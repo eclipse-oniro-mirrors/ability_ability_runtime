@@ -34,17 +34,52 @@ namespace CliTool {
 constexpr uint32_t MAX_CMD_LENGTH = 8 * 1024;
 
 /**
+ * @brief Options for executing a raw shell command.
+ *
+ * Mirrors the JS API ExecCmdOptions (cliManager.d.ts): workDir/env/policy,
+ * background/yieldMs/timeout, isShellCommand and challenge are all flat members.
+ * env is stored as a JSON string natively and surfaced as a Record<string,string>
+ * object at the NAPI boundary. callback is a JS-only field (ToolEventCallback) and
+ * is not represented natively.
+ */
+class ExecCmdOptions : public Parcelable {
+public:
+    std::string workDir;
+    std::string env;
+    std::string policy;
+    bool background = false;
+    int64_t yieldMs = 0;
+    int64_t timeout = 0;
+    bool isShellCommand = true;
+    std::string challenge;
+
+    bool Marshalling(Parcel &parcel) const;
+    static ExecCmdOptions *Unmarshalling(Parcel &parcel);
+
+    /**
+     * @brief View the background/yieldMs/timeout subset as ExecOptions so that
+     * service helpers shared with the ExecTool path (RegisterSessionWithMonitors,
+     * ValidateExecOptionsProperties) can consume the cmd options unchanged.
+     */
+    ExecOptions AsExecOptions() const
+    {
+        ExecOptions o;
+        o.background = background;
+        o.yieldMs = yieldMs;
+        o.timeout = timeout;
+        return o;
+    }
+};
+
+/**
  * @brief Parameters for executing a raw shell command.
+ *
+ * Mirrors the JS API ExecCmdParam (CliHook.d.ts): { cmd, execCmdOptions }.
  */
 class ExecCmdParam : public Parcelable {
 public:
     std::string cmd;
-    std::string workDir;
-    std::string env;
-    std::string policy;
-    ExecOptions options;
-    bool isShellCommand = true;
-    std::string challenge;
+    ExecCmdOptions execCmdOptions;
 
     bool Marshalling(Parcel &parcel) const;
     static ExecCmdParam *Unmarshalling(Parcel &parcel);

@@ -15,12 +15,34 @@
 
 #include "permission_util.h"
 
+#include "accesstoken_kit.h"
+#include "hilog_tag_wrapper.h"
+
 namespace OHOS {
 namespace CliTool {
-bool PermissionUtil::VerifyAccessToken(Security::AccessToken::AccessTokenID, const std::string &)
+bool PermissionUtil::VerifyAccessToken(AccessToken::AccessTokenID tokenId, const std::string &requirePermission)
 {
+    int32_t ret = Security::AccessToken::AccessTokenKit::VerifyAccessToken(tokenId, requirePermission, false);
+    if (ret != Security::AccessToken::PermissionState::PERMISSION_GRANTED) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}d not has %{public}s", tokenId, requirePermission.c_str());
+        return false;
+    }
     return true;
 }
 
+bool PermissionUtil::IsSystemApp()
+{
+    return false;
+}
+
+bool PermissionUtil::IsSystemSA()
+{
+    return false;
+}
+
+int32_t PermissionUtil::CheckSystemAndPermission(const std::string &)
+{
+    return 0;
+}
 } // namespace CliTool
 } // namespace OHOS

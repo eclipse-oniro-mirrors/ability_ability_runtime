@@ -92,12 +92,12 @@ ErrCode CliToolMGRClient::ExecCmd(const ExecCmdParam &param,
         return ERR_INVALID_PARAM;
     }
 
-    if (!param.isShellCommand && param.cmd.find_first_not_of(" \t") == std::string::npos) {
+    if (!param.execCmdOptions.isShellCommand && param.cmd.find_first_not_of(" \t") == std::string::npos) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "cmd is empty in tool command mode");
         return ERR_INVALID_PARAM;
     }
 
-    std::string eventKey = param.isShellCommand ? "shell" : ExecCmdParam::ExtractToolName(param.cmd);
+    std::string eventKey = param.execCmdOptions.isShellCommand ? "shell" : ExecCmdParam::ExtractToolName(param.cmd);
     std::string eventId = CliEventReplyManager::GetInstance().AddEventReplyCallback(eventKey,
         [cb = std::move(callback)](const CliEventReplyResult &result) {
             if (cb) {

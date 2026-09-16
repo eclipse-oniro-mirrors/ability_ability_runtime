@@ -90,7 +90,7 @@ ExecCmdParam ProcessManagerTest::CreateTestCmdParam(const std::string &cmd)
 {
     ExecCmdParam param;
     param.cmd = cmd;
-    param.options.timeout = TIMEOUT;
+    param.execCmdOptions.timeout = TIMEOUT;
     return param;
 }
 

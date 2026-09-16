@@ -19,6 +19,7 @@
 #include <memory>
 
 #include "hilog_tag_wrapper.h"
+#include "js_function_manager_utils.h"
 #include "napi_common_util.h"
 #include "napi_common_want.h"
 
@@ -29,63 +30,12 @@ namespace CliTool {
 namespace {
 constexpr int32_t HOOK_TIMEOUT_MS = 5000;
 
-napi_value CreateJsInvokeResult(napi_env env, const InvokeFunctionResult& result)
-{
-    napi_value jsObj = nullptr;
-    napi_create_object(env, &jsObj);
-    napi_set_named_property(env, jsObj, "success", AppExecFwk::WrapBoolToJS(env, result.success));
-    if (result.data != nullptr) {
-        napi_value jsData = AppExecFwk::WrapWantParams(env, *result.data);
-        napi_set_named_property(env, jsObj, "data", jsData);
-    }
-    napi_set_named_property(env, jsObj, "errorCode", AppExecFwk::WrapInt32ToJS(env, result.errorCode));
-    napi_set_named_property(env, jsObj, "errorMsg", AppExecFwk::WrapStringToJS(env, result.errorMsg));
-    return jsObj;
-}
-
-void ParseJsInvokeResult(napi_env env, napi_value jsObj, InvokeFunctionResult& result)
-{
-    bool hasProp = false;
-    if (napi_has_named_property(env, jsObj, "success", &hasProp) == napi_ok && hasProp) {
-        napi_value prop = nullptr;
-        napi_get_named_property(env, jsObj, "success", &prop);
-        AppExecFwk::UnwrapBoolFromJS2(env, prop, result.success);
-    }
-    if (napi_has_named_property(env, jsObj, "errorCode", &hasProp) == napi_ok && hasProp) {
-        napi_value prop = nullptr;
-        napi_get_named_property(env, jsObj, "errorCode", &prop);
-        AppExecFwk::UnwrapInt32FromJS2(env, prop, result.errorCode);
-    }
-    if (napi_has_named_property(env, jsObj, "errorMsg", &hasProp) == napi_ok && hasProp) {
-        napi_value prop = nullptr;
-        napi_get_named_property(env, jsObj, "errorMsg", &prop);
-        AppExecFwk::UnwrapStringFromJS2(env, prop, result.errorMsg);
-    }
-    if (napi_has_named_property(env, jsObj, "data", &hasProp) == napi_ok && hasProp) {
-        napi_value prop = nullptr;
-        napi_get_named_property(env, jsObj, "data", &prop);
-        if (prop != nullptr) {
-            auto wantParams = std::make_shared<AAFwk::WantParams>();
-            AppExecFwk::UnwrapWantParams(env, prop, *wantParams);
-            result.data = wantParams;
-        }
-    }
-}
-
 napi_value BuildJsParam(napi_env env, const JsFunctionHook::FunctionHookCallData& callData)
 {
     switch (callData.methodType) {
         case JsFunctionHook::HookMethodType::BEFORE_INVOKE_FUNCTION:
             if (callData.hookParam != nullptr) {
-                napi_value jsParam = nullptr;
-                napi_create_object(env, &jsParam);
-                napi_set_named_property(env, jsParam, "functionNamespace",
-                    AppExecFwk::WrapStringToJS(env, callData.hookParam->functionNamespace));
-                napi_set_named_property(env, jsParam, "functionName",
-                    AppExecFwk::WrapStringToJS(env, callData.hookParam->functionName));
-                napi_set_named_property(env, jsParam, "args",
-                    AppExecFwk::WrapWantParams(env, callData.hookParam->args));
-                return jsParam;
+                return CreateJsInvokeFunctionParam(env, *callData.hookParam);
             }
             break;
         case JsFunctionHook::HookMethodType::AFTER_INVOKE_FUNCTION:
@@ -101,23 +51,30 @@ napi_value BuildJsParam(napi_env env, const JsFunctionHook::FunctionHookCallData
     return nullptr;
 }
 
+void UnwrapInvokeResultWrap(napi_env env, napi_value jsResult, FunctionResultWrap& wrap)
+{
+    wrap.result = InvokeFunctionResult{};
+    bool hasProp = false;
+    if (napi_has_named_property(env, jsResult, "result", &hasProp) == napi_ok && hasProp) {
+        napi_value jsResult2 = nullptr;
+        napi_get_named_property(env, jsResult, "result", &jsResult2);
+        if (jsResult2 != nullptr) {
+            UnwrapInvokeResult(env, jsResult2, wrap.result);
+        }
+    }
+}
+
 void ParseJsResult(napi_env env, const JsFunctionHook::FunctionHookCallData& callData, napi_value jsResult)
 {
     switch (callData.methodType) {
         case JsFunctionHook::HookMethodType::BEFORE_INVOKE_FUNCTION:
             if (callData.hookParam != nullptr) {
-                napi_value jsArgs = nullptr;
-                napi_get_named_property(env, jsResult, "args", &jsArgs);
-                AppExecFwk::UnwrapWantParams(env, jsArgs, callData.hookParam->args);
+                UnwrapInvokeFunctionParam(env, jsResult, *callData.hookParam);
             }
             break;
         case JsFunctionHook::HookMethodType::AFTER_INVOKE_FUNCTION:
             if (callData.functionResultWrap != nullptr) {
-                napi_value jsResult2 = nullptr;
-                napi_get_named_property(env, jsResult, "result", &jsResult2);
-                if (jsResult2 != nullptr) {
-                    ParseJsInvokeResult(env, jsResult2, callData.functionResultWrap->result);
-                }
+                UnwrapInvokeResultWrap(env, jsResult, *callData.functionResultWrap);
             }
             break;
     }
@@ -155,17 +112,38 @@ JsFunctionHook::JsFunctionHook(napi_env env, napi_value jsHookObj)
             napi_delete_reference(env, callbackRef_);
             callbackRef_ = nullptr;
         }
+        return;
     }
+}
+
+void JsFunctionHook::ReleaseInternal()
+{
+    if (tsfn_ != nullptr && !released_.exchange(true)) {
+        napi_release_threadsafe_function(tsfn_, napi_tsfn_abort);
+        tsfn_ = nullptr;
+    }
+    if (callbackRef_ != nullptr && env_ != nullptr) {
+        napi_delete_reference(env_, callbackRef_);
+        callbackRef_ = nullptr;
+    }
+}
+
+void JsFunctionHook::ReleaseResources()
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    ReleaseInternal();
 }
 
 JsFunctionHook::~JsFunctionHook()
 {
-    if (tsfn_ != nullptr && !released_.exchange(true)) {
-        napi_release_threadsafe_function(tsfn_, napi_tsfn_abort);
-    }
-    if (callbackRef_ != nullptr && env_ != nullptr) {
-        napi_delete_reference(env_, callbackRef_);
-    }
+    // NAPI resources are released by ReleaseResources(), called either by the
+    // normal unregister path or by the manager-level env-cleanup hook
+    // (CleanupFunctionHookOnEnvDestroy in js_function_manager). If neither was
+    // called, the NAPI runtime finalizes tsfn and frees napi_ref during env
+    // teardown.
+    // Do NOT call napi functions here — the destructor may run on a non-JS
+    // thread (e.g. static destruction or async binder release), which would
+    // make napi_delete_reference(env_, callbackRef_) undefined behavior.
 }
 
 void JsFunctionHook::Finalize(napi_env env, void* data, void* hint)
@@ -177,7 +155,15 @@ bool JsFunctionHook::DispatchToJs(std::shared_ptr<FunctionHookCallData> callData
 {
     callData->promise = std::make_shared<std::promise<void>>();
     auto* wrapper = new std::weak_ptr<FunctionHookCallData>(callData);
-    napi_status status = napi_call_threadsafe_function(tsfn_, wrapper, napi_tsfn_blocking);
+    napi_status status = napi_ok;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (tsfn_ == nullptr) {
+            delete wrapper;
+            return false;
+        }
+        status = napi_call_threadsafe_function(tsfn_, wrapper, napi_tsfn_blocking);
+    }
     if (status != napi_ok) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "DispatchToJs: napi_call_threadsafe_function failed, status=%{public}d", status);
         delete wrapper;
@@ -268,6 +254,5 @@ void JsFunctionHook::CallJs(napi_env env, napi_value jsCb, void* context, void* 
     ParseJsResult(env, *callData, jsResult);
     callData->promise->set_value();
 }
-
 } // namespace CliTool
 } // namespace OHOS

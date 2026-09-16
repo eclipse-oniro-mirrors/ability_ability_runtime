@@ -19,12 +19,8 @@
 
 namespace OHOS {
 namespace CliTool {
-bool ExecCmdParam::Marshalling(Parcel &parcel) const
+bool ExecCmdOptions::Marshalling(Parcel &parcel) const
 {
-    if (!parcel.WriteString(cmd)) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Write cmd failed.");
-        return false;
-    }
     if (!parcel.WriteString(workDir)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Write workDir failed.");
         return false;
@@ -37,8 +33,16 @@ bool ExecCmdParam::Marshalling(Parcel &parcel) const
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Write policy failed.");
         return false;
     }
-    if (!parcel.WriteParcelable(&options)) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Write options failed.");
+    if (!parcel.WriteBool(background)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Write background failed.");
+        return false;
+    }
+    if (!parcel.WriteInt64(yieldMs)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Write yieldMs failed.");
+        return false;
+    }
+    if (!parcel.WriteInt64(timeout)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Write timeout failed.");
         return false;
     }
     if (!parcel.WriteBool(isShellCommand)) {
@@ -47,6 +51,46 @@ bool ExecCmdParam::Marshalling(Parcel &parcel) const
     }
     if (!parcel.WriteString(challenge)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Write challenge failed.");
+        return false;
+    }
+    return true;
+}
+
+ExecCmdOptions *ExecCmdOptions::Unmarshalling(Parcel &parcel)
+{
+    auto *result = new (std::nothrow) ExecCmdOptions();
+    if (result == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Fail to create ExecCmdOptions.");
+        return nullptr;
+    }
+    if (!parcel.ReadString(result->workDir) || !parcel.ReadString(result->env) ||
+        !parcel.ReadString(result->policy) || !parcel.ReadBool(result->background) ||
+        !parcel.ReadInt64(result->yieldMs) || !parcel.ReadInt64(result->timeout)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Read ExecCmdOptions core fields failed.");
+        delete result;
+        return nullptr;
+    }
+    // Tail fields with backward-compat defaults: older peers may omit them.
+    result->isShellCommand = true;
+    if (!parcel.ReadBool(result->isShellCommand)) {
+        TAG_LOGD(AAFwkTag::CLI_TOOL, "isShellCommand not present, using default(true).");
+        return result;
+    }
+    result->challenge = "";
+    if (!parcel.ReadString(result->challenge)) {
+        TAG_LOGD(AAFwkTag::CLI_TOOL, "challenge not present, using default(\"\").");
+    }
+    return result;
+}
+
+bool ExecCmdParam::Marshalling(Parcel &parcel) const
+{
+    if (!parcel.WriteString(cmd)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Write cmd failed.");
+        return false;
+    }
+    if (!parcel.WriteParcelable(&execCmdOptions)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Write execCmdOptions failed.");
         return false;
     }
     return true;
@@ -63,36 +107,14 @@ ExecCmdParam *ExecCmdParam::Unmarshalling(Parcel &parcel)
         delete result;
         return nullptr;
     }
-    if (!parcel.ReadString(result->workDir)) {
-        delete result;
-        return nullptr;
-    }
-    if (!parcel.ReadString(result->env)) {
-        delete result;
-        return nullptr;
-    }
-    if (!parcel.ReadString(result->policy)) {
-        delete result;
-        return nullptr;
-    }
 
-    std::unique_ptr<ExecOptions> execOptions(parcel.ReadParcelable<ExecOptions>());
-    if (execOptions == nullptr) {
+    std::unique_ptr<ExecCmdOptions> opts(parcel.ReadParcelable<ExecCmdOptions>());
+    if (opts == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Read execCmdOptions failed.");
         delete result;
         return nullptr;
     }
-    result->options = *execOptions;
-
-    // Tail fields for backward compat: old clients don't write these.
-    result->isShellCommand = true;
-    if (!parcel.ReadBool(result->isShellCommand)) {
-        TAG_LOGD(AAFwkTag::CLI_TOOL, "isShellCommand not present, using default(true).");
-        return result;
-    }
-    result->challenge = "";
-    if (!parcel.ReadString(result->challenge)) {
-        TAG_LOGD(AAFwkTag::CLI_TOOL, "challenge not present, using default(\"\").");
-    }
+    result->execCmdOptions = *opts;
     return result;
 }
 

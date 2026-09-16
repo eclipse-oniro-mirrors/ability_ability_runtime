@@ -19,6 +19,7 @@
 #include <atomic>
 #include <future>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include "function_hook_interface_stub.h"
@@ -50,6 +51,8 @@ public:
 
     napi_ref GetCallbackRef() const { return callbackRef_; }
     bool IsValid() const { return callbackRef_ != nullptr && tsfn_ != nullptr; }
+    bool IsSameEnv(napi_env env) const { return env == env_; }
+    void ReleaseResources();
 
     enum class HookMethodType : uint8_t {
         BEFORE_INVOKE_FUNCTION,
@@ -64,18 +67,18 @@ public:
     };
 
 private:
-
     napi_env env_ = nullptr;
     napi_ref callbackRef_ = nullptr;
     napi_threadsafe_function tsfn_ = nullptr;
     std::atomic<bool> released_{false};
+    std::mutex mutex_;
 
     static void CallJs(napi_env env, napi_value jsCb, void* context, void* data);
     static void Finalize(napi_env env, void* data, void* hint);
+    void ReleaseInternal();
 
     bool DispatchToJs(std::shared_ptr<FunctionHookCallData> callData);
 };
-
 } // namespace CliTool
 } // namespace OHOS
 

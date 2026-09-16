@@ -60,7 +60,6 @@ private:
     std::shared_ptr<std::atomic<bool>> completed_;
     InvokeResultCallback callback_;
 };
-
 } // namespace CliTool
 } // namespace OHOS
 

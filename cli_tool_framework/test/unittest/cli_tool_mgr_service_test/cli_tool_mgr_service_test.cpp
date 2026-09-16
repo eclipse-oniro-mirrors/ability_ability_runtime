@@ -2160,7 +2160,7 @@ HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareCmd_0100, TestSize.Level1)
 
     ExecCmdParam param;
     param.cmd = "echo hello";
-    param.options.timeout = -1;
+    param.execCmdOptions.timeout = -1;
     std::string sandboxConfig;
     std::string bundleName;
 
@@ -2182,7 +2182,7 @@ HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareCmd_0200, TestSize.Level1)
 
     ExecCmdParam param;
     param.cmd = "echo hello";
-    param.options.yieldMs = -1;
+    param.execCmdOptions.yieldMs = -1;
     std::string sandboxConfig;
     std::string bundleName;
 
@@ -2204,8 +2204,8 @@ HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareCmd_0300, TestSize.Level1)
 
     ExecCmdParam param;
     param.cmd = "ls /data";
-    param.options.timeout = 30;
-    param.options.yieldMs = 0;
+    param.execCmdOptions.timeout = 30;
+    param.execCmdOptions.yieldMs = 0;
     std::string sandboxConfig;
     std::string bundleName;
 
@@ -2227,9 +2227,9 @@ HWTEST_F(CliToolManagerServiceTest, ValidateAndPrepareCmd_0400, TestSize.Level1)
 
     ExecCmdParam param;
     param.cmd = "echo hello";
-    param.options.timeout = 1;
-    param.options.yieldMs = 50000;
-    param.options.background = false;
+    param.execCmdOptions.timeout = 1;
+    param.execCmdOptions.yieldMs = 50000;
+    param.execCmdOptions.background = false;
     std::string sandboxConfig;
     std::string bundleName;
 
@@ -2299,7 +2299,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_0300, TestSize.Level1)
 
     ExecCmdParam param;
     param.cmd = "echo test";
-    param.options.timeout = 30;
+    param.execCmdOptions.timeout = 30;
     sptr<TestScheduler> scheduler = new TestScheduler();
     int32_t result = service_->ExecCmd(param, "event_exec_cmd_limit", scheduler, "subscription_limit");
 
@@ -2319,7 +2319,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_0400, TestSize.Level1)
 
     ExecCmdParam param;
     param.cmd = "echo test";
-    param.options.timeout = -1;
+    param.execCmdOptions.timeout = -1;
     sptr<TestScheduler> scheduler = new TestScheduler();
     int32_t result = service_->ExecCmd(param, "event_exec_cmd_invalid_timeout", scheduler, "subscription_invalid");
 
@@ -2342,9 +2342,9 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_0500, TestSize.Level1)
 
     ExecCmdParam param;
     param.cmd = "echo hello";
-    param.options.timeout = 30;
-    param.options.yieldMs = 0;
-    param.options.background = false;
+    param.execCmdOptions.timeout = 30;
+    param.execCmdOptions.yieldMs = 0;
+    param.execCmdOptions.background = false;
 
     sptr<TestScheduler> scheduler = new TestScheduler();
     int32_t result = service_->ExecCmd(param, "event_exec_cmd_full_path", scheduler, "subscription_full");
@@ -2370,8 +2370,8 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_0600, TestSize.Level1)
 
     ExecCmdParam param;
     param.cmd = "echo test";
-    param.options.timeout = 30;
-    param.options.yieldMs = 0;
+    param.execCmdOptions.timeout = 30;
+    param.execCmdOptions.yieldMs = 0;
 
     sptr<TestScheduler> scheduler = new TestScheduler();
     int32_t result = service_->ExecCmd(param, "event_exec_cmd_empty_sub", scheduler, "");
@@ -2394,9 +2394,9 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_0700, TestSize.Level1)
 
     ExecCmdParam param;
     param.cmd = "echo test";
-    param.options.timeout = 1;
-    param.options.yieldMs = 50000;
-    param.options.background = false;
+    param.execCmdOptions.timeout = 1;
+    param.execCmdOptions.yieldMs = 50000;
+    param.execCmdOptions.background = false;
 
     sptr<TestScheduler> scheduler = new TestScheduler();
     int32_t result = service_->ExecCmd(param, "event_exec_cmd_yield_exceed", scheduler, "subscription_yield");
@@ -3390,7 +3390,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_ToolMode_InvalidToolName_0100, TestS
 
     ExecCmdParam param;
     param.cmd = "/system/bin/ohos-aa start --bundleName=com.x";
-    param.isShellCommand = false;
+    param.execCmdOptions.isShellCommand = false;
     sptr<TestScheduler> scheduler = new TestScheduler();
     int32_t result = service_->ExecCmd(param, "event_path_inject", scheduler, "sub_path_inject");
     EXPECT_TRUE(result == ERR_INVALID_PARAM || IsPermissionGateResult(result));
@@ -3408,7 +3408,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_ToolMode_InvalidToolName_0200, TestS
     TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_ToolMode_InvalidToolName_0200 start");
 
     ExecCmdParam param;
-    param.isShellCommand = false;
+    param.execCmdOptions.isShellCommand = false;
     sptr<TestScheduler> scheduler = new TestScheduler();
 
     param.cmd = "../ohos-aa start";
@@ -3433,7 +3433,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_ToolMode_EmptyToolName_0100, TestSiz
 
     ExecCmdParam param;
     param.cmd = "   ";
-    param.isShellCommand = false;
+    param.execCmdOptions.isShellCommand = false;
     sptr<TestScheduler> scheduler = new TestScheduler();
     int32_t result = service_->ExecCmd(param, "event_empty", scheduler, "sub_empty");
     EXPECT_TRUE(result == ERR_INVALID_PARAM || IsPermissionGateResult(result));
@@ -3453,7 +3453,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_ToolMode_ToolNotExist_0100, TestSize
     CliToolDataManagerMock::Reset();
     ExecCmdParam param;
     param.cmd = "ohos-nonexistent-tool start --flag=true";
-    param.isShellCommand = false;
+    param.execCmdOptions.isShellCommand = false;
     sptr<TestScheduler> scheduler = new TestScheduler();
     int32_t result = service_->ExecCmd(param, "event_missing", scheduler, "sub_missing");
     EXPECT_TRUE(result == ERR_TOOL_NOT_EXIST || IsPermissionGateResult(result));
@@ -3479,7 +3479,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_ToolMode_SessionLimit_0100, TestSize
 
     ExecCmdParam param;
     param.cmd = "ohos-aa start --bundleName=com.x";
-    param.isShellCommand = false;
+    param.execCmdOptions.isShellCommand = false;
     sptr<TestScheduler> scheduler = new TestScheduler();
     int32_t result = service_->ExecCmd(param, "event_limit", scheduler, "sub_limit");
     EXPECT_TRUE(result == ERR_SESSION_LIMIT_EXCEEDED || IsPermissionGateResult(result));
@@ -3498,7 +3498,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_DefaultShellDispatch_0100, TestSize.
 
     ExecCmdParam param;
     param.cmd = "/bin/echo hello";
-    EXPECT_TRUE(param.isShellCommand);
+    EXPECT_TRUE(param.execCmdOptions.isShellCommand);
     sptr<TestScheduler> scheduler = new TestScheduler();
     int32_t result = service_->ExecCmd(param, "event_shell_default", scheduler, "sub_shell_default");
     EXPECT_NE(result, ERR_INVALID_PARAM);
@@ -3537,7 +3537,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_CmdTooLong_0200, TestSize.Level1)
 
     ExecCmdParam param;
     param.cmd = "ohos-aa start --bundleName=" + std::string(MAX_CMD_LENGTH, 'x');
-    param.isShellCommand = false;
+    param.execCmdOptions.isShellCommand = false;
     sptr<TestScheduler> scheduler = new TestScheduler();
     int32_t result = service_->ExecCmd(param, "event_cmd_too_long_tool", scheduler, "sub_cmd_too_long_tool");
     EXPECT_TRUE(result == ERR_INVALID_PARAM || IsPermissionGateResult(result));
@@ -3661,7 +3661,10 @@ public:
 
 static void SetDeveloperMode(bool enabled)
 {
-    system::SetBoolParameter("const.security.developermode.state", enabled);
+    auto svc = CliToolManagerService::GetInstance();
+    if (svc != nullptr) {
+        svc->isDeveloperMode_ = enabled;
+    }
 }
 
 static CliSessionInfo MakeSessionWithResult(int32_t exitCode, const std::string& output)
@@ -4106,7 +4109,7 @@ HWTEST_F(CliToolManagerServiceTest, BeforeInvokeFunction_NoHook_0100, TestSize.L
 
 /**
  * @tc.name: BeforeInvokeFunction_DeveloperModeOff_0100
- * @tc.desc: When developer mode is off, BeforeInvokeFunction returns ERR_OK (hook skipped)
+ * @tc.desc: When developer mode is off, BeforeInvokeFunction returns ERR_NOT_DEVELOPER_MODE
  * @tc.type: FUNC
  */
 HWTEST_F(CliToolManagerServiceTest, BeforeInvokeFunction_DeveloperModeOff_0100, TestSize.Level1)
@@ -4123,7 +4126,7 @@ HWTEST_F(CliToolManagerServiceTest, BeforeInvokeFunction_DeveloperModeOff_0100, 
     param.functionNamespace = "test_ns";
     param.functionName = "test_fn";
     int32_t result = service_->BeforeInvokeFunction(param);
-    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(result, ERR_NOT_DEVELOPER_MODE);
     EXPECT_EQ(hook->beforeInvokeCount, 0);
 
     SetDeveloperMode(true);
@@ -4175,7 +4178,7 @@ HWTEST_F(CliToolManagerServiceTest, AfterInvokeFunction_NoHook_0100, TestSize.Le
 
 /**
  * @tc.name: AfterInvokeFunction_DeveloperModeOff_0100
- * @tc.desc: When developer mode is off, AfterInvokeFunction returns ERR_OK (hook skipped)
+ * @tc.desc: When developer mode is off, AfterInvokeFunction returns ERR_NOT_DEVELOPER_MODE
  * @tc.type: FUNC
  */
 HWTEST_F(CliToolManagerServiceTest, AfterInvokeFunction_DeveloperModeOff_0100, TestSize.Level1)
@@ -4192,7 +4195,8 @@ HWTEST_F(CliToolManagerServiceTest, AfterInvokeFunction_DeveloperModeOff_0100, T
     FunctionResultWrap wrap;
     wrap.result.success = false;
     wrap.result.errorCode = 99;
-    service_->AfterInvokeFunction(wrap);
+    int32_t result = service_->AfterInvokeFunction(wrap);
+    EXPECT_EQ(result, ERR_NOT_DEVELOPER_MODE);
     EXPECT_EQ(hook->afterInvokeCount, 0);
     EXPECT_FALSE(wrap.result.success);
 

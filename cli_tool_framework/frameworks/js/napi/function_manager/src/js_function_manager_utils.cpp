@@ -17,6 +17,7 @@
 
 #include "function_info.h"
 #include "hilog_tag_wrapper.h"
+#include "invoke_function_param.h"
 #include "napi_common_util.h"
 #include "napi_common_want.h"
 
@@ -107,6 +108,75 @@ napi_value CreateJsInvokeResult(napi_env env, const InvokeFunctionResult &result
     }
 
     return jsObj;
+}
+
+void UnwrapInvokeResult(napi_env env, napi_value jsObj, InvokeFunctionResult &result)
+{
+    if (jsObj == nullptr) {
+        return;
+    }
+    result = InvokeFunctionResult{};
+    bool hasProp = false;
+    if (napi_has_named_property(env, jsObj, "success", &hasProp) == napi_ok && hasProp) {
+        napi_value prop = nullptr;
+        napi_get_named_property(env, jsObj, "success", &prop);
+        AppExecFwk::UnwrapBoolFromJS2(env, prop, result.success);
+    }
+    if (napi_has_named_property(env, jsObj, "errorCode", &hasProp) == napi_ok && hasProp) {
+        napi_value prop = nullptr;
+        napi_get_named_property(env, jsObj, "errorCode", &prop);
+        AppExecFwk::UnwrapInt32FromJS2(env, prop, result.errorCode);
+    }
+    if (napi_has_named_property(env, jsObj, "errorMsg", &hasProp) == napi_ok && hasProp) {
+        napi_value prop = nullptr;
+        napi_get_named_property(env, jsObj, "errorMsg", &prop);
+        AppExecFwk::UnwrapStringFromJS2(env, prop, result.errorMsg);
+    }
+    if (napi_has_named_property(env, jsObj, "data", &hasProp) == napi_ok && hasProp) {
+        napi_value prop = nullptr;
+        napi_get_named_property(env, jsObj, "data", &prop);
+        if (prop != nullptr) {
+            auto wantParams = std::make_shared<AAFwk::WantParams>();
+            AppExecFwk::UnwrapWantParams(env, prop, *wantParams);
+            result.data = wantParams;
+        }
+    }
+}
+
+napi_value CreateJsInvokeFunctionParam(napi_env env, const InvokeFunctionParam &param)
+{
+    napi_value jsObj = nullptr;
+    napi_create_object(env, &jsObj);
+    napi_set_named_property(env, jsObj, "functionNamespace",
+        AppExecFwk::WrapStringToJS(env, param.functionNamespace));
+    napi_set_named_property(env, jsObj, "functionName",
+        AppExecFwk::WrapStringToJS(env, param.functionName));
+    napi_set_named_property(env, jsObj, "args", AppExecFwk::WrapWantParams(env, param.args));
+    return jsObj;
+}
+
+void UnwrapInvokeFunctionParam(napi_env env, napi_value jsObj, InvokeFunctionParam &param)
+{
+    if (jsObj == nullptr) {
+        return;
+    }
+    param = InvokeFunctionParam{};
+    bool hasProp = false;
+    if (napi_has_named_property(env, jsObj, "functionNamespace", &hasProp) == napi_ok && hasProp) {
+        napi_value prop = nullptr;
+        napi_get_named_property(env, jsObj, "functionNamespace", &prop);
+        AppExecFwk::UnwrapStringFromJS2(env, prop, param.functionNamespace);
+    }
+    if (napi_has_named_property(env, jsObj, "functionName", &hasProp) == napi_ok && hasProp) {
+        napi_value prop = nullptr;
+        napi_get_named_property(env, jsObj, "functionName", &prop);
+        AppExecFwk::UnwrapStringFromJS2(env, prop, param.functionName);
+    }
+    if (napi_has_named_property(env, jsObj, "args", &hasProp) == napi_ok && hasProp) {
+        napi_value prop = nullptr;
+        napi_get_named_property(env, jsObj, "args", &prop);
+        AppExecFwk::UnwrapWantParams(env, prop, param.args);
+    }
 }
 
 } // namespace CliTool

@@ -47,6 +47,5 @@ void InvokeFunctionCallbackClient::ProcessInsightIntentExecute(int32_t resultCod
         callback_(holder);
     }
 }
-
 } // namespace CliTool
 } // namespace OHOS

@@ -59,7 +59,6 @@ private:
     std::shared_ptr<CompletedFlag> completed_;
     InvokeResultCallback callback_;
 };
-
 } // namespace CliTool
 } // namespace OHOS
 

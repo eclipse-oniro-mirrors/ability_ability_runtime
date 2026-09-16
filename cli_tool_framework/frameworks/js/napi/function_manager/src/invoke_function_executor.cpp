@@ -120,6 +120,5 @@ void InvokeFunctionExecutor::DoExecute(const InvokeFunctionParam &param)
         ReportError(reportErr);
     }
 }
-
 } // namespace CliTool
 } // namespace OHOS

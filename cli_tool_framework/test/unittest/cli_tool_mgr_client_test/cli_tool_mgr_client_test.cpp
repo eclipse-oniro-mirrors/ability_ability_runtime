@@ -415,7 +415,7 @@ HWTEST_F(CliToolMGRClientTest, ExecCmd_0100, TestSize.Level1)
     SetMockService();
     ExecCmdParam param;
     param.cmd = "echo test_cmd";
-    param.options.timeout = 30;
+    param.execCmdOptions.timeout = 30;
     int32_t callbackCode = -1;
     auto sessionCallback = std::make_shared<MockSessionCallback>();
 
@@ -440,7 +440,7 @@ HWTEST_F(CliToolMGRClientTest, ExecCmd_0200, TestSize.Level1)
     SetMockService();
     ExecCmdParam param;
     param.cmd = "ls /data";
-    param.options.timeout = 30;
+    param.execCmdOptions.timeout = 30;
     int32_t callbackCode = -1;
     auto sessionCallback = std::make_shared<MockSessionCallback>();
 
@@ -471,7 +471,7 @@ HWTEST_F(CliToolMGRClientTest, ExecCmd_0300, TestSize.Level1)
     SetMockService();
     ExecCmdParam param;
     param.cmd = "   ";
-    param.isShellCommand = false;
+    param.execCmdOptions.isShellCommand = false;
 
     auto sessionCallback = std::make_shared<MockSessionCallback>();
     // Tool command mode with whitespace-only cmd is rejected before IPC dispatch
@@ -513,7 +513,7 @@ HWTEST_F(CliToolMGRClientTest, ExecCmd_0800, TestSize.Level1)
     SetMockService();
     ExecCmdParam param;
     param.cmd = std::string(MAX_CMD_LENGTH, 'a');
-    param.options.timeout = 30;
+    param.execCmdOptions.timeout = 30;
 
     CliToolMgrClientFlag::retExecCmd = ERR_OK;
     auto sessionCallback = std::make_shared<MockSessionCallback>();

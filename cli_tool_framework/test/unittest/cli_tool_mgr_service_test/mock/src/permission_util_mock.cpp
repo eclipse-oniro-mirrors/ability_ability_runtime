@@ -13,32 +13,35 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_ABILITY_RUNTIME_PERMISSION_UTIL_H
-#define OHOS_ABILITY_RUNTIME_PERMISSION_UTIL_H
+#include "permission_util.h"
 
-#include <access_token.h>
-#include <string>
+#include "cli_error_code.h"
+#include "ipc_skeleton.h"
 
 namespace OHOS {
 namespace CliTool {
+bool PermissionUtil::VerifyAccessToken(Security::AccessToken::AccessTokenID, const std::string &)
+{
+    return true;
+}
 
-using namespace OHOS::Security;
+bool PermissionUtil::IsSystemApp()
+{
+    return IPCSkeleton::GetCallingFullTokenID() == 0;
+}
 
-class PermissionUtil {
-public:
-    PermissionUtil() = default;
-    ~PermissionUtil() = default;
+bool PermissionUtil::IsSystemSA()
+{
+    return IPCSkeleton::GetCallingTokenID() == TOKEN_NATIVE;
+}
 
-    static bool VerifyAccessToken(AccessToken::AccessTokenID tokenId, const std::string &requirePermission);
-
-    static bool IsSystemApp();
-
-    static bool IsSystemSA();
-
-    static int32_t CheckSystemAndPermission(const std::string &permissionName);
-};
+int32_t PermissionUtil::CheckSystemAndPermission(const std::string &)
+{
+    if (!IsSystemApp() && !IsSystemSA()) {
+        return ERR_NOT_SYSTEM_APP;
+    }
+    return ERR_OK;
+}
 
 } // namespace CliTool
 } // namespace OHOS
-
-#endif // OHOS_ABILITY_RUNTIME_PERMISSION_UTIL_H

@@ -324,8 +324,6 @@ private:
     int32_t GetCallerPidCount();
 
     bool IsDeveloperMode() const;
-    int32_t VerifyHookCaller() const;
-    int32_t VerifyFunctionCaller() const;
     sptr<ICliHookInterface> CheckCliHook(uint32_t flag);
     sptr<IFunctionHookInterface> CheckFunctionHook(uint32_t flag);
     void InvokeBeforeCallTool(ExecToolParam &param);
@@ -333,6 +331,7 @@ private:
     void InvokeBeforeCallCmd(ExecCmdParam &param);
 
     bool initialized_ = false;
+    bool isDeveloperMode_ = false;
     std::shared_ptr<IOMonitor> ioMonitor_ = nullptr;
 
     // ---- SIGCHLD self-pipe + dedicated reaper thread ----
@@ -387,12 +386,12 @@ private:
         });
 
         std::unique_lock<ffrt::mutex> lock(*mtx);
-        bool ok = cv->wait_for(lock, std::chrono::seconds(HOOK_TIMEOUT_SECONDS),
+        bool success = cv->wait_for(lock, std::chrono::seconds(HOOK_TIMEOUT_SECONDS),
             [&] { return completed->load(); });
-        if (ok) {
+        if (success) {
             param = *paramCopy;
         }
-        return ok;
+        return success;
     }
 };
 

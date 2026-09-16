@@ -300,6 +300,29 @@ namespace {
 sptr<JsFunctionHook> g_functionHookStub = nullptr;
 std::mutex g_functionHookMutex;
 
+void CleanupFunctionHookOnEnvDestroy(void* data)
+{
+    auto* envPtr = static_cast<napi_env*>(data);
+    if (envPtr == nullptr) {
+        return;
+    }
+    napi_env hookEnv = *envPtr;
+    delete envPtr;
+
+    sptr<JsFunctionHook> stub;
+    {
+        std::lock_guard<std::mutex> lock(g_functionHookMutex);
+        if (g_functionHookStub == nullptr || !g_functionHookStub->IsSameEnv(hookEnv)) {
+            return;
+        }
+        stub = g_functionHookStub;
+        g_functionHookStub = nullptr;
+    }
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CleanupFunctionHookOnEnvDestroy: auto unregister on env destroy");
+    stub->ReleaseResources();
+    CliToolMGRClient::GetInstance().UnregisterFunctionHook(stub);
+}
+
 bool ValidateFunctionHookObject(napi_env env, napi_value obj, uint32_t &activeMethods)
 {
     activeMethods = 0;
@@ -363,6 +386,7 @@ napi_value JSFunctionManager::OnRegisterFunctionHook(napi_env env, size_t argc, 
     ErrCode ret = CliToolMGRClient::GetInstance().RegisterFunctionHook(stub, static_cast<int32_t>(activeMethods));
     if (ret == ERR_OK) {
         g_functionHookStub = stub;
+        napi_add_env_cleanup_hook(env, &CleanupFunctionHookOnEnvDestroy, new napi_env(env));
         napi_resolve_deferred(env, deferred, CreateJsUndefined(env));
     } else {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "RegisterFunctionHook failed: %{public}d", ret);
@@ -393,6 +417,12 @@ napi_value JSFunctionManager::OnUnregisterFunctionHook(napi_env env, size_t argc
         return handleEscape.Escape(promise);
     }
 
+    if (!g_functionHookStub->IsSameEnv(env)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "OnUnregisterFunctionHook: cross-thread unregister not supported");
+        napi_reject_deferred(env, deferred, CreateCliJsErrorByNativeErr(env, ERR_INVALID_PARAM));
+        return handleEscape.Escape(promise);
+    }
+
     napi_value storedObj = nullptr;
     napi_get_reference_value(env, g_functionHookStub->GetCallbackRef(), &storedObj);
     bool same = false;
@@ -406,6 +436,7 @@ napi_value JSFunctionManager::OnUnregisterFunctionHook(napi_env env, size_t argc
     auto stub = g_functionHookStub;
     ErrCode ret = CliToolMGRClient::GetInstance().UnregisterFunctionHook(stub);
     if (ret == ERR_OK) {
+        stub->ReleaseResources();
         g_functionHookStub = nullptr;
         napi_resolve_deferred(env, deferred, CreateJsUndefined(env));
     } else {
@@ -441,6 +472,5 @@ napi_value JSFunctionManagerInit(napi_env env, napi_value exportObj)
     TAG_LOGD(AAFwkTag::CLI_TOOL, "JSFunctionManagerInit end");
     return CreateJsUndefined(env);
 }
-
 } // namespace CliTool
 } // namespace OHOS

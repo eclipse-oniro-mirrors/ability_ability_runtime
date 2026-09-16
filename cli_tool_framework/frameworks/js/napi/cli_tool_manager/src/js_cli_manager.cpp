@@ -220,7 +220,7 @@ napi_value JSCliManager::OnExecCmd(napi_env env, size_t argc, napi_value *argv)
         if (status == napi_ok && valueType == napi_object) {
             // Parse the rest of the options into param
             std::string cmdOptionsMsg;
-            if (!UnwrapExecCmdOptions(env, argv[INDEX_ONE], param, callback, cmdOptionsMsg)) {
+            if (!UnwrapExecCmdParam(env, argv[INDEX_ONE], param, callback, cmdOptionsMsg)) {
                 ThrowInvalidParamError(env, cmdOptionsMsg.empty() ? "Invalid ExecCmdOptions" : cmdOptionsMsg.c_str());
                 return CreateJsUndefined(env);
             }
@@ -546,6 +546,29 @@ namespace {
 sptr<JsCliHook> g_cliHookStub = nullptr;
 std::mutex g_cliHookMutex;
 
+void CleanupCliHookOnEnvDestroy(void* data)
+{
+    auto* envPtr = static_cast<napi_env*>(data);
+    if (envPtr == nullptr) {
+        return;
+    }
+    napi_env hookEnv = *envPtr;
+    delete envPtr;
+
+    sptr<JsCliHook> stub;
+    {
+        std::lock_guard<std::mutex> lock(g_cliHookMutex);
+        if (g_cliHookStub == nullptr || !g_cliHookStub->IsSameEnv(hookEnv)) {
+            return;
+        }
+        stub = g_cliHookStub;
+        g_cliHookStub = nullptr;
+    }
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CleanupCliHookOnEnvDestroy: auto unregister on env destroy");
+    stub->ReleaseResources();
+    CliToolMGRClient::GetInstance().UnregisterCliHook(stub);
+}
+
 bool ValidateCliHookObject(napi_env env, napi_value obj, uint32_t &activeMethods)
 {
     activeMethods = 0;
@@ -611,6 +634,7 @@ napi_value JSCliManager::OnRegisterCliHook(napi_env env, size_t argc, napi_value
     ErrCode ret = CliToolMGRClient::GetInstance().RegisterCliHook(stub, static_cast<int32_t>(activeMethods));
     if (ret == ERR_OK) {
         g_cliHookStub = stub;
+        napi_add_env_cleanup_hook(env, &CleanupCliHookOnEnvDestroy, new napi_env(env));
         napi_resolve_deferred(env, deferred, CreateJsUndefined(env));
     } else {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "RegisterCliHook failed: %{public}d", ret);
@@ -641,6 +665,12 @@ napi_value JSCliManager::OnUnregisterCliHook(napi_env env, size_t argc, napi_val
         return handleEscape.Escape(promise);
     }
 
+    if (!g_cliHookStub->IsSameEnv(env)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "OnUnregisterCliHook: cross-thread unregister not supported");
+        napi_reject_deferred(env, deferred, CreateCliJsErrorByNativeErr(env, ERR_INVALID_PARAM));
+        return handleEscape.Escape(promise);
+    }
+
     napi_value storedObj = nullptr;
     napi_get_reference_value(env, g_cliHookStub->GetCallbackRef(), &storedObj);
     bool same = false;
@@ -654,6 +684,7 @@ napi_value JSCliManager::OnUnregisterCliHook(napi_env env, size_t argc, napi_val
     auto stub = g_cliHookStub;
     ErrCode ret = CliToolMGRClient::GetInstance().UnregisterCliHook(stub);
     if (ret == ERR_OK) {
+        stub->ReleaseResources();
         g_cliHookStub = nullptr;
         napi_resolve_deferred(env, deferred, CreateJsUndefined(env));
     } else {

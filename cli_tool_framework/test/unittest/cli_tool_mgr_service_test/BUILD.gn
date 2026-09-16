@@ -52,7 +52,7 @@ ohos_unittest("cli_tool_mgr_service_test") {
     "mock/src/accesstoken_kit.cpp",
     "mock/src/ipc_skeleton.cpp",
     "mock/src/mock_parameters.cpp",
-    "permission_util_mock.cpp",
+    "mock/src/permission_util_mock.cpp",
     "${cli_tool_framework_path}/test/unittest/common_mock/climgr_data/src/cli_tool_data_manager_mock.cpp",
   ]
 
