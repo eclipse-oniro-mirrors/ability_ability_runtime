@@ -156,7 +156,7 @@ public:
     int StartUserTest(const Want& want, const sptr<IRemoteObject>& observer) override;
     int FinishUserTest(
         const std::string& msg, const int64_t& resultCode, const std::string& bundleName) override;
-    int GetTopAbility(sptr<IRemoteObject>& token) override;
+    int GetTopAbility(sptr<IRemoteObject>& token, int32_t userId = INVALID_USER_ID) override;
     int DelegatorDoAbilityForeground(const sptr<IRemoteObject>& token) override;
     int DelegatorDoAbilityBackground(const sptr<IRemoteObject>& token) override;
     int32_t ReportDrawnCompleted(const sptr<IRemoteObject>& callerToken) override;
@@ -350,8 +350,8 @@ public:
     int StartUserTest(const Want& want, const sptr<IRemoteObject>& observer) override;
     int FinishUserTest(
         const std::string& msg, const int64_t& resultCode, const std::string& bundleName) override;
-    int GetTopAbility(sptr<IRemoteObject>& token) override;
-    AppExecFwk::ElementName GetTopAbility(bool isNeedLocalDeviceId = true) override;
+    int GetTopAbility(sptr<IRemoteObject>& token, int32_t userId = INVALID_USER_ID) override;
+    AppExecFwk::ElementName GetTopAbility(bool isNeedLocalDeviceId = true, int32_t userId = INVALID_USER_ID) override;
     int DelegatorDoAbilityForeground(const sptr<IRemoteObject>& token) override;
     int DelegatorDoAbilityBackground(const sptr<IRemoteObject>& token) override;
     int32_t ReportDrawnCompleted(const sptr<IRemoteObject>& callerToken) override;

@@ -420,8 +420,8 @@ public:
     MOCK_METHOD(int32_t, GetMissionIdByToken, (const sptr<IRemoteObject> &token), (override));
     MOCK_METHOD(int, GetMissionSnapshot, (const std::string& deviceId, int32_t missionId,
         MissionSnapshot& snapshot, bool isLowResolution), (override));
-    MOCK_METHOD(int, GetTopAbility, (sptr<IRemoteObject> &token), (override));
-    MOCK_METHOD(AppExecFwk::ElementName, GetTopAbility, (bool isNeedLocalDeviceId), (override));
+    MOCK_METHOD(int, GetTopAbility, (sptr<IRemoteObject> &token, int32_t userId), (override));
+    MOCK_METHOD(AppExecFwk::ElementName, GetTopAbility, (bool isNeedLocalDeviceId, int32_t userId), (override));
     MOCK_METHOD(int32_t, TerminateMission, (int32_t missionId), ());
     MOCK_METHOD(AppExecFwk::ElementName, GetElementNameByToken,
         (sptr<IRemoteObject> token, bool isNeedLocalDeviceId), (override));

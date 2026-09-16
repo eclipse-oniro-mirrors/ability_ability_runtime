@@ -233,7 +233,7 @@ public:
         return 0;
     }
 
-    int GetTopAbility(sptr<IRemoteObject>& token) override
+    int GetTopAbility(sptr<IRemoteObject>& token, int32_t userId = INVALID_USER_ID) override
     {
         return 0;
     }

@@ -967,6 +967,42 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_GetTopAbilityInner_001, Test
 {
     MessageParcel data;
     MessageParcel reply;
+    data.WriteBool(true);  // isNeedLocalDeviceId
+    data.WriteInt32(INVALID_USER_ID);  // userId
+    auto res = stub_->GetTopAbilityInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetTopAbilityInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService GetTopAbilityInner
+ * EnvConditions: NA
+ * CaseDescription: Verify the function GetTopAbilityInner returns error with malformed parcel.
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_GetTopAbilityInner_002, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    auto res = stub_->GetTopAbilityInner(data, reply);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetTopAbilityInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService GetTopAbilityInner
+ * EnvConditions: NA
+ * CaseDescription: Verify the function GetTopAbilityInner is compatible with the old-format
+ *                 parcel that does not carry userId.
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_GetTopAbilityInner_003, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    data.WriteBool(true);  // isNeedLocalDeviceId, old clients do not write userId
     auto res = stub_->GetTopAbilityInner(data, reply);
     EXPECT_EQ(res, NO_ERROR);
 }

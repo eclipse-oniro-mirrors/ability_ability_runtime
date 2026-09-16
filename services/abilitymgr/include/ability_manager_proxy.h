@@ -711,10 +711,12 @@ public:
     /**
      * Get top ability.
      *
-     * @param isNeedLocalDeviceId is need local device id.
+     * @param isNeedLocalDeviceId Indicates whether to need local device id.
+     * @param userId The user id.
      * @return Returns front desk focus ability elementName.
      */
-    virtual AppExecFwk::ElementName GetTopAbility(bool isNeedLocalDeviceId = true) override;
+    virtual AppExecFwk::ElementName GetTopAbility(bool isNeedLocalDeviceId = true,
+        int32_t userId = INVALID_USER_ID) override;
 
     /**
      * Get element name by token.
@@ -1134,7 +1136,7 @@ public:
      * @param token, the token of top ability.
      * @return Returns ERR_OK on success, others on failure.
      */
-    virtual int GetTopAbility(sptr<IRemoteObject> &token) override;
+    virtual int GetTopAbility(sptr<IRemoteObject> &token, int32_t userId = INVALID_USER_ID) override;
 
     virtual int CheckUIExtensionIsFocused(
         uint32_t uiExtensionTokenId, bool& isFocused, uint64_t displayId = 0) override;

@@ -112,6 +112,7 @@ using InsightIntentInfoForQuery = AbilityRuntime::InsightIntentInfoForQuery;
 
 constexpr const char* ABILITY_MANAGER_SERVICE_NAME = "AbilityManagerService";
 const int DEFAULT_INVAL_VALUE = -1;
+constexpr int32_t INVALID_USER_ID = -1;
 const int DELAY_LOCAL_FREE_INSTALL_TIMEOUT = 40000;
 const int DELAY_REMOTE_FREE_INSTALL_TIMEOUT = 30000 + DELAY_LOCAL_FREE_INSTALL_TIMEOUT;
 constexpr const char* FROM_REMOTE_KEY = "freeInstallFromRemote";
@@ -626,7 +627,7 @@ public:
         return false;
     }
 
-    virtual AppExecFwk::ElementName GetTopAbility(bool isNeedLocalDeviceId = true)
+    virtual AppExecFwk::ElementName GetTopAbility(bool isNeedLocalDeviceId = true, int32_t userId = INVALID_USER_ID)
     {
         return {};
     }
@@ -1523,7 +1524,7 @@ public:
      * @param token, the token of top ability.
      * @return Returns ERR_OK on success, others on failure.
      */
-    virtual int GetTopAbility(sptr<IRemoteObject> &token) = 0;
+    virtual int GetTopAbility(sptr<IRemoteObject> &token, int32_t userId = INVALID_USER_ID) = 0;
 
     virtual int CheckUIExtensionIsFocused(uint32_t uiExtensionTokenId, bool& isFocused, uint64_t displayId = 0)
     {

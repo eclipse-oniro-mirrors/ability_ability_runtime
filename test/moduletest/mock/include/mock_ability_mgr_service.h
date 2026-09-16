@@ -220,7 +220,7 @@ public:
         return 0;
     }
 
-    virtual int GetTopAbility(sptr<IRemoteObject>& token) override
+    virtual int GetTopAbility(sptr<IRemoteObject>& token, int32_t userId = INVALID_USER_ID) override
     {
         return 0;
     }

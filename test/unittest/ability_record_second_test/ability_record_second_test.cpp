@@ -50,7 +50,7 @@ const std::string TEST_AGENT_ID_KEY = "ohos.agentruntime.params.AgentId";
 const std::string TEST_AGENT_CARD_TYPE_KEY = "ohos.agentruntime.params.AgentCardType";
 const std::string TEST_AGENT_VERIFICATION_NONCE_KEY = "ohos.agentruntime.params.AgentVerificationNonce";
 constexpr int32_t DMS_UID = 5522;
-constexpr int32_t INVALID_USER_ID = 100;
+constexpr int32_t TEST_INVALID_USER_ID = 100;
 }
 
 class AbilityRecordSecondTest : public testing::Test {
@@ -214,7 +214,7 @@ HWTEST_F(AbilityRecordSecondTest, AbilityRecord_GetCurrentAccountId_001, TestSiz
     TAG_LOGE(AAFwkTag::TEST, "AbilityRecord_GetCurrentAccountId_001 start.");
     std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
     auto res = abilityRecord->GetCurrentAccountId();
-    EXPECT_EQ(res, INVALID_USER_ID);
+    EXPECT_EQ(res, TEST_INVALID_USER_ID);
     TAG_LOGE(AAFwkTag::TEST, "AbilityRecord_GetCurrentAccountId_001 end.");
 }
 
