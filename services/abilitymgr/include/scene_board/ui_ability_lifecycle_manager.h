@@ -912,6 +912,14 @@ private:
      * @param abilityRequest The ability request
      */
     void CacheAbilitySessionInfo(sptr<SessionInfo> &sessionInfo, const AbilityRequest &abilityRequest);
+    /**
+     * @brief Store sandbox clone params for warm path (e.g. MoveMissionToFront) into the internal
+     *        map keyed by requestId, so the SCB callback StartUIAbilityBySCBDefault can perceive
+     *        the sandbox clone scenario via AbilitySessionInfo. No-op for non-sandbox-clone records.
+     * @param sessionInfo The session info to be updated (DLP_INDEX set in want)
+     * @param abilityRecord The existing UIAbility record carrying appIndex and sandboxCloneParams
+     */
+    void SetSandboxCloneParamsForSession(sptr<SessionInfo> &sessionInfo, const UIAbilityRecordPtr &abilityRecord);
     void CreateSessionConfigurations(std::vector<sptr<SessionInfo>> &sessionInfoList, int primaryWindowId,
         std::vector<Rosen::PendingSessionActivationConfig> &configList, sptr<SessionInfo> sessionInfo);
 
