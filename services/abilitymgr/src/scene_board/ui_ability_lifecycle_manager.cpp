@@ -629,8 +629,10 @@ int UIAbilityLifecycleManager::AttachAbilityThread(const sptr<IAbilityScheduler>
     std::string callerBundleName =
         abilityRecord->GetWant().GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME);
     bool isCallBySCB = abilityRecord->GetWant().GetBoolParam(IS_CALL_BY_SCB, false);
+    AppExecFwk::UiAbilityLastCallerInfo callerInfo =
+        abilityRecord->GetRealLastCallerInfo(callerUid, callerBundleName, isCallBySCB);
 
-    int ret = HandleStartedByCall(abilityRecord, token, {callerUid, callerBundleName, isCallBySCB});
+    int ret = HandleStartedByCall(abilityRecord, token, callerInfo);
     if (ret != ERR_INVALID_VALUE) {
         return ret;
     }
@@ -640,8 +642,7 @@ int UIAbilityLifecycleManager::AttachAbilityThread(const sptr<IAbilityScheduler>
 
     abilityRecord->PostForegroundTimeoutTask();
     abilityRecord->SetAbilityState(AbilityState::FOREGROUNDING);
-    DelayedSingleton<AppScheduler>::GetInstance()->MoveToForeground(token,
-        {callerUid, callerBundleName, isCallBySCB});
+    DelayedSingleton<AppScheduler>::GetInstance()->MoveToForeground(token, callerInfo);
     return ERR_OK;
 }
 
@@ -2356,7 +2357,7 @@ void UIAbilityLifecycleManager::CompleteBackground(const UIAbilityRecordPtr &abi
             abilityRecord->GetWant().GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME);
         bool isCallBySCB = abilityRecord->GetWant().GetBoolParam(IS_CALL_BY_SCB, false);
         DelayedSingleton<AppScheduler>::GetInstance()->MoveToForeground(abilityRecord->GetToken(),
-            {callerUid, callerBundleName, isCallBySCB});
+            abilityRecord->GetRealLastCallerInfo(callerUid, callerBundleName, isCallBySCB));
     } else if (abilityRecord->GetPendingState() == AbilityState::BACKGROUND) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "not continuous startup.");
         abilityRecord->SetPendingState(AbilityState::INITIAL);

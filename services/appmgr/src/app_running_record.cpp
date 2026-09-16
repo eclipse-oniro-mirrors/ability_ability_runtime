@@ -1020,45 +1020,6 @@ void AppRunningRecord::UpdateAbilityState(const sptr<IRemoteObject> &token, cons
     }
 }
 
-void AppRunningRecord::UpdateLastCallerInfo(const UiAbilityLastCallerInfo &callerInfo)
-{
-    int32_t finalUid = callerInfo.callerUid;
-    std::string finalName = callerInfo.callerBundleName;
-
-    TAG_LOGI(AAFwkTag::APPMGR, "AbilityForeground set caller info, callerUid:%{public}d, "
-        "callerBundleName:%{public}s, isCallBySCB:%{public}d", callerInfo.callerUid,
-        callerInfo.callerBundleName.c_str(), callerInfo.isCallBySCB);
-
-    if (callerInfo.isCallBySCB) {
-        int32_t scbUid = -1;
-        {
-            std::lock_guard<ffrt::mutex> lock(scbUidLock_);
-            scbUid = scbUid_;
-        }
-        if (scbUid < 0) {
-            auto bundleMgrHelper = DelayedSingleton<BundleMgrHelper>::GetInstance();
-            scbUid = bundleMgrHelper != nullptr ?
-                IN_PROCESS_CALL(bundleMgrHelper->GetUidByBundleName(LAUNCHER_NAME, GetUserId(), 0)) : -1;
-            std::lock_guard<ffrt::mutex> lock(scbUidLock_);
-            scbUid_ = scbUid;
-        }
-        if (scbUid >= 0) {
-            finalUid = scbUid;
-            finalName = LAUNCHER_NAME;
-            TAG_LOGI(AAFwkTag::APPMGR, "AbilityForeground set scb caller info, scbUid:%{public}d, "
-                "scbBundleName:%{public}s", scbUid, LAUNCHER_NAME);
-        } else {
-            TAG_LOGW(AAFwkTag::APPMGR, "AbilityForeground skip scb caller, uid query failed");
-        }
-    }
-
-    {
-        std::lock_guard<ffrt::mutex> lock(lastUIAbilityCallerLock_);
-        lastUIAbilityCallerUid_ = finalUid;
-        lastUIAbilityCallerName_ = finalName;
-    }
-}
-
 bool AppRunningRecord::HandleForegroundStateChange(const std::shared_ptr<AbilityRunningRecord> &ability)
 {
     if (GetState() != ApplicationState::APP_STATE_FOREGROUND
@@ -1097,7 +1058,13 @@ void AppRunningRecord::AbilityForeground(const std::shared_ptr<AbilityRunningRec
         return;
     }
 
-    UpdateLastCallerInfo(callerInfo);
+    TAG_LOGI(AAFwkTag::APPMGR, "AbilityForeground set caller info, callerUid:%{public}d, "
+        "callerBundleName:%{public}s", callerInfo.callerUid, callerInfo.callerBundleName.c_str());
+    {
+        std::lock_guard<ffrt::mutex> lock(lastUIAbilityCallerLock_);
+        lastUIAbilityCallerUid_ = callerInfo.callerUid;
+        lastUIAbilityCallerName_ = callerInfo.callerBundleName;
+    }
 
     TAG_LOGI(AAFwkTag::APPMGR, "appState: %{public}d, pState: %{public}d, %{public}s/%{public}s",
         GetState(), pendingState_, mainBundleName_.c_str(), ability->GetName().c_str());

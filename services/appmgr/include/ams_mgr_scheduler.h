@@ -79,7 +79,7 @@ public:
      * @param token, the unique identification to update the ability.
      * @param state, ability status that needs to be updated.
      * @param isFromScreenOffBackground Whether from screen off background.
-     * @param callerInfo The caller info including uid, bundle name and isCallBySCB.
+     * @param callerInfo The caller info including uid and bundle name.
      * @return
      */
     virtual void UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state,

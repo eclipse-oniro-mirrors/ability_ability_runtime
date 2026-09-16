@@ -632,7 +632,7 @@ public:
      * @brief Handle foreground or background when ability is started by call.
      * @param abilityRecord The ability record.
      * @param token The ability token.
-     * @param callerInfo The caller info including uid, bundle name and isCallBySCB.
+     * @param callerInfo The caller info including uid and bundle name.
      * @return ERR_OK if handled, ERR_INVALID_VALUE if not started by call.
      */
     int HandleStartedByCall(const UIAbilityRecordPtr &abilityRecord, const sptr<IRemoteObject> &token,
