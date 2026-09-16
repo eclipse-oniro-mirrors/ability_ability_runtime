@@ -217,7 +217,6 @@ HWTEST_F(AmsAppRunningRecordTest, CreateAppRunningRecord_001, TestSize.Level1)
     appInfo->name = GetTestAppName();
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     EXPECT_TRUE(service_ != nullptr);
@@ -253,7 +252,6 @@ HWTEST_F(AmsAppRunningRecordTest, CreateAppRunningRecord_002, TestSize.Level1)
     appInfo->uid = 1010;
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     EXPECT_TRUE(service_ != nullptr);
@@ -290,7 +288,6 @@ HWTEST_F(AmsAppRunningRecordTest, CreateAppRunningRecord_003, TestSize.Level1)
     appInfo->uid = 1010;
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     EXPECT_TRUE(service_ != nullptr);
@@ -334,7 +331,6 @@ HWTEST_F(AmsAppRunningRecordTest, CreateAppRunningRecord_004, TestSize.Level1)
     appInfo->name = GetTestAppName();
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     EXPECT_TRUE(service_ != nullptr);
@@ -360,7 +356,6 @@ HWTEST_F(AmsAppRunningRecordTest, CreateAppRunningRecord_005, TestSize.Level1)
     appInfo->name = GetTestAppName();
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     EXPECT_TRUE(service_ != nullptr);
@@ -751,7 +746,6 @@ HWTEST_F(AmsAppRunningRecordTest, DeleteAppRunningRecord_001, TestSize.Level1)
     appInfo->name = GetTestAppName();
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     EXPECT_TRUE(service_ != nullptr);
@@ -964,7 +958,6 @@ HWTEST_F(AmsAppRunningRecordTest, LaunchAbilityForApp_001, TestSize.Level1)
     auto appInfo = std::make_shared<ApplicationInfo>();
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
 
@@ -1006,7 +999,6 @@ HWTEST_F(AmsAppRunningRecordTest, LaunchAbilityForApp_002, TestSize.Level1)
     appInfo->name = GetTestAppName();
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     const int EXPECT_ABILITY_LAUNCH_TIME = 3;
@@ -1057,7 +1049,6 @@ HWTEST_F(AmsAppRunningRecordTest, LaunchAbilityForApp_003, TestSize.Level1)
     appInfo->name = GetTestAppName();
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     EXPECT_TRUE(service_ != nullptr);
@@ -1103,7 +1094,6 @@ HWTEST_F(AmsAppRunningRecordTest, LaunchAbilityForApp_004, TestSize.Level1)
 
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     EXPECT_TRUE(service_ != nullptr);
@@ -1149,7 +1139,6 @@ HWTEST_F(AmsAppRunningRecordTest, LaunchAbilityForApp_005, TestSize.Level1)
     appInfo->name = GetTestAppName();
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     const int EXPECT_ABILITY_LAUNCH_TIME = 2;
@@ -1290,7 +1279,6 @@ HWTEST_F(AmsAppRunningRecordTest, SetUid_GetUid_001, TestSize.Level1)
 
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     EXPECT_TRUE(service_ != nullptr);
@@ -1886,7 +1874,6 @@ HWTEST_F(AmsAppRunningRecordTest, StartSpecifiedAbility_001, TestSize.Level1)
     appInfo->name = GetTestAppName();
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     EXPECT_TRUE(service_ != nullptr);
@@ -1921,7 +1908,6 @@ HWTEST_F(AmsAppRunningRecordTest, StartSpecifiedAbility_002, TestSize.Level1)
     appInfo->name = GetTestAppName();
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     EXPECT_TRUE(service_ != nullptr);
@@ -1962,7 +1948,6 @@ HWTEST_F(AmsAppRunningRecordTest, Specified_LaunchApplication_001, TestSize.Leve
     appInfo->bundleName = GetTestAppName();
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
 
@@ -2564,7 +2549,6 @@ HWTEST_F(AmsAppRunningRecordTest, GetModuleRunningRecordByToken_001, TestSize.Le
     appInfo1->bundleName = GetTestAppName() + "_1";
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     sptr<IRemoteObject> token = new (std::nothrow) MockAbilityToken();
@@ -2619,7 +2603,6 @@ HWTEST_F(AmsAppRunningRecordTest, GetModuleRunningRecordByTerminateLists_001, Te
     appInfo1->bundleName = GetTestAppName() + "_1";
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     sptr<IRemoteObject> token = new (std::nothrow) MockAbilityToken();
@@ -2670,7 +2653,6 @@ HWTEST_F(AmsAppRunningRecordTest, UpdateAbilityFocusState_001, TestSize.Level1)
     appInfo->name = GetTestAppName();
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     EXPECT_TRUE(service_ != nullptr);
@@ -2879,7 +2861,6 @@ HWTEST_F(AmsAppRunningRecordTest, IsUIExtension_001, TestSize.Level1)
 
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     EXPECT_TRUE(service_ != nullptr);
@@ -2917,7 +2898,6 @@ HWTEST_F(AmsAppRunningRecordTest, IsUIExtension_002, TestSize.Level1)
 
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     EXPECT_TRUE(service_ != nullptr);
