@@ -1040,7 +1040,8 @@ int32_t AmsMgrProxy::NotifyAppMgrRecordExitReason(int32_t pid, int32_t reason, c
 }
 
 int32_t AmsMgrProxy::NotifyAppMgrRecordExitReasonCompability(
-    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg, int32_t reason)
+    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg,
+    int32_t reason, int32_t callerPid)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");
     MessageParcel data;
@@ -1055,6 +1056,7 @@ int32_t AmsMgrProxy::NotifyAppMgrRecordExitReasonCompability(
     PARCEL_UTIL_WRITE_RET_INT(data, String, killMsg);
     PARCEL_UTIL_WRITE_RET_INT(data, String, innerMsg);
     PARCEL_UTIL_WRITE_RET_INT(data, Int32, reason);
+    PARCEL_UTIL_WRITE_RET_INT(data, Int32, callerPid);
     int32_t ret = SendTransactCmd(
         static_cast<uint32_t>(IAmsMgr::Message::NOTIFY_APP_MGR_RECORD_EXIT_REASON_COMPABILITY), data, reply, option);
     if (ret != NO_ERROR) {

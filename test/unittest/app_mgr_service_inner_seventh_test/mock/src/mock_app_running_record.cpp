@@ -1476,5 +1476,9 @@ void AppRunningRecord::GetAllAbilityInfos(std::vector<AppExecFwk::AbilityStateDa
 void AppRunningRecord::ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
 {
 }
+
+void AppRunningRecord::SetKillCallerInfo(int32_t killCallerPid, const std::string &killCallerProcessName)
+{
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

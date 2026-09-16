@@ -1107,6 +1107,8 @@ public:
     void SetInnerMsg(const std::string &innerMsg);
     std::string GetInnerMsg() const;
 
+    void SetKillCallerInfo(int32_t killCallerPid, const std::string &killCallerProcessName);
+
     bool SetSupportedProcessCache(bool isSupport);
     SupportProcessCacheState GetSupportProcessCacheState();
     void SetAttachedToStatusBar(bool isAttached);
@@ -1555,7 +1557,8 @@ private:
     int32_t requestProcCode_ = 0; // render record
     std::atomic_int32_t rssValue_ = 0;
     int32_t killId_ = -1;
-    int restartResidentProcCount_ = 0;
+    int32_t killCallerPid_ = -1;
+    int32_t restartResidentProcCount_ = 0;
     pid_t gpuPid_ = 0;
     int32_t byCallStatus_ = 0;
 
@@ -1576,6 +1579,7 @@ private:
     std::string killReason_ = "";
     std::string killMsg_ = "";
     std::string innerMsg_ = "";
+    std::string killCallerProcessName_ = "";
 
     bool isLauncherApp_;
     bool isAllowedNWebPreload_ = false;
@@ -1632,6 +1636,7 @@ private:
     mutable ffrt::mutex exitMsgLock_;
     mutable ffrt::mutex killMsgLock_;
     mutable ffrt::mutex innerMsgLock_;
+    mutable ffrt::mutex killCallerLock_;
     mutable ffrt::mutex supportMultiProcessDeviceFeatureLock_;
     mutable ffrt::mutex hapModulesLock_;
     mutable std::mutex specifiedMutex_;
