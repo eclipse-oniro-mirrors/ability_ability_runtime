@@ -58,6 +58,8 @@ HWTEST_F(DataObsMgrChangeInfoTest, DataObsMgrChangeInfo_Marshalling_0100, TestSi
     changeInfo.data_ = data.get();
 
     MessageParcel parcel;
+    // enlarge the parcel capacity so this case verifies the MAX_DATA_SIZE check instead of the parcel capacity limit
+    ASSERT_TRUE(parcel.SetMaxCapacity(ChangeInfo::MAX_DATA_SIZE * 2));
     EXPECT_FALSE(ChangeInfo::Marshalling(changeInfo, parcel));
 }
 
@@ -110,6 +112,8 @@ HWTEST_F(DataObsMgrChangeInfoTest, DataObsMgrChangeInfo_Marshalling_0300, TestSi
     changeInfo.data_ = data.get();
 
     MessageParcel parcel;
+    // a default parcel caps its total capacity at MAX_DATA_SIZE, which cannot hold the boundary data plus headers
+    ASSERT_TRUE(parcel.SetMaxCapacity(ChangeInfo::MAX_DATA_SIZE * 2));
     EXPECT_TRUE(ChangeInfo::Marshalling(changeInfo, parcel));
 
     ChangeInfo output;
