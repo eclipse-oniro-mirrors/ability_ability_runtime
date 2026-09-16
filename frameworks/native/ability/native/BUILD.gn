@@ -3422,6 +3422,12 @@ config("embedded_ui_extension_config") {
   ]
 }
 
+config("ukey_auth_extension_public_config") {
+  include_dirs = [
+    "${ability_runtime_path}/interfaces/kits/native/ability/native/ukey_auth_extension_ability",
+  ]
+}
+
 config("ukey_auth_extension_config") {
   visibility = [ ":*" ]
   include_dirs = [
@@ -3432,7 +3438,7 @@ config("ukey_auth_extension_config") {
     "${ability_runtime_path}/interfaces/kits/native/ability/native",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_runtime",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_runtime/context",
-    "${ability_runtime_path}/frameworks/ets/ani/ukey_auth_extension_ability/include",
+    "${ability_runtime_native_path}/ability/native/ukey_auth_extension_ability",
   ]
 }
 
@@ -3685,13 +3691,15 @@ ohos_shared_library("ukey_auth_extension") {
     "${ability_runtime_services_path}/common:optimize_config",
   ]
 
+  public_configs = [ ":ukey_auth_extension_public_config" ]
+
   sources = [
     "${ability_runtime_native_path}/ability/native/ukey_auth_extension_ability/ukey_auth_extension.cpp",
     "${ability_runtime_native_path}/ability/native/ukey_auth_extension_ability/ukey_auth_extension_context.cpp",
     "${ability_runtime_native_path}/ability/native/ukey_auth_extension_ability/js_ukey_auth_extension.cpp",
     "${ability_runtime_native_path}/ability/native/ukey_auth_extension_ability/js_ukey_auth_extension_base.cpp",
     "${ability_runtime_native_path}/ability/native/ukey_auth_extension_ability/js_ukey_auth_extension_context.cpp",
-    "${ability_runtime_path}/frameworks/ets/ani/ukey_auth_extension_ability/src/ets_ukey_auth_extension_instance.cpp",
+    "${ability_runtime_native_path}/ability/native/ukey_auth_extension_ability/ets_ukey_auth_extension_instance.cpp",
   ]
 
   deps = [
