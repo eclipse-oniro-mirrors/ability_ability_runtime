@@ -74,6 +74,10 @@ void EtsUkeyAuthExtensionBase::OnCommandWindow(const AAFwk::Want &want,
     if (it != uiWindowMap_.end() && it->second != nullptr) {
         ukeyContext_->SetWindow(it->second);
         ukeyContext_->SetSessionInfo(sessionInfo);
+        /* requestId must be injected on every foreground path: dialog launches
+         * driven by OnCommandWindow never see OnForeground, and an empty
+         * requestId silently skips the result report to cert manager */
+        ukeyContext_->SetRequestId(want.GetStringParam("requestId"));
     }
 }
 

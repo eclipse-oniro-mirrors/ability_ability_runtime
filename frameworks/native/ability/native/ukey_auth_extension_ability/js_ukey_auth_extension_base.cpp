@@ -84,6 +84,12 @@ void JsUkeyAuthExtensionBase::OnCommandWindow(const AAFwk::Want &want,
     if (it != uiWindowMap_.end() && it->second != nullptr) {
         ukeyContext_->SetWindow(it->second);
         ukeyContext_->SetSessionInfo(sessionInfo);
+        /* requestId must be injected on every foreground path: dialog launches
+         * driven by OnCommandWindow never see OnForeground, and an empty
+         * requestId silently skips the result report to cert manager */
+        ukeyContext_->SetRequestId(want.GetStringParam("requestId"));
+        TAG_LOGI(AAFwkTag::UI_EXT, "ukey OnCommandWindow: window and session injected, componentId=%{public}llu",
+            static_cast<unsigned long long>(sessionInfo->uiExtensionComponentId));
     } else {
         TAG_LOGE(AAFwkTag::UI_EXT, "ukey OnCommandWindow: window not found, componentId=%{public}llu,"
             " mapSize=%{public}zu", static_cast<unsigned long long>(sessionInfo->uiExtensionComponentId),
