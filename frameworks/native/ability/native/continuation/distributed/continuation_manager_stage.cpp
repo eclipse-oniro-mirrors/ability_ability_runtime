@@ -505,6 +505,10 @@ bool ContinuationManagerStage::HandleContinueAbility(bool reversible, const std:
     continuationHandler->SetReversible(reversible);
 
     InitMainHandlerIfNeed();
+    if (mainHandler_ == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTINUATION, "null mainHandler_");
+        return false;
+    }
     wptr<IRemoteObject> continueTokeWeak(continueToken_);
     auto task = [continuationHandlerWeak = continuationHandler_, continueTokeWeak, deviceId]() {
         auto continuationHandler = continuationHandlerWeak.lock();
@@ -551,6 +555,10 @@ void ContinuationManagerStage::RestoreStateWhenTimeout(long timeoutInMs, const P
 {
     TAG_LOGD(AAFwkTag::CONTINUATION, "Begin");
     InitMainHandlerIfNeed();
+    if (mainHandler_ == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTINUATION, "null mainHandler_");
+        return;
+    }
 
     auto timeoutTask = [continuationManager = shared_from_this(), preState]() {
         TAG_LOGD(AAFwkTag::CONTINUATION,
