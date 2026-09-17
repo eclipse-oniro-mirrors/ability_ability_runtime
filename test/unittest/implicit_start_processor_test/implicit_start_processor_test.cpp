@@ -42,6 +42,9 @@ const std::string BUNDLE_NAME = "test_bundle";
 const std::string NAME = "test_name";
 const size_t TRUSTLIST_MAX_SIZE = 50;
 const std::string APP_LAUNCH_TRUSTLIST = "ohos.params.appLaunchTrustList";
+const std::string SHOW_DEFAULT_PICKER_FLAG = "ohos.ability.params.showDefaultPicker";
+const std::string DEFAULT_BUNDLE = "com.test.default";
+const std::string OTHER_BUNDLE = "com.test.other";
 }
 namespace OHOS {
 namespace AAFwk {
@@ -2158,6 +2161,100 @@ HWTEST_F(ImplicitStartProcessorTest, ProcessLinkType_004, TestSize.Level1)
     ImplicitStartProcessor::ProcessLinkType(abilityInfos);
     EXPECT_EQ(abilityInfos.size(), 0);
     TAG_LOGI(AAFwkTag::TEST, "ProcessLinkType_004 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: GenerateAbilityRequestByAction
+ * SubFunction: FilterCloneByDefaultApp
+ * FunctionPoints: showDefaultPicker=true ("open with other") must skip collapse
+ * EnvConditions: default app exists; two candidates (one is the default)
+ * CaseDescription: When the caller sets showDefaultPicker=true, FilterCloneByDefaultApp
+ *                  must not collapse the candidate list to the default app only;
+ *                  all candidates should be retained for the selector.
+ */
+HWTEST_F(ImplicitStartProcessorTest, GenerateAbilityRequestByAction_ShowDefaultPickerTrue_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GenerateAbilityRequestByAction_ShowDefaultPickerTrue_001 start");
+    // a default app exists for this type
+    AbilityInfo defaultAbility;
+    defaultAbility.bundleName = DEFAULT_BUNDLE;
+    defaultAbility.appIndex = 0;
+    BundleInfo defaultBundleInfo;
+    defaultBundleInfo.abilityInfos.push_back(defaultAbility);
+    MockBundleMgrHelperStatus::returnNullDefaultApp_ = false;
+    MockBundleMgrHelperStatus::getDefaultAppRet_ = ERR_OK;
+    MockBundleMgrHelperStatus::defaultBundleInfo_ = defaultBundleInfo;
+
+    // two candidates match the implicit query: the default app and an alternative
+    AbilityInfo info1;
+    info1.bundleName = DEFAULT_BUNDLE;
+    info1.appIndex = 0;
+    info1.name = "MainAbility1";
+    AbilityInfo info2;
+    info2.bundleName = OTHER_BUNDLE;
+    info2.appIndex = 0;
+    info2.name = "MainAbility2";
+    MockBundleMgrHelperStatus::implicitQueryInfosRet_ = true;
+    MockBundleMgrHelperStatus::queryAbilityInfos_ = { info1, info2 };
+
+    auto processor = std::make_shared<ImplicitStartProcessor>();
+    AbilityRequest request;
+    request.want.SetAction("ohos.want.action.viewData");
+    request.want.SetParam(SHOW_DEFAULT_PICKER_FLAG, true);
+    int32_t userId = 0;
+    std::vector<DialogAppInfo> dialogAppInfos;
+    GenerateRequestParam genReqParam;
+    auto ret = processor->GenerateAbilityRequestByAction(userId, request, dialogAppInfos, genReqParam);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(dialogAppInfos.size(), 2);
+    TAG_LOGI(AAFwkTag::TEST, "GenerateAbilityRequestByAction_ShowDefaultPickerTrue_001 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: GenerateAbilityRequestByAction
+ * SubFunction: FilterCloneByDefaultApp
+ * FunctionPoints: default open (no showDefaultPicker) collapses to default app
+ * EnvConditions: default app exists; two candidates (one is the default)
+ * CaseDescription: Without showDefaultPicker (default open semantics), the candidate
+ *                  list must collapse to the default app only, so the default app is
+ *                  auto-launched instead of showing a selector.
+ */
+HWTEST_F(ImplicitStartProcessorTest, GenerateAbilityRequestByAction_DefaultOpen_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GenerateAbilityRequestByAction_DefaultOpen_001 start");
+    AbilityInfo defaultAbility;
+    defaultAbility.bundleName = DEFAULT_BUNDLE;
+    defaultAbility.appIndex = 0;
+    BundleInfo defaultBundleInfo;
+    defaultBundleInfo.abilityInfos.push_back(defaultAbility);
+    MockBundleMgrHelperStatus::returnNullDefaultApp_ = false;
+    MockBundleMgrHelperStatus::getDefaultAppRet_ = ERR_OK;
+    MockBundleMgrHelperStatus::defaultBundleInfo_ = defaultBundleInfo;
+
+    AbilityInfo info1;
+    info1.bundleName = DEFAULT_BUNDLE;
+    info1.appIndex = 0;
+    info1.name = "MainAbility1";
+    AbilityInfo info2;
+    info2.bundleName = OTHER_BUNDLE;
+    info2.appIndex = 0;
+    info2.name = "MainAbility2";
+    MockBundleMgrHelperStatus::implicitQueryInfosRet_ = true;
+    MockBundleMgrHelperStatus::queryAbilityInfos_ = { info1, info2 };
+
+    auto processor = std::make_shared<ImplicitStartProcessor>();
+    AbilityRequest request;
+    request.want.SetAction("ohos.want.action.viewData");
+    int32_t userId = 0;
+    std::vector<DialogAppInfo> dialogAppInfos;
+    GenerateRequestParam genReqParam;
+    auto ret = processor->GenerateAbilityRequestByAction(userId, request, dialogAppInfos, genReqParam);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(dialogAppInfos.size(), 1);
+    EXPECT_EQ(dialogAppInfos.front().bundleName, DEFAULT_BUNDLE);
+    TAG_LOGI(AAFwkTag::TEST, "GenerateAbilityRequestByAction_DefaultOpen_001 end");
 }
 }  // namespace AAFwk
 }  // namespace OHOS

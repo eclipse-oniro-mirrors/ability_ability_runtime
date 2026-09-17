@@ -481,7 +481,7 @@ int ImplicitStartProcessor::GenerateAbilityRequestByAction(int32_t userId, Abili
     std::vector<AppExecFwk::AbilityInfo> abilityInfos;
     std::vector<AppExecFwk::ExtensionAbilityInfo> extensionInfos;
     bool withDefault = false;
-    withDefault = request.want.GetBoolParam(SHOW_DEFAULT_PICKER_FLAG, withDefault) ? false : true;
+    withDefault = request.want.GetBoolParam(SHOW_DEFAULT_PICKER_FLAG, false) ? false : true;
     bool appLinkingOnly = false;
     bool isOpenLink = false;
     isOpenLink = request.want.HasParameter(OPEN_LINK_APP_LINKING_ONLY);
@@ -647,7 +647,7 @@ int ImplicitStartProcessor::GenerateAbilityRequestByAction(int32_t userId, Abili
     }
     KioskManager::GetInstance().FilterDialogAppInfos(dialogAppInfos);
 
-    if (!defaultBundleName.empty()) {
+    if (!defaultBundleName.empty() && withDefault) {
         FilterCloneByDefaultApp(dialogAppInfos, defaultBundleName, defaultAppIndex);
     }
     FilterClonesByPreferredIndex(dialogAppInfos, userId);
