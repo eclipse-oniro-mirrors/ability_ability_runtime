@@ -4127,14 +4127,10 @@ void AbilityManagerService::OnAddSystemAbility(int32_t systemAbilityId, const st
             }
             SubscribeBundleEventCallback();
             // Ignore the result: on failure it retries on next startup.
-            if (taskHandler_) {
-                taskHandler_->SubmitTask(
-                    []() {
-                        DelayedSingleton<AppExitReasonDataManager>::GetInstance()
-                            ->ResetRecoverInfoOnOtaUpgrade();
-                    },
-                    "ResetRecoverInfoOnOtaUpgrade");
-            }
+            ffrt::submit([]() {
+                DelayedSingleton<AppExitReasonDataManager>::GetInstance()
+                    ->ResetRecoverInfoOnOtaUpgrade();
+            }, ffrt::task_attr().name("ResetRecoverInfoOnOtaUpgrade"));
             break;
         }
 #ifdef SUPPORT_SCREEN
