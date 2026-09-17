@@ -4903,5 +4903,98 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, InitInterceptor_BlockAllAppStart_0
     status.auIsSupportBlockAllAppStart_ = true;
 }
 
+/*
+ * Feature: AbilityManagerService
+ * Name: BackToCallerAbilityWithResult_001
+ * Function: BackToCallerAbilityWithResult
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService BackToCallerAbilityWithResult reject invalid token
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, BackToCallerAbilityWithResult_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest BackToCallerAbilityWithResult_001 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    auto mockSubManagersHelper = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    abilityMs_->subManagersHelper_ = mockSubManagersHelper;
+
+    MyStatus::GetInstance().smhVerificationAllToken_ = false;
+    sptr<IRemoteObject> token = MockToken(AbilityType::PAGE);
+    Want want;
+    EXPECT_EQ(abilityMs_->BackToCallerAbilityWithResult(token, 0, &want, 0), ERR_INVALID_VALUE);
+    MyStatus::GetInstance().smhVerificationAllToken_ = true;
+
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest BackToCallerAbilityWithResult_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: BackToCallerAbilityWithResult_002
+ * Function: BackToCallerAbilityWithResult
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService BackToCallerAbilityWithResult reject cross-app caller
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, BackToCallerAbilityWithResult_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest BackToCallerAbilityWithResult_002 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    auto mockSubManagersHelper = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    abilityMs_->subManagersHelper_ = mockSubManagersHelper;
+
+    MyStatus::GetInstance().smhVerificationAllToken_ = true;
+    // caller token id differs from ability owner's accessTokenId -> JudgeSelfCalled returns false
+    MyStatus::GetInstance().ipcGetCallingTokenID_ = 1;
+    MyStatus::GetInstance().arGetAbilityInfo_.applicationInfo.accessTokenId = 0;
+    MyStatus::GetInstance().arGetAbilityRecord_ = MockAbilityRecord(AbilityType::PAGE);
+
+    sptr<IRemoteObject> token = MockToken(AbilityType::PAGE);
+    Want want;
+    EXPECT_EQ(abilityMs_->BackToCallerAbilityWithResult(token, 0, &want, 0), CHECK_PERMISSION_FAILED);
+
+    MyStatus::GetInstance().arGetAbilityRecord_ = nullptr;
+    MyStatus::GetInstance().arGetAbilityInfo_.applicationInfo.accessTokenId = 0;
+    MyStatus::GetInstance().ipcGetCallingTokenID_ = 1;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest BackToCallerAbilityWithResult_002 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: BackToCallerAbilityWithResult_003
+ * Function: BackToCallerAbilityWithResult
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService BackToCallerAbilityWithResult self-called reaches downstream
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, BackToCallerAbilityWithResult_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest BackToCallerAbilityWithResult_003 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    auto mockSubManagersHelper = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    auto mockCurrentUIAbilityManager = std::make_shared<UIAbilityLifecycleManager>(0);
+    ASSERT_NE(mockCurrentUIAbilityManager, nullptr);
+    abilityMs_->subManagersHelper_ = mockSubManagersHelper;
+    abilityMs_->subManagersHelper_->currentUIAbilityManager_ = mockCurrentUIAbilityManager;
+
+    MyStatus::GetInstance().smhVerificationAllToken_ = true;
+    // caller token id matches ability owner's accessTokenId -> JudgeSelfCalled returns true
+    MyStatus::GetInstance().ipcGetCallingTokenID_ = 1;
+    MyStatus::GetInstance().arGetAbilityInfo_.applicationInfo.accessTokenId = 1;
+    MyStatus::GetInstance().arGetAbilityRecord_ = MockAbilityRecord(AbilityType::PAGE);
+    MyStatus::GetInstance().sbjIsSceneBoardEnabled_ = true;
+    MyStatus::GetInstance().smhGetUIAbilityManagerByUserId_ = true;
+
+    sptr<IRemoteObject> token = MockToken(AbilityType::PAGE);
+    Want want;
+    EXPECT_EQ(abilityMs_->BackToCallerAbilityWithResult(token, 0, &want, 0), ERR_OK);
+
+    MyStatus::GetInstance().arGetAbilityRecord_ = nullptr;
+    MyStatus::GetInstance().arGetAbilityInfo_.applicationInfo.accessTokenId = 0;
+    MyStatus::GetInstance().sbjIsSceneBoardEnabled_ = false;
+    MyStatus::GetInstance().ipcGetCallingTokenID_ = 1;
+    MyStatus::GetInstance().smhGetUIAbilityManagerByUserId_ = true;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest BackToCallerAbilityWithResult_003 end");
+}
+
 } // namespace AAFwk
 } // namespace OHOS
