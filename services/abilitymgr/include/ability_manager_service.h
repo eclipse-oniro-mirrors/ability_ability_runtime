@@ -3319,7 +3319,6 @@ private:
      */
     int CheckCallerInfoQueryExtensionPermission(const AbilityRequest &abilityRequest);
 
-    int CheckUkeyAuthExtensionPermission(const AbilityRequest &abilityRequest);
 
     int CheckFileAccessExtensionPermission(const AbilityRequest &abilityRequest);
 

@@ -27,6 +27,7 @@ ohos_unittest("extension_permissions_util_test") {
   branch_protector_ret = "pac_ret"
   include_dirs = [
     "mock/include",
+    "${ability_runtime_innerkits_path}/ability_manager/include",
     "${ability_runtime_services_path}/abilitymgr/include/utils",
     "${ability_runtime_services_path}/abilitymgr/include",
     "${ability_runtime_services_path}/common/include",

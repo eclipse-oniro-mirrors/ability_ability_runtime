@@ -15,6 +15,7 @@
 
 #include "utils/extension_permissions_util.h"
 
+#include "ability_manager_errors.h"
 #include "hilog_tag_wrapper.h"
 #include "hilog_wrapper.h"
 #include "permission_constants.h"
@@ -22,6 +23,19 @@
 
 namespace OHOS {
 namespace AAFwk {
+namespace {
+int32_t CheckUkeyAuthCallerPermission(uint32_t specifyTokenId)
+{
+    auto ret = PermissionVerification::GetInstance()->VerifyCallingPermission(
+        PermissionConstants::PERMISSION_START_SYSTEM_DIALOG, specifyTokenId);
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "permission deny for ukeyAuthExtension");
+        return CHECK_PERMISSION_FAILED;
+    }
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "check permission success");
+    return ERR_OK;
+}
+} // namespace
 
 bool ExtensionPermissionsUtil::CheckSAPermission(const AppExecFwk::ExtensionAbilityType &extensionType,
     uint32_t specifyTokenId)
@@ -116,6 +130,19 @@ bool ExtensionPermissionsUtil::CheckSAPermissionMore(const AppExecFwk::Extension
     }
 
     return checkRet;
+}
+
+int32_t ExtensionPermissionsUtil::CheckCallerPermission(const AppExecFwk::ExtensionAbilityType &extensionType,
+    uint32_t specifyTokenId)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "CheckCallerPermission, extensionType: %{public}d.", extensionType);
+    switch (extensionType) {
+        case AppExecFwk::ExtensionAbilityType::UKEY_AUTH:
+            return CheckUkeyAuthCallerPermission(specifyTokenId);
+        default:
+            TAG_LOGD(AAFwkTag::ABILITYMGR, "bypass caller permission for type: %{public}d", extensionType);
+            return ERR_OK;
+    }
 }
 
 } // namespace AAFwk
