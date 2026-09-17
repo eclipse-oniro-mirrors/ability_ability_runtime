@@ -15,7 +15,6 @@
 
 #include <gtest/gtest.h>
 
-#include "ability_manager_errors.h"
 #include "extension_permissions_util.h"
 #include "hilog_tag_wrapper.h"
 #include "permission_verification.h"
@@ -460,8 +459,7 @@ HWTEST_F(ExtensionPermissionsUtilTest, CheckCallerPermission_001, TestSize.Level
     TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckCallerPermission_001 start");
     MyFlag::flag_ = 0;
     MyFlag::hasPerm_ = false;
-    EXPECT_EQ(CHECK_PERMISSION_FAILED,
-        ExtensionPermissionsUtil::CheckCallerPermission(ExtensionAbilityType::UKEY_AUTH));
+    EXPECT_FALSE(ExtensionPermissionsUtil::CheckCallerPermission(ExtensionAbilityType::UKEY_AUTH));
     TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckCallerPermission_001 end");
 }
 
@@ -476,7 +474,7 @@ HWTEST_F(ExtensionPermissionsUtilTest, CheckCallerPermission_002, TestSize.Level
     TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckCallerPermission_002 start");
     MyFlag::flag_ = 0;
     MyFlag::hasPerm_ = true;
-    EXPECT_EQ(ERR_OK, ExtensionPermissionsUtil::CheckCallerPermission(ExtensionAbilityType::UKEY_AUTH));
+    EXPECT_TRUE(ExtensionPermissionsUtil::CheckCallerPermission(ExtensionAbilityType::UKEY_AUTH));
     MyFlag::flag_ = 0;
     TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckCallerPermission_002 end");
 }
@@ -492,7 +490,7 @@ HWTEST_F(ExtensionPermissionsUtilTest, CheckCallerPermission_003, TestSize.Level
     TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckCallerPermission_003 start");
     MyFlag::flag_ = 0;
     MyFlag::hasPerm_ = false;
-    EXPECT_EQ(ERR_OK, ExtensionPermissionsUtil::CheckCallerPermission(ExtensionAbilityType::VPN));
+    EXPECT_TRUE(ExtensionPermissionsUtil::CheckCallerPermission(ExtensionAbilityType::VPN));
     TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckCallerPermission_003 end");
 }
 } // namespace AAFwk

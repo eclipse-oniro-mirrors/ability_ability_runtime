@@ -51,9 +51,9 @@ public:
      *
      * @param extensionType The extension type.
      * @param specifyTokenId The specified token ID.
-     * @return ERR_OK if the caller is allowed, error code otherwise.
+     * @return Whether the caller is allowed to start the extension.
      */
-    static int32_t CheckCallerPermission(const AppExecFwk::ExtensionAbilityType &extensionType,
+    static bool CheckCallerPermission(const AppExecFwk::ExtensionAbilityType &extensionType,
         uint32_t specifyTokenId = 0);
 };
 
