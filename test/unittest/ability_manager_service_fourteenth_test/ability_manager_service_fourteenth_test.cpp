@@ -676,6 +676,69 @@ HWTEST_F(AbilityManagerServiceFourteenthTest, GetTopAbility_003, TestSize.Level1
 
 /*
  * Feature: AbilityManagerService
+ * Name: GetTopAbility_004
+ * Function: GetTopAbility
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService GetTopAbility
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, GetTopAbility_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest GetTopAbility_004 start");
+    MyStatus::GetInstance().permPermission_ = 1;
+    MyStatus::GetInstance().sbjIsSceneBoardEnabled_ = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs_, nullptr);
+    sptr<IRemoteObject> token = nullptr;
+    int retCode = abilityMs_->GetTopAbility(token, -5);
+    EXPECT_EQ(retCode, ERR_INVALID_VALUE);
+    MyStatus::GetInstance().perJudgeCallerIsAllowedToUseSystemAPI_ = true;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest GetTopAbility_004 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: GetTopAbility_005
+ * Function: GetTopAbility
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService GetTopAbility
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, GetTopAbility_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest GetTopAbility_005 start");
+    MyStatus::GetInstance().permPermission_ = 1;
+    MyStatus::GetInstance().sbjIsSceneBoardEnabled_ = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs_, nullptr);
+    sptr<IRemoteObject> token = nullptr;
+    int retCode = abilityMs_->GetTopAbility(token, 100);
+    EXPECT_EQ(retCode, ERR_INVALID_VALUE);
+    MyStatus::GetInstance().perJudgeCallerIsAllowedToUseSystemAPI_ = true;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest GetTopAbility_005 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: CheckUIExtensionIsFocused_001
+ * Function: CheckUIExtensionIsFocused
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService CheckUIExtensionIsFocused
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, CheckUIExtensionIsFocused_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest CheckUIExtensionIsFocused_001 start");
+    MyStatus::GetInstance().permPermission_ = 1;
+    MyStatus::GetInstance().sbjIsSceneBoardEnabled_ = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs_, nullptr);
+    bool isFocused = true;
+    auto retCode = abilityMs_->CheckUIExtensionIsFocused(0, isFocused);
+    EXPECT_EQ(retCode, ERR_INVALID_VALUE);
+    MyStatus::GetInstance().perJudgeCallerIsAllowedToUseSystemAPI_ = true;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest CheckUIExtensionIsFocused_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
  * Name: TerminateAbilityWithFlag_001
  * Function: TerminateAbilityWithFlag
  * SubFunction: NA
@@ -1207,22 +1270,21 @@ HWTEST_F(AbilityManagerServiceFourteenthTest, GetFocusAbility_002, TestSize.Leve
 
 /*
  * Feature: AbilityManagerService
- * Name: CheckUIExtensionIsFocused_001
+ * Name: CheckUIExtensionIsFocused_002
  * Function: CheckUIExtensionIsFocused
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService CheckUIExtensionIsFocused
  */
-HWTEST_F(AbilityManagerServiceFourteenthTest, CheckUIExtensionIsFocused_001, TestSize.Level1)
+HWTEST_F(AbilityManagerServiceFourteenthTest, CheckUIExtensionIsFocused_002, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest CheckUIExtensionIsFocused_001 start");
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest CheckUIExtensionIsFocused_002 start");
     MyStatus::GetInstance().permPermission_ = 0;
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
-    sptr<IRemoteObject> token = nullptr;
     bool isFocused = false;
     int retCode = abilityMs_->CheckUIExtensionIsFocused(0, isFocused);
     EXPECT_EQ(retCode, CHECK_PERMISSION_FAILED);
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest CheckUIExtensionIsFocused_001 end");
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest CheckUIExtensionIsFocused_002 end");
 }
 
 /*

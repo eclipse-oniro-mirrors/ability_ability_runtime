@@ -27,7 +27,6 @@
 
 namespace OHOS {
 namespace AAFwk {
-constexpr int32_t INVALID_USER_ID = -1;
 
 SubManagersHelper::SubManagersHelper(
     std::shared_ptr<TaskHandlerWrap> taskHandler, std::shared_ptr<AbilityEventHandler> eventHandler)
