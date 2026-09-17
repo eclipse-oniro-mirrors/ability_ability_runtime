@@ -8881,28 +8881,47 @@ void AbilityManagerService::OnAppStateChanged(const AppInfo &info)
     }
 
     auto commonExtensionManager = GetCommonExtensionManagerByUserId(userId);
-    CHECK_POINTER_LOG(commonExtensionManager, "commonExtensionManager not init.");
-    commonExtensionManager->OnAppStateChanged(info);
+    if (commonExtensionManager != nullptr) {
+        commonExtensionManager->OnAppStateChanged(info);
+    } else {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "commonExtensionManager not init, userId: %{public}d", userId);
+    }
+
     auto uiExtensionAbilityManager = GetUIExtensionAbilityManagerByUserId(userId);
-    CHECK_POINTER_LOG(uiExtensionAbilityManager, "uiExtensionAbilityManager not init.");
-    uiExtensionAbilityManager->OnAppStateChanged(info);
+    if (uiExtensionAbilityManager != nullptr) {
+        uiExtensionAbilityManager->OnAppStateChanged(info);
+    } else {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "uiExtensionAbilityManager not init, userId: %{public}d", userId);
+    }
 
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
         auto uiAbilityManager = GetUIAbilityManagerByUserId(userId);
-        CHECK_POINTER(uiAbilityManager);
-        uiAbilityManager->OnAppStateChanged(info);
+        if (uiAbilityManager != nullptr) {
+            uiAbilityManager->OnAppStateChanged(info);
+        } else {
+            TAG_LOGW(AAFwkTag::ABILITYMGR, "uiAbilityManager not init, userId: %{public}d", userId);
+        }
     } else {
         auto missionListManager = GetMissionListManagerByUserId(userId);
-        CHECK_POINTER_LOG(missionListManager, "Current mission list manager not init.");
-        missionListManager->OnAppStateChanged(info);
+        if (missionListManager != nullptr) {
+            missionListManager->OnAppStateChanged(info);
+        } else {
+            TAG_LOGW(AAFwkTag::ABILITYMGR, "Current mission list manager not init, userId: %{public}d", userId);
+        }
     }
     auto dataAbilityManager = GetCurrentDataAbilityManager();
-    CHECK_POINTER(dataAbilityManager);
-    dataAbilityManager->OnAppStateChanged(info);
+    if (dataAbilityManager != nullptr) {
+        dataAbilityManager->OnAppStateChanged(info);
+    } else {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "dataAbilityManager not init");
+    }
 
     auto residentProcessMgr = DelayedSingleton<ResidentProcessManager>::GetInstance();
-    CHECK_POINTER(residentProcessMgr);
-    residentProcessMgr->OnAppStateChanged(info);
+    if (residentProcessMgr != nullptr) {
+        residentProcessMgr->OnAppStateChanged(info);
+    } else {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "residentProcessMgr not init");
+    }
 
     if (system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false)) {
         KeepAliveProcessManager::GetInstance().OnAppStateChanged(info);
