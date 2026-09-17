@@ -118,12 +118,14 @@ void DoFuzzCases(uint32_t code, MessageParcel &parcel, FuzzedDataProvider &fdp, 
             break;
         }
         case 10: {
-            // NOTIFY_APP_MGR_RECORD_EXIT_REASON_COMPABILITY: pid, killId, killMsg, innerMsg
+            // NOTIFY_APP_MGR_RECORD_EXIT_REASON_COMPABILITY: pid, killId, killMsg, innerMsg, reason, callerPid
             actualCode = static_cast<uint32_t>(IAmsMgr::Message::NOTIFY_APP_MGR_RECORD_EXIT_REASON_COMPABILITY);
             parcel.WriteInt32(FuzzUtil::BuildIntegerOverflow(fdp));
             parcel.WriteInt32(FuzzUtil::BuildInvalidEnum(fdp, 100));
             parcel.WriteString(FuzzUtil::BuildExitReason(fdp));
             parcel.WriteString(FuzzUtil::BuildSpecialCharString(fdp));
+            parcel.WriteInt32(FuzzUtil::BuildInvalidEnum(fdp, 100));
+            parcel.WriteInt32(FuzzUtil::BuildIntegerOverflow(fdp));
             break;
         }
         default:
