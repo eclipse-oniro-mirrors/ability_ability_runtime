@@ -30,7 +30,8 @@ namespace AbilityRuntime {
 class InsightIntentContext final {
 public:
     InsightIntentContext(const sptr<IRemoteObject>& token, const std::string& bundleName, int32_t winMode,
-        uint64_t intentId) : token_(token), bundleName_(bundleName), winMode_(winMode), intentId_(intentId) {}
+        uint64_t intentId, const std::string& toolCallId = "")
+        : token_(token), bundleName_(bundleName), winMode_(winMode), intentId_(intentId), toolCallId_(toolCallId) {}
     ~InsightIntentContext() = default;
 
     /**
@@ -55,6 +56,11 @@ public:
     uint64_t GetIntentId() const
     {
         return intentId_;
+    }
+
+    std::string GetToolCallId() const
+    {
+        return toolCallId_;
     }
 
     void SetExecuteMode(const int32_t executeMode)
@@ -82,6 +88,7 @@ private:
     std::string bundleName_ = "";
     int32_t winMode_ = 0;
     uint64_t intentId_ = 0;
+    std::string toolCallId_ = "";
     int32_t executeMode_ = -1;
     InsightIntentReturnMode delayReturnMode_ = InsightIntentReturnMode::CALLBACK;
 };

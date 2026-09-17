@@ -33,6 +33,7 @@
 #include "want_params_wrapper.h"
 #include "time_util.h"
 #include "res_sched_util.h"
+#include "string_wrapper.h"
 #include "nlohmann/json.hpp"
 
 namespace OHOS {
@@ -644,6 +645,16 @@ int32_t InsightIntentExecuteManager::GenerateWant(
         return ERR_INVALID_VALUE;
     }
     want.SetElementName("", param->bundleName_, param->abilityName_, param->moduleName_);
+
+    // Driver supplies toolCallId_ separately; functionManager already carries the
+    // reserved key in insightIntentParam_. Preserve that key when the Driver field is empty.
+    if (!param->toolCallId_.empty()) {
+        if (param->insightIntentParam_ == nullptr) {
+            param->insightIntentParam_ = std::make_shared<WantParams>();
+        }
+        param->insightIntentParam_->SetParam(INSIGHT_INTENT_TOOL_CALL_ID, AAFwk::String::Box(param->toolCallId_));
+        TAG_LOGI(AAFwkTag::INTENT, "GenerateWant with toolCallId: %{public}s", param->toolCallId_.c_str());
+    }
 
     if (param->insightIntentParam_ != nullptr) {
         sptr<AAFwk::IWantParams> pExecuteParams = WantParamWrapper::Box(*param->insightIntentParam_);

@@ -6007,6 +6007,10 @@ int32_t AbilityManagerStub::ExecuteInAppSkillWithTokenIdInner(MessageParcel &dat
         }
     }
 
+    if (data.GetReadableBytes() > 0) {
+        request.toolCallId = Str16ToStr8(data.ReadString16());
+    }
+
     int32_t result = ExecuteInAppSkillWithTokenId(request, callback);
     reply.WriteInt32(result);
     return NO_ERROR;

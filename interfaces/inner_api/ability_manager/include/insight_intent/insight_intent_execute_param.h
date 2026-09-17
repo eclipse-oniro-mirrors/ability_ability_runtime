@@ -90,6 +90,7 @@ constexpr char INSIGHT_INTENT_PARAM_USER_ID[] = "ohos.insightIntent.param.userId
 constexpr char INSIGHT_INTENT_DISTRIBUTED_CALLBACK_KEY[] = "ohos.insightIntent.distributed.callbackKey";
 constexpr char INSIGHT_INTENT_DISTRIBUTED_SRC_DEVICE_ID[] = "ohos.insightIntent.distributed.srcDeviceId";
 constexpr char INSIGHT_INTENT_DISTRIBUTED_REQUEST_CODE[] = "ohos.insightIntent.distributed.requestCode";
+constexpr char INSIGHT_INTENT_TOOL_CALL_ID[] = "ohos.insightIntent.toolCallId";
 
 constexpr int32_t INVALID_DISPLAY_ID = -1;
 constexpr char METHOD_PARAM_SEPARATOR = '\x1f';
@@ -146,6 +147,9 @@ public:
      
     // distributed intent params
     std::string deviceId_;
+
+    // Driver entry field (empty means not passed); functionManager uses insightIntentParam_ instead.
+    std::string toolCallId_;
 };
 } // namespace AppExecFwk
 } // namespace OHOS

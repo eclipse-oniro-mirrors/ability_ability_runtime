@@ -161,6 +161,10 @@ bool InsightIntentExecuteParam::ReadFromParcel(Parcel &parcel)
     navDestinationName_ = Str16ToStr8(parcel.ReadString16());
     isServiceMatch_ = parcel.ReadBool();
     deviceId_ = Str16ToStr8(parcel.ReadString16());
+    // toolCallId_ is an optional tail field: legacy parcels without it keep the default empty value
+    if (parcel.GetReadableBytes() > 0) {
+        toolCallId_ = Str16ToStr8(parcel.ReadString16());
+    }
     return true;
 }
 
@@ -202,6 +206,7 @@ bool InsightIntentExecuteParam::Marshalling(Parcel &parcel) const
     parcel.WriteString16(Str8ToStr16(navDestinationName_));
     parcel.WriteBool(isServiceMatch_);
     parcel.WriteString16(Str8ToStr16(deviceId_));
+    parcel.WriteString16(Str8ToStr16(toolCallId_));
     return true;
 }
 

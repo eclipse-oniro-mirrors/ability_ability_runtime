@@ -2173,6 +2173,7 @@ int32_t CliToolManagerService::SetupAndStartSkillSession(const ExecToolParam &pa
     auto skillName = args.GetStringParam("skillName");
     auto scriptPath = args.GetStringParam("scriptPath");
     auto funcName = args.GetStringParam("functionName");
+    auto toolCallId = param.options.toolCallId;
 
     ToolUtil::ExpandArgsJsonString(args);
     auto skillArgs = ToolUtil::FilterSkillArgs(args);
@@ -2198,6 +2199,7 @@ int32_t CliToolManagerService::SetupAndStartSkillSession(const ExecToolParam &pa
     skillRequest.scriptPath = scriptPath;
     skillRequest.functionName = funcName;
     skillRequest.skillArgs = skillArgs;
+    skillRequest.toolCallId = toolCallId;
 
     TAG_LOGD(AAFwkTag::CLI_TOOL, "execSkill before ExecuteInAppSkillWithTokenId");
     int32_t ret = AAFwk::AbilityManagerClient::GetInstance()->ExecuteInAppSkillWithTokenId(

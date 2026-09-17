@@ -21,6 +21,7 @@
 #include "insight_intent_execute_param.h"
 #include "int_wrapper.h"
 #include "string_wrapper.h"
+#include "string_ex.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -503,6 +504,116 @@ HWTEST_F(InsightIntentExecuteParamTest, MarshallingUnmarshalling_0100, TestSize.
     ASSERT_EQ(unmarshalledParam.methodParams_.size(), 2);
     EXPECT_EQ(unmarshalledParam.methodParams_[0], originalParam.methodParams_[0]);
     EXPECT_EQ(unmarshalledParam.methodParams_[1], originalParam.methodParams_[1]);
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: ToolCallId_MarshallingUnmarshalling_0100
+ * @tc.desc: verify toolCallId_ survives a Marshalling/Unmarshalling round trip.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, ToolCallId_MarshallingUnmarshalling_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    InsightIntentExecuteParam originalParam;
+    originalParam.bundleName_ = TEST_BUNDLE_NANE;
+    originalParam.moduleName_ = TEST_MODULE_NANE;
+    originalParam.abilityName_ = TEST_ABILITY_NANE;
+    originalParam.insightIntentName_ = TEST_INSIGHT_INTENT_NANE;
+    originalParam.insightIntentParam_ = std::make_shared<WantParams>();
+    originalParam.insightIntentParam_->SetParam("testKey", Integer::Box(123));
+    originalParam.executeMode_ = 0;
+    originalParam.insightIntentId_ = 100;
+    originalParam.deviceId_ = "testDeviceId";
+    originalParam.toolCallId_ = "tc-001";
+
+    Parcel parcel;
+    EXPECT_EQ(originalParam.Marshalling(parcel), true);
+
+    InsightIntentExecuteParam unmarshalledParam;
+    EXPECT_EQ(unmarshalledParam.ReadFromParcel(parcel), true);
+    EXPECT_EQ(unmarshalledParam.toolCallId_, "tc-001");
+    EXPECT_EQ(unmarshalledParam.bundleName_, originalParam.bundleName_);
+    EXPECT_EQ(unmarshalledParam.moduleName_, originalParam.moduleName_);
+    EXPECT_EQ(unmarshalledParam.abilityName_, originalParam.abilityName_);
+    EXPECT_EQ(unmarshalledParam.insightIntentName_, originalParam.insightIntentName_);
+    EXPECT_EQ(unmarshalledParam.executeMode_, originalParam.executeMode_);
+    EXPECT_EQ(unmarshalledParam.insightIntentId_, originalParam.insightIntentId_);
+    EXPECT_EQ(unmarshalledParam.deviceId_, originalParam.deviceId_);
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: ToolCallId_UnmarshallingLegacyParcel_0100
+ * @tc.desc: verify a legacy parcel without the toolCallId tail field is parsed successfully.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, ToolCallId_UnmarshallingLegacyParcel_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    // write fields in the legacy order, stopping at deviceId_ (no toolCallId_ tail field)
+    Parcel parcel;
+    parcel.WriteString16(Str8ToStr16(TEST_BUNDLE_NANE));
+    parcel.WriteString16(Str8ToStr16(TEST_MODULE_NANE));
+    parcel.WriteString16(Str8ToStr16(TEST_ABILITY_NANE));
+    parcel.WriteString16(Str8ToStr16(TEST_INSIGHT_INTENT_NANE));
+    WantParams insightIntentParam;
+    insightIntentParam.SetParam("testKey", Integer::Box(123));
+    parcel.WriteParcelable(&insightIntentParam);
+    parcel.WriteInt32(0);
+    parcel.WriteUint64(100);
+    parcel.WriteInt32(AppExecFwk::INVALID_DISPLAY_ID);
+    std::vector<std::string> uris;
+    parcel.WriteStringVector(uris);
+    parcel.WriteInt32(0);
+    parcel.WriteInt32(-1);
+    parcel.WriteInt8(0);
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    std::vector<std::string> methodParams;
+    parcel.WriteStringVector(methodParams);
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteBool(false);
+    parcel.WriteString16(Str8ToStr16("legacyDeviceId"));
+
+    InsightIntentExecuteParam unmarshalledParam;
+    EXPECT_EQ(unmarshalledParam.ReadFromParcel(parcel), true);
+    EXPECT_EQ(unmarshalledParam.bundleName_, TEST_BUNDLE_NANE);
+    EXPECT_EQ(unmarshalledParam.insightIntentId_, 100);
+    EXPECT_EQ(unmarshalledParam.deviceId_, "legacyDeviceId");
+    EXPECT_EQ(unmarshalledParam.toolCallId_, "");
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: ToolCallId_GenerateFromWantWithoutKey_0100
+ * @tc.desc: verify GenerateFromWant succeeds and yields no tool call id key when absent.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, ToolCallId_GenerateFromWantWithoutKey_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    WantParams wantParams;
+    wantParams.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME, AAFwk::String::Box(TEST_INSIGHT_INTENT_NANE));
+    wantParams.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, AAFwk::String::Box("1"));
+
+    WantParams insightIntentParam;
+    insightIntentParam.SetParam("dummy", Integer::Box(-1));
+    wantParams.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_PARAM, WantParamWrapper::Box(insightIntentParam));
+
+    Want want;
+    want.SetElementName("", TEST_BUNDLE_NANE, TEST_ABILITY_NANE, TEST_MODULE_NANE);
+    want.SetParams(wantParams);
+
+    InsightIntentExecuteParam executeParam;
+    EXPECT_EQ(InsightIntentExecuteParam::GenerateFromWant(want, executeParam), true);
+    ASSERT_NE(executeParam.insightIntentParam_, nullptr);
+    EXPECT_EQ(executeParam.insightIntentParam_->HasParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID), false);
+    EXPECT_EQ(executeParam.insightIntentParam_->GetStringParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID), "");
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
 } // namespace AAFwk

@@ -34,6 +34,7 @@ const std::string TEST_FUNCTION_NAME = "executePlay";
 const std::string TEST_REQUEST_CODE = "req_001";
 const std::string TEST_HAP_PATH = "/data/app/com.test.bundle/entry.hap";
 const std::string TEST_SRC_ENTRY = "./ets/entry/PlayMusic.ts";
+const std::string TEST_TOOL_CALL_ID = "toolCall_abc123";
 } // namespace
 
 void BuildFullSkillExecuteParam(SkillExecuteParam &param)
@@ -47,6 +48,7 @@ void BuildFullSkillExecuteParam(SkillExecuteParam &param)
     param.srcEntries_ = { TEST_SRC_ENTRY, "./ets/entry/StopMusic.ts" };
     param.requestCode_ = TEST_REQUEST_CODE;
     param.hapPath_ = TEST_HAP_PATH;
+    param.toolCallId_ = TEST_TOOL_CALL_ID;
 }
 
 class SkillExecuteParamTest : public testing::Test {
@@ -124,6 +126,7 @@ HWTEST_F(SkillExecuteParamTest, MarshallingAndUnmarshalling_0100, TestSize.Level
     EXPECT_EQ(result->srcEntries_[0], TEST_SRC_ENTRY);
     EXPECT_EQ(result->requestCode_, TEST_REQUEST_CODE);
     EXPECT_EQ(result->hapPath_, TEST_HAP_PATH);
+    EXPECT_EQ(result->toolCallId_, TEST_TOOL_CALL_ID);
     delete result;
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
@@ -147,6 +150,7 @@ HWTEST_F(SkillExecuteParamTest, MarshallingAndUnmarshalling_0200, TestSize.Level
     param.srcEntries_ = {};
     param.requestCode_ = "";
     param.hapPath_ = "";
+    param.toolCallId_ = "";
 
     EXPECT_TRUE(param.Marshalling(parcel));
 
@@ -155,6 +159,7 @@ HWTEST_F(SkillExecuteParamTest, MarshallingAndUnmarshalling_0200, TestSize.Level
     EXPECT_EQ(result->bundleName_, TEST_BUNDLE_NAME);
     ASSERT_NE(result->skillArgs_, nullptr);
     EXPECT_EQ(result->srcEntries_.size(), 0U);
+    EXPECT_EQ(result->toolCallId_, "");
     delete result;
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
@@ -178,6 +183,7 @@ HWTEST_F(SkillExecuteParamTest, ReadFromParcel_0100, TestSize.Level1)
     parcel.WriteInt32(0); // srcCount
     parcel.WriteString16(Str8ToStr16(TEST_REQUEST_CODE));
     parcel.WriteString16(Str8ToStr16(TEST_HAP_PATH));
+    parcel.WriteString16(Str8ToStr16(TEST_TOOL_CALL_ID));
 
     SkillExecuteParam param;
     EXPECT_TRUE(param.ReadFromParcel(parcel));
@@ -186,6 +192,7 @@ HWTEST_F(SkillExecuteParamTest, ReadFromParcel_0100, TestSize.Level1)
     EXPECT_EQ(param.skillName_, TEST_SKILL_NAME);
     EXPECT_EQ(param.requestCode_, TEST_REQUEST_CODE);
     EXPECT_EQ(param.hapPath_, TEST_HAP_PATH);
+    EXPECT_EQ(param.toolCallId_, TEST_TOOL_CALL_ID);
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
 
@@ -243,7 +250,7 @@ HWTEST_F(SkillExecuteParamTest, WriteToWant_0100, TestSize.Level1)
     std::vector<std::string> srcEntries = { TEST_SRC_ENTRY };
     SkillExecuteParam::WriteToWant(want, TEST_BUNDLE_NAME, TEST_MODULE_NAME,
         TEST_SKILL_NAME, TEST_SCRIPT_PATH, TEST_FUNCTION_NAME, skillArgs,
-        srcEntries, TEST_REQUEST_CODE, TEST_HAP_PATH);
+        srcEntries, TEST_REQUEST_CODE, TEST_HAP_PATH, TEST_TOOL_CALL_ID);
 
     auto params = want.GetParams();
     EXPECT_EQ(params.GetStringParam(SKILL_EXECUTE_PARAM_BUNDLE_NAME), TEST_BUNDLE_NAME);
@@ -253,6 +260,7 @@ HWTEST_F(SkillExecuteParamTest, WriteToWant_0100, TestSize.Level1)
     EXPECT_EQ(params.GetStringParam(SKILL_EXECUTE_PARAM_FUNCTION_NAME), TEST_FUNCTION_NAME);
     EXPECT_EQ(params.GetStringParam(SKILL_EXECUTE_PARAM_REQUEST_CODE), TEST_REQUEST_CODE);
     EXPECT_EQ(params.GetStringParam(SKILL_EXECUTE_PARAM_HAP_PATH), TEST_HAP_PATH);
+    EXPECT_EQ(params.GetStringParam(SKILL_EXECUTE_PARAM_TOOL_CALL_ID), TEST_TOOL_CALL_ID);
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
 
@@ -276,6 +284,7 @@ HWTEST_F(SkillExecuteParamTest, WriteToWant_0200, TestSize.Level1)
     EXPECT_FALSE(params.HasParam(SKILL_EXECUTE_PARAM_FUNCTION_NAME));
     EXPECT_FALSE(params.HasParam(SKILL_EXECUTE_PARAM_HAP_PATH));
     EXPECT_FALSE(params.HasParam(SKILL_EXECUTE_PARAM_REQUEST_CODE));
+    EXPECT_FALSE(params.HasParam(SKILL_EXECUTE_PARAM_TOOL_CALL_ID));
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
 
@@ -330,7 +339,7 @@ HWTEST_F(SkillExecuteParamTest, GenerateFromWant_0100, TestSize.Level1)
     AAFwk::Want want;
     SkillExecuteParam::WriteToWant(want, TEST_BUNDLE_NAME, TEST_MODULE_NAME,
         TEST_SKILL_NAME, TEST_SCRIPT_PATH, TEST_FUNCTION_NAME, nullptr,
-        { TEST_SRC_ENTRY }, TEST_REQUEST_CODE, TEST_HAP_PATH);
+        { TEST_SRC_ENTRY }, TEST_REQUEST_CODE, TEST_HAP_PATH, TEST_TOOL_CALL_ID);
 
     SkillExecuteParam param;
     EXPECT_TRUE(SkillExecuteParam::GenerateFromWant(want, param));
@@ -343,6 +352,7 @@ HWTEST_F(SkillExecuteParamTest, GenerateFromWant_0100, TestSize.Level1)
     EXPECT_EQ(param.srcEntries_[0], TEST_SRC_ENTRY);
     EXPECT_EQ(param.requestCode_, TEST_REQUEST_CODE);
     EXPECT_EQ(param.hapPath_, TEST_HAP_PATH);
+    EXPECT_EQ(param.toolCallId_, TEST_TOOL_CALL_ID);
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
 
@@ -392,7 +402,7 @@ HWTEST_F(SkillExecuteParamTest, RemoveSkillParam_0100, TestSize.Level1)
     AAFwk::Want want;
     SkillExecuteParam::WriteToWant(want, TEST_BUNDLE_NAME, TEST_MODULE_NAME,
         TEST_SKILL_NAME, TEST_SCRIPT_PATH, TEST_FUNCTION_NAME, nullptr,
-        { TEST_SRC_ENTRY }, TEST_REQUEST_CODE, TEST_HAP_PATH);
+        { TEST_SRC_ENTRY }, TEST_REQUEST_CODE, TEST_HAP_PATH, TEST_TOOL_CALL_ID);
 
     EXPECT_TRUE(SkillExecuteParam::RemoveSkillParam(want));
 
@@ -405,6 +415,7 @@ HWTEST_F(SkillExecuteParamTest, RemoveSkillParam_0100, TestSize.Level1)
     EXPECT_FALSE(params.HasParam(SKILL_EXECUTE_PARAM_SRC_ENTRIES_COUNT));
     EXPECT_FALSE(params.HasParam(SKILL_EXECUTE_PARAM_REQUEST_CODE));
     EXPECT_FALSE(params.HasParam(SKILL_EXECUTE_PARAM_HAP_PATH));
+    EXPECT_FALSE(params.HasParam(SKILL_EXECUTE_PARAM_TOOL_CALL_ID));
     EXPECT_FALSE(params.HasParam(std::string(SKILL_EXECUTE_PARAM_SRC_ENTRY_PREFIX) + "0"));
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
@@ -458,7 +469,7 @@ HWTEST_F(SkillExecuteParamTest, WriteToWantAndGenerateFromWant_0100, TestSize.Le
     std::vector<std::string> srcEntries = { "src1.ts" };
     SkillExecuteParam::WriteToWant(want, TEST_BUNDLE_NAME, TEST_MODULE_NAME,
         TEST_SKILL_NAME, TEST_SCRIPT_PATH, TEST_FUNCTION_NAME, skillArgs,
-        srcEntries, TEST_REQUEST_CODE, TEST_HAP_PATH);
+        srcEntries, TEST_REQUEST_CODE, TEST_HAP_PATH, TEST_TOOL_CALL_ID);
 
     SkillExecuteParam param;
     EXPECT_TRUE(SkillExecuteParam::GenerateFromWant(want, param));
@@ -473,6 +484,7 @@ HWTEST_F(SkillExecuteParamTest, WriteToWantAndGenerateFromWant_0100, TestSize.Le
     EXPECT_EQ(param.srcEntries_[0], "src1.ts");
     EXPECT_EQ(param.requestCode_, TEST_REQUEST_CODE);
     EXPECT_EQ(param.hapPath_, TEST_HAP_PATH);
+    EXPECT_EQ(param.toolCallId_, TEST_TOOL_CALL_ID);
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
 
@@ -564,5 +576,145 @@ HWTEST_F(SkillExecuteParamTest, SrcEntriesToString_0400, TestSize.Level1)
     EXPECT_EQ(param.SrcEntriesToString(), "  spaced entry  ,normal");
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
+
+/**
+ * @tc.name: ToolCallId_WriteToWant_0100
+ * @tc.desc: Test WriteToWant writes toolCallId when non-empty.
+ * @tc.type: FUNC
+ */
+HWTEST_F(SkillExecuteParamTest, ToolCallId_WriteToWant_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    AAFwk::Want want;
+    SkillExecuteParam::WriteToWant(want, TEST_BUNDLE_NAME, TEST_MODULE_NAME,
+        TEST_SKILL_NAME, "", "", nullptr, {}, "", "", TEST_TOOL_CALL_ID);
+
+    auto params = want.GetParams();
+    EXPECT_TRUE(params.HasParam(SKILL_EXECUTE_PARAM_TOOL_CALL_ID));
+    EXPECT_EQ(params.GetStringParam(SKILL_EXECUTE_PARAM_TOOL_CALL_ID), TEST_TOOL_CALL_ID);
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: ToolCallId_WriteToWant_0200
+ * @tc.desc: Test WriteToWant does not write toolCallId when empty.
+ * @tc.type: FUNC
+ */
+HWTEST_F(SkillExecuteParamTest, ToolCallId_WriteToWant_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    AAFwk::Want want;
+    SkillExecuteParam::WriteToWant(want, TEST_BUNDLE_NAME, TEST_MODULE_NAME,
+        TEST_SKILL_NAME, "", "", nullptr, {}, "", "", "");
+
+    auto params = want.GetParams();
+    EXPECT_FALSE(params.HasParam(SKILL_EXECUTE_PARAM_TOOL_CALL_ID));
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: ToolCallId_GenerateFromWant_0100
+ * @tc.desc: Test GenerateFromWant reads toolCallId from want.
+ * @tc.type: FUNC
+ */
+HWTEST_F(SkillExecuteParamTest, ToolCallId_GenerateFromWant_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    AAFwk::Want want;
+    SkillExecuteParam::WriteToWant(want, TEST_BUNDLE_NAME, TEST_MODULE_NAME,
+        TEST_SKILL_NAME, "", "", nullptr, {}, "", "", TEST_TOOL_CALL_ID);
+
+    SkillExecuteParam param;
+    EXPECT_TRUE(SkillExecuteParam::GenerateFromWant(want, param));
+    EXPECT_EQ(param.toolCallId_, TEST_TOOL_CALL_ID);
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: ToolCallId_GenerateFromWant_0200
+ * @tc.desc: Test GenerateFromWant returns empty toolCallId when not in want.
+ * @tc.type: FUNC
+ */
+HWTEST_F(SkillExecuteParamTest, ToolCallId_GenerateFromWant_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    AAFwk::Want want;
+    SkillExecuteParam::WriteToWant(want, TEST_BUNDLE_NAME, TEST_MODULE_NAME,
+        TEST_SKILL_NAME, "", "", nullptr, {}, "", "");
+
+    SkillExecuteParam param;
+    EXPECT_TRUE(SkillExecuteParam::GenerateFromWant(want, param));
+    EXPECT_EQ(param.toolCallId_, "");
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: ToolCallId_MarshallingAndUnmarshalling_0100
+ * @tc.desc: Test round-trip Marshalling/Unmarshalling with toolCallId.
+ * @tc.type: FUNC
+ */
+HWTEST_F(SkillExecuteParamTest, ToolCallId_MarshallingAndUnmarshalling_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    SkillExecuteParam param;
+    param.bundleName_ = TEST_BUNDLE_NAME;
+    param.moduleName_ = TEST_MODULE_NAME;
+    param.skillName_ = TEST_SKILL_NAME;
+    param.toolCallId_ = TEST_TOOL_CALL_ID;
+
+    EXPECT_TRUE(param.Marshalling(parcel));
+
+    auto result = SkillExecuteParam::Unmarshalling(parcel);
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->toolCallId_, TEST_TOOL_CALL_ID);
+    delete result;
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: ToolCallId_BusinessArgsIndependent_0100
+ * @tc.desc: Want transport keeps the trace ID separate from a business argument with the same name.
+ * @tc.type: FUNC
+ */
+HWTEST_F(SkillExecuteParamTest, ToolCallId_BusinessArgsIndependent_0100, TestSize.Level1)
+{
+    auto skillArgs = std::make_shared<AAFwk::WantParams>();
+    skillArgs->SetParam("toolCallId", AAFwk::String::Box("business-value"));
+    AAFwk::Want want;
+    SkillExecuteParam::WriteToWant(want, TEST_BUNDLE_NAME, TEST_MODULE_NAME,
+        TEST_SKILL_NAME, TEST_SCRIPT_PATH, TEST_FUNCTION_NAME, skillArgs, {},
+        TEST_REQUEST_CODE, TEST_HAP_PATH, "trace-id");
+
+    SkillExecuteParam param;
+    ASSERT_TRUE(SkillExecuteParam::GenerateFromWant(want, param));
+    EXPECT_EQ(param.toolCallId_, "trace-id");
+    EXPECT_EQ(param.requestCode_, TEST_REQUEST_CODE);
+    ASSERT_NE(param.skillArgs_, nullptr);
+    EXPECT_EQ(param.skillArgs_->GetStringParam("toolCallId"), "business-value");
+    EXPECT_EQ(param.skillArgs_->GetParams().size(), 1u);
+}
+
+/**
+ * @tc.name: ToolCallId_BusinessArgsWithoutTraceId_0100
+ * @tc.desc: A business argument named toolCallId does not populate the trace ID when it is absent.
+ * @tc.type: FUNC
+ */
+HWTEST_F(SkillExecuteParamTest, ToolCallId_BusinessArgsWithoutTraceId_0100, TestSize.Level1)
+{
+    auto skillArgs = std::make_shared<AAFwk::WantParams>();
+    skillArgs->SetParam("toolCallId", AAFwk::String::Box("business-value"));
+    AAFwk::Want want;
+    SkillExecuteParam::WriteToWant(want, TEST_BUNDLE_NAME, TEST_MODULE_NAME,
+        TEST_SKILL_NAME, TEST_SCRIPT_PATH, TEST_FUNCTION_NAME, skillArgs);
+
+    EXPECT_FALSE(want.HasParameter(SKILL_EXECUTE_PARAM_TOOL_CALL_ID));
+    SkillExecuteParam param;
+    ASSERT_TRUE(SkillExecuteParam::GenerateFromWant(want, param));
+    EXPECT_TRUE(param.toolCallId_.empty());
+    ASSERT_NE(param.skillArgs_, nullptr);
+    EXPECT_EQ(param.skillArgs_->GetStringParam("toolCallId"), "business-value");
+}
+
 } // namespace AppExecFwk
 } // namespace OHOS

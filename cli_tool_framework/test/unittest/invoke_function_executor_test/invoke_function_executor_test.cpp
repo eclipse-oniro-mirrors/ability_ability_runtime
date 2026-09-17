@@ -25,6 +25,7 @@
 #include "cli_tool_mgr_client.h"
 #include "errors.h"
 #include "function_info.h"
+#include "insight_intent_execute_param.h"
 #include "intent_client.h"
 #include "invoke_function_executor.h"
 #include "string_wrapper.h"
@@ -412,6 +413,38 @@ HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_StampExecutionIds_15
     EXPECT_EQ(mgrClient.lastWrap_.toolCallId, "tcid-stamp-0500");
     EXPECT_EQ(mgrClient.lastWrap_.dmSessionId, "dmsid-hook-0500");
 }
+
+/**
+ * @tc.name: InvokeFunctionExecutor_ToolCallIdPassthrough_1100
+ * @tc.desc: toolCallId in the reserved WantParams key reaches IntentClient with business args intact.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_ToolCallIdPassthrough_1100, TestSize.Level1)
+{
+    auto param = MakeParam("tc-003");
+    param.args.SetParam("city", AAFwk::String::Box("Shanghai"));
+    auto capture = RunParam(param);
+    ASSERT_TRUE(WaitForResult(capture));
+    EXPECT_TRUE(capture->result.result.success);
+    const auto &wantParam = AAFwk::IntentClient::GetInstance().lastWantParam_;
+    EXPECT_EQ(wantParam.GetStringParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID), "tc-003");
+    EXPECT_EQ(wantParam.GetStringParam("city"), "Shanghai");
+}
+
+/**
+ * @tc.name: InvokeFunctionExecutor_ToolCallIdEmptyCompat_1200
+ * @tc.desc: an absent toolCallId does not introduce the reserved key into WantParams.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_ToolCallIdEmptyCompat_1200, TestSize.Level1)
+{
+    auto capture = Run();
+    ASSERT_TRUE(WaitForResult(capture));
+    EXPECT_TRUE(capture->result.result.success);
+    EXPECT_FALSE(AAFwk::IntentClient::GetInstance().lastWantParam_.HasParam(
+        AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID));
+}
+
 } // namespace
 } // namespace CliTool
 } // namespace OHOS
