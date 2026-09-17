@@ -27,7 +27,6 @@
 #include "nlohmann/json.hpp"
 #include "parameters.h"
 #include "scene_board_judgement.h"
-#include "start_ability_utils.h"
 #include "screenlock_manager.h"
 
 using namespace testing;
@@ -44,8 +43,8 @@ public:
     void SetUp();
     void TearDown();
     void LoadTestConfig(const std::string &configStr);
-    void SetupExtensionAbilityInfo(bool isSystemApp, const std::string &appIdentifier,
-        bool allowAppRunWhenDeviceFirstLocked = false);
+    std::shared_ptr<AppExecFwk::AbilityInfo> MakeExtensionAbilityInfo(bool isSystemApp,
+        bool allowAppRunWhenDeviceFirstLocked);
 
 public:
     static std::shared_ptr<ExtensionConfig> extensionConfig_;
@@ -78,16 +77,16 @@ void ScreenUnlockInterceptorTest::LoadTestConfig(const std::string &configStr)
     extensionConfig_->LoadExtensionConfig(jsonConfig);
 }
 
-void ScreenUnlockInterceptorTest::SetupExtensionAbilityInfo(bool isSystemApp, const std::string &appIdentifier,
-    bool allowAppRunWhenDeviceFirstLocked)
+std::shared_ptr<AppExecFwk::AbilityInfo> ScreenUnlockInterceptorTest::MakeExtensionAbilityInfo(
+    bool isSystemApp, bool allowAppRunWhenDeviceFirstLocked)
 {
-    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
-    StartAbilityUtils::startAbilityInfo->abilityInfo.type = AbilityType::EXTENSION;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.extensionTypeName = "form";
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.isSystemApp = isSystemApp;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.allowAppRunWhenDeviceFirstLocked =
-        allowAppRunWhenDeviceFirstLocked;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.bundleName = "com.test.bundle";
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->type = AbilityType::EXTENSION;
+    abilityInfo->extensionTypeName = "form";
+    abilityInfo->applicationInfo.isSystemApp = isSystemApp;
+    abilityInfo->applicationInfo.allowAppRunWhenDeviceFirstLocked = allowAppRunWhenDeviceFirstLocked;
+    abilityInfo->applicationInfo.bundleName = "com.test.bundle";
+    return abilityInfo;
 }
 
 /**
@@ -100,16 +99,10 @@ HWTEST_F(ScreenUnlockInterceptorTest, DoProcess_WhenScreenLocked_001, TestSize.L
 {
     ScreenUnlockInterceptor screenUnlockInterceptor;
     Want want;
-    int requestCode = 123;
-    int32_t userId = 1001;
-    bool isWithUI = true;
-    sptr<IRemoteObject> callerToken;
-    std::function<bool(void)> shouldBlockAllAppStartFunc = []() -> bool {
-        return false;
-    };
-    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
-    AbilityInterceptorParam param =
-        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(callerToken).Build();
+    // Unresolved (empty) target info is treated as non-system and blocked when locked.
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, 123, 1001)
+        .WithUI(true).CallerToken(nullptr)
+        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>()).Build();
     if (!Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
         auto screenLockManager = OHOS::ScreenLock::ScreenLockManager::GetInstance();
         EXPECT_NE(screenLockManager, nullptr);
@@ -131,17 +124,9 @@ HWTEST_F(ScreenUnlockInterceptorTest, DoProcess_WhenScreenUnLocked_001, TestSize
 {
     ScreenUnlockInterceptor screenUnlockInterceptor;
     Want want;
-    int requestCode = 123;
-    int32_t userId = 1001;
-    bool isWithUI = true;
-    sptr<IRemoteObject> callerToken;
-    std::function<bool(void)> shouldBlockAllAppStartFunc = []() -> bool {
-        return false;
-    };
-    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
-    AbilityInterceptorParam param =
-        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(callerToken).Build();
-    auto ret = screenUnlockInterceptor.DoProcess(param);
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, 123, 1001)
+        .WithUI(true).CallerToken(nullptr)
+        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>()).Build();
     if (!Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
         auto screenLockManager = OHOS::ScreenLock::ScreenLockManager::GetInstance();
         EXPECT_NE(screenLockManager, nullptr);
@@ -163,16 +148,9 @@ HWTEST_F(ScreenUnlockInterceptorTest, DoProcess_004, TestSize.Level1)
 {
     ScreenUnlockInterceptor screenUnlockInterceptor;
     Want want;
-    int requestCode = 123;
-    int32_t userId = 1001;
-    bool isWithUI = true;
-    sptr<IRemoteObject> callerToken;
-    std::function<bool(void)> shouldBlockAllAppStartFunc = []() -> bool {
-        return false;
-    };
-    StartAbilityUtils::startAbilityInfo = nullptr;
+    // No target ability info carried in the param: skip interception.
     AbilityInterceptorParam param =
-        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(callerToken).Build();
+        InterceptorParamBuilder(want, 123, 1001).WithUI(true).CallerToken(nullptr).Build();
     auto ret = screenUnlockInterceptor.DoProcess(param);
     EXPECT_EQ(ret, ERR_OK);
 }
@@ -186,21 +164,13 @@ HWTEST_F(ScreenUnlockInterceptorTest, DoProcess_ScreenUnlocked, TestSize.Level1)
 {
     ScreenUnlockInterceptor screenUnlockInterceptor;
     Want want;
-    int requestCode = 123;
-    int32_t userId = 1001;
-    bool isWithUI = true;
-    sptr<IRemoteObject> callerToken;
-    std::function<bool(void)> shouldBlockAllAppStartFunc = []() -> bool {
-        return false;
-    };
-    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
     AppExecFwk::AbilityInfo targetAbilityInfo;
     targetAbilityInfo.type = AppExecFwk::AbilityType::EXTENSION;
-    StartAbilityUtils::startAbilityInfo->abilityInfo = targetAbilityInfo;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.allowAppRunWhenDeviceFirstLocked = false;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.isSystemApp = true;
-    AbilityInterceptorParam param =
-        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(callerToken).Build();
+    targetAbilityInfo.applicationInfo.allowAppRunWhenDeviceFirstLocked = false;
+    targetAbilityInfo.applicationInfo.isSystemApp = true;
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, 123, 1001)
+        .WithUI(true).CallerToken(nullptr)
+        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>(targetAbilityInfo)).Build();
     auto screenLockManager = OHOS::ScreenLock::ScreenLockManager::GetInstance();
     EXPECT_NE(screenLockManager, nullptr);
     screenLockManager->SetScreenLockedState(false);
@@ -426,13 +396,14 @@ HWTEST_F(ScreenUnlockInterceptorTest, DoProcess_NonSystemUIAbility_ShouldBlock, 
     LoadTestConfig(configStr);
 
     ScreenUnlockInterceptor screenUnlockInterceptor;
-    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
-    StartAbilityUtils::startAbilityInfo->abilityInfo.type = AbilityType::PAGE;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.isSystemApp = false;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.allowAppRunWhenDeviceFirstLocked = false;
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->type = AbilityType::PAGE;
+    abilityInfo->applicationInfo.isSystemApp = false;
+    abilityInfo->applicationInfo.allowAppRunWhenDeviceFirstLocked = false;
 
     Want want;
-    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, 100).WithUI(true).CallerToken(nullptr).Build();
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, 100)
+        .WithUI(true).CallerToken(nullptr).AbilityInfo(abilityInfo).Build();
 
     auto screenLockManager = OHOS::ScreenLock::ScreenLockManager::GetInstance();
     EXPECT_NE(screenLockManager, nullptr);
@@ -464,10 +435,11 @@ HWTEST_F(ScreenUnlockInterceptorTest, DoProcess_SystemAppExtension_WithConfig, T
     LoadTestConfig(configStr);
 
     ScreenUnlockInterceptor screenUnlockInterceptor;
-    SetupExtensionAbilityInfo(true, "test_app_id", true);
+    auto abilityInfo = MakeExtensionAbilityInfo(true, true);
 
     Want want;
-    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, 100).WithUI(true).CallerToken(nullptr).Build();
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, 100)
+        .WithUI(true).CallerToken(nullptr).AbilityInfo(abilityInfo).Build();
 
     auto screenLockManager = OHOS::ScreenLock::ScreenLockManager::GetInstance();
     EXPECT_NE(screenLockManager, nullptr);
@@ -502,10 +474,11 @@ HWTEST_F(ScreenUnlockInterceptorTest, DoProcess_ThirdPartyExtension_WithConfig, 
     LoadTestConfig(configStr);
 
     ScreenUnlockInterceptor screenUnlockInterceptor;
-    SetupExtensionAbilityInfo(false, "test_app_id");
+    auto abilityInfo = MakeExtensionAbilityInfo(false, false);
 
     Want want;
-    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, 100).WithUI(true).CallerToken(nullptr).Build();
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, 100)
+        .WithUI(true).CallerToken(nullptr).AbilityInfo(abilityInfo).Build();
 
     auto screenLockManager = OHOS::ScreenLock::ScreenLockManager::GetInstance();
     EXPECT_NE(screenLockManager, nullptr);
@@ -647,15 +620,16 @@ HWTEST_F(ScreenUnlockInterceptorTest, DoProcess_SystemAppExtension_ConfigNotLoad
     GTEST_LOG_(INFO) << "DoProcess_SystemAppExtension_ConfigNotLoaded_ShouldAllow start";
     EXPECT_FALSE(extensionConfig_->IsConfigLoaded());
     ScreenUnlockInterceptor screenUnlockInterceptor;
-    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
-    StartAbilityUtils::startAbilityInfo->abilityInfo.type = AbilityType::EXTENSION;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.extensionTypeName = "form";
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.isSystemApp = true;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.allowAppRunWhenDeviceFirstLocked = true;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.bundleName = "com.test.bundle";
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->type = AbilityType::EXTENSION;
+    abilityInfo->extensionTypeName = "form";
+    abilityInfo->applicationInfo.isSystemApp = true;
+    abilityInfo->applicationInfo.allowAppRunWhenDeviceFirstLocked = true;
+    abilityInfo->applicationInfo.bundleName = "com.test.bundle";
 
     Want want;
-    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, 100).WithUI(true).CallerToken(nullptr).Build();
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, 100)
+        .WithUI(true).CallerToken(nullptr).AbilityInfo(abilityInfo).Build();
 
     auto screenLockManager = OHOS::ScreenLock::ScreenLockManager::GetInstance();
     EXPECT_NE(screenLockManager, nullptr);
@@ -676,15 +650,16 @@ HWTEST_F(ScreenUnlockInterceptorTest, DoProcess_ThirdPartyExtension_ConfigNotLoa
     GTEST_LOG_(INFO) << "DoProcess_ThirdPartyExtension_ConfigNotLoaded_ShouldAllow start";
     EXPECT_FALSE(extensionConfig_->IsConfigLoaded());
     ScreenUnlockInterceptor screenUnlockInterceptor;
-    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
-    StartAbilityUtils::startAbilityInfo->abilityInfo.type = AbilityType::EXTENSION;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.extensionTypeName = "service";
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.isSystemApp = false;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.allowAppRunWhenDeviceFirstLocked = false;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.bundleName = "com.test.thirdparty";
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->type = AbilityType::EXTENSION;
+    abilityInfo->extensionTypeName = "service";
+    abilityInfo->applicationInfo.isSystemApp = false;
+    abilityInfo->applicationInfo.allowAppRunWhenDeviceFirstLocked = false;
+    abilityInfo->applicationInfo.bundleName = "com.test.thirdparty";
 
     Want want;
-    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, 100).WithUI(true).CallerToken(nullptr).Build();
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, 100)
+        .WithUI(true).CallerToken(nullptr).AbilityInfo(abilityInfo).Build();
 
     auto screenLockManager = OHOS::ScreenLock::ScreenLockManager::GetInstance();
     EXPECT_NE(screenLockManager, nullptr);

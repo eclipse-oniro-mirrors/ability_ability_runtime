@@ -3033,8 +3033,7 @@ private:
         sptr<UIExtensionAbilityConnectInfo> connectInfo = nullptr,
         uint64_t specifiedFullTokenId = 0,
         int32_t loadTimeout = 0,
-        std::shared_ptr<IndirectCallerInfo> indirectCallerInfo = nullptr,
-        bool fromConnect = false);
+        std::shared_ptr<IndirectCallerInfo> indirectCallerInfo = nullptr);
 
     int DisconnectLocalAbility(const sptr<IAbilityConnection> &connect);
     int32_t HandleExtensionConnectionByUserId(sptr<IAbilityConnection> connect, int32_t userId,
