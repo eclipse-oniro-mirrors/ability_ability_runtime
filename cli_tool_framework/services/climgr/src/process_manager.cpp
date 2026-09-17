@@ -17,6 +17,7 @@
 
 #include <cerrno>
 #include <chrono>
+#include <cstdio>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/prctl.h>
@@ -49,6 +50,7 @@ namespace {
 // loop stays cheap; any fd that genuinely needs to survive into claw_sandbox is dup2'd onto
 // 0/1/2 before the sweep and is therefore excluded by the fd > STDERR_FILENO condition.
 constexpr rlim_t MAX_FD_SWEEP_LIMIT = 65536;
+constexpr uint64_t FD_OWNER_TAG = static_cast<uint64_t>(AAFwkTag::CLI_TOOL);
 }
 
 const char *ProcessManager::clawSandboxPath_ = "/system/bin/claw_sandbox";
@@ -66,42 +68,48 @@ bool ProcessManager::CreatePipes(SessionRecord &record) const
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create stdin pipe: %{public}d", errno);
         return false;
     }
+    fdsan_exchange_owner_tag(record.stdinPipe[0], 0, FD_OWNER_TAG);
+    fdsan_exchange_owner_tag(record.stdinPipe[1], 0, FD_OWNER_TAG);
     if (pipe2(record.stdoutPipe, O_CLOEXEC) != 0) {
-        close(record.stdinPipe[0]);
+        fdsan_close_with_tag(record.stdinPipe[0], FD_OWNER_TAG);
         record.stdinPipe[0] = -1;
-        close(record.stdinPipe[1]);
+        fdsan_close_with_tag(record.stdinPipe[1], FD_OWNER_TAG);
         record.stdinPipe[1] = -1;
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create stdout pipe: %{public}d", errno);
         return false;
     }
+    fdsan_exchange_owner_tag(record.stdoutPipe[0], 0, FD_OWNER_TAG);
+    fdsan_exchange_owner_tag(record.stdoutPipe[1], 0, FD_OWNER_TAG);
     if (pipe2(record.stderrPipe, O_CLOEXEC) != 0) {
-        close(record.stdinPipe[0]);
+        fdsan_close_with_tag(record.stdinPipe[0], FD_OWNER_TAG);
         record.stdinPipe[0] = -1;
-        close(record.stdinPipe[1]);
+        fdsan_close_with_tag(record.stdinPipe[1], FD_OWNER_TAG);
         record.stdinPipe[1] = -1;
-        close(record.stdoutPipe[0]);
+        fdsan_close_with_tag(record.stdoutPipe[0], FD_OWNER_TAG);
         record.stdoutPipe[0] = -1;
-        close(record.stdoutPipe[1]);
+        fdsan_close_with_tag(record.stdoutPipe[1], FD_OWNER_TAG);
         record.stdoutPipe[1] = -1;
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create stderr pipe: %{public}d", errno);
         return false;
     }
+    fdsan_exchange_owner_tag(record.stderrPipe[0], 0, FD_OWNER_TAG);
+    fdsan_exchange_owner_tag(record.stderrPipe[1], 0, FD_OWNER_TAG);
     return true;
 }
 
 void ProcessManager::CloseAllPipes(SessionRecord &record) const
 {
-    close(record.stdinPipe[0]);
+    fdsan_close_with_tag(record.stdinPipe[0], FD_OWNER_TAG);
     record.stdinPipe[0] = -1;
-    close(record.stdinPipe[1]);
+    fdsan_close_with_tag(record.stdinPipe[1], FD_OWNER_TAG);
     record.stdinPipe[1] = -1;
-    close(record.stdoutPipe[0]);
+    fdsan_close_with_tag(record.stdoutPipe[0], FD_OWNER_TAG);
     record.stdoutPipe[0] = -1;
-    close(record.stdoutPipe[1]);
+    fdsan_close_with_tag(record.stdoutPipe[1], FD_OWNER_TAG);
     record.stdoutPipe[1] = -1;
-    close(record.stderrPipe[0]);
+    fdsan_close_with_tag(record.stderrPipe[0], FD_OWNER_TAG);
     record.stderrPipe[0] = -1;
-    close(record.stderrPipe[1]);
+    fdsan_close_with_tag(record.stderrPipe[1], FD_OWNER_TAG);
     record.stderrPipe[1] = -1;
 }
 
@@ -111,8 +119,9 @@ void ProcessManager::CloseNonStdFds() const
     // only the three standard streams can cross the exec boundary into claw_sandbox.
     // CreatePipes already sets O_CLOEXEC on our own pipe fds; this catches any fd that
     // escaped CLOEXEC (fds inherited from the parent SA process, or opened on a path that
-    // forgot the flag). Both paths below are async-signal-safe (no malloc/stdio), so they
-    // cannot deadlock on a mutex inherited locked from another thread at fork().
+    // forgot the flag). Both paths below use raw kernel syscalls: async-signal-safe
+    // (no malloc/stdio/HiLog) and bypass musl's fdsan-instrumented close(), which would
+    // mismatch on inherited tagged fds and invoke HiLog in the post-fork child (deadlock).
 
     // Fast path: close_range (Linux 5.9+, nr 436) closes every open fd in [first, last]
     // in a single syscall -- O(open fds), no userspace iteration. OpenHarmony musl exposes
@@ -126,6 +135,10 @@ void ProcessManager::CloseNonStdFds() const
     // strictly below rl.rlim_cur; sweeping [STDERR_FILENO+1, rl.rlim_cur) is exhaustive.
     // No TAG_LOGW here: CloseNonStdFds runs in the post-fork child where HiLog's internal
     // mutex may be held by a vanished thread -> deadlock. Sweep silently.
+    // Raw SYS_close (not close()): the parent tags inherited fds with FD_OWNER_TAG, and
+    // musl's close() -> fdsan_close_with_tag(fd, 0) mismatches on tagged fds, invoking
+    // fdsan_error -> HiLog (deadlock) or abort (FATAL). SYS_close bypasses fdsan; stale
+    // tag entries are harmless because execvp replaces the process image right after.
     struct rlimit rl;
     if (getrlimit(RLIMIT_NOFILE, &rl) != 0) {
         return;
@@ -135,22 +148,22 @@ void ProcessManager::CloseNonStdFds() const
         limit = MAX_FD_SWEEP_LIMIT;
     }
     for (rlim_t fd = STDERR_FILENO + 1; fd < limit; ++fd) {
-        close(static_cast<int>(fd)); // EBADF on non-open fds, harmless
+        syscall(SYS_close, static_cast<int>(fd)); // EBADF on non-open fds, harmless
     }
 }
 
 void ProcessManager::SetupChildPipesAndExec(const SessionRecord &record,
     std::vector<char *> &execArgs) const
 {
-    close(record.stdinPipe[1]);
-    close(record.stdoutPipe[0]);
-    close(record.stderrPipe[0]);
+    fdsan_close_with_tag(record.stdinPipe[1], FD_OWNER_TAG);
+    fdsan_close_with_tag(record.stdoutPipe[0], FD_OWNER_TAG);
+    fdsan_close_with_tag(record.stderrPipe[0], FD_OWNER_TAG);
     dup2(record.stdinPipe[0], STDIN_FILENO);
     dup2(record.stdoutPipe[1], STDOUT_FILENO);
     dup2(record.stderrPipe[1], STDERR_FILENO);
-    close(record.stdinPipe[0]);
-    close(record.stdoutPipe[1]);
-    close(record.stderrPipe[1]);
+    fdsan_close_with_tag(record.stdinPipe[0], FD_OWNER_TAG);
+    fdsan_close_with_tag(record.stdoutPipe[1], FD_OWNER_TAG);
+    fdsan_close_with_tag(record.stderrPipe[1], FD_OWNER_TAG);
     CloseNonStdFds();
     execvp(execArgs[0], execArgs.data());
     static const char msg[] = "claw_sandbox execvp failed\n";
@@ -203,10 +216,10 @@ int32_t ProcessManager::CreateChildProcess(const ExecToolParam &param, const std
     }
 
     // Parent process: close write ends of pipes
-    close(record->stdoutPipe[1]);
-    close(record->stderrPipe[1]);
+    fdsan_close_with_tag(record->stdoutPipe[1], FD_OWNER_TAG);
+    fdsan_close_with_tag(record->stderrPipe[1], FD_OWNER_TAG);
     // close read
-    close(record->stdinPipe[0]);
+    fdsan_close_with_tag(record->stdinPipe[0], FD_OWNER_TAG);
     record->processId = pid;
     return ERR_OK;
 }
@@ -250,16 +263,17 @@ int32_t ProcessManager::CreateShellProcess(const ExecCmdParam &param, const std:
         // vanished thread at fork -> deadlock).
         int32_t tfd = open("/dev/access_token_id", O_RDWR | O_CLOEXEC);
         if (tfd >= 0) {
+            fdsan_exchange_owner_tag(tfd, 0, FD_OWNER_TAG);
             (void)ioctl(tfd, ACCESS_TOKENID_SET_HAP_PTOKENID, &atmTokenId);
-            (void)close(tfd);
+            (void)fdsan_close_with_tag(tfd, FD_OWNER_TAG);
         }
         SetupChildPipesAndExec(*record, execArgs);
     }
     // Parent process: close write ends of pipes
-    close(record->stdoutPipe[1]);
-    close(record->stderrPipe[1]);
+    fdsan_close_with_tag(record->stdoutPipe[1], FD_OWNER_TAG);
+    fdsan_close_with_tag(record->stderrPipe[1], FD_OWNER_TAG);
     // close read end of stdin
-    close(record->stdinPipe[0]);
+    fdsan_close_with_tag(record->stdinPipe[0], FD_OWNER_TAG);
     record->processId = pid;
     return ERR_OK;
 }

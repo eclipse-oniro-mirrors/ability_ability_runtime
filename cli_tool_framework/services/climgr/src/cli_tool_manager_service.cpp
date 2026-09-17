@@ -19,6 +19,7 @@
 #include <cctype>
 #include <cerrno>
 #include <csignal>
+#include <cstdio>
 #include <cstring>
 #include <fcntl.h>
 #include <poll.h>
@@ -68,6 +69,7 @@ constexpr int32_t QUERY_DB_ERROR = 2;
 constexpr int32_t MAX_QUERY_CMDS_SIZE = 100;
 constexpr int32_t ACTIVE_TIME = 30 * 1000; // 30s
 constexpr int32_t SKILL_TYPE_INDEPENDENT = -1;
+constexpr uint64_t FD_OWNER_TAG = static_cast<uint64_t>(AAFwkTag::CLI_TOOL);
 
 class HookDeathRecipient final : public IRemoteObject::DeathRecipient {
 public:
@@ -239,6 +241,8 @@ void CliToolManagerService::Init()
         if (pipe2(pipefd, O_CLOEXEC | O_NONBLOCK) == 0) {
             reapPipeReadFd_ = pipefd[0];
             reapPipeWriteFd_.store(pipefd[1], std::memory_order_release);
+            fdsan_exchange_owner_tag(pipefd[0], 0, FD_OWNER_TAG);
+            fdsan_exchange_owner_tag(pipefd[1], 0, FD_OWNER_TAG);
         } else {
             TAG_LOGE(AAFwkTag::CLI_TOOL, "reaper pipe2 failed: %{public}s, run without reaper", strerror(errno));
             reapPipeReadFd_ = -1;
@@ -514,9 +518,9 @@ bool CliToolManagerService::RegisterSessionWithMonitors(const std::shared_ptr<Se
     if (ioMonitor_ == nullptr || !ioMonitor_->RegisterSession(
         record->sessionId, record->stdoutPipe[0], record->stderrPipe[0], record->stdinPipe[1])) {
         // RegisterSession takes ownership only on success. On failure, close the pipe ends held by this service side.
-        close(record->stdoutPipe[0]);
-        close(record->stderrPipe[0]);
-        close(record->stdinPipe[1]);
+        fdsan_close_with_tag(record->stdoutPipe[0], FD_OWNER_TAG);
+        fdsan_close_with_tag(record->stderrPipe[0], FD_OWNER_TAG);
+        fdsan_close_with_tag(record->stdinPipe[1], FD_OWNER_TAG);
         TAG_LOGE(AAFwkTag::CLI_TOOL, "ioMonitor registration failed: sessionId=%{public}s, pid=%{public}d",
             record->sessionId.c_str(), record->processId);
         return false;
@@ -1650,12 +1654,12 @@ void CliToolManagerService::StopReaper()
     // Both pipe ends are closed here. SIG_IGN was installed above, so the handler is disarmed and cannot write
     // to a reused fd after close. The reaper thread has already been joined, so the read end is not in use.
     if (reapPipeReadFd_ >= 0) {
-        close(reapPipeReadFd_);
+        fdsan_close_with_tag(reapPipeReadFd_, FD_OWNER_TAG);
         reapPipeReadFd_ = -1;
     }
     int writeFd = reapPipeWriteFd_.exchange(-1, std::memory_order_acq_rel);
     if (writeFd >= 0) {
-        close(writeFd);
+        fdsan_close_with_tag(writeFd, FD_OWNER_TAG);
     }
 }
 

@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cerrno>
 #include <chrono>
+#include <cstdio>
 #include <cstring>
 #include <fcntl.h>
 #include <poll.h>
@@ -41,6 +42,7 @@ constexpr int32_t INPUT_WRITE_POLL_MS = 1000;
 constexpr int32_t INPUT_WRITE_TIMEOUT_MS = 30 * 1000;
 constexpr size_t MAX_PENDING_INPUT_BYTES = 4 * 1024 * 1024;
 constexpr size_t MAX_PENDING_INPUT_MESSAGES = 4096;
+constexpr uint64_t FD_OWNER_TAG = static_cast<uint64_t>(AAFwkTag::CLI_TOOL);
 }
 
 std::shared_ptr<IOMonitor> IOMonitor::Create()
@@ -64,6 +66,7 @@ bool IOMonitor::Start()
         TAG_LOGE(AAFwkTag::CLI_TOOL, "epoll_create1 failed: %{public}s", strerror(errno));
         return false;
     }
+    fdsan_exchange_owner_tag(epollFd_, 0, FD_OWNER_TAG);
     auto monitor = shared_from_this();
     monitorThread_ = std::thread([monitor]() {
         monitor->MonitorLoop();
@@ -87,11 +90,11 @@ void IOMonitor::Stop()
     {
         std::lock_guard<std::mutex> lock(fdMutex_);
         if (epollFd_ >= 0) {
-            close(epollFd_);
+            fdsan_close_with_tag(epollFd_, FD_OWNER_TAG);
             epollFd_ = -1;
         }
         for (const auto &[fd, info] : fdMap_) {
-            close(fd);
+            fdsan_close_with_tag(fd, FD_OWNER_TAG);
         }
         fdMap_.clear();
         for (auto &[sessionId, queue] : inputQueues_) {
@@ -184,7 +187,7 @@ void IOMonitor::UnregisterSession(const std::string &sessionId)
     }
 
     for (const auto &[fd, info] : fdsToClose) {
-        close(fd);
+        fdsan_close_with_tag(fd, FD_OWNER_TAG);
     }
     for (const auto &input : failedInputs) {
         NotifyInputReply(sessionId, input.eventId, false);
@@ -391,9 +394,11 @@ void IOMonitor::ProcessWriteQueue(const std::string &sessionId)
             }
         }
 
-        bool result = fd >= 0 && WriteMessage(fd, sessionId, input.message);
+        bool result = false;
         if (fd >= 0) {
-            close(fd);
+            fdsan_exchange_owner_tag(fd, 0, FD_OWNER_TAG);
+            result = WriteMessage(fd, sessionId, input.message);
+            fdsan_close_with_tag(fd, FD_OWNER_TAG);
         }
         NotifyInputReply(sessionId, input.eventId, result);
         if (!result) {
@@ -457,6 +462,7 @@ void IOMonitor::HandleReadableFd(int fd)
         // level-triggered epoll while still consuming data.
         int dupFd = dup(fd);
         if (dupFd >= 0) {
+            fdsan_exchange_owner_tag(dupFd, 0, FD_OWNER_TAG);
             readFd = dupFd;
             ownReadFd = true;
         } else {
@@ -488,7 +494,7 @@ void IOMonitor::HandleReadableFd(int fd)
         break;
     }
     if (ownReadFd) {
-        close(readFd);
+        fdsan_close_with_tag(readFd, FD_OWNER_TAG);
     }
 }
 
@@ -504,7 +510,7 @@ void IOMonitor::CloseFdLocked(int fd, const FdInfo &info, bool notifyDrained)
             return;
         }
         epoll_ctl(epollFd_, EPOLL_CTL_DEL, fd, nullptr);
-        close(fd);
+        fdsan_close_with_tag(fd, FD_OWNER_TAG);
         fdMap_.erase(it);
         sessionDrained = true;
         for (const auto &[otherFd, otherInfo] : fdMap_) {
