@@ -23,7 +23,6 @@ config("foreground_app_obs_manager_public_config") {
   ]
   include_dirs = [
     "include",
-    "${ability_runtime_services_path}/common/include",
     "${ability_runtime_innerkits_path}/connectionobs_manager/include",
   ]
   cflags = []
@@ -53,6 +52,8 @@ ohos_shared_library("foreground_app_obs_manager") {
   ]
 
   public_configs = [ ":foreground_app_obs_manager_public_config" ]
+
+  include_dirs = [ "${ability_runtime_services_path}/common/include" ]
 
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
 

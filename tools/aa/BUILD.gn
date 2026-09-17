@@ -17,10 +17,20 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 config("ability_command_config") {
   include_dirs = [
     "include",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native",
+    "${ability_runtime_innerkits_path}/ability_manager/include",
+    "${ability_runtime_innerkits_path}/connectionobs_manager/include",
+    "${ability_runtime_innerkits_path}/foreground_app_obs_manager/include",
     "${ability_runtime_innerkits_path}/app_manager/include/appmgr",
-    "${ability_runtime_services_path}/abilitymgr/include/utils",
     "${ability_runtime_services_path}/abilitymgr/include",
   ]
+
+  if (ability_runtime_graphics) {
+    defines = [
+      "SUPPORT_GRAPHICS",
+      "SUPPORT_SCREEN",
+    ]
+  }
 }
 
 config("ability_command_exception_config") {
@@ -76,6 +86,9 @@ ohos_static_library("tools_aa_source_set") {
     "init:libbegetutil",
     "ipc:ipc_core",
   ]
+  if (ability_runtime_graphics) {
+    external_deps += [ "image_framework:image_native" ]
+  }
   public_external_deps = [
     "ability_base:session_info",
     "bundle_framework:appexecfwk_base",
@@ -87,7 +100,9 @@ ohos_static_library("tools_aa_source_set") {
 
   subsystem_name = "ability"
   part_name = "ability_runtime"
-  configs = [ "${ability_runtime_services_path}/common:size_optimize_config" ]
+  configs = [
+    "${ability_runtime_services_path}/common:size_optimize_config",
+  ]
 }
 
 ohos_executable("aa") {

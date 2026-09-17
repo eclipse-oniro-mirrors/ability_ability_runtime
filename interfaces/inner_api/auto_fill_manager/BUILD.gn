@@ -18,7 +18,6 @@ config("auto_fill_manager_public_config") {
   visibility = [ ":*" ]
   include_dirs = [
     "include/",
-    "${ability_runtime_services_path}/common/include",
   ]
 
   cflags = []
@@ -31,6 +30,7 @@ ohos_shared_library("auto_fill_manager") {
   branch_protector_ret = "pac_ret"
   branch_protector_frt = "bti"
   public_configs = [ ":auto_fill_manager_public_config" ]
+  include_dirs = [ "${ability_runtime_services_path}/common/include" ]
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
 
   sources = [

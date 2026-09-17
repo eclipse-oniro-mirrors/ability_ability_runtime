@@ -35,7 +35,6 @@ config("wantagent_innerkits_public_config") {
     "${ability_runtime_innerkits_path}/ability_manager/include/insight_intent",
     "${ability_runtime_innerkits_path}/ability_manager/include/ui_extension",
     "${ability_runtime_innerkits_path}/wantagent/include",
-    "${ability_runtime_services_path}/abilitymgr/include/utils",
     "${ability_runtime_services_path}/abilitymgr/include",
     "${ability_runtime_innerkits_path}/app_manager/include/appmgr",
     "${ability_runtime_path}/interfaces/kits/native/appkit/app",
@@ -51,6 +50,7 @@ ohos_shared_library("wantagent_innerkits") {
   include_dirs = [
     "${ability_runtime_services_path}/common/include",
     "${ability_runtime_services_path}/abilitymgr/include",
+    "${ability_runtime_services_path}/abilitymgr/include/utils",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
     "${ability_runtime_path}/interfaces/inner_api/deps_wrapper/include",
   ]

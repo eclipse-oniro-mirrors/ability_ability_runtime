@@ -18,7 +18,6 @@ config("function_info_config") {
   visibility = [ ":*" ]
   include_dirs = [
     "include",
-    "${ability_runtime_services_path}/common/include",
     "${cli_tool_framework_path}/interfaces/cli_tool/include",
   ]
 }

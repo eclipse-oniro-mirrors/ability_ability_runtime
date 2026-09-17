@@ -22,7 +22,6 @@ config("connection_obs_manager_public_config") {
       [ "${ability_runtime_test_path}/unittest/connection_observer_test/*" ]
   include_dirs = [
     "include",
-    "${ability_runtime_services_path}/common/include",
   ]
   cflags = []
   if (target_cpu == "arm") {
@@ -57,6 +56,8 @@ ohos_shared_library("connection_obs_manager") {
   ]
 
   public_configs = [ ":connection_obs_manager_public_config" ]
+
+  include_dirs = [ "${ability_runtime_services_path}/common/include" ]
 
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
 

@@ -133,6 +133,8 @@ ohos_unittest("test_observer_proxy_test") {
 
   sources = [ "test_observer_proxy_test.cpp" ]
 
+  configs = [ ":tools_ability_delegator_config" ]
+
   deps = [ "${ability_runtime_path}/tools/aa:tools_aa_source_set" ]
 
   external_deps = [
@@ -150,6 +152,8 @@ ohos_unittest("test_observer_stub_test") {
     "mock_test_observer_stub.cpp",
     "test_observer_stub_test.cpp",
   ]
+
+  configs = [ ":tools_ability_delegator_config" ]
 
   deps = [ "${ability_runtime_path}/tools/aa:tools_aa_source_set" ]
 

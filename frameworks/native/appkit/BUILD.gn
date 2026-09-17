@@ -48,6 +48,9 @@ config("appkit_config") {
     "${ability_runtime_path}/interfaces/kits/native/appkit/app",
     "${ability_runtime_path}/interfaces/kits/native/appkit/dfr",
     "${ability_runtime_path}/interfaces/kits/native/ability/native",
+    "${ability_runtime_services_path}/common/include",
+    "${ability_runtime_services_path}/abilitymgr/include/utils",
+    "${ability_runtime_services_path}/abilitymgr/include",
   ]
 }
 
@@ -478,13 +481,13 @@ ohos_shared_library("app_context") {
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
   ]
 
+  public_configs = [ ":appkit_public_config" ]
+
   configs = [
     ":appkit_config",
     ":appkit_exception_config",
     "${ability_runtime_services_path}/common:optimize_config",
   ]
-
-  public_configs = [ ":appkit_public_config" ]
 
   sources = [
     "${ability_runtime_native_path}/appkit/ability_runtime/context/ability_stage_context.cpp",
@@ -785,7 +788,6 @@ ohos_shared_library("test_runner_ani") {
 config("application_context_manager_config") {
   include_dirs = [
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_runtime/context",
-    "${ability_runtime_services_path}/common/include",
   ]
 }
 
@@ -852,6 +854,7 @@ ohos_shared_library("application_context_manager") {
   include_dirs = [
     "${ability_runtime_path}/interfaces/inner_api/runtime/include",
     "${ability_runtime_path}/interfaces/kits/native/ability/native",
+    "${ability_runtime_services_path}/common/include",
   ]
 
   sources = [ "${ability_runtime_native_path}/appkit/ability_runtime/context/application_context_manager.cpp" ]
