@@ -243,11 +243,11 @@ bool ToolUtil::GenerateCmdSandboxConfig(const ExecCmdParam &param, AccessToken::
     config["appIdentifier"] = bundleInfo.signatureInfo.appIdentifier;
     config["bundleName"] = bundleInfo.name;
     config["type"] = "shell";
-    config["policy"] = param.policy;
-    if (param.workDir != "") {
-        config["workdir"] = param.workDir;
+    config["policy"] = param.execCmdOptions.policy;
+    if (param.execCmdOptions.workDir != "") {
+        config["workdir"] = param.execCmdOptions.workDir;
     }
-    config["env"] = param.env;
+    config["env"] = param.execCmdOptions.env;
     config["nsFlags"] = {"pid"};
     sandboxConfig = config.dump();
     bundleName = bundleInfo.name;

@@ -18,6 +18,8 @@
 
 #include "errors.h"
 #include "function_info.h"
+#include "invoke_function_param.h"
+#include "function_result_wrap.h"
 
 namespace OHOS {
 namespace CliTool {
@@ -29,26 +31,14 @@ namespace CliTool {
  */
 class CliToolMGRClient {
 public:
-    /**
-     * @brief Get the singleton instance of CliToolMGRClient.
-     * @return Reference to the CliToolMGRClient instance.
-     */
     static CliToolMGRClient& GetInstance();
 
-    /**
-     * @brief Get function information by bundleName and functionName
-     * @param bundleName Bundle name
-     * @param functionName Function name
-     * @param function Output FunctionInfo
-     * @return ErrCode ERR_OK on success
-     */
     ErrCode GetFunctionInfo(const std::string &bundleName, const std::string &functionName,
         FunctionInfo &function);
 
-    // Test knobs (the singleton persists across tests; reset in SetUp).
-    //   mockStatus_        — value returned by GetFunctionInfo (ERR_OK == success).
-    //   mockFunctionType_  — function type surfaced on the success path, so tests can
-    //                        drive the executor's type-validation branch (Step 2).
+    ErrCode BeforeInvokeFunction(InvokeFunctionParam &param) { return ERR_OK; }
+    ErrCode AfterInvokeFunction(FunctionResultWrap &functionResultWrap) { return ERR_OK; }
+
     int32_t mockStatus_ = 0;
     FunctionType mockFunctionType_ = FunctionType::INTENT_FUNCTION;
 };

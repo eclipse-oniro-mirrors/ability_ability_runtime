@@ -17,6 +17,7 @@
 #define OHOS_ABILITY_RUNTIME_CLI_TOOL_MGR_SERVICE_H
 
 #include <atomic>
+#include <chrono>
 #include <map>
 #include <memory>
 #include <string>
@@ -29,10 +30,15 @@
 #include "cli_tool_data_manager.h"
 #include "exec_cmd_param.h"
 #include "exec_options.h"
+#include "exec_result_wrap.h"
 #include "ffrt.h"
+#include "function_result_wrap.h"
+#include "invoke_function_param.h"
+#include "invoke_function_result.h"
 #include "iremote_object.h"
 #include "system_ability.h"
 #include "system_ability_definition.h"
+#include "want_params.h"
 
 #include "io_monitor.h"
 #include "process_manager.h"
@@ -48,6 +54,8 @@ namespace CliTool {
 class SessionRecord;
 class SkillCallbackAdapter;
 class CliToolManagerService;
+
+enum class HookType { CLI, FUNCTION };
 
 class CliToolManagerService : public SystemAbility,
                               public CliToolManagerStub {
@@ -159,6 +167,13 @@ public:
      */
     int32_t GetAllFunctions(FunctionsRawData &functions) override;
 
+    int32_t RegisterCliHook(const sptr<ICliHookInterface> &hook, int32_t activeMethods) override;
+    int32_t UnregisterCliHook(const sptr<ICliHookInterface> &hook) override;
+    int32_t RegisterFunctionHook(const sptr<IFunctionHookInterface> &hook, int32_t activeMethods) override;
+    int32_t UnregisterFunctionHook(const sptr<IFunctionHookInterface> &hook) override;
+    int32_t BeforeInvokeFunction(InvokeFunctionParam &param) override;
+    int32_t AfterInvokeFunction(FunctionResultWrap &functionResultWrap) override;
+
     /**
      * @brief Batch register functions (one-way, result not reported to caller)
      * @param functions FunctionsRawData to register
@@ -181,6 +196,8 @@ public:
      */
     int32_t ResetNamespaceFunctionsAsync(const std::string &functionNamespace,
         const FunctionsRawData &functions) override;
+
+    void OnHookDied(const wptr<IRemoteObject> &remote, HookType type);
 
 protected:
     void OnStart() override;
@@ -306,7 +323,15 @@ private:
     void RemoveCallerPid(int64_t pid);
     int32_t GetCallerPidCount();
 
+    bool IsDeveloperMode() const;
+    sptr<ICliHookInterface> CheckCliHook(uint32_t flag);
+    sptr<IFunctionHookInterface> CheckFunctionHook(uint32_t flag);
+    void InvokeBeforeCallTool(ExecToolParam &param);
+    void InvokeAfterCallTool(CliSessionInfo &session, SessionType sessionType);
+    void InvokeBeforeCallCmd(ExecCmdParam &param);
+
     bool initialized_ = false;
+    bool isDeveloperMode_ = false;
     std::shared_ptr<IOMonitor> ioMonitor_ = nullptr;
 
     // ---- SIGCHLD self-pipe + dedicated reaper thread ----
@@ -326,6 +351,48 @@ private:
     std::unordered_map<std::string, sptr<AppExecFwk::IApplicationStateObserver>> bundleObservers_;
     ffrt::mutex callerPidsMutex_;
     std::unordered_set<int64_t> callerPids;
+
+    ffrt::mutex hookMutex_;
+    sptr<ICliHookInterface> cliHook_;
+    sptr<IFunctionHookInterface> functionHook_;
+    sptr<IRemoteObject::DeathRecipient> cliHookDeathRecipient_;
+    sptr<IRemoteObject::DeathRecipient> functionHookDeathRecipient_;
+
+    uint32_t cliHookActiveMethods_ = 0;     // bitmask: 0 = all methods active (for non-NAPI callers)
+    uint32_t functionHookActiveMethods_ = 0; // bitmask: 0 = all methods active (for non-NAPI callers)
+    static constexpr uint32_t CLI_HOOK_BEFORE_CALL_TOOL = 1 << 0;
+    static constexpr uint32_t CLI_HOOK_AFTER_CALL_TOOL = 1 << 1;
+    static constexpr uint32_t CLI_HOOK_BEFORE_CALL_CMD = 1 << 2;
+    static constexpr uint32_t CLI_HOOK_AFTER_CALL_CMD = 1 << 3;
+    static constexpr uint32_t FUNC_HOOK_BEFORE_INVOKE = 1 << 0;
+    static constexpr uint32_t FUNC_HOOK_AFTER_INVOKE = 1 << 1;
+
+    static constexpr int32_t HOOK_TIMEOUT_SECONDS = 6;
+    template<typename ParamType, typename HookFunc>
+    bool InvokeHookAsync(HookFunc &&hookFunc, ParamType &param)
+    {
+        auto mtx = std::make_shared<ffrt::mutex>();
+        auto cv = std::make_shared<ffrt::condition_variable>();
+        auto completed = std::make_shared<std::atomic<bool>>(false);
+        auto paramCopy = std::make_shared<ParamType>(param);
+
+        ffrt::submit([hookFunc = std::forward<HookFunc>(hookFunc), paramCopy, mtx, cv, completed]() {
+            hookFunc(*paramCopy);
+            {
+                std::lock_guard<ffrt::mutex> lock(*mtx);
+                completed->store(true);
+            }
+            cv->notify_one();
+        });
+
+        std::unique_lock<ffrt::mutex> lock(*mtx);
+        bool success = cv->wait_for(lock, std::chrono::seconds(HOOK_TIMEOUT_SECONDS),
+            [&] { return completed->load(); });
+        if (success) {
+            param = *paramCopy;
+        }
+        return success;
+    }
 };
 
 class SkillCallbackAdapter : public AAFwk::SkillExecuteCallbackStub {

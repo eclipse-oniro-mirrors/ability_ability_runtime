@@ -37,6 +37,7 @@ ohos_shared_library("functionmanager_napi") {
     "src/function_manager_module.cpp",
     "src/invoke_function_callback_client.cpp",
     "src/invoke_function_executor.cpp",
+    "src/js_function_hook.cpp",
     "src/js_function_manager.cpp",
     "src/js_function_manager_utils.cpp",
   ]

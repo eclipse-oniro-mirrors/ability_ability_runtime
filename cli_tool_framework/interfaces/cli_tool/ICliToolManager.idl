@@ -17,6 +17,8 @@ package OHOS.CliTool;
 
 import ICliToolData;
 import ICliToolManagerScheduler;
+import ICliHookInterface;
+import IFunctionHookInterface;
 sequenceable CliSessionInfo..OHOS.CliTool.CliSessionInfo;
 sequenceable ExecCmdParam..OHOS.CliTool.ExecCmdParam;
 sequenceable ExecToolParam..OHOS.CliTool.ExecToolParam;
@@ -25,6 +27,10 @@ sequenceable ToolInfo..OHOS.CliTool.ToolInfo;
 rawdata ToolInfo..OHOS.CliTool.ToolsRawData;
 sequenceable FunctionInfo..OHOS.CliTool.FunctionInfo;
 rawdata FunctionInfo..OHOS.CliTool.FunctionsRawData;
+sequenceable WantParams..OHOS.AAFwk.WantParams;
+sequenceable InvokeFunctionResult..OHOS.CliTool.InvokeFunctionResult;
+sequenceable InvokeFunctionParam..OHOS.CliTool.InvokeFunctionParam;
+sequenceable FunctionResultWrap..OHOS.CliTool.FunctionResultWrap;
 
 interface ICliToolManager {
     void GetAllToolSummaries([out] ToolSummary[] summaries);
@@ -49,4 +55,10 @@ interface ICliToolManager {
     [oneway] void BatchRegisterFunctionsAsync([in] FunctionsRawData functions);
     [oneway] void UnregisterIntentFunctionsByNamespaceAsync([in] String functionNamespace);
     [oneway] void ResetNamespaceFunctionsAsync([in] String functionNamespace, [in] FunctionsRawData functions);
+    void RegisterCliHook([in] ICliHookInterface hook, [in] int activeMethods);
+    void UnregisterCliHook([in] ICliHookInterface hook);
+    void RegisterFunctionHook([in] IFunctionHookInterface hook, [in] int activeMethods);
+    void UnregisterFunctionHook([in] IFunctionHookInterface hook);
+    void BeforeInvokeFunction([inout] InvokeFunctionParam param);
+    void AfterInvokeFunction([inout] FunctionResultWrap functionResultWrap);
 }

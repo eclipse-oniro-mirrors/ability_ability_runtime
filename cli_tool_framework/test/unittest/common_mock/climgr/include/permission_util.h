@@ -23,6 +23,12 @@ public:
 
     static bool VerifyAccessToken(AccessToken::AccessTokenID tokenId,
         const std::string &requirePermission);
+
+    static bool IsSystemApp();
+
+    static bool IsSystemSA();
+
+    static int32_t CheckSystemAndPermission(const std::string &permissionName);
 };
 
 } // namespace CliTool

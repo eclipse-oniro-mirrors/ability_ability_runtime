@@ -33,19 +33,22 @@
 #include "ccm_util.h"
 #include "cli_error_code.h"
 #include "cli_event_report.h"
+#include "cli_hook_interface_proxy.h"
 #include "cli_tool_app_state_observer.h"
 #include "cli_function_data_manager.h"
 #include "event_dispatcher.h"
+#include "exec_result.h"
+#include "function_hook_interface_proxy.h"
 #include "function_info.h"
 #include "hilog_tag_wrapper.h"
 #include "if_system_ability_manager.h"
 #include "ipc_skeleton.h"
 #include "iservice_registry.h"
+#include "parameters.h"
 #include "permission_query_util.h"
 #include "permission_util.h"
 #include "process_manager.h"
 #include "session_record.h"
-#include "tokenid_kit.h"
 #include "tool_util.h"
 
 namespace OHOS {
@@ -55,6 +58,7 @@ constexpr const char* PERMISSION_EXEC_CLI_TOOL = "ohos.permission.EXEC_CLI_TOOL"
 constexpr const char* PERMISSION_QUERY_CLI_TOOL = "ohos.permission.QUERY_CLI_TOOL";
 constexpr const char* PERMISSION_REGISTER_CLI_TOOL = "ohos.permission.REGISTER_CLI_TOOL";
 constexpr const char* PERMISSION_ACCESS_FUNCTION = "ohos.permission.ACCESS_FUNCTION";
+constexpr const char* PERMISSION_REGISTER_AGENT_HOOK = "ohos.permission.REGISTER_AGENT_HOOK";
 
 constexpr int32_t FOUNDATION_UID = 5523;
 constexpr int32_t COEFFICIENT = 1000;
@@ -64,6 +68,21 @@ constexpr int32_t QUERY_DB_ERROR = 2;
 constexpr int32_t MAX_QUERY_CMDS_SIZE = 100;
 constexpr int32_t ACTIVE_TIME = 30 * 1000; // 30s
 constexpr int32_t SKILL_TYPE_INDEPENDENT = -1;
+
+class HookDeathRecipient final : public IRemoteObject::DeathRecipient {
+public:
+    explicit HookDeathRecipient(HookType type) : type_(type) {}
+    ~HookDeathRecipient() override = default;
+    void OnRemoteDied(const wptr<IRemoteObject> &remote) override
+    {
+        auto svc = CliToolManagerService::GetInstance();
+        if (svc != nullptr) {
+            svc->OnHookDied(remote, type_);
+        }
+    }
+private:
+    HookType type_;
+};
 } // namespace
 
 std::mutex g_mutex;
@@ -114,6 +133,7 @@ void CliToolManagerService::HandleProcessTimeout(const std::string &sessionId)
     if (!oldBackground) {
         CliSessionInfo session;
         record->BuildSessionInfo(session);
+        InvokeAfterCallTool(session, record->sessionType);
         EventDispatcher::GetInstance().DispatchExecToolReplyEvent(
             record->callerPid, record->callerUid, record->eventId, ERR_OK, session);
     }
@@ -141,6 +161,7 @@ void CliToolManagerService::HandleProcessYieldTimeout(const std::string &session
     if (!oldBackground) {
         CliSessionInfo session;
         record->BuildSessionInfo(session);
+        InvokeAfterCallTool(session, record->sessionType);
         EventDispatcher::GetInstance().DispatchExecToolReplyEvent(
             record->callerPid, record->callerUid, record->eventId, ERR_OK, session);
     }
@@ -191,6 +212,7 @@ void CliToolManagerService::FinalizeBackgroundSession(const std::shared_ptr<Sess
     if (!oldBackground) {
         CliSessionInfo session;
         record->BuildSessionInfo(session);
+        InvokeAfterCallTool(session, record->sessionType);
         EventDispatcher::GetInstance().DispatchExecToolReplyEvent(
             record->callerPid, record->callerUid, record->eventId, ERR_OK, session);
     }
@@ -210,6 +232,7 @@ void CliToolManagerService::Init()
         return;
     }
 
+    isDeveloperMode_ = system::GetBoolParameter("const.security.developermode.state", false);
     // reaperStarted_ guards against re-spawning a (possibly still joinable) reaper thread.
     if (!reaperStarted_.exchange(true)) {
         int pipefd[2] = {-1, -1};
@@ -519,8 +542,7 @@ int32_t CliToolManagerService::GetAllToolInfos(ToolsRawData &tools)
 {
     TAG_LOGI(AAFwkTag::CLI_TOOL, "GetAllToolInfos called");
     InterfaceCallCounter counter(interfaceCalledCount_);
-    auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
-    if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
+    if (!PermissionUtil::IsSystemApp()) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllToolInfos: Not system app");
         return ERR_NOT_SYSTEM_APP;
     }
@@ -538,8 +560,7 @@ int32_t CliToolManagerService::GetAllToolSummaries(std::vector<ToolSummary> &sum
 {
     TAG_LOGI(AAFwkTag::CLI_TOOL, "GetAllToolSummaries called");
     InterfaceCallCounter counter(interfaceCalledCount_);
-    auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
-    if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
+    if (!PermissionUtil::IsSystemApp()) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllToolSummaries: Not system app");
         return ERR_NOT_SYSTEM_APP;
     }
@@ -557,8 +578,7 @@ int32_t CliToolManagerService::GetToolInfoByName(const std::string &name, ToolIn
 {
     TAG_LOGI(AAFwkTag::CLI_TOOL, "GetToolInfoByName called, name='%{public}s'", name.c_str());
     InterfaceCallCounter counter(interfaceCalledCount_);
-    auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
-    if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
+    if (!PermissionUtil::IsSystemApp()) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "GetToolInfoByName: Not system app");
         return ERR_NOT_SYSTEM_APP;
     }
@@ -666,26 +686,15 @@ int32_t CliToolManagerService::GetFunctionInfo(const std::string &functionNamesp
         functionNamespace.c_str(), functionName.c_str());
     InterfaceCallCounter counter(interfaceCalledCount_);
 
-    auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
-    auto callerToken = IPCSkeleton::GetCallingTokenID();
-    bool isSystemApp = AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId);
-    bool isSA = Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken) ==
-        Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE;
-    if (!isSystemApp && !isSA) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetFunctionInfo: Not system app nor SA");
-        return ERR_NOT_SYSTEM_APP;
-    }
-
-    auto tokenId = IPCSkeleton::GetCallingTokenID();
-    if (!PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_ACCESS_FUNCTION)) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetFunctionInfo: Permission denied");
-        return ERR_PERMISSION_DENIED;
-    }
-
-    int32_t ret = CliFunctionDataManager::GetInstance().GetFunctionByName(functionNamespace, functionName, function);
+    auto ret = PermissionUtil::CheckSystemAndPermission(PERMISSION_ACCESS_FUNCTION);
     if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetFunctionInfo: Failed to get function, ret=%{public}d", ret);
         return ret;
+    }
+
+    auto retCode = CliFunctionDataManager::GetInstance().GetFunctionByName(functionNamespace, functionName, function);
+    if (retCode != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetFunctionInfo: Failed to get function, ret=%{public}d", retCode);
+        return retCode;
     }
 
     TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully got function: %{public}s/%{public}s",
@@ -814,33 +823,22 @@ int32_t CliToolManagerService::GetAllFunctions(FunctionsRawData &functions)
     TAG_LOGD(AAFwkTag::CLI_TOOL, "GetAllFunctions called");
     InterfaceCallCounter counter(interfaceCalledCount_);
 
-    auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
-    auto callerToken = IPCSkeleton::GetCallingTokenID();
-    bool isSystemApp = AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId);
-    bool isSA = Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken) ==
-        Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE;
-    if (!isSystemApp && !isSA) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllFunctions: Not system app nor SA");
-        return ERR_NOT_SYSTEM_APP;
-    }
-
-    auto tokenId = IPCSkeleton::GetCallingTokenID();
-    if (!PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_ACCESS_FUNCTION)) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllFunctions: Permission denied");
-        return ERR_PERMISSION_DENIED;
+    auto ret = PermissionUtil::CheckSystemAndPermission(PERMISSION_ACCESS_FUNCTION);
+    if (ret != ERR_OK) {
+        return ret;
     }
 
     std::vector<FunctionInfo> functionList;
-    int32_t ret = CliFunctionDataManager::GetInstance().GetAllFunctions(functionList);
-    if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllFunctions: Failed to get functions, ret=%{public}d", ret);
-        return ret;
+    int32_t retCode = CliFunctionDataManager::GetInstance().GetAllFunctions(functionList);
+    if (retCode != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllFunctions: Failed to get functions, ret=%{public}d", retCode);
+        return retCode;
     }
 
-    ret = FunctionsRawData::FromFunctionInfoVec(functionList, functions);
-    if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "FromFunctionInfoVec failed: %{public}d", ret);
-        return ret;
+    retCode = FunctionsRawData::FromFunctionInfoVec(functionList, functions);
+    if (retCode != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "FromFunctionInfoVec failed: %{public}d", retCode);
+        return retCode;
     }
     TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully got all functions (raw): %{public}zu", functionList.size());
     return ERR_OK;
@@ -890,8 +888,7 @@ int32_t CliToolManagerService::ResetNamespaceFunctionsAsync(const std::string &f
 
 int32_t CliToolManagerService::ValidateExecToolPermissions()
 {
-    auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
-    if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
+    if (!PermissionUtil::IsSystemApp()) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Not system app");
         return ERR_NOT_SYSTEM_APP;
     }
@@ -939,7 +936,7 @@ int32_t CliToolManagerService::ValidateAndPrepareCmd(const ExecCmdParam &param, 
     std::string &sandboxConfig, std::string &bundleName)
 {
     std::string detail;
-    auto checkPramRet = ToolUtil::ValidateExecOptionsProperties(param.options, detail);
+    auto checkPramRet = ToolUtil::ValidateExecOptionsProperties(param.execCmdOptions.AsExecOptions(), detail);
     if (checkPramRet != ERR_OK) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Input execoptions validation failed");
         return checkPramRet;
@@ -992,8 +989,256 @@ void CliToolManagerService::HandleBackgroundSessionReply(
 {
     CliSessionInfo session;
     record->BuildSessionInfo(session);
+    InvokeAfterCallTool(session, record->sessionType);
     EventDispatcher::GetInstance().DispatchExecToolReplyEvent(
         record->callerPid, record->callerUid, eventId, ERR_OK, session);
+}
+
+int32_t CliToolManagerService::RegisterCliHook(const sptr<ICliHookInterface> &hook, int32_t activeMethods)
+{
+    auto ret = PermissionUtil::CheckSystemAndPermission(PERMISSION_REGISTER_AGENT_HOOK);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    if (!IsDeveloperMode()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "RegisterCliHook rejected: not developer mode");
+        return ERR_NOT_DEVELOPER_MODE;
+    }
+    if (hook == nullptr || hook->AsObject() == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "RegisterCliHook: hook is nullptr");
+        return ERR_INVALID_PARAM;
+    }
+    auto remote = hook->AsObject();
+    std::lock_guard<ffrt::mutex> lock(hookMutex_);
+    if (cliHook_ != nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "RegisterCliHook rejected: already registered");
+        return ERR_HOOK_ALREADY_REGISTERED;
+    }
+    cliHookDeathRecipient_ = sptr<IRemoteObject::DeathRecipient>(new HookDeathRecipient(HookType::CLI));
+    remote->AddDeathRecipient(cliHookDeathRecipient_);
+    cliHook_ = hook;
+    cliHookActiveMethods_ = static_cast<uint32_t>(activeMethods);
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "RegisterCliHook success, activeMethods=%{public}u", cliHookActiveMethods_);
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::UnregisterCliHook(const sptr<ICliHookInterface> &hook)
+{
+    auto ret = PermissionUtil::CheckSystemAndPermission(PERMISSION_REGISTER_AGENT_HOOK);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    if (!IsDeveloperMode()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "UnregisterCliHook rejected: not developer mode");
+        return ERR_NOT_DEVELOPER_MODE;
+    }
+    if (hook == nullptr) {
+        return ERR_INVALID_PARAM;
+    }
+    std::lock_guard<ffrt::mutex> lock(hookMutex_);
+    if (cliHook_ != nullptr && cliHook_->AsObject() == hook->AsObject()) {
+        if (cliHookDeathRecipient_ != nullptr) {
+            cliHook_->AsObject()->RemoveDeathRecipient(cliHookDeathRecipient_);
+        }
+        cliHook_ = nullptr;
+        cliHookActiveMethods_ = 0;
+        cliHookDeathRecipient_ = nullptr;
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterCliHook success");
+        return ERR_OK;
+    }
+    return ERR_HOOK_NOT_REGISTERED;
+}
+
+int32_t CliToolManagerService::RegisterFunctionHook(const sptr<IFunctionHookInterface> &hook, int32_t activeMethods)
+{
+    auto ret = PermissionUtil::CheckSystemAndPermission(PERMISSION_REGISTER_AGENT_HOOK);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    if (!IsDeveloperMode()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "RegisterFunctionHook rejected: not developer mode");
+        return ERR_NOT_DEVELOPER_MODE;
+    }
+    if (hook == nullptr || hook->AsObject() == nullptr) {
+        return ERR_INVALID_PARAM;
+    }
+    auto remote = hook->AsObject();
+    std::lock_guard<ffrt::mutex> lock(hookMutex_);
+    if (functionHook_ != nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "RegisterFunctionHook rejected: already registered");
+        return ERR_HOOK_ALREADY_REGISTERED;
+    }
+    functionHookDeathRecipient_ = sptr<IRemoteObject::DeathRecipient>(new HookDeathRecipient(HookType::FUNCTION));
+    remote->AddDeathRecipient(functionHookDeathRecipient_);
+    functionHook_ = hook;
+    functionHookActiveMethods_ = static_cast<uint32_t>(activeMethods);
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "RegisterFunctionHook success, activeMethods=%{public}u", functionHookActiveMethods_);
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::UnregisterFunctionHook(const sptr<IFunctionHookInterface> &hook)
+{
+    auto ret = PermissionUtil::CheckSystemAndPermission(PERMISSION_REGISTER_AGENT_HOOK);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    if (!IsDeveloperMode()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "UnregisterFunctionHook rejected: not developer mode");
+        return ERR_NOT_DEVELOPER_MODE;
+    }
+    if (hook == nullptr) {
+        return ERR_INVALID_PARAM;
+    }
+    std::lock_guard<ffrt::mutex> lock(hookMutex_);
+    if (functionHook_ != nullptr && functionHook_->AsObject() == hook->AsObject()) {
+        if (functionHookDeathRecipient_ != nullptr) {
+            functionHook_->AsObject()->RemoveDeathRecipient(functionHookDeathRecipient_);
+        }
+        functionHook_ = nullptr;
+        functionHookActiveMethods_ = 0;
+        functionHookDeathRecipient_ = nullptr;
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterFunctionHook success");
+        return ERR_OK;
+    }
+    return ERR_HOOK_NOT_REGISTERED;
+}
+
+int32_t CliToolManagerService::BeforeInvokeFunction(InvokeFunctionParam &param)
+{
+    auto ret = PermissionUtil::CheckSystemAndPermission(PERMISSION_ACCESS_FUNCTION);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    if (!IsDeveloperMode()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "BeforeInvokeFunction rejected: not developer mode");
+        return ERR_NOT_DEVELOPER_MODE;
+    }
+    auto hook = CheckFunctionHook(FUNC_HOOK_BEFORE_INVOKE);
+    if (hook == nullptr) {
+        return ERR_OK;
+    }
+    if (!InvokeHookAsync(
+        [hook](InvokeFunctionParam &p) { hook->BeforeInvokeFunction(p); }, param)) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "BeforeInvokeFunction hook timeout, using original param");
+    }
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::AfterInvokeFunction(FunctionResultWrap &functionResultWrap)
+{
+    auto ret = PermissionUtil::CheckSystemAndPermission(PERMISSION_ACCESS_FUNCTION);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    if (!IsDeveloperMode()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "AfterInvokeFunction rejected: not developer mode");
+        return ERR_NOT_DEVELOPER_MODE;
+    }
+    auto hook = CheckFunctionHook(FUNC_HOOK_AFTER_INVOKE);
+    if (hook == nullptr) {
+        return ERR_OK;
+    }
+    if (!InvokeHookAsync(
+        [hook](FunctionResultWrap &w) { hook->AfterInvokeFunction(w); }, functionResultWrap)) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "AfterInvokeFunction hook timeout, using original result");
+    }
+    return ERR_OK;
+}
+
+void CliToolManagerService::OnHookDied(const wptr<IRemoteObject> &remote, HookType type)
+{
+    auto remoteObj = remote.promote();
+    std::lock_guard<ffrt::mutex> lock(hookMutex_);
+    if (type == HookType::CLI && cliHook_ != nullptr && cliHook_->AsObject() == remoteObj) {
+        cliHook_ = nullptr;
+        cliHookActiveMethods_ = 0;
+        cliHookDeathRecipient_ = nullptr;
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "OnHookDied: cleared cliHook");
+    } else if (type == HookType::FUNCTION && functionHook_ != nullptr && functionHook_->AsObject() == remoteObj) {
+        functionHook_ = nullptr;
+        functionHookActiveMethods_ = 0;
+        functionHookDeathRecipient_ = nullptr;
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "OnHookDied: cleared functionHook");
+    }
+}
+
+bool CliToolManagerService::IsDeveloperMode() const
+{
+    return isDeveloperMode_;
+}
+
+sptr<ICliHookInterface> CliToolManagerService::CheckCliHook(uint32_t flag)
+{
+    if (!IsDeveloperMode()) {
+        return nullptr;
+    }
+    std::lock_guard<ffrt::mutex> lock(hookMutex_);
+    if (cliHook_ == nullptr) {
+        return nullptr;
+    }
+    if (cliHookActiveMethods_ != 0 && !(cliHookActiveMethods_ & flag)) { // 仅当hook存在且对应hookMethod有效
+        return nullptr;
+    }
+    return cliHook_;
+}
+
+sptr<IFunctionHookInterface> CliToolManagerService::CheckFunctionHook(uint32_t flag)
+{
+    if (!IsDeveloperMode()) {
+        return nullptr;
+    }
+    std::lock_guard<ffrt::mutex> lock(hookMutex_);
+    if (functionHook_ == nullptr) {
+        return nullptr;
+    }
+    if (functionHookActiveMethods_ != 0 && !(functionHookActiveMethods_ & flag)) {
+        return nullptr;
+    }
+    return functionHook_;
+}
+
+void CliToolManagerService::InvokeBeforeCallTool(ExecToolParam &param)
+{
+    auto hook = CheckCliHook(CLI_HOOK_BEFORE_CALL_TOOL);
+    if (hook == nullptr) {
+        return;
+    }
+    if (!InvokeHookAsync([hook](ExecToolParam &p) { hook->BeforeCallTool(p); }, param)) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "InvokeBeforeCallTool timeout, using original param");
+    }
+}
+
+void CliToolManagerService::InvokeBeforeCallCmd(ExecCmdParam &param)
+{
+    auto hook = CheckCliHook(CLI_HOOK_BEFORE_CALL_CMD);
+    if (hook == nullptr) {
+        return;
+    }
+    if (!InvokeHookAsync([hook](ExecCmdParam &p) { hook->BeforeCallCmd(p); }, param)) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "InvokeBeforeCallCmd timeout, using original param");
+    }
+}
+
+void CliToolManagerService::InvokeAfterCallTool(CliSessionInfo &session, SessionType sessionType)
+{
+    if (session.result == nullptr) {
+        return;
+    }
+    uint32_t flag = (sessionType == SessionType::CLI_CMD) ? CLI_HOOK_AFTER_CALL_CMD : CLI_HOOK_AFTER_CALL_TOOL;
+    auto hook = CheckCliHook(flag);
+    if (hook == nullptr) {
+        return;
+    }
+    ExecResultWrap execResultWrap;
+    execResultWrap.execResult = *session.result;
+    if (sessionType == SessionType::CLI_CMD &&
+        !InvokeHookAsync([hook](ExecResultWrap &w) { hook->AfterCallCmd(w); }, execResultWrap)) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "InvokeAfterCallCmd timeout, using original result");
+    } else if (sessionType == SessionType::CLI &&
+        !InvokeHookAsync([hook](ExecResultWrap &w) { hook->AfterCallTool(w); }, execResultWrap)) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "InvokeAfterCallTool timeout, using original result");
+    }
+    *session.result = execResultWrap.execResult;
 }
 
 int32_t CliToolManagerService::TryDispatchSkillSession(const ExecToolParam &param,
@@ -1038,7 +1283,6 @@ int32_t CliToolManagerService::ExecTool(const ExecToolParam &param, const std::s
     std::string bundleName;
     auto tokenId = IPCSkeleton::GetCallingTokenID();
 
-    // Get bundle name for event reporting
     AppExecFwk::BundleInfo bundleInfo;
     if (ToolUtil::GetBundleInfoByTokenId(tokenId, bundleInfo)) {
         bundleName = bundleInfo.name;
@@ -1048,18 +1292,20 @@ int32_t CliToolManagerService::ExecTool(const ExecToolParam &param, const std::s
         ReportCliExecuteFailed(bundleName, param.toolName, GetFailureReason(ret));
         return ret;
     }
+    ExecToolParam actualParam = param;
+    InvokeBeforeCallTool(actualParam);
     int32_t callerPid = IPCSkeleton::GetCallingPid();
     int32_t callerUid = IPCSkeleton::GetCallingUid();
     if (!EventDispatcher::GetInstance().SetScheduler(callerPid, callerUid, scheduler)) {
-        ReportCliExecuteFailed(bundleName, param.toolName, GetFailureReason(ERR_NO_INIT));
+        ReportCliExecuteFailed(bundleName, actualParam.toolName, GetFailureReason(ERR_NO_INIT));
         return ERR_NO_INIT;
     }
 
     ToolInfo toolInfo;
     bool dispatched = false;
-    auto skillRet = TryDispatchSkillSession(param, eventId, toolInfo, dispatched);
+    auto skillRet = TryDispatchSkillSession(actualParam, eventId, toolInfo, dispatched);
     if (skillRet != ERR_OK) {
-        ReportCliExecuteFailed(bundleName, param.toolName, GetFailureReason(skillRet));
+        ReportCliExecuteFailed(bundleName, actualParam.toolName, GetFailureReason(skillRet));
         return skillRet;
     }
     if (dispatched) {
@@ -1067,20 +1313,21 @@ int32_t CliToolManagerService::ExecTool(const ExecToolParam &param, const std::s
     }
 
     if (auto ret = ValidateSessionLimit(); ret != ERR_OK) {
-        ReportCliExecuteFailed(bundleName, param.toolName, GetFailureReason(ret));
+        ReportCliExecuteFailed(bundleName, actualParam.toolName, GetFailureReason(ret));
         return ret;
     }
 
     std::string sandboxConfig;
     std::string detail;
-    if (auto ret = ValidateAndPrepareTool(param, tokenId, toolInfo, sandboxConfig, bundleName, detail); ret != ERR_OK) {
-        ReportCliExecuteFailed(bundleName, param.toolName, GetFailureReason(ret), detail);
+    auto ret = ValidateAndPrepareTool(actualParam, tokenId, toolInfo, sandboxConfig, bundleName, detail);
+    if (ret != ERR_OK) {
+        ReportCliExecuteFailed(bundleName, actualParam.toolName, GetFailureReason(ret), detail);
         return ret;
     }
 
-    auto ret = SetupAndStartSession(param, eventId, toolInfo, sandboxConfig, bundleName);
+    ret = SetupAndStartSession(actualParam, eventId, toolInfo, sandboxConfig, bundleName);
     if (ret != ERR_OK) {
-        ReportCliExecuteFailed(bundleName, param.toolName, GetFailureReason(ret));
+        ReportCliExecuteFailed(bundleName, actualParam.toolName, GetFailureReason(ret));
     }
     return ret;
 }
@@ -1115,7 +1362,7 @@ int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::str
     }
 
     // Tool command mode
-    if (!param.isShellCommand) {
+    if (!param.execCmdOptions.isShellCommand) {
         CmdSessionContext context;
         context.eventId = eventId;
         context.subscriptionId = subscriptionId;
@@ -1127,9 +1374,11 @@ int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::str
         return ExecCmdToolMode(param, std::move(context));
     }
 
+    ExecCmdParam actualParam = param;
+    InvokeBeforeCallCmd(actualParam);
     // Shell path (original logic)
     std::string sandboxConfig;
-    if (auto ret = ValidateAndPrepareCmd(param, tokenId, sandboxConfig, bundleName); ret != ERR_OK) {
+    if (auto ret = ValidateAndPrepareCmd(actualParam, tokenId, sandboxConfig, bundleName); ret != ERR_OK) {
         return ret;
     }
     // Create session record for shell command
@@ -1140,9 +1389,10 @@ int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::str
     record->callerBundleName = bundleName;
     record->sessionId = ToolUtil::GenerateCliSessionId("shell", record);
     record->toolName = "shell";
-    record->timeoutMs = param.options.timeout * COEFFICIENT;
+    record->sessionType = SessionType::CLI_CMD;
+    record->timeoutMs = actualParam.execCmdOptions.timeout * COEFFICIENT;
     record->SetState(SessionState::RUNNING);
-    record->SetBackground(param.options.background);
+    record->SetBackground(actualParam.execCmdOptions.background);
     record->eventId = eventId;
     AddSessionRecord(record);
     auto subscribeRet = SubscribeSession(record->sessionId, subscriptionId, scheduler);
@@ -1150,13 +1400,13 @@ int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::str
         RemoveSessionRecord(record->sessionId);
         return subscribeRet;
     }
-    auto createRet = ProcessManager::GetInstance().CreateShellProcess(param,
+    auto createRet = ProcessManager::GetInstance().CreateShellProcess(actualParam,
         sandboxConfig, record);
     if (createRet != ERR_OK) {
         RemoveSessionRecord(record->sessionId);
         return createRet;
     }
-    if (!RegisterSessionWithMonitors(record, param.options)) {
+    if (!RegisterSessionWithMonitors(record, actualParam.execCmdOptions.AsExecOptions())) {
         ProcessManager::GetInstance().Killpg(record->processId);
         RemoveSessionRecord(record->sessionId);
         return ERR_NO_INIT;
@@ -1164,7 +1414,7 @@ int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::str
     if (!bundleName.empty()) {
         RegisterAppStateObserver(bundleName, record->callerPid);
     }
-    if (param.options.background) {
+    if (actualParam.execCmdOptions.background) {
         HandleBackgroundSessionReply(record, eventId);
     }
     return ERR_OK;
@@ -1200,8 +1450,8 @@ int32_t CliToolManagerService::ExecCmdToolMode(const ExecCmdParam &param, CmdSes
         return parseRet;
     }
 
-    toolParam.options = param.options;
-    toolParam.challenge = param.challenge;
+    toolParam.options = param.execCmdOptions.AsExecOptions();
+    toolParam.challenge = param.execCmdOptions.challenge;
 
     // Step 3: Validate and prepare sandbox. GenerateSandboxConfig may overwrite context.bundleName.
     std::string sandboxConfig;
@@ -1519,15 +1769,9 @@ std::shared_ptr<SessionRecord> CliToolManagerService::CreateSessionRecord(const 
 int32_t CliToolManagerService::ClearSession(const std::string &sessionId)
 {
     InterfaceCallCounter counter(interfaceCalledCount_);
-    auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
-    if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Not system app");
-        return ERR_NOT_SYSTEM_APP;
-    }
-
-    auto tokenId = IPCSkeleton::GetCallingTokenID();
-    if (!PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_EXEC_CLI_TOOL)) {
-        return ERR_PERMISSION_DENIED;
+    auto ret = ValidateExecToolPermissions();
+    if (ret != ERR_OK) {
+        return ret;
     }
 
     auto record = GetSessionRecord(sessionId);
@@ -1574,15 +1818,9 @@ int32_t CliToolManagerService::SubscribeSession(const std::string &sessionId, co
     const sptr<ICliToolManagerScheduler> &scheduler)
 {
     InterfaceCallCounter counter(interfaceCalledCount_);
-    auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
-    if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Not system app");
-        return ERR_NOT_SYSTEM_APP;
-    }
-
-    auto tokenId = IPCSkeleton::GetCallingTokenID();
-    if (!PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_EXEC_CLI_TOOL)) {
-        return ERR_PERMISSION_DENIED;
+    auto ret = ValidateExecToolPermissions();
+    if (ret != ERR_OK) {
+        return ret;
     }
 
     if (sessionId.empty() || subscriptionId.empty()) {
@@ -1624,15 +1862,9 @@ int32_t CliToolManagerService::SubscribeSession(const std::string &sessionId, co
 int32_t CliToolManagerService::UnsubscribeSession(const std::string &sessionId, const std::string &subscriptionId)
 {
     InterfaceCallCounter counter(interfaceCalledCount_);
-    auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
-    if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Not system app");
-        return ERR_NOT_SYSTEM_APP;
-    }
-
-    auto tokenId = IPCSkeleton::GetCallingTokenID();
-    if (!PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_EXEC_CLI_TOOL)) {
-        return ERR_PERMISSION_DENIED;
+    auto ret = ValidateExecToolPermissions();
+    if (ret != ERR_OK) {
+        return ret;
     }
 
     if (!EventDispatcher::GetInstance().UnregisterSubscriber(
@@ -1645,15 +1877,9 @@ int32_t CliToolManagerService::UnsubscribeSession(const std::string &sessionId, 
 int32_t CliToolManagerService::QuerySession(const std::string &sessionId, CliSessionInfo &session)
 {
     InterfaceCallCounter counter(interfaceCalledCount_);
-    auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
-    if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Not system app");
-        return ERR_NOT_SYSTEM_APP;
-    }
-
-    auto tokenId = IPCSkeleton::GetCallingTokenID();
-    if (!PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_EXEC_CLI_TOOL)) {
-        return ERR_PERMISSION_DENIED;
+    auto ret = ValidateExecToolPermissions();
+    if (ret != ERR_OK) {
+        return ret;
     }
 
     auto record = GetSessionRecord(sessionId);
@@ -1673,15 +1899,9 @@ int32_t CliToolManagerService::SendMessage(const std::string &sessionId,
     const sptr<ICliToolManagerScheduler> &scheduler)
 {
     InterfaceCallCounter counter(interfaceCalledCount_);
-    auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
-    if (!AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId)) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "Not system app");
-        return ERR_NOT_SYSTEM_APP;
-    }
-
-    auto tokenId = IPCSkeleton::GetCallingTokenID();
-    if (!PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_EXEC_CLI_TOOL)) {
-        return ERR_PERMISSION_DENIED;
+    auto ret = ValidateExecToolPermissions();
+    if (ret != ERR_OK) {
+        return ret;
     }
 
     auto record = GetSessionRecord(sessionId);
@@ -1876,7 +2096,9 @@ void CliToolManagerService::HandleSkillSessionComplete(const std::string &sessio
 
     auto oldBackground = record->SetBackground(true);
     if (!oldBackground) {
-        EventDispatcher::GetInstance().DispatchExecToolReplyEvent(callerPid, callerUid, eventId, ERR_OK, session);
+        CliSessionInfo hookSession = session;
+        InvokeAfterCallTool(hookSession, record->sessionType);
+        EventDispatcher::GetInstance().DispatchExecToolReplyEvent(callerPid, callerUid, eventId, ERR_OK, hookSession);
     }
 
     EventDispatcher::GetInstance().DispatchExitEvent(sessionId, 0);
@@ -1900,6 +2122,7 @@ void CliToolManagerService::HandleSkillSessionTimeout(const std::string &session
     if (!oldBackground) {
         CliSessionInfo session;
         record->BuildSessionInfo(session);
+        InvokeAfterCallTool(session, record->sessionType);
         EventDispatcher::GetInstance().DispatchExecToolReplyEvent(
             record->callerPid, record->callerUid, record->eventId, ERR_OK, session);
     }

@@ -13,14 +13,22 @@
  * limitations under the License.
  */
 
-#include "permission_util.h"
+#include "parameters.h"
 
 namespace OHOS {
-namespace CliTool {
-bool PermissionUtil::VerifyAccessToken(Security::AccessToken::AccessTokenID, const std::string &)
+namespace system {
+
+bool g_devModeFlag{false};
+
+void SetBoolParameter(const std::string &key, bool def)
 {
-    return true;
+    g_devModeFlag = def;
 }
 
-} // namespace CliTool
+bool GetBoolParameter(const std::string &key, bool def)
+{
+    return g_devModeFlag;
+}
+
+} // namespace system
 } // namespace OHOS

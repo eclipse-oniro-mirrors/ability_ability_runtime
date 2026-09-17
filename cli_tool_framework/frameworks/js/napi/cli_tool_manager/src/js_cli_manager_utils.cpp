@@ -21,10 +21,14 @@
 #include "cli_tool_event.h"
 #include "exec_cmd_param.h"
 #include "exec_options.h"
+#include "exec_result.h"
+#include "exec_result_wrap.h"
+#include "exec_tool_param.h"
 #include "hilog_tag_wrapper.h"
 #include "icli_tool_data.h"
 #include "js_cli_session_event_callback.h"
 #include "napi_common_util.h"
+#include "napi_common_want.h"
 
 using namespace OHOS::AbilityRuntime;
 
@@ -91,6 +95,39 @@ napi_value ConvertJsonToNapiValue(napi_env env, const nlohmann::json &value)
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
+}
+
+bool UnwrapStringProperty(napi_env env, napi_value obj, const char* name, std::string& out)
+{
+    bool hasProperty = false;
+    if (napi_has_named_property(env, obj, name, &hasProperty) != napi_ok || !hasProperty) {
+        return false;
+    }
+    napi_value prop = nullptr;
+    napi_get_named_property(env, obj, name, &prop);
+    return AppExecFwk::UnwrapStringFromJS2(env, prop, out);
+}
+
+bool UnwrapBoolProperty(napi_env env, napi_value obj, const char* name, bool& out)
+{
+    bool hasProperty = false;
+    if (napi_has_named_property(env, obj, name, &hasProperty) != napi_ok || !hasProperty) {
+        return false;
+    }
+    napi_value prop = nullptr;
+    napi_get_named_property(env, obj, name, &prop);
+    return AppExecFwk::UnwrapBoolFromJS2(env, prop, out);
+}
+
+bool UnwrapInt64Property(napi_env env, napi_value obj, const char* name, int64_t& out)
+{
+    bool hasProperty = false;
+    if (napi_has_named_property(env, obj, name, &hasProperty) != napi_ok || !hasProperty) {
+        return false;
+    }
+    napi_value prop = nullptr;
+    napi_get_named_property(env, obj, name, &prop);
+    return AppExecFwk::UnwrapInt64FromJS2(env, prop, out);
 }
 }
 bool UnwrapStringMap(napi_env env, napi_value obj,
@@ -214,10 +251,49 @@ bool UnwrapExecOptions(napi_env env, napi_value obj, ExecOptions &options)
     } else {
         options.timeout = MAX_TIMEOUT;
     }
+    if (options.timeout < 0 || options.timeout > MAX_TIMEOUT || options.yieldMs < 0) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ExecOptions timeout/yieldMs out of range");
+        return false;
+    }
     return true;
 }
 
-bool UnwrapExecCmdOptions(napi_env env, napi_value obj, ExecCmdParam &param,
+bool UnwrapExecCmdOptions(napi_env env, napi_value obj, ExecCmdOptions &options)
+{
+    if (obj == nullptr) {
+        return true;
+    }
+    napi_valuetype valueType = napi_undefined;
+    napi_status status = napi_typeof(env, obj, &valueType);
+    if (status != napi_ok || valueType != napi_object) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ExecCmdOptions is not an object");
+        return false;
+    }
+    UnwrapStringProperty(env, obj, "workDir", options.workDir);
+
+    bool hasProperty = false;
+    if (napi_has_named_property(env, obj, "env", &hasProperty) == napi_ok && hasProperty) {
+        napi_value prop = nullptr;
+        napi_get_named_property(env, obj, "env", &prop);
+        if (prop != nullptr) {
+            UnwrapStringFromRecord(env, prop, options.env);
+        }
+    }
+
+    UnwrapStringProperty(env, obj, "policy", options.policy);
+    UnwrapBoolProperty(env, obj, "background", options.background);
+    UnwrapInt64Property(env, obj, "yieldMs", options.yieldMs);
+    UnwrapInt64Property(env, obj, "timeout", options.timeout);
+    if (options.timeout < 0 || options.timeout > MAX_TIMEOUT || options.yieldMs < 0) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ExecCmdOptions timeout/yieldMs out of range");
+        return false;
+    }
+    UnwrapBoolProperty(env, obj, "isShellCommand", options.isShellCommand);
+    UnwrapStringProperty(env, obj, "challenge", options.challenge);
+    return true;
+}
+
+bool UnwrapExecCmdParam(napi_env env, napi_value obj, ExecCmdParam &param,
     std::shared_ptr<JsCliSessionEventCallbackImpl>& callback, std::string &msg)
 {
     if (obj == nullptr) {
@@ -233,100 +309,11 @@ bool UnwrapExecCmdOptions(napi_env env, napi_value obj, ExecCmdParam &param,
     }
 
     bool hasProperty = false;
-
-    if (napi_has_named_property(env, obj, "workDir", &hasProperty) != napi_ok) {
-        msg = "has workDir failed";
+    param.execCmdOptions.timeout = MAX_TIMEOUT;
+    if (!UnwrapExecCmdOptions(env, obj, param.execCmdOptions)) {
+        msg = "invalid ExecCmdOptions";
         TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
         return false;
-    }
-    if (hasProperty) {
-        napi_value workDirProp = nullptr;
-        if (napi_get_named_property(env, obj, "workDir", &workDirProp) != napi_ok) {
-            msg = "invalid workDir property";
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
-            return false;
-        }
-        if (!AppExecFwk::UnwrapStringFromJS2(env, workDirProp, param.workDir)) {
-            msg = "unwrap workDir failed";
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
-            return false;
-        }
-    }
-
-    if (napi_has_named_property(env, obj, "env", &hasProperty) != napi_ok) {
-        msg = "has env failed";
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
-        return false;
-    }
-    if (hasProperty) {
-        napi_value envProp = nullptr;
-        if (napi_get_named_property(env, obj, "env", &envProp) != napi_ok) {
-            msg = "invalid env property";
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
-            return false;
-        }
-        if (!UnwrapStringFromRecord(env, envProp, param.env)) {
-            msg = "unwrap env failed";
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
-            return false;
-        }
-    }
-
-    if (napi_has_named_property(env, obj, "policy", &hasProperty) != napi_ok) {
-        msg = "has policy failed";
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
-        return false;
-    }
-    if (hasProperty) {
-        napi_value policyProp = nullptr;
-        if (napi_get_named_property(env, obj, "policy", &policyProp) != napi_ok) {
-            msg = "invalid policy property";
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
-            return false;
-        }
-        if (!AppExecFwk::UnwrapStringFromJS2(env, policyProp, param.policy)) {
-            msg = "unwrap policy failed";
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
-            return false;
-        }
-    }
-
-    if (napi_has_named_property(env, obj, "isShellCommand", &hasProperty) != napi_ok) {
-        msg = "has isShellCommand failed";
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
-        return false;
-    }
-    if (hasProperty) {
-        napi_value isShellProp = nullptr;
-        if (napi_get_named_property(env, obj, "isShellCommand", &isShellProp) != napi_ok) {
-            msg = "invalid isShellCommand property";
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
-            return false;
-        }
-        if (!AppExecFwk::UnwrapBoolFromJS2(env, isShellProp, param.isShellCommand)) {
-            msg = "unwrap isShellCommand failed";
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
-            return false;
-        }
-    }
-
-    if (napi_has_named_property(env, obj, "challenge", &hasProperty) != napi_ok) {
-        msg = "has challenge failed";
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
-        return false;
-    }
-    if (hasProperty) {
-        napi_value challengeProp = nullptr;
-        if (napi_get_named_property(env, obj, "challenge", &challengeProp) != napi_ok) {
-            msg = "invalid challenge property";
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
-            return false;
-        }
-        if (!AppExecFwk::UnwrapStringFromJS2(env, challengeProp, param.challenge)) {
-            msg = "unwrap challenge failed";
-            TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
-            return false;
-        }
     }
 
     if (napi_has_named_property(env, obj, "callback", &hasProperty) != napi_ok) {
@@ -352,11 +339,6 @@ bool UnwrapExecCmdOptions(napi_env env, napi_value obj, ExecCmdParam &param,
             TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
             return false;
         }
-    }
-
-    // Reuse UnwrapExecOptions for background, yieldMs, timeout
-    if (!UnwrapExecOptions(env, obj, param.options)) {
-        return false;
     }
 
     return true;
@@ -459,39 +441,143 @@ napi_value CreateJsCliSessionInfo(napi_env env, const CliSessionInfo &session)
     napi_set_named_property(env, jsObj, "toolName", AppExecFwk::WrapStringToJS(env, session.toolName));
     napi_set_named_property(env, jsObj, "status", AppExecFwk::WrapStringToJS(env, session.status));
 
-    // Set result if present
+    // Set result if present. Delegate field wrapping to CreateJsExecResult so the
+    // ExecResult -> JS mapping stays single-sourced (shared with the hook path).
     if (session.status != "running" && session.result != nullptr) {
-        napi_value jsResult = nullptr;
-        status = napi_create_object(env, &jsResult);
-        if (status != napi_ok) {
+        napi_value jsResult = CreateJsExecResult(env, *session.result);
+        if (jsResult == nullptr) {
             TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create JS ExecResult");
             return nullptr;
         }
-        if (!session.result->timeout) {
-            napi_value jsExitCode = AppExecFwk::WrapInt32ToJS(env, session.result->exitCode);
-            napi_set_named_property(env, jsResult, "exitCode", jsExitCode);
-        }
-        if (!session.result->outputText.empty()) {
-            napi_value jsOutputText = AppExecFwk::WrapStringToJS(env, session.result->outputText);
-            napi_set_named_property(env, jsResult, "outputText", jsOutputText);
-        }
-        if (!session.result->errorText.empty()) {
-            napi_value jsErrorText = AppExecFwk::WrapStringToJS(env, session.result->errorText);
-            napi_set_named_property(env, jsResult, "errorText", jsErrorText);
-        }
-        if (session.result->signalNumber != 0) {
-            napi_value jsSignalNumber = AppExecFwk::WrapInt32ToJS(env, session.result->signalNumber);
-            napi_set_named_property(env, jsResult, "signalNumber", jsSignalNumber);
-        }
-        // Set timeOut
-        napi_set_named_property(env, jsResult, "timeOut", AppExecFwk::WrapBoolToJS(env, session.result->timeout));
-        // Set executionTime
-        napi_value jsExecutionTime = AppExecFwk::WrapInt64ToJS(env, session.result->executionTime);
-        napi_set_named_property(env, jsResult, "executionTime", jsExecutionTime);
         napi_set_named_property(env, jsObj, "result", jsResult);
     }
 
     return handleEscape.Escape(jsObj);
+}
+
+napi_value CreateJsExecResult(napi_env env, const ExecResult &result)
+{
+    napi_value jsObj = nullptr;
+    napi_create_object(env, &jsObj);
+    // Per the public ExecResult API contract (cliManager.d.ts) exitCode/outputText/
+    // errorText/signalNumber are optional; omit them when they carry no meaningful
+    // value so the JS shape matches the contract. timeOut/executionTime are required.
+    if (!result.timeout) {
+        napi_set_named_property(env, jsObj, "exitCode", AppExecFwk::WrapInt32ToJS(env, result.exitCode));
+    }
+    if (!result.outputText.empty()) {
+        napi_set_named_property(env, jsObj, "outputText", AppExecFwk::WrapStringToJS(env, result.outputText));
+    }
+    if (!result.errorText.empty()) {
+        napi_set_named_property(env, jsObj, "errorText", AppExecFwk::WrapStringToJS(env, result.errorText));
+    }
+    if (result.signalNumber != 0) {
+        napi_set_named_property(env, jsObj, "signalNumber", AppExecFwk::WrapInt32ToJS(env, result.signalNumber));
+    }
+    napi_set_named_property(env, jsObj, "timeOut", AppExecFwk::WrapBoolToJS(env, result.timeout));
+    napi_set_named_property(env, jsObj, "executionTime", AppExecFwk::WrapInt64ToJS(env, result.executionTime));
+    return jsObj;
+}
+
+void UnwrapExecResult(napi_env env, napi_value jsObj, ExecResult &result)
+{
+    if (jsObj == nullptr) {
+        return;
+    }
+    bool hasProp = false;
+    if (napi_has_named_property(env, jsObj, "exitCode", &hasProp) == napi_ok && hasProp) {
+        napi_value prop = nullptr;
+        napi_get_named_property(env, jsObj, "exitCode", &prop);
+        AppExecFwk::UnwrapInt32FromJS2(env, prop, result.exitCode);
+    }
+    if (napi_has_named_property(env, jsObj, "outputText", &hasProp) == napi_ok && hasProp) {
+        napi_value prop = nullptr;
+        napi_get_named_property(env, jsObj, "outputText", &prop);
+        AppExecFwk::UnwrapStringFromJS2(env, prop, result.outputText);
+    }
+    if (napi_has_named_property(env, jsObj, "errorText", &hasProp) == napi_ok && hasProp) {
+        napi_value prop = nullptr;
+        napi_get_named_property(env, jsObj, "errorText", &prop);
+        AppExecFwk::UnwrapStringFromJS2(env, prop, result.errorText);
+    }
+    if (napi_has_named_property(env, jsObj, "signalNumber", &hasProp) == napi_ok && hasProp) {
+        napi_value prop = nullptr;
+        napi_get_named_property(env, jsObj, "signalNumber", &prop);
+        AppExecFwk::UnwrapInt32FromJS2(env, prop, result.signalNumber);
+    }
+    if (napi_has_named_property(env, jsObj, "timeOut", &hasProp) == napi_ok && hasProp) {
+        napi_value prop = nullptr;
+        napi_get_named_property(env, jsObj, "timeOut", &prop);
+        AppExecFwk::UnwrapBoolFromJS2(env, prop, result.timeout);
+    }
+    if (napi_has_named_property(env, jsObj, "executionTime", &hasProp) == napi_ok && hasProp) {
+        napi_value prop = nullptr;
+        napi_get_named_property(env, jsObj, "executionTime", &prop);
+        AppExecFwk::UnwrapInt64FromJS2(env, prop, result.executionTime);
+    }
+}
+
+napi_value CreateJsExecOptions(napi_env env, const ExecOptions &opts)
+{
+    napi_value jsObj = nullptr;
+    napi_create_object(env, &jsObj);
+    napi_set_named_property(env, jsObj, "background", AppExecFwk::WrapBoolToJS(env, opts.background));
+    napi_set_named_property(env, jsObj, "yieldMs", AppExecFwk::WrapInt64ToJS(env, opts.yieldMs));
+    napi_set_named_property(env, jsObj, "timeout", AppExecFwk::WrapInt64ToJS(env, opts.timeout));
+    return jsObj;
+}
+
+napi_value CreateJsExecToolParam(napi_env env, const ExecToolParam &param)
+{
+    napi_value jsObj = nullptr;
+    napi_create_object(env, &jsObj);
+    napi_set_named_property(env, jsObj, "toolName", AppExecFwk::WrapStringToJS(env, param.toolName));
+    napi_set_named_property(env, jsObj, "subCommand", AppExecFwk::WrapStringToJS(env, param.subcommand));
+    napi_set_named_property(env, jsObj, "challenge", AppExecFwk::WrapStringToJS(env, param.challenge));
+    napi_value jsArgs = AppExecFwk::WrapWantParams(env, param.args);
+    napi_set_named_property(env, jsObj, "args", jsArgs);
+    napi_set_named_property(env, jsObj, "execOptions", CreateJsExecOptions(env, param.options));
+    return jsObj;
+}
+
+napi_value CreateJsExecCmdParam(napi_env env, const ExecCmdParam &param)
+{
+    napi_value jsObj = nullptr;
+    napi_create_object(env, &jsObj);
+    napi_set_named_property(env, jsObj, "cmd", AppExecFwk::WrapStringToJS(env, param.cmd));
+    // Matches CliHook.d.ts ExecCmdParam { cmd, execCmdOptions }. env is a JSON
+    // string natively but Record<string,string> on the JS side.
+    napi_value jsOpts = nullptr;
+    napi_create_object(env, &jsOpts);
+    napi_set_named_property(env, jsOpts, "workDir",
+        AppExecFwk::WrapStringToJS(env, param.execCmdOptions.workDir));
+    if (!param.execCmdOptions.env.empty()) {
+        napi_set_named_property(env, jsOpts, "env",
+            ParseJsonStringToJsObject(env, param.execCmdOptions.env));
+    }
+    napi_set_named_property(env, jsOpts, "policy",
+        AppExecFwk::WrapStringToJS(env, param.execCmdOptions.policy));
+    napi_set_named_property(env, jsOpts, "background",
+        AppExecFwk::WrapBoolToJS(env, param.execCmdOptions.background));
+    napi_set_named_property(env, jsOpts, "yieldMs",
+        AppExecFwk::WrapInt64ToJS(env, param.execCmdOptions.yieldMs));
+    napi_set_named_property(env, jsOpts, "timeout",
+        AppExecFwk::WrapInt64ToJS(env, param.execCmdOptions.timeout));
+    napi_set_named_property(env, jsOpts, "isShellCommand",
+        AppExecFwk::WrapBoolToJS(env, param.execCmdOptions.isShellCommand));
+    napi_set_named_property(env, jsOpts, "challenge",
+        AppExecFwk::WrapStringToJS(env, param.execCmdOptions.challenge));
+    napi_set_named_property(env, jsObj, "execCmdOptions", jsOpts);
+    return jsObj;
+}
+
+napi_value CreateJsExecResultWrap(napi_env env, const ExecResult &result)
+{
+    napi_value jsParam = nullptr;
+    napi_create_object(env, &jsParam);
+    napi_value jsInner = CreateJsExecResult(env, result);
+    napi_set_named_property(env, jsParam, "execResult", jsInner);
+    return jsParam;
 }
 
 napi_value CreateJsSubCommandInfo(napi_env env, const SubCommandInfo &subcmd)

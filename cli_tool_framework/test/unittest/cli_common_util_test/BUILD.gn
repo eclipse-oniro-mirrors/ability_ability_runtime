@@ -29,7 +29,7 @@ ohos_unittest("cli_common_util_test") {
     "cli_common_util_test.cpp",
     "mock/src/cli_common_mock.cpp",
     "${cli_tool_framework_path}/services/common/src/ccm_util.cpp",
-    "${cli_tool_framework_path}/services/common/src/permission_util.cpp",
+    "mock/src/permission_util_mock.cpp",
   ]
 
   external_deps = [

@@ -41,13 +41,13 @@ HWTEST_F(ExecCmdParamTest, ExecCmdParam_Parcelable_0100, TestSize.Level1)
 {
     ExecCmdParam param;
     param.cmd = TEST_CMD;
-    param.workDir = "/data";
-    param.env = "PATH=/usr/bin";
-    param.policy = "default";
-    param.options.background = true;
-    param.options.timeout = 3000;
-    param.isShellCommand = false;
-    param.challenge = TEST_CHALLENGE;
+    param.execCmdOptions.workDir = "/data";
+    param.execCmdOptions.env = "PATH=/usr/bin";
+    param.execCmdOptions.policy = "default";
+    param.execCmdOptions.background = true;
+    param.execCmdOptions.timeout = 3000;
+    param.execCmdOptions.isShellCommand = false;
+    param.execCmdOptions.challenge = TEST_CHALLENGE;
 
     Parcel parcel;
     ASSERT_TRUE(param.Marshalling(parcel));
@@ -56,13 +56,13 @@ HWTEST_F(ExecCmdParamTest, ExecCmdParam_Parcelable_0100, TestSize.Level1)
     std::unique_ptr<ExecCmdParam> result(ExecCmdParam::Unmarshalling(parcel));
     ASSERT_NE(result, nullptr);
     EXPECT_EQ(result->cmd, TEST_CMD);
-    EXPECT_EQ(result->workDir, "/data");
-    EXPECT_EQ(result->env, "PATH=/usr/bin");
-    EXPECT_EQ(result->policy, "default");
-    EXPECT_TRUE(result->options.background);
-    EXPECT_EQ(result->options.timeout, 3000);
-    EXPECT_FALSE(result->isShellCommand);
-    EXPECT_EQ(result->challenge, TEST_CHALLENGE);
+    EXPECT_EQ(result->execCmdOptions.workDir, "/data");
+    EXPECT_EQ(result->execCmdOptions.env, "PATH=/usr/bin");
+    EXPECT_EQ(result->execCmdOptions.policy, "default");
+    EXPECT_TRUE(result->execCmdOptions.background);
+    EXPECT_EQ(result->execCmdOptions.timeout, 3000);
+    EXPECT_FALSE(result->execCmdOptions.isShellCommand);
+    EXPECT_EQ(result->execCmdOptions.challenge, TEST_CHALLENGE);
 }
 
 /**
@@ -74,8 +74,8 @@ HWTEST_F(ExecCmdParamTest, ExecCmdParam_Parcelable_0200, TestSize.Level1)
 {
     ExecCmdParam param;
     param.cmd = "ls -l";
-    EXPECT_TRUE(param.isShellCommand);
-    EXPECT_TRUE(param.challenge.empty());
+    EXPECT_TRUE(param.execCmdOptions.isShellCommand);
+    EXPECT_TRUE(param.execCmdOptions.challenge.empty());
 
     Parcel parcel;
     ASSERT_TRUE(param.Marshalling(parcel));
@@ -84,34 +84,8 @@ HWTEST_F(ExecCmdParamTest, ExecCmdParam_Parcelable_0200, TestSize.Level1)
     std::unique_ptr<ExecCmdParam> result(ExecCmdParam::Unmarshalling(parcel));
     ASSERT_NE(result, nullptr);
     EXPECT_EQ(result->cmd, "ls -l");
-    EXPECT_TRUE(result->isShellCommand);
-    EXPECT_TRUE(result->challenge.empty());
-}
-
-/**
- * @tc.name: ExecCmdParam_Unmarshalling_OldClient_0100
- * @tc.desc: Test old client (no tail fields) unmarshalling falls back to shell-mode defaults
- * @tc.type: FUNC
- */
-HWTEST_F(ExecCmdParamTest, ExecCmdParam_Unmarshalling_OldClient_0100, TestSize.Level1)
-{
-    Parcel oldParcel;
-    ASSERT_TRUE(oldParcel.WriteString("legacy_cmd"));
-    ASSERT_TRUE(oldParcel.WriteString("/workdir"));
-    ASSERT_TRUE(oldParcel.WriteString("env_data"));
-    ASSERT_TRUE(oldParcel.WriteString("policy_data"));
-    ExecOptions options;
-    options.timeout = 1800;
-    ASSERT_TRUE(oldParcel.WriteParcelable(&options));
-    oldParcel.RewindRead(0);
-
-    std::unique_ptr<ExecCmdParam> result(ExecCmdParam::Unmarshalling(oldParcel));
-    ASSERT_NE(result, nullptr);
-    EXPECT_EQ(result->cmd, "legacy_cmd");
-    EXPECT_EQ(result->workDir, "/workdir");
-    EXPECT_EQ(result->options.timeout, 1800);
-    EXPECT_TRUE(result->isShellCommand);
-    EXPECT_TRUE(result->challenge.empty());
+    EXPECT_TRUE(result->execCmdOptions.isShellCommand);
+    EXPECT_TRUE(result->execCmdOptions.challenge.empty());
 }
 
 /**
@@ -159,8 +133,8 @@ HWTEST_F(ExecCmdParamTest, ExecCmdParam_MaxCmdLength_0100, TestSize.Level1)
 
     ExecCmdParam param;
     param.cmd = std::string(MAX_CMD_LENGTH, 'a');
-    param.isShellCommand = false;
-    param.challenge = TEST_CHALLENGE;
+    param.execCmdOptions.isShellCommand = false;
+    param.execCmdOptions.challenge = TEST_CHALLENGE;
 
     Parcel parcel;
     ASSERT_TRUE(param.Marshalling(parcel));
@@ -170,8 +144,8 @@ HWTEST_F(ExecCmdParamTest, ExecCmdParam_MaxCmdLength_0100, TestSize.Level1)
     ASSERT_NE(result, nullptr);
     EXPECT_EQ(result->cmd.length(), MAX_CMD_LENGTH);
     EXPECT_EQ(result->cmd, param.cmd);
-    EXPECT_FALSE(result->isShellCommand);
-    EXPECT_EQ(result->challenge, TEST_CHALLENGE);
+    EXPECT_FALSE(result->execCmdOptions.isShellCommand);
+    EXPECT_EQ(result->execCmdOptions.challenge, TEST_CHALLENGE);
 }
 } // namespace CliTool
 } // namespace OHOS

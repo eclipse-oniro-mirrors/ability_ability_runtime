@@ -27,6 +27,7 @@ ohos_unittest("exec_result_test") {
   sources = [
     "exec_result_test.cpp",
     "${cli_tool_framework_path}/interfaces/cli_tool/src/exec_result.cpp",
+    "${cli_tool_framework_path}/interfaces/cli_tool/src/exec_result_wrap.cpp",
   ]
 
   external_deps = [
