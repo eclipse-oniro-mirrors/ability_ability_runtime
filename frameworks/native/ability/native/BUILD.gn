@@ -2592,7 +2592,6 @@ group("extension_module") {
     ":service_extension_module",
     ":ui_extension_module",
     ":modular_object_extension_module",
-    ":ukey_auth_extension_module",
   ]
   if (ability_runtime_action_extension) {
     deps += [ ":action_extension_module" ]
@@ -3422,26 +3421,6 @@ config("embedded_ui_extension_config") {
   ]
 }
 
-config("ukey_auth_extension_public_config") {
-  include_dirs = [
-    "${ability_runtime_path}/interfaces/kits/native/ability/native/ukey_auth_extension_ability",
-  ]
-}
-
-config("ukey_auth_extension_config") {
-  visibility = [ ":*" ]
-  include_dirs = [
-    "${ability_runtime_path}/interfaces/kits/native/ability/native/ability_runtime",
-    "${ability_runtime_path}/interfaces/kits/native/ability/native/ukey_auth_extension_ability",
-    "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_extension_base",
-    "${ability_runtime_path}/interfaces/kits/native/ability/ability_runtime",
-    "${ability_runtime_path}/interfaces/kits/native/ability/native",
-    "${ability_runtime_path}/interfaces/kits/native/appkit/ability_runtime",
-    "${ability_runtime_path}/interfaces/kits/native/appkit/ability_runtime/context",
-    "${ability_runtime_native_path}/ability/native/ukey_auth_extension_ability",
-  ]
-}
-
 config("embedded_ui_extension_module_config") {
   visibility = [ ":*" ]
   visibility += [
@@ -3642,126 +3621,6 @@ ohos_shared_library("embedded_ui_extension_module") {
 
   deps = [
     ":embedded_ui_extension",
-    "${ability_runtime_innerkits_path}/runtime:runtime",
-  ]
-
-  external_deps = [
-    "ability_base:configuration",
-    "ability_base:session_info",
-    "ability_base:want",
-    "bundle_framework:appexecfwk_base",
-    "bundle_framework:appexecfwk_core",
-    "c_utils:utils",
-    "eventhandler:libeventhandler",
-    "hilog:libhilog",
-    "ipc:ipc_core",
-    "ipc:ipc_napi",
-    "ipc:ipc_single",
-    "napi:ace_napi",
-    "libuv:uv",
-    "node:node_header_notice",
-  ]
-
-  if (ability_runtime_graphics) {
-    external_deps += [ "window_manager:libwm" ]
-  }
-
-  relative_install_dir = "extensionability/"
-  subsystem_name = "ability"
-  part_name = "ability_runtime"
-  configs += [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
-}
-
-ohos_shared_library("ukey_auth_extension") {
-  sanitize = {
-    integer_overflow = true
-    ubsan = true
-    boundary_sanitize = true
-    cfi = true
-    cfi_cross_dso = true
-    cfi_vcall_icall_only = true
-    cfi_policy = "adaptive"
-    debug = false
-  }
-  branch_protector_ret = "pac_ret"
-  branch_protector_frt = "bti"
-
-  configs = [
-    ":ukey_auth_extension_config",
-    "${ability_runtime_services_path}/common:optimize_config",
-  ]
-
-  public_configs = [ ":ukey_auth_extension_public_config" ]
-
-  sources = [
-    "${ability_runtime_native_path}/ability/native/ukey_auth_extension_ability/ukey_auth_extension.cpp",
-    "${ability_runtime_native_path}/ability/native/ukey_auth_extension_ability/ukey_auth_extension_context.cpp",
-    "${ability_runtime_native_path}/ability/native/ukey_auth_extension_ability/js_ukey_auth_extension.cpp",
-    "${ability_runtime_native_path}/ability/native/ukey_auth_extension_ability/js_ukey_auth_extension_base.cpp",
-    "${ability_runtime_native_path}/ability/native/ukey_auth_extension_ability/js_ukey_auth_extension_context.cpp",
-    "${ability_runtime_native_path}/ability/native/ukey_auth_extension_ability/ets_ukey_auth_extension_instance.cpp",
-  ]
-
-  deps = [
-    ":abilitykit_native",
-    ":abilitykit_utils",
-    ":configuration_helper",
-    ":extensionkit_native",
-    ":ui_extension",
-    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
-    "${ability_runtime_innerkits_path}/ability_manager:ability_start_options",
-    "${ability_runtime_innerkits_path}/runtime:runtime",
-    "${ability_runtime_napi_path}/inner/napi_common:napi_common",
-    "${ability_runtime_native_path}/ability:ability_context_native",
-    "${ability_runtime_native_path}/ability/native:ability_business_error",
-    "${ability_runtime_native_path}/appkit:app_context",
-  ]
-
-  external_deps = [
-    "ability_base:want",
-    "certificate_manager:cert_manager_sdk",
-    "c_utils:utils",
-    "eventhandler:libeventhandler",
-    "hilog:libhilog",
-    "hitrace:hitrace_meter",
-    "ipc:ipc_napi",
-    "ipc:ipc_single",
-    "napi:ace_napi",
-    "libuv:uv",
-    "node:node_header_notice",
-  ]
-
-  if (ability_runtime_graphics) {
-    external_deps += [ "window_manager:libwm" ]
-  }
-
-  subsystem_name = "ability"
-  part_name = "ability_runtime"
-}
-
-ohos_shared_library("ukey_auth_extension_module") {
-  sanitize = {
-    integer_overflow = true
-    ubsan = true
-    boundary_sanitize = true
-    cfi = true
-    cfi_cross_dso = true
-    cfi_vcall_icall_only = true
-    cfi_policy = "adaptive"
-    debug = false
-  }
-  branch_protector_ret = "pac_ret"
-  branch_protector_frt = "bti"
-
-  sources = [ "${ability_runtime_native_path}/ability/native/ukey_auth_extension_ability/ukey_auth_extension_module_loader.cpp" ]
-
-  configs = [
-    ":ukey_auth_extension_config",
-    ":embedded_ui_extension_module_config",
-  ]
-
-  deps = [
-    ":ukey_auth_extension",
     "${ability_runtime_innerkits_path}/runtime:runtime",
   ]
 

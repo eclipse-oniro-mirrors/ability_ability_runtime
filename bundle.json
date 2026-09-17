@@ -59,7 +59,6 @@
             "background_task_mgr",
             "bounds_checking_function",
             "bundle_framework",
-            "certificate_manager",
             "common_event_service",
             "config_policy",
             "c_utils",
@@ -890,16 +889,6 @@
               ]
             },
             "name": "//foundation/ability/ability_runtime/cli_tool_framework/interfaces/cli_tool:cli_tool_client"
-          },
-          {
-            "header": {
-              "header_base": "//foundation/ability/ability_runtime/interfaces/kits/native/ability/native/ukey_auth_extension_ability",
-              "header_files": [
-                "ukey_auth_extension.h",
-                "ukey_auth_extension_context.h"
-              ]
-            },
-            "name": "//foundation/ability/ability_runtime/frameworks/native/ability/native:ukey_auth_extension"
           }
         ],
         "test": [
