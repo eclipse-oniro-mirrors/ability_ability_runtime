@@ -6005,7 +6005,7 @@ void AppMgrServiceInner::SetAtomicServiceInfo(BundleType bundleType, AppSpawnSta
         auto errCode = AccountSA::OhosAccountKits::GetInstance().GetOhosAccountInfo(accountInfo);
         if (errCode == ERR_OK) {
             TAG_LOGI(AAFwkTag::APPMGR, "getOhosAccountInfo succeed, uid %{public}s", accountInfo.uid_.c_str());
-            startMsg.atomicServiceFlag = true;
+            startMsg.flags |= (1ULL << StartFlags::ATOMIC_SERVICE);
             startMsg.atomicAccount = accountInfo.uid_;
         } else {
             TAG_LOGE(AAFwkTag::APPMGR, "get ohos account info:%{public}d fail", errCode);
@@ -6097,7 +6097,7 @@ int32_t AppMgrServiceInner::CreateStartMsg(const CreateStartMsgParam &param, App
     SetStartMsgStrictMode(startMsg, param);
     startMsg.bundleName = bundleInfo.name;
     startMsg.renderParam = RENDER_PARAM;
-    startMsg.flags = param.startFlags;
+    startMsg.flags |= param.startFlags;
     startMsg.bundleIndex = param.bundleIndex;
     startMsg.procName = param.processName;
     SetAtomicServiceInfo(param.bundleType, startMsg);
@@ -6120,7 +6120,7 @@ void AppMgrServiceInner::SetStartMsgCustomSandboxFlag(AppSpawnStartMsg &startMsg
     }
 
     if (AAFwk::PermissionVerification::GetInstance()->VerifyCustomSandbox(accessTokenId)) {
-        startMsg.isCustomSandboxFlag = true;
+        startMsg.flags |= (1ULL << StartFlags::CUSTOM_SANDBOX);
     }
 }
 
@@ -6144,8 +6144,8 @@ void AppMgrServiceInner::GetKernelPermissions(uint32_t accessTokenId, JITPermiss
 void AppMgrServiceInner::SetStartMsgStrictMode(AppSpawnStartMsg &startMsg, const CreateStartMsgParam &param)
 {
     startMsg.strictMode = param.strictMode;
-    if (param.extensionAbilityType == ExtensionAbilityType::INPUTMETHOD) {
-        startMsg.isolatedSandboxFlagLegacy = true;
+    if (param.extensionAbilityType == ExtensionAbilityType::INPUTMETHOD && param.strictMode) {
+        startMsg.flags |= (1ULL << StartFlags::ISOLATED_SANDBOX);
     } else {
         startMsg.isolatedNetworkFlag = !param.networkEnableFlags;
         startMsg.isolatedSELinuxFlag = !param.saEnableFlags;
@@ -6195,7 +6195,7 @@ void AppMgrServiceInner::QueryExtensionSandBox(const std::string &moduleName, co
     auto infoIter = std::find_if(extensionInfos.begin(), extensionInfos.end(), infoExisted);
     DataGroupInfoList extensionDataGroupInfoList;
     if (infoIter != extensionInfos.end()) {
-        startMsg.isolatedExtension = true;
+        startMsg.flags |= (1ULL << StartFlags::EXTENSION_SANDBOX);
         startMsg.extensionSandboxPath = infoIter->moduleName + "-" + infoIter->name;
         for (auto dataGroupInfo : dataGroupInfoList) {
             auto groupIdExisted = [&dataGroupInfo](const std::string &dataGroupId) {
@@ -11181,7 +11181,10 @@ int32_t AppMgrServiceInner::StartChildProcessImpl(const std::shared_ptr<ChildPro
     startMsg.procName = childProcessRecord->GetProcessName();
     startMsg.childProcessType = childProcessRecord->GetChildProcessType();
     startMsg.fds = args.fds;
-    startMsg.isolationMode = options.isolationMode;
+    if (options.isolationMode) {
+        startMsg.flags |= (1ULL << StartFlags::ISOLATED_SANDBOX_TYPE);
+        startMsg.flags |= (1ULL << StartFlags::ISOLATED_NETWORK);
+    }
     startMsg.hostProcessUid = appRecord->GetUid();
     pid_t pid = 0;
     int32_t uid = Constants::INVALID_UID;

@@ -293,14 +293,13 @@ HWTEST_F(AppMgrServiceInnerTenthTest, SetAtomicServiceInfo_001, TestSize.Level1)
     TAG_LOGI(AAFwkTag::TEST, "SetAtomicServiceInfo_001 start");
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     AppSpawnStartMsg startMsg = {};
-    startMsg.atomicServiceFlag = false; // Initially false
     BundleType bundleType = BundleType::ATOMIC_SERVICE;
 #ifdef OHOS_ACCOUNT_ENABLED
     appMgrServiceInner->SetAtomicServiceInfo(bundleType, startMsg);
-    EXPECT_TRUE(startMsg.atomicServiceFlag);
+    EXPECT_TRUE(startMsg.flags & (1ULL << StartFlags::ATOMIC_SERVICE));
 #else
     appMgrServiceInner->SetAtomicServiceInfo(bundleType, startMsg);
-    EXPECT_FALSE(startMsg.atomicServiceFlag);
+    EXPECT_FALSE(startMsg.flags & (1ULL << StartFlags::ATOMIC_SERVICE));
 #endif
     TAG_LOGI(AAFwkTag::TEST, "SetAtomicServiceInfo_001 end");
 }
@@ -316,10 +315,9 @@ HWTEST_F(AppMgrServiceInnerTenthTest, SetAtomicServiceInfo_002, TestSize.Level1)
     TAG_LOGI(AAFwkTag::TEST, "SetAtomicServiceInfo_002 start");
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     AppSpawnStartMsg startMsg = {};
-    startMsg.atomicServiceFlag = false; // Initially false
     BundleType bundleType = BundleType::APP;
     appMgrServiceInner->SetAtomicServiceInfo(bundleType, startMsg);
-    EXPECT_FALSE(startMsg.atomicServiceFlag);
+    EXPECT_FALSE(startMsg.flags & (1ULL << StartFlags::ATOMIC_SERVICE));
     TAG_LOGI(AAFwkTag::TEST, "SetAtomicServiceInfo_002 end");
 }
 
