@@ -151,6 +151,7 @@ bool DoSomethingInterestingWithMyAPI(const char *data, size_t size)
     AbilityInfo tempInfo;
     (void)interceptor->GetCallerAbilityInfo(param1, tempInfo);
     (void)interceptor->GetTargetAbilityInfo(param1, tempInfo);
+    (void)interceptor->GetTargetAbilityInfo(param2, tempInfo);
     
     return true;
 }
