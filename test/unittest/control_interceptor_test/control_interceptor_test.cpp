@@ -162,8 +162,8 @@ HWTEST_F(ControlInterceptorTest, DoProcess_001, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     bool isWithUI = false;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, nullptr, shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, -1);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_001 end");
@@ -189,8 +189,8 @@ HWTEST_F(ControlInterceptorTest, DoProcess_002, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     bool isWithUI = true;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, nullptr, shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, -1);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_002 end");
@@ -219,8 +219,8 @@ HWTEST_F(ControlInterceptorTest, DoProcess_003, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     bool isWithUI = true;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, nullptr, shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, -2);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_003 end");
@@ -250,8 +250,8 @@ HWTEST_F(ControlInterceptorTest, DoProcess_004, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     bool isWithUI = true;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, nullptr, shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, -3);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_004 end");
@@ -281,8 +281,8 @@ HWTEST_F(ControlInterceptorTest, DoProcess_005, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     bool isWithUI = true;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, nullptr, shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_005 end");
@@ -304,8 +304,8 @@ HWTEST_F(ControlInterceptorTest, DoProcess_006, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     bool isWithUI = true;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, nullptr, shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_006 end");
@@ -328,8 +328,8 @@ HWTEST_F(ControlInterceptorTest, DoProcess_007, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     bool isWithUI = true;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, nullptr, shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_007 end");
@@ -354,8 +354,8 @@ HWTEST_F(ControlInterceptorTest, DoProcess_008, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     bool isWithUI = true;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, nullptr, shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_008 end");

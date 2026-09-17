@@ -538,10 +538,9 @@ void AbilityManagerService::InitInterceptor()
     interceptorExecuter_->AddInterceptor("ScreenUnlock", std::make_shared<ScreenUnlockInterceptor>());
     interceptorExecuter_->AddInterceptor("CrowdTest", std::make_shared<CrowdTestInterceptor>());
     interceptorExecuter_->AddInterceptor("Control", std::make_shared<ControlInterceptor>());
-    afterCheckExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
-    afterCheckExecuter_->AddInterceptor("ExtensionControl", std::make_shared<ExtensionControlInterceptor>());
-    afterCheckExecuter_->AddInterceptor("DisposedRule", std::make_shared<DisposedRuleInterceptor>(taskHandler_));
-    afterCheckExecuter_->AddInterceptor("EcologicalRule", std::make_shared<EcologicalRuleInterceptor>());
+    interceptorExecuter_->AddInterceptor("ExtensionControl", std::make_shared<ExtensionControlInterceptor>());
+    interceptorExecuter_->AddInterceptor("DisposedRule", std::make_shared<DisposedRuleInterceptor>(taskHandler_));
+    interceptorExecuter_->AddInterceptor("EcologicalRule", std::make_shared<EcologicalRuleInterceptor>());
     if (AppUtils::GetInstance().IsSupportBlockAllAppStart()) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "create BlockAllAppStartInterceptor");
         blockAllAppStartInterceptor_ = std::make_shared<BlockAllAppStartInterceptor>();
@@ -1498,18 +1497,6 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
         StartAbilityUtils::RemoveAtomicServiceShareRouterIfNeeded(param.want,
             StartAbilityUtils::startAbilityInfo->abilityInfo, callerTokenId);
     }
-    auto shouldBlockFunc = [aams = shared_from_this()]() { return aams->ShouldBlockAllAppStart(); };
-    AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(param.want, param.requestCode, validUserId,
-        true, nullptr, shouldBlockFunc);
-    interceptorParam.hostBundleName = param.hostBundleName;
-    result = interceptorExecuter_ == nullptr ? ERR_NULL_INTERCEPTOR_EXECUTER :
-        interceptorExecuter_->DoProcess(interceptorParam);
-    if (result != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "interceptorExecuter_ null or DoProcess error");
-        AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result, "DoProcess error");
-        return result;
-    }
-
     if ((param.want.GetFlags() & Want::FLAG_ABILITY_PREPARE_CONTINUATION) == Want::FLAG_ABILITY_PREPARE_CONTINUATION &&
         IPCSkeleton::GetCallingUid() != DMS_UID) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "flag only support DMS, flag:%{public}d", param.want.GetFlags());
@@ -1519,6 +1506,19 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
 
     if (param.callerToken != nullptr && CheckIfOperateRemote(param.want)) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "try to StartRemoteAbility");
+        // Remote targets must pass the merged interceptor chain before dispatch, so the
+        // local policy gates (e.g. Control/EDM) still apply; interceptors that require a
+        // locally-resolved target defer to the remote device via RemoteDispatchCtx.
+        AbilityInterceptorParam interceptorParam = InterceptorParamBuilder(param.want, param.requestCode,
+            validUserId).WithUI(true).Visible(true).CallerToken(param.callerToken)
+            .Context<AbilityInterceptorParam::RemoteDispatchCtx>({}).Build();
+        result = interceptorExecuter_ == nullptr ? ERR_NULL_INTERCEPTOR_EXECUTER :
+            interceptorExecuter_->DoProcess(interceptorParam);
+        if (result != ERR_OK) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "remote dispatch intercepted, result:%{public}d", result);
+            AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result, "remote dispatch intercepted");
+            return result;
+        }
         result = StartRemoteAbility(param.want, param.requestCode, validUserId, param.callerToken,
             param.specifyTokenId);
         AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result, "StartRemoteAbility failed");
@@ -1708,13 +1708,15 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
             return result;
         }
 #endif // SUPPORT_SCREEN
-        AbilityInterceptorParam afterCheckParam = AbilityInterceptorParam(newWant, param.requestCode, validUserId,
-            true, param.callerToken, std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo), param.isStartAsCaller,
-            appIndex);
-        afterCheckParam.hostBundleName = param.hostBundleName;
-        afterCheckParam.isTargetPlugin = isTargetPlugin;
-        result = afterCheckExecuter_ == nullptr ? ERR_NULL_AFTER_CHECK_EXECUTER :
-            afterCheckExecuter_->DoProcess(afterCheckParam);
+        AbilityInterceptorParam interceptorParam = InterceptorParamBuilder(newWant, param.requestCode,
+            validUserId).WithUI(true).Visible(true).CallerToken(param.callerToken)
+            .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo))
+            .Context<AbilityInterceptorParam::EcologicalCtx>(
+                {param.isStartAsCaller, isTargetPlugin, param.hostBundleName})
+            .Context<AbilityInterceptorParam::DisposedCtx>({appIndex, nullptr}).Build();
+        result = interceptorExecuter_ == nullptr ? ERR_NULL_INTERCEPTOR_EXECUTER :
+            interceptorExecuter_->DoProcess(interceptorParam);
+        newWant = interceptorParam.want;
         bool isReplaceWantExist = newWant.GetBoolParam("queryWantFromErms", false);
         newWant.RemoveParam("queryWantFromErms");
         if (result != ERR_OK && !isReplaceWantExist) {
@@ -1862,7 +1864,7 @@ int32_t AbilityManagerService::StartAbilityForAppCloneSelector(const StartAbilit
         return ret;
     }
 
-    ret = ExecuteAfterCheckInterceptors(param, abilityRequest, abilityInfo, appCloneIndex, eventInfo);
+    ret = ExecuteInterceptors(param, abilityRequest, abilityInfo, appCloneIndex, eventInfo);
     if (ret != ERR_OK) {
         return ret;
     }
@@ -1918,23 +1920,24 @@ int32_t AbilityManagerService::ProcessLaunchReasonAndController(const StartAbili
     return ERR_OK;
 }
 
-int32_t AbilityManagerService::ExecuteAfterCheckInterceptors(const StartAbilityWrapParam &param,
+int32_t AbilityManagerService::ExecuteInterceptors(const StartAbilityWrapParam &param,
     const AbilityRequest &abilityRequest, const AppExecFwk::AbilityInfo &abilityInfo, int32_t appCloneIndex,
     const std::shared_ptr<EventInfo> eventInfo)
 {
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "Call ExecuteAfterCheckInterceptors");
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "Call ExecuteInterceptors");
     // After-check interceptors using user-selected appIndex
     Want newWant = abilityRequest.want;
-    AbilityInterceptorParam afterCheckParam = AbilityInterceptorParam(newWant, param.requestCode,
-        abilityRequest.userId, true, param.callerToken, std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo),
-        param.isStartAsCaller, appCloneIndex);
-    afterCheckParam.hostBundleName = param.hostBundleName;
+    AbilityInterceptorParam interceptorParam = InterceptorParamBuilder(newWant, param.requestCode,
+        abilityRequest.userId).WithUI(true).Visible(true).CallerToken(param.callerToken)
+        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo))
+        .Context<AbilityInterceptorParam::EcologicalCtx>({param.isStartAsCaller, false, param.hostBundleName})
+        .Context<AbilityInterceptorParam::DisposedCtx>({appCloneIndex, nullptr}).Build();
 
-    int32_t result = afterCheckExecuter_ == nullptr ? ERR_NULL_AFTER_CHECK_EXECUTER :
-        afterCheckExecuter_->DoProcess(afterCheckParam);
+    int32_t result = interceptorExecuter_ == nullptr ? ERR_NULL_INTERCEPTOR_EXECUTER :
+        interceptorExecuter_->DoProcess(interceptorParam);
     if (result != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "afterCheckExecuter_ failed: %{public}d", result);
-        AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result, "afterCheckExecuter_ failed");
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "interceptorExecuter_ failed: %{public}d", result);
+        AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result, "interceptorExecuter_ failed");
         return result;
     }
 
@@ -2137,16 +2140,7 @@ int AbilityManagerService::StartAbilityDetails(const Want &want, const AbilitySt
         return checkRet;
     }
     StartAbilityInfoWrap threadLocalInfo(want, validUserId, appIndex, callerToken);
-    auto shouldBlockFunc = [aams = shared_from_this()]() { return aams->ShouldBlockAllAppStart(); };
-    AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(want, requestCode, validUserId,
-        true, nullptr, shouldBlockFunc);
-    auto result = interceptorExecuter_ == nullptr ? ERR_NULL_INTERCEPTOR_EXECUTER :
-        interceptorExecuter_->DoProcess(interceptorParam);
-    if (result != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "interceptorExecuter_ null or doProcess error:%{public}d", result);
-        AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result, "doProcess error");
-        return result;
-    }
+    int result = ERR_OK;
 
     if (AbilityUtil::IsStartFreeInstall(want)) {
         if (CheckIfOperateRemote(want) || freeInstallManager_ == nullptr) {
@@ -2241,14 +2235,16 @@ int AbilityManagerService::StartAbilityDetails(const Want &want, const AbilitySt
         return ERR_WRONG_INTERFACE_CALL;
     }
 
-    AbilityInterceptorParam afterCheckParam = AbilityInterceptorParam(abilityRequest.want, requestCode,
-        validUserId, true, callerToken, std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo), false, appIndex);
-    afterCheckParam.isTargetPlugin = isTargetPlugin;
-    result = afterCheckExecuter_ == nullptr ? ERR_NULL_AFTER_CHECK_EXECUTER :
-        afterCheckExecuter_->DoProcess(afterCheckParam);
+    AbilityInterceptorParam interceptorParam = InterceptorParamBuilder(abilityRequest.want, requestCode,
+        validUserId).WithUI(true).Visible(true).CallerToken(callerToken)
+        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo))
+        .Context<AbilityInterceptorParam::EcologicalCtx>({false, isTargetPlugin, ""})
+        .Context<AbilityInterceptorParam::DisposedCtx>({appIndex, nullptr}).Build();
+    result = interceptorExecuter_ == nullptr ? ERR_NULL_INTERCEPTOR_EXECUTER :
+        interceptorExecuter_->DoProcess(interceptorParam);
     if (result != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "afterCheckExecuter_ null or doProcess error");
-        AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result, "afterCheckExecuter_ null or doProcess error");
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "blockAllAppStart interceptor error");
+        AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result, "blockAllAppStart interceptor error");
         return result;
     }
 
@@ -2499,16 +2495,7 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
         StartAbilityUtils::RemoveAtomicServiceShareRouterIfNeeded(const_cast<Want &>(want),
             StartAbilityUtils::startAbilityInfo->abilityInfo, callerTokenId);
     }
-    auto shouldBlockFunc = [aams = shared_from_this()]() { return aams->ShouldBlockAllAppStart(); };
-    AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(want, requestCode, validUserId,
-        true, nullptr, shouldBlockFunc);
-    auto result = interceptorExecuter_ == nullptr ? ERR_NULL_INTERCEPTOR_EXECUTER :
-        interceptorExecuter_->DoProcess(interceptorParam);
-    if (result != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "interceptorExecuter_ null or doProcess error:%{public}d", result);
-        AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result, "doProcess error");
-        return result;
-    }
+    int result = ERR_OK;
 
     if (AbilityUtil::IsStartFreeInstall(want)) {
         if (CheckIfOperateRemote(want) || freeInstallManager_ == nullptr) {
@@ -2723,11 +2710,14 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
     }
 
     Want newWant = abilityRequest.want;
-    AbilityInterceptorParam afterCheckParam = AbilityInterceptorParam(newWant, requestCode, validUserId, true,
-        callerToken, std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo), isStartAsCaller, appIndex, &startOptions);
-    afterCheckParam.isTargetPlugin = isTargetPlugin;
-    result = afterCheckExecuter_ == nullptr ? ERR_NULL_AFTER_CHECK_EXECUTER :
-        afterCheckExecuter_->DoProcess(afterCheckParam);
+    AbilityInterceptorParam interceptorParam = InterceptorParamBuilder(newWant, requestCode, validUserId)
+        .WithUI(true).Visible(true).CallerToken(callerToken)
+        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo))
+        .Context<AbilityInterceptorParam::EcologicalCtx>({isStartAsCaller, isTargetPlugin, ""})
+        .Context<AbilityInterceptorParam::DisposedCtx>({appIndex, &startOptions}).Build();
+    result = interceptorExecuter_ == nullptr ? ERR_NULL_INTERCEPTOR_EXECUTER :
+        interceptorExecuter_->DoProcess(interceptorParam);
+    newWant = interceptorParam.want;
     bool isReplaceWantExist = newWant.GetBoolParam("queryWantFromErms", false);
     newWant.RemoveParam("queryWantFromErms");
     if (result != ERR_OK && !isReplaceWantExist) {
@@ -3141,9 +3131,10 @@ int32_t AbilityManagerService::StartUIAbilitiesInterceptorCheck(const Want &want
         TAG_LOGE(AAFwkTag::ABILITYMGR, "StartUIAbilities blockAllAppStartInterceptor failed: %{public}d", result);
         return result;
     }
-    auto shouldBlockFunc = [aams = shared_from_this()]() { return aams->ShouldBlockAllAppStart(); };
-    AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(want, requestCode, userId,
-        true, nullptr, shouldBlockFunc);
+    AbilityInterceptorParam interceptorParam = InterceptorParamBuilder(newWant, requestCode, userId)
+        .WithUI(true).Visible(true).CallerToken(callerToken)
+        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo))
+        .Context<AbilityInterceptorParam::DisposedCtx>({appIndex, nullptr}).Build();
     result = interceptorExecuter_ == nullptr ? ERR_NULL_INTERCEPTOR_EXECUTER :
         interceptorExecuter_->DoProcess(interceptorParam);
     if (result == ERR_CROWDTEST_EXPIRED) {
@@ -3152,19 +3143,6 @@ int32_t AbilityManagerService::StartUIAbilitiesInterceptorCheck(const Want &want
     }
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "StartUIAbilities interceptorExecuter_ null or DoProcess error");
-        return START_UI_ABILITIES_INTERCEPTOR_CHECK_FAILED;
-    }
-
-    AbilityInterceptorParam afterCheckParam = AbilityInterceptorParam(newWant, requestCode, userId,
-        true, callerToken, std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo), false, appIndex);
-    result = afterCheckExecuter_ == nullptr ? ERR_NULL_AFTER_CHECK_EXECUTER :
-        afterCheckExecuter_->DoProcess(afterCheckParam);
-    if (result == ERR_CROWDTEST_EXPIRED) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "StartUIAbilities ERR_CROWDTEST_EXPIRED");
-        return result;
-    }
-    if (result != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "StartUIAbilities afterCheckExecuter_ null or DoProcess error");
         return START_UI_ABILITIES_INTERCEPTOR_CHECK_FAILED;
     }
     return ERR_OK;
@@ -3236,16 +3214,10 @@ int32_t AbilityManagerService::RequestDialogServiceInner(const Want &want, const
 #endif
     StartAbilityInfoWrap threadLocalInfo;
     auto blockResult = ExecuteBlockAllAppStartInterceptor();
-    auto shouldBlockFunc = [aams = shared_from_this()]() { return aams->ShouldBlockAllAppStart(); };
-    AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(want, requestCode, validUserId,
-        true, nullptr, shouldBlockFunc);
-    auto result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
-        interceptorExecuter_->DoProcess(interceptorParam);
-    ErrCode finalResult = (blockResult != ERR_OK) ? blockResult : result;
-    if (finalResult != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "interceptor error: blockResult=%{public}d, result=%{public}d, final=%{public}d",
-            blockResult, result, finalResult);
-        return finalResult;
+    if (blockResult != ERR_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "blockAllAppStart error: %{public}d",
+            blockResult);
+        return blockResult;
     }
 
     if (!JudgeMultiUserConcurrency(validUserId)) {
@@ -3253,7 +3225,7 @@ int32_t AbilityManagerService::RequestDialogServiceInner(const Want &want, const
         return ERR_CROSS_USER;
     }
     AbilityRequest abilityRequest;
-    result = GenerateExtensionAbilityRequest(want, abilityRequest, callerToken, validUserId);
+    int result = GenerateExtensionAbilityRequest(want, abilityRequest, callerToken, validUserId);
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "generate ability request local error when requestDialogService");
         return result;
@@ -3286,7 +3258,7 @@ int32_t AbilityManagerService::RequestDialogServiceInner(const Want &want, const
     if (type == AppExecFwk::AbilityType::EXTENSION &&
         abilityInfo.extensionAbilityType == AppExecFwk::ExtensionAbilityType::SERVICE) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "Check call ability permission, name is %{public}s.", abilityInfo.name.c_str());
-        result = CheckCallServicePermission(abilityRequest);
+        int result = CheckCallServicePermission(abilityRequest);
         if (result != ERR_OK) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "check permission failed");
             return result;
@@ -3296,12 +3268,13 @@ int32_t AbilityManagerService::RequestDialogServiceInner(const Want &want, const
         return ERR_WRONG_INTERFACE_CALL;
     }
 
-    AbilityInterceptorParam afterCheckParam = AbilityInterceptorParam(abilityRequest.want, requestCode,
-        validUserId, true, callerToken, std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo));
-    result = afterCheckExecuter_ == nullptr ? ERR_INVALID_VALUE :
-        afterCheckExecuter_->DoProcess(afterCheckParam);
+    AbilityInterceptorParam interceptorParam = InterceptorParamBuilder(abilityRequest.want, requestCode,
+        validUserId).WithUI(true).Visible(true).CallerToken(callerToken)
+        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo)).Build();
+    result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
+        interceptorExecuter_->DoProcess(interceptorParam);
     if (result != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "afterCheckExecuter_ null or DoProcess error");
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "interceptorExecuter_ null or DoProcess error");
         return result;
     }
 
@@ -3519,16 +3492,6 @@ int AbilityManagerService::StartUIAbilityBySCBDefault(sptr<SessionInfo> sessionI
     if (sessionInfo->want.GetBoolParam(ServerConstant::IS_CALL_BY_SCB, true)) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "interceptorExecuter_ called");
         (sessionInfo->want).RemoveParam(IS_CALLING_FROM_DMS);
-        auto shouldBlockFunc = [aams = shared_from_this()]() { return aams->ShouldBlockAllAppStart(); };
-        AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(sessionInfo->want, requestCode,
-            currentUserId, true, nullptr, shouldBlockFunc);
-        result = interceptorExecuter_ == nullptr ? ERR_NULL_INTERCEPTOR_EXECUTER :
-        interceptorExecuter_->DoProcess(interceptorParam);
-        if (result != ERR_OK) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "interceptorExecuter_ null or DoProcess error:%{public}d", result);
-            AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result, "DoProcess error");
-            return result;
-        }
         abilityRequest.userId = currentUserId;
         abilityRequest.sessionInfo = sessionInfo;
     }
@@ -3558,7 +3521,7 @@ int AbilityManagerService::StartUIAbilityBySCBDefault(sptr<SessionInfo> sessionI
     }
 
     if (sessionInfo->want.GetBoolParam(ServerConstant::IS_CALL_BY_SCB, true)) {
-        TAG_LOGD(AAFwkTag::ABILITYMGR, "afterCheckExecuter_ called");
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "interceptorExecuter_ called");
         if (sessionInfo->want.GetBoolParam("ohos.ability.params.isSkipErmsFromSCB", false)) {
             abilityRequest.want.RemoveParam("ohos.ability.params.isSkipErmsFromSCB");
             StartAbilityUtils::skipErms = true;
@@ -3566,10 +3529,13 @@ int AbilityManagerService::StartUIAbilityBySCBDefault(sptr<SessionInfo> sessionI
         Want newWant = abilityRequest.want;
         auto callerTokenId = IPCSkeleton::GetCallingTokenID();
         RemoveUnauthorizedLaunchReasonMessage(sessionInfo->want, abilityRequest, callerTokenId);
-        AbilityInterceptorParam afterCheckParam = AbilityInterceptorParam(newWant, requestCode, currentUserId, true,
-            sessionInfo->callerToken, std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo), false, appIndex);
-        result = afterCheckExecuter_ == nullptr ? ERR_INVALID_VALUE :
-            afterCheckExecuter_->DoProcess(afterCheckParam);
+        AbilityInterceptorParam interceptorParam = InterceptorParamBuilder(newWant, requestCode,
+            currentUserId).WithUI(true).Visible(true).CallerToken(sessionInfo->callerToken)
+            .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo))
+            .Context<AbilityInterceptorParam::DisposedCtx>({appIndex, nullptr}).Build();
+        int result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
+            interceptorExecuter_->DoProcess(interceptorParam);
+        newWant = interceptorParam.want;
         bool isReplaceWantExist = newWant.GetBoolParam("queryWantFromErms", false);
         newWant.RemoveParam("queryWantFromErms");
         if (result != ERR_OK) {
@@ -4442,10 +4408,9 @@ int AbilityManagerService::PreloadUIExtensionAbilityInner(
     }
 
     AbilityRequest abilityRequest;
-    ErrCode result = ERR_OK;
     auto eventInfo = BuildEventInfo(want, userId);
     eventInfo->lifeCycle = LIFE_CYCLE_PRELOAD;
-    result = GenerateExtensionAbilityRequest(want, abilityRequest, nullptr, validUserId, hostBundleName);
+    ErrCode result = GenerateExtensionAbilityRequest(want, abilityRequest, nullptr, validUserId, hostBundleName);
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::UI_EXT, "generate abilityReq error");
         return result;
@@ -4731,24 +4696,18 @@ int32_t AbilityManagerService::StartExtensionAbilityInner(const Want &want, cons
     }
     StartAbilityInfoWrap threadLocalInfo(want, validUserId, appIndex, callerToken, true);
     auto blockResult = ExecuteBlockAllAppStartInterceptor();
-    auto shouldBlockFunc = [aams = shared_from_this()]() { return aams->ShouldBlockAllAppStart(); };
-    AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(want, 0, validUserId, false, nullptr,
-        shouldBlockFunc);
-    result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
-        interceptorExecuter_->DoProcess(interceptorParam);
-    ErrCode finalResult = (blockResult != ERR_OK) ? blockResult : result;
-    if (finalResult != ERR_OK) {
-        TAG_LOGE(AAFwkTag::SERVICE_EXT, "interceptor error: blockResult=%{public}d, result=%{public}d, final=%{public}d",
-            blockResult, result, finalResult);
+    if (blockResult != ERR_OK) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "blockAllAppStart error: %{public}d",
+            blockResult);
         if (extensionType == AppExecFwk::ExtensionAbilityType::UI_SERVICE) {
-            eventInfo->errReason = "interceptorExecuter_ null or doProcess error";
+            eventInfo->errReason = "blockAllAppStart interceptor error";
             eventInfo->appIndex = appIndex;
-            SendExtensionReport(*eventInfo, finalResult, true);
+            SendExtensionReport(*eventInfo, blockResult, true);
         } else {
-            eventInfo->errCode = finalResult;
+            eventInfo->errCode = blockResult;
             EventReport::SendExtensionEvent(EventName::START_EXTENSION_ERROR, HISYSEVENT_FAULT, *eventInfo);
         }
-        return AbilityErrorUtil::ConvertToOriginErrorCode(finalResult);
+        return AbilityErrorUtil::ConvertToOriginErrorCode(blockResult);
     }
 
     if (!JudgeMultiUserConcurrency(validUserId)) {
@@ -4825,14 +4784,16 @@ int32_t AbilityManagerService::StartExtensionAbilityInner(const Want &want, cons
         return result;
     }
 
-    AbilityInterceptorParam afterCheckParam = AbilityInterceptorParam(abilityRequest.want, 0, validUserId,
-        false, callerToken, std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo), false, appIndex);
-    result = afterCheckExecuter_ == nullptr ? ERR_INVALID_VALUE :
-        afterCheckExecuter_->DoProcess(afterCheckParam);
+    AbilityInterceptorParam interceptorParam = InterceptorParamBuilder(abilityRequest.want, 0, validUserId)
+        .WithUI(false).Visible(false).CallerToken(callerToken)
+        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo))
+        .Context<AbilityInterceptorParam::DisposedCtx>({appIndex, nullptr}).Build();
+    result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
+        interceptorExecuter_->DoProcess(interceptorParam);
     if (result != ERR_OK) {
-        TAG_LOGE(AAFwkTag::SERVICE_EXT, "afterCheckExecuter_ null or doProcess error");
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "blockAllAppStart interceptor error");
         if (extensionType == AppExecFwk::ExtensionAbilityType::UI_SERVICE) {
-            eventInfo->errReason = "afterCheckExecuter_ null or doProcess error";
+            eventInfo->errReason = "blockAllAppStart interceptor error";
             eventInfo->appIndex = appIndex;
             SendExtensionReport(*eventInfo, result, true);
         } else {
@@ -5118,18 +5079,12 @@ int AbilityManagerService::StartUIExtensionAbility(const sptr<SessionInfo> &exte
 #endif
 
     auto blockResult = ExecuteBlockAllAppStartInterceptor();
-    auto shouldBlockFunc = [aams = shared_from_this()]() { return aams->ShouldBlockAllAppStart(); };
-    AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(extensionSessionInfo->want, 0,
-        GetValidUserId(userId), true, nullptr, shouldBlockFunc);
-    auto result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
-        interceptorExecuter_->DoProcess(interceptorParam);
-    ErrCode finalResult = (blockResult != ERR_OK) ? blockResult : result;
-    if (finalResult != ERR_OK) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "interceptor error: blockResult=%{public}d, result=%{public}d, final=%{public}d",
-            blockResult, result, finalResult);
-        eventInfo->errReason = "interceptorExecuter_ null or doProcess error";
-        SendExtensionReport(*eventInfo, finalResult);
-        return finalResult;
+    if (blockResult != ERR_OK) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "blockAllAppStart error: %{public}d",
+            blockResult);
+        eventInfo->errReason = "blockAllAppStart interceptor error";
+        SendExtensionReport(*eventInfo, blockResult);
+        return blockResult;
     }
 
     int32_t validUserId = GetValidUserId(userId);
@@ -5152,7 +5107,8 @@ int AbilityManagerService::StartUIExtensionAbility(const sptr<SessionInfo> &exte
     if (AbilityRuntime::StartupUtil::IsStartPlugin(extensionSessionInfo->want)) {
         abilityRequest.isTargetPlugin = true;
     }
-    result = GenerateEmbeddableUIAbilityRequest(extensionSessionInfo->want, abilityRequest, callerToken, validUserId);
+    int result = GenerateEmbeddableUIAbilityRequest(extensionSessionInfo->want, abilityRequest, callerToken,
+        validUserId);
     CHECK_POINTER_AND_RETURN(abilityRequest.sessionInfo, ERR_INVALID_VALUE);
     abilityRequest.sessionInfo->uiExtensionComponentId = (
         static_cast<uint64_t>(callerRecord->GetRecordId()) << OFFSET) |
@@ -5214,13 +5170,15 @@ int AbilityManagerService::StartUIExtensionAbility(const sptr<SessionInfo> &exte
         return result;
     }
 
-    AbilityInterceptorParam afterCheckParam = AbilityInterceptorParam(abilityRequest.want, 0, validUserId,
-        true, callerToken, std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo));
-    result = afterCheckExecuter_ == nullptr ? ERR_INVALID_VALUE :
-        afterCheckExecuter_->DoProcess(afterCheckParam);
+    AbilityInterceptorParam interceptorParam = InterceptorParamBuilder(abilityRequest.want, 0, validUserId)
+        .WithUI(true).Visible(true).CallerToken(callerToken)
+        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo))
+        .Build();
+    result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
+        interceptorExecuter_->DoProcess(interceptorParam);
     if (result != ERR_OK) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "afterCheckExecuter_ null or doProcess error");
-        eventInfo->errReason = "afterCheckExecuter_ null or doProcess error";
+        TAG_LOGE(AAFwkTag::UI_EXT, "blockAllAppStart interceptor error");
+        eventInfo->errReason = "blockAllAppStart interceptor error";
         SendExtensionReport(*eventInfo, result);
         return result;
     }
@@ -6114,7 +6072,7 @@ int32_t AbilityManagerService::ConnectAbilityCommon(
     Want checkedWant = want;
     std::string agentCallerIdentity;
     if (AgentAbilityUtil::IsAgentExtensionType(extensionType)) {
-        result = IN_PROCESS_CALL(AgentRuntime::AgentManagerClient::GetInstance().VerifyAgentConnectRequest(
+        int result = IN_PROCESS_CALL(AgentRuntime::AgentManagerClient::GetInstance().VerifyAgentConnectRequest(
             checkedWant, connect, agentCallerIdentity));
         if (result != ERR_OK) {
             TAG_LOGE(AAFwkTag::SER_ROUTER, "AGENT connect is not confirmed by AgentMgr: %{public}d", result);
@@ -6153,26 +6111,17 @@ int32_t AbilityManagerService::ConnectAbilityCommon(
         return result;
     }
 #endif // WITH_DLP
-
-    auto shouldBlockFunc = [aams = shared_from_this()]() { return aams->ShouldBlockAllAppStart(); };
-    AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(checkedWant, 0, GetValidUserId(userId), false,
-        nullptr, shouldBlockFunc);
-    interceptorParam.fromConnect = true;
     auto blockResult = ExecuteBlockAllAppStartInterceptor();
-    result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
-        interceptorExecuter_->DoProcess(interceptorParam);
-    ErrCode finalResult = (blockResult != ERR_OK) ? blockResult : result;
-    if (finalResult != ERR_OK) {
-        TAG_LOGE(AAFwkTag::SERVICE_EXT, "interceptor error: blockResult=%{public}d, result=%{public}d, final=%{public}d",
-            blockResult, result, finalResult);
+    if (blockResult != ERR_OK) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "blockAllAppStart error: %{public}d", blockResult);
         if (extensionType == AppExecFwk::ExtensionAbilityType::UI_SERVICE) {
-            eventInfo->errReason = "interceptorExecuter_ null or doProcess error";
-            SendExtensionReport(*eventInfo, finalResult, true);
+            eventInfo->errReason = "blockAllAppStart interceptor error";
+            SendExtensionReport(*eventInfo, blockResult, true);
         } else {
-            eventInfo->errCode = finalResult;
+            eventInfo->errCode = blockResult;
             EventReport::SendExtensionEvent(EventName::CONNECT_SERVICE_ERROR, HISYSEVENT_FAULT, *eventInfo);
         }
-        return finalResult;
+        return blockResult;
     }
 
     int32_t validUserId = GetValidUserId(userId);
@@ -6192,7 +6141,7 @@ int32_t AbilityManagerService::ConnectAbilityCommon(
             }
             return ERR_INVALID_VALUE;
         }
-        result = freeInstallManager_->ConnectFreeInstall(
+        int result = freeInstallManager_->ConnectFreeInstall(
             checkedWant, validUserId, callerToken, localDeviceId, extensionType);
         if (result != ERR_OK) {
             if (extensionType == AppExecFwk::ExtensionAbilityType::UI_SERVICE) {
@@ -6259,7 +6208,7 @@ int32_t AbilityManagerService::ConnectAbilityCommon(
     if (callerToken != nullptr && callerToken->GetObjectDescriptor() != u"ohos.aafwk.AbilityToken") {
         TAG_LOGD(AAFwkTag::SERVICE_EXT, "invalid Token.");
         eventInfo->errCode = ConnectLocalAbility(abilityWant, validUserId, connect, nullptr, extensionType, nullptr,
-            false, nullptr, specifiedFullTokenId, loadTimeout, indirectCallerInfo);
+            false, nullptr, specifiedFullTokenId, loadTimeout, indirectCallerInfo, true);
         if (eventInfo->errCode != ERR_OK) {
             if (extensionType == AppExecFwk::ExtensionAbilityType::UI_SERVICE) {
                 eventInfo->errReason = "ConnectLocalAbility error";
@@ -6271,7 +6220,7 @@ int32_t AbilityManagerService::ConnectAbilityCommon(
         return eventInfo->errCode;
     }
     eventInfo->errCode = ConnectLocalAbility(abilityWant, validUserId, connect, callerToken, extensionType, nullptr,
-        isQueryExtensionOnly, nullptr, specifiedFullTokenId, loadTimeout, indirectCallerInfo);
+        isQueryExtensionOnly, nullptr, specifiedFullTokenId, loadTimeout, indirectCallerInfo, true);
     if (eventInfo->errCode != ERR_OK) {
         if (extensionType == AppExecFwk::ExtensionAbilityType::UI_SERVICE) {
             eventInfo->errReason = "ConnectLocalAbility error";
@@ -6322,19 +6271,12 @@ int AbilityManagerService::ConnectUIExtensionAbility(const Want &want, const spt
         return result;
     }
 #endif // WITH_DLP
-    auto shouldBlockFunc = [aams = shared_from_this()]() { return aams->ShouldBlockAllAppStart(); };
-    AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(want, 0, GetValidUserId(userId), false, nullptr,
-        shouldBlockFunc);
     auto blockResult = ExecuteBlockAllAppStartInterceptor();
-    result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
-        interceptorExecuter_->DoProcess(interceptorParam);
-    ErrCode finalResult = (blockResult != ERR_OK) ? blockResult : result;
-    if (finalResult != ERR_OK) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "interceptor error: blockResult=%{public}d, result=%{public}d, final=%{public}d",
-            blockResult, result, finalResult);
-        eventInfo->errReason = "interceptorExecuter_ null or doProcess error";
-        SendExtensionReport(*eventInfo, finalResult);
-        return finalResult;
+    if (blockResult != ERR_OK) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "blockAllAppStart error: %{public}d", blockResult);
+        eventInfo->errReason = "blockAllAppStart interceptor error";
+        SendExtensionReport(*eventInfo, blockResult);
+        return blockResult;
     }
 
     int32_t validUserId = GetValidUserId(userId);
@@ -6461,7 +6403,7 @@ int32_t AbilityManagerService::ConnectLocalAbility(const Want &want, const int32
     const sptr<IAbilityConnection> &connect, const sptr<IRemoteObject> &callerToken,
     AppExecFwk::ExtensionAbilityType extensionType, const sptr<SessionInfo> &sessionInfo,
     bool isQueryExtensionOnly, sptr<UIExtensionAbilityConnectInfo> connectInfo, uint64_t specifiedFullTokenId,
-    int32_t loadTimeout, std::shared_ptr<IndirectCallerInfo> indirectCallerInfo)
+    int32_t loadTimeout, std::shared_ptr<IndirectCallerInfo> indirectCallerInfo, bool fromConnect)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::SERVICE_EXT, "called");
@@ -6473,9 +6415,9 @@ int32_t AbilityManagerService::ConnectLocalAbility(const Want &want, const int32
     }
 
     AbilityRequest abilityRequest;
-    ErrCode result = ERR_OK;
     TAG_LOGD(AAFwkTag::SERVICE_EXT, "start generate ability request, isQueryExtensionOnly: %{public}d, type: %{public}d",
         isQueryExtensionOnly, static_cast<int32_t>(extensionType));
+    int result = ERR_OK;
     if (isQueryExtensionOnly ||
         AAFwk::UIExtensionWrapper::IsUIExtension(extensionType)) {
         result = GenerateExtensionAbilityRequest(want, abilityRequest, callerToken, userId);
@@ -6493,9 +6435,9 @@ int32_t AbilityManagerService::ConnectLocalAbility(const Want &want, const int32
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "generate request error");
         return result;
     }
-    result = AgentAbilityUtil::CheckConnectAgentResolvedTarget(extensionType, abilityRequest.abilityInfo);
-    if (result != ERR_OK) {
-        return result;
+    ErrCode agentResult = AgentAbilityUtil::CheckConnectAgentResolvedTarget(extensionType, abilityRequest.abilityInfo);
+    if (agentResult != ERR_OK) {
+        return agentResult;
     }
     result = CheckPermissionForUIService(extensionType, want, abilityRequest);
     if (result != ERR_OK) {
@@ -6577,12 +6519,17 @@ int32_t AbilityManagerService::ConnectLocalAbility(const Want &want, const int32
         return result;
     }
 
-    AbilityInterceptorParam afterCheckParam = AbilityInterceptorParam(abilityRequest.want, 0, validUserId,
-        false, callerToken, std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo));
-    result = afterCheckExecuter_ == nullptr ? ERR_INVALID_VALUE :
-        afterCheckExecuter_->DoProcess(afterCheckParam);
+    InterceptorParamBuilder paramBuilder(abilityRequest.want, 0, validUserId);
+    paramBuilder.WithUI(false).Visible(false).CallerToken(callerToken)
+        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo));
+    if (fromConnect) {
+        paramBuilder.Context<AbilityInterceptorParam::ScreenUnlockCtx>({true});
+    }
+    AbilityInterceptorParam interceptorParam = paramBuilder.Build();
+    result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
+        interceptorExecuter_->DoProcess(interceptorParam);
     if (result != ERR_OK) {
-        TAG_LOGE(AAFwkTag::SERVICE_EXT, "afterCheckExecuter_ null or doProcess error");
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "blockAllAppStart interceptor error");
         return result;
     }
 
@@ -10544,21 +10491,24 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
 #endif
 
     StartAbilityInfoWrap threadLocalInfo(want, oriValidUserId, appIndex, callerToken);
-    auto shouldBlockFunc = [aams = shared_from_this()]() { return aams->ShouldBlockAllAppStart(); };
-    bool isWithUI = want.GetBoolParam(Want::PARAM_RESV_CALL_TO_FOREGROUND, false) ? true : !isSilent;
-    AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(want, 0, oriValidUserId, isWithUI, nullptr,
-        shouldBlockFunc);
-    auto result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
-        interceptorExecuter_->DoProcess(interceptorParam);
-    if (result != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "interceptorExecuter_ null or doProcess error");
-        AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result,
-            "startAbilityByCall interceptor doProcess error");
-        return result;
-    }
 
     if (CheckIfOperateRemote(want)) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "start remote ability by call");
+        // Remote targets must pass the merged interceptor chain before dispatch; the
+        // post-check trio defers to the remote device via RemoteDispatchCtx.
+        bool isWithUI = want.GetBoolParam(Want::PARAM_RESV_CALL_TO_FOREGROUND, false) ? true : !isSilent;
+        AbilityInterceptorParam interceptorParam = InterceptorParamBuilder(want, 0, oriValidUserId)
+            .WithUI(isWithUI).Visible(isVisible).CallerToken(callerToken)
+            .Context<AbilityInterceptorParam::RemoteDispatchCtx>({}).Build();
+        int result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
+            interceptorExecuter_->DoProcess(interceptorParam);
+        if (result != ERR_OK) {
+            errMsg = "startAbilityByCall remote dispatch intercepted";
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "remote dispatch intercepted, result:%{public}d", result);
+            AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result,
+                "startAbilityByCall remote dispatch intercepted");
+            return result;
+        }
         result = StartRemoteAbilityByCall(want, callerToken, connect->AsObject());
         AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result,
             "startAbilityByCall start remote ability failed");
@@ -10580,7 +10530,7 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
     abilityRequest.connect = connect;
     abilityRequest.specifiedFullTokenId = specifiedFullTokenId;
     abilityRequest.promotePriority = PermissionVerification::GetInstance()->IsSACall() && promotePriority;
-    result = GenerateAbilityRequest(want, -1, abilityRequest, callerToken, oriValidUserId);
+    int result = GenerateAbilityRequest(want, -1, abilityRequest, callerToken, oriValidUserId);
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "generate ability request error");
         AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result,
@@ -10621,13 +10571,16 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
     TAG_LOGD(AAFwkTag::ABILITYMGR, "abilityInfo.applicationInfo.singleton is %{public}s",
         abilityRequest.abilityInfo.applicationInfo.singleton ? "true" : "false");
     UpdateCallerInfoUtil::GetInstance().UpdateCallerInfo(abilityRequest.want, callerToken);
-    AbilityInterceptorParam afterCheckParam = AbilityInterceptorParam(abilityRequest.want, 0, oriValidUserId,
-        isVisible, callerToken, std::make_shared<AppExecFwk::AbilityInfo>(abilityRequest.abilityInfo), false, appIndex);
-    result = afterCheckExecuter_ == nullptr ? ERR_INVALID_VALUE :
-        afterCheckExecuter_->DoProcess(afterCheckParam);
+    bool isWithUI = abilityRequest.want.GetBoolParam(Want::PARAM_RESV_CALL_TO_FOREGROUND, false) ? true : !isSilent;
+    AbilityInterceptorParam interceptorParam = InterceptorParamBuilder(abilityRequest.want, 0, oriValidUserId)
+        .WithUI(isWithUI).Visible(isVisible).CallerToken(callerToken)
+        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>(abilityRequest.abilityInfo))
+        .Context<AbilityInterceptorParam::DisposedCtx>({appIndex, nullptr}).Build();
+    result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
+        interceptorExecuter_->DoProcess(interceptorParam);
     if (result != ERR_OK) {
-        errMsg = "afterCheckParam is nullptr";
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "afterCheckExecuter_ null or doProcess error");
+        errMsg = "interceptorParam is nullptr";
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "blockAllAppStart interceptor error");
         AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result,
             "startAbilityByCall afterCheckExecuter doProcess error");
         return result;
@@ -10644,7 +10597,7 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
                 "startAbilityByCall uiAbilityManager null");
             return ERR_INVALID_VALUE;
         }
-        result = uiAbilityManager->ResolveLocked(abilityRequest, errMsg);
+        int result = uiAbilityManager->ResolveLocked(abilityRequest, errMsg);
         AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result,
             "startAbilityByCall resolve locked failed");
         return result;
@@ -10661,13 +10614,16 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
     return missionListMgr->ResolveLocked(abilityRequest);
 }
 
-int32_t AbilityManagerService::ExecutePrelaunchAfterCheck(AbilityRequest &abilityRequest, int32_t userId,
+int32_t AbilityManagerService::ExecutePrelaunchInterceptors(AbilityRequest &abilityRequest, int32_t userId,
     const std::shared_ptr<EventInfo> &eventInfo)
 {
-    AbilityInterceptorParam afterCheckParam = AbilityInterceptorParam(abilityRequest.want, -1, userId, false,
-        nullptr, std::make_shared<AppExecFwk::AbilityInfo>(abilityRequest.abilityInfo), false, 0);
-    int32_t result = afterCheckExecuter_ == nullptr ? ERR_NULL_AFTER_CHECK_EXECUTER :
-        afterCheckExecuter_->DoProcess(afterCheckParam);
+    AbilityInterceptorParam interceptorParam = InterceptorParamBuilder(abilityRequest.want, -1, userId)
+        .WithUI(false).Visible(false)
+        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>(abilityRequest.abilityInfo))
+        .Context<AbilityInterceptorParam::EcologicalCtx>({false, false, ""})
+        .Context<AbilityInterceptorParam::DisposedCtx>({0, nullptr}).Build();
+    int32_t result = interceptorExecuter_ == nullptr ? ERR_NULL_INTERCEPTOR_EXECUTER :
+        interceptorExecuter_->DoProcess(interceptorParam);
     // Strip the ERMS redirect marker so it never leaks into the dispatched request.
     bool isReplaceWantExist = abilityRequest.want.GetBoolParam("queryWantFromErms", false);
     abilityRequest.want.RemoveParam("queryWantFromErms");
@@ -10681,9 +10637,9 @@ int32_t AbilityManagerService::ExecutePrelaunchAfterCheck(AbilityRequest &abilit
         return result;
     }
     // Other afterCheck failure: abort and report the fault event.
-    TAG_LOGE(AAFwkTag::ABILITYMGR, "afterCheckExecuter_ failed: %{public}d", result);
+    TAG_LOGE(AAFwkTag::ABILITYMGR, "interceptorExecuter_ failed: %{public}d", result);
     if (eventInfo != nullptr) {
-        AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result, "afterCheckExecuter_ failed");
+        AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result, "interceptorExecuter_ failed");
     }
     return result;
 }
@@ -10717,21 +10673,12 @@ int AbilityManagerService::StartAbilityForPrelaunch(const Want &want, const int3
         TAG_LOGI(AAFwkTag::ABILITYMGR, "StartAbilityForPrelaunch force specified appIndex to 0");
     }
 #endif
-    auto shouldBlockFunc = [aams = shared_from_this()]() { return aams->ShouldBlockAllAppStart(); };
-    AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(want, 0, oriValidUserId, true, nullptr,
-        shouldBlockFunc);
-    auto result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
-        interceptorExecuter_->DoProcess(interceptorParam);
-    if (result != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "interceptorExecuter_ null or doProcess error");
-        return result;
-    }
     AbilityRequest abilityRequest;
     abilityRequest.callType = AbilityCallType::CALL_REQUEST_TYPE;
     abilityRequest.callerUid = IPCSkeleton::GetCallingUid();
     abilityRequest.startSetting = nullptr;
     abilityRequest.want = want;
-    result = GenerateAbilityRequest(want, -1, abilityRequest, nullptr, oriValidUserId);
+    int result = GenerateAbilityRequest(want, -1, abilityRequest, nullptr, oriValidUserId);
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "generate ability request error");
         return result;
@@ -10766,7 +10713,7 @@ int AbilityManagerService::StartAbilityForPrelaunch(const Want &want, const int3
 
     auto eventInfo = BuildEventInfo(want, oriValidUserId);
     eventInfo->calleeId = static_cast<int32_t>(CalleeId::START_ABILITY_FOR_PRELAUNCH);
-    result = ExecutePrelaunchAfterCheck(abilityRequest, oriValidUserId, eventInfo);
+    result = ExecutePrelaunchInterceptors(abilityRequest, oriValidUserId, eventInfo);
     if (result != ERR_OK) {
         return result;
     }
@@ -14591,16 +14538,15 @@ int32_t AbilityManagerService::QueryAllAutoStartupApplications(std::vector<AutoS
     }
     std::vector<int32_t> userIds;
     AbilityRuntime::UserController::GetInstance().GetAllForegroundUserId(userIds);
-    int32_t result = ERR_OK;
     auto iter = userIds.begin();
     while (iter != userIds.end()) {
-        result = abilityAutoStartupService_->QueryAllAutoStartupApplications(infoList, *iter);
+        int32_t result = abilityAutoStartupService_->QueryAllAutoStartupApplications(infoList, *iter);
         if (result != ERR_OK) {
             return result;
         }
         iter++;
     }
-    return result;
+    return ERR_OK;
 }
 
 int32_t AbilityManagerService::GetAutoStartupStatusForSelf(bool &isAutoStartEnabled)
@@ -15786,7 +15732,6 @@ int32_t AbilityManagerService::StartAbilityByCallWithSkill(const Want &want,
             return ERR_INVALID_VALUE;
         }
         targetRecord->GetScheduler()->ExecuteSkill(abilityRequest.want);
-        result = ERR_OK;
     } else {
         result = StartAbilityByCall(want, connect, callerToken, oriValidUserId);
     }
@@ -16608,10 +16553,10 @@ int32_t AbilityManagerService::RestartApp(const AAFwk::Want &want, bool isAppRec
     SignRestartAppFlagParam param =
         { userId, callerUid, processInfo.instanceKey, processInfo.appMode, isAppRecovery, false };
     RecordAppRestartExitReason(isAppRecovery, callerPid, callerUid);
-    result = SignRestartAppFlag(param);
-    if (!isAppRecovery && result != ERR_OK) {
+    int32_t restartResult = SignRestartAppFlag(param);
+    if (!isAppRecovery && restartResult != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "signRestartAppFlag error");
-        return result;
+        return restartResult;
     }
 
     (const_cast<Want &>(want)).SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, processInfo.appCloneIndex);
@@ -17521,18 +17466,9 @@ int AbilityManagerService::StartUIAbilityByPreInstallInner(sptr<SessionInfo> ses
         return ERR_APP_CLONE_INDEX_INVALID;
     }
     StartAbilityInfoWrap threadLocalInfo(want, validUserId, appIndex, callerToken);
-    auto shouldBlockFunc = [aams = shared_from_this()]() { return aams->ShouldBlockAllAppStart(); };
-    AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(want, requestCode, validUserId,
-        true, nullptr, shouldBlockFunc);
-    auto result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
-        interceptorExecuter_->DoProcess(interceptorParam);
-    if (result != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "interceptorExecuter_ null or doProcess error");
-        return result;
-    }
 
     AbilityRequest abilityRequest;
-    result = GenerateAbilityRequest(want, requestCode, abilityRequest, callerToken, validUserId);
+    int result = GenerateAbilityRequest(want, requestCode, abilityRequest, callerToken, validUserId);
     auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
     std::string callerBundleName = abilityRecord ? abilityRecord->GetAbilityInfo().bundleName : "";
 
@@ -17584,10 +17520,14 @@ int AbilityManagerService::StartUIAbilityByPreInstallInner(sptr<SessionInfo> ses
     }
 
     Want newWant = abilityRequest.want;
-    AbilityInterceptorParam afterCheckParam = AbilityInterceptorParam(newWant, requestCode, validUserId,
-        true, callerToken, std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo), isStartAsCaller, appIndex);
-    result = afterCheckExecuter_ == nullptr ? ERR_INVALID_VALUE :
-        afterCheckExecuter_->DoProcess(afterCheckParam);
+    AbilityInterceptorParam interceptorParam = InterceptorParamBuilder(newWant, requestCode, validUserId)
+        .WithUI(true).Visible(true).CallerToken(callerToken)
+        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo))
+        .Context<AbilityInterceptorParam::EcologicalCtx>({isStartAsCaller, false, ""})
+        .Context<AbilityInterceptorParam::DisposedCtx>({appIndex, nullptr}).Build();
+    result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
+        interceptorExecuter_->DoProcess(interceptorParam);
+    newWant = interceptorParam.want;
     bool isReplaceWantExist = newWant.GetBoolParam("queryWantFromErms", false);
     newWant.RemoveParam("queryWantFromErms");
     if (result != ERR_OK && !isReplaceWantExist) {
@@ -18347,7 +18287,7 @@ int AbilityManagerService::StartAbilityDelayedInner(const Want &want,
     result = StartUIAbilityForOptionWrap(want, startOptions, nullptr, false,
         DEFAULT_INVAL_VALUE, DEFAULT_INVAL_VALUE, 0, false, false, true);
     if (result != ERR_OK) {
-        if (result == ERR_NULL_INTERCEPTOR_EXECUTER || result == ERR_NULL_AFTER_CHECK_EXECUTER) {
+        if (result == ERR_NULL_INTERCEPTOR_EXECUTER) {
             return START_UI_ABILITIES_INTERCEPTOR_CHECK_FAILED;
         }
         return result;
@@ -19054,7 +18994,6 @@ bool AbilityManagerService::HandleExecuteSAInterceptor(const Want &want, sptr<IR
         TAG_LOGW(AAFwkTag::ABILITYMGR, "sa interceptor OnCheckStarting failed, set dialog caller info");
         DialogSessionManager::GetInstance().OnlySetDialogCallerInfo(abilityRequest, abilityRequest.userId,
             SelectorType::INTERCEPTOR_SELECTOR, dialogSessionId, false);
-        result = ERR_OK;
         return false;
     }
 

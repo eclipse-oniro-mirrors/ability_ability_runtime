@@ -475,7 +475,7 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartAbilityForOptionInner_001, TestSi
     bool isImplicit = true;
     auto result = abilityMs->StartAbilityForOptionInner(want, startOptions, callerToken, false, userId, requestCode,
         isStartAsCaller, specifyTokenId, isImplicit);
-    EXPECT_EQ(result, ERR_NULL_INTERCEPTOR_EXECUTER);
+    EXPECT_EQ(result, ERR_IMPLICIT_START_ABILITY_FAIL);
     abilityMs->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
     result = abilityMs->StartAbilityForOptionInner(want, startOptions, callerToken, false, userId, requestCode,
         isStartAsCaller, specifyTokenId, isImplicit);
@@ -562,7 +562,7 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartAbility_001, TestSize.Level1)
     int requestCode{0};
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     auto ret = abilityMs_->StartAbility(want, userId, requestCode);
-    EXPECT_EQ(ret, ERR_NULL_INTERCEPTOR_EXECUTER);
+    EXPECT_EQ(ret, ERR_IMPLICIT_START_ABILITY_FAIL);
 
     want.SetParam(DEBUG_APP, true);
     system::SetBoolParameter(DEVELOPER_MODE_STATE, false);
@@ -572,14 +572,14 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartAbility_001, TestSize.Level1)
     want.SetParam(DEBUG_APP, false);
     want.SetParam(START_ABILITY_TYPE, true);
     auto ret2 = abilityMs_->StartAbility(want, userId, requestCode);
-    EXPECT_EQ(ret2, ERR_NULL_INTERCEPTOR_EXECUTER);
+    EXPECT_EQ(ret2, ERR_IMPLICIT_START_ABILITY_FAIL);
 
     want.SetParam(DEBUG_APP, false);
     want.SetParam(START_ABILITY_TYPE, false);
     want.SetParam(Want::PARAM_RESV_WINDOW_LEFT, 1);
     system::SetBoolParameter(DEVELOPER_MODE_STATE, true);
     auto ret3 = abilityMs_->StartAbility(want, userId, requestCode);
-    EXPECT_EQ(ret2, ERR_NULL_INTERCEPTOR_EXECUTER);
+    EXPECT_EQ(ret2, ERR_IMPLICIT_START_ABILITY_FAIL);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest StartAbility_001 end");
 }
 

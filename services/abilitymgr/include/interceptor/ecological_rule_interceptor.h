@@ -35,7 +35,7 @@ class EcologicalRuleInterceptor : public IAbilityInterceptor {
 public:
     EcologicalRuleInterceptor() = default;
     ~EcologicalRuleInterceptor() = default;
-    ErrCode DoProcess(const AbilityInterceptorParam &param) override;
+    ErrCode DoProcess(AbilityInterceptorParam &param) override;
     bool DoProcess(Want &want, int32_t userId);
     ErrCode QueryAtomicServiceStartupRule(Want &want, sptr<IRemoteObject> callerToken,
         int32_t userId, AtomicServiceStartupRule &rule, sptr<Want> &replaceWant);

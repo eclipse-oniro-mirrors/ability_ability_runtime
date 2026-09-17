@@ -249,7 +249,7 @@ HWTEST_F(AbilityManagerServiceMockTest, ExecuteIntent_0200, TestSize.Level1)
     sptr<IRemoteObject> callerToken = new OHOS::AAFwk::Token(ability);
     uint64_t key = 1;
     auto ret = abilityMs->ExecuteIntent(key, callerToken, param);
-    EXPECT_EQ(ret, ERR_NULL_INTERCEPTOR_EXECUTER);
+    EXPECT_EQ(ret, RESOLVE_ABILITY_ERR);
 }
 
 /**
@@ -272,7 +272,7 @@ HWTEST_F(AbilityManagerServiceMockTest, ExecuteIntent_0300, TestSize.Level1)
     sptr<IRemoteObject> callerToken = new OHOS::AAFwk::Token(ability);
     uint64_t key = 1;
     auto ret = abilityMs->ExecuteIntent(key, callerToken, param);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(ret, RESOLVE_ABILITY_ERR);
 }
 
 /**

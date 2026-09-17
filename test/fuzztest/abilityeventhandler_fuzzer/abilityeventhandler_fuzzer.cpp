@@ -108,8 +108,8 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
         }
     }
     
-    AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(
-        *want, intParam, int32Param, boolParam, nullptr, nullptr);
+    AbilityInterceptorParam interceptorParam = InterceptorParamBuilder(*want, intParam, int32Param)
+        .WithUI(boolParam).CallerToken(nullptr).Build();
     abilityInterceptorExecuter->DoProcess(interceptorParam);
 
     // fuzz for AbilityRunningInfo

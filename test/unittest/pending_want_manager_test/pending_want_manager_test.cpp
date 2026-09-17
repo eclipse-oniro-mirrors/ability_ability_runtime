@@ -1293,7 +1293,7 @@ HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_5300, TestSize.Level1)
     Want want;
 
     auto ret = pendingManager_->PendingWantStartServiceExtension(want, nullptr);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(ret, ERR_IMPLICIT_START_ABILITY_FAIL);
 }
 
 /*

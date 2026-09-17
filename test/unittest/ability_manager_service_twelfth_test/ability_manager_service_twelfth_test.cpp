@@ -2580,7 +2580,7 @@ namespace {
 class MockAfterCheckInterceptor : public IAbilityInterceptor {
 public:
     MockAfterCheckInterceptor(ErrCode code, bool setRedirect = false) : code_(code), setRedirect_(setRedirect) {}
-    ErrCode DoProcess(const AbilityInterceptorParam &param) override
+    ErrCode DoProcess(AbilityInterceptorParam &param) override
     {
         if (setRedirect_) {
             (const_cast<Want &>(param.want)).SetParam("queryWantFromErms", true);
@@ -2595,7 +2595,7 @@ private:
 
 /*
  * Feature: AbilityManagerService
- * Function: ExecutePrelaunchAfterCheck
+ * Function: ExecutePrelaunchInterceptors
  * SubFunction: NA
  * FunctionPoints: afterCheck success path coverage (round-3 C3)
  */
@@ -2604,20 +2604,20 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_AfterCheck_S
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_AfterCheck_Success_001 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityMs_, nullptr);
-    abilityMs_->afterCheckExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
-    abilityMs_->afterCheckExecuter_->AddInterceptor("Mock",
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs_->interceptorExecuter_->AddInterceptor("Mock",
         std::make_shared<MockAfterCheckInterceptor>(ERR_OK));
     AbilityRequest abilityRequest;
     abilityRequest.abilityInfo.bundleName = "com.test.bundle";
     abilityRequest.abilityInfo.name = "MainAbility";
     auto eventInfo = std::make_shared<EventInfo>();
-    EXPECT_EQ(abilityMs_->ExecutePrelaunchAfterCheck(abilityRequest, 100, eventInfo), ERR_OK);
+    EXPECT_EQ(abilityMs_->ExecutePrelaunchInterceptors(abilityRequest, 100, eventInfo), ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_AfterCheck_Success_001 end");
 }
 
 /*
  * Feature: AbilityManagerService
- * Function: ExecutePrelaunchAfterCheck
+ * Function: ExecutePrelaunchInterceptors
  * SubFunction: NA
  * FunctionPoints: afterCheck null-executer coverage (round-3 C3)
  */
@@ -2626,16 +2626,16 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_AfterCheck_N
     TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_AfterCheck_NullExecuter_001 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityMs_, nullptr);
-    // afterCheckExecuter_ left null (no Init/OnStart)
+    // interceptorExecuter_ left null (no Init/OnStart)
     AbilityRequest abilityRequest;
     auto eventInfo = std::make_shared<EventInfo>();
-    EXPECT_EQ(abilityMs_->ExecutePrelaunchAfterCheck(abilityRequest, 100, eventInfo), ERR_NULL_AFTER_CHECK_EXECUTER);
+    EXPECT_EQ(abilityMs_->ExecutePrelaunchInterceptors(abilityRequest, 100, eventInfo), ERR_NULL_INTERCEPTOR_EXECUTER);
     TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_AfterCheck_NullExecuter_001 end");
 }
 
 /*
  * Feature: AbilityManagerService
- * Function: ExecutePrelaunchAfterCheck
+ * Function: ExecutePrelaunchInterceptors
  * SubFunction: NA
  * FunctionPoints: afterCheck non-redirect failure path + START_ABILITY_ERROR fault event coverage (round-3 C1/C3)
  */
@@ -2644,22 +2644,22 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_AfterCheck_D
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_AfterCheck_Deny_001 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityMs_, nullptr);
-    abilityMs_->afterCheckExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
     // a non-redirect afterCheck failure must abort + report the fault event.
     const ErrCode deny = ERR_ECOLOGICAL_CONTROL_STATUS;
-    abilityMs_->afterCheckExecuter_->AddInterceptor("Mock", std::make_shared<MockAfterCheckInterceptor>(deny));
+    abilityMs_->interceptorExecuter_->AddInterceptor("Mock", std::make_shared<MockAfterCheckInterceptor>(deny));
     AbilityRequest abilityRequest;
     abilityRequest.abilityInfo.bundleName = "com.test.bundle";
     abilityRequest.abilityInfo.name = "MainAbility";
     auto eventInfo = std::make_shared<EventInfo>();
     // deny without redirect -> reports START_ABILITY_ERROR fault event and returns the error
-    EXPECT_EQ(abilityMs_->ExecutePrelaunchAfterCheck(abilityRequest, 100, eventInfo), deny);
+    EXPECT_EQ(abilityMs_->ExecutePrelaunchInterceptors(abilityRequest, 100, eventInfo), deny);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_AfterCheck_Deny_001 end");
 }
 
 /*
  * Feature: AbilityManagerService
- * Function: ExecutePrelaunchAfterCheck
+ * Function: ExecutePrelaunchInterceptors
  * SubFunction: NA
  * FunctionPoints: afterCheck ERMS redirect marker stripped + non-silent drop coverage (round-3 C2/C3)
  */
@@ -2668,16 +2668,16 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_AfterCheck_R
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_AfterCheck_Redirect_001 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityMs_, nullptr);
-    abilityMs_->afterCheckExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
     const ErrCode deny = ERR_ECOLOGICAL_CONTROL_STATUS;
-    abilityMs_->afterCheckExecuter_->AddInterceptor("Mock",
+    abilityMs_->interceptorExecuter_->AddInterceptor("Mock",
         std::make_shared<MockAfterCheckInterceptor>(deny, true /*setRedirect*/));
     AbilityRequest abilityRequest;
     abilityRequest.want.SetElementName("com.test.bundle", "MainAbility");
     abilityRequest.abilityInfo.bundleName = "com.test.bundle";
     abilityRequest.abilityInfo.name = "MainAbility";
     auto eventInfo = std::make_shared<EventInfo>();
-    EXPECT_EQ(abilityMs_->ExecutePrelaunchAfterCheck(abilityRequest, 100, eventInfo), deny);
+    EXPECT_EQ(abilityMs_->ExecutePrelaunchInterceptors(abilityRequest, 100, eventInfo), deny);
     // redirect marker must be stripped so it never leaks into the dispatched request
     EXPECT_FALSE(abilityRequest.want.GetBoolParam("queryWantFromErms", false));
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_AfterCheck_Redirect_001 end");

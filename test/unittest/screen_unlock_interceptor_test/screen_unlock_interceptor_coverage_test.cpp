@@ -134,7 +134,7 @@ HWTEST_F(ScreenUnlockInterceptorCoverageTest, GetTargetAbilityInfo_001, TestSize
     Want want;
     want.GetElement().SetBundleName("com.test.bundle");
     want.GetElement().SetAbilityName("TestAbility");
-    AbilityInterceptorParam param(want, 0, 100, true, nullptr, []() { return false; });
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, 100).WithUI(true).CallerToken(nullptr).Build();
 
     AppExecFwk::AbilityInfo targetAbilityInfo;
     bool ret = screenUnlockInterceptor.GetTargetAbilityInfo(param, targetAbilityInfo);
@@ -159,7 +159,7 @@ HWTEST_F(ScreenUnlockInterceptorCoverageTest, GetTargetAbilityInfo_002, TestSize
     StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.bundleName = "com.test.bundle";
 
     Want want;
-    AbilityInterceptorParam param(want, 0, 100, true, nullptr, []() { return false; });
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, 100).WithUI(true).CallerToken(nullptr).Build();
 
     AppExecFwk::AbilityInfo targetAbilityInfo;
     bool ret = screenUnlockInterceptor.GetTargetAbilityInfo(param, targetAbilityInfo);
@@ -405,7 +405,7 @@ HWTEST_F(ScreenUnlockInterceptorCoverageTest, DoProcess_SystemAppAllowAppRunWhen
     StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.allowAppRunWhenDeviceFirstLocked = false;
 
     Want want;
-    AbilityInterceptorParam param(want, 0, 100, true, nullptr, []() { return false; });
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, 100).WithUI(true).CallerToken(nullptr).Build();
 
     auto screenLockManager = OHOS::ScreenLock::ScreenLockManager::GetInstance();
     EXPECT_NE(screenLockManager, nullptr);
@@ -484,7 +484,7 @@ HWTEST_F(ScreenUnlockInterceptorCoverageTest, DoProcess_CompleteFlow_SystemApp, 
     StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.bundleName = "com.test.system.app";
 
     Want want;
-    AbilityInterceptorParam param(want, 0, 100, true, nullptr, []() { return false; });
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, 100).WithUI(true).CallerToken(nullptr).Build();
 
     auto screenLockManager = OHOS::ScreenLock::ScreenLockManager::GetInstance();
     EXPECT_NE(screenLockManager, nullptr);
@@ -526,7 +526,7 @@ HWTEST_F(ScreenUnlockInterceptorCoverageTest, DoProcess_CompleteFlow_ThirdPartyA
     StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.bundleName = "com.test.third.party";
 
     Want want;
-    AbilityInterceptorParam param(want, 0, 100, true, nullptr, []() { return false; });
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, 100).WithUI(true).CallerToken(nullptr).Build();
 
     auto screenLockManager = OHOS::ScreenLock::ScreenLockManager::GetInstance();
     EXPECT_NE(screenLockManager, nullptr);
@@ -568,7 +568,7 @@ HWTEST_F(ScreenUnlockInterceptorCoverageTest,
     StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.bundleName = "com.test.system.app";
 
     Want want;
-    AbilityInterceptorParam param(want, 0, 100, true, nullptr, []() { return false; });
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, 100).WithUI(true).CallerToken(nullptr).Build();
 
     auto screenLockManager = OHOS::ScreenLock::ScreenLockManager::GetInstance();
     EXPECT_NE(screenLockManager, nullptr);
@@ -608,7 +608,7 @@ HWTEST_F(ScreenUnlockInterceptorCoverageTest,
     StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.bundleName = "com.test.third.party";
 
     Want want;
-    AbilityInterceptorParam param(want, 0, 100, true, nullptr, []() { return false; });
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, 100).WithUI(true).CallerToken(nullptr).Build();
 
     auto screenLockManager = OHOS::ScreenLock::ScreenLockManager::GetInstance();
     EXPECT_NE(screenLockManager, nullptr);
