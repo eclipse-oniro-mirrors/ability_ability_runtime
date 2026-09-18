@@ -84,6 +84,8 @@ public:
 
     int32_t GetPageAbilitySize();
 
+    int32_t GetAbilitySize();
+
     bool ExtensionAbilityRecordExists();
 
     // Get abilities_ for this process

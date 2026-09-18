@@ -1217,8 +1217,7 @@ void AppRunningRecord::AbilityTerminated(const sptr<IRemoteObject> &token)
     }
     bool isLastUIAbility = (abilityRecord != nullptr && abilityRecord->GetAbilityInfo() != nullptr &&
         abilityRecord->GetAbilityInfo()->type == AppExecFwk::AbilityType::PAGE);
-    auto moduleRecordList = GetAllModuleRecord();
-    if (moduleRecordList.empty() && (!IsKeepAliveApp()
+    if (!IsAlreadyHaveAbility() && (!IsKeepAliveApp()
         || AAFwk::UIExtensionWrapper::IsUIExtension(GetExtensionType())
         || !ExitResidentProcessManager::GetInstance().IsMemorySizeSufficient()) && !isExtensionDebug
         && !needCache) {
@@ -1447,12 +1446,18 @@ bool AppRunningRecord::IsLastAbilityRecord(const sptr<IRemoteObject> &token)
         return false;
     }
 
+    int32_t abilitySize = 0;
     auto moduleRecordList = GetAllModuleRecord();
-    if (moduleRecordList.size() == 1) {
-        return moduleRecord->IsLastAbilityRecord(token);
+    for (auto moduleRecord : moduleRecordList) {
+        if (moduleRecord) {
+            abilitySize += moduleRecord->GetAbilitySize();
+        }
+        if (abilitySize > 1) {
+            return false;
+        }
     }
 
-    return false;
+    return abilitySize == 1;
 }
 
 bool AppRunningRecord::ExtensionAbilityRecordExists()
