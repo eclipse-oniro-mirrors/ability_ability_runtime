@@ -16538,7 +16538,6 @@ int32_t AbilityManagerService::RestartApp(const AAFwk::Want &want, bool isAppRec
 {
     XCOLLIE_TIMER_LESS(__PRETTY_FUNCTION__);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "RestartApp, isAppRecovery: %{public}d, callerPid: %{public}d", isAppRecovery, callerPid);
-    auto callerPid = IPCSkeleton::GetCallingPid();
     AppExecFwk::RunningProcessInfo processInfo;
     DelayedSingleton<AppScheduler>::GetInstance()->GetRunningProcessInfoByPid(callerPid, processInfo);
     int32_t callerUid = IPCSkeleton::GetCallingUid();
