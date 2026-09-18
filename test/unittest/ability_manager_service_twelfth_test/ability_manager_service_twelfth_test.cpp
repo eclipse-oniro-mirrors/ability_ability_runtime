@@ -13,13 +13,18 @@
  * limitations under the License.
  */
 
+#include <chrono>
 #include <gtest/gtest.h>
+#include <thread>
 
 #include "mock_ipc_skeleton.h"
 #include "mock_permission_verification.h"
 #include "mock_my_flag.h"
 #include "mock_ability_connect_callback.h"
 #include "ability_manager_service.h"
+#include "ability_manager_event_subscriber.h"
+#include "common_event_support.h"
+#include "matching_skills.h"
 #include "modal_system_dialog/modal_system_dialog_ui_extension.h"
 #include "utils/modal_system_dialog_util.h"
 #include "user_controller/user_controller.h"
@@ -1405,6 +1410,106 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, SubscribeScreenUnlockedEvent_001, Tes
     EXPECT_EQ(abilityMs->isSubscribed_, true);
     abilityMs->UnSubscribeScreenUnlockedEvent();
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest SubscribeScreenUnlockedEvent_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: UnSubscribeScreenUnlockedEvent
+ * SubFunction: NA
+ * Function: AbilityManagerService UnSubscribeScreenUnlockedEvent
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, UnSubscribeScreenUnlockedEvent_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest UnSubscribeScreenUnlockedEvent_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    abilityMs->SubscribeScreenUnlockedEvent();
+    EXPECT_EQ(abilityMs->isSubscribed_, true);
+    EXPECT_NE(abilityMs->screenSubscriber_, nullptr);
+    abilityMs->UnSubscribeScreenUnlockedEvent();
+    EXPECT_EQ(abilityMs->isSubscribed_, false);
+    EXPECT_EQ(abilityMs->screenSubscriber_, nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest UnSubscribeScreenUnlockedEvent_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: RetrySubscribeUnlockedEvent
+ * SubFunction: NA
+ * Function: verify retry aborts when screenSubscriber_ is reset by UnSubscribe (scenario A)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, RetrySubscribeUnlockedEvent_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RetrySubscribeUnlockedEvent_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_UNLOCKED);
+    EventFwk::CommonEventSubscribeInfo subscribeInfo(matchingSkills);
+    auto staleSubscriber = std::make_shared<AbilityRuntime::AbilityScreenUnlockEventSubscriber>(
+        subscribeInfo, std::function<void(int32_t)>([](int32_t) {}));
+    ASSERT_NE(staleSubscriber, nullptr);
+    abilityMs->screenSubscriber_.reset();
+    abilityMs->isSubscribed_ = false;
+    abilityMs->RetrySubscribeUnlockedEvent(1, staleSubscriber, false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    EXPECT_EQ(abilityMs->isSubscribed_, false);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RetrySubscribeUnlockedEvent_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: RetrySubscribeUnlockedEvent
+ * SubFunction: NA
+ * Function: verify retry aborts when screenSubscriber_ is replaced by a new Subscribe call (scenario B)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, RetrySubscribeUnlockedEvent_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RetrySubscribeUnlockedEvent_002 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_UNLOCKED);
+    EventFwk::CommonEventSubscribeInfo subscribeInfo(matchingSkills);
+    auto staleSubscriber = std::make_shared<AbilityRuntime::AbilityScreenUnlockEventSubscriber>(
+        subscribeInfo, std::function<void(int32_t)>([](int32_t) {}));
+    ASSERT_NE(staleSubscriber, nullptr);
+    auto newSubscriber = std::make_shared<AbilityRuntime::AbilityScreenUnlockEventSubscriber>(
+        subscribeInfo, std::function<void(int32_t)>([](int32_t) {}));
+    ASSERT_NE(newSubscriber, nullptr);
+    abilityMs->screenSubscriber_ = newSubscriber;
+    abilityMs->isSubscribed_ = false;
+    abilityMs->RetrySubscribeUnlockedEvent(1, staleSubscriber, false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    EXPECT_EQ(abilityMs->isSubscribed_, false);
+    EXPECT_EQ(abilityMs->screenSubscriber_.get(), newSubscriber.get());
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RetrySubscribeUnlockedEvent_002 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: RetrySubscribeUnlockedEvent
+ * SubFunction: NA
+ * Function: verify retry succeeds when subscriber is still current (positive control)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, RetrySubscribeUnlockedEvent_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RetrySubscribeUnlockedEvent_003 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_UNLOCKED);
+    EventFwk::CommonEventSubscribeInfo subscribeInfo(matchingSkills);
+    auto subscriber = std::make_shared<AbilityRuntime::AbilityScreenUnlockEventSubscriber>(
+        subscribeInfo, std::function<void(int32_t)>([](int32_t) {}));
+    ASSERT_NE(subscriber, nullptr);
+    abilityMs->screenSubscriber_ = subscriber;
+    abilityMs->isSubscribed_ = false;
+    abilityMs->RetrySubscribeUnlockedEvent(1, subscriber, false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    EXPECT_EQ(abilityMs->isSubscribed_, true);
+    abilityMs->UnSubscribeScreenUnlockedEvent();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RetrySubscribeUnlockedEvent_003 end");
 }
 
 /*

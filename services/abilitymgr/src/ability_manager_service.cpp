@@ -10188,6 +10188,7 @@ void AbilityManagerService::UnSubscribeScreenUnlockedEvent()
     bool subResult = EventFwk::CommonEventManager::UnSubscribeCommonEvent(screenSubscriber_);
     if (subResult) {
         isSubscribed_ = false;
+        screenSubscriber_.reset(); // invalidate any in-flight retry task
     }
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Screen unlocked event subscriber unsubscribe result is %{public}d.", subResult);
 }
@@ -10198,11 +10199,21 @@ void AbilityManagerService::RetrySubscribeUnlockedEvent(int32_t retryCount,
     TAG_LOGD(AAFwkTag::ABILITYMGR, "RetryCount: %{public}d.", retryCount);
     CHECK_POINTER_LOG(subscriber, "subscriber nullptr");
     auto retrySubscribeScreenUnlockedEventTask = [aams = weak_from_this(), unlockedEventSubscriber = subscriber,
-                                                     retryCount, isUserUnlock = isUserUnlockSubscriber]() {
+                                                 retryCount, isUserUnlock = isUserUnlockSubscriber]() {
         CHECK_POINTER_LOG(unlockedEventSubscriber, "unlockedEventSubscriber nullptr");
         auto obj = aams.lock();
         if (obj == nullptr) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "retry subscribe screen unlocked event, obj null");
+            return;
+        }
+        std::lock_guard<std::mutex> lock(obj->subscribedMutex_);
+        // Abort if the member subscriber has been replaced (new Subscribe call) or reset
+        // (UnSubscribe call) since this retry was scheduled.
+        const EventFwk::CommonEventSubscriber *current = isUserUnlock
+            ? static_cast<const EventFwk::CommonEventSubscriber *>(obj->userUnlockSubscriber_.get())
+            : static_cast<const EventFwk::CommonEventSubscriber *>(obj->screenSubscriber_.get());
+        if (current != unlockedEventSubscriber.get()) {
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "SU life, retry aborted, subscriber stale:%{public}d", isUserUnlock);
             return;
         }
         bool subResult = EventFwk::CommonEventManager::SubscribeCommonEvent(unlockedEventSubscriber);

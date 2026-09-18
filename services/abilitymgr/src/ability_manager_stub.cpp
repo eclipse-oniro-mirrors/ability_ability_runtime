@@ -5086,7 +5086,7 @@ int32_t AbilityManagerStub::OpenLinkInner(MessageParcel &data, MessageParcel &re
         TAG_LOGE(AAFwkTag::ABILITYMGR, "openLink fail");
     }
     reply.WriteInt32(result);
-    return result;
+    return NO_ERROR;
 }
 
 int32_t AbilityManagerStub::TerminateMissionInner(MessageParcel &data, MessageParcel &reply)
@@ -5097,7 +5097,7 @@ int32_t AbilityManagerStub::TerminateMissionInner(MessageParcel &data, MessagePa
         TAG_LOGE(AAFwkTag::ABILITYMGR, "openLink fail");
     }
     reply.WriteInt32(result);
-    return result;
+    return NO_ERROR;
 }
 
 int32_t AbilityManagerStub::BlockAllAppStartInner(MessageParcel &data, MessageParcel &reply)
