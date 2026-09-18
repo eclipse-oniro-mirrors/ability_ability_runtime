@@ -11467,7 +11467,7 @@ void AbilityManagerService::ScheduleRecoverAbility(const sptr<IRemoteObject>& to
 
         ReportAppRecoverResult(record->GetUid(), appInfo, abilityInfo.name, "SUCCESS");
     }
-    RestartApp(curWant, true);
+    RestartApp(curWant, true, record->GetPid());
 }
 
 int32_t AbilityManagerService::GetRemoteMissionSnapshotInfo(const std::string& deviceId, int32_t missionId,
@@ -16531,8 +16531,13 @@ void AbilityManagerService::RecordAppRestartExitReason(bool isAppRecovery, int32
 
 int32_t AbilityManagerService::RestartApp(const AAFwk::Want &want, bool isAppRecovery)
 {
+    return RestartApp(want, isAppRecovery, IPCSkeleton::GetCallingPid());
+}
+
+int32_t AbilityManagerService::RestartApp(const AAFwk::Want &want, bool isAppRecovery, pid_t callerPid)
+{
     XCOLLIE_TIMER_LESS(__PRETTY_FUNCTION__);
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "RestartApp, isAppRecovery: %{public}d", isAppRecovery);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "RestartApp, isAppRecovery: %{public}d, callerPid: %{public}d", isAppRecovery, callerPid);
     auto callerPid = IPCSkeleton::GetCallingPid();
     AppExecFwk::RunningProcessInfo processInfo;
     DelayedSingleton<AppScheduler>::GetInstance()->GetRunningProcessInfoByPid(callerPid, processInfo);

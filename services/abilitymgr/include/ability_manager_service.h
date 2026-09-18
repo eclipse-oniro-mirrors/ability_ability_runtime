@@ -2324,6 +2324,15 @@ public:
     int32_t RestartApp(const AAFwk::Want &want, bool isAppRecovery = false) override;
 
     /**
+     * @brief Restart app self with an explicit caller pid.
+     * @param callerPid Pid of the process requesting the restart. Required for oneway
+     *        callers (e.g. ScheduleRecoverAbility) because the binder driver delivers no
+     *        sender pid for async transactions, so IPCSkeleton::GetCallingPid() returns 0.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t RestartApp(const AAFwk::Want &want, bool isAppRecovery, pid_t callerPid);
+    
+    /**
      * @brief Get host info of root caller.
      *
      * @param token The ability token.
