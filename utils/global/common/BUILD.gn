@@ -29,6 +29,8 @@ ohos_shared_library("runtime_utils") {
   }
   branch_protector_ret = "pac_ret"
 
+  use_exceptions = true
+
   include_dirs = [
     #"${ability_runtime_path}/utils/global/common/include",
     "${ability_runtime_services_path}/common/include",
@@ -37,6 +39,7 @@ ohos_shared_library("runtime_utils") {
   sources = [
     "src/ui_extension_wrapper.cpp",
     "src/path_utils.cpp",
+    "src/json_safe_util.cpp",
   ]
 
   public_configs = [

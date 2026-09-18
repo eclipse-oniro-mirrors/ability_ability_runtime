@@ -34,7 +34,6 @@ ohos_shared_library("intent_client") {
     "${ability_runtime_native_path}/ability/native/insight_intent_host_client.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_execute_callback_stub.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_execute_result.cpp",
-    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/intent_json_safe_get.cpp",
   ]
 
   public_configs = [ ":intent_client_config" ]
@@ -54,6 +53,8 @@ ohos_shared_library("intent_client") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
+
+  deps = [ "${ability_runtime_path}/utils/global/common:runtime_utils" ]
 
   external_deps = [
     "ability_base:base",

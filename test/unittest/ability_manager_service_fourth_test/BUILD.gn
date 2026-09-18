@@ -90,6 +90,7 @@ ohos_unittest("ability_manager_service_fourth_test") {
     "${ability_runtime_native_path}/ability/native:auto_startup_callback",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
+    "${ability_runtime_path}/utils/global/common:runtime_utils",
     "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
     "${ability_runtime_services_path}/abilitymgr:modular_object",
     "${ability_runtime_services_path}/common:app_util",

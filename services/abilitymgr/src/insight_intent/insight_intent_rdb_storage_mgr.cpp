@@ -18,7 +18,7 @@
 #include <sstream>
 
 #include "hilog_tag_wrapper.h"
-#include "intent_json_safe_get.h"
+#include "json_safe_util.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -230,7 +230,7 @@ int32_t InsightRdbStorageMgr::SaveStorageInsightIntentData(const std::string &bu
             return ERR_INVALID_VALUE;
         }
         std::string value;
-        if (!SafeDumpTo(jsonObject, value)) {
+        if (!SafeDump(jsonObject, value)) {
             TAG_LOGE(AAFwkTag::INTENT, "dump error, key: %{private}s", key.c_str());
             return ERR_INVALID_VALUE;
         }
@@ -250,7 +250,7 @@ int32_t InsightRdbStorageMgr::SaveStorageInsightIntentData(const std::string &bu
             return ERR_INVALID_VALUE;
         }
         std::string value;
-        if (!SafeDumpTo(jsonObject, value)) {
+        if (!SafeDump(jsonObject, value)) {
             TAG_LOGE(AAFwkTag::INTENT, "dump error, key: %{private}s", key.c_str());
             return ERR_INVALID_VALUE;
         }

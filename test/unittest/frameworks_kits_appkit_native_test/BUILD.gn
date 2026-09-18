@@ -1316,6 +1316,7 @@ ohos_unittest("startup_manager_mock_test") {
     "${ability_runtime_napi_path}/inner/napi_common:napi_common",
     "${ability_runtime_native_path}/appkit:appkit_native",
     "${ability_runtime_services_path}/common:app_util",
+    "${ability_runtime_path}/utils/global/common:runtime_utils",
   ]
 
   external_deps = [
