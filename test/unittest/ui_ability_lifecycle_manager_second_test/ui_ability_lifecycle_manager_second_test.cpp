@@ -1183,51 +1183,57 @@ HWTEST_F(UIAbilityLifecycleManagerSecondTest, BackToCallerAbilityWithResultLocke
 }
 
 /**
- * @tc.name: UIAbilityLifecycleManager_SetSandboxCloneParamsForSession_0100
- * @tc.desc: SetSandboxCloneParamsForSession with null sessionInfo returns early without crash.
+ * @tc.name: UIAbilityLifecycleManager_CacheAbilitySessionInfo_0100
+ * @tc.desc: CacheAbilitySessionInfo with null sessionInfo returns early without crash.
  * @tc.type: FUNC
  */
-HWTEST_F(UIAbilityLifecycleManagerSecondTest, SetSandboxCloneParamsForSession_001, TestSize.Level1)
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, CacheAbilitySessionInfo_001, TestSize.Level1)
 {
     auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     sptr<SessionInfo> sessionInfo = nullptr;
     AbilityRequest abilityRequest;
     abilityRequest.isWebSandBoxClone = true;
 
-    mgr->SetSandboxCloneParamsForSession(sessionInfo, abilityRequest);
+    mgr->CacheAbilitySessionInfo(sessionInfo, abilityRequest);
 
     EXPECT_EQ(sessionInfo, nullptr);
 }
 
 /**
- * @tc.name: UIAbilityLifecycleManager_SetSandboxCloneParamsForSession_0200
- * @tc.desc: SetSandboxCloneParamsForSession with isWebSandBoxClone false sets no params.
+ * @tc.name: UIAbilityLifecycleManager_CacheAbilitySessionInfo_0200
+ * @tc.desc: CacheAbilitySessionInfo with isWebSandBoxClone false caches specifyTokenId only.
  * @tc.type: FUNC
  */
-HWTEST_F(UIAbilityLifecycleManagerSecondTest, SetSandboxCloneParamsForSession_002, TestSize.Level1)
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, CacheAbilitySessionInfo_002, TestSize.Level1)
 {
     auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     sptr<SessionInfo> sessionInfo(new SessionInfo());
     ASSERT_NE(sessionInfo, nullptr);
     AbilityRequest abilityRequest;
     abilityRequest.isWebSandBoxClone = false;
+    abilityRequest.specifyTokenId = 13579;
     abilityRequest.abilityInfo.applicationInfo.appIndex = 2000;
 
-    mgr->SetSandboxCloneParamsForSession(sessionInfo, abilityRequest);
+    mgr->CacheAbilitySessionInfo(sessionInfo, abilityRequest);
 
+    // Clone-specific params must not be set for non-clone launches.
     EXPECT_EQ(sessionInfo->want.GetIntParam(
         AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX, -1), -1);
+    // specifyTokenId is always cached for trusted SCB callback retrieval.
     AbilitySessionInfo info;
-    EXPECT_FALSE(mgr->GetAbilitySessionInfo(sessionInfo->requestId, info));
+    EXPECT_TRUE(mgr->GetAbilitySessionInfo(sessionInfo->requestId, info));
+    EXPECT_FALSE(info.isWebSandBoxClone);
+    EXPECT_EQ(info.specifyTokenId, 13579u);
+    mgr->RemoveAbilitySessionInfo(sessionInfo->requestId);
 }
 
 /**
- * @tc.name: UIAbilityLifecycleManager_SetSandboxCloneParamsForSession_0300
- * @tc.desc: SetSandboxCloneParamsForSession with isWebSandBoxClone true stores caller info in the map,
+ * @tc.name: UIAbilityLifecycleManager_CacheAbilitySessionInfo_0300
+ * @tc.desc: CacheAbilitySessionInfo with isWebSandBoxClone true stores caller info in the map,
  *           not in sessionInfo->want.
  * @tc.type: FUNC
  */
-HWTEST_F(UIAbilityLifecycleManagerSecondTest, SetSandboxCloneParamsForSession_003, TestSize.Level1)
+HWTEST_F(UIAbilityLifecycleManagerSecondTest, CacheAbilitySessionInfo_003, TestSize.Level1)
 {
     auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     sptr<SessionInfo> sessionInfo(new SessionInfo());
@@ -1238,11 +1244,13 @@ HWTEST_F(UIAbilityLifecycleManagerSecondTest, SetSandboxCloneParamsForSession_00
     abilityRequest.abilityInfo.applicationInfo.appIndex = 2000;
     const std::string callerBundleName = "com.test.cli.caller";
     const uint32_t callerTokenId = 537919265;
+    const uint32_t specifyTokenId = 24680;
+    abilityRequest.specifyTokenId = specifyTokenId;
     abilityRequest.sandboxCloneParams = std::make_shared<SandboxCloneParams>();
     abilityRequest.sandboxCloneParams->callerBundleName = callerBundleName;
     abilityRequest.sandboxCloneParams->callerTokenId = callerTokenId;
 
-    mgr->SetSandboxCloneParamsForSession(sessionInfo, abilityRequest);
+    mgr->CacheAbilitySessionInfo(sessionInfo, abilityRequest);
 
     // SANDBOX_CLONE_INDEX must NOT be stored in want.
     EXPECT_EQ(sessionInfo->want.GetIntParam(
@@ -1254,6 +1262,7 @@ HWTEST_F(UIAbilityLifecycleManagerSecondTest, SetSandboxCloneParamsForSession_00
     EXPECT_EQ(info.callerTokenId, callerTokenId);
     EXPECT_TRUE(info.isWebSandBoxClone);
     EXPECT_EQ(info.sandBoxCloneIndex, abilityRequest.abilityInfo.applicationInfo.appIndex);
+    EXPECT_EQ(info.specifyTokenId, specifyTokenId);
     mgr->RemoveAbilitySessionInfo(sessionInfo->requestId);
 }
 
