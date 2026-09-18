@@ -1102,6 +1102,7 @@ int32_t AmsMgrProxy::GetBundleNameByPid(const int pid, std::string &bundleName, 
             data, reply, option);
     if (ret != NO_ERROR) {
         TAG_LOGW(AAFwkTag::APPMGR, "SendRequest err: %{public}d", ret);
+        return ret;
     }
     bundleName = reply.ReadString();
     uid = reply.ReadInt32();
