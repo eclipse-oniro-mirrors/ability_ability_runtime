@@ -3132,7 +3132,7 @@ private:
     std::string GetCreatorBundleNameForSandboxClone(const std::string &inputCreatorBundleName,
         const std::string &callerBundleName, uint32_t callerTokenId, int32_t &errCode);
 
-    int32_t ProcessSandboxCloneLaunch(Want &want, const std::shared_ptr<SandboxCloneParams> &sandboxCloneParams,
+    int32_t ProcessSandboxCloneLaunch(const Want &want, const std::shared_ptr<SandboxCloneParams> &sandboxCloneParams,
         int32_t userId, AppExecFwk::AbilityInfo &abilityInfo);
 
     sptr<IWantSender> GetWantSenderByUserId(const WantSenderInfo &wantSenderInfo,

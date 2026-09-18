@@ -807,6 +807,33 @@ void UIAbilityLifecycleManager::CacheAbilitySessionInfo(sptr<SessionInfo> &sessi
         sessionInfo->requestId);
 }
 
+void UIAbilityLifecycleManager::SetSandboxCloneParamsForSession(sptr<SessionInfo> &sessionInfo,
+    const UIAbilityRecordPtr &abilityRecord)
+{
+    if (sessionInfo == nullptr || abilityRecord == nullptr) {
+        return;
+    }
+    int32_t appIndex = abilityRecord->GetAppIndex();
+    if (!AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(appIndex)) {
+        return;
+    }
+    AbilitySessionInfo info;
+    info.isWebSandBoxClone = true;
+    info.sandBoxCloneIndex = appIndex;
+    auto sandboxCloneParams = abilityRecord->GetSandboxCloneParams();
+    if (sandboxCloneParams != nullptr) {
+        info.callerBundleName = sandboxCloneParams->callerBundleName;
+        info.callerTokenId = sandboxCloneParams->callerTokenId;
+        info.creatorBundleName = sandboxCloneParams->creatorBundleName;
+    }
+    StoreAbilitySessionInfo(sessionInfo->requestId, info);
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "SandboxClone params stored for warm path: bundle = %{public}s, "
+        "tokenId = %{public}u, isWebSandBoxClone = %{public}d, sandBoxCloneIndex = %{public}d, "
+        "creatorBundleName = %{public}s, requestId = %{public}d", info.callerBundleName.c_str(),
+        info.callerTokenId, info.isWebSandBoxClone, info.sandBoxCloneIndex,
+        info.creatorBundleName.c_str(), sessionInfo->requestId);
+}
+
 bool UIAbilityLifecycleManager::HandleHookModule(AbilityRequest &abilityRequest, int32_t &ret)
 {
     auto abilityRecord = FindRecordFromSessionMap(abilityRequest);
@@ -3038,6 +3065,7 @@ void UIAbilityLifecycleManager::OnStartSpecifiedAbilityTimeoutResponse(int32_t r
 void UIAbilityLifecycleManager::OnStartSpecifiedFailed(int32_t requestId)
 {
     std::lock_guard lock(sessionLock_);
+    RemoveAbilitySessionInfo(requestId);
     auto iter = hookSpecifiedMap_.find(requestId);
     if (iter != hookSpecifiedMap_.end() && iter->second != nullptr) {
         UIAbilityRecordPtr abilityRecord = iter->second;
@@ -3120,6 +3148,7 @@ void UIAbilityLifecycleManager::OnStartSpecifiedProcessTimeoutResponse(int32_t r
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "OnStartSpecifiedProcessTimeoutResponse %{public}d", requestId);
     std::lock_guard guard(sessionLock_);
+    RemoveAbilitySessionInfo(requestId);
     auto request = GetSpecifiedRequest(requestId);
     if (request != nullptr) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "removing instance key");
@@ -4000,7 +4029,12 @@ int UIAbilityLifecycleManager::MoveMissionToFront(int32_t sessionId, std::shared
             AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_UNDEFINED));
     sessionInfo->canStartAbilityFromBackground = true;
     sessionInfo->scenarios = ServerConstant::SCENARIO_MOVE_MISSION_TO_FRONT;
-    return static_cast<int>(tmpSceneSession->PendingSessionActivation(sessionInfo));
+    SetSandboxCloneParamsForSession(sessionInfo, abilityRecord);
+    auto ret = static_cast<int>(tmpSceneSession->PendingSessionActivation(sessionInfo));
+    if (ret != ERR_OK) {
+        RemoveAbilitySessionInfo(sessionInfo->requestId);
+    }
+    return ret;
 }
 
 std::shared_ptr<StatusBarDelegateManager> UIAbilityLifecycleManager::GetStatusBarDelegateManager()
@@ -4657,6 +4691,17 @@ void UIAbilityLifecycleManager::StartSpecifiedRequest(SpecifiedRequest &specifie
                 return;
             }
         } else {
+            if (request.isWebSandBoxClone) {
+                AbilitySessionInfo info;
+                info.isWebSandBoxClone = request.isWebSandBoxClone;
+                info.sandBoxCloneIndex = request.abilityInfo.applicationInfo.appIndex;
+                if (request.sandboxCloneParams != nullptr) {
+                    info.callerBundleName = request.sandboxCloneParams->callerBundleName;
+                    info.callerTokenId = request.sandboxCloneParams->callerTokenId;
+                    info.creatorBundleName = request.sandboxCloneParams->creatorBundleName;
+                }
+                StoreAbilitySessionInfo(specifiedRequest.requestId, info);
+            }
             AbilityRuntime::StartSpecifiedParam specifiedParam;
             BuildStartSpecifiedParam(request, specifiedRequest.requestId, specifiedParam);
             DelayedSingleton<AppScheduler>::GetInstance()->StartSpecifiedAbility(request.want,
