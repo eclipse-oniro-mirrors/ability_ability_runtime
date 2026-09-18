@@ -15,6 +15,7 @@ import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 ohos_shared_library("agent_ui_extension_ani") {
+  version_script = "libagent_ui_extension_ani.map"
   branch_protector_ret = "pac_ret"
   sanitize = {
     cfi = true

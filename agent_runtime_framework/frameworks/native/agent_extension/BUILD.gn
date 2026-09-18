@@ -73,6 +73,7 @@ config("agent_extension_public_config") {
 }
 
 ohos_shared_library("agent_extension") {
+  version_script = "libagent_extension.map"
   sanitize = {
     integer_overflow = true
     ubsan = true

@@ -124,6 +124,7 @@ config("agent_manager_config") {
 }
 
 ohos_shared_library("agent_manager") {
+  version_script = "libagent_manager.map"
   branch_protector_ret = "pac_ret"
 
   sanitize = {

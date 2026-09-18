@@ -37,6 +37,7 @@ config("mission_manager_config") {
 }
 
 ohos_shared_library("mission_manager") {
+  version_script = "libmission_manager.map"
   branch_protector_ret = "pac_ret"
 
   sources = [

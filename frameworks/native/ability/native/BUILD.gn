@@ -494,6 +494,7 @@ ohos_shared_library("abilitykit_native") {
 }
 
 ohos_shared_library("ability_observer_ipc") {
+  version_script = "libability_observer_ipc.map"
   branch_protector_ret = "pac_ret"
   sanitize = {
     cfi = true
@@ -1013,6 +1014,7 @@ config("uiability_config") {
 }
 
 ohos_shared_library("ui_ability_ani") {
+  version_script = "libui_ability_ani.map"
   branch_protector_ret = "pac_ret"
   branch_protector_frt = "bti"
 
