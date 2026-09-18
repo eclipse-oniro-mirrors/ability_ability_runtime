@@ -80,6 +80,7 @@ struct AbilitySessionInfo {
     bool isWebSandBoxClone = false;
     int32_t sandBoxCloneIndex = 0;
     std::string creatorBundleName;
+    uint32_t specifyTokenId = 0;
 };
 
 class UIAbilityLifecycleManager : public std::enable_shared_from_this<UIAbilityLifecycleManager> {
@@ -906,12 +907,11 @@ private:
         const AbilityRequest &abilityRequest, std::string &errMsg);
 
     /**
-     * @brief Store sandbox clone params (isWebSandBoxClone, sandboxCloneIndex, caller info) into
-     *        sessionInfo->want for the SCB callback.
+     * @brief Cache AbilitySessionInfo into sessionInfo->want for the SCB callback.
      * @param sessionInfo The session info to be updated
-     * @param abilityRequest The ability request carrying the sandbox clone flag and caller info
+     * @param abilityRequest The ability request
      */
-    void SetSandboxCloneParamsForSession(sptr<SessionInfo> &sessionInfo, const AbilityRequest &abilityRequest);
+    void CacheAbilitySessionInfo(sptr<SessionInfo> &sessionInfo, const AbilityRequest &abilityRequest);
     void CreateSessionConfigurations(std::vector<sptr<SessionInfo>> &sessionInfoList, int primaryWindowId,
         std::vector<Rosen::PendingSessionActivationConfig> &configList, sptr<SessionInfo> sessionInfo);
 

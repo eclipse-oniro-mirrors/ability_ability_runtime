@@ -751,8 +751,8 @@ void UIAbilityLifecycleManager::StoreAbilitySessionInfo(int32_t requestId, const
     std::lock_guard<ffrt::mutex> guard(abilitySessionInfoMapLock_);
     abilitySessionInfoMap_[requestId] = info;
     TAG_LOGD(AAFwkTag::ABILITYMGR, "StoreAbilitySessionInfo requestId=%{public}d, bundle=%{public}s, "
-        "tokenId=%{public}u, isWebSandBoxClone=%{public}d", requestId, info.callerBundleName.c_str(),
-        info.callerTokenId, info.isWebSandBoxClone);
+        "tokenId=%{public}u, isWebSandBoxClone=%{public}d, specifyTokenId=%{public}u", requestId,
+        info.callerBundleName.c_str(), info.callerTokenId, info.isWebSandBoxClone, info.specifyTokenId);
 }
 
 bool UIAbilityLifecycleManager::GetAbilitySessionInfo(int32_t requestId, AbilitySessionInfo &info) const
@@ -765,8 +765,8 @@ bool UIAbilityLifecycleManager::GetAbilitySessionInfo(int32_t requestId, Ability
     }
     info = it->second;
     TAG_LOGD(AAFwkTag::ABILITYMGR, "GetAbilitySessionInfo requestId=%{public}d, bundle=%{public}s, tokenId=%{public}u, "
-        "isWebSandBoxClone=%{public}d", requestId, info.callerBundleName.c_str(), info.callerTokenId,
-        info.isWebSandBoxClone);
+        "isWebSandBoxClone=%{public}d, specifyTokenId=%{public}u", requestId, info.callerBundleName.c_str(),
+        info.callerTokenId, info.isWebSandBoxClone, info.specifyTokenId);
     return true;
 }
 
@@ -780,28 +780,31 @@ void UIAbilityLifecycleManager::RemoveAbilitySessionInfo(int32_t requestId)
     }
 }
 
-void UIAbilityLifecycleManager::SetSandboxCloneParamsForSession(sptr<SessionInfo> &sessionInfo,
+void UIAbilityLifecycleManager::CacheAbilitySessionInfo(sptr<SessionInfo> &sessionInfo,
     const AbilityRequest &abilityRequest)
 {
-    if (sessionInfo == nullptr || !abilityRequest.isWebSandBoxClone) {
+    if (sessionInfo == nullptr) {
         return;
     }
-    sessionInfo->want.SetParam(AbilityRuntime::ServerConstant::DLP_INDEX,
-        abilityRequest.abilityInfo.applicationInfo.appIndex);
-    // Store AbilitySessionInfo in the internal map
     AbilitySessionInfo info;
-    info.isWebSandBoxClone = abilityRequest.isWebSandBoxClone;
-    info.sandBoxCloneIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
-    if (abilityRequest.sandboxCloneParams != nullptr) {
-        info.callerBundleName = abilityRequest.sandboxCloneParams->callerBundleName;
-        info.callerTokenId = abilityRequest.sandboxCloneParams->callerTokenId;
-        info.creatorBundleName = abilityRequest.sandboxCloneParams->creatorBundleName;
+    info.specifyTokenId = abilityRequest.specifyTokenId;
+    if (abilityRequest.isWebSandBoxClone) {
+        sessionInfo->want.SetParam(AbilityRuntime::ServerConstant::DLP_INDEX,
+            abilityRequest.abilityInfo.applicationInfo.appIndex);
+        info.isWebSandBoxClone = abilityRequest.isWebSandBoxClone;
+        info.sandBoxCloneIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
+        if (abilityRequest.sandboxCloneParams != nullptr) {
+            info.callerBundleName = abilityRequest.sandboxCloneParams->callerBundleName;
+            info.callerTokenId = abilityRequest.sandboxCloneParams->callerTokenId;
+            info.creatorBundleName = abilityRequest.sandboxCloneParams->creatorBundleName;
+        }
     }
     StoreAbilitySessionInfo(sessionInfo->requestId, info);
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "SandboxClone params stored in map: bundle = %{public}s, tokenId = %{public}u, "
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "AbilitySessionInfo cached: bundle = %{public}s, tokenId = %{public}u, "
         "isWebSandBoxClone = %{public}d, sandBoxCloneIndex = %{public}d, creatorBundleName = %{public}s, "
-        "requestId = %{public}d", info.callerBundleName.c_str(), info.callerTokenId, info.isWebSandBoxClone,
-        info.sandBoxCloneIndex, info.creatorBundleName.c_str(), sessionInfo->requestId);
+        "specifyTokenId = %{public}u, requestId = %{public}d", info.callerBundleName.c_str(), info.callerTokenId,
+        info.isWebSandBoxClone, info.sandBoxCloneIndex, info.creatorBundleName.c_str(), info.specifyTokenId,
+        sessionInfo->requestId);
 }
 
 bool UIAbilityLifecycleManager::HandleHookModule(AbilityRequest &abilityRequest, int32_t &ret)
@@ -892,8 +895,8 @@ int UIAbilityLifecycleManager::NotifySCBToStartUIAbility(AbilityRequest &ability
         sessionInfo->persistentId = persistentId;
         sessionInfo->reuse = reuse;
     }
-    // Store isWebSandBoxClone and appIndex in want for SCB callback.
-    SetSandboxCloneParamsForSession(sessionInfo, abilityRequest);
+    // Cache AbilitySessionInfo before SCB notification.
+    CacheAbilitySessionInfo(sessionInfo, abilityRequest);
     sessionInfo->userId = userId_;
     sessionInfo->isAtomicService = (abilityInfo.applicationInfo.bundleType == AppExecFwk::BundleType::ATOMIC_SERVICE);
     TAG_LOGI(AAFwkTag::ABILITYMGR,
@@ -4641,8 +4644,8 @@ void UIAbilityLifecycleManager::StartSpecifiedRequest(SpecifiedRequest &specifie
             }
             sessionInfo->requestCode = request.requestCode;
             sessionInfo->userId = userId_;
-            // Store isWebSandBoxClone and appIndex in want for SCB callback.
-            SetSandboxCloneParamsForSession(sessionInfo, request);
+            // Cache AbilitySessionInfo before SCB notification.
+            CacheAbilitySessionInfo(sessionInfo, request);
             TAG_LOGI(AAFwkTag::ABILITYMGR, "StartSpecifiedRequest cold");
             std::string errMsg;
             auto result = NotifySCBPendingActivation(sessionInfo, request, errMsg);

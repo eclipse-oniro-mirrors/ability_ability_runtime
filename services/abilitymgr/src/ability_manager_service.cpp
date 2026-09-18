@@ -3328,6 +3328,9 @@ int AbilityManagerService::StartUIAbilityBySCB(sptr<SessionInfo> sessionInfo, Ab
         TAG_LOGE(AAFwkTag::ABILITYMGR, "sessionInfo null");
         return ERR_INVALID_VALUE;
     }
+    if (params.isRestart) {
+        sessionInfo->want.RemoveParam("ohos.aafwk.param.callerToken");
+    }
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
     if (sessionInfo->want.GetBoolParam(ServerConstant::IS_CALL_BY_SCB, true)) {
         auto currentUserId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
@@ -3508,9 +3511,8 @@ int AbilityManagerService::StartUIAbilityBySCBDefault(sptr<SessionInfo> sessionI
     }
 
     abilityRequest.collaboratorType = sessionInfo->collaboratorType;
-    uint32_t specifyTokenId = static_cast<uint32_t>(sessionInfo->want.GetIntParam(SPECIFY_TOKEN_ID, 0));
+    abilityRequest.specifyTokenId = abilitySessionInfo.specifyTokenId;
     (sessionInfo->want).RemoveParam(SPECIFY_TOKEN_ID);
-    abilityRequest.specifyTokenId = specifyTokenId;
 
     const auto &abilityInfo = abilityRequest.abilityInfo;
     if (abilityInfo.type != AppExecFwk::AbilityType::PAGE) {
