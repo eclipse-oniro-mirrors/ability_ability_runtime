@@ -28,6 +28,33 @@
 
 namespace OHOS {
 namespace AbilityRuntime {
+static void SetInteractionUIJsProperties(napi_env env, napi_value uiObj,
+    const std::shared_ptr<AppExecFwk::InteractionUI> &ui)
+{
+    if (ui->interactionUIType == AppExecFwk::INTERACTION_UI_TYPE_MODAL_UIEXTENSION) {
+        auto modalUI = std::static_pointer_cast<AppExecFwk::InteractionModalUIExtension>(ui);
+        napi_set_named_property(env, uiObj, "bundleName", CreateJsValue(env, modalUI->bundleName));
+        napi_set_named_property(env, uiObj, "abilityName", CreateJsValue(env, modalUI->abilityName));
+        napi_set_named_property(env, uiObj, "moduleName", CreateJsValue(env, modalUI->moduleName));
+        napi_set_named_property(env, uiObj, "uiExtensionType", CreateJsValue(env, modalUI->uiExtensionType));
+        napi_set_named_property(env, uiObj, "uri", CreateJsValue(env, modalUI->uri));
+        if (modalUI->parameters != nullptr) {
+            napi_set_named_property(env, uiObj, "parameters",
+                OHOS::AppExecFwk::CreateJsWantParams(env, *modalUI->parameters));
+        }
+    } else if (ui->interactionUIType == AppExecFwk::INTERACTION_UI_TYPE_TEXT) {
+        auto textUI = std::static_pointer_cast<AppExecFwk::InteractionText>(ui);
+        if (textUI->parameters != nullptr) {
+            napi_set_named_property(env, uiObj, "parameters",
+                OHOS::AppExecFwk::CreateJsWantParams(env, *textUI->parameters));
+        }
+        if (!textUI->buttons.empty()) {
+            napi_set_named_property(env, uiObj, "buttons",
+                CreateNativeArray(env, textUI->buttons));
+        }
+    }
+}
+
 napi_value CreateJsExecuteResult(napi_env env, const AppExecFwk::InsightIntentExecuteResult &result)
 {
     HandleEscape handleEscape(env);
@@ -58,20 +85,7 @@ napi_value CreateJsExecuteResult(napi_env env, const AppExecFwk::InsightIntentEx
         napi_create_object(env, &uiObj);
         napi_set_named_property(env, uiObj, "interactionUIType",
             CreateJsValue(env, result.interactionInfo->interactionUI->interactionUIType));
-        if (result.interactionInfo->interactionUI->interactionUIType ==
-            AppExecFwk::INTERACTION_UI_TYPE_MODAL_UIEXTENSION) {
-            auto modalUI = std::static_pointer_cast<AppExecFwk::InteractionModalUIExtension>(
-                result.interactionInfo->interactionUI);
-            napi_set_named_property(env, uiObj, "bundleName", CreateJsValue(env, modalUI->bundleName));
-            napi_set_named_property(env, uiObj, "abilityName", CreateJsValue(env, modalUI->abilityName));
-            napi_set_named_property(env, uiObj, "moduleName", CreateJsValue(env, modalUI->moduleName));
-            napi_set_named_property(env, uiObj, "uiExtensionType", CreateJsValue(env, modalUI->uiExtensionType));
-            napi_set_named_property(env, uiObj, "uri", CreateJsValue(env, modalUI->uri));
-            if (modalUI->parameters != nullptr) {
-                napi_set_named_property(env, uiObj, "parameters",
-                    OHOS::AppExecFwk::CreateJsWantParams(env, *modalUI->parameters));
-            }
-        }
+        SetInteractionUIJsProperties(env, uiObj, result.interactionInfo->interactionUI);
         napi_set_named_property(env, infoObj, "interactionUI", uiObj);
         napi_set_named_property(env, objValue, "interactionInfo", infoObj);
     }
