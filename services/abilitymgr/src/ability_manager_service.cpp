@@ -8094,10 +8094,11 @@ void AbilityManagerService::DumpSysAbilityInner(
     if (argList.size() >= MIN_DUMP_ARGUMENT_NUM) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "argList=%{public}s", argList[1].c_str());
         std::vector<std::string> params(argList.begin() + MIN_DUMP_ARGUMENT_NUM, argList.end());
-        try {
-            auto abilityId = static_cast<int32_t>(std::stoi(argList[1]));
+        int32_t abilityId = 0;
+        auto [ptr, ec] = std::from_chars(argList[1].data(), argList[1].data() + argList[1].size(), abilityId);
+        if (ec == std::errc() && ptr == argList[1].data() + argList[1].size()) {
             targetManager->DumpMissionListByRecordId(info, isClient, abilityId, params);
-        } catch (...) {
+        } else {
             TAG_LOGW(AAFwkTag::ABILITYMGR, "stoi(%{public}s) failed", argList[1].c_str());
             info.emplace_back("error: invalid argument, please see 'hidumper -s AbilityManagerService -a '-h''.");
         }
@@ -8121,12 +8122,13 @@ void AbilityManagerService::DumpSysAbilityInnerBySCB(
     if (argList.size() >= MIN_DUMP_ARGUMENT_NUM) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "argList=%{public}s", argList[1].c_str());
         std::vector<std::string> params(argList.begin() + MIN_DUMP_ARGUMENT_NUM, argList.end());
-        try {
-            auto abilityId = static_cast<int32_t>(std::stoi(argList[1]));
+        int32_t abilityId = 0;
+        auto [ptr, ec] = std::from_chars(argList[1].data(), argList[1].data() + argList[1].size(), abilityId);
+        if (ec == std::errc() && ptr == argList[1].data() + argList[1].size()) {
             auto uiAbilityManager = GetUIAbilityManagerByUserId(userId);
             CHECK_POINTER(uiAbilityManager);
             uiAbilityManager->DumpMissionListByRecordId(info, isClient, abilityId, params);
-        } catch (...) {
+        } else {
             TAG_LOGW(AAFwkTag::ABILITYMGR, "stoi(%{public}s) failed", argList[1].c_str());
             info.emplace_back("error: invalid argument, please see 'hidumper -s AbilityManagerService -a '-h''.");
         }

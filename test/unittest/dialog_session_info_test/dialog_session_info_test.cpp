@@ -353,5 +353,252 @@ HWTEST_F(DialogAbilityInfoTest, Unmarshalling_002, TestSize.Level2)
     EXPECT_NE(info, nullptr);
     delete info;
 }
+
+/**
+ * @tc.name: ParseURI_004
+ * @tc.desc: ParseURI with empty numeric field
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogAbilityInfoTest, ParseURI_004, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_004 is start");
+    DialogAbilityInfo dialogAbilityInfo;
+    std::string uri = "bundle/module/ability//1/2/3/0/4/5/6";
+    EXPECT_FALSE(dialogAbilityInfo.ParseURI(uri));
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_004 is end");
+}
+
+/**
+ * @tc.name: ParseURI_005
+ * @tc.desc: ParseURI with non-numeric first id field
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogAbilityInfoTest, ParseURI_005, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_005 is start");
+    DialogAbilityInfo dialogAbilityInfo;
+    std::string uri = "bundle/module/ability/x/2/3/4/0/5/6/7";
+    EXPECT_FALSE(dialogAbilityInfo.ParseURI(uri));
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_005 is end");
+}
+
+/**
+ * @tc.name: ParseURI_006
+ * @tc.desc: ParseURI with non-numeric visible field
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogAbilityInfoTest, ParseURI_006, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_006 is start");
+    DialogAbilityInfo dialogAbilityInfo;
+    std::string uri = "bundle/module/ability/1/2/3/4/x/5/6/7";
+    EXPECT_FALSE(dialogAbilityInfo.ParseURI(uri));
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_006 is end");
+}
+
+/**
+ * @tc.name: ParseURI_007
+ * @tc.desc: ParseURI with non-numeric last field
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogAbilityInfoTest, ParseURI_007, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_007 is start");
+    DialogAbilityInfo dialogAbilityInfo;
+    std::string uri = "bundle/module/ability/1/2/3/4/0/5/6/x";
+    EXPECT_FALSE(dialogAbilityInfo.ParseURI(uri));
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_007 is end");
+}
+
+/**
+ * @tc.name: ParseURI_008
+ * @tc.desc: ParseURI with trailing garbage characters
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogAbilityInfoTest, ParseURI_008, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_008 is start");
+    DialogAbilityInfo dialogAbilityInfo;
+    std::string uri = "bundle/module/ability/1ab/2/3/4/0/5/6/7";
+    EXPECT_FALSE(dialogAbilityInfo.ParseURI(uri));
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_008 is end");
+}
+
+/**
+ * @tc.name: ParseURI_009
+ * @tc.desc: ParseURI with leading whitespace
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogAbilityInfoTest, ParseURI_009, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_009 is start");
+    DialogAbilityInfo dialogAbilityInfo;
+    std::string uri = "bundle/module/ability/ 1/2/3/4/0/5/6/7";
+    EXPECT_FALSE(dialogAbilityInfo.ParseURI(uri));
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_009 is end");
+}
+
+/**
+ * @tc.name: ParseURI_010
+ * @tc.desc: ParseURI with plus sign prefix
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogAbilityInfoTest, ParseURI_010, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_010 is start");
+    DialogAbilityInfo dialogAbilityInfo;
+    std::string uri = "bundle/module/ability/+1/2/3/4/0/5/6/7";
+    EXPECT_FALSE(dialogAbilityInfo.ParseURI(uri));
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_010 is end");
+}
+
+/**
+ * @tc.name: ParseURI_011
+ * @tc.desc: ParseURI with int32 overflow value
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogAbilityInfoTest, ParseURI_011, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_011 is start");
+    DialogAbilityInfo dialogAbilityInfo;
+    std::string uri = "bundle/module/ability/2147483648/2/3/4/0/5/6/7";
+    EXPECT_FALSE(dialogAbilityInfo.ParseURI(uri));
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_011 is end");
+}
+
+/**
+ * @tc.name: ParseURI_012
+ * @tc.desc: ParseURI with int32 underflow value
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogAbilityInfoTest, ParseURI_012, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_012 is start");
+    DialogAbilityInfo dialogAbilityInfo;
+    std::string uri = "bundle/module/ability/-2147483649/2/3/4/0/5/6/7";
+    EXPECT_FALSE(dialogAbilityInfo.ParseURI(uri));
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_012 is end");
+}
+
+/**
+ * @tc.name: ParseURI_013
+ * @tc.desc: ParseURI with overflow value in last field
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogAbilityInfoTest, ParseURI_013, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_013 is start");
+    DialogAbilityInfo dialogAbilityInfo;
+    std::string uri = "bundle/module/ability/1/2/3/4/0/5/6/2147483648";
+    EXPECT_FALSE(dialogAbilityInfo.ParseURI(uri));
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_013 is end");
+}
+
+/**
+ * @tc.name: ParseURI_014
+ * @tc.desc: ParseURI with valid negative values
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogAbilityInfoTest, ParseURI_014, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_014 is start");
+    DialogAbilityInfo dialogAbilityInfo;
+    std::string uri = "bundle/module/ability/-1/-2/-3/-4/0/-5/-6/-7";
+    EXPECT_TRUE(dialogAbilityInfo.ParseURI(uri));
+    EXPECT_EQ(dialogAbilityInfo.bundleIconId, -1);
+    EXPECT_EQ(dialogAbilityInfo.bundleLabelId, -2);
+    EXPECT_EQ(dialogAbilityInfo.abilityIconId, -3);
+    EXPECT_EQ(dialogAbilityInfo.abilityLabelId, -4);
+    EXPECT_FALSE(dialogAbilityInfo.visible);
+    EXPECT_EQ(dialogAbilityInfo.appIndex, -5);
+    EXPECT_EQ(static_cast<int32_t>(dialogAbilityInfo.multiAppMode.multiAppModeType), -6);
+    EXPECT_EQ(dialogAbilityInfo.multiAppMode.maxCount, -7);
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_014 is end");
+}
+
+/**
+ * @tc.name: ParseURI_015
+ * @tc.desc: ParseURI with int32 boundary values
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogAbilityInfoTest, ParseURI_015, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_015 is start");
+    DialogAbilityInfo dialogAbilityInfo;
+    std::string uri = "bundle/module/ability/2147483647/-2147483648/1/2/0/3/4/5";
+    EXPECT_TRUE(dialogAbilityInfo.ParseURI(uri));
+    EXPECT_EQ(dialogAbilityInfo.bundleIconId, 2147483647);
+    EXPECT_EQ(dialogAbilityInfo.bundleLabelId, -2147483648);
+    EXPECT_EQ(dialogAbilityInfo.abilityIconId, 1);
+    EXPECT_EQ(dialogAbilityInfo.abilityLabelId, 2);
+    EXPECT_FALSE(dialogAbilityInfo.visible);
+    EXPECT_EQ(dialogAbilityInfo.appIndex, 3);
+    EXPECT_EQ(static_cast<int32_t>(dialogAbilityInfo.multiAppMode.multiAppModeType), 4);
+    EXPECT_EQ(dialogAbilityInfo.multiAppMode.maxCount, 5);
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_015 is end");
+}
+
+/**
+ * @tc.name: ParseURI_016
+ * @tc.desc: ParseURI visible field conversion
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogAbilityInfoTest, ParseURI_016, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_016 is start");
+    DialogAbilityInfo dialogAbilityInfo;
+    std::string uri = "bundle/module/ability/1/2/3/4/0/5/6/7";
+    EXPECT_TRUE(dialogAbilityInfo.ParseURI(uri));
+    EXPECT_FALSE(dialogAbilityInfo.visible);
+
+    DialogAbilityInfo dialogAbilityInfoTrue;
+    std::string uriTrue = "bundle/module/ability/1/2/3/4/1/5/6/7";
+    EXPECT_TRUE(dialogAbilityInfoTrue.ParseURI(uriTrue));
+    EXPECT_TRUE(dialogAbilityInfoTrue.visible);
+
+    DialogAbilityInfo dialogAbilityInfoNonZero;
+    std::string uriNonZero = "bundle/module/ability/1/2/3/4/2/5/6/7";
+    EXPECT_TRUE(dialogAbilityInfoNonZero.ParseURI(uriNonZero));
+    EXPECT_TRUE(dialogAbilityInfoNonZero.visible);
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_016 is end");
+}
+
+/**
+ * @tc.name: ParseURI_017
+ * @tc.desc: ParseURI round trip with all fields
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogAbilityInfoTest, ParseURI_017, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_017 is start");
+    DialogAbilityInfo source;
+    source.bundleName = "com.example.roundtrip";
+    source.moduleName = "entry";
+    source.abilityName = "MainAbility";
+    source.bundleIconId = 11;
+    source.bundleLabelId = 22;
+    source.abilityIconId = 33;
+    source.abilityLabelId = 44;
+    source.visible = false;
+    source.appIndex = 55;
+    source.multiAppMode.multiAppModeType = AppExecFwk::MultiAppModeType::MULTI_INSTANCE;
+    source.multiAppMode.maxCount = 66;
+
+    DialogAbilityInfo target;
+    EXPECT_TRUE(target.ParseURI(source.GetURI()));
+    EXPECT_EQ(target.bundleName, source.bundleName);
+    EXPECT_EQ(target.moduleName, source.moduleName);
+    EXPECT_EQ(target.abilityName, source.abilityName);
+    EXPECT_EQ(target.bundleIconId, source.bundleIconId);
+    EXPECT_EQ(target.bundleLabelId, source.bundleLabelId);
+    EXPECT_EQ(target.abilityIconId, source.abilityIconId);
+    EXPECT_EQ(target.abilityLabelId, source.abilityLabelId);
+    EXPECT_EQ(target.visible, source.visible);
+    EXPECT_EQ(target.appIndex, source.appIndex);
+    EXPECT_EQ(static_cast<int32_t>(target.multiAppMode.multiAppModeType),
+        static_cast<int32_t>(source.multiAppMode.multiAppModeType));
+    EXPECT_EQ(target.multiAppMode.maxCount, source.multiAppMode.maxCount);
+    TAG_LOGI(AAFwkTag::TEST, "ParseURI_017 is end");
+}
 } // AAFwk
 } // OHOS

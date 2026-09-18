@@ -2811,12 +2811,14 @@ ErrCode AbilityManagerShellCommand::StartUserTest(const std::map<std::string, st
     std::signal(SIGCHLD, SIG_DFL);
 
     int64_t timeMs = 0;
-    if (!want.GetStringParam("-w").empty()) {
-        try {
-            auto time = std::stoi(want.GetStringParam("-w"));
+    auto timeStr = want.GetStringParam("-w");
+    if (!timeStr.empty()) {
+        int32_t time = 0;
+        auto [ptr, ec] = std::from_chars(timeStr.data(), timeStr.data() + timeStr.size(), time);
+        if (ec == std::errc() && ptr == timeStr.data() + timeStr.size()) {
             timeMs = time > 0 ? time * TIME_RATE_MS : 0;
-        } catch (...) {
-            TAG_LOGE(AAFwkTag::AA_TOOL, "stoi(%{public}s) failed", want.GetStringParam("-w").c_str());
+        } else {
+            TAG_LOGE(AAFwkTag::AA_TOOL, "stoi(%{public}s) failed", timeStr.c_str());
         }
     }
     if (!observer->WaitForFinish(timeMs)) {
