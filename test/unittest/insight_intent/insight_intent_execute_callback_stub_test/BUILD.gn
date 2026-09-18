@@ -49,6 +49,7 @@ ohos_unittest("insight_intent_execute_callback_stub_test") {
     "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_services_path}/common:app_util",
+    "${ability_runtime_path}/utils/global/common:runtime_utils",
   ]
 
   external_deps = [

@@ -177,7 +177,6 @@ ohos_shared_library("abilityms") {
     "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
     "${ability_runtime_path}/utils/server/startup:startup_util",
-    "${ability_runtime_path}/utils/global/common:runtime_utils",
     "${ability_runtime_services_path}/common:app_util",
     "${ability_runtime_services_path}/common:hisysevent_report",
     "${ability_runtime_services_path}/common:perm_verification",
@@ -186,6 +185,8 @@ ohos_shared_library("abilityms") {
     "${agent_runtime_framework_path}/interfaces/inner_api:agent_manager",
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection:agent_extension_connection",
   ]
+
+  public_deps = [ "${ability_runtime_path}/utils/global/common:runtime_utils" ]
 
   external_deps = [
     "ability_base:base",

@@ -14,6 +14,7 @@
  */
 
 #include "insight_intent_execute_manager.h"
+#include "json_safe_util.h"
 
 #include <algorithm>
 #include <unordered_map>
@@ -97,8 +98,8 @@ bool GetMethodParamNamesFromSchema(const std::vector<std::string> &methodParams,
     std::unordered_map<std::string, ParamType> typeMap;
     std::vector<std::string> requiredList;
     if (!parameters.empty()) {
-        auto jsonObj = nlohmann::json::parse(parameters, nullptr, false);
-        if (jsonObj.is_discarded() || !jsonObj.is_object()) {
+        nlohmann::json jsonObj;
+        if (!AbilityRuntime::SafeParse(parameters, jsonObj) || !jsonObj.is_object()) {
             TAG_LOGW(AAFwkTag::INTENT, "parameters parse failed or not object");
         } else {
             GetMethodParamTypeMap(jsonObj, typeMap);

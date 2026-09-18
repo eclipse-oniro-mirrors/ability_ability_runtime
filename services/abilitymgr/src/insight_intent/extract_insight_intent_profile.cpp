@@ -18,7 +18,7 @@
 #include <algorithm>
 
 #include "hilog_tag_wrapper.h"
-#include "intent_json_safe_get.h"
+#include "json_safe_util.h"
 #include "json_util.h"
 
 namespace OHOS {
@@ -432,8 +432,8 @@ void to_json(nlohmann::json& jsonObject, const InsightIntentEntityInfo &info)
     };
 
     if (!info.parameters.empty()) {
-        auto parameters = nlohmann::json::parse(info.parameters, nullptr, false);
-        if (parameters.is_discarded()) {
+        nlohmann::json parameters;
+        if (!SafeParse(info.parameters, parameters)) {
             TAG_LOGE(AAFwkTag::INTENT, "discarded entity parameters");
             return;
         }
@@ -479,8 +479,8 @@ void to_json(nlohmann::json& jsonObject, const ExtractInsightIntentProfileInfo& 
     };
 
     if (!info.parameters.empty()) {
-        auto parameters = nlohmann::json::parse(info.parameters, nullptr, false);
-        if (parameters.is_discarded()) {
+        nlohmann::json parameters;
+        if (!SafeParse(info.parameters, parameters)) {
             TAG_LOGE(AAFwkTag::INTENT, "discarded parameters");
             return;
         }
@@ -489,8 +489,8 @@ void to_json(nlohmann::json& jsonObject, const ExtractInsightIntentProfileInfo& 
     }
 
     if (!info.result.empty()) {
-        auto result = nlohmann::json::parse(info.result, nullptr, false);
-        if (result.is_discarded()) {
+        nlohmann::json result;
+        if (!SafeParse(info.result, result)) {
             TAG_LOGE(AAFwkTag::INTENT, "discarded result");
             return;
         }
@@ -663,8 +663,8 @@ bool ExtractInsightIntentProfile::TransformTo(const std::string &profileStr,
     ExtractInsightIntentProfileInfoVec &intentInfos)
 {
     TAG_LOGD(AAFwkTag::INTENT, "transform profileStr: %{public}s", profileStr.c_str());
-    auto jsonObject = nlohmann::json::parse(profileStr, nullptr, false);
-    if (jsonObject.is_discarded()) {
+    nlohmann::json jsonObject;
+    if (!SafeParse(profileStr, jsonObject)) {
         TAG_LOGE(AAFwkTag::INTENT, "discarded jsonObject, profileStr: %{public}s", profileStr.c_str());
         return false;
     }

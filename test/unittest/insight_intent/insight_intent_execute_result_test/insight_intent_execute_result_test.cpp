@@ -821,6 +821,35 @@ HWTEST_F(InsightIntentExecuteResultTest, FromJsonString_NoInteractionInfo_Succee
 }
 
 /**
+ * @tc.name: FromJsonString_NonObject_2500
+ * @tc.desc: WHEN json is valid but not an object (scalar / array / string)
+ *           THEN parse fails and fields stay default.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, FromJsonString_NonObject_2500, TestSize.Level1)
+{
+    InsightIntentExecuteResult result;
+    EXPECT_FALSE(result.FromJsonString("42"));
+    EXPECT_FALSE(result.FromJsonString(R"([1,2,3])"));
+    EXPECT_FALSE(result.FromJsonString(R"("string")"));
+    EXPECT_EQ(result.interactionInfo, nullptr);
+}
+
+/**
+ * @tc.name: FromJsonString_EmptyString_2600
+ * @tc.desc: WHEN json is an empty string THEN parse fails and fields stay default.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, FromJsonString_EmptyString_2600, TestSize.Level1)
+{
+    InsightIntentExecuteResult result;
+    EXPECT_FALSE(result.FromJsonString(""));
+    EXPECT_EQ(result.interactionInfo, nullptr);
+}
+
+/**
  * @tc.name: Unmarshalling_InvalidInteractionInfo_Rejected_2400
  * @tc.desc: WHEN parcel has invalid interactionInfo THEN Marshalling logs and writes it,
  *           ReadFromParcel rejects and Unmarshalling returns nullptr.

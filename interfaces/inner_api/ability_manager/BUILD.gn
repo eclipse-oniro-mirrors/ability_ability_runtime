@@ -25,6 +25,7 @@ config("ability_manager_public_config") {
   ]
   include_dirs = [
     "include/",
+    "${ability_runtime_path}/utils/global/common/include",
     "include/aa_tools",
     "include/insight_intent",
     "include/skill",
@@ -102,7 +103,6 @@ ohos_shared_library("ability_manager") {
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_execute_result.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_info_for_query.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_query_entity_param.cpp",
-    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/intent_json_safe_get.cpp",
     "${ability_runtime_native_path}/ability/native/insight_intent_host_client.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/intent_exemption_info.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/keep_alive/keep_alive_info.cpp",
@@ -174,6 +174,7 @@ ohos_shared_library("ability_manager") {
     ":start_window_option",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
+    "${ability_runtime_path}/utils/global/common:runtime_utils",
     "${ability_runtime_services_path}/abilitymgr:wantagent_manager",
     "${ability_runtime_services_path}/common:app_util",
   ]
