@@ -471,5 +471,66 @@ HWTEST_F(InsightIntentDbCacheTest, InsightIntentDbCacheTest_010, TestSize.Level0
     EXPECT_TRUE(DelayedSingleton<InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(
         bundleName, moduleName, userId));
 }
+
+/**
+ * @tc.name: InsightIntentDbCacheTest_011
+ * @tc.desc: Test SaveBatchInsightIntentTotalInfo
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentDbCacheTest, InsightIntentDbCacheTest_011, TestSize.Level0)
+{
+    int32_t userId = 100;
+    std::string bundleName = "batch_bundle";
+    std::string moduleName = "batchModule";
+    InsightIntentSaveParam saveParam;
+    saveParam.moduleName = moduleName;
+    ExtractInsightIntentProfileInfo profileInfo;
+    profileInfo.intentName = "batchIntent";
+    saveParam.profileInfos.insightIntents.push_back(profileInfo);
+    InsightIntentInfo cfg;
+    cfg.intentName = "batchConfigIntent";
+    saveParam.configInfos.push_back(cfg);
+    std::vector<InsightIntentSaveParam> saveParams;
+    saveParams.push_back(saveParam);
+    InsightIntentSaveParam secondParam;
+    secondParam.moduleName = "batchModule2";
+    ExtractInsightIntentProfileInfo secondProfile;
+    secondProfile.intentName = "batchIntent2";
+    secondParam.profileInfos.insightIntents.push_back(secondProfile);
+    saveParams.push_back(secondParam);
+
+    // empty saveParams returns ERR_OK without touching storage
+    std::vector<InsightIntentSaveParam> emptyParams;
+    EXPECT_EQ(DelayedSingleton<InsightIntentDbCache>::GetInstance()->SaveBatchInsightIntentTotalInfo(
+        bundleName, userId, 0, emptyParams), ERR_OK);
+
+    // userId not loaded in cache: returns ERR_INVALID_VALUE
+    EXPECT_EQ(DelayedSingleton<InsightIntentDbCache>::GetInstance()->SaveBatchInsightIntentTotalInfo(
+        bundleName, userId, 0, saveParams), ERR_INVALID_VALUE);
+
+    // load cache for userId, then batch save fails on delete
+    MockLoadInsightIntentInfos(true);
+    DelayedSingleton<InsightIntentDbCache>::GetInstance()->InitInsightIntentCache(userId);
+    MockDeleteData(false);
+    EXPECT_EQ(DelayedSingleton<InsightIntentDbCache>::GetInstance()->SaveBatchInsightIntentTotalInfo(
+        bundleName, userId, 0, saveParams), ERR_INVALID_VALUE);
+    // delete fails: bundleVersionMap_ must not be updated
+    EXPECT_FALSE(DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(bundleName, userId));
+
+    // batch save fails on insert
+    MockDeleteData(true);
+    MockSaveData(false);
+    EXPECT_EQ(DelayedSingleton<InsightIntentDbCache>::GetInstance()->SaveBatchInsightIntentTotalInfo(
+        bundleName, userId, 0, saveParams), ERR_INVALID_VALUE);
+    // insert fails: bundleVersionMap_ must not be updated
+    EXPECT_FALSE(DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(bundleName, userId));
+
+    // batch save succeeds
+    MockSaveData(true);
+    EXPECT_EQ(DelayedSingleton<InsightIntentDbCache>::GetInstance()->SaveBatchInsightIntentTotalInfo(
+        bundleName, userId, 0, saveParams), ERR_OK);
+    // save succeeds: bundleVersionMap_ is updated
+    EXPECT_TRUE(DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(bundleName, userId));
+}
 }
 }
