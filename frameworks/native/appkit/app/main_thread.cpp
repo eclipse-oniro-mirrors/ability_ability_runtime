@@ -4785,7 +4785,7 @@ void MainThread::SleepCleanKill()
             exitReason.killId = HiviewDFX::ProcessKillReason::KillEventId::REASON_JS_HEAP_SLEEP_CLEAN_KILL;
             exitReason.killMsg = "Js_Heap_Sleep_Clean_Kill";
             exitReason.innerMsg = "Js_Heap_Sleep_Clean_Kill";
-            AbilityManagerClient::GetInstance()->RecordAppWithReason(pid, getuid(), exitReason);    
+            AbilityManagerClient::GetInstance()->RecordAppWithReason(pid, getuid(), exitReason);
             _exit(0);
         }
     };
