@@ -5515,10 +5515,17 @@ int32_t AbilityManagerService::TerminateUIServiceExtensionAbility(const sptr<IRe
 int AbilityManagerService::BackToCallerAbilityWithResult(const sptr<IRemoteObject> &token, int resultCode,
     const Want *resultWant, int64_t callerRequestCode)
 {
+    if (!VerificationAllToken(token)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "%{public}s verificationAllToken failed", __func__);
+        return ERR_INVALID_VALUE;
+    }
     auto abilityRecord = Token::GetAbilityRecordByToken(token);
     if (!abilityRecord) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "abilityRecord null");
         return ERR_INVALID_VALUE;
+    }
+    if (!JudgeSelfCalled(abilityRecord)) {
+        return CHECK_PERMISSION_FAILED;
     }
     auto ownerUserId = abilityRecord->GetOwnerMissionUserId();
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
