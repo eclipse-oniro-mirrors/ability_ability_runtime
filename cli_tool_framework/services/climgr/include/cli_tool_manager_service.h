@@ -239,7 +239,7 @@ private:
         int32_t callerPid = 0;
         int32_t callerUid = 0;
         uint32_t tokenId = 0;
-        std::string bundleName;
+        std::string callerBundleName;
     };
 
     /**

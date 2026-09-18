@@ -172,7 +172,7 @@ ToolInfo BuildSubCommandToolInfo(const std::string &name, const std::string &sub
 
 /**
  * @tc.name: ToolUtil_ParseToolCommand_KeyEqualsValue_0100
- * @tc.desc: Test ParseToolCommand with --key=value format
+ * @tc.desc: Test ParseToolCommand rejects --key=value format (only --key value is supported)
  * @tc.type: FUNC
  */
 HWTEST_F(ToolUtilTest, ParseToolCommand_KeyEqualsValue_0100, TestSize.Level1)
@@ -180,9 +180,9 @@ HWTEST_F(ToolUtilTest, ParseToolCommand_KeyEqualsValue_0100, TestSize.Level1)
     auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"bundleName":{"type":"string"}}})");
     ExecToolParam param;
     std::string detail;
-    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --bundleName=com.example", toolInfo, param, detail), ERR_OK);
-    EXPECT_EQ(param.toolName, "ohos-aa");
-    EXPECT_NE(param.args.GetParam("bundleName"), nullptr);
+    // --key=value format is not supported
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --bundleName=com.example", toolInfo, param, detail),
+        ERR_INVALID_PARAM);
 }
 
 /**
@@ -230,6 +230,34 @@ HWTEST_F(ToolUtilTest, ParseToolCommand_BooleanFalse_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: ToolUtil_ParseToolCommand_HelpWithOtherArgs_0100
+ * @tc.desc: Test ParseToolCommand rejects --help combined with other args
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_HelpWithOtherArgs_0100, TestSize.Level1)
+{
+    auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"bundleName":{"type":"string"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --help --bundleName com.x", toolInfo, param, detail),
+        ERR_INVALID_PARAM);
+}
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_HelpAlone_0100
+ * @tc.desc: Test ParseToolCommand accepts --help alone
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_HelpAlone_0100, TestSize.Level1)
+{
+    auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"bundleName":{"type":"string"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --help", toolInfo, param, detail), ERR_OK);
+    EXPECT_NE(param.args.GetParam("help"), nullptr);
+}
+
+/**
  * @tc.name: ToolUtil_ParseToolCommand_SingleQuoteSpace_0100
  * @tc.desc: Test ParseToolCommand with single-quoted value containing spaces
  * @tc.type: FUNC
@@ -253,7 +281,7 @@ HWTEST_F(ToolUtilTest, ParseToolCommand_UnknownFlag_0100, TestSize.Level2)
     auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"bundleName":{"type":"string"}}})");
     ExecToolParam param;
     std::string detail;
-    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --unknownFlag=foo", toolInfo, param, detail),
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --unknownFlag foo", toolInfo, param, detail),
         ERR_INVALID_PARAM);
 }
 
@@ -296,7 +324,7 @@ HWTEST_F(ToolUtilTest, ParseToolCommand_SubCommandSchema_0100, TestSize.Level1)
         R"({"properties":{"bundleName":{"type":"string"}}})");
     ExecToolParam param;
     std::string detail;
-    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa start --bundleName=com.x", toolInfo, param, detail),
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa start --bundleName com.x", toolInfo, param, detail),
         ERR_OK);
     EXPECT_EQ(param.toolName, "ohos-aa");
     EXPECT_EQ(param.subcommand, "start");

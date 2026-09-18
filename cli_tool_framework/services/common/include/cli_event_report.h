@@ -66,6 +66,7 @@ constexpr const char* DETAIL_YIELD_EXCEEDS_TIMEOUT = "yield_exceeds_timeout";
 constexpr const char* DETAIL_INPUT_SCHEMA_EMPTY = "input_schema_empty";
 constexpr const char* DETAIL_PARAM_NOT_FOUND = "param_not_found";
 constexpr const char* DETAIL_PARAM_TYPE_MISMATCH = "param_type_mismatch";
+constexpr const char* DETAIL_UNSUPPORTED_FORMAT = "unsupported_key_value_format";
 
 /**
  * @brief Report CLI execution failed event (TYPE=FAILED)

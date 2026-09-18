@@ -485,7 +485,7 @@ HWTEST_F(CliToolMGRClientTest, ExecCmd_0300, TestSize.Level1)
 
 /**
  * @tc.name: ExecCmd_0700
- * @tc.desc: Test ExecCmd rejects cmd longer than MAX_CMD_LENGTH before IPC dispatch
+ * @tc.desc: Test ExecCmd no longer rejects oversized cmd in shell mode at client side
  * @tc.type: FUNC
  */
 HWTEST_F(CliToolMGRClientTest, ExecCmd_0700, TestSize.Level1)
@@ -493,14 +493,13 @@ HWTEST_F(CliToolMGRClientTest, ExecCmd_0700, TestSize.Level1)
     SetMockService();
     ExecCmdParam param;
     param.cmd = std::string(MAX_CMD_LENGTH + 1, 'a');
+    param.execCmdOptions.timeout = 30;
 
+    CliToolMgrClientFlag::retExecCmd = ERR_OK;
     auto sessionCallback = std::make_shared<MockSessionCallback>();
-    // Oversized cmd is rejected before AddEventReplyCallback, so no IPC dispatch happens
+    // Client no longer checks cmd length in shell mode; passes through to service
     EXPECT_EQ(CliToolMGRClient::GetInstance().ExecCmd(param,
-        [](int32_t, const CliSessionInfo &) {}, sessionCallback), ERR_INVALID_PARAM);
-
-    EXPECT_EQ(CliEventReplyManager::GetInstance().HandleEventReply(
-        CliToolMgrClientFlag::lastEventId, CliEventReplyResult {}), -1);
+        [](int32_t, const CliSessionInfo &) {}, sessionCallback), ERR_OK);
 }
 
 /**
