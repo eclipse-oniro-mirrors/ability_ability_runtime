@@ -197,6 +197,25 @@ ErrCode BundleMgrHelper::GetSandboxExtAbilityInfos(const Want &want, int32_t app
     return bundleMgr->GetSandboxExtAbilityInfos(want, appIndex, flags, userId, extensionInfos);
 }
 
+ErrCode BundleMgrHelper::GetSandboxExtAbilityInfoOptimal(const Want &want, int32_t appIndex, int32_t flags,
+    int32_t userId, ExtensionAbilityInfo &extensionInfo)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");
+    if (appIndex <= AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "invalid params");
+        return ERR_APPEXECFWK_SANDBOX_INSTALL_PARAM_ERROR;
+    }
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        return ERR_APPEXECFWK_SANDBOX_INSTALL_INTERNAL_ERROR;
+    }
+
+    RecordCostTimeUtil timeRecord("GetSandboxExtAbilityInfoOptimal");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    return bundleMgr->GetSandboxExtAbilityInfoOptimal(want, appIndex, flags, userId, extensionInfo);
+}
+
 ErrCode BundleMgrHelper::GetSandboxHapModuleInfo(const AbilityInfo &abilityInfo, int32_t appIndex, int32_t userId,
     HapModuleInfo &hapModuleInfo)
 {
@@ -597,6 +616,23 @@ bool BundleMgrHelper::QueryExtensionAbilityInfos(const Want &want, const int32_t
     RecordCostTimeUtil timeRecord("QueryExtensionAbilityInfos");
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     return bundleMgr->QueryExtensionAbilityInfos(newWant, flag, userId, extensionInfos);
+}
+
+ErrCode BundleMgrHelper::QueryExtensionAbilityInfoOptimal(const Want &want, const int32_t &flag,
+    const int32_t &userId, ExtensionAbilityInfo &extensionInfo)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        return false;
+    }
+
+    AAFwk::Want newWant = want;
+    newWant.RemoveAllFd();
+    RecordCostTimeUtil timeRecord("QueryExtensionAbilityInfoOptimal");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    return bundleMgr->QueryExtensionAbilityInfoOptimal(newWant, flag, userId, extensionInfo);
 }
 
 ErrCode BundleMgrHelper::GetBundleInfoV9(
