@@ -242,34 +242,6 @@ public:
     void SetCustomProcessFlag(const std::string &flag);
 
     /**
-     * @brief Obtains the sign code.
-     *
-     * @return Returns the sign code.
-     */
-    const std::string &GetSignCode() const;
-
-    /**
-     * @brief Setting the sign code.
-     *
-     * @param code, the sign code.
-     */
-    void SetSignCode(const std::string &signCode);
-
-    /**
-     * @brief Obtains the jointUserId.
-     *
-     * @return Returns the jointUserId.
-     */
-    const std::string &GetJointUserId() const;
-
-    /**
-     * @brief Setting the jointUserId.
-     *
-     * @param jointUserId, the jointUserId.
-     */
-    void SetJointUserId(const std::string &jointUserId);
-
-    /**
      * @brief Obtains the application uid.
      *
      * @return Returns the application uid.
@@ -1565,8 +1537,6 @@ private:
     std::string processName_;  // name of this process
     std::string specifiedProcessFlag_; // flag of specified Process
     std::string customProcessFlag_; // flag of custom process
-    std::string signCode_;  // sign of this hap
-    std::string jointUserId_;
     std::string mainBundleName_;
     std::string mainAppName_;
     std::string appIdentifier_;

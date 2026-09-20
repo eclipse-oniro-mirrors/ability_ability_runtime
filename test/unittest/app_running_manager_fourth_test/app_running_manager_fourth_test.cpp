@@ -118,14 +118,9 @@ HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_CheckAppRunningRecordIsE
     std::string customProcessFlag;
     std::string specifiedProcessFlag = "specifiedProcessFlag";
 
-    bundleInfo.jointUserId = "joint456";
     auto ret = appRunningManager_->CheckAppRunningRecordIsExist(APP_NAME_EMPTY, processName,
         uid, bundleInfo, specifiedProcessFlag, isProCache, instanceKey, customProcessFlag);
     EXPECT_EQ(ret, nullptr);
-
-    bundleInfo.jointUserId = "";
-    ret = appRunningManager_->CheckAppRunningRecordIsExist(APP_NAME_EMPTY, processName,
-        uid, bundleInfo, specifiedProcessFlag, isProCache, instanceKey, customProcessFlag);
 
     std::shared_ptr<AppRunningRecord> record =
         appRunningManager_->CreateAppRunningRecord(appInfo_, processName, bundleInfo, "");

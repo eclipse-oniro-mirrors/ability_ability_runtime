@@ -107,24 +107,6 @@ const std::string &AppRunningRecord::GetName() const
     return mainAppName_;
 }
 
-const std::string &AppRunningRecord::GetSignCode() const
-{
-    return signCode_;
-}
-
-void AppRunningRecord::SetSignCode(const std::string &signCode)
-{
-}
-
-const std::string &AppRunningRecord::GetJointUserId() const
-{
-    return jointUserId_;
-}
-
-void AppRunningRecord::SetJointUserId(const std::string &jointUserId)
-{
-}
-
 const std::string &AppRunningRecord::GetProcessName() const
 {
     return processName_;
