@@ -3319,7 +3319,6 @@ private:
      */
     int CheckCallerInfoQueryExtensionPermission(const AbilityRequest &abilityRequest);
 
-
     int CheckFileAccessExtensionPermission(const AbilityRequest &abilityRequest);
 
     bool IsTargetPermission(const Want &want) const;
