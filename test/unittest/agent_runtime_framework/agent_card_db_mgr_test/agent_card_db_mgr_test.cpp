@@ -589,5 +589,88 @@ HWTEST_F(AgentCardDbMgrTest, QueryAllDataTest_011, TestSize.Level1)
     EXPECT_EQ(ret, ERR_OK);
     EXPECT_TRUE(cards.empty());
 }
+
+/**
+ * @tc.name: BackupKvStoreTest_010
+ * @tc.desc: Test BackupKvStore succeeds with mocked KVStore.
+ * @tc.type: FUNC
+ * @tc.require: AR000H1N32
+ */
+HWTEST_F(AgentCardDbMgrTest, BackupKvStoreTest_010, TestSize.Level1)
+{
+    AgentCardDbMgr agentCardDbMgr;
+    auto mockStore = std::make_shared<MockSingleKvStoreForDbMgr>();
+    agentCardDbMgr.kvStorePtr_ = mockStore;
+    auto cards = MakeStoredEntries({BuildValidCard("agent_backup_010")});
+    int ret = agentCardDbMgr.InsertData("test", 100, cards);
+    EXPECT_EQ(ret, ERR_OK);
+    agentCardDbMgr.BackupKvStore();
+}
+
+/**
+ * @tc.name: RestoreKvStoreTest_010
+ * @tc.desc: Test RestoreKvStore does nothing on non-recoverable status.
+ * @tc.type: FUNC
+ * @tc.require: AR000H1N32
+ */
+HWTEST_F(AgentCardDbMgrTest, RestoreKvStoreTest_010, TestSize.Level1)
+{
+    AgentCardDbMgr agentCardDbMgr;
+    auto mockStore = std::make_shared<MockSingleKvStoreForDbMgr>();
+    agentCardDbMgr.kvStorePtr_ = mockStore;
+    agentCardDbMgr.RestoreKvStore(DistributedKv::Status::INVALID_ARGUMENT);
+    EXPECT_EQ(agentCardDbMgr.kvStorePtr_, mockStore);
+}
+
+/**
+ * @tc.name: BackupKvStoreTest_013
+ * @tc.desc: Test backup DB_ERROR with readable store does not trigger rebuild.
+ * @tc.type: FUNC
+ * @tc.require: AR000H1N32
+ */
+HWTEST_F(AgentCardDbMgrTest, BackupKvStoreTest_013, TestSize.Level1)
+{
+    AgentCardDbMgr agentCardDbMgr;
+    auto mockStore = std::make_shared<MockSingleKvStoreForDbMgr>();
+    agentCardDbMgr.kvStorePtr_ = mockStore;
+    mockStore->Backup_ = DistributedKv::Status::DB_ERROR;
+    agentCardDbMgr.BackupKvStore();
+    EXPECT_EQ(mockStore->backupCallCount_, 2);
+    EXPECT_EQ(agentCardDbMgr.kvStorePtr_, mockStore);
+}
+
+/**
+ * @tc.name: RestoreFromBackupWithRetryTest_010
+ * @tc.desc: Test no backup file stops retrying immediately.
+ * @tc.type: FUNC
+ * @tc.require: AR000H1N32
+ */
+HWTEST_F(AgentCardDbMgrTest, RestoreFromBackupWithRetryTest_010, TestSize.Level1)
+{
+    AgentCardDbMgr agentCardDbMgr;
+    auto mockStore = std::make_shared<MockSingleKvStoreForDbMgr>();
+    agentCardDbMgr.kvStorePtr_ = mockStore;
+    mockStore->Restore_ = DistributedKv::Status::INVALID_ARGUMENT;
+    auto result = agentCardDbMgr.RestoreFromBackupWithRetry();
+    EXPECT_EQ(result, DistributedKv::Status::INVALID_ARGUMENT);
+    EXPECT_EQ(mockStore->restoreCallCount_, 1);
+}
+
+/**
+ * @tc.name: RestoreFromBackupWithRetryTest_011
+ * @tc.desc: Test transient restore failure retries up to 3 attempts.
+ * @tc.type: FUNC
+ * @tc.require: AR000H1N32
+ */
+HWTEST_F(AgentCardDbMgrTest, RestoreFromBackupWithRetryTest_011, TestSize.Level1)
+{
+    AgentCardDbMgr agentCardDbMgr;
+    auto mockStore = std::make_shared<MockSingleKvStoreForDbMgr>();
+    agentCardDbMgr.kvStorePtr_ = mockStore;
+    mockStore->Restore_ = DistributedKv::Status::DB_ERROR;
+    auto result = agentCardDbMgr.RestoreFromBackupWithRetry();
+    EXPECT_EQ(result, DistributedKv::Status::DB_ERROR);
+    EXPECT_EQ(mockStore->restoreCallCount_, 3);
+}
 } // namespace AgentRuntime
 } // namespace OHOS
