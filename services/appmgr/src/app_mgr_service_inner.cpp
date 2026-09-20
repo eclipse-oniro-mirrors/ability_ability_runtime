@@ -662,7 +662,7 @@ int32_t AppMgrServiceInner::PreloadApplication(const std::string &bundleName, in
         auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
         bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appIndex);
     }
-    if (appIndex != 0 || appIndex != AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
+    if (appIndex != 0 && appIndex != AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
         TAG_LOGE(AAFwkTag::APPMGR, "not support clone app preload");
         return ERR_INVALID_VALUE;
     }
@@ -849,7 +849,7 @@ ImageError AppMgrServiceInner::MakeImageInner(const AAFwk::Want &want, int32_t u
         auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
         bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appIndex);
     }
-    if (appIndex != 0 || appIndex != AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
+    if (appIndex != 0 && appIndex != AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
         TAG_LOGE(AAFwkTag::APPMGR, "not support appIndex yet");
         return ImageError::ERR_INNER;
     }
