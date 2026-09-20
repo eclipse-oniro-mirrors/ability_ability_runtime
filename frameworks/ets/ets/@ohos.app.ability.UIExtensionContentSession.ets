@@ -80,7 +80,8 @@ export default class UIExtensionContentSession {
   native nativeSetReceiveDataForResultCallback(callback: OnReceiveDataForResultCallback): void;
   native terminateSelfSync(callback:AsyncCallbackWrapper<void>): void;
   native terminateSelfWithResultSync(parameter: AbilityResult, callback:AsyncCallbackWrapper<void>): void;
-  private native nativeStartAbilityByTypeSync(type: string, wantParam: Record<string, RecordData>, startCallback: AbilityStartCallback): BusinessError<void>;
+  private native nativeStartAbilityByType(type: string, wantParam: Record<string, RecordData>,
+    startCallback: AbilityStartCallback, callback: AsyncCallbackWrapper<void>): void;
   native nativeSetWindowPrivacyMode(isPrivacyMode: boolean, callback:AsyncCallbackWrapper<void>): void;
   native nativeStartAbilitySync(want: Want, callback: AsyncCallbackWrapper<void>): void;
   native nativeStartAbilitySync(want: Want, options: StartOptions, callback:AsyncCallbackWrapper<void>): void;
@@ -148,36 +149,34 @@ export default class UIExtensionContentSession {
 
   startAbilityByType(type: string, wantParam: Record<string, RecordData>, startCallback: AbilityStartCallback,
     callback: AsyncCallback<void>): void {
-    let p1 = taskpool.execute((): BusinessError<void> => {
-      return this.nativeStartAbilityByTypeSync(type, wantParam, startCallback);
-    });
-    p1.then((e: Any) => {
-      let retError = e as BusinessError<void>;
-      if (retError.code === 0) {
+    let asyncCall = new AsyncCallbackWrapper<void>((err: BusinessError<void> | null) => {
+      if (err == null || err.code == 0) {
         callback(null, undefined);
       } else {
-        callback(retError, undefined);
-      }      
-    }, (err: Error): void => {
-      callback(err as BusinessError, undefined);
+        callback(err, undefined);
+      }
+    });
+    taskpool.execute((): void => {
+      this.nativeStartAbilityByType(type, wantParam, startCallback, asyncCall);
+    }).then(() => {}, (err: Error): void => {
+      asyncCall(err as BusinessError);
     });
   }
 
   startAbilityByType(type: string, wantParam: Record<string, RecordData>,
     startCallback: AbilityStartCallback): Promise<void> {
     let p = new Promise<void>((resolve: (v: undefined) => void, reject: (error: BusinessError<void>) => void): void => {
-      let p1 = taskpool.execute((): BusinessError<void> => {
-        return this.nativeStartAbilityByTypeSync(type, wantParam, startCallback);
-      });
-      p1.then((e: Any) => {
-        let retError = e as BusinessError<void>;
-        if (retError.code === 0) {
+      let myCall = new AsyncCallbackWrapper<void>((err: BusinessError<void> | null) => {
+        if (err == null || err.code == 0) {
           resolve(undefined);
         } else {
-          reject(retError);
+          reject(err);
         }
-      }).catch((err: Error): void => {
-        reject(err as BusinessError);
+      });
+      taskpool.execute((): void => {
+        this.nativeStartAbilityByType(type, wantParam, startCallback, myCall);
+      }).then(() => {}, (err: Error): void => {
+        myCall(err as BusinessError);
       });
     });
     return p;

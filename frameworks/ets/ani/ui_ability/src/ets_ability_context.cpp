@@ -77,8 +77,8 @@ constexpr const char *SIGNATURE_OPEN_ATOMIC_SERVICE = "C{std.core.String}C{utils
     "C{@ohos.app.ability.AtomicServiceOptions.AtomicServiceOptions}:";
 const std::string ATOMIC_SERVICE_PREFIX = "com.atomicservice.";
 constexpr const char *SIGNATURE_START_ABILITY_BY_TYPE =
-    "C{std.core.String}C{std.core.Record}C{application.AbilityStartCallback.AbilityStartCallback}:C{@ohos.base."
-    "BusinessError}";
+    "C{std.core.String}C{std.core.Record}C{application.AbilityStartCallback.AbilityStartCallback}"
+    "C{utils.AbilityUtils.AsyncCallbackWrapper}:";
 constexpr const char *SIGNATURE_CONNECT_UI_SERVICE_EXTENSION =
     "C{@ohos.app.ability.Want.Want}C{application.UIServiceExtensionConnectCallback.UIServiceExtensionConnectCallback}"
     "C{utils.AbilityUtils.AsyncCallbackWrapper}:";
@@ -564,16 +564,17 @@ void EtsAbilityContext::SetColorMode(ani_env *env, ani_object aniObj, ani_enum_i
     etsContext->OnSetColorMode(env, aniObj, colorMode);
 }
 
-ani_object EtsAbilityContext::StartAbilityByType(
-    ani_env *env, ani_object aniObj, ani_string aniType, ani_ref aniWantParam, ani_object startCallback)
+void EtsAbilityContext::StartAbilityByType(
+    ani_env *env, ani_object aniObj, ani_string aniType, ani_ref aniWantParam,
+    ani_object startCallback, ani_object asyncCallback)
 {
     TAG_LOGD(AAFwkTag::CONTEXT, "StartAbilityByType called");
     auto etsContext = GetEtsAbilityContext(env, aniObj);
     if (etsContext == nullptr) {
         TAG_LOGE(AAFwkTag::CONTEXT, "null etsContext");
-        return nullptr;
+        return;
     }
-    return etsContext->OnStartAbilityByType(env, aniObj, aniType, aniWantParam, startCallback);
+    etsContext->OnStartAbilityByType(env, aniObj, aniType, aniWantParam, startCallback, asyncCallback);
 }
 
 void EtsAbilityContext::OpenAtomicService(
@@ -1673,29 +1674,35 @@ void EtsAbilityContext::OnSetColorMode(ani_env *env, ani_object aniObj, ani_enum
     context->SetAbilityColorMode(static_cast<int32_t>(mode));
 }
 
-ani_object EtsAbilityContext::OnStartAbilityByType(
-    ani_env *env, ani_object aniObj, ani_string aniType, ani_ref aniWantParam, ani_object startCallback)
+void EtsAbilityContext::OnStartAbilityByType(
+    ani_env *env, ani_object aniObj, ani_string aniType, ani_ref aniWantParam,
+    ani_object startCallback, ani_object asyncCallback)
 {
-    ani_object aniObject = EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER);
     std::string type;
     if (!AppExecFwk::GetStdString(env, aniType, type)) {
         TAG_LOGE(AAFwkTag::CONTEXT, "parse type failed");
         EtsErrorUtil::ThrowInvalidParamError(env, "Parse param type failed, type must be string.");
-        return aniObject;
+        AppExecFwk::AsyncCallback(env, asyncCallback,
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM), nullptr);
+        return;
     }
 
     AAFwk::WantParams wantParam;
     if (!AppExecFwk::UnwrapWantParams(env, aniWantParam, wantParam)) {
         TAG_LOGE(AAFwkTag::CONTEXT, "parse wantParam failed");
         EtsErrorUtil::ThrowInvalidParamError(env, "Parse param want failed, want must be Want.");
-        return aniObject;
+        AppExecFwk::AsyncCallback(env, asyncCallback,
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM), nullptr);
+        return;
     }
 
     ani_vm *vm = nullptr;
     if (env->GetVM(&vm) != ANI_OK) {
         TAG_LOGE(AAFwkTag::CONTEXT, "get vm failed");
         EtsErrorUtil::ThrowInvalidParamError(env, "Internal error.");
-        return aniObject;
+        AppExecFwk::AsyncCallback(env, asyncCallback,
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER), nullptr);
+        return;
     }
     ErrCode innerErrCode = ERR_OK;
     std::shared_ptr<EtsUIExtensionCallback> callback = std::make_shared<EtsUIExtensionCallback>(vm);
@@ -1709,17 +1716,21 @@ ani_object EtsAbilityContext::OnStartAbilityByType(
     auto context = context_.lock();
     if (context == nullptr) {
         TAG_LOGE(AAFwkTag::CONTEXT, "null context");
-        return EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
+        AppExecFwk::AsyncCallback(env, asyncCallback,
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT), nullptr);
+        return;
     }
 #ifdef SUPPORT_SCREEN
     innerErrCode = context->StartAbilityByType(type, wantParam, callback);
+#else
+    innerErrCode = static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER);
+    TAG_LOGW(AAFwkTag::CONTEXT, "StartAbilityByType not supported without screen");
 #endif
     if (innerErrCode == ERR_OK) {
-        return EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK);
-    } else if (innerErrCode == static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT)) {
-        return EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
+        callback->SetAsyncCallback(env, asyncCallback);
     } else {
-        return EtsErrorUtil::CreateErrorByNativeErr(env, innerErrCode);
+        AppExecFwk::AsyncCallback(env, asyncCallback,
+            EtsErrorUtil::CreateErrorByNativeErr(env, innerErrCode), nullptr);
     }
 }
 
@@ -3176,7 +3187,7 @@ bool BindNativeMethods(ani_env *env, ani_class &cls)
             ani_native_function {"nativeSetColorMode",
                 "C{@ohos.app.ability.ConfigurationConstant.ConfigurationConstant.ColorMode}:",
                 reinterpret_cast<void*>(EtsAbilityContext::SetColorMode)},
-            ani_native_function { "nativeStartAbilityByTypeSync", SIGNATURE_START_ABILITY_BY_TYPE,
+            ani_native_function { "nativeStartAbilityByType", SIGNATURE_START_ABILITY_BY_TYPE,
                 reinterpret_cast<void *>(EtsAbilityContext::StartAbilityByType) },
             ani_native_function { "nativeOpenAtomicService", SIGNATURE_OPEN_ATOMIC_SERVICE,
                 reinterpret_cast<void *>(EtsAbilityContext::OpenAtomicService) },

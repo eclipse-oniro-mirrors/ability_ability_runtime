@@ -91,8 +91,9 @@ public:
     static void DisconnectServiceExtensionAbility(ani_env *env, ani_object aniObj, ani_long connectId,
         ani_object callback);
     static void SetColorMode(ani_env *env, ani_object aniObj, ani_enum_item colorMode);
-    static ani_object StartAbilityByType(
-        ani_env *env, ani_object aniObj, ani_string aniType, ani_ref aniWantParam, ani_object startCallback);
+    static void StartAbilityByType(
+        ani_env *env, ani_object aniObj, ani_string aniType, ani_ref aniWantParam,
+        ani_object startCallback, ani_object asyncCallback);
     static void OpenAtomicService(
         ani_env *env, ani_object aniObj, ani_string aniAppId, ani_object callbackObj, ani_object optionsObj);
     static void StartSelfUIAbilityInCurrentProcess(
@@ -218,8 +219,9 @@ private:
     void OnStopServiceExtensionAbility(ani_env *env, ani_object aniObj, ani_object wantObj,
         ani_object callbackobj, AppExecFwk::ExtensionAbilityType extensionType);
     void OnSetColorMode(ani_env *env, ani_object aniObj, ani_enum_item colorMode);
-    ani_object OnStartAbilityByType(
-        ani_env *env, ani_object aniObj, ani_string aniType, ani_ref aniWantParam, ani_object startCallback);
+    void OnStartAbilityByType(
+        ani_env *env, ani_object aniObj, ani_string aniType, ani_ref aniWantParam,
+        ani_object startCallback, ani_object asyncCallback);
     void OnOpenAtomicService(
         ani_env *env, ani_object aniObj, ani_string aniAppId, ani_object callbackObj, ani_object optionsObj);
     void OnStartSelfUIAbilityInCurrentProcess(ani_env *env, ani_object aniObj,
