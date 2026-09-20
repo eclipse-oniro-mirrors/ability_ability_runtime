@@ -1465,7 +1465,7 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
     if (!sandboxAbilityInfo.bundleName.empty()) {
         appIndex = sandboxAbilityInfo.applicationInfo.appIndex;
         TAG_LOGD(AAFwkTag::ABILITYMGR, "Using sandbox clone appIndex: %{public}d from sandboxAbilityInfo", appIndex);
-    } } else if (!StartAbilityUtils::GetAppIndex(param.want, param.callerToken, validUserId, appIndex)) {
+    } else if (!StartAbilityUtils::GetAppIndex(param.want, param.callerToken, validUserId, appIndex)) {
         AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, ERR_APP_CLONE_INDEX_INVALID, "GetAppIndex failed");
         return ERR_APP_CLONE_INDEX_INVALID;
     }
