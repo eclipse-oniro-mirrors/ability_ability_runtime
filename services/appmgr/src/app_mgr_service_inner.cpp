@@ -8079,7 +8079,7 @@ int32_t AppMgrServiceInner::UpdateConfigurationByBundleName(const Configuration 
     if (ret != ERR_OK) {
         return ret;
     }
-    if (appIndex == -1) {`
+    if (appIndex == -1) {
         auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
         int userId = 0;
         userId = GetValidUserId(userId);
