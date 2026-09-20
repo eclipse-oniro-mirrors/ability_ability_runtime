@@ -9458,8 +9458,8 @@ int32_t AbilityManagerService::UninstallAppInner(const std::string &bundleName, 
     }
 
     auto userId = uid / BASE_USER_RANGE;
-    auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
     if (appIndex == -1) {
+        auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
         bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appIndex);
     }
     if (isUpgrade) {
