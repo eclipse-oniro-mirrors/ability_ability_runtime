@@ -46,7 +46,7 @@ bool QuickFixManagerService::Init()
     std::lock_guard<std::mutex> lock(eventMutex_);
     eventRunner_ = AppExecFwk::EventRunner::Create("QuickFixMgrSvrMain");
     if (eventRunner_ == nullptr) {
-        TAG_LOGE(AAFwkTag::QUICKFIX, "null eventRunner_");
+        TAG_LOGE(AAFwkTag::QUICKFIX, "null  eventRunner_");
         return false;
     }
 

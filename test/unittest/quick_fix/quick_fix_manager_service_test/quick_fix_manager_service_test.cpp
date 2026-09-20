@@ -105,7 +105,7 @@ HWTEST_F(QuickFixManagerServiceTest, ApplyQuickFix_0100, TestSize.Level1)
     auto ret = quickFixMs_->ApplyQuickFix(quickFixFiles);
     EXPECT_EQ(ret, QUICK_FIX_OK);
 
-    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end .", __func__);
 }
 
 /**

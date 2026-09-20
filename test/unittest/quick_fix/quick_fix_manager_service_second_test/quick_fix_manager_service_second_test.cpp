@@ -77,7 +77,7 @@ void QuickFixManagerServiceTest::TearDown()
  */
 HWTEST_F(QuickFixManagerServiceTest, ApplyQuickFix_0100, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start .", __func__);
 
     MyFlag::isAllowedToUseSystemAPIFlag_ = false;
     std::vector<std::string> quickFixFiles;
