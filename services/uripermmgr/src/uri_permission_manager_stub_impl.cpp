@@ -44,6 +44,7 @@
 #include "upms_udmf_utils.h"
 #endif // ABILITY_RUNTIME_UDMF_ENABLE
 #include "want.h"
+#include "bundle_mgr_helper.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -269,6 +270,10 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermission(const std::vector<std::
     }
     int32_t curUserId = FUDUtils::GetCurrentAccountId();
     uint32_t targetTokenId = 0;
+    if (appIndex == -1) {
+        auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
+        bundleMgrHelper->GetDualModeBundleInfo(targetBundleName, curUserId, appIndex);
+    }
     ret = FUDUtils::GetTokenIdByBundleName(targetBundleName, appIndex, curUserId, targetTokenId);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "get tokenId by bundle name failed");
@@ -805,6 +810,10 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermissionPrivileged(const std::ve
     }
     int32_t curUserId = FUDUtils::GetCurrentAccountId();
     uint32_t targetTokenId = 0;
+    if (appIndex == -1) {
+        auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
+        bundleMgrHelper->GetDualModeBundleInfo(targetBundleName, curUserId, appIndex);
+    }
     auto ret = FUDUtils::GetTokenIdByBundleName(targetBundleName, appIndex, curUserId, targetTokenId);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "get tokenId failed, bundleName:%{public}s", targetBundleName.c_str());
@@ -1509,6 +1518,10 @@ ErrCode UriPermissionManagerStubImpl::RevokeUriPermissionManually(const Uri& uri
     }
     int32_t curUserId = FUDUtils::GetCurrentAccountId();
     uint32_t targetTokenId = 0;
+    if (appIndex == -1) {
+        auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
+        bundleMgrHelper->GetDualModeBundleInfo(targetBundleName, curUserId, appIndex);
+    }
     auto ret = FUDUtils::GetTokenIdByBundleName(bundleName, appIndex, curUserId, targetTokenId);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "get tokenId by bundleName fail");

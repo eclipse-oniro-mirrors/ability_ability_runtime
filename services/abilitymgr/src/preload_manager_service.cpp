@@ -87,6 +87,10 @@ int32_t PreloadManagerService::LaunchGameCustomized(const std::string &bundleNam
 {
     Want launchWant;
     AppExecFwk::AbilityInfo abilityInfo;
+    auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
+    if (appIndex == -1) {
+        bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appIndex);
+    }
     if (auto ret = PreloadApplicationVerification(bundleName, userId, appIndex, launchWant,
         abilityInfo); ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "verify preload game failed");

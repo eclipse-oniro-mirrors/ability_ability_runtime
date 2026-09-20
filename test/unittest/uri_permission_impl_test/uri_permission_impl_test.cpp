@@ -41,6 +41,7 @@
 #include "dynamic_feature_manager.h"
 #undef private
 #include "mock_dynamic_features.h"
+#include "bundle_mgr_helper.h"
 
 using namespace testing;
 using namespace testing::ext;

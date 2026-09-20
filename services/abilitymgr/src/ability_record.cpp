@@ -193,7 +193,7 @@ std::shared_ptr<AbilityRecord> AbilityRecord::CreateAbilityRecord(const AbilityR
 void AbilityRecord::Init(const AbilityRequest &abilityRequest)
 {
     SetUid(abilityRequest.uid);
-    int32_t appIndex = 0;
+    int32_t appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
     if (abilityRequest.isWebSandBoxClone) {
         appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
         InitSandboxCloneParams(abilityRequest);

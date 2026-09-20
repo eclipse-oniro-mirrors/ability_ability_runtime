@@ -48,9 +48,9 @@ private:
     void HandleBundleChanged(const EventFwk::CommonEventData &data);
 
     void LoadModularObjectExtensionInfos(int32_t userId = -1);
-    void InsertModularObjectExtensionInfo(const std::string &bundleName, int32_t userId, int32_t appIndex = 0);
-    void UpdateModularObjectExtensionInfos(const std::string &bundleName, int32_t userId, int32_t appIndex = 0);
-    void RemoveModularObjectExtensionInfo(const std::string &bundleName, int32_t userId, int32_t appIndex = 0);
+    void InsertModularObjectExtensionInfo(const std::string &bundleName, int32_t userId, int32_t appIndex = -1);
+    void UpdateModularObjectExtensionInfos(const std::string &bundleName, int32_t userId, int32_t appIndex = -1);
+    void RemoveModularObjectExtensionInfo(const std::string &bundleName, int32_t userId, int32_t appIndex = -1);
     void ProcessMetadata(const std::vector<AppExecFwk::Metadata> &metadata, AAFwk::ModularObjectExtensionInfo &info);
     void GetModularObjectExtensionInfos(const AppExecFwk::BundleInfo &bundleInfo,
         std::vector<AAFwk::ModularObjectExtensionInfo> &infos);

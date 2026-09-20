@@ -53,7 +53,8 @@ using Dlp = Security::DlpPermission::DlpPermissionKit;
         return true;
     }
     int32_t appIndex = abilityRecord->GetAppIndex();
-    if (AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex) ||
+    if (appIndex == 0 || appIndex == AbilityRuntime::GlobalConstant::PC_TABLET_INDEX ||
+        AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex) ||
         AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(appIndex)) {
         return true;
     }
@@ -79,7 +80,7 @@ using Dlp = Security::DlpPermission::DlpPermissionKit;
 {
 #ifdef WITH_DLP
     int32_t dlpIndex = want.GetIntParam(AbilityRuntime::ServerConstant::DLP_INDEX, 0);
-    if (dlpIndex != 0 &&
+    if ((dlpIndex != 0 && dlpIndex != AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) &&
         (AbilityRuntime::GlobalConstant::IsAppCloneIndex(dlpIndex) ||
          AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(dlpIndex))) {
         return false;
