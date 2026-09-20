@@ -3454,7 +3454,7 @@ int32_t AppMgrServiceInner::KillApplication(const std::string &bundleName, bool 
     
     if (appIndex == -1) {
         auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
-        int  userId = 0;
+        int  userId = -1;
         userId = GetValidUserId(userId);
         bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appIndex);
     }
@@ -8081,7 +8081,7 @@ int32_t AppMgrServiceInner::UpdateConfigurationByBundleName(const Configuration 
     }
     if (appIndex == -1) {
         auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
-        int userId = 0;
+        int userId = -1;
         userId = GetValidUserId(userId);
         bundleMgrHelper->GetDualModeBundleInfo(name, userId, appIndex);
     }
