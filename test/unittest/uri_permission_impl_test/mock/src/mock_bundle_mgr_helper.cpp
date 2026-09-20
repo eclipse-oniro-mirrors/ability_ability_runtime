@@ -98,7 +98,7 @@ ErrCode BundleMgrHelper::GetCloneBundleInfo(const std::string &bundleName, int32
 }
 
 int32_t  BundleMgrHelper::GetDualModeBundleInfo(const std::string& bundleName, int32_t userId,
-                                               int32_t &appIndex)
+                                                int32_t &appIndex)
 {
     appIndex = 0;
     return 0;
