@@ -1068,6 +1068,7 @@ ErrCode BundleMgrHelper::GetDualModeBundleInfo(const std::string &bundleName, in
     auto bundleMgr = Connect();
     if (bundleMgr == nullptr) {
         TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        appIndex = 0;
         return ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
     }
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
