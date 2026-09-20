@@ -3451,7 +3451,7 @@ int32_t AppMgrServiceInner::KillApplication(const std::string &bundleName, bool 
         TAG_LOGE(AAFwkTag::APPMGR, "permission verification fail");
         return result;
     }
-    
+
     if (appIndex == -1) {
         auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
         int  userId = -1;
