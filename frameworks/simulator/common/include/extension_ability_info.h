@@ -60,6 +60,7 @@ enum class ExtensionAbilityType {
     DISTRIBUTED = 28,
     CRYPTO = 35,
     PARTNER_AGENT = 36,
+    UKEY_AUTH = 40,
     UNSPECIFIED = 255,
     UI = 256,
     HMS_ACCOUNT = 257,
