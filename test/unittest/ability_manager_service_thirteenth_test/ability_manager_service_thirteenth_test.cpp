@@ -608,7 +608,8 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, CheckUkeyAuthExtensionPermission_0
  */
 HWTEST_F(AbilityManagerServiceThirteenthTest, CheckCallOtherExtensionPermission_UkeyAuth_001, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest CheckCallOtherExtensionPermission_UkeyAuth_001 start");
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceThirteenthTest CheckCallOtherExtensionPermission_UkeyAuth_001 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
     MyStatus::GetInstance().permPermission_ = 0;
@@ -626,11 +627,13 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, CheckCallOtherExtensionPermission_
  * Name: CheckCallOtherExtensionPermission_UkeyAuth_002
  * Function: CheckCallOtherExtensionPermission
  * SubFunction: NA
- * FunctionPoints: AbilityManagerService CheckCallOtherExtensionPermission with ukeyAuth extension and permission granted
+ * FunctionPoints: AbilityManagerService CheckCallOtherExtensionPermission
+ * with ukeyAuth extension and permission granted
  */
 HWTEST_F(AbilityManagerServiceThirteenthTest, CheckCallOtherExtensionPermission_UkeyAuth_002, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest CheckCallOtherExtensionPermission_UkeyAuth_002 start");
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceThirteenthTest CheckCallOtherExtensionPermission_UkeyAuth_002 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
     MyStatus::GetInstance().permPermission_ = 2;
