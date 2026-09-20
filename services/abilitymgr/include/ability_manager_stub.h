@@ -457,7 +457,6 @@ private:
     int32_t IsRestartAppLimitInner(MessageParcel &data, MessageParcel &reply);
     int32_t QuerySelfModularObjectExtensionInfosInner(MessageParcel &data, MessageParcel &reply);
     int32_t GetUserLockedBundleListInner(MessageParcel &data, MessageParcel &reply);
-    int32_t ExecuteInAppSkillInner(MessageParcel &data, MessageParcel &reply);
     int32_t ExecuteInAppSkillWithTokenIdInner(MessageParcel &data, MessageParcel &reply);
     int32_t ExecuteSkillDoneWithTokenInner(MessageParcel &data, MessageParcel &reply);
     int32_t NotifySkillFunctionInvokedInner(MessageParcel &data, MessageParcel &reply);

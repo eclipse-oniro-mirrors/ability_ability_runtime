@@ -759,9 +759,6 @@ enum class AbilityManagerInterfaceCode {
     // start self uiability with start options and caller token
     START_SELF_UI_ABILITY_WITH_OPTIONS_AND_TOKEN = 6168,
 
-    // execute in-app skill
-    EXECUTE_IN_APP_SKILL = 6169,
-
     // query skill type (independent or in-app)
     QUERY_SKILL_TYPE = 6171,
 
