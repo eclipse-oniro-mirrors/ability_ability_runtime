@@ -136,6 +136,201 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_0100, TestSize.Level1)
     GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_0100 end";
 }
 
+// ==================== ParseToolCommand Tests ====================
+
+namespace {
+ToolInfo BuildParseToolInfo(const std::string &name, const std::string &inputSchema)
+{
+    ToolInfo tool;
+    tool.name = name;
+    tool.version = "1.0.0";
+    tool.description = "parse test tool";
+    tool.executablePath = "/system/bin/" + name;
+    tool.inputSchema = inputSchema;
+    tool.outputSchema = "{}";
+    tool.hasSubCommand = false;
+    return tool;
+}
+
+ToolInfo BuildSubCommandToolInfo(const std::string &name, const std::string &subName,
+    const std::string &subSchema)
+{
+    ToolInfo tool;
+    tool.name = name;
+    tool.version = "1.0.0";
+    tool.description = "subcommand test tool";
+    tool.executablePath = "/system/bin/" + name;
+    tool.inputSchema = "{}";
+    tool.outputSchema = "{}";
+    tool.hasSubCommand = true;
+    SubCommandInfo sub;
+    sub.inputSchema = subSchema;
+    tool.subcommands[subName] = sub;
+    return tool;
+}
+} // namespace
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_KeyEqualsValue_0100
+ * @tc.desc: Test ParseToolCommand rejects --key=value format (only --key value is supported)
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_KeyEqualsValue_0100, TestSize.Level1)
+{
+    auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"bundleName":{"type":"string"}}})");
+    ExecToolParam param;
+    std::string detail;
+    // --key=value format is not supported
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --bundleName=com.example", toolInfo, param, detail),
+        ERR_INVALID_PARAM);
+}
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_KeySpaceValue_0100
+ * @tc.desc: Test ParseToolCommand with --key value format
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_KeySpaceValue_0100, TestSize.Level1)
+{
+    auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"bundleName":{"type":"string"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --bundleName com.example", toolInfo, param, detail), ERR_OK);
+    EXPECT_EQ(param.toolName, "ohos-aa");
+    EXPECT_NE(param.args.GetParam("bundleName"), nullptr);
+}
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_BooleanFlag_0100
+ * @tc.desc: Test ParseToolCommand with --flag (boolean true) format
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_BooleanFlag_0100, TestSize.Level1)
+{
+    auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"verbose":{"type":"boolean"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --verbose", toolInfo, param, detail), ERR_OK);
+    EXPECT_EQ(param.toolName, "ohos-aa");
+    EXPECT_NE(param.args.GetParam("verbose"), nullptr);
+}
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_BooleanFalse_0100
+ * @tc.desc: Test ParseToolCommand with --flag false (explicit boolean false) format
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_BooleanFalse_0100, TestSize.Level1)
+{
+    auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"verbose":{"type":"boolean"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --verbose false", toolInfo, param, detail), ERR_OK);
+    EXPECT_NE(param.args.GetParam("verbose"), nullptr);
+}
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_HelpWithOtherArgs_0100
+ * @tc.desc: Test ParseToolCommand rejects --help combined with other args
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_HelpWithOtherArgs_0100, TestSize.Level1)
+{
+    auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"bundleName":{"type":"string"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --help --bundleName com.x", toolInfo, param, detail),
+        ERR_INVALID_PARAM);
+}
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_HelpAlone_0100
+ * @tc.desc: Test ParseToolCommand accepts --help alone
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_HelpAlone_0100, TestSize.Level1)
+{
+    auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"bundleName":{"type":"string"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --help", toolInfo, param, detail), ERR_OK);
+    EXPECT_NE(param.args.GetParam("help"), nullptr);
+}
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_SingleQuoteSpace_0100
+ * @tc.desc: Test ParseToolCommand with single-quoted value containing spaces
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_SingleQuoteSpace_0100, TestSize.Level1)
+{
+    auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"name":{"type":"string"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --name 'hello world'", toolInfo, param, detail), ERR_OK);
+    EXPECT_NE(param.args.GetParam("name"), nullptr);
+}
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_UnknownFlag_0100
+ * @tc.desc: Test ParseToolCommand rejects unknown flag not in schema
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_UnknownFlag_0100, TestSize.Level2)
+{
+    auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"bundleName":{"type":"string"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --unknownFlag foo", toolInfo, param, detail),
+        ERR_INVALID_PARAM);
+}
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_UnknownSubCommand_0100
+ * @tc.desc: Test ParseToolCommand rejects unknown subcommand
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_UnknownSubCommand_0100, TestSize.Level2)
+{
+    auto toolInfo = BuildSubCommandToolInfo("ohos-aa", "start",
+        R"({"properties":{"bundleName":{"type":"string"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa nonexistent --flag", toolInfo, param, detail),
+        ERR_TOOL_NOT_EXIST);
+}
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_EmptyCmd_0100
+ * @tc.desc: Test ParseToolCommand with empty command string
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_EmptyCmd_0100, TestSize.Level2)
+{
+    auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"bundleName":{"type":"string"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("", toolInfo, param, detail), ERR_INVALID_PARAM);
+}
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_SubCommandSchema_0100
+ * @tc.desc: Test ParseToolCommand uses subcommand schema for args
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_SubCommandSchema_0100, TestSize.Level1)
+{
+    auto toolInfo = BuildSubCommandToolInfo("ohos-aa", "start",
+        R"({"properties":{"bundleName":{"type":"string"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa start --bundleName com.x", toolInfo, param, detail),
+        ERR_OK);
+    EXPECT_EQ(param.toolName, "ohos-aa");
+    EXPECT_EQ(param.subcommand, "start");
+    EXPECT_NE(param.args.GetParam("bundleName"), nullptr);
+}
+
 /**
  * @tc.name: ToolUtil_ValidateInputSchemaProperties_1700
  * @tc.desc: Test ValidateInputSchemaProperties with invalid JSON schema
@@ -1876,9 +2071,9 @@ HWTEST_F(ToolUtilTest, GenerateCmdSandboxConfig_0100, TestSize.Level1)
 
     ExecCmdParam param;
     param.cmd = "echo hello";
-    param.policy = "allow";
-    param.workDir = "/data/local/tmp";
-    param.env = "PATH=/bin";
+    param.execCmdOptions.policy = "allow";
+    param.execCmdOptions.workDir = "/data/local/tmp";
+    param.execCmdOptions.env = "PATH=/bin";
 
     std::string sandboxConfig;
     std::string bundleName;
@@ -1904,9 +2099,9 @@ HWTEST_F(ToolUtilTest, GenerateCmdSandboxConfig_0200, TestSize.Level1)
 
     ExecCmdParam param;
     param.cmd = "";
-    param.policy = "";
-    param.workDir = "";
-    param.env = "";
+    param.execCmdOptions.policy = "";
+    param.execCmdOptions.workDir = "";
+    param.execCmdOptions.env = "";
 
     std::string sandboxConfig;
     std::string bundleName;
@@ -1930,9 +2125,9 @@ HWTEST_F(ToolUtilTest, GenerateCmdSandboxConfig_0300, TestSize.Level1)
 
     ExecCmdParam param;
     param.cmd = "ls /data";
-    param.policy = "strict";
-    param.workDir = "/data/local/tmp";
-    param.env = "LANG=en_US.UTF-8";
+    param.execCmdOptions.policy = "strict";
+    param.execCmdOptions.workDir = "/data/local/tmp";
+    param.execCmdOptions.env = "LANG=en_US.UTF-8";
 
     std::string sandboxConfig;
     std::string bundleName;
@@ -1956,9 +2151,9 @@ HWTEST_F(ToolUtilTest, GenerateCmdSandboxConfig_0400, TestSize.Level1)
 
     ExecCmdParam param;
     param.cmd = "pwd";
-    param.policy = "allow";
-    param.workDir = "";  // empty workDir
-    param.env = "";
+    param.execCmdOptions.policy = "allow";
+    param.execCmdOptions.workDir = "";  // empty workDir
+    param.execCmdOptions.env = "";
 
     std::string sandboxConfig;
     std::string bundleName;

@@ -107,9 +107,9 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
             return false;
         }
     }
-    
-    AbilityInterceptorParam interceptorParam = AbilityInterceptorParam(
-        *want, intParam, int32Param, boolParam, nullptr, std::function<bool(void)>());
+
+    AbilityInterceptorParam interceptorParam = InterceptorParamBuilder(*want, intParam, int32Param)
+        .WithUI(boolParam).CallerToken(nullptr).Build();
     abilityInterceptorExecuter->DoProcess(interceptorParam);
 
     // fuzz for AbilityRunningInfo

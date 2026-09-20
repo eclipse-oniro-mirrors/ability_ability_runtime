@@ -41,7 +41,7 @@ public:
     ~DisposedRuleInterceptor() = default;
     static std::string GenerateTimeoutTaskName(int32_t uid);
     static std::string GenerateEventTaskName(int32_t uid);
-    ErrCode DoProcess(const AbilityInterceptorParam &param) override;
+    ErrCode DoProcess(AbilityInterceptorParam &param) override;
     void UnregisterObserver(int32_t uid);
 private:
     ErrCode HandleBlockRule(const AbilityInterceptorParam &param, AppExecFwk::DisposedRule &disposedRule);

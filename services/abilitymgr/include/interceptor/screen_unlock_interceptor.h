@@ -24,7 +24,7 @@ class ScreenUnlockInterceptor : public IAbilityInterceptor {
 public:
     ScreenUnlockInterceptor() = default;
     ~ScreenUnlockInterceptor() = default;
-    ErrCode DoProcess(const AbilityInterceptorParam &param) override;
+    ErrCode DoProcess(AbilityInterceptorParam &param) override;
 private:
     bool GetTargetAbilityInfo(const AbilityInterceptorParam &param, AppExecFwk::AbilityInfo &targetAbilityInfo);
     bool QueryTargetAbilityInfoByUri(const AbilityInterceptorParam &param, AppExecFwk::AbilityInfo &targetAbilityInfo);

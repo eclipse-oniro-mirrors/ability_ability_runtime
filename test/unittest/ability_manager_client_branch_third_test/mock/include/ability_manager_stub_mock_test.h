@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -401,6 +401,9 @@ public:
     MOCK_METHOD2(DetachAppDebug, int32_t(const std::string &bundleName, bool isDebugFromLocal));
     MOCK_METHOD3(ExecuteIntent, int32_t(uint64_t key, const sptr<IRemoteObject> &callerToken,
         const InsightIntentExecuteParam &param));
+    MOCK_METHOD4(ExecuteUIAbilityForegroundIntentWithSpecifyTokenId,
+    int32_t(const Want &want, const sptr<IRemoteObject> &callerAbilityToken,
+        const InsightIntentExecuteLiteParam &param, uint64_t specifiedFullTokenId));
     MOCK_METHOD3(ExecuteInsightIntentDone, int32_t(const sptr<IRemoteObject> &token, uint64_t intentId,
         const InsightIntentExecuteResult &result));
     MOCK_METHOD4(StartAbilityByOEExt, int32_t(const Want&, sptr<IRemoteObject>, int32_t, const std::string&));
@@ -417,8 +420,8 @@ public:
     MOCK_METHOD(int32_t, GetMissionIdByToken, (const sptr<IRemoteObject> &token), (override));
     MOCK_METHOD(int, GetMissionSnapshot, (const std::string& deviceId, int32_t missionId,
         MissionSnapshot& snapshot, bool isLowResolution), (override));
-    MOCK_METHOD(int, GetTopAbility, (sptr<IRemoteObject> &token), (override));
-    MOCK_METHOD(AppExecFwk::ElementName, GetTopAbility, (bool isNeedLocalDeviceId), (override));
+    MOCK_METHOD(int, GetTopAbility, (sptr<IRemoteObject> &token, int32_t userId), (override));
+    MOCK_METHOD(AppExecFwk::ElementName, GetTopAbility, (bool isNeedLocalDeviceId, int32_t userId), (override));
     MOCK_METHOD(int32_t, TerminateMission, (int32_t missionId), ());
     MOCK_METHOD(AppExecFwk::ElementName, GetElementNameByToken,
         (sptr<IRemoteObject> token, bool isNeedLocalDeviceId), (override));

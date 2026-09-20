@@ -89,6 +89,10 @@ ohos_moduletest("shell_command_result_module_test") {
     "hilog:libhilog",
     "ipc:ipc_core",
   ]
+
+  if (ability_runtime_graphics) {
+    external_deps += [ "image_framework:image_native" ]
+  }
 }
 
 group("moduletest") {

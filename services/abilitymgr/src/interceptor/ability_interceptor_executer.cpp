@@ -22,35 +22,48 @@ namespace AAFwk {
 void AbilityInterceptorExecuter::AddInterceptor(std::string interceptorName,
     const std::shared_ptr<IAbilityInterceptor> &interceptor)
 {
-    std::lock_guard lock(interceptorMapLock_);
-    if (interceptor != nullptr) {
-        interceptorMap_[interceptorName] = interceptor;
+    std::lock_guard lock(interceptorListLock_);
+    if (interceptor == nullptr) {
+        return;
     }
+    for (auto it = interceptorList_.begin(); it != interceptorList_.end(); ++it) {
+        if (it->first == interceptorName) {
+            interceptorList_.erase(it);
+            break;
+        }
+    }
+    interceptorList_.emplace_back(interceptorName, interceptor);
 }
 
 void AbilityInterceptorExecuter::RemoveInterceptor(std::string interceptorName)
 {
-    std::lock_guard lock(interceptorMapLock_);
-    auto iter = interceptorMap_.find(interceptorName);
-    if (iter != interceptorMap_.end()) {
-        interceptorMap_.erase(interceptorName);
+    std::lock_guard lock(interceptorListLock_);
+    for (auto it = interceptorList_.begin(); it != interceptorList_.end(); ++it) {
+        if (it->first == interceptorName) {
+            interceptorList_.erase(it);
+            break;
+        }
     }
 }
 
 bool AbilityInterceptorExecuter::HasInterceptor(std::string interceptorName)
 {
-    std::lock_guard lock(interceptorMapLock_);
-    auto iter = interceptorMap_.find(interceptorName);
-    return iter != interceptorMap_.end();
+    std::lock_guard lock(interceptorListLock_);
+    for (const auto &item : interceptorList_) {
+        if (item.first == interceptorName) {
+            return true;
+        }
+    }
+    return false;
 }
 
-ErrCode AbilityInterceptorExecuter::DoProcess(const AbilityInterceptorParam &param)
+ErrCode AbilityInterceptorExecuter::DoProcess(AbilityInterceptorParam &param)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     int32_t result = ERR_OK;
-    auto interceptorMap = GetInterceptorMapCopy();
-    auto item = interceptorMap.begin();
-    while (item != interceptorMap.end()) {
+    auto interceptorList = GetInterceptorListCopy();
+    auto item = interceptorList.begin();
+    while (item != interceptorList.end()) {
         if ((*item).second == nullptr) {
             item++;
             continue;
@@ -66,10 +79,10 @@ ErrCode AbilityInterceptorExecuter::DoProcess(const AbilityInterceptorParam &par
     return result;
 }
 
-InterceptorMap AbilityInterceptorExecuter::GetInterceptorMapCopy()
+InterceptorList AbilityInterceptorExecuter::GetInterceptorListCopy()
 {
-    std::lock_guard lock(interceptorMapLock_);
-    return interceptorMap_;
+    std::lock_guard lock(interceptorListLock_);
+    return interceptorList_;
 }
 } // namespace AAFwk
 } // namespace OHOS

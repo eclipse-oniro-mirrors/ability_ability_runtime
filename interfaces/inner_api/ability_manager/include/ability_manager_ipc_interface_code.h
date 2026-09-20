@@ -498,6 +498,9 @@ enum class AbilityManagerInterfaceCode {
     // Execute intent by function call (1146)
     EXECUTE_INTENT_BY_FUNCTION_CALL = 1146,
 
+    // Execute intent with specify token id (1147)
+    EXECUTE_INTENT_WITH_SPECIFY_TOKEN_ID = 1147,
+
     // ipc id 2001-3000 for tools
     // ipc id for dumping state (2001)
     DUMP_STATE = 2001,
@@ -782,6 +785,12 @@ enum class AbilityManagerInterfaceCode {
 
     // unregister sa interceptor
     UNREGISTER_SA_INTERCEPTOR = 6178,
+
+    // set the list of applications allowed in kiosk mode with caller uid isolation
+    ADD_KIOSK_APP_LIST = 6179,
+
+    // delete caller's own kiosk application list entries
+    DELETE_KIOSK_APP_FROM_LIST = 6180,
 };
 }  // namespace AAFwk
 }  // namespace OHOS

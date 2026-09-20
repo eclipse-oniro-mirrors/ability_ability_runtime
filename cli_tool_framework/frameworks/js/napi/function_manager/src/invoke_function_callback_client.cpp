@@ -38,15 +38,14 @@ void InvokeFunctionCallbackClient::ProcessInsightIntentExecute(int32_t resultCod
         TAG_LOGW(AAFwkTag::CLI_TOOL, "invokeFunction already completed");
         return;
     }
-    InvokeFunctionResult out;
-    out.invokeSuccess = (resultCode == 0);
-    out.errorCode = (resultCode == 0) ? 0 : ERR_FUNCTION_EXECUTE_FAILED;
-    out.resultCode = executeResult.code;  // app-level code drives InvokeResult
-    out.result = executeResult.BuildFunctionResult();
+    FunctionResultHolder holder;
+    holder.result.success = (executeResult.code == 0);
+    holder.result.errorCode = executeResult.code;
+    holder.result.data = executeResult.BuildFunctionResult();
+    holder.innerError = (resultCode == 0) ? 0 : ERR_FUNCTION_EXECUTE_FAILED;
     if (callback_) {
-        callback_(out);
+        callback_(holder);
     }
 }
-
 } // namespace CliTool
 } // namespace OHOS

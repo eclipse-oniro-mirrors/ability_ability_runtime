@@ -553,6 +553,7 @@ int DialogSessionManager::HandleErmsResult(AbilityRequest &abilityRequest, int32
 {
     std::string bundleName = abilityRequest.abilityInfo.bundleName;
     if (StartAbilityUtils::ermsResultCode < ERMS_ISALLOW_RESULTCODE ||
+        abilityRequest.want.HasParameter(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY) ||
         !IsCreateCloneSelectorDialog(bundleName, userId)) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "create jump modal dialog");
         return CreateJumpModalDialog(abilityRequest, userId, replaceWant);

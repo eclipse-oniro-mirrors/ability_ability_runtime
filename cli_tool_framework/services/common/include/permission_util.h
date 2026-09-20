@@ -17,6 +17,7 @@
 #define OHOS_ABILITY_RUNTIME_PERMISSION_UTIL_H
 
 #include <access_token.h>
+#include <string>
 
 namespace OHOS {
 namespace CliTool {
@@ -29,6 +30,12 @@ public:
     ~PermissionUtil() = default;
 
     static bool VerifyAccessToken(AccessToken::AccessTokenID tokenId, const std::string &requirePermission);
+
+    static bool IsSystemApp();
+
+    static bool IsSystemSA();
+
+    static int32_t CheckSystemAndPermission(const std::string &permissionName);
 };
 
 } // namespace CliTool

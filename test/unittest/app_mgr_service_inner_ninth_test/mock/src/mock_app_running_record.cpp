@@ -67,6 +67,33 @@ void AppRunningRecord::SetCallerTokenId(int32_t tokenId)
 {
 }
 
+std::string AppRunningRecord::GetCallerBundleName() const
+{
+    return "";
+}
+
+void AppRunningRecord::SetCallerBundleName(const std::string &name)
+{
+}
+
+int32_t AppRunningRecord::GetLastUIAbilityCallerUid() const
+{
+    return -1;
+}
+
+void AppRunningRecord::SetLastUIAbilityCallerUid(int32_t uid)
+{
+}
+
+std::string AppRunningRecord::GetLastUIAbilityCallerName() const
+{
+    return "";
+}
+
+void AppRunningRecord::SetLastUIAbilityCallerName(const std::string &name)
+{
+}
+
 bool AppRunningRecord::IsLauncherApp() const
 {
     return false;
@@ -82,24 +109,6 @@ const std::string &AppRunningRecord::GetName() const
 {
     AAFwk::MyStatus::GetInstance().getNameCalled_=true;
     return mainAppName_;
-}
-
-const std::string &AppRunningRecord::GetSignCode() const
-{
-    return signCode_;
-}
-
-void AppRunningRecord::SetSignCode(const std::string &signCode)
-{
-}
-
-const std::string &AppRunningRecord::GetJointUserId() const
-{
-    return jointUserId_;
-}
-
-void AppRunningRecord::SetJointUserId(const std::string &jointUserId)
-{
 }
 
 const std::string &AppRunningRecord::GetProcessName() const
@@ -398,11 +407,12 @@ bool AppRunningRecord::UpdateAbilityFocusState(const sptr<IRemoteObject> &token,
 }
 
 void AppRunningRecord::UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state,
-    bool isFromScreenOffBackground)
+    bool isFromScreenOffBackground, const UiAbilityLastCallerInfo &callerInfo)
 {
 }
 
-void AppRunningRecord::AbilityForeground(const std::shared_ptr<AbilityRunningRecord> &ability)
+void AppRunningRecord::AbilityForeground(const std::shared_ptr<AbilityRunningRecord> &ability,
+    const UiAbilityLastCallerInfo &callerInfo)
 {
 }
 
@@ -1551,6 +1561,10 @@ void AppRunningRecord::GetAllAbilityInfos(std::vector<AppExecFwk::AbilityStateDa
 }
 
 void AppRunningRecord::ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
+{
+}
+
+void AppRunningRecord::SetKillCallerInfo(int32_t killCallerPid, const std::string &killCallerProcessName)
 {
 }
 }  // namespace AppExecFwk

@@ -33,6 +33,7 @@ namespace CliTool {
 enum class SessionType {
     CLI = 0,
     SKILL,
+    CLI_CMD,
 };
 
 enum class SessionState {

@@ -62,6 +62,12 @@ public:
 
     static void TransferToCmdParam(const AAFwk::WantParams &args, std::vector<std::string> &execArgs);
 
+    // Parse a concatenated tool command string (e.g. "ohos-aa start --bundlename com.x")
+    // into an ExecToolParam. The parameter mapping and type recovery are driven by the
+    // tool's inputSchema (subcommand schema takes precedence when subcommand is present).
+    static int32_t ParseToolCommand(const std::string &cmd, const ToolInfo &toolInfo,
+        ExecToolParam &param, std::string &detail);
+
     static bool IsSkillTool(const std::string &toolName);
     static void NormalizeSkillParamKeys(AAFwk::WantParams &args);
     static void ExpandArgsJsonString(AAFwk::WantParams &args);

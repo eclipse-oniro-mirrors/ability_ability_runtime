@@ -7558,5 +7558,44 @@ HWTEST_F(AppMgrServiceInnerTest, SendDestroyImageEvent_001, TestSize.Level1)
 
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }
+
+/**
+ * @tc.name: ChangeAppGcState_003
+ * @tc.desc: Test ChangeAppGcState with permission denied
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, ChangeAppGcState_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto serviceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(serviceInner, nullptr);
+    int32_t pid = 1;
+    int32_t state = 0;
+    MyFlag::flag_ = 0;
+    int32_t ret = serviceInner->ChangeAppGcState(pid, state);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    MyFlag::flag_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: ChangeAppGcState_004
+ * @tc.desc: Test ChangeAppGcState with permission denied
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, ChangeAppGcState_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto serviceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(serviceInner, nullptr);
+    int32_t pid = 1;
+    int32_t state = 0;
+    MyFlag::flag_ = 1;
+    int32_t ret = serviceInner->ChangeAppGcState(pid, state);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    MyFlag::flag_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
 } // namespace AppExecFwk
 } // namespace OHOS

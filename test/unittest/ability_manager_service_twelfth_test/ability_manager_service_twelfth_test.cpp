@@ -13,13 +13,18 @@
  * limitations under the License.
  */
 
+#include <chrono>
 #include <gtest/gtest.h>
+#include <thread>
 
 #include "mock_ipc_skeleton.h"
 #include "mock_permission_verification.h"
 #include "mock_my_flag.h"
 #include "mock_ability_connect_callback.h"
 #include "ability_manager_service.h"
+#include "ability_manager_event_subscriber.h"
+#include "common_event_support.h"
+#include "matching_skills.h"
 #include "modal_system_dialog/modal_system_dialog_ui_extension.h"
 #include "utils/modal_system_dialog_util.h"
 #include "user_controller/user_controller.h"
@@ -1355,6 +1360,7 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, HandleExtensionAbility_001, TestSize.
  * FunctionPoints: AbilityManagerService EnterKioskMode
  */
 HWTEST_F(AbilityManagerServiceTwelfthTest, EnterKioskMode_003, TestSize.Level1) {
+    system::SetBoolParameter(KIOSK_MODE_ENABLED, true);
     IPCSkeleton::SetCallingUid(BASE_USER_RANGE);
     IPCSkeleton::SetCallingTokenID(ONE);
     MyFlag::flag_ = true;
@@ -1364,7 +1370,8 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, EnterKioskMode_003, TestSize.Level1) 
     auto callerToken = MockToken(AbilityType::PAGE, tokenId);
     ASSERT_NE(callerToken, nullptr);
     auto result = abilityManagerService->EnterKioskMode(callerToken);
-    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
+    EXPECT_EQ(result, ERR_KIOSK_MODE_NOT_IN_WHITELIST);
+    system::SetBoolParameter(KIOSK_MODE_ENABLED, false);
 }
 
 /*
@@ -1374,6 +1381,7 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, EnterKioskMode_003, TestSize.Level1) 
  * FunctionPoints: AbilityManagerService ExitKioskMode
  */
 HWTEST_F(AbilityManagerServiceTwelfthTest, ExitKioskMode_003, TestSize.Level1) {
+    system::SetBoolParameter(KIOSK_MODE_ENABLED, true);
     IPCSkeleton::SetCallingUid(BASE_USER_RANGE);
     IPCSkeleton::SetCallingTokenID(ONE);
     MyFlag::flag_ = true;
@@ -1383,7 +1391,8 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, ExitKioskMode_003, TestSize.Level1) {
     auto callerToken = MockToken(AbilityType::PAGE, tokenId);
     ASSERT_NE(callerToken, nullptr);
     auto result = abilityManagerService->ExitKioskMode(callerToken);
-    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
+    EXPECT_EQ(result, ERR_KIOSK_MODE_NOT_IN_WHITELIST);
+    system::SetBoolParameter(KIOSK_MODE_ENABLED, false);
 }
 
 /*
@@ -1401,6 +1410,106 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, SubscribeScreenUnlockedEvent_001, Tes
     EXPECT_EQ(abilityMs->isSubscribed_, true);
     abilityMs->UnSubscribeScreenUnlockedEvent();
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest SubscribeScreenUnlockedEvent_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: UnSubscribeScreenUnlockedEvent
+ * SubFunction: NA
+ * Function: AbilityManagerService UnSubscribeScreenUnlockedEvent
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, UnSubscribeScreenUnlockedEvent_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest UnSubscribeScreenUnlockedEvent_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    abilityMs->SubscribeScreenUnlockedEvent();
+    EXPECT_EQ(abilityMs->isSubscribed_, true);
+    EXPECT_NE(abilityMs->screenSubscriber_, nullptr);
+    abilityMs->UnSubscribeScreenUnlockedEvent();
+    EXPECT_EQ(abilityMs->isSubscribed_, false);
+    EXPECT_EQ(abilityMs->screenSubscriber_, nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest UnSubscribeScreenUnlockedEvent_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: RetrySubscribeUnlockedEvent
+ * SubFunction: NA
+ * Function: verify retry aborts when screenSubscriber_ is reset by UnSubscribe (scenario A)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, RetrySubscribeUnlockedEvent_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RetrySubscribeUnlockedEvent_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_UNLOCKED);
+    EventFwk::CommonEventSubscribeInfo subscribeInfo(matchingSkills);
+    auto staleSubscriber = std::make_shared<AbilityRuntime::AbilityScreenUnlockEventSubscriber>(
+        subscribeInfo, std::function<void(int32_t)>([](int32_t) {}));
+    ASSERT_NE(staleSubscriber, nullptr);
+    abilityMs->screenSubscriber_.reset();
+    abilityMs->isSubscribed_ = false;
+    abilityMs->RetrySubscribeUnlockedEvent(1, staleSubscriber, false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    EXPECT_EQ(abilityMs->isSubscribed_, false);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RetrySubscribeUnlockedEvent_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: RetrySubscribeUnlockedEvent
+ * SubFunction: NA
+ * Function: verify retry aborts when screenSubscriber_ is replaced by a new Subscribe call (scenario B)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, RetrySubscribeUnlockedEvent_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RetrySubscribeUnlockedEvent_002 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_UNLOCKED);
+    EventFwk::CommonEventSubscribeInfo subscribeInfo(matchingSkills);
+    auto staleSubscriber = std::make_shared<AbilityRuntime::AbilityScreenUnlockEventSubscriber>(
+        subscribeInfo, std::function<void(int32_t)>([](int32_t) {}));
+    ASSERT_NE(staleSubscriber, nullptr);
+    auto newSubscriber = std::make_shared<AbilityRuntime::AbilityScreenUnlockEventSubscriber>(
+        subscribeInfo, std::function<void(int32_t)>([](int32_t) {}));
+    ASSERT_NE(newSubscriber, nullptr);
+    abilityMs->screenSubscriber_ = newSubscriber;
+    abilityMs->isSubscribed_ = false;
+    abilityMs->RetrySubscribeUnlockedEvent(1, staleSubscriber, false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    EXPECT_EQ(abilityMs->isSubscribed_, false);
+    EXPECT_EQ(abilityMs->screenSubscriber_.get(), newSubscriber.get());
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RetrySubscribeUnlockedEvent_002 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: RetrySubscribeUnlockedEvent
+ * SubFunction: NA
+ * Function: verify retry succeeds when subscriber is still current (positive control)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, RetrySubscribeUnlockedEvent_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RetrySubscribeUnlockedEvent_003 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_UNLOCKED);
+    EventFwk::CommonEventSubscribeInfo subscribeInfo(matchingSkills);
+    auto subscriber = std::make_shared<AbilityRuntime::AbilityScreenUnlockEventSubscriber>(
+        subscribeInfo, std::function<void(int32_t)>([](int32_t) {}));
+    ASSERT_NE(subscriber, nullptr);
+    abilityMs->screenSubscriber_ = subscriber;
+    abilityMs->isSubscribed_ = false;
+    abilityMs->RetrySubscribeUnlockedEvent(1, subscriber, false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    EXPECT_EQ(abilityMs->isSubscribed_, true);
+    abilityMs->UnSubscribeScreenUnlockedEvent();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RetrySubscribeUnlockedEvent_003 end");
 }
 
 /*
@@ -2576,7 +2685,7 @@ namespace {
 class MockAfterCheckInterceptor : public IAbilityInterceptor {
 public:
     MockAfterCheckInterceptor(ErrCode code, bool setRedirect = false) : code_(code), setRedirect_(setRedirect) {}
-    ErrCode DoProcess(const AbilityInterceptorParam &param) override
+    ErrCode DoProcess(AbilityInterceptorParam &param) override
     {
         if (setRedirect_) {
             (const_cast<Want &>(param.want)).SetParam("queryWantFromErms", true);
@@ -2591,7 +2700,7 @@ private:
 
 /*
  * Feature: AbilityManagerService
- * Function: ExecutePrelaunchAfterCheck
+ * Function: ExecutePrelaunchInterceptors
  * SubFunction: NA
  * FunctionPoints: afterCheck success path coverage (round-3 C3)
  */
@@ -2600,20 +2709,20 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_AfterCheck_S
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_AfterCheck_Success_001 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityMs_, nullptr);
-    abilityMs_->afterCheckExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
-    abilityMs_->afterCheckExecuter_->AddInterceptor("Mock",
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs_->interceptorExecuter_->AddInterceptor("Mock",
         std::make_shared<MockAfterCheckInterceptor>(ERR_OK));
     AbilityRequest abilityRequest;
     abilityRequest.abilityInfo.bundleName = "com.test.bundle";
     abilityRequest.abilityInfo.name = "MainAbility";
     auto eventInfo = std::make_shared<EventInfo>();
-    EXPECT_EQ(abilityMs_->ExecutePrelaunchAfterCheck(abilityRequest, 100, eventInfo), ERR_OK);
+    EXPECT_EQ(abilityMs_->ExecutePrelaunchInterceptors(abilityRequest, 100, eventInfo), ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_AfterCheck_Success_001 end");
 }
 
 /*
  * Feature: AbilityManagerService
- * Function: ExecutePrelaunchAfterCheck
+ * Function: ExecutePrelaunchInterceptors
  * SubFunction: NA
  * FunctionPoints: afterCheck null-executer coverage (round-3 C3)
  */
@@ -2622,16 +2731,16 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_AfterCheck_N
     TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_AfterCheck_NullExecuter_001 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityMs_, nullptr);
-    // afterCheckExecuter_ left null (no Init/OnStart)
+    // interceptorExecuter_ left null (no Init/OnStart)
     AbilityRequest abilityRequest;
     auto eventInfo = std::make_shared<EventInfo>();
-    EXPECT_EQ(abilityMs_->ExecutePrelaunchAfterCheck(abilityRequest, 100, eventInfo), ERR_NULL_AFTER_CHECK_EXECUTER);
+    EXPECT_EQ(abilityMs_->ExecutePrelaunchInterceptors(abilityRequest, 100, eventInfo), ERR_NULL_INTERCEPTOR_EXECUTER);
     TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_AfterCheck_NullExecuter_001 end");
 }
 
 /*
  * Feature: AbilityManagerService
- * Function: ExecutePrelaunchAfterCheck
+ * Function: ExecutePrelaunchInterceptors
  * SubFunction: NA
  * FunctionPoints: afterCheck non-redirect failure path + START_ABILITY_ERROR fault event coverage (round-3 C1/C3)
  */
@@ -2640,22 +2749,22 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_AfterCheck_D
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_AfterCheck_Deny_001 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityMs_, nullptr);
-    abilityMs_->afterCheckExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
     // a non-redirect afterCheck failure must abort + report the fault event.
     const ErrCode deny = ERR_ECOLOGICAL_CONTROL_STATUS;
-    abilityMs_->afterCheckExecuter_->AddInterceptor("Mock", std::make_shared<MockAfterCheckInterceptor>(deny));
+    abilityMs_->interceptorExecuter_->AddInterceptor("Mock", std::make_shared<MockAfterCheckInterceptor>(deny));
     AbilityRequest abilityRequest;
     abilityRequest.abilityInfo.bundleName = "com.test.bundle";
     abilityRequest.abilityInfo.name = "MainAbility";
     auto eventInfo = std::make_shared<EventInfo>();
     // deny without redirect -> reports START_ABILITY_ERROR fault event and returns the error
-    EXPECT_EQ(abilityMs_->ExecutePrelaunchAfterCheck(abilityRequest, 100, eventInfo), deny);
+    EXPECT_EQ(abilityMs_->ExecutePrelaunchInterceptors(abilityRequest, 100, eventInfo), deny);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_AfterCheck_Deny_001 end");
 }
 
 /*
  * Feature: AbilityManagerService
- * Function: ExecutePrelaunchAfterCheck
+ * Function: ExecutePrelaunchInterceptors
  * SubFunction: NA
  * FunctionPoints: afterCheck ERMS redirect marker stripped + non-silent drop coverage (round-3 C2/C3)
  */
@@ -2664,16 +2773,16 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_AfterCheck_R
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_AfterCheck_Redirect_001 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityMs_, nullptr);
-    abilityMs_->afterCheckExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
     const ErrCode deny = ERR_ECOLOGICAL_CONTROL_STATUS;
-    abilityMs_->afterCheckExecuter_->AddInterceptor("Mock",
+    abilityMs_->interceptorExecuter_->AddInterceptor("Mock",
         std::make_shared<MockAfterCheckInterceptor>(deny, true /*setRedirect*/));
     AbilityRequest abilityRequest;
     abilityRequest.want.SetElementName("com.test.bundle", "MainAbility");
     abilityRequest.abilityInfo.bundleName = "com.test.bundle";
     abilityRequest.abilityInfo.name = "MainAbility";
     auto eventInfo = std::make_shared<EventInfo>();
-    EXPECT_EQ(abilityMs_->ExecutePrelaunchAfterCheck(abilityRequest, 100, eventInfo), deny);
+    EXPECT_EQ(abilityMs_->ExecutePrelaunchInterceptors(abilityRequest, 100, eventInfo), deny);
     // redirect marker must be stripped so it never leaks into the dispatched request
     EXPECT_FALSE(abilityRequest.want.GetBoolParam("queryWantFromErms", false));
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_AfterCheck_Redirect_001 end");

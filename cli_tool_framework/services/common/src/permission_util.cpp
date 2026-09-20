@@ -16,7 +16,10 @@
 #include "permission_util.h"
 
 #include "accesstoken_kit.h"
+#include "cli_error_code.h"
 #include "hilog_tag_wrapper.h"
+#include "ipc_skeleton.h"
+#include "tokenid_kit.h"
 
 namespace OHOS {
 namespace CliTool {
@@ -28,6 +31,33 @@ bool PermissionUtil::VerifyAccessToken(AccessToken::AccessTokenID tokenId, const
         return false;
     }
     return true;
+}
+
+bool PermissionUtil::IsSystemApp()
+{
+    auto fullTokenId = IPCSkeleton::GetCallingFullTokenID();
+    return AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId);
+}
+
+bool PermissionUtil::IsSystemSA()
+{
+    auto callerToken = IPCSkeleton::GetCallingTokenID();
+    return Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken) ==
+        Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE;
+}
+
+int32_t PermissionUtil::CheckSystemAndPermission(const std::string &permissionName)
+{
+    if (!IsSystemApp() && !IsSystemSA()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "CheckSystemAndPermission: not a system app nor SA");
+        return ERR_NOT_SYSTEM_APP;
+    }
+    auto callerToken = IPCSkeleton::GetCallingTokenID();
+    if (!VerifyAccessToken(callerToken, permissionName)) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "CheckSystemAndPermission: permission denied");
+        return ERR_PERMISSION_DENIED;
+    }
+    return ERR_OK;
 }
 } // namespace CliTool
 } // namespace OHOS

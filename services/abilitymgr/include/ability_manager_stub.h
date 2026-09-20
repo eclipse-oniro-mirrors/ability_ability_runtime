@@ -317,6 +317,7 @@ private:
     int32_t ExecuteIntentInner(MessageParcel &data, MessageParcel &reply);
     int32_t ExecuteIntentForDistributedInner(MessageParcel &data, MessageParcel &reply);
     int32_t ExecuteIntentByFunctionCallInner(MessageParcel &data, MessageParcel &reply);
+    int32_t ExecuteUIAbilityForegroundIntentWithSpecifyTokenIdInner(MessageParcel &data, MessageParcel &reply);
 
     int32_t QueryEntityInner(MessageParcel &data, MessageParcel &reply);
 
@@ -446,6 +447,8 @@ private:
     int32_t BlockAllAppStartInner(MessageParcel &data, MessageParcel &reply);
     int32_t UpdateAssociateConfigListInner(MessageParcel &data, MessageParcel &reply);
     int32_t UpdateKioskApplicationListInner(MessageParcel &data, MessageParcel &reply);
+    int32_t AddKioskApplicationListInner(MessageParcel &data, MessageParcel &reply);
+    int32_t DeleteKioskApplicationListInner(MessageParcel &data, MessageParcel &reply);
     int32_t EnterKioskModeInner(MessageParcel &data, MessageParcel &reply);
     int32_t ExitKioskModeInner(MessageParcel &data, MessageParcel &reply);
     int32_t GetKioskStatusInner(MessageParcel &data, MessageParcel &reply);

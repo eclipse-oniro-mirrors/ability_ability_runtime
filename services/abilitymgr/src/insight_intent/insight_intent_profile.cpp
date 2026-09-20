@@ -16,7 +16,7 @@
 #include "insight_intent_profile.h"
 
 #include "hilog_tag_wrapper.h"
-#include "intent_json_safe_get.h"
+#include "json_safe_util.h"
 #include "json_util.h"
 
 namespace OHOS {
@@ -409,8 +409,8 @@ bool TransformToInfos(const InsightIntentProfileInfoVec &profileInfos, std::vect
 bool InsightIntentProfile::TransformTo(const std::string &profileStr, std::vector<InsightIntentInfo> &intentInfos)
 {
     TAG_LOGD(AAFwkTag::INTENT, "called");
-    auto jsonObject = nlohmann::json::parse(profileStr, nullptr, false);
-    if (jsonObject.is_discarded()) {
+    nlohmann::json jsonObject;
+    if (!SafeParse(profileStr, jsonObject)) {
         TAG_LOGE(AAFwkTag::INTENT, "discarded jsonObject");
         return false;
     }
@@ -491,8 +491,8 @@ void to_json(nlohmann::json& jsonObject, const InsightIntentInfo& info)
         if (paramStr.empty()) {
             continue;
         }
-        auto paramJson = nlohmann::json::parse(paramStr, nullptr, false);
-        if (!paramJson.is_discarded()) {
+        nlohmann::json paramJson;
+        if (SafeParse(paramStr, paramJson)) {
             inputArray.emplace_back(paramJson);
         }
     }
@@ -502,15 +502,15 @@ void to_json(nlohmann::json& jsonObject, const InsightIntentInfo& info)
         if (paramStr.empty()) {
             continue;
         }
-        auto paramJson = nlohmann::json::parse(paramStr, nullptr, false);
-        if (!paramJson.is_discarded()) {
+        nlohmann::json paramJson;
+        if (SafeParse(paramStr, paramJson)) {
             outputArray.emplace_back(paramJson);
         }
     }
     jsonObject[INSIGHT_INTENT_OUTPUT_PARAMS] = outputArray;
     if (!info.cfgEntities.empty()) {
-        auto cfgEntities = nlohmann::json::parse(info.cfgEntities, nullptr, false);
-        if (cfgEntities.is_discarded()) {
+        nlohmann::json cfgEntities;
+        if (!SafeParse(info.cfgEntities, cfgEntities)) {
             TAG_LOGE(AAFwkTag::INTENT, "discarded entity parameters");
             return;
         }

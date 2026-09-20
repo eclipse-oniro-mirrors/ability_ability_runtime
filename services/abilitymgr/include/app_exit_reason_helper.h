@@ -33,6 +33,7 @@ struct RecordExitReasonParams {
     ExitReasonCompability exitReason;
     AppExecFwk::RunningProcessInfo processInfo;
     bool fromKillWithReason = false;
+    int32_t callerPid = DEFAULT_INVAL_VALUE;
 };
 
 class AppExitReasonHelper {
@@ -52,14 +53,14 @@ public:
     int32_t RecordProcessExitReasonForTimeout(const AppExecFwk::AbilityInfo &abilityInfo, const ExitReason &exitReason,
         const std::vector<std::string> &abilityList, const AppExecFwk::RunningProcessInfo &processInfo);
     int32_t AddAppExitReason(const std::string &bundleName, int32_t pid, int32_t uid, int32_t appIndex,
-        const ExitReasonCompability &exitReason);
+        const ExitReasonCompability &exitReason, int32_t callerPid);
     int32_t AddBundleExitReason(const std::string &bundleName, int32_t userId, int32_t appIndex,
-        const ExitReasonCompability &exitReason);
-    int32_t RecordAppWithReason(int32_t pid, int32_t uid, const ExitReasonCompability &exitReason);
+        const ExitReasonCompability &exitReason, int32_t callerPid);
+    int32_t RecordAppWithReason(int32_t pid, int32_t uid, const ExitReasonCompability &exitReason, int32_t callerPid);
     void RecordAppsWithReasonByProcessInfoList(const ExitReasonCompability &exitReason,
         const std::vector<AppExecFwk::RunningProcessInfo> &processInfoList);
     void RecordInvalidKillId(int32_t pid, const ExitReasonCompability &params,
-        const std::string &bundleName = "", int32_t userId = 0);
+        const std::string &bundleName = "", int32_t userId = 0, int32_t callerPid = DEFAULT_INVAL_VALUE);
 
 private:
     int32_t RecordProcessExitReason(const int32_t pid, const std::string bundleName, const int32_t uid,
@@ -76,7 +77,7 @@ private:
     std::vector<AppExecFwk::RunningProcessInfo> GetRunningProcessInfos(int32_t userId, const std::string &bundleName);
 
     int32_t RecordAppWithReasonInner(const ExitReasonCompability &exitReasonCompability,
-        const AppExecFwk::RunningProcessInfo &processInfo);
+        const AppExecFwk::RunningProcessInfo &processInfo, int32_t callerPid);
 
     std::shared_ptr<SubManagersHelper> subManagersHelper_;
 };

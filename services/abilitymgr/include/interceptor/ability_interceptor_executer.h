@@ -16,13 +16,14 @@
 #ifndef OHOS_ABILITY_RUNTIME_ABILITY_INTERCEPTOR_EXECUTER_H
 #define OHOS_ABILITY_RUNTIME_ABILITY_INTERCEPTOR_EXECUTER_H
 
-#include <unordered_map>
+#include <utility>
+#include <vector>
 #include "ability_interceptor_interface.h"
 #include "cpp/mutex.h"
 
 namespace OHOS {
 namespace AAFwk {
-using InterceptorMap = std::unordered_map<std::string, std::shared_ptr<IAbilityInterceptor>>;
+using InterceptorList = std::vector<std::pair<std::string, std::shared_ptr<IAbilityInterceptor>>>;
 /**
  * @class AbilityInterceptorExecuter
  * AbilityInterceptorExecuter excute the interceptors.
@@ -50,12 +51,12 @@ public:
     /**
      * Excute the DoProcess of the interceptors.
      */
-    ErrCode DoProcess(const AbilityInterceptorParam &param);
+    ErrCode DoProcess(AbilityInterceptorParam &param);
 private:
-    InterceptorMap GetInterceptorMapCopy();
+    InterceptorList GetInterceptorListCopy();
 private:
-    std::recursive_mutex interceptorMapLock_;
-    std::unordered_map<std::string, std::shared_ptr<IAbilityInterceptor>> interceptorMap_;
+    std::recursive_mutex interceptorListLock_;
+    InterceptorList interceptorList_;
 };
 } // namespace AAFwk
 } // namespace OHOS

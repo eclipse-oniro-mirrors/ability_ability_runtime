@@ -150,7 +150,7 @@ void AmsMgrScheduler::NotifyLoadAbilityFinished(pid_t callingPid, pid_t targetPi
 }
 
 void AmsMgrScheduler::UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state,
-    bool isFromScreenOffBackground)
+    bool isFromScreenOffBackground, const UiAbilityLastCallerInfo &callerInfo)
 {
     if (!IsReady()) {
         return;
@@ -161,8 +161,8 @@ void AmsMgrScheduler::UpdateAbilityState(const sptr<IRemoteObject> &token, const
         return;
     }
     std::function<void()> updateAbilityStateFunc = [amsMgrServiceInner = amsMgrServiceInner_, token, state,
-        isFromScreenOffBackground] () {
-        amsMgrServiceInner->UpdateAbilityState(token, state, isFromScreenOffBackground);
+        isFromScreenOffBackground, callerInfo] () {
+        amsMgrServiceInner->UpdateAbilityState(token, state, isFromScreenOffBackground, callerInfo);
     };
     amsHandler_->SubmitTask(updateAbilityStateFunc, AAFwk::TaskAttribute{
         .taskName_ = TASK_UPDATE_ABILITY_STATE,
@@ -594,13 +594,15 @@ int32_t AmsMgrScheduler::NotifyAppMgrRecordExitReason(int32_t pid, int32_t reaso
 }
 
 int32_t AmsMgrScheduler::NotifyAppMgrRecordExitReasonCompability(
-    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg, int32_t reason)
+    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg,
+    int32_t reason, int32_t callerPid)
 {
     if (!IsReady()) {
         TAG_LOGE(AAFwkTag::APPMGR, "not ready");
         return ERR_INVALID_OPERATION;
     }
-    return amsMgrServiceInner_->NotifyAppMgrRecordExitReasonCompability(pid, killId, killMsg, innerMsg, reason);
+    return amsMgrServiceInner_->NotifyAppMgrRecordExitReasonCompability(
+        pid, killId, killMsg, innerMsg, reason, callerPid);
 }
 
 void AmsMgrScheduler::SetEnableStartProcessFlagByUserId(int32_t userId, bool enableStartProcess)

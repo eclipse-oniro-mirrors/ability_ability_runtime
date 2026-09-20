@@ -18,7 +18,7 @@
 #include "array_wrapper.h"
 #include "hilog_tag_wrapper.h"
 #include "int_wrapper.h"
-#include "intent_json_safe_get.h"
+#include "json_safe_util.h"
 #include "nlohmann/json.hpp"
 #include "string_wrapper.h"
 #include "want_params_wrapper.h"
@@ -31,8 +31,6 @@ constexpr size_t MAX_BUNDLE_NAME_LEN = 127;
 constexpr size_t MAX_MODULE_NAME_LEN = 31;
 constexpr size_t MAX_ABILITY_NAME_LEN = 255;
 constexpr size_t MAX_UI_EXTENSION_TYPE_LEN = 255;
-constexpr size_t MAX_RESULT_JSON_LEN = 1024 * 1024;
-constexpr size_t MAX_RESULT_JSON_DEPTH = 100;
 namespace {
 constexpr const char *KEY_INNER_ERR = "innerErr";
 constexpr const char *KEY_CODE = "code";
@@ -286,51 +284,6 @@ static bool ParseInteractionInfo(const nlohmann::json &jsonObject,
     return true;
 }
 
-namespace {
-class DepthLimitSax : public nlohmann::json_sax<nlohmann::json> {
-public:
-    explicit DepthLimitSax(size_t maxDepth) : maxDepth_(maxDepth) {}
-    bool null() override { return true; }
-    bool boolean(bool) override { return true; }
-    bool number_integer(nlohmann::json::number_integer_t) override { return true; }
-    bool number_unsigned(nlohmann::json::number_unsigned_t) override { return true; }
-    bool number_float(nlohmann::json::number_float_t, const nlohmann::json::string_t&) override { return true; }
-    bool string(nlohmann::json::string_t&) override { return true; }
-    bool binary(nlohmann::json::binary_t&) override { return true; }
-    bool start_object(size_t) override { return ++depth_ <= maxDepth_; }
-    bool end_object() override
-    {
-        if (depth_ > 0) {
-            --depth_;
-        }
-        return true;
-    }
-    bool start_array(size_t) override { return ++depth_ <= maxDepth_; }
-    bool end_array() override
-    {
-        if (depth_ > 0) {
-            --depth_;
-        }
-        return true;
-    }
-    bool key(nlohmann::json::string_t&) override { return true; }
-    bool parse_error(size_t, const std::string&, const nlohmann::detail::exception&) override { return false; }
-private:
-    size_t depth_ = 0;
-    size_t maxDepth_ = 0;
-};
-}
-
-static bool CheckJsonDepth(const std::string &jsonStr, size_t maxDepth)
-{
-    DepthLimitSax handler(maxDepth);
-    if (!nlohmann::json::sax_parse(jsonStr, &handler)) {
-        TAG_LOGW(AAFwkTag::INTENT, "json depth exceeds limit or parse error");
-        return false;
-    }
-    return true;
-}
-
 static void ParseScalarFields(const nlohmann::json &jsonObject, InsightIntentExecuteResult &result)
 {
     if (jsonObject.contains(KEY_INNER_ERR) && jsonObject.at(KEY_INNER_ERR).is_number_integer()) {
@@ -379,15 +332,8 @@ static void ParseCollectionFields(const nlohmann::json &jsonObject, InsightInten
 
 bool InsightIntentExecuteResult::FromJsonString(const std::string &jsonStr)
 {
-    if (jsonStr.size() > MAX_RESULT_JSON_LEN) {
-        TAG_LOGW(AAFwkTag::INTENT, "json size exceeds limit: %{public}zu", jsonStr.size());
-        return false;
-    }
-    if (!CheckJsonDepth(jsonStr, MAX_RESULT_JSON_DEPTH)) {
-        return false;
-    }
-    nlohmann::json jsonObject = nlohmann::json::parse(jsonStr, nullptr, false);
-    if (jsonObject.is_discarded() || !jsonObject.is_object()) {
+    nlohmann::json jsonObject;
+    if (!AbilityRuntime::SafeParse(jsonStr, jsonObject) || !jsonObject.is_object()) {
         return false;
     }
     ParseScalarFields(jsonObject, *this);

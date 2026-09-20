@@ -17,6 +17,8 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 ohos_shared_library("wantconstant_napi") {
   branch_protector_ret = "pac_ret"
 
+  include_dirs = [ "${simulator_path}/common/include" ]
+
   sources = [
     "${ability_runtime_napi_path}/wantConstant/native_module.cpp",
     "${ability_runtime_napi_path}/wantConstant/want_constant.cpp",

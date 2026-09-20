@@ -967,6 +967,42 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_GetTopAbilityInner_001, Test
 {
     MessageParcel data;
     MessageParcel reply;
+    data.WriteBool(true);  // isNeedLocalDeviceId
+    data.WriteInt32(INVALID_USER_ID);  // userId
+    auto res = stub_->GetTopAbilityInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetTopAbilityInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService GetTopAbilityInner
+ * EnvConditions: NA
+ * CaseDescription: Verify the function GetTopAbilityInner returns error with malformed parcel.
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_GetTopAbilityInner_002, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    auto res = stub_->GetTopAbilityInner(data, reply);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetTopAbilityInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService GetTopAbilityInner
+ * EnvConditions: NA
+ * CaseDescription: Verify the function GetTopAbilityInner is compatible with the old-format
+ *                 parcel that does not carry userId.
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_GetTopAbilityInner_003, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    data.WriteBool(true);  // isNeedLocalDeviceId, old clients do not write userId
     auto res = stub_->GetTopAbilityInner(data, reply);
     EXPECT_EQ(res, NO_ERROR);
 }
@@ -4679,6 +4715,7 @@ HWTEST_F(AbilityManagerStubTest, EnterKioskModeInner, TestSize.Level1)
     bool writeRet = data.WriteInterfaceToken(AbilityManagerStubImplMock::GetDescriptor());
     auto token = sptr<AppExecFwk::MockAbilityToken>::MakeSptr();
     writeRet &= data.WriteRemoteObject(token);
+    writeRet &= data.WriteInt32(0); // kioskType
     EXPECT_EQ(writeRet, true);
 
     MessageParcel reply;
@@ -4727,6 +4764,50 @@ HWTEST_F(AbilityManagerStubTest, GetKioskStatusInner, TestSize.Level1)
     MessageOption option;
     auto ret = stub_->OnRemoteRequest(
         static_cast<uint32_t>(AbilityManagerInterfaceCode::GET_KIOSK_INFO), data, reply, option);
+    EXPECT_EQ(ret, NO_ERROR);
+    TAG_LOGI(AAFwkTag::TEST, "end");
+}
+
+/**
+ * @tc.name: AddKioskApplicationListInner
+ * @tc.desc: AddKioskApplicationListInner IPC dispatch
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerStubTest, AddKioskApplicationListInner, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin");
+    MessageParcel data;
+    bool writeRet = data.WriteInterfaceToken(AbilityManagerStubImplMock::GetDescriptor());
+    std::vector<std::string> appList = {"com.ohos.test1"};
+    writeRet &= data.WriteStringVector(appList);
+    EXPECT_EQ(writeRet, true);
+
+    MessageParcel reply;
+    MessageOption option;
+    auto ret = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::ADD_KIOSK_APP_LIST), data, reply, option);
+    EXPECT_EQ(ret, NO_ERROR);
+    TAG_LOGI(AAFwkTag::TEST, "end");
+}
+
+/**
+ * @tc.name: DeleteKioskApplicationListInner
+ * @tc.desc: DeleteKioskApplicationListInner IPC dispatch
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerStubTest, DeleteKioskApplicationListInner, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin");
+    MessageParcel data;
+    bool writeRet = data.WriteInterfaceToken(AbilityManagerStubImplMock::GetDescriptor());
+    std::vector<std::string> appList = {"com.ohos.test1"};
+    writeRet &= data.WriteStringVector(appList);
+    EXPECT_EQ(writeRet, true);
+
+    MessageParcel reply;
+    MessageOption option;
+    auto ret = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::DELETE_KIOSK_APP_FROM_LIST), data, reply, option);
     EXPECT_EQ(ret, NO_ERROR);
     TAG_LOGI(AAFwkTag::TEST, "end");
 }

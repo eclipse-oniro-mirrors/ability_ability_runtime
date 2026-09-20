@@ -13,14 +13,19 @@
  * limitations under the License.
  */
 
-#include "permission_util.h"
+#ifndef OHOS_ABILITY_RUNTIME_UI_ABILITY_LAST_CALLER_INFO_H
+#define OHOS_ABILITY_RUNTIME_UI_ABILITY_LAST_CALLER_INFO_H
+
+#include <string>
 
 namespace OHOS {
-namespace CliTool {
-bool PermissionUtil::VerifyAccessToken(Security::AccessToken::AccessTokenID, const std::string &)
-{
-    return true;
-}
+namespace AppExecFwk {
+struct UiAbilityLastCallerInfo {
+    int32_t callerUid = -1;
+    std::string callerBundleName;
+    bool isCallBySCB = false;
+};
+}  // namespace AppExecFwk
+}  // namespace OHOS
 
-} // namespace CliTool
-} // namespace OHOS
+#endif  // OHOS_ABILITY_RUNTIME_UI_ABILITY_LAST_CALLER_INFO_H

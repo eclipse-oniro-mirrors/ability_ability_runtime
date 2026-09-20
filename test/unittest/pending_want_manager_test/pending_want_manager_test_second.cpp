@@ -722,7 +722,7 @@ HWTEST_F(PendingWantManagerSecondTest, HandleAddWantAgentNumber_NullKey_0200, Te
     ASSERT_NE(pendingManager_, nullptr);
 
     // Act
-    pendingManager_->HandleAddWantAgentNumber(nullptr);
+    pendingManager_->HandleAddWantAgentNumber(nullptr, 100);
 
     // Assert - Should not crash
     EXPECT_NE(pendingManager_, nullptr);

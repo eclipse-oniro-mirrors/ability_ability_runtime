@@ -31,9 +31,17 @@ constexpr const char* BUNDLE_NAME_SCENEBOARD = "com.ohos.sceneboard";
 constexpr int32_t ERMS_ISALLOW_RESULTCODE = 10;
 constexpr int32_t ERMS_ISALLOW_EMBED_RESULTCODE = 1;
 }
-ErrCode EcologicalRuleInterceptor::DoProcess(const AbilityInterceptorParam &param)
+ErrCode EcologicalRuleInterceptor::DoProcess(AbilityInterceptorParam &param)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (param.GetContext<AbilityInterceptorParam::RemoteDispatchCtx>() != nullptr) {
+        TAG_LOGD(AAFwkTag::ECOLOGICAL_RULE, "remote dispatch, defer to remote device");
+        return ERR_OK;
+    }
+    if (param.abilityInfo == nullptr) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "ecological abilityInfo is nullptr, skip");
+        return ERR_OK;
+    }
     if (NoNeedErms(param)) {
         return ERR_OK;
     }
@@ -41,14 +49,16 @@ ErrCode EcologicalRuleInterceptor::DoProcess(const AbilityInterceptorParam &para
     ExperienceRule rule;
     AAFwk::Want newWant = param.want;
     newWant.RemoveAllFd();
-    if (param.isStartAsCaller) {
+    const auto *ecoCtx = param.GetContext<AbilityInterceptorParam::EcologicalCtx>();
+    if (ecoCtx && ecoCtx->isStartAsCaller) {
         callerInfo.isAsCaller = true;
     }
 
+    std::string hostBundleName = ecoCtx ? ecoCtx->hostBundleName : "";
     InitErmsCallerInfo(newWant, param.abilityInfo, callerInfo, param.userId, param.callerToken,
-        !param.hostBundleName.empty());
-    if (!param.hostBundleName.empty()) {
-        callerInfo.packageName = param.hostBundleName;
+        !hostBundleName.empty());
+    if (!hostBundleName.empty()) {
+        callerInfo.packageName = hostBundleName;
     }
 
     int ret = IN_PROCESS_CALL(AbilityEcologicalRuleMgrServiceClient::GetInstance()->QueryStartExperience(newWant,
@@ -72,9 +82,9 @@ ErrCode EcologicalRuleInterceptor::DoProcess(const AbilityInterceptorParam &para
         return ERR_OK;
     }
 #ifdef SUPPORT_GRAPHICS
-    if (param.isWithUI && rule.replaceWant) {
-        (const_cast<Want &>(param.want)) = *rule.replaceWant;
-        (const_cast<Want &>(param.want)).SetParam("queryWantFromErms", true);
+    if (param.isVisible && rule.replaceWant) {
+        param.want = *rule.replaceWant;
+        param.want.SetParam("queryWantFromErms", true);
     }
 #endif
     return ERR_ECOLOGICAL_CONTROL_STATUS;
@@ -92,7 +102,8 @@ bool EcologicalRuleInterceptor::NoNeedErms(const AbilityInterceptorParam &param)
         StartAbilityUtils::ermsSupportBackToCallerFlag = true;
         return true;
     }
-    if (param.isTargetPlugin) {
+    const auto *ecoCtx = param.GetContext<AbilityInterceptorParam::EcologicalCtx>();
+    if (ecoCtx && ecoCtx->isTargetPlugin) {
         TAG_LOGD(AAFwkTag::ECOLOGICAL_RULE, "start plugin ability");
         return true;
     }

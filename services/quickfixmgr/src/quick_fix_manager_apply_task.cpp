@@ -429,6 +429,9 @@ void QuickFixManagerApplyTask::PostDeployQuickFixTask(const std::vector<std::str
     };
     if (eventHandler_ == nullptr || !eventHandler_->PostTask(deployTask, "QuickFixManager:deployTask")) {
         TAG_LOGE(AAFwkTag::QUICKFIX, "post deploy task failed");
+        NotifyApplyStatus(QUICK_FIX_DEPLOY_FAILED);
+        RemoveSelf();
+        return;
     }
     PostTimeOutTask();
 }

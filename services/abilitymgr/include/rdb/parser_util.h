@@ -26,15 +26,16 @@ namespace AbilityRuntime {
 class ParserUtil final {
 public:
     static ParserUtil &GetInstance();
-    void GetResidentProcessRawData(std::vector<std::tuple<std::string, std::string, std::string>> &list);
+    void GetResidentProcessRawData(
+        std::vector<std::tuple<std::string, std::string, std::string, std::string>> &list);
 
 private:
-    void ParsePreInstallAbilityConfig(
-        const std::string &filePath, std::vector<std::tuple<std::string, std::string, std::string>> &list);
+    void ParsePreInstallAbilityConfig(const std::string &filePath,
+        std::vector<std::tuple<std::string, std::string, std::string, std::string>> &list);
     void GetPreInstallRootDirList(std::vector<std::string> &rootDirList);
     bool ReadFileIntoJson(const std::string &filePath, nlohmann::json &jsonBuf);
-    bool FilterInfoFromJson(
-        nlohmann::json &jsonBuf, std::vector<std::tuple<std::string, std::string, std::string>> &list);
+    bool FilterInfoFromJson(nlohmann::json &jsonBuf,
+        std::vector<std::tuple<std::string, std::string, std::string, std::string>> &list);
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

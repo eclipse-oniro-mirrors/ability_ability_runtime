@@ -65,7 +65,7 @@ sptr<Token> GetFuzzAbilityToken()
 bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
 {
     AbilityRuntime::ParserUtil &instance = AbilityRuntime::ParserUtil::GetInstance();
-    std::vector<std::tuple<std::string, std::string, std::string>> list;
+    std::vector<std::tuple<std::string, std::string, std::string, std::string>> list;
     instance.GetResidentProcessRawData(list);
     std::string jsonStr(data, size);
     instance.ParsePreInstallAbilityConfig(jsonStr, list);

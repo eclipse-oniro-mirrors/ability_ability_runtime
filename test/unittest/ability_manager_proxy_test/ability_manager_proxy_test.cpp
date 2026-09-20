@@ -3277,7 +3277,7 @@ HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_EnterKioskMode, TestSize.L
         .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
 
     OHOS::sptr<IRemoteObject> callback = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
-    auto res = proxy_->EnterKioskMode(callback);
+    auto res = proxy_->EnterKioskMode(callback, 0);
     EXPECT_EQ(res, NO_ERROR);
     EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::ENTER_KIOSK_MODE), mock_->code_);
 }
@@ -3318,6 +3318,44 @@ HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_GetKioskStatus, TestSize.L
     auto res = proxy_->GetKioskStatus(kioskStatus);
     EXPECT_EQ(res, NO_ERROR);
     EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::GET_KIOSK_INFO), mock_->code_);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: AddKioskApplicationList
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService AddKioskApplicationList
+ * EnvConditions: NA
+ * CaseDescription: AddKioskApplicationList
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_AddKioskApplicationList, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+    std::vector<std::string> appList = {"com.ohos.test1", "com.ohos.test2"};
+    auto res = proxy_->AddKioskApplicationList(appList);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::ADD_KIOSK_APP_LIST), mock_->code_);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: DeleteKioskApplicationList
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService DeleteKioskApplicationList
+ * EnvConditions: NA
+ * CaseDescription: DeleteKioskApplicationList
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_DeleteKioskApplicationList, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+    std::vector<std::string> appList = {"com.ohos.test1"};
+    auto res = proxy_->DeleteKioskApplicationList(appList);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::DELETE_KIOSK_APP_FROM_LIST), mock_->code_);
 }
 
 /*

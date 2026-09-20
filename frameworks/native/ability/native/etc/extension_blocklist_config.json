@@ -902,7 +902,6 @@
             "net.networkSecurity",
             "net.policy",
             "net.sharing",
-            "net.socket",
             "net.statistics",
             "net.vpn",
             "net.vpnExtension",

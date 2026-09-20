@@ -711,6 +711,25 @@ HWTEST_F(InsightIntentInfoForQueryTest, ReadFromParcel_0200, TestSize.Level1)
 }
 
 /**
+ * @tc.name: ReadFromParcel_0300
+ * @tc.desc: Test ReadFromParcel with valid length but invalid JSON content
+ *           returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, ReadFromParcel_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    std::string invalid = "not a json";
+    parcel.WriteUint32(static_cast<uint32_t>(invalid.size() + 1));
+    parcel.WriteRawData(invalid.c_str(), invalid.size() + 1);
+
+    InsightIntentInfoForQuery info;
+    EXPECT_FALSE(info.ReadFromParcel(parcel));
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
  * @tc.name: UnmarshallingVector_0300
  * @tc.desc: Test UnmarshallingVector with length exceeding MAX_IPC_REWDATA_SIZE returns false.
  * @tc.type: FUNC
@@ -723,6 +742,43 @@ HWTEST_F(InsightIntentInfoForQueryTest, UnmarshallingVector_0300, TestSize.Level
     uint32_t oversizedLength = static_cast<uint32_t>(MAX_IPC_REWDATA_SIZE + 1);
     parcel.WriteUint32(oversizedLength);
     
+    std::vector<InsightIntentInfoForQuery> readInfos;
+    EXPECT_FALSE(InsightIntentInfoForQuery::UnmarshallingVector(parcel, readInfos));
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: UnmarshallingVector_0400
+ * @tc.desc: Test UnmarshallingVector with valid JSON that is not an array
+ *           returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, UnmarshallingVector_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    std::string nonArray = R"({"key":"value"})";
+    parcel.WriteUint32(static_cast<uint32_t>(nonArray.size() + 1));
+    parcel.WriteRawData(nonArray.c_str(), nonArray.size() + 1);
+
+    std::vector<InsightIntentInfoForQuery> readInfos;
+    EXPECT_FALSE(InsightIntentInfoForQuery::UnmarshallingVector(parcel, readInfos));
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: UnmarshallingVector_0500
+ * @tc.desc: Test UnmarshallingVector with invalid JSON string returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, UnmarshallingVector_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    std::string invalid = "not a json";
+    parcel.WriteUint32(static_cast<uint32_t>(invalid.size() + 1));
+    parcel.WriteRawData(invalid.c_str(), invalid.size() + 1);
+
     std::vector<InsightIntentInfoForQuery> readInfos;
     EXPECT_FALSE(InsightIntentInfoForQuery::UnmarshallingVector(parcel, readInfos));
     TAG_LOGI(AAFwkTag::TEST, "end.");

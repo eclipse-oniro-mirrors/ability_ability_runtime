@@ -1010,14 +1010,13 @@ int32_t AppMgrServiceInner::KillImageProcess(uint64_t checkpointId)
         TAG_LOGE(AAFwkTag::APPMGR, "open error, %{public}s", strerror(errno));
         return -1;
     }
+    FdGuard fdGuard(fd);
     TAG_LOGI(AAFwkTag::APPMGR, "ioctl, %{public}d", fd);
     int32_t err = ioctl(fd, CHECKPOINT_IOCTL_KILL_ALL, &checkpointId);
     if (err < 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "ioctl error, %{public}s", strerror(errno));
-        close(fd);
         return -1;
     }
-    close(fd);
     TAG_LOGI(AAFwkTag::APPMGR, "end");
     return ERR_OK;
 }
@@ -1742,6 +1741,7 @@ void AppMgrServiceInner::MarkTemplateProcess(const std::shared_ptr<AppRunningRec
         TAG_LOGE(AAFwkTag::APPMGR, "MarkTemplateProcess template openfile fail: %{public}s", strerror(errno));
         return;
     }
+    FdGuard fdGuard(fd);
     int32_t templatePid = appRecord->GetPid();
     struct HMCheckpointMarkS mark {
         .pid = templatePid,
@@ -1760,11 +1760,9 @@ void AppMgrServiceInner::MarkTemplateProcess(const std::shared_ptr<AppRunningRec
     }
     int ret = ioctl(fd, CHECKPOINT_MONITOR_IOCTL_MARK_TEMPLATE, &mark);
     if (ret < 0) {
-        close(fd);
         TAG_LOGE(AAFwkTag::APPMGR, "MarkTemplateProcess template monitor error: %{public}s", strerror(errno));
         return;
     }
-    close(fd);
     TAG_LOGI(AAFwkTag::APPMGR, "MarkTemplateProcess %{public}d ret: %{public}d", templatePid, ret);
     return;
 }
@@ -1780,17 +1778,16 @@ void AppMgrServiceInner::UnMarkTemplateProcess(int32_t templatePid)
         TAG_LOGE(AAFwkTag::APPMGR, "UnMarkTemplateProcess template openfile fail: %{public}s", strerror(errno));
         return;
     }
+    FdGuard fdGuard(fd);
     struct HMCheckpointUnMarkS unMark {
         .pid = templatePid
     };
     int ret = ioctl(fd, CHECKPOINT_MONITOR_IOCTL_UNMARK_TEMPLATE, &unMark);
     if (ret < 0) {
-        close(fd);
         TAG_LOGE(AAFwkTag::APPMGR, "UnMarkTemplateProcess template monitor error: %{public}s", strerror(errno));
         return;
     }
     TAG_LOGI(AAFwkTag::APPMGR, "UnMarkTemplateProcess %{public}d ret: %{public}d", templatePid, ret);
-    close(fd);
     return;
 }
 
@@ -5061,7 +5058,7 @@ void AppMgrServiceInner::TerminateAbility(const sptr<IRemoteObject> &token, bool
 }
 
 void AppMgrServiceInner::UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state,
-    bool isFromScreenOffBackground)
+    bool isFromScreenOffBackground, const UiAbilityLastCallerInfo &callerInfo)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::APPMGR, "state %{public}d, isFromScreenOffBackground:%{public}d",
@@ -5105,7 +5102,7 @@ void AppMgrServiceInner::UpdateAbilityState(const sptr<IRemoteObject> &token, co
     if (state == AbilityState::ABILITY_STATE_FOREGROUND) {
         ReportAbilityStartInfoForSpecified(appRecord, *abilityInfo);
     }
-    appRecord->UpdateAbilityState(token, state, isFromScreenOffBackground);
+    appRecord->UpdateAbilityState(token, state, isFromScreenOffBackground, callerInfo);
     CheckCleanAbilityByUserRequest(appRecord, abilityRecord, state);
 }
 
@@ -8468,7 +8465,8 @@ int32_t AppMgrServiceInner::NotifyAppMgrRecordExitReason(int32_t pid, int32_t re
 }
 
 int32_t AppMgrServiceInner::NotifyAppMgrRecordExitReasonCompability(
-    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg, int32_t reason)
+    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg,
+    int32_t reason, int32_t callerPid)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "NotifyAppMgrRecordExitReasonCompability pid:%{public}d, killId:%{public}d,"
         "reason:%{public}s, exitMsg:%{public}s.", pid, killId, killMsg.c_str(), innerMsg.c_str());
@@ -8487,6 +8485,22 @@ int32_t AppMgrServiceInner::NotifyAppMgrRecordExitReasonCompability(
     appRecord->SetKillMsg(killMsg);
     appRecord->SetInnerMsg(innerMsg);
     appRecord->SetExitReason(reason);
+    const int32_t killCallerPid = callerPid > 0 ? callerPid : DEFAULT_INVAL_VALUE;
+    std::string callerProcessName;
+    if (killCallerPid != DEFAULT_INVAL_VALUE) {
+        auto callerRecord = GetAppRunningRecordByPid(killCallerPid);
+        if (callerRecord) {
+            callerProcessName = callerRecord->GetProcessName();
+        } else if (!ProcessUtil::ReadProcessName(static_cast<pid_t>(killCallerPid), callerProcessName)) {
+            TAG_LOGW(AAFwkTag::APPMGR, "read caller process name failed, callerPid:%{public}d", killCallerPid);
+            callerProcessName = "";
+        }
+    }
+    appRecord->SetKillCallerInfo(killCallerPid, callerProcessName);
+    TAG_LOGI(AAFwkTag::APPMGR, "[EXIT_REASON_TAG] NotifyAppMgrRecordExitReasonCompability pid:%{public}d,"
+        " killId:%{public}d, reason:%{public}d, killMsg:%{public}s, innerMsg:%{public}s,"
+        " callerPid:%{public}d, callerProcessName:%{public}s.",
+        pid, killId, reason, killMsg.c_str(), innerMsg.c_str(), killCallerPid, callerProcessName.c_str());
     return ERR_OK;
 }
 
@@ -10400,8 +10414,10 @@ int32_t AppMgrServiceInner::ChangeAppGcState(pid_t pid, int32_t state, uint64_t 
 {
     auto callerUid = IPCSkeleton::GetCallingUid();
     TAG_LOGD(AAFwkTag::APPMGR, "called, pid:%{public}d, state:%{public}d, uid:%{public}d.", pid, state, callerUid);
-    if (callerUid != RESOURCE_MANAGER_UID) { // The current UID for resource management is 1096
-        TAG_LOGE(AAFwkTag::APPMGR, "caller is not resource manager");
+    bool isMemmgrCall = AAFwk::PermissionVerification::GetInstance()->CheckSpecificSystemAbilityAccessPermission(
+        MEMMGR_PROC_NAME);
+    if (callerUid != RESOURCE_MANAGER_UID && !isMemmgrCall) { // The current UID for resource management is 1096
+        TAG_LOGE(AAFwkTag::APPMGR, "caller is not resource manager or memmgr");
         return ERR_INVALID_VALUE;
     }
     auto appRecord = GetAppRunningRecordByPid(pid);
@@ -13559,6 +13575,7 @@ ImageError AppMgrServiceInner::GetCheckpointRestoreError(pid_t pid, const std::s
         TAG_LOGE(AAFwkTag::APPMGR, "GetCheckpointRestoreError open file fail: %{public}s", strerror(errno));
         return ImageError::ERR_INNER;
     }
+    FdGuard fdGuard(fd);
 
     struct HmCheckpointErrMsgS errMsg {
         .pid = pid,
@@ -13571,11 +13588,9 @@ ImageError AppMgrServiceInner::GetCheckpointRestoreError(pid_t pid, const std::s
 
     int ret = ioctl(fd, CHECKPOINT_IOCTL_GET_LAST_ERROR, &errMsg);
     if (ret < 0) {
-        close(fd);
         TAG_LOGE(AAFwkTag::APPMGR, "GetCheckpointRestoreError ioctl error: %{public}s", strerror(errno));
         return ImageError::ERR_INNER;
     }
-    close(fd);
 
     ImageError imageError = ImageError::ERR_INNER;
     switch (errMsg.errNo) {

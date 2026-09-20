@@ -45,6 +45,7 @@ ohos_unittest("function_call_convert_test") {
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
+    "${ability_runtime_path}/utils/global/common:runtime_utils",
     "${ability_runtime_services_path}/common:app_util",
     "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
   ]

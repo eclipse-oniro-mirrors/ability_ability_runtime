@@ -58,6 +58,7 @@ struct AbilitySessionInfo {
     bool isWebSandBoxClone = false;
     int32_t sandBoxCloneIndex = 0;
     std::string creatorBundleName;
+    uint32_t specifyTokenId = 0;
 };
 
 class UIAbilityLifecycleManager : public std::enable_shared_from_this<UIAbilityLifecycleManager> {

@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_AMS_MGR_SCHEDULER_H
 #define OHOS_ABILITY_RUNTIME_AMS_MGR_SCHEDULER_H
 
+#include "ui_ability_last_caller_info.h"
 #include "ability_info.h"
 #include "ability_running_record.h"
 #include "ams_mgr_stub.h"
@@ -77,10 +78,12 @@ public:
      *
      * @param token, the unique identification to update the ability.
      * @param state, ability status that needs to be updated.
+     * @param isFromScreenOffBackground Whether from screen off background.
+     * @param callerInfo The caller info including uid, bundle name and isCallBySCB.
      * @return
      */
     virtual void UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state,
-        bool isFromScreenOffBackground = false) override;
+        bool isFromScreenOffBackground = false, const UiAbilityLastCallerInfo &callerInfo = {}) override;
 
     /**
      * UpdateExtensionState, call UpdateExtensionState() through the proxy object, update the extension status.
@@ -263,7 +266,8 @@ public:
     virtual int32_t NotifyAppMgrRecordExitReason(int32_t pid, int32_t reason, const std::string &exitMsg) override;
 
     virtual int32_t NotifyAppMgrRecordExitReasonCompability(
-        int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg, int32_t reason) override;
+        int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg,
+        int32_t reason, int32_t callerPid) override;
 
     /**
      * AbilityAttachTimeOut, called by ability manager service when an ability is loaded timeout.

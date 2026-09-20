@@ -56,7 +56,7 @@ struct ResultCapture {
     std::condition_variable cv;
     bool fired = false;
     int32_t callCount = 0;
-    InvokeFunctionResult result;
+    FunctionResultHolder result;
 };
 
 class InvokeFunctionExecutorTest : public testing::Test {
@@ -73,11 +73,11 @@ protected:
     // Build a callback that records the single outcome into a shared capture.
     static InvokeResultCallback MakeCallback(std::shared_ptr<ResultCapture> capture)
     {
-        return [capture](const InvokeFunctionResult &result) {
+        return [capture](const FunctionResultHolder &holder) {
             std::lock_guard<std::mutex> lock(capture->mutex);
             capture->fired = true;
             capture->callCount++;
-            capture->result = result;
+            capture->result = holder;
             capture->cv.notify_all();
         };
     }
@@ -96,8 +96,10 @@ protected:
     {
         auto capture = std::make_shared<ResultCapture>();
         auto executor = InvokeFunctionExecutor::Create();
-        AAFwk::WantParams params;
-        executor->Execute(BUNDLE_NAME, FUNCTION_NAME, params, MakeCallback(capture));
+        InvokeFunctionParam param;
+        param.functionNamespace = BUNDLE_NAME;
+        param.functionName = FUNCTION_NAME;
+        executor->Execute(param, MakeCallback(capture));
         return capture;
     }
 };
@@ -124,8 +126,8 @@ HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_QueryFailedGeneric_0
     CliToolMGRClient::GetInstance().mockStatus_ = ERR_KVSTORE_NOT_READY;
     auto capture = Run();
     ASSERT_TRUE(WaitForResult(capture));
-    EXPECT_FALSE(capture->result.invokeSuccess);
-    EXPECT_EQ(capture->result.errorCode, ERR_KVSTORE_NOT_READY);
+    EXPECT_FALSE(capture->result.result.success);
+    EXPECT_EQ(capture->result.innerError, ERR_KVSTORE_NOT_READY);
 }
 
 /**
@@ -139,8 +141,8 @@ HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_QueryPermissionDenie
     CliToolMGRClient::GetInstance().mockStatus_ = ERR_PERMISSION_DENIED;
     auto capture = Run();
     ASSERT_TRUE(WaitForResult(capture));
-    EXPECT_FALSE(capture->result.invokeSuccess);
-    EXPECT_EQ(capture->result.errorCode, ERR_PERMISSION_DENIED);
+    EXPECT_FALSE(capture->result.result.success);
+    EXPECT_EQ(capture->result.innerError, ERR_PERMISSION_DENIED);
 }
 
 /**
@@ -153,8 +155,8 @@ HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_QueryFunctionNotExis
     CliToolMGRClient::GetInstance().mockStatus_ = ERR_FUNCTION_NOT_EXIST;
     auto capture = Run();
     ASSERT_TRUE(WaitForResult(capture));
-    EXPECT_FALSE(capture->result.invokeSuccess);
-    EXPECT_EQ(capture->result.errorCode, ERR_FUNCTION_NOT_EXIST);
+    EXPECT_FALSE(capture->result.result.success);
+    EXPECT_EQ(capture->result.innerError, ERR_FUNCTION_NOT_EXIST);
 }
 
 /**
@@ -168,8 +170,8 @@ HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_TypeNotSupported_050
     CliToolMGRClient::GetInstance().mockFunctionType_ = static_cast<FunctionType>(1);
     auto capture = Run();
     ASSERT_TRUE(WaitForResult(capture));
-    EXPECT_FALSE(capture->result.invokeSuccess);
-    EXPECT_EQ(capture->result.errorCode, ERR_INNER_PARAM_INVALID);
+    EXPECT_FALSE(capture->result.result.success);
+    EXPECT_EQ(capture->result.innerError, ERR_INNER_PARAM_INVALID);
 }
 
 /**
@@ -183,8 +185,8 @@ HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_IntentPermissionDeni
     AAFwk::IntentClient::GetInstance().mockStatus_ = OHOS::ERR_PERMISSION_DENIED;
     auto capture = Run();
     ASSERT_TRUE(WaitForResult(capture));
-    EXPECT_FALSE(capture->result.invokeSuccess);
-    EXPECT_EQ(capture->result.errorCode, OHOS::ERR_PERMISSION_DENIED);
+    EXPECT_FALSE(capture->result.result.success);
+    EXPECT_EQ(capture->result.innerError, OHOS::ERR_PERMISSION_DENIED);
 }
 
 /**
@@ -198,8 +200,8 @@ HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_IntentFailed_0700, T
     AAFwk::IntentClient::GetInstance().mockStatus_ = ERR_INVALID_OPERATION;
     auto capture = Run();
     ASSERT_TRUE(WaitForResult(capture));
-    EXPECT_FALSE(capture->result.invokeSuccess);
-    EXPECT_EQ(capture->result.errorCode, ERR_FUNCTION_EXECUTE_FAILED);
+    EXPECT_FALSE(capture->result.result.success);
+    EXPECT_EQ(capture->result.innerError, ERR_FUNCTION_EXECUTE_FAILED);
 }
 
 /**
@@ -213,9 +215,9 @@ HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_Success_0800, TestSi
 {
     auto capture = Run();
     ASSERT_TRUE(WaitForResult(capture));
-    EXPECT_TRUE(capture->result.invokeSuccess);
-    EXPECT_EQ(capture->result.errorCode, 0);
-    EXPECT_EQ(capture->result.resultCode, 0);
+    EXPECT_TRUE(capture->result.result.success);
+    EXPECT_EQ(capture->result.innerError, 0);
+    EXPECT_EQ(capture->result.result.errorCode, 0);
 }
 
 /**
@@ -233,7 +235,7 @@ HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_ReportedExactlyOnce_
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     std::lock_guard<std::mutex> lock(capture->mutex);
     EXPECT_EQ(capture->callCount, 1);
-    EXPECT_TRUE(capture->result.invokeSuccess);  // the first (winning) outcome is retained
+    EXPECT_TRUE(capture->result.result.success);  // the first (winning) outcome is retained
 }
 
 /**
@@ -247,8 +249,8 @@ HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_1000, TestSize.Level
     AAFwk::IntentClient::GetInstance().mockStatus_ = OHOS::AAFwk::ERR_NOT_SYSTEM_APP;
     auto capture = Run();
     ASSERT_TRUE(WaitForResult(capture));
-    EXPECT_FALSE(capture->result.invokeSuccess);
-    EXPECT_EQ(capture->result.errorCode, OHOS::AAFwk::ERR_NOT_SYSTEM_APP);
+    EXPECT_FALSE(capture->result.result.success);
+    EXPECT_EQ(capture->result.innerError, OHOS::AAFwk::ERR_NOT_SYSTEM_APP);
 }
 } // namespace
 } // namespace CliTool

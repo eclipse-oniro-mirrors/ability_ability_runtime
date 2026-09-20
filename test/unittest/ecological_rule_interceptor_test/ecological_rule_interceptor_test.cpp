@@ -904,9 +904,9 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_001, TestSize.Level1)
     int requestCode = 0;
     StartAbilityUtils::skipErms = true;
     int userId = 100;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, false, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(false).CallerToken(nullptr)
+        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>()).Build();
     ErrCode result = interceptor->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
     EXPECT_EQ(StartAbilityUtils::skipErms, false);
@@ -928,9 +928,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_002, TestSize.Level1)
     want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, bundleName);
     int requestCode = 0;
     int userId = 100;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, false, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(false).CallerToken(nullptr).Build();
     ErrCode result = interceptor->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
 }
@@ -972,9 +971,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_004, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     StartAbilityUtils::skipErms = true;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, false, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(false).CallerToken(nullptr).Build();
     ErrCode result = interceptor->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
     StartAbilityUtils::skipErms = false;
@@ -1021,10 +1019,9 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_006, TestSize.Level1)
     int requestCode = 0;
     StartAbilityUtils::skipErms = false;
     int userId = 100;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, false, nullptr,
-        shouldBlockFunc);
-    param.isStartAsCaller = true;
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(false).CallerToken(nullptr)
+        .Context<AbilityInterceptorParam::EcologicalCtx>({true, false, ""}).Build();
     AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = -1;
     ErrCode result = interceptor->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
@@ -1048,9 +1045,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_007, TestSize.Level1)
     int requestCode = 0;
     StartAbilityUtils::skipErms = false;
     int userId = 100;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, false, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(false).CallerToken(nullptr).Build();
     AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = 0;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = ERMS_ISALLOW_RESULTCODE;
     ErrCode result = interceptor->DoProcess(param);
@@ -1075,9 +1071,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_008, TestSize.Level1)
     int requestCode = 0;
     StartAbilityUtils::skipErms = false;
     int userId = 100;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, false, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(false).CallerToken(nullptr).Build();
     AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = 0;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = -1;
     OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "false");
@@ -1103,9 +1098,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_009, TestSize.Level1)
     int requestCode = 0;
     StartAbilityUtils::skipErms = false;
     int userId = 100;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, true, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, requestCode, userId).WithUI(true).Visible(true)
+        .CallerToken(nullptr).AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>()).Build();
     AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = 0;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = -1;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.replaceWant =
@@ -1115,11 +1109,46 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_009, TestSize.Level1)
     OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "true");
     ErrCode result = interceptor->DoProcess(param);
 #ifdef SUPPORT_GRAPHICS
-    EXPECT_EQ(want.GetElement().GetBundleName(), "bundleName");
-    EXPECT_EQ(want.GetElement().GetAbilityName(), "abilityName");
-    EXPECT_EQ(want.GetBoolParam("queryWantFromErms", false), true);
+    EXPECT_EQ(param.want.GetElement().GetBundleName(), "bundleName");
+    EXPECT_EQ(param.want.GetElement().GetAbilityName(), "abilityName");
+    EXPECT_EQ(param.want.GetBoolParam("queryWantFromErms", false), true);
 #endif
     EXPECT_EQ(result, ERR_ECOLOGICAL_CONTROL_STATUS);
+    OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "false");
+}
+
+/**
+ * @tc.name: EcologicalRuleInterceptorTest_DoProcess_RemoteDispatch_001
+ * @tc.desc: DoProcess with RemoteDispatchCtx defers to the remote device (no-op, no redirect)
+ * @tc.type: FUNC
+ * @tc.require: No
+ */
+HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_RemoteDispatch_001, TestSize.Level1)
+{
+    std::shared_ptr<EcologicalRuleInterceptor> interceptor = std::make_shared<EcologicalRuleInterceptor>();
+    Want want;
+    std::string targetBundleName = "com.example.target";
+    std::string callerBundleName = "com.example.caller";
+    ElementName element("", targetBundleName, "MainAbility");
+    want.SetElement(element);
+    want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, callerBundleName);
+    int requestCode = 0;
+    StartAbilityUtils::skipErms = false;
+    int userId = 100;
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, requestCode, userId).WithUI(true).Visible(true)
+        .CallerToken(nullptr).AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>())
+        .Context<AbilityInterceptorParam::RemoteDispatchCtx>({}).Build();
+    AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = 0;
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = -1;
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.replaceWant =
+        sptr<Want>::MakeSptr();
+    AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.replaceWant->SetElementName(
+        "bundleName", "abilityName");
+    OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "true");
+    ErrCode result = interceptor->DoProcess(param);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(param.want.GetElement().GetBundleName(), targetBundleName);
+    EXPECT_EQ(param.want.GetBoolParam("queryWantFromErms", false), false);
     OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "false");
 }
 
@@ -1141,9 +1170,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_010, TestSize.Level1)
     int requestCode = 0;
     StartAbilityUtils::skipErms = false;
     int userId = 100;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, true, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(true).CallerToken(nullptr).Build();
     AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = 0;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = -1;
     OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "false");
@@ -1352,10 +1380,9 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_019, TestSize.Level1)
     Want want;
     int requestCode = 0;
     int userId = 100;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, false, nullptr,
-        shouldBlockFunc);
-    param.isTargetPlugin = true;
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(false).CallerToken(nullptr)
+        .Context<AbilityInterceptorParam::EcologicalCtx>({false, true, ""}).Build();
     ErrCode result = interceptor->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
 }
@@ -1372,10 +1399,9 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_020, TestSize.Level1)
     Want want;
     int requestCode = 0;
     int userId = 100;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, false, nullptr,
-        shouldBlockFunc);
-    param.hostBundleName = "bundle.test.com";
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(false).CallerToken(nullptr)
+        .Context<AbilityInterceptorParam::EcologicalCtx>({false, false, "bundle.test.com"}).Build();
     ErrCode result = interceptor->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
 }
@@ -1392,8 +1418,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, NoNeedErms_001, TestSize.Level1)
     int32_t requestCode = 0;
     int32_t userId = -1;
     int32_t isWithUI = false;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param{want, requestCode, userId, false, nullptr, shouldBlockFunc};
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, requestCode, userId)
+        .WithUI(false).CallerToken(nullptr).Build();
     StartAbilityUtils::skipErms = true;
     EXPECT_TRUE(EcologicalRuleInterceptor::NoNeedErms(param));
     EXPECT_FALSE(StartAbilityUtils::skipErms);
@@ -1406,11 +1432,15 @@ HWTEST_F(EcologicalRuleInterceptorTest, NoNeedErms_001, TestSize.Level1)
     EXPECT_TRUE(StartAbilityUtils::ermsSupportBackToCallerFlag);
 
     want.SetBundle("");
-    param.isTargetPlugin = true;
-    EXPECT_TRUE(EcologicalRuleInterceptor::NoNeedErms(param));
+    AbilityInterceptorParam pluginParam = InterceptorParamBuilder(want, requestCode, userId)
+        .WithUI(false).CallerToken(nullptr)
+        .Context<AbilityInterceptorParam::EcologicalCtx>({false, true, ""}).Build();
+    EXPECT_TRUE(EcologicalRuleInterceptor::NoNeedErms(pluginParam));
 
-    param.isTargetPlugin = false;
-    EXPECT_FALSE(EcologicalRuleInterceptor::NoNeedErms(param));
+    AbilityInterceptorParam nonPluginParam = InterceptorParamBuilder(want, requestCode, userId)
+        .WithUI(false).CallerToken(nullptr)
+        .Context<AbilityInterceptorParam::EcologicalCtx>({false, false, ""}).Build();
+    EXPECT_FALSE(EcologicalRuleInterceptor::NoNeedErms(nonPluginParam));
 }
 
 /**
@@ -1588,9 +1618,9 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_021, TestSize.Level1)
     int requestCode = 0;
     StartAbilityUtils::skipErms = false;
     int userId = 100;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, true, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(true).Visible(true).CallerToken(nullptr)
+        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>()).Build();
     AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = 0;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = -1;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.embedResultCode = 1;
@@ -1608,12 +1638,12 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_021, TestSize.Level1)
     EXPECT_EQ(StartAbilityUtils::ermsSupportBackToCallerFlag, true);
 #ifdef SUPPORT_GRAPHICS
     // follow-up: original want is replaced by erms replaceWant with the query flag appended
-    EXPECT_EQ(want.GetElement().GetBundleName(), "replace.bundle");
-    EXPECT_EQ(want.GetElement().GetAbilityName(), "ReplaceAbility");
-    EXPECT_EQ(want.GetBoolParam("queryWantFromErms", false), true);
-    EXPECT_EQ(want.GetStringParam("replaceKey"), "replaceValue");
+    EXPECT_EQ(param.want.GetElement().GetBundleName(), "replace.bundle");
+    EXPECT_EQ(param.want.GetElement().GetAbilityName(), "ReplaceAbility");
+    EXPECT_EQ(param.want.GetBoolParam("queryWantFromErms", false), true);
+    EXPECT_EQ(param.want.GetStringParam("replaceKey"), "replaceValue");
     // replacement overwrites params of the original want instead of merging them
-    EXPECT_TRUE(want.GetStringParam("originalKey").empty());
+    EXPECT_TRUE(param.want.GetStringParam("originalKey").empty());
 #endif
     OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "false");
 }
@@ -1638,9 +1668,9 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_022, TestSize.Level1)
     int requestCode = 0;
     StartAbilityUtils::skipErms = false;
     int userId = 100;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, false, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(false).CallerToken(nullptr)
+        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>()).Build();
     AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = 0;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = -1;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.isBackSkuExempt = true;

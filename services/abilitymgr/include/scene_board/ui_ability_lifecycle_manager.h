@@ -22,6 +22,7 @@
 #include <queue>
 #include <unordered_map>
 
+#include "ui_ability_last_caller_info.h"
 #include "ability_manager_constants.h"
 #include "ffrt.h"
 #include "isession_handler_interface.h"
@@ -79,6 +80,7 @@ struct AbilitySessionInfo {
     bool isWebSandBoxClone = false;
     int32_t sandBoxCloneIndex = 0;
     std::string creatorBundleName;
+    uint32_t specifyTokenId = 0;
 };
 
 class UIAbilityLifecycleManager : public std::enable_shared_from_this<UIAbilityLifecycleManager> {
@@ -627,6 +629,16 @@ public:
      */
     int32_t StartSelf(const UIAbilityRecordPtr &abilityRecord);
 
+    /**
+     * @brief Handle foreground or background when ability is started by call.
+     * @param abilityRecord The ability record.
+     * @param token The ability token.
+     * @param callerInfo The caller info including uid, bundle name and isCallBySCB.
+     * @return ERR_OK if handled, ERR_INVALID_VALUE if not started by call.
+     */
+    int HandleStartedByCall(const UIAbilityRecordPtr &abilityRecord, const sptr<IRemoteObject> &token,
+        const AppExecFwk::UiAbilityLastCallerInfo &callerInfo);
+
 private:
     /**
      * @brief Add starting process ID to tracking list
@@ -895,12 +907,19 @@ private:
         const AbilityRequest &abilityRequest, std::string &errMsg);
 
     /**
-     * @brief Store sandbox clone params (isWebSandBoxClone, sandboxCloneIndex, caller info) into
-     *        sessionInfo->want for the SCB callback.
+     * @brief Cache AbilitySessionInfo into sessionInfo->want for the SCB callback.
      * @param sessionInfo The session info to be updated
-     * @param abilityRequest The ability request carrying the sandbox clone flag and caller info
+     * @param abilityRequest The ability request
      */
-    void SetSandboxCloneParamsForSession(sptr<SessionInfo> &sessionInfo, const AbilityRequest &abilityRequest);
+    void CacheAbilitySessionInfo(sptr<SessionInfo> &sessionInfo, const AbilityRequest &abilityRequest);
+    /**
+     * @brief Store sandbox clone params for warm path (e.g. MoveMissionToFront) into the internal
+     *        map keyed by requestId, so the SCB callback StartUIAbilityBySCBDefault can perceive
+     *        the sandbox clone scenario via AbilitySessionInfo. No-op for non-sandbox-clone records.
+     * @param sessionInfo The session info to be updated (DLP_INDEX set in want)
+     * @param abilityRecord The existing UIAbility record carrying appIndex and sandboxCloneParams
+     */
+    void SetSandboxCloneParamsForSession(sptr<SessionInfo> &sessionInfo, const UIAbilityRecordPtr &abilityRecord);
     void CreateSessionConfigurations(std::vector<sptr<SessionInfo>> &sessionInfoList, int primaryWindowId,
         std::vector<Rosen::PendingSessionActivationConfig> &configList, sptr<SessionInfo> sessionInfo);
 

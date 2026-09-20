@@ -21,75 +21,45 @@
 #include <memory>
 #include <string>
 
-#include "want_params.h"
+#include "invoke_function_param.h"
+#include "invoke_function_result.h"
 
 namespace OHOS {
 namespace CliTool {
 
 /**
- * @brief Pure-C++ outcome of an invokeFunction run.
+ * @brief Carries InvokeFunctionResult (JS-visible) + innerError (framework reject code).
  *
- * Carries everything the NAPI layer needs to build a JS result or reject the
- * promise. Deliberately holds NO napi types so the executor can run and be
- * tested without an N-API environment.
+ * result is exposed to the hook via FunctionResultWrap and may be modified.
+ * innerError is NOT exposed to the hook; it drives the promise rejection path.
  */
-struct InvokeFunctionResult {
-    bool invokeSuccess = false;
-    int32_t errorCode = 0;                             // native err code, used on the reject path
-    int32_t resultCode = 0;                            // executeResult.code (app business level)
-    std::shared_ptr<AAFwk::WantParams> result;         // business data carried into InvokeResult.data
-    std::string message;                               // reserved description
+struct FunctionResultHolder {
+    int32_t innerError = 0;
+    InvokeFunctionResult result;
 };
 
 /**
  * @brief Invoked EXACTLY ONCE on completion / failure / timeout.
  */
-using InvokeResultCallback = std::function<void(const InvokeFunctionResult &)>;
+using InvokeResultCallback = std::function<void(const FunctionResultHolder &)>;
 
-/**
- * @class InvokeFunctionExecutor
- * @brief Pure C++ executor for invokeFunction, decoupled from NAPI.
- *
- * Owns the full business flow: function query, type validation, function
- * execution, timeout, and race-guarded result reporting via the injected
- * callback. Does NOT depend on napi_env / napi types.
- *
- * Lifecycle: after Execute() returns the caller may drop its shared_ptr;
- * internal ffrt/binder closures keep this alive via shared_from_this until the
- * result is delivered exactly once.
- */
 class InvokeFunctionExecutor
     : public std::enable_shared_from_this<InvokeFunctionExecutor> {
 public:
     InvokeFunctionExecutor() : completed_(std::make_shared<std::atomic<bool>>(false)) {}
 
-    /**
-     * @brief Create an executor instance.
-     * @return shared_ptr to a new executor.
-     */
     static std::shared_ptr<InvokeFunctionExecutor> Create();
 
-    /**
-     * @brief Kick off the async flow.
-     *
-     * @param funcNamespace The namespace of the function.
-     * @param functionName Function unique identifier.
-     * @param wantParams Input arguments (Record -> WantParams).
-     * @param callback Invoked exactly once with the outcome. Must be thread-safe.
-     */
-    void Execute(const std::string &funcNamespace, const std::string &functionName,
-        const AAFwk::WantParams &wantParams, InvokeResultCallback callback);
+    void Execute(const InvokeFunctionParam &param, InvokeResultCallback callback);
 
 private:
-    void DoExecute(const std::string &funcNamespace, const std::string &functionName,
-        const AAFwk::WantParams &wantParams);
+    void DoExecute(const InvokeFunctionParam &param);
     void ReportError(int32_t errorCode);
     void SetupTimeout();
 
     std::shared_ptr<std::atomic<bool>> completed_;
     InvokeResultCallback callback_;
 };
-
 } // namespace CliTool
 } // namespace OHOS
 

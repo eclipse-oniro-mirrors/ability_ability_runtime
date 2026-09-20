@@ -22,5 +22,10 @@ bool PermissionVerification::VerifyUpdateConfigurationPerm() const
 {
     return MyFlag::flag_;
 }
+
+bool PermissionVerification::CheckSpecificSystemAbilityAccessPermission(const std::string &processName) const
+{
+    return MyFlag::flag_;
+}
 } // namespace AAFwk
 } // namespace OHOS
