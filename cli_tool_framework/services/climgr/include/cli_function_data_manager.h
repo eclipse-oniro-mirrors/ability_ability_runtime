@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_CLI_FUNCTION_DATA_MANAGER_H
 #define OHOS_ABILITY_RUNTIME_CLI_FUNCTION_DATA_MANAGER_H
 
+#include <chrono>
 #include <mutex>
 #include <string>
 #include <unordered_set>
@@ -99,6 +100,13 @@ public:
      */
     int32_t EnsureFunctionsInitialized();
 
+    /**
+     * @brief Backs up the whole kv store to a backup file in the storage directory.
+     * Called after successful data mutations so the corrupted-store recovery can
+     * restore function configs instead of starting empty.
+     */
+    void BackupKvStore();
+
 private:
     CliFunctionDataManager();
     ~CliFunctionDataManager();
@@ -138,6 +146,30 @@ private:
      * @param status The status code from KVStore operation
      */
     void RestoreKvStore(DistributedKv::Status status);
+
+    /**
+     * @brief Checks whether the given KV store status can be recovered by
+     * deleting and recreating the store, followed by a backup restore.
+     * @param status The status returned by a KV store operation
+     * @return bool true if the status indicates an unrecoverable/broken store
+     */
+    bool IsRecoverableStatus(DistributedKv::Status status);
+
+    /**
+     * @brief Restores the store from the backup file with bounded retries.
+     * Stops immediately when no backup file exists (permanent for this boot).
+     * @return DistributedKv::Status result of the last restore attempt
+     */
+    DistributedKv::Status RestoreFromBackupWithRetry();
+
+    /**
+     * @brief Restores from backup when the store turns out to be empty on open
+     * @note Caller must ensure kvStorePtr_ is valid
+     */
+    void RestoreIfStoreEmpty();
+    void ScheduleBackupFlush(const std::chrono::steady_clock::time_point &now);
+    DistributedKv::Status RetryBackup();
+    void DetectAndHealCorruptedStore(DistributedKv::Status status);
 
     /**
      * @brief Generate KVStore key from namespace and functionName
@@ -204,6 +236,8 @@ private:
     DistributedKv::DistributedKvDataManager dataManager_;
     std::shared_ptr<DistributedKv::SingleKvStore> kvStorePtr_;
     mutable std::mutex kvStorePtrMutex_;
+    std::chrono::steady_clock::time_point lastBackupTime_{};
+    bool backupFlushScheduled_ = false;
     std::atomic<bool> functionsInitialized_ = false;
 };
 
