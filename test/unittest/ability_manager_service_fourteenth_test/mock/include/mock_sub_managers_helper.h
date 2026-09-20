@@ -93,6 +93,7 @@ public:
 
     std::shared_ptr<MissionListWrap> GetMissionListWrap();
     std::shared_ptr<MissionListManagerInterface> CreateMissionListMgr(int32_t userId);
+    void HandlePendingWantDeathCleanup(const std::string &bundleName, int32_t pid);
 private:
     DISALLOW_COPY_AND_MOVE(SubManagersHelper);
 

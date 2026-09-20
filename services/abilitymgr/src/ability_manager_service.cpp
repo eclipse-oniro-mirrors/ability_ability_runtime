@@ -516,6 +516,7 @@ bool AbilityManagerService::Init()
         modularObjectExtensionEventMgr_->SubscribeSysEventReceiver();
     }
     ReportDataPartitionUsageManager::SendReportDataPartitionUsageEvent();
+    InitWantAgentAppStateObserver();
     DelayedSingleton<AAFwk::ExtensionRunningTimeoutMonitor>::GetInstance()->StartMonitor();
     DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance()->StartMonitor();
 #ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
@@ -10338,6 +10339,71 @@ int AbilityManagerService::GetWantSenderInfo(const sptr<IWantSender> &target, st
     CHECK_POINTER_AND_RETURN(target, ERR_INVALID_VALUE);
     CHECK_POINTER_AND_RETURN(info, ERR_INVALID_VALUE);
     return pendingWantManager->GetWantSenderInfo(target, info);
+}
+
+void AbilityManagerService::RegisterWantAgentHolder(const sptr<IWantSender> &target)
+{
+    TAG_LOGI(AAFwkTag::WANTAGENT, "register want agent holder");
+    if (target == nullptr) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "null target");
+        return;
+    }
+    sptr<IRemoteObject> obj = target->AsObject();
+    if (obj == nullptr || obj->IsProxyObject()) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "target obj null or a proxy object");
+        return;
+    }
+    sptr<PendingWantRecord> record = static_cast<PendingWantRecord*>(target.GetRefPtr());
+    if (record == nullptr) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "null record");
+        return;
+    }
+    record->MarkSharedIfNeeded(IPCSkeleton::GetCallingPid());
+}
+
+void AbilityManagerService::InitWantAgentAppStateObserver()
+{
+    if (wantAgentAppStateObserver_ != nullptr) {
+        return;
+    }
+    auto appManager = AppMgrUtil::GetAppMgr();
+    if (!appManager) {
+        TAG_LOGW(AAFwkTag::WANTAGENT, "null appManager");
+        return;
+    }
+    auto serviceWeak = weak_from_this();
+    wantAgentAppStateObserver_ = new (std::nothrow) WantAgentAppStateObserver(
+        [serviceWeak](const std::string &bundleName, pid_t pid) {
+            auto service = serviceWeak.lock();
+            if (service != nullptr) {
+                service->HandleWantAgentAppDied(bundleName, pid);
+            }
+        });
+    if (!wantAgentAppStateObserver_) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "create want agent app state observer failed");
+        return;
+    }
+    int32_t err = appManager->RegisterApplicationStateObserver(wantAgentAppStateObserver_);
+    if (err != 0) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "register want agent app state observer err:%{public}d", err);
+        wantAgentAppStateObserver_ = nullptr;
+        return;
+    }
+    TAG_LOGI(AAFwkTag::WANTAGENT, "want agent app state observer registered");
+}
+
+void AbilityManagerService::HandleWantAgentAppDied(const std::string &bundleName, int32_t pid)
+{
+    TAG_LOGI(AAFwkTag::WANTAGENT, "app died, bundle=%{public}s, pid=%{public}d",
+        bundleName.c_str(), pid);
+    if (!subManagersHelper_) {
+        return;
+    }
+    auto task = [this, bundleName, pid]() {
+        subManagersHelper_->HandlePendingWantDeathCleanup(bundleName, pid);
+    };
+    constexpr int32_t DEATH_CLEANUP_DELAY_MS = 500;
+    taskHandler_->SubmitTask(task, DEATH_CLEANUP_DELAY_MS);
 }
 
 int AbilityManagerService::GetAppMemorySize()

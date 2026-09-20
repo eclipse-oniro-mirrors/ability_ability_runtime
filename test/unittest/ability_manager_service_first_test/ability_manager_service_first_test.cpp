@@ -51,6 +51,14 @@
 #include "utils/window_options_utils.h"
 #include "sandbox_clone_params.h"
 #include "global_constant.h"
+#include "app_mgr_stub.h"
+#include "mock_app_mgr_service.h"
+#include "pending_want_record.h"
+#include "want_sender_interface.h"
+
+#define private public
+#include "utils/app_mgr_util.h"
+#undef private
 
 using namespace testing;
 using namespace testing::ext;
@@ -3736,6 +3744,205 @@ HWTEST_F(AbilityManagerServiceFirstTest, InitInterceptor_BlockAllAppStart_Suppor
     EXPECT_NE(abilityMs_->blockAllAppStartInterceptor_, nullptr);
     cfg.value = false;
     cfg.isLoaded = false;
+}
+
+namespace {
+// IWantSender whose AsObject() returns null, to hit the "obj null" branch of RegisterWantAgentHolder.
+class MockIWantSenderNullObj : public IWantSender {
+public:
+    sptr<IRemoteObject> AsObject() override
+    {
+        return nullptr;
+    }
+};
+
+// MockAppMgrService subclass that records/controls RegisterApplicationStateObserver result.
+class MockAppMgrServiceForWantAgent : public AppExecFwk::MockAppMgrService {
+public:
+    int32_t RegisterApplicationStateObserver(const sptr<AppExecFwk::IApplicationStateObserver> &observer,
+        const std::vector<std::string> &bundleNameList = {}) override
+    {
+        registerCount_++;
+        registeredObserver_ = observer;
+        return registerResult_;
+    }
+    int32_t registerResult_ = 0;
+    int32_t registerCount_ = 0;
+    sptr<AppExecFwk::IApplicationStateObserver> registeredObserver_ = nullptr;
+};
+} // namespace
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RegisterWantAgentHolder
+ * SubFunction: NA
+ * FunctionPoints: RegisterWantAgentHolder handles null target
+ * @tc.name: RegisterWantAgentHolder_001
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, RegisterWantAgentHolder_001, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    EXPECT_NO_FATAL_FAILURE(abilityMs_->RegisterWantAgentHolder(nullptr));
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RegisterWantAgentHolder
+ * SubFunction: NA
+ * FunctionPoints: RegisterWantAgentHolder marks shared for a local record
+ * @tc.name: RegisterWantAgentHolder_002
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, RegisterWantAgentHolder_002, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    sptr<PendingWantRecord> record = new (std::nothrow) PendingWantRecord();
+    ASSERT_NE(record, nullptr);
+    record->SetCreatorPid(-1);
+    sptr<IWantSender> target = record;
+    abilityMs_->RegisterWantAgentHolder(target);
+    EXPECT_TRUE(record->GetShared());
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RegisterWantAgentHolder
+ * SubFunction: NA
+ * FunctionPoints: RegisterWantAgentHolder returns when AsObject is null
+ * @tc.name: RegisterWantAgentHolder_003
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, RegisterWantAgentHolder_003, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    sptr<IWantSender> target = new (std::nothrow) MockIWantSenderNullObj();
+    ASSERT_NE(target, nullptr);
+    EXPECT_NO_FATAL_FAILURE(abilityMs_->RegisterWantAgentHolder(target));
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: InitWantAgentAppStateObserver
+ * SubFunction: NA
+ * FunctionPoints: AppMgr unavailable, observer stays null
+ * @tc.name: InitWantAgentAppStateObserver_001
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, InitWantAgentAppStateObserver_001, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    AppMgrUtil::appMgr_ = nullptr;
+    abilityMs_->InitWantAgentAppStateObserver();
+    EXPECT_EQ(abilityMs_->wantAgentAppStateObserver_, nullptr);
+    AppMgrUtil::appMgr_ = nullptr;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: InitWantAgentAppStateObserver
+ * SubFunction: NA
+ * FunctionPoints: register success, observer created
+ * @tc.name: InitWantAgentAppStateObserver_002
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, InitWantAgentAppStateObserver_002, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    auto mockAppMgr = sptr<MockAppMgrServiceForWantAgent>::MakeSptr();
+    ASSERT_NE(mockAppMgr, nullptr);
+    mockAppMgr->registerResult_ = 0;
+    AppMgrUtil::appMgr_ = mockAppMgr;
+    abilityMs_->InitWantAgentAppStateObserver();
+    EXPECT_NE(abilityMs_->wantAgentAppStateObserver_, nullptr);
+    EXPECT_EQ(mockAppMgr->registerCount_, 1);
+    AppMgrUtil::appMgr_ = nullptr;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: InitWantAgentAppStateObserver
+ * SubFunction: NA
+ * FunctionPoints: register fails, observer reset to null
+ * @tc.name: InitWantAgentAppStateObserver_003
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, InitWantAgentAppStateObserver_003, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    auto mockAppMgr = sptr<MockAppMgrServiceForWantAgent>::MakeSptr();
+    ASSERT_NE(mockAppMgr, nullptr);
+    mockAppMgr->registerResult_ = ERR_INVALID_VALUE;
+    AppMgrUtil::appMgr_ = mockAppMgr;
+    abilityMs_->InitWantAgentAppStateObserver();
+    EXPECT_EQ(abilityMs_->wantAgentAppStateObserver_, nullptr);
+    AppMgrUtil::appMgr_ = nullptr;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: InitWantAgentAppStateObserver
+ * SubFunction: NA
+ * FunctionPoints: idempotent, second call does not re-register
+ * @tc.name: InitWantAgentAppStateObserver_004
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, InitWantAgentAppStateObserver_004, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    auto mockAppMgr = sptr<MockAppMgrServiceForWantAgent>::MakeSptr();
+    ASSERT_NE(mockAppMgr, nullptr);
+    mockAppMgr->registerResult_ = 0;
+    AppMgrUtil::appMgr_ = mockAppMgr;
+    abilityMs_->InitWantAgentAppStateObserver();
+    abilityMs_->InitWantAgentAppStateObserver();
+    EXPECT_NE(abilityMs_->wantAgentAppStateObserver_, nullptr);
+    EXPECT_EQ(mockAppMgr->registerCount_, 1);
+    AppMgrUtil::appMgr_ = nullptr;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: HandleWantAgentAppDied
+ * SubFunction: NA
+ * FunctionPoints: subManagersHelper_ is null, return directly
+ * @tc.name: HandleWantAgentAppDied_001
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, HandleWantAgentAppDied_001, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    EXPECT_NO_FATAL_FAILURE(abilityMs_->HandleWantAgentAppDied("com.test.bundle", 100));
+}
+
+/*
+ * Feature: SubManagersHelper
+ * Function: HandlePendingWantDeathCleanup
+ * SubFunction: NA
+ * FunctionPoints: empty pendingWantManagers_, no crash
+ * @tc.name: HandlePendingWantDeathCleanup_001
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, HandlePendingWantDeathCleanup_001, TestSize.Level1)
+{
+    auto helper = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    ASSERT_NE(helper, nullptr);
+    EXPECT_NO_FATAL_FAILURE(helper->HandlePendingWantDeathCleanup("com.test.bundle", 100));
+}
+
+/*
+ * Feature: SubManagersHelper
+ * Function: HandlePendingWantDeathCleanup
+ * SubFunction: NA
+ * FunctionPoints: iterate managers (null skipped), call DeleteUnsharedRecordsOnDeath
+ * @tc.name: HandlePendingWantDeathCleanup_002
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, HandlePendingWantDeathCleanup_002, TestSize.Level1)
+{
+    auto helper = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    ASSERT_NE(helper, nullptr);
+    helper->pendingWantManagers_[0] = nullptr;
+    helper->pendingWantManagers_[1] = std::make_shared<PendingWantManager>();
+    EXPECT_NO_FATAL_FAILURE(helper->HandlePendingWantDeathCleanup("com.test.bundle", 100));
 }
 
 } // namespace AAFwk
