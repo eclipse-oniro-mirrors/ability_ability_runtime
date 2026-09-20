@@ -1520,7 +1520,7 @@ ErrCode UriPermissionManagerStubImpl::RevokeUriPermissionManually(const Uri& uri
     uint32_t targetTokenId = 0;
     if (appIndex == -1) {
         auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
-        bundleMgrHelper->GetDualModeBundleInfo(targetBundleName, curUserId, appIndex);
+        bundleMgrHelper->GetDualModeBundleInfo(bundleName, curUserId, appIndex);
     }
     auto ret = FUDUtils::GetTokenIdByBundleName(bundleName, appIndex, curUserId, targetTokenId);
     if (ret != ERR_OK) {
