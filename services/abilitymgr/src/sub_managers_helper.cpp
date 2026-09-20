@@ -648,5 +648,26 @@ std::shared_ptr<MissionListManagerInterface> SubManagersHelper::CreateMissionLis
 
     return nullptr;
 }
+
+void SubManagersHelper::HandlePendingWantDeathCleanup(
+    const std::string &bundleName, int32_t pid)
+{
+    TAG_LOGI(AAFwkTag::WANTAGENT,
+        "death cleanup: bundle=%{public}s, pid=%{public}d",
+        bundleName.c_str(), pid);
+
+    std::vector<std::shared_ptr<PendingWantManager>> managers;
+    {
+        std::lock_guard<ffrt::mutex> lock(managersMutex_);
+        for (auto &[userId, pwm] : pendingWantManagers_) {
+            if (pwm != nullptr) {
+                managers.push_back(pwm);
+            }
+        }
+    }
+    for (auto &pwm : managers) {
+        pwm->DeleteUnsharedRecordsOnDeath(bundleName, pid);
+    }
+}
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -82,6 +82,7 @@ ohos_shared_library("wantagent_innerkits") {
     "ability_base:want",
     "c_utils:utils",
     "eventhandler:libeventhandler",
+    "ffrt:libffrt",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
     "hitrace:libhitracechain",

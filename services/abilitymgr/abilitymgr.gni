@@ -60,6 +60,7 @@ abilityms_files = [
   "src/pending_want_key.cpp",
   "src/pending_want_manager.cpp",
   "src/pending_want_common_event.cpp",
+  "src/want_agent_app_state_observer.cpp",
   "src/restart_app_manager.cpp",
   "src/ams_configuration_parameter.cpp",
   "src/recovery_info_timer.cpp",

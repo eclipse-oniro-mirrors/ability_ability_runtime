@@ -204,8 +204,15 @@ sptr<IWantSender> PendingWantManager::GetWantSenderLocked(const int32_t callingU
                 ref->SetCallerUid(callingUid);
                 ref->SetPublisherUid(publisherUid);
             }
+            bool isThirdParty = !PermissionVerification::GetInstance()->IsSystemAppCall() &&
+                !PermissionVerification::GetInstance()->IsSACall();
+            if (!isThirdParty) {
+                ref->SetIsThirdParty(false);
+            }
+            ref->MarkSharedIfNeeded(IPCSkeleton::GetCallingPid());
             return ref;
         }
+        TAG_LOGI(AAFwkTag::WANTAGENT, "cancel");
         MakeWantSenderCanceledLocked(*ref);
         ReduceWantAgentNumber(ref->GetKey());
         wantRecords_.erase(ref->GetKey());
@@ -221,6 +228,9 @@ sptr<IWantSender> PendingWantManager::GetWantSenderLocked(const int32_t callingU
     if (rec != nullptr) {
         rec->SetCallerUid(callingUid);
         rec->SetPublisherUid(publisherUid);
+        rec->SetCreatorPid(IPCSkeleton::GetCallingPid());
+        rec->SetIsThirdParty(!PermissionVerification::GetInstance()->IsSystemAppCall() &&
+            !PermissionVerification::GetInstance()->IsSACall());
         pendingKey->SetCode(PendingRecordIdCreate());
         AddWantAgentNumber(pendingKey);
         wantRecords_.insert(std::make_pair(pendingKey, rec));
@@ -235,8 +245,6 @@ sptr<IWantSender> PendingWantManager::GetWantSenderLocked(const int32_t callingU
 
 void PendingWantManager::MakeWantSenderCanceledLocked(PendingWantRecord &record)
 {
-    TAG_LOGI(AAFwkTag::WANTAGENT, "cancel");
-
     record.SetCanceled();
     for (auto &callback : record.GetCancelCallbacks()) {
         callback->Send(record.GetKey()->GetRequestCode());
@@ -389,6 +397,7 @@ void PendingWantManager::CancelWantSenderLocked(PendingWantRecord &record, bool 
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::WANTAGENT, "begin");
     std::lock_guard<ffrt::mutex> locker(mutex_);
+    TAG_LOGI(AAFwkTag::WANTAGENT, "cancel");
     MakeWantSenderCanceledLocked(record);
     if (cleanAbility) {
         ReduceWantAgentNumber(record.GetKey());
@@ -518,13 +527,37 @@ int32_t PendingWantManager::PendingRecordIdCreate()
 sptr<PendingWantRecord> PendingWantManager::GetPendingWantRecordByCode(int32_t code)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    TAG_LOGI(AAFwkTag::WANTAGENT, "resuest code:%{public}d", code);
+    TAG_LOGI(AAFwkTag::WANTAGENT, "request code:%{public}d", code);
 
     std::lock_guard<ffrt::mutex> locker(mutex_);
     auto iter = std::find_if(wantRecords_.begin(), wantRecords_.end(), [&code](const auto &pair) {
         return pair.second->GetKey()->GetCode() == code;
     });
     return ((iter == wantRecords_.end()) ? nullptr : iter->second);
+}
+
+void PendingWantManager::DeleteUnsharedRecordsOnDeath(
+    const std::string &bundleName, int32_t pid)
+{
+    std::lock_guard<ffrt::mutex> locker(mutex_);
+
+    for (auto iter = wantRecords_.begin(); iter != wantRecords_.end();) {
+        const auto &key = iter->first;
+        sptr<PendingWantRecord> record = iter->second;
+        if (record == nullptr || key == nullptr || record->GetCreatorPid() != pid ||
+            !record->GetIsThirdParty() || key->GetBundleName() != bundleName ||
+            record->GetShared()) {
+            ++iter;
+            continue;
+        }
+        int32_t code = key->GetCode();
+        HandleReduceWantAgentNumber(key);
+        MakeWantSenderCanceledLocked(*record);
+        iter = wantRecords_.erase(iter);
+        TAG_LOGD(AAFwkTag::WANTAGENT,
+            "creator died, deleted unshared WantAgent. bundle=%{public}s, pid=%{public}d, code=%{public}d",
+            bundleName.c_str(), pid, code);
+    }
 }
 
 int32_t PendingWantManager::GetPendingWantUid(const sptr<IWantSender> &target)

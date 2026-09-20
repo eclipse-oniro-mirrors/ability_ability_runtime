@@ -965,6 +965,9 @@ int AbilityManagerStub::OnRemoteRequestInnerTwentyFirst(uint32_t code, MessagePa
     if (interfaceCode == AbilityManagerInterfaceCode::DELETE_KIOSK_APP_FROM_LIST) {
         return DeleteKioskApplicationListInner(data, reply);
     }
+    if (interfaceCode == AbilityManagerInterfaceCode::REGISTER_WANT_AGENT_HOLDER) {
+        return RegisterWantAgentHolderInner(data, reply);
+    }
     if (interfaceCode == AbilityManagerInterfaceCode::ENTER_KIOSK_MODE) {
         return EnterKioskModeInner(data, reply);
     }
@@ -2427,6 +2430,17 @@ int AbilityManagerStub::GetWantSenderInfoInner(MessageParcel &data, MessageParce
         return ERR_INVALID_VALUE;
     }
     reply.WriteParcelable(info.get());
+    return NO_ERROR;
+}
+
+int AbilityManagerStub::RegisterWantAgentHolderInner(MessageParcel &data, MessageParcel &reply)
+{
+    sptr<IWantSender> wantSender = iface_cast<IWantSender>(data.ReadRemoteObject());
+    if (wantSender == nullptr) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "wantSender null");
+        return ERR_INVALID_VALUE;
+    }
+    RegisterWantAgentHolder(wantSender);
     return NO_ERROR;
 }
 

@@ -565,6 +565,7 @@ group("unittest") {
       "uri_utils_second_test",
       "uri_utils_test:unittest",
       "vertical_panel_manager_test:unittest",
+      "want_agent_app_state_observer_test:unittest",
       "want_agent_helper_test:unittest",
       "want_agent_info_test:unittest",
       "want_agent_test:unittest",
