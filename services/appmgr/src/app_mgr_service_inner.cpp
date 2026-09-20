@@ -658,8 +658,8 @@ int32_t AppMgrServiceInner::PreloadApplication(const std::string &bundleName, in
         TAG_LOGE(AAFwkTag::APPMGR, "permission verify fail");
         return ERR_PERMISSION_DENIED;
     }
-    auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
     if (appIndex == -1) {
+        auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
         bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appIndex);
     }
     if (appIndex != 0 || appIndex != AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
@@ -3470,8 +3470,8 @@ int32_t AppMgrServiceInner::ForceKillApplication(const std::string &bundleName,
         return AAFwk::CHECK_PERMISSION_FAILED;
     }
 
-    auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
     if (appIndex == -1) {
+        auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
         bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appIndex);
     }
     return ForceKillApplicationInner(bundleName, userId, appIndex);
@@ -3492,8 +3492,8 @@ int32_t AppMgrServiceInner::KillApplicationWithUserId(const std::string &bundleN
         return result;
     }
 
-    auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
     if (appIndex == -1) {
+        auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
         bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appIndex);
     }
     return KillApplicationWithUserIdInner(bundleName, userId, appIndex);
