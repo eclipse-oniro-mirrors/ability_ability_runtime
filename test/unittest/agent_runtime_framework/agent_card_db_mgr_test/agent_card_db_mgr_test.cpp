@@ -672,5 +672,37 @@ HWTEST_F(AgentCardDbMgrTest, RestoreFromBackupWithRetryTest_011, TestSize.Level1
     EXPECT_EQ(result, DistributedKv::Status::DB_ERROR);
     EXPECT_EQ(mockStore->restoreCallCount_, 3);
 }
+
+/**
+ * @tc.name: RestoreIfStoreEmptyTest_010
+ * @tc.desc: Test unreadable store triggers restore from backup.
+ * @tc.type: FUNC
+ * @tc.require: AR000H1N32
+ */
+HWTEST_F(AgentCardDbMgrTest, RestoreIfStoreEmptyTest_010, TestSize.Level1)
+{
+    AgentCardDbMgr agentCardDbMgr;
+    auto mockStore = std::make_shared<MockSingleKvStoreForDbMgr>();
+    agentCardDbMgr.kvStorePtr_ = mockStore;
+    mockStore->GetEntries_ = DistributedKv::Status::DATA_CORRUPTED;
+    agentCardDbMgr.RestoreIfStoreEmpty();
+    EXPECT_EQ(mockStore->restoreCallCount_, 1);
+    mockStore->GetEntries_ = DistributedKv::Status::SUCCESS;
+}
+
+/**
+ * @tc.name: RestoreIfStoreEmptyTest_020
+ * @tc.desc: Test empty store triggers restore from backup.
+ * @tc.type: FUNC
+ * @tc.require: AR000H1N32
+ */
+HWTEST_F(AgentCardDbMgrTest, RestoreIfStoreEmptyTest_020, TestSize.Level1)
+{
+    AgentCardDbMgr agentCardDbMgr;
+    auto mockStore = std::make_shared<MockSingleKvStoreForDbMgr>();
+    agentCardDbMgr.kvStorePtr_ = mockStore;
+    agentCardDbMgr.RestoreIfStoreEmpty();
+    EXPECT_EQ(mockStore->restoreCallCount_, 1);
+}
 } // namespace AgentRuntime
 } // namespace OHOS

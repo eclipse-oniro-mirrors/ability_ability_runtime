@@ -1657,5 +1657,41 @@ HWTEST_F(AbilityAutoStartupDataManagerTest, RestoreFromBackupWithRetry_200, Test
     EXPECT_EQ(kvStorePtr->restoreCallCount_, 3);
     GTEST_LOG_(INFO) << "RestoreFromBackupWithRetry_200 end";
 }
+
+/**
+ * Feature: AbilityAutoStartupDataManager
+ * Function: RestoreIfStoreEmpty
+ * SubFunction: NA
+ * FunctionPoints: unreadable store triggers restore from backup
+ */
+HWTEST_F(AbilityAutoStartupDataManagerTest, RestoreIfStoreEmpty_100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RestoreIfStoreEmpty_100 start";
+    AbilityAutoStartupDataManager abilityAutoStartupDataManager;
+    std::shared_ptr<MockSingleKvStore> kvStorePtr = std::make_shared<MockSingleKvStore>();
+    abilityAutoStartupDataManager.kvStorePtr_ = kvStorePtr;
+    kvStorePtr->GetEntries_ = DistributedKv::Status::DATA_CORRUPTED;
+    abilityAutoStartupDataManager.RestoreIfStoreEmpty();
+    EXPECT_EQ(kvStorePtr->restoreCallCount_, 1);
+    kvStorePtr->GetEntries_ = DistributedKv::Status::SUCCESS;
+    GTEST_LOG_(INFO) << "RestoreIfStoreEmpty_100 end";
+}
+
+/**
+ * Feature: AbilityAutoStartupDataManager
+ * Function: RestoreIfStoreEmpty
+ * SubFunction: NA
+ * FunctionPoints: empty store triggers restore from backup
+ */
+HWTEST_F(AbilityAutoStartupDataManagerTest, RestoreIfStoreEmpty_200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RestoreIfStoreEmpty_200 start";
+    AbilityAutoStartupDataManager abilityAutoStartupDataManager;
+    std::shared_ptr<MockSingleKvStore> kvStorePtr = std::make_shared<MockSingleKvStore>();
+    abilityAutoStartupDataManager.kvStorePtr_ = kvStorePtr;
+    abilityAutoStartupDataManager.RestoreIfStoreEmpty();
+    EXPECT_EQ(kvStorePtr->restoreCallCount_, 1);
+    GTEST_LOG_(INFO) << "RestoreIfStoreEmpty_200 end";
+}
 } // namespace AbilityRuntime
 } // namespace OHOS
