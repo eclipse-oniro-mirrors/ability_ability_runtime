@@ -43,6 +43,7 @@ config("cli_tool_client_config") {
 }
 
 ohos_shared_library("cli_tool_client") {
+  version_script = "libcli_tool_client.map"
   sanitize = {
     cfi = true
     cfi_cross_dso = true

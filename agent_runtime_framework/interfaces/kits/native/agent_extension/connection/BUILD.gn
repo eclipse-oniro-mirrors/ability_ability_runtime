@@ -15,6 +15,7 @@ import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 ohos_shared_library("agent_extension_connection") {
+  version_script = "libagent_extension_connection.map"
   sanitize = {
     integer_overflow = true
     ubsan = true
