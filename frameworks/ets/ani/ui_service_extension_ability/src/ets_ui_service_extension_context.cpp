@@ -40,8 +40,6 @@ namespace OHOS {
 namespace AbilityRuntime {
 namespace {
 constexpr const int FAILED_CODE = -1;
-constexpr int32_t ERROR_CODE_ONE = 1;
-constexpr int32_t ERROR_CODE_TWO = 2;
 constexpr int32_t INVALID_PARAM = static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_PARAM);
 constexpr const char *UI_SERVICE_CONTEXT_CLASS_NAME =
     "application.UIServiceExtensionContext.UIServiceExtensionContext";
@@ -243,7 +241,8 @@ void EtsUIServiceExtensionContext::OnTerminateSelf(ani_env *env, ani_object call
     if (context == nullptr) {
         TAG_LOGW(AAFwkTag::UISERVC_EXT, "null context");
         AppExecFwk::AsyncCallback(env, callback,
-            EtsErrorUtil::CreateError(env, ERROR_CODE_ONE, "Context is released"),
+            EtsErrorUtil::CreateError(env,
+                static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT), "Context is released"),
             nullptr);
         return;
     }
@@ -470,13 +469,15 @@ void EtsUIServiceExtensionContext::OnDisConnectServiceExtensionAbility(ani_env *
     if (context == nullptr) {
         TAG_LOGE(AAFwkTag::UISERVC_EXT, "null context");
         AppExecFwk::AsyncCallback(env, callback,
-            EtsErrorUtil::CreateError(env, ERROR_CODE_ONE, "Context is released"), nullptr);
+            EtsErrorUtil::CreateError(env,
+                static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT), "Context is released"), nullptr);
         return;
     }
     if (connection == nullptr) {
         TAG_LOGW(AAFwkTag::UISERVC_EXT, "null connection");
         AppExecFwk::AsyncCallback(env, callback,
-            EtsErrorUtil::CreateError(env, ERROR_CODE_TWO, "not found connection"), nullptr);
+            EtsErrorUtil::CreateError(env,
+                static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER), "null connection"), nullptr);
         return;
     }
     innerErrCode = context->DisConnectServiceExtensionAbility(want, connection, accountId);

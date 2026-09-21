@@ -64,13 +64,30 @@ bool IsEmbeddableStart(int32_t screenMode)
     return screenMode == AAFwk::EMBEDDED_FULL_SCREEN_MODE ||
         screenMode == AAFwk::EMBEDDED_HALF_SCREEN_MODE;
 }
+
+void *DetachNewUIExtensionContext(napi_env, void *nativeObject, void *)
+{
+    auto *origContext = static_cast<std::weak_ptr<UIExtensionContext> *>(nativeObject);
+    if (origContext == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "origContext is null");
+        return nullptr;
+    }
+    TAG_LOGD(AAFwkTag::UI_EXT, "new detached ui extension context");
+    return new (std::nothrow) std::weak_ptr<UIExtensionContext>(*origContext);
 }
 
-napi_value AttachUIExtensionContext(napi_env env, void *value, void *extValue)
+void DetachFinalizeUIExtensionContext(void *detachedObject, void *)
+{
+    TAG_LOGD(AAFwkTag::UI_EXT, "finalize detached ui extension context");
+    delete static_cast<std::weak_ptr<UIExtensionContext> *>(detachedObject);
+}
+}
+
+napi_value AttachUIExtensionContext(napi_env env, void *value, void *)
 {
     TAG_LOGD(AAFwkTag::UI_EXT, "called");
     HandleEscape handleEscape(env);
-    if (value == nullptr || extValue == nullptr) {
+    if (value == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "invalid parameter");
         return nullptr;
     }
@@ -92,8 +109,13 @@ napi_value AttachUIExtensionContext(napi_env env, void *value, void *extValue)
         TAG_LOGE(AAFwkTag::UI_EXT, "null contextObj");
         return nullptr;
     }
-    napi_coerce_to_native_binding_object(env, contextObj, DetachCallbackFunc,
-        AttachUIExtensionContext, value, extValue);
+    napi_status coerceStatus = napi_coerce_to_native_binding_object(env, contextObj, DetachNewUIExtensionContext,
+        AttachUIExtensionContext, value, nullptr);
+    if (coerceStatus != napi_ok) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "coerce ui extension context failed: %{public}d", coerceStatus);
+        return nullptr;
+    }
+    napi_add_detached_finalizer(env, contextObj, DetachFinalizeUIExtensionContext, nullptr);
     auto workContext = new (std::nothrow) std::weak_ptr<UIExtensionContext>(ptr);
     napi_status status = napi_wrap(env, contextObj, workContext,
         [](napi_env, void *data, void *) {
@@ -234,15 +256,14 @@ void JsUIExtension::BindContext(napi_env env, napi_value obj, std::shared_ptr<AA
     }
     auto workContext = new (std::nothrow) std::weak_ptr<UIExtensionContext>(context);
     CHECK_POINTER(workContext);
-    screenModePtr_ = std::make_shared<int32_t>(screenMode);
-    auto workScreenMode = new (std::nothrow) std::weak_ptr<int32_t>(screenModePtr_);
-    if (workScreenMode == nullptr) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "workScreenMode is null");
+    napi_status coerceStatus = napi_coerce_to_native_binding_object(
+        env, contextObj, DetachNewUIExtensionContext, AttachUIExtensionContext, workContext, nullptr);
+    if (coerceStatus != napi_ok) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "coerce ui extension context failed: %{public}d", coerceStatus);
         delete workContext;
         return;
     }
-    napi_coerce_to_native_binding_object(
-        env, contextObj, DetachCallbackFunc, AttachUIExtensionContext, workContext, workScreenMode);
+    napi_add_detached_finalizer(env, contextObj, DetachFinalizeUIExtensionContext, nullptr);
     context->Bind(jsRuntime_, shellContextRef_.get());
     napi_set_named_property(env, obj, "context", contextObj);
     napi_status status = napi_wrap(env, contextObj, workContext,
