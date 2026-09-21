@@ -18,7 +18,6 @@ ohos_unittest("js_ui_service_extension_context_first_test") {
   module_out_path = "ability_runtime/ability_runtime/extension"
 
   sources = [
-    "${ability_runtime_path}/frameworks/native/ability/native/ui_service_extension_ability/js_ui_service_extension_context.cpp",
     "js_ui_service_extension_context_first_test.cpp",
   ]
 

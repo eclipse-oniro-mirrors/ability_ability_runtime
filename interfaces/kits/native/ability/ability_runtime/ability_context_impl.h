@@ -30,6 +30,9 @@ namespace OHOS {
 namespace Rosen {
 enum class WSError;
 }
+namespace Ace {
+struct ModalUIExtensionCallbacks;
+}
 namespace AbilityRuntime {
 class AbilityContextImpl : public AbilityContext {
 public:
@@ -469,6 +472,11 @@ private:
     void SetWindowRectangleParams(AAFwk::Want &want);
     void GetFailureInfoByMessage(const std::string &message, int32_t &failureCode,
         std::string &failureMessage, int32_t resultCode);
+#ifdef SUPPORT_SCREEN
+    Ace::ModalUIExtensionCallbacks SetupModalUIExtensionCallbacks(
+        std::shared_ptr<UIExtensionCallback> uiExtensionCallback,
+        std::shared_ptr<std::atomic<bool>> errorFired);
+#endif
 
     std::mutex onRequestResultMutex_;
     std::mutex onAtomicRequestResultMutex_;

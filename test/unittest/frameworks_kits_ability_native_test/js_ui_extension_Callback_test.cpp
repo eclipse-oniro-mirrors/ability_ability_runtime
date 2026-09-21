@@ -17,6 +17,7 @@
 #include <memory>
 
 #include "ability_handler.h"
+#include "ability_business_error.h"
 #include "app_module_checker.h"
 #include "context_deal.h"
 #include "js_environment.h"
@@ -34,6 +35,51 @@ namespace AppExecFwk {
 using namespace testing::ext;
 using namespace OHOS;
 using namespace OHOS::AbilityRuntime;
+
+namespace {
+napi_value CountCompletionCallback(napi_env env, napi_callback_info info)
+{
+    size_t argc = 0;
+    void* data = nullptr;
+    napi_get_cb_info(env, info, &argc, nullptr, nullptr, &data);
+    if (data != nullptr) {
+        ++(*static_cast<int32_t*>(data));
+    }
+    return nullptr;
+}
+
+struct CompletionCallbackCtx {
+    int32_t callCount = 0;
+    int32_t errorCode = -2;
+};
+
+napi_value AssertCompletionCallback(napi_env env, napi_callback_info info)
+{
+    size_t argc = 2;
+    napi_value argv[2] = {nullptr};
+    void* data = nullptr;
+    napi_get_cb_info(env, info, &argc, argv, nullptr, &data);
+    if (data == nullptr) {
+        return nullptr;
+    }
+    auto* ctx = static_cast<CompletionCallbackCtx*>(data);
+    ctx->callCount++;
+    if (argc >= 1 && argv[0] != nullptr) {
+        napi_valuetype type = napi_undefined;
+        napi_typeof(env, argv[0], &type);
+        if (type == napi_null) {
+            ctx->errorCode = 0;
+        } else {
+            napi_value codeVal = nullptr;
+            if (napi_get_named_property(env, argv[0], "code", &codeVal) == napi_ok && codeVal != nullptr) {
+                napi_get_value_int32(env, codeVal, &ctx->errorCode);
+            }
+        }
+    }
+    return nullptr;
+}
+} // namespace
+
 class JsUIExtensionCallbackTest : public testing::Test {
 public:
     JsUIExtensionCallbackTest() : jsUIExtensionCallback_(nullptr) {}
@@ -94,9 +140,26 @@ HWTEST_F(JsUIExtensionCallbackTest, OnError_002, TestSize.Level1)
 HWTEST_F(JsUIExtensionCallbackTest, OnRelease_001, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "OnRelease_001 start";
-    jsUIExtensionCallback_ = std::make_shared<JsUIExtensionCallback>(nullptr);
+    OHOS::AbilityRuntime::Runtime::Options options;
+    std::shared_ptr<OHOS::JsEnv::JsEnvironment> jsEnv = nullptr;
+    auto err = JsRuntimeLite::GetInstance().CreateJsEnv(options, jsEnv);
+    ASSERT_EQ(err, napi_status::napi_ok);
+
+    napi_env env = reinterpret_cast<napi_env>(jsEnv->GetNativeEngine());
+    int32_t callbackCount = 0;
+    napi_value callback = nullptr;
+    ASSERT_EQ(napi_create_function(env, "completionCallback", NAPI_AUTO_LENGTH,
+        CountCompletionCallback, &callbackCount, &callback), napi_ok);
+
+    jsUIExtensionCallback_ = std::make_shared<JsUIExtensionCallback>(env);
     EXPECT_TRUE(jsUIExtensionCallback_ != nullptr);
+    EXPECT_TRUE(jsUIExtensionCallback_->SetCompletionCallback(env, callback));
     jsUIExtensionCallback_->OnRelease(0);
+    EXPECT_EQ(callbackCount, 0);
+    jsUIExtensionCallback_.reset();
+
+    err = JsRuntimeLite::GetInstance().RemoveJsEnv(reinterpret_cast<napi_env>(jsEnv->GetNativeEngine()));
+    EXPECT_EQ(err, napi_status::napi_ok);
     GTEST_LOG_(INFO) << "OnRelease_001 end";
 }
 
@@ -218,6 +281,180 @@ HWTEST_F(JsUIExtensionCallbackTest, CallJsError_002, TestSize.Level1)
     err = JsRuntimeLite::GetInstance().RemoveJsEnv(reinterpret_cast<napi_env>(jsEnv->GetNativeEngine()));
     EXPECT_EQ(err, napi_status::napi_ok);
     GTEST_LOG_(INFO) << "CallJsError_002 end";
+}
+
+/*
+ * Feature: RejectAsyncResult_001
+ * Function: RejectAsyncResult
+ */
+HWTEST_F(JsUIExtensionCallbackTest, RejectAsyncResult_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RejectAsyncResult_001 start";
+    OHOS::AbilityRuntime::Runtime::Options options;
+    std::shared_ptr<OHOS::JsEnv::JsEnvironment> jsEnv = nullptr;
+    auto err = JsRuntimeLite::GetInstance().CreateJsEnv(options, jsEnv);
+    ASSERT_EQ(err, napi_status::napi_ok);
+
+    napi_env env = reinterpret_cast<napi_env>(jsEnv->GetNativeEngine());
+    int32_t callbackCount = 0;
+    napi_value callback = nullptr;
+    ASSERT_EQ(napi_create_function(env, "completionCallback", NAPI_AUTO_LENGTH,
+        CountCompletionCallback, &callbackCount, &callback), napi_ok);
+
+    jsUIExtensionCallback_ = std::make_shared<JsUIExtensionCallback>(env);
+    EXPECT_TRUE(jsUIExtensionCallback_->SetCompletionCallback(env, callback));
+    jsUIExtensionCallback_->RejectAsyncResult(
+        static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER), "StartAbilityByType failed.");
+    jsUIExtensionCallback_->RejectAsyncResult(
+        static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER), "StartAbilityByType failed.");
+    EXPECT_EQ(callbackCount, 1);
+
+    err = JsRuntimeLite::GetInstance().RemoveJsEnv(reinterpret_cast<napi_env>(jsEnv->GetNativeEngine()));
+    EXPECT_EQ(err, napi_status::napi_ok);
+    GTEST_LOG_(INFO) << "RejectAsyncResult_001 end";
+}
+
+/*
+ * Feature: OnAbilityByTypeResult_001
+ * Function: OnAbilityByTypeResult (success path, errorCode == 0)
+ */
+HWTEST_F(JsUIExtensionCallbackTest, OnAbilityByTypeResult_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "OnAbilityByTypeResult_001 start";
+    OHOS::AbilityRuntime::Runtime::Options options;
+    std::shared_ptr<OHOS::JsEnv::JsEnvironment> jsEnv = nullptr;
+    auto err = JsRuntimeLite::GetInstance().CreateJsEnv(options, jsEnv);
+    ASSERT_EQ(err, napi_status::napi_ok);
+
+    napi_env env = reinterpret_cast<napi_env>(jsEnv->GetNativeEngine());
+    CompletionCallbackCtx ctx;
+    napi_value callback = nullptr;
+    ASSERT_EQ(napi_create_function(env, "completionCallback", NAPI_AUTO_LENGTH,
+        AssertCompletionCallback, &ctx, &callback), napi_ok);
+    jsUIExtensionCallback_ = std::make_shared<JsUIExtensionCallback>(env);
+    EXPECT_TRUE(jsUIExtensionCallback_->SetCompletionCallback(env, callback));
+    jsUIExtensionCallback_->OnAbilityByTypeResult(0);
+    EXPECT_EQ(ctx.callCount, 0);
+    EXPECT_TRUE(jsUIExtensionCallback_ != nullptr);
+    err = JsRuntimeLite::GetInstance().RemoveJsEnv(reinterpret_cast<napi_env>(jsEnv->GetNativeEngine()));
+    EXPECT_EQ(err, napi_status::napi_ok);
+    GTEST_LOG_(INFO) << "OnAbilityByTypeResult_001 end";
+}
+
+/*
+ * Feature: OnAbilityByTypeResult_002
+ * Function: OnAbilityByTypeResult (failure path, errorCode != 0)
+ */
+HWTEST_F(JsUIExtensionCallbackTest, OnAbilityByTypeResult_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "OnAbilityByTypeResult_002 start";
+    OHOS::AbilityRuntime::Runtime::Options options;
+    std::shared_ptr<OHOS::JsEnv::JsEnvironment> jsEnv = nullptr;
+    auto err = JsRuntimeLite::GetInstance().CreateJsEnv(options, jsEnv);
+    ASSERT_EQ(err, napi_status::napi_ok);
+
+    napi_env env = reinterpret_cast<napi_env>(jsEnv->GetNativeEngine());
+    CompletionCallbackCtx ctx;
+    napi_value callback = nullptr;
+    ASSERT_EQ(napi_create_function(env, "completionCallback", NAPI_AUTO_LENGTH,
+        AssertCompletionCallback, &ctx, &callback), napi_ok);
+    jsUIExtensionCallback_ = std::make_shared<JsUIExtensionCallback>(env);
+    EXPECT_TRUE(jsUIExtensionCallback_->SetCompletionCallback(env, callback));
+    jsUIExtensionCallback_->OnAbilityByTypeResult(1);
+    EXPECT_EQ(ctx.callCount, 0);
+    EXPECT_TRUE(jsUIExtensionCallback_ != nullptr);
+    err = JsRuntimeLite::GetInstance().RemoveJsEnv(reinterpret_cast<napi_env>(jsEnv->GetNativeEngine()));
+    EXPECT_EQ(err, napi_status::napi_ok);
+    GTEST_LOG_(INFO) << "OnAbilityByTypeResult_002 end";
+}
+
+/*
+ * Feature: OnAbilityByTypeResult_003
+ * Function: OnAbilityByTypeResult (Promise deferred path)
+ */
+HWTEST_F(JsUIExtensionCallbackTest, OnAbilityByTypeResult_003, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "OnAbilityByTypeResult_003 start";
+    OHOS::AbilityRuntime::Runtime::Options options;
+    std::shared_ptr<OHOS::JsEnv::JsEnvironment> jsEnv = nullptr;
+    auto err = JsRuntimeLite::GetInstance().CreateJsEnv(options, jsEnv);
+    ASSERT_EQ(err, napi_status::napi_ok);
+
+    napi_env env = reinterpret_cast<napi_env>(jsEnv->GetNativeEngine());
+    CompletionCallbackCtx ctx;
+    napi_value callback = nullptr;
+    ASSERT_EQ(napi_create_function(env, "completionCallback", NAPI_AUTO_LENGTH,
+        AssertCompletionCallback, &ctx, &callback), napi_ok);
+    jsUIExtensionCallback_ = std::make_shared<JsUIExtensionCallback>(env);
+    EXPECT_TRUE(jsUIExtensionCallback_->SetCompletionCallback(env, callback));
+    jsUIExtensionCallback_->OnAbilityByTypeResult(0);
+    jsUIExtensionCallback_->OnAbilityByTypeResult(1);
+    EXPECT_EQ(ctx.callCount, 0);
+    EXPECT_TRUE(jsUIExtensionCallback_ != nullptr);
+    err = JsRuntimeLite::GetInstance().RemoveJsEnv(reinterpret_cast<napi_env>(jsEnv->GetNativeEngine()));
+    EXPECT_EQ(err, napi_status::napi_ok);
+    GTEST_LOG_(INFO) << "OnAbilityByTypeResult_003 end";
+}
+
+/*
+ * Feature: RejectAsyncResult_002
+ * Function: RejectAsyncResult (completionCallback with arg validation)
+ */
+HWTEST_F(JsUIExtensionCallbackTest, RejectAsyncResult_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RejectAsyncResult_002 start";
+    OHOS::AbilityRuntime::Runtime::Options options;
+    std::shared_ptr<OHOS::JsEnv::JsEnvironment> jsEnv = nullptr;
+    auto err = JsRuntimeLite::GetInstance().CreateJsEnv(options, jsEnv);
+    ASSERT_EQ(err, napi_status::napi_ok);
+
+    napi_env env = reinterpret_cast<napi_env>(jsEnv->GetNativeEngine());
+    CompletionCallbackCtx ctx;
+    napi_value callback = nullptr;
+    ASSERT_EQ(napi_create_function(env, "completionCallback", NAPI_AUTO_LENGTH,
+        AssertCompletionCallback, &ctx, &callback), napi_ok);
+    jsUIExtensionCallback_ = std::make_shared<JsUIExtensionCallback>(env);
+    EXPECT_TRUE(jsUIExtensionCallback_->SetCompletionCallback(env, callback));
+    jsUIExtensionCallback_->RejectAsyncResult(
+        static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER), "StartAbilityByType failed.");
+    EXPECT_EQ(ctx.callCount, 1);
+    EXPECT_EQ(ctx.errorCode, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER));
+    jsUIExtensionCallback_->RejectAsyncResult(
+        static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER), "StartAbilityByType failed.");
+    EXPECT_EQ(ctx.callCount, 1);
+    err = JsRuntimeLite::GetInstance().RemoveJsEnv(reinterpret_cast<napi_env>(jsEnv->GetNativeEngine()));
+    EXPECT_EQ(err, napi_status::napi_ok);
+    GTEST_LOG_(INFO) << "RejectAsyncResult_002 end";
+}
+
+/*
+ * Feature: RejectAsyncResult_003
+ * Function: RejectAsyncResult (Promise deferred path)
+ */
+HWTEST_F(JsUIExtensionCallbackTest, RejectAsyncResult_003, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RejectAsyncResult_003 start";
+    OHOS::AbilityRuntime::Runtime::Options options;
+    std::shared_ptr<OHOS::JsEnv::JsEnvironment> jsEnv = nullptr;
+    auto err = JsRuntimeLite::GetInstance().CreateJsEnv(options, jsEnv);
+    ASSERT_EQ(err, napi_status::napi_ok);
+
+    napi_env env = reinterpret_cast<napi_env>(jsEnv->GetNativeEngine());
+    CompletionCallbackCtx ctx;
+    napi_value callback = nullptr;
+    ASSERT_EQ(napi_create_function(env, "completionCallback", NAPI_AUTO_LENGTH,
+        AssertCompletionCallback, &ctx, &callback), napi_ok);
+    jsUIExtensionCallback_ = std::make_shared<JsUIExtensionCallback>(env);
+    EXPECT_TRUE(jsUIExtensionCallback_->SetCompletionCallback(env, callback));
+    jsUIExtensionCallback_->RejectAsyncResult(
+        static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER), "StartAbilityByType failed.");
+    EXPECT_EQ(ctx.callCount, 1);
+    EXPECT_EQ(ctx.errorCode, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER));
+    jsUIExtensionCallback_->OnAbilityByTypeResult(0);
+    EXPECT_EQ(ctx.callCount, 1);
+    err = JsRuntimeLite::GetInstance().RemoveJsEnv(reinterpret_cast<napi_env>(jsEnv->GetNativeEngine()));
+    EXPECT_EQ(err, napi_status::napi_ok);
+    GTEST_LOG_(INFO) << "RejectAsyncResult_003 end";
 }
 
 /*

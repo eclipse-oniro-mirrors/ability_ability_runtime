@@ -3459,7 +3459,10 @@ private:
      */
     bool JudgeSystemParamsForPicker(const WantParams &parameters);
 
-    void SetPickerElementNameAndParams(const sptr<SessionInfo> &extensionSessionInfo, int32_t userId);
+    ErrCode SetPickerElementNameAndParams(const sptr<SessionInfo> &extensionSessionInfo, int32_t userId);
+
+    ErrCode ResolvePickerByTargetType(const sptr<SessionInfo> &extensionSessionInfo,
+        const std::string &targetType, int32_t userId);
 
     void SetAutoFillElementName(const sptr<SessionInfo> &extensionSessionInfo);
 
