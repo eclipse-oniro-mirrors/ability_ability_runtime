@@ -2268,15 +2268,9 @@ void AppMgrServiceInner::LoadAbility(std::shared_ptr<AbilityInfo> abilityInfo, s
             auto hostBundleName = want->GetStringParam(UIEXTENSION_HOST_BUNDLENAME);
             auto userId = want->GetIntParam(UIEXTENSION_HOST_UID, -1) / BASE_USER_RANGE;
             appInfo->bundleName = hostBundleName;
-            std::string absPrefix = std::string(ABS_CODE_PATH) + std::string(FILE_SEPARATOR) + hostBundleName;
             if (!hostBundleName.empty()) {
-                auto replaceAbsPrefix = [&absPrefix](std::string &path) {
-                    if (path.find(absPrefix) == 0) {
-                        path.replace(0, absPrefix.length(), LOCAL_CODE_PATH);
-                    }
-                };
-                replaceAbsPrefix(abilityInfo->hapPath);
-                replaceAbsPrefix(abilityInfo->resourcePath);
+                abilityInfo->hapPath = GetStoragePath(abilityInfo->hapPath);
+                abilityInfo->resourcePath = GetStoragePath(abilityInfo->resourcePath);
             }
             GetBundleAndHapInfo(*abilityInfo, appInfo, bundleInfo, hapModuleInfo, appIndex);
             appInfo = std::make_shared<ApplicationInfo>(bundleInfo.applicationInfo);
@@ -13443,6 +13437,23 @@ void AppMgrServiceInner::CheckRenderAttachTimeout(std::shared_ptr<RenderRecord> 
         ProcessStartFailedReason::ATTACH_TIMEOUT, elapsedMs);
 }
 
+std::string AppMgrServiceInner::GetStoragePath(const std::string& hapPath) {
+    if (hapPath.empty()) {
+        return hapPath;
+    }
+    std::string absPrefix = std::string(ABS_CODE_PATH) + std::string(FILE_SEPARATOR);
+    size_t prefixPos = hapPath.find(absPrefix);
+    if (prefixPos == std::string::npos) {
+        return hapPath;
+    }
+    std::string loadPath = hapPath.substr(prefixPos + absPrefix.length());
+    size_t slashPos = loadPath.find(std::string(FILE_SEPARATOR));
+    if (slashPos == std::string::npos) {
+        return std::string(LOCAL_CODE_PATH);
+    }
+    return std::string(LOCAL_CODE_PATH) + loadPath.substr(slashPos);
+}
+
 void AppMgrServiceInner::HandleForegroundAbilityDied(
     const std::vector<sptr<IRemoteObject>>& abilityTokens,ApplicationState state)
 {
@@ -13723,6 +13734,58 @@ void AppMgrServiceInner::ClearHyperSnapError(int32_t uid)
     std::lock_guard<std::mutex> lock(hyperSnapErrorMutex_);
     createSnapshotErrorMap_.erase(uid);
     forkFromSnapshotErrorMap_.erase(uid);
+}
+
+/**
+ * @tc.name: GetStoragePath_001
+ * @tc.desc: Test GetStoragePath with normal primary mode path.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTenthTest, GetStoragePath_001, TestSize.Level1)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    std::string hapPath = "/data/app/el1/bundle/public/com.ohos.demo/entry/entry.hap";
+    std::string result = appMgrServiceInner->GetStoragePath(hapPath);
+    EXPECT_EQ(result, "/data/storage/el1/bundle/entry/entry.hap");
+}
+
+/**
+ * @tc.name: GetStoragePath_002
+ * @tc.desc: Test GetStoragePath with clone bundle path in PC dual mode.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTenthTest, GetStoragePath_002, TestSize.Level1)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    std::string hapPath = "/data/app/el1/bundle/public/+clone-10000+com.ohos.demo/entry/entry.hap";
+    std::string result = appMgrServiceInner->GetStoragePath(hapPath);
+    EXPECT_EQ(result, "/data/storage/el1/bundle/entry/entry.hap");
+}
+
+/**
+ * @tc.name: GetStoragePath_003
+ * @tc.desc: Test GetStoragePath with empty path.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTenthTest, GetStoragePath_003, TestSize.Level1)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    std::string hapPath = "";
+    std::string result = appMgrServiceInner->GetStoragePath(hapPath);
+    EXPECT_TRUE(result.empty());
+}
+
+/**
+ * @tc.name: GetStoragePath_004
+ * @tc.desc: Test GetStoragePath with path not starting with ABS_CODE_PATH.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTenthTest, GetStoragePath_004, TestSize.Level1)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    std::string hapPath = "/system/app/com.ohos.demo/entry.hap";
+    std::string result = appMgrServiceInner->GetStoragePath(hapPath);
+    EXPECT_EQ(result, hapPath);
 }
 } // namespace AppExecFwk
 }  // namespace OHOS

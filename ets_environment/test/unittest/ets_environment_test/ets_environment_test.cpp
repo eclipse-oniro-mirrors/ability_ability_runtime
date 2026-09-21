@@ -1239,5 +1239,45 @@ HWTEST_F(EtsEnvironmentTest, CreateRuntimeLinker_0300, TestSize.Level0)
     auto obj = etsEnv->CreateRuntimeLinker(mockEnv.GetEnv(), cls, undefinedRef, refArray);
     EXPECT_NE(obj, nullptr);
 }
+
+/**
+ * @tc.name: GetHspPathList_0100
+ * @tc.desc: Test GetHspPathList with staticPluginHspPathList clone bundle path.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsEnvironmentTest, GetHspPathList_0100, TestSize.Level1)
+{
+    auto etsEnv = std::make_shared<ETSEnvironment>();
+    ASSERT_NE(etsEnv, nullptr);
+    etsEnv->commonHspBundleInfos_.clear();
+    etsEnv->appInnerHspPathList_.clear();
+    etsEnv->staticPluginHspPathList_.clear();
+    etsEnv->staticPluginHspPathList_.push_back(
+        "/data/app/el1/bundle/public/+clone-10000+com.ohos.demo/entry/entry.hsp");
+
+    auto paths = etsEnv->GetHspPathList();
+    EXPECT_EQ(paths.size(), 1);
+    EXPECT_TRUE(paths[0].find("/data/storage/el1/bundle/") != std::string::npos);
+    EXPECT_TRUE(paths[0].find("+clone-10000+com.ohos.demo") == std::string::npos);
+}
+
+/**
+ * @tc.name: GetHspPathList_0200
+ * @tc.desc: Test GetHspPathList with staticPluginHspPathList non-ABS path.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsEnvironmentTest, GetHspPathList_0200, TestSize.Level1)
+{
+    auto etsEnv = std::make_shared<ETSEnvironment>();
+    ASSERT_NE(etsEnv, nullptr);
+    etsEnv->commonHspBundleInfos_.clear();
+    etsEnv->appInnerHspPathList_.clear();
+    etsEnv->staticPluginHspPathList_.clear();
+    etsEnv->staticPluginHspPathList_.push_back("/system/app/com.ohos.demo/entry.hsp");
+
+    auto paths = etsEnv->GetHspPathList();
+    EXPECT_EQ(paths.size(), 1);
+    EXPECT_EQ(paths[0], "/system/app/com.ohos.demo/entry.hsp");
+}
 } // namespace EtsEnv
 } // namespace OHOS
