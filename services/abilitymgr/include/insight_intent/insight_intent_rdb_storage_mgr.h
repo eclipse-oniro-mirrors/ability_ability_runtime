@@ -25,9 +25,16 @@
 
 namespace OHOS {
 namespace AbilityRuntime {
+struct InsightIntentSaveParam {
+    std::string moduleName;
+    ExtractInsightIntentProfileInfoVec profileInfos;
+    std::vector<InsightIntentInfo> configInfos;
+};
+
 class InsightRdbStorageMgr : public std::enable_shared_from_this<InsightRdbStorageMgr> {
     DECLARE_DELAYED_SINGLETON(InsightRdbStorageMgr)
 public:
+    int32_t LoadInsightIntentBundleInfos(const int32_t userId, std::map<std::string, std::string> &bundleVersionMap);
     int32_t LoadInsightIntentInfos(const int32_t userId, std::map<std::string, std::string> &bundleVersionMap,
         std::vector<ExtractInsightIntentInfo> &totalInfos, std::vector<InsightIntentInfo> &configInfos);
     int32_t LoadConfigInsightIntentInfos(
@@ -43,6 +50,8 @@ public:
     int32_t SaveStorageInsightIntentData(const std::string &bundleName, const std::string &moduleName,
         const int32_t userId, uint32_t versionCode, ExtractInsightIntentProfileInfoVec &profileInfos,
         std::vector<InsightIntentInfo> &configInfos);
+    int32_t SaveStorageInsightIntentDataBatch(const std::string &bundleName, const int32_t userId,
+        uint32_t versionCode, const std::vector<InsightIntentSaveParam> &saveParams);
     int32_t DeleteStorageInsightIntentData(const std::string &bundleName,
         const std::string &moduleName, const int32_t userId);
     int32_t DeleteStorageInsightIntentByUserId(const int32_t userId);

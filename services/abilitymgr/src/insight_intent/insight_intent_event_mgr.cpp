@@ -70,6 +70,7 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
         std::vector<InsightIntentInfo> configIntentInfos = {};
         AbilityRuntime::ExtractInsightIntentProfileInfoVec allInfos = {};
         std::vector<InsightIntentInfo> allConfigInfos = {};
+        std::vector<AbilityRuntime::InsightIntentSaveParam> saveParams;
 
         auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
         if (bundleMgrHelper == nullptr) {
@@ -115,9 +116,12 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
                 item.bundleName = bundleName;
                 item.moduleName = moduleNameLocal;
             }
-            // save database
-            DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->SaveInsightIntentTotalInfo(
-                bundleName, moduleNameLocal, userId, bundleInfo.versionCode, infos, configIntentInfos);
+            // collect module data for batch save
+            AbilityRuntime::InsightIntentSaveParam saveParam;
+            saveParam.moduleName = moduleNameLocal;
+            saveParam.profileInfos = infos;
+            saveParam.configInfos = configIntentInfos;
+            saveParams.emplace_back(std::move(saveParam));
             for (const auto &item : infos.insightIntents) {
                 allInfos.insightIntents.push_back(item);
             }
@@ -134,6 +138,9 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
             DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
             return;
         }
+        // save database in one batch
+        DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->SaveBatchInsightIntentTotalInfo(
+            bundleName, userId, bundleInfo.versionCode, saveParams);
         TAG_LOGI(AAFwkTag::INTENT, "collected intents for batch update, profile:%{public}zu config:%{public}zu, "
             "bundle:%{public}s", allInfos.insightIntents.size(), allConfigInfos.size(), bundleName.c_str());
         std::vector<AbilityRuntime::ExtractInsightIntentInfo> genericInfos;

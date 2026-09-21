@@ -114,6 +114,38 @@ bool InsightIntentRdbDataMgr::InsertData(const std::string &key, const std::stri
     return true;
 }
 
+bool InsightIntentRdbDataMgr::BatchInsertData(const std::vector<std::pair<std::string, std::string>> &keyValues)
+{
+    std::lock_guard<std::mutex> lock(rdbStoreMutex_);
+    TAG_LOGD(AAFwkTag::INTENT, "BatchInsertData start");
+    if (!IsIntentRdbLoaded()) {
+        TAG_LOGE(AAFwkTag::INTENT, "null IntentRdbStore");
+        return false;
+    }
+
+    if (keyValues.empty()) {
+        return true;
+    }
+
+    std::vector<NativeRdb::ValuesBucket> valuesBuckets;
+    for (const auto &[key, value] : keyValues) {
+        NativeRdb::ValuesBucket valuesBucket;
+        valuesBucket.PutString(INTENT_KEY, key);
+        valuesBucket.PutString(INTENT_VALUE, value);
+        valuesBuckets.emplace_back(valuesBucket);
+    }
+
+    auto [ret, insertNum] = rdbStore_->BatchInsert(intentRdbConfig_.tableName, valuesBuckets,
+        NativeRdb::ConflictResolution::ON_CONFLICT_REPLACE);
+    if (ret != NativeRdb::E_OK) {
+        TAG_LOGE(AAFwkTag::INTENT, "BatchInsert error ret:%{public}d", ret);
+        return false;
+    }
+    TAG_LOGD(AAFwkTag::INTENT, "BatchInsert success, size:%{public}zu insertNum:%{public}d",
+        keyValues.size(), static_cast<int32_t>(insertNum));
+    return true;
+}
+
 bool InsightIntentRdbDataMgr::UpdateData(const std::string &key, const std::string &value)
 {
     TAG_LOGD(AAFwkTag::INTENT, "UpdateData start");
