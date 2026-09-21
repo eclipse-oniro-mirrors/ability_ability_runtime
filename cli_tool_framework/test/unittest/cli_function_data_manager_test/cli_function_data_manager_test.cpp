@@ -1571,5 +1571,65 @@ HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_ResetNamespaceFuncti
     TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_ResetNamespaceFunctions_008 end");
 }
 
+/**
+ * @tc.name: CliFunctionDataManager_BackupKvStore_004
+ * @tc.desc: Test backup DB_ERROR with readable store does not trigger rebuild
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_BackupKvStore_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_BackupKvStore_004 start");
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
+    CliFunctionDataManager::GetInstance().lastBackupTime_ = std::chrono::steady_clock::time_point{};
+    CliFunctionDataManager::GetInstance().backupFlushScheduled_ = true;
+    mockStore->Backup_ = DistributedKv::Status::DB_ERROR;
+    CliFunctionDataManager::GetInstance().BackupKvStore();
+    EXPECT_EQ(mockStore->backupCallCount_, 2);
+    EXPECT_EQ(CliFunctionDataManager::GetInstance().kvStorePtr_, mockStore);
+    CliFunctionDataManager::GetInstance().backupFlushScheduled_ = false;
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_BackupKvStore_004 end");
+}
+
+/**
+ * @tc.name: CliFunctionDataManager_RestoreFromBackupWithRetry_001
+ * @tc.desc: Test no backup file stops retrying immediately
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_RestoreFromBackupWithRetry_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_RestoreFromBackupWithRetry_001 start");
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
+    mockStore->Restore_ = DistributedKv::Status::INVALID_ARGUMENT;
+    auto result = CliFunctionDataManager::GetInstance().RestoreFromBackupWithRetry();
+    EXPECT_EQ(result, DistributedKv::Status::INVALID_ARGUMENT);
+    EXPECT_EQ(mockStore->restoreCallCount_, 1);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_RestoreFromBackupWithRetry_001 end");
+}
+
+/**
+ * @tc.name: CliFunctionDataManager_RestoreFromBackupWithRetry_002
+ * @tc.desc: Test transient restore failure retries up to 3 attempts
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_RestoreFromBackupWithRetry_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_RestoreFromBackupWithRetry_002 start");
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
+    mockStore->Restore_ = DistributedKv::Status::DB_ERROR;
+    auto result = CliFunctionDataManager::GetInstance().RestoreFromBackupWithRetry();
+    EXPECT_EQ(result, DistributedKv::Status::DB_ERROR);
+    EXPECT_EQ(mockStore->restoreCallCount_, 3);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_RestoreFromBackupWithRetry_002 end");
+}
+
 } // namespace CliTool
 } // namespace OHOS

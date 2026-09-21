@@ -46,6 +46,28 @@ std::vector<std::string> SplitStringBySlash(const std::string& inputStr)
     return result;
 }
 
+int32_t InsightRdbStorageMgr::LoadInsightIntentBundleInfos(const int32_t userId,
+    std::map<std::string, std::string> &bundleVersionMap)
+{
+    TAG_LOGD(AAFwkTag::INTENT, "Load intent bundle infos for userId:%{public}d", userId);
+    std::unordered_map<std::string, std::string> value;
+    std::string key = std::to_string(userId).append("/");
+    bool result = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->QueryDataBeginWithKey(key, value);
+    if (!result) {
+        TAG_LOGE(AAFwkTag::INTENT, "get entries error");
+        return ERR_INVALID_VALUE;
+    }
+    for (const auto &item : value) {
+        std::vector<std::string> res = SplitStringBySlash(item.first);
+        if (res.size() < INTENT_KEY_LENGTH) {
+            TAG_LOGW(AAFwkTag::INTENT, "invalid intent key");
+            continue;
+        }
+        bundleVersionMap[res[BUNDLE_NAME]] = res[VERSION];
+    }
+    return ERR_OK;
+}
+
 int32_t InsightRdbStorageMgr::LoadInsightIntentInfos(const int32_t userId,
     std::map<std::string, std::string> &bundleVersionMap, std::vector<ExtractInsightIntentInfo> &totalInfos,
     std::vector<InsightIntentInfo> &configInfos)
@@ -220,7 +242,7 @@ int32_t InsightRdbStorageMgr::SaveStorageInsightIntentData(const std::string &bu
     const int32_t userId, uint32_t versionCode, ExtractInsightIntentProfileInfoVec &profileInfos,
     std::vector<InsightIntentInfo> &configInfos)
 {
-    std::lock_guard<std::mutex> lock(rdbStorePtrMutex_);
+    std::vector<std::pair<std::string, std::string>> keyValues;
     for (auto profileInfo : profileInfos.insightIntents) {
         std::string key = std::to_string(userId).append("/").append(bundleName).append("/").append(moduleName).
             append("/").append(profileInfo.intentName).append("/").append(std::to_string(versionCode));
@@ -234,10 +256,7 @@ int32_t InsightRdbStorageMgr::SaveStorageInsightIntentData(const std::string &bu
             TAG_LOGE(AAFwkTag::INTENT, "dump error, key: %{private}s", key.c_str());
             return ERR_INVALID_VALUE;
         }
-        bool result = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->InsertData(key, value);
-        if (!result) {
-            TAG_LOGE(AAFwkTag::INTENT, "InsertData error, key: %{private}s", key.c_str());
-        }
+        keyValues.emplace_back(key, value);
     }
     for (auto configInfo : configInfos) {
         std::string key = std::to_string(userId).append("/").append(bundleName).append("/").append(moduleName).
@@ -254,10 +273,64 @@ int32_t InsightRdbStorageMgr::SaveStorageInsightIntentData(const std::string &bu
             TAG_LOGE(AAFwkTag::INTENT, "dump error, key: %{private}s", key.c_str());
             return ERR_INVALID_VALUE;
         }
-        bool result = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->InsertData(key, value);
-        if (!result) {
-            TAG_LOGE(AAFwkTag::INTENT, "InsertData error, key: %{private}s", key.c_str());
+        keyValues.emplace_back(key, value);
+    }
+    std::lock_guard<std::mutex> lock(rdbStorePtrMutex_);
+    for (const auto &keyValue : keyValues) {
+        if (!DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->InsertData(keyValue.first, keyValue.second)) {
+            TAG_LOGE(AAFwkTag::INTENT, "InsertData error, key: %{private}s", keyValue.first.c_str());
         }
+    }
+    return ERR_OK;
+}
+
+int32_t InsightRdbStorageMgr::SaveStorageInsightIntentDataBatch(const std::string &bundleName, const int32_t userId,
+    uint32_t versionCode, const std::vector<InsightIntentSaveParam> &saveParams)
+{
+    std::vector<std::pair<std::string, std::string>> keyValues;
+    for (const auto &saveParam : saveParams) {
+        for (auto profileInfo : saveParam.profileInfos.insightIntents) {
+            std::string key = std::to_string(userId).append("/").append(bundleName).append("/")
+                .append(saveParam.moduleName).append("/").append(profileInfo.intentName).append("/")
+                .append(std::to_string(versionCode));
+            nlohmann::json jsonObject;
+            if (!ExtractInsightIntentProfile::ToJson(profileInfo, jsonObject)) {
+                TAG_LOGE(AAFwkTag::INTENT, "Transform error, key: %{private}s", key.c_str());
+                return ERR_INVALID_VALUE;
+            }
+            std::string value;
+            if (!SafeDump(jsonObject, value)) {
+                TAG_LOGE(AAFwkTag::INTENT, "dump error, key: %{private}s", key.c_str());
+                return ERR_INVALID_VALUE;
+            }
+            keyValues.emplace_back(key, value);
+        }
+        for (auto configInfo : saveParam.configInfos) {
+            std::string key = std::to_string(userId).append("/").append(bundleName).append("/")
+                .append(saveParam.moduleName).append("/").append(configInfo.intentName).append("/")
+                .append(std::to_string(versionCode));
+            nlohmann::json jsonObject;
+            configInfo.moduleName = saveParam.moduleName;
+            configInfo.bundleName = bundleName;
+            if (!InsightIntentProfile::ToJson(configInfo, jsonObject)) {
+                TAG_LOGE(AAFwkTag::INTENT, "Transform error, key: %{private}s", key.c_str());
+                return ERR_INVALID_VALUE;
+            }
+            std::string value;
+            if (!SafeDump(jsonObject, value)) {
+                TAG_LOGE(AAFwkTag::INTENT, "dump error, key: %{private}s", key.c_str());
+                return ERR_INVALID_VALUE;
+            }
+            keyValues.emplace_back(key, value);
+        }
+    }
+    if (keyValues.empty()) {
+        return ERR_OK;
+    }
+    std::lock_guard<std::mutex> lock(rdbStorePtrMutex_);
+    if (!DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance()->BatchInsertData(keyValues)) {
+        TAG_LOGE(AAFwkTag::INTENT, "BatchInsertData error, bundleName: %{public}s", bundleName.c_str());
+        return ERR_INVALID_VALUE;
     }
     return ERR_OK;
 }

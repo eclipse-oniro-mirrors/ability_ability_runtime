@@ -32,16 +32,14 @@ using namespace OHOS::AppExecFwk;
 namespace OHOS {
 namespace {
 constexpr int32_t API_DO_PROCESS = 0;
-constexpr int32_t API_GET_TARGET_ABILITY_INFO = 1;
-constexpr int32_t API_QUERY_TARGET_ABILITY_INFO = 2;
-constexpr int32_t API_PROCESS_SYSTEM_APP = 3;
-constexpr int32_t API_PROCESS_NON_SYSTEM_APP = 4;
-constexpr int32_t API_CHECK_EXT_INTERCEPTION = 5;
-constexpr int32_t API_CHECK_SYS_EXT_INTERCEPTION = 6;
-constexpr int32_t API_CHECK_THIRD_EXT_INTERCEPTION = 7;
-constexpr int32_t API_CHECK_INTERCEPTION_BY_CONFIG = 8;
-constexpr int32_t API_GET_APP_IDENTIFIER = 9;
-constexpr int32_t API_REPORT_SYS_UI_ABILITY_EVENT = 10;
+constexpr int32_t API_PROCESS_SYSTEM_APP = 1;
+constexpr int32_t API_PROCESS_NON_SYSTEM_APP = 2;
+constexpr int32_t API_CHECK_EXT_INTERCEPTION = 3;
+constexpr int32_t API_CHECK_SYS_EXT_INTERCEPTION = 4;
+constexpr int32_t API_CHECK_THIRD_EXT_INTERCEPTION = 5;
+constexpr int32_t API_CHECK_INTERCEPTION_BY_CONFIG = 6;
+constexpr int32_t API_GET_APP_IDENTIFIER = 7;
+constexpr int32_t API_REPORT_SYS_UI_ABILITY_EVENT = 8;
 constexpr int32_t MAX_API_CASE = API_REPORT_SYS_UI_ABILITY_EVENT;
 constexpr size_t STRING_MAX_LEN = 128;
 constexpr int32_t USER_ID_DEFAULT = 100;
@@ -61,10 +59,11 @@ sptr<Token> CreateFuzzAbilityToken()
     return nullptr;
 }
 
-AbilityInterceptorParam BuildInterceptorParam(Want &want, sptr<IRemoteObject> &token)
+AbilityInterceptorParam BuildInterceptorParam(Want &want, sptr<IRemoteObject> &token,
+    const std::shared_ptr<AbilityInfo> &abilityInfo)
 {
-    return
-        InterceptorParamBuilder(want, REQUEST_CODE_DEFAULT, USER_ID_DEFAULT).WithUI(false).CallerToken(token).Build();
+    return InterceptorParamBuilder(want, REQUEST_CODE_DEFAULT, USER_ID_DEFAULT)
+        .WithUI(false).CallerToken(token).AbilityInfo(abilityInfo).Build();
 }
 
 void FuzzDoProcess(FuzzedDataProvider &fdp)
@@ -75,36 +74,15 @@ void FuzzDoProcess(FuzzedDataProvider &fdp)
     std::string bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
     std::string abilityName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
     want.SetElementName(bundleName, abilityName);
-    AbilityInterceptorParam param = BuildInterceptorParam(want, token);
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->type = fdp.ConsumeBool() ? AbilityType::EXTENSION : AbilityType::PAGE;
+    abilityInfo->extensionTypeName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    abilityInfo->applicationInfo.bundleName = bundleName;
+    abilityInfo->applicationInfo.name = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
+    abilityInfo->applicationInfo.isSystemApp = fdp.ConsumeBool();
+    abilityInfo->applicationInfo.allowAppRunWhenDeviceFirstLocked = fdp.ConsumeBool();
+    AbilityInterceptorParam param = BuildInterceptorParam(want, token, abilityInfo);
     interceptor->DoProcess(param);
-}
-
-void FuzzGetTargetAbilityInfo(FuzzedDataProvider &fdp)
-{
-    auto interceptor = std::make_shared<ScreenUnlockInterceptor>();
-    sptr<IRemoteObject> token = CreateFuzzAbilityToken();
-    Want want;
-    std::string bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
-    std::string abilityName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
-    want.SetElementName(bundleName, abilityName);
-    AbilityInterceptorParam param = BuildInterceptorParam(want, token);
-    AbilityInfo targetAbilityInfo;
-    interceptor->GetTargetAbilityInfo(param, targetAbilityInfo);
-}
-
-void FuzzQueryTargetAbilityInfo(FuzzedDataProvider &fdp)
-{
-    auto interceptor = std::make_shared<ScreenUnlockInterceptor>();
-    sptr<IRemoteObject> token = CreateFuzzAbilityToken();
-    Want want;
-    std::string bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
-    std::string abilityName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
-    want.SetElementName(bundleName, abilityName);
-    int32_t userId = fdp.ConsumeIntegral<int32_t>();
-    AbilityInterceptorParam param =
-        InterceptorParamBuilder(want, REQUEST_CODE_DEFAULT, userId).WithUI(false).CallerToken(token).Build();
-    AbilityInfo targetAbilityInfo;
-    interceptor->QueryTargetAbilityInfo(param, targetAbilityInfo);
 }
 
 void FuzzProcessSystemApp(FuzzedDataProvider &fdp)
@@ -201,12 +179,6 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t *data, size_t size)
     switch (apiCase) {
         case API_DO_PROCESS:
             FuzzDoProcess(fdp);
-            break;
-        case API_GET_TARGET_ABILITY_INFO:
-            FuzzGetTargetAbilityInfo(fdp);
-            break;
-        case API_QUERY_TARGET_ABILITY_INFO:
-            FuzzQueryTargetAbilityInfo(fdp);
             break;
         case API_PROCESS_SYSTEM_APP:
             FuzzProcessSystemApp(fdp);

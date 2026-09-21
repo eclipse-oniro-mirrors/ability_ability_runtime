@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_ABILITY_AUTO_STARTUP_DATA_MANAGER_H
 #define OHOS_ABILITY_RUNTIME_ABILITY_AUTO_STARTUP_DATA_MANAGER_H
 
+#include <chrono>
 #include <mutex>
 #include <vector>
 
@@ -106,6 +107,13 @@ public:
 
     int32_t GetAutoStartupStatusForSelf(uint32_t callerTokenId, bool &isAutoStartEnabled);
 
+    /**
+     * @brief Backs up the whole kv store to a backup file in the storage directory.
+     * Called after successful data mutations so the backup stays fresh, and the
+     * corrupted-store recovery can restore user settings instead of starting empty.
+     */
+    void BackupKvStore();
+
 private:
     /**
      * @brief Restores the key-value store using the provided status.
@@ -114,6 +122,20 @@ private:
      * @return The status of the restore operation.
      */
     DistributedKv::Status RestoreKvStore(DistributedKv::Status status);
+
+    /**
+     * @brief Checks whether the given KV store status can be recovered by
+     * deleting and recreating the store, followed by a backup restore.
+     *
+     * @param status The status returned by a KV store operation.
+     * @return true when the status indicates an unrecoverable/broken store.
+     */
+    bool IsRecoverableStatus(DistributedKv::Status status);
+    DistributedKv::Status RestoreFromBackupWithRetry();
+    void RestoreIfStoreEmpty();
+    void ScheduleBackupFlush(const std::chrono::steady_clock::time_point &now);
+    DistributedKv::Status RetryBackup();
+    void DetectAndHealCorruptedStore(DistributedKv::Status status);
 
     /**
      * @brief Retrieves the current status of the key-value store.
@@ -212,6 +234,8 @@ private:
     DistributedKv::DistributedKvDataManager dataManager_;
     std::shared_ptr<DistributedKv::SingleKvStore> kvStorePtr_;
     mutable std::mutex kvStorePtrMutex_;
+    std::chrono::steady_clock::time_point lastBackupTime_{};
+    bool backupFlushScheduled_ = false;
     DatabaseWriteCounter dbWriteCounter_;
 };
 } // namespace AbilityRuntime

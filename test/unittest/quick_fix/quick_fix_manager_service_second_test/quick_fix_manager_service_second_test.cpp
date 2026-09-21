@@ -119,8 +119,10 @@ HWTEST_F(QuickFixManagerServiceTest, ApplyQuickFix_0300, TestSize.Level1)
     MyFlag::isAllowedToUseSystemAPIFlag_ = true;
     MyFlag::isVerifyInstallBundlePermission_= true;
     MyFlag::isVerifyPrivilegedPermission_= false;
+    QuickFixUtil::setBundleMgrProxyNull_ = true;
     std::vector<std::string> quickFixFiles;
     int32_t ret = quickFixMs_->ApplyQuickFix(quickFixFiles);
+    QuickFixUtil::setBundleMgrProxyNull_ = false;
     EXPECT_EQ(ret, QUICK_FIX_CONNECT_FAILED);
 
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
@@ -302,7 +304,9 @@ HWTEST_F(QuickFixManagerServiceTest, ApplyQuickFix_0600, TestSize.Level1)
     EXPECT_EQ(ret, QUICK_FIX_NOT_SYSTEM_APP);
 
     MyFlag::verifyCallingPermissionFlag_ = true;
+    QuickFixUtil::setBundleMgrProxyNull_ = true;
     ret = quickFixMs_->ApplyQuickFix(quickFixFiles);
+    QuickFixUtil::setBundleMgrProxyNull_ = false;
     EXPECT_EQ(ret, QUICK_FIX_CONNECT_FAILED);
 }
 
@@ -315,8 +319,10 @@ HWTEST_F(QuickFixManagerServiceTest, ApplyQuickFix_0700, TestSize.Level1)
 {
     MyFlag::isAllowedToUseSystemAPIFlag_ = true;
     MyFlag::isVerifyInstallBundlePermission_ = true;
+    QuickFixUtil::setBundleMgrProxyNull_ = true;
     std::vector<std::string> quickFixFiles;
     auto ret = quickFixMs_->ApplyQuickFix(quickFixFiles);
+    QuickFixUtil::setBundleMgrProxyNull_ = false;
     EXPECT_EQ(ret, QUICK_FIX_CONNECT_FAILED);
 
     MyFlag::isVerifyInstallBundlePermission_ = false;
@@ -325,7 +331,9 @@ HWTEST_F(QuickFixManagerServiceTest, ApplyQuickFix_0700, TestSize.Level1)
     EXPECT_EQ(ret, QUICK_FIX_VERIFY_PERMISSION_FAILED);
 
     MyFlag::verifyCallingPermissionFlag_ = true;
+    QuickFixUtil::setBundleMgrProxyNull_ = true;
     ret = quickFixMs_->ApplyQuickFix(quickFixFiles);
+    QuickFixUtil::setBundleMgrProxyNull_ = false;
     EXPECT_EQ(ret, QUICK_FIX_CONNECT_FAILED);
 }
 

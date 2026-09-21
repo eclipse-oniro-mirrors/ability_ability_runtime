@@ -47,6 +47,7 @@ ohos_shared_library("agentextensionability") {
 }
 
 ohos_shared_library("js_agent_connection") {
+  version_script = "libjs_agent_connection.map"
   sanitize = {
     integer_overflow = true
     ubsan = true

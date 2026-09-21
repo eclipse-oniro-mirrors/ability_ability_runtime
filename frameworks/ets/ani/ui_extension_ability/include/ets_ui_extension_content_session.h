@@ -62,6 +62,7 @@ private:
     std::mutex resultCallbacksMutex_;
 };
 
+class EtsUIExtensionCallback;
 class EtsUIExtensionContentSession {
 private:
     class CallbackWrapper;
@@ -88,8 +89,8 @@ public:
     static void NativeSetReceiveDataForResultCallback(ani_env *env, ani_object clsObj, ani_object funcObj);
     static ani_object NativeGetUIExtensionHostWindowProxy(ani_env *env, ani_object obj);
     static ani_object NativeGetUIExtensionWindowProxy(ani_env *env, ani_object obj);
-    static ani_object NativeStartAbilityByTypeSync(
-        ani_env *env, ani_object obj, ani_string type, ani_ref wantParam, ani_object startCallback);
+    static void NativeStartAbilityByType(ani_env *env, ani_object obj,
+        ani_string type, ani_ref wantParam, ani_object startCallback, ani_object asyncCallback);
     static void NativeSetWindowPrivacyMode(
         ani_env *env, ani_object obj, ani_boolean isPrivacyMode, ani_object callbackObj);
     static void NativeStartAbility(ani_env *env, ani_object aniObj, ani_object wantObj, ani_object callback);
@@ -135,7 +136,8 @@ public:
 private:
     void SetReceiveDataCallbackRegister(ani_env *env, ani_object functionObj);
     void SetReceiveDataForResultCallbackRegister(ani_env *env, ani_object funcObj);
-    ani_object StartAbilityByTypeSync(ani_env *env, ani_string aniType, ani_ref aniWantParam, ani_object startCallback);
+    void StartAbilityByType(ani_env *env, ani_string aniType, ani_ref aniWantParam,
+        ani_object startCallback, ani_object asyncCallback);
     bool CheckStartAbilityByTypeParam(
         ani_env *env, ani_string aniType, ani_ref aniWantParam, std::string &type, AAFwk::WantParams &wantParam);
     ani_object GetUIExtensionHostWindowProxy(ani_env *env, ani_object object);
@@ -160,6 +162,11 @@ private:
 #ifdef SUPPORT_SCREEN
     void InitDisplayId(AAFwk::Want &want);
     void InitDisplayId(AAFwk::Want &want, AAFwk::StartOptions &startOptions, ani_env *env, ani_object opt);
+    void CreateAndSetupModalUIExtension(ani_env *env, ani_vm *vm, ani_object startCallback,
+        ani_object asyncCallback, const AAFwk::Want &want);
+    Ace::ModalUIExtensionCallbacks SetupModalUIExtensionCallbacks(
+        std::shared_ptr<EtsUIExtensionCallback> uiExtensionCallback,
+        std::shared_ptr<std::atomic<bool>> errorFired);
 #endif
 };
 

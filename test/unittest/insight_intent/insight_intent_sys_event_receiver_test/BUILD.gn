@@ -20,8 +20,10 @@ ohos_unittest("insight_intent_sys_event_receiver_test") {
 
   cflags_cc = []
 
-  include_dirs =
-      [ "${ability_runtime_services_path}/abilitymgr/include" ]
+  include_dirs = [
+    "${ability_runtime_services_path}/abilitymgr/include",
+    "mock/include",
+  ]
 
   sources = [
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/extract_insight_intent_profile.cpp",
@@ -37,6 +39,7 @@ ohos_unittest("insight_intent_sys_event_receiver_test") {
     "${ability_runtime_services_path}/abilitymgr/src/utils/hmsf_utils.cpp",
     "${ability_runtime_services_path}/common/src/json_utils.cpp",
     "insight_intent_sys_event_receiver_test.cpp",
+    "mock/src/mock_bundle_mgr_helper.cpp",
     #"insight_intent_utils_mock.cpp",
   ]
 

@@ -245,18 +245,20 @@ public:
 
     DistributedKv::Status Backup(const std::string &file, const std::string &baseDir) override
     {
-        return DistributedKv::Status::SUCCESS;
+        backupCallCount_++;
+        return Backup_;
     };
 
     DistributedKv::Status Restore(const std::string &file, const std::string &baseDir) override
     {
-        return DistributedKv::Status::SUCCESS;
+        restoreCallCount_++;
+        return Restore_;
     };
 
     DistributedKv::Status DeleteBackup(const std::vector<std::string> &files, const std::string &baseDir,
         std::map<std::string, DistributedKv::Status> &status) override
     {
-        return DistributedKv::Status::SUCCESS;
+        return DeleteBackup_;
     };
 
     void SetMockData(const std::string &key, const std::string &value)
@@ -273,6 +275,11 @@ public:
     DistributedKv::Status Delete_ = DistributedKv::Status::SUCCESS;
     DistributedKv::Status Put_ = DistributedKv::Status::SUCCESS;
     DistributedKv::Status Get_ = DistributedKv::Status::SUCCESS;
+    DistributedKv::Status Backup_ = DistributedKv::Status::SUCCESS;
+    DistributedKv::Status Restore_ = DistributedKv::Status::SUCCESS;
+    DistributedKv::Status DeleteBackup_ = DistributedKv::Status::SUCCESS;
+    int32_t backupCallCount_ = 0;
+    int32_t restoreCallCount_ = 0;
 
     // Callback for dynamic Put behavior (e.g., simulate failure after N calls)
     std::function<DistributedKv::Status(const DistributedKv::Key&, const DistributedKv::Value&)> PutCallback;

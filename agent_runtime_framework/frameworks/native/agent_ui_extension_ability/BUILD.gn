@@ -83,6 +83,7 @@ config("agent_ui_extension_config") {
 }
 
 ohos_shared_library("agent_ui_extension") {
+  version_script = "libagent_ui_extension.map"
   sanitize = {
       integer_overflow = true
       ubsan = true

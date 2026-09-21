@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -48,7 +48,7 @@ public:
     ETSEnvironment() {};
     ~ETSEnvironment();
 
-    static std::unique_ptr<ETSEnvironment> &GetInstance();
+    static std::shared_ptr<ETSEnvironment> GetInstance();
     static void InitETSSDKNS(const std::string &path);
     static void InitETSSysNS(const std::string &path);
     static ETSEnvFuncs *RegisterFuncs();
@@ -68,6 +68,9 @@ public:
         const std::shared_ptr<OHOS::AppExecFwk::EventRunner> &eventRunner, const bool isBaseLineProfile,
         const std::vector<std::string> &staticPluginHspPathList, const std::string &bundleName);
     bool PreloadSystemClass(const char *className);
+
+    int32_t HotReload(const std::string &target, const std::string &patch);
+    int32_t ColdReload(const std::string &patch);
 
     void RemoveInstance(uint32_t instanceId);
     void StopDebugMode(void *jsVm);

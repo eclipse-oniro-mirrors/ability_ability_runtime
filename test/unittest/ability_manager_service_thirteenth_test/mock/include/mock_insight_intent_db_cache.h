@@ -54,6 +54,8 @@ public:
     int32_t SaveInsightIntentTotalInfo(const std::string &bundleName, const std::string &moduleName,
         const int32_t userId, uint32_t versionCode, ExtractInsightIntentProfileInfoVec profileInfos,
         std::vector<InsightIntentInfo> configInfos);
+    int32_t SaveBatchInsightIntentTotalInfo(const std::string &bundleName, const int32_t userId,
+        uint32_t versionCode, const std::vector<InsightIntentSaveParam> &saveParams);
     bool DeleteInsightIntentTotalInfo(const std::string &bundleName,
         const std::string &moduleName, const int32_t userId);
     int32_t DeleteInsightIntentByUserId(const int32_t userId);
@@ -65,7 +67,6 @@ private:
     int32_t userId_ = -1;
     bool cacheLoadFailed_ = false;
     mutable std::mutex genericInfosMutex_;
-    std::map<std::string, std::vector<ExtractInsightIntentGenericInfo>> intentGenericInfos_;
     std::map<std::string, std::string> bundleVersionMap_;
 };
 }  // namespace AbilityRuntime

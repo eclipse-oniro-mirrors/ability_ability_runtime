@@ -330,9 +330,13 @@ void EtsUIServiceExtensionContext::OnStartAbilityByType(ani_env *env, ani_string
     }
     innerErrCode = context->StartAbilityByType(type, wantParam, callback);
     TAG_LOGD(AAFwkTag::UISERVC_EXT, "StartAbilityByType innerErrCode: %{public}d", innerErrCode);
-    AppExecFwk::AsyncCallback(env, aniCallback,
-        EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(innerErrCode)),
-        nullptr);
+    if (innerErrCode == ERR_OK) {
+        callback->SetAsyncCallback(env, aniCallback);
+    } else {
+        AppExecFwk::AsyncCallback(env, aniCallback,
+            EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(innerErrCode)),
+            nullptr);
+    }
 }
 
 ani_long EtsUIServiceExtensionContext::ConnectServiceExtensionAbility(ani_env *env, ani_object obj,

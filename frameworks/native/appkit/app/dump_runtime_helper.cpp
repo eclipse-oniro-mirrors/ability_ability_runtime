@@ -62,7 +62,7 @@ static constexpr const char* const OOM_QUOTA_PATH = "/data/storage/el2/base/cach
 static constexpr const char* const JS_HEAP_LOGTYPE = "user.event_config.js_heap_logtype";
 static constexpr const char* const EVENT_RAWHEAP = "event_rawheap";
 #ifdef __LP64__
-static constexpr const char* const SO_NAME = "libmemleak.z.so";
+static constexpr const char* const SO_NAME = "liborphanmem.z.so";
 #else
 static constexpr const char* const SO_NAME = "";
 #endif

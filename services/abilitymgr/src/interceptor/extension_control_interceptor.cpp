@@ -16,9 +16,9 @@
 #include "interceptor/extension_control_interceptor.h"
 
 #include "ability_manager_constants.h"
-#include "ability_util.h"
 #include "app_scheduler.h"
 #include "extension_config.h"
+#include "hilog_tag_wrapper.h"
 #include "start_ability_utils.h"
 
 namespace OHOS {
@@ -149,20 +149,11 @@ bool ExtensionControlInterceptor::GetCallerAbilityInfo(const AbilityInterceptorP
 bool ExtensionControlInterceptor::GetTargetAbilityInfo(const AbilityInterceptorParam& param,
     AppExecFwk::AbilityInfo& targetAbilityInfo)
 {
-    if (StartAbilityUtils::startAbilityInfo != nullptr &&
-        StartAbilityUtils::startAbilityInfo->abilityInfo.bundleName == param.want.GetBundleNameRef() &&
-        StartAbilityUtils::startAbilityInfo->abilityInfo.name == param.want.GetAbilityNameRef()) {
-        TAG_LOGD(AAFwkTag::ABILITYMGR, "targetAbilityInfo get from startAbiiltyInfo");
-        targetAbilityInfo = StartAbilityUtils::startAbilityInfo->abilityInfo;
-    } else {
-        auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
-        if (bundleMgrHelper == nullptr) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "null bundleMgrHelper");
-            return true;
-        }
-        IN_PROCESS_CALL_WITHOUT_RET(bundleMgrHelper->QueryAbilityInfo(param.want,
-            AppExecFwk::AbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION, param.userId, targetAbilityInfo));
+    if (param.abilityInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "param.abilityInfo is nullptr");
+        return true;
     }
+    targetAbilityInfo = *param.abilityInfo;
     return false;
 }
 } // namespace AAFwk

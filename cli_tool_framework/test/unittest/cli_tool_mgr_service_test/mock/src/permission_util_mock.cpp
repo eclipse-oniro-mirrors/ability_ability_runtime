@@ -17,11 +17,27 @@
 
 #include "cli_error_code.h"
 #include "ipc_skeleton.h"
+#include "permission_util_mock.h"
 
 namespace OHOS {
 namespace CliTool {
-bool PermissionUtil::VerifyAccessToken(Security::AccessToken::AccessTokenID, const std::string &)
+bool PermissionUtilMock::execCliToolPermitted = true;
+bool PermissionUtilMock::execPublicCliToolPermitted = true;
+
+void PermissionUtilMock::Reset()
 {
+    execCliToolPermitted = true;
+    execPublicCliToolPermitted = true;
+}
+
+bool PermissionUtil::VerifyAccessToken(Security::AccessToken::AccessTokenID, const std::string &perm)
+{
+    if (perm == "ohos.permission.EXEC_CLI_TOOL") {
+        return PermissionUtilMock::execCliToolPermitted;
+    }
+    if (perm == "ohos.permission.EXEC_PUBLIC_CLI_TOOL") {
+        return PermissionUtilMock::execPublicCliToolPermitted;
+    }
     return true;
 }
 

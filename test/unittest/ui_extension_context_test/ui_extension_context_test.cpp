@@ -1950,5 +1950,32 @@ HWTEST_F(UIExtensionContextTest, SetupModalCallbacks_0600, TestSize.Level1)
     TAG_LOGI(AAFwkTag::TEST, "SetupModalCallbacks_0600 end");
 }
 
+/**
+ * @tc.number: SetupModalUIExtensionCallbacks_0100
+ * @tc.name: SetupModalUIExtensionCallbacks
+ * @tc.desc: Verify SetupModalUIExtensionCallbacks sets callbacks non-null.
+ */
+HWTEST_F(UIExtensionContextTest, SetupModalUIExtensionCallbacks_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetupModalUIExtensionCallbacks_0100 start");
+
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    napi_env env = nullptr;
+    auto uiExtensionCallbacks = std::make_shared<JsUIExtensionCallback>(env);
+    ASSERT_NE(uiExtensionCallbacks, nullptr);
+    auto errorFired = std::make_shared<std::atomic<bool>>(false);
+    ASSERT_NE(errorFired, nullptr);
+
+    auto callback = context->SetupModalUIExtensionCallbacks(uiExtensionCallbacks, errorFired);
+    EXPECT_TRUE(callback.onError != nullptr);
+    EXPECT_TRUE(callback.onAbilityErrorCode != nullptr);
+    EXPECT_TRUE(callback.onRelease != nullptr);
+    EXPECT_TRUE(callback.onResult != nullptr);
+
+    TAG_LOGI(AAFwkTag::TEST, "SetupModalUIExtensionCallbacks_0100 end");
+}
+
 } // namespace AbilityRuntime
 } // namespace OHOS

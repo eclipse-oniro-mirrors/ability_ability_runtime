@@ -28,6 +28,7 @@
 
 namespace OHOS {
 namespace AbilityRuntime {
+struct InsightIntentSaveParam;
 class InsightIntentSysEventReceiver : public EventFwk::CommonEventSubscriber,
     public std::enable_shared_from_this<InsightIntentSysEventReceiver> {
 public:
@@ -36,8 +37,10 @@ public:
 
     void OnReceiveEvent(const EventFwk::CommonEventData &data) override;
 private:
-    bool SaveInsightIntentInfos(const std::string &bundleName, const std::string &moduleName,
+    bool SaveInsightIntentInfos(const std::string &bundleName, const std::vector<std::string> &moduleNames,
         uint32_t versionCode, int32_t userId);
+    bool CollectInsightIntentSaveParam(const std::string &bundleName, const std::string &moduleName,
+        uint32_t versionCode, int32_t userId, InsightIntentSaveParam &saveParam);
     void RegisterAllFunctions(const std::vector<std::pair<std::string, uint32_t>> &newBundles,
         const std::vector<ExtractInsightIntentInfo> &allIntentInfos,
         const std::vector<InsightIntentInfo> &allConfigInfos);

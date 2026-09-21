@@ -15,6 +15,9 @@
 
 #include "ui_service_extension_context.h"
 
+#include <atomic>
+
+#include "ability_business_error.h"
 #include "ability_connection.h"
 #include "ability_manager_client.h"
 #include "hilog_tag_wrapper.h"
@@ -96,12 +99,47 @@ ErrCode UIServiceExtensionContext::StartAbilityByType(
         wantParam.Remove(FLAG_AUTH_READ_URI_PERMISSION);
     }
 
-    OHOS::Ace::ModalUIExtensionCallbacks callback;
+    auto errorFired = std::make_shared<std::atomic<bool>>(false);
+    OHOS::Ace::ModalUIExtensionCallbacks callback =
+        SetupModalUIExtensionCallbacks(uiExtensionCallback, errorFired);
     OHOS::Ace::ModalUIExtensionConfig config;
-    callback.onError = [uiExtensionCallback](int32_t arg, const std::string &str1, const std::string &str2) {
+    int32_t sessionId = uiContent->CreateModalUIExtension(want, callback, config);
+    if (sessionId == 0) {
+        TAG_LOGE(AAFwkTag::UISERVC_EXT, "sessionId zero");
+        return ERR_INVALID_VALUE;
+    }
+    uiExtensionCallback->SetUIContent(uiContent);
+    uiExtensionCallback->SetSessionId(sessionId);
+    return ERR_OK;
+}
+
+OHOS::Ace::ModalUIExtensionCallbacks UIServiceExtensionContext::SetupModalUIExtensionCallbacks(
+    std::shared_ptr<UIExtensionCallback> uiExtensionCallback, std::shared_ptr<std::atomic<bool>> errorFired)
+{
+    OHOS::Ace::ModalUIExtensionCallbacks callback;
+    callback.onError = [uiExtensionCallback](int32_t arg, const std::string &str1,
+        const std::string &str2) {
         uiExtensionCallback->OnError(arg);
     };
-    callback.onRelease = [uiExtensionCallback](int32_t arg) {
+    callback.onAbilityErrorCode = [uiExtensionCallback, errorFired](const OHOS::Ace::UIExtensionOperationPhase& phase,
+        int32_t errorCode) {
+        if (phase != OHOS::Ace::UIExtensionOperationPhase::FOREGROUND && errorCode == 0) {
+            return;
+        }
+        bool expected = false;
+        if (!errorFired->compare_exchange_strong(expected, true)) {
+            if (errorCode != 0) {
+                TAG_LOGW(AAFwkTag::UISERVC_EXT, "error %{public}d dropped, callback already fired", errorCode);
+            }
+            return;
+        }
+        uiExtensionCallback->OnAbilityByTypeResult(errorCode);
+    };
+    callback.onRelease = [uiExtensionCallback, errorFired](int32_t arg) {
+        bool expected = false;
+        if (errorFired->compare_exchange_strong(expected, true)) {
+            uiExtensionCallback->OnAbilityByTypeResult(0);
+        }
         uiExtensionCallback->OnRelease(arg);
     };
     callback.onResult = [uiExtensionCallback](int32_t arg1, const OHOS::AAFwk::Want arg2) {
@@ -124,14 +162,7 @@ ErrCode UIServiceExtensionContext::StartAbilityByType(
             uiExtensionCallback->OnRequestFailure(elementName, failureCode, failureMsg);
         }
     };
-    int32_t sessionId = uiContent->CreateModalUIExtension(want, callback, config);
-    if (sessionId == 0) {
-        TAG_LOGE(AAFwkTag::UISERVC_EXT, "sessionId zero");
-        return ERR_INVALID_VALUE;
-    }
-    uiExtensionCallback->SetUIContent(uiContent);
-    uiExtensionCallback->SetSessionId(sessionId);
-    return ERR_OK;
+    return callback;
 }
 
 ErrCode UIServiceExtensionContext::ConnectServiceExtensionAbility(

@@ -21,6 +21,8 @@
 #include "want_agent_client.h"
 #include "want_sender_info.h"
 
+#include "ffrt.h"
+
 using namespace OHOS::AppExecFwk;
 using namespace OHOS::AAFwk;
 using namespace OHOS::AbilityRuntime;
@@ -465,6 +467,10 @@ PendingWant *PendingWant::Unmarshalling(Parcel &parcel)
         return nullptr;
     }
     pendingWant->SetTarget(target);
+
+    ffrt::submit([target]() {
+        WantAgentClient::GetInstance().RegisterWantAgentHolder(target);
+    });
 
     return pendingWant;
 }

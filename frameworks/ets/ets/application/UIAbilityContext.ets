@@ -167,8 +167,8 @@ export default class UIAbilityContext extends Context {
 
   private native nativeChangeAbilityVisibility(isShow: boolean, callback: AsyncCallbackWrapper<void>): void;
 
-  private native nativeStartAbilityByTypeSync(type: string, wantParam: Record<string, RecordData>,
-    startCallback: AbilityStartCallback): BusinessError;
+  private native nativeStartAbilityByType(type: string, wantParam: Record<string, RecordData>,
+    startCallback: AbilityStartCallback, callback: AsyncCallbackWrapper<void>): void;
  
   private native nativeRequestDialogService(want: Want,
     result: AsyncCallbackWrapper<dialogRequest.RequestResult>): void;
@@ -573,18 +573,15 @@ export default class UIAbilityContext extends Context {
 
   startAbilityByType(type: string, wantParam: Record<string, RecordData>, startCallback: AbilityStartCallback,
     callback: AsyncCallback<void>): void {
-    let p1 = taskpool.execute((): BusinessError => {
-      return this.nativeStartAbilityByTypeSync(type, wantParam, startCallback);
-    });
-    p1.then((e: Any) => {
-      let retError = e as BusinessError;
-      if (retError.code === 0) {
+    let asyncCall = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+      if (err == null || err.code == 0) {
         callback(null, undefined);
       } else {
-        callback(retError, undefined);
+        callback(err, undefined);
       }
-    }, (err: Error): void => {
-      callback(err as BusinessError, undefined);
+    });
+    taskpool.execute((): void => {
+      this.nativeStartAbilityByType(type, wantParam, startCallback, asyncCall);
     });
   }
 
@@ -625,18 +622,15 @@ hideAbility(): Promise<void> {
   startAbilityByType(type: string, wantParam: Record<string, RecordData>,
     startCallback: AbilityStartCallback): Promise<void> {
     let p = new Promise<void>((resolve: (v: undefined) => void, reject: (error: BusinessError) => void): void => {
-      let p1 = taskpool.execute((): BusinessError => {
-        return this.nativeStartAbilityByTypeSync(type, wantParam, startCallback);
-      });
-      p1.then((e: Any) => {
-        let retError = e as BusinessError;
-        if (retError.code === 0) {
+      let myCall = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+        if (err == null || err.code == 0) {
           resolve(undefined);
         } else {
-          reject(retError);
+          reject(err);
         }
-      }).catch((err: Error): void => {
-        reject(err as BusinessError);
+      });
+      taskpool.execute((): void => {
+        this.nativeStartAbilityByType(type, wantParam, startCallback, myCall);
       });
     });
     return p;

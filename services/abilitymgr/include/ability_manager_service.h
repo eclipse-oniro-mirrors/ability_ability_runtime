@@ -76,6 +76,7 @@
 #include "system_ability.h"
 #include "task_handler_wrap.h"
 #include "uri.h"
+#include "want_agent_app_state_observer.h"
 #ifdef SUPPORT_GRAPHICS
 #include "implicit_start_processor.h"
 #include "system_dialog_scheduler.h"
@@ -1170,6 +1171,12 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int GetWantSenderInfo(const sptr<IWantSender> &target, std::shared_ptr<WantSenderInfo> &info) override;
+
+    /**
+     * @brief Register the holder of a want sender for shared detection.
+     * @param target The target want sender.
+     */
+    virtual void RegisterWantAgentHolder(const sptr<IWantSender> &target) override;
 
     /**
      * @brief Register an observer for connection state changes.
@@ -2793,6 +2800,18 @@ protected:
     void OnStartProcessFailed(const std::vector<sptr<IRemoteObject>> &abilityTokens) override;
 
     /**
+     * @brief Handle want agent death cleanup for a died app process.
+     * @param bundleName the died app's bundle name.
+     * @param pid the died app process pid.
+     */
+    void HandleWantAgentAppDied(const std::string &bundleName, int32_t pid);
+
+    /**
+     * @brief Init the want agent app state observer.
+     */
+    void InitWantAgentAppStateObserver();
+
+    /**
      * @brief Notify one ability is being terminated.
      * @param token ability token.
      */
@@ -3033,8 +3052,7 @@ private:
         sptr<UIExtensionAbilityConnectInfo> connectInfo = nullptr,
         uint64_t specifiedFullTokenId = 0,
         int32_t loadTimeout = 0,
-        std::shared_ptr<IndirectCallerInfo> indirectCallerInfo = nullptr,
-        bool fromConnect = false);
+        std::shared_ptr<IndirectCallerInfo> indirectCallerInfo = nullptr);
 
     int DisconnectLocalAbility(const sptr<IAbilityConnection> &connect);
     int32_t HandleExtensionConnectionByUserId(sptr<IAbilityConnection> connect, int32_t userId,
@@ -3441,7 +3459,10 @@ private:
      */
     bool JudgeSystemParamsForPicker(const WantParams &parameters);
 
-    void SetPickerElementNameAndParams(const sptr<SessionInfo> &extensionSessionInfo, int32_t userId);
+    ErrCode SetPickerElementNameAndParams(const sptr<SessionInfo> &extensionSessionInfo, int32_t userId);
+
+    ErrCode ResolvePickerByTargetType(const sptr<SessionInfo> &extensionSessionInfo,
+        const std::string &targetType, int32_t userId);
 
     void SetAutoFillElementName(const sptr<SessionInfo> &extensionSessionInfo);
 
@@ -3628,6 +3649,8 @@ private:
     std::shared_ptr<FreeInstallManager> freeInstallManager_;
     std::shared_ptr<SubManagersHelper> subManagersHelper_;
     sptr<AppExecFwk::IAbilityController> abilityController_ = nullptr;
+
+    sptr<WantAgentAppStateObserver> wantAgentAppStateObserver_;
 
     std::multimap<std::string, std::string> timeoutMap_;
     std::map<std::string, sptr<SessionInfo>> preStartSessionMap_;

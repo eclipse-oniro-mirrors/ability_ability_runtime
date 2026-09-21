@@ -154,6 +154,7 @@ public:
         const InsightIntentExecuteResult &result));
     MOCK_METHOD5(StartAbilityWithSpecifyTokenId, int(const Want& want, const sptr<IRemoteObject>& callerToken,
         uint32_t specifyTokenId, int32_t userId, int requestCode));
+    MOCK_METHOD1(RegisterWantAgentHolder, void(const sptr<IWantSender>& target));
 
 private:
     bool DumpStateCalled_ = false;

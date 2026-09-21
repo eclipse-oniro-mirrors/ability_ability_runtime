@@ -55,6 +55,7 @@ abilityms_files = [
   "${ability_runtime_services_path}/abilitymgr/src/pending_want_key.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/pending_want_manager.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/pending_want_common_event.cpp",
+  "${ability_runtime_services_path}/abilitymgr/src/want_agent_app_state_observer.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/restart_app_manager.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/ams_configuration_parameter.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/recovery_info_timer.cpp",

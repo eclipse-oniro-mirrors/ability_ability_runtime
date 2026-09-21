@@ -74,6 +74,8 @@ public:
 
     virtual void CancelWantSenderByFlags(const sptr<IWantSender> &sender, uint32_t flags);
 
+    virtual void RegisterWantAgentHolder(const sptr<IWantSender> &target) = 0;
+
 protected:
     // Strip InsightIntent and Skill params from Want at IPC boundary.
     // Use for ALL Want reads EXCEPT legal InsightIntent execution channels
@@ -156,6 +158,7 @@ private:
     int GetPendingRequestWantInner(MessageParcel &data, MessageParcel &reply);
     int GetPendingRequestWantFromProxyInner(MessageParcel &data, MessageParcel &reply);
     int GetWantSenderInfoInner(MessageParcel &data, MessageParcel &reply);
+    int RegisterWantAgentHolderInner(MessageParcel &data, MessageParcel &reply);
 
     int GetAppMemorySizeInner(MessageParcel &data, MessageParcel &reply);
     int IsRamConstrainedDeviceInner(MessageParcel &data, MessageParcel &reply);

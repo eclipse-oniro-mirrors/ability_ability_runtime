@@ -664,6 +664,7 @@ ohos_prebuilt_etc("ams_extension_config.json") {
 }
 
 ohos_shared_library("mission_list") {
+  version_script = "libmission_list.map"
   sanitize = {
     integer_overflow = true
     ubsan = true

@@ -43,6 +43,8 @@ public:
         AbilityInfo &abilityInfo);
     ErrCode GetSandboxExtAbilityInfos(const Want &want, int32_t appIndex, int32_t flags, int32_t userId,
         std::vector<ExtensionAbilityInfo> &extensionInfos);
+    ErrCode GetSandboxExtAbilityInfoOptimal(const Want &want, int32_t appIndex, int32_t flags,
+        int32_t userId, ExtensionAbilityInfo &extensionInfo);
     ErrCode GetSandboxHapModuleInfo(const AbilityInfo &abilityInfo, int32_t appIndex, int32_t userId,
         HapModuleInfo &hapModuleInfo);
     bool GetBundleInfo(const std::string &bundleName, int32_t flags, BundleInfo &bundleInfo, int32_t userId);
@@ -70,6 +72,8 @@ public:
     sptr<IAppControlMgr> GetAppControlProxy();
     bool QueryExtensionAbilityInfos(const Want &want, const int32_t &flag, const int32_t &userId,
         std::vector<ExtensionAbilityInfo> &extensionInfos);
+    ErrCode QueryExtensionAbilityInfoOptimal(const Want &want, const int32_t &flag, const int32_t &userId,
+    ExtensionAbilityInfo &extensionInfo);
     ErrCode GetBundleInfoV9(
         const std::string &bundleName, int32_t flags, BundleInfo &bundleInfo, int32_t userId);
     ErrCode GetBundleInfosV9(int32_t flags, std::vector<BundleInfo> &bundleInfos, int32_t userId);

@@ -791,6 +791,9 @@ enum class AbilityManagerInterfaceCode {
 
     // delete caller's own kiosk application list entries
     DELETE_KIOSK_APP_FROM_LIST = 6180,
+    
+    // register want agent holder for shared detection
+    REGISTER_WANT_AGENT_HOLDER = 6181,
 };
 }  // namespace AAFwk
 }  // namespace OHOS

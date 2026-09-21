@@ -128,12 +128,12 @@ bool DoSomethingInterestingWithMyAPI(const char *data, size_t size)
     Want want = BuildFuzzWant(data, size);
     bool boolParam = (GetU32Data(data) % ENABLE) == 1;
     sptr<IRemoteObject> token = GetFuzzAbilityToken(data, size);
-    AbilityInterceptorParam param =
-        InterceptorParamBuilder(want, intParam, int32Param).WithUI(boolParam).CallerToken(token).Build();
-    AppExecFwk::AbilityInfo targetAbilityInfo = BuildFuzzAbilityInfo(data, size);
-    
+    std::shared_ptr<AbilityInfo> targetAbilityInfo =
+        std::make_shared<AbilityInfo>(BuildFuzzAbilityInfo(data, size));
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, intParam, int32Param)
+        .WithUI(boolParam).CallerToken(token).AbilityInfo(targetAbilityInfo).Build();
+
     (void)screenUnlockInterceptor->DoProcess(param);
-    (void)screenUnlockInterceptor->QueryTargetAbilityInfo(param, targetAbilityInfo);
 
     return true;
 }

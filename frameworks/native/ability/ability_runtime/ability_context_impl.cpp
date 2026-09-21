@@ -15,8 +15,11 @@
 
 #include "ability_context_impl.h"
 
+#include <atomic>
+
 #include <native_engine/native_engine.h>
 
+#include "ability_business_error.h"
 #include "ability_manager_client.h"
 #include "app_utils.h"
 #include "application_configuration_manager.h"
@@ -1230,15 +1233,50 @@ ErrCode AbilityContextImpl::StartAbilityByType(
         want.SetFlags(flag);
         wantParams.Remove(FLAG_AUTH_READ_URI_PERMISSION);
     }
-    Ace::ModalUIExtensionCallbacks callback;
+    auto errorFired = std::make_shared<std::atomic<bool>>(false);
     if (uiExtensionCallback == nullptr) {
         TAG_LOGE(AAFwkTag::CONTEXT, "null uiExtensionCallback");
         return ERR_INVALID_VALUE;
     }
-    callback.onError = [uiExtensionCallback](int32_t arg, const std::string &str1, const std::string &str2) {
+    Ace::ModalUIExtensionCallbacks callback = SetupModalUIExtensionCallbacks(uiExtensionCallback, errorFired);
+    Ace::ModalUIExtensionConfig config;
+    int32_t sessionId = uiContent->CreateModalUIExtension(want, callback, config);
+    if (sessionId == 0) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "createModalUIExtension failed");
+        return ERR_INVALID_VALUE;
+    }
+    uiExtensionCallback->SetUIContent(uiContent);
+    uiExtensionCallback->SetSessionId(sessionId);
+    return ERR_OK;
+}
+
+Ace::ModalUIExtensionCallbacks AbilityContextImpl::SetupModalUIExtensionCallbacks(
+    std::shared_ptr<UIExtensionCallback> uiExtensionCallback, std::shared_ptr<std::atomic<bool>> errorFired)
+{
+    Ace::ModalUIExtensionCallbacks callback;
+    callback.onError = [uiExtensionCallback](int32_t arg, const std::string &str1,
+        const std::string &str2) {
         uiExtensionCallback->OnError(arg);
     };
-    callback.onRelease = [uiExtensionCallback](int32_t arg) {
+    callback.onAbilityErrorCode = [uiExtensionCallback, errorFired](const Ace::UIExtensionOperationPhase& phase,
+        int32_t errorCode) {
+        if (phase != Ace::UIExtensionOperationPhase::FOREGROUND) {
+            return;
+        }
+        bool expected = false;
+        if (!errorFired->compare_exchange_strong(expected, true)) {
+            if (errorCode != 0) {
+                TAG_LOGW(AAFwkTag::CONTEXT, "error %{public}d dropped, callback already fired", errorCode);
+            }
+            return;
+        }
+        uiExtensionCallback->OnAbilityByTypeResult(errorCode);
+    };
+    callback.onRelease = [uiExtensionCallback, errorFired](int32_t arg) {
+        bool expected = false;
+        if (errorFired->compare_exchange_strong(expected, true)) {
+            uiExtensionCallback->OnAbilityByTypeResult(0);
+        }
         uiExtensionCallback->OnRelease(arg);
     };
     callback.onResult = [uiExtensionCallback](int32_t arg1, const OHOS::AAFwk::Want arg2) {
@@ -1261,15 +1299,7 @@ ErrCode AbilityContextImpl::StartAbilityByType(
             uiExtensionCallback->OnRequestFailure(elementName, failureCode, failureMsg);
         }
     };
-    Ace::ModalUIExtensionConfig config;
-    int32_t sessionId = uiContent->CreateModalUIExtension(want, callback, config);
-    if (sessionId == 0) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "createModalUIExtension failed");
-        return ERR_INVALID_VALUE;
-    }
-    uiExtensionCallback->SetUIContent(uiContent);
-    uiExtensionCallback->SetSessionId(sessionId);
-    return ERR_OK;
+    return callback;
 }
 
 bool AbilityContextImpl::IsUIExtensionExist(const AAFwk::Want &want)

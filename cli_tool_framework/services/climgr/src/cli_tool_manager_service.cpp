@@ -29,6 +29,7 @@
 #include <unistd.h>
 
 #include "ability_manager_client.h"
+#include "ability_manager_errors.h"
 #include "accesstoken_kit.h"
 #include "app_mgr_client.h"
 #include "ccm_util.h"
@@ -56,6 +57,7 @@ namespace OHOS {
 namespace CliTool {
 namespace {
 constexpr const char* PERMISSION_EXEC_CLI_TOOL = "ohos.permission.EXEC_CLI_TOOL";
+constexpr const char* PERMISSION_EXEC_PUBLIC_CLI_TOOL = "ohos.permission.EXEC_PUBLIC_CLI_TOOL";
 constexpr const char* PERMISSION_QUERY_CLI_TOOL = "ohos.permission.QUERY_CLI_TOOL";
 constexpr const char* PERMISSION_REGISTER_CLI_TOOL = "ohos.permission.REGISTER_CLI_TOOL";
 constexpr const char* PERMISSION_ACCESS_FUNCTION = "ohos.permission.ACCESS_FUNCTION";
@@ -904,6 +906,27 @@ int32_t CliToolManagerService::ValidateExecToolPermissions()
     return ERR_OK;
 }
 
+int32_t CliToolManagerService::ValidateExecCmdPublicPermissions(bool isShellCommand)
+{
+    bool isSupportExecCmd = CcmUtil::GetInstance().IsSupportExecCmd();
+    if (isShellCommand && !isSupportExecCmd) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ShellCommand Capability not supported");
+        return AAFwk::ERR_CAPABILITY_NOT_SUPPORT;
+    }
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+    bool isExecCliToolPermitted = PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_EXEC_CLI_TOOL);
+    if (!isShellCommand && !isExecCliToolPermitted) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "CliCommand not granted EXEC_CLI_TOOL");
+        return ERR_PERMISSION_DENIED;
+    }
+    if (isShellCommand && !isExecCliToolPermitted &&
+        !PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_EXEC_PUBLIC_CLI_TOOL)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ShellCommand not granted EXEC_CLI_TOOL or EXEC_PUBLIC_CLI_TOOL");
+        return ERR_PERMISSION_DENIED;
+    }
+    return ERR_OK;
+}
+
 int32_t CliToolManagerService::ValidateSessionLimit()
 {
     auto cliQuantity = CcmUtil::GetInstance().GetCliConcurrencyLimit();
@@ -913,6 +936,17 @@ int32_t CliToolManagerService::ValidateSessionLimit()
         return ERR_SESSION_LIMIT_EXCEEDED;
     }
     return ERR_OK;
+}
+
+int32_t CliToolManagerService::ValidateSessionPermissions()
+{
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+    if (PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_EXEC_CLI_TOOL) ||
+        PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_EXEC_PUBLIC_CLI_TOOL)) {
+        return ERR_OK;
+    }
+    TAG_LOGE(AAFwkTag::CLI_TOOL, "ValidateSessionPermissions: Permission denied");
+    return ERR_PERMISSION_DENIED;
 }
 
 int32_t CliToolManagerService::ValidateAndPrepareTool(const ExecToolParam &param, uint32_t tokenId,
@@ -1341,7 +1375,7 @@ int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::str
 {
     InterfaceCallCounter counter(interfaceCalledCount_);
     TAG_LOGI(AAFwkTag::CLI_TOOL, "ExecCmd called: cmd=%{private}s", param.cmd.c_str());
-    if (auto ret = ValidateExecToolPermissions(); ret != ERR_OK) {
+    if (auto ret = ValidateExecCmdPublicPermissions(param.execCmdOptions.isShellCommand); ret != ERR_OK) {
         return ret;
     }
     int32_t callerPid = IPCSkeleton::GetCallingPid();
@@ -1394,7 +1428,7 @@ int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::str
     record->SetBackground(actualParam.execCmdOptions.background);
     record->eventId = eventId;
     AddSessionRecord(record);
-    auto subscribeRet = SubscribeSession(record->sessionId, subscriptionId, scheduler);
+    auto subscribeRet = SubscribeSessionInternal(record->sessionId, subscriptionId, scheduler);
     if (subscribeRet != ERR_OK) {
         RemoveSessionRecord(record->sessionId);
         return subscribeRet;
@@ -1492,7 +1526,7 @@ int32_t CliToolManagerService::SetupCmdSession(const ExecToolParam &toolParam, c
     }
     AddSessionRecord(record);
 
-    auto subscribeRet = SubscribeSession(record->sessionId, context.subscriptionId, context.scheduler);
+    auto subscribeRet = SubscribeSessionInternal(record->sessionId, context.subscriptionId, context.scheduler);
     if (subscribeRet != ERR_OK) {
         RemoveSessionRecord(record->sessionId);
         ReportCliExecuteFailed(context.callerBundleName, toolName, GetFailureReason(subscribeRet));
@@ -1786,7 +1820,7 @@ std::shared_ptr<SessionRecord> CliToolManagerService::CreateSessionRecord(const 
 int32_t CliToolManagerService::ClearSession(const std::string &sessionId)
 {
     InterfaceCallCounter counter(interfaceCalledCount_);
-    auto ret = ValidateExecToolPermissions();
+    auto ret = ValidateSessionPermissions();
     if (ret != ERR_OK) {
         return ret;
     }
@@ -1831,15 +1865,10 @@ int32_t CliToolManagerService::ClearSession(const std::string &sessionId)
     return ERR_OK;
 }
 
-int32_t CliToolManagerService::SubscribeSession(const std::string &sessionId, const std::string &subscriptionId,
-    const sptr<ICliToolManagerScheduler> &scheduler)
+int32_t CliToolManagerService::SubscribeSessionInternal(const std::string &sessionId,
+    const std::string &subscriptionId, const sptr<ICliToolManagerScheduler> &scheduler)
 {
     InterfaceCallCounter counter(interfaceCalledCount_);
-    auto ret = ValidateExecToolPermissions();
-    if (ret != ERR_OK) {
-        return ret;
-    }
-
     if (sessionId.empty() || subscriptionId.empty()) {
         TAG_LOGE(AAFwkTag::CLI_TOOL,
             "SubscribeSession failed: invalid args sessionId=%{public}s, subscriptionId=%{public}s",
@@ -1876,6 +1905,18 @@ int32_t CliToolManagerService::SubscribeSession(const std::string &sessionId, co
     return ERR_OK;
 }
 
+int32_t CliToolManagerService::SubscribeSession(const std::string &sessionId, const std::string &subscriptionId,
+    const sptr<ICliToolManagerScheduler> &scheduler)
+{
+    InterfaceCallCounter counter(interfaceCalledCount_);
+    auto ret = ValidateSessionPermissions();
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
+    return SubscribeSessionInternal(sessionId, subscriptionId, scheduler);
+}
+
 int32_t CliToolManagerService::UnsubscribeSession(const std::string &sessionId, const std::string &subscriptionId)
 {
     InterfaceCallCounter counter(interfaceCalledCount_);
@@ -1894,7 +1935,7 @@ int32_t CliToolManagerService::UnsubscribeSession(const std::string &sessionId, 
 int32_t CliToolManagerService::QuerySession(const std::string &sessionId, CliSessionInfo &session)
 {
     InterfaceCallCounter counter(interfaceCalledCount_);
-    auto ret = ValidateExecToolPermissions();
+    auto ret = ValidateSessionPermissions();
     if (ret != ERR_OK) {
         return ret;
     }
@@ -1916,7 +1957,7 @@ int32_t CliToolManagerService::SendMessage(const std::string &sessionId,
     const sptr<ICliToolManagerScheduler> &scheduler)
 {
     InterfaceCallCounter counter(interfaceCalledCount_);
-    auto ret = ValidateExecToolPermissions();
+    auto ret = ValidateSessionPermissions();
     if (ret != ERR_OK) {
         return ret;
     }

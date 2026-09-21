@@ -27,6 +27,7 @@
 #include "app_utils.h"
 #include "array_wrapper.h"
 #include "accesstoken_kit.h"
+#include "bundle_mgr_helper.h"
 #include "configuration_convertor.h"
 #include "connection_state_manager.h"
 #include "common_event_manager.h"
@@ -555,7 +556,45 @@ void AbilityRecord::HandleBackgroundToForeground(const ForegroundOptions &option
     int32_t callerUid = GetWant().GetIntParam(Want::PARAM_RESV_CALLER_UID, -1);
     std::string callerBundleName = GetWant().GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME);
     DelayedSingleton<AppScheduler>::GetInstance()->MoveToForeground(token_,
-        {callerUid, callerBundleName, isCallBySCB});
+        GetRealLastCallerInfo(callerUid, callerBundleName, isCallBySCB));
+}
+
+AppExecFwk::UiAbilityLastCallerInfo AbilityRecord::GetRealLastCallerInfo(int32_t callerUid,
+    const std::string &callerBundleName, bool isCallBySCB)
+{
+    AppExecFwk::UiAbilityLastCallerInfo callerInfo;
+    callerInfo.callerUid = callerUid;
+    callerInfo.callerBundleName = callerBundleName;
+
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "AbilityForeground set caller info, callerUid:%{public}d, "
+        "callerBundleName:%{public}s, isCallBySCB:%{public}d", callerUid,
+        callerBundleName.c_str(), isCallBySCB);
+
+    if (isCallBySCB ||
+        (!isCallBySCB && callerUid == -1 && callerBundleName.empty())) {
+        int32_t scbUid = -1;
+        {
+            std::lock_guard<ffrt::mutex> lock(scbUidLock_);
+            scbUid = scbUid_;
+        }
+        if (scbUid < 0) {
+            auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
+            scbUid = bundleMgrHelper != nullptr ?
+                IN_PROCESS_CALL(bundleMgrHelper->GetUidByBundleName(
+                    AbilityConfig::SCENEBOARD_BUNDLE_NAME, GetOwnerMissionUserId(), 0)) : -1;
+            std::lock_guard<ffrt::mutex> lock(scbUidLock_);
+            scbUid_ = scbUid;
+        }
+        if (scbUid >= 0) {
+            callerInfo.callerUid = scbUid;
+            callerInfo.callerBundleName = AbilityConfig::SCENEBOARD_BUNDLE_NAME;
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "AbilityForeground set scb caller info, scbUid:%{public}d, "
+                "scbBundleName:%{public}s", scbUid, AbilityConfig::SCENEBOARD_BUNDLE_NAME);
+        } else {
+            TAG_LOGW(AAFwkTag::ABILITYMGR, "AbilityForeground skip scb caller, uid query failed");
+        }
+    }
+    return callerInfo;
 }
 
 void AbilityRecord::PostForegroundTimeoutTask()

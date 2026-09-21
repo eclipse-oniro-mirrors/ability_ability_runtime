@@ -59,7 +59,7 @@ void AppPidFdManagerTest::ClearPidFdMap()
         if (item.second.pidfd >= 0) {
             ffrt_qos_t qos = 0;
             ffrt_epoll_ctl(qos, EPOLL_CTL_DEL, item.second.pidfd, 0, nullptr, nullptr);
-            close(item.second.pidfd);
+            fdsan_close_with_tag(item.second.pidfd, static_cast<uint32_t>(AAFwkTag::APPMGR));
             item.second.pidfd = -1;
         }
     }
@@ -498,14 +498,14 @@ HWTEST_F(AppPidFdManagerTest, AppPidFdManagerTest_Destructor_002, TestSize.Level
     ASSERT_GE(fd1, 0);
     int fd2 = open("/dev/null", O_RDONLY);
     ASSERT_GE(fd2, 0);
+    fdsan_exchange_owner_tag(fd1, 0, static_cast<uint32_t>(AAFwkTag::APPMGR));
+    fdsan_exchange_owner_tag(fd2, 0, static_cast<uint32_t>(AAFwkTag::APPMGR));
     {
         AppPidFdManager mgr;
         mgr.pidfdMap_[1111] = AppPidFdManager::PidFdEntry{fd1, 1111};
         mgr.pidfdMap_[2222] = AppPidFdManager::PidFdEntry{fd2, 2222};
         EXPECT_EQ(mgr.pidfdMap_.size(), 2u);
     }
-    close(fd1);
-    close(fd2);
 }
 
 /**
@@ -522,6 +522,7 @@ HWTEST_F(AppPidFdManagerTest, AppPidFdManagerTest_OnPidfdFired_004, TestSize.Lev
     TAG_LOGD(AAFwkTag::TEST, "AppPidFdManagerTest_OnPidfdFired_004 start.");
     int fd = open("/dev/null", O_RDONLY);
     ASSERT_GE(fd, 0);
+    fdsan_exchange_owner_tag(fd, 0, static_cast<uint32_t>(AAFwkTag::APPMGR));
     int32_t pidValue = 3333;
     {
         std::lock_guard<std::mutex> lock(GetManager().mapMutex_);
@@ -531,7 +532,6 @@ HWTEST_F(AppPidFdManagerTest, AppPidFdManagerTest_OnPidfdFired_004, TestSize.Lev
     GetManager().OnPidfdFired(pidValue, PidFdType::CHILD);
     std::lock_guard<std::mutex> lock(GetManager().mapMutex_);
     EXPECT_EQ(GetManager().pidfdMap_.count(pidValue), 0u);
-    close(fd);
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

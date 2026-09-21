@@ -172,6 +172,7 @@ ohos_unittest("ability_manager_service_second_test") {
     "${ability_runtime_services_path}/abilitymgr/src/pending_want_key.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/pending_want_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/pending_want_record.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/want_agent_app_state_observer.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/preload_manager_service.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/ui_extension/ui_extension_ability_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/common_extension_manager.cpp",
