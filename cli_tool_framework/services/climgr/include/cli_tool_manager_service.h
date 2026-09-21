@@ -274,6 +274,7 @@ private:
     int32_t SubscribeSessionInternal(const std::string &sessionId, const std::string &subscriptionId,
         const sptr<ICliToolManagerScheduler> &scheduler);
     int32_t ValidateSessionLimit();
+    int32_t ValidateSessionPermissions();
     int32_t ValidateAndPrepareTool(const ExecToolParam &param, uint32_t tokenId,
         ToolInfo &toolInfo, std::string &sandboxConfig, std::string &bundleName, std::string& detail);
 

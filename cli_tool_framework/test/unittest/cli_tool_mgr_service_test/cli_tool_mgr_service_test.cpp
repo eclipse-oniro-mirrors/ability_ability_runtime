@@ -82,6 +82,7 @@ namespace CliTool {
 namespace {
 const char *CLI_TOOL_PERMS[] = {
     "ohos.permission.EXEC_CLI_TOOL",
+    "ohos.permission.EXEC_PUBLIC_CLI_TOOL",
     "ohos.permission.QUERY_CLI_TOOL",
 };
 
@@ -700,6 +701,53 @@ HWTEST_F(CliToolManagerServiceTest, ValidateExecToolPermissions_0100, TestSize.L
     EXPECT_TRUE(result == ERR_OK || IsPermissionGateResult(result));
 
     TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateExecToolPermissions_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ValidateSessionPermissions_0100
+ * @tc.desc: Test ValidateSessionPermissions returns ERR_OK when permissions are granted
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ValidateSessionPermissions_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateSessionPermissions_0100 start");
+
+    EXPECT_EQ(service_->ValidateSessionPermissions(), ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateSessionPermissions_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ValidateSessionPermissions_0200
+ * @tc.desc: Test ValidateSessionPermissions does NOT check IsSystemApp - non-system app passes
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ValidateSessionPermissions_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateSessionPermissions_0200 start");
+
+    IPCSkeleton::callingFullTokenId = 1; // non-zero -> IsSystemApp() returns false
+    EXPECT_EQ(service_->ValidateSessionPermissions(), ERR_OK);
+
+    IPCSkeleton::Reset();
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateSessionPermissions_0200 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ValidateSessionPermissions_0300
+ * @tc.desc: Test ValidateSessionPermissions vs ValidateExecToolPermissions for non-system caller
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ValidateSessionPermissions_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateSessionPermissions_0300 start");
+
+    IPCSkeleton::callingFullTokenId = 1; // non-zero -> IsSystemApp() returns false
+    EXPECT_EQ(service_->ValidateExecToolPermissions(), ERR_NOT_SYSTEM_APP);
+    EXPECT_EQ(service_->ValidateSessionPermissions(), ERR_OK);
+
+    IPCSkeleton::Reset();
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateSessionPermissions_0300 end");
 }
 
 /**
