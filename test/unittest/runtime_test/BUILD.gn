@@ -326,7 +326,7 @@ ohos_unittest("ets_runtime_test") {
   ]
 
   if (ability_runtime_graphics) {
-    defines = [ "SUPPORT_GRAPHICS" ]
+    defines = [ "SUPPORT_GRAPHICS", "SUPPORT_SCREEN" ]
     external_deps += [ "ace_engine:ace_uicontent" ]
   }
 }
