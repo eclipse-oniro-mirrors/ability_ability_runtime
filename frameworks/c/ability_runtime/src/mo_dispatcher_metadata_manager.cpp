@@ -33,7 +33,7 @@ bool ReadAllFromFd(int32_t fd, std::string* out)
     }
     auto fdGuard = [](int32_t* f) {
         if (*f >= 0) {
-            close(*f);
+            fdsan_close_with_tag(*f, static_cast<uint32_t>(AAFwkTag::EXT));
         }
     };
     std::unique_ptr<int32_t, decltype(fdGuard)> fdHolder(&fd, fdGuard);
@@ -335,6 +335,7 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::RequestMetadataJson(OH
         TAG_LOGE(AAFwkTag::EXT, "RequestMetadataJson: memfd_create failed, errno=%{public}d", errno);
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
+    fdsan_exchange_owner_tag(fd, 0, static_cast<uint32_t>(AAFwkTag::EXT));
 
     MessageParcel dataParcel;
     MessageParcel replyParcel;
@@ -342,13 +343,13 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::RequestMetadataJson(OH
     std::u16string descriptor = proxy->GetInterfaceDescriptor();
     if (!dataParcel.WriteInterfaceToken(descriptor)) {
         TAG_LOGE(AAFwkTag::EXT, "RequestMetadataJson: WriteInterfaceToken failed");
-        close(fd);
+        fdsan_close_with_tag(fd, static_cast<uint32_t>(AAFwkTag::EXT));
         return ABILITY_RUNTIME_ERROR_CODE_SEND_REQUEST_FAILED;
     }
 
     if (!dataParcel.WriteFileDescriptor(fd)) {
         TAG_LOGE(AAFwkTag::EXT, "RequestMetadataJson: WriteFileDescriptor failed");
-        close(fd);
+        fdsan_close_with_tag(fd, static_cast<uint32_t>(AAFwkTag::EXT));
         return ABILITY_RUNTIME_ERROR_CODE_SEND_REQUEST_FAILED;
     }
 
@@ -356,13 +357,13 @@ AbilityRuntime_ErrorCode ModObjDispatcherMetadataManager::RequestMetadataJson(OH
     int ipcRet = proxy->SendRequest(IPC_CODE_GET_TLB_FD, dataParcel, replyParcel, option);
     if (ipcRet != 0) {
         TAG_LOGE(AAFwkTag::EXT, "RequestMetadataJson: SendRequest failed, ipcRet=%{public}d", ipcRet);
-        close(fd);
+        fdsan_close_with_tag(fd, static_cast<uint32_t>(AAFwkTag::EXT));
         return ABILITY_RUNTIME_ERROR_CODE_SEND_REQUEST_FAILED;
     }
 
     if (lseek(fd, 0, SEEK_SET) < 0) {
         TAG_LOGE(AAFwkTag::EXT, "RequestMetadataJson: lseek failed, errno=%{public}d", errno);
-        close(fd);
+        fdsan_close_with_tag(fd, static_cast<uint32_t>(AAFwkTag::EXT));
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
     ReadAllFromFd(fd, jsonText);
