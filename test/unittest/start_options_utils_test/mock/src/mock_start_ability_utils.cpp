@@ -20,7 +20,7 @@
 namespace OHOS {
 namespace AAFwk {
 
-bool StartAbilityUtils::GetAppIndex(const Want &want, sptr<IRemoteObject> callerToken callerToken,
+bool StartAbilityUtils::GetAppIndex(const Want &want, sptr<IRemoteObject> callerToken,
                                     int userId, int32_t &appIndex)
 {
     appIndex = 0;
