@@ -46,15 +46,12 @@ struct AbilityInterceptorParam {
         int32_t appIndex = 0;
         const StartOptions* startOptions = nullptr;
     };
-    struct ScreenUnlockCtx {
-        bool fromConnect = false;
-    };
     // Marker context: this DoProcess call guards a remote dispatch. Interceptors that
     // require a locally-resolved target (DisposedRule / ExtensionControl / EcologicalRule)
     // defer to the remote device's own enforcement when this context is present.
     struct RemoteDispatchCtx {};
 
-    using Context = std::variant<std::monostate, EcologicalCtx, DisposedCtx, ScreenUnlockCtx, RemoteDispatchCtx>;
+    using Context = std::variant<std::monostate, EcologicalCtx, DisposedCtx, RemoteDispatchCtx>;
     std::vector<Context> contexts;
 
     template<typename T>

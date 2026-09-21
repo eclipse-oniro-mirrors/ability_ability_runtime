@@ -26,9 +26,6 @@ public:
     ~ScreenUnlockInterceptor() = default;
     ErrCode DoProcess(AbilityInterceptorParam &param) override;
 private:
-    bool GetTargetAbilityInfo(const AbilityInterceptorParam &param, AppExecFwk::AbilityInfo &targetAbilityInfo);
-    bool QueryTargetAbilityInfoByUri(const AbilityInterceptorParam &param, AppExecFwk::AbilityInfo &targetAbilityInfo);
-    void QueryTargetAbilityInfo(const AbilityInterceptorParam &param, AppExecFwk::AbilityInfo &targetAbilityInfo);
     ErrCode ProcessSystemApp(const AppExecFwk::AbilityInfo &targetAbilityInfo);
     ErrCode ProcessNonSystemApp(const AppExecFwk::AbilityInfo &targetAbilityInfo);
     void ReportSystemAppUIAbilityEvent(const AppExecFwk::AbilityInfo &targetAbilityInfo);

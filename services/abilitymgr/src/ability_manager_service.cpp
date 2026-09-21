@@ -1510,8 +1510,17 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
         // Remote targets must pass the merged interceptor chain before dispatch, so the
         // local policy gates (e.g. Control/EDM) still apply; interceptors that require a
         // locally-resolved target defer to the remote device via RemoteDispatchCtx.
+        // ScreenUnlock still gates on the local lock state, so feed it the target info
+        // resolved by the wrap above (possibly empty when the target is not installed
+        // locally, preserving the fail-closed block of the pre-merge pre-check).
+        std::shared_ptr<AppExecFwk::AbilityInfo> remoteTargetInfo = nullptr;
+        if (StartAbilityUtils::startAbilityInfo != nullptr) {
+            remoteTargetInfo = std::make_shared<AppExecFwk::AbilityInfo>(
+                StartAbilityUtils::startAbilityInfo->abilityInfo);
+        }
         AbilityInterceptorParam interceptorParam = InterceptorParamBuilder(param.want, param.requestCode,
             validUserId).WithUI(true).Visible(true).CallerToken(param.callerToken)
+            .AbilityInfo(remoteTargetInfo)
             .Context<AbilityInterceptorParam::RemoteDispatchCtx>({}).Build();
         result = interceptorExecuter_ == nullptr ? ERR_NULL_INTERCEPTOR_EXECUTER :
             interceptorExecuter_->DoProcess(interceptorParam);
@@ -2244,8 +2253,9 @@ int AbilityManagerService::StartAbilityDetails(const Want &want, const AbilitySt
     result = interceptorExecuter_ == nullptr ? ERR_NULL_INTERCEPTOR_EXECUTER :
         interceptorExecuter_->DoProcess(interceptorParam);
     if (result != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "blockAllAppStart interceptor error");
-        AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result, "blockAllAppStart interceptor error");
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "interceptorExecuter_ null or DoProcess error");
+        AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result,
+            "interceptorExecuter_ null or DoProcess error");
         return result;
     }
 
@@ -4829,9 +4839,9 @@ int32_t AbilityManagerService::StartExtensionAbilityInner(const Want &want, cons
     result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
         interceptorExecuter_->DoProcess(interceptorParam);
     if (result != ERR_OK) {
-        TAG_LOGE(AAFwkTag::SERVICE_EXT, "blockAllAppStart interceptor error");
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "interceptorExecuter_ null or DoProcess error");
         if (extensionType == AppExecFwk::ExtensionAbilityType::UI_SERVICE) {
-            eventInfo->errReason = "blockAllAppStart interceptor error";
+            eventInfo->errReason = "interceptorExecuter_ null or DoProcess error";
             eventInfo->appIndex = appIndex;
             SendExtensionReport(*eventInfo, result, true);
         } else {
@@ -5215,8 +5225,8 @@ int AbilityManagerService::StartUIExtensionAbility(const sptr<SessionInfo> &exte
     result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
         interceptorExecuter_->DoProcess(interceptorParam);
     if (result != ERR_OK) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "blockAllAppStart interceptor error");
-        eventInfo->errReason = "blockAllAppStart interceptor error";
+        TAG_LOGE(AAFwkTag::UI_EXT, "interceptorExecuter_ null or DoProcess error");
+        eventInfo->errReason = "interceptorExecuter_ null or DoProcess error";
         SendExtensionReport(*eventInfo, result);
         return result;
     }
@@ -6253,7 +6263,7 @@ int32_t AbilityManagerService::ConnectAbilityCommon(
     if (callerToken != nullptr && callerToken->GetObjectDescriptor() != u"ohos.aafwk.AbilityToken") {
         TAG_LOGD(AAFwkTag::SERVICE_EXT, "invalid Token.");
         eventInfo->errCode = ConnectLocalAbility(abilityWant, validUserId, connect, nullptr, extensionType, nullptr,
-            false, nullptr, specifiedFullTokenId, loadTimeout, indirectCallerInfo, true);
+            false, nullptr, specifiedFullTokenId, loadTimeout, indirectCallerInfo);
         if (eventInfo->errCode != ERR_OK) {
             if (extensionType == AppExecFwk::ExtensionAbilityType::UI_SERVICE) {
                 eventInfo->errReason = "ConnectLocalAbility error";
@@ -6265,7 +6275,7 @@ int32_t AbilityManagerService::ConnectAbilityCommon(
         return eventInfo->errCode;
     }
     eventInfo->errCode = ConnectLocalAbility(abilityWant, validUserId, connect, callerToken, extensionType, nullptr,
-        isQueryExtensionOnly, nullptr, specifiedFullTokenId, loadTimeout, indirectCallerInfo, true);
+        isQueryExtensionOnly, nullptr, specifiedFullTokenId, loadTimeout, indirectCallerInfo);
     if (eventInfo->errCode != ERR_OK) {
         if (extensionType == AppExecFwk::ExtensionAbilityType::UI_SERVICE) {
             eventInfo->errReason = "ConnectLocalAbility error";
@@ -6448,7 +6458,7 @@ int32_t AbilityManagerService::ConnectLocalAbility(const Want &want, const int32
     const sptr<IAbilityConnection> &connect, const sptr<IRemoteObject> &callerToken,
     AppExecFwk::ExtensionAbilityType extensionType, const sptr<SessionInfo> &sessionInfo,
     bool isQueryExtensionOnly, sptr<UIExtensionAbilityConnectInfo> connectInfo, uint64_t specifiedFullTokenId,
-    int32_t loadTimeout, std::shared_ptr<IndirectCallerInfo> indirectCallerInfo, bool fromConnect)
+    int32_t loadTimeout, std::shared_ptr<IndirectCallerInfo> indirectCallerInfo)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::SERVICE_EXT, "called");
@@ -6567,14 +6577,11 @@ int32_t AbilityManagerService::ConnectLocalAbility(const Want &want, const int32
     InterceptorParamBuilder paramBuilder(abilityRequest.want, 0, validUserId);
     paramBuilder.WithUI(false).Visible(false).CallerToken(callerToken)
         .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>(abilityInfo));
-    if (fromConnect) {
-        paramBuilder.Context<AbilityInterceptorParam::ScreenUnlockCtx>({true});
-    }
     AbilityInterceptorParam interceptorParam = paramBuilder.Build();
     result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
         interceptorExecuter_->DoProcess(interceptorParam);
     if (result != ERR_OK) {
-        TAG_LOGE(AAFwkTag::SERVICE_EXT, "blockAllAppStart interceptor error");
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "interceptorExecuter_ null or DoProcess error");
         return result;
     }
 
@@ -10618,10 +10625,18 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
     if (CheckIfOperateRemote(want)) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "start remote ability by call");
         // Remote targets must pass the merged interceptor chain before dispatch; the
-        // post-check trio defers to the remote device via RemoteDispatchCtx.
+        // post-check trio defers to the remote device via RemoteDispatchCtx. ScreenUnlock
+        // still gates on the local lock state, so feed it the target info resolved by the
+        // wrap above (possibly empty, preserving the fail-closed pre-merge block).
         bool isWithUI = want.GetBoolParam(Want::PARAM_RESV_CALL_TO_FOREGROUND, false) ? true : !isSilent;
+        std::shared_ptr<AppExecFwk::AbilityInfo> remoteTargetInfo = nullptr;
+        if (StartAbilityUtils::startAbilityInfo != nullptr) {
+            remoteTargetInfo = std::make_shared<AppExecFwk::AbilityInfo>(
+                StartAbilityUtils::startAbilityInfo->abilityInfo);
+        }
         AbilityInterceptorParam interceptorParam = InterceptorParamBuilder(want, 0, oriValidUserId)
             .WithUI(isWithUI).Visible(isVisible).CallerToken(callerToken)
+            .AbilityInfo(remoteTargetInfo)
             .Context<AbilityInterceptorParam::RemoteDispatchCtx>({}).Build();
         int result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
             interceptorExecuter_->DoProcess(interceptorParam);
@@ -10702,10 +10717,10 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
     result = interceptorExecuter_ == nullptr ? ERR_INVALID_VALUE :
         interceptorExecuter_->DoProcess(interceptorParam);
     if (result != ERR_OK) {
-        errMsg = "interceptorParam is nullptr";
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "blockAllAppStart interceptor error");
+        errMsg = "interceptorExecuter_ null or DoProcess error";
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "interceptorExecuter_ null or DoProcess error");
         AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, result,
-            "startAbilityByCall afterCheckExecuter doProcess error");
+            "startAbilityByCall interceptorExecuter_ doProcess error");
         return result;
     }
     auto callerTokenId = IPCSkeleton::GetCallingTokenID();
