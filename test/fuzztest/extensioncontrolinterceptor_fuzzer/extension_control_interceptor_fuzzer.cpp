@@ -70,7 +70,12 @@ bool DoSomethingInterestingWithMyAPI(const char *data, size_t size)
     sptr<IRemoteObject> token = GetFuzzAbilityToken();
     AbilityInterceptorParam param =
         InterceptorParamBuilder(want, intParam, int32Param).WithUI(boolParam).CallerToken(token).Build();
+    auto fuzzAbilityInfo = std::make_shared<AbilityInfo>();
+    AbilityInterceptorParam param2 =
+        InterceptorParamBuilder(want, intParam, int32Param).WithUI(boolParam).CallerToken(token)
+        .AbilityInfo(fuzzAbilityInfo).Build();
     extensionControlInterceptor->DoProcess(param);
+    extensionControlInterceptor->DoProcess(param2);
     return true;
 }
 } // namespace OHOS
