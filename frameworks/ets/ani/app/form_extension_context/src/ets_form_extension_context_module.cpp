@@ -50,60 +50,39 @@ ani_object EtsFormExtensionContextModule::NativeTransferStatic(ani_env *aniEnv, 
         TAG_LOGE(AAFwkTag::FORM_EXT, "null aniEnv");
         return nullptr;
     }
-
+    auto throwError = [aniEnv](const char *msg) -> ani_object {
+        TAG_LOGE(AAFwkTag::FORM_EXT, "%{public}s", msg);
+        EtsErrorUtil::ThrowEtsTransferClassError(aniEnv);
+        return nullptr;
+    };
     if (!IsInstanceOf(aniEnv, input)) {
-        TAG_LOGE(AAFwkTag::FORM_EXT, "not FormExtensionContext");
-        EtsErrorUtil::ThrowEtsTransferClassError(aniEnv);
-        return nullptr;
+        return throwError("not FormExtensionContext");
     }
-
     void *unwrapResult = nullptr;
-    bool success = arkts_esvalue_unwrap(aniEnv, input, &unwrapResult);
-    if (!success) {
-        TAG_LOGE(AAFwkTag::FORM_EXT, "failed to unwrap");
-        EtsErrorUtil::ThrowEtsTransferClassError(aniEnv);
-        return nullptr;
+    if (!arkts_esvalue_unwrap(aniEnv, input, &unwrapResult) || unwrapResult == nullptr) {
+        return throwError("failed to unwrap");
     }
-    if (unwrapResult == nullptr) {
-        TAG_LOGE(AAFwkTag::FORM_EXT, "null unwrapResult");
-        EtsErrorUtil::ThrowEtsTransferClassError(aniEnv);
-        return nullptr;
-    }
-
     auto context = reinterpret_cast<std::weak_ptr<FormExtensionContext> *>(unwrapResult)->lock();
     if (context == nullptr) {
-        TAG_LOGE(AAFwkTag::FORM_EXT, "null FormExtensionContext");
-        EtsErrorUtil::ThrowEtsTransferClassError(aniEnv);
-        return nullptr;
+        return throwError("null FormExtensionContext");
     }
-
     auto formExtContext = Context::ConvertTo<FormExtensionContext>(context);
     if (formExtContext == nullptr) {
-        TAG_LOGE(AAFwkTag::FORM_EXT, "invalid formExtContext");
-        EtsErrorUtil::ThrowEtsTransferClassError(aniEnv);
-        return nullptr;
+        return throwError("invalid formExtContext");
     }
-
     auto &bindingObj = formExtContext->GetBindingObject();
     if (bindingObj == nullptr) {
-        TAG_LOGE(AAFwkTag::FORM_EXT, "null bindingObj");
-        EtsErrorUtil::ThrowEtsTransferClassError(aniEnv);
-        return nullptr;
+        return throwError("null bindingObj");
     }
-
     auto staticContext = bindingObj->Get<ani_ref>();
     if (staticContext != nullptr) {
         TAG_LOGI(AAFwkTag::FORM_EXT, "there exist a staticContext");
         return reinterpret_cast<ani_object>(*staticContext);
     }
-
     auto newContext = CreateStaticObject(aniEnv, type, formExtContext);
     if (newContext == nullptr) {
-        TAG_LOGE(AAFwkTag::FORM_EXT, "newContext invalid");
-        EtsErrorUtil::ThrowEtsTransferClassError(aniEnv);
-        return nullptr;
+        return throwError("newContext invalid");
     }
-
     return newContext;
 }
 
@@ -140,7 +119,7 @@ std::unique_ptr<NativeReference> EtsFormExtensionContextModule::CreateNativeRefe
     auto value = CreateJsFormExtensionContext(napiEnv, formExtContext);
     if (value == nullptr) {
         TAG_LOGE(AAFwkTag::FORM_EXT, "null value");
-        return;
+        return nullptr;
     }
 
     auto systemModule =
