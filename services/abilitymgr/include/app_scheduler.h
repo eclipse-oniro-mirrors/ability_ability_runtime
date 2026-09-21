@@ -81,7 +81,7 @@ struct AppInfo {
     std::vector<AppData> appData;
     pid_t pid = 0;
     int32_t userId = -1;
-    int32_t appIndex = -1;
+    int32_t appIndex = 0;
     AppState state;
 };
 /**
