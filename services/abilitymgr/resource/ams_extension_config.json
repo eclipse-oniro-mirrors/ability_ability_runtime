@@ -475,11 +475,20 @@
             }
         },
         {
+            "name": "UkeyAuthExtensionAbility",
             "extension_type_name": "ukeyAuth",
-            "need_create_sandbox": false,
+            "ability_access": {
+                "allowlist": [],
+                "blocklist": [],
+                "third_party_app_access_flag": false,
+                "service_access_flag": false,
+                "default_access_flag": false
+            },
+            "network_access_enable_flag": false,
             "screen_unlock_access": {
-                "defaultInterception": false
-            }
+                "defaultInterception": true
+            },
+            "sa_access_enable_flag": true
         },
         {
             "extension_type_name": "modularObject",
