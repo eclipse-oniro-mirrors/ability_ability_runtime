@@ -2811,17 +2811,6 @@ int32_t AbilityManagerClient::SetAppRecoveryFlag(const sptr<IRemoteObject>& toke
     return proxy->SetAppRecoveryFlag(token, flag);
 }
 
-ErrCode AbilityManagerClient::ExecuteInAppSkill(const std::string &bundleName, const std::string &moduleName,
-    const std::string &skillName, const std::string &arkTSPath,
-    const std::string &funcName, const std::shared_ptr<AAFwk::WantParams> &skillArgs,
-    const sptr<ISkillExecuteCallback> &callback)
-{
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "called");
-    auto abms = GetAbilityManager();
-    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
-    return abms->ExecuteInAppSkill(bundleName, moduleName, skillName, arkTSPath, funcName, skillArgs, callback);
-}
-
 ErrCode AbilityManagerClient::ExecuteInAppSkillWithTokenId(
     const AppExecFwk::SkillExecuteRequest &request,
     const sptr<ISkillExecuteCallback> &callback)

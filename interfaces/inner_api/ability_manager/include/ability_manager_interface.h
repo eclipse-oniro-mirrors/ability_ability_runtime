@@ -2905,25 +2905,6 @@ public:
     }
 
     /**
-     * @brief Start skill by HDC, launch target ability.
-     * @param bundleName The target bundle name.
-     * @param moduleName The target module name.
-     * @param skillName The skill name to execute.
-     * @param arkTSPath The target ArkTS file path.
-     * @param funcName The target function name.
-     * @param argv The arguments for skill execution.
-     * @return Returns ERR_OK on success, others on failure.
-     */
-    virtual int32_t ExecuteInAppSkill(const std::string &bundleName, const std::string &moduleName,
-        const std::string &skillName, const std::string &arkTSPath = "",
-        const std::string &funcName = "",
-        const std::shared_ptr<AAFwk::WantParams> &skillArgs = nullptr,
-        const sptr<ISkillExecuteCallback> &callback = nullptr)
-    {
-        return ERR_OK;
-    }
-
-    /**
      * @brief Execute in-app skill with explicit caller tokenId (for SA-to-SA calls).
      * @param request The skill execute request parameters.
      * @param callback The callback for skill execution result.

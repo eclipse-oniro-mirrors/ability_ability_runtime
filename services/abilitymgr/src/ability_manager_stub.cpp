@@ -1067,9 +1067,6 @@ int AbilityManagerStub::OnRemoteRequestInnerTwentySecond(uint32_t code, MessageP
     if (interfaceCode == AbilityManagerInterfaceCode::INSIGHT_INTENT_QUERY_ENTITY) {
         return QueryEntityInner(data, reply);
     }
-    if (interfaceCode == AbilityManagerInterfaceCode::EXECUTE_IN_APP_SKILL) {
-        return ExecuteInAppSkillInner(data, reply);
-    }
     if (interfaceCode == AbilityManagerInterfaceCode::EXECUTE_IN_APP_SKILL_WITH_TOKEN_ID) {
         return ExecuteInAppSkillWithTokenIdInner(data, reply);
     }
@@ -5979,38 +5976,6 @@ int32_t AbilityManagerStub::SetAppRecoveryFlagInner(MessageParcel &data, Message
     }
     int flag = data.ReadInt32();
     int32_t result = SetAppRecoveryFlag(token, flag);
-    reply.WriteInt32(result);
-    return NO_ERROR;
-}
-
-int32_t AbilityManagerStub::ExecuteInAppSkillInner(MessageParcel &data, MessageParcel &reply)
-{
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "execute in-app skill stub");
-    std::string bundleName = Str16ToStr8(data.ReadString16());
-    std::string moduleName = Str16ToStr8(data.ReadString16());
-    std::string skillName = Str16ToStr8(data.ReadString16());
-    std::string scriptPath = Str16ToStr8(data.ReadString16());
-    std::string functionName = Str16ToStr8(data.ReadString16());
-
-    auto *args = data.ReadParcelable<AAFwk::WantParams>();
-    std::shared_ptr<AAFwk::WantParams> skillArgs;
-    if (args != nullptr) {
-        skillArgs = std::shared_ptr<AAFwk::WantParams>(args);
-    } else {
-        skillArgs = std::make_shared<AAFwk::WantParams>();
-    }
-
-    sptr<ISkillExecuteCallback> callback = nullptr;
-    bool hasCallback = data.ReadBool();
-    if (hasCallback) {
-        auto callbackObj = data.ReadRemoteObject();
-        if (callbackObj != nullptr) {
-            callback = iface_cast<ISkillExecuteCallback>(callbackObj);
-        }
-    }
-
-    int32_t result = ExecuteInAppSkill(
-        bundleName, moduleName, skillName, scriptPath, functionName, skillArgs, callback);
     reply.WriteInt32(result);
     return NO_ERROR;
 }

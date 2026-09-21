@@ -3110,26 +3110,6 @@ public:
     int32_t SetAppRecoveryFlag(const sptr<IRemoteObject>& token, int flag);
 
     /**
-     * @brief Execute an in-app skill (skill entry defined in the target bundle).
-     * The skill config is queried from bundle framework; caller permission is
-     * verified against the skill's configured allow rules (CheckSkillPermission).
-     * Result is delivered asynchronously via callback with a requestCode.
-     * @param bundleName Target bundle name.
-     * @param moduleName Target module name.
-     * @param skillName Target skill name.
-     * @param arkTSPath Optional skill script path override, default "".
-     * @param funcName Optional function name override, default "".
-     * @param skillArgs Optional skill arguments, default nullptr.
-     * @param callback Optional result callback, default nullptr.
-     * @return Returns ERR_OK on success, others on failure.
-     */
-    ErrCode ExecuteInAppSkill(const std::string &bundleName, const std::string &moduleName,
-        const std::string &skillName, const std::string &arkTSPath = "",
-        const std::string &funcName = "",
-        const std::shared_ptr<AAFwk::WantParams> &skillArgs = nullptr,
-        const sptr<ISkillExecuteCallback> &callback = nullptr);
-
-    /**
      * @brief Execute an in-app skill on behalf of an explicit caller token id
      * (used by broker/framework scenarios). The request.callerTokenId must
      * resolve to a valid HAP token; permission is checked with that identity.

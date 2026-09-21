@@ -15745,64 +15745,6 @@ int32_t AbilityManagerService::ExecuteInsightIntentDone(const sptr<IRemoteObject
     return ret;
 }
 
-int32_t AbilityManagerService::ExecuteInAppSkill(const std::string &bundleName, const std::string &moduleName,
-    const std::string &skillName, const std::string &arkTSPath,
-    const std::string &funcName, const std::shared_ptr<AAFwk::WantParams> &skillArgs,
-    const sptr<ISkillExecuteCallback> &callback)
-{
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "execute in-app skill called");
-
-    int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
-    userId = userId != 0 ? userId : 100;
-    uint32_t callerTokenId = IPCSkeleton::GetCallingTokenID();
-    std::string callerBundleName = InsightIntentGetcallerBundleName();
-
-    // 1. Query skill configuration from bundle framework
-    AppExecFwk::SkillInfo skillInfo;
-    auto ret = DelayedSingleton<SkillExecuteManager>::GetInstance()->QuerySkillInfo(
-        bundleName, moduleName, skillName, userId, skillInfo);
-    if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "query skill info failed");
-        return ret;
-    }
-
-    // 2. Verify caller permissions
-    ret = DelayedSingleton<SkillExecuteManager>::GetInstance()->CheckSkillPermission(
-        skillInfo, callerTokenId);
-    if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "check skill permission failed");
-        return ret;
-    }
-
-    // 3. Create execute record with requestCode and callback
-    std::string requestCode = DelayedSingleton<SkillExecuteManager>::GetInstance()->CreateExecuteRecord(
-        nullptr, bundleName, callerBundleName, callerTokenId, callback);
-
-    // 4. Generate Want with abilityName, srcEntries and requestCode
-    Want want;
-    AppExecFwk::ExtensionAbilityType targetType = AppExecFwk::ExtensionAbilityType::UNSPECIFIED;
-    ret = DelayedSingleton<SkillExecuteManager>::GetInstance()->GenerateSkillWant(
-        skillInfo, want, userId, requestCode, targetType, arkTSPath, funcName, skillArgs);
-    if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "generate skill want failed");
-        DelayedSingleton<SkillExecuteManager>::GetInstance()->OnLaunchFailed(requestCode, ret);
-        return ret;
-    }
-
-    // 5. Launch target based on type
-    uint32_t skillCallerTokenId = IPCSkeleton::GetCallingTokenID();
-    int32_t launchRet = ERR_OK;
-    if (targetType == AppExecFwk::ExtensionAbilityType::SERVICE) {
-        launchRet = StartExtensionAbilityWithSkill(want, userId, skillCallerTokenId);
-    } else {
-        launchRet = StartAbilityByCallWithSkill(want, nullptr, userId, skillCallerTokenId);
-    }
-    if (launchRet != ERR_OK) {
-        DelayedSingleton<SkillExecuteManager>::GetInstance()->OnLaunchFailed(requestCode, launchRet);
-    }
-    return launchRet;
-}
-
 int32_t AbilityManagerService::ExecuteInAppSkillWithTokenId(const AppExecFwk::SkillExecuteRequest &request,
     const sptr<ISkillExecuteCallback> &callback)
 {

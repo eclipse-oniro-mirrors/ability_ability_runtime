@@ -1463,42 +1463,6 @@ HWTEST_F(AbilityManagerClientBranchThirdTest, DisplayInfoTest_0100, TestSize.Lev
 }
 
 /**
- * @tc.name: ExecuteInAppSkill_0100
- * @tc.desc: Test ExecuteInAppSkill with proxy not connected
- * @tc.type: FUNC
- */
-HWTEST_F(AbilityManagerClientBranchThirdTest, ExecuteInAppSkill_0100, TestSize.Level1)
-{
-    client_->proxy_ = nullptr;
-    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
-        .WillRepeatedly(testing::Return(false));
-    EXPECT_CALL(*mockSystemAbility_, GetSystemAbility(testing::_)).WillRepeatedly(Return(nullptr));
-    SystemAbilityManagerClient::GetInstance().systemAbilityManager_ = mockSystemAbility_;
-
-    auto skillArgs = std::make_shared<AAFwk::WantParams>();
-    sptr<ISkillExecuteCallback> callback = nullptr;
-    auto ret = client_->ExecuteInAppSkill("bundle", "module", "skill", "path", "func", skillArgs, callback);
-    EXPECT_EQ(ret, ABILITY_SERVICE_NOT_CONNECTED);
-}
-
-/**
- * @tc.name: ExecuteInAppSkill_0200
- * @tc.desc: Test ExecuteInAppSkill with proxy connected
- * @tc.type: FUNC
- */
-HWTEST_F(AbilityManagerClientBranchThirdTest, ExecuteInAppSkill_0200, TestSize.Level1)
-{
-    client_->proxy_ = mock_;
-    auto skillArgs = std::make_shared<AAFwk::WantParams>();
-    sptr<ISkillExecuteCallback> callback = nullptr;
-    EXPECT_CALL(*mock_, ExecuteInAppSkill(_, _, _, _, _, _, _))
-        .Times(1)
-        .WillOnce(Return(ERR_OK));
-    auto ret = client_->ExecuteInAppSkill("bundle", "module", "skill", "path", "func", skillArgs, callback);
-    EXPECT_EQ(ret, ERR_OK);
-}
-
-/**
  * @tc.name: ExecuteSkillDone_0100
  * @tc.desc: Test ExecuteSkillDone with proxy not connected
  * @tc.type: FUNC
