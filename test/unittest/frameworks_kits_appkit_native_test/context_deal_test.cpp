@@ -771,5 +771,24 @@ HWTEST_F(ContextDealTest, AppExecFwk_ContextDeal_HapModuleInfoRequestInit_0100, 
     EXPECT_TRUE(context_ != nullptr);
     EXPECT_FALSE(context_->HapModuleInfoRequestInit());
 }
+
+/**
+ * @tc.number: AppExecFwk_ContextDeal_GetBundleResourcePath_0300
+ * @tc.name: GetBundleResourcePath
+ * @tc.desc: Verify GetBundleResourcePath with clone bundle path in PC dual mode.
+ */
+HWTEST_F(ContextDealTest, AppExecFwk_ContextDeal_GetBundleResourcePath_0300, Function | MediumTest | Level1)
+{
+    std::shared_ptr<AbilityInfo> info = std::make_shared<AbilityInfo>();
+    info->resourcePath = "/data/app/el1/bundle/public/+clone-10000+com.ohos.demo/entry.hap";
+    info->bundleName = "com.ohos.demo";
+
+    context_->isCreateBySystemApp_ = false;
+    context_->SetAbilityInfo(info);
+
+    std::string result = context_->GetBundleResourcePath();
+    EXPECT_TRUE(result.find("/data/storage/el1/bundle/") != std::string::npos);
+    EXPECT_TRUE(result.find("+clone-10000+com.ohos.demo") == std::string::npos);
+}
 }   // namespace AppExecFwk
 }   // OHOS

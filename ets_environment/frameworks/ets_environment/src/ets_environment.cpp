@@ -66,8 +66,6 @@ constexpr char SANDBOX_ARK_PROFILE_PATH[] = "/data/storage/ark-profile/";
 constexpr char ARK_PROFILE_SUFFIX[] = ".ap";
 constexpr char MERGE_ABC_PATH[] = "/ets/modules_static.abc";
 constexpr char ABS_DATA_CODE_PATH[] = "/data/app/el1/bundle/public/";
-constexpr char BUNDLE[] = "bundle/";
-constexpr char ABS_CODE_PATH[] = "/data/storage/el1/";
 
 
 using CreateVMETSRuntimeType = ani_status (*)(const ani_options *options, uint32_t version, ani_vm **result);
@@ -1093,8 +1091,14 @@ std::vector<std::string> ETSEnvironment::GetHspPathList()
 
     for (const auto &pluginHspPath : staticPluginHspPathList_) {
         std::string targetPath = pluginHspPath;
-        std::regex patter(std::string(ABS_DATA_CODE_PATH) + bundleName_ + "/");
-        targetPath = std::regex_replace(targetPath, patter, std::string(ABS_CODE_PATH) + std::string(BUNDLE));
+        std::string absDataCodePath = std::string(ABS_DATA_CODE_PATH);
+        if (targetPath.find(absDataCodePath) == 0) {
+            std::string remainingPath = targetPath.substr(absDataCodePath.length());
+            size_t slashPos = remainingPath.find('/');
+            if (slashPos != std::string::npos) {
+                targetPath = std::string(BUNDLE_INSTALL_PATH) + remainingPath.substr(slashPos + 1);
+            }
+        }
         hspPathList.push_back(targetPath);
     }
 

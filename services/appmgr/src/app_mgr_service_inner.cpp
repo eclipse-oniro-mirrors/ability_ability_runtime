@@ -2268,15 +2268,9 @@ void AppMgrServiceInner::LoadAbility(std::shared_ptr<AbilityInfo> abilityInfo, s
             auto hostBundleName = want->GetStringParam(UIEXTENSION_HOST_BUNDLENAME);
             auto userId = want->GetIntParam(UIEXTENSION_HOST_UID, -1) / BASE_USER_RANGE;
             appInfo->bundleName = hostBundleName;
-            std::string absPrefix = std::string(ABS_CODE_PATH) + std::string(FILE_SEPARATOR) + hostBundleName;
             if (!hostBundleName.empty()) {
-                auto replaceAbsPrefix = [&absPrefix](std::string &path) {
-                    if (path.find(absPrefix) == 0) {
-                        path.replace(0, absPrefix.length(), LOCAL_CODE_PATH);
-                    }
-                };
-                replaceAbsPrefix(abilityInfo->hapPath);
-                replaceAbsPrefix(abilityInfo->resourcePath);
+                abilityInfo->hapPath = GetStoragePath(abilityInfo->hapPath);
+                abilityInfo->resourcePath = GetStoragePath(abilityInfo->resourcePath);
             }
             GetBundleAndHapInfo(*abilityInfo, appInfo, bundleInfo, hapModuleInfo, appIndex);
             appInfo = std::make_shared<ApplicationInfo>(bundleInfo.applicationInfo);
@@ -13441,6 +13435,23 @@ void AppMgrServiceInner::CheckRenderAttachTimeout(std::shared_ptr<RenderRecord> 
         pid, elapsedMs);
     AppMgrEventUtil::SendRenderProcessStartFailedEvent(renderRecord,
         ProcessStartFailedReason::ATTACH_TIMEOUT, elapsedMs);
+}
+
+std::string AppMgrServiceInner::GetStoragePath(const std::string& hapPath) {
+    if (hapPath.empty()) {
+        return hapPath;
+    }
+    std::string absPrefix = std::string(ABS_CODE_PATH) + std::string(FILE_SEPARATOR);
+    size_t prefixPos = hapPath.find(absPrefix);
+    if (prefixPos != 0) {
+        return hapPath;
+    }
+    std::string loadPath = hapPath.substr(prefixPos + absPrefix.length());
+    size_t slashPos = loadPath.find(std::string(FILE_SEPARATOR));
+    if (slashPos == std::string::npos) {
+        return std::string(LOCAL_CODE_PATH);
+    }
+    return std::string(LOCAL_CODE_PATH) + loadPath.substr(slashPos);
 }
 
 void AppMgrServiceInner::HandleForegroundAbilityDied(
