@@ -294,22 +294,20 @@ std::shared_ptr<StartAbilityInfo> StartAbilityInfo::CreateStartAbilityInfo(const
     TAG_LOGD(AAFwkTag::ABILITYMGR, "abilityInfo customProcess: %{public}s", request->customProcess.c_str());
     if (request->abilityInfo.name.empty() || request->abilityInfo.bundleName.empty()) {
         // try to find extension
-        std::vector<AppExecFwk::ExtensionAbilityInfo> extensionInfos;
+        AppExecFwk::ExtensionAbilityInfo extensionInfo;
+        ErrCode res = ERR_OK;
         if (appIndex == 0) {
-            IN_PROCESS_CALL_WITHOUT_RET(bms->QueryExtensionAbilityInfos(want, abilityInfoFlag,
-                userId, extensionInfos));
+            res = IN_PROCESS_CALL(bms->QueryExtensionAbilityInfoOptimal(want, abilityInfoFlag,
+                userId, extensionInfo));
         } else {
-            IN_PROCESS_CALL_WITHOUT_RET(bms->GetSandboxExtAbilityInfos(want, appIndex,
-                abilityInfoFlag, userId, extensionInfos));
+            res = IN_PROCESS_CALL(bms->GetSandboxExtAbilityInfoOptimal(want, appIndex,
+                abilityInfoFlag, userId, extensionInfo));
         }
-        ExtensionQueryEventUtil::ReportExtensionQueryMultiResult(extensionInfos, appIndex != 0);
-        if (extensionInfos.size() <= 0) {
+        if (res != ERR_OK) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "extensionInfo empty");
             request->status = RESOLVE_ABILITY_ERR;
             return request;
         }
-
-        AppExecFwk::ExtensionAbilityInfo extensionInfo = extensionInfos.front();
         if (extensionInfo.bundleName.empty() || extensionInfo.name.empty()) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "extensionInfo empty.");
             request->status = RESOLVE_ABILITY_ERR;
@@ -337,27 +335,24 @@ std::shared_ptr<StartAbilityInfo> StartAbilityInfo::CreateStartExtensionInfo(con
         return abilityInfo;
     }
 
-    std::vector<AppExecFwk::ExtensionAbilityInfo> extensionInfos;
+    AppExecFwk::ExtensionAbilityInfo extensionInfo;
+    ErrCode res = ERR_OK;
     if (appIndex == 0) {
         if (AbilityRuntime::StartupUtil::IsStartPlugin(want)) {
-            AppExecFwk::ExtensionAbilityInfo pluginExtensionInfo;
-            IN_PROCESS_CALL_WITHOUT_RET(bms->GetPluginExtensionInfo(hostBundleName, want, userId, pluginExtensionInfo));
-            extensionInfos.push_back(pluginExtensionInfo);
+            res = IN_PROCESS_CALL(bms->GetPluginExtensionInfo(hostBundleName, want, userId, extensionInfo));
         } else {
-            IN_PROCESS_CALL_WITHOUT_RET(bms->QueryExtensionAbilityInfos(want, abilityInfoFlag, userId, extensionInfos));
+            res = IN_PROCESS_CALL(bms->QueryExtensionAbilityInfoOptimal(want, abilityInfoFlag, userId, extensionInfo));
         }
     } else {
-        IN_PROCESS_CALL_WITHOUT_RET(bms->GetSandboxExtAbilityInfos(want, appIndex,
-            abilityInfoFlag, userId, extensionInfos));
+        res = IN_PROCESS_CALL(bms->GetSandboxExtAbilityInfoOptimal(
+            want, appIndex, abilityInfoFlag, userId, extensionInfo));
     }
-    ExtensionQueryEventUtil::ReportExtensionQueryMultiResult(extensionInfos, appIndex != 0);
-    if (extensionInfos.size() <= 0) {
+    if (res != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "extensionInfo empty");
         abilityInfo->status = RESOLVE_ABILITY_ERR;
         return abilityInfo;
     }
-
-    AppExecFwk::ExtensionAbilityInfo extensionInfo = extensionInfos.front();
+    
     if (extensionInfo.bundleName.empty() || extensionInfo.name.empty()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "extensionInfo empty");
         abilityInfo->status = RESOLVE_ABILITY_ERR;
