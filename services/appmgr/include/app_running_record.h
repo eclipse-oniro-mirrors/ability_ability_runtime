@@ -551,7 +551,7 @@ public:
      * @param token, the unique identification to update the ability.
      * @param state, ability status that needs to be updated.
      * @param isFromScreenOffBackground Whether from screen off background.
-     * @param callerInfo The caller info including uid, bundle name and isCallBySCB.
+     * @param callerInfo The caller info including uid and bundle name.
      *
      * @return
      */
@@ -1369,19 +1369,12 @@ private:
      * AbilityForeground, Handling the ability process when switching to the foreground.
      *
      * @param ability, the ability info.
-     * @param callerInfo The caller info including uid, bundle name and isCallBySCB.
+     * @param callerInfo The caller info including uid and bundle name.
      *
      * @return
      */
     void AbilityForeground(const std::shared_ptr<AbilityRunningRecord> &ability,
         const UiAbilityLastCallerInfo &callerInfo = {});
-
-    /**
-     * Update last UIAbility caller info, record caller or SCB(launcher) as last caller.
-     *
-     * @param callerInfo The caller info including uid, bundle name and isCallBySCB.
-     */
-    void UpdateLastCallerInfo(const UiAbilityLastCallerInfo &callerInfo);
 
     /**
      * Handle foreground state change when application is already foregrounded,
@@ -1521,8 +1514,6 @@ private:
     int32_t lastUIAbilityCallerUid_ = -1;
     std::string lastUIAbilityCallerName_;
     mutable ffrt::mutex lastUIAbilityCallerLock_;
-    int32_t scbUid_ = -1;
-    mutable ffrt::mutex scbUidLock_;
     int32_t exitReason_ = 0;
     std::atomic_int32_t pssValue_ = 0;
     std::atomic<bool> isUIExtensionPreload_ = false;

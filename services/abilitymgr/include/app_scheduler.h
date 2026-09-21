@@ -268,7 +268,7 @@ public:
      * move ability to foreground.
      *
      * @param token, the token of ability.
-     * @param callerInfo, the caller info including uid, bundle name and isCallBySCB.
+     * @param callerInfo, the caller info including uid and bundle name.
      */
     void MoveToForeground(const sptr<IRemoteObject> &token, const AppExecFwk::UiAbilityLastCallerInfo &callerInfo = {});
 

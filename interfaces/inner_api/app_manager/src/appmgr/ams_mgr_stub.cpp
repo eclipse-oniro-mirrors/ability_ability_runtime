@@ -304,7 +304,6 @@ ErrCode AmsMgrStub::HandleUpdateAbilityState(MessageParcel &data, MessageParcel 
     UiAbilityLastCallerInfo callerInfo;
     callerInfo.callerUid = data.ReadInt32();
     callerInfo.callerBundleName = data.ReadString();
-    callerInfo.isCallBySCB = data.ReadBool();
     UpdateAbilityState(token, static_cast<AbilityState>(state), isFromScreenOffBackground, callerInfo);
     return NO_ERROR;
 }
