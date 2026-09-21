@@ -398,7 +398,6 @@ public:
     {
         return E_OK;
     }
-
 };
 
 bool StorageManagerServiceMock::isZero = true;
