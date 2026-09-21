@@ -100,8 +100,23 @@ ErrCode UIServiceExtensionContext::StartAbilityByType(
     }
 
     auto errorFired = std::make_shared<std::atomic<bool>>(false);
-    OHOS::Ace::ModalUIExtensionCallbacks callback;
+    OHOS::Ace::ModalUIExtensionCallbacks callback =
+        SetupModalUIExtensionCallbacks(uiExtensionCallback, errorFired);
     OHOS::Ace::ModalUIExtensionConfig config;
+    int32_t sessionId = uiContent->CreateModalUIExtension(want, callback, config);
+    if (sessionId == 0) {
+        TAG_LOGE(AAFwkTag::UISERVC_EXT, "sessionId zero");
+        return ERR_INVALID_VALUE;
+    }
+    uiExtensionCallback->SetUIContent(uiContent);
+    uiExtensionCallback->SetSessionId(sessionId);
+    return ERR_OK;
+}
+
+OHOS::Ace::ModalUIExtensionCallbacks UIServiceExtensionContext::SetupModalUIExtensionCallbacks(
+    std::shared_ptr<UIExtensionCallback> uiExtensionCallback, std::shared_ptr<std::atomic<bool>> errorFired)
+{
+    OHOS::Ace::ModalUIExtensionCallbacks callback;
     callback.onError = [uiExtensionCallback](int32_t arg, const std::string &str1,
         const std::string &str2) {
         uiExtensionCallback->OnError(arg);
@@ -147,14 +162,7 @@ ErrCode UIServiceExtensionContext::StartAbilityByType(
             uiExtensionCallback->OnRequestFailure(elementName, failureCode, failureMsg);
         }
     };
-    int32_t sessionId = uiContent->CreateModalUIExtension(want, callback, config);
-    if (sessionId == 0) {
-        TAG_LOGE(AAFwkTag::UISERVC_EXT, "sessionId zero");
-        return ERR_INVALID_VALUE;
-    }
-    uiExtensionCallback->SetUIContent(uiContent);
-    uiExtensionCallback->SetSessionId(sessionId);
-    return ERR_OK;
+    return callback;
 }
 
 ErrCode UIServiceExtensionContext::ConnectServiceExtensionAbility(

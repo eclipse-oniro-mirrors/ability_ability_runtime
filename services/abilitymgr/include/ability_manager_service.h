@@ -3462,6 +3462,9 @@ private:
 
     ErrCode SetPickerElementNameAndParams(const sptr<SessionInfo> &extensionSessionInfo, int32_t userId);
 
+    ErrCode ResolvePickerByTargetType(const sptr<SessionInfo> &extensionSessionInfo,
+        const std::string &targetType, int32_t userId);
+
     void SetAutoFillElementName(const sptr<SessionInfo> &extensionSessionInfo);
 
     /**

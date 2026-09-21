@@ -43,6 +43,7 @@ namespace {
 constexpr int32_t INDEX_ZERO = 0;
 constexpr int32_t INDEX_ONE = 1;
 constexpr int32_t INDEX_TWO = 2;
+constexpr int32_t INDEX_THREE = 3;
 constexpr int32_t ERROR_CODE_ONE = 1;
 constexpr int32_t ERROR_CODE_TWO = 2;
 constexpr size_t ARGC_ZERO = 0;
@@ -263,6 +264,14 @@ private:
             TAG_LOGD(AAFwkTag::UISERVC_EXT, "JSUIServiceExtensionContext OnStartAbilityByType");
             *innerErrCode = context->StartAbilityByType(type, wantParam, callback);
         };
+        return ScheduleStartAbilityByType(env, info, callback, innerErrCode, std::move(execute));
+    }
+
+    napi_value ScheduleStartAbilityByType(napi_env env, NapiCallbackInfo& info,
+        const std::shared_ptr<JsUIExtensionCallback>& callback,
+        const std::shared_ptr<ErrCode>& innerErrCode,
+        NapiAsyncTask::ExecuteCallback execute)
+    {
         napi_value lastParam = (info.argc > ARGC_THREE) ? info.argv[INDEX_THREE] : nullptr;
         napi_valuetype lastParamType = napi_undefined;
         if (lastParam != nullptr && napi_typeof(env, lastParam, &lastParamType) != napi_ok) {

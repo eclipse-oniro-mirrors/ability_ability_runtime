@@ -582,8 +582,6 @@ export default class UIAbilityContext extends Context {
     });
     taskpool.execute((): void => {
       this.nativeStartAbilityByType(type, wantParam, startCallback, asyncCall);
-    }).then(() => {}, (err: Error): void => {
-      asyncCall(err as BusinessError);
     });
   }
 
@@ -633,8 +631,6 @@ hideAbility(): Promise<void> {
       });
       taskpool.execute((): void => {
         this.nativeStartAbilityByType(type, wantParam, startCallback, myCall);
-      }).then(() => {}, (err: Error): void => {
-        myCall(err as BusinessError);
       });
     });
     return p;

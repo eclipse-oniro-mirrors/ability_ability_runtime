@@ -3945,5 +3945,45 @@ HWTEST_F(AbilityManagerServiceFirstTest, HandlePendingWantDeathCleanup_002, Test
     EXPECT_NO_FATAL_FAILURE(helper->HandlePendingWantDeathCleanup("com.test.bundle", 100));
 }
 
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_ResolvePickerByTargetType_0100
+ * @tc.desc: Test ResolvePickerByTargetType with targetType not in pickerMap
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ResolvePickerByTargetType_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ResolvePickerByTargetType_0100 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    sptr<SessionInfo> sessionInfo = new (std::nothrow) SessionInfo();
+    ASSERT_NE(sessionInfo, nullptr);
+    std::string targetType = "invalid_target_type_for_test";
+    int32_t userId = USER_ID_U100;
+    auto ret = abilityMs->ResolvePickerByTargetType(sessionInfo, targetType, userId);
+    EXPECT_EQ(ret, ERR_INVALID_EXTENSION_TYPE);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ResolvePickerByTargetType_0100 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_ResolvePickerByTargetType_0200
+ * @tc.desc: Test ResolvePickerByTargetType with targetType in pickerMap but bms unavailable
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ResolvePickerByTargetType_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ResolvePickerByTargetType_0200 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    std::string targetType = "test_picker_type";
+    auto& pickerMap = AmsConfigurationParameter::GetInstance().picker_;
+    pickerMap[targetType] = "picker_test";
+    sptr<SessionInfo> sessionInfo = new (std::nothrow) SessionInfo();
+    ASSERT_NE(sessionInfo, nullptr);
+    int32_t userId = USER_ID_U100;
+    auto ret = abilityMs->ResolvePickerByTargetType(sessionInfo, targetType, userId);
+    EXPECT_EQ(ret, ABILITY_SERVICE_NOT_CONNECTED);
+    pickerMap.erase(targetType);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ResolvePickerByTargetType_0200 end");
+}
 } // namespace AAFwk
 } // namespace OHOS

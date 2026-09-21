@@ -905,6 +905,25 @@ void EtsUIExtensionContentSession::StartAbilityByType(
             EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER), nullptr);
         return;
     }
+    if (uiWindow_ == nullptr || uiWindow_->GetUIContent() == nullptr) {
+        AppExecFwk::AsyncCallback(env, asyncCallback,
+            EtsErrorUtil::CreateError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_MODAL_UI_EXTENSION_FAILED)), nullptr);
+        return;
+    }
+#ifdef SUPPORT_SCREEN
+    CreateAndSetupModalUIExtension(env, vm, startCallback, asyncCallback, want);
+#else
+    AppExecFwk::AsyncCallback(env, asyncCallback,
+        EtsErrorUtil::CreateError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_MODAL_UI_EXTENSION_FAILED)), nullptr);
+#endif // SUPPORT_SCREEN
+}
+
+#ifdef SUPPORT_SCREEN
+void EtsUIExtensionContentSession::CreateAndSetupModalUIExtension(
+    ani_env *env, ani_vm *vm, ani_object startCallback, ani_object asyncCallback, const AAFwk::Want &want)
+{
     std::shared_ptr<EtsUIExtensionCallback> uiExtensionCallback = std::make_shared<EtsUIExtensionCallback>(vm);
     uiExtensionCallback->SetEtsCallbackObject(startCallback);
     ani_ref completionHandler;
@@ -913,14 +932,24 @@ void EtsUIExtensionContentSession::StartAbilityByType(
     if (!isUndefined && completionHandler != nullptr) {
         uiExtensionCallback->SetCompletionHandler(env, static_cast<ani_object>(completionHandler));
     }
-    if (uiWindow_ == nullptr || uiWindow_->GetUIContent() == nullptr) {
+    auto errorFired = std::make_shared<std::atomic<bool>>(false);
+    Ace::ModalUIExtensionCallbacks callback = SetupModalUIExtensionCallbacks(uiExtensionCallback, errorFired);
+    Ace::ModalUIExtensionConfig config;
+    int32_t sessionId = uiWindow_->GetUIContent()->CreateModalUIExtension(want, callback, config);
+    if (sessionId == 0) {
         AppExecFwk::AsyncCallback(env, asyncCallback,
             EtsErrorUtil::CreateError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
                 GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_MODAL_UI_EXTENSION_FAILED)), nullptr);
-        return;
+    } else {
+        uiExtensionCallback->SetUIContent(uiWindow_->GetUIContent());
+        uiExtensionCallback->SetSessionId(sessionId);
+        uiExtensionCallback->SetAsyncCallback(env, asyncCallback);
     }
-#ifdef SUPPORT_SCREEN
-    auto errorFired = std::make_shared<std::atomic<bool>>(false);
+}
+
+Ace::ModalUIExtensionCallbacks EtsUIExtensionContentSession::SetupModalUIExtensionCallbacks(
+    std::shared_ptr<EtsUIExtensionCallback> uiExtensionCallback, std::shared_ptr<std::atomic<bool>> errorFired)
+{
     Ace::ModalUIExtensionCallbacks callback;
     callback.onError = [uiExtensionCallback](int arg, const std::string &str1,
         const std::string &str2) {
@@ -947,23 +976,9 @@ void EtsUIExtensionContentSession::StartAbilityByType(
         }
         uiExtensionCallback->OnRelease(arg);
     };
-    Ace::ModalUIExtensionConfig config;
-    int32_t sessionId = uiWindow_->GetUIContent()->CreateModalUIExtension(want, callback, config);
-    if (sessionId == 0) {
-        AppExecFwk::AsyncCallback(env, asyncCallback,
-            EtsErrorUtil::CreateError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-                GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_MODAL_UI_EXTENSION_FAILED)), nullptr);
-    } else {
-        uiExtensionCallback->SetUIContent(uiWindow_->GetUIContent());
-        uiExtensionCallback->SetSessionId(sessionId);
-        uiExtensionCallback->SetAsyncCallback(env, asyncCallback);
-    }
-#else
-    AppExecFwk::AsyncCallback(env, asyncCallback,
-        EtsErrorUtil::CreateError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-            GetInnerErrorMsg(AbilityInnerErrorMsg::CREATE_MODAL_UI_EXTENSION_FAILED)), nullptr);
-#endif // SUPPORT_SCREEN
+    return callback;
 }
+#endif
 
 void EtsUIExtensionContentSession::SetWindowPrivacyMode(
     ani_env *env, ani_object obj, ani_boolean isPrivacyMode, ani_object callbackObj)

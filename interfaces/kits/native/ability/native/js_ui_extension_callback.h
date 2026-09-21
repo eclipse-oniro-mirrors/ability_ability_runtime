@@ -47,6 +47,9 @@ private:
     std::unique_ptr<NativeReference> onRequestSuccess_ = nullptr;
     std::unique_ptr<NativeReference> onRequestFailure_ = nullptr;
     void FreeNativeReference(std::unique_ptr<NativeReference>& reference);
+    void ReleaseJsCallbackObjectAsync();
+    void ProcessOnErrorComplete(int32_t number);
+    void ResolveAsyncResult();
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

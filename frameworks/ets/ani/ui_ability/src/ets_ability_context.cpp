@@ -1679,29 +1679,9 @@ void EtsAbilityContext::OnStartAbilityByType(
     ani_object startCallback, ani_object asyncCallback)
 {
     std::string type;
-    if (!AppExecFwk::GetStdString(env, aniType, type)) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "parse type failed");
-        EtsErrorUtil::ThrowInvalidParamError(env, "Parse param type failed, type must be string.");
-        AppExecFwk::AsyncCallback(env, asyncCallback,
-            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM), nullptr);
-        return;
-    }
-
     AAFwk::WantParams wantParam;
-    if (!AppExecFwk::UnwrapWantParams(env, aniWantParam, wantParam)) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "parse wantParam failed");
-        EtsErrorUtil::ThrowInvalidParamError(env, "Parse param want failed, want must be Want.");
-        AppExecFwk::AsyncCallback(env, asyncCallback,
-            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM), nullptr);
-        return;
-    }
-
     ani_vm *vm = nullptr;
-    if (env->GetVM(&vm) != ANI_OK) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "get vm failed");
-        EtsErrorUtil::ThrowInvalidParamError(env, "Internal error.");
-        AppExecFwk::AsyncCallback(env, asyncCallback,
-            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER), nullptr);
+    if (!ParseStartAbilityByTypeParams(env, aniType, aniWantParam, asyncCallback, type, wantParam, vm)) {
         return;
     }
     ErrCode innerErrCode = ERR_OK;
@@ -1729,9 +1709,37 @@ void EtsAbilityContext::OnStartAbilityByType(
     if (innerErrCode == ERR_OK) {
         callback->SetAsyncCallback(env, asyncCallback);
     } else {
-        AppExecFwk::AsyncCallback(env, asyncCallback,
-            EtsErrorUtil::CreateErrorByNativeErr(env, innerErrCode), nullptr);
+        AppExecFwk::AsyncCallback(
+            env, asyncCallback, EtsErrorUtil::CreateErrorByNativeErr(env, innerErrCode), nullptr);
     }
+}
+
+bool EtsAbilityContext::ParseStartAbilityByTypeParams(ani_env *env, ani_string aniType,
+    ani_ref aniWantParam, ani_object asyncCallback, std::string &type,
+    AAFwk::WantParams &wantParam, ani_vm *&vm)
+{
+    if (!AppExecFwk::GetStdString(env, aniType, type)) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "parse type failed");
+        EtsErrorUtil::ThrowInvalidParamError(env, "Parse param type failed, type must be string.");
+        AppExecFwk::AsyncCallback(env, asyncCallback,
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM), nullptr);
+        return false;
+    }
+    if (!AppExecFwk::UnwrapWantParams(env, aniWantParam, wantParam)) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "parse wantParam failed");
+        EtsErrorUtil::ThrowInvalidParamError(env, "Parse param want failed, want must be Want.");
+        AppExecFwk::AsyncCallback(env, asyncCallback,
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM), nullptr);
+        return false;
+    }
+    if (env->GetVM(&vm) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "get vm failed");
+        EtsErrorUtil::ThrowInvalidParamError(env, "Internal error.");
+        AppExecFwk::AsyncCallback(env, asyncCallback,
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER), nullptr);
+        return false;
+    }
+    return true;
 }
 
 void EtsAbilityContext::CreateOnAtomicRequestSuccessResultCallback(ani_env *env, ani_ref refCompletionHandler,

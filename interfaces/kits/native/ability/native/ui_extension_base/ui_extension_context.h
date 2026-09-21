@@ -358,6 +358,9 @@ private:
     std::mutex uiExtensionMutex_;
 
     Ace::ModalUIExtensionCallbacks SetupModalCallbacks(std::shared_ptr<UIExtensionModalCallback> modalCallbackWeak);
+    Ace::ModalUIExtensionCallbacks SetupModalUIExtensionCallbacks(
+        const std::shared_ptr<JsUIExtensionCallback> &uiExtensionCallbacks,
+        std::shared_ptr<std::atomic<bool>> errorFired);
 };
 }  // namespace AbilityRuntime
 }  // namespace OHOS

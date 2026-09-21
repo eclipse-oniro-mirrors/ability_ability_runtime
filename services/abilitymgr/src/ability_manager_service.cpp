@@ -4927,53 +4927,59 @@ ErrCode AbilityManagerService::SetPickerElementNameAndParams(const sptr<SessionI
     if (extensionSessionInfo->want.GetBundleNameRef().empty() &&
         extensionSessionInfo->want.GetAbilityNameRef().empty() &&
         extensionSessionInfo->want.HasParameter(UIEXTENSION_TARGET_TYPE_KEY)) {
-        std::string abilityName;
-        std::string bundleName;
-        std::string pickerType;
-        std::vector<AppExecFwk::ExtensionAbilityInfo> extensionInfos;
-        auto pickerMap = AmsConfigurationParameter::GetInstance().GetPickerMap();
-        auto it = pickerMap.find(targetType);
-        if (it == pickerMap.end()) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "can not find targetType:%{public}s", targetType.c_str());
-            return ERR_INVALID_EXTENSION_TYPE;
-        }
-        pickerType = it->second;
-        auto bms = AbilityUtil::GetBundleManagerHelper();
-        if (bms == nullptr) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "bms is nullptr");
-            return ABILITY_SERVICE_NOT_CONNECTED;
-        }
-        int32_t validUserId = GetValidUserId(userId);
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "targetType: %{public}s, pickerType: %{public}s, userId: %{public}d",
-            targetType.c_str(), pickerType.c_str(), validUserId);
-        auto flags = static_cast<uint32_t>(GetExtensionAbilityInfoFlag::GET_EXTENSION_ABILITY_INFO_WITH_PERMISSION) |
-            static_cast<uint32_t>(GetExtensionAbilityInfoFlag::GET_EXTENSION_ABILITY_INFO_BY_TYPE_NAME);
-        auto ret = IN_PROCESS_CALL(bms->QueryExtensionAbilityInfosOnlyWithTypeName(pickerType,
-            flags,
-            validUserId,
-            extensionInfos));
-        if (ret != ERR_OK) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "queryExtensionAbilityInfosOnlyWithTypeName failed");
-            return RESOLVE_ABILITY_ERR;
-        }
-        if (extensionInfos.empty()) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "extensionInfos is empty");
-            return RESOLVE_ABILITY_ERR;
-        }
-        abilityName = extensionInfos[0].name;
-        bundleName = extensionInfos[0].bundleName;
-        TAG_LOGI(AAFwkTag::ABILITYMGR,
-            "abilityName: %{public}s, bundleName: %{public}s", abilityName.c_str(), bundleName.c_str());
-        extensionSessionInfo->want.SetElementName(bundleName, abilityName);
-        WantParams &parameters = const_cast<WantParams &>(extensionSessionInfo->want.GetParams());
-        parameters.SetParam(UIEXTENSION_TYPE_KEY, AAFwk::String::Box(pickerType));
-
-        if (!JudgeSystemParamsForPicker(parameters)) {
-            TAG_LOGI(AAFwkTag::ABILITYMGR, "parames include systemApi but not a systemAPP");
-            extensionSessionInfo->want.RemoveParam(SCREENCONFIG_SCREENMODE);
-        }
-        extensionSessionInfo->want.SetParams(parameters);
+        return ResolvePickerByTargetType(extensionSessionInfo, targetType, userId);
     }
+    return ERR_OK;
+}
+
+ErrCode AbilityManagerService::ResolvePickerByTargetType(
+    const sptr<SessionInfo> &extensionSessionInfo, const std::string &targetType, int32_t userId)
+{
+    std::string abilityName;
+    std::string bundleName;
+    std::string pickerType;
+    std::vector<AppExecFwk::ExtensionAbilityInfo> extensionInfos;
+    auto pickerMap = AmsConfigurationParameter::GetInstance().GetPickerMap();
+    auto it = pickerMap.find(targetType);
+    if (it == pickerMap.end()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "can not find targetType:%{public}s", targetType.c_str());
+        return ERR_INVALID_EXTENSION_TYPE;
+    }
+    pickerType = it->second;
+    auto bms = AbilityUtil::GetBundleManagerHelper();
+    if (bms == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "bms is nullptr");
+        return ABILITY_SERVICE_NOT_CONNECTED;
+    }
+    int32_t validUserId = GetValidUserId(userId);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "targetType: %{public}s, pickerType: %{public}s, userId: %{public}d",
+        targetType.c_str(), pickerType.c_str(), validUserId);
+    auto flags = static_cast<uint32_t>(GetExtensionAbilityInfoFlag::GET_EXTENSION_ABILITY_INFO_WITH_PERMISSION) |
+        static_cast<uint32_t>(GetExtensionAbilityInfoFlag::GET_EXTENSION_ABILITY_INFO_BY_TYPE_NAME);
+    auto ret = IN_PROCESS_CALL(bms->QueryExtensionAbilityInfosOnlyWithTypeName(pickerType,
+        flags,
+        validUserId,
+        extensionInfos));
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "queryExtensionAbilityInfosOnlyWithTypeName failed");
+        return RESOLVE_ABILITY_ERR;
+    }
+    if (extensionInfos.empty()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "extensionInfos is empty");
+        return RESOLVE_ABILITY_ERR;
+    }
+    abilityName = extensionInfos[0].name;
+    bundleName = extensionInfos[0].bundleName;
+    TAG_LOGI(AAFwkTag::ABILITYMGR,
+        "abilityName: %{public}s, bundleName: %{public}s", abilityName.c_str(), bundleName.c_str());
+    extensionSessionInfo->want.SetElementName(bundleName, abilityName);
+    WantParams &parameters = const_cast<WantParams &>(extensionSessionInfo->want.GetParams());
+    parameters.SetParam(UIEXTENSION_TYPE_KEY, AAFwk::String::Box(pickerType));
+    if (!JudgeSystemParamsForPicker(parameters)) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "parames include systemApi but not a systemAPP");
+        extensionSessionInfo->want.RemoveParam(SCREENCONFIG_SCREENMODE);
+    }
+    extensionSessionInfo->want.SetParams(parameters);
     return ERR_OK;
 }
 

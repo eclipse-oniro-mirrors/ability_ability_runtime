@@ -3151,6 +3151,30 @@ napi_value JsAbilityContext::OnStartAbilityByType(napi_env env, NapiCallbackInfo
             TAG_LOGW(AAFwkTag::CONTEXT, "StartAbilityByType not supported without screen");
 #endif
         };
+    return DispatchStartAbilityByTypeResult(env, info, callback, execute, innerErrCode);
+}
+
+void JsAbilityContext::ProcessStartAbilityByTypeComplete(napi_env env,
+    std::shared_ptr<ErrCode> innerErrCode, std::shared_ptr<JsUIExtensionCallback> callback)
+{
+    HandleScope handleScope(env);
+    if (*innerErrCode == ERR_OK) {
+        // Hold — OnAbilityByTypeResult will call completion callback
+        // Hold — OnAbilityByTypeResult will resolve/reject
+    } else if (*innerErrCode == static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT)) {
+        callback->RejectAsyncResult(
+            static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT),
+            GetErrorMsg(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
+    } else {
+        callback->RejectAsyncResult(static_cast<int32_t>(GetJsErrorCodeByNativeError(*innerErrCode)),
+            GetErrorMsgByNativeError(*innerErrCode));
+    }
+}
+
+napi_value JsAbilityContext::DispatchStartAbilityByTypeResult(napi_env env, NapiCallbackInfo& info,
+    std::shared_ptr<JsUIExtensionCallback> callback, NapiAsyncTask::ExecuteCallback& execute,
+    std::shared_ptr<ErrCode> innerErrCode)
+{
     napi_value lastParam = (info.argc > ARGC_THREE) ? info.argv[INDEX_THREE] : nullptr;
     napi_valuetype lastParamType = napi_undefined;
     if (lastParam != nullptr && napi_typeof(env, lastParam, &lastParamType) != napi_ok) {
@@ -3163,17 +3187,7 @@ napi_value JsAbilityContext::OnStartAbilityByType(napi_env env, NapiCallbackInfo
         }
         NapiAsyncTask::CompleteCallback complete =
             [innerErrCode, callback](napi_env env, NapiAsyncTask& task, int32_t status) {
-                HandleScope handleScope(env);
-                if (*innerErrCode == ERR_OK) {
-                    // Hold — OnAbilityByTypeResult will call completion callback
-                } else if (*innerErrCode == static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT)) {
-                    callback->RejectAsyncResult(
-                        static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT),
-                        GetErrorMsg(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
-                } else {
-                    callback->RejectAsyncResult(static_cast<int32_t>(GetJsErrorCodeByNativeError(*innerErrCode)),
-                        GetErrorMsgByNativeError(*innerErrCode));
-                }
+                ProcessStartAbilityByTypeComplete(env, innerErrCode, callback);
             };
         napi_get_undefined(env, &result);
         NapiAsyncTask::ScheduleHighQos("JsAbilityContext::OnStartAbilityByType",
@@ -3192,17 +3206,7 @@ napi_value JsAbilityContext::OnStartAbilityByType(napi_env env, NapiCallbackInfo
     callback->SetDeferred(deferred);
     NapiAsyncTask::CompleteCallback complete =
         [innerErrCode, callback](napi_env env, NapiAsyncTask& task, int32_t status) {
-            HandleScope handleScope(env);
-            if (*innerErrCode == ERR_OK) {
-                // Hold — OnAbilityByTypeResult will resolve/reject
-            } else if (*innerErrCode == static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT)) {
-                callback->RejectAsyncResult(
-                    static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT),
-                    GetErrorMsg(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
-            } else {
-                callback->RejectAsyncResult(static_cast<int32_t>(GetJsErrorCodeByNativeError(*innerErrCode)),
-                    GetErrorMsgByNativeError(*innerErrCode));
-            }
+            ProcessStartAbilityByTypeComplete(env, innerErrCode, callback);
         };
     NapiAsyncTask::ScheduleHighQos("JsAbilityContext::OnStartAbilityByType",
         env, std::make_unique<NapiAsyncTask>(static_cast<napi_deferred>(nullptr),

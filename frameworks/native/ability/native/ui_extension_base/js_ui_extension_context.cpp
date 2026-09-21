@@ -1711,6 +1711,30 @@ napi_value JsUIExtensionContext::OnStartAbilityByType(napi_env env, NapiCallback
             TAG_LOGW(AAFwkTag::UI_EXT, "StartAbilityByType not supported without screen");
 #endif
         };
+    return DispatchStartAbilityByTypeResult(env, info, callback, execute, innerErrCode);
+}
+
+void JsUIExtensionContext::ProcessStartAbilityByTypeComplete(napi_env env,
+    std::shared_ptr<ErrCode> innerErrCode, std::shared_ptr<JsUIExtensionCallback> callback)
+{
+    HandleScope handleScope(env);
+    if (*innerErrCode == ERR_OK) {
+        // Hold — OnAbilityByTypeResult will call completion callback
+        // Hold — OnAbilityByTypeResult will resolve/reject
+    } else if (*innerErrCode == static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT)) {
+        callback->RejectAsyncResult(
+            static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT),
+            GetErrorMsg(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
+    } else {
+        callback->RejectAsyncResult(static_cast<int32_t>(GetJsErrorCodeByNativeError(*innerErrCode)),
+            GetErrorMsgByNativeError(*innerErrCode));
+    }
+}
+
+napi_value JsUIExtensionContext::DispatchStartAbilityByTypeResult(napi_env env, NapiCallbackInfo& info,
+    std::shared_ptr<JsUIExtensionCallback> callback, NapiAsyncTask::ExecuteCallback& execute,
+    std::shared_ptr<ErrCode> innerErrCode)
+{
     napi_value lastParam = (info.argc > ARGC_THREE) ? info.argv[INDEX_THREE] : nullptr;
     napi_valuetype lastParamType = napi_undefined;
     if (lastParam != nullptr && napi_typeof(env, lastParam, &lastParamType) != napi_ok) {
@@ -1723,17 +1747,7 @@ napi_value JsUIExtensionContext::OnStartAbilityByType(napi_env env, NapiCallback
         }
         NapiAsyncTask::CompleteCallback complete =
             [innerErrCode, callback](napi_env env, NapiAsyncTask& task, int32_t status) {
-                HandleScope handleScope(env);
-                if (*innerErrCode == ERR_OK) {
-                    // Hold — OnAbilityByTypeResult will call completion callback
-                } else if (*innerErrCode == static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT)) {
-                    callback->RejectAsyncResult(
-                        static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT),
-                        GetErrorMsg(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
-                } else {
-                    callback->RejectAsyncResult(static_cast<int32_t>(GetJsErrorCodeByNativeError(*innerErrCode)),
-                        GetErrorMsgByNativeError(*innerErrCode));
-                }
+                ProcessStartAbilityByTypeComplete(env, innerErrCode, callback);
             };
         napi_get_undefined(env, &result);
         NapiAsyncTask::ScheduleHighQos("JsUIExtensionContext::OnStartAbilityByType",
@@ -1752,17 +1766,7 @@ napi_value JsUIExtensionContext::OnStartAbilityByType(napi_env env, NapiCallback
     callback->SetDeferred(deferred);
     NapiAsyncTask::CompleteCallback complete =
         [innerErrCode, callback](napi_env env, NapiAsyncTask& task, int32_t status) {
-            HandleScope handleScope(env);
-            if (*innerErrCode == ERR_OK) {
-                // Hold — OnAbilityByTypeResult will resolve/reject
-            } else if (*innerErrCode == static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT)) {
-                callback->RejectAsyncResult(
-                    static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT),
-                    GetErrorMsg(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
-            } else {
-                callback->RejectAsyncResult(static_cast<int32_t>(GetJsErrorCodeByNativeError(*innerErrCode)),
-                    GetErrorMsgByNativeError(*innerErrCode));
-            }
+            ProcessStartAbilityByTypeComplete(env, innerErrCode, callback);
         };
     NapiAsyncTask::ScheduleHighQos("JsUIExtensionContext::OnStartAbilityByType",
         env, std::make_unique<NapiAsyncTask>(static_cast<napi_deferred>(nullptr),

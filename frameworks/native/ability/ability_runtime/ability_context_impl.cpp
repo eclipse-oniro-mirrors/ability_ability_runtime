@@ -1234,18 +1234,33 @@ ErrCode AbilityContextImpl::StartAbilityByType(
         wantParams.Remove(FLAG_AUTH_READ_URI_PERMISSION);
     }
     auto errorFired = std::make_shared<std::atomic<bool>>(false);
-    Ace::ModalUIExtensionCallbacks callback;
     if (uiExtensionCallback == nullptr) {
         TAG_LOGE(AAFwkTag::CONTEXT, "null uiExtensionCallback");
         return ERR_INVALID_VALUE;
     }
+    Ace::ModalUIExtensionCallbacks callback = SetupModalUIExtensionCallbacks(uiExtensionCallback, errorFired);
+    Ace::ModalUIExtensionConfig config;
+    int32_t sessionId = uiContent->CreateModalUIExtension(want, callback, config);
+    if (sessionId == 0) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "createModalUIExtension failed");
+        return ERR_INVALID_VALUE;
+    }
+    uiExtensionCallback->SetUIContent(uiContent);
+    uiExtensionCallback->SetSessionId(sessionId);
+    return ERR_OK;
+}
+
+Ace::ModalUIExtensionCallbacks AbilityContextImpl::SetupModalUIExtensionCallbacks(
+    std::shared_ptr<UIExtensionCallback> uiExtensionCallback, std::shared_ptr<std::atomic<bool>> errorFired)
+{
+    Ace::ModalUIExtensionCallbacks callback;
     callback.onError = [uiExtensionCallback](int32_t arg, const std::string &str1,
         const std::string &str2) {
         uiExtensionCallback->OnError(arg);
     };
     callback.onAbilityErrorCode = [uiExtensionCallback, errorFired](const Ace::UIExtensionOperationPhase& phase,
         int32_t errorCode) {
-        if (phase != Ace::UIExtensionOperationPhase::FOREGROUND && errorCode == 0) {
+        if (phase != Ace::UIExtensionOperationPhase::FOREGROUND) {
             return;
         }
         bool expected = false;
@@ -1284,15 +1299,7 @@ ErrCode AbilityContextImpl::StartAbilityByType(
             uiExtensionCallback->OnRequestFailure(elementName, failureCode, failureMsg);
         }
     };
-    Ace::ModalUIExtensionConfig config;
-    int32_t sessionId = uiContent->CreateModalUIExtension(want, callback, config);
-    if (sessionId == 0) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "createModalUIExtension failed");
-        return ERR_INVALID_VALUE;
-    }
-    uiExtensionCallback->SetUIContent(uiContent);
-    uiExtensionCallback->SetSessionId(sessionId);
-    return ERR_OK;
+    return callback;
 }
 
 bool AbilityContextImpl::IsUIExtensionExist(const AAFwk::Want &want)

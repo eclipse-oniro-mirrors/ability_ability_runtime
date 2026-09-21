@@ -222,6 +222,9 @@ private:
     void OnStartAbilityByType(
         ani_env *env, ani_object aniObj, ani_string aniType, ani_ref aniWantParam,
         ani_object startCallback, ani_object asyncCallback);
+    bool ParseStartAbilityByTypeParams(ani_env *env, ani_string aniType,
+        ani_ref aniWantParam, ani_object asyncCallback, std::string &type,
+        AAFwk::WantParams &wantParam, ani_vm *&vm);
     void OnOpenAtomicService(
         ani_env *env, ani_object aniObj, ani_string aniAppId, ani_object callbackObj, ani_object optionsObj);
     void OnStartSelfUIAbilityInCurrentProcess(ani_env *env, ani_object aniObj,

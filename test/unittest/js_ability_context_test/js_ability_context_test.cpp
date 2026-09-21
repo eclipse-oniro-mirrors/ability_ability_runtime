@@ -29,6 +29,7 @@
 #undef private
 #undef protected
 #include "js_runtime_utils.h"
+#include "js_ui_extension_callback.h"
 #include "native_engine/impl/ark/ark_native_engine.h"
 #include "native_engine/impl/ark/ark_native_deferred.h"
 #include "native_engine/native_engine.h"
@@ -680,6 +681,60 @@ HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_OnStartSelfUIAbilityI
     jsAbilityContext_->OnStartSelfUIAbilityInChildProcess(env, info);
 
     JsRuntimeLite::GetInstance().RemoveJsEnv(reinterpret_cast<napi_env>(jsEnv->GetNativeEngine()));
+}
+
+/**
+ * @tc.name: AbilityRuntime_AbilityContext_ProcessStartAbilityByTypeComplete_0100
+ * @tc.desc: Test ProcessStartAbilityByTypeComplete with ERROR_CODE_INNER triggers RejectAsyncResult
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_ProcessStartAbilityByTypeComplete_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_AbilityContext_ProcessStartAbilityByTypeComplete_0100 start";
+    HandleScope handleScope(env_);
+    napi_deferred deferred = nullptr;
+    napi_value result = nullptr;
+    napi_create_promise(env_, &deferred, &result);
+    ASSERT_NE(deferred, nullptr);
+
+    auto callback = std::make_shared<JsUIExtensionCallback>(env_);
+    callback->SetDeferred(deferred);
+
+    auto innerErrCode = std::make_shared<ErrCode>(
+        static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER));
+    MockDeferred::resolved_ = true;
+    JsAbilityContext::ProcessStartAbilityByTypeComplete(env_, innerErrCode, callback);
+    EXPECT_FALSE(MockDeferred::GetLastResolveStatus());
+    GTEST_LOG_(INFO) << "AbilityRuntime_AbilityContext_ProcessStartAbilityByTypeComplete_0100 end";
+}
+
+/**
+ * @tc.name: AbilityRuntime_AbilityContext_DispatchStartAbilityByTypeResult_0100
+ * @tc.desc: Test DispatchStartAbilityByTypeResult with no lastParam returns a promise
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_DispatchStartAbilityByTypeResult_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_AbilityContext_DispatchStartAbilityByTypeResult_0100 start";
+    HandleScope handleScope(env_);
+    NapiCallbackInfo info;
+    info.argc = 0;
+
+    auto callback = std::make_shared<JsUIExtensionCallback>(env_);
+    auto innerErrCode = std::make_shared<ErrCode>(
+        static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER));
+    NapiAsyncTask::ExecuteCallback execute = []() {};
+    auto result = jsAbilityContext_->DispatchStartAbilityByTypeResult(
+        env_, info, callback, execute, innerErrCode);
+    ASSERT_NE(result, nullptr);
+    napi_valuetype valueType = napi_undefined;
+    napi_typeof(env_, result, &valueType);
+    EXPECT_EQ(valueType, napi_object);
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+    GTEST_LOG_(INFO) << "AbilityRuntime_AbilityContext_DispatchStartAbilityByTypeResult_0100 end";
 }
 }  // namespace AAFwk
 }  // namespace OHOS

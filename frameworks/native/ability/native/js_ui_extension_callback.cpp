@@ -31,40 +31,48 @@ constexpr const char* ERROR_MSG_INNER = "Inner error.";
 #endif // SUPPORT_SCREEN
 JsUIExtensionCallback::~JsUIExtensionCallback()
 {
-    if (jsCallbackObject_ != nullptr) {
-        uv_loop_t *loop = nullptr;
-        napi_get_uv_event_loop(env_, &loop);
-        if (loop != nullptr) {
-            uv_work_t *work = new (std::nothrow) uv_work_t;
-            if (work != nullptr) {
-                work->data = reinterpret_cast<void *>(jsCallbackObject_.release());
-                int ret = uv_queue_work(loop, work, [](uv_work_t *work) {},
-                [](uv_work_t *work, int status) {
-                    if (work == nullptr) {
-                        return;
-                    }
-                    if (work->data == nullptr) {
-                        delete work;
-                        work = nullptr;
-                        return;
-                    }
-                    delete reinterpret_cast<NativeReference *>(work->data);
-                    work->data = nullptr;
-                    delete work;
-                    work = nullptr;
-                });
-                if (ret != 0) {
-                    delete reinterpret_cast<NativeReference *>(work->data);
-                    work->data = nullptr;
-                    delete work;
-                    work = nullptr;
-                }
-            }
-        }
-    }
+    ReleaseJsCallbackObjectAsync();
     FreeNativeReference(onRequestSuccess_);
     FreeNativeReference(onRequestFailure_);
     FreeNativeReference(completionCallback_);
+}
+
+void JsUIExtensionCallback::ReleaseJsCallbackObjectAsync()
+{
+    if (jsCallbackObject_ == nullptr) {
+        return;
+    }
+    uv_loop_t *loop = nullptr;
+    napi_get_uv_event_loop(env_, &loop);
+    if (loop == nullptr) {
+        return;
+    }
+    uv_work_t *work = new (std::nothrow) uv_work_t;
+    if (work == nullptr) {
+        return;
+    }
+    work->data = reinterpret_cast<void *>(jsCallbackObject_.release());
+    int ret = uv_queue_work(loop, work, [](uv_work_t *work) {},
+    [](uv_work_t *work, int status) {
+        if (work == nullptr) {
+            return;
+        }
+        if (work->data == nullptr) {
+            delete work;
+            work = nullptr;
+            return;
+        }
+        delete reinterpret_cast<NativeReference *>(work->data);
+        work->data = nullptr;
+        delete work;
+        work = nullptr;
+    });
+    if (ret != 0) {
+        delete reinterpret_cast<NativeReference *>(work->data);
+        work->data = nullptr;
+        delete work;
+        work = nullptr;
+    }
 }
 
 void JsUIExtensionCallback::FreeNativeReference(std::unique_ptr<NativeReference>& reference)
@@ -126,13 +134,7 @@ void JsUIExtensionCallback::OnError(int32_t number)
     std::unique_ptr<NapiAsyncTask::CompleteCallback> complete = std::make_unique<NapiAsyncTask::CompleteCallback>
         ([jsUIExtensionCallback, number](napi_env env, NapiAsyncTask &task, int32_t status) {
             if (jsUIExtensionCallback != nullptr) {
-                jsUIExtensionCallback->CallJsError(number);
-                if (jsUIExtensionCallback->deferred_ != nullptr ||
-                    jsUIExtensionCallback->completionCallback_ != nullptr) {
-                    jsUIExtensionCallback->RejectAsyncResult(
-                        static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-                        "StartAbilityByType failed.");
-                }
+                jsUIExtensionCallback->ProcessOnErrorComplete(number);
             }
         });
     napi_ref callback = nullptr;
@@ -142,6 +144,16 @@ void JsUIExtensionCallback::OnError(int32_t number)
     CloseModalUIExtension();
 }
 #endif // SUPPORT_SCREEN
+
+void JsUIExtensionCallback::ProcessOnErrorComplete(int32_t number)
+{
+    CallJsError(number);
+    if (deferred_ != nullptr || completionCallback_ != nullptr) {
+        RejectAsyncResult(
+            static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            "StartAbilityByType failed.");
+    }
+}
 
 void JsUIExtensionCallback::ClearAsyncResult()
 {
@@ -189,24 +201,7 @@ void JsUIExtensionCallback::OnAbilityByTypeResult(int32_t errorCode)
                 return;
             }
             if (errorCode == 0) {
-                if (jsUIExtensionCallback->deferred_ != nullptr) {
-                    napi_value value = CreateJsUndefined(env);
-                    napi_resolve_deferred(env, jsUIExtensionCallback->deferred_, value);
-                    jsUIExtensionCallback->deferred_ = nullptr;
-                }
-                if (jsUIExtensionCallback->completionCallback_ != nullptr) {
-                    napi_value callback = jsUIExtensionCallback->completionCallback_->GetNapiValue();
-                    if (callback != nullptr) {
-                        napi_value argv[] = { CreateJsNull(env), CreateJsUndefined(env) };
-                        napi_status callStatus = napi_call_function(env, nullptr, callback,
-                            ArraySize(argv), argv, nullptr);
-                        if (callStatus != napi_ok) {
-                            TAG_LOGE(AAFwkTag::UI_EXT,
-                                "OnAbilityByTypeResult resolve napi_call_function failed: %{public}d", callStatus);
-                        }
-                    }
-                    jsUIExtensionCallback->FreeNativeReference(jsUIExtensionCallback->completionCallback_);
-                }
+                jsUIExtensionCallback->ResolveAsyncResult();
             } else {
                 jsUIExtensionCallback->RejectAsyncResult(jsErrCode, innerMsg);
             }
@@ -215,6 +210,27 @@ void JsUIExtensionCallback::OnAbilityByTypeResult(int32_t errorCode)
     std::unique_ptr<NapiAsyncTask::ExecuteCallback> execute = nullptr;
     NapiAsyncTask::Schedule("JsUIExtensionCallback::OnAbilityByTypeResult:",
         env_, std::make_unique<NapiAsyncTask>(callback, std::move(execute), std::move(complete)));
+}
+
+void JsUIExtensionCallback::ResolveAsyncResult()
+{
+    if (deferred_ != nullptr) {
+        napi_value value = CreateJsUndefined(env_);
+        napi_resolve_deferred(env_, deferred_, value);
+        deferred_ = nullptr;
+    }
+    if (completionCallback_ != nullptr) {
+        napi_value callback = completionCallback_->GetNapiValue();
+        if (callback != nullptr) {
+            napi_value argv[] = { CreateJsNull(env_), CreateJsUndefined(env_) };
+            napi_status callStatus = napi_call_function(env_, nullptr, callback,
+                ArraySize(argv), argv, nullptr);
+            if (callStatus != napi_ok) {
+                TAG_LOGE(AAFwkTag::UI_EXT, "resolve napi_call_function failed: %{public}d", callStatus);
+            }
+        }
+        FreeNativeReference(completionCallback_);
+    }
 }
 
 void JsUIExtensionCallback::OnResult(int32_t resultCode, const AAFwk::Want &want)

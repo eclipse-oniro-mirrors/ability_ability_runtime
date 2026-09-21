@@ -62,6 +62,7 @@ private:
     std::mutex resultCallbacksMutex_;
 };
 
+class EtsUIExtensionCallback;
 class EtsUIExtensionContentSession {
 private:
     class CallbackWrapper;
@@ -161,6 +162,11 @@ private:
 #ifdef SUPPORT_SCREEN
     void InitDisplayId(AAFwk::Want &want);
     void InitDisplayId(AAFwk::Want &want, AAFwk::StartOptions &startOptions, ani_env *env, ani_object opt);
+    void CreateAndSetupModalUIExtension(ani_env *env, ani_vm *vm, ani_object startCallback,
+        ani_object asyncCallback, const AAFwk::Want &want);
+    Ace::ModalUIExtensionCallbacks SetupModalUIExtensionCallbacks(
+        std::shared_ptr<EtsUIExtensionCallback> uiExtensionCallback,
+        std::shared_ptr<std::atomic<bool>> errorFired);
 #endif
 };
 
