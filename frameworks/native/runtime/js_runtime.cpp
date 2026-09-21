@@ -989,9 +989,9 @@ void JsRuntime::CreatePluginDefaultNamespace(const std::string &lddictionaries)
     if (result != Security::AccessToken::PermissionState::PERMISSION_GRANTED &&
         resultWeb != Security::AccessToken::PermissionState::PERMISSION_GRANTED &&
         resultLoadCertSignLib != Security::AccessToken::PermissionState::PERMISSION_GRANTED) {
-        TAG_LOGE(AAFwkTag::JSRUNTIME, "verify access token failed: result = %{public}d, 
-        resultWeb = %{public}d, resultLoadCertSignLib = %{public}d", 
-        result, resultWeb, resultLoadCertSignLib);
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "verify access token failed: result = %{public}d,
+        resultWeb = %{public}d, resultLoadCertSignLib = %{public}d",
+        result, resultWeb, resultLoadCertSignLi);
         return;
     }
     auto moduleManager = NativeModuleManager::GetInstance();
