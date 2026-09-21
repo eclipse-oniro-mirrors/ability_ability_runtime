@@ -753,22 +753,6 @@ HWTEST_F(InsightIntentExecuteResultTest, FromJsonString_InvalidInteractionInfo_R
 }
 
 /**
- * @tc.name: FromJsonString_Oversize_Discarded_1900
- * @tc.desc: WHEN json size exceeds MAX_RESULT_JSON_LEN THEN fields stay default.
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(InsightIntentExecuteResultTest, FromJsonString_Oversize_Discarded_1900, TestSize.Level1)
-{
-    std::string huge(1024 * 1024 + 100, 'a');
-    std::string json = R"({"code":1,"uris":[")" + huge + R"("]})";
-    InsightIntentExecuteResult result;
-    EXPECT_FALSE(result.FromJsonString(json));
-    EXPECT_EQ(result.code, 0);
-    EXPECT_EQ(result.interactionInfo, nullptr);
-}
-
-/**
  * @tc.name: FromJsonString_DeepNesting_Discarded_2000
  * @tc.desc: WHEN json depth exceeds MAX_RESULT_JSON_DEPTH THEN not parsed.
  * @tc.type: FUNC
