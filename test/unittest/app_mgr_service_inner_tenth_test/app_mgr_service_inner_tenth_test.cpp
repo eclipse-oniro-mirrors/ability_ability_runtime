@@ -2323,63 +2323,67 @@ HWTEST_F(AppMgrServiceInnerTenthTest, QueryRunningSharedBundles_002, TestSize.Le
 
 /**
  * @tc.name: GetStoragePath_001
- * @tc.desc: Test GetLoadFilePath with normal primary mode path.
+ * @tc.desc: Test GetStoragePath with normal primary mode path.
  * @tc.type: FUNC
  */
 HWTEST_F(AppMgrServiceInnerTenthTest, GetStoragePath_001, TestSize.Level1)
 {
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     std::string hapPath = "/data/app/el1/bundle/public/com.ohos.demo/entry/entry.hap";
-    std::string result = AbilityBase::ExtractorUtil::GetLoadFilePath(hapPath);
+    std::string result = appMgrServiceInner->GetStoragePath(hapPath);
     EXPECT_EQ(result, "/data/storage/el1/bundle/entry/entry.hap");
 }
 
 /**
  * @tc.name: GetStoragePath_002
- * @tc.desc: Test GetLoadFilePath with clone bundle path in PC dual mode.
+ * @tc.desc: Test GetStoragePath with clone bundle path in PC dual mode.
  * @tc.type: FUNC
  */
 HWTEST_F(AppMgrServiceInnerTenthTest, GetStoragePath_002, TestSize.Level1)
 {
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     std::string hapPath = "/data/app/el1/bundle/public/+clone-10000+com.ohos.demo/entry/entry.hap";
-    std::string result = AbilityBase::ExtractorUtil::GetLoadFilePath(hapPath);
+    std::string result = appMgrServiceInner->GetStoragePath(hapPath);
     EXPECT_EQ(result, "/data/storage/el1/bundle/entry/entry.hap");
 }
 
 /**
  * @tc.name: GetStoragePath_003
- * @tc.desc: Test GetLoadFilePath with empty path.
+ * @tc.desc: Test GetStoragePath with empty path.
  * @tc.type: FUNC
  */
 HWTEST_F(AppMgrServiceInnerTenthTest, GetStoragePath_003, TestSize.Level1)
 {
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     std::string hapPath = "";
-    std::string result = AbilityBase::ExtractorUtil::GetLoadFilePath(hapPath);
+    std::string result = appMgrServiceInner->GetStoragePath(hapPath);
     EXPECT_TRUE(result.empty());
 }
 
 /**
  * @tc.name: GetStoragePath_004
- * @tc.desc: Test GetLoadFilePath with path not starting with ABS_CODE_PATH.
+ * @tc.desc: Test GetStoragePath with path not starting with ABS_CODE_PATH.
  * @tc.type: FUNC
  */
 HWTEST_F(AppMgrServiceInnerTenthTest, GetStoragePath_004, TestSize.Level1)
 {
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     std::string hapPath = "/system/app/com.ohos.demo/entry.hap";
-    std::string result = AbilityBase::ExtractorUtil::GetLoadFilePath(hapPath);
+    std::string result = appMgrServiceInner->GetStoragePath(hapPath);
     EXPECT_EQ(result, hapPath);
 }
 
 /**
  * @tc.name: GetStoragePath_005
- * @tc.desc: Test GetLoadFilePath with path having no slash after bundle name dir.
+ * @tc.desc: Test GetStoragePath with path having no slash after bundle name dir.
  * @tc.type: FUNC
  */
 HWTEST_F(AppMgrServiceInnerTenthTest, GetStoragePath_005, TestSize.Level1)
 {
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     std::string hapPath = "/data/app/el1/bundle/public/com.ohos.demo";
-    std::string result = AbilityBase::ExtractorUtil::GetLoadFilePath(hapPath);
-    EXPECT_EQ(result, "/data/storage/el1/bundle/com.ohos.demo");
+    std::string result = appMgrServiceInner->GetStoragePath(hapPath);
+    EXPECT_EQ(result, "/data/storage/el1/bundle");
 }
-
 }  // namespace AppExecFwk
 }  // namespace OHOS
