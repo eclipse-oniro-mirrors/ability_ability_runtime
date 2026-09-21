@@ -335,6 +335,8 @@ constexpr const char* ERROR_MSG_GET_DIALOG_SESSION_INFO_FAILED =
     "Internal error. Failed to get dialog session information. Try again later.";
 constexpr const char* ERROR_MSG_SEND_DIALOG_RESULT_FAILED =
     "Internal error. Failed to send the dialog result. Try again later.";
+constexpr const char* ERROR_MSG_NOT_NATIVE_UI_ABILITY =
+    "Internal error. Non-native UIAbility cannot call this method.";
 
 // follow ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST of appexecfwk_errors.h in bundle_framework
 constexpr int32_t ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST = 8521220;
@@ -641,6 +643,7 @@ static std::unordered_map<int32_t, const char*> INNER_ERROR_MSG_BY_NATIVE_CODE {
     {ERR_WRITE_KIOSK_STATUS_FAILED, ERROR_MSG_IPC_FAILED},
     {ERR_WRITE_CALLER_TOKEN_FAILED, ERROR_MSG_IPC_FAILED},
     {ERR_INVALID_EXTENSION_TYPE, ERROR_MSG_INVALID_EXTENSION_TYPE},
+    {ERR_NOT_NATIVE_UI_ABILITY, ERROR_MSG_NOT_NATIVE_UI_ABILITY},
 };
 
 static std::unordered_map<AbilityInnerErrorMsg, const char*> INNER_ERROR_MSG_BY_SCENE {

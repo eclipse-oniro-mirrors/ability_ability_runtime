@@ -1740,7 +1740,7 @@ int32_t UIAbilityLifecycleManager::StartSelf(const UIAbilityRecordPtr &abilityRe
 
     if (abilityRecord->GetNativeState() == AbilityNativeState::NONE) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "not a NativeModule ability");
-        return ERR_CAPABILITY_NOT_SUPPORT;
+        return ERR_NOT_NATIVE_UI_ABILITY;
     }
 
     if (abilityRecord->GetNativeState() == AbilityNativeState::ON_FOREGROUND) {

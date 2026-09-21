@@ -8635,7 +8635,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_002, TestSize.Level1)
     EXPECT_NE(abilityRecord, nullptr);
     // Default nativeState is NONE
     EXPECT_EQ(abilityRecord->GetNativeState(), AbilityNativeState::NONE);
-    EXPECT_EQ(mgr->StartSelf(abilityRecord), ERR_CAPABILITY_NOT_SUPPORT);
+    EXPECT_EQ(mgr->StartSelf(abilityRecord), ERR_NOT_NATIVE_UI_ABILITY);
 }
 
 /**

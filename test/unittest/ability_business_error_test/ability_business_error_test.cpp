@@ -117,6 +117,9 @@ HWTEST_F(AbilityBusinessErrorTest, GetJsErrorCodeByNativeError_0100, TestSize.Le
 
     result = GetJsErrorCodeByNativeError(OHOS::AAFwk::ERR_LOW_CODE_AGENT_DISCONNECT_BATCH_MISMATCH);
     EXPECT_TRUE(result == AbilityErrorCode::ERROR_CODE_INNER);
+
+    result = GetJsErrorCodeByNativeError(OHOS::AAFwk::ERR_NOT_NATIVE_UI_ABILITY);
+    EXPECT_TRUE(result == AbilityErrorCode::ERROR_CODE_INNER);
 }
 
 /**
@@ -138,6 +141,8 @@ HWTEST_F(AbilityBusinessErrorTest, GetErrorMsgByNativeError_0100, TestSize.Level
         "Internal error. Operation timed out. Try again later.");
     EXPECT_EQ(GetErrorMsgByNativeError(AAFwk::ERR_NATIVE_IPC_PARCEL_FAILED),
         "Internal error. IPC failed. Try again later.");
+    EXPECT_EQ(GetErrorMsgByNativeError(AAFwk::ERR_NOT_NATIVE_UI_ABILITY),
+        "Internal error. Non-native UIAbility cannot call this method.");
     EXPECT_EQ(GetErrorMsgByNativeError(AAFwk::CONNECTION_NOT_EXIST, innerErrMsg),
         "Internal error. The service connection does not exist. Use a connection ID returned by "
         "connectServiceExtensionAbility.");
