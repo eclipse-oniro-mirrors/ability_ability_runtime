@@ -16379,22 +16379,21 @@ bool AbilityManagerService::VerifySameAppOrAppIdentifierAllowListPermission(cons
     auto bms = AbilityUtil::GetBundleManagerHelper();
     CHECK_POINTER_AND_RETURN(bms, false);
     AppExecFwk::BundleInfo targetBundleInfo;
-    std::string callerAppIdentifier = abilityRequest.want.GetStringParam(Want::PARAM_RESV_CALLER_APP_IDENTIFIER);
-    if (callerAppIdentifier.empty()) {
-        AppExecFwk::SignatureInfo signatureInfo;
-        auto abilityRecord = Token::GetAbilityRecordByToken(abilityRequest.callerToken);
-        if (abilityRecord == nullptr) {
-            return false;
-        }
-        std::string callerBundleName = abilityRecord->GetApplicationInfo().bundleName;
-        if (IN_PROCESS_CALL(bms->GetSignatureInfoByBundleName(callerBundleName,
-            signatureInfo)) != ERR_OK) {
-                TAG_LOGE(AAFwkTag::ABILITYMGR,
-                    "bms GetSignatureInfoByBundleName error, bundleName: %{public}s", callerBundleName.c_str());
-                return false;
-            };
-        callerAppIdentifier = signatureInfo.appIdentifier;
+    // The caller's appIdentifier must be derived from server-side signature info only.
+    // The Want parameter is client-controlled and must never be trusted here.
+    AppExecFwk::SignatureInfo signatureInfo;
+    auto abilityRecord = Token::GetAbilityRecordByToken(abilityRequest.callerToken);
+    if (abilityRecord == nullptr) {
+        return false;
     }
+    std::string callerBundleName = abilityRecord->GetApplicationInfo().bundleName;
+    if (IN_PROCESS_CALL(bms->GetSignatureInfoByBundleName(callerBundleName,
+        signatureInfo)) != ERR_OK) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR,
+                "bms GetSignatureInfoByBundleName error, bundleName: %{public}s", callerBundleName.c_str());
+            return false;
+        };
+    std::string callerAppIdentifier = signatureInfo.appIdentifier;
     if (!IN_PROCESS_CALL(bms->GetBundleInfo(targetBundleName, AppExecFwk::BundleFlag::GET_BUNDLE_WITH_EXTENSION_INFO,
         targetBundleInfo, targetUid / BASE_USER_RANGE))) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "bms GetBundleInfo error, BundleFlag: GET_BUNDLE_WITH_EXTENSION_INFO");
