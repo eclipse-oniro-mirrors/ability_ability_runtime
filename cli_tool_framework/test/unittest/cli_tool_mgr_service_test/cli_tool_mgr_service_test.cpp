@@ -33,14 +33,16 @@
 #define private public
 #include "cli_tool_manager_service.h"
 #include "cli_function_data_manager.h"
+#include "ccm_util.h"
 #undef private
 #undef protected
 
+#include "ability_manager_errors.h"
 #include "cli_error_code.h"
 #include "cli_tool_app_state_observer.h"
-#include "ccm_util.h"
 #include "cli_tool_manager_scheduler_stub.h"
 #include "cli_tool_data_manager_mock.h"
+#include "permission_util_mock.h"
 #include "cli_hook_interface_stub.h"
 #include "exec_cmd_param.h"
 #include "exec_result_wrap.h"
@@ -87,8 +89,40 @@ static constexpr int32_t HOOK_TIMEOUT_SECONDS = 6;
 
 bool IsPermissionGateResult(int32_t result)
 {
-    return result == ERR_NOT_SYSTEM_APP || result == ERR_PERMISSION_DENIED;
+    return result == ERR_NOT_SYSTEM_APP || result == ERR_PERMISSION_DENIED ||
+           result == AAFwk::ERR_CAPABILITY_NOT_SUPPORT;
 }
+
+bool IsCapabilityGateResult(int32_t result)
+{
+    return result == AAFwk::ERR_CAPABILITY_NOT_SUPPORT;
+}
+
+// RAII guard that flips the two test-only permission toggles for the duration of
+// a single test case and restores the previous values on scope exit — including
+// when an ASSERT_* fails and the test body returns early. This eliminates the
+// cross-test pollution that the previous "set false / set true by hand" pattern
+// was prone to.
+class PermissionScope {
+public:
+    PermissionScope(bool execCliTool, bool execPublicCliTool)
+        : prevExecCliTool_(PermissionUtilMock::execCliToolPermitted),
+          prevExecPublicCliTool_(PermissionUtilMock::execPublicCliToolPermitted)
+    {
+        PermissionUtilMock::execCliToolPermitted = execCliTool;
+        PermissionUtilMock::execPublicCliToolPermitted = execPublicCliTool;
+    }
+    ~PermissionScope()
+    {
+        PermissionUtilMock::execCliToolPermitted = prevExecCliTool_;
+        PermissionUtilMock::execPublicCliToolPermitted = prevExecPublicCliTool_;
+    }
+    PermissionScope(const PermissionScope &) = delete;
+    PermissionScope &operator=(const PermissionScope &) = delete;
+private:
+    bool prevExecCliTool_;
+    bool prevExecPublicCliTool_;
+};
 } // namespace {
 
 class TestScheduler : public CliToolManagerSchedulerStub {
@@ -150,10 +184,23 @@ void CliToolManagerServiceTest::SetUp()
     std::lock_guard<ffrt::mutex> guard(service_->sessionsMutex_);
     service_->sessionRecords_.clear();
     service_->bundleObservers_.clear();
+    auto &ccmUtil = CcmUtil::GetInstance();
+    ccmUtil.isSupportExecCmd_.isLoaded = false;
+    ccmUtil.isSupportExecCmd_.value = false;
+    // Default permissive state for every case. Tests that need a denied verdict
+    // should use PermissionScope to flip the toggles within a bounded scope;
+    // TearDown will re-assert this default as a safety net.
+    PermissionUtilMock::Reset();
 }
 
 void CliToolManagerServiceTest::TearDown()
 {
+    // Safety net: guarantee the permission toggles are restored to their default
+    // permissive state even if a test body forgot to use PermissionScope or an
+    // ASSERT failed before its manual restore. This keeps later cases from
+    // inheriting a "permission denied" verdict.
+    PermissionUtilMock::Reset();
+
     service_->interfaceCalledCount_.store(0);
     CliToolDataManagerMock::Reset();
     CliFunctionDataManagerMock::Reset();
@@ -352,6 +399,85 @@ HWTEST_F(CliToolManagerServiceTest, SubscribeSession_0100, TestSize.Level1)
         ERR_CLI_SESSION_NOT_FOUND);
 
     TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SubscribeSession_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_SubscribeSessionInternal_0100
+ * @tc.desc: Test SubscribeSessionInternal rejects empty sessionId/subscriptionId
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, SubscribeSessionInternal_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SubscribeSessionInternal_0100 start");
+    EXPECT_EQ(service_->SubscribeSessionInternal("", "sub", nullptr), ERR_INVALID_PARAM);
+    EXPECT_EQ(service_->SubscribeSessionInternal("sid", "", nullptr), ERR_INVALID_PARAM);
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SubscribeSessionInternal_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_SubscribeSessionInternal_0200
+ * @tc.desc: Test SubscribeSessionInternal returns not-found for unknown sessionId
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, SubscribeSessionInternal_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SubscribeSessionInternal_0200 start");
+    EXPECT_EQ(service_->SubscribeSessionInternal("no_such_session", "sub", nullptr),
+        ERR_CLI_SESSION_NOT_FOUND);
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SubscribeSessionInternal_0200 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_SubscribeSessionInternal_0300
+ * @tc.desc: Test SubscribeSessionInternal rejects non-owner caller
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, SubscribeSessionInternal_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SubscribeSessionInternal_0300 start");
+    auto record = std::make_shared<SessionRecord>();
+    record->sessionId = "internal_not_owner_session";
+    record->callerPid = IPCSkeleton::GetCallingPid() + 1; // mismatch -> not owner
+    service_->AddSessionRecord(record);
+    EXPECT_EQ(service_->SubscribeSessionInternal(record->sessionId, "sub", nullptr), ERR_PERMISSION_DENIED);
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SubscribeSessionInternal_0300 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_SubscribeSessionInternal_0400
+ * @tc.desc: Test SubscribeSessionInternal rejects non-running sessions
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, SubscribeSessionInternal_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SubscribeSessionInternal_0400 start");
+    auto completed = std::make_shared<SessionRecord>();
+    completed->sessionId = "internal_completed_session";
+    completed->callerPid = IPCSkeleton::GetCallingPid();
+    completed->SetTerminalResult(0, 0);
+    completed->MarkStdoutClosed();
+    completed->MarkStderrClosed();
+    service_->AddSessionRecord(completed);
+    EXPECT_EQ(service_->SubscribeSessionInternal(completed->sessionId, "sub", nullptr),
+        ERR_CLI_SESSION_NOT_FOUND);
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SubscribeSessionInternal_0400 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_SubscribeSessionInternal_0500
+ * @tc.desc: Test SubscribeSessionInternal reaches subscription logic for a valid running session
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, SubscribeSessionInternal_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SubscribeSessionInternal_0500 start");
+    auto running = std::make_shared<SessionRecord>();
+    running->sessionId = "internal_running_session";
+    running->callerPid = IPCSkeleton::GetCallingPid();
+    service_->AddSessionRecord(running);
+    // nullptr scheduler -> SetScheduler fails -> ERR_NO_INIT (proves it ran the logic, not a gate)
+    EXPECT_EQ(service_->SubscribeSessionInternal(running->sessionId, "sub", nullptr), ERR_NO_INIT);
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SubscribeSessionInternal_0500 end");
 }
 
 /**
@@ -2405,6 +2531,229 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_0700, TestSize.Level1)
     EXPECT_TRUE(result == ERR_INVALID_PARAM || IsPermissionGateResult(result));
 
     TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_0700 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ValidateExecCmdPublicPermissions_0200
+ * @tc.desc: Test ValidateExecCmdPublicPermissions returns ERR_CAPABILITY_NOT_SUPPORT when device not supported
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ValidateExecCmdPublicPermissions_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateExecCmdPublicPermissions_0200 start");
+
+    auto &ccmUtil = CcmUtil::GetInstance();
+    ccmUtil.isSupportExecCmd_.isLoaded = true;
+    ccmUtil.isSupportExecCmd_.value = false;
+
+    int32_t result = service_->ValidateExecCmdPublicPermissions(true);
+    EXPECT_EQ(result, AAFwk::ERR_CAPABILITY_NOT_SUPPORT);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateExecCmdPublicPermissions_0200 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ValidateExecCmdPublicPermissions_0300
+ * @tc.desc: Test ValidateExecCmdPublicPermissions returns ERR_OK when capability supported and permission granted
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ValidateExecCmdPublicPermissions_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateExecCmdPublicPermissions_0300 start");
+
+    auto &ccmUtil = CcmUtil::GetInstance();
+    ccmUtil.isSupportExecCmd_.isLoaded = true;
+    ccmUtil.isSupportExecCmd_.value = true;
+
+    int32_t result = service_->ValidateExecCmdPublicPermissions(true);
+    EXPECT_EQ(result, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateExecCmdPublicPermissions_0300 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ValidateExecCmdPublicPermissions_0400
+ * @tc.desc: Test ValidateExecCmdPublicPermissions skips capability check when isShellCommand is false
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ValidateExecCmdPublicPermissions_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateExecCmdPublicPermissions_0400 start");
+
+    auto &ccmUtil = CcmUtil::GetInstance();
+    ccmUtil.isSupportExecCmd_.isLoaded = true;
+    ccmUtil.isSupportExecCmd_.value = false;
+
+    int32_t result = service_->ValidateExecCmdPublicPermissions(false);
+    EXPECT_EQ(result, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateExecCmdPublicPermissions_0400 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ValidateExecCmdPublicPermissions_0500
+ * @tc.desc: Test CliCommand without EXEC_CLI_TOOL returns ERR_PERMISSION_DENIED
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ValidateExecCmdPublicPermissions_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateExecCmdPublicPermissions_0500 start");
+
+    auto &ccmUtil = CcmUtil::GetInstance();
+    ccmUtil.isSupportExecCmd_.isLoaded = true;
+    ccmUtil.isSupportExecCmd_.value = true;
+
+    {
+        PermissionScope permScope(false, true); // EXEC_CLI_TOOL denied, EXEC_PUBLIC_CLI_TOOL allowed
+        int32_t result = service_->ValidateExecCmdPublicPermissions(false);
+        EXPECT_EQ(result, ERR_PERMISSION_DENIED);
+    }
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateExecCmdPublicPermissions_0500 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ValidateExecCmdPublicPermissions_0600
+ * @tc.desc: Test ShellCommand without EXEC_CLI_TOOL nor EXEC_PUBLIC_CLI_TOOL returns ERR_PERMISSION_DENIED
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ValidateExecCmdPublicPermissions_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateExecCmdPublicPermissions_0600 start");
+
+    auto &ccmUtil = CcmUtil::GetInstance();
+    ccmUtil.isSupportExecCmd_.isLoaded = true;
+    ccmUtil.isSupportExecCmd_.value = true;
+
+    {
+        PermissionScope permScope(false, false); // both permissions denied
+        int32_t result = service_->ValidateExecCmdPublicPermissions(true);
+        EXPECT_EQ(result, ERR_PERMISSION_DENIED);
+    }
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateExecCmdPublicPermissions_0600 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ValidateExecCmdPublicPermissions_0700
+ * @tc.desc: Test ShellCommand with only EXEC_PUBLIC_CLI_TOOL returns ERR_OK
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ValidateExecCmdPublicPermissions_0700, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateExecCmdPublicPermissions_0700 start");
+
+    auto &ccmUtil = CcmUtil::GetInstance();
+    ccmUtil.isSupportExecCmd_.isLoaded = true;
+    ccmUtil.isSupportExecCmd_.value = true;
+
+    {
+        PermissionScope permScope(false, true); // only EXEC_PUBLIC_CLI_TOOL allowed
+        int32_t result = service_->ValidateExecCmdPublicPermissions(true);
+        EXPECT_EQ(result, ERR_OK);
+    }
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ValidateExecCmdPublicPermissions_0700 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_0800
+ * @tc.desc: Test ExecCmd capability gate rejects before session setup and creates no session record
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_0800, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_0800 start");
+
+    auto &ccmUtil = CcmUtil::GetInstance();
+    ccmUtil.isSupportExecCmd_.isLoaded = true;
+    ccmUtil.isSupportExecCmd_.value = false;
+
+    ExecCmdParam param;
+    param.cmd = "echo capability_gate";
+    param.execCmdOptions.timeout = 30;
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_exec_cmd_cap_gate", scheduler, "subscription_cap_gate");
+
+    EXPECT_EQ(result, AAFwk::ERR_CAPABILITY_NOT_SUPPORT);
+    EXPECT_TRUE(service_->sessionRecords_.empty());
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_0800 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_0900
+ * @tc.desc: Test ExecCmd capability gate takes precedence over scheduler setup with null scheduler
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_0900, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_0900 start");
+
+    auto &ccmUtil = CcmUtil::GetInstance();
+    ccmUtil.isSupportExecCmd_.isLoaded = true;
+    ccmUtil.isSupportExecCmd_.value = false;
+
+    ExecCmdParam param;
+    param.cmd = "echo null_scheduler_gate";
+    param.execCmdOptions.timeout = 30;
+    int32_t result = service_->ExecCmd(param, "event_exec_cmd_null_sched_gate", nullptr, "subscription_ns_gate");
+
+    EXPECT_EQ(result, AAFwk::ERR_CAPABILITY_NOT_SUPPORT);
+    EXPECT_TRUE(service_->sessionRecords_.empty());
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_0900 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_1000
+ * @tc.desc: Test ExecCmd bypasses capability gate when isShellCommand is false and reaches scheduler check
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_1000, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_1000 start");
+
+    auto &ccmUtil = CcmUtil::GetInstance();
+    ccmUtil.isSupportExecCmd_.isLoaded = true;
+    ccmUtil.isSupportExecCmd_.value = false;
+
+    ExecCmdParam param;
+    param.cmd = "echo bypass_cap_gate";
+    param.execCmdOptions.timeout = 30;
+    param.execCmdOptions.isShellCommand = false;
+    int32_t result = service_->ExecCmd(param, "event_exec_cmd_bypass_cap", nullptr, "subscription_bypass_cap");
+
+    EXPECT_NE(result, AAFwk::ERR_CAPABILITY_NOT_SUPPORT);
+    EXPECT_EQ(result, ERR_NO_INIT);
+    EXPECT_TRUE(service_->sessionRecords_.empty());
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_1000 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_1100
+ * @tc.desc: Test ExecCmd with isShellCommand false proceeds past capability gate with valid scheduler
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_1100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_1100 start");
+
+    auto &ccmUtil = CcmUtil::GetInstance();
+    ccmUtil.isSupportExecCmd_.isLoaded = true;
+    ccmUtil.isSupportExecCmd_.value = false;
+
+    ExecCmdParam param;
+    param.cmd = "echo bypass_cap_valid_sched";
+    param.execCmdOptions.timeout = 30;
+    param.execCmdOptions.isShellCommand = false;
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_exec_cmd_bypass_valid", scheduler, "subscription_bypass_valid");
+
+    EXPECT_NE(result, AAFwk::ERR_CAPABILITY_NOT_SUPPORT);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_1100 end");
 }
 
 /**

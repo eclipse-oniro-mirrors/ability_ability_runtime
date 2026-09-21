@@ -13,27 +13,23 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_ABILITY_RUNTIME_CLI_COMMON_MOCK_H
-#define OHOS_ABILITY_RUNTIME_CLI_COMMON_MOCK_H
-
-#include <cstdint>
-#include <string>
-#include <vector>
+#ifndef OHOS_ABILITY_RUNTIME_PERMISSION_UTIL_MOCK_H
+#define OHOS_ABILITY_RUNTIME_PERMISSION_UTIL_MOCK_H
 
 namespace OHOS {
 namespace CliTool {
-class CliCommonMock {
+// Test-only toggle state consumed by the mocked PermissionUtil::VerifyAccessToken
+// below. Exposed as static members (instead of extern globals) so the state is
+// declared in a header, defined in exactly one TU, and reachable from any test
+// via PermissionUtilMock::xxx. Reset() restores the permissive default.
+class PermissionUtilMock {
 public:
-    static int32_t intParameterValue;
-    static int32_t vectorPermissionResult;
-    static int32_t singlePermissionResult;
-    static std::vector<int32_t> permissionStateList;
-    static std::string stringParameterValue;
-    static bool boolParameterValue;
+    static bool execCliToolPermitted;
+    static bool execPublicCliToolPermitted;
 
     static void Reset();
 };
 } // namespace CliTool
 } // namespace OHOS
 
-#endif // OHOS_ABILITY_RUNTIME_CLI_COMMON_MOCK_H
+#endif // OHOS_ABILITY_RUNTIME_PERMISSION_UTIL_MOCK_H
