@@ -2109,7 +2109,6 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
     auto moduleName = entryHapModuleInfo.moduleName;
     std::string loadPath =
         entryHapModuleInfo.hapPath.empty() ? entryHapModuleInfo.resourcePath : entryHapModuleInfo.hapPath;
-    std::regex inner_pattern(std::string(ABS_CODE_PATH) + std::string(FILE_SEPARATOR) + bundleInfo.name);
     loadPath = ExtractorUtil::GetLoadFilePath(loadPath);
     application_->SetEntryLoadPath(loadPath);
     auto res = GetOverlayModuleInfos(bundleInfo.name, moduleName, overlayModuleInfos_);

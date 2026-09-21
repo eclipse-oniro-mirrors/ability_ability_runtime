@@ -3271,8 +3271,7 @@ HWTEST_F(MainThreadTest, ChangeToLocalPath_0700, TestSize.Level1)
     const std::vector<std::string> sourceDirs = {""};
     std::vector<std::string> localPath;
     mainThread_->ChangeToLocalPath(bundleName, sourceDirs, localPath);
-    EXPECT_EQ(localPath.size(), 1);
-    EXPECT_TRUE(localPath[0].empty());
+    EXPECT_EQ(localPath.size(), 0u);
 }
 
 /**

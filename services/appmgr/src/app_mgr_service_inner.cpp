@@ -13443,7 +13443,7 @@ std::string AppMgrServiceInner::GetStoragePath(const std::string& hapPath) {
     }
     std::string absPrefix = std::string(ABS_CODE_PATH) + std::string(FILE_SEPARATOR);
     size_t prefixPos = hapPath.find(absPrefix);
-    if (prefixPos == std::string::npos) {
+    if (prefixPos != 0) {
         return hapPath;
     }
     std::string loadPath = hapPath.substr(prefixPos + absPrefix.length());
