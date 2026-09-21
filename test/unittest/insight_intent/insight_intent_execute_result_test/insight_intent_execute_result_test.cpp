@@ -41,6 +41,7 @@ constexpr const char *KEY_ABILITY_NAME = "abilityName";
 constexpr const char *KEY_UI_EXTENSION_TYPE = "uiExtensionType";
 constexpr const char *KEY_URI = "uri";
 constexpr const char *KEY_PARAMETERS = "parameters";
+constexpr const char *KEY_BUTTONS = "buttons";
 
 /**
  * @brief Read back the "uris" key and assert it holds exactly @p expected, in order.
@@ -912,6 +913,147 @@ HWTEST_F(InsightIntentExecuteResultTest, ToJsonString_InvalidInteractionInfoDrop
     entity.interactionInfo->interactionUI = modal;
     std::string json = entity.ToJsonString();
     EXPECT_EQ(json.find(KEY_INTERACTION_INFO), std::string::npos);
+}
+
+/**
+ * @tc.name: CheckInteractionInfo_ValidText_0100
+ * @tc.desc: WHEN interactionUI is a valid InteractionText THEN returns true.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, CheckInteractionInfo_ValidText_0100, TestSize.Level1)
+{
+    auto text = std::make_shared<AppExecFwk::InteractionText>();
+    text->interactionUIType = "TEXT";
+    auto params = std::make_shared<WantParams>();
+    params->SetParam("pk", String::Box("pv"));
+    text->parameters = params;
+    text->buttons = { "ok", "cancel" };
+    AppExecFwk::InteractionInfo info;
+    info.interactionUI = text;
+    EXPECT_TRUE(InsightIntentExecuteResult::CheckInteractionInfo(info));
+}
+
+/**
+ * @tc.name: CheckInteractionInfo_TextNoParameters_0200
+ * @tc.desc: WHEN InteractionText has null parameters THEN returns true (not validated).
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, CheckInteractionInfo_TextNoParameters_0200, TestSize.Level1)
+{
+    auto text = std::make_shared<AppExecFwk::InteractionText>();
+    text->interactionUIType = "TEXT";
+    AppExecFwk::InteractionInfo info;
+    info.interactionUI = text;
+    EXPECT_TRUE(InsightIntentExecuteResult::CheckInteractionInfo(info));
+}
+
+/**
+ * @tc.name: InteractionInfo_MarshallingUnmarshalling_Text_0100
+ * @tc.desc: WHEN result has InteractionText THEN round-trip preserves fields.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, InteractionInfo_MarshallingUnmarshalling_Text_0100,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    InsightIntentExecuteResult entity;
+    auto text = std::make_shared<AppExecFwk::InteractionText>();
+    text->interactionUIType = "TEXT";
+    auto params = std::make_shared<WantParams>();
+    params->SetParam("pk", String::Box("pv"));
+    text->parameters = params;
+    text->buttons = { "ok", "cancel" };
+    entity.interactionInfo = std::make_shared<AppExecFwk::InteractionInfo>();
+    entity.interactionInfo->interactionUI = text;
+
+    Parcel parcel;
+    EXPECT_TRUE(entity.Marshalling(parcel));
+    auto *restored = InsightIntentExecuteResult::Unmarshalling(parcel);
+    ASSERT_NE(restored, nullptr);
+    ASSERT_NE(restored->interactionInfo, nullptr);
+    ASSERT_NE(restored->interactionInfo->interactionUI, nullptr);
+    EXPECT_EQ(restored->interactionInfo->interactionUI->interactionUIType, "TEXT");
+    auto restoredText = std::static_pointer_cast<AppExecFwk::InteractionText>(
+        restored->interactionInfo->interactionUI);
+    ASSERT_NE(restoredText, nullptr);
+    ASSERT_NE(restoredText->parameters, nullptr);
+    EXPECT_EQ(restoredText->parameters->GetStringParam("pk"), "pv");
+    EXPECT_EQ(restoredText->buttons.size(), 2);
+    EXPECT_EQ(restoredText->buttons[0], "ok");
+    EXPECT_EQ(restoredText->buttons[1], "cancel");
+    delete restored;
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: InteractionInfo_JsonSerialization_Text_0200
+ * @tc.desc: WHEN result has InteractionText THEN JSON round-trip preserves fields.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, InteractionInfo_JsonSerialization_Text_0200,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    InsightIntentExecuteResult entity;
+    auto text = std::make_shared<AppExecFwk::InteractionText>();
+    text->interactionUIType = "TEXT";
+    auto params = std::make_shared<WantParams>();
+    params->SetParam("pk", String::Box("pv"));
+    text->parameters = params;
+    text->buttons = { "ok", "cancel" };
+    entity.interactionInfo = std::make_shared<AppExecFwk::InteractionInfo>();
+    entity.interactionInfo->interactionUI = text;
+
+    std::string jsonStr = entity.ToJsonString();
+    EXPECT_FALSE(jsonStr.empty());
+
+    InsightIntentExecuteResult restored;
+    restored.FromJsonString(jsonStr);
+    ASSERT_NE(restored.interactionInfo, nullptr);
+    ASSERT_NE(restored.interactionInfo->interactionUI, nullptr);
+    EXPECT_EQ(restored.interactionInfo->interactionUI->interactionUIType, "TEXT");
+    auto restoredText = std::static_pointer_cast<AppExecFwk::InteractionText>(
+        restored.interactionInfo->interactionUI);
+    ASSERT_NE(restoredText, nullptr);
+    ASSERT_NE(restoredText->parameters, nullptr);
+    EXPECT_EQ(restoredText->parameters->GetStringParam("pk"), "pv");
+    EXPECT_EQ(restoredText->buttons.size(), 2);
+    EXPECT_EQ(restoredText->buttons[0], "ok");
+    EXPECT_EQ(restoredText->buttons[1], "cancel");
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: BuildFunctionResult_WithTextInteractionInfo_0100
+ * @tc.desc: WHEN interactionInfo has InteractionText THEN BuildFunctionResult emits the key.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, BuildFunctionResult_WithTextInteractionInfo_0100,
+    TestSize.Level1)
+{
+    auto text = std::make_shared<AppExecFwk::InteractionText>();
+    text->interactionUIType = "TEXT";
+    auto params = std::make_shared<WantParams>();
+    params->SetParam("pk", String::Box("pv"));
+    text->parameters = params;
+    text->buttons = { "ok", "cancel" };
+    InsightIntentExecuteResult entity;
+    entity.interactionInfo = std::make_shared<AppExecFwk::InteractionInfo>();
+    entity.interactionInfo->interactionUI = text;
+    auto out = entity.BuildFunctionResult();
+    ASSERT_NE(out, nullptr);
+    EXPECT_TRUE(out->HasParam(KEY_INTERACTION_INFO));
+    EXPECT_TRUE(out->HasParam(KEY_FLAGS));
+    auto infoParams = out->GetWantParams(KEY_INTERACTION_INFO);
+    auto uiParams = infoParams.GetWantParams(KEY_INTERACTION_UI);
+    EXPECT_EQ(uiParams.GetStringParam(KEY_INTERACTION_UI_TYPE), "TEXT");
+    EXPECT_EQ(uiParams.GetWantParams(KEY_PARAMETERS).GetStringParam("pk"), "pv");
+    EXPECT_TRUE(uiParams.HasParam(KEY_BUTTONS));
 }
 
 } // namespace AAFwk
