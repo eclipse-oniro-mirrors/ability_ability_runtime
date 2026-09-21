@@ -1996,16 +1996,16 @@ HWTEST_F(ContextImplTest, ChangeToLocalPath_0400, TestSize.Level1)
 /**
  * @tc.number: ChangeToLocalPath_0500
  * @tc.name: ChangeToLocalPath_0500
- * @tc.desc: ChangeToLocalPath with empty sourceDir (early return branch).
+ * @tc.desc: ChangeToLocalPath with non-matching bundle (else branch).
  */
 HWTEST_F(ContextImplTest, ChangeToLocalPath_0500, TestSize.Level1)
 {
-    auto contextlmpl =std::make_shared<AbilityRuntime::Contextlmpl>();
-    EXPECT_NE(contextlmpl, nullptr);
+    auto contextImpl =std::make_shared<AbilityRuntime::ContextImpl>();
+    EXPECT_NE(contextImpl, nullptr);
     std::string bundleName = "com.ohos.demo";
     std::string localPath ="/data/app/el1/bundle/public/com.example.other/entry.hap";
-    contextlmpl->ChangeToLocalPath(bundleName, localPath, localPath);
-    EXPECT_TRUE(localPath =-"/data/bundles/com.example.other/entry.hap");
+    contextImpl->ChangeToLocalPath(bundleName, localPath, localPath);
+    EXPECT_TRUE(localPath == "/data/bundles/com.example.other/entry.hap");
 }
 
 #ifdef SUPPORT_SCREEN
