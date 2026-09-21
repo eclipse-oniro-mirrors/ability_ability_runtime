@@ -99,7 +99,7 @@ void FormExtensionProviderClient::AcquireFormExtensionProviderInfo(const AppExec
         }
 
         formProviderInfo = ownerFormExtension->OnCreate(createWant);
-        TAG_LOGD(AAFwkTag::FORM_EXT, "formId: %{public}s, data: %{public}s, size: %{public}zu",
+        TAG_LOGD(AAFwkTag::FORM_EXT, "formId: %{public}s, data: %{private}s, size: %{public}zu",
             createWant.GetStringParam(Constants::PARAM_FORM_IDENTITY_KEY).c_str(),
             formProviderInfo.GetFormDataString().c_str(),
             formProviderInfo.GetFormProxies().size());

@@ -550,10 +550,14 @@ void JsFormExtension::OnFormLocationChanged(const int64_t formId, const int32_t 
 #endif
     TAG_LOGI(AAFwkTag::FORM_EXT, "Card position changes, location: %{public}d, formId: %{public}" PRId64, formLocation, formId);
     FormExtension::OnFormLocationChanged(formId, formLocation);
- 
-    HandleScope handleScope(jsRuntime_);
+
     napi_env env = jsRuntime_.GetNapiEnv();
- 
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::FORM_EXT, "env nullptr");
+        return;
+    }
+    HandleScope handleScope(env);
+
     napi_value napiFormId = WrapStringToJS(env, std::to_string(formId));
     napi_value napiLocation = WrapInt32ToJS(env, formLocation);
     napi_value argv[] = {napiFormId, napiLocation};
@@ -567,18 +571,40 @@ void JsFormExtension::OnSizeChanged(int64_t formId, int32_t newDimension, const 
 #endif
     TAG_LOGI(AAFwkTag::FORM_EXT, "Form size changed, formId: %{public}" PRId64, formId);
     FormExtension::OnSizeChanged(formId, newDimension, newRect);
- 
-    HandleScope handleScope(jsRuntime_);
+
     napi_env env = jsRuntime_.GetNapiEnv();
- 
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::FORM_EXT, "env nullptr");
+        return;
+    }
+    HandleScope handleScope(env);
+
     napi_value napiFormId = WrapStringToJS(env, std::to_string(formId));
+    if (napiFormId == nullptr) {
+        TAG_LOGE(AAFwkTag::FORM_EXT, "napiFormId nullptr");
+        return;
+    }
     napi_value napinewDimension = WrapInt32ToJS(env, newDimension);
+    if (napinewDimension == nullptr) {
+        TAG_LOGE(AAFwkTag::FORM_EXT, "napinewDimension nullptr");
+        return;
+    }
     napi_value napiNewRect = nullptr;
-    napi_create_object(env, &napiNewRect);
-    napi_set_named_property(env, napiNewRect, "left", CreateJsValue(env, newRect.left));
-    napi_set_named_property(env, napiNewRect, "top", CreateJsValue(env, newRect.top));
-    napi_set_named_property(env, napiNewRect, "width", CreateJsValue(env, newRect.width));
-    napi_set_named_property(env, napiNewRect, "height", CreateJsValue(env, newRect.height));
+    if (napi_create_object(env, &napiNewRect) != napi_ok || napiNewRect == nullptr) {
+        TAG_LOGE(AAFwkTag::FORM_EXT, "napi_create_object failed");
+        return;
+    }
+    const std::pair<const char*, int32_t> rectProps[] = {
+        {"left", newRect.left}, {"top", newRect.top},
+        {"width", newRect.width}, {"height", newRect.height}
+    };
+    for (const auto& [key, val] : rectProps) {
+        napi_value jsVal = CreateJsValue(env, val);
+        if (jsVal == nullptr || napi_set_named_property(env, napiNewRect, key, jsVal) != napi_ok) {
+            TAG_LOGE(AAFwkTag::FORM_EXT, "set rect property failed, key: %{public}s", key);
+            return;
+        }
+    }
     napi_value argv[] = {napiFormId, napinewDimension, napiNewRect};
     CallObjectMethod("onSizeChanged", "onSizeChanged", argv, ARGC_THREE);
 }

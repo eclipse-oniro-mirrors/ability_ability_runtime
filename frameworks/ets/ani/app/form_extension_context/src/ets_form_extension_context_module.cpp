@@ -51,6 +51,12 @@ ani_object EtsFormExtensionContextModule::NativeTransferStatic(ani_env *aniEnv, 
         return nullptr;
     }
 
+    if (!IsInstanceOf(aniEnv, input)) {
+        TAG_LOGE(AAFwkTag::FORM_EXT, "not FormExtensionContext");
+        EtsErrorUtil::ThrowEtsTransferClassError(aniEnv);
+        return nullptr;
+    }
+
     void *unwrapResult = nullptr;
     bool success = arkts_esvalue_unwrap(aniEnv, input, &unwrapResult);
     if (!success) {
@@ -132,6 +138,11 @@ std::unique_ptr<NativeReference> EtsFormExtensionContextModule::CreateNativeRefe
     }
 
     auto value = CreateJsFormExtensionContext(napiEnv, formExtContext);
+    if (value == nullptr) {
+        TAG_LOGE(AAFwkTag::FORM_EXT, "null value");
+        return;
+    }
+
     auto systemModule =
         JsRuntime::LoadSystemModuleByEngine(napiEnv, "application.FormExtensionContext", &value, 1);
     if (systemModule == nullptr) {
@@ -193,7 +204,14 @@ napi_value EtsFormExtensionContextModule::GetOrCreateDynamicObject(napi_env napi
         }
         auto newObject = subThreadRef->Get();
         formExtContext->BindSubThreadObject(
-            static_cast<void *>(napiEnv), static_cast<void *>(subThreadRef.release()));
+            static_cast<void *>(napiEnv), static_cast<void *>(subThreadRef.get()));
+        auto boundObj = static_cast<NativeReference *>(
+            formExtContext->GetSubThreadObject(static_cast<void *>(napiEnv)));
+        if (boundObj != subThreadRef.get()) {
+            TAG_LOGE(AAFwkTag::FORM_EXT, "BindSubThreadObject failed, object already bound");
+            return nullptr;
+        }
+        subThreadRef.release();
         return newObject;
     }
 

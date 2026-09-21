@@ -807,10 +807,17 @@ void ETSFormExtension::OnFormLocationChanged(const int64_t formId, const int32_t
         return;
     }
     ani_string formIdStr = AppExecFwk::GetAniString(env, std::to_string(formId));
+    if (formIdStr == nullptr) {
+        TAG_LOGE(AAFwkTag::FORM_EXT, "formIdStr nullptr");
+        return;
+    }
 
     ani_enum_item formLocationStateItem {};
-    OHOS::AAFwk::AniEnumConvertUtil::EnumConvert_NativeToEts(
-        env, FORM_LOCATION_STATE_ENUM_NAME, formLocation, formLocationStateItem);
+    if (!OHOS::AAFwk::AniEnumConvertUtil::EnumConvert_NativeToEts(
+        env, FORM_LOCATION_STATE_ENUM_NAME, formLocation, formLocationStateItem) || formLocationStateItem == nullptr) {
+        TAG_LOGE(AAFwkTag::FORM_EXT, "formLocationStateItem NativeToEts failed");
+        return;
+    }
 
     if (etsAbilityObj_ == nullptr) {
         TAG_LOGE(AAFwkTag::FORM_EXT, "null etsAbilityObj_");
@@ -933,6 +940,10 @@ void ETSFormExtension::OnSizeChanged(int64_t formId, int32_t newDimension, const
     }
 
     ani_string formIdStr = AppExecFwk::GetAniString(env, std::to_string(formId));
+    if (formIdStr == nullptr) {
+        TAG_LOGE(AAFwkTag::FORM_EXT, "formIdStr nullptr");
+        return;
+    }
     ani_enum_item newDimensionItem = nullptr;
     if (!OHOS::AAFwk::AniEnumConvertUtil::EnumConvert_NativeToEts(env, FORM_DIMENSION_ENUM_NAME,
         newDimension, newDimensionItem) || newDimensionItem == nullptr) {
