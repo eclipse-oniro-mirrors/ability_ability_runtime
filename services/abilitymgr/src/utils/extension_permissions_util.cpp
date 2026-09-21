@@ -22,19 +22,6 @@
 
 namespace OHOS {
 namespace AAFwk {
-namespace {
-bool CheckUkeyAuthCallerPermission(uint32_t specifyTokenId)
-{
-    auto ret = PermissionVerification::GetInstance()->VerifyCallingPermission(
-        PermissionConstants::PERMISSION_START_SYSTEM_DIALOG, specifyTokenId);
-    if (!ret) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "permission deny for ukeyAuthExtension");
-        return false;
-    }
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "check permission success");
-    return true;
-}
-} // namespace
 
 bool ExtensionPermissionsUtil::CheckSAPermission(const AppExecFwk::ExtensionAbilityType &extensionType,
     uint32_t specifyTokenId)
@@ -137,7 +124,8 @@ bool ExtensionPermissionsUtil::CheckCallerPermission(const AppExecFwk::Extension
     TAG_LOGD(AAFwkTag::ABILITYMGR, "CheckCallerPermission, extensionType: %{public}d.", extensionType);
     switch (extensionType) {
         case AppExecFwk::ExtensionAbilityType::UKEY_AUTH:
-            return CheckUkeyAuthCallerPermission(specifyTokenId);
+            return PermissionVerification::GetInstance()->VerifyCallingPermission(
+                PermissionConstants::PERMISSION_START_SYSTEM_DIALOG, specifyTokenId);
         default:
             TAG_LOGD(AAFwkTag::ABILITYMGR, "bypass caller permission for type: %{public}d", extensionType);
             return true;
