@@ -992,7 +992,7 @@ void JsRuntime::CreatePluginDefaultNamespace(const std::string &lddictionaries)
         TAG_LOGE(AAFwkTag::JSRUNTIME, "verify access token failed: result = %{public}d", result);
         TAG_LOGE(AAFwkTag::JSRUNTIME, "verify access token failed: resultWeb = %{public}d", resultWeb);
         TAG_LOGE(AAFwkTag::JSRUNTIME, "verify access token failed: resultLoadCertSignLib = %{public}d",
-        resultLoadCertSignLib);
+                 resultLoadCertSignLib);
         return;
     }
     auto moduleManager = NativeModuleManager::GetInstance();
