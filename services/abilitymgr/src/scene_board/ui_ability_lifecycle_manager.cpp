@@ -1903,9 +1903,9 @@ int UIAbilityLifecycleManager::CallAbilityLocked(const AbilityRequest &abilityRe
             }
             uiAbilityRecord->SetPendingState(AbilityState::FOREGROUND);
             ForegroundOptions options;
-            options.callerUid = abilityRequest->GetWant().GetIntParam(Want::PARAM_RESV_CALLER_UID, -1);
+            options.callerUid = abilityRequest.want.GetIntParam(Want::PARAM_RESV_CALLER_UID, -1);
             options.callerBundleName =
-                abilityRequest->GetWant().GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME);
+                abilityRequest.want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME);
             options.sceneFlag = SCENE_FLAG_BYCALL;
             uiAbilityRecord->ProcessForegroundAbility(sessionInfo->callingTokenId, options,
                 abilityRequest.want.GetBoolParam(ServerConstant::IS_CALL_BY_SCB, false));
