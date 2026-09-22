@@ -824,9 +824,10 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_GetProcessKillReason_Test001
     printf("killInfo killId: %d", killInfo.killId);
     killId = 0;
     appfreezeManager->GetProcessKillReason(killInfo, killId, killMsg);
+    EXPECT_TRUE(killInfo.killReason.find("InvalidKillId") != std::string::npos);
     killId = 4000;
     appfreezeManager->GetProcessKillReason(killInfo, killId, killMsg);
-    EXPECT_TRUE(killInfo.killReason.find("InvalidKillId") != std::string::npos);
+    EXPECT_TRUE(killInfo.killReason.find("OOM_KILLER") != std::string::npos);
 }
 
 /**
