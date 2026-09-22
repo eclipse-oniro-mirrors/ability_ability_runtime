@@ -575,7 +575,7 @@ int32_t AmsMgrStub::HandleGetRunningProcessInfoByToken(MessageParcel &data, Mess
     RunningProcessInfo processInfo;
     auto token = data.ReadRemoteObject();
     GetRunningProcessInfoByToken(token, processInfo);
-    if (reply.WriteParcelable(&processInfo)) {
+    if (!reply.WriteParcelable(&processInfo)) {
         TAG_LOGE(AAFwkTag::APPMGR, "process info write failed.");
         return ERR_INVALID_VALUE;
     }
@@ -635,11 +635,15 @@ int32_t AmsMgrStub::HandleGetApplicationInfoByProcessID(MessageParcel &data, Mes
     HITRACE_METER(HITRACE_TAG_APP);
     int32_t pid = data.ReadInt32();
     AppExecFwk::ApplicationInfo application;
-    bool debug;
+    bool debug = false;
     int32_t result = GetApplicationInfoByProcessID(pid, application, debug);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::APPMGR, "write result error.");
         return ERR_INVALID_VALUE;
+    }
+    if (result != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetApplicationInfoByProcessID failed");
+        return result;
     }
     if (!reply.WriteParcelable(&application)) {
         TAG_LOGE(AAFwkTag::APPMGR, "write application info failed");
@@ -706,8 +710,12 @@ int32_t AmsMgrStub::HandleGetBundleNameByPid(MessageParcel &data, MessageParcel 
 {
     int32_t pid = data.ReadInt32();
     std::string bundleName;
-    int32_t uid;
-    GetBundleNameByPid(pid, bundleName, uid);
+    int32_t uid = -1;
+    int32_t result = GetBundleNameByPid(pid, bundleName, uid);
+    if (result != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetBundleNameByPid failed.");
+        return result;
+    }
 
     reply.WriteString(bundleName);
     reply.WriteInt32(uid);

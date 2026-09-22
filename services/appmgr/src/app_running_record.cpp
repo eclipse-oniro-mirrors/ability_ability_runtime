@@ -2469,21 +2469,25 @@ ProcessType AppRunningRecord::GetProcessType() const
 
 std::map<pid_t, std::weak_ptr<AppRunningRecord>> AppRunningRecord::GetChildAppRecordMap() const
 {
+    std::lock_guard lock(childAppRecordMapLock_);
     return childAppRecordMap_;
 }
 
 void AppRunningRecord::AddChildAppRecord(pid_t pid, std::shared_ptr<AppRunningRecord> appRecord)
 {
+    std::lock_guard lock(childAppRecordMapLock_);
     childAppRecordMap_[pid] = appRecord;
 }
 
 void AppRunningRecord::RemoveChildAppRecord(pid_t pid)
 {
+    std::lock_guard lock(childAppRecordMapLock_);
     childAppRecordMap_.erase(pid);
 }
 
 void AppRunningRecord::ClearChildAppRecordMap()
 {
+    std::lock_guard lock(childAppRecordMapLock_);
     childAppRecordMap_.clear();
 }
 

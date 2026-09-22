@@ -73,6 +73,11 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_CreateMainServiceIns
         TAG_LOGE(AAFwkTag::EXT, "Failed to allocate ModObjDispatcher instance");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
+    if (remoteProxy->remote == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "CreateMainServiceInstance: remote is nullptr");
+        delete dispatcher;
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
     dispatcher->proxy = remoteProxy->remote;
     dispatcher->metadataManager = std::make_shared<ModObjDispatcherMetadataManager>();
     // Register death recipient to auto-release cached metadata when the remote peer dies.
@@ -185,6 +190,10 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_CallMethod(
     if (pModObjDispatcher == nullptr || pInputParams == nullptr || pResult == nullptr
         || pModObjDispatcher->metadataManager == nullptr || pMethodErrCode == nullptr) {
         TAG_LOGE(AAFwkTag::EXT, "CallMethod: invalid param");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    if (pModObjDispatcher->proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "CallMethod: proxy is nullptr");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     *pMethodErrCode = 0;

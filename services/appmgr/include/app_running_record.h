@@ -1436,6 +1436,7 @@ private:
     std::map<std::string, std::vector<std::shared_ptr<ModuleRunningRecord>>> hapModules_;
     std::map<int32_t, std::shared_ptr<RenderRecord>> renderRecordMap_; // render record
     std::map<pid_t, std::weak_ptr<AppRunningRecord>> childAppRecordMap_;
+    mutable ffrt::mutex childAppRecordMapLock_;
     std::unordered_set<sptr<IRemoteObject>, RemoteObjHash> foregroundingAbilityTokens_;
     std::set<pid_t> renderPidSet_; // Contains all render pid added, whether died or not
     std::set<uint32_t> windowIds_;

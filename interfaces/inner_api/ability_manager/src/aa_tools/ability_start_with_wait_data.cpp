@@ -50,12 +50,30 @@ bool AbilityStartWithWaitObserverData::Marshalling(Parcel &parcel) const
 
 bool AbilityStartWithWaitObserverData::ReadFromParcel(Parcel &parcel)
 {
-    coldStart = parcel.ReadBool();
-    reason = parcel.ReadUint32();
-    startTime = parcel.ReadInt64();
-    foregroundTime = parcel.ReadInt64();
-    bundleName = parcel.ReadString();
-    abilityName = parcel.ReadString();
+    if (!parcel.ReadBool(coldStart)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "Read coldStart error");
+        return false;
+    }
+    if (!parcel.ReadUint32(reason)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "Read reason error");
+        return false;
+    }
+    if (!parcel.ReadInt64(startTime)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "Read startTime error");
+        return false;
+    }
+    if (!parcel.ReadInt64(foregroundTime)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "Read foregroundTime error");
+        return false;
+    }
+    if (!parcel.ReadString(bundleName)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "Read bundleName error");
+        return false;
+    }
+    if (!parcel.ReadString(abilityName)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "Read abilityName error");
+        return false;
+    }
     return true;
 }
 
