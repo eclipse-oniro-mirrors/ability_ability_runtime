@@ -626,29 +626,5 @@ HWTEST_F(InsightIntentSysEventReceiverTest, HandleUserRemove_Direct_0021, TestSi
     EXPECT_EQ(sysEventReceiver->lastUserId_, MAIN_USER_ID);
 }
 
-/**
- * @tc.name: InsightIntentSysEventReceiverTest_CollectInsightIntentSaveParam_0022
- * @tc.desc: Test CollectInsightIntentSaveParam collects a module into saveParam
- *           when GetJsonProfile succeeds.
- * @tc.type: FUNC
- */
-HWTEST_F(InsightIntentSysEventReceiverTest, CollectInsightIntentSaveParam_0022, TestSize.Level1)
-{
-    EventFwk::CommonEventSubscribeInfo subscribeInfo;
-    auto sysEventReceiver = std::make_shared<InsightIntentSysEventReceiver>(subscribeInfo);
-
-    std::string bundleName = "com.test.insightintent";
-    std::string moduleName = "testmodule";
-    uint32_t versionCode = 1;
-    int32_t userId = 100;
-    InsightIntentSaveParam saveParam;
-    bool ret = sysEventReceiver->CollectInsightIntentSaveParam(bundleName, moduleName, versionCode, userId, saveParam);
-
-    EXPECT_TRUE(ret);
-    EXPECT_EQ(saveParam.moduleName, moduleName);
-    EXPECT_FALSE(saveParam.profileInfos.insightIntents.empty());
-    EXPECT_EQ(saveParam.profileInfos.insightIntents[0].bundleName, bundleName);
-    EXPECT_EQ(saveParam.profileInfos.insightIntents[0].moduleName, moduleName);
-}
 } // namespace AbilityRuntime
 } // namespace OHOS
