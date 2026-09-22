@@ -260,33 +260,11 @@ int32_t AppSpawnClient::SetStartFlags(const AppSpawnStartMsg &startMsg, AppSpawn
         startFlagTmp = startFlagTmp >> RIGHT_SHIFT_STEP;
         flagIndex++;
     }
-    if (startMsg.atomicServiceFlag) {
-        ret = AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ATOMIC_SERVICE);
-        if (ret != 0) {
-            TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
-            return ret;
-        }
-    }
     if (startMsg.strictMode) {
         ret = SetStrictMode(startMsg, reqHandle);
         if (ret != ERR_OK) {
             return ret;
         }
-    }
-    if (startMsg.isolatedExtension) {
-        ret = AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_EXTENSION_SANDBOX);
-        if (ret != 0) {
-            TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
-            return ret;
-        }
-    }
-    if (startMsg.isCustomSandboxFlag) {
-        ret = AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_CUSTOM_SANDBOX);
-        if (ret != 0) {
-            TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
-            return ret;
-        }
-        TAG_LOGD(AAFwkTag::APPMGR, "Set APP_FLAGS_CUSTOM_SANDBOX flag success.");
     }
 #ifdef SUPPORT_CHILD_PROCESS
     ret = SetChildProcessTypeStartFlag(reqHandle, startMsg.childProcessType);
@@ -295,22 +273,13 @@ int32_t AppSpawnClient::SetStartFlags(const AppSpawnStartMsg &startMsg, AppSpawn
         return ret;
     }
 #endif // SUPPORT_CHILD_PROCESS
-    ret = SetIsolationModeFlag(startMsg, reqHandle);
-    return ret;
+    return ERR_OK;
 }
 
 int32_t AppSpawnClient::SetStrictMode(const AppSpawnStartMsg &startMsg, const AppSpawnReqMsgHandle &reqHandle)
 {
     int32_t ret = ERR_OK;
     TAG_LOGD(AAFwkTag::APPMGR, "SetStrictMode");
-    if (startMsg.isolatedSandboxFlagLegacy) {
-        TAG_LOGD(AAFwkTag::APPMGR, "SetIsolatedSandBoxLegacy");
-        ret = AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ISOLATED_SANDBOX);
-        if (ret != 0) {
-            TAG_LOGE(AAFwkTag::APPMGR, "SetIsolatedSandBoxLegacy fail, ret: %{public}d", ret);
-            return ret;
-        }
-    }
     if (startMsg.isolatedNetworkFlag) {
         TAG_LOGD(AAFwkTag::APPMGR, "Set isolatedNetwork");
         ret = AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ISOLATED_NETWORK);
@@ -865,23 +834,5 @@ int32_t AppSpawnClient::SetExtMsgFds(const AppSpawnReqMsgHandle &reqHandle,
     return ERR_OK;
 }
 
-int32_t AppSpawnClient::SetIsolationModeFlag(const AppSpawnStartMsg &startMsg, const AppSpawnReqMsgHandle &reqHandle)
-{
-    TAG_LOGD(AAFwkTag::APPMGR, "isolationMode:%{public}d", startMsg.isolationMode);
-    if (!startMsg.isolationMode) {
-        return ERR_OK;
-    }
-    auto ret = AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ISOLATED_SANDBOX_TYPE);
-    if (ret != 0) {
-        TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
-        return ret;
-    }
-    ret = AppSpawnReqMsgSetAppFlag(reqHandle, APP_FLAGS_ISOLATED_NETWORK);
-    if (ret != 0) {
-        TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
-        return ret;
-    }
-    return ERR_OK;
-}
 }  // namespace AppExecFwk
 }  // namespace OHOS
