@@ -4778,8 +4778,12 @@ void MainThread::SleepCleanKill()
         }
         if (AbilityRuntime::TimeUtil::SystemTimeMillisecond() - beginTime < AppExecFwk::SLEEP_CLEAN_TIMEOUT &&
             appThread->applicationImpl_->GetState() != ApplicationImpl::APP_STATE_FOREGROUND) {
-            AbilityManagerClient::GetInstance()->RecordAppExitReason({ REASON_RESOURCE_CONTROL,
-                "Js_Heap_Sleep_Clean_Kill" });
+            int32_t pid = getpid();
+            AAFwk::ExitReasonCompability exitReason = { REASON_RESOURCE_CONTROL, "Js_Heap_Sleep_Clean_Kill" };
+            exitReason.killId = HiviewDFX::ProcessKillReason::KillEventId::REASON_JS_HEAP_SLEEP_CLEAN_KILL;
+            exitReason.killMsg = "Js_Heap_Sleep_Clean_Kill";
+            exitReason.innerMsg = "Js_Heap_Sleep_Clean_Kill";
+            AbilityManagerClient::GetInstance()->RecordAppWithReason(pid, getuid(), exitReason);
             _exit(0);
         }
     };
