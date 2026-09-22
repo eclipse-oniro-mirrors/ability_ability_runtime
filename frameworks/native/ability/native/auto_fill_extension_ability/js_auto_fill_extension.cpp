@@ -525,7 +525,7 @@ bool JsAutoFillExtension::HandleAutoFillCreate(const AAFwk::Want &want, const sp
         option->SetParentWindowType(static_cast<Rosen::WindowType>(sessionInfo->parentWindowType));
         option->SetUIExtensionUsage(static_cast<uint32_t>(sessionInfo->uiExtensionUsage));
         option->SetDensity(sessionInfo->density);
-        option->SetIsDensityFollowHost(sessionInfo->isDensityFollowHost);
+        option->SetDpiFollowStrategy(static_cast<Rosen::DpiFollowStrategy>(sessionInfo->dpiFollowStrategy));
         option->SetDisplayId(sessionInfo->displayId);
         if (context->isNotAllow != -1) {
             bool isNotAllow = context->isNotAllow == 1 ? true : false;
