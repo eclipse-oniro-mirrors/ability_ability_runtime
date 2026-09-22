@@ -1457,9 +1457,11 @@ HWTEST_F(AppMgrServiceInnerSecondTest, GetAllRunningInstanceKeysByBundleName_100
     EXPECT_EQ(res, AAFwk::INVALID_PARAMETERS_ERR);
     bundleName = TEST_BUNDLE_NAME;
     appMgrServiceInner->remoteClientManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.remoteClientManager_ = nullptr;
     res = appMgrServiceInner->GetAllRunningInstanceKeysByBundleName(bundleName, instanceKeys, userId);
     EXPECT_EQ(res, ERR_INVALID_VALUE);
     appMgrServiceInner->remoteClientManager_ = std::make_shared<RemoteClientManager>();
+    appMgrServiceInner->appQueryHelper_.remoteClientManager_ = appMgrServiceInner->remoteClientManager_;
     res = appMgrServiceInner->GetAllRunningInstanceKeysByBundleName(bundleName, instanceKeys, userId);
     TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_GetAllRunningInstanceKeysByBundleName_1000 end");
 }
@@ -1765,6 +1767,7 @@ HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_ApplicationT
     EXPECT_EQ(appMgrServiceInner->runningSharedBundleList_.size(), 1);
 
     appMgrServiceInner->appRunningManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = nullptr;
     appMgrServiceInner->ApplicationTerminatedSendProcessEvent(appRecord);
     EXPECT_EQ(appMgrServiceInner->runningSharedBundleList_.size(), 0);
     TAG_LOGI(AAFwkTag::TEST, "AppMgrServiceInnerSecondTest_ApplicationTerminatedSendProcessEvent_0100 end");
@@ -1896,7 +1899,7 @@ HWTEST_F(AppMgrServiceInnerSecondTest, GetRunningMultiInstanceKeys_001, TestSize
     std::shared_ptr<AppRunningRecord> appRecord = nullptr;
     std::vector<std::string> instanceKeys;
     AppMgrServiceInner appMgrServiceInner;
-    appMgrServiceInner.GetRunningMultiInstanceKeys(appRecord, instanceKeys);
+    appMgrServiceInner.appQueryHelper_.GetRunningMultiInstanceKeys(appRecord, instanceKeys);
     EXPECT_TRUE(instanceKeys.empty());
 
     BundleInfo bundleInfo;
@@ -1907,15 +1910,15 @@ HWTEST_F(AppMgrServiceInnerSecondTest, GetRunningMultiInstanceKeys_001, TestSize
     appRecord = appMgrServiceInner.CreateAppRunningRecord(
         loadParam, applicationInfo_, abilityInfo_, TEST_PROCESS_NAME, bundleInfo, hapModuleInfo, want_, false);
     EXPECT_NE(appRecord, nullptr);
-    appMgrServiceInner.GetRunningMultiInstanceKeys(appRecord, instanceKeys);
+    appMgrServiceInner.appQueryHelper_.GetRunningMultiInstanceKeys(appRecord, instanceKeys);
     EXPECT_FALSE(instanceKeys.empty());
 
     instanceKeys.push_back(appRecord->GetInstanceKey());
-    appMgrServiceInner.GetRunningMultiInstanceKeys(appRecord, instanceKeys);
+    appMgrServiceInner.appQueryHelper_.GetRunningMultiInstanceKeys(appRecord, instanceKeys);
     EXPECT_FALSE(instanceKeys.size() == 1);
 
     appRecord->priorityObject_ = nullptr;
-    appMgrServiceInner.GetRunningMultiInstanceKeys(appRecord, instanceKeys);
+    appMgrServiceInner.appQueryHelper_.GetRunningMultiInstanceKeys(appRecord, instanceKeys);
     EXPECT_FALSE(instanceKeys.size() == 1 && instanceKeys[0] == appRecord->GetInstanceKey());
     TAG_LOGI(AAFwkTag::TEST, "GetRunningMultiInstanceKeys_001 end");
 }

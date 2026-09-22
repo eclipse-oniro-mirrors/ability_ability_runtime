@@ -335,10 +335,12 @@ HWTEST_F(AppMgrServiceInnerSixthTest, GetRenderProcessTerminationStatus_002, Tes
     int status = 0;
 
     appMgrServiceInner->appRunningManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = nullptr;
     int result = appMgrServiceInner->GetRenderProcessTerminationStatus(renderPid, status);
     EXPECT_NE(result, 0);
 
     appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = appMgrServiceInner->appRunningManager_;
     EXPECT_NE(appMgrServiceInner->appRunningManager_, nullptr);
     result = appMgrServiceInner->GetRenderProcessTerminationStatus(renderPid, status);
     EXPECT_NE(result, 0);
@@ -353,10 +355,12 @@ HWTEST_F(AppMgrServiceInnerSixthTest, GetRenderProcessTerminationStatus_002, Tes
 
     appRunningRecord->renderPidSet_.emplace(renderPid);
     appMgrServiceInner->remoteClientManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.remoteClientManager_ = nullptr;
     result = appMgrServiceInner->GetRenderProcessTerminationStatus(renderPid, status);
     EXPECT_NE(result, 0);
 
     appMgrServiceInner->remoteClientManager_ = std::make_shared<RemoteClientManager>();
+    appMgrServiceInner->appQueryHelper_.remoteClientManager_ = appMgrServiceInner->remoteClientManager_;
     EXPECT_NE(appMgrServiceInner->remoteClientManager_, nullptr);
     appMgrServiceInner->remoteClientManager_->nwebSpawnClient_ = nullptr;
     result = appMgrServiceInner->GetRenderProcessTerminationStatus(renderPid, status);
@@ -528,11 +532,13 @@ HWTEST_F(AppMgrServiceInnerSixthTest, IsAppRunningByBundleNameAndUserId_006, Tes
 
     IPCSkeleton::SetCallingUid(FOUNDATION_UID);
     appMgrServiceInner->appRunningManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = nullptr;
     EXPECT_EQ(IPCSkeleton::GetCallingUid(), FOUNDATION_UID);
     result = appMgrServiceInner->IsAppRunningByBundleNameAndUserId("", userId, isRunning);
     EXPECT_NE(result, 0);
 
     appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = appMgrServiceInner->appRunningManager_;
     EXPECT_NE(appMgrServiceInner->appRunningManager_, nullptr);
     result = appMgrServiceInner->IsAppRunningByBundleNameAndUserId("", userId, isRunning);
     EXPECT_EQ(result, 0);
@@ -632,6 +638,7 @@ HWTEST_F(AppMgrServiceInnerSixthTest, PreloadModuleFinished_ShouldUpdateImageSta
     int32_t pid = 100;
     auto applicationInfo = std::make_shared<ApplicationInfo>();
     appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = appMgrServiceInner->appRunningManager_;
     auto appRunningRecord = std::make_shared<AppRunningRecord>(applicationInfo, 0, "PROCESS_NAME");
     appRunningRecord->GetPriorityObject()->SetPid(pid);
     appRunningRecord->SetMakeImageState(MakeImageState::MAKE_PRELOAD_START);

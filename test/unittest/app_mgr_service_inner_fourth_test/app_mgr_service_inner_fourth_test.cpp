@@ -133,6 +133,7 @@ HWTEST_F(AppMgrServiceInnerFourthTest, KillProcessesInBatch_0100, TestSize.Level
     EXPECT_EQ(appMgrServiceInner->GetAppRunningRecordByPid(pids[0]), nullptr);
 
     appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = appMgrServiceInner->appRunningManager_;
     auto appRunningRecord = std::make_shared<AppRunningRecord>(applicationInfo_, APP_DEBUG_INFO_UID, "PROCESS_NAME");
     appMgrServiceInner->appRunningManager_ ->appRunningRecordMap_.emplace(0, appRunningRecord);
     EXPECT_EQ(appMgrServiceInner->KillProcessesInBatch(pids), ERR_OK);
@@ -291,12 +292,14 @@ HWTEST_F(AppMgrServiceInnerFourthTest, GetRunningProcessInfoByChildProcessPid_01
     TAG_LOGI(AAFwkTag::TEST, "GetRunningProcessInfoByChildProcessPid_0100 start");
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     appMgrServiceInner->appRunningManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = nullptr;
     pid_t childPid = 1;
     AppExecFwk::RunningProcessInfo info;
     auto res = appMgrServiceInner->GetRunningProcessInfoByChildProcessPid(childPid, info);
     EXPECT_EQ(res, ERR_PERMISSION_DENIED);
 
     appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = appMgrServiceInner->appRunningManager_;
     res = appMgrServiceInner->GetRunningProcessInfoByChildProcessPid(childPid, info);
     EXPECT_NE(res, ERR_PERMISSION_DENIED);
     TAG_LOGI(AAFwkTag::TEST, "GetRunningProcessInfoByChildProcessPid_0100 end");
