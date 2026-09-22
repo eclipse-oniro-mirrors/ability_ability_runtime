@@ -66,6 +66,8 @@ HWTEST_F(JsInsightIntentPageSecondTest, JsInsightIntentPageInit_001, TestSize.Le
     MyFlag::isExecuteSecureWithOhmUrl_ = true;
     InsightIntentExecutorInfo info;
     info.executeParam = std::make_shared<AppExecFwk::InsightIntentExecuteParam>();
+    info.executeParam->moduleName_ = "entry";
+    info.executeParam->srcEntrance_ = "ets/pages/Index";
     auto res = jsInsightIntentPage->Init(info);
     EXPECT_TRUE(res);
 }
@@ -137,8 +139,27 @@ HWTEST_F(JsInsightIntentPageSecondTest, JsInsightIntentPageLoadJsCode_001, TestS
     auto jsInsightIntentPage = JsInsightIntentPage::Create(*jsRuntime);
     InsightIntentExecutorInfo info;
     info.executeParam = std::make_shared<AppExecFwk::InsightIntentExecuteParam>();
+    info.executeParam->moduleName_ = "entry";
+    info.executeParam->srcEntrance_ = "ets/pages/Index";
     EXPECT_NE(info.executeParam, nullptr);
     MyFlag::isExecuteSecureWithOhmUrl_ = false;
+    auto res = jsInsightIntentPage->LoadJsCode(info, *jsRuntime);
+    EXPECT_FALSE(res);
+}
+
+/*
+* Feature: JsInsightIntentFunc
+* Function: LoadJsCode
+* SubFunction: invalid path
+*/
+HWTEST_F(JsInsightIntentPageSecondTest, JsInsightIntentPageLoadJsCode_InvalidPath_001, TestSize.Level1)
+{
+    auto jsRuntime = std::make_shared<JsRuntime>();
+    auto jsInsightIntentPage = JsInsightIntentPage::Create(*jsRuntime);
+    InsightIntentExecutorInfo info;
+    info.executeParam = std::make_shared<AppExecFwk::InsightIntentExecuteParam>();
+    info.executeParam->moduleName_ = "entry";
+    info.executeParam->srcEntrance_ = "../evil";
     auto res = jsInsightIntentPage->LoadJsCode(info, *jsRuntime);
     EXPECT_FALSE(res);
 }
