@@ -109,14 +109,15 @@ napi_value AttachUIExtensionContext(napi_env env, void *value, void *)
         TAG_LOGE(AAFwkTag::UI_EXT, "null contextObj");
         return nullptr;
     }
+    auto workContext = new (std::nothrow) std::weak_ptr<UIExtensionContext>(ptr);
     napi_status coerceStatus = napi_coerce_to_native_binding_object(env, contextObj, DetachNewUIExtensionContext,
-        AttachUIExtensionContext, value, nullptr);
+        AttachUIExtensionContext, workContext, nullptr);
     if (coerceStatus != napi_ok) {
         TAG_LOGE(AAFwkTag::UI_EXT, "coerce ui extension context failed: %{public}d", coerceStatus);
+        delete workContext;
         return nullptr;
     }
     napi_add_detached_finalizer(env, contextObj, DetachFinalizeUIExtensionContext, nullptr);
-    auto workContext = new (std::nothrow) std::weak_ptr<UIExtensionContext>(ptr);
     napi_status status = napi_wrap(env, contextObj, workContext,
         [](napi_env, void *data, void *) {
             TAG_LOGD(AAFwkTag::UI_EXT, "Finalizer for weak_ptr ui extension context is called");
