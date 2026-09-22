@@ -1794,7 +1794,7 @@ HWTEST_F(AbilityManagerServiceThirdTest, CheckCallingTokenId_001, TestSize.Level
     auto abilityMs = std::make_shared<AbilityManagerService>();
     std::string bundleName = "test";
     int32_t userId = 0;
-    auto result = abilityMs->CheckCallingTokenId(bundleName, userId);
+    auto result = abilityMs->CheckCallingTokenId(bundleName, userId, 0);
     EXPECT_EQ(result, false);
 }
 
