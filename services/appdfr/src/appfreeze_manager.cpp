@@ -15,6 +15,7 @@
 #include "appfreeze_manager.h"
 
 #include <fcntl.h>
+#include <cstring>
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <sys/types.h>
@@ -83,12 +84,17 @@ constexpr const char* PRELOAD_UIEXTENSION = "PreloadUIExtension";
 constexpr int32_t INVALID_KILL_ID = -2;
 constexpr const char* INVALID_KILL_REASON = "InvalidKillId";
 
-static constexpr int SYSLOAD_GET_KILL_INFO_MAGIC = 0xE5AC02;
-
 #define KILL_LOG_BASE 'S'
 #define GET_KILL_INFO _IOWR(KILL_LOG_BASE, 0x06, int32_t)
+#define SET_KILL_INFO _IOWR(KILL_LOG_BASE, 0x07, int32_t)
 
 #define SYSLOAD_GET_KILL_INFO_MAGIC 0xE5AC02
+#define SYSLOAD_SET_KILL_INFO_MAGIC 0xE5AC03
+
+static std::string ReadKernelProcessName(const char* name, size_t cap)
+{
+    return std::string(name, strnlen(name, cap));
+}
 
 struct KillEventInfo {
     int id = 0;
@@ -97,6 +103,8 @@ struct KillEventInfo {
     bool foreground = false;
     pid_t pid = 0;
     int uid = 0;
+    pid_t callingPid;
+    char callingProcessName[16];
     int64_t timestamp = 0;
     int64_t eventParamFirst = 0;
     int64_t eventParamSecond = 0;
@@ -1361,37 +1369,102 @@ bool AppfreezeManager::IsSkipDetect(int32_t pid, int32_t uid, const std::string&
     return false;
 }
 
-AppfreezeManager::ProcessKillInfo AppfreezeManager::GetProcessKillReason(
-    int32_t killId, int32_t pid, const std::string& killMsg, bool foreground)
+bool AppfreezeManager::GetProcessKillReason(AppfreezeManager::ProcessKillInfo &killInfo, int32_t killId,
+    const std::string& killMsg)
 {
-    AppfreezeManager::ProcessKillInfo killInfo = {
-        .killReason = "",
-        .killMsg = "",
-        .adj = 0,
-        .foreground = foreground,
-        .timestamp = 0,
-        .killId = killId,
-        .eventParamFirst = 0,
-        .eventParamSecond = 0,
-        .eventParamThird = 0,
-        .eventParamFourth = 0,
-        .eventParamFifth = 0,
-        .eventParamSixth = 0,
-        .eventParamSeventh = 0,
-    };
     if (killId == INVALID_KILL_ID) {
         killInfo.killReason = INVALID_KILL_REASON;
         killInfo.killMsg = killMsg + " " + std::string(INVALID_KILL_REASON) + ":" + std::to_string(killId);
+        killInfo.killId = killId;
     } else if (killId < 0) {
-        GetExitKernelReason(pid, killInfo);
+        bool res = GetExitKernelReason(killInfo);
+        killInfo.killMsg = killMsg;
+        if (!res) {
+            return false;
+        }
     } else {
         killInfo.killReason = HiviewDFX::ProcessKillReason::GetKillReason(killId);
         killInfo.killMsg = killMsg;
+        killInfo.killId = killId;
+        SetExitKernelReason(killInfo.pid);
     }
-    return killInfo;
+    return true;
 }
 
-void AppfreezeManager::GetExitKernelReason(int32_t pid, ProcessKillInfo& killInfo)
+static void FillProcessKillInfoFromKernel(const KillInfo& info, int64_t currentTimeNs,
+    AppfreezeManager::ProcessKillInfo& killInfo)
+{
+    int killId = static_cast<int>(info.data.id);
+    killInfo.killId = killId;
+    killInfo.adj = static_cast<int>(info.data.adj);
+    // foreground: signal/Exit death takes kernel record as authority (overrides AppMgr inferred value)
+    killInfo.foreground = info.data.foreground;
+    killInfo.timestamp = static_cast<int64_t>(info.data.timestamp);
+    killInfo.killReason = HiviewDFX::ProcessKillReason::GetKillReason(killId);
+    if (killInfo.killReason.find(INVALID_KILL_REASON) != std::string::npos) {
+        killInfo.killReason = INVALID_KILL_REASON;
+    }
+    killInfo.callingPid = static_cast<int32_t>(info.data.callingPid);
+    killInfo.callingProcessName = killInfo.callingPid > 0 ?
+        AppfreezeUtil::GetProcessNameByPid(killInfo.callingPid) : "";
+    if (killInfo.callingProcessName.empty()) {
+        TAG_LOGD(AAFwkTag::APPDFR, "get callingProcessName by pid failed, use kernel data, callingPid:%{public}d",
+            killInfo.callingPid);
+        killInfo.callingProcessName = ReadKernelProcessName(info.data.callingProcessName,
+            sizeof(info.data.callingProcessName));
+    }
+    killInfo.eventParamFirst = static_cast<int64_t>(info.data.eventParamFirst);
+    killInfo.eventParamSecond = static_cast<int64_t>(info.data.eventParamSecond);
+    killInfo.eventParamThird = static_cast<int64_t>(info.data.eventParamThird);
+    killInfo.eventParamFourth = static_cast<int64_t>(info.data.eventParamFourth);
+    killInfo.eventParamFifth = static_cast<int64_t>(info.data.eventParamFifth);
+    killInfo.eventParamSixth = static_cast<int64_t>(info.data.eventParamSixth);
+    killInfo.eventParamSeventh = static_cast<int64_t>(info.data.eventParamSeventh);
+    int kernelPid = static_cast<int>(info.data.pid);
+    TAG_LOGI(AAFwkTag::APPDFR, "Get killReason success, killId:%{public}d, adj:%{public}d, "
+        "timestamp:%{public}" PRId64 ", currentTimeNs:%{public}" PRId64 ", killReason:%{public}s, "
+        "ioctlPid:%{public}d, pid:%{public}d, paramFirst:%{public}" PRId64 ", paramSecond:%{public}"
+        PRId64 ", paramThird:%{public}" PRId64 ", paramFourth:%{public}" PRId64 ", paramFifth:%{public}"
+        PRId64 ", paramSixth:%{public}" PRId64 ", paramSeventh:%{public}" PRId64, killId, killInfo.adj,
+        killInfo.timestamp, currentTimeNs, killInfo.killReason.c_str(), kernelPid, killInfo.pid,
+        killInfo.eventParamFirst, killInfo.eventParamSecond, killInfo.eventParamThird, killInfo.eventParamFourth,
+        killInfo.eventParamFifth, killInfo.eventParamSixth, killInfo.eventParamSeventh);
+}
+
+bool AppfreezeManager::GetExitKernelReason(ProcessKillInfo& killInfo)
+{
+    int sysloadFd = open(DEV_SYSLOAD, O_RDWR);
+    if (sysloadFd < 0) {
+        TAG_LOGW(AAFwkTag::APPDFR, "open failed, errno:%{public}d", errno);
+        return false;
+    }
+    fdsan_exchange_owner_tag(sysloadFd, 0, FREEZE_DOMAIN);
+    KillInfo info = {0};
+    info.magic = SYSLOAD_GET_KILL_INFO_MAGIC;
+    info.pid = killInfo.pid;
+    info.structSize = sizeof(struct KillInfo);
+
+    struct timespec ts = {0, 0};
+    if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
+        TAG_LOGW(AAFwkTag::APPDFR, "GetExitKernelReason clock_gettime failed, errno:%{public}d", errno);
+    }
+    int64_t currentTimeNs = ((int64_t)ts.tv_sec * 1000000000) + ts.tv_nsec;
+ 
+    int res = ioctl(sysloadFd, GET_KILL_INFO, &info);
+    if (fdsan_close_with_tag(sysloadFd, FREEZE_DOMAIN) != 0) {
+        TAG_LOGW(AAFwkTag::APPDFR, "GetExitKernelReason fdsan close failed, errno:%{public}d", errno);
+    }
+    if (res == 0) {
+        FillProcessKillInfoFromKernel(info, currentTimeNs, killInfo);
+        return true;
+    } else {
+        killInfo.killReason = INVALID_KILL_REASON;
+        TAG_LOGW(AAFwkTag::APPDFR, "Get killReason ioctl failed, errno:%{public}d", errno);
+    }
+    return false;
+}
+
+void AppfreezeManager::SetExitKernelReason(int32_t pid)
 {
     int sysloadFd = open(DEV_SYSLOAD, O_RDWR);
     if (sysloadFd < 0) {
@@ -1400,42 +1473,16 @@ void AppfreezeManager::GetExitKernelReason(int32_t pid, ProcessKillInfo& killInf
     }
     fdsan_exchange_owner_tag(sysloadFd, 0, FREEZE_DOMAIN);
     KillInfo info = {0};
-    info.magic = SYSLOAD_GET_KILL_INFO_MAGIC;
+    info.magic = SYSLOAD_SET_KILL_INFO_MAGIC;
     info.pid = pid;
+    info.data.processed = true;
     info.structSize = sizeof(struct KillInfo);
-
-    int res = ioctl(sysloadFd, GET_KILL_INFO, &info);
+    int res = ioctl(sysloadFd, SET_KILL_INFO, &info);
     if (fdsan_close_with_tag(sysloadFd, FREEZE_DOMAIN) != 0) {
-        TAG_LOGW(AAFwkTag::APPDFR, "GetExitKernelReason fdsan close failed, errno:%{public}d", errno);
+        TAG_LOGW(AAFwkTag::APPDFR, "SetExitKernelReason fdsan close failed, errno:%{public}d", errno);
     }
-    int killId = -1;
-    if (res == 0) {
-        killId = static_cast<int>(info.data.id);
-        killInfo.adj = static_cast<int>(info.data.adj);
-        killInfo.foreground = static_cast<int>(info.data.foreground);
-        killInfo.timestamp = static_cast<int64_t>(info.data.timestamp);
-        killInfo.killReason = HiviewDFX::ProcessKillReason::GetKillReason(killId);
-        killInfo.killId = killId;
-        killInfo.eventParamFirst = static_cast<int64_t>(info.data.eventParamFirst);
-        killInfo.eventParamSecond = static_cast<int64_t>(info.data.eventParamSecond);
-        killInfo.eventParamThird = static_cast<int64_t>(info.data.eventParamThird);
-        killInfo.eventParamFourth = static_cast<int64_t>(info.data.eventParamFourth);
-        killInfo.eventParamFifth = static_cast<int64_t>(info.data.eventParamFifth);
-        killInfo.eventParamSixth = static_cast<int64_t>(info.data.eventParamSixth);
-        killInfo.eventParamSeventh = static_cast<int64_t>(info.data.eventParamSeventh);
-        int kernelPid = static_cast<int>(info.data.pid);
-        TAG_LOGI(AAFwkTag::APPDFR, "Get killReason success, killId:%{public}d, adj:%{public}d, foreground:%{public}d, "
-            "timestamp:%{public}" PRId64 ", killReason:%{public}s, ioctlPid:%{public}d, pid:%{public}d "
-            "paramFirst:%{public}" PRId64 ", paramSecond:%{public}" PRId64 ", paramThird:%{public}" PRId64 ", "
-            "paramFourth:%{public}" PRId64 ", paramFifth:%{public}" PRId64 ", paramSixth:%{public}" PRId64 ", "
-            "paramSeventh:%{public}" PRId64,
-            killId, killInfo.adj, killInfo.foreground, killInfo.timestamp, killInfo.killReason.c_str(),
-            kernelPid, pid, killInfo.eventParamFirst, killInfo.eventParamSecond, killInfo.eventParamThird,
-            killInfo.eventParamFourth, killInfo.eventParamFifth, killInfo.eventParamSixth, killInfo.eventParamSeventh);
-    } else {
-        killInfo.killReason = INVALID_KILL_REASON;
-        TAG_LOGW(AAFwkTag::APPDFR, "Get killReason ioctl failed, errno:%{public}d", errno);
-    }
+    TAG_LOGI(AAFwkTag::APPDFR, "SetExitKernelReason pid:%{public}d, processed:%{public}d, res:%{public}d",
+        pid, info.data.processed, res);
 }
 
 int AppfreezeManager::GetFreezeExitReason(const std::string& eventName)

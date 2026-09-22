@@ -2851,6 +2851,18 @@ void AppRunningRecord::SetKillCallerInfo(int32_t killCallerPid, const std::strin
     killCallerProcessName_ = killCallerProcessName;
 }
 
+int32_t AppRunningRecord::GetKillCallerPid() const
+{
+    std::lock_guard<ffrt::mutex> lock(killCallerLock_);
+    return killCallerPid_;
+}
+
+std::string AppRunningRecord::GetKillCallerProcessName() const
+{
+    std::lock_guard<ffrt::mutex> lock(killCallerLock_);
+    return killCallerProcessName_;
+}
+
 int AppRunningRecord::DumpIpcStart(std::string& result)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");

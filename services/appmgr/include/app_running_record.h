@@ -1080,6 +1080,8 @@ public:
     std::string GetInnerMsg() const;
 
     void SetKillCallerInfo(int32_t killCallerPid, const std::string &killCallerProcessName);
+    int32_t GetKillCallerPid() const;
+    std::string GetKillCallerProcessName() const;
 
     bool SetSupportedProcessCache(bool isSupport);
     SupportProcessCacheState GetSupportProcessCacheState();
