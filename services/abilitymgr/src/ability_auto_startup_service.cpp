@@ -499,7 +499,7 @@ bool AbilityAutoStartupService::GetBundleInfo(const std::string &bundleName, int
         TAG_LOGE(AAFwkTag::AUTO_STARTUP, "null bundleMgrHelper");
         return false;
     }
-    if (appIndex == 0) {
+    if (appIndex == 0 || appIndex == AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
         auto flags =
             AppExecFwk::BundleFlag::GET_BUNDLE_WITH_ABILITIES | AppExecFwk::BundleFlag::GET_BUNDLE_WITH_EXTENSION_INFO;
         if (!IN_PROCESS_CALL(bundleMgrHelper->GetBundleInfo(

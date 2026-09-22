@@ -710,7 +710,7 @@ bool BundleMgrHelper::GetApplicationInfoWithAppIndex(
     RecordCostTimeUtil timeRecord("GetApplicationInfoWithAppIndex");
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     BundleInfo bundleInfo;
-    if (appIndex == 0) {
+    if (appIndex == 0 || appIndex == AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
         if (bundleMgr->GetApplicationInfo(appName, AppExecFwk::BundleFlag::GET_BUNDLE_DEFAULT, userId, appInfo)) {
             return true;
         }
@@ -1096,6 +1096,27 @@ ErrCode BundleMgrHelper::GetAppClonePreference(const std::string &bundleName, in
 
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     return bundleMgr->GetAppClonePreference(bundleName, userId, preference);
+}
+
+ErrCode BundleMgrHelper::GetDualModeBundleInfo(const std::string &bundleName, int32_t userId,
+    int32_t &appIndex)
+{
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        appIndex = 0;
+        return ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
+    }
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    DualModeBundleInfo preference;
+    auto ret = bundleMgr->GetDualModeBundleInfo(bundleName, userId, preference);
+    if (ret == ERR_OK) {
+        appIndex = preference.appIndex;
+    } else {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "GetDualModeBundleInfo ERROR");
+        appIndex = 0;
+    }
+    return ret;
 }
 
 ErrCode BundleMgrHelper::GetSignatureInfoByBundleName(const std::string &bundleName, SignatureInfo &signatureInfo)

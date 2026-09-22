@@ -571,7 +571,7 @@ bool MissionListManager::HandleReusedMissionAndAbility(const AbilityRequest &abi
 
 std::string MissionListManager::GetMissionName(const AbilityRequest &abilityRequest) const
 {
-    int32_t appIndex = 0;
+    int32_t appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
     (void)AbilityRuntime::StartupUtil::GetAppIndex(abilityRequest.want, appIndex);
     return AbilityUtil::ConvertBundleNameSingleton(abilityRequest.abilityInfo.bundleName,
         abilityRequest.abilityInfo.name, abilityRequest.abilityInfo.moduleName, appIndex);
