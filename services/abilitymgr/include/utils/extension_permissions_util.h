@@ -39,10 +39,21 @@ public:
      * CheckSAPermissionMore, check if it has SA permissions or more.
      *
      * @param extensionType The extension type.
-    * @param specifyTokenId The specified token ID.
+     * @param specifyTokenId The specified token ID.
      * @return Whether it has SA permissions or more.
      */
     static bool CheckSAPermissionMore(const AppExecFwk::ExtensionAbilityType &extensionType,
+        uint32_t specifyTokenId = 0);
+
+    /**
+     * CheckCallerPermission, check the caller permission required to start the extension of
+     * the given type. Types without a dedicated rule are bypassed.
+     *
+     * @param extensionType The extension type.
+     * @param specifyTokenId The specified token ID.
+     * @return Whether the caller is allowed to start the extension.
+     */
+    static bool CheckCallerPermission(const AppExecFwk::ExtensionAbilityType &extensionType,
         uint32_t specifyTokenId = 0);
 };
 

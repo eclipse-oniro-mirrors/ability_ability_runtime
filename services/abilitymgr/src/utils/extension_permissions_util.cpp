@@ -118,5 +118,19 @@ bool ExtensionPermissionsUtil::CheckSAPermissionMore(const AppExecFwk::Extension
     return checkRet;
 }
 
+bool ExtensionPermissionsUtil::CheckCallerPermission(const AppExecFwk::ExtensionAbilityType &extensionType,
+    uint32_t specifyTokenId)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "CheckCallerPermission, extensionType: %{public}d.", extensionType);
+    switch (extensionType) {
+        case AppExecFwk::ExtensionAbilityType::UKEY_AUTH:
+            return PermissionVerification::GetInstance()->VerifyCallingPermission(
+                PermissionConstants::PERMISSION_START_SYSTEM_DIALOG, specifyTokenId);
+        default:
+            TAG_LOGD(AAFwkTag::ABILITYMGR, "bypass caller permission for type: %{public}d", extensionType);
+            return true;
+    }
+}
+
 } // namespace AAFwk
 } // namespace OHOS
