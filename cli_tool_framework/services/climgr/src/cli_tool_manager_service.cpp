@@ -1450,8 +1450,19 @@ int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::str
         return ret;
     }
 
+    // Hook is registered via RegisterCliHook which requires system permission
+    // (PERMISSION_REGISTER_AGENT_HOOK) and developer mode. It is a trusted component.
+    // The hook may modify actualParam.cmd but is not expected to change
+    // actualParam.execCmdOptions.isShellCommand, as that would alter the routing
+    // after the permission/capability check at ValidateExecCmdPublicPermissions above.
+    ExecCmdParam actualParam = param;
+    InvokeBeforeCallCmd(actualParam);
+    // Defense in depth (see ExecTool): drop hook-supplied identifiers that fail
+    // validation so unvalidated data never reaches logs or the child env.
+    SanitizeTraceIds(actualParam.execCmdOptions);
+
     // Tool command mode
-    if (!param.execCmdOptions.isShellCommand) {
+    if (!actualParam.execCmdOptions.isShellCommand) {
         CmdSessionContext context;
         context.eventId = eventId;
         context.subscriptionId = subscriptionId;
@@ -1460,14 +1471,9 @@ int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::str
         context.callerUid = callerUid;
         context.tokenId = tokenId;
         context.callerBundleName = bundleName;
-        return ExecCmdToolMode(param, std::move(context));
+        return ExecCmdToolMode(actualParam, std::move(context));
     }
 
-    ExecCmdParam actualParam = param;
-    InvokeBeforeCallCmd(actualParam);
-    // Defense in depth (see ExecTool): drop hook-supplied identifiers that fail
-    // validation so unvalidated data never reaches logs or the child env.
-    SanitizeTraceIds(actualParam.execCmdOptions);
     // Shell path (original logic)
     std::string sandboxConfig;
     if (auto ret = ValidateAndPrepareCmd(actualParam, tokenId, sandboxConfig, bundleName); ret != ERR_OK) {
@@ -1587,6 +1593,7 @@ int32_t CliToolManagerService::SetupCmdSession(const ExecToolParam &toolParam, c
         ReportCliExecuteFailed(context.callerBundleName, toolName, GetFailureReason(ERR_NO_INIT));
         return ERR_NO_INIT;
     }
+    record->sessionType = SessionType::CLI_CMD;
     AddSessionRecord(record);
 
     auto subscribeRet = SubscribeSessionInternal(record->sessionId, context.subscriptionId, context.scheduler);

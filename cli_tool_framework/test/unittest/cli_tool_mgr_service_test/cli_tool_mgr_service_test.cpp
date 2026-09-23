@@ -4217,6 +4217,12 @@ public:
         beforeCallCmdCount++;
         lastBeforeCmdToolCallId = param.execCmdOptions.toolCallId;
         lastBeforeCmdDmSessionId = param.execCmdOptions.dmSessionId;
+        if (modifyCmdIsShell) {
+            param.execCmdOptions.isShellCommand = targetIsShell;
+        }
+        if (modifyCmdString) {
+            param.cmd = targetCmd;
+        }
         return ERR_OK;
     }
 
@@ -4242,6 +4248,10 @@ public:
     std::string lastWrapDmSessionId;
     bool modifyParam = false;
     bool modifyResult = false;
+    bool modifyCmdIsShell = false;
+    bool targetIsShell = false;
+    bool modifyCmdString = false;
+    std::string targetCmd;
 };
 
 class MockFunctionHook : public FunctionHookInterfaceStub {
@@ -4972,6 +4982,150 @@ HWTEST_F(CliToolManagerServiceTest, BeforeCallCmd_ModifyParam_0100, TestSize.Lev
 
     service_->UnregisterCliHook(hook);
     TAG_LOGI(AAFwkTag::TEST, "BeforeCallCmd_ModifyParam_0100 end");
+}
+
+/**
+ * @tc.name: ExecCmd_ToolMode_InvokesBeforeCallCmd_0100
+ * @tc.desc: ExecCmd tool command mode (isShellCommand=false) invokes BeforeCallCmd hook
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_ToolMode_InvokesBeforeCallCmd_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExecCmd_ToolMode_InvokesBeforeCallCmd_0100 start");
+    SetDeveloperMode(true);
+
+    auto hook = sptr<MockCliHook>::MakeSptr();
+    service_->RegisterCliHook(hook, 0x0F);
+
+    ExecCmdParam param;
+    param.cmd = "nonexistent-tool subcommand";
+    param.execCmdOptions.isShellCommand = false;
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    service_->ExecCmd(param, "event_hook", scheduler, "sub_hook");
+
+    EXPECT_EQ(hook->beforeCallCmdCount, 1);
+
+    service_->UnregisterCliHook(hook);
+    TAG_LOGI(AAFwkTag::TEST, "ExecCmd_ToolMode_InvokesBeforeCallCmd_0100 end");
+}
+
+/**
+ * @tc.name: ExecCmd_ToolMode_SetupCmdSession_SetsCliCmdType_0100
+ * @tc.desc: SetupCmdSession (tool-command-mode path) sets sessionType=CLI_CMD on the session record
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_ToolMode_SetupCmdSession_SetsCliCmdType_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExecCmd_ToolMode_SetupCmdSession_SetsCliCmdType_0100 start");
+
+    CliToolDataManagerMock::getToolByNameResult = ERR_OK;
+    service_->ioMonitor_ = IOMonitor::Create();
+
+    ExecToolParam toolParam;
+    toolParam.toolName = "testtool";
+    toolParam.options.timeout = 0;
+    toolParam.options.background = false;
+
+    ToolInfo toolInfo;
+    toolInfo.name = "testtool";
+    toolInfo.executablePath = "/system/bin/testtool";
+
+    CliToolManagerService::CmdSessionContext context;
+    context.eventId = "event_session_type";
+    context.subscriptionId = "sub_session_type";
+    context.scheduler = new TestScheduler();
+    context.callerPid = IPCSkeleton::GetCallingPid();
+    context.callerUid = IPCSkeleton::GetCallingUid();
+    context.tokenId = IPCSkeleton::GetCallingTokenID();
+
+    int32_t result = service_->SetupCmdSession(toolParam, toolInfo, "sandbox_cfg", "testtool", context);
+
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(service_->sessionRecords_.size(), 1u);
+
+    auto it = service_->sessionRecords_.begin();
+    ASSERT_NE(it->second, nullptr);
+    EXPECT_EQ(it->second->sessionType, SessionType::CLI_CMD);
+
+    // Cleanup
+    {
+        std::lock_guard<ffrt::mutex> guard(service_->sessionsMutex_);
+        service_->sessionRecords_.clear();
+    }
+    if (service_->ioMonitor_ != nullptr) {
+        service_->ioMonitor_->Stop();
+        service_->ioMonitor_ = nullptr;
+    }
+
+    TAG_LOGI(AAFwkTag::TEST, "ExecCmd_ToolMode_SetupCmdSession_SetsCliCmdType_0100 end");
+}
+
+/**
+ * @tc.name: ExecCmd_ToolMode_HookFlipsIsShellCommand_0100
+ * @tc.desc: BeforeCallCmd hook flips isShellCommand false→true; shell path is taken instead of tool path
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_ToolMode_HookFlipsIsShellCommand_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExecCmd_ToolMode_HookFlipsIsShellCommand_0100 start");
+    SetDeveloperMode(true);
+
+    auto hook = sptr<MockCliHook>::MakeSptr();
+    hook->modifyCmdIsShell = true;
+    hook->targetIsShell = true;
+    service_->RegisterCliHook(hook, 0x0F);
+
+    // getToolByNameResult stays ERR_TOOL_NOT_EXIST (default): tool mode would return ERR_TOOL_NOT_EXIST.
+    // With the hook flipping isShellCommand to true, the shell path is taken instead.
+    // Shell path calls ValidateAndPrepareCmd → GenerateCmdSandboxConfig → ERR_NOT_HAP (not a HAP in test).
+    ExecCmdParam param;
+    param.cmd = "some-tool arg";
+    param.execCmdOptions.isShellCommand = false;
+    param.execCmdOptions.timeout = 30;
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_flip_shell", scheduler, "sub_flip_shell");
+
+    EXPECT_EQ(hook->beforeCallCmdCount, 1);
+    EXPECT_EQ(result, ERR_NOT_HAP);
+
+    service_->UnregisterCliHook(hook);
+    TAG_LOGI(AAFwkTag::TEST, "ExecCmd_ToolMode_HookFlipsIsShellCommand_0100 end");
+}
+
+/**
+ * @tc.name: ExecCmd_ToolMode_HookModifiesCmd_0100
+ * @tc.desc: BeforeCallCmd hook modifies param.cmd; the modified cmd propagates to ExecCmdToolMode
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_ToolMode_HookModifiesCmd_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExecCmd_ToolMode_HookModifiesCmd_0100 start");
+    SetDeveloperMode(true);
+
+    auto hook = sptr<MockCliHook>::MakeSptr();
+    hook->modifyCmdString = true;
+    hook->targetCmd = "mocktool";
+    service_->RegisterCliHook(hook, 0x0F);
+
+    CliToolDataManagerMock::getToolByNameResult = ERR_OK;
+
+    // Original cmd is empty → ExtractToolName("") = "" → ERR_INVALID_PARAM if unmodified.
+    // Hook rewrites cmd to "mocktool" → ExtractToolName returns "mocktool"
+    // → GetToolByName succeeds (mock OK) → ParseToolCommand passes (single token, no subcommand)
+    // → GenerateSandboxConfig → ERR_NOT_HAP (not a HAP in test).
+    // Result ERR_NOT_HAP proves the hook-modified actualParam.cmd reached ExecCmdToolMode.
+    ExecCmdParam param;
+    param.cmd = "";
+    param.execCmdOptions.isShellCommand = false;
+    param.execCmdOptions.timeout = 30;
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_modify_cmd", scheduler, "sub_modify_cmd");
+
+    EXPECT_EQ(hook->beforeCallCmdCount, 1);
+    EXPECT_EQ(result, ERR_NOT_HAP);
+
+    service_->UnregisterCliHook(hook);
+    TAG_LOGI(AAFwkTag::TEST, "ExecCmd_ToolMode_HookModifiesCmd_0100 end");
 }
 
 /**
