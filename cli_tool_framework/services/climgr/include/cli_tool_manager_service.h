@@ -331,7 +331,7 @@ private:
     sptr<ICliHookInterface> CheckCliHook(uint32_t flag);
     sptr<IFunctionHookInterface> CheckFunctionHook(uint32_t flag);
     void InvokeBeforeCallTool(ExecToolParam &param);
-    void InvokeAfterCallTool(CliSessionInfo &session, SessionType sessionType);
+    void InvokeAfterCallTool(CliSessionInfo &session, const SessionRecord &record);
     void InvokeBeforeCallCmd(ExecCmdParam &param);
 
     bool initialized_ = false;

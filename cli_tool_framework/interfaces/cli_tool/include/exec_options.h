@@ -32,10 +32,26 @@ public:
     bool background = false;
     int64_t yieldMs = 0;
     int64_t timeout = 0;
+    std::string toolCallId;
+    std::string dmSessionId;
 
     bool Marshalling(Parcel &parcel) const;
     static ExecOptions *Unmarshalling(Parcel &parcel);
 };
+// Shared trace-id rule: max length of toolCallId/dmSessionId ([A-Za-z0-9_-]{1,256}).
+constexpr size_t TRACE_ID_MAX_LEN = 256;
+
+/**
+ * @brief Validates a trace identifier received over IPC.
+ *
+ * Empty means "not provided" and is valid. A non-empty value must consist of
+ * [A-Za-z0-9_-] only and be at most TRACE_ID_MAX_LEN (256) characters.
+ * Server-side entry points (ExecTool/ExecCmd) reject requests whose
+ * identifiers fail this check, so untrusted Parcel input can never reach
+ * logs or child-process environments.
+ */
+bool IsValidTraceId(const std::string &value);
+
 } // namespace CliTool
 } // namespace OHOS
 #endif // OHOS_ABILITY_RUNTIME_EXEC_OPTIONS_H

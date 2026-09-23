@@ -20,6 +20,10 @@
 namespace OHOS::CliTool {
 struct ExecResultWrap : public Parcelable {
     ExecResult execResult;
+    // Trace identifiers actually used by the execution (post-before-hook values,
+    // stamped service-side); empty means "not provided".
+    std::string toolCallId;
+    std::string dmSessionId;
     bool Marshalling(Parcel &parcel) const override;
     static ExecResultWrap *Unmarshalling(Parcel &parcel);
 };

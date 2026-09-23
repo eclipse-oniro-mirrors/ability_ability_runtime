@@ -57,7 +57,10 @@ void ParseJsExecToolParam(napi_env env, napi_value jsObj, ExecToolParam& param)
     if (napi_has_named_property(env, jsObj, "execOptions", &hasProp) == napi_ok && hasProp) {
         napi_value prop = nullptr;
         napi_get_named_property(env, jsObj, "execOptions", &prop);
-        UnwrapExecOptions(env, prop, param.options);
+        // Partial application (LOG-009): invalid fields keep prior values and the
+        // error is not surfaced to the hook; the service re-validates entry + post-hook.
+        std::string optionsMsg;
+        UnwrapExecOptions(env, prop, param.options, optionsMsg);
     }
 }
 
@@ -73,8 +76,11 @@ void ParseJsExecCmdParam(napi_env env, napi_value jsObj, ExecCmdParam& param)
     if (napi_has_named_property(env, jsObj, "execCmdOptions", &hasProp) == napi_ok && hasProp) {
         napi_value opts = nullptr;
         napi_get_named_property(env, jsObj, "execCmdOptions", &opts);
+        // Partial application (LOG-009): invalid fields keep prior values and the
+        // error is not surfaced to the hook; the service re-validates entry + post-hook.
+        std::string optionsMsg;
         if (opts != nullptr) {
-            UnwrapExecCmdOptions(env, opts, param.execCmdOptions);
+            UnwrapExecCmdOptions(env, opts, param.execCmdOptions, optionsMsg);
         }
     }
 }
@@ -99,12 +105,12 @@ napi_value BuildJsParam(napi_env env, const JsCliHook::HookCallData& callData)
             return callData.toolParam != nullptr ? CreateJsExecToolParam(env, *callData.toolParam) : nullptr;
         case JsCliHook::HookMethodType::AFTER_CALL_TOOL:
             return callData.execResultWrap != nullptr
-                ? CreateJsExecResultWrap(env, callData.execResultWrap->execResult) : nullptr;
+                ? CreateJsExecResultWrap(env, *callData.execResultWrap) : nullptr;
         case JsCliHook::HookMethodType::BEFORE_CALL_CMD:
             return callData.cmdParam != nullptr ? CreateJsExecCmdParam(env, *callData.cmdParam) : nullptr;
         case JsCliHook::HookMethodType::AFTER_CALL_CMD:
             return callData.execResultWrap != nullptr
-                ? CreateJsExecResultWrap(env, callData.execResultWrap->execResult) : nullptr;
+                ? CreateJsExecResultWrap(env, *callData.execResultWrap) : nullptr;
     }
     return nullptr;
 }

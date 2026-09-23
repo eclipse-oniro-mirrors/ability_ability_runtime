@@ -80,6 +80,50 @@ napi_value ParseJsonStringToJsObject(napi_env env, const std::string &jsonStr)
     return jsValue;
 }
 
+// Optional trace id; an empty string is a valid provided value.
+bool UnwrapOptionalTraceId(napi_env env, napi_value obj, const char *name,
+    std::string &value, std::string &msg)
+{
+    bool hasProperty = false;
+    if (napi_has_named_property(env, obj, name, &hasProperty) != napi_ok) {
+        msg = std::string("has ") + name + " failed";
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
+        return false;
+    }
+    if (!hasProperty) {
+        return true;
+    }
+    napi_value prop = nullptr;
+    if (napi_get_named_property(env, obj, name, &prop) != napi_ok) {
+        msg = std::string("invalid ") + name + " property";
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
+        return false;
+    }
+    // Explicit undefined/null is treated as absent (spec AC-1.7: "not provided").
+    napi_valuetype valueType = napi_undefined;
+    if (napi_typeof(env, prop, &valueType) != napi_ok) {
+        msg = std::string("invalid ") + name + " property";
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
+        return false;
+    }
+    if (valueType == napi_undefined || valueType == napi_null) {
+        return true;
+    }
+    std::string traceId;
+    if (!AppExecFwk::UnwrapStringFromJS2(env, prop, traceId)) {
+        msg = std::string("Parameter error. The type of \"") + name + "\" must be string.";
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
+        return false;
+    }
+    if (!IsValidTraceId(traceId)) {
+        msg = std::string("Parameter error. The ") + name + " is invalid.";
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
+        return false;
+    }
+    value = std::move(traceId);
+    return true;
+}
+
 // Helper: Convert single JSON value to N-API value
 napi_value ConvertJsonToNapiValue(napi_env env, const nlohmann::json &value)
 {
@@ -188,7 +232,7 @@ bool UnwrapStringMap(napi_env env, napi_value obj,
     return true;
 }
 
-bool UnwrapExecOptions(napi_env env, napi_value obj, ExecOptions &options)
+bool UnwrapExecOptions(napi_env env, napi_value obj, ExecOptions &options, std::string &msg)
 {
     if (obj == nullptr) {
         return true;
@@ -255,10 +299,18 @@ bool UnwrapExecOptions(napi_env env, napi_value obj, ExecOptions &options)
         TAG_LOGE(AAFwkTag::CLI_TOOL, "ExecOptions timeout/yieldMs out of range");
         return false;
     }
+
+    if (!UnwrapOptionalTraceId(env, obj, "toolCallId", options.toolCallId, msg)) {
+        return false;
+    }
+
+    if (!UnwrapOptionalTraceId(env, obj, "dmSessionId", options.dmSessionId, msg)) {
+        return false;
+    }
     return true;
 }
 
-bool UnwrapExecCmdOptions(napi_env env, napi_value obj, ExecCmdOptions &options)
+bool UnwrapExecCmdOptions(napi_env env, napi_value obj, ExecCmdOptions &options, std::string &msg)
 {
     if (obj == nullptr) {
         return true;
@@ -266,7 +318,8 @@ bool UnwrapExecCmdOptions(napi_env env, napi_value obj, ExecCmdOptions &options)
     napi_valuetype valueType = napi_undefined;
     napi_status status = napi_typeof(env, obj, &valueType);
     if (status != napi_ok || valueType != napi_object) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "ExecCmdOptions is not an object");
+        msg = "ExecCmdOptions is not an object";
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
         return false;
     }
     UnwrapStringProperty(env, obj, "workDir", options.workDir);
@@ -285,11 +338,21 @@ bool UnwrapExecCmdOptions(napi_env env, napi_value obj, ExecCmdOptions &options)
     UnwrapInt64Property(env, obj, "yieldMs", options.yieldMs);
     UnwrapInt64Property(env, obj, "timeout", options.timeout);
     if (options.timeout < 0 || options.timeout > MAX_TIMEOUT || options.yieldMs < 0) {
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "ExecCmdOptions timeout/yieldMs out of range");
+        msg = "ExecCmdOptions timeout/yieldMs out of range";
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
         return false;
     }
     UnwrapBoolProperty(env, obj, "isShellCommand", options.isShellCommand);
     UnwrapStringProperty(env, obj, "challenge", options.challenge);
+    // Optional trace identifiers: absent / undefined / null means not provided;
+    // a present value must satisfy the shared trace-id rule (1~256 [A-Za-z0-9_-]).
+    std::string traceMsg;
+    if (!UnwrapOptionalTraceId(env, obj, "toolCallId", options.toolCallId, traceMsg) ||
+        !UnwrapOptionalTraceId(env, obj, "dmSessionId", options.dmSessionId, traceMsg)) {
+        msg = traceMsg;
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
+        return false;
+    }
     return true;
 }
 
@@ -310,8 +373,10 @@ bool UnwrapExecCmdParam(napi_env env, napi_value obj, ExecCmdParam &param,
 
     bool hasProperty = false;
     param.execCmdOptions.timeout = MAX_TIMEOUT;
-    if (!UnwrapExecCmdOptions(env, obj, param.execCmdOptions)) {
-        msg = "invalid ExecCmdOptions";
+    if (!UnwrapExecCmdOptions(env, obj, param.execCmdOptions, msg)) {
+        if (msg.empty()) {
+            msg = "Invalid ExecCmdOptions";
+        }
         TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
         return false;
     }
@@ -524,6 +589,14 @@ napi_value CreateJsExecOptions(napi_env env, const ExecOptions &opts)
     napi_set_named_property(env, jsObj, "background", AppExecFwk::WrapBoolToJS(env, opts.background));
     napi_set_named_property(env, jsObj, "yieldMs", AppExecFwk::WrapInt64ToJS(env, opts.yieldMs));
     napi_set_named_property(env, jsObj, "timeout", AppExecFwk::WrapInt64ToJS(env, opts.timeout));
+    // Trace identifiers: only surfaced when provided so the before-hook can
+    // observe them (read-only for the hook; modifications do not propagate).
+    if (!opts.toolCallId.empty()) {
+        napi_set_named_property(env, jsObj, "toolCallId", AppExecFwk::WrapStringToJS(env, opts.toolCallId));
+    }
+    if (!opts.dmSessionId.empty()) {
+        napi_set_named_property(env, jsObj, "dmSessionId", AppExecFwk::WrapStringToJS(env, opts.dmSessionId));
+    }
     return jsObj;
 }
 
@@ -567,16 +640,34 @@ napi_value CreateJsExecCmdParam(napi_env env, const ExecCmdParam &param)
         AppExecFwk::WrapBoolToJS(env, param.execCmdOptions.isShellCommand));
     napi_set_named_property(env, jsOpts, "challenge",
         AppExecFwk::WrapStringToJS(env, param.execCmdOptions.challenge));
+    // Trace identifiers: only surfaced when provided so the before-hook can
+    // observe them (read-only for the hook; modifications do not propagate).
+    if (!param.execCmdOptions.toolCallId.empty()) {
+        napi_set_named_property(env, jsOpts, "toolCallId",
+            AppExecFwk::WrapStringToJS(env, param.execCmdOptions.toolCallId));
+    }
+    if (!param.execCmdOptions.dmSessionId.empty()) {
+        napi_set_named_property(env, jsOpts, "dmSessionId",
+            AppExecFwk::WrapStringToJS(env, param.execCmdOptions.dmSessionId));
+    }
     napi_set_named_property(env, jsObj, "execCmdOptions", jsOpts);
     return jsObj;
 }
 
-napi_value CreateJsExecResultWrap(napi_env env, const ExecResult &result)
+napi_value CreateJsExecResultWrap(napi_env env, const ExecResultWrap &wrap)
 {
     napi_value jsParam = nullptr;
     napi_create_object(env, &jsParam);
-    napi_value jsInner = CreateJsExecResult(env, result);
+    napi_value jsInner = CreateJsExecResult(env, wrap.execResult);
     napi_set_named_property(env, jsParam, "execResult", jsInner);
+    // Trace identifiers actually used by the execution (stamped service-side);
+    // omitted when not provided.
+    if (!wrap.toolCallId.empty()) {
+        napi_set_named_property(env, jsParam, "toolCallId", AppExecFwk::WrapStringToJS(env, wrap.toolCallId));
+    }
+    if (!wrap.dmSessionId.empty()) {
+        napi_set_named_property(env, jsParam, "dmSessionId", AppExecFwk::WrapStringToJS(env, wrap.dmSessionId));
+    }
     return jsParam;
 }
 

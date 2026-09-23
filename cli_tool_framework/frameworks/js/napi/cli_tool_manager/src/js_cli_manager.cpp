@@ -174,8 +174,9 @@ napi_value JSCliManager::OnExecTool(napi_env env, size_t argc, napi_value *argv)
     }
 
     if (argc > INDEX_FOUR && argv[INDEX_FOUR] != nullptr) {
-        if (!UnwrapExecOptions(env, argv[INDEX_FOUR], param.options)) {
-            ThrowInvalidParamError(env, "Tool options is required");
+        std::string optionsMsg;
+        if (!UnwrapExecOptions(env, argv[INDEX_FOUR], param.options, optionsMsg)) {
+            ThrowInvalidParamError(env, optionsMsg.empty() ? "Tool options is required" : optionsMsg.c_str());
             return CreateJsUndefined(env);
         }
     }

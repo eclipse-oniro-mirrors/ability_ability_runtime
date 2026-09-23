@@ -2321,6 +2321,126 @@ HWTEST_F(CliToolManagerServiceTest, ExecTool_0900, TestSize.Level1)
     GTEST_LOG_(INFO) << "CliToolManagerService_ExecTool_0900 end";
 }
 
+// ==================== ExecTool Trace Id Validation Tests ====================
+
+/**
+ * @tc.name: CliToolManagerService_ExecTool_1000
+ * @tc.desc: Test ExecTool rejects toolCallId containing illegal characters with ERR_INVALID_VALUE
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecTool_1000, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_1000 start");
+
+    ExecToolParam param;
+    param.toolName = "non_existent_tool";
+    param.options.toolCallId = "call@id;rm -rf";
+
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecTool(param, "event_exec_invalid_call_id", scheduler);
+
+    // Entry validation runs before the permission gate, so the result is exactly ERR_INVALID_VALUE
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    EXPECT_FALSE(IsPermissionGateResult(result));
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_1000 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecTool_1100
+ * @tc.desc: Test ExecTool rejects toolCallId longer than 256 characters with ERR_INVALID_VALUE
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecTool_1100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_1100 start");
+
+    ExecToolParam param;
+    param.toolName = "non_existent_tool";
+    param.options.toolCallId = std::string(257, 'a'); // 257 chars, all in the legal character set
+
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecTool(param, "event_exec_call_id_too_long", scheduler);
+
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    EXPECT_FALSE(IsPermissionGateResult(result));
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_1100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecTool_1200
+ * @tc.desc: Test ExecTool rejects dmSessionId containing illegal characters with ERR_INVALID_VALUE
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecTool_1200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_1200 start");
+
+    ExecToolParam param;
+    param.toolName = "non_existent_tool";
+    param.options.toolCallId = "valid_call_id";
+    param.options.dmSessionId = "dm session/id";
+
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecTool(param, "event_exec_invalid_dm_session_id", scheduler);
+
+    // toolCallId is valid, only dmSessionId is invalid
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    EXPECT_FALSE(IsPermissionGateResult(result));
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_1200 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecTool_1300
+ * @tc.desc: Test ExecTool accepts trace ids whose length equals 256 (boundary value)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecTool_1300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_1300 start");
+
+    ExecToolParam param;
+    param.toolName = "non_existent_tool";
+    param.options.toolCallId = std::string(256, 'a');   // exactly 256 chars, legal
+    param.options.dmSessionId = std::string(256, '0'); // exactly 256 chars, legal
+
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecTool(param, "event_exec_max_length_trace_ids", scheduler);
+
+    // Trace ids pass entry validation; the request proceeds to the tool lookup / permission gate
+    EXPECT_NE(result, ERR_INVALID_VALUE);
+    EXPECT_TRUE(result == ERR_TOOL_NOT_EXIST || IsPermissionGateResult(result));
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_1300 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecTool_1400
+ * @tc.desc: Test ExecTool accepts explicitly empty trace ids (an empty string is a valid value)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecTool_1400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_1400 start");
+
+    ExecToolParam param;
+    param.toolName = "non_existent_tool";
+    param.options.toolCallId = "";   // explicitly empty: valid, same as not provided
+    param.options.dmSessionId = "";  // explicitly empty: valid, same as not provided
+
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecTool(param, "event_exec_empty_trace_ids", scheduler);
+
+    // Empty trace ids pass entry validation; the request proceeds exactly like the
+    // no-identifier case (tool lookup / permission gate), never ERR_INVALID_VALUE.
+    EXPECT_NE(result, ERR_INVALID_VALUE);
+    EXPECT_TRUE(result == ERR_TOOL_NOT_EXIST || IsPermissionGateResult(result));
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecTool_1400 end");
+}
+
 // ==================== ValidateAndPrepareCmd Tests ====================
 
 /**
@@ -3961,6 +4081,108 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_CmdMaxLength_0300, TestSize.Level2)
     TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_CmdMaxLength_0300 end");
 }
 
+// ==================== ExecCmd Trace Id Validation Tests ====================
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_1200
+ * @tc.desc: Test ExecCmd rejects execCmdOptions.toolCallId containing illegal characters with ERR_INVALID_VALUE
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_1200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_1200 start");
+
+    ExecCmdParam param;
+    param.cmd = "echo test";
+    param.execCmdOptions.toolCallId = "call id with space";
+
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_exec_cmd_invalid_call_id", scheduler, "sub_invalid_call_id");
+
+    // Entry validation runs before the permission gate, so the result is exactly ERR_INVALID_VALUE
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    EXPECT_FALSE(IsPermissionGateResult(result));
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_1200 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_1300
+ * @tc.desc: Test ExecCmd rejects execCmdOptions.dmSessionId longer than 256 characters with ERR_INVALID_VALUE
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_1300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_1300 start");
+
+    ExecCmdParam param;
+    param.cmd = "echo test";
+    param.execCmdOptions.toolCallId = "valid_call_id";
+    param.execCmdOptions.dmSessionId = std::string(257, 'd'); // 257 chars, all in the legal character set
+
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_exec_cmd_dm_session_too_long", scheduler, "sub_dm_too_long");
+
+    // toolCallId is valid, only dmSessionId is oversized
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    EXPECT_FALSE(IsPermissionGateResult(result));
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_1300 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_1400
+ * @tc.desc: Test ExecCmd accepts trace ids whose length equals 256 (boundary value)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_1400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_1400 start");
+
+    ExecCmdParam param;
+    param.cmd = "echo test";
+    param.execCmdOptions.toolCallId = std::string(256, 'a');   // exactly 256 chars, legal
+    param.execCmdOptions.dmSessionId = std::string(256, '0'); // exactly 256 chars, legal
+
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_exec_cmd_max_length_trace_ids", scheduler,
+        "sub_max_length_trace_ids");
+
+    // Trace ids pass entry validation; the request proceeds to later validation / permission gates
+    EXPECT_NE(result, ERR_INVALID_VALUE);
+    EXPECT_TRUE(result == ERR_NO_INIT || result == ERR_NOT_HAP ||
+        result == ERR_INVALID_PARAM || IsPermissionGateResult(result));
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_1400 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_ExecCmd_1500
+ * @tc.desc: Test ExecCmd accepts explicitly empty trace ids (an empty string is a valid value)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_1500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_1500 start");
+
+    ExecCmdParam param;
+    param.cmd = "echo test";
+    param.execCmdOptions.toolCallId = "";   // explicitly empty: valid, same as not provided
+    param.execCmdOptions.dmSessionId = "";  // explicitly empty: valid, same as not provided
+
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    int32_t result = service_->ExecCmd(param, "event_exec_cmd_empty_trace_ids", scheduler,
+        "sub_empty_trace_ids");
+
+    // Empty trace ids pass entry validation; the request proceeds exactly like the
+    // no-identifier case (later validation / permission gates), never ERR_INVALID_VALUE.
+    EXPECT_NE(result, ERR_INVALID_VALUE);
+    EXPECT_TRUE(result == ERR_NO_INIT || result == ERR_NOT_HAP ||
+        result == ERR_INVALID_PARAM || IsPermissionGateResult(result));
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_ExecCmd_1500 end");
+}
+
 // ---------------------------------------------------------------------------
 // Hook tests — covers T-P0-1 through T-P0-7, T-P1-1 through T-P1-3, API-01
 // ---------------------------------------------------------------------------
@@ -3970,6 +4192,8 @@ public:
     ErrCode BeforeCallTool(ExecToolParam& param) override
     {
         beforeCallToolCount++;
+        lastBeforeToolCallId = param.options.toolCallId;
+        lastBeforeDmSessionId = param.options.dmSessionId;
         if (modifyParam) {
             param.toolName = "modified_tool";
         }
@@ -3979,6 +4203,8 @@ public:
     ErrCode AfterCallTool(ExecResultWrap& execResultWrap) override
     {
         afterCallToolCount++;
+        lastWrapToolCallId = execResultWrap.toolCallId;
+        lastWrapDmSessionId = execResultWrap.dmSessionId;
         if (modifyResult) {
             execResultWrap.execResult.exitCode = 1;
             execResultWrap.execResult.outputText = "modified_output";
@@ -3989,6 +4215,8 @@ public:
     ErrCode BeforeCallCmd(ExecCmdParam& param) override
     {
         beforeCallCmdCount++;
+        lastBeforeCmdToolCallId = param.execCmdOptions.toolCallId;
+        lastBeforeCmdDmSessionId = param.execCmdOptions.dmSessionId;
         return ERR_OK;
     }
 
@@ -4006,6 +4234,12 @@ public:
     int afterCallToolCount = 0;
     int beforeCallCmdCount = 0;
     int afterCallCmdCount = 0;
+    std::string lastBeforeToolCallId;
+    std::string lastBeforeDmSessionId;
+    std::string lastBeforeCmdToolCallId;
+    std::string lastBeforeCmdDmSessionId;
+    std::string lastWrapToolCallId;
+    std::string lastWrapDmSessionId;
     bool modifyParam = false;
     bool modifyResult = false;
 };
@@ -4015,6 +4249,8 @@ public:
     ErrCode BeforeInvokeFunction(InvokeFunctionParam& param) override
     {
         beforeInvokeCount++;
+        lastBeforeInvokeToolCallId = param.invokeOptions.toolCallId;
+        lastBeforeInvokeDmSessionId = param.invokeOptions.dmSessionId;
         return ERR_OK;
     }
 
@@ -4030,6 +4266,8 @@ public:
 
     int beforeInvokeCount = 0;
     int afterInvokeCount = 0;
+    std::string lastBeforeInvokeToolCallId;
+    std::string lastBeforeInvokeDmSessionId;
     bool modifyResult = false;
 };
 
@@ -4075,6 +4313,15 @@ static CliSessionInfo MakeSessionWithResult(int32_t exitCode, const std::string&
     session.result->exitCode = exitCode;
     session.result->outputText = output;
     return session;
+}
+
+// The after-hook Wrap identifiers are stamped from the SessionRecord, not a CliSessionInfo echo.
+static void PrepareHookRecord(SessionRecord& record, SessionType sessionType,
+    const std::string& toolCallId = "", const std::string& dmSessionId = "")
+{
+    record.sessionType = sessionType;
+    record.toolCallId = toolCallId;
+    record.dmSessionId = dmSessionId;
 }
 
 /**
@@ -4176,6 +4423,90 @@ HWTEST_F(CliToolManagerServiceTest, UnregisterCliHook_NotRegistered_0100, TestSi
 }
 
 /**
+ * @tc.name: InvokeBeforeCallTool_ParamIds_0100
+ * @tc.desc: T-R3/AC-2.2: Before-callback param carries caller-provided trace ids via execOptions
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, InvokeBeforeCallTool_ParamIds_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "InvokeBeforeCallTool_ParamIds_0100 start");
+    SetDeveloperMode(true);
+
+    auto hook = sptr<MockCliHook>::MakeSptr();
+    service_->RegisterCliHook(hook, 0x0F);
+
+    ExecToolParam param;
+    param.toolName = "demo_tool";
+    param.subcommand = "run";
+    param.options.toolCallId = "tcid-before-tool-0100";
+    param.options.dmSessionId = "dmsid-before-tool-0100";
+    service_->InvokeBeforeCallTool(param);
+
+    EXPECT_EQ(hook->beforeCallToolCount, 1);
+    // Before-hook observes the caller-provided ids through the param options.
+    EXPECT_EQ(hook->lastBeforeToolCallId, "tcid-before-tool-0100");
+    EXPECT_EQ(hook->lastBeforeDmSessionId, "dmsid-before-tool-0100");
+
+    service_->UnregisterCliHook(hook);
+    TAG_LOGI(AAFwkTag::TEST, "InvokeBeforeCallTool_ParamIds_0100 end");
+}
+
+/**
+ * @tc.name: InvokeBeforeCallCmd_ParamIds_0100
+ * @tc.desc: T-R3/AC-2.2: Before-callback param carries caller-provided trace ids via execCmdOptions
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, InvokeBeforeCallCmd_ParamIds_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "InvokeBeforeCallCmd_ParamIds_0100 start");
+    SetDeveloperMode(true);
+
+    auto hook = sptr<MockCliHook>::MakeSptr();
+    service_->RegisterCliHook(hook, 0x0F);
+
+    ExecCmdParam param;
+    param.cmd = "echo hi";
+    param.execCmdOptions.toolCallId = "tcid-before-cmd-0100";
+    param.execCmdOptions.dmSessionId = "dmsid-before-cmd-0100";
+    service_->InvokeBeforeCallCmd(param);
+
+    EXPECT_EQ(hook->beforeCallCmdCount, 1);
+    EXPECT_EQ(hook->lastBeforeCmdToolCallId, "tcid-before-cmd-0100");
+    EXPECT_EQ(hook->lastBeforeCmdDmSessionId, "dmsid-before-cmd-0100");
+
+    service_->UnregisterCliHook(hook);
+    TAG_LOGI(AAFwkTag::TEST, "InvokeBeforeCallCmd_ParamIds_0100 end");
+}
+
+/**
+ * @tc.name: BeforeInvokeFunction_ParamIds_0100
+ * @tc.desc: T-R3/AC-2.2: Before-callback param carries caller-provided trace ids via invokeOptions
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, BeforeInvokeFunction_ParamIds_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "BeforeInvokeFunction_ParamIds_0100 start");
+    SetDeveloperMode(true);
+
+    auto hook = sptr<MockFunctionHook>::MakeSptr();
+    service_->RegisterFunctionHook(hook, 0x03);
+
+    InvokeFunctionParam param;
+    param.functionNamespace = "ns";
+    param.functionName = "fn";
+    param.invokeOptions.toolCallId = "tcid-before-invoke-0100";
+    param.invokeOptions.dmSessionId = "dmsid-before-invoke-0100";
+    service_->BeforeInvokeFunction(param);
+
+    EXPECT_EQ(hook->beforeInvokeCount, 1);
+    EXPECT_EQ(hook->lastBeforeInvokeToolCallId, "tcid-before-invoke-0100");
+    EXPECT_EQ(hook->lastBeforeInvokeDmSessionId, "dmsid-before-invoke-0100");
+
+    service_->UnregisterFunctionHook(hook);
+    TAG_LOGI(AAFwkTag::TEST, "BeforeInvokeFunction_ParamIds_0100 end");
+}
+
+/**
  * @tc.name: InvokeAfterCallTool_WriteBack_0100
  * @tc.desc: T-P0-6/API-01: Hook modifies ExecResult, session.result carries modified value
  * @tc.type: FUNC
@@ -4190,12 +4521,17 @@ HWTEST_F(CliToolManagerServiceTest, InvokeAfterCallTool_WriteBack_0100, TestSize
     service_->RegisterCliHook(hook, 0x0F);
 
     CliSessionInfo session = MakeSessionWithResult(0, "original_output");
-    service_->InvokeAfterCallTool(session, SessionType::CLI);
+    SessionRecord record;
+    PrepareHookRecord(record, SessionType::CLI, "tcid-record-0100", "dmsid-record-0100");
+    service_->InvokeAfterCallTool(session, record);
 
     EXPECT_EQ(hook->afterCallToolCount, 1);
     ASSERT_NE(session.result, nullptr);
     EXPECT_EQ(session.result->exitCode, 1);
     EXPECT_EQ(session.result->outputText, "modified_output");
+    // Wrap identifiers come from the record, not a CliSessionInfo echo.
+    EXPECT_EQ(hook->lastWrapToolCallId, "tcid-record-0100");
+    EXPECT_EQ(hook->lastWrapDmSessionId, "dmsid-record-0100");
 
     service_->UnregisterCliHook(hook);
     TAG_LOGI(AAFwkTag::TEST, "InvokeAfterCallTool_WriteBack_0100 end");
@@ -4212,7 +4548,9 @@ HWTEST_F(CliToolManagerServiceTest, InvokeAfterCallTool_NoHook_0100, TestSize.Le
     SetDeveloperMode(true);
 
     CliSessionInfo session = MakeSessionWithResult(0, "original_output");
-    service_->InvokeAfterCallTool(session, SessionType::CLI);
+    SessionRecord record;
+    PrepareHookRecord(record, SessionType::CLI);
+    service_->InvokeAfterCallTool(session, record);
 
     ASSERT_NE(session.result, nullptr);
     EXPECT_EQ(session.result->exitCode, 0);
@@ -4238,7 +4576,9 @@ HWTEST_F(CliToolManagerServiceTest, InvokeAfterCallTool_DeveloperModeOff_0100, T
     SetDeveloperMode(false);
 
     CliSessionInfo session = MakeSessionWithResult(0, "original_output");
-    service_->InvokeAfterCallTool(session, SessionType::CLI);
+    SessionRecord record;
+    PrepareHookRecord(record, SessionType::CLI);
+    service_->InvokeAfterCallTool(session, record);
 
     EXPECT_EQ(hook->afterCallToolCount, 0);
     ASSERT_NE(session.result, nullptr);
@@ -4290,7 +4630,9 @@ HWTEST_F(CliToolManagerServiceTest, InvokeAfterCallCmd_WriteBack_0100, TestSize.
     service_->RegisterCliHook(hook, 0x0F);
 
     CliSessionInfo session = MakeSessionWithResult(0, "cmd_original");
-    service_->InvokeAfterCallTool(session, SessionType::CLI_CMD);
+    SessionRecord record;
+    PrepareHookRecord(record, SessionType::CLI_CMD);
+    service_->InvokeAfterCallTool(session, record);
 
     EXPECT_EQ(hook->afterCallCmdCount, 1);
     ASSERT_NE(session.result, nullptr);
@@ -4318,7 +4660,9 @@ HWTEST_F(CliToolManagerServiceTest, RegisterCliHook_ActiveMethodsZero_0100, Test
     EXPECT_EQ(service_->cliHookActiveMethods_, 0u);
 
     CliSessionInfo session = MakeSessionWithResult(0, "original");
-    service_->InvokeAfterCallTool(session, SessionType::CLI);
+    SessionRecord record;
+    PrepareHookRecord(record, SessionType::CLI);
+    service_->InvokeAfterCallTool(session, record);
 
     EXPECT_EQ(hook->afterCallToolCount, 1);
 
@@ -4346,7 +4690,9 @@ HWTEST_F(CliToolManagerServiceTest, RegisterCliHook_ActiveMethodsPartial_0100, T
     EXPECT_EQ(hook->beforeCallToolCount, 0);
 
     CliSessionInfo session = MakeSessionWithResult(0, "output");
-    service_->InvokeAfterCallTool(session, SessionType::CLI);
+    SessionRecord record;
+    PrepareHookRecord(record, SessionType::CLI);
+    service_->InvokeAfterCallTool(session, record);
     EXPECT_EQ(hook->afterCallToolCount, 1);
 
     service_->UnregisterCliHook(hook);
@@ -4479,7 +4825,9 @@ HWTEST_F(CliToolManagerServiceTest, InvokeAfterCallTool_NullResult_0100, TestSiz
 
     CliSessionInfo session;
     session.result = nullptr;
-    EXPECT_NO_FATAL_FAILURE(service_->InvokeAfterCallTool(session, SessionType::CLI));
+    SessionRecord record;
+    PrepareHookRecord(record, SessionType::CLI);
+    EXPECT_NO_FATAL_FAILURE(service_->InvokeAfterCallTool(session, record));
     EXPECT_EQ(hook->afterCallToolCount, 0);
 
     service_->UnregisterCliHook(hook);
@@ -4643,11 +4991,15 @@ HWTEST_F(CliToolManagerServiceTest, AfterCallTool_DeveloperModeOff_NoHook_0100, 
     SetDeveloperMode(false);
 
     CliSessionInfo session1 = MakeSessionWithResult(0, "original");
-    service_->InvokeAfterCallTool(session1, SessionType::CLI);
+    SessionRecord record1;
+    PrepareHookRecord(record1, SessionType::CLI);
+    service_->InvokeAfterCallTool(session1, record1);
     EXPECT_EQ(hook->afterCallToolCount, 0);
 
     CliSessionInfo session2 = MakeSessionWithResult(0, "cmd_original");
-    service_->InvokeAfterCallTool(session2, SessionType::CLI_CMD);
+    SessionRecord record2;
+    PrepareHookRecord(record2, SessionType::CLI_CMD);
+    service_->InvokeAfterCallTool(session2, record2);
     EXPECT_EQ(hook->afterCallCmdCount, 0);
 
     SetDeveloperMode(true);
@@ -5098,9 +5450,11 @@ HWTEST_F(CliToolManagerServiceTest, InvokeAfterCallTool_Timeout_0100, TestSize.L
     service_->RegisterCliHook(hook, 0x0F);
 
     CliSessionInfo session = MakeSessionWithResult(0, "original_output");
+    SessionRecord record;
+    PrepareHookRecord(record, SessionType::CLI);
 
     auto start = std::chrono::steady_clock::now();
-    service_->InvokeAfterCallTool(session, SessionType::CLI);
+    service_->InvokeAfterCallTool(session, record);
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::steady_clock::now() - start);
 

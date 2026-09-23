@@ -2680,6 +2680,168 @@ HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityByCallWithInsightIntent_010
     EXPECT_EQ(res, RESOLVE_ABILITY_ERR);
 }
 
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_StartAbilityWithToolCallId_0100
+ * @tc.desc: StartAbility with a valid ohos.aafwk.param.toolCallId, schedule result is the same as baseline.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithToolCallId_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0100 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    ElementName element("", "com.test.demo", "MainAbility", "");
+    want.SetElement(element);
+    const int32_t userId = 1; // U1_USER_ID, not a cross user call
+    const int requestCode = 0;
+    const uint64_t specifiedFullTokenId = 0;
+    MyFlag::flag_ = 1;
+    auto baselineResult = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    // valid toolCallId: only [A-Za-z0-9_-], length 1~256
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string("valid-toolCallId_001"));
+    auto result = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    // boundary: 256 chars is still valid
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string(256, 'a'));
+    auto boundaryResult = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    MyFlag::flag_ = 0;
+    // The target bundle "com.test.demo" cannot be resolved in this UT environment (no bundle manager
+    // mock is linked for this target and the bundle is not installed), so every call below fails
+    // deterministically at the same point (GenerateAbilityRequest -> StartAbilityInfo creation)
+    // with RESOLVE_ABILITY_ERR, before the interceptor chain is reached.
+    // Semantic under test: the StartAbility(Want, userId, requestCode, specifiedFullTokenId) overload
+    // passively ignores ohos.aafwk.param.toolCallId, so a valid toolCallId must not change the result.
+    EXPECT_EQ(baselineResult, RESOLVE_ABILITY_ERR);
+    EXPECT_EQ(result, baselineResult);
+    EXPECT_EQ(boundaryResult, baselineResult);
+    abilityMs->OnStop();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0100 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_StartAbilityWithToolCallId_0200
+ * @tc.desc: StartAbility with an illegal char in ohos.aafwk.param.toolCallId, silently ignored and schedule result
+ *           is the same as baseline.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithToolCallId_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0200 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    ElementName element("", "com.test.demo", "MainAbility", "");
+    want.SetElement(element);
+    const int32_t userId = 1; // U1_USER_ID, not a cross user call
+    const int requestCode = 0;
+    const uint64_t specifiedFullTokenId = 0;
+    MyFlag::flag_ = 1;
+    auto baselineResult = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    // invalid toolCallId: contains illegal chars, should be silently ignored
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string("bad id!@#$"));
+    auto result = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    MyFlag::flag_ = 0;
+    // See StartAbilityWithToolCallId_0100: both calls fail identically at Want resolution with
+    // RESOLVE_ABILITY_ERR. An illegal-char toolCallId must be silently ignored (same result as baseline).
+    EXPECT_EQ(baselineResult, RESOLVE_ABILITY_ERR);
+    EXPECT_EQ(result, baselineResult);
+    abilityMs->OnStop();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0200 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_StartAbilityWithToolCallId_0300
+ * @tc.desc: StartAbility with an over-length (more than 256) ohos.aafwk.param.toolCallId, silently ignored and
+ *           schedule result is the same as baseline.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithToolCallId_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0300 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    ElementName element("", "com.test.demo", "MainAbility", "");
+    want.SetElement(element);
+    const int32_t userId = 1; // U1_USER_ID, not a cross user call
+    const int requestCode = 0;
+    const uint64_t specifiedFullTokenId = 0;
+    MyFlag::flag_ = 1;
+    auto baselineResult = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    // invalid toolCallId: length is 257 (> 256), should be silently ignored
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string(257, 'a'));
+    auto result = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    MyFlag::flag_ = 0;
+    // See StartAbilityWithToolCallId_0100: both calls fail identically at Want resolution with
+    // RESOLVE_ABILITY_ERR. An over-length (257 > 256) toolCallId must be silently ignored.
+    EXPECT_EQ(baselineResult, RESOLVE_ABILITY_ERR);
+    EXPECT_EQ(result, baselineResult);
+    abilityMs->OnStop();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0300 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_StartAbilityWithToolCallId_0400
+ * @tc.desc: StartAbility with an empty ohos.aafwk.param.toolCallId (not provided), schedule result is the same as
+ *           baseline.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithToolCallId_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0400 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    ElementName element("", "com.test.demo", "MainAbility", "");
+    want.SetElement(element);
+    const int32_t userId = 1; // U1_USER_ID, not a cross user call
+    const int requestCode = 0;
+    const uint64_t specifiedFullTokenId = 0;
+    MyFlag::flag_ = 1;
+    auto baselineResult = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    // empty toolCallId means not provided, should be skipped
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string(""));
+    auto result = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    MyFlag::flag_ = 0;
+    // See StartAbilityWithToolCallId_0100: both calls fail identically at Want resolution with
+    // RESOLVE_ABILITY_ERR. An empty toolCallId means "not provided" and must be skipped.
+    EXPECT_EQ(baselineResult, RESOLVE_ABILITY_ERR);
+    EXPECT_EQ(result, baselineResult);
+    abilityMs->OnStop();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0400 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_StartAbilityWithToolCallId_0500
+ * @tc.desc: The trace-only reserved param is stripped from the Want after logging, so the app side
+ *           (onCreate etc.) never sees it, whatever value it carried.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithToolCallId_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0500 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    ElementName element("", "com.test.demo", "MainAbility", "");
+    want.SetElement(element);
+    const int32_t userId = 1; // U1_USER_ID, not a cross user call
+    const int requestCode = 0;
+    const uint64_t specifiedFullTokenId = 0;
+    MyFlag::flag_ = 1;
+    // valid value: logged, then stripped
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string("valid-toolCallId_001"));
+    auto validResult = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    EXPECT_FALSE(want.HasParameter("ohos.aafwk.param.toolCallId"));
+    // invalid value: not logged, but still stripped
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string("bad id!"));
+    auto invalidResult = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    EXPECT_FALSE(want.HasParameter("ohos.aafwk.param.toolCallId"));
+    MyFlag::flag_ = 0;
+    // See StartAbilityWithToolCallId_0100: all calls fail identically at Want resolution with
+    // RESOLVE_ABILITY_ERR. The reserved param must be stripped in every case so the Want the
+    // scheduled request carries is exactly the baseline one.
+    EXPECT_EQ(validResult, RESOLVE_ABILITY_ERR);
+    EXPECT_EQ(invalidResult, validResult);
+    abilityMs->OnStop();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0500 end");
+}
+
 /*
  * Feature: AbilityManagerService
  * Name: RevokeDelegator_001

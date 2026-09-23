@@ -22,7 +22,13 @@
 namespace OHOS::CliTool {
 bool FunctionResultWrap::Marshalling(Parcel &parcel) const
 {
-    return result.Marshalling(parcel);
+    if (!result.Marshalling(parcel)) {
+        return false;
+    }
+    if (!parcel.WriteString(toolCallId) || !parcel.WriteString(dmSessionId)) {
+        return false;
+    }
+    return true;
 }
 
 FunctionResultWrap *FunctionResultWrap::Unmarshalling(Parcel &parcel)
@@ -34,6 +40,10 @@ FunctionResultWrap *FunctionResultWrap::Unmarshalling(Parcel &parcel)
         return nullptr;
     }
     wrap->result = std::move(*res);
+    // Trace identifiers: tolerant tail reads, default "" (not provided).
+    if (!parcel.ReadString(wrap->toolCallId) || !parcel.ReadString(wrap->dmSessionId)) {
+        TAG_LOGD(AAFwkTag::CLI_TOOL, "FunctionResultWrap trace ids not present, using default(\"\").");
+    }
     return wrap.release();
 }
 }

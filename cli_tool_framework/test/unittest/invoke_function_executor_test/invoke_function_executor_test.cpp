@@ -27,6 +27,7 @@
 #include "function_info.h"
 #include "intent_client.h"
 #include "invoke_function_executor.h"
+#include "string_wrapper.h"
 #include "want_params.h"
 
 using namespace testing::ext;
@@ -41,6 +42,21 @@ constexpr int32_t WAIT_TIMEOUT_MS = 2000;
 
 constexpr const char *BUNDLE_NAME = "com.example.app";
 constexpr const char *FUNCTION_NAME = "QueryWeather";
+
+// Read a string-typed want parameter; returns an empty string when the key is
+// absent or holds a non-string value (same semantics as the executor's reader).
+std::string GetWantParamString(const AAFwk::WantParams &wantParams, const std::string &key)
+{
+    sptr<AAFwk::IInterface> value = wantParams.GetParam(key);
+    if (value == nullptr) {
+        return "";
+    }
+    auto *iStr = AAFwk::IString::Query(value);
+    if (iStr == nullptr) {
+        return "";
+    }
+    return AAFwk::String::Unbox(iStr);
+}
 
 /**
  * @brief Ref-counted result sink for the executor callback.
@@ -65,9 +81,18 @@ protected:
     {
         // The clients are singletons and persist across tests; reset every knob
         // to a clean success baseline before each case overrides what it needs.
-        CliToolMGRClient::GetInstance().mockStatus_ = ERR_OK;
-        CliToolMGRClient::GetInstance().mockFunctionType_ = FunctionType::INTENT_FUNCTION;
-        AAFwk::IntentClient::GetInstance().mockStatus_ = ERR_OK;
+        auto &mgrClient = CliToolMGRClient::GetInstance();
+        mgrClient.mockStatus_ = ERR_OK;
+        mgrClient.mockFunctionType_ = FunctionType::INTENT_FUNCTION;
+        mgrClient.mockHookModify_ = false;
+        mgrClient.mockHookToolCallId_.clear();
+        mgrClient.mockHookDmSessionId_.clear();
+        mgrClient.afterHookCalled_ = false;
+        mgrClient.lastWrap_ = FunctionResultWrap();
+        auto &intentClient = AAFwk::IntentClient::GetInstance();
+        intentClient.mockStatus_ = ERR_OK;
+        intentClient.executeCalled_ = false;
+        intentClient.lastWantParam_ = AAFwk::WantParams();
     }
 
     // Build a callback that records the single outcome into a shared capture.
@@ -91,16 +116,40 @@ protected:
             [&capture]() { return capture->fired; });
     }
 
-    // Kick off an executor run and return the capture the callback will report into.
-    static std::shared_ptr<ResultCapture> Run()
+    // Build a param mirroring the NAPI entry contract: non-empty invokeOptions
+    // trace identifiers ride the reserved wantParam keys (transport leg).
+    static InvokeFunctionParam MakeParam(const std::string &toolCallId = "",
+        const std::string &dmSessionId = "")
     {
-        auto capture = std::make_shared<ResultCapture>();
-        auto executor = InvokeFunctionExecutor::Create();
         InvokeFunctionParam param;
         param.functionNamespace = BUNDLE_NAME;
         param.functionName = FUNCTION_NAME;
+        param.invokeOptions.toolCallId = toolCallId;
+        param.invokeOptions.dmSessionId = dmSessionId;
+        if (!toolCallId.empty()) {
+            param.args.SetParam(RESERVED_KEY_TOOL_CALL_ID, AAFwk::String::Box(toolCallId));
+        }
+        if (!dmSessionId.empty()) {
+            param.args.SetParam(RESERVED_KEY_DM_SESSION_ID, AAFwk::String::Box(dmSessionId));
+        }
+        return param;
+    }
+
+    // Kick off an executor run with a caller-built param and return the capture
+    // the callback will report into.
+    static std::shared_ptr<ResultCapture> RunParam(const InvokeFunctionParam &param)
+    {
+        auto capture = std::make_shared<ResultCapture>();
+        auto executor = InvokeFunctionExecutor::Create();
         executor->Execute(param, MakeCallback(capture));
         return capture;
+    }
+
+    // Kick off an executor run without trace identifiers and return the capture
+    // the callback will report into.
+    static std::shared_ptr<ResultCapture> Run()
+    {
+        return RunParam(MakeParam());
     }
 };
 
@@ -251,6 +300,117 @@ HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_1000, TestSize.Level
     ASSERT_TRUE(WaitForResult(capture));
     EXPECT_FALSE(capture->result.result.success);
     EXPECT_EQ(capture->result.innerError, OHOS::AAFwk::ERR_NOT_SYSTEM_APP);
+}
+
+/**
+ * @tc.name: InvokeFunctionExecutor_TraceIdInjected_1100
+ * @tc.desc: Valid trace identifiers provided at entry ride the reserved wantParam
+ *           keys into the intent execution with their values intact
+ *           (authoritative injection point, ADR-8).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_TraceIdInjected_1100, TestSize.Level1)
+{
+    auto capture = RunParam(MakeParam("tcid-Unit_0100", "dmsid-Unit-0200"));
+    ASSERT_TRUE(WaitForResult(capture));
+    EXPECT_TRUE(capture->result.result.success);
+
+    auto &intentClient = AAFwk::IntentClient::GetInstance();
+    ASSERT_TRUE(intentClient.executeCalled_);
+    EXPECT_EQ(GetWantParamString(intentClient.lastWantParam_, RESERVED_KEY_TOOL_CALL_ID), "tcid-Unit_0100");
+    EXPECT_EQ(GetWantParamString(intentClient.lastWantParam_, RESERVED_KEY_DM_SESSION_ID), "dmsid-Unit-0200");
+}
+
+/**
+ * @tc.name: InvokeFunctionExecutor_TraceIdNotProvided_1200
+ * @tc.desc: When no trace identifiers are provided the reserved keys are absent
+ *           from the wantParam handed to the intent execution.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_TraceIdNotProvided_1200, TestSize.Level1)
+{
+    auto capture = RunParam(MakeParam());
+    ASSERT_TRUE(WaitForResult(capture));
+    EXPECT_TRUE(capture->result.result.success);
+
+    auto &intentClient = AAFwk::IntentClient::GetInstance();
+    ASSERT_TRUE(intentClient.executeCalled_);
+    EXPECT_FALSE(intentClient.lastWantParam_.HasParam(RESERVED_KEY_TOOL_CALL_ID));
+    EXPECT_FALSE(intentClient.lastWantParam_.HasParam(RESERVED_KEY_DM_SESSION_ID));
+}
+
+/**
+ * @tc.name: InvokeFunctionExecutor_HookRewrittenTraceId_1300
+ * @tc.desc: A before-hook rewriting the toolCallId wins: the execution runs with
+ *           the post-hook value while the untouched dmSessionId keeps its entry
+ *           value (post-hook capture, R-3).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_HookRewrittenTraceId_1300, TestSize.Level1)
+{
+    auto &mgrClient = CliToolMGRClient::GetInstance();
+    mgrClient.mockHookModify_ = true;
+    mgrClient.mockHookToolCallId_ = "hook-modified-id";
+
+    auto capture = RunParam(MakeParam("orig-tool-call-id", "dmsid-keep-0300"));
+    ASSERT_TRUE(WaitForResult(capture));
+    EXPECT_TRUE(capture->result.result.success);
+
+    auto &intentClient = AAFwk::IntentClient::GetInstance();
+    ASSERT_TRUE(intentClient.executeCalled_);
+    EXPECT_EQ(GetWantParamString(intentClient.lastWantParam_, RESERVED_KEY_TOOL_CALL_ID), "hook-modified-id");
+    EXPECT_EQ(GetWantParamString(intentClient.lastWantParam_, RESERVED_KEY_DM_SESSION_ID), "dmsid-keep-0300");
+}
+
+/**
+ * @tc.name: InvokeFunctionExecutor_HookInvalidTraceIdDropped_1400
+ * @tc.desc: A before-hook rewriting the toolCallId to an invalid value (illegal
+ *           characters) has the identifier dropped from the execution
+ *           identifiers: the after-hook Wrap is stamped with an empty
+ *           toolCallId while the valid dmSessionId survives and is re-injected.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_HookInvalidTraceIdDropped_1400, TestSize.Level1)
+{
+    auto &mgrClient = CliToolMGRClient::GetInstance();
+    mgrClient.mockHookModify_ = true;
+    mgrClient.mockHookToolCallId_ = "bad id!";  // space/'!' fall outside [A-Za-z0-9_-]
+
+    auto capture = RunParam(MakeParam("", "dmsid-valid-0400"));
+    ASSERT_TRUE(WaitForResult(capture));
+    EXPECT_TRUE(capture->result.result.success);
+
+    auto &intentClient = AAFwk::IntentClient::GetInstance();
+    ASSERT_TRUE(intentClient.executeCalled_);
+    // The invalid hook value is dropped from the actual execution identifiers.
+    ASSERT_TRUE(mgrClient.afterHookCalled_);
+    EXPECT_EQ(mgrClient.lastWrap_.toolCallId, "");
+    // The valid dmSessionId is still stamped and takes part in the injection.
+    EXPECT_EQ(mgrClient.lastWrap_.dmSessionId, "dmsid-valid-0400");
+    EXPECT_EQ(GetWantParamString(intentClient.lastWantParam_, RESERVED_KEY_DM_SESSION_ID), "dmsid-valid-0400");
+}
+
+/**
+ * @tc.name: InvokeFunctionExecutor_StampExecutionIds_1500
+ * @tc.desc: On the success path the after-hook FunctionResultWrap is stamped
+ *           with the identifiers the execution actually ran with: the entry
+ *           toolCallId and the hook-rewritten dmSessionId (post-hook capture,
+ *           R-3).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_StampExecutionIds_1500, TestSize.Level1)
+{
+    auto &mgrClient = CliToolMGRClient::GetInstance();
+    mgrClient.mockHookModify_ = true;
+    mgrClient.mockHookDmSessionId_ = "dmsid-hook-0500";
+
+    auto capture = RunParam(MakeParam("tcid-stamp-0500", "dmsid-orig-0500"));
+    ASSERT_TRUE(WaitForResult(capture));
+    EXPECT_TRUE(capture->result.result.success);
+
+    ASSERT_TRUE(mgrClient.afterHookCalled_);
+    EXPECT_EQ(mgrClient.lastWrap_.toolCallId, "tcid-stamp-0500");
+    EXPECT_EQ(mgrClient.lastWrap_.dmSessionId, "dmsid-hook-0500");
 }
 } // namespace
 } // namespace CliTool

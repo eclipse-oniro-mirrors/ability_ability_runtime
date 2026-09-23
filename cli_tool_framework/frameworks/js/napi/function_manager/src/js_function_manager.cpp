@@ -29,6 +29,7 @@
 #include "js_function_manager_utils.h"
 #include "napi_common_util.h"
 #include "napi_common_want.h"
+#include "string_wrapper.h"
 
 using namespace OHOS::AbilityRuntime;
 
@@ -164,9 +165,21 @@ bool ParseInvokeFunctionParam(napi_env env, size_t argc, napi_value *argv, Invok
         ThrowInvalidParamError(env, "args is required");
         return false;
     }
-    if (argc >= INDEX_FOUR && !ValidateOptions(env, argv[INDEX_THREE])) {
-        ThrowInvalidParamError(env, "option invalid");
-        return false;
+    // Reserved keys are transport-owned: caller-supplied same-named keys in args
+    // are dropped (forgery defense).
+    out.args.Remove("ohos.insightIntent.toolCallId");
+    out.args.Remove("ohos.insightIntent.dmSessionId");
+    if (argc >= INDEX_FOUR) {
+        if (!ValidateOptions(env, argv[INDEX_THREE])) {
+            ThrowInvalidParamError(env, "option invalid");
+            return false;
+        }
+        std::string optionsMsg;
+        if (!UnwrapInvokeOptions(env, argv[INDEX_THREE],
+            out.invokeOptions.toolCallId, out.invokeOptions.dmSessionId, optionsMsg)) {
+            ThrowInvalidParamError(env, optionsMsg.empty() ? "option invalid" : optionsMsg.c_str());
+            return false;
+        }
     }
     return true;
 }
@@ -251,7 +264,7 @@ napi_value JSFunctionManager::OnInvokeFunction(napi_env env, size_t argc, napi_v
         return CreateJsUndefined(env);
     }
 
-    // Create threadsafe function context
+    // Create threadsafe function context.
     auto tsfnContext = std::make_shared<InvokeFunctionTsfnContext>();
     tsfnContext->deferred = deferred;
 
@@ -280,6 +293,17 @@ napi_value JSFunctionManager::OnInvokeFunction(napi_env env, size_t argc, napi_v
             delete data;
         }
     };
+
+    // Transport leg of the dual injection (ADR-8): non-empty ids ride the
+    // reserved wantParam keys to the executor.
+    if (!param.invokeOptions.toolCallId.empty()) {
+        param.args.SetParam("ohos.insightIntent.toolCallId",
+            AAFwk::String::Box(param.invokeOptions.toolCallId));
+    }
+    if (!param.invokeOptions.dmSessionId.empty()) {
+        param.args.SetParam("ohos.insightIntent.dmSessionId",
+            AAFwk::String::Box(param.invokeOptions.dmSessionId));
+    }
 
     InvokeFunctionExecutor::Create()->Execute(param, bridge);
 
