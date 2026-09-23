@@ -152,6 +152,50 @@ int32_t UriPermissionManagerClient::GrantUriPermissionPrivileged(const std::vect
     return funcResult;
 }
 
+int32_t UriPermissionManagerClient::GrantUriPermissionPrivileged(const std::vector<Uri> &uriVec, uint32_t flag,
+    uint32_t targetTokenId)
+{
+    TAG_LOGI(AAFwkTag::URIPERMMGR, "targetTokenId:%{public}u, uriVecSize:%{public}zu",
+        targetTokenId, uriVec.size());
+    if (uriVec.empty() || uriVec.size() > MAX_URI_COUNT) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "uriVec empty or exceed maxSize %{public}d, uriVec size: %{public}zu",
+            MAX_URI_COUNT, uriVec.size());
+        return ERR_URI_LIST_OUT_OF_RANGE;
+    }
+    auto uriPermMgr = ConnectUriPermService();
+    if (uriPermMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "null uriPermMgr");
+        return INNER_ERR;
+    }
+    std::vector<std::string> uriStrVec;
+    for (auto &uri : uriVec) {
+        uriStrVec.emplace_back(uri.ToString());
+    }
+    bool isWriteUriByRawData = CheckUseRawData();
+    ErrCode res = INNER_ERR;
+    int32_t funcResult = INNER_ERR;
+    if (isWriteUriByRawData) {
+        UriPermissionRawData rawData;
+        StringVecToRawData(uriStrVec, rawData);
+        if (rawData.size > MAX_IPC_RAW_DATA_SIZE) {
+            TAG_LOGE(AAFwkTag::URIPERMMGR, "rawData is too large");
+            return INNER_ERR;
+        }
+        res = uriPermMgr->GrantUriPermissionPrivileged(rawData, flag, targetTokenId, funcResult);
+        if (res != ERR_OK) {
+            TAG_LOGE(AAFwkTag::URIPERMMGR, "IPC failed, error:%{public}d", res);
+            return INNER_ERR;
+        }
+        return funcResult;
+    }
+    res = uriPermMgr->GrantUriPermissionPrivileged(uriStrVec, flag, targetTokenId, funcResult);
+    if (res != ERR_OK) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "IPC failed, error:%{public}d", res);
+        return INNER_ERR;
+    }
+    return funcResult;
+}
+
 int32_t UriPermissionManagerClient::GrantUriPermissionWithType(const std::vector<Uri> &uriVec, uint32_t flag,
     const std::string &targetBundleName, int32_t appIndex, uint32_t initiatorTokenId, int32_t hideSensitiveType,
     const std::vector<int32_t> &permissionTypes)
