@@ -113,6 +113,7 @@
 #include "app_mgr_service_const.h"
 #include "app_mgr_service_dump_error_code.h"
 #include "param.h"
+#include "all_users_window_manager.h"
 #include "window_focus_changed_listener.h"
 #include "window_visibility_changed_listener.h"
 #include "window_pid_visibility_changed_listener.h"
@@ -2093,14 +2094,14 @@ int32_t AppMgrServiceInner::ProcessKia(bool isKia, std::shared_ptr<AppRunningRec
     }
 #ifdef SUPPORT_SCREEN
     TAG_LOGI(AAFwkTag::APPMGR, "Openning KIA file, start setting watermark");
-    int32_t resultCode = static_cast<int32_t>(WindowManager::GetInstance().SetProcessWatermark(
+    int32_t resultCode = static_cast<int32_t>(WindowManager::GetInstance(appRecord->GetUserId()).SetProcessWatermark(
         appRecord->GetPid(), watermarkBusinessName, isWatermarkEnabled));
     if (resultCode != ERR_OK) {
         TAG_LOGE(AAFwkTag::APPMGR, "setting watermark fails with result code:%{public}d", resultCode);
         return resultCode;
     }
     TAG_LOGI(AAFwkTag::APPMGR, "setting watermark succeeds, start setting snapshot skip");
-    resultCode = static_cast<int32_t>(WindowManager::GetInstance().SkipSnapshotForAppProcess(
+    resultCode = static_cast<int32_t>(WindowManager::GetInstance(appRecord->GetUserId()).SkipSnapshotForAppProcess(
         appRecord->GetPid(), isWatermarkEnabled));
     if (resultCode != ERR_OK) {
         TAG_LOGE(AAFwkTag::APPMGR, "setting snapshot skip fails with result code:%{public}d", resultCode);
@@ -9121,7 +9122,7 @@ void AppMgrServiceInner::RegisterFocusListener()
         TAG_LOGE(AAFwkTag::APPMGR, "no focusListener_");
         return;
     }
-    WindowManager::GetInstance().RegisterFocusChangedListener(focusListener_);
+    AllUsersWindowManager::GetInstance().RegisterFocusChangedListener(focusListener_);
 #endif // SUPPORT_SCREEN
     TAG_LOGI(AAFwkTag::APPMGR, "registerFocusListener end");
 }
@@ -9134,7 +9135,7 @@ void AppMgrServiceInner::FreeFocusListener()
         TAG_LOGE(AAFwkTag::APPMGR, "no focusListener_");
         return;
     }
-    WindowManager::GetInstance().UnregisterFocusChangedListener(focusListener_);
+    AllUsersWindowManager::GetInstance().UnregisterFocusChangedListener(focusListener_);
     focusListener_ = nullptr;
 #endif // SUPPORT_SCREEN
     TAG_LOGI(AAFwkTag::APPMGR, "freeFocusListener end");
@@ -9216,11 +9217,11 @@ void AppMgrServiceInner::InitWindowVisibilityChangedListener()
         TAG_LOGE(AAFwkTag::APPMGR, "window visibility changed listener null");
         return;
     }
-    WindowManager::GetInstance().RegisterVisibilityChangedListener(windowVisibilityChangedListener_);
+    AllUsersWindowManager::GetInstance().RegisterVisibilityChangedListener(windowVisibilityChangedListener_);
 
     std::vector<sptr<WindowVisibilityInfo>> windowVisibilityInfos;
     windowVisibilityInfos.clear();
-    WindowManager::GetInstance().GetVisibilityWindowInfo(windowVisibilityInfos);
+    AllUsersWindowManager::GetInstance().GetVisibilityWindowInfo(windowVisibilityInfos);
 
     if (windowVisibilityInfos.empty()) {
         TAG_LOGW(AAFwkTag::APPMGR, "window visibility info is empty");
@@ -9250,7 +9251,7 @@ void AppMgrServiceInner::FreeWindowVisibilityChangedListener()
         TAG_LOGW(AAFwkTag::APPMGR, "visibility listener already free");
         return;
     }
-    WindowManager::GetInstance().UnregisterVisibilityChangedListener(windowVisibilityChangedListener_);
+    AllUsersWindowManager::GetInstance().UnregisterVisibilityChangedListener(windowVisibilityChangedListener_);
     windowVisibilityChangedListener_  = nullptr;
 }
 
@@ -9289,7 +9290,7 @@ void AppMgrServiceInner::InitWindowPidVisibilityChangedListener()
             TAG_LOGE(AAFwkTag::APPMGR, "Window pid visibility changed listener is nullptr.");
             return;
         }
-        WMError ret = WindowManager::GetInstance().RegisterWindowPidVisibilityChangedListener(
+        WMError ret = AllUsersWindowManager::GetInstance().RegisterWindowPidVisibilityChangedListener(
             inner->windowPidVisibilityChangedListener_);
         if (ret != WMError::WM_OK) {
             TAG_LOGE(AAFwkTag::APPMGR, "RegisterWindowPidVisibilityChangedListener failed.");
@@ -9311,7 +9312,7 @@ void AppMgrServiceInner::FreeWindowPidVisibilityChangedListener()
         TAG_LOGW(AAFwkTag::APPMGR, "pid visibility changed listener has been freed.");
         return;
     }
-    WindowManager::GetInstance().UnregisterWindowPidVisibilityChangedListener(windowPidVisibilityChangedListener_);
+    AllUsersWindowManager::GetInstance().UnregisterWindowPidVisibilityChangedListener(windowPidVisibilityChangedListener_);
     windowPidVisibilityChangedListener_ = nullptr;
 }
 

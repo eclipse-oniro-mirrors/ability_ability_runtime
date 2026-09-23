@@ -28,6 +28,7 @@ namespace AppExecFwk {
 class WindowManager {
 public:
     static WindowManager &GetInstance();
+    static WindowManager &GetInstance(int32_t userId);
     static int retCodeSetProcessWatermark;
     static int retCodeSkipSnapshotForAppProcess;
 

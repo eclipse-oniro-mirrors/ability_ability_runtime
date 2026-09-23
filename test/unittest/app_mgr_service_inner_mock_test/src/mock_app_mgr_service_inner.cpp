@@ -65,14 +65,14 @@ int32_t AppMgrServiceInner::ProcessKia(bool isKia, std::shared_ptr<AppRunningRec
         return ERR_INVALID_VALUE;
     }
     TAG_LOGI(AAFwkTag::APPMGR, "Openning KIA file, start setting watermark");
-    int32_t resultCode = static_cast<int32_t>(WindowManager::GetInstance().SetProcessWatermark(
+    int32_t resultCode = static_cast<int32_t>(WindowManager::GetInstance(appRecord->GetUserId()).SetProcessWatermark(
         appRecord->GetPid(), watermarkBusinessName, isWatermarkEnabled));
     if (resultCode != ERR_OK) {
         TAG_LOGE(AAFwkTag::APPMGR, "setting watermark fails with result code:%{public}d", resultCode);
         return resultCode;
     }
     TAG_LOGI(AAFwkTag::APPMGR, "setting watermark succeeds, start setting snapshot skip");
-    resultCode = static_cast<int32_t>(WindowManager::GetInstance().SkipSnapshotForAppProcess(
+    resultCode = static_cast<int32_t>(WindowManager::GetInstance(appRecord->GetUserId()).SkipSnapshotForAppProcess(
         appRecord->GetPid(), isWatermarkEnabled));
     if (resultCode != ERR_OK) {
         TAG_LOGE(AAFwkTag::APPMGR, "setting snapshot skip fails with result code:%{public}d", resultCode);
