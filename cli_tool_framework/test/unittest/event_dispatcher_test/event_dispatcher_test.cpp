@@ -15,6 +15,8 @@
 
 #include <gtest/gtest.h>
 #include <functional>
+#include <memory>
+#include <parcel.h>
 #include <string>
 #include <vector>
 
@@ -34,6 +36,10 @@ constexpr int32_t TEST_CALLER_UID = 2000;
 constexpr int32_t TEST_CALLER_UID_SECOND = 2001;
 constexpr int32_t TEST_EXIT_CODE = 3;
 constexpr int32_t TEST_REPLY_RESULT = 5;
+const std::string TEST_TOOL_CALL_ID = "tcid_abc-123";
+const std::string TEST_DM_SESSION_ID = "dm_xyz-789";
+const std::string TEST_TOOL_CALL_ID_SECOND = "tcid_def-456";
+const std::string TEST_DM_SESSION_ID_SECOND = "dm_uvw-012";
 }
 
 class TestScheduler : public CliToolManagerSchedulerStub {
@@ -47,6 +53,7 @@ public:
         lastEventType = event.type;
         lastEventData = event.eventData;
         lastExitCode = event.exitCode;
+        lastTimestamp = event.timestamp;
         return sessionEventResult;
     }
 
@@ -75,6 +82,7 @@ public:
     int32_t inputReplyCount = 0;
     int32_t execReplyCount = 0;
     int32_t lastExitCode = 0;
+    int64_t lastTimestamp = 0;
     int32_t lastInputResult = 0;
     int32_t lastExecResult = 0;
     std::string lastSessionId;
@@ -531,6 +539,162 @@ HWTEST_F(EventDispatcherTest, EventDispatcher_SetScheduler_0400, TestSize.Level1
     EXPECT_EQ(remote->addDeathRecipientCount, 2);
     EXPECT_EQ(remote->removeDeathRecipientCount, 1);
     EXPECT_EQ(remote->removedDeathRecipient, remote->firstDeathRecipient);
+}
+
+/**
+ * @tc.name: EventDispatcher_TraceIds_0100
+ * @tc.desc: Test dispatching events for a session with registered trace ids keeps event content unchanged
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventDispatcherTest, EventDispatcher_TraceIds_0100, TestSize.Level1)
+{
+    auto &dispatcher = EventDispatcher::GetInstance();
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    ASSERT_TRUE(dispatcher.SetScheduler(TEST_CALLER_PID, TEST_CALLER_UID, scheduler));
+    ASSERT_TRUE(dispatcher.RegisterSubscriber("session", "subscription", TEST_CALLER_PID, TEST_CALLER_UID));
+
+    dispatcher.RegisterTraceIds("session", TEST_TOOL_CALL_ID, TEST_DM_SESSION_ID);
+
+    dispatcher.DispatchIOEvent("session", "stdout", "payload");
+    EXPECT_EQ(scheduler->sessionEventCount, 1);
+    EXPECT_EQ(scheduler->lastSessionId, "session");
+    EXPECT_EQ(scheduler->lastSubscriptionId, "subscription");
+    EXPECT_EQ(scheduler->lastEventType, "stdout");
+    EXPECT_EQ(scheduler->lastEventData, "payload");
+    EXPECT_EQ(scheduler->lastExitCode, 0);
+    EXPECT_GE(scheduler->lastTimestamp, 0);
+
+    dispatcher.DispatchErrorEvent("session", "error text");
+    EXPECT_EQ(scheduler->sessionEventCount, 2);
+    EXPECT_EQ(scheduler->lastEventType, "error");
+    EXPECT_EQ(scheduler->lastEventData, "error text");
+
+    dispatcher.DispatchExitEvent("session", TEST_EXIT_CODE);
+    EXPECT_EQ(scheduler->sessionEventCount, 3);
+    EXPECT_EQ(scheduler->lastEventType, "exit");
+    EXPECT_EQ(scheduler->lastExitCode, TEST_EXIT_CODE);
+    EXPECT_EQ(scheduler->lastEventData, R"({"exitCode":3})");
+}
+
+/**
+ * @tc.name: EventDispatcher_TraceIds_0200
+ * @tc.desc: Test dispatch delivers identical event content with and without registered trace ids
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventDispatcherTest, EventDispatcher_TraceIds_0200, TestSize.Level1)
+{
+    auto &dispatcher = EventDispatcher::GetInstance();
+    sptr<TestScheduler> plainScheduler = new TestScheduler();
+    sptr<TestScheduler> tracedScheduler = new TestScheduler();
+    ASSERT_TRUE(dispatcher.SetScheduler(TEST_CALLER_PID, TEST_CALLER_UID, plainScheduler));
+    ASSERT_TRUE(dispatcher.SetScheduler(TEST_CALLER_PID_SECOND, TEST_CALLER_UID_SECOND, tracedScheduler));
+    ASSERT_TRUE(dispatcher.RegisterSubscriber(
+        "plain-session", "plain-subscription", TEST_CALLER_PID, TEST_CALLER_UID));
+    ASSERT_TRUE(dispatcher.RegisterSubscriber(
+        "traced-session", "traced-subscription", TEST_CALLER_PID_SECOND, TEST_CALLER_UID_SECOND));
+
+    dispatcher.RegisterTraceIds("traced-session", TEST_TOOL_CALL_ID, TEST_DM_SESSION_ID);
+
+    dispatcher.DispatchIOEvent("plain-session", "stdout", "payload");
+    dispatcher.DispatchIOEvent("traced-session", "stdout", "payload");
+
+    EXPECT_EQ(plainScheduler->sessionEventCount, 1);
+    EXPECT_EQ(tracedScheduler->sessionEventCount, 1);
+    EXPECT_EQ(plainScheduler->lastSubscriptionId, "plain-subscription");
+    EXPECT_EQ(tracedScheduler->lastSubscriptionId, "traced-subscription");
+    EXPECT_EQ(tracedScheduler->lastEventType, plainScheduler->lastEventType);
+    EXPECT_EQ(tracedScheduler->lastEventType, "stdout");
+    EXPECT_EQ(tracedScheduler->lastEventData, plainScheduler->lastEventData);
+    EXPECT_EQ(tracedScheduler->lastEventData, "payload");
+    EXPECT_EQ(tracedScheduler->lastExitCode, plainScheduler->lastExitCode);
+    EXPECT_EQ(tracedScheduler->lastExitCode, 0);
+    EXPECT_GE(tracedScheduler->lastTimestamp, 0);
+
+    CliToolEvent captured;
+    captured.type = tracedScheduler->lastEventType;
+    captured.eventData = tracedScheduler->lastEventData;
+    captured.exitCode = tracedScheduler->lastExitCode;
+    captured.timestamp = tracedScheduler->lastTimestamp;
+    Parcel parcel;
+    ASSERT_TRUE(captured.Marshalling(parcel));
+    std::unique_ptr<CliToolEvent> restored(CliToolEvent::Unmarshalling(parcel));
+    ASSERT_NE(restored, nullptr);
+    EXPECT_EQ(restored->type, captured.type);
+    EXPECT_EQ(restored->eventData, captured.eventData);
+    EXPECT_EQ(restored->exitCode, captured.exitCode);
+    EXPECT_EQ(restored->timestamp, captured.timestamp);
+}
+
+/**
+ * @tc.name: EventDispatcher_TraceIds_0300
+ * @tc.desc: Test dispatch falls back to normal behavior after UnregisterTraceIds
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventDispatcherTest, EventDispatcher_TraceIds_0300, TestSize.Level1)
+{
+    auto &dispatcher = EventDispatcher::GetInstance();
+    sptr<TestScheduler> scheduler = new TestScheduler();
+    ASSERT_TRUE(dispatcher.SetScheduler(TEST_CALLER_PID, TEST_CALLER_UID, scheduler));
+    ASSERT_TRUE(dispatcher.RegisterSubscriber("session", "subscription", TEST_CALLER_PID, TEST_CALLER_UID));
+
+    dispatcher.RegisterTraceIds("session", TEST_TOOL_CALL_ID, TEST_DM_SESSION_ID);
+    dispatcher.DispatchIOEvent("session", "stdout", "payload");
+    EXPECT_EQ(scheduler->sessionEventCount, 1);
+    EXPECT_EQ(scheduler->lastEventType, "stdout");
+    EXPECT_EQ(scheduler->lastEventData, "payload");
+
+    dispatcher.UnregisterTraceIds("session");
+    dispatcher.DispatchIOEvent("session", "stdout", "payload");
+    EXPECT_EQ(scheduler->sessionEventCount, 2);
+    EXPECT_EQ(scheduler->lastEventType, "stdout");
+    EXPECT_EQ(scheduler->lastEventData, "payload");
+    EXPECT_EQ(scheduler->lastExitCode, 0);
+
+    dispatcher.UnregisterTraceIds("");
+    dispatcher.UnregisterTraceIds("unknown-session");
+    dispatcher.DispatchIOEvent("session", "stderr", "payload-2");
+    EXPECT_EQ(scheduler->sessionEventCount, 3);
+    EXPECT_EQ(scheduler->lastEventType, "stderr");
+    EXPECT_EQ(scheduler->lastEventData, "payload-2");
+}
+
+/**
+ * @tc.name: EventDispatcher_TraceIds_0400
+ * @tc.desc: Test RegisterTraceIds validation no-ops, overwrite and registration before subscribers
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventDispatcherTest, EventDispatcher_TraceIds_0400, TestSize.Level1)
+{
+    auto &dispatcher = EventDispatcher::GetInstance();
+    sptr<TestScheduler> scheduler = new TestScheduler();
+
+    dispatcher.RegisterTraceIds("early-session", TEST_TOOL_CALL_ID, TEST_DM_SESSION_ID);
+
+    dispatcher.RegisterTraceIds("", TEST_TOOL_CALL_ID, TEST_DM_SESSION_ID);
+    dispatcher.RegisterTraceIds("session", "", "");
+
+    ASSERT_TRUE(dispatcher.SetScheduler(TEST_CALLER_PID, TEST_CALLER_UID, scheduler));
+    ASSERT_TRUE(dispatcher.RegisterSubscriber("session", "subscription", TEST_CALLER_PID, TEST_CALLER_UID));
+    ASSERT_TRUE(dispatcher.RegisterSubscriber(
+        "early-session", "early-subscription", TEST_CALLER_PID, TEST_CALLER_UID));
+
+    dispatcher.RegisterTraceIds("session", TEST_TOOL_CALL_ID, TEST_DM_SESSION_ID);
+    dispatcher.RegisterTraceIds("session", TEST_TOOL_CALL_ID_SECOND, TEST_DM_SESSION_ID_SECOND);
+    dispatcher.RegisterTraceIds("session", TEST_TOOL_CALL_ID_SECOND, "");
+
+    dispatcher.DispatchIOEvent("session", "stdout", "payload");
+    EXPECT_EQ(scheduler->sessionEventCount, 1);
+    EXPECT_EQ(scheduler->lastSessionId, "session");
+    EXPECT_EQ(scheduler->lastSubscriptionId, "subscription");
+    EXPECT_EQ(scheduler->lastEventType, "stdout");
+    EXPECT_EQ(scheduler->lastEventData, "payload");
+
+    dispatcher.DispatchIOEvent("early-session", "exit", "final");
+    EXPECT_EQ(scheduler->sessionEventCount, 2);
+    EXPECT_EQ(scheduler->lastSessionId, "early-session");
+    EXPECT_EQ(scheduler->lastSubscriptionId, "early-subscription");
+    EXPECT_EQ(scheduler->lastEventType, "exit");
+    EXPECT_EQ(scheduler->lastEventData, "final");
 }
 } // namespace CliTool
 } // namespace OHOS

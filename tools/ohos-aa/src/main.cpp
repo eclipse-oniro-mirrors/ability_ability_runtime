@@ -13,9 +13,11 @@
  * limitations under the License.
  */
 
+#include <cstdlib>
 #include <cstring>
 #include <unistd.h>
 
+#include "hilog_tag_wrapper.h"
 #include "ohos_aa_command.h"
 #include "xcollie/xcollie.h"
 #include "xcollie/xcollie_define.h"
@@ -55,6 +57,12 @@ int main(int argc, char* argv[])
     }
 
     if (argc > 0 && strstr(argv[0], "ohos-aa") != nullptr) {
+        // Print env-supplied ids only when they pass the shared validation; otherwise stay silent.
+        if (const char* envToolCallId = std::getenv(AAFwk::ENV_TOOL_CALL_ID.c_str());
+            envToolCallId != nullptr && envToolCallId[0] != '\0' &&
+            AAFwk::IsValidToolCallId(envToolCallId)) {
+            TAG_LOGI(AAFwkTag::AA_TOOL, "TOOL_CALL_ID: %{public}s", envToolCallId);
+        }
         CommandTimer commandTimer("ability::claw_aa_cli_command", COMMAND_TIME_OUT, operation);
         OHOS::AAFwk::ClawAaShellCommand cmd(argc, argv);
         cmd.CreateErrorInfoMap();

@@ -106,5 +106,45 @@ HWTEST_F(CliSessionInfoTest, CliSessionInfo_Unmarshalling_0200, TestSize.Level1)
     missingResultParcel.RewindRead(0);
     EXPECT_EQ(CliSessionInfo::Unmarshalling(missingResultParcel), nullptr);
 }
+
+/**
+ * @tc.name: CliSessionInfo_Unmarshalling_0300
+ * @tc.desc: Test CliSessionInfo unmarshalling succeeds for baseline parcels without trace identifiers
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliSessionInfoTest, CliSessionInfo_Unmarshalling_0300, TestSize.Level1)
+{
+    // Baseline sender format: sessionId + toolName + status + hasResult(false).
+    Parcel baselineNoResultParcel;
+    ASSERT_TRUE(baselineNoResultParcel.WriteString("session"));
+    ASSERT_TRUE(baselineNoResultParcel.WriteString("tool"));
+    ASSERT_TRUE(baselineNoResultParcel.WriteString("running"));
+    ASSERT_TRUE(baselineNoResultParcel.WriteBool(false));
+    baselineNoResultParcel.RewindRead(0);
+    std::unique_ptr<CliSessionInfo> noResult(CliSessionInfo::Unmarshalling(baselineNoResultParcel));
+    ASSERT_NE(noResult, nullptr);
+    EXPECT_EQ(noResult->sessionId, "session");
+    EXPECT_EQ(noResult->toolName, "tool");
+    EXPECT_EQ(noResult->status, "running");
+    EXPECT_EQ(noResult->result, nullptr);
+
+    // Baseline sender format with an ExecResult parcelable.
+    Parcel baselineResultParcel;
+    ASSERT_TRUE(baselineResultParcel.WriteString("session"));
+    ASSERT_TRUE(baselineResultParcel.WriteString("tool"));
+    ASSERT_TRUE(baselineResultParcel.WriteString("completed"));
+    ASSERT_TRUE(baselineResultParcel.WriteBool(true));
+    ExecResult execResult;
+    execResult.exitCode = TEST_EXIT_CODE;
+    execResult.outputText = "ok";
+    ASSERT_TRUE(baselineResultParcel.WriteParcelable(&execResult));
+    baselineResultParcel.RewindRead(0);
+    std::unique_ptr<CliSessionInfo> withResult(CliSessionInfo::Unmarshalling(baselineResultParcel));
+    ASSERT_NE(withResult, nullptr);
+    ASSERT_NE(withResult->result, nullptr);
+    EXPECT_EQ(withResult->status, "completed");
+    EXPECT_EQ(withResult->result->exitCode, TEST_EXIT_CODE);
+    EXPECT_EQ(withResult->result->outputText, "ok");
+}
 } // namespace CliTool
 } // namespace OHOS

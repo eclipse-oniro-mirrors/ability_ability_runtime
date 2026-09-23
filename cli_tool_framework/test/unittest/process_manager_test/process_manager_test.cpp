@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -845,6 +846,80 @@ HWTEST_F(ProcessManagerTest, CloseNonStdFds_PreservesStdio_0100, TestSize.Level1
     EXPECT_EQ(WEXITSTATUS(status), 0);
 
     GTEST_LOG_(INFO) << "ProcessManager_CloseNonStdFds_PreservesStdio_0100 end";
+}
+
+// ==================== Child Env Trace Id Tests ====================
+// BuildChildEnv injects TOOL_CALL_ID from the record and filters stale inherited entries.
+
+/**
+ * @tc.name: ProcessManager_CreateShellProcess_ChildEnvTraceIds_0100
+ * @tc.desc: The child environment keeps TOOL_CALL_ID from the session record and a
+ *           stale inherited parent TOOL_CALL_ID is filtered out.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ProcessManagerTest, CreateShellProcess_ChildEnvTraceIds_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_ChildEnvTraceIds_0100 start";
+
+    // A tiny probe script reports the TOOL_CALL_ID visible in its env.
+    const std::string probePath = "/data/local/tmp/cli_tool_env_probe_test.sh";
+    const std::string probeScript =
+        "#!/bin/sh\n"
+        "echo TC=$TOOL_CALL_ID\n";
+    int probeFd = open(probePath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0700);
+    if (probeFd < 0) {
+        GTEST_SKIP() << "cannot create env probe script at " << probePath;
+    }
+    ASSERT_EQ(write(probeFd, probeScript.data(), probeScript.size()),
+        static_cast<ssize_t>(probeScript.size()));
+    close(probeFd);
+    ASSERT_EQ(chmod(probePath.c_str(), 0700), 0);
+
+    // A stale parent-side TOOL_CALL_ID must be dropped from the child env.
+    ASSERT_EQ(setenv("TOOL_CALL_ID", "stale-tc-filtered", 1), 0);
+
+    auto& manager = ProcessManager::GetInstance();
+    ProcessManager::clawSandboxPath_ = probePath.c_str();
+
+    ExecCmdParam param = CreateTestCmdParam("echo env_probe");
+    std::string sandboxConfig = "/etc/claw/env_probe_config.json";
+
+    auto record = std::make_shared<SessionRecord>();
+    ASSERT_NE(record, nullptr);
+    record->sessionId = "env_probe_session";
+    record->toolName = "shell";
+    record->toolCallId = "record-tc-injected";    // injected into the child env
+
+    ASSERT_EQ(manager.CreateShellProcess(param, sandboxConfig, record), ERR_OK);
+    ASSERT_GT(record->processId, 0);
+
+    // Drain the child's stdout until EOF (the probe exits right after printing).
+    std::string output;
+    char buf[512];
+    ssize_t n = 0;
+    while ((n = read(record->stdoutPipe[0], buf, sizeof(buf))) > 0) {
+        output.append(buf, static_cast<size_t>(n));
+    }
+
+    int status = 0;
+    ASSERT_EQ(waitpid(record->processId, &status, 0), record->processId);
+    manager.CloseAllPipes(*record);
+
+    if (output.empty()) {
+        // exec of the probe failed (e.g. noexec mount): nothing observable to assert.
+        unsetenv("TOOL_CALL_ID");
+        unlink(probePath.c_str());
+        GTEST_SKIP() << "env probe produced no output; exec environment unavailable";
+    }
+
+    // TOOL_CALL_ID: stale parent value filtered, record value injected.
+    EXPECT_NE(output.find("TC=record-tc-injected"), std::string::npos);
+    EXPECT_EQ(output.find("stale-tc-filtered"), std::string::npos);
+
+    unsetenv("TOOL_CALL_ID");
+    unlink(probePath.c_str());
+
+    GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_ChildEnvTraceIds_0100 end";
 }
 
 } // namespace CliTool

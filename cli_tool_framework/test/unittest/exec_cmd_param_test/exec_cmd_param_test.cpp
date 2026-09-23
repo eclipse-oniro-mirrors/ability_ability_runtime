@@ -28,6 +28,10 @@ namespace CliTool {
 namespace {
 const std::string TEST_CMD = "ohos-aa start --bundleName=com.example";
 const std::string TEST_CHALLENGE = "test_challenge_token";
+const std::string TEST_TOOL_CALL_ID = "tool-call-123_ABC";
+const std::string TEST_DM_SESSION_ID = "dm-session-456_xyz";
+constexpr int64_t TEST_YIELD_MS = 50;
+constexpr int64_t TEST_TIMEOUT = 3000;
 }
 
 class ExecCmdParamTest : public testing::Test {};
@@ -146,6 +150,138 @@ HWTEST_F(ExecCmdParamTest, ExecCmdParam_MaxCmdLength_0100, TestSize.Level1)
     EXPECT_EQ(result->cmd, param.cmd);
     EXPECT_FALSE(result->execCmdOptions.isShellCommand);
     EXPECT_EQ(result->execCmdOptions.challenge, TEST_CHALLENGE);
+}
+
+/**
+ * @tc.name: ExecCmdParam_Parcelable_0300
+ * @tc.desc: Test ExecCmdOptions round-trip keeps trace identifiers intact
+ * @tc.type: FUNC
+ */
+HWTEST_F(ExecCmdParamTest, ExecCmdParam_Parcelable_0300, TestSize.Level1)
+{
+    ExecCmdOptions options;
+    options.workDir = "/data";
+    options.env = "PATH=/usr/bin";
+    options.policy = "default";
+    options.background = true;
+    options.yieldMs = TEST_YIELD_MS;
+    options.timeout = TEST_TIMEOUT;
+    options.isShellCommand = false;
+    options.challenge = TEST_CHALLENGE;
+    options.toolCallId = TEST_TOOL_CALL_ID;
+    options.dmSessionId = TEST_DM_SESSION_ID;
+
+    Parcel parcel;
+    ASSERT_TRUE(options.Marshalling(parcel));
+    parcel.RewindRead(0);
+
+    std::unique_ptr<ExecCmdOptions> result(ExecCmdOptions::Unmarshalling(parcel));
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->workDir, "/data");
+    EXPECT_EQ(result->env, "PATH=/usr/bin");
+    EXPECT_EQ(result->policy, "default");
+    EXPECT_TRUE(result->background);
+    EXPECT_EQ(result->yieldMs, TEST_YIELD_MS);
+    EXPECT_EQ(result->timeout, TEST_TIMEOUT);
+    EXPECT_FALSE(result->isShellCommand);
+    EXPECT_EQ(result->challenge, TEST_CHALLENGE);
+    EXPECT_EQ(result->toolCallId, TEST_TOOL_CALL_ID);
+    EXPECT_EQ(result->dmSessionId, TEST_DM_SESSION_ID);
+}
+
+/**
+ * @tc.name: ExecCmdParam_AsExecOptions_0100
+ * @tc.desc: Test AsExecOptions maps background/yieldMs/timeout and both trace identifiers
+ * @tc.type: FUNC
+ */
+HWTEST_F(ExecCmdParamTest, ExecCmdParam_AsExecOptions_0100, TestSize.Level1)
+{
+    ExecCmdOptions options;
+    options.workDir = "/data";
+    options.env = "PATH=/usr/bin";
+    options.policy = "default";
+    options.background = true;
+    options.yieldMs = TEST_YIELD_MS;
+    options.timeout = TEST_TIMEOUT;
+    options.isShellCommand = false;
+    options.challenge = TEST_CHALLENGE;
+    options.toolCallId = TEST_TOOL_CALL_ID;
+    options.dmSessionId = TEST_DM_SESSION_ID;
+
+    ExecOptions view = options.AsExecOptions();
+    EXPECT_TRUE(view.background);
+    EXPECT_EQ(view.yieldMs, TEST_YIELD_MS);
+    EXPECT_EQ(view.timeout, TEST_TIMEOUT);
+    EXPECT_EQ(view.toolCallId, TEST_TOOL_CALL_ID);
+    EXPECT_EQ(view.dmSessionId, TEST_DM_SESSION_ID);
+
+    // Default-constructed options map to an all-default view.
+    ExecCmdOptions defaults;
+    ExecOptions defaultsView = defaults.AsExecOptions();
+    EXPECT_FALSE(defaultsView.background);
+    EXPECT_EQ(defaultsView.yieldMs, 0);
+    EXPECT_EQ(defaultsView.timeout, 0);
+    EXPECT_TRUE(defaultsView.toolCallId.empty());
+    EXPECT_TRUE(defaultsView.dmSessionId.empty());
+}
+
+/**
+ * @tc.name: ExecCmdParam_Unmarshalling_0100
+ * @tc.desc: Test ExecCmdParam tolerant tail read accepts legacy parcels without trace identifiers
+ * @tc.type: FUNC
+ */
+HWTEST_F(ExecCmdParamTest, ExecCmdParam_Unmarshalling_0100, TestSize.Level1)
+{
+    // Legacy sender: cmd + parcelable placeholder + ExecCmdOptions core fields
+    // (workDir/env/policy/background/yieldMs/timeout), no tail fields at all.
+    Parcel legacyCoreParcel;
+    ASSERT_TRUE(legacyCoreParcel.WriteString(TEST_CMD));
+    ASSERT_TRUE(legacyCoreParcel.WriteInt32(1)); // WriteParcelable placeholder for execCmdOptions
+    ASSERT_TRUE(legacyCoreParcel.WriteString("/data"));        // workDir
+    ASSERT_TRUE(legacyCoreParcel.WriteString("PATH=/usr/bin")); // env
+    ASSERT_TRUE(legacyCoreParcel.WriteString("default"));      // policy
+    ASSERT_TRUE(legacyCoreParcel.WriteBool(true));              // background
+    ASSERT_TRUE(legacyCoreParcel.WriteInt64(TEST_YIELD_MS));    // yieldMs
+    ASSERT_TRUE(legacyCoreParcel.WriteInt64(TEST_TIMEOUT));     // timeout
+    legacyCoreParcel.RewindRead(0);
+
+    std::unique_ptr<ExecCmdParam> coreResult(ExecCmdParam::Unmarshalling(legacyCoreParcel));
+    ASSERT_NE(coreResult, nullptr);
+    EXPECT_EQ(coreResult->cmd, TEST_CMD);
+    EXPECT_EQ(coreResult->execCmdOptions.workDir, "/data");
+    EXPECT_EQ(coreResult->execCmdOptions.env, "PATH=/usr/bin");
+    EXPECT_EQ(coreResult->execCmdOptions.policy, "default");
+    EXPECT_TRUE(coreResult->execCmdOptions.background);
+    EXPECT_EQ(coreResult->execCmdOptions.yieldMs, TEST_YIELD_MS);
+    EXPECT_EQ(coreResult->execCmdOptions.timeout, TEST_TIMEOUT);
+    // Tolerant defaults for missing tail fields.
+    EXPECT_TRUE(coreResult->execCmdOptions.isShellCommand);
+    EXPECT_TRUE(coreResult->execCmdOptions.challenge.empty());
+    EXPECT_TRUE(coreResult->execCmdOptions.toolCallId.empty());
+    EXPECT_TRUE(coreResult->execCmdOptions.dmSessionId.empty());
+
+    // Legacy sender that already knows isShellCommand/challenge but not the trace ids.
+    Parcel legacyNoIdsParcel;
+    ASSERT_TRUE(legacyNoIdsParcel.WriteString(TEST_CMD));
+    ASSERT_TRUE(legacyNoIdsParcel.WriteInt32(1)); // WriteParcelable placeholder for execCmdOptions
+    ASSERT_TRUE(legacyNoIdsParcel.WriteString(""));            // workDir
+    ASSERT_TRUE(legacyNoIdsParcel.WriteString(""));            // env
+    ASSERT_TRUE(legacyNoIdsParcel.WriteString(""));            // policy
+    ASSERT_TRUE(legacyNoIdsParcel.WriteBool(false));            // background
+    ASSERT_TRUE(legacyNoIdsParcel.WriteInt64(TEST_YIELD_MS));   // yieldMs
+    ASSERT_TRUE(legacyNoIdsParcel.WriteInt64(TEST_TIMEOUT));    // timeout
+    ASSERT_TRUE(legacyNoIdsParcel.WriteBool(false));            // isShellCommand
+    ASSERT_TRUE(legacyNoIdsParcel.WriteString(TEST_CHALLENGE)); // challenge
+    legacyNoIdsParcel.RewindRead(0);
+
+    std::unique_ptr<ExecCmdParam> noIdsResult(ExecCmdParam::Unmarshalling(legacyNoIdsParcel));
+    ASSERT_NE(noIdsResult, nullptr);
+    EXPECT_EQ(noIdsResult->cmd, TEST_CMD);
+    EXPECT_FALSE(noIdsResult->execCmdOptions.isShellCommand);
+    EXPECT_EQ(noIdsResult->execCmdOptions.challenge, TEST_CHALLENGE);
+    // Trace identifiers fall back to "" (not provided).
+    EXPECT_TRUE(noIdsResult->execCmdOptions.toolCallId.empty());
+    EXPECT_TRUE(noIdsResult->execCmdOptions.dmSessionId.empty());
 }
 } // namespace CliTool
 } // namespace OHOS

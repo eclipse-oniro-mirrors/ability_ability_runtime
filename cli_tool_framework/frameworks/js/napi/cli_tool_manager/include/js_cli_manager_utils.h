@@ -51,18 +51,20 @@ bool UnwrapStringMap(napi_env env, napi_value obj,
  * @param env The N-API environment.
  * @param obj The JavaScript object.
  * @param options Output ExecOptions.
+ * @param msg Output error message when parsing fails.
  * @return Returns true on success, false otherwise.
  */
-bool UnwrapExecOptions(napi_env env, napi_value obj, ExecOptions &options);
+bool UnwrapExecOptions(napi_env env, napi_value obj, ExecOptions &options, std::string &msg);
 
 /**
  * @brief Unwrap ExecCmdOptions from JavaScript object.
  * @param env The N-API environment.
  * @param obj The JavaScript object.
  * @param options Output ExecCmdOptions.
+ * @param msg Output error message when parsing fails.
  * @return Returns true on success, false otherwise.
  */
-bool UnwrapExecCmdOptions(napi_env env, napi_value obj, ExecCmdOptions &options);
+bool UnwrapExecCmdOptions(napi_env env, napi_value obj, ExecCmdOptions &options, std::string &msg);
 
 /**
  * @brief Unwrap ExecCmdParam from JavaScript object.
@@ -172,7 +174,16 @@ napi_value CreateJsExecCmdParam(napi_env env, const ExecCmdParam &param);
  * @param result The native ExecResult carried by ExecResultWrap.
  * @return Returns the JavaScript object.
  */
-napi_value CreateJsExecResultWrap(napi_env env, const ExecResult &result);
+struct ExecResultWrap;
+
+/**
+ * @brief Create the JS ExecResultWrap object for after-call hooks.
+ *
+ * Carries the wrapped ExecResult plus the trace identifiers actually used by
+ * the execution (stamped service-side); identifiers that are empty (not
+ * provided) are omitted from the JS object.
+ */
+napi_value CreateJsExecResultWrap(napi_env env, const ExecResultWrap &wrap);
 
 } // namespace CliTool
 } // namespace OHOS

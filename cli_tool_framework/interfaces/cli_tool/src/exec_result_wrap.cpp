@@ -17,8 +17,19 @@
 
 #include <memory>
 
+#include "hilog_tag_wrapper.h"
+
 namespace OHOS::CliTool {
-bool ExecResultWrap::Marshalling(Parcel &parcel) const { return execResult.Marshalling(parcel); }
+bool ExecResultWrap::Marshalling(Parcel &parcel) const
+{
+    if (!execResult.Marshalling(parcel)) {
+        return false;
+    }
+    if (!parcel.WriteString(toolCallId) || !parcel.WriteString(dmSessionId)) {
+        return false;
+    }
+    return true;
+}
 ExecResultWrap *ExecResultWrap::Unmarshalling(Parcel &parcel)
 {
     auto wrap = std::make_unique<ExecResultWrap>();
@@ -27,6 +38,10 @@ ExecResultWrap *ExecResultWrap::Unmarshalling(Parcel &parcel)
         return nullptr;
     }
     wrap->execResult = std::move(*result);
+    // Trace identifiers: tolerant tail reads, default "" (not provided).
+    if (!parcel.ReadString(wrap->toolCallId) || !parcel.ReadString(wrap->dmSessionId)) {
+        TAG_LOGD(AAFwkTag::CLI_TOOL, "ExecResultWrap trace ids not present, using default(\"\").");
+    }
     return wrap.release();
 }
 }

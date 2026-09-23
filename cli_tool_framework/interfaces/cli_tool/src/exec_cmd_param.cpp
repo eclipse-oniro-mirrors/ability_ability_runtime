@@ -53,6 +53,14 @@ bool ExecCmdOptions::Marshalling(Parcel &parcel) const
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Write challenge failed.");
         return false;
     }
+    if (!parcel.WriteString(toolCallId)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Write toolCallId failed.");
+        return false;
+    }
+    if (!parcel.WriteString(dmSessionId)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Write dmSessionId failed.");
+        return false;
+    }
     return true;
 }
 
@@ -79,6 +87,17 @@ ExecCmdOptions *ExecCmdOptions::Unmarshalling(Parcel &parcel)
     result->challenge = "";
     if (!parcel.ReadString(result->challenge)) {
         TAG_LOGD(AAFwkTag::CLI_TOOL, "challenge not present, using default(\"\").");
+        return result;
+    }
+    // Trace identifiers: tolerant tail reads, default "" (not provided).
+    result->toolCallId = "";
+    if (!parcel.ReadString(result->toolCallId)) {
+        TAG_LOGD(AAFwkTag::CLI_TOOL, "toolCallId not present, using default(\"\").");
+        return result;
+    }
+    result->dmSessionId = "";
+    if (!parcel.ReadString(result->dmSessionId)) {
+        TAG_LOGD(AAFwkTag::CLI_TOOL, "dmSessionId not present, using default(\"\").");
     }
     return result;
 }

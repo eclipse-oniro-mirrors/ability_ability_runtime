@@ -21,6 +21,9 @@
 namespace OHOS::CliTool {
 struct InvokeOptions {
     std::string context;
+    // Trace identifiers for log correlation; empty means "not provided".
+    std::string toolCallId;
+    std::string dmSessionId;
 };
 
 struct InvokeFunctionParam : public Parcelable {

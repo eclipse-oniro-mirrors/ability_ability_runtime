@@ -18,6 +18,7 @@
 #include <cerrno>
 #include <chrono>
 #include <cstdio>
+#include <cstdlib>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/prctl.h>
@@ -45,6 +46,30 @@ namespace OHOS {
 namespace CliTool {
 namespace {
 #define ACCESS_TOKENID_SET_HAP_PTOKENID _IOW('A', 0x1A, uint64_t)
+
+// Only TOOL_CALL_ID is injected into the child env (never argv).
+constexpr char ENV_TOOL_CALL_ID[] = "TOOL_CALL_ID";
+
+// PARENT-only: child env = environ + TOOL_CALL_ID, dropping stale inherited ones.
+void BuildChildEnv(const SessionRecord &record, std::vector<std::string> &envStorage,
+    std::vector<char *> &envp)
+{
+    const std::string toolCallKey = std::string(ENV_TOOL_CALL_ID) + "=";
+    for (char **entry = environ; entry != nullptr && *entry != nullptr; ++entry) {
+        std::string current(*entry);
+        if (current.rfind(toolCallKey, 0) == 0) {
+            continue;
+        }
+        envStorage.push_back(std::move(current));
+    }
+    if (!record.toolCallId.empty()) {
+        envStorage.push_back(toolCallKey + record.toolCallId);
+    }
+    for (auto &entry : envStorage) {
+        envp.push_back(entry.data());
+    }
+    envp.push_back(nullptr);
+}
 
 // Upper bound for the fallback fd-sweep when RLIMIT_NOFILE is RLIM_INFINITY. Bounded so the
 // loop stays cheap; any fd that genuinely needs to survive into claw_sandbox is dup2'd onto
@@ -153,7 +178,7 @@ void ProcessManager::CloseNonStdFds() const
 }
 
 void ProcessManager::SetupChildPipesAndExec(const SessionRecord &record,
-    std::vector<char *> &execArgs) const
+    std::vector<char *> &execArgs, std::vector<char *> &envp) const
 {
     fdsan_close_with_tag(record.stdinPipe[1], FD_OWNER_TAG);
     fdsan_close_with_tag(record.stdoutPipe[0], FD_OWNER_TAG);
@@ -165,8 +190,9 @@ void ProcessManager::SetupChildPipesAndExec(const SessionRecord &record,
     fdsan_close_with_tag(record.stdoutPipe[1], FD_OWNER_TAG);
     fdsan_close_with_tag(record.stderrPipe[1], FD_OWNER_TAG);
     CloseNonStdFds();
-    execvp(execArgs[0], execArgs.data());
-    static const char msg[] = "claw_sandbox execvp failed\n";
+    // Ids reach the child via envp only (ADR-2); execve keeps the child async-signal-safe.
+    execve(execArgs[0], execArgs.data(), envp.data());
+    static const char msg[] = "claw_sandbox execve failed\n";
     (void)write(STDERR_FILENO, msg, sizeof(msg) - 1);
     _exit(EXIT_FAILURE);
 }
@@ -202,6 +228,12 @@ int32_t ProcessManager::CreateChildProcess(const ExecToolParam &param, const std
     for (const auto &element : tmpExecArgs) {
         TAG_LOGI(AAFwkTag::CLI_TOOL, "%{public}s", element.c_str());
     }
+    // PARENT (pre-fork): build the child environment here so the child only passes
+    // the prebuilt array to execve (async-signal-safe, no malloc in child).
+    std::vector<std::string> envStorage;
+    std::vector<char *> envp;
+    BuildChildEnv(*record, envStorage, envp);
+
     TAG_LOGI(AAFwkTag::CLI_TOOL, "Before fork");
 
     pid_t pid = fork();
@@ -212,7 +244,7 @@ int32_t ProcessManager::CreateChildProcess(const ExecToolParam &param, const std
         return ERR_NO_INIT;
     }
     if (pid == 0) {
-        SetupChildPipesAndExec(*record, execArgs);
+        SetupChildPipesAndExec(*record, execArgs, envp);
     }
 
     // Parent process: close write ends of pipes
@@ -246,6 +278,10 @@ int32_t ProcessManager::CreateShellProcess(const ExecCmdParam &param, const std:
         const_cast<char *>(param.cmd.c_str()),
         nullptr,
     };
+    // PARENT (pre-fork): build the child environment here (see CreateChildProcess).
+    std::vector<std::string> envStorage;
+    std::vector<char *> envp;
+    BuildChildEnv(*record, envStorage, envp);
     TAG_LOGI(AAFwkTag::CLI_TOOL, "Before fork");
     TAG_LOGD(AAFwkTag::CLI_TOOL, "sandboxConfig: %{public}s", sandboxConfig.c_str());
 
@@ -267,7 +303,7 @@ int32_t ProcessManager::CreateShellProcess(const ExecCmdParam &param, const std:
             (void)ioctl(tfd, ACCESS_TOKENID_SET_HAP_PTOKENID, &atmTokenId);
             (void)fdsan_close_with_tag(tfd, FD_OWNER_TAG);
         }
-        SetupChildPipesAndExec(*record, execArgs);
+        SetupChildPipesAndExec(*record, execArgs, envp);
     }
     // Parent process: close write ends of pipes
     fdsan_close_with_tag(record->stdoutPipe[1], FD_OWNER_TAG);
