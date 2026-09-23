@@ -553,10 +553,8 @@ void AbilityRecord::HandleBackgroundToForeground(const ForegroundOptions &option
         SendAppStartupTypeEvent(AppExecFwk::AppStartType::HOT);
     }
     SetAbilityStateInner(AbilityState::FOREGROUNDING);
-    int32_t callerUid = GetWant().GetIntParam(Want::PARAM_RESV_CALLER_UID, -1);
-    std::string callerBundleName = GetWant().GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME);
     DelayedSingleton<AppScheduler>::GetInstance()->MoveToForeground(token_,
-        GetRealLastCallerInfo(callerUid, callerBundleName, isCallBySCB));
+        GetRealLastCallerInfo(options.callerUid, options.callerBundleName, isCallBySCB));
 }
 
 AppExecFwk::UiAbilityLastCallerInfo AbilityRecord::GetRealLastCallerInfo(int32_t callerUid,
@@ -565,6 +563,11 @@ AppExecFwk::UiAbilityLastCallerInfo AbilityRecord::GetRealLastCallerInfo(int32_t
     AppExecFwk::UiAbilityLastCallerInfo callerInfo;
     callerInfo.callerUid = callerUid;
     callerInfo.callerBundleName = callerBundleName;
+
+    if (callerInfo.callerUid == -1 && callerInfo.callerBundleName.empty()) {
+        callerInfo.callerUid = GetWant().GetIntParam(Want::PARAM_RESV_CALLER_UID, -1);
+        callerInfo.callerBundleName = GetWant().GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME);
+    }
 
     TAG_LOGI(AAFwkTag::ABILITYMGR, "AbilityForeground set caller info, callerUid:%{public}d, "
         "callerBundleName:%{public}s, isCallBySCB:%{public}d", callerUid,
