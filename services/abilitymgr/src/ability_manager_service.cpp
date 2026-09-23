@@ -15198,6 +15198,7 @@ int32_t AbilityManagerService::ExecuteIntentByFunctionCall(uint64_t key,
         return ret;
     }
     auto param = parseResult.param;
+    param->toolCallId_ = toolCallId;
     bool openLinkExecuteFlag = parseResult.openLinkExecuteFlag;
     bool ignoreAbilityName = parseResult.ignoreAbilityName;
 
@@ -15311,15 +15312,12 @@ int32_t AbilityManagerService::ExecuteIntentCommon(const sptr<IRemoteObject> &ca
         return ret;
     }
 
-    const auto toolCallId = !param->toolCallId_.empty() ? param->toolCallId_ :
-        (param->insightIntentParam_ != nullptr ?
-            param->insightIntentParam_->GetStringParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID) : "");
     TAG_LOGI(AAFwkTag::INTENT, "execute insight intent, bundleName: %{public}s, moduleName: %{public}s, "
         "intentName: %{public}s, intentId:%{public}" PRIu64 ", openLinkExecuteFlag: %{public}d, "
         "executeMode: %{public}d, userId: %{public}d, isDistributed: %{public}d, toolCallId: %{public}s",
         param->bundleName_.c_str(), param->moduleName_.c_str(), param->insightIntentName_.c_str(),
         param->insightIntentId_, openLinkExecuteFlag, param->executeMode_, param->userId_, isDistributed,
-        toolCallId.c_str());
+        param->toolCallId_.c_str());
     
     if (openLinkExecuteFlag) {
         auto info = options.infos;

@@ -440,7 +440,7 @@ HWTEST_F(InsightIntentExecuteManagerTest, GenerateWant_0400, TestSize.Level1)
 
 /**
  * @tc.name: GenerateWant_0500
- * @tc.desc: toolCallId is written into the execute param when not empty.
+ * @tc.desc: toolCallId is written into the outer Want without changing business parameters.
  * @tc.type: FUNC
  */
 HWTEST_F(InsightIntentExecuteManagerTest, GenerateWant_0500, TestSize.Level1)
@@ -454,6 +454,7 @@ HWTEST_F(InsightIntentExecuteManagerTest, GenerateWant_0500, TestSize.Level1)
     param.insightIntentParam_ = std::make_shared<WantParams>();
     param.insightIntentParam_->SetParam("dummy", Integer::Box(-1));
     param.toolCallId_ = "tc-001";
+    param.insightIntentParam_->SetParam("toolCallId", String::Box("business-value"));
     param.displayId_ = 2;
 
     auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
@@ -463,16 +464,18 @@ HWTEST_F(InsightIntentExecuteManagerTest, GenerateWant_0500, TestSize.Level1)
     EXPECT_EQ(ret, ERR_OK);
 
     WantParams insightIntentParam = want.GetParams().GetWantParams(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_PARAM);
-    EXPECT_EQ(insightIntentParam.HasParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID), true);
-    EXPECT_EQ(insightIntentParam.GetStringParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID), "tc-001");
+    EXPECT_EQ(want.GetStringParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID), "tc-001");
+    EXPECT_FALSE(insightIntentParam.HasParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID));
+    EXPECT_FALSE(paramPtr->insightIntentParam_->HasParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID));
     // business params are preserved
     EXPECT_EQ(insightIntentParam.GetIntParam("dummy", 0), -1);
+    EXPECT_EQ(insightIntentParam.GetStringParam("toolCallId"), "business-value");
     TAG_LOGI(AAFwkTag::TEST, "GenerateWant_0500 end.");
 }
 
 /**
  * @tc.name: GenerateWant_0600
- * @tc.desc: no tool call id key when toolCallId is empty or the execute param is absent.
+ * @tc.desc: Empty toolCallId omits the key; a nonempty ID does not require business parameters.
  * @tc.type: FUNC
  */
 HWTEST_F(InsightIntentExecuteManagerTest, GenerateWant_0600, TestSize.Level1)
@@ -492,10 +495,11 @@ HWTEST_F(InsightIntentExecuteManagerTest, GenerateWant_0600, TestSize.Level1)
     AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
     Want want;
     EXPECT_EQ(InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, want), ERR_OK);
+    EXPECT_FALSE(want.HasParameter(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID));
     WantParams insightIntentParam = want.GetParams().GetWantParams(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_PARAM);
     EXPECT_EQ(insightIntentParam.HasParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID), false);
 
-    // case 2: null execute param but non-empty toolCallId -> auto-create WantParams and write key
+    // case 2: null business parameters remain null while the outer Want carries toolCallId.
     AppExecFwk::InsightIntentExecuteParam param2;
     param2.bundleName_ = "test.bundleName";
     param2.moduleName_ = "test.entry";
@@ -507,19 +511,18 @@ HWTEST_F(InsightIntentExecuteManagerTest, GenerateWant_0600, TestSize.Level1)
     auto paramPtr2 = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param2);
     Want want2;
     EXPECT_EQ(InsightIntentExecuteManager::GenerateWant(paramPtr2, decoratorInfo, want2), ERR_OK);
-    WantParams insightIntentParam2 = want2.GetParams().GetWantParams(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_PARAM);
-    EXPECT_EQ(insightIntentParam2.HasParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID), true);
-    EXPECT_EQ(insightIntentParam2.GetStringParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID), "tc-002");
+    EXPECT_EQ(want2.GetStringParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID), "tc-002");
+    EXPECT_FALSE(want2.HasParameter(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_PARAM));
+    EXPECT_EQ(paramPtr2->insightIntentParam_, nullptr);
     TAG_LOGI(AAFwkTag::TEST, "GenerateWant_0600 end.");
 }
 
 /**
- * @tc.name: GenerateWant_FunctionManagerToolCallId_0700
- * @tc.desc: FM toolCallId already in WantParams survives GenerateWant and GenerateFromWant
- *           even though the Driver-only toolCallId_ field is empty.
+ * @tc.name: GenerateWant_ToolCallIdRoundTrip_0700
+ * @tc.desc: The toolCallId field used by Driver and FunctionManager survives the outer Want round trip.
  * @tc.type: FUNC
  */
-HWTEST_F(InsightIntentExecuteManagerTest, GenerateWant_FunctionManagerToolCallId_0700, TestSize.Level1)
+HWTEST_F(InsightIntentExecuteManagerTest, GenerateWant_ToolCallIdRoundTrip_0700, TestSize.Level1)
 {
     auto param = std::make_shared<AppExecFwk::InsightIntentExecuteParam>();
     param->bundleName_ = "test.bundleName";
@@ -529,21 +532,21 @@ HWTEST_F(InsightIntentExecuteManagerTest, GenerateWant_FunctionManagerToolCallId
     param->insightIntentId_ = 42;
     param->displayId_ = 2;
     param->insightIntentParam_ = std::make_shared<WantParams>();
-    param->insightIntentParam_->SetParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID, String::Box("tc-fm"));
+    param->toolCallId_ = "tc-fm";
     param->insightIntentParam_->SetParam("dummy", Integer::Box(-1));
-    ASSERT_TRUE(param->toolCallId_.empty());
 
     AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
     Want want;
     ASSERT_EQ(InsightIntentExecuteManager::GenerateWant(param, decoratorInfo, want), ERR_OK);
+    EXPECT_EQ(want.GetStringParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID), "tc-fm");
 
     AppExecFwk::InsightIntentExecuteParam received;
     ASSERT_TRUE(AppExecFwk::InsightIntentExecuteParam::GenerateFromWant(want, received));
     ASSERT_NE(received.insightIntentParam_, nullptr);
-    EXPECT_EQ(received.insightIntentParam_->GetStringParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID), "tc-fm");
+    EXPECT_FALSE(received.insightIntentParam_->HasParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID));
     EXPECT_EQ(received.insightIntentParam_->GetIntParam("dummy", 0), -1);
     EXPECT_EQ(received.insightIntentId_, 42u);
-    EXPECT_TRUE(received.toolCallId_.empty());
+    EXPECT_EQ(received.toolCallId_, "tc-fm");
 }
 
 } // namespace AAFwk

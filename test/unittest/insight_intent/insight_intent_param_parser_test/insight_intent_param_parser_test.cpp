@@ -139,13 +139,14 @@ HWTEST_F(InsightIntentParamParserTest, Build_SingleBgUiAbilityCandidate_ReturnsP
     EXPECT_FALSE(out.openLinkExecuteFlag);
 }
 
-HWTEST_F(InsightIntentParamParserTest, Build_FunctionManagerToolCallId_PreservesWantParams, TestSize.Level1)
+HWTEST_F(InsightIntentParamParserTest, Build_FunctionManagerToolCallId_CleansMetadata, TestSize.Level1)
 {
     std::vector<ExtractInsightIntentGenericInfo> candidates = {
         MakeBgUiAbilityCandidate("bundle", "entry", "intentName", "BgAbility"),
     };
     WantParams wantParam;
     wantParam.SetParam(OHOS::AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID, String::Box("tc-fm"));
+    wantParam.SetParam("toolCallId", String::Box("business-value"));
     wantParam.SetParam("city", String::Box("Shanghai"));
     wantParam.SetParam(OHOS::AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, String::Box("caller-supplied"));
 
@@ -154,6 +155,8 @@ HWTEST_F(InsightIntentParamParserTest, Build_FunctionManagerToolCallId_Preserves
     cleanedWant.SetParams(wantParam);
     ASSERT_TRUE(OHOS::AppExecFwk::InsightIntentExecuteParam::RemoveInsightIntent(cleanedWant));
     EXPECT_FALSE(cleanedWant.HasParameter(OHOS::AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID));
+    EXPECT_FALSE(cleanedWant.HasParameter(OHOS::AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID));
+    EXPECT_EQ(wantParam.GetStringParam(OHOS::AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID), "tc-fm");
 
     InsightIntentParamParser parser;
     InsightIntentParamParser::ParseResult out;
@@ -161,7 +164,8 @@ HWTEST_F(InsightIntentParamParserTest, Build_FunctionManagerToolCallId_Preserves
     ASSERT_NE(out.param, nullptr);
     ASSERT_NE(out.param->insightIntentParam_, nullptr);
     EXPECT_TRUE(out.param->toolCallId_.empty());
-    EXPECT_EQ(out.param->insightIntentParam_->GetStringParam(OHOS::AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID), "tc-fm");
+    EXPECT_FALSE(out.param->insightIntentParam_->HasParam(OHOS::AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID));
+    EXPECT_EQ(out.param->insightIntentParam_->GetStringParam("toolCallId"), "business-value");
     EXPECT_EQ(out.param->insightIntentParam_->GetStringParam("city"), "Shanghai");
 }
 

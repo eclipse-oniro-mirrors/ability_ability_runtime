@@ -610,11 +610,61 @@ HWTEST_F(InsightIntentExecuteParamTest, ToolCallId_GenerateFromWantWithoutKey_01
     want.SetParams(wantParams);
 
     InsightIntentExecuteParam executeParam;
+    executeParam.toolCallId_ = "previous-call";
     EXPECT_EQ(InsightIntentExecuteParam::GenerateFromWant(want, executeParam), true);
+    EXPECT_TRUE(executeParam.toolCallId_.empty());
     ASSERT_NE(executeParam.insightIntentParam_, nullptr);
     EXPECT_EQ(executeParam.insightIntentParam_->HasParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID), false);
     EXPECT_EQ(executeParam.insightIntentParam_->GetStringParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID), "");
     TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: ToolCallId_GenerateFromOuterWant_0200
+ * @tc.desc: The outer key supplies toolCallId, including an empty value, independently of business parameters.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, ToolCallId_GenerateFromOuterWant_0200, TestSize.Level1)
+{
+    WantParams payload;
+    payload.SetParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID, String::Box("nested-value"));
+    payload.SetParam("toolCallId", String::Box("business-value"));
+    WantParams params;
+    params.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME, String::Box(TEST_INSIGHT_INTENT_NANE));
+    params.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, String::Box("42"));
+    params.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_PARAM, WantParamWrapper::Box(payload));
+    Want want;
+    want.SetParams(params);
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID, std::string("tc-outer"));
+
+    InsightIntentExecuteParam executeParam;
+    ASSERT_TRUE(InsightIntentExecuteParam::GenerateFromWant(want, executeParam));
+    EXPECT_EQ(executeParam.toolCallId_, "tc-outer");
+    ASSERT_NE(executeParam.insightIntentParam_, nullptr);
+    EXPECT_EQ(executeParam.insightIntentParam_->GetStringParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID),
+        "nested-value");
+    EXPECT_EQ(executeParam.insightIntentParam_->GetStringParam("toolCallId"), "business-value");
+
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID, std::string(""));
+    ASSERT_TRUE(InsightIntentExecuteParam::GenerateFromWant(want, executeParam));
+    EXPECT_TRUE(executeParam.toolCallId_.empty());
+}
+
+/**
+ * @tc.name: ToolCallId_RemoveInsightIntent_0100
+ * @tc.desc: Metadata cleanup removes the outer identifier and preserves the ordinary business key.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, ToolCallId_RemoveInsightIntent_0100, TestSize.Level1)
+{
+    Want want;
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID, std::string("tc-outer"));
+    want.SetParam("toolCallId", std::string("business-value"));
+    ASSERT_TRUE(InsightIntentExecuteParam::RemoveInsightIntent(want));
+    EXPECT_FALSE(want.HasParameter(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID));
+    EXPECT_EQ(want.GetStringParam("toolCallId"), "business-value");
+    EXPECT_TRUE(InsightIntentExecuteParam::RemoveInsightIntent(want));
+    EXPECT_EQ(want.GetStringParam("toolCallId"), "business-value");
 }
 } // namespace AAFwk
 } // namespace OHOS

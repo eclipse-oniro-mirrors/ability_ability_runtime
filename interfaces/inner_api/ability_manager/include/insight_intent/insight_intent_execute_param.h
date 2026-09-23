@@ -148,7 +148,7 @@ public:
     // distributed intent params
     std::string deviceId_;
 
-    // Driver entry field (empty means not passed); functionManager uses insightIntentParam_ instead.
+    // Shared by Driver and FunctionManager; empty means no tool call identifier.
     std::string toolCallId_;
 };
 } // namespace AppExecFwk

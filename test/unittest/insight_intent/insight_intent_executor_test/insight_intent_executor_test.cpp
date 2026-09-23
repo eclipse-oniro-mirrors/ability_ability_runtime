@@ -313,16 +313,18 @@ HWTEST_F(InsightIntentExecutorTest, JsInsightIntentPageInit_001, TestSize.Level1
 * Function: Init
 * SubFunction: toolCallId read from execute param into context
 */
-HWTEST_F(InsightIntentExecutorTest, Init_ToolCallIdFromWantParams_001, TestSize.Level1)
+HWTEST_F(InsightIntentExecutorTest, Init_ToolCallIdFromOuterWant_001, TestSize.Level1)
 {
     auto insightIntentExecutor = std::make_shared<MockInsightIntentExecutor>();
-    // The application receives an outer Want whose execute-param payload carries the FM ID.
+    // Only the outer metadata supplies the Context ID; the nested payload is left unchanged.
     AAFwk::WantParams payload;
-    payload.SetParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID, AAFwk::String::Box("tc-002"));
+    payload.SetParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID, AAFwk::String::Box("nested-value"));
+    payload.SetParam("toolCallId", AAFwk::String::Box("business-value"));
     AAFwk::Want want;
     want.SetElementName("", "test.bundleName", "test.abilityName", "test.entry");
     want.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME, std::string("PlayMusic"));
     want.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, std::string("42"));
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID, std::string("tc-002"));
     AAFwk::WantParams wantParams = want.GetParams();
     wantParams.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_PARAM, AAFwk::WantParamWrapper::Box(payload));
     want.SetParams(wantParams);
@@ -330,13 +332,17 @@ HWTEST_F(InsightIntentExecutorTest, Init_ToolCallIdFromWantParams_001, TestSize.
     InsightIntentExecutorInfo info;
     info.executeParam = std::make_shared<AppExecFwk::InsightIntentExecuteParam>();
     ASSERT_TRUE(AppExecFwk::InsightIntentExecuteParam::GenerateFromWant(want, *info.executeParam));
-    ASSERT_TRUE(info.executeParam->toolCallId_.empty());
+    EXPECT_EQ(info.executeParam->toolCallId_, "tc-002");
     auto res = insightIntentExecutor->Init(info);
     EXPECT_TRUE(res);
     auto context = insightIntentExecutor->GetContext();
     ASSERT_NE(context, nullptr);
     EXPECT_EQ(context->GetToolCallId(), "tc-002");
     EXPECT_EQ(context->GetIntentId(), 42u);
+    ASSERT_NE(info.executeParam->insightIntentParam_, nullptr);
+    EXPECT_EQ(info.executeParam->insightIntentParam_->GetStringParam("toolCallId"), "business-value");
+    EXPECT_EQ(info.executeParam->insightIntentParam_->GetStringParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID),
+        "nested-value");
 }
 
 /*
@@ -350,6 +356,8 @@ HWTEST_F(InsightIntentExecutorTest, Init_ToolCallIdAbsent_002, TestSize.Level1)
     InsightIntentExecutorInfo info;
     info.executeParam = std::make_shared<AppExecFwk::InsightIntentExecuteParam>();
     info.executeParam->insightIntentParam_ = std::make_shared<AAFwk::WantParams>();
+    info.executeParam->insightIntentParam_->SetParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID,
+        AAFwk::String::Box("nested-value"));
     auto res = insightIntentExecutor->Init(info);
     EXPECT_TRUE(res);
     auto context = insightIntentExecutor->GetContext();

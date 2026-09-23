@@ -256,6 +256,7 @@ bool InsightIntentExecuteParam::GenerateFromWant(const AAFwk::Want &want,
     executeParam.insightIntentName_ = wantParams.GetStringParam(INSIGHT_INTENT_EXECUTE_PARAM_NAME);
     executeParam.insightIntentId_ = insightIntentId;
     executeParam.executeMode_ = wantParams.GetIntParam(INSIGHT_INTENT_EXECUTE_PARAM_MODE, 0);
+    executeParam.toolCallId_ = wantParams.GetStringParam(INSIGHT_INTENT_TOOL_CALL_ID);
 
     auto insightIntentParam = wantParams.GetWantParams(INSIGHT_INTENT_EXECUTE_PARAM_PARAM);
     UpdateInsightIntentCallerInfo(wantParams, insightIntentParam);
@@ -282,6 +283,9 @@ bool InsightIntentExecuteParam::GenerateFromWant(const AAFwk::Want &want,
 bool InsightIntentExecuteParam::RemoveInsightIntent(AAFwk::Want &want)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (want.HasParameter(INSIGHT_INTENT_TOOL_CALL_ID)) {
+        want.RemoveParam(INSIGHT_INTENT_TOOL_CALL_ID);
+    }
     if (want.HasParameter(INSIGHT_INTENT_EXECUTE_PARAM_NAME)) {
         want.RemoveParam(INSIGHT_INTENT_EXECUTE_PARAM_NAME);
     }
