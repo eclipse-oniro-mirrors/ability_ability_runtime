@@ -459,7 +459,10 @@ napi_value JSFunctionManager::OnUnregisterFunctionHook(napi_env env, size_t argc
 
     auto stub = g_functionHookStub;
     ErrCode ret = CliToolMGRClient::GetInstance().UnregisterFunctionHook(stub);
-    if (ret == ERR_OK) {
+    if (ret == ERR_OK || ret == GET_CLI_TOOL_MGR_SERVICE_FAILED || ret == ERR_HOOK_NOT_REGISTERED) {
+        if (ret != ERR_OK) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "OnUnregisterFunctionHook: ret=%{public}d, cleanup local stub", ret);
+        }
         stub->ReleaseResources();
         g_functionHookStub = nullptr;
         napi_resolve_deferred(env, deferred, CreateJsUndefined(env));
