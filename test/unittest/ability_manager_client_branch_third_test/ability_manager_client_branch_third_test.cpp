@@ -1188,7 +1188,7 @@ HWTEST_F(AbilityManagerClientBranchThirdTest, OpenFile_0100, TestSize.Level1)
     ErrorTestBoardDisable();
     Uri uri("uri");
     auto result = client_->OpenFile(uri, 0);
-    EXPECT_EQ(result, true);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
 }
 
 /**
