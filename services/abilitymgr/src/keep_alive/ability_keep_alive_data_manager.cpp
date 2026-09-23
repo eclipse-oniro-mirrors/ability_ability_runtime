@@ -233,12 +233,16 @@ void AbilityKeepAliveDataManager::RestoreIfStoreEmpty()
 {
     std::vector<DistributedKv::Entry> entries;
     DistributedKv::Status entriesStatus = kvStorePtr_->GetEntries(nullptr, entries);
-    if (entriesStatus != DistributedKv::Status::SUCCESS || !entries.empty()) {
-        return;
+    if (entriesStatus == DistributedKv::Status::SUCCESS && !entries.empty()) {
+        return;   // Store has data; normal service.
     }
-    // Store file was lost or recreated empty; import backup if one exists, keep empty store otherwise.
+    // Empty store (file lost and recreated) or unreadable store (corrupted):
+    // recover from the backup; keep the empty store if no backup exists.
+    if (entriesStatus != DistributedKv::Status::SUCCESS) {
+        TAG_LOGW(AAFwkTag::KEEP_ALIVE, "GetEntries failed: %{public}d, try restore from backup", entriesStatus);
+    }
     DistributedKv::Status restoreStatus = RestoreFromBackupWithRetry();
-    TAG_LOGI(AAFwkTag::KEEP_ALIVE, "restore from backup on empty store result:%{public}d", restoreStatus);
+    TAG_LOGI(AAFwkTag::KEEP_ALIVE, "restore from backup result:%{public}d", restoreStatus);
 }
 
 DistributedKv::Status AbilityKeepAliveDataManager::GetKvStore()

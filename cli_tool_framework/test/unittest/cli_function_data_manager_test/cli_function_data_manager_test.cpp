@@ -1631,5 +1631,59 @@ HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_RestoreFromBackupWit
     TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_RestoreFromBackupWithRetry_002 end");
 }
 
+/**
+ * @tc.name: CliFunctionDataManager_RestoreIfStoreEmpty_001
+ * @tc.desc: Test unreadable store triggers restore from backup
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_RestoreIfStoreEmpty_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_RestoreIfStoreEmpty_001 start");
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
+    mockStore->GetEntries_ = DistributedKv::Status::DATA_CORRUPTED;
+    CliFunctionDataManager::GetInstance().RestoreIfStoreEmpty();
+    EXPECT_EQ(mockStore->restoreCallCount_, 1);
+    mockStore->GetEntries_ = DistributedKv::Status::SUCCESS;
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_RestoreIfStoreEmpty_001 end");
+}
+
+/**
+ * @tc.name: CliFunctionDataManager_RestoreIfStoreEmpty_002
+ * @tc.desc: Test store with data does not trigger restore
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_RestoreIfStoreEmpty_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_RestoreIfStoreEmpty_002 start");
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    mockStore->SetMockData("ns/function", "{}");
+    CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
+    CliFunctionDataManager::GetInstance().RestoreIfStoreEmpty();
+    EXPECT_EQ(mockStore->restoreCallCount_, 0);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_RestoreIfStoreEmpty_002 end");
+}
+
+/**
+ * @tc.name: CliFunctionDataManager_RestoreIfStoreEmpty_003
+ * @tc.desc: Test empty store triggers restore from backup
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, CliFunctionDataManager_RestoreIfStoreEmpty_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_RestoreIfStoreEmpty_003 start");
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    CliFunctionDataManager::GetInstance().kvStorePtr_ = mockStore;
+    CliFunctionDataManager::GetInstance().RestoreIfStoreEmpty();
+    EXPECT_EQ(mockStore->restoreCallCount_, 1);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CliFunctionDataManager_RestoreIfStoreEmpty_003 end");
+}
+
 } // namespace CliTool
 } // namespace OHOS
