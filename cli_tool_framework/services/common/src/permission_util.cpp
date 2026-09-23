@@ -59,5 +59,19 @@ int32_t PermissionUtil::CheckSystemAndPermission(const std::string &permissionNa
     }
     return ERR_OK;
 }
+
+int32_t PermissionUtil::CheckSystemAppAndPermission(const std::string &permissionName)
+{
+    if (!IsSystemApp()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "CheckSystemAppAndPermission: not a system app (SA not allowed)");
+        return ERR_NOT_SYSTEM_APP;
+    }
+    auto callerToken = IPCSkeleton::GetCallingTokenID();
+    if (!VerifyAccessToken(callerToken, permissionName)) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "CheckSystemAppAndPermission: permission denied");
+        return ERR_PERMISSION_DENIED;
+    }
+    return ERR_OK;
+}
 } // namespace CliTool
 } // namespace OHOS

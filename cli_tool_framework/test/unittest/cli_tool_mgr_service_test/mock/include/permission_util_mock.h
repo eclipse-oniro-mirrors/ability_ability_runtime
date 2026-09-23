@@ -26,6 +26,7 @@ class PermissionUtilMock {
 public:
     static bool execCliToolPermitted;
     static bool execPublicCliToolPermitted;
+    static bool registerAgentHookPermitted;
 
     static void Reset();
 };

@@ -23,11 +23,13 @@ namespace OHOS {
 namespace CliTool {
 bool PermissionUtilMock::execCliToolPermitted = true;
 bool PermissionUtilMock::execPublicCliToolPermitted = true;
+bool PermissionUtilMock::registerAgentHookPermitted = true;
 
 void PermissionUtilMock::Reset()
 {
     execCliToolPermitted = true;
     execPublicCliToolPermitted = true;
+    registerAgentHookPermitted = true;
 }
 
 bool PermissionUtil::VerifyAccessToken(Security::AccessToken::AccessTokenID, const std::string &perm)
@@ -37,6 +39,9 @@ bool PermissionUtil::VerifyAccessToken(Security::AccessToken::AccessTokenID, con
     }
     if (perm == "ohos.permission.EXEC_PUBLIC_CLI_TOOL") {
         return PermissionUtilMock::execPublicCliToolPermitted;
+    }
+    if (perm == "ohos.permission.REGISTER_AGENT_HOOK") {
+        return PermissionUtilMock::registerAgentHookPermitted;
     }
     return true;
 }
@@ -55,6 +60,18 @@ int32_t PermissionUtil::CheckSystemAndPermission(const std::string &)
 {
     if (!IsSystemApp() && !IsSystemSA()) {
         return ERR_NOT_SYSTEM_APP;
+    }
+    return ERR_OK;
+}
+
+int32_t PermissionUtil::CheckSystemAppAndPermission(const std::string &permissionName)
+{
+    if (!IsSystemApp()) {
+        return ERR_NOT_SYSTEM_APP;
+    }
+    auto callerToken = IPCSkeleton::GetCallingTokenID();
+    if (!VerifyAccessToken(callerToken, permissionName)) {
+        return ERR_PERMISSION_DENIED;
     }
     return ERR_OK;
 }
