@@ -1457,6 +1457,9 @@ int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::str
     // after the permission/capability check at ValidateExecCmdPublicPermissions above.
     ExecCmdParam actualParam = param;
     InvokeBeforeCallCmd(actualParam);
+    // Defense in depth (see ExecTool): drop hook-supplied identifiers that fail
+    // validation so unvalidated data never reaches logs or the child env.
+    SanitizeTraceIds(actualParam.execCmdOptions);
 
     // Tool command mode
     if (!actualParam.execCmdOptions.isShellCommand) {
@@ -1471,9 +1474,6 @@ int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::str
         return ExecCmdToolMode(actualParam, std::move(context));
     }
 
-    // Defense in depth (see ExecTool): drop hook-supplied identifiers that fail
-    // validation so unvalidated data never reaches logs or the child env.
-    SanitizeTraceIds(actualParam.execCmdOptions);
     // Shell path (original logic)
     std::string sandboxConfig;
     if (auto ret = ValidateAndPrepareCmd(actualParam, tokenId, sandboxConfig, bundleName); ret != ERR_OK) {
