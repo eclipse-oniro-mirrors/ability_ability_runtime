@@ -263,7 +263,10 @@ std::string JsTestRunner::GetTestRunnerPath(const std::shared_ptr<AbilityDelegat
     } else {
         result.append("/");
         result.append(args->GetTestRunnerPath());
-        result.erase(result.rfind("."));
+        size_t pos = result.rfind(".");
+        if (pos != std::string::npos) {
+            result.erase(pos);
+        }
     }
     return result;
 }
