@@ -21,6 +21,7 @@
 #define protected public
 #include "ability_manager_service.h"
 #include "ability_connect_manager.h"
+#include "utils/update_caller_info_util.h"
 #include "ui_extension_ability_manager.h"
 #include "common_extension_manager.h"
 #include "ability_connection.h"
@@ -2809,37 +2810,66 @@ HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithToolCallId_0400, TestSi
 
 /**
  * @tc.name: AbilityManagerServiceFirstTest_StartAbilityWithToolCallId_0500
- * @tc.desc: The trace-only reserved param is stripped from the Want after logging, so the app side
- *           (onCreate etc.) never sees it, whatever value it carried.
+ * @tc.desc: The reserved param is stripped at the unified cleanup point (ClearProtectedWantParam,
+ *           reached via every UpdateCallerInfo* entry on every start-scheduling chain), so the
+ *           app side (onCreate/onNewWant etc.) never sees it, whatever value it carried.
  * @tc.type: FUNC
  */
 HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithToolCallId_0500, TestSize.Level1)
 {
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0500 start");
-    auto abilityMs = std::make_shared<AbilityManagerService>();
+    // UpdateCallerInfo(want, nullptr) is the real shell-call path (no caller token) and funnels
+    // through ClearProtectedWantParam, the single cleanup point shared by all start entries.
     Want want;
     ElementName element("", "com.test.demo", "MainAbility", "");
     want.SetElement(element);
-    const int32_t userId = 1; // U1_USER_ID, not a cross user call
-    const int requestCode = 0;
-    const uint64_t specifiedFullTokenId = 0;
-    MyFlag::flag_ = 1;
     // valid value: logged, then stripped
     want.SetParam("ohos.aafwk.param.toolCallId", std::string("valid-toolCallId_001"));
-    auto validResult = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    UpdateCallerInfoUtil::GetInstance().UpdateCallerInfo(want, nullptr);
+    EXPECT_FALSE(want.HasParameter("ohos.aafwk.param.toolCallId"));
+    // empty value: not logged, still stripped
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string(""));
+    UpdateCallerInfoUtil::GetInstance().UpdateCallerInfo(want, nullptr);
     EXPECT_FALSE(want.HasParameter("ohos.aafwk.param.toolCallId"));
     // invalid value: not logged, but still stripped
     want.SetParam("ohos.aafwk.param.toolCallId", std::string("bad id!"));
-    auto invalidResult = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    UpdateCallerInfoUtil::GetInstance().UpdateCallerInfo(want, nullptr);
     EXPECT_FALSE(want.HasParameter("ohos.aafwk.param.toolCallId"));
-    MyFlag::flag_ = 0;
-    // See StartAbilityWithToolCallId_0100: all calls fail identically at Want resolution with
-    // RESOLVE_ABILITY_ERR. The reserved param must be stripped in every case so the Want the
-    // scheduled request carries is exactly the baseline one.
-    EXPECT_EQ(validResult, RESOLVE_ABILITY_ERR);
-    EXPECT_EQ(invalidResult, validResult);
-    abilityMs->OnStop();
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0500 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_StartAbilityWithToolCallId_0600
+ * @tc.desc: The sandbox-clone start entry is scheduling-neutral for the reserved param: the return
+ *           value is identical with/without it, and the cleanup itself is guaranteed downstream
+ *           at the unified ClearProtectedWantParam point every scheduling chain funnels through.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithToolCallId_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0600 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    SandboxCloneParams params;
+    params.callerBundleName = "com.caller.bundle";
+    params.callerUid = 1000;
+    params.callerTokenId = 1;
+    params.sandBoxCloneIndex = 2000;
+    // baseline: no reserved param
+    Want baselineWant;
+    auto baselineResult = abilityMs->StartSandboxCloneAbility(baselineWant, params);
+    // with the reserved param (valid / empty / invalid): identical scheduling outcome
+    Want want;
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string("valid-toolCallId_001"));
+    auto validResult = abilityMs->StartSandboxCloneAbility(want, params);
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string(""));
+    auto emptyResult = abilityMs->StartSandboxCloneAbility(want, params);
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string("bad id!"));
+    auto invalidResult = abilityMs->StartSandboxCloneAbility(want, params);
+    EXPECT_EQ(validResult, baselineResult);
+    EXPECT_EQ(emptyResult, baselineResult);
+    EXPECT_EQ(invalidResult, baselineResult);
+    abilityMs->OnStop();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0600 end");
 }
 
 /*
