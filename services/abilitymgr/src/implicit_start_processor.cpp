@@ -15,6 +15,7 @@
 #include <map>
 
 #include "implicit_start_processor.h"
+#include "permission_constants.h"
 
 #include "ability_manager_service.h"
 #include "ability_util.h"
@@ -28,7 +29,6 @@
 #include "global_constant.h"
 #include "hitrace_meter.h"
 #include "multi_app_utils.h"
-#include "permission_constants.h"
 #include "start_ability_utils.h"
 #include "startup_util.h"
 #ifdef WITH_DLP
@@ -177,8 +177,9 @@ int ImplicitStartProcessor::ImplicitStartAbility(AbilityRequest &request, int32_
         return ret;
     }
     if (dialogAppInfos.size() == 1) {
-        if (!PermissionVerification::GetInstance()->VerifyCallingPermission(
-            PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY, request.specifyTokenId)) {
+        if (request.specifyTokenId > 0 && !dialogAppInfos[0].visible &&
+            (!PermissionVerification::GetInstance()->VerifyCallingPermission(
+            PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY, request.specifyTokenId))) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "Caller without permission");
             return CHECK_PERMISSION_FAILED;
         }
