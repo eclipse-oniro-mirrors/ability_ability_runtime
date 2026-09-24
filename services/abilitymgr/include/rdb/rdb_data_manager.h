@@ -37,6 +37,7 @@ struct AmsRdbConfig {
     std::string dbPath{ ABILITY_RDB_PATH };
     std::string dbName{ ABILITY_RDB_NAME };
     std::string tableName;
+    std::string metaTableName;
     std::string journalMode;
     std::string syncMode;
 };
@@ -48,8 +49,7 @@ public:
 
     int32_t Init(NativeRdb::RdbOpenCallback &rdbCallback);
 
-    int32_t InsertData(const NativeRdb::ValuesBucket &valuesBucket);
-    int32_t BatchInsert(int64_t &outInsertNum, const std::vector<NativeRdb::ValuesBucket> &valuesBuckets);
+    int32_t InsertData(const std::string &tableName, const NativeRdb::ValuesBucket &valuesBucket);
     int32_t UpdateData(
         const NativeRdb::ValuesBucket &valuesBucket, const NativeRdb::AbsRdbPredicates &absRdbPredicates);
     int32_t DeleteData(const NativeRdb::AbsRdbPredicates &absRdbPredicates);

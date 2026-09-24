@@ -49,7 +49,7 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     valuesBucket.PutString(KEY_BUNDLE_NAME, fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH));
     valuesBucket.PutString(KEY_KEEP_ALIVE_ENABLE, fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH));
     valuesBucket.PutString(KEY_KEEP_ALIVE_CONFIGURED_LIST, fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH));
-    rdbMgr->InsertData(valuesBucket);
+    rdbMgr->InsertData(amsRdbConfig.tableName, valuesBucket);
     return true;
 }
 }
