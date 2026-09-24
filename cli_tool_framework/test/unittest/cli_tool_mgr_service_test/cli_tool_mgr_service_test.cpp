@@ -5036,8 +5036,10 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_ToolMode_CliCmdType_DispatchesAfterC
     PrepareHookRecord(toolRecord, SessionType::CLI);
     service_->InvokeAfterCallTool(toolSession, toolRecord);
     EXPECT_EQ(hook->afterCallToolCount, 1);
+    EXPECT_EQ(hook->afterCallCmdCount, 1);
 
     service_->UnregisterCliHook(hook);
+    SetDeveloperMode(false);
     TAG_LOGI(AAFwkTag::TEST, "ExecCmd_ToolMode_CliCmdType_DispatchesAfterCallCmd_0100 end");
 }
 
