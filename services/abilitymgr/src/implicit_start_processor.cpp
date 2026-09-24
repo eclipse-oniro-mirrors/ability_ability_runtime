@@ -176,13 +176,11 @@ int ImplicitStartProcessor::ImplicitStartAbility(AbilityRequest &request, int32_
         TAG_LOGE(AAFwkTag::ABILITYMGR, "generate request failed");
         return ret;
     }
-    if (dialogAppInfos.size() == 1) {
-        if (request.specifyTokenId > 0 && !dialogAppInfos[0].visible &&
-            (!PermissionVerification::GetInstance()->VerifyCallingPermission(
-            PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY, request.specifyTokenId))) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "Caller without permission");
-            return CHECK_PERMISSION_FAILED;
-        }
+    if (dialogAppInfos.size() == 1 && request.specifyTokenId > 0 && !dialogAppInfos[0].visible &&
+        !PermissionVerification::GetInstance()->VerifyCallingPermission(
+            PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY, request.specifyTokenId)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "Caller without permission");
+        return CHECK_PERMISSION_FAILED;
     }
     AbilityUtil::WantSetParameterWindowMode(request.want, windowMode);
     request.callerAccessTokenId = IPCSkeleton::GetCallingTokenID();
