@@ -22,6 +22,7 @@ export default class InsightIntentContext {
     loadLibrary("insight_intent_context_ani_kit.z");
   }
   instanceId: int;
+  readonly toolCallId?: string;
   nativeContext: long;
 
   private static native nativeTransferStatic(input: ESValue, type: string): Object;

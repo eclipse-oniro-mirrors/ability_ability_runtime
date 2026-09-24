@@ -1517,6 +1517,7 @@ HWTEST_F(ToolUtilTest, ExpandArgsFromJson_0300, TestSize.Level1)
         "target": "device",
         "count": 2,
         "enabled": true,
+        "toolCallId": "business-value",
         "bundleName": "reserved.bundle",
         "nested": {"ignored": true}
     })";
@@ -1536,6 +1537,7 @@ HWTEST_F(ToolUtilTest, ExpandArgsFromJson_0300, TestSize.Level1)
     EXPECT_TRUE(enabled);
     EXPECT_TRUE(args.GetStringParam("bundleName").empty());
     EXPECT_TRUE(args.GetStringParam("nested").empty());
+    EXPECT_EQ(args.GetStringParam("toolCallId"), "business-value");
 
     GTEST_LOG_(INFO) << "ToolUtil_ExpandArgsFromJson_0300 end";
 }
@@ -1569,6 +1571,7 @@ HWTEST_F(ToolUtilTest, ExpandArgsFromWantParams_0100, TestSize.Level1)
     AAFwk::WantParams nestedArgs;
     nestedArgs.SetParam("target", AAFwk::String::Box("device"));
     nestedArgs.SetParam("bundleName", AAFwk::String::Box("reserved.bundle"));
+    nestedArgs.SetParam("toolCallId", AAFwk::String::Box("business-value"));
 
     AAFwk::WantParams args;
     args.SetParam("args", AAFwk::WantParamWrapper::Box(nestedArgs));
@@ -1578,6 +1581,7 @@ HWTEST_F(ToolUtilTest, ExpandArgsFromWantParams_0100, TestSize.Level1)
     EXPECT_TRUE(args.GetStringParam("args").empty());
     EXPECT_EQ(args.GetStringParam("target"), "device");
     EXPECT_TRUE(args.GetStringParam("bundleName").empty());
+    EXPECT_EQ(args.GetStringParam("toolCallId"), "business-value");
 
     GTEST_LOG_(INFO) << "ToolUtil_ExpandArgsFromWantParams_0100 end";
 }
@@ -1700,6 +1704,7 @@ HWTEST_F(ToolUtilTest, FilterSkillArgs_0100, TestSize.Level1)
     args.SetParam("bundleName", AAFwk::String::Box("reserved.bundle"));
     args.SetParam("target", AAFwk::String::Box("device"));
     args.SetParam("moduleName", AAFwk::String::Box("module"));
+    args.SetParam("toolCallId", AAFwk::String::Box("business-value"));
 
     auto filteredArgs = ToolUtil::FilterSkillArgs(args);
 
@@ -1707,8 +1712,32 @@ HWTEST_F(ToolUtilTest, FilterSkillArgs_0100, TestSize.Level1)
     EXPECT_EQ(filteredArgs->GetStringParam("target"), "device");
     EXPECT_TRUE(filteredArgs->GetStringParam("bundleName").empty());
     EXPECT_TRUE(filteredArgs->GetStringParam("moduleName").empty());
+    EXPECT_EQ(filteredArgs->GetStringParam("toolCallId"), "business-value");
 
     GTEST_LOG_(INFO) << "ToolUtil_FilterSkillArgs_0100 end";
+}
+
+/**
+ * @tc.name: SkillArgs_ToolCallIdIndependentOfOptions
+ * @tc.desc: Expanding and filtering business args preserves the separate options toolCallId.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, SkillArgs_ToolCallIdIndependentOfOptions, TestSize.Level1)
+{
+    ExecToolParam param;
+    param.options.toolCallId = "trace-id";
+    param.args.SetParam("bundleName", AAFwk::String::Box("com.example.skill"));
+    param.args.SetParam("args", AAFwk::String::Box(R"({"toolCallId":"business-value","city":"Shanghai"})"));
+
+    ToolUtil::ExpandArgsJsonString(param.args);
+    auto skillArgs = ToolUtil::FilterSkillArgs(param.args);
+
+    ASSERT_NE(skillArgs, nullptr);
+    EXPECT_EQ(param.options.toolCallId, "trace-id");
+    EXPECT_EQ(skillArgs->GetStringParam("toolCallId"), "business-value");
+    EXPECT_EQ(skillArgs->GetStringParam("city"), "Shanghai");
+    EXPECT_FALSE(skillArgs->HasParam("bundleName"));
+    EXPECT_FALSE(skillArgs->HasParam("args"));
 }
 
 /**

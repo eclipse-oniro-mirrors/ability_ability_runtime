@@ -250,6 +250,18 @@ std::unique_ptr<AppExecFwk::ETSNativeReference> CreateEtsInsightIntentContext(an
         TAG_LOGE(AAFwkTag::INTENT, "status: %{public}d", status);
         return std::unique_ptr<AppExecFwk::ETSNativeReference>();
     }
+    const auto toolCallId = nativeContext->GetToolCallId();
+    if (!toolCallId.empty()) {
+        ani_string aniToolCallId = nullptr;
+        if ((status = env->String_NewUTF8(toolCallId.c_str(), toolCallId.size(), &aniToolCallId)) != ANI_OK) {
+            TAG_LOGE(AAFwkTag::INTENT, "create toolCallId failed, status: %{public}d", status);
+            return std::unique_ptr<AppExecFwk::ETSNativeReference>();
+        }
+        if ((status = env->Object_SetFieldByName_Ref(contextObj, "toolCallId", aniToolCallId)) != ANI_OK) {
+            TAG_LOGE(AAFwkTag::INTENT, "set toolCallId failed, status: %{public}d", status);
+            return std::unique_ptr<AppExecFwk::ETSNativeReference>();
+        }
+    }
     if ((status = env->GlobalReference_Create(contextObj, &contextObjtRef)) != ANI_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "status: %{public}d", status);
         return std::unique_ptr<AppExecFwk::ETSNativeReference>();

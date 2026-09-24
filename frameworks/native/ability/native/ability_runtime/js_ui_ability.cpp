@@ -2770,6 +2770,11 @@ std::vector<napi_value> JsUIAbility::BuildSkillCallArgs(napi_env env,
         contextObj = shellContextRef_->GetNapiValue();
     }
     napi_set_named_property(env, info, "context", contextObj);
+    if (!param->toolCallId_.empty()) {
+        napi_value toolCallIdVal = nullptr;
+        napi_create_string_utf8(env, param->toolCallId_.c_str(), param->toolCallId_.length(), &toolCallIdVal);
+        napi_set_named_property(env, info, "toolCallId", toolCallIdVal);
+    }
 
     std::vector<napi_value> args;
     args.push_back(info);

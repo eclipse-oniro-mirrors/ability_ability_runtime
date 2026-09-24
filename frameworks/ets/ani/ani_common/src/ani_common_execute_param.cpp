@@ -72,6 +72,16 @@ bool UnwrapExecuteParam(ani_env *env, ani_object param, AppExecFwk::InsightInten
         executeParam.deviceId_ = deviceId;
     }
 
+    // Keep the optional parameter consistent with the JS entry: ignore non-string values.
+    if (IsExistsProperty(env, param, "toolCallId")) {
+        std::string toolCallId;
+        if (GetStringProperty(env, param, "toolCallId", toolCallId)) {
+            executeParam.toolCallId_ = toolCallId;
+        } else {
+            TAG_LOGW(AAFwkTag::INTENT, "toolCallId is not a string, ignored");
+        }
+    }
+
     ani_ref aniIntentParam = nullptr;
     if (!GetRefProperty(env, param, "insightIntentParam", aniIntentParam)) {
         TAG_LOGE(AAFwkTag::INTENT, "null aniIntentParam");

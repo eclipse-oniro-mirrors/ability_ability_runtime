@@ -35,6 +35,7 @@ export default namespace insightIntentDriver {
     flags?: int;
     userId?: int;
     deviceId?: string;
+    toolCallId?: string;
   }
 
   export interface InsightIntentInfoFilter {

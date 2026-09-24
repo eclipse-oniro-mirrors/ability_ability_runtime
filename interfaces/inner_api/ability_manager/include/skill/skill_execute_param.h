@@ -36,6 +36,7 @@ struct SkillExecuteRequest {
     std::string scriptPath;
     std::string functionName;
     std::shared_ptr<WantParams> skillArgs;
+    std::string toolCallId;
 };
 
 // Want parameter keys for skill execution
@@ -51,6 +52,7 @@ constexpr char SKILL_EXECUTE_PARAM_SRC_ENTRY_PREFIX[] = "ohos.skill.executeParam
 constexpr char SKILL_EXECUTE_PARAM_HAP_PATH[] = "ohos.skill.executeParam.hapPath";
 constexpr char SKILL_EXECUTE_PARAM_REQUEST_CODE[] = "ohos.skill.executeParam.requestCode";
 constexpr char SKILL_EXECUTE_PARAM_CALLER_TOKEN_ID[] = "ohos.skill.executeParam.callerTokenId";
+constexpr char SKILL_EXECUTE_PARAM_TOOL_CALL_ID[] = "ohos.skill.executeParam.toolCallId";
 
 constexpr char SKILL_ERROR_MSG_KEY[] = "ohos.skill.error.message";
 
@@ -71,7 +73,8 @@ public:
         const std::string &scriptPath = "", const std::string &functionName = "",
         const std::shared_ptr<AAFwk::WantParams> &skillArgs = nullptr,
         const std::vector<std::string> &srcEntries = {},
-        const std::string &requestCode = "", const std::string &hapPath = "");
+        const std::string &requestCode = "", const std::string &hapPath = "",
+        const std::string &toolCallId = "");
 
     std::string SrcEntriesToString() const
     {
@@ -94,6 +97,7 @@ public:
     std::vector<std::string> srcEntries_;
     std::string hapPath_;
     std::string requestCode_;
+    std::string toolCallId_;
 };
 
 } // namespace AppExecFwk
