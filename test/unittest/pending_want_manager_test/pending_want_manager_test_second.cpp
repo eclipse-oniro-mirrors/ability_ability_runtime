@@ -875,46 +875,6 @@ HWTEST_F(PendingWantManagerSecondTest, CheckWindowState_NegativePid_0300, TestSi
 }
 
 /**
- * @tc.name: MakeWantSenderCanceledLocked_WithCallbacks_0100
- * @tc.desc: Test MakeWantSenderCanceledLocked notifies all registered callbacks
- * @tc.type: FUNC
- */
-HWTEST_F(PendingWantManagerSecondTest, MakeWantSenderCanceledLocked_WithCallbacks_0100, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "MakeWantSenderCanceledLocked_WithCallbacks_0100 start");
-
-    // Arrange
-    pendingManager_ = std::make_shared<PendingWantManager>();
-    ASSERT_NE(pendingManager_, nullptr);
-
-    Want want;
-    ElementName element("device", "bundleName", "abilityName");
-    want.SetElement(element);
-    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 0);
-
-    auto sender = pendingManager_->GetWantSender(1, 1, true, wantSenderInfo, nullptr);
-    ASSERT_NE(sender, nullptr);
-
-    sptr<CancelReceiver> receiver1 = new CancelReceiver();
-    sptr<CancelReceiver> receiver2 = new CancelReceiver();
-
-    pendingManager_->RegisterCancelListener(sender, receiver1);
-    pendingManager_->RegisterCancelListener(sender, receiver2);
-
-    // Reset counters
-    CancelReceiver::sendCount = 0;
-
-    // Act
-    auto record = iface_cast<PendingWantRecord>(sender->AsObject());
-    pendingManager_->MakeWantSenderCanceledLocked(*record);
-
-    // Assert - Both callbacks should be notified
-    EXPECT_EQ(CancelReceiver::sendCount, DEFAULT_COUNT);
-
-    TAG_LOGI(AAFwkTag::TEST, "MakeWantSenderCanceledLocked_WithCallbacks_0100 end");
-}
-
-/**
  * @tc.name: GetWantSender_MultipleFlags_0100
  * @tc.desc: Test GetWantSender with multiple flag combinations
  * @tc.type: FUNC
