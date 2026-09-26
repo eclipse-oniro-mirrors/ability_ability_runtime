@@ -1659,7 +1659,7 @@ int32_t UIAbilityLifecycleManager::NotifySCBToMinimizeUIAbility(const sptr<IRemo
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "notifySCBToMinimizeUIAbility");
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    auto sceneSessionManager = Rosen::SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+    auto sceneSessionManager = Rosen::SessionManagerLite::GetInstance(userId_).GetSceneSessionManagerLiteProxy();
     CHECK_POINTER_AND_RETURN(sceneSessionManager, ERR_NULL_OBJECT);
     Rosen::WSError ret = sceneSessionManager->PendingSessionToBackgroundForDelegator(token, shouldBackToCaller,
         notifyScbBackgroundReason);
@@ -3194,7 +3194,7 @@ int32_t UIAbilityLifecycleManager::StartSpecifiedProcessRequest(const AbilityReq
 {
     auto isCreating = abilityRequest.want.GetBoolParam(Want::CREATE_APP_INSTANCE_KEY, false);
     const auto &abilityInfo = abilityRequest.abilityInfo;
-    auto sceneSessionManager = Rosen::SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+    auto sceneSessionManager = Rosen::SessionManagerLite::GetInstance(userId_).GetSceneSessionManagerLiteProxy();
     if (AppUtils::GetInstance().InOnNewProcessEnableList(abilityRequest.abilityInfo.bundleName) &&
         abilityInfo.applicationInfo.multiAppMode.multiAppModeType == AppExecFwk::MultiAppModeType::MULTI_INSTANCE &&
         isCreating && sceneSessionManager != nullptr) {
@@ -4731,7 +4731,7 @@ void UIAbilityLifecycleManager::RemoveInstanceKey(const AbilityRequest &abilityR
     if (!abilityRequest.want.HasParameter(Want::APP_INSTANCE_KEY)) {
         return;
     }
-    auto sceneSessionManager = Rosen::SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+    auto sceneSessionManager = Rosen::SessionManagerLite::GetInstance(userId_).GetSceneSessionManagerLiteProxy();
     if (sceneSessionManager != nullptr) {
         Rosen::WMError ret = sceneSessionManager->RemoveInstanceKey(abilityRequest.want.GetBundleNameRef(),
             abilityRequest.want.GetStringParam(Want::APP_INSTANCE_KEY));

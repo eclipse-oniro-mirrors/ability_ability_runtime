@@ -19,6 +19,7 @@
 #include "ability_manager_service.h"
 #include "ability_util.h"
 #include "hitrace_meter.h"
+#include "ipc_skeleton.h"
 #include "utils/update_caller_info_util.h"
 #include "int_wrapper.h"
 #include "modal_system_ui_extension.h"
@@ -519,7 +520,8 @@ int DialogSessionManager::CreateModalDialogCommon(const Want &replaceWant, sptr<
     int32_t ret = ERR_INVALID_VALUE;
 #ifdef SUPPORT_SCREEN
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto sceneSessionManager = Rosen::SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+        auto sceneSessionManager = Rosen::SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         if (sceneSessionManager == nullptr) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "sceneSessionManager null");
             return ERR_INVALID_VALUE;

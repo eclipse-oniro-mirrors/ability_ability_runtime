@@ -17,6 +17,7 @@
 #include "extension_ability_info.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
+#include "ipc_skeleton.h"
 #include "iservice_registry.h"
 #include "mission_manager_client.h"
 #include "mission_manager_proxy.h"
@@ -28,6 +29,7 @@ namespace OHOS {
 namespace AAFwk {
 namespace {
 #ifdef SUPPORT_SCREEN
+constexpr int32_t BASE_USER_RANGE = 200000;
 static std::unordered_map<Rosen::WSError, int32_t> SCB_TO_MISSION_ERROR_CODE_MAP {
     { Rosen::WSError::WS_ERROR_INVALID_PERMISSION, CHECK_PERMISSION_FAILED },
     { Rosen::WSError::WS_ERROR_NOT_SYSTEM_APP, ERR_NOT_SYSTEM_APP },
@@ -187,7 +189,8 @@ ErrCode MissionManagerClient::LockMissionForCleanup(int32_t missionId)
 {
 #ifdef SUPPORT_SCREEN
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto sceneSessionManager = SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+        auto sceneSessionManager = SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         CHECK_POINTER_RETURN_INVALID_VALUE(sceneSessionManager);
         TAG_LOGI(AAFwkTag::MISSION, "scb call, LockMissionForCleanup");
         auto err = sceneSessionManager->LockSession(missionId);
@@ -209,7 +212,8 @@ ErrCode MissionManagerClient::UnlockMissionForCleanup(int32_t missionId)
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
 #ifdef SUPPORT_SCREEN
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto sceneSessionManager = SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+        auto sceneSessionManager = SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         CHECK_POINTER_RETURN_INVALID_VALUE(sceneSessionManager);
         TAG_LOGI(AAFwkTag::MISSION, "scb call, UnlockMissionForCleanup");
         auto err = sceneSessionManager->UnlockSession(missionId);
@@ -230,7 +234,8 @@ ErrCode MissionManagerClient::RegisterMissionListener(sptr<IMissionListener> lis
 {
 #ifdef SUPPORT_SCREEN
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto sceneSessionManager = SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+        auto sceneSessionManager = SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         CHECK_POINTER_RETURN_INVALID_VALUE(sceneSessionManager);
         TAG_LOGI(AAFwkTag::MISSION, "scb call, RegisterMissionListener");
         auto err = sceneSessionManager->RegisterSessionListener(listener);
@@ -251,7 +256,8 @@ ErrCode MissionManagerClient::UnRegisterMissionListener(sptr<IMissionListener> l
 {
 #ifdef SUPPORT_SCREEN
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto sceneSessionManager = SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+        auto sceneSessionManager = SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         CHECK_POINTER_RETURN_INVALID_VALUE(sceneSessionManager);
         TAG_LOGI(AAFwkTag::MISSION, "scb call, UnRegisterMissionListener");
         auto err = sceneSessionManager->UnRegisterSessionListener(listener);
@@ -291,7 +297,8 @@ ErrCode MissionManagerClient::GetMissionInfos(const std::string &deviceId, int32
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
 #ifdef SUPPORT_SCREEN
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto sceneSessionManager = SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+        auto sceneSessionManager = SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         CHECK_POINTER_RETURN_INVALID_VALUE(sceneSessionManager);
         TAG_LOGI(AAFwkTag::MISSION, "scb call, GetMissionInfos");
         auto err = sceneSessionManager->GetSessionInfos(deviceId, numMax, missionInfos);
@@ -313,7 +320,8 @@ ErrCode MissionManagerClient::GetMissionInfo(const std::string &deviceId, int32_
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
 #ifdef SUPPORT_SCREEN
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto sceneSessionManager = SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+        auto sceneSessionManager = SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         CHECK_POINTER_RETURN_INVALID_VALUE(sceneSessionManager);
         TAG_LOGI(AAFwkTag::MISSION, "scb call, GetMissionInfo");
         auto err = sceneSessionManager->GetSessionInfo(deviceId, missionId, missionInfo);
@@ -336,7 +344,8 @@ ErrCode MissionManagerClient::GetMissionSnapshot(const std::string &deviceId, in
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
 #ifdef SUPPORT_SCREEN
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto sceneSessionManager = SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+        auto sceneSessionManager = SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         CHECK_POINTER_RETURN_INVALID_VALUE(sceneSessionManager);
         TAG_LOGI(AAFwkTag::MISSION, "scb call, GetMissionSnapshot");
         auto err = sceneSessionManager->GetSessionSnapshot(deviceId, missionId, snapshot, isLowResolution);
@@ -358,7 +367,8 @@ ErrCode MissionManagerClient::CleanMission(int32_t missionId)
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
 #ifdef SUPPORT_SCREEN
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto sceneSessionManager = SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+        auto sceneSessionManager = SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         CHECK_POINTER_RETURN_INVALID_VALUE(sceneSessionManager);
         TAG_LOGI(AAFwkTag::MISSION, "scb call, CleanMission");
         auto err = sceneSessionManager->ClearSession(missionId);
@@ -380,7 +390,8 @@ ErrCode MissionManagerClient::CleanAllMissions()
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
 #ifdef SUPPORT_SCREEN
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto sceneSessionManager = SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+        auto sceneSessionManager = SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         CHECK_POINTER_RETURN_INVALID_VALUE(sceneSessionManager);
         TAG_LOGI(AAFwkTag::MISSION, "scb call, CleanAllMissions");
         auto err = sceneSessionManager->ClearAllSessions();
@@ -419,7 +430,8 @@ ErrCode MissionManagerClient::MoveMissionsToForeground(const std::vector<int32_t
     TAG_LOGI(AAFwkTag::MISSION, "call,topMissionId:%{public}d", topMissionId);
 #ifdef SUPPORT_SCREEN
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto sceneSessionManager = SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+        auto sceneSessionManager = SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         CHECK_POINTER_RETURN_INVALID_VALUE(sceneSessionManager);
         TAG_LOGI(AAFwkTag::MISSION, "scb call, MoveMissionsToForeground");
         auto err = sceneSessionManager->MoveSessionsToForeground(missionIds, topMissionId);
@@ -453,7 +465,8 @@ ErrCode MissionManagerClient::MoveMissionsToBackground(const std::vector<int32_t
     TAG_LOGI(AAFwkTag::MISSION, "call");
 #ifdef SUPPORT_SCREEN
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto sceneSessionManager = SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+        auto sceneSessionManager = SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         CHECK_POINTER_RETURN_INVALID_VALUE(sceneSessionManager);
         TAG_LOGI(AAFwkTag::MISSION, "scb call, MoveMissionsToBackground");
         auto err = sceneSessionManager->MoveSessionsToBackground(missionIds, result);
@@ -509,7 +522,8 @@ ErrCode MissionManagerClient::SetMissionContinueState(sptr<IRemoteObject> token,
         "called state:%{public}d", state);
 #ifdef SUPPORT_SCREEN
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled() && sessionToken) {
-        auto sceneSessionManager = SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+        auto sceneSessionManager = SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         CHECK_POINTER_RETURN_INVALID_VALUE(sceneSessionManager);
         uint32_t value = static_cast<uint32_t>(state);
         Rosen::ContinueState continueState = static_cast<Rosen::ContinueState>(value);
@@ -531,7 +545,8 @@ ErrCode MissionManagerClient::SetMissionContinueState(sptr<IRemoteObject> token,
 ErrCode MissionManagerClient::SetMissionLabel(sptr<IRemoteObject> token, const std::string &label)
 {
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto sceneSessionManager = SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+        auto sceneSessionManager = SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         CHECK_POINTER_RETURN_INVALID_VALUE(sceneSessionManager);
         TAG_LOGI(AAFwkTag::MISSION, "scb call, SetMissionLabel");
         auto err = sceneSessionManager->SetSessionLabel(token, label);
@@ -550,7 +565,8 @@ ErrCode MissionManagerClient::SetMissionIcon(
     sptr<IRemoteObject> abilityToken, std::shared_ptr<OHOS::Media::PixelMap> icon)
 {
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto sceneSessionManager = SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+        auto sceneSessionManager = SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         CHECK_POINTER_RETURN_INVALID_VALUE(sceneSessionManager);
         TAG_LOGI(AAFwkTag::MISSION, "scb call, SetMissionIcon");
         auto err = sceneSessionManager->SetSessionIcon(abilityToken, icon);
@@ -581,7 +597,8 @@ int32_t MissionManagerClient::IsValidMissionIds(
     TAG_LOGI(AAFwkTag::MISSION, "call");
 #ifdef SUPPORT_SCREEN
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto sceneSessionManager = SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+        auto sceneSessionManager = SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         CHECK_POINTER_RETURN_INVALID_VALUE(sceneSessionManager);
         std::vector<bool> isValidList;
         auto err = sceneSessionManager->IsValidSessionIds(missionIds, isValidList);
@@ -615,7 +632,8 @@ ErrCode MissionManagerClient::TerminateMission(int32_t missionId)
 {
 #ifdef SUPPORT_SCREEN
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto sceneSessionManager = SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+        auto sceneSessionManager = SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         CHECK_POINTER_RETURN_INVALID_VALUE(sceneSessionManager);
         TAG_LOGI(AAFwkTag::MISSION, "scb call, TerminateMission");
         auto err = sceneSessionManager->TerminateSessionByPersistentId(missionId);
