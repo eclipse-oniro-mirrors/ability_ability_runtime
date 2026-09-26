@@ -132,7 +132,7 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
         if (allInfos.insightIntents.empty() && allConfigInfos.empty()) {
             TAG_LOGI(AAFwkTag::INTENT, "no intent in new version, clear stale functions, bundle:%{public}s",
                 bundleName.c_str());
-            bool unregistered = CliTool::UnregisterInsightIntentFunctions(bundleName);
+            bool unregistered = CliTool::UnregisterInsightIntentFunctions(bundleName, userId);
             TAG_LOGI(AAFwkTag::INTENT, "unregister done, bundle:%{public}s, success:%{public}d",
                 bundleName.c_str(), unregistered);
             DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
@@ -158,7 +158,7 @@ void InsightIntentEventMgr::UpdateInsightIntentEvent(const AppExecFwk::ElementNa
         TAG_LOGI(AAFwkTag::INTENT, "after filter, generic:%{public}zu config:%{public}zu, bundle:%{public}s",
             genericInfos.size(), allConfigInfos.size(), bundleName.c_str());
         CliTool::BatchUpdateInsightIntentFunctions(
-            genericInfos, allConfigInfos, bundleName, bundleInfo.versionCode);
+            genericInfos, allConfigInfos, bundleName, bundleInfo.versionCode, userId);
         TAG_LOGI(AAFwkTag::INTENT, "batch update request done, bundle:%{public}s", bundleName.c_str());
         DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->BackupRdb();
     });
@@ -197,7 +197,7 @@ void InsightIntentEventMgr::DeleteInsightIntentEvent(const AppExecFwk::ElementNa
             return;
         }
         dbCache->BackupRdb();
-        bool unregistered = CliTool::UnregisterInsightIntentFunctions(bundleName);
+        bool unregistered = CliTool::UnregisterInsightIntentFunctions(bundleName, userId);
         TAG_LOGI(AAFwkTag::INTENT, "delete done, bundleName: %{public}s, moduleName: %{public}s, "
             "userId: %{public}d, unregistered: %{public}d",
             bundleName.c_str(), moduleName.c_str(), userId, unregistered);

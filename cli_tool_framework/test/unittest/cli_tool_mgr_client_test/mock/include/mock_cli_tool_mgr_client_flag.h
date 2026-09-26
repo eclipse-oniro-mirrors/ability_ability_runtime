@@ -30,6 +30,9 @@ public:
     static int32_t batchRegisterFunctionsSuccessCount;
     static int32_t retResetNamespaceFunctions;
     static int32_t resetNamespaceFunctionsSuccessCount;
+    static int32_t retBatchRegisterFunctionsAsync;
+    static int32_t retUnregisterIntentFunctionsByNamespaceAsync;
+    static int32_t retResetNamespaceFunctionsAsync;
     static int32_t retGetFunctionInfo;
     static int32_t retUnregisterFunction;
     static int32_t retGetAllFunctions;

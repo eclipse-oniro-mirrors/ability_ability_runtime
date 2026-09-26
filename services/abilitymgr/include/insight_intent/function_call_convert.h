@@ -37,21 +37,24 @@ bool RegisterInsightIntentFunctions(
     const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
     const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
     const std::string &bundleName,
-    uint32_t versionCode);
+    uint32_t versionCode,
+    int32_t userId);
 
-bool UnregisterInsightIntentFunctions(const std::string &bundleName);
+bool UnregisterInsightIntentFunctions(const std::string &bundleName, int32_t userId);
 
 // One-shot batch register across bundles via one-way IPC; server-side result is not reported.
 bool BatchRegisterInsightIntentFunctions(
     const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
     const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
-    const std::unordered_map<std::string, uint32_t> &bundleVersionMap);
+    const std::unordered_map<std::string, uint32_t> &bundleVersionMap,
+    int32_t userId);
 
 bool BatchUpdateInsightIntentFunctions(
     const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
     const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
     const std::string &bundleName,
-    uint32_t versionCode);
+    uint32_t versionCode,
+    int32_t userId);
 
 // Pre-filters intents before registration: keeps BG UIAbility/SE only, dedupes by module/ability name.
 class IntentFilterUtil {

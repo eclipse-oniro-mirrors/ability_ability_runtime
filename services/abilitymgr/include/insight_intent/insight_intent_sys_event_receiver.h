@@ -43,7 +43,7 @@ private:
         uint32_t versionCode, int32_t userId, InsightIntentSaveParam &saveParam);
     void RegisterAllFunctions(const std::vector<std::pair<std::string, uint32_t>> &newBundles,
         const std::vector<ExtractInsightIntentInfo> &allIntentInfos,
-        const std::vector<InsightIntentInfo> &allConfigInfos);
+        const std::vector<InsightIntentInfo> &allConfigInfos, int32_t userId);
     void DeleteInsightIntent(const std::string &bundleName, const std::string &moduleName, int32_t userId);
     void LoadInsightIntentInfos(int32_t userId = -1);
     int32_t ResolveLoadUserId(int32_t userId);

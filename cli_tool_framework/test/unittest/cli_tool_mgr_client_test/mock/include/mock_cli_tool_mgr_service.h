@@ -22,16 +22,18 @@ public:
     int32_t RegisterFunction(const FunctionInfo &function) override;
     int32_t BatchRegisterFunctions(const FunctionsRawData &functions,
         int32_t &successCount) override;
-    int32_t GetFunctionInfo(const std::string &functionNamespace, const std::string &functionName,
-        FunctionInfo &function) override;
-    int32_t UnregisterFunction(const std::string &functionNamespace, const std::string &functionName) override;
-    int32_t UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace) override;
-    int32_t ResetNamespaceFunctions(const std::string &functionNamespace,
+    int32_t GetFunctionInfo(const std::string &functionNamespace,
+        const std::string &functionName, FunctionInfo &function) override;
+    int32_t UnregisterFunction(int32_t userId, const std::string &functionNamespace,
+        const std::string &functionName) override;
+    int32_t UnregisterIntentFunctionsByNamespace(int32_t userId, const std::string &functionNamespace) override;
+    int32_t ResetNamespaceFunctions(int32_t userId, const std::string &functionNamespace,
         const FunctionsRawData &functions, int32_t &successCount) override;
     int32_t GetAllFunctions(FunctionsRawData &functions) override;
     int32_t BatchRegisterFunctionsAsync(const FunctionsRawData &functions) override;
-    int32_t UnregisterIntentFunctionsByNamespaceAsync(const std::string &functionNamespace) override;
-    int32_t ResetNamespaceFunctionsAsync(const std::string &functionNamespace,
+    int32_t UnregisterIntentFunctionsByNamespaceAsync(int32_t userId,
+        const std::string &functionNamespace) override;
+    int32_t ResetNamespaceFunctionsAsync(int32_t userId, const std::string &functionNamespace,
         const FunctionsRawData &functions) override;
     int32_t ExecTool(const ExecToolParam &param, const std::string &eventId,
         const sptr<ICliToolManagerScheduler> &scheduler) override;

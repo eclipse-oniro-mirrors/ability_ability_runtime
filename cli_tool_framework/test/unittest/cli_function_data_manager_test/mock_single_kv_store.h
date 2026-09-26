@@ -199,6 +199,18 @@ public:
 
     DistributedKv::Status PutBatch(const std::vector<DistributedKv::Entry> &entries) override
     {
+        if (PutBatchCallback) {
+            DistributedKv::Status status = PutBatchCallback(entries);
+            if (status != DistributedKv::Status::SUCCESS) {
+                return status;
+            }
+        }
+        if (PutBatch_ != DistributedKv::Status::SUCCESS) {
+            return PutBatch_;
+        }
+        for (const auto &entry : entries) {
+            mockData_[entry.key.ToString()] = entry.value;
+        }
         return DistributedKv::Status::SUCCESS;
     };
 
@@ -207,12 +219,27 @@ public:
         if (Delete_ != DistributedKv::Status::SUCCESS) {
             return Delete_;
         }
+        if (mockData_.find(key.ToString()) == mockData_.end()) {
+            return DistributedKv::Status::KEY_NOT_FOUND;
+        }
         mockData_.erase(key.ToString());
         return DistributedKv::Status::SUCCESS;
     };
 
     DistributedKv::Status DeleteBatch(const std::vector<DistributedKv::Key> &keys) override
     {
+        if (DeleteBatchCallback) {
+            DistributedKv::Status status = DeleteBatchCallback(keys);
+            if (status != DistributedKv::Status::SUCCESS) {
+                return status;
+            }
+        }
+        if (DeleteBatch_ != DistributedKv::Status::SUCCESS) {
+            return DeleteBatch_;
+        }
+        for (const auto &key : keys) {
+            mockData_.erase(key.ToString());
+        }
         return DistributedKv::Status::SUCCESS;
     };
 
@@ -273,7 +300,9 @@ public:
 
     DistributedKv::Status GetEntries_ = DistributedKv::Status::SUCCESS;
     DistributedKv::Status Delete_ = DistributedKv::Status::SUCCESS;
+    DistributedKv::Status DeleteBatch_ = DistributedKv::Status::SUCCESS;
     DistributedKv::Status Put_ = DistributedKv::Status::SUCCESS;
+    DistributedKv::Status PutBatch_ = DistributedKv::Status::SUCCESS;
     DistributedKv::Status Get_ = DistributedKv::Status::SUCCESS;
     DistributedKv::Status Backup_ = DistributedKv::Status::SUCCESS;
     DistributedKv::Status Restore_ = DistributedKv::Status::SUCCESS;
@@ -283,6 +312,12 @@ public:
 
     // Callback for dynamic Put behavior (e.g., simulate failure after N calls)
     std::function<DistributedKv::Status(const DistributedKv::Key&, const DistributedKv::Value&)> PutCallback;
+
+    // Callback for dynamic PutBatch behavior
+    std::function<DistributedKv::Status(const std::vector<DistributedKv::Entry>&)> PutBatchCallback;
+
+    // Callback for dynamic DeleteBatch behavior
+    std::function<DistributedKv::Status(const std::vector<DistributedKv::Key>&)> DeleteBatchCallback;
 
 private:
     std::map<std::string, DistributedKv::Value> mockData_;

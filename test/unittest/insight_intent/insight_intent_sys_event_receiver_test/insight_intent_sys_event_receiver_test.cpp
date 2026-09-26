@@ -538,7 +538,7 @@ HWTEST_F(InsightIntentSysEventReceiverTest, RegisterAllFunctions_0017, TestSize.
     std::vector<std::pair<std::string, uint32_t>> newBundles = {{"com.test.bundle", 1}};
     std::vector<ExtractInsightIntentInfo> allIntentInfos;
     std::vector<InsightIntentInfo> allConfigInfos;
-    sysEventReceiver->RegisterAllFunctions(newBundles, allIntentInfos, allConfigInfos);
+    sysEventReceiver->RegisterAllFunctions(newBundles, allIntentInfos, allConfigInfos, MAIN_USER_ID);
     EXPECT_TRUE(newBundles.size() == 1);
 }
 
@@ -561,7 +561,7 @@ HWTEST_F(InsightIntentSysEventReceiverTest, RegisterAllFunctions_WithData_0018, 
     info.genericInfo.set<InsightIntentLinkInfo>();
     allIntentInfos.push_back(info);
     std::vector<InsightIntentInfo> allConfigInfos;
-    sysEventReceiver->RegisterAllFunctions(newBundles, allIntentInfos, allConfigInfos);
+    sysEventReceiver->RegisterAllFunctions(newBundles, allIntentInfos, allConfigInfos, MAIN_USER_ID);
     EXPECT_EQ(allIntentInfos.size(), 1u);
 }
 

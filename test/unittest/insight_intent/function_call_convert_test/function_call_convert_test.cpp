@@ -153,12 +153,12 @@ HWTEST_F(FunctionCallConvertTest, BatchUpdateInsightIntentFunctions_EmptyBundleN
 {
     std::vector<ExtractInsightIntentInfo> intentInfos;
     std::vector<InsightIntentInfo> configInfos;
-    EXPECT_FALSE(BatchUpdateInsightIntentFunctions(intentInfos, configInfos, "", 0));
+    EXPECT_FALSE(BatchUpdateInsightIntentFunctions(intentInfos, configInfos, "", 0, 100));
 }
 
 HWTEST_F(FunctionCallConvertTest, UnregisterInsightIntentFunctions_EmptyBundleName_ReturnsFalse, TestSize.Level1)
 {
-    EXPECT_FALSE(UnregisterInsightIntentFunctions(""));
+    EXPECT_FALSE(UnregisterInsightIntentFunctions("", 100));
 }
 
 HWTEST_F(FunctionCallConvertTest, BatchRegisterInsightIntentFunctions_EmptyFunctions_ReturnsTrue, TestSize.Level1)
@@ -166,7 +166,7 @@ HWTEST_F(FunctionCallConvertTest, BatchRegisterInsightIntentFunctions_EmptyFunct
     std::vector<ExtractInsightIntentInfo> intentInfos;
     std::vector<InsightIntentInfo> configInfos;
     std::unordered_map<std::string, uint32_t> bundleVersionMap;
-    EXPECT_TRUE(BatchRegisterInsightIntentFunctions(intentInfos, configInfos, bundleVersionMap));
+    EXPECT_TRUE(BatchRegisterInsightIntentFunctions(intentInfos, configInfos, bundleVersionMap, 100));
 }
 
 HWTEST_F(FunctionCallConvertTest, ConvertFromExtractIntentInfo_PropertiesIsString_NoCrash, TestSize.Level1)
