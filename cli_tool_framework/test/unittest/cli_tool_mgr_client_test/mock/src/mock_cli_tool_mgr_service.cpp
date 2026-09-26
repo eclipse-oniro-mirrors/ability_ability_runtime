@@ -19,6 +19,9 @@ int32_t CliToolMgrClientFlag::retBatchRegisterFunctions = ERR_OK;
 int32_t CliToolMgrClientFlag::batchRegisterFunctionsSuccessCount = 0;
 int32_t CliToolMgrClientFlag::retResetNamespaceFunctions = ERR_OK;
 int32_t CliToolMgrClientFlag::resetNamespaceFunctionsSuccessCount = 0;
+int32_t CliToolMgrClientFlag::retBatchRegisterFunctionsAsync = ERR_OK;
+int32_t CliToolMgrClientFlag::retUnregisterIntentFunctionsByNamespaceAsync = ERR_OK;
+int32_t CliToolMgrClientFlag::retResetNamespaceFunctionsAsync = ERR_OK;
 int32_t CliToolMgrClientFlag::retGetFunctionInfo = ERR_OK;
 int32_t CliToolMgrClientFlag::retUnregisterFunction = ERR_OK;
 int32_t CliToolMgrClientFlag::retGetAllFunctions = ERR_OK;
@@ -68,6 +71,9 @@ void CliToolMgrClientFlag::Reset()
     batchRegisterFunctionsSuccessCount = 0;
     retResetNamespaceFunctions = ERR_OK;
     resetNamespaceFunctionsSuccessCount = 0;
+    retBatchRegisterFunctionsAsync = ERR_OK;
+    retUnregisterIntentFunctionsByNamespaceAsync = ERR_OK;
+    retResetNamespaceFunctionsAsync = ERR_OK;
     retGetFunctionInfo = ERR_OK;
     retUnregisterFunction = ERR_OK;
     retGetAllFunctions = ERR_OK;
@@ -159,7 +165,7 @@ int32_t MockCliToolMgrService::GetFunctionInfo(const std::string &, const std::s
     return CliToolMgrClientFlag::retGetFunctionInfo;
 }
 
-int32_t MockCliToolMgrService::UnregisterFunction(const std::string &, const std::string &)
+int32_t MockCliToolMgrService::UnregisterFunction(int32_t, const std::string &, const std::string &)
 {
     if (!CliToolMgrClientFlag::functionInfos.empty()) {
         CliToolMgrClientFlag::functionInfos.erase(CliToolMgrClientFlag::functionInfos.begin());
@@ -167,12 +173,12 @@ int32_t MockCliToolMgrService::UnregisterFunction(const std::string &, const std
     return CliToolMgrClientFlag::retUnregisterFunction;
 }
 
-int32_t MockCliToolMgrService::UnregisterIntentFunctionsByNamespace(const std::string &)
+int32_t MockCliToolMgrService::UnregisterIntentFunctionsByNamespace(int32_t, const std::string &)
 {
     return CliToolMgrClientFlag::retUnregisterFunction;
 }
 
-int32_t MockCliToolMgrService::ResetNamespaceFunctions(const std::string &,
+int32_t MockCliToolMgrService::ResetNamespaceFunctions(int32_t, const std::string &,
     const FunctionsRawData &functions, int32_t &successCount)
 {
     std::vector<FunctionInfo> functionList;
@@ -202,12 +208,12 @@ int32_t MockCliToolMgrService::BatchRegisterFunctionsAsync(const FunctionsRawDat
     return CliToolMgrClientFlag::retBatchRegisterFunctions;
 }
 
-int32_t MockCliToolMgrService::UnregisterIntentFunctionsByNamespaceAsync(const std::string &)
+int32_t MockCliToolMgrService::UnregisterIntentFunctionsByNamespaceAsync(int32_t, const std::string &)
 {
     return CliToolMgrClientFlag::retUnregisterFunction;
 }
 
-int32_t MockCliToolMgrService::ResetNamespaceFunctionsAsync(const std::string &,
+int32_t MockCliToolMgrService::ResetNamespaceFunctionsAsync(int32_t, const std::string &,
     const FunctionsRawData &functions)
 {
     std::vector<FunctionInfo> functionList;

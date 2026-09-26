@@ -48,16 +48,18 @@ public:
     virtual int32_t RegisterFunction(const FunctionInfo &function) = 0;
     virtual int32_t BatchRegisterFunctions(const FunctionsRawData &functions,
         int32_t &successCount) = 0;
-    virtual int32_t GetFunctionInfo(const std::string &functionNamespace, const std::string &functionName,
-        FunctionInfo &function) = 0;
-    virtual int32_t UnregisterFunction(const std::string &functionNamespace, const std::string &functionName) = 0;
-    virtual int32_t UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace) = 0;
-    virtual int32_t ResetNamespaceFunctions(const std::string &functionNamespace,
+    virtual int32_t GetFunctionInfo(const std::string &functionNamespace,
+        const std::string &functionName, FunctionInfo &function) = 0;
+    virtual int32_t UnregisterFunction(int32_t userId, const std::string &functionNamespace,
+        const std::string &functionName) = 0;
+    virtual int32_t UnregisterIntentFunctionsByNamespace(int32_t userId, const std::string &functionNamespace) = 0;
+    virtual int32_t ResetNamespaceFunctions(int32_t userId, const std::string &functionNamespace,
         const FunctionsRawData &functions, int32_t &successCount) = 0;
     virtual int32_t GetAllFunctions(FunctionsRawData &functions) = 0;
     virtual int32_t BatchRegisterFunctionsAsync(const FunctionsRawData &functions) = 0;
-    virtual int32_t UnregisterIntentFunctionsByNamespaceAsync(const std::string &functionNamespace) = 0;
-    virtual int32_t ResetNamespaceFunctionsAsync(const std::string &functionNamespace,
+    virtual int32_t UnregisterIntentFunctionsByNamespaceAsync(int32_t userId,
+        const std::string &functionNamespace) = 0;
+    virtual int32_t ResetNamespaceFunctionsAsync(int32_t userId, const std::string &functionNamespace,
         const FunctionsRawData &functions) = 0;
     virtual int32_t ExecTool(const ExecToolParam &param, const std::string &eventId,
         const sptr<ICliToolManagerScheduler> &scheduler) = 0;

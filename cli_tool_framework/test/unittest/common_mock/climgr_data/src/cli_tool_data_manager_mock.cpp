@@ -128,22 +128,22 @@ int32_t CliFunctionDataManager::RegisterFunction(const FunctionInfo &)
     return CliFunctionDataManagerMock::registerFunctionResult;
 }
 
-int32_t CliFunctionDataManager::GetFunctionByName(const std::string &, const std::string &, FunctionInfo &)
+int32_t CliFunctionDataManager::GetFunctionByName(int32_t, const std::string &, const std::string &, FunctionInfo &)
 {
     return CliFunctionDataManagerMock::getFunctionResult;
 }
 
-int32_t CliFunctionDataManager::UnregisterFunction(const std::string &, const std::string &)
+int32_t CliFunctionDataManager::UnregisterFunction(int32_t, const std::string &, const std::string &)
 {
     return CliFunctionDataManagerMock::unregisterFunctionResult;
 }
 
-int32_t CliFunctionDataManager::UnregisterIntentFunctionsByNamespace(const std::string &)
+int32_t CliFunctionDataManager::UnregisterIntentFunctionsByNamespace(int32_t, const std::string &)
 {
     return CliFunctionDataManagerMock::unregisterByNamespaceResult;
 }
 
-int32_t CliFunctionDataManager::GetAllFunctions(std::vector<FunctionInfo> &functions)
+int32_t CliFunctionDataManager::GetAllFunctions(int32_t, std::vector<FunctionInfo> &functions)
 {
     functions.clear();
     return CliFunctionDataManagerMock::getAllFunctionsResult;
@@ -161,7 +161,7 @@ int32_t CliFunctionDataManager::EnsureFunctionsInitialized()
     return ERR_OK;
 }
 
-int32_t CliFunctionDataManager::ResetNamespaceFunctions(const std::string &,
+int32_t CliFunctionDataManager::ResetNamespaceFunctions(int32_t, const std::string &,
     const std::vector<FunctionInfo> &functions, int32_t &successCount)
 {
     successCount = CliFunctionDataManagerMock::resetNamespaceFunctionsSuccessCount > 0 ?
