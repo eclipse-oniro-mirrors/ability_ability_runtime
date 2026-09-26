@@ -114,6 +114,9 @@ public:
         isDFSCallRet_ = false;
         isSandboxAppRet_ = false;
         isSACall_ = false;
+        isSAOrBrokerCall_ = false;
+        getUserIdByTokenIdRet_ = false;
+        getUserIdByTokenIdUserId_ = -1;
     }
 
     static void PushGenerateFUDAppInfoResult(bool success, int32_t userId,
@@ -175,6 +178,9 @@ public:
     static bool isDFSCallRet_;
     static bool isSandboxAppRet_;
     static bool isSACall_;
+    static bool isSAOrBrokerCall_;
+    static bool getUserIdByTokenIdRet_;
+    static int32_t getUserIdByTokenIdUserId_;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

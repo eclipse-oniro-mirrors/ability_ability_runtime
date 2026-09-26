@@ -32,16 +32,19 @@ struct TokenInfo {
     uint32_t tokenId = 0;
     std::string processName = "";
     std::string bundleName = "";
+    int32_t userID = 0;
     MyATokenTypeEnum tokenType = MyATokenTypeEnum::TOKEN_INVALID;
     
     TokenInfo() {}
 
-    TokenInfo(uint32_t tokenId, MyATokenTypeEnum tokenType, std::string processName = "", std::string bundleName = "")
+    TokenInfo(uint32_t tokenId, MyATokenTypeEnum tokenType, std::string processName = "", std::string bundleName = "",
+        int32_t userID = 0)
     {
         this->tokenId = tokenId;
         this->tokenType = tokenType;
         this->processName = processName;
         this->bundleName = bundleName;
+        this->userID = userID;
     }
 };
 

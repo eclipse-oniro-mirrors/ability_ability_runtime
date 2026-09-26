@@ -22,6 +22,7 @@
 
 namespace OHOS {
 namespace AAFwk {
+constexpr int32_t UPMS_INVALID_USER_ID = -1;
 struct FUDAppInfo {
     uint32_t tokenId = 0;
     std::string bundleName;
@@ -40,6 +41,10 @@ public:
     static bool IsSAOrSystemAppCall();
     static bool IsSystemAppCall();
     static bool IsPrivilegedSACall();
+    static bool IsSAOrBrokerCall();
+    static bool GetUserIdByTokenId(uint32_t tokenId, int32_t &userId);
+    static int32_t ResolveUserIdForSAOrBroker(int32_t userId);
+    static int32_t ResolveCurUserId(int32_t userId, int32_t &curUserId);
     static bool CheckIsSystemAppByTokenId(uint32_t tokenId);
     static bool GetDirByBundleNameAndAppIndex(const std::string &bundleName, int32_t appIndex, std::string &dirName);
     static bool GetBundleNameByTokenId(uint32_t tokenId, std::string &bundleName);

@@ -16,6 +16,7 @@
 #include "file_uri_distribution_utils.h"
 
 #include "ability_manager_errors.h"
+#include "ipc_skeleton.h"
 #include "mock_my_flag.h"
 
 namespace OHOS {
@@ -150,5 +151,44 @@ bool FUDUtils::IsBrokerCaller()
 {
     return false;
 }
-}  // namespace AAFwk
+
+bool FUDUtils::IsSAOrBrokerCall()
+{
+    return MyFlag::isSAOrBrokerCall_ || (MyFlag::IS_SA_CALL & MyFlag::flag_) != 0;
+}
+
+bool FUDUtils::GetUserIdByTokenId(uint32_t tokenId, int32_t &userId)
+{
+    userId = MyFlag::getUserIdByTokenIdUserId_;
+    return MyFlag::getUserIdByTokenIdRet_;
+}
+
+int32_t FUDUtils::ResolveUserIdForSAOrBroker(int32_t userId)
+{
+    if (userId == UPMS_INVALID_USER_ID) {
+        return GetCurrentAccountId();
+    }
+    if (userId >= 0) {
+        return userId;
+    }
+    return UPMS_INVALID_USER_ID;
+}
+
+int32_t FUDUtils::ResolveCurUserId(int32_t userId, int32_t &curUserId)
+{
+    if (IsSAOrBrokerCall()) {
+        curUserId = ResolveUserIdForSAOrBroker(userId);
+        if (curUserId < 0) {
+            return ERR_UPMS_INVALID_USER_ID;
+        }
+    } else if (IsSystemAppCall()) {
+        if (!GetUserIdByTokenId(IPCSkeleton::GetCallingTokenID(), curUserId)) {
+            return ERR_UPMS_INVALID_USER_ID;
+        }
+    } else {
+        return ERR_NOT_SYSTEM_APP;
+    }
+    return ERR_OK;
+}
+} // namespace AAFwk
 }  // namespace OHOS

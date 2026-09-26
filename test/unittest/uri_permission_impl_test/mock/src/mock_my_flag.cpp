@@ -64,5 +64,8 @@ bool MyFlag::isUdmfOrPasteboardCallRet_ = false;
 bool MyFlag::isDFSCallRet_ = false;
 bool MyFlag::isSandboxAppRet_ = false;
 bool MyFlag::isSACall_ = false;
+bool MyFlag::isSAOrBrokerCall_ = false;
+bool MyFlag::getUserIdByTokenIdRet_ = false;
+int32_t MyFlag::getUserIdByTokenIdUserId_ = -1;
 } // namespace AAFwk
 } // namespace OHOS

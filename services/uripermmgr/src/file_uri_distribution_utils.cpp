@@ -151,6 +151,59 @@ bool FUDUtils::IsPrivilegedSACall()
     return callerUId == COLLABORATION_FWK_UID;
 }
 
+bool FUDUtils::IsSAOrBrokerCall()
+{
+    auto tokenType = Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(IPCSkeleton::GetCallingTokenID());
+    return tokenType == Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE || IsBrokerCaller() || IsFoundationCall();
+}
+
+bool FUDUtils::GetUserIdByTokenId(uint32_t tokenId, int32_t &userId)
+{
+    auto tokenType = Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(tokenId);
+    if (tokenType != Security::AccessToken::ATokenTypeEnum::TOKEN_HAP) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "not HAP token, tokenId:%{public}u", tokenId);
+        return false;
+    }
+    Security::AccessToken::HapTokenInfo hapInfo;
+    auto ret = Security::AccessToken::AccessTokenKit::GetHapTokenInfo(tokenId, hapInfo);
+    if (ret != Security::AccessToken::AccessTokenKitRet::RET_SUCCESS) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "GetHapTokenInfo failed, ret:%{public}d", ret);
+        return false;
+    }
+    userId = hapInfo.userID;
+    return true;
+}
+
+int32_t FUDUtils::ResolveUserIdForSAOrBroker(int32_t userId)
+{
+    if (userId == UPMS_INVALID_USER_ID) {
+        return GetCurrentAccountId();
+    }
+    if (userId >= 0) {
+        return userId;
+    }
+    return UPMS_INVALID_USER_ID;
+}
+
+int32_t FUDUtils::ResolveCurUserId(int32_t userId, int32_t &curUserId)
+{
+    if (IsSAOrBrokerCall()) {
+        curUserId = ResolveUserIdForSAOrBroker(userId);
+        if (curUserId < 0) {
+            TAG_LOGE(AAFwkTag::URIPERMMGR, "Invalid userId: %{public}d", userId);
+            return ERR_UPMS_INVALID_USER_ID;
+        }
+    } else if (IsSystemAppCall()) {
+        if (!GetUserIdByTokenId(IPCSkeleton::GetCallingTokenID(), curUserId)) {
+            TAG_LOGE(AAFwkTag::URIPERMMGR, "Get userId from tokenId failed");
+            return ERR_UPMS_INVALID_USER_ID;
+        }
+    } else {
+        return ERR_NOT_SYSTEM_APP;
+    }
+    return ERR_OK;
+}
+
 bool FUDUtils::CheckIsSystemAppByBundleName(std::string &bundleName)
 {
     auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();

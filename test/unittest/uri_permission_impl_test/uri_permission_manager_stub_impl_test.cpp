@@ -208,7 +208,8 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermission_001, TestSiz
     int32_t appIndex = 1;
     uint32_t initiatorTokenId = 1;
     int32_t funcResult;
-    auto result = upmsi->GrantUriPermission(uri, flag, targetBundleName, appIndex, initiatorTokenId, funcResult);
+    auto result = upmsi->GrantUriPermission(uri, flag, targetBundleName, appIndex, initiatorTokenId, -1,
+        funcResult);
     EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_TYPE);
     EXPECT_EQ(result, ERR_OK);
 }
@@ -229,7 +230,8 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermission_002, TestSiz
     int32_t appIndex = 1;
     uint32_t initiatorTokenId = 1;
     int32_t funcResult = 0;
-    auto result = upmsi->GrantUriPermission(uri, flag, targetBundleName, appIndex, initiatorTokenId, funcResult);
+    auto result = upmsi->GrantUriPermission(uri, flag, targetBundleName, appIndex, initiatorTokenId, -1,
+        funcResult);
     EXPECT_EQ(result, ERR_OK);
 }
 
@@ -248,7 +250,7 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermission_003, TestSiz
     int32_t appIndex = 1;
     uint32_t initiatorTokenId = 1;
     int32_t funcResult = 1;
-    auto result = upmsi->GrantUriPermission(uriVec, flag, targetBundleName, appIndex, initiatorTokenId, funcResult);
+    auto result = upmsi->GrantUriPermission(uriVec, flag, targetBundleName, appIndex, initiatorTokenId, -1, funcResult);
     EXPECT_EQ(result, ERR_OK);
 }
 
@@ -403,7 +405,7 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_00
     int32_t hideSensitiveType = 1;
     int32_t funcResult = ERR_CODE_INVALID_URI_TYPE;
     auto result = upmsi->GrantUriPermissionPrivileged(uriVec, flag, targetBundleName, appIndex, initiatorTokenId,
-        hideSensitiveType, funcResult);
+        hideSensitiveType, -1, funcResult);
     EXPECT_EQ(funcResult, ERR_URI_LIST_OUT_OF_RANGE);
     EXPECT_EQ(result, ERR_URI_LIST_OUT_OF_RANGE);
 }
@@ -427,7 +429,7 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_00
     int32_t hideSensitiveType = 1;
     int32_t funcResult = ERR_CODE_INVALID_URI_TYPE;
     auto result = upmsi->GrantUriPermissionPrivileged(rawData, flag, targetBundleName, appIndex, initiatorTokenId,
-        hideSensitiveType, funcResult);
+        hideSensitiveType, -1, funcResult);
     EXPECT_EQ(funcResult, ERR_DEAD_OBJECT);
     EXPECT_EQ(result, ERR_DEAD_OBJECT);
 }
@@ -452,7 +454,7 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_Ra
     int32_t hideSensitiveType = 1;
     int32_t funcResult = 0;
     auto result = upmsi->GrantUriPermissionPrivileged(rawData, flag, targetBundleName, appIndex, initiatorTokenId,
-        hideSensitiveType, funcResult);
+        hideSensitiveType, -1, funcResult);
     EXPECT_EQ(result, ERR_OK);
     EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
 }
@@ -467,7 +469,8 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_Ra
 HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_RawData_DeserOk, TestSize.Level1)
 {
     auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
-    MyFlag::permissionPrivileged_ = true; // bypass early check
+    MyFlag::permissionPrivileged_ = true;
+    MyFlag::isSAOrBrokerCall_ = true;
     MyFlag::getTokenIdByBundleNameStatus_ = ERR_UPMS_INVALID_TARGET_TOKENID; // force delegate failure
     UriPermissionRawData rawData;
     BuildRawDataFromUriVec({"file://test/file.txt"}, rawData);
@@ -478,7 +481,7 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_Ra
     int32_t hideSensitiveType = 1;
     int32_t funcResult = 0;
     auto result = upmsi->GrantUriPermissionPrivileged(rawData, flag, targetBundleName, appIndex, initiatorTokenId,
-        hideSensitiveType, funcResult);
+        hideSensitiveType, -1, funcResult);
     EXPECT_EQ(result, ERR_OK);
     EXPECT_EQ(funcResult, ERR_UPMS_INVALID_TARGET_TOKENID); // echoes the forced delegate failure
 }
@@ -868,11 +871,13 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokeUriPermissionManually_001
     MyFlag::isSystemAppCall_ = true;
     MyFlag::isUriTypeValid_ = true;
     MyFlag::getTokenIdByBundleNameStatus_ = -1;
+    MyFlag::getUserIdByTokenIdRet_ = true;
+    MyFlag::getUserIdByTokenIdUserId_ = 100;
     Uri uri("uri");
     std::string bundleName = "bundleName";
     int32_t appIndex = 1;
     int32_t funcResult = 1;
-    auto result = upmsi->RevokeUriPermissionManually(uri, bundleName, appIndex, funcResult);
+    auto result = upmsi->RevokeUriPermissionManually(uri, bundleName, appIndex, -1, funcResult);
     EXPECT_EQ(funcResult, -1);
     EXPECT_EQ(result, ERR_OK);
 }
@@ -1891,7 +1896,8 @@ HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermission_RawData_BundleName
     int32_t appIndex = 0;
     uint32_t initiatorTokenId = 0;
     int32_t funcResult = 0;
-    auto result = upmsi->GrantUriPermission(rawData, flag, targetBundleName, appIndex, initiatorTokenId, funcResult);
+    auto result = upmsi->GrantUriPermission(rawData, flag, targetBundleName, appIndex, initiatorTokenId, -1,
+        funcResult);
     EXPECT_EQ(result, ERR_OK);
     EXPECT_EQ(funcResult, ERR_NOT_SYSTEM_APP);
 }
@@ -1914,9 +1920,453 @@ HWTEST_F(UriPermissionManagerStubImplTest, GrantUriPermission_RawData_BundleName
     int32_t appIndex = 0;
     uint32_t initiatorTokenId = 0;
     int32_t funcResult = 0;
-    auto result = upmsi->GrantUriPermission(rawData, flag, targetBundleName, appIndex, initiatorTokenId, funcResult);
+    auto result = upmsi->GrantUriPermission(rawData, flag, targetBundleName, appIndex, initiatorTokenId, -1,
+        funcResult);
     EXPECT_EQ(result, ERR_OK);
     EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_FLAG); // proves deserialization succeeded and delegate ran
+}
+
+// ==================== userId multi-foreground adaptation TDD tests ====================
+
+// ---------- GrantUriPermissionWithType userId tests ----------
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionWithType_UserId_Invalid_Negative, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::upmsUtilsIsFoundationCallRet_ = true;
+    std::vector<Uri> uriVec = { Uri("file://media/test.jpg") };
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 1001;
+    int32_t hideSensitiveType = 0;
+    std::vector<int32_t> permissionTypes = { 0 };
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionWithType(uriVec, flag, targetBundleName, appIndex, initiatorTokenId,
+        hideSensitiveType, permissionTypes, -1, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_UPMS_INVALID_USER_ID);
+}
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionWithType_UserId_Negative_Two, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::upmsUtilsIsFoundationCallRet_ = true;
+    std::vector<Uri> uriVec = { Uri("file://media/test.jpg") };
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 1001;
+    int32_t hideSensitiveType = 0;
+    std::vector<int32_t> permissionTypes = { 0 };
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionWithType(uriVec, flag, targetBundleName, appIndex, initiatorTokenId,
+        hideSensitiveType, permissionTypes, -2, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_UPMS_INVALID_USER_ID);
+}
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionWithType_UserId_Valid_Zero, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::upmsUtilsIsFoundationCallRet_ = true;
+    MyFlag::getTokenIdByBundleNameStatus_ = 0;
+    MyFlag::isUriTypeValid_ = false;
+    std::vector<Uri> uriVec = { Uri("http://test/1.txt") };
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 1001;
+    int32_t hideSensitiveType = 0;
+    std::vector<int32_t> permissionTypes = { 0 };
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionWithType(uriVec, flag, targetBundleName, appIndex, initiatorTokenId,
+        hideSensitiveType, permissionTypes, 0, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionWithType_UserId_Valid_Positive, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::upmsUtilsIsFoundationCallRet_ = true;
+    MyFlag::getTokenIdByBundleNameStatus_ = 0;
+    MyFlag::isUriTypeValid_ = false;
+    std::vector<Uri> uriVec = { Uri("http://test/1.txt") };
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 1001;
+    int32_t hideSensitiveType = 0;
+    std::vector<int32_t> permissionTypes = { 0 };
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionWithType(uriVec, flag, targetBundleName, appIndex, initiatorTokenId,
+        hideSensitiveType, permissionTypes, 100, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+// ---------- GrantUriPermission (string-vec) userId tests ----------
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermission_SA_UserId_Default_Fallback, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isSAOrSystemAppCall_ = true;
+    MyFlag::isSAOrBrokerCall_ = true;
+    MyFlag::isUriTypeValid_ = true;
+    MyFlag::getTokenIdByBundleNameStatus_ = -1;
+    std::vector<std::string> uriVec = { "file://com.example.test/test.txt" };
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(uriVec, flag, targetBundleName, appIndex, initiatorTokenId, -1,
+        funcResult);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermission_SA_UserId_Valid, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isSAOrSystemAppCall_ = true;
+    MyFlag::isSAOrBrokerCall_ = true;
+    MyFlag::isUriTypeValid_ = true;
+    MyFlag::getTokenIdByBundleNameStatus_ = -1;
+    std::vector<std::string> uriVec = { "file://com.example.test/test.txt" };
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(uriVec, flag, targetBundleName, appIndex, initiatorTokenId, 100,
+        funcResult);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermission_SA_UserId_Invalid, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isSAOrSystemAppCall_ = true;
+    MyFlag::isSAOrBrokerCall_ = true;
+    std::vector<std::string> uriVec = { "file://com.example.test/test.txt" };
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(uriVec, flag, targetBundleName, appIndex, initiatorTokenId, -2,
+        funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_UPMS_INVALID_USER_ID);
+}
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermission_SysApp_UserId_FromTokenId, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isSAOrSystemAppCall_ = true;
+    MyFlag::isSAOrBrokerCall_ = false;
+    MyFlag::isSystemAppCall_ = true;
+    MyFlag::getUserIdByTokenIdRet_ = true;
+    MyFlag::getUserIdByTokenIdUserId_ = 100;
+    MyFlag::isUriTypeValid_ = true;
+    MyFlag::getTokenIdByBundleNameStatus_ = -1;
+    std::vector<std::string> uriVec = { "file://com.example.test/test.txt" };
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(uriVec, flag, targetBundleName, appIndex, initiatorTokenId, -1,
+        funcResult);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermission_SysApp_GetUserIdFailed, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isSAOrSystemAppCall_ = true;
+    MyFlag::isSAOrBrokerCall_ = false;
+    MyFlag::isSystemAppCall_ = true;
+    MyFlag::getUserIdByTokenIdRet_ = false;
+    std::vector<std::string> uriVec = { "file://com.example.test/test.txt" };
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(uriVec, flag, targetBundleName, appIndex, initiatorTokenId, -1,
+        funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_UPMS_INVALID_USER_ID);
+}
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermission_NotSA_NotSysApp, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isSAOrSystemAppCall_ = false;
+    MyFlag::isSAOrBrokerCall_ = false;
+    MyFlag::isSystemAppCall_ = false;
+    std::vector<std::string> uriVec = { "file://com.example.test/test.txt" };
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(uriVec, flag, targetBundleName, appIndex, initiatorTokenId, 100,
+        funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_NOT_SYSTEM_APP);
+}
+
+// ---------- GrantUriPermissionPrivileged (string-vec) userId tests ----------
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_SA_UserIdDefault, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    MyFlag::isSAOrBrokerCall_ = true;
+    MyFlag::getTokenIdByBundleNameStatus_ = -1;
+    std::vector<std::string> uriVec = { "file://com.example.test/test.txt" };
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 0;
+    int32_t hideSensitiveType = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionPrivileged(uriVec, flag, targetBundleName, appIndex, initiatorTokenId,
+        hideSensitiveType, -1, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_SA_UserId_Valid, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    MyFlag::isSAOrBrokerCall_ = true;
+    MyFlag::getTokenIdByBundleNameStatus_ = -1;
+    std::vector<std::string> uriVec = { "file://com.example.test/test.txt" };
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 0;
+    int32_t hideSensitiveType = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionPrivileged(uriVec, flag, targetBundleName, appIndex, initiatorTokenId,
+        hideSensitiveType, 100, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_SA_UserId_Invalid, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    MyFlag::isSAOrBrokerCall_ = true;
+    std::vector<std::string> uriVec = { "file://com.example.test/test.txt" };
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 0;
+    int32_t hideSensitiveType = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionPrivileged(uriVec, flag, targetBundleName, appIndex, initiatorTokenId,
+        hideSensitiveType, -2, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_UPMS_INVALID_USER_ID);
+}
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_SysApp_UserIdFromToken, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    MyFlag::isSAOrBrokerCall_ = false;
+    MyFlag::isSystemAppCall_ = true;
+    MyFlag::getUserIdByTokenIdRet_ = true;
+    MyFlag::getUserIdByTokenIdUserId_ = 100;
+    MyFlag::getTokenIdByBundleNameStatus_ = -1;
+    std::vector<std::string> uriVec = { "file://com.example.test/test.txt" };
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 0;
+    int32_t hideSensitiveType = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionPrivileged(uriVec, flag, targetBundleName, appIndex, initiatorTokenId,
+        hideSensitiveType, -1, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_SysApp_GetUserIdFailed, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    MyFlag::isSAOrBrokerCall_ = false;
+    MyFlag::isSystemAppCall_ = true;
+    MyFlag::getUserIdByTokenIdRet_ = false;
+    std::vector<std::string> uriVec = { "file://com.example.test/test.txt" };
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 0;
+    int32_t hideSensitiveType = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionPrivileged(uriVec, flag, targetBundleName, appIndex, initiatorTokenId,
+        hideSensitiveType, -1, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_UPMS_INVALID_USER_ID);
+}
+
+// ---------- RevokeUriPermissionManually userId tests ----------
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokeUriPermissionManually_SA_UserIdDefault, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isSystemAppCall_ = true;
+    MyFlag::isSAOrBrokerCall_ = true;
+    MyFlag::isUriTypeValid_ = true;
+    MyFlag::getTokenIdByBundleNameStatus_ = -1;
+    Uri uri("file://com.example.test/test.txt");
+    std::string bundleName = "com.example.test";
+    int32_t appIndex = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->RevokeUriPermissionManually(uri, bundleName, appIndex, -1, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokeUriPermissionManually_SA_UserId_Valid, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isSystemAppCall_ = true;
+    MyFlag::isSAOrBrokerCall_ = true;
+    MyFlag::isUriTypeValid_ = true;
+    MyFlag::getTokenIdByBundleNameStatus_ = -1;
+    Uri uri("file://com.example.test/test.txt");
+    std::string bundleName = "com.example.test";
+    int32_t appIndex = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->RevokeUriPermissionManually(uri, bundleName, appIndex, 100, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokeUriPermissionManually_SA_UserId_Invalid, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isSystemAppCall_ = true;
+    MyFlag::isSAOrBrokerCall_ = true;
+    MyFlag::isUriTypeValid_ = true;
+    Uri uri("file://com.example.test/test.txt");
+    std::string bundleName = "com.example.test";
+    int32_t appIndex = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->RevokeUriPermissionManually(uri, bundleName, appIndex, -2, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_UPMS_INVALID_USER_ID);
+}
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokeUriPermissionManually_SysApp_UserId_FromTokenId, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isSystemAppCall_ = true;
+    MyFlag::isSAOrBrokerCall_ = false;
+    MyFlag::getUserIdByTokenIdRet_ = true;
+    MyFlag::getUserIdByTokenIdUserId_ = 100;
+    MyFlag::isUriTypeValid_ = true;
+    MyFlag::getTokenIdByBundleNameStatus_ = -1;
+    Uri uri("file://com.example.test/test.txt");
+    std::string bundleName = "com.example.test";
+    int32_t appIndex = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->RevokeUriPermissionManually(uri, bundleName, appIndex, -1, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokeUriPermissionManually_SysApp_GetUserIdFailed, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isSystemAppCall_ = true;
+    MyFlag::isSAOrBrokerCall_ = false;
+    MyFlag::getUserIdByTokenIdRet_ = false;
+    MyFlag::isUriTypeValid_ = true;
+    Uri uri("file://com.example.test/test.txt");
+    std::string bundleName = "com.example.test";
+    int32_t appIndex = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->RevokeUriPermissionManually(uri, bundleName, appIndex, -1, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_UPMS_INVALID_USER_ID);
+}
+
+// ---------- RawData/Uri overload passthrough userId tests ----------
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermission_Uri_UserId_Passthrough, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isSAOrSystemAppCall_ = true;
+    MyFlag::isSAOrBrokerCall_ = true;
+    MyFlag::isUriTypeValid_ = true;
+    MyFlag::getTokenIdByBundleNameStatus_ = -1;
+    Uri uri("file://com.example.test/test.txt");
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(uri, flag, targetBundleName, appIndex, initiatorTokenId, 100,
+        funcResult);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermission_RawData_UserId_Passthrough, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isSAOrSystemAppCall_ = true;
+    MyFlag::isSAOrBrokerCall_ = true;
+    MyFlag::isUriTypeValid_ = true;
+    MyFlag::getTokenIdByBundleNameStatus_ = -1;
+    UriPermissionRawData rawData;
+    BuildRawDataFromUriVec({ "file://com.example.test/test.txt" }, rawData);
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermission(rawData, flag, targetBundleName, appIndex,
+        initiatorTokenId, 100, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_RawData_UserIdPassthrough, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    MyFlag::isSAOrBrokerCall_ = true;
+    MyFlag::getTokenIdByBundleNameStatus_ = -1;
+    UriPermissionRawData rawData;
+    BuildRawDataFromUriVec({ "file://com.example.test/test.txt" }, rawData);
+    uint32_t flag = 1;
+    const std::string targetBundleName = "com.example.test";
+    int32_t appIndex = 0;
+    uint32_t initiatorTokenId = 0;
+    int32_t hideSensitiveType = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionPrivileged(rawData, flag, targetBundleName, appIndex, initiatorTokenId,
+        hideSensitiveType, 100, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokeUriPermissionManually_UserId_Default, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::isSystemAppCall_ = true;
+    MyFlag::isSAOrBrokerCall_ = false;
+    MyFlag::getUserIdByTokenIdRet_ = true;
+    MyFlag::getUserIdByTokenIdUserId_ = 100;
+    MyFlag::isUriTypeValid_ = true;
+    MyFlag::getTokenIdByBundleNameStatus_ = -1;
+    Uri uri("file://com.example.test/test.txt");
+    std::string bundleName = "com.example.test";
+    int32_t appIndex = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->RevokeUriPermissionManually(uri, bundleName, appIndex, -1, funcResult);
+    EXPECT_EQ(result, ERR_OK);
 }
 
 }  // namespace AAFwk

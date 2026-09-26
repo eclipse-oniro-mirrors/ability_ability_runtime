@@ -223,7 +223,8 @@ bool UriPermissionManagerStubImpl::IsDistributedSubDirUri(const std::string &inp
 }
 
 ErrCode UriPermissionManagerStubImpl::GrantUriPermission(const Uri& uri, uint32_t flag,
-    const std::string& targetBundleName, int32_t appIndex, uint32_t initiatorTokenId, int32_t& funcResult)
+    const std::string& targetBundleName, int32_t appIndex, uint32_t initiatorTokenId, int32_t userId,
+    int32_t& funcResult)
 {
     TAG_LOGI(AAFwkTag::URIPERMMGR, "Uri:%{private}s", uri.ToString().c_str());
     Uri tempUri = uri;
@@ -232,7 +233,7 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermission(const Uri& uri, uint32_
         return WrapErrorCode(ERR_CODE_INVALID_URI_TYPE, funcResult);
     }
     std::vector<std::string> uriVec = { uri.ToString() };
-    GrantUriPermission(uriVec, flag, targetBundleName, appIndex, initiatorTokenId, funcResult);
+    GrantUriPermission(uriVec, flag, targetBundleName, appIndex, initiatorTokenId, userId, funcResult);
     return ERR_OK;
 }
 
@@ -259,7 +260,8 @@ ErrCode UriPermissionManagerStubImpl::CheckGrantUriPermission(const std::vector<
 }
 
 ErrCode UriPermissionManagerStubImpl::GrantUriPermission(const std::vector<std::string>& uriVec, uint32_t flag,
-    const std::string& targetBundleName, int32_t appIndex, uint32_t initiatorTokenId, int32_t& funcResult)
+    const std::string& targetBundleName, int32_t appIndex, uint32_t initiatorTokenId, int32_t userId,
+    int32_t& funcResult)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGI(AAFwkTag::URIPERMMGR, "BundleName:%{public}s, appIndex:%{public}d, flag:%{public}u, uris:%{public}zu",
@@ -268,7 +270,11 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermission(const std::vector<std::
     if (ret != ERR_OK) {
         return WrapErrorCode(ret, funcResult);
     }
-    int32_t curUserId = FUDUtils::GetCurrentAccountId();
+    int32_t curUserId = UPMS_INVALID_USER_ID;
+    ret = FUDUtils::ResolveCurUserId(userId, curUserId);
+    if (ret != ERR_OK) {
+        return WrapErrorCode(ret, funcResult);
+    }
     uint32_t targetTokenId = 0;
     if (appIndex == -1) {
         auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
@@ -419,7 +425,8 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermission(const UriPermissionRawD
 }
 
 ErrCode UriPermissionManagerStubImpl::GrantUriPermission(const UriPermissionRawData& rawData, uint32_t flag,
-    const std::string& targetBundleName, int32_t appIndex, uint32_t initiatorTokenId, int32_t& funcResult)
+    const std::string& targetBundleName, int32_t appIndex, uint32_t initiatorTokenId, int32_t userId,
+    int32_t& funcResult)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (!FUDUtils::IsSAOrSystemAppCall()) {
@@ -433,7 +440,7 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermission(const UriPermissionRawD
         funcResult = res;
         return ERR_OK;
     }
-    auto errCode = GrantUriPermission(uriVec, flag, targetBundleName, appIndex, initiatorTokenId, funcResult);
+    auto errCode = GrantUriPermission(uriVec, flag, targetBundleName, appIndex, initiatorTokenId, userId, funcResult);
     if (errCode != ERR_OK) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "GrantUriPermission failed, errCode:%{public}d", errCode);
         return errCode;
@@ -793,7 +800,7 @@ ErrCode UriPermissionManagerStubImpl::CheckGrantUriPermissionPrivileged(uint32_t
 
 ErrCode UriPermissionManagerStubImpl::GrantUriPermissionPrivileged(const std::vector<std::string>& uriVec,
     uint32_t flag, const std::string& targetBundleName, int32_t appIndex, uint32_t initiatorTokenId,
-    int32_t hideSensitiveType, int32_t& funcResult)
+    int32_t hideSensitiveType, int32_t userId, int32_t& funcResult)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (uriVec.size() == 0 || uriVec.size() > MAX_URI_COUNT) {
@@ -808,7 +815,11 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermissionPrivileged(const std::ve
     if (checkRes != ERR_OK) {
         return WrapErrorCode(checkRes, funcResult);
     }
-    int32_t curUserId = FUDUtils::GetCurrentAccountId();
+    int32_t curUserId = UPMS_INVALID_USER_ID;
+    auto userIdRet = FUDUtils::ResolveCurUserId(userId, curUserId);
+    if (userIdRet != ERR_OK) {
+        return WrapErrorCode(userIdRet, funcResult);
+    }
     uint32_t targetTokenId = 0;
     if (appIndex == -1) {
         auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
@@ -846,7 +857,7 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermissionPrivileged(const std::ve
 
 ErrCode UriPermissionManagerStubImpl::GrantUriPermissionPrivileged(const UriPermissionRawData& rawData, uint32_t flag,
     const std::string& targetBundleName, int32_t appIndex, uint32_t initiatorTokenId, int32_t hideSensitiveType,
-    int32_t& funcResult)
+    int32_t userId, int32_t& funcResult)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto checkRes = CheckGrantUriPermissionPrivileged(IPCSkeleton::GetCallingTokenID(), flag);
@@ -861,7 +872,7 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermissionPrivileged(const UriPerm
         return res;
     }
     auto errCode = GrantUriPermissionPrivileged(uriStrVec, flag, targetBundleName, appIndex, initiatorTokenId,
-        hideSensitiveType, funcResult);
+        hideSensitiveType, userId, funcResult);
     if (errCode != ERR_OK) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "GrantUriPermissionPrivileged failed, errCode:%{public}d", errCode);
         return errCode;
@@ -937,7 +948,7 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermissionPrivileged(const UriPerm
 
 ErrCode UriPermissionManagerStubImpl::GrantUriPermissionWithType(const std::vector<Uri> &uriVec, uint32_t flag,
     const std::string &targetBundleName, int32_t appIndex, uint32_t initiatorTokenId, int32_t hideSensitiveType,
-    const std::vector<int32_t> &permissionTypes, int32_t &funcResult)
+    const std::vector<int32_t> &permissionTypes, int32_t userId, int32_t &funcResult)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (!FUDUtils::IsFoundationCall()) {
@@ -958,7 +969,11 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermissionWithType(const std::vect
         TAG_LOGE(AAFwkTag::URIPERMMGR, "Invalid initiatorTokenId");
         return WrapErrorCode(ERR_UPMS_INVALID_CALLER_TOKENID, funcResult);
     }
-    int32_t curUserId = FUDUtils::GetCurrentAccountId();
+    if (userId < 0) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "Invalid userId: %{public}d", userId);
+        return WrapErrorCode(ERR_UPMS_INVALID_USER_ID, funcResult);
+    }
+    int32_t curUserId = userId;
     uint32_t targetTokenId = 0;
     auto ret = FUDUtils::GetTokenIdByBundleName(targetBundleName, appIndex, curUserId, targetTokenId);
     if (ret != ERR_OK) {
@@ -1566,7 +1581,7 @@ int32_t UriPermissionManagerStubImpl::RevokeAllPolicyUriPermissions(uint32_t tok
 }
 
 ErrCode UriPermissionManagerStubImpl::RevokeUriPermissionManually(const Uri& uri, const std::string& bundleName,
-    int32_t appIndex, int32_t& funcResult)
+    int32_t appIndex, int32_t userId, int32_t& funcResult)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGI(AAFwkTag::URIPERMMGR, "uri:%{private}s, bundleName:%{public}s, appIndex:%{public}d",
@@ -1582,7 +1597,12 @@ ErrCode UriPermissionManagerStubImpl::RevokeUriPermissionManually(const Uri& uri
         funcResult = ERR_CODE_INVALID_URI_TYPE;
         return ERR_OK;
     }
-    int32_t curUserId = FUDUtils::GetCurrentAccountId();
+    int32_t curUserId = UPMS_INVALID_USER_ID;
+    auto userIdRet = FUDUtils::ResolveCurUserId(userId, curUserId);
+    if (userIdRet != ERR_OK) {
+        funcResult = userIdRet;
+        return ERR_OK;
+    }
     uint32_t targetTokenId = 0;
     if (appIndex == -1) {
         auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
