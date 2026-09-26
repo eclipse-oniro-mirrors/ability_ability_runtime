@@ -53,7 +53,6 @@
 #include "ffrt_inner.h"
 #include "foreground_app_connection_manager.h"
 #include "freeze_util.h"
-#include "exec_options.h"
 #include "utils/oe_extension_utils.h"
 #include "global_constant.h"
 #include "hidden_start_observer_manager.h"
@@ -341,11 +340,6 @@ bool IsEmbeddableStart(int32_t screenMode)
         screenMode == AAFwk::EMBEDDED_HALF_SCREEN_MODE;
 }
 
-bool IsValidToolCallId(const std::string &toolCallId)
-{
-    // Shared rule (CliTool::IsValidTraceId, interfaces/cli_tool); empty means not provided and is not logged.
-    return !toolCallId.empty() && CliTool::IsValidTraceId(toolCallId);
-}
 } // namespace
 
 using namespace std::chrono;
@@ -747,13 +741,6 @@ int AbilityManagerService::StartAbility(const Want &want, int32_t userId, int re
         TAG_LOGW(AAFwkTag::ABILITYMGR, "forbid start: %{public}s", want.GetBundleNameRef().c_str());
         return INNER_ERR;
     }
-    std::string toolCallId = want.GetStringParam("ohos.aafwk.param.toolCallId");
-    if (IsValidToolCallId(toolCallId)) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "start ability with toolCallId: %{public}s", toolCallId.c_str());
-    }
-    // Trace-only reserved param: strip it right after logging so it never reaches the app side
-    // (lifecycle callbacks like onCreate) or mission snapshots.
-    const_cast<Want &>(want).RemoveParam("ohos.aafwk.param.toolCallId");
     if (specifiedFullTokenId != 0 && IPCSkeleton::GetCallingUid() != DMS_UID) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "specifiedFullTokenId only support for DMS");
         specifiedFullTokenId = 0;

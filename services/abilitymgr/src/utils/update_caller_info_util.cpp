@@ -27,6 +27,7 @@
 #include "hitrace_meter.h"
 #include "ipc_skeleton.h"
 #include "global_constant.h"
+#include "exec_options.h"
 #include "permission_verification.h"
 #include "scene_board_judgement.h"
 #include "start_ability_utils.h"
@@ -415,6 +416,14 @@ void UpdateCallerInfoUtil::UpdateCallerAppCloneIndex(Want& want, int32_t appInde
 
 void UpdateCallerInfoUtil::ClearProtectedWantParam(Want &want)
 {
+    // Trace-only reserved param, unified cleanup point: every start-scheduling chain funnels
+    // through one of the Update* entries (and therefore here), so the param is logged once and
+    // stripped for any value before the Want reaches the app side or mission snapshots.
+    const std::string toolCallId = want.GetStringParam("ohos.aafwk.param.toolCallId");
+    if (!toolCallId.empty() && CliTool::IsValidTraceId(toolCallId)) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "start ability with toolCallId: %{public}s", toolCallId.c_str());
+    }
+    want.RemoveParam("ohos.aafwk.param.toolCallId");
     if (want.HasParameter(HIDE_SENSITIVE_TYPE)) {
         EventInfo eventInfo;
         const auto &bundleName = want.GetBundleNameRef();
