@@ -264,11 +264,11 @@ int32_t PendingWantRecord::GetUid() const
 
 void PendingWantRecord::SetCanceled()
 {
-    canceled_ = true;
+    canceled_.store(true);
 }
 bool PendingWantRecord::GetCanceled()
 {
-    return canceled_;
+    return canceled_.load();
 }
 
 void PendingWantRecord::SetCallerUid(const int32_t callerUid)

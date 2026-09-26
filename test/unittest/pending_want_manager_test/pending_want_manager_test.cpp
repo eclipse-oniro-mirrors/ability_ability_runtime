@@ -14,6 +14,11 @@
  */
 
 #include <gtest/gtest.h>
+
+#include <atomic>
+#include <chrono>
+#include <thread>
+
 #include "bundlemgr/mock_bundle_manager.h"
 #include "mock_native_token.h"
 #include "ability_manager_errors.h"
@@ -65,7 +70,7 @@ public:
     class CancelReceiver : public AAFwk::WantReceiverStub {
     public:
         static int performReceiveCount;
-        static int sendCount;
+        static std::atomic<int> sendCount;
         void Send(const int32_t resultCode) override;
         void PerformReceive(const AAFwk::Want& want, int resultCode, const std::string& data,
             const AAFwk::WantParams& extras, bool serialized, bool sticky, int sendingUser) override;
@@ -81,7 +86,7 @@ public:
 };
 
 int PendingWantManagerTest::CancelReceiver::performReceiveCount = 0;
-int PendingWantManagerTest::CancelReceiver::sendCount = 0;
+std::atomic<int> PendingWantManagerTest::CancelReceiver::sendCount = 0;
 
 void PendingWantManagerTest::CancelReceiver::Send(const int32_t resultCode)
 {
@@ -794,8 +799,15 @@ HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_3100, TestSize.Level1)
     EXPECT_NE(pendingRecord, nullptr);
     pendingManager_->RegisterCancelListener(pendingRecord, cance);
     bool isSystemApp = false;
+    CancelReceiver::sendCount = 0;
     pendingManager_->CancelWantSender(isSystemApp, pendingRecord);
-    EXPECT_TRUE(CancelReceiver::sendCount == 100);
+    constexpr int MAX_WAIT_TIME_MS = 1000;
+    constexpr int POLL_INTERVAL_MS = 10;
+    for (int elapsed = 0; elapsed < MAX_WAIT_TIME_MS && CancelReceiver::sendCount.load() == 0;
+        elapsed += POLL_INTERVAL_MS) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(POLL_INTERVAL_MS));
+    }
+    EXPECT_TRUE(CancelReceiver::sendCount.load() == 100);
     EXPECT_TRUE((int)pendingManager_->wantRecords_.size() == 0);
 }
 

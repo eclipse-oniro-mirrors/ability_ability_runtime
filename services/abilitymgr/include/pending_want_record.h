@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_PENDING_WANT_RECORD_H
 #define OHOS_ABILITY_RUNTIME_PENDING_WANT_RECORD_H
 
+#include <atomic>
 #include <list>
 #include <mutex>
 #include "cpp/mutex.h"
@@ -80,7 +81,7 @@ private:
     int32_t creatorPid_ = 0;
     bool isShared_ = false;
     bool isThirdParty_ = false;
-    bool canceled_ = false;
+    std::atomic<bool> canceled_ = false;
     ffrt::mutex lock_ = {};
     std::mutex mCancelCallbacksMutex_;
     mutable std::mutex sharedMutex_;
