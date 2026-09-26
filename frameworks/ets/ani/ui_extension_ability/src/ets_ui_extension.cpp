@@ -522,10 +522,7 @@ void EtsUIExtension::PostInsightIntentExecuted(const sptr<AAFwk::SessionInfo> &s
         CallObjectMethod(false, "onForeground", nullptr);
     }
 
-    auto filtered = result;
-    filtered.interactionInfo = nullptr;
-    TAG_LOGW(AAFwkTag::UI_EXT, "filter interactionInfo in window path");
-    OnInsightIntentExecuteDone(sessionInfo, filtered);
+    OnInsightIntentExecuteDone(sessionInfo, result);
 
     if (needForeground) {
         // If need foreground, that means triggered by onForeground.
