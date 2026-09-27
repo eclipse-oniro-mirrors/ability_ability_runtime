@@ -33,6 +33,7 @@
       *AbilitySchedulerStub*;
       *AbilityStartWithWaitObserverManager*;
       *AmsConfigurationParameter*;
+      *AMSWantParamFilter*;
       *AppExitReasonDataManager*;
       *AppExitReasonHelper*;
       *ApplicationAnrListener*;

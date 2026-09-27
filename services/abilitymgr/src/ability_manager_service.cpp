@@ -32,6 +32,7 @@
 #include "agent_card.h"
 #include "agent_extension_connection_constants.h"
 #include "agent_manager_client.h"
+#include "ams_want_param_filter.h"
 #include "app_utils.h"
 #include "app_exit_reason_data_manager.h"
 #include "app_mgr_constants.h"
@@ -435,6 +436,7 @@ void AbilityManagerService::OnStart()
         return;
     }
     state_ = ServiceRunningState::STATE_RUNNING;
+    AMSWantParamFilter::GetInstance()->InstallFilter();
     /* Publish service maybe failed, so we need call this function at the last,
      * so it can't affect the TDD test program */
     instance_ = DelayedSingleton<AbilityManagerService>::GetInstance().get();
