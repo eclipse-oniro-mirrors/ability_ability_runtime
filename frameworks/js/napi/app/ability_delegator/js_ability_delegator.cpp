@@ -792,19 +792,19 @@ napi_value JSAbilityDelegator::OnGetAbilityState(napi_env env, NapiCallbackInfo&
     HandleEscape handleEscape(env);
     if (info.argc < ARGC_ONE) {
         TAG_LOGE(AAFwkTag::DELEGATOR, "invalid argc");
-        return ThrowJsError(env, INCORRECT_PARAMETERS, "Parameter error. Too few parameters.");
+        return CreateJsUndefined(env);
     }
 
     sptr<OHOS::IRemoteObject> remoteObject = nullptr;
     if (!ParseAbilityPara(env, info.argv[INDEX_ZERO], remoteObject)) {
         TAG_LOGE(AAFwkTag::DELEGATOR, "invalid params");
-        return ThrowJsError(env, INCORRECT_PARAMETERS, "Parse ability failed.");
+        return CreateJsUndefined(env);
     }
 
     auto delegator = AbilityDelegatorRegistry::GetAbilityDelegator();
     if (!delegator) {
         TAG_LOGE(AAFwkTag::DELEGATOR, "null delegator");
-        return ThrowJsError(env, COMMON_FAILED, "Calling GetAbilityState failed.");
+        return CreateJsNull(env);
     }
     AbilityDelegator::AbilityState lifeState = delegator->GetAbilityState(remoteObject);
     AbilityLifecycleState abilityLifeState = AbilityLifecycleState::UNINITIALIZED;
