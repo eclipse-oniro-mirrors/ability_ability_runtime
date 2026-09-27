@@ -996,7 +996,7 @@ HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_3800, TestSize.Level1)
 {
     pendingManager_ = std::make_shared<PendingWantManager>();
     int32_t pid = 0;
-    pendingManager_->CheckWindowState(pid);
+    pendingManager_->CheckWindowState(pid, 0);
     EXPECT_TRUE(pendingManager_ != nullptr);
 }
 

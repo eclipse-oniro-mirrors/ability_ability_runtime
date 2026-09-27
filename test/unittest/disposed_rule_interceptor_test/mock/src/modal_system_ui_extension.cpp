@@ -29,5 +29,10 @@ bool ModalSystemUiExtension::CreateModalUIExtension(const AAFwk::Want &want)
 {
     return AAFwk::MyFlag::retCreateModalUIExtension_;
 }
+
+bool ModalSystemUiExtension::CreateModalUIExtension(const AAFwk::Want &want, int32_t userId)
+{
+    return AAFwk::MyFlag::retCreateModalUIExtension_;
+}
 }
 }

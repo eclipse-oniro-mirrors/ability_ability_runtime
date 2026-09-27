@@ -818,7 +818,7 @@ HWTEST_F(PendingWantManagerSecondTest, CheckWindowState_WithValidPid_0100, TestS
     int32_t pid = 1234;
 
     // Act
-    auto result = pendingManager_->CheckWindowState(pid);
+    auto result = pendingManager_->CheckWindowState(pid, 0);
 
     // Assert - Should return false without proper window manager setup
     EXPECT_FALSE(result);
@@ -842,7 +842,7 @@ HWTEST_F(PendingWantManagerSecondTest, CheckWindowState_ZeroPid_0300, TestSize.L
     int32_t pid = 0;
 
     // Act
-    auto result = pendingManager_->CheckWindowState(pid);
+    auto result = pendingManager_->CheckWindowState(pid, 0);
 
     // Assert - Should return false for zero PID
     EXPECT_FALSE(result);
@@ -866,7 +866,7 @@ HWTEST_F(PendingWantManagerSecondTest, CheckWindowState_NegativePid_0300, TestSi
     int32_t pid = -1;
 
     // Act
-    auto result = pendingManager_->CheckWindowState(pid);
+    auto result = pendingManager_->CheckWindowState(pid, 0);
 
     // Assert - Should return false for negative PID
     EXPECT_FALSE(result);
