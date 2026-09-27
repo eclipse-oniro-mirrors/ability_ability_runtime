@@ -8437,17 +8437,26 @@ void AbilityManagerService::DataDumpSysStateInner(
 
 void AbilityManagerService::DumpInner(const std::string &args, std::vector<std::string> &info)
 {
-    auto userId = AbilityRuntime::UserController::GetInstance().GetCallerUserId();
+    std::vector<int32_t> userIds;
+    AbilityRuntime::UserController::GetInstance().GetAllForegroundUserId(userIds);
+    auto iter = userIds.begin();
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto uiAbilityManager = GetUIAbilityManagerByUserId(userId);
-        CHECK_POINTER(uiAbilityManager);
-        uiAbilityManager->Dump(info);
+        while (iter != userIds.end()) {
+            auto uiAbilityManager = GetUIAbilityManagerByUserId(*iter);
+            if (uiAbilityManager != nullptr) {
+                uiAbilityManager->Dump(info);
+            }
+            iter++;
+        }
         return;
     }
 
-    auto missionListManager = GetMissionListManagerByUserId(userId);
-    if (missionListManager) {
-        missionListManager->Dump(info);
+    while (iter != userIds.end()) {
+        auto missionListManager = GetMissionListManagerByUserId(*iter);
+        if (missionListManager != nullptr) {
+            missionListManager->Dump(info);
+        }
+        iter++;
     }
 }
 
