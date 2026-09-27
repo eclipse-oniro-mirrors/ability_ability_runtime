@@ -166,6 +166,7 @@ struct StartAbilityWrapParam {
     bool isGamePrelaunch = false;
     sptr<IRequestStartAbilityCallback> requestCallback = nullptr;
     std::shared_ptr<SandboxCloneParams> sandboxCloneParams = nullptr;
+    bool isLaunchSCB = false;
 };
 }
 }
