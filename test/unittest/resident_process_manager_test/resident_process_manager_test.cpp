@@ -112,6 +112,12 @@ HWTEST_F(ResidentProcessManagerTest, SetResidentProcessEnable_002, TestSize.Leve
 
     std::string bundleName = "com.example.resident.process";
     std::string callerName = "resident.process.manager.test";
+    EXPECT_CALL(AmsResidentProcessRdb::GetInstance(), VerifyConfigurationPermissions(bundleName, callerName))
+        .Times(1)
+        .WillOnce(Return(RdbResult::Rdb_Permissions_Err));
+    EXPECT_CALL(AmsResidentProcessRdb::GetInstance(), GetResidentProcessRawData(bundleName, callerName))
+        .Times(1)
+        .WillOnce(Return(RdbResult::Rdb_Parameter_Err));
     EXPECT_EQ(manager->SetResidentProcessEnabled(bundleName, callerName, false), ERR_NO_RESIDENT_PERMISSION);
 }
 

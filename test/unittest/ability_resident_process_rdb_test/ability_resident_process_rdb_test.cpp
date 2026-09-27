@@ -85,6 +85,31 @@ HWTEST_F(AbilityResidentProcessRdbTest, VerifyConfigurationPermissions_001, Test
 
 /*
  * Feature: AbilityResidentProcessRdb
+ * Function: VerifyCallerInConfiguredList
+ * SubFunction: NA
+ * FunctionPoints: AbilityResidentProcessRdb VerifyCallerInConfiguredList_001
+ */
+HWTEST_F(AbilityResidentProcessRdbTest, VerifyCallerInConfiguredList_001, TestSize.Level1) {
+    std::string configuredList = "[\"com.foobar.systemapp\"]";
+    // Exact match → authorized
+    EXPECT_TRUE(AmsResidentProcessRdb::GetInstance().VerifyCallerInConfiguredList(
+        configuredList, "com.foobar.systemapp"));
+    // Substring of a configured caller but NOT an exact match → denied (F-01 regression)
+    EXPECT_FALSE(AmsResidentProcessRdb::GetInstance().VerifyCallerInConfiguredList(
+        configuredList, "com.foobar"));
+    // Caller not in the list at all → denied
+    EXPECT_FALSE(AmsResidentProcessRdb::GetInstance().VerifyCallerInConfiguredList(
+        configuredList, "com.other.app"));
+    // Empty configured list → denied
+    EXPECT_FALSE(AmsResidentProcessRdb::GetInstance().VerifyCallerInConfiguredList(
+        "", "com.foobar.systemapp"));
+    // Malformed JSON → denied
+    EXPECT_FALSE(AmsResidentProcessRdb::GetInstance().VerifyCallerInConfiguredList(
+        "not a json", "com.foobar.systemapp"));
+}
+
+/*
+ * Feature: AbilityResidentProcessRdb
  * Function: GetResidentProcessEnable
  * SubFunction: NA
  * FunctionPoints: AbilityResidentProcessRdb GetResidentProcessEnable
@@ -178,17 +203,51 @@ HWTEST_F(AbilityResidentProcessRdbTest, VerifySaConfigurationPermissions_002, Te
 
 /*
  * Feature: AbilityResidentProcessRdb
- * Function: GetSaResidentProcessRawData
+ * Function: SyncResidentProcessData
  * SubFunction: NA
- * FunctionPoints: AbilityResidentProcessRdb GetSaResidentProcessRawData_001
+ * FunctionPoints: AbilityResidentProcessRdb SyncResidentProcessData
  */
-HWTEST_F(AbilityResidentProcessRdbTest, GetSaResidentProcessRawData_001, TestSize.Level1) {
-    EXPECT_EQ(AmsResidentProcessRdb::GetInstance().GetSaResidentProcessRawData("", 1234), Rdb_Parameter_Err);
-    EXPECT_EQ(AmsResidentProcessRdb::GetInstance().GetSaResidentProcessRawData("test.com", -1),
-        Rdb_Parameter_Err);
-    // the capability config file is absent in ut, so the raw data list is empty
-    EXPECT_EQ(AmsResidentProcessRdb::GetInstance().GetSaResidentProcessRawData(
-        "com.target.bundle", 1234), Rdb_Parameter_Err);
+HWTEST_F(AbilityResidentProcessRdbTest, SyncResidentProcessData_001, TestSize.Level1) {
+    EXPECT_EQ(AmsResidentProcessRdb::GetInstance().Init(), Rdb_OK);
+    // The return depends on whether install_list_capability.json exists on the device:
+    // - present: sync succeeds (Rdb_OK)
+    // - absent:  sync aborts to avoid wiping the table (Rdb_Parse_File_Err)
+    auto result = AmsResidentProcessRdb::GetInstance().SyncResidentProcessData();
+    EXPECT_TRUE(result == Rdb_OK || result == Rdb_Parse_File_Err);
+}
+
+/*
+ * Feature: AbilityResidentProcessRdb
+ * Function: IsOtaUpgrade
+ * SubFunction: NA
+ * FunctionPoints: AbilityResidentProcessRdb IsOtaUpgrade
+ */
+HWTEST_F(AbilityResidentProcessRdbTest, IsOtaUpgrade_001, TestSize.Level1) {
+    EXPECT_EQ(AmsResidentProcessRdb::GetInstance().Init(), Rdb_OK);
+    // A missing marker (empty stored fingerprint) is treated as an OTA so that the first
+    // run after deploying the feature reconciles stale data.
+    EXPECT_TRUE(AmsResidentProcessRdb::GetInstance().IsOtaUpgrade("", "any"));
+    // A matching fingerprint is not an OTA (test-upgrade override is inactive in ut).
+    EXPECT_FALSE(AmsResidentProcessRdb::GetInstance().IsOtaUpgrade("same", "same"));
+    // An empty current fingerprint means system params are not ready yet; must not trigger
+    // OTA, otherwise an empty marker would be written and every boot would re-sync.
+    EXPECT_FALSE(AmsResidentProcessRdb::GetInstance().IsOtaUpgrade("stored", ""));
+    EXPECT_FALSE(AmsResidentProcessRdb::GetInstance().IsOtaUpgrade("", ""));
+}
+
+/*
+ * Feature: AbilityResidentProcessRdb
+ * Function: GetOtaFingerprint / SetOtaFingerprint
+ * SubFunction: NA
+ * FunctionPoints: AbilityResidentProcessRdb OtaFingerprint round-trip
+ */
+HWTEST_F(AbilityResidentProcessRdbTest, OtaFingerprint_001, TestSize.Level1) {
+    EXPECT_EQ(AmsResidentProcessRdb::GetInstance().Init(), Rdb_OK);
+    std::string value = "test_fingerprint_v1";
+    EXPECT_EQ(AmsResidentProcessRdb::GetInstance().SetOtaFingerprint(value), Rdb_OK);
+    std::string stored;
+    EXPECT_EQ(AmsResidentProcessRdb::GetInstance().GetOtaFingerprint(stored), Rdb_OK);
+    EXPECT_EQ(stored, value);
 }
 
 /*

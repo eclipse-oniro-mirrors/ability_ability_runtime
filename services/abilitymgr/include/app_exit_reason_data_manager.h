@@ -66,6 +66,10 @@ public:
      */
     int32_t ResetRecoverInfoOnOtaUpgrade();
 
+    std::string GetCurSystemFingerprint() const;
+
+    bool IsTestUpgrade() const;
+
     int32_t GetAbilityRecoverInfo(uint32_t accessTokenId,
         const std::string &moduleName, const std::string &abilityName, bool &hasRecoverInfo);
 
@@ -119,9 +123,6 @@ private:
     DistributedKv::Value ConvertAccessTokenIdToValue(uint32_t accessTokenId);
     DistributedKv::Status RestoreKvStore(DistributedKv::Status status);
     static void PutAsync(const DistributedKv::Key &key, const DistributedKv::Value &value);
-
-    std::string GetCurSystemFingerprint() const;
-    bool IsTestUpgrade() const;
 
     const DistributedKv::AppId appId_ { "app_exit_reason_storage" };
     const DistributedKv::StoreId storeId_ { "app_exit_reason_infos" };
