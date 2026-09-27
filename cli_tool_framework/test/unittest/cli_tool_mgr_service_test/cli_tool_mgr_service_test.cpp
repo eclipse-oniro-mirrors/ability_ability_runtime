@@ -3802,6 +3802,7 @@ HWTEST_F(CliToolManagerServiceTest, BatchRegisterFunctionsAsync_0100, TestSize.L
         function.functionName = "async_test_func_" + std::to_string(i);
         function.functionNamespace = "async_test_ns";
         function.functionType = FunctionType::INTENT_FUNCTION;
+        function.userId = 0;
         functions.push_back(function);
     }
     FunctionsRawData rawData;

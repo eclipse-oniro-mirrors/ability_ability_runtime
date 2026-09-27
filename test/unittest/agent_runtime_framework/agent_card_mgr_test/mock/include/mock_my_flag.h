@@ -41,6 +41,7 @@ public:
     static std::vector<AgentCard> queryAllDataCards;
     static bool syncQueryDataWithInsert;
     static std::mutex dbMutex;
+    static std::mutex bundleMutex;
     static bool retGetBundleInfo;
     static bool retGetResConfigFile;
     static bool retFromJson;
