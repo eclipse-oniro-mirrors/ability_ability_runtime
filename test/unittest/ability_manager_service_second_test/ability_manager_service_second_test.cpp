@@ -32,8 +32,10 @@
 #include "app_utils.h"
 #include "connection_observer_errors.h"
 #include "hilog_tag_wrapper.h"
+#include "mission_list_manager.h"
 #include "session/host/include/session.h"
 #include "scene_board_judgement.h"
+#include "user_controller/user_controller.h"
 #include "mock_my_status.h"
 #include "mock_sa_call.h"
 #include "unlock_screen_manager.h"
@@ -1515,11 +1517,50 @@ HWTEST_F(AbilityManagerServiceSecondTest, DumpInner_001, TestSize.Level1)
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSecondTest DumpInner_001 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     abilityMs_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
-    abilityMs_->subManagersHelper_->currentUIAbilityManager_ = std::make_shared<UIAbilityLifecycleManager>();
+    abilityMs_->subManagersHelper_->currentMissionListManager_ =
+        std::make_shared<MissionListManager>(USER_ID_U100);
+    AbilityRuntime::UserController::GetInstance().SetForegroundUserId(USER_ID_U100, 0);
     std::vector<std::string> info;
     ASSERT_NE(abilityMs_, nullptr);
     abilityMs_->DumpInner("", info);
+    EXPECT_FALSE(info.empty());
+    EXPECT_EQ(info.front(), "User ID #" + std::to_string(USER_ID_U100));
+    AbilityRuntime::UserController::GetInstance().ClearUserId(USER_ID_U100);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSecondTest DumpInner_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: DumpInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService DumpInner iterates over all foreground users
+ */
+HWTEST_F(AbilityManagerServiceSecondTest, DumpInner_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSecondTest DumpInner_002 start");
+    const int32_t userId1 = USER_ID_U100;
+    const int32_t userId2 = 200;
+    const uint64_t displayId1 = 0;
+    const uint64_t displayId2 = 1;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    abilityMs_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    abilityMs_->subManagersHelper_->currentMissionListManager_ =
+        std::make_shared<MissionListManager>(userId1);
+    AbilityRuntime::UserController::GetInstance().SetForegroundUserId(userId1, displayId1);
+    AbilityRuntime::UserController::GetInstance().SetForegroundUserId(userId2, displayId2);
+    std::vector<std::string> info;
+    ASSERT_NE(abilityMs_, nullptr);
+    abilityMs_->DumpInner("", info);
+    int32_t userIdLineCount = 0;
+    for (const auto &item : info) {
+        if (item.rfind("User ID #", 0) == 0) {
+            userIdLineCount++;
+        }
+    }
+    EXPECT_EQ(userIdLineCount, 2);
+    AbilityRuntime::UserController::GetInstance().ClearUserId(userId1);
+    AbilityRuntime::UserController::GetInstance().ClearUserId(userId2);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSecondTest DumpInner_002 end");
 }
 
 /*
