@@ -16,42 +16,62 @@
 
 #define private public
 #include "app_mgr_event.h"
+#include "app_running_record.h"
 #undef private
 
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <memory>
+#include <fuzzer/FuzzedDataProvider.h>
 #include "securec.h"
+#include "application_info.h"
 #include "configuration.h"
 using namespace OHOS::AppExecFwk;
 
 namespace OHOS {
 namespace {
 constexpr size_t U32_AT_SIZE = 4;
-}
-
-uint32_t GetU32Data(const char* ptr)
-{
-    // convert fuzz input data to an integer
-    return (ptr[0] << 24) | (ptr[1] << 16) | (ptr[2] << 8) | ptr[3];
+constexpr size_t STRING_MAX_LENGTH = 128;
 }
 
 bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
 {
+    FuzzedDataProvider fdp(reinterpret_cast<const uint8_t*>(data), size);
+
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
+    appInfo->name = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
+    int32_t recordId = fdp.ConsumeIntegral<int32_t>();
+    std::string processName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, recordId, processName);
+    appRecord->SetCallerUid(fdp.ConsumeIntegral<int32_t>());
+
     std::shared_ptr<AppRunningRecord> callerAppRecord;
-    std::shared_ptr<AppRunningRecord> appRecord;
-    std::string stringParam(data, size);
+    if (fdp.ConsumeBool()) {
+        auto callerInfo = std::make_shared<ApplicationInfo>();
+        callerInfo->bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
+        callerInfo->name = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
+        int32_t callerRecordId = fdp.ConsumeIntegral<int32_t>();
+        std::string callerProcess = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
+        callerAppRecord = std::make_shared<AppRunningRecord>(callerInfo, callerRecordId, callerProcess);
+    }
+
+    AAFwk::EventInfo eventInfo;
+    eventInfo.abilityType = fdp.ConsumeIntegral<int32_t>();
+    eventInfo.extensionType = fdp.ConsumeIntegral<int32_t>();
+
+    std::string stringParam = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
     AppMgrEventUtil::SendCreateAtomicServiceProcessEvent(callerAppRecord, appRecord,
         stringParam, stringParam);
-    AAFwk::EventInfo eventInfo;
     AppMgrEventUtil::SendProcessStartEvent(callerAppRecord, appRecord, eventInfo);
-    int32_t appUid = static_cast<int32_t>(GetU32Data(data));
-    int64_t restartTime = static_cast<int64_t>(GetU32Data(data));
+    int32_t appUid = fdp.ConsumeIntegral<int32_t>();
+    int64_t restartTime = static_cast<int64_t>(fdp.ConsumeIntegral<int32_t>());
     AppMgrEventUtil::SendReStartProcessEvent(eventInfo, appUid, restartTime);
     AppMgrEventUtil::GetCallerPid(callerAppRecord);
     std::shared_ptr<AbilityInfo> abilityInfo;
-    int32_t abilityType = static_cast<int32_t>(GetU32Data(data));
-    int32_t extensionType = static_cast<int32_t>(GetU32Data(data));
+    int32_t abilityType = fdp.ConsumeIntegral<int32_t>();
+    int32_t extensionType = fdp.ConsumeIntegral<int32_t>();
     AppMgrEventUtil::UpdateStartupType(abilityInfo, abilityType, extensionType);
     AppMgrEventUtil::SendProcessStartFailedEvent(callerAppRecord, appRecord, eventInfo);
     return true;

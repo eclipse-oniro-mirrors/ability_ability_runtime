@@ -45,9 +45,7 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
         return false;
     }
 
-    std::shared_ptr<EnvironmentCallbackFuzz> callback = nullptr;
-    context->RegisterEnvironmentCallback(callback);
-    callback = std::make_shared<EnvironmentCallbackFuzz>();
+    auto callback = std::make_shared<EnvironmentCallbackFuzz>();
     if (!callback) {
         return false;
     }

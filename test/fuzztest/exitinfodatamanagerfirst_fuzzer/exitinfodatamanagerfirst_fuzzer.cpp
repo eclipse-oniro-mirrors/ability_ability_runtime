@@ -32,7 +32,6 @@ using namespace OHOS::AbilityRuntime;
 
 namespace OHOS {
 namespace {
-constexpr size_t STRING_MAX_LENGTH = 128;
 }
 
 bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)

@@ -65,7 +65,7 @@ bool DoSomethingInterestingWithMyAPI(const char *data, size_t size)
     if (!context) {
         return false;
     }
-    std::shared_ptr<AbilityLifecycleCallbackFuzz> callback;
+    auto callback = std::make_shared<AbilityLifecycleCallbackFuzz>();
     context->RegisterAbilityLifecycleCallback(callback);
     return true;
 }

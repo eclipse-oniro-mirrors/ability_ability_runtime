@@ -32,63 +32,55 @@ using namespace OHOS::AppExecFwk;
 
 namespace OHOS {
 namespace {
-constexpr int INPUT_ZERO = 0;
-constexpr int INPUT_ONE = 1;
-constexpr int INPUT_TWO = 2;
-constexpr int INPUT_THREE = 3;
 constexpr size_t U32_AT_SIZE = 4;
-constexpr size_t OFFSET_ZERO = 24;
-constexpr size_t OFFSET_ONE = 16;
-constexpr size_t OFFSET_TWO = 8;
-constexpr uint8_t ENABLE = 2;
+constexpr size_t STRING_MAX_LENGTH = 128;
+const std::u16string AA_START_WAIT_OBSERVER_TOKEN = u"ohos.ability.IAbilityStartWithWaitObserver";
 }
-uint32_t GetU32Data(const char* ptr)
-{
-    // convert fuzz input data to an integer
-    return (ptr[INPUT_ZERO] << OFFSET_ZERO) | (ptr[INPUT_ONE] << OFFSET_ONE) | (ptr[INPUT_TWO] << OFFSET_TWO) |
-        ptr[INPUT_THREE];
-}
-class AbilityStartWithWaitObserverStubFUZZ : public AbilityStartWithWaitObserverStub {
-    public:
-        explicit AbilityStartWithWaitObserverStubFUZZ() {};
-        virtual ~ AbilityStartWithWaitObserverStubFUZZ() {};
-        int32_t NotifyAATerminateWait(const AbilityStartWithWaitObserverData &abilityStartWithWaitData) override
-        {
-            return 0;
-        };
-};
 
-sptr<Token> GetFuzzAbilityToken()
-{
-    sptr<Token> token = nullptr;
-    AbilityRequest abilityRequest;
-    abilityRequest.appInfo.bundleName = "com.example.fuzzTest";
-    abilityRequest.abilityInfo.name = "MainAbility";
-    abilityRequest.abilityInfo.type = AbilityType::DATA;
-    std::shared_ptr<AbilityRecord> abilityRecord = AbilityRecord::CreateAbilityRecord(abilityRequest);
-    if (abilityRecord) {
-        token = abilityRecord->GetToken();
-    }
-    return token;
-}
+class AbilityStartWithWaitObserverStubFUZZ : public AbilityStartWithWaitObserverStub {
+public:
+    explicit AbilityStartWithWaitObserverStubFUZZ() {};
+    virtual ~AbilityStartWithWaitObserverStubFUZZ() {};
+    int32_t NotifyAATerminateWait(const AbilityStartWithWaitObserverData &abilityStartWithWaitData) override
+    {
+        return 0;
+    };
+};
 
 bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
 {
+    FuzzedDataProvider fdp(reinterpret_cast<const uint8_t*>(data), size);
     std::shared_ptr<AbilityStartWithWaitObserverStub> infos = std::make_shared<AbilityStartWithWaitObserverStubFUZZ>();
     if (infos == nullptr) {
         return false;
     }
-    uint32_t code = static_cast<uint32_t>(GetU32Data(data));
+    AbilityStartWithWaitObserverData observerData;
+    observerData.coldStart = fdp.ConsumeBool();
+    observerData.reason = fdp.ConsumeIntegral<uint32_t>();
+    observerData.startTime = fdp.ConsumeIntegral<int64_t>();
+    observerData.foregroundTime = fdp.ConsumeIntegral<int64_t>();
+    observerData.bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
+    observerData.abilityName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
+
+    uint32_t code = static_cast<uint32_t>(IAbilityStartWithWaitObserver::Message::NOTIFY_AA_TERMINATE_WAIT);
     MessageParcel parcel;
+    parcel.WriteInterfaceToken(AA_START_WAIT_OBSERVER_TOKEN);
+    parcel.WriteParcelable(&observerData);
+    parcel.RewindRead(0);
     MessageParcel reply;
     MessageOption option;
     infos->OnRemoteRequest(code, parcel, reply, option);
-    infos->OnNotifyAATerminateWithWait(parcel, reply);
+
+    MessageParcel parcel2;
+    parcel2.WriteParcelable(&observerData);
+    parcel2.RewindRead(0);
+    infos->OnNotifyAATerminateWithWait(parcel2, reply);
+
     wptr<IRemoteObject> remote;
     AbilityStartWithWaitObserverRecipient::RemoteDiedHandler handler;
     auto abilityStartWithWaitObserverRecipient =
         std::make_shared<AbilityStartWithWaitObserverRecipient>(handler);
-        abilityStartWithWaitObserverRecipient->OnRemoteDied(remote);
+    abilityStartWithWaitObserverRecipient->OnRemoteDied(remote);
     return true;
 }
 }

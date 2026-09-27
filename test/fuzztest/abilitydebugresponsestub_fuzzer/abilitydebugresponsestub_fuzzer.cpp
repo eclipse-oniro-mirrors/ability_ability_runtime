@@ -38,9 +38,6 @@ public:
     explicit AbilityDebugResponseStubFuzz() {};
     virtual ~AbilityDebugResponseStubFuzz() {};
 
-    virtual int OnRemoteRequest(
-        uint32_t code, MessageParcel &data, MessageParcel &reply, MessageOption &option) override{ return 0; };
-
     virtual void OnAbilitysDebugStarted(const std::vector<sptr<IRemoteObject>> &tokens) override{};
     virtual void OnAbilitysDebugStoped(const std::vector<sptr<IRemoteObject>> &tokens) override{};
     virtual void OnAbilitysAssertDebugChange(
