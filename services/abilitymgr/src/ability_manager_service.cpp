@@ -9422,6 +9422,15 @@ int AbilityManagerService::KillProcess(const std::string &bundleName, bool clear
     CHECK_POINTER_AND_RETURN(bms, KILL_PROCESS_FAILED);
     int32_t userId = AbilityRuntime::UserController::GetInstance().GetCallerUserId();
     AppExecFwk::BundleInfo bundleInfo;
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    if (appIndex == 0) {
+        auto res = bms->GetBundleInfoV9(bundleName,
+            static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION), bundleInfo, userId);
+        if (res == ERR_OK && bundleInfo.applicationInfo.enabled) {
+            appIndex = bundleInfo.applicationInfo.appIndex;
+        }
+    }
+#endif
     if (appIndex == -1) {
         bms->GetDualModeBundleInfo(bundleName, userId, appIndex);
     }
