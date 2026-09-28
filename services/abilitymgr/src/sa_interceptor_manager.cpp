@@ -44,13 +44,14 @@ int32_t SAInterceptorManager::AddSAInterceptor(sptr<ISAInterceptor> interceptor)
         return AAFwk::ERR_NULL_SA_INTERCEPTOR_EXECUTER;
     }
 
-    if (ObserverExist(interceptor)) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "interceptor exist");
-        return ERR_OK;
-    }
-
     {
         std::lock_guard<std::mutex> lock(saInterceptorLock_);
+        for (auto it = saInterceptors_.begin(); it != saInterceptors_.end(); ++it) {
+            if ((*it)->AsObject() == interceptor->AsObject()) {
+                TAG_LOGI(AAFwkTag::ABILITYMGR, "interceptor exist");
+                return ERR_OK;
+            }
+        }
         saInterceptors_.emplace_back(interceptor);
         if (!deathRecipient_) {
             // add death recipient
