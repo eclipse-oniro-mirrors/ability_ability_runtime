@@ -388,6 +388,16 @@ public:
     {
         return E_OK;
     }
+
+    virtual int32_t MountCloudDiskFuse(int32_t userId, const std::string &path, int32_t &fuseFd) override
+    {
+        return E_OK;
+    }
+
+    virtual int32_t UMountCloudDiskFuse(int32_t userId, const std::string &path) override
+    {
+        return E_OK;
+    }
 };
 
 bool StorageManagerServiceMock::isZero = true;
