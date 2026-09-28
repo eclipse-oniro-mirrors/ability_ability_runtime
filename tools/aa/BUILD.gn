@@ -71,6 +71,7 @@ ohos_static_library("tools_aa_source_set") {
     "${ability_runtime_innerkits_path}/ability_manager:ability_start_setting",
     "${ability_runtime_innerkits_path}/ability_manager:mission_info",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_services_path}/common:app_util",
   ]
 
   external_deps = [
@@ -83,6 +84,7 @@ ohos_static_library("tools_aa_source_set") {
     "eventhandler:libeventhandler",
     "hicollie:libhicollie",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
     "init:libbegetutil",
     "ipc:ipc_core",
   ]
