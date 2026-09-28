@@ -176,6 +176,26 @@ HWTEST_F(ContextImplTest, GetBundleCodeDir_0100, TestSize.Level1)
 }
 
 /**
+ *@tc.name: GetBundleCodeDir_0200
+ *@tc.desc: Get bundle code directory in clone mode(clone-prefixed bundle name).
+ *@tc.type: FUNC
+ */
+HWTEST_F(ContextImplTest, GetBundleCodeDir_0200, TestSize.Level1) {
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto contextImpl = std::make_shared<AbilityRuntime::ContextImpl>();
+    EXPECT_NE(contextImpl, nullptr);
+    auto applicationInfo = std::make_shared<AppExecFwk::ApplicationInfo>();
+    EXPECT_NE(applicationInfo, nullptr);
+    applicationInfo->codePath = "/data/app/el1/bundle/public/+clone-10000+com.example.demo";
+    applicationInfo->bundleName = "com.example.demo";
+    contextImpl->SetApplicationInfo(applicationInfo);
+    contextImpl->SetFlags(CONTEXT_CREATE_BY_SYSTEM_APP);
+    auto codeDir = contextImpl->GetBundleCodeDir();
+    EXPECT_EQ(codeDir, "/data/bundles/com.example.demo");
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
  * @tc.name: IsUpdatingConfigurations_0100
  * @tc.desc: IsUpdatingConfigurations basic test.
  * @tc.type: FUNC

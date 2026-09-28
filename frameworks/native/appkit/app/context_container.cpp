@@ -32,6 +32,27 @@ constexpr int CURRENT_ACCOUNT_ID = 100;
 const int32_t TYPE_RESERVE = 1;
 const int32_t TYPE_OTHERS = 2;
 
+namespace {
+    std::string GetSandboxPath(const std::string& path, const std::string& sandboxRoot, const std::string& bundleName)
+    {
+        std::string absPrefix = std::string(AbilityBase::Constants::ABS_CODE_PATH)
+            + std::string(AbilityBase::Constants::FILE_SEPARATOR);
+        if (path.find(absPrefix) != 0) {
+            return path;
+        }
+        std::string remaining = path.substr(absPrefix.length());
+        size_t slashPos = remaining.find(std::string(AbilityBase::Constants::FILE_SEPARATOR));
+        std::string rest;
+        if (slashPos != std::string::npos) {
+            rest = remaining.substr(slashPos);
+        }
+        std::string result = sandboxRoot + std::string(AbilityBase::Constants::FILE_SEPARATOR) + bundleName + rest;
+        TAG_LOGI(AAFwkTag::APPKIT, "t30080585 GetSandboxPath before: %{public}s, after: %{public}s",
+            path.c_str(), result.c_str());
+        return result;
+    }
+} // namespace
+
 void ContextContainer::AttachBaseContext(const std::shared_ptr<ContextDeal> &base)
 {
     if (base == nullptr) {
@@ -332,7 +353,6 @@ void ContextContainer::LoadResources(BundleInfo &bundleInfo,
         TAG_LOGE(AAFwkTag::APPKIT, "null resConfig");
         return;
     }
-    std::regex pattern(AbilityBase::Constants::ABS_CODE_PATH);
     for (auto hapModuleInfo : bundleInfo.hapModuleInfos) {
         std::string loadPath;
         if (!hapModuleInfo.hapPath.empty()) {
@@ -343,7 +363,7 @@ void ContextContainer::LoadResources(BundleInfo &bundleInfo,
         if (loadPath.empty()) {
             continue;
         }
-        loadPath = std::regex_replace(loadPath, pattern, AbilityBase::Constants::LOCAL_BUNDLES);
+        loadPath = GetSandboxPath(loadPath, AbilityBase::Constants::LOCAL_BUNDLES, bundleInfo.name);
         TAG_LOGD(AAFwkTag::APPKIT, "loadPath: %{private}s", loadPath.c_str());
         if (!resourceManager->AddResource(loadPath.c_str())) {
             TAG_LOGE(AAFwkTag::APPKIT, "AddResource failed");
