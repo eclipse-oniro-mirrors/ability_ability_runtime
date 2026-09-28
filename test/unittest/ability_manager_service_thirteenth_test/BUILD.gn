@@ -95,6 +95,7 @@ ohos_unittest("ability_manager_service_thirteenth_test") {
     "${ability_runtime_services_path}/abilitymgr/src/ability_start_with_wait_observer_manager/ability_start_with_wait_observer_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/ability_token_stub.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/ams_configuration_parameter.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/ams_want_param_filter.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/app_exit_reason_data_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/app_exit_reason_helper.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/assert_fault_callback_death_mgr.cpp",

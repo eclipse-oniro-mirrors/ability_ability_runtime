@@ -22,6 +22,7 @@ abilityms_files = [
   "src/disposed_observer.cpp",
   "src/ability_manager_service.cpp",
   "src/ability_manager_stub.cpp",
+  "src/ams_want_param_filter.cpp",
   "src/ability_record.cpp",
   "src/ability_record/ability_record_utils.cpp",
   "src/ability_record/ability_request.cpp",
