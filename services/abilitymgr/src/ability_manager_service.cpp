@@ -1575,6 +1575,7 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
         }
         CHECK_POINTER_AND_RETURN(implicitStartProcessor_, ERR_IMPLICIT_START_ABILITY_FAIL);
         SetReserveInfo(param.want.GetUriString(), abilityRequest);
+        abilityRequest.specifyTokenId = param.specifyTokenId;
         result = implicitStartProcessor_->ImplicitStartAbility(abilityRequest, validUserId);
         if (result != ERR_OK) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "implicit start ability error:%{public}d", result);
@@ -2623,6 +2624,7 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
             TAG_LOGI(AAFwkTag::ABILITYMGR, "set implicit requestId:%{public}s", startOptions.requestId_.c_str());
             abilityRequest.want.SetParam(KEY_REQUEST_ID, startOptions.requestId_);
         }
+        abilityRequest.specifyTokenId = specifyTokenId;
         result = implicitStartProcessor_->ImplicitStartAbility(abilityRequest, validUserId,
             startOptions.GetWindowMode());
         if (result != ERR_OK) {
