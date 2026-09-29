@@ -27,6 +27,8 @@
 #include "mock_parameters.h"
 #include "mock_bundle_mgr_helper_status.h"
 #include "mock_multi_app_utils_status.h"
+#include "permission_constants.h"
+#include "permission_verification.h"
 #include "utils/start_ability_utils.h"
 
 using namespace OHOS;
@@ -2255,6 +2257,113 @@ HWTEST_F(ImplicitStartProcessorTest, GenerateAbilityRequestByAction_DefaultOpen_
     EXPECT_EQ(dialogAppInfos.size(), 1);
     EXPECT_EQ(dialogAppInfos.front().bundleName, DEFAULT_BUNDLE);
     TAG_LOGI(AAFwkTag::TEST, "GenerateAbilityRequestByAction_DefaultOpen_001 end");
+}
+namespace {
+int32_t RunImplicitStartWithCandidates(const std::vector<AppExecFwk::AbilityInfo> &candidates,
+    uint32_t specifyTokenId)
+{
+    MockBundleMgrHelperStatus::implicitQueryInfosRet_ = true;
+    MockBundleMgrHelperStatus::queryAbilityInfos_ = candidates;
+    PermissionVerification::verifyBackgroundCallPermissionRet_ = true;
+    PermissionVerification::verifyCallingPermissionCount_ = 0;
+    auto processor = std::make_shared<ImplicitStartProcessor>();
+    AbilityRequest request;
+    request.want.SetAction("ohos.want.action.sendData");
+    request.specifyTokenId = specifyTokenId;
+    return processor->ImplicitStartAbility(request, 100,
+        AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_UNDEFINED, "", false);
+}
+
+void ExpectGateCalledWith(uint32_t specifyTokenId)
+{
+    EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, 1);
+    EXPECT_EQ(PermissionVerification::lastPermissionName_,
+        PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY);
+    EXPECT_EQ(PermissionVerification::lastSpecifyTokenId_, specifyTokenId);
+}
+
+AppExecFwk::AbilityInfo MakeCandidateInfo(const std::string &bundleName, bool visible)
+{
+    AppExecFwk::AbilityInfo info;
+    info.bundleName = bundleName;
+    info.name = "MainAbility";
+    info.visible = visible;
+    return info;
+}
+}
+
+/**
+ * @tc.name: ImplicitStartAbility_Permission_001
+ * @tc.desc: single invisible candidate without permission is rejected
+ */
+HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_001 start");
+    PermissionVerification::verifyCallingPermissionRet_ = false;
+    auto ret = RunImplicitStartWithCandidates({ MakeCandidateInfo("com.test.implicit", false) }, 1);
+    EXPECT_EQ(ret, CHECK_PERMISSION_FAILED);
+    ExpectGateCalledWith(1);
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_001 end");
+}
+
+/**
+ * @tc.name: ImplicitStartAbility_Permission_002
+ * @tc.desc: single invisible candidate with permission is allowed
+ */
+HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_002 start");
+    PermissionVerification::verifyCallingPermissionRet_ = true;
+    auto ret = RunImplicitStartWithCandidates({ MakeCandidateInfo("com.test.implicit", false) }, 1);
+    ExpectGateCalledWith(1);
+    EXPECT_NE(ret, CHECK_PERMISSION_FAILED);
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_002 end");
+}
+
+/**
+ * @tc.name: ImplicitStartAbility_Permission_003
+ * @tc.desc: single visible candidate without permission is allowed (check only guards invisible)
+ */
+HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_003 start");
+    PermissionVerification::verifyCallingPermissionRet_ = false;
+    auto ret = RunImplicitStartWithCandidates({ MakeCandidateInfo("com.test.implicit", true) }, 1);
+    // Visible candidate short-circuits the gate before the permission call.
+    EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, 0);
+    EXPECT_NE(ret, CHECK_PERMISSION_FAILED);
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_003 end");
+}
+
+/**
+ * @tc.name: ImplicitStartAbility_Permission_004
+ * @tc.desc: no specifyTokenId skips the invisible-ability permission check
+ */
+HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_004 start");
+    PermissionVerification::verifyCallingPermissionRet_ = false;
+    auto ret = RunImplicitStartWithCandidates({ MakeCandidateInfo("com.test.implicit", false) }, 0);
+    // No specifyTokenId short-circuits the gate before the permission call.
+    EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, 0);
+    EXPECT_NE(ret, CHECK_PERMISSION_FAILED);
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_004 end");
+}
+
+/**
+ * @tc.name: ImplicitStartAbility_Permission_005
+ * @tc.desc: multiple candidates skip the invisible-ability permission check (selector dialog)
+ */
+HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_005 start");
+    PermissionVerification::verifyCallingPermissionRet_ = false;
+    auto ret = RunImplicitStartWithCandidates(
+        { MakeCandidateInfo("com.test.implicit", false), MakeCandidateInfo("com.test.other", false) }, 1);
+    // Multiple candidates short-circuit the gate before the permission call.
+    EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, 0);
+    EXPECT_NE(ret, CHECK_PERMISSION_FAILED);
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_005 end");
 }
 }  // namespace AAFwk
 }  // namespace OHOS

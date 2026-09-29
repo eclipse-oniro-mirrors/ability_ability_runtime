@@ -256,7 +256,7 @@ bool AppUtils::IsPreloadApplicationEnabled()
 
 bool AppUtils::IsForbidStart()
 {
-    return false;
+    return MyStatus::GetInstance().auIsForbidStart_;
 }
 
 bool AppUtils::IsSupportDelayedProcessExit()
