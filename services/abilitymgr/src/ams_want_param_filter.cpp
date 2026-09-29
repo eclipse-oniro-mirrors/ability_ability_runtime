@@ -67,6 +67,11 @@ const std::map<std::string, std::string> THIRD_PARTY_PARAMS_TO_STRIP = {
     { AppExecFwk::INSIGHT_INTENT_PAGE_PARAM_NAVIGATIONID, "insight intent navigation id" },
     { AppExecFwk::INSIGHT_INTENT_PAGE_PARAM_NAVDESTINATIONNAME, "insight intent nav destination name" },
     { AppExecFwk::INSIGHT_INTENT_QUERY_ENTITY_CLASS_NAME, "insight intent query entity class name" },
+
+    // UIAbility-internal param.
+    { "specifyTokenId", "specify token id" },
+    { Want::PARAM_RESV_CALLER_APP_ID, "caller app id" },
+    { Want::PARAM_RESV_CALLER_APP_IDENTIFIER, "caller app identifier" },
 };
 
 // Dynamic system-internal params (e.g. skill args / src entries) are constructed
