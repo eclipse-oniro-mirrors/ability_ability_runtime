@@ -132,7 +132,7 @@ void SessionRecord::BuildSessionInfo(CliSessionInfo &session) const
     session.sessionId = sessionId;
     session.toolName = toolName;
 
-    if ((!HasProcessExited() || !OutputDrained()) && !timeout_) {
+    if ((!HasProcessExited() || !OutputDrained()) && !Timeout()) {
         session.status = "running";
     } else {
         session.result = BuildExecResult();

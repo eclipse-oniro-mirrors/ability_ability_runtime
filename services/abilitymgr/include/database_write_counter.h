@@ -17,7 +17,7 @@
 #define OHOS_ABILITY_RUNTIME_DATABASE_WRITE_COUNTER_H
 
 #include <string>
-#include <atomic>
+#include <mutex>
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -29,7 +29,8 @@ public:
     void UpdateWriteCount(const std::string &dbPath);
 
 private:
-    std::atomic_int32_t writeCount_ = 0;
+    int32_t writeCount_ = 0;
+    std::mutex writeCountMutex_;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS
