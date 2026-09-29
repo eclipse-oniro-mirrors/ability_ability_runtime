@@ -344,6 +344,9 @@ bool AgentCardDbMgr::CheckKvStore()
 int32_t AgentCardDbMgr::InsertData(const std::string &bundleName, int32_t userId,
     const std::vector<StoredAgentCardEntry> &cards)
 {
+    if (cards.empty()) {
+        return ERR_OK;
+    }
     DistributedKv::Key key = ConvertKey(bundleName, userId);
     DistributedKv::Value value = ConvertValue(cards);
     {
@@ -366,6 +369,7 @@ int32_t AgentCardDbMgr::InsertData(const std::string &bundleName, int32_t userId
 
 int32_t AgentCardDbMgr::DeleteData(const std::string &bundleName, int32_t userId)
 {
+    TAG_LOGI(AAFwkTag::SER_ROUTER, "DeleteData bundleName: %{public}s, userId: %{public}d", bundleName.c_str(), userId);
     {
         std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
         if (!CheckKvStore()) {
