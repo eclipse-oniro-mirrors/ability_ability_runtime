@@ -29,6 +29,7 @@
 #include "cli_error_code.h"
 #include "hilog_tag_wrapper.h"
 #include "mock_single_kv_store.h"
+#include "parameters.h"
 
 using namespace testing::ext;
 
@@ -125,6 +126,19 @@ void CliToolDataManagerTest::TearDown()
 }
 
 namespace {
+constexpr const char* TEST_FINGERPRINT_KEY = "CliToolSystemFingerprint";
+
+// Must be kept in sync with SYSTEM_FINGERPRINT_PARAMS in cli_tool_data_manager.cpp
+const std::vector<std::string> TEST_FINGERPRINT_PARAMS = {
+    "const.product.software.version",
+    "const.product.build.type",
+    "const.product.brand",
+    "const.product.name",
+    "const.product.devicetype",
+    "const.product.incremental.version",
+    "const.comp.hl.product_base_version.real"
+};
+
 std::string BuildToolJson(const std::string &name, const std::string &description = "Mock tool")
 {
     nlohmann::json json = {
@@ -1118,6 +1132,307 @@ HWTEST_F(CliToolDataManagerTest, CliToolDataManager_QueryToolSummaries_0100, Tes
     EXPECT_EQ(dataManager.QueryToolSummaries(summaries), ERR_OK);
 
     TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_QueryToolSummaries_0100 end");
+}
+
+// ==================== GetSystemFingerprint Tests ====================
+
+/**
+ * @tc.name: CliToolDataManager_GetSystemFingerprint_001
+ * @tc.desc: Test GetSystemFingerprint joins non-empty system parameters with ':' separator
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolDataManagerTest, CliToolDataManager_GetSystemFingerprint_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_GetSystemFingerprint_001 start");
+
+    auto& dataManager = CliToolDataManager::GetInstance();
+    std::string fingerprint = dataManager.GetSystemFingerprint();
+
+    // Build expected fingerprint from the same system parameters
+    std::string expected;
+    for (const auto &param : TEST_FINGERPRINT_PARAMS) {
+        std::string value = system::GetParameter(param, "");
+        if (value.empty()) {
+            continue;
+        }
+        if (!expected.empty()) {
+            expected.append(":");
+        }
+        expected.append(value);
+    }
+    EXPECT_EQ(fingerprint, expected);
+
+    // Empty parameters must be skipped: no leading/trailing/duplicate separators
+    if (!fingerprint.empty()) {
+        EXPECT_NE(fingerprint.front(), ':');
+        EXPECT_NE(fingerprint.back(), ':');
+        EXPECT_EQ(fingerprint.find("::"), std::string::npos);
+    }
+
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_GetSystemFingerprint_001 end");
+}
+
+// ==================== IsSystemFingerprintMatched Tests ====================
+
+/**
+ * @tc.name: CliToolDataManager_IsSystemFingerprintMatched_001
+ * @tc.desc: Test IsSystemFingerprintMatched with empty current fingerprint returns false
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolDataManagerTest, CliToolDataManager_IsSystemFingerprintMatched_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_IsSystemFingerprintMatched_001 start");
+
+    auto& dataManager = CliToolDataManager::GetInstance();
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    mockStore->SetMockData(TEST_FINGERPRINT_KEY, "any_saved_fingerprint");
+    dataManager.kvStorePtr_ = mockStore;
+
+    // Empty current fingerprint must always trigger reload
+    EXPECT_FALSE(dataManager.IsSystemFingerprintMatched(""));
+
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_IsSystemFingerprintMatched_001 end");
+}
+
+/**
+ * @tc.name: CliToolDataManager_IsSystemFingerprintMatched_002
+ * @tc.desc: Test IsSystemFingerprintMatched returns false when no fingerprint is saved
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolDataManagerTest, CliToolDataManager_IsSystemFingerprintMatched_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_IsSystemFingerprintMatched_002 start");
+
+    auto& dataManager = CliToolDataManager::GetInstance();
+    dataManager.kvStorePtr_ = std::make_shared<MockSingleKvStore>();
+
+    // No saved fingerprint (first boot after OTA or key removed): need reload
+    EXPECT_FALSE(dataManager.IsSystemFingerprintMatched("fp_current_version"));
+
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_IsSystemFingerprintMatched_002 end");
+}
+
+/**
+ * @tc.name: CliToolDataManager_IsSystemFingerprintMatched_003
+ * @tc.desc: Test IsSystemFingerprintMatched returns true when saved fingerprint equals current one
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolDataManagerTest, CliToolDataManager_IsSystemFingerprintMatched_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_IsSystemFingerprintMatched_003 start");
+
+    auto& dataManager = CliToolDataManager::GetInstance();
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    mockStore->SetMockData(TEST_FINGERPRINT_KEY, "fp_version_1.0.0");
+    dataManager.kvStorePtr_ = mockStore;
+
+    EXPECT_TRUE(dataManager.IsSystemFingerprintMatched("fp_version_1.0.0"));
+
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_IsSystemFingerprintMatched_003 end");
+}
+
+/**
+ * @tc.name: CliToolDataManager_IsSystemFingerprintMatched_004
+ * @tc.desc: Test IsSystemFingerprintMatched returns false when OTA changed the fingerprint
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolDataManagerTest, CliToolDataManager_IsSystemFingerprintMatched_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_IsSystemFingerprintMatched_004 start");
+
+    auto& dataManager = CliToolDataManager::GetInstance();
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    mockStore->SetMockData(TEST_FINGERPRINT_KEY, "fp_version_1.0.0");
+    dataManager.kvStorePtr_ = mockStore;
+
+    // OTA upgraded the system, current fingerprint differs from the persisted one
+    EXPECT_FALSE(dataManager.IsSystemFingerprintMatched("fp_version_2.0.0"));
+
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_IsSystemFingerprintMatched_004 end");
+}
+
+/**
+ * @tc.name: CliToolDataManager_IsSystemFingerprintMatched_005
+ * @tc.desc: Test IsSystemFingerprintMatched returns false when KVStore Get fails
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolDataManagerTest, CliToolDataManager_IsSystemFingerprintMatched_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_IsSystemFingerprintMatched_005 start");
+
+    auto& dataManager = CliToolDataManager::GetInstance();
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    mockStore->Get_ = DistributedKv::Status::ERROR;
+    dataManager.kvStorePtr_ = mockStore;
+
+    EXPECT_FALSE(dataManager.IsSystemFingerprintMatched("fp_version_1.0.0"));
+
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_IsSystemFingerprintMatched_005 end");
+}
+
+// ==================== SaveSystemFingerprint Tests ====================
+
+/**
+ * @tc.name: CliToolDataManager_SaveSystemFingerprint_001
+ * @tc.desc: Test SaveSystemFingerprint rejects empty fingerprint
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolDataManagerTest, CliToolDataManager_SaveSystemFingerprint_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_SaveSystemFingerprint_001 start");
+
+    auto& dataManager = CliToolDataManager::GetInstance();
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    dataManager.kvStorePtr_ = mockStore;
+
+    EXPECT_EQ(dataManager.SaveSystemFingerprint(""), -1);
+    EXPECT_FALSE(mockStore->HasMockData(TEST_FINGERPRINT_KEY));
+
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_SaveSystemFingerprint_001 end");
+}
+
+/**
+ * @tc.name: CliToolDataManager_SaveSystemFingerprint_002
+ * @tc.desc: Test SaveSystemFingerprint persists fingerprint into KVStore on success
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolDataManagerTest, CliToolDataManager_SaveSystemFingerprint_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_SaveSystemFingerprint_002 start");
+
+    auto& dataManager = CliToolDataManager::GetInstance();
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    dataManager.kvStorePtr_ = mockStore;
+
+    EXPECT_EQ(dataManager.SaveSystemFingerprint("fp_version_2.0.0"), ERR_OK);
+    EXPECT_TRUE(mockStore->HasMockData(TEST_FINGERPRINT_KEY));
+
+    // Round-trip: the just-saved fingerprint should be matched as unchanged
+    EXPECT_TRUE(dataManager.IsSystemFingerprintMatched("fp_version_2.0.0"));
+
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_SaveSystemFingerprint_002 end");
+}
+
+/**
+ * @tc.name: CliToolDataManager_SaveSystemFingerprint_003
+ * @tc.desc: Test SaveSystemFingerprint returns -1 when KVStore Put fails
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolDataManagerTest, CliToolDataManager_SaveSystemFingerprint_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_SaveSystemFingerprint_003 start");
+
+    auto& dataManager = CliToolDataManager::GetInstance();
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    mockStore->Put_ = DistributedKv::Status::ERROR;
+    dataManager.kvStorePtr_ = mockStore;
+
+    EXPECT_EQ(dataManager.SaveSystemFingerprint("fp_version_2.0.0"), -1);
+    EXPECT_FALSE(mockStore->HasMockData(TEST_FINGERPRINT_KEY));
+
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_SaveSystemFingerprint_003 end");
+}
+
+/**
+ * @tc.name: CliToolDataManager_SaveSystemFingerprint_004
+ * @tc.desc: Test SaveSystemFingerprint when KVStore is not initialized
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolDataManagerTest, CliToolDataManager_SaveSystemFingerprint_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_SaveSystemFingerprint_004 start");
+
+    auto& dataManager = CliToolDataManager::GetInstance();
+    dataManager.kvStorePtr_ = nullptr;
+
+    // CheckKvStore either fails (UT env), or lazily opens the real store and the
+    // Put may still fail there; all three outcomes are environment dependent
+    int32_t ret = dataManager.SaveSystemFingerprint("fp_version_2.0.0");
+    EXPECT_TRUE(ret == ERR_KVSTORE_NOT_READY || ret == ERR_OK || ret == -1);
+
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_SaveSystemFingerprint_004 end");
+}
+
+// ==================== EnsureToolsLoaded Fingerprint Tests ====================
+
+/**
+ * @tc.name: CliToolDataManager_EnsureToolsLoaded_002
+ * @tc.desc: Test EnsureToolsLoaded skips reloading when persisted fingerprint matches current one
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolDataManagerTest, CliToolDataManager_EnsureToolsLoaded_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_EnsureToolsLoaded_002 start");
+
+    auto& dataManager = CliToolDataManager::GetInstance();
+    std::string currentFingerprint = dataManager.GetSystemFingerprint();
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    if (!currentFingerprint.empty()) {
+        mockStore->SetMockData(TEST_FINGERPRINT_KEY, currentFingerprint);
+    }
+    dataManager.kvStorePtr_ = mockStore;
+    dataManager.toolsLoaded_ = false;
+
+    int32_t ret = dataManager.EnsureToolsLoaded();
+    if (currentFingerprint.empty()) {
+        // Skip path is unreachable without a fingerprint, fall back to load outcome
+        EXPECT_TRUE(ret == ERR_OK || ret == ERR_FILE_NOT_FOUND);
+    } else {
+        EXPECT_EQ(ret, ERR_OK);
+        EXPECT_TRUE(dataManager.toolsLoaded_);
+        // LoadToolsFromDir must be skipped: AllCliToolNames is not rewritten
+        EXPECT_FALSE(mockStore->HasMockData("AllCliToolNames"));
+    }
+
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_EnsureToolsLoaded_002 end");
+}
+
+/**
+ * @tc.name: CliToolDataManager_EnsureToolsLoaded_003
+ * @tc.desc: Test EnsureToolsLoaded reloads tools and persists fingerprint after fingerprint change
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolDataManagerTest, CliToolDataManager_EnsureToolsLoaded_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_EnsureToolsLoaded_003 start");
+
+    auto& dataManager = CliToolDataManager::GetInstance();
+    std::string currentFingerprint = dataManager.GetSystemFingerprint();
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    mockStore->SetMockData(TEST_FINGERPRINT_KEY, "fp_stale_version_before_ota");
+    dataManager.kvStorePtr_ = mockStore;
+    dataManager.toolsLoaded_ = false;
+
+    int32_t ret = dataManager.EnsureToolsLoaded();
+    // DEFAULT_CONFIG_DIR may not exist in UT environment
+    EXPECT_TRUE(ret == ERR_OK || ret == ERR_FILE_NOT_FOUND);
+    EXPECT_EQ(static_cast<bool>(dataManager.toolsLoaded_), ret == ERR_OK);
+    if (ret == ERR_OK && !currentFingerprint.empty()) {
+        // Fingerprint is refreshed after a successful load
+        EXPECT_TRUE(dataManager.IsSystemFingerprintMatched(currentFingerprint));
+    }
+
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_EnsureToolsLoaded_003 end");
+}
+
+/**
+ * @tc.name: CliToolDataManager_EnsureToolsLoaded_004
+ * @tc.desc: Test EnsureToolsLoaded returns immediately when tools are already loaded
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolDataManagerTest, CliToolDataManager_EnsureToolsLoaded_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_EnsureToolsLoaded_004 start");
+
+    auto& dataManager = CliToolDataManager::GetInstance();
+    dataManager.kvStorePtr_ = nullptr;
+    dataManager.toolsLoaded_ = true;
+
+    // Early exit happens before KVStore check, so null KVStore still succeeds
+    EXPECT_EQ(dataManager.EnsureToolsLoaded(), ERR_OK);
+    EXPECT_TRUE(dataManager.toolsLoaded_);
+
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_EnsureToolsLoaded_004 end");
 }
 
 } // namespace CliTool

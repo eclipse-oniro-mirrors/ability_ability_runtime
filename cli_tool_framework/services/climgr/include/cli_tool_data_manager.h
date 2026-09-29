@@ -73,7 +73,9 @@ public:
     int32_t JsonArrayToTools(const std::string &jsonStr, std::vector<ToolInfo> &tools);
 
     /**
-     * @brief Ensure tools are loaded from config directory (lazy initialization)
+     * @brief Ensure tools are loaded from config directory (lazy initialization).
+     *        Config directory is read-only and only changes across OTA, so tools are
+     *        reloaded only when the persisted system version differs from the current one.
      * @return int32_t ERR_OK on success, error code otherwise
      */
     int32_t EnsureToolsLoaded();
@@ -130,6 +132,26 @@ private:
      * @return int32_t ERR_OK on success, error code otherwise
      */
     int32_t SyncToolNames(const std::vector<std::string> &currentToolNames);
+
+    /**
+     * @brief Build system fingerprint from multiple system parameters
+     * @return std::string Concatenated fingerprint, empty on failure
+     */
+    std::string GetSystemFingerprint();
+
+    /**
+     * @brief Check whether persisted system fingerprint matches current one (no OTA occurred)
+     * @param currentFingerprint Current system fingerprint string
+     * @return bool true if fingerprint match and reload can be skipped
+     */
+    bool IsSystemFingerprintMatched(const std::string &currentFingerprint);
+
+    /**
+     * @brief Persist current system fingerprint after a successful tools load
+     * @param fingerprint System fingerprint string to persist
+     * @return int32_t ERR_OK on success, error code otherwise
+     */
+    int32_t SaveSystemFingerprint(const std::string &fingerprint);
 
     DistributedKv::DistributedKvDataManager dataManager_;
     std::shared_ptr<DistributedKv::SingleKvStore> kvStorePtr_;
