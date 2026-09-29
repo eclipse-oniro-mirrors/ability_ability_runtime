@@ -57,10 +57,9 @@ bool UnwrapExecuteParam(napi_env env, napi_value param, InsightIntentExecutePara
     }
     executeParam.insightIntentName_ = insightIntentName;
 
-    napi_value napiIntentParam = nullptr;
-    napi_get_named_property(env, param, "insightIntentParam", &napiIntentParam);
+    napi_value napiIntentParam = GetPropertyValueByPropertyName(env, param, "insightIntentParam", napi_object);
     if (napiIntentParam == nullptr) {
-        TAG_LOGE(AAFwkTag::JSNAPI, "null napiIntentParam");
+        TAG_LOGE(AAFwkTag::JSNAPI, "null or non-object napiIntentParam");
         return false;
     }
 
@@ -85,12 +84,6 @@ bool UnwrapExecuteParam(napi_env env, napi_value param, InsightIntentExecutePara
         }
     }
 
-    napi_valuetype valueType = napi_undefined;
-    napi_typeof(env, napiIntentParam, &valueType);
-    if (valueType != napi_object) {
-        TAG_LOGE(AAFwkTag::JSNAPI, "wrong argument type intentParam");
-        return false;
-    }
     auto wp = std::make_shared<WantParams>();
     if (!AppExecFwk::UnwrapWantParams(env, napiIntentParam, *wp)) {
         TAG_LOGE(AAFwkTag::JSNAPI, "unwrap want fail");

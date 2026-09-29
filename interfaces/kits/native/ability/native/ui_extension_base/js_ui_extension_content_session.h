@@ -152,6 +152,7 @@ private:
     void InitDisplayId(AAFwk::Want &want);
     void InitDisplayId(AAFwk::Want &want, AAFwk::StartOptions &startOptions, napi_env &env, NapiCallbackInfo& info);
 #endif
+    void RegisterReceiveDataForResultListener(napi_env env);
 };
 
 class JsUIExtensionContentSession::CallbackWrapper {

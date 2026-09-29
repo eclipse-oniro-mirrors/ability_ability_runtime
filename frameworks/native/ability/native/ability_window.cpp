@@ -44,6 +44,14 @@ bool AbilityWindow::InitWindow(const std::shared_ptr<AbilityRuntime::AbilityCont
     sptr<Rosen::IWindowLifeCycle> &listener, int32_t displayId, const sptr<Rosen::WindowOption> &option, bool isPrivacy)
 {
     TAG_LOGD(AAFwkTag::ABILITY, "called");
+    if (abilityContext == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITY, "null abilityContext");
+        return false;
+    }
+    if (option == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITY, "null option");
+        return false;
+    }
     if (windowScene_ == nullptr) {
         windowScene_ = std::make_shared<Rosen::WindowScene>();
     }
