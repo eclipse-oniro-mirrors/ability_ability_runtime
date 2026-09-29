@@ -52,6 +52,10 @@ ErrCode ControlInterceptor::DoProcess(AbilityInterceptorParam &param)
             controlWant->SetParam(INTERCEPT_ABILITY_NAME, wantEle.GetAbilityName());
             controlWant->SetParam(INTERCEPT_MODULE_NAME, wantEle.GetModuleNameRef());
         }
+        if (controlRule.controlWant->GetBundle() == param.want.GetBundleNameRef()) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "no control want, with same bundleName");
+            return AbilityUtil::EdmErrorType(controlRule.isEdm);
+        }
         int ret = IN_PROCESS_CALL(AbilityManagerClient::GetInstance()->StartAbility(*controlRule.controlWant,
             param.requestCode, param.userId));
         if (ret != ERR_OK) {
