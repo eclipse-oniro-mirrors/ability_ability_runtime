@@ -911,6 +911,12 @@ int AbilityManagerService::StartAbilityWithSpecifyTokenIdInner(const Want &want,
     InsightIntentExecuteParam::RemoveInsightIntent(const_cast<Want &>(want));
     SkillExecuteParam::RemoveSkillParam(const_cast<Want &>(want));
     AbilityUtil::RemoveShowModeKey(const_cast<Want &>(want));
+    if ((want.GetFlags() & (Want::FLAG_AUTH_READ_URI_PERMISSION | Want::FLAG_AUTH_WRITE_URI_PERMISSION)) != 0) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "Erase URI auth flags before ability start, ability:%{public}s, flags:%{public}u",
+            want.GetAbilityNameRef().c_str(), want.GetFlags());
+    }
+    const_cast<Want &>(want).RemoveFlags(
+        Want::FLAG_AUTH_READ_URI_PERMISSION | Want::FLAG_AUTH_WRITE_URI_PERMISSION);
     auto flags = want.GetFlags();
     auto eventInfo = BuildEventInfo(want, userId);
     eventInfo->calleeId = static_cast<int32_t>(CalleeId::START_ABILITY_WITH_SPECIFY_TOKEN_ID_INNER);
@@ -949,6 +955,12 @@ int AbilityManagerService::StartAbilityWithSpecifyTokenIdInner(const Want &want,
     InsightIntentExecuteParam::RemoveInsightIntent(const_cast<Want &>(want));
     SkillExecuteParam::RemoveSkillParam(const_cast<Want &>(want));
     AbilityUtil::RemoveShowModeKey(const_cast<Want &>(want));
+    if ((want.GetFlags() & (Want::FLAG_AUTH_READ_URI_PERMISSION | Want::FLAG_AUTH_WRITE_URI_PERMISSION)) != 0) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "Erase URI auth flags before ability start, ability:%{public}s, flags:%{public}u",
+            want.GetAbilityNameRef().c_str(), want.GetFlags());
+    }
+    const_cast<Want &>(want).RemoveFlags(
+        Want::FLAG_AUTH_READ_URI_PERMISSION | Want::FLAG_AUTH_WRITE_URI_PERMISSION);
     return StartUIAbilityForOptionWrap(
         want, startOptions, callerToken, isPendingWantCaller, userId, requestCode, callerTokenId);
 }
@@ -1117,6 +1129,12 @@ int AbilityManagerService::StartAbilityOnlyUIAbility(const Want &want, const spt
     InsightIntentExecuteParam::RemoveInsightIntent(const_cast<Want &>(want));
     SkillExecuteParam::RemoveSkillParam(const_cast<Want &>(want));
     AbilityUtil::RemoveShowModeKey(const_cast<Want &>(want));
+    if ((want.GetFlags() & (Want::FLAG_AUTH_READ_URI_PERMISSION | Want::FLAG_AUTH_WRITE_URI_PERMISSION)) != 0) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "Erase URI auth flags before ability start, ability:%{public}s, flags:%{public}u",
+            want.GetAbilityNameRef().c_str(), want.GetFlags());
+    }
+    const_cast<Want &>(want).RemoveFlags(
+        Want::FLAG_AUTH_READ_URI_PERMISSION | Want::FLAG_AUTH_WRITE_URI_PERMISSION);
     auto flags = want.GetFlags();
     auto eventInfo = BuildEventInfo(want, DEFAULT_INVAL_VALUE);
     eventInfo->calleeId = static_cast<int32_t>(CalleeId::START_ABILITY_ONLY_UI_ABILITY);
