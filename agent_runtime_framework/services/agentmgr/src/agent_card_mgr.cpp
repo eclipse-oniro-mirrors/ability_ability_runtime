@@ -193,6 +193,9 @@ int32_t AgentCardMgr::HandleBundleInstall(const std::string &bundleName, const B
         storedEntry.card = entry.second;
         storedEntry.updateSource = AgentCardUpdateSource::BUNDLE;
     }
+    if (finalEntries.empty() && ret == ERR_OK) {
+        return AgentCardDbMgr::GetInstance().DeleteData(bundleName, userId);
+    }
     return AgentCardDbMgr::GetInstance().InsertData(bundleName, userId, finalEntries);
 }
 
