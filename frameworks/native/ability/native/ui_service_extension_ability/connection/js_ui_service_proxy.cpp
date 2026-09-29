@@ -40,7 +40,12 @@ napi_value JsUIServiceProxy::CreateJsUIServiceProxy(napi_env env, const sptr<IRe
 
     std::unique_ptr<JsUIServiceProxy> proxy = std::make_unique<JsUIServiceProxy>(impl, hostProxy);
     proxy->SetConnectionId(connectionId);
-    napi_wrap(env, object, proxy.release(), Finalizer, nullptr, nullptr);
+    napi_status status = napi_wrap(env, object, proxy.get(), Finalizer, nullptr, nullptr);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::UISERVC_EXT, "napi_wrap failed %{public}d", status);
+        return CreateJsUndefined(env);
+    }
+    proxy.release();
 
     const char *moduleName = "JsUIServiceProxy";
     BindNativeFunction(env, object, "sendData", moduleName, JsUIServiceProxy::SendData);
