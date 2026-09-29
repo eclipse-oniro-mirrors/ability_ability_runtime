@@ -15,6 +15,7 @@
 
 #include "dump_runtime_helper.h"
 
+#include <cstdio>
 #include <dfx_signal_handler.h>
 #include <malloc.h>
 #include <pthread.h>
@@ -34,6 +35,7 @@
 #include "directory_ex.h"
 #include "storage_acl.h"
 #include "hidebug_dump.h"
+#include "dump_fd_guard.h"
 #ifdef CJ_FRONTEND
 #include "cj_runtime.h"
 #endif
@@ -357,8 +359,8 @@ void DumpRuntimeHelper::DumpCjHeap(const OHOS::AppExecFwk::CjHeapDumpInfo &info)
             TAG_LOGE(AAFwkTag::APPKIT, "fd:%{public}d.\n", fd);
             return;
         }
+        DumpFdGuard snapshotFdGuard(fd);
         cjEnv->dumpHeapSnapshot(fd);
-        close(fd);
         return;
     }
     if (info.needGc) {
@@ -413,10 +415,10 @@ void DumpRuntimeHelper::DumpNativeHeap(const OHOS::AppExecFwk::MemDumpInfo &info
         TAG_LOGI(AAFwkTag::APPKIT, "dump native no need leakobj");
         int32_t fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::NATIVE_SNAPSHOT));
         if (fd > 0) {
+            DumpFdGuard nativeFdGuard(fd);
             if (!GetSnapshot(fd)) {
                 TAG_LOGE(AAFwkTag::APPKIT, "GetSnapshot failed");
             }
-            close(fd);
         } else {
             TAG_LOGE(AAFwkTag::APPKIT, "RequestFileDescriptor failed");
         }
@@ -528,15 +530,14 @@ void DumpRuntimeHelper::DumpKmpKotlinHeap(const OHOS::AppExecFwk::MemDumpInfo &i
         TAG_LOGE(AAFwkTag::APPKIT, "RequestFileDescriptor failed");
         return;
     }
+    DumpFdGuard kmpFdGuard(fd);
     auto& dumpListener = OHOS::HiviewDFX::HidebugMemDumpListener::GetInstance();
     bool ret = dumpListener.TriggerListener("KMP", fd,
         OH_HiDebug_MemListenerType::OH_HIDEBUG_DUMP_SNAPSHOT, info.mayReportToOEM, nullptr);
     if (!ret) {
         TAG_LOGE(AAFwkTag::APPKIT, "TriggerListener failed");
-        close(fd);
         return;
     }
-    close(fd);
 }
 
 void DumpRuntimeHelper::DumpJsvmHeap(const OHOS::AppExecFwk::MemDumpInfo &info)
@@ -704,12 +705,11 @@ void DumpRuntimeHelper::WriteCheckList(const std::string &checkList)
         TAG_LOGE(AAFwkTag::APPKIT, "fd:%{public}d.\n", fd);
         return;
     }
+    DumpFdGuard checkListFdGuard(fd);
     if (write(fd, checkList.c_str(), strlen(checkList.c_str())) == -1) {
         TAG_LOGE(AAFwkTag::APPKIT, "fd:%{public}d, errno:%{public}d.\n", fd, errno);
-        close(fd);
         return;
     }
-    close(fd);
 }
 
 void DumpRuntimeHelper::CreateDirDelay(const std::string &path)

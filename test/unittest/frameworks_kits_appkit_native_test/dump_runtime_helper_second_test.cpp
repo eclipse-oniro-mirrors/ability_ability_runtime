@@ -14,11 +14,18 @@
  */
 #include <gtest/gtest.h>
 
+#include <cerrno>
+#include <cstdio>
+#include <fcntl.h>
+#include <unistd.h>
+#include <utility>
+
 #define private public
 #include "dump_runtime_helper.h"
 #undef private
 
 #include "app_loader.h"
+#include "dump_fd_guard.h"
 #include "js_runtime.h"
 #include "js_runtime_utils.h"
 #include "ohos_application.h"
@@ -27,6 +34,11 @@ using namespace testing::ext;
 
 namespace OHOS {
 namespace AppExecFwk {
+namespace {
+constexpr const char *DEV_NULL_PATH = "/dev/null";
+constexpr uint64_t UNOWNED_TAG = 0;
+}
+
 class DumpRuntimeHelperTestSecond : public testing::Test {
 public:
     DumpRuntimeHelperTestSecond()
@@ -537,6 +549,94 @@ HWTEST_F(DumpRuntimeHelperTestSecond, DumpJsHeap_1100, TestSize.Level1)
     info.needSnapshot = true;
     helper->DumpJsHeap(info);
     EXPECT_NE(application, nullptr);
+}
+
+/**
+ * @tc.number: DumpFdGuard_0100
+ * @tc.name: DumpFdGuard
+ * @tc.desc: DumpFdGuard claims ownership on construction and closes the fd with the valid tag.
+ */
+HWTEST_F(DumpRuntimeHelperTestSecond, DumpFdGuard_0100, TestSize.Level1)
+{
+    int32_t fd = open(DEV_NULL_PATH, O_RDWR | O_CLOEXEC);
+    ASSERT_GE(fd, 0);
+    ASSERT_EQ(fdsan_get_owner_tag(fd), UNOWNED_TAG);
+    {
+        DumpFdGuard fdGuard(fd);
+        EXPECT_EQ(fdGuard.Get(), fd);
+        EXPECT_EQ(fdsan_get_owner_tag(fd), static_cast<uint64_t>(DUMP_FD_SAN_TAG));
+    }
+    EXPECT_EQ(fdsan_get_owner_tag(fd), UNOWNED_TAG);
+    int32_t ret = close(fd);
+    int32_t savedErrno = errno;
+    EXPECT_EQ(ret, -1);
+    EXPECT_EQ(savedErrno, EBADF);
+}
+
+/**
+ * @tc.number: DumpFdGuard_0200
+ * @tc.name: DumpFdGuard
+ * @tc.desc: DumpFdGuard neither claims nor closes an invalid fd.
+ */
+HWTEST_F(DumpRuntimeHelperTestSecond, DumpFdGuard_0200, TestSize.Level1)
+{
+    uint64_t stdinTag = fdsan_get_owner_tag(STDIN_FILENO);
+    uint64_t stdoutTag = fdsan_get_owner_tag(STDOUT_FILENO);
+    {
+        DumpFdGuard fdGuard(-1);
+        EXPECT_EQ(fdGuard.Get(), -1);
+    }
+    EXPECT_EQ(fdsan_get_owner_tag(STDIN_FILENO), stdinTag);
+    EXPECT_EQ(fdsan_get_owner_tag(STDOUT_FILENO), stdoutTag);
+    EXPECT_NE(fcntl(STDIN_FILENO, F_GETFD), -1);
+}
+
+/**
+ * @tc.number: DumpFdGuard_0300
+ * @tc.name: DumpFdGuard
+ * @tc.desc: Move construction transfers ownership so the source guard never closes the fd.
+ */
+HWTEST_F(DumpRuntimeHelperTestSecond, DumpFdGuard_0300, TestSize.Level1)
+{
+    int32_t fd = open(DEV_NULL_PATH, O_RDWR | O_CLOEXEC);
+    ASSERT_GE(fd, 0);
+    {
+        DumpFdGuard srcGuard(fd);
+        EXPECT_EQ(fdsan_get_owner_tag(fd), static_cast<uint64_t>(DUMP_FD_SAN_TAG));
+        DumpFdGuard dstGuard(std::move(srcGuard));
+        EXPECT_EQ(srcGuard.Get(), -1);
+        EXPECT_EQ(dstGuard.Get(), fd);
+        EXPECT_EQ(fdsan_get_owner_tag(fd), static_cast<uint64_t>(DUMP_FD_SAN_TAG));
+    }
+    EXPECT_EQ(fdsan_get_owner_tag(fd), UNOWNED_TAG);
+    int32_t ret = close(fd);
+    int32_t savedErrno = errno;
+    EXPECT_EQ(ret, -1);
+    EXPECT_EQ(savedErrno, EBADF);
+}
+
+/**
+ * @tc.number: DumpFdGuard_0400
+ * @tc.name: DumpFdGuard
+ * @tc.desc: Move assignment closes the previously held fd exactly once.
+ */
+HWTEST_F(DumpRuntimeHelperTestSecond, DumpFdGuard_0400, TestSize.Level1)
+{
+    int32_t fd1 = open(DEV_NULL_PATH, O_RDWR | O_CLOEXEC);
+    int32_t fd2 = open(DEV_NULL_PATH, O_RDWR | O_CLOEXEC);
+    ASSERT_GE(fd1, 0);
+    ASSERT_GE(fd2, 0);
+    {
+        DumpFdGuard guard1(fd1);
+        DumpFdGuard guard2(fd2);
+        guard1 = std::move(guard2);
+        EXPECT_EQ(guard1.Get(), fd2);
+        EXPECT_EQ(guard2.Get(), -1);
+        EXPECT_EQ(fdsan_get_owner_tag(fd1), UNOWNED_TAG);
+        EXPECT_EQ(fdsan_get_owner_tag(fd2), static_cast<uint64_t>(DUMP_FD_SAN_TAG));
+    }
+    EXPECT_EQ(fdsan_get_owner_tag(fd1), UNOWNED_TAG);
+    EXPECT_EQ(fdsan_get_owner_tag(fd2), UNOWNED_TAG);
 }
 }
 }
