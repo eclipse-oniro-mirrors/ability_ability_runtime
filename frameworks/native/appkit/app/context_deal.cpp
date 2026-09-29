@@ -49,7 +49,7 @@ namespace {
             rest = remaining.substr(slashPos);
         }
         std::string result = sandboxRoot + std::string(AbilityBase::Constants::FILE_SEPARATOR) + bundleName + rest;
-        TAG_LOGI(AAFwkTag::APPKIT, "t30080585 GetSandboxPath before:%{public}s, after:%{public}s",
+        TAG_LOGI(AAFwkTag::APPKIT, "GetSandboxPath lnitialPath: %{public}s, processingPath: %{public}s",
             path.c_str(), result.c_str());
         return result;
     }
