@@ -27,6 +27,11 @@ config("auto_fill_manager_public_config") {
 }
 
 ohos_shared_library("auto_fill_manager") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
   branch_protector_ret = "pac_ret"
   branch_protector_frt = "bti"
   public_configs = [ ":auto_fill_manager_public_config" ]
