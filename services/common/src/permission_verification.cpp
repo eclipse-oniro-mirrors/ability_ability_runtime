@@ -497,7 +497,7 @@ int PermissionVerification::JudgeInvisibleAndBackground(const VerificationInfo &
         TAG_LOGE(AAFwkTag::DEFAULT, "caller INVISIBLE permission invalid");
         return ABILITY_VISIBLE_FALSE_DENY_REQUEST;
     }
-    if (!JudgeStartAbilityFromBackground(verificationInfo.isBackgroundCall, specifyTokenId)) {
+    if (!JudgeStartAbilityFromBackground(verificationInfo.isBackgroundCall, verificationInfo.skillCallerTokenId)) {
         TAG_LOGE(AAFwkTag::DEFAULT, "caller START_ABILITIES_FROM_BACKGROUND permission invalid");
         return CHECK_PERMISSION_FAILED;
     }
