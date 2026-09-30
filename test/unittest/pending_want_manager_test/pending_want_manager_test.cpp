@@ -812,6 +812,29 @@ HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_3100, TestSize.Level1)
 }
 
 /*
+ * @tc.number    : PendingWantManagerTest_3101
+ * @tc.name      : PendingWantManager CancelWantSenderLocked record not found
+ * @tc.desc      : 1.Cancel a record that is not in wantRecords_, the canceled flag should not be set.
+ */
+HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_3101, TestSize.Level1)
+{
+    Want want;
+    ElementName element("device", "bundleName", "abilityName");
+    want.SetElement(element);
+    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 0);
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    EXPECT_NE(pendingManager_, nullptr);
+    std::shared_ptr<PendingWantKey> key = MakeWantKey(wantSenderInfo);
+    sptr<PendingWantRecord> pendingRecord =
+        new (std::nothrow) PendingWantRecord(pendingManager_, 1, 0, nullptr, key);
+    EXPECT_NE(pendingRecord, nullptr);
+    EXPECT_FALSE(pendingRecord->GetCanceled());
+    pendingManager_->CancelWantSenderLocked(*pendingRecord, true);
+    EXPECT_FALSE(pendingRecord->GetCanceled());
+    EXPECT_TRUE((int)pendingManager_->wantRecords_.size() == 0);
+}
+
+/*
  * @tc.number    : PendingWantManagerTest_3200
  * @tc.name      : PendingWantManager GetPendingRequestWant
  * @tc.desc      : 1.GetPendingRequestWant, Get pendingRecord want object.
