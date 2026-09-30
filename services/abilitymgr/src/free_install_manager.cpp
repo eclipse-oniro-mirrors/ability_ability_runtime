@@ -24,7 +24,6 @@
 #include "insight_intent_execute_manager.h"
 #include "insight_intent_utils.h"
 #include "ipc_capacity_wrap.h"
-#include "ipc_skeleton.h"
 #include "permission_constants.h"
 #include "start_ability_utils.h"
 #include "support_system_ability_permission.h"
@@ -102,7 +101,7 @@ bool FreeInstallManager::IsTopAbility(sptr<IRemoteObject> callerToken)
     }
 #ifdef SUPPORT_SCREEN
     if (OHOS::Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+        int32_t userId = caller->GetOwnerMissionUserId();
         OHOS::Rosen::FocusChangeInfo focusChangeInfo;
         OHOS::Rosen::WindowManager::GetInstance(userId).GetFocusWindowInfoByAbilityToken(focusChangeInfo, callerToken);
         return focusChangeInfo.abilityToken_ == callerToken;

@@ -19,7 +19,6 @@
 #include "ability_manager_service.h"
 #include "ability_util.h"
 #include "hitrace_meter.h"
-#include "ipc_skeleton.h"
 #include "utils/update_caller_info_util.h"
 #include "int_wrapper.h"
 #include "modal_system_ui_extension.h"
@@ -518,9 +517,9 @@ int DialogSessionManager::CreateModalDialogCommon(const Want &replaceWant, sptr<
     sptr<IRemoteObject> token;
     bool isParent = false;
     int32_t ret = ERR_INVALID_VALUE;
+    int32_t userId = callerRecord->GetOwnerMissionUserId();
 #ifdef SUPPORT_SCREEN
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
         auto sceneSessionManager = Rosen::SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         if (sceneSessionManager == nullptr) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "sceneSessionManager null");
@@ -547,7 +546,7 @@ int DialogSessionManager::CreateModalDialogCommon(const Want &replaceWant, sptr<
     TAG_LOGD(AAFwkTag::ABILITYMGR, "create modal ui extension for system");
     (const_cast<Want &>(replaceWant)).SetParam(UIEXTENSION_MODAL_TYPE, 1);
     (const_cast<Want &>(replaceWant)).SetParam(SUPPORT_CLOSE_ON_BLUR, true);
-    return IN_PROCESS_CALL(connection->CreateModalUIExtension(replaceWant)) ? ERR_OK : INNER_ERR;
+    return IN_PROCESS_CALL(connection->CreateModalUIExtension(replaceWant, userId)) ? ERR_OK : INNER_ERR;
 }
 
 int DialogSessionManager::HandleErmsResult(AbilityRequest &abilityRequest, int32_t userId,

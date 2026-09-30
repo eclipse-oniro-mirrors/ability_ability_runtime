@@ -39,8 +39,11 @@ public:
      */
     const AppExecFwk::AbilityInfo &GetAbilityInfo() const;
 
+    int32_t GetOwnerMissionUserId();
+
 public:
     AppExecFwk::AbilityInfo abilityInfo;
+    int32_t ownerMissionUserId_ = 0;
 };
 }  // namespace AAFwk
 }  // namespace OHOS
