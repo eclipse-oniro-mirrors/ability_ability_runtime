@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 
 #include "ams_want_param_filter.h"
+#include "int_wrapper.h"
 #include "mock_my_status.h"
 #include "skill_execute_param.h"
 #include "string_wrapper.h"
@@ -60,6 +61,45 @@ HWTEST_F(AMSWantParamFilterTest, AMSWantParamFilter_ThirdParty_StripsParam, Func
     params.SetParam(AppExecFwk::SKILL_EXECUTE_PARAM_SKILL_NAME, String::Box("forged"));
     AMSWantParamFilter::GetInstance()->OnDeserialized(params);
     EXPECT_FALSE(params.HasParam(AppExecFwk::SKILL_EXECUTE_PARAM_SKILL_NAME));
+}
+
+/**
+ * @tc.number: AMSWantParamFilter_ThirdParty_StripsSpecifyTokenId
+ * @tc.name: third-party caller strips specifyTokenId.
+ * @tc.desc: a cross-process third-party caller has specifyTokenId stripped.
+ */
+HWTEST_F(AMSWantParamFilterTest, AMSWantParamFilter_ThirdParty_StripsSpecifyTokenId, Function | MediumTest | Level1)
+{
+    WantParams params;
+    params.SetParam("specifyTokenId", Integer::Box(1));
+    AMSWantParamFilter::GetInstance()->OnDeserialized(params);
+    EXPECT_FALSE(params.HasParam("specifyTokenId"));
+}
+
+/**
+ * @tc.number: AMSWantParamFilter_ThirdParty_StripsCallerAppId
+ * @tc.name: third-party caller strips callerAppId
+ * @tc.desc: a cross-process third-party caller has callerAppId stripped.
+ */
+HWTEST_F(AMSWantParamFilterTest, AMSWantParamFilter_ThirdParty_StripsCallerAppId, Function | MediumTest | Level1)
+{
+    WantParams params;
+    params.SetParam(Want::PARAM_RESV_CALLER_APP_ID, String::Box("forged"));
+    AMSWantParamFilter::GetInstance()->OnDeserialized(params);
+    EXPECT_FALSE(params.HasParam(Want::PARAM_RESV_CALLER_APP_ID));
+}
+
+/**
+ * @tc.number: AMSWantParamFilter_ThirdParty_CallerAppIdentifier
+ * @tc.name: third-party caller strips callerAppIdentifier
+ * @tc.desc: a cross-process third-party caller has callerAppIdentifier stripped.
+ */
+HWTEST_F(AMSWantParamFilterTest, AMSWantParamFilter_ThirdParty_CallerAppIdentifier, Function | MediumTest | Level1)
+{
+    WantParams params;
+    params.SetParam(Want::PARAM_RESV_CALLER_APP_IDENTIFIER, String::Box("forged"));
+    AMSWantParamFilter::GetInstance()->OnDeserialized(params);
+    EXPECT_FALSE(params.HasParam(Want::PARAM_RESV_CALLER_APP_IDENTIFIER));
 }
 
 /**
