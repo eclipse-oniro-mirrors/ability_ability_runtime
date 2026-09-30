@@ -22,6 +22,7 @@
 
 #include "itask_manager.h"
 #include "task_handler_wrap.h"
+#include "task_manager_stub.h"
 #include "task_mgr/task_record.h"
 
 namespace OHOS {

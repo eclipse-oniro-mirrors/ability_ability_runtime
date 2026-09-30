@@ -6764,6 +6764,11 @@ void AppMgrServiceInner::SendProcessKillEvent(std::shared_ptr<AppRunningRecord> 
     }
 }
 
+void AppMgrServiceInner::SetTaskManagerService(const sptr<TaskManagerService> &taskManagerService)
+{
+    taskManagerService_ = taskManagerService;
+}
+
 void AppMgrServiceInner::OnRemoteDied(const wptr<IRemoteObject> &remote, bool isRenderProcess, bool isChildProcess,
     bool isImageProcess)
 {

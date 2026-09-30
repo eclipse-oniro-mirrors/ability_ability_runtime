@@ -16,6 +16,7 @@
 #ifndef OHOS_APP_EXECFWK_TASK_MGR_COMMON_H
 #define OHOS_APP_EXECFWK_TASK_MGR_COMMON_H
 
+#include <cstddef>
 #include <cstdint>
 
 namespace OHOS {

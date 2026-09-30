@@ -16,6 +16,7 @@
 #include "ets_task_manager.h"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 
@@ -71,7 +72,7 @@ void CallbackInvalidParam(ani_env *env, ani_object callback)
 {
     AppExecFwk::AsyncCallback(env, callback,
         AbilityRuntime::EtsErrorUtil::CreateError(env,
-            static_cast<int32_t>(AbilityRuntime::AbilityErrorCode::ERROR_CODE_INVALID_PARAM)), nullptr);
+            AbilityRuntime::AbilityErrorCode::ERROR_CODE_INVALID_PARAM), nullptr);
 }
 } // namespace
 

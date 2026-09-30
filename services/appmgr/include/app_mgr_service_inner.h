@@ -929,10 +929,7 @@ public:
         eventHandler_ = eventHandler;
     }
 
-    void SetTaskManagerService(const sptr<TaskManagerService> &taskManagerService)
-    {
-        taskManagerService_ = taskManagerService;
-    }
+    void SetTaskManagerService(const sptr<TaskManagerService> &taskManagerService);
 
     /**
      * HandleAbilityAttachTimeOut, called by ability manager service when an ability is loaded timeout.

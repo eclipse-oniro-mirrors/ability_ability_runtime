@@ -23,6 +23,8 @@
 
 namespace OHOS {
 namespace AppExecFwk {
+using namespace OHOS::AAFwk;
+
 TaskManagerClient &TaskManagerClient::GetInstance()
 {
     static TaskManagerClient instance;
@@ -42,7 +44,11 @@ int32_t TaskManagerClient::StartTask(const std::string &taskId, int32_t priority
         TAG_LOGE(AAFwkTag::TASKMGR, "task manager proxy is null");
         return ABILITY_SERVICE_NOT_CONNECTED;
     }
-    return proxy->StartTask(taskId, priority);
+    auto ret = proxy->StartTask(taskId, priority);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::TASKMGR, "start task failed: %{public}d", ret);
+    }
+    return ret;
 }
 
 int32_t TaskManagerClient::FinishTask(const std::string &taskId)
@@ -53,7 +59,11 @@ int32_t TaskManagerClient::FinishTask(const std::string &taskId)
         TAG_LOGE(AAFwkTag::TASKMGR, "task manager proxy is null");
         return ABILITY_SERVICE_NOT_CONNECTED;
     }
-    return proxy->FinishTask(taskId);
+    auto ret = proxy->FinishTask(taskId);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::TASKMGR, "finish task failed: %{public}d", ret);
+    }
+    return ret;
 }
 
 sptr<ITaskManager> TaskManagerClient::GetTaskManagerProxy()

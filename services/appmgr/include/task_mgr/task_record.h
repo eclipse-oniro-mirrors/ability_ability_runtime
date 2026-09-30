@@ -16,6 +16,7 @@
 #ifndef OHOS_APP_EXECFWK_TASK_MGR_TASK_RECORD_H
 #define OHOS_APP_EXECFWK_TASK_MGR_TASK_RECORD_H
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <set>

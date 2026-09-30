@@ -33,6 +33,7 @@
 
 namespace OHOS {
 namespace AppExecFwk {
+using namespace OHOS::AAFwk;
 namespace {
 constexpr int64_t MILLIS_PER_SECOND = 1000;
 // Keep in sync with BASE_USER_RANGE in app_mgr_service_inner.h.
