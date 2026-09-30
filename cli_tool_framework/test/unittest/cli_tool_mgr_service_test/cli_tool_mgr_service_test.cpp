@@ -5078,54 +5078,37 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_ToolMode_InvokesBeforeCallCmd_0100, 
 }
 
 /**
- * @tc.name: ExecCmd_ToolMode_SetupCmdSession_SetsCliCmdType_0100
- * @tc.desc: SetupCmdSession (tool-command-mode path) sets sessionType=CLI_CMD on the session record
+ * @tc.name: ExecCmd_ToolMode_CliCmdType_DispatchesAfterCallCmd_0100
+ * @tc.desc: CLI_CMD sessionType (set by SetupCmdSession) dispatches AfterCallCmd not AfterCallTool
  * @tc.type: FUNC
  */
-HWTEST_F(CliToolManagerServiceTest, ExecCmd_ToolMode_SetupCmdSession_SetsCliCmdType_0100, TestSize.Level1)
+HWTEST_F(CliToolManagerServiceTest, ExecCmd_ToolMode_CliCmdType_DispatchesAfterCallCmd_0100, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "ExecCmd_ToolMode_SetupCmdSession_SetsCliCmdType_0100 start");
+    TAG_LOGI(AAFwkTag::TEST, "ExecCmd_ToolMode_CliCmdType_DispatchesAfterCallCmd_0100 start");
+    SetDeveloperMode(true);
 
-    CliToolDataManagerMock::getToolByNameResult = ERR_OK;
-    service_->ioMonitor_ = IOMonitor::Create();
+    auto hook = sptr<MockCliHook>::MakeSptr();
+    service_->RegisterCliHook(hook, 0x0F);
 
-    ExecToolParam toolParam;
-    toolParam.toolName = "testtool";
-    toolParam.options.timeout = 0;
-    toolParam.options.background = false;
+    // CLI_CMD sessionType (set by SetupCmdSession for ExecCmd tool-mode) → AfterCallCmd fires
+    CliSessionInfo cmdSession = MakeSessionWithResult(0, "cmd_result");
+    SessionRecord cmdRecord;
+    PrepareHookRecord(cmdRecord, SessionType::CLI_CMD);
+    service_->InvokeAfterCallTool(cmdSession, cmdRecord);
+    EXPECT_EQ(hook->afterCallCmdCount, 1);
+    EXPECT_EQ(hook->afterCallToolCount, 0);
 
-    ToolInfo toolInfo;
-    toolInfo.name = "testtool";
-    toolInfo.executablePath = "/system/bin/testtool";
+    // CLI sessionType (default, used by direct ExecTool API) → AfterCallTool fires
+    CliSessionInfo toolSession = MakeSessionWithResult(0, "tool_result");
+    SessionRecord toolRecord;
+    PrepareHookRecord(toolRecord, SessionType::CLI);
+    service_->InvokeAfterCallTool(toolSession, toolRecord);
+    EXPECT_EQ(hook->afterCallToolCount, 1);
+    EXPECT_EQ(hook->afterCallCmdCount, 1);
 
-    CliToolManagerService::CmdSessionContext context;
-    context.eventId = "event_session_type";
-    context.subscriptionId = "sub_session_type";
-    context.scheduler = new TestScheduler();
-    context.callerPid = IPCSkeleton::GetCallingPid();
-    context.callerUid = IPCSkeleton::GetCallingUid();
-    context.tokenId = IPCSkeleton::GetCallingTokenID();
-
-    int32_t result = service_->SetupCmdSession(toolParam, toolInfo, "sandbox_cfg", "testtool", context);
-
-    EXPECT_EQ(result, ERR_OK);
-    EXPECT_EQ(service_->sessionRecords_.size(), 1u);
-
-    auto it = service_->sessionRecords_.begin();
-    ASSERT_NE(it->second, nullptr);
-    EXPECT_EQ(it->second->sessionType, SessionType::CLI_CMD);
-
-    // Cleanup
-    {
-        std::lock_guard<ffrt::mutex> guard(service_->sessionsMutex_);
-        service_->sessionRecords_.clear();
-    }
-    if (service_->ioMonitor_ != nullptr) {
-        service_->ioMonitor_->Stop();
-        service_->ioMonitor_ = nullptr;
-    }
-
-    TAG_LOGI(AAFwkTag::TEST, "ExecCmd_ToolMode_SetupCmdSession_SetsCliCmdType_0100 end");
+    service_->UnregisterCliHook(hook);
+    SetDeveloperMode(false);
+    TAG_LOGI(AAFwkTag::TEST, "ExecCmd_ToolMode_CliCmdType_DispatchesAfterCallCmd_0100 end");
 }
 
 /**
