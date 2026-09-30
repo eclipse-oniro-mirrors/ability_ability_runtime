@@ -46,9 +46,11 @@ namespace {
         if (slashPos != std::string::npos) {
             rest = remaining.substr(slashPos);
         }
+        if (bundleName.empty() || bundleName.find("..") != std::string::npos ||
+            bundleName.find("/") != std::string::npos || sandboxRoot.empty()) {
+            return path;
+        }
         std::string result = sandboxRoot + std::string(AbilityBase::Constants::FILE_SEPARATOR) + bundleName + rest;
-        TAG_LOGI(AAFwkTag::APPKIT, "GetSandboxPath lnitialPath: %{public}s, processingPath: %{public}s",
-            path.c_str(), result.c_str());
         return result;
     }
 } // namespace
