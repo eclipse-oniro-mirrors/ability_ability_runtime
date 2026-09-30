@@ -239,6 +239,7 @@ bool NapiAsyncTask::StartWithDefaultQos(const std::string &name, napi_env env)
     if (env == nullptr) {
         return false;
     }
+    env_ = env;
     if (execute_ == nullptr) {
         return SendNapiEvent(env, napi_eprio_high);
     }
