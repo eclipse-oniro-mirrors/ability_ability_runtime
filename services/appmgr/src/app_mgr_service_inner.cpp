@@ -119,6 +119,7 @@
 #include "cache_process_manager.h"
 #include "res_sched_util.h"
 #include "session_manager_lite.h"
+#include "task_mgr/task_manager_service.h"
 #include "user_controller/user_controller.h"
 #ifdef APP_NO_RESPONSE_DIALOG
 #include "fault_data.h"
@@ -6780,6 +6781,11 @@ void AppMgrServiceInner::OnRemoteDied(const wptr<IRemoteObject> &remote, bool is
     if (appRecord == nullptr) {
         TAG_LOGI(AAFwkTag::APPMGR, "null appRecord");
         return;
+    }
+    // Already on the app_mgr serial queue here: end every task created by the dead process
+    // before the heavy cleanup below, so the <=1s perception requirement is met.
+    if (taskManagerService_ != nullptr) {
+        taskManagerService_->OnProcessDied(appRecord->GetPid(), appRecord->GetUid());
     }
     CheckMakeImageState(appRecord, ImageError::ERR_TEMPLATE_DIED);
     SendProcessKillEvent(appRecord);

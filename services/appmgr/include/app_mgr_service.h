@@ -55,6 +55,7 @@ struct AppMgrServiceState {
 };
 
 class AMSEventHandler;
+class TaskManagerService;
 
 class AppMgrService : public SystemAbility, public AppMgrStub {
 public:
@@ -417,6 +418,14 @@ public:
      * @return Returns the dump result.
      */
     int Dump(int fd, const std::vector<std::u16string>& args) override;
+
+    /**
+     * @brief Remote request entry with interface-descriptor routing: requests carrying the
+     * ITaskManager descriptor are delegated to the TaskManagerService stub, while IAppMgr
+     * traffic keeps the original AppMgrStub dispatch untouched.
+     */
+    int OnRemoteRequest(uint32_t code, MessageParcel &data, MessageParcel &reply,
+        MessageOption &option) override;
 
     /**
      * @brief called when the abilityStage's onAcceptWant lifecycle completed.
@@ -1124,6 +1133,7 @@ private:
 
     int Dump(const std::vector<std::u16string>& args, std::string& result);
     int ShowHelp(const std::vector<std::u16string>& args, std::string& result);
+    int DumpTask(const std::vector<std::u16string>& args, std::string& result);
     int DumpIpc(const std::vector<std::u16string>& args, std::string& result);
     int DumpIpcAllStart(std::string& result);
     int DumpIpcAllStop(std::string& result);
@@ -1241,6 +1251,7 @@ private:
     std::shared_ptr<AMSEventHandler> eventHandler_;
     sptr<ISystemAbilityManager> systemAbilityMgr_;
     sptr<IAmsMgr> amsMgrScheduler_;
+    sptr<TaskManagerService> taskManagerService_;
 
     bool GetDumpIpcKeyByOption(const std::string &option, DumpIpcKey &key);
 

@@ -40,6 +40,7 @@
 #include "permission_constants.h"
 #include "permission_verification.h"
 #include "system_ability_definition.h"
+#include "task_mgr/task_manager_service.h"
 #include "accesstoken_kit.h"
 #include "app_mgr_service_const.h"
 #include "app_mgr_service_dump_error_code.h"
@@ -54,6 +55,8 @@ constexpr const char* OPTION_KEY_HELP = "-h";
 constexpr const char* OPTION_KEY_DUMP_IPC = "--ipc";
 constexpr const char* OPTION_KEY_DUMP_FFRT = "--ffrt";
 constexpr const char* OPTION_KEY_DUMP_WEB = "--web";
+constexpr const char* OPTION_KEY_DUMP_TASK = "--task";
+constexpr const char* TASK_DUMP_TASK_NAME = "TaskMgrDumpActiveTasks";
 const int32_t HIDUMPER_SERVICE_UID = 1212;
 constexpr int32_t RESOURCE_MANAGER_UID = 1096;
 constexpr const int INDEX_PID = 1;
@@ -163,6 +166,34 @@ void AppMgrService::SetInnerService(const std::shared_ptr<AppMgrServiceInner> &i
     appMgrServiceInner_ = innerService;
 }
 
+int AppMgrService::OnRemoteRequest(uint32_t code, MessageParcel &data, MessageParcel &reply,
+    MessageOption &option)
+{
+    size_t tokenReadPos = data.GetReadPosition();
+    std::u16string remoteDescriptor = data.ReadInterfaceToken();
+    bool isTaskMgr = (remoteDescriptor == ITaskManager::GetDescriptor());
+    bool isAppMgr = (remoteDescriptor == AppMgrStub::GetDescriptor());
+    if (!isTaskMgr && !isAppMgr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "local descriptor is not equal to remote");
+        return ERR_INVALID_STATE;
+    }
+    // Rewind so each stub re-reads and re-verifies the interface token itself: the ITaskManager
+    // branch delegates to the IDL-generated stub entry, and the IAppMgr branch falls back to
+    // the original AppMgrStub dispatch (behavior unchanged).
+    if (!data.RewindRead(tokenReadPos)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "rewind read failed");
+        return ERR_INVALID_STATE;
+    }
+    if (isTaskMgr) {
+        if (taskManagerService_ == nullptr) {
+            TAG_LOGE(AAFwkTag::TASKMGR, "task manager service is null");
+            return ERR_INVALID_STATE;
+        }
+        return taskManagerService_->TaskManagerStub::OnRemoteRequest(code, data, reply, option);
+    }
+    return AppMgrStub::OnRemoteRequest(code, data, reply, option);
+}
+
 AppMgrServiceState AppMgrService::QueryServiceState()
 {
     if (appMgrServiceInner_) {
@@ -200,6 +231,13 @@ ErrCode AppMgrService::Init()
         TAG_LOGE(AAFwkTag::APPMGR, "init failed");
         return ERR_INVALID_OPERATION;
     }
+    // Created before Publish so descriptor routing never sees a null stub.
+    taskManagerService_ = new (std::nothrow) TaskManagerService(taskHandler_);
+    if (!taskManagerService_) {
+        TAG_LOGE(AAFwkTag::TASKMGR, "init failed");
+        return ERR_INVALID_OPERATION;
+    }
+    appMgrServiceInner_->SetTaskManagerService(taskManagerService_);
     if (!Publish(this)) {
         TAG_LOGE(AAFwkTag::APPMGR, " publish fail");
         return ERR_APPEXECFWK_SERVICE_NOT_CONNECTED;
@@ -996,6 +1034,9 @@ int AppMgrService::Dump(const std::vector<std::u16string>& args, std::string& re
     if (optionKey == OPTION_KEY_DUMP_WEB) {
         return DumpArkWeb(args, result);
     }
+    if (optionKey == OPTION_KEY_DUMP_TASK) {
+        return DumpTask(args, result);
+    }
     result.append("error: unkown option.\n");
     TAG_LOGE(AAFwkTag::APPMGR, "option key %{public}s does not exist", optionKey.c_str());
     return DumpErrorCode::ERR_UNKNOWN_OPTION_ERROR;
@@ -1012,8 +1053,39 @@ int AppMgrService::ShowHelp(const std::vector<std::u16string>& args, std::string
         .append("ipc load statistic; pid must be specified or set to -a dump all processes. ARG must be one of "
             "--start-stat | --stop-stat | --stat\n")
         .append("--web pid1[,pid2,pid3] [ARG]    ")
-        .append("dump arkweb info, ARG must be one of (--all | --nweb | ...)\n");
+        .append("dump arkweb info, ARG must be one of (--all | --nweb | ...)\n")
+        .append("--task                      ")
+        .append("dump agent task manager active tasks\n");
 
+    return ERR_OK;
+}
+
+int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string& result)
+{
+    TAG_LOGD(AAFwkTag::TASKMGR, "called");
+    // Dump access control reuses the existing mechanism (ohos.permission.DUMP).
+    if (!HasDumpPermission()) {
+        TAG_LOGE(AAFwkTag::TASKMGR, "dump permission denied");
+        result.append("error: dump permission denied.\n");
+        return DumpErrorCode::ERR_PERMISSION_DENY_ERROR;
+    }
+    if (taskManagerService_ == nullptr || taskHandler_ == nullptr) {
+        TAG_LOGE(AAFwkTag::TASKMGR, "task manager service not ready");
+        result.append(MSG_DUMP_FAIL, strlen(MSG_DUMP_FAIL))
+            .append(MSG_DUMP_FAIL_REASON_INTERNAL, strlen(MSG_DUMP_FAIL_REASON_INTERNAL));
+        return DumpErrorCode::ERR_INTERNAL_ERROR;
+    }
+    auto taskResult = std::make_shared<std::string>();
+    std::function<void()> dumpTaskFunc = [taskManagerService = taskManagerService_, taskResult]() {
+        // The snapshot is generated on the serial queue for consistency with lifecycle actions:
+        // a terminal task never shows up because it leaves the map on the same queue.
+        *taskResult = taskManagerService->DumpActiveTasks();
+    };
+    AAFwk::TaskHandle handle = taskHandler_->SubmitTask(dumpTaskFunc, TASK_DUMP_TASK_NAME);
+    if (handle) {
+        handle.Sync();
+    }
+    result.append(*taskResult);
     return ERR_OK;
 }
 

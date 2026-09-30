@@ -59,6 +59,7 @@ group("ani_packages") {
     "${ability_runtime_path}/frameworks/ets/ani/memory_optimizer:app_memory_optimizer_ani_kit",
     "${ability_runtime_path}/frameworks/ets/ani/quick_fix_manager:quick_fix_manager_ani_kit",
     "${ability_runtime_path}/frameworks/ets/ani/share_extension_ability:share_extension_ani",
+    "${ability_runtime_path}/frameworks/ets/ani/task_manager:taskmanager_ani",
     "${ability_runtime_path}/frameworks/ets/ani/ui_extension_callback:ani_ui_extension_callback",
     "${ability_runtime_path}/frameworks/ets/ani/uri_permission_manager:uri_permission_manager_ani_kit",
     "${ability_runtime_path}/frameworks/ets/ani/vertical_panel_manager:vertical_panel_manager_ani_kit",

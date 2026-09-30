@@ -165,6 +165,7 @@
           "//foundation/ability/ability_runtime/ets_environment/frameworks/ets_environment:ets_environment",
           "//foundation/ability/ability_runtime/js_environment/frameworks/js_environment:js_environment",
           "//foundation/ability/ability_runtime/services/abilitymgr/etc:appfwk_etc",
+          "//foundation/ability/ability_runtime/services/appmgr/etc:task_manager_etc",
           "//foundation/ability/ability_runtime/services/dialog_ui/ams_system_dialog:dialog_hap",
           "//foundation/ability/ability_runtime/service_router_framework:srms_target",
           "//foundation/ability/ability_runtime/service_router_framework:jsapi_target",
@@ -439,6 +440,15 @@
               ]
             },
             "name": "//foundation/ability/ability_runtime/interfaces/inner_api/app_manager:app_manager"
+          },
+          {
+            "header": {
+              "header_base": "//foundation/ability/ability_runtime/interfaces/inner_api/app_manager/include",
+              "header_files": [
+                "task_mgr/task_manager_client.h"
+              ]
+            },
+            "name": "//foundation/ability/ability_runtime/interfaces/inner_api/app_manager:task_manager"
           },
           {
             "header": {

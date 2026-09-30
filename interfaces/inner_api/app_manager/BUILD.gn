@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import("//build/config/components/idl_tool/idl.gni")
 import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
@@ -279,4 +280,69 @@ ohos_shared_library("app_state_data") {
   subsystem_name = "ability"
   part_name = "ability_runtime"
   configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
+}
+
+idl_interface_sources = [
+  "${target_gen_dir}/task_manager_proxy.cpp",
+  "${target_gen_dir}/task_manager_stub.cpp",
+]
+
+idl_gen_interface("task_manager_interface") {
+  src_idl = rebase_path("ITaskManager.idl")
+  dst_file = string_join(",", idl_interface_sources)
+  hitrace = "HITRACE_TAG_ABILITY_MANAGER"
+  log_domainid = "0xD001318"
+  log_tag = "TaskMgr"
+}
+
+config("task_manager_config") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    "include/task_mgr",
+    "${ability_runtime_innerkits_path}/ability_manager/include",
+    "${ability_runtime_services_path}/common/include",
+    "${target_gen_dir}",
+  ]
+  cflags = []
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+}
+
+ohos_shared_library("task_manager") {
+  version_script = "libtask_manager.map"
+  branch_protector_ret = "pac_ret"
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  sources = [ "src/task_mgr/task_manager_client.cpp" ]
+  output_values = get_target_outputs(":task_manager_interface")
+  sources += filter_include(output_values, [ "*.cpp" ])
+
+  public_configs = [ ":task_manager_config" ]
+
+  configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
+
+  defines = [
+    "AMS_LOG_TAG = \"TaskMgr\"",
+    "AMS_LOG_DOMAIN = 0xD001318",
+  ]
+
+  deps = [ ":task_manager_interface" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "hitrace:hitrace_meter",
+    "ipc:ipc_single",
+    "samgr:samgr_proxy",
+  ]
+
+  innerapi_tags = [ "platformsdk" ]
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
 }

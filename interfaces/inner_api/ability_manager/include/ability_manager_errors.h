@@ -1199,6 +1199,16 @@ enum {
     ERR_NOT_NATIVE_UI_ABILITY = 2099423,
 
     /**
+     * Result(2099501) for task manager: the task already exists.
+     */
+    ERR_TASK_ALREADY_EXISTS = 2099501,
+
+    /**
+     * Result(2099502) for task manager: the task does not exist.
+     */
+    ERR_TASK_NOT_FOUND = 2099502,
+
+    /**
      * Native error(3000000) for target bundle not exist.
      */
     ERR_CODE_NOT_EXIST = 3000000,

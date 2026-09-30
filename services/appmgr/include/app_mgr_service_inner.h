@@ -111,6 +111,7 @@ using ImageError = IImageErrorHandler::ImageError;
 class WindowFocusChangedListener;
 class WindowVisibilityChangedListener;
 class WindowPidVisibilityChangedListener;
+class TaskManagerService;
 using LoadAbilityTaskFunc = std::function<void()>;
 constexpr int32_t BASE_USER_RANGE = 200000;
 
@@ -926,6 +927,11 @@ public:
     void SetEventHandler(const std::shared_ptr<AMSEventHandler> &eventHandler)
     {
         eventHandler_ = eventHandler;
+    }
+
+    void SetTaskManagerService(const sptr<TaskManagerService> &taskManagerService)
+    {
+        taskManagerService_ = taskManagerService;
     }
 
     /**
@@ -2586,6 +2592,7 @@ private:
     std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler_;
     std::shared_ptr<AAFwk::TaskHandlerWrap> rssTaskHandler_;
     std::shared_ptr<AMSEventHandler> eventHandler_;
+    sptr<TaskManagerService> taskManagerService_;
     std::shared_ptr<AAFwk::TaskHandlerWrap> dfxTaskHandler_;
     std::shared_ptr<AppDebugManager> appDebugManager_;
     std::shared_ptr<AbilityRuntime::AppRunningStatusModule> appRunningStatusModule_;
