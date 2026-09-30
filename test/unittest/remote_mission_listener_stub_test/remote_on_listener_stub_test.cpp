@@ -117,5 +117,28 @@ HWTEST_F(RemoteOnListenerStubTest, RemoteOnListenerStubTest_OnCallbackInner_001,
     int res = stub_->OnCallbackInner(data, reply);
     EXPECT_EQ(res, NO_ERROR);
 }
+
+/*
+ * Feature: RemoteOnListenerStub
+ * Function: OnCallbackInner
+ * SubFunction: NA
+ * FunctionPoints: RemoteOnListenerStub OnCallbackInner
+ * EnvConditions: appIdentifiers arraySize exceeds the upper limit
+ * CaseDescription: Verify that OnCallbackInner rejects oversized arraySize and skips OnCallback
+ */
+HWTEST_F(RemoteOnListenerStubTest, RemoteOnListenerStubTest_OnCallbackInner_002, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    data.WriteUint32(0);
+    data.WriteString("");
+    data.WriteString("");
+    data.WriteString("");
+    data.WriteString("");
+    data.WriteUint32(0xFFFFFFFF);
+    EXPECT_CALL(*stub_, OnCallback(_)).Times(0);
+    int res = stub_->OnCallbackInner(data, reply);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+}
 }  // namespace AAFwk
 }  // namespace OHOS

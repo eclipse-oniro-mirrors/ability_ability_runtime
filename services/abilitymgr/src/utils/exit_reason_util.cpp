@@ -77,20 +77,24 @@ void ExitReasonUtil::AppSpawnStartCallback(const char *key, const char *value, v
         TAG_LOGE(AAFwkTag::ABILITYMGR, "context null");
         return;
     }
-    auto ams = weak->lock();
-    if (ams == nullptr) {
+    auto abilityMgrService = weak->lock();
+    if (abilityMgrService == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "AbilityManagerService null");
         return;
     }
-    int32_t rFd = ams->GetRfd();
-    int32_t wFd = ams->GetWfd();
+    int32_t rFd = 0;
+    int32_t wFd = 0;
+    abilityMgrService->GetAppSpawnFdsWithLock(rFd, wFd);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "rFd is: %{public}d, wFd is: %{public}d", rFd, wFd);
+    if (rFd < 0 || wFd < 0) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid appspawn msg pipe fd");
+        return;
+    }
     // send fd
     int32_t ret = SpawnListenFdSet(wFd);
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "send fd to appspawn failed, ret: %{public}d", ret);
-        fdsan_close_with_tag(rFd, static_cast<uint32_t>(AAFwkTag::ABILITYMGR));
-        fdsan_close_with_tag(wFd, static_cast<uint32_t>(AAFwkTag::ABILITYMGR));
+        abilityMgrService->CloseAppSpawnMsgPipe();
         return;
     }
     // set flag

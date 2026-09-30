@@ -45,6 +45,8 @@ public:
         code_ = code;
         KioskStatus kioskStatus;
         reply.WriteParcelable(&kioskStatus);
+        reply.WriteRemoteObject(kioskStatus.kioskToken_);
+        reply.WriteInt32(0);
         return 0;
     }
 
