@@ -80,8 +80,6 @@ namespace {
             return path;
         }
         std::string result = sandboxRoot + std::string(FILE_SEPARATOR) + bundleName + rest;
-        TAG_LOGI(AAFwkTag::APPKIT, "GetSandboxPath lnitialPath: %{public}s, processingPath: %{public}s",
-            path.c_str(), result.c_str());
         return result;
     }
 
@@ -102,8 +100,6 @@ namespace {
             return path;
         }
         std::string result = hspSandbox + afterBundle.substr(secondSlash + 1);
-        TAG_LOGI(AAFwkTag::APPKIT, "HSP path lnitialPath: %{public}s, processingPath: %{public}s",
-            path.c_str(), result.c_str());
         return result;
     }
 } // namespace
