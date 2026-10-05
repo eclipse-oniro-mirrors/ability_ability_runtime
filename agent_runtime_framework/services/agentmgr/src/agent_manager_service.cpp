@@ -355,6 +355,7 @@ int32_t AgentManagerService::DeleteAgentCard(const std::string &bundleName, cons
 int32_t AgentManagerService::ConnectAgentExtensionAbility(const AAFwk::Want &want,
     const sptr<AAFwk::IAbilityConnection> &connection)
 {
+    want.AdoptAllLegacyFd(AAFwk::FdTraversalMode::RECURSIVE);
     // Step 1: validate caller state before classifying the agent connect request.
     int32_t callerUid = 0;
     auto ret = ValidateConnectAgentRequest(connection, callerUid);
