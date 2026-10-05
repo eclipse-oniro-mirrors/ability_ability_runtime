@@ -408,6 +408,7 @@ int32_t AgentManagerService::ConnectAgentExtensionAbility(const AAFwk::Want &wan
 int32_t AgentManagerService::ConnectAgentExtensionAbilityForCli(const AAFwk::Want &want,
     const sptr<AAFwk::IAbilityConnection> &connection, const std::string &callerIdentity)
 {
+    want.AdoptAllLegacyFd(AAFwk::FdTraversalMode::RECURSIVE);
     if (!IsOhosAgentCliEnabled()) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "ForCli connect: not enabled (CCM off or not CLI tool)");
         return ERR_PERMISSION_DENIED;
@@ -510,6 +511,7 @@ int32_t AgentManagerService::DisconnectAgentExtensionAbilityForCli(
 
 int32_t AgentManagerService::GetAgentCardTypeForConnect(AAFwk::Want &want, int32_t &cardType)
 {
+    want.AdoptAllLegacyFd(AAFwk::FdTraversalMode::RECURSIVE);
     int32_t callerUid = 0;
     auto ret = ValidateConnectAgentCaller(callerUid);
     if (ret != ERR_OK) {
@@ -594,6 +596,7 @@ int32_t AgentManagerService::ConnectServiceExtensionAbility(const sptr<IRemoteOb
     const AAFwk::Want &want,
     const sptr<AAFwk::IAbilityConnection> &connection)
 {
+    want.AdoptAllLegacyFd(AAFwk::FdTraversalMode::RECURSIVE);
     auto ret = ValidateConnectServiceRequest(callerToken, connection);
     if (ret != ERR_OK) {
         return ret;
@@ -1154,6 +1157,7 @@ int32_t AgentManagerService::DisconnectServiceExtensionAbility(const sptr<IRemot
 int32_t AgentManagerService::VerifyAgentConnectRequest(const AAFwk::Want &want,
     const sptr<AAFwk::IAbilityConnection> &connection, std::string &callerIdentity)
 {
+    want.AdoptAllLegacyFd(AAFwk::FdTraversalMode::RECURSIVE);
     if (!AAFwk::PermissionVerification::GetInstance()->CheckSpecificSystemAbilityAccessPermission(
         FOUNDATION_PROCESS_NAME)) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "non-foundation AMS confirmation caller");
@@ -1173,6 +1177,9 @@ int32_t AgentManagerService::VerifyAgentConnectRequest(const AAFwk::Want &want,
 int32_t AgentManagerService::VerifyAgentDisconnectRequests(const std::vector<AAFwk::Want> &wants,
     const sptr<AAFwk::IAbilityConnection> &connection, std::string &callerIdentity)
 {
+    for (const auto &want : wants) {
+        want.AdoptAllLegacyFd(AAFwk::FdTraversalMode::RECURSIVE);
+    }
     if (!AAFwk::PermissionVerification::GetInstance()->CheckSpecificSystemAbilityAccessPermission(
         FOUNDATION_PROCESS_NAME)) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "non-foundation AMS confirmation caller");

@@ -2834,6 +2834,9 @@ int AbilityManagerStub::StartUIAbilityBySCBInner(MessageParcel &data, MessagePar
     if (data.ReadBool()) {
         sessionInfo = data.ReadParcelable<SessionInfo>();
     }
+    if (sessionInfo != nullptr) {
+        sessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
+    }
     std::unique_ptr<AbilityRuntime::StartParamsBySCB> params(data.ReadParcelable<AbilityRuntime::StartParamsBySCB>());
     if (params == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "receive null");
@@ -3991,6 +3994,9 @@ int AbilityManagerStub::CallUIAbilityBySCBInner(MessageParcel &data, MessageParc
     if (data.ReadBool()) {
         sessionInfo = data.ReadParcelable<SessionInfo>();
     }
+    if (sessionInfo != nullptr) {
+        sessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
+    }
     std::unique_ptr<AbilityRuntime::StartParamsBySCB> params(data.ReadParcelable<AbilityRuntime::StartParamsBySCB>());
     if (params == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "receive null");
@@ -4011,6 +4017,7 @@ int32_t AbilityManagerStub::StartSpecifiedAbilityBySCBInner(MessageParcel &data,
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     std::unique_ptr<StartSpecifiedAbilityParams> params(data.ReadParcelable<StartSpecifiedAbilityParams>());
     if (params == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "params null");
