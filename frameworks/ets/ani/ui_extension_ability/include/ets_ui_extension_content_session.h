@@ -16,9 +16,11 @@
 #ifndef OHOS_ABILITY_RUNTIME_ETS_UI_EXTENSION_CONTENT_SESSION_H
 #define OHOS_ABILITY_RUNTIME_ETS_UI_EXTENSION_CONTENT_SESSION_H
 
+#include <memory>
 #include <mutex>
 
 #include "ani.h"
+#include "ani_common_util.h"
 #include "ets_free_install_observer.h"
 #include "ets_runtime.h"
 #include "session_info.h"
@@ -109,12 +111,14 @@ public:
     int32_t TerminateSelfWithResult();
     void SetWindowBackgroundColor(ani_env *env, ani_string color);
     void SetReceiveDataCallback(ani_env *env, ani_object functionObj);
-    static void CallReceiveDataCallback(ani_vm *vm, ani_ref callbackRef, const AAFwk::WantParams &wantParams);
+    static void CallReceiveDataCallback(ani_vm *vm, std::weak_ptr<CallbackWrapper> weakCallback,
+        const AAFwk::WantParams &wantParams);
     void SetReceiveDataForResultCallback(ani_env *env, ani_object object);
     void SetWindowPrivacyMode(
         ani_env *env, ani_object obj, ani_boolean isPrivacyMode, ani_object callbackObj);
     static void CallReceiveDataCallbackForResult(
-        ani_vm *vm, ani_ref callbackRef, const AAFwk::WantParams &wantParams, AAFwk::WantParams &retWantParams);
+        ani_vm *vm, std::weak_ptr<CallbackWrapper> weakCallback,
+        const AAFwk::WantParams &wantParams, AAFwk::WantParams &retWantParams);
     void OnStartAbilityAsCaller(ani_env *env, ani_object aniObj, ani_object wantObj,
         ani_object callbackObj, ani_object startOptionsObj);
     std::shared_ptr<AbilityRuntime::Context> GetContext();
@@ -144,6 +148,7 @@ private:
     ani_object GetUIExtensionWindowProxy(ani_env *env, ani_object object);
     void SetWindowPrivacyModeInner(ani_env *env, ani_boolean isPrivacyMode, ani_object callbackObj,
         ani_vm *etsVm, ani_ref callbackRef);
+    ani_ref CreateCallbackRef(ani_env *env, ani_object callback, ani_vm *&etsVm);
     void LoadContentByName(ani_env *env, ani_object object, ani_string path, ani_object storage);
     void StartAbilityInner(ani_env* env, ani_object object, ani_object opt,
         ani_object callback, AAFwk::Want &want, std::shared_ptr<AbilityRuntime::Context> context);
@@ -152,9 +157,9 @@ private:
     sptr<AAFwk::SessionInfo> sessionInfo_;
     sptr<Rosen::Window> uiWindow_;
     std::weak_ptr<AbilityRuntime::Context> context_;
-    ani_ref receiveDataCallback_ = nullptr;
+    std::shared_ptr<CallbackWrapper> receiveDataCallback_;
     bool isRegistered_ = false;
-    ani_ref receiveDataForResultCallback_ = nullptr;
+    std::shared_ptr<CallbackWrapper> receiveDataForResultCallback_;
     bool isSyncRegistered_ = false;
     std::shared_ptr<EtsUISessionAbilityResultListener> listener_;
     bool isFirstTriggerBindModal_ = true;
@@ -168,6 +173,67 @@ private:
         std::shared_ptr<EtsUIExtensionCallback> uiExtensionCallback,
         std::shared_ptr<std::atomic<bool>> errorFired);
 #endif
+};
+
+class EtsUIExtensionContentSession::CallbackWrapper {
+public:
+    class RefHolder {
+    public:
+        RefHolder(ani_vm *vm, ani_ref ref) : vm_(vm), ref_(ref) {}
+        ~RefHolder()
+        {
+            if (vm_ == nullptr || ref_ == nullptr) {
+                return;
+            }
+            bool isAttachThread = false;
+            ani_env *env = AppExecFwk::AttachAniEnv(vm_, isAttachThread);
+            if (env != nullptr) {
+                env->GlobalReference_Delete(ref_);
+                ref_ = nullptr;
+                AppExecFwk::DetachAniEnv(vm_, isAttachThread);
+            }
+        }
+        ani_ref GetRef() const
+        {
+            return ref_;
+        }
+    private:
+        ani_vm *vm_ = nullptr;
+        ani_ref ref_ = nullptr;
+    };
+
+    explicit CallbackWrapper(ani_vm *vm) : vm_(vm) {}
+    ~CallbackWrapper() = default;
+
+    bool Reset(ani_env *env, ani_object functionObj)
+    {
+        if (env == nullptr) {
+            return false;
+        }
+        ani_ref newRef = nullptr;
+        if (env->GlobalReference_Create(functionObj, &newRef) != ANI_OK) {
+            return false;
+        }
+        auto newHolder = std::make_shared<RefHolder>(vm_, newRef);
+        std::shared_ptr<RefHolder> oldHolder;
+        {
+            std::lock_guard<std::mutex> lock(mtx_);
+            oldHolder = std::move(refHolder_);
+            refHolder_ = newHolder;
+        }
+        return true;
+    }
+
+    std::shared_ptr<RefHolder> Get()
+    {
+        std::lock_guard<std::mutex> lock(mtx_);
+        return refHolder_;
+    }
+
+private:
+    ani_vm *vm_ = nullptr;
+    std::shared_ptr<RefHolder> refHolder_;
+    std::mutex mtx_;
 };
 
 } // namespace AbilityRuntime

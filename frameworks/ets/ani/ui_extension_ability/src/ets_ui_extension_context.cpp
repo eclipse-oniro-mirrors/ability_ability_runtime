@@ -496,11 +496,16 @@ void EtsUIExtensionContext::OnStartAbilityForResult(ani_env *env, ani_object ani
     }
 
     ani_ref callbackRef = nullptr;
-    env->GlobalReference_Create(callback, &callbackRef);
+    if (env->GlobalReference_Create(callback, &callbackRef) != ANI_OK || callbackRef == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "GlobalReference_Create failed");
+        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        return;
+    }
     ani_vm *etsVm = nullptr;
     ani_status status = ANI_ERROR;
     if ((status = env->GetVM(&etsVm)) != ANI_OK || etsVm == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "GetVM failed, status: %{public}d", status);
+        env->GlobalReference_Delete(callbackRef);
         return;
     }
     RuntimeTask task = [etsVm, callbackRef]
@@ -645,6 +650,15 @@ void EtsUIExtensionContext::OnDisconnectServiceExtensionAbility(ani_env *env, an
     ani_long connectId, ani_object callback)
 {
     TAG_LOGE(AAFwkTag::UI_EXT, "OnDisconnectServiceExtensionAbility");
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null env");
+        return;
+    }
+    if (callback == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null callback");
+        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM);
+        return;
+    }
     ani_object aniObject = nullptr;
     auto context = context_.lock();
     if (context == nullptr) {
@@ -1058,7 +1072,11 @@ void EtsUIExtensionContext::OnStartAbilityForResultAsCaller(ani_env *env, ani_ob
         return;
     }
     ani_ref callbackRef = nullptr;
-    env->GlobalReference_Create(callbackObj, &callbackRef);
+    if (env->GlobalReference_Create(callbackObj, &callbackRef) != ANI_OK || callbackRef == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "GlobalReference_Create failed");
+        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        return;
+    }
     RuntimeTask task = CreateRuntimeTask(etsVm, callbackRef);
     want.SetParam(AAFwk::Want::PARAM_RESV_FOR_RESULT, true);
     int curRequestCode = context->GenerateCurRequestCode();
@@ -1585,6 +1603,8 @@ void EtsUIExtensionContext::OnDisconnectUIServiceExtension(ani_env *env, ani_obj
     AAFwk::EtsUIServiceProxy* proxy = AAFwk::EtsUIServiceProxy::GetEtsUIServiceProxy(env, proxyObj);
     if (proxy == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "null proxy");
+        AppExecFwk::AsyncCallback(env, callback,
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM), nullptr);
         return;
     }
     int64_t connectId = proxy->GetConnectionId();

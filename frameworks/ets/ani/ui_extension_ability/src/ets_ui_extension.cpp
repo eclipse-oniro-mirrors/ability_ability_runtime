@@ -633,8 +633,8 @@ bool EtsUIExtension::HandleSessionCreate(const AAFwk::Want &want, const sptr<AAF
 sptr<Rosen::Window> EtsUIExtension::CreateUIWindow(const std::shared_ptr<UIExtensionContext> context,
     const sptr<AAFwk::SessionInfo> &sessionInfo, const AAFwk::Want &want)
 {
-    if (context == nullptr || context->GetAbilityInfo() == nullptr) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "context null");
+    if (context == nullptr || context->GetAbilityInfo() == nullptr || sessionInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "context or sessionInfo null");
         return nullptr;
     }
     auto option = sptr<Rosen::WindowOption>::MakeSptr();
@@ -659,7 +659,7 @@ sptr<Rosen::Window> EtsUIExtension::CreateUIWindow(const std::shared_ptr<UIExten
     }
     option->SetCallerPid(want.GetIntParam(AAFwk::Want::PARAM_RESV_CALLER_PID, -1));
     HITRACE_METER_NAME(HITRACE_TAG_APP, "Rosen::Window::Create");
-    return Rosen::Window::Create(option, GetContext(), sessionInfo->sessionToken);
+    return Rosen::Window::Create(option, context, sessionInfo->sessionToken);
 }
 
 std::unique_ptr<AppExecFwk::ETSNativeReference> EtsUIExtension::CreateAppWindowStage(sptr<Rosen::Window> uiWindow,

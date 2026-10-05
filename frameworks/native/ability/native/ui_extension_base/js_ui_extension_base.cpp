@@ -789,10 +789,6 @@ bool JsUIExtensionBase::HandleSessionCreate(const AAFwk::Want &want, const sptr<
     TAG_LOGD(AAFwkTag::UI_EXT, "UIExtension component id: %{public}" PRId64 ", bundle/ability:%{public}s/%{public}s",
         sessionInfo->uiExtensionComponentId, want.GetElement().GetBundleName().c_str(),
         want.GetElement().GetAbilityName().c_str());
-    if (sessionInfo == nullptr || sessionInfo->uiExtensionComponentId == 0) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "Invalid sessionInfo");
-        return false;
-    }
     std::shared_ptr<AAFwk::Want> sharedWant = std::make_shared<AAFwk::Want>(want);
     auto componentId = sessionInfo->uiExtensionComponentId;
     if (uiWindowMap_.find(componentId) == uiWindowMap_.end()) {

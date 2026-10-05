@@ -297,6 +297,12 @@ napi_value JsUIExtensionContentSession::OnGetUIExtensionHostWindowProxy(napi_env
             GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION));
         return CreateJsUndefined(env);
     }
+    if (uiWindow_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null uiWindow");
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION));
+        return CreateJsUndefined(env);
+    }
 
     HandleEscape handleEscape(env);
     napi_value jsExtensionWindow =
@@ -319,6 +325,12 @@ napi_value JsUIExtensionContentSession::OnGetUIExtensionWindowProxy(napi_env env
     TAG_LOGD(AAFwkTag::UI_EXT, "called");
     if (sessionInfo_ == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "null sessionInfo");
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION));
+        return CreateJsUndefined(env);
+    }
+    if (uiWindow_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null uiWindow");
         ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
             GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION));
         return CreateJsUndefined(env);
@@ -671,7 +683,12 @@ napi_value JsUIExtensionContentSession::OnSetReceiveDataCallback(napi_env env, N
         return CreateJsUndefined(env);
     }
     napi_ref ref = nullptr;
-    napi_create_reference(env, callback, 1, &ref);
+    napi_status status = napi_create_reference(env, callback, 1, &ref);
+    if (status != napi_ok || ref == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "napi_create_reference failed: %{public}d", status);
+        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        return CreateJsUndefined(env);
+    }
     receiveDataCallback_->ResetCallback(std::shared_ptr<NativeReference>(reinterpret_cast<NativeReference*>(ref)));
     return CreateJsUndefined(env);
 }
@@ -693,27 +710,10 @@ napi_value JsUIExtensionContentSession::OnSetReceiveDataForResultCallback(napi_e
     }
 
     if (!isSyncRegistered) {
-        if (uiWindow_ == nullptr) {
-            TAG_LOGE(AAFwkTag::UI_EXT, "null uiWindow_");
-            ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-                GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION));
+        RegisterReceiveDataForResultListener(env);
+        if (receiveDataForResultCallback_ == nullptr) {
             return CreateJsUndefined(env);
         }
-        receiveDataForResultCallback_ = std::make_shared<CallbackWrapper>();
-        std::weak_ptr<CallbackWrapper> weakCallback(receiveDataForResultCallback_);
-        auto handler = std::make_shared<AppExecFwk::EventHandler>(AppExecFwk::EventRunner::GetMainEventRunner());
-        uiWindow_->RegisterTransferComponentDataForResultListener([env, handler, weakCallback] (
-            const AAFwk::WantParams& wantParams) -> AAFwk::WantParams {
-                AAFwk::WantParams retWantParams;
-                if (handler) {
-                    handler->PostSyncTask([env, weakCallback, wantParams, &retWantParams]() {
-                        JsUIExtensionContentSession::CallReceiveDataCallbackForResult(env, weakCallback,
-                            wantParams, retWantParams);
-                        }, "JsUIExtensionContentSession:OnSetReceiveDataForResultCallback");
-                }
-                return retWantParams;
-        });
-        isSyncRegistered = true;
     }
     napi_value callback = info.argv[INDEX_ZERO];
     if (receiveDataForResultCallback_ == nullptr) {
@@ -722,11 +722,40 @@ napi_value JsUIExtensionContentSession::OnSetReceiveDataForResultCallback(napi_e
         return CreateJsUndefined(env);
     }
     napi_ref ref = nullptr;
-    napi_create_reference(env, callback, 1, &ref);
+    napi_status status = napi_create_reference(env, callback, 1, &ref);
+    if (status != napi_ok || ref == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "napi_create_reference failed: %{public}d", status);
+        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        return CreateJsUndefined(env);
+    }
     receiveDataForResultCallback_->ResetCallback(
         std::shared_ptr<NativeReference>(reinterpret_cast<NativeReference*>(ref)));
-
     return CreateJsUndefined(env);
+}
+
+void JsUIExtensionContentSession::RegisterReceiveDataForResultListener(napi_env env)
+{
+    if (uiWindow_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null uiWindow_");
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_SESSION));
+        return;
+    }
+    receiveDataForResultCallback_ = std::make_shared<CallbackWrapper>();
+    std::weak_ptr<CallbackWrapper> weakCallback(receiveDataForResultCallback_);
+    auto handler = std::make_shared<AppExecFwk::EventHandler>(AppExecFwk::EventRunner::GetMainEventRunner());
+    uiWindow_->RegisterTransferComponentDataForResultListener([env, handler, weakCallback] (
+        const AAFwk::WantParams& wantParams) -> AAFwk::WantParams {
+            AAFwk::WantParams retWantParams;
+            if (handler) {
+                handler->PostSyncTask([env, weakCallback, wantParams, &retWantParams]() {
+                    JsUIExtensionContentSession::CallReceiveDataCallbackForResult(env, weakCallback,
+                        wantParams, retWantParams);
+                    }, "JsUIExtensionContentSession:OnSetReceiveDataForResultCallback");
+            }
+            return retWantParams;
+    });
+    isSyncRegistered = true;
 }
 
 napi_value JsUIExtensionContentSession::OnLoadContent(napi_env env, NapiCallbackInfo& info)
@@ -1272,13 +1301,20 @@ void JsUIExtensionContentSession::SetCallbackForTerminateWithResult(int32_t resu
         [weak = context_, uiWindow = uiWindow_, sessionInfo = sessionInfo_, want, resultCode](napi_env env,
             NapiAsyncTask& task, int32_t status) {
             HandleScope handleScope(env);
-            auto extensionContext = AbilityRuntime::Context::ConvertTo<AbilityRuntime::UIExtensionContext>(weak.lock());
+            auto context = weak.lock();
+            if (!context) {
+                TAG_LOGE(AAFwkTag::UI_EXT, "null context");
+                task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
+                return;
+            }
+            auto extensionContext = AbilityRuntime::Context::ConvertTo<AbilityRuntime::UIExtensionContext>(context);
             if (!extensionContext) {
                 TAG_LOGE(AAFwkTag::UI_EXT, "null extensionContext");
-            } else {
-                auto token = extensionContext->GetToken();
-                AAFwk::AbilityManagerClient::GetInstance()->TransferAbilityResultForExtension(token, resultCode, want);
+                task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM));
+                return;
             }
+            auto token = extensionContext->GetToken();
+            AAFwk::AbilityManagerClient::GetInstance()->TransferAbilityResultForExtension(token, resultCode, want);
 
             if (uiWindow == nullptr) {
                 TAG_LOGE(AAFwkTag::UI_EXT, "null uiWindow");

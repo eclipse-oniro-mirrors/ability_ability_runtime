@@ -40,7 +40,6 @@ ohos_unittest("js_ui_extension_content_session_test") {
     "${ability_runtime_innerkits_path}/ability_manager:ability_start_options",
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_napi_path}/inner/napi_common:napi_common",
-    "${ability_runtime_napi_path}/inner/napi_wantagent_common:napi_wantagent_common",
     "${ability_runtime_native_path}/ability:ability_context_native",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_native_path}/ability/native:abilitykit_utils",

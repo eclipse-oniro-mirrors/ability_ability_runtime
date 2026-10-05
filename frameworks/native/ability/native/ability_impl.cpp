@@ -50,13 +50,17 @@ void AbilityImpl::Init(const std::shared_ptr<OHOSApplication> &application,
     ability_ = ability;
     handler_ = handler;
     auto info = record->GetAbilityInfo();
-    isStageBasedModel_ = info && info->isStageBasedModel;
+    if (info == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITY, "null abilityInfo");
+        return;
+    }
+    isStageBasedModel_ = info->isStageBasedModel;
 #ifdef SUPPORT_SCREEN
-    if (info && info->type == AbilityType::PAGE) {
+    if (info->type == AbilityType::PAGE) {
         ability_->SetSceneListener(sptr<WindowLifeCycleImpl>::MakeSptr(token_, shared_from_this()));
     }
 #endif
-    ability_->Init(record->GetAbilityInfo(), application, handler, token);
+    ability_->Init(info, application, handler, token);
     lifecycleState_ = AAFwk::ABILITY_STATE_INITIAL;
     TAG_LOGD(AAFwkTag::ABILITY, "end");
 }

@@ -201,12 +201,17 @@ ohos_unittest("caller_call_back_ut_test") {
 ohos_unittest("local_call_container_ut_test") {
   module_out_path = module_out_path
 
-  include_dirs = [ "${ability_runtime_test_path}/mock/frameworks_kits_ability_ability_runtime_test/AMS" ]
+  include_dirs = [
+    "${ability_runtime_test_path}/mock/frameworks_kits_ability_ability_runtime_test/AMS",
+    "${ability_runtime_test_path}/mock/frameworks_kits_ability_native_test/include",
+    "${ability_runtime_test_path}/unittest/frameworks_kits_appkit_native_test/mock/include",
+  ]
 
   sources = [
     "${ability_runtime_test_path}/mock/frameworks_kits_ability_ability_runtime_test/AMS/mock_ability_manager_client.cpp",
     "${ability_runtime_test_path}/mock/frameworks_kits_ability_ability_runtime_test/AMS/mock_serviceability_manager_service.cpp",
     "${ability_runtime_test_path}/mock/frameworks_kits_ability_native_test/include/sys_mgr_client_mock.cpp",
+    "${ability_runtime_test_path}/unittest/frameworks_kits_appkit_native_test/mock/src/os_account_manager_wrapper.cpp",
     "local_call_container_ut_test.cpp",
   ]
 
