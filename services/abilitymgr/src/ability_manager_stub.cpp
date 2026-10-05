@@ -1425,6 +1425,9 @@ int AbilityManagerStub::MinimizeUIAbilityBySCBInner(MessageParcel &data, Message
     if (data.ReadBool()) {
         sessionInfo = data.ReadParcelable<SessionInfo>();
     }
+    if (sessionInfo != nullptr) {
+        sessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
+    }
     bool fromUser = data.ReadBool();
     uint32_t sceneFlag = data.ReadUint32();
     int32_t backgroundReason = data.ReadInt32();
@@ -1724,6 +1727,7 @@ int AbilityManagerStub::RequestModalUIExtensionInner(MessageParcel &data, Messag
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     int32_t result = RequestModalUIExtension(*want);
     reply.WriteInt32(result);
     return NO_ERROR;
@@ -1737,6 +1741,7 @@ int AbilityManagerStub::RequestModalUIExtensionWithAccountInner(MessageParcel &d
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     int32_t accountId = data.ReadInt32();
     int32_t result = RequestModalUIExtensionWithAccount(*want, accountId);
     reply.WriteInt32(result);
@@ -1751,6 +1756,7 @@ int AbilityManagerStub::PreloadUIExtensionAbilityInner(MessageParcel &data, Mess
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     std::string hostBundleName = Str16ToStr8(data.ReadString16());
     int32_t userId = data.ReadInt32();
     int32_t hostPid = data.ReadInt32();
@@ -1847,6 +1853,7 @@ int AbilityManagerStub::StartUIExtensionConstrainedEmbeddedInner(MessageParcel &
         }
         // To ensure security, this attribute must be rewritten.
         extensionSessionInfo->uiExtensionUsage = UIExtensionUsage::CONSTRAINED_EMBEDDED;
+        extensionSessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
 
     int32_t userId = data.ReadInt32();
@@ -1867,6 +1874,7 @@ int AbilityManagerStub::StartUIExtensionPreViewEmbeddedInner(MessageParcel &data
         }
         // To ensure security, this attribute must be rewritten.
         extensionSessionInfo->uiExtensionUsage = UIExtensionUsage::PRE_VIEW_EMBEDDED;
+        extensionSessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
 
     int32_t userId = data.ReadInt32();
@@ -2032,6 +2040,7 @@ int AbilityManagerStub::ConnectUIExtensionAbilityInner(MessageParcel &data, Mess
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     sptr<IAbilityConnection> callback = nullptr;
     if (data.ReadBool()) {
         callback = iface_cast<IAbilityConnection>(data.ReadRemoteObject());
@@ -2039,6 +2048,9 @@ int AbilityManagerStub::ConnectUIExtensionAbilityInner(MessageParcel &data, Mess
     sptr<SessionInfo> sessionInfo = nullptr;
     if (data.ReadBool()) {
         sessionInfo = data.ReadParcelable<SessionInfo>();
+    }
+    if (sessionInfo != nullptr) {
+        sessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
     int32_t userId = data.ReadInt32();
 
@@ -2181,6 +2193,9 @@ int AbilityManagerStub::CloseUIAbilityBySCBInner(MessageParcel &data, MessagePar
     sptr<SessionInfo> sessionInfo = nullptr;
     if (data.ReadBool()) {
         sessionInfo = data.ReadParcelable<SessionInfo>();
+    }
+    if (sessionInfo != nullptr) {
+        sessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
     bool isUserRequestedExit = data.ReadBool();
     uint32_t sceneFlag = data.ReadUint32();
