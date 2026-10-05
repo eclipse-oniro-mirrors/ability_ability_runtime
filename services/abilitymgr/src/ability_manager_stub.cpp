@@ -1352,11 +1352,12 @@ int AbilityManagerStub::TerminateUIExtensionAbilityInner(MessageParcel &data, Me
     Want *resultWant = data.ReadParcelable<Want>();
     if (resultWant != nullptr) {
         SanitizeWantParams(*resultWant);
+        resultWant->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
+    }
+    if (extensionSessionInfo != nullptr) {
+        extensionSessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
     int32_t result = TerminateUIExtensionAbility(extensionSessionInfo, resultCode, resultWant);
-    if (extensionSessionInfo != nullptr) {
-        extensionSessionInfo->want.CloseAllFd();
-    }
     reply.WriteInt32(result);
     if (resultWant != nullptr) {
         delete resultWant;
@@ -1409,11 +1410,11 @@ int AbilityManagerStub::MinimizeUIExtensionAbilityInner(MessageParcel &data, Mes
     if (data.ReadBool()) {
         extensionSessionInfo = data.ReadParcelable<SessionInfo>();
     }
+    if (extensionSessionInfo != nullptr) {
+        extensionSessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
+    }
     auto fromUser = data.ReadBool();
     int32_t result = MinimizeUIExtensionAbility(extensionSessionInfo, fromUser);
-    if (extensionSessionInfo != nullptr) {
-        extensionSessionInfo->want.CloseAllFd();
-    }
     reply.WriteInt32(result);
     return NO_ERROR;
 }
@@ -1593,6 +1594,7 @@ int AbilityManagerStub::StartAbilityInner(MessageParcel &data, MessageParcel &re
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     int32_t userId = data.ReadInt32();
     int requestCode = data.ReadInt32();
     uint64_t specifiedFullTokenId = data.ReadUint64();
@@ -1803,6 +1805,7 @@ int AbilityManagerStub::StartUIExtensionAbilityInner(MessageParcel &data, Messag
         }
         // To ensure security, this attribute must be rewritten.
         extensionSessionInfo->uiExtensionUsage = UIExtensionUsage::MODAL;
+        extensionSessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
 
     int32_t userId = data.ReadInt32();
@@ -1823,6 +1826,7 @@ int AbilityManagerStub::StartUIExtensionAbilityEmbeddedInner(MessageParcel &data
         }
         // To ensure security, this attribute must be rewritten.
         extensionSessionInfo->uiExtensionUsage = UIExtensionUsage::EMBEDDED;
+        extensionSessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
 
     int32_t userId = data.ReadInt32();
@@ -1976,6 +1980,7 @@ int AbilityManagerStub::ConnectAbilityInner(MessageParcel &data, MessageParcel &
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     sptr<IAbilityConnection> callback = nullptr;
     sptr<IRemoteObject> token = nullptr;
     if (data.ReadBool()) {
@@ -1998,6 +2003,7 @@ int AbilityManagerStub::ConnectAbilityWithTypeInner(MessageParcel &data, Message
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     sptr<IAbilityConnection> callback = nullptr;
     sptr<IRemoteObject> token = nullptr;
     if (data.ReadBool()) {
@@ -2196,6 +2202,7 @@ int AbilityManagerStub::GetWantSenderInner(MessageParcel &data, MessageParcel &r
     }
     for (auto &wantsInfo : wantSenderInfo->allWants) {
         SanitizeWantParams(wantsInfo.want);
+        wantsInfo.want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
@@ -2224,6 +2231,7 @@ int AbilityManagerStub::SendWantSenderInner(MessageParcel &data, MessageParcel &
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(senderInfo->want);
+    senderInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     if (senderInfo->startOptions) {
         ProcessOptions::SanitizeSystemFields(senderInfo->startOptions->processOptions);
     }
@@ -2232,7 +2240,6 @@ int AbilityManagerStub::SendWantSenderInner(MessageParcel &data, MessageParcel &
         TAG_LOGE(AAFwkTag::ABILITYMGR, "completedData write fail");
     }
     reply.WriteInt32(result);
-    senderInfo->want.CloseAllFd();
     return NO_ERROR;
 }
 
