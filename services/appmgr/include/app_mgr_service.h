@@ -421,8 +421,13 @@ public:
 
     /**
      * @brief Remote request entry with interface-descriptor routing: requests carrying the
-     * ITaskManager descriptor are delegated to the TaskManagerService stub, while IAppMgr
-     * traffic keeps the original AppMgrStub dispatch untouched.
+     *        ITaskManager descriptor are delegated to the TaskManagerService stub, while
+     *        IAppMgr traffic keeps the original AppMgrStub dispatch untouched.
+     * @param code Indicates the transaction code.
+     * @param data Indicates the data parcel.
+     * @param reply Indicates the reply parcel.
+     * @param option Indicates the message option.
+     * @return Returns the processing result.
      */
     int OnRemoteRequest(uint32_t code, MessageParcel &data, MessageParcel &reply,
         MessageOption &option) override;

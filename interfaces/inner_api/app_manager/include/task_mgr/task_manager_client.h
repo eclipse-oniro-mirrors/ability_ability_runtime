@@ -40,7 +40,7 @@ public:
      * @param priority Task priority, one of TASK_PRIORITY_LOW/MEDIUM/HIGH.
      * @return ERR_OK on success; ERR_TASK_ALREADY_EXISTS if the task already exists;
      *         ERR_INVALID_VALUE on invalid parameters; ERR_NOT_SYSTEM_APP if the caller is
-     *         not the voice assistant.
+     *         not a system app.
      */
     int32_t StartTask(const std::string &taskId, int32_t priority);
 
@@ -48,7 +48,7 @@ public:
      * @brief Finishes the task with the specified task id.
      * @param taskId Attribution key of the task.
      * @return ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist (idempotent);
-     *         ERR_NOT_SYSTEM_APP if the caller is not the voice assistant.
+     *         ERR_NOT_SYSTEM_APP if the caller is not a system app.
      */
     int32_t FinishTask(const std::string &taskId);
 

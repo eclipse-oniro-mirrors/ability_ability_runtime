@@ -30,7 +30,7 @@ static napi_module _module = {
 /*
  * The module registration.
  */
-extern "C" __attribute__((constructor)) void NAPI_App_Agent_TaskManager_AutoRegister(void)
+extern "C" __attribute__((constructor)) void NapiAppAgentTaskManagerAutoRegister(void)
 {
     napi_module_register(&_module);
 }

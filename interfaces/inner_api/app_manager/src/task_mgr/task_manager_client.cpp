@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "task_manager_client.h"
+#include "task_mgr/task_manager_client.h"
 
 #include "ability_manager_errors.h"
 #include "hilog_tag_wrapper.h"
@@ -83,11 +83,13 @@ sptr<ITaskManager> TaskManagerClient::GetTaskManagerProxy()
         return nullptr;
     }
     if (deathRecipient_ == nullptr) {
-        deathRecipient_ = new (std::nothrow) TaskManagerDeathRecipient();
+        deathRecipient_ = sptr(new (std::nothrow) TaskManagerDeathRecipient());
+        if (deathRecipient_ == nullptr) {
+            TAG_LOGE(AAFwkTag::TASKMGR, "failed to create death recipient");
+            return nullptr;
+        }
     }
-    if (deathRecipient_ != nullptr) {
-        remoteObject->AddDeathRecipient(deathRecipient_);
-    }
+    remoteObject->AddDeathRecipient(deathRecipient_);
     taskManagerProxy_ = iface_cast<ITaskManager>(remoteObject);
     TAG_LOGI(AAFwkTag::TASKMGR, "get task manager proxy %{public}s",
         taskManagerProxy_ != nullptr ? "success" : "failed");

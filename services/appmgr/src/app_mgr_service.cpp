@@ -174,8 +174,9 @@ int AppMgrService::OnRemoteRequest(uint32_t code, MessageParcel &data, MessagePa
     bool isTaskMgr = (remoteDescriptor == ITaskManager::GetDescriptor());
     bool isAppMgr = (remoteDescriptor == AppMgrStub::GetDescriptor());
     if (!isTaskMgr && !isAppMgr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "local descriptor is not equal to remote");
-        return ERR_INVALID_STATE;
+        TAG_LOGE(AAFwkTag::APPMGR, "local descriptor is not equal to remote, caller uid: %{public}d, pid: %{public}d",
+            IPCSkeleton::GetCallingUid(), IPCSkeleton::GetCallingPid());
+        return ERR_INVALID_OPERATION;
     }
     // Rewind so each stub re-reads and re-verifies the interface token itself: the ITaskManager
     // branch delegates to the IDL-generated stub entry, and the IAppMgr branch falls back to
@@ -232,7 +233,7 @@ ErrCode AppMgrService::Init()
         return ERR_INVALID_OPERATION;
     }
     // Created before Publish so descriptor routing never sees a null stub.
-    taskManagerService_ = new (std::nothrow) TaskManagerService(taskHandler_);
+    taskManagerService_ = sptr(new (std::nothrow) TaskManagerService(taskHandler_));
     if (!taskManagerService_) {
         TAG_LOGE(AAFwkTag::TASKMGR, "init failed");
         return ERR_INVALID_OPERATION;
@@ -1082,9 +1083,13 @@ int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string
         *taskResult = taskManagerService->DumpActiveTasks();
     };
     AAFwk::TaskHandle handle = taskHandler_->SubmitTask(dumpTaskFunc, TASK_DUMP_TASK_NAME);
-    if (handle) {
-        handle.Sync();
+    if (!handle) {
+        TAG_LOGE(AAFwkTag::TASKMGR, "submit dump task failed");
+        result.append(MSG_DUMP_FAIL, strlen(MSG_DUMP_FAIL))
+            .append(MSG_DUMP_FAIL_REASON_INTERNAL, strlen(MSG_DUMP_FAIL_REASON_INTERNAL));
+        return DumpErrorCode::ERR_INTERNAL_ERROR;
     }
+    handle.Sync();
     result.append(*taskResult);
     return ERR_OK;
 }

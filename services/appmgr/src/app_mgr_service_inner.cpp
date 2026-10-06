@@ -6787,10 +6787,10 @@ void AppMgrServiceInner::OnRemoteDied(const wptr<IRemoteObject> &remote, bool is
         TAG_LOGI(AAFwkTag::APPMGR, "null appRecord");
         return;
     }
-    // Already on the app_mgr serial queue here: end every task created by the dead process
-    // before the heavy cleanup below, so the <=1s perception requirement is met.
+    // End every task created by the dead process. The submission inside PostProcessDied
+    // enforces the serial-queue thread affinity instead of relying on the caller context.
     if (taskManagerService_ != nullptr) {
-        taskManagerService_->OnProcessDied(appRecord->GetPid(), appRecord->GetUid());
+        taskManagerService_->PostProcessDied(appRecord->GetPid(), appRecord->GetUid());
     }
     CheckMakeImageState(appRecord, ImageError::ERR_TEMPLATE_DIED);
     SendProcessKillEvent(appRecord);

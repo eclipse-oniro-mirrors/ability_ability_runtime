@@ -24,7 +24,7 @@
 #include "hilog_tag_wrapper.h"
 #include "js_error_utils.h"
 #include "js_runtime_utils.h"
-#include "task_manager_client.h"
+#include "task_mgr/task_manager_client.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -37,6 +37,12 @@ constexpr int32_t TASK_PRIORITY_MEDIUM = 200;
 constexpr int32_t TASK_PRIORITY_HIGH = 300;
 constexpr size_t TASK_ID_MIN_LEN = 1;
 constexpr size_t TASK_ID_MAX_LEN = 256;
+constexpr size_t INDEX_ZERO = 0;
+constexpr size_t INDEX_ONE = 1;
+constexpr size_t INDEX_TWO = 2;
+constexpr size_t ARGC_ONE = 1;
+constexpr size_t ARGC_TWO = 2;
+constexpr size_t ARGC_THREE = 3;
 
 napi_status SetEnumItem(napi_env env, napi_value object, const char *name, int32_t value)
 {
@@ -58,6 +64,26 @@ napi_value TaskPriorityInit(napi_env env)
     NAPI_CALL(env, SetEnumItem(env, taskPriority, "MEDIUM", TASK_PRIORITY_MEDIUM));
     NAPI_CALL(env, SetEnumItem(env, taskPriority, "HIGH", TASK_PRIORITY_HIGH));
     return taskPriority;
+}
+
+// Parses the optional priority parameter: undefined keeps the default, and the value must be
+// a number of TaskPriority when present.
+bool ParsePriorityParam(napi_env env, napi_value value, int32_t &priority)
+{
+    napi_valuetype valueType = napi_undefined;
+    if (napi_typeof(env, value, &valueType) != napi_ok) {
+        return false;
+    }
+    if (valueType == napi_undefined) {
+        priority = TASK_PRIORITY_MEDIUM;
+        return true;
+    }
+    if (valueType != napi_number || !ConvertFromJsValue(env, value, priority) ||
+        (priority != TASK_PRIORITY_LOW && priority != TASK_PRIORITY_MEDIUM &&
+        priority != TASK_PRIORITY_HIGH)) {
+        return false;
+    }
+    return true;
 }
 
 class JsTaskManager final {
@@ -86,35 +112,25 @@ private:
     {
         TAG_LOGD(AAFwkTag::JSNAPI, "called");
         HandleEscape handleEscape(env);
-        if (info.argc < 1) {
+        if (info.argc < ARGC_ONE) {
             TAG_LOGW(AAFwkTag::JSNAPI, "not enough params");
             ThrowTooFewParametersError(env);
             return handleEscape.Escape(CreateJsUndefined(env));
         }
         std::string taskId;
-        if (!ConvertFromJsValue(env, info.argv[0], taskId) || taskId.size() < TASK_ID_MIN_LEN ||
+        if (!ConvertFromJsValue(env, info.argv[INDEX_ZERO], taskId) || taskId.size() < TASK_ID_MIN_LEN ||
             taskId.size() > TASK_ID_MAX_LEN) {
             TAG_LOGW(AAFwkTag::JSNAPI, "taskId parse failed");
             ThrowInvalidParamError(env, "taskId must be a string of 1~256 characters");
             return handleEscape.Escape(CreateJsUndefined(env));
         }
         int32_t priority = TASK_PRIORITY_MEDIUM;
-        if (info.argc >= 2) {
-            napi_valuetype valueType = napi_undefined;
-            NAPI_CALL(env, napi_typeof(env, info.argv[1], &valueType));
-            if (valueType != napi_undefined) {
-                int32_t priorityValue = 0;
-                if (valueType != napi_number || !ConvertFromJsValue(env, info.argv[1], priorityValue) ||
-                    (priorityValue != TASK_PRIORITY_LOW && priorityValue != TASK_PRIORITY_MEDIUM &&
-                    priorityValue != TASK_PRIORITY_HIGH)) {
-                    TAG_LOGW(AAFwkTag::JSNAPI, "priority parse failed");
-                    ThrowInvalidParamError(env, "priority must be a value of TaskPriority");
-                    return handleEscape.Escape(CreateJsUndefined(env));
-                }
-                priority = priorityValue;
-            }
+        if (info.argc >= ARGC_TWO && !ParsePriorityParam(env, info.argv[INDEX_ONE], priority)) {
+            TAG_LOGW(AAFwkTag::JSNAPI, "priority parse failed");
+            ThrowInvalidParamError(env, "priority must be a value of TaskPriority");
+            return handleEscape.Escape(CreateJsUndefined(env));
         }
-        napi_value lastParam = (info.argc >= 3) ? info.argv[2] : nullptr;
+        napi_value lastParam = (info.argc >= ARGC_THREE) ? info.argv[INDEX_TWO] : nullptr;
         auto innerErrCode = std::make_shared<int32_t>(ERR_OK);
         NapiAsyncTask::ExecuteCallback execute = [taskId, priority, innerErrCode]() {
             *innerErrCode = AppExecFwk::TaskManagerClient::GetInstance().StartTask(taskId, priority);
@@ -139,19 +155,19 @@ private:
     {
         TAG_LOGD(AAFwkTag::JSNAPI, "called");
         HandleEscape handleEscape(env);
-        if (info.argc < 1) {
+        if (info.argc < ARGC_ONE) {
             TAG_LOGW(AAFwkTag::JSNAPI, "not enough params");
             ThrowTooFewParametersError(env);
             return handleEscape.Escape(CreateJsUndefined(env));
         }
         std::string taskId;
-        if (!ConvertFromJsValue(env, info.argv[0], taskId) || taskId.size() < TASK_ID_MIN_LEN ||
+        if (!ConvertFromJsValue(env, info.argv[INDEX_ZERO], taskId) || taskId.size() < TASK_ID_MIN_LEN ||
             taskId.size() > TASK_ID_MAX_LEN) {
             TAG_LOGW(AAFwkTag::JSNAPI, "taskId parse failed");
             ThrowInvalidParamError(env, "taskId must be a string of 1~256 characters");
             return handleEscape.Escape(CreateJsUndefined(env));
         }
-        napi_value lastParam = (info.argc >= 2) ? info.argv[1] : nullptr;
+        napi_value lastParam = (info.argc >= ARGC_TWO) ? info.argv[INDEX_ONE] : nullptr;
         auto innerErrCode = std::make_shared<int32_t>(ERR_OK);
         NapiAsyncTask::ExecuteCallback execute = [taskId, innerErrCode]() {
             *innerErrCode = AppExecFwk::TaskManagerClient::GetInstance().FinishTask(taskId);

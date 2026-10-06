@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "ability_manager_errors.h"
+#include "ability_manager_xcollie.h"
 #include "bundle_mgr_helper.h"
 #include "errors.h"
 #include "hilog_tag_wrapper.h"
@@ -42,6 +43,7 @@ constexpr int32_t BASE_USER_RANGE = 200000;
 const char *TASK_START_TASK_NAME = "TaskMgrStartTask";
 const char *TASK_FINISH_TASK_NAME = "TaskMgrFinishTask";
 const char *TASK_TIMEOUT_NAME_PREFIX = "TaskMgrTimeout_";
+const char *TASK_PROCESS_DIED_NAME = "TaskMgrOnProcessDied";
 
 std::string FormatCreateTime(int64_t millis)
 {
@@ -76,6 +78,7 @@ TaskManagerService::TaskManagerService(const std::shared_ptr<AAFwk::TaskHandlerW
 
 int32_t TaskManagerService::StartTask(const std::string &taskId, int32_t priority)
 {
+    XCOLLIE_TIMER_LESS(__PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::TASKMGR, "called");
     if (taskHandler_ == nullptr) {
         TAG_LOGE(AAFwkTag::TASKMGR, "not ready");
@@ -106,14 +109,17 @@ int32_t TaskManagerService::StartTask(const std::string &taskId, int32_t priorit
         .taskName_ = TASK_START_TASK_NAME,
         .taskQos_ = AAFwk::TaskQoS::USER_INTERACTIVE
     });
-    if (handle) {
-        handle.Sync();
+    if (!handle) {
+        TAG_LOGE(AAFwkTag::TASKMGR, "submit start task failed");
+        return INNER_ERR;
     }
+    handle.Sync();
     return *result;
 }
 
 int32_t TaskManagerService::FinishTask(const std::string &taskId)
 {
+    XCOLLIE_TIMER_LESS(__PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::TASKMGR, "called");
     if (taskHandler_ == nullptr) {
         TAG_LOGE(AAFwkTag::TASKMGR, "not ready");
@@ -144,15 +150,21 @@ int32_t TaskManagerService::FinishTask(const std::string &taskId)
         .taskName_ = TASK_FINISH_TASK_NAME,
         .taskQos_ = AAFwk::TaskQoS::USER_INTERACTIVE
     });
-    if (handle) {
-        handle.Sync();
+    if (!handle) {
+        TAG_LOGE(AAFwkTag::TASKMGR, "submit finish task failed");
+        return INNER_ERR;
     }
+    handle.Sync();
     return *result;
 }
 
 int32_t TaskManagerService::StartTaskInner(const TaskCallerInfo &caller, const std::string &taskId,
     int32_t priority)
 {
+    if (tasks_.size() >= TASK_MAX_ACTIVE_TASKS) {
+        TAG_LOGW(AAFwkTag::TASKMGR, "too many active tasks: %{public}zu", tasks_.size());
+        return ERR_INVALID_OPERATION;
+    }
     TaskKey key;
     key.userId = caller.userId;
     key.taskId = taskId;
@@ -197,9 +209,12 @@ int32_t TaskManagerService::FinishTaskInner(const TaskKey &key, TaskFinishReason
         return ERR_TASK_NOT_FOUND;
     }
     if (it->second.timeoutHandle) {
-        // If the cancel fails (the timeout task is already running), the existence check in
-        // OnTaskTimeout keeps the double cleanup idempotent.
-        it->second.timeoutHandle.Cancel();
+        // Safe on the serial queue even when the cancel fails: if the timeout task has not
+        // run yet, the erase below makes OnTaskTimeout a no-op on its re-find; if it has
+        // already run, this record would not be found here at all.
+        if (!it->second.timeoutHandle.Cancel()) {
+            TAG_LOGW(AAFwkTag::TASKMGR, "cancel timeout failed, taskId: %{public}s", key.taskId.c_str());
+        }
     }
     int64_t aliveMillis = NowMillis() - it->second.createTimeMillis;
     // The terminal record leaves the map immediately, so it never shows up in the dump.
@@ -225,6 +240,23 @@ void TaskManagerService::OnTaskTimeout(const TaskKey &key, int64_t expectedDeadl
     FinishTaskInner(key, TaskFinishReason::FINISHED_BY_TIMEOUT, -1);
 }
 
+void TaskManagerService::PostProcessDied(pid_t pid, int32_t uid)
+{
+    if (taskHandler_ == nullptr) {
+        TAG_LOGE(AAFwkTag::TASKMGR, "not ready");
+        return;
+    }
+    wptr<TaskManagerService> weakThis(this);
+    std::function<void()> processDiedFunc = [weakThis, pid, uid]() {
+        sptr<TaskManagerService> service = weakThis.promote();
+        if (service == nullptr) {
+            return;
+        }
+        service->OnProcessDied(pid, uid);
+    };
+    taskHandler_->SubmitTask(processDiedFunc, TASK_PROCESS_DIED_NAME);
+}
+
 void TaskManagerService::OnProcessDied(pid_t pid, int32_t uid)
 {
     // Runs on the app_mgr serial queue (called from AppMgrServiceInner::OnRemoteDied).
@@ -245,8 +277,8 @@ void TaskManagerService::OnProcessDied(pid_t pid, int32_t uid)
 
 void TaskManagerService::RegisterManagedProcess(const TaskKey &key, pid_t pid)
 {
-    // Hook point reserved for SR2~SR4/SR9: attribute a process (launched via intent tools,
-    // CLI tools, A2A, startAbility and so on) to the task.
+    // Hook point reserved for process attribution: processes launched via intent tools,
+    // CLI tools, A2A, startAbility and so on are attached to the task here.
     auto it = tasks_.find(key);
     if (it == tasks_.end()) {
         TAG_LOGW(AAFwkTag::TASKMGR, "task not found, taskId: %{public}s", key.taskId.c_str());
@@ -271,8 +303,8 @@ void TaskManagerService::UnregisterManagedProcess(const TaskKey &key, pid_t pid)
 
 void TaskManagerService::NotifyTaskFinished(const TaskKey &key, TaskFinishReason reason)
 {
-    // Hook point reserved for SR5/SR6 (process_schedule): downgrade/release the control
-    // applied to the managed processes when the task ends. Log only in this SR.
+    // Hook point reserved for resource-schedule control: downgrade/release the control
+    // applied to the managed processes when the task ends. Log only for now.
     TAG_LOGI(AAFwkTag::TASKMGR, "task end notified, taskId: %{public}s, reason: %{public}s",
         key.taskId.c_str(), TaskFinishReasonToString(reason));
 }
@@ -290,9 +322,9 @@ std::string TaskManagerService::DumpActiveTasks()
             std::to_string(record.creatorPid) + "\t" + ManagedPidsToString(record.managedPids) + "\t" +
             "-\t" + std::to_string(remainSeconds) + "\t" + FormatCreateTime(record.createTimeMillis) + "\n";
     }
-    // SchedLevel and the exemption summary stay placeholder until SR5 (process_schedule)
-    // lands; the field layout is fixed here so scripts can rely on it.
-    result += "Exemption summary: total=0 (SR5 not enabled)\n";
+    // SchedLevel and the exemption summary stay placeholder until the resource-schedule
+    // control module lands; the field layout is fixed here so scripts can rely on it.
+    result += "Exemption summary: total=0\n";
     return result;
 }
 

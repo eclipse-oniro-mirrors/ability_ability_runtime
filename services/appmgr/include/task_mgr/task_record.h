@@ -59,7 +59,7 @@ struct TaskRecord {
     std::string creatorBundleName;   // creator system app, for log and dump
     int64_t createTimeMillis = 0;    // wall clock, for dump
     int64_t deadlineMillis = 0;      // wall clock, checked by the timeout handler
-    std::set<pid_t> managedPids;     // processes attributed to the task (SR2~SR5/SR9 hook point)
+    std::set<pid_t> managedPids;     // processes attributed to the task (filled by attribution channels)
     AAFwk::TaskHandle timeoutHandle;
 };
 }  // namespace AppExecFwk

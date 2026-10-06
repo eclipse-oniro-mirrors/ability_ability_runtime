@@ -51,6 +51,20 @@ config("appmgr_core_config") {
   }
 }
 
+idl_interface_sources = [
+  "${target_gen_dir}/task_manager_proxy.cpp",
+  "${target_gen_dir}/task_manager_stub.cpp",
+]
+
+# Must be declared before the library that consumes it via get_target_outputs.
+idl_gen_interface("task_manager_interface") {
+  src_idl = rebase_path("ITaskManager.idl")
+  dst_file = string_join(",", idl_interface_sources)
+  hitrace = "HITRACE_TAG_ABILITY_MANAGER"
+  log_domainid = "0xD001318"
+  log_tag = "TaskMgr"
+}
+
 ohos_shared_library("app_manager") {
   branch_protector_ret = "pac_ret"
   branch_protector_frt = "bti"
@@ -288,17 +302,4 @@ ohos_shared_library("app_state_data") {
   subsystem_name = "ability"
   part_name = "ability_runtime"
   configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
-}
-
-idl_interface_sources = [
-  "${target_gen_dir}/task_manager_proxy.cpp",
-  "${target_gen_dir}/task_manager_stub.cpp",
-]
-
-idl_gen_interface("task_manager_interface") {
-  src_idl = rebase_path("ITaskManager.idl")
-  dst_file = string_join(",", idl_interface_sources)
-  hitrace = "HITRACE_TAG_ABILITY_MANAGER"
-  log_domainid = "0xD001318"
-  log_tag = "TaskMgr"
 }
