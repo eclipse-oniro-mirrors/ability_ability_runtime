@@ -1147,11 +1147,6 @@ ohos_shared_library("ui_ability_ani") {
 }
 
 ohos_shared_library("uiabilitykit_native") {
-  sanitize = {
-    cfi = true
-    cfi_cross_dso = true
-    debug = false
-  }
   branch_protector_ret = "pac_ret"
 
   include_dirs = [
@@ -1299,11 +1294,6 @@ ohos_shared_library("uiabilitykit_native") {
 }
 
 ohos_shared_library("ability_thread") {
-  sanitize = {
-    cfi = true
-    cfi_cross_dso = true
-    debug = false
-  }
   branch_protector_ret = "pac_ret"
   branch_protector_frt = "bti"
 
@@ -3677,11 +3667,6 @@ config("auto_fill_extension_config") {
 }
 
 ohos_shared_library("auto_fill_extension") {
-  sanitize = {
-    cfi = true
-    cfi_cross_dso = true
-    debug = false
-  }
   branch_protector_ret = "pac_ret"
   branch_protector_frt = "bti"
 
@@ -3856,11 +3841,6 @@ ohos_shared_library("auto_fill_extension_util") {
 }
 
 ohos_shared_library("auto_fill_extension_module") {
-  sanitize = {
-    cfi = true
-    cfi_cross_dso = true
-    debug = false
-  }
   branch_protector_ret = "pac_ret"
   branch_protector_frt = "bti"
 
