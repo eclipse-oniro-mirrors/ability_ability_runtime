@@ -2588,7 +2588,6 @@ int AbilityManagerStub::StartContinuationInner(MessageParcel &data, MessageParce
         return ERR_NULL_OBJECT;
     }
     SanitizeWantParams(*want);
-    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
 
     sptr<IRemoteObject> abilityToken = data.ReadRemoteObject();
     if (abilityToken == nullptr) {
@@ -3601,7 +3600,6 @@ int AbilityManagerStub::ScheduleRecoverAbilityInner(MessageParcel &data, Message
     Want *want = data.ReadParcelable<Want>();
     if (want != nullptr) {
         SanitizeWantParams(*want);
-    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
     ScheduleRecoverAbility(token, reason, want);
     if (want != nullptr) {
@@ -4507,7 +4505,6 @@ int32_t AbilityManagerStub::ExecuteIntentForDistributedInner(MessageParcel &data
         TAG_LOGE(AAFwkTag::ABILITYMGR, "want null");
         return ERR_INVALID_VALUE;
     }
-    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
 
     std::string srcDeviceId = data.ReadString();
     if (srcDeviceId.empty()) {
@@ -4565,7 +4562,6 @@ int32_t AbilityManagerStub::ExecuteUIAbilityForegroundIntentWithSpecifyTokenIdIn
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null want");
         return ERR_INVALID_VALUE;
     }
-    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     sptr<IRemoteObject> callerAbilityToken = data.ReadRemoteObject();
     std::unique_ptr<InsightIntentExecuteLiteParam> param(data.ReadParcelable<InsightIntentExecuteLiteParam>());
     if (param == nullptr) {
