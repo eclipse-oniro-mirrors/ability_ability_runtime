@@ -436,19 +436,11 @@
               "header_base": "//foundation/ability/ability_runtime/interfaces/inner_api/app_manager/include",
               "header_files": [
                 "appmgr/app_mgr_client.h",
-                "appmgr/page_state_data.h"
-              ]
-            },
-            "name": "//foundation/ability/ability_runtime/interfaces/inner_api/app_manager:app_manager"
-          },
-          {
-            "header": {
-              "header_base": "//foundation/ability/ability_runtime/interfaces/inner_api/app_manager/include",
-              "header_files": [
+                "appmgr/page_state_data.h",
                 "task_mgr/task_manager_client.h"
               ]
             },
-            "name": "//foundation/ability/ability_runtime/interfaces/inner_api/app_manager:task_manager"
+            "name": "//foundation/ability/ability_runtime/interfaces/inner_api/app_manager:app_manager"
           },
           {
             "header": {

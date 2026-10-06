@@ -34,7 +34,11 @@ config("appmgr_sdk_config") {
 }
 
 config("appmgr_core_config") {
-  include_dirs = [ "include" ]
+  include_dirs = [
+    "include",
+    # Gen dir of the IDL-generated ITaskManager headers (itask_manager.h and so on).
+    "${target_gen_dir}",
+  ]
   defines = []
   if (ability_command_for_test) {
     defines += [ "ABILITY_COMMAND_FOR_TEST" ]
@@ -162,7 +166,10 @@ ohos_shared_library("app_manager") {
     "src/appmgr/start_specified_ability_response_proxy.cpp",
     "src/appmgr/start_specified_ability_response_stub.cpp",
     "src/appmgr/system_memory_attr.cpp",
+    "src/task_mgr/task_manager_client.cpp",
   ]
+  output_values = get_target_outputs(":task_manager_interface")
+  sources += filter_include(output_values, [ "*.cpp" ])
 
   public_configs = [
     ":appmgr_core_config",
@@ -178,6 +185,7 @@ ohos_shared_library("app_manager") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
   deps = [
+    ":task_manager_interface",
     "${ability_runtime_path}/utils/global/common:runtime_utils",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
     "${ability_runtime_path}/utils/server/startup:startup_util",
@@ -293,56 +301,4 @@ idl_gen_interface("task_manager_interface") {
   hitrace = "HITRACE_TAG_ABILITY_MANAGER"
   log_domainid = "0xD001318"
   log_tag = "TaskMgr"
-}
-
-config("task_manager_config") {
-  visibility = [ ":*" ]
-  include_dirs = [
-    "include/task_mgr",
-    "${ability_runtime_innerkits_path}/ability_manager/include",
-    "${ability_runtime_services_path}/common/include",
-    "${target_gen_dir}",
-  ]
-  cflags = []
-  if (target_cpu == "arm") {
-    cflags += [ "-DBINDER_IPC_32BIT" ]
-  }
-}
-
-ohos_shared_library("task_manager") {
-  version_script = "libtask_manager.map"
-  branch_protector_ret = "pac_ret"
-
-  sanitize = {
-    cfi = true
-    cfi_cross_dso = true
-    debug = false
-  }
-
-  sources = [ "src/task_mgr/task_manager_client.cpp" ]
-  output_values = get_target_outputs(":task_manager_interface")
-  sources += filter_include(output_values, [ "*.cpp" ])
-
-  public_configs = [ ":task_manager_config" ]
-
-  configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
-
-  defines = [
-    "AMS_LOG_TAG = \"TaskMgr\"",
-    "AMS_LOG_DOMAIN = 0xD001318",
-  ]
-
-  deps = [ ":task_manager_interface" ]
-
-  external_deps = [
-    "c_utils:utils",
-    "hilog:libhilog",
-    "hitrace:hitrace_meter",
-    "ipc:ipc_single",
-    "samgr:samgr_proxy",
-  ]
-
-  innerapi_tags = [ "platformsdk" ]
-  subsystem_name = "ability"
-  part_name = "ability_runtime"
 }
