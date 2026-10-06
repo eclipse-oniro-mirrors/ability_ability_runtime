@@ -152,7 +152,7 @@ void EtsTaskManagerRegistryInit(ani_env *env)
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "FindNamespace taskManager failed status : %{public}d", status);
         return;
     }
-    std::array kitFunctions = {
+    std::array<ani_native_function, 2> kitFunctions = {
         ani_native_function{ "nativeStartTask", nullptr,
             reinterpret_cast<void *>(EtsTaskManager::NativeStartTask) },
         ani_native_function{ "nativeFinishTask", nullptr,

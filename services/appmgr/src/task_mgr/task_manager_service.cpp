@@ -78,7 +78,7 @@ TaskManagerService::TaskManagerService(const std::shared_ptr<AAFwk::TaskHandlerW
 
 int32_t TaskManagerService::StartTask(const std::string &taskId, int32_t priority)
 {
-    XCOLLIE_TIMER_LESS(__PRETTY_FUNCTION__);
+    XCOLLIE_TIMER_LESS("TaskManagerService::StartTask");
     TAG_LOGD(AAFwkTag::TASKMGR, "called");
     if (taskHandler_ == nullptr) {
         TAG_LOGE(AAFwkTag::TASKMGR, "not ready");
@@ -119,7 +119,7 @@ int32_t TaskManagerService::StartTask(const std::string &taskId, int32_t priorit
 
 int32_t TaskManagerService::FinishTask(const std::string &taskId)
 {
-    XCOLLIE_TIMER_LESS(__PRETTY_FUNCTION__);
+    XCOLLIE_TIMER_LESS("TaskManagerService::FinishTask");
     TAG_LOGD(AAFwkTag::TASKMGR, "called");
     if (taskHandler_ == nullptr) {
         TAG_LOGE(AAFwkTag::TASKMGR, "not ready");
@@ -277,8 +277,8 @@ void TaskManagerService::OnProcessDied(pid_t pid, int32_t uid)
 
 void TaskManagerService::RegisterManagedProcess(const TaskKey &key, pid_t pid)
 {
-    // Hook point reserved for process attribution: processes launched via intent tools,
-    // CLI tools, A2A, startAbility and so on are attached to the task here.
+    // Hook point reserved for process attribution: processes launched via intent/CLI/A2A/startAbility
+    // and so on are attached to the task here.
     auto it = tasks_.find(key);
     if (it == tasks_.end()) {
         TAG_LOGW(AAFwkTag::TASKMGR, "task not found, taskId: %{public}s", key.taskId.c_str());
