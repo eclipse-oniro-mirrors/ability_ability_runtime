@@ -81,6 +81,7 @@
 #include "ipc_skeleton.h"
 #include "iservice_registry.h"
 #include "os_account_constants.h"
+#include "os_account_manager.h"
 #include "keep_alive_process_manager.h"
 #include "keep_alive_utils.h"
 #include "main_element_utils.h"
@@ -4580,7 +4581,13 @@ int AbilityManagerService::GetDisplayIdByAccount(int32_t accountId, uint64_t &di
 int AbilityManagerService::RequestModalUIExtensionInner(Want want)
 {
     sptr<IRemoteObject> token = nullptr;
-    int ret = IN_PROCESS_CALL(GetTopAbility(token));
+    int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+    uint64_t displayId = 0;
+    auto displayRet = AccountSA::OsAccountManager::GetForegroundOsAccountDisplayId(userId, displayId);
+    if (displayRet != ERR_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "get foreground display id failed, ret=%{public}d", displayRet);
+    }
+    int ret = IN_PROCESS_CALL(GetTopAbilityInner(token, displayId, userId));
     if (ret == ERR_OK && token != nullptr) {
         // Gets the record corresponding to the current focus appliaction
         auto record = Token::GetAbilityRecordByToken(token);
@@ -4588,19 +4595,16 @@ int AbilityManagerService::RequestModalUIExtensionInner(Want want)
             TAG_LOGE(AAFwkTag::ABILITYMGR, "record null");
             return ERR_INVALID_VALUE;
         }
-
         // Gets the bundleName corresponding to the
         // current focus appliaction
         std::string focusName = record->GetAbilityInfo().bundleName;
-
         // Gets the bundleName corresponding to the
         // current focus appliaction
         std::string callerName = want.GetParams().GetStringParam("bundleName");
 
         TAG_LOGI(AAFwkTag::ABILITYMGR,
-               "focusbundlename: %{public}s, callerbundlename: %{public}s",
-               focusName.c_str(), callerName.c_str());
-
+               "focusbundlename: %{public}s, callerbundlename: %{public}s, userId=%{public}d",
+               focusName.c_str(), callerName.c_str(), userId);
         // Compare
         if (record->GetAbilityInfo().type == AppExecFwk::AbilityType::PAGE &&
             focusName == callerName) {
@@ -4608,13 +4612,13 @@ int AbilityManagerService::RequestModalUIExtensionInner(Want want)
             return record->CreateModalUIExtension(want);
         }
     } else {
-        TAG_LOGW(AAFwkTag::ABILITYMGR, "token null");
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "token null, userId=%{public}d", userId);
     }
 
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Window Modal System Create UIExtension is called!");
     want.SetParam(UIEXTENSION_MODAL_TYPE, 1);
     auto connection = std::make_shared<Rosen::ModalSystemUiExtension>();
-    return connection->CreateModalUIExtension(want) ? ERR_OK : INNER_ERR;
+    return connection->CreateModalUIExtension(want, userId) ? ERR_OK : INNER_ERR;
 }
 
 int AbilityManagerService::RequestModalUIExtensionWithAccountInner(Want want, int32_t accountId)
@@ -13619,7 +13623,10 @@ bool AbilityManagerService::CheckUIExtensionCallerIsForeground(const AbilityRequ
         if (UIExtensionWrapper::IsUIExtension(callerAbility->GetAbilityInfo().extensionAbilityType)) {
             auto tokenId = callerAbility->GetApplicationInfo().accessTokenId;
             bool isFocused = false;
-            if (CheckUIExtensionIsFocused(tokenId, isFocused) == ERR_OK && isFocused) {
+            int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+            uint64_t displayId = 0;
+            auto displayRet = AccountSA::OsAccountManager::GetForegroundOsAccountDisplayId(userId, displayId);
+            if (CheckUIExtensionIsFocused(tokenId, isFocused, displayId) == ERR_OK && isFocused) {
                 TAG_LOGD(AAFwkTag::ABILITYMGR, "Root caller is foreground");
                 return true;
             }
@@ -13646,7 +13653,8 @@ bool AbilityManagerService::CheckStartCallHasFloatingWindowForUIExtension(const 
 {
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
         int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
-        auto sceneSessionManager = Rosen::SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
+        auto sceneSessionManager = IN_PROCESS_CALL(
+            Rosen::SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy());
         CHECK_POINTER_AND_RETURN_LOG(sceneSessionManager, CHECK_PERMISSION_FAILED, "sceneSessionManager is nullptr");
         bool hasFloatingWindow = false;
         auto err = sceneSessionManager->HasFloatingWindowForeground(callerToken, hasFloatingWindow);
@@ -14258,7 +14266,8 @@ std::shared_ptr<AbilityRecord> AbilityManagerService::GetFocusAbility()
 int AbilityManagerService::CheckUIExtensionIsFocused(uint32_t uiExtensionTokenId, bool& isFocused, uint64_t displayId)
 {
     sptr<IRemoteObject> token;
-    auto ret = GetTopAbilityInner(token, displayId, INVALID_USER_ID);
+    int32_t userId = GetValidUserId(DEFAULT_INVAL_VALUE);
+    auto ret = GetTopAbilityInner(token, displayId, userId);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "getTopAbility failed");
         return ret;
@@ -14273,7 +14282,6 @@ int AbilityManagerService::CheckUIExtensionIsFocused(uint32_t uiExtensionTokenId
     }
 
     bool focused = false;
-    int32_t userId = GetValidUserId(DEFAULT_INVAL_VALUE);
     auto connectManager = GetUIExtensionAbilityManagerByUserId(userId);
     auto commonExtensionManager = GetCommonExtensionManagerByUserId(userId);
     if (connectManager || commonExtensionManager) {

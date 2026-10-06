@@ -214,7 +214,7 @@ private:
 
     bool CheckCallerPermission();
 
-    bool CheckWindowState(int32_t pid);
+    bool CheckWindowState(int32_t pid, int32_t userId);
     bool CheckPermission(sptr<PendingWantRecord> record);
 
 private:

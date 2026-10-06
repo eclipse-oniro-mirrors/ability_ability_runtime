@@ -26,6 +26,7 @@ public:
     ~ModalSystemUiExtension();
 
     bool CreateModalUIExtension(const AAFwk::Want &want);
+    bool CreateModalUIExtension(const AAFwk::Want &want, int32_t userId);
 };
 } // namespace Rosen
 } // namespace OHOS
