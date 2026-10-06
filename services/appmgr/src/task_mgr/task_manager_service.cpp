@@ -277,8 +277,7 @@ void TaskManagerService::OnProcessDied(pid_t pid, int32_t uid)
 
 void TaskManagerService::RegisterManagedProcess(const TaskKey &key, pid_t pid)
 {
-    // Hook point reserved for process attribution: processes launched via intent/CLI/A2A/startAbility
-    // and so on are attached to the task here.
+    // Hook point reserved for process attribution
     auto it = tasks_.find(key);
     if (it == tasks_.end()) {
         TAG_LOGW(AAFwkTag::TASKMGR, "task not found, taskId: %{public}s", key.taskId.c_str());

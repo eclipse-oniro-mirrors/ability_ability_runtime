@@ -125,8 +125,7 @@ public:
     void OnProcessDied(pid_t pid, int32_t uid);
 
     /**
-     * @brief Attributes a process to the task, reserved for the process attribution
-     *        channels (processes launched via intent/CLI/A2A/startAbility and so on).
+     * @brief Attributes a process to the task, reserved for the process attribution channels
      * @param key Indicates the task key.
      * @param pid Indicates the pid of the attributed process.
      */

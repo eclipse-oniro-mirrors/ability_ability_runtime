@@ -41,6 +41,7 @@ constexpr int32_t TASK_PRIORITY_MEDIUM = 200;
 constexpr int32_t TASK_PRIORITY_HIGH = 300;
 constexpr size_t TASK_ID_MIN_LEN = 1;
 constexpr size_t TASK_ID_MAX_LEN = 256;
+constexpr size_t NATIVE_FUNCTION_COUNT = 2;
 
 bool ConvertTaskId(ani_env *env, ani_string aniTaskId, std::string &taskId)
 {
@@ -152,7 +153,7 @@ void EtsTaskManagerRegistryInit(ani_env *env)
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "FindNamespace taskManager failed status : %{public}d", status);
         return;
     }
-    std::array<ani_native_function, 2> kitFunctions = {
+    std::array<ani_native_function, NATIVE_FUNCTION_COUNT> kitFunctions = {
         ani_native_function{ "nativeStartTask", nullptr,
             reinterpret_cast<void *>(EtsTaskManager::NativeStartTask) },
         ani_native_function{ "nativeFinishTask", nullptr,
