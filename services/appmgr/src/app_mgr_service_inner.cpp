@@ -2267,6 +2267,8 @@ void AppMgrServiceInner::LoadAbility(std::shared_ptr<AbilityInfo> abilityInfo, s
             }
             isProcCache = DelayedSingleton<CacheProcessManager>::GetInstance()->ReuseCachedProcess(appRecord);
         } else {
+            abilityInfo = std::make_shared<AbilityInfo>(*abilityInfo);
+            appInfo = std::make_shared<ApplicationInfo>(*appInfo);
             MakeProcessName(abilityInfo, appInfo, hapModuleInfo, appIndex, specifiedProcessFlag,
                 processName);
             auto element = want->GetElement();
