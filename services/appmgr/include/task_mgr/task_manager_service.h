@@ -130,7 +130,7 @@ public:
      * @param pid Indicates the pid of the attributed process.
      * @param toolType Indicates the tool chain that attributes the process.
      * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
-     *         ERR_PERMISSION_DENIED if the caller is not a system ability;
+     *         ERR_PERMISSION_DENIED if the caller is not a system ability or shell;
      *         ERR_TASK_NOT_FOUND if the task does not exist.
      */
     int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType) override;
@@ -140,7 +140,7 @@ public:
      * @param taskId Indicates the attribution key of the task.
      * @param pid Indicates the pid of the process to remove.
      * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
-     *         ERR_PERMISSION_DENIED if the caller is not a system ability;
+     *         ERR_PERMISSION_DENIED if the caller is not a system ability or shell;
      *         ERR_TASK_NOT_FOUND if the task does not exist.
      */
     int32_t UnregisterManagedProcess(const std::string &taskId, int32_t pid) override;

@@ -286,16 +286,16 @@ int32_t TaskManagerService::RegisterManagedProcess(const std::string &taskId, in
         return ERR_INVALID_OPERATION;
     }
     if (pid <= 0 || taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN ||
-        toolType < static_cast<int32_t>(AttributionTool::INSIGHT_INTENT) ||
+        toolType < static_cast<int32_t>(AttributionTool::INSIGHT) ||
         toolType > static_cast<int32_t>(AttributionTool::ABILITY)) {
         TAG_LOGW(AAFwkTag::TASKMGR, "invalid param, taskId size: %{public}zu, pid: %{public}d, "
             "toolType: %{public}d", taskId.size(), pid, toolType);
         return INVALID_PARAMETERS_ERR;
     }
-    // Framework-internal channel for tool chains: only system abilities may attribute or
-    // unattribute processes.
-    if (!AAFwk::PermissionVerification::GetInstance()->IsSACall()) {
-        TAG_LOGW(AAFwkTag::TASKMGR, "caller is not SA, rejected");
+    // Framework-internal channel for tool chains: system abilities (and shell for testing).
+    if (!AAFwk::PermissionVerification::GetInstance()->IsSACall() &&
+        !AAFwk::PermissionVerification::GetInstance()->IsShellCall()) {
+        TAG_LOGW(AAFwkTag::TASKMGR, "caller is not SA or shell, rejected");
         return ERR_PERMISSION_DENIED;
     }
     auto result = std::make_shared<int32_t>(ERR_INVALID_OPERATION);
@@ -328,8 +328,9 @@ int32_t TaskManagerService::UnregisterManagedProcess(const std::string &taskId, 
             taskId.size(), pid);
         return INVALID_PARAMETERS_ERR;
     }
-    if (!AAFwk::PermissionVerification::GetInstance()->IsSACall()) {
-        TAG_LOGW(AAFwkTag::TASKMGR, "caller is not SA, rejected");
+    if (!AAFwk::PermissionVerification::GetInstance()->IsSACall() &&
+        !AAFwk::PermissionVerification::GetInstance()->IsShellCall()) {
+        TAG_LOGW(AAFwkTag::TASKMGR, "caller is not SA or shell, rejected");
         return ERR_PERMISSION_DENIED;
     }
     auto result = std::make_shared<int32_t>(ERR_INVALID_OPERATION);
