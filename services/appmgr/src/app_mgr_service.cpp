@@ -57,6 +57,13 @@ constexpr const char* OPTION_KEY_DUMP_FFRT = "--ffrt";
 constexpr const char* OPTION_KEY_DUMP_WEB = "--web";
 constexpr const char* OPTION_KEY_DUMP_TASK = "--task";
 constexpr const char* TASK_DUMP_TASK_NAME = "TaskMgrDumpActiveTasks";
+constexpr size_t SIZE_ONE = 1;
+constexpr size_t SIZE_FOUR = 4;
+constexpr size_t SIZE_FIVE = 5;
+constexpr size_t INDEX_ONE = 1;
+constexpr size_t INDEX_TWO = 2;
+constexpr size_t INDEX_THREE = 3;
+constexpr size_t INDEX_FOUR = 4;
 const int32_t HIDUMPER_SERVICE_UID = 1212;
 constexpr int32_t RESOURCE_MANAGER_UID = 1096;
 constexpr const int INDEX_PID = 1;
@@ -1056,7 +1063,11 @@ int AppMgrService::ShowHelp(const std::vector<std::u16string>& args, std::string
         .append("--web pid1[,pid2,pid3] [ARG]    ")
         .append("dump arkweb info, ARG must be one of (--all | --nweb | ...)\n")
         .append("--task                      ")
-        .append("dump agent task manager active tasks\n");
+        .append("dump agent task manager active tasks\n")
+        .append("--task register <taskId> <pid> <intent|cli|a2a|ability>    ")
+        .append("test hook: attribute a process into the task\n")
+        .append("--task unregister <taskId> <pid>    ")
+        .append("test hook: remove a process from the task\n");
 
     return ERR_OK;
 }
@@ -1076,6 +1087,17 @@ int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string
             .append(MSG_DUMP_FAIL_REASON_INTERNAL, strlen(MSG_DUMP_FAIL_REASON_INTERNAL));
         return DumpErrorCode::ERR_INTERNAL_ERROR;
     }
+    if (args.size() > SIZE_ONE) {
+        std::string subCmd = Str16ToStr8(args[INDEX_ONE]);
+        if (subCmd == "register") {
+            return DumpTaskRegisterCmd(args, result);
+        }
+        if (subCmd == "unregister") {
+            return DumpTaskUnregisterCmd(args, result);
+        }
+        result.append("error: unknown task subcommand.\n");
+        return DumpErrorCode::ERR_INVALID_CMD_ERROR;
+    }
     auto taskResult = std::make_shared<std::string>();
     std::function<void()> dumpTaskFunc = [taskManagerService = taskManagerService_, taskResult]() {
         // The snapshot is generated on the serial queue for consistency with lifecycle actions:
@@ -1092,6 +1114,73 @@ int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string
     handle.Sync();
     result.append(*taskResult);
     return ERR_OK;
+}
+
+int AppMgrService::DumpTaskRegisterCmd(const std::vector<std::u16string>& args, std::string& result)
+{
+    // Test hook: --task register <taskId> <pid> <tool(intent|cli|a2a|ability)>.
+    if (args.size() != SIZE_FIVE) {
+        result.append("usage: --task register <taskId> <pid> <intent|cli|a2a|ability>\n");
+        return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
+    }
+    pid_t pid = static_cast<pid_t>(std::stoi(Str16ToStr8(args[INDEX_THREE])));
+    std::string tool = Str16ToStr8(args[INDEX_FOUR]);
+    AttributionTool toolType = AttributionTool::UNKNOWN;
+    if (tool == "intent") {
+        toolType = AttributionTool::INTENT;
+    } else if (tool == "cli") {
+        toolType = AttributionTool::CLI;
+    } else if (tool == "a2a") {
+        toolType = AttributionTool::A2A;
+    } else if (tool == "ability") {
+        toolType = AttributionTool::ABILITY;
+    } else {
+        result.append("error: unknown tool, expected intent|cli|a2a|ability.\n");
+        return DumpErrorCode::ERR_INVALID_CMD_ERROR;
+    }
+    std::string taskId = Str16ToStr8(args[INDEX_TWO]);
+    auto errCode = std::make_shared<int32_t>(ERR_INVALID_OPERATION);
+    std::function<void()> registerFunc = [taskManagerService = taskManagerService_, taskId, pid,
+        toolType, errCode]() {
+        *errCode = taskManagerService->RegisterManagedProcessInner(taskId, pid, toolType);
+    };
+    AAFwk::TaskHandle handle = taskHandler_->SubmitTask(registerFunc, "TaskMgrDumpRegister");
+    if (!handle) {
+        TAG_LOGE(AAFwkTag::TASKMGR, "submit register task failed");
+        result.append(MSG_DUMP_FAIL, strlen(MSG_DUMP_FAIL))
+            .append(MSG_DUMP_FAIL_REASON_INTERNAL, strlen(MSG_DUMP_FAIL_REASON_INTERNAL));
+        return DumpErrorCode::ERR_INTERNAL_ERROR;
+    }
+    handle.Sync();
+    result.append(*errCode == ERR_OK ? "register ok\n" : "register failed: " + std::to_string(*errCode) + "\n");
+    return *errCode == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
+}
+
+int AppMgrService::DumpTaskUnregisterCmd(const std::vector<std::u16string>& args, std::string& result)
+{
+    // Test hook: --task unregister <taskId> <pid>.
+    if (args.size() != SIZE_FOUR) {
+        result.append("usage: --task unregister <taskId> <pid>\n");
+        return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
+    }
+    pid_t pid = static_cast<pid_t>(std::stoi(Str16ToStr8(args[INDEX_THREE])));
+    std::string taskId = Str16ToStr8(args[INDEX_TWO]);
+    auto errCode = std::make_shared<int32_t>(ERR_INVALID_OPERATION);
+    std::function<void()> unregisterFunc = [taskManagerService = taskManagerService_, taskId, pid,
+        errCode]() {
+        *errCode = taskManagerService->UnregisterManagedProcessInner(taskId, pid);
+    };
+    AAFwk::TaskHandle handle = taskHandler_->SubmitTask(unregisterFunc, "TaskMgrDumpUnregister");
+    if (!handle) {
+        TAG_LOGE(AAFwkTag::TASKMGR, "submit unregister task failed");
+        result.append(MSG_DUMP_FAIL, strlen(MSG_DUMP_FAIL))
+            .append(MSG_DUMP_FAIL_REASON_INTERNAL, strlen(MSG_DUMP_FAIL_REASON_INTERNAL));
+        return DumpErrorCode::ERR_INTERNAL_ERROR;
+    }
+    handle.Sync();
+    result.append(
+        *errCode == ERR_OK ? "unregister ok\n" : "unregister failed: " + std::to_string(*errCode) + "\n");
+    return *errCode == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
 }
 
 int AppMgrService::DumpIpcAllInner(const AppMgrService::DumpIpcKey key, std::string& result)

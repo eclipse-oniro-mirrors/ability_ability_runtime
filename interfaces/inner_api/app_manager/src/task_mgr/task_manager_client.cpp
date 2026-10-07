@@ -66,6 +66,36 @@ int32_t TaskManagerClient::FinishTask(const std::string &taskId)
     return ret;
 }
 
+int32_t TaskManagerClient::RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType)
+{
+    TAG_LOGD(AAFwkTag::TASKMGR, "called");
+    auto proxy = GetTaskManagerProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::TASKMGR, "task manager proxy is null");
+        return ABILITY_SERVICE_NOT_CONNECTED;
+    }
+    auto ret = proxy->RegisterManagedProcess(taskId, pid, toolType);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::TASKMGR, "register managed process failed: %{public}d", ret);
+    }
+    return ret;
+}
+
+int32_t TaskManagerClient::UnregisterManagedProcess(const std::string &taskId, int32_t pid)
+{
+    TAG_LOGD(AAFwkTag::TASKMGR, "called");
+    auto proxy = GetTaskManagerProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::TASKMGR, "task manager proxy is null");
+        return ABILITY_SERVICE_NOT_CONNECTED;
+    }
+    auto ret = proxy->UnregisterManagedProcess(taskId, pid);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::TASKMGR, "unregister managed process failed: %{public}d", ret);
+    }
+    return ret;
+}
+
 sptr<ITaskManager> TaskManagerClient::GetTaskManagerProxy()
 {
     std::lock_guard<std::mutex> lock(mutex_);

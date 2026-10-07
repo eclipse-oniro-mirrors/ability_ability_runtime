@@ -44,5 +44,21 @@ const char *TaskPriorityToString(int32_t priority)
             return "INVALID";
     }
 }
+
+const char *AttributionToolToString(AttributionTool tool)
+{
+    switch (tool) {
+        case AttributionTool::INTENT:
+            return "intent";
+        case AttributionTool::CLI:
+            return "cli";
+        case AttributionTool::A2A:
+            return "a2a";
+        case AttributionTool::ABILITY:
+            return "ability";
+        default:
+            return "unknown";
+    }
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

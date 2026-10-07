@@ -22,7 +22,6 @@
 interface OHOS.AppExecFwk.ITaskManager {
     void StartTask([in] String taskId, [in] int priority);
     void FinishTask([in] String taskId);
-    // New methods MUST be appended at the END: IDL codegen assigns transaction codes by
-    // declaration order; a mid-interface insertion shifts existing codes and breaks OTA-mixed
-    // proxy/stub interop.
+    void RegisterManagedProcess([in] String taskId, [in] int pid, [in] int toolType);
+    void UnregisterManagedProcess([in] String taskId, [in] int pid);
 }

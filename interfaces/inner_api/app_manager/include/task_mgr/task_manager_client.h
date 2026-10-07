@@ -52,6 +52,23 @@ public:
      */
     int32_t FinishTask(const std::string &taskId);
 
+    /**
+     * @brief Attributes a process into the task.
+     * @param taskId Attribution key of the task.
+     * @param pid The pid of the attributed process.
+     * @param toolType The tool chain that attributes the process.
+     * @return ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist.
+     */
+    int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType);
+
+    /**
+     * @brief Removes a process from the managed set of the task.
+     * @param taskId Attribution key of the task.
+     * @param pid The pid of the process to remove.
+     * @return ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist.
+     */
+    int32_t UnregisterManagedProcess(const std::string &taskId, int32_t pid);
+
 private:
     TaskManagerClient() = default;
     ~TaskManagerClient() = default;

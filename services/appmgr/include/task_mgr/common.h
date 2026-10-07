@@ -49,8 +49,19 @@ enum class TaskFinishReason : int32_t {
     FINISHED_BY_CREATOR_DIED = 2,
 };
 
+// Which tool chain attributed a process into a task. Each tool passes its own type when
+// calling RegisterManagedProcess; new tools extend this list.
+enum class AttributionTool : int32_t {
+    UNKNOWN = 0,
+    INTENT = 1,
+    CLI = 2,
+    A2A = 3,
+    ABILITY = 4,
+};
+
 const char *TaskFinishReasonToString(TaskFinishReason reason);
 const char *TaskPriorityToString(int32_t priority);
+const char *AttributionToolToString(AttributionTool tool);
 }  // namespace AppExecFwk
 }  // namespace OHOS
 #endif  // OHOS_APP_EXECFWK_TASK_MGR_COMMON_H

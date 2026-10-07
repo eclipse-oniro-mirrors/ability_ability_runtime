@@ -18,8 +18,7 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <functional>
-#include <set>
+#include <map>
 #include <string>
 
 #include "task_handler_wrap.h"
@@ -28,27 +27,16 @@
 
 namespace OHOS {
 namespace AppExecFwk {
-// Map key: the same taskId is isolated per user, so a task created in one user is invisible
-// (treated as not existing) to finishTask from another user.
-struct TaskKey {
-    int32_t userId = -1;
-    std::string taskId;
-
-    bool operator==(const TaskKey &other) const
-    {
-        return userId == other.userId && taskId == other.taskId;
-    }
+// A process attributed into a task by a tool chain. The tool knows its own type when it
+// calls RegisterManagedProcess, so the type is recorded per process.
+struct ManagedProcess {
+    pid_t pid = -1;
+    AttributionTool tool = AttributionTool::UNKNOWN;
+    int64_t attributedTimeMillis = 0;
 };
 
-struct TaskKeyHash {
-    size_t operator()(const TaskKey &key) const
-    {
-        return std::hash<int32_t>()(key.userId) ^ (std::hash<std::string>()(key.taskId) << 1);
-    }
-};
-
-// In-memory task record. Only touched on the app_mgr serial queue, never persisted: process
-// exit of AppMgrService clears everything (acceptable per spec EX-5).
+// In-memory task record keyed by the globally unique taskId. Only touched on the app_mgr
+// serial queue, never persisted: process exit of AppMgrService clears everything (EX-5).
 struct TaskRecord {
     std::string taskId;
     int32_t priority = TASK_PRIORITY_DEFAULT;
@@ -59,7 +47,7 @@ struct TaskRecord {
     std::string creatorBundleName;   // creator system app, for log and dump
     int64_t createTimeMillis = 0;    // wall clock, for dump
     int64_t deadlineMillis = 0;      // wall clock, checked by the timeout handler
-    std::set<pid_t> managedPids;     // processes attributed to the task (filled by attribution channels)
+    std::map<pid_t, ManagedProcess> managedProcesses;  // attributed by tool channels
     AAFwk::TaskHandle timeoutHandle;
 };
 }  // namespace AppExecFwk

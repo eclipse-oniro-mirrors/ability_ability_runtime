@@ -44,6 +44,8 @@ const char *TASK_START_TASK_NAME = "TaskMgrStartTask";
 const char *TASK_FINISH_TASK_NAME = "TaskMgrFinishTask";
 const char *TASK_TIMEOUT_NAME_PREFIX = "TaskMgrTimeout_";
 const char *TASK_PROCESS_DIED_NAME = "TaskMgrOnProcessDied";
+const char *TASK_REGISTER_NAME = "TaskMgrRegisterProcess";
+const char *TASK_UNREGISTER_NAME = "TaskMgrUnregisterProcess";
 
 std::string FormatCreateTime(int64_t millis)
 {
@@ -57,14 +59,14 @@ std::string FormatCreateTime(int64_t millis)
     return std::string(buffer) + "." + std::to_string(millis % MILLIS_PER_SECOND);
 }
 
-std::string ManagedPidsToString(const std::set<pid_t> &managedPids)
+std::string ManagedProcessesToString(const std::map<pid_t, ManagedProcess> &managedProcesses)
 {
     std::string result;
-    for (auto it = managedPids.begin(); it != managedPids.end(); ++it) {
-        if (it != managedPids.begin()) {
+    for (auto it = managedProcesses.begin(); it != managedProcesses.end(); ++it) {
+        if (it != managedProcesses.begin()) {
             result += ";";
         }
-        result += std::to_string(*it);
+        result += std::to_string(it->first) + "(" + AttributionToolToString(it->second.tool) + ")";
     }
     return result;
 }
@@ -134,17 +136,14 @@ int32_t TaskManagerService::FinishTask(const std::string &taskId)
         return ERR_NOT_SYSTEM_APP;
     }
     TaskCallerInfo caller = GetCallerInfo();
-    TaskKey key;
-    key.userId = caller.userId;
-    key.taskId = taskId;
     auto result = std::make_shared<int32_t>(ERR_INVALID_OPERATION);
     wptr<TaskManagerService> weakThis(this);
-    std::function<void()> finishTaskFunc = [weakThis, key, creatorUid = caller.uid, result]() {
+    std::function<void()> finishTaskFunc = [weakThis, taskId, creatorUid = caller.uid, result]() {
         sptr<TaskManagerService> service = weakThis.promote();
         if (service == nullptr) {
             return;
         }
-        *result = service->FinishTaskInner(key, TaskFinishReason::FINISHED_BY_CALLER, creatorUid);
+        *result = service->FinishTaskInner(taskId, TaskFinishReason::FINISHED_BY_CALLER, creatorUid);
     };
     AAFwk::TaskHandle handle = taskHandler_->SubmitTask(finishTaskFunc, AAFwk::TaskAttribute {
         .taskName_ = TASK_FINISH_TASK_NAME,
@@ -165,10 +164,7 @@ int32_t TaskManagerService::StartTaskInner(const TaskCallerInfo &caller, const s
         TAG_LOGW(AAFwkTag::TASKMGR, "too many active tasks: %{public}zu", tasks_.size());
         return ERR_INVALID_OPERATION;
     }
-    TaskKey key;
-    key.userId = caller.userId;
-    key.taskId = taskId;
-    if (tasks_.find(key) != tasks_.end()) {
+    if (tasks_.find(taskId) != tasks_.end()) {
         TAG_LOGW(AAFwkTag::TASKMGR, "task already exists, taskId: %{public}s", taskId.c_str());
         return ERR_TASK_ALREADY_EXISTS;
     }
@@ -183,9 +179,8 @@ int32_t TaskManagerService::StartTaskInner(const TaskCallerInfo &caller, const s
     record.creatorBundleName = caller.bundleName;
     record.createTimeMillis = NowMillis();
     record.deadlineMillis = record.createTimeMillis + static_cast<int64_t>(timeoutSeconds) * MILLIS_PER_SECOND;
-    record.managedPids.insert(caller.pid);
-    PostDelayedTimeout(key, record);
-    tasks_.emplace(key, std::move(record));
+    PostDelayedTimeout(taskId, record);
+    tasks_.emplace(taskId, std::move(record));
     TAG_LOGI(AAFwkTag::TASKMGR,
         "task started, taskId: %{public}s, priority: %{public}d, creator uid: %{public}d, pid: %{public}d, "
         "bundle: %{public}s, timeout(s): %{public}d",
@@ -193,18 +188,19 @@ int32_t TaskManagerService::StartTaskInner(const TaskCallerInfo &caller, const s
     return ERR_OK;
 }
 
-int32_t TaskManagerService::FinishTaskInner(const TaskKey &key, TaskFinishReason reason, int32_t callerUid)
+int32_t TaskManagerService::FinishTaskInner(const std::string &taskId, TaskFinishReason reason,
+    int32_t callerUid)
 {
-    auto it = tasks_.find(key);
+    auto it = tasks_.find(taskId);
     if (it == tasks_.end()) {
-        TAG_LOGW(AAFwkTag::TASKMGR, "task not found, taskId: %{public}s", key.taskId.c_str());
+        TAG_LOGW(AAFwkTag::TASKMGR, "task not found, taskId: %{public}s", taskId.c_str());
         return ERR_TASK_NOT_FOUND;
     }
     if (callerUid >= 0 && it->second.creatorUid != callerUid) {
         // Not the creating app (uid is the app identity, shared by all its processes):
         // report "not found" without disclosing the task's existence.
         TAG_LOGW(AAFwkTag::TASKMGR, "caller is not the creator, rejected, taskId: %{public}s, "
-            "creator uid: %{public}d, caller uid: %{public}d", key.taskId.c_str(), it->second.creatorUid,
+            "creator uid: %{public}d, caller uid: %{public}d", taskId.c_str(), it->second.creatorUid,
             callerUid);
         return ERR_TASK_NOT_FOUND;
     }
@@ -213,28 +209,28 @@ int32_t TaskManagerService::FinishTaskInner(const TaskKey &key, TaskFinishReason
         // run yet, the erase below makes OnTaskTimeout a no-op on its re-find; if it has
         // already run, this record would not be found here at all.
         if (!it->second.timeoutHandle.Cancel()) {
-            TAG_LOGW(AAFwkTag::TASKMGR, "cancel timeout failed, taskId: %{public}s", key.taskId.c_str());
+            TAG_LOGW(AAFwkTag::TASKMGR, "cancel timeout failed, taskId: %{public}s", taskId.c_str());
         }
     }
     int64_t aliveMillis = NowMillis() - it->second.createTimeMillis;
     // The terminal record leaves the map immediately, so it never shows up in the dump.
     tasks_.erase(it);
-    NotifyTaskFinished(key, reason);
+    NotifyTaskFinished(taskId, reason);
     TAG_LOGI(AAFwkTag::TASKMGR, "task finished, taskId: %{public}s, reason: %{public}s, alive(ms): %{public}" PRId64,
-        key.taskId.c_str(), TaskFinishReasonToString(reason), aliveMillis);
+        taskId.c_str(), TaskFinishReasonToString(reason), aliveMillis);
     return ERR_OK;
 }
 
-void TaskManagerService::OnTaskTimeout(const TaskKey &key, int64_t expectedDeadline)
+void TaskManagerService::OnTaskTimeout(const std::string &taskId, int64_t expectedDeadline)
 {
-    auto it = tasks_.find(key);
+    auto it = tasks_.find(taskId);
     if (it == tasks_.end()) {
         // Already finished by the caller or creator-death cleanup: double insurance.
         return;
     }
     if (it->second.deadlineMillis != expectedDeadline) {
         // Stale timeout event for a rebuilt record: defensive check, no-op.
-        TAG_LOGW(AAFwkTag::TASKMGR, "deadline mismatch, skip, taskId: %{public}s", key.taskId.c_str());
+        TAG_LOGW(AAFwkTag::TASKMGR, "deadline mismatch, skip, taskId: %{public}s", taskId.c_str());
         return;
     }
     FinishTaskInner(key, TaskFinishReason::FINISHED_BY_TIMEOUT, -1);
@@ -259,53 +255,138 @@ void TaskManagerService::PostProcessDied(pid_t pid, int32_t uid)
 
 void TaskManagerService::OnProcessDied(pid_t pid, int32_t uid)
 {
-    // Runs on the app_mgr serial queue (called from AppMgrServiceInner::OnRemoteDied).
+    // Runs on the app_mgr serial queue (posted via PostProcessDied).
     // The creator is identified by the (pid, uid) pair: one uid may host several processes
     // (main plus extensions), and only the tasks created by the dead process itself end.
-    std::vector<TaskKey> creatorKeys;
+    std::vector<std::string> creatorTaskIds;
     for (const auto &item : tasks_) {
         if (item.second.creatorPid == pid && item.second.creatorUid == uid) {
-            creatorKeys.push_back(item.first);
+            creatorTaskIds.push_back(item.first);
         }
     }
-    for (const auto &key : creatorKeys) {
-        FinishTaskInner(key, TaskFinishReason::FINISHED_BY_CREATOR_DIED, -1);
+    for (const auto &taskId : creatorTaskIds) {
+        FinishTaskInner(taskId, TaskFinishReason::FINISHED_BY_CREATOR_DIED, -1);
+    }
+    // A managed process that dies is removed from the managed set of every surviving task.
+    for (auto &item : tasks_) {
+        if (item.second.managedProcesses.erase(pid) > 0) {
+            TAG_LOGI(AAFwkTag::TASKMGR, "managed process died, taskId: %{public}s, pid: %{public}d",
+                item.first.c_str(), pid);
+        }
     }
     TAG_LOGI(AAFwkTag::TASKMGR, "creator process died handled, uid: %{public}d, pid: %{public}d, "
-        "tasks finished: %{public}zu", uid, pid, creatorKeys.size());
+        "tasks finished: %{public}zu", uid, pid, creatorTaskIds.size());
 }
 
-void TaskManagerService::RegisterManagedProcess(const TaskKey &key, pid_t pid)
+int32_t TaskManagerService::RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType)
 {
-    // Hook point reserved for process attribution
-    auto it = tasks_.find(key);
-    if (it == tasks_.end()) {
-        TAG_LOGW(AAFwkTag::TASKMGR, "task not found, taskId: %{public}s", key.taskId.c_str());
-        return;
+    TAG_LOGD(AAFwkTag::TASKMGR, "called");
+    if (taskHandler_ == nullptr) {
+        TAG_LOGE(AAFwkTag::TASKMGR, "not ready");
+        return ERR_INVALID_OPERATION;
     }
-    it->second.managedPids.insert(pid);
-    TAG_LOGI(AAFwkTag::TASKMGR, "process registered, taskId: %{public}s, pid: %{public}d",
-        key.taskId.c_str(), pid);
+    if (pid <= 0 || taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN ||
+        toolType < static_cast<int32_t>(AttributionTool::INTENT) ||
+        toolType > static_cast<int32_t>(AttributionTool::ABILITY)) {
+        TAG_LOGW(AAFwkTag::TASKMGR, "invalid param, taskId size: %{public}zu, pid: %{public}d, "
+            "toolType: %{public}d", taskId.size(), pid, toolType);
+        return INVALID_PARAMETERS_ERR;
+    }
+    // Framework-internal channel for tool chains: only system abilities may attribute or
+    // unattribute processes.
+    if (!AAFwk::PermissionVerification::GetInstance()->IsSACall()) {
+        TAG_LOGW(AAFwkTag::TASKMGR, "caller is not SA, rejected");
+        return ERR_PERMISSION_DENIED;
+    }
+    auto result = std::make_shared<int32_t>(ERR_INVALID_OPERATION);
+    wptr<TaskManagerService> weakThis(this);
+    std::function<void()> registerFunc = [weakThis, taskId, pid, toolType, result]() {
+        sptr<TaskManagerService> service = weakThis.promote();
+        if (service == nullptr) {
+            return;
+        }
+        *result = service->RegisterManagedProcessInner(taskId, pid, static_cast<AttributionTool>(toolType));
+    };
+    AAFwk::TaskHandle handle = taskHandler_->SubmitTask(registerFunc, TASK_REGISTER_NAME);
+    if (!handle) {
+        TAG_LOGE(AAFwkTag::TASKMGR, "submit register task failed");
+        return INNER_ERR;
+    }
+    handle.Sync();
+    return *result;
 }
 
-void TaskManagerService::UnregisterManagedProcess(const TaskKey &key, pid_t pid)
+int32_t TaskManagerService::UnregisterManagedProcess(const std::string &taskId, int32_t pid)
 {
-    auto it = tasks_.find(key);
-    if (it == tasks_.end()) {
-        TAG_LOGW(AAFwkTag::TASKMGR, "task not found, taskId: %{public}s", key.taskId.c_str());
-        return;
+    TAG_LOGD(AAFwkTag::TASKMGR, "called");
+    if (taskHandler_ == nullptr) {
+        TAG_LOGE(AAFwkTag::TASKMGR, "not ready");
+        return ERR_INVALID_OPERATION;
     }
-    it->second.managedPids.erase(pid);
+    if (pid <= 0 || taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN) {
+        TAG_LOGW(AAFwkTag::TASKMGR, "invalid param, taskId size: %{public}zu, pid: %{public}d",
+            taskId.size(), pid);
+        return INVALID_PARAMETERS_ERR;
+    }
+    if (!AAFwk::PermissionVerification::GetInstance()->IsSACall()) {
+        TAG_LOGW(AAFwkTag::TASKMGR, "caller is not SA, rejected");
+        return ERR_PERMISSION_DENIED;
+    }
+    auto result = std::make_shared<int32_t>(ERR_INVALID_OPERATION);
+    wptr<TaskManagerService> weakThis(this);
+    std::function<void()> unregisterFunc = [weakThis, taskId, pid, result]() {
+        sptr<TaskManagerService> service = weakThis.promote();
+        if (service == nullptr) {
+            return;
+        }
+        *result = service->UnregisterManagedProcessInner(taskId, pid);
+    };
+    AAFwk::TaskHandle handle = taskHandler_->SubmitTask(unregisterFunc, TASK_UNREGISTER_NAME);
+    if (!handle) {
+        TAG_LOGE(AAFwkTag::TASKMGR, "submit unregister task failed");
+        return INNER_ERR;
+    }
+    handle.Sync();
+    return *result;
+}
+
+int32_t TaskManagerService::RegisterManagedProcessInner(const std::string &taskId, pid_t pid,
+    AttributionTool tool)
+{
+    auto it = tasks_.find(taskId);
+    if (it == tasks_.end()) {
+        TAG_LOGW(AAFwkTag::TASKMGR, "task not found, taskId: %{public}s", taskId.c_str());
+        return ERR_TASK_NOT_FOUND;
+    }
+    ManagedProcess process;
+    process.pid = pid;
+    process.tool = tool;
+    process.attributedTimeMillis = NowMillis();
+    it->second.managedProcesses[pid] = process;
+    TAG_LOGI(AAFwkTag::TASKMGR, "process registered, taskId: %{public}s, pid: %{public}d, tool: %{public}s",
+        taskId.c_str(), pid, AttributionToolToString(tool));
+    return ERR_OK;
+}
+
+int32_t TaskManagerService::UnregisterManagedProcessInner(const std::string &taskId, pid_t pid)
+{
+    auto it = tasks_.find(taskId);
+    if (it == tasks_.end()) {
+        TAG_LOGW(AAFwkTag::TASKMGR, "task not found, taskId: %{public}s", taskId.c_str());
+        return ERR_TASK_NOT_FOUND;
+    }
+    it->second.managedProcesses.erase(pid);
     TAG_LOGI(AAFwkTag::TASKMGR, "process unregistered, taskId: %{public}s, pid: %{public}d",
-        key.taskId.c_str(), pid);
+        taskId.c_str(), pid);
+    return ERR_OK;
 }
 
-void TaskManagerService::NotifyTaskFinished(const TaskKey &key, TaskFinishReason reason)
+void TaskManagerService::NotifyTaskFinished(const std::string &taskId, TaskFinishReason reason)
 {
     // Hook point reserved for resource-schedule control: downgrade/release the control
     // applied to the managed processes when the task ends. Log only for now.
     TAG_LOGI(AAFwkTag::TASKMGR, "task end notified, taskId: %{public}s, reason: %{public}s",
-        key.taskId.c_str(), TaskFinishReasonToString(reason));
+        taskId.c_str(), TaskFinishReasonToString(reason));
 }
 
 std::string TaskManagerService::DumpActiveTasks()
@@ -320,7 +401,7 @@ std::string TaskManagerService::DumpActiveTasks()
         result += "        priority [" + TaskPriorityToString(record.priority) + "]\n";
         result += "        creator uid [" + std::to_string(record.creatorUid) + "] pid [" +
             std::to_string(record.creatorPid) + "] bundle [" + record.creatorBundleName + "]\n";
-        result += "        managed pids [" + ManagedPidsToString(record.managedPids) + "]\n";
+        result += "        managed processes [" + ManagedProcessesToString(record.managedProcesses) + "]\n";
         result += "        sched level [-]\n";
         result += "        remain timeout [" + std::to_string(remainSeconds) + "s]\n";
         result += "        create time [" + FormatCreateTime(record.createTimeMillis) + "]\n";
@@ -372,18 +453,18 @@ int32_t TaskManagerService::GetTimeoutSeconds() const
     return seconds;
 }
 
-void TaskManagerService::PostDelayedTimeout(const TaskKey &key, TaskRecord &record)
+void TaskManagerService::PostDelayedTimeout(const std::string &taskId, TaskRecord &record)
 {
     int64_t delayMillis = std::max(record.deadlineMillis - NowMillis(), static_cast<int64_t>(0));
     wptr<TaskManagerService> weakThis(this);
-    std::function<void()> timeoutFunc = [weakThis, key, deadline = record.deadlineMillis]() {
+    std::function<void()> timeoutFunc = [weakThis, taskId, deadline = record.deadlineMillis]() {
         sptr<TaskManagerService> service = weakThis.promote();
         if (service == nullptr) {
             return;
         }
-        service->OnTaskTimeout(key, deadline);
+        service->OnTaskTimeout(taskId, deadline);
     };
-    std::string taskName = TASK_TIMEOUT_NAME_PREFIX + std::to_string(key.userId) + "_" + key.taskId;
+    std::string taskName = TASK_TIMEOUT_NAME_PREFIX + taskId;
     record.timeoutHandle = taskHandler_->SubmitTask(timeoutFunc, taskName, delayMillis);
 }
 }  // namespace AppExecFwk

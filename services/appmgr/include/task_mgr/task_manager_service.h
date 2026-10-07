@@ -95,7 +95,7 @@ public:
      * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist or
      *         the caller is not the creator.
      */
-    int32_t FinishTaskInner(const TaskKey &key, TaskFinishReason reason, int32_t callerUid);
+    int32_t FinishTaskInner(const std::string &taskId, TaskFinishReason reason, int32_t callerUid);
 
     /**
      * @brief Handles the expiry of a task timeout, executed on the serial queue. Checks the
@@ -104,7 +104,7 @@ public:
      * @param key Indicates the task key.
      * @param expectedDeadline Indicates the deadline captured when the timer was posted.
      */
-    void OnTaskTimeout(const TaskKey &key, int64_t expectedDeadline);
+    void OnTaskTimeout(const std::string &taskId, int64_t expectedDeadline);
 
     /**
      * @brief Posts the creator-death event onto the serial queue; thread affinity is
@@ -125,18 +125,42 @@ public:
     void OnProcessDied(pid_t pid, int32_t uid);
 
     /**
-     * @brief Attributes a process to the task, reserved for the process attribution channels
-     * @param key Indicates the task key.
+     * @brief Attributes a process into the task.
+     * @param taskId Indicates the attribution key of the task.
      * @param pid Indicates the pid of the attributed process.
+     * @param toolType Indicates the tool chain that attributes the process.
+     * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
+     *         ERR_PERMISSION_DENIED if the caller is not a system ability;
+     *         ERR_TASK_NOT_FOUND if the task does not exist.
      */
-    void RegisterManagedProcess(const TaskKey &key, pid_t pid);
+    int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType) override;
 
     /**
      * @brief Removes a process from the managed set of the task.
-     * @param key Indicates the task key.
+     * @param taskId Indicates the attribution key of the task.
      * @param pid Indicates the pid of the process to remove.
+     * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
+     *         ERR_PERMISSION_DENIED if the caller is not a system ability;
+     *         ERR_TASK_NOT_FOUND if the task does not exist.
      */
-    void UnregisterManagedProcess(const TaskKey &key, pid_t pid);
+    int32_t UnregisterManagedProcess(const std::string &taskId, int32_t pid) override;
+
+    /**
+     * @brief Attributes a process into the task on the serial queue.
+     * @param taskId Indicates the attribution key of the task.
+     * @param pid Indicates the pid of the attributed process.
+     * @param tool Indicates the tool chain that attributes the process.
+     * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist.
+     */
+    int32_t RegisterManagedProcessInner(const std::string &taskId, pid_t pid, AttributionTool tool);
+
+    /**
+     * @brief Removes a process from the managed set of the task on the serial queue.
+     * @param taskId Indicates the attribution key of the task.
+     * @param pid Indicates the pid of the process to remove.
+     * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist.
+     */
+    int32_t UnregisterManagedProcessInner(const std::string &taskId, pid_t pid);
 
     /**
      * @brief Notifies that a task has ended, reserved for the resource-schedule control to
@@ -144,7 +168,7 @@ public:
      * @param key Indicates the task key.
      * @param reason Indicates why the task ends.
      */
-    void NotifyTaskFinished(const TaskKey &key, TaskFinishReason reason);
+    void NotifyTaskFinished(const std::string &taskId, TaskFinishReason reason);
 
     /**
      * @brief Dumps the snapshot of active tasks, executed on the serial queue for
@@ -186,10 +210,10 @@ private:
      * @param key Indicates the task key.
      * @param record Indicates the task record whose deadline drives the delay.
      */
-    void PostDelayedTimeout(const TaskKey &key, TaskRecord &record);
+    void PostDelayedTimeout(const std::string &taskId, TaskRecord &record);
 
     std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler_;
-    std::unordered_map<TaskKey, TaskRecord, TaskKeyHash> tasks_;
+    std::unordered_map<std::string, TaskRecord> tasks_;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS
