@@ -30,7 +30,7 @@ const std::string EXECUTE_COMMAND_FAIL = "error: failed to execute your command.
 
 class CommandTimer {
 public:
-    CommandTimer(const std::string &timerName, uint32_t timeout, const std::string &operation)
+    CommandTimer(uint32_t timeout, const std::string &operation)
     {
         if (operation != "test") {
             setTimer_ = true;
@@ -63,7 +63,7 @@ int main(int argc, char* argv[])
             AAFwk::IsValidToolCallId(envToolCallId)) {
             TAG_LOGI(AAFwkTag::AA_TOOL, "TOOL_CALL_ID: %{public}s", envToolCallId);
         }
-        CommandTimer commandTimer("ability::claw_aa_cli_command", COMMAND_TIME_OUT, operation);
+        CommandTimer commandTimer(COMMAND_TIME_OUT, operation);
         OHOS::AAFwk::ClawAaShellCommand cmd(argc, argv);
         cmd.CreateErrorInfoMap();
         if (cmd.ExecCommand() == EXECUTE_COMMAND_FAIL) {
