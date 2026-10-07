@@ -1064,7 +1064,7 @@ int AppMgrService::ShowHelp(const std::vector<std::u16string>& args, std::string
         .append("dump arkweb info, ARG must be one of (--all | --nweb | ...)\n")
         .append("--task                      ")
         .append("dump agent task manager active tasks\n")
-        .append("--task register <taskId> <pid> <intent|cli|a2a|ability>    ")
+        .append("--task register <taskId> <pid> <insight_intent|cli|a2a|ability>    ")
         .append("test hook: attribute a process into the task\n")
         .append("--task unregister <taskId> <pid>    ")
         .append("test hook: remove a process from the task\n");
@@ -1118,16 +1118,16 @@ int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string
 
 int AppMgrService::DumpTaskRegisterCmd(const std::vector<std::u16string>& args, std::string& result)
 {
-    // Test hook: --task register <taskId> <pid> <tool(intent|cli|a2a|ability)>.
+    // Test hook: --task register <taskId> <pid> <tool(insight_intent|cli|a2a|ability)>.
     if (args.size() != SIZE_FIVE) {
-        result.append("usage: --task register <taskId> <pid> <intent|cli|a2a|ability>\n");
+        result.append("usage: --task register <taskId> <pid> <insight_intent|cli|a2a|ability>\n");
         return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
     }
     pid_t pid = static_cast<pid_t>(std::stoi(Str16ToStr8(args[INDEX_THREE])));
     std::string tool = Str16ToStr8(args[INDEX_FOUR]);
     AttributionTool toolType = AttributionTool::UNKNOWN;
-    if (tool == "intent") {
-        toolType = AttributionTool::INTENT;
+    if (tool == "insight_intent") {
+        toolType = AttributionTool::INSIGHT_INTENT;
     } else if (tool == "cli") {
         toolType = AttributionTool::CLI;
     } else if (tool == "a2a") {
@@ -1135,7 +1135,7 @@ int AppMgrService::DumpTaskRegisterCmd(const std::vector<std::u16string>& args, 
     } else if (tool == "ability") {
         toolType = AttributionTool::ABILITY;
     } else {
-        result.append("error: unknown tool, expected intent|cli|a2a|ability.\n");
+        result.append("error: unknown tool, expected insight_intent|cli|a2a|ability.\n");
         return DumpErrorCode::ERR_INVALID_CMD_ERROR;
     }
     std::string taskId = Str16ToStr8(args[INDEX_TWO]);

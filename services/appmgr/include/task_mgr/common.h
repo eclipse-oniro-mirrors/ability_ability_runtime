@@ -53,7 +53,7 @@ enum class TaskFinishReason : int32_t {
 // calling RegisterManagedProcess; new tools extend this list.
 enum class AttributionTool : int32_t {
     UNKNOWN = 0,
-    INTENT = 1,
+    INSIGHT_INTENT = 1,
     CLI = 2,
     A2A = 3,
     ABILITY = 4,

@@ -48,8 +48,8 @@ const char *TaskPriorityToString(int32_t priority)
 const char *AttributionToolToString(AttributionTool tool)
 {
     switch (tool) {
-        case AttributionTool::INTENT:
-            return "intent";
+        case AttributionTool::INSIGHT_INTENT:
+            return "insight_intent";
         case AttributionTool::CLI:
             return "cli";
         case AttributionTool::A2A:

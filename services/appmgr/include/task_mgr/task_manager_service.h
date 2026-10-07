@@ -86,7 +86,7 @@ public:
      * @brief Single-exit cleanup for all three finish paths (caller finish / timeout /
      *        creator death), executed on the serial queue. The terminal record leaves the
      *        map immediately, so it never shows up in the dump.
-     * @param key Indicates the task key (userId plus taskId).
+     * @param taskId Indicates the attribution key of the task.
      * @param reason Indicates why the task ends.
      * @param callerUid Indicates the uid of the finishing caller; a non-negative value
      *        enables the ownership check (only the creating app, matched by uid, may finish
@@ -101,7 +101,7 @@ public:
      * @brief Handles the expiry of a task timeout, executed on the serial queue. Checks the
      *        task still exists and the deadline still matches before finishing it, so a
      *        race with an explicit finish stays a no-op (double insurance).
-     * @param key Indicates the task key.
+     * @param taskId Indicates the attribution key of the task.
      * @param expectedDeadline Indicates the deadline captured when the timer was posted.
      */
     void OnTaskTimeout(const std::string &taskId, int64_t expectedDeadline);
@@ -165,7 +165,7 @@ public:
     /**
      * @brief Notifies that a task has ended, reserved for the resource-schedule control to
      *        downgrade or release the control applied to the managed processes.
-     * @param key Indicates the task key.
+     * @param taskId Indicates the attribution key of the task.
      * @param reason Indicates why the task ends.
      */
     void NotifyTaskFinished(const std::string &taskId, TaskFinishReason reason);
@@ -207,7 +207,7 @@ private:
 
     /**
      * @brief Posts the delayed timeout task of the given record onto the serial queue.
-     * @param key Indicates the task key.
+     * @param taskId Indicates the attribution key of the task.
      * @param record Indicates the task record whose deadline drives the delay.
      */
     void PostDelayedTimeout(const std::string &taskId, TaskRecord &record);

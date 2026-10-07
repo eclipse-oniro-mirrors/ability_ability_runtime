@@ -233,7 +233,7 @@ void TaskManagerService::OnTaskTimeout(const std::string &taskId, int64_t expect
         TAG_LOGW(AAFwkTag::TASKMGR, "deadline mismatch, skip, taskId: %{public}s", taskId.c_str());
         return;
     }
-    FinishTaskInner(key, TaskFinishReason::FINISHED_BY_TIMEOUT, -1);
+    FinishTaskInner(taskId, TaskFinishReason::FINISHED_BY_TIMEOUT, -1);
 }
 
 void TaskManagerService::PostProcessDied(pid_t pid, int32_t uid)
@@ -286,7 +286,7 @@ int32_t TaskManagerService::RegisterManagedProcess(const std::string &taskId, in
         return ERR_INVALID_OPERATION;
     }
     if (pid <= 0 || taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN ||
-        toolType < static_cast<int32_t>(AttributionTool::INTENT) ||
+        toolType < static_cast<int32_t>(AttributionTool::INSIGHT_INTENT) ||
         toolType > static_cast<int32_t>(AttributionTool::ABILITY)) {
         TAG_LOGW(AAFwkTag::TASKMGR, "invalid param, taskId size: %{public}zu, pid: %{public}d, "
             "toolType: %{public}d", taskId.size(), pid, toolType);
@@ -398,7 +398,7 @@ std::string TaskManagerService::DumpActiveTasks()
         int64_t remainSeconds = std::max((record.deadlineMillis - now) / MILLIS_PER_SECOND,
             static_cast<int64_t>(0));
         result += "      task ID #" + record.taskId + "\n";
-        result += "        priority [" + TaskPriorityToString(record.priority) + "]\n";
+        result += std::string("        priority [") + TaskPriorityToString(record.priority) + "]\n";
         result += "        creator uid [" + std::to_string(record.creatorUid) + "] pid [" +
             std::to_string(record.creatorPid) + "] bundle [" + record.creatorBundleName + "]\n";
         result += "        managed processes [" + ManagedProcessesToString(record.managedProcesses) + "]\n";
