@@ -1854,7 +1854,7 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
     return result;
 }
 
-int32_t AbilityManagerService::StartAbilityForAppCloneSelector(const StartAbilityWrapParam &param)
+int32_t AbilityManagerService::StartAbilityForAppCloneSelector(StartAbilityWrapParam &param)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Call StartAbilityForAppCloneSelector");
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
@@ -1881,6 +1881,11 @@ int32_t AbilityManagerService::StartAbilityForAppCloneSelector(const StartAbilit
     }
 
     appCloneIndex = appCloneIndexFromWant;
+    auto callerRecord = Token::GetAbilityRecordByToken(param.callerToken);
+    std::string callerBundleName = callerRecord ? callerRecord->GetAbilityInfo().bundleName : "";
+    auto collaborator = GetCollaborator(CollaboratorType::RESERVE_TYPE);
+    CollaboratorUtil::UpdateTargetIfNeed(collaborator, param.want, callerBundleName);
+
     // Use StartAbilityInfoWrap for RAII protection
     StartAbilityInfoWrap threadLocalInfo(param.want, validUserId, appCloneIndex, param.callerToken);
 
@@ -1910,9 +1915,27 @@ int32_t AbilityManagerService::StartAbilityForAppCloneSelector(const StartAbilit
         return ret;
     }
 
-    PreprocessRequestParams(param, abilityRequest);
+    PreprocessRequestParams(param, callerRecord, abilityRequest);
+
+    ProcessCollaboratorCallerIfNeed(param, callerBundleName, collaborator, abilityRequest);
 
     return ExecuteAbilityStart(abilityInfo, abilityRequest.userId, param.isGamePrelaunch, eventInfo, abilityRequest);
+}
+
+void AbilityManagerService::ProcessCollaboratorCallerIfNeed(const StartAbilityWrapParam &param,
+    const std::string &callerBundleName, const sptr<IAbilityManagerCollaborator> &collaborator,
+    AbilityRequest &abilityRequest)
+{
+    if (!Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
+        return;
+    }
+    if (abilityRequest.want.GetBoolParam(PARAM_RESV_ANCO_IS_NEED_UPDATE_NAME, false) &&
+            PermissionVerification::GetInstance()->VerifyFusionAccessPermission()) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "startAbilityForAppCloneSelector, update name for fusion");
+        abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_ABILITY_NAME, std::string(""));
+        abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, std::string(""));
+    }
+    CollaboratorUtil::HandleCallerIfNeed(param.callerToken, collaborator, abilityRequest.want, callerBundleName);
 }
 
 int32_t AbilityManagerService::InitializeAppCloneRequest(const StartAbilityWrapParam &param, int32_t appCloneIndex,
@@ -1986,7 +2009,7 @@ int32_t AbilityManagerService::ExecuteInterceptors(const StartAbilityWrapParam &
 }
 
 void AbilityManagerService::PreprocessRequestParams(const StartAbilityWrapParam &param,
-    AbilityRequest &abilityRequest)
+    const std::shared_ptr<AbilityRecord> &callerRecord, AbilityRequest &abilityRequest)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Call PreprocessRequestParams");
     // Update BackToCallerFlag
@@ -2002,6 +2025,17 @@ void AbilityManagerService::PreprocessRequestParams(const StartAbilityWrapParam 
         abilityRequest.specifyTokenId = param.specifyTokenId;
     }
     abilityRequest.want.RemoveParam(PARAM_SPECIFIED_PROCESS_FLAG);
+
+    // sceneboard
+    if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
+        // other sa or shell can not use continueSessionId and persistentId
+        if (callerRecord == nullptr &&
+            !PermissionVerification::GetInstance()->CheckSpecificSystemAbilityAccessPermission(DMS_PROCESS_NAME)) {
+            TAG_LOGW(AAFwkTag::ABILITYMGR, "startAbilityForAppCloneSelector, remove continueSessionId and persistentId");
+            abilityRequest.want.RemoveParam(DMS_CONTINUED_SESSION_ID);
+            abilityRequest.want.RemoveParam(DMS_PERSISTENT_ID);
+        }
+    }
 }
 
 int32_t AbilityManagerService::ExecuteAbilityStart(const AppExecFwk::AbilityInfo &abilityInfo, int32_t validUserId,
