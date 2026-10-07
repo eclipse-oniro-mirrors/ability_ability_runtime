@@ -311,15 +311,19 @@ void TaskManagerService::NotifyTaskFinished(const TaskKey &key, TaskFinishReason
 std::string TaskManagerService::DumpActiveTasks()
 {
     std::string result = "TaskManager active tasks: total=" + std::to_string(tasks_.size()) + "\n";
-    result += "TaskId\tPriority\tCreatorPid\tManagedPids\tSchedLevel\tRemainTimeout(s)\tCreateTime\n";
     int64_t now = NowMillis();
     for (const auto &item : tasks_) {
         const TaskRecord &record = item.second;
         int64_t remainSeconds = std::max((record.deadlineMillis - now) / MILLIS_PER_SECOND,
             static_cast<int64_t>(0));
-        result += record.taskId + "\t" + TaskPriorityToString(record.priority) + "\t" +
-            std::to_string(record.creatorPid) + "\t" + ManagedPidsToString(record.managedPids) + "\t" +
-            "-\t" + std::to_string(remainSeconds) + "\t" + FormatCreateTime(record.createTimeMillis) + "\n";
+        result += "      task ID #" + record.taskId + "\n";
+        result += "        priority [" + TaskPriorityToString(record.priority) + "]\n";
+        result += "        creator uid [" + std::to_string(record.creatorUid) + "] pid [" +
+            std::to_string(record.creatorPid) + "] bundle [" + record.creatorBundleName + "]\n";
+        result += "        managed pids [" + ManagedPidsToString(record.managedPids) + "]\n";
+        result += "        sched level [-]\n";
+        result += "        remain timeout [" + std::to_string(remainSeconds) + "s]\n";
+        result += "        create time [" + FormatCreateTime(record.createTimeMillis) + "]\n";
     }
     // SchedLevel and the exemption summary stay placeholder until the resource-schedule
     // control module lands; the field layout is fixed here so scripts can rely on it.

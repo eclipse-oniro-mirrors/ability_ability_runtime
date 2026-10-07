@@ -6767,6 +6767,9 @@ void AppMgrServiceInner::SendProcessKillEvent(std::shared_ptr<AppRunningRecord> 
 void AppMgrServiceInner::SetTaskManagerService(const sptr<TaskManagerService> &taskManagerService)
 {
     taskManagerService_ = taskManagerService;
+    if (appRunningManager_ != nullptr) {
+        appRunningManager_->SetTaskManagerService(taskManagerService);
+    }
 }
 
 void AppMgrServiceInner::OnRemoteDied(const wptr<IRemoteObject> &remote, bool isRenderProcess, bool isChildProcess,
@@ -6786,11 +6789,6 @@ void AppMgrServiceInner::OnRemoteDied(const wptr<IRemoteObject> &remote, bool is
     if (appRecord == nullptr) {
         TAG_LOGI(AAFwkTag::APPMGR, "null appRecord");
         return;
-    }
-    // End every task created by the dead process. The submission inside PostProcessDied
-    // enforces the serial-queue thread affinity instead of relying on the caller context.
-    if (taskManagerService_ != nullptr) {
-        taskManagerService_->PostProcessDied(appRecord->GetPid(), appRecord->GetUid());
     }
     CheckMakeImageState(appRecord, ImageError::ERR_TEMPLATE_DIED);
     SendProcessKillEvent(appRecord);
