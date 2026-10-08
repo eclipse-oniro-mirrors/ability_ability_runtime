@@ -109,6 +109,7 @@ ohos_shared_library("runtime") {
     "${ability_runtime_innerkits_path}/connect_server_manager:connect_server_manager",
     "${ability_runtime_native_path}/ability/native:ability_business_error",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
+    "${ability_runtime_native_path}/appkit:extractresourcemanager",
     "${ability_runtime_path}/js_environment/frameworks/js_environment:js_environment",
     "${ability_runtime_services_path}/common:app_util",
   ]
@@ -116,7 +117,6 @@ ohos_shared_library("runtime") {
   external_deps = [
     "ability_base:configuration",
     "ability_base:extractortool",
-    "ability_base:extractresourcemanager",
     "ability_base:string_utils",
     "access_token:libaccesstoken_sdk",
     "bundle_framework:appexecfwk_base",

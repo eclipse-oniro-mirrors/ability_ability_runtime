@@ -1129,7 +1129,7 @@ ohos_unittest("native_lib_util_test") {
   ]
 
   external_deps = [
-    "ability_base:extractresourcemanager",
+    "ability_base:extractortool",
     "c_utils:utils",
     "faultloggerd:libfaultloggerd",
     "googletest:gtest_main",
@@ -1166,7 +1166,7 @@ ohos_unittest("ets_native_lib_util_test") {
   ]
 
   external_deps = [
-    "ability_base:extractresourcemanager",
+    "ability_base:extractortool",
     "c_utils:utils",
     "faultloggerd:libfaultloggerd",
     "googletest:gtest_main",
