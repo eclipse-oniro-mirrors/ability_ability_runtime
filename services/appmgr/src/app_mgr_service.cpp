@@ -56,7 +56,6 @@ constexpr const char* OPTION_KEY_DUMP_IPC = "--ipc";
 constexpr const char* OPTION_KEY_DUMP_FFRT = "--ffrt";
 constexpr const char* OPTION_KEY_DUMP_WEB = "--web";
 constexpr const char* OPTION_KEY_DUMP_TASK = "--task";
-constexpr const char* TASK_DUMP_TASK_NAME = "TaskMgrDumpActiveTasks";
 constexpr size_t SIZE_ONE = 1;
 constexpr size_t SIZE_FOUR = 4;
 constexpr size_t SIZE_FIVE = 5;
@@ -175,38 +174,22 @@ void AppMgrService::SetInnerService(const std::shared_ptr<AppMgrServiceInner> &i
 
 int32_t AppMgrService::StartTask(const std::string &taskId, int32_t priority)
 {
-    if (taskManagerService_ == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "task manager service is null");
-        return ERR_INVALID_OPERATION;
-    }
-    return taskManagerService_->StartTask(taskId, priority);
+    return TaskManagerService::GetInstance()->StartTask(taskId, priority);
 }
 
 int32_t AppMgrService::FinishTask(const std::string &taskId)
 {
-    if (taskManagerService_ == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "task manager service is null");
-        return ERR_INVALID_OPERATION;
-    }
-    return taskManagerService_->FinishTask(taskId);
+    return TaskManagerService::GetInstance()->FinishTask(taskId);
 }
 
 int32_t AppMgrService::RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType)
 {
-    if (taskManagerService_ == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "task manager service is null");
-        return ERR_INVALID_OPERATION;
-    }
-    return taskManagerService_->RegisterManagedProcess(taskId, pid, toolType);
+    return TaskManagerService::GetInstance()->RegisterManagedProcess(taskId, pid, toolType);
 }
 
 int32_t AppMgrService::UnregisterManagedProcess(const std::string &taskId, int32_t pid)
 {
-    if (taskManagerService_ == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "task manager service is null");
-        return ERR_INVALID_OPERATION;
-    }
-    return taskManagerService_->UnregisterManagedProcess(taskId, pid);
+    return TaskManagerService::GetInstance()->UnregisterManagedProcess(taskId, pid);
 }
 
 AppMgrServiceState AppMgrService::QueryServiceState()
@@ -246,13 +229,7 @@ ErrCode AppMgrService::Init()
         TAG_LOGE(AAFwkTag::APPMGR, "init failed");
         return ERR_INVALID_OPERATION;
     }
-    // Created before Publish so descriptor routing never sees a null stub.
-    taskManagerService_ = sptr(new (std::nothrow) TaskManagerService(taskHandler_));
-    if (!taskManagerService_) {
-        TAG_LOGE(AAFwkTag::APPMGR, "init failed");
-        return ERR_INVALID_OPERATION;
-    }
-    appMgrServiceInner_->SetTaskManagerService(taskManagerService_);
+    // The task manager is a self-contained singleton: no injection needed here.
     if (!Publish(this)) {
         TAG_LOGE(AAFwkTag::APPMGR, " publish fail");
         return ERR_APPEXECFWK_SERVICE_NOT_CONNECTED;
@@ -1088,12 +1065,6 @@ int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string
         result.append("error: dump permission denied.\n");
         return DumpErrorCode::ERR_PERMISSION_DENY_ERROR;
     }
-    if (taskManagerService_ == nullptr || taskHandler_ == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "task manager service not ready");
-        result.append(MSG_DUMP_FAIL, strlen(MSG_DUMP_FAIL))
-            .append(MSG_DUMP_FAIL_REASON_INTERNAL, strlen(MSG_DUMP_FAIL_REASON_INTERNAL));
-        return DumpErrorCode::ERR_INTERNAL_ERROR;
-    }
     if (args.size() > SIZE_ONE) {
         std::string subCmd = Str16ToStr8(args[INDEX_ONE]);
         if (subCmd == "register") {
@@ -1105,21 +1076,9 @@ int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string
         result.append("error: unknown task subcommand.\n");
         return DumpErrorCode::ERR_INVALID_CMD_ERROR;
     }
-    auto taskResult = std::make_shared<std::string>();
-    std::function<void()> dumpTaskFunc = [taskManagerService = taskManagerService_, taskResult]() {
-        // The snapshot is generated on the serial queue for consistency with lifecycle actions:
-        // a terminal task never shows up because it leaves the map on the same queue.
-        *taskResult = taskManagerService->DumpActiveTasks();
-    };
-    AAFwk::TaskHandle handle = taskHandler_->SubmitTask(dumpTaskFunc, TASK_DUMP_TASK_NAME);
-    if (!handle) {
-        TAG_LOGE(AAFwkTag::APPMGR, "submit dump task failed");
-        result.append(MSG_DUMP_FAIL, strlen(MSG_DUMP_FAIL))
-            .append(MSG_DUMP_FAIL_REASON_INTERNAL, strlen(MSG_DUMP_FAIL_REASON_INTERNAL));
-        return DumpErrorCode::ERR_INTERNAL_ERROR;
-    }
-    handle.Sync();
-    result.append(*taskResult);
+    // The snapshot is taken under the task manager's own mutex, consistent with its
+    // lifecycle actions: a terminal task never shows up because it leaves the map there.
+    result.append(TaskManagerService::GetInstance()->DumpActiveTasks());
     return ERR_OK;
 }
 

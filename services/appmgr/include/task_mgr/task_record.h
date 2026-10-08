@@ -21,7 +21,7 @@
 #include <map>
 #include <string>
 
-#include "task_handler_wrap.h"
+#include "ffrt.h"
 
 #include "task_mgr/common.h"
 
@@ -35,8 +35,8 @@ struct ManagedProcess {
     int64_t attributedTimeMillis = 0;
 };
 
-// In-memory task record keyed by the globally unique taskId. Only touched on the app_mgr
-// serial queue, never persisted: process exit of AppMgrService clears everything (EX-5).
+// In-memory task record keyed by the globally unique taskId. Protected by
+// TaskManagerService::tasksMutex_, never persisted: process exit clears everything (EX-5).
 struct TaskRecord {
     std::string taskId;
     int32_t priority = TASK_PRIORITY_DEFAULT;
@@ -48,7 +48,7 @@ struct TaskRecord {
     int64_t createTimeMillis = 0;    // wall clock, for dump
     int64_t deadlineMillis = 0;      // wall clock, checked by the timeout handler
     std::map<pid_t, ManagedProcess> managedProcesses;  // attributed by tool channels
-    AAFwk::TaskHandle timeoutHandle;
+    ffrt_timer_t timeoutHandle = ffrt_error;  // FFRT one-shot timer, stopped outside the lock
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

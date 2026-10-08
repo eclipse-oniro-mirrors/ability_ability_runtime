@@ -119,7 +119,6 @@
 #include "cache_process_manager.h"
 #include "res_sched_util.h"
 #include "session_manager_lite.h"
-#include "task_mgr/task_manager_service.h"
 #include "user_controller/user_controller.h"
 #ifdef APP_NO_RESPONSE_DIALOG
 #include "fault_data.h"
@@ -6761,14 +6760,6 @@ void AppMgrServiceInner::SendProcessKillEvent(std::shared_ptr<AppRunningRecord> 
         timeout(AbilityRuntime::GlobalConstant::DEFAULT_FFRT_TASK_TIMEOUT));
     } else {
         ReportProcessKillEvent(versionCode, versionName, reportData, killInfo);
-    }
-}
-
-void AppMgrServiceInner::SetTaskManagerService(const sptr<TaskManagerService> &taskManagerService)
-{
-    taskManagerService_ = taskManagerService;
-    if (appRunningManager_ != nullptr) {
-        appRunningManager_->SetTaskManagerService(taskManagerService);
     }
 }
 

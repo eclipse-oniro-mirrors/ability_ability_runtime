@@ -55,7 +55,6 @@ struct AppMgrServiceState {
 };
 
 class AMSEventHandler;
-class TaskManagerService;
 
 class AppMgrService : public SystemAbility, public AppMgrStub {
 public:
@@ -1277,7 +1276,6 @@ private:
     std::shared_ptr<AMSEventHandler> eventHandler_;
     sptr<ISystemAbilityManager> systemAbilityMgr_;
     sptr<IAmsMgr> amsMgrScheduler_;
-    sptr<TaskManagerService> taskManagerService_;
 
     bool GetDumpIpcKeyByOption(const std::string &option, DumpIpcKey &key);
 

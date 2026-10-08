@@ -16,30 +16,39 @@
 #ifndef OHOS_APP_EXECFWK_TASK_MGR_TASK_MANAGER_SERVICE_H
 #define OHOS_APP_EXECFWK_TASK_MGR_TASK_MANAGER_SERVICE_H
 
-#include <memory>
-#include <mutex>
 #include <string>
 #include <unordered_map>
 
-#include "task_handler_wrap.h"
+#include "ffrt.h"
+#include "singleton.h"
+
 #include "task_mgr/task_record.h"
 
 namespace OHOS {
 namespace AppExecFwk {
 /**
- * @brief Task lifecycle manager hosted by AppMgrService (SA 501). The IPC entries live on
- *        IAppMgr and AppMgrService forwards to this class.
+ * @brief Task lifecycle manager behind IAppMgr (SA 501). The IPC entries live on
+ *        IAppMgr and AppMgrService forwards to this self-contained singleton,
+ *        obtained via TaskManagerService::GetInstance().
  *
- * All state (tasks_) is owned by the shared app_mgr serial queue (taskHandler_): the
- * entries (StartTask/FinishTask) only capture caller identity, validate and submit, so no
- * lock is needed anywhere. The single-exit FinishTaskInner gathers the three finish paths
- * (caller finish / timeout / creator process death) into one cleanup routine.
+ * All state (tasks_) is protected by tasksMutex_ (an ffrt::mutex, because the
+ * timeout callbacks run on FFRT workers): each public entry locks exactly once
+ * and delegates to the *Locked helpers, which require the caller to hold the
+ * mutex (ffrt::mutex is non-recursive). The single-exit FinishTaskLocked gathers
+ * the three finish paths (caller finish / timeout / creator process death) into
+ * one cleanup routine.
+ *
+ * Locking contract, never violated:
+ * - ffrt_timer_stop and NotifyTaskFinished are only called after tasksMutex_ is
+ *   released: stop waits for a running callback (which itself waits on the
+ *   mutex), and the finish hook is reserved for resource-schedule control that
+ *   may re-enter this class.
+ * - ffrt_timer_start is non-blocking and safe under the mutex.
  */
-class TaskManagerService {
-public:
-    explicit TaskManagerService(const std::shared_ptr<AAFwk::TaskHandlerWrap> &taskHandler);
-    ~TaskManagerService() = default;
+class TaskManagerService : public DelayedSingleton<TaskManagerService> {
+    DECLARE_DELAYED_SINGLETON(TaskManagerService)
 
+public:
     /**
      * @brief Caller identity captured on the binder thread, taken from the IPC framework
      *        so that it cannot be forged by parameters.
@@ -53,8 +62,8 @@ public:
     };
 
     /**
-     * @brief Starts a task (binder entry): validate parameters and caller identity, then
-     *        submit to the serial queue. Never touches tasks_ on the binder thread.
+     * @brief Starts a task (binder entry): validate parameters and caller identity on the
+     *        calling thread, then create the record under the mutex.
      * @param taskId Indicates the attribution key of the task.
      * @param priority Indicates the task priority.
      * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
@@ -64,7 +73,9 @@ public:
     int32_t StartTask(const std::string &taskId, int32_t priority);
 
     /**
-     * @brief Finishes a task (binder entry): validate and submit to the serial queue.
+     * @brief Finishes a task (binder entry): validate, then clean up under the mutex; the
+     *        pending timeout timer is stopped and the finish hook is notified after the
+     *        mutex is released.
      * @param taskId Indicates the attribution key of the task.
      * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
      *         ERR_NOT_SYSTEM_APP if the caller is not a system app;
@@ -73,50 +84,18 @@ public:
     int32_t FinishTask(const std::string &taskId);
 
     /**
-     * @brief Creates the task record on the serial queue.
-     * @param caller Indicates the captured caller identity.
+     * @brief Handles the expiry of a task timeout, executed on the FFRT timer callback.
+     *        Checks the task still exists and the deadline still matches before finishing
+     *        it, so a race with an explicit finish stays a no-op (double insurance).
      * @param taskId Indicates the attribution key of the task.
-     * @param priority Indicates the task priority.
-     * @return Returns ERR_OK on success; ERR_TASK_ALREADY_EXISTS if the task already exists.
-     */
-    int32_t StartTaskInner(const TaskCallerInfo &caller, const std::string &taskId, int32_t priority);
-
-    /**
-     * @brief Single-exit cleanup for all three finish paths (caller finish / timeout /
-     *        creator death), executed on the serial queue. The terminal record leaves the
-     *        map immediately, so it never shows up in the dump.
-     * @param taskId Indicates the attribution key of the task.
-     * @param reason Indicates why the task ends.
-     * @param callerUid Indicates the uid of the finishing caller; a non-negative value
-     *        enables the ownership check (only the creating app, matched by uid, may finish
-     *        the task) and a mismatch returns ERR_TASK_NOT_FOUND without existence
-     *        disclosure, while the system-initiated paths pass a negative value to skip it.
-     * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist or
-     *         the caller is not the creator.
-     */
-    int32_t FinishTaskInner(const std::string &taskId, TaskFinishReason reason, int32_t callerUid);
-
-    /**
-     * @brief Handles the expiry of a task timeout, executed on the serial queue. Checks the
-     *        task still exists and the deadline still matches before finishing it, so a
-     *        race with an explicit finish stays a no-op (double insurance).
-     * @param taskId Indicates the attribution key of the task.
-     * @param expectedDeadline Indicates the deadline captured when the timer was posted.
+     * @param expectedDeadline Indicates the deadline captured when the timer was started.
      */
     void OnTaskTimeout(const std::string &taskId, int64_t expectedDeadline);
 
     /**
-     * @brief Posts the creator-death event onto the serial queue; thread affinity is
-     *        enforced here so it is safe to call from any thread.
-     * @param pid Indicates the pid of the dead process.
-     * @param uid Indicates the uid of the dead process.
-     */
-    void PostProcessDied(pid_t pid, int32_t uid);
-
-    /**
-     * @brief Ends every task whose creator matches the (pid, uid) pair of the dead process.
-     *        Only for the serial-queue domain: invoked through PostProcessDied, do not call
-     *        from other threads.
+     * @brief Ends every task whose creator matches the (pid, uid) pair of the dead process
+     *        and removes the dead pid from every managed set. Thread-safe, callable from
+     *        any thread (e.g. the death-recipient thread).
      * @param pid Indicates the pid of the dead process.
      * @param uid Indicates the uid of the dead process; one uid may host several processes
      *        and only the dead process's own tasks end.
@@ -145,38 +124,84 @@ public:
     int32_t UnregisterManagedProcess(const std::string &taskId, int32_t pid);
 
     /**
-     * @brief Attributes a process into the task on the serial queue.
-     * @param taskId Indicates the attribution key of the task.
-     * @param pid Indicates the pid of the attributed process.
-     * @param tool Indicates the tool chain that attributes the process.
-     * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist.
-     */
-    int32_t RegisterManagedProcessInner(const std::string &taskId, pid_t pid, AttributionTool tool);
-
-    /**
-     * @brief Removes a process from the managed set of the task on the serial queue.
-     * @param taskId Indicates the attribution key of the task.
-     * @param pid Indicates the pid of the process to remove.
-     * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist.
-     */
-    int32_t UnregisterManagedProcessInner(const std::string &taskId, pid_t pid);
-
-    /**
      * @brief Notifies that a task has ended, reserved for the resource-schedule control to
-     *        downgrade or release the control applied to the managed processes.
+     *        downgrade or release the control applied to the managed processes. Only
+     *        called after tasksMutex_ is released.
      * @param taskId Indicates the attribution key of the task.
      * @param reason Indicates why the task ends.
      */
     void NotifyTaskFinished(const std::string &taskId, TaskFinishReason reason);
 
     /**
-     * @brief Dumps the snapshot of active tasks, executed on the serial queue for
-     *        consistency with lifecycle actions.
+     * @brief Dumps the snapshot of active tasks, taken under the mutex for consistency
+     *        with lifecycle actions.
      * @return Returns the dump text of the active task list.
      */
     std::string DumpActiveTasks();
 
 private:
+    /**
+     * @brief Creates the task record; the caller must hold tasksMutex_.
+     * @param caller Indicates the captured caller identity.
+     * @param taskId Indicates the attribution key of the task.
+     * @param priority Indicates the task priority.
+     * @return Returns ERR_OK on success; ERR_TASK_ALREADY_EXISTS if the task already exists.
+     */
+    int32_t StartTaskLocked(const TaskCallerInfo &caller, const std::string &taskId, int32_t priority);
+
+    /**
+     * @brief Single-exit cleanup for all three finish paths (caller finish / timeout /
+     *        creator death); the caller must hold tasksMutex_. The terminal record leaves
+     *        the map immediately, so it never shows up in the dump. The pending timeout
+     *        timer handle is returned via timerToStop so the caller stops it only after
+     *        releasing the mutex.
+     * @param taskId Indicates the attribution key of the task.
+     * @param reason Indicates why the task ends.
+     * @param callerUid Indicates the uid of the finishing caller; a non-negative value
+     *        enables the ownership check (only the creating app, matched by uid, may finish
+     *        the task) and a mismatch returns ERR_TASK_NOT_FOUND without existence
+     *        disclosure, while the system-initiated paths pass a negative value to skip it.
+     * @param timerToStop Outputs the timeout timer handle to stop after unlocking.
+     * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist or
+     *         the caller is not the creator.
+     */
+    int32_t FinishTaskLocked(const std::string &taskId, TaskFinishReason reason, int32_t callerUid,
+        ffrt_timer_t &timerToStop);
+
+    /**
+     * @brief Attributes a process into the task; the caller must hold tasksMutex_.
+     * @param taskId Indicates the attribution key of the task.
+     * @param pid Indicates the pid of the attributed process.
+     * @param tool Indicates the tool chain that attributes the process.
+     * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist.
+     */
+    int32_t RegisterManagedProcessLocked(const std::string &taskId, pid_t pid, AttributionTool tool);
+
+    /**
+     * @brief Removes a process from the managed set of the task; the caller must hold
+     *        tasksMutex_.
+     * @param taskId Indicates the attribution key of the task.
+     * @param pid Indicates the pid of the process to remove.
+     * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist.
+     */
+    int32_t UnregisterManagedProcessLocked(const std::string &taskId, pid_t pid);
+
+    /**
+     * @brief Starts the FFRT one-shot timeout timer of the given record and stores the
+     *        handle into it; the caller must hold tasksMutex_ (ffrt_timer_start is
+     *        non-blocking).
+     * @param taskId Indicates the attribution key of the task.
+     * @param record Indicates the task record whose deadline drives the delay.
+     */
+    void StartTimeoutTimer(const std::string &taskId, TaskRecord &record);
+
+    /**
+     * @brief Stops a timeout timer; must only be called after tasksMutex_ is released,
+     *        because ffrt_timer_stop waits for a running callback.
+     * @param handle Indicates the timer handle returned by ffrt_timer_start.
+     */
+    void StopTimer(ffrt_timer_t handle);
+
     /**
      * @brief Captures the caller identity from the IPC framework.
      * @return Returns the captured caller information.
@@ -204,14 +229,7 @@ private:
      */
     int32_t GetTimeoutSeconds() const;
 
-    /**
-     * @brief Posts the delayed timeout task of the given record onto the serial queue.
-     * @param taskId Indicates the attribution key of the task.
-     * @param record Indicates the task record whose deadline drives the delay.
-     */
-    void PostDelayedTimeout(const std::string &taskId, TaskRecord &record);
-
-    std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler_;
+    ffrt::mutex tasksMutex_;
     std::unordered_map<std::string, TaskRecord> tasks_;
 };
 }  // namespace AppExecFwk

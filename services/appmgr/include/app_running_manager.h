@@ -55,14 +55,11 @@ enum ConfigMode : uint32_t {
 }
 namespace AppExecFwk {
 
-class TaskManagerService;
-
 class AppRunningManager : public std::enable_shared_from_this<AppRunningManager> {
 public:
     AppRunningManager();
     virtual ~AppRunningManager();
 
-    void SetTaskManagerService(const sptr<TaskManagerService> &taskManagerService);
     /**
      * CreateAppRunningRecord, Get or create application record information.
      *
@@ -508,7 +505,6 @@ private:
 private:
     std::mutex runningRecordMapMutex_;
     std::map<const int32_t, const std::shared_ptr<AppRunningRecord>> appRunningRecordMap_;
-    sptr<TaskManagerService> taskManagerService_;
 
     std::mutex uiExtensionMapLock_;
     std::map<int32_t, std::pair<pid_t, pid_t>> uiExtensionLauncherMap_;
