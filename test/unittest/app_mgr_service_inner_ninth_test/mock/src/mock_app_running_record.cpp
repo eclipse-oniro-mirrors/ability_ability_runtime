@@ -1482,6 +1482,16 @@ std::string AppRunningRecord::GetKillMsg() const
     return killMsg_;
 }
 
+bool AppRunningRecord::SetKillReasonIfAbsent(int32_t killId, const std::string &killMsg)
+{
+    if (killId_ != -1) {
+        return false;
+    }
+    killId_ = killId;
+    killMsg_ = killMsg;
+    return true;
+}
+
 void AppRunningRecord::SetInnerMsg(const std::string &innerMsg)
 {
     innerMsg_ = innerMsg;

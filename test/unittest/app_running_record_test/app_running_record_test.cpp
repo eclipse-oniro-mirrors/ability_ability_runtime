@@ -1822,6 +1822,29 @@ HWTEST_F(AppRunningRecordTest, AppRunningRecord_SetKillAppReason_0100, TestSize.
 }
 
 /**
+ * @tc.name: AppRunningRecord_SetKillReasonIfAbsent_0100
+ * @tc.desc: SetKillReasonIfAbsent writes killId and killMsg only when killId is default.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningRecordTest, AppRunningRecord_SetKillReasonIfAbsent_0100, TestSize.Level1)
+{
+    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
+    ASSERT_NE(appInfo, nullptr);
+    int32_t recordId = RECORD_ID;
+    std::string processName;
+    auto appRunningRecord = std::make_shared<AppRunningRecord>(appInfo, recordId, processName);
+    ASSERT_NE(appRunningRecord, nullptr);
+
+    EXPECT_TRUE(appRunningRecord->SetKillReasonIfAbsent(1, "firstKillMsg"));
+    EXPECT_EQ(appRunningRecord->GetKillId(), 1);
+    EXPECT_EQ(appRunningRecord->GetKillMsg(), "firstKillMsg");
+
+    EXPECT_FALSE(appRunningRecord->SetKillReasonIfAbsent(2, "secondKillMsg"));
+    EXPECT_EQ(appRunningRecord->GetKillId(), 1);
+    EXPECT_EQ(appRunningRecord->GetKillMsg(), "firstKillMsg");
+}
+
+/**
  * @tc.name: GetAllAbilityInfos_0100
  * @tc.desc: Test GetAllAbilityInfos with empty ability list
  * @tc.type: FUNC
