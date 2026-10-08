@@ -195,7 +195,7 @@ int AppMgrService::OnRemoteRequest(uint32_t code, MessageParcel &data, MessagePa
     }
     if (isTaskMgr) {
         if (taskManagerService_ == nullptr) {
-            TAG_LOGE(AAFwkTag::TASKMGR, "task manager service is null");
+            TAG_LOGE(AAFwkTag::APPMGR, "task manager service is null");
             return ERR_INVALID_STATE;
         }
         return taskManagerService_->TaskManagerStub::OnRemoteRequest(code, data, reply, option);
@@ -243,7 +243,7 @@ ErrCode AppMgrService::Init()
     // Created before Publish so descriptor routing never sees a null stub.
     taskManagerService_ = sptr(new (std::nothrow) TaskManagerService(taskHandler_));
     if (!taskManagerService_) {
-        TAG_LOGE(AAFwkTag::TASKMGR, "init failed");
+        TAG_LOGE(AAFwkTag::APPMGR, "init failed");
         return ERR_INVALID_OPERATION;
     }
     appMgrServiceInner_->SetTaskManagerService(taskManagerService_);
@@ -1075,15 +1075,15 @@ int AppMgrService::ShowHelp(const std::vector<std::u16string>& args, std::string
 
 int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string& result)
 {
-    TAG_LOGD(AAFwkTag::TASKMGR, "called");
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
     // Dump access control reuses the existing mechanism (ohos.permission.DUMP).
     if (!HasDumpPermission()) {
-        TAG_LOGE(AAFwkTag::TASKMGR, "dump permission denied");
+        TAG_LOGE(AAFwkTag::APPMGR, "dump permission denied");
         result.append("error: dump permission denied.\n");
         return DumpErrorCode::ERR_PERMISSION_DENY_ERROR;
     }
     if (taskManagerService_ == nullptr || taskHandler_ == nullptr) {
-        TAG_LOGE(AAFwkTag::TASKMGR, "task manager service not ready");
+        TAG_LOGE(AAFwkTag::APPMGR, "task manager service not ready");
         result.append(MSG_DUMP_FAIL, strlen(MSG_DUMP_FAIL))
             .append(MSG_DUMP_FAIL_REASON_INTERNAL, strlen(MSG_DUMP_FAIL_REASON_INTERNAL));
         return DumpErrorCode::ERR_INTERNAL_ERROR;
@@ -1107,7 +1107,7 @@ int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string
     };
     AAFwk::TaskHandle handle = taskHandler_->SubmitTask(dumpTaskFunc, TASK_DUMP_TASK_NAME);
     if (!handle) {
-        TAG_LOGE(AAFwkTag::TASKMGR, "submit dump task failed");
+        TAG_LOGE(AAFwkTag::APPMGR, "submit dump task failed");
         result.append(MSG_DUMP_FAIL, strlen(MSG_DUMP_FAIL))
             .append(MSG_DUMP_FAIL_REASON_INTERNAL, strlen(MSG_DUMP_FAIL_REASON_INTERNAL));
         return DumpErrorCode::ERR_INTERNAL_ERROR;

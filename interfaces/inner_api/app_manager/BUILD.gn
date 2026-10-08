@@ -61,8 +61,8 @@ idl_gen_interface("task_manager_interface") {
   src_idl = rebase_path("ITaskManager.idl")
   dst_file = string_join(",", idl_interface_sources)
   hitrace = "HITRACE_TAG_ABILITY_MANAGER"
-  log_domainid = "0xD001318"
-  log_tag = "TaskMgr"
+  log_domainid = "0xD001311"
+  log_tag = "AppMS"
 }
 
 ohos_shared_library("app_manager") {

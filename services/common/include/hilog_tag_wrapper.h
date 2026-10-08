@@ -53,7 +53,6 @@ enum class AAFwkLogTag : uint32_t {
     URIPERMMGR,
     BUNDLEMGRHELPER,
     APPKIT,
-    TASKMGR,                    // 0xD001318
 
     JSENV = DEFAULT + 0x20,     // 0xD001320
     JSRUNTIME,
@@ -127,7 +126,7 @@ inline const char* GetDomainName0(AAFwkLogTag tag)
 inline const char* GetDomainName1(AAFwkLogTag tag)
 {
     const char* tagNames[] = { "AppDfr", "AppMS", "DbObsMgr", "Dialog", "Quickfix",
-        "UriPermMgr", "BMSHelper", "AppKit", "TaskMgr" };
+        "UriPermMgr", "BMSHelper", "AppKit" };
     uint32_t offset = GetOffset(tag, AAFwkLogTag::APPDFR);
     if (offset >= sizeof(tagNames) / sizeof(const char*)) {
         return "UN";

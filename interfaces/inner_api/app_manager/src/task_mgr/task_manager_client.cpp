@@ -38,60 +38,60 @@ void TaskManagerClient::TaskManagerDeathRecipient::OnRemoteDied(const wptr<IRemo
 
 int32_t TaskManagerClient::StartTask(const std::string &taskId, int32_t priority)
 {
-    TAG_LOGD(AAFwkTag::TASKMGR, "called");
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
     auto proxy = GetTaskManagerProxy();
     if (proxy == nullptr) {
-        TAG_LOGE(AAFwkTag::TASKMGR, "task manager proxy is null");
+        TAG_LOGE(AAFwkTag::APPMGR, "task manager proxy is null");
         return ABILITY_SERVICE_NOT_CONNECTED;
     }
     auto ret = proxy->StartTask(taskId, priority);
     if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::TASKMGR, "start task failed: %{public}d", ret);
+        TAG_LOGE(AAFwkTag::APPMGR, "start task failed: %{public}d", ret);
     }
     return ret;
 }
 
 int32_t TaskManagerClient::FinishTask(const std::string &taskId)
 {
-    TAG_LOGD(AAFwkTag::TASKMGR, "called");
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
     auto proxy = GetTaskManagerProxy();
     if (proxy == nullptr) {
-        TAG_LOGE(AAFwkTag::TASKMGR, "task manager proxy is null");
+        TAG_LOGE(AAFwkTag::APPMGR, "task manager proxy is null");
         return ABILITY_SERVICE_NOT_CONNECTED;
     }
     auto ret = proxy->FinishTask(taskId);
     if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::TASKMGR, "finish task failed: %{public}d", ret);
+        TAG_LOGE(AAFwkTag::APPMGR, "finish task failed: %{public}d", ret);
     }
     return ret;
 }
 
 int32_t TaskManagerClient::RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType)
 {
-    TAG_LOGD(AAFwkTag::TASKMGR, "called");
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
     auto proxy = GetTaskManagerProxy();
     if (proxy == nullptr) {
-        TAG_LOGE(AAFwkTag::TASKMGR, "task manager proxy is null");
+        TAG_LOGE(AAFwkTag::APPMGR, "task manager proxy is null");
         return ABILITY_SERVICE_NOT_CONNECTED;
     }
     auto ret = proxy->RegisterManagedProcess(taskId, pid, toolType);
     if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::TASKMGR, "register managed process failed: %{public}d", ret);
+        TAG_LOGE(AAFwkTag::APPMGR, "register managed process failed: %{public}d", ret);
     }
     return ret;
 }
 
 int32_t TaskManagerClient::UnregisterManagedProcess(const std::string &taskId, int32_t pid)
 {
-    TAG_LOGD(AAFwkTag::TASKMGR, "called");
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
     auto proxy = GetTaskManagerProxy();
     if (proxy == nullptr) {
-        TAG_LOGE(AAFwkTag::TASKMGR, "task manager proxy is null");
+        TAG_LOGE(AAFwkTag::APPMGR, "task manager proxy is null");
         return ABILITY_SERVICE_NOT_CONNECTED;
     }
     auto ret = proxy->UnregisterManagedProcess(taskId, pid);
     if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::TASKMGR, "unregister managed process failed: %{public}d", ret);
+        TAG_LOGE(AAFwkTag::APPMGR, "unregister managed process failed: %{public}d", ret);
     }
     return ret;
 }
@@ -104,24 +104,24 @@ sptr<ITaskManager> TaskManagerClient::GetTaskManagerProxy()
     }
     auto systemAbilityMgr = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
     if (systemAbilityMgr == nullptr) {
-        TAG_LOGE(AAFwkTag::TASKMGR, "failed to get SystemAbilityManager");
+        TAG_LOGE(AAFwkTag::APPMGR, "failed to get SystemAbilityManager");
         return nullptr;
     }
     auto remoteObject = systemAbilityMgr->GetSystemAbility(APP_MGR_SERVICE_ID);
     if (remoteObject == nullptr) {
-        TAG_LOGE(AAFwkTag::TASKMGR, "get system ability %{public}d failed", APP_MGR_SERVICE_ID);
+        TAG_LOGE(AAFwkTag::APPMGR, "get system ability %{public}d failed", APP_MGR_SERVICE_ID);
         return nullptr;
     }
     if (deathRecipient_ == nullptr) {
         deathRecipient_ = sptr(new (std::nothrow) TaskManagerDeathRecipient());
         if (deathRecipient_ == nullptr) {
-            TAG_LOGE(AAFwkTag::TASKMGR, "failed to create death recipient");
+            TAG_LOGE(AAFwkTag::APPMGR, "failed to create death recipient");
             return nullptr;
         }
     }
     remoteObject->AddDeathRecipient(deathRecipient_);
     taskManagerProxy_ = iface_cast<ITaskManager>(remoteObject);
-    TAG_LOGI(AAFwkTag::TASKMGR, "get task manager proxy %{public}s",
+    TAG_LOGI(AAFwkTag::APPMGR, "get task manager proxy %{public}s",
         taskManagerProxy_ != nullptr ? "success" : "failed");
     return taskManagerProxy_;
 }
@@ -136,7 +136,7 @@ void TaskManagerClient::ResetProxy(const wptr<IRemoteObject> &remote)
     if (remoteObject != nullptr && remoteObject == taskManagerProxy_->AsObject()) {
         taskManagerProxy_ = nullptr;
         deathRecipient_ = nullptr;
-        TAG_LOGW(AAFwkTag::TASKMGR, "app mgr service died, reset task manager proxy");
+        TAG_LOGW(AAFwkTag::APPMGR, "app mgr service died, reset task manager proxy");
     }
 }
 } // namespace AppExecFwk
