@@ -614,11 +614,9 @@ int ImplicitStartProcessor::GenerateAbilityRequestByAction(int32_t userId, Abili
         }
     }
 
-    std::string defaultBundleName;
-    int32_t defaultAppIndex = -1;
     {
         HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, "for (const auto &info : abilityInfos)");
-        bool isExistDefaultApp = IsExistDefaultApp(userId, typeName, defaultBundleName, defaultAppIndex);
+        bool isExistDefaultApp = IsExistDefaultApp(userId, typeName);
         for (const auto &info : abilityInfos) {
             AddInfoParam param = {
                 .isExtension = isExtension,
@@ -654,9 +652,6 @@ int ImplicitStartProcessor::GenerateAbilityRequestByAction(int32_t userId, Abili
     }
     KioskManager::GetInstance().FilterDialogAppInfos(dialogAppInfos);
 
-    if (!defaultBundleName.empty() && withDefault) {
-        FilterCloneByDefaultApp(dialogAppInfos, defaultBundleName, defaultAppIndex);
-    }
     FilterClonesByPreferredIndex(dialogAppInfos, userId);
 
     return ERR_OK;
@@ -1041,8 +1036,7 @@ void ImplicitStartProcessor::AddAbilityInfoToDialogInfos(const AddInfoParam &par
     dialogAppInfos.emplace_back(dialogAppInfo);
 }
 
-bool ImplicitStartProcessor::IsExistDefaultApp(int32_t userId, const std::string &typeName,
-    std::string &defaultBundleName, int32_t &defaultAppIndex)
+bool ImplicitStartProcessor::IsExistDefaultApp(int32_t userId, const std::string &typeName)
 {
     auto defaultMgr = GetDefaultAppProxy();
     CHECK_POINTER_AND_RETURN_LOG(defaultMgr, false, "defaultMgr null");
@@ -1055,16 +1049,10 @@ bool ImplicitStartProcessor::IsExistDefaultApp(int32_t userId, const std::string
     }
 
     if (bundleInfo.abilityInfos.size() == 1) {
-        defaultBundleName = bundleInfo.abilityInfos.front().bundleName;
-        defaultAppIndex = bundleInfo.abilityInfos.front().appIndex;
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "find default ability, bundle: %{public}s, appIndex: %{public}d",
-            defaultBundleName.c_str(), defaultAppIndex);
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "find default ability");
         return true;
     } else if (bundleInfo.extensionInfos.size() == 1) {
-        defaultBundleName = bundleInfo.extensionInfos.front().bundleName;
-        defaultAppIndex = bundleInfo.extensionInfos.front().appIndex;
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "find default extension, bundle: %{public}s, appIndex: %{public}d",
-            defaultBundleName.c_str(), defaultAppIndex);
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "find default extension");
         return true;
     } else {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "getDefaultApplication failed");
@@ -1222,20 +1210,6 @@ bool ImplicitStartProcessor::FindExtensionAppClone(std::vector<AppExecFwk::Exten
         }
     }
     return true;
-}
-
-void ImplicitStartProcessor::FilterCloneByDefaultApp(std::vector<DialogAppInfo> &dialogAppInfos,
-    const std::string &defaultBundleName, int32_t defaultAppIndex)
-{
-    for (auto it = dialogAppInfos.begin(); it != dialogAppInfos.end(); ++it) {
-        if (it->bundleName == defaultBundleName && it->appIndex == defaultAppIndex) {
-            TAG_LOGI(AAFwkTag::ABILITYMGR,
-                "default clone matched, bundle: %{public}s, appIndex: %{public}d, skip selector",
-                defaultBundleName.c_str(), defaultAppIndex);
-            dialogAppInfos = { *it };
-            return;
-        }
-    }
 }
 
 void ImplicitStartProcessor::FilterClonesByPreferredIndex(

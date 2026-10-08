@@ -112,11 +112,7 @@ private:
 
     void AddAbilityInfoToDialogInfos(const AddInfoParam &param, std::vector<DialogAppInfo> &dialogAppInfos);
 
-    bool IsExistDefaultApp(int32_t userId, const std::string &typeName,
-        std::string &defaultBundleName, int32_t &defaultAppIndex);
-
-    void FilterCloneByDefaultApp(std::vector<DialogAppInfo> &dialogAppInfos,
-        const std::string &defaultBundleName, int32_t defaultAppIndex);
+    bool IsExistDefaultApp(int32_t userId, const std::string &typeName);
 
     void FilterClonesByPreferredIndex(std::vector<DialogAppInfo> &dialogAppInfos, int32_t userId);
 
