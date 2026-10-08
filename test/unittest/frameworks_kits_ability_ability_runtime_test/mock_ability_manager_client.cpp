@@ -403,12 +403,12 @@ ErrCode AbilityManagerClient::NotifyContinuationResult(int32_t missionId, int32_
     return ERR_OK;
 }
 
-ErrCode AbilityManagerClient::LockMissionForCleanup(int32_t missionId)
+ErrCode AbilityManagerClient::LockMissionForCleanup(int32_t missionId, int32_t userId)
 {
     return ERR_OK;
 }
 
-ErrCode AbilityManagerClient::UnlockMissionForCleanup(int32_t missionId)
+ErrCode AbilityManagerClient::UnlockMissionForCleanup(int32_t missionId, int32_t userId)
 {
     return ERR_OK;
 }
@@ -416,12 +416,12 @@ ErrCode AbilityManagerClient::UnlockMissionForCleanup(int32_t missionId)
 void AbilityManagerClient::SetLockedState(int32_t sessionId, bool lockedState)
 {}
 
-ErrCode AbilityManagerClient::RegisterMissionListener(sptr<IMissionListener> listener)
+ErrCode AbilityManagerClient::RegisterMissionListener(sptr<IMissionListener> listener, int32_t userId)
 {
     return ERR_OK;
 }
 
-ErrCode AbilityManagerClient::UnRegisterMissionListener(sptr<IMissionListener> listener)
+ErrCode AbilityManagerClient::UnRegisterMissionListener(sptr<IMissionListener> listener, int32_t userId)
 {
     return ERR_OK;
 }
@@ -451,23 +451,23 @@ ErrCode AbilityManagerClient::UnRegisterMissionListener(const std::string &devic
 }
 
 ErrCode AbilityManagerClient::GetMissionInfos(const std::string& deviceId, int32_t numMax,
-    std::vector<MissionInfo> &missionInfos)
+    std::vector<MissionInfo> &missionInfos, int32_t userId)
 {
     return ERR_OK;
 }
 
 ErrCode AbilityManagerClient::GetMissionInfo(const std::string& deviceId, int32_t missionId,
-    MissionInfo &missionInfo)
+    MissionInfo &missionInfo, int32_t userId)
 {
     return ERR_OK;
 }
 
-ErrCode AbilityManagerClient::CleanMission(int32_t missionId)
+ErrCode AbilityManagerClient::CleanMission(int32_t missionId, int32_t userId)
 {
     return ERR_OK;
 }
 
-ErrCode AbilityManagerClient::CleanAllMissions()
+ErrCode AbilityManagerClient::CleanAllMissions(int32_t userId)
 {
     return ERR_OK;
 }
@@ -482,13 +482,14 @@ ErrCode AbilityManagerClient::MoveMissionToFront(int32_t missionId, const StartO
     return ERR_OK;
 }
 
-ErrCode AbilityManagerClient::MoveMissionsToForeground(const std::vector<int32_t>& missionIds, int32_t topMissionId)
+ErrCode AbilityManagerClient::MoveMissionsToForeground(const std::vector<int32_t>& missionIds, int32_t topMissionId,
+    int32_t userId)
 {
     return ERR_OK;
 }
 
 ErrCode AbilityManagerClient::MoveMissionsToBackground(const std::vector<int32_t>& missionIds,
-    std::vector<int32_t>& result)
+    std::vector<int32_t>& result, int32_t userId)
 {
     return ERR_OK;
 }
@@ -605,7 +606,7 @@ ErrCode AbilityManagerClient::RegisterSnapshotHandler(sptr<ISnapshotHandler> han
 }
 
 ErrCode AbilityManagerClient::GetMissionSnapshot(const std::string& deviceId, int32_t missionId,
-    MissionSnapshot& snapshot, bool isLowResolution)
+    MissionSnapshot& snapshot, bool isLowResolution, int32_t userId)
 {
     return ERR_OK;
 }
@@ -643,25 +644,25 @@ ErrCode AbilityManagerClient::DelegatorDoAbilityForeground(sptr<IRemoteObject> t
     return ERR_OK;
 }
 
-ErrCode AbilityManagerClient::DelegatorDoAbilityBackground(sptr<IRemoteObject> token)
+ErrCode AbilityManagerClient::DelegatorDoAbilityBackground(sptr<IRemoteObject> token, int32_t userId)
 {
     return ERR_OK;
 }
 
 ErrCode AbilityManagerClient::SetMissionContinueState(sptr<IRemoteObject> token,
-    const AAFwk::ContinueState &state, sptr<IRemoteObject> sessionToken)
+    const AAFwk::ContinueState &state, sptr<IRemoteObject> sessionToken, int32_t userId)
 {
     return ERR_OK;
 }
 
 #ifdef SUPPORT_SCREEN
-ErrCode AbilityManagerClient::SetMissionLabel(sptr<IRemoteObject> token, const std::string& label)
+ErrCode AbilityManagerClient::SetMissionLabel(sptr<IRemoteObject> token, const std::string& label, int32_t userId)
 {
     return ERR_OK;
 }
 
 ErrCode AbilityManagerClient::SetMissionIcon(
-    sptr<IRemoteObject> abilityToken, std::shared_ptr<OHOS::Media::PixelMap> icon)
+    sptr<IRemoteObject> abilityToken, std::shared_ptr<OHOS::Media::PixelMap> icon, int32_t userId)
 {
     return ERR_OK;
 }
@@ -766,7 +767,7 @@ ErrCode AbilityManagerClient::AddFreeInstallObserver(const sptr<IRemoteObject> c
 }
 
 int32_t AbilityManagerClient::IsValidMissionIds(
-    const std::vector<int32_t> &missionIds, std::vector<MissionValidResult> &results)
+    const std::vector<int32_t> &missionIds, std::vector<MissionValidResult> &results, int32_t userId)
 {
     return 0;
 }
@@ -1042,7 +1043,7 @@ ErrCode AbilityManagerClient::OpenLink(const Want& want, sptr<IRemoteObject> cal
     return ERR_OK;
 }
 
-ErrCode AbilityManagerClient::TerminateMission(int32_t missionId)
+ErrCode AbilityManagerClient::TerminateMission(int32_t missionId, int32_t userId)
 {
     return ERR_OK;
 }

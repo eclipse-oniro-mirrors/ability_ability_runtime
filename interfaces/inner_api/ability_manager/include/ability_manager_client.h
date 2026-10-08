@@ -1304,7 +1304,7 @@ public:
      * @return ERR_OK on success; ERR_NOT_SYSTEM_APP; CHECK_PERMISSION_FAILED without
      *         MANAGE_MISSIONS; ERR_NO_INIT when the mission manager is unavailable.
      */
-    ErrCode LockMissionForCleanup(int32_t missionId);
+    ErrCode LockMissionForCleanup(int32_t missionId, int32_t userId = -1);
 
     /**
      * Unlock a previously locked mission so it can be cleaned again. System-app callers only +
@@ -1313,7 +1313,7 @@ public:
      * @param missionId The id of the mission to unlock.
      * @return ERR_OK on success; ERR_NOT_SYSTEM_APP; CHECK_PERMISSION_FAILED; ERR_NO_INIT.
      */
-    ErrCode UnlockMissionForCleanup(int32_t missionId);
+    ErrCode UnlockMissionForCleanup(int32_t missionId, int32_t userId = -1);
 
     /**
      * Set the locked state of an ability record (session) directly. SceneBoard callers ONLY —
@@ -1332,7 +1332,7 @@ public:
      * @param listener The mission listener to register; must be non-null.
      * @return ERR_OK on success; ERR_NOT_SYSTEM_APP; CHECK_PERMISSION_FAILED; ERR_NO_INIT.
      */
-    ErrCode RegisterMissionListener(sptr<IMissionListener> listener);
+    ErrCode RegisterMissionListener(sptr<IMissionListener> listener, int32_t userId = -1);
 
     /**
      * Unregister a mission listener. System-app callers only + ohos.permission.MANAGE_MISSIONS.
@@ -1340,7 +1340,7 @@ public:
      * @param listener The mission listener to remove; must be non-null.
      * @return ERR_OK on success; ERR_NOT_SYSTEM_APP; CHECK_PERMISSION_FAILED; ERR_NO_INIT.
      */
-    ErrCode UnRegisterMissionListener(sptr<IMissionListener> listener);
+    ErrCode UnRegisterMissionListener(sptr<IMissionListener> listener, int32_t userId = -1);
 
     /**
      * Register a remote mission listener for a remote device (distributed mission sync).
@@ -1393,7 +1393,8 @@ public:
      * @return ERR_OK on success; ERR_NOT_SYSTEM_APP; CHECK_PERMISSION_FAILED without
      *         MANAGE_MISSIONS; ERR_NO_INIT; DMS errors for remote queries.
      */
-    ErrCode GetMissionInfos(const std::string &deviceId, int32_t numMax, std::vector<MissionInfo> &missionInfos);
+    ErrCode GetMissionInfos(const std::string &deviceId, int32_t numMax, std::vector<MissionInfo> &missionInfos,
+        int32_t userId = -1);
 
     /**
      * Query a single mission info by id. System-app callers only +
@@ -1405,7 +1406,8 @@ public:
      * @return ERR_OK on success; ERR_NOT_SYSTEM_APP; CHECK_PERMISSION_FAILED; ERR_NO_INIT;
      *         INVALID_PARAMETERS_ERR / MISSION_NOT_FOUND variants; DMS errors.
      */
-    ErrCode GetMissionInfo(const std::string &deviceId, int32_t missionId, MissionInfo &missionInfo);
+    ErrCode GetMissionInfo(const std::string &deviceId, int32_t missionId, MissionInfo &missionInfo,
+        int32_t userId = -1);
 
     /**
      * Query a single mission info together with the display info of its window. SceneBoard
@@ -1421,7 +1423,7 @@ public:
      *         CHECK_PERMISSION_FAILED without MANAGE_MISSIONS; SCB-mapped errors.
      */
     ErrCode GetMissionInfo(const std::string& deviceId, int32_t missionId, MissionInfo &missionInfo,
-        DisplayInfo &displayInfo);
+        DisplayInfo &displayInfo, int32_t userId = -1);
 
     /**
      * Get the snapshot (screenshot pixel map) of a mission. System-app callers only +
@@ -1436,7 +1438,7 @@ public:
      *         snapshot cannot be captured; DMS errors for remote.
      */
     ErrCode GetMissionSnapshot(const std::string& deviceId, int32_t missionId,
-        MissionSnapshot& snapshot, bool isLowResolution = false);
+        MissionSnapshot& snapshot, bool isLowResolution = false, int32_t userId = -1);
 
     /**
      * Clean (destroy) a single mission. On SceneBoard devices the request is routed to the
@@ -1446,7 +1448,7 @@ public:
      * @return ERR_OK on success; INVALID_PARAMETERS_ERR / MISSION_NOT_FOUND variants;
      *         CHECK_PERMISSION_FAILED (mapped from SCB permission error); ERR_NO_INIT.
      */
-    ErrCode CleanMission(int32_t missionId);
+    ErrCode CleanMission(int32_t missionId, int32_t userId = -1);
 
     /**
      * Clean all missions in the system (except locked/protected ones). SCB path uses
@@ -1454,7 +1456,7 @@ public:
      *
      * @return ERR_OK on success; CHECK_PERMISSION_FAILED; ERR_NO_INIT; SCB-mapped errors.
      */
-    ErrCode CleanAllMissions();
+    ErrCode CleanAllMissions(int32_t userId = -1);
 
     /**
      * Bring a mission to the front (switch to it). System-app callers only +
@@ -1490,7 +1492,7 @@ public:
      * @return ERR_OK on success; ERR_NOT_SYSTEM_APP; CHECK_PERMISSION_FAILED;
      *         ERR_INVALID_VALUE for an empty list; ERR_NO_INIT.
      */
-    ErrCode MoveMissionsToForeground(const std::vector<int32_t>& missionIds, int32_t topMissionId);
+    ErrCode MoveMissionsToForeground(const std::vector<int32_t>& missionIds, int32_t topMissionId, int32_t userId = -1);
 
     /**
      * Move multiple missions to background in one operation. System-app callers only +
@@ -1502,7 +1504,8 @@ public:
      * @return ERR_OK on success; ERR_NOT_SYSTEM_APP; CHECK_PERMISSION_FAILED; ERR_NO_INIT /
      *         ERR_INVALID_VALUE.
      */
-    ErrCode MoveMissionsToBackground(const std::vector<int32_t>& missionIds, std::vector<int32_t>& result);
+    ErrCode MoveMissionsToBackground(const std::vector<int32_t>& missionIds, std::vector<int32_t>& result,
+        int32_t userId = -1);
 
     /**
      * Get the mission (session) id of the ability identified by token. Self-call or DMS callers
@@ -1900,7 +1903,7 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     ErrCode SetMissionContinueState(sptr<IRemoteObject> token, const AAFwk::ContinueState &state,
-        sptr<IRemoteObject> sessionToken);
+        sptr<IRemoteObject> sessionToken, int32_t userId = -1);
 
 #ifdef SUPPORT_SCREEN
     /**
@@ -1911,7 +1914,7 @@ public:
      * @param label Label displayed in recent missions.
      * @return Returns ERR_OK on success, others on failure.
      */
-    ErrCode SetMissionLabel(sptr<IRemoteObject> abilityToken, const std::string &label);
+    ErrCode SetMissionLabel(sptr<IRemoteObject> abilityToken, const std::string &label, int32_t userId = -1);
 
     /**
      * @brief Set the mission icon shown in recent missions.
@@ -1922,7 +1925,7 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     ErrCode SetMissionIcon(sptr<IRemoteObject> abilityToken,
-        std::shared_ptr<OHOS::Media::PixelMap> icon);
+        std::shared_ptr<OHOS::Media::PixelMap> icon, int32_t userId = -1);
 
     /**
      * @brief Register the window manager service handler. Internal use:
@@ -2038,7 +2041,7 @@ public:
      * @param token Ability token.
      * @return Returns ERR_OK on success, others on failure.
      */
-    ErrCode DelegatorDoAbilityBackground(sptr<IRemoteObject> token);
+    ErrCode DelegatorDoAbilityBackground(sptr<IRemoteObject> token, int32_t userId = -1);
 
     /**
      * @brief Report ability foreground transition (internal, called by ability
@@ -2145,7 +2148,8 @@ public:
      * @param results Output, up to 20 validity results.
      * @return Returns ERR_OK on success, others on failure.
      */
-    int32_t IsValidMissionIds(const std::vector<int32_t> &missionIds, std::vector<MissionValidResult> &results);
+    int32_t IsValidMissionIds(const std::vector<int32_t> &missionIds, std::vector<MissionValidResult> &results,
+        int32_t userId = -1);
 
     /**
      * @brief Verify whether the application owning the uid has been granted a
@@ -2689,7 +2693,7 @@ public:
      * @param missionId The mission id of the UIAbility to terminate.
      * @return Returns ERR_OK on success, others on failure.
      */
-    ErrCode TerminateMission(int32_t missionId);
+    ErrCode TerminateMission(int32_t missionId, int32_t userId = -1);
 
     /**
      * @brief Set the global flag to block all app starting (low-memory emergency
