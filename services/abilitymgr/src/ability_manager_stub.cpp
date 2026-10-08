@@ -1295,7 +1295,7 @@ int AbilityManagerStub::TerminateAbilityInner(MessageParcel &data, MessageParcel
     Want *resultWant = data.ReadParcelable<Want>();
     if (resultWant != nullptr) {
         SanitizeWantParams(*resultWant);
-    resultWant->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
+        resultWant->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
     bool flag = data.ReadBool();
     int32_t result;
@@ -1321,7 +1321,7 @@ int AbilityManagerStub::BackToCallerInner(MessageParcel &data, MessageParcel &re
     Want *resultWant = data.ReadParcelable<Want>();
     if (resultWant != nullptr) {
         SanitizeWantParams(*resultWant);
-    resultWant->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
+        resultWant->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
     int64_t callerRequestCode = data.ReadInt64();
     int32_t result = BackToCallerAbilityWithResult(token, resultCode, resultWant, callerRequestCode);
@@ -4637,7 +4637,7 @@ int32_t AbilityManagerStub::StartUIAbilitiesInner(MessageParcel &data, MessagePa
             return ERR_NATIVE_IPC_PARCEL_FAILED;
         }
         SanitizeWantParams(*want);
-    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
+        want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
         wantList.emplace_back(*want);
     }
 
