@@ -120,10 +120,6 @@
                     "psn": {
                         "type": "string",
                         "description": "For the string-type value corresponding to an empty key."
-                    },
-                    "tool-call-id": {
-                        "type": "string",
-                        "description": "Tool call id for tracing, <=256 chars; defaults to the TOOL_CALL_ID env."
                     }
                 }
             },
@@ -175,10 +171,6 @@
                     "bundlename": {
                         "type": "string",
                         "description": "bundleName"
-                    },
-                    "tool-call-id": {
-                        "type": "string",
-                        "description": "Tool call id for tracing, <=256 chars; defaults to the TOOL_CALL_ID env."
                     }
                 }
             },

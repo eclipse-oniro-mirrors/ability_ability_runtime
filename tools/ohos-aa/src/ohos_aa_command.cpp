@@ -437,34 +437,9 @@ ErrCode ClawAaShellCommand::RunAsForceStop()
         return OHOS::ERR_OK;
     }
 
-    std::string bundleName;
-    std::string toolCallId;
-    bool hasBundleName = false;
-    bool hasToolCallId = false;
-    // Scan argument list: only '--bundlename <value>' and '--tool-call-id <value>' pairs are accepted
-    size_t index = 0;
-    while (index < argList_.size()) {
-        if (index + 1 >= argList_.size()) {
-            break;
-        }
-        if (argList_[index] == "--bundlename" && !hasBundleName) {
-            bundleName = argList_[index + 1];
-            hasBundleName = true;
-        } else if (argList_[index] == "--tool-call-id" && !hasToolCallId) {
-            toolCallId = argList_[index + 1];
-            hasToolCallId = true;
-        } else {
-            // Unexpected argument pair: index stays behind argList_.size(), which
-            // already fails the strict argList check below.
-            break;
-        }
-        index += NUMBER_TWO;
-    }
-    if (index == argList_.size() && hasBundleName && (!hasToolCallId || IsValidToolCallId(toolCallId))) {
-        // Tool call identifier: parameter value takes precedence over environment variable
-        if (!hasToolCallId) {
-            toolCallId = GetToolCallIdFromEnv();
-        }
+    if (argList_.size() == NUMBER_TWO && argList_[0] == "--bundlename") {
+        std::string bundleName = argList_[1];
+        std::string toolCallId = GetToolCallIdFromEnv();
         toolCallId_ = toolCallId;
         std::string inputReason = "ohos-aa force-stop";
         if (!toolCallId.empty()) {
@@ -485,12 +460,6 @@ ErrCode ClawAaShellCommand::RunAsForceStop()
             PrintError(errorInfo);
         }
         return result;
-    }
-
-    if (hasToolCallId && !IsValidToolCallId(toolCallId)) {
-        // Parameter-level error consistent with the start subcommand.
-        resultReceiver_.append("invalid parameter for '--tool-call-id' option.");
-        return OHOS::ERR_INVALID_VALUE;
     }
 
     AaToolErrorInfo errorInfo = {
@@ -750,7 +719,6 @@ ErrCode ClawAaShellCommand::MakeWantFromCmd(Want& want, int32_t& userId)
     int32_t sandBoxCloneIndex = 0;
     bool hasSandBoxCloneIndex = false;
     std::string creatorBundleName;  // Creator bundle name (untrusted, from command line)
-    std::string toolCallId;  // Tool call identifier (untrusted, from command line)
 
     while (true) {
         counter++;
@@ -905,16 +873,6 @@ ErrCode ClawAaShellCommand::MakeWantFromCmd(Want& want, int32_t& userId)
 
                     result = OHOS::ERR_INVALID_VALUE;
 
-                    break;
-                }
-                case OPTION_TOOL_CALL_ID: {
-                    // 'aa start --tool-call-id' with no argument
-                    TAG_LOGI(AAFwkTag::AA_TOOL, "'ohos-aa %{public}s --tool-call-id' no arg", cmd_.c_str());
-
-                    resultReceiver_.append("error: option ");
-                    resultReceiver_.append("requires a value.\n");
-
-                    result = OHOS::ERR_INVALID_VALUE;
                     break;
                 }
                 case OPTION_TIME: {
@@ -1072,18 +1030,6 @@ ErrCode ClawAaShellCommand::MakeWantFromCmd(Want& want, int32_t& userId)
                 }
                 break;
             }
-            case OPTION_TOOL_CALL_ID: {
-                // 'ohos-aa start --tool-call-id xxx'
-                if (optarg != nullptr) {
-                    toolCallId = optarg;
-                    if (!IsValidToolCallId(toolCallId)) {
-                        resultReceiver_.append("invalid parameter for '--tool-call-id' option.");
-                        result = OHOS::ERR_INVALID_VALUE;
-                        break;
-                    }
-                }
-                break;
-            }
             case OPTION_URI: {
                 // 'aa start -U xxx'
 
@@ -1192,10 +1138,8 @@ ErrCode ClawAaShellCommand::MakeWantFromCmd(Want& want, int32_t& userId)
                 want.SetParam(AbilityRuntime::GlobalConstant::CREATOR_BUNDLE_NAME, creatorBundleName);
                 TAG_LOGI(AAFwkTag::AA_TOOL, "creatorBundleName: %{public}s", creatorBundleName.c_str());
             }
-            // Tool call identifier: parameter value takes precedence over environment variable
-            if (toolCallId.empty()) {
-                toolCallId = GetToolCallIdFromEnv();
-            }
+            // Tool call identifier from environment variable
+            std::string toolCallId = GetToolCallIdFromEnv();
             toolCallId_ = toolCallId;
             if (!toolCallId.empty()) {
                 want.SetParam("ohos.aafwk.param.toolCallId", toolCallId);
