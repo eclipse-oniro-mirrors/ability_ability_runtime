@@ -645,6 +645,11 @@ int32_t InsightIntentExecuteManager::GenerateWant(
     }
     want.SetElementName("", param->bundleName_, param->abilityName_, param->moduleName_);
 
+    if (!param->toolCallId_.empty()) {
+        want.SetParam(INSIGHT_INTENT_TOOL_CALL_ID, param->toolCallId_);
+        TAG_LOGI(AAFwkTag::INTENT, "GenerateWant with toolCallId: %{public}s", param->toolCallId_.c_str());
+    }
+
     if (param->insightIntentParam_ != nullptr) {
         sptr<AAFwk::IWantParams> pExecuteParams = WantParamWrapper::Box(*param->insightIntentParam_);
         if (pExecuteParams != nullptr) {

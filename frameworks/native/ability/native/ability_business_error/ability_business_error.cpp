@@ -335,6 +335,8 @@ constexpr const char* ERROR_MSG_GET_DIALOG_SESSION_INFO_FAILED =
     "Internal error. Failed to get dialog session information. Try again later.";
 constexpr const char* ERROR_MSG_SEND_DIALOG_RESULT_FAILED =
     "Internal error. Failed to send the dialog result. Try again later.";
+constexpr const char* ERROR_MSG_NOT_NATIVE_UI_ABILITY =
+    "Internal error. Non-native UIAbility cannot call this method.";
 
 // follow ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST of appexecfwk_errors.h in bundle_framework
 constexpr int32_t ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST = 8521220;
@@ -344,6 +346,7 @@ constexpr const char* ERROR_MSG_FILE_TYPE_ERROR =
 
 constexpr const char* ERROR_MSG_EVICT_CONFIG_PARSE_ERROR =
     "Failed to parse configuration file.";
+constexpr const char* ERROR_MSG_INVALID_EXTENSION_TYPE = "Internal error. Invalid extension ability type.";
 
 static std::unordered_map<AbilityErrorCode, const char*> ERR_CODE_MAP = {
     { AbilityErrorCode::ERROR_OK, ERROR_MSG_OK },
@@ -594,6 +597,7 @@ static std::unordered_map<int32_t, AbilityErrorCode> INNER_TO_JS_ERROR_CODE_MAP 
     {ERR_DELAYED_PROCESS_EXIT_NO_UIABILITY, AbilityErrorCode::ERROR_CODE_DELAYED_PROCESS_EXIT_NO_UIABILITY},
     {ERR_DELAYED_PROCESS_EXIT_HAS_OTHER_UIABILITY,
         AbilityErrorCode::ERROR_CODE_DELAYED_PROCESS_EXIT_HAS_OTHER_UIABILITY},
+    {ERR_INVALID_EXTENSION_TYPE, AbilityErrorCode::ERROR_CODE_INNER},
 };
 
 static std::unordered_map<int32_t, const char*> INNER_ERROR_MSG_BY_NATIVE_CODE {
@@ -638,6 +642,8 @@ static std::unordered_map<int32_t, const char*> INNER_ERROR_MSG_BY_NATIVE_CODE {
     {ERR_WRITE_RESULT_CODE_FAILED, ERROR_MSG_IPC_FAILED},
     {ERR_WRITE_KIOSK_STATUS_FAILED, ERROR_MSG_IPC_FAILED},
     {ERR_WRITE_CALLER_TOKEN_FAILED, ERROR_MSG_IPC_FAILED},
+    {ERR_INVALID_EXTENSION_TYPE, ERROR_MSG_INVALID_EXTENSION_TYPE},
+    {ERR_NOT_NATIVE_UI_ABILITY, ERROR_MSG_NOT_NATIVE_UI_ABILITY},
 };
 
 static std::unordered_map<AbilityInnerErrorMsg, const char*> INNER_ERROR_MSG_BY_SCENE {

@@ -497,7 +497,7 @@ UIAbilityRecordPtr UIAbilityLifecycleManager::GenerateAbilityRecord(AbilityReque
 UIAbilityRecordPtr UIAbilityLifecycleManager::FindRecordFromTmpMap(
     const AbilityRequest &abilityRequest)
 {
-    int32_t appIndex = 0;
+    int32_t appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
     if (abilityRequest.want.HasParameter(ServerConstant::DLP_INDEX)) {
         appIndex = abilityRequest.want.GetIntParam(ServerConstant::DLP_INDEX, 0);
     } else {
@@ -629,8 +629,10 @@ int UIAbilityLifecycleManager::AttachAbilityThread(const sptr<IAbilityScheduler>
     std::string callerBundleName =
         abilityRecord->GetWant().GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME);
     bool isCallBySCB = abilityRecord->GetWant().GetBoolParam(IS_CALL_BY_SCB, false);
+    AppExecFwk::UiAbilityLastCallerInfo callerInfo =
+        abilityRecord->GetRealLastCallerInfo(callerUid, callerBundleName, isCallBySCB);
 
-    int ret = HandleStartedByCall(abilityRecord, token, {callerUid, callerBundleName, isCallBySCB});
+    int ret = HandleStartedByCall(abilityRecord, token, callerInfo);
     if (ret != ERR_INVALID_VALUE) {
         return ret;
     }
@@ -640,8 +642,7 @@ int UIAbilityLifecycleManager::AttachAbilityThread(const sptr<IAbilityScheduler>
 
     abilityRecord->PostForegroundTimeoutTask();
     abilityRecord->SetAbilityState(AbilityState::FOREGROUNDING);
-    DelayedSingleton<AppScheduler>::GetInstance()->MoveToForeground(token,
-        {callerUid, callerBundleName, isCallBySCB});
+    DelayedSingleton<AppScheduler>::GetInstance()->MoveToForeground(token, callerInfo);
     return ERR_OK;
 }
 
@@ -1739,7 +1740,7 @@ int32_t UIAbilityLifecycleManager::StartSelf(const UIAbilityRecordPtr &abilityRe
 
     if (abilityRecord->GetNativeState() == AbilityNativeState::NONE) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "not a NativeModule ability");
-        return ERR_CAPABILITY_NOT_SUPPORT;
+        return ERR_NOT_NATIVE_UI_ABILITY;
     }
 
     if (abilityRecord->GetNativeState() == AbilityNativeState::ON_FOREGROUND) {
@@ -1932,6 +1933,9 @@ int UIAbilityLifecycleManager::CallAbilityLocked(const AbilityRequest &abilityRe
             }
             uiAbilityRecord->SetPendingState(AbilityState::FOREGROUND);
             ForegroundOptions options;
+            options.callerUid = abilityRequest.want.GetIntParam(Want::PARAM_RESV_CALLER_UID, -1);
+            options.callerBundleName =
+                abilityRequest.want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME);
             options.sceneFlag = SCENE_FLAG_BYCALL;
             uiAbilityRecord->ProcessForegroundAbility(sessionInfo->callingTokenId, options,
                 abilityRequest.want.GetBoolParam(ServerConstant::IS_CALL_BY_SCB, false));
@@ -2386,7 +2390,7 @@ void UIAbilityLifecycleManager::CompleteBackground(const UIAbilityRecordPtr &abi
             abilityRecord->GetWant().GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME);
         bool isCallBySCB = abilityRecord->GetWant().GetBoolParam(IS_CALL_BY_SCB, false);
         DelayedSingleton<AppScheduler>::GetInstance()->MoveToForeground(abilityRecord->GetToken(),
-            {callerUid, callerBundleName, isCallBySCB});
+            abilityRecord->GetRealLastCallerInfo(callerUid, callerBundleName, isCallBySCB));
     } else if (abilityRecord->GetPendingState() == AbilityState::BACKGROUND) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "not continuous startup.");
         abilityRecord->SetPendingState(AbilityState::INITIAL);
@@ -2742,12 +2746,7 @@ bool UIAbilityLifecycleManager::CheckProperties(const UIAbilityRecordPtr &abilit
 {
     CHECK_POINTER_RETURN_BOOL(abilityRecord);
     const auto& abilityInfo = abilityRecord->GetAbilityInfo();
-    int32_t appIndex = 0;
-    if (abilityRequest.isWebSandBoxClone) {
-        appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
-    } else {
-        (void)AbilityRuntime::StartupUtil::GetAppIndex(abilityRequest.want, appIndex);
-    }
+    int32_t appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
     auto instanceKey = abilityRequest.want.GetStringParam(Want::APP_INSTANCE_KEY);
     return abilityInfo.launchMode == launchMode && abilityRequest.abilityInfo.name == abilityInfo.name &&
         abilityRequest.abilityInfo.bundleName == abilityInfo.bundleName &&
@@ -4591,12 +4590,7 @@ void UIAbilityLifecycleManager::EnableListForSCBRecovery()
 UIAbilityRecordPtr UIAbilityLifecycleManager::FindRecordFromSessionMap(
     const AbilityRequest &abilityRequest)
 {
-    int32_t appIndex = 0;
-    if (abilityRequest.want.HasParameter(ServerConstant::DLP_INDEX)) {
-        appIndex = abilityRequest.want.GetIntParam(ServerConstant::DLP_INDEX, 0);
-    } else {
-        appIndex = abilityRequest.abilityInfo.appIndex;
-    }
+    int32_t appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
     auto instanceKey = abilityRequest.want.GetStringParam(Want::APP_INSTANCE_KEY);
     for (const auto &[sessionId, abilityRecord] : sessionAbilityMap_) {
         if (abilityRecord) {

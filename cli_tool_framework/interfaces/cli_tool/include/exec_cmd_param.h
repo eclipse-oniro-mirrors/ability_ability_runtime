@@ -52,6 +52,9 @@ public:
     int64_t timeout = 0;
     bool isShellCommand = true;
     std::string challenge;
+    // Trace identifiers for log correlation; empty means "not provided".
+    std::string toolCallId;
+    std::string dmSessionId;
 
     bool Marshalling(Parcel &parcel) const;
     static ExecCmdOptions *Unmarshalling(Parcel &parcel);
@@ -67,6 +70,8 @@ public:
         o.background = background;
         o.yieldMs = yieldMs;
         o.timeout = timeout;
+        o.toolCallId = toolCallId;
+        o.dmSessionId = dmSessionId;
         return o;
     }
 };

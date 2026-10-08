@@ -996,6 +996,7 @@ HWTEST_F(AbilityManagerServiceFourthTest, CheckCallPermission_001, TestSize.Leve
         callerBundleName, false);
     EXPECT_EQ(ret, ERR_WRONG_INTERFACE_CALL);
 
+    MyFlag::flag_ = MyFlag::FLAG::IS_NOT_SYSTEM_APP_CALL;
     abilityInfo.type = AppExecFwk::AbilityType::EXTENSION;
     auto ret1 = abilityMs_->CheckCallPermission(
         want, abilityInfo, abilityRequest, isForegroundToRestartApp, isSendDialogResult, specifyTokenId,

@@ -174,8 +174,9 @@ napi_value JSCliManager::OnExecTool(napi_env env, size_t argc, napi_value *argv)
     }
 
     if (argc > INDEX_FOUR && argv[INDEX_FOUR] != nullptr) {
-        if (!UnwrapExecOptions(env, argv[INDEX_FOUR], param.options)) {
-            ThrowInvalidParamError(env, "Tool options is required");
+        std::string optionsMsg;
+        if (!UnwrapExecOptions(env, argv[INDEX_FOUR], param.options, optionsMsg)) {
+            ThrowInvalidParamError(env, optionsMsg.empty() ? "Tool options is required" : optionsMsg.c_str());
             return CreateJsUndefined(env);
         }
     }
@@ -677,7 +678,10 @@ napi_value JSCliManager::OnUnregisterCliHook(napi_env env, size_t argc, napi_val
 
     auto stub = g_cliHookStub;
     ErrCode ret = CliToolMGRClient::GetInstance().UnregisterCliHook(stub);
-    if (ret == ERR_OK) {
+    if (ret == ERR_OK || ret == GET_CLI_TOOL_MGR_SERVICE_FAILED || ret == ERR_HOOK_NOT_REGISTERED) {
+        if (ret != ERR_OK) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "OnUnregisterCliHook: ret=%{public}d, cleanup local stub", ret);
+        }
         stub->ReleaseResources();
         g_cliHookStub = nullptr;
         napi_resolve_deferred(env, deferred, CreateJsUndefined(env));

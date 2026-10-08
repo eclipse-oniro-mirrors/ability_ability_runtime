@@ -37,7 +37,7 @@ public:
 
     void TerminateAbility(const sptr<IRemoteObject> &token, bool clearMissionFlag) override {}
     void UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state,
-        bool isFromScreenOffBackground = false) override {}
+        bool isFromScreenOffBackground = false, const UiAbilityLastCallerInfo &callerInfo = {}) override {}
     void RegisterAppStateCallback(const sptr<IAppStateCallback> &callback) override {}
     void KillProcessByAbilityToken(const sptr<IRemoteObject> &token) override {}
     int32_t SetGameSAPrelaunch(const sptr<IRemoteObject> &token, bool isGameSAPrelaunch) override { return 0; }
@@ -82,7 +82,8 @@ public:
         return 0;
     }
     int32_t NotifyAppMgrRecordExitReasonCompability(
-        int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg, int32_t reason) override
+        int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg,
+        int32_t reason, int32_t callerPid = -1) override
     {
         return 0;
     }

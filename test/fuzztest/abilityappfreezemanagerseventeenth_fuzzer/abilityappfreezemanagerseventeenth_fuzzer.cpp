@@ -33,6 +33,7 @@ namespace OHOS {
 namespace {
 constexpr size_t STRING_MAX_LENGTH = 256;
 constexpr size_t FREEZE_TYPE_COUNT = 12;
+constexpr size_t SHORT_STRING_MAX_LENGTH = 64;
 const char* const FREEZE_TYPES[FREEZE_TYPE_COUNT] = {
     AppFreezeType::LIFECYCLE_HALF_TIMEOUT,
     AppFreezeType::LIFECYCLE_HALF_TIMEOUT_WARNING,
@@ -54,7 +55,7 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     FuzzedDataProvider fdp(data, size);
     FaultData faultData;
     if (fdp.ConsumeBool()) {
-        faultData.errorObject.name = FREEZE_TYPES[fdp.ConsumeIntegral<uint32_t>() % FREEZE_TYPE_COUNT];
+        faultData.errorObject.name = FREEZE_TYPES[fdp.ConsumeIntegralInRange<size_t>(0, FREEZE_TYPE_COUNT - 1)];
     } else {
         faultData.errorObject.name = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
     }
@@ -96,9 +97,9 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     info.needKillProcess = fdp.ConsumeBool();
     info.typeId = fdp.ConsumeIntegral<int32_t>();
     info.pid = fdp.ConsumeIntegral<int32_t>();
-    info.eventName = fdp.ConsumeRandomLengthString(64);
-    info.bundleName = fdp.ConsumeRandomLengthString(64);
-    info.msg = fdp.ConsumeRandomLengthString(64);
+    info.eventName = fdp.ConsumeRandomLengthString(SHORT_STRING_MAX_LENGTH);
+    info.bundleName = fdp.ConsumeRandomLengthString(SHORT_STRING_MAX_LENGTH);
+    info.msg = fdp.ConsumeRandomLengthString(SHORT_STRING_MAX_LENGTH);
     auto freeze = AppfreezeManager::GetInstance();
     if (!freeze) {
         return false;

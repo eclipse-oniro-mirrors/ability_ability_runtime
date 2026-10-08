@@ -44,6 +44,7 @@
 #include "upms_udmf_utils.h"
 #endif // ABILITY_RUNTIME_UDMF_ENABLE
 #include "want.h"
+#include "bundle_mgr_helper.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -269,6 +270,10 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermission(const std::vector<std::
     }
     int32_t curUserId = FUDUtils::GetCurrentAccountId();
     uint32_t targetTokenId = 0;
+    if (appIndex == -1) {
+        auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
+        bundleMgrHelper->GetDualModeBundleInfo(targetBundleName, curUserId, appIndex);
+    }
     ret = FUDUtils::GetTokenIdByBundleName(targetBundleName, appIndex, curUserId, targetTokenId);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "get tokenId by bundle name failed");
@@ -805,6 +810,10 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermissionPrivileged(const std::ve
     }
     int32_t curUserId = FUDUtils::GetCurrentAccountId();
     uint32_t targetTokenId = 0;
+    if (appIndex == -1) {
+        auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
+        bundleMgrHelper->GetDualModeBundleInfo(targetBundleName, curUserId, appIndex);
+    }
     auto ret = FUDUtils::GetTokenIdByBundleName(targetBundleName, appIndex, curUserId, targetTokenId);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "get tokenId failed, bundleName:%{public}s", targetBundleName.c_str());
@@ -853,6 +862,72 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermissionPrivileged(const UriPerm
     }
     auto errCode = GrantUriPermissionPrivileged(uriStrVec, flag, targetBundleName, appIndex, initiatorTokenId,
         hideSensitiveType, funcResult);
+    if (errCode != ERR_OK) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "GrantUriPermissionPrivileged failed, errCode:%{public}d", errCode);
+        return errCode;
+    }
+    return ERR_OK;
+}
+
+ErrCode UriPermissionManagerStubImpl::GrantUriPermissionPrivileged(const std::vector<std::string>& uriVec,
+    uint32_t flag, uint32_t targetTokenId, int32_t& funcResult)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (uriVec.size() == 0 || uriVec.size() > MAX_URI_COUNT) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "out of range: %{public}zu", uriVec.size());
+        funcResult = ERR_URI_LIST_OUT_OF_RANGE;
+        return ERR_URI_LIST_OUT_OF_RANGE;
+    }
+    TAG_LOGI(AAFwkTag::URIPERMMGR, "targetTokenId:%{public}u, flag:%{public}u, uris:%{public}zu",
+        targetTokenId, flag, uriVec.size());
+    uint32_t callerTokenId = IPCSkeleton::GetCallingTokenID();
+    auto checkRes = CheckGrantUriPermissionPrivileged(callerTokenId, flag);
+    if (checkRes != ERR_OK) {
+        return WrapErrorCode(checkRes, funcResult);
+    }
+    if (targetTokenId == 0) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "targetTokenId is 0");
+        return WrapErrorCode(ERR_UPMS_INVALID_TARGET_TOKENID, funcResult);
+    }
+    // supportSA defaults to false: only HAP-type application token IDs are accepted;
+    // this also fills userId / bundleName / alterBundleName required by the inner grant path.
+    FUDAppInfo targetAppInfo = { .tokenId = targetTokenId };
+    if (!FUDUtils::GenerateFUDAppInfo(targetAppInfo)) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "targetTokenId is not a valid hap app");
+        return WrapErrorCode(ERR_UPMS_INVALID_TARGET_TOKENID, funcResult);
+    }
+    FUDAppInfo callerAppInfo = { .tokenId = callerTokenId };
+    if (!FUDUtils::GenerateFUDAppInfo(callerAppInfo, true)) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "callerAppInfo is not a valid hap app");
+        return WrapErrorCode(ERR_UPMS_INVALID_CALLER_TOKENID, funcResult);
+    }
+    std::vector<Uri> uriVecInner;
+    for (auto& uri : uriVec) {
+        uriVecInner.emplace_back(uri);
+    }
+    std::vector<int32_t> permissionTypes(uriVec.size(), 0);
+    auto ret = GrantUriPermissionPrivilegedInner(uriVecInner, flag, callerAppInfo, targetAppInfo,
+        DEFAULT_HIDE_SENSITIVE_TYPE, permissionTypes);
+    TAG_LOGI(AAFwkTag::URIPERMMGR, "GrantUriPermissionPrivileged with tokenId finished.");
+    return WrapErrorCode(ret, funcResult);
+}
+
+ErrCode UriPermissionManagerStubImpl::GrantUriPermissionPrivileged(const UriPermissionRawData& rawData,
+    uint32_t flag, uint32_t targetTokenId, int32_t& funcResult)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto checkRes = CheckGrantUriPermissionPrivileged(IPCSkeleton::GetCallingTokenID(), flag);
+    if (checkRes != ERR_OK) {
+        return WrapErrorCode(checkRes, funcResult);
+    }
+    std::vector<std::string> uriStrVec;
+    auto res = RawDataToStringVec(rawData, uriStrVec);
+    if (res != ERR_OK) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "raw data to vec failed");
+        funcResult = res;
+        return res;
+    }
+    auto errCode = GrantUriPermissionPrivileged(uriStrVec, flag, targetTokenId, funcResult);
     if (errCode != ERR_OK) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "GrantUriPermissionPrivileged failed, errCode:%{public}d", errCode);
         return errCode;
@@ -1509,6 +1584,10 @@ ErrCode UriPermissionManagerStubImpl::RevokeUriPermissionManually(const Uri& uri
     }
     int32_t curUserId = FUDUtils::GetCurrentAccountId();
     uint32_t targetTokenId = 0;
+    if (appIndex == -1) {
+        auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
+        bundleMgrHelper->GetDualModeBundleInfo(bundleName, curUserId, appIndex);
+    }
     auto ret = FUDUtils::GetTokenIdByBundleName(bundleName, appIndex, curUserId, targetTokenId);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "get tokenId by bundleName fail");

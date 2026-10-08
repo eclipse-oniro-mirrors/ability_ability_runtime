@@ -17,25 +17,33 @@
 #define OHOS_ABILITY_RUNTIME_RDB_PARSER_UTIL_H
 
 #include <nlohmann/json.hpp>
-#include <tuple>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace OHOS {
 namespace AbilityRuntime {
 /* This class is used to parse the resident process information section in files(install_list_capability.json) */
+
+// Parsed keepalive capability of one bundle from install_list_capability.json.
+struct ResidentBundleCapability {
+    std::string bundleName;
+    std::string keepAliveEnable;
+    std::string keepAliveConfiguredList;
+    std::string keepAliveSaUidList;
+};
+
 class ParserUtil final {
 public:
     static ParserUtil &GetInstance();
-    void GetResidentProcessRawData(
-        std::vector<std::tuple<std::string, std::string, std::string, std::string>> &list);
+    void GetResidentProcessRawData(std::vector<ResidentBundleCapability> &list);
 
 private:
     void ParsePreInstallAbilityConfig(const std::string &filePath,
-        std::vector<std::tuple<std::string, std::string, std::string, std::string>> &list);
+        std::vector<ResidentBundleCapability> &list);
     void GetPreInstallRootDirList(std::vector<std::string> &rootDirList);
     bool ReadFileIntoJson(const std::string &filePath, nlohmann::json &jsonBuf);
-    bool FilterInfoFromJson(nlohmann::json &jsonBuf,
-        std::vector<std::tuple<std::string, std::string, std::string, std::string>> &list);
+    bool FilterInfoFromJson(nlohmann::json &jsonBuf, std::vector<ResidentBundleCapability> &list);
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

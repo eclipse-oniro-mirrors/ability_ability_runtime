@@ -1442,5 +1442,227 @@ HWTEST_F(PendingWantRecordTest, SetPublisherUid_GetPublisherUid_0100, TestSize.L
     TAG_LOGI(AAFwkTag::TEST, "SetPublisherUid_GetPublisherUid_0100 end");
 }
 
+HWTEST_F(PendingWantRecordTest, SetCreatorPid_GetCreatorPid_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetCreatorPid_GetCreatorPid_0100 start");
+    std::shared_ptr<PendingWantRecord> record = std::make_shared<PendingWantRecord>();
+    ASSERT_NE(record, nullptr);
+    EXPECT_EQ(record->GetCreatorPid(), 0);
+    record->SetCreatorPid(1234);
+    EXPECT_EQ(record->GetCreatorPid(), 1234);
+    record->SetCreatorPid(-1);
+    EXPECT_EQ(record->GetCreatorPid(), -1);
+    TAG_LOGI(AAFwkTag::TEST, "SetCreatorPid_GetCreatorPid_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, SetShared_GetShared_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetShared_GetShared_0100 start");
+    std::shared_ptr<PendingWantRecord> record = std::make_shared<PendingWantRecord>();
+    ASSERT_NE(record, nullptr);
+    EXPECT_FALSE(record->GetShared());
+    record->SetShared(true);
+    EXPECT_TRUE(record->GetShared());
+    record->SetShared(false);
+    EXPECT_FALSE(record->GetShared());
+    TAG_LOGI(AAFwkTag::TEST, "SetShared_GetShared_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, SetIsThirdParty_GetIsThirdParty_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetIsThirdParty_GetIsThirdParty_0100 start");
+    std::shared_ptr<PendingWantRecord> record = std::make_shared<PendingWantRecord>();
+    ASSERT_NE(record, nullptr);
+    EXPECT_FALSE(record->GetIsThirdParty());
+    record->SetIsThirdParty(true);
+    EXPECT_TRUE(record->GetIsThirdParty());
+    record->SetIsThirdParty(false);
+    EXPECT_FALSE(record->GetIsThirdParty());
+    TAG_LOGI(AAFwkTag::TEST, "SetIsThirdParty_GetIsThirdParty_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, MarkSharedIfNeeded_SamePid_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "MarkSharedIfNeeded_SamePid_0100 start");
+    std::shared_ptr<PendingWantRecord> record = std::make_shared<PendingWantRecord>();
+    ASSERT_NE(record, nullptr);
+    record->SetCreatorPid(100);
+    record->MarkSharedIfNeeded(100);
+    EXPECT_FALSE(record->GetShared());
+    TAG_LOGI(AAFwkTag::TEST, "MarkSharedIfNeeded_SamePid_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, MarkSharedIfNeeded_DiffPid_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "MarkSharedIfNeeded_DiffPid_0100 start");
+    std::shared_ptr<PendingWantRecord> record = std::make_shared<PendingWantRecord>();
+    ASSERT_NE(record, nullptr);
+    record->SetCreatorPid(100);
+    record->MarkSharedIfNeeded(200);
+    EXPECT_TRUE(record->GetShared());
+    TAG_LOGI(AAFwkTag::TEST, "MarkSharedIfNeeded_DiffPid_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, MarkSharedIfNeeded_AlreadyShared_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "MarkSharedIfNeeded_AlreadyShared_0100 start");
+    std::shared_ptr<PendingWantRecord> record = std::make_shared<PendingWantRecord>();
+    ASSERT_NE(record, nullptr);
+    record->SetCreatorPid(100);
+    record->SetShared(true);
+    record->MarkSharedIfNeeded(300);
+    EXPECT_TRUE(record->GetShared());
+    TAG_LOGI(AAFwkTag::TEST, "MarkSharedIfNeeded_AlreadyShared_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, DeleteUnsharedRecordsOnDeath_DeleteUnshared_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_DeleteUnshared_0100 start");
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    ASSERT_NE(pendingManager_, nullptr);
+
+    std::shared_ptr<PendingWantKey> key = std::make_shared<PendingWantKey>();
+    key->SetBundleName("com.test.bundle");
+    key->SetCode(1);
+    sptr<PendingWantRecord> record = new PendingWantRecord(pendingManager_, 1, 0, nullptr, key);
+    ASSERT_NE(record, nullptr);
+    record->SetCreatorPid(1000);
+    record->SetShared(false);
+    record->SetIsThirdParty(true);
+    pendingManager_->wantRecords_.insert(std::make_pair(key, record));
+
+    pendingManager_->DeleteUnsharedRecordsOnDeath("com.test.bundle", 1000);
+
+    EXPECT_EQ(pendingManager_->wantRecords_.size(), 0u);
+    EXPECT_TRUE(record->GetCanceled());
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_DeleteUnshared_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, DeleteUnsharedRecordsOnDeath_KeepShared_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_KeepShared_0100 start");
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    ASSERT_NE(pendingManager_, nullptr);
+
+    std::shared_ptr<PendingWantKey> key = std::make_shared<PendingWantKey>();
+    key->SetBundleName("com.test.bundle");
+    key->SetCode(1);
+    sptr<PendingWantRecord> record = new PendingWantRecord(pendingManager_, 1, 0, nullptr, key);
+    ASSERT_NE(record, nullptr);
+    record->SetCreatorPid(1000);
+    record->SetShared(true);
+    record->SetIsThirdParty(true);
+    pendingManager_->wantRecords_.insert(std::make_pair(key, record));
+
+    pendingManager_->DeleteUnsharedRecordsOnDeath("com.test.bundle", 1000);
+
+    EXPECT_EQ(pendingManager_->wantRecords_.size(), 1u);
+    EXPECT_FALSE(record->GetCanceled());
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_KeepShared_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, DeleteUnsharedRecordsOnDeath_KeepNonThirdParty_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_KeepNonThirdParty_0100 start");
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    ASSERT_NE(pendingManager_, nullptr);
+
+    std::shared_ptr<PendingWantKey> key = std::make_shared<PendingWantKey>();
+    key->SetBundleName("com.test.bundle");
+    key->SetCode(1);
+    sptr<PendingWantRecord> record = new PendingWantRecord(pendingManager_, 1, 0, nullptr, key);
+    ASSERT_NE(record, nullptr);
+    record->SetCreatorPid(1000);
+    record->SetShared(false);
+    record->SetIsThirdParty(false);
+    pendingManager_->wantRecords_.insert(std::make_pair(key, record));
+
+    pendingManager_->DeleteUnsharedRecordsOnDeath("com.test.bundle", 1000);
+
+    EXPECT_EQ(pendingManager_->wantRecords_.size(), 1u);
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_KeepNonThirdParty_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, DeleteUnsharedRecordsOnDeath_KeepDiffBundle_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_KeepDiffBundle_0100 start");
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    ASSERT_NE(pendingManager_, nullptr);
+
+    std::shared_ptr<PendingWantKey> key = std::make_shared<PendingWantKey>();
+    key->SetBundleName("com.other.bundle");
+    key->SetCode(1);
+    sptr<PendingWantRecord> record = new PendingWantRecord(pendingManager_, 1, 0, nullptr, key);
+    ASSERT_NE(record, nullptr);
+    record->SetCreatorPid(1000);
+    record->SetShared(false);
+    record->SetIsThirdParty(true);
+    pendingManager_->wantRecords_.insert(std::make_pair(key, record));
+
+    pendingManager_->DeleteUnsharedRecordsOnDeath("com.test.bundle", 1000);
+
+    EXPECT_EQ(pendingManager_->wantRecords_.size(), 1u);
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_KeepDiffBundle_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, DeleteUnsharedRecordsOnDeath_KeepDiffPid_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_KeepDiffPid_0100 start");
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    ASSERT_NE(pendingManager_, nullptr);
+
+    std::shared_ptr<PendingWantKey> key = std::make_shared<PendingWantKey>();
+    key->SetBundleName("com.test.bundle");
+    key->SetCode(1);
+    sptr<PendingWantRecord> record = new PendingWantRecord(pendingManager_, 1, 0, nullptr, key);
+    ASSERT_NE(record, nullptr);
+    record->SetCreatorPid(1000);
+    record->SetShared(false);
+    record->SetIsThirdParty(true);
+    pendingManager_->wantRecords_.insert(std::make_pair(key, record));
+
+    pendingManager_->DeleteUnsharedRecordsOnDeath("com.test.bundle", 999);
+
+    EXPECT_EQ(pendingManager_->wantRecords_.size(), 1u);
+    EXPECT_FALSE(record->GetCanceled());
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_KeepDiffPid_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, DeleteUnsharedRecordsOnDeath_NullRecord_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_NullRecord_0100 start");
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    ASSERT_NE(pendingManager_, nullptr);
+
+    std::shared_ptr<PendingWantKey> key = std::make_shared<PendingWantKey>();
+    key->SetBundleName("com.test.bundle");
+    key->SetCode(1);
+    sptr<PendingWantRecord> nullRecord = nullptr;
+    pendingManager_->wantRecords_.insert(std::make_pair(key, nullRecord));
+
+    EXPECT_NO_FATAL_FAILURE(pendingManager_->DeleteUnsharedRecordsOnDeath("com.test.bundle", 1000));
+    EXPECT_EQ(pendingManager_->wantRecords_.size(), 1u);
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_NullRecord_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, DeleteUnsharedRecordsOnDeath_NullKey_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_NullKey_0100 start");
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    ASSERT_NE(pendingManager_, nullptr);
+
+    std::shared_ptr<PendingWantKey> nullKey = nullptr;
+    sptr<PendingWantRecord> record = new PendingWantRecord(pendingManager_, 1, 0, nullptr, nullptr);
+    ASSERT_NE(record, nullptr);
+    record->SetCreatorPid(1000);
+    record->SetShared(false);
+    record->SetIsThirdParty(true);
+    pendingManager_->wantRecords_.insert(std::make_pair(nullKey, record));
+
+    EXPECT_NO_FATAL_FAILURE(pendingManager_->DeleteUnsharedRecordsOnDeath("com.test.bundle", 1000));
+    EXPECT_EQ(pendingManager_->wantRecords_.size(), 1u);
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_NullKey_0100 end");
+}
+
 }  // namespace AAFwk
 }  // namespace OHOS

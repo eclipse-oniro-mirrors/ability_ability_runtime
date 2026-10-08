@@ -44,5 +44,10 @@ int32_t PermissionUtil::CheckSystemAndPermission(const std::string &)
 {
     return 0;
 }
+
+int32_t PermissionUtil::CheckSystemAppAndPermission(const std::string &)
+{
+    return 0;
+}
 } // namespace CliTool
 } // namespace OHOS

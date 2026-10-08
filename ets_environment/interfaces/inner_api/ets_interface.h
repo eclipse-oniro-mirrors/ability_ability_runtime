@@ -16,9 +16,11 @@
 #ifndef OHOS_ABILITY_RUNTIME_ETS_INTERFACE_H
 #define OHOS_ABILITY_RUNTIME_ETS_INTERFACE_H
 
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <string>
+#include <vector>
 #include "ets_exception_callback.h"
 #include "ets_native_reference.h"
 #include "napi/native_api.h"
@@ -71,6 +73,8 @@ struct ETSEnvFuncs {
     void (*BroadcastAndConnect)(const std::string& bundleName, int socketFd) = nullptr;
     bool (*StartProfiler)(int tid, int32_t instanceId, bool debugApp, void *jsVm,
         EtsProfilerType profiler, uint32_t interval) = nullptr;
+    int32_t (*HotReload)(const std::string &target, const std::string &patch) = nullptr;
+    int32_t (*ColdReload)(const std::string &patch) = nullptr;
 };
 }
 #endif // OHOS_ABILITY_RUNTIME_ETS_INTERFACE_H

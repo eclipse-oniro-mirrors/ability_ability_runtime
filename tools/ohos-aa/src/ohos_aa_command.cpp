@@ -23,6 +23,7 @@
 #include "ability_manager_client.h"
 #include "ability_start_with_wait_observer.h"
 #include "ability_start_with_wait_observer_utils.h"
+#include "exec_options.h"
 #include "global_constant.h"
 #include "hilog_tag_wrapper.h"
 #include "iservice_registry.h"
@@ -123,6 +124,19 @@ const std::string ERR_IMPLICIT_START_ABILITY_FAIL_SOLUTION_TWO =
 
 const std::string BLACK_ACTION_SELECT_DATA = "ohos.want.action.select";
 
+std::string GetToolCallIdFromEnv()
+{
+    const char* envToolCallId = std::getenv(ENV_TOOL_CALL_ID.c_str());
+    if (envToolCallId == nullptr || envToolCallId[0] == '\0') {
+        return "";
+    }
+    std::string toolCallId = envToolCallId;
+    if (!IsValidToolCallId(toolCallId)) {
+        return "";
+    }
+    return toolCallId;
+}
+
 void AddEntities(const std::vector<std::string>& entities, Want& want)
 {
     for (auto entity : entities) {
@@ -130,6 +144,21 @@ void AddEntities(const std::vector<std::string>& entities, Want& want)
     }
 }
 }  // namespace
+
+// Shared trace-id rule: [A-Za-z0-9_-], <= 256 chars; an empty string is valid.
+bool IsValidToolCallId(const std::string &toolCallId)
+{
+    if (toolCallId.length() > CliTool::TRACE_ID_MAX_LEN) {
+        // Length only: never echo the raw value, it may contain control characters.
+        TAG_LOGE(AAFwkTag::AA_TOOL, "invalid toolCallId length: %{public}zu", toolCallId.length());
+        return false;
+    }
+    if (!CliTool::IsValidTraceId(toolCallId)) {
+        TAG_LOGE(AAFwkTag::AA_TOOL, "invalid toolCallId charset, length: %{public}zu", toolCallId.length());
+        return false;
+    }
+    return true;
+}
 
 ClawAaShellCommand::ClawAaShellCommand(int argc, char* argv[]) : ShellCommand(argc, argv, TOOL_NAME)
 {
@@ -142,13 +171,21 @@ ClawAaShellCommand::ClawAaShellCommand(int argc, char* argv[]) : ShellCommand(ar
     }
 }
 
-void PrintSuccess(const std::string& message)
+void PrintSuccess(const std::string& message, const std::string& toolCallId)
 {
     json response;
     response["type"] = "result";
     response["status"] = "success";
     response["data"]["message"] = message;
+    if (!toolCallId.empty()) {
+        response["data"]["toolCallId"] = toolCallId;
+    }
     std::cout << response.dump() << std::endl;
+}
+
+void PrintSuccess(const std::string& message)
+{
+    PrintSuccess(message, "");
 }
 
 void PrintError(const AaToolErrorInfo& errorInfo)
@@ -354,7 +391,7 @@ ErrCode ClawAaShellCommand::RunAsStartAbility()
         if (result == OHOS::ERR_OK) {
             TAG_LOGI(AAFwkTag::AA_TOOL, "%{public}s", STRING_START_ABILITY_OK.c_str());
             resultReceiver_.append(STRING_START_ABILITY_OK);
-            PrintSuccess(resultReceiver_);
+            PrintSuccess(resultReceiver_, toolCallId_);
         } else {
             TAG_LOGI(AAFwkTag::AA_TOOL, "%{public}s result: %{public}d", STRING_START_ABILITY_NG.c_str(), result);
             CheckStartAbilityResult(result);
@@ -395,14 +432,52 @@ void ClawAaShellCommand::CheckStartAbilityResult(ErrCode& result)
 ErrCode ClawAaShellCommand::RunAsForceStop()
 {
     TAG_LOGI(AAFwkTag::AA_TOOL, "enter");
-    if (argList_.size() == NUMBER_TWO && argList_[0] == "--bundlename") {
-        std::string bundleName = argList_[1];
+    if (argList_.size() == 1 && argList_[0] == "--help") {
+        std::cout << HELP_MSG_FORCE_STOP << std::endl;
+        return OHOS::ERR_OK;
+    }
+
+    std::string bundleName;
+    std::string toolCallId;
+    bool hasBundleName = false;
+    bool hasToolCallId = false;
+    // Scan argument list: only '--bundlename <value>' and '--tool-call-id <value>' pairs are accepted
+    size_t index = 0;
+    while (index < argList_.size()) {
+        if (index + 1 >= argList_.size()) {
+            break;
+        }
+        if (argList_[index] == "--bundlename" && !hasBundleName) {
+            bundleName = argList_[index + 1];
+            hasBundleName = true;
+        } else if (argList_[index] == "--tool-call-id" && !hasToolCallId) {
+            toolCallId = argList_[index + 1];
+            hasToolCallId = true;
+        } else {
+            // Unexpected argument pair: index stays behind argList_.size(), which
+            // already fails the strict argList check below.
+            break;
+        }
+        index += NUMBER_TWO;
+    }
+    if (index == argList_.size() && hasBundleName && (!hasToolCallId || IsValidToolCallId(toolCallId))) {
+        // Tool call identifier: parameter value takes precedence over environment variable
+        if (!hasToolCallId) {
+            toolCallId = GetToolCallIdFromEnv();
+        }
+        toolCallId_ = toolCallId;
         std::string inputReason = "ohos-aa force-stop";
+        if (!toolCallId.empty()) {
+            inputReason.append(";toolCallId=").append(toolCallId);
+        }
         TAG_LOGI(AAFwkTag::AA_TOOL, "Bundle name %{public}s", bundleName.c_str());
+        if (!toolCallId.empty()) {
+            TAG_LOGI(AAFwkTag::AA_TOOL, "toolCallId: %{public}s", toolCallId.c_str());
+        }
         ErrCode result = AbilityManagerClient::GetInstance()->KillProcess(bundleName, false, 0, inputReason);
         if (result == OHOS::ERR_OK) {
             TAG_LOGI(AAFwkTag::AA_TOOL, "%{public}s", STRING_FORCE_STOP_OK.c_str());
-            PrintSuccess(STRING_FORCE_STOP_OK);
+            PrintSuccess(STRING_FORCE_STOP_OK, toolCallId_);
         } else {
             TAG_LOGI(AAFwkTag::AA_TOOL, "%{public}s result: %{public}d", STRING_FORCE_STOP_NG.c_str(), result);
             AaToolErrorInfo errorInfo = GetErrorInfoFromCode(result);
@@ -410,9 +485,12 @@ ErrCode ClawAaShellCommand::RunAsForceStop()
             PrintError(errorInfo);
         }
         return result;
-    } else if (argList_.size() == 1 && argList_[0] == "--help") {
-        std::cout << HELP_MSG_FORCE_STOP << std::endl;
-        return OHOS::ERR_OK;
+    }
+
+    if (hasToolCallId && !IsValidToolCallId(toolCallId)) {
+        // Parameter-level error consistent with the start subcommand.
+        resultReceiver_.append("invalid parameter for '--tool-call-id' option.");
+        return OHOS::ERR_INVALID_VALUE;
     }
 
     AaToolErrorInfo errorInfo = {
@@ -672,6 +750,7 @@ ErrCode ClawAaShellCommand::MakeWantFromCmd(Want& want, int32_t& userId)
     int32_t sandBoxCloneIndex = 0;
     bool hasSandBoxCloneIndex = false;
     std::string creatorBundleName;  // Creator bundle name (untrusted, from command line)
+    std::string toolCallId;  // Tool call identifier (untrusted, from command line)
 
     while (true) {
         counter++;
@@ -826,6 +905,16 @@ ErrCode ClawAaShellCommand::MakeWantFromCmd(Want& want, int32_t& userId)
 
                     result = OHOS::ERR_INVALID_VALUE;
 
+                    break;
+                }
+                case OPTION_TOOL_CALL_ID: {
+                    // 'aa start --tool-call-id' with no argument
+                    TAG_LOGI(AAFwkTag::AA_TOOL, "'ohos-aa %{public}s --tool-call-id' no arg", cmd_.c_str());
+
+                    resultReceiver_.append("error: option ");
+                    resultReceiver_.append("requires a value.\n");
+
+                    result = OHOS::ERR_INVALID_VALUE;
                     break;
                 }
                 case OPTION_TIME: {
@@ -983,6 +1072,18 @@ ErrCode ClawAaShellCommand::MakeWantFromCmd(Want& want, int32_t& userId)
                 }
                 break;
             }
+            case OPTION_TOOL_CALL_ID: {
+                // 'ohos-aa start --tool-call-id xxx'
+                if (optarg != nullptr) {
+                    toolCallId = optarg;
+                    if (!IsValidToolCallId(toolCallId)) {
+                        resultReceiver_.append("invalid parameter for '--tool-call-id' option.");
+                        result = OHOS::ERR_INVALID_VALUE;
+                        break;
+                    }
+                }
+                break;
+            }
             case OPTION_URI: {
                 // 'aa start -U xxx'
 
@@ -1090,6 +1191,15 @@ ErrCode ClawAaShellCommand::MakeWantFromCmd(Want& want, int32_t& userId)
             if (!creatorBundleName.empty()) {
                 want.SetParam(AbilityRuntime::GlobalConstant::CREATOR_BUNDLE_NAME, creatorBundleName);
                 TAG_LOGI(AAFwkTag::AA_TOOL, "creatorBundleName: %{public}s", creatorBundleName.c_str());
+            }
+            // Tool call identifier: parameter value takes precedence over environment variable
+            if (toolCallId.empty()) {
+                toolCallId = GetToolCallIdFromEnv();
+            }
+            toolCallId_ = toolCallId;
+            if (!toolCallId.empty()) {
+                want.SetParam("ohos.aafwk.param.toolCallId", toolCallId);
+                TAG_LOGI(AAFwkTag::AA_TOOL, "toolCallId: %{public}s", toolCallId.c_str());
             }
         }
     }

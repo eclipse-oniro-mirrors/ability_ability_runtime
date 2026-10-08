@@ -40,7 +40,8 @@ public:
     int32_t GenerateSkillWant(const AppExecFwk::SkillInfo &skillInfo, Want &want,
         int32_t userId, const std::string &requestCode, AppExecFwk::ExtensionAbilityType &targetType,
         const std::string &scriptPath = "", const std::string &functionName = "",
-        const std::shared_ptr<AAFwk::WantParams> &skillArgs = nullptr);
+        const std::shared_ptr<AAFwk::WantParams> &skillArgs = nullptr,
+        const std::string &toolCallId = "");
 
     int32_t QuerySkillInfo(const std::string &bundleName, const std::string &moduleName,
         const std::string &skillName, int32_t userId, AppExecFwk::SkillInfo &skillInfo);

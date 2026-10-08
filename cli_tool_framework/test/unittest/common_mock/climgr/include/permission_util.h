@@ -29,6 +29,8 @@ public:
     static bool IsSystemSA();
 
     static int32_t CheckSystemAndPermission(const std::string &permissionName);
+
+    static int32_t CheckSystemAppAndPermission(const std::string &permissionName);
 };
 
 } // namespace CliTool

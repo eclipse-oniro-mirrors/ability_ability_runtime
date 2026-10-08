@@ -161,6 +161,10 @@ bool InsightIntentExecuteParam::ReadFromParcel(Parcel &parcel)
     navDestinationName_ = Str16ToStr8(parcel.ReadString16());
     isServiceMatch_ = parcel.ReadBool();
     deviceId_ = Str16ToStr8(parcel.ReadString16());
+    // toolCallId_ is an optional tail field: legacy parcels without it keep the default empty value
+    if (parcel.GetReadableBytes() > 0) {
+        toolCallId_ = Str16ToStr8(parcel.ReadString16());
+    }
     return true;
 }
 
@@ -202,6 +206,7 @@ bool InsightIntentExecuteParam::Marshalling(Parcel &parcel) const
     parcel.WriteString16(Str8ToStr16(navDestinationName_));
     parcel.WriteBool(isServiceMatch_);
     parcel.WriteString16(Str8ToStr16(deviceId_));
+    parcel.WriteString16(Str8ToStr16(toolCallId_));
     return true;
 }
 
@@ -251,6 +256,7 @@ bool InsightIntentExecuteParam::GenerateFromWant(const AAFwk::Want &want,
     executeParam.insightIntentName_ = wantParams.GetStringParam(INSIGHT_INTENT_EXECUTE_PARAM_NAME);
     executeParam.insightIntentId_ = insightIntentId;
     executeParam.executeMode_ = wantParams.GetIntParam(INSIGHT_INTENT_EXECUTE_PARAM_MODE, 0);
+    executeParam.toolCallId_ = wantParams.GetStringParam(INSIGHT_INTENT_TOOL_CALL_ID);
 
     auto insightIntentParam = wantParams.GetWantParams(INSIGHT_INTENT_EXECUTE_PARAM_PARAM);
     UpdateInsightIntentCallerInfo(wantParams, insightIntentParam);
@@ -277,6 +283,9 @@ bool InsightIntentExecuteParam::GenerateFromWant(const AAFwk::Want &want,
 bool InsightIntentExecuteParam::RemoveInsightIntent(AAFwk::Want &want)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (want.HasParameter(INSIGHT_INTENT_TOOL_CALL_ID)) {
+        want.RemoveParam(INSIGHT_INTENT_TOOL_CALL_ID);
+    }
     if (want.HasParameter(INSIGHT_INTENT_EXECUTE_PARAM_NAME)) {
         want.RemoveParam(INSIGHT_INTENT_EXECUTE_PARAM_NAME);
     }

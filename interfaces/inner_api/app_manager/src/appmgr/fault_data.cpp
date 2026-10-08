@@ -258,7 +258,7 @@ bool FaultData::WriteContent(Parcel &parcel) const
         "stuckTimeout [%{public}u] write uint32 failed.", stuckTimeout
     );
 
-    if (token == nullptr) {
+    if (token == nullptr || token->IsObjectDead()) {
         RETURN_FALSE_AND_WRITE_LOG_IF_TRUE(!parcel.WriteBool(false), "Token falge [false] write bool failed.");
     } else {
         if (!parcel.WriteBool(true) || !(static_cast<MessageParcel*>(&parcel))->WriteRemoteObject(token)) {
@@ -567,7 +567,7 @@ bool AppFaultDataBySA::WriteLeakContent(Parcel &parcel) const
 
 bool AppFaultDataBySA::WriteContent(Parcel &parcel) const
 {
-    if (token == nullptr) {
+    if (token == nullptr || token->IsObjectDead()) {
         RETURN_FALSE_AND_WRITE_LOG_IF_TRUE(!parcel.WriteBool(false), "Token falge [false] write bool failed.");
     } else {
         if (!parcel.WriteBool(true) || !(static_cast<MessageParcel*>(&parcel))->WriteRemoteObject(token)) {

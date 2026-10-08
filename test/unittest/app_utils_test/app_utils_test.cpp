@@ -1231,5 +1231,6 @@ HWTEST_F(AppUtilsTest, AppUtilsTest_4500, TestSize.Level2)
     EXPECT_TRUE(out.empty());
     std::remove(tmpPath.c_str());
 }
+
 }  // namespace AbilityRuntime
 }  // namespace OHOS

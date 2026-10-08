@@ -272,7 +272,7 @@ int32_t FUDUtils::GetTokenIdByBundleName(const std::string &bundleName, int32_t 
         return GET_BUNDLE_MANAGER_SERVICE_FAILED;
     }
     AppExecFwk::BundleInfo bundleInfo;
-    if (appIndex == 0) {
+    if (appIndex == 0 || appIndex == AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
         auto bundleFlag = AppExecFwk::BundleFlag::GET_BUNDLE_WITH_EXTENSION_INFO;
         if (!IN_PROCESS_CALL(bms->GetBundleInfo(bundleName, bundleFlag, bundleInfo, userId))) {
             TAG_LOGW(AAFwkTag::URIPERMMGR, "Failed GetBundleInfo");

@@ -40,6 +40,12 @@ namespace insightIntent {
     parameters?: Record<string, RecordData>;
   }
 
+  export interface InteractionText extends InteractionUI {
+    interactionUIType: 'TEXT';
+    parameters: Record<string, RecordData>;
+    buttons?: Array<string>;
+  }
+
   export interface InteractionInfo {
     interactionUI?: InteractionUI;
   }
@@ -78,6 +84,12 @@ namespace insightIntent {
     uiExtensionType: string = '';
     uri: string = '';
     parameters?: Record<string, RecordData>;
+  }
+
+  export class InteractionTextInner implements InteractionText {
+    interactionUIType: 'TEXT' = 'TEXT';
+    parameters: Record<string, RecordData> = new Record<string, RecordData>();
+    buttons?: Array<string>;
   }
 
   export class InteractionInfoInner implements InteractionInfo {

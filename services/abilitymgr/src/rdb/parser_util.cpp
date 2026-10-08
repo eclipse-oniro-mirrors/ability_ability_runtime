@@ -41,8 +41,7 @@ ParserUtil &ParserUtil::GetInstance()
     return instance;
 }
 
-void ParserUtil::GetResidentProcessRawData(
-    std::vector<std::tuple<std::string, std::string, std::string, std::string>> &list)
+void ParserUtil::GetResidentProcessRawData(std::vector<ResidentBundleCapability> &list)
 {
     std::vector<std::string> rootDirList;
     GetPreInstallRootDirList(rootDirList);
@@ -55,7 +54,7 @@ void ParserUtil::GetResidentProcessRawData(
 }
 
 void ParserUtil::ParsePreInstallAbilityConfig(const std::string &filePath,
-    std::vector<std::tuple<std::string, std::string, std::string, std::string>> &list)
+    std::vector<ResidentBundleCapability> &list)
 {
     nlohmann::json jsonBuf;
     if (!ReadFileIntoJson(filePath, jsonBuf)) {
@@ -69,8 +68,7 @@ void ParserUtil::ParsePreInstallAbilityConfig(const std::string &filePath,
     FilterInfoFromJson(jsonBuf, list);
 }
 
-bool ParserUtil::FilterInfoFromJson(nlohmann::json &jsonBuf,
-    std::vector<std::tuple<std::string, std::string, std::string, std::string>> &list)
+bool ParserUtil::FilterInfoFromJson(nlohmann::json &jsonBuf, std::vector<ResidentBundleCapability> &list)
 {
     if (jsonBuf.is_discarded()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "format error");
@@ -88,10 +86,6 @@ bool ParserUtil::FilterInfoFromJson(nlohmann::json &jsonBuf,
         return false;
     }
 
-    std::string bundleName;
-    std::string KeepAliveEnable = "1";
-    std::string KeepAliveConfiguredList;
-    std::string KeepAliveSaUidList;
     for (const auto &array : arrays) {
         if (!array.is_object()) {
             continue;
@@ -107,28 +101,22 @@ bool ParserUtil::FilterInfoFromJson(nlohmann::json &jsonBuf,
             continue;
         }
 
-        bundleName = array.at(BUNDLE_NAME).get<std::string>();
-
+        ResidentBundleCapability capability;
+        capability.bundleName = array.at(BUNDLE_NAME).get<std::string>();
+        capability.keepAliveEnable = "1";
         if (array.find(KEEP_ALIVE_ENABLE) != array.end() && array.at(KEEP_ALIVE_ENABLE).is_boolean()) {
-            auto val = array.at(KEEP_ALIVE_ENABLE).get<bool>();
-            KeepAliveEnable = std::to_string(val);
+            capability.keepAliveEnable = std::to_string(array.at(KEEP_ALIVE_ENABLE).get<bool>());
         }
-
-        if (array.find(KEEP_ALIVE_CONFIGURED_LIST) != array.end() && array.at(KEEP_ALIVE_CONFIGURED_LIST).is_array()) {
+        if (array.find(KEEP_ALIVE_CONFIGURED_LIST) != array.end() &&
+            array.at(KEEP_ALIVE_CONFIGURED_LIST).is_array()) {
             // Save directly in the form of an array and parse it when in use
-            KeepAliveConfiguredList = array.at(KEEP_ALIVE_CONFIGURED_LIST).dump();
+            capability.keepAliveConfiguredList = array.at(KEEP_ALIVE_CONFIGURED_LIST).dump();
         }
-
         if (array.find(KEEP_ALIVE_SA_UID_LIST) != array.end() && array.at(KEEP_ALIVE_SA_UID_LIST).is_array()) {
             // Save directly in the form of an array and parse it when in use
-            KeepAliveSaUidList = array.at(KEEP_ALIVE_SA_UID_LIST).dump();
+            capability.keepAliveSaUidList = array.at(KEEP_ALIVE_SA_UID_LIST).dump();
         }
-
-        list.emplace_back(std::make_tuple(bundleName, KeepAliveEnable, KeepAliveConfiguredList, KeepAliveSaUidList));
-        bundleName.clear();
-        KeepAliveEnable = "1";
-        KeepAliveConfiguredList.clear();
-        KeepAliveSaUidList.clear();
+        list.emplace_back(capability);
     }
 
     return true;

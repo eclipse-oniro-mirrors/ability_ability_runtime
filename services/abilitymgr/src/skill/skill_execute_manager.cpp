@@ -118,7 +118,8 @@ int32_t SkillExecuteManager::CheckSkillPermission(const AppExecFwk::SkillInfo &s
 int32_t SkillExecuteManager::GenerateSkillWant(const AppExecFwk::SkillInfo &skillInfo, Want &want,
     int32_t userId, const std::string &requestCode, AppExecFwk::ExtensionAbilityType &targetType,
     const std::string &scriptPath, const std::string &functionName,
-    const std::shared_ptr<AAFwk::WantParams> &skillArgs)
+    const std::shared_ptr<AAFwk::WantParams> &skillArgs,
+    const std::string &toolCallId)
 {
     std::string abilityName = skillInfo.abilityName;
     if (abilityName.empty()) {
@@ -141,7 +142,7 @@ int32_t SkillExecuteManager::GenerateSkillWant(const AppExecFwk::SkillInfo &skil
     want.SetElementName("", skillInfo.bundleName, abilityName, skillInfo.moduleName);
     AppExecFwk::SkillExecuteParam::WriteToWant(want, skillInfo.bundleName, skillInfo.moduleName,
         skillInfo.skillName, scriptPath, functionName, skillArgs, skillInfo.srcEntries, requestCode,
-        skillInfo.hapPath);
+        skillInfo.hapPath, toolCallId);
     return ERR_OK;
 }
 

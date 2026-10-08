@@ -62,6 +62,10 @@ HWTEST_F(UIExtensionUtilsTest, IsUIExtension_0100, TestSize.Level0)
     result = UIExtensionUtils::IsUIExtension(extensionAbilityType);
     EXPECT_TRUE(result);
 
+    extensionAbilityType = AppExecFwk::ExtensionAbilityType::UKEY_AUTH;
+    result = UIExtensionUtils::IsUIExtension(extensionAbilityType);
+    EXPECT_TRUE(result);
+
     extensionAbilityType = AppExecFwk::ExtensionAbilityType::WINDOW;
     result = UIExtensionUtils::IsUIExtension(extensionAbilityType);
     EXPECT_FALSE(result);

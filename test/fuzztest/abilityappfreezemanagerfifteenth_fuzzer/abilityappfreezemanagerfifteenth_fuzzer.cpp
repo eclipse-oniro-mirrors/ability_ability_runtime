@@ -33,6 +33,8 @@ namespace OHOS {
 namespace {
 constexpr size_t U32_AT_SIZE = 4;
 constexpr size_t STRING_MAX_LENGTH = 128;
+constexpr size_t LONG_STRING_MAX_LENGTH = 256;
+constexpr size_t SHORT_STRING_MAX_LENGTH = 64;
 }
 
 bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
@@ -48,27 +50,29 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     FuzzedDataProvider fdp(data, size);
     appInfo.pid = fdp.ConsumeIntegralInRange<int32_t>(0, U32_AT_SIZE);
     appInfo.uid = fdp.ConsumeIntegralInRange<int32_t>(0, U32_AT_SIZE);
-    appInfo.bundleName = fdp.ConsumeRandomLengthString(256);
-    appInfo.processName = fdp.ConsumeRandomLengthString(256);
-    binderInfo = fdp.ConsumeRandomLengthString(64);
-    memoryContent = fdp.ConsumeRandomLengthString(64);
+    appInfo.bundleName = fdp.ConsumeRandomLengthString(LONG_STRING_MAX_LENGTH);
+    appInfo.processName = fdp.ConsumeRandomLengthString(LONG_STRING_MAX_LENGTH);
+    binderInfo = fdp.ConsumeRandomLengthString(SHORT_STRING_MAX_LENGTH);
+    memoryContent = fdp.ConsumeRandomLengthString(SHORT_STRING_MAX_LENGTH);
     int32_t pid2 = fdp.ConsumeIntegral<int32_t>();
-    std::string ret = fdp.ConsumeRandomLengthString(64);
-    std::string faultType = fdp.ConsumeRandomLengthString(64);
-    std::string bundleName2 = fdp.ConsumeRandomLengthString(128);
-    std::string processName2 = fdp.ConsumeRandomLengthString(64);
-    std::string key2 = fdp.ConsumeRandomLengthString(64);
-    std::string errorName2 = fdp.ConsumeRandomLengthString(64);
-    freeze->NotifyANR(faultData, appInfo, binderInfo, memoryContent);
+    std::string ret = fdp.ConsumeRandomLengthString(SHORT_STRING_MAX_LENGTH);
+    std::string faultType = fdp.ConsumeRandomLengthString(SHORT_STRING_MAX_LENGTH);
+    std::string bundleName2 = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
+    std::string processName2 = fdp.ConsumeRandomLengthString(SHORT_STRING_MAX_LENGTH);
+    std::string key2 = fdp.ConsumeRandomLengthString(SHORT_STRING_MAX_LENGTH);
+    std::string errorName2 = fdp.ConsumeRandomLengthString(SHORT_STRING_MAX_LENGTH);
+    int32_t pid3 = fdp.ConsumeIntegral<int32_t>();
+    std::string bundleName3 = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
     freeze->FindStackByPid(ret, pid2);
-    freeze->CatcherStacktrace(pid2);
-    freeze->CatchJsonStacktrace(pid2, faultType);
-    freeze->ResetAppfreezeState(pid2, bundleName2);
     freeze->IsProcessDebug(pid2, processName2);
     freeze->IsHandleAppfreeze(bundleName2);
     freeze->IsValidFreezeFilter(pid2, bundleName2);
-    freeze->CancelAppFreezeDetect(pid2, bundleName2);
     freeze->IsNeedIgnoreFreezeEvent(key2, errorName2);
+    freeze->NotifyANR(faultData, appInfo, binderInfo, memoryContent);
+    freeze->CatcherStacktrace(pid2);
+    freeze->CatchJsonStacktrace(pid2, faultType);
+    freeze->ResetAppfreezeState(pid3, bundleName3);
+    freeze->CancelAppFreezeDetect(pid3, bundleName3);
 
     return true;
 }

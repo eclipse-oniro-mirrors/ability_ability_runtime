@@ -220,36 +220,39 @@ ErrCode CliToolMGRClient::GetFunctionInfo(const std::string &functionNamespace, 
     return proxy->GetFunctionInfo(functionNamespace, functionName, function);
 }
 
-ErrCode CliToolMGRClient::UnregisterFunction(const std::string &functionNamespace, const std::string &functionName)
+ErrCode CliToolMGRClient::UnregisterFunction(int32_t userId, const std::string &functionNamespace,
+    const std::string &functionName)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterFunction: %{public}s/%{public}s",
-        functionNamespace.c_str(), functionName.c_str());
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterFunction: userId=%{public}d, %{public}s/%{public}s",
+        userId, functionNamespace.c_str(), functionName.c_str());
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto proxy = GetCliToolMgrProxy();
     if (proxy == nullptr) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
         return GET_CLI_TOOL_MGR_SERVICE_FAILED;
     }
-    return proxy->UnregisterFunction(functionNamespace, functionName);
+    return proxy->UnregisterFunction(userId, functionNamespace, functionName);
 }
 
-ErrCode CliToolMGRClient::UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace)
+ErrCode CliToolMGRClient::UnregisterIntentFunctionsByNamespace(int32_t userId,
+    const std::string &functionNamespace)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespace: %{public}s", functionNamespace.c_str());
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespace: userId=%{public}d, %{public}s",
+        userId, functionNamespace.c_str());
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto proxy = GetCliToolMgrProxy();
     if (proxy == nullptr) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
         return GET_CLI_TOOL_MGR_SERVICE_FAILED;
     }
-    return proxy->UnregisterIntentFunctionsByNamespace(functionNamespace);
+    return proxy->UnregisterIntentFunctionsByNamespace(userId, functionNamespace);
 }
 
-ErrCode CliToolMGRClient::ResetNamespaceFunctions(const std::string &functionNamespace,
+ErrCode CliToolMGRClient::ResetNamespaceFunctions(int32_t userId, const std::string &functionNamespace,
     const std::vector<FunctionInfo> &functions, int32_t &successCount)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctions: %{public}s, %{public}zu functions",
-        functionNamespace.c_str(), functions.size());
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctions: userId=%{public}d, %{public}s, %{public}zu functions",
+        userId, functionNamespace.c_str(), functions.size());
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto proxy = GetCliToolMgrProxy();
     if (proxy == nullptr) {
@@ -262,7 +265,7 @@ ErrCode CliToolMGRClient::ResetNamespaceFunctions(const std::string &functionNam
         TAG_LOGE(AAFwkTag::CLI_TOOL, "FromFunctionInfoVec failed: %{public}d", ret);
         return ret;
     }
-    return proxy->ResetNamespaceFunctions(functionNamespace, rawData, successCount);
+    return proxy->ResetNamespaceFunctions(userId, functionNamespace, rawData, successCount);
 }
 
 ErrCode CliToolMGRClient::GetAllFunctions(std::vector<FunctionInfo> &functions)
@@ -301,23 +304,25 @@ ErrCode CliToolMGRClient::BatchRegisterFunctionsAsync(const std::vector<Function
     return proxy->BatchRegisterFunctionsAsync(rawData);
 }
 
-ErrCode CliToolMGRClient::UnregisterIntentFunctionsByNamespaceAsync(const std::string &functionNamespace)
+ErrCode CliToolMGRClient::UnregisterIntentFunctionsByNamespaceAsync(int32_t userId,
+    const std::string &functionNamespace)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespaceAsync: %{public}s", functionNamespace.c_str());
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespaceAsync: userId=%{public}d, %{public}s",
+        userId, functionNamespace.c_str());
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto proxy = GetCliToolMgrProxy();
     if (proxy == nullptr) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
         return GET_CLI_TOOL_MGR_SERVICE_FAILED;
     }
-    return proxy->UnregisterIntentFunctionsByNamespaceAsync(functionNamespace);
+    return proxy->UnregisterIntentFunctionsByNamespaceAsync(userId, functionNamespace);
 }
 
-ErrCode CliToolMGRClient::ResetNamespaceFunctionsAsync(const std::string &functionNamespace,
+ErrCode CliToolMGRClient::ResetNamespaceFunctionsAsync(int32_t userId, const std::string &functionNamespace,
     const std::vector<FunctionInfo> &functions)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctionsAsync: %{public}s, %{public}zu functions",
-        functionNamespace.c_str(), functions.size());
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctionsAsync: userId=%{public}d, %{public}s, %{public}zu functions",
+        userId, functionNamespace.c_str(), functions.size());
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto proxy = GetCliToolMgrProxy();
     if (proxy == nullptr) {
@@ -330,7 +335,7 @@ ErrCode CliToolMGRClient::ResetNamespaceFunctionsAsync(const std::string &functi
         TAG_LOGE(AAFwkTag::CLI_TOOL, "FromFunctionInfoVec failed: %{public}d", ret);
         return ret;
     }
-    return proxy->ResetNamespaceFunctionsAsync(functionNamespace, rawData);
+    return proxy->ResetNamespaceFunctionsAsync(userId, functionNamespace, rawData);
 }
 
 ErrCode CliToolMGRClient::RegisterCliHook(const sptr<ICliHookInterface> &hook, int32_t activeMethods)

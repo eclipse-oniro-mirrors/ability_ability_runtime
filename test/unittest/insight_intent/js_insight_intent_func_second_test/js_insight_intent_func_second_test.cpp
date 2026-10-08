@@ -76,6 +76,8 @@ HWTEST_F(JsInsightIntentFuncSecondTest, JsInsightIntentFuncInit_001, TestSize.Le
     jsInsightIntentFunc->state_ = State::CREATED;
     InsightIntentExecutorInfo info;
     info.executeParam = std::make_shared<AppExecFwk::InsightIntentExecuteParam>();
+    info.executeParam->moduleName_ = "entry";
+    info.executeParam->srcEntrance_ = "ets/pages/Index";
     MyFlag::isExecuteSecureWithOhmUrl_ = true;
     MyFlag::isGetNapiEnvNullptr_ = true;
     auto res = jsInsightIntentFunc->Init(info);
@@ -134,10 +136,67 @@ HWTEST_F(JsInsightIntentFuncSecondTest, JsInsightIntentFuncLoadJsCode_001, TestS
     auto jsInsightIntentFunc = JsInsightIntentFunc::Create(*jsRuntime);
     InsightIntentExecutorInfo info;
     info.executeParam = std::make_shared<AppExecFwk::InsightIntentExecuteParam>();
+    info.executeParam->moduleName_ = "entry";
+    info.executeParam->srcEntrance_ = "ets/pages/Index";
     MyFlag::isExecuteSecureWithOhmUrl_ = true;
     auto runTime = std::make_shared<JsRuntime>();
     auto ret = jsInsightIntentFunc->LoadJsCode(info, *runTime);
     EXPECT_TRUE(ret);
+}
+
+/*
+* Feature: JsInsightIntentFunc
+* Function: LoadJsCode
+* SubFunction: invalid moduleName
+*/
+HWTEST_F(JsInsightIntentFuncSecondTest, JsInsightIntentFuncLoadJsCode_InvalidModuleName_001, TestSize.Level1)
+{
+    auto jsRuntime = std::make_shared<JsRuntime>();
+    auto jsInsightIntentFunc = JsInsightIntentFunc::Create(*jsRuntime);
+    InsightIntentExecutorInfo info;
+    info.executeParam = std::make_shared<AppExecFwk::InsightIntentExecuteParam>();
+    info.executeParam->moduleName_ = "../evil";
+    info.executeParam->srcEntrance_ = "ets/pages/Index";
+    auto runTime = std::make_shared<JsRuntime>();
+    auto ret = jsInsightIntentFunc->LoadJsCode(info, *runTime);
+    EXPECT_FALSE(ret);
+}
+
+/*
+* Feature: JsInsightIntentFunc
+* Function: LoadJsCode
+* SubFunction: invalid srcEntrance
+*/
+HWTEST_F(JsInsightIntentFuncSecondTest, JsInsightIntentFuncLoadJsCode_InvalidSrcEntrance_001, TestSize.Level1)
+{
+    auto jsRuntime = std::make_shared<JsRuntime>();
+    auto jsInsightIntentFunc = JsInsightIntentFunc::Create(*jsRuntime);
+    InsightIntentExecutorInfo info;
+    info.executeParam = std::make_shared<AppExecFwk::InsightIntentExecuteParam>();
+    info.executeParam->moduleName_ = "entry";
+    info.executeParam->srcEntrance_ = "../evil";
+    auto runTime = std::make_shared<JsRuntime>();
+    auto ret = jsInsightIntentFunc->LoadJsCode(info, *runTime);
+    EXPECT_FALSE(ret);
+}
+
+/*
+* Feature: JsInsightIntentFunc
+* Function: LoadJsCode
+* SubFunction: invalid hapPath
+*/
+HWTEST_F(JsInsightIntentFuncSecondTest, JsInsightIntentFuncLoadJsCode_InvalidHapPath_001, TestSize.Level1)
+{
+    auto jsRuntime = std::make_shared<JsRuntime>();
+    auto jsInsightIntentFunc = JsInsightIntentFunc::Create(*jsRuntime);
+    InsightIntentExecutorInfo info;
+    info.executeParam = std::make_shared<AppExecFwk::InsightIntentExecuteParam>();
+    info.executeParam->moduleName_ = "entry";
+    info.executeParam->srcEntrance_ = "ets/pages/Index";
+    info.hapPath = "../evil.hap";
+    auto runTime = std::make_shared<JsRuntime>();
+    auto ret = jsInsightIntentFunc->LoadJsCode(info, *runTime);
+    EXPECT_FALSE(ret);
 }
 
 /*

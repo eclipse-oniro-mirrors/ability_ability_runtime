@@ -1442,5 +1442,15 @@ void AppRunningRecord::GetAllAbilityInfos(std::vector<AppExecFwk::AbilityStateDa
 void AppRunningRecord::SetKillCallerInfo(int32_t killCallerPid, const std::string &killCallerProcessName)
 {
 }
+
+int32_t AppRunningRecord::GetKillCallerPid() const
+{
+    return 0;
+}
+
+std::string AppRunningRecord::GetKillCallerProcessName() const
+{
+    return "";
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

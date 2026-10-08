@@ -19,6 +19,7 @@
 #include "context.h"
 #include "context_impl.h"
 #include "js_runtime_lite.h"
+#include "js_ui_extension_callback.h"
 #include "js_ui_extension_content_session.h"
 #include "napi_common_want_agent.h"
 #include "napi/native_api.h"
@@ -1653,48 +1654,84 @@ HWTEST_F(JsUIExtensionContentSessionTest, SetCallbackForTerminateWithResultTest_
 }
 
 /**
- * @tc.number: WrapWantAgentTest_0100
- * @tc.name: WrapWantAgent test
- * @tc.desc: WrapWantAgent test
+ * @tc.number: ProcessStartAbilityByTypeComplete_0100
+ * @tc.name: ProcessStartAbilityByTypeComplete with null uiWindow
+ * @tc.desc: ProcessStartAbilityByTypeComplete rejects when uiWindow is null
  */
-HWTEST_F(JsUIExtensionContentSessionTest, WrapWantAgentTest_0100, Function | MediumTest | Level1)
+HWTEST_F(JsUIExtensionContentSessionTest, ProcessStartAbilityByTypeComplete_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "WrapWantAgentTest_0100 start";
+    GTEST_LOG_(INFO) << "ProcessStartAbilityByTypeComplete_0100 start";
 
-    OHOS::AbilityRuntime::Runtime::Options options;
-    std::shared_ptr<OHOS::JsEnv::JsEnvironment> jsEnv = nullptr;
-    auto err = JsRuntimeLite::GetInstance().CreateJsEnv(options, jsEnv);
-    EXPECT_EQ(err, napi_status::napi_ok);
+    AbilityRuntime::Runtime::Options options;
+    std::shared_ptr<JsEnv::JsEnvironment> jsEnv = nullptr;
+    JsRuntimeLite::GetInstance().CreateJsEnv(options, jsEnv);
+    ASSERT_NE(jsEnv, nullptr);
     napi_env env = reinterpret_cast<napi_env>(jsEnv->GetNativeEngine());
-    EXPECT_NE(OHOS::AppExecFwk::WrapWantAgent(env, nullptr, nullptr), nullptr);
+    EXPECT_NE(env, nullptr);
+
+    bool callbackInvoked = false;
+    napi_value callbackFunc = nullptr;
+    napi_create_function(env, "completionCallback", NAPI_AUTO_LENGTH,
+        [](napi_env env, napi_callback_info info) -> napi_value {
+            void* data = nullptr;
+            napi_get_cb_info(env, info, nullptr, nullptr, nullptr, &data);
+            if (data != nullptr) {
+                *static_cast<bool*>(data) = true;
+            }
+            napi_value result = nullptr;
+            napi_get_undefined(env, &result);
+            return result;
+        }, &callbackInvoked, &callbackFunc);
+    EXPECT_NE(callbackFunc, nullptr);
+
+    auto uiExtensionCallback = std::make_shared<JsUIExtensionCallback>(env);
+    ASSERT_NE(uiExtensionCallback, nullptr);
+    EXPECT_TRUE(uiExtensionCallback->SetCompletionCallback(env, callbackFunc));
+
+    AAFwk::Want want;
+    sptr<Rosen::Window> nullWindow = nullptr;
+    JsUIExtensionContentSession::ProcessStartAbilityByTypeComplete(env, nullWindow, want, uiExtensionCallback);
+    EXPECT_TRUE(callbackInvoked);
     JsRuntimeLite::GetInstance().RemoveJsEnv(reinterpret_cast<napi_env>(jsEnv->GetNativeEngine()));
 
-    GTEST_LOG_(INFO) << "WrapWantAgentTest_0100 end";
+    GTEST_LOG_(INFO) << "ProcessStartAbilityByTypeComplete_0100 end";
 }
 
 /**
- * @tc.number: UnwrapWantAgentTest_0100
- * @tc.name: UnwrapWantAgent test
- * @tc.desc: UnwrapWantAgent test
+ * @tc.number: DispatchStartAbilityByTypeResult_0100
+ * @tc.name: DispatchStartAbilityByTypeResult with null lastParam
+ * @tc.desc: DispatchStartAbilityByTypeResult returns a promise when lastParam is null
  */
-HWTEST_F(JsUIExtensionContentSessionTest, UnwrapWantAgentTest_0100, Function | MediumTest | Level1)
+HWTEST_F(JsUIExtensionContentSessionTest, DispatchStartAbilityByTypeResult_0100, TestSize.Level1)
 {
-    GTEST_LOG_(INFO) << "UnwrapWantAgentTest_0100 start";
+    GTEST_LOG_(INFO) << "DispatchStartAbilityByTypeResult_0100 start";
 
-    OHOS::AbilityRuntime::Runtime::Options options;
-    std::shared_ptr<OHOS::JsEnv::JsEnvironment> jsEnv = nullptr;
-    auto err = JsRuntimeLite::GetInstance().CreateJsEnv(options, jsEnv);
-    EXPECT_EQ(err, napi_status::napi_ok);
+    AbilityRuntime::Runtime::Options options;
+    std::shared_ptr<JsEnv::JsEnvironment> jsEnv = nullptr;
+    JsRuntimeLite::GetInstance().CreateJsEnv(options, jsEnv);
+    ASSERT_NE(jsEnv, nullptr);
     napi_env env = reinterpret_cast<napi_env>(jsEnv->GetNativeEngine());
-    std::string test = "test";
-    void* myPointer = static_cast<void*>(&test);
-    void** result = reinterpret_cast<void**>(&myPointer);
-    napi_value jSObject = AppExecFwk::CreateJSObject(env);
-    OHOS::AppExecFwk::UnwrapWantAgent(env, jSObject, result);
-    EXPECT_EQ(myPointer, nullptr);
+    EXPECT_NE(env, nullptr);
+
+    sptr<AAFwk::SessionInfo> sessionInfo = nullptr;
+    sptr<Rosen::Window> uiWindow = nullptr;
+    auto session = std::make_shared<JsUIExtensionContentSession>(sessionInfo, uiWindow);
+    ASSERT_NE(session, nullptr);
+
+    napi_value lastParam = nullptr;
+    HandleEscape handleEscape(env);
+    auto uiExtensionCallback = std::make_shared<JsUIExtensionCallback>(env);
+    NapiAsyncTask::CompleteCallback complete =
+        [](napi_env env, NapiAsyncTask& task, int32_t status) {};
+    auto result = session->DispatchStartAbilityByTypeResult(
+        env, lastParam, handleEscape, uiExtensionCallback, complete);
+    ASSERT_NE(result, nullptr);
+    napi_valuetype valueType = napi_undefined;
+    napi_typeof(env, result, &valueType);
+    EXPECT_EQ(valueType, napi_object);
     JsRuntimeLite::GetInstance().RemoveJsEnv(reinterpret_cast<napi_env>(jsEnv->GetNativeEngine()));
 
-    GTEST_LOG_(INFO) << "UnwrapWantAgentTest_0100 end";
+    GTEST_LOG_(INFO) << "DispatchStartAbilityByTypeResult_0100 end";
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

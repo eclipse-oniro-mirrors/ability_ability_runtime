@@ -40,80 +40,86 @@ InsightIntentSysEventReceiver::InsightIntentSysEventReceiver(const EventFwk::Com
 {
 }
 
-bool InsightIntentSysEventReceiver::SaveInsightIntentInfos(const std::string &bundleName, const std::string &moduleName,
-    uint32_t versionCode, int32_t userId)
+bool InsightIntentSysEventReceiver::SaveInsightIntentInfos(const std::string &bundleName,
+    const std::vector<std::string> &moduleNames, uint32_t versionCode, int32_t userId)
 {
-    std::vector<std::string> moduleNameVec;
+    TAG_LOGI(AAFwkTag::INTENT, "save insight intent infos, bundle:%{public}s moduleCount:%{public}zu",
+        bundleName.c_str(), moduleNames.size());
+    std::vector<InsightIntentSaveParam> saveParams;
+    for (const auto &moduleNameLocal : moduleNames) {
+        InsightIntentSaveParam saveParam;
+        if (CollectInsightIntentSaveParam(bundleName, moduleNameLocal, versionCode, userId, saveParam)) {
+            saveParams.emplace_back(std::move(saveParam));
+        }
+    }
+    // save database in one batch
+    ErrCode ret = DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->
+        SaveBatchInsightIntentTotalInfo(bundleName, userId, versionCode, saveParams);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::INTENT, "save intent infos failed, bundleName: %{public}s, userId: %{public}d, "
+            "ret: %{public}d", bundleName.c_str(), userId, ret);
+        return false;
+    }
+    if (!saveParams.empty()) {
+        TAG_LOGI(AAFwkTag::INTENT, "save intent infos success, bundleName: %{public}s, moduleCount: %{public}zu, "
+            "userId: %{public}d", bundleName.c_str(), moduleNames.size(), userId);
+    }
+    return !saveParams.empty();
+}
+
+bool InsightIntentSysEventReceiver::CollectInsightIntentSaveParam(const std::string &bundleName,
+    const std::string &moduleName, uint32_t versionCode, int32_t userId, InsightIntentSaveParam &saveParam)
+{
     std::string profile;
     AbilityRuntime::ExtractInsightIntentProfileInfoVec infos = {};
     std::vector<InsightIntentInfo> configIntentInfos = {};
-    TAG_LOGI(AAFwkTag::INTENT, "save insight intent infos, bundle:%{public}s module:%{public}s",
-        bundleName.c_str(), moduleName.c_str());
-    ErrCode ret;
     auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
     if (bundleMgrHelper == nullptr) {
         TAG_LOGE(AAFwkTag::INTENT, "null bundleMgrHelper");
         return false;
     }
-
-    bool anySaved = false;
-    OHOS::SplitStr(moduleName, ",", moduleNameVec);
-    for (std::string moduleNameLocal : moduleNameVec) {
-        // Get json profile firstly
-        ret = IN_PROCESS_CALL(bundleMgrHelper->GetJsonProfile(AppExecFwk::INTENT_PROFILE, bundleName,
-            moduleNameLocal, profile, userId));
-        if (ret != ERR_OK) {
-            TAG_LOGW(AAFwkTag::INTENT, "GetJsonProfile failed, code: %{public}d", ret);
-            DeleteInsightIntent(bundleName, moduleNameLocal, userId);
-            continue;
-        }
-
-        // Transform json string
-        bool isTransformExtractIntent = (!AbilityRuntime::ExtractInsightIntentProfile::TransformTo(profile, infos) ||
-            infos.insightIntents.size() == 0);
-        bool isTransformConfigIntent = (
-            !AbilityRuntime::InsightIntentProfile::TransformTo(profile, configIntentInfos) ||
-            configIntentInfos.size() == 0);
-        if (isTransformExtractIntent && isTransformConfigIntent) {
-            TAG_LOGW(AAFwkTag::INTENT,
-                "transform profile failed, deleting config, bundle:%{public}s module:%{public}s",
-                bundleName.c_str(), moduleNameLocal.c_str());
-            DeleteInsightIntent(bundleName, moduleNameLocal, userId);
-            continue;
-        }
-
-        // force BMS bundleName/moduleName over the profile values so the function
-        // namespace matches the name UnregisterInsightIntentFunctions uses and the
-        // db cache erase-by-moduleName hits stale entries
-        for (auto &item : configIntentInfos) {
-            item.bundleName = bundleName;
-            item.moduleName = moduleNameLocal;
-        }
-        for (auto &item : infos.insightIntents) {
-            item.bundleName = bundleName;
-            item.moduleName = moduleNameLocal;
-        }
-
-        // save database
-        ret = DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->SaveInsightIntentTotalInfo(
-            bundleName, moduleNameLocal, userId, versionCode, infos, configIntentInfos);
-        if (ret != ERR_OK) {
-            TAG_LOGE(AAFwkTag::INTENT, "save intent info failed, bundleName: %{public}s, moduleName: %{public}s, "
-                "userId: %{public}d", bundleName.c_str(), moduleNameLocal.c_str(), userId);
-            continue;
-        }
-        anySaved = true;
-
-        TAG_LOGI(AAFwkTag::INTENT, "save intent info success, bundleName: %{public}s, moduleName: %{public}s, "
-            "userId: %{public}d", bundleName.c_str(), moduleNameLocal.c_str(), userId);
+    // Get json profile firstly
+    ErrCode ret = IN_PROCESS_CALL(bundleMgrHelper->GetJsonProfile(AppExecFwk::INTENT_PROFILE, bundleName,
+        moduleName, profile, userId));
+    if (ret != ERR_OK) {
+        TAG_LOGW(AAFwkTag::INTENT, "GetJsonProfile failed, code: %{public}d", ret);
+        DeleteInsightIntent(bundleName, moduleName, userId);
+        return false;
     }
-    return anySaved;
+    // Transform json string
+    bool isTransformExtractIntent = (!AbilityRuntime::ExtractInsightIntentProfile::TransformTo(profile, infos) ||
+        infos.insightIntents.size() == 0);
+    bool isTransformConfigIntent = (
+        !AbilityRuntime::InsightIntentProfile::TransformTo(profile, configIntentInfos) ||
+        configIntentInfos.size() == 0);
+    if (isTransformExtractIntent && isTransformConfigIntent) {
+        TAG_LOGW(AAFwkTag::INTENT,
+            "transform profile failed, deleting config, bundle:%{public}s module:%{public}s",
+            bundleName.c_str(), moduleName.c_str());
+        DeleteInsightIntent(bundleName, moduleName, userId);
+        return false;
+    }
+    // force BMS bundleName/moduleName over the profile values so the function
+    // namespace matches the name UnregisterInsightIntentFunctions uses and the
+    // db cache erase-by-moduleName hits stale entries
+    for (auto &item : configIntentInfos) {
+        item.bundleName = bundleName;
+        item.moduleName = moduleName;
+    }
+    for (auto &item : infos.insightIntents) {
+        item.bundleName = bundleName;
+        item.moduleName = moduleName;
+    }
+    saveParam.moduleName = moduleName;
+    saveParam.profileInfos = infos;
+    saveParam.configInfos = configIntentInfos;
+    return true;
 }
 
 void InsightIntentSysEventReceiver::RegisterAllFunctions(
     const std::vector<std::pair<std::string, uint32_t>> &newBundles,
     const std::vector<ExtractInsightIntentInfo> &allIntentInfos,
-    const std::vector<InsightIntentInfo> &allConfigInfos)
+    const std::vector<InsightIntentInfo> &allConfigInfos, int32_t userId)
 {
     TAG_LOGI(AAFwkTag::INTENT, "register all functions, bundles:%{public}zu intent:%{public}zu config:%{public}zu",
         newBundles.size(), allIntentInfos.size(), allConfigInfos.size());
@@ -126,7 +132,7 @@ void InsightIntentSysEventReceiver::RegisterAllFunctions(
         bundleVersionMap[entry.first] = entry.second;
     }
     CliTool::BatchRegisterInsightIntentFunctions(
-        allIntentInfos, allConfigInfos, bundleVersionMap);
+        allIntentInfos, allConfigInfos, bundleVersionMap, userId);
     TAG_LOGI(AAFwkTag::INTENT, "register all functions request done");
 }
 
@@ -138,7 +144,7 @@ void InsightIntentSysEventReceiver::DeleteInsightIntent(const std::string &bundl
         return;
     }
     TAG_LOGI(AAFwkTag::INTENT, "update bundleName: %{public}s to no insight intent", bundleName.c_str());
-    CliTool::UnregisterInsightIntentFunctions(bundleName);
+    CliTool::UnregisterInsightIntentFunctions(bundleName, userId);
 }
 
 int32_t InsightIntentSysEventReceiver::ResolveLoadUserId(int32_t userId)
@@ -167,7 +173,7 @@ void InsightIntentSysEventReceiver::BackupAndScheduleRegister(
             userId, allIntentInfos, allConfigInfos);
         TAG_LOGI(AAFwkTag::INTENT, "GetAllForRegister done, intent:%{public}zu config:%{public}zu bundles:%{public}zu",
             allIntentInfos.size(), allConfigInfos.size(), newBundles.size());
-        self->RegisterAllFunctions(newBundles, allIntentInfos, allConfigInfos);
+        self->RegisterAllFunctions(newBundles, allIntentInfos, allConfigInfos, userId);
     };
     ffrt::submit(task);
 }
@@ -199,11 +205,12 @@ void InsightIntentSysEventReceiver::LoadInsightIntentInfos(int32_t userId)
             newBundles.emplace_back(bundleInfo.name, bundleInfo.versionCode);
             continue;
         }
-        bool anySaved = false;
+        std::vector<std::string> moduleNames;
         for (const auto &hapInfo : bundleInfo.hapModuleInfos) {
-            anySaved = SaveInsightIntentInfos(bundleInfo.name, hapInfo.moduleName,
-                bundleInfo.versionCode, userId) || anySaved;
+            moduleNames.push_back(hapInfo.moduleName);
         }
+        bool anySaved = SaveInsightIntentInfos(bundleInfo.name, moduleNames,
+            bundleInfo.versionCode, userId);
         if (anySaved) {
             newBundles.emplace_back(bundleInfo.name, bundleInfo.versionCode);
         }

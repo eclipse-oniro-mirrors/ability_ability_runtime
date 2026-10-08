@@ -44,6 +44,15 @@ napi_value BuildJsParam(napi_env env, const JsFunctionHook::FunctionHookCallData
                 napi_value jsParam = nullptr;
                 napi_create_object(env, &jsParam);
                 napi_set_named_property(env, jsParam, "result", jsInner);
+                // Actual execution ids (post-before-hook); read-only for the hook.
+                if (!callData.functionResultWrap->toolCallId.empty()) {
+                    napi_set_named_property(env, jsParam, "toolCallId",
+                        AppExecFwk::WrapStringToJS(env, callData.functionResultWrap->toolCallId));
+                }
+                if (!callData.functionResultWrap->dmSessionId.empty()) {
+                    napi_set_named_property(env, jsParam, "dmSessionId",
+                        AppExecFwk::WrapStringToJS(env, callData.functionResultWrap->dmSessionId));
+                }
                 return jsParam;
             }
             break;

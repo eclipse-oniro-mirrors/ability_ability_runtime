@@ -14,6 +14,11 @@
  */
 
 #include <gtest/gtest.h>
+
+#include <atomic>
+#include <chrono>
+#include <thread>
+
 #include "bundlemgr/mock_bundle_manager.h"
 #include "mock_native_token.h"
 #include "ability_manager_errors.h"
@@ -65,7 +70,7 @@ public:
     class CancelReceiver : public AAFwk::WantReceiverStub {
     public:
         static int performReceiveCount;
-        static int sendCount;
+        static std::atomic<int> sendCount;
         void Send(const int32_t resultCode) override;
         void PerformReceive(const AAFwk::Want& want, int resultCode, const std::string& data,
             const AAFwk::WantParams& extras, bool serialized, bool sticky, int sendingUser) override;
@@ -81,7 +86,7 @@ public:
 };
 
 int PendingWantManagerTest::CancelReceiver::performReceiveCount = 0;
-int PendingWantManagerTest::CancelReceiver::sendCount = 0;
+std::atomic<int> PendingWantManagerTest::CancelReceiver::sendCount = 0;
 
 void PendingWantManagerTest::CancelReceiver::Send(const int32_t resultCode)
 {
@@ -794,8 +799,15 @@ HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_3100, TestSize.Level1)
     EXPECT_NE(pendingRecord, nullptr);
     pendingManager_->RegisterCancelListener(pendingRecord, cance);
     bool isSystemApp = false;
+    CancelReceiver::sendCount = 0;
     pendingManager_->CancelWantSender(isSystemApp, pendingRecord);
-    EXPECT_TRUE(CancelReceiver::sendCount == 100);
+    constexpr int MAX_WAIT_TIME_MS = 1000;
+    constexpr int POLL_INTERVAL_MS = 10;
+    for (int elapsed = 0; elapsed < MAX_WAIT_TIME_MS && CancelReceiver::sendCount.load() == 0;
+        elapsed += POLL_INTERVAL_MS) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(POLL_INTERVAL_MS));
+    }
+    EXPECT_TRUE(CancelReceiver::sendCount.load() == 100);
     EXPECT_TRUE((int)pendingManager_->wantRecords_.size() == 0);
 }
 
@@ -1559,6 +1571,28 @@ HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_6700, TestSize.Level1)
     EXPECT_EQ(getWantInfo->GetElement().GetBundleName(), "bundleName");
     EXPECT_EQ(getWantInfo->GetElement().GetAbilityName(), "abilityName");
     EXPECT_EQ(getWantInfo->GetParams().GetStringParam("test_key"), "test_value");
+}
+
+HWTEST_F(PendingWantManagerTest, GetWantSenderLocked_MarkShared_0100, TestSize.Level1)
+{
+    Want want;
+    ElementName element("device", "com.ix.hiMusic", "MusicSAbility");
+    want.SetElement(element);
+    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 0);
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    ASSERT_NE(pendingManager_, nullptr);
+
+    auto sender = pendingManager_->GetWantSenderLocked(1, 1, wantSenderInfo.userId, wantSenderInfo, nullptr);
+    ASSERT_NE(sender, nullptr);
+    EXPECT_EQ(pendingManager_->wantRecords_.size(), 1u);
+    auto record = pendingManager_->wantRecords_.begin()->second;
+    ASSERT_NE(record, nullptr);
+    EXPECT_FALSE(record->GetShared());
+
+    auto sender2 = pendingManager_->GetWantSenderLocked(1, 1, wantSenderInfo.userId, wantSenderInfo, nullptr);
+    ASSERT_NE(sender2, nullptr);
+    EXPECT_EQ(pendingManager_->wantRecords_.size(), 1u);
+    EXPECT_FALSE(record->GetShared());
 }
 }  // namespace AAFwk
 }  // namespace OHOS

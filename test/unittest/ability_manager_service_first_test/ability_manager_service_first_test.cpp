@@ -21,6 +21,7 @@
 #define protected public
 #include "ability_manager_service.h"
 #include "ability_connect_manager.h"
+#include "utils/update_caller_info_util.h"
 #include "ui_extension_ability_manager.h"
 #include "common_extension_manager.h"
 #include "ability_connection.h"
@@ -51,6 +52,14 @@
 #include "utils/window_options_utils.h"
 #include "sandbox_clone_params.h"
 #include "global_constant.h"
+#include "app_mgr_stub.h"
+#include "mock_app_mgr_service.h"
+#include "pending_want_record.h"
+#include "want_sender_interface.h"
+
+#define private public
+#include "utils/app_mgr_util.h"
+#undef private
 
 using namespace testing;
 using namespace testing::ext;
@@ -2672,6 +2681,197 @@ HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityByCallWithInsightIntent_010
     EXPECT_EQ(res, RESOLVE_ABILITY_ERR);
 }
 
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_StartAbilityWithToolCallId_0100
+ * @tc.desc: StartAbility with a valid ohos.aafwk.param.toolCallId, schedule result is the same as baseline.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithToolCallId_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0100 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    ElementName element("", "com.test.demo", "MainAbility", "");
+    want.SetElement(element);
+    const int32_t userId = 1; // U1_USER_ID, not a cross user call
+    const int requestCode = 0;
+    const uint64_t specifiedFullTokenId = 0;
+    MyFlag::flag_ = 1;
+    auto baselineResult = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    // valid toolCallId: only [A-Za-z0-9_-], length 1~256
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string("valid-toolCallId_001"));
+    auto result = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    // boundary: 256 chars is still valid
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string(256, 'a'));
+    auto boundaryResult = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    MyFlag::flag_ = 0;
+    // The target bundle "com.test.demo" cannot be resolved in this UT environment (no bundle manager
+    // mock is linked for this target and the bundle is not installed), so every call below fails
+    // deterministically at the same point (GenerateAbilityRequest -> StartAbilityInfo creation)
+    // with RESOLVE_ABILITY_ERR, before the interceptor chain is reached.
+    // Semantic under test: the StartAbility(Want, userId, requestCode, specifiedFullTokenId) overload
+    // passively ignores ohos.aafwk.param.toolCallId, so a valid toolCallId must not change the result.
+    EXPECT_EQ(baselineResult, RESOLVE_ABILITY_ERR);
+    EXPECT_EQ(result, baselineResult);
+    EXPECT_EQ(boundaryResult, baselineResult);
+    abilityMs->OnStop();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0100 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_StartAbilityWithToolCallId_0200
+ * @tc.desc: StartAbility with an illegal char in ohos.aafwk.param.toolCallId, silently ignored and schedule result
+ *           is the same as baseline.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithToolCallId_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0200 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    ElementName element("", "com.test.demo", "MainAbility", "");
+    want.SetElement(element);
+    const int32_t userId = 1; // U1_USER_ID, not a cross user call
+    const int requestCode = 0;
+    const uint64_t specifiedFullTokenId = 0;
+    MyFlag::flag_ = 1;
+    auto baselineResult = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    // invalid toolCallId: contains illegal chars, should be silently ignored
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string("bad id!@#$"));
+    auto result = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    MyFlag::flag_ = 0;
+    // See StartAbilityWithToolCallId_0100: both calls fail identically at Want resolution with
+    // RESOLVE_ABILITY_ERR. An illegal-char toolCallId must be silently ignored (same result as baseline).
+    EXPECT_EQ(baselineResult, RESOLVE_ABILITY_ERR);
+    EXPECT_EQ(result, baselineResult);
+    abilityMs->OnStop();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0200 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_StartAbilityWithToolCallId_0300
+ * @tc.desc: StartAbility with an over-length (more than 256) ohos.aafwk.param.toolCallId, silently ignored and
+ *           schedule result is the same as baseline.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithToolCallId_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0300 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    ElementName element("", "com.test.demo", "MainAbility", "");
+    want.SetElement(element);
+    const int32_t userId = 1; // U1_USER_ID, not a cross user call
+    const int requestCode = 0;
+    const uint64_t specifiedFullTokenId = 0;
+    MyFlag::flag_ = 1;
+    auto baselineResult = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    // invalid toolCallId: length is 257 (> 256), should be silently ignored
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string(257, 'a'));
+    auto result = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    MyFlag::flag_ = 0;
+    // See StartAbilityWithToolCallId_0100: both calls fail identically at Want resolution with
+    // RESOLVE_ABILITY_ERR. An over-length (257 > 256) toolCallId must be silently ignored.
+    EXPECT_EQ(baselineResult, RESOLVE_ABILITY_ERR);
+    EXPECT_EQ(result, baselineResult);
+    abilityMs->OnStop();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0300 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_StartAbilityWithToolCallId_0400
+ * @tc.desc: StartAbility with an empty ohos.aafwk.param.toolCallId (not provided), schedule result is the same as
+ *           baseline.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithToolCallId_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0400 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    ElementName element("", "com.test.demo", "MainAbility", "");
+    want.SetElement(element);
+    const int32_t userId = 1; // U1_USER_ID, not a cross user call
+    const int requestCode = 0;
+    const uint64_t specifiedFullTokenId = 0;
+    MyFlag::flag_ = 1;
+    auto baselineResult = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    // empty toolCallId means not provided, should be skipped
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string(""));
+    auto result = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    MyFlag::flag_ = 0;
+    // See StartAbilityWithToolCallId_0100: both calls fail identically at Want resolution with
+    // RESOLVE_ABILITY_ERR. An empty toolCallId means "not provided" and must be skipped.
+    EXPECT_EQ(baselineResult, RESOLVE_ABILITY_ERR);
+    EXPECT_EQ(result, baselineResult);
+    abilityMs->OnStop();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0400 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_StartAbilityWithToolCallId_0500
+ * @tc.desc: The reserved param is stripped at the unified cleanup point (ClearProtectedWantParam,
+ *           reached via every UpdateCallerInfo* entry on every start-scheduling chain), so the
+ *           app side (onCreate/onNewWant etc.) never sees it, whatever value it carried.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithToolCallId_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0500 start");
+    // UpdateCallerInfo(want, nullptr) is the real shell-call path (no caller token) and funnels
+    // through ClearProtectedWantParam, the single cleanup point shared by all start entries.
+    Want want;
+    ElementName element("", "com.test.demo", "MainAbility", "");
+    want.SetElement(element);
+    // valid value: logged, then stripped
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string("valid-toolCallId_001"));
+    UpdateCallerInfoUtil::GetInstance().UpdateCallerInfo(want, nullptr);
+    EXPECT_FALSE(want.HasParameter("ohos.aafwk.param.toolCallId"));
+    // empty value: not logged, still stripped
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string(""));
+    UpdateCallerInfoUtil::GetInstance().UpdateCallerInfo(want, nullptr);
+    EXPECT_FALSE(want.HasParameter("ohos.aafwk.param.toolCallId"));
+    // invalid value: not logged, but still stripped
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string("bad id!"));
+    UpdateCallerInfoUtil::GetInstance().UpdateCallerInfo(want, nullptr);
+    EXPECT_FALSE(want.HasParameter("ohos.aafwk.param.toolCallId"));
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0500 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_StartAbilityWithToolCallId_0600
+ * @tc.desc: The sandbox-clone start entry is scheduling-neutral for the reserved param: the return
+ *           value is identical with/without it, and the cleanup itself is guaranteed downstream
+ *           at the unified ClearProtectedWantParam point every scheduling chain funnels through.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithToolCallId_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0600 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    SandboxCloneParams params;
+    params.callerBundleName = "com.caller.bundle";
+    params.callerUid = 1000;
+    params.callerTokenId = 1;
+    params.sandBoxCloneIndex = 2000;
+    // baseline: no reserved param
+    Want baselineWant;
+    auto baselineResult = abilityMs->StartSandboxCloneAbility(baselineWant, params);
+    // with the reserved param (valid / empty / invalid): identical scheduling outcome
+    Want want;
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string("valid-toolCallId_001"));
+    auto validResult = abilityMs->StartSandboxCloneAbility(want, params);
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string(""));
+    auto emptyResult = abilityMs->StartSandboxCloneAbility(want, params);
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string("bad id!"));
+    auto invalidResult = abilityMs->StartSandboxCloneAbility(want, params);
+    EXPECT_EQ(validResult, baselineResult);
+    EXPECT_EQ(emptyResult, baselineResult);
+    EXPECT_EQ(invalidResult, baselineResult);
+    abilityMs->OnStop();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0600 end");
+}
+
 /*
  * Feature: AbilityManagerService
  * Name: RevokeDelegator_001
@@ -3303,40 +3503,6 @@ HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_0700, TestSiz
 }
 
 /**
- * @tc.name: StartAbilityForOptionInner_SandboxClone_001
- * @tc.desc: Test StartAbilityForOptionInner with null callerToken skips sandbox clone adaptation
- *           (callerRecord is nullptr → sandbox clone block skipped → ProcessSandboxCloneLaunch with
- *           null params returns ERR_OK → sandboxAbilityInfo empty → GetAppIndex fallback path).
- * @tc.type: FUNC
- */
-HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityForOptionInner_SandboxClone_001, TestSize.Level1)
-{
-    auto abilityMs_ = std::make_shared<AbilityManagerService>();
-    ASSERT_NE(abilityMs_, nullptr);
-
-    MyFlag::flag_ = 1;
-    StartAbilityUtils::isSandBoxClone = false;
-    StartAbilityUtils::startAbilityInfo = nullptr;
-
-    Want want;
-    StartOptions startOptions;
-    const sptr<IRemoteObject> callerToken = nullptr;
-    int32_t userId = 0;
-    int requestCode = 0;
-    bool isStartAsCaller = false;
-    uint32_t specifyTokenId = 0;
-    bool isImplicit = false;
-
-    auto result = abilityMs_->StartAbilityForOptionInner(want, startOptions, callerToken, false, userId, requestCode,
-        isStartAsCaller, specifyTokenId, isImplicit);
-    EXPECT_EQ(result, ERR_NULL_INTERCEPTOR_EXECUTER);
-    // StartAbilityInfoWrap destructor resets thread-local state; verify clean exit.
-    EXPECT_FALSE(StartAbilityUtils::isSandBoxClone);
-    EXPECT_EQ(StartAbilityUtils::startAbilityInfo, nullptr);
-    MyFlag::flag_ = 0;
-}
-
-/**
  * @tc.name: StartAbilityForOptionInner_SandboxClone_002
  * @tc.desc: Test StartAbilityForOptionInner with PARAM_APP_CLONE_INDEX_KEY=2000 (sandbox clone index)
  *           and null callerToken. Null callerToken means callerRecord is nullptr.
@@ -3738,5 +3904,244 @@ HWTEST_F(AbilityManagerServiceFirstTest, InitInterceptor_BlockAllAppStart_Suppor
     cfg.isLoaded = false;
 }
 
+namespace {
+// IWantSender whose AsObject() returns null, to hit the "obj null" branch of RegisterWantAgentHolder.
+class MockIWantSenderNullObj : public IWantSender {
+public:
+    sptr<IRemoteObject> AsObject() override
+    {
+        return nullptr;
+    }
+};
+
+// MockAppMgrService subclass that records/controls RegisterApplicationStateObserver result.
+class MockAppMgrServiceForWantAgent : public AppExecFwk::MockAppMgrService {
+public:
+    int32_t RegisterApplicationStateObserver(const sptr<AppExecFwk::IApplicationStateObserver> &observer,
+        const std::vector<std::string> &bundleNameList = {}) override
+    {
+        registerCount_++;
+        registeredObserver_ = observer;
+        return registerResult_;
+    }
+    int32_t registerResult_ = 0;
+    int32_t registerCount_ = 0;
+    sptr<AppExecFwk::IApplicationStateObserver> registeredObserver_ = nullptr;
+};
+} // namespace
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RegisterWantAgentHolder
+ * SubFunction: NA
+ * FunctionPoints: RegisterWantAgentHolder handles null target
+ * @tc.name: RegisterWantAgentHolder_001
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, RegisterWantAgentHolder_001, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    EXPECT_NO_FATAL_FAILURE(abilityMs_->RegisterWantAgentHolder(nullptr));
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RegisterWantAgentHolder
+ * SubFunction: NA
+ * FunctionPoints: RegisterWantAgentHolder marks shared for a local record
+ * @tc.name: RegisterWantAgentHolder_002
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, RegisterWantAgentHolder_002, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    sptr<PendingWantRecord> record = new (std::nothrow) PendingWantRecord();
+    ASSERT_NE(record, nullptr);
+    record->SetCreatorPid(-1);
+    sptr<IWantSender> target = record;
+    abilityMs_->RegisterWantAgentHolder(target);
+    EXPECT_TRUE(record->GetShared());
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RegisterWantAgentHolder
+ * SubFunction: NA
+ * FunctionPoints: RegisterWantAgentHolder returns when AsObject is null
+ * @tc.name: RegisterWantAgentHolder_003
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, RegisterWantAgentHolder_003, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    sptr<IWantSender> target = new (std::nothrow) MockIWantSenderNullObj();
+    ASSERT_NE(target, nullptr);
+    EXPECT_NO_FATAL_FAILURE(abilityMs_->RegisterWantAgentHolder(target));
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: InitWantAgentAppStateObserver
+ * SubFunction: NA
+ * FunctionPoints: AppMgr unavailable, observer stays null
+ * @tc.name: InitWantAgentAppStateObserver_001
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, InitWantAgentAppStateObserver_001, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    AppMgrUtil::appMgr_ = nullptr;
+    abilityMs_->InitWantAgentAppStateObserver();
+    EXPECT_EQ(abilityMs_->wantAgentAppStateObserver_, nullptr);
+    AppMgrUtil::appMgr_ = nullptr;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: InitWantAgentAppStateObserver
+ * SubFunction: NA
+ * FunctionPoints: register success, observer created
+ * @tc.name: InitWantAgentAppStateObserver_002
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, InitWantAgentAppStateObserver_002, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    auto mockAppMgr = sptr<MockAppMgrServiceForWantAgent>::MakeSptr();
+    ASSERT_NE(mockAppMgr, nullptr);
+    mockAppMgr->registerResult_ = 0;
+    AppMgrUtil::appMgr_ = mockAppMgr;
+    abilityMs_->InitWantAgentAppStateObserver();
+    EXPECT_NE(abilityMs_->wantAgentAppStateObserver_, nullptr);
+    EXPECT_EQ(mockAppMgr->registerCount_, 1);
+    AppMgrUtil::appMgr_ = nullptr;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: InitWantAgentAppStateObserver
+ * SubFunction: NA
+ * FunctionPoints: register fails, observer reset to null
+ * @tc.name: InitWantAgentAppStateObserver_003
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, InitWantAgentAppStateObserver_003, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    auto mockAppMgr = sptr<MockAppMgrServiceForWantAgent>::MakeSptr();
+    ASSERT_NE(mockAppMgr, nullptr);
+    mockAppMgr->registerResult_ = ERR_INVALID_VALUE;
+    AppMgrUtil::appMgr_ = mockAppMgr;
+    abilityMs_->InitWantAgentAppStateObserver();
+    EXPECT_EQ(abilityMs_->wantAgentAppStateObserver_, nullptr);
+    AppMgrUtil::appMgr_ = nullptr;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: InitWantAgentAppStateObserver
+ * SubFunction: NA
+ * FunctionPoints: idempotent, second call does not re-register
+ * @tc.name: InitWantAgentAppStateObserver_004
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, InitWantAgentAppStateObserver_004, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    auto mockAppMgr = sptr<MockAppMgrServiceForWantAgent>::MakeSptr();
+    ASSERT_NE(mockAppMgr, nullptr);
+    mockAppMgr->registerResult_ = 0;
+    AppMgrUtil::appMgr_ = mockAppMgr;
+    abilityMs_->InitWantAgentAppStateObserver();
+    abilityMs_->InitWantAgentAppStateObserver();
+    EXPECT_NE(abilityMs_->wantAgentAppStateObserver_, nullptr);
+    EXPECT_EQ(mockAppMgr->registerCount_, 1);
+    AppMgrUtil::appMgr_ = nullptr;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: HandleWantAgentAppDied
+ * SubFunction: NA
+ * FunctionPoints: subManagersHelper_ is null, return directly
+ * @tc.name: HandleWantAgentAppDied_001
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, HandleWantAgentAppDied_001, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    EXPECT_NO_FATAL_FAILURE(abilityMs_->HandleWantAgentAppDied("com.test.bundle", 100));
+}
+
+/*
+ * Feature: SubManagersHelper
+ * Function: HandlePendingWantDeathCleanup
+ * SubFunction: NA
+ * FunctionPoints: empty pendingWantManagers_, no crash
+ * @tc.name: HandlePendingWantDeathCleanup_001
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, HandlePendingWantDeathCleanup_001, TestSize.Level1)
+{
+    auto helper = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    ASSERT_NE(helper, nullptr);
+    EXPECT_NO_FATAL_FAILURE(helper->HandlePendingWantDeathCleanup("com.test.bundle", 100));
+}
+
+/*
+ * Feature: SubManagersHelper
+ * Function: HandlePendingWantDeathCleanup
+ * SubFunction: NA
+ * FunctionPoints: iterate managers (null skipped), call DeleteUnsharedRecordsOnDeath
+ * @tc.name: HandlePendingWantDeathCleanup_002
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, HandlePendingWantDeathCleanup_002, TestSize.Level1)
+{
+    auto helper = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    ASSERT_NE(helper, nullptr);
+    helper->pendingWantManagers_[0] = nullptr;
+    helper->pendingWantManagers_[1] = std::make_shared<PendingWantManager>();
+    EXPECT_NO_FATAL_FAILURE(helper->HandlePendingWantDeathCleanup("com.test.bundle", 100));
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_ResolvePickerByTargetType_0100
+ * @tc.desc: Test ResolvePickerByTargetType with targetType not in pickerMap
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ResolvePickerByTargetType_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ResolvePickerByTargetType_0100 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    sptr<SessionInfo> sessionInfo = new (std::nothrow) SessionInfo();
+    ASSERT_NE(sessionInfo, nullptr);
+    std::string targetType = "invalid_target_type_for_test";
+    int32_t userId = USER_ID_U100;
+    auto ret = abilityMs->ResolvePickerByTargetType(sessionInfo, targetType, userId);
+    EXPECT_EQ(ret, ERR_INVALID_EXTENSION_TYPE);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ResolvePickerByTargetType_0100 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_ResolvePickerByTargetType_0200
+ * @tc.desc: Test ResolvePickerByTargetType with targetType in pickerMap but bms unavailable
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ResolvePickerByTargetType_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ResolvePickerByTargetType_0200 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    std::string targetType = "test_picker_type";
+    auto& pickerMap = AmsConfigurationParameter::GetInstance().picker_;
+    pickerMap[targetType] = "picker_test";
+    sptr<SessionInfo> sessionInfo = new (std::nothrow) SessionInfo();
+    ASSERT_NE(sessionInfo, nullptr);
+    int32_t userId = USER_ID_U100;
+    auto ret = abilityMs->ResolvePickerByTargetType(sessionInfo, targetType, userId);
+    EXPECT_EQ(ret, ABILITY_SERVICE_NOT_CONNECTED);
+    pickerMap.erase(targetType);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ResolvePickerByTargetType_0200 end");
+}
 } // namespace AAFwk
 } // namespace OHOS

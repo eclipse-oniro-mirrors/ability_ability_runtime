@@ -87,12 +87,7 @@ public:
     };
 
     struct ProcessKillInfo {
-        std::string killReason;
-        std::string killMsg;
-        int adj = 0;
-        bool foreground = false;
         int64_t timestamp = 0;
-        int killId = -1;
         int64_t eventParamFirst = 0;
         int64_t eventParamSecond = 0;
         int64_t eventParamThird = 0;
@@ -100,6 +95,15 @@ public:
         int64_t eventParamFifth = 0;
         int64_t eventParamSixth = 0;
         int64_t eventParamSeventh = 0;
+        int32_t callingPid;
+        int32_t pid;
+        int killId = -1;
+        int adj = 0;
+        bool foreground = false;
+        std::string killReason;
+        std::string killMsg;
+        std::string callingProcessName;
+        std::string processName;
     };
 
     AppfreezeManager();
@@ -128,9 +132,9 @@ public:
     void InsertKillThread(int32_t state, int32_t pid, int32_t uid, const std::string& bundleName);
     bool IsSkipDetect(int32_t pid, int32_t uid, const std::string& bundleName,
         const std::string& eventName);
-    AppfreezeManager::ProcessKillInfo GetProcessKillReason(int32_t killId, int32_t pid,
-        const std::string& killMsg, bool foreground);
-    void GetExitKernelReason(int32_t pid, ProcessKillInfo& killInfo);
+    bool GetProcessKillReason(AppfreezeManager::ProcessKillInfo &killInfo, int32_t killId, const std::string& killMsg);
+    bool GetExitKernelReason(ProcessKillInfo& killInfo);
+    void SetExitKernelReason(int32_t pid);
     int GetFreezeExitReason(const std::string& eventName);
     void UpdateFreezeExcludedPid(bool isAdd, int32_t targetPid, int32_t profilerPid);
     bool IsFreezeExcludedPid(int32_t targetPid);

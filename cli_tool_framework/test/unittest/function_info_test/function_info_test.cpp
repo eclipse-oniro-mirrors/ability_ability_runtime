@@ -1098,6 +1098,7 @@ HWTEST_F(FunctionInfoTest, FunctionInfo_Validate_0100, TestSize.Level1)
     function.inputSchema = R"({"type": "object"})";
     function.outputSchema = R"({"type": "string"})";
     function.functionType = FunctionType::INTENT_FUNCTION;
+    function.userId = 100;
 
     EXPECT_TRUE(FunctionInfo::Validate(function));
 
@@ -1161,6 +1162,7 @@ HWTEST_F(FunctionInfoTest, FunctionInfo_Validate_0400, TestSize.Level1)
     function.inputSchema = "";
     function.outputSchema = R"({"type": "string"})";
     function.functionType = FunctionType::INTENT_FUNCTION;
+    function.userId = 100;
 
     EXPECT_TRUE(FunctionInfo::Validate(function));
 
@@ -1203,6 +1205,7 @@ HWTEST_F(FunctionInfoTest, FunctionInfo_Validate_0600, TestSize.Level1)
     function.inputSchema = R"({"type": "object"})";
     function.outputSchema = "";
     function.functionType = FunctionType::INTENT_FUNCTION;
+    function.userId = 100;
 
     EXPECT_TRUE(FunctionInfo::Validate(function));
 
@@ -1247,6 +1250,7 @@ HWTEST_F(FunctionInfoTest, FunctionInfo_Validate_0800, TestSize.Level1)
     function.inputSchema = R"({"type": "object", "properties": {"input": {"type": "string"}}})";
     function.outputSchema = R"({"type": "array", "items": {"type": "string"}})";
     function.functionType = FunctionType::INTENT_FUNCTION;
+    function.userId = 100;
 
     EXPECT_TRUE(FunctionInfo::Validate(function));
 
@@ -1266,10 +1270,117 @@ HWTEST_F(FunctionInfoTest, FunctionInfo_Validate_0900, TestSize.Level1)
     function.functionName = "minimalFunction";
     function.functionNamespace = "com.test.minimal";
     function.functionType = FunctionType::INTENT_FUNCTION;
+    function.userId = 100;
 
     EXPECT_TRUE(FunctionInfo::Validate(function));
 
     TAG_LOGI(AAFwkTag::TEST, "FunctionInfo_Validate_0900 end");
+}
+
+/**
+ * @tc.name: FunctionInfo_Validate_1000
+ * @tc.desc: Test FunctionInfo::Validate with unset userId
+ * @tc.type: FUNC
+ */
+HWTEST_F(FunctionInfoTest, FunctionInfo_Validate_1000, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FunctionInfo_Validate_1000 start");
+
+    FunctionInfo function;
+    function.functionName = "noUserFunction";
+    function.functionNamespace = "com.test.nouser";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+
+    EXPECT_FALSE(FunctionInfo::Validate(function));
+
+    TAG_LOGI(AAFwkTag::TEST, "FunctionInfo_Validate_1000 end");
+}
+
+/**
+ * @tc.name: FunctionInfo_ParseFromJson_1900
+ * @tc.desc: Test FunctionInfo ParseFromJson with negative userId (discarded)
+ * @tc.type: FUNC
+ */
+HWTEST_F(FunctionInfoTest, FunctionInfo_ParseFromJson_1900, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FunctionInfo_ParseFromJson_1900 start");
+
+    nlohmann::json json = R"({
+        "functionName": "negUser",
+        "functionNamespace": "com.test.neguser",
+        "functionType": 0,
+        "userId": -1
+    })"_json;
+
+    FunctionInfo function;
+    bool result = FunctionInfo::ParseFromJson(json, function);
+
+    EXPECT_FALSE(result);
+
+    TAG_LOGI(AAFwkTag::TEST, "FunctionInfo_ParseFromJson_1900 end");
+}
+
+/**
+ * @tc.name: FunctionInfo_ParseFromJson_2000
+ * @tc.desc: Test FunctionInfo ParseFromJson with userId out of range (int32 wrap and upper bound)
+ * @tc.type: FUNC
+ */
+HWTEST_F(FunctionInfoTest, FunctionInfo_ParseFromJson_2000, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FunctionInfo_ParseFromJson_2000 start");
+
+    nlohmann::json jsonUpper = R"({
+        "functionName": "upperUser",
+        "functionNamespace": "com.test.upperuser",
+        "functionType": 0,
+        "userId": 200000
+    })"_json;
+    FunctionInfo function;
+    EXPECT_FALSE(FunctionInfo::ParseFromJson(jsonUpper, function));
+
+    // A huge value would silently wrap via get<int32_t>; int64 parsing must reject it
+    nlohmann::json jsonHuge = R"({
+        "functionName": "hugeUser",
+        "functionNamespace": "com.test.hugeuser",
+        "functionType": 0,
+        "userId": 4294967301
+    })"_json;
+    EXPECT_FALSE(FunctionInfo::ParseFromJson(jsonHuge, function));
+
+    // A uint64 value beyond int64 range wraps to a negative int64 via get<int64_t>,
+    // which the range check also rejects
+    nlohmann::json jsonUint64Max = R"({
+        "functionName": "uint64MaxUser",
+        "functionNamespace": "com.test.uint64maxuser",
+        "functionType": 0,
+        "userId": 18446744073709551615
+    })"_json;
+    EXPECT_FALSE(FunctionInfo::ParseFromJson(jsonUint64Max, function));
+
+    TAG_LOGI(AAFwkTag::TEST, "FunctionInfo_ParseFromJson_2000 end");
+}
+
+/**
+ * @tc.name: FunctionInfo_Validate_1100
+ * @tc.desc: Test FunctionInfo::Validate with userId at and above the upper bound
+ * @tc.type: FUNC
+ */
+HWTEST_F(FunctionInfoTest, FunctionInfo_Validate_1100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FunctionInfo_Validate_1100 start");
+
+    FunctionInfo function;
+    function.functionName = "boundUserFunction";
+    function.functionNamespace = "com.test.bounduser";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+
+    function.userId = 199999;
+    EXPECT_TRUE(FunctionInfo::Validate(function));
+
+    function.userId = 200000;
+    EXPECT_FALSE(FunctionInfo::Validate(function));
+
+    TAG_LOGI(AAFwkTag::TEST, "FunctionInfo_Validate_1100 end");
 }
 
 // ==================== FunctionsRawData Tests ====================

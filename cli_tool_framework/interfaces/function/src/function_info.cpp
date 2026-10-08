@@ -30,6 +30,7 @@ namespace {
 constexpr uint32_t MAX_FUNCTION_INFO_COUNT = 200 * 1000;  // Maximum number of function info (200 * 1000)
 constexpr uint32_t MAX_SCHEMA_STRING_LENGTH = 16 * 1024;  // Maximum length of inputSchema/outputSchema (16KB)
 constexpr uint32_t MAX_RAW_DATA_SIZE = 128 * 1024 * 1024;  // Shared memory cap for FunctionsRawData (128MB)
+constexpr int32_t MAX_USER_ID = 200000;  // userId range per uid segmentation, same as service-side BASE_USER_RANGE
 }
 
 namespace OHOS {
@@ -135,6 +136,27 @@ bool ParseFunctionType(const nlohmann::json &json, FunctionType &output)
     return true;
 }
 
+bool ParseUserId(const nlohmann::json &json, int32_t &output)
+{
+    // userId is optional for compatibility with legacy entries written without it
+    if (!json.contains("userId")) {
+        return true;
+    }
+    if (!json["userId"].is_number_integer()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Invalid userId in JSON, must be integer");
+        return false;
+    }
+    // Parse via int64_t first: get<int32_t> silently wraps out-of-range values
+    const int64_t value = json["userId"].get<int64_t>();
+    if (value < 0 || value >= static_cast<int64_t>(MAX_USER_ID)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Invalid userId in JSON: %{public}lld, out of range [0, %{public}d), discard",
+            static_cast<long long>(value), MAX_USER_ID);
+        return false;
+    }
+    output = static_cast<int32_t>(value);
+    return true;
+}
+
 } // namespace
 
 bool FunctionInfo::Marshalling(Parcel &parcel) const
@@ -166,6 +188,10 @@ bool FunctionInfo::Marshalling(Parcel &parcel) const
     }
     if (!parcel.WriteInt32(typeValue)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Write functionType failed");
+        return false;
+    }
+    if (!parcel.WriteInt32(userId)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Write userId failed");
         return false;
     }
     return true;
@@ -212,6 +238,10 @@ FunctionInfo *FunctionInfo::Unmarshalling(Parcel &parcel)
         return nullptr;
     }
     function->functionType = static_cast<FunctionType>(typeValue);
+    if (!parcel.ReadInt32(function->userId)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Read userId failed");
+        return nullptr;
+    }
     return function.release();
 }
 
@@ -223,7 +253,8 @@ bool FunctionInfo::ParseFromJson(const nlohmann::json &json, FunctionInfo &funct
            ParseRequiredStringField(json, "description", function.description, true) &&
            ParseInputSchema(json, function.inputSchema) &&
            ParseOutputSchema(json, function.outputSchema) &&
-           ParseFunctionType(json, function.functionType);
+           ParseFunctionType(json, function.functionType) &&
+           ParseUserId(json, function.userId);
 }
 
 nlohmann::json FunctionInfo::ParseToJson() const
@@ -244,6 +275,7 @@ nlohmann::json FunctionInfo::ParseToJson() const
     }
 
     j["functionType"] = static_cast<int32_t>(functionType);
+    j["userId"] = userId;
 
     return j;
 }
@@ -267,6 +299,14 @@ bool FunctionInfo::Validate(const FunctionInfo &function)
 
     if (function.functionNamespace.find('/') != std::string::npos) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: functionNamespace contains illegal character '/'");
+        return false;
+    }
+
+    // -1 is the unset default; write paths (foundation interfaces) must carry an explicit
+    // userId within [0, MAX_USER_ID) matching the uid segmentation convention
+    if (function.userId < 0 || function.userId >= MAX_USER_ID) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Validate failed: userId out of range: %{public}d, must be [0, %{public}d)",
+            function.userId, MAX_USER_ID);
         return false;
     }
 

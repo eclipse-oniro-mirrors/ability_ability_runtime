@@ -550,7 +550,6 @@ group("fuzztest") {
     "quickfixmanagerclient_fuzzer:fuzztest",
     "quickfixmanagerstub_fuzzer:fuzztest",
     "rdbdatamanagerfourth_fuzzer:fuzztest",
-    "rdbdatamanagersecond_fuzzer:fuzztest",
     "registerabilitylifecyclecallback_fuzzer:fuzztest",
     "registerconfigurationobserver_fuzzer:fuzztest",
     "registerenvironmentcallback_fuzzer:fuzztest",

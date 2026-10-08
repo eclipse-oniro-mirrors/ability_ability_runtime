@@ -27,6 +27,7 @@ namespace AbilityRuntime {
 struct NapiCallbackInfo;
 class JsEmbeddableUIAbilityContext;
 class JSUIServiceUIExtConnection;
+class JsUIExtensionCallback;
 
 class JsUIExtensionContext {
 public:
@@ -126,6 +127,11 @@ private:
         const std::shared_ptr<AbilityRuntime::Context>& context, int32_t resultCode, const AAFwk::Want& want);
     napi_value HandleTerminateSelfWithResultInNonEmbeddableMode(napi_env env, napi_value lastParam,
         int32_t resultCode, AAFwk::Want& want);
+    static void ProcessStartAbilityByTypeComplete(napi_env env, std::shared_ptr<ErrCode> innerErrCode,
+        std::shared_ptr<JsUIExtensionCallback> callback);
+    napi_value DispatchStartAbilityByTypeResult(napi_env env, NapiCallbackInfo& info,
+        std::shared_ptr<JsUIExtensionCallback> callback, NapiAsyncTask::ExecuteCallback& execute,
+        std::shared_ptr<ErrCode> innerErrCode);
 
 #ifdef SUPPORT_SCREEN
     void InitDisplayId(AAFwk::Want &want);

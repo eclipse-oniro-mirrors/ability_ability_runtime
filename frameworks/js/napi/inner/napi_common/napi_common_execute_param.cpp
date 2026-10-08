@@ -74,6 +74,17 @@ bool UnwrapExecuteParam(napi_env env, napi_value param, InsightIntentExecutePara
         executeParam.deviceId_ = deviceId;
     }
 
+    // toolCallId is an optional parameter: a non-string value is treated as unspecified (no 401 is thrown)
+    if (IsExistsByPropertyName(env, param, "toolCallId")) {
+        std::string toolCallId {""};
+        if (UnwrapStringByPropertyName(env, param, "toolCallId", toolCallId)) {
+            TAG_LOGI(AAFwkTag::JSNAPI, "toolCallId %{public}s", toolCallId.c_str());
+            executeParam.toolCallId_ = toolCallId;
+        } else {
+            TAG_LOGW(AAFwkTag::JSNAPI, "toolCallId is not a string, ignored");
+        }
+    }
+
     napi_valuetype valueType = napi_undefined;
     napi_typeof(env, napiIntentParam, &valueType);
     if (valueType != napi_object) {

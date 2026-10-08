@@ -62,26 +62,6 @@ std::u16string ToU16(const std::string &s)
 void DoFuzzCases(uint32_t code, MessageParcel &parcel, FuzzedDataProvider &fdp, uint32_t &actualCode)
 {
     switch (code % HANDLE_COUNT) {
-        case 0: {
-            // EXECUTE_IN_APP_SKILL = 6169, ExecuteInAppSkillInner:
-            //   ReadString16(bundleName) -> ReadString16(moduleName) -> ReadString16(skillName)
-            //   -> ReadString16(scriptPath) -> ReadString16(functionName)
-            //   -> ReadParcelable<WantParams>(skillArgs) -> ReadBool(hasCallback)
-            //   -> [hasCallback] ReadRemoteObject(callbackObj)
-            actualCode = static_cast<uint32_t>(AbilityManagerInterfaceCode::EXECUTE_IN_APP_SKILL);
-            parcel.WriteString16(ToU16(FuzzUtil::BuildMaliciousBundleName(fdp)));
-            parcel.WriteString16(ToU16(FuzzUtil::BuildSpecialCharString(fdp)));
-            parcel.WriteString16(ToU16(FuzzUtil::BuildSpecialCharString(fdp)));
-            parcel.WriteString16(ToU16(FuzzUtil::BuildSandboxEscapePath(fdp)));
-            parcel.WriteString16(ToU16(FuzzUtil::BuildSpecialCharString(fdp)));
-            {
-                AAFwk::WantParams skillArgs;
-                parcel.WriteParcelable(&skillArgs);
-            }
-            FuzzUtil::WriteOptionalRemoteObject(parcel, fdp);
-            OHOS::FuzzUtil::WriteUntrustedCallerData(parcel, fdp);
-            break;
-        }
         case 1: {
             // QUERY_SKILL_TYPE = 6171, QuerySkillTypeInner:
             //   ReadString16(bundleName) -> ReadString16(moduleName) -> ReadString16(skillName)

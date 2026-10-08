@@ -23,7 +23,6 @@ namespace AppExecFwk {
 struct UiAbilityLastCallerInfo {
     int32_t callerUid = -1;
     std::string callerBundleName;
-    bool isCallBySCB = false;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

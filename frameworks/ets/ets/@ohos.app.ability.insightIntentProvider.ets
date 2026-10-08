@@ -48,6 +48,12 @@ export default namespace insightIntentProvider {
         return createParamError('InteractionModalUIExtension missing required field');
       }
     }
+    if (ui.interactionUIType === 'TEXT') {
+      let text = ui as insightIntent.InteractionText;
+      if (!text.parameters) {
+        return createParamError('InteractionText missing required field');
+      }
+    }
     return null;
   }
 

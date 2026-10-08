@@ -159,11 +159,14 @@ int32_t ResidentProcessManager::SetResidentProcessEnabled(
     }
     auto &rdb = AmsResidentProcessRdb::GetInstance();
     auto rdbResult = rdb.VerifyConfigurationPermissions(bundleName, callerName);
-    auto configResult = rdb.GetResidentProcessRawData(bundleName, callerName);
-    if (rdbResult != Rdb_OK && configResult != Rdb_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "obtain permissions failed. result: %{public}d, configResult: %{public}d",
-            rdbResult, configResult);
-        return ERR_NO_RESIDENT_PERMISSION;
+    if (rdbResult != Rdb_OK) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "db verify failed[%{public}d], fallback to config file", rdbResult);
+        auto configResult = rdb.GetResidentProcessRawData(bundleName, callerName);
+        if (configResult != Rdb_OK) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "obtain permissions failed. db: %{public}d, config: %{public}d",
+                rdbResult, configResult);
+            return ERR_NO_RESIDENT_PERMISSION;
+        }
     }
 
     return SetResidentProcessEnabledInner(bundleName, updateEnable);
@@ -180,11 +183,14 @@ int32_t ResidentProcessManager::SetResidentProcessEnabledForSA(
     }
     auto &rdb = AmsResidentProcessRdb::GetInstance();
     auto rdbResult = rdb.VerifySaConfigurationPermissions(bundleName, callerUid);
-    auto configResult = rdb.GetSaResidentProcessRawData(bundleName, callerUid);
-    if (rdbResult != Rdb_OK && configResult != Rdb_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "obtain sa permissions failed. result: %{public}d, configResult: %{public}d",
-            rdbResult, configResult);
-        return ERR_NO_RESIDENT_PERMISSION;
+    if (rdbResult != Rdb_OK) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "db sa verify failed[%{public}d], fallback to config file", rdbResult);
+        auto configResult = rdb.GetSaResidentProcessRawData(bundleName, callerUid);
+        if (configResult != Rdb_OK) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "obtain sa permissions failed. db: %{public}d, config: %{public}d",
+                rdbResult, configResult);
+            return ERR_NO_RESIDENT_PERMISSION;
+        }
     }
 
     return SetResidentProcessEnabledInner(bundleName, updateEnable);

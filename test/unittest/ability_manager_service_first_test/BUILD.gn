@@ -40,6 +40,7 @@ ohos_unittest("ability_manager_service_first_test") {
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/aakit/include",
     "${ability_runtime_test_path}/unittest/app_debug_listener_stub_test",
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
+    "${ability_runtime_test_path}/unittest/multi_app_utils_test/include",
     "mock/include",
   ]
 
@@ -52,6 +53,7 @@ ohos_unittest("ability_manager_service_first_test") {
     "${ability_runtime_services_path}/abilitymgr/src/report_data_partition_usage_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/exit_reason_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/request_id_util.cpp",
+    "${ability_runtime_test_path}/unittest/multi_app_utils_test/src/mock_app_mgr_service.cpp",
     "ability_manager_service_first_test.cpp",
     "mock/src/mock_my_flag.cpp",
     "mock/src/mock_permission_verification.cpp",

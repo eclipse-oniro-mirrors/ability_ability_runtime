@@ -111,6 +111,18 @@ public:
         const std::string& targetBundleName, int32_t appIndex, uint32_t initiatorTokenId,
         int32_t hideSensitiveType, int32_t& funcResult) override;
 
+    /*
+    * only support local file uri, not support distribute docs and content uri.
+    */
+    ErrCode GrantUriPermissionPrivileged(const std::vector<std::string>& uriVec, uint32_t flag,
+        uint32_t targetTokenId, int32_t& funcResult) override;
+
+    /*
+    * only support local file uri, not support distribute docs and content uri.
+    */
+    ErrCode GrantUriPermissionPrivileged(const UriPermissionRawData& rawData, uint32_t flag,
+        uint32_t targetTokenId, int32_t& funcResult) override;
+
     ErrCode GrantUriPermission(const std::vector<std::string>& uriVec, uint32_t flag,
         uint32_t targetTokenId, uint32_t oriCallerTokenId, int32_t& funcResult) override;
 

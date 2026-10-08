@@ -1200,7 +1200,7 @@ public:
      *         GET_BUNDLE_INFO_FAILED when the bundle cannot be resolved;
      *         KILL_PROCESS_KEEP_ALIVE for persistent apps; KILL_PROCESS_FAILED on failure.
      */
-    ErrCode KillProcess(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = 0,
+    ErrCode KillProcess(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = -1,
         const std::string& reason = "Abilityms::KillProcess");
 
     #ifdef ABILITY_COMMAND_FOR_TEST
@@ -1866,7 +1866,7 @@ public:
      * @param appIndex App clone index; only appIndex = 0 is supported.
      * @return Returns ERR_OK on success; CHECK_PERMISSION_FAILED for others.
      */
-    ErrCode LaunchGameCustomized(const std::string &bundleName, int32_t userId, int32_t appIndex = 0);
+    ErrCode LaunchGameCustomized(const std::string &bundleName, int32_t userId, int32_t appIndex = -1);
     
     /**
      * @brief Report the pre-launch completion time (ms) of a game.
@@ -3108,26 +3108,6 @@ public:
      * @return Returns ERR_OK on success; ERR_INVALID_VALUE for invalid token.
      */
     int32_t SetAppRecoveryFlag(const sptr<IRemoteObject>& token, int flag);
-
-    /**
-     * @brief Execute an in-app skill (skill entry defined in the target bundle).
-     * The skill config is queried from bundle framework; caller permission is
-     * verified against the skill's configured allow rules (CheckSkillPermission).
-     * Result is delivered asynchronously via callback with a requestCode.
-     * @param bundleName Target bundle name.
-     * @param moduleName Target module name.
-     * @param skillName Target skill name.
-     * @param arkTSPath Optional skill script path override, default "".
-     * @param funcName Optional function name override, default "".
-     * @param skillArgs Optional skill arguments, default nullptr.
-     * @param callback Optional result callback, default nullptr.
-     * @return Returns ERR_OK on success, others on failure.
-     */
-    ErrCode ExecuteInAppSkill(const std::string &bundleName, const std::string &moduleName,
-        const std::string &skillName, const std::string &arkTSPath = "",
-        const std::string &funcName = "",
-        const std::shared_ptr<AAFwk::WantParams> &skillArgs = nullptr,
-        const sptr<ISkillExecuteCallback> &callback = nullptr);
 
     /**
      * @brief Execute an in-app skill on behalf of an explicit caller token id

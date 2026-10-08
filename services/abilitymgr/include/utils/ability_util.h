@@ -129,7 +129,7 @@ constexpr const char* BUNDLE_NAME_SELECTOR_DIALOG = "com.ohos.amsdialog";
 }
 
 [[maybe_unused]] static std::string ConvertBundleNameSingleton(const std::string &bundleName, const std::string &name,
-    const std::string &moduleName, const int32_t appIndex = 0)
+    const std::string &moduleName, int32_t appIndex)
 {
     std::string strName;
     if (appIndex == 0) {

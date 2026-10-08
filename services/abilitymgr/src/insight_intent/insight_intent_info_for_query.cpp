@@ -28,7 +28,7 @@ namespace {
 int32_t g_parseResult = ERR_OK;
 constexpr size_t MAX_IPC_REWDATA_SIZE = 100 * 1024 * 1024;      // max ipc size 100MB
 std::mutex g_extraMutex;
-constexpr int32_t MAX_INTENT_SIZE = 10000;
+constexpr int32_t MAX_INTENT_SIZE = 100000;
 
 const std::map<AppExecFwk::ExecuteMode, std::string> EXECUTE_MODE_STRING_MAP = {
     {AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND, "UI_ABILITY_FOREGROUND"},

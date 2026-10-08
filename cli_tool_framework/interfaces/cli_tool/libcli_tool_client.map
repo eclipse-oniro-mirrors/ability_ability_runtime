@@ -13,23 +13,5 @@
 
 {
   global:
-    extern "C++" {
-      *AgentBundleEventCallback*;
-      *AgentCardDbMgr*;
-      *AgentCardMgr*;
-      *AgentCardUtils*;
-      *AgentConnectManager*;
-      *AgentEventHandler*;
-      *AgentHostConnection*;
-      *AgentHostKey*;
-      *AgentHostKeyEqual*;
-      *AgentManagerCallerIdentityScope*;
-      *AgentManagerService*;
-      *AgentOwnerKey*;
-      *AgentQuotaKey*;
-      *AgentServiceConnection*;
-      *AgentStandardConnectRequestBuilder*;
-    };
-  local:
     *;
 };

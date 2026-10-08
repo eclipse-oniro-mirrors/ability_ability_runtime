@@ -39,9 +39,12 @@
 #include "wants_info.h"
 #include "want_params.h"
 #include "want_receiver_stub.h"
+#define private public
 #include "want_agent_client.h"
+#undef private
 #include "want_agent_helper.h"
 #include "want_sender_info.h"
+#include "ability_manager_ipc_interface_code.h"
 #include "bool_wrapper.h"
 #include "zchar_wrapper.h"
 #include "byte_wrapper.h"
@@ -1382,5 +1385,23 @@ HWTEST_F(PendingWantTest, PendingWant_7500, Function | MediumTest | Level1)
     std::shared_ptr<PendingWant> pendingWant = nullptr;
     PendingWant::GetServiceExtension(nullptr, requestCode, want, flags, pendingWant);
     EXPECT_EQ(pendingWant, nullptr);
+}
+
+/*
+ * @tc.number    : PendingWant_Unmarshalling_NonEmpty_0100
+ * @tc.name      : Unmarshalling
+ * @tc.desc      : unmarshal non-null target triggers ffrt holder registration submit
+ */
+HWTEST_F(PendingWantTest, PendingWant_Unmarshalling_NonEmpty_0100, Function | MediumTest | Level1)
+{
+    WantAgentClient::GetInstance().proxy_ = nullptr;
+    sptr<AAFwk::IWantSender> target = new (std::nothrow) PendingWantRecord();
+    ASSERT_NE(target, nullptr);
+    MessageParcel parcel;
+    ASSERT_TRUE(parcel.WriteRemoteObject(target->AsObject()));
+    parcel.RewindRead(0);
+    std::unique_ptr<PendingWant> pendingWant(PendingWant::Unmarshalling(parcel));
+    ASSERT_NE(pendingWant, nullptr);
+    EXPECT_NE(pendingWant->GetTarget(), nullptr);
 }
 }  // namespace OHOS::AbilityRuntime::WantAgent

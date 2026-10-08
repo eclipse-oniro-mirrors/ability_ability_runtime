@@ -29,12 +29,13 @@
 #include "os_account_manager_wrapper.h"
 #include "sys_mgr_client.h"
 #include "system_ability_definition.h"
+#include "extractor.h"
 
 #define MODE 0771
 namespace OHOS {
 namespace AppExecFwk {
 using namespace OHOS::AbilityBase::Constants;
-
+using ExtractorUtil = AbilityBase::ExtractorUtil;
 const std::string ContextDeal::CONTEXT_DEAL_FILE_SEPARATOR("/");
 const std::string ContextDeal::CONTEXT_DEAL_Files("files");
 const int64_t ContextDeal::CONTEXT_CREATE_BY_SYSTEM_APP(0x00000001);
@@ -200,8 +201,7 @@ std::string ContextDeal::GetBundleResourcePath()
     if (isCreateBySystemApp_) {
         dir = std::regex_replace(abilityInfo_->resourcePath, std::regex(ABS_CODE_PATH), LOCAL_BUNDLES);
     } else {
-        std::regex pattern(std::string(ABS_CODE_PATH) + std::string(FILE_SEPARATOR) + abilityInfo_->bundleName);
-        dir = std::regex_replace(abilityInfo_->resourcePath, pattern, LOCAL_CODE_PATH);
+        dir = ExtractorUtil::GetLoadFilePath(abilityInfo_->resourcePath);
     }
     return dir;
 }

@@ -268,7 +268,7 @@ public:
      * move ability to foreground.
      *
      * @param token, the token of ability.
-     * @param callerInfo, the caller info including uid, bundle name and isCallBySCB.
+     * @param callerInfo, the caller info including uid and bundle name.
      */
     void MoveToForeground(const sptr<IRemoteObject> &token, const AppExecFwk::UiAbilityLastCallerInfo &callerInfo = {});
 
@@ -362,7 +362,7 @@ public:
      *
      * @param bundleName.
      */
-    int KillApplication(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = 0,
+    int KillApplication(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = -1,
         const std::string &reason = "KillApplication");
 
     /**
@@ -374,7 +374,7 @@ public:
      * @return ERR_OK, return back success, others fail.
      */
     int ForceKillApplication(const std::string &bundleName, const int userId = -1,
-        const int appIndex = 0);
+        const int appIndex = -1);
 
     /**
      * KillApplicationWithUserId, kill designated user application.
@@ -384,7 +384,7 @@ public:
      * @param  appIndex, appIndex.
      * @return ERR_OK, return back success, others fail.
      */
-    int KillApplicationWithUserId(const std::string &bundleName, const int userId = -1, const int appIndex = 0);
+    int KillApplicationWithUserId(const std::string &bundleName, const int userId = -1, const int appIndex = -1);
 
     /**
      * KillProcessesByAccessTokenId.

@@ -33,7 +33,7 @@ using namespace OHOS;
 
 namespace OHOS {
 namespace {
-constexpr uint32_t HANDLE_COUNT = 18;
+constexpr uint32_t HANDLE_COUNT = 20;
 }
 
 class UriPermissionManagerStubFuzz : public UriPermissionManagerStub {
@@ -78,6 +78,18 @@ public:
     ErrCode GrantUriPermissionPrivileged(const UriPermissionRawData& rawData, uint32_t flag,
         const std::string& targetBundleName, int32_t appIndex, uint32_t initiatorTokenId,
         int32_t hideSensitiveType, int32_t& funcResult) override
+    {
+        funcResult = 0;
+        return 0;
+    }
+    ErrCode GrantUriPermissionPrivileged(const std::vector<std::string>& uriVec, uint32_t flag,
+        uint32_t targetTokenId, int32_t& funcResult) override
+    {
+        funcResult = 0;
+        return 0;
+    }
+    ErrCode GrantUriPermissionPrivileged(const UriPermissionRawData& rawData, uint32_t flag,
+        uint32_t targetTokenId, int32_t& funcResult) override
     {
         funcResult = 0;
         return 0;
@@ -278,6 +290,18 @@ void DoFuzzCases(uint32_t code, MessageParcel &parcel, FuzzedDataProvider &fdp, 
         case 17:  // code 18: Active(policyRawData)
             actualCode = 18;
             FuzzUtil::WriteMaliciousRawData(parcel, fdp);
+            break;
+        case 18:  // code 19: GrantUriPermissionPrivileged(String[], flag, targetTokenId)
+            actualCode = 19;
+            parcel.WriteStringVector(OHOS::FuzzUtil::BuildMaliciousStringVector(fdp));
+            parcel.WriteUint32(fdp.ConsumeIntegral<uint32_t>());
+            parcel.WriteUint32(fdp.ConsumeIntegral<uint32_t>());
+            break;
+        case 19:  // code 20: GrantUriPermissionPrivileged(RawData, flag, targetTokenId)
+            actualCode = 20;
+            FuzzUtil::WriteMaliciousRawData(parcel, fdp);
+            parcel.WriteUint32(fdp.ConsumeIntegral<uint32_t>());
+            parcel.WriteUint32(fdp.ConsumeIntegral<uint32_t>());
             break;
         default:
             break;

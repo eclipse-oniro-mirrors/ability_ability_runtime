@@ -107,7 +107,8 @@ public:
     ErrCode BatchRegisterFunctions(const std::vector<FunctionInfo> &functions, int32_t &successCount);
 
     /**
-     * @brief Get function information by bundleName and functionName
+     * @brief Get function information by bundleName and functionName; always scoped to
+     *        the caller's own user
      * @param bundleName Bundle name
      * @param functionName Function name
      * @param function Output FunctionInfo
@@ -118,31 +119,35 @@ public:
 
     /**
      * @brief Unregister a function
+     * @param userId Owner user whose record is deleted (must be >= 0)
      * @param functionNamespace Namespace
      * @param functionName Function name
      * @return ErrCode ERR_OK on success
      */
-    ErrCode UnregisterFunction(const std::string &functionNamespace, const std::string &functionName);
+    ErrCode UnregisterFunction(int32_t userId, const std::string &functionNamespace,
+        const std::string &functionName);
 
     /**
      * @brief Batch unregister intentFunctions by namespace
+     * @param userId Owner user whose records are deleted (must be >= 0)
      * @param functionNamespace Namespace to delete all functions from
      * @return ErrCode ERR_OK on success
      */
-    ErrCode UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace);
+    ErrCode UnregisterIntentFunctionsByNamespace(int32_t userId, const std::string &functionNamespace);
 
     /**
      * @brief Reset all functions by namespace (delete all existing and add new ones)
+     * @param userId Owner user whose records are reset (must be >= 0)
      * @param functionNamespace Namespace to reset functions for
      * @param functions New function list to replace existing ones
      * @param successCount Output count of successfully reset functions
      * @return ErrCode ERR_OK on success
      */
-    ErrCode ResetNamespaceFunctions(const std::string &functionNamespace,
+    ErrCode ResetNamespaceFunctions(int32_t userId, const std::string &functionNamespace,
         const std::vector<FunctionInfo> &functions, int32_t &successCount);
 
     /**
-     * @brief Get all functions
+     * @brief Get all functions; always scoped to the caller's own user
      * @param functions Output vector of FunctionInfo
      * @return ErrCode ERR_OK on success
      */
@@ -157,18 +162,20 @@ public:
 
     /**
      * @brief Batch unregister intentFunctions by namespace (one-way, fire-and-forget)
+     * @param userId Owner user whose records are deleted (must be >= 0)
      * @param functionNamespace Namespace to delete all functions from
      * @return ErrCode ERR_OK if the request was sent; service-side result is not reported
      */
-    ErrCode UnregisterIntentFunctionsByNamespaceAsync(const std::string &functionNamespace);
+    ErrCode UnregisterIntentFunctionsByNamespaceAsync(int32_t userId, const std::string &functionNamespace);
 
     /**
      * @brief Reset all functions by namespace (one-way, fire-and-forget, no successCount)
+     * @param userId Owner user whose records are reset (must be >= 0)
      * @param functionNamespace Namespace to reset functions for
      * @param functions New function list to replace existing ones
      * @return ErrCode ERR_OK if the request was sent; service-side result is not reported
      */
-    ErrCode ResetNamespaceFunctionsAsync(const std::string &functionNamespace,
+    ErrCode ResetNamespaceFunctionsAsync(int32_t userId, const std::string &functionNamespace,
         const std::vector<FunctionInfo> &functions);
 
     ErrCode RegisterCliHook(const sptr<ICliHookInterface> &hook, int32_t activeMethods = 0);

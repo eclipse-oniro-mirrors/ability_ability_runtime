@@ -40,21 +40,33 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     FuzzedDataProvider fdp(reinterpret_cast<const uint8_t*>(data), size);
 
     auto appInfo = std::make_shared<ApplicationInfo>();
+    if (!appInfo) {
+        return false;
+    }
     appInfo->bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
     appInfo->name = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
     int32_t recordId = fdp.ConsumeIntegral<int32_t>();
     std::string processName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
     auto appRecord = std::make_shared<AppRunningRecord>(appInfo, recordId, processName);
+    if (!appRecord) {
+        return false;
+    }
     appRecord->SetCallerUid(fdp.ConsumeIntegral<int32_t>());
 
     std::shared_ptr<AppRunningRecord> callerAppRecord;
     if (fdp.ConsumeBool()) {
         auto callerInfo = std::make_shared<ApplicationInfo>();
+        if (!callerInfo) {
+            return false;
+        }
         callerInfo->bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
         callerInfo->name = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
         int32_t callerRecordId = fdp.ConsumeIntegral<int32_t>();
         std::string callerProcess = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
         callerAppRecord = std::make_shared<AppRunningRecord>(callerInfo, callerRecordId, callerProcess);
+        if (!callerAppRecord) {
+            return false;
+        }
     }
 
     AAFwk::EventInfo eventInfo;
@@ -66,7 +78,7 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
         stringParam, stringParam);
     AppMgrEventUtil::SendProcessStartEvent(callerAppRecord, appRecord, eventInfo);
     int32_t appUid = fdp.ConsumeIntegral<int32_t>();
-    int64_t restartTime = static_cast<int64_t>(fdp.ConsumeIntegral<int32_t>());
+    int64_t restartTime = fdp.ConsumeIntegral<int64_t>();
     AppMgrEventUtil::SendReStartProcessEvent(eventInfo, appUid, restartTime);
     AppMgrEventUtil::GetCallerPid(callerAppRecord);
     std::shared_ptr<AbilityInfo> abilityInfo;

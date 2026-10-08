@@ -15,6 +15,7 @@ import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 ohos_shared_library("ets_agent_connection") {
+  version_script = "libets_agent_connection.map"
   branch_protector_ret = "pac_ret"
   sanitize = {
     integer_overflow = true
@@ -78,6 +79,7 @@ ohos_shared_library("ets_agent_connection") {
 }
 
 ohos_shared_library("ets_agent_extension") {
+  version_script = "libets_agent_extension.map"
   sanitize = {
     integer_overflow = true
     ubsan = true

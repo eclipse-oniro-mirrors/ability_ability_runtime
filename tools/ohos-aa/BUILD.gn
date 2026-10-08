@@ -55,12 +55,14 @@ ohos_static_library("ohos_aa_cli_source_set") {
     "${ability_runtime_services_path}/common:common_config",
   ]
 
+  deps = [ "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client" ]
+
   cflags = []
   if (target_cpu == "arm") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
 
-  deps = [
+  deps += [
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/ability_manager:ability_start_options",
     "${ability_runtime_innerkits_path}/ability_manager:ability_start_setting",

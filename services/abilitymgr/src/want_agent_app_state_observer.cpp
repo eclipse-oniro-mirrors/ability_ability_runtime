@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,9 +13,20 @@
  * limitations under the License.
  */
 
-#ifndef FUZZTEST_OHOS_ABILITY_RUNTIME_RDBDATAMANAGERSECOND_FUZZER_H
-#define FUZZTEST_OHOS_ABILITY_RUNTIME_RDBDATAMANAGERSECOND_FUZZER_H
+#include "want_agent_app_state_observer.h"
 
-#define FUZZ_PROJECT_NAME "rdbdatamanagersecond_fuzzer"
+#include <utility>
 
-#endif // FUZZTEST_OHOS_ABILITY_RUNTIME_RDBDATAMANAGERSECOND_FUZZER_H
+namespace OHOS {
+namespace AAFwk {
+WantAgentAppStateObserver::WantAgentAppStateObserver(ProcessDiedHandler handler)
+    : handler_(std::move(handler)) {}
+
+void WantAgentAppStateObserver::OnProcessDied(const AppExecFwk::ProcessData &processData)
+{
+    if (handler_ != nullptr) {
+        handler_(processData.bundleName, processData.pid);
+    }
+}
+} // namespace AAFwk
+} // namespace OHOS

@@ -708,10 +708,30 @@ HWTEST_F(AppMgrServiceInnerTest, SetStartMsgStrictMode_001, TestSize.Level2)
     EXPECT_EQ(startMsg.isolatedSELinuxFlag, false);
 
     param.extensionAbilityType = ExtensionAbilityType::INPUTMETHOD;
-    startMsg.isolatedSandboxFlagLegacy = false;
     appMgrServiceInner->SetStartMsgStrictMode(startMsg, param);
     EXPECT_EQ(startMsg.strictMode, param.strictMode);
-    EXPECT_EQ(startMsg.isolatedSandboxFlagLegacy, true);
+    EXPECT_TRUE(startMsg.flags & (1ULL << StartFlags::ISOLATED_SANDBOX));
+}
+
+/**
+ * @tc.name: SetStartMsgStrictMode_002
+ * @tc.desc: SetStartMsgStrictMode with strictMode=false should not set ISOLATED_SANDBOX for INPUTMETHOD.
+ * @tc.type: FUNC
+ * @tc.require: issueI5W4S7
+ */
+HWTEST_F(AppMgrServiceInnerTest, SetStartMsgStrictMode_002, TestSize.Level2)
+{
+    CreateStartMsgParam param;
+    param.strictMode = false;
+    AppSpawnStartMsg startMsg;
+    startMsg.strictMode = false;
+    startMsg.flags = 0;
+
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    param.extensionAbilityType = ExtensionAbilityType::INPUTMETHOD;
+    appMgrServiceInner->SetStartMsgStrictMode(startMsg, param);
+    EXPECT_EQ(startMsg.strictMode, param.strictMode);
+    EXPECT_FALSE(startMsg.flags & (1ULL << StartFlags::ISOLATED_SANDBOX));
 }
 
 /**

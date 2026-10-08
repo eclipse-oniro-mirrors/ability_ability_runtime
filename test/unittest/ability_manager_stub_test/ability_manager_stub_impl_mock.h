@@ -58,6 +58,7 @@ public:
     MOCK_METHOD2(GetPendingRequestWant, int(const sptr<IWantSender>& target, std::shared_ptr<Want>& want));
     MOCK_METHOD2(GetPendingRequestWantFromProxy, int(const sptr<IWantSender>& target, std::shared_ptr<Want>& want));
     MOCK_METHOD2(GetWantSenderInfo, int(const sptr<IWantSender>& target, std::shared_ptr<WantSenderInfo>& info));
+    MOCK_METHOD1(RegisterWantAgentHolder, void(const sptr<IWantSender>& target));
     MOCK_METHOD2(SetMissionContinueState, int(const sptr<IRemoteObject>& token, const AAFwk::ContinueState& state));
     MOCK_METHOD2(SetMissionLabel, int(const sptr<IRemoteObject>& token, const std::string& label));
     MOCK_METHOD2(SetMissionIcon, int(const sptr<IRemoteObject>& token,
@@ -509,9 +510,6 @@ int32_t GetUserLockedBundleList(int32_t userId, std::unordered_set<std::string> 
     return ERR_OK;
 }
 
-    MOCK_METHOD7(ExecuteInAppSkill, int32_t(const std::string &, const std::string &,
-        const std::string &, const std::string &, const std::string &,
-        const std::shared_ptr<AAFwk::WantParams> &, const sptr<ISkillExecuteCallback> &));
     MOCK_METHOD2(ExecuteInAppSkillWithTokenId, int32_t(const AppExecFwk::SkillExecuteRequest &,
         const sptr<ISkillExecuteCallback> &));
     MOCK_METHOD4(ExecuteSkillDone, int32_t(const sptr<IRemoteObject> &, const std::string &,

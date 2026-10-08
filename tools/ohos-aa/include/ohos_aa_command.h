@@ -70,6 +70,7 @@ const std::string HELP_MSG_START = "ohos-aa start - Start an ability on the syst
     "  --pb <'{\"key1\":true,\"key2\":false,\"key3\":true}'>    bool-type key-value pair\n"
     "  --ps <'{\"key1\":\"str1\",\"key2\":\"str2\",\"key3\":\"str3\"}'>  string-type key-value pair\n"
     "  --psn <type>                                             type for implicit startup\n"
+    "  --tool-call-id <toolCallId>                              tool call id for tracing (0-256 chars)\n"
     "  --time                                                   flag for launch-to-foreground time\n\n"
     "Examples:\n"
     "  # Start an ability\n"
@@ -81,6 +82,7 @@ const std::string HELP_MSG_FORCE_STOP = "ohos-aa force-stop - Stop an applicatio
     "Parameters:\n"
     "  --help                                             Display this help message\n"
     "  --bundlename <bundlename>                          bundle name to be stopped\n"
+    "  --tool-call-id <toolCallId>                        tool call id for tracing (0-256 chars)\n"
     "Examples:\n"
     "  # Stop an applcation\n"
     "  ohos-aa force-stop --bundlename com.acts.example\n";
@@ -105,6 +107,9 @@ constexpr int EXTRA_ARGUMENTS_FOR_NULL_STRING = 0;
 constexpr int PARAM_LENGTH = 20;
 constexpr int INDEX_OFFSET = 3;
 
+// Tool identifier env var set by SA-CLI when the tool is pulled via execTool.
+const std::string ENV_TOOL_CALL_ID = "TOOL_CALL_ID";
+
 enum OptionType {
     OPTION_PARAMETER_INTEGER = 1000,
     OPTION_PARAMETER_STRING,
@@ -120,7 +125,8 @@ enum OptionType {
     OPTION_TYPE,
     OPTION_TIME,
     OPTION_SANDBOX_CLONE_INDEX,      // Sandbox clone index for clone application
-    OPTION_CREATOR_BUNDLE    // Creator bundle name (untrusted, from command line)
+    OPTION_CREATOR_BUNDLE,    // Creator bundle name (untrusted, from command line)
+    OPTION_TOOL_CALL_ID    // Tool call identifier (untrusted, from command line)
 };
 
 const std::string SHORT_OPTIONS = "";
@@ -141,9 +147,12 @@ struct option LONG_OPTIONS[] = {
     {"psn", required_argument, 0, OPTION_PARAMETER_NULL_STRING},
     {"sandboxCloneIndex", required_argument, 0, OPTION_SANDBOX_CLONE_INDEX},
     {"creatorBundle", required_argument, 0, OPTION_CREATOR_BUNDLE},
+    {"tool-call-id", required_argument, 0, OPTION_TOOL_CALL_ID},
     {0, 0, 0, 0}
 };
 }
+
+bool IsValidToolCallId(const std::string &toolCallId);
 
 class ClawAaShellCommand : public ShellCommand {
 public:
@@ -185,6 +194,8 @@ private:
 
     bool startAbilityWithWaitFlag_ = false;
     bool startSandboxCloneAbilityFlag_ = false;
+    // Resolved tool call id (param first, env fallback) for result output.
+    std::string toolCallId_;
     std::map<int32_t, AaToolErrorInfo> errorInfoMap_;
 };
 }  // namespace AAFwk

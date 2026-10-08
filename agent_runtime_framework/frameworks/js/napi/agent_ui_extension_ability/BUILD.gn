@@ -53,6 +53,7 @@ config("agent_ui_extension_config") {
 }
 
 ohos_shared_library("js_agent_ui_extension") {
+  version_script = "libjs_agent_ui_extension.map"
   sanitize = {
     integer_overflow = true
     ubsan = true

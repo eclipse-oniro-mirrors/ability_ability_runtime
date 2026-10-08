@@ -334,7 +334,10 @@ bool SimulatorImpl::ParseAbilityInfo(const std::string &abilitySrcPath, const st
         abilityInfo_ = AppExecFwk::BundleContainer::GetInstance().GetAbilityInfo(options_.moduleName, abilityName);
     } else {
         auto path = abilitySrcPath;
-        path.erase(path.rfind("."));
+        size_t dotPos = path.rfind(".");
+        if (dotPos != std::string::npos) {
+            path.erase(dotPos);
+        }
         auto abilityNameFromPath = path.substr(path.rfind('/') + 1, path.length());
         abilityInfo_ = AppExecFwk::BundleContainer::GetInstance().GetAbilityInfo(
             options_.moduleName, abilityNameFromPath);
@@ -429,7 +432,10 @@ bool SimulatorImpl::LoadAbilityStage(uint8_t *buffer, size_t len)
         return false;
     }
     std::string srcEntrance = moduleInfo_->srcEntrance;
-    srcEntrance.erase(srcEntrance.rfind("."));
+    size_t dotPos = srcEntrance.rfind(".");
+    if (dotPos != std::string::npos) {
+        srcEntrance.erase(dotPos);
+    }
     srcEntrance.append(".abc");
     srcEntrance = srcEntrance.substr(srcEntrance.find('/') + 1, srcEntrance.length());
 

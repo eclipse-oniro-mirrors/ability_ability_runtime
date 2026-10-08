@@ -87,14 +87,28 @@ InsightRdbStorageMgr::~InsightRdbStorageMgr()
 {
 }
 
+int32_t InsightRdbStorageMgr::LoadInsightIntentBundleInfos(const int32_t userId,
+    std::map<std::string, std::string> &bundleVersionMap)
+{
+    bundleVersionMap["mock.bundle"] = "0";
+    if (g_mockLoadInsightIntentInfosRet) {
+        return ERR_OK;
+    }
+    return ERR_INVALID_VALUE;
+}
+
 int32_t  InsightRdbStorageMgr::LoadInsightIntentInfos(const int32_t userId,
     std::map<std::string, std::string> &bundleVersionMap,
     std::vector<ExtractInsightIntentInfo> &totalInfos, std::vector<InsightIntentInfo> &configInfos)
 {
     ExtractInsightIntentInfo totalInfo;
     InsightIntentInfo configInfo;
+    totalInfo.genericInfo.bundleName = "mock.bundle";
+    totalInfo.genericInfo.moduleName = "mockModule";
+    totalInfo.genericInfo.intentName = "mockIntent";
     totalInfos.push_back(totalInfo);
     configInfos.push_back(configInfo);
+    bundleVersionMap["mock.bundle"] = "0";
     if (g_mockLoadInsightIntentInfosRet) {
         return ERR_OK;
     }
@@ -122,6 +136,9 @@ int32_t  InsightRdbStorageMgr::LoadInsightIntentInfoByName(const std::string &bu
     std::vector<ExtractInsightIntentInfo> &totalInfos)
 {
     ExtractInsightIntentInfo totalInfo;
+    totalInfo.genericInfo.bundleName = bundleName;
+    totalInfo.genericInfo.moduleName = "mockModule";
+    totalInfo.genericInfo.intentName = "mockIntent";
     totalInfos.push_back(totalInfo);
     if (g_mockLoadInsightIntentInfoByNameRet) {
         return ERR_OK;
@@ -156,6 +173,15 @@ int32_t  InsightRdbStorageMgr::LoadInsightIntentInfo(const std::string &bundleNa
 int32_t  InsightRdbStorageMgr::SaveStorageInsightIntentData(const std::string &bundleName,
     const std::string &moduleName, const int32_t userId, uint32_t versionCode,
     ExtractInsightIntentProfileInfoVec &profileInfos, std::vector<InsightIntentInfo> &configInfos)
+{
+    if (g_mockSaveStorageInsightIntentDataRet) {
+        return ERR_OK;
+    }
+    return ERR_INVALID_VALUE;
+}
+
+int32_t  InsightRdbStorageMgr::SaveStorageInsightIntentDataBatch(const std::string &bundleName,
+    const int32_t userId, uint32_t versionCode, const std::vector<InsightIntentSaveParam> &saveParams)
 {
     if (g_mockSaveStorageInsightIntentDataRet) {
         return ERR_OK;

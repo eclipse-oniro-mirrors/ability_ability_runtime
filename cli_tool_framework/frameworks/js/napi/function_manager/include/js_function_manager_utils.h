@@ -57,7 +57,9 @@ struct InvokeFunctionParam;
  * @brief Create JavaScript InvokeFunctionParam object from native InvokeFunctionParam.
  *
  * Matches FunctionHook.d.ts InvokeFunctionParam: { functionNamespace, functionName,
- * args }. invokeOptions is omitted (Context is not IPC-round-trippable).
+ * args }. invokeOptions is omitted (Context is not IPC-round-trippable); the trace
+ * identifiers from invokeOptions are surfaced as top-level optional fields so the
+ * before-hook can observe them.
  * @param env The N-API environment.
  * @param param The native InvokeFunctionParam.
  * @return Returns the JavaScript object.
@@ -70,12 +72,31 @@ napi_value CreateJsInvokeFunctionParam(napi_env env, const InvokeFunctionParam &
  * Tolerant: fields absent in JS leave the native value unchanged. Inverse of
  * CreateJsInvokeFunctionParam. Reads functionNamespace/functionName/args so a hook
  * callback may modify any of them (per the "returned object replaces the original"
- * contract on onBeforeInvokeFunction).
+ * contract on onBeforeInvokeFunction). Trace identifiers are NOT parsed back:
+ * hook modifications of them do not propagate to execution.
  * @param env The N-API environment.
  * @param jsObj The JavaScript object.
  * @param param Output native InvokeFunctionParam.
  */
 void UnwrapInvokeFunctionParam(napi_env env, napi_value jsObj, InvokeFunctionParam &param);
+
+/**
+ * @brief Parse the optional trace identifiers from InvokeOptions.
+ *
+ * Reads the optional toolCallId / dmSessionId fields. An absent field (or an
+ * explicit undefined/null) leaves the output string empty. A present field must
+ * be a string of [A-Za-z0-9_-] with length 1~256; an empty string or any other
+ * value is invalid.
+ *
+ * @param env The N-API environment.
+ * @param options The InvokeOptions object (may be undefined/null).
+ * @param toolCallId Output for the parsed toolCallId (empty when not passed).
+ * @param dmSessionId Output for the parsed dmSessionId (empty when not passed).
+ * @param msg Output error message when parsing fails.
+ * @return Returns true on success, false otherwise.
+ */
+bool UnwrapInvokeOptions(napi_env env, napi_value options,
+    std::string &toolCallId, std::string &dmSessionId, std::string &msg);
 
 } // namespace CliTool
 } // namespace OHOS

@@ -387,7 +387,8 @@ void ModuleRunningRecord::GetHapModuleInfo(HapModuleInfo &info)
     TAG_LOGD(AAFwkTag::APPMGR, "userId: %{public}d, bundleName: %{public}s, appIndex: %{public}d", userId,
         appInfo_->bundleName.c_str(), appIndex_);
     int32_t bundleMgrResult;
-    if (AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex_) ||
+    if (appIndex_ == 0 || appIndex_ == AbilityRuntime::GlobalConstant::PC_TABLET_INDEX ||
+        AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex_) ||
         AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(appIndex_)) {
         bundleMgrResult = IN_PROCESS_CALL(bundleMgrHelper->GetCloneBundleInfo(appInfo_->bundleName,
             BUNDLE_INFO_FLAG_WITH_APP_HAP, appIndex_, bundleInfo, userId));

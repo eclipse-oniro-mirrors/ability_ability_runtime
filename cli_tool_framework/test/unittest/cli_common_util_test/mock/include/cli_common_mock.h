@@ -28,6 +28,8 @@ public:
     static int32_t vectorPermissionResult;
     static int32_t singlePermissionResult;
     static std::vector<int32_t> permissionStateList;
+    static std::string stringParameterValue;
+    static bool boolParameterValue;
 
     static void Reset();
 };

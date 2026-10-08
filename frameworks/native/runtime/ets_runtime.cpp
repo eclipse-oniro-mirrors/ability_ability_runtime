@@ -23,6 +23,7 @@
 #include <dlfcn.h>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <nlohmann/json.hpp>
 #include <regex>
 #include <sys/mman.h>
@@ -719,6 +720,69 @@ std::unique_ptr<AppExecFwk::ETSNativeReference> ETSRuntime::LoadEtsModule(const 
     etsNativeReference->aniObj = reinterpret_cast<ani_object>(obj);
     etsNativeReference->aniRef = reinterpret_cast<ani_ref>(ref);
     return etsNativeReference;
+}
+
+bool ETSRuntime::LoadRepairPatch(const std::string &hqfFile, const std::string &hapPath)
+{
+    std::string target = ExtractorUtil::GetLoadFilePath(hapPath);
+    if (g_etsEnvFuncs == nullptr || g_etsEnvFuncs->HotReload == nullptr) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "null g_etsEnvFuncs or HotReload");
+        return false;
+    }
+    return g_etsEnvFuncs->HotReload(target, hqfFile) == 0;
+}
+
+bool ETSRuntime::NotifyHotReloadPage()
+{
+#ifdef SUPPORT_SCREEN
+    Ace::HotReloader::HotReload();
+    return true;
+#else
+    return false;
+#endif
+}
+
+void ETSRuntime::RegisterQuickFixQueryFunc(const std::map<std::string, std::string> &moduleAndPath)
+{
+    if (g_etsEnvFuncs == nullptr || g_etsEnvFuncs->ColdReload == nullptr) {
+        std::lock_guard<std::mutex> lock(quickFixMutex_);
+        for (const auto &item : moduleAndPath) {
+            std::string patchPath = GetLoadPath(item.second);
+            if (std::find(cachedPatches_.begin(), cachedPatches_.end(), patchPath) == cachedPatches_.end()) {
+                cachedPatches_.push_back(std::move(patchPath));
+            }
+        }
+        return;
+    }
+    for (const auto &item : moduleAndPath) {
+        std::string patch = GetLoadPath(item.second);
+        if (g_etsEnvFuncs->ColdReload(patch) != 0) {
+            TAG_LOGE(AAFwkTag::ETSRUNTIME, "ColdReload failed, patch: %{public}s", patch.c_str());
+        }
+    }
+}
+
+void ETSRuntime::ApplyCachedColdReload()
+{
+    std::vector<std::string> patches;
+    {
+        std::lock_guard<std::mutex> lock(quickFixMutex_);
+        if (cachedPatches_.empty()) {
+            return;
+        }
+        patches = std::move(cachedPatches_);
+    }
+    if (g_etsEnvFuncs == nullptr || g_etsEnvFuncs->ColdReload == nullptr) {
+        std::lock_guard<std::mutex> lock(quickFixMutex_);
+        cachedPatches_.insert(cachedPatches_.end(),
+            std::make_move_iterator(patches.begin()), std::make_move_iterator(patches.end()));
+        return;
+    }
+    for (const auto &patch : patches) {
+        if (g_etsEnvFuncs->ColdReload(patch) != 0) {
+            TAG_LOGE(AAFwkTag::ETSRUNTIME, "ColdReload failed, patch: %{public}s", patch.c_str());
+        }
+    }
 }
 
 bool ETSRuntime::HandleUncaughtError()

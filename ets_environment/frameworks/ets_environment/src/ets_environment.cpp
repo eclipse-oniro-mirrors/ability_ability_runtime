@@ -66,8 +66,6 @@ constexpr char SANDBOX_ARK_PROFILE_PATH[] = "/data/storage/ark-profile/";
 constexpr char ARK_PROFILE_SUFFIX[] = ".ap";
 constexpr char MERGE_ABC_PATH[] = "/ets/modules_static.abc";
 constexpr char ABS_DATA_CODE_PATH[] = "/data/app/el1/bundle/public/";
-constexpr char BUNDLE[] = "bundle/";
-constexpr char ABS_CODE_PATH[] = "/data/storage/el1/";
 
 
 using CreateVMETSRuntimeType = ani_status (*)(const ani_options *options, uint32_t version, ani_vm **result);
@@ -84,14 +82,11 @@ constexpr const int32_t ARG_ONE = 1;
 
 static void PostTaskWrapper(void(*task)(void *), void *data, const char *taskName, int64_t delayMs);
 ETSRuntimeAPI ETSEnvironment::lazyApis_ {};
-std::unique_ptr<ETSEnvironment> instance_ = nullptr;
 
-std::unique_ptr<ETSEnvironment> &ETSEnvironment::GetInstance()
+std::shared_ptr<ETSEnvironment> ETSEnvironment::GetInstance()
 {
-    if (instance_ == nullptr) {
-        instance_ = std::make_unique<ETSEnvironment>();
-    }
-    return instance_;
+    static std::shared_ptr<ETSEnvironment> instance = std::make_shared<ETSEnvironment>();
+    return instance;
 }
 
 ETSEnvironment::~ETSEnvironment()
@@ -769,6 +764,73 @@ bool ETSEnvironment::PreloadSystemClass(const char *className)
     return true;
 }
 
+int32_t ETSEnvironment::HotReload(const std::string &target, const std::string &patch)
+{
+    TAG_LOGD(AAFwkTag::ETSRUNTIME, "hotReload start");
+    ani_env *env = GetAniEnv();
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "null env");
+        return -1;
+    }
+    if (vmEntry_.abcLinkerRef_ == nullptr) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "null abcLinkerRef");
+        return -1;
+    }
+    {
+        std::lock_guard<std::mutex> lock(vmEntry_.abcCacheMutex_);
+        if (vmEntry_.abcCacheMap_.find(target) == vmEntry_.abcCacheMap_.end()) {
+            TAG_LOGE(AAFwkTag::ETSRUNTIME, "target not loaded: %{public}s", target.c_str());
+            return -1;
+        }
+    }
+    ani_string targetStr = nullptr;
+    if (env->String_NewUTF8(target.c_str(), target.size(), &targetStr) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "String_NewUTF8 target failed");
+        return -1;
+    }
+    ani_string patchStr = nullptr;
+    if (env->String_NewUTF8(patch.c_str(), patch.size(), &patchStr) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "String_NewUTF8 patch failed");
+        return -1;
+    }
+    ani_int result = 0;
+    ani_status status = env->Object_CallMethodByName_Int(
+        static_cast<ani_object>(vmEntry_.abcLinkerRef_),
+        "hotReload", "C{std.core.String}C{std.core.String}:i", &result, targetStr, patchStr);
+    if (status != ANI_OK || result != 0) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "hotReload failed, status: %{public}d, result: %{public}d", status, result);
+        return -1;
+    }
+    return 0;
+}
+
+int32_t ETSEnvironment::ColdReload(const std::string &patch)
+{
+    ani_env *env = GetAniEnv();
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "null env");
+        return -1;
+    }
+    if (vmEntry_.abcLinkerRef_ == nullptr) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "null abcLinkerRef");
+        return -1;
+    }
+    ani_string patchStr = nullptr;
+    if (env->String_NewUTF8(patch.c_str(), patch.size(), &patchStr) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "String_NewUTF8 patch failed");
+        return -1;
+    }
+    ani_int result = 0;
+    ani_status status = env->Object_CallMethodByName_Int(
+        static_cast<ani_object>(vmEntry_.abcLinkerRef_),
+        "coldReload", "C{std.core.String}:i", &result, patchStr);
+    if (status != ANI_OK || result != 0) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "coldReload failed, status: %{public}d, result: %{public}d", status, result);
+        return -1;
+    }
+    return 0;
+}
+
 ETSEnvFuncs *ETSEnvironment::RegisterFuncs()
 {
     static ETSEnvFuncs funcs {
@@ -840,6 +902,12 @@ ETSEnvFuncs *ETSEnvironment::RegisterFuncs()
             EtsProfilerType profiler, uint32_t interval) {
             return ETSEnvironment::GetInstance()->StartProfiler(
                 tid, instanceId, debugApp, jsVm, profiler, interval);
+        },
+        .HotReload = [](const std::string &target, const std::string &patch) -> int32_t {
+            return ETSEnvironment::GetInstance()->HotReload(target, patch);
+        },
+        .ColdReload = [](const std::string &patch) -> int32_t {
+            return ETSEnvironment::GetInstance()->ColdReload(patch);
         }
     };
     return &funcs;
@@ -1023,8 +1091,14 @@ std::vector<std::string> ETSEnvironment::GetHspPathList()
 
     for (const auto &pluginHspPath : staticPluginHspPathList_) {
         std::string targetPath = pluginHspPath;
-        std::regex patter(std::string(ABS_DATA_CODE_PATH) + bundleName_ + "/");
-        targetPath = std::regex_replace(targetPath, patter, std::string(ABS_CODE_PATH) + std::string(BUNDLE));
+        std::string absDataCodePath = std::string(ABS_DATA_CODE_PATH);
+        if (targetPath.find(absDataCodePath) == 0) {
+            std::string remainingPath = targetPath.substr(absDataCodePath.length());
+            size_t slashPos = remainingPath.find('/');
+            if (slashPos != std::string::npos) {
+                targetPath = std::string(BUNDLE_INSTALL_PATH) + remainingPath.substr(slashPos + 1);
+            }
+        }
         hspPathList.push_back(targetPath);
     }
 

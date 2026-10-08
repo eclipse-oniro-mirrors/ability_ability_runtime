@@ -494,6 +494,7 @@ ohos_shared_library("abilitykit_native") {
 }
 
 ohos_shared_library("ability_observer_ipc") {
+  version_script = "libability_observer_ipc.map"
   branch_protector_ret = "pac_ret"
   sanitize = {
     cfi = true
@@ -830,6 +831,7 @@ ohos_shared_library("insight_intent_executor") {
     "${ability_runtime_native_path}/ability/native:ability_business_error",
     "${ability_runtime_native_path}/insight_intent/insight_intent_context:insightintentcontext",
     "${ability_runtime_services_path}/common:app_util",
+    "${ability_runtime_path}/utils/global/common:runtime_utils",
   ]
 
   external_deps = []
@@ -1013,6 +1015,7 @@ config("uiability_config") {
 }
 
 ohos_shared_library("ui_ability_ani") {
+  version_script = "libui_ability_ani.map"
   branch_protector_ret = "pac_ret"
   branch_protector_frt = "bti"
 

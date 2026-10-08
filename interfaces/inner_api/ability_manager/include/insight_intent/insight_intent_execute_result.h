@@ -26,6 +26,7 @@ using WantParams = OHOS::AAFwk::WantParams;
 constexpr char INSIGHT_INTENT_EXECUTE_RESULT_CODE[] = "ohos.insightIntent.executeResultCode";
 constexpr char INSIGHT_INTENT_EXECUTE_RESULT[] = "ohos.insightIntent.executeResult";
 constexpr char INTERACTION_UI_TYPE_MODAL_UIEXTENSION[] = "MODAL_UIEXTENSION";
+constexpr char INTERACTION_UI_TYPE_TEXT[] = "TEXT";
 
 struct InteractionUI {
     std::string interactionUIType;
@@ -43,6 +44,13 @@ struct InteractionModalUIExtension : public InteractionUI {
     std::shared_ptr<WantParams> parameters = nullptr;
     bool Marshalling(Parcel &parcel) const;
     static std::shared_ptr<InteractionModalUIExtension> UnmarshallingModal(Parcel &parcel);
+};
+
+struct InteractionText : public InteractionUI {
+    std::shared_ptr<WantParams> parameters = nullptr;
+    std::vector<std::string> buttons;
+    bool Marshalling(Parcel &parcel) const;
+    static std::shared_ptr<InteractionText> UnmarshallingText(Parcel &parcel);
 };
 
 struct InteractionInfo {

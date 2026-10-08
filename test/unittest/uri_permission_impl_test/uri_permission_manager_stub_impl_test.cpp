@@ -485,6 +485,210 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_Ra
 
 /*
  * Feature: UriPermissionManagerService
+ * Function: GrantUriPermissionPrivileged (targetTokenId)
+ * SubFunction: NA
+ * FunctionPoints: UriPermissionManagerService GrantUriPermissionPrivileged with targetTokenId
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_WithTokenId_001, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    std::vector<std::string> uriVec;
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 1;
+    int32_t funcResult = ERR_CODE_INVALID_URI_TYPE;
+    auto result = upmsi->GrantUriPermissionPrivileged(uriVec, flag, targetTokenId, funcResult);
+    EXPECT_EQ(funcResult, ERR_URI_LIST_OUT_OF_RANGE);
+    EXPECT_EQ(result, ERR_URI_LIST_OUT_OF_RANGE);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermissionPrivileged (targetTokenId)
+ * SubFunction: NA
+ * FunctionPoints: caller without PERMISSION_GRANT_URI_PERMISSION_PRIVILEGED is rejected
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_WithTokenId_002, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = false;
+    std::vector<std::string> uriVec = {"file://docs/storage/Users/currentUser/test.txt"};
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 1;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionPrivileged(uriVec, flag, targetTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermissionPrivileged (targetTokenId)
+ * SubFunction: NA
+ * FunctionPoints: flag without read/write bits is rejected
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_WithTokenId_003, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    std::vector<std::string> uriVec = {"file://docs/storage/Users/currentUser/test.txt"};
+    uint32_t flag = 0;
+    uint32_t targetTokenId = 1;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionPrivileged(uriVec, flag, targetTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_FLAG);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermissionPrivileged (targetTokenId)
+ * SubFunction: NA
+ * FunctionPoints: zero targetTokenId is rejected
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_WithTokenId_004, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    std::vector<std::string> uriVec = {"file://docs/storage/Users/currentUser/test.txt"};
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 0;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionPrivileged(uriVec, flag, targetTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_UPMS_INVALID_TARGET_TOKENID);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermissionPrivileged (targetTokenId)
+ * SubFunction: NA
+ * FunctionPoints: targetTokenId not belonging to a hap-type application is rejected
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_WithTokenId_005, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    MyFlag::fudUtilsGenerateFUDAppInfoRet_ = false; // not a valid hap app token
+    std::vector<std::string> uriVec = {"file://docs/storage/Users/currentUser/test.txt"};
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 1;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionPrivileged(uriVec, flag, targetTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_UPMS_INVALID_TARGET_TOKENID);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermissionPrivileged (targetTokenId)
+ * SubFunction: NA
+ * FunctionPoints: target application in another user is allowed (no cross-user
+ *                 restriction; both sides resolved via GenerateFUDAppInfo),
+ *                 delegation proceeds
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_WithTokenId_006, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    MyFlag::fudUtilsGenerateFUDAppInfoRet_ = true;
+    MyFlag::fudAppInfoUserId_ = 100; // different userIds for target and caller -> cross user
+    MyFlag::isUriTypeValid_ = false; // all uris filtered out in inner
+    std::vector<std::string> uriVec = {"file://docs/storage/Users/currentUser/test.txt"};
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 1;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionPrivileged(uriVec, flag, targetTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_TYPE); // not ERR_UPMS_INVALID_TARGET_TOKENID: grant proceeds
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermissionPrivileged (targetTokenId)
+ * SubFunction: NA
+ * FunctionPoints: all checks passed, delegation to GrantUriPermissionPrivilegedInner
+ *                 (all uris invalid -> ERR_CODE_INVALID_URI_TYPE)
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_WithTokenId_007, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    MyFlag::fudUtilsGenerateFUDAppInfoRet_ = true;
+    MyFlag::isUriTypeValid_ = false; // all uris filtered out in inner
+    std::vector<std::string> uriVec = {"file://docs/storage/Users/currentUser/test.txt"};
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 1;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionPrivileged(uriVec, flag, targetTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_TYPE);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermissionPrivileged (targetTokenId, rawData)
+ * SubFunction: NA
+ * FunctionPoints: rawData path - permission check runs before rawData deserialization
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_WithTokenId_008, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = false;
+    UriPermissionRawData rawData;
+    rawData.data = nullptr;
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 1;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionPrivileged(rawData, flag, targetTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermissionPrivileged (targetTokenId, rawData)
+ * SubFunction: NA
+ * FunctionPoints: rawData path - null data with permission granted yields ERR_DEAD_OBJECT
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_WithTokenId_009, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    UriPermissionRawData rawData;
+    rawData.data = nullptr;
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 1;
+    int32_t funcResult = ERR_CODE_INVALID_URI_TYPE;
+    auto result = upmsi->GrantUriPermissionPrivileged(rawData, flag, targetTokenId, funcResult);
+    EXPECT_EQ(funcResult, ERR_DEAD_OBJECT);
+    EXPECT_EQ(result, ERR_DEAD_OBJECT);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: GrantUriPermissionPrivileged (targetTokenId)
+ * SubFunction: NA
+ * FunctionPoints: caller token ID that is neither a valid hap app nor a SA
+ *                 (GenerateFUDAppInfo with supportSA fails) is rejected
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_GrantUriPermissionPrivileged_WithTokenId_010, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    MyFlag::permissionPrivileged_ = true;
+    // first GenerateFUDAppInfo call: target valid; second call: caller invalid
+    MyFlag::PushGenerateFUDAppInfoResult(true, 1);
+    MyFlag::PushGenerateFUDAppInfoResult(false, -1);
+    std::vector<std::string> uriVec = {"file://docs/storage/Users/currentUser/test.txt"};
+    uint32_t flag = 1;
+    uint32_t targetTokenId = 1;
+    int32_t funcResult = 0;
+    auto result = upmsi->GrantUriPermissionPrivileged(uriVec, flag, targetTokenId, funcResult);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(funcResult, ERR_UPMS_INVALID_CALLER_TOKENID);
+}
+
+/*
+ * Feature: UriPermissionManagerService
  * Function: GrantUriPermissionPrivilegedInner
  * SubFunction: NA
  * FunctionPoints: UriPermissionManagerService GrantUriPermissionPrivilegedInner

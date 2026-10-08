@@ -45,6 +45,7 @@ constexpr static char AGENT_UI_EXTENSION[] = "AgentUIExtensionAbility";
 constexpr static char AUTO_FILL_EXTENSION[] = "AutoFillExtensionAbility";
 #endif  // SUPPORT_AUTO_FILL
 constexpr static char EMBEDDED_UI_EXTENSION[] = "EmbeddedUIExtensionAbility";
+constexpr static char UKEY_AUTH_EXTENSION[] = "UkeyAuthExtensionAbility";
 constexpr static char PHOTO_EDITOR_EXTENSION[] = "PhotoEditorExtensionAbility";
 constexpr static char VPN_EXTENSION[] = "VpnExtension";
 #endif
@@ -77,6 +78,7 @@ const std::map<AppExecFwk::ExtensionAbilityType, std::string> UI_EXTENSION_NAME_
     { AppExecFwk::ExtensionAbilityType::AUTO_FILL_SMART, AUTO_FILL_EXTENSION },
 #endif  // SUPPORT_AUTO_FILL
     { AppExecFwk::ExtensionAbilityType::EMBEDDED_UI, EMBEDDED_UI_EXTENSION },
+    { AppExecFwk::ExtensionAbilityType::UKEY_AUTH, UKEY_AUTH_EXTENSION },
     { AppExecFwk::ExtensionAbilityType::PHOTO_EDITOR, PHOTO_EDITOR_EXTENSION },
     { AppExecFwk::ExtensionAbilityType::FORM_EDIT, FORM_EDIT_EXTENSION },
     { AppExecFwk::ExtensionAbilityType::LIVE_FORM, LIVE_FORM_EXTENSION }

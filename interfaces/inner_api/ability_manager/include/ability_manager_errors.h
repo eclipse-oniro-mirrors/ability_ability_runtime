@@ -1194,6 +1194,11 @@ enum {
     ERR_QUERY_DISPOSED_RULE_FAILED = 2099422,
 
     /**
+     * Result(2099423) for the UIAbility is not a native ability.
+     */
+    ERR_NOT_NATIVE_UI_ABILITY = 2099423,
+
+    /**
      * Native error(3000000) for target bundle not exist.
      */
     ERR_CODE_NOT_EXIST = 3000000,

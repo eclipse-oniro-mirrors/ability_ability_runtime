@@ -28,6 +28,12 @@ bool ExecOptions::Marshalling(Parcel &parcel) const
     if (!parcel.WriteInt64(timeout)) {
         return false;
     }
+    if (!parcel.WriteString(toolCallId)) {
+        return false;
+    }
+    if (!parcel.WriteString(dmSessionId)) {
+        return false;
+    }
     return true;
 }
 
@@ -49,7 +55,32 @@ ExecOptions *ExecOptions::Unmarshalling(Parcel &parcel)
         delete options;
         return nullptr;
     }
+    if (!parcel.ReadString(options->toolCallId)) {
+        delete options;
+        return nullptr;
+    }
+    if (!parcel.ReadString(options->dmSessionId)) {
+        delete options;
+        return nullptr;
+    }
     return options;
+}
+
+bool IsValidTraceId(const std::string &value)
+{
+    if (value.empty()) {
+        return true;
+    }
+    if (value.length() > TRACE_ID_MAX_LEN) {
+        return false;
+    }
+    for (char c : value) {
+        if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+            (c >= '0' && c <= '9') || c == '_' || c == '-')) {
+            return false;
+        }
+    }
+    return true;
 }
 } // namespace CliTool
 } // namespace OHOS

@@ -16,6 +16,7 @@
 #include "cli_tool_mgr_client.h"
 
 #include "errors.h"
+#include "string_wrapper.h"
 
 namespace OHOS {
 namespace CliTool {
@@ -35,6 +36,29 @@ ErrCode CliToolMGRClient::GetFunctionInfo(const std::string &bundleName, const s
     // On success, surface the configured function type so tests can drive the
     // executor's type-validation branch (Step 2 of DoExecute).
     function.functionType = mockFunctionType_;
+    return ERR_OK;
+}
+
+ErrCode CliToolMGRClient::BeforeInvokeFunction(InvokeFunctionParam &param)
+{
+    if (!mockHookModify_) {
+        return ERR_OK;
+    }
+    if (!mockHookToolCallId_.empty()) {
+        param.invokeOptions.toolCallId = mockHookToolCallId_;
+        param.args.SetParam(RESERVED_KEY_TOOL_CALL_ID, AAFwk::String::Box(mockHookToolCallId_));
+    }
+    if (!mockHookDmSessionId_.empty()) {
+        param.invokeOptions.dmSessionId = mockHookDmSessionId_;
+        param.args.SetParam(RESERVED_KEY_DM_SESSION_ID, AAFwk::String::Box(mockHookDmSessionId_));
+    }
+    return ERR_OK;
+}
+
+ErrCode CliToolMGRClient::AfterInvokeFunction(FunctionResultWrap &functionResultWrap)
+{
+    afterHookCalled_ = true;
+    lastWrap_ = functionResultWrap;
     return ERR_OK;
 }
 

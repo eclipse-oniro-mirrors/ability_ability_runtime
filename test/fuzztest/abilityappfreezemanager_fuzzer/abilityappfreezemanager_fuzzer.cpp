@@ -330,7 +330,10 @@ void FuzzGetProcessKillReason(FuzzedDataProvider &fdp,
             killId = fdp.ConsumeIntegral<int32_t>();
             break;
     }
-    mgr->GetProcessKillReason(killId, pid, killMsg, foreground);
+    AppfreezeManager::ProcessKillInfo killInfo;
+    killInfo.pid = pid;
+    killInfo.foreground = foreground;
+    mgr->GetProcessKillReason(killInfo, killId, killMsg);
 }
 
 void FuzzGetFreezeExitReason(FuzzedDataProvider &fdp,

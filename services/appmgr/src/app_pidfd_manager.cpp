@@ -55,7 +55,7 @@ AppPidFdManager::~AppPidFdManager()
         if (item.second.pidfd >= 0) {
             ffrt_qos_t qos = 0;
             ffrt_epoll_ctl(qos, EPOLL_CTL_DEL, item.second.pidfd, 0, nullptr, nullptr);
-            close(item.second.pidfd);
+            fdsan_close_with_tag(item.second.pidfd, static_cast<uint32_t>(AAFwkTag::APPMGR));
         }
     }
     pidfdMap_.clear();
@@ -88,6 +88,7 @@ void AppPidFdManager::AddWatcher(pid_t pid, PidFdType type)
         DispatchCleanup(pid, type);
         return;
     }
+    fdsan_exchange_owner_tag(pidfd, 0, static_cast<uint32_t>(AAFwkTag::APPMGR));
 
     // The pid is stored in the map entry itself; the callback reads it via the
     // stable address of entry->second.pid (std::map nodes do not relocate).
@@ -100,7 +101,7 @@ void AppPidFdManager::AddWatcher(pid_t pid, PidFdType type)
             // Should not happen; replace the stale entry defensively.
             ffrt_qos_t qos = 0;
             ffrt_epoll_ctl(qos, EPOLL_CTL_DEL, it->second.pidfd, 0, nullptr, nullptr);
-            close(it->second.pidfd);
+            fdsan_close_with_tag(it->second.pidfd, static_cast<uint32_t>(AAFwkTag::APPMGR));
             it->second.pidfd = pidfd;
             it->second.pid = static_cast<int32_t>(pid);
             data = &it->second.pid;
@@ -121,7 +122,7 @@ void AppPidFdManager::AddWatcher(pid_t pid, PidFdType type)
         if (it != pidfdMap_.end() && it->second.pidfd == pidfd) {
             pidfdMap_.erase(it);
         }
-        close(pidfd);
+        fdsan_close_with_tag(pidfd, static_cast<uint32_t>(AAFwkTag::APPMGR));
         DispatchCleanup(pid, type);
         return;
     }
@@ -168,7 +169,7 @@ void AppPidFdManager::OnPidfdFired(pid_t pid, PidFdType type)
     if (pidfd >= 0) {
         ffrt_qos_t qos = 0;
         ffrt_epoll_ctl(qos, EPOLL_CTL_DEL, pidfd, 0, nullptr, nullptr);
-        close(pidfd);
+        fdsan_close_with_tag(pidfd, static_cast<uint32_t>(AAFwkTag::APPMGR));
     }
     DispatchCleanup(pid, type);
 }

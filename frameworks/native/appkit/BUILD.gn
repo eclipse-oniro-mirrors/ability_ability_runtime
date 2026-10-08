@@ -359,6 +359,7 @@ ohos_shared_library("appkit_native") {
 }
 
 ohos_shared_library("ability_stage_ani") {
+  version_script = "libability_stage_ani.map"
   branch_protector_ret = "pac_ret"
   branch_protector_frt = "bti"
 

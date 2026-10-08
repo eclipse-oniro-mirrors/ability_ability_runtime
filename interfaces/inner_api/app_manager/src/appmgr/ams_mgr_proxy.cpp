@@ -188,8 +188,7 @@ void AmsMgrProxy::UpdateAbilityState(const sptr<IRemoteObject> &token, const Abi
         TAG_LOGE(AAFwkTag::APPMGR, "Failed to write isFromScreenOffBackground");
         return;
     }
-    if (!data.WriteInt32(callerInfo.callerUid) || !data.WriteString(callerInfo.callerBundleName) ||
-        !data.WriteBool(callerInfo.isCallBySCB)) {
+    if (!data.WriteInt32(callerInfo.callerUid) || !data.WriteString(callerInfo.callerBundleName)) {
         TAG_LOGE(AAFwkTag::APPMGR, "Failed to write caller info");
         return;
     }
@@ -1108,6 +1107,7 @@ int32_t AmsMgrProxy::GetBundleNameByPid(const int pid, std::string &bundleName, 
             data, reply, option);
     if (ret != NO_ERROR) {
         TAG_LOGW(AAFwkTag::APPMGR, "SendRequest err: %{public}d", ret);
+        return ret;
     }
     bundleName = reply.ReadString();
     uid = reply.ReadInt32();

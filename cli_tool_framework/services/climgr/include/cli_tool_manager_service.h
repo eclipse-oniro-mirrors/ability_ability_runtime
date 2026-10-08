@@ -126,42 +126,48 @@ public:
     int32_t BatchRegisterFunctions(const FunctionsRawData &functions, int32_t &successCount) override;
 
     /**
-     * @brief Get function information by bundleName and functionName
+     * @brief Get function information by bundleName and functionName; always scoped to
+     *        the IPC caller's own user
      * @param bundleName Bundle name
      * @param functionName Function name
      * @param function Output FunctionInfo
      * @return int32_t ERR_OK if found, error code otherwise
      */
-    int32_t GetFunctionInfo(const std::string &functionNamespace, const std::string &functionName,
-        FunctionInfo &function) override;
+    int32_t GetFunctionInfo(const std::string &functionNamespace,
+        const std::string &functionName, FunctionInfo &function) override;
 
     /**
      * @brief Unregister a function
+     * @param userId Owner user whose record is deleted (caller-supplied, must be >= 0)
      * @param functionNamespace Namespace
      * @param functionName Function name
      * @return int32_t ERR_OK on success, error code otherwise
      */
-    int32_t UnregisterFunction(const std::string &functionNamespace, const std::string &functionName) override;
+    int32_t UnregisterFunction(int32_t userId, const std::string &functionNamespace,
+        const std::string &functionName) override;
 
     /**
      * @brief Batch unregister intentFunctions by namespace
+     * @param userId Owner user whose records are deleted (caller-supplied, must be >= 0)
      * @param functionNamespace Namespace to delete all functions from
      * @return int32_t ERR_OK on success, error code otherwise
      */
-    int32_t UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace) override;
+    int32_t UnregisterIntentFunctionsByNamespace(int32_t userId, const std::string &functionNamespace) override;
 
     /**
      * @brief Reset all functions by namespace (delete all existing and add new ones)
+     * @param userId Owner user whose records are reset (caller-supplied, must be >= 0)
      * @param functionNamespace Namespace to reset functions for
      * @param functions New function list to replace existing ones
      * @param successCount Output count of successfully reset functions
      * @return int32_t ERR_OK on success, error code otherwise
      */
-    int32_t ResetNamespaceFunctions(const std::string &functionNamespace,
+    int32_t ResetNamespaceFunctions(int32_t userId, const std::string &functionNamespace,
         const FunctionsRawData &functions, int32_t &successCount) override;
 
     /**
-     * @brief Get all functions via raw data (for large data transfer)
+     * @brief Get all functions via raw data (for large data transfer); always scoped to
+     *        the IPC caller's own user
      * @param functions Output FunctionsRawData
      * @return int32_t ERR_OK on success, error code otherwise
      */
@@ -183,18 +189,21 @@ public:
 
     /**
      * @brief Batch unregister intentFunctions by namespace (one-way, result not reported to caller)
+     * @param userId Owner user whose records are deleted (caller-supplied, must be >= 0)
      * @param functionNamespace Namespace to delete all functions from
      * @return int32_t ERR_OK on success, error code otherwise (local result only, not sent back)
      */
-    int32_t UnregisterIntentFunctionsByNamespaceAsync(const std::string &functionNamespace) override;
+    int32_t UnregisterIntentFunctionsByNamespaceAsync(int32_t userId,
+        const std::string &functionNamespace) override;
 
     /**
      * @brief Reset all functions by namespace (one-way, result not reported to caller)
+     * @param userId Owner user whose records are reset (caller-supplied, must be >= 0)
      * @param functionNamespace Namespace to reset functions for
      * @param functions New function list to replace existing ones
      * @return int32_t ERR_OK on success, error code otherwise (local result only, not sent back)
      */
-    int32_t ResetNamespaceFunctionsAsync(const std::string &functionNamespace,
+    int32_t ResetNamespaceFunctionsAsync(int32_t userId, const std::string &functionNamespace,
         const FunctionsRawData &functions) override;
 
     void OnHookDied(const wptr<IRemoteObject> &remote, HookType type);
@@ -270,7 +279,27 @@ private:
     void UnregisterSessionWithMonitors(const std::string &sessionId);
 
     int32_t ValidateExecToolPermissions();
+    int32_t ValidateExecCmdPublicPermissions(bool isShellCommand);
+    int32_t SubscribeSessionInternal(const std::string &sessionId, const std::string &subscriptionId,
+        const sptr<ICliToolManagerScheduler> &scheduler);
     int32_t ValidateSessionLimit();
+    int32_t ValidateSessionPermissions();
+
+    /**
+     * @brief Reject callers other than the foundation process (native token) for function write APIs.
+     * @param apiName Interface name used in permission-denied logs.
+     * @return Returns ERR_OK if the caller is foundation, ERR_PERMISSION_DENIED otherwise.
+     */
+    int32_t ValidateFoundationCaller(const char *apiName);
+
+    /**
+     * @brief Filter functions for ResetNamespaceFunctions: skip entries failing FunctionInfo::Validate and
+     * reject the whole batch when any entry's namespace/userId mismatches. An empty result is valid and
+     * degrades the reset to deleting all existing functions under (userId, namespace).
+     * @return Returns ERR_OK with validFunctions filled, ERR_INVALID_PARAM on mismatch.
+     */
+    int32_t FilterFunctionsForReset(int32_t userId, const std::string &functionNamespace,
+        const std::vector<FunctionInfo> &functionList, std::vector<FunctionInfo> &validFunctions);
     int32_t ValidateAndPrepareTool(const ExecToolParam &param, uint32_t tokenId,
         ToolInfo &toolInfo, std::string &sandboxConfig, std::string &bundleName, std::string& detail);
 
@@ -327,7 +356,7 @@ private:
     sptr<ICliHookInterface> CheckCliHook(uint32_t flag);
     sptr<IFunctionHookInterface> CheckFunctionHook(uint32_t flag);
     void InvokeBeforeCallTool(ExecToolParam &param);
-    void InvokeAfterCallTool(CliSessionInfo &session, SessionType sessionType);
+    void InvokeAfterCallTool(CliSessionInfo &session, const SessionRecord &record);
     void InvokeBeforeCallCmd(ExecCmdParam &param);
 
     bool initialized_ = false;
