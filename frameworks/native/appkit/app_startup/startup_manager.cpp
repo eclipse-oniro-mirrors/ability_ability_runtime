@@ -194,6 +194,7 @@ int32_t StartupManager::BuildAutoAppStartupTaskManager(std::shared_ptr<AAFwk::Wa
     if (startupConfig != nullptr) {
         startupTaskManager->SetConfig(startupConfig);
     }
+    startupTaskManager->SetPreAbilityStageLoad(preAbilityStageLoad);
     startupTaskManagerMap_.emplace(startupTaskManagerId, startupTaskManager);
     startupTaskManagerId++;
     return ERR_OK;
