@@ -18,6 +18,7 @@
 #include "app_mgr_service_inner.h"
 #include "datetime_ex.h"
 #include "iremote_object.h"
+#include "task_mgr/task_manager_service.h"
 
 #include "appexecfwk_errors.h"
 #include "app_utils.h"
@@ -477,6 +478,10 @@ bool AppRunningManager::CheckAppRunningRecordIsLast(const std::shared_ptr<AppRun
 int32_t AppRunningManager::DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
 {
     return ERR_OK;
+}
+
+void AppRunningManager::SetTaskManagerService(const sptr<TaskManagerService> &taskManagerService)
+{
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

@@ -18,6 +18,7 @@
 #include "app_mgr_service_inner.h"
 #include "datetime_ex.h"
 #include "iremote_object.h"
+#include "task_mgr/task_manager_service.h"
 
 #include "appexecfwk_errors.h"
 #include "app_utils.h"
@@ -192,6 +193,10 @@ std::map<const int32_t, const std::shared_ptr<AppRunningRecord>> AppRunningManag
 {
     AAFwk::MyStatus::GetInstance().getAppRunningRecordMapCall_++;
     return AAFwk::MyStatus::GetInstance().getAppRunningRecordMap_;
+}
+
+void AppRunningManager::SetTaskManagerService(const sptr<TaskManagerService> &taskManagerService)
+{
 }
 
 void AppRunningManager::RemoveAppRunningRecordById(const int32_t recordId)
