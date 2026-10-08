@@ -2346,6 +2346,7 @@ void MainThread::HandleNWebPreload()
             return;
         }
         auto initArgs = std::make_shared<NWeb::NWebEngineInitArgsImpl>();
+        initArgs->SetIsPreloadNWeb(true);
         preloadNWeb_ = NWeb::NWebAdapterHelper::Instance().CreateNWeb(surface, initArgs,
             NWEB_SURFACE_SIZE, NWEB_SURFACE_SIZE, false);
         if (!preloadNWeb_) {
