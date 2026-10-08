@@ -225,7 +225,7 @@ HWTEST_F(QuickFixManagerApplyTaskMoreTest, HandlePatchDeleted_0400, TestSize.Lev
 
 /**
  * @tc.name: HandleRevokeQuickFixAppRunning_0300
- * @tc.desc: isSoContained true should register app state observer and remove timeout task.
+ * @tc.desc: isSoContained true should register app state observer and post timeout task.
  * @tc.type: FUNC
  * @tc.require: issueI5OD2E
  */

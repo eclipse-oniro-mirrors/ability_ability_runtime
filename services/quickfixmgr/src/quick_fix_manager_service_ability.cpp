@@ -63,6 +63,7 @@ void QuickFixManagerServiceAbility::OnStop()
         service_->Stop();
         service_ = nullptr;
     }
+    QuickFixManagerService::ResetInstance();
 }
 }  // namespace AAFwk
 }  // namespace OHOS

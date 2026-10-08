@@ -76,7 +76,7 @@ private:
     void PostRevokeQuickFixTask();
     void HandleRevokeQuickFixAppRunning();
     void PostRevokeQuickFixNotifyUnloadPatchTask();
-    void HandleRevokeQuickFixAppStop();
+    bool HandleRevokeQuickFixAppStop();
 
     sptr<AppExecFwk::IQuickFixManager> bundleQfMgr_ = nullptr;
     sptr<AppExecFwk::IAppMgr> appMgr_ = nullptr;

@@ -40,6 +40,11 @@ public:
     static sptr<QuickFixManagerService> GetInstance();
 
     /**
+     * @brief Reset the instance of quick fix manager service.
+     */
+    static void ResetInstance();
+
+    /**
      * @brief Init quick fix manager service, such as event runner and event handler.
      *
      * @return Returns true when init succeed, false when init failed.
@@ -105,6 +110,7 @@ private:
         bool &isSoContained);
     int32_t GetApplyedQuickFixInfoInner(const std::string &bundleName,
         ApplicationQuickFixInfo &quickFixInfo, int32_t userId, bool isCheckDebugApp);
+    std::shared_ptr<AppExecFwk::EventHandler> GetEventHandler();
 
     static std::mutex mutex_;
     static sptr<QuickFixManagerService> instance_;
