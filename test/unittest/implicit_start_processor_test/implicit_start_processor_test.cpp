@@ -1784,8 +1784,8 @@ HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_003, TestSize.
  * SubFunction: NA
  * FunctionPoints: ImplicitStartProcessor FilterClonesByPreferredIndex
  * EnvConditions: NA
- * CaseDescription: preferred index configured & present in candidates; non-preferred clones of
- *                 that bundle are removed; bundles without preferred config are kept intact.
+ * CaseDescription: Multiple apps matched → preferred clone filter is skipped entirely;
+ *                 all candidates are retained regardless of preferred index config.
  */
 HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_004, TestSize.Level1)
 {
@@ -1816,23 +1816,7 @@ HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_004, TestSize.
     MockMultiAppUtilsStatus::preferredIndexMap_["bundleA"] = 2;
     processor->FilterClonesByPreferredIndex(dialogAppInfos, 0);
 
-    ASSERT_EQ(dialogAppInfos.size(), 3);
-    int32_t bundleACount = 0;
-    int32_t bundleBCount = 0;
-    int32_t bundleAPreferredCount = 0;
-    for (const auto &info : dialogAppInfos) {
-        if (info.bundleName == "bundleA") {
-            bundleACount++;
-            if (info.appIndex == 2) {
-                bundleAPreferredCount++;
-            }
-        } else if (info.bundleName == "bundleB") {
-            bundleBCount++;
-        }
-    }
-    EXPECT_EQ(bundleACount, 1);
-    EXPECT_EQ(bundleAPreferredCount, 1);
-    EXPECT_EQ(bundleBCount, 2);
+    EXPECT_EQ(dialogAppInfos.size(), 5);
     TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_004 end");
 }
 
@@ -1872,8 +1856,8 @@ HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_005, TestSize.
  * SubFunction: NA
  * FunctionPoints: ImplicitStartProcessor FilterClonesByPreferredIndex
  * EnvConditions: NA
- * CaseDescription: bundles with a single candidate (count<=1) are skipped even when a preferred
- *                 index is configured; multi-clone bundles with preferred index are filtered.
+ * CaseDescription: Multiple apps matched → preferred clone filter is skipped entirely;
+ *                 all candidates are retained regardless of preferred index config.
  */
 HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_006, TestSize.Level1)
 {
@@ -1897,19 +1881,7 @@ HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_006, TestSize.
     MockMultiAppUtilsStatus::preferredIndexMap_["bundleB"] = 1;
     processor->FilterClonesByPreferredIndex(dialogAppInfos, 0);
 
-    ASSERT_EQ(dialogAppInfos.size(), 2);
-    bool preferredKept = false;
-    bool singleBundleKept = false;
-    for (const auto &info : dialogAppInfos) {
-        if (info.bundleName == "bundleA" && info.appIndex == 2) {
-            preferredKept = true;
-        }
-        if (info.bundleName == "bundleB" && info.appIndex == 1) {
-            singleBundleKept = true;
-        }
-    }
-    EXPECT_TRUE(preferredKept);
-    EXPECT_TRUE(singleBundleKept);
+    EXPECT_EQ(dialogAppInfos.size(), 3);
     TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_006 end");
 }
 

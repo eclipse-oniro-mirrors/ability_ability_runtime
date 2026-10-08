@@ -1248,32 +1248,29 @@ void ImplicitStartProcessor::FilterClonesByPreferredIndex(
     for (const auto &info : dialogAppInfos) {
         cloneCount[info.bundleName]++;
     }
-    std::map<std::string, int32_t> preferredMap;
-    for (const auto &item : cloneCount) {
-        if (item.second <= 1) {
-            continue;
-        }
-        int32_t preferredAppIndex = 0;
-        if (MultiAppUtils::GetPreferredAppCloneIndex(item.first, userId, preferredAppIndex) &&
-            IsPreferredCloneExist(dialogAppInfos, item.first, preferredAppIndex)) {
-            preferredMap[item.first] = preferredAppIndex;
-        }
+    if (cloneCount.size() != 1) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "multiple apps matched, skip preferred clone filter");
+        return;
     }
-    if (preferredMap.empty()) {
+    const auto &singleBundle = *cloneCount.begin();
+    if (singleBundle.second <= 1) {
+        return;
+    }
+    int32_t preferredAppIndex = 0;
+    if (!MultiAppUtils::GetPreferredAppCloneIndex(singleBundle.first, userId, preferredAppIndex) ||
+        !IsPreferredCloneExist(dialogAppInfos, singleBundle.first, preferredAppIndex)) {
         return;
     }
     std::vector<DialogAppInfo> result;
     for (const auto &info : dialogAppInfos) {
-        auto it = preferredMap.find(info.bundleName);
-        if (it != preferredMap.end() && info.appIndex != it->second) {
-            TAG_LOGI(AAFwkTag::ABILITYMGR,
-                "filter clone, bundle: %{public}s, appIndex: %{public}d, preferred: %{public}d",
-                info.bundleName.c_str(), info.appIndex, it->second);
-            continue;
+        if (info.bundleName == singleBundle.first && info.appIndex == preferredAppIndex) {
+            result.push_back(info);
         }
-        result.push_back(info);
     }
-    if (result.size() < dialogAppInfos.size()) {
+    if (!result.empty()) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR,
+            "single app matched, preferred clone: %{public}s, appIndex: %{public}d, launch directly",
+            singleBundle.first.c_str(), preferredAppIndex);
         dialogAppInfos = std::move(result);
     }
 }
