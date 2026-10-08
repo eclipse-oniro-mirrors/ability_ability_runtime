@@ -1307,6 +1307,59 @@ public:
     }
 
     virtual void CancelDelayedExitTask(int32_t pid) {}
+
+    /**
+     * @brief Starts a task with the specified task id and priority.
+     * @param taskId Indicates the attribution key of the task.
+     * @param priority Indicates the task priority.
+     * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
+     *         ERR_NOT_SYSTEM_APP if the caller is not a system app;
+     *         ERR_TASK_ALREADY_EXISTS if the task already exists.
+     */
+    virtual int32_t StartTask(const std::string &taskId, int32_t priority)
+    {
+        return ERR_OK;
+    }
+
+    /**
+     * @brief Finishes the task with the specified task id.
+     * @param taskId Indicates the attribution key of the task.
+     * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
+     *         ERR_NOT_SYSTEM_APP if the caller is not a system app;
+     *         ERR_TASK_NOT_FOUND if the task does not exist (idempotent).
+     */
+    virtual int32_t FinishTask(const std::string &taskId)
+    {
+        return ERR_OK;
+    }
+
+    /**
+     * @brief Attributes a process into the task, called by tool chains such as
+     *        insight/CLI/A2A/ability; the caller passes its own tool type.
+     * @param taskId Indicates the attribution key of the task.
+     * @param pid Indicates the pid of the attributed process.
+     * @param toolType Indicates the tool chain that attributes the process.
+     * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
+     *         ERR_PERMISSION_DENIED if the caller is not a system ability or shell;
+     *         ERR_TASK_NOT_FOUND if the task does not exist.
+     */
+    virtual int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType)
+    {
+        return ERR_OK;
+    }
+
+    /**
+     * @brief Removes a process from the managed set of the task.
+     * @param taskId Indicates the attribution key of the task.
+     * @param pid Indicates the pid of the process to remove.
+     * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
+     *         ERR_PERMISSION_DENIED if the caller is not a system ability or shell;
+     *         ERR_TASK_NOT_FOUND if the task does not exist.
+     */
+    virtual int32_t UnregisterManagedProcess(const std::string &taskId, int32_t pid)
+    {
+        return ERR_OK;
+    }
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

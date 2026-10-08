@@ -17,29 +17,28 @@
 #define OHOS_APP_EXECFWK_TASK_MGR_TASK_MANAGER_SERVICE_H
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 
-#include "itask_manager.h"
 #include "task_handler_wrap.h"
-#include "task_manager_stub.h"
 #include "task_mgr/task_record.h"
 
 namespace OHOS {
 namespace AppExecFwk {
 /**
- * @brief Task lifecycle manager hosted by AppMgrService (SA 501), reached through the
- *        interface-descriptor routing in AppMgrService::OnRemoteRequest.
+ * @brief Task lifecycle manager hosted by AppMgrService (SA 501). The IPC entries live on
+ *        IAppMgr and AppMgrService forwards to this class.
  *
- * All state (tasks_) is owned by the shared app_mgr serial queue (taskHandler_): the binder
+ * All state (tasks_) is owned by the shared app_mgr serial queue (taskHandler_): the
  * entries (StartTask/FinishTask) only capture caller identity, validate and submit, so no
  * lock is needed anywhere. The single-exit FinishTaskInner gathers the three finish paths
  * (caller finish / timeout / creator process death) into one cleanup routine.
  */
-class TaskManagerService : public TaskManagerStub {
+class TaskManagerService {
 public:
     explicit TaskManagerService(const std::shared_ptr<AAFwk::TaskHandlerWrap> &taskHandler);
-    ~TaskManagerService() override = default;
+    ~TaskManagerService() = default;
 
     /**
      * @brief Caller identity captured on the binder thread, taken from the IPC framework
@@ -62,7 +61,7 @@ public:
      *         ERR_NOT_SYSTEM_APP if the caller is not a system app;
      *         ERR_TASK_ALREADY_EXISTS if the task already exists.
      */
-    int32_t StartTask(const std::string &taskId, int32_t priority) override;
+    int32_t StartTask(const std::string &taskId, int32_t priority);
 
     /**
      * @brief Finishes a task (binder entry): validate and submit to the serial queue.
@@ -71,7 +70,7 @@ public:
      *         ERR_NOT_SYSTEM_APP if the caller is not a system app;
      *         ERR_TASK_NOT_FOUND if the task does not exist (idempotent).
      */
-    int32_t FinishTask(const std::string &taskId) override;
+    int32_t FinishTask(const std::string &taskId);
 
     /**
      * @brief Creates the task record on the serial queue.
@@ -133,7 +132,7 @@ public:
      *         ERR_PERMISSION_DENIED if the caller is not a system ability or shell;
      *         ERR_TASK_NOT_FOUND if the task does not exist.
      */
-    int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType) override;
+    int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType);
 
     /**
      * @brief Removes a process from the managed set of the task.
@@ -143,7 +142,7 @@ public:
      *         ERR_PERMISSION_DENIED if the caller is not a system ability or shell;
      *         ERR_TASK_NOT_FOUND if the task does not exist.
      */
-    int32_t UnregisterManagedProcess(const std::string &taskId, int32_t pid) override;
+    int32_t UnregisterManagedProcess(const std::string &taskId, int32_t pid);
 
     /**
      * @brief Attributes a process into the task on the serial queue.

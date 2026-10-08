@@ -420,17 +420,36 @@ public:
     int Dump(int fd, const std::vector<std::u16string>& args) override;
 
     /**
-     * @brief Remote request entry with interface-descriptor routing: requests carrying the
-     *        ITaskManager descriptor are delegated to the TaskManagerService stub, while
-     *        IAppMgr traffic keeps the original AppMgrStub dispatch untouched.
-     * @param code Indicates the transaction code.
-     * @param data Indicates the data parcel.
-     * @param reply Indicates the reply parcel.
-     * @param option Indicates the message option.
-     * @return Returns the processing result.
+     * @brief Starts a task with the specified task id and priority.
+     * @param taskId Indicates the attribution key of the task.
+     * @param priority Indicates the task priority.
+     * @return Returns ERR_OK on success; others on failure.
      */
-    int OnRemoteRequest(uint32_t code, MessageParcel &data, MessageParcel &reply,
-        MessageOption &option) override;
+    int32_t StartTask(const std::string &taskId, int32_t priority) override;
+
+    /**
+     * @brief Finishes the task with the specified task id.
+     * @param taskId Indicates the attribution key of the task.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    int32_t FinishTask(const std::string &taskId) override;
+
+    /**
+     * @brief Attributes a process into the task.
+     * @param taskId Indicates the attribution key of the task.
+     * @param pid Indicates the pid of the attributed process.
+     * @param toolType Indicates the tool chain that attributes the process.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType) override;
+
+    /**
+     * @brief Removes a process from the managed set of the task.
+     * @param taskId Indicates the attribution key of the task.
+     * @param pid Indicates the pid of the process to remove.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    int32_t UnregisterManagedProcess(const std::string &taskId, int32_t pid) override;
 
     /**
      * @brief called when the abilityStage's onAcceptWant lifecycle completed.

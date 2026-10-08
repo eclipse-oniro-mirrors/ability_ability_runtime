@@ -27,7 +27,7 @@
 #include "errors.h"
 #include "ets_error_utils.h"
 #include "hilog_tag_wrapper.h"
-#include "task_mgr/task_manager_client.h"
+#include "appmgr/app_mgr_client.h"
 
 namespace OHOS {
 namespace TaskManagerEts {
@@ -102,7 +102,14 @@ void EtsTaskManager::NativeStartTask(ani_env *env, ani_string aniTaskId, ani_enu
         CallbackInvalidParam(env, callback);
         return;
     }
-    int32_t ret = AppExecFwk::TaskManagerClient::GetInstance().StartTask(taskId, priority);
+    auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+    if (appMgrClient == nullptr) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "app mgr client is null");
+        AppExecFwk::AsyncCallback(env, callback,
+            AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env, AAFwk::INNER_ERR), nullptr);
+        return;
+    }
+    int32_t ret = appMgrClient->StartTask(taskId, priority);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "startTask failed: %{public}d", ret);
         AppExecFwk::AsyncCallback(env, callback,
@@ -125,7 +132,14 @@ void EtsTaskManager::NativeFinishTask(ani_env *env, ani_string aniTaskId, ani_ob
         CallbackInvalidParam(env, callback);
         return;
     }
-    int32_t ret = AppExecFwk::TaskManagerClient::GetInstance().FinishTask(taskId);
+    auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+    if (appMgrClient == nullptr) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "app mgr client is null");
+        AppExecFwk::AsyncCallback(env, callback,
+            AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env, AAFwk::INNER_ERR), nullptr);
+        return;
+    }
+    int32_t ret = appMgrClient->FinishTask(taskId);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "finishTask failed: %{public}d", ret);
         AppExecFwk::AsyncCallback(env, callback,

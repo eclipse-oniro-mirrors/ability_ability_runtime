@@ -24,7 +24,7 @@
 #include "hilog_tag_wrapper.h"
 #include "js_error_utils.h"
 #include "js_runtime_utils.h"
-#include "task_mgr/task_manager_client.h"
+#include "appmgr/app_mgr_client.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -133,7 +133,12 @@ private:
         napi_value lastParam = (info.argc >= ARGC_THREE) ? info.argv[INDEX_TWO] : nullptr;
         auto innerErrCode = std::make_shared<int32_t>(ERR_OK);
         NapiAsyncTask::ExecuteCallback execute = [taskId, priority, innerErrCode]() {
-            *innerErrCode = AppExecFwk::TaskManagerClient::GetInstance().StartTask(taskId, priority);
+            auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+            if (appMgrClient == nullptr) {
+                *innerErrCode = AAFwk::INNER_ERR;
+                return;
+            }
+            *innerErrCode = appMgrClient->StartTask(taskId, priority);
         };
         NapiAsyncTask::CompleteCallback complete = [innerErrCode](napi_env env, NapiAsyncTask &task,
             int32_t status) {
@@ -170,7 +175,12 @@ private:
         napi_value lastParam = (info.argc >= ARGC_TWO) ? info.argv[INDEX_ONE] : nullptr;
         auto innerErrCode = std::make_shared<int32_t>(ERR_OK);
         NapiAsyncTask::ExecuteCallback execute = [taskId, innerErrCode]() {
-            *innerErrCode = AppExecFwk::TaskManagerClient::GetInstance().FinishTask(taskId);
+            auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+            if (appMgrClient == nullptr) {
+                *innerErrCode = AAFwk::INNER_ERR;
+                return;
+            }
+            *innerErrCode = appMgrClient->FinishTask(taskId);
         };
         NapiAsyncTask::CompleteCallback complete = [innerErrCode](napi_env env, NapiAsyncTask &task,
             int32_t status) {

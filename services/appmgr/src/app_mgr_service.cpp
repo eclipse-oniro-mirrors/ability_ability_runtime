@@ -40,7 +40,6 @@
 #include "permission_constants.h"
 #include "permission_verification.h"
 #include "system_ability_definition.h"
-#include "task_mgr/task_manager_client.h"
 #include "task_mgr/task_manager_service.h"
 #include "accesstoken_kit.h"
 #include "app_mgr_service_const.h"
@@ -174,33 +173,40 @@ void AppMgrService::SetInnerService(const std::shared_ptr<AppMgrServiceInner> &i
     appMgrServiceInner_ = innerService;
 }
 
-int AppMgrService::OnRemoteRequest(uint32_t code, MessageParcel &data, MessageParcel &reply,
-    MessageOption &option)
+int32_t AppMgrService::StartTask(const std::string &taskId, int32_t priority)
 {
-    size_t tokenReadPos = data.GetReadPosition();
-    std::u16string remoteDescriptor = data.ReadInterfaceToken();
-    bool isTaskMgr = (remoteDescriptor == ITaskManager::GetDescriptor());
-    bool isAppMgr = (remoteDescriptor == AppMgrStub::GetDescriptor());
-    if (!isTaskMgr && !isAppMgr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "local descriptor is not equal to remote, caller uid: %{public}d, pid: %{public}d",
-            IPCSkeleton::GetCallingUid(), IPCSkeleton::GetCallingPid());
+    if (taskManagerService_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "task manager service is null");
         return ERR_INVALID_OPERATION;
     }
-    // Rewind so each stub re-reads and re-verifies the interface token itself: the ITaskManager
-    // branch delegates to the IDL-generated stub entry, and the IAppMgr branch falls back to
-    // the original AppMgrStub dispatch (behavior unchanged).
-    if (!data.RewindRead(tokenReadPos)) {
-        TAG_LOGE(AAFwkTag::APPMGR, "rewind read failed");
-        return ERR_INVALID_STATE;
+    return taskManagerService_->StartTask(taskId, priority);
+}
+
+int32_t AppMgrService::FinishTask(const std::string &taskId)
+{
+    if (taskManagerService_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "task manager service is null");
+        return ERR_INVALID_OPERATION;
     }
-    if (isTaskMgr) {
-        if (taskManagerService_ == nullptr) {
-            TAG_LOGE(AAFwkTag::APPMGR, "task manager service is null");
-            return ERR_INVALID_STATE;
-        }
-        return taskManagerService_->TaskManagerStub::OnRemoteRequest(code, data, reply, option);
+    return taskManagerService_->FinishTask(taskId);
+}
+
+int32_t AppMgrService::RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType)
+{
+    if (taskManagerService_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "task manager service is null");
+        return ERR_INVALID_OPERATION;
     }
-    return AppMgrStub::OnRemoteRequest(code, data, reply, option);
+    return taskManagerService_->RegisterManagedProcess(taskId, pid, toolType);
+}
+
+int32_t AppMgrService::UnregisterManagedProcess(const std::string &taskId, int32_t pid)
+{
+    if (taskManagerService_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "task manager service is null");
+        return ERR_INVALID_OPERATION;
+    }
+    return taskManagerService_->UnregisterManagedProcess(taskId, pid);
 }
 
 AppMgrServiceState AppMgrService::QueryServiceState()
@@ -1119,8 +1125,7 @@ int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string
 
 int AppMgrService::DumpTaskRegisterCmd(const std::vector<std::u16string>& args, std::string& result)
 {
-    // Test hook: --task register <taskId> <pid> <tool(insight|cli|a2a|ability)>. Goes
-    // through TaskManagerClient so the whole IPC path is the same as the tool chains use.
+    // Test hook: --task register <taskId> <pid> <tool(insight|cli|a2a|ability)>.
     if (args.size() != SIZE_FIVE) {
         result.append("usage: --task register <taskId> <pid> <insight|cli|a2a|ability>\n");
         return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
@@ -1141,8 +1146,7 @@ int AppMgrService::DumpTaskRegisterCmd(const std::vector<std::u16string>& args, 
         return DumpErrorCode::ERR_INVALID_CMD_ERROR;
     }
     std::string taskId = Str16ToStr8(args[INDEX_TWO]);
-    auto ret = AppExecFwk::TaskManagerClient::GetInstance().RegisterManagedProcess(taskId, pid,
-        static_cast<int32_t>(toolType));
+    auto ret = RegisterManagedProcess(taskId, pid, static_cast<int32_t>(toolType));
     result.append(ret == ERR_OK ? "register ok\n" : "register failed: " + std::to_string(ret) + "\n");
     return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
 }
@@ -1156,7 +1160,7 @@ int AppMgrService::DumpTaskUnregisterCmd(const std::vector<std::u16string>& args
     }
     pid_t pid = static_cast<pid_t>(std::stoi(Str16ToStr8(args[INDEX_THREE])));
     std::string taskId = Str16ToStr8(args[INDEX_TWO]);
-    auto ret = AppExecFwk::TaskManagerClient::GetInstance().UnregisterManagedProcess(taskId, pid);
+    auto ret = UnregisterManagedProcess(taskId, pid);
     result.append(
         ret == ERR_OK ? "unregister ok\n" : "unregister failed: " + std::to_string(ret) + "\n");
     return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
