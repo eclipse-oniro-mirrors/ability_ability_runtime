@@ -414,6 +414,35 @@ void UpdateCallerInfoUtil::UpdateCallerAppCloneIndex(Want& want, int32_t appInde
     want.SetParam(Want::PARAM_RESV_CALLER_APP_CLONE_INDEX, appIndex);
 }
 
+void UpdateCallerInfoUtil::CacheCallerInfoFromWant(const Want &want, AbilitySessionInfo &info)
+{
+    info.callerUid = want.GetIntParam(Want::PARAM_RESV_CALLER_UID, 0);
+    info.callerPid = want.GetIntParam(Want::PARAM_RESV_CALLER_PID, 0);
+    info.callerNativeName = want.GetStringParam(Want::PARAM_RESV_CALLER_NATIVE_NAME);
+    info.hasCallerNativeName = want.HasParameter(Want::PARAM_RESV_CALLER_NATIVE_NAME);
+    info.callerAbilityName = want.GetStringParam(Want::PARAM_RESV_CALLER_ABILITY_NAME);
+    info.callerAppId = want.GetStringParam(Want::PARAM_RESV_CALLER_APP_ID);
+    info.callerAppIdentifier = want.GetStringParam(Want::PARAM_RESV_CALLER_APP_IDENTIFIER);
+    info.callerAppCloneIndex = want.GetIntParam(Want::PARAM_RESV_CALLER_APP_CLONE_INDEX, 0);
+}
+
+void UpdateCallerInfoUtil::RestoreCallerInfoToWant(Want &want, const AbilitySessionInfo &info)
+{
+    want.SetParam(Want::PARAM_RESV_CALLER_TOKEN, static_cast<int32_t>(info.callerTokenId));
+    want.SetParam(Want::PARAM_RESV_CALLER_UID, info.callerUid);
+    want.SetParam(Want::PARAM_RESV_CALLER_PID, info.callerPid);
+    want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, info.callerBundleName);
+    if (info.hasCallerNativeName) {
+        want.SetParam(Want::PARAM_RESV_CALLER_NATIVE_NAME, info.callerNativeName);
+    } else {
+        want.RemoveParam(Want::PARAM_RESV_CALLER_NATIVE_NAME);
+    }
+    want.SetParam(Want::PARAM_RESV_CALLER_ABILITY_NAME, info.callerAbilityName);
+    want.SetParam(Want::PARAM_RESV_CALLER_APP_ID, info.callerAppId);
+    want.SetParam(Want::PARAM_RESV_CALLER_APP_IDENTIFIER, info.callerAppIdentifier);
+    want.SetParam(Want::PARAM_RESV_CALLER_APP_CLONE_INDEX, info.callerAppCloneIndex);
+}
+
 void UpdateCallerInfoUtil::ClearProtectedWantParam(Want &want)
 {
     // Trace-only reserved param, unified cleanup point: every start-scheduling chain funnels

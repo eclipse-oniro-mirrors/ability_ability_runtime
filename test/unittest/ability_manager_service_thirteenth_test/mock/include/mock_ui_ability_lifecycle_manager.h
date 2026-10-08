@@ -25,6 +25,7 @@
 
 #include "ability_manager_constants.h"
 #include "isession_handler_interface.h"
+#include "scene_board/ability_session_info.h"
 #include "scene_board/ui_ability_record.h"
 
 namespace OHOS {
@@ -50,15 +51,6 @@ struct SpecifiedRequest {
     AbilityRequest abilityRequest;
 
     SpecifiedRequest(int32_t requestId, AbilityRequest request) : requestId(requestId), abilityRequest(request) {}
-};
-
-struct AbilitySessionInfo {
-    std::string callerBundleName;
-    uint32_t callerTokenId = 0;
-    bool isWebSandBoxClone = false;
-    int32_t sandBoxCloneIndex = 0;
-    std::string creatorBundleName;
-    uint32_t specifyTokenId = 0;
 };
 
 class UIAbilityLifecycleManager : public std::enable_shared_from_this<UIAbilityLifecycleManager> {

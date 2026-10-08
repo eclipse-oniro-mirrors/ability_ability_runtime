@@ -3533,10 +3533,15 @@ int AbilityManagerService::StartUIAbilityBySCBDefault(sptr<SessionInfo> sessionI
     auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
     AbilitySessionInfo abilitySessionInfo;
     auto uiAbilityManager = GetUIAbilityManagerByUserId(currentUserId);
+    bool hasCachedInfo = false;
     // Retrieve sandbox clone info from the map (stored before SCB notification).
     if (uiAbilityManager != nullptr) {
-        uiAbilityManager->GetAbilitySessionInfo(sessionInfo->requestId, abilitySessionInfo);
+        hasCachedInfo = uiAbilityManager->GetAbilitySessionInfo(sessionInfo->requestId, abilitySessionInfo);
         uiAbilityManager->RemoveAbilitySessionInfo(sessionInfo->requestId);
+    }
+    // Restore cached caller info to want so SCB-returned IPC values don't override the originals.
+    if (hasCachedInfo) {
+        UpdateCallerInfoUtil::GetInstance().RestoreCallerInfoToWant(sessionInfo->want, abilitySessionInfo);
     }
     if (abilitySessionInfo.isWebSandBoxClone) {
         sessionInfo->want.RemoveParam(AbilityRuntime::ServerConstant::DLP_INDEX);

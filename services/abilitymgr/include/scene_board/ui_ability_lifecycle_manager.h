@@ -24,6 +24,7 @@
 
 #include "ui_ability_last_caller_info.h"
 #include "ability_manager_constants.h"
+#include "ability_session_info.h"
 #include "ffrt.h"
 #include "isession_handler_interface.h"
 #include "ui_ability_record.h"
@@ -72,15 +73,6 @@ struct AbilitiesRequest {
     sptr<IRemoteObject> callerToken;
     int32_t requestListId = -1;
     uint32_t doneCount = 0;
-};
-
-struct AbilitySessionInfo {
-    std::string callerBundleName;
-    uint32_t callerTokenId = 0;
-    bool isWebSandBoxClone = false;
-    int32_t sandBoxCloneIndex = 0;
-    std::string creatorBundleName;
-    uint32_t specifyTokenId = 0;
 };
 
 class UIAbilityLifecycleManager : public std::enable_shared_from_this<UIAbilityLifecycleManager> {
