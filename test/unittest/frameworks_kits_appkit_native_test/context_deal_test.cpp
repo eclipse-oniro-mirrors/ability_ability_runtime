@@ -152,6 +152,21 @@ HWTEST_F(ContextDealTest, AppExecFwk_ContextDeal_GetBundleCodePath_0200, Functio
 }
 
 /**
+*@tc.number: AppExecFwk_ContextDeal_GetBundleCodePath_0300
+*@tc.name: GetBundleCodePath
+*@tc.desc: Verify GetBundleCodePath with clone-prefixed codePath.
+*/
+HWTEST_F(ContextDealTest, AppExecFwk_ContextDeal_GetBundleCodePath_0300, Function | MediumTest | Level1)
+{
+    std::shared_ptr<ApplicationInfo> info = std::make_shared<ApplicationInfo>();
+    info->codePath = "/data/app/el1/bundle/public/+clone-10000+com.example.demo";
+    info->bundleName = "com.example.demo";
+    context_->isCreateBySystemApp_ = true;
+    context_->SetApplicationInfo(info);
+    EXPECT_STREQ(context_->GetBundleCodePath().c_str(), "/data/bundles/com.example.demo");
+}
+
+/**
  * @tc.number: AppExecFwk_ContextDeal_GetApplicationInfo_0100
  * @tc.name: GetApplicationInfo
  * @tc.desc: Verify that the GetApplicationInfo return value is correct.
