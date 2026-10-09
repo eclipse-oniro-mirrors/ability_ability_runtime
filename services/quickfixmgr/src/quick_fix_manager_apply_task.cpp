@@ -51,7 +51,7 @@ constexpr const char *PATCH_VERSION = "patchVersion";
 
 // timeout task
 constexpr const char *TIMEOUT_TASK_NAME = "timeoutTask";
-constexpr int64_t TIMEOUT_TASK_DELAY_TIME = 3 * 60 * 1000;
+constexpr const int64_t TIMEOUT_TASK_DELAY_TIME = 3 * 60 * 1000;
 } // namespace
 
 class QuickFixManagerStatusCallback : public AppExecFwk::QuickFixStatusCallbackHost {
@@ -316,6 +316,8 @@ void QuickFixManagerApplyTask::Run(const std::vector<std::string> &quickFixFiles
     TAG_LOGI(AAFwkTag::QUICKFIX, "Run apply task");
     taskType_ = TaskType::QUICK_FIX_APPLY;
     callerUid_ = IPCSkeleton::GetCallingUid();
+    callerUserId_ = callerUid_ / AppExecFwk::Constants::BASE_USER_RANGE;
+    isCheckDebugApp_ = isCheckDebugApp;
     PostDeployQuickFixTask(quickFixFiles, isDebug, isReplace, isCheckDebugApp);
 }
 
@@ -346,7 +348,8 @@ void QuickFixManagerApplyTask::HandlePatchDeployed()
         ApplicationQuickFixInfo quickFixInfo;
         auto service = quickFixMgrService_.promote();
         if (service != nullptr) {
-            auto ret = service->GetApplyedQuickFixInfo(bundleName_, quickFixInfo);
+            auto ret = service->GetApplyedQuickFixInfoForApply(bundleName_, quickFixInfo, callerUserId_,
+                isCheckDebugApp_);
             if (ret == QUICK_FIX_OK && quickFixInfo.appqfInfo.nativeLibraryPath.empty()) {
                 TAG_LOGD(AAFwkTag::QUICKFIX, "isSoContained_ corrected to false: nativeLibraryPath is empty");
                 isSoContained_ = false;
@@ -365,7 +368,8 @@ void QuickFixManagerApplyTask::HandlePatchDeployed()
             return;
         }
 
-        auto ret = service->GetApplyedQuickFixInfo(bundleName_, quickFixInfo);
+        auto ret = service->GetApplyedQuickFixInfoForApply(bundleName_, quickFixInfo, callerUserId_,
+            isCheckDebugApp_);
         if (ret == QUICK_FIX_OK && !quickFixInfo.appqfInfo.hqfInfos.empty()) {
             // if there exist old version hqfInfo, need to unload.
             TAG_LOGD(AAFwkTag::QUICKFIX, "Need unload patch firstly");

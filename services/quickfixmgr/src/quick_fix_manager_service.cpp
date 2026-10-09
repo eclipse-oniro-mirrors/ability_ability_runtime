@@ -18,6 +18,7 @@
 #include "bundle_mgr_helper.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
+#include "ipc_skeleton.h"
 #include "parameters.h"
 #include "permission_constants.h"
 #include "permission_verification.h"
@@ -131,6 +132,20 @@ int32_t QuickFixManagerService::GetApplyedQuickFixInfo(const std::string &bundle
         isCheckDebugApp = true;
     }
 
+    int32_t userId = IPCSkeleton::GetCallingUid() / AppExecFwk::Constants::BASE_USER_RANGE;
+    return GetApplyedQuickFixInfoInner(bundleName, quickFixInfo, userId, isCheckDebugApp);
+}
+
+int32_t QuickFixManagerService::GetApplyedQuickFixInfoForApply(const std::string &bundleName,
+    ApplicationQuickFixInfo &quickFixInfo, int32_t userId, bool isCheckDebugApp)
+{
+    TAG_LOGD(AAFwkTag::QUICKFIX, "called, userId: %{public}d", userId);
+    return GetApplyedQuickFixInfoInner(bundleName, quickFixInfo, userId, isCheckDebugApp);
+}
+
+int32_t QuickFixManagerService::GetApplyedQuickFixInfoInner(const std::string &bundleName,
+    ApplicationQuickFixInfo &quickFixInfo, int32_t userId, bool isCheckDebugApp)
+{
     auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
     if (bundleMgrHelper == nullptr) {
         TAG_LOGE(AAFwkTag::QUICKFIX, "null bundleMgrHelper");
@@ -138,8 +153,9 @@ int32_t QuickFixManagerService::GetApplyedQuickFixInfo(const std::string &bundle
     }
 
     AppExecFwk::BundleInfo bundleInfo;
+    int32_t queryUserId = isCheckDebugApp ? userId : AppExecFwk::Constants::ANY_USERID;
     if (!bundleMgrHelper->GetBundleInfo(bundleName, AppExecFwk::BundleFlag::GET_BUNDLE_DEFAULT, bundleInfo,
-        AppExecFwk::Constants::ANY_USERID)) {
+        queryUserId)) {
         TAG_LOGE(AAFwkTag::QUICKFIX, "get bundleInfo failed");
         return QUICK_FIX_GET_BUNDLE_INFO_FAILED;
     }
@@ -239,7 +255,8 @@ bool QuickFixManagerService::CheckTaskRunningState(const std::string &bundleName
     return false;
 }
 
-int32_t QuickFixManagerService::GetQuickFixInfo(const std::string &bundleName, bool &patchExists, bool &isSoContained)
+int32_t QuickFixManagerService::GetQuickFixInfo(const std::string &bundleName, bool &patchExists,
+    bool &isSoContained)
 {
     auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
     if (bundleMgrHelper == nullptr) {

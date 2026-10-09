@@ -1317,5 +1317,30 @@ HWTEST_F(QuickFixManagerApplyTaskTest, NotifyApplyStatus_0400, TestSize.Level1)
     applyTask->NotifyApplyStatus(QUICK_FIX_OK);
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }
+
+/**
+ * @tc.name: Run_0200
+ * @tc.desc: Run captures callerUserId_ and isCheckDebugApp_ from IPC context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(QuickFixManagerApplyTaskTest, Run_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+
+    auto applyTask = std::make_shared<QuickFixManagerApplyTask>(bundleQfMgr_, appMgr_,
+        quickFixMs_->eventHandler_, quickFixMs_);
+    ASSERT_NE(applyTask, nullptr);
+
+    EXPECT_CALL(*bundleQfMgr_, DeployQuickFix(_, _, _, _, _, _)).Times(1);
+    std::vector<std::string> quickFixFiles;
+    applyTask->Run(quickFixFiles, false, false, true);
+    WaitUntilTaskDone(quickFixMs_->eventHandler_);
+
+    EXPECT_EQ(applyTask->taskType_, QuickFixManagerApplyTask::TaskType::QUICK_FIX_APPLY);
+    EXPECT_TRUE(applyTask->isCheckDebugApp_);
+    EXPECT_EQ(applyTask->callerUserId_, applyTask->callerUid_ / 200000);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
 } // namespace AppExecFwk
 } // namespace OHOS
