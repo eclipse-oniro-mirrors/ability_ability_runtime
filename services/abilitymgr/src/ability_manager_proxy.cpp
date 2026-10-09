@@ -6334,6 +6334,10 @@ int32_t AbilityManagerProxy::GetUIExtensionSessionInfo(const sptr<IRemoteObject>
 int32_t AbilityManagerProxy::OpenAtomicService(Want& want, const StartOptions &options,
     sptr<IRemoteObject> callerToken, int32_t requestCode, int32_t userId)
 {
+    if (AppUtils::GetInstance().IsForbidStart()) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "forbid start: %{public}s", want.GetElement().GetBundleName().c_str());
+        return INNER_ERR;
+    }
     MessageParcel data;
     if (!WriteInterfaceToken(data)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write token fail");

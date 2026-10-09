@@ -5153,5 +5153,131 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, BackToCallerAbilityWithResult_003,
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest BackToCallerAbilityWithResult_003 end");
 }
 
+namespace {
+// RAII: keeps the forbid-start switch consistent even if an ASSERT_* aborts the test body early,
+// so a failing test cannot leak the switch into later cases.
+struct ForbidStartSwitch {
+    ForbidStartSwitch()
+    {
+        MyStatus::GetInstance().auIsForbidStart_ = true;
+    }
+
+    ~ForbidStartSwitch()
+    {
+        MyStatus::GetInstance().auIsForbidStart_ = false;
+    }
+};
+} // namespace
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartUIAbilityForOptionWrap / StartAbilityWithSpecifyTokenIdInner / OpenAtomicService
+ * SubFunction: NA
+ * FunctionPoints: IsForbidStart entry interception
+ * EnvConditions: NA
+ * CaseDescription: Verify the option-based UIAbility start funnel rejects with INNER_ERR when
+ *                  forbid start is on (covers pending-want delayed trigger, implicit start,
+ *                  atomic service and shortcut paths routed through these funnels)
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, StartUIAbilityForOptionWrap_ForbidStart_001, TestSize.Level1)
+{
+    ForbidStartSwitch forbidSwitch;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    StartOptions startOptions;
+    auto ret = abilityMs->StartUIAbilityForOptionWrap(want, startOptions, nullptr, false,
+        DEFAULT_INVAL_VALUE, DEFAULT_INVAL_VALUE, 0, false);
+    EXPECT_EQ(ret, INNER_ERR);
+}
+
+HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityWithSpecifyTokenIdInner_ForbidStart_001, TestSize.Level1)
+{
+    ForbidStartSwitch forbidSwitch;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    auto ret = abilityMs->StartAbilityWithSpecifyTokenIdInner(want, nullptr, 0, true,
+        DEFAULT_INVAL_VALUE, DEFAULT_INVAL_VALUE);
+    EXPECT_EQ(ret, INNER_ERR);
+}
+
+HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityWithSpecifyTokenIdInner_ForbidStart_002, TestSize.Level1)
+{
+    ForbidStartSwitch forbidSwitch;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    StartOptions startOptions;
+    auto ret = abilityMs->StartAbilityWithSpecifyTokenIdInner(want, startOptions, nullptr, true,
+        DEFAULT_INVAL_VALUE, DEFAULT_INVAL_VALUE, 0);
+    EXPECT_EQ(ret, INNER_ERR);
+}
+
+HWTEST_F(AbilityManagerServiceThirteenthTest, OpenAtomicService_ForbidStart_001, TestSize.Level1)
+{
+    ForbidStartSwitch forbidSwitch;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    StartOptions startOptions;
+    auto ret = abilityMs->OpenAtomicService(want, startOptions, nullptr,
+        DEFAULT_INVAL_VALUE, DEFAULT_INVAL_VALUE);
+    EXPECT_EQ(ret, INNER_ERR);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartSpecifiedAbilityBySCB / StartAbilityWithServiceMatch / StartAbilityWithInsightIntent /
+ *           RestartApp / StartSandboxCloneAbility
+ * SubFunction: NA
+ * FunctionPoints: IsForbidStart entry interception
+ * EnvConditions: NA
+ * CaseDescription: Verify the system-internal StartAbilityInner callers reject with INNER_ERR at
+ *                  entry when forbid start is on, before any state is touched
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, StartSpecifiedAbilityBySCB_ForbidStart_001, TestSize.Level1)
+{
+    ForbidStartSwitch forbidSwitch;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    StartSpecifiedAbilityParams params;
+    auto ret = abilityMs->StartSpecifiedAbilityBySCB(want, params);
+    EXPECT_EQ(ret, INNER_ERR);
+}
+
+HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityWithServiceMatch_ForbidStart_001, TestSize.Level1)
+{
+    ForbidStartSwitch forbidSwitch;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    InsightIntentExecuteParam param;
+    auto ret = abilityMs->StartAbilityWithServiceMatch(param, DEFAULT_INVAL_VALUE, DEFAULT_INVAL_VALUE);
+    EXPECT_EQ(ret, INNER_ERR);
+}
+
+HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityWithInsightIntent_ForbidStart_001, TestSize.Level1)
+{
+    ForbidStartSwitch forbidSwitch;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    auto ret = abilityMs->StartAbilityWithInsightIntent(want, DEFAULT_INVAL_VALUE, DEFAULT_INVAL_VALUE, 0, nullptr);
+    EXPECT_EQ(ret, INNER_ERR);
+}
+
+HWTEST_F(AbilityManagerServiceThirteenthTest, RestartApp_ForbidStart_001, TestSize.Level1)
+{
+    ForbidStartSwitch forbidSwitch;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    auto ret = abilityMs->RestartApp(want, false, 1);
+    EXPECT_EQ(ret, INNER_ERR);
+}
+
+HWTEST_F(AbilityManagerServiceThirteenthTest, StartSandboxCloneAbility_ForbidStart_001, TestSize.Level1)
+{
+    ForbidStartSwitch forbidSwitch;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    SandboxCloneParams params;
+    auto ret = abilityMs->StartSandboxCloneAbility(want, params);
+    EXPECT_EQ(ret, INNER_ERR);
+}
+
 } // namespace AAFwk
 } // namespace OHOS

@@ -33,6 +33,7 @@ public:
     };
 
     bool auIsLaunchEmbededUIAbility_ = true;
+    bool auIsForbidStart_ = false;
     int atkGetTokenTypeFlag_ = 0;
     bool smhGetUIAbilityManagerByUid_ = true;
     bool smhGetUIAbilityManagerByUserId_ = true;

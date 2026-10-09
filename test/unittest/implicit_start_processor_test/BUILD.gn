@@ -42,6 +42,7 @@ ohos_unittest("implicit_start_processor_test") {
     "mock/src/mock_ams_dependencies.cpp",
     "mock/src/mock_bundle_mgr_helper.cpp",
     "mock/src/mock_parameters.cpp",
+    "mock/src/mock_permission_verification.cpp",
   ]
 
   configs = [

@@ -17,7 +17,6 @@
 #define OHOS_AGENT_RUNTIME_AGENT_MANAGER_CLIENT_H
 
 #include <functional>
-#include <memory>
 #include <vector>
 
 #include "iagent_manager.h"
@@ -26,7 +25,7 @@ namespace OHOS {
 namespace AgentRuntime {
 using ClearProxyCallback = std::function<void(const wptr<IRemoteObject>&)>;
 
-class AgentManagerClient final : public std::enable_shared_from_this<AgentManagerClient> {
+class AgentManagerClient final {
 public:
     AgentManagerClient() = default;
     virtual ~AgentManagerClient() = default;
@@ -87,10 +86,14 @@ public:
 
 private:
     sptr<IAgentManager> GetAgentMgrProxy();
-    void ClearProxy();
+    // Clears the cached proxy only if it holds the died remote (stale notifications ignored).
+    void ClearProxyIfMatch(const wptr<IRemoteObject> &remote);
     bool LoadAgentMgrService();
     void SetAgentMgr(const sptr<IRemoteObject> &remoteObject);
     sptr<IAgentManager> GetAgentMgr();
+    // Caller must hold registerMutex_. Returns false only for a dead proxy (must not be
+    // cached); stubs return true without registering.
+    bool RegisterDeathRecipient(const sptr<IRemoteObject> &remoteObject);
 
     class AgentManagerServiceDeathRecipient : public IRemoteObject::DeathRecipient {
     public:
@@ -104,6 +107,11 @@ private:
 
 private:
     std::mutex mutex_;
+    // Serializes load + registration (one recipient per remote); never taken inside mutex_.
+    std::mutex registerMutex_;
+    // Remote with a registered death recipient, guarded by registerMutex_. Only these are
+    // protected by the stale-callback guard; others cannot be proven live.
+    wptr<IRemoteObject> registeredRemote_;
     sptr<IAgentManager> agentMgr_ = nullptr;
 };
 } // namespace AgentRuntime

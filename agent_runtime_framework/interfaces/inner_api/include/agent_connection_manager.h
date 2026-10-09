@@ -124,9 +124,8 @@ public:
      */
     void OnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode) override;
 
-    // Thread-safe accessor: readers on a different lock than agentMutex_ must take it to avoid a
-    // data race with SetRemoteObject(nullptr) in OnAbilityDisconnectDone.
-    sptr<IRemoteObject> GetRemoteObjectLocked();
+    // Atomic snapshot under agentMutex_: state + remote + resultCode in one critical section.
+    bool SnapshotConnectedState(sptr<IRemoteObject> &remoteObject, int32_t &resultCode);
 
 private:
     std::mutex agentMutex_;
