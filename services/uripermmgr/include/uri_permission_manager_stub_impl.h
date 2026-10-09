@@ -76,40 +76,41 @@ public:
     * only support local file uri, not support distribute docs and content uri.
     */
     ErrCode GrantUriPermission(const Uri& uri, uint32_t flag, const std::string& targetBundleName, int32_t appIndex,
-        uint32_t initiatorTokenId, int32_t& funcResult) override;
+        uint32_t initiatorTokenId, int32_t userId, int32_t& funcResult) override;
 
     /*
     * only support local file uri, not support distribute docs and content uri.
     */
     ErrCode GrantUriPermission(const std::vector<std::string>& uriVec, uint32_t flag,
-        const std::string& targetBundleName, int32_t appIndex, uint32_t initiatorTokenId, int32_t& funcResult) override;
+        const std::string& targetBundleName, int32_t appIndex, uint32_t initiatorTokenId, int32_t userId,
+        int32_t& funcResult) override;
 
     /*
     * only support local file uri, not support distribute docs and content uri.
     */
     ErrCode GrantUriPermission(const UriPermissionRawData& rawData, uint32_t flag, const std::string& targetBundleName,
-        int32_t appIndex, uint32_t initiatorTokenId, int32_t& funcResult) override;
+        int32_t appIndex, uint32_t initiatorTokenId, int32_t userId, int32_t& funcResult) override;
 
     /*
     * only support local file uri, not support distribute docs and content uri.
     */
     ErrCode GrantUriPermissionPrivileged(const std::vector<std::string>& uriVec, uint32_t flag,
         const std::string& targetBundleName, int32_t appIndex, uint32_t initiatorTokenId, int32_t hideSensitiveType,
-        int32_t& funcResult) override;
+        int32_t userId, int32_t& funcResult) override;
 
     /*
     * only support local file uri, not support distribute docs and content uri.
     */
     ErrCode GrantUriPermissionWithType(const std::vector<Uri> &uriVec, uint32_t flag,
         const std::string &targetBundleName, int32_t appIndex, uint32_t initiatorTokenId, int32_t hideSensitiveType,
-        const std::vector<int32_t> &permissionTypes, int32_t &funcResult) override;
+        const std::vector<int32_t> &permissionTypes, int32_t userId, int32_t &funcResult) override;
 
     /*
     * only support local file uri, not support distribute docs and content uri.
     */
     ErrCode GrantUriPermissionPrivileged(const UriPermissionRawData& rawData, uint32_t flag,
         const std::string& targetBundleName, int32_t appIndex, uint32_t initiatorTokenId,
-        int32_t hideSensitiveType, int32_t& funcResult) override;
+        int32_t hideSensitiveType, int32_t userId, int32_t& funcResult) override;
 
     /*
     * only support local file uri, not support distribute docs and content uri.
@@ -156,7 +157,7 @@ public:
     ErrCode RevokeAllUriPermissions(uint32_t tokenId, int32_t& funcResult) override;
 
     ErrCode RevokeUriPermissionManually(const Uri& uri, const std::string& bundleName,
-        int32_t appIndex, int32_t& funcResult) override;
+        int32_t appIndex, int32_t userId, int32_t& funcResult) override;
 
 private:
     template<typename T>

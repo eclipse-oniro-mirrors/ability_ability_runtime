@@ -260,5 +260,80 @@ HWTEST_F(FileUriDistributionUtilsNewTest, GetDirByBundleNameAndAppIndex_001, Tes
     std::string dirName = "/Data";
     EXPECT_TRUE(FUDUtils::GetDirByBundleNameAndAppIndex(bundleName, 0, dirName));
 }
+
+// ==================== userId multi-foreground adaptation tests ====================
+
+// ---------- GetUserIdByTokenId tests ----------
+
+HWTEST_F(FileUriDistributionUtilsNewTest, GetUserIdByTokenId_HAP_Success, TestSize.Level1)
+{
+    uint32_t tokenId = 2001;
+    int32_t userId = -1;
+    MyFlag::tokenInfos_.clear();
+    MyFlag::tokenInfos_[tokenId] = TokenInfo(tokenId, Security::AccessToken::ATokenTypeEnum::TOKEN_HAP,
+        "com.test.app", "com.test.app", 100);
+    MyFlag::retHapSuccValue_ = Security::AccessToken::AccessTokenKitRet::RET_SUCCESS;
+    auto result = FUDUtils::GetUserIdByTokenId(tokenId, userId);
+    EXPECT_TRUE(result);
+    EXPECT_EQ(userId, 100);
+}
+
+HWTEST_F(FileUriDistributionUtilsNewTest, GetUserIdByTokenId_HAP_GetInfoFailed, TestSize.Level1)
+{
+    uint32_t tokenId = 2002;
+    int32_t userId = -1;
+    MyFlag::tokenInfos_.clear();
+    MyFlag::tokenInfos_[tokenId] = TokenInfo(tokenId, Security::AccessToken::ATokenTypeEnum::TOKEN_HAP,
+        "com.test.app", "com.test.app", 100);
+    MyFlag::retHapSuccValue_ = Security::AccessToken::AccessTokenKitRet::RET_FAILED;
+    auto result = FUDUtils::GetUserIdByTokenId(tokenId, userId);
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F(FileUriDistributionUtilsNewTest, GetUserIdByTokenId_Native_NotHAP, TestSize.Level1)
+{
+    uint32_t tokenId = 2003;
+    int32_t userId = -1;
+    MyFlag::tokenInfos_.clear();
+    MyFlag::tokenInfos_[tokenId] = TokenInfo(tokenId, Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE,
+        "foundation");
+    auto result = FUDUtils::GetUserIdByTokenId(tokenId, userId);
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F(FileUriDistributionUtilsNewTest, GetUserIdByTokenId_Invalid_NotFound, TestSize.Level1)
+{
+    uint32_t tokenId = 9999;
+    int32_t userId = -1;
+    MyFlag::tokenInfos_.clear();
+    auto result = FUDUtils::GetUserIdByTokenId(tokenId, userId);
+    EXPECT_FALSE(result);
+}
+
+// ---------- ResolveUserIdForSAOrBroker tests ----------
+
+HWTEST_F(FileUriDistributionUtilsNewTest, ResolveUserIdForSAOrBroker_DefaultFallback, TestSize.Level1)
+{
+    auto result = FUDUtils::ResolveUserIdForSAOrBroker(UPMS_INVALID_USER_ID);
+    EXPECT_GE(result, 0);
+}
+
+HWTEST_F(FileUriDistributionUtilsNewTest, ResolveUserIdForSAOrBroker_ValidUserId, TestSize.Level1)
+{
+    auto result = FUDUtils::ResolveUserIdForSAOrBroker(100);
+    EXPECT_EQ(result, 100);
+}
+
+HWTEST_F(FileUriDistributionUtilsNewTest, ResolveUserIdForSAOrBroker_ZeroUserId, TestSize.Level1)
+{
+    auto result = FUDUtils::ResolveUserIdForSAOrBroker(0);
+    EXPECT_EQ(result, 0);
+}
+
+HWTEST_F(FileUriDistributionUtilsNewTest, ResolveUserIdForSAOrBroker_InvalidNegative, TestSize.Level1)
+{
+    auto result = FUDUtils::ResolveUserIdForSAOrBroker(-2);
+    EXPECT_EQ(result, UPMS_INVALID_USER_ID);
+}
 }  // namespace AAFwk
 }  // namespace OHOS

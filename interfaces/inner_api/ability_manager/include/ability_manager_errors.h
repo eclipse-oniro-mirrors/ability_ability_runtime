@@ -849,6 +849,8 @@ enum {
 
     ERR_UPMS_SERVICE_NOT_START = 2097349,
 
+    ERR_UPMS_INVALID_USER_ID = 2097350,
+
     /**
      * Result (2097351) target not in whitelist.
      */
