@@ -31,10 +31,11 @@ constexpr int32_t TASK_PRIORITY_DEFAULT = TASK_PRIORITY_MEDIUM;
 constexpr size_t TASK_ID_MIN_LEN = 1;
 constexpr size_t TASK_ID_MAX_LEN = 256;
 
-// Task timeout is a system-wide configuration (no per-task input): default 3600s, and the
-// value read from the system parameter is clamped into (0, TASK_MAX_TIMEOUT_SECONDS].
-constexpr int32_t TASK_DEFAULT_TIMEOUT_SECONDS = 3600;
-constexpr int32_t TASK_MAX_TIMEOUT_SECONDS = 3600;
+// Task timeout is a system-wide inactivity window (no per-task input): the window opens
+// at task creation and restarts on every managed-process change. The default is 600s;
+// the system parameter is a test knob (settable only from the root shell) and a
+// non-positive value falls back to the default.
+constexpr int32_t TASK_DEFAULT_TIMEOUT_SECONDS = 600;
 constexpr const char *TASK_TIMEOUT_PARAM = "persist.sys.appms.taskmanager.task_timeout";
 
 // Safety ceiling on the number of simultaneously active tasks (memory and timer resources).

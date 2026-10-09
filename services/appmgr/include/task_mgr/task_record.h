@@ -46,7 +46,7 @@ struct TaskRecord {
     int32_t userId = -1;
     std::string creatorBundleName;   // creator system app, for log and dump
     int64_t createTimeMillis = 0;    // wall clock, for dump
-    int64_t deadlineMillis = 0;      // wall clock, checked by the timeout handler
+    int64_t deadlineMillis = 0;      // wall clock, pushed forward by every adoption, checked by the timeout handler
     std::map<pid_t, ManagedProcess> managedProcesses;  // attributed by tool channels
     ffrt_timer_t timeoutHandle = ffrt_error;  // FFRT one-shot timer, stopped outside the lock
 };

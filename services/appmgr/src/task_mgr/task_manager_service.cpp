@@ -23,7 +23,6 @@
 #include <vector>
 
 #include "ability_manager_errors.h"
-#include "ability_manager_xcollie.h"
 #include "bundle_mgr_helper.h"
 #include "errors.h"
 #include "hilog_tag_wrapper.h"
@@ -39,6 +38,11 @@ namespace {
 constexpr int64_t MILLIS_PER_SECOND = 1000;
 // Keep in sync with BASE_USER_RANGE in app_mgr_service_inner.h.
 constexpr int32_t BASE_USER_RANGE = 200000;
+// Sentinel caller uid for the system-initiated finish paths (timeout / creator death):
+// a negative value skips the creator-ownership check in FinishTaskInner.
+constexpr int32_t SYSTEM_INITIATED_UID = -1;
+// Sentinel expected deadline for the finish paths that must not match a specific deadline.
+constexpr int64_t SKIP_DEADLINE_CHECK = 0;
 
 std::string FormatCreateTime(int64_t millis)
 {
@@ -98,7 +102,6 @@ TaskManagerService::~TaskManagerService()
 
 int32_t TaskManagerService::StartTask(const std::string &taskId, int32_t priority)
 {
-    XCOLLIE_TIMER_LESS("TaskManagerService::StartTask");
     TAG_LOGD(AAFwkTag::APPMGR, "called");
     if (!CheckParam(taskId, priority)) {
         TAG_LOGW(AAFwkTag::APPMGR, "invalid param, taskId size: %{public}zu, priority: %{public}d",
@@ -112,13 +115,11 @@ int32_t TaskManagerService::StartTask(const std::string &taskId, int32_t priorit
         return ERR_NOT_SYSTEM_APP;
     }
     TaskCallerInfo caller = GetCallerInfo();
-    std::lock_guard<ffrt::mutex> lock(tasksMutex_);
-    return StartTaskLocked(caller, taskId, priority);
+    return StartTaskInner(caller, taskId, priority);
 }
 
 int32_t TaskManagerService::FinishTask(const std::string &taskId)
 {
-    XCOLLIE_TIMER_LESS("TaskManagerService::FinishTask");
     TAG_LOGD(AAFwkTag::APPMGR, "called");
     if (taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN) {
         TAG_LOGW(AAFwkTag::APPMGR, "invalid param, taskId size: %{public}zu", taskId.size());
@@ -129,24 +130,14 @@ int32_t TaskManagerService::FinishTask(const std::string &taskId)
         return ERR_NOT_SYSTEM_APP;
     }
     TaskCallerInfo caller = GetCallerInfo();
-    TaskFinishReason reason = TaskFinishReason::FINISHED_BY_CALLER;
-    ffrt_timer_t timerToStop = ffrt_error;
-    int32_t result = ERR_INVALID_OPERATION;
-    {
-        std::lock_guard<ffrt::mutex> lock(tasksMutex_);
-        result = FinishTaskLocked(taskId, reason, caller.uid, timerToStop);
-    }
-    // Outside the mutex: stop waits for a running callback, which itself waits on the mutex.
-    StopTimer(timerToStop);
-    if (result == ERR_OK) {
-        NotifyTaskFinished(taskId, reason);
-    }
-    return result;
+    return FinishTaskInner(taskId, TaskFinishReason::FINISHED_BY_CALLER, caller.uid,
+        SKIP_DEADLINE_CHECK);
 }
 
-int32_t TaskManagerService::StartTaskLocked(const TaskCallerInfo &caller, const std::string &taskId,
+int32_t TaskManagerService::StartTaskInner(const TaskCallerInfo &caller, const std::string &taskId,
     int32_t priority)
 {
+    std::lock_guard<ffrt::mutex> lock(tasksMutex_);
     if (tasks_.size() >= TASK_MAX_ACTIVE_TASKS) {
         TAG_LOGW(AAFwkTag::APPMGR, "too many active tasks: %{public}zu", tasks_.size());
         return ERR_INVALID_OPERATION;
@@ -166,7 +157,7 @@ int32_t TaskManagerService::StartTaskLocked(const TaskCallerInfo &caller, const 
     record.creatorBundleName = caller.bundleName;
     record.createTimeMillis = NowMillis();
     record.deadlineMillis = record.createTimeMillis + static_cast<int64_t>(timeoutSeconds) * MILLIS_PER_SECOND;
-    StartTimeoutTimer(taskId, record);
+    record.timeoutHandle = StartTimeoutTimer(taskId, record.deadlineMillis);
     if (record.timeoutHandle == ffrt_error) {
         // No record without a timer: the task must never live without its timeout.
         TAG_LOGE(AAFwkTag::APPMGR, "start timeout timer failed, taskId: %{public}s", taskId.c_str());
@@ -180,97 +171,99 @@ int32_t TaskManagerService::StartTaskLocked(const TaskCallerInfo &caller, const 
     return ERR_OK;
 }
 
-int32_t TaskManagerService::FinishTaskLocked(const std::string &taskId, TaskFinishReason reason,
-    int32_t callerUid, ffrt_timer_t &timerToStop)
+int32_t TaskManagerService::FinishTaskInner(const std::string &taskId, TaskFinishReason reason,
+    int32_t callerUid, int64_t expectedDeadline)
 {
-    auto it = tasks_.find(taskId);
-    if (it == tasks_.end()) {
-        TAG_LOGW(AAFwkTag::APPMGR, "task not found, taskId: %{public}s", taskId.c_str());
-        return ERR_TASK_NOT_FOUND;
+    ffrt_timer_t timerToStop = ffrt_error;
+    {
+        std::lock_guard<ffrt::mutex> lock(tasksMutex_);
+        auto it = tasks_.find(taskId);
+        if (it == tasks_.end()) {
+            // Finished by the caller or the creator-death cleanup already: double insurance
+            // for a late or stale timeout fire.
+            TAG_LOGW(AAFwkTag::APPMGR, "task not found, taskId: %{public}s", taskId.c_str());
+            return ERR_TASK_NOT_FOUND;
+        }
+        if (expectedDeadline != SKIP_DEADLINE_CHECK && it->second.deadlineMillis != expectedDeadline) {
+            // Stale timeout event for a rebuilt record: defensive check, no-op.
+            TAG_LOGW(AAFwkTag::APPMGR, "deadline mismatch, skip, taskId: %{public}s", taskId.c_str());
+            return ERR_TASK_NOT_FOUND;
+        }
+        if (callerUid >= 0 && it->second.creatorUid != callerUid) {
+            // Not the creating app (uid is the app identity, shared by all its processes):
+            // report "not found" without disclosing the task's existence.
+            TAG_LOGW(AAFwkTag::APPMGR, "caller is not the creator, rejected, taskId: %{public}s, "
+                "creator uid: %{public}d, caller uid: %{public}d", taskId.c_str(), it->second.creatorUid,
+                callerUid);
+            return ERR_TASK_NOT_FOUND;
+        }
+        int64_t aliveMillis = NowMillis() - it->second.createTimeMillis;
+        // The terminal record leaves the map immediately, so it never shows up in the dump.
+        // The timer is stopped below after unlocking: if it already fired and is blocked on
+        // the mutex, the checks above make it a no-op on its re-find.
+        timerToStop = it->second.timeoutHandle;
+        tasks_.erase(it);
+        TAG_LOGI(AAFwkTag::APPMGR, "task finished, taskId: %{public}s, reason: %{public}s, "
+            "alive(ms): %{public}" PRId64, taskId.c_str(), TaskFinishReasonToString(reason), aliveMillis);
     }
-    if (callerUid >= 0 && it->second.creatorUid != callerUid) {
-        // Not the creating app (uid is the app identity, shared by all its processes):
-        // report "not found" without disclosing the task's existence.
-        TAG_LOGW(AAFwkTag::APPMGR, "caller is not the creator, rejected, taskId: %{public}s, "
-            "creator uid: %{public}d, caller uid: %{public}d", taskId.c_str(), it->second.creatorUid,
-            callerUid);
-        return ERR_TASK_NOT_FOUND;
-    }
-    int64_t aliveMillis = NowMillis() - it->second.createTimeMillis;
-    // The terminal record leaves the map immediately, so it never shows up in the dump.
-    // The timer is stopped by the caller after unlocking: if it already fired and is blocked
-    // on the mutex, the erase above makes OnTaskTimeout a no-op on its re-find.
-    timerToStop = it->second.timeoutHandle;
-    tasks_.erase(it);
-    TAG_LOGI(AAFwkTag::APPMGR, "task finished, taskId: %{public}s, reason: %{public}s, alive(ms): %{public}" PRId64,
-        taskId.c_str(), TaskFinishReasonToString(reason), aliveMillis);
+    // Outside the mutex: stop waits for a running callback, which itself waits on the mutex;
+    // the finish hook may re-enter through the resource-schedule control.
+    StopTimer(timerToStop);
+    NotifyTaskFinished(taskId, reason);
     return ERR_OK;
 }
 
 void TaskManagerService::OnTaskTimeout(const std::string &taskId, int64_t expectedDeadline)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called, taskId: %{public}s", taskId.c_str());
-    {
-        std::lock_guard<ffrt::mutex> lock(tasksMutex_);
-        auto it = tasks_.find(taskId);
-        if (it == tasks_.end()) {
-            // Already finished by the caller or creator-death cleanup: double insurance.
-            return;
-        }
-        if (it->second.deadlineMillis != expectedDeadline) {
-            // Stale timeout event for a rebuilt record: defensive check, no-op.
-            TAG_LOGW(AAFwkTag::APPMGR, "deadline mismatch, skip, taskId: %{public}s", taskId.c_str());
-            return;
-        }
-        // This one-shot timer has already fired, so there is nothing to stop here.
-        ffrt_timer_t timerToStop = ffrt_error;
-        if (FinishTaskLocked(taskId, TaskFinishReason::FINISHED_BY_TIMEOUT, -1, timerToStop) != ERR_OK) {
-            return;
-        }
-    }
-    // Outside the mutex (may re-enter through the resource-schedule hook).
-    NotifyTaskFinished(taskId, TaskFinishReason::FINISHED_BY_TIMEOUT);
+    // This one-shot timer has already fired, so there is nothing to stop; FinishTaskInner
+    // re-checks existence and the deadline under the mutex before finishing.
+    FinishTaskInner(taskId, TaskFinishReason::FINISHED_BY_TIMEOUT, SYSTEM_INITIATED_UID,
+        expectedDeadline);
 }
 
 void TaskManagerService::OnProcessDied(pid_t pid, int32_t uid)
 {
-    std::vector<std::string> finishedTasks;
-    std::vector<ffrt_timer_t> timersToStop;
+    // The creator is identified by the (pid, uid) pair: one uid may host several
+    // processes (main plus extensions), and only the tasks created by the dead
+    // process itself end.
+    FinishTasksByCreatorInner(pid, uid);
+    // A managed process that dies is removed from the managed set of every surviving task.
+    RemoveManagedProcessFromAllTasksInner(pid);
+}
+
+void TaskManagerService::FinishTasksByCreatorInner(pid_t pid, int32_t uid)
+{
+    std::vector<std::string> creatorTaskIds;
     {
         std::lock_guard<ffrt::mutex> lock(tasksMutex_);
-        // The creator is identified by the (pid, uid) pair: one uid may host several
-        // processes (main plus extensions), and only the tasks created by the dead
-        // process itself end.
-        std::vector<std::string> creatorTaskIds;
         for (const auto &item : tasks_) {
             if (item.second.creatorPid == pid && item.second.creatorUid == uid) {
                 creatorTaskIds.push_back(item.first);
             }
         }
-        for (const auto &taskId : creatorTaskIds) {
-            ffrt_timer_t timerToStop = ffrt_error;
-            if (FinishTaskLocked(taskId, TaskFinishReason::FINISHED_BY_CREATOR_DIED, -1,
-                timerToStop) == ERR_OK) {
-                finishedTasks.push_back(taskId);
-                timersToStop.push_back(timerToStop);
-            }
-        }
-        // A managed process that dies is removed from the managed set of every surviving task.
-        for (auto &item : tasks_) {
-            if (item.second.managedProcesses.erase(pid) > 0) {
-                TAG_LOGI(AAFwkTag::APPMGR, "managed process died, taskId: %{public}s, pid: %{public}d",
-                    item.first.c_str(), pid);
-            }
-        }
-        TAG_LOGI(AAFwkTag::APPMGR, "creator process died handled, uid: %{public}d, pid: %{public}d, "
-            "tasks finished: %{public}zu", uid, pid, finishedTasks.size());
     }
-    // Outside the mutex: stop waits for a running callback, which itself waits on the mutex.
-    for (ffrt_timer_t handle : timersToStop) {
-        StopTimer(handle);
+    // Finished one by one, each with its own lock: a task raced away by another finish
+    // path in between is simply skipped by FinishTaskInner.
+    size_t finishedCount = 0;
+    for (const auto &taskId : creatorTaskIds) {
+        if (FinishTaskInner(taskId, TaskFinishReason::FINISHED_BY_CREATOR_DIED, SYSTEM_INITIATED_UID,
+            SKIP_DEADLINE_CHECK) == ERR_OK) {
+            finishedCount++;
+        }
     }
-    for (const auto &taskId : finishedTasks) {
-        NotifyTaskFinished(taskId, TaskFinishReason::FINISHED_BY_CREATOR_DIED);
+    TAG_LOGI(AAFwkTag::APPMGR, "creator process died handled, uid: %{public}d, pid: %{public}d, "
+        "tasks finished: %{public}zu", uid, pid, finishedCount);
+}
+
+void TaskManagerService::RemoveManagedProcessFromAllTasksInner(pid_t pid)
+{
+    std::lock_guard<ffrt::mutex> lock(tasksMutex_);
+    for (auto &item : tasks_) {
+        if (item.second.managedProcesses.erase(pid) > 0) {
+            TAG_LOGI(AAFwkTag::APPMGR, "managed process died, taskId: %{public}s, pid: %{public}d",
+                item.first.c_str(), pid);
+        }
     }
 }
 
@@ -290,8 +283,7 @@ int32_t TaskManagerService::RegisterManagedProcess(const std::string &taskId, in
         TAG_LOGW(AAFwkTag::APPMGR, "caller is not SA or shell, rejected");
         return ERR_PERMISSION_DENIED;
     }
-    std::lock_guard<ffrt::mutex> lock(tasksMutex_);
-    return RegisterManagedProcessLocked(taskId, pid, static_cast<AttributionTool>(toolType));
+    return RegisterManagedProcessInner(taskId, pid, static_cast<AttributionTool>(toolType));
 }
 
 int32_t TaskManagerService::UnregisterManagedProcess(const std::string &taskId, int32_t pid)
@@ -307,59 +299,92 @@ int32_t TaskManagerService::UnregisterManagedProcess(const std::string &taskId, 
         TAG_LOGW(AAFwkTag::APPMGR, "caller is not SA or shell, rejected");
         return ERR_PERMISSION_DENIED;
     }
-    std::lock_guard<ffrt::mutex> lock(tasksMutex_);
-    return UnregisterManagedProcessLocked(taskId, pid);
+    return UnregisterManagedProcessInner(taskId, pid);
 }
 
-int32_t TaskManagerService::RegisterManagedProcessLocked(const std::string &taskId, pid_t pid,
+int32_t TaskManagerService::RegisterManagedProcessInner(const std::string &taskId, pid_t pid,
     AttributionTool tool)
 {
-    auto it = tasks_.find(taskId);
-    if (it == tasks_.end()) {
-        TAG_LOGW(AAFwkTag::APPMGR, "task not found, taskId: %{public}s", taskId.c_str());
-        return ERR_TASK_NOT_FOUND;
+    ffrt_timer_t timerToStop = ffrt_error;
+    {
+        std::lock_guard<ffrt::mutex> lock(tasksMutex_);
+        auto it = tasks_.find(taskId);
+        if (it == tasks_.end()) {
+            TAG_LOGW(AAFwkTag::APPMGR, "task not found, taskId: %{public}s", taskId.c_str());
+            return ERR_TASK_NOT_FOUND;
+        }
+        ManagedProcess process;
+        process.pid = pid;
+        process.tool = tool;
+        process.attributedTimeMillis = NowMillis();
+        it->second.managedProcesses[pid] = process;
+        TAG_LOGI(AAFwkTag::APPMGR, "process registered, taskId: %{public}s, pid: %{public}d, tool: %{public}s",
+            taskId.c_str(), pid, AttributionToolToString(tool));
+        // Every managed-process change restarts the inactivity window; the replaced
+        // timer is stopped below after unlocking.
+        timerToStop = RestartTimeoutWindow(taskId, it->second);
     }
-    ManagedProcess process;
-    process.pid = pid;
-    process.tool = tool;
-    process.attributedTimeMillis = NowMillis();
-    it->second.managedProcesses[pid] = process;
-    TAG_LOGI(AAFwkTag::APPMGR, "process registered, taskId: %{public}s, pid: %{public}d, tool: %{public}s",
-        taskId.c_str(), pid, AttributionToolToString(tool));
+    StopTimer(timerToStop);
     return ERR_OK;
 }
 
-int32_t TaskManagerService::UnregisterManagedProcessLocked(const std::string &taskId, pid_t pid)
+int32_t TaskManagerService::UnregisterManagedProcessInner(const std::string &taskId, pid_t pid)
 {
-    auto it = tasks_.find(taskId);
-    if (it == tasks_.end()) {
-        TAG_LOGW(AAFwkTag::APPMGR, "task not found, taskId: %{public}s", taskId.c_str());
-        return ERR_TASK_NOT_FOUND;
+    ffrt_timer_t timerToStop = ffrt_error;
+    {
+        std::lock_guard<ffrt::mutex> lock(tasksMutex_);
+        auto it = tasks_.find(taskId);
+        if (it == tasks_.end()) {
+            TAG_LOGW(AAFwkTag::APPMGR, "task not found, taskId: %{public}s", taskId.c_str());
+            return ERR_TASK_NOT_FOUND;
+        }
+        it->second.managedProcesses.erase(pid);
+        TAG_LOGI(AAFwkTag::APPMGR, "process unregistered, taskId: %{public}s, pid: %{public}d",
+            taskId.c_str(), pid);
+        // Same as the register side: every managed-process change restarts the window.
+        timerToStop = RestartTimeoutWindow(taskId, it->second);
     }
-    it->second.managedProcesses.erase(pid);
-    TAG_LOGI(AAFwkTag::APPMGR, "process unregistered, taskId: %{public}s, pid: %{public}d",
-        taskId.c_str(), pid);
+    StopTimer(timerToStop);
     return ERR_OK;
 }
 
-void TaskManagerService::StartTimeoutTimer(const std::string &taskId, TaskRecord &record)
+ffrt_timer_t TaskManagerService::RestartTimeoutWindow(const std::string &taskId, TaskRecord &record)
 {
-    int64_t delayMillis = std::max(record.deadlineMillis - NowMillis(), static_cast<int64_t>(0));
+    int64_t newDeadline = NowMillis() + static_cast<int64_t>(GetTimeoutSeconds()) * MILLIS_PER_SECOND;
+    ffrt_timer_t newHandle = StartTimeoutTimer(taskId, newDeadline);
+    if (newHandle == ffrt_error) {
+        // Keep the previous window: the record still matches the armed timer, so the
+        // task times out at the old deadline instead of living without a timer.
+        TAG_LOGE(AAFwkTag::APPMGR, "restart timeout window failed, taskId: %{public}s", taskId.c_str());
+        return ffrt_error;
+    }
+    ffrt_timer_t previousHandle = record.timeoutHandle;
+    record.deadlineMillis = newDeadline;
+    record.timeoutHandle = newHandle;
+    TAG_LOGI(AAFwkTag::APPMGR, "timeout window restarted, taskId: %{public}s, deadline(ms): %{public}" PRId64,
+        taskId.c_str(), newDeadline);
+    return previousHandle;
+}
+
+ffrt_timer_t TaskManagerService::StartTimeoutTimer(const std::string &taskId, int64_t deadlineMillis)
+{
+    int64_t delayMillis = std::max(deadlineMillis - NowMillis(), static_cast<int64_t>(0));
     auto ctx = new (std::nothrow) TimeoutContext();
     if (ctx == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "alloc timeout context failed, taskId: %{public}s", taskId.c_str());
-        return;
+        return ffrt_error;
     }
     ctx->taskId = taskId;
-    ctx->deadlineMillis = record.deadlineMillis;
+    ctx->deadlineMillis = deadlineMillis;
     // One-shot on an FFRT worker; the callback re-checks existence and deadline before
     // finishing, so a late or stale fire is always a no-op.
-    record.timeoutHandle = ffrt_timer_start(ffrt_qos_default, static_cast<uint64_t>(delayMillis),
+    ffrt_timer_t handle = ffrt_timer_start(ffrt_qos_default, static_cast<uint64_t>(delayMillis),
         ctx, TimerCallback, false);
-    if (record.timeoutHandle == ffrt_error) {
+    if (handle == ffrt_error) {
         TAG_LOGE(AAFwkTag::APPMGR, "start timeout timer failed, taskId: %{public}s", taskId.c_str());
         delete ctx;
     }
+    return handle;
 }
 
 void TaskManagerService::StopTimer(ffrt_timer_t handle)
@@ -439,7 +464,7 @@ int32_t TaskManagerService::GetTimeoutSeconds() const
 {
     int32_t seconds = OHOS::system::GetIntParameter<int32_t>(TASK_TIMEOUT_PARAM,
         TASK_DEFAULT_TIMEOUT_SECONDS);
-    if (seconds <= 0 || seconds > TASK_MAX_TIMEOUT_SECONDS) {
+    if (seconds <= 0) {
         return TASK_DEFAULT_TIMEOUT_SECONDS;
     }
     return seconds;

@@ -32,11 +32,16 @@ namespace AppExecFwk {
  *        obtained via TaskManagerService::GetInstance().
  *
  * All state (tasks_) is protected by tasksMutex_ (an ffrt::mutex, because the
- * timeout callbacks run on FFRT workers): each public entry locks exactly once
- * and delegates to the *Locked helpers, which require the caller to hold the
- * mutex (ffrt::mutex is non-recursive). The single-exit FinishTaskLocked gathers
- * the three finish paths (caller finish / timeout / creator process death) into
- * one cleanup routine.
+ * timeout callbacks run on FFRT workers): the public entries only validate
+ * parameters and caller identity on the calling thread, and delegate to the
+ * *Inner helpers, which take the mutex themselves (ffrt::mutex is non-recursive,
+ * so the helpers never call each other while holding it). The single-exit
+ * FinishTaskInner gathers the three finish paths (caller finish / timeout /
+ * creator process death) into one cleanup routine.
+ *
+ * The timeout is an inactivity window: it opens at task creation and restarts on
+ * every managed-process change, so a task ends by timeout only after the configured
+ * interval passes without such activity.
  *
  * Locking contract, never violated:
  * - ffrt_timer_stop and NotifyTaskFinished are only called after tasksMutex_ is
@@ -85,8 +90,9 @@ public:
 
     /**
      * @brief Handles the expiry of a task timeout, executed on the FFRT timer callback.
-     *        Checks the task still exists and the deadline still matches before finishing
-     *        it, so a race with an explicit finish stays a no-op (double insurance).
+     *        FinishTaskInner re-checks existence and the deadline under the mutex, so a
+     *        race with an explicit finish or a rebuilt record stays a no-op (double
+     *        insurance).
      * @param taskId Indicates the attribution key of the task.
      * @param expectedDeadline Indicates the deadline captured when the timer was started.
      */
@@ -103,7 +109,8 @@ public:
     void OnProcessDied(pid_t pid, int32_t uid);
 
     /**
-     * @brief Attributes a process into the task.
+     * @brief Attributes a process into the task and restarts its inactivity timeout
+     *        window.
      * @param taskId Indicates the attribution key of the task.
      * @param pid Indicates the pid of the attributed process.
      * @param toolType Indicates the tool chain that attributes the process.
@@ -114,7 +121,8 @@ public:
     int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType);
 
     /**
-     * @brief Removes a process from the managed set of the task.
+     * @brief Removes a process from the managed set of the task and restarts its
+     *        inactivity timeout window.
      * @param taskId Indicates the attribution key of the task.
      * @param pid Indicates the pid of the process to remove.
      * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
@@ -141,59 +149,92 @@ public:
 
 private:
     /**
-     * @brief Creates the task record; the caller must hold tasksMutex_.
+     * @brief Creates the task record and starts its timeout timer; locks tasksMutex_
+     *        internally.
      * @param caller Indicates the captured caller identity.
      * @param taskId Indicates the attribution key of the task.
      * @param priority Indicates the task priority.
      * @return Returns ERR_OK on success; ERR_TASK_ALREADY_EXISTS if the task already exists.
      */
-    int32_t StartTaskLocked(const TaskCallerInfo &caller, const std::string &taskId, int32_t priority);
+    int32_t StartTaskInner(const TaskCallerInfo &caller, const std::string &taskId, int32_t priority);
 
     /**
      * @brief Single-exit cleanup for all three finish paths (caller finish / timeout /
-     *        creator death); the caller must hold tasksMutex_. The terminal record leaves
-     *        the map immediately, so it never shows up in the dump. The pending timeout
-     *        timer handle is returned via timerToStop so the caller stops it only after
-     *        releasing the mutex.
+     *        creator death); locks tasksMutex_ internally, and stops the pending timeout
+     *        timer and notifies the finish hook only after the mutex is released. The
+     *        terminal record leaves the map immediately, so it never shows up in the dump.
      * @param taskId Indicates the attribution key of the task.
      * @param reason Indicates why the task ends.
      * @param callerUid Indicates the uid of the finishing caller; a non-negative value
      *        enables the ownership check (only the creating app, matched by uid, may finish
      *        the task) and a mismatch returns ERR_TASK_NOT_FOUND without existence
      *        disclosure, while the system-initiated paths pass a negative value to skip it.
-     * @param timerToStop Outputs the timeout timer handle to stop after unlocking.
-     * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist or
-     *         the caller is not the creator.
+     * @param expectedDeadline Indicates the deadline captured when the timer was started;
+     *        a positive value enables the staleness check for the timeout path (a mismatch
+     *        means the record was rebuilt and nothing is finished), while the other paths
+     *        pass zero to skip it.
+     * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist, the
+     *         deadline mismatches or the caller is not the creator.
      */
-    int32_t FinishTaskLocked(const std::string &taskId, TaskFinishReason reason, int32_t callerUid,
-        ffrt_timer_t &timerToStop);
+    int32_t FinishTaskInner(const std::string &taskId, TaskFinishReason reason, int32_t callerUid,
+        int64_t expectedDeadline);
 
     /**
-     * @brief Attributes a process into the task; the caller must hold tasksMutex_.
+     * @brief Ends every task whose creator matches the (pid, uid) pair of the dead process.
+     * @param pid Indicates the pid of the dead creator process.
+     * @param uid Indicates the uid of the dead creator process; one uid may host several
+     *        processes and only the dead process's own tasks end.
+     */
+    void FinishTasksByCreatorInner(pid_t pid, int32_t uid);
+
+    /**
+     * @brief Removes a dead process from the managed set of every surviving task; locks
+     *        tasksMutex_ internally.
+     * @param pid Indicates the pid of the dead managed process.
+     */
+    void RemoveManagedProcessFromAllTasksInner(pid_t pid);
+
+    /**
+     * @brief Attributes a process into the task and restarts its inactivity timeout
+     *        window; locks tasksMutex_ internally, and stops the replaced timer only
+     *        after the mutex is released.
      * @param taskId Indicates the attribution key of the task.
      * @param pid Indicates the pid of the attributed process.
      * @param tool Indicates the tool chain that attributes the process.
      * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist.
      */
-    int32_t RegisterManagedProcessLocked(const std::string &taskId, pid_t pid, AttributionTool tool);
+    int32_t RegisterManagedProcessInner(const std::string &taskId, pid_t pid, AttributionTool tool);
 
     /**
-     * @brief Removes a process from the managed set of the task; the caller must hold
-     *        tasksMutex_.
+     * @brief Removes a process from the managed set of the task and restarts its
+     *        inactivity timeout window; locks tasksMutex_ internally, and stops the
+     *        replaced timer only after the mutex is released.
      * @param taskId Indicates the attribution key of the task.
      * @param pid Indicates the pid of the process to remove.
      * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist.
      */
-    int32_t UnregisterManagedProcessLocked(const std::string &taskId, pid_t pid);
+    int32_t UnregisterManagedProcessInner(const std::string &taskId, pid_t pid);
 
     /**
-     * @brief Starts the FFRT one-shot timeout timer of the given record and stores the
-     *        handle into it; the caller must hold tasksMutex_ (ffrt_timer_start is
-     *        non-blocking).
+     * @brief Restarts the inactivity window of the task: posts a new one-shot timer for
+     *        the configured interval and swaps it into the record; the caller must hold
+     *        tasksMutex_. On timer failure the previous window is kept untouched, so the
+     *        record always matches an armed timer.
      * @param taskId Indicates the attribution key of the task.
-     * @param record Indicates the task record whose deadline drives the delay.
+     * @param record Indicates the task record whose window is restarted.
+     * @return Returns the replaced timer handle for the caller to stop outside the
+     *         mutex, or ffrt_error if nothing was replaced.
      */
-    void StartTimeoutTimer(const std::string &taskId, TaskRecord &record);
+    ffrt_timer_t RestartTimeoutWindow(const std::string &taskId, TaskRecord &record);
+
+    /**
+     * @brief Starts the FFRT one-shot timer for the given deadline; the caller must
+     *        hold tasksMutex_ (ffrt_timer_start is non-blocking).
+     * @param taskId Indicates the attribution key of the task.
+     * @param deadlineMillis Indicates the absolute deadline that drives the delay.
+     * @return Returns the timer handle, or ffrt_error on failure.
+     */
+    ffrt_timer_t StartTimeoutTimer(const std::string &taskId, int64_t deadlineMillis);
 
     /**
      * @brief Stops a timeout timer; must only be called after tasksMutex_ is released,
@@ -223,8 +264,9 @@ private:
     static int64_t NowMillis();
 
     /**
-     * @brief Reads the task timeout from the system parameter and clamps it into
-     *        (0, TASK_MAX_TIMEOUT_SECONDS].
+     * @brief Reads the task timeout from the system parameter; the parameter is a test
+     *        knob (settable only from the root shell), and a non-positive value falls
+     *        back to the default.
      * @return Returns the effective timeout in seconds.
      */
     int32_t GetTimeoutSeconds() const;
