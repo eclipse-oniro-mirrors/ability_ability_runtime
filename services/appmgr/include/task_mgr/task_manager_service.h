@@ -26,31 +26,7 @@
 
 namespace OHOS {
 namespace AppExecFwk {
-/**
- * @brief Task lifecycle manager behind IAppMgr (SA 501). The IPC entries live on
- *        IAppMgr and AppMgrService forwards to this self-contained singleton,
- *        obtained via TaskManagerService::GetInstance().
- *
- * All state (tasks_) is protected by tasksMutex_ (an ffrt::mutex, because the
- * timeout callbacks run on FFRT workers): the public entries only validate
- * parameters on the calling thread (caller permission is checked by
- * AppMgrService, the IPC entry), and delegate to the *Inner helpers, which take
- * the mutex themselves (ffrt::mutex is non-recursive, so the helpers never call
- * each other while holding it). The single-exit FinishTaskInner gathers the
- * three finish paths (caller finish / timeout / creator process death) into one
- * cleanup routine.
- *
- * The timeout is an inactivity window: it opens at task creation and restarts on
- * every managed-process change, so a task ends by timeout only after the configured
- * interval passes without such activity.
- *
- * Locking contract, never violated:
- * - ffrt_timer_stop and NotifyTaskFinished are only called after tasksMutex_ is
- *   released: stop waits for a running callback (which itself waits on the
- *   mutex), and the finish hook is reserved for resource-schedule control that
- *   may re-enter this class.
- * - ffrt_timer_start is non-blocking and safe under the mutex.
- */
+    
 class TaskManagerService : public DelayedSingleton<TaskManagerService> {
     DECLARE_DELAYED_SINGLETON(TaskManagerService)
 
@@ -182,9 +158,10 @@ private:
 
     /**
      * @brief Single-exit cleanup for all three finish paths (caller finish / timeout /
-     *        creator death); locks tasksMutex_ internally, and stops the pending timeout
-     *        timer and notifies the finish hook only after the mutex is released. The
-     *        terminal record leaves the map immediately, so it never shows up in the dump.
+     *        creator death); locks tasksMutex_ internally, and releases the extracted
+     *        timeout context and notifies the finish hook only after the mutex is
+     *        released. The terminal record leaves the map immediately, so it never shows
+     *        up in the dump.
      * @param taskId Indicates the attribution key of the task.
      * @param reason Indicates why the task ends.
      * @param callerUid Indicates the uid of the finishing caller; a non-negative value
@@ -239,31 +216,38 @@ private:
 
     /**
      * @brief Restarts the inactivity window of the task: posts a new one-shot timer for
-     *        the configured interval and swaps it into the record; the caller must hold
-     *        tasksMutex_. On timer failure the previous window is kept untouched, so the
-     *        record always matches an armed timer.
+     *        the configured interval and swaps its context into the record; the caller
+     *        must hold tasksMutex_. On timer failure the previous window is kept
+     *        untouched, so the record always matches an armed timer.
      * @param taskId Indicates the attribution key of the task.
      * @param record Indicates the task record whose window is restarted.
-     * @return Returns the replaced timer handle for the caller to stop outside the
-     *         mutex, or ffrt_error if nothing was replaced.
+     * @return Returns the replaced context for the caller to release outside the mutex,
+     *         or nullptr if nothing was replaced.
      */
-    ffrt_timer_t RestartTimeoutWindow(const std::string &taskId, TaskRecord &record);
+    TimeoutContext *RestartTimeoutWindow(const std::string &taskId, TaskRecord &record);
 
     /**
-     * @brief Starts the FFRT one-shot timer for the given deadline; the caller must
-     *        hold tasksMutex_ (ffrt_timer_start is non-blocking).
+     * @brief Starts the FFRT one-shot timer for the given deadline; the caller must hold
+     *        tasksMutex_ (ffrt_timer_start is non-blocking) and stores the returned
+     *        context into the record, so the timer can never fire before its context is
+     *        owned by the record. The delay is clamped to at least 1ms as defense in
+     *        depth.
      * @param taskId Indicates the attribution key of the task.
      * @param deadlineMillis Indicates the absolute deadline that drives the delay.
-     * @return Returns the timer handle, or ffrt_error on failure.
+     * @return Returns the armed timer's context (with its handle inside), or nullptr on
+     *         failure.
      */
-    ffrt_timer_t StartTimeoutTimer(const std::string &taskId, int64_t deadlineMillis);
+    TimeoutContext *StartTimeoutTimer(const std::string &taskId, int64_t deadlineMillis);
 
     /**
-     * @brief Stops a timeout timer; must only be called after tasksMutex_ is released,
-     *        because ffrt_timer_stop waits for a running callback.
-     * @param handle Indicates the timer handle returned by ffrt_timer_start.
+     * @brief Releases an extracted timeout context: stops its timer and then deletes it.
+     *        Must only be called after tasksMutex_ is released (ffrt_timer_stop waits for
+     *        a running callback), and never from inside the fired timer's own callback
+     *        (the timeout path deletes the context directly instead, because stopping it
+     *        there would deadlock).
+     * @param ctx Indicates the context extracted from a record; nullptr is a no-op.
      */
-    void StopTimer(ffrt_timer_t handle);
+    void ReleaseTimeoutContext(TimeoutContext *ctx);
 
     /**
      * @brief Captures the caller identity from the IPC framework.

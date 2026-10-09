@@ -3255,7 +3255,6 @@ void AppMgrProxy::CancelDelayedExitTask(int32_t pid)
 
 int32_t AppMgrProxy::StartTask(const std::string &taskId, int32_t priority)
 {
-    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     MessageParcel data;
     MessageParcel reply;
     MessageOption option(MessageOption::TF_SYNC);
@@ -3273,7 +3272,6 @@ int32_t AppMgrProxy::StartTask(const std::string &taskId, int32_t priority)
 
 int32_t AppMgrProxy::FinishTask(const std::string &taskId)
 {
-    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     MessageParcel data;
     MessageParcel reply;
     MessageOption option(MessageOption::TF_SYNC);

@@ -245,7 +245,6 @@ ErrCode AppMgrService::Init()
         TAG_LOGE(AAFwkTag::APPMGR, "init failed");
         return ERR_INVALID_OPERATION;
     }
-    // The task manager is a self-contained singleton: no injection needed here.
     if (!Publish(this)) {
         TAG_LOGE(AAFwkTag::APPMGR, " publish fail");
         return ERR_APPEXECFWK_SERVICE_NOT_CONNECTED;

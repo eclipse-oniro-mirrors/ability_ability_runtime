@@ -59,7 +59,6 @@ class AppRunningManager : public std::enable_shared_from_this<AppRunningManager>
 public:
     AppRunningManager();
     virtual ~AppRunningManager();
-
     /**
      * CreateAppRunningRecord, Get or create application record information.
      *

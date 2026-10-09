@@ -754,7 +754,6 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::OnRemoteDied(const wptr<IRe
         appRunningRecordMap_.erase(iter);
     }
     if (appRecord != nullptr) {
-        // Thread-safe singleton entry, locks internally on the calling thread.
         TaskManagerService::GetInstance()->OnProcessDied(appRecord->GetPid(), appRecord->GetUid());
     }
     if (appRecord != nullptr) {
@@ -804,7 +803,6 @@ void AppRunningManager::RemoveAppRunningRecordById(const int32_t recordId)
     }
 
     if (appRecord != nullptr) {
-        // Thread-safe singleton entry, locks internally on the calling thread.
         TaskManagerService::GetInstance()->OnProcessDied(appRecord->GetPid(), appRecord->GetUid());
     }
 
