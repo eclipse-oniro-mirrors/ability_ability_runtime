@@ -189,6 +189,7 @@ ohos_shared_library("appkit_native") {
     "${ability_runtime_native_path}/appkit:app_context_utils",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_native_path}/appkit:application_image_observer_manager",
+    "${ability_runtime_native_path}/appkit:extractresourcemanager",
     "${ability_runtime_path}/js_environment/frameworks/js_environment:js_environment",
     "${ability_runtime_path}/utils/global/common:runtime_utils",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
@@ -201,7 +202,6 @@ ohos_shared_library("appkit_native") {
   external_deps = [
     "ability_base:base",
     "ability_base:extractortool",
-    "ability_base:extractresourcemanager",
     "ability_base:string_utils",
     "ability_base:want",
     "access_token:libaccesstoken_sdk",
@@ -1027,5 +1027,38 @@ ohos_shared_library("appkit_child_entry") {
 
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
+################################### extractresourcemanager ########################################
+ohos_shared_library("extractresourcemanager") {
+  branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
+
+  sources = [
+    "${ability_runtime_native_path}/appkit/app/extract_resource_manager.cpp",
+  ]
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+
+  cflags = []
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+
+  external_deps = [
+    "resource_management:global_resmgr",
+    "icu:shared_icuuc",
+  ]
+
+  public_configs = [ ":appkit_public_config" ]
+
+  subsystem_name = "ability"
+  innerapi_tags = [ "platformsdk" ]
   part_name = "ability_runtime"
 }

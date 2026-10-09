@@ -77,7 +77,6 @@ ohos_unittest("appcapture_perf_test") {
  
   external_deps = [
     "ability_base:configuration",
-    "ability_base:extractresourcemanager",
     "ability_base:string_utils",
     "ability_base:want",
     "bundle_framework:appexecfwk_base",
