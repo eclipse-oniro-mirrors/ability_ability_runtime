@@ -90,9 +90,11 @@ void AmsMgrScheduler::LoadAbility(const std::shared_ptr<AbilityInfo> &abilityInf
     PerfProfile::GetInstance().SetAbilityLoadStartTime(GetTickCount());
     TAG_LOGI(AAFwkTag::PROCESSMGR, "Load:%{public}s-%{public}s", abilityInfo->bundleName.c_str(),
         abilityInfo->name.c_str());
+    auto abilityInfoCopy = std::make_shared<AbilityInfo>(*abilityInfo);
+    auto appInfoCopy = std::make_shared<ApplicationInfo>(*appInfo);
     std::function<void()> loadAbilityFunc = [amsMgrServiceInner = amsMgrServiceInner_,
-        abilityInfo, appInfo, want, loadParam]() {
-        amsMgrServiceInner->LoadAbility(abilityInfo, appInfo, want, loadParam);
+        abilityInfoCopy, appInfoCopy, want, loadParam]() {
+        amsMgrServiceInner->LoadAbility(abilityInfoCopy, appInfoCopy, want, loadParam);
     };
 
     // cache other application load ability task before scene board attach
