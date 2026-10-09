@@ -1825,6 +1825,50 @@ public:
      * @param pid Pid of the process whose delayed-exit task should be cancelled.
      */
     virtual void CancelDelayedExitTask(int32_t pid) const;
+
+    /**
+     * Start a task (task manager entry forwarded to AppMgrService, replacing the
+     * removed standalone task manager client); the caller must be a system app.
+     *
+     * @param taskId Attribution key of the task (1~256 characters).
+     * @param priority One of the TaskPriority values.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
+    int32_t StartTask(const std::string &taskId, int32_t priority);
+
+    /**
+     * Finish a task (task manager entry forwarded to AppMgrService); the caller
+     * must be the creating system app.
+     *
+     * @param taskId Attribution key of the task (1~256 characters).
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
+    int32_t FinishTask(const std::string &taskId);
+
+    /**
+     * Attribute a process into a task (task manager entry forwarded to
+     * AppMgrService); the caller must be a system ability or shell.
+     *
+     * @param taskId Attribution key of the task (1~256 characters).
+     * @param pid Pid of the process to attribute.
+     * @param toolType One of the AttributionTool values.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
+    int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType);
+
+    /**
+     * Remove a process from the managed set of a task (task manager entry
+     * forwarded to AppMgrService); the caller must be a system ability or shell.
+     *
+     * @param taskId Attribution key of the task (1~256 characters).
+     * @param pid Pid of the process to remove.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
+    int32_t UnregisterManagedProcess(const std::string &taskId, int32_t pid);
 private:
     void SetServiceManager(std::unique_ptr<AppServiceManager> serviceMgr);
     /**

@@ -25,6 +25,7 @@
 #include "js_error_utils.h"
 #include "js_runtime_utils.h"
 #include "appmgr/app_mgr_client.h"
+#include "singleton.h"
 
 namespace OHOS {
 namespace AbilityRuntime {

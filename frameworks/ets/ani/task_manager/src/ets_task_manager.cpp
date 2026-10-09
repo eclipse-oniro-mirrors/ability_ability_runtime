@@ -28,6 +28,7 @@
 #include "ets_error_utils.h"
 #include "hilog_tag_wrapper.h"
 #include "appmgr/app_mgr_client.h"
+#include "singleton.h"
 
 namespace OHOS {
 namespace TaskManagerEts {
