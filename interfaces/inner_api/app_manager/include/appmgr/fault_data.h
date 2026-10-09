@@ -114,6 +114,9 @@ struct FaultData : public Parcelable {
     std::string callbackLog;
     AppTelemetryLeakType atLeakType;
     std::string gpuHookSize;
+    std::string heaviestStack;
+    int64_t ipcLatency = 0;
+    std::string logValidity;
 };
 
 /**

@@ -21,6 +21,9 @@
 
 namespace OHOS {
 namespace AppExecFwk {
+constexpr size_t MAX_HEAVIEST_STACK_SIZE = 128 * 1024;
+constexpr size_t HEAVIEST_STACK_INDEX = 8;
+
 #define RETURN_FALSE_AND_WRITE_LOG_IF_TRUE(expr, log) \
     do { \
         if ((expr)) { \
@@ -80,7 +83,18 @@ bool FaultData::ReadFromParcel(Parcel &parcel)
 
     RETURN_FALSE_AND_WRITE_LOG_IF_TRUE(!parcel.ReadString(strValue), "AppfreezeInfo read string failed.");
     appfreezeInfo = strValue;
-    return ReadContent(parcel);
+    if (!ReadContent(parcel)) {
+        return false;
+    }
+    heaviestStack.clear();
+    // Older applications end the parcel here. A missing or malformed optional tail
+    // must not discard their existing freeze report.
+    if (parcel.GetReadableBytes() > 0 && parcel.GetReadableBytes() <= MAX_HEAVIEST_STACK_SIZE + HEAVIEST_STACK_INDEX &&
+        parcel.ReadString(strValue) && strValue.size() <= MAX_HEAVIEST_STACK_SIZE &&
+        strValue.find('\0') == std::string::npos) {
+        heaviestStack = std::move(strValue);
+    }
+    return true;
 }
 
 bool FaultData::ReadContent(Parcel &parcel)
@@ -392,7 +406,9 @@ bool FaultData::Marshalling(Parcel &parcel) const
         "Tid [%{public}u] write int32 failed.", tid
     );
 
-    return WriteContent(parcel);
+    return WriteContent(parcel) && parcel.WriteString(
+        heaviestStack.size() <= MAX_HEAVIEST_STACK_SIZE && heaviestStack.find('\0') == std::string::npos ?
+        heaviestStack : "");
 }
 
 bool AppFaultDataBySA::ReadFromParcel(Parcel &parcel)

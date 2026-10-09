@@ -375,5 +375,75 @@ HWTEST_F(FaultDataTest, Marshalling_002, TestSize.Level1)
     bool ret = appFaultDataBySA->Marshalling(message);
     EXPECT_EQ(true, ret);
 }
+
+HWTEST_F(FaultDataTest, Req1OptionalHeaviestStackParcel, TestSize.Level1)
+{
+    FaultData source;
+    source.errorObject.name = "THREAD_BLOCK_6S";
+    source.samplerCount = 0;
+    source.heaviestStack = "heaviest stack: \nstack counts: 1\n#00 pc 0000000000001234 /system/lib64/test.so\n";
+    source.ipcLatency = 123;
+    source.logValidity = "1:0:2:123";
+    MessageParcel parcel;
+    ASSERT_TRUE(source.Marshalling(parcel));
+    FaultData received;
+    ASSERT_TRUE(received.ReadFromParcel(parcel));
+    EXPECT_EQ(received.heaviestStack, source.heaviestStack);
+    EXPECT_EQ(received.samplerCount, 0);
+    EXPECT_EQ(received.ipcLatency, 0);
+    EXPECT_TRUE(received.logValidity.empty());
+
+    MessageParcel legacy;
+    MessageParcel tail;
+    ASSERT_TRUE(source.Marshalling(legacy));
+    ASSERT_TRUE(tail.WriteString(source.heaviestStack));
+    ASSERT_TRUE(legacy.SetDataSize(legacy.GetDataSize() - tail.GetDataSize()));
+    received.heaviestStack = "old round";
+    ASSERT_TRUE(received.ReadFromParcel(legacy));
+    EXPECT_TRUE(received.heaviestStack.empty());
+    EXPECT_EQ(received.errorObject.name, source.errorObject.name);
+
+    MessageParcel corrupt;
+    ASSERT_TRUE(corrupt.WriteString(source.errorObject.name));
+    EXPECT_FALSE(received.ReadFromParcel(corrupt));
+}
+
+HWTEST_F(FaultDataTest, Req1OversizeHeaviestStackFallsBack, TestSize.Level1)
+{
+    FaultData source;
+    source.heaviestStack.assign(128 * 1024 + 1, 'x');
+    MessageParcel parcel;
+    ASSERT_TRUE(source.Marshalling(parcel));
+    FaultData received;
+    ASSERT_TRUE(received.ReadFromParcel(parcel));
+    EXPECT_TRUE(received.heaviestStack.empty());
+    EXPECT_EQ(received.samplerCount, -1);
+}
+
+HWTEST_F(FaultDataTest, Req1EmbeddedNulHeaviestStackFallsBack, TestSize.Level1)
+{
+    FaultData source;
+    source.errorObject.name = "THREAD_BLOCK_6S";
+    const std::string invalid = std::string("heaviest stack: ") + '\0' + "hidden suffix";
+    source.heaviestStack = invalid;
+    MessageParcel marshalled;
+    ASSERT_TRUE(source.Marshalling(marshalled));
+    FaultData received;
+    ASSERT_TRUE(received.ReadFromParcel(marshalled));
+    EXPECT_TRUE(received.heaviestStack.empty());
+
+    // Bypass the producer's validation to exercise an untrusted incoming optional tail.
+    MessageParcel raw;
+    MessageParcel emptyTail;
+    ASSERT_TRUE(source.Marshalling(raw));
+    ASSERT_TRUE(emptyTail.WriteString(""));
+    const auto tailPosition = raw.GetDataSize() - emptyTail.GetDataSize();
+    ASSERT_TRUE(raw.RewindWrite(tailPosition));
+    ASSERT_TRUE(raw.WriteString(invalid));
+    ASSERT_TRUE(received.ReadFromParcel(raw));
+    EXPECT_TRUE(received.heaviestStack.empty());
+    EXPECT_EQ(received.errorObject.name, source.errorObject.name);
+}
+
 } // namespace AppExecFwk
 } // namespace OHOS

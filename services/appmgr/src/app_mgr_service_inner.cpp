@@ -15,6 +15,9 @@
 
 #include "app_mgr_service_inner.h"
 
+#include <atomic>
+#include <charconv>
+#include <chrono>
 #include <cctype>
 #include <cinttypes>
 #include <csignal>
@@ -357,6 +360,8 @@ constexpr int32_t SHADER_CACHE_GROUPID = 3099;
 constexpr int32_t DEFAULT_INVAL_VALUE = -1;
 constexpr int32_t DEFAULT_KILL_ID = -1;
 constexpr int32_t NO_ABILITY_RECORD_ID = -1;
+constexpr int64_t IPC_LATENCY_THREAD_BLOCK = 0;
+constexpr int64_t IPC_LATENCY_NOT_MEASURED = -1;
 constexpr int32_t EXIT_REASON_UNKNOWN = 0;
 constexpr int32_t PROCESS_START_FAILED_SUB_REASON_UNKNOWN = 0;
 constexpr int32_t ATTACH_TIMEOUT_SUB_REASON_TIMEOUT = 0;
@@ -6789,8 +6794,7 @@ void AppMgrServiceInner::OnRemoteDied(const wptr<IRemoteObject> &remote, bool is
     }
     CheckMakeImageState(appRecord, ImageError::ERR_TEMPLATE_DIED);
     SendProcessKillEvent(appRecord);
-    AppExecFwk::AppfreezeManager::GetInstance()->ReportAppFreezeSysEvents(appRecord->GetPid(),
-        appRecord->GetBundleName());
+    AppExecFwk::AppfreezeManager::GetInstance()->ClearLogValidity(appRecord->GetPid());
     AppExecFwk::AppfreezeManager::GetInstance()->RemoveDeathProcess(appRecord->GetBundleName());
     std::vector<sptr<IRemoteObject>> abilityTokens;
     for (const auto &token : appRecord->GetAbilities()) {
@@ -9726,6 +9730,8 @@ bool AppMgrServiceInner::IsAsanEnabled(const std::shared_ptr<AppRunningRecord> &
 
 int32_t AppMgrServiceInner::NotifyAppFault(const FaultData &faultData)
 {
+    int64_t receiveTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
     TAG_LOGI(AAFwkTag::APPMGR, "call");
     int32_t pid = IPCSkeleton::GetCallingPid();
     int32_t uid = IPCSkeleton::GetCallingUid();
@@ -9764,7 +9770,14 @@ int32_t AppMgrServiceInner::NotifyAppFault(const FaultData &faultData)
     std::string processName = appRecord->GetProcessName();
     bool isExit = AppExecFwk::AppfreezeManager::GetInstance()->CheckProcessExit(processName,
         eventName, nonConstFaultData.isInForeground);
+    bool isThreadBlock = faultData.errorObject.name == AppFreezeType::THREAD_BLOCK_3S ||
+        faultData.errorObject.name == AppFreezeType::THREAD_BLOCK_6S;
+    nonConstFaultData.ipcLatency = isThreadBlock ? 0 : -1;
     if (faultData.faultType == FaultDataType::APP_FREEZE) {
+        if (HandleFaultTimeout(nonConstFaultData, pid, recordId, receiveTime, isThreadBlock)) {
+            return ERR_OK;
+        }
+        // Only the original pending task can claim this notification's feedback.
         if (CheckAppFault(appRecord, faultData)) {
             return ERR_OK;
         }
@@ -9807,9 +9820,47 @@ int32_t AppMgrServiceInner::NotifyAppFault(const FaultData &faultData)
     return ERR_OK;
 }
 
+bool AppMgrServiceInner::HandleFaultTimeout(FaultData &faultData, int32_t pid, int32_t recordId,
+    int64_t receiveTime, bool isThreadBlock)
+{
+    if (faultData.timeoutMarkers.empty()) {
+        return false;
+    }
+    const int64_t latency = GetAppFaultNotifyLatency (faultData.timeoutMarkers, pid, recordId, receiveTime);
+    if (latency < 0) {
+        return true;
+    }
+    faultData.ipcLatency = isThreadBlock ? IPC_LATENCY_THREAD_BLOCK : latency;
+    return false;
+}
+
+int64_t AppMgrServiceInner::GetAppFaultNotifyLatency(const std::string& marker, int32_t pid, int32_t recordId,
+    int64_t receiveTime) const
+{
+    const std::string prefix = "notifyFault:" + std::to_string(pid) + ":" + std::to_string(recordId) + ":";
+    if (marker.compare(0, prefix.size(), prefix) != 0) {
+        return -1;
+    }
+    const auto end = marker.find(':', prefix.size());
+    if (end == std::string::npos) {
+        return -1;
+    }
+    int64_t startTime = -1;
+    uint64_t sequence = 0;
+    const auto timeResult = std::from_chars(marker.data() + prefix.size(), marker.data() + end, startTime);
+    const auto sequenceResult = std::from_chars(marker.data() + end + 1, marker.data() + marker.size(), sequence);
+    if (timeResult.ec != std::errc() || timeResult.ptr != marker.data() + end || startTime < 0 ||
+        startTime > receiveTime || sequenceResult.ec != std::errc() ||
+        sequenceResult.ptr != marker.data() + marker.size()) {
+        return -1;
+    }
+    return receiveTime - startTime;
+}
+
 bool AppMgrServiceInner::CheckAppFault(const std::shared_ptr<AppRunningRecord> &appRecord, const FaultData &faultData)
 {
-    if (faultData.timeoutMarkers != "" && !dfxTaskHandler_->CancelTask(faultData.timeoutMarkers)) {
+    if (!faultData.timeoutMarkers.empty() &&
+        (dfxTaskHandler_ == nullptr || !dfxTaskHandler_->CancelTask(faultData.timeoutMarkers))) {
         return true;
     }
 
@@ -9848,9 +9899,6 @@ int32_t AppMgrServiceInner::KillFaultApp(int32_t pid, const std::string &bundleN
             CHECK_POINTER_AND_RETURN_LOG(innerService, "get appMgrServiceInner fail");
             TAG_LOGW(AAFwkTag::APPMGR, "faultData: %{public}s,pid: %{public}d will exit because %{public}s",
                 bundleName.c_str(), pid, innerService->FaultTypeToString(faultData.faultType).c_str());
-            uint64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::system_clock::now().time_since_epoch()).count();
-            AppExecFwk::AppfreezeManager::GetInstance()->RegisterAppKillTime(pid, now);
 #ifdef APP_MGR_KILL_REASON_TAG
             innerService->RecordAppfreezeKillReason(pid, faultData);
 #endif
@@ -9933,6 +9981,19 @@ int32_t AppMgrServiceInner::TransformedNotifyAppFault(const AppFaultDataBySA &fa
         if (!AppExecFwk::AppfreezeManager::GetInstance()->IsHandleAppfreeze(ctx.bundleName) || record->IsDebugging()) {
             return ERR_OK;
         }
+        if (dfxTaskHandler_ == nullptr) {
+            TAG_LOGE(AAFwkTag::APPMGR, "dfxTaskHandler_ null");
+            return ERR_NO_INIT;
+        }
+        static std::atomic<uint64_t> notifySequence {0};
+        const auto notifyTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count();
+        // The application echoes this opaque marker; the pending task owns its lifetime.
+        transformedFaultData.timeoutMarkers = "notifyFault:" + std::to_string(ctx.pid) + ":" +
+            std::to_string(ctx.recordId) + ":" + std::to_string(notifyTime) + ":" +
+            std::to_string(notifySequence.fetch_add(1));
+        transformedFaultData.ipcLatency = ctx.eventName == AppFreezeType::THREAD_BLOCK_3S ||
+            ctx.eventName == AppFreezeType::THREAD_BLOCK_6S ? IPC_LATENCY_THREAD_BLOCK : IPC_LATENCY_NOT_MEASURED;
         auto timeoutNotifyApp = [this, ctx, transformedFaultData]() {
             std::string key = std::to_string(ctx.pid) + "_" + std::to_string(ctx.uid) + "_" + ctx.bundleName;
             std::string message = transformedFaultData.errorObject.message;
@@ -9942,10 +10003,6 @@ int32_t AppMgrServiceInner::TransformedNotifyAppFault(const AppFaultDataBySA &fa
             }
             this->TimeoutNotifyApp(ctx.pid, ctx.uid, ctx.bundleName, ctx.processName, transformedFaultData, ctx.recordId);
         };
-        if (dfxTaskHandler_ == nullptr) {
-            TAG_LOGE(AAFwkTag::APPMGR, "dfxTaskHandler_ null");
-            return ERR_NO_INIT;
-        }
         dfxTaskHandler_->SubmitTask(timeoutNotifyApp, transformedFaultData.timeoutMarkers, timeout);
     }
     record->NotifyAppFault(transformedFaultData);

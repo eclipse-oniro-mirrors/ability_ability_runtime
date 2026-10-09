@@ -1266,5 +1266,127 @@ HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_IsValidFreezeTypeName_009, T
     EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("LIFECYCLE_TIMEOUT%00"));
     EXPECT_FALSE(appfreezeManager->IsValidFreezeTypeName("%4c%49%46%45"));
 }
+
+HWTEST_F(AppfreezeManagerTest, Req1LogValidityEpisodeAndMetadata, TestSize.Level1)
+{
+    AppfreezeManager::AppInfo app {false, false, 12345, 200001, "req1.test", "req1.test"};
+    FaultData half;
+    half.errorObject.name = AppFreezeType::THREAD_BLOCK_3S;
+    half.detectTime = 100000;
+    half.logValidity = "10:0:20:0";
+    appfreezeManager->AppendLogValidity(half, app);
+    FaultData full;
+    full.errorObject.name = AppFreezeType::THREAD_BLOCK_6S;
+    full.detectTime = 103000;
+    full.logValidity = "30:0:40:0";
+    full.samplerCount = 7;
+    full.heaviestStack = "current round";
+    appfreezeManager->AppendLogValidity(full, app);
+    EXPECT_EQ(full.logValidity, "10:0:20:0|30:0:40:0");
+    auto copy = appfreezeManager->GetFaultNotifyData(full, app.pid);
+    auto event = appfreezeManager->UpdateEventInfo(copy, app, "", "");
+    EXPECT_EQ(event.logValidity, full.logValidity);
+    EXPECT_EQ(event.samplerCount, 7);
+    EXPECT_EQ(event.heaviestStack, "current round");
+    EXPECT_EQ(appfreezeManager->freezeLogInfo_.at(app.pid).count, 2);
+
+    appfreezeManager->AppendLogValidity(half, app);
+    full.detectTime += 20000;
+    full.logValidity = "1:0:2:0";
+    appfreezeManager->AppendLogValidity(full, app);
+    EXPECT_EQ(full.logValidity, "1:0:2:0");
+    appfreezeManager->AppendLogValidity(half, app);
+    appfreezeManager->ClearLogValidity(app.pid);
+    EXPECT_TRUE(appfreezeManager->freezeLogInfo_.empty());
+}
+
+HWTEST_F(AppfreezeManagerTest, Req1LogValidityInterleavingAndBounds, TestSize.Level1)
+{
+    constexpr int64_t LOG_CHAIN_TIMEOUT_MS = 15000;
+    AppfreezeManager::AppInfo app {false, false, 12346, 200001, "req1.test", "req1.test"};
+    FaultData event;
+    event.detectTime = 100000;
+    const auto append = [&event, &app, this](const std::string& name, uint32_t state,
+        const std::string& expected) {
+        event.errorObject.name = name;
+        event.state = state;
+        event.logValidity = "1:0:2:0";
+        event.detectTime += 100;
+        appfreezeManager->AppendLogValidity(event, app);
+        EXPECT_EQ(event.logValidity, expected);
+    };
+    const std::string item = "1:0:2:0";
+    append(AppFreezeType::LIFECYCLE_HALF_TIMEOUT, 1, item);
+    event.detectTime -= 200; // An earlier checkpoint can arrive after a later notification's feedback.
+    append(AppFreezeType::LIFECYCLE_HALF_TIMEOUT, 2, item + "|" + item);
+    append(AppFreezeType::LIFECYCLE_TIMEOUT, 1, item + "|" + item + "|" + item);
+    // The same half flow starts a new cycle; distinct half flows remain in processing order.
+    append(AppFreezeType::LIFECYCLE_HALF_TIMEOUT, 1, item);
+    appfreezeManager->ClearLogValidity(app.pid);
+    append(AppFreezeType::THREAD_BLOCK_3S, 0, item);
+    append(AppFreezeType::APP_INPUT_BLOCK, 0, item + "|" + item);
+    append(AppFreezeType::THREAD_BLOCK_6S, 0, item + "|" + item + "|" + item);
+    append(AppFreezeType::LIFECYCLE_HALF_TIMEOUT, 1, item + "|" + item + "|" + item + "|" + item);
+    append(AppFreezeType::LIFECYCLE_TIMEOUT, 1, item + "|" + item + "|" + item + "|" + item + "|" + item);
+    append(AppFreezeType::APP_INPUT_BLOCK, 0, item);
+    event.appRunningUniqueId = "new-process";
+    append(AppFreezeType::THREAD_BLOCK_6S, 0, item);
+    appfreezeManager->freezeLogInfo_.at(app.pid).startTime -= LOG_CHAIN_TIMEOUT_MS + 1;
+    append(AppFreezeType::APP_INPUT_BLOCK, 0, item);
+    appfreezeManager->ClearLogValidity(app.pid);
+}
+
+HWTEST_F(AppfreezeManagerTest, Req1LogValiditySurvivesDumpLatency, TestSize.Level1)
+{
+    constexpr int64_t LOG_CHAIN_TIMEOUT_MS = 15000;
+    AppfreezeManager::AppInfo app {false, false, 12347, 200001, "req1.test", "req1.test"};
+    FaultData first;
+    first.errorObject.name = AppFreezeType::THREAD_BLOCK_3S;
+    first.detectTime = 100000;
+    first.logValidity = "10:0:20:0";
+    appfreezeManager->AppendLogValidity(first, app);
+
+    FaultData second;
+    second.errorObject.name = AppFreezeType::THREAD_BLOCK_6S;
+    second.detectTime = 105000;
+    second.logValidity = "30:0:40:0";
+    appfreezeManager->AppendLogValidity(second, app);
+    EXPECT_EQ(second.logValidity, "10:0:20:0|30:0:40:0");
+    EXPECT_EQ(appfreezeManager->freezeLogInfo_.at(app.pid).count, 2);
+
+    appfreezeManager->freezeLogInfo_.at(app.pid).startTime -= 5000;
+    FaultData third;
+    third.errorObject.name = AppFreezeType::THREAD_BLOCK_6S;
+    third.detectTime = 108000;
+    third.logValidity = "50:0:60:0";
+    appfreezeManager->AppendLogValidity(third, app);
+    EXPECT_EQ(third.logValidity, "10:0:20:0|30:0:40:0|50:0:60:0");
+    EXPECT_EQ(appfreezeManager->freezeLogInfo_.at(app.pid).count, 3);
+
+    appfreezeManager->freezeLogInfo_.at(app.pid).startTime -= LOG_CHAIN_TIMEOUT_MS;
+    FaultData fourth;
+    fourth.errorObject.name = AppFreezeType::THREAD_BLOCK_6S;
+    fourth.detectTime = 130000;
+    fourth.logValidity = "70:0:80:0";
+    appfreezeManager->AppendLogValidity(fourth, app);
+    EXPECT_EQ(fourth.logValidity, "70:0:80:0");
+    EXPECT_EQ(appfreezeManager->freezeLogInfo_.at(app.pid).count, 1);
+
+    appfreezeManager->ClearLogValidity(app.pid);
+}
+
+HWTEST_F(AppfreezeManagerTest, Req1DumpTimingMeasuresActualFailure, TestSize.Level1)
+{
+    AppfreezeManager::DumpTiming timing;
+    const auto start = std::chrono::steady_clock::now();
+    auto stack = appfreezeManager->CatchJsonStacktrace(-1, AppFreezeType::THREAD_BLOCK_3S, &timing);
+    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - start).count();
+    EXPECT_EQ(timing.result, -1);
+    EXPECT_GE(timing.latency, 0);
+    EXPECT_LE(timing.latency, elapsed);
+    EXPECT_FALSE(stack.first.empty());
+}
+
 }  // namespace AppExecFwk
 }  // namespace OHOS

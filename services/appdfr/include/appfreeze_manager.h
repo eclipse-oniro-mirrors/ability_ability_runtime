@@ -35,13 +35,6 @@
 namespace OHOS {
 using AbilityRuntime::FreezeUtil;
 namespace AppExecFwk {
-static const std::vector<std::string> APP_FREEZE_EVENT_NAME = {
-    "THREAD_BLOCK_3S",
-    "THREAD_BLOCK_6S",
-    "APP_INPUT_BLOCK",
-    "LIFECYCLE_HALF_TIMEOUT",
-    "LIFECYCLE_TIMEOUT",
-};
 static constexpr int DEFAULT_APPFREEZE_REPORT_TIMES = 1;
 
 class AppfreezeManager : public std::enable_shared_from_this<AppfreezeManager> {
@@ -74,16 +67,6 @@ public:
         std::string eventName;
         std::string bundleName;
         std::string msg;
-    };
-
-    struct AppfreezeEventRecord {
-        std::string dumpResult;
-        uint64_t schedTime = 0;
-        uint64_t detectTime = 0;
-        uint64_t dumpStartTime = 0;
-        uint64_t dumpFinishTime = 0;
-        int32_t appStatus = -1;
-        bool isRepeatKilledThread = false;
     };
 
     struct ProcessKillInfo {
@@ -122,8 +105,7 @@ public:
     void RemoveDeathProcess(std::string bundleName);
     void ResetAppfreezeState(int32_t pid, const std::string& bundleName);
     bool IsValidFreezeFilter(int32_t pid, const std::string& bundleName);
-    void ReportAppFreezeSysEvents(int32_t pid, const std::string& bundleName);
-    void RegisterAppKillTime(int32_t pid, uint64_t killTime);
+    void ClearLogValidity(int32_t pid);
     void InitWarningCpuInfo(const FaultData& faultData, const AppfreezeManager::AppInfo& appInfo);
     bool CheckInBackGround(const FaultData &faultData);
     bool CheckAppfreezeHappend(const std::string& key, const std::string& eventName);
@@ -144,6 +126,21 @@ public:
     bool IsValidFreezeTypeName(const std::string& freezeTypeName);
 
 private:
+    struct DumpTiming {
+        int result = -1;
+        int64_t latency = -1;
+    };
+
+    struct FreezeLogInfo {
+        std::string identity;
+        std::string validity;
+        std::set<std::string> halfFlows;
+        uint64_t checkpointTime = 0;
+        uint64_t lastCheckpointTime = 0;
+        int64_t startTime = 0;
+        size_t count = 0;
+    };
+
     struct PeerBinderInfo {
         int32_t clientPid;
         int32_t clientTid;
@@ -168,7 +165,6 @@ private:
         int pid = 0;
         int reportTimes = DEFAULT_APPFREEZE_REPORT_TIMES;
         int state = 0;
-        bool isRepeatKilledThread = false;
     };
 
     struct FreezeExcludedPidInfo {
@@ -192,8 +188,9 @@ private:
     std::set<int> GetBinderPeerPids(std::string& stack, AppfreezeManager::ParseBinderParam params,
         std::set<int>& asyncPids, AppfreezeManager::TerminalBinder& terminalBinder) const;
     void FindStackByPid(std::string& msg, int pid) const;
-    std::pair<std::string, std::string> CatchJsonStacktrace(int pid, const std::string& faultType) const;
-    std::string CatcherStacktrace(int pid) const;
+    std::pair<std::string, std::string> CatchJsonStacktrace(int pid, const std::string& faultType,
+        DumpTiming* timing = nullptr) const;
+    std::string CatcherStacktrace(int pid, DumpTiming* timing = nullptr) const;
     FaultData GetFaultNotifyData(const FaultData& faultData, int pid);
     int AcquireStack(const FaultData& faultData, const AppInfo& appInfo, const std::string& memoryContent);
     bool IsAncoProc(int pid);
@@ -202,8 +199,8 @@ private:
         const std::string& binderInfo, const std::string& memoryContent);
     void CollectFreezeSysMemory(std::string& memoryContent);
     int MergeNotifyInfo(FaultData& faultNotifyData, const AppfreezeManager::AppInfo& appInfo);
-    void RecordAppFreezeBehavior(FaultData& faultData, uint64_t dumpStartTime,
-        uint64_t dumpFinishTime, const std::string& dumpResult);
+    void AppendLogValidity(FaultData& faultData, const AppInfo& appInfo);
+    FaultData PrepareFaultNotifyData(const FaultData& faultData, int64_t processStart);
     std::string ParseDecToHex(uint64_t id);
     std::string GetHitraceInfo();
     AppFaultDataBySA GenerateFaultDataBySA(const ParamInfo& info, const FreezeUtil::LifecycleFlow& flow);
@@ -247,7 +244,7 @@ private:
     static ffrt::mutex freezeInfoMutex_;
     static std::string appfreezeInfoPath_;
     std::mutex freezeMapMutex_;
-    std::map<int32_t, std::map<std::string, AppfreezeEventRecord>> freezeEventMap_;
+    std::map<int32_t, FreezeLogInfo> freezeLogInfo_;
     std::mutex freezeKillThreadMutex_;
     std::map<std::string, AppFreezeInfo> freezeKillThreadMap_;
     mutable ffrt::mutex freezeExcludedPidMutex_;

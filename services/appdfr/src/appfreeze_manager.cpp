@@ -14,6 +14,7 @@
  */
 #include "appfreeze_manager.h"
 
+#include <chrono>
 #include <fcntl.h>
 #include <cstring>
 #include <sys/time.h>
@@ -51,7 +52,6 @@
 namespace OHOS {
 namespace AppExecFwk {
 namespace {
-constexpr char KILL_EVENT_NAME[] = "APP_KILL";
 constexpr int MAX_LAYER = 8;
 constexpr int FREEZEMAP_SIZE_MAX = 20;
 constexpr int FREEZE_TIME_LIMIT = 60000;
@@ -61,13 +61,12 @@ static constexpr uint8_t ARR_SIZE = 7;
 static constexpr uint8_t DECIMAL = 10;
 static constexpr uint8_t FREE_ASYNC_INDEX = 6;
 static constexpr uint16_t FREE_ASYNC_MAX = 1000;
-static constexpr int64_t NANOSECONDS = 1000000000;  // NANOSECONDS mean 10^9 nano second
-static constexpr int64_t MICROSECONDS = 1000000;    // MICROSECONDS mean 10^6 millias second
 static constexpr int DUMP_STACK_FAILED = -1;
 static constexpr int DUMP_KERNEL_STACK_SUCCESS = 1;
 static constexpr int MIN_APP_UID = 20000;
 static constexpr int MAX_REPORT_STACK_SIZE = 256 * 1024; // 256KB
 static constexpr int UNKNOWN_FREEZE_REASON = -1;
+static constexpr int64_t LATENCY_INVALID = -1;
 const std::string LOG_FILE_PATH = "/data/log/eventlog";
 static bool g_betaVersion = OHOS::system::GetParameter("const.logsystem.versiontype", "unknown") == "beta";
 static bool g_overseaVersion = OHOS::system::GetParameter("const.global.region", "CN") != "CN";
@@ -129,11 +128,6 @@ static constexpr const char *const TWELVE_MID_CPU_MAX_FREQ = "/sys/devices/syste
 const static std::set<std::string> HALF_EVENT_CONFIGS = {"UI_BLOCK_3S", "THREAD_BLOCK_3S", "BUSSNESS_THREAD_BLOCK_3S",
                                                          "LIFECYCLE_HALF_TIMEOUT", "LIFECYCLE_HALF_TIMEOUT_WARNING"};
 static constexpr int PERF_TIME = 60000;
-static constexpr int FREEZE_EVENT_ZERO = 0;
-static constexpr int FREEZE_EVENT_FIRST = 1;
-static constexpr int FREEZE_EVENT_SED = 2;
-static constexpr int FREEZE_EVENT_THIRD = 3;
-static constexpr int FREEZE_EVENT_FORTH = 4;
 std::shared_ptr<AppfreezeManager> AppfreezeManager::instance_ = nullptr;
 ffrt::mutex AppfreezeManager::singletonMutex_;
 ffrt::mutex AppfreezeManager::freezeMutex_;
@@ -243,20 +237,18 @@ int AppfreezeManager::MergeNotifyInfo(FaultData& faultNotifyData, const Appfreez
     std::string catcherStack;
     faultNotifyData.errorObject.message += "\nCatche stack trace start time: " +
         AbilityRuntime::TimeUtil::DefaultCurrentTimeStr() + "\n";
-    uint64_t dumpStartTime = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count());
-    std::string resultMsg;
+    DumpTiming timing;
     if (faultNotifyData.errorObject.name == AppFreezeType::LIFECYCLE_HALF_TIMEOUT_WARNING ||
         faultNotifyData.errorObject.name == AppFreezeType::LIFECYCLE_TIMEOUT_WARNING) {
-        catcherStack += CatcherStacktrace(appInfo.pid);
+        catcherStack += CatcherStacktrace(appInfo.pid, &timing);
     } else {
         std::pair<std::string, std::string> catchResult =
-            CatchJsonStacktrace(appInfo.pid, faultNotifyData.errorObject.name);
+            CatchJsonStacktrace(appInfo.pid, faultNotifyData.errorObject.name, &timing);
         catcherStack += catchResult.first;
-        resultMsg += catchResult.second;
     }
-    uint64_t dumpFinishTime = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count());
+    faultNotifyData.logValidity += ":" + std::to_string(timing.result) + ":" + std::to_string(timing.latency) +
+        ":" + std::to_string(faultNotifyData.ipcLatency);
+    AppendLogValidity(faultNotifyData, appInfo);
     std::string timeStamp = "Catche stack trace end time: " + AbilityRuntime::TimeUtil::DefaultCurrentTimeStr();
     catcherStack = GetCatcherStack(fileName, catcherStack);
     faultNotifyData.errorObject.stack = catcherStack.empty() ? faultNotifyData.errorObject.stack : catcherStack;
@@ -272,35 +264,66 @@ int AppfreezeManager::MergeNotifyInfo(FaultData& faultNotifyData, const Appfreez
     } else {
         NotifyANR(faultNotifyData, appInfo, "", memoryContent);
     }
-    RecordAppFreezeBehavior(faultNotifyData, dumpStartTime, dumpFinishTime, resultMsg);
     return 0;
 }
 
-void AppfreezeManager::RecordAppFreezeBehavior(FaultData& faultData, uint64_t dumpStartTime,
-    uint64_t dumpFinishTime, const std::string& resultMsg)
+void AppfreezeManager::AppendLogValidity(FaultData& faultData, const AppInfo& appInfo)
 {
-    std::lock_guard<std::mutex> mapLock(freezeMapMutex_);
-    std::string eventName = faultData.errorObject.name;
-    if (freezeEventMap_.size() > FREEZE_EVENT_MAX_SIZE) {
-        freezeEventMap_.clear();
+    std::lock_guard<std::mutex> lock(freezeMapMutex_);
+    const int64_t now = GetFreezeCurrentTime();
+    constexpr int64_t logChainTimeoutMs = 15000;
+    constexpr size_t maxLogItems = 5;
+    for (auto it = freezeLogInfo_.begin(); it != freezeLogInfo_.end();) {
+        if (now - it->second.startTime > logChainTimeoutMs || now < it->second.startTime) {
+            it = freezeLogInfo_.erase(it);
+        } else {
+            ++it;
+        }
     }
-    auto it = std::find(APP_FREEZE_EVENT_NAME.begin(), APP_FREEZE_EVENT_NAME.end(), eventName);
-    if (it != APP_FREEZE_EVENT_NAME.end()) {
-        freezeEventMap_[faultData.pid][eventName].schedTime = faultData.schedTime;
-        freezeEventMap_[faultData.pid][eventName].detectTime = faultData.detectTime;
-        freezeEventMap_[faultData.pid][eventName].dumpStartTime = dumpStartTime;
-        freezeEventMap_[faultData.pid][eventName].dumpFinishTime = dumpFinishTime;
-        freezeEventMap_[faultData.pid][eventName].dumpResult = resultMsg;
-        freezeEventMap_[faultData.pid][eventName].appStatus = faultData.appStatus;
-        freezeEventMap_[faultData.pid][KILL_EVENT_NAME].dumpStartTime = faultData.samplerStartTime;
-        freezeEventMap_[faultData.pid][KILL_EVENT_NAME].dumpFinishTime = faultData.samplerFinishTime;
-        freezeEventMap_[faultData.pid][KILL_EVENT_NAME].dumpResult = std::to_string(faultData.samplerCount);
-        freezeEventMap_[faultData.pid][KILL_EVENT_NAME].isRepeatKilledThread = false;
+    if (freezeLogInfo_.size() >= FREEZE_EVENT_MAX_SIZE && freezeLogInfo_.count(appInfo.pid) == 0) {
+        freezeLogInfo_.erase(freezeLogInfo_.begin());
+    }
+    auto& previous = freezeLogInfo_[appInfo.pid];
+    const std::string identity = std::to_string(appInfo.uid) + ":" + appInfo.bundleName + ":" +
+        faultData.appRunningUniqueId;
+    const auto& eventName = faultData.errorObject.name;
+    const std::string flow = eventName + ":" +
+        std::to_string(reinterpret_cast<uintptr_t>(faultData.token.GetRefPtr())) +
+        ":" + std::to_string(faultData.state);
+    const bool newCheckpoint = faultData.detectTime > 0 && previous.checkpointTime > 0 &&
+        ((faultData.detectTime > previous.checkpointTime &&
+        faultData.detectTime - previous.checkpointTime > logChainTimeoutMs) ||
+        (faultData.detectTime < previous.lastCheckpointTime &&
+        previous.lastCheckpointTime - faultData.detectTime > logChainTimeoutMs));
+    if (previous.identity != identity || previous.count >= maxLogItems || newCheckpoint ||
+        (IsHalfTimeout(eventName) && previous.halfFlows.count(flow) > 0)) {
+        previous = {};
+    }
+    if (previous.count == 0) {
+        previous.identity = identity;
+        previous.startTime = now;
+        previous.checkpointTime = faultData.detectTime;
+    } else {
+        faultData.logValidity = previous.validity + "|" + faultData.logValidity;
+    }
+    // Preserve the bounded processing sequence, including interleaved lifecycle and input events.
+    previous.validity = faultData.logValidity;
+    if (faultData.detectTime > 0) {
+        if (previous.checkpointTime == 0 || faultData.detectTime < previous.checkpointTime) {
+            previous.checkpointTime = faultData.detectTime;
+        }
+        previous.lastCheckpointTime = std::max(previous.lastCheckpointTime, faultData.detectTime);
+    }
+    ++previous.count;
+    if (IsHalfTimeout(eventName)) {
+        previous.halfFlows.insert(flow);
     }
 }
 
 int AppfreezeManager::AppfreezeHandleWithStack(const FaultData& faultData, const AppfreezeManager::AppInfo& appInfo)
 {
+    const int64_t processStart = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
     TAG_LOGW(AAFwkTag::APPDFR, "NotifyAppFaultTask called, eventName:%{public}s, bundleName:%{public}s, "
         "name_:%{public}s, currentTime:%{public}s, isInForeground:%{public}d",
         faultData.errorObject.name.c_str(), appInfo.bundleName.c_str(),
@@ -308,6 +331,14 @@ int AppfreezeManager::AppfreezeHandleWithStack(const FaultData& faultData, const
     if (!IsHandleAppfreeze(appInfo.bundleName)) {
         return -1;
     }
+    FaultData faultNotifyData = PrepareFaultNotifyData(faultData, processStart);
+    HITRACE_METER_FMT(HITRACE_TAG_APP, "AppfreezeHandleWithStack pid:%{public}d-name:%{public}s",
+        appInfo.pid, faultData.errorObject.name.c_str());
+    return MergeNotifyInfo(faultNotifyData, appInfo);
+}
+
+FaultData AppfreezeManager::PrepareFaultNotifyData(const FaultData& faultData, int64_t processStart)
+{
     FaultData faultNotifyData;
     faultNotifyData.errorObject.name = faultData.errorObject.name;
     faultNotifyData.errorObject.message = faultData.errorObject.message;
@@ -321,6 +352,13 @@ int AppfreezeManager::AppfreezeHandleWithStack(const FaultData& faultData, const
     faultNotifyData.samplerStartTime = faultData.samplerStartTime;
     faultNotifyData.samplerFinishTime = faultData.samplerFinishTime;
     faultNotifyData.samplerCount = faultData.samplerCount;
+    faultNotifyData.heaviestStack = faultData.heaviestStack;
+    faultNotifyData.token = faultData.token;
+    faultNotifyData.state = faultData.state;
+    faultNotifyData.ipcLatency = faultData.ipcLatency;
+    const int64_t latency = faultData.detectTime > 0 && faultData.detectTime <= static_cast<uint64_t>(processStart) ?
+        processStart - static_cast<int64_t>(faultData.detectTime) : LATENCY_INVALID;
+    faultNotifyData.logValidity = std::to_string(latency);
     faultNotifyData.pid = faultData.pid;
     faultNotifyData.tid = faultData.tid;
     faultNotifyData.appfreezeInfo = faultData.appfreezeInfo;
@@ -338,9 +376,7 @@ int AppfreezeManager::AppfreezeHandleWithStack(const FaultData& faultData, const
     faultNotifyData.processedId = faultData.processedId;
     faultNotifyData.dispatchedEventId = faultData.dispatchedEventId;
     faultNotifyData.callbackLog = faultData.callbackLog;
-    HITRACE_METER_FMT(HITRACE_TAG_APP, "AppfreezeHandleWithStack pid:%{public}d-name:%{public}s",
-        appInfo.pid, faultData.errorObject.name.c_str());
-    return MergeNotifyInfo(faultNotifyData, appInfo);
+    return faultNotifyData;
 }
 
 std::string AppfreezeManager::WriteToFile(const std::string& fileName, const std::string& content)
@@ -443,6 +479,9 @@ AppFaultDataBySA AppfreezeManager::GenerateFaultDataBySA(const ParamInfo& info, 
 FaultData AppfreezeManager::GetFaultNotifyData(const FaultData& faultData, int pid)
 {
     FaultData faultNotifyData;
+    faultNotifyData.samplerCount = faultData.samplerCount;
+    faultNotifyData.heaviestStack = faultData.heaviestStack;
+    faultNotifyData.logValidity = faultData.logValidity;
     faultNotifyData.errorObject.name = faultData.errorObject.name;
     faultNotifyData.errorObject.message = faultData.errorObject.message;
     faultNotifyData.errorObject.stack = faultData.errorObject.stack;
@@ -644,6 +683,9 @@ AppfreezeEventInfo AppfreezeManager::UpdateEventInfo(
     eventInfo.processedId = faultData.processedId;
     eventInfo.dispatchedEventId = faultData.dispatchedEventId;
     eventInfo.externalLog = faultData.callbackLog;
+    eventInfo.samplerCount = faultData.samplerCount;
+    eventInfo.heaviestStack = faultData.heaviestStack;
+    eventInfo.logValidity = faultData.logValidity;
     return eventInfo;
 }
 
@@ -857,14 +899,21 @@ bool AppfreezeManager::IsHalfTimeout(const std::string& faultType) const
     return false;
 }
 
-std::pair<std::string, std::string> AppfreezeManager::CatchJsonStacktrace(int pid, const std::string& faultType) const
+std::pair<std::string, std::string> AppfreezeManager::CatchJsonStacktrace(int pid, const std::string& faultType,
+    DumpTiming* timing) const
 {
     HITRACE_METER_FMT(HITRACE_TAG_APP, "CatchJsonStacktrace pid:%{public}d", pid);
     HiviewDFX::DfxDumpCatcher dumplog;
     std::string msg;
     int timeout = IsHalfTimeout(faultType) ? 5000 : 3000;
     int tid = 0;
+    const auto start = std::chrono::steady_clock::now();
     std::pair<int, std::string> dumpResult = dumplog.DumpCatchWithTimeout(pid, msg, timeout, tid, true);
+    const auto finish = std::chrono::steady_clock::now();
+    if (timing != nullptr) {
+        timing->result = dumpResult.first;
+        timing->latency = std::chrono::duration_cast<std::chrono::milliseconds>(finish - start).count();
+    }
     if (dumpResult.first == DUMP_STACK_FAILED) {
         TAG_LOGI(AAFwkTag::APPDFR, "appfreeze catch json stacktrace failed, %{public}s", dumpResult.second.c_str());
         msg = "Failed to dump stacktrace for " + std::to_string(pid) + "\n" + dumpResult.second + msg;
@@ -884,12 +933,18 @@ std::pair<std::string, std::string> AppfreezeManager::CatchJsonStacktrace(int pi
     return std::make_pair(msg, dumpResult.second);
 }
 
-std::string AppfreezeManager::CatcherStacktrace(int pid) const
+std::string AppfreezeManager::CatcherStacktrace(int pid, DumpTiming* timing) const
 {
     HITRACE_METER_FMT(HITRACE_TAG_APP, "CatcherStacktrace pid:%{public}d", pid);
     HiviewDFX::DfxDumpCatcher dumplog;
     std::string msg;
+    const auto start = std::chrono::steady_clock::now();
     std::pair<int, std::string> dumpResult = dumplog.DumpCatchWithTimeout(pid, msg);
+    const auto finish = std::chrono::steady_clock::now();
+    if (timing != nullptr) {
+        timing->result = dumpResult.first;
+        timing->latency = std::chrono::duration_cast<std::chrono::milliseconds>(finish - start).count();
+    }
     if (dumpResult.first == DUMP_STACK_FAILED) {
         TAG_LOGI(AAFwkTag::APPDFR, "appfreeze catch stacktrace failed, %{public}s",
             dumpResult.second.c_str());
@@ -929,11 +984,9 @@ bool AppfreezeManager::IsProcessDebug(int32_t pid, std::string bundleName)
 
 int64_t AppfreezeManager::GetFreezeCurrentTime()
 {
-    struct timespec t;
-    t.tv_sec = 0;
-    t.tv_nsec = 0;
-    clock_gettime(CLOCK_MONOTONIC, &t);
-    return static_cast<int64_t>(((t.tv_sec) * NANOSECONDS + t.tv_nsec) / MICROSECONDS);
+    auto now = std::chrono::steady_clock::now();
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+        now.time_since_epoch()).count();
 }
 
 void AppfreezeManager::SetFreezeState(const std::string& key, int state, const std::string& eventName)
@@ -1066,6 +1119,7 @@ bool AppfreezeManager::CancelAppFreezeDetect(int32_t pid, const std::string& bun
         return false;
     }
     std::lock_guard<ffrt::mutex> lock(freezeFilterMutex_);
+    ClearLogValidity(pid);
     AppFreezeInfo info;
     info.pid = pid;
     info.state = AppFreezeState::APPFREEZE_STATE_CANCELING;
@@ -1114,100 +1168,10 @@ bool AppfreezeManager::IsValidFreezeFilter(int32_t pid, const std::string& bundl
     return ret;
 }
 
-void AppfreezeManager::ReportAppFreezeSysEvents(int32_t pid, const std::string& bundleName)
+void AppfreezeManager::ClearLogValidity(int32_t pid)
 {
-    std::lock_guard<std::mutex> mapLock(freezeMapMutex_);
-    if (freezeEventMap_.find(pid) == freezeEventMap_.end()) {
-        return;
-    }
-
-    uint64_t now = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count());
-    auto hisyseventReport = std::make_shared<AAFwk::HisyseventReport>(40);
-    hisyseventReport->InsertParam("THREAD_HALF_SCHED",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_ZERO]].schedTime);
-    hisyseventReport->InsertParam("THREAD_HALF_DETECT",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_ZERO]].detectTime);
-    hisyseventReport->InsertParam("THREAD_HALF_DUMP_START",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_ZERO]].dumpStartTime);
-    hisyseventReport->InsertParam("THREAD_HALF_DUMP_FINISH",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_ZERO]].dumpFinishTime);
-    hisyseventReport->InsertParam("THREAD_HALF_DUMP_RESULT",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_ZERO]].dumpResult);
-    hisyseventReport->InsertParam("THREAD_HALF_APP_STATUS",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_ZERO]].appStatus);
-    hisyseventReport->InsertParam("THREAD_TIMEOUT_SCHED",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_FIRST]].schedTime);
-    hisyseventReport->InsertParam("THREAD_TIMEOUT_DETECT",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_FIRST]].detectTime);
-    hisyseventReport->InsertParam("THREAD_TIMEOUT_DUMP_START",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_FIRST]].dumpStartTime);
-    hisyseventReport->InsertParam("THREAD_TIMEOUT_DUMP_FINISH",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_FIRST]].dumpFinishTime);
-    hisyseventReport->InsertParam("THREAD_TIMEOUT_DUMP_RESULT",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_FIRST]].dumpResult);
-    hisyseventReport->InsertParam("THREAD_TIMEOUT_APP_STATUS",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_FIRST]].appStatus);
-    hisyseventReport->InsertParam("INPUT_SCHED",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_SED]].schedTime);
-    hisyseventReport->InsertParam("INPUT_DETECT",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_SED]].detectTime);
-    hisyseventReport->InsertParam("INPUT_DUMP_START",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_SED]].dumpStartTime);
-    hisyseventReport->InsertParam("INPUT_DUMP_FINISH",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_SED]].dumpFinishTime);
-    hisyseventReport->InsertParam("INPUT_DUMP_RESULT",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_SED]].dumpResult);
-    hisyseventReport->InsertParam("INPUT_APP_STATUS",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_SED]].appStatus);
-    hisyseventReport->InsertParam("LIFECYCLE_HALF_SCHED",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_THIRD]].schedTime);
-    hisyseventReport->InsertParam("LIFECYCLE_HALF_DETECT",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_THIRD]].detectTime);
-    hisyseventReport->InsertParam("LIFECYCLE_HALF_DUMP_START",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_THIRD]].dumpStartTime);
-    hisyseventReport->InsertParam("LIFECYCLE_HALF_DUMP_FINISH",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_THIRD]].dumpFinishTime);
-    hisyseventReport->InsertParam("LIFECYCLE_HALF_DUMP_RESULT",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_THIRD]].dumpResult);
-    hisyseventReport->InsertParam("LIFECYCLE_HALF_APP_STATUS",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_THIRD]].appStatus);
-    hisyseventReport->InsertParam("LIFECYCLE_TIMEOUT_SCHED",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_FORTH]].schedTime);
-    hisyseventReport->InsertParam("LIFECYCLE_TIMEOUT_DETECT",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_FORTH]].detectTime);
-    hisyseventReport->InsertParam("LIFECYCLE_TIMEOUT_DUMP_START",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_FORTH]].dumpStartTime);
-    hisyseventReport->InsertParam("LIFECYCLE_TIMEOUT_DUMP_FINISH",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_FORTH]].dumpFinishTime);
-    hisyseventReport->InsertParam("LIFECYCLE_TIMEOUT_DUMP_RESULT",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_FORTH]].dumpResult);
-    hisyseventReport->InsertParam("LIFECYCLE_TIMEOUT_APP_STATUS",
-        freezeEventMap_[pid][APP_FREEZE_EVENT_NAME[FREEZE_EVENT_FORTH]].appStatus);
-    hisyseventReport->InsertParam("APP_KILL_TIME",
-        freezeEventMap_[pid][KILL_EVENT_NAME].schedTime);
-    hisyseventReport->InsertParam("APP_TERMINATED_TIME", now);
-    hisyseventReport->InsertParam("SAMPLER_START",
-        freezeEventMap_[pid][KILL_EVENT_NAME].dumpStartTime);
-    hisyseventReport->InsertParam("SAMPLER_FINISH",
-        freezeEventMap_[pid][KILL_EVENT_NAME].dumpFinishTime);
-    hisyseventReport->InsertParam("SAMPLER_COUNT",
-        freezeEventMap_[pid][KILL_EVENT_NAME].dumpResult);
-    hisyseventReport->InsertParam("BUNDLE_NAME", bundleName);
-    hisyseventReport->InsertParam("APP_PID", pid);
-    hisyseventReport->InsertParam("REPEAT_KILLED_THREAD",
-        freezeEventMap_[pid][KILL_EVENT_NAME].isRepeatKilledThread);
-    int ret = hisyseventReport->Report("RELIABILITY", "APP_FREEZE_STATISTICS", HISYSEVENT_STATISTIC);
-    freezeEventMap_.erase(pid);
-}
-
-void AppfreezeManager::RegisterAppKillTime(int32_t pid, uint64_t time)
-{
-    std::lock_guard<std::mutex> mapLock(freezeMapMutex_);
-    if (freezeEventMap_.find(pid) == freezeEventMap_.end()) {
-        return;
-    }
-    freezeEventMap_[pid][KILL_EVENT_NAME].schedTime = time;
+    std::lock_guard<std::mutex> lock(freezeMapMutex_);
+    freezeLogInfo_.erase(pid);
 }
 
 void AppfreezeManager::PerfStart(std::string eventName)
@@ -1325,7 +1289,6 @@ bool AppfreezeManager::CheckThreadKilled(int32_t pid, int32_t uid, const std::st
     std::string key = bundleName + AppfreezeUtil::KEY_SEPARATOR + std::to_string(pid) +
         AppfreezeUtil::KEY_SEPARATOR + std::to_string(uid);
     bool result = false;
-    bool isRepeatKilledThread = false;
     {
         std::lock_guard<std::mutex> mapLock(freezeKillThreadMutex_);
         if (freezeKillThreadMap_.empty()) {
@@ -1334,21 +1297,11 @@ bool AppfreezeManager::CheckThreadKilled(int32_t pid, int32_t uid, const std::st
         auto it = freezeKillThreadMap_.find(key);
         if (it != freezeKillThreadMap_.end()) {
             result = it->second.state >= 0;
-            if (result && !it->second.isRepeatKilledThread) {
-                it->second.isRepeatKilledThread = true;
-                isRepeatKilledThread = true;
-            }
         }
     }
 
-    if (isRepeatKilledThread) {
-        {
-            std::lock_guard<std::mutex> mapLock(freezeMapMutex_);
-            if (freezeEventMap_.find(pid) != freezeEventMap_.end()) {
-                freezeEventMap_[pid][KILL_EVENT_NAME].isRepeatKilledThread = true;
-            }
-        }
-        ReportAppFreezeSysEvents(pid, bundleName);
+    if (result) {
+        ClearLogValidity(pid);
     }
     return result;
 }
