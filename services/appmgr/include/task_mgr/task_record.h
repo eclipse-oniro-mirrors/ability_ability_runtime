@@ -24,17 +24,10 @@
 #include "ffrt.h"
 
 #include "task_mgr/common.h"
+#include "task_mgr/managed_process.h"
 
 namespace OHOS {
 namespace AppExecFwk {
-// A process attributed into a task by a tool chain. The tool knows its own type when it
-// calls RegisterManagedProcess, so the type is recorded per process.
-struct ManagedProcess {
-    pid_t pid = -1;
-    AttributionTool tool = AttributionTool::UNKNOWN;
-    int64_t attributedTimeMillis = 0;
-};
-
 // In-memory task record keyed by the globally unique taskId. Protected by
 // TaskManagerService::tasksMutex_, never persisted: process exit clears everything (EX-5).
 struct TaskRecord {

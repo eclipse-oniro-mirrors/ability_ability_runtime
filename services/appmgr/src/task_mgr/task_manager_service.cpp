@@ -16,6 +16,7 @@
 #include "task_mgr/task_manager_service.h"
 
 #include <algorithm>
+#include <charconv>
 #include <cinttypes>
 #include <chrono>
 #include <ctime>
@@ -29,7 +30,6 @@
 #include "in_process_call_wrapper.h"
 #include "ipc_skeleton.h"
 #include "parameters.h"
-#include "permission_verification.h"
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -66,6 +66,19 @@ std::string ManagedProcessesToString(const std::map<pid_t, ManagedProcess> &mana
         result += std::to_string(it->first) + "(" + AttributionToolToString(it->second.tool) + ")";
     }
     return result;
+}
+
+// Parses the pid text of a dump hook: std::from_chars throws nothing on garbage, and the
+// whole text must be consumed ("12x" is rejected, not read as 12).
+bool ParsePidText(const std::string &pidText, pid_t &pid)
+{
+    pid_t value = 0;
+    auto res = std::from_chars(pidText.data(), pidText.data() + pidText.size(), value);
+    if (res.ec != std::errc() || res.ptr != pidText.data() + pidText.size()) {
+        return false;
+    }
+    pid = value;
+    return true;
 }
 
 // Context heap-allocated for the FFRT one-shot timer (the C callback carries no closure):
@@ -108,12 +121,6 @@ int32_t TaskManagerService::StartTask(const std::string &taskId, int32_t priorit
             taskId.size(), priority);
         return INVALID_PARAMETERS_ERR;
     }
-    // System API: only system apps are allowed (caller identity from the IPC framework,
-    // cannot be forged by parameters).
-    if (!AAFwk::PermissionVerification::GetInstance()->IsSystemAppCall()) {
-        TAG_LOGW(AAFwkTag::APPMGR, "caller is not system app, rejected");
-        return ERR_NOT_SYSTEM_APP;
-    }
     TaskCallerInfo caller = GetCallerInfo();
     return StartTaskInner(caller, taskId, priority);
 }
@@ -124,10 +131,6 @@ int32_t TaskManagerService::FinishTask(const std::string &taskId)
     if (taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN) {
         TAG_LOGW(AAFwkTag::APPMGR, "invalid param, taskId size: %{public}zu", taskId.size());
         return INVALID_PARAMETERS_ERR;
-    }
-    if (!AAFwk::PermissionVerification::GetInstance()->IsSystemAppCall()) {
-        TAG_LOGW(AAFwkTag::APPMGR, "caller is not system app, rejected");
-        return ERR_NOT_SYSTEM_APP;
     }
     TaskCallerInfo caller = GetCallerInfo();
     return FinishTaskInner(taskId, TaskFinishReason::FINISHED_BY_CALLER, caller.uid,
@@ -277,12 +280,6 @@ int32_t TaskManagerService::RegisterManagedProcess(const std::string &taskId, in
             "toolType: %{public}d", taskId.size(), pid, toolType);
         return INVALID_PARAMETERS_ERR;
     }
-    // Framework-internal channel for tool chains: system abilities (and shell for testing).
-    if (!AAFwk::PermissionVerification::GetInstance()->IsSACall() &&
-        !AAFwk::PermissionVerification::GetInstance()->IsShellCall()) {
-        TAG_LOGW(AAFwkTag::APPMGR, "caller is not SA or shell, rejected");
-        return ERR_PERMISSION_DENIED;
-    }
     return RegisterManagedProcessInner(taskId, pid, static_cast<AttributionTool>(toolType));
 }
 
@@ -293,11 +290,6 @@ int32_t TaskManagerService::UnregisterManagedProcess(const std::string &taskId, 
         TAG_LOGW(AAFwkTag::APPMGR, "invalid param, taskId size: %{public}zu, pid: %{public}d",
             taskId.size(), pid);
         return INVALID_PARAMETERS_ERR;
-    }
-    if (!AAFwk::PermissionVerification::GetInstance()->IsSACall() &&
-        !AAFwk::PermissionVerification::GetInstance()->IsShellCall()) {
-        TAG_LOGW(AAFwkTag::APPMGR, "caller is not SA or shell, rejected");
-        return ERR_PERMISSION_DENIED;
     }
     return UnregisterManagedProcessInner(taskId, pid);
 }
@@ -427,6 +419,33 @@ std::string TaskManagerService::DumpActiveTasks()
     // control module lands; the field layout is fixed here so scripts can rely on it.
     result += "Exemption summary: total=0\n";
     return result;
+}
+
+int32_t TaskManagerService::DumpRegisterManagedProcess(const std::string &taskId,
+    const std::string &pidText, const std::string &toolText, std::string &result)
+{
+    pid_t pid = -1;
+    AttributionTool tool = AttributionToolFromString(toolText);
+    if (!ParsePidText(pidText, pid) || tool == AttributionTool::UNKNOWN) {
+        result = "error: invalid pid or tool, expected <pid> <insight|cli|a2a|ability>.\n";
+        return INVALID_PARAMETERS_ERR;
+    }
+    int32_t ret = RegisterManagedProcess(taskId, pid, static_cast<int32_t>(tool));
+    result = ret == ERR_OK ? "register ok\n" : "register failed: " + std::to_string(ret) + "\n";
+    return ret;
+}
+
+int32_t TaskManagerService::DumpUnregisterManagedProcess(const std::string &taskId,
+    const std::string &pidText, std::string &result)
+{
+    pid_t pid = -1;
+    if (!ParsePidText(pidText, pid)) {
+        result = "error: invalid pid.\n";
+        return INVALID_PARAMETERS_ERR;
+    }
+    int32_t ret = UnregisterManagedProcess(taskId, pid);
+    result = ret == ERR_OK ? "unregister ok\n" : "unregister failed: " + std::to_string(ret) + "\n";
+    return ret;
 }
 
 TaskManagerService::TaskCallerInfo TaskManagerService::GetCallerInfo()

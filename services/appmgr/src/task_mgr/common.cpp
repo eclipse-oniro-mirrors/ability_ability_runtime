@@ -60,5 +60,22 @@ const char *AttributionToolToString(AttributionTool tool)
             return "unknown";
     }
 }
+
+AttributionTool AttributionToolFromString(const std::string &text)
+{
+    if (text == "insight") {
+        return AttributionTool::INSIGHT;
+    }
+    if (text == "cli") {
+        return AttributionTool::CLI;
+    }
+    if (text == "a2a") {
+        return AttributionTool::A2A;
+    }
+    if (text == "ability") {
+        return AttributionTool::ABILITY;
+    }
+    return AttributionTool::UNKNOWN;
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

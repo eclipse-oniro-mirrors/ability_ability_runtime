@@ -174,21 +174,37 @@ void AppMgrService::SetInnerService(const std::shared_ptr<AppMgrServiceInner> &i
 
 int32_t AppMgrService::StartTask(const std::string &taskId, int32_t priority)
 {
+    if (!AAFwk::PermissionVerification::GetInstance()->IsSystemAppCall()) {
+        TAG_LOGW(AAFwkTag::APPMGR, "caller is not system app, rejected");
+        return AAFwk::ERR_NOT_SYSTEM_APP;
+    }
     return TaskManagerService::GetInstance()->StartTask(taskId, priority);
 }
 
 int32_t AppMgrService::FinishTask(const std::string &taskId)
 {
+    if (!AAFwk::PermissionVerification::GetInstance()->IsSystemAppCall()) {
+        TAG_LOGW(AAFwkTag::APPMGR, "caller is not system app, rejected");
+        return AAFwk::ERR_NOT_SYSTEM_APP;
+    }
     return TaskManagerService::GetInstance()->FinishTask(taskId);
 }
 
 int32_t AppMgrService::RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType)
 {
+    if (!AAFwk::PermissionVerification::GetInstance()->IsSACall()) {
+        TAG_LOGW(AAFwkTag::APPMGR, "caller is not SA, rejected");
+        return ERR_PERMISSION_DENIED;
+    }
     return TaskManagerService::GetInstance()->RegisterManagedProcess(taskId, pid, toolType);
 }
 
 int32_t AppMgrService::UnregisterManagedProcess(const std::string &taskId, int32_t pid)
 {
+    if (!AAFwk::PermissionVerification::GetInstance()->IsSACall()) {
+        TAG_LOGW(AAFwkTag::APPMGR, "caller is not SA, rejected");
+        return ERR_PERMISSION_DENIED;
+    }
     return TaskManagerService::GetInstance()->UnregisterManagedProcess(taskId, pid);
 }
 
@@ -1084,44 +1100,25 @@ int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string
 
 int AppMgrService::DumpTaskRegisterCmd(const std::vector<std::u16string>& args, std::string& result)
 {
-    // Test hook: --task register <taskId> <pid> <tool(insight|cli|a2a|ability)>.
+    // Basic validation only: the register hook (text parsing, execution, output) lives in
+    // the task manager.
     if (args.size() != SIZE_FIVE) {
         result.append("usage: --task register <taskId> <pid> <insight|cli|a2a|ability>\n");
         return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
     }
-    pid_t pid = static_cast<pid_t>(std::stoi(Str16ToStr8(args[INDEX_THREE])));
-    std::string tool = Str16ToStr8(args[INDEX_FOUR]);
-    AttributionTool toolType = AttributionTool::UNKNOWN;
-    if (tool == "insight") {
-        toolType = AttributionTool::INSIGHT;
-    } else if (tool == "cli") {
-        toolType = AttributionTool::CLI;
-    } else if (tool == "a2a") {
-        toolType = AttributionTool::A2A;
-    } else if (tool == "ability") {
-        toolType = AttributionTool::ABILITY;
-    } else {
-        result.append("error: unknown tool, expected insight|cli|a2a|ability.\n");
-        return DumpErrorCode::ERR_INVALID_CMD_ERROR;
-    }
-    std::string taskId = Str16ToStr8(args[INDEX_TWO]);
-    auto ret = RegisterManagedProcess(taskId, pid, static_cast<int32_t>(toolType));
-    result.append(ret == ERR_OK ? "register ok\n" : "register failed: " + std::to_string(ret) + "\n");
+    auto ret = TaskManagerService::GetInstance()->DumpRegisterManagedProcess(Str16ToStr8(args[INDEX_TWO]),
+        Str16ToStr8(args[INDEX_THREE]), Str16ToStr8(args[INDEX_FOUR]), result);
     return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
 }
 
 int AppMgrService::DumpTaskUnregisterCmd(const std::vector<std::u16string>& args, std::string& result)
 {
-    // Test hook: --task unregister <taskId> <pid>.
     if (args.size() != SIZE_FOUR) {
         result.append("usage: --task unregister <taskId> <pid>\n");
         return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
     }
-    pid_t pid = static_cast<pid_t>(std::stoi(Str16ToStr8(args[INDEX_THREE])));
-    std::string taskId = Str16ToStr8(args[INDEX_TWO]);
-    auto ret = UnregisterManagedProcess(taskId, pid);
-    result.append(
-        ret == ERR_OK ? "unregister ok\n" : "unregister failed: " + std::to_string(ret) + "\n");
+    auto ret = TaskManagerService::GetInstance()->DumpUnregisterManagedProcess(Str16ToStr8(args[INDEX_TWO]),
+        Str16ToStr8(args[INDEX_THREE]), result);
     return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
 }
 

@@ -33,11 +33,12 @@ namespace AppExecFwk {
  *
  * All state (tasks_) is protected by tasksMutex_ (an ffrt::mutex, because the
  * timeout callbacks run on FFRT workers): the public entries only validate
- * parameters and caller identity on the calling thread, and delegate to the
- * *Inner helpers, which take the mutex themselves (ffrt::mutex is non-recursive,
- * so the helpers never call each other while holding it). The single-exit
- * FinishTaskInner gathers the three finish paths (caller finish / timeout /
- * creator process death) into one cleanup routine.
+ * parameters on the calling thread (caller permission is checked by
+ * AppMgrService, the IPC entry), and delegate to the *Inner helpers, which take
+ * the mutex themselves (ffrt::mutex is non-recursive, so the helpers never call
+ * each other while holding it). The single-exit FinishTaskInner gathers the
+ * three finish paths (caller finish / timeout / creator process death) into one
+ * cleanup routine.
  *
  * The timeout is an inactivity window: it opens at task creation and restarts on
  * every managed-process change, so a task ends by timeout only after the configured
@@ -67,23 +68,19 @@ public:
     };
 
     /**
-     * @brief Starts a task (binder entry): validate parameters and caller identity on the
-     *        calling thread, then create the record under the mutex.
+     * @brief Starts a task: validate parameters, then create the record under the mutex.
      * @param taskId Indicates the attribution key of the task.
      * @param priority Indicates the task priority.
      * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
-     *         ERR_NOT_SYSTEM_APP if the caller is not a system app;
      *         ERR_TASK_ALREADY_EXISTS if the task already exists.
      */
     int32_t StartTask(const std::string &taskId, int32_t priority);
 
     /**
-     * @brief Finishes a task (binder entry): validate, then clean up under the mutex; the
-     *        pending timeout timer is stopped and the finish hook is notified after the
-     *        mutex is released.
+     * @brief Finishes a task: validate, then clean up under the mutex; the pending timeout
+     *        timer is stopped and the finish hook is notified after the mutex is released.
      * @param taskId Indicates the attribution key of the task.
      * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
-     *         ERR_NOT_SYSTEM_APP if the caller is not a system app;
      *         ERR_TASK_NOT_FOUND if the task does not exist (idempotent).
      */
     int32_t FinishTask(const std::string &taskId);
@@ -115,7 +112,6 @@ public:
      * @param pid Indicates the pid of the attributed process.
      * @param toolType Indicates the tool chain that attributes the process.
      * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
-     *         ERR_PERMISSION_DENIED if the caller is not a system ability or shell;
      *         ERR_TASK_NOT_FOUND if the task does not exist.
      */
     int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType);
@@ -126,7 +122,6 @@ public:
      * @param taskId Indicates the attribution key of the task.
      * @param pid Indicates the pid of the process to remove.
      * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
-     *         ERR_PERMISSION_DENIED if the caller is not a system ability or shell;
      *         ERR_TASK_NOT_FOUND if the task does not exist.
      */
     int32_t UnregisterManagedProcess(const std::string &taskId, int32_t pid);
@@ -146,6 +141,33 @@ public:
      * @return Returns the dump text of the active task list.
      */
     std::string DumpActiveTasks();
+
+    /**
+     * @brief Dump hook of the register channel: parses the dump texts and attributes the
+     *        process; the dump surface is gated by the dump permission at the
+     *        AppMgrService dump entry.
+     * @param taskId Indicates the attribution key of the task.
+     * @param pidText Indicates the process id text from the dump command.
+     * @param toolText Indicates the tool name text from the dump command.
+     * @param result Indicates the dump output text of the hook.
+     * @return Returns the result of RegisterManagedProcess, or INVALID_PARAMETERS_ERR on
+     *         unparsable texts.
+     */
+    int32_t DumpRegisterManagedProcess(const std::string &taskId, const std::string &pidText,
+        const std::string &toolText, std::string &result);
+
+    /**
+     * @brief Dump hook of the unregister channel: parses the dump texts and removes the
+     *        process; the dump surface is gated by the dump permission at the AppMgrService
+     *        dump entry.
+     * @param taskId Indicates the attribution key of the task.
+     * @param pidText Indicates the process id text from the dump command.
+     * @param result Indicates the dump output text of the hook.
+     * @return Returns the result of UnregisterManagedProcess, or INVALID_PARAMETERS_ERR
+     *         on an unparsable text.
+     */
+    int32_t DumpUnregisterManagedProcess(const std::string &taskId, const std::string &pidText,
+        std::string &result);
 
 private:
     /**
