@@ -8556,6 +8556,28 @@ int32_t AbilityManagerProxy::NotifySkillFunctionInvoked(const sptr<IRemoteObject
     return reply.ReadInt32();
 }
 
+int32_t AbilityManagerProxy::NotifyInsightIntentExecute(uint64_t intentId)
+{
+    TAG_LOGD(AAFwkTag::INTENT, "notify insight intent execute proxy, intentId:%{public}" PRIu64, intentId);
+    MessageParcel data;
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write interface token fail");
+        return INNER_ERR;
+    }
+    if (!data.WriteUint64(intentId)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write intentId fail");
+        return INNER_ERR;
+    }
+    MessageParcel reply;
+    MessageOption option;
+    auto ret = SendRequest(AbilityManagerInterfaceCode::NOTIFY_INSIGHT_INTENT_EXECUTE, data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "request fail:%{public}d", ret);
+        return ret;
+    }
+    return reply.ReadInt32();
+}
+
 int32_t AbilityManagerProxy::QuerySkillType(const std::string &bundleName, const std::string &moduleName,
     const std::string &skillName, int32_t &skillType)
 {

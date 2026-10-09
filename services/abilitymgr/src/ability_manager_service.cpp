@@ -8957,7 +8957,8 @@ void AbilityManagerService::OnAppStateChanged(const AppInfo &info)
         userId = AbilityRuntime::UserController::GetInstance().GetForegroundUserId(ServerConstant::DEFAULT_DISPLAY_ID);
     }
     if (info.state == AppState::TERMINATED) {
-        DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->OnInsightAppDied(info.bundleName);
+        DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->OnInsightAppDied(
+            info.bundleName, info.pid);
     }
 
     auto commonExtensionManager = GetCommonExtensionManagerByUserId(userId);
@@ -16006,6 +16007,25 @@ int32_t AbilityManagerService::NotifySkillFunctionInvoked(const sptr<IRemoteObje
         return CHECK_PERMISSION_FAILED;
     }
     DelayedSingleton<SkillExecuteManager>::GetInstance()->OnLaunchCompleted(requestCode);
+    return ERR_OK;
+}
+
+int32_t AbilityManagerService::NotifyInsightIntentExecute(uint64_t intentId)
+{
+    TAG_LOGD(AAFwkTag::INTENT, "notify insight intent execute, intentId:%{public}" PRIu64, intentId);
+    auto executeManager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    std::string targetBundleName;
+    if (executeManager->GetBundleName(intentId, targetBundleName) != ERR_OK || targetBundleName.empty()) {
+        TAG_LOGE(AAFwkTag::INTENT, "intent record not found, intentId:%{public}" PRIu64, intentId);
+        return ERR_INVALID_VALUE;
+    }
+    std::string callerBundleName = InsightIntentGetcallerBundleName();
+    if (callerBundleName != targetBundleName) {
+        TAG_LOGE(AAFwkTag::INTENT, "caller bundle %{public}s mismatch target bundle %{public}s",
+            callerBundleName.c_str(), targetBundleName.c_str());
+        return CHECK_PERMISSION_FAILED;
+    }
+    executeManager->SetTargetPid(intentId, IPCSkeleton::GetCallingPid());
     return ERR_OK;
 }
 

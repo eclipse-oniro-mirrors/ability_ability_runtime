@@ -16,6 +16,7 @@
 #include "insight_intent_executor_mgr.h"
 
 #include "ability_business_error.h"
+#include "ability_manager_client.h"
 #include "hilog_tag_wrapper.h"
 
 namespace OHOS {
@@ -57,21 +58,17 @@ bool InsightIntentExecutorMgr::ExecuteInsightIntent(Runtime& runtime, const Insi
         };
     callback->Push(asyncCallback);
 
+    // Notify AMS that this intent execution has started (AMS records the process pid).
+    AAFwk::AbilityManagerClient::GetInstance()->NotifyInsightIntentExecute(
+        executeParam->insightIntentId_);
+
     // Create insight intent executor
     InsightIntentType type = static_cast<InsightIntentType>(executeParam->decoratorType_);
-    auto intentExecutor = InsightIntentExecutor::Create(runtime, type);
+    auto intentExecutor = CreateExecutor(runtime, type, executeInfo);
     if (intentExecutor == nullptr) {
-        TAG_LOGE(AAFwkTag::INTENT, "null intentExecutor");
         TriggerCallbackInner(std::move(callback), static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_PARAM));
         return false;
     }
-
-    if (!intentExecutor->Init(executeInfo)) {
-        TAG_LOGE(AAFwkTag::INTENT, "Init intent executor failed");
-        TriggerCallbackInner(std::move(callback), static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_PARAM));
-        return false;
-    }
-    AddInsightIntentExecutor(executeParam->insightIntentId_, intentExecutor);
 
     TAG_LOGI(AAFwkTag::INTENT, "execute insight intent, type: %{public}hhu", type);
     bool isAsync = false;
@@ -89,6 +86,23 @@ bool InsightIntentExecutorMgr::ExecuteInsightIntent(Runtime& runtime, const Insi
     }
 
     return true;
+}
+
+std::shared_ptr<InsightIntentExecutor> InsightIntentExecutorMgr::CreateExecutor(
+    Runtime& runtime, InsightIntentType type, const InsightIntentExecutorInfo &executeInfo)
+{
+    auto executeParam = executeInfo.executeParam;
+    auto intentExecutor = InsightIntentExecutor::Create(runtime, type);
+    if (intentExecutor == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "null intentExecutor");
+        return nullptr;
+    }
+    if (!intentExecutor->Init(executeInfo)) {
+        TAG_LOGE(AAFwkTag::INTENT, "Init intent executor failed");
+        return nullptr;
+    }
+    AddInsightIntentExecutor(executeParam->insightIntentId_, intentExecutor);
+    return intentExecutor;
 }
 
 void InsightIntentExecutorMgr::AddInsightIntentExecutor(uint64_t intentId,

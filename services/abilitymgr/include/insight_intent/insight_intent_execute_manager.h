@@ -17,6 +17,8 @@
 #define OHOS_ABILITY_RUNTIME_INSIGHT_INTENT_EXECUTE_MANAGER_H
 
 #include <map>
+#include <sys/types.h>
+
 #include "ability_connect_callback_stub.h"
 #include "cpp/mutex.h"
 #include "event_report.h"
@@ -42,6 +44,7 @@ struct InsightIntentExecuteRecord {
     uint64_t key = 0;
     std::string bundleName;
     std::string callerBundleName;
+    pid_t targetPid = 0;
     InsightIntentExecuteState state = InsightIntentExecuteState::UNKNOWN;
     bool isDistributed = false;
     std::string deviceId;
@@ -119,7 +122,9 @@ public:
 
     static std::string GetCallerBundleNameByUid();
 
-    void OnInsightAppDied(const std::string &bundleName);
+    void OnInsightAppDied(const std::string &bundleName, pid_t pid = 0);
+
+    void SetTargetPid(uint64_t intentId, pid_t pid);
 
     int32_t CheckAndUpdateQueryEntityParam(uint64_t key, const sptr<IRemoteObject> &callerToken,
         std::shared_ptr<OHOS::AppExecFwk::InsightIntentQueryParam> &param, const std::string& callerBundleName);
