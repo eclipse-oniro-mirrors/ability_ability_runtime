@@ -1295,6 +1295,7 @@ int AbilityManagerStub::TerminateAbilityInner(MessageParcel &data, MessageParcel
     Want *resultWant = data.ReadParcelable<Want>();
     if (resultWant != nullptr) {
         SanitizeWantParams(*resultWant);
+        resultWant->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
     bool flag = data.ReadBool();
     int32_t result;
@@ -1320,6 +1321,7 @@ int AbilityManagerStub::BackToCallerInner(MessageParcel &data, MessageParcel &re
     Want *resultWant = data.ReadParcelable<Want>();
     if (resultWant != nullptr) {
         SanitizeWantParams(*resultWant);
+        resultWant->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
     int64_t callerRequestCode = data.ReadInt64();
     int32_t result = BackToCallerAbilityWithResult(token, resultCode, resultWant, callerRequestCode);
@@ -1352,11 +1354,12 @@ int AbilityManagerStub::TerminateUIExtensionAbilityInner(MessageParcel &data, Me
     Want *resultWant = data.ReadParcelable<Want>();
     if (resultWant != nullptr) {
         SanitizeWantParams(*resultWant);
+        resultWant->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
+    }
+    if (extensionSessionInfo != nullptr) {
+        extensionSessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
     int32_t result = TerminateUIExtensionAbility(extensionSessionInfo, resultCode, resultWant);
-    if (extensionSessionInfo != nullptr) {
-        extensionSessionInfo->want.CloseAllFd();
-    }
     reply.WriteInt32(result);
     if (resultWant != nullptr) {
         delete resultWant;
@@ -1386,6 +1389,7 @@ int AbilityManagerStub::SendResultToAbilityInner(MessageParcel &data, MessagePar
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*resultWant);
+    resultWant->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     int32_t result = SendResultToAbility(requestCode, resultCode, *resultWant);
     reply.WriteInt32(result);
     if (resultWant != nullptr) {
@@ -1409,11 +1413,11 @@ int AbilityManagerStub::MinimizeUIExtensionAbilityInner(MessageParcel &data, Mes
     if (data.ReadBool()) {
         extensionSessionInfo = data.ReadParcelable<SessionInfo>();
     }
+    if (extensionSessionInfo != nullptr) {
+        extensionSessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
+    }
     auto fromUser = data.ReadBool();
     int32_t result = MinimizeUIExtensionAbility(extensionSessionInfo, fromUser);
-    if (extensionSessionInfo != nullptr) {
-        extensionSessionInfo->want.CloseAllFd();
-    }
     reply.WriteInt32(result);
     return NO_ERROR;
 }
@@ -1423,6 +1427,9 @@ int AbilityManagerStub::MinimizeUIAbilityBySCBInner(MessageParcel &data, Message
     sptr<SessionInfo> sessionInfo = nullptr;
     if (data.ReadBool()) {
         sessionInfo = data.ReadParcelable<SessionInfo>();
+    }
+    if (sessionInfo != nullptr) {
+        sessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
     bool fromUser = data.ReadBool();
     uint32_t sceneFlag = data.ReadUint32();
@@ -1507,6 +1514,9 @@ int AbilityManagerStub::ScheduleCommandAbilityWindowDoneInner(MessageParcel &dat
 {
     sptr<IRemoteObject> token = data.ReadRemoteObject();
     sptr<SessionInfo> sessionInfo = data.ReadParcelable<SessionInfo>();
+    if (sessionInfo != nullptr) {
+        sessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
+    }
     int32_t winCmd = data.ReadInt32();
     int32_t abilityCmd = data.ReadInt32();
     int32_t result = ScheduleCommandAbilityWindowDone(token, sessionInfo,
@@ -1593,6 +1603,7 @@ int AbilityManagerStub::StartAbilityInner(MessageParcel &data, MessageParcel &re
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     int32_t userId = data.ReadInt32();
     int requestCode = data.ReadInt32();
     uint64_t specifiedFullTokenId = data.ReadUint64();
@@ -1609,6 +1620,7 @@ int AbilityManagerStub::StartAbilityInnerSpecifyTokenId(MessageParcel &data, Mes
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
 
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
@@ -1630,6 +1642,7 @@ int AbilityManagerStub::StartAbilityByUIContentSessionAddCallerInner(MessageParc
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
 
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
@@ -1664,6 +1677,7 @@ int AbilityManagerStub::StartAbilityByUIContentSessionForOptionsInner(MessagePar
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     std::unique_ptr<StartOptions> startOptions(data.ReadParcelable<StartOptions>());
     if (startOptions == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startOptions null");
@@ -1702,6 +1716,7 @@ int AbilityManagerStub::StartExtensionAbilityInner(MessageParcel &data, MessageP
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
         callerToken = data.ReadRemoteObject();
@@ -1722,6 +1737,7 @@ int AbilityManagerStub::RequestModalUIExtensionInner(MessageParcel &data, Messag
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     int32_t result = RequestModalUIExtension(*want);
     reply.WriteInt32(result);
     return NO_ERROR;
@@ -1735,6 +1751,7 @@ int AbilityManagerStub::RequestModalUIExtensionWithAccountInner(MessageParcel &d
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     int32_t accountId = data.ReadInt32();
     int32_t result = RequestModalUIExtensionWithAccount(*want, accountId);
     reply.WriteInt32(result);
@@ -1749,6 +1766,7 @@ int AbilityManagerStub::PreloadUIExtensionAbilityInner(MessageParcel &data, Mess
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     std::string hostBundleName = Str16ToStr8(data.ReadString16());
     int32_t userId = data.ReadInt32();
     int32_t hostPid = data.ReadInt32();
@@ -1782,6 +1800,9 @@ int AbilityManagerStub::ChangeUIAbilityVisibilityBySCBInner(MessageParcel &data,
         TAG_LOGE(AAFwkTag::ABILITYMGR, "read sessionInfo fail");
         return ERR_NULL_OBJECT;
     }
+    if (sessionInfo != nullptr) {
+        sessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
+    }
 
     bool isShow = data.ReadBool();
     int result = ChangeUIAbilityVisibilityBySCB(sessionInfo, isShow);
@@ -1803,6 +1824,7 @@ int AbilityManagerStub::StartUIExtensionAbilityInner(MessageParcel &data, Messag
         }
         // To ensure security, this attribute must be rewritten.
         extensionSessionInfo->uiExtensionUsage = UIExtensionUsage::MODAL;
+        extensionSessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
 
     int32_t userId = data.ReadInt32();
@@ -1823,6 +1845,7 @@ int AbilityManagerStub::StartUIExtensionAbilityEmbeddedInner(MessageParcel &data
         }
         // To ensure security, this attribute must be rewritten.
         extensionSessionInfo->uiExtensionUsage = UIExtensionUsage::EMBEDDED;
+        extensionSessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
 
     int32_t userId = data.ReadInt32();
@@ -1843,6 +1866,7 @@ int AbilityManagerStub::StartUIExtensionConstrainedEmbeddedInner(MessageParcel &
         }
         // To ensure security, this attribute must be rewritten.
         extensionSessionInfo->uiExtensionUsage = UIExtensionUsage::CONSTRAINED_EMBEDDED;
+        extensionSessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
 
     int32_t userId = data.ReadInt32();
@@ -1863,6 +1887,7 @@ int AbilityManagerStub::StartUIExtensionPreViewEmbeddedInner(MessageParcel &data
         }
         // To ensure security, this attribute must be rewritten.
         extensionSessionInfo->uiExtensionUsage = UIExtensionUsage::PRE_VIEW_EMBEDDED;
+        extensionSessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
 
     int32_t userId = data.ReadInt32();
@@ -1880,6 +1905,7 @@ int AbilityManagerStub::StopExtensionAbilityInner(MessageParcel& data, MessagePa
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
         callerToken = data.ReadRemoteObject();
@@ -1900,6 +1926,7 @@ int AbilityManagerStub::StartAbilityAddCallerInner(MessageParcel &data, MessageP
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
 
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
@@ -1922,6 +1949,7 @@ int AbilityManagerStub::StartAbilityAsCallerByTokenInner(MessageParcel &data, Me
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
 
     sptr<IRemoteObject> callerToken = nullptr;
     sptr<IRemoteObject> asCallerSourceToken = nullptr;
@@ -1946,6 +1974,7 @@ int AbilityManagerStub::StartAbilityAsCallerForOptionInner(MessageParcel &data, 
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     StartOptions *startOptions = data.ReadParcelable<StartOptions>();
     if (startOptions == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null startOptions");
@@ -1976,6 +2005,7 @@ int AbilityManagerStub::ConnectAbilityInner(MessageParcel &data, MessageParcel &
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     sptr<IAbilityConnection> callback = nullptr;
     sptr<IRemoteObject> token = nullptr;
     if (data.ReadBool()) {
@@ -1998,6 +2028,7 @@ int AbilityManagerStub::ConnectAbilityWithTypeInner(MessageParcel &data, Message
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     sptr<IAbilityConnection> callback = nullptr;
     sptr<IRemoteObject> token = nullptr;
     if (data.ReadBool()) {
@@ -2026,6 +2057,7 @@ int AbilityManagerStub::ConnectUIExtensionAbilityInner(MessageParcel &data, Mess
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     sptr<IAbilityConnection> callback = nullptr;
     if (data.ReadBool()) {
         callback = iface_cast<IAbilityConnection>(data.ReadRemoteObject());
@@ -2033,6 +2065,9 @@ int AbilityManagerStub::ConnectUIExtensionAbilityInner(MessageParcel &data, Mess
     sptr<SessionInfo> sessionInfo = nullptr;
     if (data.ReadBool()) {
         sessionInfo = data.ReadParcelable<SessionInfo>();
+    }
+    if (sessionInfo != nullptr) {
+        sessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
     int32_t userId = data.ReadInt32();
 
@@ -2071,6 +2106,7 @@ int AbilityManagerStub::StopServiceAbilityInner(MessageParcel &data, MessageParc
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     int32_t userId = data.ReadInt32();
     sptr<IRemoteObject> token = nullptr;
     if (data.ReadBool()) {
@@ -2127,6 +2163,7 @@ int AbilityManagerStub::StartAbilityForSettingsInner(MessageParcel &data, Messag
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     AbilityStartSetting *abilityStartSetting = data.ReadParcelable<AbilityStartSetting>();
     if (abilityStartSetting == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "abilityStartSetting null");
@@ -2152,6 +2189,7 @@ int AbilityManagerStub::StartAbilityForOptionsInner(MessageParcel &data, Message
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     StartOptions *startOptions = data.ReadParcelable<StartOptions>();
     if (startOptions == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startOptions null");
@@ -2176,6 +2214,9 @@ int AbilityManagerStub::CloseUIAbilityBySCBInner(MessageParcel &data, MessagePar
     if (data.ReadBool()) {
         sessionInfo = data.ReadParcelable<SessionInfo>();
     }
+    if (sessionInfo != nullptr) {
+        sessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
+    }
     bool isUserRequestedExit = data.ReadBool();
     uint32_t sceneFlag = data.ReadUint32();
     int32_t result = CloseUIAbilityBySCB(sessionInfo, isUserRequestedExit, sceneFlag);
@@ -2196,6 +2237,7 @@ int AbilityManagerStub::GetWantSenderInner(MessageParcel &data, MessageParcel &r
     }
     for (auto &wantsInfo : wantSenderInfo->allWants) {
         SanitizeWantParams(wantsInfo.want);
+        wantsInfo.want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
@@ -2224,6 +2266,7 @@ int AbilityManagerStub::SendWantSenderInner(MessageParcel &data, MessageParcel &
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(senderInfo->want);
+    senderInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     if (senderInfo->startOptions) {
         ProcessOptions::SanitizeSystemFields(senderInfo->startOptions->processOptions);
     }
@@ -2232,7 +2275,6 @@ int AbilityManagerStub::SendWantSenderInner(MessageParcel &data, MessageParcel &
         TAG_LOGE(AAFwkTag::ABILITYMGR, "completedData write fail");
     }
     reply.WriteInt32(result);
-    senderInfo->want.CloseAllFd();
     return NO_ERROR;
 }
 
@@ -2244,12 +2286,12 @@ int AbilityManagerStub::SendLocalWantSenderInner(MessageParcel &data, MessagePar
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(senderInfo->want);
+    senderInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     if (senderInfo->startOptions) {
         ProcessOptions::SanitizeSystemFields(senderInfo->startOptions->processOptions);
     }
     int32_t result = SendLocalWantSender(*senderInfo);
     reply.WriteInt32(result);
-    senderInfo->want.CloseAllFd();
     return NO_ERROR;
 }
 
@@ -2386,6 +2428,7 @@ int AbilityManagerStub::GetPendingRequestWantInner(MessageParcel &data, MessageP
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     int32_t result = GetPendingRequestWant(wantSender, want);
     if (result != NO_ERROR) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "getPendingRequestWant fail");
@@ -2410,6 +2453,7 @@ int AbilityManagerStub::GetPendingRequestWantFromProxyInner(MessageParcel &data,
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     int32_t result = GetPendingRequestWantFromProxy(wantSender, want);
     if (result != NO_ERROR) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "getPendingRequestWant fail");
@@ -2428,6 +2472,11 @@ int AbilityManagerStub::GetWantSenderInfoInner(MessageParcel &data, MessageParce
     }
 
     std::shared_ptr<WantSenderInfo> info(data.ReadParcelable<WantSenderInfo>());
+    if (info != nullptr) {
+        for (auto &wantsInfo : info->allWants) {
+            wantsInfo.want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
+        }
+    }
     int32_t result = GetWantSenderInfo(wantSender, info);
     if (result != NO_ERROR) {
         TAG_LOGE(AAFwkTag::WANTAGENT, "getWantSenderInfo fail");
@@ -2773,6 +2822,7 @@ int AbilityManagerStub::StartAbilityByCallInner(MessageParcel &data, MessageParc
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
 
     auto callback = iface_cast<IAbilityConnection>(data.ReadRemoteObject());
     if (callback == nullptr) {
@@ -2810,6 +2860,7 @@ int AbilityManagerStub::StartAbilityForPrelaunchInner(MessageParcel &data, Messa
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     int32_t frameNum = data.ReadInt32();
     int32_t result = StartAbilityForPrelaunch(*want, frameNum);
 
@@ -2826,6 +2877,9 @@ int AbilityManagerStub::StartUIAbilityBySCBInner(MessageParcel &data, MessagePar
     sptr<SessionInfo> sessionInfo = nullptr;
     if (data.ReadBool()) {
         sessionInfo = data.ReadParcelable<SessionInfo>();
+    }
+    if (sessionInfo != nullptr) {
+        sessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
     std::unique_ptr<AbilityRuntime::StartParamsBySCB> params(data.ReadParcelable<AbilityRuntime::StartParamsBySCB>());
     if (params == nullptr) {
@@ -3147,6 +3201,7 @@ int AbilityManagerStub::StartUserTestInner(MessageParcel &data, MessageParcel &r
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     auto observer = data.ReadRemoteObject();
     int32_t result = StartUserTest(*want, observer);
     reply.WriteInt32(result);
@@ -3766,6 +3821,7 @@ int AbilityManagerStub::SendDialogResultInner(MessageParcel &data, MessageParcel
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     std::string dialogSessionId = data.ReadString();
     bool isAllow = data.ReadBool();
     int result = SendDialogResult(*want, dialogSessionId, isAllow);
@@ -3984,6 +4040,9 @@ int AbilityManagerStub::CallUIAbilityBySCBInner(MessageParcel &data, MessageParc
     if (data.ReadBool()) {
         sessionInfo = data.ReadParcelable<SessionInfo>();
     }
+    if (sessionInfo != nullptr) {
+        sessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
+    }
     std::unique_ptr<AbilityRuntime::StartParamsBySCB> params(data.ReadParcelable<AbilityRuntime::StartParamsBySCB>());
     if (params == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "receive null");
@@ -4004,6 +4063,7 @@ int32_t AbilityManagerStub::StartSpecifiedAbilityBySCBInner(MessageParcel &data,
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     std::unique_ptr<StartSpecifiedAbilityParams> params(data.ReadParcelable<StartSpecifiedAbilityParams>());
     if (params == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "params null");
@@ -4022,6 +4082,7 @@ int AbilityManagerStub::NotifySaveAsResultInner(MessageParcel &data, MessageParc
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     int resultCode = data.ReadInt32();
     int requestCode = data.ReadInt32();
     int32_t result = NotifySaveAsResult(*want, resultCode, requestCode);
@@ -4081,6 +4142,9 @@ int AbilityManagerStub::PrepareTerminateAbilityBySCBInner(MessageParcel &data, M
     sptr<SessionInfo> sessionInfo = nullptr;
     if (data.ReadBool()) {
         sessionInfo = data.ReadParcelable<SessionInfo>();
+    }
+    if (sessionInfo != nullptr) {
+        sessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     }
     bool isPrepareTerminate = false;
     auto result = PrepareTerminateAbilityBySCB(sessionInfo, isPrepareTerminate);
@@ -4386,6 +4450,7 @@ int32_t AbilityManagerStub::IsAbilityControllerStartInner(MessageParcel &data, M
         return true;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     bool result = IsAbilityControllerStart(*want);
     reply.WriteBool(result);
     return NO_ERROR;
@@ -4522,6 +4587,7 @@ int AbilityManagerStub::StartAbilityForResultAsCallerInner(MessageParcel &data, 
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
         callerToken = data.ReadRemoteObject();
@@ -4543,6 +4609,7 @@ int32_t AbilityManagerStub::StartUIAbilitiesInSplitWindowModeInner(MessageParcel
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     sptr<IRemoteObject> callerToken = data.ReadRemoteObject();
     if (callerToken == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null callerToken");
@@ -4570,6 +4637,7 @@ int32_t AbilityManagerStub::StartUIAbilitiesInner(MessageParcel &data, MessagePa
             return ERR_NATIVE_IPC_PARCEL_FAILED;
         }
         SanitizeWantParams(*want);
+        want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
         wantList.emplace_back(*want);
     }
 
@@ -4610,6 +4678,7 @@ int AbilityManagerStub::StartAbilityForResultAsCallerForOptionsInner(MessageParc
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     std::unique_ptr<StartOptions> startOptions(data.ReadParcelable<StartOptions>());
     if (startOptions == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startOptions null");
@@ -4635,6 +4704,7 @@ int32_t AbilityManagerStub::StartAbilityOnlyUIAbilityInner(MessageParcel &data, 
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
 
     sptr<IRemoteObject> callerToken = nullptr;
     if (!data.ReadBool()) {
@@ -4655,6 +4725,7 @@ int32_t AbilityManagerStub::StartAbilityByInsightIntentInner(MessageParcel &data
         TAG_LOGE(AAFwkTag::ABILITYMGR, "want null");
         return ERR_INVALID_VALUE;
     }
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
 
     sptr<IRemoteObject> callerToken = nullptr;
     if (!data.ReadBool()) {
@@ -4677,6 +4748,7 @@ int32_t AbilityManagerStub::StartAbilityByOEExtInner(MessageParcel &data, Messag
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
 
     sptr<IRemoteObject> callerToken = nullptr;
     if (!data.ReadBool()) {
@@ -4840,6 +4912,7 @@ int32_t AbilityManagerStub::UpdateSessionInfoBySCBInner(MessageParcel &data, Mes
             TAG_LOGE(AAFwkTag::ABILITYMGR, "null info");
             return ERR_NATIVE_IPC_PARCEL_FAILED;
         }
+        info->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
         sessionInfos.emplace_back(*info);
     }
     int32_t userId = data.ReadInt32();
@@ -4940,6 +5013,7 @@ int32_t AbilityManagerStub::OpenAtomicServiceInner(MessageParcel &data, MessageP
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     std::unique_ptr<StartOptions> options(data.ReadParcelable<StartOptions>());
     if (options == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "options null");
@@ -5005,6 +5079,7 @@ int32_t AbilityManagerStub::StartShortcutInner(MessageParcel &data, MessageParce
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     StartOptions *startOptions = data.ReadParcelable<StartOptions>();
     if (startOptions == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startOptions null");
@@ -5042,6 +5117,7 @@ int32_t AbilityManagerStub::TransferAbilityResultForExtensionInner(MessageParcel
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     int32_t result = TransferAbilityResultForExtension(callerToken, resultCode, *want);
     reply.WriteInt32(result);
     return NO_ERROR;
@@ -5073,6 +5149,9 @@ int32_t AbilityManagerStub::CleanUIAbilityBySCBInner(MessageParcel &data, Messag
     if (data.ReadBool()) {
         sessionInfo = data.ReadParcelable<SessionInfo>();
     }
+    if (sessionInfo != nullptr) {
+        sessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
+    }
     uint32_t sceneFlag = data.ReadUint32();
     bool isUserRequestedExit = data.ReadBool();
     int32_t result = CleanUIAbilityBySCB(sessionInfo, isUserRequestedExit, sceneFlag);
@@ -5088,6 +5167,7 @@ int32_t AbilityManagerStub::OpenLinkInner(MessageParcel &data, MessageParcel &re
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     sptr<IRemoteObject> callerToken = data.ReadRemoteObject();
     int32_t userId = data.ReadInt32();
     int requestCode = data.ReadInt32();
@@ -5281,12 +5361,12 @@ int32_t AbilityManagerStub::StartSelfUIAbilityInner(MessageParcel &data, Message
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     int32_t result = StartSelfUIAbility(*want);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "reply write fail");
         return INNER_ERR;
     }
-    want->CloseAllFd();
     return NO_ERROR;
 }
 
@@ -5298,6 +5378,7 @@ int32_t AbilityManagerStub::StartSelfUIAbilityWithStartOptionsInner(MessageParce
         return ERR_READ_WANT;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     sptr<StartOptions> options = data.ReadParcelable<StartOptions>();
     if (options == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startOptions null");
@@ -5309,7 +5390,6 @@ int32_t AbilityManagerStub::StartSelfUIAbilityWithStartOptionsInner(MessageParce
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write StartSelfUIAbilityWithStartOptions result fail");
         return ERR_WRITE_START_SELF_UI_ABILITY_RESULT;
     }
-    want->CloseAllFd();
     return NO_ERROR;
 }
 
@@ -5321,6 +5401,7 @@ int32_t AbilityManagerStub::StartSelfUIAbilityWithTokenInner(MessageParcel &data
         return ERR_READ_WANT;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
         callerToken = data.ReadRemoteObject();
@@ -5330,7 +5411,6 @@ int32_t AbilityManagerStub::StartSelfUIAbilityWithTokenInner(MessageParcel &data
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");
         return INNER_ERR;
     }
-    want->CloseAllFd();
     return NO_ERROR;
 }
 
@@ -5342,6 +5422,7 @@ int32_t AbilityManagerStub::StartSelfUIAbilityWithStartOptionsAndTokenInner(Mess
         return ERR_READ_WANT;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     sptr<StartOptions> options = data.ReadParcelable<StartOptions>();
     if (options == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startOptions null");
@@ -5357,7 +5438,6 @@ int32_t AbilityManagerStub::StartSelfUIAbilityWithStartOptionsAndTokenInner(Mess
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");
         return INNER_ERR;
     }
-    want->CloseAllFd();
     return NO_ERROR;
 }
 
@@ -5369,6 +5449,7 @@ int32_t AbilityManagerStub::StartSelfUIAbilityWithPidResultInner(MessageParcel &
         return ERR_READ_WANT;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     sptr<StartOptions> options = data.ReadParcelable<StartOptions>();
     if (options == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startOptions null");
@@ -5381,7 +5462,6 @@ int32_t AbilityManagerStub::StartSelfUIAbilityWithPidResultInner(MessageParcel &
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write StartSelfUIAbilityWithPidResult result fail");
         return ERR_WRITE_START_SELF_UI_ABILITY_RESULT;
     }
-    want->CloseAllFd();
     return NO_ERROR;
 }
 
@@ -5499,6 +5579,7 @@ int32_t AbilityManagerStub::StartAbilityWithWaitInner(MessageParcel &data, Messa
         return ERR_NULL_OBJECT;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
 
     auto callback = iface_cast<IAbilityStartWithWaitObserver>(data.ReadRemoteObject());
     if (callback == nullptr) {
@@ -5522,6 +5603,7 @@ int32_t AbilityManagerStub::StartUIAbilityWithCallbackInner(MessageParcel &data,
         return ERR_READ_WANT;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
 
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
@@ -5842,6 +5924,7 @@ int AbilityManagerStub::StartSelfUIAbilityInCurrentProcessInner(MessageParcel &d
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     std::string specifiedFlag = data.ReadString();
     StartOptions *startOptions = data.ReadParcelable<StartOptions>();
     bool hasOptions = data.ReadBool();
@@ -5869,6 +5952,7 @@ int AbilityManagerStub::StartSelfUIAbilityInChildProcessInner(MessageParcel &dat
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     std::string specifiedFlag = data.ReadString();
     sptr<IRemoteObject> callerToken = nullptr;
     if (data.ReadBool()) {
@@ -6075,6 +6159,7 @@ int32_t AbilityManagerStub::StartSelfUIAbilityByAppContextInner(MessageParcel &d
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     int32_t result = StartSelfUIAbilityByAppContext(*want);
     reply.WriteInt32(result);
     return NO_ERROR;
@@ -6089,6 +6174,7 @@ int32_t AbilityManagerStub::StartSandboxCloneAbilityInner(MessageParcel &data, M
         return ERR_INVALID_VALUE;
     }
     SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     std::shared_ptr<SandboxCloneParams> params(data.ReadParcelable<SandboxCloneParams>());
     if (params == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "params null");
