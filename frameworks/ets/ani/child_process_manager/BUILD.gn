@@ -63,7 +63,10 @@ ohos_shared_library("ability_child_process_manager_ani_kit") {
       "./src/ets_child_process_manager.cpp",
     ]
     deps += [ "${ability_runtime_innerkits_path}/child_process_manager:child_process_manager" ]
-    external_deps += [ "ipc:ipc_single" ]
+    external_deps += [
+      "ipc:ipc_single",
+      "node:node_header_notice",
+    ]
   }
 
   if (ability_runtime_graphics) {

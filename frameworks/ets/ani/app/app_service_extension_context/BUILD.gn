@@ -67,6 +67,7 @@ ohos_shared_library("app_service_extension_context_ani_kit") {
     "napi:ace_napi",
     "runtime_core:ani",
     "runtime_core:ani_helpers",
+    "node:node_header_notice",
   ]
 
   innerapi_tags = [ "platformsdk" ]

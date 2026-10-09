@@ -65,6 +65,7 @@ ohos_shared_library("service_extension_context_ani_kit") {
     "hitrace:hitrace_meter",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "node:node_header_notice",
     "runtime_core:ani",
     "runtime_core:ani_helpers",
   ]

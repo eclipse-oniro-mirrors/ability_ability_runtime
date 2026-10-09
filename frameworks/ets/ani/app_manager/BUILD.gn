@@ -71,6 +71,7 @@ ohos_shared_library("app_manager_ani") {
     "hilog:libhilog",
     "ipc:ipc_core",
     "napi:ace_napi",
+    "node:node_header_notice",
     "runtime_core:ani",
     "samgr:samgr_proxy",
   ]

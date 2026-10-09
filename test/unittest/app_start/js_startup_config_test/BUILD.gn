@@ -74,6 +74,7 @@ ohos_unittest("js_startup_config_test") {
     "hilog:libhilog",
     "ipc:ipc_core",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
 }
 
