@@ -41,4 +41,5 @@ export default class StartOptions {
   completionHandler?: CompletionHandler;
   hideStartWindow?: boolean;
   windowCreateParams?: window.WindowCreateParams;
+  preferDefaultBrowser?: boolean;
 }

@@ -119,7 +119,9 @@ private:
     bool IsPreferredCloneExist(const std::vector<DialogAppInfo> &dialogAppInfos,
         const std::string &bundleName, int32_t preferredAppIndex);
 
-    static void ProcessLinkType(std::vector<AppExecFwk::AbilityInfo> &abilityInfos);
+    static void ProcessLinkType(std::vector<AppExecFwk::AbilityInfo> &abilityInfos,
+        const AbilityRequest &request);
+    static bool ShouldPreferDefaultBrowser(const AbilityRequest &request, bool defaultAppExist);
 
     void SetTargetLinkInfo(const std::vector<AppExecFwk::SkillUriForAbilityAndExtension> &skillUri, Want &want);
 

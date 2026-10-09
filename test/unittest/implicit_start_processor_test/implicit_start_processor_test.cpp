@@ -1837,7 +1837,8 @@ HWTEST_F(ImplicitStartProcessorTest, ProcessLinkType_001, TestSize.Level1)
     abilityInfos.push_back(info1);
     abilityInfos.push_back(info2);
 
-    ImplicitStartProcessor::ProcessLinkType(abilityInfos);
+    AbilityRequest request;
+    ImplicitStartProcessor::ProcessLinkType(abilityInfos, request);
     ASSERT_EQ(abilityInfos.size(), 1);
     EXPECT_EQ(abilityInfos.front().linkType, AppExecFwk::LinkType::APP_LINK);
     TAG_LOGI(AAFwkTag::TEST, "ProcessLinkType_001 end");
@@ -1861,7 +1862,8 @@ HWTEST_F(ImplicitStartProcessorTest, ProcessLinkType_002, TestSize.Level1)
     abilityInfos.push_back(info1);
     abilityInfos.push_back(info2);
 
-    ImplicitStartProcessor::ProcessLinkType(abilityInfos);
+    AbilityRequest request;
+    ImplicitStartProcessor::ProcessLinkType(abilityInfos, request);
     ASSERT_EQ(abilityInfos.size(), 1);
     EXPECT_EQ(abilityInfos.front().linkType, AppExecFwk::LinkType::APP_LINK);
     TAG_LOGI(AAFwkTag::TEST, "ProcessLinkType_002 end");
@@ -1885,7 +1887,8 @@ HWTEST_F(ImplicitStartProcessorTest, ProcessLinkType_003, TestSize.Level1)
     abilityInfos.push_back(info1);
     abilityInfos.push_back(info2);
 
-    ImplicitStartProcessor::ProcessLinkType(abilityInfos);
+    AbilityRequest request;
+    ImplicitStartProcessor::ProcessLinkType(abilityInfos, request);
     ASSERT_EQ(abilityInfos.size(), 1);
     EXPECT_EQ(abilityInfos.front().linkType, AppExecFwk::LinkType::DEFAULT_APP);
     TAG_LOGI(AAFwkTag::TEST, "ProcessLinkType_003 end");
@@ -1900,9 +1903,160 @@ HWTEST_F(ImplicitStartProcessorTest, ProcessLinkType_004, TestSize.Level1)
 {
     TAG_LOGI(AAFwkTag::TEST, "ProcessLinkType_004 start");
     std::vector<AbilityInfo> abilityInfos;
-    ImplicitStartProcessor::ProcessLinkType(abilityInfos);
+    AbilityRequest request;
+    ImplicitStartProcessor::ProcessLinkType(abilityInfos, request);
     EXPECT_EQ(abilityInfos.size(), 0);
     TAG_LOGI(AAFwkTag::TEST, "ProcessLinkType_004 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: ProcessLinkType
+ * CaseDescription: preferDefaultBrowser=true + https scheme + APP_LINK present → only
+ *                  DEFAULT_APP kept, APP_LINK/DEEP_LINK removed.
+ */
+HWTEST_F(ImplicitStartProcessorTest, ProcessLinkType_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ProcessLinkType_005 start");
+    std::vector<AbilityInfo> abilityInfos;
+    AbilityInfo info1;
+    info1.name = "default_app_ability";
+    info1.linkType = AppExecFwk::LinkType::DEFAULT_APP;
+    AbilityInfo info2;
+    info2.name = "app_link_ability";
+    info2.linkType = AppExecFwk::LinkType::APP_LINK;
+    AbilityInfo info3;
+    info3.name = "deep_link_ability";
+    info3.linkType = AppExecFwk::LinkType::DEEP_LINK;
+    abilityInfos.push_back(info1);
+    abilityInfos.push_back(info2);
+    abilityInfos.push_back(info3);
+
+    AbilityRequest request;
+    request.want.SetUri("https://www.example.com");
+    request.startOptions.SetPreferDefaultBrowser(true);
+    ImplicitStartProcessor::ProcessLinkType(abilityInfos, request);
+    ASSERT_EQ(abilityInfos.size(), 1);
+    EXPECT_EQ(abilityInfos.front().linkType, AppExecFwk::LinkType::DEFAULT_APP);
+    TAG_LOGI(AAFwkTag::TEST, "ProcessLinkType_005 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: ProcessLinkType
+ * CaseDescription: preferDefaultBrowser=true but scheme is NOT http/https → fast-path
+ *                  must NOT fire; normal filter keeps APP_LINK, drops DEFAULT_APP.
+ */
+HWTEST_F(ImplicitStartProcessorTest, ProcessLinkType_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ProcessLinkType_006 start");
+    std::vector<AbilityInfo> abilityInfos;
+    AbilityInfo info1;
+    info1.name = "default_app_ability";
+    info1.linkType = AppExecFwk::LinkType::DEFAULT_APP;
+    AbilityInfo info2;
+    info2.name = "app_link_ability";
+    info2.linkType = AppExecFwk::LinkType::APP_LINK;
+    abilityInfos.push_back(info1);
+    abilityInfos.push_back(info2);
+
+    AbilityRequest request;
+    request.want.SetUri("mailto:test@example.com");
+    request.startOptions.SetPreferDefaultBrowser(true);
+    // scheme is mailto (non-web) → guarantee: fast-path skipped, normal flow
+    ImplicitStartProcessor::ProcessLinkType(abilityInfos, request);
+    ASSERT_EQ(abilityInfos.size(), 1);
+    EXPECT_EQ(abilityInfos.front().linkType, AppExecFwk::LinkType::APP_LINK);
+    TAG_LOGI(AAFwkTag::TEST, "ProcessLinkType_006 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: ShouldPreferDefaultBrowser
+ * CaseDescription: preferDefaultBrowser=true + defaultAppExist=true + http scheme → true.
+ */
+HWTEST_F(ImplicitStartProcessorTest, ShouldPreferDefaultBrowser_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ShouldPreferDefaultBrowser_001 start");
+    AbilityRequest request;
+    request.want.SetUri("http://www.example.com");
+    request.startOptions.SetPreferDefaultBrowser(true);
+    EXPECT_TRUE(ImplicitStartProcessor::ShouldPreferDefaultBrowser(request, true));
+    TAG_LOGI(AAFwkTag::TEST, "ShouldPreferDefaultBrowser_001 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: ShouldPreferDefaultBrowser
+ * CaseDescription: preferDefaultBrowser=true + defaultAppExist=true + https scheme → true.
+ */
+HWTEST_F(ImplicitStartProcessorTest, ShouldPreferDefaultBrowser_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ShouldPreferDefaultBrowser_002 start");
+    AbilityRequest request;
+    request.want.SetUri("https://www.example.com");
+    request.startOptions.SetPreferDefaultBrowser(true);
+    EXPECT_TRUE(ImplicitStartProcessor::ShouldPreferDefaultBrowser(request, true));
+    TAG_LOGI(AAFwkTag::TEST, "ShouldPreferDefaultBrowser_002 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: ShouldPreferDefaultBrowser
+ * CaseDescription: preferDefaultBrowser=false → false even with default app and https scheme.
+ */
+HWTEST_F(ImplicitStartProcessorTest, ShouldPreferDefaultBrowser_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ShouldPreferDefaultBrowser_003 start");
+    AbilityRequest request;
+    request.want.SetUri("https://www.example.com");
+    request.startOptions.SetPreferDefaultBrowser(false);
+    EXPECT_FALSE(ImplicitStartProcessor::ShouldPreferDefaultBrowser(request, true));
+    TAG_LOGI(AAFwkTag::TEST, "ShouldPreferDefaultBrowser_003 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: ShouldPreferDefaultBrowser
+ * CaseDescription: defaultAppExist=false → false even with preferDefaultBrowser=true and https scheme.
+ */
+HWTEST_F(ImplicitStartProcessorTest, ShouldPreferDefaultBrowser_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ShouldPreferDefaultBrowser_004 start");
+    AbilityRequest request;
+    request.want.SetUri("https://www.example.com");
+    request.startOptions.SetPreferDefaultBrowser(true);
+    EXPECT_FALSE(ImplicitStartProcessor::ShouldPreferDefaultBrowser(request, false));
+    TAG_LOGI(AAFwkTag::TEST, "ShouldPreferDefaultBrowser_004 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: ShouldPreferDefaultBrowser
+ * CaseDescription: non-web scheme (ftp) → false even with preferDefaultBrowser=true and default app.
+ */
+HWTEST_F(ImplicitStartProcessorTest, ShouldPreferDefaultBrowser_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ShouldPreferDefaultBrowser_005 start");
+    AbilityRequest request;
+    request.want.SetUri("ftp://www.example.com");
+    request.startOptions.SetPreferDefaultBrowser(true);
+    EXPECT_FALSE(ImplicitStartProcessor::ShouldPreferDefaultBrowser(request, true));
+    TAG_LOGI(AAFwkTag::TEST, "ShouldPreferDefaultBrowser_005 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: ShouldPreferDefaultBrowser
+ * CaseDescription: empty URI (no scheme) → false even with preferDefaultBrowser=true and default app.
+ */
+HWTEST_F(ImplicitStartProcessorTest, ShouldPreferDefaultBrowser_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ShouldPreferDefaultBrowser_006 start");
+    AbilityRequest request;
+    request.startOptions.SetPreferDefaultBrowser(true);
+    EXPECT_FALSE(ImplicitStartProcessor::ShouldPreferDefaultBrowser(request, true));
+    TAG_LOGI(AAFwkTag::TEST, "ShouldPreferDefaultBrowser_006 end");
 }
 
 /*
