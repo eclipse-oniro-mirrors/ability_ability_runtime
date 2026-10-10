@@ -51,6 +51,7 @@ ohos_shared_library("appmemoryoptimizer_napi") {
     "hilog:libhilog",
     "ipc:ipc_core",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
 
   relative_install_dir = "module/app/ability"

@@ -120,6 +120,7 @@ ohos_shared_library("agent_extension") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
 
   subsystem_name = "ability"
@@ -167,6 +168,7 @@ ohos_shared_library("agent_extension_module") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) { 

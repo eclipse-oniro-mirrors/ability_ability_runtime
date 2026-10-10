@@ -49,6 +49,7 @@ ohos_shared_library("autostartupcallback") {
     "ipc:ipc_core",
     "napi:ace_napi",
     "window_manager:libwm",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {

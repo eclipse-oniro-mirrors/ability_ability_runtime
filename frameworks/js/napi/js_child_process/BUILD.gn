@@ -44,7 +44,10 @@ ohos_shared_library("childprocess_napi") {
     ":child_process_js",
   ]
 
-  external_deps = [ "napi:ace_napi" ]
+  external_deps = [
+    "napi:ace_napi",
+    "node:node_header_notice",
+  ]
 
   relative_install_dir = "module/app/ability"
   subsystem_name = "ability"
