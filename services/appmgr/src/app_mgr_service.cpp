@@ -1074,7 +1074,6 @@ int AppMgrService::ShowHelp(const std::vector<std::u16string>& args, std::string
 int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string& result)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");
-    // Dump access control reuses the existing mechanism (ohos.permission.DUMP).
     if (!HasDumpPermission()) {
         TAG_LOGE(AAFwkTag::APPMGR, "dump permission denied");
         result.append("error: dump permission denied.\n");
@@ -1083,42 +1082,29 @@ int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string
     if (args.size() > SIZE_ONE) {
         std::string subCmd = Str16ToStr8(args[INDEX_ONE]);
         if (subCmd == "register") {
-            return DumpTaskRegisterCmd(args, result);
+            if (args.size() != SIZE_FIVE) {
+                result.append("usage: --task register <taskId> <pid> <insight|cli|a2a|ability>\n");
+                return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
+            }
+            auto ret = TaskManagerService::GetInstance()->DumpRegisterManagedProcess(
+                Str16ToStr8(args[INDEX_TWO]), Str16ToStr8(args[INDEX_THREE]),
+                Str16ToStr8(args[INDEX_FOUR]), result);
+            return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
         }
         if (subCmd == "unregister") {
-            return DumpTaskUnregisterCmd(args, result);
+            if (args.size() != SIZE_FOUR) {
+                result.append("usage: --task unregister <taskId> <pid>\n");
+                return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
+            }
+            auto ret = TaskManagerService::GetInstance()->DumpUnregisterManagedProcess(
+                Str16ToStr8(args[INDEX_TWO]), Str16ToStr8(args[INDEX_THREE]), result);
+            return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
         }
         result.append("error: unknown task subcommand.\n");
         return DumpErrorCode::ERR_INVALID_CMD_ERROR;
     }
-    // The snapshot is taken under the task manager's own mutex, consistent with its
-    // lifecycle actions: a terminal task never shows up because it leaves the map there.
     result.append(TaskManagerService::GetInstance()->DumpActiveTasks());
     return ERR_OK;
-}
-
-int AppMgrService::DumpTaskRegisterCmd(const std::vector<std::u16string>& args, std::string& result)
-{
-    // Basic validation only: the register hook (text parsing, execution, output) lives in
-    // the task manager.
-    if (args.size() != SIZE_FIVE) {
-        result.append("usage: --task register <taskId> <pid> <insight|cli|a2a|ability>\n");
-        return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
-    }
-    auto ret = TaskManagerService::GetInstance()->DumpRegisterManagedProcess(Str16ToStr8(args[INDEX_TWO]),
-        Str16ToStr8(args[INDEX_THREE]), Str16ToStr8(args[INDEX_FOUR]), result);
-    return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
-}
-
-int AppMgrService::DumpTaskUnregisterCmd(const std::vector<std::u16string>& args, std::string& result)
-{
-    if (args.size() != SIZE_FOUR) {
-        result.append("usage: --task unregister <taskId> <pid>\n");
-        return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
-    }
-    auto ret = TaskManagerService::GetInstance()->DumpUnregisterManagedProcess(Str16ToStr8(args[INDEX_TWO]),
-        Str16ToStr8(args[INDEX_THREE]), result);
-    return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
 }
 
 int AppMgrService::DumpIpcAllInner(const AppMgrService::DumpIpcKey key, std::string& result)
