@@ -193,8 +193,6 @@ int32_t TaskManagerService::FinishTaskInner(const std::string &taskId, TaskFinis
             "alive(ms): %{public}" PRId64, taskId.c_str(), TaskFinishReasonToString(reason), aliveMillis);
     }
     if (reason == TaskFinishReason::FINISHED_BY_TIMEOUT) {
-        // Inside the fired timer's own callback: stopping it here would deadlock, and a
-        // fired one-shot has nothing left to stop — just release the context.
         timerCtx.reset();
     } else {
         ReleaseTimeoutContext(std::move(timerCtx));
@@ -287,7 +285,6 @@ int32_t TaskManagerService::RegisterManagedProcessInner(const std::string &taskI
             TAG_LOGW(AAFwkTag::APPMGR, "task not found, taskId: %{public}s", taskId.c_str());
             return ERR_TASK_NOT_FOUND;
         }
-        // Server-authoritative attribution time; the caller-provided value is ignored.
         AttributionRecord stored = attribution;
         stored.attributedTimeMillis = NowMillis();
         it->second.attributions[stored.pid] = stored;
@@ -325,8 +322,6 @@ std::unique_ptr<TimeoutContext> TaskManagerService::RestartTimeoutWindow(const s
     int64_t newDeadline = NowMillis() + static_cast<int64_t>(GetTimeoutSeconds()) * MILLIS_PER_SECOND;
     record.timeoutCtx = StartTimeoutTimer(taskId, newDeadline);
     if (record.timeoutCtx == nullptr) {
-        // Keep the previous window: the record still matches the armed timer, so the
-        // task times out at the old deadline instead of living without a timer.
         TAG_LOGE(AAFwkTag::APPMGR, "restart timeout window failed, taskId: %{public}s", taskId.c_str());
         record.timeoutCtx = std::move(previousCtx);
         return nullptr;
@@ -351,13 +346,9 @@ std::unique_ptr<TimeoutContext> TaskManagerService::StartTimeoutTimer(const std:
     ctx->handle = ffrt_timer_start(ffrt_qos_default, static_cast<uint64_t>(delayMillis),
         ctx.get(), TimerCallback, false);
     if (ctx->handle == ffrt_error) {
-        // No timer was created, so no callback will ever reference the context; the
-        // unique_ptr frees it on return.
         TAG_LOGE(AAFwkTag::APPMGR, "start timeout timer failed, taskId: %{public}s", taskId.c_str());
         return nullptr;
     }
-    // The caller moves the context into the record while still holding tasksMutex_, so
-    // the timer can never fire before its context is owned by the record.
     return ctx;
 }
 
@@ -369,9 +360,6 @@ void TaskManagerService::ReleaseTimeoutContext(std::unique_ptr<TimeoutContext> c
     if (ffrt_timer_stop(ffrt_qos_default, ctx->handle) != ffrt_success) {
         TAG_LOGW(AAFwkTag::APPMGR, "stop timeout timer failed, handle: %{public}d", ctx->handle);
     }
-    // Safe to let the scope exit delete the context: a running callback has fully
-    // completed (it copied its fields before calling OnTaskTimeout and never touches
-    // the context again), and a pending one will never run.
 }
 
 void TaskManagerService::NotifyTaskFinished(const std::string &taskId, TaskFinishReason reason)

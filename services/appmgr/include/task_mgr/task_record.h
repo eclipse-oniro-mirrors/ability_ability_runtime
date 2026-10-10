@@ -35,7 +35,7 @@ namespace AppExecFwk {
 struct TimeoutContext {
     std::string taskId;
     int64_t deadlineMillis = 0;
-    ffrt_timer_t handle = ffrt_error;  // set right after ffrt_timer_start returns
+    ffrt_timer_t handle = ffrt_error;
 };
 
 // In-memory task record keyed by the globally unique taskId. Protected by TaskManagerService::tasksMutex_.
@@ -46,11 +46,11 @@ struct TaskRecord {
     pid_t creatorPid = -1;
     uint32_t creatorTokenId = 0;
     int32_t userId = -1;
-    std::string creatorBundleName;   // creator system app, for log and dump
-    int64_t createTimeMillis = 0;    // wall clock, for dump
-    int64_t deadlineMillis = 0;      // wall clock, pushed forward by every adoption, checked by the timeout handler
-    std::map<pid_t, AttributionRecord> attributions;  // tool-chain attributions, keyed by pid
-    std::unique_ptr<TimeoutContext> timeoutCtx;  // armed timer's context, owned by the record
+    std::string creatorBundleName;
+    int64_t createTimeMillis = 0;
+    int64_t deadlineMillis = 0;
+    std::map<pid_t, AttributionRecord> attributions;
+    std::unique_ptr<TimeoutContext> timeoutCtx;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

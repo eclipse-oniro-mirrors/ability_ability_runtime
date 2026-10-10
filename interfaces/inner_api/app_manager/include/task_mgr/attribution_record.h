@@ -23,8 +23,7 @@
 
 namespace OHOS {
 namespace AppExecFwk {
-// Which tool chain attributed a process into a task. Each tool passes its own type when
-// calling RegisterManagedProcess; new tools extend this list.
+    
 enum class AttributionTool : int32_t {
     UNKNOWN = 0,
     INSIGHT = 1,
@@ -33,13 +32,6 @@ enum class AttributionTool : int32_t {
     ABILITY = 4,
 };
 
-// A process attributed into a task by a tool chain. This is the IPC contract of the
-// RegisterManagedProcess entry and the stored entry of TaskRecord::attributions:
-// the record carries the most basic attribution information, and each tool may derive
-// its own struct on top of it to prepare richer, tool-specific context. Note that the
-// IPC boundary transfers the base fields only (pid and tool; the server stamps the
-// attribution time), so derived fields are for in-process preparation and must be
-// flattened into base fields or a future extension field before crossing IPC.
 struct AttributionRecord : public Parcelable {
     pid_t pid = -1;
     AttributionTool tool = AttributionTool::UNKNOWN;

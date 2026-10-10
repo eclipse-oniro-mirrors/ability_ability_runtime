@@ -67,8 +67,6 @@ napi_value TaskPriorityInit(napi_env env)
     return taskPriority;
 }
 
-// Parses the optional priority parameter: undefined keeps the default, and the value must be
-// a number of TaskPriority when present.
 bool ParsePriorityParam(napi_env env, napi_value value, int32_t &priority)
 {
     napi_valuetype valueType = napi_undefined;
