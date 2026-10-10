@@ -15,7 +15,10 @@
 
 #include "js_cli_manager.h"
 
+#include <iomanip>
 #include <mutex>
+#include <set>
+#include <sstream>
 #include <string>
 
 #include "cli_error_code.h"
@@ -43,6 +46,101 @@ constexpr int32_t INDEX_ONE = 1;
 constexpr int32_t INDEX_TWO = 2;
 constexpr int32_t INDEX_THREE = 3;
 constexpr int32_t INDEX_FOUR = 4;
+constexpr int32_t SKILL_ARG_ORDINAL_WIDTH = 3;
+constexpr size_t DOUBLE_DASH_PREFIX_LEN = 2;
+constexpr const char *SKILL_TOOL_NAME = "ohos-arkTSScript";
+
+bool IsReservedSkillKey(const std::string &key)
+{
+    static const std::set<std::string> RESERVED = {
+        "bundleName", "moduleName", "skillName", "scriptPath", "functionName"
+    };
+    return RESERVED.count(key) > 0;
+}
+
+std::string NormalizeSkillKey(const std::string &key)
+{
+    if (key.rfind("--", 0) == 0) {
+        return key.substr(DOUBLE_DASH_PREFIX_LEN);
+    }
+    if (!key.empty() && key[0] == '-') {
+        return key.substr(1);
+    }
+    return key;
+}
+
+std::string FormatSkillArgKey(int32_t ordinal)
+{
+    std::ostringstream oss;
+    oss << "arg_" << std::setw(SKILL_ARG_ORDINAL_WIDTH) << std::setfill('0') << ordinal;
+    return oss.str();
+}
+
+// 展开嵌套 args 对象：按插入序把非保留 key 重命名为 arg_001/arg_002/...
+void FlattenNestedArgs(napi_env env, napi_value argsObj, napi_value ordered, int32_t &ordinal)
+{
+    napi_value argsNameList = nullptr;
+    uint32_t argsCount = 0;
+    if (napi_get_property_names(env, argsObj, &argsNameList) != napi_ok ||
+        napi_get_array_length(env, argsNameList, &argsCount) != napi_ok) {
+        return;
+    }
+    for (uint32_t j = 0; j < argsCount; j++) {
+        napi_value argName = nullptr;
+        if (napi_get_element(env, argsNameList, j, &argName) != napi_ok) {
+            continue;
+        }
+        std::string argRawKey = AppExecFwk::UnwrapStringFromJS(env, argName);
+        std::string argKey = NormalizeSkillKey(argRawKey);
+        if (argKey.empty() || IsReservedSkillKey(argKey)) {
+            continue;
+        }
+        napi_value argValue = nullptr;
+        napi_get_named_property(env, argsObj, argRawKey.c_str(), &argValue);
+        std::string orderedKey = FormatSkillArgKey(ordinal++);
+        napi_set_named_property(env, ordered, orderedKey.c_str(), argValue);
+    }
+}
+
+// 保序重排 skill args 对象：控制 key 保留原名，嵌套 args 对象按插入序
+// 展开重命名为 arg_001/arg_002/...，避免 UnwrapWantParams 递归转 std::map 丢序。
+napi_value ReorderSkillArgs(napi_env env, napi_value obj)
+{
+    napi_value ordered = nullptr;
+    napi_create_object(env, &ordered);
+
+    napi_value nameList = nullptr;
+    uint32_t count = 0;
+    if (napi_get_property_names(env, obj, &nameList) != napi_ok ||
+        napi_get_array_length(env, nameList, &count) != napi_ok) {
+        return ordered;
+    }
+
+    int32_t ordinal = 1;
+    for (uint32_t i = 0; i < count; i++) {
+        napi_value name = nullptr;
+        if (napi_get_element(env, nameList, i, &name) != napi_ok) {
+            continue;
+        }
+        std::string rawKey = AppExecFwk::UnwrapStringFromJS(env, name);
+        std::string key = NormalizeSkillKey(rawKey);
+        if (key.empty()) {
+            continue;
+        }
+        napi_value value = nullptr;
+        napi_get_named_property(env, obj, rawKey.c_str(), &value);
+        if (key == "args") {
+            napi_valuetype argsType = napi_undefined;
+            napi_typeof(env, value, &argsType);
+            if (argsType == napi_object) {
+                FlattenNestedArgs(env, value, ordered, ordinal);
+                continue;
+            }
+        }
+        napi_set_named_property(env, ordered, key.c_str(), value);
+    }
+    return ordered;
+}
 
 int32_t DispatchCliTool(const ExecToolParam &param, napi_env env,
     std::shared_ptr<NapiAsyncTask> asyncTask)
@@ -163,7 +261,11 @@ napi_value JSCliManager::OnExecTool(napi_env env, size_t argc, napi_value *argv)
         return CreateJsUndefined(env);
     }
 
-    if (!AppExecFwk::UnwrapWantParams(env, argv[INDEX_TWO], param.args)) {
+    napi_value skillArgsValue = argv[INDEX_TWO];
+    if (param.toolName == SKILL_TOOL_NAME) {
+        skillArgsValue = ReorderSkillArgs(env, argv[INDEX_TWO]);
+    }
+    if (!AppExecFwk::UnwrapWantParams(env, skillArgsValue, param.args)) {
         ThrowInvalidParamError(env, "Tool args is required");
         return CreateJsUndefined(env);
     }
