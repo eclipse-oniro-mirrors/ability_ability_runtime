@@ -851,9 +851,9 @@ void InsightIntentExecuteManager::SendIntentReport(EventInfo &eventInfo, int32_t
     EventReport::SendExecuteIntentEvent(EventName::EXECUTE_INSIGHT_INTENT_ERROR, HISYSEVENT_FAULT, eventInfo);
 }
 
-void InsightIntentExecuteManager::OnInsightAppDied(const std::string &bundleName)
+void InsightIntentExecuteManager::OnInsightAppDied(const std::string &bundleName, pid_t pid)
 {
-    TAG_LOGD(AAFwkTag::INTENT, "app died: %{public}s", bundleName.c_str());
+    TAG_LOGD(AAFwkTag::INTENT, "app died: %{public}s, pid: %{public}d", bundleName.c_str(), pid);
     AppExecFwk::InsightIntentExecuteResult errorResult{};
     errorResult.innerErr = AbilityRuntime::InsightIntentInnerErr::INSIGHT_INTENT_EXECUTE_REPLY_FAILED;
 
@@ -862,6 +862,11 @@ void InsightIntentExecuteManager::OnInsightAppDied(const std::string &bundleName
         std::lock_guard<ffrt::mutex> lock(mutex_);
         for (const auto &[intentId, record] : records_) {
             if (record == nullptr || bundleName != record->bundleName) {
+                continue;
+            }
+            // Only clean records whose target pid exactly matches this died process;
+            // skip targetPid == 0 (not reported yet, gap window) and other-process records.
+            if (record->targetPid != pid) {
                 continue;
             }
             toRemove.push_back(intentId);
@@ -877,6 +882,18 @@ void InsightIntentExecuteManager::OnInsightAppDied(const std::string &bundleName
         self->HandleDiedRecordsCleanup(toRemove, errorResult);
         }, ffrt::task_attr().delay(static_cast<uint64_t>(DYING_CALLBACK_DELAY_MS) * MICROSECONDS_PER_MILLISECOND)
         .name("InsightIntentDiedCleanup"));
+}
+
+void InsightIntentExecuteManager::SetTargetPid(uint64_t intentId, pid_t pid)
+{
+    std::lock_guard<ffrt::mutex> lock(mutex_);
+    auto it = records_.find(intentId);
+    if (it == records_.end() || it->second == nullptr) {
+        TAG_LOGD(AAFwkTag::INTENT, "SetTargetPid: record not found, intentId: %{public}" PRIu64, intentId);
+        return;
+    }
+    it->second->targetPid = pid;
+    TAG_LOGD(AAFwkTag::INTENT, "SetTargetPid: intentId: %{public}" PRIu64 ", pid: %{public}d", intentId, pid);
 }
 
 void InsightIntentExecuteManager::HandleDiedRecordsCleanup(const std::vector<uint64_t> &toRemove,

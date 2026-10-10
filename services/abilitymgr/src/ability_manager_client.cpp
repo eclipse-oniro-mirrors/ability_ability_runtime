@@ -2840,6 +2840,14 @@ ErrCode AbilityManagerClient::NotifySkillFunctionInvoked(sptr<IRemoteObject> tok
     return abms->NotifySkillFunctionInvoked(token, requestCode);
 }
 
+ErrCode AbilityManagerClient::NotifyInsightIntentExecute(uint64_t intentId)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "called");
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    return abms->NotifyInsightIntentExecute(intentId);
+}
+
 ErrCode AbilityManagerClient::QuerySkillType(const std::string &bundleName, const std::string &moduleName,
     const std::string &skillName, int32_t &skillType)
 {

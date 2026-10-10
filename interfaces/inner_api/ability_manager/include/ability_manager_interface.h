@@ -2941,6 +2941,11 @@ public:
     {
         return ERR_OK;
     }
+
+    virtual int32_t NotifyInsightIntentExecute(uint64_t intentId)
+    {
+        return ERR_OK;
+    }
 };
 }  // namespace AAFwk
 }  // namespace OHOS

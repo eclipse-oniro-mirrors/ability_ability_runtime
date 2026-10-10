@@ -3149,6 +3149,13 @@ public:
     ErrCode NotifySkillFunctionInvoked(sptr<IRemoteObject> token, const std::string &requestCode);
 
     /**
+     * @brief Notify that an insight intent execution has started.
+     * @param intentId The insight intent id.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode NotifyInsightIntentExecute(uint64_t intentId);
+
+    /**
      * @brief Query the type of a configured skill (e.g. UI ability vs service
      * extension). No special permission; queried for the caller's user.
      * @param bundleName Target bundle name.
