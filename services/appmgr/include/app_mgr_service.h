@@ -433,7 +433,6 @@ public:
      */
     int32_t FinishTask(const std::string &taskId) override;
 
-
     /**
      * @brief called when the abilityStage's onAcceptWant lifecycle completed.
      * @param recordId record id of the ability.

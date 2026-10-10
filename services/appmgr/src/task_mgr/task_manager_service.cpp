@@ -20,7 +20,6 @@
 #include <cinttypes>
 #include <chrono>
 #include <ctime>
-#include <new>
 #include <vector>
 
 #include "ability_manager_errors.h"
@@ -336,11 +335,7 @@ std::unique_ptr<TimeoutContext> TaskManagerService::StartTimeoutTimer(const std:
     int64_t deadlineMillis)
 {
     int64_t delayMillis = std::max(deadlineMillis - NowMillis(), MIN_TIMER_DELAY_MILLIS);
-    std::unique_ptr<TimeoutContext> ctx(new (std::nothrow) TimeoutContext());
-    if (ctx == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "alloc timeout context failed, taskId: %{public}s", taskId.c_str());
-        return nullptr;
-    }
+    auto ctx = std::make_unique<TimeoutContext>();
     ctx->taskId = taskId;
     ctx->deadlineMillis = deadlineMillis;
     ctx->handle = ffrt_timer_start(ffrt_qos_default, static_cast<uint64_t>(delayMillis),
