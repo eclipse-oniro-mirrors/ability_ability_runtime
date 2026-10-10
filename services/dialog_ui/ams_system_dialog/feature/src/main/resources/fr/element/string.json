@@ -1,0 +1,95 @@
+{
+    "string":[
+        {
+            "name":"Btn_qr",
+            "value":"OK",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_subtitle_ytxx",
+            "value":"Informations sur l'intention",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_title_ytts",
+            "value":"Débogage InsightIntent",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_ytmc",
+            "value":"Nom de l'intention",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Btn_sc",
+            "value":"Supprimer",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Tips_bt",
+            "value":"Champ obligatoire",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_subtitle_ytcs",
+            "value":"Paramètres de l'intention",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_ytbm",
+            "value":"Nom du package",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Btn_tj",
+            "value":"Ajouter",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Cont_title_syyt",
+            "value":"Toutes les intentions",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_btn_zxyt",
+            "value":"Exécuter l'intention",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_stitle_zxjg",
+            "value":"Résultat de l'exécution",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_zxms",
+            "value":"Mode d'exécution",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}
