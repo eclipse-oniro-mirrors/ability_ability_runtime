@@ -1234,10 +1234,10 @@ void ImplicitStartProcessor::FilterClonesByPreferredIndex(
         return;
     }
     const auto &first = dialogAppInfos.front();
-    const std::string firstKey = first.bundleName + "#" + first.moduleName + "#" + first.abilityName;
     for (size_t i = 1; i < dialogAppInfos.size(); ++i) {
         const auto &info = dialogAppInfos[i];
-        if (info.bundleName + "#" + info.moduleName + "#" + info.abilityName != firstKey) {
+        if (info.bundleName != first.bundleName || info.moduleName != first.moduleName ||
+            info.abilityName != first.abilityName) {
             TAG_LOGI(AAFwkTag::ABILITYMGR, "multiple abilities matched, skip preferred clone filter");
             return;
         }

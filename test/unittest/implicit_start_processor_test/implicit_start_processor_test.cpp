@@ -1512,9 +1512,9 @@ HWTEST_F(ImplicitStartProcessorTest, IsExistDefaultApp_001, TestSize.Level1)
     TAG_LOGI(AAFwkTag::TEST, "IsExistDefaultApp_001 end");
 }
 
-HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_001, TestSize.Level1)
+HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_007, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_001 start");
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_007 start");
     auto processor = std::make_shared<ImplicitStartProcessor>();
 
     std::vector<DialogAppInfo> emptyInfos;
@@ -1528,7 +1528,7 @@ HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_001, TestSize.
     singleInfo.emplace_back(info1);
     processor->FilterClonesByPreferredIndex(singleInfo, 0);
     EXPECT_EQ(singleInfo.size(), 1);
-    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_001 end");
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_007 end");
 }
 
 /*
@@ -1540,9 +1540,9 @@ HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_001, TestSize.
  * CaseDescription: Multiple apps matched → preferred clone filter is skipped entirely;
  *                 all candidates are retained regardless of preferred index config.
  */
-HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_002, TestSize.Level1)
+HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_008, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_002 start");
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_008 start");
     auto processor = std::make_shared<ImplicitStartProcessor>();
     std::vector<DialogAppInfo> dialogAppInfos;
     DialogAppInfo info1;
@@ -1570,7 +1570,7 @@ HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_002, TestSize.
     processor->FilterClonesByPreferredIndex(dialogAppInfos, 0);
 
     EXPECT_EQ(dialogAppInfos.size(), 5);
-    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_002 end");
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_008 end");
 }
 
 /*
@@ -1582,9 +1582,9 @@ HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_002, TestSize.
  * CaseDescription: preferred index configured but NOT present in candidates (clone uninstalled);
  *                 dialogAppInfos unchanged.
  */
-HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_003, TestSize.Level1)
+HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_009, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_003 start");
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_009 start");
     auto processor = std::make_shared<ImplicitStartProcessor>();
     std::vector<DialogAppInfo> dialogAppInfos;
     DialogAppInfo info1;
@@ -1600,7 +1600,7 @@ HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_003, TestSize.
     processor->FilterClonesByPreferredIndex(dialogAppInfos, 0);
 
     EXPECT_EQ(dialogAppInfos.size(), 2);
-    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_003 end");
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_009 end");
 }
 
 /*
@@ -1612,9 +1612,9 @@ HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_003, TestSize.
  * CaseDescription: Single ability with multiple clones, preferred index present and found
  *                 → reduces to the preferred clone only.
  */
-HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_004, TestSize.Level1)
+HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_010, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_004 start");
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_010 start");
     auto processor = std::make_shared<ImplicitStartProcessor>();
     std::vector<DialogAppInfo> dialogAppInfos;
     for (int i = 1; i <= 3; ++i) {
@@ -1629,7 +1629,7 @@ HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_004, TestSize.
 
     ASSERT_EQ(dialogAppInfos.size(), 1);
     EXPECT_EQ(dialogAppInfos.front().appIndex, 2);
-    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_004 end");
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_010 end");
 }
 
 /*
@@ -1641,9 +1641,9 @@ HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_004, TestSize.
  * CaseDescription: Same bundle but different abilities (different abilityName or moduleName)
  *                 → multiple triples detected → skip preferred clone filter entirely.
  */
-HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_005, TestSize.Level1)
+HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_011, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_005 start");
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_011 start");
     auto processor = std::make_shared<ImplicitStartProcessor>();
     std::vector<DialogAppInfo> dialogAppInfos;
     DialogAppInfo info1;
@@ -1675,7 +1675,7 @@ HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_005, TestSize.
     processor->FilterClonesByPreferredIndex(dialogAppInfos, 0);
 
     EXPECT_EQ(dialogAppInfos.size(), 4);
-    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_005 end");
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_011 end");
 }
 
 /*
