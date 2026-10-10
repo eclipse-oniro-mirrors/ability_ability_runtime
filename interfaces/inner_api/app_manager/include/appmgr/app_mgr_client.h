@@ -1845,27 +1845,6 @@ public:
      */
     int32_t FinishTask(const std::string &taskId);
 
-    /**
-     * Attribute a process into a task. The caller must be a system ability. The record
-     * carries the base attribution info; tools may derive their own struct on top
-     * of it, but only the base fields cross the IPC boundary.
-     *
-     * @param taskId Attribution key of the task (1~256 characters).
-     * @param attribution Attribution record with the pid and the AttributionTool value.
-     * @return ERR_OK on success, server error code otherwise;
-     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
-     */
-    int32_t RegisterManagedProcess(const std::string &taskId, const AttributionRecord &attribution);
-
-    /**
-     * Remove a process from the managed set of a task. The caller must be a system ability.
-     *
-     * @param taskId Attribution key of the task (1~256 characters).
-     * @param pid Pid of the process to remove.
-     * @return ERR_OK on success, server error code otherwise;
-     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
-     */
-    int32_t UnregisterManagedProcess(const std::string &taskId, int32_t pid);
 private:
     void SetServiceManager(std::unique_ptr<AppServiceManager> serviceMgr);
     /**

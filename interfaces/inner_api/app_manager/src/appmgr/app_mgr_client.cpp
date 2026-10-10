@@ -2178,32 +2178,5 @@ int32_t AppMgrClient::FinishTask(const std::string &taskId)
     return service->FinishTask(taskId);
 }
 
-int32_t AppMgrClient::RegisterManagedProcess(const std::string &taskId, const AttributionRecord &attribution)
-{
-    if (mgrHolder_ == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "mgrHolder is nullptr.");
-        return ERROR_SERVICE_NOT_CONNECTED;
-    }
-    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
-    if (service == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "Service is nullptr.");
-        return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
-    }
-    return service->RegisterManagedProcess(taskId, attribution);
-}
-
-int32_t AppMgrClient::UnregisterManagedProcess(const std::string &taskId, int32_t pid)
-{
-    if (mgrHolder_ == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "mgrHolder is nullptr.");
-        return ERROR_SERVICE_NOT_CONNECTED;
-    }
-    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
-    if (service == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "Service is nullptr.");
-        return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
-    }
-    return service->UnregisterManagedProcess(taskId, pid);
-}
 }  // namespace AppExecFwk
 }  // namespace OHOS

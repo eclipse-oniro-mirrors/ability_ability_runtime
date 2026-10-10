@@ -53,6 +53,7 @@ ohos_unittest("AMSEventHandlerTest") {
     "${ability_runtime_services_path}/appmgr/src/remote_client_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/render_record.cpp",
     "${ability_runtime_services_path}/appmgr/src/render_state_observer_manager.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/attribution_record.cpp",
     "${ability_runtime_services_path}/appmgr/src/task_mgr/common.cpp",
     "${ability_runtime_services_path}/appmgr/src/task_mgr/task_manager_service.cpp",
     "${ability_runtime_services_path}/appmgr/src/user_record_manager.cpp",

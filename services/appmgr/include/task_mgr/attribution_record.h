@@ -13,17 +13,16 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_INNER_API_APP_MANAGER_TASK_MGR_ATTRIBUTION_RECORD_H
-#define OHOS_INNER_API_APP_MANAGER_TASK_MGR_ATTRIBUTION_RECORD_H
+#ifndef OHOS_APP_EXECFWK_TASK_MGR_ATTRIBUTION_RECORD_H
+#define OHOS_APP_EXECFWK_TASK_MGR_ATTRIBUTION_RECORD_H
 
 #include <cstdint>
+#include <string>
 #include <sys/types.h>
-
-#include "parcel.h"
 
 namespace OHOS {
 namespace AppExecFwk {
-    
+
 enum class AttributionTool : int32_t {
     UNKNOWN = 0,
     INSIGHT = 1,
@@ -32,14 +31,15 @@ enum class AttributionTool : int32_t {
     ABILITY = 4,
 };
 
-struct AttributionRecord : public Parcelable {
+struct AttributionRecord {
     pid_t pid = -1;
     AttributionTool tool = AttributionTool::UNKNOWN;
     int64_t attributedTimeMillis = 0;  // server-authoritative, set at registration
-
-    bool Marshalling(Parcel &parcel) const override;
-    static AttributionRecord *Unmarshalling(Parcel &parcel);
 };
+
+const char *AttributionToolToString(AttributionTool tool);
+// Inverse of AttributionToolToString (dump command texts); returns UNKNOWN on no match.
+AttributionTool AttributionToolFromString(const std::string &text);
 }  // namespace AppExecFwk
 }  // namespace OHOS
-#endif  // OHOS_INNER_API_APP_MANAGER_TASK_MGR_ATTRIBUTION_RECORD_H
+#endif  // OHOS_APP_EXECFWK_TASK_MGR_ATTRIBUTION_RECORD_H

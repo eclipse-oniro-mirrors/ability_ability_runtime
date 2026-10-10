@@ -433,21 +433,6 @@ public:
      */
     int32_t FinishTask(const std::string &taskId) override;
 
-    /**
-     * @brief Attributes a process into the task.
-     * @param taskId Indicates the attribution key of the task.
-     * @param attribution Indicates the attribution record (pid and tool).
-     * @return Returns ERR_OK on success; others on failure.
-     */
-    int32_t RegisterManagedProcess(const std::string &taskId, const AttributionRecord &attribution) override;
-
-    /**
-     * @brief Removes a process from the managed set of the task.
-     * @param taskId Indicates the attribution key of the task.
-     * @param pid Indicates the pid of the process to remove.
-     * @return Returns ERR_OK on success; others on failure.
-     */
-    int32_t UnregisterManagedProcess(const std::string &taskId, int32_t pid) override;
 
     /**
      * @brief called when the abilityStage's onAcceptWant lifecycle completed.

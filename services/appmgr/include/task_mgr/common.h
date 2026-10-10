@@ -20,8 +20,6 @@
 #include <cstdint>
 #include <string>
 
-#include "task_mgr/attribution_record.h"
-
 namespace OHOS {
 namespace AppExecFwk {
 // Task priority values, aligned with the TaskPriority enum of @ohos.app.agent.taskManager.
@@ -51,8 +49,6 @@ enum class TaskFinishReason : int32_t {
 
 const char *TaskFinishReasonToString(TaskFinishReason reason);
 const char *TaskPriorityToString(int32_t priority);
-const char *AttributionToolToString(AttributionTool tool);
-AttributionTool AttributionToolFromString(const std::string &text);
 }  // namespace AppExecFwk
 }  // namespace OHOS
 #endif  // OHOS_APP_EXECFWK_TASK_MGR_COMMON_H

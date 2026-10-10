@@ -71,6 +71,7 @@ ohos_unittest("app_mgr_service_inner_ninth_test") {
     "${ability_runtime_services_path}/appmgr/src/quick_fix_callback_with_record.cpp",
     "${ability_runtime_services_path}/appmgr/src/render_record.cpp",
     "${ability_runtime_services_path}/appmgr/src/render_state_observer_manager.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/attribution_record.cpp",
     "${ability_runtime_services_path}/appmgr/src/task_mgr/common.cpp",
     "${ability_runtime_services_path}/appmgr/src/task_mgr/task_manager_service.cpp",
     "${ability_runtime_services_path}/appmgr/src/window_focus_changed_listener.cpp",

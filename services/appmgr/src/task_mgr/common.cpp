@@ -44,38 +44,5 @@ const char *TaskPriorityToString(int32_t priority)
             return "INVALID";
     }
 }
-
-const char *AttributionToolToString(AttributionTool tool)
-{
-    switch (tool) {
-        case AttributionTool::INSIGHT:
-            return "insight";
-        case AttributionTool::CLI:
-            return "cli";
-        case AttributionTool::A2A:
-            return "a2a";
-        case AttributionTool::ABILITY:
-            return "ability";
-        default:
-            return "unknown";
-    }
-}
-
-AttributionTool AttributionToolFromString(const std::string &text)
-{
-    if (text == "insight") {
-        return AttributionTool::INSIGHT;
-    }
-    if (text == "cli") {
-        return AttributionTool::CLI;
-    }
-    if (text == "a2a") {
-        return AttributionTool::A2A;
-    }
-    if (text == "ability") {
-        return AttributionTool::ABILITY;
-    }
-    return AttributionTool::UNKNOWN;
-}
 }  // namespace AppExecFwk
 }  // namespace OHOS
