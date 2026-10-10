@@ -97,8 +97,8 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
 
     // fuzz for AbilityInterceptorExecuter
     auto abilityInterceptorExecuter = std::make_shared<AbilityInterceptorExecuter>();
-    std::shared_ptr<AbilityInterceptor> interceptor;
-    abilityInterceptorExecuter->AddInterceptor(interceptor);
+    std::shared_ptr<IAbilityInterceptor> interceptor;
+    abilityInterceptorExecuter->AddInterceptor("fuzzInterceptor", interceptor);
     Parcel wantParcel;
     Want* want = nullptr;
     if (wantParcel.WriteBuffer(data, size)) {
@@ -107,7 +107,7 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
             return false;
         }
     }
-    
+
     AbilityInterceptorParam interceptorParam = InterceptorParamBuilder(*want, intParam, int32Param)
         .WithUI(boolParam).CallerToken(nullptr).Build();
     abilityInterceptorExecuter->DoProcess(interceptorParam);
@@ -166,7 +166,6 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     AmsConfigurationParameter::GetInstance().GetANRTimeOutTime();
     AmsConfigurationParameter::GetInstance().GetAMSTimeOutTime();
     AmsConfigurationParameter::GetInstance().GetMaxRestartNum(true);
-    AmsConfigurationParameter::GetInstance().GetDeviceType();
     AmsConfigurationParameter::GetInstance().GetBootAnimationTimeoutTime();
     nlohmann::json Object;
     AmsConfigurationParameter::GetInstance().LoadAppConfigurationForStartUpService(Object);

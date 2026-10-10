@@ -27,7 +27,6 @@ ohos_fuzztest("AbilityManagerServiceAFuzzTest") {
   include_dirs = [
     "${ability_runtime_innerkits_path}/ability_manager/include",
     "${ability_runtime_innerkits_path}/dataobs_manager/include",
-    "${multimodalinput_path}/interfaces/native/innerkits/event/include",
   ]
   cflags = [
     "-g",
@@ -59,6 +58,10 @@ ohos_fuzztest("AbilityManagerServiceAFuzzTest") {
     "common_event_service:cesfwk_innerkits",
     "ffrt:libffrt",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "eventhandler:libeventhandler",
+    "input:libmmi-client",
+    "safwk:api_cache_manager",
     "ipc:ipc_core",
     "napi:ace_napi",
     "relational_store:native_dataability",

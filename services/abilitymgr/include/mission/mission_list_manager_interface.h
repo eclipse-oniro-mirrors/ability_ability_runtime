@@ -74,7 +74,7 @@ public:
 
     virtual void Dump(std::vector<std::string> &info) = 0;
 
-    virtual void DumpMissionList(std::vector<std::string> &info, bool isClient, const std::string &args = "");
+    virtual void DumpMissionList(std::vector<std::string> &info, bool isClient, const std::string &args = "") = 0;
 
     virtual void DumpMissionListByRecordId(std::vector<std::string> &info, bool isClient, int32_t abilityRecordId,
         const std::vector<std::string> &params) = 0;
@@ -104,7 +104,7 @@ public:
     virtual void ResumeManager() = 0;
     virtual int32_t IsValidMissionIds(const std::vector<int32_t> &missionIds,
         std::vector<MissionValidResult> &results) = 0;
-    virtual int DoAbilityForeground(std::shared_ptr<AbilityRecord> &abilityRecord, uint32_t flag);
+    virtual int DoAbilityForeground(std::shared_ptr<AbilityRecord> &abilityRecord, uint32_t flag) = 0;
     virtual void GetActiveAbilityList(int32_t uid, std::vector<std::string> &abilityList, int32_t pid = NO_PID) = 0;
     virtual void CallRequestDone(const std::shared_ptr<AbilityRecord> &abilityRecord,
         const sptr<IRemoteObject> &callStub) = 0;

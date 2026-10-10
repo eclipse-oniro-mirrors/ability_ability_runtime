@@ -28,8 +28,8 @@
 
 #include "ability_fuzz_util.h"
 #include "ability_record.h"
-#include "continuous_task_callback_info.h"
 #include "connection_observer.h"
+#include "continuous_task_callback_info.h"
 
 using namespace OHOS::AAFwk;
 using namespace OHOS::AppExecFwk;
@@ -37,7 +37,6 @@ using namespace OHOS::AbilityRuntime;
 
 namespace OHOS {
 namespace {
-constexpr size_t STRING_MAX_LENGTH = 128;
 }
 
 bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)

@@ -37,14 +37,7 @@ using namespace OHOS::AppExecFwk;
 namespace OHOS {
 namespace {
 constexpr int INPUT_ZERO = 0;
-constexpr int INPUT_ONE = 1;
-constexpr int INPUT_TWO = 2;
-constexpr int INPUT_THREE = 3;
 constexpr size_t U32_AT_SIZE = 4;
-constexpr size_t OFFSET_ZERO = 24;
-constexpr size_t OFFSET_ONE = 16;
-constexpr size_t OFFSET_TWO = 8;
-constexpr uint8_t ENABLE = 2;
 
 class IConnectionObserverFuzz : public IConnectionObserver {
 public:
@@ -81,9 +74,9 @@ public:
 class ForegroundAppConnectionFuzz : public IForegroundAppConnection {
 public:
     void OnForegroundAppConnected(const ForegroundAppConnectionData &data) override {}
-    
+
     void OnForegroundAppDisconnected(const ForegroundAppConnectionData &data) override {}
-    
+
     void OnForegroundAppCallerStarted(int32_t callerPid, int32_t callerUid, const std::string &bundleName) override {}
 
     int OnRemoteRequest(
@@ -96,27 +89,6 @@ public:
 };
 }
 const std::u16string ABILITYMGR_INTERFACE_TOKEN = u"ohos.aafwk.AbilityManager";
-uint32_t GetU32Data(const char* ptr)
-{
-    // convert fuzz input data to an integer
-    return (ptr[INPUT_ZERO] << OFFSET_ZERO) | (ptr[INPUT_ONE] << OFFSET_ONE) | (ptr[INPUT_TWO] << OFFSET_TWO) |
-        ptr[INPUT_THREE];
-}
-
-sptr<Token> GetFuzzAbilityToken()
-{
-    sptr<Token> token = nullptr;
-    AbilityRequest abilityRequest;
-    abilityRequest.appInfo.bundleName = "com.example.fuzzTest";
-    abilityRequest.abilityInfo.name = "MainAbility";
-    abilityRequest.abilityInfo.type = AbilityType::DATA;
-    std::shared_ptr<AbilityRecord> abilityRecord = AbilityRecord::CreateAbilityRecord(abilityRequest);
-    if (abilityRecord) {
-        token = abilityRecord->GetToken();
-    }
-    return token;
-}
-
 bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
 {
     uint32_t codeOne = static_cast<uint32_t>(AbilityManagerInterfaceCode::GET_PENDING_WANT_TYPE);

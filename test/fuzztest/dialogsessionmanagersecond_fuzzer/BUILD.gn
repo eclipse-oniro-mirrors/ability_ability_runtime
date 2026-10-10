@@ -68,6 +68,7 @@ ohos_fuzztest("DialogSessionManagerSecondFuzzTest") {
   ]
 
   external_deps = [
+    "ability_base:session_info",
     "ability_base:want",
     "ability_base:zuri",
     "bundle_framework:appexecfwk_base",
@@ -85,7 +86,7 @@ ohos_fuzztest("DialogSessionManagerSecondFuzzTest") {
     "samgr:samgr_proxy",
     "window_manager:libmodal_system_ui_extension_client",
     "window_manager:libwsutils",
-    "window_manager:session_manager_lite",
+    "window_manager:session_manager_lite"
   ]
 
   if (background_task_mgr_continuous_task_enable) {

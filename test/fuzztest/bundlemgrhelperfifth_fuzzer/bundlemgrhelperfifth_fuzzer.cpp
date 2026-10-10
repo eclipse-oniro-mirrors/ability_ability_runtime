@@ -27,14 +27,12 @@
 #include "connection_observer.h"
 #undef protected
 #undef private
-#include "ability_fuzz_util.h"
 #include "ability_record.h"
 #include "app_mgr_client.h"
 #include "continuous_task_callback_info.h"
 #include "keep_alive_process_manager.h"
 #include "parameters.h"
 #include "permission_verification.h"
-
 
 using namespace OHOS::AAFwk;
 using namespace OHOS::AppExecFwk;

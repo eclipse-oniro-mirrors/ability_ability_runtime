@@ -126,16 +126,16 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     freeInstallManager->BuildFreeInstallInfo(*want, int32Param, intParam, token);
     freeInstallManager->StartRemoteFreeInstall(*want, intParam, int32Param, token);
     freeInstallManager->NotifyDmsCallback(*want, intParam);
-    freeInstallManager->NotifyFreeInstallResult(*want, intParam);
+    freeInstallManager->NotifyFreeInstallResult(intParam, *want, intParam);
     freeInstallManager->FreeInstallAbilityFromRemote(*want, token, int32Param, intParam);
     freeInstallManager->ConnectFreeInstall(
         *want, int32Param, token, stringParam, AppExecFwk::ExtensionAbilityType::SERVICE);
-    freeInstallManager->OnInstallFinished(intParam, *want, int32Param, int64Param);
-    freeInstallManager->OnRemoteInstallFinished(intParam, *want, int32Param);
+    freeInstallManager->OnInstallFinished(intParam, intParam, *want, int32Param);
+    freeInstallManager->OnRemoteInstallFinished(intParam, intParam, *want, int32Param);
 
     // fuzz for AtomicServiceStatusCallback
     std::weak_ptr<FreeInstallManager> fimWeakPtr{ freeInstallManager };
-    auto atomicServiceStatusCallback = std::make_shared<AtomicServiceStatusCallback>(fimWeakPtr, int64Param);
+    auto atomicServiceStatusCallback = std::make_shared<AtomicServiceStatusCallback>(fimWeakPtr, false, intParam);
     atomicServiceStatusCallback->OnInstallFinished(intParam, *want, int32Param);
     atomicServiceStatusCallback->OnRemoteInstallFinished(intParam, *want, int32Param);
 

@@ -23,6 +23,7 @@
 #undef private
 #include "iapplication_state_observer.h"
 #include "securec.h"
+#include <fuzzer/FuzzedDataProvider.h>
 
 using namespace OHOS::AAFwk;
 using namespace OHOS::AppExecFwk;
@@ -33,7 +34,7 @@ constexpr size_t U32_AT_SIZE = 4;
 }
 bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
 {
-    (void)data;
+    
     std::shared_ptr<AppMgrService> appMgrService = std::make_shared<AppMgrService>();
     sptr<IApplicationStateObserver> observer;
     if (!appMgrService) {

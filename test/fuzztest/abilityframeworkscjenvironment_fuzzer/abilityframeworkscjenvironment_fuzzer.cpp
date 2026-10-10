@@ -20,6 +20,7 @@
 
 #define private public
 #include "cj_environment.h"
+#include "cj_runtime.h"
 #undef private
 
 #include "ability_record.h"
@@ -65,7 +66,7 @@ sptr<Token> GetFuzzAbilityToken()
 bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
 {
     std::string jsonStr(data, size);
-    IsCJAbility(jsonStr);
+    AbilityRuntime::CJRuntime::IsCJAbility(jsonStr);
     return true;
 }
 }

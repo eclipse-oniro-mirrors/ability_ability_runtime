@@ -19,8 +19,8 @@
 #include "ability_fuzz_util.h"
 #undef private
 
-#include "keep_alive_info.h"
 #include "background_app_info.h"
+#include "keep_alive_info.h"
 
 #include <fuzzer/FuzzedDataProvider.h>
 #include <iostream>

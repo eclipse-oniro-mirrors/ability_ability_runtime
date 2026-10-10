@@ -55,6 +55,8 @@ ohos_fuzztest("AtomicServiceStatusCallbackStubFuzzTest") {
     "ability_base:want",
     "c_utils:utils",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "safwk:api_cache_manager",
     "ipc:ipc_core",
     "samgr:samgr_proxy",
   ]

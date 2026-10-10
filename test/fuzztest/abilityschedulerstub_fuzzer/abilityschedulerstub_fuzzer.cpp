@@ -152,6 +152,23 @@ public:
     }
     void OnExecuteIntent(const Want &want) override
     {}
+
+    int CreateModalUIExtension(const Want &want) override
+    {
+        return 0;
+    }
+
+    void UpdateSessionToken(sptr<IRemoteObject> sessionToken) override {}
+
+    void ScheduleCollaborate(const Want &want) override {}
+
+    void ScheduleAbilityRequestFailure(const std::string &requestId, const AppExecFwk::ElementName &element,
+        const std::string &message, int32_t resultCode) override {}
+
+    void ScheduleAbilityRequestSuccess(const std::string &requestId,
+        const AppExecFwk::ElementName &element) override {}
+
+    void ScheduleAbilitiesRequestDone(const std::string &requestKey, int32_t resultCode) override {}
 };
 
 uint32_t GetU32Data(const char* ptr)

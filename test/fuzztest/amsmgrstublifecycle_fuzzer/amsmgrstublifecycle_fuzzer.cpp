@@ -43,7 +43,7 @@ class AmsMgrStubLifecycleFuzz : public AmsMgrStubFuzzBase {};
 
 void DoFuzzCases(uint32_t code, MessageParcel &parcel, FuzzedDataProvider &fdp, uint32_t &actualCode)
 {
-    switch (code % 11) {
+    switch (code % 12) {
         case 0: {
             // LOAD_ABILITY: AbilityInfo, ApplicationInfo, Want, LoadParam
             actualCode = static_cast<uint32_t>(IAmsMgr::Message::LOAD_ABILITY);
@@ -129,6 +129,13 @@ void DoFuzzCases(uint32_t code, MessageParcel &parcel, FuzzedDataProvider &fdp, 
             actualCode = static_cast<uint32_t>(IAmsMgr::Message::SET_GAME_SA_PRELAUNCH);
             parcel.WriteRemoteObject(nullptr);
             parcel.WriteBool(fdp.ConsumeBool());
+            break;
+        }
+        case 11: {
+            // UPDATE_EXTENSION_STATE: token, state
+            actualCode = static_cast<uint32_t>(IAmsMgr::Message::UPDATE_EXTENSION_STATE);
+            parcel.WriteRemoteObject(nullptr);
+            parcel.WriteInt32(FuzzUtil::BuildInvalidEnum(fdp, 20));
             break;
         }
         default:

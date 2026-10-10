@@ -31,16 +31,10 @@ ohos_fuzztest("AbilityFrameworksCjEnvironmentFuzzTest") {
     "${ability_runtime_path}/cj_environment/frameworks/cj_environment/include",
     "${ability_runtime_native_path}/runtime",
     "${ability_runtime_native_path}/runtime/utils/include",
-    "${ability_base_kits_path}/extractortool/include",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
     "${ability_runtime_innerkits_path}/app_manager/include/appmgr",
     "${ability_runtime_services_path}/abilitymgr/include/utils",
     "${ability_runtime_services_path}/abilitymgr/include",
-    "${distributedschedule_path}/samgr/interfaces/innerkits/samgr_proxy/include",
-    "${distributedschedule_path}/samgr/adapter/interfaces/innerkits/include/",
-    "${multimodalinput_path}/interfaces/native/innerkits/event/include",
-    "//third_party/zlib/contrib/minizip",
-    "//third_party/zlib",
   ]
   cflags = [
     "-g",
@@ -51,6 +45,7 @@ ohos_fuzztest("AbilityFrameworksCjEnvironmentFuzzTest") {
 
   sources = [
     "${ability_runtime_path}/cj_environment/frameworks/cj_environment/src/cj_environment.cpp",
+    "${ability_runtime_path}/cj_environment/frameworks/cj_environment/src/dynamic_loader_ohos.cpp",
     "abilityframeworkscjenvironment_fuzzer.cpp",
   ]
 
@@ -64,21 +59,21 @@ ohos_fuzztest("AbilityFrameworksCjEnvironmentFuzzTest") {
     "${ability_runtime_innerkits_path}/ability_manager:ability_start_options",
     "${ability_runtime_innerkits_path}/ability_manager:mission_info",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
+    "${ability_runtime_path}/js_environment/frameworks/js_environment:js_environment",
     "${ability_runtime_path}/utils/server/startup:startup_util",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
     "${ability_runtime_services_path}/common:perm_verification",
-    "//third_party/libjpeg-turbo:turbojpeg_static",
   ]
   defines = [ "WITH_EVENT_HANDLER" ]
   external_deps = [
     "ability_base:extractortool",
     "ability_base:want",
     "ability_base:zuri",
-    "ability_runtime:ability_deps_wrapper",
-    "ability_runtime:js_environment",
-    "ability_runtime:runtime",
+    "bounds_checking_function:libsec_shared",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",
@@ -88,6 +83,7 @@ ohos_fuzztest("AbilityFrameworksCjEnvironmentFuzzTest") {
     "hilog:libhilog",
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
+    "libjpeg-turbo:turbojpeg",
     "napi:ace_napi",
     "napi:cj_backtrace",
   ]

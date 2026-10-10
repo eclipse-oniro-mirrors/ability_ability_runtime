@@ -59,6 +59,7 @@ ohos_fuzztest("AbilityAppMgrEventFuzzTest") {
     "ffrt:libffrt",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
+    "safwk:api_cache_manager",
     "hitrace:hitrace_meter",
     "init:libbeget_proxy",
     "init:libbegetutil",

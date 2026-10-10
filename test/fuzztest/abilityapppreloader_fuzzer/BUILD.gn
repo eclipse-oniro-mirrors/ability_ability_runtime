@@ -52,6 +52,8 @@ ohos_fuzztest("AbilityAppPreloaderFuzzTest") {
     "c_utils:utils",
     "ffrt:libffrt",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "safwk:api_cache_manager",
     "hitrace:hitrace_meter",
     "init:libbegetutil",
     "ipc:ipc_core",

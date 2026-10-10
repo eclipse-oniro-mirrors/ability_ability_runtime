@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -21,8 +21,8 @@
 #include "ability_context_impl.h"
 #include "ability_record.h"
 #include "parcel.h"
-#include "want.h"
 #include "securec.h"
+#include "want.h"
 
 using namespace OHOS::AAFwk;
 using namespace OHOS::AppExecFwk;
@@ -33,7 +33,7 @@ constexpr size_t U32_AT_SIZE = 4;
 }
 bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
 {
-    AbilityRuntime::AbilityContextImpl* context = new AbilityRuntime::AbilityContextImpl();
+    auto context = std::make_shared<AbilityRuntime::AbilityContextImpl>();
     int resultCode = 100;
     if (!context) {
         return false;
@@ -56,11 +56,15 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     AbilityInfo abilityInfo;
     ApplicationInfo applicationInfo;
     int requestCode = -1;
-    auto abilityRecord = new AbilityRecord(*want, abilityInfo, applicationInfo, requestCode);
+    auto abilityRecord = std::make_shared<AbilityRecord>(*want, abilityInfo, applicationInfo, requestCode);
 
     abilityRecord->Init(AbilityRequest());
     if (abilityRecord->TerminateAbility() != ERR_OK) {
         std::cout << "AbilityRecord TerminateAbility failed" << std::endl;
+        if (want) {
+            delete want;
+            want = nullptr;
+        }
         return false;
     }
 
@@ -68,9 +72,6 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
         delete want;
         want = nullptr;
     }
-
-    delete abilityRecord;
-    abilityRecord = nullptr;
 
     return true;
 }
