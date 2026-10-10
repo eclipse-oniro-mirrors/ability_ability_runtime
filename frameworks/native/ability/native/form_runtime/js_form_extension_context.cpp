@@ -134,6 +134,20 @@ private:
         }
 
         formProviderData = AppExecFwk::FormProviderData(formDataStr);
+
+        bool isSupportMoreImages = false;
+        napi_value nativeSupportValue = nullptr;
+        if (napi_get_named_property(env, info.argv[1], "isSupportMoreImages", &nativeSupportValue) == napi_ok &&
+            nativeSupportValue != nullptr) {
+            napi_valuetype valType = napi_undefined;
+            if (napi_typeof(env, nativeSupportValue, &valType) == napi_ok && valType == napi_boolean) {
+                if (napi_get_value_bool(env, nativeSupportValue, &isSupportMoreImages) != napi_ok) {
+                    TAG_LOGE(AAFwkTag::FORM_EXT, "Failed to get isSupportMoreImages value");
+                    isSupportMoreImages = false;
+                }
+            }
+        }
+        formProviderData.SetSupportMoreImages(isSupportMoreImages);
         NapiAsyncTask::CompleteCallback complete =
             [weak = context_, formId, formProviderData](napi_env env, NapiAsyncTask& task, int32_t status) {
                 auto context = weak.lock();
