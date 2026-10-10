@@ -20,6 +20,8 @@
 #include <cstdint>
 #include <string>
 
+#include "task_mgr/attribution_record.h"
+
 namespace OHOS {
 namespace AppExecFwk {
 // Task priority values, aligned with the TaskPriority enum of @ohos.app.agent.taskManager.
@@ -49,16 +51,6 @@ enum class TaskFinishReason : int32_t {
     FINISHED_BY_CALLER = 0,
     FINISHED_BY_TIMEOUT = 1,
     FINISHED_BY_CREATOR_DIED = 2,
-};
-
-// Which tool chain attributed a process into a task. Each tool passes its own type when
-// calling RegisterManagedProcess; new tools extend this list.
-enum class AttributionTool : int32_t {
-    UNKNOWN = 0,
-    INSIGHT = 1,
-    CLI = 2,
-    A2A = 3,
-    ABILITY = 4,
 };
 
 const char *TaskFinishReasonToString(TaskFinishReason reason);

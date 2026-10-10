@@ -1034,7 +1034,7 @@ public:
     void CancelDelayedExitTask(int32_t pid) override;
     int32_t StartTask(const std::string &taskId, int32_t priority) override;
     int32_t FinishTask(const std::string &taskId) override;
-    int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType) override;
+    int32_t RegisterManagedProcess(const std::string &taskId, const AttributionRecord &attribution) override;
     int32_t UnregisterManagedProcess(const std::string &taskId, int32_t pid) override;
 private:
     bool SendTransactCmd(AppMgrInterfaceCode code, MessageParcel &data, MessageParcel &reply);

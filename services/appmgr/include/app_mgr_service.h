@@ -436,11 +436,10 @@ public:
     /**
      * @brief Attributes a process into the task.
      * @param taskId Indicates the attribution key of the task.
-     * @param pid Indicates the pid of the attributed process.
-     * @param toolType Indicates the tool chain that attributes the process.
+     * @param attribution Indicates the attribution record (pid and tool).
      * @return Returns ERR_OK on success; others on failure.
      */
-    int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType) override;
+    int32_t RegisterManagedProcess(const std::string &taskId, const AttributionRecord &attribution) override;
 
     /**
      * @brief Removes a process from the managed set of the task.

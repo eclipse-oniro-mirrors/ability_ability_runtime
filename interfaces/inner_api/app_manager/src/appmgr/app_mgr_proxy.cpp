@@ -3286,7 +3286,7 @@ int32_t AppMgrProxy::FinishTask(const std::string &taskId)
     return reply.ReadInt32();
 }
 
-int32_t AppMgrProxy::RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType)
+int32_t AppMgrProxy::RegisterManagedProcess(const std::string &taskId, const AttributionRecord &attribution)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -3298,8 +3298,10 @@ int32_t AppMgrProxy::RegisterManagedProcess(const std::string &taskId, int32_t p
     }
 
     PARCEL_UTIL_WRITE_RET_INT(data, String16, Str8ToStr16(taskId));
-    PARCEL_UTIL_WRITE_RET_INT(data, Int32, pid);
-    PARCEL_UTIL_WRITE_RET_INT(data, Int32, toolType);
+    if (!data.WriteParcelable(&attribution)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write attribution record failed.");
+        return IPC_PROXY_ERR;
+    }
     PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::REGISTER_MANAGED_PROCESS, data, reply, option);
     return reply.ReadInt32();
 }

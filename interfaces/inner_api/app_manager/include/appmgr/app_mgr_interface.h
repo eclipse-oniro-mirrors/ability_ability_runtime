@@ -51,6 +51,7 @@
 #include "render_process_info.h"
 #include "running_process_info.h"
 #include "system_memory_attr.h"
+#include "task_mgr/attribution_record.h"
 #include "want.h"
 #include "app_jsheap_mem_info.h"
 #include "app_jshandle_map_info.h"
@@ -1335,15 +1336,15 @@ public:
 
     /**
      * @brief Attributes a process into the task, called by tool chains such as
-     *        insight/CLI/A2A/ability; the caller passes its own tool type.
+     *        insight/CLI/A2A/ability; the record carries the caller's tool type.
      * @param taskId Indicates the attribution key of the task.
-     * @param pid Indicates the pid of the attributed process.
-     * @param toolType Indicates the tool chain that attributes the process.
+     * @param attribution Indicates the attribution record (pid and tool; the
+     *        attribution time is stamped by the server).
      * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
      *         ERR_PERMISSION_DENIED if the caller is not a system ability or shell;
      *         ERR_TASK_NOT_FOUND if the task does not exist.
      */
-    virtual int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType)
+    virtual int32_t RegisterManagedProcess(const std::string &taskId, const AttributionRecord &attribution)
     {
         return ERR_OK;
     }

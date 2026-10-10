@@ -19,28 +19,26 @@
 #include <cstddef>
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <string>
 
 #include "ffrt.h"
 
 #include "task_mgr/common.h"
-#include "task_mgr/managed_process.h"
+#include "task_mgr/attribution_record.h"
 
 namespace OHOS {
 namespace AppExecFwk {
-// Snapshot payload handed to the FFRT one-shot timer (the C callback carries no closure):
-// it carries the taskId and the deadline captured when THIS timer was armed, so a stale
-// fire after a window restart mismatches the record and stays a no-op (double insurance).
-// The handle of the armed timer lives here too (timer and payload are created 1:1), for
-// the stop-side bookkeeping; the record owns the whole context, see TaskRecord.
+// Snapshot payload of the armed one-shot timer: the taskId and the deadline captured
+// when THIS timer was armed (a stale fire mismatches and stays a no-op), plus the timer
+// handle for the stop side.
 struct TimeoutContext {
     std::string taskId;
     int64_t deadlineMillis = 0;
     ffrt_timer_t handle = ffrt_error;  // set right after ffrt_timer_start returns
 };
 
-// In-memory task record keyed by the globally unique taskId. Protected by
-// TaskManagerService::tasksMutex_, never persisted: process exit clears everything (EX-5).
+// In-memory task record keyed by the globally unique taskId. Protected by TaskManagerService::tasksMutex_.
 struct TaskRecord {
     std::string taskId;
     int32_t priority = TASK_PRIORITY_DEFAULT;
@@ -51,11 +49,8 @@ struct TaskRecord {
     std::string creatorBundleName;   // creator system app, for log and dump
     int64_t createTimeMillis = 0;    // wall clock, for dump
     int64_t deadlineMillis = 0;      // wall clock, pushed forward by every adoption, checked by the timeout handler
-    std::map<pid_t, ManagedProcess> managedProcesses;  // attributed by tool channels
-    // Owning pointer to the armed timer's context; whoever extracts it under
-    // tasksMutex_ (FinishTaskInner before the erase, or RestartTimeoutWindow when
-    // replacing it) releases it outside the mutex, see the locking contract.
-    TimeoutContext *timeoutCtx = nullptr;
+    std::map<pid_t, AttributionRecord> attributions;  // tool-chain attributions, keyed by pid
+    std::unique_ptr<TimeoutContext> timeoutCtx;  // armed timer's context, owned by the record
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

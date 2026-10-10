@@ -190,13 +190,13 @@ int32_t AppMgrService::FinishTask(const std::string &taskId)
     return TaskManagerService::GetInstance()->FinishTask(taskId);
 }
 
-int32_t AppMgrService::RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType)
+int32_t AppMgrService::RegisterManagedProcess(const std::string &taskId, const AttributionRecord &attribution)
 {
     if (!AAFwk::PermissionVerification::GetInstance()->IsSACall()) {
         TAG_LOGW(AAFwkTag::APPMGR, "caller is not SA, rejected");
         return ERR_PERMISSION_DENIED;
     }
-    return TaskManagerService::GetInstance()->RegisterManagedProcess(taskId, pid, toolType);
+    return TaskManagerService::GetInstance()->RegisterManagedProcess(taskId, attribution);
 }
 
 int32_t AppMgrService::UnregisterManagedProcess(const std::string &taskId, int32_t pid)

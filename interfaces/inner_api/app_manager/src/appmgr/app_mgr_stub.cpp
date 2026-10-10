@@ -2729,9 +2729,12 @@ int32_t AppMgrStub::HandleRegisterManagedProcess(MessageParcel &data, MessagePar
 {
     HITRACE_METER(HITRACE_TAG_APP);
     std::string taskId = Str16ToStr8(data.ReadString16());
-    int32_t pid = data.ReadInt32();
-    int32_t toolType = data.ReadInt32();
-    auto result = RegisterManagedProcess(taskId, pid, toolType);
+    std::unique_ptr<AttributionRecord> attribution(data.ReadParcelable<AttributionRecord>());
+    if (attribution == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Read attribution record failed.");
+        return ERR_INVALID_VALUE;
+    }
+    auto result = RegisterManagedProcess(taskId, *attribution);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::APPMGR, "write result fail");
         return ERR_APPEXECFWK_PARCEL_ERROR;

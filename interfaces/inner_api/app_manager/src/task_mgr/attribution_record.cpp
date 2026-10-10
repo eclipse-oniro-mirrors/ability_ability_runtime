@@ -13,23 +13,28 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_APP_EXECFWK_TASK_MGR_MANAGED_PROCESS_H
-#define OHOS_APP_EXECFWK_TASK_MGR_MANAGED_PROCESS_H
+#include "task_mgr/attribution_record.h"
 
-#include <cstdint>
-#include <sys/types.h>
-
-#include "task_mgr/common.h"
+#include <new>
 
 namespace OHOS {
 namespace AppExecFwk {
-// A process attributed into a task by a tool chain. The tool knows its own type when it
-// calls RegisterManagedProcess, so the type is recorded per process.
-struct ManagedProcess {
-    pid_t pid = -1;
-    AttributionTool tool = AttributionTool::UNKNOWN;
-    int64_t attributedTimeMillis = 0;
-};
+bool AttributionRecord::Marshalling(Parcel &parcel) const
+{
+    return parcel.WriteInt32(pid) && parcel.WriteInt32(static_cast<int32_t>(tool)) &&
+        parcel.WriteInt64(attributedTimeMillis);
+}
+
+AttributionRecord *AttributionRecord::Unmarshalling(Parcel &parcel)
+{
+    auto record = new (std::nothrow) AttributionRecord();
+    if (record == nullptr) {
+        return nullptr;
+    }
+    record->pid = parcel.ReadInt32();
+    record->tool = static_cast<AttributionTool>(parcel.ReadInt32());
+    record->attributedTimeMillis = parcel.ReadInt64();
+    return record;
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS
-#endif  // OHOS_APP_EXECFWK_TASK_MGR_MANAGED_PROCESS_H

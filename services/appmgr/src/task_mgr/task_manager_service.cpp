@@ -58,11 +58,11 @@ std::string FormatCreateTime(int64_t millis)
     return std::string(buffer) + "." + std::to_string(millis % MILLIS_PER_SECOND);
 }
 
-std::string ManagedProcessesToString(const std::map<pid_t, ManagedProcess> &managedProcesses)
+std::string AttributionsToString(const std::map<pid_t, AttributionRecord> &attributions)
 {
     std::string result;
-    for (auto it = managedProcesses.begin(); it != managedProcesses.end(); ++it) {
-        if (it != managedProcesses.begin()) {
+    for (auto it = attributions.begin(); it != attributions.end(); ++it) {
+        if (it != attributions.begin()) {
             result += ";";
         }
         result += std::to_string(it->first) + "(" + AttributionToolToString(it->second.tool) + ")";
@@ -168,7 +168,7 @@ int32_t TaskManagerService::StartTaskInner(const TaskCallerInfo &caller, const s
 int32_t TaskManagerService::FinishTaskInner(const std::string &taskId, TaskFinishReason reason,
     int32_t callerUid, int64_t expectedDeadline)
 {
-    TimeoutContext *timerCtx = nullptr;
+    std::unique_ptr<TimeoutContext> timerCtx;
     {
         std::lock_guard<ffrt::mutex> lock(tasksMutex_);
         auto it = tasks_.find(taskId);
@@ -187,16 +187,17 @@ int32_t TaskManagerService::FinishTaskInner(const std::string &taskId, TaskFinis
             return ERR_TASK_NOT_FOUND;
         }
         int64_t aliveMillis = NowMillis() - it->second.createTimeMillis;
-        timerCtx = it->second.timeoutCtx;
-        it->second.timeoutCtx = nullptr;
+        timerCtx = std::move(it->second.timeoutCtx);
         tasks_.erase(it);
         TAG_LOGI(AAFwkTag::APPMGR, "task finished, taskId: %{public}s, reason: %{public}s, "
             "alive(ms): %{public}" PRId64, taskId.c_str(), TaskFinishReasonToString(reason), aliveMillis);
     }
     if (reason == TaskFinishReason::FINISHED_BY_TIMEOUT) {
-        delete timerCtx;
+        // Inside the fired timer's own callback: stopping it here would deadlock, and a
+        // fired one-shot has nothing left to stop — just release the context.
+        timerCtx.reset();
     } else {
-        ReleaseTimeoutContext(timerCtx);
+        ReleaseTimeoutContext(std::move(timerCtx));
     }
     NotifyTaskFinished(taskId, reason);
     return ERR_OK;
@@ -241,25 +242,26 @@ void TaskManagerService::RemoveManagedProcessFromAllTasksInner(pid_t pid)
 {
     std::lock_guard<ffrt::mutex> lock(tasksMutex_);
     for (auto &item : tasks_) {
-        if (item.second.managedProcesses.erase(pid) > 0) {
+        if (item.second.attributions.erase(pid) > 0) {
             TAG_LOGI(AAFwkTag::APPMGR, "managed process died, taskId: %{public}s, pid: %{public}d",
                 item.first.c_str(), pid);
         }
     }
 }
 
-int32_t TaskManagerService::RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType)
+int32_t TaskManagerService::RegisterManagedProcess(const std::string &taskId, const AttributionRecord &attribution)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::APPMGR, "called");
-    if (pid <= 0 || taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN ||
+    int32_t toolType = static_cast<int32_t>(attribution.tool);
+    if (attribution.pid <= 0 || taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN ||
         toolType < static_cast<int32_t>(AttributionTool::INSIGHT) ||
         toolType > static_cast<int32_t>(AttributionTool::ABILITY)) {
         TAG_LOGW(AAFwkTag::APPMGR, "invalid param, taskId size: %{public}zu, pid: %{public}d, "
-            "toolType: %{public}d", taskId.size(), pid, toolType);
+            "toolType: %{public}d", taskId.size(), attribution.pid, toolType);
         return INVALID_PARAMETERS_ERR;
     }
-    return RegisterManagedProcessInner(taskId, pid, static_cast<AttributionTool>(toolType));
+    return RegisterManagedProcessInner(taskId, attribution);
 }
 
 int32_t TaskManagerService::UnregisterManagedProcess(const std::string &taskId, int32_t pid)
@@ -274,10 +276,10 @@ int32_t TaskManagerService::UnregisterManagedProcess(const std::string &taskId, 
     return UnregisterManagedProcessInner(taskId, pid);
 }
 
-int32_t TaskManagerService::RegisterManagedProcessInner(const std::string &taskId, pid_t pid,
-    AttributionTool tool)
+int32_t TaskManagerService::RegisterManagedProcessInner(const std::string &taskId,
+    const AttributionRecord &attribution)
 {
-    TimeoutContext *replacedCtx = nullptr;
+    std::unique_ptr<TimeoutContext> replacedCtx;
     {
         std::lock_guard<ffrt::mutex> lock(tasksMutex_);
         auto it = tasks_.find(taskId);
@@ -285,22 +287,21 @@ int32_t TaskManagerService::RegisterManagedProcessInner(const std::string &taskI
             TAG_LOGW(AAFwkTag::APPMGR, "task not found, taskId: %{public}s", taskId.c_str());
             return ERR_TASK_NOT_FOUND;
         }
-        ManagedProcess process;
-        process.pid = pid;
-        process.tool = tool;
-        process.attributedTimeMillis = NowMillis();
-        it->second.managedProcesses[pid] = process;
+        // Server-authoritative attribution time; the caller-provided value is ignored.
+        AttributionRecord stored = attribution;
+        stored.attributedTimeMillis = NowMillis();
+        it->second.attributions[stored.pid] = stored;
         TAG_LOGI(AAFwkTag::APPMGR, "process registered, taskId: %{public}s, pid: %{public}d, tool: %{public}s",
-            taskId.c_str(), pid, AttributionToolToString(tool));
+            taskId.c_str(), stored.pid, AttributionToolToString(stored.tool));
         replacedCtx = RestartTimeoutWindow(taskId, it->second);
     }
-    ReleaseTimeoutContext(replacedCtx);
+    ReleaseTimeoutContext(std::move(replacedCtx));
     return ERR_OK;
 }
 
 int32_t TaskManagerService::UnregisterManagedProcessInner(const std::string &taskId, pid_t pid)
 {
-    TimeoutContext *replacedCtx = nullptr;
+    std::unique_ptr<TimeoutContext> replacedCtx;
     {
         std::lock_guard<ffrt::mutex> lock(tasksMutex_);
         auto it = tasks_.find(taskId);
@@ -308,24 +309,26 @@ int32_t TaskManagerService::UnregisterManagedProcessInner(const std::string &tas
             TAG_LOGW(AAFwkTag::APPMGR, "task not found, taskId: %{public}s", taskId.c_str());
             return ERR_TASK_NOT_FOUND;
         }
-        it->second.managedProcesses.erase(pid);
+        it->second.attributions.erase(pid);
         TAG_LOGI(AAFwkTag::APPMGR, "process unregistered, taskId: %{public}s, pid: %{public}d",
             taskId.c_str(), pid);
         replacedCtx = RestartTimeoutWindow(taskId, it->second);
     }
-    ReleaseTimeoutContext(replacedCtx);
+    ReleaseTimeoutContext(std::move(replacedCtx));
     return ERR_OK;
 }
 
-TimeoutContext *TaskManagerService::RestartTimeoutWindow(const std::string &taskId, TaskRecord &record)
+std::unique_ptr<TimeoutContext> TaskManagerService::RestartTimeoutWindow(const std::string &taskId,
+    TaskRecord &record)
 {
-    TimeoutContext *previousCtx = record.timeoutCtx;
-    record.timeoutCtx = nullptr;
+    std::unique_ptr<TimeoutContext> previousCtx = std::move(record.timeoutCtx);
     int64_t newDeadline = NowMillis() + static_cast<int64_t>(GetTimeoutSeconds()) * MILLIS_PER_SECOND;
     record.timeoutCtx = StartTimeoutTimer(taskId, newDeadline);
     if (record.timeoutCtx == nullptr) {
+        // Keep the previous window: the record still matches the armed timer, so the
+        // task times out at the old deadline instead of living without a timer.
         TAG_LOGE(AAFwkTag::APPMGR, "restart timeout window failed, taskId: %{public}s", taskId.c_str());
-        record.timeoutCtx = previousCtx;
+        record.timeoutCtx = std::move(previousCtx);
         return nullptr;
     }
     record.deadlineMillis = newDeadline;
@@ -334,10 +337,11 @@ TimeoutContext *TaskManagerService::RestartTimeoutWindow(const std::string &task
     return previousCtx;
 }
 
-TimeoutContext *TaskManagerService::StartTimeoutTimer(const std::string &taskId, int64_t deadlineMillis)
+std::unique_ptr<TimeoutContext> TaskManagerService::StartTimeoutTimer(const std::string &taskId,
+    int64_t deadlineMillis)
 {
     int64_t delayMillis = std::max(deadlineMillis - NowMillis(), MIN_TIMER_DELAY_MILLIS);
-    auto ctx = new (std::nothrow) TimeoutContext();
+    std::unique_ptr<TimeoutContext> ctx(new (std::nothrow) TimeoutContext());
     if (ctx == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "alloc timeout context failed, taskId: %{public}s", taskId.c_str());
         return nullptr;
@@ -345,16 +349,19 @@ TimeoutContext *TaskManagerService::StartTimeoutTimer(const std::string &taskId,
     ctx->taskId = taskId;
     ctx->deadlineMillis = deadlineMillis;
     ctx->handle = ffrt_timer_start(ffrt_qos_default, static_cast<uint64_t>(delayMillis),
-        ctx, TimerCallback, false);
+        ctx.get(), TimerCallback, false);
     if (ctx->handle == ffrt_error) {
+        // No timer was created, so no callback will ever reference the context; the
+        // unique_ptr frees it on return.
         TAG_LOGE(AAFwkTag::APPMGR, "start timeout timer failed, taskId: %{public}s", taskId.c_str());
-        delete ctx;
         return nullptr;
     }
+    // The caller moves the context into the record while still holding tasksMutex_, so
+    // the timer can never fire before its context is owned by the record.
     return ctx;
 }
 
-void TaskManagerService::ReleaseTimeoutContext(TimeoutContext *ctx)
+void TaskManagerService::ReleaseTimeoutContext(std::unique_ptr<TimeoutContext> ctx)
 {
     if (ctx == nullptr) {
         return;
@@ -362,7 +369,9 @@ void TaskManagerService::ReleaseTimeoutContext(TimeoutContext *ctx)
     if (ffrt_timer_stop(ffrt_qos_default, ctx->handle) != ffrt_success) {
         TAG_LOGW(AAFwkTag::APPMGR, "stop timeout timer failed, handle: %{public}d", ctx->handle);
     }
-    delete ctx;
+    // Safe to let the scope exit delete the context: a running callback has fully
+    // completed (it copied its fields before calling OnTaskTimeout and never touches
+    // the context again), and a pending one will never run.
 }
 
 void TaskManagerService::NotifyTaskFinished(const std::string &taskId, TaskFinishReason reason)
@@ -386,7 +395,7 @@ std::string TaskManagerService::DumpActiveTasks()
         result += std::string("        priority [") + TaskPriorityToString(record.priority) + "]\n";
         result += "        creator uid [" + std::to_string(record.creatorUid) + "] pid [" +
             std::to_string(record.creatorPid) + "] bundle [" + record.creatorBundleName + "]\n";
-        result += "        managed processes [" + ManagedProcessesToString(record.managedProcesses) + "]\n";
+        result += "        managed processes [" + AttributionsToString(record.attributions) + "]\n";
         result += "        sched level [-]\n";
         result += "        remain timeout [" + std::to_string(remainSeconds) + "s]\n";
         result += "        create time [" + FormatCreateTime(record.createTimeMillis) + "]\n";
@@ -400,13 +409,13 @@ std::string TaskManagerService::DumpActiveTasks()
 int32_t TaskManagerService::DumpRegisterManagedProcess(const std::string &taskId,
     const std::string &pidText, const std::string &toolText, std::string &result)
 {
-    pid_t pid = -1;
-    AttributionTool tool = AttributionToolFromString(toolText);
-    if (!ParsePidText(pidText, pid) || tool == AttributionTool::UNKNOWN) {
+    AttributionRecord attribution;
+    attribution.tool = AttributionToolFromString(toolText);
+    if (!ParsePidText(pidText, attribution.pid) || attribution.tool == AttributionTool::UNKNOWN) {
         result = "error: invalid pid or tool, expected <pid> <insight|cli|a2a|ability>.\n";
         return INVALID_PARAMETERS_ERR;
     }
-    int32_t ret = RegisterManagedProcess(taskId, pid, static_cast<int32_t>(tool));
+    int32_t ret = RegisterManagedProcess(taskId, attribution);
     result = ret == ERR_OK ? "register ok\n" : "register failed: " + std::to_string(ret) + "\n";
     return ret;
 }

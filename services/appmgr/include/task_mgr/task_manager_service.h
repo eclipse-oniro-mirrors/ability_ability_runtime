@@ -16,6 +16,7 @@
 #ifndef OHOS_APP_EXECFWK_TASK_MGR_TASK_MANAGER_SERVICE_H
 #define OHOS_APP_EXECFWK_TASK_MGR_TASK_MANAGER_SERVICE_H
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 
@@ -85,12 +86,12 @@ public:
      * @brief Attributes a process into the task and restarts its inactivity timeout
      *        window.
      * @param taskId Indicates the attribution key of the task.
-     * @param pid Indicates the pid of the attributed process.
-     * @param toolType Indicates the tool chain that attributes the process.
+     * @param attribution Indicates the attribution record (pid and tool; the
+     *        attribution time is stamped here).
      * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
      *         ERR_TASK_NOT_FOUND if the task does not exist.
      */
-    int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t toolType);
+    int32_t RegisterManagedProcess(const std::string &taskId, const AttributionRecord &attribution);
 
     /**
      * @brief Removes a process from the managed set of the task and restarts its
@@ -198,11 +199,11 @@ private:
      *        window; locks tasksMutex_ internally, and stops the replaced timer only
      *        after the mutex is released.
      * @param taskId Indicates the attribution key of the task.
-     * @param pid Indicates the pid of the attributed process.
-     * @param tool Indicates the tool chain that attributes the process.
+     * @param attribution Indicates the attribution record; the attribution time is
+     *        stamped server-side.
      * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist.
      */
-    int32_t RegisterManagedProcessInner(const std::string &taskId, pid_t pid, AttributionTool tool);
+    int32_t RegisterManagedProcessInner(const std::string &taskId, const AttributionRecord &attribution);
 
     /**
      * @brief Removes a process from the managed set of the task and restarts its
@@ -222,32 +223,32 @@ private:
      * @param taskId Indicates the attribution key of the task.
      * @param record Indicates the task record whose window is restarted.
      * @return Returns the replaced context for the caller to release outside the mutex,
-     *         or nullptr if nothing was replaced.
+     *         or null if nothing was replaced.
      */
-    TimeoutContext *RestartTimeoutWindow(const std::string &taskId, TaskRecord &record);
+    std::unique_ptr<TimeoutContext> RestartTimeoutWindow(const std::string &taskId, TaskRecord &record);
 
     /**
      * @brief Starts the FFRT one-shot timer for the given deadline; the caller must hold
-     *        tasksMutex_ (ffrt_timer_start is non-blocking) and stores the returned
+     *        tasksMutex_ (ffrt_timer_start is non-blocking) and moves the returned
      *        context into the record, so the timer can never fire before its context is
      *        owned by the record. The delay is clamped to at least 1ms as defense in
      *        depth.
      * @param taskId Indicates the attribution key of the task.
      * @param deadlineMillis Indicates the absolute deadline that drives the delay.
-     * @return Returns the armed timer's context (with its handle inside), or nullptr on
+     * @return Returns the armed timer's context (with its handle inside), or null on
      *         failure.
      */
-    TimeoutContext *StartTimeoutTimer(const std::string &taskId, int64_t deadlineMillis);
+    std::unique_ptr<TimeoutContext> StartTimeoutTimer(const std::string &taskId, int64_t deadlineMillis);
 
     /**
      * @brief Releases an extracted timeout context: stops its timer and then deletes it.
      *        Must only be called after tasksMutex_ is released (ffrt_timer_stop waits for
      *        a running callback), and never from inside the fired timer's own callback
-     *        (the timeout path deletes the context directly instead, because stopping it
+     *        (the timeout path resets the context directly instead, because stopping it
      *        there would deadlock).
-     * @param ctx Indicates the context extracted from a record; nullptr is a no-op.
+     * @param ctx Indicates the context extracted from a record; null is a no-op.
      */
-    void ReleaseTimeoutContext(TimeoutContext *ctx);
+    void ReleaseTimeoutContext(std::unique_ptr<TimeoutContext> ctx);
 
     /**
      * @brief Captures the caller identity from the IPC framework.
