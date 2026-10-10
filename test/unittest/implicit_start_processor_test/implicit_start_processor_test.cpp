@@ -1516,53 +1516,19 @@ HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_001, TestSize.
 {
     TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_001 start");
     auto processor = std::make_shared<ImplicitStartProcessor>();
-    std::vector<DialogAppInfo> dialogAppInfos;
-    DialogAppInfo info1;
-    info1.bundleName = "bundleA";
-    info1.appIndex = 1;
-    DialogAppInfo info2;
-    info2.bundleName = "bundleA";
-    info2.appIndex = 2;
-    DialogAppInfo info3;
-    info3.bundleName = "bundleB";
-    info3.appIndex = 1;
-    DialogAppInfo info4;
-    info4.bundleName = "bundleB";
-    info4.appIndex = 2;
-    dialogAppInfos.emplace_back(info1);
-    dialogAppInfos.emplace_back(info2);
-    dialogAppInfos.emplace_back(info3);
-    dialogAppInfos.emplace_back(info4);
 
-    processor->FilterClonesByPreferredIndex(dialogAppInfos, 0);
-    EXPECT_EQ(dialogAppInfos.size(), 4);
-    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_001 end");
-}
+    std::vector<DialogAppInfo> emptyInfos;
+    processor->FilterClonesByPreferredIndex(emptyInfos, 0);
+    EXPECT_EQ(emptyInfos.size(), 0);
 
-HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_002, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_002 start");
-    auto processor = std::make_shared<ImplicitStartProcessor>();
-    std::vector<DialogAppInfo> dialogAppInfos;
+    std::vector<DialogAppInfo> singleInfo;
     DialogAppInfo info1;
     info1.bundleName = BUNDLE_NAME;
     info1.appIndex = 1;
-    dialogAppInfos.emplace_back(info1);
-
-    processor->FilterClonesByPreferredIndex(dialogAppInfos, 0);
-    EXPECT_EQ(dialogAppInfos.size(), 1);
-    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_002 end");
-}
-
-HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_003, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_003 start");
-    auto processor = std::make_shared<ImplicitStartProcessor>();
-    std::vector<DialogAppInfo> dialogAppInfos;
-
-    processor->FilterClonesByPreferredIndex(dialogAppInfos, 0);
-    EXPECT_EQ(dialogAppInfos.size(), 0);
-    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_003 end");
+    singleInfo.emplace_back(info1);
+    processor->FilterClonesByPreferredIndex(singleInfo, 0);
+    EXPECT_EQ(singleInfo.size(), 1);
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_001 end");
 }
 
 /*
@@ -1574,9 +1540,9 @@ HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_003, TestSize.
  * CaseDescription: Multiple apps matched → preferred clone filter is skipped entirely;
  *                 all candidates are retained regardless of preferred index config.
  */
-HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_004, TestSize.Level1)
+HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_002, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_004 start");
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_002 start");
     auto processor = std::make_shared<ImplicitStartProcessor>();
     std::vector<DialogAppInfo> dialogAppInfos;
     DialogAppInfo info1;
@@ -1604,7 +1570,7 @@ HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_004, TestSize.
     processor->FilterClonesByPreferredIndex(dialogAppInfos, 0);
 
     EXPECT_EQ(dialogAppInfos.size(), 5);
-    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_004 end");
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_002 end");
 }
 
 /*
@@ -1614,11 +1580,11 @@ HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_004, TestSize.
  * FunctionPoints: ImplicitStartProcessor FilterClonesByPreferredIndex
  * EnvConditions: NA
  * CaseDescription: preferred index configured but NOT present in candidates (clone uninstalled);
- *                 the bundle is not filtered (found=false), dialogAppInfos unchanged.
+ *                 dialogAppInfos unchanged.
  */
-HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_005, TestSize.Level1)
+HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_003, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_005 start");
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_003 start");
     auto processor = std::make_shared<ImplicitStartProcessor>();
     std::vector<DialogAppInfo> dialogAppInfos;
     DialogAppInfo info1;
@@ -1634,7 +1600,7 @@ HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_005, TestSize.
     processor->FilterClonesByPreferredIndex(dialogAppInfos, 0);
 
     EXPECT_EQ(dialogAppInfos.size(), 2);
-    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_005 end");
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_003 end");
 }
 
 /*
@@ -1643,33 +1609,73 @@ HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_005, TestSize.
  * SubFunction: NA
  * FunctionPoints: ImplicitStartProcessor FilterClonesByPreferredIndex
  * EnvConditions: NA
- * CaseDescription: Multiple apps matched → preferred clone filter is skipped entirely;
- *                 all candidates are retained regardless of preferred index config.
+ * CaseDescription: Single ability with multiple clones, preferred index present and found
+ *                 → reduces to the preferred clone only.
  */
-HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_006, TestSize.Level1)
+HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_004, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_006 start");
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_004 start");
+    auto processor = std::make_shared<ImplicitStartProcessor>();
+    std::vector<DialogAppInfo> dialogAppInfos;
+    for (int i = 1; i <= 3; ++i) {
+        DialogAppInfo info;
+        info.bundleName = BUNDLE_NAME;
+        info.appIndex = i;
+        dialogAppInfos.emplace_back(info);
+    }
+
+    MockMultiAppUtilsStatus::preferredIndexMap_[BUNDLE_NAME] = 2;
+    processor->FilterClonesByPreferredIndex(dialogAppInfos, 0);
+
+    ASSERT_EQ(dialogAppInfos.size(), 1);
+    EXPECT_EQ(dialogAppInfos.front().appIndex, 2);
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_004 end");
+}
+
+/*
+ * Feature: ImplicitStartProcessor
+ * Function: FilterClonesByPreferredIndex
+ * SubFunction: NA
+ * FunctionPoints: ImplicitStartProcessor FilterClonesByPreferredIndex
+ * EnvConditions: NA
+ * CaseDescription: Same bundle but different abilities (different abilityName or moduleName)
+ *                 → multiple triples detected → skip preferred clone filter entirely.
+ */
+HWTEST_F(ImplicitStartProcessorTest, FilterClonesByPreferredIndex_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_005 start");
     auto processor = std::make_shared<ImplicitStartProcessor>();
     std::vector<DialogAppInfo> dialogAppInfos;
     DialogAppInfo info1;
     info1.bundleName = "bundleA";
+    info1.moduleName = "module1";
+    info1.abilityName = "abilityA";
     info1.appIndex = 1;
     DialogAppInfo info2;
     info2.bundleName = "bundleA";
+    info2.moduleName = "module1";
+    info2.abilityName = "abilityA";
     info2.appIndex = 2;
     DialogAppInfo info3;
-    info3.bundleName = "bundleB";
+    info3.bundleName = "bundleA";
+    info3.moduleName = "module1";
+    info3.abilityName = "abilityB";
     info3.appIndex = 1;
+    DialogAppInfo info4;
+    info4.bundleName = "bundleA";
+    info4.moduleName = "module2";
+    info4.abilityName = "abilityA";
+    info4.appIndex = 1;
     dialogAppInfos.emplace_back(info1);
     dialogAppInfos.emplace_back(info2);
     dialogAppInfos.emplace_back(info3);
+    dialogAppInfos.emplace_back(info4);
 
-    MockMultiAppUtilsStatus::preferredIndexMap_["bundleA"] = 2;
-    MockMultiAppUtilsStatus::preferredIndexMap_["bundleB"] = 1;
+    MockMultiAppUtilsStatus::preferredIndexMap_["bundleA"] = 1;
     processor->FilterClonesByPreferredIndex(dialogAppInfos, 0);
 
-    EXPECT_EQ(dialogAppInfos.size(), 3);
-    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_006 end");
+    EXPECT_EQ(dialogAppInfos.size(), 4);
+    TAG_LOGI(AAFwkTag::TEST, "FilterClonesByPreferredIndex_005 end");
 }
 
 /*
@@ -1712,111 +1718,6 @@ HWTEST_F(ImplicitStartProcessorTest, IsExistDefaultApp_003, TestSize.Level1)
     bool result = processor->IsExistDefaultApp(0, ".pdf");
     EXPECT_TRUE(result);
     TAG_LOGI(AAFwkTag::TEST, "IsExistDefaultApp_003 end");
-}
-
-/*
- * Feature: ImplicitStartProcessor
- * Function: FilterClonesByPreferredIndex
- * CaseDescription: Single app with multiple clones, preferred index present → reduces to preferred clone.
- */
-HWTEST_F(ImplicitStartProcessorTest, FilterSequence_001, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "FilterSequence_001 start");
-    auto processor = std::make_shared<ImplicitStartProcessor>();
-    std::vector<DialogAppInfo> dialogAppInfos;
-    for (int i = 1; i <= 3; ++i) {
-        DialogAppInfo info;
-        info.bundleName = BUNDLE_NAME;
-        info.appIndex = i;
-        dialogAppInfos.emplace_back(info);
-    }
-
-    MockMultiAppUtilsStatus::preferredIndexMap_[BUNDLE_NAME] = 1;
-    processor->FilterClonesByPreferredIndex(dialogAppInfos, 0);
-    ASSERT_EQ(dialogAppInfos.size(), 1);
-    EXPECT_EQ(dialogAppInfos.front().appIndex, 1);
-    TAG_LOGI(AAFwkTag::TEST, "FilterSequence_001 end");
-}
-
-/*
- * Feature: ImplicitStartProcessor
- * Function: FilterClonesByPreferredIndex
- * CaseDescription: Single app with multiple clones, preferred index present → reduces to preferred clone.
- */
-HWTEST_F(ImplicitStartProcessorTest, FilterSequence_002, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "FilterSequence_002 start");
-    auto processor = std::make_shared<ImplicitStartProcessor>();
-    std::vector<DialogAppInfo> dialogAppInfos;
-    for (int i = 1; i <= 3; ++i) {
-        DialogAppInfo info;
-        info.bundleName = BUNDLE_NAME;
-        info.appIndex = i;
-        dialogAppInfos.emplace_back(info);
-    }
-
-    MockMultiAppUtilsStatus::preferredIndexMap_[BUNDLE_NAME] = 2;
-    processor->FilterClonesByPreferredIndex(dialogAppInfos, 0);
-    ASSERT_EQ(dialogAppInfos.size(), 1);
-    EXPECT_EQ(dialogAppInfos.front().appIndex, 2);
-    TAG_LOGI(AAFwkTag::TEST, "FilterSequence_002 end");
-}
-
-/*
- * Feature: ImplicitStartProcessor
- * Function: FilterClonesByPreferredIndex
- * CaseDescription: Single app with multiple clones, preferred index present → reduces to preferred clone.
- */
-HWTEST_F(ImplicitStartProcessorTest, FilterSequence_003, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "FilterSequence_003 start");
-    auto processor = std::make_shared<ImplicitStartProcessor>();
-    std::vector<DialogAppInfo> dialogAppInfos;
-    for (int i = 1; i <= 3; ++i) {
-        DialogAppInfo info;
-        info.bundleName = BUNDLE_NAME;
-        info.appIndex = i;
-        dialogAppInfos.emplace_back(info);
-    }
-
-    MockMultiAppUtilsStatus::preferredIndexMap_[BUNDLE_NAME] = 3;
-    processor->FilterClonesByPreferredIndex(dialogAppInfos, 0);
-    ASSERT_EQ(dialogAppInfos.size(), 1);
-    EXPECT_EQ(dialogAppInfos.front().appIndex, 3);
-    TAG_LOGI(AAFwkTag::TEST, "FilterSequence_003 end");
-}
-
-/*
- * Feature: ImplicitStartProcessor
- * Function: GenerateAbilityRequestByAppIndexes
- * CaseDescription: Clone app indexes with preferred index → non-preferred clones filtered.
- */
-HWTEST_F(ImplicitStartProcessorTest, GenerateAbilityRequestByAppIndexes_001, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "GenerateAbilityRequestByAppIndexes_001 start");
-    auto processor = std::make_shared<ImplicitStartProcessor>();
-    StartAbilityUtils::CloneAppIndexesResult() = {1};
-
-    AbilityInfo cloneInfo;
-    cloneInfo.bundleName = BUNDLE_NAME;
-    cloneInfo.name = NAME;
-    cloneInfo.applicationInfo.appIndex = 1;
-    MockBundleMgrHelperStatus::cloneAbilityInfo_ = cloneInfo;
-
-    MockMultiAppUtilsStatus::preferredIndexMap_[BUNDLE_NAME] = 1;
-
-    AbilityRequest request;
-    request.want.SetElementName(BUNDLE_NAME, NAME);
-    request.abilityInfo.bundleName = BUNDLE_NAME;
-    request.abilityInfo.name = NAME;
-    request.abilityInfo.applicationInfo.appIndex = 0;
-
-    std::vector<DialogAppInfo> dialogAppInfos;
-    int32_t ret = processor->GenerateAbilityRequestByAppIndexes(0, request, dialogAppInfos);
-    EXPECT_EQ(ret, ERR_OK);
-    ASSERT_EQ(dialogAppInfos.size(), 1);
-    EXPECT_EQ(dialogAppInfos.front().appIndex, 1);
-    TAG_LOGI(AAFwkTag::TEST, "GenerateAbilityRequestByAppIndexes_001 end");
 }
 
 /*
