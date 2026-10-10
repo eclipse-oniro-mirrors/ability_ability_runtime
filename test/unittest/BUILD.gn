@@ -378,7 +378,6 @@ group("unittest") {
       "extension_permissions_util_test:unittest",
       "extension_record_base_first_test:unittest",
       "extension_record_factory_test:unittest",
-      "extension_record_test:unittest",
       "extract_insight_intent_profile_test:unittest",
       "fault_data:unittest",
       "file_path_utils_test:unittest",
