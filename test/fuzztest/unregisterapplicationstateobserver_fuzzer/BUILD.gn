@@ -42,6 +42,7 @@ ohos_fuzztest("UnregisterApplicationStateObserverFuzzTest") {
   ]
 
   external_deps = [
+    "eventhandler:libeventhandler",
     "ability_base:base",
     "appspawn:appspawn_client",
     "bundle_framework:appexecfwk_base",

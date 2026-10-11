@@ -65,6 +65,7 @@ ohos_fuzztest("AbilityAppMgrRenderStateObserverManagerFuzzTest") {
   ]
 
   external_deps = [
+    "eventhandler:libeventhandler",
     "ability_base:want",
     "ability_base:zuri",
     "appspawn:appspawn_client",

@@ -58,6 +58,7 @@ ohos_fuzztest("AbilitymgrDisposedRuleInterceptorFuzzTest") {
   ]
 
   external_deps = [
+    "eventhandler:libeventhandler",
     "ability_base:want",
     "ability_base:zuri",
     "bundle_framework:appexecfwk_base",
