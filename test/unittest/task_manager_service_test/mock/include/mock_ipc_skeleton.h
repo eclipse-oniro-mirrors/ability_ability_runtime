@@ -30,11 +30,15 @@ public:
 
     static uint32_t GetCallingTokenID();
 
+    static uint64_t GetCallingFullTokenID();
+
     static void SetCallingUid(pid_t uid);
 
     static void SetCallingPid(pid_t pid);
 
     static uint32_t SetCallingTokenID(pid_t tokenId);
+
+    static void SetCallingFullTokenID(uint64_t tokenId);
 };
 } // namespace OHOS
 #endif // OHOS_IPC_IPC_SKELETON_H

@@ -49,6 +49,8 @@ constexpr pid_t TEST_CREATOR_PID = 100;
 constexpr pid_t TEST_OTHER_PID = 101;
 constexpr pid_t TEST_MANAGED_PID = 4321;
 constexpr int64_t TEST_SLEEP_MILLIS = 20;
+// same bit the access token kit checks in IsSystemAppByFullTokenID
+constexpr uint64_t TEST_SYSTEM_APP_FLAG = (1ULL << 32);
 const std::string TEST_TASK_PREFIX = "tms_tdd_";
 
 std::string MakeTaskId(const std::string &tag)
@@ -82,6 +84,8 @@ void SetNativeTokenForTaskTest()
     SetSelfTokenID(tokenId);
     Security::AccessToken::AccessTokenKit::ReloadNativeTokenInfo();
     IPCSkeleton::SetCallingTokenID(static_cast<pid_t>(tokenId));
+    // IsSystemAppCall checks the full token id; mark the native token as a system app
+    IPCSkeleton::SetCallingFullTokenID(tokenId | TEST_SYSTEM_APP_FLAG);
 }
 
 std::vector<std::u16string> MakeDumpArgs(const std::vector<std::string> &args)
@@ -721,7 +725,7 @@ HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_StartFinishTask_0100, TestSize
  */
 HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_StartFinishTask_0200, TestSize.Level1)
 {
-    SetSelfTokenID(0);
+    IPCSkeleton::SetCallingFullTokenID(0);
     std::string taskId = MakeTaskId("service_0200");
     EXPECT_EQ(appMgrService_->StartTask(taskId, TASK_PRIORITY_DEFAULT), AAFwk::ERR_NOT_SYSTEM_APP);
     EXPECT_EQ(appMgrService_->FinishTask(taskId), AAFwk::ERR_NOT_SYSTEM_APP);

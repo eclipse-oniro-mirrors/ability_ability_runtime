@@ -19,6 +19,7 @@ namespace OHOS {
 pid_t uid_ = 0;
 pid_t pid_ = 1;
 pid_t tokenId_ = 0;
+uint64_t fullTokenId_ = 0;
 
 pid_t IPCSkeleton::GetCallingUid()
 {
@@ -48,5 +49,15 @@ uint32_t IPCSkeleton::GetCallingTokenID()
 uint32_t IPCSkeleton::SetCallingTokenID(pid_t tokenId)
 {
     return static_cast<uint32_t>(tokenId_ = tokenId);
+}
+
+uint64_t IPCSkeleton::GetCallingFullTokenID()
+{
+    return fullTokenId_;
+}
+
+void IPCSkeleton::SetCallingFullTokenID(uint64_t tokenId)
+{
+    fullTokenId_ = tokenId;
 }
 }  // namespace OHOS
