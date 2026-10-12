@@ -29,6 +29,8 @@ ohos_unittest("task_manager_service_test") {
   include_dirs = [ "mock/include" ]
 
   sources = [
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/attribution_record.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/common.cpp",
     "mock/src/mock_ipc_skeleton.cpp",
     "task_manager_service_test.cpp",
   ]
@@ -38,6 +40,8 @@ ohos_unittest("task_manager_service_test") {
   deps = [
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
+    "${ability_runtime_native_path}/appkit:appkit_native",
+    "${ability_runtime_path}/utils/server/startup:startup_util",
     "${ability_runtime_services_path}/appmgr:libappms",
     "${ability_runtime_services_path}/common:perm_verification",
     "${ability_runtime_services_path}/common:task_handler_wrap",
@@ -47,6 +51,7 @@ ohos_unittest("task_manager_service_test") {
     "access_token:libaccesstoken_sdk",
     "access_token:libnativetoken",
     "access_token:libtoken_setproc",
+    "appspawn:appspawn_client",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
@@ -55,8 +60,10 @@ ohos_unittest("task_manager_service_test") {
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
+    "init:libbeget_proxy",
     "init:libbegetutil",
     "ipc:ipc_core",
+    "napi:ace_napi",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
   ]
