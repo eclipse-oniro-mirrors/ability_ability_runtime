@@ -303,20 +303,15 @@ int32_t TaskManagerService::RegisterManagedProcessInner(const std::string &taskI
 
 int32_t TaskManagerService::UnregisterManagedProcessInner(const std::string &taskId, pid_t pid)
 {
-    std::unique_ptr<TimeoutContext> replacedCtx;
-    {
-        std::lock_guard<ffrt::mutex> lock(tasksMutex_);
-        auto it = tasks_.find(taskId);
-        if (it == tasks_.end()) {
-            TAG_LOGW(AAFwkTag::APPMGR, "task not found, taskId: %{public}s", taskId.c_str());
-            return ERR_TASK_NOT_FOUND;
-        }
-        it->second.attributions.erase(pid);
-        TAG_LOGI(AAFwkTag::APPMGR, "process unregistered, taskId: %{public}s, pid: %{public}d",
-            taskId.c_str(), pid);
-        replacedCtx = RestartTimeoutWindow(taskId, it->second);
+    std::lock_guard<ffrt::mutex> lock(tasksMutex_);
+    auto it = tasks_.find(taskId);
+    if (it == tasks_.end()) {
+        TAG_LOGW(AAFwkTag::APPMGR, "task not found, taskId: %{public}s", taskId.c_str());
+        return ERR_TASK_NOT_FOUND;
     }
-    ReleaseTimeoutContext(std::move(replacedCtx));
+    it->second.attributions.erase(pid);
+    TAG_LOGI(AAFwkTag::APPMGR, "process unregistered, taskId: %{public}s, pid: %{public}d",
+        taskId.c_str(), pid);
     return ERR_OK;
 }
 

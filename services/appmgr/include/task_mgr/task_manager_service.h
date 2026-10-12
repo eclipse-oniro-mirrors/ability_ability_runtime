@@ -93,8 +93,8 @@ public:
     int32_t RegisterManagedProcess(const std::string &taskId, const AttributionRecord &attribution);
 
     /**
-     * @brief Removes a process from the managed set of the task and restarts its
-     *        inactivity timeout window.
+     * @brief Removes a process from the managed set of the task; the inactivity
+     *        timeout window is left running untouched.
      * @param taskId Indicates the attribution key of the task.
      * @param pid Indicates the pid of the process to remove.
      * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
@@ -208,9 +208,8 @@ private:
     int32_t RegisterManagedProcessInner(const std::string &taskId, const AttributionRecord &attribution);
 
     /**
-     * @brief Removes a process from the managed set of the task and restarts its
-     *        inactivity timeout window; locks tasksMutex_ internally, and stops the
-     *        replaced timer only after the mutex is released.
+     * @brief Removes a process from the managed set of the task; locks tasksMutex_
+     *        internally. The inactivity timeout window is left running untouched.
      * @param taskId Indicates the attribution key of the task.
      * @param pid Indicates the pid of the process to remove.
      * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist.
