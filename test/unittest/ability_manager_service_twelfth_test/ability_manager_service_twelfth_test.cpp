@@ -847,7 +847,7 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, CheckProcessIsBackground_001, TestSiz
     auto abilityMs = std::make_shared<AbilityManagerService>();
     int32_t pid = 1234;
     AbilityState currentState = AbilityState::BACKGROUND;
-    abilityMs->windowVisibleList_.insert(pid);
+    abilityMs->windowVisibleList_[pid] = 100;
     bool result = abilityMs->CheckProcessIsBackground(pid, currentState);
     ASSERT_FALSE(result);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest CheckProcessIsBackground_001 end");
@@ -883,7 +883,7 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, CheckProcessIsBackground_003, TestSiz
     auto abilityMs = std::make_shared<AbilityManagerService>();
     int32_t pid = 1234;
     AbilityState currentState = AbilityState::FOREGROUND;
-    abilityMs->windowVisibleList_.insert(pid);
+    abilityMs->windowVisibleList_[pid] = 100;
     bool result = abilityMs->CheckProcessIsBackground(pid, currentState);
     ASSERT_FALSE(result);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest CheckProcessIsBackground_003 end");

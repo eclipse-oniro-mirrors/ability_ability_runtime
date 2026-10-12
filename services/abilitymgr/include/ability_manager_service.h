@@ -3084,6 +3084,7 @@ private:
     void InitWindowVisibilityChangedListener();
     void FreeWindowVisibilityChangedListener();
     bool CheckProcessIsBackground(int32_t pid, AbilityState currentState);
+    void RemoveVisiblePidByUser(int32_t userId);
     void GetAndSetRootHostToken(
         const sptr<IRemoteObject> &callerToken, const int32_t userId, AbilityRequest &abilityRequest);
     bool CheckIfOperateRemote(const Want &want);
@@ -3647,7 +3648,7 @@ private:
     bool shouldBlockAllAppStart_ = false;
 
     int32_t uniqueId_ = 0;
-    std::unordered_set<int32_t> windowVisibleList_;
+    std::unordered_map<int32_t, int32_t> windowVisibleList_;
 
     sptr<WindowVisibilityChangedListener> windowVisibilityChangedListener_;
     std::shared_ptr<TaskHandlerWrap> taskHandler_;
