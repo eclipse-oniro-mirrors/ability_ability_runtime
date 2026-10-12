@@ -18,6 +18,7 @@
 #include "ability_foreground_state_observer_interface.h"
 #include "app_foreground_state_observer_stub.h"
 #include "app_mgr_proxy.h"
+#include "ability_manager_errors.h"
 #include "hilog_tag_wrapper.h"
 #include "image_error_handler_stub.h"
 #include "image_process_state_observer_stub.h"
@@ -1705,6 +1706,78 @@ HWTEST_F(AppMgrProxyTest, CancelDelayedExitTask_0100, TestSize.Level1)
         });
 
     appMgrProxy_->CancelDelayedExitTask(1234);
+}
+
+/**
+ * @tc.name: StartTask_0100
+ * @tc.desc: Test StartTask with successful SendRequest.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, StartTask_0100, TestSize.Level1)
+{
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce([](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
+            reply.WriteInt32(ERR_OK);
+            return NO_ERROR;
+        });
+
+    auto ret = appMgrProxy_->StartTask("proxy_start_task_0100", 200);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: StartTask_0200
+ * @tc.desc: Test StartTask with the task already exists error.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, StartTask_0200, TestSize.Level1)
+{
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce([](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
+            reply.WriteInt32(AAFwk::ERR_TASK_ALREADY_EXISTS);
+            return NO_ERROR;
+        });
+
+    auto ret = appMgrProxy_->StartTask("proxy_start_task_0200", 200);
+    EXPECT_EQ(ret, AAFwk::ERR_TASK_ALREADY_EXISTS);
+}
+
+/**
+ * @tc.name: FinishTask_0100
+ * @tc.desc: Test FinishTask with successful SendRequest.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, FinishTask_0100, TestSize.Level1)
+{
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce([](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
+            reply.WriteInt32(ERR_OK);
+            return NO_ERROR;
+        });
+
+    auto ret = appMgrProxy_->FinishTask("proxy_finish_task_0100");
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: FinishTask_0200
+ * @tc.desc: Test FinishTask with the task not found error.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, FinishTask_0200, TestSize.Level1)
+{
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce([](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
+            reply.WriteInt32(AAFwk::ERR_TASK_NOT_FOUND);
+            return NO_ERROR;
+        });
+
+    auto ret = appMgrProxy_->FinishTask("proxy_finish_task_0200");
+    EXPECT_EQ(ret, AAFwk::ERR_TASK_NOT_FOUND);
 }
 
 /**
