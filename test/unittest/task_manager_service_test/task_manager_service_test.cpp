@@ -168,7 +168,6 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_AttributionToolToString_0100
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_StartTask_0100, TestSize.Level1)
 {
     auto &service = TaskManagerService::GetInstance();
-    ASSERT_NE(service, nullptr);
     std::string taskId = MakeTaskId("start_0100");
     EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
     std::string dump = service.DumpActiveTasks();
@@ -711,7 +710,7 @@ HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_StartFinishTask_0100, TestSize
 {
     std::string taskId = MakeTaskId("service_0100");
     EXPECT_EQ(appMgrService_->StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
-    EXPECT_NE(TaskManagerService::GetInstance()->DumpActiveTasks().find(taskId), std::string::npos);
+    EXPECT_NE(TaskManagerService::GetInstance().DumpActiveTasks().find(taskId), std::string::npos);
     EXPECT_EQ(appMgrService_->StartTask(taskId, TASK_PRIORITY_DEFAULT), AAFwk::ERR_TASK_ALREADY_EXISTS);
     EXPECT_EQ(appMgrService_->StartTask(taskId, 0), AAFwk::INVALID_PARAMETERS_ERR);
     EXPECT_EQ(appMgrService_->FinishTask(taskId), ERR_OK);
@@ -729,7 +728,7 @@ HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_StartFinishTask_0200, TestSize
     std::string taskId = MakeTaskId("service_0200");
     EXPECT_EQ(appMgrService_->StartTask(taskId, TASK_PRIORITY_DEFAULT), AAFwk::ERR_NOT_SYSTEM_APP);
     EXPECT_EQ(appMgrService_->FinishTask(taskId), AAFwk::ERR_NOT_SYSTEM_APP);
-    EXPECT_EQ(TaskManagerService::GetInstance()->DumpActiveTasks().find(taskId), std::string::npos);
+    EXPECT_EQ(TaskManagerService::GetInstance().DumpActiveTasks().find(taskId), std::string::npos);
     SetNativeTokenForTaskTest();
 }
 
