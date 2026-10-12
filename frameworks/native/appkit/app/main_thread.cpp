@@ -157,6 +157,7 @@ constexpr int32_t START_HIGH_SENSITIVE = 1;
 constexpr int32_t EXIT_HIGH_SENSITIVE = 2;
 constexpr int32_t UNSPECIFIED_USERID = -2;
 constexpr int32_t APP_UNVISIBLE_STATE = 4;
+constexpr int32_t APP_VISIBLE_STATE = 5;
 constexpr int32_t JS_ERROR_EXIT = -2;
 constexpr int32_t TIME_OUT = 120;
 constexpr int32_t DEFAULT_SLEEP_TIME = 100000;
@@ -4195,6 +4196,10 @@ int32_t MainThread::ChangeAppGcState(int32_t state, uint64_t tid)
     if (state == APP_UNVISIBLE_STATE) {
         TAG_LOGI(AAFwkTag::APPKIT, "notify application unvisible state for GC");
         runtime->NotifyApplicationState(true);
+        return NO_ERROR;
+    } else if (state == APP_VISIBLE_STATE) {
+        TAG_LOGI(AAFwkTag::APPKIT, "notify application visible state for GC");
+        runtime->NotifyApplicationState(false);
         return NO_ERROR;
     }
 
