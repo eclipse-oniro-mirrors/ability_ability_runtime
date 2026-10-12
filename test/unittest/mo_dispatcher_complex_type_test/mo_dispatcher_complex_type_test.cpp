@@ -3005,20 +3005,21 @@ HWTEST_F(ModObjDispatcherComplexTypeTest, Dedup_MapStringKey_SameContent, TestSi
 // container — causing use-after-free/double-free on subsequent access or release.
 HWTEST_F(ModObjDispatcherComplexTypeTest, Nested_Circular_SourceIntactAfterDeepCopyFailure, TestSize.Level1)
 {
-    auto* elemTi = new OH_AbilityRuntime_ModObjDispatcher_TypeInfo();
-    (void)memset_s(elemTi, sizeof(*elemTi), 0, sizeof(*elemTi));
-    elemTi->vt = OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VECTOR;
-
+    auto elemTi = MakeStringTypeInfo();
     OH_AbilityRuntime_ModObjDispatcher_VectorHandle vec = nullptr;
-    auto ret = ModObjDispatcherComplexTypeManager::VectorCreate(elemTi, &vec);
+    auto ret = ModObjDispatcherComplexTypeManager::VectorCreate(&elemTi, &vec);
     ASSERT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
     ASSERT_NE(vec, nullptr);
 
-    auto subVec = CreateStringVector({"a", "b"});
-    auto subVar = MakeVectorVariant(subVec);
-    ret = ModObjDispatcherComplexTypeManager::VectorAdd(vec, &subVar);
+    auto var1 = MakeStringVariant("a");
+    ret = ModObjDispatcherComplexTypeManager::VectorAdd(vec, &var1);
     EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
-    ModObjDispatcherComplexTypeManager::VectorRelease(&subVec);
+    ModObjDispatcherComplexTypeManager::Variant_Clear(&var1);
+
+    auto var2 = MakeStringVariant("b");
+    ret = ModObjDispatcherComplexTypeManager::VectorAdd(vec, &var2);
+    EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
+    ModObjDispatcherComplexTypeManager::Variant_Clear(&var2);
 
     auto* vecInternal = reinterpret_cast<OH_AbilityRuntime_ModularObjectDispatcher_Vector*>(vec);
     MoVariantStorage cycleElem;
@@ -3027,27 +3028,23 @@ HWTEST_F(ModObjDispatcherComplexTypeTest, Nested_Circular_SourceIntactAfterDeepC
     vecInternal->elements.push_back(std::move(cycleElem));
 
     OH_AbilityRuntime_ModObjDispatcher_Variant out = {};
-    ret = ModObjDispatcherComplexTypeManager::VectorGet(vec, 1, &out);
+    ret = ModObjDispatcherComplexTypeManager::VectorGet(vec, 2, &out);
     EXPECT_NE(ret, ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
 
     uint32_t sz = 0;
     ModObjDispatcherComplexTypeManager::VectorGetSize(vec, &sz);
-    EXPECT_EQ(sz, 2u);
+    EXPECT_EQ(sz, 3u);
 
     ret = ModObjDispatcherComplexTypeManager::VectorGet(vec, 0, &out);
     EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
-    EXPECT_NE(out.u.pvectorVal, nullptr);
-    if (out.u.pvectorVal != nullptr) {
-        uint32_t subSz = 0;
-        ModObjDispatcherComplexTypeManager::VectorGetSize(out.u.pvectorVal, &subSz);
-        EXPECT_EQ(subSz, 2u);
+    EXPECT_NE(out.u.bstrVal, nullptr);
+    if (out.u.bstrVal != nullptr) {
+        EXPECT_STREQ(out.u.bstrVal, "a");
     }
     ModObjDispatcherComplexTypeManager::Variant_Clear(&out);
 
-    vecInternal->elements[1].value.u.pvectorVal = nullptr;
+    vecInternal->elements[2].value.u.pvectorVal = nullptr;
     ModObjDispatcherComplexTypeManager::VectorRelease(&vec);
-    FreeTypeInfo(*elemTi);
-    delete elemTi;
 }
 
 } // namespace AbilityRuntime
