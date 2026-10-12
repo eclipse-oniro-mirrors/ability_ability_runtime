@@ -196,6 +196,17 @@ public:
         const bool clearPageStack = false, int32_t appIndex = 0) = 0;
 
     /**
+     * Safely kills the processes of the specified application. If the application is protected by an MDM
+     * keep-alive configuration, the processes are not killed.
+     *
+     * @param bundleName, bundle name in Application record.
+     * @param accountId, account ID.
+     * @return ERR_OK, return back success, others fail.
+     */
+    virtual int32_t KillProcessWithAccountSafely(const std::string &bundleName, const int accountId,
+        const bool clearPageStack = false, int32_t appIndex = 0) = 0;
+
+    /**
      * KillProcessesInBatch, kill processes in batch, call KillProcessesInBatch() through proxy object;
      * the killed bundle won't be started by the watcher.
      *
@@ -667,6 +678,7 @@ public:
         NOTIFY_LOAD_ABILITY_FINISHED,
         NOTIFY_APP_MGR_RECORD_EXIT_REASON_COMPABILITY,
         KILL_APPLICATION_WITH_USER_ID,
+        KILL_PROCESS_WITH_ACCOUNT_SAFELY,
         ATTRIBUTE_PROCESS_FOR_ABILITY,
         UNREGISTER_TASK_ATTRIBUTION,
         // Add enumeration values above

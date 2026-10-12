@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -761,6 +761,33 @@ HWTEST_F(AmsMgrStubTest, HandleUnregisterTaskAttribution_001, TestSize.Level1)
     EXPECT_EQ(result, NO_ERROR);
     EXPECT_EQ(reply.ReadInt32(), ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "HandleUnregisterTaskAttribution_001 end.");
+}
+
+/**
+ * @tc.name: HandleKillProcessWithAccountSafely_0100
+ * @tc.desc: Deserialize safe-kill arguments and write the MDM-protected result to the reply.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrStubTest, HandleKillProcessWithAccountSafely_0100, TestSize.Level1)
+{
+    ASSERT_NE(mockAmsMgrScheduler_, nullptr);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    WriteInterfaceToken(data);
+    data.WriteString("com.example.protected");
+    data.WriteInt32(100);
+    data.WriteBool(true);
+    data.WriteInt32(3);
+    EXPECT_CALL(*mockAmsMgrScheduler_, KillProcessWithAccountSafely(
+        "com.example.protected", 100, true, 3))
+        .WillOnce(Return(AAFwk::ERR_KILL_PROCESS_MDM_PROTECTED));
+
+    int32_t ret = mockAmsMgrScheduler_->OnRemoteRequest(
+        static_cast<uint32_t>(IAmsMgr::Message::KILL_PROCESS_WITH_ACCOUNT_SAFELY), data, reply, option);
+
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), AAFwk::ERR_KILL_PROCESS_MDM_PROTECTED);
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

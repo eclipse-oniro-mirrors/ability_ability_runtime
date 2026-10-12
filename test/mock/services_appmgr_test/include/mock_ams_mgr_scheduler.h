@@ -38,6 +38,8 @@ public:
     MOCK_METHOD3(KillProcessesByUserId, void(int32_t userId, bool isNeedSendAppSpawnMsg,
         sptr<AAFwk::IUserCallback> callback));
     MOCK_METHOD4(KillProcessWithAccount, int(const std::string&, const int, const bool clearPageStack, int32_t));
+    MOCK_METHOD4(KillProcessWithAccountSafely,
+        int32_t(const std::string&, const int, const bool clearPageStack, int32_t));
     MOCK_METHOD1(KillProcessesInBatch, int(const std::vector<int32_t> &pids));
     MOCK_METHOD4(UpdateApplicationInfoInstalled, int(const std::string&, const int uid, const std::string&, bool));
     MOCK_METHOD3(ForceKillApplication, int32_t(const std::string& appName, const int userId, const int appIndex));

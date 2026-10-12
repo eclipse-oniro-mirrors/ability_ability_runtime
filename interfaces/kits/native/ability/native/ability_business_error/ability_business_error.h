@@ -285,6 +285,9 @@ enum class AbilityErrorCode {
     // can not change keep alive status
     ERROR_CODE_CHANGE_KEEP_ALIVE = 16000203,
 
+    // The target process is protected by an MDM application and cannot be terminated.
+    ERROR_CODE_KILL_PROCESS_KEEP_ALIVE = 16000210,
+
     ERROR_CODE_KIOSK_MODE_NOT_IN_WHITELIST = 16000110,
 
     ERROR_CODE_ALREADY_IN_KIOSK_MODE = 16000111,

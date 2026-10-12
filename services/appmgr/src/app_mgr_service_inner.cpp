@@ -3976,6 +3976,46 @@ int32_t AppMgrServiceInner::KillApplicationByUserId(
     return KillApplicationByUserIdLocked(bundleName, appCloneIndex, userId, config);
 }
 
+int32_t AppMgrServiceInner::KillApplicationByUserIdSafely(
+    const std::string &bundleName, int32_t appCloneIndex, const int userId,
+    const bool clearPageStack, const std::string& reason)
+{
+    CHECK_CALLER_IS_SYSTEM_APP;
+    if (VerifyAccountPermission(
+        AAFwk::PermissionConstants::PERMISSION_KILL_APP_PROCESSES, userId) == ERR_PERMISSION_DENIED &&
+        VerifyAccountPermission(
+            AAFwk::PermissionConstants::PERMISSION_CLEAN_BACKGROUND_PROCESSES, userId) == ERR_PERMISSION_DENIED) {
+        TAG_LOGE(AAFwkTag::APPMGR, "safe kill permission verify fail");
+        return ERR_PERMISSION_DENIED;
+    }
+    if (appRunningManager_ == nullptr || remoteClientManager_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "safe kill failed, appRunningManager_ or remoteClientManager_ null");
+        return ERR_NO_INIT;
+    }
+    auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
+    if (bundleMgrHelper == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "safe kill failed, bundleMgrHelper null");
+        return ERR_NO_INIT;
+    }
+    if (appCloneIndex == 0) {
+        bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appCloneIndex);
+    }
+    bool isDisableForbidden = false;
+    auto ret = IN_PROCESS_CALL(bundleMgrHelper->IsApplicationDisableForbidden(
+        bundleName, userId, appCloneIndex, isDisableForbidden));
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "query disable forbidden failed, ret=%{public}d", ret);
+        return ret;
+    }
+    if (isDisableForbidden) {
+        TAG_LOGW(AAFwkTag::APPMGR, "safe kill rejected for disable forbidden bundle=%{public}s",
+            bundleName.c_str());
+        return AAFwk::ERR_KILL_PROCESS_MDM_PROTECTED;
+    }
+    KillProcessConfig config{clearPageStack, true, reason};
+    return KillApplicationByUserIdLocked(bundleName, appCloneIndex, userId, config);
+}
+
 int32_t AppMgrServiceInner::KillApplicationByUserIdLocked(
     const std::string &bundleName, int32_t appCloneIndex, const int userId, const KillProcessConfig &config)
 {

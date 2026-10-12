@@ -530,6 +530,48 @@ int32_t AmsMgrProxy::KillProcessWithAccount(
     return reply.ReadInt32();
 }
 
+int32_t AmsMgrProxy::KillProcessWithAccountSafely(
+    const std::string &bundleName, const int accountId, const bool clearPageStack, int32_t appIndex)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    if (!WriteInterfaceToken(data)) {
+        return ERR_INVALID_DATA;
+    }
+
+    if (!data.WriteString(bundleName)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "WriteString failed");
+        return ERR_FLATTEN_OBJECT;
+    }
+
+    if (!data.WriteInt32(accountId)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "parcel WriteInt32 failed");
+        return ERR_FLATTEN_OBJECT;
+    }
+
+    if (!data.WriteBool(clearPageStack)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "parcel bool failed");
+        return ERR_FLATTEN_OBJECT;
+    }
+
+    if (!data.WriteInt32(appIndex)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "parcel appIndex failed");
+        return ERR_FLATTEN_OBJECT;
+    }
+
+    int32_t ret = SendTransactCmd(static_cast<uint32_t>(IAmsMgr::Message::KILL_PROCESS_WITH_ACCOUNT_SAFELY),
+        data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGW(AAFwkTag::APPMGR, "safe kill request failed: %{public}d", ret);
+        return ret;
+    }
+
+    TAG_LOGD(AAFwkTag::APPMGR, "end");
+
+    return reply.ReadInt32();
+}
+
 int32_t AmsMgrProxy::KillProcessesInBatch(const std::vector<int32_t> &pids)
 {
     MessageParcel data;

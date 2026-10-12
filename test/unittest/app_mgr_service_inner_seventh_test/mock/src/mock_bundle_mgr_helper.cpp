@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -312,6 +312,18 @@ ErrCode BundleMgrHelper::GetUidByBundleName(const std::string& bundleName, int32
     return ERR_OK;
 }
 
+ErrCode BundleMgrHelper::IsApplicationDisableForbidden(const std::string& bundleName, int32_t userId,
+    int32_t appIndex, bool& forbidden)
+{
+    auto &status = AAFwk::MyStatus::GetInstance();
+    status.isApplicationDisableForbiddenCall_++;
+    status.disableForbiddenBundleName_ = bundleName;
+    status.disableForbiddenUserId_ = userId;
+    status.disableForbiddenAppIndex_ = appIndex;
+    forbidden = status.isApplicationDisableForbidden_;
+    return status.isApplicationDisableForbiddenRet_;
+}
+
 ErrCode BundleMgrHelper::QueryExtensionAbilityInfosOnlyWithTypeName(const std::string& extensionTypeName,
     const uint32_t flag, const int32_t userId, std::vector<ExtensionAbilityInfo>& extensionInfos)
 {
@@ -387,6 +399,16 @@ ErrCode BundleMgrHelper::RegisterPluginEventCallback(sptr<IBundleEventCallback> 
 
 ErrCode BundleMgrHelper::UnregisterPluginEventCallback(sptr<IBundleEventCallback> pluginEventCallback)
 {
+    return ERR_OK;
+}
+
+ErrCode BundleMgrHelper::GetDualModeBundleInfo(const std::string& bundleName, int32_t userId, int32_t &appIndex)
+{
+    auto &status = AAFwk::MyStatus::GetInstance();
+    status.getDualModeBundleInfoCall_++;
+    status.dualModeBundleName_ = bundleName;
+    status.dualModeUserId_ = userId;
+    appIndex = status.dualModeAppIndex_;
     return ERR_OK;
 }
 } // namespace AppExecFwk
