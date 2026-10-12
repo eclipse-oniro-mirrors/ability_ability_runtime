@@ -47,6 +47,7 @@ ohos_fuzztest("AbilityAppMgrEventFourthFuzzTest") {
   ]
 
   external_deps = [
+    "eventhandler:libeventhandler",
     "ability_base:configuration",
     "ability_base:want",
     "access_token:libaccesstoken_sdk",

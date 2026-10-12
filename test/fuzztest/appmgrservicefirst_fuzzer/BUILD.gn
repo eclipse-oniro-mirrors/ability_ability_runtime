@@ -44,6 +44,7 @@ ohos_fuzztest("AppMgrServiceFirstFuzzTest") {
   ]
 
   external_deps = [
+    "eventhandler:libeventhandler",
     "ability_base:configuration",
     "ability_base:want",
     "ability_base:zuri",

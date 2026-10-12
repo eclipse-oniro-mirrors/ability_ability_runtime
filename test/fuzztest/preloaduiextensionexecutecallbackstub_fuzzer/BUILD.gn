@@ -49,6 +49,7 @@ ohos_fuzztest("PreloadUIExtensionExecuteCallbackStubFuzzTest") {
   ]
 
   external_deps = [
+    "eventhandler:libeventhandler",
     "ability_base:want",
     "c_utils:utils",
     "hilog:libhilog",
