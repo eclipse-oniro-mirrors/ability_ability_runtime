@@ -754,7 +754,7 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::OnRemoteDied(const wptr<IRe
         appRunningRecordMap_.erase(iter);
     }
     if (appRecord != nullptr) {
-        TaskManagerService::GetInstance()->OnProcessDied(appRecord->GetPid(), appRecord->GetUid());
+        TaskManagerService::GetInstance().OnProcessDied(appRecord->GetPid(), appRecord->GetUid());
     }
     if (appRecord != nullptr) {
         {
@@ -803,7 +803,7 @@ void AppRunningManager::RemoveAppRunningRecordById(const int32_t recordId)
     }
 
     if (appRecord != nullptr) {
-        TaskManagerService::GetInstance()->OnProcessDied(appRecord->GetPid(), appRecord->GetUid());
+        TaskManagerService::GetInstance().OnProcessDied(appRecord->GetPid(), appRecord->GetUid());
     }
 
     if (appRecord != nullptr && appRecord->GetPriorityObject() != nullptr) {

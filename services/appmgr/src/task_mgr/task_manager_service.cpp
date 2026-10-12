@@ -88,7 +88,7 @@ void TimerCallback(void *data)
     }
     std::string taskId = ctx->taskId;
     int64_t deadline = ctx->deadlineMillis;
-    DelayedSingleton<TaskManagerService>::GetInstance()->OnTaskTimeout(taskId, deadline);
+    TaskManagerService::GetInstance().OnTaskTimeout(taskId, deadline);
 }
 }  // namespace
 
@@ -100,6 +100,12 @@ TaskManagerService::TaskManagerService()
 TaskManagerService::~TaskManagerService()
 {
     TAG_LOGD(AAFwkTag::APPMGR, "destroyed");
+}
+
+TaskManagerService &TaskManagerService::GetInstance()
+{
+    static TaskManagerService instance;
+    return instance;
 }
 
 int32_t TaskManagerService::StartTask(const std::string &taskId, int32_t priority)

@@ -167,16 +167,16 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_AttributionToolToString_0100
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_StartTask_0100, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
+    auto &service = TaskManagerService::GetInstance();
     ASSERT_NE(service, nullptr);
     std::string taskId = MakeTaskId("start_0100");
-    EXPECT_EQ(service->StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
-    std::string dump = service->DumpActiveTasks();
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    std::string dump = service.DumpActiveTasks();
     EXPECT_NE(dump.find(taskId), std::string::npos);
     EXPECT_NE(dump.find("priority [MEDIUM(200)]"), std::string::npos);
     EXPECT_NE(dump.find("creator uid [" + std::to_string(TEST_CREATOR_UID) + "]"), std::string::npos);
-    EXPECT_EQ(service->FinishTask(taskId), ERR_OK);
-    EXPECT_EQ(service->DumpActiveTasks().find(taskId), std::string::npos);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
+    EXPECT_EQ(service.DumpActiveTasks().find(taskId), std::string::npos);
 }
 
 /**
@@ -186,21 +186,21 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_StartTask_0100, TestSize.Lev
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_StartTask_0200, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
+    auto &service = TaskManagerService::GetInstance();
     std::vector<std::string> taskIds = {
         MakeTaskId("start_0200_low"),
         MakeTaskId("start_0200_medium"),
         MakeTaskId("start_0200_high"),
     };
-    EXPECT_EQ(service->StartTask(taskIds[0], TASK_PRIORITY_LOW), ERR_OK);
-    EXPECT_EQ(service->StartTask(taskIds[1], TASK_PRIORITY_MEDIUM), ERR_OK);
-    EXPECT_EQ(service->StartTask(taskIds[2], TASK_PRIORITY_HIGH), ERR_OK);
-    std::string dump = service->DumpActiveTasks();
+    EXPECT_EQ(service.StartTask(taskIds[0], TASK_PRIORITY_LOW), ERR_OK);
+    EXPECT_EQ(service.StartTask(taskIds[1], TASK_PRIORITY_MEDIUM), ERR_OK);
+    EXPECT_EQ(service.StartTask(taskIds[2], TASK_PRIORITY_HIGH), ERR_OK);
+    std::string dump = service.DumpActiveTasks();
     EXPECT_NE(dump.find("priority [LOW(100)]"), std::string::npos);
     EXPECT_NE(dump.find("priority [MEDIUM(200)]"), std::string::npos);
     EXPECT_NE(dump.find("priority [HIGH(300)]"), std::string::npos);
     for (const auto &taskId : taskIds) {
-        EXPECT_EQ(service->FinishTask(taskId), ERR_OK);
+        EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
     }
 }
 
@@ -211,12 +211,12 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_StartTask_0200, TestSize.Lev
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_StartTask_0300, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
+    auto &service = TaskManagerService::GetInstance();
     std::string taskId = MakeTaskId("start_0300");
-    EXPECT_EQ(service->StartTask(taskId, TASK_PRIORITY_LOW - 1), AAFwk::INVALID_PARAMETERS_ERR);
-    EXPECT_EQ(service->StartTask(taskId, TASK_PRIORITY_HIGH + 1), AAFwk::INVALID_PARAMETERS_ERR);
-    EXPECT_EQ(service->StartTask(taskId, 0), AAFwk::INVALID_PARAMETERS_ERR);
-    EXPECT_EQ(service->DumpActiveTasks().find(taskId), std::string::npos);
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_LOW - 1), AAFwk::INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_HIGH + 1), AAFwk::INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(service.StartTask(taskId, 0), AAFwk::INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(service.DumpActiveTasks().find(taskId), std::string::npos);
 }
 
 /**
@@ -226,10 +226,10 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_StartTask_0300, TestSize.Lev
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_StartTask_0400, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
-    EXPECT_EQ(service->StartTask("", TASK_PRIORITY_DEFAULT), AAFwk::INVALID_PARAMETERS_ERR);
+    auto &service = TaskManagerService::GetInstance();
+    EXPECT_EQ(service.StartTask("", TASK_PRIORITY_DEFAULT), AAFwk::INVALID_PARAMETERS_ERR);
     std::string tooLongTaskId(TASK_ID_MAX_LEN + 1, 'a');
-    EXPECT_EQ(service->StartTask(tooLongTaskId, TASK_PRIORITY_DEFAULT), AAFwk::INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(service.StartTask(tooLongTaskId, TASK_PRIORITY_DEFAULT), AAFwk::INVALID_PARAMETERS_ERR);
 }
 
 /**
@@ -239,13 +239,13 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_StartTask_0400, TestSize.Lev
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_StartTask_0500, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
+    auto &service = TaskManagerService::GetInstance();
     std::string minLenTaskId = MakeTaskId("a");
     std::string maxLenTaskId(TASK_ID_MAX_LEN, 'b');
-    EXPECT_EQ(service->StartTask(minLenTaskId, TASK_PRIORITY_DEFAULT), ERR_OK);
-    EXPECT_EQ(service->StartTask(maxLenTaskId, TASK_PRIORITY_DEFAULT), ERR_OK);
-    EXPECT_EQ(service->FinishTask(minLenTaskId), ERR_OK);
-    EXPECT_EQ(service->FinishTask(maxLenTaskId), ERR_OK);
+    EXPECT_EQ(service.StartTask(minLenTaskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.StartTask(maxLenTaskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.FinishTask(minLenTaskId), ERR_OK);
+    EXPECT_EQ(service.FinishTask(maxLenTaskId), ERR_OK);
 }
 
 /**
@@ -255,15 +255,15 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_StartTask_0500, TestSize.Lev
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_StartTask_0600, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
+    auto &service = TaskManagerService::GetInstance();
     std::string taskId = MakeTaskId("start_0600");
-    EXPECT_EQ(service->StartTask(taskId, TASK_PRIORITY_LOW), ERR_OK);
-    EXPECT_EQ(service->StartTask(taskId, TASK_PRIORITY_HIGH), AAFwk::ERR_TASK_ALREADY_EXISTS);
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_LOW), ERR_OK);
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_HIGH), AAFwk::ERR_TASK_ALREADY_EXISTS);
     {
-        std::lock_guard<ffrt::mutex> lock(service->tasksMutex_);
-        EXPECT_EQ(service->tasks_[taskId].priority, TASK_PRIORITY_LOW);
+        std::lock_guard<ffrt::mutex> lock(service.tasksMutex_);
+        EXPECT_EQ(service.tasks_[taskId].priority, TASK_PRIORITY_LOW);
     }
-    EXPECT_EQ(service->FinishTask(taskId), ERR_OK);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
 }
 
 /**
@@ -273,25 +273,25 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_StartTask_0600, TestSize.Lev
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_StartTask_0700, TestSize.Level3)
 {
-    auto service = TaskManagerService::GetInstance();
+    auto &service = TaskManagerService::GetInstance();
     std::vector<std::string> filledTaskIds;
     size_t existingCount = 0;
     {
-        std::lock_guard<ffrt::mutex> lock(service->tasksMutex_);
-        existingCount = service->tasks_.size();
+        std::lock_guard<ffrt::mutex> lock(service.tasksMutex_);
+        existingCount = service.tasks_.size();
     }
     for (size_t i = existingCount; i < TASK_MAX_ACTIVE_TASKS; ++i) {
         std::string taskId = MakeTaskId("start_0700_" + std::to_string(i));
-        if (service->StartTask(taskId, TASK_PRIORITY_DEFAULT) != ERR_OK) {
+        if (service.StartTask(taskId, TASK_PRIORITY_DEFAULT) != ERR_OK) {
             break;
         }
         filledTaskIds.emplace_back(taskId);
     }
     EXPECT_EQ(filledTaskIds.size(), TASK_MAX_ACTIVE_TASKS - existingCount);
-    EXPECT_EQ(service->StartTask(MakeTaskId("start_0700_overflow"), TASK_PRIORITY_DEFAULT),
+    EXPECT_EQ(service.StartTask(MakeTaskId("start_0700_overflow"), TASK_PRIORITY_DEFAULT),
         ERR_INVALID_OPERATION);
     for (const auto &taskId : filledTaskIds) {
-        EXPECT_EQ(service->FinishTask(taskId), ERR_OK);
+        EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
     }
 }
 
@@ -302,12 +302,12 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_StartTask_0700, TestSize.Lev
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_FinishTask_0100, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
+    auto &service = TaskManagerService::GetInstance();
     std::string taskId = MakeTaskId("finish_0100");
-    EXPECT_EQ(service->StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
-    EXPECT_EQ(service->FinishTask(taskId), ERR_OK);
-    EXPECT_EQ(service->FinishTask(taskId), AAFwk::ERR_TASK_NOT_FOUND);
-    EXPECT_EQ(service->DumpActiveTasks().find(taskId), std::string::npos);
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
+    EXPECT_EQ(service.FinishTask(taskId), AAFwk::ERR_TASK_NOT_FOUND);
+    EXPECT_EQ(service.DumpActiveTasks().find(taskId), std::string::npos);
 }
 
 /**
@@ -317,10 +317,10 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_FinishTask_0100, TestSize.Le
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_FinishTask_0200, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
-    EXPECT_EQ(service->FinishTask(""), AAFwk::INVALID_PARAMETERS_ERR);
+    auto &service = TaskManagerService::GetInstance();
+    EXPECT_EQ(service.FinishTask(""), AAFwk::INVALID_PARAMETERS_ERR);
     std::string tooLongTaskId(TASK_ID_MAX_LEN + 1, 'c');
-    EXPECT_EQ(service->FinishTask(tooLongTaskId), AAFwk::INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(service.FinishTask(tooLongTaskId), AAFwk::INVALID_PARAMETERS_ERR);
 }
 
 /**
@@ -330,14 +330,14 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_FinishTask_0200, TestSize.Le
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_FinishTask_0300, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
+    auto &service = TaskManagerService::GetInstance();
     std::string taskId = MakeTaskId("finish_0300");
-    EXPECT_EQ(service->StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
     SetTestCaller(TEST_OTHER_UID, TEST_OTHER_PID);
-    EXPECT_EQ(service->FinishTask(taskId), AAFwk::ERR_TASK_NOT_FOUND);
-    EXPECT_NE(service->DumpActiveTasks().find(taskId), std::string::npos);
+    EXPECT_EQ(service.FinishTask(taskId), AAFwk::ERR_TASK_NOT_FOUND);
+    EXPECT_NE(service.DumpActiveTasks().find(taskId), std::string::npos);
     SetTestCaller(TEST_CREATOR_UID, TEST_CREATOR_PID);
-    EXPECT_EQ(service->FinishTask(taskId), ERR_OK);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
 }
 
 /**
@@ -347,19 +347,19 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_FinishTask_0300, TestSize.Le
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_OnTaskTimeout_0100, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
+    auto &service = TaskManagerService::GetInstance();
     std::string taskId = MakeTaskId("timeout_0100");
-    EXPECT_EQ(service->StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
     int64_t deadline = 0;
     {
-        std::lock_guard<ffrt::mutex> lock(service->tasksMutex_);
-        deadline = service->tasks_[taskId].deadlineMillis;
+        std::lock_guard<ffrt::mutex> lock(service.tasksMutex_);
+        deadline = service.tasks_[taskId].deadlineMillis;
     }
-    service->OnTaskTimeout(taskId, deadline + 1);
-    EXPECT_NE(service->DumpActiveTasks().find(taskId), std::string::npos);
-    service->OnTaskTimeout(taskId, deadline);
-    EXPECT_EQ(service->DumpActiveTasks().find(taskId), std::string::npos);
-    EXPECT_EQ(service->FinishTask(taskId), AAFwk::ERR_TASK_NOT_FOUND);
+    service.OnTaskTimeout(taskId, deadline + 1);
+    EXPECT_NE(service.DumpActiveTasks().find(taskId), std::string::npos);
+    service.OnTaskTimeout(taskId, deadline);
+    EXPECT_EQ(service.DumpActiveTasks().find(taskId), std::string::npos);
+    EXPECT_EQ(service.FinishTask(taskId), AAFwk::ERR_TASK_NOT_FOUND);
 }
 
 /**
@@ -369,17 +369,17 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_OnTaskTimeout_0100, TestSize
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_TimeoutWindow_0100, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
+    auto &service = TaskManagerService::GetInstance();
     std::string taskId = MakeTaskId("window_0100");
-    EXPECT_EQ(service->StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
     int64_t createMillis = 0;
     int64_t deadline = 0;
     int32_t timeoutSeconds = 0;
     {
-        std::lock_guard<ffrt::mutex> lock(service->tasksMutex_);
-        createMillis = service->tasks_[taskId].createTimeMillis;
-        deadline = service->tasks_[taskId].deadlineMillis;
-        timeoutSeconds = service->GetTimeoutSeconds();
+        std::lock_guard<ffrt::mutex> lock(service.tasksMutex_);
+        createMillis = service.tasks_[taskId].createTimeMillis;
+        deadline = service.tasks_[taskId].deadlineMillis;
+        timeoutSeconds = service.GetTimeoutSeconds();
     }
     EXPECT_EQ(deadline - createMillis, static_cast<int64_t>(timeoutSeconds) * 1000);
 
@@ -387,14 +387,14 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_TimeoutWindow_0100, TestSize
     AttributionRecord attribution;
     attribution.pid = TEST_MANAGED_PID;
     attribution.tool = AttributionTool::INSIGHT;
-    EXPECT_EQ(service->RegisterManagedProcess(taskId, attribution), ERR_OK);
+    EXPECT_EQ(service.RegisterManagedProcess(taskId, attribution), ERR_OK);
     int64_t newDeadline = 0;
     {
-        std::lock_guard<ffrt::mutex> lock(service->tasksMutex_);
-        newDeadline = service->tasks_[taskId].deadlineMillis;
+        std::lock_guard<ffrt::mutex> lock(service.tasksMutex_);
+        newDeadline = service.tasks_[taskId].deadlineMillis;
     }
     EXPECT_GT(newDeadline, deadline);
-    EXPECT_EQ(service->FinishTask(taskId), ERR_OK);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
 }
 
 /**
@@ -404,23 +404,23 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_TimeoutWindow_0100, TestSize
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_RegisterManagedProcess_0100, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
+    auto &service = TaskManagerService::GetInstance();
     std::string taskId = MakeTaskId("register_0100");
-    EXPECT_EQ(service->StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
     AttributionRecord attribution;
     attribution.pid = TEST_MANAGED_PID;
     attribution.tool = AttributionTool::INSIGHT;
-    EXPECT_EQ(service->RegisterManagedProcess(taskId, attribution), ERR_OK);
-    EXPECT_NE(service->DumpActiveTasks().find(std::to_string(TEST_MANAGED_PID) + "(insight)"),
+    EXPECT_EQ(service.RegisterManagedProcess(taskId, attribution), ERR_OK);
+    EXPECT_NE(service.DumpActiveTasks().find(std::to_string(TEST_MANAGED_PID) + "(insight)"),
         std::string::npos);
 
     attribution.tool = AttributionTool::CLI;
-    EXPECT_EQ(service->RegisterManagedProcess(taskId, attribution), ERR_OK);
-    EXPECT_EQ(service->DumpActiveTasks().find(std::to_string(TEST_MANAGED_PID) + "(insight)"),
+    EXPECT_EQ(service.RegisterManagedProcess(taskId, attribution), ERR_OK);
+    EXPECT_EQ(service.DumpActiveTasks().find(std::to_string(TEST_MANAGED_PID) + "(insight)"),
         std::string::npos);
-    EXPECT_NE(service->DumpActiveTasks().find(std::to_string(TEST_MANAGED_PID) + "(cli)"),
+    EXPECT_NE(service.DumpActiveTasks().find(std::to_string(TEST_MANAGED_PID) + "(cli)"),
         std::string::npos);
-    EXPECT_EQ(service->FinishTask(taskId), ERR_OK);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
 }
 
 /**
@@ -430,32 +430,32 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_RegisterManagedProcess_0100,
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_RegisterManagedProcess_0200, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
+    auto &service = TaskManagerService::GetInstance();
     std::string taskId = MakeTaskId("register_0200");
-    EXPECT_EQ(service->StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
 
     AttributionRecord attribution;
     attribution.pid = TEST_MANAGED_PID;
     attribution.tool = AttributionTool::INSIGHT;
-    EXPECT_EQ(service->RegisterManagedProcess("", attribution), AAFwk::INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(service.RegisterManagedProcess("", attribution), AAFwk::INVALID_PARAMETERS_ERR);
     std::string tooLongTaskId(TASK_ID_MAX_LEN + 1, 'd');
-    EXPECT_EQ(service->RegisterManagedProcess(tooLongTaskId, attribution), AAFwk::INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(service.RegisterManagedProcess(tooLongTaskId, attribution), AAFwk::INVALID_PARAMETERS_ERR);
 
     AttributionRecord invalidPid = attribution;
     invalidPid.pid = 0;
-    EXPECT_EQ(service->RegisterManagedProcess(taskId, invalidPid), AAFwk::INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(service.RegisterManagedProcess(taskId, invalidPid), AAFwk::INVALID_PARAMETERS_ERR);
 
     AttributionRecord unknownTool = attribution;
     unknownTool.tool = AttributionTool::UNKNOWN;
-    EXPECT_EQ(service->RegisterManagedProcess(taskId, unknownTool), AAFwk::INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(service.RegisterManagedProcess(taskId, unknownTool), AAFwk::INVALID_PARAMETERS_ERR);
 
     AttributionRecord outOfRangeTool = attribution;
     outOfRangeTool.tool = static_cast<AttributionTool>(99);
-    EXPECT_EQ(service->RegisterManagedProcess(taskId, outOfRangeTool), AAFwk::INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(service.RegisterManagedProcess(taskId, outOfRangeTool), AAFwk::INVALID_PARAMETERS_ERR);
 
-    EXPECT_EQ(service->RegisterManagedProcess(MakeTaskId("register_0200_none"), attribution),
+    EXPECT_EQ(service.RegisterManagedProcess(MakeTaskId("register_0200_none"), attribution),
         AAFwk::ERR_TASK_NOT_FOUND);
-    EXPECT_EQ(service->FinishTask(taskId), ERR_OK);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
 }
 
 /**
@@ -465,19 +465,19 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_RegisterManagedProcess_0200,
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_UnregisterManagedProcess_0100, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
+    auto &service = TaskManagerService::GetInstance();
     std::string taskId = MakeTaskId("unregister_0100");
-    EXPECT_EQ(service->StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
     AttributionRecord attribution;
     attribution.pid = TEST_MANAGED_PID;
     attribution.tool = AttributionTool::A2A;
-    EXPECT_EQ(service->RegisterManagedProcess(taskId, attribution), ERR_OK);
-    EXPECT_NE(service->DumpActiveTasks().find(std::to_string(TEST_MANAGED_PID) + "(a2a)"),
+    EXPECT_EQ(service.RegisterManagedProcess(taskId, attribution), ERR_OK);
+    EXPECT_NE(service.DumpActiveTasks().find(std::to_string(TEST_MANAGED_PID) + "(a2a)"),
         std::string::npos);
-    EXPECT_EQ(service->UnregisterManagedProcess(taskId, TEST_MANAGED_PID), ERR_OK);
-    EXPECT_EQ(service->DumpActiveTasks().find(std::to_string(TEST_MANAGED_PID)), std::string::npos);
-    EXPECT_EQ(service->UnregisterManagedProcess(taskId, TEST_MANAGED_PID), ERR_OK);
-    EXPECT_EQ(service->FinishTask(taskId), ERR_OK);
+    EXPECT_EQ(service.UnregisterManagedProcess(taskId, TEST_MANAGED_PID), ERR_OK);
+    EXPECT_EQ(service.DumpActiveTasks().find(std::to_string(TEST_MANAGED_PID)), std::string::npos);
+    EXPECT_EQ(service.UnregisterManagedProcess(taskId, TEST_MANAGED_PID), ERR_OK);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
 }
 
 /**
@@ -487,18 +487,18 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_UnregisterManagedProcess_010
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_UnregisterManagedProcess_0200, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
+    auto &service = TaskManagerService::GetInstance();
     std::string taskId = MakeTaskId("unregister_0200");
-    EXPECT_EQ(service->StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
-    EXPECT_EQ(service->UnregisterManagedProcess(taskId, 0), AAFwk::INVALID_PARAMETERS_ERR);
-    EXPECT_EQ(service->UnregisterManagedProcess(taskId, -1), AAFwk::INVALID_PARAMETERS_ERR);
-    EXPECT_EQ(service->UnregisterManagedProcess("", TEST_MANAGED_PID), AAFwk::INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.UnregisterManagedProcess(taskId, 0), AAFwk::INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(service.UnregisterManagedProcess(taskId, -1), AAFwk::INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(service.UnregisterManagedProcess("", TEST_MANAGED_PID), AAFwk::INVALID_PARAMETERS_ERR);
     std::string tooLongTaskId(TASK_ID_MAX_LEN + 1, 'e');
-    EXPECT_EQ(service->UnregisterManagedProcess(tooLongTaskId, TEST_MANAGED_PID),
+    EXPECT_EQ(service.UnregisterManagedProcess(tooLongTaskId, TEST_MANAGED_PID),
         AAFwk::INVALID_PARAMETERS_ERR);
-    EXPECT_EQ(service->UnregisterManagedProcess(MakeTaskId("unregister_0200_none"), TEST_MANAGED_PID),
+    EXPECT_EQ(service.UnregisterManagedProcess(MakeTaskId("unregister_0200_none"), TEST_MANAGED_PID),
         AAFwk::ERR_TASK_NOT_FOUND);
-    EXPECT_EQ(service->FinishTask(taskId), ERR_OK);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
 }
 
 /**
@@ -508,26 +508,26 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_UnregisterManagedProcess_020
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_OnProcessDied_0100, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
+    auto &service = TaskManagerService::GetInstance();
     std::string creatorTaskId = MakeTaskId("died_0100_creator");
     std::string sameUidTaskId = MakeTaskId("died_0100_same_uid");
     std::string samePidTaskId = MakeTaskId("died_0100_same_pid");
-    EXPECT_EQ(service->StartTask(creatorTaskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.StartTask(creatorTaskId, TASK_PRIORITY_DEFAULT), ERR_OK);
     SetTestCaller(TEST_CREATOR_UID, TEST_OTHER_PID);
-    EXPECT_EQ(service->StartTask(sameUidTaskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.StartTask(sameUidTaskId, TASK_PRIORITY_DEFAULT), ERR_OK);
     SetTestCaller(TEST_OTHER_UID, TEST_CREATOR_PID);
-    EXPECT_EQ(service->StartTask(samePidTaskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.StartTask(samePidTaskId, TASK_PRIORITY_DEFAULT), ERR_OK);
 
-    service->OnProcessDied(TEST_CREATOR_PID, TEST_CREATOR_UID);
-    std::string dump = service->DumpActiveTasks();
+    service.OnProcessDied(TEST_CREATOR_PID, TEST_CREATOR_UID);
+    std::string dump = service.DumpActiveTasks();
     EXPECT_EQ(dump.find(creatorTaskId), std::string::npos);
     EXPECT_NE(dump.find(sameUidTaskId), std::string::npos);
     EXPECT_NE(dump.find(samePidTaskId), std::string::npos);
 
     SetTestCaller(TEST_CREATOR_UID, TEST_OTHER_PID);
-    EXPECT_EQ(service->FinishTask(sameUidTaskId), ERR_OK);
+    EXPECT_EQ(service.FinishTask(sameUidTaskId), ERR_OK);
     SetTestCaller(TEST_OTHER_UID, TEST_CREATOR_PID);
-    EXPECT_EQ(service->FinishTask(samePidTaskId), ERR_OK);
+    EXPECT_EQ(service.FinishTask(samePidTaskId), ERR_OK);
 }
 
 /**
@@ -537,21 +537,21 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_OnProcessDied_0100, TestSize
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_OnProcessDied_0200, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
+    auto &service = TaskManagerService::GetInstance();
     std::string taskId = MakeTaskId("died_0200");
-    EXPECT_EQ(service->StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
     AttributionRecord attribution;
     attribution.pid = TEST_MANAGED_PID;
     attribution.tool = AttributionTool::ABILITY;
-    EXPECT_EQ(service->RegisterManagedProcess(taskId, attribution), ERR_OK);
-    EXPECT_NE(service->DumpActiveTasks().find(std::to_string(TEST_MANAGED_PID) + "(ability)"),
+    EXPECT_EQ(service.RegisterManagedProcess(taskId, attribution), ERR_OK);
+    EXPECT_NE(service.DumpActiveTasks().find(std::to_string(TEST_MANAGED_PID) + "(ability)"),
         std::string::npos);
 
-    service->OnProcessDied(TEST_MANAGED_PID, TEST_OTHER_UID);
-    std::string dump = service->DumpActiveTasks();
+    service.OnProcessDied(TEST_MANAGED_PID, TEST_OTHER_UID);
+    std::string dump = service.DumpActiveTasks();
     EXPECT_EQ(dump.find(std::to_string(TEST_MANAGED_PID)), std::string::npos);
     EXPECT_NE(dump.find(taskId), std::string::npos);
-    EXPECT_EQ(service->FinishTask(taskId), ERR_OK);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
 }
 
 /**
@@ -561,15 +561,15 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_OnProcessDied_0200, TestSize
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_DumpActiveTasks_0100, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
+    auto &service = TaskManagerService::GetInstance();
     std::string taskId = MakeTaskId("dump_0100");
-    EXPECT_EQ(service->StartTask(taskId, TASK_PRIORITY_HIGH), ERR_OK);
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_HIGH), ERR_OK);
     AttributionRecord attribution;
     attribution.pid = TEST_MANAGED_PID;
     attribution.tool = AttributionTool::CLI;
-    EXPECT_EQ(service->RegisterManagedProcess(taskId, attribution), ERR_OK);
+    EXPECT_EQ(service.RegisterManagedProcess(taskId, attribution), ERR_OK);
 
-    std::string dump = service->DumpActiveTasks();
+    std::string dump = service.DumpActiveTasks();
     EXPECT_NE(dump.find("TaskManager active tasks: total="), std::string::npos);
     EXPECT_NE(dump.find("task ID #" + taskId), std::string::npos);
     EXPECT_NE(dump.find("priority [HIGH(300)]"), std::string::npos);
@@ -580,7 +580,7 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_DumpActiveTasks_0100, TestSi
     EXPECT_NE(dump.find("remain timeout ["), std::string::npos);
     EXPECT_NE(dump.find("create time ["), std::string::npos);
     EXPECT_NE(dump.find("Exemption summary: total=0"), std::string::npos);
-    EXPECT_EQ(service->FinishTask(taskId), ERR_OK);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
 }
 
 /**
@@ -590,16 +590,16 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_DumpActiveTasks_0100, TestSi
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_DumpRegisterManagedProcess_0100, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
+    auto &service = TaskManagerService::GetInstance();
     std::string taskId = MakeTaskId("dump_reg_0100");
-    EXPECT_EQ(service->StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
     std::string result;
-    EXPECT_EQ(service->DumpRegisterManagedProcess(taskId, std::to_string(TEST_MANAGED_PID), "insight",
+    EXPECT_EQ(service.DumpRegisterManagedProcess(taskId, std::to_string(TEST_MANAGED_PID), "insight",
         result), ERR_OK);
     EXPECT_EQ(result, "register ok\n");
-    EXPECT_NE(service->DumpActiveTasks().find(std::to_string(TEST_MANAGED_PID) + "(insight)"),
+    EXPECT_NE(service.DumpActiveTasks().find(std::to_string(TEST_MANAGED_PID) + "(insight)"),
         std::string::npos);
-    EXPECT_EQ(service->FinishTask(taskId), ERR_OK);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
 }
 
 /**
@@ -609,30 +609,30 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_DumpRegisterManagedProcess_0
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_DumpRegisterManagedProcess_0200, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
+    auto &service = TaskManagerService::GetInstance();
     std::string result;
-    EXPECT_EQ(service->DumpRegisterManagedProcess(MakeTaskId("dump_reg_0200"), "not_a_pid", "insight",
+    EXPECT_EQ(service.DumpRegisterManagedProcess(MakeTaskId("dump_reg_0200"), "not_a_pid", "insight",
         result), AAFwk::INVALID_PARAMETERS_ERR);
     EXPECT_NE(result.find("error: invalid pid or tool"), std::string::npos);
 
     result.clear();
-    EXPECT_EQ(service->DumpRegisterManagedProcess(MakeTaskId("dump_reg_0200"), "12x", "insight", result),
+    EXPECT_EQ(service.DumpRegisterManagedProcess(MakeTaskId("dump_reg_0200"), "12x", "insight", result),
         AAFwk::INVALID_PARAMETERS_ERR);
 
     result.clear();
-    EXPECT_EQ(service->DumpRegisterManagedProcess(MakeTaskId("dump_reg_0200"), "99999999999", "insight",
+    EXPECT_EQ(service.DumpRegisterManagedProcess(MakeTaskId("dump_reg_0200"), "99999999999", "insight",
         result), AAFwk::INVALID_PARAMETERS_ERR);
 
     result.clear();
-    EXPECT_EQ(service->DumpRegisterManagedProcess(MakeTaskId("dump_reg_0200"), "-5", "insight", result),
+    EXPECT_EQ(service.DumpRegisterManagedProcess(MakeTaskId("dump_reg_0200"), "-5", "insight", result),
         AAFwk::INVALID_PARAMETERS_ERR);
 
     result.clear();
-    EXPECT_EQ(service->DumpRegisterManagedProcess(MakeTaskId("dump_reg_0200"), "4321", "not_a_tool",
+    EXPECT_EQ(service.DumpRegisterManagedProcess(MakeTaskId("dump_reg_0200"), "4321", "not_a_tool",
         result), AAFwk::INVALID_PARAMETERS_ERR);
 
     result.clear();
-    EXPECT_EQ(service->DumpRegisterManagedProcess(MakeTaskId("dump_reg_0200_none"), "4321", "insight",
+    EXPECT_EQ(service.DumpRegisterManagedProcess(MakeTaskId("dump_reg_0200_none"), "4321", "insight",
         result), AAFwk::ERR_TASK_NOT_FOUND);
     EXPECT_NE(result.find("register failed:"), std::string::npos);
 }
@@ -644,28 +644,28 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_DumpRegisterManagedProcess_0
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_DumpUnregisterManagedProcess_0100, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
+    auto &service = TaskManagerService::GetInstance();
     std::string taskId = MakeTaskId("dump_unreg_0100");
-    EXPECT_EQ(service->StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
     std::string result;
-    EXPECT_EQ(service->DumpRegisterManagedProcess(taskId, std::to_string(TEST_MANAGED_PID), "cli",
+    EXPECT_EQ(service.DumpRegisterManagedProcess(taskId, std::to_string(TEST_MANAGED_PID), "cli",
         result), ERR_OK);
 
-    EXPECT_EQ(service->DumpUnregisterManagedProcess(taskId, std::to_string(TEST_MANAGED_PID), result),
+    EXPECT_EQ(service.DumpUnregisterManagedProcess(taskId, std::to_string(TEST_MANAGED_PID), result),
         ERR_OK);
     EXPECT_EQ(result, "unregister ok\n");
-    EXPECT_EQ(service->DumpActiveTasks().find(std::to_string(TEST_MANAGED_PID)), std::string::npos);
+    EXPECT_EQ(service.DumpActiveTasks().find(std::to_string(TEST_MANAGED_PID)), std::string::npos);
 
     result.clear();
-    EXPECT_EQ(service->DumpUnregisterManagedProcess(taskId, "not_a_pid", result),
+    EXPECT_EQ(service.DumpUnregisterManagedProcess(taskId, "not_a_pid", result),
         AAFwk::INVALID_PARAMETERS_ERR);
     EXPECT_NE(result.find("error: invalid pid"), std::string::npos);
 
     result.clear();
-    EXPECT_EQ(service->DumpUnregisterManagedProcess(MakeTaskId("dump_unreg_0100_none"),
+    EXPECT_EQ(service.DumpUnregisterManagedProcess(MakeTaskId("dump_unreg_0100_none"),
         std::to_string(TEST_MANAGED_PID), result), AAFwk::ERR_TASK_NOT_FOUND);
     EXPECT_NE(result.find("unregister failed:"), std::string::npos);
-    EXPECT_EQ(service->FinishTask(taskId), ERR_OK);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
 }
 
 class AppMgrServiceTaskTest : public testing::Test {
@@ -757,22 +757,22 @@ HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0100, TestSize.Level1
  */
 HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0200, TestSize.Level1)
 {
-    auto service = TaskManagerService::GetInstance();
+    auto &service = TaskManagerService::GetInstance();
     std::string taskId = MakeTaskId("dump_task_0200");
-    EXPECT_EQ(service->StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
 
     std::string result;
     EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "register", taskId,
         std::to_string(TEST_MANAGED_PID), "insight"}), result), ERR_OK);
     EXPECT_EQ(result, "register ok\n");
-    EXPECT_NE(service->DumpActiveTasks().find(std::to_string(TEST_MANAGED_PID) + "(insight)"),
+    EXPECT_NE(service.DumpActiveTasks().find(std::to_string(TEST_MANAGED_PID) + "(insight)"),
         std::string::npos);
 
     result.clear();
     EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "unregister", taskId,
         std::to_string(TEST_MANAGED_PID)}), result), ERR_OK);
     EXPECT_EQ(result, "unregister ok\n");
-    EXPECT_EQ(service->FinishTask(taskId), ERR_OK);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
 }
 
 /**

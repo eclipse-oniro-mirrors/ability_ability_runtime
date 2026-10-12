@@ -21,17 +21,16 @@
 #include <unordered_map>
 
 #include "ffrt.h"
-#include "singleton.h"
 
 #include "task_mgr/task_record.h"
 
 namespace OHOS {
 namespace AppExecFwk {
     
-class TaskManagerService : public DelayedSingleton<TaskManagerService> {
-    DECLARE_DELAYED_SINGLETON(TaskManagerService)
-
+class TaskManagerService {
 public:
+    static TaskManagerService &GetInstance();
+
     /**
      * @brief Caller identity captured on the binder thread, taken from the IPC framework
      *        so that it cannot be forged by parameters.
@@ -147,6 +146,9 @@ public:
         std::string &result);
 
 private:
+    TaskManagerService();
+    ~TaskManagerService();
+
     /**
      * @brief Creates the task record and starts its timeout timer; locks tasksMutex_
      *        internally.

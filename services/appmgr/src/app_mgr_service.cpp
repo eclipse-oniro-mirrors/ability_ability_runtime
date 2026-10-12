@@ -178,7 +178,7 @@ int32_t AppMgrService::StartTask(const std::string &taskId, int32_t priority)
         TAG_LOGW(AAFwkTag::APPMGR, "caller is not system app, rejected");
         return AAFwk::ERR_NOT_SYSTEM_APP;
     }
-    return TaskManagerService::GetInstance()->StartTask(taskId, priority);
+    return TaskManagerService::GetInstance().StartTask(taskId, priority);
 }
 
 int32_t AppMgrService::FinishTask(const std::string &taskId)
@@ -187,7 +187,7 @@ int32_t AppMgrService::FinishTask(const std::string &taskId)
         TAG_LOGW(AAFwkTag::APPMGR, "caller is not system app, rejected");
         return AAFwk::ERR_NOT_SYSTEM_APP;
     }
-    return TaskManagerService::GetInstance()->FinishTask(taskId);
+    return TaskManagerService::GetInstance().FinishTask(taskId);
 }
 
 AppMgrServiceState AppMgrService::QueryServiceState()
@@ -1068,7 +1068,7 @@ int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string
                 result.append("usage: --task register <taskId> <pid> <insight|cli|a2a|ability>\n");
                 return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
             }
-            auto ret = TaskManagerService::GetInstance()->DumpRegisterManagedProcess(
+            auto ret = TaskManagerService::GetInstance().DumpRegisterManagedProcess(
                 Str16ToStr8(args[INDEX_TWO]), Str16ToStr8(args[INDEX_THREE]),
                 Str16ToStr8(args[INDEX_FOUR]), result);
             return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
@@ -1078,14 +1078,14 @@ int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string
                 result.append("usage: --task unregister <taskId> <pid>\n");
                 return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
             }
-            auto ret = TaskManagerService::GetInstance()->DumpUnregisterManagedProcess(
+            auto ret = TaskManagerService::GetInstance().DumpUnregisterManagedProcess(
                 Str16ToStr8(args[INDEX_TWO]), Str16ToStr8(args[INDEX_THREE]), result);
             return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
         }
         result.append("error: unknown task subcommand.\n");
         return DumpErrorCode::ERR_INVALID_CMD_ERROR;
     }
-    result.append(TaskManagerService::GetInstance()->DumpActiveTasks());
+    result.append(TaskManagerService::GetInstance().DumpActiveTasks());
     return ERR_OK;
 }
 

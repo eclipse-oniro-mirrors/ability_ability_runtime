@@ -38,7 +38,7 @@ constexpr int32_t TASK_DEFAULT_TIMEOUT_SECONDS = 600;
 constexpr const char *TASK_TIMEOUT_PARAM = "persist.sys.appms.taskmanager.task_timeout";
 
 // Safety ceiling on the number of simultaneously active tasks (memory and timer resources).
-constexpr size_t TASK_MAX_ACTIVE_TASKS = 1024;
+constexpr size_t TASK_MAX_ACTIVE_TASKS = 10;
 
 // How a task reached its end; logged with a unified tag and dumped for DFX.
 enum class TaskFinishReason : int32_t {
