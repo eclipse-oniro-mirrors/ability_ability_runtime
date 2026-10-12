@@ -26,6 +26,8 @@
 #include "nativetoken_kit.h"
 #include "token_setproc.h"
 
+// Workaround to access private members for testing
+// NOLINTNEXTLINE(g.nam.03-cpp): Redefining C++ keyword 'private' for unit testing
 #define private public
 #include "task_mgr/task_manager_service.h"
 #include "app_mgr_service.h"
@@ -703,7 +705,7 @@ void AppMgrServiceTaskTest::TearDown(void)
  */
 HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_StartFinishTask_0100, TestSize.Level1)
 {
-    std::string taskId = MakeTaskId("ams_0100");
+    std::string taskId = MakeTaskId("service_0100");
     EXPECT_EQ(appMgrService_->StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
     EXPECT_NE(TaskManagerService::GetInstance()->DumpActiveTasks().find(taskId), std::string::npos);
     EXPECT_EQ(appMgrService_->StartTask(taskId, TASK_PRIORITY_DEFAULT), AAFwk::ERR_TASK_ALREADY_EXISTS);
@@ -720,7 +722,7 @@ HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_StartFinishTask_0100, TestSize
 HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_StartFinishTask_0200, TestSize.Level1)
 {
     SetSelfTokenID(0);
-    std::string taskId = MakeTaskId("ams_0200");
+    std::string taskId = MakeTaskId("service_0200");
     EXPECT_EQ(appMgrService_->StartTask(taskId, TASK_PRIORITY_DEFAULT), AAFwk::ERR_NOT_SYSTEM_APP);
     EXPECT_EQ(appMgrService_->FinishTask(taskId), AAFwk::ERR_NOT_SYSTEM_APP);
     EXPECT_EQ(TaskManagerService::GetInstance()->DumpActiveTasks().find(taskId), std::string::npos);
@@ -752,7 +754,7 @@ HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0100, TestSize.Level1
 HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0200, TestSize.Level1)
 {
     auto service = TaskManagerService::GetInstance();
-    std::string taskId = MakeTaskId("ams_dump_0200");
+    std::string taskId = MakeTaskId("dump_task_0200");
     EXPECT_EQ(service->StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
 
     std::string result;
