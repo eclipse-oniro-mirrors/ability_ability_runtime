@@ -48,6 +48,10 @@ constexpr int32_t INDEX_ONE = 1;
 constexpr int32_t MAX_KILL_PROCESS_PID_COUNT = 100;
 constexpr int32_t MAX_UPDATE_CONFIG_SIZE = 100;
 constexpr int32_t MAX_WANT_LIST_SIZE = 4;
+constexpr const char* WINDOW_PARAMS_SUGGESTION_SOURCE = "ohos.multiwindow.suggestionSource";
+constexpr const char* WINDOW_PARAMS_APP_LABEL = "ohos.multiwindow.appLabel";
+constexpr const char* WINDOW_PARAMS_SOURCE_BUNDLENAME = "ohos.multiwindow.sourceBundleName";
+constexpr const char* WINDOW_PARAMS_SOURCE_ABILITYNAME = "ohos.multiwindow.sourceAbilityName";
 } // namespace
 AbilityManagerStub::AbilityManagerStub()
 {}
@@ -71,6 +75,14 @@ void AbilityManagerStub::SanitizeWantParams(Want &want)
             want.SetUri(want.GetUriString());
             TAG_LOGI(AAFwkTag::ABILITYMGR, "third-party want uri pass-through blocked");
         }
+    }
+
+    if (!PermissionVerification::GetInstance()->JudgeCallerIsAllowedToUseSystemAPI()) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "third-party want remove multiwindow params");
+        want.RemoveParam(WINDOW_PARAMS_SUGGESTION_SOURCE);
+        want.RemoveParam(WINDOW_PARAMS_APP_LABEL);
+        want.RemoveParam(WINDOW_PARAMS_SOURCE_BUNDLENAME);
+        want.RemoveParam(WINDOW_PARAMS_SOURCE_ABILITYNAME);
     }
 }
 
