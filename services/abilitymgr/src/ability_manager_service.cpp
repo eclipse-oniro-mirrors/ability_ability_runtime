@@ -10776,8 +10776,10 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
     int32_t oriValidUserId = GetValidUserId(accountId);
     eventInfo->userId = oriValidUserId;
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), oriValidUserId),
-        RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+    if (!CheckIfOperateRemote(want)) {
+        CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), oriValidUserId),
+            RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+    }
 #endif
     AbilityUtil::RemoveWantKey(const_cast<Want &>(want));
     int32_t appIndex = -1;
