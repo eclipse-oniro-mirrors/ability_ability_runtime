@@ -1056,9 +1056,11 @@ int AppMgrService::ShowHelp(const std::vector<std::u16string>& args, std::string
 int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string& result)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");
-    if (!HasDumpPermission()) {
-        TAG_LOGE(AAFwkTag::APPMGR, "dump permission denied");
-        result.append("error: dump permission denied.\n");
+    auto isHidumperServiceCall = (IPCSkeleton::GetCallingUid() == HIDUMPER_SERVICE_UID);
+    if (!isHidumperServiceCall) {
+        result.append(MSG_DUMP_FAIL, strlen(MSG_DUMP_FAIL))
+            .append(MSG_DUMP_FAIL_REASON_PERMISSION_DENY, strlen(MSG_DUMP_FAIL_REASON_PERMISSION_DENY));
+        TAG_LOGE(AAFwkTag::APPMGR, "permission deny");
         return DumpErrorCode::ERR_PERMISSION_DENY_ERROR;
     }
     if (args.size() > SIZE_ONE) {

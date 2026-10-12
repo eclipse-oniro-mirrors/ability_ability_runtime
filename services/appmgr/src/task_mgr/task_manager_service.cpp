@@ -129,8 +129,7 @@ int32_t TaskManagerService::FinishTask(const std::string &taskId)
         TAG_LOGW(AAFwkTag::APPMGR, "invalid param, taskId size: %{public}zu", taskId.size());
         return INVALID_PARAMETERS_ERR;
     }
-    TaskCallerInfo caller = GetCallerInfo();
-    return FinishTaskInner(taskId, TaskFinishReason::FINISHED_BY_CALLER, caller.uid,
+    return FinishTaskInner(taskId, TaskFinishReason::FINISHED_BY_CALLER, IPCSkeleton::GetCallingUid(),
         SKIP_DEADLINE_CHECK);
 }
 

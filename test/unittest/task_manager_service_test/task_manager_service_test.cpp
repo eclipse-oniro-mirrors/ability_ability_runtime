@@ -48,6 +48,7 @@ constexpr int32_t TEST_OTHER_UID = 20000002;
 constexpr pid_t TEST_CREATOR_PID = 100;
 constexpr pid_t TEST_OTHER_PID = 101;
 constexpr pid_t TEST_MANAGED_PID = 4321;
+constexpr int32_t TEST_HIDUMPER_SERVICE_UID = 1212;
 constexpr int64_t TEST_SLEEP_MILLIS = 20;
 // same bit the access token kit checks in IsSystemAppByFullTokenID
 constexpr uint64_t TEST_SYSTEM_APP_FLAG = (1ULL << 32);
@@ -739,6 +740,7 @@ HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_StartFinishTask_0200, TestSize
  */
 HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0100, TestSize.Level1)
 {
+    IPCSkeleton::SetCallingUid(TEST_HIDUMPER_SERVICE_UID);
     std::string result;
     EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task"}), result), ERR_OK);
     EXPECT_NE(result.find("TaskManager active tasks: total="), std::string::npos);
@@ -760,6 +762,7 @@ HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0200, TestSize.Level1
     std::string taskId = MakeTaskId("dump_task_0200");
     EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
 
+    IPCSkeleton::SetCallingUid(TEST_HIDUMPER_SERVICE_UID);
     std::string result;
     EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "register", taskId,
         std::to_string(TEST_MANAGED_PID), "insight"}), result), ERR_OK);
@@ -771,6 +774,7 @@ HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0200, TestSize.Level1
     EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "unregister", taskId,
         std::to_string(TEST_MANAGED_PID)}), result), ERR_OK);
     EXPECT_EQ(result, "unregister ok\n");
+    SetTestCaller(TEST_CREATOR_UID, TEST_CREATOR_PID);
     EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
 }
 
@@ -781,6 +785,7 @@ HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0200, TestSize.Level1
  */
 HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0300, TestSize.Level1)
 {
+    IPCSkeleton::SetCallingUid(TEST_HIDUMPER_SERVICE_UID);
     std::string result;
     EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "register", "x"}), result),
         DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR);
@@ -801,17 +806,15 @@ HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0300, TestSize.Level1
 
 /**
  * @tc.number: AppMgrServiceTask_DumpTask_0400
- * @tc.name: dump task without dump permission
- * @tc.desc: a caller without the dump permission is rejected by the --task entry.
+ * @tc.name: dump task from a non-hidumper caller
+ * @tc.desc: a caller that is not the hidumper service is rejected by the --task entry.
  */
 HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0400, TestSize.Level1)
 {
-    IPCSkeleton::SetCallingTokenID(0);
     std::string result;
     EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task"}), result),
         DumpErrorCode::ERR_PERMISSION_DENY_ERROR);
-    EXPECT_NE(result.find("error: dump permission denied"), std::string::npos);
-    SetNativeTokenForTaskTest();
+    EXPECT_NE(result.find("permission deny"), std::string::npos);
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS
