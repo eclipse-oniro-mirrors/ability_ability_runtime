@@ -46,7 +46,6 @@ ohos_fuzztest("AbilitymgrPreloadUiextStateObserverFuzzTest") {
     "${ability_runtime_innerkits_path}/app_manager/src/appmgr/process_data.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/extension_record/extension_record.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/ui_extension/preload_uiext_state_observer.cpp",
-    "${bundlefwk_inner_api_path}/appexecfwk_base/src/application_info.cpp",
     "abilitymgrpreloaduiextstateobserver_fuzzer.cpp",
   ]
 
