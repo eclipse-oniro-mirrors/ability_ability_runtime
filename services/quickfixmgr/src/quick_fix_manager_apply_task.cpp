@@ -68,11 +68,21 @@ public:
     void OnPatchDeployed(const std::shared_ptr<AppExecFwk::QuickFixResult> &result) override
     {
         TAG_LOGD(AAFwkTag::QUICKFIX, "called");
+        if (result == nullptr) {
+            TAG_LOGE(AAFwkTag::QUICKFIX, "null result");
+            if (applyTask_ != nullptr) {
+                applyTask_->RemoveTimeoutTask();
+                applyTask_->NotifyApplyStatus(QUICK_FIX_DEPLOY_FAILED);
+                applyTask_->RemoveSelf();
+            }
+            return;
+        }
         if (applyTask_ == nullptr) {
             TAG_LOGE(AAFwkTag::QUICKFIX, "null Apply task, result:%{public}s", result->ToString().c_str());
             return;
         }
 
+        applyTask_->RemoveTimeoutTask();
         int32_t ret = QUICK_FIX_OK;
         do {
             if (result->GetResCode() != 0) {
@@ -95,17 +105,26 @@ public:
             applyTask_->NotifyApplyStatus(ret);
             applyTask_->RemoveSelf();
         }
-        applyTask_->RemoveTimeoutTask();
     }
 
     void OnPatchSwitched(const std::shared_ptr<AppExecFwk::QuickFixResult> &result) override
     {
         TAG_LOGD(AAFwkTag::QUICKFIX, "called");
+        if (result == nullptr) {
+            TAG_LOGE(AAFwkTag::QUICKFIX, "null result");
+            if (applyTask_ != nullptr) {
+                applyTask_->RemoveTimeoutTask();
+                applyTask_->NotifyApplyStatus(QUICK_FIX_SWICH_FAILED);
+                applyTask_->RemoveSelf();
+            }
+            return;
+        }
         if (applyTask_ == nullptr) {
             TAG_LOGE(AAFwkTag::QUICKFIX, "null apply task, result: %{public}s", result->ToString().c_str());
             return;
         }
 
+        applyTask_->RemoveTimeoutTask();
         int32_t ret = QUICK_FIX_OK;
         do {
             if (result->GetResCode() != 0) {
@@ -131,17 +150,26 @@ public:
             applyTask_->NotifyApplyStatus(ret);
             applyTask_->RemoveSelf();
         }
-        applyTask_->RemoveTimeoutTask();
     }
 
     void OnPatchDeleted(const std::shared_ptr<AppExecFwk::QuickFixResult> &result) override
     {
         TAG_LOGD(AAFwkTag::QUICKFIX, "called");
+        if (result == nullptr) {
+            TAG_LOGE(AAFwkTag::QUICKFIX, "null result");
+            if (applyTask_ != nullptr) {
+                applyTask_->RemoveTimeoutTask();
+                applyTask_->NotifyApplyStatus(QUICK_FIX_DELETE_FAILED);
+                applyTask_->RemoveSelf();
+            }
+            return;
+        }
         if (applyTask_ == nullptr) {
             TAG_LOGE(AAFwkTag::QUICKFIX, "null apply task, result: %{public}s", result->ToString().c_str());
             return;
         }
 
+        applyTask_->RemoveTimeoutTask();
         int32_t ret = QUICK_FIX_OK;
         do {
             if (result->GetResCode() != 0) {
@@ -167,7 +195,6 @@ public:
             applyTask_->NotifyApplyStatus(ret);
             applyTask_->RemoveSelf();
         }
-        applyTask_->RemoveTimeoutTask();
     }
 
 private:
@@ -240,6 +267,11 @@ public:
     void OnLoadPatchDone(int32_t resultCode, [[maybe_unused]] int32_t recordId) override
     {
         TAG_LOGD(AAFwkTag::QUICKFIX, "called");
+        if (applyTask_ == nullptr) {
+            TAG_LOGE(AAFwkTag::QUICKFIX, "null apply task");
+            return;
+        }
+        applyTask_->RemoveTimeoutTask();
         if (resultCode != 0) {
             TAG_LOGE(AAFwkTag::QUICKFIX, "notify patch failed: %{public}d", resultCode);
             applyTask_->NotifyApplyStatus(QUICK_FIX_NOTIFY_LOAD_PATCH_FAILED);
@@ -253,6 +285,11 @@ public:
     void OnUnloadPatchDone(int32_t resultCode, [[maybe_unused]] int32_t recordId) override
     {
         TAG_LOGD(AAFwkTag::QUICKFIX, "called");
+        if (applyTask_ == nullptr) {
+            TAG_LOGE(AAFwkTag::QUICKFIX, "null apply task");
+            return;
+        }
+        applyTask_->RemoveTimeoutTask();
         if (resultCode != 0) {
             TAG_LOGE(AAFwkTag::QUICKFIX, "notify patch failed: %{public}d", resultCode);
             applyTask_->NotifyApplyStatus(QUICK_FIX_NOTIFY_UNLOAD_PATCH_FAILED);
@@ -274,6 +311,11 @@ public:
     void OnReloadPageDone(int32_t resultCode, [[maybe_unused]] int32_t recordId) override
     {
         TAG_LOGD(AAFwkTag::QUICKFIX, "called");
+        if (applyTask_ == nullptr) {
+            TAG_LOGE(AAFwkTag::QUICKFIX, "null apply task");
+            return;
+        }
+        applyTask_->RemoveTimeoutTask();
         if (resultCode != 0) {
             TAG_LOGE(AAFwkTag::QUICKFIX, "notify app load patch failed: %{public}d", resultCode);
             applyTask_->NotifyApplyStatus(QUICK_FIX_NOTIFY_RELOAD_PAGE_FAILED);
@@ -357,7 +399,11 @@ void QuickFixManagerApplyTask::HandlePatchDeployed()
         }
     }
     if (isRunning_ && isSoContained_) {
-        return RegAppStateObserver();
+        RegAppStateObserver();
+        if (appStateCallback_ != nullptr) {
+            PostTimeOutTask();
+        }
+        return;
     } else if (isRunning_ && !isSoContained_) {
         ApplicationQuickFixInfo quickFixInfo;
         auto service = quickFixMgrService_.promote();
@@ -486,6 +532,9 @@ void QuickFixManagerApplyTask::PostSwitchQuickFixTask()
     };
     if (eventHandler_ == nullptr || !eventHandler_->PostTask(switchTask, "QuickFixManager:switchTask")) {
         TAG_LOGE(AAFwkTag::QUICKFIX, "Post switch task failed");
+        NotifyApplyStatus(QUICK_FIX_SWICH_FAILED);
+        RemoveSelf();
+        return;
     }
     PostTimeOutTask();
 }
@@ -525,12 +574,20 @@ void QuickFixManagerApplyTask::PostDeleteQuickFixTask()
     };
     if (eventHandler_ == nullptr || !eventHandler_->PostTask(deleteTask, "QuickFixManager:deleteTask")) {
         TAG_LOGE(AAFwkTag::QUICKFIX, "Post delete task failed");
+        NotifyApplyStatus(QUICK_FIX_DELETE_FAILED);
+        RemoveSelf();
+        return;
     }
     PostTimeOutTask();
 }
 
 void QuickFixManagerApplyTask::PostTimeOutTask()
 {
+    if (eventHandler_ == nullptr) {
+        TAG_LOGE(AAFwkTag::QUICKFIX, "null event handler");
+        return;
+    }
+    RemoveTimeoutTask();
     std::weak_ptr<QuickFixManagerApplyTask> thisWeakPtr(weak_from_this());
     auto timeoutTask = [thisWeakPtr]() {
         auto applyTask = thisWeakPtr.lock();
@@ -542,8 +599,8 @@ void QuickFixManagerApplyTask::PostTimeOutTask()
         applyTask->NotifyApplyStatus(QUICK_FIX_PROCESS_TIMEOUT);
         applyTask->RemoveSelf();
     };
-    if (eventHandler_ == nullptr || !eventHandler_->PostTask(timeoutTask, TIMEOUT_TASK_NAME, TIMEOUT_TASK_DELAY_TIME)) {
-        TAG_LOGE(AAFwkTag::QUICKFIX, "Post delete task failed");
+    if (!eventHandler_->PostTask(timeoutTask, TIMEOUT_TASK_NAME, TIMEOUT_TASK_DELAY_TIME)) {
+        TAG_LOGE(AAFwkTag::QUICKFIX, "Post timeout task failed");
     }
 }
 
@@ -710,7 +767,10 @@ void QuickFixManagerApplyTask::PostNotifyLoadRepairPatchTask()
         }
     };
     if (eventHandler_ == nullptr || !eventHandler_->PostTask(loadPatchTask, "QuickFixManager:loadPatchTask")) {
-        TAG_LOGE(AAFwkTag::QUICKFIX, "post delete failed");
+        TAG_LOGE(AAFwkTag::QUICKFIX, "post load patch task failed");
+        NotifyApplyStatus(QUICK_FIX_NOTIFY_LOAD_PATCH_FAILED);
+        RemoveSelf();
+        return;
     }
     PostTimeOutTask();
 }
@@ -747,8 +807,12 @@ void QuickFixManagerApplyTask::PostNotifyUnloadRepairPatchTask()
             applyTask->RemoveSelf();
         }
     };
-    if (eventHandler_ == nullptr || !eventHandler_->PostTask(unloadPatchTask, "QuickFixManager:unloadPatchTask")) {
-        TAG_LOGE(AAFwkTag::QUICKFIX, "Post delete task failed");
+    if (eventHandler_ == nullptr ||
+        !eventHandler_->PostTask(unloadPatchTask, "QuickFixManager:unloadPatchTask")) {
+        TAG_LOGE(AAFwkTag::QUICKFIX, "post unload patch task failed");
+        NotifyApplyStatus(QUICK_FIX_NOTIFY_UNLOAD_PATCH_FAILED);
+        RemoveSelf();
+        return;
     }
     PostTimeOutTask();
 }
@@ -785,8 +849,12 @@ void QuickFixManagerApplyTask::PostNotifyHotReloadPageTask()
             applyTask->RemoveSelf();
         }
     };
-    if (eventHandler_ == nullptr || !eventHandler_->PostTask(reloadPageTask, "QuickFixManager:reloadPageTask")) {
-        TAG_LOGE(AAFwkTag::QUICKFIX, "Post delete task failed");
+    if (eventHandler_ == nullptr ||
+        !eventHandler_->PostTask(reloadPageTask, "QuickFixManager:reloadPageTask")) {
+        TAG_LOGE(AAFwkTag::QUICKFIX, "post reload page task failed");
+        NotifyApplyStatus(QUICK_FIX_NOTIFY_RELOAD_PAGE_FAILED);
+        RemoveSelf();
+        return;
     }
     PostTimeOutTask();
 }
@@ -804,7 +872,12 @@ void QuickFixManagerApplyTask::RegAppStateObserver()
     std::vector<std::string> bundleNameList;
     bundleNameList.push_back(bundleName_);
     auto callback = sptr<QuickFixMgrAppStateObserver>::MakeSptr(shared_from_this());
-    // The validity of callback will be checked below.
+    if (callback == nullptr) {
+        TAG_LOGE(AAFwkTag::QUICKFIX, "null callback");
+        NotifyApplyStatus(QUICK_FIX_REGISTER_OBSERVER_FAILED);
+        RemoveSelf();
+        return;
+    }
     auto ret = appMgr_->RegisterApplicationStateObserver(callback, bundleNameList);
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::QUICKFIX, "register app state observer failed");
@@ -869,6 +942,9 @@ void QuickFixManagerApplyTask::PostRevokeQuickFixTask()
     };
     if (eventHandler_ == nullptr || !eventHandler_->PostTask(revokeTask, "QuickFixManager:revokeTask")) {
         TAG_LOGE(AAFwkTag::QUICKFIX, "post revoke failed");
+        NotifyApplyStatus(QUICK_FIX_DEPLOY_FAILED);
+        RemoveSelf();
+        return;
     }
     PostTimeOutTask();
 }
@@ -879,7 +955,9 @@ void QuickFixManagerApplyTask::HandleRevokeQuickFixAppRunning()
     // so contained, reg app died
     if (isSoContained_) {
         RegAppStateObserver();
-        RemoveTimeoutTask();
+        if (appStateCallback_ != nullptr) {
+            PostTimeOutTask();
+        }
         return;
     }
 
@@ -912,14 +990,21 @@ void QuickFixManagerApplyTask::PostRevokeQuickFixNotifyUnloadPatchTask()
 
     // app process run and wait callback
     auto callback = sptr<RevokeQuickFixNotifyCallback>::MakeSptr(shared_from_this());
-    // The validity of callback will be checked below.
+    if (callback == nullptr) {
+        TAG_LOGE(AAFwkTag::QUICKFIX, "null callback");
+        NotifyApplyStatus(QUICK_FIX_NOTIFY_UNLOAD_PATCH_FAILED);
+        RemoveSelf();
+        return;
+    }
     auto ret = appMgr_->NotifyUnLoadRepairPatch(bundleName_, callback);
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::QUICKFIX, "Notify app unload patch failed");
         NotifyApplyStatus(QUICK_FIX_NOTIFY_UNLOAD_PATCH_FAILED);
         RemoveSelf();
+        return;
     }
 
+    PostTimeOutTask();
     TAG_LOGD(AAFwkTag::QUICKFIX, "Function end");
 }
 
@@ -941,24 +1026,27 @@ void QuickFixManagerApplyTask::PostRevokeQuickFixDeleteTask()
         RemoveSelf();
         return;
     }
+
+    PostTimeOutTask();
 }
 
 void QuickFixManagerApplyTask::PostRevokeQuickFixProcessDiedTask()
 {
     TAG_LOGD(AAFwkTag::QUICKFIX, "called");
     // app process died
-    HandleRevokeQuickFixAppStop();
-    PostTimeOutTask();
+    if (HandleRevokeQuickFixAppStop()) {
+        PostTimeOutTask();
+    }
 }
 
-void QuickFixManagerApplyTask::HandleRevokeQuickFixAppStop()
+bool QuickFixManagerApplyTask::HandleRevokeQuickFixAppStop()
 {
     auto callback = sptr<RevokeQuickFixTaskCallback>::MakeSptr(shared_from_this());
     if (callback == nullptr || bundleQfMgr_ == nullptr) {
         TAG_LOGE(AAFwkTag::QUICKFIX, "Param invalid");
         NotifyApplyStatus(QUICK_FIX_BUNDLEMGR_INVALID);
         RemoveSelf();
-        return;
+        return false;
     }
 
     auto ret = bundleQfMgr_->SwitchQuickFix(bundleName_, false, callback);
@@ -966,8 +1054,9 @@ void QuickFixManagerApplyTask::HandleRevokeQuickFixAppStop()
         TAG_LOGE(AAFwkTag::QUICKFIX, "failed: %{public}d", ret);
         NotifyApplyStatus(QUICK_FIX_SWICH_FAILED);
         RemoveSelf();
-        return;
+        return false;
     }
+    return true;
 }
 
 void QuickFixManagerApplyTask::HandleRevokePatchDeleted()

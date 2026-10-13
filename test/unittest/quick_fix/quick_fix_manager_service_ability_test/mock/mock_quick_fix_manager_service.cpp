@@ -53,6 +53,13 @@ sptr<QuickFixManagerService> QuickFixManagerService::GetInstance()
     return instance_;
 }
 
+void QuickFixManagerService::ResetInstance()
+{
+    if (instance_ != nullptr) {
+        instance_ = nullptr;
+    }
+}
+
 bool QuickFixManagerService::Init()
 {
     return g_mockInitState;
