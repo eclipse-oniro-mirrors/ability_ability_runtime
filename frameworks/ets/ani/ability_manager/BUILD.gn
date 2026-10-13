@@ -79,6 +79,8 @@ ohos_shared_library("ability_manager_ani_kit") {
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
     "napi:ace_napi",
+    "node:node_header_notice",
+    "libuv:uv",
     "runtime_core:ani",
     "samgr:samgr_proxy",
   ]

@@ -78,6 +78,8 @@ ohos_shared_library("action_extension_ani") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "node:node_header_notice",
+    "libuv:uv",
     "runtime_core:ani",
   ]
 

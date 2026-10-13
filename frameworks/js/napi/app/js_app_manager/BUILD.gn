@@ -60,6 +60,8 @@ ohos_shared_library("appmanager") {
     "hilog:libhilog",
     "ipc:ipc_core",
     "napi:ace_napi",
+    "node:node_header_notice",
+    "libuv:uv",
     "samgr:samgr_proxy",
     "node:node_header_notice",
   ]

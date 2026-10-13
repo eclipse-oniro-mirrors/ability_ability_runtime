@@ -45,6 +45,8 @@ ohos_shared_library("js_agent_manager_utils") {
     "c_utils:utils",
     "hilog:libhilog",
     "napi:ace_napi",
+    "node:node_header_notice",
+    "libuv:uv",
   ]
 
   subsystem_name = "ability"
@@ -114,6 +116,8 @@ ohos_shared_library("agentmanager_napi") {
     "ipc:ipc_napi",
     "json:nlohmann_json_static",
     "napi:ace_napi",
+    "node:node_header_notice",
+    "libuv:uv",
     "samgr:samgr_proxy",
   ]
   defines = []
