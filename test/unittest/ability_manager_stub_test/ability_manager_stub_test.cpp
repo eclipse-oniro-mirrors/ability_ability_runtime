@@ -6170,7 +6170,78 @@ HWTEST_F(AbilityManagerStubTest, SanitizeWantParams_SystemApp_KeepsFlag, TestSiz
     SetSelfTokenID(originalToken);
 }
 
-HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_SendWantSenderInner_Sanitize_0100, TestSize.Level1)
+/*
+ * Feature: AbilityManagerService
+ * Function: SanitizeWantParams
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub SanitizeWantParams
+ * EnvConditions: third-party caller sets window params
+ * CaseDescription: Verify all window params are stripped for non-system-API caller
+ */
+HWTEST_F(AbilityManagerStubTest, SanitizeWantParams_ThirdParty_StripsWindowParams, TestSize.Level1)
+{
+    uint64_t originalToken = GetSelfTokenID();
+    SetSelfTokenID(0);
+
+    Want want;
+    want.SetParam("ohos.multiwindow.suggestionSource", 1);
+    want.SetParam("ohos.multiwindow.appLabel", std::string("label"));
+    want.SetParam("ohos.multiwindow.sourceBundleName", std::string("com.test.bundle"));
+    want.SetParam("ohos.multiwindow.sourceAbilityName", std::string("TestAbility"));
+
+    stub_->SanitizeWantParamsForTest(want);
+
+    EXPECT_FALSE(want.HasParameter("ohos.multiwindow.suggestionSource"));
+    EXPECT_FALSE(want.HasParameter("ohos.multiwindow.appLabel"));
+    EXPECT_FALSE(want.HasParameter("ohos.multiwindow.sourceBundleName"));
+    EXPECT_FALSE(want.HasParameter("ohos.multiwindow.sourceAbilityName"));
+
+    SetSelfTokenID(originalToken);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: SanitizeWantParams
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub SanitizeWantParams
+ * EnvConditions: SA caller sets window params
+ * CaseDescription: Verify SA caller retains all window params
+ */
+HWTEST_F(AbilityManagerStubTest, SanitizeWantParams_SA_KeepsWindowParams, TestSize.Level1)
+{
+    uint64_t originalToken = GetSelfTokenID();
+    const char *perms[] = { "ohos.permission.INTERACT_ACROSS_LOCAL_ACCOUNTS" };
+    NativeTokenInfoParams infoInstance = {
+        .dcapsNum = 0,
+        .permsNum = 1,
+        .aclsNum = 0,
+        .dcaps = nullptr,
+        .perms = perms,
+        .acls = nullptr,
+        .aplStr = "system_core",
+    };
+    infoInstance.processName = "ability_manager_stub_test";
+    uint64_t nativeToken = GetAccessTokenId(&infoInstance);
+    SetSelfTokenID(nativeToken);
+    Security::AccessToken::AccessTokenKit::ReloadNativeTokenInfo();
+
+    Want want;
+    want.SetParam("ohos.multiwindow.suggestionSource", 1);
+    want.SetParam("ohos.multiwindow.appLabel", std::string("label"));
+    want.SetParam("ohos.multiwindow.sourceBundleName", std::string("com.test.bundle"));
+    want.SetParam("ohos.multiwindow.sourceAbilityName", std::string("TestAbility"));
+
+    stub_->SanitizeWantParamsForTest(want);
+
+    EXPECT_TRUE(want.HasParameter("ohos.multiwindow.suggestionSource"));
+    EXPECT_TRUE(want.HasParameter("ohos.multiwindow.appLabel"));
+    EXPECT_TRUE(want.HasParameter("ohos.multiwindow.sourceBundleName"));
+    EXPECT_TRUE(want.HasParameter("ohos.multiwindow.sourceAbilityName"));
+
+    SetSelfTokenID(originalToken);
+}
+
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_SendWantSenderInner_StubSanitize_0100, TestSize.Level1)
 {
     auto stub = sptr<AbilityManagerStubImplMock>(new CapturingStub());
     auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
@@ -6187,7 +6258,7 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_SendWantSenderInner_Sanitize
     ExpectSystemFieldsSanitized(capture->capturedOpts);
 }
 
-HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_SendLocalWantSenderInner_Sanitize_0100, TestSize.Level1)
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_SendLocalWantSenderInner_StubSanitize_0200, TestSize.Level1)
 {
     auto stub = sptr<AbilityManagerStubImplMock>(new CapturingStub());
     auto capture = static_cast<CapturingStub*>(stub.GetRefPtr());
