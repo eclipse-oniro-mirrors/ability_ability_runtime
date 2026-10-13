@@ -255,7 +255,7 @@ public:
      *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode KillApplication(const std::string &bundleName, bool clearPageStack = false,
-        int32_t appIndex = -1, const std::string &reason = "KillApplication");
+        int32_t appIndex = -1, const std::string &reason = "KillApplication", int32_t userId = -1);
 
     /**
      * Force kill the application. Restricted: the server only accepts calls from

@@ -1201,7 +1201,7 @@ public:
      *         KILL_PROCESS_KEEP_ALIVE for persistent apps; KILL_PROCESS_FAILED on failure.
      */
     ErrCode KillProcess(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = -1,
-        const std::string& reason = "Abilityms::KillProcess");
+        const std::string& reason = "Abilityms::KillProcess", int32_t userId = -1);
 
     #ifdef ABILITY_COMMAND_FOR_TEST
     /**

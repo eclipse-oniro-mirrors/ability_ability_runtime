@@ -305,11 +305,11 @@ void AppScheduler::RecordAppExitSignalReason(int32_t pid, int32_t uid, int32_t s
 }
 
 int AppScheduler::KillApplication(const std::string &bundleName, bool clearPageStack, int32_t appIndex,
-    const std::string &reason)
+    const std::string &reason, int32_t userId)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "call");
     CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
-    int ret = (int)appMgrClient_->KillApplication(bundleName, clearPageStack, appIndex, reason);
+    int ret = (int)appMgrClient_->KillApplication(bundleName, clearPageStack, appIndex, reason, userId);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "failed kill app");
         return INNER_ERR;

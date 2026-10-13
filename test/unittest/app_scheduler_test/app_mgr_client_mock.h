@@ -39,8 +39,8 @@ public:
         const std::string&, bool));
     MOCK_METHOD0(UpdateApplicationInfoInstalledDone, AppMgrResultCode());
     MOCK_METHOD1(VerifyKillProcessPermission, int32_t(const std::string &bundleName));
-    MOCK_METHOD4(KillApplication, AppMgrResultCode(const std::string&, const bool clearPageStack, int32_t appIndex,
-        const std::string&));
+    MOCK_METHOD5(KillApplication, AppMgrResultCode(const std::string&, const bool clearPageStack, int32_t appIndex,
+        const std::string&, int32_t userId));
     MOCK_METHOD3(KillApplicationByUid,
         AppMgrResultCode(const std::string &bundleName, const int uid, const std::string&));
     MOCK_METHOD3(ClearUpApplicationData, AppMgrResultCode(const std::string&, int32_t appCloneIndex, int32_t userId));

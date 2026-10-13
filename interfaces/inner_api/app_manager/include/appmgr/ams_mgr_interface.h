@@ -188,7 +188,7 @@ public:
      * @return ERR_OK, return back success, others fail.
      */
     virtual int KillApplication(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = -1,
-        const std::string &reason = "KillApplication") = 0;
+        const std::string &reason = "KillApplication", int32_t userId = -1) = 0;
 
     /**
      * ForceKillApplication, call ForceKillApplication() through proxy object, force kill the application.

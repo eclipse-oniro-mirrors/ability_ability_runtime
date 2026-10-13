@@ -152,7 +152,7 @@ int MockAbilityManagerService::StopServiceAbility(const Want& want, int32_t user
 }
 
 int MockAbilityManagerService::KillProcess(const std::string& bundleName, bool clearPageStack, int32_t appIndex,
-    const std::string& reason)
+    const std::string& reason, int32_t userId)
 {
     return 0;
 }

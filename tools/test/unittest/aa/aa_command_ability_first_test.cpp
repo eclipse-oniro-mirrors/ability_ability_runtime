@@ -134,7 +134,7 @@ HWTEST_F(AaCommandFirstTest, Aa_Command_1003, Function | MediumTest | Level1)
     auto managerClientPtr = AbilityManagerClient::GetInstance();
     auto mockAbilityManagerStub = sptr<MockAbilityManagerStub>(new MockAbilityManagerStub());
     ASSERT_NE(mockAbilityManagerStub, nullptr);
-    EXPECT_CALL(*mockAbilityManagerStub, KillProcess(testing::_, testing::_, testing::_, testing::_))
+    EXPECT_CALL(*mockAbilityManagerStub, KillProcess(testing::_, testing::_, testing::_, testing::_, testing::_))
         .Times(1)
         .WillOnce(testing::Return(-1));
     managerClientPtr->proxy_ = static_cast<IAbilityManager*>(mockAbilityManagerStub);

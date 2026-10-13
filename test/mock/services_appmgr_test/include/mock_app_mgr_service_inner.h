@@ -42,8 +42,8 @@ public:
         bool isFromScreenOffBackground, const UiAbilityLastCallerInfo& callerInfo));
     MOCK_METHOD2(TerminateAbility, void(const sptr<IRemoteObject>& token, bool clearMissionFlag));
     MOCK_METHOD4(UpdateApplicationInfoInstalled, int(const std::string&, const int uid, const std::string&, bool));
-    MOCK_METHOD4(KillApplication, int32_t(const std::string& bundleName, const bool clearPageStack, int32_t appIndex,
-        const std::string& reason));
+    MOCK_METHOD5(KillApplication, int32_t(const std::string& bundleName, const bool clearPageStack, int32_t appIndex,
+        const std::string& reason, int32_t userId));
     MOCK_METHOD3(KillApplicationByUid, int(const std::string&, const int uid, const std::string&));
     MOCK_METHOD1(AbilityTerminated, void(const sptr<IRemoteObject>& token));
     MOCK_METHOD5(ClearUpApplicationData,

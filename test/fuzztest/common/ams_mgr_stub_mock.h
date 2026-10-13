@@ -52,7 +52,7 @@ public:
     int UpdateApplicationInfoInstalled(const std::string &bundleName, const int uid,
         const std::string &moduleName, bool isPlugin) override { return 0; }
     int KillApplication(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = 0,
-        const std::string &reason = "KillApplication") override { return 0; }
+        const std::string &reason = "KillApplication", int32_t userId = -1) override { return 0; }
     int ForceKillApplication(const std::string &bundleName, const int userId = -1, const int appIndex = 0) override
     {
         return 0;

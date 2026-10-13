@@ -42,8 +42,8 @@ public:
     MOCK_METHOD4(UpdateApplicationInfoInstalled, int(const std::string&, const int uid, const std::string&, bool));
     MOCK_METHOD3(ForceKillApplication, int32_t(const std::string& appName, const int userId, const int appIndex));
     MOCK_METHOD3(KillApplicationWithUserId, int32_t(const std::string& appName, const int userId, const int appIndex));
-    MOCK_METHOD4(KillApplication, int32_t(const std::string& bundleName, const bool clearPageStack, int32_t appIndex,
-        const std::string& reason));
+    MOCK_METHOD5(KillApplication, int32_t(const std::string& bundleName, const bool clearPageStack, int32_t appIndex,
+        const std::string& reason, int32_t userId));
     MOCK_METHOD1(KillProcessesByAccessTokenId, int32_t(const uint32_t accessTokenId));
     MOCK_METHOD3(KillApplicationByUid, int(const std::string&, const int uid, const std::string&));
     MOCK_METHOD0(IsReady, bool());

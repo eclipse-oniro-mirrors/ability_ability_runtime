@@ -357,7 +357,7 @@ ErrCode AbilityManagerClient::StopServiceAbility(const Want &want, sptr<IRemoteO
 }
 
 ErrCode AbilityManagerClient::KillProcess(const std::string &bundleName, bool clearPageStack, int32_t appIndex,
-    const std::string& reason)
+    const std::string& reason, int32_t userId)
 {
     return ERR_OK;
 }

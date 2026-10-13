@@ -119,8 +119,8 @@ public:
 
     int ReleaseCall(const sptr<IAbilityConnection>& connect, const AppExecFwk::ElementName& element) override;
 
-    MOCK_METHOD4(KillProcess, int(const std::string& bundleName, const bool clearPageStack, int32_t appIndex,
-        const std::string& reason));
+    MOCK_METHOD5(KillProcess, int(const std::string& bundleName, const bool clearPageStack, int32_t appIndex,
+        const std::string& reason, int32_t userId));
     MOCK_METHOD2(UninstallApp, int(const std::string& bundleName, int32_t uid));
     MOCK_METHOD3(UninstallApp, int32_t(const std::string& bundleName, int32_t uid, int32_t appIndex));
     MOCK_METHOD3(

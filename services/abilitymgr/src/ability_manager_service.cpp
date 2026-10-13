@@ -9530,7 +9530,7 @@ bool AbilityManagerService::CheckPermissionForKillCollaborator()
 }
 
 int AbilityManagerService::KillProcess(const std::string &bundleName, bool clearPageStack, int32_t appIndex,
-    const std::string& reason)
+    const std::string& reason, int32_t userId)
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "Kill process, bundleName: %{public}s, clearPageStack: %{public}d"
         "callingUid: %{public}d, callingPid: %{public}d", bundleName.c_str(), clearPageStack,
@@ -9542,10 +9542,12 @@ int AbilityManagerService::KillProcess(const std::string &bundleName, bool clear
         TAG_LOGE(AAFwkTag::ABILITYMGR, "KillProcess permission verification fail");
         return ERR_PERMISSION_DENIED;
     }
-
     auto bms = AbilityUtil::GetBundleManagerHelper();
     CHECK_POINTER_AND_RETURN(bms, KILL_PROCESS_FAILED);
-    int32_t userId = AbilityRuntime::UserController::GetInstance().GetCallerUserId();
+    int originUserId = userId;
+    if (userId == -1) {
+        userId = AbilityRuntime::UserController::GetInstance().GetCallerUserId();
+    }
     AppExecFwk::BundleInfo bundleInfo;
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
     if (appIndex == 0) {
@@ -9565,7 +9567,6 @@ int AbilityManagerService::KillProcess(const std::string &bundleName, bool clear
         TAG_LOGE(AAFwkTag::ABILITYMGR, "get bundle info when kill process failed");
         return GET_BUNDLE_INFO_FAILED;
     }
-
     int32_t collaboratorType = GetCollaboratorType(bundleInfo.applicationInfo.codePath);
     if (CheckCollaboratorType(collaboratorType)) {
         if (!isAllowKillProcessForCollaborator) {
@@ -9574,15 +9575,14 @@ int AbilityManagerService::KillProcess(const std::string &bundleName, bool clear
         }
         return KillProcessForCollaborator(collaboratorType, bundleName, userId);
     }
-
     KeepAliveType type;
     if (KeepAliveUtils::IsKeepAliveBundle(bundleInfo, userId, type)
         && DelayedSingleton<AppScheduler>::GetInstance()->IsMemorySizeSufficient()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "no kill alive process");
         return KILL_PROCESS_KEEP_ALIVE;
     }
-
-    int ret = DelayedSingleton<AppScheduler>::GetInstance()->KillApplication(bundleName, clearPageStack, appIndex, reason);
+    int ret = DelayedSingleton<AppScheduler>::GetInstance()->KillApplication(
+        bundleName, clearPageStack, appIndex, reason, originUserId);
     return ret == ERR_OK ? ERR_OK : KILL_PROCESS_FAILED;
 }
 
