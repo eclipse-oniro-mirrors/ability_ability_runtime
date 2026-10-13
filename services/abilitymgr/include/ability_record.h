@@ -740,6 +740,12 @@ public:
 #ifdef SUPPORT_UPMS
     void GrantUriPermission();
 
+    // Grant FileEntity URIs grouped by their own flag, reusing the generic grant in UriUtils.
+    void GrantFileEntityUriPermission();
+
+    // Grant foreground URI permission (generic URI and FileEntity) for the foreground start.
+    void GrantForegroundUriPermission(uint32_t tokenId, const ForegroundOptions &options);
+
     void GrantUriPermission(const std::vector<std::string> &uriVec, int32_t flag,
         const std::string &targetBundleName, uint32_t callerTokenId);
 #endif // SUPPORT_UPMS
