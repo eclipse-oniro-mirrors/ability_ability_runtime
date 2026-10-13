@@ -37,8 +37,8 @@ void DebuggerConnectionHandler(const std::string &bundleName)
     int32_t instanceId = static_cast<int32_t>(getproctid());
     int32_t tid = instanceId;
     if (!ConnectServerManager::Get().StoreInstanceMessage(tid, instanceId, bundleName)) {
-        ConnectServerManager::Get().RemoveInstance(instanceId);
-        ConnectServerManager::Get().StoreInstanceMessage(tid, instanceId, bundleName);
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "StoreInstanceMessage failed");
+        return;
     }
     ConnectServerManager::Get().SendInstanceMessage(tid, instanceId, bundleName);
 }

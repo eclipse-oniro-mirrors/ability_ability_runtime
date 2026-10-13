@@ -4879,10 +4879,29 @@ int32_t AbilityManagerService::StartExtensionAbilityInner(const Want &want, cons
     abilityRequest.skillCallerTokenId = skillCallerTokenId;
     abilityRequest.userId = validUserId;
     if (!HandleExecuteSAInterceptor(want, callerToken, abilityRequest, result)) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "HandleExecuteSAInterceptor failed");
+        if (extensionType == AppExecFwk::ExtensionAbilityType::UI_SERVICE) {
+            eventInfo->errReason = "HandleExecuteSAInterceptor failed";
+            eventInfo->appIndex = appIndex;
+            SendExtensionReport(*eventInfo, result, true);
+        } else {
+            eventInfo->errCode = result;
+            EventReport::SendExtensionEvent(EventName::START_EXTENSION_ERROR, HISYSEVENT_FAULT, *eventInfo);
+        }
         return result;
     }
 
     if (!CheckWorkSchedulerPermission(callerToken, abilityRequest.abilityInfo.applicationInfo.uid)) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "CheckWorkSchedulerPermission failed, uid:%{public}d",
+            abilityRequest.abilityInfo.applicationInfo.uid);
+        if (extensionType == AppExecFwk::ExtensionAbilityType::UI_SERVICE) {
+            eventInfo->errReason = "CheckWorkSchedulerPermission failed";
+            eventInfo->appIndex = appIndex;
+            SendExtensionReport(*eventInfo, CHECK_PERMISSION_FAILED, true);
+        } else {
+            eventInfo->errCode = CHECK_PERMISSION_FAILED;
+            EventReport::SendExtensionEvent(EventName::START_EXTENSION_ERROR, HISYSEVENT_FAULT, *eventInfo);
+        }
         return CHECK_PERMISSION_FAILED;
     }
     const auto &abilityInfo = abilityRequest.abilityInfo;

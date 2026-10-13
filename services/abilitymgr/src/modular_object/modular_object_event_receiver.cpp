@@ -90,11 +90,17 @@ void ModularObjectEventReceiver::LoadModularObjectExtensionInfos(int32_t userId)
             DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->QueryVersion(key, versionCode);
         GetModularObjectExtensionInfos(bundleInfo, infos);
         if (hasRecord && bundleInfo.versionCode != versionCode) {
-            DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->InsertOrUpdateData(
+            auto ret = DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->InsertOrUpdateData(
                 key, infos, bundleInfo.versionCode);
+            if (ret != NativeRdb::E_OK) {
+                TAG_LOGE(AAFwkTag::EXT, "InsertOrUpdateData failed, key:%{public}s ret:%{public}d", key.c_str(), ret);
+            }
         } else if (!hasRecord && !infos.empty()) {
-            DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->InsertOrUpdateData(
+            auto ret = DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->InsertOrUpdateData(
                 key, infos, bundleInfo.versionCode);
+            if (ret != NativeRdb::E_OK) {
+                TAG_LOGE(AAFwkTag::EXT, "InsertOrUpdateData failed, key:%{public}s ret:%{public}d", key.c_str(), ret);
+            }
         }
         infos.clear();
     }

@@ -552,6 +552,10 @@ bool AppMgrClient::IsCorrespondingProcessAttachDebug(const AbilityInfo &abilityI
 AppMgrResultCode AppMgrClient::GetProcessRunningInfosByAccessTokenId(uint32_t accessTokenId,
     std::vector<RunningProcessInfo> &info)
 {
+    if (mgrHolder_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "mgrHolder_ is nullptr.");
+        return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
+    }
     sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
     if (service != nullptr) {
         int32_t result = service->GetProcessRunningInfosByAccessTokenId(accessTokenId, info);
