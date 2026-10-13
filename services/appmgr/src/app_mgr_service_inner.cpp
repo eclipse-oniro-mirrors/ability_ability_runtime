@@ -2188,20 +2188,6 @@ void AppMgrServiceInner::LoadAbility(std::shared_ptr<AbilityInfo> abilityInfo, s
     bool isProcCache = false;
     HapModuleInfo hapModuleInfo;
     int32_t appIndex = appInfo->appIndex;
-    if (loadParam->selfPid > 0) {
-        if (!GetBundleAndHapInfo(*abilityInfo, appInfo, bundleInfo, hapModuleInfo, appIndex)) {
-            TAG_LOGE(AAFwkTag::APPMGR, "getBundleAndHapInfo fail");
-            return;
-        }
-        std::shared_ptr<AppRunningRecord> appRecord = GetAppRunningRecordByPid(loadParam->selfPid);
-        if (appRecord == nullptr) {
-            TAG_LOGW(AAFwkTag::APPMGR, "appRecord not found by pid %{public}d", loadParam->selfPid);
-            return;
-        }
-        isProcCache = DelayedSingleton<CacheProcessManager>::GetInstance()->ReuseCachedProcess(appRecord);
-        HandleExistingAppRecordAfterFound(appRecord, abilityInfo, hapModuleInfo, want, isProcCache, loadParam);
-        return;
-    }
     LoadAbilityCallbackGuard guard(loadParam->loadAbilityCallbackId, loadParam->callingPid, weak_from_this());
     if (!CheckLoadAbilityConditions(loadParam->token, abilityInfo, appInfo)) {
         TAG_LOGE(AAFwkTag::APPMGR, "checkLoadAbilityConditions fail");
@@ -2219,6 +2205,24 @@ void AppMgrServiceInner::LoadAbility(std::shared_ptr<AbilityInfo> abilityInfo, s
 
     if (UserRecordManager::GetInstance().IsLogoutUser(GetUserIdByUid(appInfo->uid))) {
         TAG_LOGE(AAFwkTag::APPMGR, "disable start process in logout user");
+        return;
+    }
+
+    if (loadParam->selfPid > 0) {
+        if (!GetBundleAndHapInfo(*abilityInfo, appInfo, bundleInfo, hapModuleInfo, appIndex)) {
+            TAG_LOGE(AAFwkTag::APPMGR, "getBundleAndHapInfo fail");
+            NotifyStartProcessFailed(loadParam->token);
+            return;
+        }
+        std::shared_ptr<AppRunningRecord> appRecord =
+            appRunningManager_->GetValidAppRunningRecordByPid(loadParam->selfPid);
+        if (appRecord == nullptr) {
+            TAG_LOGW(AAFwkTag::APPMGR, "appRecord not found by pid %{public}d", loadParam->selfPid);
+            NotifyStartProcessFailed(loadParam->token);
+            return;
+        }
+        isProcCache = DelayedSingleton<CacheProcessManager>::GetInstance()->ReuseCachedProcess(appRecord);
+        HandleExistingAppRecordAfterFound(appRecord, abilityInfo, hapModuleInfo, want, isProcCache, loadParam);
         return;
     }
 
@@ -2705,7 +2709,11 @@ void AppMgrServiceInner::MakeProcessName(const std::shared_ptr<AbilityInfo> &abi
     }
 
     if (!specifiedProcessFlag.empty()) {
-        processName = (processName + ":" + specifiedProcessFlag).substr(0, MAX_SPECIFIED_PROCESS_NAME_LENGTH);
+        if (static_cast<int32_t>(specifiedProcessFlag.size()) > MAX_SPECIFIED_PROCESS_NAME_LENGTH) {
+            TAG_LOGW(AAFwkTag::APPMGR, "specifiedProcessFlag truncated to %{public}d chars: %{public}s",
+                MAX_SPECIFIED_PROCESS_NAME_LENGTH, specifiedProcessFlag.c_str());
+        }
+        processName += ":" + specifiedProcessFlag.substr(0, MAX_SPECIFIED_PROCESS_NAME_LENGTH);
         TAG_LOGI(AAFwkTag::APPMGR, "specifiedProcessFlag: %{public}s, processName: %{public}s",
             specifiedProcessFlag.c_str(), processName.c_str());
     }
@@ -8755,6 +8763,7 @@ int AppMgrServiceInner::PreStartNWebSpawnProcess(const pid_t hostPid)
 int AppMgrServiceInner::StartRenderProcess(const pid_t hostPid, const std::string &renderParam,
     FdGuard &&ipcFd, FdGuard &&sharedFd, FdGuard &&crashFd, pid_t &renderPid, bool isGPU)
 {
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     TAG_LOGI(AAFwkTag::APPMGR, "hostPid:%{public}d", hostPid);
     if (hostPid <= 0 || renderParam.empty() || ipcFd.Get() <= 0 || sharedFd.Get() <= 0 || crashFd.Get() <= 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "invalid param: hostPid:%{public}d renderParam:%{private}s "
@@ -8912,6 +8921,7 @@ bool AppMgrServiceInner::GenerateUid(std::unordered_set<int32_t> &assignedUids,
 int AppMgrServiceInner::StartRenderProcessImpl(const std::shared_ptr<RenderRecord> &renderRecord,
     const std::shared_ptr<AppRunningRecord> appRecord, pid_t &renderPid, bool isGPU)
 {
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     if (!renderRecord || !appRecord) {
         TAG_LOGE(AAFwkTag::APPMGR, "renderRecord or appRecord null");
         return ERR_INVALID_VALUE;
@@ -11107,6 +11117,7 @@ int32_t AppMgrServiceInner::UnregisterAppRunningStatusListener(const sptr<IRemot
 int32_t AppMgrServiceInner::StartChildProcess(const pid_t callingPid, pid_t &childPid,
     const ChildProcessRequest &request)
 {
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     TAG_LOGI(AAFwkTag::APPMGR, "callingPid:%{public}d", callingPid);
     auto errCode = StartChildProcessPreCheck(callingPid, request.childProcessType);
     if (errCode != ERR_OK) {
@@ -11221,6 +11232,7 @@ int32_t AppMgrServiceInner::StartChildProcessImpl(const std::shared_ptr<ChildPro
     const std::shared_ptr<AppRunningRecord> appRecord, pid_t &childPid, const ChildProcessArgs &args,
     const ChildProcessOptions &options)
 {
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::APPMGR, "called");
     if (!appRecord) {
         TAG_LOGE(AAFwkTag::APPMGR, "no appRecord, childPid:%{public}d", childPid);
