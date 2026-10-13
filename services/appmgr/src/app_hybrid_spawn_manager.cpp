@@ -132,6 +132,8 @@ void AppHybridSpawnManager::InitHybridSpawnMsgPipe(std::weak_ptr<AppMgrServiceIn
         TAG_LOGE(AAFwkTag::APPMGR, "send fd to hybridspawn failed, ret: %{public}d", ret);
         fdsan_close_with_tag(hrFd_, static_cast<uint32_t>(AAFwkTag::APPMGR));
         fdsan_close_with_tag(hwFd_, static_cast<uint32_t>(AAFwkTag::APPMGR));
+        hrFd_ = -1;
+        hwFd_ = -1;
         return;
     }
     ret = WatchParameter(HYBRIDSPAWN_EXIT, HybridSpawnExitCallback, nullptr);
@@ -139,14 +141,22 @@ void AppHybridSpawnManager::InitHybridSpawnMsgPipe(std::weak_ptr<AppMgrServiceIn
         TAG_LOGE(AAFwkTag::APPMGR, "watch parameter ret: %{public}d", ret);
         fdsan_close_with_tag(hrFd_, static_cast<uint32_t>(AAFwkTag::APPMGR));
         fdsan_close_with_tag(hwFd_, static_cast<uint32_t>(AAFwkTag::APPMGR));
+        hrFd_ = -1;
+        hwFd_ = -1;
         return;
     }
     ffrt_qos_t taskQos = 0;
     ret = ffrt_epoll_ctl(taskQos, EPOLL_CTL_ADD, hrFd_, EPOLLIN, nullptr, ProcessSignalData);
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "ffrt_epoll_ctl failed, ret: %{public}d", ret);
+        int32_t unwatchRet = RemoveParameterWatcher(HYBRIDSPAWN_EXIT, HybridSpawnExitCallback, nullptr);
+        if (unwatchRet != 0) {
+            TAG_LOGW(AAFwkTag::APPMGR, "remove parameter watcher failed, ret: %{public}d", unwatchRet);
+        }
         fdsan_close_with_tag(hrFd_, static_cast<uint32_t>(AAFwkTag::APPMGR));
         fdsan_close_with_tag(hwFd_, static_cast<uint32_t>(AAFwkTag::APPMGR));
+        hrFd_ = -1;
+        hwFd_ = -1;
         return;
     }
     TAG_LOGI(AAFwkTag::APPMGR, "Listen signal msg ...");

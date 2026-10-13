@@ -1574,7 +1574,7 @@ private:
     bool isNeedPreloadModule_ = false;
     bool delayedProcessExitEnabled_ = false;
     bool isPrepareExit_ = false;
-    bool isRestartApp_ = false; // Only app calling RestartApp can be set to true
+    std::atomic_bool isRestartApp_ = false; // Only app calling RestartApp can be set to true
     bool isSingleton_ = false;
     bool isStageBasedModel_ = false;
     std::atomic_bool isStrictMode_ = false;
