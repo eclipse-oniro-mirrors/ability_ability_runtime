@@ -155,6 +155,11 @@ int AbilityConnectManager::StartAbilityLocked(const AbilityRequest &abilityReque
         return ERR_INVALID_VALUE;
     }
 
+    ret = ReportXiaoYiToRSSIfNeeded(abilityRequest.abilityInfo);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
     std::shared_ptr<BaseExtensionRecord> targetService;
     bool isLoadedAbility = false;
     std::string hostBundleName;
@@ -171,11 +176,6 @@ int AbilityConnectManager::StartAbilityLocked(const AbilityRequest &abilityReque
     targetService->DoBackgroundAbilityWindowDelayed(false);
 
     targetService->SetSessionInfo(abilityRequest.sessionInfo);
-
-    ret = ReportXiaoYiToRSSIfNeeded(abilityRequest.abilityInfo);
-    if (ret != ERR_OK) {
-        return ret;
-    }
 
     ReportEventToRSS(abilityRequest.abilityInfo, targetService, abilityRequest.callerToken);
     if (!isLoadedAbility) {
@@ -592,7 +592,11 @@ int AbilityConnectManager::DisconnectAbilityLocked(const sptr<IAbilityConnection
     for (auto &connectRecord : connectRecordList) {
         if (connectRecord) {
             auto abilityRecord = connectRecord->GetAbilityRecord();
-            CHECK_POINTER_AND_RETURN(abilityRecord, ERR_INVALID_VALUE);
+            if (abilityRecord == nullptr) {
+                TAG_LOGW(AAFwkTag::EXT, "null abilityRecord, skip");
+                result = ERR_INVALID_VALUE;
+                continue;
+            }
             TAG_LOGD(AAFwkTag::EXT, "abilityName: %{public}s, bundleName: %{public}s",
                 abilityRecord->GetAbilityInfo().name.c_str(), abilityRecord->GetAbilityInfo().bundleName.c_str());
             if (abilityRecord->GetAbilityInfo().type == AbilityType::EXTENSION) {
@@ -2617,6 +2621,10 @@ void AbilityConnectManager::RestartAbility(const std::shared_ptr<BaseExtensionRe
 
 std::string AbilityConnectManager::GetServiceKey(const std::shared_ptr<BaseExtensionRecord> &service)
 {
+    if (service == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "null service");
+        return "";
+    }
     std::string serviceKey = service->GetURI();
     if (FRS_BUNDLE_NAME == service->GetAbilityInfo().bundleName) {
         serviceKey = serviceKey + std::to_string(service->GetIntParam(FRS_APP_INDEX, 0));
@@ -2673,6 +2681,9 @@ void AbilityConnectManager::DumpState(ServiceMapType &serviceMapBack, std::vecto
 
         std::string serviceKey;
         auto iter = std::find_if(cacheList.begin(), cacheList.end(), [&args, &serviceKey](const auto &service) {
+            if (service == nullptr) {
+                return false;
+            }
             serviceKey = GetServiceKey(service);
             return serviceKey.compare(args) == 0;
         });
@@ -2693,11 +2704,12 @@ void AbilityConnectManager::DumpState(ServiceMapType &serviceMapBack, std::vecto
             }
         }
         for (auto &&service : cacheList) {
+            if (service == nullptr) {
+                continue;
+            }
             std::string serviceKey = GetServiceKey(service);
             info.emplace_back("    uri [" + serviceKey + "]");
-            if (service != nullptr) {
-                service->DumpService(info, isClient);
-            }
+            service->DumpService(info, isClient);
         }
     }
 }
