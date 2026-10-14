@@ -35,9 +35,10 @@ int32_t InsightIntentMatcher::GetMatchedIntentInfos(const std::string &bundleNam
     const std::string &intentName, int32_t userId, std::vector<ExtractInsightIntentGenericInfo> &matchedInfos)
 {
     matchedInfos.clear();
+    int32_t validUserId = GetValidUserId(userId);
     std::vector<ExtractInsightIntentGenericInfo> allInfos;
     DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentGenericInfoByName(
-        bundleName, GetValidUserId(userId), allInfos);
+        bundleName, validUserId, allInfos);
     for (const auto &info : allInfos) {
         if (info.intentName == intentName) {
             matchedInfos.push_back(info);
@@ -46,7 +47,7 @@ int32_t InsightIntentMatcher::GetMatchedIntentInfos(const std::string &bundleNam
 
     std::vector<InsightIntentInfo> configInfos;
     DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetConfigInsightIntentInfoByName(
-        bundleName, GetValidUserId(userId), configInfos);
+        bundleName, validUserId, configInfos);
     for (const auto &config : configInfos) {
         if (config.intentName == intentName) {
             ExtractInsightIntentGenericInfo generic;

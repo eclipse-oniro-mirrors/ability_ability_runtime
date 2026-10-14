@@ -127,6 +127,11 @@ public:
         extensionInfos.emplace_back(extensionInfo);
         return ERR_OK;
     }
+
+    ErrCode GetDualModeBundleInfo(const std::string &bundleName, int32_t userId, int32_t &appIndex)
+    {
+        return ERR_OK;
+    }
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

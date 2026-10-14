@@ -47,6 +47,7 @@ public:
     ErrCode GetBundleInfoV9(
         const std::string &bundleName, int32_t flags, BundleInfo &bundleInfo, int32_t userId);
     ErrCode GetBundleInfosV9(int32_t flags, std::vector<BundleInfo> &bundleInfos, int32_t userId);
+    ErrCode GetDualModeBundleInfo(const std::string &bundleName, int32_t userId, int32_t &appIndex);
 
 private:
     DECLARE_DELAYED_SINGLETON(BundleMgrHelper)

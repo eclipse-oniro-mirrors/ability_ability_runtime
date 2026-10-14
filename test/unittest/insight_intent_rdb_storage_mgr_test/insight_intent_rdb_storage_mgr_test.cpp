@@ -107,11 +107,11 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_003, Tes
     ExtractInsightIntentProfileInfoVec profileInfos;
     std::vector<InsightIntentInfo> configInfos;
     MockInsertData(false);
-    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->SaveStorageInsightIntentData(bundleName,
-        moduleName, userId, versionCode, profileInfos, configInfos);
+    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->SaveStorageInsightIntentData(
+        InsightIntentSaveParam{bundleName, moduleName, versionCode, userId}, profileInfos, configInfos);
     MockInsertData(true);
-    result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->SaveStorageInsightIntentData(bundleName,
-        moduleName, userId, versionCode, profileInfos, configInfos);
+    result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->SaveStorageInsightIntentData(
+        InsightIntentSaveParam{bundleName, moduleName, versionCode, userId}, profileInfos, configInfos);
     EXPECT_EQ(result, ERR_OK);
 }
 
@@ -168,11 +168,11 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_006, Tes
     std::string intentName;
     ExtractInsightIntentInfo infos;
     MockQueryDataBeginWithKey(false);
-    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentInfo(bundleName,
-        moduleName, intentName, userId, infos);
+    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentInfo(
+        IntentKey{bundleName, moduleName, intentName, userId}, infos);
     MockQueryDataBeginWithKey(true);
-    result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentInfo(bundleName,
-        moduleName, intentName, userId, infos);
+    result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentInfo(
+        IntentKey{bundleName, moduleName, intentName, userId}, infos);
     EXPECT_EQ(result, ERR_OK);
 }
 
@@ -226,11 +226,11 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_009, Tes
     std::string intentName;
     InsightIntentInfo infos;
     MockQueryDataBeginWithKey(false);
-    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadConfigInsightIntentInfo(bundleName,
-        moduleName, intentName, userId, infos);
+    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadConfigInsightIntentInfo(
+        IntentKey{bundleName, moduleName, intentName, userId}, infos);
     MockQueryDataBeginWithKey(true);
-    result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadConfigInsightIntentInfo(bundleName,
-        moduleName, intentName, userId, infos);
+    result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadConfigInsightIntentInfo(
+        IntentKey{bundleName, moduleName, intentName, userId}, infos);
     EXPECT_EQ(result, ERR_OK);
 }
 
@@ -274,7 +274,7 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_011, Tes
     profileInfos.insightIntents.push_back(profileInfo);
 
     auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->SaveStorageInsightIntentData(
-        bundleName, moduleName, userId, 0, profileInfos, configInfos);
+        InsightIntentSaveParam{bundleName, moduleName, 0u, userId}, profileInfos, configInfos);
     EXPECT_EQ(result, ERR_OK);
 }
 
@@ -296,7 +296,7 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_012, Tes
     configInfos.push_back(configInfo);
 
     auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->SaveStorageInsightIntentData(
-        bundleName, moduleName, userId, 0, profileInfos, configInfos);
+        InsightIntentSaveParam{bundleName, moduleName, 0u, userId}, profileInfos, configInfos);
     EXPECT_EQ(result, ERR_OK);
 }
 
@@ -315,7 +315,7 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_013, Tes
 
     MockQueryDataBeginWithKey(true);
     auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentInfo(
-        bundleName, moduleName, intentName, userId, totalInfo);
+        IntentKey{bundleName, moduleName, intentName, userId}, totalInfo);
     EXPECT_EQ(result, ERR_OK);
 }
 
@@ -334,7 +334,7 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_014, Tes
 
     MockQueryDataBeginWithKey(true);
     auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadConfigInsightIntentInfo(
-        bundleName, moduleName, intentName, userId, totalInfo);
+        IntentKey{bundleName, moduleName, intentName, userId}, totalInfo);
     EXPECT_EQ(result, ERR_OK);
 }
 
@@ -391,7 +391,7 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_018, Tes
     
     MockInsertData(false);
     auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->SaveStorageInsightIntentData(
-        bundleName, moduleName, userId, 0, profileInfos, configInfos);
+        InsightIntentSaveParam{bundleName, moduleName, 0u, userId}, profileInfos, configInfos);
     EXPECT_EQ(result, ERR_OK);
 }
 
@@ -414,7 +414,7 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_019, Tes
     
     MockInsertData(false);
     auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->SaveStorageInsightIntentData(
-        bundleName, moduleName, userId, 0, profileInfos, configInfos);
+        InsightIntentSaveParam{bundleName, moduleName, 0u, userId}, profileInfos, configInfos);
     EXPECT_EQ(result, ERR_OK);
 }
 
@@ -555,7 +555,7 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_027, Tes
 
     MockInsertData(true);
     auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->SaveStorageInsightIntentData(
-        bundleName, moduleName, userId, 2, profileInfos, configInfos);
+        InsightIntentSaveParam{bundleName, moduleName, 2u, userId}, profileInfos, configInfos);
     EXPECT_EQ(result, ERR_OK);
 }
 
@@ -756,7 +756,7 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_037, Tes
     std::vector<InsightIntentInfo> configInfos;
     MockInsertData(true);
     auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->SaveStorageInsightIntentData(
-        bundleName, moduleName, userId, 100, profileInfos, configInfos);
+        InsightIntentSaveParam{bundleName, moduleName, 100u, userId}, profileInfos, configInfos);
     EXPECT_EQ(result, ERR_OK);
 }
 
@@ -781,8 +781,8 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_038, Tes
         "\"bundleName\":\"testBundle\",\"moduleName\":\"testModule\",\"intentName\":\"testIntentFoo\","
         "\"domain\":\"testDomain\",\"intentVersion\":\"1\",\"displayName\":\"testDisplay\","
         "\"functionName\":\"testFunction\"}]}");
-    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentInfo(bundleName,
-        moduleName, "testIntent", userId, totalInfo);
+    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentInfo(
+        IntentKey{bundleName, moduleName, "testIntent", userId}, totalInfo);
     EXPECT_EQ(result, ERR_OK);
     EXPECT_TRUE(totalInfo.genericInfo.intentName.empty());
 }
@@ -802,8 +802,8 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_039, Tes
     ExtractInsightIntentInfo totalInfo;
 
     MockQueryDataBeginWithKey(true);
-    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentInfo(bundleName,
-        moduleName, intentName, userId, totalInfo);
+    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentInfo(
+        IntentKey{bundleName, moduleName, intentName, userId}, totalInfo);
     EXPECT_EQ(result, ERR_OK);
     EXPECT_EQ(GetMockQueryDataKey(), "0/testBundle/testModule/testIntent/");
 }
@@ -836,8 +836,8 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_040, Tes
         "\"bundleName\":\"testBundle\",\"moduleName\":\"testModule\",\"intentName\":\"testIntentFoo\","
         "\"domain\":\"testDomain\",\"intentVersion\":\"1\",\"displayName\":\"testDisplay\","
         "\"functionName\":\"testFunction\"}]}");
-    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentInfo(bundleName,
-        moduleName, "testIntent", userId, totalInfo);
+    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentInfo(
+        IntentKey{bundleName, moduleName, "testIntent", userId}, totalInfo);
     EXPECT_EQ(result, ERR_OK);
     EXPECT_EQ(totalInfo.genericInfo.intentName, "testIntent");
 }
@@ -858,8 +858,8 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_041, Tes
     MockQueryDataBeginWithKey(true);
     MockDeleteDataBeginWithKey(true);
     MockQueryDataBeginWithKeyData("0/testBundle/testModule/testIntent/1", "invalid json {{");
-    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentInfo(bundleName,
-        moduleName, "testIntent", userId, totalInfo);
+    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentInfo(
+        IntentKey{bundleName, moduleName, "testIntent", userId}, totalInfo);
     EXPECT_EQ(result, ERR_OK);
     EXPECT_TRUE(GetMockDeleteDataBeginWithKeyCalled());
     EXPECT_TRUE(totalInfo.genericInfo.intentName.empty());
@@ -884,8 +884,8 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_042, Tes
         "\"intentName\":\"testIntentFoo\",\"domain\":\"testDomain\",\"intentVersion\":\"1\","
         "\"srcEntry\":\"testEntry\",\"bundleName\":\"testBundle\",\"moduleName\":\"testModule\","
         "\"uiAbility\":{\"ability\":\"testAbility\",\"executeMode\":[\"foreground\"]}}]}");
-    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadConfigInsightIntentInfo(bundleName,
-        moduleName, "testIntent", userId, totalInfo);
+    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadConfigInsightIntentInfo(
+        IntentKey{bundleName, moduleName, "testIntent", userId}, totalInfo);
     EXPECT_EQ(result, ERR_OK);
     EXPECT_TRUE(totalInfo.intentName.empty());
 }
@@ -905,8 +905,8 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_043, Tes
     InsightIntentInfo totalInfo;
 
     MockQueryDataBeginWithKey(true);
-    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadConfigInsightIntentInfo(bundleName,
-        moduleName, intentName, userId, totalInfo);
+    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadConfigInsightIntentInfo(
+        IntentKey{bundleName, moduleName, intentName, userId}, totalInfo);
     EXPECT_EQ(result, ERR_OK);
     EXPECT_EQ(GetMockQueryDataKey(), "0/testBundle/testModule/testIntent/");
 }
@@ -935,8 +935,8 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_044, Tes
         "\"intentName\":\"testIntentFoo\",\"domain\":\"testDomain\",\"intentVersion\":\"1\","
         "\"srcEntry\":\"testEntry\",\"bundleName\":\"testBundle\",\"moduleName\":\"testModule\","
         "\"uiAbility\":{\"ability\":\"testAbility\",\"executeMode\":[\"foreground\"]}}]}");
-    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadConfigInsightIntentInfo(bundleName,
-        moduleName, "testIntent", userId, totalInfo);
+    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadConfigInsightIntentInfo(
+        IntentKey{bundleName, moduleName, "testIntent", userId}, totalInfo);
     EXPECT_EQ(result, ERR_OK);
     EXPECT_EQ(totalInfo.intentName, "testIntent");
 }
@@ -957,8 +957,8 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_045, Tes
     MockQueryDataBeginWithKey(true);
     MockDeleteDataBeginWithKey(true);
     MockQueryDataBeginWithKeyData("0/testBundle/testModule/testIntent/1", "invalid json {{");
-    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadConfigInsightIntentInfo(bundleName,
-        moduleName, "testIntent", userId, totalInfo);
+    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadConfigInsightIntentInfo(
+        IntentKey{bundleName, moduleName, "testIntent", userId}, totalInfo);
     EXPECT_EQ(result, ERR_OK);
     EXPECT_TRUE(GetMockDeleteDataBeginWithKeyCalled());
     EXPECT_TRUE(totalInfo.intentName.empty());
@@ -975,7 +975,10 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_046, Tes
     std::string bundleName = "testBundle";
     uint32_t versionCode = 1;
     InsightIntentSaveParam saveParam;
+    saveParam.bundleName = bundleName;
     saveParam.moduleName = "testModule";
+    saveParam.versionCode = versionCode;
+    saveParam.userId = userId;
     ExtractInsightIntentProfileInfo profileInfo;
     profileInfo.intentName = "testIntent";
     saveParam.profileInfos.insightIntents.push_back(profileInfo);
@@ -983,7 +986,10 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_046, Tes
     cfg.intentName = "testConfigIntent";
     saveParam.configInfos.push_back(cfg);
     InsightIntentSaveParam secondParam;
+    secondParam.bundleName = bundleName;
     secondParam.moduleName = "secondModule";
+    secondParam.versionCode = versionCode;
+    secondParam.userId = userId;
     ExtractInsightIntentProfileInfo secondProfile;
     secondProfile.intentName = "secondIntent";
     secondParam.profileInfos.insightIntents.push_back(secondProfile);
@@ -993,15 +999,15 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_046, Tes
 
     std::vector<InsightIntentSaveParam> emptyParams;
     EXPECT_EQ(DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->SaveStorageInsightIntentDataBatch(
-        bundleName, userId, versionCode, emptyParams), ERR_OK);
+        emptyParams), ERR_OK);
 
     MockBatchInsertData(false);
     EXPECT_EQ(DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->SaveStorageInsightIntentDataBatch(
-        bundleName, userId, versionCode, saveParams), ERR_INVALID_VALUE);
+        saveParams), ERR_INVALID_VALUE);
 
     MockBatchInsertData(true);
     EXPECT_EQ(DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->SaveStorageInsightIntentDataBatch(
-        bundleName, userId, versionCode, saveParams), ERR_OK);
+        saveParams), ERR_OK);
 }
 
 /**

@@ -41,49 +41,50 @@ InsightIntentSysEventReceiver::InsightIntentSysEventReceiver(const EventFwk::Com
 }
 
 bool InsightIntentSysEventReceiver::SaveInsightIntentInfos(const std::string &bundleName,
-    const std::vector<std::string> &moduleNames, uint32_t versionCode, int32_t userId)
+    const std::vector<std::string> &moduleNames, const InsightIntentSaveParam &templateParam)
 {
     TAG_LOGI(AAFwkTag::INTENT, "save insight intent infos, bundle:%{public}s moduleCount:%{public}zu",
         bundleName.c_str(), moduleNames.size());
     std::vector<InsightIntentSaveParam> saveParams;
     for (const auto &moduleNameLocal : moduleNames) {
-        InsightIntentSaveParam saveParam;
-        if (CollectInsightIntentSaveParam(bundleName, moduleNameLocal, versionCode, userId, saveParam)) {
+        InsightIntentSaveParam saveParam = templateParam;
+        saveParam.bundleName = bundleName;
+        saveParam.moduleName = moduleNameLocal;
+        if (CollectInsightIntentSaveParam(bundleName, moduleNameLocal, saveParam)) {
             saveParams.emplace_back(std::move(saveParam));
         }
     }
-    // save database in one batch
     ErrCode ret = DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->
-        SaveBatchInsightIntentTotalInfo(bundleName, userId, versionCode, saveParams);
+        SaveBatchInsightIntentTotalInfo(saveParams);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "save intent infos failed, bundleName: %{public}s, userId: %{public}d, "
-            "ret: %{public}d", bundleName.c_str(), userId, ret);
+            "ret: %{public}d", bundleName.c_str(), templateParam.userId, ret);
         return false;
     }
     if (!saveParams.empty()) {
         TAG_LOGI(AAFwkTag::INTENT, "save intent infos success, bundleName: %{public}s, moduleCount: %{public}zu, "
-            "userId: %{public}d", bundleName.c_str(), moduleNames.size(), userId);
+            "userId: %{public}d", bundleName.c_str(), moduleNames.size(), templateParam.userId);
     }
     return !saveParams.empty();
 }
 
 bool InsightIntentSysEventReceiver::CollectInsightIntentSaveParam(const std::string &bundleName,
-    const std::string &moduleName, uint32_t versionCode, int32_t userId, InsightIntentSaveParam &saveParam)
+    const std::string &moduleName, InsightIntentSaveParam &saveParam)
 {
-    std::string profile;
-    AbilityRuntime::ExtractInsightIntentProfileInfoVec infos = {};
-    std::vector<InsightIntentInfo> configIntentInfos = {};
     auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
     if (bundleMgrHelper == nullptr) {
         TAG_LOGE(AAFwkTag::INTENT, "null bundleMgrHelper");
         return false;
     }
     // Get json profile firstly
+    std::string profile;
+    AbilityRuntime::ExtractInsightIntentProfileInfoVec infos;
+    std::vector<InsightIntentInfo> configIntentInfos;
     ErrCode ret = IN_PROCESS_CALL(bundleMgrHelper->GetJsonProfile(AppExecFwk::INTENT_PROFILE, bundleName,
-        moduleName, profile, userId));
+        moduleName, profile, saveParam.userId));
     if (ret != ERR_OK) {
         TAG_LOGW(AAFwkTag::INTENT, "GetJsonProfile failed, code: %{public}d", ret);
-        DeleteInsightIntent(bundleName, moduleName, userId);
+        DeleteInsightIntent(bundleName, moduleName, saveParam.userId, saveParam.appIndex, saveParam.isDualMode);
         return false;
     }
     // Transform json string
@@ -96,7 +97,7 @@ bool InsightIntentSysEventReceiver::CollectInsightIntentSaveParam(const std::str
         TAG_LOGW(AAFwkTag::INTENT,
             "transform profile failed, deleting config, bundle:%{public}s module:%{public}s",
             bundleName.c_str(), moduleName.c_str());
-        DeleteInsightIntent(bundleName, moduleName, userId);
+        DeleteInsightIntent(bundleName, moduleName, saveParam.userId, saveParam.appIndex, saveParam.isDualMode);
         return false;
     }
     // force BMS bundleName/moduleName over the profile values so the function
@@ -110,6 +111,7 @@ bool InsightIntentSysEventReceiver::CollectInsightIntentSaveParam(const std::str
         item.bundleName = bundleName;
         item.moduleName = moduleName;
     }
+    saveParam.bundleName = bundleName;
     saveParam.moduleName = moduleName;
     saveParam.profileInfos = infos;
     saveParam.configInfos = configIntentInfos;
@@ -137,10 +139,10 @@ void InsightIntentSysEventReceiver::RegisterAllFunctions(
 }
 
 void InsightIntentSysEventReceiver::DeleteInsightIntent(const std::string &bundleName,
-    const std::string &moduleName, int32_t userId)
+    const std::string &moduleName, int32_t userId, int32_t appIndex, bool isDualMode)
 {
     if (!DelayedSingleton<InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(
-        bundleName, moduleName, userId)) {
+        bundleName, moduleName, userId, appIndex, isDualMode)) {
         return;
     }
     TAG_LOGI(AAFwkTag::INTENT, "update bundleName: %{public}s to no insight intent", bundleName.c_str());
@@ -199,8 +201,14 @@ void InsightIntentSysEventReceiver::LoadInsightIntentInfos(int32_t userId)
 
     std::vector<std::pair<std::string, uint32_t>> newBundles;
     for (auto &bundleInfo : bundleInfos) {
+        auto policy = bundleInfo.deviceModeDistributionPolicy;
+        bool isDifferentPackage =
+            (policy == AppExecFwk::DeviceModeDistributionPolicy::UNIVERSAL_DIFFERENT_PACKAGE ||
+             policy == AppExecFwk::DeviceModeDistributionPolicy::PARTIAL_COMPATIBLE_DIFFERENT_PACKAGE ||
+             policy == AppExecFwk::DeviceModeDistributionPolicy::FULL_COMPATIBLE_DIFFERENT_PACKAGE);
+        int32_t appIndex = isDifferentPackage ? bundleInfo.appIndex : 0;
         bool rdbHas = DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->
-            HasInsightIntentByName(bundleInfo.versionCode, bundleInfo.name, userId);
+            HasInsightIntentByName(bundleInfo.versionCode, bundleInfo.name, userId, appIndex, isDifferentPackage);
         if (rdbHas) {
             newBundles.emplace_back(bundleInfo.name, bundleInfo.versionCode);
             continue;
@@ -210,7 +218,8 @@ void InsightIntentSysEventReceiver::LoadInsightIntentInfos(int32_t userId)
             moduleNames.push_back(hapInfo.moduleName);
         }
         bool anySaved = SaveInsightIntentInfos(bundleInfo.name, moduleNames,
-            bundleInfo.versionCode, userId);
+            AbilityRuntime::InsightIntentSaveParam{"", "", bundleInfo.versionCode, userId,
+                {}, {}, appIndex, isDifferentPackage});
         if (anySaved) {
             newBundles.emplace_back(bundleInfo.name, bundleInfo.versionCode);
         }

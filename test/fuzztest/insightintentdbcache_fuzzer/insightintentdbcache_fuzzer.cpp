@@ -57,16 +57,16 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     AbilityFuzzUtil::GetRandomExtractInsightIntentGenericInfo(fdp, genericInfo);
     AbilityFuzzUtil::GetRandomExtractInsightIntentInfo(fdp, intentInfo);
     DelayedSingleton<InsightIntentDbCache>::GetInstance()->InitInsightIntentCache(userId);
-    DelayedSingleton<InsightIntentDbCache>::GetInstance()->SaveInsightIntentTotalInfo(bundleName, moduleName,
-        userId, versionCode, profileInfos, configIntentInfos);
+    DelayedSingleton<InsightIntentDbCache>::GetInstance()->SaveInsightIntentTotalInfo(
+        InsightIntentSaveParam{bundleName, moduleName, versionCode, userId}, profileInfos, configIntentInfos);
     DelayedSingleton<InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(bundleName, moduleName,
         userId);
     DelayedSingleton<InsightIntentDbCache>::GetInstance()->DeleteInsightIntentByUserId(userId);
     DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetAllInsightIntentGenericInfo(userId, genericInfos);
     DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentGenericInfoByName(bundleName, userId,
         genericInfos);
-    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentGenericInfo(bundleName, moduleName,
-        intentName, userId, genericInfo);
+    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentGenericInfo(
+        IntentKey{bundleName, moduleName, intentName, userId}, genericInfo);
     DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetAllInsightIntentInfo(userId, intentInfos, configInfos);
     DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentInfoByName(bundleName, userId, intentInfos);
     auto insightIntentDbCache = DelayedSingleton<InsightIntentDbCache>::GetInstance();
@@ -76,10 +76,10 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     insightIntentDbCache->GetAllInsightIntentInfo(userId, intentInfos, configInfos);
     insightIntentDbCache->GetAllInsightIntentGenericInfo(userId, genericInfos);
     insightIntentDbCache->GetAllConfigInsightIntentInfo(userId, configInfos);
-    insightIntentDbCache->GetConfigInsightIntentInfo(bundleName, moduleName, intentName, userId, info2);
+    insightIntentDbCache->GetConfigInsightIntentInfo(IntentKey{bundleName, moduleName, intentName, userId}, info2);
     insightIntentDbCache->GetConfigInsightIntentInfoByName(bundleName, userId, configInfos);
-    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentInfo(bundleName, moduleName,
-        intentName, userId, intentInfo);
+    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentInfo(
+        IntentKey{bundleName, moduleName, intentName, userId}, intentInfo);
     return true;
 }
 }

@@ -49,6 +49,7 @@ ohos_unittest("insight_intent_param_parser_test") {
     "${ability_runtime_services_path}/abilitymgr:abilityms",
     "${ability_runtime_path}/utils/global/common:runtime_utils",
     "${ability_runtime_services_path}/common:app_util",
+    "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
   ]
 
   external_deps = [

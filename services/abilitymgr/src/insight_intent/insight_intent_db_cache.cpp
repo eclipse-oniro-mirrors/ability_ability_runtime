@@ -17,10 +17,53 @@
 
 #include <algorithm>
 
+#include "bundle_mgr_helper.h"
+#include "in_process_call_wrapper.h"
 #include "function_call_convert.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
+
+void InsightIntentDbCache::ResolveDualModeIfNeeded(const std::string &bundleName, int32_t userId,
+    int32_t &appIndex, bool &isDualMode)
+{
+    if (isDualMode) {
+        return;
+    }
+    auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
+    if (bundleMgrHelper == nullptr) {
+        return;
+    }
+    AppExecFwk::BundleInfo bundleInfo;
+    auto ret = IN_PROCESS_CALL(bundleMgrHelper->GetBundleInfoV9(bundleName,
+        static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_HAP_MODULE),
+        bundleInfo, userId));
+    if (ret != ERR_OK) {
+        isDualMode = true;
+        appIndex = -1;
+        return;
+    }
+    auto policy = bundleInfo.deviceModeDistributionPolicy;
+    bool isDifferentPackage =
+        (policy == AppExecFwk::DeviceModeDistributionPolicy::UNIVERSAL_DIFFERENT_PACKAGE ||
+         policy == AppExecFwk::DeviceModeDistributionPolicy::PARTIAL_COMPATIBLE_DIFFERENT_PACKAGE ||
+         policy == AppExecFwk::DeviceModeDistributionPolicy::FULL_COMPATIBLE_DIFFERENT_PACKAGE);
+    if (!isDifferentPackage) {
+        return;
+    }
+    isDualMode = true;
+    int32_t preferredAppIndex = 0;
+    auto dualRet = IN_PROCESS_CALL(bundleMgrHelper->GetDualModeBundleInfo(
+        bundleName, userId, preferredAppIndex));
+    if (dualRet == ERR_OK) {
+        appIndex = preferredAppIndex;
+    } else {
+        appIndex = -1;
+    }
+    TAG_LOGI(AAFwkTag::INTENT, "auto-resolved dual-mode, bundle:%{public}s, appIndex:%{public}d",
+        bundleName.c_str(), appIndex);
+}
+
 InsightIntentDbCache::InsightIntentDbCache()
 {}
 
@@ -50,41 +93,44 @@ int32_t InsightIntentDbCache::InitInsightIntentCache(const int32_t userId)
 InsightIntentDbCache::~InsightIntentDbCache()
 {}
 
-int32_t InsightIntentDbCache::SaveInsightIntentTotalInfo(const std::string &bundleName, const std::string &moduleName,
-    const int32_t userId, uint32_t versionCode, ExtractInsightIntentProfileInfoVec profileInfos,
-    std::vector<InsightIntentInfo> configInfos)
+int32_t InsightIntentDbCache::SaveInsightIntentTotalInfo(const InsightIntentSaveParam &saveParam,
+    ExtractInsightIntentProfileInfoVec profileInfos, std::vector<InsightIntentInfo> configInfos)
 {
     {
         std::lock_guard<std::mutex> lock(genericInfosMutex_);
-        if (userId != userId_) {
-            TAG_LOGE(AAFwkTag::INTENT, "The userId %{public}d. is not the cache userId %{public}d.", userId, userId_);
+        if (saveParam.userId != userId_) {
+            TAG_LOGE(AAFwkTag::INTENT, "The userId %{public}d. is not the cache userId %{public}d.",
+                saveParam.userId, userId_);
             return ERR_INVALID_VALUE;
         }
     }
-    int32_t res = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->DeleteStorageInsightIntentData(bundleName,
-        moduleName, userId);
+    int32_t res = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->DeleteStorageInsightIntentData(
+        saveParam.bundleName, saveParam.moduleName, saveParam.userId,
+        saveParam.appIndex, saveParam.isDualMode);
     if (res != ERR_OK) {
         TAG_LOGW(AAFwkTag::INTENT, "Save before delete key error");
         return res;
     }
     res = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->SaveStorageInsightIntentData(
-        bundleName, moduleName, userId, versionCode, profileInfos, configInfos);
+        saveParam, profileInfos, configInfos);
     if (res != ERR_OK) {
         return res;
     }
     {
         std::lock_guard<std::mutex> lock(genericInfosMutex_);
-        bundleVersionMap_[bundleName] = std::to_string(versionCode);
+        std::string mapKey = saveParam.isDualMode
+            ? (saveParam.bundleName + "/" + std::to_string(saveParam.appIndex)) : saveParam.bundleName;
+        bundleVersionMap_[mapKey] = std::to_string(saveParam.versionCode);
     }
     return ERR_OK;
 }
 
-int32_t InsightIntentDbCache::SaveBatchInsightIntentTotalInfo(const std::string &bundleName, const int32_t userId,
-    uint32_t versionCode, const std::vector<InsightIntentSaveParam> &saveParams)
+int32_t InsightIntentDbCache::SaveBatchInsightIntentTotalInfo(const std::vector<InsightIntentSaveParam> &saveParams)
 {
     if (saveParams.empty()) {
         return ERR_OK;
     }
+    int32_t userId = saveParams.front().userId;
     {
         std::lock_guard<std::mutex> lock(genericInfosMutex_);
         if (userId != userId_) {
@@ -94,28 +140,31 @@ int32_t InsightIntentDbCache::SaveBatchInsightIntentTotalInfo(const std::string 
     }
     for (const auto &saveParam : saveParams) {
         int32_t res = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->DeleteStorageInsightIntentData(
-            bundleName, saveParam.moduleName, userId);
+            saveParam.bundleName, saveParam.moduleName, saveParam.userId,
+            saveParam.appIndex, saveParam.isDualMode);
         if (res != ERR_OK) {
             TAG_LOGW(AAFwkTag::INTENT, "Save before delete key error");
             return res;
         }
     }
-    int32_t res = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->SaveStorageInsightIntentDataBatch(
-        bundleName, userId, versionCode, saveParams);
+    int32_t res = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->SaveStorageInsightIntentDataBatch(saveParams);
     if (res != ERR_OK) {
         return res;
     }
     {
         std::lock_guard<std::mutex> lock(genericInfosMutex_);
-        bundleVersionMap_[bundleName] = std::to_string(versionCode);
+        const auto &front = saveParams.front();
+        std::string mapKey = front.isDualMode
+            ? (front.bundleName + "/" + std::to_string(front.appIndex)) : front.bundleName;
+        bundleVersionMap_[mapKey] = std::to_string(front.versionCode);
     }
     return ERR_OK;
 }
 
 bool InsightIntentDbCache::DeleteInsightIntentTotalInfo(const std::string &bundleName,
-    const std::string &moduleName, const int32_t userId)
+    const std::string &moduleName, const int32_t userId, int32_t appIndex, bool isDualMode)
 {
-    if (!HasBundleCache(bundleName, userId)) {
+    if (!HasBundleCache(bundleName, userId, appIndex, isDualMode)) {
         TAG_LOGI(AAFwkTag::INTENT, "no intent cache, skip delete, bundleName: %{public}s, "
             "moduleName: %{public}s, userId: %{public}d",
             bundleName.c_str(), moduleName.c_str(), userId);
@@ -123,12 +172,14 @@ bool InsightIntentDbCache::DeleteInsightIntentTotalInfo(const std::string &bundl
     }
     {
         std::lock_guard<std::mutex> lock(genericInfosMutex_);
+        std::string mapKey = isDualMode
+            ? (bundleName + "/" + std::to_string(appIndex)) : bundleName;
         if (moduleName.empty()) {
-            bundleVersionMap_.erase(bundleName);
+            bundleVersionMap_.erase(mapKey);
         }
     }
     int32_t ret = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->DeleteStorageInsightIntentData(bundleName,
-        moduleName, userId);
+        moduleName, userId, appIndex, isDualMode);
     if (ret != ERR_OK) {
         TAG_LOGW(AAFwkTag::INTENT, "delete intent info failed, bundleName: %{public}s, "
             "moduleName: %{public}s, userId: %{public}d, ret: %{public}d",
@@ -138,10 +189,12 @@ bool InsightIntentDbCache::DeleteInsightIntentTotalInfo(const std::string &bundl
     // Query DB to check if bundle has any remaining intents
     if (!moduleName.empty()) {
         std::vector<ExtractInsightIntentInfo> remainingInfos;
-        GetInsightIntentInfoByName(bundleName, userId, remainingInfos);
+        GetInsightIntentInfoByName(bundleName, userId, remainingInfos, appIndex, isDualMode);
         if (remainingInfos.empty()) {
             std::lock_guard<std::mutex> lock(genericInfosMutex_);
-            bundleVersionMap_.erase(bundleName);
+            std::string mapKey = isDualMode
+                ? (bundleName + "/" + std::to_string(appIndex)) : bundleName;
+            bundleVersionMap_.erase(mapKey);
         }
     }
     return true;
@@ -160,22 +213,25 @@ int32_t InsightIntentDbCache::DeleteInsightIntentByUserId(const int32_t userId)
 }
 
 bool InsightIntentDbCache::HasInsightIntentByName(uint32_t versionCode,
-    const std::string &bundleName, const int32_t userId)
+    const std::string &bundleName, const int32_t userId, int32_t appIndex, bool isDualMode)
 {
     std::lock_guard<std::mutex> lock(genericInfosMutex_);
     if (userId != userId_) {
         TAG_LOGW(AAFwkTag::INTENT, "error userId %{public}d.", userId_);
         return false;
     }
-    if (bundleVersionMap_.find(bundleName) != bundleVersionMap_.end() &&
-        bundleVersionMap_[bundleName].compare(std::to_string(versionCode)) == 0) {
+    std::string mapKey = isDualMode
+        ? (bundleName + "/" + std::to_string(appIndex)) : bundleName;
+    if (bundleVersionMap_.find(mapKey) != bundleVersionMap_.end() &&
+        bundleVersionMap_[mapKey].compare(std::to_string(versionCode)) == 0) {
         return true;
     }
     TAG_LOGD(AAFwkTag::INTENT, "null bundleName %{public}s", bundleName.c_str());
     return false;
 }
 
-bool InsightIntentDbCache::HasBundleCache(const std::string &bundleName, int32_t userId)
+bool InsightIntentDbCache::HasBundleCache(const std::string &bundleName, int32_t userId,
+    int32_t appIndex, bool isDualMode)
 {
     std::lock_guard<std::mutex> lock(genericInfosMutex_);
     if (userId_ != userId) {
@@ -187,7 +243,9 @@ bool InsightIntentDbCache::HasBundleCache(const std::string &bundleName, int32_t
             bundleName.c_str(), userId);
         return false;
     }
-    return bundleVersionMap_.find(bundleName) != bundleVersionMap_.end();
+    std::string mapKey = isDualMode
+        ? (bundleName + "/" + std::to_string(appIndex)) : bundleName;
+    return bundleVersionMap_.find(mapKey) != bundleVersionMap_.end();
 }
 
 bool InsightIntentDbCache::IsCacheInitialized(int32_t userId)
@@ -215,12 +273,13 @@ void InsightIntentDbCache::GetAllInsightIntentGenericInfo(const int32_t userId,
 }
 
 void InsightIntentDbCache::GetInsightIntentGenericInfoByName(const std::string &bundleName, const int32_t userId,
-    std::vector<ExtractInsightIntentGenericInfo> &genericInfos)
+    std::vector<ExtractInsightIntentGenericInfo> &genericInfos, int32_t appIndex, bool isDualMode)
 {
+    ResolveDualModeIfNeeded(bundleName, userId, appIndex, isDualMode);
     std::vector<ExtractInsightIntentInfo> totalInfos;
     genericInfos.clear();
     if (DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->
-        LoadInsightIntentInfoByName(bundleName, userId, totalInfos) != ERR_OK) {
+        LoadInsightIntentInfoByName(bundleName, userId, totalInfos, appIndex, isDualMode) != ERR_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "GetInsightIntentInfoByName failed");
         return;
     }
@@ -235,12 +294,13 @@ void InsightIntentDbCache::GetInsightIntentGenericInfoByName(const std::string &
         });
 }
 
-void InsightIntentDbCache::GetInsightIntentGenericInfo(const std::string &bundleName, const std::string &moduleName,
-    const std::string &intentName, const int32_t userId, ExtractInsightIntentGenericInfo &genericInfo)
+void InsightIntentDbCache::GetInsightIntentGenericInfo(const IntentKey &key,
+    ExtractInsightIntentGenericInfo &genericInfo, int32_t appIndex, bool isDualMode)
 {
+    ResolveDualModeIfNeeded(key.bundleName, key.userId, appIndex, isDualMode);
     ExtractInsightIntentInfo info;
     if (DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->
-        LoadInsightIntentInfo(bundleName, moduleName, intentName, userId, info) != ERR_OK) {
+        LoadInsightIntentInfo(key, info, appIndex, isDualMode) != ERR_OK) {
         TAG_LOGW(AAFwkTag::INTENT, "GetInsightIntentInfo failed");
         return;
     }
@@ -278,40 +338,45 @@ void InsightIntentDbCache::GetAllConfigInsightIntentInfo(
 }
 
 void InsightIntentDbCache::GetInsightIntentInfoByName(const std::string &bundleName, const int32_t userId,
-    std::vector<ExtractInsightIntentInfo> &infos)
+    std::vector<ExtractInsightIntentInfo> &infos, int32_t appIndex, bool isDualMode)
 {
+    ResolveDualModeIfNeeded(bundleName, userId, appIndex, isDualMode);
     if (DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->
-        LoadInsightIntentInfoByName(bundleName, userId, infos) != ERR_OK) {
+        LoadInsightIntentInfoByName(bundleName, userId, infos, appIndex, isDualMode) != ERR_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "GetInsightIntentInfoByName failed");
         return;
     }
 }
 
 void InsightIntentDbCache::GetConfigInsightIntentInfoByName(const std::string &bundleName, const int32_t userId,
-    std::vector<InsightIntentInfo> &infos)
+    std::vector<InsightIntentInfo> &infos, int32_t appIndex, bool isDualMode)
 {
+    ResolveDualModeIfNeeded(bundleName, userId, appIndex, isDualMode);
     if (DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->
-        LoadConfigInsightIntentInfoByName(bundleName, userId, infos) != ERR_OK) {
+        LoadConfigInsightIntentInfoByName(bundleName, userId, infos, appIndex, isDualMode) != ERR_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "GetConfigInsightIntentInfoByName failed");
         return;
     }
 }
 
-void InsightIntentDbCache::GetInsightIntentInfo(const std::string &bundleName, const std::string &moduleName,
-    const std::string &intentName, const int32_t userId, ExtractInsightIntentInfo &info)
+void InsightIntentDbCache::GetInsightIntentInfo(const IntentKey &key, ExtractInsightIntentInfo &info,
+    int32_t appIndex, bool isDualMode)
 {
+    ResolveDualModeIfNeeded(key.bundleName, key.userId, appIndex, isDualMode);
     if (DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->
-        LoadInsightIntentInfo(bundleName, moduleName, intentName, userId, info) != ERR_OK) {
+        LoadInsightIntentInfo(key, info, appIndex, isDualMode) != ERR_OK) {
         TAG_LOGW(AAFwkTag::INTENT, "GetInsightIntentInfo failed");
         return;
     }
 }
 
-void InsightIntentDbCache::GetConfigInsightIntentInfo(const std::string &bundleName, const std::string &moduleName,
-    const std::string &intentName, const int32_t userId, InsightIntentInfo &info)
+void InsightIntentDbCache::GetConfigInsightIntentInfo(const IntentKey &key, InsightIntentInfo &info,
+    int32_t appIndex, bool isDualMode)
 {
+    ResolveDualModeIfNeeded(key.bundleName, key.userId, appIndex, isDualMode);
     if (DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->
-        LoadConfigInsightIntentInfo(bundleName, moduleName, intentName, userId, info) != ERR_OK) {
+        LoadConfigInsightIntentInfo(key, info, appIndex, isDualMode)
+        != ERR_OK) {
         TAG_LOGW(AAFwkTag::INTENT, "GetConfigInsightIntentInfo failed");
         return;
     }
@@ -320,6 +385,25 @@ void InsightIntentDbCache::GetConfigInsightIntentInfo(const std::string &bundleN
 void InsightIntentDbCache::BackupRdb()
 {
     DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->BackupRdb();
+}
+
+void InsightIntentDbCache::RemoveBundleVersionCacheEntry(const std::string &bundleName,
+    int32_t userId, int32_t appIndex, bool isDualMode, const std::string &moduleName)
+{
+    std::string mapKey = isDualMode
+        ? (bundleName + "/" + std::to_string(appIndex)) : bundleName;
+    if (moduleName.empty()) {
+        std::lock_guard<std::mutex> lock(genericInfosMutex_);
+        bundleVersionMap_.erase(mapKey);
+        return;
+    }
+    std::vector<ExtractInsightIntentInfo> remainingInfos;
+    DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->
+        LoadInsightIntentInfoByName(bundleName, userId, remainingInfos, appIndex, isDualMode);
+    if (remainingInfos.empty()) {
+        std::lock_guard<std::mutex> lock(genericInfosMutex_);
+        bundleVersionMap_.erase(mapKey);
+    }
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

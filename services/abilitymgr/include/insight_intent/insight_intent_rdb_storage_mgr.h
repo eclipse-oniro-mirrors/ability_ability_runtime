@@ -26,9 +26,21 @@
 namespace OHOS {
 namespace AbilityRuntime {
 struct InsightIntentSaveParam {
+    std::string bundleName;
     std::string moduleName;
+    uint32_t versionCode = 0;
+    int32_t userId = 0;
     ExtractInsightIntentProfileInfoVec profileInfos;
     std::vector<InsightIntentInfo> configInfos;
+    int32_t appIndex = 0;
+    bool isDualMode = false;
+};
+
+struct IntentKey {
+    std::string bundleName;
+    std::string moduleName;
+    std::string intentName;
+    int32_t userId = 0;
 };
 
 class InsightRdbStorageMgr : public std::enable_shared_from_this<InsightRdbStorageMgr> {
@@ -40,24 +52,28 @@ public:
     int32_t LoadConfigInsightIntentInfos(
         const int32_t userId, std::vector<InsightIntentInfo> &configInfos);
     int32_t LoadInsightIntentInfoByName(const std::string &bundleName, const int32_t userId,
-        std::vector<ExtractInsightIntentInfo> &totalInfos);
+        std::vector<ExtractInsightIntentInfo> &totalInfos, int32_t appIndex = 0, bool isDualMode = false);
     int32_t LoadConfigInsightIntentInfoByName(const std::string &bundleName, const int32_t userId,
-        std::vector<InsightIntentInfo> &totalInfos);
-    int32_t LoadInsightIntentInfo(const std::string &bundleName, const std::string &moduleName,
-        const std::string &intentName, const int32_t userId, ExtractInsightIntentInfo &totalInfo);
-    int32_t LoadConfigInsightIntentInfo(const std::string &bundleName, const std::string &moduleName,
-        const std::string &intentName, const int32_t userId, InsightIntentInfo &totalInfo);
-    int32_t SaveStorageInsightIntentData(const std::string &bundleName, const std::string &moduleName,
-        const int32_t userId, uint32_t versionCode, ExtractInsightIntentProfileInfoVec &profileInfos,
-        std::vector<InsightIntentInfo> &configInfos);
-    int32_t SaveStorageInsightIntentDataBatch(const std::string &bundleName, const int32_t userId,
-        uint32_t versionCode, const std::vector<InsightIntentSaveParam> &saveParams);
+        std::vector<InsightIntentInfo> &totalInfos, int32_t appIndex = 0, bool isDualMode = false);
+    int32_t LoadInsightIntentInfo(const IntentKey &key, ExtractInsightIntentInfo &totalInfo,
+        int32_t appIndex = 0, bool isDualMode = false);
+    int32_t LoadConfigInsightIntentInfo(const IntentKey &key, InsightIntentInfo &totalInfo,
+        int32_t appIndex = 0, bool isDualMode = false);
+    int32_t SaveStorageInsightIntentData(const InsightIntentSaveParam &saveParam,
+        ExtractInsightIntentProfileInfoVec &profileInfos, std::vector<InsightIntentInfo> &configInfos);
+    int32_t SaveStorageInsightIntentDataBatch(const std::vector<InsightIntentSaveParam> &saveParams);
     int32_t DeleteStorageInsightIntentData(const std::string &bundleName,
-        const std::string &moduleName, const int32_t userId);
+        const std::string &moduleName, const int32_t userId, int32_t appIndex = 0, bool isDualMode = false);
+    int32_t DeleteIntentByAppIndex(const std::string &bundleName,
+        const std::string &moduleName, const int32_t userId, int32_t appIndex);
     int32_t DeleteStorageInsightIntentByUserId(const int32_t userId);
     void BackupRdb();
 
 private:
+    static std::string BuildIntentKey(const IntentKey &key, uint32_t versionCode,
+        int32_t appIndex, bool isDualMode);
+    static std::string BuildBundlePrefix(int32_t userId, const std::string &bundleName,
+        int32_t appIndex, bool isDualMode);
     void Transform(std::unordered_map<std::string, std::string> value,
         std::vector<ExtractInsightIntentInfo> &totalInfos, std::vector<InsightIntentInfo> &configInfos);
     void TransformConfigIntent(std::unordered_map<std::string, std::string> value,

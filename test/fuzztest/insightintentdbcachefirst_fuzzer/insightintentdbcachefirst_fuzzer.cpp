@@ -73,10 +73,10 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     insightIntentDbCache->InitInsightIntentCache(userId);
     insightIntentDbCache->InitInsightIntentCache(userId2);
 
-    insightIntentDbCache->SaveInsightIntentTotalInfo(bundleName, moduleName, userId2,
-        versionCode, profileInfos, configIntentInfos);
-    insightIntentDbCache->SaveInsightIntentTotalInfo(bundleName, moduleName, userId,
-        versionCode, profileInfos, configIntentInfos);
+    insightIntentDbCache->SaveInsightIntentTotalInfo(
+        InsightIntentSaveParam{bundleName, moduleName, versionCode, userId2}, profileInfos, configIntentInfos);
+    insightIntentDbCache->SaveInsightIntentTotalInfo(
+        InsightIntentSaveParam{bundleName, moduleName, versionCode, userId}, profileInfos, configIntentInfos);
 
     insightIntentDbCache->DeleteInsightIntentTotalInfo(bundleName, moduleName, userId2);
     insightIntentDbCache->DeleteInsightIntentTotalInfo(bundleName, emptyModuleName, userId2);
@@ -89,15 +89,18 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     insightIntentDbCache->GetInsightIntentGenericInfoByName(bundleName, userId2, genericInfos);
     genericInfos.clear();
     insightIntentDbCache->GetInsightIntentGenericInfoByName(bundleName, userId, genericInfos);
-    insightIntentDbCache->GetInsightIntentGenericInfo(bundleName, moduleName, intentName, userId, genericInfo);
+    insightIntentDbCache->GetInsightIntentGenericInfo(
+        IntentKey{bundleName, moduleName, intentName, userId}, genericInfo);
     insightIntentDbCache->GetAllInsightIntentInfo(userId2, intentInfos, configInfos);
     insightIntentDbCache->GetAllConfigInsightIntentInfo(userId2, configInfos);
     insightIntentDbCache->GetInsightIntentInfoByName(bundleName, userId2, intentInfos);
     insightIntentDbCache->GetConfigInsightIntentInfoByName(bundleName, userId2, configInfos);
 
-    insightIntentDbCache->GetInsightIntentInfo(bundleName, moduleName, intentName, userId2, intentInfo);
+    insightIntentDbCache->GetInsightIntentInfo(
+        IntentKey{bundleName, moduleName, intentName, userId2}, intentInfo);
 
-    insightIntentDbCache->GetConfigInsightIntentInfo(bundleName, moduleName, intentName, userId2, configInfo);
+    insightIntentDbCache->GetConfigInsightIntentInfo(
+        IntentKey{bundleName, moduleName, intentName, userId2}, configInfo);
 
     return true;
 }

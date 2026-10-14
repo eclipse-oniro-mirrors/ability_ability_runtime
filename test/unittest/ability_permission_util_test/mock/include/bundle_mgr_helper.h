@@ -60,6 +60,11 @@ public:
         bundleInfo = retBundleInfo;
         return retGetBundleInfo;
     }
+
+    ErrCode GetDualModeBundleInfo(const std::string &bundleName, int32_t userId, int32_t &appIndex)
+    {
+        return ERR_OK;
+    }
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

@@ -32,6 +32,8 @@ public:
     static std::shared_ptr<BundleMgrHelper> GetInstance();
 
     sptr<IAppControlMgr> GetAppControlProxy();
+
+    ErrCode GetDualModeBundleInfo(const std::string &bundleName, int32_t userId, int32_t &appIndex);
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

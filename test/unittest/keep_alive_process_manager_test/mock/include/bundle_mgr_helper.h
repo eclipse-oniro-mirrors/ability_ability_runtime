@@ -31,6 +31,7 @@ public:
     ~BundleMgrHelper() = default;
 
     bool GetBundleInfo(const std::string &bundleName, const BundleFlag flag, BundleInfo &bundleInfo, int32_t userId);
+    ErrCode GetDualModeBundleInfo(const std::string &bundleName, int32_t userId, int32_t &appIndex);
 
 public:
     static bool getBundleInfoResult;

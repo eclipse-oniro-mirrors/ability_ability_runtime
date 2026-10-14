@@ -61,6 +61,12 @@ bool BundleMgrHelper::QueryDataGroupInfos(const std::string &bundleName,
     return dataGroupInfos_;
 }
 
+ErrCode BundleMgrHelper::GetDualModeBundleInfo(
+    const std::string &bundleName, int32_t userId, int32_t &appIndex)
+{
+    return ERR_OK;
+}
+
 bool BundleMgrHelper::hapModuleInfo_ = false;
 bool BundleMgrHelper::dataGroupInfos_ = false;
 ErrCode BundleMgrHelper::getBundleInfoV9Result_ = ERR_OK;

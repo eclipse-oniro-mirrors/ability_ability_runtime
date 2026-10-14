@@ -49,6 +49,7 @@ public:
     ErrCode GetBundleInfosV9(int32_t flags, std::vector<BundleInfo> &bundleInfos, int32_t userId);
     ErrCode GetLauncherAbilityInfoSync(
         const std::string &bundleName, int32_t userId, std::vector<AbilityInfo> &abilityInfo);
+    ErrCode GetDualModeBundleInfo(const std::string &bundleName, int32_t userId, int32_t &appIndex);
 
 private:
     DECLARE_DELAYED_SINGLETON(BundleMgrHelper)
