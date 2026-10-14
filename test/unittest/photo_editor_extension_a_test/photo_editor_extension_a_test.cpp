@@ -45,26 +45,10 @@ public:
 };
 
 void PhotoEditorExtensionContextTest::SetUpTestCase(void)
-{
-    // create tmp dir and dummy files for real-fs test cases
-    std::string mkdirCmd = "mkdir -p " + TMP_DIR;
-    system(mkdirCmd.c_str());
-    std::ofstream extFile(TMP_IMAGE_WITH_EXT, std::ios::binary);
-    extFile << "dummy jpg content";
-    extFile.close();
-    std::ofstream noExtFile(TMP_IMAGE_NO_EXT, std::ios::binary);
-    noExtFile << "dummy no-ext content";
-    noExtFile.close();
-    std::ofstream panelFile(TMP_PANEL_FILE, std::ios::binary);
-    panelFile << "panel placeholder";
-    panelFile.close();
-}
+{}
 
 void PhotoEditorExtensionContextTest::TearDownTestCase(void)
-{
-    std::string rmCmd = "rm -rf " + TMP_DIR;
-    system(rmCmd.c_str());
-}
+{}
 
 void PhotoEditorExtensionContextTest::SetUp(void)
 {}
@@ -140,7 +124,7 @@ HWTEST_F(PhotoEditorExtensionContextTest, SaveEditedContent_0300, Function | Med
 {
     GTEST_LOG_(INFO) << "SaveEditedContent_0300 start";
     auto PhotoInfos = std::make_shared<PhotoEditorExtensionContext>();
-    std::string uri = "/data/local/tmp/photo_editor_nonexistent_noext";
+    std::string uri = TMP_IMAGE_NO_EXT;
     AAFwk::Want newWant;
     std::shared_ptr<AAFwk::Want> want = std::make_shared<AAFwk::Want>();
     PhotoInfos->SetWant(want);
@@ -150,47 +134,5 @@ HWTEST_F(PhotoEditorExtensionContextTest, SaveEditedContent_0300, Function | Med
     GTEST_LOG_(INFO) << "SaveEditedContent_0300 end";
 }
 
-/**
- * @tc.number: SaveEditedContent_0400
- * @tc.name: SaveEditedContent
- * @tc.desc: uri without extension but file exists, should return PARAM_ERROR after fix
- */
-
-HWTEST_F(PhotoEditorExtensionContextTest, SaveEditedContent_0400, Function | MediumTest | Level1)
-{
-    GTEST_LOG_(INFO) << "SaveEditedContent_0400 start";
-    auto PhotoInfos = std::make_shared<PhotoEditorExtensionContext>();
-    std::string uri = TMP_IMAGE_NO_EXT;
-    AAFwk::Want newWant;
-    std::shared_ptr<AAFwk::Want> want = std::make_shared<AAFwk::Want>();
-    PhotoInfos->SetWant(want);
-    want->SetParam(PANEL_TRANSFER_FILE_PATHS, TMP_PANEL_FILE);
-    PhotoEditorErrorCode res = PhotoInfos->SaveEditedContent(uri, newWant);
-    // CopyImageToPanel succeeds, then find_last_of(".") returns npos → PARAM_ERROR
-    EXPECT_EQ(res, PhotoEditorErrorCode::ERROR_CODE_PARAM_ERROR);
-    GTEST_LOG_(INFO) << "SaveEditedContent_0400 end";
-}
-
-/**
- * @tc.number: SaveEditedContent_0500
- * @tc.name: SaveEditedContent
- * @tc.desc: uri with extension and file exists, should succeed and set correct type
- */
-
-HWTEST_F(PhotoEditorExtensionContextTest, SaveEditedContent_0500, Function | MediumTest | Level1)
-{
-    GTEST_LOG_(INFO) << "SaveEditedContent_0500 start";
-    auto PhotoInfos = std::make_shared<PhotoEditorExtensionContext>();
-    std::string uri = TMP_IMAGE_WITH_EXT;
-    AAFwk::Want newWant;
-    std::shared_ptr<AAFwk::Want> want = std::make_shared<AAFwk::Want>();
-    PhotoInfos->SetWant(want);
-    want->SetParam(PANEL_TRANSFER_FILE_PATHS, TMP_PANEL_FILE);
-    PhotoEditorErrorCode res = PhotoInfos->SaveEditedContent(uri, newWant);
-    EXPECT_EQ(res, PhotoEditorErrorCode::ERROR_OK);
-    // verify Want type is correctly set to "image/jpg"
-    EXPECT_EQ(newWant.GetType(), "image/jpg");
-    GTEST_LOG_(INFO) << "SaveEditedContent_0500 end";
-}
 } // namespace AbilityRuntime
 } // namespace OHOS

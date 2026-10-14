@@ -40,12 +40,14 @@ PhotoEditorErrorCode PhotoEditorExtensionContext::SaveEditedContent(const std::s
     if (errCode == PhotoEditorErrorCode::ERROR_OK) {
         TAG_LOGD(AAFwkTag::UI_EXT, "Save content succeed");
         auto pos = uri.find_last_of(".");
-        if (pos == std::string::npos) {
+        auto sep = uri.find_last_of('/');
+        if (pos != std::string::npos && (sep == std::string::npos || pos > sep)) {
+            newWant.SetType("image/" + uri.substr(pos + 1));
+        } else {
             TAG_LOGE(AAFwkTag::UI_EXT, "uri has no extension");
             return PhotoEditorErrorCode::ERROR_CODE_PARAM_ERROR;
         }
         newWant.SetUri(panelUri);
-        newWant.SetType("image/" + uri.substr(pos + 1));
     }
     return errCode;
 }
