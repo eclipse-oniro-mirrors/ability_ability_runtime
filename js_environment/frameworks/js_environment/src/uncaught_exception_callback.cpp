@@ -339,52 +339,80 @@ void NapiUncaughtExceptionCallback::HandleAndLogIfNotJsError(napi_value obj)
     TAG_LOGE(AAFwkTag::JSENV, "Uncaught exception: %{public}s", strPtr->ToString(vm).c_str());
 }
 
+static void SkipToBacktrace(std::stringstream& ss, const std::string& nativeStack)
+{
+    // Skip header lines until the Backtrace marker is found.
+    // In NO_SOURCEMAP mode the stack has two header lines:
+    //   "Cannot get SourceMap info, dump raw stack:" and "====...Backtrace...===="
+    // In EXECUTED_SUCCESSFULLY mode TranslateBySourceMap may return only one header line:
+    //   "====...Backtrace...===="
+    // Unconditionally skipping two lines loses the first frame in the latter case.
+    bool foundBacktrace = false;
+    std::string tempStr;
+    while (std::getline(ss, tempStr)) {
+        if (tempStr.find(BACKTRACE) != std::string::npos) {
+            foundBacktrace = true;
+            break;
+        }
+    }
+    if (!foundBacktrace) {
+        // The Backtrace marker is absent. Do not silently consume the whole
+        // stream (which would drop every frame); rewind and parse all lines
+        // as raw stack frames instead.
+        ss.clear();
+        ss.str(nativeStack);
+    }
+}
+
+static bool ProcessStackFrame(const std::string& tempStr, std::string& appendInfo)
+{
+    auto splitPos = tempStr.rfind(" ");
+    if (splitPos == std::string::npos) {
+        return false;
+    }
+    HiviewDFX::RegularElfFactory elfFactory(tempStr.substr(splitPos + 1));
+    auto elfFile = elfFactory.Create();
+    size_t pcPos = tempStr.find(" pc ");
+    if (pcPos == std::string::npos) {
+        return false;
+    }
+    std::string pc = tempStr.substr(pcPos += FLAG_PC_POS, FLAG_SPLIT_POS);
+    uint64_t value;
+    auto res = std::from_chars(pc.data(), pc.data() + pc.size(), value, FLAG_SPLIT_POS);
+    if (res.ec != std::errc()) {
+        return false;
+    }
+    std::string funcName;
+    uint64_t funcOffset;
+    HiviewDFX::DfxSymbols::GetFuncNameAndOffsetByPc(value, elfFile, funcName, funcOffset);
+    std::string buildId = elfFile->GetBuildId();
+    if (!funcName.empty()) {
+        appendInfo += tempStr + "(" + funcName;
+        appendInfo += HiviewDFX::StringPrintf("+%" PRId64, funcOffset) + ")";
+        if (!buildId.empty()) {
+            appendInfo += "(" + buildId + ")" + "\n";
+        } else {
+            appendInfo += "\n";
+        }
+    } else if (!buildId.empty()) {
+        appendInfo += tempStr + "(" + buildId + ")" + "\n";
+    } else {
+        appendInfo += tempStr + "\n";
+    }
+    return true;
+}
+
 std::string NapiUncaughtExceptionCallback::GetFuncNameAndBuildId(std::string nativeStack)
 {
     std::stringstream ss(nativeStack);
     std::string tempStr;
     std::string appendInfo;
-    // Filter two lines
-    std::getline(ss, tempStr); // Cannot get SourceMap info, dump raw stack:
-    std::getline(ss, tempStr); // =====================Backtrace========================
+    SkipToBacktrace(ss, nativeStack);
     HiviewDFX::UnwinderConfig::SetEnableMiniDebugInfo(true);
     HiviewDFX::UnwinderConfig::SetEnableLoadSymbolLazily(true);
     while (std::getline(ss, tempStr)) {
-        auto splitPos = tempStr.rfind(" ");
-        if (splitPos == std::string::npos) {
+        if (!ProcessStackFrame(tempStr, appendInfo)) {
             return nativeStack;
-        }
-        HiviewDFX::RegularElfFactory elfFactory(tempStr.substr(splitPos + 1));
-        auto elfFile = elfFactory.Create();
-        std::string pc;
-        size_t pcPos = tempStr.find(" pc ");
-        if (pcPos == std::string::npos) {
-            return nativeStack;
-        }
-        pc = tempStr.substr(pcPos += FLAG_PC_POS, FLAG_SPLIT_POS);
-        uint64_t value;
-        auto res = std::from_chars(pc.data(), pc.data() + pc.size(), value, FLAG_SPLIT_POS);
-        if (res.ec != std::errc()) {
-            return nativeStack;
-        }
-        std::string funcName;
-        uint64_t funcOffset;
-        HiviewDFX::DfxSymbols::GetFuncNameAndOffsetByPc(value, elfFile, funcName, funcOffset);
-        std::string buildId = elfFile->GetBuildId();
-        if (!funcName.empty()) {
-            appendInfo += tempStr + "(" + funcName;
-            appendInfo += HiviewDFX::StringPrintf("+%" PRId64, funcOffset) + ")";
-            if (!buildId.empty()) {
-                appendInfo += "(" + buildId + ")" + "\n";
-            } else {
-                appendInfo += "\n";
-            }
-        } else {
-            if (!buildId.empty()) {
-                appendInfo += tempStr + "(" + buildId + ")" + "\n";
-            } else {
-                appendInfo += tempStr + "\n";
-            }
         }
     }
     return appendInfo;
