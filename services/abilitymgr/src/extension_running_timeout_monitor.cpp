@@ -165,6 +165,10 @@ void ExtensionRunningTimeoutMonitor::SubmitPeriodicTask()
     auto task = []() {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "extension timeout periodic task triggered");
         auto monitor = DelayedSingleton<ExtensionRunningTimeoutMonitor>::GetInstance();
+        if (monitor == nullptr) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "failed to get extension monitor instance");
+            return;
+        }
         if (!monitor->isMonitoring_.load()) {
             TAG_LOGI(AAFwkTag::ABILITYMGR, "monitor not running, skip periodic cycle");
             return;

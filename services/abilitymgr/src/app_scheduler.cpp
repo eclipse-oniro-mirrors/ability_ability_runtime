@@ -338,7 +338,9 @@ int AppScheduler::KillApplicationWithUserId(const std::string &bundleName,
     CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
     int ret = (int)appMgrClient_->KillApplicationWithUserId(bundleName, userId, appIndex);
     if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "failed kill app");
+        TAG_LOGE(AAFwkTag::ABILITYMGR,
+            "failed kill app, bundleName:%{public}s userId:%{public}d appIndex:%{public}d ret:%{public}d",
+            bundleName.c_str(), userId, appIndex, ret);
         return INNER_ERR;
     }
 
