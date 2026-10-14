@@ -68,6 +68,7 @@ private:
     int32_t VerifyKioskPermissions();
     bool IsInKioskModeInner();
     bool IsInWhiteListInner(const std::string &bundleName);
+    bool IsCallerBackgroundAndScreenLocked(sptr<IRemoteObject> callerToken);
     bool IsSAProxyInKioskWhitelist(int32_t callerUid, const std::string &bundleName);
     std::function<void()> GetEnterKioskModeCallback();
     std::function<void()> GetExitKioskModeCallback();

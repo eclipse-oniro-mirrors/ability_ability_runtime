@@ -28,6 +28,9 @@
 #include "ipc_skeleton.h"
 #include "kiosk_manager.h"
 #include "permission_constants.h"
+#ifdef ABILITY_RUNTIME_SCREENLOCK_ENABLE
+#include "screenlock_manager.h"
+#endif // ABILITY_RUNTIME_SCREENLOCK_ENABLE
 #include "session_manager_lite.h"
 #include "singleton.h"
 #include "utils/want_utils.h"
@@ -264,6 +267,20 @@ int32_t KioskManager::DeleteKioskApplicationList(const std::vector<std::string> 
     return ERR_OK;
 }
 
+bool KioskManager::IsCallerBackgroundAndScreenLocked(sptr<IRemoteObject> callerToken)
+{
+    AppExecFwk::RunningProcessInfo processInfo;
+    DelayedSingleton<AppScheduler>::GetInstance()->GetRunningProcessInfoByToken(callerToken, processInfo);
+    if (processInfo.state_ == AppExecFwk::AppProcessState::APP_STATE_FOREGROUND) {
+        return false;
+    }
+    bool screenLocked = false;
+#ifdef ABILITY_RUNTIME_SCREENLOCK_ENABLE
+    screenLocked = OHOS::ScreenLock::ScreenLockManager::GetInstance()->IsScreenLocked();
+#endif // ABILITY_RUNTIME_SCREENLOCK_ENABLE
+    return screenLocked;
+}
+
 int32_t KioskManager::EnterKioskMode(sptr<IRemoteObject> callerToken, int32_t kioskType)
 {
     if (!system::GetBoolParameter(KIOSK_MODE_ENABLED, false)) {
@@ -279,6 +296,10 @@ int32_t KioskManager::EnterKioskMode(sptr<IRemoteObject> callerToken, int32_t ki
     int32_t recordUid = record->GetAbilityInfo().uid;
     int32_t callingUid = IPCSkeleton::GetCallingUid();
     bool isSelf = (callingUid == recordUid);
+    if (isSelf && IsCallerBackgroundAndScreenLocked(callerToken)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "caller is in background and screen locked");
+        return INNER_ERR;
+    }
     {
         std::lock_guard<std::mutex> lock(kioskManagerMutex_);
         if (isSelf) {
