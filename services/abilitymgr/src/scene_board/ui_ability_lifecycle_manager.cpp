@@ -1910,6 +1910,7 @@ int UIAbilityLifecycleManager::CallAbilityLocked(const AbilityRequest &abilityRe
 #ifdef SUPPORT_UPMS
     if (InsightIntentExecuteParam::IsInsightIntentExecute(abilityRequest.want)) {
         uiAbilityRecord->GrantUriPermission();
+        uiAbilityRecord->GrantFileEntityUriPermission();
     }
 #endif // SUPPORT_UPMS
 

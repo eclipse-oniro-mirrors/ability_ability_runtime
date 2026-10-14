@@ -3385,6 +3385,7 @@ int MissionListManager::CallAbilityLocked(const AbilityRequest &abilityRequest)
 #ifdef SUPPORT_UPMS
     if (InsightIntentExecuteParam::IsInsightIntentExecute(abilityRequest.want)) {
         targetAbilityRecord->GrantUriPermission();
+        targetAbilityRecord->GrantFileEntityUriPermission();
     }
 #endif // SUPPORT_UPMS
 

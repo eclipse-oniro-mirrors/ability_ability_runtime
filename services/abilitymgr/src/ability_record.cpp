@@ -38,6 +38,7 @@
 #include "global_constant.h"
 #include "hitrace_meter.h"
 #include "image_source.h"
+#include "insight_intent_execute_param.h"
 #include "json_utils.h"
 #include "last_exit_detail_info.h"
 #include "main_element_utils.h"
@@ -495,18 +496,7 @@ void AbilityRecord::ProcessForegroundAbility(uint32_t tokenId, const ForegroundO
     needCheckAutoStartupStatusBar_ = GetBoolParam(HIDDEN_START_AUTOSTARTUP, false);
     RemoveSpecifiedWantParam(HIDDEN_START_AUTOSTARTUP);
 #ifdef SUPPORT_UPMS
-    {
-        std::lock_guard guard(wantLock_);
-        std::string targetBundleName = abilityInfo_.applicationInfo.bundleName;
-        bool isNotifyCollaborator = !options.targetGrantBundleName.empty();
-        if (isNotifyCollaborator) {
-            targetBundleName = options.targetGrantBundleName;
-        }
-        if (options.callerTypeForAnco == static_cast<int32_t>(CallerTypeForAnco::QUERY)) {
-            tokenId = options.realCallerTokenId;
-        }
-        GrantUriPermission(want_, targetBundleName, false, tokenId, isNotifyCollaborator);
-    }
+    GrantForegroundUriPermission(tokenId, options);
 #endif // SUPPORT_UPMS
     if (!isReady_) {
         isPrelaunch_ = false;
@@ -3019,6 +3009,52 @@ void AbilityRecord::GrantUriPermission()
     {
         std::lock_guard guard(wantLock_);
         GrantUriPermission(want_, abilityInfo_.applicationInfo.bundleName, false, 0, false);
+    }
+}
+
+void AbilityRecord::GrantFileEntityUriPermission()
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    Want want;
+    {
+        std::lock_guard guard(wantLock_);
+        want = want_;
+    }
+    std::vector<std::vector<std::string>> uriGroups;
+    std::vector<int32_t> flags;
+    InsightIntentExecuteParam::GetFileEntityUrisAndFlags(want, uriGroups, flags);
+    if (uriGroups.empty()) {
+        return;
+    }
+    auto callerTokenId = specifyTokenId_ > 0 ? specifyTokenId_ :
+        static_cast<uint32_t>(want.GetIntParam(Want::PARAM_RESV_CALLER_TOKEN, 0));
+    for (size_t i = 0; i < uriGroups.size() && i < flags.size(); i++) {
+        UriUtils::GetInstance().GrantUriPermission(uriGroups[i], flags[i],
+            abilityInfo_.applicationInfo.bundleName, appIndex_, callerTokenId);
+    }
+}
+
+void AbilityRecord::GrantForegroundUriPermission(uint32_t tokenId, const ForegroundOptions &options)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    std::lock_guard guard(wantLock_);
+    std::string targetBundleName = abilityInfo_.applicationInfo.bundleName;
+    bool isNotifyCollaborator = !options.targetGrantBundleName.empty();
+    if (isNotifyCollaborator) {
+        targetBundleName = options.targetGrantBundleName;
+    }
+    if (options.callerTypeForAnco == static_cast<int32_t>(CallerTypeForAnco::QUERY)) {
+        tokenId = options.realCallerTokenId;
+    }
+    GrantUriPermission(want_, targetBundleName, false, tokenId, isNotifyCollaborator);
+    if (InsightIntentExecuteParam::IsInsightIntentExecute(want_)) {
+        std::vector<std::vector<std::string>> uriGroups;
+        std::vector<int32_t> flags;
+        InsightIntentExecuteParam::GetFileEntityUrisAndFlags(want_, uriGroups, flags);
+        for (size_t i = 0; i < uriGroups.size() && i < flags.size(); i++) {
+            UriUtils::GetInstance().GrantUriPermission(
+                uriGroups[i], flags[i], targetBundleName, appIndex_, tokenId);
+        }
     }
 }
 #endif // SUPPORT_UPMS

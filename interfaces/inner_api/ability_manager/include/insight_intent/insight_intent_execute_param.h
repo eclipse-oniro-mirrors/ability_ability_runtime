@@ -114,6 +114,15 @@ public:
     static bool RemoveInsightIntent(AAFwk::Want &want);
     static void UpdateInsightIntentCallerInfo(const WantParams &wantParams, WantParams &insightIntentParam);
 
+    /**
+     * @brief Collect FileEntity URIs from intent custom parameters, grouped by grant flag.
+     * @param want The Want object containing intent custom parameters.
+     * @param uriGroups Output URI groups, each corresponds to one entry in flags.
+     * @param flags Output grant flags, each corresponds to one URI group.
+     */
+    static void GetFileEntityUrisAndFlags(const AAFwk::Want &want,
+        std::vector<std::vector<std::string>> &uriGroups, std::vector<int32_t> &flags);
+
     int32_t executeMode_ = -1;
     int32_t displayId_ = INVALID_DISPLAY_ID;
     int32_t flags_ = 0;

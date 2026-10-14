@@ -36,6 +36,7 @@
 #include "global_constant.h"
 #include "hitrace_meter.h"
 #include "init_reboot.h"
+#include "insight_intent_execute_param.h"
 #include "int_wrapper.h"
 #include "multi_instance_utils.h"
 #include "modular_object_manager.h"
@@ -107,6 +108,18 @@ int AbilityConnectManager::StartAbility(const AbilityRequest &abilityRequest)
 #ifdef SUPPORT_UPMS
     // grant uri permission to service extension and ui extension, must call out of serialMutext_.
     UriUtils::GetInstance().GrantUriPermissionForUIOrServiceExtension(abilityRequest);
+    if (InsightIntentExecuteParam::IsInsightIntentExecute(abilityRequest.want)) {
+        std::vector<std::vector<std::string>> uriGroups;
+        std::vector<int32_t> flags;
+        InsightIntentExecuteParam::GetFileEntityUrisAndFlags(abilityRequest.want, uriGroups, flags);
+        auto callerTokenId = abilityRequest.specifyTokenId > 0 ? abilityRequest.specifyTokenId :
+            static_cast<uint32_t>(abilityRequest.want.GetIntParam(Want::PARAM_RESV_CALLER_TOKEN, 0));
+        for (size_t i = 0; i < uriGroups.size() && i < flags.size(); i++) {
+            UriUtils::GetInstance().GrantUriPermission(uriGroups[i], flags[i],
+                abilityRequest.abilityInfo.bundleName, abilityRequest.abilityInfo.applicationInfo.appIndex,
+                callerTokenId);
+        }
+    }
 #endif // SUPPORT_UPMS
     std::lock_guard guard(serialMutex_);
     return StartAbilityLocked(abilityRequest);

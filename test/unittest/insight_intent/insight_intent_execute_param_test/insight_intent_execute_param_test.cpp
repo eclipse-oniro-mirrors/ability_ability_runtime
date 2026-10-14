@@ -15,10 +15,14 @@
 
 #include <gtest/gtest.h>
 
+#include <map>
+#include <vector>
+
 #include "hilog_tag_wrapper.h"
 #include "want.h"
 #include "want_params_wrapper.h"
 #include "insight_intent_execute_param.h"
+#include "array_wrapper.h"
 #include "int_wrapper.h"
 #include "string_wrapper.h"
 #include "string_ex.h"
@@ -44,6 +48,44 @@ std::string BuildEncodedMethodParam(const std::string &name, AppExecFwk::ParamTy
     param.type = type;
     param.isRequired = isRequired;
     return AppExecFwk::EncodeMethodParam(param);
+}
+
+const std::string TEST_FILE_ENTITY_ID = "OHOS_FILE_ENTITY";
+const std::string TEST_ENTITY_ID_KEY = "entityId";
+const std::string TEST_URIS_KEY = "uris";
+const std::string TEST_FLAGS_KEY = "flags";
+const int32_t TEST_FLAG_READ = 0x00000001;   // Want::FLAG_AUTH_READ_URI_PERMISSION
+const int32_t TEST_FLAG_WRITE = 0x00000002;  // Want::FLAG_AUTH_WRITE_URI_PERMISSION
+
+sptr<IWantParams> BuildFileEntity(const std::string &entityId,
+    const std::vector<std::string> &uris, int32_t flags)
+{
+    WantParams entity;
+    entity.SetParam(TEST_ENTITY_ID_KEY, String::Box(entityId));
+    if (!uris.empty()) {
+        auto size = uris.size();
+        sptr<IArray> array = sptr<Array>::MakeSptr(size, g_IID_IString);
+        for (size_t i = 0; i < size; i++) {
+            array->Set(i, String::Box(uris[i]));
+        }
+        entity.SetParam(TEST_URIS_KEY, array);
+    }
+    entity.SetParam(TEST_FLAGS_KEY, Integer::Box(flags));
+    return WantParamWrapper::Box(entity);
+}
+
+Want BuildWantWithEntities(const std::map<std::string, sptr<IWantParams>> &entities)
+{
+    Want want;
+    WantParams insightIntentParam;
+    for (const auto &entry : entities) {
+        insightIntentParam.SetParam(entry.first, entry.second);
+    }
+    WantParams wantParams;
+    wantParams.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_PARAM,
+        WantParamWrapper::Box(insightIntentParam));
+    want.SetParams(wantParams);
+    return want;
 }
 } // namespace
 
@@ -665,6 +707,229 @@ HWTEST_F(InsightIntentExecuteParamTest, ToolCallId_RemoveInsightIntent_0100, Tes
     EXPECT_EQ(want.GetStringParam("toolCallId"), "business-value");
     EXPECT_TRUE(InsightIntentExecuteParam::RemoveInsightIntent(want));
     EXPECT_EQ(want.GetStringParam("toolCallId"), "business-value");
+}
+
+/**
+ * @tc.name: GetFileEntityUrisAndFlags_0100
+ * @tc.desc: no insight intent param yields empty result.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, GetFileEntityUrisAndFlags_0100, TestSize.Level1)
+{
+    Want want;
+    std::vector<std::vector<std::string>> uriGroups;
+    std::vector<int32_t> flags;
+    InsightIntentExecuteParam::GetFileEntityUrisAndFlags(want, uriGroups, flags);
+    EXPECT_TRUE(uriGroups.empty());
+    EXPECT_TRUE(flags.empty());
+}
+
+/**
+ * @tc.name: GetFileEntityUrisAndFlags_0200
+ * @tc.desc: a single file entity with read flag is collected into one bucket.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, GetFileEntityUrisAndFlags_0200, TestSize.Level1)
+{
+    Want want = BuildWantWithEntities({
+        { "entity_a", BuildFileEntity(TEST_FILE_ENTITY_ID,
+            { "file:///data/test1.txt", "file:///data/test2.txt" }, TEST_FLAG_READ) },
+    });
+    std::vector<std::vector<std::string>> uriGroups;
+    std::vector<int32_t> flags;
+    InsightIntentExecuteParam::GetFileEntityUrisAndFlags(want, uriGroups, flags);
+
+    ASSERT_EQ(uriGroups.size(), 1u);
+    ASSERT_EQ(flags.size(), 1u);
+    EXPECT_EQ(uriGroups[0].size(), 2u);
+    EXPECT_EQ(uriGroups[0][0], "file:///data/test1.txt");
+    EXPECT_EQ(uriGroups[0][1], "file:///data/test2.txt");
+    EXPECT_EQ(flags[0], TEST_FLAG_READ);
+}
+
+/**
+ * @tc.name: GetFileEntityUrisAndFlags_0300
+ * @tc.desc: a file entity with read-write flag keeps the combined flag.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, GetFileEntityUrisAndFlags_0300, TestSize.Level1)
+{
+    Want want = BuildWantWithEntities({
+        { "entity_a", BuildFileEntity(TEST_FILE_ENTITY_ID,
+            { "file:///data/test1.txt" }, TEST_FLAG_READ | TEST_FLAG_WRITE) },
+    });
+    std::vector<std::vector<std::string>> uriGroups;
+    std::vector<int32_t> flags;
+    InsightIntentExecuteParam::GetFileEntityUrisAndFlags(want, uriGroups, flags);
+
+    ASSERT_EQ(flags.size(), 1u);
+    EXPECT_EQ(flags[0], TEST_FLAG_READ | TEST_FLAG_WRITE);
+}
+
+/**
+ * @tc.name: GetFileEntityUrisAndFlags_0400
+ * @tc.desc: a non-file entity (mismatched entityId) is skipped.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, GetFileEntityUrisAndFlags_0400, TestSize.Level1)
+{
+    Want want = BuildWantWithEntities({
+        { "entity_a", BuildFileEntity("OHOS_OTHER_ENTITY",
+            { "file:///data/test1.txt" }, TEST_FLAG_READ) },
+    });
+    std::vector<std::vector<std::string>> uriGroups;
+    std::vector<int32_t> flags;
+    InsightIntentExecuteParam::GetFileEntityUrisAndFlags(want, uriGroups, flags);
+    EXPECT_TRUE(uriGroups.empty());
+    EXPECT_TRUE(flags.empty());
+}
+
+/**
+ * @tc.name: GetFileEntityUrisAndFlags_0500
+ * @tc.desc: non-file scheme uris are filtered out.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, GetFileEntityUrisAndFlags_0500, TestSize.Level1)
+{
+    Want want = BuildWantWithEntities({
+        { "entity_a", BuildFileEntity(TEST_FILE_ENTITY_ID,
+            { "file:///data/test1.txt", "datashare:///com.test/test" }, TEST_FLAG_READ) },
+    });
+    std::vector<std::vector<std::string>> uriGroups;
+    std::vector<int32_t> flags;
+    InsightIntentExecuteParam::GetFileEntityUrisAndFlags(want, uriGroups, flags);
+
+    ASSERT_EQ(uriGroups.size(), 1u);
+    EXPECT_EQ(uriGroups[0].size(), 1u);
+    EXPECT_EQ(uriGroups[0][0], "file:///data/test1.txt");
+}
+
+/**
+ * @tc.name: GetFileEntityUrisAndFlags_0600
+ * @tc.desc: an entity with only non-file scheme uris is dropped entirely.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, GetFileEntityUrisAndFlags_0600, TestSize.Level1)
+{
+    Want want = BuildWantWithEntities({
+        { "entity_a", BuildFileEntity(TEST_FILE_ENTITY_ID,
+            { "datashare:///com.test/test", "content://com.test/test" }, TEST_FLAG_READ) },
+    });
+    std::vector<std::vector<std::string>> uriGroups;
+    std::vector<int32_t> flags;
+    InsightIntentExecuteParam::GetFileEntityUrisAndFlags(want, uriGroups, flags);
+    EXPECT_TRUE(uriGroups.empty());
+    EXPECT_TRUE(flags.empty());
+}
+
+/**
+ * @tc.name: GetFileEntityUrisAndFlags_0700
+ * @tc.desc: unrelated flag bits are stripped by the read/write mask.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, GetFileEntityUrisAndFlags_0700, TestSize.Level1)
+{
+    const int32_t unrelatedBit = 0x00000004;
+    Want want = BuildWantWithEntities({
+        { "entity_a", BuildFileEntity(TEST_FILE_ENTITY_ID,
+            { "file:///data/test1.txt" }, TEST_FLAG_READ | unrelatedBit) },
+    });
+    std::vector<std::vector<std::string>> uriGroups;
+    std::vector<int32_t> flags;
+    InsightIntentExecuteParam::GetFileEntityUrisAndFlags(want, uriGroups, flags);
+
+    ASSERT_EQ(flags.size(), 1u);
+    EXPECT_EQ(flags[0], TEST_FLAG_READ);
+}
+
+/**
+ * @tc.name: GetFileEntityUrisAndFlags_0800
+ * @tc.desc: a zero flag defaults to read permission.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, GetFileEntityUrisAndFlags_0800, TestSize.Level1)
+{
+    Want want = BuildWantWithEntities({
+        { "entity_a", BuildFileEntity(TEST_FILE_ENTITY_ID,
+            { "file:///data/test1.txt" }, 0) },
+        { "entity_b", BuildFileEntity(TEST_FILE_ENTITY_ID,
+            { "file:///data/test2.txt" }, 0x00000004) },
+    });
+    std::vector<std::vector<std::string>> uriGroups;
+    std::vector<int32_t> flags;
+    InsightIntentExecuteParam::GetFileEntityUrisAndFlags(want, uriGroups, flags);
+
+    ASSERT_EQ(flags.size(), 2u);
+    EXPECT_EQ(flags[0], TEST_FLAG_READ);
+    EXPECT_EQ(flags[1], TEST_FLAG_READ);
+}
+
+/**
+ * @tc.name: GetFileEntityUrisAndFlags_0900
+ * @tc.desc: multiple file entities are bucketed by their own flags.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, GetFileEntityUrisAndFlags_0900, TestSize.Level1)
+{
+    Want want = BuildWantWithEntities({
+        { "entity_a", BuildFileEntity(TEST_FILE_ENTITY_ID,
+            { "file:///data/read1.txt", "file:///data/read2.txt" }, TEST_FLAG_READ) },
+        { "entity_b", BuildFileEntity(TEST_FILE_ENTITY_ID,
+            { "file:///data/write1.txt" }, TEST_FLAG_WRITE) },
+    });
+    std::vector<std::vector<std::string>> uriGroups;
+    std::vector<int32_t> flags;
+    InsightIntentExecuteParam::GetFileEntityUrisAndFlags(want, uriGroups, flags);
+
+    ASSERT_EQ(uriGroups.size(), 2u);
+    ASSERT_EQ(flags.size(), 2u);
+    EXPECT_EQ(flags[0], TEST_FLAG_READ);
+    EXPECT_EQ(uriGroups[0].size(), 2u);
+    EXPECT_EQ(flags[1], TEST_FLAG_WRITE);
+    EXPECT_EQ(uriGroups[1].size(), 1u);
+    EXPECT_EQ(uriGroups[1][0], "file:///data/write1.txt");
+}
+
+/**
+ * @tc.name: GetFileEntityUrisAndFlags_1000
+ * @tc.desc: an entity with empty uris is dropped.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, GetFileEntityUrisAndFlags_1000, TestSize.Level1)
+{
+    Want want = BuildWantWithEntities({
+        { "entity_a", BuildFileEntity(TEST_FILE_ENTITY_ID, {}, TEST_FLAG_READ) },
+    });
+    std::vector<std::vector<std::string>> uriGroups;
+    std::vector<int32_t> flags;
+    InsightIntentExecuteParam::GetFileEntityUrisAndFlags(want, uriGroups, flags);
+    EXPECT_TRUE(uriGroups.empty());
+    EXPECT_TRUE(flags.empty());
+}
+
+/**
+ * @tc.name: GetFileEntityUrisAndFlags_1100
+ * @tc.desc: the same uri in two entities is collected into two buckets as-is.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, GetFileEntityUrisAndFlags_1100, TestSize.Level1)
+{
+    Want want = BuildWantWithEntities({
+        { "entity_a", BuildFileEntity(TEST_FILE_ENTITY_ID,
+            { "file:///data/dup.txt" }, TEST_FLAG_READ | TEST_FLAG_WRITE) },
+        { "entity_b", BuildFileEntity(TEST_FILE_ENTITY_ID,
+            { "file:///data/dup.txt" }, TEST_FLAG_READ) },
+    });
+    std::vector<std::vector<std::string>> uriGroups;
+    std::vector<int32_t> flags;
+    InsightIntentExecuteParam::GetFileEntityUrisAndFlags(want, uriGroups, flags);
+
+    ASSERT_EQ(uriGroups.size(), 2u);
+    ASSERT_EQ(flags.size(), 2u);
+    EXPECT_EQ(flags[0], TEST_FLAG_READ | TEST_FLAG_WRITE);
+    EXPECT_EQ(flags[1], TEST_FLAG_READ);
+    EXPECT_EQ(uriGroups[0][0], "file:///data/dup.txt");
+    EXPECT_EQ(uriGroups[1][0], "file:///data/dup.txt");
 }
 } // namespace AAFwk
 } // namespace OHOS
