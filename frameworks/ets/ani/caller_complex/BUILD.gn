@@ -52,6 +52,8 @@ ohos_shared_library("caller_complex_ani") {
     "ipc:ipc_single",
     "ipc:rpc_taihe",
     "napi:ace_napi",
+    "node:node_header_notice",
+    "libuv:uv",
     "runtime_core:ani",
     "runtime_core:ani_helpers",
   ]

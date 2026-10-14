@@ -139,6 +139,8 @@ ohos_shared_library("runtime") {
     "ipc:ipc_core",
     "json:nlohmann_json_static",
     "napi:ace_napi",
+    "node:node_header_notice",
+    "libuv:uv",
     "resource_management:global_resmgr",
     "runtime_core:common_interfaces_header",
     "samgr:samgr_proxy",

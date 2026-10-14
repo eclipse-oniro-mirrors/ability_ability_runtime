@@ -73,6 +73,8 @@ ohos_shared_library("kiosk_manager_ani_kit") {
     "ipc:ipc_napi",
     "json:nlohmann_json_static",
     "napi:ace_napi",
+    "node:node_header_notice",
+    "libuv:uv",
     "runtime_core:ani",
   ]
 

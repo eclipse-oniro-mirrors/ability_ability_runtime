@@ -36,6 +36,7 @@ ohos_shared_library("agentextensioncontext_napi") {
   external_deps = [
     "napi:ace_napi",
     "node:node_header_notice",
+    "libuv:uv",
   ]
 
   relative_install_dir = "module/application"
@@ -99,6 +100,7 @@ ohos_shared_library("js_agent_extension_context") {
     "ipc:ipc_napi",
     "napi:ace_napi",
     "node:node_header_notice",
+    "libuv:uv",
   ]
 
   subsystem_name = "ability"

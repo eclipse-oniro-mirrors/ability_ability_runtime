@@ -72,6 +72,7 @@ ohos_shared_library("app_manager_ani") {
     "ipc:ipc_core",
     "napi:ace_napi",
     "node:node_header_notice",
+    "libuv:uv",
     "runtime_core:ani",
     "samgr:samgr_proxy",
   ]

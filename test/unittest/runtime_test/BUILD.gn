@@ -132,7 +132,9 @@ ohos_unittest("js_runtime_test") {
     "googletest:gtest_main",
     "hilog:libhilog",
     "ipc:ipc_core",
+    "libuv:uv",
     "napi:ace_napi",
+    "node:node_header_notice",
     "zlib:libz",
     "zlib:shared_libz",
   ]
@@ -268,7 +270,9 @@ ohos_unittest("js_worker_test") {
     "eventhandler:libeventhandler",
     "hilog:libhilog",
     "ipc:ipc_core",
+    "libuv:uv",
     "napi:ace_napi",
+    "node:node_header_notice",
     "zlib:libz",
     "zlib:shared_libz",
   ]

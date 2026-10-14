@@ -72,6 +72,8 @@ ohos_unittest("js_ui_service_extension_context_first_test") {
     "ipc:ipc_napi",
     "ipc:rpc",
     "kv_store:distributeddata_inner",
+    "libuv:uv",
+    "node:node_header_notice",
     "samgr:samgr_proxy",
     "window_manager:libwsutils",
   ]
