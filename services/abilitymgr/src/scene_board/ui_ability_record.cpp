@@ -90,5 +90,19 @@ bool UIAbilityRecord::UpdateWantByLastWant()
     SetIsNewWant(true);
     return true;
 }
+
+void UIAbilityRecord::UpdatePendingStateByCall(CallToState state)
+{
+    if (state != CallToState::BACKGROUND) {
+        SetPendingState(AbilityState::FOREGROUND);
+        return;
+    }
+    if (GetPendingState() == AbilityState::FOREGROUND) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "pending state already FOREGROUND, keep it");
+        return;
+    }
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "set pending BACKGROUND");
+    SetPendingState(AbilityState::BACKGROUND);
+}
 }  // namespace AAFwk
 }  // namespace OHOS

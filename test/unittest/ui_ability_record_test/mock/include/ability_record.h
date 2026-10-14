@@ -23,6 +23,7 @@
 
 #include "ability_info.h"
 #include "ability_state.h"
+#include "session_info_constants.h"
 #include "want.h"
 
 namespace OHOS {

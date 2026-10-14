@@ -2059,12 +2059,7 @@ void UIAbilityLifecycleManager::CallUIAbilityBySCB(const sptr<SessionInfo> &sess
     sessionAbilityMap_.emplace(sessionInfo->persistentId, uiAbilityRecord);
     uiAbilityRecord->SetSessionInfo(sessionInfo);
     SetLastExitReasonAsync(uiAbilityRecord);
-    if (sessionInfo->state == CallToState::BACKGROUND) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "set pending BACKGROUND");
-        uiAbilityRecord->SetPendingState(AbilityState::BACKGROUND);
-    } else {
-        uiAbilityRecord->SetPendingState(AbilityState::FOREGROUND);
-    }
+    uiAbilityRecord->UpdatePendingStateByCall(sessionInfo->state);
     uiAbilityRecord->LoadAbility();
 }
 
