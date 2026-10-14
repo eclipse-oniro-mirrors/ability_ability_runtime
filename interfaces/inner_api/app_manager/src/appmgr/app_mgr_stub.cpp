@@ -488,6 +488,10 @@ int32_t AppMgrStub::OnRemoteRequestInnerNinth(uint32_t code, MessageParcel &data
             return HandleCancelDelayedExitTask(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::IS_CORRESPONDING_PROCESS_ATTACH_DEBUG):
             return HandleIsCorrespondingProcessAttachDebug(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::START_TASK):
+            return HandleStartTask(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::FINISH_TASK):
+            return HandleFinishTask(data, reply);
     }
     return INVALID_FD;
 }
@@ -2691,5 +2695,31 @@ int32_t AppMgrStub::HandleCancelDelayedExitTask(MessageParcel &data, MessageParc
     CancelDelayedExitTask(pid);
     return NO_ERROR;
 }
+
+int32_t AppMgrStub::HandleStartTask(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::string taskId = Str16ToStr8(data.ReadString16());
+    int32_t priority = data.ReadInt32();
+    auto result = StartTask(taskId, priority);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write result fail");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleFinishTask(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::string taskId = Str16ToStr8(data.ReadString16());
+    auto result = FinishTask(taskId);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write result fail");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    return NO_ERROR;
+}
+
 }  // namespace AppExecFwk
 }  // namespace OHOS

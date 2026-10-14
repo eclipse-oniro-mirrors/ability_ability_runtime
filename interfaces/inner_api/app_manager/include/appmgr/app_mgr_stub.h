@@ -235,6 +235,8 @@ private:
     int32_t HandleGetAllAbilityInfos(MessageParcel &data, MessageParcel &reply);
     int32_t HandleEnableDelayedProcessExit(MessageParcel &data, MessageParcel &reply);
     int32_t HandleCancelDelayedExitTask(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleStartTask(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleFinishTask(MessageParcel &data, MessageParcel &reply);
     DISALLOW_COPY_AND_MOVE(AppMgrStub);
 };
 }  // namespace AppExecFwk

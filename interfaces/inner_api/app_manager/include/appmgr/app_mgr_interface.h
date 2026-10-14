@@ -1307,6 +1307,31 @@ public:
     }
 
     virtual void CancelDelayedExitTask(int32_t pid) {}
+
+    /**
+     * @brief Starts a task with the specified task id and priority.
+     * @param taskId Indicates the attribution key of the task.
+     * @param priority Indicates the task priority.
+     * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
+     *         ERR_NOT_SYSTEM_APP if the caller is not a system app;
+     *         ERR_TASK_ALREADY_EXISTS if the task already exists.
+     */
+    virtual int32_t StartTask(const std::string &taskId, int32_t priority)
+    {
+        return ERR_OK;
+    }
+
+    /**
+     * @brief Finishes the task with the specified task id.
+     * @param taskId Indicates the attribution key of the task.
+     * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
+     *         ERR_NOT_SYSTEM_APP if the caller is not a system app;
+     *         ERR_TASK_NOT_FOUND if the task does not exist (idempotent).
+     */
+    virtual int32_t FinishTask(const std::string &taskId)
+    {
+        return ERR_OK;
+    }
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

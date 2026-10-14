@@ -29,6 +29,7 @@
 #include "hilog_tag_wrapper.h"
 #include "ipc_types.h"
 #include "errors.h"
+#include "ability_manager_errors.h"
 #include "hyper_snap_error_record.h"
 #include "mem_dump_callback_interface.h"
 #include "mem_dump_callback_stub.h"
@@ -1598,6 +1599,58 @@ HWTEST_F(AppMgrStubTest, HandleCancelDelayedExitTask_0100, TestSize.Level1)
     auto ret = mockAppMgrService_->OnRemoteRequest(
         static_cast<uint32_t>(AppMgrInterfaceCode::CANCEL_DELAYED_EXIT_TASK), data, reply, option);
     EXPECT_EQ(ret, NO_ERROR);
+}
+
+/**
+ * @tc.name: HandleStartTask_0100
+ * @tc.desc: Test HandleStartTask.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleStartTask_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    std::string taskId = "stub_start_task_0100";
+    constexpr int32_t priority = 300;
+    data.WriteString16(Str8ToStr16(taskId));
+    data.WriteInt32(priority);
+
+    EXPECT_CALL(*mockAppMgrService_, StartTask(_, _))
+        .Times(1)
+        .WillOnce(Return(AAFwk::ERR_TASK_ALREADY_EXISTS));
+
+    auto ret = mockAppMgrService_->OnRemoteRequest(
+        static_cast<uint32_t>(AppMgrInterfaceCode::START_TASK), data, reply, option);
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), AAFwk::ERR_TASK_ALREADY_EXISTS);
+}
+
+/**
+ * @tc.name: HandleFinishTask_0100
+ * @tc.desc: Test HandleFinishTask.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleFinishTask_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    std::string taskId = "stub_finish_task_0100";
+    data.WriteString16(Str8ToStr16(taskId));
+
+    EXPECT_CALL(*mockAppMgrService_, FinishTask(_))
+        .Times(1)
+        .WillOnce(Return(AAFwk::ERR_TASK_NOT_FOUND));
+
+    auto ret = mockAppMgrService_->OnRemoteRequest(
+        static_cast<uint32_t>(AppMgrInterfaceCode::FINISH_TASK), data, reply, option);
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), AAFwk::ERR_TASK_NOT_FOUND);
 }
 
 /**

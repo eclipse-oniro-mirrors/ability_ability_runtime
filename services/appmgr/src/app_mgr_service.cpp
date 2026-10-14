@@ -40,6 +40,7 @@
 #include "permission_constants.h"
 #include "permission_verification.h"
 #include "system_ability_definition.h"
+#include "task_mgr/task_manager_service.h"
 #include "accesstoken_kit.h"
 #include "app_mgr_service_const.h"
 #include "app_mgr_service_dump_error_code.h"
@@ -54,6 +55,14 @@ constexpr const char* OPTION_KEY_HELP = "-h";
 constexpr const char* OPTION_KEY_DUMP_IPC = "--ipc";
 constexpr const char* OPTION_KEY_DUMP_FFRT = "--ffrt";
 constexpr const char* OPTION_KEY_DUMP_WEB = "--web";
+constexpr const char* OPTION_KEY_DUMP_TASK = "--task";
+constexpr size_t SIZE_ONE = 1;
+constexpr size_t SIZE_FOUR = 4;
+constexpr size_t SIZE_FIVE = 5;
+constexpr size_t INDEX_ONE = 1;
+constexpr size_t INDEX_TWO = 2;
+constexpr size_t INDEX_THREE = 3;
+constexpr size_t INDEX_FOUR = 4;
 const int32_t HIDUMPER_SERVICE_UID = 1212;
 constexpr int32_t RESOURCE_MANAGER_UID = 1096;
 constexpr const int INDEX_PID = 1;
@@ -161,6 +170,24 @@ void AppMgrService::OnStop()
 void AppMgrService::SetInnerService(const std::shared_ptr<AppMgrServiceInner> &innerService)
 {
     appMgrServiceInner_ = innerService;
+}
+
+int32_t AppMgrService::StartTask(const std::string &taskId, int32_t priority)
+{
+    if (!AAFwk::PermissionVerification::GetInstance()->IsSystemAppCall()) {
+        TAG_LOGW(AAFwkTag::APPMGR, "caller is not system app, rejected");
+        return AAFwk::ERR_NOT_SYSTEM_APP;
+    }
+    return TaskManagerService::GetInstance().StartTask(taskId, priority);
+}
+
+int32_t AppMgrService::FinishTask(const std::string &taskId)
+{
+    if (!AAFwk::PermissionVerification::GetInstance()->IsSystemAppCall()) {
+        TAG_LOGW(AAFwkTag::APPMGR, "caller is not system app, rejected");
+        return AAFwk::ERR_NOT_SYSTEM_APP;
+    }
+    return TaskManagerService::GetInstance().FinishTask(taskId);
 }
 
 AppMgrServiceState AppMgrService::QueryServiceState()
@@ -996,6 +1023,9 @@ int AppMgrService::Dump(const std::vector<std::u16string>& args, std::string& re
     if (optionKey == OPTION_KEY_DUMP_WEB) {
         return DumpArkWeb(args, result);
     }
+    if (optionKey == OPTION_KEY_DUMP_TASK) {
+        return DumpTask(args, result);
+    }
     result.append("error: unkown option.\n");
     TAG_LOGE(AAFwkTag::APPMGR, "option key %{public}s does not exist", optionKey.c_str());
     return DumpErrorCode::ERR_UNKNOWN_OPTION_ERROR;
@@ -1012,8 +1042,52 @@ int AppMgrService::ShowHelp(const std::vector<std::u16string>& args, std::string
         .append("ipc load statistic; pid must be specified or set to -a dump all processes. ARG must be one of "
             "--start-stat | --stop-stat | --stat\n")
         .append("--web pid1[,pid2,pid3] [ARG]    ")
-        .append("dump arkweb info, ARG must be one of (--all | --nweb | ...)\n");
+        .append("dump arkweb info, ARG must be one of (--all | --nweb | ...)\n")
+        .append("--task                      ")
+        .append("dump agent task manager active tasks\n")
+        .append("--task register <taskId> <pid> <insight|cli|a2a|ability>    ")
+        .append("test hook: attribute a process into the task\n")
+        .append("--task unregister <taskId> <pid>    ")
+        .append("test hook: remove a process from the task\n");
 
+    return ERR_OK;
+}
+
+int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string& result)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    auto isHidumperServiceCall = (IPCSkeleton::GetCallingUid() == HIDUMPER_SERVICE_UID);
+    if (!isHidumperServiceCall) {
+        result.append(MSG_DUMP_FAIL, strlen(MSG_DUMP_FAIL))
+            .append(MSG_DUMP_FAIL_REASON_PERMISSION_DENY, strlen(MSG_DUMP_FAIL_REASON_PERMISSION_DENY));
+        TAG_LOGE(AAFwkTag::APPMGR, "permission deny");
+        return DumpErrorCode::ERR_PERMISSION_DENY_ERROR;
+    }
+    if (args.size() > SIZE_ONE) {
+        std::string subCmd = Str16ToStr8(args[INDEX_ONE]);
+        if (subCmd == "register") {
+            if (args.size() != SIZE_FIVE) {
+                result.append("usage: --task register <taskId> <pid> <insight|cli|a2a|ability>\n");
+                return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
+            }
+            auto ret = TaskManagerService::GetInstance().DumpRegisterManagedProcess(
+                Str16ToStr8(args[INDEX_TWO]), Str16ToStr8(args[INDEX_THREE]),
+                Str16ToStr8(args[INDEX_FOUR]), result);
+            return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
+        }
+        if (subCmd == "unregister") {
+            if (args.size() != SIZE_FOUR) {
+                result.append("usage: --task unregister <taskId> <pid>\n");
+                return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
+            }
+            auto ret = TaskManagerService::GetInstance().DumpUnregisterManagedProcess(
+                Str16ToStr8(args[INDEX_TWO]), Str16ToStr8(args[INDEX_THREE]), result);
+            return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
+        }
+        result.append("error: unknown task subcommand.\n");
+        return DumpErrorCode::ERR_INVALID_CMD_ERROR;
+    }
+    result.append(TaskManagerService::GetInstance().DumpActiveTasks());
     return ERR_OK;
 }
 

@@ -1825,6 +1825,26 @@ public:
      * @param pid Pid of the process whose delayed-exit task should be cancelled.
      */
     virtual void CancelDelayedExitTask(int32_t pid) const;
+
+    /**
+     * Start a task. The caller must be a system app.
+     *
+     * @param taskId Attribution key of the task (1~256 characters).
+     * @param priority One of the TaskPriority values.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
+    int32_t StartTask(const std::string &taskId, int32_t priority);
+
+    /**
+     * Finish a task. The caller must be the creating system app.
+     *
+     * @param taskId Attribution key of the task (1~256 characters).
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
+    int32_t FinishTask(const std::string &taskId);
+
 private:
     void SetServiceManager(std::unique_ptr<AppServiceManager> serviceMgr);
     /**

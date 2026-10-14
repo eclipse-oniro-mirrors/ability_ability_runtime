@@ -497,7 +497,13 @@ HWTEST_F(AppMgrServiceThirdTest, ShowHelp_001, TestSize.Level1)
         "--ipc pid ARG               ipc load statistic; pid must be specified or set to -a dump all processes. "
         "ARG must be one of --start-stat | --stop-stat | --stat\n"
         "--web pid1[,pid2,pid3] [ARG]    "
-        "dump arkweb info, ARG must be one of (--all | --nweb | ...)\n";
+        "dump arkweb info, ARG must be one of (--all | --nweb | ...)\n"
+        "--task                      "
+        "dump agent task manager active tasks\n"
+        "--task register <taskId> <pid> <insight|cli|a2a|ability>    "
+        "test hook: attribute a process into the task\n"
+        "--task unregister <taskId> <pid>    "
+        "test hook: remove a process from the task\n";
     int res = appMgrService->ShowHelp(dummyArgs, resultBuffer);
     EXPECT_EQ(resultBuffer, expectedOutput);
     EXPECT_EQ(res, ERR_OK);

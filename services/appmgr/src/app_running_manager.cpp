@@ -19,6 +19,7 @@
 #include "datetime_ex.h"
 #include "exit_reason.h"
 #include "iremote_object.h"
+#include "task_mgr/task_manager_service.h"
 
 #include "appexecfwk_errors.h"
 #include "app_utils.h"
@@ -762,6 +763,9 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::OnRemoteDied(const wptr<IRe
         appRunningRecordMap_.erase(iter);
     }
     if (appRecord != nullptr) {
+        TaskManagerService::GetInstance().OnProcessDied(appRecord->GetPid(), appRecord->GetUid());
+    }
+    if (appRecord != nullptr) {
         {
             std::lock_guard guard(updateConfigurationDelayedLock_);
             updateConfigurationDelayedMap_.erase(appRecord->GetRecordId());
@@ -805,6 +809,10 @@ void AppRunningManager::RemoveAppRunningRecordById(const int32_t recordId)
     {
         std::lock_guard guard(updateConfigurationDelayedLock_);
         updateConfigurationDelayedMap_.erase(recordId);
+    }
+
+    if (appRecord != nullptr) {
+        TaskManagerService::GetInstance().OnProcessDied(appRecord->GetPid(), appRecord->GetUid());
     }
 
     if (appRecord != nullptr && appRecord->GetPriorityObject() != nullptr) {

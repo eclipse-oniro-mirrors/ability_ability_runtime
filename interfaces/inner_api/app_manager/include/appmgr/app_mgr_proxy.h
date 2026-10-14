@@ -1032,6 +1032,8 @@ public:
      */
     int32_t EnableDelayedProcessExit(bool enabled) override;
     void CancelDelayedExitTask(int32_t pid) override;
+    int32_t StartTask(const std::string &taskId, int32_t priority) override;
+    int32_t FinishTask(const std::string &taskId) override;
 private:
     bool SendTransactCmd(AppMgrInterfaceCode code, MessageParcel &data, MessageParcel &reply);
     bool WriteInterfaceToken(MessageParcel &data);

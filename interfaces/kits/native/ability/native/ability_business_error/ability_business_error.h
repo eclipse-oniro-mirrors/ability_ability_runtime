@@ -343,6 +343,12 @@ enum class AbilityErrorCode {
     // target bundle is not in u1
     ERROR_CODE_NO_U1 = 16000204,
 
+    // agent task manager: the task already exists.
+    ERROR_CODE_TASK_ALREADY_EXISTS = 16000301,
+
+    // agent task manager: the task does not exist.
+    ERROR_CODE_TASK_NOT_FOUND = 16000302,
+
     ERROR_CODE_BUNDLE_NAME_INVALID = 18500001,
 };
 

@@ -169,6 +169,8 @@ enum class AppMgrInterfaceCode {
     GET_SELF_UIABILITY_CHILD_PROCESSES = 144,
     GET_SELF_CHILDREN_PROCESSES = 145,
     GET_HYPER_SNAP_LAST_ERROR = 146,
+    START_TASK = 147,
+    FINISH_TASK = 148,
 };
 } // AppExecFwk
 } // OHOS

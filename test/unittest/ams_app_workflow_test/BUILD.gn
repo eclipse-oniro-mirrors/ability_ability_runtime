@@ -46,6 +46,9 @@ ohos_unittest("AmsWorkFlowTest") {
     "${ability_runtime_services_path}/appmgr/src/killing_process_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/module_running_record.cpp",
     "${ability_runtime_services_path}/appmgr/src/remote_client_manager.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/attribution_record.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/common.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/task_manager_service.cpp",
     "${ability_runtime_services_path}/appmgr/src/window_focus_changed_listener.cpp",
     "${ability_runtime_services_path}/appmgr/src/window_visibility_changed_listener.cpp",
   ]

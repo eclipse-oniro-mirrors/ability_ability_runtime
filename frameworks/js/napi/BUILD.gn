@@ -97,6 +97,7 @@ group("napi_packages") {
     "${ability_runtime_napi_path}/service_extension_ability:serviceextensionability_napi",
     "${ability_runtime_napi_path}/service_extension_context:serviceextensioncontext_napi",
     "${ability_runtime_napi_path}/share_extension_ability:shareextensionability_napi",
+    "${ability_runtime_napi_path}/task_manager:taskmanager_napi",
     "${ability_runtime_napi_path}/ui_extension_ability:uiextensionability_napi",
     "${ability_runtime_napi_path}/ui_extension_context:uiextensioncontext_napi",
     "${ability_runtime_napi_path}/ui_service_extension_ability:uiserviceextensionability",
