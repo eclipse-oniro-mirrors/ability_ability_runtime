@@ -592,7 +592,7 @@ int32_t DistributedClient::StartRemoteIntent(const OHOS::AAFwk::Want& want,
     PARCEL_WRITE_HELPER(data, Uint32, callerInfo.specifyTokenId);
     PARCEL_WRITE_HELPER(data, RemoteObject, resultCallback);
     MessageParcel reply;
-    PARCEL_TRANSACT_SYNC_RET_INT(remote, START_REMOTE_INTENT, data, reply);
+    PARCEL_TRANSACT_ASYNC_RET_INT(remote, START_REMOTE_INTENT, data, reply);
 }
 
 int32_t DistributedClient::SendIntentResult(const OHOS::AAFwk::Want& want,
@@ -614,7 +614,7 @@ int32_t DistributedClient::SendIntentResult(const OHOS::AAFwk::Want& want,
     PARCEL_WRITE_HELPER(data, Uint32, callerInfo.specifyTokenId);
     PARCEL_WRITE_HELPER(data, String, msg);
     MessageParcel reply;
-    PARCEL_TRANSACT_SYNC_RET_INT(remote, SEND_INTENT_RESULT, data, reply);
+    PARCEL_TRANSACT_ASYNC_RET_INT(remote, SEND_INTENT_RESULT, data, reply);
 }
 }  // namespace AAFwk
 }  // namespace OHOS
