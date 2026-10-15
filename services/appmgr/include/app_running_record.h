@@ -1076,6 +1076,8 @@ public:
     void SetKillMsg(const std::string &killMsg);
     std::string GetKillMsg() const;
 
+    bool SetKillReasonIfAbsent(int32_t killId, const std::string &killMsg);
+
     void SetInnerMsg(const std::string &innerMsg);
     std::string GetInnerMsg() const;
 
@@ -1598,7 +1600,7 @@ private:
     mutable ffrt::mutex killReasonLock_;
     mutable ffrt::mutex exitReasonLock_;
     mutable ffrt::mutex exitMsgLock_;
-    mutable ffrt::mutex killMsgLock_;
+    mutable ffrt::mutex killInfoLock_; // protects killId_ and killMsg_
     mutable ffrt::mutex innerMsgLock_;
     mutable ffrt::mutex killCallerLock_;
     mutable ffrt::mutex supportMultiProcessDeviceFeatureLock_;

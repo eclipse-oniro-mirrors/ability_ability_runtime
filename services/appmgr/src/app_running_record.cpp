@@ -53,6 +53,7 @@ constexpr int64_t MICROSECONDS = 1000000;    // MICROSECONDS mean 10^6 millias s
 constexpr int32_t MAX_RESTART_COUNT = 3;
 constexpr int32_t RESTART_INTERVAL_TIME = 120000;
 constexpr int32_t HALF_TIMEOUT = 2;
+constexpr int32_t DEFAULT_KILL_ID = -1;
 // SCB（大桌面 / SceneBoard）的 bundle name，用于 SCB 发起前台时 last-caller 兜底记录与保活判断。
 constexpr const char* LAUNCHER_NAME = "com.ohos.sceneboard";
 constexpr const char *EVENT_KEY_VERSION_NAME = "VERSION_NAME";
@@ -2812,24 +2813,40 @@ std::string AppRunningRecord::GetExitMsg() const
 
 void AppRunningRecord::SetKillId(int32_t killId)
 {
+    std::lock_guard<ffrt::mutex> lock(killInfoLock_);
     killId_ = killId;
 }
 
 int32_t AppRunningRecord::GetKillId() const
 {
+    std::lock_guard<ffrt::mutex> lock(killInfoLock_);
     return killId_;
 }
 
 void AppRunningRecord::SetKillMsg(const std::string &killMsg)
 {
-    std::lock_guard<ffrt::mutex> lock(killMsgLock_);
+    std::lock_guard<ffrt::mutex> lock(killInfoLock_);
     killMsg_ = killMsg;
 }
 
 std::string AppRunningRecord::GetKillMsg() const
 {
-    std::lock_guard<ffrt::mutex> lock(killMsgLock_);
+    std::lock_guard<ffrt::mutex> lock(killInfoLock_);
     return killMsg_;
+}
+
+bool AppRunningRecord::SetKillReasonIfAbsent(int32_t killId, const std::string &killMsg)
+{
+    std::lock_guard<ffrt::mutex> lock(killInfoLock_);
+    if (killId_ != DEFAULT_KILL_ID) {
+        TAG_LOGD(AAFwkTag::APPMGR,
+            "SetKillReasonIfAbsent refused, killId already set: %{public}d, incoming: %{public}d",
+            killId_, killId);
+        return false;
+    }
+    killId_ = killId;
+    killMsg_ = killMsg;
+    return true;
 }
 
 void AppRunningRecord::SetInnerMsg(const std::string &innerMsg)

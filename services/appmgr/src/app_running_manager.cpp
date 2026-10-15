@@ -990,8 +990,11 @@ void AppRunningManager::TerminateAbility(const sptr<IRemoteObject> &token, bool 
             return;
         }
         auto result = inner->KillProcessByPid(pid, "TerminateAbility", false, appRecordSptr->GetRecordId());
-        if (result < 0) {
-            TAG_LOGW(AAFwkTag::APPMGR, "failed, pid: %{public}d", pid);
+        if (result != 0) {
+            TAG_LOGW(AAFwkTag::APPMGR, "KillProcess failed, result: %{public}d, pid: %{public}d", result, pid);
+        } else {
+            appRecordSptr->SetKillReasonIfAbsent(
+                HiviewDFX::ProcessKillReason::KillEventId::REASON_APP_EXIT, "Kill Reason:app exit");
         }
         inner->NotifyAppStatus(appRecordSptr->GetBundleName(), appRecordSptr->GetAppIndex(),
             CommonEventSupport::COMMON_EVENT_PACKAGE_RESTARTED);
