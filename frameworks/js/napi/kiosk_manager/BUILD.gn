@@ -60,10 +60,6 @@ template("kioskmanager") {
   }
 }
 
-kioskmanager("kioskmanager_napi") {
-  relative_install_dir = "module/application"
-}
-
 kioskmanager("kioskmanager") {
   relative_install_dir = "module/app/ability"
   defines = [ "ENABLE_ERRCODE" ]
