@@ -9530,6 +9530,12 @@ bool AbilityManagerService::CheckPermissionForKillCollaborator()
 }
 
 int AbilityManagerService::KillProcess(const std::string &bundleName, bool clearPageStack, int32_t appIndex,
+    const std::string& reason)
+{
+    return KillProcessWithUserId(bundleName, clearPageStack, appIndex, reason, -1);
+}
+
+int AbilityManagerService::KillProcessWithUserId(const std::string &bundleName, bool clearPageStack, int32_t appIndex,
     const std::string& reason, int32_t userId)
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "Kill process, bundleName: %{public}s, clearPageStack: %{public}d"

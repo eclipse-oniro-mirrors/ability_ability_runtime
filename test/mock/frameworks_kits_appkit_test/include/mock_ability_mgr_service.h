@@ -65,8 +65,8 @@ public:
     MOCK_METHOD3(StopServiceAbility, int(const Want&, int32_t userId, const sptr<IRemoteObject> &token));
     MOCK_METHOD4(OnRemoteRequest, int(uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option));
 
-    MOCK_METHOD5(KillProcess, int(const std::string& bundleName, const bool clearPageStack, int32_t appIndex,
-        const std::string& reason, int32_t userId));
+    MOCK_METHOD4(KillProcess, int(const std::string& bundleName, const bool clearPageStack, int32_t appIndex,
+        const std::string& reason));
     MOCK_METHOD2(UninstallApp, int(const std::string& bundleName, int32_t uid));
     MOCK_METHOD3(UninstallApp, int32_t(const std::string& bundleName, int32_t uid, int32_t appIndex));
     MOCK_METHOD1(TerminateAbilityByRecordId, int(const int64_t recordId));

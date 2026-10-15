@@ -865,12 +865,21 @@ ErrCode AbilityManagerClient::StopServiceAbility(const Want &want, sptr<IRemoteO
 }
 
 ErrCode AbilityManagerClient::KillProcess(const std::string &bundleName, bool clearPageStack, int32_t appIndex,
-    const std::string& reason, int32_t userId)
+    const std::string& reason)
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "enter");
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
-    return abms->KillProcess(bundleName, clearPageStack, appIndex, reason, userId);
+    return abms->KillProcess(bundleName, clearPageStack, appIndex, reason);
+}
+
+ErrCode AbilityManagerClient::KillProcessWithUserId(const std::string &bundleName, bool clearPageStack,
+    int32_t appIndex, const std::string& reason, int32_t userId)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "enter");
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    return abms->KillProcessWithUserId(bundleName, clearPageStack, appIndex, reason, userId);
 }
 
 #ifdef ABILITY_COMMAND_FOR_TEST

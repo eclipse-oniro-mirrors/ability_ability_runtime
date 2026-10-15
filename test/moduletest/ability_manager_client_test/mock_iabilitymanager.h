@@ -157,7 +157,7 @@ public:
         return 0;
     }
     int KillProcess(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = 0,
-        const std::string &reason = "KillProcess", int32_t userId = -1) override
+        const std::string &reason = "KillProcess") override
     {
         return 0;
     }
