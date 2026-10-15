@@ -1539,11 +1539,11 @@ ErrCode AbilityManagerClient::DelegatorDoAbilityForeground(sptr<IRemoteObject> t
     return abms->DelegatorDoAbilityForeground(token);
 }
 
-ErrCode AbilityManagerClient::DelegatorDoAbilityBackground(sptr<IRemoteObject> token, int32_t userId)
+ErrCode AbilityManagerClient::DelegatorDoAbilityBackground(sptr<IRemoteObject> token)
 {
 #ifdef SUPPORT_SCREEN
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto sceneSessionManager = SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
+        auto sceneSessionManager = SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
         CHECK_POINTER_RETURN_INVALID_VALUE(sceneSessionManager);
         TAG_LOGI(AAFwkTag::ABILITYMGR, "scb call, DelegatorDoAbilityBackground");
         sceneSessionManager->PendingSessionToBackgroundForDelegator(token);

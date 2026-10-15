@@ -644,7 +644,7 @@ ErrCode AbilityManagerClient::DelegatorDoAbilityForeground(sptr<IRemoteObject> t
     return ERR_OK;
 }
 
-ErrCode AbilityManagerClient::DelegatorDoAbilityBackground(sptr<IRemoteObject> token, int32_t userId)
+ErrCode AbilityManagerClient::DelegatorDoAbilityBackground(sptr<IRemoteObject> token)
 {
     return ERR_OK;
 }
