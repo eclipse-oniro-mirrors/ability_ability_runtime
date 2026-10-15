@@ -1,0 +1,95 @@
+{
+    "string":[
+        {
+            "name":"Btn_qr",
+            "value":"확인",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_subtitle_ytxx",
+            "value":"의도 정보",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_title_ytts",
+            "value":"InsightIntent 디버깅",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_ytmc",
+            "value":"의도 이름",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Btn_sc",
+            "value":"삭제",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Tips_bt",
+            "value":"필수 입력란",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_subtitle_ytcs",
+            "value":"의도 매개변수",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_ytbm",
+            "value":"패키지 이름",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Btn_tj",
+            "value":"추가",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Cont_title_syyt",
+            "value":"모든 의도",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_btn_zxyt",
+            "value":"실행 의도",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_stitle_zxjg",
+            "value":"실행 결과",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_zxms",
+            "value":"실행 모드",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

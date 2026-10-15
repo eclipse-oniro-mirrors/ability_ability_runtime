@@ -1,0 +1,95 @@
+{
+    "string":[
+        {
+            "name":"Btn_qr",
+            "value":"OK",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_subtitle_ytxx",
+            "value":"Maklumat niat",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_title_ytts",
+            "value":"Penyahpepijatan InsightIntent",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_ytmc",
+            "value":"Nama niat",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Btn_sc",
+            "value":"Padamkan",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Tips_bt",
+            "value":"Medan wajib",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_subtitle_ytcs",
+            "value":"Parameter niat",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_ytbm",
+            "value":"Nama pakej",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Btn_tj",
+            "value":"Tambah",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Cont_title_syyt",
+            "value":"Semua niat",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_btn_zxyt",
+            "value":"Jalankan niat",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_stitle_zxjg",
+            "value":"Hasil pelaksanaan",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_zxms",
+            "value":"Mod pelaksanaan",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

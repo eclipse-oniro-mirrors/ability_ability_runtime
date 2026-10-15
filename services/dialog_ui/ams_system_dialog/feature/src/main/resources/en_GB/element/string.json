@@ -1,0 +1,95 @@
+{
+    "string":[
+        {
+            "name":"Btn_qr",
+            "value":"OK",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_subtitle_ytxx",
+            "value":"Intent information",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_title_ytts",
+            "value":"InsightIntent debugging",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_ytmc",
+            "value":"Intent name",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Btn_sc",
+            "value":"Delete",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Tips_bt",
+            "value":"Required field",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_subtitle_ytcs",
+            "value":"Intent parameters",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_ytbm",
+            "value":"Package name",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Btn_tj",
+            "value":"Add",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Cont_title_syyt",
+            "value":"All intents",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_btn_zxyt",
+            "value":"Run intent",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_stitle_zxjg",
+            "value":"Execution result",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_zxms",
+            "value":"Execution mode",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

@@ -1,60 +1,99 @@
 {
-  "string": [
-    {
-      "name": "Cont_title_syyt",
-      "value": "所有意图"
-    },
-    {
-      "name": "Detail_title_ytts",
-      "value": "意图调试"
-    },
-    {
-      "name": "Detail_subtitle_ytxx",
-      "value": "意图信息"
-    },
-    {
-      "name": "Detail_subtitle_ytcs",
-      "value": "意图参数"
-    },
-    {
-      "name": "Detail_btn_zxyt",
-      "value": "执行意图"
-    },
-    {
-      "name": "Detail_stitle_zxjg",
-      "value": "执行结果"
-    },
-    {
-      "name": "Detail_ytbm",
-      "value": "意图包名"
-    },
-    {
-      "name": "Detail_ytmc",
-      "value": "意图名称"
-    },
-    {
-      "name": "Detail_zxms",
-      "value": "执行模式"
-    },
-    {
-      "name": "Tips_bt",
-      "value": "必填"
-    },
-    {
-      "name": "Btn_qr",
-      "value": "确认"
-    },
-    {
-      "name": "Btn_tj",
-      "value": "添加"
-    },
-    {
-      "name": "Btn_sc",
-      "value": "删除"
-    },
-    {
-      "name": "tips_qsbtzd",
-      "value": "缺少必填字段"
-    }
-  ]
+    "string":[
+        {
+            "name":"Cont_title_syyt",
+            "value":"所有意图",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_title_ytts",
+            "value":"意图调试",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_subtitle_ytxx",
+            "value":"意图信息",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_subtitle_ytcs",
+            "value":"意图参数",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_btn_zxyt",
+            "value":"执行意图",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_stitle_zxjg",
+            "value":"执行结果",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_ytbm",
+            "value":"意图包名",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_ytmc",
+            "value":"意图名称",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_zxms",
+            "value":"执行模式",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Tips_bt",
+            "value":"必填",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Btn_qr",
+            "value":"确认",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Btn_tj",
+            "value":"添加",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Btn_sc",
+            "value":"删除",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"tips_qsbtzd",
+            "value":"缺少必填字段"
+        }
+    ]
 }

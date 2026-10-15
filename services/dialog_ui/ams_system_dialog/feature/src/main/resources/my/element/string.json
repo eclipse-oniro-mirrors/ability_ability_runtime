@@ -1,0 +1,95 @@
+{
+    "string":[
+        {
+            "name":"Btn_qr",
+            "value":"အိုကေ",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_subtitle_ytxx",
+            "value":"Intent အချက်အလက်",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_title_ytts",
+            "value":"InsightIntent ပြစ်ချက်ရှာဖွေ ဖယ်ရှားမှု",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_ytmc",
+            "value":"Intent အမည်",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Btn_sc",
+            "value":"ဖျက်ရန်",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Tips_bt",
+            "value":"လိုအပ်သော အကွက်",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_subtitle_ytcs",
+            "value":"Intent သတ်မှတ်ချက်များ",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_ytbm",
+            "value":"ပက်ကေ့ခ်ျ အမည်",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Btn_tj",
+            "value":"ပေါင်းထည့်ရန်",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Cont_title_syyt",
+            "value":"Intent အားလုံး",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_btn_zxyt",
+            "value":"Intent ကို လုပ်ဆောင်ရန်",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_stitle_zxjg",
+            "value":"လုပ်ဆောင်မှု ရလဒ်",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"Detail_zxms",
+            "value":"လုပ်ဆောင်မှု စနစ်",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}
