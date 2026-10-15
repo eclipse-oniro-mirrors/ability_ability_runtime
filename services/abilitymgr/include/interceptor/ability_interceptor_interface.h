@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_ABILITY_INTERCEPTOR_INTERFACE_H
 #define OHOS_ABILITY_RUNTIME_ABILITY_INTERCEPTOR_INTERFACE_H
 
+#include <functional>
 #include <variant>
 #include <vector>
 
@@ -53,6 +54,11 @@ struct AbilityInterceptorParam {
 
     using Context = std::variant<std::monostate, EcologicalCtx, DisposedCtx, RemoteDispatchCtx>;
     std::vector<Context> contexts;
+
+    // Lambda for BlockAllAppStart's escape-hatch query (is the already-started PAGE UIAbility
+    // allowed through in low-memory block mode). Set at post-resolution chain sites where a
+    // non-const AbilityRequest is in scope; when unset (empty), BlockAllAppStart fails-closed.
+    std::function<bool(int32_t)> blockAllEscapeCheck;
 
     template<typename T>
     const T* GetContext() const
@@ -105,6 +111,11 @@ public:
     InterceptorParamBuilder &Context(const T &ctx)
     {
         param_.contexts.push_back(ctx);
+        return *this;
+    }
+    InterceptorParamBuilder &BlockAllEscapeCheck(std::function<bool(int32_t)> check)
+    {
+        param_.blockAllEscapeCheck = std::move(check);
         return *this;
     }
     [[nodiscard]] AbilityInterceptorParam Build()

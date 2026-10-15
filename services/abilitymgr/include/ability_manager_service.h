@@ -3497,13 +3497,12 @@ private:
         AppExecFwk::ExtensionAbilityType extensionType = AppExecFwk::ExtensionAbilityType::UNSPECIFIED,
         int32_t userId = DEFAULT_INVAL_VALUE);
 
-    bool IsAbilityStarted(AbilityRequest &abilityRequest, std::shared_ptr<AbilityRecord> &targetRecord,
+    bool IsAbilityStarted(const AbilityRequest &abilityRequest, std::shared_ptr<AbilityRecord> &targetRecord,
         const int32_t oriValidUserId);
 
     void InitInterceptor();
-    void InitBlockAllAppStartInterceptorCallbacks();
-    ErrCode ExecuteBlockAllAppStartInterceptor();
-    ErrCode ExecuteBlockAllAppStartInterceptor(AbilityRequest& abilityRequest, int32_t validUserId);
+    void InitBlockAllAppStartInterceptorCallbacks(const std::shared_ptr<BlockAllAppStartInterceptor>& interceptor);
+    std::function<bool(int32_t)> MakeBlockAllEscapeCheck(const AbilityRequest &req);
     void InitInterceptorForScreenUnlock();
     void UpdateScreenUnlockInterceptor(int32_t userId);
     void InitPushTask();
@@ -3801,7 +3800,6 @@ private:
     sptr<IWindowManagerServiceHandler> wmsHandler_;
 #endif
     std::shared_ptr<AbilityInterceptorExecuter> interceptorExecuter_;
-    std::shared_ptr<BlockAllAppStartInterceptor> blockAllAppStartInterceptor_;
 
     AbilityRuntime::InsightIntentParamParser paramParser_;
 

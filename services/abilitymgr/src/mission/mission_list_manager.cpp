@@ -3342,7 +3342,7 @@ int MissionListManager::ResolveLocked(const AbilityRequest &abilityRequest)
     return CallAbilityLocked(abilityRequest);
 }
 
-bool MissionListManager::IsAbilityStarted(AbilityRequest &abilityRequest,
+bool MissionListManager::IsAbilityStarted(const AbilityRequest &abilityRequest,
     std::shared_ptr<AbilityRecord> &targetRecord)
 {
     std::shared_ptr<Mission> targetMission;

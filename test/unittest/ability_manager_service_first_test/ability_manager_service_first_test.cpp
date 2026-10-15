@@ -3880,7 +3880,7 @@ HWTEST_F(AbilityManagerServiceFirstTest, InitInterceptor_BlockAllAppStart_NotSup
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityMs_, nullptr);
     abilityMs_->InitInterceptor();
-    EXPECT_EQ(abilityMs_->blockAllAppStartInterceptor_, nullptr);
+    EXPECT_FALSE(abilityMs_->interceptorExecuter_->HasInterceptor("BlockAllAppStart"));
     cfg.value = false;
     cfg.isLoaded = false;
 }
@@ -3899,7 +3899,7 @@ HWTEST_F(AbilityManagerServiceFirstTest, InitInterceptor_BlockAllAppStart_Suppor
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityMs_, nullptr);
     abilityMs_->InitInterceptor();
-    EXPECT_NE(abilityMs_->blockAllAppStartInterceptor_, nullptr);
+    EXPECT_TRUE(abilityMs_->interceptorExecuter_->HasInterceptor("BlockAllAppStart"));
     cfg.value = false;
     cfg.isLoaded = false;
 }

@@ -25,6 +25,7 @@
 
 #include "ability_record/ability_request.h"
 #include "hilog_tag_wrapper.h"
+#include "want.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -38,8 +39,6 @@ public:
     static void TearDownTestCase();
     void SetUp();
     void TearDown();
-
-public:
 };
 
 void BlockAllAppStartInterceptorTest::SetUpTestCase()
@@ -54,159 +53,207 @@ void BlockAllAppStartInterceptorTest::SetUp()
 void BlockAllAppStartInterceptorTest::TearDown()
 {}
 
+namespace {
+constexpr int32_t TEST_USER_ID = 100;
+AbilityInterceptorParam BuildParam(AbilityRequest &request, int32_t userId,
+    AppExecFwk::AbilityType type, std::function<bool(int32_t)> escapeCheck = {})
+{
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->type = type;
+    InterceptorParamBuilder builder(request.want, 0, userId);
+    builder.CallerToken(nullptr).AbilityInfo(abilityInfo);
+    if (escapeCheck) {
+        builder.BlockAllEscapeCheck(escapeCheck);
+    }
+    return builder.Build();
+}
+
+AbilityInterceptorParam BuildRemoteParam()
+{
+    return InterceptorParamBuilder(Want(), 0, TEST_USER_ID)
+        .CallerToken(nullptr)
+        .Context<AbilityInterceptorParam::RemoteDispatchCtx>({}).Build();
+}
+}
+
 /**
- * @tc.name: BlockAllAppStartInterceptorTest_Execute_001
- * @tc.desc: Execute with no shouldBlockFunc set (nullptr) returns ERR_INVALID_VALUE
+ * @tc.name: BlockAllAppStartInterceptorTest_DoProcess_001
+ * @tc.desc: DoProcess with no shouldBlockFunc set (nullptr) returns ERR_INVALID_VALUE
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F(BlockAllAppStartInterceptorTest, Execute_001, TestSize.Level1)
+HWTEST_F(BlockAllAppStartInterceptorTest, DoProcess_001, TestSize.Level1)
 {
-    BlockAllAppStartInterceptor blockAllAppStartInterceptor;
-    auto ret = blockAllAppStartInterceptor.Execute();
+    BlockAllAppStartInterceptor interceptor;
+    AbilityRequest request;
+    auto param = BuildParam(request, TEST_USER_ID, AppExecFwk::AbilityType::PAGE);
+    auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
 }
 
 /**
- * @tc.name: BlockAllAppStartInterceptorTest_Execute_002
- * @tc.desc: Execute returns ERR_ALL_APP_START_BLOCKED when shouldBlockFunc returns true
+ * @tc.name: BlockAllAppStartInterceptorTest_DoProcess_002
+ * @tc.desc: DoProcess returns ERR_ALL_APP_START_BLOCKED when shouldBlockFunc returns true and no escape hatch applies
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F(BlockAllAppStartInterceptorTest, Execute_002, TestSize.Level1)
+HWTEST_F(BlockAllAppStartInterceptorTest, DoProcess_002, TestSize.Level1)
 {
-    BlockAllAppStartInterceptor blockAllAppStartInterceptor;
-    blockAllAppStartInterceptor.SetShouldBlockFunc([]() -> bool { return true; });
-    auto ret = blockAllAppStartInterceptor.Execute();
+    BlockAllAppStartInterceptor interceptor;
+    interceptor.SetShouldBlockFunc([]() -> bool { return true; });
+    AbilityRequest request;
+    auto param = BuildParam(request, TEST_USER_ID, AppExecFwk::AbilityType::SERVICE);
+    auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, ERR_ALL_APP_START_BLOCKED);
 }
 
 /**
- * @tc.name: BlockAllAppStartInterceptorTest_Execute_003
- * @tc.desc: Execute returns ERR_OK when shouldBlockFunc returns false
+ * @tc.name: BlockAllAppStartInterceptorTest_DoProcess_003
+ * @tc.desc: DoProcess returns ERR_OK when shouldBlockFunc returns false
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F(BlockAllAppStartInterceptorTest, Execute_003, TestSize.Level1)
+HWTEST_F(BlockAllAppStartInterceptorTest, DoProcess_003, TestSize.Level1)
 {
-    BlockAllAppStartInterceptor blockAllAppStartInterceptor;
-    blockAllAppStartInterceptor.SetShouldBlockFunc([]() -> bool { return false; });
-    auto ret = blockAllAppStartInterceptor.Execute();
+    BlockAllAppStartInterceptor interceptor;
+    interceptor.SetShouldBlockFunc([]() -> bool { return false; });
+    AbilityRequest request;
+    auto param = BuildParam(request, TEST_USER_ID, AppExecFwk::AbilityType::PAGE);
+    auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, ERR_OK);
 }
 
-
 /**
- * @tc.name: BlockAllAppStartInterceptorTest_ExecuteWithRequest_001
- * @tc.desc: Execute(AbilityRequest) with null shouldBlockFunc
+ * @tc.name: BlockAllAppStartInterceptorTest_DoProcess_004
+ * @tc.desc: DoProcess no-ops (ERR_OK) on RemoteDispatchCtx even when block mode is active
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F(BlockAllAppStartInterceptorTest, ExecuteWithRequest_001, TestSize.Level1)
+HWTEST_F(BlockAllAppStartInterceptorTest, DoProcess_004, TestSize.Level1)
 {
     BlockAllAppStartInterceptor interceptor;
-    AbilityRequest request;
-    int32_t userId = 100;
-    // null shouldBlockFunc is rejected before the null isAbilityStartedFunc check
-    auto ret = interceptor.Execute(request, userId);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
-
-    // null isAbilityStartedFunc is rejected even when the block flag is false
-    interceptor.SetShouldBlockFunc([]() { return false; });
-    ret = interceptor.Execute(request, userId);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    interceptor.SetShouldBlockFunc([]() -> bool { return true; });
+    auto param = BuildRemoteParam();
+    auto ret = interceptor.DoProcess(param);
+    EXPECT_EQ(ret, ERR_OK);
 }
 
 /**
- * @tc.name: BlockAllAppStartInterceptorTest_ExecuteWithRequest_002
- * @tc.desc: Execute(AbilityRequest) with block flag false, isAbilityStartedFunc not consulted
+ * @tc.name: BlockAllAppStartInterceptorTest_DoProcess_005
+ * @tc.desc: DoProcess with block flag false never calls the escape-check lambda
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F(BlockAllAppStartInterceptorTest, ExecuteWithRequest_002, TestSize.Level1)
+HWTEST_F(BlockAllAppStartInterceptorTest, DoProcess_005, TestSize.Level1)
 {
     BlockAllAppStartInterceptor interceptor;
     auto startedCount = std::make_shared<std::atomic<int32_t>>(0);
     interceptor.SetShouldBlockFunc([]() { return false; });
-    interceptor.SetIsAbilityStartedFunc(
-        [&startedCount](AbilityRequest &request, int32_t userId) {
-            startedCount->fetch_add(1);
-            return true;
-        });
+    auto escapeCheck = [&startedCount](int32_t userId) {
+        startedCount->fetch_add(1);
+        return true;
+    };
     AbilityRequest request;
-    request.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
-    int32_t userId = 100;
-    auto ret = interceptor.Execute(request, userId);
+    auto param = BuildParam(request, TEST_USER_ID, AppExecFwk::AbilityType::PAGE, escapeCheck);
+    auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, ERR_OK);
-    // no block mode: the started func is never consulted
     EXPECT_EQ(startedCount->load(), 0);
 }
 
 /**
- * @tc.name: BlockAllAppStartInterceptorTest_ExecuteWithRequest_003
- * @tc.desc: Execute(AbilityRequest) blocks non-PAGE ability even if isAbilityStartedFunc returns true
+ * @tc.name: BlockAllAppStartInterceptorTest_DoProcess_006
+ * @tc.desc: DoProcess blocks non-PAGE ability even if escapeCheck returns true
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F(BlockAllAppStartInterceptorTest, ExecuteWithRequest_003, TestSize.Level1)
+HWTEST_F(BlockAllAppStartInterceptorTest, DoProcess_006, TestSize.Level1)
 {
     BlockAllAppStartInterceptor interceptor;
     interceptor.SetShouldBlockFunc([]() { return true; });
-    interceptor.SetIsAbilityStartedFunc([](AbilityRequest &request, int32_t userId) { return true; });
-    int32_t userId = 100;
-    // the started-exemption only applies to PAGE abilities
+    AbilityRequest request;
     for (auto type : { AppExecFwk::AbilityType::SERVICE, AppExecFwk::AbilityType::EXTENSION }) {
-        AbilityRequest request;
-        request.abilityInfo.type = type;
-        auto ret = interceptor.Execute(request, userId);
+        auto param = BuildParam(request, TEST_USER_ID, type, [](int32_t) { return true; });
+        auto ret = interceptor.DoProcess(param);
         EXPECT_EQ(ret, ERR_ALL_APP_START_BLOCKED);
     }
 }
 
 /**
- * @tc.name: BlockAllAppStartInterceptorTest_ExecuteWithRequest_004
- * @tc.desc: Execute(AbilityRequest) allows a started PAGE ability despite block mode
+ * @tc.name: BlockAllAppStartInterceptorTest_DoProcess_007
+ * @tc.desc: DoProcess allows a started PAGE ability despite block mode (escape hatch)
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F(BlockAllAppStartInterceptorTest, ExecuteWithRequest_004, TestSize.Level1)
+HWTEST_F(BlockAllAppStartInterceptorTest, DoProcess_007, TestSize.Level1)
 {
     BlockAllAppStartInterceptor interceptor;
     interceptor.SetShouldBlockFunc([]() { return true; });
-    interceptor.SetIsAbilityStartedFunc([](AbilityRequest &request, int32_t userId) { return true; });
     AbilityRequest request;
-    request.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
-    int32_t userId = 100;
-    auto ret = interceptor.Execute(request, userId);
+    auto param = BuildParam(request, TEST_USER_ID, AppExecFwk::AbilityType::PAGE,
+        [](int32_t) { return true; });
+    auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, ERR_OK);
 }
 
 /**
- * @tc.name: BlockAllAppStartInterceptorTest_ExecuteWithRequest_005
- * @tc.desc: Execute(AbilityRequest) blocks a non-started PAGE ability in block mode
+ * @tc.name: BlockAllAppStartInterceptorTest_DoProcess_008
+ * @tc.desc: DoProcess blocks a non-started PAGE ability in block mode
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F(BlockAllAppStartInterceptorTest, ExecuteWithRequest_005, TestSize.Level1)
+HWTEST_F(BlockAllAppStartInterceptorTest, DoProcess_008, TestSize.Level1)
 {
     BlockAllAppStartInterceptor interceptor;
     interceptor.SetShouldBlockFunc([]() { return true; });
-    interceptor.SetIsAbilityStartedFunc([](AbilityRequest &request, int32_t userId) { return false; });
     AbilityRequest request;
-    request.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
-    int32_t userId = 100;
-    auto ret = interceptor.Execute(request, userId);
+    auto param = BuildParam(request, TEST_USER_ID, AppExecFwk::AbilityType::PAGE,
+        [](int32_t) { return false; });
+    auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, ERR_ALL_APP_START_BLOCKED);
 }
 
 /**
- * @tc.name: BlockAllAppStartInterceptorTest_TwoPathConsistency_002
- * @tc.desc: Execute() and Execute(AbilityRequest) paths are consistent for non-exempt requests,
- *           while a started PAGE ability is exempted only on the request path
+ * @tc.name: BlockAllAppStartInterceptorTest_DoProcess_009
+ * @tc.desc: DoProcess fails-closed (blocks) for a PAGE ability when the escape-check lambda
+ *           is absent, i.e. the escape hatch is unavailable at the chain site
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F(BlockAllAppStartInterceptorTest, TwoPathConsistency_002, TestSize.Level1)
+HWTEST_F(BlockAllAppStartInterceptorTest, DoProcess_009, TestSize.Level1)
+{
+    BlockAllAppStartInterceptor interceptor;
+    interceptor.SetShouldBlockFunc([]() { return true; });
+    AbilityRequest request;
+    auto param = BuildParam(request, TEST_USER_ID, AppExecFwk::AbilityType::PAGE);
+    auto ret = interceptor.DoProcess(param);
+    EXPECT_EQ(ret, ERR_ALL_APP_START_BLOCKED);
+}
+
+/**
+ * @tc.name: BlockAllAppStartInterceptorTest_DoProcess_010
+ * @tc.desc: DoProcess fails-closed (blocks) for a PAGE ability when the escape-check lambda
+ *           is unset (empty std::function)
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(BlockAllAppStartInterceptorTest, DoProcess_010, TestSize.Level1)
+{
+    BlockAllAppStartInterceptor interceptor;
+    interceptor.SetShouldBlockFunc([]() { return true; });
+    AbilityRequest request;
+    auto param = BuildParam(request, TEST_USER_ID, AppExecFwk::AbilityType::PAGE);
+    auto ret = interceptor.DoProcess(param);
+    EXPECT_EQ(ret, ERR_ALL_APP_START_BLOCKED);
+}
+
+/**
+ * @tc.name: BlockAllAppStartInterceptorTest_DoProcess_011
+ * @tc.desc: DoProcess escape hatch is consulted exactly once per PAGE-under-block call; the
+ *           escape-check lambda receives the param userId
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(BlockAllAppStartInterceptorTest, DoProcess_011, TestSize.Level1)
 {
     BlockAllAppStartInterceptor interceptor;
     auto blockFlag = std::make_shared<std::atomic<bool>>(false);
@@ -214,40 +261,43 @@ HWTEST_F(BlockAllAppStartInterceptorTest, TwoPathConsistency_002, TestSize.Level
     interceptor.SetShouldBlockFunc(shouldBlock);
     auto startedFlag = std::make_shared<std::atomic<bool>>(false);
     auto startedCount = std::make_shared<std::atomic<int32_t>>(0);
-    interceptor.SetIsAbilityStartedFunc([startedFlag, startedCount](AbilityRequest &request, int32_t userId) {
+    auto capturedUserId = std::make_shared<std::atomic<int32_t>>(0);
+    auto escapeCheck = [startedFlag, startedCount, capturedUserId](int32_t userId) {
         startedCount->fetch_add(1);
+        capturedUserId->store(userId);
         return startedFlag->load();
-    });
+    };
 
-    int32_t userId = 100;
+    int32_t userId = TEST_USER_ID;
     AbilityRequest pageRequest;
-    pageRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
     AbilityRequest serviceRequest;
-    serviceRequest.abilityInfo.type = AppExecFwk::AbilityType::SERVICE;
 
-    // scenario 1: block mode, PAGE not started, both paths reject consistently
+    // scenario 1: block mode, PAGE not started -> blocked, escape check consulted once
     blockFlag->store(true);
     startedFlag->store(false);
-    EXPECT_EQ(interceptor.Execute(), ERR_ALL_APP_START_BLOCKED);
-    EXPECT_EQ(interceptor.Execute(pageRequest, userId), ERR_ALL_APP_START_BLOCKED);
-    EXPECT_EQ(interceptor.Execute(serviceRequest, userId), ERR_ALL_APP_START_BLOCKED);
+    auto pageParam = BuildParam(pageRequest, userId, AppExecFwk::AbilityType::PAGE, escapeCheck);
+    EXPECT_EQ(interceptor.DoProcess(pageParam), ERR_ALL_APP_START_BLOCKED);
+    auto serviceParam = BuildParam(serviceRequest, userId, AppExecFwk::AbilityType::SERVICE, escapeCheck);
+    EXPECT_EQ(interceptor.DoProcess(serviceParam), ERR_ALL_APP_START_BLOCKED);
+    // escape check only consulted for the PAGE request
+    EXPECT_EQ(startedCount->load(), 1);
+    EXPECT_EQ(capturedUserId->load(), userId);
 
-    // scenario 2: block mode, started PAGE is exempted only on the request path
+    // scenario 2: block mode, started PAGE is exempted
     startedFlag->store(true);
-    EXPECT_EQ(interceptor.Execute(), ERR_ALL_APP_START_BLOCKED);
-    EXPECT_EQ(interceptor.Execute(pageRequest, userId), ERR_OK);
-    // non PAGE keeps being rejected
-    EXPECT_EQ(interceptor.Execute(serviceRequest, userId), ERR_ALL_APP_START_BLOCKED);
-    // the started func is only consulted for PAGE requests under block mode,
-    // exactly twice: scenario 1 and scenario 2 pageRequest calls
+    auto pageParam2 = BuildParam(pageRequest, userId, AppExecFwk::AbilityType::PAGE, escapeCheck);
+    EXPECT_EQ(interceptor.DoProcess(pageParam2), ERR_OK);
+    auto serviceParam2 = BuildParam(serviceRequest, userId, AppExecFwk::AbilityType::SERVICE, escapeCheck);
+    EXPECT_EQ(interceptor.DoProcess(serviceParam2), ERR_ALL_APP_START_BLOCKED);
     EXPECT_EQ(startedCount->load(), 2);
 
-    // scenario 3: no block mode, both paths allow and the started func is not consulted
+    // scenario 3: no block mode -> all pass, escape check not consulted
     auto countBefore = startedCount->load();
     blockFlag->store(false);
-    EXPECT_EQ(interceptor.Execute(), ERR_OK);
-    EXPECT_EQ(interceptor.Execute(pageRequest, userId), ERR_OK);
-    EXPECT_EQ(interceptor.Execute(serviceRequest, userId), ERR_OK);
+    auto pageParam3 = BuildParam(pageRequest, userId, AppExecFwk::AbilityType::PAGE, escapeCheck);
+    EXPECT_EQ(interceptor.DoProcess(pageParam3), ERR_OK);
+    auto serviceParam3 = BuildParam(serviceRequest, userId, AppExecFwk::AbilityType::SERVICE, escapeCheck);
+    EXPECT_EQ(interceptor.DoProcess(serviceParam3), ERR_OK);
     EXPECT_EQ(startedCount->load(), countBefore);
 }
 } // namespace AAFwk
