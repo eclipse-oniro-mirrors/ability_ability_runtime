@@ -84,7 +84,7 @@ bool InsightIntentSysEventReceiver::CollectInsightIntentSaveParam(const std::str
         moduleName, profile, saveParam.userId));
     if (ret != ERR_OK) {
         TAG_LOGW(AAFwkTag::INTENT, "GetJsonProfile failed, code: %{public}d", ret);
-        DeleteInsightIntent(bundleName, moduleName, saveParam.userId, saveParam.appIndex, saveParam.isDualMode);
+        DeleteInsightIntent(bundleName, moduleName, saveParam.userId, saveParam.appIndex);
         return false;
     }
     // Transform json string
@@ -97,7 +97,7 @@ bool InsightIntentSysEventReceiver::CollectInsightIntentSaveParam(const std::str
         TAG_LOGW(AAFwkTag::INTENT,
             "transform profile failed, deleting config, bundle:%{public}s module:%{public}s",
             bundleName.c_str(), moduleName.c_str());
-        DeleteInsightIntent(bundleName, moduleName, saveParam.userId, saveParam.appIndex, saveParam.isDualMode);
+        DeleteInsightIntent(bundleName, moduleName, saveParam.userId, saveParam.appIndex);
         return false;
     }
     // force BMS bundleName/moduleName over the profile values so the function
@@ -139,10 +139,11 @@ void InsightIntentSysEventReceiver::RegisterAllFunctions(
 }
 
 void InsightIntentSysEventReceiver::DeleteInsightIntent(const std::string &bundleName,
-    const std::string &moduleName, int32_t userId, int32_t appIndex, bool isDualMode)
+    const std::string &moduleName, int32_t userId, int32_t appIndex)
 {
+    IntentKey key{bundleName, moduleName, "", userId, appIndex};
     if (!DelayedSingleton<InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(
-        bundleName, moduleName, userId, appIndex, isDualMode)) {
+        key)) {
         return;
     }
     TAG_LOGI(AAFwkTag::INTENT, "update bundleName: %{public}s to no insight intent", bundleName.c_str());
@@ -206,9 +207,10 @@ void InsightIntentSysEventReceiver::LoadInsightIntentInfos(int32_t userId)
             (policy == AppExecFwk::DeviceModeDistributionPolicy::UNIVERSAL_DIFFERENT_PACKAGE ||
              policy == AppExecFwk::DeviceModeDistributionPolicy::PARTIAL_COMPATIBLE_DIFFERENT_PACKAGE ||
              policy == AppExecFwk::DeviceModeDistributionPolicy::FULL_COMPATIBLE_DIFFERENT_PACKAGE);
-        int32_t appIndex = isDifferentPackage ? bundleInfo.appIndex : 0;
+        int32_t appIndex = isDifferentPackage ? bundleInfo.appIndex : -1;
         bool rdbHas = DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->
-            HasInsightIntentByName(bundleInfo.versionCode, bundleInfo.name, userId, appIndex, isDifferentPackage);
+            HasInsightIntentByName(bundleInfo.versionCode,
+                AbilityRuntime::IntentKey{bundleInfo.name, "", "", userId, appIndex});
         if (rdbHas) {
             newBundles.emplace_back(bundleInfo.name, bundleInfo.versionCode);
             continue;
@@ -219,7 +221,7 @@ void InsightIntentSysEventReceiver::LoadInsightIntentInfos(int32_t userId)
         }
         bool anySaved = SaveInsightIntentInfos(bundleInfo.name, moduleNames,
             AbilityRuntime::InsightIntentSaveParam{"", "", bundleInfo.versionCode, userId,
-                {}, {}, appIndex, isDifferentPackage});
+                {}, {}, appIndex});
         if (anySaved) {
             newBundles.emplace_back(bundleInfo.name, bundleInfo.versionCode);
         }

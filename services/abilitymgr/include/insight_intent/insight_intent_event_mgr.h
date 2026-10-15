@@ -24,41 +24,36 @@
 #include "insight_intent_sys_event_receiver.h"
 
 namespace OHOS {
-namespace AppExecFwk {
-class BundleMgrHelper;
-}
 namespace AbilityRuntime {
-struct ModuleCollectResult {
-    std::vector<InsightIntentSaveParam> saveParams;
-    ExtractInsightIntentProfileInfoVec allInfos;
-    std::vector<InsightIntentInfo> allConfigInfos;
-};
 class InsightIntentEventMgr : public std::enable_shared_from_this<InsightIntentEventMgr> {
 public:
     static void UpdateInsightIntentEvent(const AppExecFwk::ElementName &elementName, int32_t userId,
-        int32_t appIndex = 0);
+        int32_t appIndex = -1);
     static void DeleteInsightIntentEvent(const AppExecFwk::ElementName &elementName, int32_t userId,
         int32_t appIndex);
 
     void SubscribeSysEventReceiver();
 private:
-    struct DualModeInfo {
-        int32_t appIndex = 0;
-        bool isDualMode = false;
+    struct ModuleCollectResult {
+        std::vector<InsightIntentSaveParam> saveParams;
+        ExtractInsightIntentProfileInfoVec allInfos;
+        std::vector<InsightIntentInfo> allConfigInfos;
     };
-    static DualModeInfo ResolveDualModeInfo(const std::string &bundleName,
-        int32_t userId, int32_t appIndexFromEvent);
+    static void ResolveDualModeInfo(const std::string &bundleName,
+        int32_t userId, int32_t &appIndex);
     std::shared_ptr<InsightIntentSysEventReceiver> insightIntentSysEventReceiver_ = nullptr;
 
     static void DeleteInsightIntent(const std::string &bundleName, const std::string &moduleName,
-        int32_t userId, const DualModeInfo &dualInfo);
+        int32_t userId, int32_t appIndex);
     static void CollectModuleSaveParams(const std::string &bundleName, const std::string &moduleName,
-        int32_t userId, const DualModeInfo &dualInfo, ModuleCollectResult &result);
+        int32_t userId, int32_t appIndex, ModuleCollectResult &result);
     static void FilterAndRegisterIntentFunctions(const std::string &bundleName,
         int32_t userId, uint32_t versionCode,
         const ExtractInsightIntentProfileInfoVec &allInfos,
         std::vector<InsightIntentInfo> &allConfigInfos);
     static void ClearStaleIntentFunctions(const std::string &bundleName, int32_t userId);
+    static void DoUpdateInsightIntent(const std::string &bundleName, const std::string &moduleName,
+        int32_t userId, int32_t resolvedAppIndex);
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

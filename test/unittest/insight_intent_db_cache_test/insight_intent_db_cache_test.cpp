@@ -113,18 +113,18 @@ HWTEST_F(InsightIntentDbCacheTest, InsightIntentDbCacheTest_002, TestSize.Level0
     std::string moduleName = "";
     ExtractInsightIntentProfileInfoVec profileInfos;
     std::vector<InsightIntentInfo> configInfos;
-    // cache holds entries of bundleName (saved by test_001); wrong user is skipped
-    bool deleted = DelayedSingleton<InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(bundleName,
-        moduleName, 100);
-    EXPECT_FALSE(deleted);
-    deleted = DelayedSingleton<InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(bundleName,
-        moduleName, userId);
+    // cache holds entries of bundleName (saved by test_001); wrong user triggers direct RDB delete
+    bool deleted = DelayedSingleton<InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(
+        IntentKey{bundleName, moduleName, "", 100});
+    EXPECT_TRUE(deleted);
+    deleted = DelayedSingleton<InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(
+        IntentKey{bundleName, moduleName, "", userId});
     EXPECT_TRUE(deleted);
     moduleName = "qwe";
     DelayedSingleton<InsightIntentDbCache>::GetInstance()->SaveInsightIntentTotalInfo(
         InsightIntentSaveParam{bundleName, moduleName, 0u, userId}, profileInfos, configInfos);
-    deleted = DelayedSingleton<InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(bundleName,
-        moduleName, userId);
+    deleted = DelayedSingleton<InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(
+        IntentKey{bundleName, moduleName, "", userId});
     EXPECT_TRUE(deleted);
     auto result = DelayedSingleton<InsightIntentDbCache>::GetInstance()->DeleteInsightIntentByUserId(userId);
     EXPECT_EQ(result, ERR_INVALID_VALUE);
@@ -167,11 +167,11 @@ HWTEST_F(InsightIntentDbCacheTest, InsightIntentDbCacheTest_003, TestSize.Level0
         InsightIntentSaveParam{bundleName, moduleName, 0u, userId}, profileInfos, configInfos);
     EXPECT_EQ(result, ERR_OK);
         std::vector<InsightIntentInfo> configInfos1;
-    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetConfigInsightIntentInfoByName(bundleName,
-        100, configInfos1);
+    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetConfigInsightIntentInfoByName(
+        IntentKey{bundleName, "", "", 100}, configInfos1);
     EXPECT_EQ(configInfos1.empty(), false);
-    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetConfigInsightIntentInfoByName(bundleName,
-        userId, configInfos1);
+    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetConfigInsightIntentInfoByName(
+        IntentKey{bundleName, "", "", userId}, configInfos1);
     EXPECT_EQ(configInfos1.empty(), false);
     std::vector<InsightIntentInfo> configInfos2;
     DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetAllConfigInsightIntentInfo(100, configInfos2);
@@ -227,10 +227,10 @@ HWTEST_F(InsightIntentDbCacheTest, InsightIntentDbCacheTest_004, TestSize.Level0
     DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetAllInsightIntentGenericInfo(100, genericInfos);
     EXPECT_EQ(genericInfos.empty(), false);
     DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentGenericInfoByName(
-        bundleName, userId, genericInfos);
+        IntentKey{bundleName, "", "", userId}, genericInfos);
     EXPECT_EQ(genericInfos.empty(), false);
     DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentGenericInfoByName(
-        bundleName, 100, genericInfos);
+        IntentKey{bundleName, "", "", 100}, genericInfos);
     EXPECT_EQ(genericInfos.empty(), false);
     ExtractInsightIntentGenericInfo genericInfo;
     DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentGenericInfo(
@@ -239,10 +239,11 @@ HWTEST_F(InsightIntentDbCacheTest, InsightIntentDbCacheTest_004, TestSize.Level0
             IntentKey{bundleName, moduleName, intentName, 100}, genericInfo);
 
     std::vector<ExtractInsightIntentInfo> genericInfos2;
-    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentInfoByName(bundleName, 100, genericInfos2);
+    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentInfoByName(
+        IntentKey{bundleName, "", "", 100}, genericInfos2);
     EXPECT_EQ(genericInfos2.empty(), false);
-    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentInfoByName(bundleName,
-        userId, genericInfos2);
+    DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentInfoByName(
+        IntentKey{bundleName, "", "", userId}, genericInfos2);
     EXPECT_EQ(genericInfos2.empty(), false);
 }
 
@@ -267,7 +268,8 @@ HWTEST_F(InsightIntentDbCacheTest, InsightIntentDbCacheTest_005, TestSize.Level0
     MockLoadInsightIntentInfos(true);
     DelayedSingleton<InsightIntentDbCache>::GetInstance()->InitInsightIntentCache(userId);
 
-    bool hasCache = DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(bundleName, userId);
+    bool hasCache = DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(
+        IntentKey{bundleName, "", "", userId});
     EXPECT_EQ(hasCache, false);
 
     MockSaveData(true);
@@ -275,11 +277,12 @@ HWTEST_F(InsightIntentDbCacheTest, InsightIntentDbCacheTest_005, TestSize.Level0
         InsightIntentSaveParam{bundleName, moduleName, 0u, userId}, profileInfos, configInfos);
     EXPECT_EQ(result, ERR_OK);
 
-    hasCache = DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(bundleName, userId);
+    hasCache = DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(
+        IntentKey{bundleName, "", "", userId});
     EXPECT_EQ(hasCache, true);
 
     hasCache = DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(
-        "not_exist_bundle", userId);
+        IntentKey{"not_exist_bundle", "", "", userId});
     EXPECT_EQ(hasCache, false);
 }
 
@@ -403,17 +406,17 @@ HWTEST_F(InsightIntentDbCacheTest, InsightIntentDbCacheTest_009, TestSize.Level0
 
     // loaded for the user and bundle absent
     EXPECT_FALSE(DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(
-        bundleName, cachedUserId));
+        IntentKey{bundleName, "", "", cachedUserId}));
     // wrong user: always false
     EXPECT_FALSE(DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(
-        bundleName, switchedUserId));
+        IntentKey{bundleName, "", "", switchedUserId}));
 
     MockSaveData(true);
     EXPECT_EQ(DelayedSingleton<InsightIntentDbCache>::GetInstance()->SaveInsightIntentTotalInfo(
         InsightIntentSaveParam{bundleName, moduleName, 0u, cachedUserId}, profileInfos, configInfos), ERR_OK);
     // bundle cached
     EXPECT_TRUE(DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(
-        bundleName, cachedUserId));
+        IntentKey{bundleName, "", "", cachedUserId}));
 
     // user switch load failure clears the map and keeps the old userId:
     // no entry may be reported for either user
@@ -421,20 +424,20 @@ HWTEST_F(InsightIntentDbCacheTest, InsightIntentDbCacheTest_009, TestSize.Level0
     EXPECT_EQ(DelayedSingleton<InsightIntentDbCache>::GetInstance()->InitInsightIntentCache(
         switchedUserId), ERR_INVALID_VALUE);
     EXPECT_FALSE(DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(
-        "any_bundle", cachedUserId));
+        IntentKey{"any_bundle", "", "", cachedUserId}));
     EXPECT_FALSE(DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(
-        "any_bundle", switchedUserId));
+        IntentKey{"any_bundle", "", "", switchedUserId}));
 
     // same-user re-init must reload instead of early-returning, restoring trust
     MockLoadInsightIntentInfos(true);
     DelayedSingleton<InsightIntentDbCache>::GetInstance()->InitInsightIntentCache(cachedUserId);
     EXPECT_FALSE(DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(
-        "other_bundle", cachedUserId));
+        IntentKey{"other_bundle", "", "", cachedUserId}));
 
     // successful switch works as before
     DelayedSingleton<InsightIntentDbCache>::GetInstance()->InitInsightIntentCache(switchedUserId);
     EXPECT_FALSE(DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(
-        bundleName, switchedUserId));
+        IntentKey{bundleName, "", "", switchedUserId}));
 }
 
 /**
@@ -460,16 +463,16 @@ HWTEST_F(InsightIntentDbCacheTest, InsightIntentDbCacheTest_010, TestSize.Level0
     DelayedSingleton<InsightIntentDbCache>::GetInstance()->InitInsightIntentCache(userId);
     MockDeleteData(true);
 
-    // cache loaded for the user and bundle absent: nothing to delete
+    // cache loaded for the user and bundle absent: skip delete
     EXPECT_FALSE(DelayedSingleton<InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(
-        bundleName, moduleName, userId));
+        IntentKey{bundleName, moduleName, "", userId}));
 
     // bundle cached: delete and report
     MockSaveData(true);
     EXPECT_EQ(DelayedSingleton<InsightIntentDbCache>::GetInstance()->SaveInsightIntentTotalInfo(
         InsightIntentSaveParam{bundleName, moduleName, 0u, userId}, profileInfos, configInfos), ERR_OK);
     EXPECT_TRUE(DelayedSingleton<InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(
-        bundleName, moduleName, userId));
+        IntentKey{bundleName, moduleName, "", userId}));
 }
 
 /**
@@ -519,7 +522,8 @@ HWTEST_F(InsightIntentDbCacheTest, InsightIntentDbCacheTest_011, TestSize.Level0
     EXPECT_EQ(DelayedSingleton<InsightIntentDbCache>::GetInstance()->SaveBatchInsightIntentTotalInfo(
         saveParams), ERR_INVALID_VALUE);
     // delete fails: bundleVersionMap_ must not be updated
-    EXPECT_FALSE(DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(bundleName, userId));
+    EXPECT_FALSE(DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(
+        IntentKey{bundleName, "", "", userId}));
 
     // batch save fails on insert
     MockDeleteData(true);
@@ -527,14 +531,16 @@ HWTEST_F(InsightIntentDbCacheTest, InsightIntentDbCacheTest_011, TestSize.Level0
     EXPECT_EQ(DelayedSingleton<InsightIntentDbCache>::GetInstance()->SaveBatchInsightIntentTotalInfo(
         saveParams), ERR_INVALID_VALUE);
     // insert fails: bundleVersionMap_ must not be updated
-    EXPECT_FALSE(DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(bundleName, userId));
+    EXPECT_FALSE(DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(
+        IntentKey{bundleName, "", "", userId}));
 
     // batch save succeeds
     MockSaveData(true);
     EXPECT_EQ(DelayedSingleton<InsightIntentDbCache>::GetInstance()->SaveBatchInsightIntentTotalInfo(
         saveParams), ERR_OK);
     // save succeeds: bundleVersionMap_ is updated
-    EXPECT_TRUE(DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(bundleName, userId));
+    EXPECT_TRUE(DelayedSingleton<InsightIntentDbCache>::GetInstance()->HasBundleCache(
+        IntentKey{bundleName, "", "", userId}));
 }
 }
 }

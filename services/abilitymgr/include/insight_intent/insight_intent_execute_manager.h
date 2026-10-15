@@ -49,8 +49,6 @@ struct InsightIntentExecuteRecord {
     bool isDistributed = false;
     std::string deviceId;
     uint64_t requestCode = 0;
-    int32_t appIndex = 0;
-    bool isDualMode = false;
 };
 
 class InsightIntentExecuteConnection : public AbilityConnectionStub {
@@ -87,8 +85,6 @@ struct ExecuteParam {
     std::string srcDeviceId;
     uint64_t requestCode = 0;
     uint64_t specifiedFullTokenId = 0;
-    int32_t appIndex = 0;
-    bool isDualMode = false;
 };
 
 class InsightIntentExecuteManager : public std::enable_shared_from_this<InsightIntentExecuteManager> {
@@ -139,8 +135,7 @@ public:
     void SetTargetPid(uint64_t intentId, pid_t pid);
 
     int32_t CheckAndUpdateQueryEntityParam(uint64_t key, const sptr<IRemoteObject> &callerToken,
-        std::shared_ptr<OHOS::AppExecFwk::InsightIntentQueryParam> &param,
-        const ExecuteParam &execParam = ExecuteParam{});
+        std::shared_ptr<OHOS::AppExecFwk::InsightIntentQueryParam> &param, const std::string &callerBundleName);
 
     static int32_t GenerateQueryEntityWant(const std::shared_ptr<AppExecFwk::InsightIntentQueryParam> &param,
         Want &want);

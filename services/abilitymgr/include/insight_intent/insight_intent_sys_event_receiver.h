@@ -45,7 +45,7 @@ private:
         const std::vector<ExtractInsightIntentInfo> &allIntentInfos,
         const std::vector<InsightIntentInfo> &allConfigInfos, int32_t userId);
     void DeleteInsightIntent(const std::string &bundleName, const std::string &moduleName, int32_t userId,
-        int32_t appIndex, bool isDualMode);
+        int32_t appIndex);
     void LoadInsightIntentInfos(int32_t userId = -1);
     int32_t ResolveLoadUserId(int32_t userId);
     void BackupAndScheduleRegister(std::vector<std::pair<std::string, uint32_t>> &&newBundles, int32_t userId);

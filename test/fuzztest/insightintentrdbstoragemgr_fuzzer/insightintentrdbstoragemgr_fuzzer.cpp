@@ -57,9 +57,9 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
         LoadInsightIntentInfos(userId, bundleVersionMap, totalInfos, configInfos);
     DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadConfigInsightIntentInfos(userId, configInfos);
     DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->
-        LoadConfigInsightIntentInfoByName(bundleName, userId, configInfos);
+        LoadConfigInsightIntentInfoByName(IntentKey{bundleName, "", "", userId}, configInfos);
     DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->
-        LoadInsightIntentInfoByName(bundleName, userId, totalInfos);
+        LoadInsightIntentInfoByName(IntentKey{bundleName, "", "", userId}, totalInfos);
     DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->
         LoadInsightIntentInfo(IntentKey{bundleName, moduleName, intentName, userId}, totalInfo);
     DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->
@@ -70,7 +70,7 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
         InsightIntentSaveParam{bundleName, moduleName, versionCode, userId}, profileInfos, configInfos);
     DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->DeleteStorageInsightIntentByUserId(userId);
     DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->
-        DeleteStorageInsightIntentData(bundleName, moduleName, userId);
+        DeleteStorageInsightIntentData(IntentKey{bundleName, moduleName, "", userId});
     return true;
 }
 }

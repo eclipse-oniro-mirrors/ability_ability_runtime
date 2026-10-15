@@ -15715,7 +15715,7 @@ ErrCode AbilityManagerService::QueryEntityInfo(uint64_t key, sptr<IRemoteObject>
     auto callerBundlename = InsightIntentGetcallerBundleName();
     auto paramPtr = std::make_shared<InsightIntentQueryParam>(param);
     int32_t ret = executeManager->CheckAndUpdateQueryEntityParam(key, callerToken, paramPtr,
-        {callerBundlename});
+        callerBundlename);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "CheckAndUpdateQueryEntityParam error:%{public}d", ret);
         return ret;
@@ -19041,9 +19041,9 @@ int32_t AbilityManagerService::GetInsightIntentInfoByBundleName(
         std::vector<ExtractInsightIntentInfo> intentInfos;
         std::vector<InsightIntentInfo> configInfos;
         DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentInfoByName(
-            bundleName, GetValidUserId(userId), intentInfos);
+            IntentKey{bundleName, "", "", GetValidUserId(userId)}, intentInfos);
         DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetConfigInsightIntentInfoByName(
-            bundleName, GetValidUserId(userId), configInfos);
+            IntentKey{bundleName, "", "", GetValidUserId(userId)}, configInfos);
         if (intentInfos.empty() && configInfos.empty()) {
             TAG_LOGD(AAFwkTag::INTENT, "InsightIntentInfos and configInsightIntentInfos empty");
             return ERR_OK;
@@ -19064,9 +19064,9 @@ int32_t AbilityManagerService::GetInsightIntentInfoByBundleName(
         std::vector<ExtractInsightIntentGenericInfo> genericInfos;
         std::vector<InsightIntentInfo> configInfos;
         DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetConfigInsightIntentInfoByName(
-            bundleName, GetValidUserId(userId), configInfos);
+            IntentKey{bundleName, "", "", GetValidUserId(userId)}, configInfos);
         DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentGenericInfoByName(
-            bundleName, GetValidUserId(userId), genericInfos);
+            IntentKey{bundleName, "", "", GetValidUserId(userId)}, genericInfos);
         if (genericInfos.empty() && configInfos.empty()) {
             return ERR_OK;
         }
@@ -19081,7 +19081,7 @@ int32_t AbilityManagerService::GetInsightIntentInfoByBundleName(
         if (getEntity) {
             std::vector<ExtractInsightIntentInfo> intentInfos;
             DelayedSingleton<InsightIntentDbCache>::GetInstance()->GetInsightIntentInfoByName(
-                bundleName, GetValidUserId(userId), intentInfos);
+                IntentKey{bundleName, "", "", GetValidUserId(userId)}, intentInfos);
             if (intentInfos.empty()) {
                 TAG_LOGI(AAFwkTag::INTENT, "extractInsightIntentInfos empty");
                 return ERR_OK;
