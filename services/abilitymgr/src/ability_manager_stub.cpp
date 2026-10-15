@@ -2919,6 +2919,7 @@ int AbilityManagerStub::StartAbilityForPrelaunchInner(MessageParcel &data, Messa
     int32_t frameNum = data.ReadInt32();
     sptr<IAbilityConnection> connect = nullptr;
     bool hasConnect = data.ReadBool();
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "StartAbilityForPrelaunchInner hasConnect:%{public}d", hasConnect ? 1 : 0);
     if (hasConnect) {
         auto remoteObj = data.ReadRemoteObject();
         if (remoteObj != nullptr) {

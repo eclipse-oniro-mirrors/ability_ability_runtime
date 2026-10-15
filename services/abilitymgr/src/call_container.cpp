@@ -261,19 +261,22 @@ void CallContainer::NotifyDisconnectOnTimeout(const AppExecFwk::ElementName &ele
         return;
     }
 
-    for (const auto &[_, callRecord] : callRecordMap_) {
-        if (callRecord == nullptr) {
+    for (auto it = callRecordMap_.begin(); it != callRecordMap_.end();) {
+        auto &callRecord = it->second;
+        if (callRecord == nullptr || !callRecord->IsPrelaunch()) {
+            ++it;
             continue;
         }
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "Notify prelaunch timeout disconnect, recordId:%{public}d, reason:%{public}d",
+            callRecord->GetCallRecordId(), REASON_PRELAUNCH_TIMEOUT);
         auto callback = callRecord->GetConCallBack();
         if (callback) {
             ffrt::submit([callback, element]() {
                 callback->OnAbilityDisconnectDone(element, REASON_PRELAUNCH_TIMEOUT);
             });
         }
+        it = callRecordMap_.erase(it);
     }
-
-    callRecordMap_.clear();
 }
 }  // namespace AAFwk
 }  // namesspace OHOS

@@ -4176,7 +4176,8 @@ int AbilityManagerProxy::StartAbilityByCallWithErrMsg(const Want &want, const sp
 int AbilityManagerProxy::StartAbilityForPrelaunch(const Want &want, const int32_t frameNum,
     const sptr<IAbilityConnection> &connect)
 {
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "AbilityManagerProxy::StartAbilityForPrelaunch begin.");
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "AbilityManagerProxy::StartAbilityForPrelaunch begin, hasConnect:%{public}d.",
+        connect != nullptr ? 1 : 0);
     int error;
     MessageParcel data;
     MessageParcel reply;

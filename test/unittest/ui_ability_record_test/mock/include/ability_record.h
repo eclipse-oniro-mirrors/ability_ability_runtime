@@ -36,6 +36,7 @@ enum class AbilityRecordType {
 
 struct AbilityRequest {
     bool isStartByOEExt = false;
+    bool isPrelaunch = false;
     int32_t requestCode = 0;
     Want want;
     AppExecFwk::AbilityInfo abilityInfo;

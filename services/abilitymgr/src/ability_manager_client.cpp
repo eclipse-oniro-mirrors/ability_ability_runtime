@@ -1305,9 +1305,9 @@ ErrCode AbilityManagerClient::StartAbilityForPrelaunch(const Want &want, const i
 {
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "prelaunch, ability:%{public}s/%{public}s",
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "prelaunch, ability:%{public}s/%{public}s, hasConnect:%{public}d",
         want.GetBundle().c_str(),
-        want.GetElement().GetAbilityName().c_str());
+        want.GetElement().GetAbilityName().c_str(), connect != nullptr ? 1 : 0);
     return abms->StartAbilityForPrelaunch(want, frameNum, connect);
 }
 
