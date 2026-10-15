@@ -63,7 +63,7 @@ public:
     MOCK_METHOD3(StopServiceAbility, int(const Want&, int32_t userId, const sptr<IRemoteObject> &token));
     MOCK_METHOD1(GetMissionIdByToken, int32_t(const sptr<IRemoteObject>& token));
     MOCK_METHOD2(GetAbilityTokenByCalleeObj, void(const sptr<IRemoteObject> &callStub, sptr<IRemoteObject> &token));
-    MOCK_METHOD4(KillProcess, int(const std::string&, const bool clearPageStack, int32_t appIndex,
+    MOCK_METHOD4(KillProcess, int(const std::string& bundleName, const bool clearPageStack, int32_t appIndex,
         const std::string& reason));
     MOCK_METHOD2(UninstallApp, int(const std::string&, int32_t));
     MOCK_METHOD3(UninstallApp, int32_t(const std::string&, int32_t, int32_t));

@@ -338,13 +338,13 @@ AppMgrResultCode AppMgrClient::UpdateApplicationInfoInstalled(const std::string 
 }
 
 AppMgrResultCode AppMgrClient::KillApplication(const std::string &bundleName, bool clearPageStack, int32_t appIndex,
-    const std::string &reason)
+    const std::string &reason, int32_t userId)
 {
     sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
     if (service != nullptr) {
         sptr<IAmsMgr> amsService = service->GetAmsMgr();
         if (amsService != nullptr) {
-            int32_t result = amsService->KillApplication(bundleName, clearPageStack, appIndex, reason);
+            int32_t result = amsService->KillApplication(bundleName, clearPageStack, appIndex, reason, userId);
             if (result == ERR_OK) {
                 return AppMgrResultCode::RESULT_OK;
             }

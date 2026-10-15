@@ -873,6 +873,15 @@ ErrCode AbilityManagerClient::KillProcess(const std::string &bundleName, bool cl
     return abms->KillProcess(bundleName, clearPageStack, appIndex, reason);
 }
 
+ErrCode AbilityManagerClient::KillProcessWithUserId(const std::string &bundleName, bool clearPageStack,
+    int32_t appIndex, const std::string& reason, int32_t userId)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "enter");
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    return abms->KillProcessWithUserId(bundleName, clearPageStack, appIndex, reason, userId);
+}
+
 #ifdef ABILITY_COMMAND_FOR_TEST
 ErrCode AbilityManagerClient::ForceTimeoutForTest(const std::string &abilityName, const std::string &state)
 {

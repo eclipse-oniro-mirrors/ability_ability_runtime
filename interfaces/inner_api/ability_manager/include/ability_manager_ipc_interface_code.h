@@ -794,6 +794,9 @@ enum class AbilityManagerInterfaceCode {
 
     // notify that an insight intent execution has started
     NOTIFY_INSIGHT_INTENT_EXECUTE = 6182,
+
+    // kill process with user id
+    KILL_PROCESS_WITH_USER_ID = 6183,
 };
 }  // namespace AAFwk
 }  // namespace OHOS

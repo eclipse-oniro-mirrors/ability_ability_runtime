@@ -3446,7 +3446,7 @@ int32_t AppMgrServiceInner::UpdateApplicationInfoInstalled(
 }
 
 int32_t AppMgrServiceInner::KillApplication(const std::string &bundleName, bool clearPageStack, int32_t appIndex,
-    const std::string &reason)
+    const std::string &reason, int32_t userId)
 {
     TAG_LOGI(AAFwkTag::APPMGR, "KillApplication");
     if (!appRunningManager_) {
@@ -3462,11 +3462,10 @@ int32_t AppMgrServiceInner::KillApplication(const std::string &bundleName, bool 
 
     if (appIndex == -1) {
         auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
-        int  userId = -1;
-        userId = GetValidUserId(userId);
-        bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appIndex);
+        int32_t localUserId = GetValidUserId(userId);
+        bundleMgrHelper->GetDualModeBundleInfo(bundleName, localUserId, appIndex);
     }
-    return KillApplicationByBundleName(bundleName, appIndex, clearPageStack, reason);
+    return KillApplicationByBundleName(bundleName, appIndex, clearPageStack, reason, userId);
 }
 
 int32_t AppMgrServiceInner::ForceKillApplication(const std::string &bundleName,
@@ -3898,13 +3897,13 @@ int32_t AppMgrServiceInner::KillProcessByPidForExit(int32_t pid, const std::stri
 }
 
 int32_t AppMgrServiceInner::KillApplicationByBundleName(
-    const std::string &bundleName, int32_t appIndex, bool clearPageStack, const std::string& reason)
+    const std::string &bundleName, int32_t appIndex, bool clearPageStack, const std::string& reason, int32_t userId)
 {
     int result = ERR_OK;
     int64_t startTime = SystemTimeMillisecond();
     std::list<pid_t> pids;
 
-    if (!appRunningManager_->ProcessExitByBundleNameAndAppIndex(bundleName, appIndex, pids, clearPageStack)) {
+    if (!appRunningManager_->ProcessExitByBundleNameAndAppIndex(bundleName, appIndex, pids, clearPageStack, userId)) {
         TAG_LOGE(AAFwkTag::APPMGR, "process corresponding to the package name did not start");
         return result;
     }

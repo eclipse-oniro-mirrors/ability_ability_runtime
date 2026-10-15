@@ -1046,6 +1046,16 @@ public:
         const std::string& reason = "Abilityms::KillProcess") override;
 
     /**
+     * Kill the process immediately with a specified userId.
+     *
+     * @param bundleName.
+     * @param userId The user id to kill process for, -1 means use caller's userId.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int KillProcessWithUserId(const std::string &bundleName, bool clearPageStack = false,
+        int32_t appIndex = -1, const std::string& reason = "Abilityms::KillProcess", int32_t userId = -1) override;
+
+    /**
      * Uninstall app
      *
      * @param bundleName bundle name of uninstalling app.

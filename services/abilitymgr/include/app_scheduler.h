@@ -363,7 +363,7 @@ public:
      * @param bundleName.
      */
     int KillApplication(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = -1,
-        const std::string &reason = "KillApplication");
+        const std::string &reason = "KillApplication", int32_t userId = -1);
 
     /**
      * ForceKillApplication, force kill the application.

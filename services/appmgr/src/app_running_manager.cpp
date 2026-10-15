@@ -633,7 +633,7 @@ bool AppRunningManager::ProcessExitByPid(int32_t pid, const KillProcessConfig &c
 }
 
 bool AppRunningManager::ProcessExitByBundleNameAndAppIndex(const std::string &bundleName, int32_t appIndex,
-    std::list<pid_t> &pids, bool clearPageStack)
+    std::list<pid_t> &pids, bool clearPageStack, int32_t userId)
 {
     auto appRunningMap = GetAppRunningRecordMap();
     for (const auto &item : appRunningMap) {
@@ -652,7 +652,8 @@ bool AppRunningManager::ProcessExitByBundleNameAndAppIndex(const std::string &bu
             continue;
         }
 
-        if (appInfo->bundleName == bundleName && appRecord->GetAppIndex() == appIndex) {
+        if (appInfo->bundleName == bundleName && appRecord->GetAppIndex() == appIndex
+            && (userId == -1 || appRecord->GetUserId() == userId)) {
             pid_t pid = appRecord->GetPid();
             if (pid <= 0) {
                 continue;

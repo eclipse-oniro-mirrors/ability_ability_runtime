@@ -486,7 +486,7 @@ int32_t AmsMgrProxy::KillProcessesInBatch(const std::vector<int32_t> &pids)
 }
 
 int32_t AmsMgrProxy::KillApplication(const std::string &bundleName, bool clearPageStack, int32_t appIndex,
-    const std::string &reason)
+    const std::string &reason, int32_t userId)
 {
     TAG_LOGI(AAFwkTag::APPMGR, "start");
     MessageParcel data;
@@ -513,6 +513,11 @@ int32_t AmsMgrProxy::KillApplication(const std::string &bundleName, bool clearPa
     
     if (!data.WriteString(reason)) {
         TAG_LOGE(AAFwkTag::APPMGR, "WriteString reason failed");
+        return ERR_FLATTEN_OBJECT;
+    }
+
+    if (!data.WriteInt32(userId)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "parcel userId failed");
         return ERR_FLATTEN_OBJECT;
     }
 

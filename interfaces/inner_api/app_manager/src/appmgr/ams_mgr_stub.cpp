@@ -449,12 +449,13 @@ ErrCode AmsMgrStub::HandleKillApplication(MessageParcel &data, MessageParcel &re
     bool clearPageStack = data.ReadBool();
     auto appIndex = data.ReadInt32();
     std::string reason = data.ReadString();
+    auto userId = data.ReadInt32();
 
     TAG_LOGW(AAFwkTag::APPMGR,
         "KillApplication,callingPid=%{public}d,bundleName=%{public}s,clearPageStack=%{public}d,kill reason=%{public}s",
         IPCSkeleton::GetCallingPid(), bundleName.c_str(), clearPageStack, reason.c_str());
 
-    int32_t result = KillApplication(bundleName, clearPageStack, appIndex, reason);
+    int32_t result = KillApplication(bundleName, clearPageStack, appIndex, reason, userId);
     reply.WriteInt32(result);
     return NO_ERROR;
 }

@@ -105,6 +105,7 @@ private:
     int AcquireDataAbilityInner(MessageParcel &data, MessageParcel &reply);
     int ReleaseDataAbilityInner(MessageParcel &data, MessageParcel &reply);
     int KillProcessInner(MessageParcel &data, MessageParcel &reply);
+    int KillProcessWithUserIdInner(MessageParcel &data, MessageParcel &reply);
     int UninstallAppInner(MessageParcel &data, MessageParcel &reply);
     int32_t UpgradeAppInner(MessageParcel &data, MessageParcel &reply);
     int StartSelfUIAbilityInner(MessageParcel &data, MessageParcel &reply);
