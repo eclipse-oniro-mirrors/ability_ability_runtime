@@ -10572,7 +10572,7 @@ int AbilityManagerService::GetWantSenderInfo(const sptr<IWantSender> &target, st
 
 void AbilityManagerService::RegisterWantAgentHolder(const sptr<IWantSender> &target)
 {
-    TAG_LOGI(AAFwkTag::WANTAGENT, "register want agent holder");
+    TAG_LOGD(AAFwkTag::WANTAGENT, "register want agent holder");
     if (target == nullptr) {
         TAG_LOGE(AAFwkTag::WANTAGENT, "null target");
         return;
@@ -10623,7 +10623,7 @@ void AbilityManagerService::InitWantAgentAppStateObserver()
 
 void AbilityManagerService::HandleWantAgentAppDied(const std::string &bundleName, int32_t pid)
 {
-    TAG_LOGI(AAFwkTag::WANTAGENT, "app died, bundle=%{public}s, pid=%{public}d",
+    TAG_LOGD(AAFwkTag::WANTAGENT, "app died, bundle=%{public}s, pid=%{public}d",
         bundleName.c_str(), pid);
     if (!subManagersHelper_) {
         return;
