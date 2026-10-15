@@ -14,6 +14,7 @@
  */
 
 #include "form_runtime/js_form_extension.h"
+#include "form_runtime/form_binding_data_utils.h"
 
 #include "ability_info.h"
 #include "connection_manager.h"
@@ -203,6 +204,9 @@ OHOS::AppExecFwk::FormProviderInfo JsFormExtension::OnCreate(const OHOS::AAFwk::
         return formProviderInfo;
     }
     AppExecFwk::FormProviderData formData = AppExecFwk::FormProviderData(formDataStr);
+
+    formData.SetSupportMoreImages(GetIsSupportMoreImages(env, nativeResult));
+
     formProviderInfo.SetFormData(formData);
 
     napi_value nativeProxies = nullptr;

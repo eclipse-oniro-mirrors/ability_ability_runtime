@@ -14,6 +14,7 @@
  */
 
 #include "form_runtime/js_form_extension_context.h"
+#include "form_runtime/form_binding_data_utils.h"
 
 #include <cinttypes>
 #include <cstdint>
@@ -134,6 +135,8 @@ private:
         }
 
         formProviderData = AppExecFwk::FormProviderData(formDataStr);
+
+        formProviderData.SetSupportMoreImages(GetIsSupportMoreImages(env, info.argv[1]));
         NapiAsyncTask::CompleteCallback complete =
             [weak = context_, formId, formProviderData](napi_env env, NapiAsyncTask& task, int32_t status) {
                 auto context = weak.lock();
