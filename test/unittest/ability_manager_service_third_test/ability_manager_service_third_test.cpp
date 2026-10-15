@@ -14,6 +14,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <unistd.h>
 
 #define private public
 #define protected public
@@ -1095,6 +1096,39 @@ HWTEST_F(AbilityManagerServiceThirdTest, SetPickerElementNameAndParams_004, Test
     sessionInfo->want = want;
     const sptr<SessionInfo> extensionSessionInfo = sessionInfo;
     abilityMs_->SetPickerElementNameAndParams(extensionSessionInfo, USER_ID_U100);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: CloseAppSpawnMsgPipe
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService CloseAppSpawnMsgPipe
+ * EnvConditions: rFd_/wFd_ hold valid tagged fds and appSpawnContext_ is non-empty
+ * CaseDescription: Verify CloseAppSpawnMsgPipe closes fds, resets rFd_/wFd_/ptrRFd_ to -1,
+ *                  and resets appSpawnContext_ to empty
+ */
+HWTEST_F(AbilityManagerServiceThirdTest, CloseAppSpawnMsgPipe_001, TestSize.Level1)
+{
+    auto abilityMgrService = std::make_shared<AbilityManagerService>();
+    int32_t pipeFd[2];
+    ASSERT_EQ(pipe(pipeFd), 0);
+    fdsan_exchange_owner_tag(pipeFd[0], 0, static_cast<uint32_t>(AAFwkTag::ABILITYMGR));
+    fdsan_exchange_owner_tag(pipeFd[1], 0, static_cast<uint32_t>(AAFwkTag::ABILITYMGR));
+    abilityMgrService->rFd_ = pipeFd[0];
+    abilityMgrService->wFd_ = pipeFd[1];
+    *abilityMgrService->ptrRFd_ = pipeFd[0];
+    abilityMgrService->appSpawnContext_ = abilityMgrService;
+    EXPECT_NE(abilityMgrService->rFd_, -1);
+    EXPECT_NE(abilityMgrService->wFd_, -1);
+    EXPECT_FALSE(abilityMgrService->appSpawnContext_.expired());
+
+    abilityMgrService->CloseAppSpawnMsgPipe();
+
+    EXPECT_EQ(abilityMgrService->rFd_, -1);
+    EXPECT_EQ(abilityMgrService->wFd_, -1);
+    ASSERT_NE(abilityMgrService->ptrRFd_, nullptr);
+    EXPECT_EQ(*abilityMgrService->ptrRFd_, -1);
+    EXPECT_TRUE(abilityMgrService->appSpawnContext_.expired());
 }
 
 /*

@@ -588,38 +588,60 @@ ErrCode AbilityManagerService::ExecuteBlockAllAppStartInterceptor(AbilityRequest
     return blockAllAppStartInterceptor_->Execute(abilityRequest, validUserId);
 }
 
- void AbilityManagerService::InitAppSpawnMsgPipe()
- {
-     int32_t pipeFd[2];
-     if (pipe(pipeFd) != 0) {
-         TAG_LOGE(AAFwkTag::ABILITYMGR, "create pipe failed");
-         return;
-     }
-     rFd_ = pipeFd[0];
-     wFd_ = pipeFd[1];
-     fdsan_exchange_owner_tag(rFd_, 0, static_cast<uint32_t>(AAFwkTag::ABILITYMGR));
-     fdsan_exchange_owner_tag(wFd_, 0, static_cast<uint32_t>(AAFwkTag::ABILITYMGR));
-     *ptrRFd_ = rFd_;
-     auto context = new (std::nothrow) std::weak_ptr<AbilityManagerService>(shared_from_this());
-     if (context == nullptr) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "context null");
+void AbilityManagerService::InitAppSpawnMsgPipe()
+{
+    int32_t pipeFd[2];
+    if (pipe(pipeFd) != 0) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "create pipe failed");
         return;
-     }
-     int32_t ret = WatchParameter(APPSPAWN_STARTED, ExitReasonUtil::AppSpawnStartCallback, context);
-     if (ret != 0) {
-         TAG_LOGE(AAFwkTag::ABILITYMGR, "watch parameter ret: %{public}d", ret);
-         return;
-     }
-     ffrt_qos_t taskQos = 0;
-     ret = ffrt_epoll_ctl(taskQos, EPOLL_CTL_ADD, rFd_, EPOLLIN, static_cast<void*>(ptrRFd_.get()),
-        ExitReasonUtil::ProcessSignalData);
-     if (ret != 0) {
-         TAG_LOGE(AAFwkTag::ABILITYMGR, "ffrt_epoll_ctl failed, ret: %{public}d", ret);
-         fdsan_close_with_tag(rFd_, static_cast<uint32_t>(AAFwkTag::ABILITYMGR));
-         return;
-     }
-     TAG_LOGI(AAFwkTag::ABILITYMGR, "Listen signal msg ...");
- }
+    }
+    rFd_ = pipeFd[0];
+    wFd_ = pipeFd[1];
+    fdsan_exchange_owner_tag(rFd_, 0, static_cast<uint32_t>(AAFwkTag::ABILITYMGR));
+    fdsan_exchange_owner_tag(wFd_, 0, static_cast<uint32_t>(AAFwkTag::ABILITYMGR));
+    *ptrRFd_ = rFd_;
+    appSpawnContext_ = shared_from_this();
+    int32_t ret = WatchParameter(APPSPAWN_STARTED, ExitReasonUtil::AppSpawnStartCallback, &appSpawnContext_);
+    if (ret != 0) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "watch parameter ret: %{public}d", ret);
+        CloseAppSpawnMsgPipe();
+        return;
+    }
+    ffrt_qos_t taskQos = 0;
+    ret = ffrt_epoll_ctl(taskQos, EPOLL_CTL_ADD, rFd_, EPOLLIN, static_cast<void*>(ptrRFd_.get()),
+    ExitReasonUtil::ProcessSignalData);
+    if (ret != 0) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "ffrt_epoll_ctl failed, ret: %{public}d", ret);
+        CloseAppSpawnMsgPipe();
+        return;
+    }
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "Listen signal msg ...");
+}
+
+void AbilityManagerService::CloseAppSpawnMsgPipe()
+{
+    RemoveParameterWatcher(APPSPAWN_STARTED, ExitReasonUtil::AppSpawnStartCallback, &appSpawnContext_);
+    std::lock_guard<ffrt::mutex> lock(appSpawnPipeMutex_);
+    if (ptrRFd_ != nullptr) {
+        *ptrRFd_ = -1;
+    }
+    if (rFd_ != -1) {
+        fdsan_close_with_tag(rFd_, static_cast<uint32_t>(AAFwkTag::ABILITYMGR));
+        rFd_ = -1;
+    }
+    if (wFd_ != -1) {
+        fdsan_close_with_tag(wFd_, static_cast<uint32_t>(AAFwkTag::ABILITYMGR));
+        wFd_ = -1;
+    }
+    appSpawnContext_.reset();
+}
+
+void AbilityManagerService::GetAppSpawnFdsWithLock(int32_t &rFd, int32_t &wFd)
+{
+    std::lock_guard<ffrt::mutex> lock(appSpawnPipeMutex_);
+    rFd = rFd_;
+    wFd = wFd_;
+}
 
 void AbilityManagerService::InitInterceptorForScreenUnlock()
 {
@@ -680,6 +702,7 @@ void AbilityManagerService::InitStartupFlag()
 void AbilityManagerService::OnStop()
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "stop");
+    CloseAppSpawnMsgPipe();
     DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance()->StopMonitor();
 #ifdef BGTASKMGR_CONTINUOUS_TASK_ENABLE
     std::unique_lock<ffrt::mutex> lock(bgtaskObserverMutex_);
