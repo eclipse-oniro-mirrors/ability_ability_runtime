@@ -43,6 +43,7 @@ ohos_unittest("ui_ability_record_test") {
   ]
 
   external_deps = [
+    "ability_base:session_info",
     "ability_base:want",
     "googletest:gmock_main",
     "hilog:libhilog",

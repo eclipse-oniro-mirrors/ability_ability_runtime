@@ -132,6 +132,8 @@ public:
             GetNativeState() == AbilityNativeState::ON_FOREGROUND && requestId == startSelfRequestId_);
     }
 
+    void UpdatePendingStateByCall(CallToState state);
+
     inline void SetStartSelfRequestId(int32_t startSelfRequestId)
     {
         startSelfRequestId_ = startSelfRequestId;
