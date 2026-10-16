@@ -88,5 +88,11 @@ ErrCode BundleMgrHelper::GetBundleInfosV9(int32_t flags, std::vector<BundleInfo>
     bundleInfos = AgentRuntime::MyFlag::mockBundleInfos;
     return ERR_OK;
 }
+
+ErrCode BundleMgrHelper::GetDualModeBundleInfo(
+    const std::string &bundleName, int32_t userId, int32_t &appIndex)
+{
+    return ERR_OK;
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

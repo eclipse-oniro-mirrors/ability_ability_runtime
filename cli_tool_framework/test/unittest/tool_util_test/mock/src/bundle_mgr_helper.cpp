@@ -35,6 +35,12 @@ ErrCode BundleMgrHelper::GetCloneBundleInfo(
     return getCloneBundleInfoResult;
 }
 
+ErrCode BundleMgrHelper::GetDualModeBundleInfo(
+    const std::string &bundleName, int32_t userId, int32_t &appIndex)
+{
+    return ERR_OK;
+}
+
 void BundleMgrHelper::Reset()
 {
     getBundleInfoResult = ERR_OK;

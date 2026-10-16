@@ -78,13 +78,21 @@ private:
     uint64_t intentId_ = 0;
 };
 
+struct ExecuteParam {
+    std::string callerBundleName;
+    bool ignoreAbilityName = false;
+    bool isDistributed = false;
+    std::string srcDeviceId;
+    uint64_t requestCode = 0;
+    uint64_t specifiedFullTokenId = 0;
+};
+
 class InsightIntentExecuteManager : public std::enable_shared_from_this<InsightIntentExecuteManager> {
-DECLARE_DELAYED_SINGLETON(InsightIntentExecuteManager)
+    DECLARE_DELAYED_SINGLETON(InsightIntentExecuteManager)
 public:
     int32_t CheckAndUpdateParam(uint64_t key, const sptr<IRemoteObject> &callerToken,
-        const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param, std::string callerBundleName = "",
-        const bool ignoreAbilityName = false, bool isDistributed = false,
-        const std::string &srcDeviceId = "", uint64_t requestCode = 0, uint64_t specifiedFullTokenId = 0);
+        const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param,
+        const ExecuteParam &execParam = ExecuteParam{});
 
     int32_t CheckAndUpdateWant(Want &want, AppExecFwk::ExecuteMode executeMode, int32_t userId,
         std::string callerBundleName = "");
@@ -127,11 +135,19 @@ public:
     void SetTargetPid(uint64_t intentId, pid_t pid);
 
     int32_t CheckAndUpdateQueryEntityParam(uint64_t key, const sptr<IRemoteObject> &callerToken,
-        std::shared_ptr<OHOS::AppExecFwk::InsightIntentQueryParam> &param, const std::string& callerBundleName);
+        std::shared_ptr<OHOS::AppExecFwk::InsightIntentQueryParam> &param, const std::string &callerBundleName);
 
     static int32_t GenerateQueryEntityWant(const std::shared_ptr<AppExecFwk::InsightIntentQueryParam> &param,
         Want &want);
 private:
+    static void BuildQueryEntityWantParams(Want &want,
+        const AppExecFwk::InsightIntentQueryParam &param);
+    static void SetQueryEntityWantExtras(Want &want,
+        const AppExecFwk::InsightIntentQueryParam &param,
+        const AbilityRuntime::ExtractInsightIntentInfo &intentInfo);
+    static int32_t ResolveSrcEntry(Want &want,
+        const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param,
+        const AbilityRuntime::ExtractInsightIntentGenericInfo &decoratorInfo);
     mutable ffrt::mutex mutex_;
     mutable ffrt::mutex intentExemptionLock_;
     uint64_t intentIdCount_ = 0;
@@ -139,8 +155,7 @@ private:
     std::map<int32_t, int64_t> intentExemptionDeadlineTime_;
 
     int32_t AddRecord(uint64_t key, const sptr<IRemoteObject> &callerToken, const std::string &bundleName,
-        uint64_t &intentId, const std::string &callerBundleName, bool isDistributed = false,
-        const std::string &deviceId = "", uint64_t requestCode = 0);
+        uint64_t &intentId, const ExecuteParam &execParam = ExecuteParam{});
 
     static int32_t IsValidCall(const Want &want);
 

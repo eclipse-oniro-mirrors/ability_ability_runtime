@@ -30,43 +30,33 @@ public:
     int32_t InitInsightIntentCache(const int32_t userId);
     void GetAllInsightIntentGenericInfo(const int32_t userId,
         std::vector<ExtractInsightIntentGenericInfo> &genericInfos);
-    void GetInsightIntentGenericInfoByName(const std::string &bundleName, const int32_t userId,
-         std::vector<ExtractInsightIntentGenericInfo> &genericInfos);
-    void GetInsightIntentGenericInfo(const std::string &bundleName, const std::string &moduleName,
-        const std::string &intentName, const int32_t userId, ExtractInsightIntentGenericInfo &genericInfo);
+    void GetInsightIntentGenericInfoByName(IntentKey key,
+        std::vector<ExtractInsightIntentGenericInfo> &genericInfos);
+    void GetInsightIntentGenericInfo(IntentKey key, ExtractInsightIntentGenericInfo &genericInfo);
     void GetAllInsightIntentInfo(const int32_t userId, std::vector<ExtractInsightIntentInfo> &infos,
         std::vector<InsightIntentInfo> &configInfos);
-    // 取全量后按规则 1 过滤（丢弃非"后台 UIAbility / ServiceExtension"）+ 按 (moduleName, abilityName) 排序。
-    // 输出 vector 已处理完毕，调用方拿到的数据可直接注册（无需再调 IntentFilterUtil）。
     void GetAllInsightIntentInfoForRegister(const int32_t userId,
         std::vector<ExtractInsightIntentInfo> &infos, std::vector<InsightIntentInfo> &configInfos);
-    void GetInsightIntentInfoByName(const std::string &bundleName, const int32_t userId,
+    void GetInsightIntentInfoByName(IntentKey key,
         std::vector<ExtractInsightIntentInfo> &infos);
-    void GetConfigInsightIntentInfoByName(const std::string &bundleName, const int32_t userId,
+    void GetConfigInsightIntentInfoByName(IntentKey key,
         std::vector<InsightIntentInfo> &infos);
     void GetAllConfigInsightIntentInfo(
         const int32_t userId, std::vector<InsightIntentInfo> &configInfos);
-    void GetInsightIntentInfo(const std::string &bundleName, const std::string &moduleName,
-        const std::string &intentName, const int32_t userId, ExtractInsightIntentInfo &infos);
-    void GetConfigInsightIntentInfo(const std::string &bundleName, const std::string &moduleName,
-        const std::string &intentName, const int32_t userId, InsightIntentInfo &info);
-    int32_t SaveInsightIntentTotalInfo(const std::string &bundleName, const std::string &moduleName,
-        const int32_t userId, uint32_t versionCode, ExtractInsightIntentProfileInfoVec profileInfos,
-        std::vector<InsightIntentInfo> configInfos);
-    int32_t SaveBatchInsightIntentTotalInfo(const std::string &bundleName, const int32_t userId,
-        uint32_t versionCode, const std::vector<InsightIntentSaveParam> &saveParams);
-    // Delete intent entries of the bundle only when the cache proves presence.
-    // Returns true only when the delete succeeded, so callers run follow-up
-    // work (backup, unregister) exactly once.
-    bool DeleteInsightIntentTotalInfo(const std::string &bundleName,
-        const std::string &moduleName, const int32_t userId);
+    void GetInsightIntentInfo(IntentKey key, ExtractInsightIntentInfo &infos);
+    void GetConfigInsightIntentInfo(IntentKey key, InsightIntentInfo &info);
+    int32_t SaveInsightIntentTotalInfo(const InsightIntentSaveParam &saveParam,
+        ExtractInsightIntentProfileInfoVec profileInfos, std::vector<InsightIntentInfo> configInfos);
+    int32_t SaveBatchInsightIntentTotalInfo(const std::vector<InsightIntentSaveParam> &saveParams);
+    bool DeleteInsightIntentTotalInfo(const IntentKey &key);
     int32_t DeleteInsightIntentByUserId(const int32_t userId);
-    bool HasInsightIntentByName(uint32_t versionCode, const std::string &bundleName, const int32_t userId);
+    bool HasInsightIntentByName(uint32_t versionCode, const IntentKey &key);
     bool IsCacheInitialized(int32_t userId);
-    // True when the cache is loaded for this user and holds an entry for the bundle.
-    bool HasBundleCache(const std::string &bundleName, int32_t userId);
+    bool HasBundleCache(const IntentKey &key);
     void BackupRdb();
+    void RemoveBundleVersionCacheEntry(const IntentKey &key);
 private:
+    bool ResolveDualMode(IntentKey &key);
     int32_t userId_ = -1;
     bool cacheLoadFailed_ = false;
     mutable std::mutex genericInfosMutex_;

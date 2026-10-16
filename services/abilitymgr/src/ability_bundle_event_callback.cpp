@@ -90,7 +90,7 @@ void AbilityBundleEventCallback::OnReceiveEvent(const EventFwk::CommonEventData 
     } else if (action == EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_ADDED) {
         // install or uninstall module/bundle
         HandleUpdatedModuleInfo(bundleName, uid, moduleName, false);
-        AbilityRuntime::InsightIntentEventMgr::UpdateInsightIntentEvent(want.GetElement(), userId);
+        AbilityRuntime::InsightIntentEventMgr::UpdateInsightIntentEvent(want.GetElement(), userId, appIndex);
         bool isRecover = want.GetBoolParam(IS_RECOVER, false);
         TAG_LOGI(AAFwkTag::ABILITYMGR, "COMMON_EVENT_PACKAGE_ADDED, isRecover:%{public}d", isRecover);
         if (isRecover) {
@@ -110,7 +110,7 @@ void AbilityBundleEventCallback::OnReceiveEvent(const EventFwk::CommonEventData 
             return;
         }
         abilityAutoStartupService_->CheckAutoStartupData(bundleName, uid);
-        AbilityRuntime::InsightIntentEventMgr::UpdateInsightIntentEvent(want.GetElement(), userId);
+        AbilityRuntime::InsightIntentEventMgr::UpdateInsightIntentEvent(want.GetElement(), userId, appIndex);
     }
 }
 

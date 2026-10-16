@@ -38,13 +38,14 @@ public:
     void OnReceiveEvent(const EventFwk::CommonEventData &data) override;
 private:
     bool SaveInsightIntentInfos(const std::string &bundleName, const std::vector<std::string> &moduleNames,
-        uint32_t versionCode, int32_t userId);
+        const InsightIntentSaveParam &templateParam);
     bool CollectInsightIntentSaveParam(const std::string &bundleName, const std::string &moduleName,
-        uint32_t versionCode, int32_t userId, InsightIntentSaveParam &saveParam);
+        InsightIntentSaveParam &saveParam);
     void RegisterAllFunctions(const std::vector<std::pair<std::string, uint32_t>> &newBundles,
         const std::vector<ExtractInsightIntentInfo> &allIntentInfos,
         const std::vector<InsightIntentInfo> &allConfigInfos, int32_t userId);
-    void DeleteInsightIntent(const std::string &bundleName, const std::string &moduleName, int32_t userId);
+    void DeleteInsightIntent(const std::string &bundleName, const std::string &moduleName, int32_t userId,
+        int32_t appIndex);
     void LoadInsightIntentInfos(int32_t userId = -1);
     int32_t ResolveLoadUserId(int32_t userId);
     void BackupAndScheduleRegister(std::vector<std::pair<std::string, uint32_t>> &&newBundles, int32_t userId);

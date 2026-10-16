@@ -299,6 +299,8 @@ public:
         return "";
     }
 
+    ErrCode GetDualModeBundleInfo(const std::string &bundleName, int32_t userId, int32_t &appIndex);
+
 public:
     static bool getNameAndIndexForUid_;
 };

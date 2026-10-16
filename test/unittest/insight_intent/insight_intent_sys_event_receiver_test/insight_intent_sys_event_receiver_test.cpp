@@ -74,7 +74,8 @@ HWTEST_F(InsightIntentSysEventReceiverTest, OnReceiveEvent_0001, TestSize.Level1
     AbilityRuntime::InsightIntentEventMgr::DeleteInsightIntentEvent(element1, -1, 0);
     // param valid
     AbilityRuntime::InsightIntentEventMgr::DeleteInsightIntentEvent(element1, MAIN_USER_ID, 0);
-    AbilityRuntime::InsightIntentEventMgr::DeleteInsightIntent("com.test.demo", "module1", MAIN_USER_ID);
+    int32_t appIndex = -1;
+    AbilityRuntime::InsightIntentEventMgr::DeleteInsightIntent("com.test.demo", "module1", MAIN_USER_ID, appIndex);
 
     EventFwk::CommonEventSubscribeInfo subscribeInfo;
     auto sysEventReceiver = std::make_shared<AbilityRuntime::InsightIntentSysEventReceiver>(subscribeInfo);
@@ -455,10 +456,10 @@ HWTEST_F(InsightIntentSysEventReceiverTest, DeleteInsightIntent_Direct_0019, Tes
 {
     EventFwk::CommonEventSubscribeInfo subscribeInfo;
     auto sysEventReceiver = std::make_shared<InsightIntentSysEventReceiver>(subscribeInfo);
-    sysEventReceiver->DeleteInsightIntent("", TEST_MODULE_NAME, MAIN_USER_ID);
-    sysEventReceiver->DeleteInsightIntent(TEST_BUNDLE_NAME, "", MAIN_USER_ID);
-    sysEventReceiver->DeleteInsightIntent(TEST_BUNDLE_NAME, TEST_MODULE_NAME, INVALID_USER_ID);
-    sysEventReceiver->DeleteInsightIntent(TEST_BUNDLE_NAME, TEST_MODULE_NAME, MAIN_USER_ID);
+    sysEventReceiver->DeleteInsightIntent("", TEST_MODULE_NAME, MAIN_USER_ID, 0);
+    sysEventReceiver->DeleteInsightIntent(TEST_BUNDLE_NAME, "", MAIN_USER_ID, 0);
+    sysEventReceiver->DeleteInsightIntent(TEST_BUNDLE_NAME, TEST_MODULE_NAME, INVALID_USER_ID, 0);
+    sysEventReceiver->DeleteInsightIntent(TEST_BUNDLE_NAME, TEST_MODULE_NAME, MAIN_USER_ID, 0);
     EXPECT_EQ(sysEventReceiver->lastUserId_, 0);
 }
 

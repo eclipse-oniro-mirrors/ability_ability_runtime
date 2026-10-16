@@ -24,5 +24,11 @@ bool BundleMgrHelper::GetBundleInfo(const std::string &bundleName, const BundleF
 {
     return getBundleInfoResult;
 }
+
+ErrCode BundleMgrHelper::GetDualModeBundleInfo(
+    const std::string &bundleName, int32_t userId, int32_t &appIndex)
+{
+    return ERR_OK;
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

@@ -47,5 +47,11 @@ bool BundleMgrHelper::QueryEnabledExtensionAbilityInfo(const Want &want, int32_t
     extensionInfo = extensionInfoResult;
     return retQueryEnabledExtensionAbilityInfo;
 }
+
+ErrCode BundleMgrHelper::GetDualModeBundleInfo(
+    const std::string &bundleName, int32_t userId, int32_t &appIndex)
+{
+    return ERR_OK;
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

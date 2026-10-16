@@ -53,7 +53,7 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     AbilityFuzzUtil::GetRandomExtractInsightIntentInfo(fdp, info);
     AbilityFuzzUtil::GetRandomExtractInsightIntentGenericInfo(fdp, decoratorInfo);
     DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->CheckAndUpdateParam(key, callerToken,
-        param, callerBundleName, ignoreAbilityName);
+        param, ExecuteParam{.callerBundleName = callerBundleName, .ignoreAbilityName = ignoreAbilityName});
     ExecuteMode executeMode = UI_ABILITY_FOREGROUND;
     DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->CheckAndUpdateWant(want, executeMode, userId,
         callerBundleName);

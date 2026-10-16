@@ -46,6 +46,10 @@ public:
         appInfo.uid = 1000;
         return true;
     }
+    ErrCode GetDualModeBundleInfo(const std::string &bundleName, int32_t userId, int32_t &appIndex)
+    {
+        return ERR_OK;
+    }
 };
 
 } // namespace AppExecFwk

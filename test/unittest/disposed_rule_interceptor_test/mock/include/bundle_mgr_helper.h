@@ -47,6 +47,8 @@ public:
     ErrCode GetNameForUid(int32_t uid, std::string &name);
 
     bool QueryAppGalleryBundleName(std::string &appGalleryBundleName);
+
+    ErrCode GetDualModeBundleInfo(const std::string &bundleName, int32_t userId, int32_t &appIndex);
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

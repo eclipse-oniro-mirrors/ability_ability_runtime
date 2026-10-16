@@ -132,11 +132,11 @@ int32_t InsightRdbStorageMgr::LoadConfigInsightIntentInfos(
     return ERR_OK;
 }
 
-int32_t  InsightRdbStorageMgr::LoadInsightIntentInfoByName(const std::string &bundleName, const int32_t userId,
+int32_t  InsightRdbStorageMgr::LoadInsightIntentInfoByName(const IntentKey &key,
     std::vector<ExtractInsightIntentInfo> &totalInfos)
 {
     ExtractInsightIntentInfo totalInfo;
-    totalInfo.genericInfo.bundleName = bundleName;
+    totalInfo.genericInfo.bundleName = key.bundleName;
     totalInfo.genericInfo.moduleName = "mockModule";
     totalInfo.genericInfo.intentName = "mockIntent";
     totalInfos.push_back(totalInfo);
@@ -146,32 +146,29 @@ int32_t  InsightRdbStorageMgr::LoadInsightIntentInfoByName(const std::string &bu
     return ERR_INVALID_VALUE;
 }
 
-int32_t  InsightRdbStorageMgr::LoadConfigInsightIntentInfo(const std::string &bundleName, const std::string &moduleName,
-    const std::string &intentName, const int32_t userId, InsightIntentInfo &totalInfo)
+int32_t  InsightRdbStorageMgr::LoadConfigInsightIntentInfo(const IntentKey &key, InsightIntentInfo &totalInfo)
 {
     if (g_mockLoadConfigInsightIntentInfoRet) {
-        totalInfo.bundleName = bundleName;
-        totalInfo.moduleName = moduleName;
-        totalInfo.intentName = intentName;
+        totalInfo.bundleName = key.bundleName;
+        totalInfo.moduleName = key.moduleName;
+        totalInfo.intentName = key.intentName;
         return ERR_OK;
     }
     return ERR_INVALID_VALUE;
 }
 
-int32_t  InsightRdbStorageMgr::LoadInsightIntentInfo(const std::string &bundleName, const std::string &moduleName,
-    const std::string &intentName, const int32_t userId, ExtractInsightIntentInfo &totalInfo)
+int32_t  InsightRdbStorageMgr::LoadInsightIntentInfo(const IntentKey &key, ExtractInsightIntentInfo &totalInfo)
 {
     if (g_mockLoadInsightIntentInfoRet) {
-        totalInfo.genericInfo.bundleName = bundleName;
-        totalInfo.genericInfo.moduleName = moduleName;
-        totalInfo.genericInfo.intentName = intentName;
+        totalInfo.genericInfo.bundleName = key.bundleName;
+        totalInfo.genericInfo.moduleName = key.moduleName;
+        totalInfo.genericInfo.intentName = key.intentName;
         return ERR_OK;
     }
     return ERR_INVALID_VALUE;
 }
 
-int32_t  InsightRdbStorageMgr::SaveStorageInsightIntentData(const std::string &bundleName,
-    const std::string &moduleName, const int32_t userId, uint32_t versionCode,
+int32_t  InsightRdbStorageMgr::SaveStorageInsightIntentData(const InsightIntentSaveParam &saveParam,
     ExtractInsightIntentProfileInfoVec &profileInfos, std::vector<InsightIntentInfo> &configInfos)
 {
     if (g_mockSaveStorageInsightIntentDataRet) {
@@ -180,8 +177,8 @@ int32_t  InsightRdbStorageMgr::SaveStorageInsightIntentData(const std::string &b
     return ERR_INVALID_VALUE;
 }
 
-int32_t  InsightRdbStorageMgr::SaveStorageInsightIntentDataBatch(const std::string &bundleName,
-    const int32_t userId, uint32_t versionCode, const std::vector<InsightIntentSaveParam> &saveParams)
+int32_t  InsightRdbStorageMgr::SaveStorageInsightIntentDataBatch(
+    const std::vector<InsightIntentSaveParam> &saveParams)
 {
     if (g_mockSaveStorageInsightIntentDataRet) {
         return ERR_OK;
@@ -189,8 +186,7 @@ int32_t  InsightRdbStorageMgr::SaveStorageInsightIntentDataBatch(const std::stri
     return ERR_INVALID_VALUE;
 }
 
-int32_t  InsightRdbStorageMgr::DeleteStorageInsightIntentData(const std::string &bundleName,
-    const std::string &moduleName, const int32_t userId)
+int32_t  InsightRdbStorageMgr::DeleteStorageInsightIntentData(const IntentKey &key)
 {
     if (g_mockDeleteStorageInsightIntentDataRet) {
         return ERR_OK;
@@ -206,16 +202,16 @@ int32_t  InsightRdbStorageMgr::DeleteStorageInsightIntentByUserId(const int32_t 
     return ERR_INVALID_VALUE;
 }
 
-int32_t InsightRdbStorageMgr::LoadConfigInsightIntentInfoByName(const std::string &bundleName,
-    const int32_t userId, std::vector<InsightIntentInfo> &infos)
+int32_t InsightRdbStorageMgr::LoadConfigInsightIntentInfoByName(const IntentKey &key,
+    std::vector<InsightIntentInfo> &totalInfos)
 {
     InsightIntentInfo info;
     info.intentName = "configIntent";
-    infos.emplace_back(info);
+    totalInfos.emplace_back(info);
     if (g_mockLoadConfigInsightIntentInfoByNameRet) {
         return ERR_OK;
     }
-    infos.clear();
+    totalInfos.clear();
     return ERR_INVALID_VALUE;
 }
 
