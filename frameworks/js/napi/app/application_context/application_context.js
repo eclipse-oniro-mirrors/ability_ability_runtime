@@ -322,8 +322,8 @@ class ApplicationContext {
     return this.__context_impl__.setLanguage(language);
   }
 
-  setFont(font) {
-    return this.__context_impl__.setFont(font);
+  setFont(font, enableAnimation) {
+    return this.__context_impl__.setFont(font, enableAnimation !== false);
   }
 
   setFontSizeScale(fontSizeScale) {

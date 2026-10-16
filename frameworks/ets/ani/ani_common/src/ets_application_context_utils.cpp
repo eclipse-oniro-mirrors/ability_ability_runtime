@@ -668,7 +668,8 @@ void EtsApplicationContextUtils::OnStartSelfUIAbility(ani_env *env,
     }
 }
 
-void EtsApplicationContextUtils::OnSetFont(ani_env *env, ani_object aniObj, ani_string font)
+void EtsApplicationContextUtils::OnSetFont(ani_env *env, ani_object aniObj, ani_string font,
+    ani_boolean enableAnimation)
 {
     if (env == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "null env");
@@ -685,8 +686,9 @@ void EtsApplicationContextUtils::OnSetFont(ani_env *env, ani_object aniObj, ani_
         EtsErrorUtil::ThrowInvalidParamError(env, "Parse param font failed, font must be string.");
         return;
     }
-    TAG_LOGD(AAFwkTag::APPKIT, "SetFont font %{public}s", stdFont.c_str());
-    applicationContext->SetFont(stdFont);
+    TAG_LOGD(AAFwkTag::APPKIT, "SetFont font %{public}s, enableAnimation %{public}s",
+        stdFont.c_str(), enableAnimation ? "true" : "false");
+    applicationContext->SetFont(stdFont, enableAnimation);
 }
 
 void EtsApplicationContextUtils::OnSetColorMode(ani_env *env, ani_object aniObj, ani_enum_item colorMode)
@@ -964,7 +966,8 @@ void EtsApplicationContextUtils::StartSelfUIAbility(ani_env *env, ani_object ani
     etsContext->OnStartSelfUIAbility(env, aniObj, wantObj, callback);
 }
 
-void EtsApplicationContextUtils::SetFont(ani_env *env, ani_object aniObj, ani_string font)
+void EtsApplicationContextUtils::SetFont(ani_env *env, ani_object aniObj, ani_string font,
+    ani_boolean enableAnimation)
 {
     TAG_LOGD(AAFwkTag::APPKIT, "SetFont Call");
     auto etsContext = GeApplicationContext(env, aniObj);
@@ -972,7 +975,7 @@ void EtsApplicationContextUtils::SetFont(ani_env *env, ani_object aniObj, ani_st
         TAG_LOGE(AAFwkTag::APPKIT, "null etsContext");
         return;
     }
-    etsContext->OnSetFont(env, aniObj, font);
+    etsContext->OnSetFont(env, aniObj, font, enableAnimation);
 }
 
 void EtsApplicationContextUtils::SetColorMode(ani_env *env, ani_object aniObj, ani_enum_item colorMode)
@@ -1469,7 +1472,7 @@ void EtsApplicationContextUtils::BindApplicationContextFunc(ani_env *aniEnv)
             ani_native_function {"nativesetColorMode",
                 "C{@ohos.app.ability.ConfigurationConstant.ConfigurationConstant.ColorMode}:",
                 reinterpret_cast<void *>(EtsApplicationContextUtils::SetColorMode)},
-            ani_native_function {"nativesetFont", "C{std.core.String}:",
+            ani_native_function {"nativesetFont", "C{std.core.String}z:",
                 reinterpret_cast<void *>(EtsApplicationContextUtils::SetFont)},
             ani_native_function {"nativerestartApp", "C{@ohos.app.ability.Want.Want}:",
                 reinterpret_cast<void *>(EtsApplicationContextUtils::RestartApp)},

@@ -83,7 +83,7 @@ export default class ApplicationContext extends Context {
   public native nativesetLanguage(language: string): void;
   public native nativesetFontSizeScale(fontSizeScale: double): void;
   public native nativesetColorMode(colorMode: ConfigurationConstant.ColorMode): void;
-  public native nativesetFont(font: string): void;
+  public native nativesetFont(font: string, enableAnimation: boolean): void;
   public native nativerestartApp(want: Want): void;
   public native nativeGetAllRunningInstanceKeys(callback: AsyncCallbackWrapper<Array<string>>): void;
   public native nativeGetAllWindowStages(callback: AsyncCallbackWrapper<Array<window.WindowStage>>): void;
@@ -244,8 +244,8 @@ export default class ApplicationContext extends Context {
     this.nativesetColorMode(colorMode);
   }
 
-  setFont(font: string): void {
-    this.nativesetFont(font);
+  setFont(font: string, enableAnimation?: boolean): void {
+    this.nativesetFont(font, enableAnimation !== false);
   }
 
   restartApp(want: Want): void {

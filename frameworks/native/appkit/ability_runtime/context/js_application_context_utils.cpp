@@ -898,10 +898,10 @@ napi_value JsApplicationContextUtils::SetFont(napi_env env, napi_callback_info i
 
 napi_value JsApplicationContextUtils::OnSetFont(napi_env env, NapiCallbackInfo& info)
 {
-    // only support one params
-    if (info.argc == ARGC_ZERO) {
-        TAG_LOGE(AAFwkTag::APPKIT, "Not enough params");
-        ThrowInvalidParamError(env, "Not enough params.");
+    // support one or two params
+    if (info.argc == ARGC_ZERO || info.argc > ARGC_TWO) {
+        TAG_LOGE(AAFwkTag::APPKIT, "params error");
+        ThrowInvalidParamError(env, "Params error.");
         return CreateJsUndefined(env);
     }
     auto applicationContext = applicationContext_.lock();
@@ -915,7 +915,16 @@ napi_value JsApplicationContextUtils::OnSetFont(napi_env env, NapiCallbackInfo& 
         ThrowInvalidParamError(env, "Parse param font failed, font must be string.");
         return CreateJsUndefined(env);
     }
-    applicationContext->SetFont(font);
+    bool enableAnimation = true;
+    if (info.argc == ARGC_TWO) {
+        bool value = true;
+        if (ConvertFromJsValue(env, info.argv[INDEX_ONE], value)) {
+            enableAnimation = value;
+        } else {
+            TAG_LOGW(AAFwkTag::APPKIT, "enableAnimation is not boolean, use default true");
+        }
+    }
+    applicationContext->SetFont(font, enableAnimation);
     return CreateJsUndefined(env);
 }
 

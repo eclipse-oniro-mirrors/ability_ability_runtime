@@ -44,6 +44,7 @@ constexpr const char* APPLICATION_DIRECTION = "ohos.application.direction";
 constexpr const char* APPLICATION_DENSITYDPI = "ohos.application.densitydpi";
 constexpr const char* APPLICATION_DISPLAYID = "ohos.application.displayid";
 constexpr const char* APPLICATION_FONT = "ohos.application.font";
+constexpr const char* APPLICATION_FONT_ANIMATION = "ohos.application.font.animation";
 
 constexpr const char* COLOR_MODE_LIGHT = "light";
 constexpr const char* COLOR_MODE_DARK = "dark";
