@@ -1414,7 +1414,7 @@ public:
         const sptr<IAbilityConnection> &connect) override;
 
     int GeneratePrelaunchAbilityRequest(const Want &want, const sptr<IAbilityConnection> &connect,
-        int32_t oriValidUserId, AbilityRequest &abilityRequest);
+        int32_t oriValidUserId, AbilityRequest &abilityRequest, int32_t &appIndex);
 
     /**
      * CallRequestDone, after invoke callRequest, ability will call this interface to return callee.
@@ -2963,7 +2963,7 @@ private:
      * @param eventInfo fault attribution context (may be null).
      * @return ERR_OK to proceed, otherwise the interceptor error to abort the prelaunch.
      */
-    int32_t ExecutePrelaunchInterceptors(AbilityRequest &abilityRequest, int32_t userId,
+    int32_t ExecutePrelaunchInterceptors(AbilityRequest &abilityRequest, int32_t userId, int32_t appIndex,
         const std::shared_ptr<EventInfo> &eventInfo);
 
     /**
