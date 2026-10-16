@@ -245,14 +245,10 @@ void FuzzFreezeFilterOperations(FuzzedDataProvider &fdp,
     mgr->ResetAppfreezeState(pid, bundleName);
 }
 
-void FuzzReportAndKillTime(FuzzedDataProvider &fdp,
+void FuzzClearLogValidity(FuzzedDataProvider &fdp,
     const std::shared_ptr<AppfreezeManager> &mgr)
 {
-    int32_t pid = fdp.ConsumeIntegral<int32_t>();
-    std::string bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LEN);
-    uint64_t killTime = fdp.ConsumeIntegral<uint64_t>();
-    mgr->ReportAppFreezeSysEvents(pid, bundleName);
-    mgr->RegisterAppKillTime(pid, killTime);
+    mgr->ClearLogValidity(fdp.ConsumeIntegral<int32_t>());
 }
 
 void FuzzCheckInBackground(FuzzedDataProvider &fdp,
@@ -422,7 +418,7 @@ void DispatchCommandSecond(FuzzedDataProvider &fdp,
     switch (cmd) {
         case CMD_REPORT_SYS_EVENTS:
         case CMD_REGISTER_APP_KILL_TIME:
-            FuzzReportAndKillTime(fdp, mgr);
+            FuzzClearLogValidity(fdp, mgr);
             break;
         case CMD_CHECK_IN_BACKGROUND:
             FuzzCheckInBackground(fdp, mgr);

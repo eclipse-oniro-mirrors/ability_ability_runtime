@@ -40,6 +40,9 @@ struct AppfreezeEventInfo {
     std::string processLifeTime;
     std::string mainStack;
     std::string externalLog;
+    int32_t samplerCount = -1;
+    std::string heaviestStack;
+    std::string logValidity;
     int32_t markedId = 0;
     int32_t processedId = 0;
     int32_t dispatchedEventId = 0;

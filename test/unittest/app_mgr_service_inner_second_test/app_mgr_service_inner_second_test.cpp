@@ -3160,5 +3160,32 @@ HWTEST_F(AppMgrServiceInnerSecondTest, IsCorrespondingProcessAttachDebug_007, Te
     TAG_LOGI(AAFwkTag::TEST, "IsCorrespondingProcessAttachDebug_007 end");
 }
 
+
+HWTEST_F(AppMgrServiceInnerSecondTest, Req1NotificationCorrelationAndFrozenLatency, TestSize.Level1)
+{
+    auto service = std::make_shared<AppMgrServiceInner>();
+    EXPECT_EQ(service->GetAppFaultNotifyLatency("notifyFault:101:5:1000:1", 101, 5, 1250), 250);
+    EXPECT_EQ(service->GetAppFaultNotifyLatency("notifyFault:101:5:1100:2", 101, 5, 1250), 150);
+    EXPECT_EQ(service->GetAppFaultNotifyLatency("notifyFault:101:5:1000:1", 102, 5, 1250), -1);
+    EXPECT_EQ(service->GetAppFaultNotifyLatency("notifyFault:101:5:1000:1", 101, 6, 1250), -1);
+    for (const auto& marker : {"", "legacy", "notifyFault:101:5:1300:1", "notifyFault:101:5:-1:1",
+        "notifyFault:101:5:1000x:1", "notifyFault:101:5:1000:", "notifyFault:101:5:1000:1x",
+        "notifyFault:101:5:99999999999999999999:1"}) {
+        EXPECT_EQ(service->GetAppFaultNotifyLatency(marker, 101, 5, 1250), -1);
+    }
+    // A valid timestamp alone is insufficient: only the pending full marker can claim feedback.
+    service->dfxTaskHandler_ = AAFwk::TaskHandlerWrap::CreateQueueHandler("req1-notify-test");
+    auto info = std::make_shared<ApplicationInfo>();
+    auto record = std::make_shared<AppRunningRecord>(info, 5, "req1.test");
+    FaultData report;
+    report.timeoutMarkers = "notifyFault:101:5:1000:1";
+    EXPECT_TRUE(service->CheckAppFault(record, report));
+    service->dfxTaskHandler_->SubmitTask([]() {}, report.timeoutMarkers, 60000);
+    EXPECT_FALSE(service->CheckAppFault(record, report));
+    EXPECT_TRUE(service->CheckAppFault(record, report));
+    report.ipcLatency = service->GetAppFaultNotifyLatency(report.timeoutMarkers, 101, 5, 1250);
+    EXPECT_EQ(report.ipcLatency, 250);
+}
+
 } // namespace AppExecFwk
 } // namespace OHOS
