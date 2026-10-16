@@ -2947,11 +2947,6 @@ void UIAbilityLifecycleManager::OnTimeOut(uint32_t msgId, int64_t abilityRecordI
 void UIAbilityLifecycleManager::SetRootSceneSession(const sptr<IRemoteObject> &rootSceneSession)
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "SetRootSceneSession begin");
-    auto tmpSceneSession = iface_cast<Rosen::ISession>(rootSceneSession);
-    if (tmpSceneSession == nullptr) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "rootSceneSession invalid");
-        return;
-    }
     std::lock_guard guard(rootSceneSessionLock_);
     rootSceneSession_ = rootSceneSession;
     TAG_LOGI(AAFwkTag::ABILITYMGR, "SetRootSceneSession end");

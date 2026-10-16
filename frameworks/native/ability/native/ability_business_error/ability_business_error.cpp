@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -110,6 +110,8 @@ constexpr const char* ERROR_MSG_FROM_WINDOW =
 constexpr const char* ERROR_TARGET_NOT_IN_APP_IDENTIFIER_ALLOW_LIST =
     "The caller is not in the appIdentifierAllowList of the target appliaction.";
 constexpr const char* ERROR_TARGET_NOT_STARTED = "The target service has not been started yet.";
+constexpr const char* ERROR_MSG_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT =
+    "The specified application is not authorized to start before the user is unlocked.";
 constexpr const char* ERROR_MSG_CALLER_NOT_ATOMIC_SERVICE =
     "The caller is not an atomic service.";
 constexpr const char* ERROR_MSG_AGENT_ID_NOT_EXIST =
@@ -429,6 +431,8 @@ static std::unordered_map<AbilityErrorCode, const char*> ERR_CODE_MAP = {
     { AbilityErrorCode::ERROR_CODE_TARGET_NOT_IN_APP_IDENTIFIER_ALLOW_LIST,
         ERROR_TARGET_NOT_IN_APP_IDENTIFIER_ALLOW_LIST},
     { AbilityErrorCode::ERROR_CODE_TARGET_NOT_STARTED, ERROR_TARGET_NOT_STARTED},
+    { AbilityErrorCode::ERROR_CODE_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT,
+        ERROR_MSG_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT },
     { AbilityErrorCode::ERROR_CODE_CALLER_NOT_ATOMIC_SERVICE, ERROR_MSG_CALLER_NOT_ATOMIC_SERVICE},
     { AbilityErrorCode::ERROR_CODE_AGENT_ID_NOT_EXIST, ERROR_MSG_AGENT_ID_NOT_EXIST},
     { AbilityErrorCode::ERROR_CODE_AGENT_CARD_LIST_OUT_OF_RANGE, ERROR_MSG_AGENT_CARD_LIST_OUT_OF_RANGE},
@@ -477,6 +481,7 @@ static std::unordered_map<AbilityErrorCode, const char*> ERR_CODE_MAP = {
 static std::unordered_map<int32_t, AbilityErrorCode> INNER_TO_JS_ERROR_CODE_MAP {
     {0, AbilityErrorCode::ERROR_OK},
     {CHECK_PERMISSION_FAILED, AbilityErrorCode::ERROR_CODE_PERMISSION_DENIED},
+    {ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT, AbilityErrorCode::ERROR_CODE_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT},
     {ERR_PERMISSION_DENIED, AbilityErrorCode::ERROR_CODE_PERMISSION_DENIED},
     {ERR_NOT_SYSTEM_APP, AbilityErrorCode::ERROR_CODE_NOT_SYSTEM_APP},
     {ERR_EVICT_FILE_TYPE, AbilityErrorCode::ERROR_CODE_FILE_TYPE_ERROR},

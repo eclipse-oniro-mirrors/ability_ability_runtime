@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -44,6 +44,7 @@ public:
     int32_t setterUserId = -1;
     bool canUserModify = false;
     bool isHiddenStart = false;
+    bool isDirectBoot = false;
     std::string bundleName;
     std::string abilityName;
     std::string moduleName;
@@ -65,6 +66,7 @@ struct AutoStartupStatus {
     AutoStartupSetterType setterType = AutoStartupSetterType::UNSPECIFIED;
     int32_t code = -1;
     bool isHiddenStart = false;
+    bool isDirectBoot = false;
 };
 
 struct AutoStartupAbilityData {

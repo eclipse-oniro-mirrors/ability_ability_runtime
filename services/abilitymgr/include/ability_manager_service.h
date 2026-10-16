@@ -3251,9 +3251,9 @@ private:
 
     void StartKeepAliveApps(int32_t userId);
 
-    void StartAutoStartupApps(int32_t userId, bool isEDMStart = false);
+    void StartAutoStartupApps(int32_t userId, bool isEDMStart, bool isDirectBoot);
     void StartAutoStartupApps(std::queue<AutoStartupInfo> infoList, int32_t userId);
-    bool IsAutoStartupAllowed(int32_t userId, bool isEDMStart);
+    bool IsAutoStartupAllowed(int32_t userId, bool isEDMStart, bool isDirectBoot);
     void SubscribeUserUnlockedEvent();
     void SubscribeScreenUnlockedEvent();
     std::function<void(int32_t)> GetScreenUnlockCallback();

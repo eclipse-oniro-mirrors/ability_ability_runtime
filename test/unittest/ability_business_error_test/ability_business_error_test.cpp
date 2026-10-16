@@ -156,6 +156,22 @@ HWTEST_F(AbilityBusinessErrorTest, GetErrorMsgByNativeError_0100, TestSize.Level
 }
 
 /**
+ * @tc.name: DirectBootPermissionError
+ * @tc.desc: Target permission failure uses 16000206; caller permission failure keeps 201.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityBusinessErrorTest, DirectBootPermissionError, TestSize.Level1)
+{
+    EXPECT_EQ(static_cast<int32_t>(GetJsErrorCodeByNativeError(AAFwk::ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT)),
+        16000206);
+    EXPECT_EQ(GetErrorMsgByNativeError(AAFwk::ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT),
+        "The specified application is not authorized to start before the user is unlocked.");
+    EXPECT_EQ(GetJsErrorCodeByNativeError(AAFwk::CHECK_PERMISSION_FAILED),
+        AbilityErrorCode::ERROR_CODE_PERMISSION_DENIED);
+    EXPECT_EQ(GetJsErrorCodeByNativeError(AAFwk::ERR_NOT_SYSTEM_APP), AbilityErrorCode::ERROR_CODE_NOT_SYSTEM_APP);
+}
+
+/**
  * @tc.name: GetInnerErrorMsg_0100
  * @tc.desc: Verify direct framework-side 16000050 scenes use centralized developer-facing messages.
  * @tc.type: FUNC
