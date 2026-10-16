@@ -11013,7 +11013,8 @@ int32_t AbilityManagerService::ExecutePrelaunchInterceptors(AbilityRequest &abil
     return result;
 }
 
-int AbilityManagerService::StartAbilityForPrelaunch(const Want &want, const int32_t frameNum)
+int AbilityManagerService::StartAbilityForPrelaunch(const Want &want, const int32_t frameNum,
+    const sptr<IAbilityConnection> &connect)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartAbilityForPrelaunch, bundleName: %{public}s, abilityName: %{public}s, "
@@ -11031,22 +11032,46 @@ int AbilityManagerService::StartAbilityForPrelaunch(const Want &want, const int3
         TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbilityForPrelaunch not support implicit start");
         return ERR_INVALID_VALUE;
     }
+    AbilityRequest abilityRequest;
+    int result = GeneratePrelaunchAbilityRequest(want, connect, oriValidUserId, abilityRequest);
+    if (result != ERR_OK) {
+        return result;
+    }
+    UpdateCallerInfoUtil::GetInstance().UpdateCallerInfo(abilityRequest.want, nullptr);
+    auto eventInfo = BuildEventInfo(want, oriValidUserId);
+    eventInfo->calleeId = static_cast<int32_t>(CalleeId::START_ABILITY_FOR_PRELAUNCH);
+    result = ExecutePrelaunchInterceptors(abilityRequest, oriValidUserId, eventInfo);
+    if (result != ERR_OK) {
+        return result;
+    }
+    auto callerTokenId = IPCSkeleton::GetCallingTokenID();
+    RemoveUnauthorizedLaunchReasonMessage(want, abilityRequest, callerTokenId);
+    abilityRequest.want.SetParam(ServerConstant::IS_CALL_BY_SCB, false);
+    auto uiAbilityManager = GetUIAbilityManagerByUserId(oriValidUserId);
+    if (uiAbilityManager == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "uiAbilityManager null, userId is invalid:%{public}d", oriValidUserId);
+        return ERR_INVALID_VALUE;
+    }
+    return uiAbilityManager->PrelaunchAbilityLocked(abilityRequest, frameNum);
+}
+
+int AbilityManagerService::GeneratePrelaunchAbilityRequest(const Want &want,
+    const sptr<IAbilityConnection> &connect, int32_t oriValidUserId, AbilityRequest &abilityRequest)
+{
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
     CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), oriValidUserId),
         RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
 #else
-    // Non-car prelaunch does not support starting a clone instance; force any specified
-    // appIndex to the base instance (0).
     if (want.HasParameter(Want::PARAM_APP_CLONE_INDEX_KEY)) {
         const_cast<Want &>(want).SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 0);
         TAG_LOGI(AAFwkTag::ABILITYMGR, "StartAbilityForPrelaunch force specified appIndex to 0");
     }
 #endif
-    AbilityRequest abilityRequest;
     abilityRequest.callType = AbilityCallType::CALL_REQUEST_TYPE;
     abilityRequest.callerUid = IPCSkeleton::GetCallingUid();
     abilityRequest.startSetting = nullptr;
     abilityRequest.want = want;
+    abilityRequest.connect = connect;
     int result = GenerateAbilityRequest(want, -1, abilityRequest, nullptr, oriValidUserId);
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "generate ability request error");
@@ -11062,7 +11087,6 @@ int AbilityManagerService::StartAbilityForPrelaunch(const Want &want, const int3
     if (!HandleExecuteSAInterceptor(want, nullptr, abilityRequest, result)) {
         return result;
     }
-
     if (!abilityRequest.abilityInfo.isStageBasedModel) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "target ability not stage base model");
         return RESOLVE_CALL_ABILITY_VERSION_ERR;
@@ -11078,24 +11102,7 @@ int AbilityManagerService::StartAbilityForPrelaunch(const Want &want, const int3
         TAG_LOGE(AAFwkTag::ABILITYMGR, "checkStartByCallPermission fail, result:%{public}d", result);
         return result;
     }
-    UpdateCallerInfoUtil::GetInstance().UpdateCallerInfo(abilityRequest.want, nullptr);
-
-    auto eventInfo = BuildEventInfo(want, oriValidUserId);
-    eventInfo->calleeId = static_cast<int32_t>(CalleeId::START_ABILITY_FOR_PRELAUNCH);
-    result = ExecutePrelaunchInterceptors(abilityRequest, oriValidUserId, eventInfo);
-    if (result != ERR_OK) {
-        return result;
-    }
-
-    auto callerTokenId = IPCSkeleton::GetCallingTokenID();
-    RemoveUnauthorizedLaunchReasonMessage(want, abilityRequest, callerTokenId);
-    abilityRequest.want.SetParam(ServerConstant::IS_CALL_BY_SCB, false);
-    auto uiAbilityManager = GetUIAbilityManagerByUserId(oriValidUserId);
-    if (uiAbilityManager == nullptr) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "uiAbilityManager null, userId is invalid:%{public}d", oriValidUserId);
-        return ERR_INVALID_VALUE;
-    }
-    return uiAbilityManager->PrelaunchAbilityLocked(abilityRequest, frameNum);
+    return ERR_OK;
 }
 
 int AbilityManagerService::ReleaseCall(

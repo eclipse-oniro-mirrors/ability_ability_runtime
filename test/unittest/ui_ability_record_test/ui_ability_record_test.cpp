@@ -20,6 +20,7 @@
 #include "native_ability_util.h"
 
 using namespace testing::ext;
+using namespace testing;
 using namespace OHOS::AppExecFwk;
 
 namespace OHOS {
@@ -595,6 +596,66 @@ HWTEST_F(UIAbilityRecordTest, UpdatePendingStateByCall_0500, TestSize.Level1)
     abilityRecord->SetPendingState(AbilityState::FOREGROUND);
     abilityRecord->UpdatePendingStateByCall(CallToState::BACKGROUND);
     EXPECT_EQ(abilityRecord->GetPendingState(), AbilityState::FOREGROUND);
+}
+
+/**
+ * @tc.name: NotifyCallersOnPrelaunchTimeout_NullContainer_0100
+ * @tc.desc: NotifyCallersOnPrelaunchTimeout with null callContainer, should not crash
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, NotifyCallersOnPrelaunchTimeout_NullContainer_0100, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.bundleName = "testBundle";
+    abilityRequest.abilityInfo.name = "testAbility";
+    abilityRequest.abilityInfo.moduleName = "testModule";
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+
+    abilityRecord->SetPrelaunchFlag(true);
+    EXPECT_EQ(abilityRecord->callContainer_, nullptr);
+    abilityRecord->NotifyCallersOnPrelaunchTimeout();
+}
+
+/**
+ * @tc.name: NotifyCallersOnPrelaunchTimeout_NoPrelaunch_0100
+ * @tc.desc: NotifyCallersOnPrelaunchTimeout with prelaunch flag false, should return early
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, NotifyCallersOnPrelaunchTimeout_NoPrelaunch_0100, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.bundleName = "testBundle";
+    abilityRequest.abilityInfo.name = "testAbility";
+    abilityRequest.abilityInfo.moduleName = "testModule";
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+
+    auto callContainer = std::make_shared<CallContainer>();
+    abilityRecord->callContainer_ = callContainer;
+    EXPECT_CALL(*callContainer, NotifyDisconnectOnTimeout(_)).Times(0);
+    abilityRecord->NotifyCallersOnPrelaunchTimeout();
+}
+
+/**
+ * @tc.name: NotifyCallersOnPrelaunchTimeout_0100
+ * @tc.desc: NotifyCallersOnPrelaunchTimeout with prelaunch flag true and valid callContainer
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, NotifyCallersOnPrelaunchTimeout_0100, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.bundleName = "testBundle";
+    abilityRequest.abilityInfo.name = "testAbility";
+    abilityRequest.abilityInfo.moduleName = "testModule";
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+
+    abilityRecord->SetPrelaunchFlag(true);
+    auto callContainer = std::make_shared<CallContainer>();
+    abilityRecord->callContainer_ = callContainer;
+    EXPECT_CALL(*callContainer, NotifyDisconnectOnTimeout(_)).Times(1);
+    abilityRecord->NotifyCallersOnPrelaunchTimeout();
 }
 }  // namespace AAFwk
 }  // namespace OHOS

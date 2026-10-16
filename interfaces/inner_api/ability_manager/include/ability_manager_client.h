@@ -1606,11 +1606,14 @@ public:
      *
      * @param want The want of the ability to prelaunch (explicit element required).
      * @param frameNum Frame number used to remove the start window; 0 means not specified.
+     * @param connect Optional IAbilityConnection callback; when non-null, OnAbilityConnectDone
+     *        is called after prelaunch completes to return the caller object.
      * @return ERR_OK on success; RESOLVE_CALL_NO_PERMISSIONS for non-RSS callers;
      *         ERR_INVALID_VALUE for implicit want / SCB disabled; RESOLVE_CALL_ABILITY_TYPE_ERR /
      *         RESOLVE_CALL_ABILITY_VERSION_ERR for unsupported targets; interceptor errors.
      */
-    ErrCode StartAbilityForPrelaunch(const Want &want, const int32_t frameNum = 0);
+    ErrCode StartAbilityForPrelaunch(const Want &want, const int32_t frameNum = 0,
+        const sptr<IAbilityConnection> &connect = nullptr);
 
     /**
      * Start a sandbox-clone instance of an application (CLI-tool driven sandbox scenario).

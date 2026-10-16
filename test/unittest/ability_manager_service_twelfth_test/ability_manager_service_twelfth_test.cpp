@@ -2660,7 +2660,7 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_Implicit_001
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_TRUE(abilityMs_ != nullptr);
     Want want; // empty abilityName + bundle -> implicit start
-    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 5), ERR_INVALID_VALUE);
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr), ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_Implicit_001 end");
 }
 
@@ -2675,7 +2675,7 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_CloneForceZe
     Want want;
     want.SetElementName("com.test.bundle", "MainAbility");
     want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 2);
-    abilityMs_->StartAbilityForPrelaunch(want, 5);
+    abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr);
     // non-car (#else): a specified appIndex is forced to the base instance (0)
     EXPECT_EQ(want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1), 0);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_CloneForceZero_001 end");
@@ -2786,6 +2786,130 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_AfterCheck_R
     // redirect marker must be stripped so it never leaks into the dispatched request
     EXPECT_FALSE(abilityRequest.want.GetBoolParam("queryWantFromErms", false));
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_AfterCheck_Redirect_001 end");
+}
+
+namespace {
+class TrackableConnection : public IAbilityConnection {
+public:
+    TrackableConnection() = default;
+    ~TrackableConnection() = default;
+    void OnAbilityConnectDone(const AppExecFwk::ElementName &element,
+        const sptr<IRemoteObject> &remoteObject, int resultCode) override
+    {
+        connectDoneCount_++;
+        remoteObject_ = remoteObject;
+    }
+    void OnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode) override
+    {
+        disconnectDoneCount_++;
+    }
+    sptr<IRemoteObject> AsObject() override
+    {
+        return remoteObject_;
+    }
+    int GetConnectDoneCount() const { return connectDoneCount_; }
+    int GetDisconnectDoneCount() const { return disconnectDoneCount_; }
+    sptr<IRemoteObject> GetRemoteObject() const { return remoteObject_; }
+    void Reset()
+    {
+        connectDoneCount_ = 0;
+        disconnectDoneCount_ = 0;
+        remoteObject_ = nullptr;
+    }
+private:
+    int connectDoneCount_ = 0;
+    int disconnectDoneCount_ = 0;
+    sptr<IRemoteObject> remoteObject_ = nullptr;
+};
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: connect != nullptr — prelaunch fails, no callback invoked (AC-2.1)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_WithConnect_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_WithConnect_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    sptr<TrackableConnection> connect = new TrackableConnection();
+    ASSERT_NE(connect, nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    auto result = abilityMs_->StartAbilityForPrelaunch(want, 0, connect);
+    EXPECT_NE(result, ERR_OK);
+    EXPECT_EQ(connect->GetConnectDoneCount(), 0);
+    EXPECT_EQ(connect->GetDisconnectDoneCount(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_WithConnect_001 end, result=%{public}d", result);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: connect == nullptr — regression, prelaunch fails (AC-3.1)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_NullConnect_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_NullConnect_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    auto result = abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr);
+    EXPECT_NE(result, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_NullConnect_001 end, result=%{public}d", result);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: non-RSS UID with connect — permission check unchanged (AC-1.2)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_WithConnect_Permission_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_WithConnect_Permission_001 start");
+    IPCSkeleton::SetCallingUid(0);
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    sptr<TrackableConnection> connect = new TrackableConnection();
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 0, connect), RESOLVE_CALL_NO_PERMISSIONS);
+    EXPECT_EQ(connect->GetConnectDoneCount(), 0);
+    EXPECT_EQ(connect->GetDisconnectDoneCount(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_WithConnect_Permission_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: implicit want with connect — validation unchanged (AC-1.3)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_WithConnect_Implicit_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_WithConnect_Implicit_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    sptr<TrackableConnection> connect = new TrackableConnection();
+    Want want;
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 0, connect), ERR_INVALID_VALUE);
+    EXPECT_EQ(connect->GetConnectDoneCount(), 0);
+    EXPECT_EQ(connect->GetDisconnectDoneCount(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_WithConnect_Implicit_001 end");
 }
 } // namespace AAFwk
 } // namespace OHOS

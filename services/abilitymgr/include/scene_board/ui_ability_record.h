@@ -59,6 +59,8 @@ public:
         isPrelaunch_ = isPrelaunch;
     }
 
+    void NotifyCallersOnPrelaunchTimeout();
+
     void ScheduleCollaborate(const Want &want);
 
     inline bool IsHook () const

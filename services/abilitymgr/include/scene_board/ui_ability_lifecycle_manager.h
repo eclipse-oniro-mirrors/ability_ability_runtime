@@ -255,6 +255,9 @@ public:
      */
     int PrelaunchAbilityLocked(const AbilityRequest &abilityRequest, const int32_t frameNum);
 
+    int PrepareAndNotifyPrelaunchSession(const AbilityRequest &abilityRequest,
+        const UIAbilityRecordPtr &uiAbilityRecord, int32_t persistentId, bool reuse, int32_t frameNum);
+
     /**
      * Call UIAbility by SCB.
      *

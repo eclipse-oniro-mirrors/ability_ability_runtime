@@ -501,6 +501,7 @@ public:
     MOCK_METHOD4(StartAbilityByOEExt, int32_t(const Want&, sptr<IRemoteObject>, int32_t, const std::string&));
     MOCK_METHOD1(StartSelf, int(sptr<IRemoteObject> token));
     MOCK_METHOD3(StartSelfUIAbilityInChildProcess, ErrCode(const Want&, const std::string&, sptr<IRemoteObject>));
+    MOCK_METHOD3(StartAbilityForPrelaunch, int(const Want&, const int32_t, const sptr<IAbilityConnection>&));
     MOCK_METHOD2(StartSandboxCloneAbility, int32_t(const Want&, const SandboxCloneParams&));
 
 int32_t GetUserLockedBundleList(int32_t userId, std::unordered_set<std::string> &userLockedBundleList) override

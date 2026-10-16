@@ -103,6 +103,25 @@ public:
     virtual void OnAbilityDisconnectDone(const AppExecFwk::ElementName& element, int resultCode) {};
 };
 
+class PrelaunchTimeoutConnection : public IRemoteStub<IAbilityConnection> {
+public:
+    static int disconnectDoneCount;
+    PrelaunchTimeoutConnection() = default;
+    virtual ~PrelaunchTimeoutConnection() = default;
+    virtual int OnRemoteRequest(
+        uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option)
+    {
+        return 0;
+    };
+    virtual void OnAbilityConnectDone(
+        const AppExecFwk::ElementName& element, const sptr<IRemoteObject>& remoteObject, int resultCode) {};
+    virtual void OnAbilityDisconnectDone(const AppExecFwk::ElementName& element, int resultCode)
+    {
+        disconnectDoneCount++;
+    };
+};
+int PrelaunchTimeoutConnection::disconnectDoneCount = 0;
+
 std::shared_ptr<UIAbilityRecord> UIAbilityLifecycleManagerThirdTest::InitAbilityRecord()
 {
     AbilityRequest abilityRequest;
@@ -1933,6 +1952,119 @@ HWTEST_F(UIAbilityLifecycleManagerThirdTest, SubmitSpecifiedFailTask_002, TestSi
     EXPECT_GE(MyFlag::ffrtSubmitFlag_, 1);
     usleep(TIMEOUT_VALUE);
     EXPECT_EQ(mgr->hookSpecifiedMap_.size(), 0);
+}
+
+/*
+ * @tc.name: PrelaunchAbilityLocked_WithConnect_001
+ * @tc.desc: PrelaunchAbilityLocked with connect != nullptr creates CallRecord
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, PrelaunchAbilityLocked_WithConnect_001, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.bundleName = "com.test.bundle";
+    abilityRequest.abilityInfo.moduleName = "entry";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    abilityRequest.abilityInfo.isStageBasedModel = true;
+    abilityRequest.callType = AbilityCallType::CALL_REQUEST_TYPE;
+    abilityRequest.connect = sptr<IAbilityConnection>(new UIAbilityLifecycleManagerThirdTestStub());
+
+    auto result = mgr->PrelaunchAbilityLocked(abilityRequest, 0);
+    auto record = mgr->FindRecordFromTmpMap(abilityRequest);
+    ASSERT_NE(record, nullptr);
+    EXPECT_NE(record->callContainer_, nullptr);
+}
+
+/*
+ * @tc.name: PrelaunchAbilityLocked_WithConnect_002
+ * @tc.desc: PrelaunchAbilityLocked with connect == nullptr does NOT create CallRecord
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, PrelaunchAbilityLocked_WithConnect_002, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.bundleName = "com.test.bundle";
+    abilityRequest.abilityInfo.moduleName = "entry";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    abilityRequest.abilityInfo.isStageBasedModel = true;
+    abilityRequest.callType = AbilityCallType::CALL_REQUEST_TYPE;
+
+    auto result = mgr->PrelaunchAbilityLocked(abilityRequest, 0);
+    auto record = mgr->FindRecordFromTmpMap(abilityRequest);
+    ASSERT_NE(record, nullptr);
+    EXPECT_EQ(record->callContainer_, nullptr);
+}
+
+/*
+ * @tc.name: PrelaunchAbilityLocked_WithConnect_ExistingAbility_001
+ * @tc.desc: PrelaunchAbilityLocked with connect for existing ability processes connect (LOG-01)
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, PrelaunchAbilityLocked_WithConnect_ExistingAbility_001, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.bundleName = "com.test.bundle";
+    abilityRequest.abilityInfo.moduleName = "entry";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    abilityRequest.abilityInfo.isStageBasedModel = true;
+    abilityRequest.callType = AbilityCallType::CALL_REQUEST_TYPE;
+
+    auto existingRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(existingRecord, nullptr);
+    int32_t persistentId = 100;
+    mgr->sessionAbilityMap_[persistentId] = existingRecord;
+
+    abilityRequest.connect = sptr<IAbilityConnection>(new UIAbilityLifecycleManagerThirdTestStub());
+    auto result = mgr->PrelaunchAbilityLocked(abilityRequest, 0);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    EXPECT_NE(existingRecord->callContainer_, nullptr);
+}
+
+/*
+ * @tc.name: NotifyStartupExceptionBySCB_PrelaunchTimeout_001
+ * @tc.desc: NotifyStartupExceptionBySCB with prelaunch flag=true triggers NotifyCallersOnPrelaunchTimeout
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, NotifyStartupExceptionBySCB_PrelaunchTimeout_001, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(mgr, nullptr);
+
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.bundleName = "com.test.bundle";
+    abilityRequest.abilityInfo.moduleName = "entry";
+
+    auto record = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(record, nullptr);
+    record->SetPrelaunchFlag(true);
+
+    auto connect = sptr<IAbilityConnection>(new PrelaunchTimeoutConnection());
+    ASSERT_NE(connect, nullptr);
+    auto callRecord = CallRecord::CreateCallRecord(1, record->shared_from_this(), connect, nullptr);
+    ASSERT_NE(callRecord, nullptr);
+    callRecord->SetCallState(CallState::REQUESTING);
+
+    record->callContainer_ = std::make_shared<CallContainer>();
+    ASSERT_NE(record->callContainer_, nullptr);
+    record->callContainer_->AddCallRecord(connect, callRecord);
+
+    int32_t requestId = 42;
+    mgr->tmpAbilityMap_[requestId] = record;
+
+    PrelaunchTimeoutConnection::disconnectDoneCount = 0;
+    std::string reason = "prelaunch timeout";
+    auto ret = mgr->NotifyStartupExceptionBySCB(requestId, reason);
+    EXPECT_EQ(ret, ERR_OK);
+    usleep(100000);
+    EXPECT_EQ(PrelaunchTimeoutConnection::disconnectDoneCount, 1);
+    EXPECT_EQ(mgr->tmpAbilityMap_.size(), 0);
 }
 }  // namespace AAFwk
 }  // namespace OHOS
