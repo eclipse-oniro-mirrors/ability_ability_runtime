@@ -1872,7 +1872,7 @@ int UIAbilityLifecycleManager::ResolveLocked(const AbilityRequest &abilityReques
     return CallAbilityLocked(abilityRequest, errMsg);
 }
 
-bool UIAbilityLifecycleManager::IsAbilityStarted(AbilityRequest &abilityRequest,
+bool UIAbilityLifecycleManager::IsAbilityStarted(const AbilityRequest &abilityRequest,
     std::shared_ptr<AbilityRecord> &targetRecord)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Call.");
