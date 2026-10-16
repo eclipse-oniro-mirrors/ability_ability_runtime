@@ -9654,18 +9654,18 @@ int AppMgrServiceInner::GetExceptionTimerId(const FaultData &faultData, const st
 }
 
 bool AppMgrServiceInner::UpdateForeground(const std::shared_ptr<AppRunningRecord> &appRecord,
-    const std::string &eventName)
+    const std::string &eventName, bool abilityPendingBackground, bool isInForeground)
 {
-    bool isStateForeground = appRecord->GetState() == ApplicationState::APP_STATE_FOREGROUND ||
-        appRecord->GetState() == ApplicationState::APP_STATE_FOCUS;
-    if (eventName == AppFreezeType::THREAD_BLOCK_3S || eventName == AppFreezeType::THREAD_BLOCK_6S ||
-        eventName == AppFreezeType::BUSSINESS_THREAD_BLOCK_3S ||
-        eventName == AppFreezeType::BUSSINESS_THREAD_BLOCK_6S) {
-        return isStateForeground;
-    }
-    bool isTransitioningToForeground = appRecord->GetApplicationPendingState() ==
-        ApplicationPendingState::FOREGROUNDING;
-    return (isStateForeground || isTransitioningToForeground);
+    auto pendingState = appRecord->GetApplicationPendingState();
+    AppfreezeManager::ForegroundState foregroundState = {
+        .isStateForeground = appRecord->GetState() == ApplicationState::APP_STATE_FOREGROUND ||
+            appRecord->GetState() == ApplicationState::APP_STATE_FOCUS,
+        .isTransitioningToForeground = pendingState == ApplicationPendingState::FOREGROUNDING,
+        .isTransitioningToBackground = pendingState == ApplicationPendingState::BACKGROUNDING,
+        .abilityPendingBackground = abilityPendingBackground,
+        .isInForeground = isInForeground,
+    };
+    return AppfreezeManager::GetInstance()->CalculateFaultForeground(eventName, foregroundState);
 }
 
 int32_t AppMgrServiceInner::SubmitDfxFaultTask(const FaultData &faultData, const std::string &bundleName,
@@ -9772,7 +9772,8 @@ int32_t AppMgrServiceInner::NotifyAppFault(const FaultData &faultData)
     }
 
     FaultData& nonConstFaultData = const_cast<FaultData&>(faultData);
-    nonConstFaultData.isInForeground = UpdateForeground(appRecord, eventName);
+    nonConstFaultData.isInForeground = UpdateForeground(appRecord, eventName,
+        faultData.abilityPendingBackground, faultData.isInForeground);
     std::string processName = appRecord->GetProcessName();
     bool isExit = AppExecFwk::AppfreezeManager::GetInstance()->CheckProcessExit(processName,
         eventName, nonConstFaultData.isInForeground);
@@ -9922,7 +9923,8 @@ int32_t AppMgrServiceInner::TransformedNotifyAppFault(const AppFaultDataBySA &fa
     FaultData transformedFaultData = ConvertDataTypes(faultData);
     AppFaultCtx ctx = {faultData.pid, record->GetUid(), record->GetRecordId(), record->GetBundleName(),
         record->GetProcessName(), transformedFaultData.errorObject.name};
-    transformedFaultData.isInForeground = UpdateForeground(record, ctx.eventName);
+    transformedFaultData.isInForeground = UpdateForeground(record, ctx.eventName,
+        faultData.abilityPendingBackground, faultData.isInForeground);
     if (IsAsanEnabled(record)) {
         TAG_LOGI(AAFwkTag::APPMGR, "no freeze detect cause asan enable, bundleName:%{public}s, pid:%{public}d",
             ctx.bundleName.c_str(), ctx.pid);
@@ -10042,6 +10044,7 @@ FaultData AppMgrServiceInner::ConvertDataTypes(const AppFaultDataBySA &faultData
     newfaultData.isInForeground = faultData.isInForeground;
     newfaultData.isEnableMainThreadSample = faultData.isEnableMainThreadSample;
     newfaultData.reportLifecycleToFreeze = faultData.reportLifecycleToFreeze;
+    newfaultData.abilityPendingBackground = faultData.abilityPendingBackground;
     newfaultData.applicationHeapInfo = faultData.applicationHeapInfo;
     newfaultData.applicationGCInfo = faultData.applicationGCInfo;
     newfaultData.applicationIOInfo = faultData.applicationIOInfo;

@@ -102,6 +102,7 @@ struct FaultData : public Parcelable {
     bool isInForeground;
     bool isEnableMainThreadSample;
     bool reportLifecycleToFreeze = false;
+    bool abilityPendingBackground = false;
     std::string applicationHeapInfo;
     std::string applicationGCInfo;
     std::string applicationIOInfo;
@@ -150,6 +151,7 @@ struct AppFaultDataBySA : public Parcelable {
     bool isInForeground;
     bool isEnableMainThreadSample;
     bool reportLifecycleToFreeze = false;
+    bool abilityPendingBackground = false;
     std::string applicationHeapInfo;
     std::string applicationGCInfo;
     std::string applicationIOInfo;

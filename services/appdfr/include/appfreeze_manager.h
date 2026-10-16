@@ -74,6 +74,15 @@ public:
         std::string eventName;
         std::string bundleName;
         std::string msg;
+        bool abilityPendingBackground = false;
+    };
+
+    struct ForegroundState {
+        bool isStateForeground = false;
+        bool isTransitioningToForeground = false;
+        bool isTransitioningToBackground = false;
+        bool abilityPendingBackground = false;
+        bool isInForeground = false;
     };
 
     struct AppfreezeEventRecord {
@@ -140,6 +149,7 @@ public:
     bool IsFreezeExcludedPid(int32_t targetPid);
     bool CheckPreloadUIExtension(const std::string& message, const std::string& bundleName, int32_t pid,
         const std::string& eventName);
+    bool CalculateFaultForeground(const std::string& eventName, const ForegroundState& state) const;
     bool CheckProcessExit(const std::string& processName, const std::string& eventName, bool foreground);
     bool IsValidFreezeTypeName(const std::string& freezeTypeName);
 

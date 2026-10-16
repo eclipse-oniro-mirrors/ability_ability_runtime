@@ -431,6 +431,7 @@ AppFaultDataBySA AppfreezeManager::GenerateFaultDataBySA(const ParamInfo& info, 
                                  "-" + std::to_string(AbilityRuntime::TimeUtil::CurrentTimeMillis());
     faultDataSA.pid = info.pid;
     faultDataSA.needKillProcess = info.needKillProcess;
+    faultDataSA.abilityPendingBackground = info.abilityPendingBackground;
     if (flow.state != AbilityRuntime::FreezeUtil::TimeoutState::UNKNOWN) {
         faultDataSA.token = flow.token;
         faultDataSA.state = static_cast<uint32_t>(flow.state);
@@ -460,6 +461,7 @@ FaultData AppfreezeManager::GetFaultNotifyData(const FaultData& faultData, int p
     faultNotifyData.isInForeground = faultData.isInForeground;
     faultNotifyData.isEnableMainThreadSample = faultData.isEnableMainThreadSample;
     faultNotifyData.reportLifecycleToFreeze = faultData.reportLifecycleToFreeze;
+    faultNotifyData.abilityPendingBackground = faultData.abilityPendingBackground;
     faultNotifyData.applicationHeapInfo = faultData.applicationHeapInfo;
     faultNotifyData.applicationGCInfo = faultData.applicationGCInfo;
     faultNotifyData.applicationIOInfo = faultData.applicationIOInfo;
@@ -1586,6 +1588,26 @@ bool AppfreezeManager::CheckPreloadUIExtension(const std::string& message, const
         return true;
     }
     return false;
+}
+
+bool AppfreezeManager::CalculateFaultForeground(const std::string& eventName, const ForegroundState& state) const
+{
+    if (eventName == AppFreezeType::THREAD_BLOCK_3S || eventName == AppFreezeType::THREAD_BLOCK_6S ||
+        eventName == AppFreezeType::BUSSINESS_THREAD_BLOCK_3S ||
+        eventName == AppFreezeType::BUSSINESS_THREAD_BLOCK_6S) {
+        return state.isInForeground;
+    }
+
+    if (state.abilityPendingBackground) {
+        return false;
+    }
+    if (state.isTransitioningToBackground) {
+        return false;
+    }
+    if (state.isStateForeground) {
+        return true;
+    }
+    return state.isTransitioningToForeground;
 }
 
 bool AppfreezeManager::CheckProcessExit(const std::string& processName, const std::string& eventName, bool foreground)
