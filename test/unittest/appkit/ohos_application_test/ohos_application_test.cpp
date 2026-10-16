@@ -2687,5 +2687,26 @@ HWTEST_F(OHOSApplicationTest, ChangeAppGcState_0200, TestSize.Level1)
     GTEST_LOG_(INFO) << "ChangeAppGcState_0200 end.";
 }
 
+/*
+* @tc.number: ChangeAppGcState_0300
+* @tc.name: ChangeAppGcState with runtime APP_VISIBLE_STATE, return NO_ERROR
+* @tc.desc: FUNC
+*/
+HWTEST_F(OHOSApplicationTest, ChangeAppGcState_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ChangeAppGcState_0300 start.";
+    constexpr int32_t APP_VISIBLE_STATE = 5;
+    auto runner = EventRunner::GetMainEventRunner();
+    ASSERT_NE(runner, nullptr);
+    sptr<MainThread> mainThread = sptr<MainThread>(new MainThread());
+    ASSERT_NE(mainThread, nullptr);
+    mainThread->Init(runner);
+    mainThread->application_ = std::make_shared<OHOSApplication>();
+    mainThread->application_->SetRuntime(std::make_unique<AbilityRuntime::MockRuntime>());
+    auto ret = mainThread->ChangeAppGcState(APP_VISIBLE_STATE);
+    EXPECT_EQ(ret, NO_ERROR);
+    GTEST_LOG_(INFO) << "ChangeAppGcState_0300 end.";
+}
+
 }  // namespace AppExecFwk
 }  // namespace OHOS
