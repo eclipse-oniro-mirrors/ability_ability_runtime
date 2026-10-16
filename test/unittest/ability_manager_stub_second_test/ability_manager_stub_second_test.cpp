@@ -1334,5 +1334,178 @@ HWTEST_F(AbilityManagerStubSecondTest, StartSelfUIAbilityInChildProcessInner_040
 
     TAG_LOGI(AAFwkTag::TEST, "StartSelfUIAbilityInChildProcessInner_0400 end");
 }
+
+/**
+ * @tc.name: StartAbilityForPrelaunchInner_0100
+ * @tc.desc: Test StartAbilityForPrelaunchInner with valid want and no connect
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerStubSecondTest, StartAbilityForPrelaunchInner_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunchInner_0100 begin");
+
+    MessageParcel data;
+    WriteInterfaceToken(data);
+
+    Want want;
+    want.SetElementName("com.test.bundle", "com.test.TestAbility");
+    data.WriteParcelable(&want);
+
+    int32_t frameNum = 0;
+    data.WriteInt32(frameNum);
+
+    data.WriteBool(false); // hasConnect = false
+
+    MessageParcel reply;
+    MessageOption option;
+
+    EXPECT_CALL(*stub_, StartAbilityForPrelaunch(_, _, _))
+        .Times(1)
+        .WillOnce(Return(ERR_OK));
+
+    auto ret = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::START_PRELAUNCH_ABILITY), data, reply, option);
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunchInner_0100 end");
+}
+
+/**
+ * @tc.name: StartAbilityForPrelaunchInner_0200
+ * @tc.desc: Test StartAbilityForPrelaunchInner with invalid interface token
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerStubSecondTest, StartAbilityForPrelaunchInner_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunchInner_0200 begin");
+
+    MessageParcel data;
+    // Not writing interface token
+
+    Want want;
+    want.SetElementName("com.test.bundle", "com.test.TestAbility");
+    data.WriteParcelable(&want);
+
+    int32_t frameNum = 0;
+    data.WriteInt32(frameNum);
+
+    data.WriteBool(false);
+
+    MessageParcel reply;
+    MessageOption option;
+
+    auto ret = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::START_PRELAUNCH_ABILITY), data, reply, option);
+    EXPECT_EQ(ret, ERR_INVALID_STATE);
+
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunchInner_0200 end");
+}
+
+/**
+ * @tc.name: StartAbilityForPrelaunchInner_0300
+ * @tc.desc: Test StartAbilityForPrelaunchInner with null want
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerStubSecondTest, StartAbilityForPrelaunchInner_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunchInner_0300 begin");
+
+    MessageParcel data;
+    WriteInterfaceToken(data);
+
+    // Not writing want
+
+    int32_t frameNum = 0;
+    data.WriteInt32(frameNum);
+
+    data.WriteBool(false);
+
+    MessageParcel reply;
+    MessageOption option;
+
+    auto ret = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::START_PRELAUNCH_ABILITY), data, reply, option);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunchInner_0300 end");
+}
+
+/**
+ * @tc.name: StartAbilityForPrelaunchInner_0400
+ * @tc.desc: Test StartAbilityForPrelaunchInner with valid connect
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerStubSecondTest, StartAbilityForPrelaunchInner_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunchInner_0400 begin");
+
+    MessageParcel data;
+    WriteInterfaceToken(data);
+
+    Want want;
+    want.SetElementName("com.test.bundle", "com.test.TestAbility");
+    data.WriteParcelable(&want);
+
+    int32_t frameNum = 5;
+    data.WriteInt32(frameNum);
+
+    data.WriteBool(true); // hasConnect = true
+    auto connect = sptr<AbilityConnectCallback>(new AbilityConnectCallback());
+    data.WriteRemoteObject(connect->AsObject());
+
+    MessageParcel reply;
+    MessageOption option;
+
+    EXPECT_CALL(*stub_, StartAbilityForPrelaunch(_, _, _))
+        .Times(1)
+        .WillOnce(Return(ERR_OK));
+
+    auto ret = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::START_PRELAUNCH_ABILITY), data, reply, option);
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunchInner_0400 end");
+}
+
+/**
+ * @tc.name: StartAbilityForPrelaunchInner_0500
+ * @tc.desc: Test StartAbilityForPrelaunchInner with hasConnect=true but no remote object
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerStubSecondTest, StartAbilityForPrelaunchInner_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunchInner_0500 begin");
+
+    MessageParcel data;
+    WriteInterfaceToken(data);
+
+    Want want;
+    want.SetElementName("com.test.bundle", "com.test.TestAbility");
+    data.WriteParcelable(&want);
+
+    int32_t frameNum = 5;
+    data.WriteInt32(frameNum);
+
+    data.WriteBool(true); // hasConnect = true
+    // Not writing remote object, ReadRemoteObject returns null
+
+    MessageParcel reply;
+    MessageOption option;
+
+    sptr<IAbilityConnection> capturedConnect;
+    EXPECT_CALL(*stub_, StartAbilityForPrelaunch(_, _, _))
+        .Times(1)
+        .WillOnce(DoAll(SaveArg<2>(&capturedConnect), Return(ERR_OK)));
+
+    auto ret = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::START_PRELAUNCH_ABILITY), data, reply, option);
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+    EXPECT_EQ(capturedConnect, nullptr);
+
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunchInner_0500 end");
+}
 } // namespace AAFwk
 } // namespace OHOS

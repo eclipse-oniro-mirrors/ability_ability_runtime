@@ -2817,6 +2817,7 @@ ResolveResultType AbilityRecord::Resolve(const AbilityRequest &abilityRequest)
             TAG_LOGE(AAFwkTag::ABILITYMGR, "mark_shared error");
             return ResolveResultType::NG_INNER_ERROR;
         }
+        callRecord->SetPrelaunchFlag(abilityRequest.isPrelaunch);
     }
 
     callContainer_->AddCallRecord(callback, callRecord);

@@ -950,7 +950,8 @@ public:
      * @param frameNum, Special frameNum for remove start window num.
      * @return Returns ERR_OK on success, others on failure.
      */
-    virtual int StartAbilityForPrelaunch(const Want &want, const int32_t frameNum) override;
+    virtual int StartAbilityForPrelaunch(const Want &want, const int32_t frameNum,
+        const sptr<IAbilityConnection> &connect) override;
 
     /**
      * Start Ability, connect session with common ability.

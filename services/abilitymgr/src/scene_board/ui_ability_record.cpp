@@ -54,6 +54,25 @@ AbilityRecordType UIAbilityRecord::GetAbilityRecordType()
     return AbilityRecordType::UI_ABILITY;
 }
 
+void UIAbilityRecord::NotifyCallersOnPrelaunchTimeout()
+{
+    if (!GetPrelaunchFlag()) {
+        return;
+    }
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "Notify callers on prelaunch timeout: %{public}s",
+        abilityInfo_.name.c_str());
+
+    if (callContainer_ == nullptr) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "callContainer_ is null, no callers to notify");
+        return;
+    }
+
+    AppExecFwk::ElementName element(abilityInfo_.deviceId, abilityInfo_.bundleName,
+        abilityInfo_.name, abilityInfo_.moduleName);
+
+    callContainer_->NotifyDisconnectOnTimeout(element);
+}
+
 void UIAbilityRecord::ScheduleCollaborate(const Want &want)
 {
     std::lock_guard guard(collaborateWantLock_);

@@ -1410,7 +1410,11 @@ public:
      * @param frameNum, Special frameNum for remove start window num.
      * @return Returns ERR_OK on success, others on failure.
      */
-    virtual int StartAbilityForPrelaunch(const Want &want, const int32_t frameNum) override;
+    virtual int StartAbilityForPrelaunch(const Want &want, const int32_t frameNum,
+        const sptr<IAbilityConnection> &connect) override;
+
+    int GeneratePrelaunchAbilityRequest(const Want &want, const sptr<IAbilityConnection> &connect,
+        int32_t oriValidUserId, AbilityRequest &abilityRequest);
 
     /**
      * CallRequestDone, after invoke callRequest, ability will call this interface to return callee.

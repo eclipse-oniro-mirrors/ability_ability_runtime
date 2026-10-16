@@ -4173,9 +4173,11 @@ int AbilityManagerProxy::StartAbilityByCallWithErrMsg(const Want &want, const sp
     return reply.ReadInt32();
 }
 
-int AbilityManagerProxy::StartAbilityForPrelaunch(const Want &want, const int32_t frameNum)
+int AbilityManagerProxy::StartAbilityForPrelaunch(const Want &want, const int32_t frameNum,
+    const sptr<IAbilityConnection> &connect)
 {
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "AbilityManagerProxy::StartAbilityForPrelaunch begin.");
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "AbilityManagerProxy::StartAbilityForPrelaunch begin, hasConnect:%{public}d.",
+        connect != nullptr ? 1 : 0);
     int error;
     MessageParcel data;
     MessageParcel reply;
@@ -4192,6 +4194,17 @@ int AbilityManagerProxy::StartAbilityForPrelaunch(const Want &want, const int32_
     if (!data.WriteInt32(frameNum)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "frameNum write fail");
         return ERR_INVALID_VALUE;
+    }
+    bool hasConnect = (connect != nullptr);
+    if (!data.WriteBool(hasConnect)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "hasConnect write fail");
+        return ERR_INVALID_VALUE;
+    }
+    if (hasConnect) {
+        if (!data.WriteRemoteObject(connect->AsObject())) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "connect write fail");
+            return ERR_INVALID_VALUE;
+        }
     }
 
     error = SendRequest(AbilityManagerInterfaceCode::START_PRELAUNCH_ABILITY, data, reply, option);

@@ -2917,7 +2917,18 @@ int AbilityManagerStub::StartAbilityForPrelaunchInner(MessageParcel &data, Messa
     SanitizeWantParams(*want);
     want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     int32_t frameNum = data.ReadInt32();
-    int32_t result = StartAbilityForPrelaunch(*want, frameNum);
+    sptr<IAbilityConnection> connect = nullptr;
+    bool hasConnect = data.ReadBool();
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "StartAbilityForPrelaunchInner hasConnect:%{public}d", hasConnect ? 1 : 0);
+    if (hasConnect) {
+        auto remoteObj = data.ReadRemoteObject();
+        if (remoteObj != nullptr) {
+            connect = iface_cast<IAbilityConnection>(remoteObj);
+        } else {
+            TAG_LOGW(AAFwkTag::ABILITYMGR, "hasConnect=true but ReadRemoteObject returned null");
+        }
+    }
+    int32_t result = StartAbilityForPrelaunch(*want, frameNum, connect);
 
     TAG_LOGD(AAFwkTag::ABILITYMGR, "resolve call ability ret = %{public}d", result);
     reply.WriteInt32(result);

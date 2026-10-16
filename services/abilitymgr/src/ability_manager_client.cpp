@@ -1300,14 +1300,15 @@ ErrCode AbilityManagerClient::StartAbilityByCallWithErrMsg(const Want &want, spt
         isVisible);
 }
 
-ErrCode AbilityManagerClient::StartAbilityForPrelaunch(const Want &want, const int32_t frameNum)
+ErrCode AbilityManagerClient::StartAbilityForPrelaunch(const Want &want, const int32_t frameNum,
+    const sptr<IAbilityConnection> &connect)
 {
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "prelaunch, ability:%{public}s/%{public}s",
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "prelaunch, ability:%{public}s/%{public}s, hasConnect:%{public}d",
         want.GetBundle().c_str(),
-        want.GetElement().GetAbilityName().c_str());
-    return abms->StartAbilityForPrelaunch(want, frameNum);
+        want.GetElement().GetAbilityName().c_str(), connect != nullptr ? 1 : 0);
+    return abms->StartAbilityForPrelaunch(want, frameNum, connect);
 }
 
 ErrCode AbilityManagerClient::StartSandboxCloneAbility(const Want &want, const SandboxCloneParams &params)

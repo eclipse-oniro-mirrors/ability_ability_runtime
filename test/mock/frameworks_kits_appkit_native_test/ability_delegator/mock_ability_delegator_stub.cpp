@@ -106,7 +106,8 @@ int MockAbilityDelegatorStub::StartAbilityByCall(const Want& want, const sptr<IA
     return 0;
 }
 
-int MockAbilityDelegatorStub::StartAbilityForPrelaunch(const Want& want, const int32_t frameNum)
+int MockAbilityDelegatorStub::StartAbilityForPrelaunch(const Want& want, const int32_t frameNum,
+    const sptr<IAbilityConnection> &connect)
 {
     return 0;
 }
@@ -307,7 +308,8 @@ int MockAbilityDelegatorStub2::StartAbilityByCall(const Want& want, const sptr<I
     return 0;
 }
 
-int MockAbilityDelegatorStub2::StartAbilityForPrelaunch(const Want& want, const int32_t frameNum)
+int MockAbilityDelegatorStub2::StartAbilityForPrelaunch(const Want& want, const int32_t frameNum,
+    const sptr<IAbilityConnection> &connect)
 {
     return 0;
 }
