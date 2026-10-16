@@ -216,6 +216,7 @@ ohos_shared_library("appkit_native") {
     "faultloggerd:libbacktrace_local",
     "faultloggerd:libdfx_procinfo",
     "faultloggerd:libfaultloggerd",
+    "faultloggerd:libunwinder",
     "ffrt:libffrt",
     "graphic_2d:2d_graphics",
     "graphic_2d:EGL",
