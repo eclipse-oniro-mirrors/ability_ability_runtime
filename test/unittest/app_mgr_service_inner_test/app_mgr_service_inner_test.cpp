@@ -2163,6 +2163,7 @@ HWTEST_F(AppMgrServiceInnerTest, GetAppRunningRecordByAbilityToken_001, TestSize
     appMgrServiceInner->GetAppRunningRecordByAbilityToken(token);
 
     appMgrServiceInner->appRunningManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = nullptr;
     appMgrServiceInner->GetAppRunningRecordByAbilityToken(token);
 
     TAG_LOGI(AAFwkTag::TEST, "GetAppRunningRecordByAbilityToken_001 end");
@@ -2535,6 +2536,7 @@ HWTEST_F(AppMgrServiceInnerTest, GetRunningProcessInfoByToken_001, TestSize.Leve
     appMgrServiceInner->GetRunningProcessInfoByToken(nullptr, info);
 
     appMgrServiceInner->appRunningManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = nullptr;
     appMgrServiceInner->GetRunningProcessInfoByToken(nullptr, info);
 
     TAG_LOGI(AAFwkTag::TEST, "GetRunningProcessInfoByToken_001 end");
@@ -2556,6 +2558,7 @@ HWTEST_F(AppMgrServiceInnerTest, GetRunningProcessInfoByPid_001, TestSize.Level2
     appMgrServiceInner->GetRunningProcessInfoByPid(0, info);
 
     appMgrServiceInner->appRunningManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = nullptr;
     appMgrServiceInner->GetRunningProcessInfoByPid(0, info);
 
     TAG_LOGI(AAFwkTag::TEST, "GetRunningProcessInfoByPid_001 end");
@@ -2573,10 +2576,10 @@ HWTEST_F(AppMgrServiceInnerTest, CheckGetRunningInfoPermission_001, TestSize.Lev
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     EXPECT_NE(appMgrServiceInner, nullptr);
 
-    appMgrServiceInner->CheckGetRunningInfoPermission();
+    appMgrServiceInner->appQueryHelper_.CheckGetRunningInfoPermission();
 
     appMgrServiceInner->appRunningManager_ = nullptr;
-    appMgrServiceInner->CheckGetRunningInfoPermission();
+    appMgrServiceInner->appQueryHelper_.CheckGetRunningInfoPermission();
 
     TAG_LOGI(AAFwkTag::TEST, "CheckGetRunningInfoPermission_001 end");
 }
@@ -2596,6 +2599,7 @@ HWTEST_F(AppMgrServiceInnerTest, IsMemorySizeSufficient_001, TestSize.Level2)
     appMgrServiceInner->IsMemorySizeSufficient();
 
     appMgrServiceInner->appRunningManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = nullptr;
     appMgrServiceInner->IsMemorySizeSufficient();
 
     TAG_LOGI(AAFwkTag::TEST, "IsMemorySizeSufficient_001 end");
@@ -4649,6 +4653,7 @@ HWTEST_F(AppMgrServiceInnerTest, GetAppRunningStateByBundleName_001, TestSize.Le
     appMgrServiceInner->GetAppRunningStateByBundleName(bundleName);
 
     appMgrServiceInner->appRunningManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = nullptr;
     appMgrServiceInner->GetAppRunningStateByBundleName(bundleName);
 
     TAG_LOGI(AAFwkTag::TEST, "GetAppRunningStateByBundleName_001 end");
@@ -4793,10 +4798,12 @@ HWTEST_F(AppMgrServiceInnerTest, GetRunningProcessInformation_001, TestSize.Leve
     EXPECT_EQ(ret, ERR_OK);
 
     appMgrServiceInner->remoteClientManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.remoteClientManager_ = nullptr;
     ret = appMgrServiceInner->GetRunningProcessInformation(bundleName, userId, info);
     EXPECT_EQ(ret, ERR_NO_INIT);
 
     appMgrServiceInner->appRunningManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = nullptr;
     ret = appMgrServiceInner->GetRunningProcessInformation(bundleName, userId, info);
     EXPECT_EQ(ret, ERR_NO_INIT);
 
@@ -6287,10 +6294,12 @@ HWTEST_F(AppMgrServiceInnerTest, GetAllRunningInstanceKeysBySelf_001, TestSize.L
     EXPECT_NE(ret, ERR_OK);
 
     appMgrServiceInner->remoteClientManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.remoteClientManager_ = nullptr;
     ret = appMgrServiceInner->GetAllRunningInstanceKeysBySelf(instanceKeys);
     EXPECT_EQ(ret, ERR_NO_INIT);
 
     appMgrServiceInner->remoteClientManager_ = std::make_shared<RemoteClientManager>();
+    appMgrServiceInner->appQueryHelper_.remoteClientManager_ = appMgrServiceInner->remoteClientManager_;
     ret = appMgrServiceInner->GetAllRunningInstanceKeysBySelf(instanceKeys);
     EXPECT_NE(ret, ERR_NO_INIT);
 
@@ -6412,6 +6421,7 @@ HWTEST_F(AppMgrServiceInnerTest, GetSupportedProcessCachePids_001, TestSize.Leve
     EXPECT_EQ(ret, ERR_OK);
 
     appMgrServiceInner->appRunningManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = nullptr;
     ret = appMgrServiceInner->GetSupportedProcessCachePids(bundleName, pidList);
     EXPECT_NE(ret, ERR_OK);
 
@@ -6536,6 +6546,7 @@ HWTEST_F(AppMgrServiceInnerTest, IsProcessCacheSupported_001, TestSize.Level2)
     EXPECT_EQ(appMgrServiceInner->IsProcessCacheSupported(pid, isSupport), AAFwk::ERR_NO_APP_RECORD);
 
     appMgrServiceInner->appRunningManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = nullptr;
     EXPECT_EQ(appMgrServiceInner->IsProcessCacheSupported(pid, isSupport), AAFwk::ERR_NULL_APP_RUNNING_MANAGER);
 }
 
@@ -6922,6 +6933,7 @@ HWTEST_F(AppMgrServiceInnerTest, GetAllAbilityInfos_0001, TestSize.Level1)
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     EXPECT_NE(appMgrServiceInner, nullptr);
     appMgrServiceInner->appRunningManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = nullptr;
 
     std::vector<AppExecFwk::AbilityStateData> infos;
     auto ret = appMgrServiceInner->GetAllAbilityInfos(-1, infos);
@@ -6940,6 +6952,7 @@ HWTEST_F(AppMgrServiceInnerTest, GetAllAbilityInfos_0002, TestSize.Level1)
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     EXPECT_NE(appMgrServiceInner, nullptr);
     appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = std::make_shared<AppRunningManager>();
 
     std::vector<AppExecFwk::AbilityStateData> infos;
     auto ret = appMgrServiceInner->GetAllAbilityInfos(-1, infos);
@@ -6958,6 +6971,7 @@ HWTEST_F(AppMgrServiceInnerTest, GetAllAbilityInfos_0003, TestSize.Level1)
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     EXPECT_NE(appMgrServiceInner, nullptr);
     appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = std::make_shared<AppRunningManager>();
 
     std::vector<AppExecFwk::AbilityStateData> infos;
     int32_t pid = 1001;

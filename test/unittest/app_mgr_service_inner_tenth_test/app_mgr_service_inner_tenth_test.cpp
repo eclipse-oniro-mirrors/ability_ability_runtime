@@ -728,6 +728,7 @@ HWTEST_F(AppMgrServiceInnerTenthTest, ClearProcessByToken_003, TestSize.Level2)
     AAFwk::MyStatus::GetInstance().resetRunningRecordFunctionFlag();
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     appMgrServiceInner->appRunningManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = nullptr;
     sptr<IRemoteObject> token = new MockAppScheduler();
     appMgrServiceInner->ClearProcessByToken(token);
     EXPECT_FALSE(AAFwk::MyStatus::GetInstance().setApplicationClientCalled_);

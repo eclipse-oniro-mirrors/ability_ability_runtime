@@ -1360,7 +1360,7 @@ HWTEST_F(AppMgrServiceInnerNinthTest, GetRunningProcesses_001, TestSize.Level1)
     EXPECT_NE(appRecord, nullptr);
     std::vector<RunningProcessInfo> info;
     EXPECT_EQ(info.size(), 0);
-    appMgrServiceInner->GetRunningProcesses(appRecord, info);
+    appMgrServiceInner->appQueryHelper_.GetRunningProcesses(appRecord, info);
     EXPECT_EQ(info.size(), 1);
     TAG_LOGI(AAFwkTag::TEST, "GetRunningProcesses_001 end");
 }
@@ -1378,7 +1378,7 @@ HWTEST_F(AppMgrServiceInnerNinthTest, GetRunningProcess_002, TestSize.Level1)
     
     std::shared_ptr<AppRunningRecord> appRecord = nullptr;
     RunningProcessInfo info;
-    appMgrServiceInner->GetRunningProcess(appRecord, info);
+    appMgrServiceInner->appQueryHelper_.GetRunningProcess(appRecord, info);
     EXPECT_TRUE(info.processName_.empty());
     TAG_LOGI(AAFwkTag::TEST, "GetRunningProcess_002 end");
 }
@@ -1404,7 +1404,7 @@ HWTEST_F(AppMgrServiceInnerNinthTest, GetRunningProcess_003, TestSize.Level1)
     EXPECT_NE(appRecord, nullptr);
     
     RunningProcessInfo info;
-    appMgrServiceInner->GetRunningProcess(appRecord, info);
+    appMgrServiceInner->appQueryHelper_.GetRunningProcess(appRecord, info);
     EXPECT_EQ(info.processName_, processName);
     
     TAG_LOGI(AAFwkTag::TEST, "GetRunningProcess_003 end");
@@ -1432,7 +1432,7 @@ HWTEST_F(AppMgrServiceInnerNinthTest, GetRunningProcess_004, TestSize.Level1)
     RunningProcessInfo info;
     AAFwk::MyStatus::GetInstance().getBoolParameter_ = true;
     info.isTestMode = false;
-    appMgrServiceInner->GetRunningProcess(appRecord, info);
+    appMgrServiceInner->appQueryHelper_.GetRunningProcess(appRecord, info);
     EXPECT_TRUE(info.isTestMode);
     TAG_LOGI(AAFwkTag::TEST, "GetRunningProcess_004 end");
 }
@@ -1458,7 +1458,7 @@ HWTEST_F(AppMgrServiceInnerNinthTest, GetRunningProcess_005, TestSize.Level1)
     EXPECT_NE(appRecord, nullptr);
     
     RunningProcessInfo info;
-    appMgrServiceInner->GetRunningProcess(appRecord, info);
+    appMgrServiceInner->appQueryHelper_.GetRunningProcess(appRecord, info);
     EXPECT_EQ(info.bundleType, static_cast<int32_t>(BundleType::APP));
     
     TAG_LOGI(AAFwkTag::TEST, "GetRunningProcess_005 end");
@@ -1486,7 +1486,7 @@ HWTEST_F(AppMgrServiceInnerNinthTest, GetRunningProcess_006, TestSize.Level1)
     const int32_t testAppIndex = 5;
     appRecord->SetAppIndex(testAppIndex);
     RunningProcessInfo info;
-    appMgrServiceInner->GetRunningProcess(appRecord, info);
+    appMgrServiceInner->appQueryHelper_.GetRunningProcess(appRecord, info);
     EXPECT_EQ(info.appCloneIndex, testAppIndex);
 
     TAG_LOGI(AAFwkTag::TEST, "GetRunningProcess_006 end");

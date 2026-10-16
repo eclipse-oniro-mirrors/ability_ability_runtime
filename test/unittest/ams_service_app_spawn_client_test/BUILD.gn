@@ -38,6 +38,8 @@ ohos_unittest("AmsServiceAppSpawnClientTest") {
     "${ability_runtime_services_path}/appmgr/src/app_mgr_service.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_mgr_service_event_handler.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_mgr_service_inner.cpp",
+
+    "${ability_runtime_services_path}/appmgr/src/app_query_helper.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_pidfd_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_native_spawn_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_preloader.cpp",
