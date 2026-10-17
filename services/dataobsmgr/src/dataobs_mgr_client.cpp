@@ -358,7 +358,6 @@ int32_t DataObsMgrClient::TryRegisterObserver(const Uri &uri, sptr<IDataAbilityO
 void DataObsMgrClient::ReRegister()
 {
     decltype(observers_) observers(std::move(observers_));
-    observers_.Clear();
     observers.ForEach([this](const auto &key, const auto &value) {
         for (const auto &val : value) {
             int32_t ret = (val.isExtension)
@@ -373,7 +372,6 @@ void DataObsMgrClient::ReRegister()
         return false;
     });
     decltype(observerExts_) observerExts(std::move(observerExts_));
-    observerExts_.Clear();
     observerExts.ForEach([this](const auto &key, const auto &value) {
         for (const auto &param : value) {
             int32_t ret = RegisterObserverExt(param.uri, key, param.isDescendants);
