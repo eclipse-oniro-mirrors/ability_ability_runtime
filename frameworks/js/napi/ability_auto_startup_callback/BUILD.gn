@@ -46,6 +46,7 @@ ohos_shared_library("autostartupcallback") {
     "c_utils:utils",
     "eventhandler:libeventhandler",
     "hilog:libhilog",
+    "libuv:uv",
     "ipc:ipc_core",
     "napi:ace_napi",
     "window_manager:libwm",
