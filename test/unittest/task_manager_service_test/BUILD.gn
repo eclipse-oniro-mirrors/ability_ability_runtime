@@ -66,6 +66,7 @@ ohos_unittest("task_manager_service_test") {
     "napi:ace_napi",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "selinux_adapter:librestorecon",
   ]
 
   defines = []
