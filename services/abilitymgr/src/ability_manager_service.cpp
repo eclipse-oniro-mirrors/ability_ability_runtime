@@ -10900,13 +10900,15 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
 }
 
 int32_t AbilityManagerService::ExecutePrelaunchInterceptors(AbilityRequest &abilityRequest, int32_t userId,
-    const std::shared_ptr<EventInfo> &eventInfo)
+    int32_t appIndex, const std::shared_ptr<EventInfo> &eventInfo)
 {
     AbilityInterceptorParam interceptorParam = InterceptorParamBuilder(abilityRequest.want, -1, userId)
         .WithUI(false).Visible(false)
         .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>(abilityRequest.abilityInfo))
         .Context<AbilityInterceptorParam::EcologicalCtx>({false, false, ""})
-        .Context<AbilityInterceptorParam::DisposedCtx>({0, nullptr})
+        // Dispose/running-control rules are stored per appIndex; pass the resolved clone index
+        // so clone instances honor their own MDM rules (aligned with StartAbilityByCall paths).
+        .Context<AbilityInterceptorParam::DisposedCtx>({appIndex, nullptr})
         .BlockAllEscapeCheck(MakeBlockAllEscapeCheck(abilityRequest)).Build();
     int32_t result = interceptorExecuter_ == nullptr ? ERR_NULL_INTERCEPTOR_EXECUTER :
         interceptorExecuter_->DoProcess(interceptorParam);
@@ -10950,15 +10952,16 @@ int AbilityManagerService::StartAbilityForPrelaunch(const Want &want, const int3
         TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbilityForPrelaunch not support implicit start");
         return ERR_INVALID_VALUE;
     }
+    int32_t appIndex = 0;
     AbilityRequest abilityRequest;
-    int result = GeneratePrelaunchAbilityRequest(want, connect, oriValidUserId, abilityRequest);
+    int result = GeneratePrelaunchAbilityRequest(want, connect, oriValidUserId, abilityRequest, appIndex);
     if (result != ERR_OK) {
         return result;
     }
     UpdateCallerInfoUtil::GetInstance().UpdateCallerInfo(abilityRequest.want, nullptr);
     auto eventInfo = BuildEventInfo(want, oriValidUserId);
     eventInfo->calleeId = static_cast<int32_t>(CalleeId::START_ABILITY_FOR_PRELAUNCH);
-    result = ExecutePrelaunchInterceptors(abilityRequest, oriValidUserId, eventInfo);
+    result = ExecutePrelaunchInterceptors(abilityRequest, oriValidUserId, appIndex, eventInfo);
     if (result != ERR_OK) {
         return result;
     }
@@ -10974,15 +10977,30 @@ int AbilityManagerService::StartAbilityForPrelaunch(const Want &want, const int3
 }
 
 int AbilityManagerService::GeneratePrelaunchAbilityRequest(const Want &want,
-    const sptr<IAbilityConnection> &connect, int32_t oriValidUserId, AbilityRequest &abilityRequest)
+    const sptr<IAbilityConnection> &connect, int32_t oriValidUserId, AbilityRequest &abilityRequest,
+    int32_t &appIndex)
 {
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
     CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), oriValidUserId),
-        RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+        RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed.");
 #else
-    if (want.HasParameter(Want::PARAM_APP_CLONE_INDEX_KEY)) {
-        const_cast<Want &>(want).SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 0);
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "StartAbilityForPrelaunch force specified appIndex to 0");
+    StartAbilityUtils::ResolveTargetAppCloneIndex(want, nullptr, oriValidUserId);
+    if (!StartAbilityUtils::GetAppIndex(want, nullptr, oriValidUserId, appIndex)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbilityForPrelaunch GetAppIndex failed");
+        return ERR_APP_CLONE_INDEX_INVALID;
+    }
+    // DLP sandbox instances are out of the prelaunch scope (RSS never preloads DLP instances);
+    // reject the want explicitly so DLP instances cannot be preloaded without authorization.
+    if (want.HasParameter(AbilityRuntime::ServerConstant::DLP_INDEX)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbilityForPrelaunch not support DLP prelaunch");
+        return CHECK_PERMISSION_FAILED;
+    }
+    auto checkRet = AbilityPermissionUtil::GetInstance().CheckMultiInstanceAndAppClone(
+        const_cast<Want &>(want), oriValidUserId, appIndex, nullptr, false);
+    if (checkRet != ERR_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbilityForPrelaunch CheckMultiInstanceAndAppClone failed: %{public}d",
+            checkRet);
+        return checkRet;
     }
 #endif
     abilityRequest.callType = AbilityCallType::CALL_REQUEST_TYPE;
