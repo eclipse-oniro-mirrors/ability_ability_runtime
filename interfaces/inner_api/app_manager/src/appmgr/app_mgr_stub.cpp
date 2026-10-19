@@ -1235,6 +1235,7 @@ int32_t AppMgrStub::HandleScheduleAcceptWantDone(MessageParcel &data, MessagePar
     }
     auto flag = data.ReadString();
 
+    want->AdoptAllLegacyFd(AAFwk::FdTraversalMode::RECURSIVE);
     ScheduleAcceptWantDone(recordId, *want, flag);
     delete want;
     return NO_ERROR;
@@ -1250,6 +1251,7 @@ int32_t AppMgrStub::HandleScheduleNewProcessRequestDone(MessageParcel &data, Mes
     }
     auto flag = data.ReadString();
 
+    want->AdoptAllLegacyFd(AAFwk::FdTraversalMode::RECURSIVE);
     ScheduleNewProcessRequestDone(recordId, *want, flag);
     delete want;
     return NO_ERROR;
