@@ -765,7 +765,7 @@ int AbilityManagerService::StartAbility(const Want &want, int32_t userId, int re
         userId = GetValidUserId(userId);
     }
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    if(!AbilityUtil::IsStartFreeInstall(want)) {
+    if (!AbilityUtil::IsStartFreeInstall(want)) {
         CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), userId),
             RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
     }
@@ -1424,8 +1424,15 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
     if ((param.callerToken == nullptr || !CheckIfOperateRemote(param.want)) &&
         !AbilityUtil::IsStartFreeInstall(param.want)) {
-        CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(param.want, oriValidUserId),
-            RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+        if (!CloneForAccountUtil::ProcessAppIndex(param.want, oriValidUserId)) {
+            // Self free install target (caller's own bundle with module name) may be not installed,
+            // keep going and let selfFreeInstallEnable handle it.
+            auto callerRecord = Token::GetAbilityRecordByToken(param.callerToken);
+            bool isSelfFreeInstall = param.want.GetModuleNameRef() != "" && callerRecord != nullptr &&
+                param.want.GetBundleNameRef() == callerRecord->GetAbilityInfo().bundleName;
+            CHECK_TRUE_RETURN_RET(!isSelfFreeInstall, RESOLVE_ABILITY_ERR,
+                "CloneForAccountUtil::ProcessAppIndex failed");
+        }
     }
 #endif
     std::string dialogSessionId = param.want.GetStringParam("dialogSessionId");
@@ -2158,8 +2165,10 @@ int AbilityManagerService::StartAbilityDetails(const Want &want, const AbilitySt
     auto eventInfo = BuildEventInfo(want, userId);
     int32_t oriValidUserId = GetValidUserId(userId);
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), oriValidUserId),
-        RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+    if (!AbilityUtil::IsStartFreeInstall(want)) {
+        CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), oriValidUserId),
+            RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+    }
 #endif
     if (want.GetBoolParam(AbilityConfig::DEBUG_APP, false)) {
         if (!system::GetBoolParameter(DEVELOPER_MODE_STATE, false)) {
@@ -2507,8 +2516,10 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
     auto eventInfo = BuildEventInfo(want, userId);
     int32_t oriValidUserId = GetValidUserId(userId);
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), oriValidUserId),
-        RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+    if (!AbilityUtil::IsStartFreeInstall(want)) {
+        CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), oriValidUserId),
+            RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+    }
 #endif
     // prevent the app from dominating the screen
     if (callerToken == nullptr && !IsCallerSceneBoard() && !isCallByShortcut &&
