@@ -68,6 +68,23 @@ private:
     void DumpNativeHeap(const OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult);
     napi_value GetJsLeakModule(napi_env env, napi_value global);
     napi_value GetMethodCheck(napi_env env, napi_value requireValue, napi_value global);
+    // Asynchronously detect and unwind orphan thread stacks, then report the
+    // result via `callback`. This is the THREAD_STACK_LEAK branch of DumpMem.
+    // Threading contract (addresses ai_review concern about cross-thread risk):
+    // - Detection runs on an ffrt worker thread, NOT the caller's thread.
+    // - `callback` is invoked on that ffrt worker thread. Callers MUST pass a
+    //   Binder proxy (IPC代理) so OnMemDumpDone marshals across the binder
+    //   driver and is thread-safe; if a local in-process stub is passed, its
+    //   OnMemDumpDone implementation must be thread-safe on its own.
+    // - DumpMem returns immediately for this dump type (async branch); callers
+    //   must NOT expect a synchronous dumpResult and must wait for the callback.
+    static void SubmitThreadStackLeakTask(sptr<IMemDumpCallback> callback);
+    // Report the thread stack leak result via AppMgrClient::ReportDumpMemResult.
+    // Returns true on success (RESULT_OK), false on failure (client null,
+    // non-OK return, or exception). Extracted from SubmitThreadStackLeakTask to
+    // keep that method's nesting depth within the codeCheck limit (<=4).
+    static bool ReportThreadStackLeakResult(const sptr<IMemDumpCallback> &callback,
+        const std::string &dumpResult);
     static bool Init2DOOMDumpQuota(const std::string &path, uint32_t oomDumpProcessMaxQuota);
     static bool Check2DOOMDumpQuota(uint32_t oomDumpMaxQuota, uint32_t oomDumpProcessMaxQuota);
     static bool Get2DQuota(const std::string &path, const std::string &property, uint64_t &timestamp, int &quota);
@@ -95,6 +112,9 @@ private:
     static bool GetDumpResult(std::string &dumpResult);
     static bool GetSnapshot(int fd);
     static std::string DetectAndUnwindThreadStackLeak();
+    static std::string UnwindLeakedStacks(
+        const std::vector<ThreadStackRegion> &regions,
+        std::shared_ptr<OHOS::HiviewDFX::DfxMaps> &maps);
     // Extract tid from a thread stack map name like "[anon:stack:11111]".
     // Returns 0 if the tid cannot be parsed.
     static int32_t ParseTidFromMapName(const std::string &mapName);

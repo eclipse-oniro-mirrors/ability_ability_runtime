@@ -978,7 +978,10 @@ ohos_unittest("dump_runtime_helper_test") {
     defines = [ "CJ_FRONTEND" ]
   }
 
-  configs = [ ":module_context_config" ]
+  configs = [
+    ":module_context_config",
+    ":appkit_exception_config",
+  ]
 
   deps = [
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
@@ -1080,7 +1083,10 @@ ohos_unittest("dump_runtime_helper_second_test") {
     "dump_runtime_helper_second_test.cpp",
   ]
 
-  configs = [ ":module_context_config" ]
+  configs = [
+    ":module_context_config",
+    ":appkit_exception_config",
+  ]
 
   deps = [
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
