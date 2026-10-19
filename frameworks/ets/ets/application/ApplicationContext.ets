@@ -244,8 +244,12 @@ export default class ApplicationContext extends Context {
     this.nativesetColorMode(colorMode);
   }
 
-  setFont(font: string, enableAnimation?: boolean): void {
-    this.nativesetFont(font, enableAnimation !== false);
+  setFont(font: string): void {
+    this.nativesetFont(font, true);
+  }
+
+  setFont(font: string, enableAnimation: boolean): void {
+    this.nativesetFont(font, enableAnimation);
   }
 
   restartApp(want: Want): void {
