@@ -71,6 +71,9 @@ BundleMgrHelper::~BundleMgrHelper() {}
 ErrCode BundleMgrHelper::GetBundleInfoV9(const std::string &bundleName, int32_t flags, BundleInfo &bundleInfo,
     int32_t userId)
 {
+    // RegisterAgentCard may be invoked concurrently (multi-thread tests); the shared mock
+    // state below is not otherwise synchronized, so guard it to avoid heap corruption
+    std::lock_guard<std::mutex> lock(AgentRuntime::MyFlag::bundleMutex);
     AgentRuntime::MyFlag::getBundleInfoV9CallNames.push_back(bundleName);
     if (!AgentRuntime::MyFlag::retGetBundleInfo) {
         return ERR_INVALID_VALUE;
@@ -81,6 +84,7 @@ ErrCode BundleMgrHelper::GetBundleInfoV9(const std::string &bundleName, int32_t 
 
 ErrCode BundleMgrHelper::GetBundleInfosV9(int32_t flags, std::vector<BundleInfo> &bundleInfos, int32_t userId)
 {
+    std::lock_guard<std::mutex> lock(AgentRuntime::MyFlag::bundleMutex);
     AgentRuntime::MyFlag::lastGetBundleInfosUserId = userId;
     if (!AgentRuntime::MyFlag::retGetBundleInfos) {
         return ERR_INVALID_VALUE;

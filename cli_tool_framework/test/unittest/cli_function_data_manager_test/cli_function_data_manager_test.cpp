@@ -294,6 +294,7 @@ HWTEST_F(CliFunctionDataManagerTest, FunctionInfo_ParseFromJson_ParseToJson_Roun
     nlohmann::json originalJson = R"({
         "functionName": "user_function",
         "functionNamespace": "user_namespace",
+        "description": "User function",
         "functionType": 0,
         "version": "1.0",
         "userId": 100
