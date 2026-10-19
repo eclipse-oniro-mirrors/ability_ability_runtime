@@ -916,12 +916,12 @@ napi_value JsApplicationContextUtils::OnSetFont(napi_env env, NapiCallbackInfo& 
         return CreateJsUndefined(env);
     }
     bool enableAnimation = true;
-    if (info.argc == ARGC_TWO) {
-        bool value = true;
-        if (ConvertFromJsValue(env, info.argv[INDEX_ONE], value)) {
-            enableAnimation = value;
-        } else {
-            TAG_LOGW(AAFwkTag::APPKIT, "enableAnimation is not boolean, use default true");
+    if (info.argc == ARGC_TWO && !CheckTypeForNapiValue(env, info.argv[INDEX_ONE], napi_undefined)) {
+        if (!ConvertFromJsValue(env, info.argv[INDEX_ONE], enableAnimation)) {
+            TAG_LOGE(AAFwkTag::APPKIT, "Parse enableAnimation failed");
+            ThrowInvalidParamError(env,
+                "Parse param enableAnimation failed, enableAnimation must be boolean.");
+            return CreateJsUndefined(env);
         }
     }
     applicationContext->SetFont(font, enableAnimation);

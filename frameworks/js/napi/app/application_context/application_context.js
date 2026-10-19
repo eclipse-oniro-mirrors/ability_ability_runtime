@@ -323,7 +323,10 @@ class ApplicationContext {
   }
 
   setFont(font, enableAnimation) {
-    return this.__context_impl__.setFont(font, enableAnimation !== false);
+    if (enableAnimation === undefined) {
+      return this.__context_impl__.setFont(font);
+    }
+    return this.__context_impl__.setFont(font, enableAnimation);
   }
 
   setFontSizeScale(fontSizeScale) {
