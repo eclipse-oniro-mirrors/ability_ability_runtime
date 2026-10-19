@@ -36,7 +36,8 @@
         "ability_runtime_no_screen",
         "ability_runtime_forbid_start_enabled",
         "ability_runtime_enable_clone_for_account",
-        "ability_runtime_dsoftbus_enable"
+        "ability_runtime_dsoftbus_enable",
+        "os_dlp_part_enabled"
       ],
       "adapted_system_type": [
           "standard"

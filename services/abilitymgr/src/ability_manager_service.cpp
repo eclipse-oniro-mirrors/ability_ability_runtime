@@ -765,8 +765,10 @@ int AbilityManagerService::StartAbility(const Want &want, int32_t userId, int re
         userId = GetValidUserId(userId);
     }
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), userId),
-        RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+    if(!AbilityUtil::IsStartFreeInstall(want)) {
+        CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), userId),
+            RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+    }
 #endif
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     XCOLLIE_TIMER_LESS_IGNORE(__PRETTY_FUNCTION__, !want.GetDeviceIdRef().empty());
@@ -1420,7 +1422,8 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
     }
     int32_t oriValidUserId = GetValidUserId(param.userId);
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    if (param.callerToken == nullptr || !CheckIfOperateRemote(param.want)) {
+    if ((param.callerToken == nullptr || !CheckIfOperateRemote(param.want)) &&
+        !AbilityUtil::IsStartFreeInstall(param.want)) {
         CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(param.want, oriValidUserId),
             RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
     }
@@ -6350,7 +6353,7 @@ int32_t AbilityManagerService::ConnectAbilityCommon(
     }
 
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(abilityWant, validUserId, true),
+    CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(abilityWant, validUserId, isQueryExtensionOnly),
         RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
 #endif
 
