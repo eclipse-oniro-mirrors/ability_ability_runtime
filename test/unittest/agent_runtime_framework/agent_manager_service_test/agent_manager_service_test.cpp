@@ -212,6 +212,7 @@ void AgentManagerServiceTest::SetUp(void)
     AgentManagerService::GetInstance()->OnStop();
     MyFlag::retVerifyCallingPermission = true;
     MyFlag::retVerifyConnectAgentPermission = true;
+    MyFlag::retVerifyConnectAgentFromBackgroundPermission = false;
     MyFlag::retVerifyGetAgentCardPermission = true;
     MyFlag::retJudgeCallerIsAllowedToUseSystemAPI = true;
     MyFlag::retVerifyModifyAgentCardPermission = true;
@@ -1103,6 +1104,31 @@ HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_002, TestSize.Lev
     EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connection),
         AAFwk::NOT_TOP_ABILITY);
     MyFlag::processState = AppExecFwk::AppProcessState::APP_STATE_FOREGROUND;
+}
+
+/**
+* @tc.name  : ConnectAgentExtensionAbility_036
+* @tc.number: ConnectAgentExtensionAbility_036
+* @tc.desc  : Test ConnectAgentExtensionAbility allows background caller with CONNECT_AGENT_FROM_BACKGROUND permission
+*/
+HWTEST_F(AgentManagerServiceTest, ConnectAgentExtensionAbility_036, TestSize.Level1)
+{
+    MyFlag::retVerifyCallingPermission = true;
+    MyFlag::retQueryExtensionAbilityInfos = true;
+    MyFlag::retGetProcessRunningInfoByPid = ERR_OK;
+    MyFlag::processState = AppExecFwk::AppProcessState::APP_STATE_BACKGROUND;
+    MyFlag::retVerifyConnectAgentFromBackgroundPermission = true;
+    MyFlag::retGetAgentCardByAgentId = ERR_OK;
+    MyFlag::agentCardAgentId = "testAgent";
+    MyFlag::retConnectAbilityWithExtensionType = ERR_OK;
+    AAFwk::Want want;
+    want.SetParam(AGENTID_KEY, std::string("testAgent"));
+    want.SetBundle("test.bundle");
+    want.SetElementName("test.bundle", "TestAbility");
+    sptr<MockAbilityConnection> connection = new MockAbilityConnection();
+    EXPECT_EQ(AgentManagerService::GetInstance()->ConnectAgentExtensionAbility(want, connection), ERR_OK);
+    MyFlag::processState = AppExecFwk::AppProcessState::APP_STATE_FOREGROUND;
+    MyFlag::retVerifyConnectAgentFromBackgroundPermission = false;
 }
 
 /**

@@ -13434,8 +13434,11 @@ int32_t AbilityManagerService::CheckPermissionForAgentExtension(AppExecFwk::Exte
         return ret;
     }
     if (processInfo.state_ != AppExecFwk::AppProcessState::APP_STATE_FOREGROUND) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "not foreground app");
-        return AAFwk::NOT_TOP_ABILITY;
+        if (!AAFwk::PermissionVerification::GetInstance()->VerifyCallingPermission(
+            AAFwk::PermissionConstants::PERMISSION_CONNECT_AGENT_FROM_BACKGROUND)) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "not foreground app");
+            return AAFwk::NOT_TOP_ABILITY;
+        }
     }
     return ERR_OK;
 }
