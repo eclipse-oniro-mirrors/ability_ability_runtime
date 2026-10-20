@@ -2123,8 +2123,8 @@ HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_003, TestSi
     TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_003 start");
     PermissionVerification::verifyCallingPermissionRet_ = false;
     auto ret = RunImplicitStartWithCandidates({ MakeCandidateInfo("com.test.implicit", true) }, 1);
-    // Visible candidate short-circuits the gate before the permission call.
-    EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, 0);
+    // Permission is verified once up front; a visible candidate is never erased.
+    EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, 1);
     EXPECT_NE(ret, CHECK_PERMISSION_FAILED);
     TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_003 end");
 }
@@ -2155,7 +2155,8 @@ HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_005, TestSi
     auto ret = RunImplicitStartWithCandidates(
         { MakeCandidateInfo("com.test.implicit", false), MakeCandidateInfo("com.test.other", false) }, 1);
     EXPECT_EQ(ret, CHECK_PERMISSION_FAILED);
-    EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, 2);
+    // Permission is verified once regardless of candidate count.
+    EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, 1);
     EXPECT_EQ(PermissionVerification::lastPermissionName_,
         PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY);
     EXPECT_EQ(PermissionVerification::lastSpecifyTokenId_, 1);
@@ -2208,8 +2209,8 @@ HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_008, TestSi
     PermissionVerification::verifyCallingPermissionRet_ = true;
     auto ret = RunImplicitStartWithCandidates(
         { MakeCandidateInfo("com.test.implicit", false), MakeCandidateInfo("com.test.other", false) }, 1);
-    // Permission granted: no candidate is erased, so the start is not rejected.
-    EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, 2);
+    // Permission granted (verified once): no candidate is erased, so the start is not rejected.
+    EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, 1);
     EXPECT_EQ(PermissionVerification::lastPermissionName_,
         PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY);
     EXPECT_EQ(PermissionVerification::lastSpecifyTokenId_, 1);

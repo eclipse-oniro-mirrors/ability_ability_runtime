@@ -175,9 +175,10 @@ int ImplicitStartProcessor::ImplicitStartAbility(AbilityRequest &request, int32_
         return ret;
     }
     if (request.specifyTokenId > 0 && !dialogAppInfos.empty()) {
+        bool hasPermission = PermissionVerification::GetInstance()->VerifyCallingPermission(
+            PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY, request.specifyTokenId);
         for (auto it = dialogAppInfos.begin(); it != dialogAppInfos.end();) {
-            if (!it->visible && !PermissionVerification::GetInstance()->VerifyCallingPermission(
-                PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY, request.specifyTokenId)) {
+            if (!it->visible && !hasPermission) {
                 TAG_LOGE(AAFwkTag::ABILITYMGR, "Caller without permission, erase: %{public}s",
                     it->bundleName.c_str());
                 it = dialogAppInfos.erase(it);
