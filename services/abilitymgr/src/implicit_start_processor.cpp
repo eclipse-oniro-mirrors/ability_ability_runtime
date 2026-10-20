@@ -180,7 +180,7 @@ int ImplicitStartProcessor::ImplicitStartAbility(AbilityRequest &request, int32_
         if (!hasPermission) {
             for (auto it = dialogAppInfos.begin(); it != dialogAppInfos.end();) {
                 if (!it->visible) {
-                    TAG_LOGI(AAFwkTag::ABILITYMGR, "Caller without permission, erase: %{public}s",
+                    TAG_LOGW(AAFwkTag::ABILITYMGR, "Caller without permission, erase: %{public}s",
                         it->bundleName.c_str());
                     it = dialogAppInfos.erase(it);
                 } else {
