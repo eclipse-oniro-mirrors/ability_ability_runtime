@@ -807,6 +807,14 @@ void DumpRuntimeHelper::DumpKmpKotlinHeap(const OHOS::AppExecFwk::MemDumpInfo &i
     }
     DumpFdGuard kmpFdGuard(fd);
     auto& dumpListener = OHOS::HiviewDFX::HidebugMemDumpListener::GetInstance();
+    if (info.needGc) {
+        bool gcRet = dumpListener.TriggerListener("KMP", fd,
+            OH_HiDebug_MemListenerType::OH_HIDEBUG_RUNNING_GC, false, nullptr);
+        if (!gcRet) {
+            TAG_LOGE(AAFwkTag::APPKIT, "TriggerListener gc failed");
+        }
+        return;
+    }
     bool ret = dumpListener.TriggerListener("KMP", fd,
         OH_HiDebug_MemListenerType::OH_HIDEBUG_DUMP_SNAPSHOT, info.mayReportToOEM, nullptr);
     if (!ret) {
