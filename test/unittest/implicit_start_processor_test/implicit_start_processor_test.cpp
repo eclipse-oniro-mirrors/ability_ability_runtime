@@ -2142,7 +2142,7 @@ HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_004, TestSi
 
 /**
  * @tc.name: ImplicitStartAbility_Permission_005
- * @tc.desc: multiple candidates skip the invisible-ability permission check (selector dialog)
+ * @tc.desc: all invisible candidates without permission are erased and the start is rejected
  */
 HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_005, TestSize.Level1)
 {
@@ -2150,10 +2150,27 @@ HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_005, TestSi
     PermissionVerification::verifyCallingPermissionRet_ = false;
     auto ret = RunImplicitStartWithCandidates(
         { MakeCandidateInfo("com.test.implicit", false), MakeCandidateInfo("com.test.other", false) }, 1);
-    // Multiple candidates short-circuit the gate before the permission call.
-    EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, 0);
-    EXPECT_NE(ret, CHECK_PERMISSION_FAILED);
+    EXPECT_EQ(ret, CHECK_PERMISSION_FAILED);
+    EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, 2);
+    EXPECT_EQ(PermissionVerification::lastPermissionName_,
+        PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY);
+    EXPECT_EQ(PermissionVerification::lastSpecifyTokenId_, 1);
     TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_005 end");
+}
+
+/**
+ * @tc.name: ImplicitStartAbility_Permission_006
+ * @tc.desc: invisible candidates are erased while visible candidates remain startable
+ */
+HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_006 start");
+    PermissionVerification::verifyCallingPermissionRet_ = false;
+    auto ret = RunImplicitStartWithCandidates(
+        { MakeCandidateInfo("com.test.implicit", false), MakeCandidateInfo("com.test.other", true) }, 1);
+    ExpectGateCalledWith(1);
+    EXPECT_NE(ret, CHECK_PERMISSION_FAILED);
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_006 end");
 }
 }  // namespace AAFwk
 }  // namespace OHOS
