@@ -177,18 +177,20 @@ int ImplicitStartProcessor::ImplicitStartAbility(AbilityRequest &request, int32_
     if (request.specifyTokenId > 0 && !dialogAppInfos.empty()) {
         bool hasPermission = PermissionVerification::GetInstance()->VerifyCallingPermission(
             PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY, request.specifyTokenId);
-        for (auto it = dialogAppInfos.begin(); it != dialogAppInfos.end();) {
-            if (!it->visible && !hasPermission) {
-                TAG_LOGE(AAFwkTag::ABILITYMGR, "Caller without permission, erase: %{public}s",
-                    it->bundleName.c_str());
-                it = dialogAppInfos.erase(it);
-            } else {
-                it++;
+        if (!hasPermission) {
+            for (auto it = dialogAppInfos.begin(); it != dialogAppInfos.end();) {
+                if (!it->visible) {
+                    TAG_LOGE(AAFwkTag::ABILITYMGR, "Caller without permission, erase: %{public}s",
+                        it->bundleName.c_str());
+                    it = dialogAppInfos.erase(it);
+                } else {
+                    it++;
+                }
             }
-        }
-        if (dialogAppInfos.empty()) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "Caller without permission");
-            return CHECK_PERMISSION_FAILED;
+            if (dialogAppInfos.empty()) {
+                TAG_LOGE(AAFwkTag::ABILITYMGR, "Caller without permission");
+                return CHECK_PERMISSION_FAILED;
+            }
         }
     }
     AbilityUtil::WantSetParameterWindowMode(request.want, windowMode);
