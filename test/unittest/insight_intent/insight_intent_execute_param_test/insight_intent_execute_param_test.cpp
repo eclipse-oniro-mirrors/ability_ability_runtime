@@ -586,6 +586,77 @@ HWTEST_F(InsightIntentExecuteParamTest, ToolCallId_MarshallingUnmarshalling_0100
 }
 
 /**
+ * @tc.name: TaskId_MarshallingUnmarshalling_0100
+ * @tc.desc: verify taskId_ survives a Marshalling/Unmarshalling round trip.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, TaskId_MarshallingUnmarshalling_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    InsightIntentExecuteParam originalParam;
+    originalParam.bundleName_ = TEST_BUNDLE_NANE;
+    originalParam.insightIntentParam_ = std::make_shared<WantParams>();
+    originalParam.toolCallId_ = "tc-001";
+    originalParam.taskId_ = "task-001";
+
+    Parcel parcel;
+    EXPECT_EQ(originalParam.Marshalling(parcel), true);
+
+    InsightIntentExecuteParam unmarshalledParam;
+    EXPECT_EQ(unmarshalledParam.ReadFromParcel(parcel), true);
+    EXPECT_EQ(unmarshalledParam.toolCallId_, "tc-001");
+    EXPECT_EQ(unmarshalledParam.taskId_, "task-001");
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: TaskId_UnmarshallingLegacyParcel_0100
+ * @tc.desc: verify a legacy parcel without the taskId tail field is parsed
+ *           successfully and taskId_ keeps the default empty value.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, TaskId_UnmarshallingLegacyParcel_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    // write fields in the legacy order, stopping at toolCallId_ (no taskId_ tail field)
+    Parcel parcel;
+    parcel.WriteString16(Str8ToStr16(TEST_BUNDLE_NANE));
+    parcel.WriteString16(Str8ToStr16(TEST_MODULE_NANE));
+    parcel.WriteString16(Str8ToStr16(TEST_ABILITY_NANE));
+    parcel.WriteString16(Str8ToStr16(TEST_INSIGHT_INTENT_NANE));
+    WantParams insightIntentParam;
+    insightIntentParam.SetParam("testKey", Integer::Box(123));
+    parcel.WriteParcelable(&insightIntentParam);
+    parcel.WriteInt32(0);
+    parcel.WriteUint64(100);
+    parcel.WriteInt32(AppExecFwk::INVALID_DISPLAY_ID);
+    std::vector<std::string> uris;
+    parcel.WriteStringVector(uris);
+    parcel.WriteInt32(0);
+    parcel.WriteInt32(-1);
+    parcel.WriteInt8(0);
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    std::vector<std::string> methodParams;
+    parcel.WriteStringVector(methodParams);
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteBool(false);
+    parcel.WriteString16(Str8ToStr16("legacyDeviceId"));
+    parcel.WriteString16(Str8ToStr16("legacyToolCallId"));
+
+    InsightIntentExecuteParam unmarshalledParam;
+    EXPECT_EQ(unmarshalledParam.ReadFromParcel(parcel), true);
+    EXPECT_EQ(unmarshalledParam.deviceId_, "legacyDeviceId");
+    EXPECT_EQ(unmarshalledParam.toolCallId_, "legacyToolCallId");
+    EXPECT_EQ(unmarshalledParam.taskId_, "");
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
  * @tc.name: ToolCallId_UnmarshallingLegacyParcel_0100
  * @tc.desc: verify a legacy parcel without the toolCallId tail field is parsed successfully.
  * @tc.type: FUNC

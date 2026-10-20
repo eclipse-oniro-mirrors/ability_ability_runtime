@@ -190,6 +190,11 @@ int32_t AppMgrService::FinishTask(const std::string &taskId)
     return TaskManagerService::GetInstance().FinishTask(taskId);
 }
 
+int32_t AppMgrService::UnregisterManagedProcess(const std::string &taskId, int32_t pid)
+{
+    return TaskManagerService::GetInstance().UnregisterManagedProcess(taskId, pid);
+}
+
 AppMgrServiceState AppMgrService::QueryServiceState()
 {
     if (appMgrServiceInner_) {

@@ -168,6 +168,10 @@ bool InsightIntentExecuteParam::ReadFromParcel(Parcel &parcel)
     if (parcel.GetReadableBytes() > 0) {
         toolCallId_ = Str16ToStr8(parcel.ReadString16());
     }
+    
+    if (parcel.GetReadableBytes() > 0) {
+        taskId_ = Str16ToStr8(parcel.ReadString16());
+    }
     return true;
 }
 
@@ -210,6 +214,7 @@ bool InsightIntentExecuteParam::Marshalling(Parcel &parcel) const
     parcel.WriteBool(isServiceMatch_);
     parcel.WriteString16(Str8ToStr16(deviceId_));
     parcel.WriteString16(Str8ToStr16(toolCallId_));
+    parcel.WriteString16(Str8ToStr16(taskId_));
     return true;
 }
 

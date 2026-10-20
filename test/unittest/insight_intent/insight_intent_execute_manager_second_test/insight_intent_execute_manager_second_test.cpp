@@ -2565,5 +2565,128 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, OnInsightAppDied_017, TestSize.L
     TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_017 end.");
 }
 
+/**
+ * @tc.name: AddRecord_WithTaskId_0100
+ * @tc.desc: Test AddRecord stores the taskId passed through the last parameter.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, AddRecord_WithTaskId_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AddRecord_WithTaskId_0100 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
+    ASSERT_NE(callToken, nullptr);
+
+    uint64_t intentId = 0;
+    manager->AddRecord(100, callToken, "test.bundle.taskid", intentId,
+        ExecuteParam{.callerBundleName = "caller.bundle"}, "ohos_task_id_0100");
+    ASSERT_EQ(manager->records_.count(intentId), 1);
+    EXPECT_EQ(manager->records_[intentId]->taskId, "ohos_task_id_0100");
+
+    uint64_t intentIdDefault = 0;
+    manager->AddRecord(101, callToken, "test.bundle.taskid", intentIdDefault,
+        ExecuteParam{.callerBundleName = "caller.bundle"});
+    ASSERT_EQ(manager->records_.count(intentIdDefault), 1);
+    EXPECT_TRUE(manager->records_[intentIdDefault]->taskId.empty());
+    TAG_LOGI(AAFwkTag::TEST, "AddRecord_WithTaskId_0100 end.");
+}
+
+/**
+ * @tc.name: RemoveExecuteIntent_Unregister_0100
+ * @tc.desc: Test RemoveExecuteIntent removes the record even when taskId/targetPid are absent
+ *           (helper guard no-op, no crash).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, RemoveExecuteIntent_Unregister_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RemoveExecuteIntent_Unregister_0100 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
+    ASSERT_NE(callToken, nullptr);
+
+    uint64_t intentId = 0;
+    manager->AddRecord(100, callToken, "test.bundle.remove", intentId,
+        ExecuteParam{.callerBundleName = "caller.bundle"}, "ohos_task_id_remove");
+    ASSERT_EQ(manager->records_.count(intentId), 1);
+
+    // No targetPid set: unregister guard skips IPC, removal still happens.
+    auto ret = manager->RemoveExecuteIntent(intentId);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(manager->records_.count(intentId), 0);
+
+    // Removing a non-existent intent is still safe (no record, no crash).
+    ret = manager->RemoveExecuteIntent(999999);
+    EXPECT_EQ(ret, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "RemoveExecuteIntent_Unregister_0100 end.");
+}
+
+/**
+ * @tc.name: RemoveExecuteIntent_Unregister_0200
+ * @tc.desc: Test RemoveExecuteIntent with taskId and targetPid both present: record removed and
+ *           the unregister path runs without crash (AppMgrClient unavailable in UT, only logged).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, RemoveExecuteIntent_Unregister_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RemoveExecuteIntent_Unregister_0200 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
+    ASSERT_NE(callToken, nullptr);
+
+    uint64_t intentId = 0;
+    manager->AddRecord(100, callToken, "test.bundle.remove2", intentId,
+        ExecuteParam{.callerBundleName = "caller.bundle"}, "ohos_task_id_remove2");
+    ASSERT_EQ(manager->records_.count(intentId), 1);
+    manager->SetTargetPid(intentId, 5678);
+    EXPECT_EQ(manager->records_[intentId]->targetPid, 5678);
+
+    auto ret = manager->RemoveExecuteIntent(intentId);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(manager->records_.count(intentId), 0);
+    TAG_LOGI(AAFwkTag::TEST, "RemoveExecuteIntent_Unregister_0200 end.");
+}
+
+/**
+ * @tc.name: UnregisterAttributedProcess_Guard_0100
+ * @tc.desc: Test the unregister helper guard: empty taskId or non-positive pid returns directly.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, UnregisterAttributedProcess_Guard_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "UnregisterAttributedProcess_Guard_0100 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    // Guarded cases must not construct an AppMgrClient or crash.
+    manager->UnregisterAttributedProcess("", 1234);
+    manager->UnregisterAttributedProcess("ohos_task_id_guard", 0);
+    manager->UnregisterAttributedProcess("ohos_task_id_guard", -1);
+    TAG_LOGI(AAFwkTag::TEST, "UnregisterAttributedProcess_Guard_0100 end.");
+}
+
+/**
+ * @tc.name: UnregisterAttributedProcess_Guard_0200
+ * @tc.desc: Test the unregister helper with valid inputs runs the best-effort IPC path
+ *           (service unavailable in UT, failure is only logged, no crash).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, UnregisterAttributedProcess_Guard_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "UnregisterAttributedProcess_Guard_0200 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    // In UT there is no samgr: AppMgrClient::GetRemoteObject returns null,
+    // the helper only logs and must not crash.
+    manager->UnregisterAttributedProcess("ohos_task_id_ipc", 9999);
+    TAG_LOGI(AAFwkTag::TEST, "UnregisterAttributedProcess_Guard_0200 end.");
+}
+
 } // namespace AAFwk
 } // namespace OHOS

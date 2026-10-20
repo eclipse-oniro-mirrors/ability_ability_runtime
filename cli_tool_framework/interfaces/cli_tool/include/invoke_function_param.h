@@ -24,6 +24,7 @@ struct InvokeOptions {
     // Trace identifiers for log correlation; empty means "not provided".
     std::string toolCallId;
     std::string dmSessionId;
+    std::string taskId;
 };
 
 struct InvokeFunctionParam : public Parcelable {

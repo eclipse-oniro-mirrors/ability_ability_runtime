@@ -22,6 +22,7 @@
 #include "error_msg_util.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
+#include "insight_intent_execute_param.h"
 #include "ipc_capacity_wrap.h"
 #include "ishared_result_set.h"
 #include "session_info.h"
@@ -32,6 +33,27 @@ namespace AAFwk {
 namespace {
 const int64_t SCHEDULE_IPC_LOG_TIME = 10000;
 }
+
+const Want &AbilitySchedulerProxy::SanitizeWant(const Want &want, Want &sanitized)
+{
+    if (!want.HasParameter(AppExecFwk::INSIGHT_INTENT_TASK_ID)) {
+        return want;
+    }
+    sanitized = want;
+    sanitized.RemoveParam(AppExecFwk::INSIGHT_INTENT_TASK_ID);
+    return sanitized;
+}
+
+bool AbilitySchedulerProxy::SanitizeSessionInfo(const sptr<SessionInfo> &sessionInfo, sptr<SessionInfo> &sanitized)
+{
+    if (sessionInfo == nullptr || !sessionInfo->want.HasParameter(AppExecFwk::INSIGHT_INTENT_TASK_ID)) {
+        return false;
+    }
+    sanitized = new SessionInfo(*sessionInfo);
+    sanitized->want.RemoveParam(AppExecFwk::INSIGHT_INTENT_TASK_ID);
+    return true;
+}
+
 bool AbilitySchedulerProxy::WriteInterfaceToken(MessageParcel &data)
 {
     if (!data.WriteInterfaceToken(AbilitySchedulerProxy::GetDescriptor())) {
@@ -56,7 +78,9 @@ bool AbilitySchedulerProxy::ScheduleAbilityTransaction(const Want &want, const L
     }
     auto msgKey = AbilityRuntime::ErrorMgsUtil::BuildErrorKey(reinterpret_cast<uintptr_t>(this),
         "ScheduleAbilityTransaction");
-    if (!data.WriteParcelable(&want)) {
+    Want sanitizedWant;
+    const Want &wantToSend = SanitizeWant(want, sanitizedWant);
+    if (!data.WriteParcelable(&wantToSend)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write want failed");
         AbilityRuntime::ErrorMgsUtil::GetInstance().UpdateErrorMsg(msgKey, "write want failed");
         return false;
@@ -147,7 +171,9 @@ void AbilitySchedulerProxy::ScheduleConnectAbility(const Want &want)
     if (!WriteInterfaceToken(data)) {
         return;
     }
-    if (!data.WriteParcelable(&want)) {
+    Want sanitizedWant;
+    const Want &wantToSend = SanitizeWant(want, sanitizedWant);
+    if (!data.WriteParcelable(&wantToSend)) {
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "fail to WriteParcelable");
         return;
     }
@@ -166,7 +192,9 @@ void AbilitySchedulerProxy::ScheduleDisconnectAbility(const Want &want)
     if (!WriteInterfaceToken(data)) {
         return;
     }
-    if (!data.WriteParcelable(&want)) {
+    Want sanitizedWant;
+    const Want &wantToSend = SanitizeWant(want, sanitizedWant);
+    if (!data.WriteParcelable(&wantToSend)) {
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "fail to WriteParcelable");
         return;
     }
@@ -186,7 +214,9 @@ void AbilitySchedulerProxy::ScheduleCommandAbility(const Want &want, bool restar
     if (!WriteInterfaceToken(data)) {
         return;
     }
-    if (!data.WriteParcelable(&want)) {
+    Want sanitizedWant;
+    const Want &wantToSend = SanitizeWant(want, sanitizedWant);
+    if (!data.WriteParcelable(&wantToSend)) {
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "WriteParcelable failed");
         return;
     }
@@ -234,11 +264,16 @@ void AbilitySchedulerProxy::ScheduleCommandAbilityWindow(const Want &want, const
     if (!WriteInterfaceToken(data)) {
         return;
     }
-    if (!data.WriteParcelable(&want)) {
+    Want sanitizedWant;
+    const Want &wantToSend = SanitizeWant(want, sanitizedWant);
+    if (!data.WriteParcelable(&wantToSend)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "writeParcelable failed");
         return;
     }
-    if (!data.WriteParcelable(sessionInfo)) {
+    sptr<SessionInfo> sanitizedSessionInfo;
+    sptr<SessionInfo> sessionInfoToSend = SanitizeSessionInfo(sessionInfo, sanitizedSessionInfo) ?
+        sanitizedSessionInfo : sessionInfo;
+    if (!data.WriteParcelable(sessionInfoToSend)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "writeParcelable failed");
         return;
     }
@@ -1139,7 +1174,9 @@ void AbilitySchedulerProxy::OnExecuteIntent(const Want &want)
     if (!WriteInterfaceToken(data)) {
         return;
     }
-    data.WriteParcelable(&want);
+    Want sanitizedWant;
+    const Want &wantToSend = SanitizeWant(want, sanitizedWant);
+    data.WriteParcelable(&wantToSend);
     int32_t err = SendTransactCmd(IAbilityScheduler::SCHEDULE_ONEXECUTE_INTENT, data, reply, option);
     if (err != NO_ERROR) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "fail, err: %{public}d", err);
@@ -1159,7 +1196,9 @@ void AbilitySchedulerProxy::ExecuteSkill(const Want &want)
     if (!WriteInterfaceToken(data)) {
         return;
     }
-    if (!data.WriteParcelable(&want)) {
+    Want sanitizedWant;
+    const Want &wantToSend = SanitizeWant(want, sanitizedWant);
+    if (!data.WriteParcelable(&wantToSend)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Write wants fail");
         return;
     }
@@ -1183,7 +1222,9 @@ int32_t AbilitySchedulerProxy::CreateModalUIExtension(const Want &want)
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Write interface fail");
         return INNER_ERR;
     }
-    if (!data.WriteParcelable(&want)) {
+    Want sanitizedWant;
+    const Want &wantToSend = SanitizeWant(want, sanitizedWant);
+    if (!data.WriteParcelable(&wantToSend)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Write wants fail");
         return INNER_ERR;
     }
@@ -1241,7 +1282,9 @@ void AbilitySchedulerProxy::ScheduleCollaborate(const Want &want)
     }
     auto msgKey = AbilityRuntime::ErrorMgsUtil::BuildErrorKey(reinterpret_cast<uintptr_t>(this),
         "ScheduleCollaborate");
-    if (!data.WriteParcelable(&want)) {
+    Want sanitizedWant;
+    const Want &wantToSend = SanitizeWant(want, sanitizedWant);
+    if (!data.WriteParcelable(&wantToSend)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write want failed");
         AbilityRuntime::ErrorMgsUtil::GetInstance().UpdateErrorMsg(msgKey, "write want failed");
         return;

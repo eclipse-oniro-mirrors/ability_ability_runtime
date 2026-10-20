@@ -200,11 +200,13 @@ napi_value CreateJsInvokeFunctionParam(napi_env env, const InvokeFunctionParam &
     napi_set_named_property(env, jsObj, "args", AppExecFwk::WrapWantParams(env, param.args));
     // Matches FunctionHook.d.ts InvokeFunctionParam {invokeOptions?: InvokeOptions}; the ids
     // are read-only for the hook (not parsed back from the hook result).
-    if (!param.invokeOptions.toolCallId.empty() || !param.invokeOptions.dmSessionId.empty()) {
+    if (!param.invokeOptions.toolCallId.empty() || !param.invokeOptions.dmSessionId.empty() ||
+        !param.invokeOptions.taskId.empty()) {
         napi_value jsOptions = nullptr;
         napi_create_object(env, &jsOptions);
         SetOptionalStringProperty(env, jsOptions, "toolCallId", param.invokeOptions.toolCallId);
         SetOptionalStringProperty(env, jsOptions, "dmSessionId", param.invokeOptions.dmSessionId);
+        SetOptionalStringProperty(env, jsOptions, "taskId", param.invokeOptions.taskId);
         napi_set_named_property(env, jsObj, "invokeOptions", jsOptions);
     }
     return jsObj;
@@ -235,7 +237,7 @@ void UnwrapInvokeFunctionParam(napi_env env, napi_value jsObj, InvokeFunctionPar
 }
 
 bool UnwrapInvokeOptions(napi_env env, napi_value options,
-    std::string& toolCallId, std::string& dmSessionId, std::string& msg)
+    std::string& toolCallId, std::string& dmSessionId, std::string& taskId, std::string& msg)
 {
     if (options == nullptr) {
         return true;
@@ -256,7 +258,8 @@ bool UnwrapInvokeOptions(napi_env env, napi_value options,
         return false;
     }
     return UnwrapOptionalTraceId(env, options, "toolCallId", toolCallId, msg) &&
-        UnwrapOptionalTraceId(env, options, "dmSessionId", dmSessionId, msg);
+        UnwrapOptionalTraceId(env, options, "dmSessionId", dmSessionId, msg) &&
+        UnwrapOptionalTraceId(env, options, "taskId", taskId, msg);
 }
 
 } // namespace CliTool

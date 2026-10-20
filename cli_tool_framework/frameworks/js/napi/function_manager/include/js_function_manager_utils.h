@@ -83,20 +83,21 @@ void UnwrapInvokeFunctionParam(napi_env env, napi_value jsObj, InvokeFunctionPar
 /**
  * @brief Parse the optional trace identifiers from InvokeOptions.
  *
- * Reads the optional toolCallId / dmSessionId fields. An absent field (or an
- * explicit undefined/null) leaves the output string empty. A present field must
- * be a string of [A-Za-z0-9_-] with length 1~256; an empty string or any other
- * value is invalid.
+ * Reads the optional toolCallId / dmSessionId / taskId fields. An absent field
+ * (or an explicit undefined/null) leaves the output string empty. A present
+ * field must be a string of [A-Za-z0-9_-] with length 1~256; an empty string
+ * or any other value is invalid.
  *
  * @param env The N-API environment.
  * @param options The InvokeOptions object (may be undefined/null).
  * @param toolCallId Output for the parsed toolCallId (empty when not passed).
  * @param dmSessionId Output for the parsed dmSessionId (empty when not passed).
+ * @param taskId Output for the parsed taskId (empty when not passed).
  * @param msg Output error message when parsing fails.
  * @return Returns true on success, false otherwise.
  */
 bool UnwrapInvokeOptions(napi_env env, napi_value options,
-    std::string &toolCallId, std::string &dmSessionId, std::string &msg);
+    std::string &toolCallId, std::string &dmSessionId, std::string &taskId, std::string &msg);
 
 } // namespace CliTool
 } // namespace OHOS

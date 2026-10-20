@@ -2240,6 +2240,18 @@ private:
     void ReportUIExtensionProcColdStartToRss(const std::shared_ptr<AbilityInfo>& abilityInfo,
         const std::shared_ptr<AAFwk::Want>& want, bool isPreloadUIExtension);
 
+    /**
+     * Registers a task-attributed managed process into TaskManagerService. Called from
+     * LoadAbility after the process record (new or reused) resolves to a valid pid.
+     * Failures are logged only and never affect the load result (attribution is best
+     * effort: ERR_TASK_NOT_FOUND means the caller has not started the task yet).
+     *
+     * @param taskId Attribution key extracted from the want; empty means no attribution.
+     * @param appRecord The process record whose pid is registered.
+     */
+    void RegisterAttributedManagedProcess(const std::string &taskId,
+        const std::shared_ptr<AppRunningRecord> &appRecord);
+
 private:
     /**
      * ClearUpApplicationData, clear the application data.

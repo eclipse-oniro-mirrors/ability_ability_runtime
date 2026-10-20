@@ -1332,6 +1332,19 @@ public:
     {
         return ERR_OK;
     }
+
+    /**
+     * @brief Removes the process from the managed set of the task; the
+     *        inactivity timeout window is left running untouched.
+     * @param taskId Indicates the attribution key of the task.
+     * @param pid Indicates the pid of the process to remove.
+     * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid
+     *         parameters; ERR_TASK_NOT_FOUND if the task does not exist.
+     */
+    virtual int32_t UnregisterManagedProcess(const std::string &taskId, int32_t pid)
+    {
+        return ERR_OK;
+    }
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

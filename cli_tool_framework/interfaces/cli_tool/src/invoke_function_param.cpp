@@ -46,6 +46,10 @@ bool InvokeFunctionParam::Marshalling(Parcel &parcel) const
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write invokeOptions.dmSessionId.");
         return false;
     }
+    if (!parcel.WriteString(invokeOptions.taskId)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write invokeOptions.taskId.");
+        return false;
+    }
     return true;
 }
 
@@ -77,6 +81,9 @@ InvokeFunctionParam *InvokeFunctionParam::Unmarshalling(Parcel &parcel)
     }
     if (!parcel.ReadString(param->invokeOptions.dmSessionId)) {
         TAG_LOGD(AAFwkTag::CLI_TOOL, "invokeOptions.dmSessionId not present, using default(\"\").");
+    }
+    if (!parcel.ReadString(param->invokeOptions.taskId)) {
+        TAG_LOGD(AAFwkTag::CLI_TOOL, "invokeOptions.taskId not present, using default(\"\").");
     }
     return param.release();
 }

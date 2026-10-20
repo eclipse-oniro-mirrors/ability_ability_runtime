@@ -27,6 +27,7 @@
 #include "app_spawn_client.h"
 #include "event_handler.h"
 #include "hilog_tag_wrapper.h"
+#include "insight_intent_execute_param.h"
 #include "ipc_skeleton.h"
 #include "mock_ability_token.h"
 #include "mock_app_scheduler.h"
@@ -46,6 +47,7 @@
 #include "param.h"
 #include "parameters.h"
 #include "render_state_observer_stub.h"
+#include "task_mgr/task_manager_service.h"
 #include "window_manager.h"
 
 using namespace testing;
@@ -603,6 +605,109 @@ HWTEST_F(AppMgrServiceInnerTest, LoadAbility_001, TestSize.Level0)
 
     appMgrServiceInner2->LoadAbility(abilityInfo_, applicationInfo_, nullptr, loadParamPtr);
     TAG_LOGI(AAFwkTag::TEST, "LoadAbility_001 end");
+}
+
+/**
+ * @tc.name: LoadAbility_TaskId_0100
+ * @tc.desc: the internal ohos.task.id want param is stripped before LoadAbility
+ *           proceeds and never reaches the target application.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, LoadAbility_TaskId_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "LoadAbility_TaskId_0100 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    OHOS::sptr<IRemoteObject> token = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+
+    auto want = std::make_shared<AAFwk::Want>();
+    want->SetParam(AppExecFwk::INSIGHT_INTENT_TASK_ID, std::string("taskid_strip_0100"));
+    want->SetParam("normal_param", std::string("kept"));
+    AbilityRuntime::LoadParam loadParam;
+    loadParam.token = token;
+    auto loadParamPtr = std::make_shared<AbilityRuntime::LoadParam>(loadParam);
+
+    // bundle helper null forces an early return after the strip point
+    appMgrServiceInner->remoteClientManager_->SetBundleManagerHelper(nullptr);
+    appMgrServiceInner->LoadAbility(abilityInfo_, applicationInfo_, want, loadParamPtr);
+
+    EXPECT_FALSE(want->HasParameter(AppExecFwk::INSIGHT_INTENT_TASK_ID));
+    EXPECT_TRUE(want->HasParameter("normal_param"));
+    TAG_LOGI(AAFwkTag::TEST, "LoadAbility_TaskId_0100 end");
+}
+
+/**
+ * @tc.name: RegisterAttributedManagedProcess_0100
+ * @tc.desc: a valid taskId with a live app record registers the process pid into
+ *           TaskManagerService with the INSIGHT tool.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, RegisterAttributedManagedProcess_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RegisterAttributedManagedProcess_0100 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    const std::string taskId = "tdd_task_attr_0100";
+    auto &taskMgr = TaskManagerService::GetInstance();
+    ASSERT_EQ(taskMgr.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+
+    std::string processName = "test_task_attr_process";
+    std::shared_ptr<AppRunningRecord> appRecord =
+        std::make_shared<AppRunningRecord>(applicationInfo_, ++recordId_, processName);
+    ASSERT_NE(appRecord, nullptr);
+    constexpr pid_t testPid = 23333;
+    appRecord->priorityObject_ = std::make_shared<PriorityObject>();
+    appRecord->priorityObject_->SetPid(testPid);
+
+    appMgrServiceInner->RegisterAttributedManagedProcess(taskId, appRecord);
+    auto dump = taskMgr.DumpActiveTasks();
+    EXPECT_NE(dump.find(std::to_string(testPid) + "(insight)"), std::string::npos);
+
+    EXPECT_EQ(taskMgr.FinishTask(taskId), ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "RegisterAttributedManagedProcess_0100 end");
+}
+
+/**
+ * @tc.name: RegisterAttributedManagedProcess_0200
+ * @tc.desc: empty taskId, null record or invalid pid is skipped without crash and
+ *           without registration.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, RegisterAttributedManagedProcess_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RegisterAttributedManagedProcess_0200 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    const std::string taskId = "tdd_task_attr_0200";
+    auto &taskMgr = TaskManagerService::GetInstance();
+    ASSERT_EQ(taskMgr.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+
+    std::string processName = "test_task_attr_process_2";
+    std::shared_ptr<AppRunningRecord> appRecord =
+        std::make_shared<AppRunningRecord>(applicationInfo_, ++recordId_, processName);
+    ASSERT_NE(appRecord, nullptr);
+    constexpr pid_t testPid = 23334;
+    appRecord->priorityObject_ = std::make_shared<PriorityObject>();
+    appRecord->priorityObject_->SetPid(testPid);
+
+    // empty taskId: no registration
+    appMgrServiceInner->RegisterAttributedManagedProcess("", appRecord);
+    // null record: no registration, no crash
+    appMgrServiceInner->RegisterAttributedManagedProcess(taskId, nullptr);
+    // pid unset (fresh record without priority pid): skipped
+    auto noPidRecord = std::make_shared<AppRunningRecord>(applicationInfo_, ++recordId_, processName);
+    noPidRecord->priorityObject_ = std::make_shared<PriorityObject>();
+    noPidRecord->priorityObject_->SetPid(0);
+    appMgrServiceInner->RegisterAttributedManagedProcess(taskId, noPidRecord);
+    EXPECT_EQ(taskMgr.DumpActiveTasks().find(std::to_string(testPid) + "(insight)"), std::string::npos);
+
+    // unknown task id (caller has not started the task): logged only, no crash
+    appMgrServiceInner->RegisterAttributedManagedProcess("tdd_task_attr_0200_none", appRecord);
+
+    EXPECT_EQ(taskMgr.FinishTask(taskId), ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "RegisterAttributedManagedProcess_0200 end");
 }
 
 /**

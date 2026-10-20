@@ -169,14 +169,15 @@ bool ParseInvokeFunctionParam(napi_env env, size_t argc, napi_value *argv, Invok
     // are dropped (forgery defense).
     out.args.Remove("ohos.insightIntent.toolCallId");
     out.args.Remove("ohos.insightIntent.dmSessionId");
+    out.args.Remove("ohos.task.id");
     if (argc >= INDEX_FOUR) {
         if (!ValidateOptions(env, argv[INDEX_THREE])) {
             ThrowInvalidParamError(env, "option invalid");
             return false;
         }
         std::string optionsMsg;
-        if (!UnwrapInvokeOptions(env, argv[INDEX_THREE],
-            out.invokeOptions.toolCallId, out.invokeOptions.dmSessionId, optionsMsg)) {
+        if (!UnwrapInvokeOptions(env, argv[INDEX_THREE], out.invokeOptions.toolCallId,
+            out.invokeOptions.dmSessionId, out.invokeOptions.taskId, optionsMsg)) {
             ThrowInvalidParamError(env, optionsMsg.empty() ? "option invalid" : optionsMsg.c_str());
             return false;
         }
@@ -303,6 +304,9 @@ napi_value JSFunctionManager::OnInvokeFunction(napi_env env, size_t argc, napi_v
     if (!param.invokeOptions.dmSessionId.empty()) {
         param.args.SetParam("ohos.insightIntent.dmSessionId",
             AAFwk::String::Box(param.invokeOptions.dmSessionId));
+    }
+    if (!param.invokeOptions.taskId.empty()) {
+        param.args.SetParam("ohos.task.id", AAFwk::String::Box(param.invokeOptions.taskId));
     }
 
     InvokeFunctionExecutor::Create()->Execute(param, bridge);

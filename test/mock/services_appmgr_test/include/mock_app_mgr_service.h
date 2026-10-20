@@ -157,6 +157,7 @@ public:
     MOCK_METHOD1(CancelDelayedExitTask, void(int32_t pid));
     MOCK_METHOD2(StartTask, int32_t(const std::string &taskId, int32_t priority));
     MOCK_METHOD1(FinishTask, int32_t(const std::string &taskId));
+    MOCK_METHOD2(UnregisterManagedProcess, int32_t(const std::string &taskId, int32_t pid));
     MOCK_METHOD2(DumpMem, int32_t(MemDumpInfo &info, sptr<IMemDumpCallback> callback));
     MOCK_METHOD2(ReportDumpMemResult, int32_t(sptr<IMemDumpCallback>, const std::string&));
     MOCK_METHOD1(DumpJsHandleMap, int32_t(OHOS::AppExecFwk::JsHandleMapInfo &));
