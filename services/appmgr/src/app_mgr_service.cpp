@@ -1045,10 +1045,10 @@ int AppMgrService::ShowHelp(const std::vector<std::u16string>& args, std::string
         .append("dump arkweb info, ARG must be one of (--all | --nweb | ...)\n")
         .append("--task                      ")
         .append("dump agent task manager active tasks\n")
-        .append("--task register <taskId> <pid> <insight|cli|a2a|ability>    ")
-        .append("test hook: attribute a process into the task\n")
-        .append("--task unregister <taskId> <pid>    ")
-        .append("test hook: remove a process from the task\n");
+        .append("--task register <taskId> <pid|-> <insight|cli|a2a|ability>    ")
+        .append("test hook: attribute an entity into the task\n")
+        .append("--task unregister <taskId> <attributionId>    ")
+        .append("test hook: remove an attribution from the task\n");
 
     return ERR_OK;
 }
@@ -1067,7 +1067,7 @@ int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string
         std::string subCmd = Str16ToStr8(args[INDEX_ONE]);
         if (subCmd == "register") {
             if (args.size() != SIZE_FIVE) {
-                result.append("usage: --task register <taskId> <pid> <insight|cli|a2a|ability>\n");
+                result.append("usage: --task register <taskId> <pid|-> <insight|cli|a2a|ability>\n");
                 return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
             }
             auto ret = TaskManagerService::GetInstance().DumpRegisterManagedProcess(
@@ -1077,7 +1077,7 @@ int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string
         }
         if (subCmd == "unregister") {
             if (args.size() != SIZE_FOUR) {
-                result.append("usage: --task unregister <taskId> <pid>\n");
+                result.append("usage: --task unregister <taskId> <attributionId>\n");
                 return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
             }
             auto ret = TaskManagerService::GetInstance().DumpUnregisterManagedProcess(

@@ -57,14 +57,16 @@ std::string FormatCreateTime(int64_t millis)
     return std::string(buffer) + "." + std::to_string(millis % MILLIS_PER_SECOND);
 }
 
-std::string AttributionsToString(const std::map<pid_t, AttributionRecord> &attributions)
+std::string AttributionsToString(const std::map<AttributionId, AttributionRecord> &attributions)
 {
     std::string result;
     for (auto it = attributions.begin(); it != attributions.end(); ++it) {
         if (it != attributions.begin()) {
             result += ";";
         }
-        result += std::to_string(it->first) + "(" + AttributionToolToString(it->second.tool) + ")";
+        std::string pidText = it->second.pid > 0 ? std::to_string(it->second.pid) : "-";
+        result += std::to_string(it->first) + ":" + pidText +
+            "(" + AttributionToolToString(it->second.tool) + ")";
     }
     return result;
 }
@@ -80,6 +82,17 @@ bool ParsePidText(const std::string &pidText, pid_t &pid)
     return true;
 }
 
+bool ParseAttributionIdText(const std::string &idText, AttributionId &attributionId)
+{
+    AttributionId value = 0;
+    auto res = std::from_chars(idText.data(), idText.data() + idText.size(), value);
+    if (res.ec != std::errc() || res.ptr != idText.data() + idText.size()) {
+        return false;
+    }
+    attributionId = value;
+    return true;
+}
+
 void TimerCallback(void *data)
 {
     TimeoutContext *ctx = static_cast<TimeoutContext *>(data);
@@ -91,6 +104,8 @@ void TimerCallback(void *data)
     TaskManagerService::GetInstance().OnTaskTimeout(taskId, deadline);
 }
 }  // namespace
+
+std::atomic<AttributionId> TaskManagerService::attributionRecordId_ = 1;
 
 TaskManagerService::TaskManagerService()
 {
@@ -244,42 +259,51 @@ void TaskManagerService::RemoveManagedProcessFromAllTasksInner(pid_t pid)
 {
     std::lock_guard<ffrt::mutex> lock(tasksMutex_);
     for (auto &item : tasks_) {
-        if (item.second.attributions.erase(pid) > 0) {
-            TAG_LOGI(AAFwkTag::APPMGR, "managed process died, taskId: %{public}s, pid: %{public}d",
-                item.first.c_str(), pid);
+        auto &attributions = item.second.attributions;
+        for (auto it = attributions.begin(); it != attributions.end();) {
+            if (it->second.pid == pid) {
+                TAG_LOGI(AAFwkTag::APPMGR, "managed process died, taskId: %{public}s, pid: %{public}d, "
+                    "attributionId: %{public}" PRId64, item.first.c_str(), pid, it->first);
+                it = attributions.erase(it);
+            } else {
+                ++it;
+            }
         }
     }
 }
 
-int32_t TaskManagerService::RegisterManagedProcess(const std::string &taskId, const AttributionRecord &attribution)
+int32_t TaskManagerService::RegisterManagedProcess(const std::string &taskId,
+    const AttributionRecord &attribution, AttributionId &attributionId)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::APPMGR, "called");
     int32_t toolType = static_cast<int32_t>(attribution.tool);
-    if (attribution.pid <= 0 || taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN ||
+    if ((attribution.pid <= 0 && attribution.pid != -1) ||
+        taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN ||
         toolType < static_cast<int32_t>(AttributionTool::INSIGHT) ||
         toolType > static_cast<int32_t>(AttributionTool::ABILITY)) {
         TAG_LOGW(AAFwkTag::APPMGR, "invalid param, taskId size: %{public}zu, pid: %{public}d, "
             "toolType: %{public}d", taskId.size(), attribution.pid, toolType);
         return INVALID_PARAMETERS_ERR;
     }
-    return RegisterManagedProcessInner(taskId, attribution);
+    return RegisterManagedProcessInner(taskId, attribution, attributionId);
 }
 
-int32_t TaskManagerService::UnregisterManagedProcess(const std::string &taskId, int32_t pid)
+int32_t TaskManagerService::UnregisterManagedProcess(const std::string &taskId,
+    AttributionId attributionId)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::APPMGR, "called");
-    if (pid <= 0 || taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN) {
-        TAG_LOGW(AAFwkTag::APPMGR, "invalid param, taskId size: %{public}zu, pid: %{public}d",
-            taskId.size(), pid);
+    if (attributionId <= 0 || taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN) {
+        TAG_LOGW(AAFwkTag::APPMGR, "invalid param, taskId size: %{public}zu, "
+            "attributionId: %{public}" PRId64, taskId.size(), attributionId);
         return INVALID_PARAMETERS_ERR;
     }
-    return UnregisterManagedProcessInner(taskId, pid);
+    return UnregisterManagedProcessInner(taskId, attributionId);
 }
 
 int32_t TaskManagerService::RegisterManagedProcessInner(const std::string &taskId,
-    const AttributionRecord &attribution)
+    const AttributionRecord &attribution, AttributionId &attributionId)
 {
     std::unique_ptr<TimeoutContext> replacedCtx;
     {
@@ -289,18 +313,27 @@ int32_t TaskManagerService::RegisterManagedProcessInner(const std::string &taskI
             TAG_LOGW(AAFwkTag::APPMGR, "task not found, taskId: %{public}s", taskId.c_str());
             return ERR_TASK_NOT_FOUND;
         }
+        if (it->second.attributions.size() >= TASK_MAX_ATTRIBUTIONS_PER_TASK) {
+            TAG_LOGW(AAFwkTag::APPMGR, "too many attributions, taskId: %{public}s, count: %{public}zu",
+                taskId.c_str(), it->second.attributions.size());
+            return ERR_INVALID_OPERATION;
+        }
+        AttributionId newId = attributionRecordId_++;
         AttributionRecord stored = attribution;
         stored.attributedTimeMillis = NowMillis();
-        it->second.attributions[stored.pid] = stored;
-        TAG_LOGI(AAFwkTag::APPMGR, "process registered, taskId: %{public}s, pid: %{public}d, tool: %{public}s",
-            taskId.c_str(), stored.pid, AttributionToolToString(stored.tool));
+        it->second.attributions[newId] = stored;
+        attributionId = newId;
+        TAG_LOGI(AAFwkTag::APPMGR, "attribution registered, taskId: %{public}s, "
+            "attributionId: %{public}" PRId64 ", pid: %{public}d, tool: %{public}s",
+            taskId.c_str(), newId, stored.pid, AttributionToolToString(stored.tool));
         replacedCtx = RestartTimeoutWindow(taskId, it->second);
     }
     ReleaseTimeoutContext(std::move(replacedCtx));
     return ERR_OK;
 }
 
-int32_t TaskManagerService::UnregisterManagedProcessInner(const std::string &taskId, pid_t pid)
+int32_t TaskManagerService::UnregisterManagedProcessInner(const std::string &taskId,
+    AttributionId attributionId)
 {
     std::lock_guard<ffrt::mutex> lock(tasksMutex_);
     auto it = tasks_.find(taskId);
@@ -308,9 +341,9 @@ int32_t TaskManagerService::UnregisterManagedProcessInner(const std::string &tas
         TAG_LOGW(AAFwkTag::APPMGR, "task not found, taskId: %{public}s", taskId.c_str());
         return ERR_TASK_NOT_FOUND;
     }
-    it->second.attributions.erase(pid);
-    TAG_LOGI(AAFwkTag::APPMGR, "process unregistered, taskId: %{public}s, pid: %{public}d",
-        taskId.c_str(), pid);
+    it->second.attributions.erase(attributionId);
+    TAG_LOGI(AAFwkTag::APPMGR, "attribution unregistered, taskId: %{public}s, "
+        "attributionId: %{public}" PRId64, taskId.c_str(), attributionId);
     return ERR_OK;
 }
 
@@ -394,24 +427,34 @@ int32_t TaskManagerService::DumpRegisterManagedProcess(const std::string &taskId
 {
     AttributionRecord attribution;
     attribution.tool = AttributionToolFromString(toolText);
-    if (!ParsePidText(pidText, attribution.pid) || attribution.tool == AttributionTool::UNKNOWN) {
-        result = "error: invalid pid or tool, expected <pid> <insight|cli|a2a|ability>.\n";
+    if (pidText == "-") {
+        attribution.pid = -1;
+    } else if (!ParsePidText(pidText, attribution.pid) || attribution.pid <= 0) {
+        attribution.tool = AttributionTool::UNKNOWN;
+    }
+    if (attribution.tool == AttributionTool::UNKNOWN) {
+        result = "error: invalid pid or tool, expected <pid|-> <insight|cli|a2a|ability>.\n";
         return INVALID_PARAMETERS_ERR;
     }
-    int32_t ret = RegisterManagedProcess(taskId, attribution);
-    result = ret == ERR_OK ? "register ok\n" : "register failed: " + std::to_string(ret) + "\n";
+    AttributionId attributionId = 0;
+    int32_t ret = RegisterManagedProcess(taskId, attribution, attributionId);
+    if (ret == ERR_OK) {
+        result = "register ok, attributionId=" + std::to_string(attributionId) + "\n";
+    } else {
+        result = "register failed: " + std::to_string(ret) + "\n";
+    }
     return ret;
 }
 
 int32_t TaskManagerService::DumpUnregisterManagedProcess(const std::string &taskId,
-    const std::string &pidText, std::string &result)
+    const std::string &idText, std::string &result)
 {
-    pid_t pid = -1;
-    if (!ParsePidText(pidText, pid)) {
-        result = "error: invalid pid.\n";
+    AttributionId attributionId = 0;
+    if (!ParseAttributionIdText(idText, attributionId) || attributionId <= 0) {
+        result = "error: invalid attribution id.\n";
         return INVALID_PARAMETERS_ERR;
     }
-    int32_t ret = UnregisterManagedProcess(taskId, pid);
+    int32_t ret = UnregisterManagedProcess(taskId, attributionId);
     result = ret == ERR_OK ? "unregister ok\n" : "unregister failed: " + std::to_string(ret) + "\n";
     return ret;
 }

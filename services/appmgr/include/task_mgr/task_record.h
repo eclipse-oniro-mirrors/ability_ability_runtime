@@ -49,7 +49,7 @@ struct TaskRecord {
     std::string creatorBundleName;
     int64_t createTimeMillis = 0;
     int64_t deadlineMillis = 0;
-    std::map<pid_t, AttributionRecord> attributions;
+    std::map<AttributionId, AttributionRecord> attributions;
     std::unique_ptr<TimeoutContext> timeoutCtx;
 };
 }  // namespace AppExecFwk

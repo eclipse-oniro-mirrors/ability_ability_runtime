@@ -500,10 +500,10 @@ HWTEST_F(AppMgrServiceThirdTest, ShowHelp_001, TestSize.Level1)
         "dump arkweb info, ARG must be one of (--all | --nweb | ...)\n"
         "--task                      "
         "dump agent task manager active tasks\n"
-        "--task register <taskId> <pid> <insight|cli|a2a|ability>    "
-        "test hook: attribute a process into the task\n"
-        "--task unregister <taskId> <pid>    "
-        "test hook: remove a process from the task\n";
+        "--task register <taskId> <pid|-> <insight|cli|a2a|ability>    "
+        "test hook: attribute an entity into the task\n"
+        "--task unregister <taskId> <attributionId>    "
+        "test hook: remove an attribution from the task\n";
     int res = appMgrService->ShowHelp(dummyArgs, resultBuffer);
     EXPECT_EQ(resultBuffer, expectedOutput);
     EXPECT_EQ(res, ERR_OK);
