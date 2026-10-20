@@ -900,8 +900,8 @@ napi_value JsApplicationContextUtils::OnSetFont(napi_env env, NapiCallbackInfo& 
 {
     // support one or two params
     if (info.argc == ARGC_ZERO || info.argc > ARGC_TWO) {
-        TAG_LOGE(AAFwkTag::APPKIT, "params error");
-        ThrowInvalidParamError(env, "Params error.");
+        TAG_LOGE(AAFwkTag::APPKIT, "params count error, only support one or two params");
+        ThrowInvalidParamError(env, "Params count error, only support one or two params.");
         return CreateJsUndefined(env);
     }
     auto applicationContext = applicationContext_.lock();
