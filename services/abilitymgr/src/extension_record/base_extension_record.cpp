@@ -264,7 +264,7 @@ void BaseExtensionRecord::DumpUIExtensionRootHostInfo(std::vector<std::string> &
     }
 
     UIExtensionHostInfo hostInfo;
-    int32_t ownerUserId = GetOwnerMissionUserId() >= 0 ? GetOwnerMissionUserId() : DEFAULT_INVAL_VALUE;
+    int32_t ownerUserId = ownerMissionUserId_ >= 0 ? ownerMissionUserId_ : DEFAULT_INVAL_VALUE;
     auto ret = IN_PROCESS_CALL(AAFwk::AbilityManagerClient::GetInstance()->GetUIExtensionRootHostInfo(token, hostInfo,
         ownerUserId));
     if (ret != ERR_OK) {
