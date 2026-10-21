@@ -122,7 +122,9 @@ void TaskManagerServiceTest::SetUp(void)
 }
 
 void TaskManagerServiceTest::TearDown(void)
-{}
+{
+    TaskManagerService::GetInstance().SetPidValidator(nullptr);
+}
 
 /**
  * @tc.number: TaskManagerService_HelperToString_0100
@@ -480,10 +482,36 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_RegisterManagedProcess_0200,
 }
 
 /**
+ * @tc.number: TaskManagerService_RegisterManagedProcess_0300
+ * @tc.name: register managed process validated by the wired pid validator
+ * @tc.desc: a pid rejected by the wired validator is refused while a non-process
+ *           entity is not affected.
+ */
+HWTEST_F(TaskManagerServiceTest, TaskManagerService_RegisterManagedProcess_0300, TestSize.Level1)
+{
+    auto &service = TaskManagerService::GetInstance();
+    std::string taskId = MakeTaskId("register_0300");
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    service.SetPidValidator([](pid_t) { return true; });
+    AttributionRecord attribution;
+    attribution.pid = TEST_MANAGED_PID;
+    attribution.tool = AttributionTool::INSIGHT;
+    AttributionId attributionId = 0;
+    EXPECT_EQ(service.RegisterManagedProcess(taskId, attribution, attributionId), ERR_OK);
+
+    service.SetPidValidator([](pid_t) { return false; });
+    EXPECT_EQ(service.RegisterManagedProcess(taskId, attribution, attributionId),
+        AAFwk::ERR_INVALID_PID);
+    attribution.pid = -1;
+    EXPECT_EQ(service.RegisterManagedProcess(taskId, attribution, attributionId), ERR_OK);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
+}
+
+/**
  * @tc.number: TaskManagerService_UnregisterManagedProcess_0100
  * @tc.name: unregister managed attribution
  * @tc.desc: an attribution is removed from the task by its id and a repeat unregister
- *           is idempotent.
+ *           reports the missing record.
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_UnregisterManagedProcess_0100, TestSize.Level1)
 {
@@ -500,15 +528,16 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_UnregisterManagedProcess_010
     EXPECT_EQ(service.UnregisterManagedProcess(taskId, attributionId), ERR_OK);
     EXPECT_EQ(service.DumpActiveTasks().find(std::to_string(attributionId) + ":" +
         std::to_string(TEST_MANAGED_PID) + "(a2a)"), std::string::npos);
-    EXPECT_EQ(service.UnregisterManagedProcess(taskId, attributionId), ERR_OK);
+    EXPECT_EQ(service.UnregisterManagedProcess(taskId, attributionId),
+        AAFwk::ERR_ATTRIBUTION_NOT_FOUND);
     EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
 }
 
 /**
  * @tc.number: TaskManagerService_UnregisterManagedProcess_0200
  * @tc.name: unregister managed process with invalid params
- * @tc.desc: an invalid attribution id or task id is rejected and an unknown task is
- *           not found.
+ * @tc.desc: an invalid attribution id or task id is rejected, an unknown task is not
+ *           found and a missing attribution record is reported.
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_UnregisterManagedProcess_0200, TestSize.Level1)
 {
@@ -524,6 +553,8 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_UnregisterManagedProcess_020
         AAFwk::INVALID_PARAMETERS_ERR);
     EXPECT_EQ(service.UnregisterManagedProcess(MakeTaskId("unregister_0200_none"),
         TEST_UNKNOWN_ATTRIBUTION_ID), AAFwk::ERR_TASK_NOT_FOUND);
+    EXPECT_EQ(service.UnregisterManagedProcess(taskId, TEST_UNKNOWN_ATTRIBUTION_ID),
+        AAFwk::ERR_ATTRIBUTION_NOT_FOUND);
     EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
 }
 
@@ -641,7 +672,8 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_DumpRegisterManagedProcess_0
 /**
  * @tc.number: TaskManagerService_DumpRegisterManagedProcess_0200
  * @tc.name: dump register hook with invalid texts
- * @tc.desc: unparsable pid/tool texts and unknown tasks are rejected with an explanatory text.
+ * @tc.desc: unparsable pid/tool texts, an unmanaged pid and unknown tasks are rejected
+ *           with an explanatory text.
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_DumpRegisterManagedProcess_0200, TestSize.Level1)
 {
@@ -667,6 +699,13 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_DumpRegisterManagedProcess_0
     EXPECT_EQ(service.DumpRegisterManagedProcess(MakeTaskId("dump_reg_0200"), "4321", "not_a_tool",
         result), AAFwk::INVALID_PARAMETERS_ERR);
 
+    service.SetPidValidator([](pid_t) { return false; });
+    result.clear();
+    EXPECT_EQ(service.DumpRegisterManagedProcess(MakeTaskId("dump_reg_0200_pid"), "4321", "insight",
+        result), AAFwk::ERR_INVALID_PID);
+    EXPECT_NE(result.find("register failed:"), std::string::npos);
+    service.SetPidValidator(nullptr);
+
     result.clear();
     EXPECT_EQ(service.DumpRegisterManagedProcess(MakeTaskId("dump_reg_0200_none"), "4321", "insight",
         result), AAFwk::ERR_TASK_NOT_FOUND);
@@ -677,7 +716,7 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_DumpRegisterManagedProcess_0
  * @tc.number: TaskManagerService_DumpUnregisterManagedProcess_0100
  * @tc.name: dump unregister managed process hook
  * @tc.desc: the dump unregister hook removes an attribution by its id and rejects
- *           unparsable or unknown inputs.
+ *           unparsable, stale or unknown inputs.
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_DumpUnregisterManagedProcess_0100, TestSize.Level1)
 {
@@ -705,6 +744,11 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_DumpUnregisterManagedProcess
     result.clear();
     EXPECT_EQ(service.DumpUnregisterManagedProcess(taskId, "-5", result),
         AAFwk::INVALID_PARAMETERS_ERR);
+
+    result.clear();
+    EXPECT_EQ(service.DumpUnregisterManagedProcess(taskId, std::to_string(attributionId), result),
+        AAFwk::ERR_ATTRIBUTION_NOT_FOUND);
+    EXPECT_NE(result.find("unregister failed:"), std::string::npos);
 
     result.clear();
     EXPECT_EQ(service.DumpUnregisterManagedProcess(MakeTaskId("dump_unreg_0100_none"),

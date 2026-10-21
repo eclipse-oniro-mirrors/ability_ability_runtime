@@ -286,7 +286,29 @@ int32_t TaskManagerService::RegisterManagedProcess(const std::string &taskId,
             "toolType: %{public}d", taskId.size(), attribution.pid, toolType);
         return INVALID_PARAMETERS_ERR;
     }
+    if (attribution.pid > 0 && !IsLiveManagedProcess(attribution.pid)) {
+        TAG_LOGW(AAFwkTag::APPMGR, "pid is not a live managed process, rejected, "
+            "taskId: %{public}s, pid: %{public}d", taskId.c_str(), attribution.pid);
+        return AAFwk::ERR_INVALID_PID;
+    }
     return RegisterManagedProcessInner(taskId, attribution, attributionId);
+}
+
+void TaskManagerService::SetPidValidator(std::function<bool(pid_t)> validator)
+{
+    std::lock_guard<ffrt::mutex> lock(tasksMutex_);
+    pidValidator_ = validator;
+    TAG_LOGI(AAFwkTag::APPMGR, "pid validator %{public}s", validator ? "wired" : "unwired");
+}
+
+bool TaskManagerService::IsLiveManagedProcess(pid_t pid)
+{
+    std::function<bool(pid_t)> validator;
+    {
+        std::lock_guard<ffrt::mutex> lock(tasksMutex_);
+        validator = pidValidator_;
+    }
+    return !validator || validator(pid);
 }
 
 int32_t TaskManagerService::UnregisterManagedProcess(const std::string &taskId,
@@ -341,7 +363,11 @@ int32_t TaskManagerService::UnregisterManagedProcessInner(const std::string &tas
         TAG_LOGW(AAFwkTag::APPMGR, "task not found, taskId: %{public}s", taskId.c_str());
         return ERR_TASK_NOT_FOUND;
     }
-    it->second.attributions.erase(attributionId);
+    if (it->second.attributions.erase(attributionId) == 0) {
+        TAG_LOGW(AAFwkTag::APPMGR, "attribution not found, taskId: %{public}s, "
+            "attributionId: %{public}" PRId64, taskId.c_str(), attributionId);
+        return ERR_ATTRIBUTION_NOT_FOUND;
+    }
     TAG_LOGI(AAFwkTag::APPMGR, "attribution unregistered, taskId: %{public}s, "
         "attributionId: %{public}" PRId64, taskId.c_str(), attributionId);
     return ERR_OK;

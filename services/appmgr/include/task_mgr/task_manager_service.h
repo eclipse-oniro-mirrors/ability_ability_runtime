@@ -17,6 +17,7 @@
 #define OHOS_APP_EXECFWK_TASK_MGR_TASK_MANAGER_SERVICE_H
 
 #include <atomic>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -93,6 +94,7 @@ public:
      * @param attributionId Indicates the server-assigned id of the created record,
      *        handed back to the caller as the handle for later operations.
      * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
+     *         ERR_INVALID_PID if the pid is not a live appmgr-managed process;
      *         ERR_TASK_NOT_FOUND if the task does not exist; ERR_INVALID_OPERATION if
      *         the per-task attribution ceiling is reached.
      */
@@ -101,14 +103,22 @@ public:
 
     /**
      * @brief Removes the attribution record with the given id from the task; the
-     *        inactivity timeout window is left running untouched. Removing a missing
-     *        id is an idempotent no-op.
+     *        inactivity timeout window is left running untouched.
      * @param taskId Indicates the attribution key of the task.
      * @param attributionId Indicates the id returned by RegisterManagedProcess.
      * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
-     *         ERR_TASK_NOT_FOUND if the task does not exist.
+     *         ERR_TASK_NOT_FOUND if the task does not exist; ERR_ATTRIBUTION_NOT_FOUND
+     *         if the attribution record does not exist (idempotent).
      */
     int32_t UnregisterManagedProcess(const std::string &taskId, AttributionId attributionId);
+
+    /**
+     * @brief Wires the pid validator used by RegisterManagedProcess to reject pids
+     *        that are not live appmgr-managed processes; called when the app manager
+     *        service assembles. An unwired validator skips the check.
+     * @param validator Indicates the pid liveness checker, or null to unwire.
+     */
+    void SetPidValidator(std::function<bool(pid_t)> validator);
 
     /**
      * @brief Notifies that a task has ended, reserved for the resource-schedule control to
@@ -227,7 +237,8 @@ private:
      *        untouched.
      * @param taskId Indicates the attribution key of the task.
      * @param attributionId Indicates the id returned by RegisterManagedProcess.
-     * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist.
+     * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist;
+     *         ERR_ATTRIBUTION_NOT_FOUND if the attribution record does not exist.
      */
     int32_t UnregisterManagedProcessInner(const std::string &taskId, AttributionId attributionId);
 
@@ -294,9 +305,19 @@ private:
      */
     int32_t GetTimeoutSeconds() const;
 
+    /**
+     * @brief Checks the pid against the wired validator outside tasksMutex_; an
+     *        unwired validator accepts every pid.
+     * @param pid Indicates the pid to check.
+     * @return Returns true if the pid is a live appmgr-managed process or no
+     *         validator is wired; false otherwise.
+     */
+    bool IsLiveManagedProcess(pid_t pid);
+
     static std::atomic<AttributionId> attributionRecordId_;
     ffrt::mutex tasksMutex_;
     std::unordered_map<std::string, TaskRecord> tasks_;
+    std::function<bool(pid_t)> pidValidator_;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

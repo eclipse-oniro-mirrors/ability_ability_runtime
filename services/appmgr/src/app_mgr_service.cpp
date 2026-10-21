@@ -213,6 +213,10 @@ ErrCode AppMgrService::Init()
     appMgrServiceInner_->SetTaskHandler(taskHandler_);
     appMgrServiceInner_->SetEventHandler(eventHandler_);
     DelayedSingleton<CacheProcessManager>::GetInstance()->SetAppMgr(appMgrServiceInner_);
+    TaskManagerService::GetInstance().SetPidValidator(
+        [appMgrServiceInner = appMgrServiceInner_](pid_t pid) {
+            return appMgrServiceInner->GetAppRunningRecordByPid(pid) != nullptr;
+        });
     std::function<void()> initAppMgrServiceInnerTask = [appMgrServiceInner = appMgrServiceInner_]() {
         appMgrServiceInner->Init();
     };
