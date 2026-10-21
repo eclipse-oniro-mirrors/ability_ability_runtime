@@ -59,6 +59,7 @@ ohos_unittest("js_application_context_utils_test") {
     "ipc:ipc_napi",
     "libuv:uv",
     "napi:ace_napi",
+    "resource_management:global_resmgr",
   ]
 }
 
