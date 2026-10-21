@@ -28,9 +28,16 @@ ohos_unittest("js_application_context_utils_test") {
     debug = false
   }
 
+  include_dirs = [
+    "${ability_runtime_path}/interfaces/kits/native/appkit/ability_runtime/context",
+    "${ability_runtime_napi_path}/ability_auto_startup_callback",
+  ]
+
   sources = [ "js_application_context_utils_test.cpp" ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_native_path}/appkit:app_context_utils",
@@ -38,14 +45,19 @@ ohos_unittest("js_application_context_utils_test") {
 
   external_deps = [
     "ability_base:configuration",
+    "ability_base:session_info",
     "ability_base:want",
     "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "bundle_framework:libappexecfwk_common",
     "c_utils:utils",
     "ets_runtime:libark_jsruntime",
     "googletest:gmock_main",
     "googletest:gtest_main",
     "hilog:libhilog",
     "ipc:ipc_core",
+    "ipc:ipc_napi",
+    "libuv:uv",
     "napi:ace_napi",
   ]
 }
