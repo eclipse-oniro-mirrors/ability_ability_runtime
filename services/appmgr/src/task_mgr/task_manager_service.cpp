@@ -452,10 +452,8 @@ int32_t TaskManagerService::DumpRegisterManagedProcess(const std::string &taskId
 {
     AttributionRecord attribution;
     attribution.tool = AttributionToolFromString(toolText);
-    if (!ParsePidText(pidText, attribution.pid) || attribution.pid <= 0) {
-        attribution.tool = AttributionTool::UNKNOWN;
-    }
-    if (attribution.tool == AttributionTool::UNKNOWN) {
+    if (!ParsePidText(pidText, attribution.pid) || attribution.pid <= 0 ||
+        attribution.tool == AttributionTool::UNKNOWN) {
         result = "error: invalid pid or tool, expected <pid> <insight|cli|a2a|ability>.\n";
         return INVALID_PARAMETERS_ERR;
     }
