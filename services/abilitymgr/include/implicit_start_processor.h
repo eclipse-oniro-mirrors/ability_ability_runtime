@@ -116,8 +116,6 @@ private:
 
     void FilterClonesByPreferredIndex(std::vector<DialogAppInfo> &dialogAppInfos, int32_t userId);
 
-    int FilterInvisibleAppInfos(const AbilityRequest &request, std::vector<DialogAppInfo> &dialogAppInfos);
-
     static void ProcessLinkType(std::vector<AppExecFwk::AbilityInfo> &abilityInfos,
         const AbilityRequest &request);
     static bool ShouldPreferDefaultBrowser(const AbilityRequest &request, bool defaultAppExist);

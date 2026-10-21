@@ -174,9 +174,22 @@ int ImplicitStartProcessor::ImplicitStartAbility(AbilityRequest &request, int32_
         TAG_LOGE(AAFwkTag::ABILITYMGR, "generate request failed");
         return ret;
     }
-    ret = FilterInvisibleAppInfos(request, dialogAppInfos);
-    if (ret != ERR_OK) {
-        return ret;
+    if (request.specifyTokenId > 0 && !dialogAppInfos.empty() &&
+        !PermissionVerification::GetInstance()->VerifyCallingPermission(
+            PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY, request.specifyTokenId)) {
+        for (auto it = dialogAppInfos.begin(); it != dialogAppInfos.end();) {
+            if (!it->visible) {
+                TAG_LOGW(AAFwkTag::ABILITYMGR, "Caller without permission, erase: %{public}s",
+                    it->bundleName.c_str());
+                it = dialogAppInfos.erase(it);
+            } else {
+                it++;
+            }
+        }
+        if (dialogAppInfos.empty()) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "Caller without permission");
+            return CHECK_PERMISSION_FAILED;
+        }
     }
     AbilityUtil::WantSetParameterWindowMode(request.want, windowMode);
     request.callerAccessTokenId = IPCSkeleton::GetCallingTokenID();
@@ -326,33 +339,6 @@ int ImplicitStartProcessor::ImplicitStartAbility(AbilityRequest &request, int32_
             dialogAppInfos);
     }
     return IN_PROCESS_CALL(abilityMgr->ImplicitStartAbilityAsCaller(request.want, request.callerToken, nullptr));
-}
-
-int ImplicitStartProcessor::FilterInvisibleAppInfos(const AbilityRequest &request,
-    std::vector<DialogAppInfo> &dialogAppInfos)
-{
-    if (request.specifyTokenId <= 0 || dialogAppInfos.empty()) {
-        return ERR_OK;
-    }
-    bool hasPermission = PermissionVerification::GetInstance()->VerifyCallingPermission(
-        PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY, request.specifyTokenId);
-    if (hasPermission) {
-        return ERR_OK;
-    }
-    for (auto it = dialogAppInfos.begin(); it != dialogAppInfos.end();) {
-        if (!it->visible) {
-            TAG_LOGW(AAFwkTag::ABILITYMGR, "Caller without permission, erase: %{public}s",
-                it->bundleName.c_str());
-            it = dialogAppInfos.erase(it);
-        } else {
-            it++;
-        }
-    }
-    if (dialogAppInfos.empty()) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "Caller without permission");
-        return CHECK_PERMISSION_FAILED;
-    }
-    return ERR_OK;
 }
 
 std::string ImplicitStartProcessor::MatchTypeAndUri(const AAFwk::Want &want)
