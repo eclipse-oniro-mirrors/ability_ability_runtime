@@ -7974,9 +7974,14 @@ int32_t AbilityManagerProxy::GetKioskStatus(KioskStatus &kioskStatus)
         return ERR_READ_RESULT_PARCEL_FAILED;
     }
     kioskStatus = *info;
-    sptr<IRemoteObject> token = reply.ReadRemoteObject();
-    if (token != nullptr) {
-        kioskStatus.kioskToken_ = token;
+    // The token is optional on the wire: AbilityManagerStub::GetKioskStatusInner writes a bool flag
+    // first, and only writes the binder object when the flag is true. Keep this read order
+    // (flag, [token], result) in sync with the stub's write contract when changing this reply.
+    if (reply.ReadBool()) {
+        sptr<IRemoteObject> token = reply.ReadRemoteObject();
+        if (token != nullptr) {
+            kioskStatus.kioskToken_ = token;
+        }
     }
     return reply.ReadInt32();
 }

@@ -454,8 +454,10 @@ public:
 
     int32_t GetKioskStatus(AAFwk::KioskStatus &kioskStatus) override
     {
+        kioskStatus.kioskToken_ = kioskToken_;
         return ERR_OK;
     }
+    sptr<IRemoteObject> kioskToken_ = nullptr;
 
     int32_t SetAppServiceExtensionKeepAlive(const std::string &bundleName, bool flag) override
     {
