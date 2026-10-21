@@ -18,6 +18,15 @@ module_output_path = "ability_runtime/ability_runtime/abilitymgr"
 
 ohos_unittest("js_application_context_utils_test") {
   module_out_path = module_output_path
+  sanitize = {
+    integer_overflow = true
+    ubsan = true
+    boundary_sanitize = true
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
 
   sources = [ "js_application_context_utils_test.cpp" ]
 

@@ -14,7 +14,6 @@
  */
 
 #include <gtest/gtest.h>
-#include <cstdint>
 #include <memory>
 #include <string>
 
@@ -26,228 +25,177 @@
 #include "native_engine/impl/ark/ark_native_engine.h"
 #include "native_engine/native_engine.h"
 
+using namespace testing;
 using namespace testing::ext;
+using namespace OHOS::AbilityRuntime;
 
 namespace OHOS {
 namespace AbilityRuntime {
-namespace {
 constexpr size_t ARGC_ZERO = 0;
 constexpr size_t ARGC_ONE = 1;
 constexpr size_t ARGC_TWO = 2;
 constexpr size_t ARGC_THREE = 3;
-constexpr size_t INDEX_ZERO = 0;
-constexpr size_t INDEX_ONE = 1;
-constexpr size_t INDEX_TWO = 2;
 
-napi_env g_env = nullptr;
-panda::ecmascript::EcmaVM *g_vm = nullptr;
-} // namespace
+napi_env env_ = nullptr;
+panda::ecmascript::EcmaVM* vm_ = nullptr;
 
 class JsApplicationContextUtilsSetFontTest : public testing::Test {
 public:
-    static void SetUpTestCase()
-    {
-        panda::RuntimeOption option;
-        option.SetGcType(panda::RuntimeOption::GC_TYPE::GEN_GC);
-        const int64_t poolSize = 0x1000000;
-        option.SetGcPoolSize(poolSize);
-        option.SetLogLevel(panda::RuntimeOption::LOG_LEVEL::ERROR);
-        option.SetDebuggerLibraryPath("");
-        g_vm = panda::JSNApi::CreateJSVM(option);
-        if (g_vm == nullptr) {
-            GTEST_LOG_(INFO) << "Create vm failed.";
-            return;
-        }
-        g_env = reinterpret_cast<napi_env>(new (std::nothrow) ArkNativeEngine(g_vm, nullptr));
-    }
+    static void SetUpTestCase();
+    static void TearDownTestCase();
+    void SetUp() override;
+    void TearDown() override;
+    void ClearException();
+    bool IsExceptionPending();
 
-    static void TearDownTestCase()
-    {
-        if (g_env != nullptr) {
-            delete reinterpret_cast<ArkNativeEngine *>(g_env);
-            g_env = nullptr;
-        }
-        if (g_vm != nullptr) {
-            panda::JSNApi::DestroyJSVM(g_vm);
-            g_vm = nullptr;
-        }
-    }
-
-    void SetUp() override
-    {
-        ASSERT_NE(g_env, nullptr);
-        context_ = std::make_shared<ApplicationContext>();
-        utils_ = std::make_shared<JsApplicationContextUtils>(std::weak_ptr<ApplicationContext>(context_));
-        context_->RegisterAppFontObserver([this](const AppExecFwk::Configuration &config) {
-            called_ = true;
-            capturedConfig_ = config;
-        });
-    }
-
-    void TearDown() override
-    {
-        ClearException();
-        utils_.reset();
-        context_.reset();
-    }
-
-    napi_value CreateString(const std::string &value)
-    {
-        napi_value result = nullptr;
-        napi_create_string_utf8(g_env, value.c_str(), value.size(), &result);
-        return result;
-    }
-
-    napi_value CreateBool(bool value)
-    {
-        napi_value result = nullptr;
-        napi_get_boolean(g_env, value, &result);
-        return result;
-    }
-
-    void ClearException()
-    {
-        bool pending = false;
-        if (g_env == nullptr || napi_is_exception_pending(g_env, &pending) != napi_ok || !pending) {
-            return;
-        }
-        napi_value exception = nullptr;
-        napi_get_and_clear_last_exception(g_env, &exception);
-    }
-
-    bool IsExceptionPending()
-    {
-        bool pending = false;
-        napi_is_exception_pending(g_env, &pending);
-        return pending;
-    }
-
-    bool called_ = false;
-    AppExecFwk::Configuration capturedConfig_;
+public:
     std::shared_ptr<ApplicationContext> context_ = nullptr;
     std::shared_ptr<JsApplicationContextUtils> utils_ = nullptr;
+    AppExecFwk::Configuration capturedConfig_;
+    bool called_ = false;
 };
 
+void JsApplicationContextUtilsSetFontTest::SetUpTestCase()
+{
+    panda::RuntimeOption option;
+    vm_ = panda::JSNApi::CreateJSVM(option);
+    if (vm_ == nullptr) {
+        GTEST_LOG_(INFO) << "Create vm failed.";
+        return;
+    }
+    env_ = reinterpret_cast<napi_env>(new (std::nothrow) ArkNativeEngine(vm_, nullptr));
+}
+
+void JsApplicationContextUtilsSetFontTest::TearDownTestCase()
+{
+    if (env_ != nullptr) {
+        delete reinterpret_cast<ArkNativeEngine*>(env_);
+        env_ = nullptr;
+    }
+    if (vm_ != nullptr) {
+        panda::JSNApi::DestroyJSVM(vm_);
+        vm_ = nullptr;
+    }
+}
+
+void JsApplicationContextUtilsSetFontTest::SetUp()
+{
+    ASSERT_NE(env_, nullptr);
+    context_ = std::make_shared<ApplicationContext>();
+    utils_ = std::make_shared<JsApplicationContextUtils>(std::weak_ptr<ApplicationContext>(context_));
+    context_->RegisterAppFontObserver([this](const AppExecFwk::Configuration& config) {
+        called_ = true;
+        capturedConfig_ = config;
+    });
+}
+
+void JsApplicationContextUtilsSetFontTest::TearDown()
+{
+    ClearException();
+    utils_.reset();
+    context_.reset();
+}
+
+void JsApplicationContextUtilsSetFontTest::ClearException()
+{
+    bool pending = false;
+    if (env_ == nullptr || napi_is_exception_pending(env_, &pending) != napi_ok || !pending) {
+        return;
+    }
+    napi_value exception = nullptr;
+    napi_get_and_clear_last_exception(env_, &exception);
+}
+
+bool JsApplicationContextUtilsSetFontTest::IsExceptionPending()
+{
+    bool pending = false;
+    napi_is_exception_pending(env_, &pending);
+    return pending;
+}
+
 /**
- * @tc.number:OnSetFont_0200
+ * @tc.number: OnSetFont_0100
  * @tc.name: OnSetFont
  * @tc.desc: Verify two-arg SetFont passes font and enableAnimation=false to app font callback
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsApplicationContextUtilsSetFontTest, OnSetFont_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "OnSetFont_0100 start";
+    HandleScope handleScope(env_);
+    NapiCallbackInfo info;
+    info.argc = ARGC_TWO;
+    napi_create_string_utf8(env_, "SetFontTestCustom", NAPI_AUTO_LENGTH, &info.argv[0]);
+    napi_get_boolean(env_, false, &info.argv[1]);
+    utils_->OnSetFont(env_, info);
+#ifdef SUPPORT_GRAPHICS
+    ASSERT_TRUE(called_);
+    EXPECT_EQ(capturedConfig_.GetItem(AppExecFwk::ConfigurationInner::APPLICATION_FONT), "SetFontTestCustom");
+    EXPECT_EQ(capturedConfig_.GetItem(AppExecFwk::ConfigurationInner::APPLICATION_FONT_ANIMATION), "false");
+#endif
+    EXPECT_FALSE(IsExceptionPending());
+    GTEST_LOG_(INFO) << "OnSetFont_0100 end";
+}
+
+/**
+ * @tc.number: OnSetFont_0200
+ * @tc.name: OnSetFont
+ * @tc.desc: Verify one-arg SetFont uses default enableAnimation=true
+ * @tc.type: FUNC
  */
 HWTEST_F(JsApplicationContextUtilsSetFontTest, OnSetFont_0200, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "OnSetFont_0200 start";
+    HandleScope handleScope(env_);
     NapiCallbackInfo info;
-    info.argc = ARGC_TWO;
-    info.argv[INDEX_ZERO] = CreateString("SetFontTestCustom");
-    info.argv[INDEX_ONE] = CreateBool(false);
-    utils_->OnSetFont(g_env, info);
+    info.argc = ARGC_ONE;
+    napi_create_string_utf8(env_, "SetFontTestCustom", NAPI_AUTO_LENGTH, &info.argv[0]);
+    utils_->OnSetFont(env_, info);
 #ifdef SUPPORT_GRAPHICS
     ASSERT_TRUE(called_);
-    std::string fontKey = AppExecFwk::ConfigurationInner::APPLICATION_FONT;
-    std::string animationKey = AppExecFwk::ConfigurationInner::APPLICATION_FONT_ANIMATION;
-    EXPECT_EQ(capturedConfig_.GetItem(fontKey), "SetFontTestCustom");
-    EXPECT_EQ(capturedConfig_.GetItem(animationKey), "false");
+    EXPECT_EQ(capturedConfig_.GetItem(AppExecFwk::ConfigurationInner::APPLICATION_FONT), "SetFontTestCustom");
+    EXPECT_EQ(capturedConfig_.GetItem(AppExecFwk::ConfigurationInner::APPLICATION_FONT_ANIMATION), "true");
 #endif
     EXPECT_FALSE(IsExceptionPending());
     GTEST_LOG_(INFO) << "OnSetFont_0200 end";
 }
 
 /**
- * @tc.number:OnSetFont_0300
+ * @tc.number: OnSetFont_0300
  * @tc.name: OnSetFont
- * @tc.desc: Verify one-arg SetFont uses default enableAnimation=true
+ * @tc.desc: Verify SetFont throws when param count or enableAnimation type is invalid
+ * @tc.type: FUNC
  */
 HWTEST_F(JsApplicationContextUtilsSetFontTest, OnSetFont_0300, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "OnSetFont_0300 start";
-    NapiCallbackInfo info;
-    info.argc = ARGC_ONE;
-    info.argv[INDEX_ZERO] = CreateString("SetFontTestCustom");
-    utils_->OnSetFont(g_env, info);
-#ifdef SUPPORT_GRAPHICS
-    ASSERT_TRUE(called_);
-    std::string fontKey = AppExecFwk::ConfigurationInner::APPLICATION_FONT;
-    std::string animationKey = AppExecFwk::ConfigurationInner::APPLICATION_FONT_ANIMATION;
-    EXPECT_EQ(capturedConfig_.GetItem(fontKey), "SetFontTestCustom");
-    EXPECT_EQ(capturedConfig_.GetItem(animationKey), "true");
-#endif
-    EXPECT_FALSE(IsExceptionPending());
+    HandleScope handleScope(env_);
+
+    NapiCallbackInfo noParam;
+    noParam.argc = ARGC_ZERO;
+    utils_->OnSetFont(env_, noParam);
+    EXPECT_TRUE(IsExceptionPending());
+    ClearException();
+
+    NapiCallbackInfo tooManyParams;
+    tooManyParams.argc = ARGC_THREE;
+    napi_create_string_utf8(env_, "SetFontTestCustom", NAPI_AUTO_LENGTH, &tooManyParams.argv[0]);
+    napi_get_boolean(env_, false, &tooManyParams.argv[1]);
+    napi_get_boolean(env_, true, &tooManyParams.argv[2]);
+    utils_->OnSetFont(env_, tooManyParams);
+    EXPECT_TRUE(IsExceptionPending());
+    ClearException();
+
+    NapiCallbackInfo wrongType;
+    wrongType.argc = ARGC_TWO;
+    napi_create_string_utf8(env_, "SetFontTestCustom", NAPI_AUTO_LENGTH, &wrongType.argv[0]);
+    napi_create_string_utf8(env_, "false", NAPI_AUTO_LENGTH, &wrongType.argv[1]);
+    utils_->OnSetFont(env_, wrongType);
+    EXPECT_TRUE(IsExceptionPending());
+    ClearException();
+
+    EXPECT_FALSE(called_);
     GTEST_LOG_(INFO) << "OnSetFont_0300 end";
-}
-
-/**
- * @tc.number:OnSetFont_0400
- * @tc.name: OnSetFont
- * @tc.desc: Verify two-arg SetFont treats undefined enableAnimation as default true
- */
-HWTEST_F(JsApplicationContextUtilsSetFontTest, OnSetFont_0400, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "OnSetFont_0400 start";
-    NapiCallbackInfo info;
-    info.argc = ARGC_TWO;
-    info.argv[INDEX_ZERO] = CreateString("SetFontTestCustom");
-    napi_get_undefined(g_env, &info.argv[INDEX_ONE]);
-    utils_->OnSetFont(g_env, info);
-#ifdef SUPPORT_GRAPHICS
-    ASSERT_TRUE(called_);
-    std::string animationKey = AppExecFwk::ConfigurationInner::APPLICATION_FONT_ANIMATION;
-    EXPECT_EQ(capturedConfig_.GetItem(animationKey), "true");
-#endif
-    EXPECT_FALSE(IsExceptionPending());
-    GTEST_LOG_(INFO) << "OnSetFont_0400 end";
-}
-
-/**
- * @tc.number:OnSetFont_0500
- * @tc.name: OnSetFont
- * @tc.desc: Verify SetFont throws when no param is passed
- */
-HWTEST_F(JsApplicationContextUtilsSetFontTest, OnSetFont_0500, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "OnSetFont_0500 start";
-    NapiCallbackInfo info;
-    info.argc = ARGC_ZERO;
-    utils_->OnSetFont(g_env, info);
-    EXPECT_TRUE(IsExceptionPending());
-    EXPECT_FALSE(called_);
-    GTEST_LOG_(INFO) << "OnSetFont_0500 end";
-}
-
-/**
- * @tc.number:OnSetFont_0600
- * @tc.name: OnSetFont
- * @tc.desc: Verify SetFont throws when more than two params are passed
- */
-HWTEST_F(JsApplicationContextUtilsSetFontTest, OnSetFont_0600, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "OnSetFont_0600 start";
-    NapiCallbackInfo info;
-    info.argc = ARGC_THREE;
-    info.argv[INDEX_ZERO] = CreateString("SetFontTestCustom");
-    info.argv[INDEX_ONE] = CreateBool(false);
-    info.argv[INDEX_TWO] = CreateBool(true);
-    utils_->OnSetFont(g_env, info);
-    EXPECT_TRUE(IsExceptionPending());
-    EXPECT_FALSE(called_);
-    GTEST_LOG_(INFO) << "OnSetFont_0600 end";
-}
-
-/**
- * @tc.number:OnSetFont_0700
- * @tc.name: OnSetFont
- * @tc.desc: Verify SetFont throws when enableAnimation is not boolean
- */
-HWTEST_F(JsApplicationContextUtilsSetFontTest, OnSetFont_0700, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "OnSetFont_0700 start";
-    NapiCallbackInfo info;
-    info.argc = ARGC_TWO;
-    info.argv[INDEX_ZERO] = CreateString("SetFontTestCustom");
-    info.argv[INDEX_ONE] = CreateString("false");
-    utils_->OnSetFont(g_env, info);
-    EXPECT_TRUE(IsExceptionPending());
-    EXPECT_FALSE(called_);
-    GTEST_LOG_(INFO) << "OnSetFont_0700 end";
 }
 } // namespace AbilityRuntime
 } // namespace OHOS
