@@ -15,6 +15,7 @@
 
 #include "mock_permission_verification.h"
 #include "mock_my_status.h"
+#include "permission_constants.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -27,6 +28,9 @@ enum FLAG {
 bool PermissionVerification::VerifyCallingPermission(const std::string &permissionName,
     const uint32_t specifyTokenId) const
 {
+    if (permissionName == PermissionConstants::PERMISSION_CONNECT_AGENT_FROM_BACKGROUND) {
+        return !!(MyStatus::GetInstance().permConnectAgentFromBackground_);
+    }
     return !!(MyStatus::GetInstance().permPermission_);
 }
 bool PermissionVerification::IsSACall() const

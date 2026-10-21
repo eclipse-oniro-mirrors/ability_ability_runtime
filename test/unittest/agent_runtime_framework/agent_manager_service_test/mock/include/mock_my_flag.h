@@ -42,6 +42,7 @@ public:
     static int32_t backfillPreInstallCardsCallCount;
     static bool retVerifyCallingPermission;
     static bool retVerifyConnectAgentPermission;
+    static bool retVerifyConnectAgentFromBackgroundPermission;
     static bool retVerifyGetAgentCardPermission;
     static bool retJudgeCallerIsAllowedToUseSystemAPI;
     static bool retVerifyModifyAgentCardPermission;

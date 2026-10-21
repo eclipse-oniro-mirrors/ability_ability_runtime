@@ -21,6 +21,7 @@ namespace OHOS {
 namespace AgentRuntime {
 bool MyFlag::retVerifyCallingPermission = true;
 bool MyFlag::retVerifyConnectAgentPermission = true;
+bool MyFlag::retVerifyConnectAgentFromBackgroundPermission = false;
 bool MyFlag::retVerifyGetAgentCardPermission = true;
 bool MyFlag::retJudgeCallerIsAllowedToUseSystemAPI = true;
 bool MyFlag::retVerifyModifyAgentCardPermission = true;
@@ -33,6 +34,9 @@ bool PermissionVerification::VerifyCallingPermission(const std::string &permissi
 {
     if (permissionName == PermissionConstants::PERMISSION_CONNECT_AGENT) {
         return AgentRuntime::MyFlag::retVerifyConnectAgentPermission;
+    }
+    if (permissionName == PermissionConstants::PERMISSION_CONNECT_AGENT_FROM_BACKGROUND) {
+        return AgentRuntime::MyFlag::retVerifyConnectAgentFromBackgroundPermission;
     }
     if (permissionName == PermissionConstants::PERMISSION_GET_AGENT_CARD) {
         return AgentRuntime::MyFlag::retVerifyGetAgentCardPermission;
