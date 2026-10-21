@@ -17,6 +17,7 @@
 
 #define private public
 #include "app_mgr_service_inner.h"
+#include "appfreeze_manager.h"
 #include "app_running_record.h"
 #include "remote_client_manager.h"
 #undef private
@@ -5009,14 +5010,11 @@ HWTEST_F(AppMgrServiceInnerTest, TimeoutNotifyApp_001, TestSize.Level1)
     std::shared_ptr<MockTaskHandlerWrap> taskHandler = MockTaskHandlerWrap::CreateQueueHandler("app_mgr_task_queue");
     appMgrServiceInner->SetTaskHandler(taskHandler);
 
-    int32_t pid = 0;
-    int32_t uid = 0;
-    std::string bundleName = "test_processName";
-    std::string processName = "test_processName";
     FaultData faultData;
     faultData.errorObject.name = "1234";
     faultData.faultType = FaultDataType::APP_FREEZE;
-    appMgrServiceInner->TimeoutNotifyApp(pid, uid, bundleName, processName, faultData, -1);
+    AppfreezeManager::GetInstance()->TimeoutNotifyApp(faultData, appMgrServiceInner->GetAppfreezeAppInfo(nullptr),
+        appMgrServiceInner->dfxTaskHandler_);
     EXPECT_NE(taskHandler, nullptr);
     TAG_LOGI(AAFwkTag::TEST, "TimeoutNotifyApp_001 end");
 }

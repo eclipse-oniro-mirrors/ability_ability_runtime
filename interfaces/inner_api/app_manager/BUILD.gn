@@ -74,6 +74,8 @@ ohos_shared_library("app_manager") {
     "${ability_runtime_services_path}/appdfr/src/appfreeze_cpu_freq_manager.cpp",
     "${ability_runtime_services_path}/appdfr/src/appfreeze_event_report.cpp",
     "${ability_runtime_services_path}/appdfr/src/appfreeze_manager.cpp",
+    "${ability_runtime_services_path}/appdfr/src/appfreeze_info.cpp",
+    "${ability_runtime_services_path}/appdfr/src/appfreeze_binder_collector.cpp",
     "${ability_runtime_services_path}/appdfr/src/app_recovery_mgr.cpp",
     "${ability_runtime_services_path}/appdfr/src/appfreeze_util.cpp",
     "${ability_runtime_services_path}/appdfr/src/cpu_data_processor.cpp",
@@ -182,6 +184,7 @@ ohos_shared_library("app_manager") {
     "${ability_runtime_path}/utils/server/startup:startup_util",
     "${ability_runtime_services_path}/common:app_util",
     "${ability_runtime_services_path}/common:hisysevent_report",
+    "${ability_runtime_services_path}/common:task_handler_wrap",
   ]
 
   external_deps = [
@@ -230,6 +233,10 @@ ohos_shared_library("app_manager") {
 
   if (ability_runtime_app_no_response_dialog) {
     defines += [ "APP_NO_RESPONSE_DIALOG" ]
+  }
+
+  if (app_mgr_service_hicollie_enable) {
+    defines += [ "APP_MGR_SERVICE_HICOLLIE_ENABLE" ]
   }
 
   innerapi_tags = [ "platformsdk" ]

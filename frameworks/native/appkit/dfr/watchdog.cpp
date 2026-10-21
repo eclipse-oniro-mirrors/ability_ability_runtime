@@ -243,6 +243,7 @@ void Watchdog::SetBackgroundStatus(const bool isInBackground)
 void Watchdog::AllowReportEvent()
 {
     std::unique_lock<std::mutex> lock(cvMutex_);
+    AppExecFwk::AppfreezeInner::GetInstance()->ResetMainFreezeCallback();
     needReport_.store(true);
     isSixSecondEvent_.store(false);
     backgroundReportCount_.store(0);

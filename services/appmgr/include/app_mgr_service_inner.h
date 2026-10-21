@@ -106,6 +106,7 @@ class WindowPidVisibilityInfo;
 class FocusChangeInfo;
 }
 namespace AppExecFwk {
+struct AppfreezeAppInfo;
 using OHOS::AAFwk::Want;
 using AAFwk::FdGuard;
 using ImageError = IImageErrorHandler::ImageError;
@@ -2301,9 +2302,6 @@ private:
     void SetOverlayInfo(const std::string& bundleName, const int32_t userId, AppSpawnStartMsg& startMsg);
     void SetAppEnvInfo(const BundleInfo &bundleInfo, AppSpawnStartMsg& startMsg);
 
-    void TimeoutNotifyApp(int32_t pid, int32_t uid, const std::string& bundleName, const std::string& processName,
-        const FaultData &faultData, int32_t recordId);
-
     void AppRecoveryNotifyApp(int32_t pid, const std::string& bundleName,
         FaultDataType faultType, const std::string& markers, int32_t recordId);
     
@@ -2494,6 +2492,11 @@ private:
         bool abilityPendingBackground = false, bool isInForeground = false);
     int32_t SubmitDfxFaultTask(const FaultData &faultData, const std::string &bundleName,
         const std::shared_ptr<AppRunningRecord> &appRecord, const int32_t pid);
+    int32_t SubmitAppFault(FaultData& faultData, const std::shared_ptr<AppRunningRecord>& appRecord,
+        int32_t pid, int64_t receiveTime);
+    AppfreezeAppInfo GetAppfreezeAppInfo(const std::shared_ptr<AppRunningRecord>& record);
+    __attribute__((visibility("hidden"))) void HandleFaultDisposition(const FaultData& faultData,
+        const std::shared_ptr<AppRunningRecord>& record, bool saTimeout, bool focusFlag);
     void AddAbilityStageForSpecified(std::shared_ptr<AppRunningRecord> appRecord);
     void ReportAbilityStartInfoForSpecified(std::shared_ptr<AppRunningRecord> appRecord,
         const AbilityInfo &abilityInfo);

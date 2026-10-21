@@ -14,7 +14,10 @@
  */
 #include "appfreeze_manager.h"
 
+#include <algorithm>
 #include <chrono>
+#include <iterator>
+#include <utility>
 #include <fcntl.h>
 #include <cstring>
 #include <sys/time.h>
@@ -29,6 +32,7 @@
 #include "faultloggerd_client.h"
 #include "file_ex.h"
 #include "ffrt.h"
+#include "cpp/future.h"
 #include "dfx_dump_catcher.h"
 #include "directory_ex.h"
 #include "hisysevent_report.h"
@@ -40,6 +44,10 @@
 #include "app_mgr_client.h"
 #include "hilog_tag_wrapper.h"
 #include "time_util.h"
+#include "task_handler_wrap.h"
+#ifdef APP_MGR_SERVICE_HICOLLIE_ENABLE
+#include "xcollie/xcollie.h"
+#endif
 #ifdef ABILITY_RUNTIME_HITRACE_ENABLE
 #include "hitrace/hitracechain.h"
 #endif
@@ -131,8 +139,6 @@ static constexpr int PERF_TIME = 60000;
 std::shared_ptr<AppfreezeManager> AppfreezeManager::instance_ = nullptr;
 ffrt::mutex AppfreezeManager::singletonMutex_;
 ffrt::mutex AppfreezeManager::freezeMutex_;
-ffrt::mutex AppfreezeManager::catchStackMutex_;
-std::map<int, std::string> AppfreezeManager::catchStackMap_;
 ffrt::mutex AppfreezeManager::freezeFilterMutex_;
 ffrt::mutex AppfreezeManager::freezeInfoMutex_;
 std::string AppfreezeManager::appfreezeInfoPath_;
@@ -140,10 +146,12 @@ std::string AppfreezeManager::appfreezeInfoPath_;
 AppfreezeManager::AppfreezeManager()
 {
     name_ = "AppfreezeManager" + std::to_string(AbilityRuntime::TimeUtil::CurrentTimeMillis());
+    collector_ = std::make_shared<AppfreezeBinderCollector>();
 }
 
 AppfreezeManager::~AppfreezeManager()
 {
+    CloseAppfreezeEvents();
 }
 
 std::shared_ptr<AppfreezeManager> AppfreezeManager::GetInstance()
@@ -166,25 +174,961 @@ void AppfreezeManager::DestroyInstance()
     }
 }
 
-bool AppfreezeManager::IsHandleAppfreeze(const std::string& bundleName)
+int AppfreezeManager::GetExceptionTimerId(const std::function<void()>& fallback)
 {
-    if (bundleName.empty()) {
+#ifdef APP_MGR_SERVICE_HICOLLIE_ENABLE
+    auto exceptionCallback = [fallback](void *) {
+        // Bypass the stalled DFX queue through the existing global FFRT handler.
+        AAFwk::TaskHandlerWrap::GetFfrtHandler()->SubmitTask(fallback, "AppfreezeException");
+    };
+    constexpr uint32_t timeout = 30;
+    return HiviewDFX::XCollie::GetInstance().SetTimer("DfxFault::Exception", timeout,
+        exceptionCallback, nullptr, HiviewDFX::XCOLLIE_FLAG_NOOP);
+#else
+    return -1;
+#endif
+}
+
+namespace {
+constexpr int64_t APPFREEZE_WINDOW_MS = 60000;
+constexpr int64_t IPC_LATENCY_THREAD_BLOCK = 0;
+constexpr int64_t IPC_LATENCY_NOT_MEASURED = -1;
+constexpr int64_t APPFREEZE_CAPTURE_TIMEOUT_MS = 30000;
+constexpr size_t APPFREEZE_MAX_PENDING = 2;
+constexpr size_t APPFREEZE_MAX_ATTACHMENTS = 2;
+constexpr auto APPFREEZE_ATTACHMENT_TIMEOUT = std::chrono::milliseconds(500);
+std::atomic<uint64_t> appfreezeRequestSequence {0};
+} // namespace
+
+AppfreezeManager::FreezeInfo AppfreezeManager::ReserveAppfreezeTask(const FaultData& faultData,
+    AppInfo& appInfo, const std::string& marker, AppfreezeSubmitResult& result)
+{
+    result = AppfreezeSubmitResult::REJECTED;
+    if (!appInfo.refresh || !appInfo.refresh(appInfo, false)) {
+        return nullptr;
+    }
+    AppfreezeObservation observation {faultData.errorObject.name, appInfo.instanceId,
+        reinterpret_cast<uintptr_t>(faultData.token.GetRefPtr()), faultData.state, faultData.detectTime};
+    auto info = ReserveAppfreezeEvent(appInfo, observation,
+        AbilityRuntime::TimeUtil::CurrentTimeMillis(), marker, &result);
+    if (!info) {
+        return nullptr;
+    }
+    // Exit may have completed its cleanup before the reservation became visible.
+    if (!appInfo.refresh(appInfo, false)) {
+        RemoveAppfreezeInstance(info->generationId, info->instanceId);
+        result = AppfreezeSubmitResult::REJECTED;
+        return nullptr;
+    }
+    info->faultData = std::make_shared<FaultData>(faultData);
+    return info;
+}
+
+AppfreezeSubmitResult AppfreezeManager::SubmitAppfreezeCapture(AppInfo appInfo, const FreezeInfo& request,
+    const std::shared_ptr<AAFwk::TaskHandlerWrap>& handler, bool saTimeout)
+{
+    appInfo.isFrozen = FreezeUtil::GetInstance().IsFrozen(appInfo.pid);
+    return SubmitAppfreezeEvent(request, appInfo, [weak = weak_from_this(), appInfo, saTimeout](const auto& req) {
+        auto manager = weak.lock();
+        auto current = appInfo;
+        if (!manager || req->IsCancelled() || !current.refresh(current, true)) {
+            return;
+        }
+        const auto& faultData = *req->faultData;
+        if (!manager->ProcessAppfreezeEvent(req, appInfo, [&] {
+            appInfo.handleFault(faultData, appInfo, saTimeout);
+        })) {
+            return;
+        }
+        if (req->IsFallback() && !req->half && !req->IsCancelled() && current.refresh(current, false)) {
+            current.isOccurException = true;
+            appInfo.handleFault(faultData, current, saTimeout);
+        }
+        if (req->IsCancelled()) {
+            manager->ClearLogValidity(appInfo.pid);
+        }
+    }, handler);
+}
+
+int32_t AppfreezeManager::SubmitAppfreezeFault(const FaultData& faultData, AppInfo appInfo,
+    const std::shared_ptr<AAFwk::TaskHandlerWrap>& handler, const FreezeInfo& reserved, bool saTimeout)
+{
+    if (faultData.faultType != FaultDataType::APP_FREEZE) {
+        return ERR_OK;
+    }
+    if (!handler || !appInfo.refresh || !appInfo.handleFault || !appInfo.refresh(appInfo, false)) {
+        CancelAppfreezeEvent(reserved);
+        return ERR_INVALID_VALUE;
+    }
+    if (CheckPreloadUIExtension(faultData.errorObject.message, appInfo.bundleName, appInfo.pid,
+        faultData.errorObject.name)) {
+        CancelAppfreezeEvent(reserved);
+        return ERR_OK;
+    }
+    AppfreezeSubmitResult admission;
+    auto request = reserved ? reserved : ReserveAppfreezeTask(faultData, appInfo, "", admission);
+    if (!request) {
+        return admission == AppfreezeSubmitResult::DUPLICATE ? ERR_OK : ERR_INVALID_VALUE;
+    }
+    request->faultData = std::make_shared<FaultData>(faultData);
+    auto result = SubmitAppfreezeCapture(appInfo, request, handler, saTimeout);
+    TAG_LOGI(AAFwkTag::APPDFR, "Appfreeze submit request:%{public}" PRIu64 " pid:%{public}d result:%{public}d",
+        request->requestId, appInfo.pid, static_cast<int>(result));
+    return result == AppfreezeSubmitResult::REJECTED ? ERR_INVALID_VALUE : ERR_OK;
+}
+
+bool AppfreezeManager::PrepareAppfreezeFeedback(const FaultData& faultData, int32_t pid, int32_t instanceId,
+    const std::shared_ptr<AAFwk::TaskHandlerWrap>& handler, FreezeInfo& reserved)
+{
+    if (faultData.timeoutMarkers.empty()) {
         return true;
     }
-    return !DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance()->IsAttachDebug(bundleName);
+    if (!handler) {
+        return false;
+    }
+    reserved = ClaimAppfreezeFeedback(pid, instanceId, faultData.timeoutMarkers, faultData.errorObject.name);
+    if (!reserved) {
+        return false;
+    }
+    // The AppFreezeInfo claim decides the winner when feedback races the timeout.
+    handler->CancelTask(faultData.timeoutMarkers);
+    return true;
+}
+
+int32_t AppfreezeManager::PrepareAppfreezeNotification(FaultData& faultData, AppInfo appInfo,
+    const std::shared_ptr<AAFwk::TaskHandlerWrap>& handler, FreezeInfo& reserved)
+{
+    const int64_t timeout = 3000; // ipc timeout 3000ms
+    if (!appInfo.refresh || !appInfo.handleFault || !appInfo.refresh(appInfo, false)) {
+        return ERR_INVALID_VALUE;
+    }
+    if (!collector_->IsHandleAppfreeze(appInfo.bundleName) || !appInfo.refresh(appInfo, true)) {
+        return ERR_OK;
+    }
+    if (!handler) {
+        TAG_LOGE(AAFwkTag::APPMGR, "dfxTaskHandler_ null");
+        return ERR_NO_INIT;
+    }
+    static std::atomic<uint64_t> notifySequence {0};
+    const auto notifyTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+    // The application echoes this opaque marker; the pending task owns its lifetime.
+    faultData.timeoutMarkers = "notifyFault:" + std::to_string(appInfo.pid) + ":" +
+        std::to_string(appInfo.instanceId) + ":" + std::to_string(notifyTime) + ":" +
+        std::to_string(notifySequence.fetch_add(1));
+    faultData.ipcLatency = faultData.errorObject.name == AppFreezeType::THREAD_BLOCK_3S ||
+        faultData.errorObject.name == AppFreezeType::THREAD_BLOCK_6S ?
+        IPC_LATENCY_THREAD_BLOCK : IPC_LATENCY_NOT_MEASURED;
+    AppfreezeSubmitResult admission;
+    reserved = ReserveAppfreezeTask(faultData, appInfo, faultData.timeoutMarkers, admission);
+    if (!reserved) {
+        return admission == AppfreezeSubmitResult::DUPLICATE ? ERR_OK : ERR_NO_INIT;
+    }
+    auto timeoutNotifyApp = [weak = weak_from_this(), appInfo, faultData,
+        weakHandler = std::weak_ptr<AAFwk::TaskHandlerWrap>(handler)] {
+        if (auto manager = weak.lock()) {
+            manager->TimeoutNotifyApp(faultData, appInfo, weakHandler.lock());
+        }
+    };
+    auto timeoutTask = handler->SubmitTask(timeoutNotifyApp, faultData.timeoutMarkers, timeout);
+    if (!timeoutTask) {
+        CancelAppfreezeEvent(reserved, true);
+        TAG_LOGE(AAFwkTag::APPDFR, "SA Appfreeze feedback timeout post failed pid:%{public}d", appInfo.pid);
+        return ERR_NO_INIT;
+    }
+    SetAppfreezeFeedbackTask(reserved, [timeoutTask] { timeoutTask.Cancel(); });
+    return ERR_OK;
+}
+
+void AppfreezeManager::TimeoutNotifyApp(const FaultData& faultData, AppInfo appInfo,
+    const std::shared_ptr<AAFwk::TaskHandlerWrap>& handler)
+{
+    if (!handler || !appInfo.refresh || !appInfo.refresh(appInfo, false)) {
+        return;
+    }
+    FreezeInfo reserved;
+    if (!faultData.timeoutMarkers.empty()) {
+        reserved = ClaimAppfreezeFeedback(appInfo.pid, appInfo.instanceId,
+            faultData.timeoutMarkers, faultData.errorObject.name);
+        if (!reserved) {
+            return;
+        }
+    }
+    SubmitAppfreezeFault(faultData, appInfo, handler, reserved, true);
+}
+
+void AppfreezeManager::ClearAppfreezeTasks(int32_t pid, int32_t uid, int32_t instanceId)
+{
+    RemoveAppfreezeInstance(std::to_string(pid) + ":" + std::to_string(uid), instanceId);
+    ClearLogValidity(pid);
+    collector_->DeleteStack(pid);
+}
+
+void AppfreezeManager::ObserveAppfreezeLocked(const FreezeInfo& info, int64_t now)
+{
+    auto app = info ? info->application_.lock() : nullptr;
+    const bool mainFlow = AppFreezeInfo::EventGroup(info->eventName) == "main";
+    if (!app) {
+        return;
+    }
+    int64_t firstSeen = now;
+    auto half = app->halfFlows_.find(info->flowId);
+    if (!info->half && half != app->halfFlows_.end()) {
+        firstSeen = half->second.front();
+        // Input feedback timeout and 6s can finish separately in one main-thread stall.
+        if (!mainFlow) {
+            half->second.pop_front();
+            if (half->second.empty()) {
+                app->halfFlows_.erase(half);
+            }
+        }
+    } else {
+        recentFreezes_.insert(now);
+        info->counted_ = true;
+    }
+    info->countedAt_ = firstSeen;
+    if (info->half) {
+        if (mainFlow) {
+            // A new Half identity starts the next stall after main-thread recovery.
+            app->halfFlows_[info->flowId].clear();
+        }
+    }
+    if (!info->notificationId.empty()) {
+        app->notifications_[info->notificationId] = firstSeen;
+    }
+    info->freezeCount1min = static_cast<int64_t>(recentFreezes_.size());
+}
+
+void AppfreezeManager::InitAppfreezeObservation(const FreezeInfo& info, const AppfreezeObservation& observation)
+{
+    info->instanceId = observation.instanceId;
+    info->eventName = observation.eventName;
+    info->half = AppFreezeInfo::IsHalfEvent(info->eventName);
+    std::string family = info->eventName;
+    if (AppFreezeInfo::EventGroup(family) == "main") {
+        family = "THREAD_BLOCK";
+    } else if (family == "LIFECYCLE_HALF_TIMEOUT") {
+        family = "LIFECYCLE_TIMEOUT";
+    } else if (family == "LIFECYCLE_HALF_TIMEOUT_WARNING") {
+        family = "LIFECYCLE_TIMEOUT_WARNING";
+    } else if (family == "BUSSINESS_THREAD_BLOCK_3S" || family == "BUSSINESS_THREAD_BLOCK_6S") {
+        family = "BUSSINESS_THREAD_BLOCK";
+    }
+    info->flowId = info->generationId + ":" + std::to_string(info->instanceId) + ":" + family + ":" +
+        (AppFreezeInfo::EventGroup(info->eventName) == "main" ? "0:0" :
+        std::to_string(observation.token) + ":" + std::to_string(observation.state));
+    info->notificationId = observation.detectTime > 0 ?
+        info->flowId + ":" + info->eventName + ":" + std::to_string(observation.detectTime) : "";
+}
+
+AppfreezeManager::FreezeInfo AppfreezeManager::GetAppfreezeApplicationLocked(const FreezeInfo& info)
+{
+    auto& app = appfreezeApps_[info->generationId];
+    if (app && (app->instanceId != info->instanceId || !app->accepting_)) {
+        if (!app->groups_.empty()) {
+            return {};
+        }
+        app.reset();
+    }
+    if (!app) {
+        app = std::make_shared<AppFreezeInfo>();
+        app->pid = info->pid;
+        app->instanceId = info->instanceId;
+        app->generationId = info->generationId;
+    }
+    info->application_ = app;
+    return app;
+}
+
+AppfreezeManager::FreezeInfo AppfreezeManager::FindAppfreezeHalfLocked(const FreezeInfo& info,
+    const FreezeInfo& current) const
+{
+    if (info->half) {
+        return {};
+    }
+    if (current->half && current->flowId == info->flowId) {
+        return current;
+    }
+    auto match = std::find_if(current->pending_.begin(), current->pending_.end(),
+        [&info](const FreezeInfo& pending) { return pending->half && pending->flowId == info->flowId; });
+    return match == current->pending_.end() ? nullptr : *match;
+}
+
+bool AppfreezeManager::PrepareAppfreezeCallbackLocked(const FreezeInfo& info, int64_t now)
+{
+    auto app = info->application_.lock();
+    if (!app) {
+        return false;
+    }
+#ifndef APP_NO_RESPONSE_DIALOG
+    // A new application-side 3s report starts the next main-thread fault cycle.
+    // AppfreezeInner remains authoritative when an IPC races recovery or reporting.
+    if (info->eventName == AppFreezeType::THREAD_BLOCK_3S && info->feedbackMarker_.empty()) {
+        app->mainCallbackTime_ = -1;
+    }
+#endif
+    return info->feedbackMarker_.empty() || info->half || AppFreezeInfo::EventGroup(info->eventName) != "main" ||
+        app->mainCallbackTime_ < 0 || now - app->mainCallbackTime_ >= APPFREEZE_WINDOW_MS;
+}
+
+bool AppfreezeManager::PrepareAppfreezeAdmissionLocked(const FreezeInfo& info, int64_t now,
+    FreezeTask& cancelDiscardedFeedback)
+{
+    auto app = info->application_.lock();
+    if (!app) {
+        return false;
+    }
+    if (!info->notificationId.empty() && app->notifications_.count(info->notificationId) > 0) {
+        return false;
+    }
+    if (!PrepareAppfreezeCallbackLocked(info, now)) {
+        return false;
+    }
+    auto entry = app->groups_.find(AppFreezeInfo::EventGroup(info->eventName));
+    if (entry == app->groups_.end()) {
+        return true;
+    }
+    const auto& current = entry->second;
+    if (!info->half && current->fatalAdmitted_) {
+        return false;
+    }
+    const auto same = [&info](const FreezeInfo& old) {
+        return !old->IsCancelled() && old->eventName == info->eventName &&
+            old->flowId == info->flowId && old->notificationId == info->notificationId;
+    };
+    if (same(current) || std::any_of(current->pending_.begin(), current->pending_.end(), same)) {
+        return false;
+    }
+    auto half = FindAppfreezeHalfLocked(info, current);
+    if (current->pending_.size() >= APPFREEZE_MAX_PENDING) {
+        if (info->half) {
+            // Count an independent fault even when capture capacity is full.
+            ObserveAppfreezeLocked(info, now);
+            return false;
+        }
+        // Keep the matching Half ahead of its upgrade, even if it has not run yet.
+        auto discarded = std::find_if(current->pending_.rbegin(), current->pending_.rend(),
+            [&half](const FreezeInfo& pending) { return pending != half; });
+        if (discarded == current->pending_.rend()) {
+            return false;
+        }
+        *(*discarded)->cancelled_ = true;
+        cancelDiscardedFeedback = std::exchange((*discarded)->cancelFeedback_, {});
+        current->pending_.erase(std::next(discarded).base());
+    }
+    if (half) {
+        info->episodeId = half->episodeId;
+        info->reportClaim = half->reportClaim;
+    }
+    return true;
+}
+
+AppfreezeSubmitResult AppfreezeManager::EnqueueAppfreezeEventLocked(const FreezeInfo& info, int64_t now)
+{
+    info->requestId = ++appfreezeRequestSequence;
+    info->occurTime = now;
+    info->deadline_ = now + APPFREEZE_CAPTURE_TIMEOUT_MS;
+    info->cancelled_ = std::make_shared<std::atomic<bool>>(false);
+    if (info->episodeId.empty()) {
+        const auto wallTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+        lastAppfreezeEpisode_ = std::max<int64_t>(wallTime, lastAppfreezeEpisode_ + 1);
+        info->episodeId = std::to_string(lastAppfreezeEpisode_);
+    }
+    if (!info->reportClaim) {
+        info->reportClaim = std::make_shared<std::atomic<uint8_t>>(0);
+    }
+    ObserveAppfreezeLocked(info, now);
+    auto app = info->application_.lock();
+    if (!app) {
+        return AppfreezeSubmitResult::REJECTED;
+    }
+    if (!info->half && info->feedbackMarker_.empty() && AppFreezeInfo::EventGroup(info->eventName) == "main") {
+        app->mainCallbackTime_ = now;
+    }
+    auto entry = app->groups_.find(AppFreezeInfo::EventGroup(info->eventName));
+    if (entry == app->groups_.end()) {
+        info->fatalAdmitted_ = !info->half;
+        app->groups_.emplace(AppFreezeInfo::EventGroup(info->eventName), info);
+        return AppfreezeSubmitResult::DISPATCHED;
+    }
+    auto& current = entry->second;
+    if (!info->half) {
+        current->fatalAdmitted_ = true;
+        auto predecessor = std::find_if(current->pending_.begin(), current->pending_.end(),
+            [&info](const FreezeInfo& pending) { return pending->reportClaim == info->reportClaim; });
+        current->pending_.insert(predecessor == current->pending_.end() ?
+            current->pending_.begin() : std::next(predecessor), info);
+    } else {
+        current->pending_.push_back(info);
+    }
+    return AppfreezeSubmitResult::QUEUED;
+}
+
+AppfreezeManager::FreezeInfo AppfreezeManager::ReserveAppfreezeEvent(const AppInfo& appInfo,
+    const AppfreezeObservation& observation, int64_t now,
+    const std::string& feedbackMarker, AppfreezeSubmitResult* result)
+{
+    if (result) {
+        *result = AppfreezeSubmitResult::REJECTED;
+    }
+    auto info = std::make_shared<AppFreezeInfo>();
+    info->pid = appInfo.pid;
+    info->generationId = std::to_string(appInfo.pid) + ":" + std::to_string(appInfo.uid);
+    info->feedbackMarker_ = feedbackMarker;
+    InitAppfreezeObservation(info, observation);
+    FreezeTask cancelDiscardedFeedback;
+    {
+        std::lock_guard<std::mutex> lock(appfreezeEventMutex_);
+        ExpireAppfreezeHistoryLocked(now);
+        if (!GetAppfreezeApplicationLocked(info)) {
+            return {};
+        }
+        if (result) {
+            *result = AppfreezeSubmitResult::DUPLICATE;
+        }
+        if (!PrepareAppfreezeAdmissionLocked(info, now, cancelDiscardedFeedback)) {
+            return {};
+        }
+        auto admission = EnqueueAppfreezeEventLocked(info, now);
+        if (result) {
+            *result = admission;
+        }
+    }
+    if (cancelDiscardedFeedback) {
+        cancelDiscardedFeedback();
+    }
+    ScheduleAppfreezeMaintenance();
+    return info;
+}
+
+bool AppfreezeManager::IsAppfreezeEventTrackedLocked(const FreezeInfo& info) const
+{
+    auto app = info ? info->application_.lock() : nullptr;
+    if (!app) {
+        return false;
+    }
+    auto it = app->groups_.find(AppFreezeInfo::EventGroup(info->eventName));
+    return it != app->groups_.end() && (it->second == info ||
+        std::find(it->second->pending_.begin(), it->second->pending_.end(), info) != it->second->pending_.end());
+}
+
+AppfreezeSubmitResult AppfreezeManager::SubmitAppfreezeEvent(const FreezeInfo& info, FreezeProcess process,
+    const std::shared_ptr<AAFwk::TaskHandlerWrap>& handler)
+{
+    auto app = info ? info->application_.lock() : nullptr;
+    if (!app || !process || !handler) {
+        return AppfreezeSubmitResult::REJECTED;
+    }
+    bool current = false;
+    {
+        std::lock_guard<std::mutex> lock(appfreezeEventMutex_);
+        if (info->IsCancelled() || !IsAppfreezeEventTrackedLocked(info)) {
+            return AppfreezeSubmitResult::REJECTED;
+        }
+        if (info->task_ || info->completed_) {
+            return AppfreezeSubmitResult::DUPLICATE;
+        }
+        if (!info->feedbackMarker_.empty() && !info->feedbackClaimed_) {
+            return AppfreezeSubmitResult::REJECTED;
+        }
+        info->task_ = std::move(process);
+        info->taskHandler_ = handler;
+        current = app->groups_.at(AppFreezeInfo::EventGroup(info->eventName)) == info;
+    }
+    if (!current) {
+        return AppfreezeSubmitResult::QUEUED;
+    }
+    return DispatchAppfreezeEvent(info) ? AppfreezeSubmitResult::DISPATCHED : AppfreezeSubmitResult::REJECTED;
+}
+
+AppfreezeSubmitResult AppfreezeManager::SubmitAppfreezeEvent(const FreezeInfo& info, const AppInfo& appInfo,
+    FreezeProcess process, const std::shared_ptr<AAFwk::TaskHandlerWrap>& handler)
+{
+    if (!info || !info->faultData) {
+        return AppfreezeSubmitResult::REJECTED;
+    }
+    const auto& faultData = *info->faultData;
+    // Apply the existing filter when feedback or timeout submits the admitted event.
+    // Reserving an application notification must not consume the filter on a failed timer post.
+    const std::string key = std::to_string(appInfo.pid) + "_" + std::to_string(appInfo.uid) + "_" +
+        appInfo.bundleName + ":" + std::to_string(info->instanceId) + ":" + AppFreezeInfo::EventGroup(info->eventName);
+    if (CheckAppfreezeHappend(key, faultData.errorObject.name)) {
+        CancelAppfreezeEvent(info);
+        return AppfreezeSubmitResult::DUPLICATE;
+    }
+    InitWarningCpuInfo(faultData, appInfo);
+    return SubmitAppfreezeEvent(info, std::move(process), handler);
+}
+
+bool AppfreezeManager::ProcessAppfreezeEvent(const FreezeInfo& info, const AppInfo& appInfo,
+    const FreezeTask& disposition)
+{
+    if (!info || !info->faultData ||
+        !CanPublishAppfreeze(info, AbilityRuntime::TimeUtil::CurrentTimeMillis())) {
+        return false;
+    }
+    bool startDisposition = false;
+    {
+        std::lock_guard<std::mutex> lock(appfreezeEventMutex_);
+        auto app = info->application_.lock();
+        if (!app || !app->accepting_ || info->IsCancelled() || !info->running_ || info->completed_) {
+            return false;
+        }
+        if (!info->half && !info->fallback_ && !info->dispositionStarted_ && disposition) {
+            info->dispositionStarted_ = true;
+            startDisposition = true;
+        }
+    }
+    if (startDisposition) {
+        disposition();
+    }
+    const auto& faultData = *info->faultData;
+    TAG_LOGI(AAFwkTag::APPDFR, "Appfreeze RUNNING request:%{public}" PRIu64 " pid:%{public}d",
+        info->requestId, appInfo.pid);
+    AppfreezeCaptureResult capture;
+    if (!CaptureAppfreeze(faultData, appInfo, info, capture) ||
+        !CanPublishAppfreeze(info, AbilityRuntime::TimeUtil::CurrentTimeMillis())) {
+        return false;
+    }
+    auto reportInfo = appInfo;
+    reportInfo.request = info;
+    reportInfo.isOccurException = info->IsFallback();
+    ReportAppfreeze(faultData, reportInfo, capture);
+    // The report path ran; HiSysEvent retains ownership of transport retries.
+    return true;
+}
+
+void AppfreezeManager::SetAppfreezeFeedbackTask(const FreezeInfo& info, FreezeTask cancel)
+{
+    auto app = info ? info->application_.lock() : nullptr;
+    {
+        std::lock_guard<std::mutex> lock(appfreezeEventMutex_);
+        if (app && IsAppfreezeEventTrackedLocked(info) && !info->IsCancelled() && !info->feedbackClaimed_) {
+            info->cancelFeedback_ = std::exchange(cancel, {});
+            if (!info->half && AppFreezeInfo::EventGroup(info->eventName) == "main") {
+                app->mainCallbackTime_ = info->occurTime;
+            }
+        }
+    }
+    if (cancel) {
+        cancel();
+    }
+}
+
+AppfreezeManager::FreezeInfo AppfreezeManager::ClaimAppfreezeFeedback(int32_t pid, int32_t instanceId,
+    const std::string& marker, const std::string& eventName)
+{
+    FreezeInfo claimed;
+    FreezeTask cancel;
+    {
+        std::lock_guard<std::mutex> lock(appfreezeEventMutex_);
+        if (marker.empty()) { return {}; }
+        const auto claim = [&](const FreezeInfo& info) {
+            if (info->feedbackMarker_ != marker || info->eventName != eventName || info->feedbackClaimed_ ||
+                info->IsCancelled() || AbilityRuntime::TimeUtil::CurrentTimeMillis() >= info->deadline_) {
+                return false;
+            }
+            info->feedbackClaimed_ = true;
+            claimed = info;
+            cancel = std::exchange(info->cancelFeedback_, {});
+            return true;
+        };
+        for (const auto& entry : appfreezeApps_) {
+            const auto& app = entry.second;
+            if (app->pid != pid || app->instanceId != instanceId || !app->accepting_) {
+                continue;
+            }
+            for (const auto& group : app->groups_) {
+                const auto& info = group.second;
+                if (claim(info) || std::any_of(info->pending_.begin(), info->pending_.end(), claim)) {
+                    break;
+                }
+            }
+            if (claimed) {
+                break;
+            }
+        }
+    }
+    if (cancel) {
+        cancel();
+    }
+    return claimed;
+}
+
+bool AppfreezeManager::DispatchAppfreezeEvent(const FreezeInfo& info)
+{
+    {
+        std::lock_guard<std::mutex> lock(appfreezeEventMutex_);
+        auto app = info->application_.lock();
+        if (!app || !IsAppfreezeEventTrackedLocked(info) ||
+            app->groups_.at(AppFreezeInfo::EventGroup(info->eventName)) != info ||
+            info->IsCancelled() || !info->task_) {
+            return false;
+        }
+        if (info->dispatched_) {
+            return true;
+        }
+        info->dispatched_ = true;
+#ifdef APP_MGR_SERVICE_HICOLLIE_ENABLE
+        info->watchdogArmed_ = true;
+#endif
+    }
+    auto weak = weak_from_this();
+#ifdef APP_MGR_SERVICE_HICOLLIE_ENABLE
+    const int timerId = GetExceptionTimerId([weak, info] {
+        if (auto inner = weak.lock()) {
+            inner->RunAppfreezeEvent(info, true);
+        }
+    });
+    FreezeTask cancel = timerId < 0 ? FreezeTask {} :
+        FreezeTask([timerId] { HiviewDFX::XCollie::GetInstance().CancelTimer(timerId); });
+    {
+        std::lock_guard<std::mutex> lock(appfreezeEventMutex_);
+        if (!info->running_ && !info->completed_ && !info->IsCancelled()) {
+            info->cancelWatchdog_ = std::exchange(cancel, {});
+            info->watchdogArmed_ = static_cast<bool>(info->cancelWatchdog_);
+        }
+    }
+    if (cancel) {
+        cancel();
+    }
+#endif
+    auto handler = info->taskHandler_.lock();
+    if (handler && handler->SubmitTask([weak, info] {
+        if (auto inner = weak.lock()) {
+            inner->RunAppfreezeEvent(info);
+        }
+    }, "AppfreezeCapture")) {
+        return true;
+    }
+    CancelAppfreezeEvent(info);
+    return false;
+}
+
+bool AppfreezeManager::CanPublishAppfreeze(const FreezeInfo& info, int64_t now)
+{
+    auto app = info ? info->application_.lock() : nullptr;
+    std::lock_guard<std::mutex> lock(appfreezeEventMutex_);
+    if (!app || !app->accepting_ || info->IsCancelled() || !IsAppfreezeEventTrackedLocked(info)) {
+        return false;
+    }
+    if (now >= info->deadline_) {
+        *info->cancelled_ = true;
+    }
+    return !info->IsCancelled();
+}
+
+void AppfreezeManager::RunAppfreezeEvent(const FreezeInfo& info, bool fallback)
+{
+    auto app = info ? info->application_.lock() : nullptr;
+    FreezeTask cancel;
+    FreezeProcess process;
+    {
+        std::lock_guard<std::mutex> lock(appfreezeEventMutex_);
+        if (!app) {
+            return;
+        }
+        auto it = app->groups_.find(AppFreezeInfo::EventGroup(info->eventName));
+        if (it == app->groups_.end() || it->second != info || info->running_ || info->completed_ ||
+            info->IsCancelled() || !info->accepting_) {
+            return;
+        }
+        info->running_ = true;
+        info->fallback_ = fallback;
+        info->deadline_ = AbilityRuntime::TimeUtil::CurrentTimeMillis() + APPFREEZE_CAPTURE_TIMEOUT_MS;
+        info->processStartTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+        cancel = std::exchange(info->cancelWatchdog_, {});
+        process = info->task_;
+    }
+    if (cancel) {
+        cancel();
+    }
+    auto finish = std::shared_ptr<void>(nullptr, [weak = weak_from_this(), info](void*) {
+        if (auto self = weak.lock()) {
+            self->FinishAppfreezeEvent(info);
+        }
+    });
+#ifdef __cpp_exceptions
+    try {
+#endif
+        if (process && !info->IsCancelled()) {
+            process(info);
+        }
+#ifdef __cpp_exceptions
+    } catch (...) {
+        TAG_LOGE(AAFwkTag::APPDFR, "Appfreeze task threw, pid:%{public}d", info->pid);
+        *info->cancelled_ = true;
+    }
+#endif
+}
+
+void AppfreezeManager::FinishAppfreezeEvent(const FreezeInfo& info)
+{
+    auto app = info ? info->application_.lock() : nullptr;
+    FreezeInfo next;
+    {
+        std::lock_guard<std::mutex> lock(appfreezeEventMutex_);
+        if (!app) {
+            return;
+        }
+        auto it = app->groups_.find(AppFreezeInfo::EventGroup(info->eventName));
+        if (it == app->groups_.end() || it->second != info || info->completed_) {
+            return;
+        }
+        info->completed_ = true;
+        info->task_ = {};
+        if (!info->accepting_ || info->pending_.empty()) {
+            app->groups_.erase(it);
+        } else {
+            next = info->pending_.front();
+            info->pending_.erase(info->pending_.begin());
+            next->pending_ = std::exchange(info->pending_, {});
+            next->fatalAdmitted_ = info->fatalAdmitted_;
+            it->second = next;
+            if (!next->task_) {
+                next.reset(); // Its application feedback has not arrived yet.
+            }
+        }
+    }
+    if (next) {
+        DispatchAppfreezeEvent(next);
+    }
+}
+
+void AppfreezeManager::WithdrawAppfreezeEventLocked(const FreezeInfo& info, const FreezeInfo& app)
+{
+    app->notifications_.erase(info->notificationId);
+    if (info->counted_) {
+        auto timestamp = recentFreezes_.find(info->countedAt_);
+        if (timestamp != recentFreezes_.end()) {
+            recentFreezes_.erase(timestamp);
+        }
+    } else if (!info->half && AppFreezeInfo::EventGroup(info->eventName) != "main") {
+        app->halfFlows_[info->flowId].push_front(info->countedAt_);
+    }
+    if (info->half) {
+        auto flow = app->halfFlows_.find(info->flowId);
+        if (flow != app->halfFlows_.end()) {
+            auto timestamp = std::find(flow->second.begin(), flow->second.end(), info->countedAt_);
+            if (timestamp != flow->second.end()) {
+                flow->second.erase(timestamp);
+            }
+            if (flow->second.empty()) {
+                app->halfFlows_.erase(flow);
+            }
+        }
+    }
+    if (!info->half) {
+        app->groups_.at(AppFreezeInfo::EventGroup(info->eventName))->fatalAdmitted_ = false;
+    }
+}
+
+void AppfreezeManager::CancelAppfreezeEvent(const FreezeInfo& info, bool withdraw)
+{
+    auto app = info ? info->application_.lock() : nullptr;
+    if (!app) {
+        return;
+    }
+    FreezeTask cancel;
+    FreezeTask cancelFeedback;
+    bool finish = false;
+    {
+        std::lock_guard<std::mutex> lock(appfreezeEventMutex_);
+        if (!info->cancelled_) {
+            return;
+        }
+        // Only an unsent application notification can roll back admission/counting.
+        if (withdraw && !info->dispatched_ && !info->feedbackClaimed_ && !info->IsCancelled() &&
+            IsAppfreezeEventTrackedLocked(info)) {
+            WithdrawAppfreezeEventLocked(info, app);
+        }
+        *info->cancelled_ = true;
+        cancel = std::exchange(info->cancelWatchdog_, {});
+        cancelFeedback = std::exchange(info->cancelFeedback_, {});
+        auto it = app->groups_.find(AppFreezeInfo::EventGroup(info->eventName));
+        if (it != app->groups_.end()) {
+            if (it->second == info) {
+                finish = !info->running_;
+            } else {
+                auto& pending = it->second->pending_;
+                pending.erase(std::remove(pending.begin(), pending.end(), info), pending.end());
+            }
+        }
+    }
+    if (cancel) {
+        cancel();
+    }
+    if (cancelFeedback) {
+        cancelFeedback();
+    }
+    if (finish) {
+        FinishAppfreezeEvent(info);
+    }
+}
+
+void AppfreezeManager::RemoveAppfreezeInstance(const std::string& generation, int32_t instanceId)
+{
+    std::vector<FreezeInfo> removed;
+    {
+        std::lock_guard<std::mutex> lock(appfreezeEventMutex_);
+        auto it = appfreezeApps_.find(generation);
+        if (it == appfreezeApps_.end() || it->second->instanceId != instanceId) {
+            return;
+        }
+        auto& app = it->second;
+        app->accepting_ = false;
+        for (const auto& group : app->groups_) {
+            auto& info = group.second;
+            info->accepting_ = false;
+            removed.insert(removed.end(), info->pending_.begin(), info->pending_.end());
+            info->pending_.clear();
+            removed.push_back(info);
+        }
+    }
+    for (const auto& info : removed) {
+        CancelAppfreezeEvent(info);
+    }
+}
+
+void AppfreezeManager::CloseAppfreezeEvents()
+{
+    std::vector<FreezeInfo> removed;
+    {
+        std::lock_guard<std::mutex> lock(appfreezeEventMutex_);
+        for (const auto& entry : appfreezeApps_) {
+            const auto& app = entry.second;
+            app->accepting_ = false;
+            app->notifications_.clear();
+            app->halfFlows_.clear();
+            for (const auto& group : app->groups_) {
+                const auto& info = group.second;
+                info->accepting_ = false;
+                removed.insert(removed.end(), info->pending_.begin(), info->pending_.end());
+                info->pending_.clear();
+                removed.push_back(info);
+            }
+        }
+        recentFreezes_.clear();
+        ++appfreezeTimerVersion_;
+        appfreezeTimerDeadline_ = 0;
+    }
+    for (const auto& info : removed) {
+        CancelAppfreezeEvent(info);
+    }
+}
+
+void AppfreezeManager::ExpireAppfreezeHistoryLocked(int64_t now)
+{
+    const int64_t cutoff = now - APPFREEZE_WINDOW_MS;
+    recentFreezes_.erase(recentFreezes_.begin(), recentFreezes_.upper_bound(cutoff));
+    for (auto entry = appfreezeApps_.begin(); entry != appfreezeApps_.end();) {
+        auto& app = entry->second;
+        for (auto it = app->notifications_.begin(); it != app->notifications_.end();) {
+            it = it->second <= cutoff ? app->notifications_.erase(it) : std::next(it);
+        }
+        for (auto it = app->halfFlows_.begin(); it != app->halfFlows_.end();) {
+            auto& times = it->second;
+            while (!times.empty() && times.front() <= cutoff) {
+                times.pop_front();
+            }
+            it = times.empty() ? app->halfFlows_.erase(it) : std::next(it);
+        }
+        const bool hasCallback = app->mainCallbackTime_ >= 0 && app->mainCallbackTime_ > cutoff;
+        entry = app->groups_.empty() && app->notifications_.empty() && app->halfFlows_.empty() && !hasCallback ?
+            appfreezeApps_.erase(entry) : std::next(entry);
+    }
+}
+
+void AppfreezeManager::ExpireAppfreezeEvents(int64_t now)
+{
+    std::vector<FreezeInfo> expired;
+    auto collectPendingExpired = [&expired, now](const std::vector<FreezeInfo>& pending) {
+        for (const auto& item : pending) {
+            if (now >= item->deadline_) {
+                expired.push_back(item);
+            }
+        }
+    };
+    {
+        std::lock_guard<std::mutex> lock(appfreezeEventMutex_);
+        ExpireAppfreezeHistoryLocked(now);
+        for (const auto& entry : appfreezeApps_) {
+            for (const auto& group : entry.second->groups_) {
+                const auto& info = group.second;
+                if (now >= info->deadline_ && (info->running_ || !info->watchdogArmed_)) {
+                    expired.push_back(info);
+                }
+                collectPendingExpired(info->pending_);
+            }
+        }
+    }
+    for (auto it = expired.rbegin(); it != expired.rend(); ++it) {
+        CancelAppfreezeEvent(*it);
+    }
+}
+
+void AppfreezeManager::ScheduleAppfreezeMaintenance()
+{
+    int64_t delay;
+    uint64_t version;
+    {
+        std::lock_guard<std::mutex> lock(appfreezeEventMutex_);
+        if (appfreezeApps_.empty() && recentFreezes_.empty()) {
+            return;
+        }
+        auto now = AbilityRuntime::TimeUtil::CurrentTimeMillis();
+        auto next = now + APPFREEZE_WINDOW_MS;
+        if (!recentFreezes_.empty()) {
+            next = std::min(next, *recentFreezes_.begin() + APPFREEZE_WINDOW_MS);
+        }
+        for (const auto& entry : appfreezeApps_) {
+            for (const auto& group : entry.second->groups_) {
+                const auto& info = group.second;
+                if (!info->IsCancelled() && (info->running_ || !info->watchdogArmed_)) {
+                    next = std::min(next, info->deadline_);
+                }
+                for (const auto& pending : info->pending_) {
+                    next = std::min(next, pending->deadline_);
+                }
+            }
+        }
+        if (appfreezeTimerDeadline_ > 0 && appfreezeTimerDeadline_ <= next) {
+            return;
+        }
+        appfreezeTimerDeadline_ = next;
+        delay = std::max<int64_t>(1, next - now);
+        version = ++appfreezeTimerVersion_;
+    }
+    AAFwk::TaskHandlerWrap::GetFfrtHandler()->SubmitTask([weak = weak_from_this(), version] {
+        auto inner = weak.lock();
+        if (!inner) {
+            return;
+        }
+        {
+            std::lock_guard<std::mutex> lock(inner->appfreezeEventMutex_);
+            if (inner->appfreezeTimerVersion_ != version) {
+                return;
+            }
+            inner->appfreezeTimerDeadline_ = 0;
+        }
+        inner->ExpireAppfreezeEvents(AbilityRuntime::TimeUtil::CurrentTimeMillis());
+        inner->ScheduleAppfreezeMaintenance();
+        }, delay);
 }
 
 int AppfreezeManager::AppfreezeHandle(const FaultData& faultData, const AppfreezeManager::AppInfo& appInfo)
 {
     TAG_LOGD(AAFwkTag::APPDFR, "called %{public}s, bundleName %{public}s, name_ %{public}s",
         faultData.errorObject.name.c_str(), appInfo.bundleName.c_str(), name_.c_str());
-    if (!IsHandleAppfreeze(appInfo.bundleName)) {
+    if (!collector_->IsHandleAppfreeze(appInfo.bundleName)) {
         return -1;
     }
     HITRACE_METER_FMT(HITRACE_TAG_APP, "AppfreezeHandler:%{public}s bundleName:%{public}s",
         faultData.errorObject.name.c_str(), appInfo.bundleName.c_str());
     std::string memoryContent = "";
-    CollectFreezeSysMemory(memoryContent);
+    collector_->CollectFreezeSysMemory(memoryContent);
     if (faultData.errorObject.name == AppFreezeType::APP_INPUT_BLOCK ||
         faultData.errorObject.name == AppFreezeType::THREAD_BLOCK_3S ||
         faultData.errorObject.name == AppFreezeType::LIFECYCLE_HALF_TIMEOUT ||
@@ -196,42 +1140,10 @@ int AppfreezeManager::AppfreezeHandle(const FaultData& faultData, const Appfreez
     return 0;
 }
 
-void AppfreezeManager::CollectFreezeSysMemory(std::string& memoryContent)
-{
-    memoryContent = "\nGet freeze memory start time: " + AbilityRuntime::TimeUtil::DefaultCurrentTimeStr() + "\n";
-    std::string tmp = "";
-    std::string pressMemInfo = "/proc/pressure/memory";
-    OHOS::LoadStringFromFile(pressMemInfo, tmp);
-    memoryContent += tmp + "\n";
-    std::string memInfoPath = "/proc/memview";
-    if (!OHOS::FileExists(memInfoPath)) {
-        memInfoPath = "/proc/meminfo";
-    }
-    OHOS::LoadStringFromFile(memInfoPath, tmp);
-    memoryContent += tmp + "\nGet freeze memory end time: " + AbilityRuntime::TimeUtil::DefaultCurrentTimeStr();
-}
-
-std::string AppfreezeManager::GetCatcherStack(const std::string& fileName, const std::string& catcherStack)
-{
-    std::string stackFile = WriteToFile(fileName, catcherStack);
-    if (!stackFile.empty()) {
-        return stackFile;
-    }
-    if (catcherStack.size() > MAX_REPORT_STACK_SIZE) {
-        stackFile = "";
-        TAG_LOGW(AAFwkTag::APPDFR, "create stack failed, catcherStack over size: %{public}zu",
-            catcherStack.size());
-    } else {
-        stackFile = catcherStack;
-        TAG_LOGW(AAFwkTag::APPDFR, "create stack failed, catcherStack size: %{public}zu", catcherStack.size());
-    }
-    return stackFile;
-}
-
 int AppfreezeManager::MergeNotifyInfo(FaultData& faultNotifyData, const AppfreezeManager::AppInfo& appInfo)
 {
     std::string memoryContent;
-    CollectFreezeSysMemory(memoryContent);
+    collector_->CollectFreezeSysMemory(memoryContent);
     std::string fileName = faultNotifyData.errorObject.name + "_" +
         AbilityRuntime::TimeUtil::FormatTime("%Y%m%d%H%M%S") + "_" + std::to_string(appInfo.pid) + "_stack";
     std::string catcherStack;
@@ -240,17 +1152,17 @@ int AppfreezeManager::MergeNotifyInfo(FaultData& faultNotifyData, const Appfreez
     DumpTiming timing;
     if (faultNotifyData.errorObject.name == AppFreezeType::LIFECYCLE_HALF_TIMEOUT_WARNING ||
         faultNotifyData.errorObject.name == AppFreezeType::LIFECYCLE_TIMEOUT_WARNING) {
-        catcherStack += CatcherStacktrace(appInfo.pid, &timing);
+        catcherStack += collector_->CatcherStacktrace(appInfo.pid, &timing);
     } else {
         std::pair<std::string, std::string> catchResult =
-            CatchJsonStacktrace(appInfo.pid, faultNotifyData.errorObject.name, &timing);
+            collector_->CatchJsonStacktrace(appInfo.pid, faultNotifyData.errorObject.name, &timing);
         catcherStack += catchResult.first;
     }
     faultNotifyData.logValidity += ":" + std::to_string(timing.result) + ":" + std::to_string(timing.latency) +
         ":" + std::to_string(faultNotifyData.ipcLatency);
     AppendLogValidity(faultNotifyData, appInfo);
     std::string timeStamp = "Catche stack trace end time: " + AbilityRuntime::TimeUtil::DefaultCurrentTimeStr();
-    catcherStack = GetCatcherStack(fileName, catcherStack);
+    catcherStack = collector_->GetCatcherStack(fileName, catcherStack);
     faultNotifyData.errorObject.stack = catcherStack.empty() ? faultNotifyData.errorObject.stack : catcherStack;
     if (appInfo.isOccurException) {
         faultNotifyData.errorObject.message += "\nnotifyAppFault exception.\n";
@@ -267,12 +1179,141 @@ int AppfreezeManager::MergeNotifyInfo(FaultData& faultNotifyData, const Appfreez
     return 0;
 }
 
-void AppfreezeManager::AppendLogValidity(FaultData& faultData, const AppInfo& appInfo)
+AppfreezeCaptureResult AppfreezeManager::RunAppfreezeAttachments(const FaultData& faultData, int32_t pid,
+    const FreezeInfo& request, std::chrono::steady_clock::time_point deadline)
 {
-    std::lock_guard<std::mutex> lock(freezeMapMutex_);
-    const int64_t now = GetFreezeCurrentTime();
-    constexpr int64_t logChainTimeoutMs = 15000;
-    constexpr size_t maxLogItems = 5;
+    AppfreezeCaptureResult result;
+    const auto cancelled = [request, deadline] {
+        return request->IsCancelled() || std::chrono::steady_clock::now() >= deadline;
+    };
+#ifdef __cpp_exceptions
+    try {
+#endif
+        if (!cancelled()) {
+            collector_->CollectFreezeSysMemory(result.memoryContent);
+        }
+        if (!cancelled() && (faultData.errorObject.name == AppFreezeType::APP_INPUT_BLOCK ||
+            AppFreezeInfo::IsHalfEvent(faultData.errorObject.name))) {
+            result.binderInfo = collector_->CollectBinderAttachment(faultData, pid, cancelled);
+        }
+        if (cancelled()) {
+            result = {};
+        }
+#ifdef __cpp_exceptions
+    } catch (...) {
+        TAG_LOGE(AAFwkTag::APPDFR, "Appfreeze attachment collection threw, pid:%{public}d", pid);
+        result = {};
+    }
+#endif
+    // Timeout/cancellation never releases capacity while a collector is still executing.
+    --activeAttachments_;
+    return result;
+}
+
+ffrt::future<AppfreezeCaptureResult> AppfreezeManager::CollectAppfreezeAttachments(const FaultData& faultData,
+    int32_t pid, const FreezeInfo& request, std::chrono::steady_clock::time_point deadline)
+{
+    if (!request || request->IsCancelled() || std::chrono::steady_clock::now() >= deadline) {
+        return {};
+    }
+    auto active = activeAttachments_.load();
+    do {
+        if (active >= APPFREEZE_MAX_ATTACHMENTS) {
+            return {};
+        }
+    } while (!activeAttachments_.compare_exchange_weak(active, active + 1));
+#ifdef __cpp_exceptions
+    try {
+#endif
+        ffrt::packaged_task<AppfreezeCaptureResult()> collect(
+            [self = shared_from_this(), faultData, pid, request, deadline] {
+                return self->RunAppfreezeAttachments(faultData, pid, request, deadline);
+            });
+        auto future = collect.get_future();
+        ffrt::submit([collect = std::move(collect)]() mutable { collect(); },
+            ffrt::task_attr().name("AppfreezeAttachment"));
+        return future;
+#ifdef __cpp_exceptions
+    } catch (...) {
+        TAG_LOGE(AAFwkTag::APPDFR, "Appfreeze attachment submission threw, pid:%{public}d", pid);
+        --activeAttachments_;
+        return {};
+    }
+#endif
+}
+
+bool AppfreezeManager::CaptureAppfreeze(const FaultData& faultData,
+    const AppInfo& appInfo, const FreezeInfo& request, AppfreezeCaptureResult& result)
+{
+    if (!request || request->IsCancelled() || !collector_->IsHandleAppfreeze(appInfo.bundleName)) {
+        return false;
+    }
+    const auto deadline = std::chrono::steady_clock::now() + APPFREEZE_ATTACHMENT_TIMEOUT;
+    auto attachments = CollectAppfreezeAttachments(faultData, appInfo.pid, request, deadline);
+    result.processStart = request->processStartTime;
+    DumpTiming timing;
+    std::string stack;
+    if (faultData.errorObject.name == AppFreezeType::LIFECYCLE_HALF_TIMEOUT_WARNING ||
+        faultData.errorObject.name == AppFreezeType::LIFECYCLE_TIMEOUT_WARNING) {
+        stack = collector_->CatcherStacktrace(appInfo.pid, &timing);
+    } else {
+        stack = collector_->CatchJsonStacktrace(appInfo.pid, faultData.errorObject.name, &timing, true).first;
+    }
+    result.dumpResult = timing.result;
+    result.dumpLatency = timing.latency;
+    if (request->IsCancelled()) {
+        return false;
+    }
+    const std::string fileName = faultData.errorObject.name + "_" + std::to_string(appInfo.pid) + "_" +
+        request->episodeId + "_" + std::to_string(request->requestId) + "_stack";
+    result.stack = collector_->GetCatcherStack(fileName, stack);
+    // Consume only this future's value; a late FFRT task cannot modify the returned capture result.
+    if (!request->IsCancelled() && attachments.valid() &&
+        attachments.wait_until(deadline) == ffrt::future_status::ready) {
+        auto collected = attachments.get();
+        result.binderInfo = std::move(collected.binderInfo);
+        result.memoryContent = std::move(collected.memoryContent);
+    } else if (!request->IsCancelled() && attachments.valid()) {
+        TAG_LOGW(AAFwkTag::APPDFR, "Appfreeze attachments timed out, pid:%{public}d", appInfo.pid);
+    }
+    return !request->IsCancelled();
+}
+
+int AppfreezeManager::ReportAppfreeze(const FaultData& faultData, const AppInfo& appInfo,
+    const AppfreezeCaptureResult& result)
+{
+    const auto claim = appInfo.request ? appInfo.request->reportClaim : nullptr;
+    const uint8_t severity = AppFreezeInfo::IsHalfEvent(faultData.errorObject.name) ? 1 : 2;
+    if (claim && (claim->fetch_or(severity) & severity) != 0) {
+        return 0;
+    }
+    FaultData report = faultData;
+    const auto& event = report.errorObject.name;
+    const bool usedAcquireStack = event == AppFreezeType::APP_INPUT_BLOCK ||
+        event == AppFreezeType::THREAD_BLOCK_3S || event == AppFreezeType::LIFECYCLE_HALF_TIMEOUT ||
+        event == AppFreezeType::LIFECYCLE_HALF_TIMEOUT_WARNING;
+    if (usedAcquireStack && (event == AppFreezeType::APP_INPUT_BLOCK || report.tid <= 0)) {
+        report.tid = appInfo.pid;
+    }
+    const int64_t start = result.processStart;
+    const int64_t latency = report.detectTime > 0 && report.detectTime <= static_cast<uint64_t>(start) ?
+        start - static_cast<int64_t>(report.detectTime) : -1;
+    report.logValidity = std::to_string(latency) + ":" + std::to_string(result.dumpResult) + ":" +
+        std::to_string(result.dumpLatency) + ":" + std::to_string(report.ipcLatency);
+    AppendLogValidity(report, appInfo);
+    if (!result.stack.empty()) {
+        report.errorObject.stack = result.stack;
+    }
+    if (appInfo.isOccurException) {
+        report.errorObject.message += "\nnotifyAppFault exception.\n";
+    }
+    // A negative transport result can already be queued by HiSysEvent. Releasing
+    // this claim would let a waiter submit a second copy of the same report.
+    return NotifyANR(report, appInfo, result.binderInfo, result.memoryContent);
+}
+
+void AppfreezeManager::ExpireLogValidityLocked(int32_t pid, int64_t now, int64_t logChainTimeoutMs)
+{
     for (auto it = freezeLogInfo_.begin(); it != freezeLogInfo_.end();) {
         if (now - it->second.startTime > logChainTimeoutMs || now < it->second.startTime) {
             it = freezeLogInfo_.erase(it);
@@ -280,9 +1321,18 @@ void AppfreezeManager::AppendLogValidity(FaultData& faultData, const AppInfo& ap
             ++it;
         }
     }
-    if (freezeLogInfo_.size() >= FREEZE_EVENT_MAX_SIZE && freezeLogInfo_.count(appInfo.pid) == 0) {
+    if (freezeLogInfo_.size() >= FREEZE_EVENT_MAX_SIZE && freezeLogInfo_.count(pid) == 0) {
         freezeLogInfo_.erase(freezeLogInfo_.begin());
     }
+}
+
+void AppfreezeManager::AppendLogValidity(FaultData& faultData, const AppInfo& appInfo)
+{
+    std::lock_guard<std::mutex> lock(freezeMapMutex_);
+    const int64_t now = GetFreezeCurrentTime();
+    constexpr int64_t logChainTimeoutMs = 15000;
+    constexpr size_t maxLogItems = 5;
+    ExpireLogValidityLocked(appInfo.pid, now, logChainTimeoutMs);
     auto& previous = freezeLogInfo_[appInfo.pid];
     const std::string identity = std::to_string(appInfo.uid) + ":" + appInfo.bundleName + ":" +
         faultData.appRunningUniqueId;
@@ -318,6 +1368,10 @@ void AppfreezeManager::AppendLogValidity(FaultData& faultData, const AppInfo& ap
     if (IsHalfTimeout(eventName)) {
         previous.halfFlows.insert(flow);
     }
+    // Store only timing items; the window snapshot belongs to this report alone.
+    if (appInfo.request && appInfo.request->freezeCount1min >= 0) {
+        faultData.logValidity += "|" + std::to_string(appInfo.request->freezeCount1min);
+    }
 }
 
 int AppfreezeManager::AppfreezeHandleWithStack(const FaultData& faultData, const AppfreezeManager::AppInfo& appInfo)
@@ -328,7 +1382,7 @@ int AppfreezeManager::AppfreezeHandleWithStack(const FaultData& faultData, const
         "name_:%{public}s, currentTime:%{public}s, isInForeground:%{public}d",
         faultData.errorObject.name.c_str(), appInfo.bundleName.c_str(),
         name_.c_str(), AbilityRuntime::TimeUtil::DefaultCurrentTimeStr().c_str(), faultData.isInForeground);
-    if (!IsHandleAppfreeze(appInfo.bundleName)) {
+    if (!collector_->IsHandleAppfreeze(appInfo.bundleName)) {
         return -1;
     }
     FaultData faultNotifyData = PrepareFaultNotifyData(faultData, processStart);
@@ -379,36 +1433,10 @@ FaultData AppfreezeManager::PrepareFaultNotifyData(const FaultData& faultData, i
     return faultNotifyData;
 }
 
-std::string AppfreezeManager::WriteToFile(const std::string& fileName, const std::string& content)
-{
-    std::string path = LOG_FILE_PATH + "/freeze";
-    constexpr mode_t defaultLogDirMode = 0770;
-    if (!OHOS::FileExists(path)) {
-        OHOS::ForceCreateDirectory(path);
-        OHOS::ChangeModeDirectory(path, defaultLogDirMode);
-    }
-    std::string realPath = AppfreezeUtil::FreezePathToRealPath(path);
-    if (realPath.empty()) {
-        realPath = path;
-    }
-    std::string stackPath = realPath + "/" + fileName;
-    constexpr mode_t defaultLogFileMode = 0644;
-    FILE* fp = fopen(stackPath.c_str(), "w+");
-    chmod(stackPath.c_str(), defaultLogFileMode);
-    if (fp == nullptr) {
-        TAG_LOGI(AAFwkTag::APPDFR, "stackPath create failed, errno: %{public}d", errno);
-        return "";
-    } else {
-        TAG_LOGI(AAFwkTag::APPDFR, "stackPath: %{public}s", stackPath.c_str());
-    }
-    OHOS::SaveStringToFile(stackPath, content, true);
-    (void)fclose(fp);
-    return stackPath;
-}
-
 int AppfreezeManager::LifecycleTimeoutHandle(const ParamInfo& info, FreezeUtil::LifecycleFlow flow)
 {
-    if (info.typeId != AppfreezeManager::TypeAttribute::CRITICAL_TIMEOUT || !IsHandleAppfreeze(info.bundleName)) {
+    if (info.typeId != AppfreezeManager::TypeAttribute::CRITICAL_TIMEOUT ||
+        !collector_->IsHandleAppfreeze(info.bundleName)) {
         return -1;
     }
     if (info.eventName != AppFreezeType::LIFECYCLE_TIMEOUT && info.eventName != AppFreezeType::LIFECYCLE_HALF_TIMEOUT
@@ -477,145 +1505,11 @@ AppFaultDataBySA AppfreezeManager::GenerateFaultDataBySA(const ParamInfo& info, 
     return faultDataSA;
 }
 
-FaultData AppfreezeManager::GetFaultNotifyData(const FaultData& faultData, int pid)
+int AppfreezeManager::AcquireStack(const FaultData& faultData, const AppInfo& appInfo,
+    const std::string& memoryContent)
 {
-    FaultData faultNotifyData;
-    faultNotifyData.samplerCount = faultData.samplerCount;
-    faultNotifyData.heaviestStack = faultData.heaviestStack;
-    faultNotifyData.logValidity = faultData.logValidity;
-    faultNotifyData.errorObject.name = faultData.errorObject.name;
-    faultNotifyData.errorObject.message = faultData.errorObject.message;
-    faultNotifyData.errorObject.stack = faultData.errorObject.stack;
-    faultNotifyData.errorObject.mainStack = faultData.errorObject.mainStack;
-    faultNotifyData.faultType = FaultDataType::APP_FREEZE;
-    faultNotifyData.eventId = faultData.eventId;
-    if (faultData.errorObject.name == AppFreezeType::APP_INPUT_BLOCK || faultData.tid <= 0) {
-        faultNotifyData.tid = pid;
-    } else {
-        faultNotifyData.tid = faultData.tid;
-    }
-    faultNotifyData.appfreezeInfo = faultData.appfreezeInfo;
-    faultNotifyData.appRunningUniqueId = faultData.appRunningUniqueId;
-    faultNotifyData.procStatm = faultData.procStatm;
-    faultNotifyData.isInForeground = faultData.isInForeground;
-    faultNotifyData.isEnableMainThreadSample = faultData.isEnableMainThreadSample;
-    faultNotifyData.reportLifecycleToFreeze = faultData.reportLifecycleToFreeze;
-    faultNotifyData.abilityPendingBackground = faultData.abilityPendingBackground;
-    faultNotifyData.applicationHeapInfo = faultData.applicationHeapInfo;
-    faultNotifyData.applicationGCInfo = faultData.applicationGCInfo;
-    faultNotifyData.applicationIOInfo = faultData.applicationIOInfo;
-    faultNotifyData.isBlockInGc = faultData.isBlockInGc;
-    faultNotifyData.processLifeTime = faultData.processLifeTime;
-    faultNotifyData.markedId = faultData.markedId;
-    faultNotifyData.processedId = faultData.processedId;
-    faultNotifyData.dispatchedEventId = faultData.dispatchedEventId;
-    faultNotifyData.callbackLog = faultData.callbackLog;
-    return faultNotifyData;
-}
-
-int AppfreezeManager::AcquireStack(const FaultData& faultData,
-    const AppfreezeManager::AppInfo& appInfo, const std::string& memoryContent)
-{
-    int pid = appInfo.pid;
-    FaultData faultNotifyData = GetFaultNotifyData(faultData, pid);
-
-    std::string binderInfo;
-    std::string binderPidsStr;
-    std::string terminalBinderTid;
-    AppfreezeManager::TerminalBinder terminalBinder = {0, 0};
-    AppfreezeManager::ParseBinderParam params = {pid, faultNotifyData.tid, pid, 0};
-    std::set<int> asyncPids;
-    std::set<int> syncPids = GetBinderPeerPids(binderInfo, params, asyncPids, terminalBinder);
-    std::string binderProcessNameStr;
-    std::string binderProcessStackStr;
-    for (auto& pidTemp : syncPids) {
-        TAG_LOGI(AAFwkTag::APPDFR, "PeerBinder pidTemp pids:%{public}d", pidTemp);
-        if (pidTemp == pid || IsAncoProc(pidTemp)) {
-            continue;
-        }
-        std::string content = "Binder catcher stacktrace, type is peer, pid : " + std::to_string(pidTemp) + "\n";
-        content += CatcherStacktrace(pidTemp);
-        binderPidsStr += " " + std::to_string(pidTemp);
-        binderProcessNameStr += std::to_string(pidTemp) + "(" +
-            AppfreezeUtil::GetProcessNameFromProcCmdline(pidTemp) + ");";
-        if (terminalBinder.pid > 0 && pidTemp == terminalBinder.pid) {
-            terminalBinder.tid  = (terminalBinder.tid > 0) ? terminalBinder.tid : terminalBinder.pid;
-            content = "Binder catcher stacktrace, terminal binder tag\n" + content +
-                "Binder catcher stacktrace, terminal binder tag\n";
-            terminalBinderTid = std::to_string(terminalBinder.tid);
-        }
-        binderProcessStackStr += content;
-    }
-    if (syncPids.empty()) {
-        binderInfo += "PeerBinder pids is empty\n";
-    } else {
-        if (!binderProcessNameStr.empty()) {
-            binderProcessNameStr.pop_back();
-            binderProcessNameStr = "BINDER_PROC_NAME: " + binderProcessNameStr + "\n";
-        }
-        binderInfo = binderInfo + binderProcessNameStr + binderProcessStackStr;
-    }
-    binderInfo += CatchASyncByPid(asyncPids, syncPids, pid);
-    std::string fileName = faultData.errorObject.name + "_" +
-        AbilityRuntime::TimeUtil::FormatTime("%Y%m%d%H%M%S") + "_" + std::to_string(pid) + "_binder";
-    std::string fullStackPath = WriteToFile(fileName, binderInfo);
-    binderInfo = fullStackPath + "," + binderPidsStr + "," + terminalBinderTid;
-
-    int ret = NotifyANR(faultNotifyData, appInfo, binderInfo, memoryContent);
-    return ret;
-}
-
-bool AppfreezeManager::IsAncoProc(int pid)
-{
-    std::string cgroupPath = "/proc/" + std::to_string(pid) + "/cgroup";
-    std::string firstLine = GetFirstLine(cgroupPath);
-    return firstLine.find("isulad") != std::string::npos;
-}
-
-std::string AppfreezeManager::CatchASyncByPid(const std::set<int> &asyncPids, const std::set<int> &syncPids, int pid)
-{
-    std::string binderInfo;
-    for (auto& pidTemp : asyncPids) {
-        int uid = AppfreezeUtil::GetUidByPid(pidTemp);
-        if (uid < 0 || uid >= MIN_APP_UID) {
-            TAG_LOGI(AAFwkTag::APPDFR, "Async stack, skip current pid:%{public}d, uid:%{public}d", pidTemp, uid);
-            continue;
-        }
-        TAG_LOGI(AAFwkTag::APPDFR, "AsyncBinder pidTemp pids:%{public}d", pidTemp);
-        if (pidTemp != pid && !IsAncoProc(pidTemp) && syncPids.find(pidTemp) == syncPids.end()) {
-            std::string content = "Binder catcher stacktrace, type is async, pid : " + std::to_string(pidTemp) + "\n";
-            content += CatcherStacktrace(pidTemp);
-            binderInfo += content;
-        }
-    }
-    return binderInfo;
-}
-
-std::string AppfreezeManager::ParseDecToHex(uint64_t id)
-{
-    std::stringstream ss;
-    ss << std::hex << id;
-    return ss.str();
-}
-
-std::string AppfreezeManager::GetHitraceInfo()
-{
-#ifdef ABILITY_RUNTIME_HITRACE_ENABLE
-    OHOS::HiviewDFX::HiTraceId hitraceId = OHOS::HiviewDFX::HiTraceChain::GetId();
-    if (hitraceId.IsValid() == 0) {
-        TAG_LOGW(AAFwkTag::APPDFR, "get hitrace id is invalid.");
-        return "";
-    }
-    std::ostringstream hitraceIdStr;
-    hitraceIdStr << "hitrace_id: " << ParseDecToHex(hitraceId.GetChainId()) <<
-        ", span_id: " << ParseDecToHex(hitraceId.GetSpanId()) <<
-        ", parent_span_id: " << ParseDecToHex(hitraceId.GetParentSpanId()) <<
-        ", trace_flag: " << ParseDecToHex(hitraceId.GetFlags());
-    std::string hiTraceIdInfo = hitraceIdStr.str();
-    TAG_LOGW(AAFwkTag::APPDFR, "hitraceIdStr: %{public}s", hiTraceIdInfo.c_str());
-    return hitraceIdStr.str();
-#endif
-    return "";
+    auto binderInfo = collector_->CollectBinderAttachment(faultData, appInfo.pid, {});
+    return NotifyANR(collector_->GetFaultNotifyData(faultData, appInfo.pid), appInfo, binderInfo, memoryContent);
 }
 
 void AppfreezeManager::InitWarningCpuInfo(const FaultData& faultData,
@@ -672,7 +1566,7 @@ AppfreezeEventInfo AppfreezeManager::UpdateEventInfo(
     eventInfo.errorName = faultData.errorObject.name;
     eventInfo.errorMessage = faultData.errorObject.message;
     eventInfo.freezeInfoFile = GetAppfreezeInfoPath(faultData, appInfo);
-    eventInfo.hitraceInfo = GetHitraceInfo();
+    eventInfo.hitraceInfo = collector_->GetHitraceInfo();
     eventInfo.foregroundState = faultData.isInForeground;
     eventInfo.enableFreeze = faultData.isEnableMainThreadSample;
     eventInfo.reportLifecycleToFreeze = faultData.reportLifecycleToFreeze;
@@ -713,249 +1607,6 @@ int AppfreezeManager::NotifyANR(const FaultData& faultData, const AppfreezeManag
         eventInfo.processLifeTime.c_str(), ret);
     OHOS::HiviewDFX::HiTraceChain::ClearId();
     return 0;
-}
-
-std::map<int, std::list<AppfreezeManager::PeerBinderInfo>> AppfreezeManager::BinderParser(std::ifstream& fin,
-    std::string& stack, std::set<int>& asyncPids) const
-{
-    std::map<uint32_t, uint32_t> asyncBinderMap;
-    std::vector<std::pair<uint32_t, uint64_t>> freeAsyncSpacePairs;
-    std::map<int, std::list<AppfreezeManager::PeerBinderInfo>> binderInfos = BinderLineParser(fin, stack,
-        asyncBinderMap, freeAsyncSpacePairs);
-
-    if (!g_overseaVersion) {
-        std::sort(freeAsyncSpacePairs.begin(), freeAsyncSpacePairs.end(),
-            [] (const auto& pairOne, const auto& pairTwo) { return pairOne.second < pairTwo.second; });
-        std::vector<std::pair<uint32_t, uint32_t>> asyncBinderPairs(asyncBinderMap.begin(), asyncBinderMap.end());
-        std::sort(asyncBinderPairs.begin(), asyncBinderPairs.end(),
-            [] (const auto& pairOne, const auto& pairTwo) { return pairOne.second > pairTwo.second; });
-
-        size_t freeAsyncSpaceSize = freeAsyncSpacePairs.size();
-        size_t asyncBinderSize = asyncBinderPairs.size();
-        size_t individualMaxSize = 2;
-        for (size_t i = 0; i < individualMaxSize; i++) {
-            if (i < freeAsyncSpaceSize) {
-                asyncPids.insert(freeAsyncSpacePairs[i].first);
-            }
-            if (i < asyncBinderSize) {
-                asyncPids.insert(asyncBinderPairs[i].first);
-            }
-        }
-    }
-    return binderInfos;
-}
-
-std::map<int, std::list<AppfreezeManager::PeerBinderInfo>> AppfreezeManager::BinderLineParser(std::ifstream& fin,
-    std::string& stack, std::map<uint32_t, uint32_t>& asyncBinderMap,
-    std::vector<std::pair<uint32_t, uint64_t>>& freeAsyncSpacePairs) const
-{
-    std::map<int, std::list<AppfreezeManager::PeerBinderInfo>> binderInfos;
-    std::string line;
-    bool isBinderMatchup = false;
-    TAG_LOGI(AAFwkTag::APPDFR, "start");
-    stack += "BinderCatcher --\n\n";
-    while (getline(fin, line)) {
-        stack += line + "\n";
-        if (g_overseaVersion) {
-            continue;
-        }
-        isBinderMatchup = (!isBinderMatchup && line.find("free_async_space") != line.npos) ? true : isBinderMatchup;
-        std::vector<std::string> strList = GetFileToList(line);
-        if (isBinderMatchup) {
-            if (line.find("free_async_space") == line.npos && strList.size() == ARR_SIZE &&
-                std::atoll(strList[FREE_ASYNC_INDEX].c_str()) < FREE_ASYNC_MAX) {
-                freeAsyncSpacePairs.emplace_back(std::atoi(strList[0].c_str()),
-                    std::atoll(strList[FREE_ASYNC_INDEX].c_str()));
-            }
-        } else if (line.find("async\t") != std::string::npos && strList.size() > ARR_SIZE) {
-            std::string serverPid = StrSplit(strList[3], 0);
-            std::string serverTid = StrSplit(strList[3], 1);
-            if (serverPid != "" && serverTid != "" && std::atoi(serverTid.c_str()) == 0) {
-                asyncBinderMap[std::atoi(serverPid.c_str())]++;
-            }
-        } else if (strList.size() >= ARR_SIZE) { // 7: valid array size
-            AppfreezeManager::PeerBinderInfo info = {0};
-            // 0: local id,
-            std::string clientPid = StrSplit(strList[0], 0);
-            std::string clientTid = StrSplit(strList[0], 1);
-            // 2: peer id,
-            std::string serverPid = StrSplit(strList[2], 0);
-            std::string serverTid = StrSplit(strList[2], 1);
-             // 5: wait time, s
-            std::string wait = StrSplit(strList[5], 1);
-            if (clientPid == "" || clientTid == "" || serverPid == "" || serverTid == "" || wait == "") {
-                continue;
-            }
-            info = {std::strtol(clientPid.c_str(), nullptr, DECIMAL), std::strtol(clientTid.c_str(), nullptr, DECIMAL),
-                    std::strtol(serverPid.c_str(), nullptr, DECIMAL), strtol(serverTid.c_str(), nullptr, DECIMAL)};
-            int waitTime = std::strtol(wait.c_str(), nullptr, DECIMAL);
-            TAG_LOGI(AAFwkTag::APPDFR, "server:%{public}d, client:%{public}d, wait:%{public}d", info.serverPid,
-                info.clientPid, waitTime);
-            binderInfos[info.clientPid].push_back(info);
-        }
-    }
-    TAG_LOGI(AAFwkTag::APPDFR, "binderInfos size: %{public}zu", binderInfos.size());
-    return binderInfos;
-}
-
-std::vector<std::string> AppfreezeManager::GetFileToList(std::string line) const
-{
-    std::vector<std::string> strList;
-    std::istringstream lineStream(line);
-    std::string tmpstr;
-    while (lineStream >> tmpstr) {
-        strList.push_back(tmpstr);
-    }
-    TAG_LOGD(AAFwkTag::APPDFR, "strList size: %{public}zu", strList.size());
-    return strList;
-}
-
-std::string AppfreezeManager::StrSplit(const std::string& str, uint16_t index) const
-{
-    std::vector<std::string> strings;
-    SplitStr(str, ":", strings);
-    return index < strings.size() ? strings[index] : "";
-}
-
-std::set<int> AppfreezeManager::GetBinderPeerPids(std::string& stack, AppfreezeManager::ParseBinderParam params,
-    std::set<int>& asyncPids, AppfreezeManager::TerminalBinder& terminalBinder) const
-{
-    std::set<int> pids;
-    std::ifstream fin;
-    std::string path = LOGGER_DEBUG_PROC_PATH;
-    char resolvePath[PATH_MAX] = {0};
-    if (realpath(path.c_str(), resolvePath) == nullptr) {
-        TAG_LOGE(AAFwkTag::APPDFR, "invalid realpath");
-        return pids;
-    }
-    fin.open(resolvePath);
-    if (!fin.is_open()) {
-        TAG_LOGE(AAFwkTag::APPDFR, "open failed, %{public}s", resolvePath);
-        stack += "open file failed :" + path + "\r\n";
-        return pids;
-    }
-
-    stack += "\n\nPeerBinderCatcher -- pid==" + std::to_string(params.pid) + "\n\n";
-    std::map<int, std::list<AppfreezeManager::PeerBinderInfo>> binderInfos = BinderParser(fin, stack, asyncPids);
-    fin.close();
-
-    if (g_overseaVersion || binderInfos.size() == 0 || binderInfos.find(params.pid) == binderInfos.end()) {
-        return pids;
-    }
-
-    ParseBinderPids(binderInfos, pids, params, true, terminalBinder);
-    for (auto& each : pids) {
-        TAG_LOGD(AAFwkTag::APPDFR, "each pids:%{public}d", each);
-    }
-    return pids;
-}
-
-void AppfreezeManager::ParseBinderPids(const std::map<int, std::list<AppfreezeManager::PeerBinderInfo>>& binderInfos,
-    std::set<int>& pids, AppfreezeManager::ParseBinderParam params, bool getTerminal,
-    AppfreezeManager::TerminalBinder& terminalBinder) const
-{
-    auto it = binderInfos.find(params.pid);
-    params.layer++;
-    if (params.layer >= MAX_LAYER || it == binderInfos.end()) {
-        return;
-    }
-
-    for (auto& each : it->second) {
-        pids.insert(each.serverPid);
-        params.pid = each.serverPid;
-        if (getTerminal && ((each.clientPid == params.eventPid && each.clientTid == params.eventTid) ||
-            (each.clientPid == terminalBinder.pid && each.clientTid == terminalBinder.tid))) {
-            terminalBinder.pid = each.serverPid;
-            terminalBinder.tid = each.serverTid;
-            ParseBinderPids(binderInfos, pids, params, true, terminalBinder);
-        } else {
-            ParseBinderPids(binderInfos, pids, params, false, terminalBinder);
-        }
-    }
-}
-
-void AppfreezeManager::DeleteStack(int pid)
-{
-    std::lock_guard<ffrt::mutex> lock(catchStackMutex_);
-    auto it = catchStackMap_.find(pid);
-    if (it != catchStackMap_.end()) {
-        catchStackMap_.erase(it);
-    }
-}
-
-void AppfreezeManager::FindStackByPid(std::string& msg, int pid) const
-{
-    std::lock_guard<ffrt::mutex> lock(catchStackMutex_);
-    auto it = catchStackMap_.find(pid);
-    if (it != catchStackMap_.end()) {
-        msg = it->second;
-    }
-}
-
-bool AppfreezeManager::IsHalfTimeout(const std::string& faultType) const
-{
-    if (faultType == AppFreezeType::THREAD_BLOCK_3S ||
-        faultType == AppFreezeType::LIFECYCLE_HALF_TIMEOUT) {
-            return true;
-    }
-    return false;
-}
-
-std::pair<std::string, std::string> AppfreezeManager::CatchJsonStacktrace(int pid, const std::string& faultType,
-    DumpTiming* timing) const
-{
-    HITRACE_METER_FMT(HITRACE_TAG_APP, "CatchJsonStacktrace pid:%{public}d", pid);
-    HiviewDFX::DfxDumpCatcher dumplog;
-    std::string msg;
-    int timeout = IsHalfTimeout(faultType) ? 5000 : 3000;
-    int tid = 0;
-    const auto start = std::chrono::steady_clock::now();
-    std::pair<int, std::string> dumpResult = dumplog.DumpCatchWithTimeout(pid, msg, timeout, tid, true);
-    const auto finish = std::chrono::steady_clock::now();
-    if (timing != nullptr) {
-        timing->result = dumpResult.first;
-        timing->latency = std::chrono::duration_cast<std::chrono::milliseconds>(finish - start).count();
-    }
-    if (dumpResult.first == DUMP_STACK_FAILED) {
-        TAG_LOGI(AAFwkTag::APPDFR, "appfreeze catch json stacktrace failed, %{public}s", dumpResult.second.c_str());
-        msg = "Failed to dump stacktrace for " + std::to_string(pid) + "\n" + dumpResult.second + msg;
-        if (faultType == AppFreezeType::APP_INPUT_BLOCK) {
-            FindStackByPid(msg, pid);
-        }
-    } else {
-        if (dumpResult.first == DUMP_KERNEL_STACK_SUCCESS) {
-            msg = "Failed to dump normal stacktrace for " + std::to_string(pid) + "\n" + dumpResult.second +
-                "Kernel stack is:\n" + msg;
-        }
-        if (faultType == AppFreezeType::THREAD_BLOCK_3S) {
-            std::lock_guard<ffrt::mutex> lock(catchStackMutex_);
-            catchStackMap_[pid] = msg;
-        }
-    }
-    return std::make_pair(msg, dumpResult.second);
-}
-
-std::string AppfreezeManager::CatcherStacktrace(int pid, DumpTiming* timing) const
-{
-    HITRACE_METER_FMT(HITRACE_TAG_APP, "CatcherStacktrace pid:%{public}d", pid);
-    HiviewDFX::DfxDumpCatcher dumplog;
-    std::string msg;
-    const auto start = std::chrono::steady_clock::now();
-    std::pair<int, std::string> dumpResult = dumplog.DumpCatchWithTimeout(pid, msg);
-    const auto finish = std::chrono::steady_clock::now();
-    if (timing != nullptr) {
-        timing->result = dumpResult.first;
-        timing->latency = std::chrono::duration_cast<std::chrono::milliseconds>(finish - start).count();
-    }
-    if (dumpResult.first == DUMP_STACK_FAILED) {
-        TAG_LOGI(AAFwkTag::APPDFR, "appfreeze catch stacktrace failed, %{public}s",
-            dumpResult.second.c_str());
-        msg = "Failed to dump stacktrace for " + std::to_string(pid) + "\n" + dumpResult.second + msg;
-    } else if (dumpResult.first == DUMP_KERNEL_STACK_SUCCESS) {
-        msg = "Failed to dump normal stacktrace for " + std::to_string(pid) + "\n" + dumpResult.second +
-            "Kernel stack is:\n" + msg;
-    }
-    return msg;
 }
 
 bool AppfreezeManager::IsProcessDebug(int32_t pid, std::string bundleName)
@@ -1202,21 +1853,6 @@ void AppfreezeManager::PerfStart(std::string eventName)
         TAG_LOGI(AAFwkTag::APPDFR, "perf end");
     }
 }
-std::string AppfreezeManager::GetFirstLine(const std::string &path)
-{
-    std::string realPath = AppfreezeUtil::FreezePathToRealPath(path);
-    if (realPath.empty()) {
-        return "";
-    }
-    std::ifstream inFile(realPath.c_str());
-    if (!inFile) {
-        return "";
-    }
-    std::string firstLine;
-    getline(inFile, firstLine);
-    inFile.close();
-    return firstLine;
-}
 
 bool AppfreezeManager::CheckInBackGround(const FaultData &faultData)
 {
@@ -1322,142 +1958,6 @@ bool AppfreezeManager::IsSkipDetect(int32_t pid, int32_t uid, const std::string&
         return true;
     }
     return false;
-}
-
-bool AppfreezeManager::GetProcessKillReason(AppfreezeManager::ProcessKillInfo &killInfo, int32_t killId,
-    const std::string& killMsg)
-{
-    if (killId == INVALID_KILL_ID) {
-        killInfo.killReason = INVALID_KILL_REASON;
-        killInfo.killMsg = killMsg + " " + std::string(INVALID_KILL_REASON) + ":" + std::to_string(killId);
-        killInfo.killId = killId;
-    } else if (killId < 0) {
-        bool res = GetExitKernelReason(killInfo);
-        killInfo.killMsg = killMsg;
-        if (!res) {
-            return false;
-        }
-    } else {
-        killInfo.killReason = HiviewDFX::ProcessKillReason::GetKillReason(killId);
-        killInfo.killMsg = killMsg;
-        killInfo.killId = killId;
-        SetExitKernelReason(killInfo.pid);
-    }
-    return true;
-}
-
-static void FillProcessKillInfoFromKernel(const KillInfo& info, int64_t currentTimeNs,
-    AppfreezeManager::ProcessKillInfo& killInfo)
-{
-    int killId = static_cast<int>(info.data.id);
-    killInfo.killId = killId;
-    killInfo.adj = static_cast<int>(info.data.adj);
-    // foreground: signal/Exit death takes kernel record as authority (overrides AppMgr inferred value)
-    killInfo.foreground = info.data.foreground;
-    killInfo.timestamp = static_cast<int64_t>(info.data.timestamp);
-    killInfo.killReason = HiviewDFX::ProcessKillReason::GetKillReason(killId);
-    if (killInfo.killReason.find(INVALID_KILL_REASON) != std::string::npos) {
-        killInfo.killReason = INVALID_KILL_REASON;
-    }
-    killInfo.callingPid = static_cast<int32_t>(info.data.callingPid);
-    killInfo.callingProcessName = killInfo.callingPid > 0 ?
-        AppfreezeUtil::GetProcessNameByPid(killInfo.callingPid) : "";
-    if (killInfo.callingProcessName.empty()) {
-        TAG_LOGD(AAFwkTag::APPDFR, "get callingProcessName by pid failed, use kernel data, callingPid:%{public}d",
-            killInfo.callingPid);
-        killInfo.callingProcessName = ReadKernelProcessName(info.data.callingProcessName,
-            sizeof(info.data.callingProcessName));
-    }
-    killInfo.eventParamFirst = static_cast<int64_t>(info.data.eventParamFirst);
-    killInfo.eventParamSecond = static_cast<int64_t>(info.data.eventParamSecond);
-    killInfo.eventParamThird = static_cast<int64_t>(info.data.eventParamThird);
-    killInfo.eventParamFourth = static_cast<int64_t>(info.data.eventParamFourth);
-    killInfo.eventParamFifth = static_cast<int64_t>(info.data.eventParamFifth);
-    killInfo.eventParamSixth = static_cast<int64_t>(info.data.eventParamSixth);
-    killInfo.eventParamSeventh = static_cast<int64_t>(info.data.eventParamSeventh);
-    int kernelPid = static_cast<int>(info.data.pid);
-    TAG_LOGI(AAFwkTag::APPDFR, "Get killReason success, killId:%{public}d, adj:%{public}d, "
-        "timestamp:%{public}" PRId64 ", currentTimeNs:%{public}" PRId64 ", killReason:%{public}s, "
-        "ioctlPid:%{public}d, pid:%{public}d, paramFirst:%{public}" PRId64 ", paramSecond:%{public}"
-        PRId64 ", paramThird:%{public}" PRId64 ", paramFourth:%{public}" PRId64 ", paramFifth:%{public}"
-        PRId64 ", paramSixth:%{public}" PRId64 ", paramSeventh:%{public}" PRId64, killId, killInfo.adj,
-        killInfo.timestamp, currentTimeNs, killInfo.killReason.c_str(), kernelPid, killInfo.pid,
-        killInfo.eventParamFirst, killInfo.eventParamSecond, killInfo.eventParamThird, killInfo.eventParamFourth,
-        killInfo.eventParamFifth, killInfo.eventParamSixth, killInfo.eventParamSeventh);
-}
-
-bool AppfreezeManager::GetExitKernelReason(ProcessKillInfo& killInfo)
-{
-    int sysloadFd = open(DEV_SYSLOAD, O_RDWR);
-    if (sysloadFd < 0) {
-        TAG_LOGW(AAFwkTag::APPDFR, "open failed, errno:%{public}d", errno);
-        return false;
-    }
-    fdsan_exchange_owner_tag(sysloadFd, 0, FREEZE_DOMAIN);
-    KillInfo info = {0};
-    info.magic = SYSLOAD_GET_KILL_INFO_MAGIC;
-    info.pid = killInfo.pid;
-    info.structSize = sizeof(struct KillInfo);
-
-    struct timespec ts = {0, 0};
-    if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
-        TAG_LOGW(AAFwkTag::APPDFR, "GetExitKernelReason clock_gettime failed, errno:%{public}d", errno);
-    }
-    int64_t currentTimeNs = ((int64_t)ts.tv_sec * 1000000000) + ts.tv_nsec;
- 
-    int res = ioctl(sysloadFd, GET_KILL_INFO, &info);
-    if (fdsan_close_with_tag(sysloadFd, FREEZE_DOMAIN) != 0) {
-        TAG_LOGW(AAFwkTag::APPDFR, "GetExitKernelReason fdsan close failed, errno:%{public}d", errno);
-    }
-    if (res == 0) {
-        FillProcessKillInfoFromKernel(info, currentTimeNs, killInfo);
-        return true;
-    } else {
-        killInfo.killReason = INVALID_KILL_REASON;
-        TAG_LOGW(AAFwkTag::APPDFR, "Get killReason ioctl failed, errno:%{public}d", errno);
-    }
-    return false;
-}
-
-void AppfreezeManager::SetExitKernelReason(int32_t pid)
-{
-    int sysloadFd = open(DEV_SYSLOAD, O_RDWR);
-    if (sysloadFd < 0) {
-        TAG_LOGW(AAFwkTag::APPDFR, "open failed, errno:%{public}d", errno);
-        return;
-    }
-    fdsan_exchange_owner_tag(sysloadFd, 0, FREEZE_DOMAIN);
-    KillInfo info = {0};
-    info.magic = SYSLOAD_SET_KILL_INFO_MAGIC;
-    info.pid = pid;
-    info.data.processed = true;
-    info.structSize = sizeof(struct KillInfo);
-    int res = ioctl(sysloadFd, SET_KILL_INFO, &info);
-    if (fdsan_close_with_tag(sysloadFd, FREEZE_DOMAIN) != 0) {
-        TAG_LOGW(AAFwkTag::APPDFR, "SetExitKernelReason fdsan close failed, errno:%{public}d", errno);
-    }
-    TAG_LOGI(AAFwkTag::APPDFR, "SetExitKernelReason pid:%{public}d, processed:%{public}d, res:%{public}d",
-        pid, info.data.processed, res);
-}
-
-int AppfreezeManager::GetFreezeExitReason(const std::string& eventName)
-{
-    if (eventName == AppFreezeType::THREAD_BLOCK_6S) {
-        return HiviewDFX::ProcessKillReason::KillEventId::REASON_THREAD_BLOCK_6S;
-    }
-    if (eventName == AppFreezeType::LIFECYCLE_TIMEOUT) {
-        return HiviewDFX::ProcessKillReason::KillEventId::REASON_LIFECYCLE_TIMEOUT;
-    }
-    if (eventName == AppFreezeType::APP_INPUT_BLOCK) {
-        return HiviewDFX::ProcessKillReason::KillEventId::REASON_APP_INPUT_BLOCK;
-    }
-    if (eventName == AppFreezeType::BUSSINESS_THREAD_BLOCK_6S) {
-        return HiviewDFX::ProcessKillReason::KillEventId::REASON_BUSINESS_THREAD_BLOCK_6S;
-    }
-    if (eventName == AppFreezeType::BUSINESS_INPUT_BLOCK) {
-        return HiviewDFX::ProcessKillReason::KillEventId::REASON_BUSINESS_INPUT_BLOCK;
-    }
-    return UNKNOWN_FREEZE_REASON;
 }
 
 void AppfreezeManager::UpdateFreezeExcludedPid(bool isAdd, int32_t targetPid, int32_t profilerPid)
