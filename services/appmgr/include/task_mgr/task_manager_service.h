@@ -88,8 +88,8 @@ public:
      *        window. Every registration creates a new record under a fresh
      *        server-assigned attribution id.
      * @param taskId Indicates the attribution key of the task.
-     * @param attribution Indicates the attribution record (tool required; pid optional,
-     *        -1 when the managed entity is not a process; the attribution time is
+     * @param attribution Indicates the attribution record (tool and pid required; the
+     *        pid must be a live appmgr-managed process; the attribution time is
      *        stamped here).
      * @param attributionId Indicates the server-assigned id of the created record,
      *        handed back to the caller as the handle for later operations.
@@ -141,8 +141,7 @@ public:
      *        entity; the dump surface is gated by the dump permission at the
      *        AppMgrService dump entry.
      * @param taskId Indicates the attribution key of the task.
-     * @param pidText Indicates the process id text from the dump command ("-" for a
-     *        non-process entity).
+     * @param pidText Indicates the process id text from the dump command.
      * @param toolText Indicates the tool name text from the dump command.
      * @param result Indicates the dump output text of the hook, carrying the assigned
      *        attribution id on success.

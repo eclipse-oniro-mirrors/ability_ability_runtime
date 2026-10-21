@@ -64,8 +64,7 @@ std::string AttributionsToString(const std::map<AttributionId, AttributionRecord
         if (it != attributions.begin()) {
             result += ";";
         }
-        std::string pidText = it->second.pid > 0 ? std::to_string(it->second.pid) : "-";
-        result += std::to_string(it->first) + ":" + pidText +
+        result += std::to_string(it->first) + ":" + std::to_string(it->second.pid) +
             "(" + AttributionToolToString(it->second.tool) + ")";
     }
     return result;
@@ -278,7 +277,7 @@ int32_t TaskManagerService::RegisterManagedProcess(const std::string &taskId,
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::APPMGR, "called");
     int32_t toolType = static_cast<int32_t>(attribution.tool);
-    if ((attribution.pid <= 0 && attribution.pid != -1) ||
+    if (attribution.pid <= 0 ||
         taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN ||
         toolType < static_cast<int32_t>(AttributionTool::INSIGHT) ||
         toolType > static_cast<int32_t>(AttributionTool::ABILITY)) {
@@ -286,7 +285,7 @@ int32_t TaskManagerService::RegisterManagedProcess(const std::string &taskId,
             "toolType: %{public}d", taskId.size(), attribution.pid, toolType);
         return INVALID_PARAMETERS_ERR;
     }
-    if (attribution.pid > 0 && !IsLiveManagedProcess(attribution.pid)) {
+    if (!IsLiveManagedProcess(attribution.pid)) {
         TAG_LOGW(AAFwkTag::APPMGR, "pid is not a live managed process, rejected, "
             "taskId: %{public}s, pid: %{public}d", taskId.c_str(), attribution.pid);
         return AAFwk::ERR_INVALID_PID;
@@ -453,13 +452,11 @@ int32_t TaskManagerService::DumpRegisterManagedProcess(const std::string &taskId
 {
     AttributionRecord attribution;
     attribution.tool = AttributionToolFromString(toolText);
-    if (pidText == "-") {
-        attribution.pid = -1;
-    } else if (!ParsePidText(pidText, attribution.pid) || attribution.pid <= 0) {
+    if (!ParsePidText(pidText, attribution.pid) || attribution.pid <= 0) {
         attribution.tool = AttributionTool::UNKNOWN;
     }
     if (attribution.tool == AttributionTool::UNKNOWN) {
-        result = "error: invalid pid or tool, expected <pid|-> <insight|cli|a2a|ability>.\n";
+        result = "error: invalid pid or tool, expected <pid> <insight|cli|a2a|ability>.\n";
         return INVALID_PARAMETERS_ERR;
     }
     AttributionId attributionId = 0;

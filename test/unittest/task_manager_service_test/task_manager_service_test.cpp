@@ -434,8 +434,8 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_RegisterManagedProcess_0100,
 /**
  * @tc.number: TaskManagerService_RegisterManagedProcess_0200
  * @tc.name: register managed process with invalid params
- * @tc.desc: invalid pid, tool or task id is rejected, a non-process entity is accepted
- *           and an unknown task is not found.
+ * @tc.desc: an invalid pid (0 / -1), tool or task id is rejected and an unknown task
+ *           is not found.
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_RegisterManagedProcess_0200, TestSize.Level1)
 {
@@ -461,10 +461,8 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_RegisterManagedProcess_0200,
     AttributionRecord noPid = attribution;
     noPid.pid = -1;
     AttributionId noPidId = 0;
-    EXPECT_EQ(service.RegisterManagedProcess(taskId, noPid, noPidId), ERR_OK);
-    EXPECT_GT(noPidId, 0);
-    EXPECT_NE(service.DumpActiveTasks().find(std::to_string(noPidId) + ":-(insight)"),
-        std::string::npos);
+    EXPECT_EQ(service.RegisterManagedProcess(taskId, noPid, noPidId),
+        AAFwk::INVALID_PARAMETERS_ERR);
 
     AttributionRecord unknownTool = attribution;
     unknownTool.tool = AttributionTool::UNKNOWN;
@@ -484,8 +482,8 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_RegisterManagedProcess_0200,
 /**
  * @tc.number: TaskManagerService_RegisterManagedProcess_0300
  * @tc.name: register managed process validated by the wired pid validator
- * @tc.desc: a pid rejected by the wired validator is refused while a non-process
- *           entity is not affected.
+ * @tc.desc: a pid rejected by the wired validator is refused while the format check
+ *           still precedes the validator.
  */
 HWTEST_F(TaskManagerServiceTest, TaskManagerService_RegisterManagedProcess_0300, TestSize.Level1)
 {
@@ -503,7 +501,8 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_RegisterManagedProcess_0300,
     EXPECT_EQ(service.RegisterManagedProcess(taskId, attribution, attributionId),
         AAFwk::ERR_INVALID_PID);
     attribution.pid = -1;
-    EXPECT_EQ(service.RegisterManagedProcess(taskId, attribution, attributionId), ERR_OK);
+    EXPECT_EQ(service.RegisterManagedProcess(taskId, attribution, attributionId),
+        AAFwk::INVALID_PARAMETERS_ERR);
     EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
 }
 
@@ -661,11 +660,6 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_DumpRegisterManagedProcess_0
     EXPECT_NE(result.find("register ok, attributionId="), std::string::npos);
     EXPECT_NE(service.DumpActiveTasks().find(":" + std::to_string(TEST_MANAGED_PID) + "(insight)"),
         std::string::npos);
-
-    result.clear();
-    EXPECT_EQ(service.DumpRegisterManagedProcess(taskId, "-", "a2a", result), ERR_OK);
-    EXPECT_NE(result.find("register ok, attributionId="), std::string::npos);
-    EXPECT_NE(service.DumpActiveTasks().find(":-(a2a)"), std::string::npos);
     EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
 }
 
@@ -693,6 +687,10 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_DumpRegisterManagedProcess_0
 
     result.clear();
     EXPECT_EQ(service.DumpRegisterManagedProcess(MakeTaskId("dump_reg_0200"), "-5", "insight", result),
+        AAFwk::INVALID_PARAMETERS_ERR);
+
+    result.clear();
+    EXPECT_EQ(service.DumpRegisterManagedProcess(MakeTaskId("dump_reg_0200"), "-", "insight", result),
         AAFwk::INVALID_PARAMETERS_ERR);
 
     result.clear();
