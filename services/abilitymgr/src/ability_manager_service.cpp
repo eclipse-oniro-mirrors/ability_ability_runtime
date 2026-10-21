@@ -6364,7 +6364,11 @@ int32_t AbilityManagerService::ConnectAbilityCommon(
     }
 
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(abilityWant, validUserId, isQueryExtensionOnly),
+    bool processAppIndexRet = CloneForAccountUtil::ProcessAppIndex(abilityWant, validUserId, true);
+    if (!processAppIndexRet && !isQueryExtensionOnly) {
+        processAppIndexRet = CloneForAccountUtil::ProcessAppIndex(abilityWant, validUserId, false);
+    }
+    CHECK_TRUE_RETURN_RET(!processAppIndexRet,
         RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
 #endif
 
