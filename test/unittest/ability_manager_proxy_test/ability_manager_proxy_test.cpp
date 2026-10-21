@@ -3317,7 +3317,31 @@ HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_GetKioskStatus, TestSize.L
     KioskStatus kioskStatus;
     auto res = proxy_->GetKioskStatus(kioskStatus);
     EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(kioskStatus.kioskToken_, nullptr);
     EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::GET_KIOSK_INFO), mock_->code_);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetKioskStatus
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService GetKioskStatus with non-null kiosk token
+ * EnvConditions: NA
+ * CaseDescription: GetKioskStatus reads the token when the stub's has-token flag is true
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_GetKioskStatus_WithToken, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeKioskModeSendRequest));
+    mock_->kioskToken_ = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    ASSERT_NE(mock_->kioskToken_, nullptr);
+    KioskStatus kioskStatus;
+    auto res = proxy_->GetKioskStatus(kioskStatus);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_NE(kioskStatus.kioskToken_, nullptr);
+    EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::GET_KIOSK_INFO), mock_->code_);
+    mock_->kioskToken_ = nullptr;
 }
 
 /*

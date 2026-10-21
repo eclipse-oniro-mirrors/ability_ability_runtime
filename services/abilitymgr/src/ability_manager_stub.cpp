@@ -5869,7 +5869,16 @@ int32_t AbilityManagerStub::GetKioskStatusInner(MessageParcel &data, MessageParc
         return ERR_WRITE_KIOSK_STATUS_FAILED;
     }
 
-    if (!reply.WriteRemoteObject(kioskStatus.kioskToken_)) {
+    // kioskToken_ is optional: WriteRemoteObject(nullptr) always returns false without writing any
+    // byte, so an explicit bool flag is written first to tell the peer whether a binder object
+    // follows. AbilityManagerProxy::GetKioskStatus reads the flag and only calls ReadRemoteObject()
+    // when it is true. Keep this write order (flag, [token], result) in sync with the proxy side.
+    bool hasToken = (kioskStatus.kioskToken_ != nullptr);
+    if (!reply.WriteBool(hasToken)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write has token flag fail");
+        return ERR_WRITE_CALLER_TOKEN_FAILED;
+    }
+    if (hasToken && !reply.WriteRemoteObject(kioskStatus.kioskToken_)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write token fail");
         return ERR_WRITE_CALLER_TOKEN_FAILED;
     }

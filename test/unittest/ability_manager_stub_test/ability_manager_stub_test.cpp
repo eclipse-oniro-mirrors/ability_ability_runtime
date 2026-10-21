@@ -4767,6 +4767,43 @@ HWTEST_F(AbilityManagerStubTest, GetKioskStatusInner, TestSize.Level1)
     auto ret = stub_->OnRemoteRequest(
         static_cast<uint32_t>(AbilityManagerInterfaceCode::GET_KIOSK_INFO), data, reply, option);
     EXPECT_EQ(ret, NO_ERROR);
+
+    // Verify the reply wire format: parcelable, has-token bool flag, [token], result.
+    // The impl mock returns a default KioskStatus (null token), so the flag must be false
+    // and no binder object may follow it.
+    std::unique_ptr<KioskStatus> info(reply.ReadParcelable<KioskStatus>());
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(reply.ReadBool(), false);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "end");
+}
+
+/**
+ * @tc.name: GetKioskStatusInnerWithToken
+ * @tc.desc: GetKioskStatusInner writes has-token flag true followed by the binder object
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerStubTest, GetKioskStatusInnerWithToken, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin");
+    stub_->kioskToken_ = sptr<IRemoteObject>(new (std::nothrow) AppExecFwk::MockAbilityToken());
+    ASSERT_NE(stub_->kioskToken_, nullptr);
+    MessageParcel data;
+    bool writeRet = data.WriteInterfaceToken(AbilityManagerStubImplMock::GetDescriptor());
+    EXPECT_EQ(writeRet, true);
+
+    MessageParcel reply;
+    MessageOption option;
+    auto ret = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::GET_KIOSK_INFO), data, reply, option);
+    EXPECT_EQ(ret, NO_ERROR);
+
+    std::unique_ptr<KioskStatus> info(reply.ReadParcelable<KioskStatus>());
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(reply.ReadBool(), true);
+    EXPECT_NE(reply.ReadRemoteObject(), nullptr);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+    stub_->kioskToken_ = nullptr;
     TAG_LOGI(AAFwkTag::TEST, "end");
 }
 

@@ -44,8 +44,13 @@ public:
     {
         code_ = code;
         KioskStatus kioskStatus;
+        kioskStatus.kioskToken_ = kioskToken_;
         reply.WriteParcelable(&kioskStatus);
-        reply.WriteRemoteObject(kioskStatus.kioskToken_);
+        bool hasToken = (kioskStatus.kioskToken_ != nullptr);
+        reply.WriteBool(hasToken);
+        if (hasToken) {
+            reply.WriteRemoteObject(kioskStatus.kioskToken_);
+        }
         reply.WriteInt32(0);
         return 0;
     }
@@ -68,6 +73,7 @@ public:
     }
 
     int code_ = 0;
+    sptr<IRemoteObject> kioskToken_ = nullptr;
 
     virtual int StartAbility(
         const Want& want, int32_t userId = DEFAULT_INVAL_VALUE, int requestCode = -1, uint64_t specifiedFullTokenId = 0)

@@ -438,6 +438,7 @@ HWTEST_F(CallContainerTest, Call_Container_Notify_All_Call_Disconnect_001, TestS
 
     // Notify all disconnect
     callContainer->NotifyAllCallDisconnect(element);
+    usleep(100000); // ffrt::submit is async — drain before test ends to avoid leaking into later tests
 
     // Verify all records are cleared
     EXPECT_EQ(callContainer->GetCallRecord(connect1), nullptr);
