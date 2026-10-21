@@ -436,6 +436,7 @@ group("unittest") {
       "js_ability_context_test:unittest",
       "js_ability_stage_context_test:unittest",
       "js_app_service_extension_test:unittest",
+      "js_application_context_utils_test:unittest",
       "js_runtime_common_test:unittest",
       "js_service_extension_test:unittest",
       "js_system_configuration_updated_callback_test:unittest",
