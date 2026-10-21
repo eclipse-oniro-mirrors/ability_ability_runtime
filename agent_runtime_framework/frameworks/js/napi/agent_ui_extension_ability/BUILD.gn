@@ -32,7 +32,10 @@ ohos_shared_library("agentuiextensionability_napi") {
       "${agent_runtime_framework_path}/frameworks/js/js/agent_ui_extension_ability:agent_ui_extension_ability_js",
   ]
 
-  external_deps = [ "napi:ace_napi" ]
+  external_deps = [
+    "napi:ace_napi",
+    "node:node_header_notice",
+  ]
 
   relative_install_dir = "module/app/agent"
   subsystem_name = "ability"
@@ -104,6 +107,7 @@ ohos_shared_library("js_agent_ui_extension") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {

@@ -215,6 +215,7 @@ sptr<IWantSender> PendingWantManager::GetWantSenderLocked(const int32_t callingU
                 ref->MarkSharedIfNeeded(IPCSkeleton::GetCallingPid());
                 result = ref;
             } else {
+                TAG_LOGI(AAFwkTag::WANTAGENT, "cancel");
                 CollectCancelCallbacksLocked(*ref, cancelCallbacks);
                 ReduceWantAgentNumber(ref->GetKey());
                 wantRecords_.erase(ref->GetKey());
@@ -436,6 +437,7 @@ void PendingWantManager::CancelWantSenderLocked(PendingWantRecord &record, bool 
             TAG_LOGE(AAFwkTag::WANTAGENT, "record not found in wantRecords_, cancel failed");
             return;
         }
+        TAG_LOGI(AAFwkTag::WANTAGENT, "cancel");
         CollectCancelCallbacksLocked(record, cancelCallbacks);
         if (cleanAbility) {
             ReduceWantAgentNumber(record.GetKey());

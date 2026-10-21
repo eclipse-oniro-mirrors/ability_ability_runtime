@@ -651,7 +651,7 @@ std::shared_ptr<MissionListManagerInterface> SubManagersHelper::CreateMissionLis
 void SubManagersHelper::HandlePendingWantDeathCleanup(
     const std::string &bundleName, int32_t pid)
 {
-    TAG_LOGI(AAFwkTag::WANTAGENT,
+    TAG_LOGD(AAFwkTag::WANTAGENT,
         "death cleanup: bundle=%{public}s, pid=%{public}d",
         bundleName.c_str(), pid);
 

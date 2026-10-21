@@ -343,6 +343,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, CheckPermissionForAgentExtension_0
     auto &status = MyStatus::GetInstance();
     status.perJudgeCallerIsAllowedToUseSystemAPI_ = true;
     status.permPermission_ = 1;
+    status.permConnectAgentFromBackground_ = 0;
     status.amcGetProcessInfoRet_ = ERR_OK;
     status.amcProcessState_ = AppProcessState::APP_STATE_BACKGROUND;
 
@@ -371,6 +372,33 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, CheckPermissionForAgentExtension_0
     status.permPermission_ = 1;
     status.amcGetProcessInfoRet_ = ERR_OK;
     status.amcProcessState_ = AppProcessState::APP_STATE_FOREGROUND;
+
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    Want want;
+    want.SetParam(AgentRuntime::AGENTEXTENSIONHOSTPROXY_KEY, true);
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.extensionAbilityType = ExtensionAbilityType::AGENT;
+    auto ret = abilityMs->CheckPermissionForAgentExtension(ExtensionAbilityType::AGENT, want, abilityRequest);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: CheckPermissionForAgentExtension_009
+ * Function: CheckPermissionForAgentExtension
+ * SubFunction: NA
+ * FunctionPoints: Verify CheckPermissionForAgentExtension allows background callers holding CONNECT_AGENT_FROM_BACKGROUND.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, CheckPermissionForAgentExtension_009, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    status.perJudgeCallerIsAllowedToUseSystemAPI_ = true;
+    status.permPermission_ = 1;
+    status.permConnectAgentFromBackground_ = 1;
+    status.amcGetProcessInfoRet_ = ERR_OK;
+    status.amcProcessState_ = AppProcessState::APP_STATE_BACKGROUND;
 
     auto abilityMs = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityMs, nullptr);

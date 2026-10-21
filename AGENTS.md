@@ -39,6 +39,7 @@
 | 拦截器相关（启动被拦截/生态规则/Kiosk） | `services/abilitymgr/src/interceptor/` |
 | 任务栈/Mission 管理 | `services/abilitymgr/src/mission/` → `mission_list_manager.cpp` |
 | InsightIntent（意图识别/分发/执行） | `services/abilitymgr/src/insight_intent/` + `frameworks/native/ability/native/insight_intent_executor/` |
+| 可靠性设计/开发（故障模式、资源限制风险） | `skills/Reliability/skill.md`（Want/InsightIntent 模块） |
 | 新增 Extension 类型 | `interfaces/kits/native/` → `frameworks/native/ability/native/` → `frameworks/ets/ani/` → `frameworks/js/napi/` → `services/abilitymgr/` |
 | 修改公共 SDK API 签名 | `interfaces/kits/native/` + `interfaces/kits/c/` → 需兼容性评估 |
 | NAPI 绑定修改 | `frameworks/js/napi/<module>/` → 对应 `nativecommon` 共享组件 |
@@ -69,6 +70,7 @@
 | 应用进程管理/AppSpawn 协调变更 | `services/appmgr/` → `app_mgr_service.h`、`app_spawn_client.h` |
 | 拦截器新增或修改 | `services/abilitymgr/CLAUDE.md` 中的 Interceptor Framework 章节 |
 | InsightIntent 意图框架变更 | `services/abilitymgr/src/insight_intent/` 目录结构 + `核心功能特性总结.md` 意图框架章节 |
+| 元能力代码设计/开发的可靠性风险识别（故障模式、资源限制） | `skills/Reliability/skill.md`（元能力可靠性skill，覆盖 Want/InsightIntent 模块） |
 
 ### Path-based routing
 
@@ -82,6 +84,7 @@
 | `frameworks/js/napi/` | 对应模块目录的 `native_module.cpp`（NAPI 模块注册入口） |
 | `frameworks/ets/ani/` | 对应模块目录的 ANI 注册入口 + `ani_common/` 共享工具 |
 | `services/appdfr/` | `services/appmgr/CLAUDE.md`（如存在）或 `services/appdfr/` 目录头文件 |
+| `services/abilitymgr/src/insight_intent/` | `skills/Reliability/skill.md`（InsightIntent 可靠性子skill）+ `services/abilitymgr/CLAUDE.md` |
 
 ### Vocabulary-based routing
 
@@ -106,6 +109,7 @@
 | PermissionVerification | 不是通用"权限检查"，而是 ability_runtime 的全局安全入口，所有组件操作都经过此单例 | `services/common/include/permission_verification.h` |
 | QuickFix / 热修复 | 不是通用"热更新"，而是 OpenHarmony 应用级补丁机制，有 Apply/Revert 和版本管理 | `services/quickfixmgr/` |
 | AutoFill / 自动填充 | 不是通用"表单填充"，而是跨应用隐私保护的自动填充扩展，有独立的 Extension 和 Manager | `ability_runtime.gni` 中 `ability_runtime_auto_fill` |
+| 故障模式 / 资源限制 / 可靠性设计 / FaultMode | 元能力可靠性风险库，覆盖 Want（序列化/fd传递）和 InsightIntent（执行记录/IPC回传）的已知故障模式和资源限制规格 | `skills/Reliability/skill.md` |
 
 在规划中声明：
 - 任务类别

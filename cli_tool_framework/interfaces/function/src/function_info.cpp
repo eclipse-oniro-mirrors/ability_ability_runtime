@@ -138,7 +138,9 @@ bool ParseFunctionType(const nlohmann::json &json, FunctionType &output)
 
 bool ParseUserId(const nlohmann::json &json, int32_t &output)
 {
-    // userId is optional for compatibility with legacy entries written without it
+    // Absent key = unset sentinel (-1): ParseToJson omits the field when unset, so the
+    // decoder must map absence back to the default to keep the round trip lossless.
+    // Explicit values are still range-checked below.
     if (!json.contains("userId")) {
         return true;
     }
@@ -275,7 +277,11 @@ nlohmann::json FunctionInfo::ParseToJson() const
     }
 
     j["functionType"] = static_cast<int32_t>(functionType);
-    j["userId"] = userId;
+    // -1 is the unset sentinel; ParseUserId rejects explicit negatives, so omit the field
+    // to keep the raw-data round trip lossless for default-constructed FunctionInfo
+    if (userId >= 0) {
+        j["userId"] = userId;
+    }
 
     return j;
 }
