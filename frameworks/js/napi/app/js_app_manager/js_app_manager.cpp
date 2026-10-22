@@ -346,21 +346,22 @@ private:
             }
         }
         int64_t observerId = serialNumber_.fetch_add(1, std::memory_order_relaxed);
+        int32_t ret = 0;
         {
             std::lock_guard<std::mutex> lock(*observerMtx_);
             if (observer_->GetJsObserverMapSize() == 0) {
-                int32_t ret = appManager_->RegisterApplicationStateObserverWithFilter(observer_,
+                ret = appManager_->RegisterApplicationStateObserverWithFilter(observer_,
                     bundleNameList, appStateFilter, isUsingFilter);
-                if (ret == 0) {
-                    TAG_LOGD(AAFwkTag::APPMGR, "success");
-                } else {
-                    TAG_LOGE(AAFwkTag::APPMGR, "err:%{public}d", ret);
-                    napi_throw(env, CreateJsErrorByNativeErr(env, ret, "",
-                        GetInnerErrorMsg(AbilityInnerErrorMsg::REGISTER_OBSERVER_FAILED)));
-                    return CreateJsUndefined(env);
-                }
             }
-            observer_->AddJsObserverObject(observerId, argv[INDEX_ONE]);
+            if (ret == 0) {
+                observer_->AddJsObserverObject(observerId, argv[INDEX_ONE]);
+            }
+        }
+        if (ret != 0) {
+            TAG_LOGE(AAFwkTag::APPMGR, "err:%{public}d", ret);
+            napi_throw(env, CreateJsErrorByNativeErr(env, ret, "",
+            GetInnerErrorMsg(AbilityInnerErrorMsg::REGISTER_OBSERVER_FAILED)));
+            return CreateJsUndefined(env);
         }
         return CreateJsValue(env, observerId);
     }
@@ -520,16 +521,19 @@ private:
                 GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED)));
             return;
         }
-        std::lock_guard<std::mutex> lock(*mtx);
-        observer->RemoveJsObserverObject(observerId);
-        if (observer->GetJsObserverMapSize() == 0) {
-            int32_t ret = appManager->UnregisterApplicationStateObserver(observer);
-            if (ret != 0) {
-                TAG_LOGE(AAFwkTag::APPMGR, "err:%{public}d", ret);
-                task->Reject(env, CreateJsErrorByNativeErr(env, ret, "",
-                    GetInnerErrorMsg(AbilityInnerErrorMsg::UNREGISTER_OBSERVER_FAILED)));
-                return;
+        int32_t ret = 0;
+        {
+            std::lock_guard<std::mutex> lock(*mtx);
+            observer->RemoveJsObserverObject(observerId);
+            if (observer->GetJsObserverMapSize() == 0) {
+                ret = appManager->UnregisterApplicationStateObserver(observer);
             }
+        }
+        if (ret != 0) {
+            TAG_LOGE(AAFwkTag::APPMGR, "err:%{public}d", ret);
+            task->Reject(env, CreateJsErrorByNativeErr(env, ret, "",
+            GetInnerErrorMsg(AbilityInnerErrorMsg::UNREGISTER_OBSERVER_FAILED)));
+            return;
         }
         TAG_LOGI(AAFwkTag::APPMGR, "unregister success size:%{public}zu", observer->GetJsObserverMapSize());
         task->ResolveWithNoError(env, CreateJsUndefined(env));
@@ -556,15 +560,17 @@ private:
             ThrowInvalidParamError(env, "observer is nullptr, please register first.");
             return CreateJsUndefined(env);
         }
+        bool isExist = false;
         {
             std::lock_guard<std::mutex> lock(*observerMtx_);
-            if (!observer_->FindObserverByObserverId(observerId)) {
-                TAG_LOGE(AAFwkTag::APPMGR, "not find observer:%{public}d", observerId);
-                ThrowInvalidParamError(env, "not find observerId.");
-                return CreateJsUndefined(env);
-            }
-            TAG_LOGD(AAFwkTag::APPMGR, "find observer exist:%{public}d", observerId);
+            isExist = observer_->FindObserverByObserverId(observerId);
         }
+        if (!isExist) {
+            TAG_LOGE(AAFwkTag::APPMGR, "not find observer:%{public}d", observerId);
+            ThrowInvalidParamError(env, "not find observerId.");
+            return CreateJsUndefined(env);
+        }
+        TAG_LOGD(AAFwkTag::APPMGR, "find observer exist:%{public}d", observerId);
         napi_value lastParam = (argc > ARGC_TWO) ? argv[INDEX_TWO] : nullptr;
         napi_value result = nullptr;
         std::unique_ptr<NapiAsyncTask> napiAsyncTask = CreateEmptyAsyncTask(env, lastParam, &result);
