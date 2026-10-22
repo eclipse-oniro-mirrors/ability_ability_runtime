@@ -310,8 +310,9 @@ void UIAbilityLifecycleManager::CompleteBackground(const UIAbilityRecordPtr &abi
 }
 
 int32_t UIAbilityLifecycleManager::BackToCallerAbilityWithResult(std::shared_ptr<AbilityRecord> abilityRecord,
-    int resultCode, const Want *resultWant, int64_t callerRequestCode)
+    int resultCode, const Want &resultWant, int64_t callerRequestCode, bool isBackToCallerApp)
 {
+    MyStatus::GetInstance().ualmIsBackToCallerApp_ = isBackToCallerApp;
     return ERR_OK;
 }
 

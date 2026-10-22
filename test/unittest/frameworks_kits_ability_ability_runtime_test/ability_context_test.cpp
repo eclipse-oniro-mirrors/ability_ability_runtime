@@ -198,7 +198,7 @@ public:
         return ERR_OK;
     }
     virtual ErrCode BackToCallerAbilityWithResult(const AAFwk::Want &want,
-        int resultCode, int64_t requestCode)
+        int resultCode, int64_t requestCode, bool isBackToCallerApp = false)
     {
         return ERR_OK;
     }

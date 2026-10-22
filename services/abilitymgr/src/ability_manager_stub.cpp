@@ -1336,17 +1336,18 @@ int AbilityManagerStub::BackToCallerInner(MessageParcel &data, MessageParcel &re
         token = data.ReadRemoteObject();
     }
     int resultCode = data.ReadInt32();
-    Want *resultWant = data.ReadParcelable<Want>();
-    if (resultWant != nullptr) {
-        SanitizeWantParams(*resultWant);
-        resultWant->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
+    std::unique_ptr<Want> resultWant(data.ReadParcelable<Want>());
+    if (resultWant == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "resultWant null");
+        return ERR_INVALID_VALUE;
     }
+    SanitizeWantParams(*resultWant);
+    resultWant->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     int64_t callerRequestCode = data.ReadInt64();
-    int32_t result = BackToCallerAbilityWithResult(token, resultCode, resultWant, callerRequestCode);
+    bool isBackToCallerApp = data.ReadBool();
+    int32_t result = BackToCallerAbilityWithResult(token, resultCode, *resultWant, callerRequestCode,
+        isBackToCallerApp);
     reply.WriteInt32(result);
-    if (resultWant != nullptr) {
-        delete resultWant;
-    }
     return NO_ERROR;
 }
 

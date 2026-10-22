@@ -70,6 +70,9 @@ public:
     int32_t GetOpenAtomicService();
     void SetOpenAtomicService(int32_t openAtomicService);
 
+    bool GetBackToCallerApp();
+    void SetBackToCallerApp(bool isBackToCallerApp);
+
 private:
     static std::shared_ptr<MyFlag> flagInstance_;
     static std::once_flag flagOnce_;
@@ -88,6 +91,7 @@ private:
     static ErrCode requestModalUIExtension_;
     static ErrCode addFreeInstallObserver_;
     static int32_t openAtomicService_;
+    static bool backToCallerApp_;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

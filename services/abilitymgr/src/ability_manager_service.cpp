@@ -5673,7 +5673,7 @@ int32_t AbilityManagerService::TerminateUIServiceExtensionAbility(const sptr<IRe
 }
 
 int AbilityManagerService::BackToCallerAbilityWithResult(const sptr<IRemoteObject> &token, int resultCode,
-    const Want *resultWant, int64_t callerRequestCode)
+    const Want &resultWant, int64_t callerRequestCode, bool isBackToCallerApp)
 {
     if (!VerificationAllToken(token)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "%{public}s verificationAllToken failed", __func__);
@@ -5692,11 +5692,11 @@ int AbilityManagerService::BackToCallerAbilityWithResult(const sptr<IRemoteObjec
         auto uiAbilityManager = GetUIAbilityManagerByUserId(ownerUserId);
         CHECK_POINTER_AND_RETURN(uiAbilityManager, ERR_INVALID_VALUE);
         return uiAbilityManager->BackToCallerAbilityWithResult(abilityRecord, resultCode, resultWant,
-            callerRequestCode);
+            callerRequestCode, isBackToCallerApp);
     }
     auto missionListManager = GetMissionListManagerByUserId(ownerUserId);
     CHECK_POINTER_AND_RETURN(missionListManager, ERR_INVALID_VALUE);
-    return missionListManager->BackToCallerAbilityWithResult(abilityRecord, resultCode, resultWant, callerRequestCode);
+    return missionListManager->BackToCallerAbilityWithResult(abilityRecord, resultCode, &resultWant, callerRequestCode);
 }
 
 int AbilityManagerService::CloseAbility(const sptr<IRemoteObject> &token, int resultCode, const Want *resultWant)
