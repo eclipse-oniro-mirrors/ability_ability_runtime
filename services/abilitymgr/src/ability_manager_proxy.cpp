@@ -1258,7 +1258,7 @@ int AbilityManagerProxy::TerminateAbility(const sptr<IRemoteObject> &token,
 }
 
 int AbilityManagerProxy::BackToCallerAbilityWithResult(const sptr<IRemoteObject> &token, int resultCode,
-    const Want *resultWant, int64_t callerRequestCode)
+    const Want &resultWant, int64_t callerRequestCode, bool isBackToCallerApp)
 {
     int error;
     MessageParcel data;
@@ -1268,27 +1268,31 @@ int AbilityManagerProxy::BackToCallerAbilityWithResult(const sptr<IRemoteObject>
     CHECK_POINTER_AND_RETURN_LOG(token, ERR_INVALID_VALUE, "null token");
 
     if (!WriteInterfaceToken(data)) {
-        return INNER_ERR;
+        return ERR_NATIVE_IPC_PARCEL_FAILED;
     }
 
     if (token) {
         if (!data.WriteBool(true) || !data.WriteRemoteObject(token)) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "token write fail");
-            return INNER_ERR;
+            return ERR_NATIVE_IPC_PARCEL_FAILED;
         }
     } else {
         if (!data.WriteBool(false)) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "flag write fail");
-            return INNER_ERR;
+            return ERR_NATIVE_IPC_PARCEL_FAILED;
         }
     }
-    if (!data.WriteInt32(resultCode) || !data.WriteParcelable(resultWant)) {
+    if (!data.WriteInt32(resultCode) || !data.WriteParcelable(&resultWant)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write resultCode fail");
-        return INNER_ERR;
+        return ERR_NATIVE_IPC_PARCEL_FAILED;
     }
     if (!data.WriteInt64(callerRequestCode)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write requestCode fail");
-        return INNER_ERR;
+        return ERR_NATIVE_IPC_PARCEL_FAILED;
+    }
+    if (!data.WriteBool(isBackToCallerApp)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write isBackToCallerApp fail");
+        return ERR_NATIVE_IPC_PARCEL_FAILED;
     }
     error = SendRequest(AbilityManagerInterfaceCode::BACK_TO_CALLER_UIABILITY, data, reply, option);
     if (error != NO_ERROR) {

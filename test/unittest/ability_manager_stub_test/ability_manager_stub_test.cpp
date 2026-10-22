@@ -6440,5 +6440,131 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_ExecuteInAppSkillWithTokenId
     EXPECT_EQ(captured.skillArgs->GetStringParam("key0"), "value0");
     EXPECT_EQ(captured.skillArgs->GetStringParam("toolCallId"), "business-value");
 }
+
+/*
+ * Feature: AbilityManagerService
+ * Function: BackToCallerInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService BackToCallerInner
+ * EnvConditions: NA
+ * CaseDescription: Reject a null result Want before forwarding the request.
+ */
+HWTEST_F(AbilityManagerStubTest, BackToCallerAppWithResult_NullWant, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    ASSERT_TRUE(data.WriteBool(false));
+    ASSERT_TRUE(data.WriteInt32(0));
+    ASSERT_TRUE(data.WriteParcelable(nullptr));
+    ASSERT_TRUE(data.WriteInt64(1));
+    ASSERT_TRUE(data.WriteBool(true));
+
+    EXPECT_CALL(*stub_, BackToCallerAbilityWithResult).Times(0);
+    EXPECT_EQ(stub_->BackToCallerInner(data, reply), ERR_INVALID_VALUE);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: OnRemoteRequest
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub BackToCallerInner
+ * EnvConditions: NA
+ * CaseDescription: The shared IPC code dispatches the new interface flag and preserves the service result.
+ */
+HWTEST_F(AbilityManagerStubTest, BackToCallerAppWithResult_RemoteRequest, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    Want want;
+    want.SetParam("result", std::string("test"));
+    sptr<IRemoteObject> token = new AppExecFwk::MockAbilityToken();
+    int64_t requestCode = 0x100000001;
+    WriteInterfaceToken(data);
+    ASSERT_TRUE(data.WriteBool(true));
+    ASSERT_TRUE(data.WriteRemoteObject(token));
+    ASSERT_TRUE(data.WriteInt32(100));
+    ASSERT_TRUE(data.WriteParcelable(&want));
+    ASSERT_TRUE(data.WriteInt64(requestCode));
+    ASSERT_TRUE(data.WriteBool(true));
+    EXPECT_CALL(*stub_, BackToCallerAbilityWithResult)
+        .WillOnce(Invoke([&](const sptr<IRemoteObject> &actualToken, int resultCode, const Want &resultWant,
+            int64_t actualRequestCode, bool isBackToCallerApp) {
+            EXPECT_EQ(actualToken, token);
+            EXPECT_EQ(resultCode, 100);
+            EXPECT_EQ(resultWant.GetStringParam("result"), "test");
+            EXPECT_EQ(actualRequestCode, requestCode);
+            EXPECT_TRUE(isBackToCallerApp);
+            return ERR_CALLER_NOT_EXISTS;
+        }));
+    auto result = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::BACK_TO_CALLER_UIABILITY), data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_CALLER_NOT_EXISTS);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: BackToCallerInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService BackToCallerInner
+ * EnvConditions: NA
+ * CaseDescription: A request without the trailing flag selects the old interface.
+ */
+HWTEST_F(AbilityManagerStubTest, BackToCallerAbilityWithResult_MissingFlag, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    Want want;
+    ASSERT_TRUE(data.WriteBool(false));
+    ASSERT_TRUE(data.WriteInt32(100));
+    ASSERT_TRUE(data.WriteParcelable(&want));
+    ASSERT_TRUE(data.WriteInt64(1));
+    EXPECT_CALL(*stub_, BackToCallerAbilityWithResult)
+        .WillOnce(Invoke([](const sptr<IRemoteObject> &token, int resultCode, const Want &, int64_t requestCode,
+            bool isBackToCallerApp) {
+            EXPECT_EQ(token, nullptr);
+            EXPECT_EQ(resultCode, 100);
+            EXPECT_EQ(requestCode, 1);
+            EXPECT_FALSE(isBackToCallerApp);
+            return ERR_CALLER_NOT_EXISTS;
+        }));
+
+    EXPECT_EQ(stub_->BackToCallerInner(data, reply), NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_CALLER_NOT_EXISTS);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: BackToCallerInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService BackToCallerInner
+ * EnvConditions: NA
+ * CaseDescription: A false trailing flag selects the old interface.
+ */
+HWTEST_F(AbilityManagerStubTest, BackToCallerAbilityWithResult_FalseFlag, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    Want want;
+    ASSERT_TRUE(data.WriteBool(false));
+    ASSERT_TRUE(data.WriteInt32(100));
+    ASSERT_TRUE(data.WriteParcelable(&want));
+    ASSERT_TRUE(data.WriteInt64(1));
+    ASSERT_TRUE(data.WriteBool(false));
+    EXPECT_CALL(*stub_, BackToCallerAbilityWithResult)
+        .WillOnce(Invoke([](const sptr<IRemoteObject> &token, int resultCode, const Want &, int64_t requestCode,
+            bool isBackToCallerApp) {
+            EXPECT_EQ(token, nullptr);
+            EXPECT_EQ(resultCode, 100);
+            EXPECT_EQ(requestCode, 1);
+            EXPECT_FALSE(isBackToCallerApp);
+            return ERR_OK;
+        }));
+
+    EXPECT_EQ(stub_->BackToCallerInner(data, reply), NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+}
+
 } // namespace AAFwk
 } // namespace OHOS

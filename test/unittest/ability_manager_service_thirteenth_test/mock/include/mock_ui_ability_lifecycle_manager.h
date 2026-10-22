@@ -168,7 +168,7 @@ public:
     UIAbilityRecordPtr GetUIAbilityRecordBySessionInfo(const sptr<SessionInfo> &sessionInfo);
 
     int32_t BackToCallerAbilityWithResult(std::shared_ptr<AbilityRecord> abilityRecord,
-        int resultCode, const Want *resultWant, int64_t callerRequestCode);
+        int resultCode, const Want &resultWant, int64_t callerRequestCode, bool isBackToCallerApp = false);
 
     /**
      * CloseUIAbility, close the special ability by scb.

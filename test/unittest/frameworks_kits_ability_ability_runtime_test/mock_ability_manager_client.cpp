@@ -216,8 +216,9 @@ ErrCode AbilityManagerClient::TerminateAbility(sptr<IRemoteObject> token, int re
 }
 
 ErrCode AbilityManagerClient::BackToCallerAbilityWithResult(const sptr<IRemoteObject> &token, int resultCode,
-    const Want *resultWant, int64_t callerRequestCode)
+    const Want &resultWant, int64_t callerRequestCode, bool isBackToCallerApp)
 {
+    MyFlag::GetInstance()->SetBackToCallerApp(isBackToCallerApp);
     return ERR_OK;
 }
 

@@ -43,6 +43,7 @@ public:
     bool smhVerificationAllToken_ = true;
     std::shared_ptr<UIAbilityRecord> ualmGetAbilityRecordByToken_ = nullptr;
     int ualmGetSessionIdByAbilityToken_ = 0;
+    bool ualmIsBackToCallerApp_ = false;
     int fimStartFreeInstall_ = ERR_OK;
     int eriQueryAtomicServiceStartupRule_ = ERR_OK;
     std::shared_ptr<AbilityRecord> arGetAbilityRecord_ = nullptr;

@@ -480,6 +480,7 @@ public:
     MOCK_METHOD1(StartSelf, int(sptr<IRemoteObject> token));
     MOCK_METHOD3(StartSelfUIAbilityInChildProcess, ErrCode(const Want &, const std::string &, sptr<IRemoteObject>));
     MOCK_METHOD2(StartSandboxCloneAbility, int32_t(const Want&, const SandboxCloneParams&));
+    MOCK_METHOD5(BackToCallerAbilityWithResult, int(const sptr<IRemoteObject> &, int, const Want &, int64_t, bool));
 };
 }  // namespace AAFwk
 }  // namespace OHOS
