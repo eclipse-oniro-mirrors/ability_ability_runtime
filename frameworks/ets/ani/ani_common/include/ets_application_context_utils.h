@@ -40,7 +40,7 @@ public:
     static void NativeOnInteropLifecycleCallbackSync(ani_env *env, ani_object aniObj, ani_object callback);
     static void NativeOffInteropLifecycleCallbackSync(ani_env *env, ani_object aniObj, ani_object callback);
     static void RestartApp(ani_env *env, ani_object aniObj, ani_object wantObj);
-    static void SetFont(ani_env *env, ani_object aniObj, ani_string font);
+    static void SetFont(ani_env *env, ani_object aniObj, ani_string font, ani_boolean enableAnimation);
     static void SetColorMode(ani_env *env, ani_object aniObj, ani_enum_item colorMode);
     static void SetLanguage(ani_env *env, ani_object aniObj, ani_string language);
     static void SetFontSizeScale(ani_env *env, ani_object aniObj, ani_double fontSizeScale);
@@ -86,7 +86,7 @@ private:
     void RegisterInteropAbilityLifecycleCallback(ani_env *env, ani_object callback);
     void UnregisterInteropAbilityLifecycleCallback(ani_env *env, ani_object callback);
     void OnRestartApp(ani_env *env, ani_object aniObj, ani_object wantObj);
-    void OnSetFont(ani_env *env, ani_object aniObj, ani_string font);
+    void OnSetFont(ani_env *env, ani_object aniObj, ani_string font, ani_boolean enableAnimation);
     void OnSetColorMode(ani_env *env, ani_object aniObj, ani_enum_item colorMode);
     void OnSetLanguage(ani_env *env, ani_object aniObj, ani_string language);
     void OnSetFontSizeScale(ani_env *env, ani_object aniObj, ani_double fontSizeScale);
