@@ -2955,6 +2955,13 @@ private:
     int GetTopAbilityInner(sptr<IRemoteObject> &token, uint64_t displayId, int32_t userId);
 
     /**
+     * @brief Restart app with window preserved via ISession for AppRecovery.
+     * @param want The restart want (already validated by ScheduleRecoverAbility).
+     * @param record The ability record of the app being recovered.
+     */
+    void RestartAppWithWindowForRecovery(AAFwk::Want &want, const std::shared_ptr<AbilityRecord> &record);
+    
+    /**
      * Run the post-check interceptors for a prelaunch request and report a fault event on failure.
      * Extracted so the failure/redirect paths are unit-testable without bundle resolution.
      *
