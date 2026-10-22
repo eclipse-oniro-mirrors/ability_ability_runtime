@@ -22,6 +22,10 @@ void MockMultiAppUtilsStatus::Reset()
 AbilityManagerService::AbilityManagerService() = default;
 AbilityManagerService::~AbilityManagerService() = default;
 
+int AbilityManagerService::startAbilityInnerCount_ = 0;
+std::string AbilityManagerService::lastStartAbilityInnerBundleName_;
+std::string AbilityManagerService::lastStartAbilityInnerAbilityName_;
+
 std::shared_ptr<AbilityRecord> Token::GetAbilityRecordByToken(sptr<IRemoteObject> token)
 {
     return nullptr;
