@@ -410,11 +410,6 @@ public:
         return E_OK;
     }
 
-    virtual int32_t DeleteUserDir(const std::string &path) override
-    {
-        return E_OK;
-    }
-
     virtual int32_t NotifyUserChangedEvent(uint32_t userId, uint32_t eventType) override
     {
         return E_OK;
