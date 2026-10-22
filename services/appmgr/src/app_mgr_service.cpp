@@ -213,6 +213,10 @@ ErrCode AppMgrService::Init()
     appMgrServiceInner_->SetTaskHandler(taskHandler_);
     appMgrServiceInner_->SetEventHandler(eventHandler_);
     DelayedSingleton<CacheProcessManager>::GetInstance()->SetAppMgr(appMgrServiceInner_);
+    TaskManagerService::GetInstance().SetPidValidator(
+        [appMgrServiceInner = appMgrServiceInner_](pid_t pid) {
+            return appMgrServiceInner->GetAppRunningRecordByPid(pid) != nullptr;
+        });
     std::function<void()> initAppMgrServiceInnerTask = [appMgrServiceInner = appMgrServiceInner_]() {
         appMgrServiceInner->Init();
     };
@@ -1046,9 +1050,9 @@ int AppMgrService::ShowHelp(const std::vector<std::u16string>& args, std::string
         .append("--task                      ")
         .append("dump agent task manager active tasks\n")
         .append("--task register <taskId> <pid> <insight|cli|a2a|ability>    ")
-        .append("test hook: attribute a process into the task\n")
-        .append("--task unregister <taskId> <pid>    ")
-        .append("test hook: remove a process from the task\n");
+        .append("test hook: attribute an entity into the task\n")
+        .append("--task unregister <taskId> <attributionId>    ")
+        .append("test hook: remove an attribution from the task\n");
 
     return ERR_OK;
 }
@@ -1077,7 +1081,7 @@ int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string
         }
         if (subCmd == "unregister") {
             if (args.size() != SIZE_FOUR) {
-                result.append("usage: --task unregister <taskId> <pid>\n");
+                result.append("usage: --task unregister <taskId> <attributionId>\n");
                 return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
             }
             auto ret = TaskManagerService::GetInstance().DumpUnregisterManagedProcess(

@@ -16,6 +16,8 @@
 #ifndef OHOS_APP_EXECFWK_TASK_MGR_TASK_MANAGER_SERVICE_H
 #define OHOS_APP_EXECFWK_TASK_MGR_TASK_MANAGER_SERVICE_H
 
+#include <atomic>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -82,25 +84,41 @@ public:
     void OnProcessDied(pid_t pid, int32_t uid);
 
     /**
-     * @brief Attributes a process into the task and restarts its inactivity timeout
-     *        window.
+     * @brief Attributes an entity into the task and restarts its inactivity timeout
+     *        window. Every registration creates a new record under a fresh
+     *        server-assigned attribution id.
      * @param taskId Indicates the attribution key of the task.
-     * @param attribution Indicates the attribution record (pid and tool; the
-     *        attribution time is stamped here).
+     * @param attribution Indicates the attribution record (tool and pid required; the
+     *        pid must be a live appmgr-managed process; the attribution time is
+     *        stamped here).
+     * @param attributionId Indicates the server-assigned id of the created record,
+     *        handed back to the caller as the handle for later operations.
      * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
-     *         ERR_TASK_NOT_FOUND if the task does not exist.
+     *         ERR_INVALID_PID if the pid is not a live appmgr-managed process;
+     *         ERR_TASK_NOT_FOUND if the task does not exist; ERR_INVALID_OPERATION if
+     *         the per-task attribution ceiling is reached.
      */
-    int32_t RegisterManagedProcess(const std::string &taskId, const AttributionRecord &attribution);
+    int32_t RegisterManagedProcess(const std::string &taskId, const AttributionRecord &attribution,
+        AttributionId &attributionId);
 
     /**
-     * @brief Removes a process from the managed set of the task; the inactivity
-     *        timeout window is left running untouched.
+     * @brief Removes the attribution record with the given id from the task; the
+     *        inactivity timeout window is left running untouched.
      * @param taskId Indicates the attribution key of the task.
-     * @param pid Indicates the pid of the process to remove.
+     * @param attributionId Indicates the id returned by RegisterManagedProcess.
      * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
-     *         ERR_TASK_NOT_FOUND if the task does not exist.
+     *         ERR_TASK_NOT_FOUND if the task does not exist; ERR_ATTRIBUTION_NOT_FOUND
+     *         if the attribution record does not exist (idempotent).
      */
-    int32_t UnregisterManagedProcess(const std::string &taskId, int32_t pid);
+    int32_t UnregisterManagedProcess(const std::string &taskId, AttributionId attributionId);
+
+    /**
+     * @brief Wires the pid validator used by RegisterManagedProcess to reject pids
+     *        that are not live appmgr-managed processes; called when the app manager
+     *        service assembles. An unwired validator skips the check.
+     * @param validator Indicates the pid liveness checker, or null to unwire.
+     */
+    void SetPidValidator(std::function<bool(pid_t)> validator);
 
     /**
      * @brief Notifies that a task has ended, reserved for the resource-schedule control to
@@ -120,12 +138,13 @@ public:
 
     /**
      * @brief Dump hook of the register channel: parses the dump texts and attributes the
-     *        process; the dump surface is gated by the dump permission at the
+     *        entity; the dump surface is gated by the dump permission at the
      *        AppMgrService dump entry.
      * @param taskId Indicates the attribution key of the task.
      * @param pidText Indicates the process id text from the dump command.
      * @param toolText Indicates the tool name text from the dump command.
-     * @param result Indicates the dump output text of the hook.
+     * @param result Indicates the dump output text of the hook, carrying the assigned
+     *        attribution id on success.
      * @return Returns the result of RegisterManagedProcess, or INVALID_PARAMETERS_ERR on
      *         unparsable texts.
      */
@@ -134,15 +153,15 @@ public:
 
     /**
      * @brief Dump hook of the unregister channel: parses the dump texts and removes the
-     *        process; the dump surface is gated by the dump permission at the AppMgrService
-     *        dump entry.
+     *        attribution record; the dump surface is gated by the dump permission at the
+     *        AppMgrService dump entry.
      * @param taskId Indicates the attribution key of the task.
-     * @param pidText Indicates the process id text from the dump command.
+     * @param idText Indicates the attribution id text from the dump command.
      * @param result Indicates the dump output text of the hook.
      * @return Returns the result of UnregisterManagedProcess, or INVALID_PARAMETERS_ERR
      *         on an unparsable text.
      */
-    int32_t DumpUnregisterManagedProcess(const std::string &taskId, const std::string &pidText,
+    int32_t DumpUnregisterManagedProcess(const std::string &taskId, const std::string &idText,
         std::string &result);
 
 private:
@@ -197,24 +216,30 @@ private:
     void RemoveManagedProcessFromAllTasksInner(pid_t pid);
 
     /**
-     * @brief Attributes a process into the task and restarts its inactivity timeout
+     * @brief Attributes an entity into the task and restarts its inactivity timeout
      *        window; locks tasksMutex_ internally, and stops the replaced timer only
      *        after the mutex is released.
      * @param taskId Indicates the attribution key of the task.
      * @param attribution Indicates the attribution record; the attribution time is
      *        stamped server-side.
-     * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist.
+     * @param attributionId Indicates the server-assigned id of the created record.
+     * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not
+     *         exist; ERR_INVALID_OPERATION if the per-task attribution ceiling is
+     *         reached.
      */
-    int32_t RegisterManagedProcessInner(const std::string &taskId, const AttributionRecord &attribution);
+    int32_t RegisterManagedProcessInner(const std::string &taskId, const AttributionRecord &attribution,
+        AttributionId &attributionId);
 
     /**
-     * @brief Removes a process from the managed set of the task; locks tasksMutex_
-     *        internally. The inactivity timeout window is left running untouched.
+     * @brief Removes the attribution record with the given id from the task; locks
+     *        tasksMutex_ internally. The inactivity timeout window is left running
+     *        untouched.
      * @param taskId Indicates the attribution key of the task.
-     * @param pid Indicates the pid of the process to remove.
-     * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist.
+     * @param attributionId Indicates the id returned by RegisterManagedProcess.
+     * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist;
+     *         ERR_ATTRIBUTION_NOT_FOUND if the attribution record does not exist.
      */
-    int32_t UnregisterManagedProcessInner(const std::string &taskId, pid_t pid);
+    int32_t UnregisterManagedProcessInner(const std::string &taskId, AttributionId attributionId);
 
     /**
      * @brief Restarts the inactivity window of the task: posts a new one-shot timer for
@@ -279,8 +304,19 @@ private:
      */
     int32_t GetTimeoutSeconds() const;
 
+    /**
+     * @brief Checks the pid against the wired validator outside tasksMutex_; an
+     *        unwired validator accepts every pid.
+     * @param pid Indicates the pid to check.
+     * @return Returns true if the pid is a live appmgr-managed process or no
+     *         validator is wired; false otherwise.
+     */
+    bool IsLiveManagedProcess(pid_t pid);
+
+    static std::atomic<AttributionId> attributionRecordId_;
     ffrt::mutex tasksMutex_;
     std::unordered_map<std::string, TaskRecord> tasks_;
+    std::function<bool(pid_t)> pidValidator_;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS
