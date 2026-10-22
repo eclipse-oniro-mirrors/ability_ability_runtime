@@ -2563,7 +2563,7 @@ private:
         std::shared_ptr<ApplicationInfo> appInfo, sptr<IRemoteObject> token, const std::string& callerKey,
         int32_t appIndex, const std::string& processName, const std::string& instanceKey,
         const std::string& specifiedProcessFlag, const std::string& customProcessFlag,
-        std::shared_ptr<AppRunningRecord>& appRecord);
+        std::shared_ptr<AppRunningRecord>& appRecord, bool isPrelaunch);
 
     void SnapshotStartReport(int32_t uid, const std::string &bundleName, const std::string &appVersionName,
         int32_t result, const std::string &reason);

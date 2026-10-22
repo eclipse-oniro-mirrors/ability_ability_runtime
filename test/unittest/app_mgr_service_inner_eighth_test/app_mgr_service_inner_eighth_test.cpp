@@ -4037,7 +4037,7 @@ HWTEST_F(AppMgrServiceInnerEighthTest, TryToUseImageInfo_NotifyAppRunningStatusE
     
     std::shared_ptr<AppRunningRecord> appRecord = nullptr;
     appMgrServiceInner->TryToUseImageInfo(abilityInfo, appInfo, nullptr, "callerKey", 0, "testProcess",
-        "instanceKey", "", "", appRecord);
+        "instanceKey", "", "", appRecord, false);
     
     TAG_LOGI(AAFwkTag::TEST, "TryToUseImageInfo_NotifyAppRunningStatusEvent_001 end");
 }
@@ -4699,7 +4699,7 @@ HWTEST_F(AppMgrServiceInnerEighthTest, TryToUseImageInfo_0100, TestSize.Level2)
     AAFwk::MyStatus::GetInstance().getSpawnClient_ = std::make_shared<AppSpawnClient>();
     std::shared_ptr<AppRunningRecord> appRecord;
     int32_t result = appMgrServiceInner->TryToUseImageInfo(abilityInfo, appInfo, nullptr, "", 0,
-        "PROCESS_NAME", "", "", "", appRecord);
+        "PROCESS_NAME", "", "", "", appRecord, false);
     EXPECT_EQ(result, ERR_OK);
     HyperSnapErrorRecord record;
     EXPECT_EQ(appMgrServiceInner->GetHyperSnapLastError(HyperSnapErrorType::FORK_FROM_SNAPSHOT, record), ERR_OK);

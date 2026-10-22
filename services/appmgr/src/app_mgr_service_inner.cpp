@@ -1584,7 +1584,7 @@ int32_t AppMgrServiceInner::TryToUseImageInfo(std::shared_ptr<AbilityInfo> abili
     std::shared_ptr<ApplicationInfo> appInfo, sptr<IRemoteObject> token, const std::string& callerKey,
     int32_t appIndex, const std::string& processName, const std::string& instanceKey,
     const std::string& specifiedProcessFlag, const std::string& customProcessFlag,
-    std::shared_ptr<AppRunningRecord>& appRecord)
+    std::shared_ptr<AppRunningRecord>& appRecord, bool isPrelaunch)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     if (appRunningManager_ == nullptr || appInfo == nullptr || abilityInfo == nullptr) {
@@ -1621,6 +1621,9 @@ int32_t AppMgrServiceInner::TryToUseImageInfo(std::shared_ptr<AbilityInfo> abili
         SaveHyperSnapError(appInfo->uid, HyperSnapErrorType::FORK_FROM_SNAPSHOT, HyperSnapErrorCode::ERR_SYSTEM_INNER);
         TAG_LOGE(AAFwkTag::APPMGR, "Saved FORK_FROM_SNAPSHOT error: CreateAppRunningRecordFromImageInfo failed");
         return ERR_OK;
+    }
+    if (isPrelaunch) {
+        appRecord->SetPreloadMode(PreloadMode::PRE_LAUNCH);
     }
     int32_t workPid = -1;
     AAFwk::ResSchedUtil::GetInstance().ReportForkAllEventToRSS(imageInfo->imagePid, appRecord->GetPid(),
@@ -1669,7 +1672,7 @@ int32_t AppMgrServiceInner::TryToUseImageInfo(std::shared_ptr<AbilityInfo> abili
     if (!appExistFlag) {
         OnAppStarted(appRecord);
     }
-    SendProcessStartEvent(appRecord, false, PreloadMode::PRELOAD_NONE);
+    SendProcessStartEvent(appRecord, isPrelaunch, appRecord->GetPreloadMode());
     ffrt::submit([appRecord, abilityInfo, innerServiceWeak = weak_from_this()]() {
         auto innerService = innerServiceWeak.lock();
         CHECK_POINTER_AND_RETURN_LOG(innerService, "get appMgrServiceInner fail");
@@ -1932,7 +1935,7 @@ void AppMgrServiceInner::HandlePreloadApplication(const PreloadRequest &request)
     std::shared_ptr<AppRunningRecord> appRecord;
     if (request.preloadMode == AppExecFwk::PreloadMode::PRESS_DOWN) {
         auto ret = TryToUseImageInfo(abilityInfo, appInfo, nullptr, "", request.appIndex, processName,
-            "", specifiedProcessFlag, "", appRecord);
+            "", specifiedProcessFlag, "", appRecord, false);
         if (ret != ERR_OK) {
             return;
         }
@@ -2381,7 +2384,7 @@ void AppMgrServiceInner::LoadAbility(std::shared_ptr<AbilityInfo> abilityInfo, s
     bool isProcessReuse = false;
     if (!appRecord) {
         auto ret = TryToUseImageInfo(abilityInfo, appInfo, loadParam->token, callerKey, appIndex, processName,
-            loadParam->instanceKey, specifiedProcessFlag, customProcessFlag, appRecord);
+            loadParam->instanceKey, specifiedProcessFlag, customProcessFlag, appRecord, loadParam->isPrelaunch);
         if (ret != ERR_OK) {
             return;
         }
@@ -2562,7 +2565,7 @@ void AppMgrServiceInner::HandleExistingAppRecordAfterFound(std::shared_ptr<AppRu
     } else {
         SendAppStartupTypeEvent(appRecord, abilityInfo, AppStartType::WARM, AppStartReason::SUGGEST_CACHE);
     }
-    if (appRecord->GetPreloadMode() == PreloadMode::PRE_LAUNCH) {
+    if (!loadParam->isPrelaunch && appRecord->GetPreloadMode() == PreloadMode::PRE_LAUNCH) {
         appRecord->SetPreloadMode(PreloadMode::PRELOAD_NONE);
     }
     if (appRecord->IsPreloaded() || appRecord->IsPreloading()) {
@@ -7359,7 +7362,7 @@ void AppMgrServiceInner::StartSpecifiedAbility(const AAFwk::Want &want, const Ap
         "", nullptr, instanceKey, customProcessFlag);
     if (!appRecord) {
         auto ret = TryToUseImageInfo(abilityInfoPtr, appInfo, nullptr, "", appIndex, processName,
-            instanceKey, "", customProcessFlag, appRecord);
+            instanceKey, "", customProcessFlag, appRecord, false);
         if (ret != ERR_OK) {
             return;
         }
