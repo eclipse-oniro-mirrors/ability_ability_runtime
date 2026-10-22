@@ -410,11 +410,6 @@ public:
         return E_OK;
     }
 
-    virtual int32_t CreateUserDir(const std::string &path, mode_t mode, uid_t uid, gid_t gid) override
-    {
-        return E_OK;
-    }
-
     virtual int32_t DeleteUserDir(const std::string &path) override
     {
         return E_OK;
