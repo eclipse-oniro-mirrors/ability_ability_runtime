@@ -103,7 +103,8 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     Minfos->AddRecord(key, callerToken, jsonStr, intentId,
         ExecuteParam{.callerBundleName = callerBundleName});
     AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
-    Minfos->GenerateWant(paramPtr, decoratorInfo, want);
+    AbilityRuntime::ExtractInsightIntentInfo extractInfo;
+    Minfos->GenerateWant(paramPtr, decoratorInfo, extractInfo, want);
     Minfos->IsValidCall(want);
     Minfos->CheckCallerPermission();
     return true;

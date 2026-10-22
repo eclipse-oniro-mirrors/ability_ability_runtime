@@ -874,7 +874,10 @@ ohos_shared_library("insight_intent_executor_ani") {
     debug = false
   }
 
-  include_dirs = [ "${ability_runtime_path}/frameworks/ets/ani/enum_convert" ]
+  include_dirs = [
+    "${ability_runtime_path}/frameworks/ets/ani/enum_convert",
+    "${ability_runtime_native_path}/insight_intent",
+  ]
 
   sources = [
     "${ability_runtime_native_path}/ability/native/insight_intent_executor/ets_insight_intent_entry.cpp",
@@ -884,6 +887,7 @@ ohos_shared_library("insight_intent_executor_ani") {
     "${ability_runtime_native_path}/ability/native/insight_intent_executor/ets_insight_intent_query_entity.cpp",
     "${ability_runtime_native_path}/ability/native/insight_intent_executor/ets_insight_intent_utils.cpp",
     "${ability_runtime_path}/frameworks/native/insight_intent/insight_intent_context/ets_insight_intent_context.cpp",
+    "${ability_runtime_native_path}/insight_intent/ets_insight_intent_execution_info.cpp",
   ]
 
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]

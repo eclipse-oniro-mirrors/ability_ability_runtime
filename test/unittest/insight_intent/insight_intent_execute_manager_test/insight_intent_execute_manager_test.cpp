@@ -65,8 +65,9 @@ HWTEST_F(InsightIntentExecuteManagerTest, GenerateWant_0100, TestSize.Level1)
     // other member has default value.
     auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
     AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
+    AbilityRuntime::ExtractInsightIntentInfo extractInfo;
     Want want;
-    auto ret = InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, want);
+    auto ret = InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, extractInfo, want);
     EXPECT_EQ(ret, ERR_OK);
     // get display id of want, expect don't contain
     auto displayId = want.GetIntParam(Want::PARAM_RESV_DISPLAY_ID, -100);
@@ -93,8 +94,9 @@ HWTEST_F(InsightIntentExecuteManagerTest, GenerateWant_0200, TestSize.Level1)
     // other member has default value.
     auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
     AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
+    AbilityRuntime::ExtractInsightIntentInfo extractInfo;
     Want want;
-    auto ret = InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, want);
+    auto ret = InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, extractInfo, want);
     EXPECT_EQ(ret, ERR_OK);
     // get display id of want
     auto displayId = want.GetIntParam(Want::PARAM_RESV_DISPLAY_ID, -100);
@@ -402,9 +404,10 @@ HWTEST_F(InsightIntentExecuteManagerTest, GenerateWant_0300, TestSize.Level1)
 
     std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> paramPtr = nullptr;
     AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
+    AbilityRuntime::ExtractInsightIntentInfo extractInfo;
     Want want;
 
-    auto ret = InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, want);
+    auto ret = InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, extractInfo, want);
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
 
     TAG_LOGI(AAFwkTag::TEST, "GenerateWant_0300 end.");
@@ -430,9 +433,10 @@ HWTEST_F(InsightIntentExecuteManagerTest, GenerateWant_0400, TestSize.Level1)
 
     auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
     AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
+    AbilityRuntime::ExtractInsightIntentInfo extractInfo;
     Want want;
 
-    auto ret = InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, want);
+    auto ret = InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, extractInfo, want);
     EXPECT_EQ(ret, ERR_OK);
 
     // Verify intentId is set in want
@@ -463,8 +467,9 @@ HWTEST_F(InsightIntentExecuteManagerTest, GenerateWant_0500, TestSize.Level1)
 
     auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
     AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
+    AbilityRuntime::ExtractInsightIntentInfo extractInfo;
     Want want;
-    auto ret = InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, want);
+    auto ret = InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, extractInfo, want);
     EXPECT_EQ(ret, ERR_OK);
 
     WantParams insightIntentParam = want.GetParams().GetWantParams(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_PARAM);
@@ -497,8 +502,9 @@ HWTEST_F(InsightIntentExecuteManagerTest, GenerateWant_0600, TestSize.Level1)
     param.displayId_ = 2;
     auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
     AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
+    AbilityRuntime::ExtractInsightIntentInfo extractInfo;
     Want want;
-    EXPECT_EQ(InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, want), ERR_OK);
+    EXPECT_EQ(InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, extractInfo, want), ERR_OK);
     EXPECT_FALSE(want.HasParameter(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID));
     WantParams insightIntentParam = want.GetParams().GetWantParams(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_PARAM);
     EXPECT_EQ(insightIntentParam.HasParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID), false);
@@ -514,7 +520,7 @@ HWTEST_F(InsightIntentExecuteManagerTest, GenerateWant_0600, TestSize.Level1)
     param2.displayId_ = 2;
     auto paramPtr2 = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param2);
     Want want2;
-    EXPECT_EQ(InsightIntentExecuteManager::GenerateWant(paramPtr2, decoratorInfo, want2), ERR_OK);
+    EXPECT_EQ(InsightIntentExecuteManager::GenerateWant(paramPtr2, decoratorInfo, extractInfo, want2), ERR_OK);
     EXPECT_EQ(want2.GetStringParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID), "tc-002");
     EXPECT_FALSE(want2.HasParameter(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_PARAM));
     EXPECT_EQ(paramPtr2->insightIntentParam_, nullptr);
@@ -540,8 +546,9 @@ HWTEST_F(InsightIntentExecuteManagerTest, GenerateWant_ToolCallIdRoundTrip_0700,
     param->insightIntentParam_->SetParam("dummy", Integer::Box(-1));
 
     AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
+    AbilityRuntime::ExtractInsightIntentInfo extractInfo;
     Want want;
-    ASSERT_EQ(InsightIntentExecuteManager::GenerateWant(param, decoratorInfo, want), ERR_OK);
+    ASSERT_EQ(InsightIntentExecuteManager::GenerateWant(param, decoratorInfo, extractInfo, want), ERR_OK);
     EXPECT_EQ(want.GetStringParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID), "tc-fm");
 
     AppExecFwk::InsightIntentExecuteParam received;

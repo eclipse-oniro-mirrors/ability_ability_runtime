@@ -1839,6 +1839,10 @@ public:
 
     virtual int32_t NotifyInsightIntentExecute(uint64_t intentId) override;
 
+    virtual int32_t RegisterWillInsightIntentExecuteCallback(const sptr<IRemoteObject> &callback) override;
+
+    virtual int32_t UnregisterWillInsightIntentExecuteCallback() override;
+
     /**
      * Set keep-alive flag for application under a specific user.
      * @param bundleName Bundle name.

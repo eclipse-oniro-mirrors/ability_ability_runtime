@@ -28,9 +28,15 @@ ohos_shared_library("insightintentprovider_napi") {
     debug = false
   }
 
+  include_dirs = [
+    "${ability_runtime_path}/frameworks/native/insight_intent",
+  ]
+
   sources = [
     "js_insight_intent_provider.cpp",
     "js_insight_intent_provider_module.cpp",
+    "${ability_runtime_path}/frameworks/native/insight_intent/insight_intent_will_execute_callback_mgr.cpp",
+    "${ability_runtime_path}/frameworks/native/insight_intent/js_insight_intent_execution_info.cpp",
   ]
 
   configs = [
@@ -39,6 +45,7 @@ ohos_shared_library("insightintentprovider_napi") {
   ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_napi_path}/inner/napi_common:napi_common",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
@@ -48,6 +55,8 @@ ohos_shared_library("insightintentprovider_napi") {
   external_deps = [
     "hilog:libhilog",
     "ipc:ipc_single",
+    "napi:ace_napi",
+    "node:node_header_notice",
   ]
 
   cflags_cc = []

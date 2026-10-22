@@ -25,9 +25,12 @@ ohos_shared_library("insightintentcontext") {
   branch_protector_ret = "pac_ret"
   branch_protector_frt = "bti"
 
+  include_dirs = [ "${ability_runtime_native_path}/insight_intent" ]
+
   sources = [
     "insight_intent_context.cpp",
     "js_insight_intent_context.cpp",
+    "${ability_runtime_native_path}/insight_intent/js_insight_intent_execution_info.cpp",
   ]
 
   defines = [ "AMS_LOG_TAG = \"InsigtIntent\"" ]

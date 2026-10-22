@@ -18,9 +18,11 @@
 #include "ability_window_configuration.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
+#include "ani_common_util.h"
 #include "ani_common_want.h"
 #include "ani_enum_convert.h"
 #include "ets_error_utils.h"
+#include "ets_insight_intent_execution_info.h"
 #include "insight_intent_constant.h"
 
 namespace OHOS {
@@ -126,6 +128,32 @@ void EtsInsightIntentContext::SetReturnModeForUIExtensionAbility(ani_env *env, a
     nativeContext->SetDelayReturnMode(static_cast<InsightIntentReturnMode>(returnMode));
 }
 
+ani_object EtsInsightIntentContext::GetInsightIntentExecutionInfo(ani_env *env, ani_object aniObj)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto context = GetContext(env, aniObj);
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "get context failed.");
+        return EtsErrorUtil::CreateInvalidParamError(env, "context null");
+    }
+    auto nativeContext = context->GetNativeContext();
+    if (nativeContext == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "null native context");
+        return EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER);
+    }
+    AppExecFwk::InsightIntentExecutionInfo info;
+    auto errCode = nativeContext->GetInsightIntentExecutionInfo(info);
+    if (errCode != ERR_OK) {
+        TAG_LOGE(AAFwkTag::INTENT, "get execution info failed, err: %{public}d", errCode);
+        return EtsErrorUtil::CreateErrorByNativeErr(env, errCode);
+    }
+    ani_object obj = CreateEtsInsightIntentExecutionInfo(env, info);
+    if (obj == nullptr) {
+        return EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER);
+    }
+    return obj;
+}
+
 EtsInsightIntentContext *EtsInsightIntentContext::GetContext(ani_env *env, ani_object aniObj)
 {
     ani_long nativeContextLong;
@@ -219,6 +247,8 @@ std::unique_ptr<AppExecFwk::ETSNativeReference> CreateEtsInsightIntentContext(an
             reinterpret_cast<void *>(EtsInsightIntentContext::SetReturnModeForUIAbilityForeground) },
         ani_native_function { "setReturnModeForUIExtensionAbility", nullptr,
             reinterpret_cast<void *>(EtsInsightIntentContext::SetReturnModeForUIExtensionAbility) },
+        ani_native_function { "nativeGetInsightIntentExecutionInfo", nullptr,
+            reinterpret_cast<void *>(EtsInsightIntentContext::GetInsightIntentExecutionInfo) },
     };
     if ((status = env->Class_BindNativeMethods(cls, functions.data(), functions.size())) != ANI_OK) {
         if (status != ANI_ALREADY_BINDED) {

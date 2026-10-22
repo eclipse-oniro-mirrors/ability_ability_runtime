@@ -3183,6 +3183,10 @@ public:
      */
     ErrCode NotifyInsightIntentExecute(uint64_t intentId);
 
+    ErrCode RegisterWillInsightIntentExecuteCallback(const sptr<IRemoteObject> &callback);
+
+    ErrCode UnregisterWillInsightIntentExecuteCallback();
+
     /**
      * @brief Query the type of a configured skill (e.g. UI ability vs service
      * extension). No special permission; queried for the caller's user.
