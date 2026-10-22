@@ -485,7 +485,7 @@ void AppfreezeInner::ChangeFaultDateInfo(FaultData& faultData, const std::string
         faultData.forceExit = true;
 #ifdef APP_NO_RESPONSE_DIALOG
         faultData.waitSaveState = false;
-#else        
+#else
         faultData.waitSaveState = AppRecovery::GetInstance().IsEnabled();
 #endif
         std::string reason = faultData.errorObject.name;
