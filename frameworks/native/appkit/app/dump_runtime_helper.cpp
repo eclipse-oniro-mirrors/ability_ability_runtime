@@ -808,9 +808,9 @@ void DumpRuntimeHelper::DumpKmpKotlinHeap(const OHOS::AppExecFwk::MemDumpInfo &i
     DumpFdGuard kmpFdGuard(fd);
     if (info.needGc) {
         DumpKmpGc(fd);
-        return;
+    } else {
+        DumpKmpSnapshot(fd, info.mayReportToOEM);
     }
-    DumpKmpSnapshot(fd, info.mayReportToOEM);
 }
 
 void DumpRuntimeHelper::DumpKmpGc(int32_t fd)
