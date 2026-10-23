@@ -172,6 +172,7 @@ enum class AppMgrInterfaceCode {
     START_TASK = 147,
     FINISH_TASK = 148,
     UNREGISTER_MANAGED_PROCESS = 149,
+    REGISTER_MANAGED_PROCESS = 150,
 };
 } // AppExecFwk
 } // OHOS

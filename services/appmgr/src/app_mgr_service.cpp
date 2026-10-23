@@ -16,6 +16,7 @@
 #include "app_mgr_service.h"
 
 #include <chrono>
+#include <cinttypes>
 #include <cstdlib>
 #include <nlohmann/json.hpp>
 #include <sys/types.h>
@@ -193,6 +194,27 @@ int32_t AppMgrService::FinishTask(const std::string &taskId)
 int32_t AppMgrService::UnregisterManagedProcess(const std::string &taskId, int32_t pid)
 {
     return TaskManagerService::GetInstance().UnregisterManagedProcessByPid(taskId, pid);
+}
+
+int32_t AppMgrService::RegisterManagedProcess(const std::string &taskId, int32_t pid)
+{
+    if (taskId.empty() || pid <= 0) {
+        TAG_LOGW(AAFwkTag::APPMGR, "register managed process skipped, invalid param, pid: %{public}d", pid);
+        return AAFwk::INVALID_PARAMETERS_ERR;
+    }
+    AttributionRecord attribution;
+    attribution.pid = pid;
+    attribution.tool = AttributionTool::INSIGHT;
+    AttributionId attributionId = 0;
+    int32_t ret = TaskManagerService::GetInstance().RegisterManagedProcess(taskId, attribution, attributionId);
+    if (ret != ERR_OK) {
+        TAG_LOGW(AAFwkTag::APPMGR, "register managed process failed, ret: %{public}d, "
+            "pid: %{public}d, taskId: %{public}s", ret, pid, taskId.c_str());
+        return ret;
+    }
+    TAG_LOGI(AAFwkTag::APPMGR, "managed process registered, pid: %{public}d, "
+        "taskId: %{public}s, attributionId: %{public}" PRId64, pid, taskId.c_str(), attributionId);
+    return ret;
 }
 
 AppMgrServiceState AppMgrService::QueryServiceState()

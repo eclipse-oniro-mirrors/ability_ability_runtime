@@ -446,6 +446,18 @@ public:
     int32_t UnregisterManagedProcess(const std::string &taskId, int32_t pid) override;
 
     /**
+     * @brief Attributes the process into the managed set of the task. Called by
+     *        inner services (e.g. AbilityManagerService re-attributing an
+     *        insight intent target process) whose native calling token is not
+     *        a hap token, so no IsSystemAppCall gate here; parameter validation
+     *        is done by TaskManagerService.
+     * @param taskId Indicates the attribution key of the task.
+     * @param pid Indicates the pid of the process to attribute.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid) override;
+
+    /**
      * @brief called when the abilityStage's onAcceptWant lifecycle completed.
      * @param recordId record id of the ability.
      * @param want want has been accepted.

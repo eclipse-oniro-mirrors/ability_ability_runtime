@@ -1345,6 +1345,23 @@ public:
     {
         return ERR_OK;
     }
+
+    /**
+     * @brief Attributes the process into the managed set of the task; every
+     *        registration creates a new attribution record under a fresh
+     *        server-assigned attribution id.
+     * @param taskId Indicates the attribution key of the task.
+     * @param pid Indicates the pid of the process to attribute.
+     * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid
+     *         parameters; ERR_INVALID_PID if the pid is not a live
+     *         appmgr-managed process; ERR_TASK_NOT_FOUND if the task does not
+     *         exist; ERR_INVALID_OPERATION if the per-task attribution ceiling
+     *         is reached.
+     */
+    virtual int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid)
+    {
+        return ERR_OK;
+    }
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

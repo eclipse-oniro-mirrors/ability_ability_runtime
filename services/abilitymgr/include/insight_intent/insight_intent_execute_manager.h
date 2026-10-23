@@ -185,6 +185,8 @@ private:
 
     void UnregisterAttributedProcess(const std::string &taskId, pid_t pid);
 
+    void RegisterAttributedProcess(const std::string &taskId, pid_t pid);
+
     void HandleDiedRecordsCleanup(const std::vector<uint64_t> &toRemove,
         const AppExecFwk::InsightIntentExecuteResult &errorResult);
 };

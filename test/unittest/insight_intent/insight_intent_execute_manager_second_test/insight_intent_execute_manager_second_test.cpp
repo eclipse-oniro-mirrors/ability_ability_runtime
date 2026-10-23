@@ -2500,6 +2500,63 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, SetTargetPid_0300, TestSize.Leve
 }
 
 /**
+ * @tc.name: SetTargetPid_RegisterAttribution_0100
+ * @tc.desc: Test SetTargetPid with a taskId present runs the best-effort
+ *           re-attribution IPC path (service unavailable in UT, failure is
+ *           only logged, no crash) and still sets targetPid.
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, SetTargetPid_RegisterAttribution_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetTargetPid_RegisterAttribution_0100 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    uint64_t key = 100;
+    uint64_t intentId = 0;
+    sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
+    ASSERT_NE(callToken, nullptr);
+    std::string bundleName = "test.bundle.setpid.reattr";
+    manager->AddRecord(key, callToken, bundleName, intentId,
+        ExecuteParam{.callerBundleName = "caller.bundle"}, "ohos_task_id_setpid_reattr");
+    ASSERT_EQ(manager->records_.count(intentId), 1);
+
+    pid_t pid = 12345;
+    manager->SetTargetPid(intentId, pid);
+    EXPECT_EQ(manager->records_[intentId]->targetPid, pid);
+    TAG_LOGI(AAFwkTag::TEST, "SetTargetPid_RegisterAttribution_0100 end.");
+}
+
+/**
+ * @tc.name: SetTargetPid_RegisterAttribution_0200
+ * @tc.desc: Test SetTargetPid without a taskId skips the attribution IPC
+ *           (guard returns early) and only sets targetPid.
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, SetTargetPid_RegisterAttribution_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetTargetPid_RegisterAttribution_0200 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    uint64_t key = 100;
+    uint64_t intentId = 0;
+    sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
+    ASSERT_NE(callToken, nullptr);
+    std::string bundleName = "test.bundle.setpid.notaskid";
+    manager->AddRecord(key, callToken, bundleName, intentId,
+        ExecuteParam{.callerBundleName = "caller.bundle"});
+    ASSERT_EQ(manager->records_.count(intentId), 1);
+
+    pid_t pid = 12345;
+    manager->SetTargetPid(intentId, pid);
+    EXPECT_EQ(manager->records_[intentId]->targetPid, pid);
+    TAG_LOGI(AAFwkTag::TEST, "SetTargetPid_RegisterAttribution_0200 end.");
+}
+
+/**
  * @tc.name: OnInsightAppDied_016
  * @tc.desc: Test cleanup only removes the record whose targetPid matches the died pid.
  * @tc.type: FUNC
@@ -2686,6 +2743,42 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, UnregisterAttributedProcess_Guar
     // the helper only logs and must not crash.
     manager->UnregisterAttributedProcess("ohos_task_id_ipc", 9999);
     TAG_LOGI(AAFwkTag::TEST, "UnregisterAttributedProcess_Guard_0200 end.");
+}
+
+/**
+ * @tc.name: RegisterAttributedProcess_Guard_0100
+ * @tc.desc: Test the register helper guard: empty taskId or non-positive pid returns directly.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, RegisterAttributedProcess_Guard_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RegisterAttributedProcess_Guard_0100 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    // Guarded cases must not construct an AppMgrClient or crash.
+    manager->RegisterAttributedProcess("", 1234);
+    manager->RegisterAttributedProcess("ohos_task_id_guard", 0);
+    manager->RegisterAttributedProcess("ohos_task_id_guard", -1);
+    TAG_LOGI(AAFwkTag::TEST, "RegisterAttributedProcess_Guard_0100 end.");
+}
+
+/**
+ * @tc.name: RegisterAttributedProcess_Guard_0200
+ * @tc.desc: Test the register helper with valid inputs runs the best-effort upsert IPC path
+ *           (service unavailable in UT, failure is only logged, no crash).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, RegisterAttributedProcess_Guard_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RegisterAttributedProcess_Guard_0200 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    // In UT there is no samgr: both the stale-record unregister and the new
+    // registration fail with ERROR_SERVICE_NOT_CONNECTED, only logged, no crash.
+    manager->RegisterAttributedProcess("ohos_task_id_ipc", 9999);
+    TAG_LOGI(AAFwkTag::TEST, "RegisterAttributedProcess_Guard_0200 end.");
 }
 
 } // namespace AAFwk

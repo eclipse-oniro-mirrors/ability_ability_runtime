@@ -494,6 +494,8 @@ int32_t AppMgrStub::OnRemoteRequestInnerNinth(uint32_t code, MessageParcel &data
             return HandleFinishTask(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_MANAGED_PROCESS):
             return HandleUnregisterManagedProcess(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_MANAGED_PROCESS):
+            return HandleRegisterManagedProcess(data, reply);
     }
     return INVALID_FD;
 }
@@ -2731,6 +2733,19 @@ int32_t AppMgrStub::HandleUnregisterManagedProcess(MessageParcel &data, MessageP
     std::string taskId = Str16ToStr8(data.ReadString16());
     int32_t pid = data.ReadInt32();
     auto result = UnregisterManagedProcess(taskId, pid);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write result fail");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleRegisterManagedProcess(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::string taskId = Str16ToStr8(data.ReadString16());
+    int32_t pid = data.ReadInt32();
+    auto result = RegisterManagedProcess(taskId, pid);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::APPMGR, "write result fail");
         return ERR_APPEXECFWK_PARCEL_ERROR;

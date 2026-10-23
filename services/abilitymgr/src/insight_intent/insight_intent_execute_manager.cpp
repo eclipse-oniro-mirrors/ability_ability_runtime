@@ -907,6 +907,34 @@ void InsightIntentExecuteManager::UnregisterAttributedProcess(const std::string 
     }
 }
 
+void InsightIntentExecuteManager::RegisterAttributedProcess(const std::string &taskId, pid_t pid)
+{
+    if (taskId.empty() || pid <= 0) {
+        return;
+    }
+    // Best-effort re-attribution: on a warm-started reused process the task
+    // attribution was already unregistered when the previous intent finished,
+    // so an existing record for this pid is stale and is removed first to keep
+    // exactly one attribution record per (taskId, pid). Missing-record errors
+    // are the normal first-registration case and are tolerated.
+    auto unret = IN_PROCESS_CALL(DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance()->UnregisterManagedProcess(
+        taskId, pid));
+    if (unret != ERR_OK && unret != AAFwk::ERR_TASK_NOT_FOUND && unret != AAFwk::ERR_ATTRIBUTION_NOT_FOUND) {
+        TAG_LOGW(AAFwkTag::INTENT, "stale attributed process unregister failed, ret: %{public}d, pid: %{public}d",
+            unret, pid);
+    }
+    auto ret = IN_PROCESS_CALL(DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance()->RegisterManagedProcess(
+        taskId, pid));
+    if (ret != ERR_OK) {
+        // ERR_TASK_NOT_FOUND is normal when the caller has not started the task.
+        TAG_LOGW(AAFwkTag::INTENT, "register attributed process failed, ret: %{public}d, pid: %{public}d",
+            ret, pid);
+    } else {
+        TAG_LOGI(AAFwkTag::INTENT, "attributed process registered, taskId: %{public}s, pid: %{public}d",
+            taskId.c_str(), pid);
+    }
+}
+
 void InsightIntentExecuteManager::OnInsightAppDied(const std::string &bundleName, pid_t pid)
 {
     TAG_LOGD(AAFwkTag::INTENT, "app died: %{public}s, pid: %{public}d", bundleName.c_str(), pid);
@@ -942,14 +970,22 @@ void InsightIntentExecuteManager::OnInsightAppDied(const std::string &bundleName
 
 void InsightIntentExecuteManager::SetTargetPid(uint64_t intentId, pid_t pid)
 {
-    std::lock_guard<ffrt::mutex> lock(mutex_);
-    auto it = records_.find(intentId);
-    if (it == records_.end() || it->second == nullptr) {
-        TAG_LOGD(AAFwkTag::INTENT, "SetTargetPid: record not found, intentId: %{public}" PRIu64, intentId);
-        return;
+    std::string taskId;
+    {
+        std::lock_guard<ffrt::mutex> lock(mutex_);
+        auto it = records_.find(intentId);
+        if (it == records_.end() || it->second == nullptr) {
+            TAG_LOGD(AAFwkTag::INTENT, "SetTargetPid: record not found, intentId: %{public}" PRIu64, intentId);
+            return;
+        }
+        it->second->targetPid = pid;
+        taskId = it->second->taskId;
+        TAG_LOGD(AAFwkTag::INTENT, "SetTargetPid: intentId: %{public}" PRIu64 ", pid: %{public}d", intentId, pid);
     }
-    it->second->targetPid = pid;
-    TAG_LOGD(AAFwkTag::INTENT, "SetTargetPid: intentId: %{public}" PRIu64 ", pid: %{public}d", intentId, pid);
+    // Warm-started intents never pass LoadAbility (no appmgr registration), so
+    // the target process is (re-)attributed to the task here. The IPC must run
+    // outside mutex_: it is synchronous and could take the appmgr inner lock.
+    RegisterAttributedProcess(taskId, pid);
 }
 
 void InsightIntentExecuteManager::HandleDiedRecordsCleanup(const std::vector<uint64_t> &toRemove,

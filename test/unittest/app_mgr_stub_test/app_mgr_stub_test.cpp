@@ -1681,6 +1681,33 @@ HWTEST_F(AppMgrStubTest, HandleUnregisterManagedProcess_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: HandleRegisterManagedProcess_0100
+ * @tc.desc: Test HandleRegisterManagedProcess.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleRegisterManagedProcess_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    std::string taskId = "stub_register_managed_process_0100";
+    int32_t pid = 2345;
+    data.WriteString16(Str8ToStr16(taskId));
+    data.WriteInt32(pid);
+
+    EXPECT_CALL(*mockAppMgrService_, RegisterManagedProcess(taskId, pid))
+        .Times(1)
+        .WillOnce(Return(ERR_OK));
+
+    auto ret = mockAppMgrService_->OnRemoteRequest(
+        static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_MANAGED_PROCESS), data, reply, option);
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+}
+
+/**
  * @tc.name: HandleDumpMem_001
  * @tc.desc: Handle dump mem with valid info and no callback.
  * @tc.type: FUNC

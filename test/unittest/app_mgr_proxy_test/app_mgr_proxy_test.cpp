@@ -1799,6 +1799,24 @@ HWTEST_F(AppMgrProxyTest, UnregisterManagedProcess_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: RegisterManagedProcess_0100
+ * @tc.desc: Test RegisterManagedProcess with successful SendRequest.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, RegisterManagedProcess_0100, TestSize.Level1)
+{
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce([](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
+            reply.WriteInt32(ERR_OK);
+            return NO_ERROR;
+        });
+
+    auto ret = appMgrProxy_->RegisterManagedProcess("proxy_register_managed_process_0100", 5432);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
  * @tc.name: AppMgrProxy_DumpMem_001
  * @tc.desc: DumpMem with valid info and null callback.
  * @tc.type: FUNC
