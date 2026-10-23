@@ -1,10 +1,10 @@
- * Copyright (c) 2026 Huawei Device Co., Ltd.
-/*
+/**
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -73,7 +73,6 @@ HWTEST_F(RestartAppWithWindowForRecoveryTest, RestartAppWithWindowForRecovery_00
     AAFwk::Want want;
     std::shared_ptr<AbilityRecord> record = nullptr;
     abilityMs_->RestartAppWithWindowForRecovery(want, record);
-    // No crash, no fallback cold restart 鈥?just logs and returns
     TAG_LOGI(AAFwkTag::TEST, "RestartAppWithWindowForRecovery_001 end");
 }
 
@@ -189,7 +188,6 @@ HWTEST_F(RestartAppWithWindowForRecoveryTest, RestartAppWithWindowForRecovery_00
     ASSERT_NE(sessionInfo->sessionToken, nullptr);
     record->SetSessionInfo(sessionInfo);
     // Rosen::Session::RestartApp may return non-WS_OK in unit test context (no real SceneBoard).
-    // The function should log the error and return without fallback 鈥?no crash expected.
     abilityMs_->RestartAppWithWindowForRecovery(want, record);
     TAG_LOGI(AAFwkTag::TEST, "RestartAppWithWindowForRecovery_006 end");
 }
@@ -207,7 +205,6 @@ HWTEST_F(RestartAppWithWindowForRecoveryTest, RestartAppWithWindowForRecovery_00
     want.SetElementName("testBundle", "testAbility");
     auto record = std::make_shared<AbilityRecord>(want, AbilityInfo(), ApplicationInfo());
     ASSERT_NE(record, nullptr);
-    // sessionInfo is nullptr 鈫?fallback to RestartApp(want, true, record->GetPid())
     // RestartApp will fail internally (no running process), but the code path is exercised.
     abilityMs_->RestartAppWithWindowForRecovery(want, record);
     TAG_LOGI(AAFwkTag::TEST, "RestartAppWithWindowForRecovery_007 end");
