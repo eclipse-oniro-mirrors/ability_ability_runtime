@@ -27,5 +27,10 @@ bool PermissionVerification::CheckSpecificSystemAbilityAccessPermission(const st
 {
     return MyFlag::flag_;
 }
+
+bool PermissionVerification::VerifyPreloadApplicationPermission() const
+{
+    return MyFlag::flag_;
+}
 } // namespace AAFwk
 } // namespace OHOS
