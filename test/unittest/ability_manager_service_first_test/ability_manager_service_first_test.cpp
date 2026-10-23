@@ -3514,8 +3514,6 @@ HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityForOptionInner_SandboxClone
     ASSERT_NE(abilityMs_, nullptr);
 
     MyFlag::flag_ = 1;
-    StartAbilityUtils::isSandBoxClone = false;
-    StartAbilityUtils::startAbilityInfo = nullptr;
 
     Want want;
     // 2000 is a sandbox clone index (range [2000, 3000]), not a valid app clone index (range [0, 1000]).
@@ -3531,8 +3529,6 @@ HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityForOptionInner_SandboxClone
     auto result = abilityMs_->StartAbilityForOptionInner(want, startOptions, callerToken, false, userId, requestCode,
         isStartAsCaller, specifyTokenId, isImplicit);
     EXPECT_EQ(result, ERR_APP_CLONE_INDEX_INVALID);
-    EXPECT_FALSE(StartAbilityUtils::isSandBoxClone);
-    EXPECT_EQ(StartAbilityUtils::startAbilityInfo, nullptr);
     MyFlag::flag_ = 0;
 }
 
@@ -3550,8 +3546,6 @@ HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityForOptionInner_SandboxClone
     ASSERT_NE(abilityMs_, nullptr);
 
     MyFlag::flag_ = 1;
-    StartAbilityUtils::isSandBoxClone = false;
-    StartAbilityUtils::startAbilityInfo = nullptr;
 
     Want want;
     StartOptions startOptions;
@@ -3566,8 +3560,6 @@ HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityForOptionInner_SandboxClone
     auto result = abilityMs_->StartAbilityForOptionInner(want, startOptions, callerToken, false, userId, requestCode,
         isStartAsCaller, specifyTokenId, isImplicit);
     EXPECT_EQ(result, ERR_INVALID_CALLER);
-    EXPECT_FALSE(StartAbilityUtils::isSandBoxClone);
-    EXPECT_EQ(StartAbilityUtils::startAbilityInfo, nullptr);
     MyFlag::flag_ = 0;
 }
 
@@ -3584,8 +3576,6 @@ HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityForOptionInner_SandboxClone
     ASSERT_NE(abilityMs_, nullptr);
 
     MyFlag::flag_ = 1;
-    StartAbilityUtils::isSandBoxClone = false;
-    StartAbilityUtils::startAbilityInfo = nullptr;
 
     Want want;
     StartOptions startOptions;
@@ -3601,8 +3591,6 @@ HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityForOptionInner_SandboxClone
     auto result = abilityMs_->StartAbilityForOptionInner(want, startOptions, callerToken, false, userId, requestCode,
         isStartAsCaller, specifyTokenId, isImplicit);
     EXPECT_EQ(result, ERR_IMPLICIT_START_ABILITY_FAIL);
-    EXPECT_FALSE(StartAbilityUtils::isSandBoxClone);
-    EXPECT_EQ(StartAbilityUtils::startAbilityInfo, nullptr);
     MyFlag::flag_ = 0;
 }
 

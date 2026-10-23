@@ -24,30 +24,32 @@ ErrCode EcologicalRuleInterceptor::DoProcess(AbilityInterceptorParam &param)
     return ERR_OK;
 }
 
-bool EcologicalRuleInterceptor::DoProcess(Want &want, int32_t userId)
+bool EcologicalRuleInterceptor::DoProcess(StartAbilityContext &ctx, Want &want, int32_t userId)
 {
     return true;
 }
 
-ErrCode EcologicalRuleInterceptor::QueryAtomicServiceStartupRule(Want &want, sptr<IRemoteObject> callerToken,
+ErrCode EcologicalRuleInterceptor::QueryAtomicServiceStartupRule(
+    StartAbilityContext &ctx, Want &want, sptr<IRemoteObject> callerToken,
     int32_t userId, AtomicServiceStartupRule &rule, sptr<Want> &replaceWant)
 {
     return MyStatus::GetInstance().eriQueryAtomicServiceStartupRule_;
 }
 
-void EcologicalRuleInterceptor::GetEcologicalTargetInfo(const Want &want,
-    const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo, ErmsCallerInfo &callerInfo)
+void EcologicalRuleInterceptor::GetEcologicalTargetInfo(const StartAbilityContext &ctx,
+    const Want &want, const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo, ErmsCallerInfo &callerInfo)
 {
 }
 
-void EcologicalRuleInterceptor::GetEcologicalCallerInfo(const Want &want, ErmsCallerInfo &callerInfo, int32_t userId,
-    const sptr<IRemoteObject> &callerToken)
+void EcologicalRuleInterceptor::GetEcologicalCallerInfo(const StartAbilityContext &ctx,
+    const Want &want, ErmsCallerInfo &callerInfo, int32_t userId, const sptr<IRemoteObject> &callerToken)
 {
 }
 
-void EcologicalRuleInterceptor::InitErmsCallerInfo(const Want &want,
-    const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo,
-    ErmsCallerInfo &callerInfo, int32_t userId, const sptr<IRemoteObject> &callerToken)
+void EcologicalRuleInterceptor::InitErmsCallerInfo(const StartAbilityContext &ctx,
+    const Want &want, const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo,
+    ErmsCallerInfo &callerInfo, int32_t userId, const sptr<IRemoteObject> &callerToken,
+    bool skipCallerInfo)
 {
 }
 

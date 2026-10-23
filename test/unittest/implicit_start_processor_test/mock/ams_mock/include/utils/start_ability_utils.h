@@ -7,6 +7,7 @@
 #include "iremote_object.h"
 #include "ability_info.h"
 #include "want.h"
+#include "start_ability_context.h"
 #include "start_specified_ability_params.h"
 #include "irequest_start_ability_callback.h"
 
@@ -37,12 +38,14 @@ struct StartAbilityWrapParam {
     std::string specifiedFlag;
     bool isGamePrelaunch = false;
     sptr<IRequestStartAbilityCallback> requestCallback = nullptr;
+    StartAbilityContext startAbilityCtx;
 };
 
 class StartAbilityUtils {
 public:
-    static bool IsCallFromAncoShellOrBroker(const sptr<IRemoteObject> &callerToken) { return false; }
-    static int HandleSelfRedirection(bool isFromOpenLink, std::vector<AppExecFwk::AbilityInfo> &abilityInfos)
+    static bool IsCallFromAncoShellOrBroker(const sptr<IRemoteObject> &callerToken,
+        const StartAbilityContext &ctx = StartAbilityContext{}) { return false; }
+    static int HandleSelfRedirection(bool isFromOpenLink, const std::vector<AppExecFwk::AbilityInfo> &abilityInfos)
     {
         return ERR_OK;
     }

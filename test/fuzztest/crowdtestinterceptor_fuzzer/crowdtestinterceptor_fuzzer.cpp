@@ -71,7 +71,8 @@ bool DoSomethingInterestingWithMyAPI(const char *data, size_t size)
     AbilityInterceptorParam param =
         InterceptorParamBuilder(want, intParam, int32Param).WithUI(boolParam).CallerToken(token).Build();
     crowdTestInterceptor->DoProcess(param);
-    crowdTestInterceptor->CheckCrowdtest(want, int32Param);
+    StartAbilityContext ctx;
+    crowdTestInterceptor->CheckCrowdtest(ctx, want, int32Param);
     return true;
 }
 } // namespace OHOS

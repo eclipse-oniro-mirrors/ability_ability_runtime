@@ -20,6 +20,7 @@
 #include "dialog_session_manager.h"
 #undef private
 #include "ability_record.h"
+#include "start_ability_context.h"
 
 using namespace OHOS::AAFwk;
 using namespace OHOS::AppExecFwk;
@@ -108,9 +109,10 @@ bool DoSomethingInterestingWithMyAPI(const char *data, size_t size)
     dialogSessionManager->CreateCloneSelectorModalDialog(abilityRequest, want, int32Param, dialogAppInfos,
         replaceWant);
     dialogSessionManager->CreateModalDialogCommon(want, callerToken, dialogSessionId);
-    dialogSessionManager->HandleErmsResult(abilityRequest, int32Param, want);
+    StartAbilityContext ctx;
+    dialogSessionManager->HandleErmsResult(ctx, abilityRequest, int32Param, want);
     dialogSessionManager->HandleErmsResultBySCB(abilityRequest, want);
-    dialogSessionManager->IsCreateCloneSelectorDialog(bundleName, int32Param);
+    dialogSessionManager->IsCreateCloneSelectorDialog(ctx, bundleName, int32Param);
     return true;
 }
 } // namespace OHOS

@@ -28,6 +28,7 @@
 #include "interceptor/control_interceptor.h"
 #include "interceptor/crowd_test_interceptor.h"
 #include "permission_constants.h"
+#include "start_ability_context.h"
 #include "start_ability_utils.h"
 
 using namespace testing;
@@ -548,7 +549,8 @@ HWTEST_F(AbilityInterceptorTest, EcologicalRuleInterceptor_003, TestSize.Level1)
     std::shared_ptr<EcologicalRuleInterceptor> interceptor = std::make_shared<EcologicalRuleInterceptor>();
     Want want;
     int userId = 100;
-    bool result = interceptor->DoProcess(want, userId);
+    StartAbilityContext ctx;
+    bool result = interceptor->DoProcess(ctx, want, userId);
     EXPECT_EQ(result, true);
 }
 } // namespace AAFwk

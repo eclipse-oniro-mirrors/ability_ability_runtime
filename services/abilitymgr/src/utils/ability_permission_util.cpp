@@ -122,14 +122,14 @@ bool AbilityPermissionUtil::IsDominateScreen(const Want &want, bool isPendingWan
 }
 
 int32_t AbilityPermissionUtil::CheckMultiInstanceAndAppClone(Want &want, int32_t userId, int32_t appIndex,
-    sptr<IRemoteObject> callerToken, bool isScbCall)
+    sptr<IRemoteObject> callerToken, bool isScbCall, const StartAbilityContext &ctx)
 {
     auto instanceKey = want.GetStringParam(Want::APP_INSTANCE_KEY);
     auto isCreating = want.GetBoolParam(Want::CREATE_APP_INSTANCE_KEY, false);
     AppExecFwk::ApplicationInfo appInfo;
     auto isSupportMultiInstance = AppUtils::GetInstance().IsSupportMultiInstance();
     if (isSupportMultiInstance) {
-        if (!StartAbilityUtils::GetApplicationInfo(want.GetBundleNameRef(), userId, appInfo)) {
+        if (!StartAbilityUtils::GetApplicationInfo(ctx, want.GetBundleNameRef(), userId, appInfo)) {
             TAG_LOGI(AAFwkTag::ABILITYMGR, "implicit start");
             return ERR_OK;
         }

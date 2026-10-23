@@ -25,6 +25,8 @@
 
 namespace OHOS {
 namespace AppExecFwk {
+bool BundleMgrHelper::mockExtensionInfoSuccess = false;
+bool BundleMgrHelper::mockDualModeAppIndexZero = false;
 namespace {
     const std::string profileJsonStr = "{"
         "\"insightIntents\":["
@@ -112,6 +114,19 @@ ErrCode BundleMgrHelper::GetBundleInfoV9(
     return ERR_OK;
 }
 
+ErrCode BundleMgrHelper::QueryExtensionAbilityInfoOptimal(const Want &want, const int32_t &flag,
+    const int32_t &userId, ExtensionAbilityInfo &extensionInfo)
+{
+    extensionInfo.bundleName = want.GetBundleNameRef();
+    extensionInfo.name = want.GetAbilityNameRef();
+    if (mockExtensionInfoSuccess) {
+        extensionInfo.applicationInfo.bundleName = want.GetBundleNameRef();
+        extensionInfo.applicationInfo.name = want.GetBundleNameRef();
+        extensionInfo.visible = true;
+    }
+    return ERR_OK;
+}
+
 ErrCode BundleMgrHelper::GetBundleInfosV9(int32_t flags,
     std::vector<BundleInfo> &bundleInfos, int32_t userId)
 {
@@ -160,6 +175,9 @@ bool BundleMgrHelper::QueryAppGalleryBundleName(std::string &bundleName)
 ErrCode BundleMgrHelper::GetDualModeBundleInfo(
     const std::string &bundleName, int32_t userId, int32_t &appIndex)
 {
+    if (mockDualModeAppIndexZero) {
+        appIndex = 0;
+    }
     return ERR_OK;
 }
 }  // namespace AppExecFwk

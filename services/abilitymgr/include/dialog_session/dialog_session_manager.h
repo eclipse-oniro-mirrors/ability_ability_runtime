@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_DIALOG_SESSION_MANAGEER_H
 #define OHOS_ABILITY_RUNTIME_DIALOG_SESSION_MANAGEER_H
 #include <list>
+#include <memory>
 #include <unordered_map>
 #include <string>
 #include "ability_record.h"
@@ -30,6 +31,7 @@
 
 namespace OHOS {
 namespace AAFwk {
+struct StartAbilityContext;  // forward declaration (full type in start_ability_context.h)
 enum class SelectorType {
     WITHOUT_SELECTOR = -1,
     IMPLICIT_START_SELECTOR = 0,
@@ -133,11 +135,12 @@ public:
     int CreateCloneSelectorModalDialog(AbilityRequest &abilityRequest, const Want &want, int32_t userId,
         std::vector<DialogAppInfo> &dialogAppInfos, const std::string &replaceWant);
 
-    int HandleErmsResult(AbilityRequest &abilityRequest, int32_t userId, const Want &replaceWant);
+    int HandleErmsResult(StartAbilityContext &ctx, AbilityRequest &abilityRequest,
+        int32_t userId, const Want &replaceWant);
 
     int32_t HandleErmsResultBySCB(AbilityRequest &abilityRequest, const Want &replaceWant);
 
-    bool IsCreateCloneSelectorDialog(const std::string &bundleName, int32_t userId);
+    bool IsCreateCloneSelectorDialog(StartAbilityContext &ctx, const std::string &bundleName, int32_t userId);
 
     bool UpdateExtensionWantWithDialogCallerInfo(AbilityRequest &abilityRequest,
         const sptr<IRemoteObject> &callerToken, bool isSCBCall);
