@@ -176,8 +176,7 @@ bool ParseInvokeFunctionParam(napi_env env, size_t argc, napi_value *argv, Invok
             return false;
         }
         std::string optionsMsg;
-        if (!UnwrapInvokeOptions(env, argv[INDEX_THREE], out.invokeOptions.toolCallId,
-            out.invokeOptions.dmSessionId, out.invokeOptions.taskId, optionsMsg)) {
+        if (!UnwrapInvokeOptions(env, argv[INDEX_THREE], out.invokeOptions, optionsMsg)) {
             ThrowInvalidParamError(env, optionsMsg.empty() ? "option invalid" : optionsMsg.c_str());
             return false;
         }

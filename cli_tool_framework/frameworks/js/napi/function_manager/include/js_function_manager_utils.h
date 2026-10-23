@@ -80,6 +80,8 @@ napi_value CreateJsInvokeFunctionParam(napi_env env, const InvokeFunctionParam &
  */
 void UnwrapInvokeFunctionParam(napi_env env, napi_value jsObj, InvokeFunctionParam &param);
 
+struct InvokeOptions;
+
 /**
  * @brief Parse the optional trace identifiers from InvokeOptions.
  *
@@ -90,14 +92,12 @@ void UnwrapInvokeFunctionParam(napi_env env, napi_value jsObj, InvokeFunctionPar
  *
  * @param env The N-API environment.
  * @param options The InvokeOptions object (may be undefined/null).
- * @param toolCallId Output for the parsed toolCallId (empty when not passed).
- * @param dmSessionId Output for the parsed dmSessionId (empty when not passed).
- * @param taskId Output for the parsed taskId (empty when not passed).
+ * @param invokeOptions Output for the parsed trace identifiers.
  * @param msg Output error message when parsing fails.
  * @return Returns true on success, false otherwise.
  */
 bool UnwrapInvokeOptions(napi_env env, napi_value options,
-    std::string &toolCallId, std::string &dmSessionId, std::string &taskId, std::string &msg);
+    InvokeOptions &invokeOptions, std::string &msg);
 
 } // namespace CliTool
 } // namespace OHOS
