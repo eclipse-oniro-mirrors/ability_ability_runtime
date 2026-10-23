@@ -108,9 +108,6 @@
 #include "uri_permission_manager_client.h"
 #endif // SUPPORT_UPMS
 #include "user_record_manager.h"
-#include "insight_intent_execute_param.h"
-#include "task_mgr/attribution_record.h"
-#include "task_mgr/task_manager_service.h"
 #ifdef APP_MGR_SERVICE_APPMS
 #include "net_conn_client.h"
 #endif
@@ -2237,15 +2234,7 @@ void AppMgrServiceInner::LoadAbility(std::shared_ptr<AbilityInfo> abilityInfo, s
             return;
         }
         isProcCache = DelayedSingleton<CacheProcessManager>::GetInstance()->ReuseCachedProcess(appRecord);
-        std::string selfPidTaskId;
-        if (want != nullptr) {
-            selfPidTaskId = want->GetStringParam(AppExecFwk::INSIGHT_INTENT_TASK_ID);
-            if (!selfPidTaskId.empty()) {
-                want->RemoveParam(AppExecFwk::INSIGHT_INTENT_TASK_ID);
-            }
-        }
         HandleExistingAppRecordAfterFound(appRecord, abilityInfo, hapModuleInfo, want, isProcCache, loadParam);
-        RegisterAttributedManagedProcess(selfPidTaskId, appRecord);
         return;
     }
 
@@ -2261,14 +2250,6 @@ void AppMgrServiceInner::LoadAbility(std::shared_ptr<AbilityInfo> abilityInfo, s
     if (want != nullptr) {
         callerKey = want->GetStringParam(Want::PARAMS_REAL_CALLER_KEY);
         want->RemoveParam(Want::PARAMS_REAL_CALLER_KEY);
-    }
-
-    std::string taskId;
-    if (want != nullptr) {
-        taskId = want->GetStringParam(AppExecFwk::INSIGHT_INTENT_TASK_ID);
-        if (!taskId.empty()) {
-            want->RemoveParam(AppExecFwk::INSIGHT_INTENT_TASK_ID);
-        }
     }
     std::shared_ptr<AppRunningRecord> appRecord;
     if (loadParam->reusePid > 0) {
@@ -2473,35 +2454,7 @@ void AppMgrServiceInner::LoadAbility(std::shared_ptr<AbilityInfo> abilityInfo, s
         want->RemoveParam(UIEXTENSION_BIND_ABILITY_ID);
     }
     guard.appRecord_ = appRecord;
-    RegisterAttributedManagedProcess(taskId, appRecord);
     AfterLoadAbility(appRecord, abilityInfo, loadParam, isProcessReuse);
-}
-
-void AppMgrServiceInner::RegisterAttributedManagedProcess(const std::string &taskId,
-    const std::shared_ptr<AppRunningRecord> &appRecord)
-{
-    if (taskId.empty() || appRecord == nullptr) {
-        return;
-    }
-    int32_t pid = appRecord->GetPid();
-    if (pid <= 0) {
-        TAG_LOGW(AAFwkTag::APPMGR, "task attribution skipped, invalid pid, taskId: %{public}s", taskId.c_str());
-        return;
-    }
-    AttributionRecord attribution;
-    attribution.pid = pid;
-    attribution.tool = AttributionTool::INSIGHT;
-    AttributionId attributionId = 0;
-    int32_t ret = TaskManagerService::GetInstance().RegisterManagedProcess(taskId, attribution, attributionId);
-    if (ret != ERR_OK) {
-        // Best effort: registration failure must not affect the load result.
-        // ERR_TASK_NOT_FOUND is normal when the caller has not started the task.
-        TAG_LOGW(AAFwkTag::APPMGR, "register attributed managed process failed, ret: %{public}d, "
-            "pid: %{public}d, taskId: %{public}s", ret, pid, taskId.c_str());
-        return;
-    }
-    TAG_LOGI(AAFwkTag::APPMGR, "task attributed process registered, pid: %{public}d, "
-        "taskId: %{public}s, attributionId: %{public}" PRId64, pid, taskId.c_str(), attributionId);
 }
 
 void AppMgrServiceInner::ReportUIExtensionProcColdStartToRss(const std::shared_ptr<AbilityInfo>& abilityInfo,

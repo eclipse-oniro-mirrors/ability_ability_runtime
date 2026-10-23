@@ -1845,31 +1845,6 @@ public:
      */
     int32_t FinishTask(const std::string &taskId);
 
-    /**
-     * Remove a process from the managed set of the task. Inner-service entry
-     * (e.g. AMS finishing an insight intent attribution); the inactivity
-     * timeout window is left running untouched.
-     *
-     * @param taskId Attribution key of the task (1~256 characters).
-     * @param pid Pid of the attributed process.
-     * @return ERR_OK on success, server error code otherwise;
-     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
-     */
-    int32_t UnregisterManagedProcess(const std::string &taskId, int32_t pid);
-
-    /**
-     * Attribute a process into the managed set of the task. Inner-service
-     * entry (e.g. AMS re-attributing an insight intent target process); every
-     * registration creates a new attribution record under a fresh
-     * server-assigned attribution id.
-     *
-     * @param taskId Attribution key of the task (1~256 characters).
-     * @param pid Pid of the attributed process.
-     * @return ERR_OK on success, server error code otherwise;
-     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
-     */
-    int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid);
-
 private:
     void SetServiceManager(std::unique_ptr<AppServiceManager> serviceMgr);
     /**

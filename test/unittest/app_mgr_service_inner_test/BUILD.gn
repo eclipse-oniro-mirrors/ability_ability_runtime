@@ -32,7 +32,6 @@ ohos_unittest("AppMgrServiceInnerTest") {
     "${ability_runtime_test_path}/mock/services_appmgr_test/include",
     "${ability_runtime_test_path}/mock/task_handler_wrap_mock/include",
     "${ability_runtime_innerkits_path}/app_manager/include/appmgr",
-    "${ability_runtime_innerkits_path}/ability_manager/include/insight_intent",
     "${ability_runtime_services_path}/abilitymgr/include/utils",
     "${ability_runtime_services_path}/abilitymgr/include",
 

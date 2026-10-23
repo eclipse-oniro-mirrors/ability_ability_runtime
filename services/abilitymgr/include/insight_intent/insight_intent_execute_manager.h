@@ -50,6 +50,8 @@ struct InsightIntentExecuteRecord {
     std::string deviceId;
     uint64_t requestCode = 0;
     std::string taskId;
+    // Attribution id allocated by the in-process TaskManagerService (0 means not registered).
+    int64_t attributionId = 0;
 };
 
 class InsightIntentExecuteConnection : public AbilityConnectionStub {
@@ -183,9 +185,9 @@ private:
 
     void SendIntentReport(EventInfo &eventInfo, int32_t errCode);
 
-    void UnregisterAttributedProcess(const std::string &taskId, pid_t pid);
+    void UnregisterAttributedProcess(const std::string &taskId, int64_t attributionId);
 
-    void RegisterAttributedProcess(const std::string &taskId, pid_t pid);
+    void RegisterAttributedProcess(const std::string &taskId, pid_t pid, int64_t &attributionId);
 
     void HandleDiedRecordsCleanup(const std::vector<uint64_t> &toRemove,
         const AppExecFwk::InsightIntentExecuteResult &errorResult);

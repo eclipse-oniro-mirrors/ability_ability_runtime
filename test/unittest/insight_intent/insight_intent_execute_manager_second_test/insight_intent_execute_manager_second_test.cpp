@@ -19,6 +19,7 @@
 #include <chrono>
 #include <functional>
 #include <thread>
+#include <unistd.h>
 
 #include "hilog_tag_wrapper.h"
 #include "insight_intent_execute_callback_stub.h"
@@ -28,6 +29,7 @@
 #include "extract_insight_intent_profile.h"
 #include "mock_ability_token.h"
 #include "string_wrapper.h"
+#include "task_mgr/task_manager_service.h"
 #include "want.h"
 
 using namespace testing;
@@ -2502,8 +2504,9 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, SetTargetPid_0300, TestSize.Leve
 /**
  * @tc.name: SetTargetPid_RegisterAttribution_0100
  * @tc.desc: Test SetTargetPid with a taskId present runs the best-effort
- *           re-attribution IPC path (service unavailable in UT, failure is
- *           only logged, no crash) and still sets targetPid.
+ *           attribution path (direct in-process call to TaskManagerService;
+ *           no task started in UT, so RegisterManagedProcess returns
+ *           ERR_TASK_NOT_FOUND which is only logged) and still sets targetPid.
  * @tc.type: FUNC
  * @tc.require: issueI8ZRAG
  */
@@ -2525,12 +2528,14 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, SetTargetPid_RegisterAttribution
     pid_t pid = 12345;
     manager->SetTargetPid(intentId, pid);
     EXPECT_EQ(manager->records_[intentId]->targetPid, pid);
+    // No task registered in TaskManagerService: registration fails, id stays 0.
+    EXPECT_EQ(manager->records_[intentId]->attributionId, 0);
     TAG_LOGI(AAFwkTag::TEST, "SetTargetPid_RegisterAttribution_0100 end.");
 }
 
 /**
  * @tc.name: SetTargetPid_RegisterAttribution_0200
- * @tc.desc: Test SetTargetPid without a taskId skips the attribution IPC
+ * @tc.desc: Test SetTargetPid without a taskId skips the attribution call
  *           (guard returns early) and only sets targetPid.
  * @tc.type: FUNC
  * @tc.require: issueI8ZRAG
@@ -2553,6 +2558,7 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, SetTargetPid_RegisterAttribution
     pid_t pid = 12345;
     manager->SetTargetPid(intentId, pid);
     EXPECT_EQ(manager->records_[intentId]->targetPid, pid);
+    EXPECT_EQ(manager->records_[intentId]->attributionId, 0);
     TAG_LOGI(AAFwkTag::TEST, "SetTargetPid_RegisterAttribution_0200 end.");
 }
 
@@ -2652,8 +2658,8 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, AddRecord_WithTaskId_0100, TestS
 
 /**
  * @tc.name: RemoveExecuteIntent_Unregister_0100
- * @tc.desc: Test RemoveExecuteIntent removes the record even when taskId/targetPid are absent
- *           (helper guard no-op, no crash).
+ * @tc.desc: Test RemoveExecuteIntent removes the record even when taskId/attributionId are
+ *           absent (helper guard no-op, no crash).
  * @tc.type: FUNC
  */
 HWTEST_F(InsightIntentExecuteManagerSecondTest, RemoveExecuteIntent_Unregister_0100, TestSize.Level1)
@@ -2670,7 +2676,7 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, RemoveExecuteIntent_Unregister_0
         ExecuteParam{.callerBundleName = "caller.bundle"}, "ohos_task_id_remove");
     ASSERT_EQ(manager->records_.count(intentId), 1);
 
-    // No targetPid set: unregister guard skips IPC, removal still happens.
+    // No attribution registered: unregister guard skips the call, removal still happens.
     auto ret = manager->RemoveExecuteIntent(intentId);
     EXPECT_EQ(ret, ERR_OK);
     EXPECT_EQ(manager->records_.count(intentId), 0);
@@ -2684,7 +2690,8 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, RemoveExecuteIntent_Unregister_0
 /**
  * @tc.name: RemoveExecuteIntent_Unregister_0200
  * @tc.desc: Test RemoveExecuteIntent with taskId and targetPid both present: record removed and
- *           the unregister path runs without crash (AppMgrClient unavailable in UT, only logged).
+ *           the unregister path runs without crash (no task started in UT, the direct
+ *           in-process TaskManagerService call only logs the missing task).
  * @tc.type: FUNC
  */
 HWTEST_F(InsightIntentExecuteManagerSecondTest, RemoveExecuteIntent_Unregister_0200, TestSize.Level1)
@@ -2711,7 +2718,8 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, RemoveExecuteIntent_Unregister_0
 
 /**
  * @tc.name: UnregisterAttributedProcess_Guard_0100
- * @tc.desc: Test the unregister helper guard: empty taskId or non-positive pid returns directly.
+ * @tc.desc: Test the unregister helper guard: empty taskId or non-positive attributionId
+ *           returns directly.
  * @tc.type: FUNC
  */
 HWTEST_F(InsightIntentExecuteManagerSecondTest, UnregisterAttributedProcess_Guard_0100, TestSize.Level1)
@@ -2720,7 +2728,7 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, UnregisterAttributedProcess_Guar
     auto manager = std::make_shared<InsightIntentExecuteManager>();
     ASSERT_NE(manager, nullptr);
 
-    // Guarded cases must not construct an AppMgrClient or crash.
+    // Guarded cases must not touch TaskManagerService or crash.
     manager->UnregisterAttributedProcess("", 1234);
     manager->UnregisterAttributedProcess("ohos_task_id_guard", 0);
     manager->UnregisterAttributedProcess("ohos_task_id_guard", -1);
@@ -2729,8 +2737,9 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, UnregisterAttributedProcess_Guar
 
 /**
  * @tc.name: UnregisterAttributedProcess_Guard_0200
- * @tc.desc: Test the unregister helper with valid inputs runs the best-effort IPC path
- *           (service unavailable in UT, failure is only logged, no crash).
+ * @tc.desc: Test the unregister helper with valid inputs runs the best-effort path
+ *           (direct in-process TaskManagerService call; no task started in UT,
+ *           ERR_TASK_NOT_FOUND is only logged, no crash).
  * @tc.type: FUNC
  */
 HWTEST_F(InsightIntentExecuteManagerSecondTest, UnregisterAttributedProcess_Guard_0200, TestSize.Level1)
@@ -2739,7 +2748,7 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, UnregisterAttributedProcess_Guar
     auto manager = std::make_shared<InsightIntentExecuteManager>();
     ASSERT_NE(manager, nullptr);
 
-    // In UT there is no samgr: AppMgrClient::GetRemoteObject returns null,
+    // In UT no task was started, so TaskManagerService answers ERR_TASK_NOT_FOUND,
     // the helper only logs and must not crash.
     manager->UnregisterAttributedProcess("ohos_task_id_ipc", 9999);
     TAG_LOGI(AAFwkTag::TEST, "UnregisterAttributedProcess_Guard_0200 end.");
@@ -2747,7 +2756,8 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, UnregisterAttributedProcess_Guar
 
 /**
  * @tc.name: RegisterAttributedProcess_Guard_0100
- * @tc.desc: Test the register helper guard: empty taskId or non-positive pid returns directly.
+ * @tc.desc: Test the register helper guard: empty taskId or non-positive pid returns directly
+ *           and leaves attributionId 0.
  * @tc.type: FUNC
  */
 HWTEST_F(InsightIntentExecuteManagerSecondTest, RegisterAttributedProcess_Guard_0100, TestSize.Level1)
@@ -2756,17 +2766,22 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, RegisterAttributedProcess_Guard_
     auto manager = std::make_shared<InsightIntentExecuteManager>();
     ASSERT_NE(manager, nullptr);
 
-    // Guarded cases must not construct an AppMgrClient or crash.
-    manager->RegisterAttributedProcess("", 1234);
-    manager->RegisterAttributedProcess("ohos_task_id_guard", 0);
-    manager->RegisterAttributedProcess("ohos_task_id_guard", -1);
+    // Guarded cases must not touch TaskManagerService or crash.
+    int64_t attributionId = 0;
+    manager->RegisterAttributedProcess("", 1234, attributionId);
+    EXPECT_EQ(attributionId, 0);
+    manager->RegisterAttributedProcess("ohos_task_id_guard", 0, attributionId);
+    EXPECT_EQ(attributionId, 0);
+    manager->RegisterAttributedProcess("ohos_task_id_guard", -1, attributionId);
+    EXPECT_EQ(attributionId, 0);
     TAG_LOGI(AAFwkTag::TEST, "RegisterAttributedProcess_Guard_0100 end.");
 }
 
 /**
  * @tc.name: RegisterAttributedProcess_Guard_0200
- * @tc.desc: Test the register helper with valid inputs runs the best-effort upsert IPC path
- *           (service unavailable in UT, failure is only logged, no crash).
+ * @tc.desc: Test the register helper with valid inputs runs the best-effort path
+ *           (direct in-process TaskManagerService call; no task started in UT,
+ *           ERR_TASK_NOT_FOUND is only logged, attributionId stays 0, no crash).
  * @tc.type: FUNC
  */
 HWTEST_F(InsightIntentExecuteManagerSecondTest, RegisterAttributedProcess_Guard_0200, TestSize.Level1)
@@ -2775,10 +2790,51 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, RegisterAttributedProcess_Guard_
     auto manager = std::make_shared<InsightIntentExecuteManager>();
     ASSERT_NE(manager, nullptr);
 
-    // In UT there is no samgr: both the stale-record unregister and the new
-    // registration fail with ERROR_SERVICE_NOT_CONNECTED, only logged, no crash.
-    manager->RegisterAttributedProcess("ohos_task_id_ipc", 9999);
+    // In UT no task was started, so TaskManagerService answers ERR_TASK_NOT_FOUND,
+    // the helper only logs and must not crash.
+    int64_t attributionId = 0;
+    manager->RegisterAttributedProcess("ohos_task_id_ipc", 9999, attributionId);
+    EXPECT_EQ(attributionId, 0);
     TAG_LOGI(AAFwkTag::TEST, "RegisterAttributedProcess_Guard_0200 end.");
+}
+
+/**
+ * @tc.name: RegisterAttributedProcess_Positive_0100
+ * @tc.desc: Test the full attribution lifecycle against a real in-process
+ *           TaskManagerService: StartTask -> AddRecord -> SetTargetPid stores a
+ *           server-allocated attributionId; RemoveExecuteIntent unregisters it.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, RegisterAttributedProcess_Positive_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RegisterAttributedProcess_Positive_0100 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    // A live managed process is required: use the UT process itself.
+    const std::string taskId = "ohos_task_id_positive_0100";
+    pid_t pid = static_cast<pid_t>(getpid());
+    auto &tms = AppExecFwk::TaskManagerService::GetInstance();
+    ASSERT_EQ(tms.StartTask(taskId, AppExecFwk::TASK_PRIORITY_DEFAULT), ERR_OK);
+
+    uint64_t key = 100;
+    uint64_t intentId = 0;
+    sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
+    ASSERT_NE(callToken, nullptr);
+    manager->AddRecord(key, callToken, "test.bundle.positive", intentId,
+        ExecuteParam{.callerBundleName = "caller.bundle"}, taskId);
+    ASSERT_EQ(manager->records_.count(intentId), 1);
+
+    manager->SetTargetPid(intentId, pid);
+    EXPECT_EQ(manager->records_[intentId]->targetPid, pid);
+    EXPECT_GT(manager->records_[intentId]->attributionId, 0);
+
+    // Removal unregisters exactly the stored attributionId (no crash, record gone).
+    auto ret = manager->RemoveExecuteIntent(intentId);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(manager->records_.count(intentId), 0);
+    EXPECT_EQ(tms.FinishTask(taskId), ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "RegisterAttributedProcess_Positive_0100 end.");
 }
 
 } // namespace AAFwk

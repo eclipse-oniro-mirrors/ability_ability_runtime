@@ -15211,9 +15211,6 @@ int32_t AbilityManagerService::StartAbilityWithServiceMatch(const InsightIntentE
     }
     want.SetParams(*IParam);
     want.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME, param.insightIntentName_);
-    if (!param.taskId_.empty()) {
-        want.SetParam(AppExecFwk::INSIGHT_INTENT_TASK_ID, param.taskId_);
-    }
     want.SetUri(Uri(IParam->GetStringParam(static_cast<std::string>("uri"))));
     want.SetAction(IParam->GetStringParam(static_cast<std::string>("action")));
 
@@ -15487,11 +15484,6 @@ int32_t AbilityManagerService::ExecuteIntentCommon(const sptr<IRemoteObject> &ca
         DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->RemoveExecuteIntent(param->insightIntentId_);
         return ret;
     }
-    if (!param->taskId_.empty()) {
-        // Internal attribution key consumed by appmgr; never delivered to the
-        // target application (stripped again in AppMgrServiceInner::LoadAbility).
-        want.SetParam(AppExecFwk::INSIGHT_INTENT_TASK_ID, param->taskId_);
-    }
     if (param->insightIntentParam_ != nullptr &&
         AAFwk::PermissionVerification::GetInstance()->JudgeCallerIsAllowedToUseSystemAPI()) {
         if (param->insightIntentParam_->HasParam(WINDOW_PARAMS_SUGGESTION_SOURCE)) {
@@ -15648,9 +15640,9 @@ int32_t AbilityManagerService::ExecuteIntent(uint64_t key, const sptr<IRemoteObj
 
     AbilityRuntime::ExecuteIntentCommonOptions options(ignoreAbilityName, infos, key);
     if (param.isServiceMatch_) {
-        // Pass the HandleTaskIdAttribution-processed copy so the extracted
-        // taskId_ travels with the want chain instead of being dropped.
-        return StartAbilityWithServiceMatch(*paramPtr);
+        // insightIntentParam_ is shared with paramPtr, so HandleTaskIdAttribution
+        // already stripped the task id from this path's want params.
+        return StartAbilityWithServiceMatch(param);
     }
     return ExecuteIntentCommon(callerToken, paramPtr, callerBundlename, options);
 }
@@ -18048,11 +18040,6 @@ ErrCode AbilityManagerService::IntentOpenLinkInner(const std::shared_ptr<AppExec
         want.SetParam(APP_LINKING_ONLY, false);
     }
     want.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME, param->insightIntentName_);
-    if (!param->taskId_.empty()) {
-        // Internal attribution key consumed by appmgr; never delivered to the
-        // target application (stripped again in AppMgrServiceInner::LoadAbility).
-        want.SetParam(AppExecFwk::INSIGHT_INTENT_TASK_ID, param->taskId_);
-    }
     want.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_OPENLINK_FLAG, 1);
     if (!want.HasParameter(Want::PARAM_APP_CLONE_INDEX_KEY)) {
         want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 0);
