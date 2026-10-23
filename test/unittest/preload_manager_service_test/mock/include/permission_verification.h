@@ -30,7 +30,7 @@ public:
 
     bool VerifyPreloadApplicationPermission() const;
     bool IsShellCall() const;
-    bool IsLocalDebugOtherAppsCall() const;
+    bool IsLocalDebugOtherAppsCall(const uint32_t specifyTokenId = 0, int32_t targetUserId = -1) const;
 };
 }  // namespace AAFwk
 }  // namespace OHOS
