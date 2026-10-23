@@ -573,7 +573,8 @@ public:
     ErrCode StartAbilityOnlyUIAbility(
         const Want &want,
         sptr<IRemoteObject> callerToken,
-        uint32_t specifyTokenId);
+        uint32_t specifyTokenId,
+        int32_t userId = DEFAULT_INVAL_VALUE);
 
     /**
      * Start a UIAbility and receive an asynchronous result callback. IMPORTANT: the callback is

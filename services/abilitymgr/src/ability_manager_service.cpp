@@ -1135,7 +1135,7 @@ int AbilityManagerService::StartAbilityByUIContentSession(const Want &want, cons
 }
 
 int AbilityManagerService::StartAbilityOnlyUIAbility(const Want &want, const sptr<IRemoteObject> &callerToken,
-    uint32_t specifyTokenId)
+    uint32_t specifyTokenId, int32_t userId)
 {
     if (AppUtils::GetInstance().IsForbidStart()) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "forbid start: %{public}s", want.GetBundleNameRef().c_str());
@@ -1175,6 +1175,7 @@ int AbilityManagerService::StartAbilityOnlyUIAbility(const Want &want, const spt
         .callerToken = callerToken,
         .specifyTokenId = specifyTokenId,
         .isUIAbilityOnly = true,
+        .userId = userId,
     };
     int32_t ret = StartAbilityInner(startAbilityWrapParam);
     if (ret != ERR_OK) {
