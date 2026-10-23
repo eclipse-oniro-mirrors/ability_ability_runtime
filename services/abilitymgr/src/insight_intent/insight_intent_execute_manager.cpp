@@ -898,7 +898,7 @@ void InsightIntentExecuteManager::UnregisterAttributedProcess(const std::string 
     // finished, which is a legal timing rather than an error.
     auto ret = IN_PROCESS_CALL(DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance()->UnregisterManagedProcess(
         taskId, pid));
-    if (ret != ERR_OK && ret != AAFwk::ERR_TASK_NOT_FOUND) {
+    if (ret != ERR_OK && ret != AAFwk::ERR_TASK_NOT_FOUND && ret != AAFwk::ERR_ATTRIBUTION_NOT_FOUND) {
         TAG_LOGW(AAFwkTag::INTENT, "unregister attributed process failed, ret: %{public}d, pid: %{public}d",
             ret, pid);
     } else {

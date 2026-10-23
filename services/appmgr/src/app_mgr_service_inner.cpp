@@ -2491,7 +2491,8 @@ void AppMgrServiceInner::RegisterAttributedManagedProcess(const std::string &tas
     AttributionRecord attribution;
     attribution.pid = pid;
     attribution.tool = AttributionTool::INSIGHT;
-    int32_t ret = TaskManagerService::GetInstance().RegisterManagedProcess(taskId, attribution);
+    AttributionId attributionId = 0;
+    int32_t ret = TaskManagerService::GetInstance().RegisterManagedProcess(taskId, attribution, attributionId);
     if (ret != ERR_OK) {
         // Best effort: registration failure must not affect the load result.
         // ERR_TASK_NOT_FOUND is normal when the caller has not started the task.
@@ -2499,8 +2500,8 @@ void AppMgrServiceInner::RegisterAttributedManagedProcess(const std::string &tas
             "pid: %{public}d, taskId: %{public}s", ret, pid, taskId.c_str());
         return;
     }
-    TAG_LOGI(AAFwkTag::APPMGR, "task attributed process registered, pid: %{public}d, taskId: %{public}s",
-        pid, taskId.c_str());
+    TAG_LOGI(AAFwkTag::APPMGR, "task attributed process registered, pid: %{public}d, "
+        "taskId: %{public}s, attributionId: %{public}" PRId64, pid, taskId.c_str(), attributionId);
 }
 
 void AppMgrServiceInner::ReportUIExtensionProcColdStartToRss(const std::shared_ptr<AbilityInfo>& abilityInfo,

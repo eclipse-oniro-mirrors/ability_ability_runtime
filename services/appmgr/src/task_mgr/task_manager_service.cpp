@@ -323,6 +323,18 @@ int32_t TaskManagerService::UnregisterManagedProcess(const std::string &taskId,
     return UnregisterManagedProcessInner(taskId, attributionId);
 }
 
+int32_t TaskManagerService::UnregisterManagedProcessByPid(const std::string &taskId, pid_t pid)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    if (pid <= 0 || taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN) {
+        TAG_LOGW(AAFwkTag::APPMGR, "invalid param, taskId size: %{public}zu, pid: %{public}d",
+            taskId.size(), pid);
+        return INVALID_PARAMETERS_ERR;
+    }
+    return UnregisterManagedProcessByPidInner(taskId, pid);
+}
+
 int32_t TaskManagerService::RegisterManagedProcessInner(const std::string &taskId,
     const AttributionRecord &attribution, AttributionId &attributionId)
 {
@@ -370,6 +382,31 @@ int32_t TaskManagerService::UnregisterManagedProcessInner(const std::string &tas
     TAG_LOGI(AAFwkTag::APPMGR, "attribution unregistered, taskId: %{public}s, "
         "attributionId: %{public}" PRId64, taskId.c_str(), attributionId);
     return ERR_OK;
+}
+
+int32_t TaskManagerService::UnregisterManagedProcessByPidInner(const std::string &taskId, pid_t pid)
+{
+    std::lock_guard<ffrt::mutex> lock(tasksMutex_);
+    auto it = tasks_.find(taskId);
+    if (it == tasks_.end()) {
+        TAG_LOGW(AAFwkTag::APPMGR, "task not found, taskId: %{public}s", taskId.c_str());
+        return ERR_TASK_NOT_FOUND;
+    }
+    // attributions keeps ascending ids, so the first pid match is the oldest one;
+    // unregistering the oldest record keeps register/unregister pairing balanced
+    // when the same pid is attributed to the same task more than once.
+    for (auto attrIt = it->second.attributions.begin(); attrIt != it->second.attributions.end(); ++attrIt) {
+        if (attrIt->second.pid == pid) {
+            AttributionId attributionId = attrIt->first;
+            it->second.attributions.erase(attrIt);
+            TAG_LOGI(AAFwkTag::APPMGR, "attribution unregistered by pid, taskId: %{public}s, "
+                "attributionId: %{public}" PRId64 ", pid: %{public}d", taskId.c_str(), attributionId, pid);
+            return ERR_OK;
+        }
+    }
+    TAG_LOGW(AAFwkTag::APPMGR, "attribution not found, taskId: %{public}s, pid: %{public}d",
+        taskId.c_str(), pid);
+    return ERR_ATTRIBUTION_NOT_FOUND;
 }
 
 std::unique_ptr<TimeoutContext> TaskManagerService::RestartTimeoutWindow(const std::string &taskId,

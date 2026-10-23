@@ -113,6 +113,19 @@ public:
     int32_t UnregisterManagedProcess(const std::string &taskId, AttributionId attributionId);
 
     /**
+     * @brief Removes the oldest attribution record matching the given pid from the
+     *        task, for callers that only know (taskId, pid) and never received the
+     *        attribution id (e.g. the ability manager unregistering on intent
+     *        completion); the inactivity timeout window is left running untouched.
+     * @param taskId Indicates the attribution key of the task.
+     * @param pid Indicates the pid of the attributed process.
+     * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
+     *         ERR_TASK_NOT_FOUND if the task does not exist; ERR_ATTRIBUTION_NOT_FOUND
+     *         if no attribution record matches the pid (idempotent).
+     */
+    int32_t UnregisterManagedProcessByPid(const std::string &taskId, pid_t pid);
+
+    /**
      * @brief Wires the pid validator used by RegisterManagedProcess to reject pids
      *        that are not live appmgr-managed processes; called when the app manager
      *        service assembles. An unwired validator skips the check.
@@ -240,6 +253,8 @@ private:
      *         ERR_ATTRIBUTION_NOT_FOUND if the attribution record does not exist.
      */
     int32_t UnregisterManagedProcessInner(const std::string &taskId, AttributionId attributionId);
+
+    int32_t UnregisterManagedProcessByPidInner(const std::string &taskId, pid_t pid);
 
     /**
      * @brief Restarts the inactivity window of the task: posts a new one-shot timer for
