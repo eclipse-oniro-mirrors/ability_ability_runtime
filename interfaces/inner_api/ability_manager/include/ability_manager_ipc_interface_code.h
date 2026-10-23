@@ -797,6 +797,9 @@ enum class AbilityManagerInterfaceCode {
 
     // kill process with user id
     KILL_PROCESS_WITH_USER_ID = 6183,
+
+    // extend game prelaunch timeout
+    EXTEND_GAME_PRELAUNCH_TIMEOUT = 6184,
 };
 }  // namespace AAFwk
 }  // namespace OHOS

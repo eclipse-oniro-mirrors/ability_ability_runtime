@@ -2743,6 +2743,15 @@ ErrCode AbilityManagerClient::SetGamePreLaunchCompleteTime(int32_t userId, int64
     return abms->SetGamePreLaunchCompleteTime(userId, completeTime);
 }
 
+ErrCode AbilityManagerClient::ExtendGamePreLaunchTimeout(int32_t pid, int64_t extendTime)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "ExtendGamePreLaunchTimeout called");
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    return abms->ExtendGamePreLaunchTimeout(pid, extendTime);
+}
+
 ErrCode AbilityManagerClient::StartSelfUIAbilityInChildProcess(const Want &want, const std::string &specifiedFlag,
     sptr<IRemoteObject> callerToken)
 {

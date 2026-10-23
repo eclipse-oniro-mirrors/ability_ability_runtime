@@ -5390,6 +5390,59 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_SetGamePreLaunchCompleteTime
 
 /*
  * Feature: AbilityManagerStub
+ * Function: ExtendGamePreLaunchTimeoutInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub ExtendGamePreLaunchTimeoutInner
+ * EnvConditions: NA
+ * CaseDescription: Verify ExtendGamePreLaunchTimeoutInner with valid parameters
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_ExtendGamePreLaunchTimeoutInner_001, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+
+    // Write pid
+    data.WriteInt32(100);
+
+    // Write extendTime
+    data.WriteInt64(60 * 1000 * 1000); // 60s in microseconds
+
+    auto res = stub_->ExtendGamePreLaunchTimeoutInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+
+    // Verify the result was written to reply
+    int32_t result = reply.ReadInt32();
+    EXPECT_EQ(result, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerStub
+ * Function: OnRemoteRequest
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub ExtendGamePreLaunchTimeoutInner via OnRemoteRequest
+ * EnvConditions: code is EXTEND_GAME_PRELAUNCH_TIMEOUT
+ * CaseDescription: Verify dispatching EXTEND_GAME_PRELAUNCH_TIMEOUT through OnRemoteRequest
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_ExtendGamePreLaunchTimeoutInner_002, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    data.WriteInt32(100); // pid
+    data.WriteInt64(60 * 1000 * 1000); // extendTime, 60s in microseconds
+
+    auto res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::EXTEND_GAME_PRELAUNCH_TIMEOUT), data, reply, option);
+    EXPECT_EQ(res, NO_ERROR);
+
+    int32_t result = reply.ReadInt32();
+    EXPECT_EQ(result, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerStub
  * Function: OnRemoteRequest
  * SubFunction: NA
  * FunctionPoints: AbilityManagerStub StartSandboxCloneAbilityInner via OnRemoteRequest

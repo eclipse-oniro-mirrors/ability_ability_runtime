@@ -1745,6 +1745,275 @@ HWTEST_F(UIAbilityLifecycleManagerThirdTest, HandleAbilityRecordReused_007, Test
 }
 
 /**
+ * @tc.name: ExtendGamePreLaunchTimeout_001
+ * @tc.desc: No game SA prelaunch ability found, return ERR_NOT_GAME_PRELOAD_STATE.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, ExtendGamePreLaunchTimeout_001, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    // sessionAbilityMap_ is empty — no prelaunch ability
+    int32_t pid = 1234;
+    int64_t extendTime = 60 * 1000 * 1000; // 60s in microseconds
+    auto ret = mgr->ExtendGamePreLaunchTimeout(pid, extendTime);
+    EXPECT_EQ(ret, ERR_NOT_GAME_PRELOAD_STATE);
+    EXPECT_TRUE(mgr->extendTaskMap_.empty());
+}
+
+/**
+ * @tc.name: ExtendGamePreLaunchTimeout_002
+ * @tc.desc: Valid prelaunch ability and extendTime, countdown reset, return ERR_OK.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, ExtendGamePreLaunchTimeout_002, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->SetGameSAPreLaunch(true);
+    abilityRecord->SetPid(1234);
+    abilityRecord->sessionInfo_ = sptr<SessionInfo>::MakeSptr();
+    mgr->sessionAbilityMap_ = { {1, abilityRecord} };
+
+    MyFlag::ffrtSubmitFlag_ = 0;
+    int32_t pid = 1234;
+    int64_t extendTime = 60 * 1000 * 1000; // 60s in microseconds
+    auto ret = mgr->ExtendGamePreLaunchTimeout(pid, extendTime);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_GE(MyFlag::ffrtSubmitFlag_, 1);
+    EXPECT_EQ(mgr->extendTaskMap_.size(), 1);
+    // Clear flag so detached task body skips NotifyCompleteGamePreLaunch
+    abilityRecord->SetGameSAPreLaunch(false);
+    usleep(TIMEOUT_VALUE);
+}
+
+/**
+ * @tc.name: ExtendGamePreLaunchTimeout_003
+ * @tc.desc: Multiple calls (reentrant), only last countdown effective.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, ExtendGamePreLaunchTimeout_003, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->SetGameSAPreLaunch(true);
+    abilityRecord->SetPid(1234);
+    abilityRecord->sessionInfo_ = sptr<SessionInfo>::MakeSptr();
+    mgr->sessionAbilityMap_ = { {1, abilityRecord} };
+
+    MyFlag::ffrtSubmitFlag_ = 0;
+    int32_t pid = 1234;
+    int64_t extendTime1 = 60 * 1000 * 1000;    // 60s
+    int64_t extendTime2 = 120 * 1000 * 1000;   // 120s
+    auto ret1 = mgr->ExtendGamePreLaunchTimeout(pid, extendTime1);
+    EXPECT_EQ(ret1, ERR_OK);
+    auto ret2 = mgr->ExtendGamePreLaunchTimeout(pid, extendTime2);
+    EXPECT_EQ(ret2, ERR_OK);
+    // Two submissions but map holds only one entry (old handle replaced)
+    EXPECT_GE(MyFlag::ffrtSubmitFlag_, 2);
+    EXPECT_EQ(mgr->extendTaskMap_.size(), 1);
+    // Clear flag so detached task bodies skip NotifyCompleteGamePreLaunch
+    abilityRecord->SetGameSAPreLaunch(false);
+    usleep(TIMEOUT_VALUE);
+}
+
+/**
+ * @tc.name: ExtendGamePreLaunchTimeout_004
+ * @tc.desc: Ability exists but IsGameSAPreLaunch is false, skip it and return ERR_NOT_GAME_PRELOAD_STATE.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, ExtendGamePreLaunchTimeout_004, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->SetGameSAPreLaunch(false);
+    abilityRecord->SetPid(1234);
+    abilityRecord->sessionInfo_ = sptr<SessionInfo>::MakeSptr();
+    mgr->sessionAbilityMap_ = { {1, abilityRecord} };
+
+    int32_t pid = 1234;
+    int64_t extendTime = 60 * 1000 * 1000; // 60s in microseconds
+    auto ret = mgr->ExtendGamePreLaunchTimeout(pid, extendTime);
+    EXPECT_EQ(ret, ERR_NOT_GAME_PRELOAD_STATE);
+    EXPECT_TRUE(mgr->extendTaskMap_.empty());
+}
+
+/**
+ * @tc.name: ExtendGamePreLaunchTimeout_005
+ * @tc.desc: Ability is prelaunch but pid does not match, skip it and return ERR_NOT_GAME_PRELOAD_STATE.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, ExtendGamePreLaunchTimeout_005, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->SetGameSAPreLaunch(true);
+    abilityRecord->SetPid(1234);
+    abilityRecord->sessionInfo_ = sptr<SessionInfo>::MakeSptr();
+    mgr->sessionAbilityMap_ = { {1, abilityRecord} };
+
+    int32_t pid = 5678; // mismatched pid
+    int64_t extendTime = 60 * 1000 * 1000; // 60s in microseconds
+    auto ret = mgr->ExtendGamePreLaunchTimeout(pid, extendTime);
+    EXPECT_EQ(ret, ERR_NOT_GAME_PRELOAD_STATE);
+    EXPECT_TRUE(mgr->extendTaskMap_.empty());
+    // Clear flag so no detached task body triggers
+    abilityRecord->SetGameSAPreLaunch(false);
+}
+
+/**
+ * @tc.name: ExtendGamePreLaunchTimeout_006
+ * @tc.desc: sessionAbilityMap_ contains a nullptr entry followed by a valid prelaunch ability;
+ *           the nullptr entry is skipped and the valid one is selected, returning ERR_OK.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, ExtendGamePreLaunchTimeout_006, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->SetGameSAPreLaunch(true);
+    abilityRecord->SetPid(1234);
+    abilityRecord->sessionInfo_ = sptr<SessionInfo>::MakeSptr();
+    // First entry is nullptr (skipped), second entry is the valid prelaunch ability
+    mgr->sessionAbilityMap_ = { {1, nullptr}, {2, abilityRecord} };
+
+    MyFlag::ffrtSubmitFlag_ = 0;
+    int32_t pid = 1234;
+    int64_t extendTime = 60 * 1000 * 1000; // 60s in microseconds
+    auto ret = mgr->ExtendGamePreLaunchTimeout(pid, extendTime);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_GE(MyFlag::ffrtSubmitFlag_, 1);
+    EXPECT_EQ(mgr->extendTaskMap_.size(), 1);
+    // Clear flag so detached task body skips NotifyCompleteGamePreLaunch
+    abilityRecord->SetGameSAPreLaunch(false);
+    usleep(TIMEOUT_VALUE);
+}
+
+/**
+ * @tc.name: CleanupExtendTask_001
+ * @tc.desc: CleanupExtendTask clears the handle from extendTaskMap_.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, CleanupExtendTask_001, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    int32_t recordId = 42;
+    mgr->extendTaskMap_[recordId] = ffrt::task_handle{};
+    EXPECT_EQ(mgr->extendTaskMap_.size(), 1);
+    mgr->CleanupExtendTask(recordId);
+    EXPECT_TRUE(mgr->extendTaskMap_.empty());
+}
+
+/**
+ * @tc.name: CleanupExtendTask_002
+ * @tc.desc: CleanupExtendTask on non-existent record is a safe no-op.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, CleanupExtendTask_002, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    // No entry for recordId 999
+    mgr->CleanupExtendTask(999);
+    EXPECT_TRUE(mgr->extendTaskMap_.empty());
+}
+
+/**
+ * @tc.name: HandleAbilityRecordReused_GameSAPrelaunch_ExtendTaskCleanup
+ * @tc.desc: User launch (HandleAbilityRecordReused) with GameSAPreLaunch cleans up extend task.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, HandleAbilityRecordReused_GameSAPrelaunch_ExtendTaskCleanup,
+    TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->SetGameSAPreLaunch(true);
+
+    // Set up matching session tokens
+    auto session = sptr<Rosen::Session>::MakeSptr(Rosen::SessionInfo());
+    auto recordSessionInfo = sptr<SessionInfo>::MakeSptr();
+    recordSessionInfo->sessionToken = session->AsObject();
+    abilityRecord->sessionInfo_ = recordSessionInfo;
+    mgr->sessionAbilityMap_ = { {1, abilityRecord} };
+
+    // Pre-populate extendTaskMap_ to simulate a pending delayed task
+    mgr->extendTaskMap_[abilityRecord->GetRecordId()] = ffrt::task_handle{};
+    EXPECT_EQ(mgr->extendTaskMap_.size(), 1);
+
+    // Mock app mgr
+    auto originAppMgr = AppMgrUtil::appMgr_;
+    auto appmgr = sptr<AppExecFwk::MockAppMgrService>::MakeSptr();
+    AppMgrUtil::appMgr_ = appmgr;
+
+    SessionInfo sessionInfo;
+    sessionInfo.sessionToken = session->AsObject();
+    sessionInfo.persistentId = 1;
+    sessionInfo.reuseDelegatorWindow = false;
+
+    // HandleAbilityRecordReused may return nullptr if SetGameSAPrelaunch fails in test env,
+    // but CleanupExtendTask runs before SetGameSAPrelaunch
+    auto result = mgr->HandleAbilityRecordReused(abilityRecord, sessionInfo, abilityRequest);
+
+    // Verify extend task was cleaned up (CleanupExtendTask ran before SetGameSAPrelaunch)
+    EXPECT_TRUE(mgr->extendTaskMap_.empty());
+    // Flag should be cleared regardless of SetGameSAPrelaunch result
+    EXPECT_FALSE(abilityRecord->IsGameSAPreLaunch());
+
+    AppMgrUtil::appMgr_ = originAppMgr;
+}
+
+/**
+ * @tc.name: EraseAbilityRecord_ExtendTaskCleanup
+ * @tc.desc: EraseAbilityRecord cleans up extend task as safety net.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, EraseAbilityRecord_ExtendTaskCleanup, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->sessionInfo_ = sptr<SessionInfo>::MakeSptr();
+    mgr->sessionAbilityMap_ = { {1, abilityRecord} };
+
+    // Pre-populate extendTaskMap_
+    mgr->extendTaskMap_[abilityRecord->GetRecordId()] = ffrt::task_handle{};
+    EXPECT_EQ(mgr->extendTaskMap_.size(), 1);
+
+    mgr->EraseAbilityRecord(abilityRecord);
+
+    // Verify extend task was cleaned up
+    EXPECT_TRUE(mgr->extendTaskMap_.empty());
+    // Verify ability record was removed from sessionAbilityMap_
+    EXPECT_TRUE(mgr->sessionAbilityMap_.empty());
+}
+
+/**
  * @tc.name: SetProcessPrepareExit_001
  * @tc.desc: SetProcessPrepareExit
  * @tc.type: FUNC

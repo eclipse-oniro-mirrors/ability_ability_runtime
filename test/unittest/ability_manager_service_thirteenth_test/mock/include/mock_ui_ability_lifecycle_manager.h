@@ -134,6 +134,15 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     int32_t SetGamePreLaunchCompleteTime(int64_t completeTime);
+
+    /**
+     * ExtendGamePreLaunchTimeout, reset the game pre-launch foreground countdown.
+     *
+     * @param pid The process ID of the game pre-launch ability to extend.
+     * @param extendTime The extended time in microseconds for the game pre-launch.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t ExtendGamePreLaunchTimeout(int32_t pid, int64_t extendTime);
     
     /**
      * @brief Cancel game prelaunch and kill the game process.

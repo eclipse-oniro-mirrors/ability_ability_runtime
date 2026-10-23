@@ -219,6 +219,8 @@ constexpr size_t OFFSET = 32;
 constexpr int32_t PENG_LAI_UID = 7655;
 constexpr int32_t TASKMGR_UID = 7005;
 constexpr int32_t RSS_UID = 1096;
+constexpr int64_t MIN_EXTEND_TIME = 30 * 1000 * 1000; // 30s in microseconds
+constexpr int64_t MAX_EXTEND_TIME = 4LL * 60 * 60 * 1000 * 1000; // 4h in microseconds
 constexpr const char* IS_DELEGATOR_CALL = "isDelegatorCall";
 
 constexpr int32_t SHORT_REPOLL_TIME_MICRO_SECONDS = 200000;
@@ -15027,6 +15029,28 @@ int32_t AbilityManagerService::SetGamePreLaunchCompleteTime(int32_t userId, int6
     CHECK_POINTER_AND_RETURN(uiAbilityManager, ERR_INVALID_VALUE);
 
     return uiAbilityManager->SetGamePreLaunchCompleteTime(completeTime);
+}
+
+int32_t AbilityManagerService::ExtendGamePreLaunchTimeout(int32_t pid, int64_t extendTime)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "ExtendGamePreLaunchTimeout called, pid: %{public}d, extendTime: %{public}" PRId64,
+        pid, extendTime);
+
+    if (IPCSkeleton::GetCallingUid() != AbilityRuntime::GlobalConstant::GAME_SA_UID) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "verify game SA failed");
+        return CHECK_PERMISSION_FAILED;
+    }
+
+    if (extendTime <= MIN_EXTEND_TIME || extendTime >= MAX_EXTEND_TIME) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid extendTime, out of range (30s, 4h)");
+        return ERR_INVALID_VALUE;
+    }
+
+    auto uiAbilityManager = GetUIAbilityManagerByUid(IPCSkeleton::GetCallingUid());
+    CHECK_POINTER_AND_RETURN(uiAbilityManager, ERR_INVALID_VALUE);
+
+    return uiAbilityManager->ExtendGamePreLaunchTimeout(pid, extendTime);
 }
 
 int AbilityManagerService::PrepareTerminateAbilityBySCB(const sptr<SessionInfo> &sessionInfo, bool &isTerminate)

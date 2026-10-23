@@ -152,6 +152,15 @@ public:
     int32_t SetGamePreLaunchCompleteTime(int64_t completeTime);
 
     /**
+     * ExtendGamePreLaunchTimeout, reset the game pre-launch foreground countdown.
+     *
+     * @param pid The process ID of the game pre-launch ability to extend.
+     * @param extendTime The extended time in microseconds for the game pre-launch.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t ExtendGamePreLaunchTimeout(int32_t pid, int64_t extendTime);
+
+    /**
      * Notify SCB to minimize UIAbility
      *
      * @param token ability's token
@@ -1412,6 +1421,16 @@ private:
 
     mutable ffrt::mutex abilitySessionInfoMapLock_;
     std::unordered_map<int32_t, AbilitySessionInfo> abilitySessionInfoMap_;
+
+    /**
+     * Cleanup the game pre-launch extend delayed task handle for the given ability record.
+     *
+     * @param abilityRecordId The record id of the ability.
+     */
+    void CleanupExtendTask(int32_t abilityRecordId);
+
+    ffrt::mutex extendTaskMutex_;
+    std::unordered_map<int32_t, ffrt::task_handle> extendTaskMap_; // for game pre-launch extend delayed task
 };
 }  // namespace AAFwk
 }  // namespace OHOS

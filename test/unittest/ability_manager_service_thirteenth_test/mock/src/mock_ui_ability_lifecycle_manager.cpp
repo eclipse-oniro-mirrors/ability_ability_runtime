@@ -222,6 +222,11 @@ int32_t UIAbilityLifecycleManager::SetGamePreLaunchCompleteTime(int64_t complete
     return 0;
 }
 
+int32_t UIAbilityLifecycleManager::ExtendGamePreLaunchTimeout(int32_t pid, int64_t extendTime)
+{
+    return 0;
+}
+
 int32_t UIAbilityLifecycleManager::NotifyCancelGamePreLaunch(const sptr<IRemoteObject> callerToken)
 {
     return 0;

@@ -3831,6 +3831,64 @@ HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_SetGamePreLaunchCompleteTi
 
 /*
  * Feature: AbilityManagerService
+ * Function: ExtendGamePreLaunchTimeout
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerProxy ExtendGamePreLaunchTimeout
+ * EnvConditions: NA
+ * CaseDescription: Verify ExtendGamePreLaunchTimeout with valid parameters
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_ExtendGamePreLaunchTimeout_001, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(NO_ERROR));
+    int32_t pid = 100;
+    int64_t extendTime = 60 * 1000 * 1000; // 60s in microseconds
+    auto res = proxy_->ExtendGamePreLaunchTimeout(pid, extendTime);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: ExtendGamePreLaunchTimeout
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerProxy ExtendGamePreLaunchTimeout
+ * EnvConditions: NA
+ * CaseDescription: Verify ExtendGamePreLaunchTimeout when SendRequest fails
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_ExtendGamePreLaunchTimeout_002, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeErrorSendRequest));
+    int32_t pid = 100;
+    int64_t extendTime = 60 * 1000 * 1000; // 60s in microseconds
+    auto res = proxy_->ExtendGamePreLaunchTimeout(pid, extendTime);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: ExtendGamePreLaunchTimeout
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerProxy ExtendGamePreLaunchTimeout
+ * EnvConditions: NA
+ * CaseDescription: Verify ExtendGamePreLaunchTimeout sends the correct IPC code
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_ExtendGamePreLaunchTimeout_003, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+    int32_t pid = 100;
+    int64_t extendTime = 60 * 1000 * 1000; // 60s in microseconds
+    auto res = proxy_->ExtendGamePreLaunchTimeout(pid, extendTime);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(mock_->code_, static_cast<uint32_t>(AbilityManagerInterfaceCode::EXTEND_GAME_PRELAUNCH_TIMEOUT));
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: NotifyCancelGamePreLaunch
  * SubFunction: NA
  * FunctionPoints: AbilityManagerProxy NotifyCancelGamePreLaunch
