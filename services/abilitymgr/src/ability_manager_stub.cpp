@@ -1336,17 +1336,18 @@ int AbilityManagerStub::BackToCallerInner(MessageParcel &data, MessageParcel &re
         token = data.ReadRemoteObject();
     }
     int resultCode = data.ReadInt32();
-    Want *resultWant = data.ReadParcelable<Want>();
-    if (resultWant != nullptr) {
-        SanitizeWantParams(*resultWant);
-        resultWant->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
+    std::unique_ptr<Want> resultWant(data.ReadParcelable<Want>());
+    if (resultWant == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "resultWant null");
+        return ERR_INVALID_VALUE;
     }
+    SanitizeWantParams(*resultWant);
+    resultWant->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
     int64_t callerRequestCode = data.ReadInt64();
-    int32_t result = BackToCallerAbilityWithResult(token, resultCode, resultWant, callerRequestCode);
+    bool isBackToCallerApp = data.ReadBool();
+    int32_t result = BackToCallerAbilityWithResult(token, resultCode, *resultWant, callerRequestCode,
+        isBackToCallerApp);
     reply.WriteInt32(result);
-    if (resultWant != nullptr) {
-        delete resultWant;
-    }
     return NO_ERROR;
 }
 
@@ -5869,7 +5870,16 @@ int32_t AbilityManagerStub::GetKioskStatusInner(MessageParcel &data, MessageParc
         return ERR_WRITE_KIOSK_STATUS_FAILED;
     }
 
-    if (!reply.WriteRemoteObject(kioskStatus.kioskToken_)) {
+    // kioskToken_ is optional: WriteRemoteObject(nullptr) always returns false without writing any
+    // byte, so an explicit bool flag is written first to tell the peer whether a binder object
+    // follows. AbilityManagerProxy::GetKioskStatus reads the flag and only calls ReadRemoteObject()
+    // when it is true. Keep this write order (flag, [token], result) in sync with the proxy side.
+    bool hasToken = (kioskStatus.kioskToken_ != nullptr);
+    if (!reply.WriteBool(hasToken)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write has token flag fail");
+        return ERR_WRITE_CALLER_TOKEN_FAILED;
+    }
+    if (hasToken && !reply.WriteRemoteObject(kioskStatus.kioskToken_)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write token fail");
         return ERR_WRITE_CALLER_TOKEN_FAILED;
     }

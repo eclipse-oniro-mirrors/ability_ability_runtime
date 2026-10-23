@@ -647,10 +647,11 @@ public:
      * @param resultCode, the resultCode of the ability to terminate.
      * @param resultWant, the Want of the ability to return.
      * @param callerRequestCode, the requestCode of caller ability.
+     * @param isBackToCallerApp, whether the request is from backToCallerAppWithResult.
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int BackToCallerAbilityWithResult(const sptr<IRemoteObject> &token, int resultCode,
-        const Want *resultWant, int64_t callerRequestCode) override;
+        const Want &resultWant, int64_t callerRequestCode, bool isBackToCallerApp = false) override;
 
     /**
      * TerminateAbility, terminate the special ui extension ability.
@@ -2954,6 +2955,13 @@ protected:
 private:
     int GetTopAbilityInner(sptr<IRemoteObject> &token, uint64_t displayId, int32_t userId);
 
+    /**
+     * @brief Restart app with window preserved via ISession for AppRecovery.
+     * @param want The restart want (already validated by ScheduleRecoverAbility).
+     * @param record The ability record of the app being recovered.
+     */
+    void RestartAppWithWindowForRecovery(AAFwk::Want &want, const std::shared_ptr<AbilityRecord> &record);
+    
     /**
      * Run the post-check interceptors for a prelaunch request and report a fault event on failure.
      * Extracted so the failure/redirect paths are unit-testable without bundle resolution.

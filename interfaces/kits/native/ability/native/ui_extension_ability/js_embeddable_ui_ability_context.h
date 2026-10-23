@@ -44,6 +44,7 @@ public:
     static napi_value TerminateSelf(napi_env env, napi_callback_info info);
     static napi_value TerminateSelfWithResult(napi_env env, napi_callback_info info);
     static napi_value BackToCallerAbilityWithResult(napi_env env, napi_callback_info info);
+    static napi_value BackToCallerAppWithResult(napi_env env, napi_callback_info info);
     static napi_value CreateJsEmbeddableUIAbilityContext(napi_env env, std::shared_ptr<AbilityContext> uiAbiContext,
         std::shared_ptr<UIExtensionContext> uiExtContext, int32_t screenMode);
     static napi_value StartAbilityAsCaller(napi_env env, napi_callback_info info);
@@ -88,6 +89,7 @@ private:
     napi_value OnTerminateSelf(napi_env env, NapiCallbackInfo& info);
     napi_value OnTerminateSelfWithResult(napi_env env, NapiCallbackInfo& info);
     napi_value OnBackToCallerAbilityWithResult(napi_env env, NapiCallbackInfo& info);
+    napi_value OnBackToCallerAppWithResult(napi_env env, NapiCallbackInfo& info);
     napi_value OnStartAbilityAsCaller(napi_env env, NapiCallbackInfo& info);
     napi_value OnStartAbilityWithAccount(napi_env env, NapiCallbackInfo& info);
     napi_value OnStartAbilityByCall(napi_env env, NapiCallbackInfo& info);

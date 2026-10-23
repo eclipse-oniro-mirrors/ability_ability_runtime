@@ -18,6 +18,7 @@
 #define private public
 #include "app_mgr_service_inner.h"
 #include "appfreeze_manager.h"
+#include "app_preloader.h"
 #include "app_running_record.h"
 #include "remote_client_manager.h"
 #undef private
@@ -7631,6 +7632,157 @@ HWTEST_F(AppMgrServiceInnerTest, ChangeAppGcState_004, TestSize.Level1)
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
     MyFlag::flag_ = 0;
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: PreloadApplication_AppIndexOutOfRange_1001
+ * @tc.desc: Test appIndex=1001 exceeds MAX_APP_CLONE_INDEX, should return ERR_INVALID_VALUE.
+ * @tc.type: FUNC
+ * @tc.Function: PreloadApplication
+ */
+HWTEST_F(AppMgrServiceInnerTest, PreloadApplication_AppIndexOutOfRange_1001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "PreloadApplication_AppIndexOutOfRange_1001 start");
+    AAFwk::IsMockSaCall::IsMockSaCallWithPermission();
+    MyFlag::flag_ = 1;
+    auto appMgrServiceInner = std::make_shared<AppExecFwk::AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    std::string bundleName = "com.acts.preloadtest";
+    int32_t userId = 100;
+    AppExecFwk::PreloadMode preloadMode = AppExecFwk::PreloadMode::PRE_MAKE;
+    int32_t appIndex = 1001;
+    int32_t ret = appMgrServiceInner->PreloadApplication(bundleName, userId, preloadMode, appIndex);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    AAFwk::MyFlag::flag_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "PreloadApplication_AppIndexOutOfRange_1001 end");
+}
+
+/**
+ * @tc.name: PreloadApplication_AppIndexOutOfRange_5000
+ * @tc.desc: Test appIndex=5000 exceeds MAX_APP_CLONE_INDEX and is not PC_TABLET_INDEX.
+ * @tc.type: FUNC
+ * @tc.Function: PreloadApplication
+ */
+HWTEST_F(AppMgrServiceInnerTest, PreloadApplication_AppIndexOutOfRange_5000, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "PreloadApplication_AppIndexOutOfRange_5000 start");
+    AAFwk::IsMockSaCall::IsMockSaCallWithPermission();
+    MyFlag::flag_ = 1;
+    auto appMgrServiceInner = std::make_shared<AppExecFwk::AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    std::string bundleName = "com.acts.preloadtest";
+    int32_t userId = 100;
+    AppExecFwk::PreloadMode preloadMode = AppExecFwk::PreloadMode::PRE_MAKE;
+    int32_t appIndex = 5000;
+    int32_t ret = appMgrServiceInner->PreloadApplication(bundleName, userId, preloadMode, appIndex);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    AAFwk::MyFlag::flag_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "PreloadApplication_AppIndexOutOfRange_5000 end");
+}
+
+/**
+ * @tc.name: PreloadApplication_AppIndexOutOfRange_NegativeTwo
+ * @tc.desc: Test appIndex=-2 (not -1 dual mode) should return ERR_INVALID_VALUE.
+ * @tc.type: FUNC
+ * @tc.Function: PreloadApplication
+ */
+HWTEST_F(AppMgrServiceInnerTest, PreloadApplication_AppIndexOutOfRange_NegativeTwo, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "PreloadApplication_AppIndexOutOfRange_NegativeTwo start");
+    AAFwk::IsMockSaCall::IsMockSaCallWithPermission();
+    MyFlag::flag_ = 1;
+    auto appMgrServiceInner = std::make_shared<AppExecFwk::AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    std::string bundleName = "com.acts.preloadtest";
+    int32_t userId = 100;
+    AppExecFwk::PreloadMode preloadMode = AppExecFwk::PreloadMode::PRE_MAKE;
+    int32_t appIndex = -2;
+    int32_t ret = appMgrServiceInner->PreloadApplication(bundleName, userId, preloadMode, appIndex);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    AAFwk::MyFlag::flag_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "PreloadApplication_AppIndexOutOfRange_NegativeTwo end");
+}
+
+/**
+ * @tc.name: PreloadApplication_CloneAppIndex_PassesRangeCheck
+ * @tc.desc: Test appIndex=1 passes range check (not ERR_INVALID_VALUE from range check),
+ *           reaches preload flow (returns bundle not exist due to null BMS mock).
+ * @tc.type: FUNC
+ * @tc.Function: PreloadApplication
+ */
+HWTEST_F(AppMgrServiceInnerTest, PreloadApplication_CloneAppIndex_PassesRangeCheck, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "PreloadApplication_CloneAppIndex_PassesRangeCheck start");
+    AAFwk::IsMockSaCall::IsMockSaCallWithPermission();
+    MyFlag::flag_ = 1;
+    auto appMgrServiceInner = std::make_shared<AppExecFwk::AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    appMgrServiceInner->appPreloader_ = std::make_shared<AppExecFwk::AppPreloader>(nullptr);
+
+    std::string bundleName = "com.acts.preloadtest";
+    int32_t userId = 100;
+    AppExecFwk::PreloadMode preloadMode = AppExecFwk::PreloadMode::PRE_MAKE;
+    int32_t appIndex = 1;
+    int32_t ret = appMgrServiceInner->PreloadApplication(bundleName, userId, preloadMode, appIndex);
+    EXPECT_NE(ret, ERR_PERMISSION_DENIED);
+    EXPECT_NE(ret, ERR_INVALID_VALUE);
+    AAFwk::MyFlag::flag_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "PreloadApplication_CloneAppIndex_PassesRangeCheck end");
+}
+
+/**
+ * @tc.name: PreloadApplication_AppIndex0_PassesRangeCheck
+ * @tc.desc: Test appIndex=0 passes range check (regression — behavior unchanged).
+ * @tc.type: FUNC
+ * @tc.Function: PreloadApplication
+ */
+HWTEST_F(AppMgrServiceInnerTest, PreloadApplication_AppIndex0_PassesRangeCheck, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "PreloadApplication_AppIndex0_PassesRangeCheck start");
+    AAFwk::IsMockSaCall::IsMockSaCallWithPermission();
+    MyFlag::flag_ = 1;
+    auto appMgrServiceInner = std::make_shared<AppExecFwk::AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    appMgrServiceInner->appPreloader_ = std::make_shared<AppExecFwk::AppPreloader>(nullptr);
+
+    std::string bundleName = "com.acts.preloadtest";
+    int32_t userId = 100;
+    AppExecFwk::PreloadMode preloadMode = AppExecFwk::PreloadMode::PRE_MAKE;
+    int32_t appIndex = 0;
+    int32_t ret = appMgrServiceInner->PreloadApplication(bundleName, userId, preloadMode, appIndex);
+    EXPECT_NE(ret, ERR_PERMISSION_DENIED);
+    EXPECT_NE(ret, ERR_INVALID_VALUE);
+    AAFwk::MyFlag::flag_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "PreloadApplication_AppIndex0_PassesRangeCheck end");
+}
+
+/**
+ * @tc.name: PreloadApplication_PCTabletIndex_PassesRangeCheck
+ * @tc.desc: Test appIndex=PC_TABLET_INDEX(10000) passes range check.
+ * @tc.type: FUNC
+ * @tc.Function: PreloadApplication
+ */
+HWTEST_F(AppMgrServiceInnerTest, PreloadApplication_PCTabletIndex_PassesRangeCheck, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "PreloadApplication_PCTabletIndex_PassesRangeCheck start");
+    AAFwk::IsMockSaCall::IsMockSaCallWithPermission();
+    MyFlag::flag_ = 1;
+    auto appMgrServiceInner = std::make_shared<AppExecFwk::AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    appMgrServiceInner->appPreloader_ = std::make_shared<AppExecFwk::AppPreloader>(nullptr);
+
+    std::string bundleName = "com.acts.preloadtest";
+    int32_t userId = 100;
+    AppExecFwk::PreloadMode preloadMode = AppExecFwk::PreloadMode::PRE_MAKE;
+    int32_t appIndex = 10000;
+    int32_t ret = appMgrServiceInner->PreloadApplication(bundleName, userId, preloadMode, appIndex);
+    EXPECT_NE(ret, ERR_PERMISSION_DENIED);
+    EXPECT_NE(ret, ERR_INVALID_VALUE);
+    AAFwk::MyFlag::flag_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "PreloadApplication_PCTabletIndex_PassesRangeCheck end");
 }
 
 } // namespace AppExecFwk

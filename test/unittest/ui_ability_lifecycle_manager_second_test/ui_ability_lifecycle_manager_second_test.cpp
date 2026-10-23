@@ -669,7 +669,8 @@ HWTEST_F(UIAbilityLifecycleManagerSecondTest, BackToCallerAbilityWithResult_007,
 {
     auto mgr = std::make_unique<UIAbilityLifecycleManager>();
 
-    auto ret = mgr->BackToCallerAbilityWithResult(nullptr, 1, nullptr, 0);
+    Want resultWant;
+    auto ret = mgr->BackToCallerAbilityWithResult(nullptr, 1, resultWant, 0);
 
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
 }
@@ -694,7 +695,8 @@ HWTEST_F(UIAbilityLifecycleManagerSecondTest, BackToCallerAbilityWithResult_008,
     requestInfo.pid = 100;
     requestInfo.backFlag = false;
 
-    auto ret = mgr->BackToCallerAbilityWithResult(abilityRecord, 0, nullptr, callerRequestCode);
+    Want resultWant;
+    auto ret = mgr->BackToCallerAbilityWithResult(abilityRecord, 0, resultWant, callerRequestCode);
 
     EXPECT_EQ(ret, ERR_CALLER_NOT_EXISTS);
 }
