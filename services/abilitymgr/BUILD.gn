@@ -147,6 +147,7 @@ ohos_shared_library("abilityms") {
   ]
   public_configs = [ ":abilityms_cli_tool_function_include" ]
   include_dirs = [
+    "${ability_runtime_services_path}/abilitymgr/include",
     "${ability_runtime_services_path}/appmgr/include",
     "${ability_runtime_services_path}/appdfr/include",
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_service_extension_ability/connection",
