@@ -21,6 +21,7 @@
 #include "ani.h"
 #include "app_state_data.h"
 #include "ets_runtime.h"
+#include "focused_application_info.h"
 #include "keep_alive_info.h"
 #include "process_data.h"
 #include "running_multi_info.h"
@@ -62,6 +63,8 @@ ani_object WrapAbilityFirstFrameStateData(ani_env *env,
 bool SetAbilityFirstFrameStateData(ani_env *env, ani_object object,
     const AppExecFwk::AbilityFirstFrameStateData &abilityFirstFrameStateData);
 #endif
+ani_object WrapFocusedApplicationInfo(ani_env *env,
+    const AppExecFwk::FocusedApplicationInfo &focusedApplicationInfo);
 bool AttachAniEnv(ani_vm *etsVm, ani_env *&env);
 void DetachAniEnv(ani_vm *etsVm);
 void ReleaseObjectReference(ani_vm *etsVm, ani_ref etsObjRef);

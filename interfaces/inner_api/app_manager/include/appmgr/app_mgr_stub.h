@@ -164,6 +164,8 @@ private:
     int32_t HandleRegisterProcessLifecycleObserver(MessageParcel &data, MessageParcel &reply);
     int32_t HandleUnregisterProcessLifecycleObserver(MessageParcel &data, MessageParcel &reply);
 
+    int32_t HandleRegisterFocusedApplicationObserver(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleUnregisterFocusedApplicationObserver(MessageParcel &data, MessageParcel &reply);
     int32_t HandleIsApplicationRunning(MessageParcel &data, MessageParcel &reply);
 #ifdef SUPPORT_CHILD_PROCESS
     int32_t HandleStartChildProcess(MessageParcel &data, MessageParcel &reply);

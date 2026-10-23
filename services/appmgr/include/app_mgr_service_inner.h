@@ -35,6 +35,7 @@
 #include "app_debug_manager.h"
 #include "app_foreground_state_observer_interface.h"
 #include "process_lifecycle_observer_interface.h"
+#include "focused_application_observer_interface.h"
 #include "app_malloc_info.h"
 #include "app_mgr_constants.h"
 #include "app_mgr_event.h"
@@ -1232,6 +1233,8 @@ public:
 #ifdef SUPPORT_SCREEN
     void HandleFocused(const sptr<OHOS::Rosen::FocusChangeInfo> &focusChangeInfo);
     void HandleUnfocused(const sptr<OHOS::Rosen::FocusChangeInfo> &focusChangeInfo);
+    void NotifyFocusedApplicationChanged(int32_t focusedUid, int32_t unfocusedUid,
+        uint64_t displayGroupId, const std::shared_ptr<AppRunningRecord> &appRecord);
 
     /**
      * Handle window visibility changed.
@@ -1511,6 +1514,8 @@ public:
 
     int32_t RegisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer);
     int32_t UnregisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer);
+    int32_t RegisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer);
+    int32_t UnregisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer);
 
 #ifdef SUPPORT_CHILD_PROCESS
     /**

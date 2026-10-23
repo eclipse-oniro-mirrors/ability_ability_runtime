@@ -17,7 +17,7 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 ohos_shared_library("appmanager") {
   branch_protector_ret = "pac_ret"
 
-  include_dirs = ["${ability_runtime_utils_path}/global/common/include"]
+  include_dirs = [ "${ability_runtime_utils_path}/global/common/include" ]
 
   if (ability_runtime_graphics) {
     include_dirs += [ "./" ]
@@ -32,7 +32,10 @@ ohos_shared_library("appmanager") {
   ]
 
   if (ability_runtime_graphics) {
-    sources += [ "js_ability_first_frame_state_observer.cpp" ]
+    sources += [
+      "js_ability_first_frame_state_observer.cpp",
+      "js_focused_application_observer.cpp",
+    ]
   }
 
   configs = [
@@ -41,12 +44,12 @@ ohos_shared_library("appmanager") {
   ]
 
   deps = [
-    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/ability_manager",
     "${ability_runtime_innerkits_path}/ability_manager:ability_start_options",
-    "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_innerkits_path}/app_manager",
     "${ability_runtime_innerkits_path}/error_utils:ability_runtime_error_util",
-    "${ability_runtime_innerkits_path}/runtime:runtime",
-    "${ability_runtime_napi_path}/inner/napi_common:napi_common",
+    "${ability_runtime_innerkits_path}/runtime",
+    "${ability_runtime_napi_path}/inner/napi_common",
     "${ability_runtime_native_path}/ability/native:ability_business_error",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_utils_path}/global/common:runtime_utils",
@@ -59,11 +62,10 @@ ohos_shared_library("appmanager") {
     "eventhandler:libeventhandler",
     "hilog:libhilog",
     "ipc:ipc_core",
+    "libuv:uv",
     "napi:ace_napi",
     "node:node_header_notice",
-    "libuv:uv",
     "samgr:samgr_proxy",
-    "node:node_header_notice",
   ]
   defines = []
   if (ability_runtime_child_process) {

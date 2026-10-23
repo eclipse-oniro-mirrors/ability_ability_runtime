@@ -1901,6 +1901,26 @@ int32_t AppMgrService::UnregisterProcessLifecycleObserver(const sptr<IProcessLif
     return appMgrServiceInner_->UnregisterProcessLifecycleObserver(observer);
 }
 
+int32_t AppMgrService::RegisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "not ready");
+        return ERR_INVALID_OPERATION;
+    }
+    return appMgrServiceInner_->RegisterFocusedApplicationObserver(observer);
+}
+ 
+int32_t AppMgrService::UnregisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "not ready");
+        return ERR_INVALID_OPERATION;
+    }
+    return appMgrServiceInner_->UnregisterFocusedApplicationObserver(observer);
+}
+
 int32_t AppMgrService::IsApplicationRunning(const std::string &bundleName, bool &isRunning)
 {
     if (!IsReady()) {

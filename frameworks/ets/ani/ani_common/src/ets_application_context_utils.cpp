@@ -332,7 +332,7 @@ void EtsApplicationContextUtils::OnNativeOnAppProcessStateChangeSync(ani_env *en
         TAG_LOGE(AAFwkTag::APPKIT, "RegisterProcessLifecycleObserver failed: %{public}d", ret);
         appProcessStateObserver_ = nullptr;
         if (ret == ERR_ABILITY_RUNTIME_EXTERNAL_PROCESS_LIFECYCLE_OBSERVER_EXCEED_LIMIT) {
-            EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_PROCESS_LIFECYCLE_OBSERVER_EXCEED_LIMIT);
+            EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_REGISTERED_FOCUS_OBSERVER_EXCEED_LIMIT);
         } else {
             EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
         }
