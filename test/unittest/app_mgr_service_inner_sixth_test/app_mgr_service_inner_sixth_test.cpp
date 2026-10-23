@@ -669,7 +669,7 @@ HWTEST_F(AppMgrServiceInnerSixthTest, TryToUseImageInfo_ShouldReturnErrOkWhenApp
     std::shared_ptr<AppRunningRecord> appRecord;
     appMgrServiceInner->appRunningManager_ = nullptr;
     EXPECT_EQ(appMgrServiceInner->TryToUseImageInfo(nullptr, nullptr, nullptr, "callerKey", appIndex, processName,
-        instanceKey, specifiedProcessFlag, customProcessFlag, appRecord), ERR_OK);
+        instanceKey, specifiedProcessFlag, customProcessFlag, appRecord, false), ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "TryToUseImageInfo_ShouldReturnErrOkWhenAppRunningManagerIsNullptr end");
 }
 
@@ -693,7 +693,7 @@ HWTEST_F(AppMgrServiceInnerSixthTest, TryToUseImageInfo_ShouldReturnErrOkWhenIma
     appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
     auto appInfo = std::make_shared<ApplicationInfo>();
     EXPECT_EQ(appMgrServiceInner->TryToUseImageInfo(nullptr, appInfo, nullptr, "callerKey", appIndex, processName,
-        instanceKey, specifiedProcessFlag, customProcessFlag, appRecord), ERR_OK);
+        instanceKey, specifiedProcessFlag, customProcessFlag, appRecord, false), ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "TryToUseImageInfo_ShouldReturnErrOkWhenImageInfoNotExist end");
 }
 
@@ -723,7 +723,7 @@ HWTEST_F(AppMgrServiceInnerSixthTest, TryToUseImageInfo_ShouldReturnErrOkWhenIma
     PreloadRequest preloadRequest;
     appMgrServiceInner->PreAddImageInfo(bundleName, userId, appIndex, nullptr, preloadRequest);
     EXPECT_EQ(appMgrServiceInner->TryToUseImageInfo(nullptr, appInfo, nullptr, "callerKey", appIndex, processName,
-        instanceKey, specifiedProcessFlag, customProcessFlag, appRecord), ERR_OK);
+        instanceKey, specifiedProcessFlag, customProcessFlag, appRecord, false), ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "TryToUseImageInfo_ShouldReturnErrOkWhenImageInfoNotMatch end");
 }
 } // namespace AppExecFwk
