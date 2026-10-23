@@ -1097,6 +1097,9 @@ int AbilityManagerStub::OnRemoteRequestInnerTwentySecond(uint32_t code, MessageP
     if (interfaceCode == AbilityManagerInterfaceCode::QUERY_SKILL_TYPE) {
         return QuerySkillTypeInner(data, reply);
     }
+    if (interfaceCode == AbilityManagerInterfaceCode::EXTEND_GAME_PRELAUNCH_TIMEOUT) {
+        return ExtendGamePreLaunchTimeoutInner(data, reply);
+    }
     return ERR_CODE_NOT_EXIST;
 }
 
@@ -4423,6 +4426,18 @@ int32_t AbilityManagerStub::SetGamePreLaunchCompleteTimeInner(MessageParcel &dat
     int32_t userId = data.ReadInt32();
     int64_t completeTime = data.ReadInt64();
     ErrCode result = SetGamePreLaunchCompleteTime(userId, completeTime);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AbilityManagerStub::ExtendGamePreLaunchTimeoutInner(MessageParcel &data, MessageParcel &reply)
+{
+    int32_t pid = data.ReadInt32();
+    int64_t extendTime = data.ReadInt64();
+    ErrCode result = ExtendGamePreLaunchTimeout(pid, extendTime);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");
         return ERR_INVALID_VALUE;

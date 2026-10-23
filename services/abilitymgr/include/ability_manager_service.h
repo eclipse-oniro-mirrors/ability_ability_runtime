@@ -2160,6 +2160,15 @@ public:
     virtual int32_t SetGamePreLaunchCompleteTime(int32_t userId, int64_t completeTime) override;
 
     /**
+     * @brief Extend game prelaunch timeout. Resets the game pre-launch foreground countdown.
+     *
+     * @param pid Indicates the process ID of the game pre-launch ability to extend.
+     * @param extendTime The extended time in microseconds, must be in range (30s, 4h).
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t ExtendGamePreLaunchTimeout(int32_t pid, int64_t extendTime) override;
+
+    /**
      * PrepareTerminateAbilityBySCB, prepare to terminate ability by scb.
      *
      * @param sessionInfo the session info of the ability to start.

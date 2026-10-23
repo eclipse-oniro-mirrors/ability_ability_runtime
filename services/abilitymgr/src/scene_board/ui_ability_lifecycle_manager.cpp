@@ -27,6 +27,7 @@
 #include "dms_util.h"
 #include "display_util.h"
 #include "ffrt.h"
+#include "ffrt_inner.h"
 #include "foreground_app_connection_manager.h"
 #include "global_constant.h"
 #include "hidden_start_observer_manager.h"
@@ -411,6 +412,8 @@ UIAbilityRecordPtr UIAbilityLifecycleManager::HandleAbilityRecordReused(
         // Report game prelaunch user click event to RSS.
         ResSchedUtil::GetInstance().ReportGameClickToRSS(
             uiAbilityRecord->GetBundleName(), uiAbilityRecord->GetPid(), uiAbilityRecord->GetUid());
+        // Cancel the pending extend delayed task before clearing the prelaunch flag.
+        CleanupExtendTask(uiAbilityRecord->GetRecordId());
         // Clear the game SA prelaunch flag in AbilityRecord and AppRecord when reusing AbilityRecord.
         uiAbilityRecord->SetGameSAPreLaunch(false);
         int32_t ret = IN_PROCESS_CALL(DelayedSingleton<AppScheduler>::GetInstance()->SetGameSAPrelaunch(
@@ -1362,6 +1365,7 @@ int32_t UIAbilityLifecycleManager::NotifyCancelGamePreLaunch(const sptr<IRemoteO
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Ability is not a game SA prelaunch");
         return ERR_NOT_GAME_PRELOAD_STATE;
     }
+    CleanupExtendTask(abilityRecord->GetRecordId());
     // Kill the process
     auto pid = abilityRecord->GetPid();
     std::vector<pid_t> pids = { pid };
@@ -1396,6 +1400,8 @@ int32_t UIAbilityLifecycleManager::NotifyCompleteGamePreLaunch(const sptr<IRemot
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Ability is not a game SA prelaunch");
         return ERR_NOT_GAME_PRELOAD_STATE;
     }
+
+    CleanupExtendTask(abilityRecord->GetRecordId());
 
     // Clear the game SA prelaunch flag in AbilityRecord and AppRecord
     abilityRecord->SetGameSAPreLaunch(false);
@@ -1446,7 +1452,10 @@ void UIAbilityLifecycleManager::CompleteForegroundSuccess(const UIAbilityRecordP
                 selfObj->NotifyCompleteGamePreLaunch(abilityRecordObj->GetToken());
             }
         };
-        ffrt::submit(task, ffrt::task_attr().delay(gamePreLaunchCompleteTime_));
+        CleanupExtendTask(abilityRecord->GetRecordId());
+        auto handle = ffrt::submit_h(std::move(task), {}, {}, ffrt::task_attr().delay(gamePreLaunchCompleteTime_));
+        std::lock_guard<ffrt::mutex> lock(extendTaskMutex_);
+        extendTaskMap_[abilityRecord->GetRecordId()] = std::move(handle);
     }
 
     abilityRecord->SetShouldUpdateWant(true);
@@ -1588,11 +1597,69 @@ int32_t UIAbilityLifecycleManager::SetGamePreLaunchCompleteTime(int64_t complete
     return ERR_OK;
 }
 
+int32_t UIAbilityLifecycleManager::ExtendGamePreLaunchTimeout(int32_t pid, int64_t extendTime)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "ExtendGamePreLaunchTimeout called, pid: %{public}d, extendTime: %{public}" PRId64,
+        pid, extendTime);
+    std::shared_ptr<UIAbilityRecord> targetAbilityRecord;
+    {
+        std::lock_guard<ffrt::mutex> guard(sessionLock_);
+        for (auto &item : sessionAbilityMap_) {
+            if (item.second != nullptr && item.second->IsGameSAPreLaunch() && item.second->GetPid() == pid) {
+                targetAbilityRecord = item.second;
+                break;
+            }
+        }
+    }
+    if (targetAbilityRecord == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "no game SA prelaunch ability found");
+        return ERR_NOT_GAME_PRELOAD_STATE;
+    }
+
+    auto abilityRecordId = targetAbilityRecord->GetRecordId();
+    std::weak_ptr<UIAbilityRecord> weakAbilityRecord(targetAbilityRecord);
+    auto task = [self = weak_from_this(), weakAbilityRecord]() {
+        auto selfObj = self.lock();
+        auto abilityRecordObj = weakAbilityRecord.lock();
+        if (selfObj == nullptr || abilityRecordObj == nullptr) {
+            TAG_LOGW(AAFwkTag::ABILITYMGR, "UIAbilityLifecycleManager or abilityRecord invalid");
+            return;
+        }
+        if (abilityRecordObj->IsGameSAPreLaunch()) {
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "Execute NotifyCompleteGamePreLaunch for game SA prelaunch (extend)");
+            selfObj->NotifyCompleteGamePreLaunch(abilityRecordObj->GetToken());
+        }
+    };
+    CleanupExtendTask(abilityRecordId);
+    auto handle = ffrt::submit_h(std::move(task), {}, {}, ffrt::task_attr().delay(extendTime));
+    std::lock_guard<ffrt::mutex> lock(extendTaskMutex_);
+    extendTaskMap_[abilityRecordId] = std::move(handle);
+    return ERR_OK;
+}
+
+void UIAbilityLifecycleManager::CleanupExtendTask(int32_t abilityRecordId)
+{
+    std::lock_guard<ffrt::mutex> lock(extendTaskMutex_);
+    auto it = extendTaskMap_.find(abilityRecordId);
+    if (it != extendTaskMap_.end()) {
+        auto ret = ffrt::skip(it->second);
+        if (ret != 0) {
+            TAG_LOGW(AAFwkTag::ABILITYMGR, "CleanupExtendTask skip failed, ret=%{public}d, abilityRecordId=%{public}d",
+                ret, abilityRecordId);
+        }
+        extendTaskMap_.erase(it);
+    }
+}
+
 void UIAbilityLifecycleManager::EraseAbilityRecord(const UIAbilityRecordPtr &abilityRecord)
 {
     if (abilityRecord == nullptr) {
         return;
     }
+
+    // Clean up any pending extend delayed task as a safety net.
+    CleanupExtendTask(abilityRecord->GetRecordId());
 
     for (auto iter = sessionAbilityMap_.begin(); iter != sessionAbilityMap_.end(); iter++) {
         if (iter->second != nullptr && iter->second->GetToken() && abilityRecord->GetToken() &&
@@ -2691,6 +2758,9 @@ void UIAbilityLifecycleManager::CompleteTerminate(const UIAbilityRecordPtr &abil
         return;
     }
 
+    // Clean up any pending extend delayed task as a safety net.
+    CleanupExtendTask(abilityRecord->GetRecordId());
+
     // If this is a plugin ability, remove it from host's plugin list
     abilityRecord->PluginCompleteTerminate();
 
@@ -3007,6 +3077,7 @@ void UIAbilityLifecycleManager::OnAbilityDied(UIAbilityRecordPtr abilityRecord)
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null ability record");
         return;
     }
+    CleanupExtendTask(abilityRecord->GetRecordId());
     auto handler = DelayedSingleton<AbilityManagerService>::GetInstance()->GetEventHandler();
     CHECK_POINTER_LOG(handler, "Fail to get AbilityEventHandler.");
     if (abilityRecord->GetAbilityState() == AbilityState::INITIAL) {

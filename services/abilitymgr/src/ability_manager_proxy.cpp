@@ -8281,6 +8281,31 @@ int32_t AbilityManagerProxy::SetGamePreLaunchCompleteTime(int32_t userId, int64_
     return reply.ReadInt32();
 }
 
+int32_t AbilityManagerProxy::ExtendGamePreLaunchTimeout(int32_t pid, int64_t extendTime)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write token fail");
+        return ERR_WRITE_INTERFACE_TOKEN_FAILED;
+    }
+    if (!data.WriteInt32(pid)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write pid fail");
+        return ERR_WRITE_INT32_FAILED;
+    }
+    if (!data.WriteInt64(extendTime)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write extendTime fail");
+        return INNER_ERR;
+    }
+    auto ret = SendRequest(AbilityManagerInterfaceCode::EXTEND_GAME_PRELAUNCH_TIMEOUT, data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "send request error:%{public}d", ret);
+        return ret;
+    }
+    return reply.ReadInt32();
+}
+
 int32_t AbilityManagerProxy::StartSelfUIAbilityInChildProcess(
     const Want &want, const std::string &specifiedFlag, sptr<IRemoteObject> callerToken)
 {
