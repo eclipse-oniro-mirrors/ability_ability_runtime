@@ -31,6 +31,10 @@ enum class AttributionTool : int32_t {
     ABILITY = 4,
 };
 
+// Server-assigned monotonic id of a managed attribution; handed out to the registering
+// tool as the handle for later operations (e.g. unregister). 0 is the invalid sentinel.
+using AttributionId = int64_t;
+
 struct AttributionRecord {
     pid_t pid = -1;
     AttributionTool tool = AttributionTool::UNKNOWN;

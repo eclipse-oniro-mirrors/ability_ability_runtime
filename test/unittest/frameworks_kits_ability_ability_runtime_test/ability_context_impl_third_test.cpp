@@ -932,5 +932,23 @@ HWTEST_F(AbilityContextImplThirdTest, AbilityContextImplThirdTest_OnRequestFailu
     EXPECT_EQ(failureCode, 0);
     EXPECT_EQ(failureMessage, "A system error occurred");
 }
+
+/**
+ * @tc.number: AbilityContextImplThirdTest_BackToCallerAppWithResult_0100
+ * @tc.name: BackToCallerAppWithResult
+ * @tc.desc: Verify that the new interface flag is forwarded to the client.
+ */
+HWTEST_F(AbilityContextImplThirdTest, AbilityContextImplThirdTest_BackToCallerAppWithResult_0100,
+    Function | MediumTest | Level1)
+{
+    MyFlag::GetInstance()->SetBackToCallerApp(false);
+    AAFwk::Want want;
+    int resultCode = 100;
+    int64_t requestCode = 1;
+    auto err = context_->BackToCallerAbilityWithResult(want, resultCode, requestCode, true);
+    EXPECT_EQ(err, ERR_OK);
+    EXPECT_TRUE(MyFlag::GetInstance()->GetBackToCallerApp());
+    MyFlag::GetInstance()->SetBackToCallerApp(false);
+}
 } // namespace AppExecFwk
 } // namespace OHOS

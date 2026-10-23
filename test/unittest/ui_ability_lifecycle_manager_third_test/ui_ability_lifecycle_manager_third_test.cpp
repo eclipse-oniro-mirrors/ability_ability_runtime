@@ -2050,6 +2050,7 @@ HWTEST_F(UIAbilityLifecycleManagerThirdTest, NotifyStartupExceptionBySCB_Prelaun
     auto callRecord = CallRecord::CreateCallRecord(1, record->shared_from_this(), connect, nullptr);
     ASSERT_NE(callRecord, nullptr);
     callRecord->SetCallState(CallState::REQUESTING);
+    callRecord->SetPrelaunchFlag(true);
 
     record->callContainer_ = std::make_shared<CallContainer>();
     ASSERT_NE(record->callContainer_, nullptr);

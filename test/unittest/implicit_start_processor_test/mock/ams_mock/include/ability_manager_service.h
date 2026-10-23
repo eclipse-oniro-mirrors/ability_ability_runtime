@@ -25,6 +25,11 @@ class AbilityManagerService : public SystemAbility,
     public std::enable_shared_from_this<AbilityManagerService> {
     DECLARE_DELAYED_SINGLETON(AbilityManagerService)
 public:
+    // Recording for implicit start target assertions.
+    static int startAbilityInnerCount_;
+    static std::string lastStartAbilityInnerBundleName_;
+    static std::string lastStartAbilityInnerAbilityName_;
+
     int IsCallFromBackground(const AbilityRequest &request, bool &isBackgroundCall, bool fromNotification)
     {
         return ERR_OK;
@@ -59,6 +64,10 @@ public:
     }
     int StartAbilityInner(StartAbilityWrapParam &param)
     {
+        startAbilityInnerCount_++;
+        auto element = param.want.GetElement();
+        lastStartAbilityInnerBundleName_ = element.GetBundleName();
+        lastStartAbilityInnerAbilityName_ = element.GetAbilityName();
         return RESOLVE_ABILITY_ERR;
     }
     void OnStart() {}

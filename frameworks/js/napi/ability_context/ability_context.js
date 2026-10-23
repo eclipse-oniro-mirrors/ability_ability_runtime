@@ -181,6 +181,10 @@ class AbilityContext extends Context {
     return this.__context_impl__.backToCallerAbilityWithResult(abilityResult, requestCode);
   }
 
+  backToCallerAppWithResult(abilityResult, requestCode) {
+    return this.__context_impl__.backToCallerAppWithResult(abilityResult, requestCode);
+  }
+
   restoreWindowStage(contentStorage) {
     return this.__context_impl__.restoreWindowStage(contentStorage);
   }

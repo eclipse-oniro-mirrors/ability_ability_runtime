@@ -29,6 +29,7 @@
 #include "mock_multi_app_utils_status.h"
 #include "permission_constants.h"
 #include "permission_verification.h"
+#include "ability_manager_service.h"
 #include "utils/start_ability_utils.h"
 
 using namespace OHOS;
@@ -2056,6 +2057,9 @@ int32_t RunImplicitStartWithCandidates(const std::vector<AppExecFwk::AbilityInfo
     MockBundleMgrHelperStatus::queryAbilityInfos_ = candidates;
     PermissionVerification::verifyBackgroundCallPermissionRet_ = true;
     PermissionVerification::verifyCallingPermissionCount_ = 0;
+    AbilityManagerService::startAbilityInnerCount_ = 0;
+    AbilityManagerService::lastStartAbilityInnerBundleName_.clear();
+    AbilityManagerService::lastStartAbilityInnerAbilityName_.clear();
     auto processor = std::make_shared<ImplicitStartProcessor>();
     AbilityRequest request;
     request.want.SetAction("ohos.want.action.sendData");
@@ -2119,8 +2123,8 @@ HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_003, TestSi
     TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_003 start");
     PermissionVerification::verifyCallingPermissionRet_ = false;
     auto ret = RunImplicitStartWithCandidates({ MakeCandidateInfo("com.test.implicit", true) }, 1);
-    // Visible candidate short-circuits the gate before the permission call.
-    EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, 0);
+    // Permission is verified once up front; a visible candidate is never erased.
+    EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, 1);
     EXPECT_NE(ret, CHECK_PERMISSION_FAILED);
     TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_003 end");
 }
@@ -2142,7 +2146,7 @@ HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_004, TestSi
 
 /**
  * @tc.name: ImplicitStartAbility_Permission_005
- * @tc.desc: multiple candidates skip the invisible-ability permission check (selector dialog)
+ * @tc.desc: all invisible candidates without permission are erased and the start is rejected
  */
 HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_005, TestSize.Level1)
 {
@@ -2150,10 +2154,68 @@ HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_005, TestSi
     PermissionVerification::verifyCallingPermissionRet_ = false;
     auto ret = RunImplicitStartWithCandidates(
         { MakeCandidateInfo("com.test.implicit", false), MakeCandidateInfo("com.test.other", false) }, 1);
-    // Multiple candidates short-circuit the gate before the permission call.
+    EXPECT_EQ(ret, CHECK_PERMISSION_FAILED);
+    // Permission is verified once regardless of candidate count.
+    EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, 1);
+    EXPECT_EQ(PermissionVerification::lastPermissionName_,
+        PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY);
+    EXPECT_EQ(PermissionVerification::lastSpecifyTokenId_, 1);
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_005 end");
+}
+
+/**
+ * @tc.name: ImplicitStartAbility_Permission_006
+ * @tc.desc: invisible candidates are erased while visible candidates remain startable
+ */
+HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_006 start");
+    PermissionVerification::verifyCallingPermissionRet_ = false;
+    auto ret = RunImplicitStartWithCandidates(
+        { MakeCandidateInfo("com.test.implicit", false), MakeCandidateInfo("com.test.other", true) }, 1);
+    ExpectGateCalledWith(1);
+    EXPECT_NE(ret, CHECK_PERMISSION_FAILED);
+    // The surviving visible candidate is the one finally started.
+    EXPECT_EQ(AbilityManagerService::startAbilityInnerCount_, 1);
+    EXPECT_EQ(AbilityManagerService::lastStartAbilityInnerBundleName_, "com.test.other");
+    EXPECT_EQ(AbilityManagerService::lastStartAbilityInnerAbilityName_, "MainAbility");
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_006 end");
+}
+
+/**
+ * @tc.name: ImplicitStartAbility_Permission_007
+ * @tc.desc: empty candidate list with specifyTokenId skips the gate instead of being rejected
+ */
+HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_007, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_007 start");
+    PermissionVerification::verifyCallingPermissionRet_ = false;
+    auto ret = RunImplicitStartWithCandidates({}, 1);
+    // Guards the !dialogAppInfos.empty() design: a legitimately empty candidate list flows to
+    // the no-candidate dialog path, never a permission failure, and never triggers the gate.
     EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, 0);
     EXPECT_NE(ret, CHECK_PERMISSION_FAILED);
-    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_005 end");
+    EXPECT_EQ(AbilityManagerService::startAbilityInnerCount_, 0);
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_007 end");
+}
+
+/**
+ * @tc.name: ImplicitStartAbility_Permission_008
+ * @tc.desc: multiple invisible candidates with permission are all kept startable
+ */
+HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_008, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_008 start");
+    PermissionVerification::verifyCallingPermissionRet_ = true;
+    auto ret = RunImplicitStartWithCandidates(
+        { MakeCandidateInfo("com.test.implicit", false), MakeCandidateInfo("com.test.other", false) }, 1);
+    // Permission granted (verified once): no candidate is erased, so the start is not rejected.
+    EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, 1);
+    EXPECT_EQ(PermissionVerification::lastPermissionName_,
+        PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY);
+    EXPECT_EQ(PermissionVerification::lastSpecifyTokenId_, 1);
+    EXPECT_NE(ret, CHECK_PERMISSION_FAILED);
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_008 end");
 }
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -3455,7 +3455,7 @@ int AbilityManagerService::StartUIAbilityBySCB(sptr<SessionInfo> sessionInfo, Ab
         sessionInfo->want.RemoveParam("ohos.aafwk.param.callerToken");
     }
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    if (sessionInfo->want.GetBoolParam(ServerConstant::IS_CALL_BY_SCB, true)) {
+    if (sessionInfo->want.GetBoolParam(ServerConstant::IS_CALL_BY_SCB, true) || sessionInfo->requestId == -1) {
         auto currentUserId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
         CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(sessionInfo->want, currentUserId),
             RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
@@ -3615,13 +3615,13 @@ int AbilityManagerService::StartUIAbilityBySCBDefault(sptr<SessionInfo> sessionI
     if (!HandleExecuteSAInterceptor(sessionInfo->want, sessionInfo->callerToken, abilityRequest, result)) {
         return result;
     }
-    if (sessionInfo->want.GetBoolParam(ServerConstant::IS_CALL_BY_SCB, true)) {
+    if (sessionInfo->want.GetBoolParam(ServerConstant::IS_CALL_BY_SCB, true) || sessionInfo->requestId == -1) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "interceptorExecuter_ called");
         (sessionInfo->want).RemoveParam(IS_CALLING_FROM_DMS);
         abilityRequest.userId = currentUserId;
         abilityRequest.sessionInfo = sessionInfo;
     }
-    if (sessionInfo->want.GetBoolParam(ServerConstant::IS_CALL_BY_SCB, true)) {
+    if (sessionInfo->want.GetBoolParam(ServerConstant::IS_CALL_BY_SCB, true) || sessionInfo->requestId == -1) {
         if (sessionInfo->startSetting != nullptr) {
             TAG_LOGD(AAFwkTag::ABILITYMGR, "Start by scb, last not.");
             sessionInfo->startSetting->AddProperty(AbilityStartSetting::IS_START_BY_SCB_KEY, "true");
@@ -3645,7 +3645,7 @@ int AbilityManagerService::StartUIAbilityBySCBDefault(sptr<SessionInfo> sessionI
         return ERR_INVALID_VALUE;
     }
 
-    if (sessionInfo->want.GetBoolParam(ServerConstant::IS_CALL_BY_SCB, true)) {
+    if (sessionInfo->want.GetBoolParam(ServerConstant::IS_CALL_BY_SCB, true) || sessionInfo->requestId == -1) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "interceptorExecuter_ called");
         if (sessionInfo->want.GetBoolParam("ohos.ability.params.isSkipErmsFromSCB", false)) {
             abilityRequest.want.RemoveParam("ohos.ability.params.isSkipErmsFromSCB");
@@ -5673,7 +5673,7 @@ int32_t AbilityManagerService::TerminateUIServiceExtensionAbility(const sptr<IRe
 }
 
 int AbilityManagerService::BackToCallerAbilityWithResult(const sptr<IRemoteObject> &token, int resultCode,
-    const Want *resultWant, int64_t callerRequestCode)
+    const Want &resultWant, int64_t callerRequestCode, bool isBackToCallerApp)
 {
     if (!VerificationAllToken(token)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "%{public}s verificationAllToken failed", __func__);
@@ -5692,11 +5692,11 @@ int AbilityManagerService::BackToCallerAbilityWithResult(const sptr<IRemoteObjec
         auto uiAbilityManager = GetUIAbilityManagerByUserId(ownerUserId);
         CHECK_POINTER_AND_RETURN(uiAbilityManager, ERR_INVALID_VALUE);
         return uiAbilityManager->BackToCallerAbilityWithResult(abilityRecord, resultCode, resultWant,
-            callerRequestCode);
+            callerRequestCode, isBackToCallerApp);
     }
     auto missionListManager = GetMissionListManagerByUserId(ownerUserId);
     CHECK_POINTER_AND_RETURN(missionListManager, ERR_INVALID_VALUE);
-    return missionListManager->BackToCallerAbilityWithResult(abilityRecord, resultCode, resultWant, callerRequestCode);
+    return missionListManager->BackToCallerAbilityWithResult(abilityRecord, resultCode, &resultWant, callerRequestCode);
 }
 
 int AbilityManagerService::CloseAbility(const sptr<IRemoteObject> &token, int resultCode, const Want *resultWant)
