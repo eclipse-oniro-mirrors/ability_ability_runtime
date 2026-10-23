@@ -483,7 +483,11 @@ void AppfreezeInner::ChangeFaultDateInfo(FaultData& faultData, const std::string
     bool isExit = IsExitApp(faultData.errorObject.name) && faultData.needKillProcess;
     if (isExit) {
         faultData.forceExit = true;
+#ifdef APP_NO_RESPONSE_DIALOG
+        faultData.waitSaveState = false;
+#else
         faultData.waitSaveState = AppRecovery::GetInstance().IsEnabled();
+#endif
         std::string reason = faultData.errorObject.name;
         AAFwk::ExitReasonCompability exitReason = { REASON_APP_FREEZE, "Reason:" + reason };
         exitReason.killId =
@@ -770,7 +774,11 @@ int AppfreezeInner::NotifyANR(const FaultData& faultData)
 void AppfreezeInner::AppFreezeRecovery()
 {
     AppRecovery::GetInstance().ScheduleSaveAppState(StateReason::APP_FREEZE);
+#ifdef APP_NO_RESPONSE_DIALOG
+    return;
+#else
     AppRecovery::GetInstance().ScheduleRecoverApp(StateReason::APP_FREEZE);
+#endif
 }
 
 void AppfreezeInner::SetAppDebug(bool isAppDebug)

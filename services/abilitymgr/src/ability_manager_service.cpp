@@ -11779,7 +11779,43 @@ void AbilityManagerService::ScheduleRecoverAbility(const sptr<IRemoteObject>& to
 
         ReportAppRecoverResult(record->GetUid(), appInfo, abilityInfo.name, "SUCCESS");
     }
-    RestartApp(curWant, true, record->GetPid());
+    RestartAppWithWindowForRecovery(curWant, record);
+}
+
+void AbilityManagerService::RestartAppWithWindowForRecovery(
+    AAFwk::Want &want, const std::shared_ptr<AbilityRecord> &record)
+{
+    if (record == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "record is null");
+        return;
+    }
+ 
+    auto sessionInfo = record->GetSessionInfo();
+    if (sessionInfo == nullptr || sessionInfo->sessionToken == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "sessionInfo or sessionToken is null, fallback to cold restart");
+        RestartApp(want, true, record->GetPid());
+        return;
+    }
+ 
+    auto session = iface_cast<Rosen::ISession>(sessionInfo->sessionToken);
+    if (session == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "iface_cast ISession failed, fallback to cold restart");
+        RestartApp(want, true, record->GetPid());
+        return;
+    }
+ 
+    AppExecFwk::RunningProcessInfo processInfo;
+    DelayedSingleton<AppScheduler>::GetInstance()->GetRunningProcessInfoByPid(
+        record->GetPid(), processInfo);
+    want.SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, processInfo.appCloneIndex);
+    want.SetParam(AAFwk::Want::APP_INSTANCE_KEY, processInfo.instanceKey);
+    want.RemoveParam(AAFwk::Want::CREATE_APP_INSTANCE_KEY);
+ 
+    auto wantCopy = std::make_shared<AAFwk::Want>(want);
+    auto ret = session->RestartApp(wantCopy);
+    if (ret != Rosen::WSError::WS_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "ISession::RestartApp failed: %{public}d", static_cast<int32_t>(ret));
+    }
 }
 
 int32_t AbilityManagerService::GetRemoteMissionSnapshotInfo(const std::string& deviceId, int32_t missionId,
