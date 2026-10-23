@@ -183,6 +183,23 @@ bool ParseInvokeFunctionParam(napi_env env, size_t argc, napi_value *argv, Invok
     }
     return true;
 }
+
+// Transport leg of the dual injection (ADR-8): non-empty ids ride the
+// reserved wantParam keys to the executor.
+void InjectTransportTraceIds(InvokeFunctionParam &param)
+{
+    if (!param.invokeOptions.toolCallId.empty()) {
+        param.args.SetParam("ohos.insightIntent.toolCallId",
+            AAFwk::String::Box(param.invokeOptions.toolCallId));
+    }
+    if (!param.invokeOptions.dmSessionId.empty()) {
+        param.args.SetParam("ohos.insightIntent.dmSessionId",
+            AAFwk::String::Box(param.invokeOptions.dmSessionId));
+    }
+    if (!param.invokeOptions.taskId.empty()) {
+        param.args.SetParam("ohos.task.id", AAFwk::String::Box(param.invokeOptions.taskId));
+    }
+}
 } // namespace
 
 void JSFunctionManager::Finalizer(napi_env env, void *data, void *hint)
@@ -294,19 +311,7 @@ napi_value JSFunctionManager::OnInvokeFunction(napi_env env, size_t argc, napi_v
         }
     };
 
-    // Transport leg of the dual injection (ADR-8): non-empty ids ride the
-    // reserved wantParam keys to the executor.
-    if (!param.invokeOptions.toolCallId.empty()) {
-        param.args.SetParam("ohos.insightIntent.toolCallId",
-            AAFwk::String::Box(param.invokeOptions.toolCallId));
-    }
-    if (!param.invokeOptions.dmSessionId.empty()) {
-        param.args.SetParam("ohos.insightIntent.dmSessionId",
-            AAFwk::String::Box(param.invokeOptions.dmSessionId));
-    }
-    if (!param.invokeOptions.taskId.empty()) {
-        param.args.SetParam("ohos.task.id", AAFwk::String::Box(param.invokeOptions.taskId));
-    }
+    InjectTransportTraceIds(param);
 
     InvokeFunctionExecutor::Create()->Execute(param, bridge);
 
