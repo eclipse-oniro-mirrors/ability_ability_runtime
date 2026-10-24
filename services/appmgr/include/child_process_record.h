@@ -25,6 +25,7 @@
 #include "child_scheduler_interface.h"
 #include "child_process_info.h"
 #include "child_process_request.h"
+#include "running_process_info.h"
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -71,6 +72,8 @@ public:
     void SetAttachTimeoutStartTime(const std::chrono::system_clock::time_point &time);
     std::chrono::system_clock::time_point GetAttachTimeoutStartTime() const;
     bool IsStatic() const;
+    AppProcessState GetState() const;
+    void SetState(const AppProcessState state);
 
 private:
     void MakeProcessName(const std::shared_ptr<AppRunningRecord> hostRecord, const std::string &customProcessName);
@@ -92,6 +95,8 @@ private:
     std::string entryFunc_;
     std::string entryParams_;
     std::chrono::system_clock::time_point attachTimeoutStartTime_;
+    // Atomic Variables
+    std::atomic<AppProcessState> curState_ = AppProcessState::APP_STATE_CREATE;  // current state of this process
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

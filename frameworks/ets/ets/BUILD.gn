@@ -1172,6 +1172,22 @@ ohos_prebuilt_etc("ability_runtime_application_state_change_callback_abc_etc") {
   deps = [ ":ability_runtime_application_state_change_callback_abc" ]
 }
 
+generate_static_abc("ability_runtime_app_process_state_observer_abc") {
+  base_url = "./"
+  files = [ "./@ohos.app.ability.AppProcessStateObserver.ets" ]
+
+  is_boot_abc = "True"
+  device_dst_file = "/system/framework/ability_runtime_app_process_state_observer_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_app_process_state_observer_abc_etc") {
+  source = "$target_out_dir/ability_runtime_app_process_state_observer_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_app_process_state_observer_abc" ]
+}
+
 generate_static_abc("ability_runtime_AbilityRunningInfo_abc") {
   base_url = "./"
   files = [ "./application/AbilityRunningInfo.ets" ]
@@ -2264,6 +2280,7 @@ group("ets_packages") {
     ":ability_runtime_openLink_options_abc_etc",
     ":ability_runtime_page_node_info_abc_etc",
     ":ability_runtime_process_data_abc_etc",
+    ":ability_runtime_app_process_state_observer_abc_etc",
     ":ability_runtime_process_information_abc_etc",
     ":ability_runtime_running_app_clone_abc_etc",
     ":ability_runtime_running_multi_appinfo_abc_etc",

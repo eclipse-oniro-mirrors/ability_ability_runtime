@@ -34,6 +34,7 @@
 #include "iconfiguration_observer.h"
 #include "image_error_handler_interface.h"
 #include "image_process_state_observer_interface.h"
+#include "process_lifecycle_observer_interface.h"
 #include "iremote_object.h"
 #include "irender_scheduler.h"
 #include "irender_state_observer.h"
@@ -1155,6 +1156,9 @@ public:
      *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t UnregisterImageProcessStateObserver(const sptr<IImageProcessStateObserver> &observer);
+
+    int32_t RegisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer);
+    int32_t UnregisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer);
 
     /**
      * Register a callback to be notified when native child processes exit.

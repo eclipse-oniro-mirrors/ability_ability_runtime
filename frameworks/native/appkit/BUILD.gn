@@ -501,6 +501,7 @@ ohos_shared_library("app_context") {
     "${ability_runtime_native_path}/appkit/ability_runtime/context/interop_object_instance.cpp",
     "${ability_runtime_native_path}/appkit/ability_runtime/context/js_ability_lifecycle_callback.cpp",
     "${ability_runtime_native_path}/appkit/ability_runtime/context/js_system_configuration_updated_callback.cpp",
+    "${ability_runtime_native_path}/appkit/ability_runtime/context/js_process_lifecycle_observer.cpp",
     "${ability_runtime_native_path}/appkit/ability_runtime/context/ability_native_thread.cpp",
     "${ability_runtime_native_path}/appkit/app/overlay_event_subscriber.cpp",
     "${ability_runtime_native_path}/appkit/app/sys_mgr_client.cpp",

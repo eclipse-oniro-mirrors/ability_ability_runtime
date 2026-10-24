@@ -95,6 +95,8 @@ ohos_shared_library("app_manager") {
     "src/appmgr/app_debug_listener_stub.cpp",
     "src/appmgr/app_foreground_state_observer_proxy.cpp",
     "src/appmgr/app_foreground_state_observer_stub.cpp",
+    "src/appmgr/process_lifecycle_observer_stub.cpp",
+    "src/appmgr/process_lifecycle_observer_proxy.cpp",
     "src/appmgr/app_mem_dump_info.cpp",
     "src/appmgr/app_jsheap_mem_info.cpp",
     "src/appmgr/app_jshandle_map_info.cpp",

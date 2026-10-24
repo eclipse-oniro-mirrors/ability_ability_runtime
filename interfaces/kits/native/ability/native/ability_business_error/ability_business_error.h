@@ -340,6 +340,9 @@ enum class AbilityErrorCode {
     // Failed to parse configuration file.
     ERROR_CODE_EVICT_CONFIG_PARSE_ERROR = 16000164,
 
+    // The number of process lifecycle observers exceeds the upper limit.
+    ERROR_CODE_PROCESS_LIFECYCLE_OBSERVER_EXCEED_LIMIT = 16000165,
+
     // target bundle is not in u1
     ERROR_CODE_NO_U1 = 16000204,
 
