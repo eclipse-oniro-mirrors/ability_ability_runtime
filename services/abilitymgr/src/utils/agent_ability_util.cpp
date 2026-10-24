@@ -25,7 +25,7 @@
 namespace OHOS {
 namespace AAFwk {
 namespace {
-constexpr const char* FOUNDATION_PROCESS_NAME = "foundation";
+constexpr const char* SUBFOUNDATION_PROCESS_NAME = "subfoundation";
 }
 
 bool AgentAbilityUtil::IsAgentExtensionType(AppExecFwk::ExtensionAbilityType extensionType)
@@ -89,10 +89,11 @@ int64_t AgentAbilityUtil::GetAgentVerificationNonceParam(const Want &want)
 int32_t AgentAbilityUtil::CheckAgentConnectEntry(const Want &want, AppExecFwk::ExtensionAbilityType extensionType)
 {
     if (IsAgentExtensionType(extensionType)) {
-        bool isFoundationCall =
-            PermissionVerification::GetInstance()->CheckSpecificSystemAbilityAccessPermission(FOUNDATION_PROCESS_NAME);
-        if (!isFoundationCall) {
-            TAG_LOGE(AAFwkTag::SER_ROUTER, "AGENT connect only accepts foundation process callers");
+        bool isSubfoundationCall =
+            PermissionVerification::GetInstance()->CheckSpecificSystemAbilityAccessPermission(
+                SUBFOUNDATION_PROCESS_NAME);
+        if (!isSubfoundationCall) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "AGENT connect only accepts subfoundation process caller");
             return CHECK_PERMISSION_FAILED;
         }
         if (want.GetStringParam(AgentRuntime::AGENTID_KEY).empty() ||

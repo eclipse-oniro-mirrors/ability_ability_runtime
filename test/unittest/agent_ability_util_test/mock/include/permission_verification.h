@@ -70,8 +70,13 @@ public:
     bool IsSystemAppCall() const;
 };
 
-// Test-only control: when true, CheckSpecificSystemAbilityAccessPermission returns true.
+// Test-only controls:
+// - g_mockGrantFoundationPermission: master grant flag.
+// - g_mockCallerProcessName: simulates the caller's native-token process name;
+//   CheckSpecificSystemAbilityAccessPermission returns true only when the
+//   input name matches g_mockCallerProcessName and the master flag is set.
 extern bool g_mockGrantFoundationPermission;
+extern std::string g_mockCallerProcessName;
 
 }  // namespace AAFwk
 }  // namespace OHOS

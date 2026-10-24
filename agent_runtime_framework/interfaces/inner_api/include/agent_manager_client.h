@@ -24,6 +24,7 @@
 namespace OHOS {
 namespace AgentRuntime {
 using ClearProxyCallback = std::function<void(const wptr<IRemoteObject>&)>;
+using DeathCallback = std::function<void()>;
 
 class AgentManagerClient final {
 public:
@@ -39,6 +40,16 @@ public:
      * @brief Wakes blocked callers when the agent manager service cannot be loaded.
      */
     void OnLoadSystemAbilityFail();
+
+    /**
+     * @brief Registers a callback fired once when the agent manager service (subfoundation)
+     * dies. Subscribers drop in-process connection state that the normal disconnect-done chain
+     * cannot reach: the AgentServiceConnection that forwards OnAbilityDisconnectDone to the
+     * caller lives in the dead process, so app-side registries (AgentConnectionManager,
+     * JS-layer g_agentConnects) are never notified. Callbacks fire outside mutex_ on the
+     * binder death thread.
+     */
+    void RegisterDeathCallback(DeathCallback callback);
 
     int32_t GetAllAgentCards(std::vector<AgentCard> &cards);
     int32_t GetAgentCardsByBundleName(const std::string &bundleName, std::vector<AgentCard> &cards);
@@ -113,6 +124,7 @@ private:
     // protected by the stale-callback guard; others cannot be proven live.
     wptr<IRemoteObject> registeredRemote_;
     sptr<IAgentManager> agentMgr_ = nullptr;
+    std::vector<DeathCallback> deathCallbacks_;
 };
 } // namespace AgentRuntime
 } // namespace OHOS

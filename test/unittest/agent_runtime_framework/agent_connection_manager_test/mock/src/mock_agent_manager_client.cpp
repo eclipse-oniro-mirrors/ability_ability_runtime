@@ -57,5 +57,7 @@ int32_t AgentManagerClient::DisconnectServiceExtensionAbility(const sptr<IRemote
 {
     return MyFlag::retDisconnectServiceExtensionAbility;
 }
+
+void AgentManagerClient::RegisterDeathCallback(DeathCallback) {}
 } // namespace AgentRuntime
 } // namespace OHOS
