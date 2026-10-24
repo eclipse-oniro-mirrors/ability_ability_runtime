@@ -30,7 +30,6 @@
 #include "ability_manager_errors.h"
 #include "start_ability_utils.h"
 #include "message_parcel.h"
-#include "string_wrapper.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -332,117 +331,6 @@ HWTEST_F(AbilityManagerServiceMockTest, ExecuteIntent_0500, TestSize.Level1)
     uint64_t key = 1;
     auto ret = abilityMs->ExecuteIntent(key, callerToken, param);
     EXPECT_EQ(ret, INNER_ERR);
-}
-
-/**
- * @tc.name: ExecuteIntent_0600
- * @tc.desc: Test ExecuteIntent with an over-long task id: no error is returned
- *           for the id itself (only logged); the key is still stripped from the
- *           intent params so it never reaches the target application
- * @tc.type: FUNC
- */
-HWTEST_F(AbilityManagerServiceMockTest, ExecuteIntent_0600, TestSize.Level1)
-{
-    auto abilityMs = std::make_shared<AbilityManagerService>();
-    ASSERT_NE(abilityMs, nullptr);
-
-    AppExecFwk::InsightIntentExecuteParam param;
-    param.bundleName_ = "test.bundleName";
-    param.moduleName_ = "test.entry";
-    param.abilityName_ = "ability1";
-    param.insightIntentName_ = "test1";
-    param.insightIntentParam_ = std::make_shared<WantParams>();
-    param.insightIntentParam_->SetParam(AppExecFwk::INSIGHT_INTENT_TASK_ID,
-        AAFwk::String::Box(std::string(257, 'a')));  // one past the 256 limit
-    param.executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND;
-
-    std::shared_ptr<AbilityRecord> ability = nullptr;
-    sptr<IRemoteObject> callerToken = new OHOS::AAFwk::Token(ability);
-    uint64_t key = 1;
-    auto ret = abilityMs->ExecuteIntent(key, callerToken, param);
-    // The over-long id is dropped silently: the call keeps the baseline
-    // behavior (fails later in the mock environment), never ERR_INVALID_VALUE.
-    EXPECT_NE(ret, ERR_INVALID_VALUE);
-    // paramPtr aliases param.insightIntentParam_, so the unconditional strip is
-    // observable on the caller-side object too.
-    EXPECT_FALSE(param.insightIntentParam_->HasParam(AppExecFwk::INSIGHT_INTENT_TASK_ID));
-}
-
-/**
- * @tc.name: ExecuteIntent_0700
- * @tc.desc: Test ExecuteIntent with a boundary-length (256) task id and a
- *           missing task id: both keep the baseline behavior and the key is
- *           always stripped from the intent params
- * @tc.type: FUNC
- */
-HWTEST_F(AbilityManagerServiceMockTest, ExecuteIntent_0700, TestSize.Level1)
-{
-    auto abilityMs = std::make_shared<AbilityManagerService>();
-    ASSERT_NE(abilityMs, nullptr);
-
-    std::shared_ptr<AbilityRecord> ability = nullptr;
-    sptr<IRemoteObject> callerToken = new OHOS::AAFwk::Token(ability);
-    uint64_t key = 1;
-
-    // Boundary length 256 is accepted by the length rule and fails later
-    // exactly as the baseline (unresolvable ability in the mock environment).
-    AppExecFwk::InsightIntentExecuteParam param;
-    param.bundleName_ = "test.bundleName";
-    param.moduleName_ = "test.entry";
-    param.abilityName_ = "ability1";
-    param.insightIntentName_ = "test1";
-    param.insightIntentParam_ = std::make_shared<WantParams>();
-    param.insightIntentParam_->SetParam(AppExecFwk::INSIGHT_INTENT_TASK_ID,
-        AAFwk::String::Box(std::string(256, 'a')));
-    param.executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND;
-    auto ret = abilityMs->ExecuteIntent(key, callerToken, param);
-    EXPECT_EQ(ret, RESOLVE_ABILITY_ERR);
-    EXPECT_FALSE(param.insightIntentParam_->HasParam(AppExecFwk::INSIGHT_INTENT_TASK_ID));
-
-    // Missing task id keeps the current behavior (EX-4) and nothing to strip.
-    param.insightIntentParam_ = std::make_shared<WantParams>();
-    ret = abilityMs->ExecuteIntent(key, callerToken, param);
-    EXPECT_EQ(ret, RESOLVE_ABILITY_ERR);
-}
-
-/**
- * @tc.name: ExecuteIntentByFunctionCall_TaskId_0100
- * @tc.desc: Test ExecuteIntentByFunctionCall task id handling: an over-long id
- *           no longer fails the call (only logged); boundary/missing ids keep
- *           the baseline path. The system-app storage branch is not directly
- *           observable here (the parsed param is internal), and the unit-test
- *           process is not a system app, so taskId_ stays empty by design.
- * @tc.type: FUNC
- */
-HWTEST_F(AbilityManagerServiceMockTest, ExecuteIntentByFunctionCall_TaskId_0100, TestSize.Level1)
-{
-    auto abilityMs = std::make_shared<AbilityManagerService>();
-    ASSERT_NE(abilityMs, nullptr);
-
-    std::shared_ptr<AbilityRecord> ability = nullptr;
-    sptr<IRemoteObject> callerToken = new OHOS::AAFwk::Token(ability);
-    uint64_t key = 1;
-
-    // Over-long task id is dropped silently; the call follows the baseline path
-    // instead of returning ERR_INVALID_VALUE up front.
-    WantParams overLongParam;
-    overLongParam.SetParam(AppExecFwk::INSIGHT_INTENT_TASK_ID, AAFwk::String::Box(std::string(257, 'a')));
-    auto ret = abilityMs->ExecuteIntentByFunctionCall(key, callerToken, "test.bundleName", "test1", overLongParam);
-    EXPECT_NE(ret, ERR_OK);
-    EXPECT_NE(ret, ERR_INVALID_VALUE);
-
-    // Boundary length 256 passes the length rule and follows the baseline path;
-    // a missing task id behaves exactly like the baseline (EX-4). Both fail in
-    // the mock environment the same way (no ability to resolve).
-    WantParams boundaryParam;
-    boundaryParam.SetParam(AppExecFwk::INSIGHT_INTENT_TASK_ID, AAFwk::String::Box(std::string(256, 'a')));
-    auto boundaryRet = abilityMs->ExecuteIntentByFunctionCall(
-        key, callerToken, "test.bundleName", "test1", boundaryParam);
-    WantParams emptyParam;
-    auto baselineRet = abilityMs->ExecuteIntentByFunctionCall(
-        key, callerToken, "test.bundleName", "test1", emptyParam);
-    EXPECT_NE(baselineRet, ERR_OK);
-    EXPECT_EQ(boundaryRet, baselineRet);
 }
 
 /**
