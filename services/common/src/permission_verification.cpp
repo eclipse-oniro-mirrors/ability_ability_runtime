@@ -680,19 +680,57 @@ bool PermissionVerification::IsAllowLocalDebugOtherApps(bool isDebugFromLocal) c
     return VerifyLocalDebugOtherApps();
 }
 
-bool PermissionVerification::IsLocalDebugOtherAppsCall() const
+bool PermissionVerification::IsLocalDebugOtherAppsCall(uint32_t specifyTokenId, int32_t targetUserId) const
 {
     if (!system::GetBoolParameter(DEVELOPER_MODE_STATE, false)) {
         TAG_LOGD(AAFwkTag::DEFAULT, "not developer mode");
         return false;
     }
-    auto callerToken = GetCallingTokenID();
+    auto callerToken = specifyTokenId == 0 ? GetCallingTokenID() : specifyTokenId;
+    TAG_LOGD(AAFwkTag::DEFAULT, "Token: %{public}u", callerToken);
     if (VerifyPermissionByTokenId(callerToken, PermissionConstants::PERMISSION_LOCAL_DEBUG_OTHER_APPS)) {
+        if (IsCrossUserForSandboxCall(targetUserId)) {
+            TAG_LOGE(AAFwkTag::DEFAULT, "cross-user operation not allowed for local debug others apps");
+            return false;
+        }
         TAG_LOGD(AAFwkTag::DEFAULT, "Permission granted");
         return true;
     }
     TAG_LOGE(AAFwkTag::DEFAULT, "Permission denied");
     return false;
+}
+
+bool PermissionVerification::IsCustomSandboxCall(uint32_t specifyTokenId, int32_t targetUserId) const
+{
+    if (!system::GetBoolParameter(DEVELOPER_MODE_STATE, false)) {
+        TAG_LOGD(AAFwkTag::DEFAULT, "not developer mode");
+        return false;
+    }
+    auto callerToken = specifyTokenId == 0 ? GetCallingTokenID() : specifyTokenId;
+    TAG_LOGD(AAFwkTag::DEFAULT, "Token: %{public}u", callerToken);
+    if (VerifyPermissionByTokenId(callerToken, PermissionConstants::PERMISSION_CUSTOM_SANDBOX)) {
+        if (IsCrossUserForSandboxCall(targetUserId)) {
+            TAG_LOGE(AAFwkTag::DEFAULT, "cross-user operation not allowed for custom sandbox");
+            return false;
+        }
+        TAG_LOGD(AAFwkTag::DEFAULT, "Permission granted");
+        return true;
+    }
+    TAG_LOGE(AAFwkTag::DEFAULT, "Custom sandbox Permission denied");
+    return false;
+}
+
+bool PermissionVerification::IsCrossUserForSandboxCall(int32_t targetUserId) const
+{
+    if (targetUserId < 0) {
+        return false;
+    }
+    constexpr int32_t BASE_USER_RANGE = 200000;
+    int32_t callerUser = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+    if (callerUser <= 1) {
+        return false;
+    }
+    return callerUser != targetUserId;
 }
 
 bool PermissionVerification::VerifyStartSelfUIAbility(int tokenId) const

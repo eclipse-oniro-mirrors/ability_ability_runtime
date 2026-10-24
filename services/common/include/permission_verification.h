@@ -132,7 +132,8 @@ struct VerificationInfo {
     bool VerifyLocalDebugOtherApps() const;
 
     bool IsAllowLocalDebugOtherApps(bool isDebugFromLocal) const;
-    bool IsLocalDebugOtherAppsCall() const;
+    bool IsLocalDebugOtherAppsCall(const uint32_t specifyTokenId = 0, int32_t targetUserId = -1) const;
+    bool IsCustomSandboxCall(const uint32_t specifyTokenId = 0, int32_t targetUserId = -1) const;
 
     bool VerifyStartSelfUIAbility(int tokenId) const;
 
@@ -159,6 +160,8 @@ private:
     int JudgeInvisibleAndBackground(const VerificationInfo &verificationInfo, bool isCallByShortcut = false) const;
 
     int CheckSkillStartByCallPermission(const VerificationInfo &verificationInfo) const;
+
+    bool IsCrossUserForSandboxCall(int32_t targetUserId) const;
 
     inline bool IsCallFromSameAccessToken(const uint32_t accessTokenId) const
     {

@@ -8213,6 +8213,10 @@ int32_t AppMgrServiceInner::VerifyKillProcessPermissionCommon() const
         return ERR_OK;
     }
 
+    if (AAFwk::PermissionVerification::GetInstance()->IsCustomSandboxCall()) {
+        return ERR_OK;
+    }
+
     if (VerifyAPL()) {
         return ERR_OK;
     }

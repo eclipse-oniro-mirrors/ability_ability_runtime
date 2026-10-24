@@ -1280,7 +1280,11 @@ int AbilityManagerService::CheckExtensionCallPermission(const Want& want, const 
     }
     auto isShellCall = AAFwk::PermissionVerification::GetInstance()->IsShellCallByTokenId(specifyTokenId);
     auto isToPermissionMgr = IsTargetPermission(want);
-    if (!isSACall && !isSystemAppCall && !isShellCall && !isToPermissionMgr) {
+    if (!isSACall && !isSystemAppCall && !isShellCall && !isToPermissionMgr &&
+        !AAFwk::PermissionVerification::GetInstance()->
+            IsLocalDebugOtherAppsCall(specifyTokenId, abilityRequest.userId) &&
+        !AAFwk::PermissionVerification::GetInstance()->
+            IsCustomSandboxCall(specifyTokenId, abilityRequest.userId)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR,
             "cannot start, use startServiceExtensionAbility");
         return ERR_WRONG_INTERFACE_CALL;
@@ -8655,8 +8659,9 @@ void AbilityManagerService::DumpSysState(
     TAG_LOGD(AAFwkTag::ABILITYMGR, "%{public}s begin", __func__);
     auto isShellCall = AAFwk::PermissionVerification::GetInstance()->IsShellCall();
     auto isHidumperServiceCall = (IPCSkeleton::GetCallingUid() == HIDUMPER_SERVICE_UID);
+    int32_t dumpTargetUserId = isUserID ? userId : -1;
     if (!isShellCall && !isHidumperServiceCall &&
-        !AAFwk::PermissionVerification::GetInstance()->IsLocalDebugOtherAppsCall()) {
+        !AAFwk::PermissionVerification::GetInstance()->IsLocalDebugOtherAppsCall(0, dumpTargetUserId)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "permission deny");
         return;
     }
@@ -13995,7 +14000,9 @@ int AbilityManagerService::IsCallFromBackground(const AbilityRequest &abilityReq
     }
 
     if (!isData && (SupportSystemAbilityPermission::IsSupportSaCallPermission() ||
-        AbilityUtil::IsStartFreeInstall(abilityRequest.want))) {
+        AbilityUtil::IsStartFreeInstall(abilityRequest.want) ||
+        AAFwk::PermissionVerification::GetInstance()->IsLocalDebugOtherAppsCall(specifyTokenId, abilityRequest.userId) ||
+        AAFwk::PermissionVerification::GetInstance()->IsCustomSandboxCall(specifyTokenId, abilityRequest.userId))) {
         isBackgroundCall = false;
         return ERR_OK;
     }

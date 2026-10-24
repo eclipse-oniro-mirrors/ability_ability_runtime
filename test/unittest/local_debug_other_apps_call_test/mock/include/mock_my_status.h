@@ -24,6 +24,7 @@ public:
     ~MyStatus() = default;
     bool getBoolParameter_ = false;
     int isVerifyAccessToken_ = 1; // PERMISSION_DENIED by default
+    int ipcGetCallingUid_ = 1; // uid 1 -> non-sandbox user by default
 private:
     MyStatus() = default;
 };
