@@ -305,20 +305,38 @@ bool AgentManagerClient::RegisterDeathRecipient(const sptr<IRemoteObject> &remot
     return true;
 }
 
-void AgentManagerClient::ClearProxyIfMatch(const wptr<IRemoteObject> &remote)
+void AgentManagerClient::RegisterDeathCallback(DeathCallback callback)
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    // Compare the broker proxy's AsObject() with the died remote (agentMgr_ != remote object).
-    if (agentMgr_ == nullptr) {
-        TAG_LOGI(AAFwkTag::SER_ROUTER, "agentmgr death notification after proxy already cleared, ignore");
-        return;
+    deathCallbacks_.push_back(std::move(callback));
+}
+
+void AgentManagerClient::ClearProxyIfMatch(const wptr<IRemoteObject> &remote)
+{
+    std::vector<DeathCallback> callbacks;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        // Compare the broker proxy's AsObject() with the died remote (agentMgr_ != remote object).
+        if (agentMgr_ == nullptr) {
+            TAG_LOGI(AAFwkTag::SER_ROUTER, "agentmgr death notification after proxy already cleared, ignore");
+            return;
+        }
+        if (agentMgr_->AsObject() != remote) {
+            TAG_LOGI(AAFwkTag::SER_ROUTER, "stale agentmgr death notification, ignore");
+            return;
+        }
+        TAG_LOGI(AAFwkTag::SER_ROUTER, "agentmgr service died, clear cached proxy");
+        agentMgr_ = nullptr;
+        callbacks = deathCallbacks_;
     }
-    if (agentMgr_->AsObject() != remote) {
-        TAG_LOGI(AAFwkTag::SER_ROUTER, "stale agentmgr death notification, ignore");
-        return;
+    // Fire outside mutex_: subscriber callbacks take their own locks (e.g. AgentConnectionManager
+    // connectionsLock_), and a disconnect path takes connectionsLock_ before reaching
+    // GetAgentMgrProxy/registerMutex_/mutex_, so nesting under mutex_ would invert lock order.
+    for (const auto &callback : callbacks) {
+        if (callback != nullptr) {
+            callback();
+        }
     }
-    TAG_LOGI(AAFwkTag::SER_ROUTER, "agentmgr service died, clear cached proxy");
-    agentMgr_ = nullptr;
 }
 
 void AgentManagerClient::AgentManagerServiceDeathRecipient::OnRemoteDied(const wptr<IRemoteObject> &remote)

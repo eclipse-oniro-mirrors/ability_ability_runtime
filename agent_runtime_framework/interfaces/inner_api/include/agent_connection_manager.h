@@ -202,11 +202,23 @@ public:
     bool DisconnectNonexistentService(const AppExecFwk::ElementName &element,
         const sptr<AgentConnection> &connection);
 
+    /**
+     * @brief Handle agent manager service (subfoundation) death: clear every in-process
+     * AgentConnection so reconnects after restart don't hit stale "duplicated" entries.
+     * Fires OnAbilityDisconnectDone(DIED) on each AgentConnection, which cascades to the
+     * JSAgentConnection registered as a callback on each AgentConnection, thereby also
+     * clearing the JS-layer g_agentConnects registry.
+     */
+    void OnAgentMgrDied();
+
 private:
     /**
-     * @brief Private constructor for singleton.
+     * @brief Private constructor for singleton. Registers a death callback with AgentManagerClient
+     * so that when subfoundation dies, app-side connection registries are cleared (the normal
+     * disconnect-done chain can't reach them — the forwarding AgentServiceConnection lives in the
+     * dead process). Runs exactly once via the thread-safe static in GetInstance().
      */
-    AgentConnectionManager() = default;
+    AgentConnectionManager();
 
     /**
      * @brief Check if two connect receivers are equal.

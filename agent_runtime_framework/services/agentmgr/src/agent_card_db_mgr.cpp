@@ -31,7 +31,7 @@ constexpr int32_t MAX_TIMES = 5;           // 5 * 100ms = 500ms
 constexpr std::chrono::milliseconds BACKUP_MIN_INTERVAL(2000); // 2s
 constexpr int32_t RESTORE_RETRY_TIMES = 3;                     // restore attempts before treating backup as corrupted
 constexpr useconds_t RESTORE_RETRY_INTERVAL = 100000;          // 100ms
-constexpr const char *AGENT_CARD_STORAGE_DIR = "/data/service/el1/public/database/ability_manager_service";
+constexpr const char *AGENT_CARD_STORAGE_DIR = "/data/service/el1/public/database/agent_manager_service/agent_card";
 constexpr const char *AGENT_CARD_BACKUP_NAME = "agent_card_backup";
 const std::string JSON_KEY_BUNDLE_NAME = "bundleName";
 const std::string JSON_KEY_CARD = "card";
