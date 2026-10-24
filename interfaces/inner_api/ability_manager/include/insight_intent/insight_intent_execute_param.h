@@ -94,6 +94,9 @@ constexpr char INSIGHT_INTENT_DISTRIBUTED_REQUEST_CODE[] = "ohos.insightIntent.d
 constexpr char INSIGHT_INTENT_TOOL_CALL_ID[] = "ohos.insightIntent.toolCallId";
 constexpr char INSIGHT_INTENT_TASK_ID[] = "ohos.task.id";
 constexpr size_t INSIGHT_INTENT_TASK_ID_MAX_LEN = 256;
+constexpr char INSIGHT_INTENT_CALLER_BUNDLE_NAME[] = "ohos.insightIntent.executeParam.callerBundleName";
+constexpr char INSIGHT_INTENT_CALLER_TOKEN_ID[] = "ohos.insightIntent.executeParam.callerTokenId";
+constexpr char INSIGHT_INTENT_CALLER_UID[] = "ohos.insightIntent.executeParam.callerUid";
 
 constexpr int32_t INVALID_DISPLAY_ID = -1;
 constexpr char METHOD_PARAM_SEPARATOR = '\x1f';
@@ -164,6 +167,11 @@ public:
     std::string toolCallId_;
 
     std::string taskId_;
+
+    // caller identity of this intent execution, filled by AMS and passed down to the application.
+    std::string callerBundleName_;
+    std::string callerTokenId_;
+    int32_t callerUid_ = 0;
 };
 } // namespace AppExecFwk
 } // namespace OHOS

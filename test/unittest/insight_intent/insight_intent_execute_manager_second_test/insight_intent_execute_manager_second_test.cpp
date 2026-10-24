@@ -579,8 +579,9 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, GenerateWant_0300, TestSize.Leve
 {
     TAG_LOGI(AAFwkTag::TEST, "begin.");
     AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
+    AbilityRuntime::ExtractInsightIntentInfo extractInfo;
     Want want;
-    auto ret = InsightIntentExecuteManager::GenerateWant(nullptr, decoratorInfo, want);
+    auto ret = InsightIntentExecuteManager::GenerateWant(nullptr, decoratorInfo, extractInfo, want);
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
@@ -607,7 +608,8 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, GenerateWant_0400, TestSize.Leve
     std::string startTime = want.GetStringParam(Want::PARAM_RESV_START_TIME);
     EXPECT_TRUE(startTime.empty());
     AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
-    InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, want);
+    AbilityRuntime::ExtractInsightIntentInfo extractInfo;
+    InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, extractInfo, want);
     startTime = want.GetStringParam(Want::PARAM_RESV_START_TIME);
     EXPECT_FALSE(startTime.empty());
     TAG_LOGI(AAFwkTag::TEST, "end.");
@@ -632,8 +634,9 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, GenerateWant_0500, TestSize.Leve
     param.executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND;
     auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
     AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
+    AbilityRuntime::ExtractInsightIntentInfo extractInfo;
     Want want;
-    int32_t result = InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, want);
+    int32_t result = InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, extractInfo, want);
     EXPECT_EQ(result, ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
@@ -1764,13 +1767,13 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateDecoratorParams_01
     param.insightIntentName_ = "test.IntentName";
     param.executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND;
     auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
-    AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
-    decoratorInfo.decoratorType = AbilityRuntime::INSIGHT_INTENTS_DECORATOR_TYPE_LINK;
+    AbilityRuntime::ExtractInsightIntentInfo extractInfo;
+    extractInfo.genericInfo.decoratorType = AbilityRuntime::INSIGHT_INTENTS_DECORATOR_TYPE_LINK;
     Want want;
     
     std::shared_ptr<InsightIntentExecuteManager> manager = std::make_shared<InsightIntentExecuteManager>();
     auto ret = manager->CheckAndUpdateDecoratorParams(
-        paramPtr, decoratorInfo, want);
+        paramPtr, extractInfo, want);
     EXPECT_EQ(ret, ERR_OK);
 }
 

@@ -660,6 +660,28 @@ ani_object CreateEtsInsightIntentInfoForQuery(ani_env *env, const InsightIntentI
     return objValue;
 }
 
+void SetInsightIntentSubInfo(ani_env *env, ani_object objValue, const InsightIntentInfoForQuery &info)
+{
+    if (info.intentType == INSIGHT_INTENTS_TYPE_LINK) {
+        env->Object_SetPropertyByName_Ref(objValue, "subIntentInfo", CreateEtsLinkInfoForQuery(env, info.linkInfo));
+    } else if (info.intentType == INSIGHT_INTENTS_TYPE_PAGE) {
+        env->Object_SetPropertyByName_Ref(objValue, "subIntentInfo", CreateEtsPageInfoForQuery(env, info.pageInfo));
+    } else if (info.intentType == INSIGHT_INTENTS_TYPE_ENTRY) {
+        env->Object_SetPropertyByName_Ref(
+            objValue, "subIntentInfo", CreateEtsEntryInfoForQuery(env, info.entryInfo));
+    } else if (info.intentType == INSIGHT_INTENTS_TYPE_FUNCTION) {
+        env->Object_SetPropertyByName_Ref(
+            objValue, "subIntentInfo", CreateEtsFunctionInfoForQuery(env, info.functionInfo));
+    } else if (info.intentType == INSIGHT_INTENTS_TYPE_FORM) {
+        env->Object_SetPropertyByName_Ref(objValue, "subIntentInfo", CreateEtsFormInfoForQuery(env, info.formInfo));
+    } else {
+        if (info.isConfig) {
+            env->Object_SetPropertyByName_Ref(
+                objValue, "subIntentInfo", CreateEtsEntryInfoForQuery(env, info.entryInfo));
+        }
+    }
+}
+
 void SetInsightIntentInfo(ani_env *env, ani_object objValue, const InsightIntentInfoForQuery &info)
 {
     env->Object_SetPropertyByName_Ref(objValue, "bundleName", AppExecFwk::GetAniString(env, info.bundleName));
@@ -685,28 +707,14 @@ void SetInsightIntentInfo(ani_env *env, ani_object objValue, const InsightIntent
     ani_object stringArray = nullptr;
     AppExecFwk::WrapArrayString(env, stringArray, info.keywords);
     env->Object_SetPropertyByName_Ref(objValue, "keywords", stringArray);
+    ani_object permissionArray = nullptr;
+    AppExecFwk::WrapArrayString(env, permissionArray, info.permissions);
+    env->Object_SetPropertyByName_Ref(objValue, "permissions", permissionArray);
     if (!info.develoType.empty()) {
         env->Object_SetPropertyByName_Ref(objValue, "developType", AppExecFwk::GetAniString(env, info.develoType));
     }
     env->Object_SetPropertyByName_Ref(objValue, "entities", CreateEtsEntityInfoForArray(env, info.entities));
-    if (info.intentType == INSIGHT_INTENTS_TYPE_LINK) {
-        env->Object_SetPropertyByName_Ref(objValue, "subIntentInfo", CreateEtsLinkInfoForQuery(env, info.linkInfo));
-    } else if (info.intentType == INSIGHT_INTENTS_TYPE_PAGE) {
-        env->Object_SetPropertyByName_Ref(objValue, "subIntentInfo", CreateEtsPageInfoForQuery(env, info.pageInfo));
-    } else if (info.intentType == INSIGHT_INTENTS_TYPE_ENTRY) {
-        env->Object_SetPropertyByName_Ref(
-            objValue, "subIntentInfo", CreateEtsEntryInfoForQuery(env, info.entryInfo));
-    } else if (info.intentType == INSIGHT_INTENTS_TYPE_FUNCTION) {
-        env->Object_SetPropertyByName_Ref(
-            objValue, "subIntentInfo", CreateEtsFunctionInfoForQuery(env, info.functionInfo));
-    } else if (info.intentType == INSIGHT_INTENTS_TYPE_FORM) {
-        env->Object_SetPropertyByName_Ref(objValue, "subIntentInfo", CreateEtsFormInfoForQuery(env, info.formInfo));
-    } else {
-        if (info.isConfig) {
-            env->Object_SetPropertyByName_Ref(
-                objValue, "subIntentInfo", CreateEtsEntryInfoForQuery(env, info.entryInfo));
-        }
-    }
+    SetInsightIntentSubInfo(env, objValue, info);
     if (info.isConfig) {
         env->Object_SetPropertyByName_Ref(
             objValue, "subIntentInfoForConfiguration", CreateEtsConfigIntentInfo(env, info));

@@ -48,6 +48,7 @@
 
 #include "insight_intent/insight_intent_info_for_query.h"
 #include "insight_intent/insight_intent_query_param.h"
+#include "insight_intent/insight_intent_execution_info.h"
 #include "iprepare_terminate_callback_interface.h"
 #include "irequest_start_ability_callback.h"
 #include "keep_alive_info.h"
@@ -2970,6 +2971,16 @@ public:
     }
 
     virtual int32_t NotifyInsightIntentExecute(uint64_t intentId)
+    {
+        return ERR_OK;
+    }
+
+    virtual int32_t RegisterWillInsightIntentExecuteCallback(const sptr<IRemoteObject> &callback)
+    {
+        return ERR_OK;
+    }
+
+    virtual int32_t UnregisterWillInsightIntentExecuteCallback()
     {
         return ERR_OK;
     }

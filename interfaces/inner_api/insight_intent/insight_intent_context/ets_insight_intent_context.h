@@ -46,6 +46,7 @@ public:
     static void StartAbilitySyncCheck(ani_env *env, ani_object aniObj);
     static void SetReturnModeForUIAbilityForeground(ani_env *env, ani_object aniObj, ani_enum_item aniMode);
     static void SetReturnModeForUIExtensionAbility(ani_env *env, ani_object aniObj, ani_enum_item aniMode);
+    static ani_object GetInsightIntentExecutionInfo(ani_env *env, ani_object aniObj);
     static EtsInsightIntentContext *GetContext(ani_env *env, ani_object aniObj);
 
     std::shared_ptr<InsightIntentContext> GetNativeContext()

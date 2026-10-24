@@ -32,5 +32,13 @@ ErrCode InsightIntentContext::StartAbilityByInsightIntent(const AAFwk::Want &wan
     TAG_LOGD(AAFwkTag::INTENT, "end");
     return err;
 }
+
+ErrCode InsightIntentContext::GetInsightIntentExecutionInfo(AppExecFwk::InsightIntentExecutionInfo &info)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::INTENT, "called");
+    info = executionInfo_;
+    return ERR_OK;
+}
 } // namespace AbilityRuntime
 } // namespace OHOS

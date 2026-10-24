@@ -97,6 +97,7 @@ struct InsightIntentInfoForQuery : public Parcelable {
     std::string parameters;
     std::string result;
     std::vector<std::string> keywords;
+    std::vector<std::string> permissions;
     LinkInfoForQuery linkInfo;
     PageInfoForQuery pageInfo;
     EntryInfoForQuery entryInfo;

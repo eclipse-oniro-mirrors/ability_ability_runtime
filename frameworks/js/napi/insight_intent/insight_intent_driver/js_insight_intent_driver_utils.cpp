@@ -367,6 +367,7 @@ napi_value CreateInsightIntentInfoForQuery(napi_env env, const InsightIntentInfo
     napi_set_named_property(env, objValue, "parameters", CreateInsightIntentInfoParam(env, info.parameters));
     napi_set_named_property(env, objValue, "result", CreateInsightIntentInfoResult(env, info.result));
     napi_set_named_property(env, objValue, "keywords", CreateNativeArray(env, info.keywords));
+    napi_set_named_property(env, objValue, "permissions", CreateNativeArray(env, info.permissions));
     if (!info.develoType.empty()) {
         napi_set_named_property(env, objValue, "developType", CreateJsValue(env, info.develoType));
     }

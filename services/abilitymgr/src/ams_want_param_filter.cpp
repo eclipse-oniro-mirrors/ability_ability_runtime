@@ -67,6 +67,9 @@ const std::map<std::string, std::string> THIRD_PARTY_PARAMS_TO_STRIP = {
     { AppExecFwk::INSIGHT_INTENT_PAGE_PARAM_NAVIGATIONID, "insight intent navigation id" },
     { AppExecFwk::INSIGHT_INTENT_PAGE_PARAM_NAVDESTINATIONNAME, "insight intent nav destination name" },
     { AppExecFwk::INSIGHT_INTENT_QUERY_ENTITY_CLASS_NAME, "insight intent query entity class name" },
+    { AppExecFwk::INSIGHT_INTENT_CALLER_BUNDLE_NAME, "insight intent caller bundle name" },
+    { AppExecFwk::INSIGHT_INTENT_CALLER_TOKEN_ID, "insight intent caller token id" },
+    { AppExecFwk::INSIGHT_INTENT_CALLER_UID, "insight intent caller uid" },
 
     // UIAbility-internal param.
     { "specifyTokenId", "specify token id" },

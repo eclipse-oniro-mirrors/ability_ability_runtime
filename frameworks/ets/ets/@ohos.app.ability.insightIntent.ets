@@ -101,6 +101,20 @@ namespace insightIntent {
     FUNCTION = 1
   }
 
+  export interface InsightIntentExecutionInfo {
+    readonly intentName: string;
+    readonly callerBundleName: string;
+    readonly callerTokenId: string;
+    readonly callerUid: int;
+  }
+
+  export class InsightIntentExecutionInfoInner implements InsightIntentExecutionInfo {
+    intentName: string = '';
+    callerBundleName: string = '';
+    callerTokenId: string = '';
+    callerUid: int = 0;
+  }
+
   export enum QueryType {
     ALL = 'all',
     BY_PROPERTY = 'byProperty'

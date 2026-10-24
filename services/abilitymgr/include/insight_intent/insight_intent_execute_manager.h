@@ -17,6 +17,7 @@
 #define OHOS_ABILITY_RUNTIME_INSIGHT_INTENT_EXECUTE_MANAGER_H
 
 #include <map>
+#include <mutex>
 #include <sys/types.h>
 
 #include "ability_connect_callback_stub.h"
@@ -25,7 +26,9 @@
 #include "extract_insight_intent_profile.h"
 #include "insight_intent_execute_param.h"
 #include "insight_intent_execute_result.h"
+#include "insight_intent_execution_info.h"
 #include "insight_intent_query_param.h"
+#include "insight_intent_will_execute_callback_interface.h"
 #include "iremote_object.h"
 #include "singleton.h"
 
@@ -44,6 +47,7 @@ struct InsightIntentExecuteRecord {
     uint64_t key = 0;
     std::string bundleName;
     std::string callerBundleName;
+    AppExecFwk::InsightIntentExecutionInfo executionInfo;
     pid_t targetPid = 0;
     InsightIntentExecuteState state = InsightIntentExecuteState::UNKNOWN;
     bool isDistributed = false;
@@ -116,6 +120,7 @@ public:
 
     static int32_t GenerateWant(const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param,
         const AbilityRuntime::ExtractInsightIntentGenericInfo &decoratorInfo,
+        AbilityRuntime::ExtractInsightIntentInfo &extractInfo,
         Want &want);
 
     std::map<int32_t, int64_t> GetAllIntentExemptionInfo() const;
@@ -142,6 +147,15 @@ public:
 
     static int32_t GenerateQueryEntityWant(const std::shared_ptr<AppExecFwk::InsightIntentQueryParam> &param,
         Want &want);
+
+    int32_t RegisterWillInsightIntentExecuteCallback(pid_t pid,
+        const sptr<IRemoteObject> &callback);
+    int32_t UnregisterWillInsightIntentExecuteCallback(pid_t pid);
+    void NotifyInsightIntentWillExecute(pid_t pid,
+        const AppExecFwk::InsightIntentExecutionInfo &info);
+    void RemoveInsightIntentWillExecuteCallback(pid_t pid);
+    void SetInsightIntentExecutionInfo(uint64_t intentId,
+        const AppExecFwk::InsightIntentExecutionInfo &info);
 private:
     static void BuildQueryEntityWantParams(Want &want,
         const AppExecFwk::InsightIntentQueryParam &param);
@@ -151,11 +165,18 @@ private:
     static int32_t ResolveSrcEntry(Want &want,
         const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param,
         const AbilityRuntime::ExtractInsightIntentGenericInfo &decoratorInfo);
+    static void SetInsightIntentExecuteParam(Want &want,
+        const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param);
+    static void SetInsightIntentBaseParams(Want &want,
+        const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param);
     mutable ffrt::mutex mutex_;
     mutable ffrt::mutex intentExemptionLock_;
     uint64_t intentIdCount_ = 0;
     std::map<uint64_t, std::shared_ptr<InsightIntentExecuteRecord>> records_;
     std::map<int32_t, int64_t> intentExemptionDeadlineTime_;
+
+    std::mutex insightIntentWillExecuteMutex_;
+    std::map<pid_t, sptr<IInsightIntentWillExecuteCallback>> insightIntentWillExecuteCallbacks_;
 
     int32_t AddRecord(uint64_t key, const sptr<IRemoteObject> &callerToken, const std::string &bundleName,
         uint64_t &intentId, const ExecuteParam &execParam = ExecuteParam{}, const std::string &taskId = "");
@@ -166,7 +187,7 @@ private:
         const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param, Want &want);
     static int32_t CheckAndUpdateDecoratorParams(
         const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param,
-        const AbilityRuntime::ExtractInsightIntentGenericInfo &decoratorInfo,
+        AbilityRuntime::ExtractInsightIntentInfo &extractInfo,
         Want &want);
     static int32_t UpdateFuncDecoratorParams(const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param,
         AbilityRuntime::ExtractInsightIntentInfo &info, Want &want);

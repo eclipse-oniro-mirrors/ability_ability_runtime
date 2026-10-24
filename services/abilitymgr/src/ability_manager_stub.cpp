@@ -1094,6 +1094,12 @@ int AbilityManagerStub::OnRemoteRequestInnerTwentySecond(uint32_t code, MessageP
     if (interfaceCode == AbilityManagerInterfaceCode::NOTIFY_INSIGHT_INTENT_EXECUTE) {
         return NotifyInsightIntentExecuteInner(data, reply);
     }
+    if (interfaceCode == AbilityManagerInterfaceCode::REGISTER_WILL_INSIGHT_INTENT_EXECUTE_CALLBACK) {
+        return RegisterWillInsightIntentExecuteCallbackInner(data, reply);
+    }
+    if (interfaceCode == AbilityManagerInterfaceCode::UNREGISTER_WILL_INSIGHT_INTENT_EXECUTE_CALLBACK) {
+        return UnregisterWillInsightIntentExecuteCallbackInner(data, reply);
+    }
     if (interfaceCode == AbilityManagerInterfaceCode::QUERY_SKILL_TYPE) {
         return QuerySkillTypeInner(data, reply);
     }
@@ -6231,6 +6237,23 @@ int32_t AbilityManagerStub::NotifyInsightIntentExecuteInner(MessageParcel &data,
     TAG_LOGD(AAFwkTag::INTENT, "notify insight intent execute stub");
     uint64_t intentId = data.ReadUint64();
     int32_t ret = NotifyInsightIntentExecute(intentId);
+    reply.WriteInt32(ret);
+    return NO_ERROR;
+}
+
+int32_t AbilityManagerStub::RegisterWillInsightIntentExecuteCallbackInner(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::INTENT, "register will insight intent execute callback stub");
+    sptr<IRemoteObject> callback = data.ReadRemoteObject();
+    int32_t ret = RegisterWillInsightIntentExecuteCallback(callback);
+    reply.WriteInt32(ret);
+    return NO_ERROR;
+}
+
+int32_t AbilityManagerStub::UnregisterWillInsightIntentExecuteCallbackInner(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::INTENT, "unregister will insight intent execute callback stub");
+    int32_t ret = UnregisterWillInsightIntentExecuteCallback();
     reply.WriteInt32(ret);
     return NO_ERROR;
 }

@@ -19,6 +19,7 @@
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
 #include "js_error_utils.h"
+#include "js_insight_intent_execution_info.h"
 #include "napi_common_want.h"
 
 namespace OHOS {
@@ -51,6 +52,12 @@ napi_value JsInsightIntentContext::SetReturnModeForUiExtensionAbility(napi_env e
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     GET_NAPI_INFO_AND_CALL(env, info, JsInsightIntentContext, OnSetReturnModeForUiExtensionAbility);
+}
+
+napi_value JsInsightIntentContext::GetInsightIntentExecutionInfo(napi_env env, napi_callback_info info)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    GET_NAPI_INFO_AND_CALL(env, info, JsInsightIntentContext, OnGetInsightIntentExecutionInfo);
 }
 
 napi_value JsInsightIntentContext::OnStartAbility(napi_env env, NapiCallbackInfo& info)
@@ -183,6 +190,26 @@ napi_value JsInsightIntentContext::OnSetReturnModeForUiExtensionAbility(napi_env
     return CreateJsUndefined(env);
 }
 
+napi_value JsInsightIntentContext::OnGetInsightIntentExecutionInfo(napi_env env, NapiCallbackInfo& info)
+{
+    TAG_LOGD(AAFwkTag::INTENT, "called");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto context = context_.lock();
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "null context");
+        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        return CreateJsUndefined(env);
+    }
+    AppExecFwk::InsightIntentExecutionInfo executeInfo;
+    auto errCode = context->GetInsightIntentExecutionInfo(executeInfo);
+    if (errCode != ERR_OK) {
+        TAG_LOGE(AAFwkTag::INTENT, "get execution info failed, err: %{public}d", errCode);
+        ThrowErrorByNativeErr(env, errCode);
+        return CreateJsUndefined(env);
+    }
+    return CreateJsInsightIntentExecutionInfo(env, executeInfo);
+}
+
 napi_value CreateJsInsightIntentContext(napi_env env, const std::shared_ptr<InsightIntentContext>& context)
 {
     TAG_LOGD(AAFwkTag::INTENT, "called");
@@ -200,6 +227,8 @@ napi_value CreateJsInsightIntentContext(napi_env env, const std::shared_ptr<Insi
         JsInsightIntentContext::SetReturnModeForUiAbilityForeground);
     BindNativeFunction(env, contextObj, "setReturnModeForUIExtensionAbility", CONTEXT_MODULE_NAME,
         JsInsightIntentContext::SetReturnModeForUiExtensionAbility);
+    BindNativeProperty(env, contextObj, "insightIntentExecutionInfo",
+        JsInsightIntentContext::GetInsightIntentExecutionInfo);
     TAG_LOGD(AAFwkTag::INTENT, "end");
     return handleEscape.Escape(contextObj);
 }

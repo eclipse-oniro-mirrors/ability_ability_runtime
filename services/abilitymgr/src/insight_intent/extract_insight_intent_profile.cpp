@@ -46,6 +46,7 @@ const std::string INSIGHT_INTENT_SCHEMA = "schema";
 const std::string INSIGHT_INTENT_ICON = "icon";
 const std::string INSIGHT_INTENT_LLM_DESCRIPTION = "llmDescription";
 const std::string INSIGHT_INTENT_KEYWORDS = "keywords";
+const std::string INSIGHT_INTENT_PERMISSIONS = "permissions";
 const std::string INSIGHT_INTENT_PARAMETERS = "parameters";
 const std::string INSIGHT_INTENT_URI = "uri";
 const std::string INSIGHT_INTENT_PARAM_MAPPING = "paramMappings";
@@ -102,6 +103,39 @@ const std::map<std::string, ExecuteMode> executeModeMap = {
     {"uiextension", ExecuteMode::UI_EXTENSION_ABILITY},
     {"serviceextension", ExecuteMode::SERVICE_EXTENSION_ABILITY}
 };
+
+bool SetJsonFieldIfNotEmpty(nlohmann::json &jsonObject, const std::string &key, const std::string &value,
+    const std::string &logMsg)
+{
+    if (value.empty()) {
+        return true;
+    }
+    nlohmann::json parsed;
+    if (!SafeParse(value, parsed)) {
+        TAG_LOGE(AAFwkTag::INTENT, "%{public}s", logMsg.c_str());
+        return false;
+    }
+    jsonObject[key] = parsed;
+    return true;
+}
+
+constexpr size_t MAX_PERMISSION_COUNT = 64;
+constexpr const char *PERMISSION_PREFIX = "ohos.permission.";
+
+bool IsValidPermissions(const std::vector<std::string> &permissions)
+{
+    if (permissions.size() > MAX_PERMISSION_COUNT) {
+        TAG_LOGE(AAFwkTag::INTENT, "permissions count exceeds limit: %{public}zu", permissions.size());
+        return false;
+    }
+    for (const auto &permission : permissions) {
+        if (permission.empty() || permission.rfind(PERMISSION_PREFIX, 0) != 0) {
+            TAG_LOGE(AAFwkTag::INTENT, "invalid permission name in profile");
+            return false;
+        }
+    }
+    return true;
+}
 } // namespace
 
 void from_json(const nlohmann::json &jsonObject, LinkIntentParamProfileMapping &paramMapping)
@@ -277,6 +311,17 @@ void from_json(const nlohmann::json &jsonObject, ExtractInsightIntentProfileInfo
         false,
         g_extraParseResult,
         ArrayType::STRING);
+    AppExecFwk::GetValueIfFindKey<std::vector<std::string>>(jsonObject,
+        jsonObjectEnd,
+        INSIGHT_INTENT_PERMISSIONS,
+        insightIntentInfo.permissions,
+        JsonType::ARRAY,
+        false,
+        g_extraParseResult,
+        ArrayType::STRING);
+    if (!IsValidPermissions(insightIntentInfo.permissions)) {
+        g_extraParseResult = ERR_INVALID_VALUE;
+    }
     AppExecFwk::BMSJsonUtil::GetStrValueIfFindKey(jsonObject,
         jsonObjectEnd,
         INSIGHT_INTENT_EXAMPLE,
@@ -461,6 +506,7 @@ void to_json(nlohmann::json& jsonObject, const ExtractInsightIntentProfileInfo& 
         {INSIGHT_INTENT_ICON, info.icon},
         {INSIGHT_INTENT_LLM_DESCRIPTION, info.llmDescription},
         {INSIGHT_INTENT_KEYWORDS, info.keywords},
+        {INSIGHT_INTENT_PERMISSIONS, info.permissions},
         {INSIGHT_INTENT_EXAMPLE, info.example},
         {INSIGHT_INTENT_URI, info.uri},
         {INSIGHT_INTENT_PARAM_MAPPING, info.paramMapping},
@@ -478,24 +524,11 @@ void to_json(nlohmann::json& jsonObject, const ExtractInsightIntentProfileInfo& 
         {INSIGHT_INTENT_ARKTS_MODE, info.arkTSMode}
     };
 
-    if (!info.parameters.empty()) {
-        nlohmann::json parameters;
-        if (!SafeParse(info.parameters, parameters)) {
-            TAG_LOGE(AAFwkTag::INTENT, "discarded parameters");
-            return;
-        }
-
-        jsonObject[INSIGHT_INTENT_PARAMETERS] = parameters;
+    if (!SetJsonFieldIfNotEmpty(jsonObject, INSIGHT_INTENT_PARAMETERS, info.parameters, "discarded parameters")) {
+        return;
     }
-
-    if (!info.result.empty()) {
-        nlohmann::json result;
-        if (!SafeParse(info.result, result)) {
-            TAG_LOGE(AAFwkTag::INTENT, "discarded result");
-            return;
-        }
-
-        jsonObject[INSIGHT_INTENT_RESULT] = result;
+    if (!SetJsonFieldIfNotEmpty(jsonObject, INSIGHT_INTENT_RESULT, info.result, "discarded result")) {
+        return;
     }
 }
 
@@ -725,6 +758,7 @@ bool ExtractInsightIntentProfile::ProfileInfoFormat(const ExtractInsightIntentPr
     info.example = insightIntent.example;
     info.result = insightIntent.result;
     info.keywords.assign(insightIntent.keywords.begin(), insightIntent.keywords.end());
+    info.permissions.assign(insightIntent.permissions.begin(), insightIntent.permissions.end());
     info.arkTSMode = insightIntent.arkTSMode;
     info.entities = insightIntent.entities;
     TAG_LOGD(AAFwkTag::INTENT, "entities size: %{public}zu", info.entities.size());

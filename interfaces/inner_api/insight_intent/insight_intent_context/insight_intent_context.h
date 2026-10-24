@@ -18,17 +18,33 @@
 #define OHOS_ABILITY_RUNTIME_INSIGHT_INTENT_CONTEXT_H
 
 #include "insight_intent_constant.h"
+#include "insight_intent_execution_info.h"
 #include "iremote_object.h"
 #include "want.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
 /**
+ * @struct InsightIntentContextExecParam
+ * The execution metadata of an insight intent context.
+ */
+struct InsightIntentContextExecParam {
+    uint64_t intentId = 0;
+    std::string toolCallId;
+    AppExecFwk::InsightIntentExecutionInfo executionInfo;
+};
+
+/**
  * @class InsightIntentContext
  * InsightIntentContext provides a context for insightintent to execute certain tasks.
  */
 class InsightIntentContext final {
 public:
+    InsightIntentContext(const sptr<IRemoteObject>& token, const std::string& bundleName, int32_t winMode,
+        const InsightIntentContextExecParam& execParam)
+        : token_(token), bundleName_(bundleName), winMode_(winMode), intentId_(execParam.intentId),
+          toolCallId_(execParam.toolCallId), executionInfo_(execParam.executionInfo) {}
+
     InsightIntentContext(const sptr<IRemoteObject>& token, const std::string& bundleName, int32_t winMode,
         uint64_t intentId, const std::string& toolCallId = "")
         : token_(token), bundleName_(bundleName), winMode_(winMode), intentId_(intentId), toolCallId_(toolCallId) {}
@@ -42,6 +58,14 @@ public:
      * @return result of StartAbility.
      */
     ErrCode StartAbilityByInsightIntent(const AAFwk::Want &want);
+
+    /**
+     * Gets the insight intent execution info of this context.
+     *
+     * @param info Indicates the insight intent execution info.
+     * @return result of GetInsightIntentExecutionInfo.
+     */
+    ErrCode GetInsightIntentExecutionInfo(AppExecFwk::InsightIntentExecutionInfo &info);
 
     std::string GetBundleName() const
     {
@@ -89,6 +113,7 @@ private:
     int32_t winMode_ = 0;
     uint64_t intentId_ = 0;
     std::string toolCallId_ = "";
+    AppExecFwk::InsightIntentExecutionInfo executionInfo_;
     int32_t executeMode_ = -1;
     InsightIntentReturnMode delayReturnMode_ = InsightIntentReturnMode::CALLBACK;
 };
