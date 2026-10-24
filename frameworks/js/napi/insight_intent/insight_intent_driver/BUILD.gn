@@ -49,6 +49,7 @@ ohos_shared_library("insightintentdriver_napi") {
     "ipc:ipc_napi",
     "json:nlohmann_json_static",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
   defines = []
   if (hiviewdfx_runtime_api_metrics_enable) {
