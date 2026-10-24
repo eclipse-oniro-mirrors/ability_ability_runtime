@@ -32,6 +32,7 @@ const std::string TEST_FUNCTION_NAME = "testFunction";
 const std::string TEST_CONTEXT = "test_context";
 const std::string TEST_TOOL_CALL_ID = "toolCall-111_aBc";
 const std::string TEST_DM_SESSION_ID = "dmSession-222_XyZ";
+const std::string TEST_TASK_ID = "task-333_UvW";
 }
 
 class InvokeFunctionParamTest : public testing::Test {};
@@ -50,6 +51,7 @@ HWTEST_F(InvokeFunctionParamTest, InvokeFunctionParam_Parcelable_0100, TestSize.
     param.invokeOptions.context = TEST_CONTEXT;
     param.invokeOptions.toolCallId = TEST_TOOL_CALL_ID;
     param.invokeOptions.dmSessionId = TEST_DM_SESSION_ID;
+    param.invokeOptions.taskId = TEST_TASK_ID;
 
     Parcel parcel;
     ASSERT_TRUE(param.Marshalling(parcel));
@@ -63,6 +65,7 @@ HWTEST_F(InvokeFunctionParamTest, InvokeFunctionParam_Parcelable_0100, TestSize.
     EXPECT_EQ(result->invokeOptions.context, TEST_CONTEXT);
     EXPECT_EQ(result->invokeOptions.toolCallId, TEST_TOOL_CALL_ID);
     EXPECT_EQ(result->invokeOptions.dmSessionId, TEST_DM_SESSION_ID);
+    EXPECT_EQ(result->invokeOptions.taskId, TEST_TASK_ID);
 }
 
 /**
@@ -78,6 +81,7 @@ HWTEST_F(InvokeFunctionParamTest, InvokeFunctionParam_Parcelable_0200, TestSize.
     param.invokeOptions.context = TEST_CONTEXT;
     param.invokeOptions.toolCallId = "";
     param.invokeOptions.dmSessionId = "";
+    param.invokeOptions.taskId = "";
 
     Parcel parcel;
     ASSERT_TRUE(param.Marshalling(parcel));
@@ -90,6 +94,7 @@ HWTEST_F(InvokeFunctionParamTest, InvokeFunctionParam_Parcelable_0200, TestSize.
     EXPECT_EQ(result->invokeOptions.context, TEST_CONTEXT);
     EXPECT_EQ(result->invokeOptions.toolCallId, "");
     EXPECT_EQ(result->invokeOptions.dmSessionId, "");
+    EXPECT_EQ(result->invokeOptions.taskId, "");
 }
 
 /**
@@ -117,6 +122,7 @@ HWTEST_F(InvokeFunctionParamTest, InvokeFunctionParam_Unmarshalling_TolerantTail
     // Tolerant tail read: missing identifiers default to "" (not provided).
     EXPECT_EQ(result->invokeOptions.toolCallId, "");
     EXPECT_EQ(result->invokeOptions.dmSessionId, "");
+    EXPECT_EQ(result->invokeOptions.taskId, "");
 }
 } // namespace CliTool
 } // namespace OHOS

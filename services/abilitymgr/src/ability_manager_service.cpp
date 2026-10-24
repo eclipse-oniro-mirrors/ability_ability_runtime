@@ -15372,14 +15372,38 @@ int32_t AbilityManagerService::PrepareFunctionCallParam(const std::string &bundl
     return paramParser_.Build(bundleName, intentName, wantParamCleaned, candidates, callerUserId, parseResult);
 }
 
+void AbilityManagerService::HandleTaskIdAttribution(const std::shared_ptr<InsightIntentExecuteParam> &param)
+{
+    if (param == nullptr || param->insightIntentParam_ == nullptr) {
+        return;
+    }
+    const auto taskId = param->insightIntentParam_->GetStringParam(AppExecFwk::INSIGHT_INTENT_TASK_ID);
+
+    param->insightIntentParam_->Remove(AppExecFwk::INSIGHT_INTENT_TASK_ID);
+    if (taskId.empty()) {
+        return;
+    }
+    if (!AAFwk::PermissionVerification::GetInstance()->IsSystemAppCall()) {
+        TAG_LOGI(AAFwkTag::INTENT, "non-system caller, ignore task id attribution");
+        return;
+    }
+    if (taskId.length() > AppExecFwk::INSIGHT_INTENT_TASK_ID_MAX_LEN) {
+        TAG_LOGE(AAFwkTag::INTENT, "task id too long, length: %{public}zu, drop it", taskId.length());
+        return;
+    }
+    param->taskId_ = taskId;
+    TAG_LOGI(AAFwkTag::INTENT, "task id attribution accepted, taskId: %{public}s", taskId.c_str());
+}
+
 int32_t AbilityManagerService::ExecuteIntentByFunctionCall(uint64_t key,
     const sptr<IRemoteObject> &callerToken, const std::string &bundleName,
     const std::string &intentName, const WantParams &wantParam)
 {
     const auto toolCallId = wantParam.GetStringParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID);
+    const auto taskId = wantParam.GetStringParam(AppExecFwk::INSIGHT_INTENT_TASK_ID);
     TAG_LOGI(AAFwkTag::INTENT, "called, bundleName: %{public}s, intentName: %{public}s, "
-        "toolCallId: %{public}s, wantParam: %{public}s",
-        bundleName.c_str(), intentName.c_str(), toolCallId.c_str(), wantParam.ToString().c_str());
+        "toolCallId: %{public}s, taskId: %{public}s, wantParam: %{public}s",
+        bundleName.c_str(), intentName.c_str(), toolCallId.c_str(), taskId.c_str(), wantParam.ToString().c_str());
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (bundleName.empty() || intentName.empty()) {
         TAG_LOGE(AAFwkTag::INTENT, "invalid params, bundleName or intentName empty");
@@ -15394,6 +15418,9 @@ int32_t AbilityManagerService::ExecuteIntentByFunctionCall(uint64_t key,
     }
     auto param = parseResult.param;
     param->toolCallId_ = toolCallId;
+    // Extract the task attribution id for system-side use and strip it from
+    // the params before any downstream consumer merges them into the target Want.
+    HandleTaskIdAttribution(param);
     bool openLinkExecuteFlag = parseResult.openLinkExecuteFlag;
     bool ignoreAbilityName = parseResult.ignoreAbilityName;
 
@@ -15615,6 +15642,15 @@ int32_t AbilityManagerService::ExecuteIntent(uint64_t key, const sptr<IRemoteObj
         !param.deviceId_.empty();
 
     auto paramPtr = std::make_shared<InsightIntentExecuteParam>(param);
+    if (paramPtr == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "param null");
+        return ERR_INVALID_VALUE;
+    }
+    // Extract the task attribution id for system-side use and strip it from
+    // the params before any downstream consumer merges them into the target Want.
+    // paramPtr->insightIntentParam_ aliases param.insightIntentParam_, so the
+    // strip also covers the StartAbilityWithServiceMatch(param) path below.
+    HandleTaskIdAttribution(paramPtr);
 
     ret = DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->CheckAndUpdateParam(
         key, callerToken, paramPtr, {callerBundlename, ignoreAbilityName});
@@ -15671,6 +15707,8 @@ int32_t AbilityManagerService::ExecuteIntent(uint64_t key, const sptr<IRemoteObj
 
     AbilityRuntime::ExecuteIntentCommonOptions options(ignoreAbilityName, infos, key);
     if (param.isServiceMatch_) {
+        // insightIntentParam_ is shared with paramPtr, so HandleTaskIdAttribution
+        // already stripped the task id from this path's want params.
         return StartAbilityWithServiceMatch(param);
     }
     return ExecuteIntentCommon(callerToken, paramPtr, callerBundlename, options);

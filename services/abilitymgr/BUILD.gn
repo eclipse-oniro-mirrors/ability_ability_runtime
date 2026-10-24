@@ -147,6 +147,8 @@ ohos_shared_library("abilityms") {
   ]
   public_configs = [ ":abilityms_cli_tool_function_include" ]
   include_dirs = [
+    "${ability_runtime_services_path}/abilitymgr/include",
+    "${ability_runtime_services_path}/appmgr/include",
     "${ability_runtime_services_path}/appdfr/include",
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_service_extension_ability/connection",
     "${agent_runtime_framework_path}/interfaces/inner_api/include",
@@ -177,6 +179,7 @@ ohos_shared_library("abilityms") {
     "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
     "${ability_runtime_path}/utils/server/startup:startup_util",
+    "${ability_runtime_services_path}/appmgr:libappms",
     "${ability_runtime_services_path}/common:app_util",
     "${ability_runtime_services_path}/common:hisysevent_report",
     "${ability_runtime_services_path}/common:perm_verification",

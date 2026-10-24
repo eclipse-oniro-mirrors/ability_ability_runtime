@@ -102,6 +102,37 @@ inline bool UnwrapOptionalTraceId(napi_env env, napi_value options, const char* 
     out = std::move(traceId);
     return true;
 }
+
+// Classification of the JS options value before field parsing.
+enum class OptionsKind {
+    ABSENT,   // nullptr / undefined / null: nothing to parse
+    OBJECT,   // an object: parse the optional trace identifiers
+    INVALID,  // non-object value or typeof failure: reported via msg
+};
+
+// Helper: classify the options parameter. Sets msg and logs on a non-object
+// value or a typeof failure (INVALID).
+inline OptionsKind GetOptionsKind(napi_env env, napi_value options, std::string& msg)
+{
+    if (options == nullptr) {
+        return OptionsKind::ABSENT;
+    }
+    napi_valuetype optionsType = napi_undefined;
+    if (napi_typeof(env, options, &optionsType) != napi_ok) {
+        msg = "Parameter error. Failed to parse the option.";
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
+        return OptionsKind::INVALID;
+    }
+    if (optionsType == napi_undefined || optionsType == napi_null) {
+        return OptionsKind::ABSENT;
+    }
+    if (optionsType != napi_object) {
+        msg = "Parameter error. The type of \"option\" must be object.";
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
+        return OptionsKind::INVALID;
+    }
+    return OptionsKind::OBJECT;
+}
 } // namespace
 
 napi_value CreateJsFunctionInfo(napi_env env, const FunctionInfo& function)
@@ -200,11 +231,13 @@ napi_value CreateJsInvokeFunctionParam(napi_env env, const InvokeFunctionParam &
     napi_set_named_property(env, jsObj, "args", AppExecFwk::WrapWantParams(env, param.args));
     // Matches FunctionHook.d.ts InvokeFunctionParam {invokeOptions?: InvokeOptions}; the ids
     // are read-only for the hook (not parsed back from the hook result).
-    if (!param.invokeOptions.toolCallId.empty() || !param.invokeOptions.dmSessionId.empty()) {
+    if (!param.invokeOptions.toolCallId.empty() || !param.invokeOptions.dmSessionId.empty() ||
+        !param.invokeOptions.taskId.empty()) {
         napi_value jsOptions = nullptr;
         napi_create_object(env, &jsOptions);
         SetOptionalStringProperty(env, jsOptions, "toolCallId", param.invokeOptions.toolCallId);
         SetOptionalStringProperty(env, jsOptions, "dmSessionId", param.invokeOptions.dmSessionId);
+        SetOptionalStringProperty(env, jsOptions, "taskId", param.invokeOptions.taskId);
         napi_set_named_property(env, jsObj, "invokeOptions", jsOptions);
     }
     return jsObj;
@@ -234,29 +267,15 @@ void UnwrapInvokeFunctionParam(napi_env env, napi_value jsObj, InvokeFunctionPar
     }
 }
 
-bool UnwrapInvokeOptions(napi_env env, napi_value options,
-    std::string& toolCallId, std::string& dmSessionId, std::string& msg)
+bool UnwrapInvokeOptions(napi_env env, napi_value options, InvokeOptions& invokeOptions, std::string& msg)
 {
-    if (options == nullptr) {
-        return true;
+    OptionsKind kind = GetOptionsKind(env, options, msg);
+    if (kind != OptionsKind::OBJECT) {
+        return kind == OptionsKind::ABSENT;
     }
-    napi_valuetype optionsType = napi_undefined;
-    napi_status status = napi_typeof(env, options, &optionsType);
-    if (status != napi_ok) {
-        msg = "Parameter error. Failed to parse the option.";
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
-        return false;
-    }
-    if (optionsType == napi_undefined || optionsType == napi_null) {
-        return true;  // options absent: no identifiers to parse
-    }
-    if (optionsType != napi_object) {
-        msg = "Parameter error. The type of \"option\" must be object.";
-        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
-        return false;
-    }
-    return UnwrapOptionalTraceId(env, options, "toolCallId", toolCallId, msg) &&
-        UnwrapOptionalTraceId(env, options, "dmSessionId", dmSessionId, msg);
+    return UnwrapOptionalTraceId(env, options, "toolCallId", invokeOptions.toolCallId, msg) &&
+        UnwrapOptionalTraceId(env, options, "dmSessionId", invokeOptions.dmSessionId, msg) &&
+        UnwrapOptionalTraceId(env, options, "taskId", invokeOptions.taskId, msg);
 }
 
 } // namespace CliTool

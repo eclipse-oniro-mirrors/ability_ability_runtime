@@ -88,6 +88,7 @@ protected:
         mgrClient.mockHookModify_ = false;
         mgrClient.mockHookToolCallId_.clear();
         mgrClient.mockHookDmSessionId_.clear();
+        mgrClient.mockHookTaskId_.clear();
         mgrClient.afterHookCalled_ = false;
         mgrClient.lastWrap_ = FunctionResultWrap();
         auto &intentClient = AAFwk::IntentClient::GetInstance();
@@ -120,18 +121,22 @@ protected:
     // Build a param mirroring the NAPI entry contract: non-empty invokeOptions
     // trace identifiers ride the reserved wantParam keys (transport leg).
     static InvokeFunctionParam MakeParam(const std::string &toolCallId = "",
-        const std::string &dmSessionId = "")
+        const std::string &dmSessionId = "", const std::string &taskId = "")
     {
         InvokeFunctionParam param;
         param.functionNamespace = BUNDLE_NAME;
         param.functionName = FUNCTION_NAME;
         param.invokeOptions.toolCallId = toolCallId;
         param.invokeOptions.dmSessionId = dmSessionId;
+        param.invokeOptions.taskId = taskId;
         if (!toolCallId.empty()) {
             param.args.SetParam(RESERVED_KEY_TOOL_CALL_ID, AAFwk::String::Box(toolCallId));
         }
         if (!dmSessionId.empty()) {
             param.args.SetParam(RESERVED_KEY_DM_SESSION_ID, AAFwk::String::Box(dmSessionId));
+        }
+        if (!taskId.empty()) {
+            param.args.SetParam(RESERVED_KEY_TASK_ID, AAFwk::String::Box(taskId));
         }
         return param;
     }
@@ -412,6 +417,46 @@ HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_StampExecutionIds_15
     ASSERT_TRUE(mgrClient.afterHookCalled_);
     EXPECT_EQ(mgrClient.lastWrap_.toolCallId, "tcid-stamp-0500");
     EXPECT_EQ(mgrClient.lastWrap_.dmSessionId, "dmsid-hook-0500");
+}
+
+/**
+ * @tc.name: InvokeFunctionExecutor_TaskIdInjected_1600
+ * @tc.desc: A valid taskId provided at entry rides the reserved "ohos.task.id"
+ *           wantParam key into the intent execution with its value intact
+ *           (authoritative injection point, ADR-8).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_TaskIdInjected_1600, TestSize.Level1)
+{
+    auto param = MakeParam("", "", "task-uuid-0600");
+    param.args.SetParam("city", AAFwk::String::Box("Shanghai"));
+    auto capture = RunParam(param);
+    ASSERT_TRUE(WaitForResult(capture));
+    EXPECT_TRUE(capture->result.result.success);
+
+    auto &intentClient = AAFwk::IntentClient::GetInstance();
+    ASSERT_TRUE(intentClient.executeCalled_);
+    EXPECT_EQ(GetWantParamString(intentClient.lastWantParam_, RESERVED_KEY_TASK_ID), "task-uuid-0600");
+    EXPECT_EQ(GetWantParamString(intentClient.lastWantParam_, "city"), "Shanghai");
+}
+
+/**
+ * @tc.name: InvokeFunctionExecutor_TaskIdNotProvided_1700
+ * @tc.desc: When no taskId is provided the reserved "ohos.task.id" key is absent
+ *           from the wantParam handed to the intent execution (EX-4: missing
+ *           key keeps the current behavior).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_TaskIdNotProvided_1700, TestSize.Level1)
+{
+    auto capture = RunParam(MakeParam("tcid-only-0700"));
+    ASSERT_TRUE(WaitForResult(capture));
+    EXPECT_TRUE(capture->result.result.success);
+
+    auto &intentClient = AAFwk::IntentClient::GetInstance();
+    ASSERT_TRUE(intentClient.executeCalled_);
+    EXPECT_FALSE(intentClient.lastWantParam_.HasParam(RESERVED_KEY_TASK_ID));
+    EXPECT_EQ(GetWantParamString(intentClient.lastWantParam_, RESERVED_KEY_TOOL_CALL_ID), "tcid-only-0700");
 }
 
 /**
