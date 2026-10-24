@@ -34,7 +34,7 @@ namespace AAFwk {
 namespace {
 constexpr int32_t DEFAULT_USER_ID = 0;
 constexpr int32_t API_VERSION_MOD = 100;
-constexpr int32_t COLLABORATION_FWK_UID = 5520;
+constexpr int32_t TOKEN_ID_BIT_SIZE = 32;
 constexpr int32_t FOUNDATION_UID = 5523;
 constexpr int32_t UDMF_UID = 3012;
 constexpr int32_t PASTEBOARD_UID = 3816;
@@ -89,7 +89,7 @@ bool FUDUtils::CheckAndCreateEventInfo(uint32_t callerTokenId, uint32_t targetTo
         TAG_LOGD(AAFwkTag::URIPERMMGR, "get callerBundleName failed");
         return false;
     }
-    if (!CheckIsSystemAppByBundleName(callerBundleName)) {
+    if (!CheckIsSystemAppByTokenId(callerTokenId)) {
         TAG_LOGD(AAFwkTag::URIPERMMGR, "caller not system");
         return false;
     }
@@ -98,7 +98,7 @@ bool FUDUtils::CheckAndCreateEventInfo(uint32_t callerTokenId, uint32_t targetTo
         TAG_LOGD(AAFwkTag::URIPERMMGR, "get targetBundleName failed");
         return false;
     }
-    if (CheckIsSystemAppByBundleName(targetBundleName)) {
+    if (CheckIsSystemAppByTokenId(targetTokenId)) {
         TAG_LOGD(AAFwkTag::URIPERMMGR, "target is systemApp");
         return false;
     }
@@ -147,8 +147,7 @@ bool FUDUtils::IsPrivilegedSACall()
     if (PermissionVerification::GetInstance()->VerifyPermissionByTokenId(callerTokenId, permissionName)) {
         return true;
     }
-    int32_t callerUId = IPCSkeleton::GetCallingUid();
-    return callerUId == COLLABORATION_FWK_UID;
+    return false;
 }
 
 bool FUDUtils::IsSAOrBrokerCall()
@@ -204,26 +203,7 @@ int32_t FUDUtils::ResolveCurUserId(int32_t userId, int32_t &curUserId)
     return ERR_OK;
 }
 
-bool FUDUtils::CheckIsSystemAppByBundleName(std::string &bundleName)
-{
-    auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
-    if (bundleMgrHelper == nullptr) {
-        TAG_LOGW(AAFwkTag::URIPERMMGR, "bundleMgrHelper null");
-        return false;
-    }
-    AppExecFwk::ApplicationInfo appInfo;
-    if (!IN_PROCESS_CALL(bundleMgrHelper->GetApplicationInfo(bundleName, AppExecFwk::BundleFlag::GET_BUNDLE_DEFAULT,
-                                                             GetCurrentAccountId(), appInfo))) {
-        TAG_LOGW(AAFwkTag::URIPERMMGR, "GetApplicationInfo failed");
-        return false;
-    }
-    auto isSystemApp = Security::AccessToken::TokenIdKit::IsSystemAppByFullTokenID(appInfo.accessTokenIdEx);
-    TAG_LOGD(AAFwkTag::URIPERMMGR, "BundleName:%{public}s, isSystemApp:%{public}d", bundleName.c_str(),
-             static_cast<int32_t>(isSystemApp));
-    return isSystemApp;
-}
-
-bool FUDUtils::GetBundleApiTargetVersion(const std::string &bundleName, int32_t &targetApiVersion)
+bool FUDUtils::GetBundleApiTargetVersion(const std::string &bundleName, int32_t userId, int32_t &targetApiVersion)
 {
     auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
     if (bundleMgrHelper == nullptr) {
@@ -232,7 +212,7 @@ bool FUDUtils::GetBundleApiTargetVersion(const std::string &bundleName, int32_t 
     }
     AppExecFwk::ApplicationInfo appInfo;
     if (!IN_PROCESS_CALL(bundleMgrHelper->GetApplicationInfo(bundleName, AppExecFwk::BundleFlag::GET_BUNDLE_DEFAULT,
-                                                             GetCurrentAccountId(), appInfo))) {
+                                                             userId, appInfo))) {
         TAG_LOGI(AAFwkTag::URIPERMMGR, "Get application info failed.");
         return false;
     }
@@ -242,11 +222,19 @@ bool FUDUtils::GetBundleApiTargetVersion(const std::string &bundleName, int32_t 
 
 bool FUDUtils::CheckIsSystemAppByTokenId(uint32_t tokenId)
 {
-    std::string bundleName;
-    if (GetBundleNameByTokenId(tokenId, bundleName)) {
-        return CheckIsSystemAppByBundleName(bundleName);
+    auto tokenType = Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(tokenId);
+    if (tokenType != Security::AccessToken::ATokenTypeEnum::TOKEN_HAP) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "not HAP token, tokenId:%{public}u", tokenId);
+        return false;
     }
-    return false;
+    Security::AccessToken::HapTokenInfo hapInfo;
+    auto ret = Security::AccessToken::AccessTokenKit::GetHapTokenInfo(tokenId, hapInfo);
+    if (ret != Security::AccessToken::AccessTokenKitRet::RET_SUCCESS) {
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "GetHapTokenInfo failed, ret:%{public}d", ret);
+        return false;
+    }
+    uint64_t fullTokenId = (static_cast<uint64_t>(hapInfo.tokenAttr) << TOKEN_ID_BIT_SIZE) + tokenId;
+    return Security::AccessToken::TokenIdKit::IsSystemAppByFullTokenID(fullTokenId);
 }
 
 bool FUDUtils::GetDirByBundleNameAndAppIndex(const std::string &bundleName, int32_t appIndex, std::string &dirName)
@@ -297,7 +285,7 @@ bool FUDUtils::GetBundleNameByTokenId(uint32_t tokenId, std::string &bundleName)
     return false;
 }
 
-int32_t FUDUtils::GetAppIdByBundleName(const std::string &bundleName, std::string &appId)
+int32_t FUDUtils::GetAppIdByBundleName(const std::string &bundleName, int32_t userId, std::string &appId)
 {
     TAG_LOGD(AAFwkTag::URIPERMMGR, "BundleName is %{public}s.", bundleName.c_str());
     auto bms = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
@@ -305,7 +293,6 @@ int32_t FUDUtils::GetAppIdByBundleName(const std::string &bundleName, std::strin
         TAG_LOGW(AAFwkTag::URIPERMMGR, "The bundleMgrHelper is nullptr.");
         return GET_BUNDLE_MANAGER_SERVICE_FAILED;
     }
-    auto userId = GetCurrentAccountId();
     appId = IN_PROCESS_CALL(bms->GetAppIdByBundleName(bundleName, userId));
     if (appId.empty()) {
         TAG_LOGW(AAFwkTag::URIPERMMGR, "Get appId by bundle name failed, userId is %{private}d", userId);
