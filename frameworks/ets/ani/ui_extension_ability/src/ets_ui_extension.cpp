@@ -20,7 +20,9 @@
 #include "ability_info.h"
 #include "ability_manager_client.h"
 #include "ability_start_setting.h"
+#include "accesstoken_kit.h"
 #include "ani_common_configuration.h"
+#include "ani_common_util.h"
 #include "ani_common_want.h"
 #include "configuration_utils.h"
 #include "connection_manager.h"
@@ -38,10 +40,12 @@
 #include "insight_intent_executor_info.h"
 #include "insight_intent_executor_mgr.h"
 #include "int_wrapper.h"
+#include "ipc_skeleton.h"
 #include "js_ui_extension_content_session.h"
 #include "js_runtime.h"
 #include "js_runtime_utils.h"
 #include "napi/native_api.h"
+#include "tokenid_kit.h"
 #include "ui_extension_window_command.h"
 #include "want_params_wrapper.h"
 
@@ -285,6 +289,10 @@ void EtsUIExtension::OnStart(const AAFwk::Want &want, sptr<AAFwk::SessionInfo> s
     int32_t screenMode = want.GetIntParam(AAFwk::SCREEN_MODE_KEY, AAFwk::IDLE_SCREEN_MODE);
     if (!IsEmbeddableStart(screenMode)) {
         CallObjectMethod(false, "onCreate", signature, launchParamObj);
+    }
+
+    if (!OnGetConfigurationStrategy(sessionInfo)) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "OnGetConfigurationStrategy failed");
     }
 }
 
@@ -612,6 +620,7 @@ bool EtsUIExtension::HandleSessionCreate(const AAFwk::Want &want, const sptr<AAF
         int32_t screenMode = want.GetIntParam(AAFwk::SCREEN_MODE_KEY, AAFwk::IDLE_SCREEN_MODE);
         if (!IsEmbeddableStart(screenMode)) {
             CallObjectMethod(false, "onSessionCreate", nullptr, wantObj, sessonObj);
+            RegisterBrandColorChangeListener(uiWindow);
         }
         uiWindowMap_[compId] = uiWindow;
 #ifdef SUPPORT_GRAPHICS
@@ -692,12 +701,16 @@ void EtsUIExtension::DestroyWindow(const sptr<AAFwk::SessionInfo> &sessionInfo)
         CallObjectMethod(false, "onSessionDestroy", nullptr, contenSessionObj);
     }
     auto uiWindow = uiWindowMap_[componentId];
+    auto context = GetContext();
     if (uiWindow) {
+        if (context != nullptr &&
+            context->GetBrandColorStrategy() == AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC) {
+            uiWindow->UnregisterAbilityDataConsumer();
+        }
         uiWindow->Destroy();
     }
     uiWindowMap_.erase(componentId);
 #ifdef SUPPORT_GRAPHICS
-    auto context = GetContext();
     if (context != nullptr && context->GetWindow() == uiWindow) {
         context->SetWindow(nullptr);
         for (auto it : uiWindowMap_) {
@@ -751,6 +764,78 @@ bool EtsUIExtension::CallObjectMethod(bool withResult, const char *name, const c
     }
     va_end(args);
     return false;
+}
+
+ani_object EtsUIExtension::CallObjectMethodRef(const char *name, const char *signature, ...)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, std::string("CallObjectMethodRef:") + name);
+    TAG_LOGD(AAFwkTag::UI_EXT, "CallObjectMethodRef %{public}s", name);
+    if (etsObj_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "etsObj_ nullptr");
+        return nullptr;
+    }
+    auto env = etsRuntime_.GetAniEnv();
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null env");
+        return nullptr;
+    }
+    ani_status status = ANI_OK;
+    ani_method method = nullptr;
+    if ((status = env->Class_FindMethod(etsObj_->aniCls, name, signature, &method)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "status: %{public}d", status);
+        return nullptr;
+    }
+    env->ResetError();
+    ani_ref res {};
+    va_list args;
+    va_start(args, signature);
+    if ((status = env->Object_CallMethod_Ref(etsObj_->aniObj, method, &res, args)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "status: %{public}d", status);
+        etsRuntime_.HandleUncaughtError();
+        va_end(args);
+        return nullptr;
+    }
+    va_end(args);
+    return reinterpret_cast<ani_object>(res);
+}
+
+bool EtsUIExtension::OnGetConfigurationStrategy(const sptr<AAFwk::SessionInfo> &sessionInfo)
+{
+    TAG_LOGD(AAFwkTag::UI_EXT, "OnGetConfigurationStrategy begin");
+    auto selfToken = IPCSkeleton::GetSelfTokenID();
+    if (!Security::AccessToken::TokenIdKit::IsSystemAppByFullTokenID(selfToken)) {
+        TAG_LOGW(AAFwkTag::UI_EXT, "not system app, can not use onGetConfigurationStrategy");
+        return false;
+    }
+    auto env = etsRuntime_.GetAniEnv();
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null env");
+        return false;
+    }
+    ani_object result = CallObjectMethodRef("onGetConfigurationStrategy", nullptr);
+    if (result == nullptr) {
+        TAG_LOGI(AAFwkTag::UI_EXT, "onGetConfigurationStrategy not implemented");
+        return true;
+    }
+    int32_t brandColorStrategy = 0;
+    if (!GetFieldIntByName(env, result, "brandColorStrategy", brandColorStrategy)) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "Convert brandColorStrategy failed");
+        return false;
+    }
+    auto strategy =
+        brandColorStrategy == static_cast<int32_t>(AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC)
+            ? AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC
+            : AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM;
+    auto context = GetContext();
+    if (!context || sessionInfo  == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "ptr null");
+        return false;
+    }
+    if (!context->ApplyBrandColorStrategy(strategy, sessionInfo->brandColorStr)) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "ApplyBrandColorStrategy failed");
+        return false;
+    }
+    return true;
 }
 
 void EtsUIExtension::OnAbilityConfigurationUpdated(const AppExecFwk::Configuration &configuration)
