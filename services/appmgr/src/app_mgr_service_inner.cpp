@@ -82,6 +82,7 @@
 #include "locale_config.h"
 #endif
 #include "mem_mgr_client.h"
+#include "process_state_callback.h"
 #include "mem_mgr_process_state_info.h"
 #include "os_account_manager_wrapper.h"
 #ifdef OHOS_ACCOUNT_ENABLED
@@ -149,6 +150,8 @@ using namespace OHOS::Security;
 using namespace OHOS::Rosen;
 
 namespace {
+constexpr int32_t PROCESS_AVAILABLE_QUERY_TIMEOUT_MS = 100;
+
 #define CHECK_CALLER_IS_SYSTEM_APP                                                             \
     if (!AAFwk::PermissionVerification::GetInstance()->JudgeCallerIsAllowedToUseSystemAPI()) { \
         TAG_LOGE(AAFwkTag::APPMGR, "can't use SA");    \
@@ -2355,6 +2358,10 @@ void AppMgrServiceInner::LoadAbility(std::shared_ptr<AbilityInfo> abilityInfo, s
     if (appRecord && appRecord->GetProcessCacheLocked()) {
         TAG_LOGI(AAFwkTag::APPMGR, "process %{public}s is locked", processName.c_str());
         DelayedSingleton<CacheProcessManager>::GetInstance()->OnAppProcessCacheBlocked(appRecord);
+        appRecord = nullptr;
+    }
+    if (appRecord && !CheckProcessAvailable(appRecord)) {
+        TAG_LOGD(AAFwkTag::APPMGR, "process %{public}s is being killed by memmgr, skip reuse", processName.c_str());
         appRecord = nullptr;
     }
     if (appRecord && abilityInfo->type == AppExecFwk::AbilityType::PAGE) {
@@ -11326,6 +11333,53 @@ bool AppMgrServiceInner::NotifyMemMgrPriorityChanged(const std::shared_ptr<AppRu
     return true;
 }
 
+bool AppMgrServiceInner::CheckProcessAvailable(const std::shared_ptr<AppRunningRecord> &appRecord)
+{
+    if (!appRecord) {
+        return true;
+    }
+    auto priorityObject = appRecord->GetPriorityObject();
+    if (!priorityObject) {
+        return true;
+    }
+    int32_t pid = priorityObject->GetPid();
+    if (pid <= 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "pid not ready, skip check, pid:%{public}d", pid);
+        return true;
+    }
+
+    sptr<AppExecFwk::ProcessStateCallback> callback = sptr<AppExecFwk::ProcessStateCallback>::MakeSptr();
+    if (callback == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "callback is null, skip check, pid:%{public}d", pid);
+        return true;
+    }
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::APPMGR, "QueryProcessStateWithCallback begin, pid:%{public}d, timeout:%{public}d",
+        pid, PROCESS_AVAILABLE_QUERY_TIMEOUT_MS);
+    int32_t result = Memory::MemMgrClient::GetInstance().QueryProcessStateWithCallback(
+        pid, callback, PROCESS_AVAILABLE_QUERY_TIMEOUT_MS);
+    if (result != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "QueryProcessStateWithCallback failed, result:%{public}d, pid:%{public}d",
+            result, pid);
+        return true;
+    }
+    TAG_LOGD(AAFwkTag::APPMGR, "QueryProcessStateWithCallback sent, waiting result, pid:%{public}d", pid);
+
+    if (!callback->WaitForResult(PROCESS_AVAILABLE_QUERY_TIMEOUT_MS)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "QueryProcessStateWithCallback timeout, pid:%{public}d, use default", pid);
+        return true;
+    }
+
+    if (!callback->IsAvailable()) {
+        TAG_LOGD(AAFwkTag::APPMGR, "process pid:%{public}d is not available, prepare exit and kill", pid);
+        SetProcessPrepareExit(pid);
+        KillProcessByPid(pid, "LowMemoryKill");
+        return false;
+    }
+    TAG_LOGD(AAFwkTag::APPMGR, "process pid:%{public}d is available, proceed reuse", pid);
+    return true;
+}
+
 int32_t AppMgrServiceInner::GetAllUIExtensionRootHostPid(pid_t pid, std::vector<pid_t> &hostPids)
 {
     return appQueryHelper_.GetAllUIExtensionRootHostPid(pid, hostPids);
@@ -12583,15 +12637,18 @@ void AppMgrServiceInner::RecordAppExitSignalReason(int32_t pid, int32_t uid, int
 
 void AppMgrServiceInner::SetProcessPrepareExit(int32_t pid)
 {
-    TAG_LOGI(AAFwkTag::APPMGR, "SetProcessPrepareExit %{public}d", pid);
+    TAG_LOGD(AAFwkTag::APPMGR, "SetProcessPrepareExit %{public}d", pid);
     auto appRecord = GetAppRunningRecordByPid(pid);
     if (appRecord == nullptr) {
         TAG_LOGW(AAFwkTag::APPMGR, "SetProcessPrepareExit appRecord null: %{public}d", pid);
         return;
     }
+    TAG_LOGD(AAFwkTag::APPMGR, "SetProcessPrepareExit executing, pid:%{public}d, bundle:%{public}s",
+        pid, appRecord->GetBundleName().c_str());
     appRecord->SetProcessCacheBlocked(true);
     appRecord->SetTerminating();
     appRecord->SetPrepareExit();
+    TAG_LOGD(AAFwkTag::APPMGR, "SetProcessPrepareExit done, pid:%{public}d", pid);
 }
 
 void AppMgrServiceInner::SetTerminateTimeOutFlag(const sptr<IRemoteObject> token)

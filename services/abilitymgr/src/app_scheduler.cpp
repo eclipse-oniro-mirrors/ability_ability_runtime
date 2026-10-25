@@ -201,6 +201,13 @@ int32_t AppScheduler::KillProcessesByPids(const std::vector<int32_t> &pids, cons
     return ERR_OK;
 }
 
+bool AppScheduler::CheckProcessAvailable(int32_t pid)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "pid:%{public}d", pid);
+    CHECK_POINTER_AND_RETURN(appMgrClient_, true);
+    return IN_PROCESS_CALL(appMgrClient_->CheckProcessAvailable(pid));
+}
+
 void AppScheduler::AttachPidToParent(const sptr<IRemoteObject> &token, const sptr<IRemoteObject> &callerToken)
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "call");

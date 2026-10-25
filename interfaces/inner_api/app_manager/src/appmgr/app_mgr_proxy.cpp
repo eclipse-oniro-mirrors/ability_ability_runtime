@@ -3155,7 +3155,6 @@ int32_t AppMgrProxy::PreloadExtension(const AAFwk::Want &want, int32_t appIndex,
     return reply.ReadInt32();
 }
 
-
 void AppMgrProxy::SetProcessPrepareExit(int32_t pid)
 {
     MessageParcel data;
@@ -3182,7 +3181,7 @@ void AppMgrProxy::SetTerminateTimeOutFlag(const sptr<IRemoteObject> token)
         return;
     }
     PARCEL_UTIL_WRITE_NORET(data, RemoteObject, token.GetRefPtr());
-    PARCEL_UTIL_SENDREQ_NORET(AppMgrInterfaceCode::SET_PROCESS_PREPARE_EXIT, data, reply, option);
+    PARCEL_UTIL_SENDREQ_NORET(AppMgrInterfaceCode::SET_TERMINATE_TIMEOUT_FLAG, data, reply, option);
 }
 
 int32_t AppMgrProxy::GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos)

@@ -269,5 +269,10 @@ int32_t AppScheduler::RegisterAbilityDebugResponse(const sptr<AppExecFwk::IAbili
 {
     return 0;
 }
+
+bool AppScheduler::CheckProcessAvailable(int32_t pid)
+{
+    return true;
+}
 }  // namespace AAFwk
 }  // namespace OHOS

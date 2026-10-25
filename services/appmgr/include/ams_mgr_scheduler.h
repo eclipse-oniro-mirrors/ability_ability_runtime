@@ -145,6 +145,8 @@ public:
         const std::string &reason = "KillProcessesByPids", bool subProcess = false,
         bool isKillPrecedeStart = false) override;
 
+    virtual bool CheckProcessAvailable(int32_t pid) override;
+
     /**
      * Set child and parent relationship
      * @param token child process

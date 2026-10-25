@@ -301,6 +301,25 @@ int32_t AmsMgrScheduler::KillProcessesByPids(const std::vector<int32_t> &pids, c
     return amsMgrServiceInner_->KillProcessesByPids(pids, reason, subProcess, isKillPrecedeStart);
 }
 
+bool AmsMgrScheduler::CheckProcessAvailable(int32_t pid)
+{
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "AmsMgrScheduler is not ready");
+        return true;
+    }
+    if (IPCSkeleton::GetCallingUid() != FOUNDATION_UID) {
+        TAG_LOGE(AAFwkTag::APPMGR, "CheckProcessAvailable: not foundation call, uid: %{public}d",
+            IPCSkeleton::GetCallingUid());
+        return true;
+    }
+    auto appRecord = amsMgrServiceInner_->GetAppRunningRecordByPid(pid);
+    if (appRecord == nullptr) {
+        TAG_LOGD(AAFwkTag::APPMGR, "CheckProcessAvailable: appRecord not found, pid:%{public}d", pid);
+        return true;
+    }
+    return amsMgrServiceInner_->CheckProcessAvailable(appRecord);
+}
+
 void AmsMgrScheduler::AttachPidToParent(const sptr<IRemoteObject> &token, const sptr<IRemoteObject> &callerToken)
 {
     if (!IsReady()) {

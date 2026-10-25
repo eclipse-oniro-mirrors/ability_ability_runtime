@@ -20,6 +20,7 @@
 #include "app_mgr_service_inner.h"
 #include "app_running_record.h"
 #include "remote_client_manager.h"
+#include "process_state_callback.h"
 #undef private
 #include "app_scheduler.h"
 #include "app_utils.h"
@@ -1874,6 +1875,135 @@ HWTEST_F(AppMgrServiceInnerTest, SendProcessKillEvent_008, TestSize.Level1)
     appMgrServiceInner->NotifyAppMgrRecordExitReasonCompability(pid, killId, reason, reason, exitreason);
     appMgrServiceInner->SendProcessKillEvent(appRecord);
     TAG_LOGI(AAFwkTag::TEST, "SendProcessKillEvent_008 end");
+}
+
+/**
+ * @tc.name: CheckProcessAvailable_001
+ * @tc.desc: CheckProcessAvailable with null appRecord, expect return true
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, CheckProcessAvailable_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckProcessAvailable_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    auto result = appMgrServiceInner->CheckProcessAvailable(nullptr);
+    EXPECT_TRUE(result);
+    TAG_LOGI(AAFwkTag::TEST, "CheckProcessAvailable_001 end");
+}
+
+/**
+ * @tc.name: CheckProcessAvailable_002
+ * @tc.desc: CheckProcessAvailable with appRecord that has null priorityObject, expect return true
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, CheckProcessAvailable_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckProcessAvailable_002 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, 0, "test_process");
+    ASSERT_NE(appRecord, nullptr);
+
+    auto result = appMgrServiceInner->CheckProcessAvailable(appRecord);
+    EXPECT_TRUE(result);
+    TAG_LOGI(AAFwkTag::TEST, "CheckProcessAvailable_002 end");
+}
+
+/**
+ * @tc.name: CheckProcessAvailable_003
+ * @tc.desc: CheckProcessAvailable with appRecord that has pid <= 0, expect return true
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, CheckProcessAvailable_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckProcessAvailable_003 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, 0, "test_process");
+    ASSERT_NE(appRecord, nullptr);
+
+    auto priorityObject = appRecord->GetPriorityObject();
+    ASSERT_NE(priorityObject, nullptr);
+    priorityObject->pid_ = 0;
+
+    auto result = appMgrServiceInner->CheckProcessAvailable(appRecord);
+    EXPECT_TRUE(result);
+    TAG_LOGI(AAFwkTag::TEST, "CheckProcessAvailable_003 end");
+}
+
+/**
+ * @tc.name: SetProcessPrepareExit_001
+ * @tc.desc: SetProcessPrepareExit with non-existent pid, expect no crash
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, SetProcessPrepareExit_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetProcessPrepareExit_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    appMgrServiceInner->Init();
+
+    int32_t nonExistentPid = 99999;
+    appMgrServiceInner->SetProcessPrepareExit(nonExistentPid);
+
+    SUCCEED();
+    TAG_LOGI(AAFwkTag::TEST, "SetProcessPrepareExit_001 end");
+}
+
+/**
+ * @tc.name: ProcessStateCallback_001
+ * @tc.desc: ProcessStateCallback OnProcessAvailable and WaitForResult timeout
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, ProcessStateCallback_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ProcessStateCallback_001 start");
+    auto callback = sptr<ProcessStateCallback>::MakeSptr();
+    ASSERT_NE(callback, nullptr);
+
+    EXPECT_TRUE(callback->IsAvailable());
+
+    bool waitResult = callback->WaitForResult(50);
+    EXPECT_FALSE(waitResult);
+
+    callback->OnProcessAvailable(false);
+    EXPECT_FALSE(callback->IsAvailable());
+
+    callback->OnProcessAvailable(true);
+    EXPECT_TRUE(callback->IsAvailable());
+    TAG_LOGI(AAFwkTag::TEST, "ProcessStateCallback_001 end");
+}
+
+/**
+ * @tc.name: ProcessStateCallback_002
+ * @tc.desc: ProcessStateCallback Reset and WaitForResult after callback
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, ProcessStateCallback_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ProcessStateCallback_002 start");
+    auto callback = sptr<ProcessStateCallback>::MakeSptr();
+    ASSERT_NE(callback, nullptr);
+
+    callback->OnProcessAvailable(false);
+    EXPECT_FALSE(callback->IsAvailable());
+
+    bool waitResult = callback->WaitForResult(100);
+    EXPECT_TRUE(waitResult);
+
+    callback->Reset();
+    EXPECT_TRUE(callback->IsAvailable());
+
+    waitResult = callback->WaitForResult(50);
+    EXPECT_FALSE(waitResult);
+    TAG_LOGI(AAFwkTag::TEST, "ProcessStateCallback_002 end");
 }
 
 } // namespace AppExecFwk

@@ -3431,6 +3431,16 @@ void AbilityConnectManager::GetOrCreateServiceRecord(const AbilityRequest &abili
             AddToServiceMap(serviceKey, targetService);
         }
     }
+    if (targetService != nullptr) {
+        pid_t recordPid = targetService->GetPid();
+        if (recordPid > 0 && !DelayedSingleton<AppScheduler>::GetInstance()->CheckProcessAvailable(recordPid)) {
+            TAG_LOGD(AAFwkTag::EXT,
+                "service process pid:%{public}d is not available, recreate: %{public}s/%{public}s",
+                recordPid, element.GetBundleName().c_str(), element.GetAbilityName().c_str());
+            MoveToTerminatingMap(targetService);
+            targetService = nullptr;
+        }
+    }
     if (abilityRequest.abilityInfo.extensionAbilityType == AppExecFwk::ExtensionAbilityType::AGENT &&
         targetService != nullptr && targetService->IsAbilityState(AbilityState::TERMINATING)) {
         TAG_LOGW(AAFwkTag::SER_ROUTER,
