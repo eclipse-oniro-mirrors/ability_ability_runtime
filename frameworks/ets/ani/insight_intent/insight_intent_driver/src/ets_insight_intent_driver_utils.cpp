@@ -503,32 +503,24 @@ ani_object CreateEtsInsightIntentInfoForQueryArray(ani_env *env, const std::vect
         return nullptr;
     }
 
-    // Convert every item first; a single failed item is skipped instead of
-    // dropping all remaining valid items.
-    std::vector<ani_ref> validInfos;
-    validInfos.reserve(infos.size());
-    for (auto &intentInfo : infos) {
-        ani_ref intentInfoRef = CreateEtsInsightIntentInfoForQuery(env, intentInfo);
-        if (intentInfoRef == nullptr) {
-            TAG_LOGE(AAFwkTag::INTENT, "null intentInfoRef, skip corrupt item");
-            continue;
-        }
-        validInfos.emplace_back(intentInfoRef);
-    }
-
     ani_object arrayObj = nullptr;
-    status = env->Object_New(arrayCls, arrayCtor, &arrayObj, validInfos.size());
+    status = env->Object_New(arrayCls, arrayCtor, &arrayObj, infos.size());
     if (status != ANI_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "status : %{public}d", status);
         return arrayObj;
     }
 
     ani_size index = 0;
-    for (auto &intentInfoRef : validInfos) {
+    for (auto &intentInfo : infos) {
+        ani_ref intentInfoRef = CreateEtsInsightIntentInfoForQuery(env, intentInfo);
+        if (intentInfoRef == nullptr) {
+            TAG_LOGE(AAFwkTag::INTENT, "null intentInfoRef");
+            break;
+        }
         status = env->Object_CallMethodByName_Void(arrayObj, "$_set", "iY:", index, intentInfoRef);
         if (status != ANI_OK) {
             TAG_LOGE(AAFwkTag::INTENT, "status : %{public}d", status);
-            continue;
+            break;
         }
         index++;
     }
