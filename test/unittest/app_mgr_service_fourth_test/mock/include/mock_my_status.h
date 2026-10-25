@@ -42,6 +42,7 @@ public:
     bool isCheckPermission_ = false;
     bool isCheckPermissionByTokenId_ = false;
     bool isAllowedToUseSystemAPI_ = false;
+    bool isAllowLocalDebugOtherApps_ = false;
     std::shared_ptr<AppExecFwk::BundleMgrHelper> getBundleManagerHelper_ = nullptr;
     ErrCode getBundleInfoV9Flag_ = ERR_OK;
     ErrCode isGetHapModuleInfo_ = ERR_OK;

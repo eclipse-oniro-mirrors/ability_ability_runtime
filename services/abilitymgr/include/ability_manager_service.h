@@ -3787,7 +3787,7 @@ private:
 
     bool IsAllowAttachOrDetachAppDebug(AppExecFwk::ApplicationInfo &appInfo);
     bool IsAllowLocalDebugOtherApps(bool isDebugFromLocal);
-    ErrCode CheckLocalDebugPermission(bool isDebugApp, bool isDebugFromLocal);
+    ErrCode CheckLocalDebugPermission(bool isDebugApp, bool isDebugFromLocal, int32_t userId);
     ErrCode GetBundleInfoForUserTest(const std::string &bundleName,
         int32_t userId, AppExecFwk::BundleInfo &bundleInfo);
     bool IsExitReasonValid(const ExitReasonCompability &reason);
