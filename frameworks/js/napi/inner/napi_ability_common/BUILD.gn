@@ -65,6 +65,7 @@ ohos_shared_library("napi_ability_common") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "node:node_header_notice",
     "samgr:samgr_proxy",
   ]
 
