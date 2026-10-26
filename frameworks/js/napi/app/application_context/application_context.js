@@ -318,6 +318,14 @@ class ApplicationContext {
     return this.__context_impl__.offSystemConfigurationUpdated(colorMode);
   }
 
+  onAppProcessStateChange(observer) {
+    return this.__context_impl__.onAppProcessStateChange(observer);
+  }
+
+  offAppProcessStateChange(observer) {
+    return this.__context_impl__.offAppProcessStateChange(observer);
+  }
+
   setLanguage(language) {
     return this.__context_impl__.setLanguage(language);
   }

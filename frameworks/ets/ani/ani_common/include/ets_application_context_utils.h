@@ -26,6 +26,7 @@
 #include "ets_application_state_change_callback.h"
 #include "ets_context_utils.h"
 #include "ets_enviroment_callback.h"
+#include "ets_app_process_state_observer.h"
 #include "ets_system_configuration_updated_callback.h"
 
 namespace OHOS {
@@ -71,6 +72,8 @@ public:
     static void NativeOffAbilityLifecycleCheck(ani_env *env, ani_object aniObj);
     static void NativeOffApplicationStateChangeSync(ani_env *env, ani_object aniObj, ani_object callback);
     static void NativeOnApplicationStateChangeSync(ani_env *env, ani_object aniObj, ani_object callback);
+    static void NativeOnAppProcessStateChangeSync(ani_env *env, ani_object aniObj, ani_object observer);
+    static void NativeOffAppProcessStateChangeSync(ani_env *env, ani_object aniObj, ani_object observer);
 
     static void NativeOnSystemConfigurationUpdatedSync(ani_env *env, ani_object aniObj, ani_object callback);
     static void NativeOffSystemConfigurationUpdatedSync(ani_env *env, ani_object aniObj, ani_object callback);
@@ -102,6 +105,8 @@ private:
     void OnGetAllWindowStages(ani_env *env, ani_object aniObj, ani_object callback);
     void OnNativeOffApplicationStateChangeSync(ani_env *env, ani_object aniObj, ani_object callback);
     void OnNativeOnApplicationStateChangeSync(ani_env *env, ani_object aniObj, ani_object callback);
+    void OnNativeOnAppProcessStateChangeSync(ani_env *env, ani_object aniObj, ani_object observer);
+    void OnNativeOffAppProcessStateChangeSync(ani_env *env, ani_object aniObj, ani_object observer);
     void OnNativeOffEnvironmentSync(ani_env *env, ani_object aniObj, ani_int callbackId, ani_object callback);
     void OnNativeSystemConfigurationUpdatedSync(ani_env *env, ani_object aniObj, ani_object callback);
     void OffNativeSystemConfigurationUpdatedSync(ani_env *env, ani_object aniObj, ani_object callback);
@@ -114,6 +119,7 @@ private:
     void OnStartSelfUIAbility(ani_env *env, ani_object aniObj, ani_object wantObj, ani_object callback);
     std::shared_ptr<EtsEnviromentCallback> etsEnviromentCallback_;
     std::shared_ptr<EtsApplicationStateChangeCallback> applicationStateCallback_;
+    sptr<EtsAppProcessStateObserver> appProcessStateObserver_;
     std::shared_ptr<EtsSystemConfigurationUpdatedCallback> systemConfigurationUpdatedCallback_;
     static std::mutex abilityLifecycleCallbackLock_;
     static std::shared_ptr<EtsAbilityLifecycleCallback> abilityLifecycleCallback_ ;

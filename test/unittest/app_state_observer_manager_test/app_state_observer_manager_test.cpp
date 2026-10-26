@@ -26,6 +26,7 @@
 #include "iremote_broker.h"
 #include "mock_ability_foreground_state_observer_server_stub.h"
 #include "mock_i_remote_object.h"
+#include "process_lifecycle_observer_stub.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -72,6 +73,21 @@ public:
     virtual ~AppForegroundStateObserver() = default;
     void OnAppStateChanged(const AppStateData &appStateData) override
     {}
+};
+class MockProcessLifecycleObserver : public ProcessLifecycleObserverStub {
+public:
+    MockProcessLifecycleObserver() = default;
+    ~MockProcessLifecycleObserver() = default;
+    void OnProcessCreated(const ProcessData &processData) override
+    {
+        onProcessCreatedCount_++;
+    }
+    void OnProcessDied(const ProcessData &processData) override
+    {
+        onProcessDiedCount_++;
+    }
+    int onProcessCreatedCount_ = 0;
+    int onProcessDiedCount_ = 0;
 };
 class AppSpawnSocketTest : public testing::Test {
 public:
@@ -1889,6 +1905,340 @@ HWTEST_F(AppSpawnSocketTest, OnProcessStateChanged_002, TestSize.Level2)
     manager->Init();
     std::shared_ptr<AppRunningRecord> appRecord;
     manager->OnProcessStateChanged(appRecord);
+}
+
+/*
+ * Feature: AppStateObserverManager
+ * Function: RegisterProcessLifecycleObserver
+ * SubFunction: NA
+ * FunctionPoints: AppStateObserverManager RegisterProcessLifecycleObserver
+ * EnvConditions: NA
+ * CaseDescription: Verify RegisterProcessLifecycleObserver with null observer
+ */
+HWTEST_F(AppSpawnSocketTest, RegisterProcessLifecycleObserver_001, TestSize.Level1)
+{
+    auto manager = std::make_shared<AppStateObserverManager>();
+    ASSERT_NE(manager, nullptr);
+    int32_t res = manager->RegisterProcessLifecycleObserver(nullptr);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+}
+
+/*
+ * Feature: AppStateObserverManager
+ * Function: RegisterProcessLifecycleObserver
+ * SubFunction: NA
+ * FunctionPoints: AppStateObserverManager RegisterProcessLifecycleObserver
+ * EnvConditions: NA
+ * CaseDescription: Verify RegisterProcessLifecycleObserver with valid observer
+ */
+HWTEST_F(AppSpawnSocketTest, RegisterProcessLifecycleObserver_002, TestSize.Level1)
+{
+    auto manager = std::make_shared<AppStateObserverManager>();
+    ASSERT_NE(manager, nullptr);
+    sptr<IProcessLifecycleObserver> observer = new MockProcessLifecycleObserver();
+    int32_t res = manager->RegisterProcessLifecycleObserver(observer);
+    EXPECT_EQ(res, ERR_OK);
+    EXPECT_EQ(manager->processLifecycleObserverMap_.size(), 1);
+}
+
+/*
+ * Feature: AppStateObserverManager
+ * Function: RegisterProcessLifecycleObserver
+ * SubFunction: NA
+ * FunctionPoints: AppStateObserverManager RegisterProcessLifecycleObserver
+ * EnvConditions: NA
+ * CaseDescription: Verify RegisterProcessLifecycleObserver with duplicate observer
+ */
+HWTEST_F(AppSpawnSocketTest, RegisterProcessLifecycleObserver_003, TestSize.Level1)
+{
+    auto manager = std::make_shared<AppStateObserverManager>();
+    ASSERT_NE(manager, nullptr);
+    sptr<IProcessLifecycleObserver> observer = new MockProcessLifecycleObserver();
+    manager->RegisterProcessLifecycleObserver(observer);
+    int32_t res = manager->RegisterProcessLifecycleObserver(observer);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+}
+
+/*
+ * Feature: AppStateObserverManager
+ * Function: RegisterProcessLifecycleObserver
+ * SubFunction: NA
+ * FunctionPoints: AppStateObserverManager RegisterProcessLifecycleObserver
+ * EnvConditions: NA
+ * CaseDescription: Verify RegisterProcessLifecycleObserver exceeds limit
+ */
+HWTEST_F(AppSpawnSocketTest, RegisterProcessLifecycleObserver_004, TestSize.Level1)
+{
+    auto manager = std::make_shared<AppStateObserverManager>();
+    ASSERT_NE(manager, nullptr);
+    for (int32_t i = 0; i < MAX_PROCESS_LIFECYCLE_OBSERVER_PER_APP; ++i) {
+        sptr<IProcessLifecycleObserver> observer = new MockProcessLifecycleObserver();
+        manager->RegisterProcessLifecycleObserver(observer);
+    }
+    sptr<IProcessLifecycleObserver> observer = new MockProcessLifecycleObserver();
+    int32_t res = manager->RegisterProcessLifecycleObserver(observer);
+    EXPECT_EQ(res, ERR_PROCESS_LIFECYCLE_OBSERVER_EXCEED_LIMIT);
+}
+
+/*
+ * Feature: AppStateObserverManager
+ * Function: UnregisterProcessLifecycleObserver
+ * SubFunction: NA
+ * FunctionPoints: AppStateObserverManager UnregisterProcessLifecycleObserver
+ * EnvConditions: NA
+ * CaseDescription: Verify UnregisterProcessLifecycleObserver with null observer
+ */
+HWTEST_F(AppSpawnSocketTest, UnregisterProcessLifecycleObserver_001, TestSize.Level1)
+{
+    auto manager = std::make_shared<AppStateObserverManager>();
+    ASSERT_NE(manager, nullptr);
+    int32_t res = manager->UnregisterProcessLifecycleObserver(nullptr);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+}
+
+/*
+ * Feature: AppStateObserverManager
+ * Function: UnregisterProcessLifecycleObserver
+ * SubFunction: NA
+ * FunctionPoints: AppStateObserverManager UnregisterProcessLifecycleObserver
+ * EnvConditions: NA
+ * CaseDescription: Verify UnregisterProcessLifecycleObserver with non-existent observer
+ */
+HWTEST_F(AppSpawnSocketTest, UnregisterProcessLifecycleObserver_002, TestSize.Level1)
+{
+    auto manager = std::make_shared<AppStateObserverManager>();
+    ASSERT_NE(manager, nullptr);
+    sptr<IProcessLifecycleObserver> observer = new MockProcessLifecycleObserver();
+    int32_t res = manager->UnregisterProcessLifecycleObserver(observer);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+}
+
+/*
+ * Feature: AppStateObserverManager
+ * Function: UnregisterProcessLifecycleObserver
+ * SubFunction: NA
+ * FunctionPoints: AppStateObserverManager UnregisterProcessLifecycleObserver
+ * EnvConditions: NA
+ * CaseDescription: Verify UnregisterProcessLifecycleObserver with registered observer
+ */
+HWTEST_F(AppSpawnSocketTest, UnregisterProcessLifecycleObserver_003, TestSize.Level1)
+{
+    auto manager = std::make_shared<AppStateObserverManager>();
+    ASSERT_NE(manager, nullptr);
+    sptr<IProcessLifecycleObserver> observer = new MockProcessLifecycleObserver();
+    manager->RegisterProcessLifecycleObserver(observer);
+    EXPECT_EQ(manager->processLifecycleObserverMap_.size(), 1);
+    int32_t res = manager->UnregisterProcessLifecycleObserver(observer);
+    EXPECT_EQ(res, ERR_OK);
+    EXPECT_EQ(manager->processLifecycleObserverMap_.size(), 0);
+}
+
+/*
+ * Feature: AppStateObserverManager
+ * Function: DispatchProcessLifecycleCreated
+ * SubFunction: NA
+ * FunctionPoints: AppStateObserverManager DispatchProcessLifecycleCreated
+ * EnvConditions: NA
+ * CaseDescription: Verify DispatchProcessLifecycleCreated with empty observer map
+ */
+HWTEST_F(AppSpawnSocketTest, DispatchProcessLifecycleCreated_001, TestSize.Level1)
+{
+    auto manager = std::make_shared<AppStateObserverManager>();
+    ASSERT_NE(manager, nullptr);
+    ProcessData data;
+    data.uid = 1001;
+    data.pid = 100;
+    manager->DispatchProcessLifecycleCreated(data);
+}
+
+/*
+ * Feature: AppStateObserverManager
+ * Function: DispatchProcessLifecycleCreated
+ * SubFunction: NA
+ * FunctionPoints: AppStateObserverManager DispatchProcessLifecycleCreated
+ * EnvConditions: NA
+ * CaseDescription: Verify DispatchProcessLifecycleCreated with matching uid and different pid
+ */
+HWTEST_F(AppSpawnSocketTest, DispatchProcessLifecycleCreated_002, TestSize.Level1)
+{
+    auto manager = std::make_shared<AppStateObserverManager>();
+    ASSERT_NE(manager, nullptr);
+    auto* mockObserver = new MockProcessLifecycleObserver();
+    sptr<IProcessLifecycleObserver> observer = mockObserver;
+    manager->processLifecycleObserverMap_.emplace(observer, std::make_pair(1001, static_cast<pid_t>(200)));
+    ProcessData data;
+    data.uid = 1001;
+    data.pid = 100;
+    manager->DispatchProcessLifecycleCreated(data);
+    EXPECT_EQ(mockObserver->onProcessCreatedCount_, 1);
+}
+
+/*
+ * Feature: AppStateObserverManager
+ * Function: DispatchProcessLifecycleCreated
+ * SubFunction: NA
+ * FunctionPoints: AppStateObserverManager DispatchProcessLifecycleCreated
+ * EnvConditions: NA
+ * CaseDescription: Verify DispatchProcessLifecycleCreated with matching uid and same pid (skip self)
+ */
+HWTEST_F(AppSpawnSocketTest, DispatchProcessLifecycleCreated_003, TestSize.Level1)
+{
+    auto manager = std::make_shared<AppStateObserverManager>();
+    ASSERT_NE(manager, nullptr);
+    auto* mockObserver = new MockProcessLifecycleObserver();
+    sptr<IProcessLifecycleObserver> observer = mockObserver;
+    manager->processLifecycleObserverMap_.emplace(observer, std::make_pair(1001, static_cast<pid_t>(100)));
+    ProcessData data;
+    data.uid = 1001;
+    data.pid = 100;
+    manager->DispatchProcessLifecycleCreated(data);
+    EXPECT_EQ(mockObserver->onProcessCreatedCount_, 0);
+}
+
+/*
+ * Feature: AppStateObserverManager
+ * Function: DispatchProcessLifecycleCreated
+ * SubFunction: NA
+ * FunctionPoints: AppStateObserverManager DispatchProcessLifecycleCreated
+ * EnvConditions: NA
+ * CaseDescription: Verify DispatchProcessLifecycleCreated with non-matching uid
+ */
+HWTEST_F(AppSpawnSocketTest, DispatchProcessLifecycleCreated_004, TestSize.Level1)
+{
+    auto manager = std::make_shared<AppStateObserverManager>();
+    ASSERT_NE(manager, nullptr);
+    auto* mockObserver = new MockProcessLifecycleObserver();
+    sptr<IProcessLifecycleObserver> observer = mockObserver;
+    manager->processLifecycleObserverMap_.emplace(observer, std::make_pair(2002, static_cast<pid_t>(200)));
+    ProcessData data;
+    data.uid = 1001;
+    data.pid = 100;
+    manager->DispatchProcessLifecycleCreated(data);
+    EXPECT_EQ(mockObserver->onProcessCreatedCount_, 0);
+}
+
+/*
+ * Feature: AppStateObserverManager
+ * Function: DispatchProcessLifecycleCreated
+ * SubFunction: NA
+ * FunctionPoints: AppStateObserverManager DispatchProcessLifecycleCreated
+ * EnvConditions: NA
+ * CaseDescription: Verify DispatchProcessLifecycleCreated with null observer in map
+ */
+HWTEST_F(AppSpawnSocketTest, DispatchProcessLifecycleCreated_005, TestSize.Level1)
+{
+    auto manager = std::make_shared<AppStateObserverManager>();
+    ASSERT_NE(manager, nullptr);
+    sptr<IProcessLifecycleObserver> nullObserver = nullptr;
+    manager->processLifecycleObserverMap_.emplace(nullObserver, std::make_pair(1001, static_cast<pid_t>(200)));
+    ProcessData data;
+    data.uid = 1001;
+    data.pid = 100;
+    manager->DispatchProcessLifecycleCreated(data);
+}
+
+/*
+ * Feature: AppStateObserverManager
+ * Function: DispatchProcessLifecycleDied
+ * SubFunction: NA
+ * FunctionPoints: AppStateObserverManager DispatchProcessLifecycleDied
+ * EnvConditions: NA
+ * CaseDescription: Verify DispatchProcessLifecycleDied with empty observer map
+ */
+HWTEST_F(AppSpawnSocketTest, DispatchProcessLifecycleDied_001, TestSize.Level1)
+{
+    auto manager = std::make_shared<AppStateObserverManager>();
+    ASSERT_NE(manager, nullptr);
+    ProcessData data;
+    data.uid = 1001;
+    data.pid = 100;
+    manager->DispatchProcessLifecycleDied(data);
+}
+
+/*
+ * Feature: AppStateObserverManager
+ * Function: DispatchProcessLifecycleDied
+ * SubFunction: NA
+ * FunctionPoints: AppStateObserverManager DispatchProcessLifecycleDied
+ * EnvConditions: NA
+ * CaseDescription: Verify DispatchProcessLifecycleDied with matching uid and different pid
+ */
+HWTEST_F(AppSpawnSocketTest, DispatchProcessLifecycleDied_002, TestSize.Level1)
+{
+    auto manager = std::make_shared<AppStateObserverManager>();
+    ASSERT_NE(manager, nullptr);
+    auto* mockObserver = new MockProcessLifecycleObserver();
+    sptr<IProcessLifecycleObserver> observer = mockObserver;
+    manager->processLifecycleObserverMap_.emplace(observer, std::make_pair(1001, static_cast<pid_t>(200)));
+    ProcessData data;
+    data.uid = 1001;
+    data.pid = 100;
+    manager->DispatchProcessLifecycleDied(data);
+    EXPECT_EQ(mockObserver->onProcessDiedCount_, 1);
+}
+
+/*
+ * Feature: AppStateObserverManager
+ * Function: DispatchProcessLifecycleDied
+ * SubFunction: NA
+ * FunctionPoints: AppStateObserverManager DispatchProcessLifecycleDied
+ * EnvConditions: NA
+ * CaseDescription: Verify DispatchProcessLifecycleDied with matching uid and same pid (skip self)
+ */
+HWTEST_F(AppSpawnSocketTest, DispatchProcessLifecycleDied_003, TestSize.Level1)
+{
+    auto manager = std::make_shared<AppStateObserverManager>();
+    ASSERT_NE(manager, nullptr);
+    auto* mockObserver = new MockProcessLifecycleObserver();
+    sptr<IProcessLifecycleObserver> observer = mockObserver;
+    manager->processLifecycleObserverMap_.emplace(observer, std::make_pair(1001, static_cast<pid_t>(100)));
+    ProcessData data;
+    data.uid = 1001;
+    data.pid = 100;
+    manager->DispatchProcessLifecycleDied(data);
+    EXPECT_EQ(mockObserver->onProcessDiedCount_, 0);
+}
+
+/*
+ * Feature: AppStateObserverManager
+ * Function: DispatchProcessLifecycleDied
+ * SubFunction: NA
+ * FunctionPoints: AppStateObserverManager DispatchProcessLifecycleDied
+ * EnvConditions: NA
+ * CaseDescription: Verify DispatchProcessLifecycleDied with non-matching uid
+ */
+HWTEST_F(AppSpawnSocketTest, DispatchProcessLifecycleDied_004, TestSize.Level1)
+{
+    auto manager = std::make_shared<AppStateObserverManager>();
+    ASSERT_NE(manager, nullptr);
+    auto* mockObserver = new MockProcessLifecycleObserver();
+    sptr<IProcessLifecycleObserver> observer = mockObserver;
+    manager->processLifecycleObserverMap_.emplace(observer, std::make_pair(2002, static_cast<pid_t>(200)));
+    ProcessData data;
+    data.uid = 1001;
+    data.pid = 100;
+    manager->DispatchProcessLifecycleDied(data);
+    EXPECT_EQ(mockObserver->onProcessDiedCount_, 0);
+}
+
+/*
+ * Feature: AppStateObserverManager
+ * Function: DispatchProcessLifecycleDied
+ * SubFunction: NA
+ * FunctionPoints: AppStateObserverManager DispatchProcessLifecycleDied
+ * EnvConditions: NA
+ * CaseDescription: Verify DispatchProcessLifecycleDied with null observer in map
+ */
+HWTEST_F(AppSpawnSocketTest, DispatchProcessLifecycleDied_005, TestSize.Level1)
+{
+    auto manager = std::make_shared<AppStateObserverManager>();
+    ASSERT_NE(manager, nullptr);
+    sptr<IProcessLifecycleObserver> nullObserver = nullptr;
+    manager->processLifecycleObserverMap_.emplace(nullObserver, std::make_pair(1001, static_cast<pid_t>(200)));
+    ProcessData data;
+    data.uid = 1001;
+    data.pid = 100;
+    manager->DispatchProcessLifecycleDied(data);
 }
 } // namespace AppExecFwk
 } // namespace OHOS

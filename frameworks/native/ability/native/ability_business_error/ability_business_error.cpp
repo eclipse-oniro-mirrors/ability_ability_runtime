@@ -351,6 +351,7 @@ constexpr const char* ERROR_MSG_EVICT_CONFIG_PARSE_ERROR =
 constexpr const char* ERROR_MSG_INVALID_EXTENSION_TYPE = "Internal error. Invalid extension ability type.";
 constexpr const char* ERROR_MSG_TASK_ALREADY_EXISTS = "Task already exists.";
 constexpr const char* ERROR_MSG_TASK_NOT_FOUND = "Task not found.";
+constexpr const char* ERROR_MSG_OBSERVER_NOT_FOUND = "The observer does not exist.";
 
 static std::unordered_map<AbilityErrorCode, const char*> ERR_CODE_MAP = {
     { AbilityErrorCode::ERROR_OK, ERROR_MSG_OK },
@@ -476,6 +477,7 @@ static std::unordered_map<AbilityErrorCode, const char*> ERR_CODE_MAP = {
     { AbilityErrorCode::ERROR_CODE_DELAYED_PROCESS_EXIT_NOT_PENDING, ERROR_MSG_DELAYED_PROCESS_EXIT_NOT_PENDING },
     { AbilityErrorCode::ERROR_CODE_DELAYED_PROCESS_EXIT_HAS_OTHER_UIABILITY,
         ERROR_MSG_DELAYED_PROCESS_EXIT_HAS_OTHER_UIABILITY },
+    { AbilityErrorCode::ERROR_CODE_OBSERVER_NOT_FOUND, ERROR_MSG_OBSERVER_NOT_FOUND },
 };
 
 static std::unordered_map<int32_t, AbilityErrorCode> INNER_TO_JS_ERROR_CODE_MAP {

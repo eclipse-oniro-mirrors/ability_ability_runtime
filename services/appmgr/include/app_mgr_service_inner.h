@@ -34,6 +34,7 @@
 #include "app_debug_listener_interface.h"
 #include "app_debug_manager.h"
 #include "app_foreground_state_observer_interface.h"
+#include "process_lifecycle_observer_interface.h"
 #include "app_malloc_info.h"
 #include "app_mgr_constants.h"
 #include "app_mgr_event.h"
@@ -1507,6 +1508,9 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     int32_t UnregisterAppForegroundStateObserver(const sptr<IAppForegroundStateObserver> &observer);
+
+    int32_t RegisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer);
+    int32_t UnregisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer);
 
 #ifdef SUPPORT_CHILD_PROCESS
     /**
