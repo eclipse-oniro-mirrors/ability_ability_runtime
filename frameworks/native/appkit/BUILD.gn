@@ -457,6 +457,7 @@ ohos_shared_library("ability_stage_ani") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "ipc:ipc_single",
+    "node:node_header_notice",
     "resource_management:global_resmgr",
     "runtime_core:ani",
     "runtime_core:ani_helpers",
