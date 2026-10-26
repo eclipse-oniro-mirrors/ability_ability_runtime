@@ -59,6 +59,7 @@ constexpr const char* PERMISSION_EXEMPT_AS_TARGET = "ohos.permission.EXEMPT_AS_T
 constexpr const char* PERMISSION_PREPARE_TERMINATE = "ohos.permission.PREPARE_APP_TERMINATE";
 constexpr const char* PERMISSION_START_RECENT_ABILITY = "ohos.permission.START_RECENT_ABILITY";
 constexpr const char* PERMISSION_MANAGE_APP_BOOT = "ohos.permission.MANAGE_APP_BOOT";
+constexpr const char* PERMISSION_ALLOW_DIRECT_BOOT = "ohos.permission.ALLOW_DIRECT_BOOT";
 constexpr const char* PERMISSION_START_ABILITY_WITH_ANIMATION = "ohos.permission.START_ABILITY_WITH_ANIMATION";
 constexpr const char* PERMISSION_MANAGE_APP_BOOT_INTERNAL = "ohos.permission.MANAGE_APP_BOOT_INTERNAL";
 constexpr const char* PERMISSION_CONNECT_UI_EXTENSION_ABILITY = "ohos.permission.CONNECT_UI_EXTENSION_ABILITY";

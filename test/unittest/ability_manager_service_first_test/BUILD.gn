@@ -13,7 +13,8 @@
 
 import("//build/test.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
-import("//foundation/ability/ability_runtime/test/unittest/ability_manager_service_first_test/abilitymgr.gni")
+import(
+    "//foundation/ability/ability_runtime/test/unittest/ability_manager_service_first_test/abilitymgr.gni")
 
 module_output_path = "ability_runtime/ability_runtime/abilitymgr"
 
@@ -44,6 +45,9 @@ ohos_unittest("ability_manager_service_first_test") {
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
     "${ability_runtime_test_path}/unittest/multi_app_utils_test/include",
     "mock/include",
+    "${ability_runtime_test_path}/mock/auto_startup_mock/include",
+    "${ability_runtime_test_path}/mock/common/include",
+    "${ability_runtime_test_path}/mock/task_handler_wrap_mock/include",
   ]
 
   sources = [
@@ -55,8 +59,10 @@ ohos_unittest("ability_manager_service_first_test") {
     "${ability_runtime_services_path}/abilitymgr/src/report_data_partition_usage_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/exit_reason_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/request_id_util.cpp",
+    "${ability_runtime_test_path}/mock/auto_startup_mock/src/direct_boot_test_support.cpp",
     "${ability_runtime_test_path}/unittest/multi_app_utils_test/src/mock_app_mgr_service.cpp",
     "ability_manager_service_first_test.cpp",
+    "mock/src/mock_auto_startup_parameters.cpp",
     "mock/src/mock_my_flag.cpp",
     "mock/src/mock_permission_verification.cpp",
   ]
@@ -69,18 +75,18 @@ ohos_unittest("ability_manager_service_first_test") {
   ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager",
     "${ability_runtime_innerkits_path}/ability_manager:ability_connect_callback_stub",
-    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
-    "${ability_runtime_innerkits_path}/ability_manager:ability_start_setting",
     "${ability_runtime_innerkits_path}/ability_manager:ability_start_options",
+    "${ability_runtime_innerkits_path}/ability_manager:ability_start_setting",
     "${ability_runtime_innerkits_path}/ability_manager:mission_info",
     "${ability_runtime_innerkits_path}/ability_manager:process_options",
     "${ability_runtime_innerkits_path}/ability_manager:start_window_option",
-    "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_innerkits_path}/app_manager",
     "${ability_runtime_innerkits_path}/connectionobs_manager:connection_obs_manager",
     "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
-    "${ability_runtime_innerkits_path}/foreground_app_obs_manager:foreground_app_obs_manager",
-    "${ability_runtime_innerkits_path}/session_handler:session_handler",
+    "${ability_runtime_innerkits_path}/foreground_app_obs_manager",
+    "${ability_runtime_innerkits_path}/session_handler",
     "${ability_runtime_innerkits_path}/uri_permission:uri_permission_mgr",
     "${ability_runtime_native_path}/ability/native:ability_business_error",
     "${ability_runtime_native_path}/ability/native:ability_observer_ipc",
@@ -90,10 +96,9 @@ ohos_unittest("ability_manager_service_first_test") {
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
     "${ability_runtime_path}/utils/server/startup:startup_util",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
-    "${ability_runtime_services_path}/appmgr:libappms",
-    "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
     "${ability_runtime_services_path}/abilitymgr:modular_object",
     "${ability_runtime_services_path}/abilitymgr:wantagent_manager",
+    "${ability_runtime_services_path}/appmgr:libappms",
     "${ability_runtime_services_path}/common:app_util",
     "${ability_runtime_services_path}/common:hisysevent_report",
     "${ability_runtime_services_path}/common:image_native_bridge",
@@ -102,6 +107,7 @@ ohos_unittest("ability_manager_service_first_test") {
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/aakit:aakit_mock",
     "${agent_runtime_framework_path}/interfaces/inner_api:agent_manager",
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection:agent_extension_connection",
+    "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
   ]
 
   external_deps = [
@@ -113,15 +119,15 @@ ohos_unittest("ability_manager_service_first_test") {
     "ability_base:want",
     "ability_base:zuri",
     "access_token:libaccesstoken_sdk",
-    "access_token:libtokenid_sdk",
     "access_token:libnativetoken",
     "access_token:libtoken_setproc",
+    "access_token:libtokenid_sdk",
     "appspawn:appspawn_client",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "bundle_framework:libappexecfwk_common",
-    "c_utils:utils",
     "cJSON:cjson",
+    "c_utils:utils",
     "common_event_service:cesfwk_core",
     "common_event_service:cesfwk_innerkits",
     "config_policy:configpolicy_util",
@@ -149,12 +155,12 @@ ohos_unittest("ability_manager_service_first_test") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "selinux_adapter:librestorecon",
+    "udmf:udmf_client",
     "window_manager:libmodal_system_ui_extension_client",
     "window_manager:libwsutils",
     "window_manager:scene_session",
     "window_manager:session_manager_lite",
     "window_manager:sms",
-    "udmf:udmf_client",
   ]
   if (ability_runtime_dsoftbus_enable) {
     external_deps += [ "dsoftbus:softbus_client" ]
@@ -172,7 +178,7 @@ ohos_unittest("ability_manager_service_first_test") {
     external_deps += [ "memmgr:memmgrclient" ]
   }
 
-  cflags_cc = []
+  cflags_cc = [ "-fno-access-control" ]
   if (os_dlp_part_enabled) {
     cflags_cc += [ "-DWITH_DLP" ]
     external_deps += [
@@ -210,12 +216,8 @@ ohos_unittest("ability_manager_service_first_test") {
   }
 
   if (ability_runtime_graphics && ability_runtime_screenlock_enable) {
-    defines += [
-      "ABILITY_RUNTIME_SCREENLOCK_ENABLE"
-    ]
-    external_deps += [
-      "screenlock_mgr:screenlock_client",
-    ]
+    defines += [ "ABILITY_RUNTIME_SCREENLOCK_ENABLE" ]
+    external_deps += [ "screenlock_mgr:screenlock_client" ]
   }
 
   if (ability_runtime_upms) {
@@ -229,7 +231,7 @@ ohos_unittest("ability_manager_service_first_test") {
     external_deps += [ "sandbox_manager:libsandbox_manager_sdk" ]
     defines += [
       "ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER",
-      "SUPPORT_APP_SELECTOR"
+      "SUPPORT_APP_SELECTOR",
     ]
   }
 
@@ -246,13 +248,14 @@ ohos_unittest("ability_manager_service_first_test") {
     external_deps += [ "power_manager:powermgr_client" ]
   }
 
-  if (ability_runtime_graphics && ability_runtime_start_window_options_with_pixelmap) {
+  if (ability_runtime_graphics &&
+      ability_runtime_start_window_options_with_pixelmap) {
     defines += [ "START_WINDOW_OPTIONS_WITH_PIXELMAP" ]
     external_deps += [ "image_framework:image_native" ]
   }
 
   if (ability_runtime_no_screen) {
-    defines += ["DISABLE_LAUNCHER"]
+    defines += [ "DISABLE_LAUNCHER" ]
   }
 }
 

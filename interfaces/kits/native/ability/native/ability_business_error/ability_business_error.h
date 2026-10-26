@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -245,6 +245,9 @@ enum class AbilityErrorCode {
 
     // The caller is not main thread
     ERROR_CODE_MAIN_THREAD = 16000205,
+
+    // The target application is not authorized for startup before the first unlock.
+    ERROR_CODE_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT = 16000206,
 
     // Setting permissions for resident processes
     ERROR_CODE_NO_RESIDENT_PERMISSION = 16200006,

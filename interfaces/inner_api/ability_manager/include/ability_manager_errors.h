@@ -1492,6 +1492,11 @@ enum NativeFreeInstallError {
      */
     ERR_SANDBOX_CLONE_INDEX_INVALID = 29360228,
 
+    /*
+     * The target application is not authorized for startup before the first unlock.
+     */
+    ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT = 29360229,
+
     /* codes 29360270 - 29360280 are reserved for StartSelfUIAbility by delayed process exit */
     /*
      * Result (29360270) The current process has no UIAbility, cannot be called.
