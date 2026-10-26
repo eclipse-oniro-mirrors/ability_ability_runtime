@@ -66,15 +66,40 @@ const std::map<std::string, std::string> THIRD_PARTY_PARAMS_TO_STRIP = {
     { AppExecFwk::INSIGHT_INTENT_PAGE_PARAM_PAGEPATH, "insight intent page path" },
     { AppExecFwk::INSIGHT_INTENT_PAGE_PARAM_NAVIGATIONID, "insight intent navigation id" },
     { AppExecFwk::INSIGHT_INTENT_PAGE_PARAM_NAVDESTINATIONNAME, "insight intent nav destination name" },
+    { AppExecFwk::INSIGHT_INTENT_DECORATOR_CLASS, "insight intent decorator class" },
     { AppExecFwk::INSIGHT_INTENT_QUERY_ENTITY_CLASS_NAME, "insight intent query entity class name" },
     { AppExecFwk::INSIGHT_INTENT_CALLER_BUNDLE_NAME, "insight intent caller bundle name" },
     { AppExecFwk::INSIGHT_INTENT_CALLER_TOKEN_ID, "insight intent caller token id" },
     { AppExecFwk::INSIGHT_INTENT_CALLER_UID, "insight intent caller uid" },
+    { AppExecFwk::INSIGHT_INTENT_QUERY_TYPE, "insight intent query type" },
+    { AppExecFwk::INSIGHT_INTENT_QUERY_ENTITY_PARAM_PARAM, "insight intent query entity param" },
+    { AppExecFwk::INSIGHT_INTENT_PARAM_USER_ID, "insight intent param user id" },
+    { "ohos.insightIntent.bundleName", "insight intent bundle name" },
+    { "ohos.insightIntent.moduleName", "insight intent module name" },
+    { "ohos.insightIntent.hapPath", "insight intent hap path" },
+    { "ohos.insightIntent.userId", "insight intent user id" },
 
     // UIAbility-internal param.
     { "specifyTokenId", "specify token id" },
     { Want::PARAM_RESV_CALLER_APP_ID, "caller app id" },
     { Want::PARAM_RESV_CALLER_APP_IDENTIFIER, "caller app identifier" },
+    { Want::PARM_LAUNCH_REASON_MESSAGE, "launch reason message" },
+
+    // UIExtension-internal params, set by AMS to mark the uiextension ability,
+    // its host process and the bind relation; a third-party app must not forge them.
+    { "ability.want.params.is_preload_uiextension_ability", "preload uiextension ability" },
+    { "ability.want.params.uiExtensionAbilityId", "uiextension ability id" },
+    { "ability.want.params.uiExtensionBindAbilityId", "uiextension bind ability id" },
+    { "ability.want.params.uiExtensionHostBundleName", "uiextension host bundle name" },
+    { "ability.want.params.uiExtensionHostPid", "uiextension host pid" },
+    { "ability.want.params.uiExtensionHostUid", "uiextension host uid" },
+    { "ability.want.params.uiExtensionRootHostPid", "uiextension root host pid" },
+    { "ohos.ability.params.transferRootHostToken", "uiextension transfer root host token" },
+    { "ohos.ability.params.uiExtensionLaunchTimestampHigh", "uiextension launch timestamp high" },
+    { "ohos.ability.params.uiExtensionLaunchTimestampLow", "uiextension launch timestamp low" },
+    { "ohos.ability.params.uiExtensionTargetUserId", "uiextension target user id" },
+    { "ohos.param.isCallerEmbeddableUIExtension", "is caller embeddable uiextension" },
+    { "ohos.param.uiExtension.rootHostToken", "uiextension root host token" },
 };
 
 // Dynamic system-internal params (e.g. skill args / src entries) are constructed
