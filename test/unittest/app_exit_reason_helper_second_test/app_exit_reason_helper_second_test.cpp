@@ -98,6 +98,54 @@ HWTEST_F(AppExitReasonHelperTest, RecordUIAbilityExitReason_0100, TestSize.Level
     AAFwk::ExitReason exitReason = { AAFwk::REASON_USER_REQUEST, "User Request" };
     int32_t result = appExitReasonHelper_->RecordUIAbilityExitReason(pid, abilityName, exitReason);
     EXPECT_NE(result, ERR_OK);
+    result = appExitReasonHelper_->RecordUIAbilityExitReason(pid, abilityName, exitReason, 1234);
+    EXPECT_NE(result, ERR_OK);
+}
+
+/**
+ * @tc.name: RecordKillCallerInfo_0100
+ * @tc.desc: RecordKillCallerInfo
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(AppExitReasonHelperTest, RecordKillCallerInfo_0100, TestSize.Level1)
+{
+    std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler_;
+    taskHandler_ = AAFwk::TaskHandlerWrap::CreateQueueHandler(AAFwk::AbilityConfig::NAME_ABILITY_MGR_SERVICE);
+    std::weak_ptr<AAFwk::AbilityManagerService> service;
+    service = AAFwk::AbilityManagerService::GetPubInstance();
+    std::shared_ptr<AAFwk::AbilityEventHandler> eventHandler_;
+    eventHandler_ = std::make_shared<AAFwk::AbilityEventHandler>(taskHandler_, service);
+    std::shared_ptr<AAFwk::SubManagersHelper> subManagersHelper_;
+    subManagersHelper_ = std::make_shared<AAFwk::SubManagersHelper>(taskHandler_, eventHandler_);
+    std::shared_ptr<AAFwk::AppExitReasonHelper> appExitReasonHelper_;
+    appExitReasonHelper_ = std::make_shared<AAFwk::AppExitReasonHelper>(subManagersHelper_);
+
+    EXPECT_EQ(appExitReasonHelper_->RecordKillCallerInfo(0, 1234), ERR_INVALID_VALUE);
+    EXPECT_EQ(appExitReasonHelper_->RecordKillCallerInfo(-1, 1234), ERR_INVALID_VALUE);
+    EXPECT_EQ(appExitReasonHelper_->RecordKillCallerInfo(1, -1), ERR_INVALID_VALUE);
+    EXPECT_NE(appExitReasonHelper_->RecordKillCallerInfo(1, 1234), ERR_OK);
+}
+
+/**
+ * @tc.name: RecordAppRestartExitReason_0100
+ * @tc.desc: RecordAppRestartExitReason
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(AppExitReasonHelperTest, RecordAppRestartExitReason_0100, TestSize.Level1)
+{
+    auto abilityMs = AAFwk::AbilityManagerService::GetPubInstance();
+    ASSERT_NE(abilityMs, nullptr);
+    // app recovery path: return early without recording
+    abilityMs->RecordAppRestartExitReason(true, 1234, 5678);
+    // normal restart path: record chain (no appmgr service in UT, best-effort log only)
+    abilityMs->RecordAppRestartExitReason(false, 1234, 5678);
+    // null helper branch: return without recording
+    auto appExitReasonHelper = abilityMs->appExitReasonHelper_;
+    abilityMs->appExitReasonHelper_ = nullptr;
+    abilityMs->RecordAppRestartExitReason(false, 1234, 5678);
+    abilityMs->appExitReasonHelper_ = appExitReasonHelper;
 }
 
 /**

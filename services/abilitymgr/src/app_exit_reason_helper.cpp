@@ -510,7 +510,7 @@ int32_t AppExitReasonHelper::GetActiveAbilityListWithPid(int32_t uid, std::vecto
 }
 
 int32_t AppExitReasonHelper::RecordUIAbilityExitReason(const pid_t pid, const std::string &abilityName,
-    const ExitReason &exitReason)
+    const ExitReason &exitReason, int32_t callerPid, bool isLastAbilityOfProcess)
 {
     AppExecFwk::ApplicationInfo application;
     bool debug = false;
@@ -532,11 +532,16 @@ int32_t AppExitReasonHelper::RecordUIAbilityExitReason(const pid_t pid, const st
     abilityLists.emplace_back(abilityName);
 
     ExitReasonCompability exitReasonCompability(exitReason);
-    ret = DelayedSingleton<AppScheduler>::GetInstance()->NotifyAppMgrRecordExitReasonCompability(
-        pid, exitReasonCompability.killId, exitReasonCompability.killMsg,
-        exitReasonCompability.innerMsg, exitReasonCompability.reason, DEFAULT_INVAL_VALUE);
-    if (ret != ERR_OK) {
-        TAG_LOGW(AAFwkTag::ABILITYMGR, "notify failed: %{public}d", ret);
+    // kill-info is process-level: writing it on a close that does not terminate the process
+    // leaves a stale record that misattributes later deaths, so it is written only when this
+    // ability is the last one of the process. KV ability-name accumulation stays unconditional.
+    if (isLastAbilityOfProcess) {
+        ret = DelayedSingleton<AppScheduler>::GetInstance()->NotifyAppMgrRecordExitReasonCompability(
+            pid, exitReasonCompability.killId, exitReasonCompability.killMsg,
+            exitReasonCompability.innerMsg, exitReasonCompability.reason, callerPid);
+        if (ret != ERR_OK) {
+            TAG_LOGW(AAFwkTag::ABILITYMGR, "notify failed: %{public}d", ret);
+        }
     }
 
     if (isAbilityListsEmpty) {
@@ -547,6 +552,21 @@ int32_t AppExitReasonHelper::RecordUIAbilityExitReason(const pid_t pid, const st
             UpdateAppExitReason(application.accessTokenId, abilityLists, exitReason, processInfo, false);
     }
     return ERR_OK;
+}
+
+int32_t AppExitReasonHelper::RecordKillCallerInfo(const pid_t pid, int32_t callerPid)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "pid:%{public}d, callerPid:%{public}d", pid, callerPid);
+    if (pid <= 0 || callerPid <= 0) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "invalid pid:%{public}d, callerPid:%{public}d", pid, callerPid);
+        return ERR_INVALID_VALUE;
+    }
+    int32_t ret = DelayedSingleton<AppScheduler>::GetInstance()->NotifyAppMgrRecordExitReasonCompability(
+        pid, DEFAULT_INVAL_VALUE, "", "", static_cast<int32_t>(Reason::REASON_UNKNOWN), callerPid);
+    if (ret != ERR_OK) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "record kill caller info failed, pid:%{public}d, ret:%{public}d", pid, ret);
+    }
+    return ret;
 }
 
 void AppExitReasonHelper::GetRunningProcessInfo(int32_t pid, int32_t userId, const std::string &bundleName,
