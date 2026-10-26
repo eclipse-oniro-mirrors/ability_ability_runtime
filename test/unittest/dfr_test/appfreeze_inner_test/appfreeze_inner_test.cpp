@@ -14,6 +14,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <chrono>
 
 #define private public
 #include "appfreeze_inner.h"
@@ -1120,5 +1121,113 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner_IsAsanEnabled_002, TestSize.Level1)
     EXPECT_EQ(ret, true);
     GTEST_LOG_(INFO) << "AppfreezeInner_IsAsanEnabled_002 end";
 }
+
+/**
+ * @tc.name: AppfreezeInner_CheckMainFreezeCallback_001
+ * @tc.desc: Verify non-6S/non-INPUT_BLOCK events are always admitted.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_CheckMainFreezeCallback_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppfreezeInner_CheckMainFreezeCallback_001 start";
+    appfreezeInner->mainFreezeCallbackTime_ = std::chrono::steady_clock::time_point::min();
+    appfreezeInner->mainFreezeRecoveryTime_ = std::chrono::steady_clock::time_point::min();
+    auto now = std::chrono::steady_clock::now();
+    EXPECT_TRUE(appfreezeInner->CheckMainFreezeCallback(AppFreezeType::THREAD_BLOCK_3S, now, true));
+    EXPECT_TRUE(appfreezeInner->CheckMainFreezeCallback(AppFreezeType::LIFECYCLE_TIMEOUT, now, true));
+    EXPECT_EQ(appfreezeInner->mainFreezeCallbackTime_, std::chrono::steady_clock::time_point::min());
+    GTEST_LOG_(INFO) << "AppfreezeInner_CheckMainFreezeCallback_001 end";
+}
+
+/**
+ * @tc.name: AppfreezeInner_CheckMainFreezeCallback_002
+ * @tc.desc: Verify first 6S with startProcessing=true is admitted and consumes the callback.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_CheckMainFreezeCallback_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppfreezeInner_CheckMainFreezeCallback_002 start";
+    appfreezeInner->mainFreezeCallbackTime_ = std::chrono::steady_clock::time_point::min();
+    appfreezeInner->mainFreezeRecoveryTime_ = std::chrono::steady_clock::time_point::min();
+    auto now = std::chrono::steady_clock::now();
+    EXPECT_TRUE(appfreezeInner->CheckMainFreezeCallback(AppFreezeType::THREAD_BLOCK_6S, now, true));
+    EXPECT_NE(appfreezeInner->mainFreezeCallbackTime_, std::chrono::steady_clock::time_point::min());
+    GTEST_LOG_(INFO) << "AppfreezeInner_CheckMainFreezeCallback_002 end";
+}
+
+/**
+ * @tc.name: AppfreezeInner_CheckMainFreezeCallback_003
+ * @tc.desc: Verify startProcessing=false does not consume the callback opportunity.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_CheckMainFreezeCallback_003, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppfreezeInner_CheckMainFreezeCallback_003 start";
+    appfreezeInner->mainFreezeCallbackTime_ = std::chrono::steady_clock::time_point::min();
+    appfreezeInner->mainFreezeRecoveryTime_ = std::chrono::steady_clock::time_point::min();
+    auto now = std::chrono::steady_clock::now();
+    EXPECT_TRUE(appfreezeInner->CheckMainFreezeCallback(AppFreezeType::APP_INPUT_BLOCK, now, false));
+    EXPECT_EQ(appfreezeInner->mainFreezeCallbackTime_, std::chrono::steady_clock::time_point::min());
+    GTEST_LOG_(INFO) << "AppfreezeInner_CheckMainFreezeCallback_003 end";
+}
+
+/**
+ * @tc.name: AppfreezeInner_ResetMainFreezeCallback_001
+ * @tc.desc: Verify ResetMainFreezeCallback allows subsequent callbacks after reset.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_ResetMainFreezeCallback_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppfreezeInner_ResetMainFreezeCallback_001 start";
+    appfreezeInner->mainFreezeCallbackTime_ = std::chrono::steady_clock::time_point::min();
+    appfreezeInner->mainFreezeRecoveryTime_ = std::chrono::steady_clock::time_point::min();
+    auto now = std::chrono::steady_clock::now();
+    ASSERT_TRUE(appfreezeInner->CheckMainFreezeCallback(AppFreezeType::THREAD_BLOCK_6S, now, true));
+    ASSERT_FALSE(appfreezeInner->CheckMainFreezeCallback(AppFreezeType::THREAD_BLOCK_6S,
+        std::chrono::steady_clock::now(), true));
+    appfreezeInner->ResetMainFreezeCallback();
+    auto afterReset = std::chrono::steady_clock::now();
+    EXPECT_TRUE(appfreezeInner->CheckMainFreezeCallback(AppFreezeType::THREAD_BLOCK_6S, afterReset, true));
+    GTEST_LOG_(INFO) << "AppfreezeInner_ResetMainFreezeCallback_001 end";
+}
+
+/**
+ * @tc.name: AppfreezeInner_SetThreadBlockDetectTime_001
+ * @tc.desc: Verify SetThreadBlockDetectTime sets detectTime and deduplicates 3S half events.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_SetThreadBlockDetectTime_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppfreezeInner_SetThreadBlockDetectTime_001 start";
+    appfreezeInner->mainFreezeHalfDetectTime_ = 0;
+    FaultData fault;
+    fault.errorObject.name = AppFreezeType::THREAD_BLOCK_3S;
+    appfreezeInner->SetThreadBlockDetectTime(fault, 1000);
+    EXPECT_EQ(fault.detectTime, 1000u);
+    EXPECT_EQ(appfreezeInner->mainFreezeHalfDetectTime_, 1000u);
+    FaultData second;
+    second.errorObject.name = AppFreezeType::THREAD_BLOCK_3S;
+    appfreezeInner->SetThreadBlockDetectTime(second, 2000);
+    EXPECT_EQ(second.detectTime, 1000u);
+    GTEST_LOG_(INFO) << "AppfreezeInner_SetThreadBlockDetectTime_001 end";
+}
+
+/**
+ * @tc.name: AppfreezeInner_SetThreadBlockDetectTime_002
+ * @tc.desc: Verify SetThreadBlockDetectTime does not deduplicate non-3S events.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_SetThreadBlockDetectTime_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppfreezeInner_SetThreadBlockDetectTime_002 start";
+    appfreezeInner->mainFreezeHalfDetectTime_ = 0;
+    FaultData fault;
+    fault.errorObject.name = AppFreezeType::THREAD_BLOCK_6S;
+    appfreezeInner->SetThreadBlockDetectTime(fault, 5000);
+    EXPECT_EQ(fault.detectTime, 5000u);
+    EXPECT_EQ(appfreezeInner->mainFreezeHalfDetectTime_, 0u);
+    GTEST_LOG_(INFO) << "AppfreezeInner_SetThreadBlockDetectTime_002 end";
+}
+
 }  // namespace AppExecFwk
 }  // namespace OHOS
