@@ -344,16 +344,33 @@ void SendAbilityEvent(const EventName &eventName, HiSysEventEventType type, std:
  *        kill-info recording is gated on this: only the close that terminates the process should
  *        be recorded, otherwise the record goes stale and misattributes later deaths to this
  *        close. Reuses the same authoritative appmgr query as TryPrepareTerminateByPids.
+ *        Siblings already marked terminating by their own close flow (e.g. concurrent session
+ *        cleanup from the recents screen) are excluded, so the concurrently cleaned last one
+ *        still judges itself as last. Extensions have no SCB-side record and are kept alive.
  */
-bool IsLastAbilityOfProcess(const sptr<IRemoteObject> &token, int32_t pid)
+bool IsLastAbilityOfProcess(const std::shared_ptr<UIAbilityLifecycleManager> &uiAbilityManager,
+    const sptr<IRemoteObject> &token, int32_t pid)
 {
-    if (token == nullptr || pid <= 0) {
+    if (token == nullptr || pid <= 0 || uiAbilityManager == nullptr) {
         return false;
     }
     std::vector<sptr<IRemoteObject>> tokens;
     IN_PROCESS_CALL_WITHOUT_RET(
         DelayedSingleton<AppScheduler>::GetInstance()->GetAbilityRecordsByProcessID(pid, tokens));
-    return tokens.size() == 1 && tokens.front() == token;
+    int32_t aliveCount = 0;
+    bool selfInRegistry = false;
+    for (const auto &candidate : tokens) {
+        if (candidate == token) {
+            selfInRegistry = true;    // the queried ability always counts
+            aliveCount++;
+            continue;
+        }
+        auto record = uiAbilityManager->GetAbilityRecordByToken(candidate);
+        if (record == nullptr || !record->IsTerminating()) {
+            aliveCount++;             // extension (no record) stays; terminating sibling excluded
+        }
+    }
+    return selfInRegistry && aliveCount == 1;
 }
 
 bool IsEmbeddableStart(int32_t screenMode)
@@ -5923,7 +5940,8 @@ int AbilityManagerService::CloseUIAbilityBySCB(const sptr<SessionInfo> &sessionI
     eventInfo->bundleName = abilityRecord->GetAbilityInfo().bundleName;
     eventInfo->abilityName = abilityRecord->GetAbilityInfo().name;
     SendAbilityEvent(EventName::CLOSE_ABILITY, HISYSEVENT_BEHAVIOR, eventInfo);
-    bool isLastAbility = IsLastAbilityOfProcess(abilityRecord->GetToken(), abilityRecord->GetPid());
+    bool isLastAbility = IsLastAbilityOfProcess(uiAbilityManager,
+        abilityRecord->GetToken(), abilityRecord->GetPid());
     if (sessionInfo->isClearSession && !isUserRequestedExit && isLastAbility && appExitReasonHelper_ != nullptr) {
         appExitReasonHelper_->RecordKillCallerInfo(abilityRecord->GetPid(), IPCSkeleton::GetCallingPid());
     }
@@ -18248,7 +18266,8 @@ int32_t AbilityManagerService::CleanUIAbilityBySCB(const sptr<SessionInfo> &sess
     }
     CHECK_POINTER_AND_RETURN(abilityRecord, ERR_INVALID_VALUE);
     abilityRecord->SetSceneFlag(sceneFlag);
-    bool isLastAbility = IsLastAbilityOfProcess(abilityRecord->GetToken(), abilityRecord->GetPid());
+    bool isLastAbility = IsLastAbilityOfProcess(uiAbilityManager,
+        abilityRecord->GetToken(), abilityRecord->GetPid());
     if (isUserRequestedExit) {
         CHECK_POINTER_AND_RETURN(appExitReasonHelper_, ERR_NULL_OBJECT);
         AAFwk::ExitReason exitReason = { REASON_NORMAL, "User Request" };
