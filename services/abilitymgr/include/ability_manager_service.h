@@ -2239,6 +2239,7 @@ public:
     int32_t StartAbilityByCallWithInsightIntent(const Want &want,
         const sptr<IRemoteObject> &callerToken, const InsightIntentExecuteParam &param,
         int32_t userId = DEFAULT_INVAL_VALUE, uint64_t specifiedFullTokenId = 0);
+    void GrantFileEntityUriPermission(const AbilityRequest &abilityRequest);
     int32_t ExecuteIntentForDistributed(const Want &want, const std::string &srcDeviceId,
         uint64_t requestCode, uint64_t specifiedFullTokenId = 0) override;
     int32_t ExecuteIntentByFunctionCall(uint64_t key, const sptr<IRemoteObject> &callerToken,

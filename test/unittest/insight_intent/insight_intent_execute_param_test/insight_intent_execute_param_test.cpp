@@ -1002,5 +1002,60 @@ HWTEST_F(InsightIntentExecuteParamTest, GetFileEntityUrisAndFlags_1100, TestSize
     EXPECT_EQ(uriGroups[0][0], "file:///data/dup.txt");
     EXPECT_EQ(uriGroups[1][0], "file:///data/dup.txt");
 }
+
+/**
+ * @tc.name: GetFileEntityUrisAndFlags_1200
+ * @tc.desc: total uris exceeding the limit are truncated to the first limit-count uris.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, GetFileEntityUrisAndFlags_1200, TestSize.Level1)
+{
+    std::vector<std::string> uris;
+    for (int i = 0; i < 600; i++) {
+        uris.push_back("file:///data/test" + std::to_string(i) + ".txt");
+    }
+    Want want = BuildWantWithEntities({
+        { "entity_a", BuildFileEntity(TEST_FILE_ENTITY_ID, uris, TEST_FLAG_READ) },
+    });
+    std::vector<std::vector<std::string>> uriGroups;
+    std::vector<int32_t> flags;
+    InsightIntentExecuteParam::GetFileEntityUrisAndFlags(want, uriGroups, flags);
+
+    ASSERT_EQ(uriGroups.size(), 1u);
+    ASSERT_EQ(flags.size(), 1u);
+    EXPECT_EQ(uriGroups[0].size(), 500u);
+    EXPECT_EQ(uriGroups[0][0], "file:///data/test0.txt");
+    EXPECT_EQ(uriGroups[0][499], "file:///data/test499.txt");
+}
+
+/**
+ * @tc.name: GetFileEntityUrisAndFlags_1300
+ * @tc.desc: total uris across multiple file entities are capped together at the limit.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, GetFileEntityUrisAndFlags_1300, TestSize.Level1)
+{
+    std::vector<std::string> urisA;
+    std::vector<std::string> urisB;
+    for (int i = 0; i < 300; i++) {
+        urisA.push_back("file:///data/a" + std::to_string(i) + ".txt");
+        urisB.push_back("file:///data/b" + std::to_string(i) + ".txt");
+    }
+    Want want = BuildWantWithEntities({
+        { "entity_a", BuildFileEntity(TEST_FILE_ENTITY_ID, urisA, TEST_FLAG_READ) },
+        { "entity_b", BuildFileEntity(TEST_FILE_ENTITY_ID, urisB, TEST_FLAG_WRITE) },
+    });
+    std::vector<std::vector<std::string>> uriGroups;
+    std::vector<int32_t> flags;
+    InsightIntentExecuteParam::GetFileEntityUrisAndFlags(want, uriGroups, flags);
+
+    ASSERT_EQ(uriGroups.size(), 2u);
+    ASSERT_EQ(flags.size(), 2u);
+    EXPECT_EQ(uriGroups[0].size(), 300u);
+    EXPECT_EQ(flags[0], TEST_FLAG_READ);
+    EXPECT_EQ(uriGroups[1].size(), 200u);
+    EXPECT_EQ(flags[1], TEST_FLAG_WRITE);
+    EXPECT_EQ(uriGroups[1][199], "file:///data/b199.txt");
+}
 } // namespace AAFwk
 } // namespace OHOS

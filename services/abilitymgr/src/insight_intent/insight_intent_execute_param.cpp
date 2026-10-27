@@ -260,6 +260,7 @@ constexpr const char *FILE_ENTITY_ID_KEY = "entityId";
 constexpr const char *FILE_ENTITY_URIS_KEY = "uris";
 constexpr const char *FILE_ENTITY_FLAGS_KEY = "flags";
 const std::string FILE_SCHEME = "file";
+constexpr size_t MAX_FILE_ENTITY_URI_COUNT = 500;
 
 std::vector<std::string> GetValidFileEntityUris(const WantParams &entity)
 {
@@ -300,6 +301,7 @@ void InsightIntentExecuteParam::GetFileEntityUrisAndFlags(const AAFwk::Want &wan
     const WantParams &wantParams = want.GetParams();
     WantParams params = wantParams.GetWantParams(INSIGHT_INTENT_EXECUTE_PARAM_PARAM);
     auto paramMap = params.GetParams();
+    size_t totalUriCount = 0;
     for (auto it = paramMap.begin(); it != paramMap.end(); it++) {
         AAFwk::IWantParams *wantParamsObj = AAFwk::IWantParams::Query(it->second);
         if (wantParamsObj == nullptr) {
@@ -312,6 +314,9 @@ void InsightIntentExecuteParam::GetFileEntityUrisAndFlags(const AAFwk::Want &wan
         }
 
         std::vector<std::string> validUris = GetValidFileEntityUris(entity);
+        if (validUris.empty()) {
+            continue;
+        }
 
         int32_t entityFlags = entity.GetIntParam(FILE_ENTITY_FLAGS_KEY, 0);
         // Only keep read/write permission bits to avoid leaking unrelated flags.
@@ -320,10 +325,20 @@ void InsightIntentExecuteParam::GetFileEntityUrisAndFlags(const AAFwk::Want &wan
         if (entityFlags == 0) {
             entityFlags = static_cast<int32_t>(AAFwk::Want::FLAG_AUTH_READ_URI_PERMISSION);
         }
-        if (!validUris.empty()) {
-            uriGroups.push_back(validUris);
-            flags.push_back(entityFlags);
+
+        if (totalUriCount >= MAX_FILE_ENTITY_URI_COUNT) {
+            break;
         }
+        size_t remaining = MAX_FILE_ENTITY_URI_COUNT - totalUriCount;
+        if (validUris.size() > remaining) {
+            TAG_LOGW(AAFwkTag::INTENT,
+                "file entity uri total exceeds %{public}zu, only the first %{public}zu are granted",
+                MAX_FILE_ENTITY_URI_COUNT, remaining);
+            validUris.resize(remaining);
+        }
+        totalUriCount += validUris.size();
+        uriGroups.push_back(validUris);
+        flags.push_back(entityFlags);
     }
 }
 
