@@ -34,6 +34,7 @@ public:
     int64_t timeout = 0;
     std::string toolCallId;
     std::string dmSessionId;
+    std::string policy;
 
     bool Marshalling(Parcel &parcel) const;
     static ExecOptions *Unmarshalling(Parcel &parcel);

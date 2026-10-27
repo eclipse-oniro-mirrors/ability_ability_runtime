@@ -34,6 +34,9 @@ bool ExecOptions::Marshalling(Parcel &parcel) const
     if (!parcel.WriteString(dmSessionId)) {
         return false;
     }
+    if (!parcel.WriteString(policy)) {
+        return false;
+    }
     return true;
 }
 
@@ -60,6 +63,10 @@ ExecOptions *ExecOptions::Unmarshalling(Parcel &parcel)
         return nullptr;
     }
     if (!parcel.ReadString(options->dmSessionId)) {
+        delete options;
+        return nullptr;
+    }
+    if (!parcel.ReadString(options->policy)) {
         delete options;
         return nullptr;
     }

@@ -214,6 +214,7 @@ HWTEST_F(ExecCmdParamTest, ExecCmdParam_AsExecOptions_0100, TestSize.Level1)
     EXPECT_EQ(view.timeout, TEST_TIMEOUT);
     EXPECT_EQ(view.toolCallId, TEST_TOOL_CALL_ID);
     EXPECT_EQ(view.dmSessionId, TEST_DM_SESSION_ID);
+    EXPECT_EQ(view.policy, "default");
 
     // Default-constructed options map to an all-default view.
     ExecCmdOptions defaults;
@@ -223,6 +224,7 @@ HWTEST_F(ExecCmdParamTest, ExecCmdParam_AsExecOptions_0100, TestSize.Level1)
     EXPECT_EQ(defaultsView.timeout, 0);
     EXPECT_TRUE(defaultsView.toolCallId.empty());
     EXPECT_TRUE(defaultsView.dmSessionId.empty());
+    EXPECT_TRUE(defaultsView.policy.empty());
 }
 
 /**

@@ -307,6 +307,8 @@ bool UnwrapExecOptions(napi_env env, napi_value obj, ExecOptions &options, std::
     if (!UnwrapOptionalTraceId(env, obj, "dmSessionId", options.dmSessionId, msg)) {
         return false;
     }
+
+    UnwrapStringProperty(env, obj, "policy", options.policy);
     return true;
 }
 
@@ -596,6 +598,9 @@ napi_value CreateJsExecOptions(napi_env env, const ExecOptions &opts)
     }
     if (!opts.dmSessionId.empty()) {
         napi_set_named_property(env, jsObj, "dmSessionId", AppExecFwk::WrapStringToJS(env, opts.dmSessionId));
+    }
+    if (!opts.policy.empty()) {
+        napi_set_named_property(env, jsObj, "policy", AppExecFwk::WrapStringToJS(env, opts.policy));
     }
     return jsObj;
 }

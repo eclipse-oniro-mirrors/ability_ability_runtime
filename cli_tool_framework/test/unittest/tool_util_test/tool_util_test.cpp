@@ -2226,6 +2226,7 @@ HWTEST_F(ToolUtilTest, GenerateSandboxConfig_InjectsCallerIdentityEnv_0100, Test
     param.toolName = "ohos-agent";
     param.subcommand = "connect";
     param.challenge = "challenge-abc";
+    param.options.policy = "default";
 
     std::string sandboxConfig;
     std::string outBundleName;
@@ -2251,6 +2252,7 @@ HWTEST_F(ToolUtilTest, GenerateSandboxConfig_InjectsCallerIdentityEnv_0100, Test
     EXPECT_EQ(cfg["gid"].get<int32_t>(), 2000);
     EXPECT_EQ(cfg["appId"].get<std::string>(), "app-id-xxx");
     EXPECT_EQ(cfg["type"].get<std::string>(), "cli");
+    EXPECT_EQ(cfg["policy"].get<std::string>(), "default");
     EXPECT_EQ(outBundleName, "com.test.agent");
 }
 
