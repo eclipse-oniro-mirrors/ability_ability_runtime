@@ -208,7 +208,7 @@ void UIAbilityLifecycleManager::UpdateAbilityRecordLaunchReason(
 UIAbilityRecordPtr UIAbilityLifecycleManager::GetUIAbilityRecordBySessionInfo(
     const sptr<SessionInfo> &sessionInfo)
 {
-    return nullptr;
+    return MyStatus::GetInstance().ualmGetUIAbilityRecordBySessionInfo_;
 }
 
 int32_t UIAbilityLifecycleManager::NotifySCBToMinimizeUIAbility(const sptr<IRemoteObject> token,

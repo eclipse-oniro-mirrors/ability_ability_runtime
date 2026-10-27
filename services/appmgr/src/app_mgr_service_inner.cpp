@@ -393,6 +393,7 @@ constexpr const char* AGENT_EXTENSION_TYPE = "agent";
 
 // kill resaon
 constexpr int32_t PROCESS_KILL_PARAM = 26; // PROCESS_KILL params
+constexpr int32_t PROCESS_KILL_EXIT_PARAM = 10; // PROCESS_KILL exit params
 
 constexpr int32_t FORK_ALL_LIVING_BEGIN = 0;
 constexpr int32_t FORK_ALL_LIVING_END = 1;
@@ -4533,10 +4534,13 @@ void AppMgrServiceInner::SendProcessKillEvent(std::shared_ptr<AppRunningRecord> 
     int32_t killId = appRecord->GetKillId() == DEFAULT_KILL_ID ?
         HiviewDFX::ProcessKillReason::KillEventId::REASON_APP_EXIT : appRecord->GetKillId();
     std::string newReason = appRecord->GetKillReason().empty() ? defaultReason : appRecord->GetKillReason();
+    int32_t callingPid = appRecord->GetKillCallerPid();
+    std::string callingProcessName = appRecord->GetKillCallerProcessName();
+    std::string bundleName = appRecord->GetBundleName();
     bool foreground = appRecord->GetState() == ApplicationState::APP_STATE_FOREGROUND ||
         appRecord->GetState() == ApplicationState::APP_STATE_FOCUS;
     AAFwk::EventReport::SendAppEvent(AAFwk::EventName::APP_TERMINATE, HISYSEVENT_BEHAVIOR, eventInfo);
-    auto hisyseventReport = std::make_shared<AAFwk::HisyseventReport>(6);
+    auto hisyseventReport = std::make_shared<AAFwk::HisyseventReport>(PROCESS_KILL_EXIT_PARAM);
     hisyseventReport->InsertParam(EVENT_KEY_PID, std::to_string(eventInfo.pid));
     hisyseventReport->InsertParam(EVENT_KEY_PROCESS_NAME, eventInfo.processName);
     hisyseventReport->InsertParam(EVENT_KEY_MESSAGE, newReason);
@@ -4544,11 +4548,17 @@ void AppMgrServiceInner::SendProcessKillEvent(std::shared_ptr<AppRunningRecord> 
     hisyseventReport->InsertParam(EVENT_KEY_FOREGROUND, foreground);
     hisyseventReport->InsertParam("APP_RUNNING_UNIQUE_ID", appRunningUniqueId);
     hisyseventReport->InsertParam(EVENT_KEY_KILL_ID, killId);
+    hisyseventReport->InsertParam(EVENT_KEY_CALLING_PID, callingPid);
+    hisyseventReport->InsertParam(EVENT_KEY_CALLING_PROCESS_NAME, callingProcessName);
+    hisyseventReport->InsertParam(EVENT_KEY_BUNDLE_NAME, bundleName);
     int result = hisyseventReport->Report("FRAMEWORK", "PROCESS_KILL", HISYSEVENT_FAULT);
     TAG_LOGW(AAFwkTag::APPMGR, "hisysevent write result=%{public}d, send event [FRAMEWORK,PROCESS_KILL], pid="
         "%{public}d, processName=%{public}s, msg=%{public}s, reason=%{public}s, FOREGROUND=%{public}d,"
-        " appRunningUniqueId=%{public}s, killId=%{public}d", result, eventInfo.pid, eventInfo.processName.c_str(),
-        newReason.c_str(), newReason.c_str(), foreground, appRunningUniqueId.c_str(), killId);
+        " appRunningUniqueId=%{public}s, killId=%{public}d, callingPid=%{public}d, callingProcessName=%{public}s,"
+        " bundleName=%{public}s",
+        result, eventInfo.pid, eventInfo.processName.c_str(),
+        newReason.c_str(), newReason.c_str(), foreground, appRunningUniqueId.c_str(), killId,
+        callingPid, callingProcessName.c_str(), bundleName.c_str());
 }
 
 int32_t AppMgrServiceInner::KillProcessByPidInner(const pid_t pid, const std::string& reason,

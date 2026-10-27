@@ -338,6 +338,40 @@ void SendAbilityEvent(const EventName &eventName, HiSysEventEventType type, std:
         }, ffrt::task_attr().timeout(AbilityRuntime::GlobalConstant::DEFAULT_FFRT_TASK_TIMEOUT));
 }
 
+/**
+ * @brief Whether the ability being closed is the only remaining ability record of its process.
+ *        kill-info recording is gated on this: only the close that terminates the process should
+ *        be recorded, otherwise the record goes stale and misattributes later deaths to this
+ *        close. Reuses the same authoritative appmgr query as TryPrepareTerminateByPids.
+ *        Siblings already marked terminating by their own close flow (e.g. concurrent session
+ *        cleanup from the recents screen) are excluded, so the concurrently cleaned last one
+ *        still judges itself as last. Extensions have no SCB-side record and are kept alive.
+ */
+bool IsLastAbilityOfProcess(const std::shared_ptr<UIAbilityLifecycleManager> &uiAbilityManager,
+    const sptr<IRemoteObject> &token, int32_t pid)
+{
+    if (token == nullptr || pid <= 0 || uiAbilityManager == nullptr) {
+        return false;
+    }
+    std::vector<sptr<IRemoteObject>> tokens;
+    IN_PROCESS_CALL_WITHOUT_RET(
+        DelayedSingleton<AppScheduler>::GetInstance()->GetAbilityRecordsByProcessID(pid, tokens));
+    int32_t aliveCount = 0;
+    bool selfInRegistry = false;
+    for (const auto &candidate : tokens) {
+        if (candidate == token) {
+            selfInRegistry = true;    // the queried ability always counts
+            aliveCount++;
+            continue;
+        }
+        auto record = uiAbilityManager->GetAbilityRecordByToken(candidate);
+        if (record == nullptr || !record->IsTerminating()) {
+            aliveCount++;             // extension (no record) stays; terminating sibling excluded
+        }
+    }
+    return selfInRegistry && aliveCount == 1;
+}
+
 bool IsEmbeddableStart(int32_t screenMode)
 {
     return screenMode == AAFwk::EMBEDDED_FULL_SCREEN_MODE ||
@@ -5919,12 +5953,17 @@ int AbilityManagerService::CloseUIAbilityBySCB(const sptr<SessionInfo> &sessionI
     eventInfo->bundleName = abilityRecord->GetAbilityInfo().bundleName;
     eventInfo->abilityName = abilityRecord->GetAbilityInfo().name;
     SendAbilityEvent(EventName::CLOSE_ABILITY, HISYSEVENT_BEHAVIOR, eventInfo);
+    bool isLastAbility = IsLastAbilityOfProcess(uiAbilityManager,
+        abilityRecord->GetToken(), abilityRecord->GetPid());
+    if (sessionInfo->isClearSession && !isUserRequestedExit && isLastAbility && appExitReasonHelper_ != nullptr) {
+        appExitReasonHelper_->RecordKillCallerInfo(abilityRecord->GetPid(), IPCSkeleton::GetCallingPid());
+    }
     if (isUserRequestedExit) {
         CHECK_POINTER_AND_RETURN(appExitReasonHelper_, ERR_NULL_OBJECT);
         AAFwk::ExitReason exitReason = { REASON_NORMAL, "User Request" };
         exitReason.killId = HiviewDFX::ProcessKillReason::KillEventId::REASON_USER_REQUEST;
         appExitReasonHelper_->RecordUIAbilityExitReason(abilityRecord->GetPid(), abilityRecord->GetAbilityInfo().name,
-            exitReason);
+            exitReason, IPCSkeleton::GetCallingPid(), isLastAbility);
     }
     eventInfo->errCode = uiAbilityManager->CloseUIAbility(abilityRecord, sessionInfo->resultCode,
         &(sessionInfo->want), sessionInfo->isClearSession, false);
@@ -17063,9 +17102,13 @@ void AbilityManagerService::RecordAppRestartExitReason(bool isAppRecovery, int32
     if (isAppRecovery) {
         return;
     }
+    if (appExitReasonHelper_ == nullptr) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "RecordAppRestartExitReason failed, appExitReasonHelper_ is null");
+        return;
+    }
     int32_t killId = HiviewDFX::ProcessKillReason::KillEventId::REASON_RESTART;
     AAFwk::ExitReasonCompability exitReason(killId);
-    auto result = IN_PROCESS_CALL(RecordAppWithReason(callerPid, callerUid, exitReason));
+    auto result = appExitReasonHelper_->RecordAppWithReason(callerPid, callerUid, exitReason, callerPid);
     if (result != ERR_OK) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "RecordAppRestartExitReason failed, result: %{public}d", result);
     }
@@ -18449,12 +18492,14 @@ int32_t AbilityManagerService::CleanUIAbilityBySCB(const sptr<SessionInfo> &sess
     }
     CHECK_POINTER_AND_RETURN(abilityRecord, ERR_INVALID_VALUE);
     abilityRecord->SetSceneFlag(sceneFlag);
+    bool isLastAbility = IsLastAbilityOfProcess(uiAbilityManager,
+        abilityRecord->GetToken(), abilityRecord->GetPid());
     if (isUserRequestedExit) {
         CHECK_POINTER_AND_RETURN(appExitReasonHelper_, ERR_NULL_OBJECT);
         AAFwk::ExitReason exitReason = { REASON_NORMAL, "User Request" };
         exitReason.killId = HiviewDFX::ProcessKillReason::KillEventId::REASON_USER_REQUEST;
         appExitReasonHelper_->RecordUIAbilityExitReason(abilityRecord->GetPid(), abilityRecord->GetAbilityInfo().name,
-            exitReason);
+            exitReason, IPCSkeleton::GetCallingPid(), isLastAbility);
     }
     int32_t errCode = uiAbilityManager->CleanUIAbility(abilityRecord);
     ReportCleanSession(sessionInfo, abilityRecord, errCode);
