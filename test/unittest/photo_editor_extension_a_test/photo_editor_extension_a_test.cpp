@@ -117,7 +117,7 @@ HWTEST_F(PhotoEditorExtensionContextTest, SetWant_0100, Function | MediumTest | 
 /**
  * @tc.number: SaveEditedContent_0300
  * @tc.name: SaveEditedContent
- * @tc.desc: uri without extension and file not exist, CopyImageToPanel fails first
+ * @tc.desc: uri without extension, param check fails before CopyImageToPanel
  */
 
 HWTEST_F(PhotoEditorExtensionContextTest, SaveEditedContent_0300, Function | MediumTest | Level1)
@@ -130,8 +130,29 @@ HWTEST_F(PhotoEditorExtensionContextTest, SaveEditedContent_0300, Function | Med
     PhotoInfos->SetWant(want);
     want->SetParam(PANEL_TRANSFER_FILE_PATHS, uri);
     PhotoEditorErrorCode res = PhotoInfos->SaveEditedContent(uri, newWant);
-    EXPECT_EQ(res, PhotoEditorErrorCode::ERROR_CODE_IMAGE_INPUT_ERROR);
+    // 参数校验前置：无扩展名直接返回 PARAM_ERROR，不进入 CopyImageToPanel
+    EXPECT_EQ(res, PhotoEditorErrorCode::ERROR_CODE_PARAM_ERROR);
     GTEST_LOG_(INFO) << "SaveEditedContent_0300 end";
+}
+
+/**
+ * @tc.number: SaveEditedContent_0400
+ * @tc.name: SaveEditedContent
+ * @tc.desc: uri ending with dot, extension empty, param check fails
+ */
+
+HWTEST_F(PhotoEditorExtensionContextTest, SaveEditedContent_0400, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "SaveEditedContent_0400 start";
+    auto PhotoInfos = std::make_shared<PhotoEditorExtensionContext>();
+    std::string uri = TMP_IMAGE_WITH_EXT + "."; // 以点结尾，扩展名为空
+    AAFwk::Want newWant;
+    std::shared_ptr<AAFwk::Want> want = std::make_shared<AAFwk::Want>();
+    PhotoInfos->SetWant(want);
+    want->SetParam(PANEL_TRANSFER_FILE_PATHS, uri);
+    PhotoEditorErrorCode res = PhotoInfos->SaveEditedContent(uri, newWant);
+    EXPECT_EQ(res, PhotoEditorErrorCode::ERROR_CODE_PARAM_ERROR);
+    GTEST_LOG_(INFO) << "SaveEditedContent_0400 end";
 }
 
 } // namespace AbilityRuntime
