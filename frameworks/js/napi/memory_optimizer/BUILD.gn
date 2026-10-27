@@ -50,6 +50,7 @@ ohos_shared_library("appmemoryoptimizer_napi") {
     "c_utils:utils",
     "hilog:libhilog",
     "ipc:ipc_core",
+    "libuv:uv",
     "napi:ace_napi",
     "node:node_header_notice",
   ]

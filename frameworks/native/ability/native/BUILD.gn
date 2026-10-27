@@ -3158,6 +3158,7 @@ ohos_shared_library("cj_share_extension") {
     "hitrace:hitrace_meter",
     "ipc:ipc_napi",
     "napi:cj_bind_native",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -3279,6 +3280,7 @@ ohos_shared_library("cj_action_extension") {
     "hitrace:hitrace_meter",
     "ipc:ipc_napi",
     "napi:cj_bind_native",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -3600,6 +3602,7 @@ ohos_shared_library("cj_embedded_ui_extension") {
     "ipc:ipc_napi",
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -4032,6 +4035,7 @@ ohos_shared_library("cj_photo_editor_extension") {
     "ipc:ipc_napi",
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
