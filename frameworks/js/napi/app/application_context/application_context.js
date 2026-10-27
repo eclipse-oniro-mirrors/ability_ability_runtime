@@ -323,7 +323,9 @@ class ApplicationContext {
   }
 
   offAppProcessStateChange(observer) {
-    return this.__context_impl__.offAppProcessStateChange(observer);
+    return arguments.length === 0
+      ? this.__context_impl__.offAppProcessStateChange()
+      : this.__context_impl__.offAppProcessStateChange(observer);
   }
 
   setLanguage(language) {
