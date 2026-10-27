@@ -78,4 +78,25 @@ export function getLastError(errType: HyperSnapErrorType): Promise<HyperSnapErro
         });
     });
 }
+
+export native function nativeIsHyperSnapInitializing(callback: AsyncCallbackWrapper<boolean>): void;
+export function isHyperSnapInitializing(): Promise<boolean> {
+    return new Promise<boolean>((resolve, reject) => {
+        let call = new AsyncCallbackWrapper<boolean>((err: BusinessError | null,
+            data: boolean | undefined) => {
+            if (err == null || err.code == 0) {
+                resolve(data as boolean);
+            } else {
+                reject(err);
+            }
+        });
+        taskpool.execute((): void => {
+            try {
+                hyperSnapManager.nativeIsHyperSnapInitializing(call);
+            } catch (err) {
+                reject(err as BusinessError);
+            }
+        });
+    });
+}
 } // namespace hyperSnapManager

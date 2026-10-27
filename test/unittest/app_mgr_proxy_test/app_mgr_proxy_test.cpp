@@ -1985,5 +1985,76 @@ HWTEST_F(AppMgrProxyTest, AppMgrProxy_GetHyperSnapLastError_0400, TestSize.Level
     GTEST_LOG_(INFO) << "AppMgrProxy_GetHyperSnapLastError_0400 end";
 }
 
+/**
+ * @tc.name: AppMgrProxy_IsHyperSnapInitializing_0100
+ * @tc.desc: IsHyperSnapInitializing sends the correct interface code and returns the reply bool.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, AppMgrProxy_IsHyperSnapInitializing_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppMgrProxy_IsHyperSnapInitializing_0100 start";
+
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke([this](uint32_t code, MessageParcel& data, MessageParcel& reply,
+            MessageOption& option) {
+            mockAppMgrService_->code_ = code;
+            (void)reply.WriteBool(true);
+            return NO_ERROR;
+        }));
+
+    bool result = appMgrProxy_->IsHyperSnapInitializing();
+    EXPECT_EQ(result, true);
+    EXPECT_EQ(mockAppMgrService_->code_, static_cast<uint32_t>(AppMgrInterfaceCode::IS_HYPER_SNAP_INITIALIZING));
+
+    GTEST_LOG_(INFO) << "AppMgrProxy_IsHyperSnapInitializing_0100 end";
+}
+
+/**
+ * @tc.name: AppMgrProxy_IsHyperSnapInitializing_0200
+ * @tc.desc: IsHyperSnapInitializing returns false when SendRequest fails.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, AppMgrProxy_IsHyperSnapInitializing_0200, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "AppMgrProxy_IsHyperSnapInitializing_0200 start";
+
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(ERR_INVALID_VALUE));
+
+    bool result = appMgrProxy_->IsHyperSnapInitializing();
+    EXPECT_EQ(result, false);
+
+    GTEST_LOG_(INFO) << "AppMgrProxy_IsHyperSnapInitializing_0200 end";
+}
+
+/**
+ * @tc.name: AppMgrProxy_IsHyperSnapInitializing_0300
+ * @tc.desc: IsHyperSnapInitializing goes through the real stub handler and returns the service result.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, AppMgrProxy_IsHyperSnapInitializing_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppMgrProxy_IsHyperSnapInitializing_0300 start";
+
+    EXPECT_CALL(*mockAppMgrService_, IsHyperSnapInitializing())
+        .Times(1)
+        .WillOnce(Return(true));
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke([this](uint32_t code, MessageParcel& data, MessageParcel& reply,
+            MessageOption& option) {
+            mockAppMgrService_->code_ = code;
+            return mockAppMgrService_->OnRemoteRequest(code, data, reply, option);
+        }));
+
+    bool result = appMgrProxy_->IsHyperSnapInitializing();
+    EXPECT_EQ(result, true);
+    EXPECT_EQ(mockAppMgrService_->code_, static_cast<uint32_t>(AppMgrInterfaceCode::IS_HYPER_SNAP_INITIALIZING));
+
+    GTEST_LOG_(INFO) << "AppMgrProxy_IsHyperSnapInitializing_0300 end";
+}
+
 } // namespace AppExecFwk
 } // namespace OHOS

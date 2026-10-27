@@ -2017,6 +2017,164 @@ HWTEST_F(AppMgrServiceInnerEighthTest, IsFinalAppProcessByBundleName_001, TestSi
 }
 
 /**
+ * @tc.name: IsHyperSnapInitializing_001
+ * @tc.desc: test IsHyperSnapInitializing when appRunningManager is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, IsHyperSnapInitializing_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsHyperSnapInitializing_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrServiceInner->appRunningManager_ = nullptr;
+
+    auto ret = appMgrServiceInner->IsHyperSnapInitializing();
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "IsHyperSnapInitializing_001 end");
+}
+
+/**
+ * @tc.name: IsHyperSnapInitializing_002
+ * @tc.desc: test IsHyperSnapInitializing when GetAppRunningRecordByPid returns nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, IsHyperSnapInitializing_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsHyperSnapInitializing_002 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = nullptr;
+
+    auto ret = appMgrServiceInner->IsHyperSnapInitializing();
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "IsHyperSnapInitializing_002 end");
+}
+
+/**
+ * @tc.name: IsHyperSnapInitializing_003
+ * @tc.desc: test IsHyperSnapInitializing when makeImageState is MAKE_PRELOAD_START.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, IsHyperSnapInitializing_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsHyperSnapInitializing_003 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
+    appRecord->SetMakeImageState(MakeImageState::MAKE_PRELOAD_START);
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = appRecord;
+
+    auto ret = appMgrServiceInner->IsHyperSnapInitializing();
+    EXPECT_EQ(ret, true);
+    TAG_LOGI(AAFwkTag::TEST, "IsHyperSnapInitializing_003 end");
+}
+
+/**
+ * @tc.name: IsHyperSnapInitializing_004
+ * @tc.desc: test IsHyperSnapInitializing when makeImageState is MAKE_PRELOAD_FINISH.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, IsHyperSnapInitializing_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsHyperSnapInitializing_004 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
+    appRecord->SetMakeImageState(MakeImageState::MAKE_PRELOAD_FINISH);
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = appRecord;
+
+    auto ret = appMgrServiceInner->IsHyperSnapInitializing();
+    EXPECT_EQ(ret, true);
+    TAG_LOGI(AAFwkTag::TEST, "IsHyperSnapInitializing_004 end");
+}
+
+/**
+ * @tc.name: IsHyperSnapInitializing_005
+ * @tc.desc: test IsHyperSnapInitializing when makeImageState is MAKE_IMAGE_FINISH.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, IsHyperSnapInitializing_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsHyperSnapInitializing_005 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
+    appRecord->SetMakeImageState(MakeImageState::MAKE_IMAGE_FINISH);
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = appRecord;
+
+    auto ret = appMgrServiceInner->IsHyperSnapInitializing();
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "IsHyperSnapInitializing_005 end");
+}
+
+/**
+ * @tc.name: IsHyperSnapInitializing_006
+ * @tc.desc: test IsHyperSnapInitializing when makeImageState is NONE.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, IsHyperSnapInitializing_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsHyperSnapInitializing_006 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
+    appRecord->SetMakeImageState(MakeImageState::NONE);
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = appRecord;
+
+    auto ret = appMgrServiceInner->IsHyperSnapInitializing();
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "IsHyperSnapInitializing_006 end");
+}
+
+/**
+ * @tc.name: IsHyperSnapInitializing_007
+ * @tc.desc: test IsHyperSnapInitializing when makeImageState is MAKE_IMAGE_START.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, IsHyperSnapInitializing_007, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsHyperSnapInitializing_007 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
+    appRecord->SetMakeImageState(MakeImageState::MAKE_IMAGE_START);
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = appRecord;
+
+    auto ret = appMgrServiceInner->IsHyperSnapInitializing();
+    EXPECT_EQ(ret, true);
+    TAG_LOGI(AAFwkTag::TEST, "IsHyperSnapInitializing_007 end");
+}
+
+/**
+ * @tc.name: IsHyperSnapInitializing_008
+ * @tc.desc: test IsHyperSnapInitializing when makeImageState is DESTROY_START.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, IsHyperSnapInitializing_008, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsHyperSnapInitializing_008 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
+    appRecord->SetMakeImageState(MakeImageState::DESTROY_START);
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = appRecord;
+
+    auto ret = appMgrServiceInner->IsHyperSnapInitializing();
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "IsHyperSnapInitializing_008 end");
+}
+
+/**
+ * @tc.name: IsHyperSnapInitializing_009
+ * @tc.desc: test IsHyperSnapInitializing when makeImageState is DESTROY_FINISH.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, IsHyperSnapInitializing_009, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsHyperSnapInitializing_009 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    auto appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
+    appRecord->SetMakeImageState(MakeImageState::DESTROY_FINISH);
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = appRecord;
+
+    auto ret = appMgrServiceInner->IsHyperSnapInitializing();
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "IsHyperSnapInitializing_009 end");
+}
+
+/**
  * @tc.name: IsFinalAppProcessByBundleName_002
  * @tc.desc: test IsFinalAppProcessByBundleName_002
  * @tc.type: FUNC

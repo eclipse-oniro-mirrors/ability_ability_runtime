@@ -11303,6 +11303,27 @@ bool AppMgrServiceInner::IsFinalAppProcessByBundleName(const std::string &bundle
     return appQueryHelper_.IsFinalAppProcessByBundleName(bundleName);
 }
 
+bool AppMgrServiceInner::IsHyperSnapInitializing()
+{
+    if (appRunningManager_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "appRunningManager is null");
+        return false;
+    }
+    auto callingPid = IPCSkeleton::GetCallingPid();
+    auto appRecord = appRunningManager_->GetAppRunningRecordByPid(callingPid);
+    if (appRecord == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "get running record null, pid: %{public}d", callingPid);
+        return false;
+    }
+    auto state = appRecord->GetMakeImageState();
+    bool isInitializing = state == MakeImageState::MAKE_PRELOAD_START
+        || state == MakeImageState::MAKE_PRELOAD_FINISH
+        || state == MakeImageState::MAKE_IMAGE_START;
+    TAG_LOGD(AAFwkTag::APPMGR, "pid: %{public}d, makeImageState: %{public}d, isInitializing: %{public}d",
+        callingPid, static_cast<int32_t>(state), isInitializing);
+    return isInitializing;
+}
+
 void AppMgrServiceInner::ParseServiceExtMultiProcessWhiteList()
 {
     auto serviceExtMultiProcessWhiteList =

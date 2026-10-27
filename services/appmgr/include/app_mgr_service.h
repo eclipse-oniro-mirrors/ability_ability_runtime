@@ -1213,6 +1213,15 @@ private:
     bool IsFinalAppProcess() override;
 
     /**
+     * Query whether the current process is doing snapshot initialization.
+     *
+     * @return Returns true if the current process is doing snapshot initialization,
+     *         false otherwise (completed, failed, not a template process,
+     *         or service unavailable).
+     */
+    bool IsHyperSnapInitializing() override;
+
+    /**
      * Get pids of processes which belong to specific bundle name and support process cache feature.
      *
      * @param bundleName bundle name.

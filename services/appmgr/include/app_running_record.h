@@ -1498,7 +1498,7 @@ private:
     std::atomic<ProcessChangeReason> processChangeReason_ = ProcessChangeReason::REASON_NONE; // render record
     std::chrono::system_clock::time_point preloadAttachTimeoutStartTime_;
 
-    MakeImageState makeImageState_ = MakeImageState::NONE;
+    std::atomic<MakeImageState> makeImageState_ = MakeImageState::NONE;
     bool isCreateFromImage_ = false;
     ImageProcessType imageProcessType_ = ImageProcessType::UNSPECIFIED;
     bool needRemoveDeathRecipient_ = true;

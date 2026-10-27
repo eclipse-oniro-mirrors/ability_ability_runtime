@@ -338,6 +338,8 @@ int32_t AppMgrStub::OnRemoteRequestInnerSixth(uint32_t code, MessageParcel &data
     #endif // SUPPORT_CHILD_PROCESS
         case static_cast<uint32_t>(AppMgrInterfaceCode::IS_FINAL_APP_PROCESS):
             return HandleIsFinalAppProcess(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::IS_HYPER_SNAP_INITIALIZING):
+            return HandleIsHyperSnapInitializing(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::APP_CLEAR_UP_APPLICATION_DATA_BY_SELF):
             return HandleClearUpApplicationDataBySelf(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_RENDER_STATUS_OBSERVER):
@@ -2103,6 +2105,16 @@ int32_t AppMgrStub::HandleIsFinalAppProcess(MessageParcel &data, MessageParcel &
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");
     if (!reply.WriteBool(IsFinalAppProcess())) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Fail to write bool result.");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleIsHyperSnapInitializing(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    if (!reply.WriteBool(IsHyperSnapInitializing())) {
         TAG_LOGE(AAFwkTag::APPMGR, "Fail to write bool result.");
         return ERR_INVALID_VALUE;
     }

@@ -1555,6 +1555,16 @@ bool AppMgrClient::IsFinalAppProcess()
     return service->IsFinalAppProcess();
 }
 
+bool AppMgrClient::IsHyperSnapInitializing()
+{
+    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
+    if (service == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Service is nullptr.");
+        return false;
+    }
+    return service->IsHyperSnapInitializing();
+}
+
 int32_t AppMgrClient::RegisterRenderStateObserver(const sptr<IRenderStateObserver> &observer)
 {
     sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());

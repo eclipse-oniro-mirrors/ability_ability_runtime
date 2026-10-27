@@ -2039,6 +2039,15 @@ bool AppMgrService::IsFinalAppProcess()
     return appMgrServiceInner_->IsFinalAppProcessByBundleName("");
 }
 
+bool AppMgrService::IsHyperSnapInitializing()
+{
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "not ready");
+        return false;
+    }
+    return appMgrServiceInner_->IsHyperSnapInitializing();
+}
+
 int32_t AppMgrService::RegisterRenderStateObserver(const sptr<IRenderStateObserver> &observer)
 {
     if (!IsReady()) {
