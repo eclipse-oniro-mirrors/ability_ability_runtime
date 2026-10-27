@@ -381,6 +381,61 @@ HWTEST_F(AppMgrServiceInnerTenthTest, SetAppInfo_003, TestSize.Level1)
 }
 
 /**
+ * @tc.name: SetAppInfo_AgentId_001
+ * @tc.desc: Test SetAppInfo function: agentId empty when no execCmd permission (default token)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTenthTest, SetAppInfo_AgentId_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetAppInfo_AgentId_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    BundleInfo bundleInfo;
+    bundleInfo.applicationInfo.accessTokenId = 0;
+    bundleInfo.signatureInfo.appIdentifier = "test_app_identifier";
+    AppSpawnStartMsg startMsg;
+    appMgrServiceInner->SetAppInfo(bundleInfo, startMsg);
+    EXPECT_TRUE(startMsg.agentId.empty());
+    TAG_LOGI(AAFwkTag::TEST, "SetAppInfo_AgentId_001 end");
+}
+
+/**
+ * @tc.name: SetAppInfo_AgentId_002
+ * @tc.desc: Test SetAppInfo function: agentId empty when appIdentifier is empty
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTenthTest, SetAppInfo_AgentId_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetAppInfo_AgentId_002 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    BundleInfo bundleInfo;
+    bundleInfo.applicationInfo.accessTokenId = 0;
+    bundleInfo.signatureInfo.appIdentifier = "";
+    AppSpawnStartMsg startMsg;
+    appMgrServiceInner->SetAppInfo(bundleInfo, startMsg);
+    EXPECT_TRUE(startMsg.agentId.empty());
+    TAG_LOGI(AAFwkTag::TEST, "SetAppInfo_AgentId_002 end");
+}
+
+/**
+ * @tc.name: SetAppInfo_AgentId_003
+ * @tc.desc: Test SetAppInfo function: ownerId unchanged after agentId field added
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTenthTest, SetAppInfo_AgentId_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetAppInfo_AgentId_003 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    BundleInfo bundleInfo;
+    bundleInfo.applicationInfo.accessTokenId = 0;
+    bundleInfo.signatureInfo.appIdentifier = "test_owner_id";
+    AppSpawnStartMsg startMsg;
+    appMgrServiceInner->SetAppInfo(bundleInfo, startMsg);
+    EXPECT_EQ(startMsg.ownerId, "test_owner_id");
+    EXPECT_TRUE(startMsg.agentId.empty());
+    TAG_LOGI(AAFwkTag::TEST, "SetAppInfo_AgentId_003 end");
+}
+
+/**
  * @tc.name: OnRemoteDied_001
  * @tc.desc: Test OnRemoteDied function
  * @tc.type: FUNC
