@@ -27,6 +27,8 @@ const std::string RESOURCES_FILE_NAME = "resources.index";
 constexpr char DELIMITER[] = "\\";
 #elif defined(MAC_PLATFORM)
 constexpr char DELIMITER[] = "/";
+#elif defined(LINUX_PLATFORM)
+constexpr char DELIMITER[] = "/";
 #else
 #error "Unsupported platform"
 #endif
