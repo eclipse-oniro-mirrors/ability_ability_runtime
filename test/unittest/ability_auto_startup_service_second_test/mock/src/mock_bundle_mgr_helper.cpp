@@ -144,6 +144,10 @@ std::string BundleMgrHelper::GetAppIdByBundleName(const std::string& bundleName,
 ErrCode BundleMgrHelper::GetCloneBundleInfo(
     const std::string& bundleName, int32_t flags, int32_t appCloneIndex, BundleInfo& bundleInfo, int32_t userId)
 {
+    if (AAFwk::GetDirectBootTestState().active) {
+        return AAFwk::GetDirectBootBundleInfo(bundleName, bundleInfo, userId) &&
+            bundleInfo.applicationInfo.appIndex == appCloneIndex ? ERR_OK : -1;
+    }
     if (bundleName.size() < TOKENID_LENGTH) {
         return -1;
     }

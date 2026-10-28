@@ -53,6 +53,9 @@ struct DirectBootTestState {
     bool callerPermission = true;
     bool edmCallerPermission = false;
     bool bundleAvailable = true;
+    int32_t bundleInfoCalls = 0;
+    int32_t bundleInfoFailureCall = 0;
+    int32_t invalidBundleTokenCall = 0;
     std::string deviceType = "2in1";
     int32_t callingUid = DIRECT_BOOT_TEST_UID;
     int32_t accountCalls = 0;
@@ -72,6 +75,7 @@ bool GetDirectBootBundleInfo(const std::string &bundleName, AppExecFwk::BundleIn
 
 class DirectBootTestStore : public MockSingleKvStore {
 public:
+    DistributedKv::Status Get(const DistributedKv::Key &key, DistributedKv::Value &value) override;
     DistributedKv::Status GetEntries(const DistributedKv::Key &prefix,
         std::vector<DistributedKv::Entry> &entries) const override;
     DistributedKv::Status Put(const DistributedKv::Key &key, const DistributedKv::Value &value) override;
@@ -79,7 +83,9 @@ public:
 
     std::vector<DistributedKv::Entry> entries;
     DistributedKv::Status readResult = DistributedKv::Status::SUCCESS;
+    DistributedKv::Status writeResult = DistributedKv::Status::SUCCESS;
     int32_t writes = 0;
+    int32_t writeFailureCall = 0;
 };
 
 class DirectBootServiceTestContext {
