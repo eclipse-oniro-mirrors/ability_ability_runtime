@@ -527,6 +527,7 @@ public:
         ani_vm *vm = nullptr;
         if (env->GetVM(&vm) != ANI_OK) {
             TAG_LOGE(AAFwkTag::INTENT, "GetVM failed");
+            env->GlobalReference_Delete(callbackRef);
             error = EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER));
             AsyncCallback(env, callback, error, CreateEmptyArray(env));
             return;
