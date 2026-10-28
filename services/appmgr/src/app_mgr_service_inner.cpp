@@ -9160,6 +9160,10 @@ void AppMgrServiceInner::ParseInfoToAppfreeze(const FaultData &faultData, int32_
     const std::string &bundleName, const std::string &processName, const bool isOccurException)
 {
     if (faultData.faultType == FaultDataType::APP_FREEZE) {
+        if (!ValidateFreezeTargetSnapshot(pid, uid, bundleName)) {
+            TAG_LOGE(AAFwkTag::APPDFR, "invalid freeze target snapshot, skip appfreeze report, pid:%{public}d", pid);
+            return;
+        }
         bool isFrozen = AbilityRuntime::FreezeUtil::GetInstance().IsFrozen(pid);
         AppfreezeManager::AppInfo info = {
             .isOccurException = isOccurException,
@@ -9282,6 +9286,10 @@ void AppMgrServiceInner::HandleFaultDisposition(const FaultData& faultData,
     const int32_t pid = record->GetPid();
     const int32_t recordId = record->GetRecordId();
     const std::string bundleName = record->GetBundleName();
+    if (!ValidateFreezeTargetSnapshot(pid, record->GetUid(), bundleName)) {
+        TAG_LOGE(AAFwkTag::APPDFR, "invalid freeze target snapshot, stop notify and kill, pid:%{public}d", pid);
+        return;
+    }
     const bool isExit = AppfreezeManager::GetInstance()->CheckProcessExit(record->GetProcessName(),
         faultData.errorObject.name, faultData.isInForeground);
     if (faultData.faultType == FaultDataType::APP_FREEZE && isExit && faultData.waitSaveState) {
@@ -9410,14 +9418,28 @@ int32_t AppMgrServiceInner::NotifyAppFault(const FaultData &faultData)
     TAG_LOGI(AAFwkTag::APPMGR, "call");
     int32_t pid = IPCSkeleton::GetCallingPid();
     int32_t uid = IPCSkeleton::GetCallingUid();
+    if (pid <= 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "invalid calling pid:%{public}d", pid);
+        return ERR_INVALID_VALUE;
+    }
     auto appRecord = GetAppRunningRecordByPid(pid);
     if (appRecord == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "no appRecord, pid:%{public}d", pid);
         return ERR_INVALID_VALUE;
     }
+    if (appRecord->GetUid() != uid) {
+        TAG_LOGE(AAFwkTag::APPMGR, "calling uid:%{public}d does not own record pid:%{public}d, recordUid:%{public}d",
+            uid, pid, appRecord->GetUid());
+        return ERR_INVALID_VALUE;
+    }
     std::string eventName = faultData.errorObject.name;
     if (!AppExecFwk::AppfreezeManager::GetInstance()->IsValidFreezeTypeName(eventName)) {
         TAG_LOGE(AAFwkTag::APPDFR, "called failed, invalid freeze name: %{public}s", eventName.c_str());
+        return ERR_INVALID_VALUE;
+    }
+    if (faultData.faultType == FaultDataType::APP_FREEZE && eventName == AppFreezeType::APP_INPUT_BLOCK &&
+        faultData.timeoutMarkers.empty()) {
+        TAG_LOGE(AAFwkTag::APPDFR, "APP_INPUT_BLOCK feedback without server-issued marker, pid:%{public}d", pid);
         return ERR_INVALID_VALUE;
     }
     if (appRecord->GetState() == ApplicationState::APP_STATE_TERMINATED ||
@@ -9477,6 +9499,34 @@ int64_t AppMgrServiceInner::GetAppFaultNotifyLatency(const std::string& marker, 
         return -1;
     }
     return receiveTime - startTime;
+}
+
+bool AppMgrServiceInner::ValidateFreezeTargetSnapshot(int32_t pid, int32_t uid, const std::string &bundleName)
+{
+    if (pid <= 0 || uid <= 0 || bundleName.empty()) {
+        TAG_LOGE(AAFwkTag::APPDFR, "invalid freeze target, pid:%{public}d, uid:%{public}d, bundle:%{public}s",
+            pid, uid, bundleName.c_str());
+        return false;
+    }
+    if (remoteClientManager_ == nullptr) {
+        return true;
+    }
+    auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
+    if (bundleMgrHelper == nullptr) {
+        return true;
+    }
+    std::string uidBundleName;
+    // Only a positive BMS mismatch blocks the report; a failed lookup must not.
+    if (IN_PROCESS_CALL(bundleMgrHelper->GetNameForUid(uid, uidBundleName)) != ERR_OK || uidBundleName.empty()) {
+        TAG_LOGW(AAFwkTag::APPDFR, "BMS lookup unavailable, fail-open for uid:%{public}d", uid);
+        return true;
+    }
+    if (uidBundleName != bundleName) {
+        TAG_LOGE(AAFwkTag::APPDFR, "freeze target uid/bundle mismatch, uid:%{public}d, bundle:%{public}s, "
+            "resolved:%{public}s", uid, bundleName.c_str(), uidBundleName.c_str());
+        return false;
+    }
+    return true;
 }
 
 bool AppMgrServiceInner::CheckAppFault(const std::shared_ptr<AppRunningRecord> &appRecord, const FaultData &faultData)
@@ -9547,9 +9597,18 @@ struct AppFaultCtx {
 
 int32_t AppMgrServiceInner::TransformedNotifyAppFault(const AppFaultDataBySA &faultData)
 {
+    if (faultData.pid <= 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "invalid target pid:%{public}d", faultData.pid);
+        return ERR_INVALID_VALUE;
+    }
     auto record = GetAppRunningRecordByPid(faultData.pid);
     if (record == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "no such AppRunningRecord");
+        return ERR_INVALID_VALUE;
+    }
+    if (record->GetUid() <= 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "record uid not ready, pid:%{public}d, uid:%{public}d", faultData.pid,
+            record->GetUid());
         return ERR_INVALID_VALUE;
     }
     FaultData transformedFaultData = ConvertDataTypes(faultData);

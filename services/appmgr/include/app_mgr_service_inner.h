@@ -2448,6 +2448,7 @@ private:
     void HandleConfigurationChange(const Configuration &config, const int32_t userId = -1);
     void HandleConfigurationChange(const Configuration &config, const std::set<int32_t> &userIds);
     bool CheckIsThreadInFoundation(pid_t pid);
+    bool ValidateFreezeTargetSnapshot(int32_t pid, int32_t uid, const std::string &bundleName);
     bool CheckAppFault(const std::shared_ptr<AppRunningRecord> &appRecord, const FaultData &faultData);
     int64_t GetAppFaultNotifyLatency(const std::string& marker, int32_t pid, int32_t recordId,
         int64_t receiveTime) const;
