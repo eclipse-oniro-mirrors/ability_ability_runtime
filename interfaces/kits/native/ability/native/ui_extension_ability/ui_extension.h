@@ -16,7 +16,9 @@
 #ifndef OHOS_ABILITY_RUNTIME_UI_EXTENSION_H
 #define OHOS_ABILITY_RUNTIME_UI_EXTENSION_H
 
+#include <memory>
 #include <mutex>
+#include <optional>
 #include <unordered_set>
 
 #include "extension_base.h"
@@ -106,6 +108,11 @@ protected:
     virtual bool ForegroundWindowWithInsightIntent(
         const AAFwk::Want &want, const sptr<AAFwk::SessionInfo> &sessionInfo, bool needForeground);
     virtual bool HandleSessionCreate(const AAFwk::Want &want, const sptr<AAFwk::SessionInfo> &sessionInfo);
+    void RegisterBrandColorChangeListener(const sptr<Rosen::Window> &uiWindow);
+private:
+    int32_t WindowNotifeBrandColorChange(Rosen::SubSystemId id, uint32_t customId, AAFwk::Want &&data,
+        std::optional<AAFwk::Want> &reply);
+
 protected:
     std::mutex uiWindowMutex_;
     std::map<uint64_t, sptr<Rosen::Window>> uiWindowMap_;

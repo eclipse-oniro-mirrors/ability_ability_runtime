@@ -35,6 +35,11 @@ namespace ConfigurationConstant {
     SCREEN_DENSITY_XXLDPI = 480,
     SCREEN_DENSITY_XXXLDPI = 640
   }
+
+  export enum BrandColorStrategy {
+    BRAND_COLOR_FOLLOW_SYSTEM = 0,
+    BRAND_COLOR_FOLLOW_UEC = 1
+  }
 }
 
 export default ConfigurationConstant;
