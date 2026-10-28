@@ -14308,7 +14308,7 @@ int32_t AbilityManagerService::GetPidByCallStub(const sptr<IRemoteObject> &callS
     pid = static_cast<int32_t>(abilityRecord->GetPid());
     if (pid <= 0) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid pid:%{public}d", pid);
-        return ERR_CALL_STUB_NOT_FOUND;
+        return ERR_CALLEE_PID_INVALID;
     }
     TAG_LOGI(AAFwkTag::ABILITYMGR, "GetPidByCallStub success, pid:%{public}d", pid);
     return ERR_OK;

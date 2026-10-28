@@ -1636,7 +1636,7 @@ HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_GetPidByCallStub_0
     sptr<IRemoteObject> callStub = nullptr;
     int32_t pid = 0;
     auto result = client_->GetPidByCallStub(callStub, pid);
-    EXPECT_EQ(result, 0);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
 }
 
 /**
@@ -1649,7 +1649,7 @@ HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_GetPidByCallStub_0
     sptr<IRemoteObject> callStub = new AbilityManagerStubTestMock();
     int32_t pid = 0;
     auto result = client_->GetPidByCallStub(callStub, pid);
-    EXPECT_EQ(result, 0);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
 }
 
 /**

@@ -1086,8 +1086,10 @@ HWTEST_F(AbilityManagerProxySecondTest, AbilityManagerProxy_GetPidByCallStub_030
     std::shared_ptr<AbilityRecord> abilityRecord = AbilityRecord::CreateAbilityRecord(abilityRequest);
     sptr<IRemoteObject> callStub = abilityRecord->GetToken();
     int32_t pid = 0;
-    EXPECT_CALL(*mock_, SendRequest(_, _, _, _)).WillOnce(Return(NO_ERROR));
-    EXPECT_EQ(proxy_->GetPidByCallStub(callStub, pid), 0);
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeGetPidByCallStubSuccess));
+    EXPECT_EQ(proxy_->GetPidByCallStub(callStub, pid), ERR_OK);
+    EXPECT_EQ(pid, AbilityManagerStubMock::TEST_PID);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerProxy_GetPidByCallStub_0300 end");
 }
 } // namespace AAFwk

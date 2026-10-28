@@ -3595,5 +3595,56 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, GetPidByCallStub_NotFound_001, TestSi
     EXPECT_EQ(abilityMs_->GetPidByCallStub(callStub, pid), ERR_CALL_STUB_NOT_FOUND);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetPidByCallStub_NotFound_001 end");
 }
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetPidByCallStub
+ * SubFunction: NA
+ * FunctionPoints: GetPidByCallStub returns ERR_CALLEE_PID_INVALID when callee record exists but pid is invalid
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, GetPidByCallStub_InvalidPid_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetPidByCallStub_InvalidPid_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    auto record = MockAbilityRecord(AbilityType::PAGE);
+    ASSERT_NE(record, nullptr);
+    sptr<Token> token = record->GetToken();
+    ASSERT_NE(token, nullptr);
+    sptr<IRemoteObject> callStub = MockToken(AbilityType::DATA);
+    ASSERT_NE(callStub, nullptr);
+    abilityMs_->callStubTokenMap_[callStub] = token;
+    int32_t pid = 0;
+    EXPECT_EQ(abilityMs_->GetPidByCallStub(callStub, pid), ERR_CALLEE_PID_INVALID);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetPidByCallStub_InvalidPid_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetPidByCallStub
+ * SubFunction: NA
+ * FunctionPoints: GetPidByCallStub returns ERR_OK with correct pid when callStub maps to a valid callee record
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, GetPidByCallStub_Success_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetPidByCallStub_Success_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    auto record = MockAbilityRecord(AbilityType::PAGE);
+    ASSERT_NE(record, nullptr);
+    const int32_t expectedPid = 4321;
+    record->SetPid(expectedPid);
+    sptr<Token> token = record->GetToken();
+    ASSERT_NE(token, nullptr);
+    sptr<IRemoteObject> callStub = MockToken(AbilityType::DATA);
+    ASSERT_NE(callStub, nullptr);
+    abilityMs_->callStubTokenMap_[callStub] = token;
+    int32_t pid = 0;
+    EXPECT_EQ(abilityMs_->GetPidByCallStub(callStub, pid), ERR_OK);
+    EXPECT_EQ(pid, expectedPid);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetPidByCallStub_Success_001 end");
+}
 } // namespace AAFwk
 } // namespace OHOS

@@ -3150,18 +3150,23 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_GetPidByCallStubInner_001, T
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService GetPidByCallStubInner
  * EnvConditions: NA
- * CaseDescription: Verify the function GetPidByCallStubInner with valid callStub.
+ * CaseDescription: Verify the function GetPidByCallStubInner with valid callStub and successful result.
  */
 HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_GetPidByCallStubInner_002, TestSize.Level1)
 {
     MessageParcel data;
     MessageParcel reply;
-    sptr<IRemoteObject> callStub = sptr<AppExecFwk::MockAbilityToken>(new (std::nothrow) AppExecFwk::MockAbilityToken());
+    sptr<IRemoteObject> callStub = sptr<AppExecFwk::MockAbilityToken>(new AppExecFwk::MockAbilityToken());
     ASSERT_TRUE(data.WriteRemoteObject(callStub));
+    int32_t expectedPid = 5678;
+    EXPECT_CALL(*stub_, GetPidByCallStub(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(expectedPid), Return(ERR_OK)));
     auto res = stub_->GetPidByCallStubInner(data, reply);
     EXPECT_EQ(res, NO_ERROR);
     int32_t result = reply.ReadInt32();
-    EXPECT_EQ(result, 0);
+    EXPECT_EQ(result, ERR_OK);
+    int32_t pid = reply.ReadInt32();
+    EXPECT_EQ(pid, expectedPid);
 }
 
 #ifdef ABILITY_COMMAND_FOR_TEST

@@ -31,6 +31,8 @@ public:
     virtual ~AbilityManagerStubMock()
     {}
 
+    static constexpr int32_t TEST_PID = 5678;
+
     MOCK_METHOD4(SendRequest, int(uint32_t, MessageParcel&, MessageParcel&, MessageOption&));
 
     int InvokeSendRequest(uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option)
@@ -38,6 +40,14 @@ public:
         code_ = code;
 
         return 0;
+    }
+
+    int InvokeGetPidByCallStubSuccess(uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option)
+    {
+        code_ = code;
+        reply.WriteInt32(ERR_OK);
+        reply.WriteInt32(TEST_PID);
+        return NO_ERROR;
     }
 
     int InvokeErrorSendRequest(uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option)

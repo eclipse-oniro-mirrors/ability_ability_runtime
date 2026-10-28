@@ -1661,7 +1661,8 @@ public:
      * @param pid Output: the callee process pid.
      * @return ERR_OK on success; RESOLVE_CALL_NO_PERMISSIONS for non-RSS callers;
      *         ERR_INVALID_VALUE for null callStub;
-     *         ERR_CALL_STUB_NOT_FOUND when no callee record maps to the callStub.
+     *         ERR_CALL_STUB_NOT_FOUND when no callee record maps to the callStub;
+     *         ERR_CALLEE_PID_INVALID when the callee record exists but pid is invalid.
      */
     ErrCode GetPidByCallStub(sptr<IRemoteObject> callStub, int32_t &pid);
 
