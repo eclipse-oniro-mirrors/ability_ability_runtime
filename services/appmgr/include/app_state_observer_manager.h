@@ -28,6 +28,8 @@
 #include "application_state_filter.h"
 #include "cpp/mutex.h"
 #include "process_lifecycle_observer_interface.h"
+#include "focused_application_info.h"
+#include "focused_application_observer_interface.h"
 #include "iapp_state_callback.h"
 #include "iapplication_state_observer.h"
 #include "image_error_handler_interface.h"
@@ -54,6 +56,7 @@ using AppStateObserverMap = std::map<sptr<IApplicationStateObserver>, AppStateOb
 using AppForegroundStateObserverMap = std::map<sptr<IAppForegroundStateObserver>, int32_t>;
 using AbilityForegroundObserverMap = std::map<sptr<IAbilityForegroundStateObserver>, int32_t>;
 using ImageProcessObserverMap = std::map<sptr<IImageProcessStateObserver>, int32_t>;
+using FocusedApplicationObserverMap = std::map<sptr<IFocusedApplicationObserver>, int32_t>;
 
 using ProcessLifecycleObserverMap = std::map<sptr<IProcessLifecycleObserver>, std::pair<int32_t, pid_t>>;
 
@@ -65,7 +68,8 @@ enum class ObserverType {
     APP_FOREGROUND_STATE_OBSERVER,
     ABILITY_FOREGROUND_STATE_OBSERVER,
     IMAGE_PROCESS_STATE_OBSERVER,
-    PROCESS_LIFECYCLE_OBSERVER
+    PROCESS_LIFECYCLE_OBSERVER,
+    FOCUSED_APPLICATION_OBSERVER
 };
 class AppStateObserverManager : public std::enable_shared_from_this<AppStateObserverManager> {
     DECLARE_DELAYED_SINGLETON(AppStateObserverManager)
@@ -82,6 +86,9 @@ public:
     int32_t UnregisterImageProcessStateObserver(const sptr<IImageProcessStateObserver> &observer);
     int32_t RegisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer);
     int32_t UnregisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer);
+    int32_t RegisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer);
+    int32_t UnregisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer);
+    void NotifyFocusedApplicationChanged(const FocusedApplicationInfo &focusedApplicationInfo);
     void StateChangedNotifyObserver(const AbilityStateData abilityStateData, bool isAbility,
         bool isFromWindowFocusChanged, BundleType bundleType = BundleType::APP);
     void OnAppStateChanged(const std::shared_ptr<AppRunningRecord> &appRecord, const ApplicationState state,
@@ -147,6 +154,7 @@ private:
     AbilityForegroundObserverMap GetAbilityForegroundObserverMapCopy();
     ImageProcessObserverMap GetImageProcessObserverMapCopy();
     ProcessLifecycleObserverMap GetProcessLifecycleObserverMapCopy();
+    FocusedApplicationObserverMap GetFocusedApplicationObserverMapCopy();
     std::shared_ptr<ProcessData> WrapProcessData(
         const std::shared_ptr<AppRunningRecord> &appRecord, bool isFromWindowFocusChanged = false,
         bool isFromScreenOffBackground = false);
@@ -180,6 +188,7 @@ private:
     void HandleOnPreForkAllWorkProcess(std::shared_ptr<ImageProcessStateData> data);
     void DispatchProcessLifecycleCreated(const ProcessData &data);
     void DispatchProcessLifecycleDied(const ProcessData &data);
+    void HandleNotifyFocusedApplicationChanged(const FocusedApplicationInfo &focusedApplicationInfo);
 
 private:
     std::shared_ptr<AAFwk::TaskHandlerWrap> handler_;
@@ -200,6 +209,8 @@ private:
 
     ffrt::mutex processLifecycleObserverLock_;
     ProcessLifecycleObserverMap processLifecycleObserverMap_;
+    ffrt::mutex focusedApplicationObserverLock_;
+    FocusedApplicationObserverMap focusedApplicationObserverMap_;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

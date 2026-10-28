@@ -784,6 +784,8 @@ public:
 
     int32_t RegisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer) override;
     int32_t UnregisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer) override;
+    int32_t RegisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer) override;
+    int32_t UnregisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer) override;
 
 #ifdef SUPPORT_CHILD_PROCESS
     /**

@@ -22,6 +22,7 @@
 #include "app_foreground_state_observer_interface.h"
 #include "app_malloc_info.h"
 #include "process_lifecycle_observer_interface.h"
+#include "focused_application_observer_interface.h"
 #include "app_mem_dump_info.h"
 #include "app_mgr_ipc_interface_code.h"
 #include "app_record_id.h"
@@ -877,6 +878,26 @@ public:
     }
 
     virtual int32_t UnregisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer)
+    {
+        return 0;
+    }
+
+    /**
+     * Register focused application observer.
+     * @param observer Is focused application observer
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t RegisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer)
+    {
+        return 0;
+    }
+
+    /**
+     * Unregister focused application observer.
+     * @param observer Is focused application observer.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t UnregisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer)
     {
         return 0;
     }

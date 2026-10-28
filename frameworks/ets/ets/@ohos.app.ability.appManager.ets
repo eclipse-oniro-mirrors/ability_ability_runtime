@@ -24,6 +24,7 @@ import bundleManager from '@ohos.bundle.bundleManager';
 import _AppForegroundStateObserver from 'application.AppForegroundStateObserver';
 import { AbilityFirstFrameStateObserver as _AbilityFirstFrameStateObserver } from 'application.AbilityFirstFrameStateObserver';
 import { AbilityFirstFrameStateData as _AbilityFirstFrameStateData } from 'application.AbilityFirstFrameStateData';
+import _FocusedApplicationObserver from 'application.FocusedApplicationObserver';
 import { AbilityUtils } from './utils/AbilityUtils';
 
 const ERROR_CODE_INVALID_PARAM: int = 401;
@@ -40,6 +41,7 @@ export type ApplicationStateObserver = _ApplicationStateObserver;
 export type AppForegroundStateObserver = _AppForegroundStateObserver;
 export type AbilityFirstFrameStateObserver = _AbilityFirstFrameStateObserver;
 export type AbilityFirstFrameStateData = _AbilityFirstFrameStateData;
+export type FocusedApplicationObserver = _FocusedApplicationObserver;
 
 export enum PreloadMode {
   PRESS_DOWN
@@ -767,5 +769,16 @@ export function isApplicationRunning(bundleName: string, callback: AsyncCallback
   taskpool.execute((): void => {
     appManager.nativeIsApplicationRunning(bundleName, myCall);
   });
+}
+
+export native function nativeOnFocusedApplicationChanged(
+    observer: FocusedApplicationObserver): int;
+export function onFocusedApplicationChanged(observer: FocusedApplicationObserver): int {
+  return appManager.nativeOnFocusedApplicationChanged(observer);
+}
+
+export native function nativeOffFocusedApplicationChanged(observerId: int): void;
+export function offFocusedApplicationChanged(observerId: int): void {
+  appManager.nativeOffFocusedApplicationChanged(observerId);
 }
 } // namespace appManager

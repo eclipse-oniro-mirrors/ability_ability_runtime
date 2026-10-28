@@ -32,5 +32,10 @@ bool PermissionVerification::VerifyPreloadApplicationPermission() const
 {
     return MyFlag::flag_;
 }
+
+int32_t PermissionVerification::VerifyAppStateObserverPermission() const
+{
+    return MyFlag::flag_ ? 0 : ERR_PERMISSION_DENIED;
+}
 } // namespace AAFwk
 } // namespace OHOS
