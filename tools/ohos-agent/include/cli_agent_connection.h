@@ -102,6 +102,8 @@ public:
 
     // Disconnect wakeup channel: a self-pipe read fd the command loop polls alongside stdin so a
     // peer disconnect (OnAbilityDisconnectDone on a binder thread) can unblock an idle stdin read.
+    // The fd is fdsan-tagged (FD_OWNER_TAG); callers must NOT close() it — plain close() on a
+    // tagged fd triggers a fdsan abort. Use poll()/read() only; the destructor owns lifecycle.
     int GetWakeupFd() const { return wakeupPipe_[0]; }
     // Whether the self-pipe wakeup channel was created (pipe2 may fail under fd exhaustion).
     bool HasWakeup() const { return wakeupPipe_[0] >= 0; }
