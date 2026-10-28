@@ -3541,5 +3541,59 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_AfterCheck_S
     EXPECT_FALSE(abilityRequest.want.GetBoolParam("queryWantFromErms", false));
     TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_AfterCheck_Success_StripRedirect_001 end");
 }
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetPidByCallStub
+ * SubFunction: NA
+ * FunctionPoints: GetPidByCallStub rejects callers other than RSS
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, GetPidByCallStub_PermissionDenied_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetPidByCallStub_PermissionDenied_001 start");
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID);
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    sptr<IRemoteObject> callStub = MockToken(AbilityType::PAGE);
+    int32_t pid = 0;
+    EXPECT_EQ(abilityMs_->GetPidByCallStub(callStub, pid), RESOLVE_CALL_NO_PERMISSIONS);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetPidByCallStub_PermissionDenied_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetPidByCallStub
+ * SubFunction: NA
+ * FunctionPoints: GetPidByCallStub rejects null callStub
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, GetPidByCallStub_NullCallStub_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetPidByCallStub_NullCallStub_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    sptr<IRemoteObject> callStub = nullptr;
+    int32_t pid = 0;
+    EXPECT_EQ(abilityMs_->GetPidByCallStub(callStub, pid), ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetPidByCallStub_NullCallStub_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetPidByCallStub
+ * SubFunction: NA
+ * FunctionPoints: GetPidByCallStub returns not found when callStub is unknown
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, GetPidByCallStub_NotFound_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetPidByCallStub_NotFound_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    sptr<IRemoteObject> callStub = MockToken(AbilityType::PAGE);
+    int32_t pid = 0;
+    EXPECT_EQ(abilityMs_->GetPidByCallStub(callStub, pid), ERR_CALL_STUB_NOT_FOUND);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetPidByCallStub_NotFound_001 end");
+}
 } // namespace AAFwk
 } // namespace OHOS

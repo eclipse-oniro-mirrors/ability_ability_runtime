@@ -1204,6 +1204,18 @@ public:
     void GetAbilityTokenByCalleeObj(const sptr<IRemoteObject> &callStub, sptr<IRemoteObject> &token) override;
 
     /**
+     * Get the callee process pid by the call stub returned via OnAbilityConnectDone.
+     * RSS process ONLY (RSS_UID check at server side).
+     *
+     * @param callStub The callee stub received in OnAbilityConnectDone.
+     * @param pid Output: the callee process pid.
+     * @return ERR_OK on success; RESOLVE_CALL_NO_PERMISSIONS for non-RSS callers;
+     *         ERR_INVALID_VALUE for null callStub;
+     *         ERR_CALL_STUB_NOT_FOUND when no callee record maps to the callStub.
+     */
+    int32_t GetPidByCallStub(const sptr<IRemoteObject> &callStub, int32_t &pid) override;
+
+    /**
      * Call free install from remote.
      *
      * @param want, the want of the ability to start.

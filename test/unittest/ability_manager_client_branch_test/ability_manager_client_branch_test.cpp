@@ -1627,6 +1627,32 @@ HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_GetAbilityTokenByC
 }
 
 /**
+ * @tc.name: AbilityManagerClient_GetPidByCallStub_0100
+ * @tc.desc: GetPidByCallStub with null callStub.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_GetPidByCallStub_0100, TestSize.Level1)
+{
+    sptr<IRemoteObject> callStub = nullptr;
+    int32_t pid = 0;
+    auto result = client_->GetPidByCallStub(callStub, pid);
+    EXPECT_EQ(result, 0);
+}
+
+/**
+ * @tc.name: AbilityManagerClient_GetPidByCallStub_0200
+ * @tc.desc: GetPidByCallStub with non-null callStub.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_GetPidByCallStub_0200, TestSize.Level1)
+{
+    sptr<IRemoteObject> callStub = new AbilityManagerStubTestMock();
+    int32_t pid = 0;
+    auto result = client_->GetPidByCallStub(callStub, pid);
+    EXPECT_EQ(result, 0);
+}
+
+/**
  * @tc.name: AbilityManagerClient_RegisterOnListener_0100
  * @tc.desc: RegisterOnListener
  * @tc.type: FUNC

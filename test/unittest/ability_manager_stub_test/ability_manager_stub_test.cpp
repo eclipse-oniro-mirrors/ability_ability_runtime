@@ -3128,6 +3128,42 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_GetAbilityTokenByCalleeObjIn
     EXPECT_EQ(res, ERR_NULL_OBJECT);
 }
 
+/*
+ * Feature: AbilityManagerService
+ * Function: GetPidByCallStubInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService GetPidByCallStubInner
+ * EnvConditions: NA
+ * CaseDescription: Verify the function GetPidByCallStubInner with null callStub.
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_GetPidByCallStubInner_001, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    auto res = stub_->GetPidByCallStubInner(data, reply);
+    EXPECT_EQ(res, ERR_NULL_OBJECT);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetPidByCallStubInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService GetPidByCallStubInner
+ * EnvConditions: NA
+ * CaseDescription: Verify the function GetPidByCallStubInner with valid callStub.
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_GetPidByCallStubInner_002, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    sptr<IRemoteObject> callStub = sptr<AppExecFwk::MockAbilityToken>(new (std::nothrow) AppExecFwk::MockAbilityToken());
+    ASSERT_TRUE(data.WriteRemoteObject(callStub));
+    auto res = stub_->GetPidByCallStubInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    int32_t result = reply.ReadInt32();
+    EXPECT_EQ(result, 0);
+}
+
 #ifdef ABILITY_COMMAND_FOR_TEST
 /*
  * Feature: AbilityManagerService

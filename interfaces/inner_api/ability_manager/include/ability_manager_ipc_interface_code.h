@@ -806,6 +806,9 @@ enum class AbilityManagerInterfaceCode {
 
     // unregister listener that an insight intent is about to be executed
     UNREGISTER_WILL_INSIGHT_INTENT_EXECUTE_CALLBACK = 6186,
+
+    // get pid by call stub (RSS only)
+    GET_PID_BY_CALL_STUB = 6187,
 };
 }  // namespace AAFwk
 }  // namespace OHOS
