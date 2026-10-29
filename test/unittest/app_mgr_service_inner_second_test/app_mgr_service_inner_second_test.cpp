@@ -755,6 +755,7 @@ HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_NotifyAppFau
     auto appRecord = appMgrServiceInner->CreateAppRunningRecord(loadParam, applicationInfo_, abilityInfo_,
         TEST_PROCESS_NAME, bundleInfo, hapModuleInfo, want_, false);
     appRecord->GetPriorityObject()->SetPid(1);
+    appRecord->SetUid(IPCSkeleton::GetCallingUid());
     appRecord->SetState(ApplicationState::APP_STATE_TERMINATED);
 
     FaultData faultData;
@@ -806,6 +807,7 @@ HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_NotifyAppFau
     auto appRecord = appMgrServiceInner->CreateAppRunningRecord(loadParam, applicationInfo_, abilityInfo_,
         TEST_PROCESS_NAME, bundleInfo, hapModuleInfo, want_, false);
     appRecord->GetPriorityObject()->SetPid(1);
+    appRecord->SetUid(IPCSkeleton::GetCallingUid());
     appRecord->SetState(ApplicationState::APP_STATE_BACKGROUND);
 
     FaultData faultData;
@@ -835,6 +837,7 @@ HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_NotifyAppFau
     auto appRecord = appMgrServiceInner->CreateAppRunningRecord(loadParam, applicationInfo_, abilityInfo_,
         TEST_PROCESS_NAME, bundleInfo, hapModuleInfo, want_, false);
     appRecord->GetPriorityObject()->SetPid(1);
+    appRecord->SetUid(IPCSkeleton::GetCallingUid());
     appRecord->SetState(ApplicationState::APP_STATE_BACKGROUND);
 
     FaultData faultData;
@@ -1609,6 +1612,7 @@ HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_TransformedN
     appRecord = appMgrServiceInner->CreateAppRunningRecord(loadParam, applicationInfo_, abilityInfo_,
         TEST_PROCESS_NAME, bundleInfo, hapModuleInfo, want_, false);
     appRecord->GetPriorityObject()->SetPid(TEST_PID_100);
+    appRecord->SetUid(FOUNDATION_UID);
     faultData.pid = TEST_PID_100;
     faultData.errorObject.name = AppFreezeType::THREAD_BLOCK_6S;
     ret = appMgrServiceInner->TransformedNotifyAppFault(faultData);
@@ -1649,6 +1653,7 @@ HWTEST_F(AppMgrServiceInnerSecondTest, AppMgrServiceInnerSecondTest_TransformedN
         TEST_PROCESS_NAME, bundleInfo, hapModuleInfo, want_, false);
 
     appRecord->GetPriorityObject()->SetPid(TEST_PID_100);
+    appRecord->SetUid(FOUNDATION_UID);
     faultData.pid = TEST_PID_100;
     faultData.faultType = FaultDataType::APP_FREEZE;
     faultData.errorObject.name = AppFreezeType::THREAD_BLOCK_6S;
