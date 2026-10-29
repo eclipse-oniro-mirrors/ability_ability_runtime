@@ -1345,6 +1345,18 @@ public:
     void GetAbilityTokenByCalleeObj(const sptr<IRemoteObject> &callStub, sptr<IRemoteObject> &token) override;
 
     /**
+     * @brief Get callee process pid by call stub object.
+     *        RSS process ONLY (RSS_UID check) — other callers get RESOLVE_CALL_NO_PERMISSIONS.
+     * @param callStub The call stub object received in OnAbilityConnectDone.
+     * @param pid Output: the callee process pid.
+     * @return ERR_OK on success; RESOLVE_CALL_NO_PERMISSIONS for non-RSS callers;
+     *         ERR_INVALID_VALUE for null callStub;
+     *         ERR_CALL_STUB_NOT_FOUND when no callee record maps to the callStub;
+     *         ERR_CALLEE_PID_INVALID when the callee record exists but pid is invalid.
+     */
+    int32_t GetPidByCallStub(const sptr<IRemoteObject> &callStub, int32_t &pid) override;
+
+    /**
      * @brief Start synchronizing remote missions with specified device.
      * @param devId The target device ID.
      * @param fixConflict Whether to fix conflict when syncing.

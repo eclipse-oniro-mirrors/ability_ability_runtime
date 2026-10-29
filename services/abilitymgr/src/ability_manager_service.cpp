@@ -14377,6 +14377,37 @@ void AbilityManagerService::GetAbilityTokenByCalleeObj(const sptr<IRemoteObject>
     token = callStubTokenMap_[callStub];
 }
 
+int32_t AbilityManagerService::GetPidByCallStub(const sptr<IRemoteObject> &callStub, int32_t &pid)
+{
+    int32_t callerUid = IPCSkeleton::GetCallingUid();
+    if (callerUid != RSS_UID) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "uid check fail, callerUid:%{public}d", callerUid);
+        return RESOLVE_CALL_NO_PERMISSIONS;
+    }
+    if (callStub == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "callStub is null");
+        return ERR_INVALID_VALUE;
+    }
+    sptr<IRemoteObject> token;
+    GetAbilityTokenByCalleeObj(callStub, token);
+    if (token == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "callee token not found by callStub");
+        return ERR_CALL_STUB_NOT_FOUND;
+    }
+    auto abilityRecord = Token::GetAbilityRecordByToken(token);
+    if (abilityRecord == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "abilityRecord not found by token");
+        return ERR_CALL_STUB_NOT_FOUND;
+    }
+    pid = static_cast<int32_t>(abilityRecord->GetPid());
+    if (pid <= 0) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid pid:%{public}d", pid);
+        return ERR_CALLEE_PID_INVALID;
+    }
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "GetPidByCallStub success, pid:%{public}d", pid);
+    return ERR_OK;
+}
+
 int AbilityManagerService::AddStartControlParam(Want &want, const sptr<IRemoteObject> &callerToken)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);

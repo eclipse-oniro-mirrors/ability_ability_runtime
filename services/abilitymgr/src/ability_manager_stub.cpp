@@ -537,6 +537,9 @@ int AbilityManagerStub::OnRemoteRequestInnerEleventh(uint32_t code, MessageParce
     if (interfaceCode == AbilityManagerInterfaceCode::GET_ABILITY_TOKEN) {
         return GetAbilityTokenByCalleeObjInner(data, reply);
     }
+    if (interfaceCode == AbilityManagerInterfaceCode::GET_PID_BY_CALL_STUB) {
+        return GetPidByCallStubInner(data, reply);
+    }
     if (interfaceCode == AbilityManagerInterfaceCode::FORCE_EXIT_APP) {
         return ForceExitAppInner(data, reply);
     }
@@ -3661,6 +3664,22 @@ int AbilityManagerStub::GetAbilityTokenByCalleeObjInner(MessageParcel &data, Mes
     sptr<IRemoteObject> result;
     GetAbilityTokenByCalleeObj(callStub, result);
     reply.WriteRemoteObject(result);
+    return NO_ERROR;
+}
+
+int AbilityManagerStub::GetPidByCallStubInner(MessageParcel &data, MessageParcel &reply)
+{
+    sptr<IRemoteObject> callStub = data.ReadRemoteObject();
+    if (!callStub) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "read call stub fail");
+        return ERR_NULL_OBJECT;
+    }
+    int32_t pid = 0;
+    int32_t result = GetPidByCallStub(callStub, pid);
+    reply.WriteInt32(result);
+    if (result == ERR_OK) {
+        reply.WriteInt32(pid);
+    }
     return NO_ERROR;
 }
 

@@ -1337,6 +1337,13 @@ void AbilityManagerClient::GetAbilityTokenByCalleeObj(sptr<IRemoteObject> callSt
     abms->GetAbilityTokenByCalleeObj(callStub, token);
 }
 
+ErrCode AbilityManagerClient::GetPidByCallStub(sptr<IRemoteObject> callStub, int32_t &pid)
+{
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    return abms->GetPidByCallStub(callStub, pid);
+}
+
 ErrCode AbilityManagerClient::ReleaseCall(
     sptr<IAbilityConnection> connect, const AppExecFwk::ElementName &element)
 {
