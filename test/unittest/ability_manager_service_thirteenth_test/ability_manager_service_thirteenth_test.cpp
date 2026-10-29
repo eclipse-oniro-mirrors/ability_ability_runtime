@@ -22,6 +22,7 @@
 #include "hilog_tag_wrapper.h"
 #include "insight_intent_db_cache.h"
 #include "insight_intent_execute_manager.h"
+#include "dialog_session_manager.h"
 #include "agent_extension_connection_constants.h"
 #include "mission_list_manager.h"
 #include "mock_my_status.h"
@@ -4958,6 +4959,225 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_01
     MyStatus::GetInstance().paramGetBoolParameter_ = true;
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest StartAbilityForAppCloneSelector_013 end");
 }
+
+#ifdef SUPPORT_SCREEN
+/*
+ * Feature: AbilityManagerService
+ * Name: StartAbilityForAppCloneSelector_014
+ * Function: StartAbilityForAppCloneSelector
+ * SubFunction: NA
+ * FunctionPoints: callerBundleName == BUNDLE_NAME_DIALOG triggers ResetCallingIdentityAsCaller with flag=true
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_014, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest StartAbilityForAppCloneSelector_014 start");
+    MyStatus::GetInstance().isSupportMultiInstance_ = true;
+    MyStatus::GetInstance().paramGetBoolParameter_ = true;
+
+    auto mockStartInfo = std::make_shared<StartAbilityInfo>();
+    mockStartInfo->abilityInfo.bundleName = "com.ohos.test";
+    mockStartInfo->abilityInfo.name = "MainAbility";
+    mockStartInfo->abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    mockStartInfo->abilityInfo.moduleName = "entry";
+    mockStartInfo->abilityInfo.applicationInfo.name = "TestApp";
+    mockStartInfo->abilityInfo.applicationInfo.bundleName = "com.ohos.test";
+    mockStartInfo->abilityInfo.applicationInfo.uid = 1000;
+    mockStartInfo->status = ERR_OK;
+    StartAbilityUtils::isSandBoxClone = true;
+    StartAbilityUtils::startAbilityInfo = mockStartInfo;
+
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs_, nullptr);
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs_->appExitReasonHelper_ = std::make_shared<AppExitReasonHelper>(nullptr);
+    abilityMs_->implicitStartProcessor_ = std::make_shared<ImplicitStartProcessor>();
+
+    auto mockSubManagersHelper = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    EXPECT_NE(mockSubManagersHelper, nullptr);
+    auto mockMissionListManager = std::make_shared<MissionListManager>(0);
+    EXPECT_NE(mockMissionListManager, nullptr);
+    mockSubManagersHelper->missionListManagers_[0] = mockMissionListManager;
+    abilityMs_->subManagersHelper_ = mockSubManagersHelper;
+
+    AbilityRequest callerRequest;
+    callerRequest.abilityInfo.bundleName = "com.ohos.amsdialog";
+    callerRequest.abilityInfo.name = "DialogAbility";
+    callerRequest.abilityInfo.type = AbilityType::PAGE;
+    callerRequest.appInfo.bundleName = "com.ohos.amsdialog";
+    auto abilityRecord = AbilityRecord::CreateAbilityRecord(callerRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    sptr<IRemoteObject> callerToken = abilityRecord->GetToken();
+    MyStatus::GetInstance().arGetAbilityRecord_ = abilityRecord;
+
+    Want want;
+    want.SetElementName("com.ohos.test", "MainAbility");
+    want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 0);
+
+    StartAbilityWrapParam param;
+    param.want = want;
+    param.userId = DEFAULT_INVAL_VALUE;
+    param.callerToken = callerToken;
+    param.isForegroundToRestartApp = true;
+    param.isBySCB = false;
+    param.requestCode = 0;
+    param.isStartAsCaller = false;
+    param.hostBundleName = "";
+    param.specifiedFullTokenId = 0;
+    param.isGamePrelaunch = false;
+
+    abilityMs_->StartAbilityForAppCloneSelector(param);
+
+    MyStatus::GetInstance().isSupportMultiInstance_ = true;
+    MyStatus::GetInstance().paramGetBoolParameter_ = true;
+    MyStatus::GetInstance().arGetAbilityRecord_ = nullptr;
+    StartAbilityUtils::startAbilityInfo = nullptr;
+    StartAbilityUtils::isSandBoxClone = false;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest StartAbilityForAppCloneSelector_014 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: StartAbilityForAppCloneSelector_015
+ * Function: StartAbilityForAppCloneSelector
+ * SubFunction: NA
+ * FunctionPoints: isSendDialogResult && isSelector triggers ResetCallingIdentityAsCaller with flag=false
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_015, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest StartAbilityForAppCloneSelector_015 start");
+    MyStatus::GetInstance().isSupportMultiInstance_ = true;
+    MyStatus::GetInstance().paramGetBoolParameter_ = true;
+
+    auto mockStartInfo = std::make_shared<StartAbilityInfo>();
+    mockStartInfo->abilityInfo.bundleName = "com.ohos.test";
+    mockStartInfo->abilityInfo.name = "MainAbility";
+    mockStartInfo->abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    mockStartInfo->abilityInfo.moduleName = "entry";
+    mockStartInfo->abilityInfo.applicationInfo.name = "TestApp";
+    mockStartInfo->abilityInfo.applicationInfo.bundleName = "com.ohos.test";
+    mockStartInfo->abilityInfo.applicationInfo.uid = 1000;
+    mockStartInfo->status = ERR_OK;
+    StartAbilityUtils::isSandBoxClone = true;
+    StartAbilityUtils::startAbilityInfo = mockStartInfo;
+
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs_, nullptr);
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs_->appExitReasonHelper_ = std::make_shared<AppExitReasonHelper>(nullptr);
+    abilityMs_->implicitStartProcessor_ = std::make_shared<ImplicitStartProcessor>();
+
+    auto mockSubManagersHelper = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    EXPECT_NE(mockSubManagersHelper, nullptr);
+    auto mockMissionListManager = std::make_shared<MissionListManager>(0);
+    EXPECT_NE(mockMissionListManager, nullptr);
+    mockSubManagersHelper->missionListManagers_[0] = mockMissionListManager;
+    abilityMs_->subManagersHelper_ = mockSubManagersHelper;
+
+    auto abilityRecord = MockAbilityRecord(AbilityType::PAGE);
+    sptr<IRemoteObject> callerToken = abilityRecord->GetToken();
+    MyStatus::GetInstance().arGetAbilityRecord_ = abilityRecord;
+
+    const std::string testSessionId = "testDialogSession_015";
+    auto dialogCallerInfo = std::make_shared<DialogCallerInfo>();
+    DialogSessionManager::GetInstance().dialogCallerInfoMap_[testSessionId] = dialogCallerInfo;
+
+    Want want;
+    want.SetElementName("com.ohos.test", "MainAbility");
+    want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 0);
+    want.SetParam("dialogSessionId", testSessionId);
+    want.SetParam("isSelector", true);
+
+    StartAbilityWrapParam param;
+    param.want = want;
+    param.userId = DEFAULT_INVAL_VALUE;
+    param.callerToken = callerToken;
+    param.isForegroundToRestartApp = true;
+    param.isBySCB = false;
+    param.requestCode = 0;
+    param.isStartAsCaller = false;
+    param.hostBundleName = "";
+    param.specifiedFullTokenId = 0;
+    param.isGamePrelaunch = false;
+
+    abilityMs_->StartAbilityForAppCloneSelector(param);
+
+    DialogSessionManager::GetInstance().dialogCallerInfoMap_.erase(testSessionId);
+    MyStatus::GetInstance().isSupportMultiInstance_ = true;
+    MyStatus::GetInstance().paramGetBoolParameter_ = true;
+    MyStatus::GetInstance().arGetAbilityRecord_ = nullptr;
+    StartAbilityUtils::startAbilityInfo = nullptr;
+    StartAbilityUtils::isSandBoxClone = false;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest StartAbilityForAppCloneSelector_015 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: StartAbilityForAppCloneSelector_016
+ * Function: StartAbilityForAppCloneSelector
+ * SubFunction: NA
+ * FunctionPoints: NA
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_016, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest StartAbilityForAppCloneSelector_016 start");
+    MyStatus::GetInstance().isSupportMultiInstance_ = true;
+    MyStatus::GetInstance().paramGetBoolParameter_ = true;
+
+    auto mockStartInfo = std::make_shared<StartAbilityInfo>();
+    mockStartInfo->abilityInfo.bundleName = "com.ohos.test";
+    mockStartInfo->abilityInfo.name = "MainAbility";
+    mockStartInfo->abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    mockStartInfo->abilityInfo.moduleName = "entry";
+    mockStartInfo->abilityInfo.applicationInfo.name = "TestApp";
+    mockStartInfo->abilityInfo.applicationInfo.bundleName = "com.ohos.test";
+    mockStartInfo->abilityInfo.applicationInfo.uid = 1000;
+    mockStartInfo->status = ERR_OK;
+    StartAbilityUtils::isSandBoxClone = true;
+    StartAbilityUtils::startAbilityInfo = mockStartInfo;
+
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs_, nullptr);
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs_->appExitReasonHelper_ = std::make_shared<AppExitReasonHelper>(nullptr);
+    abilityMs_->implicitStartProcessor_ = std::make_shared<ImplicitStartProcessor>();
+
+    auto mockSubManagersHelper = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    EXPECT_NE(mockSubManagersHelper, nullptr);
+    auto mockMissionListManager = std::make_shared<MissionListManager>(0);
+    EXPECT_NE(mockMissionListManager, nullptr);
+    mockSubManagersHelper->missionListManagers_[0] = mockMissionListManager;
+    abilityMs_->subManagersHelper_ = mockSubManagersHelper;
+
+    auto abilityRecord = MockAbilityRecord(AbilityType::PAGE);
+    sptr<IRemoteObject> callerToken = abilityRecord->GetToken();
+    MyStatus::GetInstance().arGetAbilityRecord_ = abilityRecord;
+
+    Want want;
+    want.SetElementName("com.ohos.test", "MainAbility");
+    want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 0);
+
+    StartAbilityWrapParam param;
+    param.want = want;
+    param.userId = DEFAULT_INVAL_VALUE;
+    param.callerToken = callerToken;
+    param.isForegroundToRestartApp = true;
+    param.isBySCB = false;
+    param.requestCode = 0;
+    param.isStartAsCaller = false;
+    param.hostBundleName = "";
+    param.specifiedFullTokenId = 0;
+    param.isGamePrelaunch = false;
+
+    abilityMs_->StartAbilityForAppCloneSelector(param);
+
+    MyStatus::GetInstance().isSupportMultiInstance_ = true;
+    MyStatus::GetInstance().paramGetBoolParameter_ = true;
+    MyStatus::GetInstance().arGetAbilityRecord_ = nullptr;
+    StartAbilityUtils::startAbilityInfo = nullptr;
+    StartAbilityUtils::isSandBoxClone = false;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest StartAbilityForAppCloneSelector_016 end");
+}
+#endif // SUPPORT_SCREEN
 
 /*
  * Feature: AbilityManagerService

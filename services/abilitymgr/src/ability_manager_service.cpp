@@ -1961,6 +1961,28 @@ int32_t AbilityManagerService::StartAbilityForAppCloneSelector(StartAbilityWrapP
         return ret;
     }
 
+#ifdef SUPPORT_SCREEN
+    std::string dialogSessionId = param.want.GetStringParam("dialogSessionId");
+    bool isSendDialogResult = false;
+    auto dialogCallerInfo = DialogSessionManager::GetInstance().GetDialogCallerInfo(dialogSessionId);
+    if (!dialogSessionId.empty() && dialogCallerInfo != nullptr) {
+        isSendDialogResult = true;
+    }
+    if ((param.specifyTokenId > 0 || param.isStartByOEExt) && param.callerToken != nullptr) {
+        // for sa specify tokenId and caller token
+        UpdateCallerInfoUtil::GetInstance().UpdateCallerInfoFromToken(abilityRequest.want, param.callerToken);
+    } else if (callerBundleName == BUNDLE_NAME_DIALOG ||
+        (isSendDialogResult && param.want.GetBoolParam("isSelector", false))) {
+        CHECK_POINTER_AND_RETURN(implicitStartProcessor_, ERR_IMPLICIT_START_ABILITY_FAIL);
+        int32_t flag = false;
+        if (callerBundleName == BUNDLE_NAME_DIALOG) {
+            flag = true;
+        }
+        implicitStartProcessor_->ResetCallingIdentityAsCaller(
+            abilityRequest.want.GetIntParam(Want::PARAM_RESV_CALLER_TOKEN, 0), flag);
+    }
+#endif // SUPPORT_SCREEN
+
     // Only allow UIAbility type
     if (abilityInfo.type != AppExecFwk::AbilityType::PAGE) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbilityForAppCloneSelector only supports UIAbility, type=%{public}d",
