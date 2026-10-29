@@ -123,8 +123,8 @@ void JsFormExtension::Init(const std::shared_ptr<AbilityLocalRecord> &record,
     HandleScope handleScope(jsRuntime_);
     auto env = jsRuntime_.GetNapiEnv();
 
-    jsObj_ = jsRuntime_.LoadModule(
-        moduleName, srcPath, abilityInfo_->hapPath, abilityInfo_->compileMode == CompileMode::ES_MODULE);
+    jsObj_ = jsRuntime_.LoadModule(moduleName, srcPath, abilityInfo_->hapPath,
+        abilityInfo_->compileMode == CompileMode::ES_MODULE, false, abilityInfo_->srcEntrance);
     if (jsObj_ == nullptr) {
         TAG_LOGE(AAFwkTag::FORM_EXT, "null jsObj");
         return;
