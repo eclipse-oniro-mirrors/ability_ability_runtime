@@ -27,6 +27,11 @@ namespace OHOS {
 namespace AAFwk {
 
 namespace {
+// fdsan owner tag for the self-pipe wakeup fds: tags each fd at creation and verifies the tag
+// at close so a double-close or use-after-close by another owner is caught instead of silently
+// corrupting an unrelated fd.
+constexpr uint64_t FD_OWNER_TAG = static_cast<uint64_t>(AAFwkTag::AA_TOOL);
+
 // Serialize stdout emission across the agentmgr binder threads (OnAbilityConnectDone /
 // OnAbilityDisconnectDone / agent->host stub calls) and the main thread.
 std::mutex &StdoutMutex()
@@ -209,16 +214,26 @@ CliAgentConnection::CliAgentConnection()
         TAG_LOGE(AAFwkTag::AA_TOOL, "pipe2 for disconnect wakeup failed");
         wakeupPipe_[0] = -1;
         wakeupPipe_[1] = -1;
+    } else {
+        // Acquire fdsan ownership: kernel-created fds start with tag 0; tag them so the
+        // destructor's fdsan_close_with_tag can detect a stray close/dup by another owner.
+        fdsan_exchange_owner_tag(wakeupPipe_[0], 0, FD_OWNER_TAG);
+        fdsan_exchange_owner_tag(wakeupPipe_[1], 0, FD_OWNER_TAG);
     }
 }
 
 CliAgentConnection::~CliAgentConnection()
 {
     if (wakeupPipe_[0] >= 0) {
-        (void)close(wakeupPipe_[0]);
+        // fdsan_close_with_tag verifies the fd still belongs to FD_OWNER_TAG before closing;
+        // a mismatch (e.g. the fd was already closed or reassigned by another owner) aborts
+        // with a fdsan diagnostic instead of silently closing the wrong fd.
+        (void)fdsan_close_with_tag(wakeupPipe_[0], FD_OWNER_TAG);
+        wakeupPipe_[0] = -1;
     }
     if (wakeupPipe_[1] >= 0) {
-        (void)close(wakeupPipe_[1]);
+        (void)fdsan_close_with_tag(wakeupPipe_[1], FD_OWNER_TAG);
+        wakeupPipe_[1] = -1;
     }
 }
 
