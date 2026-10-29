@@ -94,6 +94,7 @@ public:
     int32_t IsAppRunning(const std::string &bundleName, int32_t appCloneIndex, int32_t userId,
         bool &isRunning);
     bool IsFinalAppProcessByBundleName(const std::string &bundleName);
+    bool IsHyperSnapInitializing();
     bool IsProcessContainsOnlyUIAbility(const pid_t pid);
     bool IsProcessAttached(sptr<IRemoteObject> token) const;
     int32_t IsProcessCacheSupported(int32_t pid, bool &isSupported);

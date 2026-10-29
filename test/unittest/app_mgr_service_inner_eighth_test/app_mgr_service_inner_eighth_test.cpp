@@ -2026,6 +2026,7 @@ HWTEST_F(AppMgrServiceInnerEighthTest, IsHyperSnapInitializing_001, TestSize.Lev
     TAG_LOGI(AAFwkTag::TEST, "IsHyperSnapInitializing_001 start");
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     appMgrServiceInner->appRunningManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = nullptr;
 
     auto ret = appMgrServiceInner->IsHyperSnapInitializing();
     EXPECT_EQ(ret, false);
