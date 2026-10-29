@@ -24,6 +24,7 @@
 
 #define private public
 #define protected public
+#include "start_ability_context.h"
 #include "start_ability_utils.h"
 #undef protected
 #undef private
@@ -84,17 +85,16 @@ Want BuildFuzzWant(const char* data, size_t size)
     return want;
 }
 
-std::shared_ptr<StartAbilityInfo> BuildFuzzStartAbilityInfo(const char* data, size_t size)
+std::shared_ptr<AppExecFwk::AbilityInfo> BuildFuzzCallerAbilityInfo(const char* data, size_t size)
 {
-    auto info = std::make_shared<StartAbilityInfo>();
+    auto info = std::make_shared<AppExecFwk::AbilityInfo>();
     if (data == nullptr || size == 0 || info == nullptr) {
         return info;
     }
-    info->abilityInfo.bundleName = std::string(data, size % MAX_STR_LEN);
-    info->abilityInfo.name = std::string(data + INPUT_ONE, (size - INPUT_ONE) % MAX_STR_LEN);
-    info->abilityInfo.applicationInfo.appProvisionType = static_cast<int32_t>(GetU32Data(data));
-    info->abilityInfo.applicationInfo.appIndex = static_cast<int32_t>(GetU32Data(data) % MAX_APP_CLONE_INDEX);
-    info->customProcess = std::string(data + INPUT_ONE, (size - INPUT_ONE) % MAX_STR_LEN);
+    info->bundleName = std::string(data, size % MAX_STR_LEN);
+    info->name = std::string(data + INPUT_ONE, (size - INPUT_ONE) % MAX_STR_LEN);
+    info->applicationInfo.appProvisionType = static_cast<int32_t>(GetU32Data(data));
+    info->applicationInfo.appIndex = static_cast<int32_t>(GetU32Data(data) % MAX_APP_CLONE_INDEX);
     return info;
 }
 
@@ -140,20 +140,21 @@ void StartAbilityUtilsFuzztest1(bool boolParam, std::string &stringParam, int32_
     AppExecFwk::ApplicationInfo appInfo;
 
     AppExecFwk::AbilityInfo abilityInfo;
-    StartAbilityUtils::callerAbilityInfo = BuildFuzzStartAbilityInfo(stringParam.c_str(), stringParam.size());
-    StartAbilityUtils::GetCallerAbilityInfo(callerToken, abilityInfo);
-    StartAbilityUtils::GetCallerAbilityInfo(nullToken, abilityInfo);
-    StartAbilityUtils::callerAbilityInfo.reset();
-    StartAbilityUtils::GetCallerAbilityInfo(callerToken, abilityInfo);
-    StartAbilityUtils::GetCallerAbilityInfo(nullToken, abilityInfo);
-    
+    StartAbilityContext ctx;
+    ctx.callerAbilityInfo = BuildFuzzCallerAbilityInfo(stringParam.c_str(), stringParam.size());
+    StartAbilityUtils::GetCallerAbilityInfo(ctx, callerToken, abilityInfo);
+    StartAbilityUtils::GetCallerAbilityInfo(ctx, nullToken, abilityInfo);
+    ctx.callerAbilityInfo.reset();
+    StartAbilityUtils::GetCallerAbilityInfo(ctx, callerToken, abilityInfo);
+    StartAbilityUtils::GetCallerAbilityInfo(ctx, nullToken, abilityInfo);
+
     StartAbilityUtils::CheckAppProvisionMode(want, int32Param, callerToken);
     StartAbilityUtils::CheckAppProvisionMode(want, int32Param, nullToken);
-    
-    std::shared_ptr<StartAbilityInfoWrap> wrap1 =
-        std::make_shared<StartAbilityInfoWrap>(want, int32Param, int32Param, callerToken, boolParam);
-    std::shared_ptr<StartAbilityInfoWrap> wrap2 = std::make_shared<StartAbilityInfoWrap>();
-    wrap2->SetStartAbilityInfo(abilityInfo);
+
+    StartAbilityContext scopeCtx1;
+    StartAbilityUtils::ResolveAndCacheStartAbilityInfo(scopeCtx1, want, int32Param, int32Param, callerToken, boolParam);
+    StartAbilityContext scopeCtx2;
+    StartAbilityUtils::SetStartAbilityInfo(scopeCtx2, abilityInfo);
 
     StartAbilityUtils::SetTargetCloneIndexInSameBundle(want, callerToken);
     StartAbilityUtils::SetTargetCloneIndexInSameBundle(want, nullToken);

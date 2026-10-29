@@ -19,6 +19,7 @@
 #include "app_scheduler.h"
 #include "extension_config.h"
 #include "hilog_tag_wrapper.h"
+#include "start_ability_context.h"
 #include "start_ability_utils.h"
 
 namespace OHOS {
@@ -126,7 +127,7 @@ int32_t ExtensionControlInterceptor::ProcessInterceptNew(const AbilityIntercepto
 bool ExtensionControlInterceptor::GetCallerAbilityInfo(const AbilityInterceptorParam& param,
     AppExecFwk::AbilityInfo& callerAbilityInfo)
 {
-    if (StartAbilityUtils::GetCallerAbilityInfo(param.callerToken, callerAbilityInfo)) {
+    if (StartAbilityUtils::GetCallerAbilityInfo(param.startAbilityCtx, param.callerToken, callerAbilityInfo)) {
         if (callerAbilityInfo.type != AppExecFwk::AbilityType::EXTENSION ||
             callerAbilityInfo.extensionAbilityType == AppExecFwk::ExtensionAbilityType::SERVICE ||
             callerAbilityInfo.bundleName == param.want.GetBundleNameRef()) {

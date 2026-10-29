@@ -73,6 +73,7 @@
 #include "resident_process_manager.h"
 #include "sandbox_clone_params.h"
 #include "scene_board/ui_ability_lifecycle_manager.h"
+#include "start_ability_context.h"
 #include "sub_managers_helper.h"
 #include "system_ability.h"
 #include "task_handler_wrap.h"
@@ -1598,7 +1599,8 @@ public:
         int requestCode,
         AbilityRequest &request,
         const sptr<IRemoteObject> &callerToken,
-        int32_t userId);
+        int32_t userId,
+        const StartAbilityContext &ctx = StartAbilityContext{});
 
     /**
      * Get mission id by target ability token.
@@ -3078,8 +3080,9 @@ private:
         const sptr<IRemoteObject> &callerToken, uint32_t specifyTokenId = 0);
     int StartUIAbilityBySCBDefault(sptr<SessionInfo> sessionInfo, AbilityRuntime::StartParamsBySCB &params,
         bool &isColdStart);
-    int HandleSandboxCloneLaunch(sptr<SessionInfo> sessionInfo, std::shared_ptr<SandboxCloneParams> &sandboxCloneParams,
-        int32_t currentUserId, std::shared_ptr<EventInfo> eventInfo, const AbilitySessionInfo &abilitySessionInfo);
+    int HandleSandboxCloneLaunch(StartAbilityContext &ctx, sptr<SessionInfo> sessionInfo,
+        std::shared_ptr<SandboxCloneParams> &sandboxCloneParams, int32_t currentUserId,
+        std::shared_ptr<EventInfo> eventInfo, const AbilitySessionInfo &abilitySessionInfo);
     int StartUIAbilityByPreInstallInner(sptr<SessionInfo> sessionInfo, uint32_t specifyTokenId,
         AbilityRuntime::StartParamsBySCB &params, bool &isColdStart);
     int32_t PreStartInner(const FreeInstallInfo& taskInfo);
@@ -3113,7 +3116,7 @@ private:
     int32_t ProcessLaunchReasonAndController(const StartAbilityWrapParam &param,
         const std::shared_ptr<EventInfo> eventInfo, const AppExecFwk::AbilityInfo &abilityInfo,
         AbilityRequest &abilityRequest);
-    int32_t ExecuteInterceptors(const StartAbilityWrapParam &param, const AbilityRequest &abilityRequest,
+    int32_t ExecuteInterceptors(StartAbilityWrapParam &param, const AbilityRequest &abilityRequest,
        const AppExecFwk::AbilityInfo &abilityInfo, int32_t appCloneIndex, const std::shared_ptr<EventInfo> eventInfo);
     void PreprocessRequestParams(const StartAbilityWrapParam &param,
         const std::shared_ptr<AAFwk::AbilityRecord> &callerRecord, AbilityRequest &abilityRequest);
@@ -3287,7 +3290,8 @@ private:
     bool GetValidDataAbilityUri(const std::string &abilityInfoUri, std::string &adjustUri);
 
     int GenerateExtensionAbilityRequest(const Want &want, AbilityRequest &request,
-        const sptr<IRemoteObject> &callerToken, int32_t userId, const std::string hostBundleName = "");
+        const sptr<IRemoteObject> &callerToken, int32_t userId, const std::string hostBundleName = "",
+        const StartAbilityContext &ctx = StartAbilityContext{});
     std::string GetHostBundleName(const std::string hostBundleName,
         const sptr<IRemoteObject> &callerToken);
     int32_t InitialAbilityRequest(AbilityRequest &request, const StartAbilityInfo &abilityInfo) const;
@@ -3477,7 +3481,7 @@ private:
         std::vector<AbilityRequest> &abilityRequestList);
     int32_t StartUIAbilitiesCheckDlp(const Want &want, sptr<IRemoteObject> callerToken, int32_t userId);
     int32_t StartUIAbilitiesInterceptorCheck(const Want &want, AbilityRequest &abilityRequest,
-        sptr<IRemoteObject> callerToken, int32_t appIndex, int32_t userId);
+        sptr<IRemoteObject> callerToken, int32_t appIndex, int32_t userId, StartAbilityContext &ctx);
     /**
      * Start switch user dialog Extension ability.
      */

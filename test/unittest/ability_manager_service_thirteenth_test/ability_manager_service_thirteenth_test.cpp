@@ -26,6 +26,7 @@
 #include "agent_extension_connection_constants.h"
 #include "mission_list_manager.h"
 #include "mock_my_status.h"
+#include "start_ability_context.h"
 #include "start_ability_utils.h"
 #include "sub_managers_helper.h"
 
@@ -2771,7 +2772,8 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, StartUIAbilitiesInterceptorCheck_0
     MyStatus::GetInstance().permPermission_ = true;
     want.SetElementName("com.ohos.test", "MainAbility");
 
-    EXPECT_EQ(abilityMs_->StartUIAbilitiesInterceptorCheck(want, abilityRequest, callerToken, appIndex, userId),
+    StartAbilityContext ctx;
+    EXPECT_EQ(abilityMs_->StartUIAbilitiesInterceptorCheck(want, abilityRequest, callerToken, appIndex, userId, ctx),
         START_UI_ABILITIES_INTERCEPTOR_CHECK_FAILED);
 
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest StartUIAbilitiesInterceptorCheck_001 end");
@@ -3995,7 +3997,8 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, InitializeAppCloneRequest_001, Tes
     mockStartInfo->abilityInfo.applicationInfo.bundleName = "com.ohos.test";
     mockStartInfo->abilityInfo.applicationInfo.uid = 1000;
     mockStartInfo->status = ERR_OK;
-    StartAbilityUtils::startAbilityInfo = mockStartInfo;
+    StartAbilityContext ctx;
+    ctx.startAbilityInfo = mockStartInfo;
 
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
@@ -4015,6 +4018,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, InitializeAppCloneRequest_001, Tes
     param.requestCode = 0;
     param.specifiedFullTokenId = 0;
     param.requestCallback = nullptr;
+    param.startAbilityCtx = ctx;
 
     AbilityRequest abilityRequest;
     AppExecFwk::AbilityInfo abilityInfo;
@@ -4025,8 +4029,6 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, InitializeAppCloneRequest_001, Tes
     EXPECT_EQ(result, ERR_OK);
     MyStatus::GetInstance().isSupportMultiInstance_ = true;
 
-    // Reset mock
-    StartAbilityUtils::startAbilityInfo = nullptr;
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest InitializeAppCloneRequest_001 end");
 }
 
@@ -4052,7 +4054,8 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, InitializeAppCloneRequest_002, Tes
     mockStartInfo->abilityInfo.applicationInfo.bundleName = "com.ohos.test";
     mockStartInfo->abilityInfo.applicationInfo.uid = 1000;
     mockStartInfo->status = ERR_OK;
-    StartAbilityUtils::startAbilityInfo = mockStartInfo;
+    StartAbilityContext ctx;
+    ctx.startAbilityInfo = mockStartInfo;
 
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
@@ -4072,6 +4075,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, InitializeAppCloneRequest_002, Tes
     param.requestCode = 0;
     param.specifiedFullTokenId = 100;
     param.requestCallback = nullptr;
+    param.startAbilityCtx = ctx;
 
     AbilityRequest abilityRequest;
     AppExecFwk::AbilityInfo abilityInfo;
@@ -4082,8 +4086,6 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, InitializeAppCloneRequest_002, Tes
     EXPECT_EQ(result, ERR_OK);
     MyStatus::GetInstance().isSupportMultiInstance_ = true;
 
-    // Reset mock
-    StartAbilityUtils::startAbilityInfo = nullptr;
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest InitializeAppCloneRequest_002 end");
 }
 

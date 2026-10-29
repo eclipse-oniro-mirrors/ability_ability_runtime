@@ -18,6 +18,7 @@
 #include "ability_manager_client.h"
 #include "ability_util.h"
 #include "modal_system_ui_extension.h"
+#include "start_ability_context.h"
 #include "start_ability_utils.h"
 
 namespace OHOS {
@@ -33,11 +34,10 @@ const std::string UIEXTENSION_SYS_COMMON_UI = "sys/commonUI";
 }
 ErrCode CrowdTestInterceptor::DoProcess(AbilityInterceptorParam &param)
 {
-    if (StartAbilityUtils::skipCrowTest) {
-        StartAbilityUtils::skipCrowTest = false;
+    if (param.startAbilityCtx.ConsumeSkipCrowTest()) {
         return ERR_OK;
     }
-    if (CheckCrowdtest(param.want, param.userId)) {
+    if (CheckCrowdtest(param.startAbilityCtx, param.want, param.userId)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "expired");
 #ifdef SUPPORT_GRAPHICS
         if (param.isWithUI) {
@@ -86,11 +86,12 @@ ErrCode CrowdTestInterceptor::DoProcess(AbilityInterceptorParam &param)
     return ERR_OK;
 }
 
-bool CrowdTestInterceptor::CheckCrowdtest(const Want &want, int32_t userId)
+bool CrowdTestInterceptor::CheckCrowdtest(const StartAbilityContext &ctx,
+    const Want &want, int32_t userId)
 {
     // get crowdtest status and time
     AppExecFwk::ApplicationInfo appInfo;
-    if (!StartAbilityUtils::GetApplicationInfo(want.GetBundleNameRef(), userId, appInfo)) {
+    if (!StartAbilityUtils::GetApplicationInfo(ctx, want.GetBundleNameRef(), userId, appInfo)) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "GetAppInfo failed");
         return false;
     }

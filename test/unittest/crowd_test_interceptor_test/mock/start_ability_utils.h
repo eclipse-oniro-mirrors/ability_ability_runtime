@@ -23,12 +23,12 @@
 
 namespace OHOS {
 namespace AAFwk {
+struct StartAbilityContext;
 struct StartAbilityUtils {
-    static bool skipCrowTest;
     static bool retGetApplicationInfo;
     static AppExecFwk::ApplicationInfo applicationInfo;
-    static bool GetApplicationInfo(const std::string &bundleName, int32_t userId,
-    AppExecFwk::ApplicationInfo &appInfo);
+    static bool GetApplicationInfo(const StartAbilityContext &ctx,
+        const std::string &bundleName, int32_t userId, AppExecFwk::ApplicationInfo &appInfo);
 };
 }
 }

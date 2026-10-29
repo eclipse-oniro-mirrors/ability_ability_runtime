@@ -136,16 +136,17 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     sptr<Want> replaceWant = new (std::nothrow) Want();
     int32_t bundleType = static_cast<int32_t>(GetU32Data(data + 2 * U32_AT_SIZE)) % MAX_BUNDLE_TYPE;
     
-    executer->DoProcess(want, userId);
+    StartAbilityContext ctx;
+    executer->DoProcess(ctx, want, userId);
     if (abilityInfo != nullptr) {
-        executer->GetEcologicalTargetInfo(want, abilityInfo, callerInfo);
+        executer->GetEcologicalTargetInfo(ctx, want, abilityInfo, callerInfo);
     }
-    executer->GetEcologicalCallerInfo(want, callerInfo, userId, token);
+    executer->GetEcologicalCallerInfo(ctx, want, callerInfo, userId, token);
     if (abilityInfo != nullptr) {
-        executer->InitErmsCallerInfo(want, abilityInfo, callerInfo, userId, token);
+        executer->InitErmsCallerInfo(ctx, want, abilityInfo, callerInfo, userId, token);
     }
     executer->GetAppTypeByBundleType(bundleType);
-    executer->QueryAtomicServiceStartupRule(want, token, userId, rule, replaceWant);
+    executer->QueryAtomicServiceStartupRule(ctx, want, token, userId, rule, replaceWant);
     
     return true;
 }

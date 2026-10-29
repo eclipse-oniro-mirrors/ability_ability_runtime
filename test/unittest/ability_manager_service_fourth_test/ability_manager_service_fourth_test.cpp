@@ -1290,8 +1290,9 @@ HWTEST_F(AbilityManagerServiceFourthTest, HandleSandboxCloneLaunch_001, TestSize
     ASSERT_NE(sandboxCloneParams, nullptr);
     auto eventInfo = std::make_shared<EventInfo>();
     // sandBoxCloneIndex defaults to 0 (not in [2000,3000]) → ProcessSandboxCloneLaunch returns error.
-    auto ret = abilityMs->HandleSandboxCloneLaunch(sessionInfo, sandboxCloneParams, TEST_VALID_USER_ID, eventInfo,
-        abilitySessionInfo);
+    StartAbilityContext ctx;
+    auto ret = abilityMs->HandleSandboxCloneLaunch(ctx, sessionInfo, sandboxCloneParams, TEST_VALID_USER_ID,
+        eventInfo, abilitySessionInfo);
     EXPECT_EQ(ret, ERR_SANDBOX_CLONE_INDEX_INVALID);
     // callerBundleName and callerTokenId are set before ProcessSandboxCloneLaunch is called.
     EXPECT_EQ(sandboxCloneParams->callerBundleName, "com.test.caller");
@@ -1318,8 +1319,9 @@ HWTEST_F(AbilityManagerServiceFourthTest, HandleSandboxCloneLaunch_002, TestSize
     auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
     ASSERT_NE(sandboxCloneParams, nullptr);
     auto eventInfo = std::make_shared<EventInfo>();
-    auto ret = abilityMs->HandleSandboxCloneLaunch(sessionInfo, sandboxCloneParams, TEST_VALID_USER_ID, eventInfo,
-        abilitySessionInfo);
+    StartAbilityContext ctx;
+    auto ret = abilityMs->HandleSandboxCloneLaunch(ctx, sessionInfo, sandboxCloneParams, TEST_VALID_USER_ID,
+        eventInfo, abilitySessionInfo);
     EXPECT_EQ(ret, ERR_SANDBOX_CLONE_INDEX_INVALID);
     EXPECT_EQ(sandboxCloneParams->callerBundleName, "com.test.caller");
     EXPECT_EQ(sandboxCloneParams->callerTokenId, 0u);
@@ -1343,8 +1345,9 @@ HWTEST_F(AbilityManagerServiceFourthTest, HandleSandboxCloneLaunch_003, TestSize
     auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
     ASSERT_NE(sandboxCloneParams, nullptr);
     auto eventInfo = std::make_shared<EventInfo>();
-    auto ret = abilityMs->HandleSandboxCloneLaunch(sessionInfo, sandboxCloneParams, TEST_VALID_USER_ID, eventInfo,
-        abilitySessionInfo);
+    StartAbilityContext ctx;
+    auto ret = abilityMs->HandleSandboxCloneLaunch(ctx, sessionInfo, sandboxCloneParams, TEST_VALID_USER_ID,
+        eventInfo, abilitySessionInfo);
     EXPECT_EQ(ret, ERR_SANDBOX_CLONE_INDEX_INVALID);
     EXPECT_EQ(sandboxCloneParams->callerTokenId, 0u);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest HandleSandboxCloneLaunch_003 end");
@@ -1368,8 +1371,9 @@ HWTEST_F(AbilityManagerServiceFourthTest, HandleSandboxCloneLaunch_004, TestSize
     auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
     ASSERT_NE(sandboxCloneParams, nullptr);
     auto eventInfo = std::make_shared<EventInfo>();
-    auto ret = abilityMs->HandleSandboxCloneLaunch(sessionInfo, sandboxCloneParams, TEST_VALID_USER_ID, eventInfo,
-        abilitySessionInfo);
+    StartAbilityContext ctx;
+    auto ret = abilityMs->HandleSandboxCloneLaunch(ctx, sessionInfo, sandboxCloneParams, TEST_VALID_USER_ID,
+        eventInfo, abilitySessionInfo);
     EXPECT_EQ(ret, ERR_SANDBOX_CLONE_INDEX_INVALID);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest HandleSandboxCloneLaunch_004 end");
 }
