@@ -100,7 +100,6 @@ group("napi_packages") {
     "${ability_runtime_napi_path}/ui_extension_ability:uiextensionability_napi",
     "${ability_runtime_napi_path}/ui_extension_context:uiextensioncontext_napi",
     "${ability_runtime_napi_path}/ui_service_extension_ability:uiserviceextensionability",
-    "${ability_runtime_napi_path}/ui_service_extension_ability:uiserviceextensionability_napi",
     "${ability_runtime_napi_path}/ui_service_extension_context:uiserviceextensioncontext_napi",
     "${ability_runtime_napi_path}/wantConstant:wantconstant",
     "${ability_runtime_napi_path}/wantConstant:wantconstant_napi",
