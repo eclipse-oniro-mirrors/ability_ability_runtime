@@ -725,7 +725,7 @@ HWTEST_F(AbilityManagerProxySecondTest, AbilityManagerProxy_NotifySaveAsResult_0
     int resultCode = 0;
     int requestCode = 0;
     EXPECT_CALL(*mock_, SendRequest(_, _, _, _)).WillOnce(Return(INVALID_PARAMETERS_ERR));
-    EXPECT_EQ(proxy_->NotifySaveAsResult(want, resultCode, requestCode), 0);
+    EXPECT_EQ(proxy_->NotifySaveAsResult(want, resultCode, requestCode), INVALID_PARAMETERS_ERR);
     EXPECT_CALL(*mock_, SendRequest(_, _, _, _)).WillOnce(Return(NO_ERROR));
     proxy_->NotifySaveAsResult(want, resultCode, requestCode);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerProxy_NotifySaveAsResult_0100 end");
