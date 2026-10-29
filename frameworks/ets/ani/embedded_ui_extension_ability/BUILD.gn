@@ -16,6 +16,7 @@ import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 ohos_shared_library("embedded_ui_extension_ani") {
+  version_script = "libembedded_ui_extension_ani.map"
   sanitize = {
     cfi = true
     cfi_cross_dso = true

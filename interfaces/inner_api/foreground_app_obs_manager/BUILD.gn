@@ -33,6 +33,7 @@ config("foreground_app_obs_manager_public_config") {
 }
 
 ohos_shared_library("foreground_app_obs_manager") {
+  version_script = "libforeground_app_obs_manager.map"
   branch_protector_ret = "pac_ret"
   branch_protector_frt = "bti"
   sanitize = {

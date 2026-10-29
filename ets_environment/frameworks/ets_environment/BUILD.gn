@@ -22,6 +22,7 @@ config("public_ets_environment_config") {
 }
 
 ohos_shared_library("ets_environment") {
+  version_script = "libets_environment.map"
   branch_protector_ret = "pac_ret"
   branch_protector_frt = "bti"
 

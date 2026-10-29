@@ -722,6 +722,7 @@ ohos_shared_library("appkit_delegator") {
 }
 
 ohos_shared_library("test_runner_ani") {
+  version_script = "libtest_runner_ani.map"
   branch_protector_ret = "pac_ret"
 
   sanitize = {
