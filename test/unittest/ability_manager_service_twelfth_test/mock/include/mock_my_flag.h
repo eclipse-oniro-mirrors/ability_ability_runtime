@@ -23,6 +23,8 @@ public:
         IS_SA_CALL = 1,
         IS_SHELL_CALL,
         IS_SA_AND_SHELL_CALL,
+        IS_PERFORM_LOCAL_DEBUG = 4,
+        IS_ALLOW_LOCAL_DEBUG = 8,
     };
     static int flag_;
     static bool retCreateModalUIExtension_;  // Control ModalSystemUiExtension mock return value

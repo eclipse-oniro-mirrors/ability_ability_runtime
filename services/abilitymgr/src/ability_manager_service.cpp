@@ -12287,7 +12287,7 @@ int AbilityManagerService::StartUserTest(const Want &want, const sptr<IRemoteObj
     }
     bool isDebugApp = want.GetBoolParam(AbilityConfig::DEBUG_APP, false);
     bool isDebugFromLocal = want.GetBoolParam(DEBUG_FROM, false);
-    auto permErr = CheckLocalDebugPermission(isDebugApp, isDebugFromLocal);
+    auto permErr = CheckLocalDebugPermission(isDebugApp, isDebugFromLocal, userId);
     if (permErr != ERR_OK) {
         return permErr;
     }
@@ -15381,17 +15381,28 @@ bool AbilityManagerService::IsAllowLocalDebugOtherApps(bool isDebugFromLocal)
     return AAFwk::PermissionVerification::GetInstance()->IsAllowLocalDebugOtherApps(isDebugFromLocal);
 }
 
-ErrCode AbilityManagerService::CheckLocalDebugPermission(bool isDebugApp, bool isDebugFromLocal)
+ErrCode AbilityManagerService::CheckLocalDebugPermission(
+    bool isDebugApp, bool isDebugFromLocal, int32_t userId)
 {
     if (!isDebugApp && !isDebugFromLocal) {
         return ERR_OK;
     }
-    if (isDebugFromLocal &&
-        !AAFwk::PermissionVerification::GetInstance()->VerifyStartLocalDebug(
-            IPCSkeleton::GetCallingTokenID()) &&
-        !IsAllowLocalDebugOtherApps(isDebugFromLocal)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "local debugging, permission denied");
-        return CHECK_PERMISSION_FAILED;
+    if (isDebugFromLocal) {
+        auto perm = AAFwk::PermissionVerification::GetInstance();
+        bool isStartLocalDebug = perm->VerifyStartLocalDebug(IPCSkeleton::GetCallingTokenID());
+        bool isAllowLocalDebug = IsAllowLocalDebugOtherApps(isDebugFromLocal);
+        if (!isStartLocalDebug && !isAllowLocalDebug) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "local debugging, permission denied");
+            return CHECK_PERMISSION_FAILED;
+        }
+        if (isAllowLocalDebug && !perm->IsSACall() && !perm->IsShellCall()) {
+            int32_t callingUserId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+            if (callingUserId > 1 && userId != callingUserId) {
+                TAG_LOGE(AAFwkTag::ABILITYMGR, "userId %{public}d mismatch calling %{public}d",
+                    userId, callingUserId);
+                return INVALID_USERID_VALUE;
+            }
+        }
     }
     if (!isDebugFromLocal && !system::GetBoolParameter(DEVELOPER_MODE_STATE, false)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "not developer Mode");
