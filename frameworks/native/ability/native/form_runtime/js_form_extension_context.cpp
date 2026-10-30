@@ -22,6 +22,7 @@
 
 #include "hilog_tag_wrapper.h"
 #include "form_mgr_errors.h"
+#include "form_provider_info.h"
 #include "ipc_skeleton.h"
 #include "js_extension_context.h"
 #include "js_error_utils.h"
@@ -122,7 +123,6 @@ private:
             formId = -1;
         }
 
-        AppExecFwk::FormProviderData formProviderData;
         std::string formDataStr = "{}";
         if (CheckTypeForNapiValue(env, info.argv[1], napi_object)) {
             napi_value nativeDataValue = nullptr;
@@ -134,18 +134,20 @@ private:
             TAG_LOGE(AAFwkTag::FORM_EXT, "Not object");
         }
 
-        formProviderData = AppExecFwk::FormProviderData(formDataStr);
+        AppExecFwk::FormProviderInfo formProviderInfo;
+        AppExecFwk::FormProviderData formProviderData(formDataStr);
+        formProviderInfo.SetFormData(formProviderData);
+        formProviderInfo.SetSupportMoreImages(GetIsSupportMoreImages(env, info.argv[1]));
 
-        formProviderData.SetSupportMoreImages(GetIsSupportMoreImages(env, info.argv[1]));
         NapiAsyncTask::CompleteCallback complete =
-            [weak = context_, formId, formProviderData](napi_env env, NapiAsyncTask& task, int32_t status) {
+            [weak = context_, formId, formProviderInfo](napi_env env, NapiAsyncTask& task, int32_t status) {
                 auto context = weak.lock();
                 if (!context) {
                     TAG_LOGW(AAFwkTag::FORM_EXT, "null context");
                     task.Reject(env, CreateJsError(env, 1, "Context is released"));
                     return;
                 }
-                auto errcode = context->UpdateForm(formId, formProviderData);
+                auto errcode = context->UpdateForm(formId, formProviderInfo);
                 if (errcode == ERR_OK) {
                     task.Resolve(env, CreateJsUndefined(env));
                 } else {
