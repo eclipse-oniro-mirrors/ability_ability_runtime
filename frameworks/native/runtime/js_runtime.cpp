@@ -17,6 +17,7 @@
 
 #include <cerrno>
 #include <climits>
+#include <cstdint>
 #include <cstdlib>
 #include <fstream>
 #include <mutex>
@@ -120,6 +121,34 @@ int32_t PrintVmLog(int32_t, int32_t, const char*, const char*, const char* messa
 {
     TAG_LOGI(AAFwkTag::JSRUNTIME, "ArkLog: %{public}s", message);
     return 0;
+}
+
+int32_t ParseInterval(const std::string& jsperfResuflt, int32_t defaultValue)
+{
+    const std::regex regexJsperfNum(R"(^\s*(\d+).*)");
+    std::match_results<std::string::const_iterator> jsperfMatchResults;
+    if (!std::regex_match(jsperfResuflt, jsperfMatchResults, regexJsperfNum)) {
+        TAG_LOGD(AAFwkTag::JSRUNTIME, "the jsperf results not match");
+        return defaultValue;
+    }
+    constexpr size_t matchNumResultIndex = 1;
+    if (jsperfMatchResults.size() < PARAM_TWO) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "jsperfMatchResults not match");
+        return defaultValue;
+    }
+    auto interval = jsperfMatchResults[matchNumResultIndex].str();
+    if (interval.empty()) {
+        TAG_LOGD(AAFwkTag::JSRUNTIME, "empty interval");
+        return defaultValue;
+    }
+    errno = 0;
+    char *endPtr = nullptr;
+    long val = strtol(interval.c_str(), &endPtr, 10);
+    if (errno != 0 || val > INT32_MAX || val < 0 || endPtr == interval.c_str()) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "interval out of range: %{public}s", interval.c_str());
+        return defaultValue;
+    }
+    return static_cast<int32_t>(val);
 }
 } // namespace
 
@@ -323,29 +352,7 @@ int32_t JsRuntime::JsperfProfilerCommandParse(const std::string &command, int32_
     }
 
     jsperfResuflt = matchResults[matchResultIndex].str();
-    // match number result
-    const std::regex regexJsperfNum(R"(^\s*(\d+).*)");
-    std::match_results<std::string::const_iterator> jsperfMatchResults;
-    if (!std::regex_match(jsperfResuflt, jsperfMatchResults, regexJsperfNum)) {
-        TAG_LOGD(AAFwkTag::JSRUNTIME, "the jsperf results not match");
-        return defaultValue;
-    }
-
-    // get match result
-    std::string interval;
-    constexpr size_t matchNumResultIndex = 1;
-    if (jsperfMatchResults.size() < PARAM_TWO) {
-        TAG_LOGE(AAFwkTag::JSRUNTIME, "jsperfMatchResults not match");
-        return defaultValue;
-    }
-
-    interval = jsperfMatchResults[matchNumResultIndex].str();
-    if (interval.empty()) {
-        TAG_LOGD(AAFwkTag::JSRUNTIME, "empty interval");
-        return defaultValue;
-    }
-
-    return std::stoi(interval);
+    return ParseInterval(jsperfResuflt, defaultValue);
 }
 
 void JsRuntime::StartProfiler(const DebugOption dOption)

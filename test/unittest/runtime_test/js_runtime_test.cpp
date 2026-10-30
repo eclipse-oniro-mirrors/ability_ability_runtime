@@ -114,6 +114,58 @@ HWTEST_F(JsRuntimeTest, JsperfProfilerCommandParse_100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: JsperfProfilerCommandParse_200
+ * @tc.desc: JsRuntime test for JsperfProfilerCommandParse with INT_MAX boundary.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsperfProfilerCommandParse_200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "JsperfProfilerCommandParse_200 start");
+    auto jsRuntime = std::make_shared<AbilityRuntime::JsRuntime>();
+    constexpr int32_t defaultVal = 500;
+    constexpr int32_t intMax = 2147483647;
+    std::string command = "jsperf 2147483647";
+    ASSERT_EQ(jsRuntime->JsperfProfilerCommandParse(command, defaultVal), intMax);
+    jsRuntime.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    TAG_LOGI(AAFwkTag::TEST, "JsperfProfilerCommandParse_200 end");
+}
+
+/**
+ * @tc.name: JsperfProfilerCommandParse_201
+ * @tc.desc: JsRuntime test for JsperfProfilerCommandParse with INT_MAX + 1 overflow.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsperfProfilerCommandParse_201, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "JsperfProfilerCommandParse_201 start");
+    auto jsRuntime = std::make_shared<AbilityRuntime::JsRuntime>();
+    constexpr int32_t defaultVal = 500;
+    std::string command = "jsperf 2147483648";
+    ASSERT_EQ(jsRuntime->JsperfProfilerCommandParse(command, defaultVal), defaultVal);
+    jsRuntime.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    TAG_LOGI(AAFwkTag::TEST, "JsperfProfilerCommandParse_201 end");
+}
+
+/**
+ * @tc.name: JsperfProfilerCommandParse_202
+ * @tc.desc: JsRuntime test for JsperfProfilerCommandParse with very large number overflow.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsperfProfilerCommandParse_202, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "JsperfProfilerCommandParse_202 start");
+    auto jsRuntime = std::make_shared<AbilityRuntime::JsRuntime>();
+    constexpr int32_t defaultVal = 500;
+    std::string command = "jsperf 99999999999999999999";
+    ASSERT_EQ(jsRuntime->JsperfProfilerCommandParse(command, defaultVal), defaultVal);
+    jsRuntime.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    TAG_LOGI(AAFwkTag::TEST, "JsperfProfilerCommandParse_202 end");
+}
+
+/**
  * @tc.name: JsRuntimeTestCreate_0100
  * @tc.desc: JsRuntime Test for Create
  * @tc.type: FUNC
