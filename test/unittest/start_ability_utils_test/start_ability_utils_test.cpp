@@ -288,11 +288,11 @@ HWTEST_F(StartAbilityUtilsTest, SetStartAbilityInfo_001, TestSize.Level1)
 }
 
 /**
- * @tc.name: StartAbilityInfoWrap_001
- * @tc.desc: test class StartAbilityUtil StartAbilityInfoWrap constructor
+ * @tc.name: ResolveAndCacheStartAbilityInfo_001
+ * @tc.desc: test ResolveAndCacheStartAbilityInfo sets isWantWithAppCloneIndex when want has app clone index
  * @tc.type: FUNC
  */
-HWTEST_F(StartAbilityUtilsTest, StartAbilityInfoWrap_001, TestSize.Level1)
+HWTEST_F(StartAbilityUtilsTest, ResolveAndCacheStartAbilityInfo_001, TestSize.Level1)
 {
     Want want;
     want.SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, 0);
@@ -304,11 +304,11 @@ HWTEST_F(StartAbilityUtilsTest, StartAbilityInfoWrap_001, TestSize.Level1)
 }
 
 /**
- * @tc.name: StartAbilityInfoWrap_002
- * @tc.desc: test class StartAbilityUtil StartAbilityInfoWrap constructor
+ * @tc.name: ResolveAndCacheStartAbilityInfo_002
+ * @tc.desc: test ResolveAndCacheStartAbilityInfo does not set isWantWithAppCloneIndex when want lacks app clone index
  * @tc.type: FUNC
  */
-HWTEST_F(StartAbilityUtilsTest, StartAbilityInfoWrap_002, TestSize.Level1)
+HWTEST_F(StartAbilityUtilsTest, ResolveAndCacheStartAbilityInfo_002, TestSize.Level1)
 {
     Want want;
     int32_t userId = 0;
