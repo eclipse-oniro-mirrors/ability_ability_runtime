@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "appmgr/running_process_info.h"
+#include "hap_token_info.h"
 #include "iremote_object.h"
 #include "scene_board/ui_ability_record.h"
 #include "base_extension_record.h"
@@ -38,6 +39,11 @@ public:
     bool auIsLaunchEmbededUIAbility_ = true;
     bool auIsForbidStart_ = false;
     int atkGetTokenTypeFlag_ = 0;
+    int atkGetHapTokenInfo_ = -1;
+    Security::AccessToken::HapTokenInfo atkHapTokenInfo_;
+    uint32_t atkQueriedTokenId_ = 0;
+    int atkVerifyAccessToken_ = -1;
+    uint32_t atkVerifiedTokenId_ = 0;
     bool smhGetUIAbilityManagerByUid_ = true;
     bool smhGetUIAbilityManagerByUserId_ = true;
     bool smhGetMissionListManagerByUserId_ = true;
@@ -71,6 +77,7 @@ public:
     int32_t fimConnectExtensionType_ = -1;
     std::string fimConnectLocalDeviceId_;
     int32_t softbusGetLocalNodeDeviceInfo_ = ERR_OK;
+    bool auIsAppServiceFullCapability_ = true;
     bool auIsSupportDelayedProcessExit_ = false;
     bool auIsSupportBlockAllAppStart_ = true;
     int32_t oeuValidateCallerResult_ = ERR_OK;

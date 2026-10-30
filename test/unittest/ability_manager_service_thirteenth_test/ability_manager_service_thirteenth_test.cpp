@@ -13,10 +13,13 @@
  * limitations under the License.
  */
 #include <gtest/gtest.h>
+#include <climits>
 #include <unistd.h>
 
 #include "ability_manager_service.h"
 #include "app_exit_reason_helper.h"
+#include "bundle_mgr_helper.h"
+#include "bundle_mgr_proxy.h"
 #include "common_extension_manager.h"
 
 #include "global_constant.h"
@@ -35,6 +38,7 @@
 #include "start_ability_utils.h"
 #include "sub_managers_helper.h"
 #include "task_mgr/attribution_record.h"
+#include "ui_extension_utils.h"
 #include "../../moduletest/mock/include/mock_ability_scheduler.h"
 
 using namespace testing;
@@ -70,6 +74,94 @@ public:
     void TearDown();
     std::shared_ptr<AbilityRecord> MockAbilityRecord(AbilityType);
     sptr<Token> MockToken(AbilityType);
+};
+
+class AppServiceBundleManager : public AppExecFwk::BundleMgrProxy {
+public:
+    AppServiceBundleManager() : BundleMgrProxy(nullptr) {}
+
+    ErrCode QueryExtensionAbilityInfoOptimal(const Want &, const int32_t &, const int32_t &,
+        AppExecFwk::ExtensionAbilityInfo &info) override
+    {
+        info = extensionInfo_;
+        return ERR_OK;
+    }
+
+    AppExecFwk::ExtensionAbilityInfo extensionInfo_;
+};
+
+class AppServiceConnectTest : public testing::Test {
+public:
+    static constexpr uint32_t CALLER_TOKEN = 111;
+    static constexpr uint32_t TARGET_TOKEN = 222;
+    static constexpr int32_t TARGET_USER = 100;
+    static constexpr int32_t CALLER_UID = 20001001;
+    static constexpr int32_t TARGET_UID = 20001002;
+    static constexpr int32_t callerPid = 123;
+    static constexpr char targetBundle[] = "com.example.appservice.target";
+
+    void SetUp() override
+    {
+        savedStatus_ = MyStatus::GetInstance();
+        auto &status = MyStatus::GetInstance();
+        status = MyStatus();
+        status.ipcGetCallingUid_ = EDM_SA_UID;
+        status.atkGetHapTokenInfo_ = ERR_OK;
+        status.atkHapTokenInfo_.bundleName = "com.example.appservice.caller";
+        status.arGetAbilityRecord_ = nullptr;
+        service_ = std::make_shared<AbilityManagerService>();
+        service_->isParamStartAbilityEnable_ = false;
+        service_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+        service_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+        service_->subManagersHelper_->currentCommonExtensionManager_ =
+            std::make_shared<CommonExtensionManager>(TARGET_USER);
+        helper_ = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
+        ASSERT_NE(helper_, nullptr);
+        savedBundleMgr_ = helper_->bundleMgr_;
+        bundleMgr_ = sptr<AppServiceBundleManager>::MakeSptr();
+        auto &info = bundleMgr_->extensionInfo_;
+        info.type = AppExecFwk::ExtensionAbilityType::APP_SERVICE;
+        info.name = "AppService";
+        info.bundleName = targetBundle;
+        info.moduleName = "entry";
+        info.permissions = {"ohos.permission.TEST_APP_SERVICE_ACCESS"};
+        info.applicationInfo.name = "target";
+        info.applicationInfo.bundleName = targetBundle;
+        info.applicationInfo.uid = TARGET_UID;
+        info.applicationInfo.accessTokenId = TARGET_TOKEN;
+        helper_->bundleMgr_ = bundleMgr_;
+        identity_ = std::make_shared<IndirectCallerInfo>();
+        identity_->tokenId = CALLER_TOKEN;
+        identity_->callerUid = CALLER_UID;
+        identity_->callerPid = callerPid;
+        want_.SetElementName(targetBundle, "AppService");
+        connection_ = sptr<InsightIntentExecuteConnection>::MakeSptr();
+    }
+
+    void TearDown() override
+    {
+        if (helper_ != nullptr) {
+            helper_->bundleMgr_ = savedBundleMgr_;
+        }
+        service_.reset();
+        MyStatus::GetInstance() = savedStatus_;
+    }
+
+    int Connect(int32_t userId = TARGET_USER,
+        AppExecFwk::ExtensionAbilityType type = AppExecFwk::ExtensionAbilityType::APP_SERVICE)
+    {
+        return service_->ConnectLocalAbility(want_, userId, connection_, nullptr, type,
+            nullptr, true, nullptr, 0, 0, identity_);
+    }
+
+    MyStatus savedStatus_;
+    std::shared_ptr<AbilityManagerService> service_;
+    std::shared_ptr<AppExecFwk::BundleMgrHelper> helper_;
+    sptr<AppExecFwk::IBundleMgr> savedBundleMgr_;
+    sptr<AppServiceBundleManager> bundleMgr_;
+    std::shared_ptr<IndirectCallerInfo> identity_;
+    sptr<InsightIntentExecuteConnection> connection_;
+    Want want_;
 };
 
 class MockISAInterceptor : public AbilityRuntime::ISAInterceptor {
@@ -6412,5 +6504,104 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, SkillExecuteAttribution_ColdAttach
     EXPECT_EQ(status.asUnregisterManagedAttributionId_, SKILL_TEST_ATTRIBUTION_ID);
 }
 
+/*
+ * Feature: AbilityManagerService
+ * Function: ConnectLocalAbility
+ * FunctionPoints: The EDM connection rejects an unresolved application identity before querying its target.
+ */
+HWTEST_F(AppServiceConnectTest, CallerIdentity_001, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    status.atkGetHapTokenInfo_ = -1;
+    identity_->tokenId = 0;
+    EXPECT_EQ(ERR_INVALID_CALLER, Connect());
+    EXPECT_EQ(0U, status.atkQueriedTokenId_);
+    identity_->tokenId = CALLER_TOKEN;
+    EXPECT_EQ(ERR_INVALID_CALLER, Connect());
+    EXPECT_EQ(CALLER_TOKEN, status.atkQueriedTokenId_);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: ConnectLocalAbility
+ * FunctionPoints: Other requests retain the cross-user restriction; EDM AppService requires a caller identity.
+ */
+HWTEST_F(AppServiceConnectTest, ProxyScope_001, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    status.ipcGetCallingUid_ = 1;
+    EXPECT_EQ(ERR_CROSS_USER, Connect(INT_MAX));
+    EXPECT_EQ(0U, status.atkQueriedTokenId_);
+    status.ipcGetCallingUid_ = EDM_SA_UID;
+    EXPECT_EQ(ERR_CROSS_USER, Connect(INT_MAX, AppExecFwk::ExtensionAbilityType::UI_SERVICE));
+    EXPECT_EQ(0U, status.atkQueriedTokenId_);
+    identity_.reset();
+    EXPECT_EQ(ERR_INVALID_CALLER, Connect(INT_MAX));
+    EXPECT_EQ(ERR_INVALID_CALLER, Connect(0));
+    EXPECT_EQ(0U, status.atkQueriedTokenId_);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: ConnectLocalAbility
+ * FunctionPoints: An EDM AppService request cannot resolve to another extension type.
+ */
+HWTEST_F(AppServiceConnectTest, TargetType_001, TestSize.Level1)
+{
+    bundleMgr_->extensionInfo_.type = AppExecFwk::ExtensionAbilityType::SERVICE;
+    EXPECT_EQ(ERR_WRONG_INTERFACE_CALL, Connect());
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: ConnectLocalAbility
+ * FunctionPoints: Target permissions are checked with the represented application token rather than the SA token.
+ */
+HWTEST_F(AppServiceConnectTest, TargetPermission_001, TestSize.Level1)
+{
+    // A resolved parent HAP token must not replace the original caller token for authorization.
+    MyStatus::GetInstance().atkHapTokenInfo_.tokenID = TARGET_TOKEN;
+    EXPECT_EQ(ERR_STATIC_CFG_PERMISSION, Connect());
+    EXPECT_EQ(CALLER_TOKEN, MyStatus::GetInstance().atkVerifiedTokenId_);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: ConnectLocalAbility
+ * FunctionPoints: An authorized represented application reaches the subsequent component permission check.
+ */
+HWTEST_F(AppServiceConnectTest, TargetPermission_002, TestSize.Level1)
+{
+    MyStatus::GetInstance().atkVerifyAccessToken_ = ERR_OK;
+    // The existing service-permission mock returns permPermission_ (1).
+    EXPECT_EQ(1, Connect());
+    EXPECT_EQ(CALLER_TOKEN, MyStatus::GetInstance().atkVerifiedTokenId_);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: ConnectLocalAbility
+ * FunctionPoints: The existing same-token static-permission exemption also applies to the represented application.
+ */
+HWTEST_F(AppServiceConnectTest, SameApplication_001, TestSize.Level1)
+{
+    bundleMgr_->extensionInfo_.applicationInfo.accessTokenId = CALLER_TOKEN;
+    EXPECT_EQ(1, Connect());
+    EXPECT_EQ(0U, MyStatus::GetInstance().atkVerifiedTokenId_);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: ConnectLocalAbility
+ * FunctionPoints: A different SA retains its original same-user permission path even with an indirect identity.
+ */
+HWTEST_F(AppServiceConnectTest, ExistingCaller_001, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    status.ipcGetCallingUid_ = 1;
+    EXPECT_EQ(1, Connect(0));
+    EXPECT_EQ(0U, status.atkQueriedTokenId_);
+    EXPECT_EQ(0U, status.atkVerifiedTokenId_);
+}
 } // namespace AAFwk
 } // namespace OHOS

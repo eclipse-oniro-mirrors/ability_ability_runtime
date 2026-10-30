@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,8 +15,20 @@
 
 #ifndef MOCK_MY_FLAG_H
 #define MOCK_MY_FLAG_H
+#include "permission_verification.h"
+
 namespace OHOS {
 namespace AAFwk {
+struct AppServicePermissionState {
+    bool enabled = false;
+    bool oldPermission = false;
+    bool advancedPermission = false;
+    uint32_t targetTokenId = 0;
+    PermissionVerification::VerificationInfo verification;
+    int result = 0;
+};
+extern AppServicePermissionState g_appServicePermissionState;
+
 class MyFlag {
 public:
     enum FLAG {
