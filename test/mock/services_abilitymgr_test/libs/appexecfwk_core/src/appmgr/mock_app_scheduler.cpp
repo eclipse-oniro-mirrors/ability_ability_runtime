@@ -22,6 +22,16 @@
 
 namespace OHOS {
 namespace AAFwk {
+
+namespace {
+int32_t g_verifyKillProcessPermissionResult = ERR_OK;
+}
+
+void SetVerifyKillProcessPermissionResult(int32_t result)
+{
+    g_verifyKillProcessPermissionResult = result;
+}
+
 AppScheduler::AppScheduler()
 {
     TAG_LOGI(AAFwkTag::TEST, " Test AppScheduler::AppScheduler()");
@@ -206,7 +216,7 @@ bool AppScheduler::IsMemorySizeSufficient() const
 int32_t AppScheduler::VerifyKillProcessPermission(const std::string &bundleName) const
 {
     TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::VerifyKillProcessPermission()");
-    return ERR_OK;
+    return g_verifyKillProcessPermissionResult;
 }
 
 void AppScheduler::StartSpecifiedAbility(const AAFwk::Want&, const AppExecFwk::AbilityInfo&,

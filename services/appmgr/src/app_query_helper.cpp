@@ -1009,9 +1009,20 @@ int32_t AppQueryHelper::GetAppRunningUniqueIdByPid(pid_t pid, std::string &appRu
     auto isShellCall = AAFwk::PermissionVerification::GetInstance()->IsShellCall();
     auto isLocalDebugOtherAppsCall = AAFwk::PermissionVerification::GetInstance()->IsLocalDebugOtherAppsCall();
     bool isDevelopMode = system::GetBoolParameter(DEVELOPER_MODE_STATE, false);
-    if (!isCallingPermission && !(isShellCall && isDevelopMode) && !isLocalDebugOtherAppsCall) {
-        TAG_LOGE(AAFwkTag::APPMGR, "GetAppRunningUniqueIdByPid not SA call or verification failed");
-        return ERR_PERMISSION_DENIED;
+    if (!isCallingPermission && !(isShellCall && isDevelopMode)) {
+        if (!isLocalDebugOtherAppsCall) {
+            TAG_LOGE(AAFwkTag::APPMGR, "GetAppRunningUniqueIdByPid not SA call or verification failed");
+            return ERR_PERMISSION_DENIED;
+        }
+        auto appRecord = GetAppRunningRecordByPid(pid);
+        if (appRecord == nullptr) {
+            TAG_LOGE(AAFwkTag::APPMGR, "isLocalDebugOtherAppsCall appRecord null, pid:%{public}d", pid);
+            return ERR_PERMISSION_DENIED;
+        }
+        if (GetUserIdByUid(appRecord->GetUid()) != GetUserIdByUid(IPCSkeleton::GetCallingUid())) {
+            TAG_LOGE(AAFwkTag::APPMGR, "isLocalDebugOtherAppsCall not same user, permission denied");
+            return ERR_PERMISSION_DENIED;
+        }
     }
     return appRunningManager_->GetAppRunningUniqueIdByPid(pid, appRunningUniqueId);
 }

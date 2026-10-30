@@ -143,7 +143,7 @@ bool PermissionVerification::VerifySuperviseKiaServicePermission() const
 }
 bool PermissionVerification::IsLocalDebugOtherAppsCall(const uint32_t specifyTokenId, int32_t targetUserId) const
 {
-    return false;
+    return AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_;
 }
 }  // namespace AAFwk
 }  // namespace OHOS
