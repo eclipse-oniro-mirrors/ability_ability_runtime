@@ -1412,7 +1412,7 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, DirectBoot_DeviceAndProductConfigu
             state.parameters = {
                 {"const.edm.is_enterprise_device", enterprise},
                 {"persist.edm.edm_enable", edm},
-                {"security.developermode.state", developer},
+                {"const.security.developermode.state", developer},
                 {"const.abilityms.enable_auto_startup", enabled},
             };
             AppUtils::GetInstance().isAutoStartupSupported_.isLoaded = false;

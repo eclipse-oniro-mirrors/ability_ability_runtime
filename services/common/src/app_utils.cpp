@@ -92,7 +92,7 @@ constexpr const char* SUPPORT_NATIVE_UI_ABILITY = "persist.sys.abilityms.support
 constexpr const char* PRODUCT_APPBOOT_SETTING_ENABLED = "const.product.appboot.setting.enabled";
 constexpr const char* IS_ENTERPRISE_DEVICE_TYPE = "const.edm.is_enterprise_device";
 constexpr const char* IS_EDM_ENABLE = "persist.edm.edm_enable";
-constexpr const char* IS_DEVELOPER_MODE = "security.developermode.state";
+constexpr const char* IS_DEVELOPER_MODE = "const.security.developermode.state";
 constexpr const char* SUPPORT_AUTO_STARTUP = "const.abilityms.enable_auto_startup";
 constexpr const char* SUPPORT_DELAYED_PROCESS_EXIT = "const.abilityms.support_delayed_process_exit";
 // Support prepare terminate
