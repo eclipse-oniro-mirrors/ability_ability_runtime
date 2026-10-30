@@ -3987,7 +3987,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, InitializeAppCloneRequest_001, Tes
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest InitializeAppCloneRequest_001 start");
     MyStatus::GetInstance().isSupportMultiInstance_ = true;
 
-    // Mock StartAbilityUtils::startAbilityInfo
+    // Mock ctx.startAbilityInfo
     auto mockStartInfo = std::make_shared<StartAbilityInfo>();
     mockStartInfo->abilityInfo.bundleName = "com.ohos.test";
     mockStartInfo->abilityInfo.name = "MainAbility";
@@ -4044,7 +4044,7 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, InitializeAppCloneRequest_002, Tes
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest InitializeAppCloneRequest_002 start");
     MyStatus::GetInstance().isSupportMultiInstance_ = true;
 
-    // Mock StartAbilityUtils::startAbilityInfo
+    // Mock ctx.startAbilityInfo
     auto mockStartInfo = std::make_shared<StartAbilityInfo>();
     mockStartInfo->abilityInfo.bundleName = "com.ohos.test";
     mockStartInfo->abilityInfo.name = "MainAbility";
@@ -4985,8 +4985,6 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_01
     mockStartInfo->abilityInfo.applicationInfo.bundleName = "com.ohos.test";
     mockStartInfo->abilityInfo.applicationInfo.uid = 1000;
     mockStartInfo->status = ERR_OK;
-    StartAbilityUtils::isSandBoxClone = true;
-    StartAbilityUtils::startAbilityInfo = mockStartInfo;
 
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
@@ -5026,14 +5024,14 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_01
     param.hostBundleName = "";
     param.specifiedFullTokenId = 0;
     param.isGamePrelaunch = false;
+    param.startAbilityCtx.isSandBoxClone = true;
+    param.startAbilityCtx.startAbilityInfo = mockStartInfo;
 
     abilityMs_->StartAbilityForAppCloneSelector(param);
 
     MyStatus::GetInstance().isSupportMultiInstance_ = true;
     MyStatus::GetInstance().paramGetBoolParameter_ = true;
     MyStatus::GetInstance().arGetAbilityRecord_ = nullptr;
-    StartAbilityUtils::startAbilityInfo = nullptr;
-    StartAbilityUtils::isSandBoxClone = false;
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest StartAbilityForAppCloneSelector_014 end");
 }
 
@@ -5059,8 +5057,6 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_01
     mockStartInfo->abilityInfo.applicationInfo.bundleName = "com.ohos.test";
     mockStartInfo->abilityInfo.applicationInfo.uid = 1000;
     mockStartInfo->status = ERR_OK;
-    StartAbilityUtils::isSandBoxClone = true;
-    StartAbilityUtils::startAbilityInfo = mockStartInfo;
 
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
@@ -5100,6 +5096,8 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_01
     param.hostBundleName = "";
     param.specifiedFullTokenId = 0;
     param.isGamePrelaunch = false;
+    param.startAbilityCtx.isSandBoxClone = true;
+    param.startAbilityCtx.startAbilityInfo = mockStartInfo;
 
     abilityMs_->StartAbilityForAppCloneSelector(param);
 
@@ -5107,8 +5105,6 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_01
     MyStatus::GetInstance().isSupportMultiInstance_ = true;
     MyStatus::GetInstance().paramGetBoolParameter_ = true;
     MyStatus::GetInstance().arGetAbilityRecord_ = nullptr;
-    StartAbilityUtils::startAbilityInfo = nullptr;
-    StartAbilityUtils::isSandBoxClone = false;
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest StartAbilityForAppCloneSelector_015 end");
 }
 
@@ -5134,8 +5130,6 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_01
     mockStartInfo->abilityInfo.applicationInfo.bundleName = "com.ohos.test";
     mockStartInfo->abilityInfo.applicationInfo.uid = 1000;
     mockStartInfo->status = ERR_OK;
-    StartAbilityUtils::isSandBoxClone = true;
-    StartAbilityUtils::startAbilityInfo = mockStartInfo;
 
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
@@ -5169,14 +5163,14 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, StartAbilityForAppCloneSelector_01
     param.hostBundleName = "";
     param.specifiedFullTokenId = 0;
     param.isGamePrelaunch = false;
+    param.startAbilityCtx.isSandBoxClone = true;
+    param.startAbilityCtx.startAbilityInfo = mockStartInfo;
 
     abilityMs_->StartAbilityForAppCloneSelector(param);
 
     MyStatus::GetInstance().isSupportMultiInstance_ = true;
     MyStatus::GetInstance().paramGetBoolParameter_ = true;
     MyStatus::GetInstance().arGetAbilityRecord_ = nullptr;
-    StartAbilityUtils::startAbilityInfo = nullptr;
-    StartAbilityUtils::isSandBoxClone = false;
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirteenthTest StartAbilityForAppCloneSelector_016 end");
 }
 #endif // SUPPORT_SCREEN
