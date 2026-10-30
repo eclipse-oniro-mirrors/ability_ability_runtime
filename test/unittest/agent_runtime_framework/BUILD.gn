@@ -20,6 +20,7 @@ group("unittest") {
     "agent_bundle_event_callback_test:agent_bundle_event_callback_test",
     "agent_card_db_mgr_test:agent_card_db_mgr_test",
     "agent_card_mgr_test:agent_card_mgr_test",
+    "agent_card_migration_helper_test:agent_card_migration_helper_test",
     "agent_card_test:agent_card_test",
     "agent_card_utils_test:agent_card_utils_test",
     "agent_connect_manager_test:agent_connect_manager_test",

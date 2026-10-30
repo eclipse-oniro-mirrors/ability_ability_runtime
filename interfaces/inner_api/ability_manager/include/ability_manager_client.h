@@ -3200,6 +3200,8 @@ public:
 
     ErrCode UnregisterWillInsightIntentExecuteCallback();
 
+    ErrCode GetDynamicAgentCardsForMigration(std::string &jsonStr);
+
     /**
      * @brief Query the type of a configured skill (e.g. UI ability vs service
      * extension). No special permission; queried for the caller's user.

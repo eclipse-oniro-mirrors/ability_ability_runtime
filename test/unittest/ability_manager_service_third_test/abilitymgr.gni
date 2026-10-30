@@ -156,6 +156,7 @@ abilityms_files = [
 
   #utils
   "${ability_runtime_services_path}/abilitymgr/src/utils/ability_event_util.cpp",
+  "${ability_runtime_services_path}/abilitymgr/src/agent_extension/agent_card_migration_helper.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/agent_ability_util.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/agent_caller_identity_util.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/ability_permission_util.cpp",

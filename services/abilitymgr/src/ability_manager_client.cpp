@@ -2890,6 +2890,13 @@ ErrCode AbilityManagerClient::UnregisterWillInsightIntentExecuteCallback()
     return abms->UnregisterWillInsightIntentExecuteCallback();
 }
 
+ErrCode AbilityManagerClient::GetDynamicAgentCardsForMigration(std::string &jsonStr)
+{
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    return abms->GetDynamicAgentCardsForMigration(jsonStr);
+}
+
 ErrCode AbilityManagerClient::QuerySkillType(const std::string &bundleName, const std::string &moduleName,
     const std::string &skillName, int32_t &skillType)
 {

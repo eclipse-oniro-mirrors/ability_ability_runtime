@@ -50,6 +50,10 @@ public:
 
     int32_t QueryAllData(std::vector<StoredAgentCardEntry> &cards);
 
+    bool IsMigrationCompleted();
+
+    void MarkMigrationCompleted();
+
     /**
      * @brief Backs up the whole kv store to a backup file in the storage directory.
      * Called after successful data mutations so the corrupted-store recovery can

@@ -15,7 +15,9 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
 #include <thread>
+#include <tuple>
 
 #define private public
 #define protected public
@@ -1617,7 +1619,7 @@ HWTEST_F(AgentCardMgrTest, HandlePreInstallBackfill_001, TestSize.Level1)
     MyFlag::retGetBundleInfos = false;
     MyFlag::getBundleInfoV9CallNames.clear();
 
-    EXPECT_NE(agentCardMgr.HandlePreInstallBackfill(100), ERR_OK);
+    EXPECT_NE(agentCardMgr.HandleInstallBackfill(100, true), ERR_OK);
     EXPECT_TRUE(MyFlag::getBundleInfoV9CallNames.empty());
 }
 
@@ -1639,7 +1641,7 @@ HWTEST_F(AgentCardMgrTest, HandlePreInstallBackfill_002, TestSize.Level1)
     MyFlag::mockProfileInfoContent = TEST_PROFILE_CONTENT;
     MyFlag::getBundleInfoV9CallNames.clear();
 
-    EXPECT_EQ(agentCardMgr.HandlePreInstallBackfill(100), ERR_OK);
+    EXPECT_EQ(agentCardMgr.HandleInstallBackfill(100, true), ERR_OK);
     ASSERT_EQ(MyFlag::insertDataCallNames.size(), 1);
     EXPECT_EQ(MyFlag::insertDataCallNames[0], "pre.bundle");
 }
@@ -1663,7 +1665,7 @@ HWTEST_F(AgentCardMgrTest, HandlePreInstallBackfill_003, TestSize.Level1)
     MyFlag::mockProfileInfoContent = TEST_PROFILE_CONTENT;
     MyFlag::getBundleInfoV9CallNames.clear();
 
-    EXPECT_EQ(agentCardMgr.HandlePreInstallBackfill(100), ERR_OK);
+    EXPECT_EQ(agentCardMgr.HandleInstallBackfill(100, true), ERR_OK);
     ASSERT_EQ(MyFlag::insertDataCallNames.size(), 2);
     EXPECT_EQ(MyFlag::insertDataCallNames[0], "pre1");
     EXPECT_EQ(MyFlag::insertDataCallNames[1], "pre2");
@@ -1695,7 +1697,7 @@ HWTEST_F(AgentCardMgrTest, HandlePreInstallBackfill_004, TestSize.Level1)
         R"("version":"1.0.0","category":"productivity","defaultInputModes":["text"],)"
         R"("defaultOutputModes":["text"]}]})";
 
-    EXPECT_EQ(agentCardMgr.HandlePreInstallBackfill(100), ERR_OK);
+    EXPECT_EQ(agentCardMgr.HandleInstallBackfill(100, true), ERR_OK);
 
     ASSERT_EQ(MyFlag::insertDataCallNames.size(), 1);
     EXPECT_EQ(MyFlag::insertDataCallNames[0], "pre.bundle");
@@ -1715,7 +1717,7 @@ HWTEST_F(AgentCardMgrTest, HandlePreInstallBackfill_005, TestSize.Level1)
     MyFlag::retGetBundleInfos = true;
     // mockBundleInfos stays empty (cleared by SetUp)
 
-    EXPECT_EQ(agentCardMgr.HandlePreInstallBackfill(100), ERR_OK);
+    EXPECT_EQ(agentCardMgr.HandleInstallBackfill(100, true), ERR_OK);
     EXPECT_TRUE(MyFlag::insertDataCallNames.empty());
 }
 
@@ -1735,7 +1737,7 @@ HWTEST_F(AgentCardMgrTest, HandlePreInstallBackfill_006, TestSize.Level1)
     MyFlag::retInsertData = -1; // every per-bundle HandleBundleInstall fails at InsertData
 
     // Backfill swallows per-bundle failures (warn+continue) and still returns OK.
-    EXPECT_EQ(agentCardMgr.HandlePreInstallBackfill(100), ERR_OK);
+    EXPECT_EQ(agentCardMgr.HandleInstallBackfill(100, true), ERR_OK);
     ASSERT_EQ(MyFlag::insertDataCallNames.size(), 2);
     EXPECT_EQ(MyFlag::insertDataCallNames[0], "pre1");
     EXPECT_EQ(MyFlag::insertDataCallNames[1], "pre2");
@@ -1754,8 +1756,8 @@ HWTEST_F(AgentCardMgrTest, HandlePreInstallBackfill_007, TestSize.Level1)
     MyFlag::retGetBundleInfos = true;
     MyFlag::mockProfileInfoContent = TEST_PROFILE_CONTENT;
 
-    EXPECT_EQ(agentCardMgr.HandlePreInstallBackfill(100), ERR_OK);
-    EXPECT_EQ(agentCardMgr.HandlePreInstallBackfill(100), ERR_OK);
+    EXPECT_EQ(agentCardMgr.HandleInstallBackfill(100, true), ERR_OK);
+    EXPECT_EQ(agentCardMgr.HandleInstallBackfill(100, true), ERR_OK);
     ASSERT_EQ(MyFlag::insertDataCallNames.size(), 2);
     EXPECT_EQ(MyFlag::insertDataCallNames[0], "pre.bundle");
     EXPECT_EQ(MyFlag::insertDataCallNames[1], "pre.bundle");
@@ -1776,7 +1778,7 @@ HWTEST_F(AgentCardMgrTest, HandlePreInstallBackfill_008, TestSize.Level1)
     MyFlag::retGetBundleInfos = true;
     MyFlag::mockProfileInfoContent = TEST_PROFILE_CONTENT;
 
-    EXPECT_EQ(agentCardMgr.HandlePreInstallBackfill(100), ERR_OK);
+    EXPECT_EQ(agentCardMgr.HandleInstallBackfill(100, true), ERR_OK);
     ASSERT_EQ(MyFlag::insertDataCallNames.size(), 1);
     EXPECT_EQ(MyFlag::insertDataCallNames[0], "keep.bundle");
 }
@@ -1793,11 +1795,11 @@ HWTEST_F(AgentCardMgrTest, HandlePreInstallBackfill_009, TestSize.Level1)
     MyFlag::retGetBundleInfos = true;
 
     constexpr int32_t ALL_USERID = -3;
-    EXPECT_EQ(agentCardMgr.HandlePreInstallBackfill(100), ERR_OK);
+    EXPECT_EQ(agentCardMgr.HandleInstallBackfill(100, true), ERR_OK);
     EXPECT_EQ(MyFlag::lastGetBundleInfosUserId, 100);
     EXPECT_NE(MyFlag::lastGetBundleInfosUserId, ALL_USERID);
 
-    EXPECT_EQ(agentCardMgr.HandlePreInstallBackfill(101), ERR_OK);
+    EXPECT_EQ(agentCardMgr.HandleInstallBackfill(101, true), ERR_OK);
     EXPECT_EQ(MyFlag::lastGetBundleInfosUserId, 101);
 }
 /**
@@ -1851,6 +1853,269 @@ HWTEST_F(AgentCardMgrTest, HandleBundleInstallTest_024, TestSize.Level1)
     EXPECT_TRUE(MyFlag::deleteDataCallNames.empty());
     ASSERT_EQ(MyFlag::insertDataCallNames.size(), 1);
     EXPECT_EQ(MyFlag::insertDataCallNames[0], "test.bundle");
+}
+
+nlohmann::json MakeMigrationCard(const std::string &agentId, const std::string &name = "test")
+{
+    nlohmann::json j;
+    j["agentId"] = agentId;
+    j["name"] = name;
+    j["version"] = "1.0.0";
+    j["type"] = "APP";
+    return j;
+}
+
+struct MigrationBundle {
+    std::string bundleName;
+    int32_t userId;
+    std::vector<nlohmann::json> cards;
+};
+
+std::string MakeMigrationJson(const std::vector<MigrationBundle> &bundles)
+{
+    nlohmann::json root = nlohmann::json::array();
+    for (const auto &bundle : bundles) {
+        nlohmann::json entry;
+        entry["bundleName"] = bundle.bundleName;
+        entry["userId"] = bundle.userId;
+        entry["cards"] = bundle.cards;
+        root.push_back(entry);
+    }
+    return root.dump();
+}
+
+/**
+ * @tc.name: MigrateDynamicAgentCards_001
+ * @tc.desc: Empty json string, should return ERR_OK and not call InsertData
+ */
+HWTEST_F(AgentCardMgrTest, MigrateDynamicAgentCards_001, TestSize.Level1)
+{
+    auto &mgr = AgentCardMgr::GetInstance();
+    int32_t ret = mgr.MigrateDynamicAgentCards("");
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(MyFlag::insertDataCallNames.empty());
+}
+
+/**
+ * @tc.name: MigrateDynamicAgentCards_002
+ * @tc.desc: Invalid json string, should return INNER_ERR
+ */
+HWTEST_F(AgentCardMgrTest, MigrateDynamicAgentCards_002, TestSize.Level1)
+{
+    auto &mgr = AgentCardMgr::GetInstance();
+    int32_t ret = mgr.MigrateDynamicAgentCards("not_valid_json");
+    EXPECT_EQ(ret, AAFwk::INNER_ERR);
+    EXPECT_TRUE(MyFlag::insertDataCallNames.empty());
+}
+
+/**
+ * @tc.name: MigrateDynamicAgentCards_003
+ * @tc.desc: Valid json but not an array, should return INNER_ERR
+ */
+HWTEST_F(AgentCardMgrTest, MigrateDynamicAgentCards_003, TestSize.Level1)
+{
+    auto &mgr = AgentCardMgr::GetInstance();
+    int32_t ret = mgr.MigrateDynamicAgentCards(R"({"key":"value"})");
+    EXPECT_EQ(ret, AAFwk::INNER_ERR);
+}
+
+/**
+ * @tc.name: MigrateDynamicAgentCards_004
+ * @tc.desc: Single bundle with single card, DB empty, should migrate and call InsertData
+ */
+HWTEST_F(AgentCardMgrTest, MigrateDynamicAgentCards_004, TestSize.Level1)
+{
+    auto &mgr = AgentCardMgr::GetInstance();
+    std::string jsonStr = MakeMigrationJson({
+        {"com.test.app1", 100, {MakeMigrationCard("card1", "Card One")}}
+    });
+    MyFlag::retQueryData = ERR_NAME_NOT_FOUND;
+
+    int32_t ret = mgr.MigrateDynamicAgentCards(jsonStr);
+    EXPECT_EQ(ret, ERR_OK);
+    ASSERT_EQ(MyFlag::insertDataCallNames.size(), 1);
+    EXPECT_EQ(MyFlag::insertDataCallNames[0], "com.test.app1");
+    ASSERT_EQ(MyFlag::insertedEntries.size(), 1);
+    EXPECT_EQ(MyFlag::insertedEntries[0].card.agentId, "card1");
+    EXPECT_EQ(MyFlag::insertedEntries[0].updateSource, AgentCardUpdateSource::API);
+}
+
+/**
+ * @tc.name: MigrateDynamicAgentCards_005
+ * @tc.desc: Card FromJson fails, should skip the card
+ */
+HWTEST_F(AgentCardMgrTest, MigrateDynamicAgentCards_005, TestSize.Level1)
+{
+    auto &mgr = AgentCardMgr::GetInstance();
+    std::string jsonStr = MakeMigrationJson({
+        {"com.test.app2", 100, {MakeMigrationCard("card2")}}
+    });
+    MyFlag::retFromJson = false;
+    MyFlag::retQueryData = ERR_NAME_NOT_FOUND;
+
+    int32_t ret = mgr.MigrateDynamicAgentCards(jsonStr);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(MyFlag::insertDataCallNames.empty());
+}
+
+/**
+ * @tc.name: MigrateDynamicAgentCards_006
+ * @tc.desc: Multiple cards in one bundle, all should be migrated
+ */
+HWTEST_F(AgentCardMgrTest, MigrateDynamicAgentCards_006, TestSize.Level1)
+{
+    auto &mgr = AgentCardMgr::GetInstance();
+    std::string jsonStr = MakeMigrationJson({
+        {"com.test.app3", 100, {
+            MakeMigrationCard("card3", "Card Three"),
+            MakeMigrationCard("card4", "Card Four"),
+            MakeMigrationCard("card5", "Card Five")
+        }}
+    });
+    MyFlag::retQueryData = ERR_NAME_NOT_FOUND;
+
+    int32_t ret = mgr.MigrateDynamicAgentCards(jsonStr);
+    EXPECT_EQ(ret, ERR_OK);
+    ASSERT_EQ(MyFlag::insertDataCallNames.size(), 1);
+    ASSERT_EQ(MyFlag::insertedEntries.size(), 3);
+    EXPECT_EQ(MyFlag::insertedEntries[0].card.agentId, "card3");
+    EXPECT_EQ(MyFlag::insertedEntries[1].card.agentId, "card4");
+    EXPECT_EQ(MyFlag::insertedEntries[2].card.agentId, "card5");
+}
+
+/**
+ * @tc.name: MigrateDynamicAgentCards_007
+ * @tc.desc: Bundle entry missing required fields, should be skipped
+ */
+HWTEST_F(AgentCardMgrTest, MigrateDynamicAgentCards_007, TestSize.Level1)
+{
+    auto &mgr = AgentCardMgr::GetInstance();
+    nlohmann::json root = nlohmann::json::array();
+    nlohmann::json entry1;
+    entry1["bundleName"] = "com.test.missing_userid";
+    entry1["cards"] = nlohmann::json::array({MakeMigrationCard("card6")});
+    root.push_back(entry1);
+    nlohmann::json entry2;
+    entry2["userId"] = 100;
+    entry2["cards"] = nlohmann::json::array({MakeMigrationCard("card7")});
+    root.push_back(entry2);
+    nlohmann::json entry3;
+    entry3["bundleName"] = "com.test.missing_cards";
+    entry3["userId"] = 100;
+    root.push_back(entry3);
+
+    int32_t ret = mgr.MigrateDynamicAgentCards(root.dump());
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(MyFlag::insertDataCallNames.empty());
+}
+
+/**
+ * @tc.name: MigrateDynamicAgentCards_008
+ * @tc.desc: QueryData returns error other than ERR_NAME_NOT_FOUND, bundle should be skipped
+ */
+HWTEST_F(AgentCardMgrTest, MigrateDynamicAgentCards_008, TestSize.Level1)
+{
+    auto &mgr = AgentCardMgr::GetInstance();
+    std::string jsonStr = MakeMigrationJson({
+        {"com.test.app4", 100, {MakeMigrationCard("card8")}}
+    });
+    MyFlag::retQueryData = AAFwk::INNER_ERR;
+
+    int32_t ret = mgr.MigrateDynamicAgentCards(jsonStr);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(MyFlag::insertDataCallNames.empty());
+}
+
+/**
+ * @tc.name: MigrateDynamicAgentCards_009
+ * @tc.desc: Existing card with same agentId, should update in place
+ */
+HWTEST_F(AgentCardMgrTest, MigrateDynamicAgentCards_009, TestSize.Level1)
+{
+    auto &mgr = AgentCardMgr::GetInstance();
+    AgentCard existingCard;
+    existingCard.agentId = "card9";
+    existingCard.name = "Old Name";
+    existingCard.version = "0.9.0";
+    StoredAgentCardEntry existingEntry = {existingCard, AgentCardUpdateSource::BUNDLE};
+    MyFlag::queryDataEntries = {existingEntry};
+    MyFlag::retQueryData = ERR_OK;
+
+    std::string jsonStr = MakeMigrationJson({
+        {"com.test.app5", 100, {MakeMigrationCard("card9", "New Name")}}
+    });
+
+    int32_t ret = mgr.MigrateDynamicAgentCards(jsonStr);
+    EXPECT_EQ(ret, ERR_OK);
+    ASSERT_EQ(MyFlag::insertDataCallNames.size(), 1);
+    ASSERT_EQ(MyFlag::insertedEntries.size(), 1);
+    EXPECT_EQ(MyFlag::insertedEntries[0].card.agentId, "card9");
+    EXPECT_EQ(MyFlag::insertedEntries[0].card.name, "New Name");
+    EXPECT_EQ(MyFlag::insertedEntries[0].updateSource, AgentCardUpdateSource::API);
+}
+
+/**
+ * @tc.name: MigrateDynamicAgentCards_010
+ * @tc.desc: Existing card with different agentId + new card, should keep existing and add new
+ */
+HWTEST_F(AgentCardMgrTest, MigrateDynamicAgentCards_010, TestSize.Level1)
+{
+    auto &mgr = AgentCardMgr::GetInstance();
+    AgentCard existingCard;
+    existingCard.agentId = "old_card";
+    existingCard.name = "Old";
+    StoredAgentCardEntry existingEntry = {existingCard, AgentCardUpdateSource::BUNDLE};
+    MyFlag::queryDataEntries = {existingEntry};
+    MyFlag::retQueryData = ERR_OK;
+
+    std::string jsonStr = MakeMigrationJson({
+        {"com.test.app6", 100, {MakeMigrationCard("new_card", "New")}}
+    });
+
+    int32_t ret = mgr.MigrateDynamicAgentCards(jsonStr);
+    EXPECT_EQ(ret, ERR_OK);
+    ASSERT_EQ(MyFlag::insertedEntries.size(), 2);
+    EXPECT_EQ(MyFlag::insertedEntries[0].card.agentId, "old_card");
+    EXPECT_EQ(MyFlag::insertedEntries[0].updateSource, AgentCardUpdateSource::BUNDLE);
+    EXPECT_EQ(MyFlag::insertedEntries[1].card.agentId, "new_card");
+    EXPECT_EQ(MyFlag::insertedEntries[1].updateSource, AgentCardUpdateSource::API);
+}
+
+/**
+ * @tc.name: MigrateDynamicAgentCards_011
+ * @tc.desc: Multiple bundles, all should be processed
+ */
+HWTEST_F(AgentCardMgrTest, MigrateDynamicAgentCards_011, TestSize.Level1)
+{
+    auto &mgr = AgentCardMgr::GetInstance();
+    std::string jsonStr = MakeMigrationJson({
+        {"com.test.app7", 100, {MakeMigrationCard("card10")}},
+        {"com.test.app8", 101, {MakeMigrationCard("card11")}}
+    });
+    MyFlag::retQueryData = ERR_NAME_NOT_FOUND;
+    MyFlag::syncQueryDataWithInsert = false;
+
+    int32_t ret = mgr.MigrateDynamicAgentCards(jsonStr);
+    EXPECT_EQ(ret, ERR_OK);
+    ASSERT_EQ(MyFlag::insertDataCallNames.size(), 2);
+    EXPECT_EQ(MyFlag::insertDataCallNames[0], "com.test.app7");
+    EXPECT_EQ(MyFlag::insertDataCallNames[1], "com.test.app8");
+}
+
+/**
+ * @tc.name: MigrateDynamicAgentCards_012
+ * @tc.desc: Empty cards array in bundle entry, should skip the bundle
+ */
+HWTEST_F(AgentCardMgrTest, MigrateDynamicAgentCards_012, TestSize.Level1)
+{
+    auto &mgr = AgentCardMgr::GetInstance();
+    std::string jsonStr = MakeMigrationJson({
+        {"com.test.app9", 100, {}}
+    });
+
+    int32_t ret = mgr.MigrateDynamicAgentCards(jsonStr);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(MyFlag::insertDataCallNames.empty());
 }
 
 } // namespace AgentRuntime

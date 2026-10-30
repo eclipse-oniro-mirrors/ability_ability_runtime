@@ -470,6 +470,7 @@ private:
     int32_t RegisterWillInsightIntentExecuteCallbackInner(MessageParcel &data, MessageParcel &reply);
     int32_t UnregisterWillInsightIntentExecuteCallbackInner(MessageParcel &data, MessageParcel &reply);
     int32_t QuerySkillTypeInner(MessageParcel &data, MessageParcel &reply);
+    int32_t GetDynamicAgentCardsForMigrationInner(MessageParcel &data, MessageParcel &reply);
     int32_t StartSelfUIAbilityByAppContextInner(MessageParcel &data, MessageParcel &reply);
     int32_t StartSandboxCloneAbilityInner(MessageParcel &data, MessageParcel &reply);
 };

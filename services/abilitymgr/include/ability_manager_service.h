@@ -2321,6 +2321,8 @@ public:
 
     int32_t UnregisterWillInsightIntentExecuteCallback() override;
 
+    int32_t GetDynamicAgentCardsForMigration(std::string &jsonStr) override;
+
     int32_t QuerySkillType(const std::string &bundleName, const std::string &moduleName,
         const std::string &skillName, int32_t &skillType) override;
 

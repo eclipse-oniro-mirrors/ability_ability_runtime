@@ -35,6 +35,7 @@
 #include "agent_service_connection.h"
 #include "app_mgr_client.h"
 #include "bundle_mgr_helper.h"
+#include "ffrt.h"
 #include "hilog_tag_wrapper.h"
 #include "if_system_ability_manager.h"
 #include "in_process_call_wrapper.h"
@@ -177,7 +178,6 @@ void AgentManagerService::OnRemoveSystemAbility(int32_t systemAbilityId, const s
 
 void AgentManagerService::TryBackfillPreInstallCards()
 {
-    // Fire once, after both BMS and accountmgr report ready.
     bool shouldTrigger = false;
     {
         std::lock_guard<std::mutex> lock(backfillState_.mutex);
@@ -187,7 +187,9 @@ void AgentManagerService::TryBackfillPreInstallCards()
         }
     }
     if (shouldTrigger) {
-        AgentCardMgr::BackfillPreInstallCards();
+        ffrt::submit([] {
+            AgentCardMgr::BackfillCards();
+        });
     }
 }
 
