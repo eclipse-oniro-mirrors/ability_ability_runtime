@@ -45,10 +45,6 @@ public:
 
     bool IsShellCall() const;
 
-    bool VerifyStartLocalDebug(int32_t tokenId) const;
-
-    bool IsAllowLocalDebugOtherApps(bool isDebugFromLocal) const;
-
     bool CheckSpecificSystemAbilityAccessPermission() const;
 
     bool VerifyRunningInfoPerm() const;

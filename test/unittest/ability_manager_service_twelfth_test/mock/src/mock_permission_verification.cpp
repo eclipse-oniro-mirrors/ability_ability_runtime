@@ -32,16 +32,6 @@ bool PermissionVerification::IsShellCall() const
     return (MyFlag::flag_ & MyFlag::FLAG::IS_SHELL_CALL);
 }
 
-bool PermissionVerification::VerifyStartLocalDebug(int32_t tokenId) const
-{
-    return (MyFlag::flag_ & MyFlag::FLAG::IS_PERFORM_LOCAL_DEBUG);
-}
-
-bool PermissionVerification::IsAllowLocalDebugOtherApps(bool isDebugFromLocal) const
-{
-    return (MyFlag::flag_ & MyFlag::FLAG::IS_ALLOW_LOCAL_DEBUG);
-}
-
 bool PermissionVerification::CheckSpecificSystemAbilityAccessPermission() const
 {
     return !!(MyFlag::flag_);
