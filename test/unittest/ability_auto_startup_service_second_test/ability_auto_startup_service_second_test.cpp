@@ -13,14 +13,20 @@
  * limitations under the License.
  */
 
+#include "ability_auto_startup_service.h"
+
+#include <memory>
+#include <string>
+#include <vector>
+
 #include <gtest/gtest.h>
 
 #include "ability_auto_startup_data_manager.h"
-#include "ability_auto_startup_service.h"
 #include "ability_manager_errors.h"
 #include "app_utils.h"
-#include "auto_startup_callback_stub.h"
 #include "auto_startup_callback_proxy.h"
+#include "auto_startup_callback_stub.h"
+#include "direct_boot_test_support.h"
 #include "hilog_tag_wrapper.h"
 #include "mock_bundle_mgr_helper.h"
 #include "mock_my_flag.h"
@@ -1288,6 +1294,184 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, GetAutoStartupStatusForSelf_001, T
     auto result = abilityAutoStartupService->GetAutoStartupStatusForSelf(callerTokenId, isAutoStartEnabled);
     EXPECT_EQ(result, ERR_OK);
     GTEST_LOG_(INFO) << "GetAutoStartupStatusForSelf_001 end";
+}
+HWTEST_F(AbilityAutoStartupServiceSecondTest, DirectBoot_TargetPermissionMatrix, TestSize.Level1)
+{
+    DirectBootServiceTestContext context;
+    auto info = context.Target("direct.permission");
+    auto &state = GetDirectBootTestState();
+    for (bool allow : {false, true}) {
+        for (bool window : {false, true}) {
+            SCOPED_TRACE(std::to_string(allow) + ":" + std::to_string(window));
+            state.targets[info.bundleName].allowDirectBoot = allow;
+            state.targets[info.bundleName].allowWindow = window;
+            EXPECT_EQ(context.service_->CheckBootAppPermission(info),
+                allow ? ERR_OK : ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT);
+        }
+    }
+    EXPECT_EQ(state.windowPermissionQueries, 0);
+    EXPECT_EQ(state.tokenQueries, 0);
+    state.targets.clear();
+    EXPECT_EQ(context.service_->CheckBootAppPermission(info), ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT);
+}
+
+HWTEST_F(AbilityAutoStartupServiceSecondTest, DirectBoot_SetRejectsMissingTargetPermissionWithoutWriting,
+    TestSize.Level1)
+{
+    DirectBootServiceTestContext context;
+    auto info = context.Target("direct.set");
+    auto &state = GetDirectBootTestState();
+    auto &target = state.targets[info.bundleName];
+    target.allowDirectBoot = false;
+    EXPECT_EQ(context.service_->SetApplicationAutoStartup(info), ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT);
+    EXPECT_EQ(context.store_->writes, 0);
+    target.allowDirectBoot = true;
+    target.allowWindow = false;
+    EXPECT_EQ(context.service_->SetApplicationAutoStartup(info), ERR_OK);
+    EXPECT_EQ(state.windowPermissionQueries, 0);
+    const int32_t writes = context.store_->writes;
+    target.allowDirectBoot = false;
+    EXPECT_EQ(context.service_->SetApplicationAutoStartup(info), ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT);
+    EXPECT_EQ(context.store_->writes, writes);
+    std::vector<AutoStartupInfo> infos;
+    ASSERT_EQ(context.service_->QueryAllAutoStartupApplicationsWithoutPermission(infos, info.userId), ERR_OK);
+    ASSERT_EQ(infos.size(), 1);
+    EXPECT_TRUE(infos.front().isDirectBoot);
+}
+
+HWTEST_F(AbilityAutoStartupServiceSecondTest, DirectBoot_AfterUnlockSetDoesNotRequireTargetPermissions, TestSize.Level1)
+{
+    DirectBootServiceTestContext context;
+    auto info = context.Target("direct.afterUnlock", false);
+    auto &state = GetDirectBootTestState();
+    state.targets[info.bundleName].allowDirectBoot = false;
+    state.targets[info.bundleName].allowWindow = false;
+    state.deviceType = "default";
+    EXPECT_EQ(context.service_->SetApplicationAutoStartup(info), ERR_OK);
+    EXPECT_EQ(state.tokenQueries, 0);
+    EXPECT_EQ(state.permissionQueries, 0);
+}
+
+HWTEST_F(AbilityAutoStartupServiceSecondTest, DirectBoot_SetDoesNotIntroduceDeviceRestriction, TestSize.Level1)
+{
+    DirectBootServiceTestContext context;
+    auto info = context.Target("direct.nonpc");
+    GetDirectBootTestState().deviceType = "default";
+    EXPECT_EQ(context.service_->SetApplicationAutoStartup(info), ERR_OK);
+    EXPECT_GT(GetDirectBootTestState().permissionQueries, 0);
+}
+
+HWTEST_F(AbilityAutoStartupServiceSecondTest, DirectBoot_CallerPermissionErrorsRemainUnchanged, TestSize.Level1)
+{
+    DirectBootServiceTestContext context;
+    auto info = context.Target("direct.caller");
+    auto &state = GetDirectBootTestState();
+    state.systemCaller = false;
+    EXPECT_EQ(context.service_->SetApplicationAutoStartup(info), ERR_NOT_SYSTEM_APP);
+    state.systemCaller = true;
+    state.callerPermission = false;
+    EXPECT_EQ(context.service_->SetApplicationAutoStartup(info), CHECK_PERMISSION_FAILED);
+    EXPECT_EQ(context.store_->writes, 0);
+    EXPECT_EQ(state.tokenQueries, 0);
+}
+
+HWTEST_F(AbilityAutoStartupServiceSecondTest, DirectBoot_ChangeModeAndCancelRoundTrip, TestSize.Level1)
+{
+    DirectBootServiceTestContext context;
+    auto info = context.Target("direct.update");
+    ASSERT_EQ(context.service_->SetApplicationAutoStartup(info), ERR_OK);
+    info.isDirectBoot = false;
+    ASSERT_EQ(context.service_->SetApplicationAutoStartup(info), ERR_OK);
+    std::vector<AutoStartupInfo> infos;
+    ASSERT_EQ(context.service_->QueryAllAutoStartupApplicationsWithoutPermission(infos, info.userId), ERR_OK);
+    ASSERT_EQ(infos.size(), 1);
+    EXPECT_FALSE(infos.front().isDirectBoot);
+    ASSERT_EQ(context.service_->CancelApplicationAutoStartup(info), ERR_OK);
+    infos.clear();
+    ASSERT_EQ(context.service_->QueryAllAutoStartupApplicationsWithoutPermission(infos, info.userId), ERR_OK);
+    EXPECT_TRUE(infos.empty());
+}
+
+HWTEST_F(AbilityAutoStartupServiceSecondTest, DirectBoot_DeviceAndProductConfigurationMatrix, TestSize.Level1)
+{
+    DirectBootServiceTestContext context;
+    auto &state = GetDirectBootTestState();
+    auto info = context.Target("direct.configuration");
+    state.parameters.clear();
+    AppUtils::GetInstance().isAutoStartupSupported_.isLoaded = false;
+    EXPECT_EQ(context.service_->SetApplicationAutoStartup(info), ERR_NOT_SUPPORTED_PRODUCT_TYPE);
+    EXPECT_EQ(context.store_->writes, 0);
+    for (const auto &device : {"default", "phone", "tablet", "2in1"}) {
+        state.deviceType = device;
+        for (int32_t flags = 0; flags < 16; ++flags) {
+            SCOPED_TRACE(std::string(device) + ":" + std::to_string(flags));
+            const bool enterprise = (flags & 1) != 0;
+            const bool edm = (flags & 2) != 0;
+            const bool developer = (flags & 4) != 0;
+            const bool enabled = (flags & 8) != 0;
+            state.parameters = {
+                {"const.edm.is_enterprise_device", enterprise},
+                {"persist.edm.edm_enable", edm},
+                {"security.developermode.state", developer},
+                {"const.abilityms.enable_auto_startup", enabled},
+            };
+            AppUtils::GetInstance().isAutoStartupSupported_.isLoaded = false;
+            const bool supported = enterprise || (edm && developer) || enabled;
+            const int32_t expected = supported ? ERR_OK : ERR_NOT_SUPPORTED_PRODUCT_TYPE;
+            std::vector<AutoStartupInfo> infos;
+            EXPECT_EQ(context.service_->SetApplicationAutoStartup(info), expected);
+            EXPECT_EQ(context.service_->QueryAllAutoStartupApplications(infos, info.userId), expected);
+            EXPECT_EQ(infos.size(), supported ? 1 : 0);
+            EXPECT_EQ(context.service_->CancelApplicationAutoStartup(info), expected);
+            EXPECT_TRUE(context.store_->entries.empty());
+        }
+    }
+}
+
+/*
+ * Feature: AbilityAutoStartupService
+ * Function: CheckBootAppPermission
+ * FunctionPoints: A target without a granted token fails permission verification on every device type.
+ */
+HWTEST_F(AbilityAutoStartupServiceSecondTest, DirectBoot_BootAppPermissionWithoutToken, TestSize.Level1)
+{
+    DirectBootServiceTestContext context;
+    AutoStartupInfo info;
+    info.bundleName = "nonexistent.boot.permission.target";
+    info.userId = 100;
+    EXPECT_EQ(context.service_->CheckBootAppPermission(info), ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT);
+}
+
+HWTEST_F(AbilityAutoStartupServiceSecondTest, DirectBoot_SetUsesResolvedTargetToken, TestSize.Level1)
+{
+    DirectBootServiceTestContext context;
+    auto info = context.Target("direct.resolved");
+    auto other = context.Target("direct.other");
+    auto &state = GetDirectBootTestState();
+    const auto resolvedToken = state.targets[info.bundleName].tokenId;
+    state.targets[info.bundleName].tokenId = resolvedToken + 10000;
+    state.targets[info.bundleName].appIndex = 10000;
+    state.targets[other.bundleName].allowDirectBoot = false;
+    // Client-supplied identity must not replace the token returned by BundleManager.
+    info.accessTokenId = other.accessTokenId;
+    ASSERT_EQ(context.service_->SetApplicationAutoStartup(info), ERR_OK);
+    EXPECT_EQ(state.tokenQueries, 0);
+    std::vector<AutoStartupInfo> infos;
+    ASSERT_EQ(context.service_->QueryAllAutoStartupApplicationsWithoutPermission(infos, info.userId), ERR_OK);
+    ASSERT_EQ(infos.size(), 1);
+    EXPECT_EQ(infos.front().accessTokenId, std::to_string(resolvedToken + 10000));
+}
+
+HWTEST_F(AbilityAutoStartupServiceSecondTest, DirectBoot_BootAppPermissionRejectsInvalidToken, TestSize.Level1)
+{
+    DirectBootServiceTestContext context;
+    auto info = context.Target("direct.invalidToken");
+    for (const auto &token : {"", "0", "-1", "4294967296", "1001suffix"}) {
+        SCOPED_TRACE(token);
+        info.accessTokenId = token;
+        EXPECT_EQ(context.service_->CheckBootAppPermission(info), ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT);
+    }
+    EXPECT_EQ(GetDirectBootTestState().permissionQueries, 0);
 }
 } // namespace AAFwk
 } // namespace OHOS

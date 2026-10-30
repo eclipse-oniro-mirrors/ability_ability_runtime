@@ -476,23 +476,31 @@ bool ETSEnvironment::InitAbcLinker(ani_env *env)
     ani_ref undefinedRef = nullptr;
     if ((status = env->GetUndefined(&undefinedRef)) != ANI_OK) {
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "GetUndefined failed, status: %{public}d", status);
+        env->GlobalReference_Delete(vmEntry_.abcLinkerClass_);
+        vmEntry_.abcLinkerClass_ = nullptr;
         return false;
     }
 
     ani_array refArray = nullptr;
     if ((status = env->Array_New(ARG_ZERO, undefinedRef, &refArray)) != ANI_OK) {
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "Array_New_Ref failed, status: %{public}d", status);
+        env->GlobalReference_Delete(vmEntry_.abcLinkerClass_);
+        vmEntry_.abcLinkerClass_ = nullptr;
         return false;
     }
 
     ani_object abcObj = CreateRuntimeLinker(env, vmEntry_.abcLinkerClass_, undefinedRef, refArray);
     if (abcObj == nullptr) {
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "CreateRuntimeLinker failed");
+        env->GlobalReference_Delete(vmEntry_.abcLinkerClass_);
+        vmEntry_.abcLinkerClass_ = nullptr;
         return false;
     }
 
     if ((status = env->GlobalReference_Create(abcObj, &vmEntry_.abcLinkerRef_)) != ANI_OK) {
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "GlobalReference_Create failed, status: %{public}d", status);
+        env->GlobalReference_Delete(vmEntry_.abcLinkerClass_);
+        vmEntry_.abcLinkerClass_ = nullptr;
         return false;
     }
 

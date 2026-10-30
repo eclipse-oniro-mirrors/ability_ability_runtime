@@ -36,17 +36,18 @@ public:
     EcologicalRuleInterceptor() = default;
     ~EcologicalRuleInterceptor() = default;
     ErrCode DoProcess(AbilityInterceptorParam &param) override;
-    bool DoProcess(Want &want, int32_t userId);
-    ErrCode QueryAtomicServiceStartupRule(Want &want, sptr<IRemoteObject> callerToken,
-        int32_t userId, AtomicServiceStartupRule &rule, sptr<Want> &replaceWant);
+    bool DoProcess(StartAbilityContext &ctx, Want &want, int32_t userId);
+    ErrCode QueryAtomicServiceStartupRule(StartAbilityContext &ctx, Want &want,
+        sptr<IRemoteObject> callerToken, int32_t userId, AtomicServiceStartupRule &rule, sptr<Want> &replaceWant);
 
 private:
-    void GetEcologicalTargetInfo(const Want &want, const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo,
-        ErmsCallerInfo &callerInfo);
-    void GetEcologicalCallerInfo(const Want &want, ErmsCallerInfo &callerInfo, int32_t userId,
-        const sptr<IRemoteObject> &callerToken = nullptr);
-    void InitErmsCallerInfo(const Want &want, const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo,
+    void GetEcologicalTargetInfo(const StartAbilityContext &ctx, const Want &want,
+        const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo, ErmsCallerInfo &callerInfo);
+    void GetEcologicalCallerInfo(const StartAbilityContext &ctx, const Want &want,
         ErmsCallerInfo &callerInfo, int32_t userId, const sptr<IRemoteObject> &callerToken = nullptr);
+    void InitErmsCallerInfo(const StartAbilityContext &ctx, const Want &want,
+        const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo, ErmsCallerInfo &callerInfo, int32_t userId,
+        const sptr<IRemoteObject> &callerToken = nullptr, bool skipCallerInfo = false);
     static int32_t GetAppTypeByBundleType(int32_t bundleType);
 };
 } // namespace AAFwk

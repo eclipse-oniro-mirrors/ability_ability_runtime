@@ -25,6 +25,7 @@
 #undef private
 
 #include "ability_record.h"
+#include "start_ability_context.h"
 #include <fuzzer/FuzzedDataProvider.h>
 
 using namespace OHOS::AAFwk;
@@ -70,13 +71,13 @@ void StartAbilityUtilsFuzztest1(bool boolParam, std::string &stringParam, int32_
     sptr<Token> callerToken = GetFuzzAbilityToken();
     StartAbilityUtils::GetAppIndex(want, callerToken, userId, int32Param);
     AppExecFwk::ApplicationInfo appInfo;
-    StartAbilityUtils::GetApplicationInfo(stringParam, int32Param, appInfo);
+    StartAbilityUtils::GetApplicationInfo(StartAbilityContext{}, stringParam, int32Param, appInfo);
     AppExecFwk::AbilityInfo abilityInfo;
-    StartAbilityUtils::GetCallerAbilityInfo(nullptr, abilityInfo);
-    StartAbilityUtils::GetCallerAbilityInfo(callerToken, abilityInfo);
+    StartAbilityUtils::GetCallerAbilityInfo(StartAbilityContext{}, nullptr, abilityInfo);
+    StartAbilityUtils::GetCallerAbilityInfo(StartAbilityContext{}, callerToken, abilityInfo);
     StartAbilityUtils::CheckAppProvisionMode(want, int32Param, callerToken);
-    std::shared_ptr<StartAbilityInfoWrap>  startAbilityInfoWrap =
-        std::make_shared<StartAbilityInfoWrap>(want, int32Param, int32Param, callerToken, boolParam);
+    StartAbilityContext ctx;
+    StartAbilityUtils::ResolveAndCacheStartAbilityInfo(ctx, want, int32Param, int32Param, callerToken, boolParam);
     StartAbilityInfo::CreateStartAbilityInfo(want, int32Param, int32Param, nullptr);
     StartAbilityInfo::CreateCallerAbilityInfo(nullptr);
     StartAbilityInfo::CreateCallerAbilityInfo(callerToken);

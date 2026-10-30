@@ -53,6 +53,7 @@ ohos_shared_library("aniwantagent") {
     "c_utils:utils",
     "hilog:libhilog",
     "ipc:ipc_core",
+    "node:node_header_notice",
     "runtime_core:ani",
   ]
 

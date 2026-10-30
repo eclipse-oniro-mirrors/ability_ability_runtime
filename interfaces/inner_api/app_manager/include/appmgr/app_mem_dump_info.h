@@ -28,6 +28,12 @@ enum class MemDumpType : uint32_t {
     KMP_KOTLIN = 3,
     ARKWEB_JS = 4,
     ARKTS_HEAP = 5,
+    // Thread stack leak detection. DumpMem with this type runs asynchronously:
+    // it scans /proc/self/smaps for orphan thread stack regions, unwinds the
+    // leaked stacks, and reports the result via the IMemDumpCallback callback
+    // (NOT via the synchronous dumpResult out-parameter used by other types).
+    // Callers must wait for the callback and cannot rely on a sync return.
+    THREAD_STACK_LEAK = 6,
 };
 
 struct MemDumpInfo : public Parcelable {

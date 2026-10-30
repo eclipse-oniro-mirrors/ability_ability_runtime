@@ -1216,6 +1216,16 @@ enum {
     ERR_ATTRIBUTION_NOT_FOUND = 2099503,
 
     /**
+     * Result(2099504) for get pid by call stub failed, callee record not found.
+     */
+    ERR_CALL_STUB_NOT_FOUND = 2099504,
+
+    /**
+     * Result(2099505) for get pid by call stub failed, callee pid is invalid (<=0).
+     */
+    ERR_CALLEE_PID_INVALID = 2099505,
+
+    /**
      * Native error(3000000) for target bundle not exist.
      */
     ERR_CODE_NOT_EXIST = 3000000,
@@ -1491,6 +1501,11 @@ enum NativeFreeInstallError {
      * Result(29360228) for sandbox clone index is invalid.
      */
     ERR_SANDBOX_CLONE_INDEX_INVALID = 29360228,
+
+    /*
+     * The target application is not authorized for startup before the first unlock.
+     */
+    ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT = 29360229,
 
     /* codes 29360270 - 29360280 are reserved for StartSelfUIAbility by delayed process exit */
     /*

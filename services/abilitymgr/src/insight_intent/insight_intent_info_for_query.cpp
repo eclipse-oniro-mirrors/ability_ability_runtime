@@ -845,7 +845,7 @@ bool InsightIntentInfoForQuery::UnmarshallingVector(
         if (g_parseResult != ERR_OK) {
             TAG_LOGE(AAFwkTag::INTENT, "parse result: %{public}d", g_parseResult);
             g_parseResult = ERR_OK;
-            return false;
+            continue;
         }
         infos.emplace_back(std::move(info));
     }

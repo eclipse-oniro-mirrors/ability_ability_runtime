@@ -55,6 +55,7 @@ ohos_shared_library("startuplistener_napi") {
   ]
 
   external_deps = [
+    "libuv:uv",
     "napi:ace_napi",
     "node:node_header_notice",
   ]

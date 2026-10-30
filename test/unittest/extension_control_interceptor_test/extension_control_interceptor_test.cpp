@@ -20,6 +20,7 @@
 #include "mock/status_singleton.h"
 #include "ability_record.h"
 #include "start_ability_utils.h"
+#include "start_ability_context.h"
 using namespace testing::ext;
 using namespace OHOS::AppExecFwk;
 
@@ -116,13 +117,14 @@ HWTEST_F(ExtensionControlInterceptorTest, DoProcess_002, TestSize.Level1)
     int32_t userId = 100;
     bool isWithUI = false;
     sptr<IRemoteObject> token = GetAbilityToken();
-    auto callerInfo = std::make_shared<StartAbilityInfo>();
-    callerInfo->abilityInfo.type = AppExecFwk::AbilityType::PAGE;
-    StartAbilityUtils::callerAbilityInfo = callerInfo;
+    StartAbilityContext ctx;
+    auto callerInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    callerInfo->type = AppExecFwk::AbilityType::PAGE;
+    ctx.callerAbilityInfo = callerInfo;
     AbilityInterceptorParam param =
-        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(token).Build();
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(token)
+        .StartAbilityCtx(ctx).Build();
     EXPECT_EQ(extensionControlInterceptor->DoProcess(param), ERR_OK);
-    StartAbilityUtils::callerAbilityInfo.reset();
 }
 
 /*
@@ -141,11 +143,12 @@ HWTEST_F(ExtensionControlInterceptorTest, DoProcess_003, TestSize.Level1)
     int32_t userId = 100;
     bool isWithUI = false;
     sptr<IRemoteObject> token = GetAbilityToken();
-    auto callerInfo = std::make_shared<StartAbilityInfo>();
-    callerInfo->abilityInfo.type = AppExecFwk::AbilityType::EXTENSION;
-    callerInfo->abilityInfo.bundleName = "com.example.different";
-    callerInfo->abilityInfo.extensionTypeName = "testExtension";
-    StartAbilityUtils::callerAbilityInfo = callerInfo;
+    StartAbilityContext ctx;
+    auto callerInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    callerInfo->type = AppExecFwk::AbilityType::EXTENSION;
+    callerInfo->bundleName = "com.example.different";
+    callerInfo->extensionTypeName = "testExtension";
+    ctx.callerAbilityInfo = callerInfo;
     StatusSingleton::GetInstance().SetHasAbilityAccess(true);
     auto targetAbilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
     targetAbilityInfo->bundleName = "com.example.target";
@@ -155,9 +158,8 @@ HWTEST_F(ExtensionControlInterceptorTest, DoProcess_003, TestSize.Level1)
     StatusSingleton::GetInstance().SetExtensionStartDefaultEnable(true);
     AbilityInterceptorParam param =
         InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(token)
-        .AbilityInfo(targetAbilityInfo).Build();
+        .AbilityInfo(targetAbilityInfo).StartAbilityCtx(ctx).Build();
     EXPECT_EQ(extensionControlInterceptor->DoProcess(param), ERR_OK);
-    StartAbilityUtils::callerAbilityInfo.reset();
     StatusSingleton::GetInstance().Reset();
 }
 
@@ -523,14 +525,15 @@ HWTEST_F(ExtensionControlInterceptorTest, GetCallerAbilityInfo_001, TestSize.Lev
     int32_t userId = 100;
     bool isWithUI = false;
     sptr<IRemoteObject> token = GetAbilityToken();
-    auto callerInfo = std::make_shared<StartAbilityInfo>();
-    callerInfo->abilityInfo.type = AppExecFwk::AbilityType::PAGE;
-    StartAbilityUtils::callerAbilityInfo = callerInfo;
+    StartAbilityContext ctx;
+    auto callerInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    callerInfo->type = AppExecFwk::AbilityType::PAGE;
+    ctx.callerAbilityInfo = callerInfo;
     AbilityInterceptorParam param =
-        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(token).Build();
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(token)
+        .StartAbilityCtx(ctx).Build();
     AppExecFwk::AbilityInfo callerAbilityInfo;
     bool result = interceptor->GetCallerAbilityInfo(param, callerAbilityInfo);
-    StartAbilityUtils::callerAbilityInfo.reset();
     EXPECT_TRUE(result);
 }
 
@@ -549,16 +552,17 @@ HWTEST_F(ExtensionControlInterceptorTest, GetCallerAbilityInfo_002, TestSize.Lev
     int32_t userId = 100;
     bool isWithUI = false;
     sptr<IRemoteObject> token = GetAbilityToken();
-    auto callerInfo = std::make_shared<StartAbilityInfo>();
-    callerInfo->abilityInfo.type = AppExecFwk::AbilityType::EXTENSION;
-    callerInfo->abilityInfo.bundleName = "com.example.fuzzTest";
-    StartAbilityUtils::callerAbilityInfo = callerInfo;
-    
+    StartAbilityContext ctx;
+    auto callerInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    callerInfo->type = AppExecFwk::AbilityType::EXTENSION;
+    callerInfo->bundleName = "com.example.fuzzTest";
+    ctx.callerAbilityInfo = callerInfo;
+
     AbilityInterceptorParam param =
-        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(token).Build();
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(token)
+        .StartAbilityCtx(ctx).Build();
     AppExecFwk::AbilityInfo callerAbilityInfo;
     bool result = interceptor->GetCallerAbilityInfo(param, callerAbilityInfo);
-    StartAbilityUtils::callerAbilityInfo.reset();
     EXPECT_TRUE(result);
 }
 

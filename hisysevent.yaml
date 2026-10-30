@@ -23,7 +23,7 @@ LIFECYCLE_TIMEOUT:
   STACK: {type: STRING, desc: main thread stacktrace}
   HEAVIEST_STACK: {type: STRING, desc: most frequent sampled stack}
   SAMPLER_COUNT: {type: INT32, desc: processed samples or -1 when unavailable}
-  LOG_VALIDITY: {type: STRING, desc: checkpoint delay and dump result and dump latency and notification feedback latency in ms}
+  LOG_VALIDITY: {type: STRING, desc: "checkpoint delay, dump result, dump and feedback latency in ms; optional final pipe-separated independent AppFreeze count in 60s"}
 
 LIFECYCLE_TIMEOUT_WARNING:
   __BASE: {type: FAULT, level: CRITICAL, tag: STABILITY, desc: ability timeout}
@@ -35,7 +35,7 @@ LIFECYCLE_TIMEOUT_WARNING:
   STACK: {type: STRING, desc: main thread stacktrace}
   HEAVIEST_STACK: {type: STRING, desc: most frequent sampled stack}
   SAMPLER_COUNT: {type: INT32, desc: processed samples or -1 when unavailable}
-  LOG_VALIDITY: {type: STRING, desc: checkpoint delay and dump result and dump latency and notification feedback latency in ms}
+  LOG_VALIDITY: {type: STRING, desc: "checkpoint delay, dump result, dump and feedback latency in ms; optional final pipe-separated independent AppFreeze count in 60s"}
 
 LIFECYCLE_HALF_TIMEOUT:
   __BASE: {type: FAULT, level: CRITICAL, tag: STABILITY, desc: ability timeout}
@@ -47,7 +47,7 @@ LIFECYCLE_HALF_TIMEOUT:
   STACK: {type: STRING, desc: main thread stacktrace}
   HEAVIEST_STACK: {type: STRING, desc: most frequent sampled stack}
   SAMPLER_COUNT: {type: INT32, desc: processed samples or -1 when unavailable}
-  LOG_VALIDITY: {type: STRING, desc: checkpoint delay and dump result and dump latency and notification feedback latency in ms}
+  LOG_VALIDITY: {type: STRING, desc: "checkpoint delay, dump result, dump and feedback latency in ms; optional final pipe-separated independent AppFreeze count in 60s"}
 
 LIFECYCLE_HALF_TIMEOUT_WARNING:
   __BASE: {type: FAULT, level: CRITICAL, tag: STABILITY, desc: ability timeout}
@@ -59,7 +59,7 @@ LIFECYCLE_HALF_TIMEOUT_WARNING:
   STACK: {type: STRING, desc: main thread stacktrace}
   HEAVIEST_STACK: {type: STRING, desc: most frequent sampled stack}
   SAMPLER_COUNT: {type: INT32, desc: processed samples or -1 when unavailable}
-  LOG_VALIDITY: {type: STRING, desc: checkpoint delay and dump result and dump latency and notification feedback latency in ms}
+  LOG_VALIDITY: {type: STRING, desc: "checkpoint delay, dump result, dump and feedback latency in ms; optional final pipe-separated independent AppFreeze count in 60s"}
 
 APP_LIFECYCLE_TIMEOUT:
   __BASE: {type: FAULT, level: CRITICAL, tag: STABILITY, desc: application timeout}
@@ -89,7 +89,7 @@ THREAD_BLOCK_3S:
   STACK: {type: STRING, desc: stacktrace of current process}
   HEAVIEST_STACK: {type: STRING, desc: most frequent sampled stack}
   SAMPLER_COUNT: {type: INT32, desc: processed samples or -1 when unavailable}
-  LOG_VALIDITY: {type: STRING, desc: checkpoint delay and dump result and dump latency and notification feedback latency in ms}
+  LOG_VALIDITY: {type: STRING, desc: "checkpoint delay, dump result, dump and feedback latency in ms; optional final pipe-separated independent AppFreeze count in 60s"}
 
 THREAD_BLOCK_6S:
   __BASE: {type: FAULT, level: CRITICAL, tag: STABILITY, desc: application freeze}
@@ -101,7 +101,7 @@ THREAD_BLOCK_6S:
   STACK: {type: STRING, desc: main thread stacktrace}
   HEAVIEST_STACK: {type: STRING, desc: most frequent sampled stack}
   SAMPLER_COUNT: {type: INT32, desc: processed samples or -1 when unavailable}
-  LOG_VALIDITY: {type: STRING, desc: checkpoint delay and dump result and dump latency and notification feedback latency in ms}
+  LOG_VALIDITY: {type: STRING, desc: "checkpoint delay, dump result, dump and feedback latency in ms; optional final pipe-separated independent AppFreeze count in 60s"}
 
 APP_INPUT_BLOCK:
   __BASE: {type: FAULT, level: CRITICAL, tag: STABILITY, desc: application freeze}
@@ -113,7 +113,7 @@ APP_INPUT_BLOCK:
   STACK: {type: STRING, desc: main thread stacktrace}
   HEAVIEST_STACK: {type: STRING, desc: most frequent sampled stack}
   SAMPLER_COUNT: {type: INT32, desc: processed samples or -1 when unavailable}
-  LOG_VALIDITY: {type: STRING, desc: checkpoint delay and dump result and dump latency and notification feedback latency in ms}
+  LOG_VALIDITY: {type: STRING, desc: "checkpoint delay, dump result, dump and feedback latency in ms; optional final pipe-separated independent AppFreeze count in 60s"}
 
 # fault event
 

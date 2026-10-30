@@ -22,6 +22,7 @@
 
 #include "ability_info.h"
 #include "ability_manager_errors.h"
+#include "start_ability_context.h"
 #include "start_options.h"
 #include "want.h"
 
@@ -36,6 +37,7 @@ struct AbilityInterceptorParam {
     bool isVisible = false;     // DisposedRule/EcologicalRule: "is this a visible start?"
     sptr<IRemoteObject> callerToken = nullptr;
     std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo;  // resolved target abilityInfo passed to the interceptor
+    StartAbilityContext startAbilityCtx;  // start-ability request-scoped context (default-constructed = absent)
 
     // Per-interceptor contexts, accessed via GetContext<T>()
     struct EcologicalCtx {
@@ -103,6 +105,11 @@ public:
     InterceptorParamBuilder &AbilityInfo(const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo)
     {
         param_.abilityInfo = abilityInfo;
+        return *this;
+    }
+    InterceptorParamBuilder &StartAbilityCtx(const StartAbilityContext &ctx)
+    {
+        param_.startAbilityCtx = ctx;
         return *this;
     }
 

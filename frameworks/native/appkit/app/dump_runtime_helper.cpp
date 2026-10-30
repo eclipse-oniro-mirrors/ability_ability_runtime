@@ -110,6 +110,11 @@ static constexpr size_t THREAD_STACK_READ_CHUNK = 4096; // 4KB batch read size
 static void ScanChunkForPcs(const uint8_t *buf, uint64_t bytesValid,
     const std::shared_ptr<OHOS::HiviewDFX::DfxMaps> &maps, std::vector<uintptr_t> &pcs)
 {
+    // Defensive null check: callers currently guard maps before calling, but
+    // keep this function self-consistent so future callers cannot deref null.
+    if (maps == nullptr) {
+        return;
+    }
     for (uint64_t offset = bytesValid; offset >= sizeof(uintptr_t) &&
         pcs.size() < THREAD_STACK_LEAK_MAX_FRAMES; offset -= THREAD_STACK_SCAN_UNIT) {
         uintptr_t value = 0;
@@ -432,6 +437,11 @@ void DumpRuntimeHelper::DumpMem(const OHOS::AppExecFwk::MemDumpInfo &info, sptr<
         return;
     }
 
+    if (info.dumpType == MemDumpType::THREAD_STACK_LEAK) {
+        SubmitThreadStackLeakTask(callback);
+        return;
+    }
+
     std::string dumpResult;
     if (info.dumpType == MemDumpType::KMP_KOTLIN) {
         DumpKmpKotlinHeap(info);
@@ -448,6 +458,65 @@ void DumpRuntimeHelper::DumpMem(const OHOS::AppExecFwk::MemDumpInfo &info, sptr<
     if (client != nullptr && callback != nullptr) {
         client->ReportDumpMemResult(callback, dumpResult);
     }
+}
+
+bool DumpRuntimeHelper::ReportThreadStackLeakResult(const sptr<IMemDumpCallback> &callback,
+    const std::string &dumpResult)
+{
+    auto client = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+    if (client == nullptr) {
+        return false;
+    }
+    try {
+        auto ret = client->ReportDumpMemResult(callback, dumpResult);
+        if (ret == RESULT_OK) {
+            return true;
+        }
+        TAG_LOGE(AAFwkTag::APPKIT, "ReportDumpMemResult failed: %{public}d", static_cast<int32_t>(ret));
+    } catch (const std::exception &e) {
+        TAG_LOGE(AAFwkTag::APPKIT, "ReportDumpMemResult exception: %{public}s", e.what());
+    } catch (...) {
+        TAG_LOGE(AAFwkTag::APPKIT, "ReportDumpMemResult unknown exception");
+    }
+    return false;
+}
+
+void DumpRuntimeHelper::SubmitThreadStackLeakTask(sptr<IMemDumpCallback> callback)
+{
+    // Async branch: result is reported via IPC callback. On success, the service
+    // invokes the callback. On failure, we fall back to invoking the callback
+    // directly on this ffrt worker thread so the caller does not hang.
+    auto task = [callback]() {
+        if (callback == nullptr) {
+            TAG_LOGE(AAFwkTag::APPKIT, "callback is null, cannot report thread stack leak result");
+            return;
+        }
+        std::string dumpResult;
+        try {
+            dumpResult = DumpRuntimeHelper::DetectAndUnwindThreadStackLeak();
+        } catch (const std::exception &e) {
+            TAG_LOGE(AAFwkTag::APPKIT, "DetectAndUnwindThreadStackLeak exception: %{public}s", e.what());
+            dumpResult = "DetectAndUnwindThreadStackLeak failed: exception occurred\n";
+        } catch (...) {
+            TAG_LOGE(AAFwkTag::APPKIT, "DetectAndUnwindThreadStackLeak unknown exception");
+            dumpResult = "DetectAndUnwindThreadStackLeak failed: unknown exception\n";
+        }
+        if (!ReportThreadStackLeakResult(callback, dumpResult)) {
+            // Fallback: invoke callback directly on this ffrt worker thread so the
+            // caller does not hang waiting for the result. The callback is expected
+            // to be a Binder proxy whose OnMemDumpDone marshals across the binder
+            // driver (thread-safe); an in-process stub implementation must guarantee
+            // its own thread-safety since this call runs off the caller's thread.
+            try {
+                callback->OnMemDumpDone(dumpResult);
+            } catch (const std::exception &e) {
+                TAG_LOGE(AAFwkTag::APPKIT, "OnMemDumpDone exception: %{public}s", e.what());
+            } catch (...) {
+                TAG_LOGE(AAFwkTag::APPKIT, "OnMemDumpDone unknown exception");
+            }
+        }
+    };
+    ffrt::submit(task, {}, {}, {ffrt::task_attr().name("ffrt_DumpThreadStackLeak")});
 }
 
 void DumpRuntimeHelper::DumpNativeHeap(const OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
@@ -600,7 +669,7 @@ int32_t DumpRuntimeHelper::ParseTidFromMapName(const std::string &mapName)
     }
     return static_cast<int32_t>(val);
 }
- 
+
 // Check whether the given tid is still alive in current process by looking up
 // /proc/self/task/<tid>. Returns true if the tid directory exists.
 bool DumpRuntimeHelper::IsTidAlive(int32_t tid)
@@ -634,7 +703,7 @@ size_t DumpRuntimeHelper::CountTotalThreads()
     closedir(dir);
     return count;
 }
- 
+
 // Parse /proc/self/smaps and collect all thread stack map regions whose name
 // starts with THREAD_STACK_MAP_PREFIX. Each region's tid is extracted from the
 // map name and validated against /proc/self/task.
@@ -712,10 +781,14 @@ std::vector<uintptr_t> DumpRuntimeHelper::CollectPcsFromStack(
             break;
         }
         uint64_t chunkSize = chunkEnd - chunkBegin;
-        buffer.resize(chunkSize);
+        // Use explicit cast to silence narrowing/portability warnings:
+        // chunkSize is uint64_t but resize() takes size_t, and the remote
+        // address must go through uintptr_t before reinterpret_cast to void*
+        // to avoid truncation on 32-bit targets.
+        buffer.resize(static_cast<size_t>(chunkSize));
         size_t readLen = static_cast<size_t>(chunkSize);
         struct iovec localiov = {buffer.data(), readLen};
-        struct iovec remoteiov = {reinterpret_cast<void *>(chunkBegin), readLen};
+        struct iovec remoteiov = {reinterpret_cast<void *>(static_cast<uintptr_t>(chunkBegin)), readLen};
         ssize_t nread = process_vm_readv(getpid(), &localiov, 1, &remoteiov, 1, 0);
         if (nread <= 0) {
             TAG_LOGW(AAFwkTag::APPKIT, "process_vm_readv failed, errno:%{public}d", errno);
@@ -730,7 +803,7 @@ std::vector<uintptr_t> DumpRuntimeHelper::CollectPcsFromStack(
     TAG_LOGI(AAFwkTag::APPKIT, "CollectPcsFromStack: pcs:%{public}zu", pcs.size());
     return pcs;
 }
- 
+
 // Build a standardized stack string for one leaked thread stack using
 // faultloggerd's Unwinder + DfxFrameFormatter, which produces the canonical
 // "#00 pc <pc> <mapName>(<funcName>+<offset>)" format.
@@ -753,27 +826,41 @@ std::string DumpRuntimeHelper::FormatLeakedStack(int32_t tid, const std::vector<
 
 std::string DumpRuntimeHelper::DetectAndUnwindThreadStackLeak()
 {
-    std::string dumpResult;
     size_t totalThreadCount = CountTotalThreads();
     auto regions = ParseLeakedThreadStackRegions();
+    size_t leakCount = regions.size();
+    std::string statusSuffix;
+    std::string body;
+
     if (regions.empty()) {
         TAG_LOGI(AAFwkTag::APPKIT, "no leaked thread stack found, total thread count:%{public}zu",
             totalThreadCount);
-        return dumpResult;
+    } else {
+        auto maps = OHOS::HiviewDFX::DfxMaps::Create(0, true, false);
+        if (maps == nullptr) {
+            TAG_LOGE(AAFwkTag::APPKIT, "failed to create DfxMaps, skip stack unwinding");
+            statusSuffix = " (unwind failed)";
+        } else {
+            body = UnwindLeakedStacks(regions, maps);
+        }
     }
-    auto maps = OHOS::HiviewDFX::DfxMaps::Create(0, true, false);
-    if (maps == nullptr) {
-        TAG_LOGE(AAFwkTag::APPKIT, "failed to create DfxMaps, skip stack unwinding");
-        std::ostringstream errHeader;
-        errHeader << "total thread count: " << totalThreadCount
-                  << ", orphan thread stack count: " << regions.size() << " (unwind failed)\n";
-        dumpResult.append(errHeader.str());
-        return dumpResult;
-    }
+
+    std::ostringstream header;
+    header << "total thread count: " << totalThreadCount
+           << ", leak thread stack count: " << leakCount << statusSuffix << "\n";
+    return header.str() + body;
+}
+
+std::string DumpRuntimeHelper::UnwindLeakedStacks(
+    const std::vector<ThreadStackRegion> &regions,
+    std::shared_ptr<OHOS::HiviewDFX::DfxMaps> &maps)
+{
+    std::string dumpResult;
     size_t printedStacks = 0;
     for (const auto &region : regions) {
         if (printedStacks >= THREAD_STACK_LEAK_MAX_STACKS) {
-            TAG_LOGI(AAFwkTag::APPKIT, "max stack limit reached, printedStacks:%{public}zu totalOrphan:%{public}zu",
+            TAG_LOGI(AAFwkTag::APPKIT,
+                "max stack limit reached, printedStacks:%{public}zu totalOrphan:%{public}zu",
                 printedStacks, regions.size());
             break;
         }
@@ -791,10 +878,6 @@ std::string DumpRuntimeHelper::DetectAndUnwindThreadStackLeak()
         printedStacks++;
         dumpResult.append(stackStr);
     }
-    std::ostringstream header;
-    header << "total thread count: " << totalThreadCount
-           << ", orphan thread stack count: " << regions.size() << "\n";
-    dumpResult.insert(0, header.str());
     return dumpResult;
 }
 

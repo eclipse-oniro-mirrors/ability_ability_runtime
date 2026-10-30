@@ -21,6 +21,7 @@
 #include "ecological_rule/ability_ecological_rule_mgr_service.h"
 #include "interceptor/ecological_rule_interceptor.h"
 #include "start_ability_utils.h"
+#include "start_ability_context.h"
 #include "parameters.h"
 using namespace testing;
 using namespace testing::ext;
@@ -32,8 +33,6 @@ namespace AAFwk {
 namespace {
 constexpr const char* ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE =
     "persist.sys.abilityms.support.ecologicalrulemgrservice";
-constexpr int32_t ERMS_ISALLOW_RESULTCODE = 10;
-constexpr int32_t ERMS_ISALLOW_EMBED_RESULTCODE = 1;
 constexpr const char* BUNDLE_NAME_SCENEBOARD = "com.ohos.sceneboard";
 }
 
@@ -126,7 +125,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, QueryAtomicServiceStartupRule_001, TestS
     AtomicServiceStartupRule rule;
     sptr<Want> replaceWant = nullptr;
     int userId = 100;
-    ErrCode result = interceptor->QueryAtomicServiceStartupRule(want, callerToken, userId, rule, replaceWant);
+    StartAbilityContext ctx;
+    ErrCode result = interceptor->QueryAtomicServiceStartupRule(ctx, want, callerToken, userId, rule, replaceWant);
     EXPECT_EQ(result, ERR_INVALID_CALLER);
 }
 
@@ -150,7 +150,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, QueryAtomicServiceStartupRule_002, TestS
     sptr<Want> replaceWant = nullptr;
     OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "false");
     int userId = 100;
-    ErrCode result = interceptor->QueryAtomicServiceStartupRule(want, callerToken, userId, rule, replaceWant);
+    StartAbilityContext ctx;
+    ErrCode result = interceptor->QueryAtomicServiceStartupRule(ctx, want, callerToken, userId, rule, replaceWant);
     EXPECT_EQ(result, ERR_CAPABILITY_NOT_SUPPORT);
 }
 
@@ -175,7 +176,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, QueryAtomicServiceStartupRule_003, TestS
     OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "true");
     BundleMgrHelper::isBundleManagerHelperNull = true;
     int userId = 100;
-    ErrCode result = interceptor->QueryAtomicServiceStartupRule(want, callerToken, userId, rule, replaceWant);
+    StartAbilityContext ctx;
+    ErrCode result = interceptor->QueryAtomicServiceStartupRule(ctx, want, callerToken, userId, rule, replaceWant);
     EXPECT_EQ(result, BMS_NOT_CONNECTED);
 }
 
@@ -201,7 +203,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, QueryAtomicServiceStartupRule_004, TestS
     BundleMgrHelper::isBundleManagerHelperNull = false;
     BundleMgrHelper::retGetLaunchWantForBundle = -1;
     int userId = 100;
-    ErrCode result = interceptor->QueryAtomicServiceStartupRule(want, callerToken, userId, rule, replaceWant);
+    StartAbilityContext ctx;
+    ErrCode result = interceptor->QueryAtomicServiceStartupRule(ctx, want, callerToken, userId, rule, replaceWant);
     EXPECT_EQ(result, -1);
 }
 
@@ -228,7 +231,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, QueryAtomicServiceStartupRule_005, TestS
     BundleMgrHelper::retGetLaunchWantForBundle = 0;
     StartAbilityInfo::createStartAbilityInfo = nullptr;
     int userId = 100;
-    ErrCode result = interceptor->QueryAtomicServiceStartupRule(want, callerToken, userId, rule, replaceWant);
+    StartAbilityContext ctx;
+    ErrCode result = interceptor->QueryAtomicServiceStartupRule(ctx, want, callerToken, userId, rule, replaceWant);
     EXPECT_EQ(result, INNER_ERR);
 }
 
@@ -256,7 +260,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, QueryAtomicServiceStartupRule_006, TestS
     StartAbilityInfo::createStartAbilityInfo = std::make_shared<StartAbilityInfo>();
     StartAbilityInfo::createStartAbilityInfo->status = -1;
     int userId = 100;
-    ErrCode result = interceptor->QueryAtomicServiceStartupRule(want, callerToken, userId, rule, replaceWant);
+    StartAbilityContext ctx;
+    ErrCode result = interceptor->QueryAtomicServiceStartupRule(ctx, want, callerToken, userId, rule, replaceWant);
     EXPECT_EQ(result, -1);
 }
 
@@ -285,7 +290,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, QueryAtomicServiceStartupRule_007, TestS
     StartAbilityInfo::createStartAbilityInfo->status = 0;
     AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = -1;
     int userId = 100;
-    ErrCode result = interceptor->QueryAtomicServiceStartupRule(want, callerToken, userId, rule, replaceWant);
+    StartAbilityContext ctx;
+    ErrCode result = interceptor->QueryAtomicServiceStartupRule(ctx, want, callerToken, userId, rule, replaceWant);
     EXPECT_EQ(result, -1);
 }
 
@@ -315,7 +321,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, QueryAtomicServiceStartupRule_008, TestS
     AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = 0;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = ERMS_ISALLOW_RESULTCODE;
     int userId = 100;
-    ErrCode result = interceptor->QueryAtomicServiceStartupRule(want, callerToken, userId, rule, replaceWant);
+    StartAbilityContext ctx;
+    ErrCode result = interceptor->QueryAtomicServiceStartupRule(ctx, want, callerToken, userId, rule, replaceWant);
     EXPECT_EQ(result, ERR_OK);
 }
 
@@ -346,7 +353,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, QueryAtomicServiceStartupRule_009, TestS
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = -1;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.replaceWant = sptr<Want>::MakeSptr();
     int userId = 100;
-    ErrCode result = interceptor->QueryAtomicServiceStartupRule(want, callerToken, userId, rule, replaceWant);
+    StartAbilityContext ctx;
+    ErrCode result = interceptor->QueryAtomicServiceStartupRule(ctx, want, callerToken, userId, rule, replaceWant);
     EXPECT_EQ(result, ERR_ECOLOGICAL_CONTROL_STATUS);
 }
 
@@ -377,7 +385,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, QueryAtomicServiceStartupRule_010, TestS
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = -1;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.replaceWant = nullptr;
     int userId = 100;
-    ErrCode result = interceptor->QueryAtomicServiceStartupRule(want, callerToken, userId, rule, replaceWant);
+    StartAbilityContext ctx;
+    ErrCode result = interceptor->QueryAtomicServiceStartupRule(ctx, want, callerToken, userId, rule, replaceWant);
     EXPECT_EQ(result, ERR_OK);
 }
 
@@ -399,27 +408,27 @@ HWTEST_F(EcologicalRuleInterceptorTest, GetEcologicalTargetInfo_001, TestSize.Le
     int testType = 123;
     want.SetParam("send_to_erms_targetLinkFeature", testFeature);
     want.SetParam("send_to_erms_targetLinkType", testType);
-    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
-    StartAbilityUtils::startAbilityInfo->abilityInfo.bundleName = bundleName;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.name = abilityName;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.appDistributionType = "test_dist_type";
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.appProvisionType = "test_provision_type";
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.bundleType =
+    StartAbilityContext ctx;
+    ctx.startAbilityInfo = std::make_shared<StartAbilityInfo>();
+    ctx.startAbilityInfo->abilityInfo.bundleName = bundleName;
+    ctx.startAbilityInfo->abilityInfo.name = abilityName;
+    ctx.startAbilityInfo->abilityInfo.applicationInfo.appDistributionType = "test_dist_type";
+    ctx.startAbilityInfo->abilityInfo.applicationInfo.appProvisionType = "test_provision_type";
+    ctx.startAbilityInfo->abilityInfo.applicationInfo.bundleType =
         static_cast<AppExecFwk::BundleType>(AppExecFwk::BundleType::APP);
-    StartAbilityUtils::startAbilityInfo->abilityInfo.type = AppExecFwk::AbilityType::PAGE;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.extensionAbilityType = ExtensionAbilityType::SERVICE;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.applicationReservedFlag =
+    ctx.startAbilityInfo->abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    ctx.startAbilityInfo->abilityInfo.extensionAbilityType = ExtensionAbilityType::SERVICE;
+    ctx.startAbilityInfo->abilityInfo.applicationInfo.applicationReservedFlag =
         static_cast<AppExecFwk::ApplicationFlag>(123);
     ErmsCallerInfo callerInfo;
     std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo = nullptr;
-    interceptor->GetEcologicalTargetInfo(want, abilityInfo, callerInfo);
+    interceptor->GetEcologicalTargetInfo(ctx, want, abilityInfo, callerInfo);
     EXPECT_EQ(callerInfo.targetLinkFeature, "testFeature");
     EXPECT_EQ(callerInfo.targetLinkType, 123);
     EXPECT_EQ(callerInfo.targetAppDistType, "test_dist_type");
     EXPECT_EQ(callerInfo.targetAppProvisionType, "test_provision_type");
     EXPECT_EQ(callerInfo.targetAppType, ErmsCallerInfo::TYPE_HARMONY_APP);
     EXPECT_EQ(callerInfo.targetAbilityType, AppExecFwk::AbilityType::PAGE);
-    StartAbilityUtils::startAbilityInfo = nullptr;
 }
 
 /**
@@ -440,9 +449,10 @@ HWTEST_F(EcologicalRuleInterceptorTest, GetEcologicalTargetInfo_002, TestSize.Le
     int testType = 123;
     want.SetParam("send_to_erms_targetLinkFeature", testFeature);
     want.SetParam("send_to_erms_targetLinkType", testType);
-    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
-    StartAbilityUtils::startAbilityInfo->abilityInfo.bundleName = "different.bundle";
-    StartAbilityUtils::startAbilityInfo->abilityInfo.name = "DifferentAbility";
+    StartAbilityContext ctx;
+    ctx.startAbilityInfo = std::make_shared<StartAbilityInfo>();
+    ctx.startAbilityInfo->abilityInfo.bundleName = "different.bundle";
+    ctx.startAbilityInfo->abilityInfo.name = "DifferentAbility";
     std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
     abilityInfo->applicationInfo.appDistributionType = "test_dist_type2";
     abilityInfo->applicationInfo.appProvisionType = "test_provision_type2";
@@ -452,14 +462,13 @@ HWTEST_F(EcologicalRuleInterceptorTest, GetEcologicalTargetInfo_002, TestSize.Le
     abilityInfo->extensionAbilityType = OHOS::AppExecFwk::ExtensionAbilityType::SERVICE;
     abilityInfo->applicationInfo.applicationReservedFlag = static_cast<AppExecFwk::ApplicationFlag>(456);
     ErmsCallerInfo callerInfo;
-    interceptor->GetEcologicalTargetInfo(want, abilityInfo, callerInfo);
+    interceptor->GetEcologicalTargetInfo(ctx, want, abilityInfo, callerInfo);
     EXPECT_EQ(callerInfo.targetLinkFeature, "testFeature");
     EXPECT_EQ(callerInfo.targetLinkType, 123);
     EXPECT_EQ(callerInfo.targetAppDistType, "test_dist_type2");
     EXPECT_EQ(callerInfo.targetAppProvisionType, "test_provision_type2");
     EXPECT_EQ(callerInfo.targetAppType, ErmsCallerInfo::TYPE_ATOM_SERVICE);
     EXPECT_EQ(callerInfo.targetAbilityType, AppExecFwk::AbilityType::SERVICE);
-    StartAbilityUtils::startAbilityInfo = nullptr;
 }
 
 /**
@@ -480,19 +489,19 @@ HWTEST_F(EcologicalRuleInterceptorTest, GetEcologicalTargetInfo_003, TestSize.Le
     int testType = 123;
     want.SetParam("send_to_erms_targetLinkFeature", testFeature);
     want.SetParam("send_to_erms_targetLinkType", testType);
-    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
-    StartAbilityUtils::startAbilityInfo->abilityInfo.bundleName = "different.bundle";
-    StartAbilityUtils::startAbilityInfo->abilityInfo.name = "DifferentAbility";
+    StartAbilityContext ctx;
+    ctx.startAbilityInfo = std::make_shared<StartAbilityInfo>();
+    ctx.startAbilityInfo->abilityInfo.bundleName = "different.bundle";
+    ctx.startAbilityInfo->abilityInfo.name = "DifferentAbility";
     ErmsCallerInfo callerInfo;
     std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo = nullptr;
-    interceptor->GetEcologicalTargetInfo(want, abilityInfo, callerInfo);
+    interceptor->GetEcologicalTargetInfo(ctx, want, abilityInfo, callerInfo);
     EXPECT_EQ(callerInfo.targetLinkFeature, "testFeature");
     EXPECT_EQ(callerInfo.targetLinkType, 123);
     EXPECT_EQ(callerInfo.targetAppDistType, "");
     EXPECT_EQ(callerInfo.targetAppProvisionType, "");
     EXPECT_EQ(callerInfo.targetAppType, 0);
     EXPECT_EQ(callerInfo.targetAbilityType, AppExecFwk::AbilityType::UNKNOWN);
-    StartAbilityUtils::startAbilityInfo = nullptr;
 }
 
 /**
@@ -514,7 +523,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, GetEcologicalCallerInfo_001, TestSize.Le
     StartAbilityUtils::retGetCallerAbilityInfo = true;
     StartAbilityUtils::callerAbiltyInfo.type = AppExecFwk::AbilityType::PAGE;
     int userId = 100;
-    interceptor->GetEcologicalCallerInfo(want, callerInfo, userId, callerToken);
+    StartAbilityContext ctx;
+    interceptor->GetEcologicalCallerInfo(ctx, want, callerInfo, userId, callerToken);
     EXPECT_EQ(callerInfo.callerAppType, static_cast<int32_t>(AppExecFwk::AbilityType::PAGE));
 }
 
@@ -537,7 +547,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, GetEcologicalCallerInfo_002, TestSize.Le
     callerInfo.packageName = "";
     sptr<IRemoteObject> callerToken = nullptr;
     int userId = 100;
-    interceptor->GetEcologicalCallerInfo(want, callerInfo, userId, callerToken);
+    StartAbilityContext ctx;
+    interceptor->GetEcologicalCallerInfo(ctx, want, callerInfo, userId, callerToken);
     EXPECT_NE(callerInfo.callerAppType, ErmsCallerInfo::TYPE_ATOM_SERVICE);
     EXPECT_NE(callerInfo.callerAppType, ErmsCallerInfo::TYPE_APP_SERVICE);
 }
@@ -563,7 +574,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, GetEcologicalCallerInfo_003, TestSize.Le
     StartAbilityUtils::retGetCallerAbilityInfo = false;
     BundleMgrHelper::isBundleManagerHelperNull = true;
     int userId = 100;
-    interceptor->GetEcologicalCallerInfo(want, callerInfo, userId, callerToken);
+    StartAbilityContext ctx;
+    interceptor->GetEcologicalCallerInfo(ctx, want, callerInfo, userId, callerToken);
     EXPECT_EQ(callerInfo.callerAppType, ErmsCallerInfo::TYPE_HARMONY_APP);
     EXPECT_EQ(callerInfo.packageName, "");
 }
@@ -590,7 +602,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, GetEcologicalCallerInfo_004, TestSize.Le
     BundleMgrHelper::isBundleManagerHelperNull = false;
     BundleMgrHelper::retGetNameForUid = -1;
     int userId = 100;
-    interceptor->GetEcologicalCallerInfo(want, callerInfo, userId, callerToken);
+    StartAbilityContext ctx;
+    interceptor->GetEcologicalCallerInfo(ctx, want, callerInfo, userId, callerToken);
     EXPECT_EQ(callerInfo.callerAppType, ErmsCallerInfo::TYPE_HARMONY_APP);
     EXPECT_EQ(callerInfo.packageName, "");
 }
@@ -618,7 +631,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, GetEcologicalCallerInfo_005, TestSize.Le
     BundleMgrHelper::retGetNameForUid = ERR_OK;
     BundleMgrHelper::retGetApplicationInfo = -1;
     int userId = 100;
-    interceptor->GetEcologicalCallerInfo(want, callerInfo, userId, callerToken);
+    StartAbilityContext ctx;
+    interceptor->GetEcologicalCallerInfo(ctx, want, callerInfo, userId, callerToken);
     EXPECT_EQ(callerInfo.callerAppType, ErmsCallerInfo::TYPE_HARMONY_APP);
     EXPECT_EQ(callerInfo.packageName, "");
 }
@@ -646,7 +660,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, GetEcologicalCallerInfo_006, TestSize.Le
     BundleMgrHelper::retGetNameForUid = ERR_OK;
     BundleMgrHelper::retGetApplicationInfo = false;
     int userId = 100;
-    interceptor->GetEcologicalCallerInfo(want, callerInfo, userId, callerToken);
+    StartAbilityContext ctx;
+    interceptor->GetEcologicalCallerInfo(ctx, want, callerInfo, userId, callerToken);
     EXPECT_EQ(callerInfo.callerAppType, ErmsCallerInfo::TYPE_HARMONY_APP);
     EXPECT_EQ(callerInfo.packageName, "");
 }
@@ -673,7 +688,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, GetEcologicalCallerInfo_007, TestSize.Le
     BundleMgrHelper::retGetApplicationInfo = true;
     BundleMgrHelper::applicationInfo.bundleType = AppExecFwk::BundleType::ATOMIC_SERVICE;
     int userId = 100;
-    interceptor->GetEcologicalCallerInfo(want, callerInfo, userId, callerToken);
+    StartAbilityContext ctx;
+    interceptor->GetEcologicalCallerInfo(ctx, want, callerInfo, userId, callerToken);
     EXPECT_EQ(callerInfo.callerAppType, ErmsCallerInfo::TYPE_ATOM_SERVICE);
 }
 
@@ -701,7 +717,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, GetEcologicalCallerInfo_008, TestSize.Le
     BundleMgrHelper::applicationInfo.bundleType = AppExecFwk::BundleType::APP;
     BundleMgrHelper::applicationInfo.name = BUNDLE_NAME_SCENEBOARD;
     int userId = 100;
-    interceptor->GetEcologicalCallerInfo(want, callerInfo, userId, callerToken);
+    StartAbilityContext ctx;
+    interceptor->GetEcologicalCallerInfo(ctx, want, callerInfo, userId, callerToken);
     EXPECT_EQ(callerInfo.callerAppType, ErmsCallerInfo::TYPE_HARMONY_APP);
     EXPECT_EQ(callerInfo.packageName, BUNDLE_NAME_SCENEBOARD);
 }
@@ -728,7 +745,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, GetEcologicalCallerInfo_009, TestSize.Le
     BundleMgrHelper::retGetApplicationInfo = true;
     BundleMgrHelper::applicationInfo.bundleType = AppExecFwk::BundleType::APP_SERVICE_FWK;
     int userId = 100;
-    interceptor->GetEcologicalCallerInfo(want, callerInfo, userId, callerToken);
+    StartAbilityContext ctx;
+    interceptor->GetEcologicalCallerInfo(ctx, want, callerInfo, userId, callerToken);
     EXPECT_EQ(callerInfo.callerAppType, ErmsCallerInfo::TYPE_APP_SERVICE);
 }
 
@@ -754,7 +772,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, InitErmsCallerInfo_001, TestSize.Level1)
     ErmsCallerInfo callerInfo;
     sptr<IRemoteObject> callerToken = nullptr;
     int userId = 100;
-    interceptor->InitErmsCallerInfo(want, abilityInfo, callerInfo, userId, callerToken);
+    StartAbilityContext ctx;
+    interceptor->InitErmsCallerInfo(ctx, want, abilityInfo, callerInfo, userId, callerToken);
     EXPECT_EQ(callerInfo.packageName, callerBundleName);
     EXPECT_EQ(callerInfo.uid, 1000);
     EXPECT_EQ(callerInfo.pid, 2000);
@@ -786,7 +805,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, InitErmsCallerInfo_002, TestSize.Level1)
     ErmsCallerInfo callerInfo;
     sptr<IRemoteObject> callerToken = nullptr;
     int userId = 100;
-    interceptor->InitErmsCallerInfo(want, abilityInfo, callerInfo, userId, callerToken);
+    StartAbilityContext ctx;
+    interceptor->InitErmsCallerInfo(ctx, want, abilityInfo, callerInfo, userId, callerToken);
     EXPECT_EQ(callerInfo.packageName, callerBundleName);
     EXPECT_EQ(callerInfo.uid, 1000);
     EXPECT_EQ(callerInfo.pid, 2000);
@@ -815,7 +835,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, InitErmsCallerInfo_003, TestSize.Level1)
     ErmsCallerInfo callerInfo;
     sptr<IRemoteObject> callerToken = nullptr;
     int userId = 100;
-    interceptor->InitErmsCallerInfo(want, nullptr, callerInfo, userId, callerToken);
+    StartAbilityContext ctx;
+    interceptor->InitErmsCallerInfo(ctx, want, nullptr, callerInfo, userId, callerToken);
     EXPECT_EQ(callerInfo.packageName, callerBundleName);
     EXPECT_EQ(callerInfo.uid, 1000);
     EXPECT_EQ(callerInfo.pid, 2000);
@@ -846,7 +867,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, InitErmsCallerInfo_004, TestSize.Level1)
     Token::abilityRecord = std::make_shared<AbilityRecord>();
     AbilityRecord::abilityInfo.isStageBasedModel = false;
     int userId = 100;
-    interceptor->InitErmsCallerInfo(want, nullptr, callerInfo, userId, callerToken);
+    StartAbilityContext ctx;
+    interceptor->InitErmsCallerInfo(ctx, want, nullptr, callerInfo, userId, callerToken);
     EXPECT_EQ(callerInfo.callerModelType, ErmsCallerInfo::MODEL_FA);
 }
 
@@ -866,7 +888,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, InitErmsCallerInfo_005, TestSize.Level1)
     sptr<IRemoteObject> callerToken = sptr<Token>::MakeSptr();
     Token::abilityRecord = nullptr;
     int userId = 100;
-    interceptor->InitErmsCallerInfo(want, nullptr, callerInfo, userId, callerToken);
+    StartAbilityContext ctx;
+    interceptor->InitErmsCallerInfo(ctx, want, nullptr, callerInfo, userId, callerToken);
     EXPECT_NE(callerInfo.callerModelType, ErmsCallerInfo::MODEL_FA);
 }
 
@@ -887,7 +910,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, InitErmsCallerInfo_006, TestSize.Level1)
     Token::abilityRecord = std::make_shared<AbilityRecord>();
     AbilityRecord::abilityInfo.isStageBasedModel = true;
     int userId = 100;
-    interceptor->InitErmsCallerInfo(want, nullptr, callerInfo, userId, callerToken);
+    StartAbilityContext ctx;
+    interceptor->InitErmsCallerInfo(ctx, want, nullptr, callerInfo, userId, callerToken);
     EXPECT_NE(callerInfo.callerModelType, ErmsCallerInfo::MODEL_FA);
 }
 
@@ -902,14 +926,15 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_001, TestSize.Level1)
     std::shared_ptr<EcologicalRuleInterceptor> interceptor = std::make_shared<EcologicalRuleInterceptor>();
     Want want;
     int requestCode = 0;
-    StartAbilityUtils::skipErms = true;
+    StartAbilityContext ctx;
+    ctx.skipErms = true;
     int userId = 100;
     AbilityInterceptorParam param =
         InterceptorParamBuilder(want, requestCode, userId).WithUI(false).CallerToken(nullptr)
-        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>()).Build();
+        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>()).StartAbilityCtx(ctx).Build();
     ErrCode result = interceptor->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
-    EXPECT_EQ(StartAbilityUtils::skipErms, false);
+    EXPECT_FALSE(param.startAbilityCtx.skipErms);
 }
 
 /**
@@ -949,7 +974,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_003, TestSize.Level1)
     want.SetElement(element);
     want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, bundleName);
     int userId = 100;
-    bool result = interceptor->DoProcess(want, userId);
+    StartAbilityContext ctx;
+    bool result = interceptor->DoProcess(ctx, want, userId);
     EXPECT_TRUE(result);
 }
 
@@ -970,12 +996,12 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_004, TestSize.Level1)
     want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, callerBundleName);
     int requestCode = 0;
     int userId = 100;
-    StartAbilityUtils::skipErms = true;
-    AbilityInterceptorParam param =
-        InterceptorParamBuilder(want, requestCode, userId).WithUI(false).CallerToken(nullptr).Build();
+    StartAbilityContext ctx;
+    ctx.skipErms = true;
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, requestCode, userId)
+        .WithUI(false).CallerToken(nullptr).StartAbilityCtx(ctx).Build();
     ErrCode result = interceptor->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
-    StartAbilityUtils::skipErms = false;
 }
 
 /**
@@ -994,11 +1020,11 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_005, TestSize.Level1)
     want.SetElement(element);
     want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, callerBundleName);
     OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "false");
-    StartAbilityUtils::skipErms = true;
+    StartAbilityContext ctx;
+    ctx.skipErms = true;
     int userId = 100;
-    bool result = interceptor->DoProcess(want, userId);
+    bool result = interceptor->DoProcess(ctx, want, userId);
     EXPECT_TRUE(result);
-    StartAbilityUtils::skipErms = false;
 }
 
 /**
@@ -1017,10 +1043,11 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_006, TestSize.Level1)
     want.SetElement(element);
     want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, callerBundleName);
     int requestCode = 0;
-    StartAbilityUtils::skipErms = false;
+    StartAbilityContext ctx;
+    ctx.skipErms = false;
     int userId = 100;
     AbilityInterceptorParam param =
-        InterceptorParamBuilder(want, requestCode, userId).WithUI(false).CallerToken(nullptr)
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(false).CallerToken(nullptr).StartAbilityCtx(ctx)
         .Context<AbilityInterceptorParam::EcologicalCtx>({true, false, ""}).Build();
     AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = -1;
     ErrCode result = interceptor->DoProcess(param);
@@ -1043,10 +1070,11 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_007, TestSize.Level1)
     want.SetElement(element);
     want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, callerBundleName);
     int requestCode = 0;
-    StartAbilityUtils::skipErms = false;
+    StartAbilityContext ctx;
+    ctx.skipErms = false;
     int userId = 100;
-    AbilityInterceptorParam param =
-        InterceptorParamBuilder(want, requestCode, userId).WithUI(false).CallerToken(nullptr).Build();
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, requestCode, userId)
+        .WithUI(false).CallerToken(nullptr).StartAbilityCtx(ctx).Build();
     AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = 0;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = ERMS_ISALLOW_RESULTCODE;
     ErrCode result = interceptor->DoProcess(param);
@@ -1069,10 +1097,11 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_008, TestSize.Level1)
     want.SetElement(element);
     want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, callerBundleName);
     int requestCode = 0;
-    StartAbilityUtils::skipErms = false;
+    StartAbilityContext ctx;
+    ctx.skipErms = false;
     int userId = 100;
-    AbilityInterceptorParam param =
-        InterceptorParamBuilder(want, requestCode, userId).WithUI(false).CallerToken(nullptr).Build();
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, requestCode, userId)
+        .WithUI(false).CallerToken(nullptr).StartAbilityCtx(ctx).Build();
     AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = 0;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = -1;
     OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "false");
@@ -1096,10 +1125,11 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_009, TestSize.Level1)
     want.SetElement(element);
     want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, callerBundleName);
     int requestCode = 0;
-    StartAbilityUtils::skipErms = false;
+    StartAbilityContext ctx;
+    ctx.skipErms = false;
     int userId = 100;
     AbilityInterceptorParam param = InterceptorParamBuilder(want, requestCode, userId).WithUI(true).Visible(true)
-        .CallerToken(nullptr).AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>()).Build();
+        .CallerToken(nullptr).AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>()).StartAbilityCtx(ctx).Build();
     AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = 0;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = -1;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.replaceWant =
@@ -1133,10 +1163,11 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_RemoteDispatch_001, TestSize.L
     want.SetElement(element);
     want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, callerBundleName);
     int requestCode = 0;
-    StartAbilityUtils::skipErms = false;
+    StartAbilityContext ctx;
+    ctx.skipErms = false;
     int userId = 100;
     AbilityInterceptorParam param = InterceptorParamBuilder(want, requestCode, userId).WithUI(true).Visible(true)
-        .CallerToken(nullptr).AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>())
+        .CallerToken(nullptr).AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>()).StartAbilityCtx(ctx)
         .Context<AbilityInterceptorParam::RemoteDispatchCtx>({}).Build();
     AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = 0;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = -1;
@@ -1168,10 +1199,11 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_010, TestSize.Level1)
     want.SetElement(element);
     want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, callerBundleName);
     int requestCode = 0;
-    StartAbilityUtils::skipErms = false;
+    StartAbilityContext ctx;
+    ctx.skipErms = false;
     int userId = 100;
-    AbilityInterceptorParam param =
-        InterceptorParamBuilder(want, requestCode, userId).WithUI(true).CallerToken(nullptr).Build();
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, requestCode, userId)
+        .WithUI(true).CallerToken(nullptr).StartAbilityCtx(ctx).Build();
     AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = 0;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = -1;
     OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "false");
@@ -1197,7 +1229,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_012, TestSize.Level1)
     OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "true");
     BundleMgrHelper::isBundleManagerHelperNull = true;
     int userId = 100;
-    bool result = interceptor->DoProcess(want, userId);
+    StartAbilityContext ctx;
+    bool result = interceptor->DoProcess(ctx, want, userId);
     EXPECT_FALSE(result);
 }
 
@@ -1220,7 +1253,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_013, TestSize.Level1)
     BundleMgrHelper::isBundleManagerHelperNull = false;
     BundleMgrHelper::retGetLaunchWantForBundle = -1;
     int userId = 100;
-    bool result = interceptor->DoProcess(want, userId);
+    StartAbilityContext ctx;
+    bool result = interceptor->DoProcess(ctx, want, userId);
     EXPECT_FALSE(result);
 }
 
@@ -1247,7 +1281,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_014, TestSize.Level1)
     BundleMgrHelper::launchWant.SetElementName(bundleName, abilityName);
     StartAbilityInfo::createStartAbilityInfo = nullptr;
     int userId = 100;
-    bool result = interceptor->DoProcess(want, userId);
+    StartAbilityContext ctx;
+    bool result = interceptor->DoProcess(ctx, want, userId);
     EXPECT_FALSE(result);
 }
 
@@ -1275,7 +1310,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_015, TestSize.Level1)
     StartAbilityInfo::createStartAbilityInfo = std::make_shared<StartAbilityInfo>();
     StartAbilityInfo::createStartAbilityInfo->status = -1;
     int userId = 100;
-    bool result = interceptor->DoProcess(want, userId);
+    StartAbilityContext ctx;
+    bool result = interceptor->DoProcess(ctx, want, userId);
     EXPECT_FALSE(result);
 }
 
@@ -1304,7 +1340,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_016, TestSize.Level1)
     StartAbilityInfo::createStartAbilityInfo->status = 0;
     AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = -1;
     int userId = 100;
-    bool result = interceptor->DoProcess(want, userId);
+    StartAbilityContext ctx;
+    bool result = interceptor->DoProcess(ctx, want, userId);
     EXPECT_TRUE(result);
 }
 
@@ -1334,7 +1371,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_017, TestSize.Level1)
     AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = 0;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = 0;
     int userId = 100;
-    bool result = interceptor->DoProcess(want, userId);
+    StartAbilityContext ctx;
+    bool result = interceptor->DoProcess(ctx, want, userId);
     EXPECT_FALSE(result);
 }
 
@@ -1364,7 +1402,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_018, TestSize.Level1)
     AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = 0;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = ERMS_ISALLOW_RESULTCODE;
     int userId = 100;
-    bool result = interceptor->DoProcess(want, userId);
+    StartAbilityContext ctx;
+    bool result = interceptor->DoProcess(ctx, want, userId);
     EXPECT_TRUE(result);
 }
 
@@ -1418,27 +1457,29 @@ HWTEST_F(EcologicalRuleInterceptorTest, NoNeedErms_001, TestSize.Level1)
     int32_t requestCode = 0;
     int32_t userId = -1;
     int32_t isWithUI = false;
+    StartAbilityContext ctx;
+    ctx.skipErms = true;
     AbilityInterceptorParam param = InterceptorParamBuilder(want, requestCode, userId)
-        .WithUI(false).CallerToken(nullptr).Build();
-    StartAbilityUtils::skipErms = true;
+        .WithUI(false).CallerToken(nullptr).StartAbilityCtx(ctx).Build();
     EXPECT_TRUE(EcologicalRuleInterceptor::NoNeedErms(param));
-    EXPECT_FALSE(StartAbilityUtils::skipErms);
+    EXPECT_FALSE(param.startAbilityCtx.skipErms);
 
     std::string testBundelName = "bundle.test.com";
-    StartAbilityUtils::ermsSupportBackToCallerFlag = false;
     want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, testBundelName);
     want.SetBundle(testBundelName);
     EXPECT_TRUE(EcologicalRuleInterceptor::NoNeedErms(param));
-    EXPECT_TRUE(StartAbilityUtils::ermsSupportBackToCallerFlag);
+    EXPECT_TRUE(param.startAbilityCtx.ermsSupportBackToCallerFlag);
 
     want.SetBundle("");
+    StartAbilityContext pluginCtx;
     AbilityInterceptorParam pluginParam = InterceptorParamBuilder(want, requestCode, userId)
-        .WithUI(false).CallerToken(nullptr)
+        .WithUI(false).CallerToken(nullptr).StartAbilityCtx(pluginCtx)
         .Context<AbilityInterceptorParam::EcologicalCtx>({false, true, ""}).Build();
     EXPECT_TRUE(EcologicalRuleInterceptor::NoNeedErms(pluginParam));
 
+    StartAbilityContext nonPluginCtx;
     AbilityInterceptorParam nonPluginParam = InterceptorParamBuilder(want, requestCode, userId)
-        .WithUI(false).CallerToken(nullptr)
+        .WithUI(false).CallerToken(nullptr).StartAbilityCtx(nonPluginCtx)
         .Context<AbilityInterceptorParam::EcologicalCtx>({false, false, ""}).Build();
     EXPECT_FALSE(EcologicalRuleInterceptor::NoNeedErms(nonPluginParam));
 }
@@ -1453,14 +1494,14 @@ HWTEST_F(EcologicalRuleInterceptorTest, GetEcologicalTargetInfo_004, TestSize.Le
 {
     std::shared_ptr<EcologicalRuleInterceptor> interceptor = std::make_shared<EcologicalRuleInterceptor>();
     ASSERT_NE(interceptor, nullptr);
-    StartAbilityUtils::callerAbilityInfo = std::make_shared<StartAbilityInfo>();
-    StartAbilityUtils::callerAbilityInfo->abilityInfo.applicationInfo.bundleType =
+    StartAbilityUtils::callerAbiltyInfo.applicationInfo.bundleType =
         AppExecFwk::BundleType::ATOMIC_SERVICE;
     Want want;
     ErmsCallerInfo callerInfo;
     sptr<IRemoteObject> callerToken = nullptr;
     int userId = 100;
-    interceptor->GetEcologicalCallerInfo(want, callerInfo, userId, callerToken);
+    StartAbilityContext ctx;
+    interceptor->GetEcologicalCallerInfo(ctx, want, callerInfo, userId, callerToken);
     EXPECT_EQ(callerInfo.callerAppType, ErmsCallerInfo::TYPE_APP_SERVICE);
 }
 
@@ -1474,13 +1515,13 @@ HWTEST_F(EcologicalRuleInterceptorTest, GetEcologicalTargetInfo_005, TestSize.Le
 {
     std::shared_ptr<EcologicalRuleInterceptor> interceptor = std::make_shared<EcologicalRuleInterceptor>();
     ASSERT_NE(interceptor, nullptr);
-    StartAbilityUtils::callerAbilityInfo = std::make_shared<StartAbilityInfo>();
-    StartAbilityUtils::callerAbilityInfo->abilityInfo.applicationInfo.bundleType = AppExecFwk::BundleType::APP;
+    StartAbilityUtils::callerAbiltyInfo.applicationInfo.bundleType = AppExecFwk::BundleType::APP;
     Want want;
     ErmsCallerInfo callerInfo;
     sptr<IRemoteObject> callerToken = nullptr;
     int userId = 100;
-    interceptor->GetEcologicalCallerInfo(want, callerInfo, userId, callerToken);
+    StartAbilityContext ctx;
+    interceptor->GetEcologicalCallerInfo(ctx, want, callerInfo, userId, callerToken);
     EXPECT_EQ(callerInfo.callerAppType, ErmsCallerInfo::TYPE_APP_SERVICE);
 }
 
@@ -1494,14 +1535,14 @@ HWTEST_F(EcologicalRuleInterceptorTest, GetEcologicalTargetInfo_006, TestSize.Le
 {
     std::shared_ptr<EcologicalRuleInterceptor> interceptor = std::make_shared<EcologicalRuleInterceptor>();
     ASSERT_NE(interceptor, nullptr);
-    StartAbilityUtils::callerAbilityInfo = std::make_shared<StartAbilityInfo>();
-    StartAbilityUtils::callerAbilityInfo->abilityInfo.applicationInfo.bundleType =
+    StartAbilityUtils::callerAbiltyInfo.applicationInfo.bundleType =
         AppExecFwk::BundleType::APP_SERVICE_FWK;
     Want want;
     ErmsCallerInfo callerInfo;
     sptr<IRemoteObject> callerToken = nullptr;
     int userId = 100;
-    interceptor->GetEcologicalCallerInfo(want, callerInfo, userId, callerToken);
+    StartAbilityContext ctx;
+    interceptor->GetEcologicalCallerInfo(ctx, want, callerInfo, userId, callerToken);
     EXPECT_EQ(callerInfo.callerAppType, ErmsCallerInfo::TYPE_APP_SERVICE);
 }
 
@@ -1515,17 +1556,19 @@ HWTEST_F(EcologicalRuleInterceptorTest, GetEcologicalTargetInfo_007, TestSize.Le
 {
     std::shared_ptr<EcologicalRuleInterceptor> interceptor = std::make_shared<EcologicalRuleInterceptor>();
     ASSERT_NE(interceptor, nullptr);
-    StartAbilityUtils::callerAbilityInfo = std::make_shared<StartAbilityInfo>();
-    StartAbilityUtils::callerAbilityInfo->abilityInfo.applicationInfo.bundleType = AppExecFwk::BundleType::APP;
-    StartAbilityUtils::callerAbilityInfo->abilityInfo.applicationInfo.name = "test";
+    StartAbilityUtils::callerAbiltyInfo.applicationInfo.bundleType = AppExecFwk::BundleType::APP;
+    StartAbilityUtils::callerAbiltyInfo.applicationInfo.name = "test";
+    StartAbilityUtils::retGetCallerAbilityInfo = true;
     Want want;
     ErmsCallerInfo callerInfo;
     callerInfo.packageName = "";
     sptr<IRemoteObject> callerToken = nullptr;
     int userId = 100;
-    interceptor->GetEcologicalCallerInfo(want, callerInfo, userId, callerToken);
-    EXPECT_EQ(callerInfo.callerAppType, ErmsCallerInfo::TYPE_APP_SERVICE);
+    StartAbilityContext ctx;
+    interceptor->GetEcologicalCallerInfo(ctx, want, callerInfo, userId, callerToken);
+    EXPECT_EQ(callerInfo.callerAppType, ErmsCallerInfo::TYPE_HARMONY_APP);
     EXPECT_NE(callerInfo.packageName, BUNDLE_NAME_SCENEBOARD);
+    StartAbilityUtils::retGetCallerAbilityInfo = false;
 }
 
 /**
@@ -1538,17 +1581,19 @@ HWTEST_F(EcologicalRuleInterceptorTest, GetEcologicalTargetInfo_008, TestSize.Le
 {
     std::shared_ptr<EcologicalRuleInterceptor> interceptor = std::make_shared<EcologicalRuleInterceptor>();
     ASSERT_NE(interceptor, nullptr);
-    StartAbilityUtils::callerAbilityInfo = std::make_shared<StartAbilityInfo>();
-    StartAbilityUtils::callerAbilityInfo->abilityInfo.applicationInfo.bundleType = AppExecFwk::BundleType::APP;
-    StartAbilityUtils::callerAbilityInfo->abilityInfo.applicationInfo.name = BUNDLE_NAME_SCENEBOARD;
+    StartAbilityUtils::callerAbiltyInfo.applicationInfo.bundleType = AppExecFwk::BundleType::APP;
+    StartAbilityUtils::callerAbiltyInfo.applicationInfo.name = BUNDLE_NAME_SCENEBOARD;
+    StartAbilityUtils::retGetCallerAbilityInfo = true;
     Want want;
     ErmsCallerInfo callerInfo;
     callerInfo.packageName = "";
     sptr<IRemoteObject> callerToken = nullptr;
     int userId = 100;
-    interceptor->GetEcologicalCallerInfo(want, callerInfo, userId, callerToken);
-    EXPECT_EQ(callerInfo.callerAppType, ErmsCallerInfo::TYPE_APP_SERVICE);
-    EXPECT_NE(callerInfo.packageName, BUNDLE_NAME_SCENEBOARD);
+    StartAbilityContext ctx;
+    interceptor->GetEcologicalCallerInfo(ctx, want, callerInfo, userId, callerToken);
+    EXPECT_EQ(callerInfo.callerAppType, ErmsCallerInfo::TYPE_HARMONY_APP);
+    EXPECT_EQ(callerInfo.packageName, BUNDLE_NAME_SCENEBOARD);
+    StartAbilityUtils::retGetCallerAbilityInfo = false;
 }
 
 /**
@@ -1561,17 +1606,19 @@ HWTEST_F(EcologicalRuleInterceptorTest, GetEcologicalTargetInfo_009, TestSize.Le
 {
     std::shared_ptr<EcologicalRuleInterceptor> interceptor = std::make_shared<EcologicalRuleInterceptor>();
     ASSERT_NE(interceptor, nullptr);
-    StartAbilityUtils::callerAbilityInfo = std::make_shared<StartAbilityInfo>();
-    StartAbilityUtils::callerAbilityInfo->abilityInfo.applicationInfo.bundleType = AppExecFwk::BundleType::APP;
-    StartAbilityUtils::callerAbilityInfo->abilityInfo.applicationInfo.name = BUNDLE_NAME_SCENEBOARD;
+    StartAbilityUtils::callerAbiltyInfo.applicationInfo.bundleType = AppExecFwk::BundleType::APP;
+    StartAbilityUtils::callerAbiltyInfo.applicationInfo.name = BUNDLE_NAME_SCENEBOARD;
+    StartAbilityUtils::retGetCallerAbilityInfo = true;
     Want want;
     ErmsCallerInfo callerInfo;
     callerInfo.packageName = "test";
     sptr<IRemoteObject> callerToken = nullptr;
     int userId = 100;
-    interceptor->GetEcologicalCallerInfo(want, callerInfo, userId, callerToken);
-    EXPECT_EQ(callerInfo.callerAppType, ErmsCallerInfo::TYPE_APP_SERVICE);
+    StartAbilityContext ctx;
+    interceptor->GetEcologicalCallerInfo(ctx, want, callerInfo, userId, callerToken);
+    EXPECT_EQ(callerInfo.callerAppType, ErmsCallerInfo::TYPE_HARMONY_APP);
     EXPECT_NE(callerInfo.packageName, BUNDLE_NAME_SCENEBOARD);
+    StartAbilityUtils::retGetCallerAbilityInfo = false;
 }
 
 /**
@@ -1584,17 +1631,19 @@ HWTEST_F(EcologicalRuleInterceptorTest, GetEcologicalTargetInfo_010, TestSize.Le
 {
     std::shared_ptr<EcologicalRuleInterceptor> interceptor = std::make_shared<EcologicalRuleInterceptor>();
     ASSERT_NE(interceptor, nullptr);
-    StartAbilityUtils::callerAbilityInfo = std::make_shared<StartAbilityInfo>();
-    StartAbilityUtils::callerAbilityInfo->abilityInfo.applicationInfo.bundleType = AppExecFwk::BundleType::APP;
-    StartAbilityUtils::callerAbilityInfo->abilityInfo.applicationInfo.name = "test";
+    StartAbilityUtils::callerAbiltyInfo.applicationInfo.bundleType = AppExecFwk::BundleType::APP;
+    StartAbilityUtils::callerAbiltyInfo.applicationInfo.name = "test";
+    StartAbilityUtils::retGetCallerAbilityInfo = true;
     Want want;
     ErmsCallerInfo callerInfo;
     callerInfo.packageName = "test";
     sptr<IRemoteObject> callerToken = nullptr;
     int userId = 100;
-    interceptor->GetEcologicalCallerInfo(want, callerInfo, userId, callerToken);
-    EXPECT_EQ(callerInfo.callerAppType, ErmsCallerInfo::TYPE_APP_SERVICE);
+    StartAbilityContext ctx;
+    interceptor->GetEcologicalCallerInfo(ctx, want, callerInfo, userId, callerToken);
+    EXPECT_EQ(callerInfo.callerAppType, ErmsCallerInfo::TYPE_HARMONY_APP);
     EXPECT_NE(callerInfo.packageName, BUNDLE_NAME_SCENEBOARD);
+    StartAbilityUtils::retGetCallerAbilityInfo = false;
 }
 
 /**
@@ -1616,11 +1665,12 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_021, TestSize.Level1)
     want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, callerBundleName);
     want.SetParam("originalKey", std::string("originalValue"));
     int requestCode = 0;
-    StartAbilityUtils::skipErms = false;
+    StartAbilityContext ctx;
+    ctx.skipErms = false;
     int userId = 100;
     AbilityInterceptorParam param =
         InterceptorParamBuilder(want, requestCode, userId).WithUI(true).Visible(true).CallerToken(nullptr)
-        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>()).Build();
+        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>()).StartAbilityCtx(ctx).Build();
     AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = 0;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = -1;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.embedResultCode = 1;
@@ -1633,9 +1683,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_021, TestSize.Level1)
     OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "true");
     ErrCode result = interceptor->DoProcess(param);
     EXPECT_EQ(result, ERR_ECOLOGICAL_CONTROL_STATUS);
-    // follow-up: erms result flags are propagated for subsequent start flow
-    EXPECT_EQ(StartAbilityUtils::ermsResultCode, -1);
-    EXPECT_EQ(StartAbilityUtils::ermsSupportBackToCallerFlag, true);
+    EXPECT_EQ(param.startAbilityCtx.ermsResultCode, -1);
+    EXPECT_EQ(param.startAbilityCtx.ermsSupportBackToCallerFlag, true);
 #ifdef SUPPORT_GRAPHICS
     // follow-up: original want is replaced by erms replaceWant with the query flag appended
     EXPECT_EQ(param.want.GetElement().GetBundleName(), "replace.bundle");
@@ -1666,11 +1715,12 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_022, TestSize.Level1)
     want.SetElement(element);
     want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, callerBundleName);
     int requestCode = 0;
-    StartAbilityUtils::skipErms = false;
+    StartAbilityContext ctx;
+    ctx.skipErms = false;
     int userId = 100;
     AbilityInterceptorParam param =
         InterceptorParamBuilder(want, requestCode, userId).WithUI(false).CallerToken(nullptr)
-        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>()).Build();
+        .AbilityInfo(std::make_shared<AppExecFwk::AbilityInfo>()).StartAbilityCtx(ctx).Build();
     AbilityEcologicalRuleMgrServiceClient::retQueryStartExperience = 0;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.resultCode = -1;
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.isBackSkuExempt = true;
@@ -1681,8 +1731,8 @@ HWTEST_F(EcologicalRuleInterceptorTest, DoProcess_022, TestSize.Level1)
     ErrCode result = interceptor->DoProcess(param);
     // non-UI start still reports the ecological control status
     EXPECT_EQ(result, ERR_ECOLOGICAL_CONTROL_STATUS);
-    EXPECT_EQ(StartAbilityUtils::ermsResultCode, -1);
-    EXPECT_EQ(StartAbilityUtils::ermsSupportBackToCallerFlag, true);
+    EXPECT_EQ(param.startAbilityCtx.ermsResultCode, -1);
+    EXPECT_EQ(param.startAbilityCtx.ermsSupportBackToCallerFlag, true);
     // but the replaceWant is not applied to the original want
     EXPECT_EQ(want.GetElement().GetBundleName(), targetBundleName);
     EXPECT_EQ(want.GetElement().GetAbilityName(), "MainAbility");
@@ -1724,12 +1774,13 @@ HWTEST_F(EcologicalRuleInterceptorTest, QueryAtomicServiceStartupRule_011, TestS
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.replaceWant->SetElementName(
         "replace.bundle", "ReplaceAbility");
     int userId = 100;
-    ErrCode result = interceptor->QueryAtomicServiceStartupRule(want, callerToken, userId, rule, replaceWant);
+    StartAbilityContext ctx;
+    ErrCode result = interceptor->QueryAtomicServiceStartupRule(ctx, want, callerToken, userId, rule, replaceWant);
     // follow-up: rule mapping and erms flag propagation happen before the replaceWant branch
     EXPECT_EQ(rule.isOpenAllowed, false);
     EXPECT_EQ(rule.isEmbeddedAllowed, true);
-    EXPECT_EQ(StartAbilityUtils::ermsResultCode, -1);
-    EXPECT_EQ(StartAbilityUtils::ermsSupportBackToCallerFlag, true);
+    EXPECT_EQ(ctx.ermsResultCode, -1);
+    EXPECT_EQ(ctx.ermsSupportBackToCallerFlag, true);
 #ifdef SUPPORT_GRAPHICS
     EXPECT_EQ(result, ERR_ECOLOGICAL_CONTROL_STATUS);
     ASSERT_NE(replaceWant, nullptr);
@@ -1776,14 +1827,15 @@ HWTEST_F(EcologicalRuleInterceptorTest, QueryAtomicServiceStartupRule_012, TestS
     AbilityEcologicalRuleMgrServiceClient::queryStartExperienceRule.replaceWant->SetElementName(
         "replace.bundle", "ReplaceAbility");
     int userId = 100;
-    ErrCode result = interceptor->QueryAtomicServiceStartupRule(want, callerToken, userId, rule, replaceWant);
+    StartAbilityContext ctx;
+    ErrCode result = interceptor->QueryAtomicServiceStartupRule(ctx, want, callerToken, userId, rule, replaceWant);
     // allowed open: no interception, no replaceWant delivered, embed not allowed
     EXPECT_EQ(result, ERR_OK);
     EXPECT_EQ(rule.isOpenAllowed, true);
     EXPECT_EQ(rule.isEmbeddedAllowed, false);
     EXPECT_EQ(replaceWant, nullptr);
-    EXPECT_EQ(StartAbilityUtils::ermsResultCode, ERMS_ISALLOW_RESULTCODE);
-    EXPECT_EQ(StartAbilityUtils::ermsSupportBackToCallerFlag, false);
+    EXPECT_EQ(ctx.ermsResultCode, ERMS_ISALLOW_RESULTCODE);
+    EXPECT_EQ(ctx.ermsSupportBackToCallerFlag, false);
     OHOS::system::SetParameter(ABILITY_SUPPORT_ECOLOGICAL_RULEMGRSERVICE, "false");
 }
 } // namespace AAFwk

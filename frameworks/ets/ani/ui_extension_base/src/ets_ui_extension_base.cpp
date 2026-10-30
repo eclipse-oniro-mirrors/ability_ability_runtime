@@ -21,6 +21,7 @@
 #include "ani.h"
 #include "ability_info.h"
 #include "ability_manager_client.h"
+#include "accesstoken_kit.h"
 #include "ani_common_configuration.h"
 #include "ani_common_util.h"
 #include "ani_common_want.h"
@@ -42,8 +43,10 @@
 #include "hitrace_meter.h"
 #include "insight_intent_executor_mgr.h"
 #include "int_wrapper.h"
+#include "ipc_skeleton.h"
 #include "ohos_application.h"
 #include "string_wrapper.h"
+#include "tokenid_kit.h"
 #include "ui_extension_window_command.h"
 #include "want_params_wrapper.h"
 
@@ -317,6 +320,10 @@ void EtsUIExtensionBase::OnStart(
         return;
     }
     CallObjectMethod(false, "onCreate", UIEXT_ONCREATE_SIGNATURE, launchParamObj, wantObj);
+
+    if (!OnGetConfigurationStrategy(sessionInfo)) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "OnGetConfigurationStrategy failed");
+    }
 }
 
 void EtsUIExtensionBase::OnStop()
@@ -746,6 +753,7 @@ bool EtsUIExtensionBase::HandleSessionCreate(const AAFwk::Want &want, const sptr
         if (!CallEtsOnSessionCreate(*sharedWant, sessionInfo, uiWindow, componentId)) {
             return false;
         }
+        RegisterBrandColorChangeListener(uiWindow);
         uiWindowMap_[componentId] = uiWindow;
 #ifdef SUPPORT_GRAPHICS
         if (context_->GetWindow() == nullptr) {
@@ -869,6 +877,10 @@ void EtsUIExtensionBase::DestroyWindow(const sptr<AAFwk::SessionInfo> &sessionIn
             UIEXT_ONSESSIONDESTROY_SIGNATURE, contentSessionObj);
     }
     if (uiWindow) {
+        if (context_ != nullptr &&
+            context_->GetBrandColorStrategy() == AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC) {
+            uiWindow->UnregisterAbilityDataConsumer();
+        }
         uiWindow->Destroy();
     }
     if (abilityResultListeners_) {
@@ -950,6 +962,107 @@ ani_object EtsUIExtensionBase::CallObjectMethod(const char *name, const char *si
     return reinterpret_cast<ani_object>(res);
 }
 
+bool EtsUIExtensionBase::OnGetConfigurationStrategy(const sptr<AAFwk::SessionInfo> &sessionInfo)
+{
+    TAG_LOGD(AAFwkTag::UI_EXT, "OnGetConfigurationStrategy begin");
+    auto selfToken = IPCSkeleton::GetSelfTokenID();
+    if (!Security::AccessToken::TokenIdKit::IsSystemAppByFullTokenID(selfToken)) {
+        TAG_LOGW(AAFwkTag::UI_EXT, "not system app, can not use onGetConfigurationStrategy");
+        return false;
+    }
+    auto env = etsRuntime_.GetAniEnv();
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null env");
+        return false;
+    }
+    ani_object result = CallObjectMethod("onGetConfigurationStrategy", nullptr);
+    if (result == nullptr) {
+        TAG_LOGI(AAFwkTag::UI_EXT, "onGetConfigurationStrategy not implemented");
+        return true;
+    }
+    int32_t brandColorStrategy = 0;
+    if (!GetFieldIntByName(env, result, "brandColorStrategy", brandColorStrategy)) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "Convert brandColorStrategy failed");
+        return false;
+    }
+    auto strategy =
+        brandColorStrategy == static_cast<int32_t>(AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC)
+            ? AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC
+            : AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM;
+    if (context_ == nullptr || sessionInfo  == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null ptr");
+        return false;
+    }
+    if (!context_->ApplyBrandColorStrategy(strategy, sessionInfo->brandColorStr)) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "ApplyBrandColorStrategy failed");
+        return false;
+    }
+    return true;
+}
+
+void EtsUIExtensionBase::RegisterBrandColorChangeListener(const sptr<Rosen::Window> &uiWindow)
+{
+    if (uiWindow == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null uiWindow");
+        return;
+    }
+    if (context_ == nullptr ||
+        context_->GetBrandColorStrategy() != AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC) {
+        TAG_LOGI(AAFwkTag::UI_EXT, "brandColorStrategy not FOLLOW_UEC, skip register");
+        return;
+    }
+    std::weak_ptr<EtsUIExtensionBase> weakThis = shared_from_this();
+    auto windowNotifeBrandColorChange = [weakThis](Rosen::SubSystemId id,
+                                                   uint32_t customId,
+                                                   AAFwk::Want &&data,
+                                                   std::optional<AAFwk::Want> &reply) -> int32_t {
+        auto ptr = weakThis.lock();
+        if (ptr == nullptr) {
+            TAG_LOGE(AAFwkTag::UI_EXT, "null ptr");
+            return ERR_INVALID_VALUE;
+        }
+        return ptr->WindowNotifeBrandColorChange(id, customId, std::move(data), reply);
+    };
+    if (uiWindow->RegisterAbilityDataConsumer(windowNotifeBrandColorChange) != Rosen::WMError::WM_OK) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "RegisterAbilityDataConsumer error");
+    }
+    TAG_LOGD(AAFwkTag::UI_EXT, "RegisterAbilityDataConsumer ok");
+}
+
+int32_t EtsUIExtensionBase::WindowNotifeBrandColorChange(Rosen::SubSystemId id, uint32_t customId, AAFwk::Want &&data,
+                                                         std::optional<AAFwk::Want> &reply)
+{
+    if (context_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "context null");
+        return ERR_INVALID_VALUE;
+    }
+    auto ret = context_->HandleBrandColorChange(customId, std::move(data));
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
+    AppExecFwk::Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED, "true");
+    context_->SetAbilityConfiguration(config);
+    auto self = std::static_pointer_cast<EtsUIExtensionBase>(shared_from_this());
+    auto task = [self, config]() {
+        if (self == nullptr) {
+            TAG_LOGE(AAFwkTag::UI_EXT, "null self");
+            return;
+        }
+        self->OnAbilityConfigurationUpdated(config);
+        auto abilityConfig = self->context_->GetAbilityConfiguration();
+        if (abilityConfig != nullptr) {
+            abilityConfig->RemoveItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED);
+        }
+    };
+    if (handler_ == nullptr || !handler_->PostTask(task, "EtsUIExtensionBase:OnBrandColorChange")) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "PostTask failed");
+        return ERR_INVALID_VALUE;
+    }
+    return ERR_OK;
+}
+
 void EtsUIExtensionBase::OnConfigurationUpdated(const AppExecFwk::Configuration &configuration)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
@@ -959,11 +1072,17 @@ void EtsUIExtensionBase::OnConfigurationUpdated(const AppExecFwk::Configuration 
         return;
     }
 
+    AppExecFwk::Configuration config = configuration;
+    if (context_->GetBrandColorStrategy() == AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC) {
+        config.RemoveItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED);
+        config.RemoveItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID);
+    }
+
     auto abilityConfig = context_->GetAbilityConfiguration();
     auto configUtils = std::make_shared<ConfigurationUtils>();
 
     if (abilityConfig != nullptr) {
-        auto newConfig = configUtils->UpdateGlobalConfig(configuration, context_->GetConfiguration(),
+        auto newConfig = configUtils->UpdateGlobalConfig(config, context_->GetConfiguration(),
             abilityConfig, context_->GetResourceManager());
         if (newConfig.GetItemSize() == 0) {
             return;
@@ -975,7 +1094,7 @@ void EtsUIExtensionBase::OnConfigurationUpdated(const AppExecFwk::Configuration 
         }
     } else {
         auto configUtils = std::make_shared<ConfigurationUtils>();
-        configUtils->UpdateGlobalConfig(configuration, context_->GetConfiguration(), context_->GetResourceManager());
+        configUtils->UpdateGlobalConfig(config, context_->GetConfiguration(), context_->GetResourceManager());
     }
 
     ConfigurationUpdated();

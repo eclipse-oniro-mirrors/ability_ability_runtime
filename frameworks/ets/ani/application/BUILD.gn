@@ -63,6 +63,7 @@ ohos_shared_library("application_ani") {
     "ipc:ipc_core",
     "json:nlohmann_json_static",
     "napi:ace_napi",
+    "node:node_header_notice",
     "runtime_core:ani",
   ]
 

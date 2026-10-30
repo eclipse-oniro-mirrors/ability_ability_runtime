@@ -48,19 +48,22 @@ ohos_shared_library("app_manager_ani") {
     "./src/ets_app_state_observer.cpp",
   ]
 
+  if (ability_runtime_graphics) {
+    sources += [ "./src/ets_focused_application_observer.cpp" ]
+  }
+
   cflags = []
   if (target_cpu == "arm") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
 
   deps = [
-    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
-    "${ability_runtime_innerkits_path}/app_manager:app_manager",
-    "${ability_runtime_innerkits_path}/runtime:runtime",
+    "${ability_runtime_innerkits_path}/ability_manager",
+    "${ability_runtime_innerkits_path}/app_manager",
+    "${ability_runtime_innerkits_path}/runtime",
     "${ability_runtime_native_path}/ability/native:ability_business_error",
     "${ability_runtime_native_path}/appkit:app_context",
-    "${ability_runtime_path}/frameworks/ets/ani/ani_common:ani_common",
-    "${ability_runtime_native_path}/ability/native:ability_business_error",
+    "${ability_runtime_path}/frameworks/ets/ani/ani_common",
   ]
 
   external_deps = [
@@ -70,9 +73,9 @@ ohos_shared_library("app_manager_ani") {
     "eventhandler:libeventhandler",
     "hilog:libhilog",
     "ipc:ipc_core",
+    "libuv:uv",
     "napi:ace_napi",
     "node:node_header_notice",
-    "libuv:uv",
     "runtime_core:ani",
     "samgr:samgr_proxy",
   ]

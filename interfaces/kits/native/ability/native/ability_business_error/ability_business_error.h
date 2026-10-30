@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -246,6 +246,9 @@ enum class AbilityErrorCode {
     // The caller is not main thread
     ERROR_CODE_MAIN_THREAD = 16000205,
 
+    // The target application is not authorized for startup before the first unlock.
+    ERROR_CODE_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT = 16000206,
+
     // Setting permissions for resident processes
     ERROR_CODE_NO_RESIDENT_PERMISSION = 16200006,
 
@@ -339,6 +342,9 @@ enum class AbilityErrorCode {
 
     // Failed to parse configuration file.
     ERROR_CODE_EVICT_CONFIG_PARSE_ERROR = 16000164,
+
+    // The number of registered focused application observers for the current application has reached the upper limit.
+    ERROR_CODE_REGISTERED_FOCUS_OBSERVER_EXCEED_LIMIT = 16000165,
 
     // target bundle is not in u1
     ERROR_CODE_NO_U1 = 16000204,

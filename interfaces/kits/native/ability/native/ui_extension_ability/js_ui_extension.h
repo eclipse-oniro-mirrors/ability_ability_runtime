@@ -192,6 +192,7 @@ private:
     sptr<Rosen::Window> CreateUIWindow(const std::shared_ptr<UIExtensionContext> context,
         const sptr<AAFwk::SessionInfo> &sessionInfo, const AAFwk::Want &want);
     void ExecuteInsightIntentDone(uint64_t intentId, const InsightIntentExecuteResult &result);
+    bool OnGetConfigurationStrategy(const sptr<AAFwk::SessionInfo> &sessionInfo);
 
     JsRuntime& jsRuntime_;
     std::shared_ptr<NativeReference> jsObj_ = nullptr;

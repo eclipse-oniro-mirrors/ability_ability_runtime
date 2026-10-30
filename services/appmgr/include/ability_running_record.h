@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_ABILITY_RUNNING_RECORD_H
 #define OHOS_ABILITY_RUNTIME_ABILITY_RUNNING_RECORD_H
 
+#include <atomic>
 #include <string>
 
 #include "ability_info.h"
@@ -164,7 +165,7 @@ private:
     int32_t ownerUserId_ = -1;
     int32_t uiExtensionBindAbilityId_ = 0;
     AbilityState state_ = AbilityState::ABILITY_STATE_CREATE;
-    bool isTerminating_ = false;
+    std::atomic<bool> isTerminating_ = false;
     bool isFocused_ = false;
     bool isSingleUser_ = false;
     bool isUserRequestCleaning_ = false;

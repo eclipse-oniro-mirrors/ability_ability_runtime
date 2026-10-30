@@ -395,10 +395,7 @@ HWTEST_F(AppMgrServiceInnerSixthTest, GetExceptionTimerId_002, TestSize.Level1)
     EXPECT_NE(appMgrServiceInner, nullptr);
 #ifdef APP_MGR_SERVICE_HICOLLIE_ENABLE
 #else
-    FaultData faultData;
-    int32_t pid = 0;
-    int32_t callerUid = 0;
-    int result = appMgrServiceInner->GetExceptionTimerId(faultData, "", nullptr, pid, callerUid);
+    int result = AppfreezeManager::GetInstance()->GetExceptionTimerId([] {});
     EXPECT_NE(result, 0);
 #endif
 

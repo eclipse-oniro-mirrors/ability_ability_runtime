@@ -1654,6 +1654,19 @@ public:
     void GetAbilityTokenByCalleeObj(sptr<IRemoteObject> callStub, sptr<IRemoteObject> &token);
 
     /**
+     * Get the callee process pid by the call stub returned via OnAbilityConnectDone.
+     * RSS process ONLY (RSS_UID check) — all other callers get RESOLVE_CALL_NO_PERMISSIONS.
+     *
+     * @param callStub The callee stub received in OnAbilityConnectDone.
+     * @param pid Output: the callee process pid.
+     * @return ERR_OK on success; RESOLVE_CALL_NO_PERMISSIONS for non-RSS callers;
+     *         ERR_INVALID_VALUE for null callStub;
+     *         ERR_CALL_STUB_NOT_FOUND when no callee record maps to the callStub;
+     *         ERR_CALLEE_PID_INVALID when the callee record exists but pid is invalid.
+     */
+    ErrCode GetPidByCallStub(sptr<IRemoteObject> callStub, int32_t &pid);
+
+    /**
      * Release a call established by StartAbilityByCall: disconnect the connection and, when the
      * callee has no remaining callers, stop the callee ability. element identifies the callee
      * (remote device id in the element routes the release to DMS). connect must be non-null.

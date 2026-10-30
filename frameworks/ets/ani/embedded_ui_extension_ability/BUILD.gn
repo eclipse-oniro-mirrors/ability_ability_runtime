@@ -68,6 +68,7 @@ ohos_shared_library("embedded_ui_extension_ani") {
     "hitrace:hitrace_meter",
     "ipc:ipc_napi",
     "ipc:ipc_single",
+    "node:node_header_notice",
     "runtime_core:ani",
   ]
 

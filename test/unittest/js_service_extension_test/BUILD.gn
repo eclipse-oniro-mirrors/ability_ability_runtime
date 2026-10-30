@@ -66,6 +66,7 @@ ohos_unittest("js_service_extension_test") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "json:nlohmann_json_static",
+    "libuv:uv",
     "napi:ace_napi",
     "node:node_header_notice",
     "resource_management:global_resmgr",

@@ -1699,6 +1699,34 @@ HWTEST_F(AppMgrServiceTest, UnregisterAppForegroundStateObserver_001, TestSize.L
 }
 
 /**
+ * @tc.name: RegisterFocusedApplicationObserver_001
+ * @tc.desc: Test the return when service is not ready.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, RegisterFocusedApplicationObserver_001, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    appMgrService->appMgrServiceInner_ = nullptr;
+    sptr<IFocusedApplicationObserver> observer = nullptr;
+    auto res = appMgrService->RegisterFocusedApplicationObserver(observer);
+    EXPECT_EQ(ERR_INVALID_OPERATION, res);
+}
+
+/**
+ * @tc.name: UnregisterFocusedApplicationObserver_001
+ * @tc.desc: Test the return when service is not ready.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, UnregisterFocusedApplicationObserver_001, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    appMgrService->appMgrServiceInner_ = nullptr;
+    sptr<IFocusedApplicationObserver> observer = nullptr;
+    auto res = appMgrService->UnregisterFocusedApplicationObserver(observer);
+    EXPECT_EQ(ERR_INVALID_OPERATION, res);
+}
+
+/**
  * @tc.name: IsFinalAppProcess_001
  * @tc.desc: Test IsFinalAppProcess when inpit is nullptr.
  * @tc.type: FUNC

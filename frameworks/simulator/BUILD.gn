@@ -16,6 +16,8 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 if (is_mac) {
   dylib_suffix = ".dylib"
+} else if (is_linux) {
+  dylib_suffix = ".so"
 } else {
   dylib_suffix = ".dll"
 }

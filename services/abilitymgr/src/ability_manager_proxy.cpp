@@ -4305,6 +4305,32 @@ void AbilityManagerProxy::GetAbilityTokenByCalleeObj(const sptr<IRemoteObject> &
     token = sptr<IRemoteObject>(reply.ReadRemoteObject());
 }
 
+int32_t AbilityManagerProxy::GetPidByCallStub(const sptr<IRemoteObject> &callStub, int32_t &pid)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write interface token fail");
+        return INNER_ERR;
+    }
+    if (!data.WriteRemoteObject(callStub)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write callStub fail");
+        return ERR_INVALID_VALUE;
+    }
+
+    auto error = SendRequest(AbilityManagerInterfaceCode::GET_PID_BY_CALL_STUB, data, reply, option);
+    if (error != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "request error:%{public}d", error);
+        return error;
+    }
+    int32_t result = reply.ReadInt32();
+    if (result == ERR_OK) {
+        pid = reply.ReadInt32();
+    }
+    return result;
+}
+
 int AbilityManagerProxy::RegisterSnapshotHandler(const sptr<ISnapshotHandler>& handler)
 {
     MessageParcel data;

@@ -26,6 +26,8 @@
 namespace OHOS {
 namespace AAFwk {
 
+struct StartAbilityContext;
+
 struct StartAbilityInfo {
     static std::shared_ptr<StartAbilityInfo> CreateStartAbilityInfo(const Want &want, int32_t userId,
         int32_t appIndex, sptr<IRemoteObject> callerToken);
@@ -38,16 +40,9 @@ struct StartAbilityInfo {
 };
 
 struct StartAbilityUtils {
-    static bool GetCallerAbilityInfo(const sptr<IRemoteObject> &callerToken,
-        AppExecFwk::AbilityInfo &abilityInfo);
+    static bool GetCallerAbilityInfo(const StartAbilityContext &ctx,
+        const sptr<IRemoteObject> &callerToken, AppExecFwk::AbilityInfo &abilityInfo);
 
-    static std::shared_ptr<StartAbilityInfo> startAbilityInfo;
-    static std::shared_ptr<StartAbilityInfo> callerAbilityInfo;
-    static bool skipCrowTest;
-    static bool skipErms;
-    static int32_t ermsResultCode;
-    static bool isWantWithAppCloneIndex;
-    static bool ermsSupportBackToCallerFlag;
     static bool retGetCallerAbilityInfo;
     static AppExecFwk::AbilityInfo callerAbiltyInfo;
 };

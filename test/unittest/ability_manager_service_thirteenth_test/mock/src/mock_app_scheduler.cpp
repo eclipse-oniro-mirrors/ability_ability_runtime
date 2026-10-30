@@ -18,6 +18,7 @@
 #include "app_scheduler.h"
 #include "appmgr/app_mgr_constants.h"
 #include "hilog_tag_wrapper.h"
+#include "mock_my_status.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -256,11 +257,13 @@ int32_t AppScheduler::NotifyAppMgrRecordExitReasonCompability(
     int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg,
     int32_t reason, int32_t callerPid)
 {
+    MyStatus::GetInstance().asNotifyExitReasonCompabilityCount_++;
     return 0;
 }
 
 int AppScheduler::GetAbilityRecordsByProcessID(const int pid, std::vector<sptr<IRemoteObject>>& tokens)
 {
+    tokens = MyStatus::GetInstance().asGetAbilityRecordsTokens_;
     return 0;
 }
 

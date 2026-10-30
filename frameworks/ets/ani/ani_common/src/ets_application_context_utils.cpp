@@ -19,13 +19,16 @@
 #include "ability_business_error.h"
 #include "ability_runtime_error_util.h"
 #include "ani_enum_convert.h"
+#include "app_mgr_client.h"
 #include "application_context_manager.h"
 #include "child_process_info.h"
 #include "ets_context_utils.h"
 #include "ets_error_utils.h"
 #include "ets_interop_ability_lifecycle_callback.h"
 #include "ets_native_reference.h"
+#include "ets_app_process_state_observer.h"
 #include "hilog_tag_wrapper.h"
+#include "singleton.h"
 #ifdef SUPPORT_SCREEN
 #include "ui_ability.h"
 #endif
@@ -286,6 +289,101 @@ void EtsApplicationContextUtils::OnNativeOffApplicationStateChangeSync(ani_env *
     }
     if (applicationStateCallback_->IsEmpty()) {
         applicationStateCallback_.reset();
+    }
+}
+
+void EtsApplicationContextUtils::OnNativeOnAppProcessStateChangeSync(ani_env *env, ani_object aniObj,
+    ani_object observer)
+{
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null env");
+        return;
+    }
+    auto applicationContext = applicationContext_.lock();
+    if (applicationContext == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "nativeContext is null");
+        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM);
+        return;
+    }
+    if (appProcessStateObserver_ != nullptr) {
+        appProcessStateObserver_->Register(observer);
+        return;
+    }
+    ani_vm *aniVM = nullptr;
+    if (env->GetVM(&aniVM) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPKIT, "get aniVM failed");
+        return;
+    }
+    appProcessStateObserver_ = new (std::nothrow) EtsAppProcessStateObserver(aniVM);
+    if (appProcessStateObserver_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null appProcessStateObserver_");
+        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        return;
+    }
+    auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+    if (appMgrClient == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null appMgrClient");
+        appProcessStateObserver_ = nullptr;
+        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        return;
+    }
+    int32_t ret = appMgrClient->RegisterProcessLifecycleObserver(appProcessStateObserver_);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPKIT, "RegisterProcessLifecycleObserver failed: %{public}d", ret);
+        appProcessStateObserver_ = nullptr;
+        if (ret == ERR_ABILITY_RUNTIME_EXTERNAL_PROCESS_LIFECYCLE_OBSERVER_EXCEED_LIMIT) {
+            EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_REGISTERED_FOCUS_OBSERVER_EXCEED_LIMIT);
+        } else {
+            EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        }
+        return;
+    }
+    appProcessStateObserver_->Register(observer);
+}
+
+void EtsApplicationContextUtils::OnNativeOffAppProcessStateChangeSync(ani_env *env, ani_object aniObj,
+    ani_object observer)
+{
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null env");
+        return;
+    }
+    ani_boolean isUndefined = ANI_FALSE;
+    env->Reference_IsUndefined(observer, &isUndefined);
+    if (isUndefined) {
+        if (appProcessStateObserver_) {
+            appProcessStateObserver_->UnRegister();
+            auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+            if (appMgrClient != nullptr) {
+                int32_t ret = appMgrClient->UnregisterProcessLifecycleObserver(appProcessStateObserver_);
+                if (ret != ERR_OK) {
+                    TAG_LOGE(AAFwkTag::APPKIT, "UnregisterProcessLifecycleObserver failed: %{public}d", ret);
+                }
+            }
+            appProcessStateObserver_ = nullptr;
+        }
+        return;
+    }
+    ani_boolean isNull = ANI_FALSE;
+    env->Reference_IsNull(observer, &isNull);
+    if (isNull) {
+        TAG_LOGE(AAFwkTag::APPKIT, "observer is null");
+        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM);
+        return;
+    } else if (!(appProcessStateObserver_ && appProcessStateObserver_->UnRegister(observer))) {
+        TAG_LOGE(AAFwkTag::APPKIT, "call UnRegister failed, observer does not exist");
+        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_OBSERVER_NOT_FOUND);
+        return;
+    }
+    if (appProcessStateObserver_ && appProcessStateObserver_->IsEmpty()) {
+        auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+        if (appMgrClient != nullptr) {
+            int32_t ret = appMgrClient->UnregisterProcessLifecycleObserver(appProcessStateObserver_);
+            if (ret != ERR_OK) {
+                TAG_LOGE(AAFwkTag::APPKIT, "UnregisterProcessLifecycleObserver failed: %{public}d", ret);
+            }
+        }
+        appProcessStateObserver_ = nullptr;
     }
 }
 
@@ -1328,6 +1426,30 @@ void EtsApplicationContextUtils::NativeOffApplicationStateChangeSync(ani_env *en
     etsContext->OnNativeOffApplicationStateChangeSync(env, aniObj, callback);
 }
 
+void EtsApplicationContextUtils::NativeOnAppProcessStateChangeSync(ani_env *env, ani_object aniObj,
+    ani_object observer)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "NativeOnAppProcessStateChangeSync Call");
+    auto etsContext = GeApplicationContext(env, aniObj);
+    if (etsContext == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null etsContext");
+        return;
+    }
+    etsContext->OnNativeOnAppProcessStateChangeSync(env, aniObj, observer);
+}
+
+void EtsApplicationContextUtils::NativeOffAppProcessStateChangeSync(ani_env *env, ani_object aniObj,
+    ani_object observer)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "NativeOffAppProcessStateChangeSync Call");
+    auto etsContext = GeApplicationContext(env, aniObj);
+    if (etsContext == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null etsContext");
+        return;
+    }
+    etsContext->OnNativeOffAppProcessStateChangeSync(env, aniObj, observer);
+}
+
 void EtsApplicationContextUtils::GetAllRunningInstanceKeys(ani_env *env, ani_object aniObj, ani_object callback)
 {
     TAG_LOGD(AAFwkTag::APPKIT, "GetAllRunningInstanceKeys Call");
@@ -1498,6 +1620,12 @@ void EtsApplicationContextUtils::BindApplicationContextFunc(ani_env *aniEnv)
             ani_native_function {"nativeOffApplicationStateChangeSync",
                 "C{@ohos.app.ability.ApplicationStateChangeCallback.ApplicationStateChangeCallback}:",
                 reinterpret_cast<void*>(EtsApplicationContextUtils::NativeOffApplicationStateChangeSync)},
+            ani_native_function {"nativeOnAppProcessStateChangeSync",
+                "C{@ohos.app.ability.AppProcessStateObserver.AppProcessStateObserver}:",
+                reinterpret_cast<void*>(EtsApplicationContextUtils::NativeOnAppProcessStateChangeSync)},
+            ani_native_function {"nativeOffAppProcessStateChangeSync",
+                "C{@ohos.app.ability.AppProcessStateObserver.AppProcessStateObserver}:",
+                reinterpret_cast<void*>(EtsApplicationContextUtils::NativeOffAppProcessStateChangeSync)},
             ani_native_function {"nativeGetAllRunningInstanceKeys", "C{utils.AbilityUtils.AsyncCallbackWrapper}:",
                 reinterpret_cast<void *>(EtsApplicationContextUtils::GetAllRunningInstanceKeys)},
             ani_native_function {"nativeGetAllWindowStages", "C{utils.AbilityUtils.AsyncCallbackWrapper}:",

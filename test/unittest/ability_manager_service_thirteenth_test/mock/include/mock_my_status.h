@@ -17,8 +17,10 @@
 #define MOCK_MY_STATUS_H
 
 #include <string>
+#include <vector>
 
 #include "appmgr/running_process_info.h"
+#include "iremote_object.h"
 #include "scene_board/ui_ability_record.h"
 #include "base_extension_record.h"
 
@@ -75,6 +77,12 @@ public:
     std::string oeuValidateCallerHostBundleName_;
     int32_t amcGetProcessInfoRet_ = ERR_OK;
     AppExecFwk::AppProcessState amcProcessState_ = AppExecFwk::AppProcessState::APP_STATE_FOREGROUND;
+    // AppScheduler mock: tokens returned by GetAbilityRecordsByProcessID and the call
+    // counter of NotifyAppMgrRecordExitReasonCompability, for kill-info gating tests.
+    std::vector<sptr<IRemoteObject>> asGetAbilityRecordsTokens_;
+    int asNotifyExitReasonCompabilityCount_ = 0;
+    // UIAbilityLifecycleManager mock: record returned by GetUIAbilityRecordBySessionInfo.
+    std::shared_ptr<UIAbilityRecord> ualmGetUIAbilityRecordBySessionInfo_ = nullptr;
 };
 } // namespace AAFwk
 } // namespace OHOS

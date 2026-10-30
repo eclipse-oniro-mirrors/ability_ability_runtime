@@ -1036,5 +1036,61 @@ HWTEST_F(AbilityManagerProxySecondTest, AbilityManagerProxy_StartAbilityByOEExt_
     EXPECT_EQ(proxy_->StartAbilityByOEExt(want, callerToken, hostPid, specifiedFlag), NO_ERROR);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerProxy_StartAbilityByOEExt_0300 end");
 }
+
+/**
+ * @tc.name: AbilityManagerProxy_GetPidByCallStub_0100
+ * @tc.desc: GetPidByCallStub with null callStub.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxySecondTest, AbilityManagerProxy_GetPidByCallStub_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerProxy_GetPidByCallStub_0100 start");
+    sptr<IRemoteObject> callStub = nullptr;
+    int32_t pid = 0;
+    EXPECT_EQ(proxy_->GetPidByCallStub(callStub, pid), ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerProxy_GetPidByCallStub_0100 end");
+}
+
+/**
+ * @tc.name: AbilityManagerProxy_GetPidByCallStub_0200
+ * @tc.desc: GetPidByCallStub with SendRequest failure.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxySecondTest, AbilityManagerProxy_GetPidByCallStub_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerProxy_GetPidByCallStub_0200 start");
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "data.client.bundle";
+    abilityRequest.abilityInfo.name = "ClientAbility";
+    abilityRequest.abilityInfo.type = AbilityType::DATA;
+    std::shared_ptr<AbilityRecord> abilityRecord = AbilityRecord::CreateAbilityRecord(abilityRequest);
+    sptr<IRemoteObject> callStub = abilityRecord->GetToken();
+    int32_t pid = 0;
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _)).WillOnce(Return(INVALID_PARAMETERS_ERR));
+    EXPECT_EQ(proxy_->GetPidByCallStub(callStub, pid), INVALID_PARAMETERS_ERR);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerProxy_GetPidByCallStub_0200 end");
+}
+
+/**
+ * @tc.name: AbilityManagerProxy_GetPidByCallStub_0300
+ * @tc.desc: GetPidByCallStub with SendRequest success.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxySecondTest, AbilityManagerProxy_GetPidByCallStub_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerProxy_GetPidByCallStub_0300 start");
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "data.client.bundle";
+    abilityRequest.abilityInfo.name = "ClientAbility";
+    abilityRequest.abilityInfo.type = AbilityType::DATA;
+    std::shared_ptr<AbilityRecord> abilityRecord = AbilityRecord::CreateAbilityRecord(abilityRequest);
+    sptr<IRemoteObject> callStub = abilityRecord->GetToken();
+    int32_t pid = 0;
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeGetPidByCallStubSuccess));
+    EXPECT_EQ(proxy_->GetPidByCallStub(callStub, pid), ERR_OK);
+    EXPECT_EQ(pid, AbilityManagerStubMock::TEST_PID);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerProxy_GetPidByCallStub_0300 end");
+}
 } // namespace AAFwk
 } // namespace OHOS

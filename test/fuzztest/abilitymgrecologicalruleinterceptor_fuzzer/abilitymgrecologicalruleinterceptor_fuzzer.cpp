@@ -159,9 +159,10 @@ void TestDoProcessWantUserId(
 {
     Want sameBundleWant = BuildSameBundleWant(fdp);
     int32_t userId = fdp.ConsumeIntegralInRange<int32_t>(0, TEST_USER_ID);
-    interceptor->DoProcess(sameBundleWant, userId);
+    StartAbilityContext ctx;
+    interceptor->DoProcess(ctx, sameBundleWant, userId);
     Want diffBundleWant = BuildDifferentBundleWant(fdp);
-    interceptor->DoProcess(diffBundleWant, userId);
+    interceptor->DoProcess(ctx, diffBundleWant, userId);
 }
 
 void TestGetEcologicalTargetInfo(
@@ -171,9 +172,10 @@ void TestGetEcologicalTargetInfo(
     Want want = BuildFuzzWant(fdp);
     ErmsCallerInfo callerInfo;
     auto abilityInfo = CreateFuzzAbilityInfo(fdp);
-    interceptor->GetEcologicalTargetInfo(want, abilityInfo, callerInfo);
+    StartAbilityContext ctx;
+    interceptor->GetEcologicalTargetInfo(ctx, want, abilityInfo, callerInfo);
     auto nullAbilityInfo = std::shared_ptr<AbilityInfo>(nullptr);
-    interceptor->GetEcologicalTargetInfo(want, nullAbilityInfo, callerInfo);
+    interceptor->GetEcologicalTargetInfo(ctx, want, nullAbilityInfo, callerInfo);
 }
 
 void TestGetEcologicalCallerInfo(
@@ -185,8 +187,9 @@ void TestGetEcologicalCallerInfo(
     callerInfo.uid = fdp.ConsumeIntegral<int32_t>();
     int32_t userId = fdp.ConsumeIntegralInRange<int32_t>(0, TEST_USER_ID);
     sptr<IRemoteObject> token = GetFuzzAbilityToken();
-    interceptor->GetEcologicalCallerInfo(want, callerInfo, userId, token);
-    interceptor->GetEcologicalCallerInfo(want, callerInfo, userId, nullptr);
+    StartAbilityContext ctx;
+    interceptor->GetEcologicalCallerInfo(ctx, want, callerInfo, userId, token);
+    interceptor->GetEcologicalCallerInfo(ctx, want, callerInfo, userId, nullptr);
 }
 
 void TestInitErmsCallerInfo(
@@ -199,10 +202,11 @@ void TestInitErmsCallerInfo(
     int32_t userId = fdp.ConsumeIntegralInRange<int32_t>(0, TEST_USER_ID);
     sptr<IRemoteObject> token = GetFuzzAbilityToken();
     bool skipCallerInfo = fdp.ConsumeBool();
+    StartAbilityContext ctx;
     interceptor->InitErmsCallerInfo(
-        want, abilityInfo, callerInfo, userId, token, skipCallerInfo);
+        ctx, want, abilityInfo, callerInfo, userId, token, skipCallerInfo);
     interceptor->InitErmsCallerInfo(
-        want, abilityInfo, callerInfo, userId, nullptr, skipCallerInfo);
+        ctx, want, abilityInfo, callerInfo, userId, nullptr, skipCallerInfo);
 }
 
 void TestQueryAtomicServiceStartupRule(
@@ -214,11 +218,12 @@ void TestQueryAtomicServiceStartupRule(
     sptr<IRemoteObject> token = GetFuzzAbilityToken();
     AtomicServiceStartupRule rule;
     sptr<Want> replaceWant = new (std::nothrow) Want();
+    StartAbilityContext ctx;
     interceptor->QueryAtomicServiceStartupRule(
-        want, token, userId, rule, replaceWant);
+        ctx, want, token, userId, rule, replaceWant);
     Want sameBundleWant = BuildSameBundleWant(fdp);
     interceptor->QueryAtomicServiceStartupRule(
-        sameBundleWant, token, userId, rule, replaceWant);
+        ctx, sameBundleWant, token, userId, rule, replaceWant);
 }
 
 void TestNoNeedErms(

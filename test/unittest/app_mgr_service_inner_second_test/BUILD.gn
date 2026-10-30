@@ -37,6 +37,7 @@ ohos_unittest("AppMgrServiceInnerSecondTest") {
     "${ability_runtime_services_path}/abilitymgr/include/utils",
     "${ability_runtime_services_path}/abilitymgr/include",
     "${ability_runtime_services_path}/appdfr/include",
+    "${ability_runtime_services_path}/common/src",
     "${ability_runtime_test_path}/moduletest/mock/include",
     "${ability_runtime_test_path}/mock/mock_appmgr_service",
     "mock/include",

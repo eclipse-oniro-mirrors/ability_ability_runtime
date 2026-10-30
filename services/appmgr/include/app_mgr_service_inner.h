@@ -34,6 +34,8 @@
 #include "app_debug_listener_interface.h"
 #include "app_debug_manager.h"
 #include "app_foreground_state_observer_interface.h"
+#include "process_lifecycle_observer_interface.h"
+#include "focused_application_observer_interface.h"
 #include "app_malloc_info.h"
 #include "app_mgr_constants.h"
 #include "app_mgr_event.h"
@@ -106,6 +108,7 @@ class WindowPidVisibilityInfo;
 class FocusChangeInfo;
 }
 namespace AppExecFwk {
+struct AppfreezeAppInfo;
 using OHOS::AAFwk::Want;
 using AAFwk::FdGuard;
 using ImageError = IImageErrorHandler::ImageError;
@@ -1230,6 +1233,8 @@ public:
 #ifdef SUPPORT_SCREEN
     void HandleFocused(const sptr<OHOS::Rosen::FocusChangeInfo> &focusChangeInfo);
     void HandleUnfocused(const sptr<OHOS::Rosen::FocusChangeInfo> &focusChangeInfo);
+    void NotifyFocusedApplicationChanged(int32_t focusedUid, int32_t unfocusedUid,
+        uint64_t displayGroupId, const std::shared_ptr<AppRunningRecord> &appRecord);
 
     /**
      * Handle window visibility changed.
@@ -1506,6 +1511,11 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     int32_t UnregisterAppForegroundStateObserver(const sptr<IAppForegroundStateObserver> &observer);
+
+    int32_t RegisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer);
+    int32_t UnregisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer);
+    int32_t RegisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer);
+    int32_t UnregisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer);
 
 #ifdef SUPPORT_CHILD_PROCESS
     /**
@@ -2301,9 +2311,6 @@ private:
     void SetOverlayInfo(const std::string& bundleName, const int32_t userId, AppSpawnStartMsg& startMsg);
     void SetAppEnvInfo(const BundleInfo &bundleInfo, AppSpawnStartMsg& startMsg);
 
-    void TimeoutNotifyApp(int32_t pid, int32_t uid, const std::string& bundleName, const std::string& processName,
-        const FaultData &faultData, int32_t recordId);
-
     void AppRecoveryNotifyApp(int32_t pid, const std::string& bundleName,
         FaultDataType faultType, const std::string& markers, int32_t recordId);
     
@@ -2441,6 +2448,7 @@ private:
     void HandleConfigurationChange(const Configuration &config, const int32_t userId = -1);
     void HandleConfigurationChange(const Configuration &config, const std::set<int32_t> &userIds);
     bool CheckIsThreadInFoundation(pid_t pid);
+    bool ValidateFreezeTargetSnapshot(int32_t pid, int32_t uid, const std::string &bundleName);
     bool CheckAppFault(const std::shared_ptr<AppRunningRecord> &appRecord, const FaultData &faultData);
     int64_t GetAppFaultNotifyLatency(const std::string& marker, int32_t pid, int32_t recordId,
         int64_t receiveTime) const;
@@ -2494,6 +2502,11 @@ private:
         bool abilityPendingBackground = false, bool isInForeground = false);
     int32_t SubmitDfxFaultTask(const FaultData &faultData, const std::string &bundleName,
         const std::shared_ptr<AppRunningRecord> &appRecord, const int32_t pid);
+    int32_t SubmitAppFault(FaultData& faultData, const std::shared_ptr<AppRunningRecord>& appRecord,
+        int32_t pid, int64_t receiveTime);
+    AppfreezeAppInfo GetAppfreezeAppInfo(const std::shared_ptr<AppRunningRecord>& record);
+    __attribute__((visibility("hidden"))) void HandleFaultDisposition(const FaultData& faultData,
+        const std::shared_ptr<AppRunningRecord>& record, bool saTimeout, bool focusFlag);
     void AddAbilityStageForSpecified(std::shared_ptr<AppRunningRecord> appRecord);
     void ReportAbilityStartInfoForSpecified(std::shared_ptr<AppRunningRecord> appRecord,
         const AbilityInfo &abilityInfo);
