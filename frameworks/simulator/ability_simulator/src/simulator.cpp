@@ -1097,7 +1097,7 @@ void SimulatorImpl::ReportJsError(napi_value obj)
         TAG_LOGE(AAFwkTag::ABILITY_SIM, "errorStack empty");
         return;
     }
-    auto newErrorStack = DFXJSNApi::SourceMapTranslateBySourceMap(errorStack);
+    auto newErrorStack = DFXJSNApi::SourceMapTranslateBySourceMap(errorStack, false);
     summary += "Stacktrace:\n" + newErrorStack;
 
     std::stringstream summaryBody(summary);
