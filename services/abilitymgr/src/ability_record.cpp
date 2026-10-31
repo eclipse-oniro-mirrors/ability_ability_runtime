@@ -70,7 +70,7 @@
 #endif
 #include "xcollie/process_kill_reason.h"
 #include "parameters.h"
-
+#include "server_constant.h"
 namespace OHOS {
 using AbilityRuntime::FreezeUtil;
 namespace AAFwk {
@@ -195,13 +195,14 @@ std::shared_ptr<AbilityRecord> AbilityRecord::CreateAbilityRecord(const AbilityR
 void AbilityRecord::Init(const AbilityRequest &abilityRequest)
 {
     SetUid(abilityRequest.uid);
-    int32_t appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
-    if (abilityRequest.isWebSandBoxClone) {
-        appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
-        InitSandboxCloneParams(abilityRequest);
-        TAG_LOGD(AAFwkTag::ABILITYMGR, "Web sandbox clone, using appIndex from abilityInfo: %{public}d", appIndex);
+    int32_t appIndex = 0;
+    if (abilityRequest.want.HasParameter(ServerConstant::DLP_INDEX)) {
+        appIndex = abilityRequest.want.GetIntParam(ServerConstant::DLP_INDEX, 0);
     } else {
-        (void)AbilityRuntime::StartupUtil::GetAppIndex(abilityRequest.want, appIndex);
+        appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
+    }
+    if (abilityRequest.isWebSandBoxClone) {
+        InitSandboxCloneParams(abilityRequest);
     }
     SetAppIndex(appIndex);
     SetSecurityFlag(abilityRequest.want.GetBoolParam(DLP_PARAMS_SECURITY_FLAG, false));

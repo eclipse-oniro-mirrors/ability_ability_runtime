@@ -23,6 +23,7 @@
 #include "system_ability_definition.h"
 #include "app_utils.h"
 #include "record_cost_time_util.h"
+#include "in_process_call_wrapper.h"
 
 namespace OHOS {
 using AAFwk::RecordCostTimeUtil;
@@ -710,11 +711,12 @@ bool BundleMgrHelper::GetApplicationInfoWithAppIndex(
     RecordCostTimeUtil timeRecord("GetApplicationInfoWithAppIndex");
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     BundleInfo bundleInfo;
-    if (appIndex == 0 || appIndex == AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
+    if (appIndex == 0) {
         if (bundleMgr->GetApplicationInfo(appName, AppExecFwk::BundleFlag::GET_BUNDLE_DEFAULT, userId, appInfo)) {
             return true;
         }
     } else if (AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex) ||
+               appIndex == AbilityRuntime::GlobalConstant::PC_TABLET_INDEX ||
                AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(appIndex)) {
         if (bundleMgr->GetCloneBundleInfo(appName,
             static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION),
@@ -1109,7 +1111,7 @@ ErrCode BundleMgrHelper::GetDualModeBundleInfo(const std::string &bundleName, in
     }
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     DualModeBundleInfo preference;
-    auto ret = bundleMgr->GetDualModeBundleInfo(bundleName, userId, preference);
+    auto ret = IN_PROCESS_CALL(bundleMgr->GetDualModeBundleInfo(bundleName, userId, preference));
     if (ret == ERR_OK) {
         appIndex = preference.appIndex;
     } else {
