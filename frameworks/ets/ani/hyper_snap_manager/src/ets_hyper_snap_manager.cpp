@@ -104,7 +104,7 @@ public:
 
     static void NativeGetLastError(ani_env *env, ani_enum_item errType, ani_object call);
 
-    static void NativeIsHyperSnapInitializing(ani_env *env, ani_object call);
+    static ani_boolean NativeIsHyperSnapInitializing(ani_env *env);
 };
 
 void EtsHyperSnapManager::SetHyperSnapEnabled(ani_env *env, ani_boolean enabledFlag)
@@ -195,28 +195,25 @@ void EtsHyperSnapManager::NativeGetLastError(ani_env *env, ani_enum_item errType
     AppExecFwk::AsyncCallback(env, call, errOk, info);
 }
 
-void EtsHyperSnapManager::NativeIsHyperSnapInitializing(ani_env *env, ani_object call)
+ani_boolean EtsHyperSnapManager::NativeIsHyperSnapInitializing(ani_env *env)
 {
     TAG_LOGD(AAFwkTag::APPKIT, "NativeIsHyperSnapInitializing called");
     if (env == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "NativeIsHyperSnapInitializing: null env");
-        return;
+        return ANI_FALSE;
     }
 
     auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
     if (appMgrClient == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "NativeIsHyperSnapInitializing: null appMgrClient");
-        ani_object error = AbilityRuntime::EtsErrorUtil::CreateError(env,
+        AbilityRuntime::EtsErrorUtil::ThrowError(env,
             AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
-        AppExecFwk::AsyncCallback(env, call, error, nullptr);
-        return;
+        return ANI_FALSE;
     }
 
     bool result = appMgrClient->IsHyperSnapInitializing();
     TAG_LOGI(AAFwkTag::APPKIT, "NativeIsHyperSnapInitializing result: %{public}d", result);
-    ani_object errOk = AbilityRuntime::EtsErrorUtil::CreateError(env, AbilityRuntime::AbilityErrorCode::ERROR_OK);
-    ani_object aniResult = AppExecFwk::CreateBoolean(env, static_cast<ani_boolean>(result));
-    AppExecFwk::AsyncCallback(env, call, errOk, aniResult);
+    return result ? ANI_TRUE : ANI_FALSE;
 }
 
 void EtsHyperSnapManagerRegisterInit(ani_env *env)
