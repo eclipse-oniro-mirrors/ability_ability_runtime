@@ -144,6 +144,15 @@ public:
         bool isKillPrecedeStart = false) = 0;
 
     /**
+     * CheckProcessAvailable, async query memmgr whether the process is available.
+     * If memmgr is unreachable, tolerate and return true.
+     *
+     * @param pid, the process id to check.
+     * @return true if process is available or memmgr unreachable; false if being killed.
+     */
+    virtual bool CheckProcessAvailable(int32_t pid) { return true; }
+
+    /**
      * Set child and parent relationship
      * @param token child process
      * @param callerToken parent process
@@ -603,6 +612,7 @@ public:
         CLEAR_PROCESS_BY_TOKEN,
         REGISTER_ABILITY_MS_DELEGATE,
         KILL_PROCESSES_BY_PIDS,
+        CHECK_PROCESS_AVAILABLE,
         ATTACH_PID_TO_PARENT,
         IS_MEMORY_SIZE_SUFFICIENT,
         NOTIFY_APP_MGR_RECORD_EXIT_REASON,

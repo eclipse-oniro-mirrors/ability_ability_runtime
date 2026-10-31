@@ -403,5 +403,10 @@ bool AppScheduler::IsKilledForUpgradeWeb(const std::string &bundleName)
 {
     return true;
 }
+
+bool AppScheduler::CheckProcessAvailable(int32_t pid)
+{
+    return true;
+}
 } // namespace AAFwk
 } // namespace OHOS

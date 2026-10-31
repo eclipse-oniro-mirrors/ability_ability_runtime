@@ -2711,7 +2711,6 @@ int32_t AppMgrStub::HandlePreloadExtension(MessageParcel &data, MessageParcel &r
     return NO_ERROR;
 }
 
-
 int32_t AppMgrStub::HandleSetProcessPrepareExit(MessageParcel &data, MessageParcel &reply)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "HandleSetProcessPrepareExit call");
