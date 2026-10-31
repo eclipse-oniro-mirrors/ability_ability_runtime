@@ -195,7 +195,9 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
 
     dataAbilityRecord->StartLoading();
     dataAbilityRecord->GetScheduler();
+    mutex.lock();
     dataAbilityRecord->WaitForLoaded(mutex, timeout);
+    mutex.unlock();
     dataAbilityRecord->Attach(scheduler);
     scheduler = new AbilitySchedulerFuzzTest();
     dataAbilityRecord->Attach(scheduler);
