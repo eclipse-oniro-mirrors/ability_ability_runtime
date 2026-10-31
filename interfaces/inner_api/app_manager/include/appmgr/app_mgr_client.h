@@ -1238,6 +1238,15 @@ public:
     bool IsFinalAppProcess();
 
     /**
+     * Query whether the current process is doing snapshot initialization.
+     *
+     * @return Returns true if the current process is doing snapshot initialization,
+     *         false otherwise (completed, failed, not a template process,
+     *         or service unavailable).
+     */
+    bool IsHyperSnapInitializing();
+
+    /**
      * Register an observer for render process state changes.
      *
      * @param observer Render process state observer.

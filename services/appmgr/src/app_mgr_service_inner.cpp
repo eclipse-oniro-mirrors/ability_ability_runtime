@@ -11303,6 +11303,11 @@ bool AppMgrServiceInner::IsFinalAppProcessByBundleName(const std::string &bundle
     return appQueryHelper_.IsFinalAppProcessByBundleName(bundleName);
 }
 
+bool AppMgrServiceInner::IsHyperSnapInitializing()
+{
+    return appQueryHelper_.IsHyperSnapInitializing();
+}
+
 void AppMgrServiceInner::ParseServiceExtMultiProcessWhiteList()
 {
     auto serviceExtMultiProcessWhiteList =

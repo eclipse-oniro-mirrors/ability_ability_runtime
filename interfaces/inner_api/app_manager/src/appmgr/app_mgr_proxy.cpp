@@ -2390,6 +2390,27 @@ bool AppMgrProxy::IsFinalAppProcess()
     return reply.ReadBool();
 }
 
+bool AppMgrProxy::IsHyperSnapInitializing()
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    MessageParcel data;
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write interface token failed.");
+        return false;
+    }
+
+    MessageParcel reply;
+    MessageOption option;
+    auto ret = SendRequest(AppMgrInterfaceCode::IS_HYPER_SNAP_INITIALIZING,
+        data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Send request is failed, error code: %{public}d", ret);
+        return false;
+    }
+
+    return reply.ReadBool();
+}
+
 int32_t AppMgrProxy::RegisterRenderStateObserver(const sptr<IRenderStateObserver> &observer)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");

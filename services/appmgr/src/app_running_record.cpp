@@ -2701,12 +2701,12 @@ bool AppRunningRecord::IsPreloaded() const
 
 void AppRunningRecord::SetMakeImageState(MakeImageState state)
 {
-    makeImageState_ = state;
+    makeImageState_.store(state, std::memory_order_relaxed);
 }
 
 MakeImageState AppRunningRecord::GetMakeImageState() const
 {
-    return makeImageState_;
+    return makeImageState_.load(std::memory_order_relaxed);
 }
 
 void AppRunningRecord::SetIsCreateFromImage(bool flag)

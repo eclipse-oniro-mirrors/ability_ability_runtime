@@ -419,6 +419,11 @@ public:
         return false;
     }
 
+    virtual bool IsHyperSnapInitializing()
+    {
+        return false;
+    }
+
     virtual int32_t RegisterRenderStateObserver(const sptr<IRenderStateObserver>& observer)
     {
         return 0;

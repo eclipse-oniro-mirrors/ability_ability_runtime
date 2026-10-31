@@ -175,6 +175,7 @@ private:
 #endif // SUPPORT_CHILD_PROCESS
     int32_t HandleClearUpApplicationDataBySelf(MessageParcel &data, MessageParcel &reply);
     int32_t HandleIsFinalAppProcess(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleIsHyperSnapInitializing(MessageParcel &data, MessageParcel &reply);
     int32_t HandleRegisterRenderStateObserver(MessageParcel &data, MessageParcel &reply);
     int32_t HandleRegisterKiaInterceptor(MessageParcel &data, MessageParcel &reply);
     int32_t HandleCheckIsKiaProcess(MessageParcel &data, MessageParcel &reply);

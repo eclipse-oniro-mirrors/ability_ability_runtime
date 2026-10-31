@@ -136,6 +136,7 @@ public:
     void ExitChildProcessSafely() override {}
 #endif // SUPPORT_CHILD_PROCESS
     bool IsFinalAppProcess() override { return false; }
+    bool IsHyperSnapInitializing() override { return false; }
     int32_t RegisterRenderStateObserver(const sptr<IRenderStateObserver> &observer) override { return 0; }
     int32_t UnregisterRenderStateObserver(const sptr<IRenderStateObserver> &observer) override { return 0; }
     int32_t RegisterKiaInterceptor(const sptr<IKiaInterceptor> &interceptor) override { return 0; }

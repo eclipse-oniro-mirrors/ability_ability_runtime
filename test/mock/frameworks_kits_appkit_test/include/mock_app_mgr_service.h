@@ -159,6 +159,7 @@ public:
         const std::string& reason, int32_t userId));
     MOCK_METHOD3(KillApplicationByUid, int(const std::string&, const int uid, const std::string&));
     MOCK_METHOD0(IsFinalAppProcess, bool());
+    MOCK_METHOD0(IsHyperSnapInitializing, bool());
 
     virtual sptr<IAmsMgr> GetAmsMgr() override
     {

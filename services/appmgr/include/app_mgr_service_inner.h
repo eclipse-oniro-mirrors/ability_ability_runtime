@@ -1616,6 +1616,13 @@ public:
     bool IsFinalAppProcessByBundleName(const std::string &bundleName);
 
     /**
+     * Query whether the calling process is doing snapshot initialization.
+     * @return Returns true if the calling process is doing snapshot initialization,
+     *         false otherwise (completed, failed, or not a template process).
+     */
+    bool IsHyperSnapInitializing();
+
+    /**
      * @brief Notify memory size state changed: LOW_MEMORY, MEMORY_RECOVERY, REQUIRE_BIG_MEMORY, NO_REQUIRE_BIG_MEMORY.
      * @param memorySizeState Indicates the memory size state.
      * @return Returns ERR_OK on success, others on failure.

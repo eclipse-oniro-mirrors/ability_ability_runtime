@@ -1223,6 +1223,25 @@ HWTEST_F(AppMgrClientTest, AppMgrClient_IsFinalAppProcess_001, TestSize.Level2)
 }
 
 /**
+ * @tc.name: AppMgrClient_IsHyperSnapInitializing_001
+ * @tc.desc: IsHyperSnapInitializing.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrClientTest, AppMgrClient_IsHyperSnapInitializing_001, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrClient_IsHyperSnapInitializing_001 start");
+    auto appMgrClient = std::make_unique<AppMgrClient>();
+    EXPECT_NE(appMgrClient, nullptr);
+
+    auto result = appMgrClient->ConnectAppMgrService();
+    EXPECT_EQ(result, AppMgrResultCode::RESULT_OK);
+
+    auto ret = appMgrClient->IsHyperSnapInitializing();
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrClient_IsHyperSnapInitializing_001 end");
+}
+
+/**
  * @tc.name: AppMgrClient_ClearProcessByToken_001
  * @tc.desc: ClearProcessByToken.
  * @tc.type: FUNC

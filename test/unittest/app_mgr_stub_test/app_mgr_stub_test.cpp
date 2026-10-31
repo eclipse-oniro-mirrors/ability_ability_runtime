@@ -328,6 +328,79 @@ HWTEST_F(AppMgrStubTest, HandleGetHyperSnapLastError_0200, TestSize.Level1)
 }
 
 /**
+ * @tc.name: HandleIsHyperSnapInitializing_0100
+ * @tc.desc: HandleIsHyperSnapInitializing dispatches via OnRemoteRequest and writes bool result.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleIsHyperSnapInitializing_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    EXPECT_CALL(*mockAppMgrService_, IsHyperSnapInitializing())
+        .Times(1)
+        .WillOnce(Return(true));
+    auto result = mockAppMgrService_->OnRemoteRequest(
+        static_cast<uint32_t>(AppMgrInterfaceCode::IS_HYPER_SNAP_INITIALIZING), data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+    EXPECT_EQ(reply.ReadBool(), true);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: HandleIsHyperSnapInitializing_0200
+ * @tc.desc: HandleIsHyperSnapInitializing writes false when service returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleIsHyperSnapInitializing_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    EXPECT_CALL(*mockAppMgrService_, IsHyperSnapInitializing())
+        .Times(1)
+        .WillOnce(Return(false));
+    int32_t ret = mockAppMgrService_->HandleIsHyperSnapInitializing(data, reply);
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadBool(), false);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: HandleIsHyperSnapInitializing_0300
+ * @tc.desc: HandleIsHyperSnapInitializing writes true when service returns true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleIsHyperSnapInitializing_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    EXPECT_CALL(*mockAppMgrService_, IsHyperSnapInitializing())
+        .Times(1)
+        .WillOnce(Return(true));
+    int32_t ret = mockAppMgrService_->HandleIsHyperSnapInitializing(data, reply);
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadBool(), true);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
  * @tc.name: HandleNotifyUnLoadRepairPatch_0100
  * @tc.desc: Handle notify unload repair patch.
  * @tc.type: FUNC

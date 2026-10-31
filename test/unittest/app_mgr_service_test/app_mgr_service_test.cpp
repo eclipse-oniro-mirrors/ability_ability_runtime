@@ -1741,6 +1741,36 @@ HWTEST_F(AppMgrServiceTest, IsFinalAppProcess_001, TestSize.Level1)
 }
 
 /**
+ * @tc.name: IsHyperSnapInitializing_001
+ * @tc.desc: Test IsHyperSnapInitializing when inner service is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, IsHyperSnapInitializing_001, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    ASSERT_NE(appMgrService, nullptr);
+    appMgrService->SetInnerService(nullptr);
+    bool res = appMgrService->IsHyperSnapInitializing();
+    EXPECT_EQ(res, false);
+}
+
+/**
+ * @tc.name: IsHyperSnapInitializing_002
+ * @tc.desc: Test IsHyperSnapInitializing when service is ready, delegate to inner.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, IsHyperSnapInitializing_002, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    ASSERT_NE(appMgrService, nullptr);
+    appMgrService->SetInnerService(std::make_shared<AppMgrServiceInner>());
+    appMgrService->taskHandler_ = taskHandler_;
+
+    bool res = appMgrService->IsHyperSnapInitializing();
+    EXPECT_EQ(res, false);
+}
+
+/**
  * @tc.name: RegisterRenderStateObserver_0100
  * @tc.desc: Test registerRenderStateObserver when inpit is nullptr.
  * @tc.type: FUNC
