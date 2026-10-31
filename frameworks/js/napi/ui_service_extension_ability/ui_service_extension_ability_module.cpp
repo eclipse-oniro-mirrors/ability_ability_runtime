@@ -22,7 +22,7 @@ extern const char _binary_ui_service_extension_ability_abc_end[];
 
 static napi_module _module = {
     .nm_version = 0,
-    .nm_filename = "app/ability/libuiserviceextensionability_napi.so/ui_service_extension_ability.js",
+    .nm_filename = "app/ability/libuiserviceextensionability.so/ui_service_extension_ability.js",
     .nm_modname = "app.ability.UIServiceExtensionAbility",
 };
 extern "C" __attribute__((constructor))
