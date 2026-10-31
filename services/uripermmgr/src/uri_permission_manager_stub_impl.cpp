@@ -276,7 +276,7 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermission(const std::vector<std::
         return WrapErrorCode(ret, funcResult);
     }
     uint32_t targetTokenId = 0;
-    if (appIndex == -1) {
+    if (appIndex == 0) {
         auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
         bundleMgrHelper->GetDualModeBundleInfo(targetBundleName, curUserId, appIndex);
     }
@@ -821,7 +821,7 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermissionPrivileged(const std::ve
         return WrapErrorCode(userIdRet, funcResult);
     }
     uint32_t targetTokenId = 0;
-    if (appIndex == -1) {
+    if (appIndex == 0) {
         auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
         bundleMgrHelper->GetDualModeBundleInfo(targetBundleName, curUserId, appIndex);
     }
@@ -1604,7 +1604,7 @@ ErrCode UriPermissionManagerStubImpl::RevokeUriPermissionManually(const Uri& uri
         return ERR_OK;
     }
     uint32_t targetTokenId = 0;
-    if (appIndex == -1) {
+    if (appIndex == 0) {
         auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
         bundleMgrHelper->GetDualModeBundleInfo(bundleName, curUserId, appIndex);
     }
