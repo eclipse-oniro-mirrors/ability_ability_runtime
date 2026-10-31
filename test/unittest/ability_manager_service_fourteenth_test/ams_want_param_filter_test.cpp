@@ -91,15 +91,19 @@ HWTEST_F(AMSWantParamFilterTest, AMSWantParamFilter_ThirdParty_StripsCallerAppId
 
 /**
  * @tc.number: AMSWantParamFilter_ThirdParty_CallerAppIdentifier
- * @tc.name: third-party caller strips callerAppIdentifier
- * @tc.desc: a cross-process third-party caller has callerAppIdentifier stripped.
+ * @tc.name: third-party caller keeps callerAppIdentifier
+ * @tc.desc: a cross-process third-party caller keeps callerAppIdentifier. The param is
+ *           caller-declared and intentionally not stripped (needed e.g. by login
+ *           UIExtensions to identify the calling app); it is untrusted input, and flows
+ *           needing a verified value must overwrite it with the BMS signature
+ *           (UpdateCallerInfoUtil::UpdateSignatureInfo) or query BMS directly.
  */
 HWTEST_F(AMSWantParamFilterTest, AMSWantParamFilter_ThirdParty_CallerAppIdentifier, Function | MediumTest | Level1)
 {
     WantParams params;
-    params.SetParam(Want::PARAM_RESV_CALLER_APP_IDENTIFIER, String::Box("forged"));
+    params.SetParam(Want::PARAM_RESV_CALLER_APP_IDENTIFIER, String::Box("caller-declared"));
     AMSWantParamFilter::GetInstance()->OnDeserialized(params);
-    EXPECT_FALSE(params.HasParam(Want::PARAM_RESV_CALLER_APP_IDENTIFIER));
+    EXPECT_TRUE(params.HasParam(Want::PARAM_RESV_CALLER_APP_IDENTIFIER));
 }
 
 /**
