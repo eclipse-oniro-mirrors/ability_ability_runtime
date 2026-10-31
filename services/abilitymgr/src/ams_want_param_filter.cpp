@@ -82,7 +82,6 @@ const std::map<std::string, std::string> THIRD_PARTY_PARAMS_TO_STRIP = {
     // UIAbility-internal param.
     { "specifyTokenId", "specify token id" },
     { Want::PARAM_RESV_CALLER_APP_ID, "caller app id" },
-    { Want::PARAM_RESV_CALLER_APP_IDENTIFIER, "caller app identifier" },
     { Want::PARM_LAUNCH_REASON_MESSAGE, "launch reason message" },
 
     // UIExtension-internal params, set by AMS to mark the uiextension ability,
