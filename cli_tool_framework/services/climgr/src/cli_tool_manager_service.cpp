@@ -1356,12 +1356,14 @@ void CliToolManagerService::InvokeAfterCallTool(CliSessionInfo &session, const S
     // record carries the post-before-hook values the process ran with.
     execResultWrap.toolCallId = record.toolCallId;
     execResultWrap.dmSessionId = record.dmSessionId;
-    if (record.sessionType == SessionType::CLI_CMD &&
-        !InvokeHookAsync([hook](ExecResultWrap &w) { hook->AfterCallCmd(w); }, execResultWrap)) {
-        TAG_LOGW(AAFwkTag::CLI_TOOL, "InvokeAfterCallCmd timeout, using original result");
-    } else if (record.sessionType == SessionType::CLI &&
-        !InvokeHookAsync([hook](ExecResultWrap &w) { hook->AfterCallTool(w); }, execResultWrap)) {
-        TAG_LOGW(AAFwkTag::CLI_TOOL, "InvokeAfterCallTool timeout, using original result");
+    if (record.sessionType == SessionType::CLI_CMD) {
+        if (!InvokeHookAsync([hook](ExecResultWrap &w) { hook->AfterCallCmd(w); }, execResultWrap)) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "InvokeAfterCallCmd timeout, using original result");
+        }
+    } else {
+        if (!InvokeHookAsync([hook](ExecResultWrap &w) { hook->AfterCallTool(w); }, execResultWrap)) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "InvokeAfterCallTool timeout, using original result");
+        }
     }
     *session.result = execResultWrap.execResult;
 }

@@ -5113,6 +5113,37 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_ToolMode_CliCmdType_DispatchesAfterC
 }
 
 /**
+ * @tc.name: InvokeAfterCallTool_SkillType_DispatchesAfterCallTool_0100
+ * @tc.desc: SKILL sessionType dispatches AfterCallTool (not AfterCallCmd) and modifies result
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, InvokeAfterCallTool_SkillType_DispatchesAfterCallTool_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "InvokeAfterCallTool_SkillType_DispatchesAfterCallTool_0100 start");
+    SetDeveloperMode(true);
+
+    auto hook = sptr<MockCliHook>::MakeSptr();
+    hook->modifyResult = true;
+    service_->RegisterCliHook(hook, 0x0F);
+
+    CliSessionInfo session = MakeSessionWithResult(0, "skill_original");
+    SessionRecord record;
+    PrepareHookRecord(record, SessionType::SKILL, "tcid-skill-0100", "dmsid-skill-0100");
+    service_->InvokeAfterCallTool(session, record);
+
+    EXPECT_EQ(hook->afterCallToolCount, 1);
+    EXPECT_EQ(hook->afterCallCmdCount, 0);
+    EXPECT_EQ(session.result->exitCode, 1);
+    EXPECT_EQ(session.result->outputText, "modified_output");
+    EXPECT_EQ(hook->lastWrapToolCallId, "tcid-skill-0100");
+    EXPECT_EQ(hook->lastWrapDmSessionId, "dmsid-skill-0100");
+
+    service_->UnregisterCliHook(hook);
+    SetDeveloperMode(false);
+    TAG_LOGI(AAFwkTag::TEST, "InvokeAfterCallTool_SkillType_DispatchesAfterCallTool_0100 end");
+}
+
+/**
  * @tc.name: ExecCmd_ToolMode_HookFlipsIsShellCommand_0100
  * @tc.desc: BeforeCallCmd hook flips isShellCommand false→true; shell path is taken instead of tool path
  * @tc.type: FUNC
