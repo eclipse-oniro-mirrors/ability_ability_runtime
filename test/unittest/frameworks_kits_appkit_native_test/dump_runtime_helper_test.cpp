@@ -165,6 +165,38 @@ HWTEST_F(DumpRuntimeHelperTest, DumpCjHeap_0300, Function | MediumTest | Level1)
 }
 
 /**
+ * @tc.number: DumpKmpGc_0100
+ * @tc.name: DumpKmpGc
+ * @tc.desc: Test whether DumpKmpGc is called normally.
+ * @tc.type: FUNC
+ */
+HWTEST_F(DumpRuntimeHelperTest, DumpKmpGc_0100, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpKmpGc_0100 start";
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    EXPECT_NE(application, nullptr);
+    auto helper = std::make_shared<DumpRuntimeHelper>(application);
+    helper->DumpKmpGc(-1);
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpKmpGc_0100 end";
+}
+
+/**
+ * @tc.number: DumpKmpSnapshot_0100
+ * @tc.name: DumpKmpSnapshot
+ * @tc.desc: Test whether DumpKmpSnapshot is called normally.
+ * @tc.type: FUNC
+ */
+HWTEST_F(DumpRuntimeHelperTest, DumpKmpSnapshot_0100, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpKmpSnapshot_0100 start";
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    EXPECT_NE(application, nullptr);
+    auto helper = std::make_shared<DumpRuntimeHelper>(application);
+    helper->DumpKmpSnapshot(-1, false);
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpKmpSnapshot_0100 end";
+}
+
+/**
  * @tc.number: DumpMem_0100
  * @tc.name: DumpMem
  * @tc.desc: Test whether DumpMem and are called normally.

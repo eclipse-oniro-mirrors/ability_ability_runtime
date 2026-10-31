@@ -144,6 +144,8 @@ private:
     void DumpJsHeapGc(const std::unique_ptr<AbilityRuntime::Runtime> &runtime,
         const OHOS::AppExecFwk::JsHeapDumpInfo &info);
     void DumpKmpKotlinHeap(const OHOS::AppExecFwk::MemDumpInfo &info);
+    void DumpKmpGc(int32_t fd);
+    void DumpKmpSnapshot(int32_t fd, bool mayReportToOEM);
     void DumpJsvmHeap(const OHOS::AppExecFwk::MemDumpInfo &info);
     void DumpArkwebJsHeap(const OHOS::AppExecFwk::MemDumpInfo &info);
     static constexpr int32_t THREAD_NAME_MAX_LEN = 16;

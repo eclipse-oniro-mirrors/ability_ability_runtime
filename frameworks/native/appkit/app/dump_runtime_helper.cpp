@@ -889,12 +889,30 @@ void DumpRuntimeHelper::DumpKmpKotlinHeap(const OHOS::AppExecFwk::MemDumpInfo &i
         return;
     }
     DumpFdGuard kmpFdGuard(fd);
+    if (info.needGc) {
+        DumpKmpGc(fd);
+    } else {
+        DumpKmpSnapshot(fd, info.mayReportToOEM);
+    }
+}
+
+void DumpRuntimeHelper::DumpKmpGc(int32_t fd)
+{
+    auto& dumpListener = OHOS::HiviewDFX::HidebugMemDumpListener::GetInstance();
+    bool gcRet = dumpListener.TriggerListener("KMP", fd,
+        OH_HiDebug_MemListenerType::OH_HIDEBUG_RUNNING_GC, false, nullptr);
+    if (!gcRet) {
+        TAG_LOGE(AAFwkTag::APPKIT, "TriggerListener gc failed");
+    }
+}
+
+void DumpRuntimeHelper::DumpKmpSnapshot(int32_t fd, bool mayReportToOEM)
+{
     auto& dumpListener = OHOS::HiviewDFX::HidebugMemDumpListener::GetInstance();
     bool ret = dumpListener.TriggerListener("KMP", fd,
-        OH_HiDebug_MemListenerType::OH_HIDEBUG_DUMP_SNAPSHOT, info.mayReportToOEM, nullptr);
+        OH_HiDebug_MemListenerType::OH_HIDEBUG_DUMP_SNAPSHOT, mayReportToOEM, nullptr);
     if (!ret) {
         TAG_LOGE(AAFwkTag::APPKIT, "TriggerListener failed");
-        return;
     }
 }
 
