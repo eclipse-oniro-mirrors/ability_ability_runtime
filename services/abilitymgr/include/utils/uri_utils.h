@@ -32,7 +32,7 @@ struct GrantUriPermissionInfo {
     std::string targetAbilityName = "";
     uint32_t callerTokenId = 0;
     uint32_t flag = 0;
-    int32_t appIndex = -1;
+    int32_t appIndex = 0;
     int32_t userId = -1;
     int32_t targetUid = -1;
     int32_t callerUid = -1;
