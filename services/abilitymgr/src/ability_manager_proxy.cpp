@@ -5267,6 +5267,7 @@ int32_t AbilityManagerProxy::NotifySaveAsResult(const Want &want, int resultCode
     auto error = SendRequest(AbilityManagerInterfaceCode::NOTIFY_SAVE_AS_RESULT, data, reply, option);
     if (error != NO_ERROR) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "request error:%{public}d", error);
+        return error;
     }
 
     return reply.ReadInt32();
