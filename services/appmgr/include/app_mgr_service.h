@@ -434,6 +434,52 @@ public:
     int32_t FinishTask(const std::string &taskId) override;
 
     /**
+     * @brief Attributes a process into the task owned by the caller and hands back
+     *        the server-assigned attribution id used for later unregistration. Only
+     *        the climgr process (aimgr uid) may call this.
+     * @param taskId Indicates the attribution key of the task.
+     * @param pid Indicates the pid of the managed process to attribute.
+     * @param tool Indicates the tool type of the attribution (AttributionTool value).
+     * @param callerUid Indicates the forensic uid of the original task creator; a
+     *        negative value skips the ownership check.
+     * @param attributionId Outputs the server-assigned attribution id (AttributionId)
+     *        on success, or 0 on any failure.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t tool,
+        int32_t callerUid, int64_t &attributionId) override;
+
+    /**
+     * @brief Removes the attribution record with the given id from the task owned by
+     *        the caller (idempotent). Only the climgr process (aimgr uid) may call this.
+     * @param taskId Indicates the attribution key of the task.
+     * @param attributionId Indicates the id returned by RegisterManagedProcess
+     *        (AttributionId).
+     * @param callerUid Indicates the forensic uid of the original task creator; a
+     *        negative value skips the ownership check.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    int32_t UnregisterManagedProcess(const std::string &taskId, int64_t attributionId,
+        int32_t callerUid) override;
+
+    /**
+     * @brief Attributes the main process of the running application into the task; the
+     *        target process is located server-side by the bundle name. Only the climgr
+     *        process (aimgr uid) may call this.
+     * @param taskId Indicates the attribution key of the task.
+     * @param bundleName Indicates the bundle name used only for process location.
+     * @param callerUid Indicates the forensic uid of the original task creator; a
+     *        negative value skips the ownership check.
+     * @param resolvedPid Outputs the located pid on success, or -1 on any failure.
+     * @param attributionId Outputs the server-assigned attribution id (AttributionId)
+     *        on success, or 0 on any failure.
+     * @return Returns ERR_OK on success; INNER_ERR when the target application is not
+     *         running; others on failure.
+     */
+    int32_t RegisterInAppSkillProcess(const std::string &taskId, const std::string &bundleName,
+        int32_t callerUid, int32_t &resolvedPid, int64_t &attributionId) override;
+
+    /**
      * @brief called when the abilityStage's onAcceptWant lifecycle completed.
      * @param recordId record id of the ability.
      * @param want want has been accepted.

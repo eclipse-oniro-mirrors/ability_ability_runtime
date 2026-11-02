@@ -55,6 +55,7 @@ bool CliToolMgrClientFlag::devModeEnabled = false;
 sptr<IRemoteObject> CliToolMgrClientFlag::cliToolMgr = nullptr;
 std::string CliToolMgrClientFlag::lastEventId;
 std::string CliToolMgrClientFlag::lastSubscriptionId;
+std::string CliToolMgrClientFlag::lastTaskId;
 std::vector<ToolInfo> CliToolMgrClientFlag::toolInfos;
 std::vector<FunctionInfo> CliToolMgrClientFlag::functionInfos;
 std::vector<ToolSummary> CliToolMgrClientFlag::summaries;
@@ -107,6 +108,7 @@ void CliToolMgrClientFlag::Reset()
     cliToolMgr = nullptr;
     lastEventId.clear();
     lastSubscriptionId.clear();
+    lastTaskId.clear();
     toolInfos.clear();
     functionInfos.clear();
     summaries.clear();
@@ -224,17 +226,19 @@ int32_t MockCliToolMgrService::ResetNamespaceFunctionsAsync(int32_t, const std::
     return CliToolMgrClientFlag::retResetNamespaceFunctions;
 }
 
-int32_t MockCliToolMgrService::ExecTool(const ExecToolParam &, const std::string &eventId,
+int32_t MockCliToolMgrService::ExecTool(const ExecToolParam &param, const std::string &eventId,
     const sptr<ICliToolManagerScheduler> &)
 {
     CliToolMgrClientFlag::lastEventId = eventId;
+    CliToolMgrClientFlag::lastTaskId = param.options.taskId;
     return CliToolMgrClientFlag::retExecTool;
 }
 
-int32_t MockCliToolMgrService::ExecCmd(const ExecCmdParam &, const std::string &eventId,
+int32_t MockCliToolMgrService::ExecCmd(const ExecCmdParam &param, const std::string &eventId,
     const sptr<ICliToolManagerScheduler> &, const std::string &)
 {
     CliToolMgrClientFlag::lastEventId = eventId;
+    CliToolMgrClientFlag::lastTaskId = param.execCmdOptions.taskId;
     return CliToolMgrClientFlag::retExecCmd;
 }
 

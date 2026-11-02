@@ -244,6 +244,9 @@ private:
     int32_t HandleCancelDelayedExitTask(MessageParcel &data, MessageParcel &reply);
     int32_t HandleStartTask(MessageParcel &data, MessageParcel &reply);
     int32_t HandleFinishTask(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleRegisterManagedProcess(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleUnregisterManagedProcess(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleRegisterInAppSkillProcess(MessageParcel &data, MessageParcel &reply);
     DISALLOW_COPY_AND_MOVE(AppMgrStub);
 };
 }  // namespace AppExecFwk

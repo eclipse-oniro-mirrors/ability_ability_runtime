@@ -1817,6 +1817,161 @@ HWTEST_F(AppMgrProxyTest, FinishTask_0200, TestSize.Level1)
 }
 
 /**
+ * @tc.name: RegisterManagedProcess_0100
+ * @tc.desc: Test RegisterManagedProcess request construction (taskId, pid, tool,
+ *           callerUid write order) and the errCode + attributionId reply.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, RegisterManagedProcess_0100, TestSize.Level1)
+{
+    std::string readTaskId;
+    int32_t readPid = 0;
+    int32_t readTool = 0;
+    int32_t readCallerUid = 0;
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce([&](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
+            EXPECT_EQ(code, static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_MANAGED_PROCESS));
+            data.RewindRead(0);
+            data.ReadString16(); // interface token
+            readTaskId = Str16ToStr8(data.ReadString16());
+            readPid = data.ReadInt32();
+            readTool = data.ReadInt32();
+            readCallerUid = data.ReadInt32();
+            reply.WriteInt32(ERR_OK);
+            reply.WriteInt64(77);
+            return NO_ERROR;
+        });
+
+    int64_t attributionId = 0;
+    auto ret = appMgrProxy_->RegisterManagedProcess("proxy_register_managed_0100", 4321, 2, 3099,
+        attributionId);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(attributionId, 77);
+    EXPECT_EQ(readTaskId, "proxy_register_managed_0100");
+    EXPECT_EQ(readPid, 4321);
+    EXPECT_EQ(readTool, 2);
+    EXPECT_EQ(readCallerUid, 3099);
+}
+
+/**
+ * @tc.name: RegisterManagedProcess_0200
+ * @tc.desc: Test RegisterManagedProcess passes the server verdict through and keeps the
+ *           attribution handle at 0 on failure.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, RegisterManagedProcess_0200, TestSize.Level1)
+{
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce([](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
+            reply.WriteInt32(AAFwk::ERR_TASK_NOT_FOUND);
+            return NO_ERROR;
+        });
+
+    int64_t attributionId = 1;
+    auto ret = appMgrProxy_->RegisterManagedProcess("proxy_register_managed_0200", 4321, 2, 3099,
+        attributionId);
+    EXPECT_EQ(ret, AAFwk::ERR_TASK_NOT_FOUND);
+    EXPECT_EQ(attributionId, 0);
+}
+
+/**
+ * @tc.name: UnregisterManagedProcess_0100
+ * @tc.desc: Test UnregisterManagedProcess request construction (taskId, attributionId,
+ *           callerUid write order) and the errCode reply.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, UnregisterManagedProcess_0100, TestSize.Level1)
+{
+    std::string readTaskId;
+    int64_t readAttributionId = 0;
+    int32_t readCallerUid = 0;
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce([&](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
+            EXPECT_EQ(code, static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_MANAGED_PROCESS));
+            data.RewindRead(0);
+            data.ReadString16(); // interface token
+            readTaskId = Str16ToStr8(data.ReadString16());
+            readAttributionId = data.ReadInt64();
+            readCallerUid = data.ReadInt32();
+            reply.WriteInt32(ERR_OK);
+            return NO_ERROR;
+        });
+
+    auto ret = appMgrProxy_->UnregisterManagedProcess("proxy_unregister_managed_0100", 77, 3099);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(readTaskId, "proxy_unregister_managed_0100");
+    EXPECT_EQ(readAttributionId, 77);
+    EXPECT_EQ(readCallerUid, 3099);
+}
+
+/**
+ * @tc.name: RegisterInAppSkillProcess_0100
+ * @tc.desc: Test RegisterInAppSkillProcess request construction (taskId, bundleName,
+ *           callerUid write order) and the reply layout (errCode first, then
+ *           resolvedPid and attributionId into the out parameters).
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, RegisterInAppSkillProcess_0100, TestSize.Level1)
+{
+    std::string readTaskId;
+    std::string readBundleName;
+    int32_t readCallerUid = 0;
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce([&](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
+            EXPECT_EQ(code, static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_IN_APP_SKILL_PROCESS));
+            data.RewindRead(0);
+            data.ReadString16(); // interface token
+            readTaskId = Str16ToStr8(data.ReadString16());
+            readBundleName = Str16ToStr8(data.ReadString16());
+            readCallerUid = data.ReadInt32();
+            reply.WriteInt32(ERR_OK);
+            reply.WriteInt32(8765);
+            reply.WriteInt64(77);
+            return NO_ERROR;
+        });
+
+    int32_t resolvedPid = -1;
+    int64_t attributionId = 0;
+    auto ret = appMgrProxy_->RegisterInAppSkillProcess("proxy_in_app_skill_0100",
+        "com.example.skill.host", 3099, resolvedPid, attributionId);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(resolvedPid, 8765);
+    EXPECT_EQ(attributionId, 77);
+    EXPECT_EQ(readTaskId, "proxy_in_app_skill_0100");
+    EXPECT_EQ(readBundleName, "com.example.skill.host");
+    EXPECT_EQ(readCallerUid, 3099);
+}
+
+/**
+ * @tc.name: RegisterInAppSkillProcess_0200
+ * @tc.desc: Test RegisterInAppSkillProcess failure reply keeps resolvedPid invalid.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, RegisterInAppSkillProcess_0200, TestSize.Level1)
+{
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce([](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
+            reply.WriteInt32(AAFwk::INNER_ERR);
+            reply.WriteInt32(-1);
+            reply.WriteInt64(0);
+            return NO_ERROR;
+        });
+
+    int32_t resolvedPid = 0;
+    int64_t attributionId = 0;
+    auto ret = appMgrProxy_->RegisterInAppSkillProcess("proxy_in_app_skill_0200",
+        "com.example.skill.host", 3099, resolvedPid, attributionId);
+    EXPECT_EQ(ret, AAFwk::INNER_ERR);
+    EXPECT_EQ(resolvedPid, -1);
+    EXPECT_EQ(attributionId, 0);
+}
+
+/**
  * @tc.name: AppMgrProxy_DumpMem_001
  * @tc.desc: DumpMem with valid info and null callback.
  * @tc.type: FUNC

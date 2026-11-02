@@ -102,6 +102,16 @@ public:
         AttributionId &attributionId);
 
     /**
+     * @brief Registers a process into the task owned by the caller (CLI channel):
+     *        creator-ownership check, then the shared registration kernel. Skips
+     *        the pid-liveness check: the reporter is uid-gated to climgr and the
+     *        pid is climgr's fork child.
+     * @param callerUid Indicates the task creator's uid; negative skips the check.
+     */
+    int32_t RegisterManagedProcessForCaller(const std::string &taskId, const AttributionRecord &attribution,
+        int32_t callerUid, AttributionId &attributionId);
+
+    /**
      * @brief Removes the attribution record with the given id from the task; the
      *        inactivity timeout window is left running untouched.
      * @param taskId Indicates the attribution key of the task.
@@ -119,6 +129,15 @@ public:
      * @param validator Indicates the pid liveness checker, or null to unwire.
      */
     void SetPidValidator(std::function<bool(pid_t)> validator);
+
+    /**
+     * @brief Removes the attribution record from the task owned by the caller (CLI
+     *        channel): creator-ownership check, then delegation to the
+     *        shared UnregisterManagedProcess.
+     * @param callerUid Indicates the task creator's uid; negative skips the check.
+     */
+    int32_t UnregisterManagedProcessForCaller(const std::string &taskId, AttributionId attributionId,
+        int32_t callerUid);
 
     /**
      * @brief Notifies that a task has ended, reserved for the resource-schedule control to

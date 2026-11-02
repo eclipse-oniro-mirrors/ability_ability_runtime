@@ -43,6 +43,7 @@ group("unittest") {
     "io_monitor_test:io_monitor_test",
     "permission_query_util_test:permission_query_util_test",
     "process_manager_test:process_manager_test",
+    "task_attribution_manager_test:task_attribution_manager_test",
     "session_record_test:session_record_test",
     "sub_command_info_test:sub_command_info_test",
     "tool_info_test:tool_info_test",

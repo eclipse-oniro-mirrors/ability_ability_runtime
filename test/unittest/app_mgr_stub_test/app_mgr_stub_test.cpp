@@ -1770,6 +1770,168 @@ HWTEST_F(AppMgrStubTest, HandleFinishTask_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: HandleRegisterManagedProcess_0100
+ * @tc.desc: Test HandleRegisterManagedProcess read order and reply writing.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleRegisterManagedProcess_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    std::string taskId = "stub_register_managed_0100";
+    constexpr int32_t pid = 4321;
+    constexpr int32_t tool = 2;
+    constexpr int32_t callerUid = 3099;
+    data.WriteString16(Str8ToStr16(taskId));
+    data.WriteInt32(pid);
+    data.WriteInt32(tool);
+    data.WriteInt32(callerUid);
+
+    EXPECT_CALL(*mockAppMgrService_, RegisterManagedProcess(taskId, pid, tool, callerUid, _))
+        .Times(1)
+        .WillOnce(Return(AAFwk::ERR_TASK_NOT_FOUND));
+
+    auto ret = mockAppMgrService_->OnRemoteRequest(
+        static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_MANAGED_PROCESS), data, reply, option);
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), AAFwk::ERR_TASK_NOT_FOUND);
+    EXPECT_EQ(reply.ReadInt64(), 0);
+}
+
+/**
+ * @tc.name: HandleRegisterManagedProcess_0200
+ * @tc.desc: Test HandleRegisterManagedProcess passes the server verdict through.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleRegisterManagedProcess_0200, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    data.WriteString16(Str8ToStr16("stub_register_managed_0200"));
+    data.WriteInt32(1000);
+    data.WriteInt32(2);
+    data.WriteInt32(3099);
+
+    EXPECT_CALL(*mockAppMgrService_, RegisterManagedProcess(_, _, _, _, _))
+        .Times(1)
+        .WillOnce(Return(AAFwk::INVALID_PARAMETERS_ERR));
+
+    auto ret = mockAppMgrService_->OnRemoteRequest(
+        static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_MANAGED_PROCESS), data, reply, option);
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), AAFwk::INVALID_PARAMETERS_ERR);
+}
+
+/**
+ * @tc.name: HandleUnregisterManagedProcess_0100
+ * @tc.desc: Test HandleUnregisterManagedProcess read order and reply writing.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleUnregisterManagedProcess_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    std::string taskId = "stub_unregister_managed_0100";
+    constexpr int64_t attributionId = 77;
+    constexpr int32_t callerUid = 3099;
+    data.WriteString16(Str8ToStr16(taskId));
+    data.WriteInt64(attributionId);
+    data.WriteInt32(callerUid);
+
+    EXPECT_CALL(*mockAppMgrService_, UnregisterManagedProcess(taskId, attributionId, callerUid))
+        .Times(1)
+        .WillOnce(Return(ERR_OK));
+
+    auto ret = mockAppMgrService_->OnRemoteRequest(
+        static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_MANAGED_PROCESS), data, reply, option);
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+}
+
+/**
+ * @tc.name: HandleRegisterInAppSkillProcess_0100
+ * @tc.desc: Test HandleRegisterInAppSkillProcess read order and the reply layout
+ *           (errCode first, then resolvedPid).
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleRegisterInAppSkillProcess_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    std::string taskId = "stub_in_app_skill_0100";
+    std::string bundleName = "com.example.skill.host";
+    constexpr int32_t callerUid = 3099;
+    constexpr int32_t resolvedPid = 8765;
+    constexpr int64_t attributionId = 77;
+    data.WriteString16(Str8ToStr16(taskId));
+    data.WriteString16(Str8ToStr16(bundleName));
+    data.WriteInt32(callerUid);
+
+    EXPECT_CALL(*mockAppMgrService_, RegisterInAppSkillProcess(taskId, bundleName, callerUid, _, _))
+        .Times(1)
+        .WillOnce(Invoke([&resolvedPid, &attributionId](const std::string &taskId,
+            const std::string &bundleName, int32_t callerUid, int32_t &outPid,
+            int64_t &outAttributionId) {
+            outPid = resolvedPid;
+            outAttributionId = attributionId;
+            return ERR_OK;
+        }));
+
+    auto ret = mockAppMgrService_->OnRemoteRequest(
+        static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_IN_APP_SKILL_PROCESS), data, reply, option);
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+    EXPECT_EQ(reply.ReadInt32(), resolvedPid);
+    EXPECT_EQ(reply.ReadInt64(), attributionId);
+}
+
+/**
+ * @tc.name: HandleRegisterInAppSkillProcess_0200
+ * @tc.desc: Test HandleRegisterInAppSkillProcess failure reply: errCode first, then
+ *           the invalid resolvedPid.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleRegisterInAppSkillProcess_0200, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    data.WriteString16(Str8ToStr16("stub_in_app_skill_0200"));
+    data.WriteString16(Str8ToStr16("com.example.skill.host"));
+    data.WriteInt32(3099);
+
+    EXPECT_CALL(*mockAppMgrService_, RegisterInAppSkillProcess(_, _, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke([](const std::string &taskId, const std::string &bundleName,
+            int32_t callerUid, int32_t &outPid, int64_t &outAttributionId) {
+            outPid = -1;
+            outAttributionId = 0;
+            return AAFwk::INNER_ERR;
+        }));
+
+    auto ret = mockAppMgrService_->OnRemoteRequest(
+        static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_IN_APP_SKILL_PROCESS), data, reply, option);
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), AAFwk::INNER_ERR);
+    EXPECT_EQ(reply.ReadInt32(), -1);
+    EXPECT_EQ(reply.ReadInt64(), 0);
+}
+
+/**
  * @tc.name: HandleDumpMem_001
  * @tc.desc: Handle dump mem with valid info and no callback.
  * @tc.type: FUNC

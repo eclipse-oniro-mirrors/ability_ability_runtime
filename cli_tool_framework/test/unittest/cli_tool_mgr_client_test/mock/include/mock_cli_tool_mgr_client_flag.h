@@ -66,6 +66,7 @@ public:
     static sptr<IRemoteObject> cliToolMgr;
     static std::string lastEventId;
     static std::string lastSubscriptionId;
+    static std::string lastTaskId;
     static std::vector<ToolInfo> toolInfos;
     static std::vector<FunctionInfo> functionInfos;
     static std::vector<ToolSummary> summaries;

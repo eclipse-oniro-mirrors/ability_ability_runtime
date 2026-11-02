@@ -15,7 +15,9 @@
 
 #include "app_mgr_service.h"
 
+#include <algorithm>
 #include <chrono>
+#include <cinttypes>
 #include <cstdlib>
 #include <nlohmann/json.hpp>
 #include <sys/types.h>
@@ -28,6 +30,7 @@
 #include "app_utils.h"
 #include "application_state_filter.h"
 #include "datetime_ex.h"
+#include "task_mgr/common.h"
 #include "fd_guard.h"
 #include "freeze_util.h"
 #include "global_constant.h"
@@ -64,6 +67,10 @@ constexpr size_t INDEX_TWO = 2;
 constexpr size_t INDEX_THREE = 3;
 constexpr size_t INDEX_FOUR = 4;
 const int32_t HIDUMPER_SERVICE_UID = 1212;
+// climgr (SA 186) runs in the aimgr process and is the sole allowed caller of the
+// attribution IPC face; uid 3092 per base/startup/init/services/etc/passwd:183 and
+// cli_tool_framework/etc/profile/aimgr.cfg — keep both in sync.
+const int32_t AIMGR_SERVICE_UID = 3092;
 constexpr int32_t RESOURCE_MANAGER_UID = 1096;
 constexpr const int INDEX_PID = 1;
 constexpr const int INDEX_CMD = 2;
@@ -188,6 +195,93 @@ int32_t AppMgrService::FinishTask(const std::string &taskId)
         return AAFwk::ERR_NOT_SYSTEM_APP;
     }
     return TaskManagerService::GetInstance().FinishTask(taskId);
+}
+
+namespace {
+bool IsTaskIdSanitized(const std::string &taskId)
+{
+    if (taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN) {
+        return false;
+    }
+    return std::all_of(taskId.begin(), taskId.end(), [](char c) {
+        return c >= 0x20 && c != 0x7f;
+    });
+}
+} // namespace
+
+int32_t AppMgrService::RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t tool,
+    int32_t callerUid, int64_t &attributionId)
+{
+    attributionId = 0;
+    // The native climgr token never carries the system-app flag: gate on the aimgr uid alone.
+    if (IPCSkeleton::GetCallingUid() != AIMGR_SERVICE_UID) {
+        TAG_LOGW(AAFwkTag::APPMGR, "caller is not climgr process, rejected, calling uid: %{public}d",
+            IPCSkeleton::GetCallingUid());
+        return AAFwk::ERR_NOT_SYSTEM_APP;
+    }
+    if (!IsTaskIdSanitized(taskId) || pid <= 0) {
+        TAG_LOGW(AAFwkTag::APPMGR, "invalid param, taskId size: %{public}zu, pid: %{public}d",
+            taskId.size(), pid);
+        return AAFwk::INVALID_PARAMETERS_ERR;
+    }
+    AttributionRecord attribution;
+    attribution.pid = pid;
+    attribution.tool = static_cast<AttributionTool>(tool);
+    return TaskManagerService::GetInstance().RegisterManagedProcessForCaller(taskId, attribution, callerUid,
+        attributionId);
+}
+
+int32_t AppMgrService::UnregisterManagedProcess(const std::string &taskId, int64_t attributionId,
+    int32_t callerUid)
+{
+    if (IPCSkeleton::GetCallingUid() != AIMGR_SERVICE_UID) {
+        TAG_LOGW(AAFwkTag::APPMGR, "caller is not climgr process, rejected, calling uid: %{public}d",
+            IPCSkeleton::GetCallingUid());
+        return AAFwk::ERR_NOT_SYSTEM_APP;
+    }
+    if (!IsTaskIdSanitized(taskId) || attributionId <= 0) {
+        TAG_LOGW(AAFwkTag::APPMGR, "invalid param, taskId size: %{public}zu, "
+            "attributionId: %{public}" PRId64, taskId.size(), attributionId);
+        return AAFwk::INVALID_PARAMETERS_ERR;
+    }
+    return TaskManagerService::GetInstance().UnregisterManagedProcessForCaller(taskId, attributionId,
+        callerUid);
+}
+
+int32_t AppMgrService::RegisterInAppSkillProcess(const std::string &taskId, const std::string &bundleName,
+    int32_t callerUid, int32_t &resolvedPid, int64_t &attributionId)
+{
+    resolvedPid = -1;
+    attributionId = 0;
+    if (IPCSkeleton::GetCallingUid() != AIMGR_SERVICE_UID) {
+        TAG_LOGW(AAFwkTag::APPMGR, "caller is not climgr process, rejected, calling uid: %{public}d",
+            IPCSkeleton::GetCallingUid());
+        return AAFwk::ERR_NOT_SYSTEM_APP;
+    }
+    if (!IsTaskIdSanitized(taskId) || bundleName.empty()) {
+        TAG_LOGW(AAFwkTag::APPMGR, "invalid param, taskId size: %{public}zu, bundle size: %{public}zu",
+            taskId.size(), bundleName.size());
+        return AAFwk::INVALID_PARAMETERS_ERR;
+    }
+    if (appMgrServiceInner_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "inner service is not ready");
+        return AAFwk::INNER_ERR;
+    }
+    int32_t taskUserId = callerUid >= 0 ? callerUid / BASE_USER_RANGE : -1;
+    pid_t targetPid = appMgrServiceInner_->ResolveMainProcessPidByBundleName(bundleName, taskUserId);
+    if (targetPid <= 0) {
+        TAG_LOGW(AAFwkTag::APPMGR, "main process not found, bundle: %{public}s", bundleName.c_str());
+        return AAFwk::INNER_ERR;
+    }
+    AttributionRecord attribution;
+    attribution.pid = targetPid;
+    attribution.tool = AttributionTool::CLI;
+    int32_t result = TaskManagerService::GetInstance().RegisterManagedProcessForCaller(taskId, attribution,
+        callerUid, attributionId);
+    if (result == ERR_OK) {
+        resolvedPid = static_cast<int32_t>(targetPid);
+    }
+    return result;
 }
 
 AppMgrServiceState AppMgrService::QueryServiceState()

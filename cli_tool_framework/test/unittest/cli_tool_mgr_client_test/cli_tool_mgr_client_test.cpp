@@ -17,6 +17,7 @@
 #include "cli_error_code.h"
 #include "mock_cli_tool_mgr_client_flag.h"
 #include "mock_cli_tool_mgr_service.h"
+#include "message_parcel.h"
 
 using namespace testing::ext;
 
@@ -1254,6 +1255,124 @@ HWTEST_F(CliToolMGRClientTest, Hook_AfterInvokeFunction_NullProxy_0400, TestSize
     EXPECT_EQ(CliToolMGRClient::GetInstance().AfterInvokeFunction(wrap),
         GET_CLI_TOOL_MGR_SERVICE_FAILED);
     EXPECT_EQ(CliToolMgrClientFlag::afterInvokeFunctionCount, 0);
+}
+
+/**
+ * @tc.name: ExecTool_TaskIdPassThrough_0100
+ * @tc.desc: A carried taskId rides the serialized options through the
+ *           generated proxy/stub chain and reaches the service override
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, ExecTool_TaskIdPassThrough_0100, TestSize.Level1)
+{
+    SetMockService();
+    ExecToolParam param;
+    param.toolName = "ohos-tool";
+    param.options.taskId = "task_abc-123";
+
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ExecTool(param,
+        [](int32_t code, const CliSessionInfo &) {}), ERR_OK);
+    EXPECT_EQ(CliToolMgrClientFlag::lastTaskId, "task_abc-123");
+}
+
+/**
+ * @tc.name: ExecTool_TaskIdPassThrough_0200
+ * @tc.desc: A not-carried taskId travels as an empty serialized field
+ *           (behavior-identical: empty = not provided)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, ExecTool_TaskIdPassThrough_0200, TestSize.Level1)
+{
+    SetMockService();
+    ExecToolParam param;
+    param.toolName = "ohos-tool";
+
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ExecTool(param,
+        [](int32_t code, const CliSessionInfo &) {}), ERR_OK);
+    EXPECT_TRUE(CliToolMgrClientFlag::lastTaskId.empty());
+}
+
+/**
+ * @tc.name: ExecCmd_TaskIdPassThrough_0100
+ * @tc.desc: A carried taskId rides the serialized options of ExecCmd
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, ExecCmd_TaskIdPassThrough_0100, TestSize.Level1)
+{
+    SetMockService();
+    ExecCmdParam param;
+    param.cmd = "echo test_cmd";
+    param.execCmdOptions.timeout = 30;
+    param.execCmdOptions.taskId = "task_cmd-456";
+    auto sessionCallback = std::make_shared<MockSessionCallback>();
+
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ExecCmd(param,
+        [](int32_t code, const CliSessionInfo &) {}, sessionCallback), ERR_OK);
+    EXPECT_EQ(CliToolMgrClientFlag::lastTaskId, "task_cmd-456");
+}
+
+/**
+ * @tc.name: ExecCmd_TaskIdPassThrough_0200
+ * @tc.desc: A not-carried ExecCmd taskId travels as an empty serialized field
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, ExecCmd_TaskIdPassThrough_0200, TestSize.Level1)
+{
+    SetMockService();
+    ExecCmdParam param;
+    param.cmd = "echo test_cmd";
+    param.execCmdOptions.timeout = 30;
+    auto sessionCallback = std::make_shared<MockSessionCallback>();
+
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ExecCmd(param,
+        [](int32_t code, const CliSessionInfo &) {}, sessionCallback), ERR_OK);
+    EXPECT_TRUE(CliToolMgrClientFlag::lastTaskId.empty());
+}
+
+/**
+ * @tc.name: ExecCmd_MixedDeploy_NewWriteOldRead_0100
+ * @tc.desc: A new-format ExecCmdOptions parcelable (taskId tail present) read
+ *           with the pre-taskId field order keeps all fields aligned; the
+ *           tail bytes are simply left unread by the old reader. Options-level
+ *           standalone parcel only — a message-level mixed deploy mis-aligns
+ *           (bytes after the options block would be mis-consumed; known
+ *           boundary, the one-image synchronized upgrade makes it unreachable today)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, ExecCmd_MixedDeploy_NewWriteOldRead_0100, TestSize.Level1)
+{
+    ExecCmdOptions options;
+    options.workDir = "/data";
+    options.challenge = "chal";
+    options.taskId = "task_mixed-789";
+    MessageParcel data;
+    ASSERT_TRUE(options.Marshalling(data));
+
+    std::string workDir;
+    std::string env;
+    std::string policy;
+    bool background = true;
+    int64_t yieldMs = 0;
+    int64_t timeout = 0;
+    bool isShellCommand = false;
+    std::string challenge;
+    std::string toolCallId;
+    std::string dmSessionId;
+    ASSERT_TRUE(data.ReadString(workDir));
+    ASSERT_TRUE(data.ReadString(env));
+    ASSERT_TRUE(data.ReadString(policy));
+    ASSERT_TRUE(data.ReadBool(background));
+    ASSERT_TRUE(data.ReadInt64(yieldMs));
+    ASSERT_TRUE(data.ReadInt64(timeout));
+    ASSERT_TRUE(data.ReadBool(isShellCommand));
+    ASSERT_TRUE(data.ReadString(challenge));
+    ASSERT_TRUE(data.ReadString(toolCallId));
+    ASSERT_TRUE(data.ReadString(dmSessionId));
+    EXPECT_EQ(workDir, "/data");
+    EXPECT_EQ(challenge, "chal");
+    std::string leftover;
+    EXPECT_TRUE(data.ReadString(leftover));
+    EXPECT_EQ(leftover, "task_mixed-789");
 }
 } // namespace CliTool
 } // namespace OHOS
