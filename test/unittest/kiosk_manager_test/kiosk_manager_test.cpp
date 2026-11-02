@@ -661,6 +661,7 @@ HWTEST_F(KioskManagerTest, UpdateKioskApplicationList_003, TestSize.Level1) {
     MyStatus::GetInstance().paramGetBoolParameter_ = true;
     MyFlag::flag_ = true;
     MyFlag::permissionFlag_ = true;
+    MyFlag::saFlag_ = MyFlag::FLAG::IS_SA_CALL;
     std::vector<std::string> appList;
     KioskManager::GetInstance().kioskStatus_.isKioskMode_ = true;
     KioskManager::GetInstance().NotifyKioskModeChanged(true, "", 0, static_cast<int32_t>(Rosen::KioskType::DEFAULT));
@@ -1170,7 +1171,7 @@ HWTEST_F(KioskManagerTest, CheckAndExitIfOutOfActiveList_004, TestSize.Level1) {
     KioskManager::GetInstance().kioskWhitelistMap_[1] = {"com.test.demo"}; // IsInWhiteListInner passes
     std::vector<std::string> appList = {"com.other"}; // kiosk app NOT in list
     auto result = KioskManager::GetInstance().CheckAndExitIfOutOfActiveList(1, appList);
-    EXPECT_EQ(result, ERR_OK); // ExitKioskModeInner WMS null -> INNER_ERR
+    EXPECT_EQ(result, INNER_ERR); // ExitKioskModeInner WMS null -> INNER_ERR
     EXPECT_FALSE(KioskManager::GetInstance().kioskStatus_.isKioskMode_); // cleared before WMS
     KioskManager::GetInstance().kioskWhitelistMap_.clear();
     KioskManager::GetInstance().kioskStatus_.Clear();

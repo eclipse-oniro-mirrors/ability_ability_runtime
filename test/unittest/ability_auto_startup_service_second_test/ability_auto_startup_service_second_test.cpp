@@ -37,7 +37,7 @@
 
 namespace {
 constexpr int32_t BASE_USER_RANGE = 200000;
-const int32_t MAX_APP_CLONE_INDEX_NUM = 10000;
+const int32_t MAX_APP_CLONE_INDEX_NUM = 1001;
 } // namespace
 
 using namespace testing;

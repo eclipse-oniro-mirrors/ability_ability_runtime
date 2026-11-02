@@ -50,6 +50,7 @@ ohos_fuzztest("AbilityFrameworksCjEnvironmentFuzzTest") {
   ]
 
   configs = [
+    "${ability_runtime_path}/cj_environment/frameworks/cj_environment:cj_rt_public_config",
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager_public_config",
     "${ability_runtime_services_path}/abilitymgr:abilityms_config",
   ]

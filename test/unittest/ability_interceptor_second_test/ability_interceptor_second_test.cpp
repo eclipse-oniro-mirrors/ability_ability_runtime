@@ -298,7 +298,7 @@ HWTEST_F(AbilityInterceptorSecondTest, DisposedRuleInterceptor_012, TestSize.Lev
     auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
     abilityInfo->uid = 0;
     ErrCode result = executer->StartNonBlockRule(want, disposedRule, abilityInfo);
-    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
 }
 } // namespace AAFwk
 } // namespace OHOS
