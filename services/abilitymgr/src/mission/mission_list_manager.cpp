@@ -36,6 +36,7 @@
 #include "res_sched_util.h"
 #include "server_constant.h"
 #include "startup_util.h"
+#include "start_ability_utils.h"
 #include "param.h"
 #include "ui_extension_wrapper.h"
 #ifdef SUPPORT_GRAPHICS
