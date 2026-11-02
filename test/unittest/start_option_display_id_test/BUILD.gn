@@ -51,6 +51,7 @@ ohos_unittest("start_option_display_id_test") {
     "init:libbegetutil",
     "ipc:ipc_core",
     "safwk:api_cache_manager",
+    "samgr:samgr_proxy",
   ]
 
   if (background_task_mgr_continuous_task_enable) {

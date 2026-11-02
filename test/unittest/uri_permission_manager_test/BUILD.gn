@@ -52,6 +52,7 @@ ohos_unittest("uri_permission_manager_test") {
     "ffrt:libffrt",
     "googletest:gmock_main",
     "hilog:libhilog",
+    "samgr:samgr_proxy",
     "storage_service:storage_manager_sa_proxy",
   ]
 

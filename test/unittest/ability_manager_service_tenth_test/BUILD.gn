@@ -89,6 +89,7 @@ ohos_unittest("ability_manager_service_tenth_test") {
     "ipc:ipc_core",
     "kv_store:distributeddata_inner",
     "safwk:api_cache_manager",
+    "samgr:samgr_proxy",
     "selinux_adapter:librestorecon",
   ]
 

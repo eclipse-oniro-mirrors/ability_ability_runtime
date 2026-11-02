@@ -53,6 +53,7 @@ ohos_unittest("ui_extension_record_test") {
     "ipc:ipc_core",
     "safwk:api_cache_manager",
     "window_manager:scene_session",
+    "samgr:samgr_proxy",
   ]
 }
 

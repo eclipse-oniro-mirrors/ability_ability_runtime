@@ -74,6 +74,7 @@ ohos_fuzztest("FreezeUtilFuzzTest") {
     "ipc:ipc_core",
     "libjpeg-turbo:turbojpeg",
     "napi:ace_napi",
+    "samgr:samgr_proxy",
   ]
 
   if (ability_runtime_dsoftbus_enable) {

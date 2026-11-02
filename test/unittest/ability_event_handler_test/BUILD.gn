@@ -60,6 +60,7 @@ ohos_unittest("ability_event_handler_test") {
     "ipc:ipc_core",
     "napi:ace_napi",
     "safwk:api_cache_manager",
+    "samgr:samgr_proxy",
   ]
 
   if (background_task_mgr_continuous_task_enable) {
