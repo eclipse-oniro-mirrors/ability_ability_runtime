@@ -87,7 +87,7 @@ int32_t PreloadManagerService::LaunchGameCustomized(const std::string &bundleNam
 {
     Want launchWant;
     AppExecFwk::AbilityInfo abilityInfo;
-    if (appIndex == -1) {
+    if (appIndex == 0) {
         auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
         bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appIndex);
     }
