@@ -18,6 +18,7 @@
 #include "ability_foreground_state_observer_interface.h"
 #include "app_foreground_state_observer_stub.h"
 #include "app_mgr_proxy.h"
+#include "focused_application_observer_stub.h"
 #include "ability_manager_errors.h"
 #include "hilog_tag_wrapper.h"
 #include "image_error_handler_stub.h"
@@ -45,6 +46,15 @@ public:
     virtual ~AppForegroundStateObserverMock() = default;
 
     void OnAppStateChanged(const AppStateData &appStateData) override
+    {}
+};
+
+class FocusedApplicationObserverMock : public FocusedApplicationObserverStub {
+public:
+    FocusedApplicationObserverMock() = default;
+    virtual ~FocusedApplicationObserverMock() = default;
+
+    void OnFocusedApplicationChanged(const FocusedApplicationInfo &focusedApplicationInfo) override
     {}
 };
 
@@ -595,6 +605,32 @@ HWTEST_F(AppMgrProxyTest, UnregisterAppForegroundStateObserver_0100, TestSize.Le
     EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _)).Times(1);
     sptr<IAppForegroundStateObserver> observer = new (std::nothrow) AppForegroundStateObserverMock();
     auto res = appMgrProxy_->RegisterAppForegroundStateObserver(observer);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/**
+ * @tc.name: RegisterFocusedApplicationObserver_0100
+ * @tc.desc: Test registerFocusedApplicationObserver sendRequest.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, RegisterFocusedApplicationObserver_0100, TestSize.Level1)
+{
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _)).Times(1);
+    sptr<IFocusedApplicationObserver> observer = new (std::nothrow) FocusedApplicationObserverMock();
+    auto res = appMgrProxy_->RegisterFocusedApplicationObserver(observer);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/**
+ * @tc.name: UnregisterFocusedApplicationObserver_0100
+ * @tc.desc: Test unregisterFocusedApplicationObserver sendRequest.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, UnregisterFocusedApplicationObserver_0100, TestSize.Level1)
+{
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _)).Times(1);
+    sptr<IFocusedApplicationObserver> observer = new (std::nothrow) FocusedApplicationObserverMock();
+    auto res = appMgrProxy_->UnregisterFocusedApplicationObserver(observer);
     EXPECT_EQ(res, NO_ERROR);
 }
 

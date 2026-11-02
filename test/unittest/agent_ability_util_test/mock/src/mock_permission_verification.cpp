@@ -19,6 +19,7 @@ namespace OHOS {
 namespace AAFwk {
 
 bool g_mockGrantFoundationPermission = false;
+std::string g_mockCallerProcessName = "subfoundation";
 
 bool PermissionVerification::VerifyCallingPermission(const std::string &permissionName,
     const uint32_t specifyTokenId) const
@@ -32,7 +33,7 @@ bool PermissionVerification::IsShellCallByTokenId(uint32_t callerTokenId) const 
 
 bool PermissionVerification::CheckSpecificSystemAbilityAccessPermission(const std::string &processName) const
 {
-    return g_mockGrantFoundationPermission;
+    return g_mockGrantFoundationPermission && processName == g_mockCallerProcessName;
 }
 
 bool PermissionVerification::VerifyRunningInfoPerm() const { return false; }

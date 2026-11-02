@@ -16,6 +16,9 @@
 #ifndef OHOS_ABILITY_RUNTIME_ETS_UI_EXTENSION_BASE_H
 #define OHOS_ABILITY_RUNTIME_ETS_UI_EXTENSION_BASE_H
 
+#include <memory>
+#include <optional>
+
 #include "ability_handler.h"
 #include "ability_local_record.h"
 #include "ability_result_listener.h"
@@ -211,6 +214,10 @@ protected:
 private:
     sptr<Rosen::WindowOption> CreateWindowOption(const sptr<AAFwk::SessionInfo> &sessionInfo,
         const AAFwk::Want &want);
+    bool OnGetConfigurationStrategy(const sptr<AAFwk::SessionInfo> &sessionInfo);
+    void RegisterBrandColorChangeListener(const sptr<Rosen::Window> &uiWindow);
+    int32_t WindowNotifeBrandColorChange(Rosen::SubSystemId id, uint32_t customId, AAFwk::Want &&data,
+        std::optional<AAFwk::Want> &reply);
 
 #ifdef SUPPORT_GRAPHICS
 private:

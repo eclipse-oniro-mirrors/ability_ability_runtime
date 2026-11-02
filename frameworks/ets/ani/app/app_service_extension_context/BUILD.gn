@@ -64,6 +64,7 @@ ohos_shared_library("app_service_extension_context_ani_kit") {
     "hilog:libhilog",
     "hitrace:hitrace_meter",
     "ipc:ipc_napi",
+    "libuv:uv",
     "napi:ace_napi",
     "runtime_core:ani",
     "runtime_core:ani_helpers",

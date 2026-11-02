@@ -586,6 +586,77 @@ HWTEST_F(InsightIntentExecuteParamTest, ToolCallId_MarshallingUnmarshalling_0100
 }
 
 /**
+ * @tc.name: TaskId_MarshallingUnmarshalling_0100
+ * @tc.desc: verify taskId_ survives a Marshalling/Unmarshalling round trip.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, TaskId_MarshallingUnmarshalling_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    InsightIntentExecuteParam originalParam;
+    originalParam.bundleName_ = TEST_BUNDLE_NANE;
+    originalParam.insightIntentParam_ = std::make_shared<WantParams>();
+    originalParam.toolCallId_ = "tc-001";
+    originalParam.taskId_ = "task-001";
+
+    Parcel parcel;
+    EXPECT_EQ(originalParam.Marshalling(parcel), true);
+
+    InsightIntentExecuteParam unmarshalledParam;
+    EXPECT_EQ(unmarshalledParam.ReadFromParcel(parcel), true);
+    EXPECT_EQ(unmarshalledParam.toolCallId_, "tc-001");
+    EXPECT_EQ(unmarshalledParam.taskId_, "task-001");
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: TaskId_UnmarshallingLegacyParcel_0100
+ * @tc.desc: verify a legacy parcel without the taskId tail field is parsed
+ *           successfully and taskId_ keeps the default empty value.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, TaskId_UnmarshallingLegacyParcel_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    // write fields in the legacy order, stopping at toolCallId_ (no taskId_ tail field)
+    Parcel parcel;
+    parcel.WriteString16(Str8ToStr16(TEST_BUNDLE_NANE));
+    parcel.WriteString16(Str8ToStr16(TEST_MODULE_NANE));
+    parcel.WriteString16(Str8ToStr16(TEST_ABILITY_NANE));
+    parcel.WriteString16(Str8ToStr16(TEST_INSIGHT_INTENT_NANE));
+    WantParams insightIntentParam;
+    insightIntentParam.SetParam("testKey", Integer::Box(123));
+    parcel.WriteParcelable(&insightIntentParam);
+    parcel.WriteInt32(0);
+    parcel.WriteUint64(100);
+    parcel.WriteInt32(AppExecFwk::INVALID_DISPLAY_ID);
+    std::vector<std::string> uris;
+    parcel.WriteStringVector(uris);
+    parcel.WriteInt32(0);
+    parcel.WriteInt32(-1);
+    parcel.WriteInt8(0);
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    std::vector<std::string> methodParams;
+    parcel.WriteStringVector(methodParams);
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteBool(false);
+    parcel.WriteString16(Str8ToStr16("legacyDeviceId"));
+    parcel.WriteString16(Str8ToStr16("legacyToolCallId"));
+
+    InsightIntentExecuteParam unmarshalledParam;
+    EXPECT_EQ(unmarshalledParam.ReadFromParcel(parcel), true);
+    EXPECT_EQ(unmarshalledParam.deviceId_, "legacyDeviceId");
+    EXPECT_EQ(unmarshalledParam.toolCallId_, "legacyToolCallId");
+    EXPECT_EQ(unmarshalledParam.taskId_, "");
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
  * @tc.name: ToolCallId_UnmarshallingLegacyParcel_0100
  * @tc.desc: verify a legacy parcel without the toolCallId tail field is parsed successfully.
  * @tc.type: FUNC
@@ -930,6 +1001,61 @@ HWTEST_F(InsightIntentExecuteParamTest, GetFileEntityUrisAndFlags_1100, TestSize
     EXPECT_EQ(flags[1], TEST_FLAG_READ);
     EXPECT_EQ(uriGroups[0][0], "file:///data/dup.txt");
     EXPECT_EQ(uriGroups[1][0], "file:///data/dup.txt");
+}
+
+/**
+ * @tc.name: GetFileEntityUrisAndFlags_1200
+ * @tc.desc: total uris exceeding the limit are truncated to the first limit-count uris.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, GetFileEntityUrisAndFlags_1200, TestSize.Level1)
+{
+    std::vector<std::string> uris;
+    for (int i = 0; i < 600; i++) {
+        uris.push_back("file:///data/test" + std::to_string(i) + ".txt");
+    }
+    Want want = BuildWantWithEntities({
+        { "entity_a", BuildFileEntity(TEST_FILE_ENTITY_ID, uris, TEST_FLAG_READ) },
+    });
+    std::vector<std::vector<std::string>> uriGroups;
+    std::vector<int32_t> flags;
+    InsightIntentExecuteParam::GetFileEntityUrisAndFlags(want, uriGroups, flags);
+
+    ASSERT_EQ(uriGroups.size(), 1u);
+    ASSERT_EQ(flags.size(), 1u);
+    EXPECT_EQ(uriGroups[0].size(), 500u);
+    EXPECT_EQ(uriGroups[0][0], "file:///data/test0.txt");
+    EXPECT_EQ(uriGroups[0][499], "file:///data/test499.txt");
+}
+
+/**
+ * @tc.name: GetFileEntityUrisAndFlags_1300
+ * @tc.desc: total uris across multiple file entities are capped together at the limit.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, GetFileEntityUrisAndFlags_1300, TestSize.Level1)
+{
+    std::vector<std::string> urisA;
+    std::vector<std::string> urisB;
+    for (int i = 0; i < 300; i++) {
+        urisA.push_back("file:///data/a" + std::to_string(i) + ".txt");
+        urisB.push_back("file:///data/b" + std::to_string(i) + ".txt");
+    }
+    Want want = BuildWantWithEntities({
+        { "entity_a", BuildFileEntity(TEST_FILE_ENTITY_ID, urisA, TEST_FLAG_READ) },
+        { "entity_b", BuildFileEntity(TEST_FILE_ENTITY_ID, urisB, TEST_FLAG_WRITE) },
+    });
+    std::vector<std::vector<std::string>> uriGroups;
+    std::vector<int32_t> flags;
+    InsightIntentExecuteParam::GetFileEntityUrisAndFlags(want, uriGroups, flags);
+
+    ASSERT_EQ(uriGroups.size(), 2u);
+    ASSERT_EQ(flags.size(), 2u);
+    EXPECT_EQ(uriGroups[0].size(), 300u);
+    EXPECT_EQ(flags[0], TEST_FLAG_READ);
+    EXPECT_EQ(uriGroups[1].size(), 200u);
+    EXPECT_EQ(flags[1], TEST_FLAG_WRITE);
+    EXPECT_EQ(uriGroups[1][199], "file:///data/b199.txt");
 }
 } // namespace AAFwk
 } // namespace OHOS

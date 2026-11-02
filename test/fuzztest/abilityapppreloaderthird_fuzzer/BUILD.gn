@@ -23,6 +23,7 @@ ohos_fuzztest("AbilityAppPreloaderThirdFuzzTest") {
   include_dirs = [
     "${ability_runtime_services_path}/appmgr/include",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
+    "${ability_runtime_path}/utils/global/constant",
   ]
 
   cflags = [

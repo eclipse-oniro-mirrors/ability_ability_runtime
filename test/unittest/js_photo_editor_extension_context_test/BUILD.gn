@@ -104,7 +104,9 @@ ohos_unittest("js_photo_editor_extension_context_test") {
     "hilog:libhilog",
     "init:libbegetutil",
     "ipc:ipc_core",
+    "libuv:uv",
     "napi:ace_napi",
+    "node:node_header_notice",
     "samgr:samgr_proxy",
   ]
   if (ability_runtime_graphics) {

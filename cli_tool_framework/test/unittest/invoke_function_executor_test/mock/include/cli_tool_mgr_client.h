@@ -30,6 +30,7 @@ namespace CliTool {
 // (the transport leg the NAPI layer injects from invokeOptions).
 constexpr const char *RESERVED_KEY_TOOL_CALL_ID = "ohos.insightIntent.toolCallId";
 constexpr const char *RESERVED_KEY_DM_SESSION_ID = "ohos.insightIntent.dmSessionId";
+constexpr const char *RESERVED_KEY_TASK_ID = "ohos.task.id";
 
 /**
  * @class CliToolMGRClient
@@ -60,6 +61,7 @@ public:
     bool mockHookModify_ = false;
     std::string mockHookToolCallId_;
     std::string mockHookDmSessionId_;
+    std::string mockHookTaskId_;
 
     // After-hook capture (reset by the test fixture SetUp).
     FunctionResultWrap lastWrap_;

@@ -454,8 +454,10 @@ public:
 
     int32_t GetKioskStatus(AAFwk::KioskStatus &kioskStatus) override
     {
+        kioskStatus.kioskToken_ = kioskToken_;
         return ERR_OK;
     }
+    sptr<IRemoteObject> kioskToken_ = nullptr;
 
     int32_t SetAppServiceExtensionKeepAlive(const std::string &bundleName, bool flag) override
     {
@@ -519,6 +521,7 @@ int32_t GetUserLockedBundleList(int32_t userId, std::unordered_set<std::string> 
         const std::string &));
     MOCK_METHOD4(QuerySkillType, int32_t(const std::string &, const std::string &,
         const std::string &, int32_t &));
+    MOCK_METHOD5(BackToCallerAbilityWithResult, int(const sptr<IRemoteObject> &, int, const Want &, int64_t, bool));
 
     void SanitizeWantParamsForTest(Want &want)
     {

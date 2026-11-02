@@ -25,6 +25,7 @@ ohos_unittest("ability_auto_startup_service_second_test") {
     "${ability_runtime_abilitymgr_path}/include",
     "${ability_runtime_services_path}/common/include",
     "mock/include",
+    "${ability_runtime_test_path}/mock/auto_startup_mock/include",
     "${ability_runtime_path}/test/mock/mock_sa_call",
     "${ability_runtime_path}frameworks/simulator/common/include",
     "${ability_runtime_path}/utils/server/startup/include",
@@ -35,7 +36,9 @@ ohos_unittest("ability_auto_startup_service_second_test") {
     "${ability_runtime_services_path}/abilitymgr/src/ability_auto_startup_service.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/database_write_counter.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/report_data_partition_usage_manager.cpp",
+    "${ability_runtime_test_path}/mock/auto_startup_mock/src/direct_boot_test_support.cpp",
     "ability_auto_startup_service_second_test.cpp",
+    "mock/src/direct_boot_test_support.cpp",
     "mock/src/mock_bundle_mgr_helper.cpp",
     "mock/src/mock_my_flag.cpp",
     "mock/src/mock_parameters.cpp",
@@ -51,9 +54,9 @@ ohos_unittest("ability_auto_startup_service_second_test") {
 
   deps = [
     "${ability_runtime_abilitymgr_path}/:abilityms",
-    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/ability_manager",
     "${ability_runtime_innerkits_path}/ability_manager:ability_start_setting",
-    "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_innerkits_path}/app_manager",
     "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_native_path}/ability/native:auto_startup_callback",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
@@ -88,7 +91,7 @@ ohos_unittest("ability_auto_startup_service_second_test") {
     "window_manager:libwsutils",
   ]
 
-  cflags_cc = []
+  cflags_cc = [ "-fno-access-control" ]
   if (os_dlp_part_enabled) {
     cflags_cc += [ "-DWITH_DLP" ]
   }

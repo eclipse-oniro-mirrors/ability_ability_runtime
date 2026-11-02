@@ -71,7 +71,8 @@ bool AppPreloader::GetLaunchWant(const std::string &bundleName, int32_t userId, 
     return true;
 }
 
-bool AppPreloader::GetLaunchAbilityInfo(const AAFwk::Want &want, int32_t userId, AbilityInfo &abilityInfo)
+bool AppPreloader::GetLaunchAbilityInfo(const AAFwk::Want &want, int32_t userId, int32_t appIndex,
+    AbilityInfo &abilityInfo)
 {
     // Mock implementation - get info from want element
     abilityInfo.bundleName = want.GetElement().GetBundleName();
@@ -79,7 +80,7 @@ bool AppPreloader::GetLaunchAbilityInfo(const AAFwk::Want &want, int32_t userId,
     return true;
 }
 
-bool AppPreloader::GetBundleAndHapInfo(const std::string &bundleName, int32_t userId,
+bool AppPreloader::GetBundleAndHapInfo(const std::string &bundleName, int32_t userId, int32_t appIndex,
     const AbilityInfo &abilityInfo, BundleInfo &bundleInfo, HapModuleInfo &hapModuleInfo)
 {
     // Mock implementation - always succeed for testing

@@ -100,11 +100,13 @@ void EtsInteropAbilityMonitor::SetEtsInteropAbilityMonitor(ani_env *env, ani_obj
     ani_vm *aniVM = nullptr;
     if (env->GetVM(&aniVM) != ANI_OK) {
         TAG_LOGE(AAFwkTag::DELEGATOR, "GetVM failed");
+        env->GlobalReference_Delete(objRef);
         return;
     }
     vm_ = aniVM;
     if (etsInteropMonitor_ == nullptr) {
         TAG_LOGE(AAFwkTag::DELEGATOR, "null etsInteropMonitor_");
+        env->GlobalReference_Delete(objRef);
         return;
     }
     etsInteropMonitor_->aniObj = monitorObj;
@@ -198,8 +200,14 @@ void EtsInteropAbilityMonitor::CallLifecycleCBFunction(const std::string &functi
     }
     ani_boolean isValue = false;
     ani_boolean isUndefined = false;
-    env->Reference_IsNullishValue(funRef, &isValue);
-    env->Reference_IsUndefined(funRef, &isUndefined);
+    if (env->Reference_IsNullishValue(funRef, &isValue) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::DELEGATOR, "Reference_IsNullishValue failed");
+        return;
+    }
+    if (env->Reference_IsUndefined(funRef, &isUndefined) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::DELEGATOR, "Reference_IsUndefined failed");
+        return;
+    }
     if (isUndefined || isValue) {
         return;
     }

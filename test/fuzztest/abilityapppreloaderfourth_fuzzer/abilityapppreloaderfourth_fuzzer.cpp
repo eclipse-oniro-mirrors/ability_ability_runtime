@@ -92,12 +92,12 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     appPreloader->GetLaunchWant(bundleName, userId, launchWant);
     appPreloaderNull->GetLaunchWant(bundleName, userId, launchWant);
 
-    appPreloader->GetLaunchAbilityInfo(launchWant, userId, abilityInfo);
-    appPreloaderNull->GetLaunchAbilityInfo(launchWant, userId, abilityInfo);
+    appPreloader->GetLaunchAbilityInfo(launchWant, userId, 0, abilityInfo);
+    appPreloaderNull->GetLaunchAbilityInfo(launchWant, userId, 0, abilityInfo);
 
-    appPreloader->GetBundleAndHapInfo(bundleName, userId, validAbilityInfo, bundleInfo, hapModuleInfo);
-    appPreloader->GetBundleAndHapInfo(bundleName, userId, validAbilityInfo, bundleInfo, nonEntryHapInfo);
-    appPreloaderNull->GetBundleAndHapInfo(bundleName, userId, validAbilityInfo, bundleInfo, hapModuleInfo);
+    appPreloader->GetBundleAndHapInfo(bundleName, userId, 0, validAbilityInfo, bundleInfo, hapModuleInfo);
+    appPreloader->GetBundleAndHapInfo(bundleName, userId, 0, validAbilityInfo, bundleInfo, nonEntryHapInfo);
+    appPreloaderNull->GetBundleAndHapInfo(bundleName, userId, 0, validAbilityInfo, bundleInfo, hapModuleInfo);
 
     return true;
 }

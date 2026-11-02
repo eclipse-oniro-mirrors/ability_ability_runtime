@@ -44,7 +44,6 @@ bool MyFlag::isDocsCloudUri_ = false;
 int32_t MyFlag::getTokenIdByBundleNameStatus_ = 0;
 int32_t MyFlag::processUdmfKeyRet_ = 0;
 std::vector<std::string> MyFlag::udmfUtilsUris_ = {};
-bool MyFlag::upmsUtilsCheckIsSystemAppByBundleNameRet_ = true;
 bool MyFlag::upmsUtilsCheckIsSystemAppByTokenIdRet_ = false;
 bool MyFlag::upmsUtilsGetDirByBundleNameAndAppIndexRet_ = true;
 std::string MyFlag::upmsUtilsAlterBundleName_ = "";

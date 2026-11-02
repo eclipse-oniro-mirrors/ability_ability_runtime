@@ -48,6 +48,7 @@
 
 #include "insight_intent/insight_intent_info_for_query.h"
 #include "insight_intent/insight_intent_query_param.h"
+#include "insight_intent/insight_intent_execution_info.h"
 #include "iprepare_terminate_callback_interface.h"
 #include "irequest_start_ability_callback.h"
 #include "keep_alive_info.h"
@@ -667,10 +668,11 @@ public:
      * @param resultCode, the resultCode of the ability to terminate.
      * @param resultWant, the Want of the ability to return.
      * @param callerRequestCode, the requestCode of caller ability.·
+     * @param isBackToCallerApp, whether the request is from backToCallerAppWithResult.
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int BackToCallerAbilityWithResult(const sptr<IRemoteObject> &token, int resultCode,
-        const Want *resultWant, int64_t callerRequestCode)
+        const Want &resultWant, int64_t callerRequestCode, bool isBackToCallerApp = false)
     {
         return 0;
     };
@@ -2004,6 +2006,17 @@ public:
     }
 
     /**
+     * @brief Extend game prelaunch timeout. Resets the game pre-launch foreground countdown.
+     * @param pid Indicates the process ID of the game pre-launch ability to extend.
+     * @param extendTime The extended time in microseconds, must be in range (30s, 4h).
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual ErrCode ExtendGamePreLaunchTimeout(int32_t pid, int64_t extendTime)
+    {
+        return ERR_OK;
+    }
+
+    /**
      * PrepareTerminateAbilityBySCB, prepare to terminate ability by scb.
      *
      * @param sessionInfo the session info of the ability to start.
@@ -2958,6 +2971,16 @@ public:
     }
 
     virtual int32_t NotifyInsightIntentExecute(uint64_t intentId)
+    {
+        return ERR_OK;
+    }
+
+    virtual int32_t RegisterWillInsightIntentExecuteCallback(const sptr<IRemoteObject> &callback)
+    {
+        return ERR_OK;
+    }
+
+    virtual int32_t UnregisterWillInsightIntentExecuteCallback()
     {
         return ERR_OK;
     }

@@ -48,8 +48,16 @@ public:
 
 class AgentAbilityUtilTest : public testing::Test {
 public:
-    void SetUp() override { g_mockGrantFoundationPermission = false; }
-    void TearDown() override { g_mockGrantFoundationPermission = false; }
+    void SetUp() override
+    {
+        g_mockGrantFoundationPermission = false;
+        g_mockCallerProcessName = "subfoundation";
+    }
+    void TearDown() override
+    {
+        g_mockGrantFoundationPermission = false;
+        g_mockCallerProcessName = "subfoundation";
+    }
 };
 
 // ===================== IsAgentExtensionType =====================
@@ -224,6 +232,16 @@ HWTEST_F(AgentAbilityUtilTest, CheckAgentConnectEntryAgentNoPermissionReturnsChe
         CHECK_PERMISSION_FAILED);
 }
 
+HWTEST_F(AgentAbilityUtilTest, CheckAgentConnectEntryAgentFoundationCallerRejected, TestSize.Level1)
+{
+    // AGENT connect must only be initiated by subfoundation; foundation caller is rejected.
+    g_mockGrantFoundationPermission = true;
+    g_mockCallerProcessName = "foundation";
+    Want want;
+    EXPECT_EQ(AgentAbilityUtil::CheckAgentConnectEntry(want, ExtensionAbilityType::AGENT),
+        CHECK_PERMISSION_FAILED);
+}
+
 HWTEST_F(AgentAbilityUtilTest, CheckAgentConnectEntryAgentInvalidParamsReturnsInvalidValue, TestSize.Level1)
 {
     g_mockGrantFoundationPermission = true;
@@ -300,4 +318,13 @@ HWTEST_F(AgentAbilityUtilTest, CheckConnectResolvedNonAgentRequestNonAgentTarget
     info.type = AbilityType::EXTENSION;
     info.extensionAbilityType = ExtensionAbilityType::SERVICE;
     EXPECT_EQ(AgentAbilityUtil::CheckConnectAgentResolvedTarget(ExtensionAbilityType::SERVICE, info), ERR_OK);
+}
+
+HWTEST_F(AgentAbilityUtilTest, CheckAgentConnectEntrySubfoundationGrantedProceedsToParamCheck, TestSize.Level1)
+{
+    g_mockGrantFoundationPermission = true;
+    g_mockCallerProcessName = "subfoundation";
+    Want want;
+    // Subfoundation caller passes the permission gate; params invalid => ERR_INVALID_VALUE.
+    EXPECT_EQ(AgentAbilityUtil::CheckAgentConnectEntry(want, ExtensionAbilityType::AGENT), ERR_INVALID_VALUE);
 }

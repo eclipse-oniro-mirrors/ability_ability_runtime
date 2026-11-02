@@ -309,6 +309,7 @@ private:
     int32_t NotifyCancelGamePreLaunchInner(MessageParcel &data, MessageParcel &reply);
     int32_t NotifyCompleteGamePreLaunchInner(MessageParcel &data, MessageParcel &reply);
     int32_t SetGamePreLaunchCompleteTimeInner(MessageParcel &data, MessageParcel &reply);
+    int32_t ExtendGamePreLaunchTimeoutInner(MessageParcel &data, MessageParcel &reply);
 
     int PrepareTerminateAbilityBySCBInner(MessageParcel &data, MessageParcel &reply);
     int RegisterSessionHandlerInner(MessageParcel &data, MessageParcel &reply);
@@ -465,6 +466,8 @@ private:
     int32_t ExecuteSkillDoneWithTokenInner(MessageParcel &data, MessageParcel &reply);
     int32_t NotifySkillFunctionInvokedInner(MessageParcel &data, MessageParcel &reply);
     int32_t NotifyInsightIntentExecuteInner(MessageParcel &data, MessageParcel &reply);
+    int32_t RegisterWillInsightIntentExecuteCallbackInner(MessageParcel &data, MessageParcel &reply);
+    int32_t UnregisterWillInsightIntentExecuteCallbackInner(MessageParcel &data, MessageParcel &reply);
     int32_t QuerySkillTypeInner(MessageParcel &data, MessageParcel &reply);
     int32_t StartSelfUIAbilityByAppContextInner(MessageParcel &data, MessageParcel &reply);
     int32_t StartSandboxCloneAbilityInner(MessageParcel &data, MessageParcel &reply);

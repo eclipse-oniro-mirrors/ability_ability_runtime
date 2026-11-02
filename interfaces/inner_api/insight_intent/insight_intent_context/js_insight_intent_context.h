@@ -49,6 +49,8 @@ public:
 
     static napi_value SetReturnModeForUiExtensionAbility(napi_env env, napi_callback_info info);
 
+    static napi_value GetInsightIntentExecutionInfo(napi_env env, napi_callback_info info);
+
     std::shared_ptr<InsightIntentContext> GetContext()
     {
         return context_.lock();
@@ -58,6 +60,7 @@ private:
     napi_value OnStartAbility(napi_env env, NapiCallbackInfo& info);
     napi_value OnSetReturnModeForUiAbilityForeground(napi_env env, NapiCallbackInfo& info);
     napi_value OnSetReturnModeForUiExtensionAbility(napi_env env, NapiCallbackInfo& info);
+    napi_value OnGetInsightIntentExecutionInfo(napi_env env, NapiCallbackInfo& info);
 
     std::weak_ptr<InsightIntentContext> context_;
 };

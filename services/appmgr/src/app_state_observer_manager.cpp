@@ -18,6 +18,8 @@
 #include "ability_foreground_state_observer_stub.h"
 #include "app_foreground_state_observer_stub.h"
 #include "application_state_observer_stub.h"
+#include "process_lifecycle_observer_stub.h"
+#include "focused_application_observer_stub.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
 #include "image_process_state_observer_stub.h"
@@ -36,6 +38,8 @@ constexpr int OBSERVER_SINGLE_STEP_LOG = 10;
 constexpr int OBSERVER_UID_COUNT_LOG = 3;
 constexpr int OBSERVER_AMOUNT_COUNT_LOG = 70;
 constexpr int32_t RESOURCE_MANAGER_UID = 1096;
+constexpr int32_t ERR_REGISTERED_FOCUS_OBSERVER_EXCEED_LIMIT = 16000165;
+constexpr int32_t FOCUSED_APPLICATION_OBSERVER_LIMIT = 10;
 constexpr const char* DEVELOPER_MODE_STATE = "const.security.developermode.state";
 } // namespace
 AppStateObserverManager::AppStateObserverManager()
@@ -211,6 +215,122 @@ int32_t AppStateObserverManager::UnregisterAppForegroundStateObserver(const sptr
         if (it != nullptr && it->AsObject() == observer->AsObject()) {
             DecreaseObserverCount(uid);
             appForegroundStateObserverMap_.erase(it);
+            RemoveObserverDeathRecipient(observer);
+            return ERR_OK;
+        }
+    }
+    return ERR_INVALID_VALUE;
+}
+
+int32_t AppStateObserverManager::RegisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    if (observer == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null observer");
+        return ERR_INVALID_VALUE;
+    }
+    auto callingUid = IPCSkeleton::GetCallingUid();
+    pid_t callingPid = IPCSkeleton::GetCallingPid();
+    std::lock_guard lockRegister(processLifecycleObserverLock_);
+    for (const auto &[it, info] : processLifecycleObserverMap_) {
+        if (it != nullptr && it->AsObject() == observer->AsObject()) {
+            TAG_LOGW(AAFwkTag::APPMGR, "observer exist");
+            return ERR_INVALID_VALUE;
+        }
+    }
+    int32_t count = 0;
+    for (const auto &[it, info] : processLifecycleObserverMap_) {
+        if (info.first == callingUid) {
+            count++;
+        }
+    }
+    if (count >= MAX_PROCESS_LIFECYCLE_OBSERVER_PER_APP) {
+        TAG_LOGE(AAFwkTag::APPMGR, "exceed limit, uid:%{public}d count:%{public}d", callingUid, count);
+        return ERR_PROCESS_LIFECYCLE_OBSERVER_EXCEED_LIMIT;
+    }
+    processLifecycleObserverMap_.emplace(observer, std::make_pair(callingUid, callingPid));
+    AddObserverDeathRecipient(observer, ObserverType::PROCESS_LIFECYCLE_OBSERVER);
+    return ERR_OK;
+}
+
+int32_t AppStateObserverManager::UnregisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    if (observer == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null observer");
+        return ERR_INVALID_VALUE;
+    }
+    std::lock_guard lockUnregister(processLifecycleObserverLock_);
+    for (const auto &[it, info] : processLifecycleObserverMap_) {
+        if (it != nullptr && it->AsObject() == observer->AsObject()) {
+            processLifecycleObserverMap_.erase(it);
+            RemoveObserverDeathRecipient(observer);
+            return ERR_OK;
+        }
+    }
+    return ERR_INVALID_VALUE;
+}
+
+int32_t AppStateObserverManager::RegisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    if (observer == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null observer");
+        return ERR_INVALID_VALUE;
+    }
+    if (AAFwk::PermissionVerification::GetInstance()->VerifyAppStateObserverPermission() == ERR_PERMISSION_DENIED) {
+        TAG_LOGE(AAFwkTag::APPMGR, "verification failed");
+        return ERR_PERMISSION_DENIED;
+    }
+    auto callingUid = IPCSkeleton::GetCallingUid();
+    std::lock_guard lockRegister(focusedApplicationObserverLock_);
+    bool exist = false;
+    for (const auto &[it, uid] : focusedApplicationObserverMap_) {
+        if (it != nullptr && it->AsObject() == observer->AsObject()) {
+            exist = true;
+            break;
+        }
+    }
+    if (exist) {
+        TAG_LOGW(AAFwkTag::APPMGR, "observer exist");
+        return ERR_INVALID_VALUE;
+    }
+    int32_t sameUidCount = 0;
+    for (const auto &[it, uid] : focusedApplicationObserverMap_) {
+        if (uid == callingUid) {
+            sameUidCount++;
+        }
+    }
+    if (sameUidCount >= FOCUSED_APPLICATION_OBSERVER_LIMIT) {
+        TAG_LOGE(AAFwkTag::APPMGR, "focus observer count reach upper limit, uid: %{public}d", callingUid);
+        return ERR_REGISTERED_FOCUS_OBSERVER_EXCEED_LIMIT;
+    }
+    focusedApplicationObserverMap_.emplace(observer, callingUid);
+    AddObserverDeathRecipient(observer, ObserverType::FOCUSED_APPLICATION_OBSERVER);
+    AddObserverCount(callingUid);
+    return ERR_OK;
+}
+ 
+int32_t AppStateObserverManager::UnregisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    if (observer == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null observer");
+        return ERR_INVALID_VALUE;
+    }
+    if (AAFwk::PermissionVerification::GetInstance()->VerifyAppStateObserverPermission() == ERR_PERMISSION_DENIED) {
+        TAG_LOGE(AAFwkTag::APPMGR, "verification failed");
+        return ERR_PERMISSION_DENIED;
+    }
+    std::lock_guard lockUnregister(focusedApplicationObserverLock_);
+    for (const auto &[it, uid] : focusedApplicationObserverMap_) {
+        if (it != nullptr && it->AsObject() == observer->AsObject()) {
+            DecreaseObserverCount(uid);
+            focusedApplicationObserverMap_.erase(it);
             RemoveObserverDeathRecipient(observer);
             return ERR_OK;
         }
@@ -918,6 +1038,7 @@ void AppStateObserverManager::HandleOnProcessCreated(const std::shared_ptr<Proce
             it->first->OnProcessCreated(*data);
 }
     }
+    DispatchProcessLifecycleCreated(*data);
 }
 
 void AppStateObserverManager::HandleOnProcessStateChanged(
@@ -1088,6 +1209,7 @@ void AppStateObserverManager::HandleOnProcessDied(const std::shared_ptr<ProcessD
             it->first->OnProcessDied(*data);
 }
     }
+    DispatchProcessLifecycleDied(*data);
 }
 
 std::shared_ptr<ProcessData> AppStateObserverManager::WrapProcessData(
@@ -1166,6 +1288,7 @@ int32_t AppStateObserverManager::WrapChildProcessData(ProcessData &processData,
     processData.childUid = childRecord->GetUid();
     processData.processName = childRecord->GetProcessName();
     processData.processType = childRecord->GetProcessType();
+    processData.state = childRecord->GetState();
     return ERR_OK;
 }
 #endif // SUPPORT_CHILD_PROCESS
@@ -1260,6 +1383,10 @@ void AppStateObserverManager::AddObserverDeathRecipient(const sptr<IRemoteBroker
             deathRecipient = new (std::nothrow) AbilityForegroundStateObserverRecipient(deathRecipientFunc);
         } else if (type == ObserverType::IMAGE_PROCESS_STATE_OBSERVER) {
             deathRecipient = new (std::nothrow) ImageProcessStateObserverRecipient(deathRecipientFunc);
+        } else if (type == ObserverType::PROCESS_LIFECYCLE_OBSERVER) {
+            deathRecipient = new (std::nothrow) ProcessLifecycleObserverRecipient(deathRecipientFunc);
+        } else if (type == ObserverType::FOCUSED_APPLICATION_OBSERVER) {
+            deathRecipient = new (std::nothrow) FocusedApplicationObserverRecipient(deathRecipientFunc);
         } else {
             TAG_LOGW(AAFwkTag::APPMGR, "null ObserverType");
             return;
@@ -1355,6 +1482,52 @@ ImageProcessObserverMap AppStateObserverManager::GetImageProcessObserverMapCopy(
     return imageProcessStateObserverMap_;
 }
 
+ProcessLifecycleObserverMap AppStateObserverManager::GetProcessLifecycleObserverMapCopy()
+{
+    std::lock_guard lock(processLifecycleObserverLock_);
+    return processLifecycleObserverMap_;
+}
+
+void AppStateObserverManager::DispatchProcessLifecycleCreated(const ProcessData &data)
+{
+    auto observerMap = GetProcessLifecycleObserverMapCopy();
+    for (const auto &[observer, info] : observerMap) {
+        if (observer == nullptr) {
+            continue;
+        }
+        if (info.first != data.uid) {
+            continue;
+        }
+        if (info.second == data.pid) {
+            continue;
+        }
+        observer->OnProcessCreated(data);
+    }
+}
+
+void AppStateObserverManager::DispatchProcessLifecycleDied(const ProcessData &data)
+{
+    auto observerMap = GetProcessLifecycleObserverMapCopy();
+    for (const auto &[observer, info] : observerMap) {
+        if (observer == nullptr) {
+            continue;
+        }
+        if (info.first != data.uid) {
+            continue;
+        }
+        if (info.second == data.pid) {
+            continue;
+        }
+        observer->OnProcessDied(data);
+    }
+}
+
+FocusedApplicationObserverMap AppStateObserverManager::GetFocusedApplicationObserverMapCopy()
+{
+    std::lock_guard lock(focusedApplicationObserverLock_);
+    return focusedApplicationObserverMap_;
+}
+
 void AppStateObserverManager::OnObserverDied(const wptr<IRemoteObject> &remote, const ObserverType &type)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
@@ -1377,6 +1550,12 @@ void AppStateObserverManager::OnObserverDied(const wptr<IRemoteObject> &remote, 
     } else if (type == ObserverType::IMAGE_PROCESS_STATE_OBSERVER) {
         sptr<IImageProcessStateObserver> observer = iface_cast<IImageProcessStateObserver>(object);
         UnregisterImageProcessStateObserver(observer);
+    } else if (type == ObserverType::PROCESS_LIFECYCLE_OBSERVER) {
+        sptr<IProcessLifecycleObserver> observer = iface_cast<IProcessLifecycleObserver>(object);
+        UnregisterProcessLifecycleObserver(observer);
+    } else if (type == ObserverType::FOCUSED_APPLICATION_OBSERVER) {
+        sptr<IFocusedApplicationObserver> observer = iface_cast<IFocusedApplicationObserver>(object);
+        UnregisterFocusedApplicationObserver(observer);
     } else {
         TAG_LOGW(AAFwkTag::APPMGR, "null ObserverType");
         return;
@@ -1935,6 +2114,45 @@ void AppStateObserverManager::HandleOnPreForkAllWorkProcess(std::shared_ptr<Imag
     for (auto it = imageProcessStateObserverMapCopy.begin(); it != imageProcessStateObserverMapCopy.end(); ++it) {
         if (it->first) {
             it->first->OnPreForkAllWorkProcess(*data);
+        }
+    }
+}
+
+void AppStateObserverManager::NotifyFocusedApplicationChanged(const FocusedApplicationInfo &focusedApplicationInfo)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (handler_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null handler");
+        return;
+    }
+
+    auto task = [weak = weak_from_this(), focusedApplicationInfo]() {
+        auto self = weak.lock();
+        if (self == nullptr) {
+            TAG_LOGE(AAFwkTag::APPMGR, "null self");
+            return;
+        }
+        TAG_LOGD(AAFwkTag::APPMGR, "NotifyFocusedApplicationChanged come.");
+        self->HandleNotifyFocusedApplicationChanged(focusedApplicationInfo);
+    };
+    AAFwk::TaskAttribute taskAttribute{
+        .taskName_ = "NotifyFocusedApplicationChanged",
+        .taskQos_ = AAFwk::TaskQoS::USER_INTERACTIVE
+    };
+    handler_->SubmitTask(task, taskAttribute);
+}
+
+void AppStateObserverManager::HandleNotifyFocusedApplicationChanged(
+    const FocusedApplicationInfo &focusedApplicationInfo)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::APPMGR,
+        "focusedUid:%{public}d, focusedBundleName:%{public}s",
+        focusedApplicationInfo.focusedUid, focusedApplicationInfo.focusedBundleName.c_str());
+    auto focusedApplicationObserverMap = GetFocusedApplicationObserverMapCopy();
+    for (const auto &entry : focusedApplicationObserverMap) {
+        if (entry.first != nullptr) {
+            entry.first->OnFocusedApplicationChanged(focusedApplicationInfo);
         }
     }
 }

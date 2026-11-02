@@ -95,6 +95,9 @@ ani_object WrapConfiguration(ani_env *env, const AppExecFwk::Configuration &conf
     std::string hasPointerDevice = configuration.GetItem(AAFwk::GlobalConfigurationKey::INPUT_POINTER_DEVICE);
     bool hasPointer = hasPointerDevice == "true" ? true : false;
 
+    std::string hasBrandColorChanged = configuration.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED);
+    bool hasBrandColor = hasBrandColorChanged == "true" ? true : false;
+
     std::string fontIdStr = configuration.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_FONT_ID);
     auto aniFontId = GetAniString(env, fontIdStr);
     CHECK_POINTER_AND_RETURN_LOG(aniFontId, nullptr, "null aniFontId");
@@ -119,7 +122,7 @@ ani_object WrapConfiguration(ani_env *env, const AppExecFwk::Configuration &conf
         "C{std.core.String}E{@ohos.app.ability.ConfigurationConstant.ConfigurationConstant.ColorMode}"
         "E{@ohos.app.ability.ConfigurationConstant.ConfigurationConstant.Direction}E{@ohos.app.ability."
         "ConfigurationConstant.ConfigurationConstant.ScreenDensity}lzC{std.core.String}ddC{std.core.String}"
-        "C{std.core.String}C{std.core.Intl.Locale}:",
+        "C{std.core.String}C{std.core.Intl.Locale}z:",
         aniLanguage,
         colorModeItem,
         directionItem,
@@ -131,7 +134,8 @@ ani_object WrapConfiguration(ani_env *env, const AppExecFwk::Configuration &conf
         fontWeight,
         aniMcc,
         aniMnc,
-        localeObj);
+        localeObj,
+        hasBrandColor);
     if (object == nullptr) {
         TAG_LOGE(AAFwkTag::ANI, "null object");
         return nullptr;

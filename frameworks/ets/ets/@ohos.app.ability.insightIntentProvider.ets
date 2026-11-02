@@ -104,4 +104,19 @@ export default namespace insightIntentProvider {
       });
     });
   }
+
+  export interface InsightIntentExecutionCallBack {
+    onWillInsightIntentExecuteCallBack?: (executionInfo: insightIntent.InsightIntentExecutionInfo) => void;
+  }
+
+  export native function nativeOnWillInsightIntentExecute(callback: InsightIntentExecutionCallBack): void;
+  export native function nativeOffWillInsightIntentExecute(callback?: InsightIntentExecutionCallBack): void;
+
+  export function onWillInsightIntentExecute(callback: InsightIntentExecutionCallBack): void {
+    insightIntentProvider.nativeOnWillInsightIntentExecute(callback);
+  }
+
+  export function offWillInsightIntentExecute(callback?: InsightIntentExecutionCallBack): void {
+    insightIntentProvider.nativeOffWillInsightIntentExecute(callback);
+  }
 }

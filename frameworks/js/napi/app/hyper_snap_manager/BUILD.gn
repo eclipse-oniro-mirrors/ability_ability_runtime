@@ -45,10 +45,11 @@ ohos_shared_library("hypersnapmanager_napi") {
   external_deps = [
     "c_utils:utils",
     "hilog:libhilog",
+    "libuv:uv",
     "napi:ace_napi",
+    "node:node_header_notice",
     "resource_schedule_service:ressched_client",
     "samgr:samgr_proxy",
-    "node:node_header_notice",
   ]
   defines = []
 

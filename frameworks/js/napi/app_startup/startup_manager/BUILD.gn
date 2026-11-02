@@ -54,6 +54,7 @@ ohos_shared_library("startupmanager_napi") {
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "ipc:ipc_single",
+    "libuv:uv",
     "napi:ace_napi",
     "node:node_header_notice",
   ]

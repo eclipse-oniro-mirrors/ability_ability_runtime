@@ -111,6 +111,7 @@ void InvokeFunctionExecutor::DoExecute(const InvokeFunctionParam &param)
     // Capture post-before-hook ids; invalid hook values are dropped.
     std::string toolCallId = GetWantParamString(hookParams, "ohos.insightIntent.toolCallId");
     std::string dmSessionId = GetWantParamString(hookParams, "ohos.insightIntent.dmSessionId");
+    std::string taskId = GetWantParamString(hookParams, "ohos.task.id");
     if (!IsValidTraceId(toolCallId) || !IsValidTraceId(dmSessionId)) {
         TAG_LOGW(AAFwkTag::CLI_TOOL,
             "invokeFunction execute: invalid hook-modified trace id dropped, length: %{public}zu/%{public}zu",
@@ -154,6 +155,9 @@ void InvokeFunctionExecutor::DoExecute(const InvokeFunctionParam &param)
     }
     if (!dmSessionId.empty()) {
         execParam.wantParam.SetParam("ohos.insightIntent.dmSessionId", AAFwk::String::Box(dmSessionId));
+    }
+    if (!taskId.empty()) {
+        execParam.wantParam.SetParam("ohos.task.id", AAFwk::String::Box(taskId));
     }
     execParam.callback = client;
 

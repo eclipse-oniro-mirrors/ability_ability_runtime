@@ -501,9 +501,9 @@ HWTEST_F(AppMgrServiceThirdTest, ShowHelp_001, TestSize.Level1)
         "--task                      "
         "dump agent task manager active tasks\n"
         "--task register <taskId> <pid> <insight|cli|a2a|ability>    "
-        "test hook: attribute a process into the task\n"
-        "--task unregister <taskId> <pid>    "
-        "test hook: remove a process from the task\n";
+        "test hook: attribute an entity into the task\n"
+        "--task unregister <taskId> <attributionId>    "
+        "test hook: remove an attribution from the task\n";
     int res = appMgrService->ShowHelp(dummyArgs, resultBuffer);
     EXPECT_EQ(resultBuffer, expectedOutput);
     EXPECT_EQ(res, ERR_OK);

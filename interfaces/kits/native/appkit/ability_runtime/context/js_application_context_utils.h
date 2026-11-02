@@ -24,6 +24,7 @@
 #include "interop_ability_lifecycle_callback.h"
 #include "js_ability_auto_startup_callback.h"
 #include "js_ability_lifecycle_callback.h"
+#include "js_process_lifecycle_observer.h"
 #include "js_system_configuration_updated_callback.h"
 #include "native_engine/native_engine.h"
 #include "running_process_info.h"
@@ -111,6 +112,8 @@ public:
     napi_value OnEnableDelayedProcessExit(napi_env env, NapiCallbackInfo& info);
     napi_value OnDisableDelayedProcessExit(napi_env env, NapiCallbackInfo& info);
     napi_value OnStartSelfUIAbility(napi_env env, NapiCallbackInfo& info);
+    napi_value OnOnAppProcessStateChange(napi_env env, NapiCallbackInfo& info);
+    napi_value OnOffAppProcessStateChange(napi_env env, NapiCallbackInfo& info);
 
     static napi_value GetCacheDir(napi_env env, napi_callback_info info);
     static napi_value GetTempDir(napi_env env, napi_callback_info info);
@@ -147,6 +150,8 @@ public:
     static napi_value EnableDelayedProcessExit(napi_env env, napi_callback_info info);
     static napi_value DisableDelayedProcessExit(napi_env env, napi_callback_info info);
     static napi_value StartSelfUIAbility(napi_env env, napi_callback_info info);
+    static napi_value OnAppProcessStateChange(napi_env env, napi_callback_info info);
+    static napi_value OffAppProcessStateChange(napi_env env, napi_callback_info info);
 
 protected:
     std::weak_ptr<ApplicationContext> applicationContext_;
@@ -171,6 +176,8 @@ private:
     std::shared_ptr<JsEnvironmentCallback> envCallback_;
     std::shared_ptr<JsApplicationStateChangeCallback> applicationStateCallback_;
     std::mutex applicationStateCallbackLock_;
+    sptr<JsProcessLifecycleObserver> processLifecycleObserver_;
+    std::mutex processLifecycleObserverLock_;
     sptr<JsAbilityAutoStartupCallBack> jsAutoStartupCallback_;
     std::shared_ptr<JsSystemConfigurationUpdatedCallback> systemConfigurationUpdatedCallback_;
     std::mutex systemConfigurationUpdatedCallbackLock_;

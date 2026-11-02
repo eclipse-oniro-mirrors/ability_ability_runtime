@@ -15,8 +15,11 @@
 
 #include "ability_auto_startup_service.h"
 
+#include <charconv>
+
 #include "ability_auto_startup_data_manager.h"
 #include "ability_manager_service.h"
+#include "accesstoken_kit.h"
 #include "app_utils.h"
 #include "auto_startup_callback_proxy.h"
 #include "auto_startup_interface.h"
@@ -165,6 +168,11 @@ int32_t AbilityAutoStartupService::SetApplicationAutoStartup(const AutoStartupIn
     fullInfo.canUserModify = true;
     fullInfo.setterType = AutoStartupSetterType::USER;
 
+    if (fullInfo.isDirectBoot && CheckBootAppPermission(fullInfo) != ERR_OK) {
+        TAG_LOGE(AAFwkTag::AUTO_STARTUP, "target not authorized for direct boot, bundle:%{public}s user:%{public}d",
+            fullInfo.bundleName.c_str(), fullInfo.userId);
+        return ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT;
+    }
     return InnerSetApplicationAutoStartup(fullInfo);
 }
 
@@ -608,6 +616,24 @@ std::shared_ptr<AppExecFwk::BundleMgrClient> AbilityAutoStartupService::GetBundl
         bundleMgrClient_ = DelayedSingleton<AppExecFwk::BundleMgrClient>::GetInstance();
     }
     return bundleMgrClient_;
+}
+
+int32_t AbilityAutoStartupService::CheckBootAppPermission(const AutoStartupInfo &info)
+{
+    Security::AccessToken::AccessTokenID tokenId = Security::AccessToken::INVALID_TOKENID;
+    const auto *end = info.accessTokenId.data() + info.accessTokenId.size();
+    auto [ptr, ec] = std::from_chars(info.accessTokenId.data(), end, tokenId);
+    if (ec != std::errc() || ptr != end || tokenId == Security::AccessToken::INVALID_TOKENID) {
+        TAG_LOGE(AAFwkTag::AUTO_STARTUP, "invalid boot app token");
+        return ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT;
+    }
+    if (Security::AccessToken::AccessTokenKit::VerifyAccessToken(tokenId,
+        PermissionConstants::PERMISSION_ALLOW_DIRECT_BOOT) != Security::AccessToken::PERMISSION_GRANTED) {
+        TAG_LOGE(AAFwkTag::AUTO_STARTUP, "target lacks ALLOW_DIRECT_BOOT permission: %{public}s",
+            info.bundleName.c_str());
+        return ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT;
+    }
+    return ERR_OK;
 }
 
 int32_t AbilityAutoStartupService::CheckPermissionForSystem()

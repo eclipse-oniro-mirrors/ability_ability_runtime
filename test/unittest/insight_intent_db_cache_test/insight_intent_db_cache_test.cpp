@@ -113,10 +113,10 @@ HWTEST_F(InsightIntentDbCacheTest, InsightIntentDbCacheTest_002, TestSize.Level0
     std::string moduleName = "";
     ExtractInsightIntentProfileInfoVec profileInfos;
     std::vector<InsightIntentInfo> configInfos;
-    // cache holds entries of bundleName (saved by test_001); wrong user triggers direct RDB delete
+    // cache holds entries of bundleName (saved by test_001); wrong user is skipped
     bool deleted = DelayedSingleton<InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(
         IntentKey{bundleName, moduleName, "", 100});
-    EXPECT_TRUE(deleted);
+    EXPECT_FALSE(deleted);
     deleted = DelayedSingleton<InsightIntentDbCache>::GetInstance()->DeleteInsightIntentTotalInfo(
         IntentKey{bundleName, moduleName, "", userId});
     EXPECT_TRUE(deleted);

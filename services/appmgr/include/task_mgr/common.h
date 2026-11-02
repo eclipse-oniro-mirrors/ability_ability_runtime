@@ -40,6 +40,9 @@ constexpr const char *TASK_TIMEOUT_PARAM = "persist.sys.appms.taskmanager.task_t
 // Safety ceiling on the number of simultaneously active tasks (memory and timer resources).
 constexpr size_t TASK_MAX_ACTIVE_TASKS = 10;
 
+// Safety ceiling on the managed attributions of one task.
+constexpr size_t TASK_MAX_ATTRIBUTIONS_PER_TASK = 1000;
+
 // How a task reached its end; logged with a unified tag and dumped for DFX.
 enum class TaskFinishReason : int32_t {
     FINISHED_BY_CALLER = 0,

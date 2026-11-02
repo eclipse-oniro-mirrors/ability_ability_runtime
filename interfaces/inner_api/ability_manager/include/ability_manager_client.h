@@ -769,20 +769,21 @@ public:
     ErrCode StartSelf(sptr<IRemoteObject> token);
 
     /**
-     * Return the result to the CALLER ability and finish (terminateSelfWithResult for FA/
-     * delegated scenarios). The callerRequestCode (int64) identifies the caller's outstanding
+     * Return the result to the CALLER ability without terminating the current ability.
+     * The callerRequestCode (int64) identifies the caller's outstanding
      * request. The ability record must exist; the caller must have started this ability for
      * result, otherwise the result is dropped with an error.
      *
      * @param token The token of the ability returning the result.
      * @param resultCode Result code delivered to the caller.
-     * @param resultWant Result data delivered to the caller; may be nullptr.
+     * @param resultWant Result data delivered to the caller.
      * @param callerRequestCode The request code under which the caller awaits the result.
+     * @param isBackToCallerApp Whether the request is from backToCallerAppWithResult.
      * @return ERR_OK on success; ERR_INVALID_VALUE for unknown token; error when no caller
      *         request matches.
      */
     ErrCode BackToCallerAbilityWithResult(const sptr<IRemoteObject> &token, int resultCode,
-        const Want *resultWant, int64_t callerRequestCode);
+        const Want &resultWant, int64_t callerRequestCode, bool isBackToCallerApp = false);
 
     /**
      * Terminate a UIServiceExtensionAbility. SceneBoard callers ONLY (ERR_WRONG_INTERFACE_CALL
@@ -1899,6 +1900,15 @@ public:
      *         when the AMS proxy is unavailable.
      */
     ErrCode SetGamePreLaunchCompleteTime(int32_t userId, int64_t completeTime);
+
+    /**
+     * @brief Extend game prelaunch timeout (reset the pre-launch foreground countdown).
+     * Internal: only game SA (GAME_SA_UID) may call.
+     * @param pid Process ID of the game pre-launch ability to extend.
+     * @param extendTime Extended time in microseconds, must be in range (30s, 4h).
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode ExtendGamePreLaunchTimeout(int32_t pid, int64_t extendTime);
 
     /**
      * @brief Query whether a UIAbility's onPrepareToTerminate allows termination.
@@ -3172,6 +3182,10 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     ErrCode NotifyInsightIntentExecute(uint64_t intentId);
+
+    ErrCode RegisterWillInsightIntentExecuteCallback(const sptr<IRemoteObject> &callback);
+
+    ErrCode UnregisterWillInsightIntentExecuteCallback();
 
     /**
      * @brief Query the type of a configured skill (e.g. UI ability vs service

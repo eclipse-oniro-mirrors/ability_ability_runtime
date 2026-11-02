@@ -3194,5 +3194,36 @@ HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_StartSelf_0100, Te
     auto result = client_->StartSelf(token);
     EXPECT_EQ(ERR_OK, result);
 }
+
+/**
+ * @tc.name: AbilityManagerClient_BackToCallerAppWithResult_0200
+ * @tc.desc: BackToCallerAppWithResult forwards arguments and returns ERR_CALLER_NOT_EXISTS.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_BackToCallerAppWithResult_0200, TestSize.Level1)
+{
+    Want want;
+    sptr<IRemoteObject> token = new AbilityManagerStubTestMock();
+    int64_t requestCode = 0x100000001;
+    EXPECT_CALL(*mock_, BackToCallerAbilityWithResult(token, 100, Ref(want), requestCode, true))
+        .WillOnce(Return(ERR_CALLER_NOT_EXISTS));
+    auto result = client_->BackToCallerAbilityWithResult(token, 100, want, requestCode, true);
+    EXPECT_EQ(result, ERR_CALLER_NOT_EXISTS);
+}
+
+/**
+ * @tc.name: AbilityManagerClient_BackToCallerAbilityWithResult_Legacy
+ * @tc.desc: The old interface forwards the request with the new interface flag disabled.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_BackToCallerAbilityWithResult_Legacy, TestSize.Level1)
+{
+    Want want;
+    sptr<IRemoteObject> token = new AbilityManagerStubTestMock();
+    EXPECT_CALL(*mock_, BackToCallerAbilityWithResult(token, 100, Ref(want), 1, false)).WillOnce(Return(ERR_OK));
+    auto result = client_->BackToCallerAbilityWithResult(token, 100, want, 1);
+    EXPECT_EQ(result, ERR_OK);
+}
+
 }  // namespace AAFwk
 }  // namespace OHOS

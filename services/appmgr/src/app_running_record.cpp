@@ -1554,7 +1554,9 @@ bool AppRunningRecord::IsLastPageAbilityRecord(const sptr<IRemoteObject> &token)
     auto moduleRecordList = GetAllModuleRecord();
     for (auto moduleRecord : moduleRecordList) {
         if (moduleRecord) {
-            pageAbilitySize += moduleRecord->GetPageAbilitySize();
+            // terminating siblings are excluded so that concurrently cleaned sessions still
+            // judge the last one correctly; the queried token itself always counts
+            pageAbilitySize += moduleRecord->GetActivePageAbilitySize(token);
         }
         if (pageAbilitySize > 1) {
             return false;

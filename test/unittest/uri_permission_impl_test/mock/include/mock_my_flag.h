@@ -95,7 +95,6 @@ public:
         permissionGrantUriPermissionAsCaller_ = false;
         processUdmfKeyRet_ = 0;
         udmfUtilsUris_ = {};
-        upmsUtilsCheckIsSystemAppByBundleNameRet_ = true;
         upmsUtilsCheckIsSystemAppByTokenIdRet_ = false;
         upmsUtilsGetDirByBundleNameAndAppIndexRet_ = true;
         upmsUtilsAlterBundleName_ = "";
@@ -158,7 +157,6 @@ public:
     static int32_t getTokenIdByBundleNameStatus_;
     static int32_t processUdmfKeyRet_;
     static std::vector<std::string> udmfUtilsUris_;
-    static bool upmsUtilsCheckIsSystemAppByBundleNameRet_;
     static bool upmsUtilsCheckIsSystemAppByTokenIdRet_;
     static bool upmsUtilsGetDirByBundleNameAndAppIndexRet_;
     static std::string upmsUtilsAlterBundleName_ ;

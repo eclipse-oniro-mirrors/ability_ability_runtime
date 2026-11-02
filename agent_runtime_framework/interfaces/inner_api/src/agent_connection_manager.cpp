@@ -138,6 +138,15 @@ bool AgentConnection::SnapshotConnectedState(sptr<IRemoteObject> &remoteObject, 
     return true;
 }
 
+AgentConnectionManager::AgentConnectionManager()
+{
+    // Registered exactly once: GetInstance()'s thread-safe static guarantees the ctor runs once.
+    // On subfoundation death the normal disconnect-done chain can't reach app-side registries
+    // (the forwarding AgentServiceConnection lives in the dead process), so clear them here.
+    AgentManagerClient::GetInstance().RegisterDeathCallback(
+        []() { AgentConnectionManager::GetInstance().OnAgentMgrDied(); });
+}
+
 AgentConnectionManager &AgentConnectionManager::GetInstance()
 {
     static AgentConnectionManager agentConnectionManager;
@@ -286,6 +295,36 @@ bool AgentConnectionManager::DisconnectNonexistentService(const AppExecFwk::Elem
         return true;
     }
     return false;
+}
+
+void AgentConnectionManager::OnAgentMgrDied()
+{
+    std::vector<std::pair<sptr<AgentConnection>, AppExecFwk::ElementName>> snapshot;
+    {
+        std::lock_guard<std::recursive_mutex> lock(connectionsLock_);
+        TAG_LOGI(AAFwkTag::SER_ROUTER, "AgentManagerService died, clear %{public}zu tracked agent connection(s)",
+            agentConnections_.size());
+        snapshot.reserve(agentConnections_.size());
+        for (const auto &entry : agentConnections_) {
+            const AAFwk::Operation &connectReceiver = entry.first.connectReceiver;
+            AppExecFwk::ElementName element;
+            element.SetBundleName(connectReceiver.GetBundleName());
+            element.SetModuleName(connectReceiver.GetModuleName());
+            element.SetAbilityName(connectReceiver.GetAbilityName());
+            snapshot.emplace_back(entry.first.agentConnection, element);
+        }
+        agentConnections_.clear();
+    }
+    // Fire outside connectionsLock_: OnAbilityDisconnectDone(DIED) re-enters this manager via
+    // RemoveConnection (recursive mutex; the list is already cleared -> no-op) and forwards to
+    // JSAgentConnection::OnAbilityDisconnectDone which schedules napi work that must not run
+    // under the lock. DIED is the same code used when the target AgentExtension dies, so the
+    // existing death-settlement path (RemoveConnection + JS onDisconnect) applies unchanged.
+    for (const auto &item : snapshot) {
+        if (item.first != nullptr) {
+            item.first->OnAbilityDisconnectDone(item.second, DIED);
+        }
+    }
 }
 
 bool AgentConnectionManager::IsConnectReceiverEqual(const AAFwk::Operation &connectReceiver,

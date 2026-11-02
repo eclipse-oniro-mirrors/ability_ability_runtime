@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_INSIGHT_INTENT_EXECUTE_PARAM_H
 #define OHOS_ABILITY_RUNTIME_INSIGHT_INTENT_EXECUTE_PARAM_H
 
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -87,10 +88,12 @@ constexpr char INSIGHT_INTENT_QUERY_ENTITY_CLASS_NAME[] = "ohos.insightIntent.qu
 constexpr char INSIGHT_INTENT_QUERY_TYPE[] = "ohos.insightIntent.queryEntity.queryType";
 constexpr char INSIGHT_INTENT_QUERY_ENTITY_PARAM_PARAM[] = "ohos.insightIntent.queryEntity.param";
 constexpr char INSIGHT_INTENT_PARAM_USER_ID[] = "ohos.insightIntent.param.userId";
-constexpr char INSIGHT_INTENT_DISTRIBUTED_CALLBACK_KEY[] = "ohos.insightIntent.distributed.callbackKey";
-constexpr char INSIGHT_INTENT_DISTRIBUTED_SRC_DEVICE_ID[] = "ohos.insightIntent.distributed.srcDeviceId";
-constexpr char INSIGHT_INTENT_DISTRIBUTED_REQUEST_CODE[] = "ohos.insightIntent.distributed.requestCode";
 constexpr char INSIGHT_INTENT_TOOL_CALL_ID[] = "ohos.insightIntent.toolCallId";
+constexpr char INSIGHT_INTENT_TASK_ID[] = "ohos.task.id";
+constexpr size_t INSIGHT_INTENT_TASK_ID_MAX_LEN = 256;
+constexpr char INSIGHT_INTENT_CALLER_BUNDLE_NAME[] = "ohos.insightIntent.executeParam.callerBundleName";
+constexpr char INSIGHT_INTENT_CALLER_TOKEN_ID[] = "ohos.insightIntent.executeParam.callerTokenId";
+constexpr char INSIGHT_INTENT_CALLER_UID[] = "ohos.insightIntent.executeParam.callerUid";
 
 constexpr int32_t INVALID_DISPLAY_ID = -1;
 constexpr char METHOD_PARAM_SEPARATOR = '\x1f';
@@ -159,6 +162,13 @@ public:
 
     // Shared by Driver and FunctionManager; empty means no tool call identifier.
     std::string toolCallId_;
+
+    std::string taskId_;
+
+    // caller identity of this intent execution, filled by AMS and passed down to the application.
+    std::string callerBundleName_;
+    std::string callerTokenId_;
+    int32_t callerUid_ = 0;
 };
 } // namespace AppExecFwk
 } // namespace OHOS

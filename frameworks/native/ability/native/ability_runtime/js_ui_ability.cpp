@@ -2041,7 +2041,10 @@ void JsUIAbility::OnConfigurationUpdated(const Configuration &configuration)
         }
     }
 
-    TAG_LOGD(AAFwkTag::UIABILITY, "realConfig: %{public}s", realConfig.GetName().c_str());
+    TAG_LOGD(AAFwkTag::UIABILITY,
+             "realConfig: %{public}s full :%{public}s",
+             realConfig.GetName().c_str(),
+             fullConfig->GetName().c_str());
     napi_value napiConfiguration = OHOS::AppExecFwk::WrapConfiguration(env, realConfig);
 
     CallObjectMethod("onConfigurationUpdated", &napiConfiguration, 1);

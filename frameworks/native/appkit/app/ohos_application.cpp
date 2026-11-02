@@ -267,6 +267,22 @@ void OHOSApplication::SetAbilityRecordMgr(const std::shared_ptr<AbilityRecordMgr
  * @param config Indicates the new Configuration object.
  * @param reason Indicates the Configuration update scene flag.
  */
+void OHOSApplication::MarkBrandColorChanged(Configuration &config)
+{
+    auto newBrandColorNum = config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID);
+    auto currentBrandColorNum = configuration_->GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID);
+    if (!newBrandColorNum.empty() && newBrandColorNum != currentBrandColorNum) {
+        config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED, "true");
+    }
+}
+
+void OHOSApplication::UnMarkBrandColorChanged(Configuration &config)
+{
+    if (!config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty()) {
+        config.RemoveItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED);
+    }
+}
+
 void OHOSApplication::OnConfigurationUpdated(
     Configuration config, AbilityRuntime::SetLevel level, ConfigUpdateReason reason)
 {
@@ -283,6 +299,7 @@ void OHOSApplication::OnConfigurationUpdated(
     bool isUpdateAppFontSize = isUpdateFontSize(config, level);
     bool isUpdateAppLanguage = IsUpdateLanguageNeeded(config, level);
     bool isUpdateAppLocale = IsUpdateLocaleNeeded(*configuration_, config);
+    MarkBrandColorChanged(config);
     if (!isUpdateAppColor && !isUpdateAppFontSize && !isUpdateAppLanguage && !isUpdateAppLocale &&
         config.GetItemSize() == 0) {
         TAG_LOGD(AAFwkTag::APPKIT, "configuration need not updated");
@@ -323,6 +340,7 @@ void OHOSApplication::OnConfigurationUpdated(
     Rosen::Window::UpdateConfigurationForAll(diffConfiguration, ignoreWindowContext);
 #endif
     abilityRuntimeContext_->DispatchConfigurationUpdated(*configuration_);
+    UnMarkBrandColorChanged(*configuration_);
     abilityRuntimeContext_->SetConfiguration(configuration_);
 }
 

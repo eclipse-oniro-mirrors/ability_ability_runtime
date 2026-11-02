@@ -51,6 +51,7 @@ export default class InsightIntentContext {
   public native nativeStartAbilitySyncCheck(): void;
   public native setReturnModeForUIAbilityForeground(returnMode: insightIntent.ReturnMode): void;
   public native setReturnModeForUIExtensionAbility(returnMode: insightIntent.ReturnMode): void;
+  public native nativeGetInsightIntentExecutionInfo(): insightIntent.InsightIntentExecutionInfo;
 
   startAbility(want: Want, callback: AsyncCallback<void>): void {
     this.nativeStartAbilitySyncCheck();
@@ -83,5 +84,9 @@ export default class InsightIntentContext {
       });
     });
     return p;
+  }
+
+  get insightIntentExecutionInfo(): insightIntent.InsightIntentExecutionInfo {
+    return this.nativeGetInsightIntentExecutionInfo();
   }
 }

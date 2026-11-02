@@ -59,7 +59,7 @@ bool FUDUtils::IsPrivilegedSACall()
     return MyFlag::isPrivilegedSACall_;
 }
 
-bool FUDUtils::GetBundleApiTargetVersion(const std::string &bundleName, int32_t &targetApiVersion)
+bool FUDUtils::GetBundleApiTargetVersion(const std::string &bundleName, int32_t userId, int32_t &targetApiVersion)
 {
     return true;
 }
@@ -87,7 +87,7 @@ bool FUDUtils::GetBundleNameByTokenId(uint32_t tokenId, std::string &bundleName)
     return MyFlag::upmsUtilsGetBundleNameByTokenIdRet_;
 }
 
-int32_t FUDUtils::GetAppIdByBundleName(const std::string &bundleName, std::string &appId)
+int32_t FUDUtils::GetAppIdByBundleName(const std::string &bundleName, int32_t userId, std::string &appId)
 {
     appId = MyFlag::upmsUtilsAppId_;
     return MyFlag::upmsUtilsGetAppIdByBundleNameRet_;

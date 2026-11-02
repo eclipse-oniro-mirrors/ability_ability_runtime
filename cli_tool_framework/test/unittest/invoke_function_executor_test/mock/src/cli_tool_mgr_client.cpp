@@ -52,6 +52,10 @@ ErrCode CliToolMGRClient::BeforeInvokeFunction(InvokeFunctionParam &param)
         param.invokeOptions.dmSessionId = mockHookDmSessionId_;
         param.args.SetParam(RESERVED_KEY_DM_SESSION_ID, AAFwk::String::Box(mockHookDmSessionId_));
     }
+    if (!mockHookTaskId_.empty()) {
+        param.invokeOptions.taskId = mockHookTaskId_;
+        param.args.SetParam(RESERVED_KEY_TASK_ID, AAFwk::String::Box(mockHookTaskId_));
+    }
     return ERR_OK;
 }
 

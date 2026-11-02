@@ -59,6 +59,7 @@ class MockDeferred : public NativeDeferred {
 public:
     void Resolve(napi_value data) override
     {
+        settled_ = true;
         resolved_ = true;
         if (nref_ != nullptr) {
             napi_delete_reference(env_, nref_);
@@ -71,7 +72,12 @@ public:
 
     void Reject(napi_value reason) override
     {
+        settled_ = true;
         resolved_ = false;
+        napi_value code = nullptr;
+        if (napi_get_named_property(env_, reason, "code", &code) == napi_ok) {
+            napi_get_value_int32(env_, code, &rejectedCode_);
+        }
     }
 
 public:
@@ -85,9 +91,13 @@ public:
         }
     }
     static bool resolved_;
+    static bool settled_;
+    static int32_t rejectedCode_;
     static napi_ref nref_;
 };
 bool MockDeferred::resolved_ = false;
+bool MockDeferred::settled_ = false;
+int32_t MockDeferred::rejectedCode_ = ERR_OK;
 napi_ref MockDeferred::nref_ = nullptr;
 
 class MockArkNativeEngine : public ArkNativeEngine {
@@ -124,6 +134,13 @@ public:
         GTEST_LOG_(INFO) << "StartSelfUIAbilityInChildProcess mock called, ret " << startSelfRet_;
         return startSelfRet_;
     }
+
+    ErrCode BackToCallerAbilityWithResult(const AAFwk::Want &want, int resultCode, int64_t requestCode,
+        bool isBackToCallerApp = false) override
+    {
+        EXPECT_TRUE(isBackToCallerApp);
+        return backToCallerRet_;
+    }
 public:
     static void DoneConnect(int status)
     {
@@ -140,10 +157,12 @@ public:
     }
     void SetConnectResult(ErrCode code) { connectRet_ = code; }
     void SetStartSelfResult(ErrCode code) { startSelfRet_ = code; }
+    void SetBackToCallerResult(ErrCode code) { backToCallerRet_ = code; }
 protected:
     static sptr<AbilityConnectCallback> callback_;
     ErrCode connectRet_ = ERR_OK;
     ErrCode startSelfRet_ = ERR_OK;
+    ErrCode backToCallerRet_ = ERR_OK;
 };
 
 sptr<AbilityConnectCallback> MockAbilityContextImpl::callback_;
@@ -199,6 +218,8 @@ void AbilityContextTest::TearDownTestCase()
 void AbilityContextTest::SetUp()
 {
     GTEST_LOG_(INFO) << "AbilityContextTest::SetUp";
+    MockDeferred::settled_ = false;
+    MockDeferred::rejectedCode_ = ERR_OK;
     abilityContextImpl_ = std::make_shared<MockAbilityContextImpl>();
     if (abilityContextImpl_ == nullptr) {
         GTEST_LOG_(INFO) << "abilityContextImpl is nullptr.";
@@ -736,5 +757,296 @@ HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_DispatchStartAbilityB
     RunNowait(loop);
     GTEST_LOG_(INFO) << "AbilityRuntime_AbilityContext_DispatchStartAbilityByTypeResult_0100 end";
 }
+
+/**
+ * @tc.name: AbilityRuntime_AbilityContext_OnBackToCallerAppWithResult_0100
+ * @tc.desc: An expired context rejects the promise with 16000011.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_OnBackToCallerAppWithResult_0100, TestSize.Level1)
+{
+    ASSERT_NE(env_, nullptr);
+    HandleScope handleScope(env_);
+    AAFwk::Want want;
+    NapiCallbackInfo info{2};
+    info.argv[0] = AppExecFwk::WrapAbilityResult(env_, 100, want);
+    ASSERT_NE(info.argv[0], nullptr);
+    ASSERT_EQ(napi_create_string_utf8(env_, "1", NAPI_AUTO_LENGTH, &info.argv[1]), napi_ok);
+    abilityContextImpl_.reset();
+
+    auto result = jsAbilityContext_->OnBackToCallerAppWithResult(env_, info);
+    ASSERT_NE(result, nullptr);
+    auto loop = reinterpret_cast<ArkNativeEngine*>(env_)->GetUVLoop();
+    ASSERT_NE(loop, nullptr);
+    constexpr int32_t maxAttempts = 50;
+    for (int32_t i = 0; i < maxAttempts && !MockDeferred::settled_; ++i) {
+        RunNowait(loop);
+    }
+
+    ASSERT_TRUE(MockDeferred::settled_);
+    EXPECT_FALSE(MockDeferred::GetLastResolveStatus());
+    EXPECT_EQ(MockDeferred::rejectedCode_, 16000011);
+}
+
+/**
+ * @tc.name: AbilityRuntime_AbilityContext_OnBackToCallerAppWithResult_0200
+ * @tc.desc: A service connection failure rejects the promise with 16000050.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_OnBackToCallerAppWithResult_0200, TestSize.Level1)
+{
+    ASSERT_NE(env_, nullptr);
+    HandleScope handleScope(env_);
+    AAFwk::Want want;
+    NapiCallbackInfo info{2};
+    info.argv[0] = AppExecFwk::WrapAbilityResult(env_, 100, want);
+    ASSERT_NE(info.argv[0], nullptr);
+    ASSERT_EQ(napi_create_string_utf8(env_, "1", NAPI_AUTO_LENGTH, &info.argv[1]), napi_ok);
+    abilityContextImpl_->SetBackToCallerResult(ABILITY_SERVICE_NOT_CONNECTED);
+
+    auto result = jsAbilityContext_->OnBackToCallerAppWithResult(env_, info);
+    ASSERT_NE(result, nullptr);
+    auto loop = reinterpret_cast<ArkNativeEngine*>(env_)->GetUVLoop();
+    ASSERT_NE(loop, nullptr);
+    constexpr int32_t maxAttempts = 50;
+    for (int32_t i = 0; i < maxAttempts && !MockDeferred::settled_; ++i) {
+        RunNowait(loop);
+    }
+
+    ASSERT_TRUE(MockDeferred::settled_);
+    EXPECT_FALSE(MockDeferred::GetLastResolveStatus());
+    EXPECT_EQ(MockDeferred::rejectedCode_, 16000050);
+}
+
+/**
+ * @tc.name: AbilityRuntime_AbilityContext_OnBackToCallerAppWithResult_0300
+ * @tc.desc: An IPC parcel failure rejects the promise with 16000050.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_OnBackToCallerAppWithResult_0300, TestSize.Level1)
+{
+    ASSERT_NE(env_, nullptr);
+    HandleScope handleScope(env_);
+    AAFwk::Want want;
+    NapiCallbackInfo info{2};
+    info.argv[0] = AppExecFwk::WrapAbilityResult(env_, 100, want);
+    ASSERT_NE(info.argv[0], nullptr);
+    ASSERT_EQ(napi_create_string_utf8(env_, "1", NAPI_AUTO_LENGTH, &info.argv[1]), napi_ok);
+    abilityContextImpl_->SetBackToCallerResult(ERR_NATIVE_IPC_PARCEL_FAILED);
+
+    auto result = jsAbilityContext_->OnBackToCallerAppWithResult(env_, info);
+    ASSERT_NE(result, nullptr);
+    auto loop = reinterpret_cast<ArkNativeEngine*>(env_)->GetUVLoop();
+    ASSERT_NE(loop, nullptr);
+    constexpr int32_t maxAttempts = 50;
+    for (int32_t i = 0; i < maxAttempts && !MockDeferred::settled_; ++i) {
+        RunNowait(loop);
+    }
+
+    ASSERT_TRUE(MockDeferred::settled_);
+    EXPECT_FALSE(MockDeferred::GetLastResolveStatus());
+    EXPECT_EQ(MockDeferred::rejectedCode_, 16000050);
+}
+
+/**
+ * @tc.name: AbilityRuntime_AbilityContext_OnBackToCallerAppWithResult_0400
+ * @tc.desc: A zero request code reaches native handling and rejects with 16000074.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_OnBackToCallerAppWithResult_0400, TestSize.Level1)
+{
+    ASSERT_NE(env_, nullptr);
+    HandleScope handleScope(env_);
+    AAFwk::Want want;
+    NapiCallbackInfo info{2};
+    info.argv[0] = AppExecFwk::WrapAbilityResult(env_, 100, want);
+    ASSERT_NE(info.argv[0], nullptr);
+    ASSERT_EQ(napi_create_string_utf8(env_, "0", NAPI_AUTO_LENGTH, &info.argv[1]), napi_ok);
+    abilityContextImpl_->SetBackToCallerResult(ERR_CALLER_NOT_EXISTS);
+
+    auto result = jsAbilityContext_->OnBackToCallerAppWithResult(env_, info);
+    ASSERT_NE(result, nullptr);
+    auto loop = reinterpret_cast<ArkNativeEngine*>(env_)->GetUVLoop();
+    ASSERT_NE(loop, nullptr);
+    constexpr int32_t maxAttempts = 50;
+    for (int32_t i = 0; i < maxAttempts && !MockDeferred::settled_; ++i) {
+        RunNowait(loop);
+    }
+
+    ASSERT_TRUE(MockDeferred::settled_);
+    EXPECT_FALSE(MockDeferred::GetLastResolveStatus());
+    EXPECT_EQ(MockDeferred::rejectedCode_, 16000074);
+}
+
+/**
+ * @tc.name: AbilityRuntime_AbilityContext_OnBackToCallerAppWithResult_0500
+ * @tc.desc: An unsupported return rejects the promise with 16000075.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_OnBackToCallerAppWithResult_0500, TestSize.Level1)
+{
+    ASSERT_NE(env_, nullptr);
+    HandleScope handleScope(env_);
+    AAFwk::Want want;
+    NapiCallbackInfo info{2};
+    info.argv[0] = AppExecFwk::WrapAbilityResult(env_, 100, want);
+    ASSERT_NE(info.argv[0], nullptr);
+    ASSERT_EQ(napi_create_string_utf8(env_, "1", NAPI_AUTO_LENGTH, &info.argv[1]), napi_ok);
+    abilityContextImpl_->SetBackToCallerResult(ERR_NOT_SUPPORT_BACK_TO_CALLER);
+
+    auto result = jsAbilityContext_->OnBackToCallerAppWithResult(env_, info);
+    ASSERT_NE(result, nullptr);
+    auto loop = reinterpret_cast<ArkNativeEngine*>(env_)->GetUVLoop();
+    ASSERT_NE(loop, nullptr);
+    constexpr int32_t maxAttempts = 50;
+    for (int32_t i = 0; i < maxAttempts && !MockDeferred::settled_; ++i) {
+        RunNowait(loop);
+    }
+
+    ASSERT_TRUE(MockDeferred::settled_);
+    EXPECT_FALSE(MockDeferred::GetLastResolveStatus());
+    EXPECT_EQ(MockDeferred::rejectedCode_, 16000075);
+}
+
+/**
+ * @tc.name: AbilityRuntime_AbilityContext_OnBackToCallerAppWithResult_0600
+ * @tc.desc: Missing arguments throw a parameter error.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_OnBackToCallerAppWithResult_0600, TestSize.Level1)
+{
+    ASSERT_NE(env_, nullptr);
+    HandleScope handleScope(env_);
+    NapiCallbackInfo info{0};
+    jsAbilityContext_->OnBackToCallerAppWithResult(env_, info);
+
+    napi_value error = nullptr;
+    ASSERT_EQ(napi_get_and_clear_last_exception(env_, &error), napi_ok);
+    ASSERT_NE(error, nullptr);
+    napi_value code = nullptr;
+    ASSERT_EQ(napi_get_named_property(env_, error, "code", &code), napi_ok);
+    int32_t errorCode = 0;
+    ASSERT_EQ(napi_get_value_int32(env_, code, &errorCode), napi_ok);
+    EXPECT_EQ(errorCode, 401);
+    EXPECT_FALSE(MockDeferred::settled_);
+}
+
+/**
+ * @tc.name: AbilityRuntime_AbilityContext_OnBackToCallerAppWithResult_0700
+ * @tc.desc: An invalid ability result throws a parameter error.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_OnBackToCallerAppWithResult_0700, TestSize.Level1)
+{
+    ASSERT_NE(env_, nullptr);
+    HandleScope handleScope(env_);
+    NapiCallbackInfo info{2};
+    ASSERT_EQ(napi_create_int32(env_, 100, &info.argv[0]), napi_ok);
+    jsAbilityContext_->OnBackToCallerAppWithResult(env_, info);
+
+    napi_value error = nullptr;
+    ASSERT_EQ(napi_get_and_clear_last_exception(env_, &error), napi_ok);
+    ASSERT_NE(error, nullptr);
+    napi_value code = nullptr;
+    ASSERT_EQ(napi_get_named_property(env_, error, "code", &code), napi_ok);
+    int32_t errorCode = 0;
+    ASSERT_EQ(napi_get_value_int32(env_, code, &errorCode), napi_ok);
+    EXPECT_EQ(errorCode, 401);
+    EXPECT_FALSE(MockDeferred::settled_);
+}
+
+/**
+ * @tc.name: AbilityRuntime_AbilityContext_OnBackToCallerAppWithResult_0800
+ * @tc.desc: A non-string request code throws a parameter error.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_OnBackToCallerAppWithResult_0800, TestSize.Level1)
+{
+    ASSERT_NE(env_, nullptr);
+    HandleScope handleScope(env_);
+    AAFwk::Want want;
+    NapiCallbackInfo info{2};
+    info.argv[0] = AppExecFwk::WrapAbilityResult(env_, 100, want);
+    ASSERT_NE(info.argv[0], nullptr);
+    ASSERT_EQ(napi_create_int32(env_, 1, &info.argv[1]), napi_ok);
+    jsAbilityContext_->OnBackToCallerAppWithResult(env_, info);
+
+    napi_value error = nullptr;
+    ASSERT_EQ(napi_get_and_clear_last_exception(env_, &error), napi_ok);
+    ASSERT_NE(error, nullptr);
+    napi_value code = nullptr;
+    ASSERT_EQ(napi_get_named_property(env_, error, "code", &code), napi_ok);
+    int32_t errorCode = 0;
+    ASSERT_EQ(napi_get_value_int32(env_, code, &errorCode), napi_ok);
+    EXPECT_EQ(errorCode, 401);
+    EXPECT_FALSE(MockDeferred::settled_);
+}
+
+/**
+ * @tc.name: AbilityRuntime_AbilityContext_OnBackToCallerAppWithResult_0900
+ * @tc.desc: A successful result return resolves the promise.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_OnBackToCallerAppWithResult_0900, TestSize.Level1)
+{
+    ASSERT_NE(env_, nullptr);
+    HandleScope handleScope(env_);
+    AAFwk::Want want;
+    NapiCallbackInfo info{2};
+    info.argv[0] = AppExecFwk::WrapAbilityResult(env_, 100, want);
+    ASSERT_NE(info.argv[0], nullptr);
+    ASSERT_EQ(napi_create_string_utf8(env_, "1", NAPI_AUTO_LENGTH, &info.argv[1]), napi_ok);
+    abilityContextImpl_->SetBackToCallerResult(ERR_OK);
+
+    auto object = CreateJsAbilityContext(env_, abilityContextImpl_);
+    ASSERT_NE(object, nullptr);
+    napi_value method = nullptr;
+    ASSERT_EQ(napi_get_named_property(env_, object, "backToCallerAppWithResult", &method), napi_ok);
+    auto engine = reinterpret_cast<ArkNativeEngine*>(env_);
+    auto result = engine->CallFunction(object, method, info.argv, info.argc);
+    ASSERT_NE(result, nullptr);
+    auto loop = engine->GetUVLoop();
+    ASSERT_NE(loop, nullptr);
+    constexpr int32_t maxAttempts = 50;
+    for (int32_t i = 0; i < maxAttempts && !MockDeferred::settled_; ++i) {
+        RunNowait(loop);
+    }
+
+    ASSERT_TRUE(MockDeferred::settled_);
+    EXPECT_TRUE(MockDeferred::GetLastResolveStatus());
+    EXPECT_EQ(MockDeferred::rejectedCode_, ERR_OK);
+}
+
+/**
+ * @tc.name: AbilityRuntime_AbilityContext_OnBackToCallerAppWithResult_1000
+ * @tc.desc: Invalid request code strings throw a parameter error.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityContextTest, AbilityRuntime_AbilityContext_OnBackToCallerAppWithResult_1000, TestSize.Level1)
+{
+    ASSERT_NE(env_, nullptr);
+    HandleScope handleScope(env_);
+    AAFwk::Want want;
+    NapiCallbackInfo info{2};
+    info.argv[0] = AppExecFwk::WrapAbilityResult(env_, 100, want);
+    ASSERT_NE(info.argv[0], nullptr);
+    const char *requestCodes[] = {"", "abc", "-1", "1.5", "01", "562949953421312", "1000000000000000"};
+    for (const auto *requestCode : requestCodes) {
+        SCOPED_TRACE(requestCode);
+        ASSERT_EQ(napi_create_string_utf8(env_, requestCode, NAPI_AUTO_LENGTH, &info.argv[1]), napi_ok);
+        jsAbilityContext_->OnBackToCallerAppWithResult(env_, info);
+
+        napi_value error = nullptr;
+        ASSERT_EQ(napi_get_and_clear_last_exception(env_, &error), napi_ok);
+        ASSERT_NE(error, nullptr);
+        napi_value code = nullptr;
+        ASSERT_EQ(napi_get_named_property(env_, error, "code", &code), napi_ok);
+        int32_t errorCode = 0;
+        ASSERT_EQ(napi_get_value_int32(env_, code, &errorCode), napi_ok);
+        EXPECT_EQ(errorCode, 401);
+        EXPECT_FALSE(MockDeferred::settled_);
+    }
+}
+
 }  // namespace AAFwk
 }  // namespace OHOS

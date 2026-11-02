@@ -19,6 +19,7 @@
 #include "ability_info.h"
 #include "ability_manager_client.h"
 #include "ability_start_setting.h"
+#include "accesstoken_kit.h"
 #include "array_wrapper.h"
 #include "configuration_utils.h"
 #include "connection_manager.h"
@@ -29,6 +30,7 @@
 #include "insight_intent_delay_result_callback_mgr.h"
 #include "insight_intent_executor_mgr.h"
 #include "int_wrapper.h"
+#include "ipc_skeleton.h"
 #include "js_ability_lifecycle_callback.h"
 #include "js_data_struct_converter.h"
 #include "js_embeddable_ui_ability_context.h"
@@ -46,6 +48,7 @@
 #include "napi_common_want.h"
 #include "napi_remote_object.h"
 #include "string_wrapper.h"
+#include "tokenid_kit.h"
 #include "ui_extension_window_command.h"
 #include "want_params_wrapper.h"
 #include "ohos_application.h"
@@ -314,7 +317,58 @@ void JsUIExtension::OnStart(const AAFwk::Want &want, sptr<AAFwk::SessionInfo> se
         napi_value argv[] = {CreateJsLaunchParam(env, launchParam) };
         CallObjectMethod("onCreate", argv, ARGC_ONE);
     }
+
+    if (!OnGetConfigurationStrategy(sessionInfo)) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "OnGetConfigurationStrategy failed");
+    }
+
     TAG_LOGD(AAFwkTag::UI_EXT, "end");
+}
+
+bool JsUIExtension::OnGetConfigurationStrategy(const sptr<AAFwk::SessionInfo> &sessionInfo)
+{
+    TAG_LOGD(AAFwkTag::UI_EXT, "OnGetConfigurationStrategy begin");
+    auto selfToken = IPCSkeleton::GetSelfTokenID();
+    if (!Security::AccessToken::TokenIdKit::IsSystemAppByFullTokenID(selfToken)) {
+        TAG_LOGW(AAFwkTag::UI_EXT, "not system app, can not use onGetConfigurationStrategy");
+        return false;
+    }
+    HandleScope handleScope(jsRuntime_);
+    napi_env env = jsRuntime_.GetNapiEnv();
+
+    napi_value result = CallObjectMethod("onGetConfigurationStrategy", nullptr, 0, true);
+    if (result == nullptr) {
+        TAG_LOGI(AAFwkTag::UI_EXT, "onGetConfigurationStrategy not implemented");
+        return true;
+    }
+
+    napi_value brandColorValue = nullptr;
+    napi_status status = napi_get_named_property(env, result, "brandColorStrategy", &brandColorValue);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "brandColorStrategy not found in ConfigurationStrategy");
+        return false;
+    }
+
+    int32_t brandColorStrategy = 0;
+    if (!ConvertFromJsValue(env, brandColorValue, brandColorStrategy)) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "Convert brandColorStrategy failed");
+        return false;
+    }
+
+    auto strategy =
+        brandColorStrategy == static_cast<int32_t>(AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC)
+            ? AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC
+            : AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM;
+    auto context = GetContext();
+    if (!context || sessionInfo  == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "ptr null");
+        return false;
+    }
+    if (!context->ApplyBrandColorStrategy(strategy, sessionInfo->brandColorStr)) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "ApplyBrandColorStrategy failed");
+        return false;
+    }
+    return true;
 }
 
 void JsUIExtension::OnStop()
@@ -688,6 +742,7 @@ bool JsUIExtension::HandleSessionCreate(const AAFwk::Want &want, const sptr<AAFw
         } else {
             napi_value argv[] = {napiWant, nativeContentSession};
             CallObjectMethod("onSessionCreate", argv, ARGC_TWO);
+            RegisterBrandColorChangeListener(uiWindow);
         }
         uiWindowMap_[compId] = uiWindow;
 #ifdef SUPPORT_GRAPHICS
@@ -788,12 +843,16 @@ void JsUIExtension::DestroyWindow(const sptr<AAFwk::SessionInfo> &sessionInfo)
     TAG_LOGI(AAFwkTag::UI_EXT, "Befor window destory, UIExtcomponent id: %{public}" PRId64,
         sessionInfo->uiExtensionComponentId);
     auto uiWindow = uiWindowMap_[componentId];
+    auto context = GetContext();
     if (uiWindow) {
+        if (context != nullptr &&
+            context->GetBrandColorStrategy() == AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC) {
+            uiWindow->UnregisterAbilityDataConsumer();
+        }
         uiWindow->Destroy();
     }
     uiWindowMap_.erase(componentId);
 #ifdef SUPPORT_GRAPHICS
-    auto context = GetContext();
     if (context != nullptr && context->GetWindow() == uiWindow) {
         context->SetWindow(nullptr);
         for (auto it : uiWindowMap_) {

@@ -83,8 +83,15 @@ bool InsightIntentExecutor::Init(const InsightIntentExecutorInfo& intentInfo)
         return false;
     }
 
+    InsightIntentContextExecParam execParam;
+    execParam.intentId = executeParam->insightIntentId_;
+    execParam.toolCallId = executeParam->toolCallId_;
+    execParam.executionInfo.intentName = executeParam->insightIntentName_;
+    execParam.executionInfo.callerBundleName = executeParam->callerBundleName_;
+    execParam.executionInfo.callerTokenId = executeParam->callerTokenId_;
+    execParam.executionInfo.callerUid = executeParam->callerUid_;
     context_ = std::make_shared<InsightIntentContext>(intentInfo.token, executeParam->bundleName_,
-        intentInfo.windowMode, executeParam->insightIntentId_, executeParam->toolCallId_);
+        intentInfo.windowMode, execParam);
     return true;
 }
 

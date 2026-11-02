@@ -152,6 +152,15 @@ public:
     int32_t SetGamePreLaunchCompleteTime(int64_t completeTime);
 
     /**
+     * ExtendGamePreLaunchTimeout, reset the game pre-launch foreground countdown.
+     *
+     * @param pid The process ID of the game pre-launch ability to extend.
+     * @param extendTime The extended time in microseconds for the game pre-launch.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t ExtendGamePreLaunchTimeout(int32_t pid, int64_t extendTime);
+
+    /**
      * Notify SCB to minimize UIAbility
      *
      * @param token ability's token
@@ -181,7 +190,7 @@ public:
     UIAbilityRecordPtr GetUIAbilityRecordBySessionInfo(const sptr<SessionInfo> &sessionInfo);
 
     int32_t BackToCallerAbilityWithResult(std::shared_ptr<AbilityRecord> abilityRecord,
-        int resultCode, const Want *resultWant, int64_t callerRequestCode);
+        int resultCode, const Want &resultWant, int64_t callerRequestCode, bool isBackToCallerApp = false);
 
     int CloseUIAbility(const UIAbilityRecordPtr &abilityRecord,
         int resultCode, const Want *resultWant, bool isClearSession, bool isIndependentRecovery);
@@ -866,6 +875,15 @@ private:
     int32_t BackToCallerAbilityWithResultLocked(sptr<SessionInfo> currentSessionInfo,
         std::shared_ptr<AbilityRecord> callerAbilityRecord);
 
+    /**
+     * @brief Return to caller ability with result (locked)
+     * @param currentSessionInfo Current session info
+     * @param callerAbilityRecord The caller ability record
+     * @return ERR_OK if successful, error code otherwise
+     */
+    int32_t BackToCallerAppWithResultLocked(sptr<SessionInfo> currentSessionInfo,
+        std::shared_ptr<AbilityRecord> callerAbilityRecord);
+
     // byCall
     /**
      * @brief Call ability with lock held
@@ -1415,6 +1433,16 @@ private:
 
     mutable ffrt::mutex abilitySessionInfoMapLock_;
     std::unordered_map<int32_t, AbilitySessionInfo> abilitySessionInfoMap_;
+
+    /**
+     * Cleanup the game pre-launch extend delayed task handle for the given ability record.
+     *
+     * @param abilityRecordId The record id of the ability.
+     */
+    void CleanupExtendTask(int32_t abilityRecordId);
+
+    ffrt::mutex extendTaskMutex_;
+    std::unordered_map<int32_t, ffrt::task_handle> extendTaskMap_; // for game pre-launch extend delayed task
 };
 }  // namespace AAFwk
 }  // namespace OHOS

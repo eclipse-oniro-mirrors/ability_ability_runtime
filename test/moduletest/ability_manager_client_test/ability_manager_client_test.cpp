@@ -755,6 +755,21 @@ HWTEST_F(AbilityManagerClientTest, SetGamePreLaunchCompleteTime_002, TestSize.Le
 }
 
 /**
+ * @tc.name: ExtendGamePreLaunchTimeout_001
+ * @tc.desc: ExtendGamePreLaunchTimeout with valid parameters.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientTest, ExtendGamePreLaunchTimeout_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExtendGamePreLaunchTimeout_001 start");
+    int32_t pid = 100;
+    int64_t extendTime = 60 * 1000 * 1000; // 60s in microseconds
+    auto result = AbilityManagerClient::GetInstance()->ExtendGamePreLaunchTimeout(pid, extendTime);
+    EXPECT_EQ(result, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "ExtendGamePreLaunchTimeout_001 end");
+}
+
+/**
  * @tc.name: NotifyCancelGamePreLaunch_001
  * @tc.desc: NotifyCancelGamePreLaunch with null callerToken.
  * @tc.type: FUNC

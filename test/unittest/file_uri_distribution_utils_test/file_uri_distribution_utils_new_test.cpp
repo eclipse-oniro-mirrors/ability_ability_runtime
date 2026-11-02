@@ -167,7 +167,7 @@ HWTEST_F(FileUriDistributionUtilsNewTest, GetAppIdByBundleName_001, TestSize.Lev
 {
     std::string bundleName = "";
     std::string appId = "";
-    auto result = FUDUtils::GetAppIdByBundleName(bundleName, appId);
+    auto result = FUDUtils::GetAppIdByBundleName(bundleName, 0, appId);
     EXPECT_EQ(result, INNER_ERR);
 }
 
@@ -245,7 +245,7 @@ HWTEST_F(FileUriDistributionUtilsNewTest, GetBundleApiTargetVersion_001, TestSiz
 {
     std::string bundleName = "ohos.bundle.test";
     int32_t targetApiVersion = 0;
-    EXPECT_FALSE(FUDUtils::GetBundleApiTargetVersion(bundleName, targetApiVersion));
+    EXPECT_FALSE(FUDUtils::GetBundleApiTargetVersion(bundleName, 0, targetApiVersion));
 }
 
 /*

@@ -23,7 +23,7 @@ config("ability_simulator_public_config") {
 ohos_shared_library("ability_simulator_inner") {
   branch_protector_ret = "pac_ret"
 
-  if (is_mingw || is_mac) {
+  if (is_mingw || is_mac || is_linux) {
     defines = []
     if (is_mingw) {
       defines += [
@@ -31,6 +31,8 @@ ohos_shared_library("ability_simulator_inner") {
         "NOGDI",
         "NONLS",
       ]
+    } else if (is_linux) {
+      defines += [ "LINUX_PLATFORM" ]
     }
     defines += [
       "OFFSET_PREVIEW=0",
@@ -52,6 +54,7 @@ ohos_shared_library("ability_simulator_inner") {
       "${windowmanager_path}/previewer/mock/ui",
       "${windowmanager_path}/interfaces/innerkits/wm",
       "${windowmanager_path}/interfaces/kits/napi/window_runtime/window_stage_napi",
+      "${resource_management_path}/interfaces/inner_api/include",
       "include/bundle_parser",
       "${simulator_path}/napi_module/application",
     ]
@@ -113,6 +116,7 @@ ohos_shared_library("ability_simulator_inner") {
     ]
 
     if (ability_runtime_graphics) {
+      defines += [ "SUPPORT_GRAPHICS" ]
       external_deps += [
         "ace_engine:ace_uicontent",
         "window_manager:previewer_window",
@@ -122,6 +126,8 @@ ohos_shared_library("ability_simulator_inner") {
 
     if (is_mingw) {
       external_deps += [ "resource_management:win_resmgr" ]
+    } else if (is_linux) {
+      external_deps += [ "resource_management:linux_resmgr" ]
     } else {
       external_deps += [ "resource_management:mac_resmgr" ]
     }
@@ -134,7 +140,7 @@ ohos_shared_library("ability_simulator_inner") {
 }
 
 group("ability_simulator") {
-  if (is_mingw || is_mac) {
+  if (is_mingw || is_mac || is_linux) {
     public_deps = [ ":ability_simulator_inner" ]
   }
 }

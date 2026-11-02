@@ -176,6 +176,10 @@ napi_value CreateJsConfiguration(napi_env env, const AppExecFwk::Configuration& 
     napi_set_named_property(env, object, "hasPointerDevice",
         CreateJsValue(env, hasPointerDevice == "true" ? true : false));
 
+    std::string hasBrandColorChanged = configuration.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED);
+    napi_set_named_property(env, object, "hasBrandColorChanged",
+        CreateJsValue(env, hasBrandColorChanged == "true" ? true : false));
+
     std::string fontSizeScale = configuration.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_FONT_SIZE_SCALE);
     double fontSizeScaleValue = 1.0;
     ConvertToDouble(fontSizeScale, fontSizeScaleValue);

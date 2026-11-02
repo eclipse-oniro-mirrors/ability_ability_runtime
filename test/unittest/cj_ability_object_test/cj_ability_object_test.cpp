@@ -73,9 +73,13 @@ bool ProxyCall()
     proxy.Init(nullptr);
     proxy.OnStart(want, AAFwk::LaunchParam());
     auto win = std::make_shared<Rosen::WindowScene>();
-    auto winStage = new Rosen::CJWindowStageImpl(win);
-    proxy.OnSceneCreated(winStage);
-    proxy.OnSceneRestored(winStage);
+    int64_t winStageId = OHOS_CreateCJWindowStage(win);
+    auto winStage = OHOS::FFI::FFIData::GetData<Rosen::CJWindowStageImpl>(winStageId);
+    if (winStage.GetRefPtr() == nullptr) {
+        return false;
+    }
+    proxy.OnSceneCreated(winStage.GetRefPtr());
+    proxy.OnSceneRestored(winStage.GetRefPtr());
     proxy.OnForeground(want);
     proxy.OnBackground();
     auto config = std::make_shared<AppExecFwk::Configuration>();
@@ -88,6 +92,7 @@ bool ProxyCall()
     proxy.Dump(params, infos);
     proxy.OnSceneDestroyed();
     proxy.OnStop();
+    OHOS::FFI::FFIDataManager::GetInstance()->RemoveFFIData(winStageId);
     return true;
 }
 

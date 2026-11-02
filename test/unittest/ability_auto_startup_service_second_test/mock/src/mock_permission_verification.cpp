@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,20 +13,31 @@
  * limitations under the License.
  */
 
-#include "ability_manager_errors.h"
 #include "mock_permission_verification.h"
+
+#include "ability_manager_errors.h"
+#include "direct_boot_test_support.h"
+#include "permission_constants.h"
 
 namespace OHOS {
 namespace AAFwk {
 
 bool PermissionVerification::VerifyCallingPermission(const std::string& permissionName) const
 {
+    if (GetDirectBootTestState().active) {
+        return VerifyCallingPermission(permissionName, 0);
+    }
     return !!(MyFlag::flag_);
 }
 
 bool PermissionVerification::VerifyCallingPermission(
     const std::string& permissionName, const uint32_t specifyTokenId) const
 {
+    if (GetDirectBootTestState().active) {
+        const auto &state = GetDirectBootTestState();
+        return permissionName == PermissionConstants::PERMISSION_MANAGE_APP_BOOT_INTERNAL ?
+            state.edmCallerPermission : state.callerPermission;
+    }
     return !!(MyFlag::flag_);
 }
 bool PermissionVerification::IsSACall() const
@@ -120,6 +131,9 @@ int PermissionVerification::JudgeInvisibleAndBackground(const VerificationInfo& 
 }
 bool PermissionVerification::JudgeCallerIsAllowedToUseSystemAPI() const
 {
+    if (GetDirectBootTestState().active) {
+        return GetDirectBootTestState().systemCaller;
+    }
     return MyFlag::flag_;
 }
 bool PermissionVerification::JudgeCallerIsAllowedToUseSystemAPIByTokenId(uint64_t specifiedFullTokenId) const

@@ -128,11 +128,11 @@ bool PermissionVerification::IsSystemAppCall() const
 {
     return (MyFlag::flag_ & MyFlag::FLAG::IS_NOT_SYSTEM_APP_CALL) == 0;
 }
-bool PermissionVerification::IsLocalDebugOtherAppsCall(const uint32_t specifyTokenId) const
+bool PermissionVerification::IsLocalDebugOtherAppsCall(const uint32_t specifyTokenId, int32_t targetUserId) const
 {
     return false;
 }
-bool PermissionVerification::IsCustomSandboxCall(const uint32_t specifyTokenId) const
+bool PermissionVerification::IsCustomSandboxCall(const uint32_t specifyTokenId, int32_t targetUserId) const
 {
     return false;
 }

@@ -81,6 +81,8 @@ public:
     virtual void OnConfigurationUpdated(Configuration config,
         AbilityRuntime::SetLevel level = AbilityRuntime::SetLevel::System,
         ConfigUpdateReason reason = ConfigUpdateReason::CONFIG_UPDATE_REASON_DEFAULT);
+    void MarkBrandColorChanged(Configuration &config);
+    void UnMarkBrandColorChanged(Configuration &config);
 
     /**
      *

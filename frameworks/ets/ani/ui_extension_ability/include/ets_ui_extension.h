@@ -148,7 +148,9 @@ private:
     ani_object CreateETSContext(ani_env *env, std::shared_ptr<UIExtensionContext> context, int32_t screenMode);
 
     bool CallObjectMethod(bool withResult, const char *name, const char *signature, ...);
+    ani_object CallObjectMethodRef(const char *name, const char *signature, ...);
     ani_status CallOnDisconnect(const AAFwk::Want &want, bool withResult = false);
+    bool OnGetConfigurationStrategy(const sptr<AAFwk::SessionInfo> &sessionInfo);
     void DestroyWindow(const sptr<AAFwk::SessionInfo> &sessionInfo) override;
     bool ForegroundWindowInitInsightIntentExecutorInfo(const AAFwk::Want &want,
         const sptr<AAFwk::SessionInfo> &sessionInfo, InsightIntentExecutorInfo &executorInfo,

@@ -64,7 +64,10 @@ ohos_shared_library("context_napi") {
     ":context_js",
   ]
 
-  external_deps = [ "napi:ace_napi" ]
+  external_deps = [
+    "napi:ace_napi",
+    "node:node_header_notice",
+  ]
 
   relative_install_dir = "module/application"
   subsystem_name = "ability"

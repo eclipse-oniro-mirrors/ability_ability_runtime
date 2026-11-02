@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "insight_intent_execute_param.h"
+#include "insight_intent_profile.h"
 #include "nlohmann/json.hpp"
 namespace OHOS {
 namespace AbilityRuntime {
@@ -168,6 +169,7 @@ struct InsightIntentEntityInfo {
 struct ExtractInsightIntentInfo {
     std::vector<InsightIntentEntityInfo> entities {};
     std::vector<std::string> keywords;
+    std::vector<std::string> permissions;
     ExtractInsightIntentGenericInfo genericInfo;
     std::string decoratorFile;
     std::string decoratorClass;
@@ -195,6 +197,7 @@ struct ExtractInsightIntentProfileInfo {
     std::vector<std::string> executeMode {};
     std::vector<std::string> functionParams;
     std::vector<std::string> keywords;
+    std::vector<std::string> permissions;
     std::vector<LinkIntentParamProfileMapping> paramMapping {};
 
     std::string decoratorFile;
@@ -232,6 +235,8 @@ struct ExtractInsightIntentProfileInfoVec {
 struct ExecuteIntentCommonOptions {
     bool ignoreAbilityName = false;
     ExtractInsightIntentGenericInfo infos;
+    ExtractInsightIntentInfo extractInfo;
+    InsightIntentInfo configInfo;
     uint64_t key = 0;
     std::string srcDeviceId;
     uint64_t requestCode = 0;

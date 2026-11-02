@@ -901,7 +901,10 @@ void EtsAbilityManager::NativeOffPreloadedUIExtensionAbilityLoaded(ani_env *env,
         return;
     }
     ani_boolean isUndefined = true;
-    env->Reference_IsUndefined(callback, &isUndefined);
+    if (env->Reference_IsUndefined(callback, &isUndefined) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "Reference_IsUndefined failed");
+        return;
+    }
     std::lock_guard<std::mutex> lock(loadedCallbackMutex_);
     if (isUndefined) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "callback is undefined");
@@ -972,7 +975,10 @@ void EtsAbilityManager::NativeOffPreloadedUIExtensionAbilityDestroyed(ani_env *e
         return;
     }
     ani_boolean isUndefined = true;
-    env->Reference_IsUndefined(callback, &isUndefined);
+    if (env->Reference_IsUndefined(callback, &isUndefined) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "Reference_IsUndefined failed");
+        return;
+    }
     std::lock_guard<std::mutex> lock(destroyedCallbackMutex_);
     if (isUndefined) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "callback is undefined");

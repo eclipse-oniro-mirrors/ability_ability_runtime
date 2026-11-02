@@ -14,6 +14,8 @@
  */
 
 #include <gtest/gtest.h>
+#include <cstdio>
+#include <fstream>
 
 #include "ability_handler.h"
 #include "js_photo_editor_extension.h"
@@ -30,6 +32,10 @@ using namespace testing::ext;
 const std::string PANEL_TRANSFER_FILE_PATHS = "transferFile";
 const std::string PANEL_URI_ONE_PATHS = "file://com.example.testdemo/data/storage/el2/base/haps/test.jpg";
 const std::string PANEL_URI_TWO_PATHS = "file://com.hmos.notepad/data/storage/el2/distributedfiles/dir/1.txt";
+const std::string TMP_DIR = "/data/local/tmp/photo_editor_test/";
+const std::string TMP_IMAGE_WITH_EXT = TMP_DIR + "test_image.jpg";
+const std::string TMP_IMAGE_NO_EXT = TMP_DIR + "test_image_no_ext";
+const std::string TMP_PANEL_FILE = TMP_DIR + "panel_output.jpg";
 class PhotoEditorExtensionContextTest : public testing::Test {
 public:
     static void SetUpTestCase(void);
@@ -107,5 +113,47 @@ HWTEST_F(PhotoEditorExtensionContextTest, SetWant_0100, Function | MediumTest | 
     EXPECT_NE(want, nullptr);
     GTEST_LOG_(INFO) << "SetWant_0100 end";
 }
+
+/**
+ * @tc.number: SaveEditedContent_0300
+ * @tc.name: SaveEditedContent
+ * @tc.desc: uri without extension, param check fails before CopyImageToPanel
+ */
+
+HWTEST_F(PhotoEditorExtensionContextTest, SaveEditedContent_0300, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "SaveEditedContent_0300 start";
+    auto PhotoInfos = std::make_shared<PhotoEditorExtensionContext>();
+    std::string uri = TMP_IMAGE_NO_EXT;
+    AAFwk::Want newWant;
+    std::shared_ptr<AAFwk::Want> want = std::make_shared<AAFwk::Want>();
+    PhotoInfos->SetWant(want);
+    want->SetParam(PANEL_TRANSFER_FILE_PATHS, uri);
+    PhotoEditorErrorCode res = PhotoInfos->SaveEditedContent(uri, newWant);
+    // 参数校验前置：无扩展名直接返回 PARAM_ERROR，不进入 CopyImageToPanel
+    EXPECT_EQ(res, PhotoEditorErrorCode::ERROR_CODE_PARAM_ERROR);
+    GTEST_LOG_(INFO) << "SaveEditedContent_0300 end";
+}
+
+/**
+ * @tc.number: SaveEditedContent_0400
+ * @tc.name: SaveEditedContent
+ * @tc.desc: uri ending with dot, extension empty, param check fails
+ */
+
+HWTEST_F(PhotoEditorExtensionContextTest, SaveEditedContent_0400, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "SaveEditedContent_0400 start";
+    auto PhotoInfos = std::make_shared<PhotoEditorExtensionContext>();
+    std::string uri = TMP_IMAGE_WITH_EXT + "."; // 以点结尾，扩展名为空
+    AAFwk::Want newWant;
+    std::shared_ptr<AAFwk::Want> want = std::make_shared<AAFwk::Want>();
+    PhotoInfos->SetWant(want);
+    want->SetParam(PANEL_TRANSFER_FILE_PATHS, uri);
+    PhotoEditorErrorCode res = PhotoInfos->SaveEditedContent(uri, newWant);
+    EXPECT_EQ(res, PhotoEditorErrorCode::ERROR_CODE_PARAM_ERROR);
+    GTEST_LOG_(INFO) << "SaveEditedContent_0400 end";
+}
+
 } // namespace AbilityRuntime
 } // namespace OHOS

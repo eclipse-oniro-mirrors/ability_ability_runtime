@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 #include "array_wrapper.h"
 #include "hilog_tag_wrapper.h"
+#include "insight_intent_execution_info.h"
 #include "insight_intent_execute_result.h"
 #include "string_wrapper.h"
 #include "want_params_wrapper.h"
@@ -1038,6 +1039,57 @@ HWTEST_F(InsightIntentExecuteResultTest, BuildFunctionResult_WithTextInteraction
     EXPECT_EQ(uiParams.GetStringParam(KEY_INTERACTION_UI_TYPE), "TEXT");
     EXPECT_EQ(uiParams.GetWantParams(KEY_PARAMETERS).GetStringParam("pk"), "pv");
     EXPECT_TRUE(uiParams.HasParam(KEY_BUTTONS));
+}
+
+/**
+ * @tc.name: InsightIntentExecutionInfo_Marshalling_0100
+ * @tc.desc: Marshalling then Unmarshalling round-trip preserves all fields.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, InsightIntentExecutionInfo_Marshalling_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    AppExecFwk::InsightIntentExecutionInfo info;
+    info.intentName = "PlayMusic";
+    info.callerBundleName = "com.example.caller";
+    info.callerTokenId = "987654321";
+    info.callerUid = 10086;
+
+    Parcel parcel;
+    EXPECT_TRUE(info.Marshalling(parcel));
+
+    auto result = AppExecFwk::InsightIntentExecutionInfo::Unmarshalling(parcel);
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->intentName, "PlayMusic");
+    EXPECT_EQ(result->callerBundleName, "com.example.caller");
+    EXPECT_EQ(result->callerTokenId, "987654321");
+    EXPECT_EQ(result->callerUid, 10086);
+    delete result;
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: InsightIntentExecutionInfo_Marshalling_0200
+ * @tc.desc: Marshalling empty info then Unmarshalling returns non-null with default fields.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, InsightIntentExecutionInfo_Marshalling_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    AppExecFwk::InsightIntentExecutionInfo info;
+    Parcel parcel;
+    EXPECT_TRUE(info.Marshalling(parcel));
+
+    auto result = AppExecFwk::InsightIntentExecutionInfo::Unmarshalling(parcel);
+    ASSERT_NE(result, nullptr);
+    EXPECT_TRUE(result->intentName.empty());
+    EXPECT_TRUE(result->callerBundleName.empty());
+    EXPECT_TRUE(result->callerTokenId.empty());
+    EXPECT_EQ(result->callerUid, 0);
+    delete result;
+    TAG_LOGI(AAFwkTag::TEST, "end.");
 }
 
 } // namespace AAFwk

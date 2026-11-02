@@ -463,7 +463,8 @@ void QuickFixManagerApplyTask::PostDeployQuickFixTask(const std::vector<std::str
     }
 
     std::weak_ptr<QuickFixManagerApplyTask> thisWeakPtr(weak_from_this());
-    auto deployTask = [thisWeakPtr, quickFixFiles, callback, isDebug, isReplace, isCheckDebugApp]() {
+    int32_t callerUid = IPCSkeleton::GetCallingUid();
+    auto deployTask = [thisWeakPtr, quickFixFiles, callback, isDebug, isReplace, isCheckDebugApp, callerUid]() {
         auto applyTask = thisWeakPtr.lock();
         if (applyTask == nullptr) {
             TAG_LOGE(AAFwkTag::QUICKFIX, "null apply task");
@@ -480,7 +481,8 @@ void QuickFixManagerApplyTask::PostDeployQuickFixTask(const std::vector<std::str
         TAG_LOGD(AAFwkTag::QUICKFIX, "isDebug is %{public}d isReplace is %{public}d isCheckDebugApp is %{public}d",
             isDebug, isReplace, isCheckDebugApp);
         auto ret =
-            applyTask->bundleQfMgr_->DeployQuickFix(quickFixFiles, callback, isDebug, "", isReplace, isCheckDebugApp);
+            applyTask->bundleQfMgr_->DeployQuickFix(quickFixFiles, callback,
+                isDebug, "", isReplace, isCheckDebugApp, callerUid);
         if (ret != 0) {
             TAG_LOGE(AAFwkTag::QUICKFIX, "failed: %{public}d", ret);
             applyTask->NotifyApplyStatus(QUICK_FIX_DEPLOY_FAILED);

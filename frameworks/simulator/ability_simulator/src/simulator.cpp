@@ -72,6 +72,8 @@ const std::string DEPENDENCY_ALIAS = "dependencyAlias";
 constexpr char ARK_DEBUGGER_LIB_PATH[] = "libark_inspector.dll";
 #elif defined(MAC_PLATFORM)
 constexpr char ARK_DEBUGGER_LIB_PATH[] = "libark_inspector.dylib";
+#elif defined(LINUX_PLATFORM)
+constexpr char ARK_DEBUGGER_LIB_PATH[] = "libark_inspector.so";
 #else
 #error "Unsupported platform"
 #endif

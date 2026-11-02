@@ -335,11 +335,6 @@ public:
         return E_OK;
     }
 
-    virtual int32_t CreateUserDir(const std::string &path, mode_t mode, uid_t uid, gid_t gid) override
-    {
-        return E_OK;
-    }
-
     virtual int32_t NotifyUserChangedEvent(uint32_t userId, uint32_t eventType) override
     {
         return E_OK;
@@ -401,6 +396,16 @@ public:
     }
 
     virtual int32_t UMountCloudDiskFuse(int32_t userId, const std::string &path) override
+    {
+        return E_OK;
+    }
+
+    virtual int32_t MountUdmfClipFuse(int32_t userId, const std::string &path, int32_t &fuseFd) override
+    {
+        return E_OK;
+    }
+
+    virtual int32_t UMountUdmfClipFuse(int32_t userId, const std::string &path) override
     {
         return E_OK;
     }

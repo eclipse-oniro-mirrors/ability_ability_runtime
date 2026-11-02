@@ -39,6 +39,7 @@ ohos_unittest("ability_manager_service_eighth_test") {
     "${ability_runtime_services_path}/abilitymgr/src/ability_connect_callback_stub.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/window_options_utils.cpp",
     "ability_manager_service_eighth_test.cpp",
+    "restart_app_with_window_for_recovery_test.cpp",
     "mock/src/ipc_skeleton.cpp",
     "mock/src/mock_parameters.cpp",
     "mock/src/mock_scene_board_judgement.cpp",

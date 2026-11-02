@@ -617,20 +617,24 @@ int AbilityConnectManager::DisconnectAbilityLocked(const sptr<IAbilityConnection
             }
             AgentCallerIdentityScope agentCallerIdentityScope;
             if (abilityRecord->GetAbilityInfo().extensionAbilityType == AppExecFwk::ExtensionAbilityType::AGENT) {
-                std::string callerIdentity;
-                std::vector<Want> verificationWants = { connectRecord->GetConnectWant() };
-                result = IN_PROCESS_CALL(
-                    AgentRuntime::AgentManagerClient::GetInstance().VerifyAgentDisconnectRequests(
-                        verificationWants, connect, callerIdentity));
-                if (result != ERR_OK) {
-                    TAG_LOGE(AAFwkTag::SER_ROUTER, "AGENT disconnect is not confirmed by AgentMgr: %{public}d",
-                        result);
-                    break;
-                }
-                result = agentCallerIdentityScope.ApplyIfNeeded(
-                    AppExecFwk::ExtensionAbilityType::AGENT, callerIdentity);
-                if (result != ERR_OK) {
-                    break;
+                if (callerDied) {
+                    TAG_LOGI(AAFwkTag::SER_ROUTER, "subfoundation is died");
+                } else {
+                    std::string callerIdentity;
+                    std::vector<Want> verificationWants = { connectRecord->GetConnectWant() };
+                    result = IN_PROCESS_CALL(
+                        AgentRuntime::AgentManagerClient::GetInstance().VerifyAgentDisconnectRequests(
+                            verificationWants, connect, callerIdentity));
+                    if (result != ERR_OK) {
+                        TAG_LOGE(AAFwkTag::SER_ROUTER, "AGENT disconnect is not confirmed by AgentMgr: %{public}d",
+                            result);
+                        break;
+                    }
+                    result = agentCallerIdentityScope.ApplyIfNeeded(
+                        AppExecFwk::ExtensionAbilityType::AGENT, callerIdentity);
+                    if (result != ERR_OK) {
+                        break;
+                    }
                 }
             } else if (connectRecord->GetDirectCallerTokenId() != IPCSkeleton::GetCallingTokenID() &&
                 IPCSkeleton::GetSelfTokenID() != IPCSkeleton::GetCallingTokenID()) {

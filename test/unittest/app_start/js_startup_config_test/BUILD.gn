@@ -73,6 +73,7 @@ ohos_unittest("js_startup_config_test") {
     "googletest:gtest_main",
     "hilog:libhilog",
     "ipc:ipc_core",
+    "libuv:uv",
     "napi:ace_napi",
     "node:node_header_notice",
   ]

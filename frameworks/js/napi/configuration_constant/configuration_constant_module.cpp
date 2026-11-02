@@ -19,6 +19,10 @@
 
 namespace OHOS {
 namespace AAFwk {
+namespace {
+constexpr const uint32_t BRAND_COLOR_FOLLOW_SYSTEM = 0;
+constexpr const uint32_t BRAND_COLOR_FOLLOW_UEC = 1;
+}  // namespace
 static napi_status SetEnumItem(napi_env env, napi_value object, const char* name, int32_t value)
 {
     napi_status status;
@@ -86,6 +90,17 @@ static napi_value InitScreenDensityObject(napi_env env)
     return object;
 }
 
+static napi_value InitBrandColorStrategyObject(napi_env env)
+{
+    napi_value object;
+    NAPI_CALL(env, napi_create_object(env, &object));
+
+    NAPI_CALL(env, SetEnumItem(env, object, "BRAND_COLOR_FOLLOW_SYSTEM", BRAND_COLOR_FOLLOW_SYSTEM));
+    NAPI_CALL(env, SetEnumItem(env, object, "BRAND_COLOR_FOLLOW_UEC", BRAND_COLOR_FOLLOW_UEC));
+
+    return object;
+}
+
 /*
  * The module initialization.
  */
@@ -103,11 +118,15 @@ static napi_value ConfigurationConstantInit(napi_env env, napi_value exports)
     napi_value screenDensity = InitScreenDensityObject(env);
     NAPI_ASSERT(env, screenDensity != nullptr, "failed to create screen density object");
 
+    napi_value brandColorStrategy = InitBrandColorStrategyObject(env);
+    NAPI_ASSERT(env, brandColorStrategy != nullptr, "failed to create brand color strategy object");
+
     napi_property_descriptor exportObjs[] = {
         DECLARE_NAPI_PROPERTY("ColorMode", colorMode),
         DECLARE_NAPI_PROPERTY("Time24", time24),
         DECLARE_NAPI_PROPERTY("Direction", direction),
         DECLARE_NAPI_PROPERTY("ScreenDensity", screenDensity),
+        DECLARE_NAPI_PROPERTY("BrandColorStrategy", brandColorStrategy),
     };
 
     napi_status status = napi_define_properties(env, exports, sizeof(exportObjs) / sizeof(exportObjs[0]), exportObjs);

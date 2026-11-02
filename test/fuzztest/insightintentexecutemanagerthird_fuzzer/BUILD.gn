@@ -26,6 +26,7 @@ ohos_fuzztest("InsightIntentExecuteManagerThirdFuzzTest") {
   fuzz_config_file = "${ability_runtime_test_path}/fuzztest/insightintentexecutemanagerthird_fuzzer"
 
   include_dirs = [
+    "${ability_runtime_services_path}/appmgr/include",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
     "${ability_runtime_innerkits_path}/ability_manager/include/insight_intent",
     "${ability_runtime_innerkits_path}/wantagent/include",
@@ -69,6 +70,7 @@ ohos_fuzztest("InsightIntentExecuteManagerThirdFuzzTest") {
   }
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_services_path}/appmgr:libappms",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
     "${ability_runtime_path}/utils/global/common:runtime_utils",

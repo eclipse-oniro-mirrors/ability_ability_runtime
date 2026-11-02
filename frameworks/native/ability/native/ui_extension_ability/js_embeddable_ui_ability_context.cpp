@@ -106,6 +106,11 @@ napi_value JsEmbeddableUIAbilityContext::BackToCallerAbilityWithResult(napi_env 
     GET_NAPI_INFO_AND_CALL(env, info, JsEmbeddableUIAbilityContext, OnBackToCallerAbilityWithResult);
 }
 
+napi_value JsEmbeddableUIAbilityContext::BackToCallerAppWithResult(napi_env env, napi_callback_info info)
+{
+    GET_NAPI_INFO_AND_CALL(env, info, JsEmbeddableUIAbilityContext, OnBackToCallerAppWithResult);
+}
+
 napi_value JsEmbeddableUIAbilityContext::StartAbilityAsCaller(napi_env env, napi_callback_info info)
 {
     GET_NAPI_INFO_AND_CALL(env, info, JsEmbeddableUIAbilityContext, OnStartAbilityAsCaller);
@@ -332,6 +337,17 @@ napi_value JsEmbeddableUIAbilityContext::OnBackToCallerAbilityWithResult(napi_en
     }
     CHECK_POINTER_RETURN(env, jsAbilityContext_);
     return jsAbilityContext_->OnBackToCallerAbilityWithResult(env, info);
+}
+
+napi_value JsEmbeddableUIAbilityContext::OnBackToCallerAppWithResult(napi_env env, NapiCallbackInfo& info)
+{
+    if (IsEmbeddableStart(screenMode_)) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "BackToCallerAppWithResult in embedded screen mode");
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER), ERR_MSG_NOT_SUPPORT);
+        return CreateJsUndefined(env);
+    }
+    CHECK_POINTER_RETURN(env, jsAbilityContext_);
+    return jsAbilityContext_->OnBackToCallerAppWithResult(env, info);
 }
 
 napi_value JsEmbeddableUIAbilityContext::OnStartAbilityAsCaller(napi_env env, NapiCallbackInfo& info)
@@ -741,6 +757,7 @@ napi_value JsEmbeddableUIAbilityContext::CreateJsEmbeddableUIAbilityContext(napi
     BindNativeFunction(env, objValue, "terminateSelf", moduleName, TerminateSelf);
     BindNativeFunction(env, objValue, "terminateSelfWithResult", moduleName, TerminateSelfWithResult);
     BindNativeFunction(env, objValue, "backToCallerAbilityWithResult", moduleName, BackToCallerAbilityWithResult);
+    BindNativeFunction(env, objValue, "backToCallerAppWithResult", moduleName, BackToCallerAppWithResult);
     BindNativeFunction(env, objValue, "startAbilityAsCaller", moduleName, StartAbilityAsCaller);
     BindNativeFunction(env, objValue, "startAbilityWithAccount", moduleName, StartAbilityWithAccount);
     BindNativeFunction(env, objValue, "startAbilityByCall", moduleName, StartAbilityByCall);

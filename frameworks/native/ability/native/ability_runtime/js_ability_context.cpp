@@ -378,6 +378,11 @@ napi_value JsAbilityContext::BackToCallerAbilityWithResult(napi_env env, napi_ca
     GET_NAPI_INFO_AND_CALL(env, info, JsAbilityContext, OnBackToCallerAbilityWithResult);
 }
 
+napi_value JsAbilityContext::BackToCallerAppWithResult(napi_env env, napi_callback_info info)
+{
+    GET_NAPI_INFO_AND_CALL(env, info, JsAbilityContext, OnBackToCallerAppWithResult);
+}
+
 napi_value JsAbilityContext::RestoreWindowStage(napi_env env, napi_callback_info info)
 {
     GET_NAPI_INFO_AND_CALL(env, info, JsAbilityContext, OnRestoreWindowStage);
@@ -1871,6 +1876,63 @@ napi_value JsAbilityContext::OnBackToCallerAbilityWithResult(napi_env env, NapiC
     return result;
 }
 
+napi_value JsAbilityContext::OnBackToCallerAppWithResult(napi_env env, NapiCallbackInfo& info)
+{
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+    HISTOGRAM_BOOLEAN("AbilityKit.UIAbilityContext.backToCallerAppWithResult", 1);
+#endif
+    if (info.argc < ARGC_TWO) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "invalid argc");
+        ThrowTooFewParametersError(env);
+        return CreateJsUndefined(env);
+    }
+
+    int resultCode = 0;
+    AAFwk::Want want;
+    if (!AppExecFwk::UnWrapAbilityResult(env, info.argv[INDEX_ZERO], resultCode, want)) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "parse ability result failed");
+        ThrowInvalidParamError(env, "Parse param want failed, want must be Want.");
+        return CreateJsUndefined(env);
+    }
+
+    std::string requestCodeStr;
+    if (!OHOS::AppExecFwk::UnwrapStringFromJS2(env, info.argv[INDEX_ONE], requestCodeStr)) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "invalid requestCode");
+        ThrowInvalidParamError(env, "Parse param requestCode failed, requestCode must be string.");
+        return CreateJsUndefined(env);
+    }
+    auto requestCode = RequestCodeFromStringToInt64(requestCodeStr);
+    if (requestCode == 0 && requestCodeStr != "0") {
+        TAG_LOGE(AAFwkTag::CONTEXT, "invalid requestCode");
+        ThrowInvalidParamError(env, "Parse param requestCode failed.");
+        return CreateJsUndefined(env);
+    }
+    TAG_LOGD(AAFwkTag::CONTEXT, "requestCode: %{public}s", requestCodeStr.c_str());
+
+    auto innerErrCode = std::make_shared<int32_t>(ERR_OK);
+    NapiAsyncTask::ExecuteCallback execute = [weak = context_, want, resultCode, requestCode, innerErrCode]() {
+        TAG_LOGI(AAFwkTag::CONTEXT, "async execute");
+        auto context = weak.lock();
+        if (!context) {
+            TAG_LOGW(AAFwkTag::CONTEXT, "null context");
+            *innerErrCode = static_cast<int32_t>(AAFwk::ERR_INVALID_CONTEXT);
+            return;
+        }
+
+        *innerErrCode = context->BackToCallerAbilityWithResult(want, resultCode, requestCode, true);
+    };
+
+    NapiAsyncTask::CompleteCallback complete = [innerErrCode](napi_env env, NapiAsyncTask& task, int32_t status) {
+        HandleScope handleScope(env);
+        (*innerErrCode == ERR_OK) ? task.ResolveWithNoError(env, CreateJsUndefined(env)) :
+            task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrCode));
+    };
+    napi_value result = nullptr;
+    NapiAsyncTask::ScheduleHighQos("JsAbilityContext::OnBackToCallerAppWithResult",
+        env, CreateAsyncTaskWithLastParam(env, nullptr, std::move(execute), std::move(complete), &result));
+    return result;
+}
+
 napi_value JsAbilityContext::OnConnectAbility(napi_env env, NapiCallbackInfo& info)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
@@ -2503,6 +2565,8 @@ napi_value CreateJsAbilityContext(napi_env env, std::shared_ptr<AbilityContext> 
         JsAbilityContext::TerminateSelfWithResult);
     BindNativeFunction(env, object, "backToCallerAbilityWithResult", moduleName,
         JsAbilityContext::BackToCallerAbilityWithResult);
+    BindNativeFunction(env, object, "backToCallerAppWithResult", moduleName,
+        JsAbilityContext::BackToCallerAppWithResult);
     BindNativeFunction(env, object, "restoreWindowStage", moduleName, JsAbilityContext::RestoreWindowStage);
     BindNativeFunction(env, object, "isTerminating", moduleName, JsAbilityContext::IsTerminating);
     BindNativeFunction(env, object, "startRecentAbility", moduleName,

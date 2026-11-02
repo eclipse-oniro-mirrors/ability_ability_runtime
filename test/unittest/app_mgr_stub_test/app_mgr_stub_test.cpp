@@ -21,6 +21,7 @@
 #define protected public
 #include "app_foreground_state_observer_stub.h"
 #include "app_mgr_stub.h"
+#include "focused_application_observer_stub.h"
 #include "image_error_handler_stub.h"
 #include "image_process_state_observer_stub.h"
 #undef private
@@ -52,6 +53,14 @@ public:
     AppForegroundStateObserverMock() = default;
     virtual ~AppForegroundStateObserverMock() = default;
     void OnAppStateChanged(const AppStateData &appStateData) override
+    {}
+};
+
+class FocusedApplicationObserverMock : public FocusedApplicationObserverStub {
+public:
+    FocusedApplicationObserverMock() = default;
+    virtual ~FocusedApplicationObserverMock() = default;
+    void OnFocusedApplicationChanged(const FocusedApplicationInfo &focusedApplicationInfo) override
     {}
 };
 
@@ -610,6 +619,40 @@ HWTEST_F(AppMgrStubTest, HandleUnregisterAppForegroundStateObserver_0100, TestSi
     int32_t pid = 1;
     reply.WriteInt32(pid);
     auto res = mockAppMgrService_->HandleUnregisterAppForegroundStateObserver(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/**
+ * @tc.name: HandleRegisterFocusedApplicationObserver_0100
+ * @tc.desc: Test HandleRegisterFocusedApplicationObserver with valid observer.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleRegisterFocusedApplicationObserver_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    sptr<IRemoteObject> object = new (std::nothrow) FocusedApplicationObserverMock();
+    data.WriteRemoteObject(object);
+    int32_t pid = 1;
+    reply.WriteInt32(pid);
+    auto res = mockAppMgrService_->HandleRegisterFocusedApplicationObserver(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/**
+ * @tc.name: HandleUnregisterFocusedApplicationObserver_0100
+ * @tc.desc: Test HandleUnregisterFocusedApplicationObserver with valid observer.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleUnregisterFocusedApplicationObserver_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    sptr<IRemoteObject> object = new (std::nothrow) FocusedApplicationObserverMock();
+    data.WriteRemoteObject(object);
+    int32_t pid = 1;
+    reply.WriteInt32(pid);
+    auto res = mockAppMgrService_->HandleUnregisterFocusedApplicationObserver(data, reply);
     EXPECT_EQ(res, NO_ERROR);
 }
 

@@ -1211,6 +1211,11 @@ enum {
     ERR_TASK_NOT_FOUND = 2099502,
 
     /**
+     * Result(2099503) for task manager: the attribution record does not exist.
+     */
+    ERR_ATTRIBUTION_NOT_FOUND = 2099503,
+
+    /**
      * Native error(3000000) for target bundle not exist.
      */
     ERR_CODE_NOT_EXIST = 3000000,
@@ -1486,6 +1491,11 @@ enum NativeFreeInstallError {
      * Result(29360228) for sandbox clone index is invalid.
      */
     ERR_SANDBOX_CLONE_INDEX_INVALID = 29360228,
+
+    /*
+     * The target application is not authorized for startup before the first unlock.
+     */
+    ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT = 29360229,
 
     /* codes 29360270 - 29360280 are reserved for StartSelfUIAbility by delayed process exit */
     /*

@@ -462,12 +462,13 @@ ErrCode AbilityContextImpl::TerminateAbilityWithResult(const AAFwk::Want& want, 
 #endif
 }
 
-ErrCode AbilityContextImpl::BackToCallerAbilityWithResult(const AAFwk::Want& want, int resultCode, int64_t requestCode)
+ErrCode AbilityContextImpl::BackToCallerAbilityWithResult(const AAFwk::Want& want, int resultCode, int64_t requestCode,
+    bool isBackToCallerApp)
 {
     ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->BackToCallerAbilityWithResult(
-        token_, resultCode, &want, requestCode);
+        token_, resultCode, want, requestCode, isBackToCallerApp);
     TAG_LOGI(AAFwkTag::CONTEXT, "ret:%{public}d", err);
-    return static_cast<int32_t>(err);
+    return err;
 }
 
 void AbilityContextImpl::SetWeakSessionToken(const wptr<IRemoteObject>& sessionToken)

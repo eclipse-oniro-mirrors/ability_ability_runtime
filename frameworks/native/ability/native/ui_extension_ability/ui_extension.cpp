@@ -14,6 +14,9 @@
  */
 #include "ui_extension.h"
 
+#include <memory>
+#include <optional>
+
 #include "ability_manager_client.h"
 #include "application_configuration_manager.h"
 #include "array_wrapper.h"
@@ -174,6 +177,71 @@ bool UIExtension::ForegroundWindowWithInsightIntent(
     return true;
 }
 
+void UIExtension::RegisterBrandColorChangeListener(const sptr<Rosen::Window> &uiWindow)
+{
+    if (uiWindow == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null uiWindow");
+        return;
+    }
+    auto context = GetContext();
+    if (context == nullptr ||
+        context->GetBrandColorStrategy() != AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC) {
+        TAG_LOGI(AAFwkTag::UI_EXT, "brandColorStrategy not FOLLOW_UEC, skip register");
+        return;
+    }
+    std::weak_ptr<Extension> weakThis = shared_from_this();
+    auto windowNotifeBrandColorChange = [weakThis](Rosen::SubSystemId id,
+                                                   uint32_t customId,
+                                                   AAFwk::Want &&data,
+                                                   std::optional<AAFwk::Want> &reply) -> int32_t {
+        auto ptr = weakThis.lock();
+        if (ptr == nullptr) {
+            TAG_LOGE(AAFwkTag::UI_EXT, "null ptr");
+            return ERR_INVALID_VALUE;
+        }
+        auto uiExtension = std::static_pointer_cast<UIExtension>(ptr);
+        return uiExtension->WindowNotifeBrandColorChange(id, customId, std::move(data), reply);
+    };
+    if (uiWindow->RegisterAbilityDataConsumer(windowNotifeBrandColorChange) != Rosen::WMError::WM_OK) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "RegisterAbilityDataConsumer error");
+    }
+    TAG_LOGD(AAFwkTag::UI_EXT, "RegisterAbilityDataConsumer ok");
+}
+
+int32_t UIExtension::WindowNotifeBrandColorChange(Rosen::SubSystemId id, uint32_t customId, AAFwk::Want &&data,
+    std::optional<AAFwk::Want> &reply)
+{
+    auto context = GetContext();
+    if (!context) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "context null");
+        return ERR_INVALID_VALUE;
+    }
+    auto ret = context->HandleBrandColorChange(customId, std::move(data));
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    AppExecFwk::Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED, "true");
+    context->SetAbilityConfiguration(config);
+    auto self = std::static_pointer_cast<UIExtension>(shared_from_this());
+    auto task = [self, config]() {
+        if (self == nullptr) {
+            TAG_LOGE(AAFwkTag::UI_EXT, "null self");
+            return;
+        }
+        self->OnAbilityConfigurationUpdated(config);
+        auto abilityConfig = self->GetContext()->GetAbilityConfiguration();
+        if (abilityConfig != nullptr) {
+            abilityConfig->RemoveItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED);
+        }
+    };
+    if (handler_ == nullptr || !handler_->PostTask(task, "UIExtension:OnBrandColorChange")) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "PostTask failed");
+        return ERR_INVALID_VALUE;
+    }
+    return ERR_OK;
+}
+
 void UIExtension::OnStopCallBack()
 {
     auto context = GetContext();
@@ -288,8 +356,9 @@ void UIExtension::RegisterUiExtensionDelayResultCallback(uint64_t intentId, cons
     }
 }
 
-void UIExtension::OnConfigurationUpdated(const AppExecFwk::Configuration &configuration)
+void UIExtension::OnConfigurationUpdated(const AppExecFwk::Configuration &config)
 {
+    AppExecFwk::Configuration configuration = config;
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     Extension::OnConfigurationUpdated(configuration);
     TAG_LOGD(AAFwkTag::UI_EXT, "OnConfigurationUpdated called");
@@ -297,6 +366,10 @@ void UIExtension::OnConfigurationUpdated(const AppExecFwk::Configuration &config
     if (context == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "null context");
         return;
+    }
+    if (context->GetBrandColorStrategy() == AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC) {
+        configuration.RemoveItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED);
+        configuration.RemoveItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID);
     }
     auto abilityConfig = context->GetAbilityConfiguration();
     auto configUtils = std::make_shared<ConfigurationUtils>();

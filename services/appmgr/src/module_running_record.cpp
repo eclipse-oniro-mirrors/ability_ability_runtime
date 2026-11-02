@@ -128,6 +128,30 @@ int32_t ModuleRunningRecord::GetPageAbilitySize()
     return pageAbilitySize;
 }
 
+int32_t ModuleRunningRecord::GetActivePageAbilitySize(const sptr<IRemoteObject> &token)
+{
+    int activeSize = 0;
+    std::lock_guard<ffrt::mutex> lock(abilitiesMutex_);
+    for (auto it : abilities_) {
+        if (it.first == token) {
+            // the queried ability always counts: it may already be marked terminating by
+            // its own close flow before this judgment, and the question being answered is
+            // "is anyone else still alive", not "is anyone alive".
+            activeSize++;
+            continue;
+        }
+        std::shared_ptr<AbilityRunningRecord> abilityRunningRecord = it.second;
+        std::shared_ptr<AbilityInfo> abilityInfo = abilityRunningRecord->GetAbilityInfo();
+        if (abilityInfo && (abilityInfo->type == AbilityType::PAGE ||
+            abilityInfo->extensionAbilityType == ExtensionAbilityType::EMBEDDED_UI) &&
+            !abilityRunningRecord->IsTerminating()) {
+            activeSize++;
+        }
+    }
+
+    return activeSize;
+}
+
 bool ModuleRunningRecord::ExtensionAbilityRecordExists()
 {
     std::lock_guard<ffrt::mutex> lock(abilitiesMutex_);

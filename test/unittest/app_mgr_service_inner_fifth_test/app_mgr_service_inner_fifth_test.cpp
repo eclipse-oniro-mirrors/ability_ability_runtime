@@ -1413,7 +1413,7 @@ HWTEST_F(AppMgrServiceInnerTest, TryToUseImageInfo_NullParams_001, TestSize.Leve
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     std::shared_ptr<AppRunningRecord> appRecord = nullptr;
     auto ret = appMgrServiceInner->TryToUseImageInfo(nullptr, nullptr, nullptr,
-        "callerKey", 0, "process", "instanceKey", "", "", appRecord);
+        "callerKey", 0, "process", "instanceKey", "", "", appRecord, false);
     EXPECT_EQ(ret, ERR_OK);
 }
 
@@ -1432,7 +1432,7 @@ HWTEST_F(AppMgrServiceInnerTest, TryToUseImageInfo_ImageInfoNotFound_001, TestSi
     appInfo->uid = 0;
     std::shared_ptr<AppRunningRecord> appRecord = nullptr;
     auto ret = appMgrServiceInner->TryToUseImageInfo(abilityInfo, appInfo, nullptr,
-        "callerKey", 0, "process", "instanceKey", "", "", appRecord);
+        "callerKey", 0, "process", "instanceKey", "", "", appRecord, false);
     EXPECT_EQ(ret, ERR_OK);
 }
 
@@ -1461,7 +1461,7 @@ HWTEST_F(AppMgrServiceInnerTest, TryToUseImageInfo_ImageInfoNotMatched_001, Test
     std::shared_ptr<AppRunningRecord> appRecord = nullptr;
     auto ret = appMgrServiceInner->TryToUseImageInfo(abilityInfo, appInfo,
         sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken()),
-        "callerKey", 0, "differentProcess", "instanceKey", "", "", appRecord);
+        "callerKey", 0, "differentProcess", "instanceKey", "", "", appRecord, false);
     EXPECT_EQ(ret, ERR_OK);
 }
 

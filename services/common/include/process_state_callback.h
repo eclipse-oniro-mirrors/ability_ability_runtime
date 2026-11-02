@@ -18,12 +18,12 @@
 
 #include "cpp/condition_variable.h"
 #include "hilog_tag_wrapper.h"
-#include "memory_observer_stub.h"
+#include "process_state_callback_stub.h"
 #include <chrono>
 
 namespace OHOS {
 namespace AppExecFwk {
-class ProcessStateCallback : public Memory::MemoryObserverStub {
+class ProcessStateCallback : public Memory::ProcessStateCallbackStub {
 public:
     ProcessStateCallback() = default;
     ~ProcessStateCallback() override = default;

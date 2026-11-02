@@ -420,7 +420,7 @@ HWTEST_F(QuickFixManagerApplyTaskMoreTest, PostDeployQuickFixTask_0400, TestSize
     auto applyTask = std::make_shared<QuickFixManagerApplyTask>(bundleQfMgr_, appMgr_,
         quickFixMs_->eventHandler_, quickFixMs_);
     ASSERT_NE(applyTask, nullptr);
-    ON_CALL(*bundleQfMgr_, DeployQuickFix(_, _, _, _, _, _)).WillByDefault(Return(1));
+    ON_CALL(*bundleQfMgr_, DeployQuickFix(_, _, _, _, _, _, _)).WillByDefault(Return(1));
     std::vector<std::string> files;
     applyTask->PostDeployQuickFixTask(files, false, false, false);
     WaitUntilTaskDone(quickFixMs_->eventHandler_);
@@ -623,7 +623,7 @@ HWTEST_F(QuickFixManagerApplyTaskMoreTest, Run_0200, TestSize.Level1)
     auto applyTask = std::make_shared<QuickFixManagerApplyTask>(bundleQfMgr_, appMgr_,
         quickFixMs_->eventHandler_, quickFixMs_);
     ASSERT_NE(applyTask, nullptr);
-    EXPECT_CALL(*bundleQfMgr_, DeployQuickFix(_, _, _, _, _, _)).Times(1);
+    EXPECT_CALL(*bundleQfMgr_, DeployQuickFix(_, _, _, _, _, _, _)).Times(1);
     std::vector<std::string> files;
     applyTask->Run(files);
     WaitUntilTaskDone(quickFixMs_->eventHandler_);
