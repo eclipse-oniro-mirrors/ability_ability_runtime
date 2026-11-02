@@ -88,6 +88,7 @@ ohos_source_set("service_router_mgr_stub") {
 }
 
 ohos_shared_library("srms_fwk") {
+  version_script = "libsrms_fwk.map"
   branch_protector_ret = "pac_ret"
 
   sanitize = {

@@ -20,6 +20,7 @@ config("caller_complex_ani_public_config") {
 }
 
 ohos_shared_library("caller_complex_ani") {
+  version_script = "libcaller_complex_ani.map"
   branch_protector_ret = "pac_ret"
   sanitize = {
     cfi = true

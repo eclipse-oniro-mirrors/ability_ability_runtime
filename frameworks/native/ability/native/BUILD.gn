@@ -863,6 +863,7 @@ ohos_shared_library("insight_intent_executor") {
 }
 
 ohos_shared_library("insight_intent_executor_ani") {
+  version_script = "libinsight_intent_executor_ani.map"
   branch_protector_ret = "pac_ret"
   branch_protector_frt = "bti"
 
@@ -1371,6 +1372,7 @@ ohos_shared_library("ability_thread") {
 }
 
 ohos_shared_library("ets_form_extension") {
+  version_script = "libets_form_extension.map"
   branch_protector_ret = "pac_ret"
 
   sanitize = {
@@ -1970,6 +1972,7 @@ ohos_shared_library("ui_service_extension_connection") {
 }
 
 ohos_shared_library("ui_service_extension_connection_ani") {
+  version_script = "libui_service_extension_connection_ani.map"
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -2132,6 +2135,7 @@ ohos_shared_library("ui_service_extension") {
 }
 
 ohos_shared_library("ui_service_extension_ani") {
+  version_script = "libui_service_extension_ani.map"
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -2719,6 +2723,7 @@ ohos_shared_library("ui_extension") {
 }
 
 ohos_shared_library("photo_editor_extension_ani") {
+  version_script = "libphoto_editor_extension_ani.map"
   branch_protector_ret = "pac_ret"
 
   sanitize = {
@@ -2821,6 +2826,7 @@ config("ui_extension_ani_public_config") {
 }
 
 ohos_shared_library("ui_extension_ani") {
+  version_script = "libui_extension_ani.map"
   branch_protector_ret = "pac_ret"
 
   sanitize = {
