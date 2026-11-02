@@ -1201,7 +1201,7 @@ public:
      *         GET_BUNDLE_INFO_FAILED when the bundle cannot be resolved;
      *         KILL_PROCESS_KEEP_ALIVE for persistent apps; KILL_PROCESS_FAILED on failure.
      */
-    ErrCode KillProcess(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = -1,
+    ErrCode KillProcess(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = 0,
         const std::string& reason = "Abilityms::KillProcess");
 
     /**
@@ -1216,7 +1216,7 @@ public:
      *         GET_BUNDLE_INFO_FAILED when the bundle cannot be resolved;
      *         KILL_PROCESS_KEEP_ALIVE for persistent apps; KILL_PROCESS_FAILED on failure.
      */
-    ErrCode KillProcessWithUserId(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = -1,
+    ErrCode KillProcessWithUserId(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = 0,
         const std::string& reason = "Abilityms::KillProcess", int32_t userId = -1);
 
     #ifdef ABILITY_COMMAND_FOR_TEST
@@ -1901,7 +1901,7 @@ public:
      * @param appIndex App clone index; only appIndex = 0 is supported.
      * @return Returns ERR_OK on success; CHECK_PERMISSION_FAILED for others.
      */
-    ErrCode LaunchGameCustomized(const std::string &bundleName, int32_t userId, int32_t appIndex = -1);
+    ErrCode LaunchGameCustomized(const std::string &bundleName, int32_t userId, int32_t appIndex = 0);
     
     /**
      * @brief Report the pre-launch completion time (ms) of a game.
