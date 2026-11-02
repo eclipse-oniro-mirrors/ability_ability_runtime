@@ -51,6 +51,7 @@ constexpr int32_t DEFAULT_INVAL_VALUE = -1;
 constexpr int32_t PENG_LAI_UID = 7655;
 constexpr int32_t TASKMGR_UID = 7005;
 constexpr int32_t BROKER_UID = 5557;
+constexpr int32_t ERECT_SAFE_UID = 8088;
 
 namespace OHOS {
 namespace AAFwk {
@@ -3601,6 +3602,22 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, RegisterSAInterceptor_002, TestSiz
     auto abilityManagerService = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityManagerService, nullptr);
     MyStatus::GetInstance().ipcGetCallingUid_ = PENG_LAI_UID;
+    auto result = abilityManagerService->RegisterSAInterceptor(interceptor);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RegisterSAInterceptor
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService RegisterSAInterceptor
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, RegisterSAInterceptor_003, TestSize.Level1) {
+    sptr<AbilityRuntime::ISAInterceptor> interceptor = new (std::nothrow) MockISAInterceptor();
+    ASSERT_NE(interceptor, nullptr);
+    auto abilityManagerService = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityManagerService, nullptr);
+    MyStatus::GetInstance().ipcGetCallingUid_ = ERECT_SAFE_UID;
     auto result = abilityManagerService->RegisterSAInterceptor(interceptor);
     EXPECT_EQ(result, ERR_OK);
 }
