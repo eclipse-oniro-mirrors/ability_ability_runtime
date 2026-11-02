@@ -19,6 +19,7 @@
 #include "ability_record.h"
 #include "app_scheduler.h"
 #include "hilog_tag_wrapper.h"
+#include "start_ability_utils.h"
 #include "startup_util.h"
 #include "utils/oe_extension_utils.h"
 
@@ -297,32 +298,32 @@ HWTEST_F(OEExtensionUtilsTest, ValidateCaller_009, TestSize.Level1)
     std::string hostBundleName;
     int32_t userId = -1;
 
-    AbilityRuntime::StartupUtil::mockStatus = false;
-    AbilityRuntime::StartupUtil::mockAppIndex = 1;
+    AAFwk::StartAbilityUtils::mockStatus = false;
+    AAFwk::StartAbilityUtils::mockAppIndex = 1;
     int32_t result = OEExtensionUtils::GetInstance().ValidateCaller(
         OESA_UID, want, abilityRecord->GetToken(), TEST_HOST_PID, hostBundleName, userId);
     EXPECT_EQ(result, ERR_APP_CLONE_INDEX_INVALID);
 
-    AbilityRuntime::StartupUtil::mockStatus = true;
-    AbilityRuntime::StartupUtil::mockAppIndex = 1;
+    AAFwk::StartAbilityUtils::mockStatus = true;
+    AAFwk::StartAbilityUtils::mockAppIndex = 1;
     result = OEExtensionUtils::GetInstance().ValidateCaller(
         OESA_UID, want, abilityRecord->GetToken(), TEST_HOST_PID, hostBundleName, userId);
     EXPECT_EQ(result, ERR_APP_CLONE_INDEX_INVALID);
 
-    AbilityRuntime::StartupUtil::mockStatus = false;
-    AbilityRuntime::StartupUtil::mockAppIndex = 0;
+    AAFwk::StartAbilityUtils::mockStatus = false;
+    AAFwk::StartAbilityUtils::mockAppIndex = 0;
     result = OEExtensionUtils::GetInstance().ValidateCaller(
         OESA_UID, want, abilityRecord->GetToken(), TEST_HOST_PID, hostBundleName, userId);
     EXPECT_EQ(result, ERR_APP_CLONE_INDEX_INVALID);
 
-    AbilityRuntime::StartupUtil::mockStatus = true;
-    AbilityRuntime::StartupUtil::mockAppIndex = 0;
+    AAFwk::StartAbilityUtils::mockStatus = true;
+    AAFwk::StartAbilityUtils::mockAppIndex = 0;
     result = OEExtensionUtils::GetInstance().ValidateCaller(
         OESA_UID, want, abilityRecord->GetToken(), TEST_HOST_PID, hostBundleName, userId);
     EXPECT_EQ(result, ERR_OK);
 
-    AbilityRuntime::StartupUtil::mockStatus = true;
-    AbilityRuntime::StartupUtil::mockAppIndex = 1;
+    AAFwk::StartAbilityUtils::mockStatus = true;
+    AAFwk::StartAbilityUtils::mockAppIndex = 1;
     abilityRecord->appIndex_ = 1;
     result = OEExtensionUtils::GetInstance().ValidateCaller(
         OESA_UID, want, abilityRecord->GetToken(), TEST_HOST_PID, hostBundleName, userId);

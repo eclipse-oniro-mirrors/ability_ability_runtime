@@ -683,7 +683,7 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, GetBundleInfo_003, TestSize.Level1
     int32_t appIndex = MAX_APP_CLONE_INDEX_NUM;
     AppExecFwk::BundleInfo bundleInfo;
     auto result = abilityAutoStartupService->GetBundleInfo(bundleName, userId, appIndex, bundleInfo);
-    EXPECT_FALSE(result);
+    EXPECT_TRUE(result);
     GTEST_LOG_(INFO) << "AbilityAutoStartupServiceSecondTest GetBundleInfo_003 end";
 }
 
@@ -703,7 +703,7 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, GetBundleInfo_004, TestSize.Level1
     int32_t appIndex = MAX_APP_CLONE_INDEX_NUM;
     AppExecFwk::BundleInfo bundleInfo;
     auto result = abilityAutoStartupService->GetBundleInfo(bundleName, userId, appIndex, bundleInfo);
-    EXPECT_TRUE(result);
+    EXPECT_FALSE(result);
     GTEST_LOG_(INFO) << "AbilityAutoStartupServiceSecondTest GetBundleInfo_004 end";
 }
 

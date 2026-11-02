@@ -157,7 +157,7 @@ HWTEST_F(UIAbilityLifecycleManagerSecondTest, FindRecordFromSessionMap_001, Test
     EXPECT_EQ(ret, nullptr);
     abilityRequest.want.RemoveParam(DLP_INDEX);
 
-    (void)AbilityRuntime::StartupUtil::GetAppIndex(abilityRequest.want, appIndex);
+    appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
     auto instanceKey = abilityRequest.want.GetStringParam(Want::APP_INSTANCE_KEY);
     std::unordered_map<int32_t, UIAbilityRecordPtr> sessionAbilityMap_;
 
@@ -361,7 +361,7 @@ HWTEST_F(UIAbilityLifecycleManagerSecondTest, TryProcessHookModule_002, TestSize
     AbilityRequest abilityRequest;
     int32_t appIndex = 0;
     const int32_t sessionId = 100;
-    (void)AbilityRuntime::StartupUtil::GetAppIndex(abilityRequest.want, appIndex);
+    appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
     auto instanceKey = abilityRequest.want.GetStringParam(Want::APP_INSTANCE_KEY);
 
     abilityRequest.appInfo.bundleName = "com.example.unittest";
@@ -386,7 +386,7 @@ HWTEST_F(UIAbilityLifecycleManagerSecondTest, TryProcessHookModule_003, TestSize
     AbilityRequest abilityRequest;
     int32_t appIndex = 0;
     const int32_t sessionId = 100;
-    (void)AbilityRuntime::StartupUtil::GetAppIndex(abilityRequest.want, appIndex);
+    appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
     auto instanceKey = abilityRequest.want.GetStringParam(Want::APP_INSTANCE_KEY);
 
     abilityRequest.appInfo.bundleName = "com.example.unittest";
@@ -911,7 +911,7 @@ HWTEST_F(UIAbilityLifecycleManagerSecondTest, TryProcessHookModule_006, TestSize
     abilityRequest2.abilityInfo.bundleName = "HelloWorld";
     abilityRequest2.abilityInfo.moduleName = "HelloWorld";
     abilityRequest2.want.SetParam(Want::APP_INSTANCE_KEY, std::string("HelloWorld"));
-    AbilityRuntime::StartupUtil::GetAppIndex(abilityRequest2.want, appIndex);
+    appIndex = abilityRequest2.abilityInfo.applicationInfo.appIndex;
     abilityRecord->SetAppIndex(appIndex);
 
     auto specifiedRequest = std::make_shared<AAFwk::SpecifiedRequest>(100, abilityRequest2);
