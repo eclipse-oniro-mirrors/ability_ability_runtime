@@ -205,7 +205,7 @@ OHOS::AppExecFwk::FormProviderInfo JsFormExtension::OnCreate(const OHOS::AAFwk::
     }
     AppExecFwk::FormProviderData formData = AppExecFwk::FormProviderData(formDataStr);
 
-    formData.SetSupportMoreImages(GetIsSupportMoreImages(env, nativeResult));
+    formProviderInfo.SetSupportMoreImages(GetIsSupportMoreImages(env, nativeResult));
 
     formProviderInfo.SetFormData(formData);
 
