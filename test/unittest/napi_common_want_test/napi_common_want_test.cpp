@@ -246,11 +246,11 @@ HWTEST_F(NapiCommonWantTest, UnwrapWantParams_NullParam_0100, Function | MediumT
 }
 
 /**
- * @tc.name: WrapWant_NonSystemApp_StripsPassThroughFlag_0100
- * @tc.desc: Non-system app is the final hop, the pass-through flag is stripped
+ * @tc.name: WrapWant_NonSystemApp_KeepsPassThroughFlag_0100
+ * @tc.desc: Non-system app is the final hop, the pass-through flag is preserved
  *          when the want is wrapped to the JS layer.
  */
-HWTEST_F(NapiCommonWantTest, WrapWant_NonSystemApp_StripsPassThroughFlag_0100, Function | MediumTest | Level1)
+HWTEST_F(NapiCommonWantTest, WrapWant_NonSystemApp_KeepsPassThroughFlag_0100, Function | MediumTest | Level1)
 {
     uint64_t originalToken = GetSelfTokenID();
     SetSelfTokenID(0);
@@ -269,7 +269,7 @@ HWTEST_F(NapiCommonWantTest, WrapWant_NonSystemApp_StripsPassThroughFlag_0100, F
 
     napi_value jsParams = GetPropertyValueByPropertyName(env, jsWant, "parameters", napi_object);
     ASSERT_NE(jsParams, nullptr);
-    EXPECT_FALSE(IsExistsByPropertyName(env, jsParams,
+    EXPECT_TRUE(IsExistsByPropertyName(env, jsParams,
         AAFwk::Want::PARAM_SET_URI_WITH_ORIGIN_STRING.c_str()));
 
     AbilityRuntime::JsRuntimeLite::GetInstance().RemoveJsEnv(env);
@@ -315,11 +315,11 @@ HWTEST_F(NapiCommonWantTest, WrapWant_SystemApp_KeepsPassThroughFlag_0100, Funct
 }
 
 /**
- * @tc.name: WrapWantParams_NonSystemApp_StripsPassThroughFlag_0100
+ * @tc.name: WrapWantParams_NonSystemApp_KeepsPassThroughFlag_0100
  * @tc.desc: WrapWantParams is invoked directly (bypassing WrapWant); the
- *          pass-through flag must still be stripped for a non-system app.
+ *          pass-through flag is preserved for a non-system app.
  */
-HWTEST_F(NapiCommonWantTest, WrapWantParams_NonSystemApp_StripsPassThroughFlag_0100, Function | MediumTest | Level1)
+HWTEST_F(NapiCommonWantTest, WrapWantParams_NonSystemApp_KeepsPassThroughFlag_0100, Function | MediumTest | Level1)
 {
     uint64_t originalToken = GetSelfTokenID();
     SetSelfTokenID(0);
@@ -335,7 +335,7 @@ HWTEST_F(NapiCommonWantTest, WrapWantParams_NonSystemApp_StripsPassThroughFlag_0
     want.SetParam(AAFwk::Want::PARAM_SET_URI_WITH_ORIGIN_STRING, true);
     napi_value jsParams = WrapWantParams(env, want.GetParams());
     ASSERT_NE(jsParams, nullptr);
-    EXPECT_FALSE(IsExistsByPropertyName(env, jsParams,
+    EXPECT_TRUE(IsExistsByPropertyName(env, jsParams,
         AAFwk::Want::PARAM_SET_URI_WITH_ORIGIN_STRING.c_str()));
 
     AbilityRuntime::JsRuntimeLite::GetInstance().RemoveJsEnv(env);
@@ -378,11 +378,11 @@ HWTEST_F(NapiCommonWantTest, WrapWantParams_SystemApp_KeepsPassThroughFlag_0100,
 }
 
 /**
- * @tc.name: WrapWantParams_NestedNotStripped_0100
- * @tc.desc: The pass-through flag is stripped only at the first layer of the
- *          want parameters; a nested WantParams keeps its own flag intact.
+ * @tc.name: WrapWantParams_NestedKeepsPassThroughFlag_0100
+ * @tc.desc: The pass-through flag is preserved at every layer of the want
+ *          parameters, including a nested WantParams.
  */
-HWTEST_F(NapiCommonWantTest, WrapWantParams_NestedNotStripped_0100, Function | MediumTest | Level1)
+HWTEST_F(NapiCommonWantTest, WrapWantParams_NestedKeepsPassThroughFlag_0100, Function | MediumTest | Level1)
 {
     uint64_t originalToken = GetSelfTokenID();
     SetSelfTokenID(0);
@@ -403,7 +403,7 @@ HWTEST_F(NapiCommonWantTest, WrapWantParams_NestedNotStripped_0100, Function | M
 
     napi_value jsParams = WrapWantParams(env, wantParams);
     ASSERT_NE(jsParams, nullptr);
-    EXPECT_FALSE(IsExistsByPropertyName(env, jsParams,
+    EXPECT_TRUE(IsExistsByPropertyName(env, jsParams,
         AAFwk::Want::PARAM_SET_URI_WITH_ORIGIN_STRING.c_str()));
 
     napi_value jsNested = GetPropertyValueByPropertyName(env, jsParams, "nestedKey", napi_object);
