@@ -1088,7 +1088,6 @@ int32_t AppMgrServiceInner::HandleForkAll(int32_t pid)
     CHECK_POINTER_AND_RETURN_VALUE(appRecord, -1);
     auto ret = HandleForkAllInner(appRecord, pid);
     if (ret != ImageError::ERR_OK) {
-        appRecord->SetMakeImageState(MakeImageState::NONE);
         HandleMakeImageFailed(appRecord, ret);
         return -1;
     }
@@ -1230,6 +1229,10 @@ void AppMgrServiceInner::HandleMakeImageFailed(const std::string& bundleName, co
     UnMarkTemplateProcess(imageInfo->templatePid);
     RemoveImageInfo(bundleName, abilityName, userId, appIndex);
     NotifyMakeImageFailed(imageInfo->bundleInfo.uid, imageInfo->errorHandler, err);
+    auto appRecord = GetAppRunningRecordByPid(imageInfo->templatePid);
+    if (appRecord != nullptr) {
+        appRecord->SetMakeImageState(MakeImageState::NONE);
+    }
 }
 
 int32_t AppMgrServiceInner::PreAddImageInfo(const std::string& bundleName, int32_t userId, int32_t appIndex,
