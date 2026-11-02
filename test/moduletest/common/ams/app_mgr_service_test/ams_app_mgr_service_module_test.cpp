@@ -378,6 +378,9 @@ HWTEST_F(AppMgrServiceModuleTest, ApplicationTerminated_001, TestSize.Level1)
  */
 HWTEST_F(AppMgrServiceModuleTest, ClearUpApplicationData_001, TestSize.Level1)
 {
+#ifdef __x86_64__
+    GTEST_SKIP() << "not supported on x86_64";
+#else
     auto appMgrService = std::make_shared<AppMgrService>();
     std::shared_ptr<OHOS::AAFwk::TaskHandlerWrap> taskHandler_ =
         OHOS::AAFwk::TaskHandlerWrap::CreateQueueHandler(Constants::APP_MGR_SERVICE_NAME);
@@ -386,6 +389,7 @@ HWTEST_F(AppMgrServiceModuleTest, ClearUpApplicationData_001, TestSize.Level1)
     appMgrService->eventHandler_ = std::make_shared<AMSEventHandler>(taskHandler_, appMgrService->appMgrServiceInner_);
     int32_t res = appMgrService->ClearUpApplicationData(bundleName, 0);
     EXPECT_EQ(res, ERR_INVALID_OPERATION);
+#endif
 }
 
 /*

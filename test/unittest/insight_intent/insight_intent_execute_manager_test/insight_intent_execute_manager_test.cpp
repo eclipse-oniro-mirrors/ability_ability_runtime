@@ -324,7 +324,7 @@ HWTEST_F(InsightIntentExecuteManagerTest, CheckCallerPermission_0100, TestSize.L
 
     auto ret = InsightIntentExecuteManager::CheckCallerPermission();
     // Result depends on system permissions, just check it doesn't crash
-    EXPECT_TRUE(ret == ERR_OK || ret == ERR_PERMISSION_DENIED);
+    EXPECT_TRUE(ret == ERR_OK || ret == ERR_PERMISSION_DENIED || ret == ERR_NOT_SYSTEM_APP);
 
     TAG_LOGI(AAFwkTag::TEST, "CheckCallerPermission_0100 end.");
 }

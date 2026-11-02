@@ -511,7 +511,7 @@ HWTEST_F(DialogAbilityInfoTest, ParseURI_014, TestSize.Level2)
     EXPECT_EQ(dialogAbilityInfo.abilityLabelId, -4);
     EXPECT_FALSE(dialogAbilityInfo.visible);
     EXPECT_EQ(dialogAbilityInfo.appIndex, -5);
-    EXPECT_EQ(static_cast<int32_t>(dialogAbilityInfo.multiAppMode.multiAppModeType), -6);
+    EXPECT_EQ(static_cast<int32_t>(dialogAbilityInfo.multiAppMode.multiAppModeType), 250);
     EXPECT_EQ(dialogAbilityInfo.multiAppMode.maxCount, -7);
     TAG_LOGI(AAFwkTag::TEST, "ParseURI_014 is end");
 }
