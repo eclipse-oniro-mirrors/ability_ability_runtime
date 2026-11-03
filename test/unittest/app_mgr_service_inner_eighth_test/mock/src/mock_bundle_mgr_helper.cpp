@@ -352,6 +352,13 @@ ErrCode BundleMgrHelper::GetCloneAppIndexes(const std::string& bundleName,
     return ERR_OK;
 }
 
+ErrCode BundleMgrHelper::GetDualModeBundleInfo(const std::string& bundleName, int32_t userId,
+    int32_t& appIndex)
+{
+    appIndex = 0;
+    return ERR_OK;
+}
+
 ErrCode BundleMgrHelper::GetSignatureInfoByBundleName(const std::string& bundleName, SignatureInfo& signatureInfo)
 {
     return ERR_OK;

@@ -1309,6 +1309,48 @@ HWTEST_F(StartupManagerTest, PreloadSoStartupTask_0100, Function | MediumTest | 
 }
 
 /**
+ * @tc.name: PreloadSoStartupTask_0200
+ * @tc.type: FUNC
+ * @tc.Function: RunTaskInit
+ */
+HWTEST_F(StartupManagerTest, PreloadSoStartupTask_0200, Function | MediumTest | Level1)
+{
+    std::string name = "test_name";
+    std::string ohmUrl = "@normalized:Y&&&lib&v";
+    std::shared_ptr<PreloadSoStartupTask> startupTask = std::make_shared<PreloadSoStartupTask>(name, ohmUrl);
+    auto ret = startupTask->RunTaskInit(nullptr);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: PreloadSoStartupTask_0300
+ * @tc.type: FUNC
+ * @tc.Function: RunTaskInit
+ */
+HWTEST_F(StartupManagerTest, PreloadSoStartupTask_0300, Function | MediumTest | Level1)
+{
+    std::string name = "test_name";
+    std::string ohmUrl = "@normalized:Y&&&&v";
+    std::shared_ptr<PreloadSoStartupTask> startupTask = std::make_shared<PreloadSoStartupTask>(name, ohmUrl);
+    auto ret = startupTask->RunTaskInit(nullptr);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: PreloadSoStartupTask_0400
+ * @tc.type: FUNC
+ * @tc.Function: RunTaskInit
+ */
+HWTEST_F(StartupManagerTest, PreloadSoStartupTask_0400, Function | MediumTest | Level1)
+{
+    std::string name = "test_name";
+    std::string ohmUrl = "@normalized:Y&&&lib.so&v";
+    std::shared_ptr<PreloadSoStartupTask> startupTask = std::make_shared<PreloadSoStartupTask>(name, ohmUrl);
+    auto ret = startupTask->RunTaskInit(nullptr);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
  * @tc.name: InitPreloadSystemSoAllowlist_0100
  * @tc.type: FUNC
  * @tc.Function: InitPreloadSystemSoAllowlist

@@ -122,20 +122,21 @@ bool AbilityPermissionUtil::IsDominateScreen(const Want &want, bool isPendingWan
 }
 
 int32_t AbilityPermissionUtil::CheckMultiInstanceAndAppClone(Want &want, int32_t userId, int32_t appIndex,
-    sptr<IRemoteObject> callerToken, bool isScbCall)
+    sptr<IRemoteObject> callerToken, bool isScbCall, const StartAbilityContext &ctx)
 {
     auto instanceKey = want.GetStringParam(Want::APP_INSTANCE_KEY);
     auto isCreating = want.GetBoolParam(Want::CREATE_APP_INSTANCE_KEY, false);
     AppExecFwk::ApplicationInfo appInfo;
     auto isSupportMultiInstance = AppUtils::GetInstance().IsSupportMultiInstance();
     if (isSupportMultiInstance) {
-        if (!StartAbilityUtils::GetApplicationInfo(want.GetBundleNameRef(), userId, appInfo)) {
+        if (!StartAbilityUtils::GetApplicationInfo(ctx, want.GetBundleNameRef(), userId, appInfo)) {
             TAG_LOGI(AAFwkTag::ABILITYMGR, "implicit start");
             return ERR_OK;
         }
         if (appInfo.multiAppMode.multiAppModeType == AppExecFwk::MultiAppModeType::UNSPECIFIED) {
             if (!instanceKey.empty() || isCreating ||
-                (appIndex != 0 && appIndex <= AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX)) {
+                (appIndex != 0 && appIndex != AbilityRuntime::GlobalConstant::PC_TABLET_INDEX &&
+                AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex))) {
                 TAG_LOGE(AAFwkTag::ABILITYMGR, "Not support multi-instance or appClone");
                 return ERR_MULTI_APP_NOT_SUPPORTED;
             }
@@ -277,7 +278,9 @@ int32_t AbilityPermissionUtil::CheckStartRecentAbility(const Want &want, Ability
 int32_t AbilityPermissionUtil::CheckStartCallHasFloatingWindow(const sptr<IRemoteObject> &callerToken)
 {
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto sceneSessionManager = Rosen::SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        auto callerRecord = Token::GetAbilityRecordByToken(callerToken);
+        int32_t userId = callerRecord ? callerRecord->GetOwnerMissionUserId() : -1;
+        auto sceneSessionManager = Rosen::SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         CHECK_POINTER_AND_RETURN_LOG(sceneSessionManager, CHECK_PERMISSION_FAILED, "sceneSessionManager is nullptr");
         bool hasFloatingWindow = false;
         auto err = sceneSessionManager->HasFloatingWindowForeground(callerToken, hasFloatingWindow);

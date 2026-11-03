@@ -68,5 +68,15 @@ bool AppUtils::IsBopdOrRescueMode()
 {
     return false;
 }
+
+int32_t AppUtils::GetCollaboratorBrokerUID()
+{
+    return 0;
+}
+
+std::string AppUtils::GetBrokerDelegateBundleName()
+{
+    return "";
+}
 }  // namespace AAFwk
 }  // namespace OHOS

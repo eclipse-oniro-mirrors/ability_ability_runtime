@@ -22,7 +22,9 @@
 #include <queue>
 #include <unordered_map>
 
+#include "ui_ability_last_caller_info.h"
 #include "ability_manager_constants.h"
+#include "ability_session_info.h"
 #include "ffrt.h"
 #include "isession_handler_interface.h"
 #include "ui_ability_record.h"
@@ -71,14 +73,6 @@ struct AbilitiesRequest {
     sptr<IRemoteObject> callerToken;
     int32_t requestListId = -1;
     uint32_t doneCount = 0;
-};
-
-struct AbilitySessionInfo {
-    std::string callerBundleName;
-    uint32_t callerTokenId = 0;
-    bool isWebSandBoxClone = false;
-    int32_t sandBoxCloneIndex = 0;
-    std::string creatorBundleName;
 };
 
 class UIAbilityLifecycleManager : public std::enable_shared_from_this<UIAbilityLifecycleManager> {
@@ -158,6 +152,15 @@ public:
     int32_t SetGamePreLaunchCompleteTime(int64_t completeTime);
 
     /**
+     * ExtendGamePreLaunchTimeout, reset the game pre-launch foreground countdown.
+     *
+     * @param pid The process ID of the game pre-launch ability to extend.
+     * @param extendTime The extended time in microseconds for the game pre-launch.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t ExtendGamePreLaunchTimeout(int32_t pid, int64_t extendTime);
+
+    /**
      * Notify SCB to minimize UIAbility
      *
      * @param token ability's token
@@ -187,7 +190,7 @@ public:
     UIAbilityRecordPtr GetUIAbilityRecordBySessionInfo(const sptr<SessionInfo> &sessionInfo);
 
     int32_t BackToCallerAbilityWithResult(std::shared_ptr<AbilityRecord> abilityRecord,
-        int resultCode, const Want *resultWant, int64_t callerRequestCode);
+        int resultCode, const Want &resultWant, int64_t callerRequestCode, bool isBackToCallerApp = false);
 
     int CloseUIAbility(const UIAbilityRecordPtr &abilityRecord,
         int resultCode, const Want *resultWant, bool isClearSession, bool isIndependentRecovery);
@@ -260,6 +263,9 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     int PrelaunchAbilityLocked(const AbilityRequest &abilityRequest, const int32_t frameNum);
+
+    int PrepareAndNotifyPrelaunchSession(const AbilityRequest &abilityRequest,
+        const UIAbilityRecordPtr &uiAbilityRecord, int32_t persistentId, bool reuse, int32_t frameNum);
 
     /**
      * Call UIAbility by SCB.
@@ -434,7 +440,7 @@ public:
 
     int MoveMissionToFront(int32_t sessionId, std::shared_ptr<StartOptions> startOptions = nullptr);
 
-    bool IsAbilityStarted(AbilityRequest &abilityRequest, std::shared_ptr<AbilityRecord> &targetRecord);
+    bool IsAbilityStarted(const AbilityRequest &abilityRequest, std::shared_ptr<AbilityRecord> &targetRecord);
 
     /**
      * @brief Update session info.
@@ -626,6 +632,16 @@ public:
      * @return Returns ERR_OK on success, others on failure
      */
     int32_t StartSelf(const UIAbilityRecordPtr &abilityRecord);
+
+    /**
+     * @brief Handle foreground or background when ability is started by call.
+     * @param abilityRecord The ability record.
+     * @param token The ability token.
+     * @param callerInfo The caller info including uid and bundle name.
+     * @return ERR_OK if handled, ERR_INVALID_VALUE if not started by call.
+     */
+    int HandleStartedByCall(const UIAbilityRecordPtr &abilityRecord, const sptr<IRemoteObject> &token,
+        const AppExecFwk::UiAbilityLastCallerInfo &callerInfo);
 
 private:
     /**
@@ -859,6 +875,15 @@ private:
     int32_t BackToCallerAbilityWithResultLocked(sptr<SessionInfo> currentSessionInfo,
         std::shared_ptr<AbilityRecord> callerAbilityRecord);
 
+    /**
+     * @brief Return to caller ability with result (locked)
+     * @param currentSessionInfo Current session info
+     * @param callerAbilityRecord The caller ability record
+     * @return ERR_OK if successful, error code otherwise
+     */
+    int32_t BackToCallerAppWithResultLocked(sptr<SessionInfo> currentSessionInfo,
+        std::shared_ptr<AbilityRecord> callerAbilityRecord);
+
     // byCall
     /**
      * @brief Call ability with lock held
@@ -895,12 +920,19 @@ private:
         const AbilityRequest &abilityRequest, std::string &errMsg);
 
     /**
-     * @brief Store sandbox clone params (isWebSandBoxClone, sandboxCloneIndex, caller info) into
-     *        sessionInfo->want for the SCB callback.
+     * @brief Cache AbilitySessionInfo into sessionInfo->want for the SCB callback.
      * @param sessionInfo The session info to be updated
-     * @param abilityRequest The ability request carrying the sandbox clone flag and caller info
+     * @param abilityRequest The ability request
      */
-    void SetSandboxCloneParamsForSession(sptr<SessionInfo> &sessionInfo, const AbilityRequest &abilityRequest);
+    void CacheAbilitySessionInfo(sptr<SessionInfo> &sessionInfo, const AbilityRequest &abilityRequest);
+    /**
+     * @brief Store sandbox clone params for warm path (e.g. MoveMissionToFront) into the internal
+     *        map keyed by requestId, so the SCB callback StartUIAbilityBySCBDefault can perceive
+     *        the sandbox clone scenario via AbilitySessionInfo. No-op for non-sandbox-clone records.
+     * @param sessionInfo The session info to be updated (DLP_INDEX set in want)
+     * @param abilityRecord The existing UIAbility record carrying appIndex and sandboxCloneParams
+     */
+    void SetSandboxCloneParamsForSession(sptr<SessionInfo> &sessionInfo, const UIAbilityRecordPtr &abilityRecord);
     void CreateSessionConfigurations(std::vector<sptr<SessionInfo>> &sessionInfoList, int primaryWindowId,
         std::vector<Rosen::PendingSessionActivationConfig> &configList, sptr<SessionInfo> sessionInfo);
 
@@ -1401,6 +1433,16 @@ private:
 
     mutable ffrt::mutex abilitySessionInfoMapLock_;
     std::unordered_map<int32_t, AbilitySessionInfo> abilitySessionInfoMap_;
+
+    /**
+     * Cleanup the game pre-launch extend delayed task handle for the given ability record.
+     *
+     * @param abilityRecordId The record id of the ability.
+     */
+    void CleanupExtendTask(int32_t abilityRecordId);
+
+    ffrt::mutex extendTaskMutex_;
+    std::unordered_map<int32_t, ffrt::task_handle> extendTaskMap_; // for game pre-launch extend delayed task
 };
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -20,6 +20,7 @@ config("caller_complex_ani_public_config") {
 }
 
 ohos_shared_library("caller_complex_ani") {
+  version_script = "libcaller_complex_ani.map"
   branch_protector_ret = "pac_ret"
   sanitize = {
     cfi = true
@@ -52,6 +53,8 @@ ohos_shared_library("caller_complex_ani") {
     "ipc:ipc_single",
     "ipc:rpc_taihe",
     "napi:ace_napi",
+    "node:node_header_notice",
+    "libuv:uv",
     "runtime_core:ani",
     "runtime_core:ani_helpers",
   ]

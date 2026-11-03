@@ -950,5 +950,6 @@ HWTEST_F(AbilityRecordTest, GetWantParam_0100, TestSize.Level1)
     abilityRecord->RemoveSpecifiedWantParam("testStringKey");
     EXPECT_FALSE(abilityRecord->HasParameter("testStringKey"));
 }
+
 }  // namespace AAFwk
 }  // namespace OHOS

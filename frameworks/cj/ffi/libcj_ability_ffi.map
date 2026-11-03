@@ -1,0 +1,39 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+{
+  global:
+    extern "C" {
+      FFI*;
+      Ffi*;
+      OHOS_*;
+      RegisterCJMonitorFuncs;
+    };
+    extern "C++" {
+      "OHOS::ApplicationContextCJ::CJApplicationContext::GetInstance()";
+      "OHOS::ApplicationContextCJ::CJApplicationContext::GetCJApplicationContext(std::__h::weak_ptr<OHOS::AbilityRuntime::ApplicationContext>&&)";
+      "OHOS::ApplicationContextCJ::CJApplicationContext::GetApplicationInfo()";
+      "OHOS::ApplicationContextCJ::CJApplicationContext::RegisterAbilityLifecycleCallback(std::__h::shared_ptr<OHOS::AbilityRuntime::CjAbilityLifecycleCallback> const&)";
+      "OHOS::ApplicationContextCJ::CJApplicationContext::UnregisterAbilityLifecycleCallback(std::__h::shared_ptr<OHOS::AbilityRuntime::CjAbilityLifecycleCallback> const&)";
+      "OHOS::ApplicationContextCJ::CJApplicationContext::DispatchOnAbilityDestroy(long const&)";
+      "OHOS::ApplicationContextCJ::CJApplicationContext::DispatchOnAbilityDestroy(long long const&)";
+      "CreateCStringFromString(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+      "VectorToCArrString(std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>> const&)";
+      "OHOS::AbilityRuntime::CreateCConfiguration(OHOS::AppExecFwk::Configuration const&)";
+      "OHOS::AbilityRuntime::CreateCConfigurationV2(OHOS::AppExecFwk::Configuration const&)";
+      "OHOS::AbilityRuntime::FreeCConfiguration(OHOS::AbilityRuntime::CConfiguration*)";
+      "OHOS::AbilityRuntime::FreeCConfigurationV2(OHOS::AbilityRuntime::CConfigurationV2*)";
+    };
+  local:
+    *;
+};

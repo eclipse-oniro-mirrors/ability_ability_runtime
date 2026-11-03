@@ -31,5 +31,11 @@ ErrCode BundleMgrHelper::GetNameAndIndexForUid(const int32_t uid, std::string& b
     int32_t errCode = getNameAndIndexForUid_ ? 0 : -1;
     return errCode;
 }
+
+ErrCode BundleMgrHelper::GetDualModeBundleInfo(
+    const std::string &bundleName, int32_t userId, int32_t &appIndex)
+{
+    return ERR_OK;
+}
 } // namespace AppExecFwk
 } // namespace OHOS

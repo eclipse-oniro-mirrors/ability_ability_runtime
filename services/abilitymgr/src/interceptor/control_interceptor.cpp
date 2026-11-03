@@ -16,7 +16,6 @@
 #include "interceptor/control_interceptor.h"
 
 #include "ability_util.h"
-#include "appexecfwk_errors.h"
 #include "hitrace_meter.h"
 
 namespace OHOS {
@@ -29,7 +28,7 @@ constexpr const char* INTERCEPT_MODULE_NAME = "intercept_moduleName";
 constexpr const char* IS_FROM_PARENTCONTROL = "ohos.ability.isFromParentControl";
 }
 
-ErrCode ControlInterceptor::DoProcess(const AbilityInterceptorParam &param)
+ErrCode ControlInterceptor::DoProcess(AbilityInterceptorParam &param)
 {
     AppExecFwk::AppRunningControlRuleResult controlRule;
     if (CheckControl(param.want, param.userId, controlRule)) {
@@ -52,7 +51,10 @@ ErrCode ControlInterceptor::DoProcess(const AbilityInterceptorParam &param)
             controlWant->SetParam(INTERCEPT_BUNDLE_NAME, wantEle.GetBundleName());
             controlWant->SetParam(INTERCEPT_ABILITY_NAME, wantEle.GetAbilityName());
             controlWant->SetParam(INTERCEPT_MODULE_NAME, wantEle.GetModuleNameRef());
-            controlRule.controlWant = controlWant;
+        }
+        if (controlRule.controlWant->GetBundle() == param.want.GetBundleNameRef()) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "no control want, with same bundleName");
+            return AbilityUtil::EdmErrorType(controlRule.isEdm);
         }
         int ret = IN_PROCESS_CALL(AbilityManagerClient::GetInstance()->StartAbility(*controlRule.controlWant,
             param.requestCode, param.userId));
@@ -78,7 +80,6 @@ bool ControlInterceptor::CheckControl(const Want &want, int32_t userId,
     }
 
     // get disposed status
-    const auto &bundleName = want.GetBundleNameRef();
     auto appControlMgr = bundleMgrHelper->GetAppControlProxy();
     if (appControlMgr == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null appControlMgr");
@@ -86,13 +87,8 @@ bool ControlInterceptor::CheckControl(const Want &want, int32_t userId,
     }
 
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, "GetAppRunningControlRule");
-    std::string identity = IPCSkeleton::ResetCallingIdentity();
-    auto ret = appControlMgr->GetAppRunningControlRule(bundleName, userId, controlRule);
-    if (ret == ERR_BUNDLE_MANAGER_PERMISSION_DENIED) {
-        IPCSkeleton::SetCallingIdentity(identity, true);
-    } else {
-        IPCSkeleton::SetCallingIdentity(identity);
-    }
+    const auto &bundleName = want.GetBundleNameRef();
+    auto ret = IN_PROCESS_CALL(appControlMgr->GetAppRunningControlRule(bundleName, userId, controlRule));
     if (ret != ERR_OK) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "Get No AppRunningControlRule.");
         return false;

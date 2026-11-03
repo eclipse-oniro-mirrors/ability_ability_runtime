@@ -54,6 +54,7 @@ StartOptions::StartOptions(const StartOptions &other)
     windowCreateParams_ = other.windowCreateParams_;
     splitRatioPreference_ = other.splitRatioPreference_;
     currentProcessName_ = other.currentProcessName_;
+    preferDefaultBrowser_ = other.preferDefaultBrowser_;
 }
 
 StartOptions &StartOptions::operator=(const StartOptions &other)
@@ -87,6 +88,7 @@ StartOptions &StartOptions::operator=(const StartOptions &other)
         windowCreateParams_ = other.windowCreateParams_;
         splitRatioPreference_ = other.splitRatioPreference_;
         currentProcessName_ = other.currentProcessName_;
+        preferDefaultBrowser_ = other.preferDefaultBrowser_;
     }
     return *this;
 }
@@ -127,6 +129,7 @@ bool StartOptions::ReadFromParcel(Parcel &parcel)
     requestId_ = parcel.ReadString();
     windowCreateParams_.reset(parcel.ReadParcelable<Rosen::WindowCreateParams>());
     SetSplitRatioPreference(parcel.ReadInt32());
+    SetPreferDefaultBrowser(parcel.ReadBool());
     return true;
 }
 
@@ -198,6 +201,10 @@ bool StartOptions::MarshallingTwo(Parcel &parcel) const
     }
     if (!parcel.WriteInt32(GetSplitRatioPreference())) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Write splitRatioPreference_ failed");
+        return false;
+    }
+    if (!parcel.WriteBool(GetPreferDefaultBrowser())) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "Write preferDefaultBrowser_ failed");
         return false;
     }
     return true;
@@ -351,6 +358,16 @@ void StartOptions::SetSplitRatioPreference(int32_t splitRatioPreference)
 int32_t StartOptions::GetSplitRatioPreference() const
 {
     return splitRatioPreference_;
+}
+
+void StartOptions::SetPreferDefaultBrowser(bool preferDefaultBrowser)
+{
+    preferDefaultBrowser_ = preferDefaultBrowser;
+}
+
+bool StartOptions::GetPreferDefaultBrowser() const
+{
+    return preferDefaultBrowser_;
 }
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,7 +44,14 @@ public:
     {
         code_ = code;
         KioskStatus kioskStatus;
+        kioskStatus.kioskToken_ = kioskToken_;
         reply.WriteParcelable(&kioskStatus);
+        bool hasToken = (kioskStatus.kioskToken_ != nullptr);
+        reply.WriteBool(hasToken);
+        if (hasToken) {
+            reply.WriteRemoteObject(kioskStatus.kioskToken_);
+        }
+        reply.WriteInt32(0);
         return 0;
     }
 
@@ -66,6 +73,7 @@ public:
     }
 
     int code_ = 0;
+    sptr<IRemoteObject> kioskToken_ = nullptr;
 
     virtual int StartAbility(
         const Want& want, int32_t userId = DEFAULT_INVAL_VALUE, int requestCode = -1, uint64_t specifiedFullTokenId = 0)
@@ -386,7 +394,9 @@ public:
         const int32_t &resultCode, const int32_t &uniqueId, WantParams &wantParam));
     MOCK_METHOD1(MoveUIAbilityToBackground, int(const sptr<IRemoteObject> token));
     MOCK_METHOD1(UpdateKioskApplicationList, int(const std::vector<std::string> &appList));
-    MOCK_METHOD1(EnterKioskMode, int(sptr<IRemoteObject>));
+    MOCK_METHOD1(AddKioskApplicationList, int(const std::vector<std::string> &appList));
+    MOCK_METHOD1(DeleteKioskApplicationList, int(const std::vector<std::string> &appList));
+    MOCK_METHOD2(EnterKioskMode, int(sptr<IRemoteObject>, int32_t));
     MOCK_METHOD1(ExitKioskMode, int(sptr<IRemoteObject>));
     MOCK_METHOD1(GetKioskStatus, int(AAFwk::KioskStatus &kioskInf));
     int StartUserTest(const Want& want, const sptr<IRemoteObject>& observer) override
@@ -400,7 +410,7 @@ public:
         return 0;
     }
 
-    int GetTopAbility(sptr<IRemoteObject>& token) override
+    int GetTopAbility(sptr<IRemoteObject>& token, int32_t userId = INVALID_USER_ID) override
     {
         return 0;
     }
@@ -454,6 +464,9 @@ public:
     MOCK_METHOD1(IsAbilityControllerStart, bool(const Want& want));
     MOCK_METHOD3(ExecuteIntent, int32_t(uint64_t key, const sptr<IRemoteObject> &callerToken,
         const InsightIntentExecuteParam &param));
+    MOCK_METHOD4(ExecuteUIAbilityForegroundIntentWithSpecifyTokenId,
+    int32_t(const Want &want, const sptr<IRemoteObject> &callerAbilityToken,
+        const InsightIntentExecuteLiteParam &param, uint64_t specifiedFullTokenId));
     MOCK_METHOD3(ExecuteInsightIntentDone, int32_t(const sptr<IRemoteObject> &token, uint64_t intentId,
         const InsightIntentExecuteResult &result));
 };

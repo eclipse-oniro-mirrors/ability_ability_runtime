@@ -131,9 +131,5 @@ int32_t AppSpawnClient::SetExtMsgFds(const AppSpawnReqMsgHandle &reqHandle,
     return ERR_OK;
 }
 
-int32_t AppSpawnClient::SetIsolationModeFlag(const AppSpawnStartMsg &startMsg, const AppSpawnReqMsgHandle &reqHandle)
-{
-    return ERR_OK;
-}
 }  // namespace AppExecFwk
 }  // namespace OHOS

@@ -29,11 +29,7 @@ ohos_unittest("cj_application_context_test") {
     "${ability_runtime_path}/cj_environment/interfaces/inner_api",
   ]
 
-  sources = [
-    "${ability_runtime_path}/frameworks/cj/ffi/application_context/src/cj_application_context.cpp",
-    "${ability_runtime_path}/frameworks/cj/ffi/cj_application_context_ffi.cpp",
-    "cj_application_context_test.cpp",
-  ]
+  sources = [ "cj_application_context_test.cpp" ]
 
   configs =
       [ "${ability_runtime_path}/frameworks/cj/ffi:cj_ability_public_config" ]
@@ -58,7 +54,7 @@ ohos_unittest("cj_application_context_test") {
     "${ability_runtime_native_path}/appkit:app_context_utils",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_native_path}/appkit:appkit_native",
-    "${ability_runtime_path}/frameworks/cj/ffi:cj_ability_ffi",
+    "${ability_runtime_path}/frameworks/cj/ffi:cj_ability_ffi_source",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
   ]
 

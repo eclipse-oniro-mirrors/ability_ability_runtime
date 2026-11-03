@@ -33,6 +33,7 @@
       *AbilitySchedulerStub*;
       *AbilityStartWithWaitObserverManager*;
       *AmsConfigurationParameter*;
+      *AMSWantParamFilter*;
       *AppExitReasonDataManager*;
       *AppExitReasonHelper*;
       *ApplicationAnrListener*;
@@ -108,7 +109,6 @@
       *WantReceiverStub*;
       *WantReceiverProxy*;
       *WantSenderProxy*;
-      *WantSenderStub*;
       *WantUtils*;
       *WindowOptionsUtils*;
     };

@@ -17,16 +17,6 @@
 
 namespace OHOS {
 namespace AAFwk {
-namespace {
-constexpr int32_t ERMS_ISALLOW_RESULTCODE = 10;
-}
-std::shared_ptr<StartAbilityInfo> StartAbilityUtils::startAbilityInfo;
-std::shared_ptr<StartAbilityInfo> StartAbilityUtils::callerAbilityInfo;
-bool StartAbilityUtils::skipCrowTest = false;
-bool StartAbilityUtils::skipErms = false;
-int32_t StartAbilityUtils::ermsResultCode = ERMS_ISALLOW_RESULTCODE;
-bool StartAbilityUtils::isWantWithAppCloneIndex = false;
-bool StartAbilityUtils::ermsSupportBackToCallerFlag = false;
 bool StartAbilityUtils::retGetCallerAbilityInfo;
 AppExecFwk::AbilityInfo StartAbilityUtils::callerAbiltyInfo;
 
@@ -38,8 +28,8 @@ std::shared_ptr<StartAbilityInfo> StartAbilityInfo::CreateStartAbilityInfo(const
     return createStartAbilityInfo;
 }
 
-bool StartAbilityUtils::GetCallerAbilityInfo(const sptr<IRemoteObject> &callerToken,
-    AppExecFwk::AbilityInfo &abilityInfo)
+bool StartAbilityUtils::GetCallerAbilityInfo(const StartAbilityContext &ctx,
+    const sptr<IRemoteObject> &callerToken, AppExecFwk::AbilityInfo &abilityInfo)
 {
     abilityInfo = callerAbiltyInfo;
     return retGetCallerAbilityInfo;

@@ -44,6 +44,7 @@ ohos_unittest("ability_util_test") {
     "hilog:libhilog",
     "hitrace:hitrace_meter",
     "image_framework:image_native",
+    "samgr:samgr_proxy",
   ]
 
   cflags_cc = []

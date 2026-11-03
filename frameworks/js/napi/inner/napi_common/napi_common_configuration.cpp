@@ -111,6 +111,10 @@ napi_value WrapConfiguration(napi_env env, const AppExecFwk::Configuration &conf
     jsValue = WrapBoolToJS(env, hasPointerDevice == "true" ? true : false);
     SetPropertyValueByPropertyName(env, jsObject, "hasPointerDevice", jsValue);
 
+    std::string hasBrandColorChanged = configuration.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED);
+    jsValue = WrapBoolToJS(env, hasBrandColorChanged == "true" ? true : false);
+    SetPropertyValueByPropertyName(env, jsObject, "hasBrandColorChanged", jsValue);
+
     jsValue = WrapStringToJS(env, configuration.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_FONT_ID));
     SetPropertyValueByPropertyName(env, jsObject, "fontId", jsValue);
 

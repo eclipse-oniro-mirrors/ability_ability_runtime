@@ -17,6 +17,7 @@
 #include <gtest/hwext/gtest-multithread.h>
 #include <cstdlib>
 #include <fstream>
+#include <vector>
 
 #define private public
 #define protected public
@@ -49,6 +50,22 @@ const std::string TEST_HOST_AOT_ROOT = "/system/app/ark_cache/";
 const std::string TEST_HOST_PRIVATE_HSP_AOT_ROOT = "/data/storage/ark-cache/arm64/";
 const std::string TEST_HOST_AOT_BUNDLE_NAME = "com.example.hostaot";
 const std::string TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME = "com.example.hsp1";
+
+class TestApplicationStateJsRuntime final : public JsRuntime {
+public:
+    void NotifyApplicationState(bool isBackground) override
+    {
+        applicationStates_.emplace_back(isBackground);
+    }
+
+    const std::vector<bool> &GetApplicationStates() const
+    {
+        return applicationStates_;
+    }
+
+private:
+    std::vector<bool> applicationStates_;
+};
 
 std::string GetHostAotAnPath(const std::string &bundleName, const std::string &moduleName)
 {
@@ -978,6 +995,40 @@ HWTEST_F(EtsRuntimeTest, XGC_0100, TestSize.Level2)
 }
 
 /**
+ * @tc.name: NotifyApplicationState_0100
+ * @tc.desc: EtsRuntimeTest test for NotifyApplicationState when jsRuntime_ is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, NotifyApplicationState_0100, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    etsRuntime->NotifyApplicationState(true);
+    EXPECT_EQ(etsRuntime->GetJsRuntime(), nullptr);
+}
+
+/**
+ * @tc.name: NotifyApplicationState_0200
+ * @tc.desc: EtsRuntimeTest test for foreground and background states.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, NotifyApplicationState_0200, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    std::unique_ptr<Runtime> jsRuntime = std::make_unique<TestApplicationStateJsRuntime>();
+    auto *applicationStateRuntime = static_cast<TestApplicationStateJsRuntime *>(jsRuntime.get());
+    etsRuntime->SetJsRuntime(jsRuntime);
+    ASSERT_NE(etsRuntime->GetJsRuntime(), nullptr);
+
+    etsRuntime->NotifyApplicationState(false);
+    etsRuntime->NotifyApplicationState(true);
+
+    const auto &applicationStates = applicationStateRuntime->GetApplicationStates();
+    ASSERT_EQ(applicationStates.size(), 2U);
+    EXPECT_FALSE(applicationStates[0]);
+    EXPECT_TRUE(applicationStates[1]);
+}
+
+/**
  * @tc.name: DumpHeapSnapshot_0100
  * @tc.desc: EtsRuntimeTest test for DumpHeapSnapshot with param, jsRuntime_ is nullptr.
  * @tc.type: FUNC
@@ -1074,6 +1125,240 @@ HWTEST_F(EtsRuntimeTest, PopPreloadObj_0300, TestSize.Level1)
     bool ret2 = etsRuntime->PopPreloadObj(key, obj2);
     EXPECT_FALSE(ret2);
     EXPECT_EQ(obj2, nullptr);
+}
+
+/**
+ * @tc.name: JsperfProfilerCommandParse_001
+ * @tc.desc: parse "profile jsperf 5000" returns 5000.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, JsperfProfilerCommandParse_001, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    int32_t result = etsRuntime->JsperfProfilerCommandParse("profile jsperf 5000", 500);
+    EXPECT_EQ(result, 5000);
+}
+
+/**
+ * @tc.name: JsperfProfilerCommandParse_002
+ * @tc.desc: command without jsperf returns 0.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, JsperfProfilerCommandParse_002, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    int32_t result = etsRuntime->JsperfProfilerCommandParse("profile nativeperf", 500);
+    EXPECT_EQ(result, 0);
+}
+
+/**
+ * @tc.name: JsperfProfilerCommandParse_003
+ * @tc.desc: jsperf without number returns defaultValue.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, JsperfProfilerCommandParse_003, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    int32_t result = etsRuntime->JsperfProfilerCommandParse("profile jsperf", 500);
+    EXPECT_EQ(result, 500);
+}
+
+/**
+ * @tc.name: JsperfProfilerCommandParse_004
+ * @tc.desc: jsperf with nativeperf suffix ignores nativeperf.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, JsperfProfilerCommandParse_004, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    int32_t result = etsRuntime->JsperfProfilerCommandParse("profile jsperf 5000 nativeperf", 500);
+    EXPECT_EQ(result, 5000);
+}
+
+/**
+ * @tc.name: JsperfProfilerCommandParse_005
+ * @tc.desc: empty command returns 0.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, JsperfProfilerCommandParse_005, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    int32_t result = etsRuntime->JsperfProfilerCommandParse("", 500);
+    EXPECT_EQ(result, 0);
+}
+
+/**
+ * @tc.name: StartProfilerTask_001
+ * @tc.desc: baseLineProfile perfCmd does not start profiler.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, StartProfilerTask_001, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    Runtime::DebugOption dOption;
+    dOption.perfCmd = "baseLineProfile";
+    etsRuntime->StartProfilerTask(dOption);
+}
+
+/**
+ * @tc.name: StartProfilerTask_002
+ * @tc.desc: profile perfCmd with null jsRuntime_ returns safely.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, StartProfilerTask_002, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    Runtime::DebugOption dOption;
+    dOption.perfCmd = "profile jsperf 5000";
+    etsRuntime->StartProfilerTask(dOption);
+}
+
+/**
+ * @tc.name: StartProfilerTask_003
+ * @tc.desc: dumpheap perfCmd with null jsRuntime_ returns safely.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, StartProfilerTask_003, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    Runtime::DebugOption dOption;
+    dOption.perfCmd = "dumpheap";
+    etsRuntime->StartProfilerTask(dOption);
+}
+
+/**
+ * @tc.name: LoadRepairPatch_0100
+ * @tc.desc: EtsRuntime test for LoadRepairPatch with placeholder paths.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, LoadRepairPatch_0100, TestSize.Level2)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    std::string hqfFile = "<hqfFile>";
+    std::string hapPath = "<hapPath>";
+    bool result = etsRuntime->LoadRepairPatch(hqfFile, hapPath);
+    EXPECT_EQ(result, false);
+}
+
+/**
+ * @tc.name: NotifyHotReloadPage_0100
+ * @tc.desc: EtsRuntime test for NotifyHotReloadPage.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, NotifyHotReloadPage_0100, TestSize.Level2)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    bool result = etsRuntime->NotifyHotReloadPage();
+#ifdef SUPPORT_SCREEN
+    EXPECT_EQ(result, true);
+#else
+    EXPECT_EQ(result, false);
+#endif
+}
+
+/**
+ * @tc.name: UnLoadRepairPatch_0100
+ * @tc.desc: EtsRuntime test for UnLoadRepairPatch.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, UnLoadRepairPatch_0100, TestSize.Level2)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    std::string hqfFile = "<hqfFile>";
+    bool result = etsRuntime->UnLoadRepairPatch(hqfFile);
+    EXPECT_EQ(result, true);
+}
+
+/**
+ * @tc.name: RegisterQuickFixQueryFunc_0100
+ * @tc.desc: EtsRuntime test for RegisterQuickFixQueryFunc with patches.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, RegisterQuickFixQueryFunc_0100, TestSize.Level2)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    etsRuntime->cachedPatches_.clear();
+    std::string moduleName = "<moduleName>";
+    std::string hqfFile = "<hqfFile>";
+    std::map<std::string, std::string> moduleAndPath;
+    moduleAndPath.insert(std::make_pair(moduleName, hqfFile));
+    etsRuntime->RegisterQuickFixQueryFunc(moduleAndPath);
+    SUCCEED();
+}
+
+/**
+ * @tc.name: RegisterQuickFixQueryFunc_0200
+ * @tc.desc: EtsRuntime test for RegisterQuickFixQueryFunc with empty map.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, RegisterQuickFixQueryFunc_0200, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    etsRuntime->cachedPatches_.clear();
+    std::map<std::string, std::string> moduleAndPath;
+    etsRuntime->RegisterQuickFixQueryFunc(moduleAndPath);
+    SUCCEED();
+}
+
+/**
+ * @tc.name: RegisterQuickFixQueryFunc_0300
+ * @tc.desc: EtsRuntime test for RegisterQuickFixQueryFunc called twice no crash.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, RegisterQuickFixQueryFunc_0300, TestSize.Level2)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    etsRuntime->cachedPatches_.clear();
+    std::string moduleName = "<moduleName>";
+    std::string hqfFile = "<hqfFile>";
+    std::map<std::string, std::string> moduleAndPath;
+    moduleAndPath.insert(std::make_pair(moduleName, hqfFile));
+    etsRuntime->RegisterQuickFixQueryFunc(moduleAndPath);
+    etsRuntime->RegisterQuickFixQueryFunc(moduleAndPath);
+    SUCCEED();
+}
+
+/**
+ * @tc.name: ApplyCachedColdReload_0100
+ * @tc.desc: EtsRuntime test for ApplyCachedColdReload with empty cache.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, ApplyCachedColdReload_0100, TestSize.Level2)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    etsRuntime->cachedPatches_.clear();
+    etsRuntime->ApplyCachedColdReload();
+    SUCCEED();
+}
+
+/**
+ * @tc.name: ApplyCachedColdReload_0200
+ * @tc.desc: EtsRuntime test for ApplyCachedColdReload with prefilled cache.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, ApplyCachedColdReload_0200, TestSize.Level2)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    etsRuntime->cachedPatches_.clear();
+    etsRuntime->cachedPatches_.push_back("<patchPath>");
+    etsRuntime->ApplyCachedColdReload();
+    SUCCEED();
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

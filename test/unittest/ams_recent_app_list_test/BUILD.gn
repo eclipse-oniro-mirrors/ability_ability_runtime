@@ -32,6 +32,8 @@ ohos_unittest("AmsRecentAppListTest") {
     "${ability_runtime_services_path}/appmgr/src/app_lifecycle_deal.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_mgr_service_event_handler.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_mgr_service_inner.cpp",
+
+    "${ability_runtime_services_path}/appmgr/src/app_query_helper.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_pidfd_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_native_spawn_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_preloader.cpp",
@@ -48,6 +50,9 @@ ohos_unittest("AmsRecentAppListTest") {
     "${ability_runtime_services_path}/appmgr/src/module_running_record.cpp",
     "${ability_runtime_services_path}/appmgr/src/remote_client_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/render_state_observer_manager.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/attribution_record.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/common.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/task_manager_service.cpp",
     "${ability_runtime_services_path}/appmgr/src/user_record_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/window_focus_changed_listener.cpp",
     "${ability_runtime_services_path}/appmgr/src/window_visibility_changed_listener.cpp",

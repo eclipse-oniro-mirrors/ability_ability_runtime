@@ -85,6 +85,7 @@ std::atomic<bool> g_hasSetContinueState = false;
 constexpr int64_t MAX_REQUEST_CODE = 562949953421311;
 constexpr size_t MAX_REQUEST_CODE_LENGTH = 15;
 constexpr int32_t BASE_REQUEST_CODE_NUM = 10;
+constexpr size_t MAX_ABILITY_INSTANCE_GROUP_ID_LENGTH = 64;
 constexpr const char* FUNC_NAME_ON_REQUEST_SUCCESS = "onRequestSuccess";
 constexpr const char* FUNC_NAME_ON_REQUEST_FAILURE = "onRequestFailure";
 
@@ -375,6 +376,11 @@ napi_value JsAbilityContext::TerminateSelfWithResult(napi_env env, napi_callback
 napi_value JsAbilityContext::BackToCallerAbilityWithResult(napi_env env, napi_callback_info info)
 {
     GET_NAPI_INFO_AND_CALL(env, info, JsAbilityContext, OnBackToCallerAbilityWithResult);
+}
+
+napi_value JsAbilityContext::BackToCallerAppWithResult(napi_env env, napi_callback_info info)
+{
+    GET_NAPI_INFO_AND_CALL(env, info, JsAbilityContext, OnBackToCallerAppWithResult);
 }
 
 napi_value JsAbilityContext::RestoreWindowStage(napi_env env, napi_callback_info info)
@@ -1870,6 +1876,63 @@ napi_value JsAbilityContext::OnBackToCallerAbilityWithResult(napi_env env, NapiC
     return result;
 }
 
+napi_value JsAbilityContext::OnBackToCallerAppWithResult(napi_env env, NapiCallbackInfo& info)
+{
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+    HISTOGRAM_BOOLEAN("AbilityKit.UIAbilityContext.backToCallerAppWithResult", 1);
+#endif
+    if (info.argc < ARGC_TWO) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "invalid argc");
+        ThrowTooFewParametersError(env);
+        return CreateJsUndefined(env);
+    }
+
+    int resultCode = 0;
+    AAFwk::Want want;
+    if (!AppExecFwk::UnWrapAbilityResult(env, info.argv[INDEX_ZERO], resultCode, want)) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "parse ability result failed");
+        ThrowInvalidParamError(env, "Parse param want failed, want must be Want.");
+        return CreateJsUndefined(env);
+    }
+
+    std::string requestCodeStr;
+    if (!OHOS::AppExecFwk::UnwrapStringFromJS2(env, info.argv[INDEX_ONE], requestCodeStr)) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "invalid requestCode");
+        ThrowInvalidParamError(env, "Parse param requestCode failed, requestCode must be string.");
+        return CreateJsUndefined(env);
+    }
+    auto requestCode = RequestCodeFromStringToInt64(requestCodeStr);
+    if (requestCode == 0 && requestCodeStr != "0") {
+        TAG_LOGE(AAFwkTag::CONTEXT, "invalid requestCode");
+        ThrowInvalidParamError(env, "Parse param requestCode failed.");
+        return CreateJsUndefined(env);
+    }
+    TAG_LOGD(AAFwkTag::CONTEXT, "requestCode: %{public}s", requestCodeStr.c_str());
+
+    auto innerErrCode = std::make_shared<int32_t>(ERR_OK);
+    NapiAsyncTask::ExecuteCallback execute = [weak = context_, want, resultCode, requestCode, innerErrCode]() {
+        TAG_LOGI(AAFwkTag::CONTEXT, "async execute");
+        auto context = weak.lock();
+        if (!context) {
+            TAG_LOGW(AAFwkTag::CONTEXT, "null context");
+            *innerErrCode = static_cast<int32_t>(AAFwk::ERR_INVALID_CONTEXT);
+            return;
+        }
+
+        *innerErrCode = context->BackToCallerAbilityWithResult(want, resultCode, requestCode, true);
+    };
+
+    NapiAsyncTask::CompleteCallback complete = [innerErrCode](napi_env env, NapiAsyncTask& task, int32_t status) {
+        HandleScope handleScope(env);
+        (*innerErrCode == ERR_OK) ? task.ResolveWithNoError(env, CreateJsUndefined(env)) :
+            task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrCode));
+    };
+    napi_value result = nullptr;
+    NapiAsyncTask::ScheduleHighQos("JsAbilityContext::OnBackToCallerAppWithResult",
+        env, CreateAsyncTaskWithLastParam(env, nullptr, std::move(execute), std::move(complete), &result));
+    return result;
+}
+
 napi_value JsAbilityContext::OnConnectAbility(napi_env env, NapiCallbackInfo& info)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
@@ -2502,6 +2565,8 @@ napi_value CreateJsAbilityContext(napi_env env, std::shared_ptr<AbilityContext> 
         JsAbilityContext::TerminateSelfWithResult);
     BindNativeFunction(env, object, "backToCallerAbilityWithResult", moduleName,
         JsAbilityContext::BackToCallerAbilityWithResult);
+    BindNativeFunction(env, object, "backToCallerAppWithResult", moduleName,
+        JsAbilityContext::BackToCallerAppWithResult);
     BindNativeFunction(env, object, "restoreWindowStage", moduleName, JsAbilityContext::RestoreWindowStage);
     BindNativeFunction(env, object, "isTerminating", moduleName, JsAbilityContext::IsTerminating);
     BindNativeFunction(env, object, "startRecentAbility", moduleName,
@@ -3071,8 +3136,18 @@ napi_value JsAbilityContext::OnSetAbilityInstanceInfo(napi_env env, NapiCallback
         ThrowInvalidParamError(env, "Parse icon failed.");
         return CreateJsUndefined(env);
     }
+    std::string groupId = "";
+    if (info.argc > ARGC_TWO && CheckTypeForNapiValue(env, info.argv[INDEX_TWO], napi_string)) {
+        TAG_LOGD(AAFwkTag::CONTEXT, "groupId is used.");
+        if (!ConvertFromJsValue(env, info.argv[INDEX_TWO], groupId) ||
+            groupId.length() > MAX_ABILITY_INSTANCE_GROUP_ID_LENGTH) {
+            TAG_LOGE(AAFwkTag::CONTEXT, "parse groupId failed");
+            ThrowInvalidParamError(env, "Invalid groupId.");
+            return CreateJsUndefined(env);
+        }
+    }
     NapiAsyncTask::CompleteCallback complete =
-        [weak = context_, label, icon](napi_env env, NapiAsyncTask& task, int32_t status) {
+        [weak = context_, label, icon, groupId](napi_env env, NapiAsyncTask& task, int32_t status) {
             HandleScope handleScope(env);
             auto context = weak.lock();
             if (!context) {
@@ -3080,7 +3155,7 @@ napi_value JsAbilityContext::OnSetAbilityInstanceInfo(napi_env env, NapiCallback
                 task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
                 return;
             }
-            auto errCode = context->SetAbilityInstanceInfo(label, icon);
+            auto errCode = context->SetAbilityInstanceInfo(label, icon, groupId);
             if (errCode == ERR_OK) {
                 task.Resolve(env, CreateJsUndefined(env));
             } else {
@@ -3135,23 +3210,72 @@ napi_value JsAbilityContext::OnStartAbilityByType(napi_env env, NapiCallbackInfo
             }
 #ifdef SUPPORT_SCREEN
             *innerErrCode = context->StartAbilityByType(type, wantParam, callback);
+#else
+            *innerErrCode = static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER);
+            TAG_LOGW(AAFwkTag::CONTEXT, "StartAbilityByType not supported without screen");
 #endif
         };
-    NapiAsyncTask::CompleteCallback complete =
-        [innerErrCode](napi_env env, NapiAsyncTask& task, int32_t status) {
-            HandleScope handleScope(env);
-            if (*innerErrCode == ERR_OK) {
-                task.ResolveWithNoError(env, CreateJsUndefined(env));
-            } else if (*innerErrCode == static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT)) {
-                task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
-            } else {
-                task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrCode));
-            }
-        };
+    return DispatchStartAbilityByTypeResult(env, info, callback, execute, innerErrCode);
+}
+
+void JsAbilityContext::ProcessStartAbilityByTypeComplete(napi_env env,
+    std::shared_ptr<ErrCode> innerErrCode, std::shared_ptr<JsUIExtensionCallback> callback)
+{
+    HandleScope handleScope(env);
+    if (*innerErrCode == ERR_OK) {
+        // Hold — OnAbilityByTypeResult will call completion callback
+        // Hold — OnAbilityByTypeResult will resolve/reject
+    } else if (*innerErrCode == static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT)) {
+        callback->RejectAsyncResult(
+            static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT),
+            GetErrorMsg(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
+    } else {
+        callback->RejectAsyncResult(static_cast<int32_t>(GetJsErrorCodeByNativeError(*innerErrCode)),
+            GetErrorMsgByNativeError(*innerErrCode));
+    }
+}
+
+napi_value JsAbilityContext::DispatchStartAbilityByTypeResult(napi_env env, NapiCallbackInfo& info,
+    std::shared_ptr<JsUIExtensionCallback> callback, NapiAsyncTask::ExecuteCallback& execute,
+    std::shared_ptr<ErrCode> innerErrCode)
+{
     napi_value lastParam = (info.argc > ARGC_THREE) ? info.argv[INDEX_THREE] : nullptr;
+    napi_valuetype lastParamType = napi_undefined;
+    if (lastParam != nullptr && napi_typeof(env, lastParam, &lastParamType) != napi_ok) {
+        return CreateJsError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM);
+    }
     napi_value result = nullptr;
+    if (lastParam != nullptr && lastParamType == napi_function) {
+        if (!callback->SetCompletionCallback(env, lastParam)) {
+            return CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        }
+        NapiAsyncTask::CompleteCallback complete =
+            [innerErrCode, callback](napi_env env, NapiAsyncTask& task, int32_t status) {
+                ProcessStartAbilityByTypeComplete(env, innerErrCode, callback);
+            };
+        napi_get_undefined(env, &result);
+        NapiAsyncTask::ScheduleHighQos("JsAbilityContext::OnStartAbilityByType",
+            env, std::make_unique<NapiAsyncTask>(static_cast<napi_deferred>(nullptr),
+                std::make_unique<NapiAsyncTask::ExecuteCallback>(std::move(execute)),
+                std::make_unique<NapiAsyncTask::CompleteCallback>(std::move(complete))));
+        return result;
+    } else if (lastParam != nullptr && lastParamType != napi_undefined) {
+        return CreateJsError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM);
+    }
+    napi_deferred deferred = nullptr;
+    napi_status status = napi_create_promise(env, &deferred, &result);
+    if (status != napi_ok || deferred == nullptr) {
+        return CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER);
+    }
+    callback->SetDeferred(deferred);
+    NapiAsyncTask::CompleteCallback complete =
+        [innerErrCode, callback](napi_env env, NapiAsyncTask& task, int32_t status) {
+            ProcessStartAbilityByTypeComplete(env, innerErrCode, callback);
+        };
     NapiAsyncTask::ScheduleHighQos("JsAbilityContext::OnStartAbilityByType",
-        env, CreateAsyncTaskWithLastParam(env, lastParam, std::move(execute), std::move(complete), &result));
+        env, std::make_unique<NapiAsyncTask>(static_cast<napi_deferred>(nullptr),
+            std::make_unique<NapiAsyncTask::ExecuteCallback>(std::move(execute)),
+            std::make_unique<NapiAsyncTask::CompleteCallback>(std::move(complete))));
     return result;
 }
 

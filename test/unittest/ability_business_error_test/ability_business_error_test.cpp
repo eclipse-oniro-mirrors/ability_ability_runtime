@@ -117,6 +117,9 @@ HWTEST_F(AbilityBusinessErrorTest, GetJsErrorCodeByNativeError_0100, TestSize.Le
 
     result = GetJsErrorCodeByNativeError(OHOS::AAFwk::ERR_LOW_CODE_AGENT_DISCONNECT_BATCH_MISMATCH);
     EXPECT_TRUE(result == AbilityErrorCode::ERROR_CODE_INNER);
+
+    result = GetJsErrorCodeByNativeError(OHOS::AAFwk::ERR_NOT_NATIVE_UI_ABILITY);
+    EXPECT_TRUE(result == AbilityErrorCode::ERROR_CODE_INNER);
 }
 
 /**
@@ -138,6 +141,8 @@ HWTEST_F(AbilityBusinessErrorTest, GetErrorMsgByNativeError_0100, TestSize.Level
         "Internal error. Operation timed out. Try again later.");
     EXPECT_EQ(GetErrorMsgByNativeError(AAFwk::ERR_NATIVE_IPC_PARCEL_FAILED),
         "Internal error. IPC failed. Try again later.");
+    EXPECT_EQ(GetErrorMsgByNativeError(AAFwk::ERR_NOT_NATIVE_UI_ABILITY),
+        "Internal error. Non-native UIAbility cannot call this method.");
     EXPECT_EQ(GetErrorMsgByNativeError(AAFwk::CONNECTION_NOT_EXIST, innerErrMsg),
         "Internal error. The service connection does not exist. Use a connection ID returned by "
         "connectServiceExtensionAbility.");
@@ -148,6 +153,22 @@ HWTEST_F(AbilityBusinessErrorTest, GetErrorMsgByNativeError_0100, TestSize.Level
         "The application does not have permission to call the interface. permission:ohos.permission.TEST");
     EXPECT_EQ(GetErrorMsgByNativeError(static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER), innerErrMsg),
         innerErrMsg);
+}
+
+/**
+ * @tc.name: DirectBootPermissionError
+ * @tc.desc: Target permission failure uses 16000206; caller permission failure keeps 201.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityBusinessErrorTest, DirectBootPermissionError, TestSize.Level1)
+{
+    EXPECT_EQ(static_cast<int32_t>(GetJsErrorCodeByNativeError(AAFwk::ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT)),
+        16000206);
+    EXPECT_EQ(GetErrorMsgByNativeError(AAFwk::ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT),
+        "The specified application is not authorized to start before the user is unlocked.");
+    EXPECT_EQ(GetJsErrorCodeByNativeError(AAFwk::CHECK_PERMISSION_FAILED),
+        AbilityErrorCode::ERROR_CODE_PERMISSION_DENIED);
+    EXPECT_EQ(GetJsErrorCodeByNativeError(AAFwk::ERR_NOT_SYSTEM_APP), AbilityErrorCode::ERROR_CODE_NOT_SYSTEM_APP);
 }
 
 /**

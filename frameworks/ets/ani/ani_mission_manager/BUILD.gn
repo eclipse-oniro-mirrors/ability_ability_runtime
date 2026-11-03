@@ -58,6 +58,7 @@ ohos_shared_library("missionmanager_ani") {
     "image_framework:image_taihe",
     "ipc:ipc_core",
     "ipc:ipc_napi",
+    "node:node_header_notice",
     "runtime_core:ani",
   ]
 

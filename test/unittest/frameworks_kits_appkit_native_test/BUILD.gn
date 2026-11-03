@@ -182,7 +182,9 @@ ohos_unittest("context_impl_test") {
     "hitrace:hitrace_meter",
     "init:libbegetutil",
     "ipc:ipc_core",
+    "libuv:uv",
     "napi:ace_napi",
+    "node:node_header_notice",
     "resource_management:global_resmgr",
     "resource_management:librawfile",
     "runtime_core:ani",
@@ -976,7 +978,10 @@ ohos_unittest("dump_runtime_helper_test") {
     defines = [ "CJ_FRONTEND" ]
   }
 
-  configs = [ ":module_context_config" ]
+  configs = [
+    ":module_context_config",
+    ":appkit_exception_config",
+  ]
 
   deps = [
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
@@ -989,6 +994,7 @@ ohos_unittest("dump_runtime_helper_test") {
     "c_utils:utils",
     "faultloggerd:dfx_signalhandler",
     "faultloggerd:libfaultloggerd",
+    "faultloggerd:libunwinder",
     "ffrt:libffrt",
     "googletest:gtest_main",
     "hilog:libhilog",
@@ -1077,7 +1083,10 @@ ohos_unittest("dump_runtime_helper_second_test") {
     "dump_runtime_helper_second_test.cpp",
   ]
 
-  configs = [ ":module_context_config" ]
+  configs = [
+    ":module_context_config",
+    ":appkit_exception_config",
+  ]
 
   deps = [
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
@@ -1091,6 +1100,7 @@ ohos_unittest("dump_runtime_helper_second_test") {
     "ets_runtime:libark_jsruntime",
     "faultloggerd:dfx_signalhandler",
     "faultloggerd:libfaultloggerd",
+    "faultloggerd:libunwinder",
     "ffrt:libffrt",
     "googletest:gtest_main",
     "hilog:libhilog",
@@ -1129,7 +1139,7 @@ ohos_unittest("native_lib_util_test") {
   ]
 
   external_deps = [
-    "ability_base:extractresourcemanager",
+    "ability_base:extractortool",
     "c_utils:utils",
     "faultloggerd:libfaultloggerd",
     "googletest:gtest_main",
@@ -1166,7 +1176,7 @@ ohos_unittest("ets_native_lib_util_test") {
   ]
 
   external_deps = [
-    "ability_base:extractresourcemanager",
+    "ability_base:extractortool",
     "c_utils:utils",
     "faultloggerd:libfaultloggerd",
     "googletest:gtest_main",
@@ -1316,6 +1326,7 @@ ohos_unittest("startup_manager_mock_test") {
     "${ability_runtime_napi_path}/inner/napi_common:napi_common",
     "${ability_runtime_native_path}/appkit:appkit_native",
     "${ability_runtime_services_path}/common:app_util",
+    "${ability_runtime_path}/utils/global/common:runtime_utils",
   ]
 
   external_deps = [
@@ -1380,7 +1391,9 @@ ohos_unittest("js_environment_callback_test") {
     "hitrace:hitrace_meter",
     "init:libbegetutil",
     "ipc:ipc_core",
+    "libuv:uv",
     "napi:ace_napi",
+    "node:node_header_notice",
     "resource_management:global_resmgr",
     "resource_management:librawfile",
     "runtime_core:ani",

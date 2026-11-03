@@ -181,6 +181,10 @@ class AbilityContext extends Context {
     return this.__context_impl__.backToCallerAbilityWithResult(abilityResult, requestCode);
   }
 
+  backToCallerAppWithResult(abilityResult, requestCode) {
+    return this.__context_impl__.backToCallerAppWithResult(abilityResult, requestCode);
+  }
+
   restoreWindowStage(contentStorage) {
     return this.__context_impl__.restoreWindowStage(contentStorage);
   }
@@ -201,8 +205,8 @@ class AbilityContext extends Context {
     return this.__context_impl__.setMissionWindowIcon(windowIcon);
   }
 
-  setAbilityInstanceInfo(label, callback) {
-    return this.__context_impl__.setAbilityInstanceInfo(label, callback);
+  setAbilityInstanceInfo(label, icon, groupId) {
+    return this.__context_impl__.setAbilityInstanceInfo(label, icon, groupId);
   }
 
   requestDialogService(want, resultCallback) {

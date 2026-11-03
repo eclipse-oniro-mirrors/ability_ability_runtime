@@ -40,6 +40,12 @@ namespace insightIntent {
     parameters?: Record<string, RecordData>;
   }
 
+  export interface InteractionText extends InteractionUI {
+    interactionUIType: 'TEXT';
+    parameters: Record<string, RecordData>;
+    buttons?: Array<string>;
+  }
+
   export interface InteractionInfo {
     interactionUI?: InteractionUI;
   }
@@ -80,6 +86,12 @@ namespace insightIntent {
     parameters?: Record<string, RecordData>;
   }
 
+  export class InteractionTextInner implements InteractionText {
+    interactionUIType: 'TEXT' = 'TEXT';
+    parameters: Record<string, RecordData> = new Record<string, RecordData>();
+    buttons?: Array<string>;
+  }
+
   export class InteractionInfoInner implements InteractionInfo {
     interactionUI?: InteractionUI = new InteractionUIInner();
   }
@@ -87,6 +99,20 @@ namespace insightIntent {
   export enum ReturnMode {
     CALLBACK = 0,
     FUNCTION = 1
+  }
+
+  export interface InsightIntentExecutionInfo {
+    readonly intentName: string;
+    readonly callerBundleName: string;
+    readonly callerTokenId: string;
+    readonly callerUid: int;
+  }
+
+  export class InsightIntentExecutionInfoInner implements InsightIntentExecutionInfo {
+    intentName: string = '';
+    callerBundleName: string = '';
+    callerTokenId: string = '';
+    callerUid: int = 0;
   }
 
   export enum QueryType {

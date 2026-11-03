@@ -30,6 +30,7 @@ std::vector<AgentRuntime::AgentCard> AgentRuntime::MyFlag::queryAllDataCards;
 bool AgentRuntime::MyFlag::syncQueryDataWithInsert = false;
 std::mutex AgentRuntime::MyFlag::dbMutex;
 std::vector<std::string> AgentRuntime::MyFlag::insertDataCallNames;
+std::vector<std::string> AgentRuntime::MyFlag::deleteDataCallNames;
 
 namespace AgentRuntime {
 AgentCardDbMgr &AgentCardDbMgr::GetInstance()
@@ -64,6 +65,7 @@ int32_t AgentCardDbMgr::InsertData(const std::string &bundleName, int32_t userId
 
 int32_t AgentCardDbMgr::DeleteData(const std::string &bundleName, int32_t userId)
 {
+    MyFlag::deleteDataCallNames.push_back(bundleName);
     return MyFlag::retDeleteData;
 }
 

@@ -1030,6 +1030,10 @@ sptr<IRemoteObject> CJUIAbility::SetNewRuleFlagToCallee(int64_t remoteCjObjId)
         return nullptr;
     }
     auto flag = IsUseNewStartUpRule();
+    if (cjAbilityObj_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "null cjAbilityObj_");
+        return nullptr;
+    }
     cjAbilityObj_->OnSetCalleeFlag(flag);
     auto remoteObj = CallGetNativeRemoteObject(remoteCjObjId);
     if (remoteObj == nullptr) {

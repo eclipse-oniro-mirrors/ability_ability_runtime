@@ -15,6 +15,7 @@ import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 ohos_shared_library("js_agent_manager_utils") {
+  version_script = "libjs_agent_manager_utils.map"
   branch_protector_ret = "pac_ret"
   sanitize = {
     integer_overflow = true
@@ -44,6 +45,8 @@ ohos_shared_library("js_agent_manager_utils") {
     "c_utils:utils",
     "hilog:libhilog",
     "napi:ace_napi",
+    "node:node_header_notice",
+    "libuv:uv",
   ]
 
   subsystem_name = "ability"
@@ -113,6 +116,8 @@ ohos_shared_library("agentmanager_napi") {
     "ipc:ipc_napi",
     "json:nlohmann_json_static",
     "napi:ace_napi",
+    "node:node_header_notice",
+    "libuv:uv",
     "samgr:samgr_proxy",
   ]
   defines = []

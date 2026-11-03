@@ -48,6 +48,12 @@ export default namespace insightIntentProvider {
         return createParamError('InteractionModalUIExtension missing required field');
       }
     }
+    if (ui.interactionUIType === 'TEXT') {
+      let text = ui as insightIntent.InteractionText;
+      if (!text.parameters) {
+        return createParamError('InteractionText missing required field');
+      }
+    }
     return null;
   }
 
@@ -97,5 +103,20 @@ export default namespace insightIntentProvider {
         insightIntentProvider.nativeSendIntentResult(instanceId, recordResult, asyncCall);
       });
     });
+  }
+
+  export interface InsightIntentExecutionCallBack {
+    onWillInsightIntentExecuteCallBack?: (executionInfo: insightIntent.InsightIntentExecutionInfo) => void;
+  }
+
+  export native function nativeOnWillInsightIntentExecute(callback: InsightIntentExecutionCallBack): void;
+  export native function nativeOffWillInsightIntentExecute(callback?: InsightIntentExecutionCallBack): void;
+
+  export function onWillInsightIntentExecute(callback: InsightIntentExecutionCallBack): void {
+    insightIntentProvider.nativeOnWillInsightIntentExecute(callback);
+  }
+
+  export function offWillInsightIntentExecute(callback?: InsightIntentExecutionCallBack): void {
+    insightIntentProvider.nativeOffWillInsightIntentExecute(callback);
   }
 }

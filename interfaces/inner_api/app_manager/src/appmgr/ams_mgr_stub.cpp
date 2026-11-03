@@ -181,6 +181,8 @@ int32_t AmsMgrStub::OnRemoteRequestInnerThird(uint32_t code, MessageParcel &data
             return HandleClearProcessByToken(data, reply);
         case static_cast<uint32_t>(IAmsMgr::Message::KILL_PROCESSES_BY_PIDS):
             return HandleKillProcessesByPids(data, reply);
+        case static_cast<uint32_t>(IAmsMgr::Message::CHECK_PROCESS_AVAILABLE):
+            return HandleCheckProcessAvailable(data, reply);
         case static_cast<uint32_t>(IAmsMgr::Message::ATTACH_PID_TO_PARENT):
             return HandleAttachPidToParent(data, reply);
         case static_cast<uint32_t>(IAmsMgr::Message::IS_MEMORY_SIZE_SUFFICIENT):
@@ -301,7 +303,10 @@ ErrCode AmsMgrStub::HandleUpdateAbilityState(MessageParcel &data, MessageParcel 
     sptr<IRemoteObject> token = data.ReadRemoteObject();
     int32_t state = data.ReadInt32();
     bool isFromScreenOffBackground = data.ReadBool();
-    UpdateAbilityState(token, static_cast<AbilityState>(state), isFromScreenOffBackground);
+    UiAbilityLastCallerInfo callerInfo;
+    callerInfo.callerUid = data.ReadInt32();
+    callerInfo.callerBundleName = data.ReadString();
+    UpdateAbilityState(token, static_cast<AbilityState>(state), isFromScreenOffBackground, callerInfo);
     return NO_ERROR;
 }
 
@@ -382,6 +387,18 @@ ErrCode AmsMgrStub::HandleKillProcessesByPids(MessageParcel &data, MessageParcel
     return NO_ERROR;
 }
 
+ErrCode AmsMgrStub::HandleCheckProcessAvailable(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    int32_t pid = data.ReadInt32();
+    bool isAvailable = CheckProcessAvailable(pid);
+    if (!reply.WriteBool(isAvailable)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write result failed");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
 ErrCode AmsMgrStub::HandleAttachPidToParent(MessageParcel &data, MessageParcel &reply)
 {
     HITRACE_METER(HITRACE_TAG_APP);
@@ -446,12 +463,13 @@ ErrCode AmsMgrStub::HandleKillApplication(MessageParcel &data, MessageParcel &re
     bool clearPageStack = data.ReadBool();
     auto appIndex = data.ReadInt32();
     std::string reason = data.ReadString();
+    auto userId = data.ReadInt32();
 
     TAG_LOGW(AAFwkTag::APPMGR,
         "KillApplication,callingPid=%{public}d,bundleName=%{public}s,clearPageStack=%{public}d,kill reason=%{public}s",
         IPCSkeleton::GetCallingPid(), bundleName.c_str(), clearPageStack, reason.c_str());
 
-    int32_t result = KillApplication(bundleName, clearPageStack, appIndex, reason);
+    int32_t result = KillApplication(bundleName, clearPageStack, appIndex, reason, userId);
     reply.WriteInt32(result);
     return NO_ERROR;
 }
@@ -572,7 +590,7 @@ int32_t AmsMgrStub::HandleGetRunningProcessInfoByToken(MessageParcel &data, Mess
     RunningProcessInfo processInfo;
     auto token = data.ReadRemoteObject();
     GetRunningProcessInfoByToken(token, processInfo);
-    if (reply.WriteParcelable(&processInfo)) {
+    if (!reply.WriteParcelable(&processInfo)) {
         TAG_LOGE(AAFwkTag::APPMGR, "process info write failed.");
         return ERR_INVALID_VALUE;
     }
@@ -632,11 +650,15 @@ int32_t AmsMgrStub::HandleGetApplicationInfoByProcessID(MessageParcel &data, Mes
     HITRACE_METER(HITRACE_TAG_APP);
     int32_t pid = data.ReadInt32();
     AppExecFwk::ApplicationInfo application;
-    bool debug;
+    bool debug = false;
     int32_t result = GetApplicationInfoByProcessID(pid, application, debug);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::APPMGR, "write result error.");
         return ERR_INVALID_VALUE;
+    }
+    if (result != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetApplicationInfoByProcessID failed");
+        return result;
     }
     if (!reply.WriteParcelable(&application)) {
         TAG_LOGE(AAFwkTag::APPMGR, "write application info failed");
@@ -671,7 +693,8 @@ int32_t AmsMgrStub::HandleNotifyAppMgrRecordExitReasonCompability(MessageParcel 
     std::string killMsg = data.ReadString();
     std::string innerMsg = data.ReadString();
     int32_t reason = data.ReadInt32();
-    int32_t result = NotifyAppMgrRecordExitReasonCompability(pid, killId, killMsg, innerMsg, reason);
+    int32_t callerPid = data.ReadInt32();
+    int32_t result = NotifyAppMgrRecordExitReasonCompability(pid, killId, killMsg, innerMsg, reason, callerPid);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::APPMGR, "Write result failed.");
         return IPC_PROXY_ERR;
@@ -702,8 +725,12 @@ int32_t AmsMgrStub::HandleGetBundleNameByPid(MessageParcel &data, MessageParcel 
 {
     int32_t pid = data.ReadInt32();
     std::string bundleName;
-    int32_t uid;
-    GetBundleNameByPid(pid, bundleName, uid);
+    int32_t uid = -1;
+    int32_t result = GetBundleNameByPid(pid, bundleName, uid);
+    if (result != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetBundleNameByPid failed.");
+        return result;
+    }
 
     reply.WriteString(bundleName);
     reply.WriteInt32(uid);

@@ -23,5 +23,10 @@ bool PermissionVerification::CheckSpecificSystemAbilityAccessPermission(const st
 {
     return MyFlag::GetInstance().retCheckSpecificSystemAbilityAccessPermission_;
 }
+
+bool PermissionVerification::IsLocalDebugOtherAppsCall(const uint32_t specifyTokenId, int32_t targetUserId) const
+{
+    return false;
+}
 }  // namespace AAFwk
 }  // namespace OHOS

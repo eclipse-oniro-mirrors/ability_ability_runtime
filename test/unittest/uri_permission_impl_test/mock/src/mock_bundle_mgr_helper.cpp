@@ -96,5 +96,12 @@ ErrCode BundleMgrHelper::GetCloneBundleInfo(const std::string &bundleName, int32
     bundleInfo.applicationInfo.accessTokenId = tokenId;
     return ERR_OK;
 }
+
+int32_t  BundleMgrHelper::GetDualModeBundleInfo(const std::string& bundleName, int32_t userId,
+                                                int32_t &appIndex)
+{
+    appIndex = 0;
+    return 0;
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

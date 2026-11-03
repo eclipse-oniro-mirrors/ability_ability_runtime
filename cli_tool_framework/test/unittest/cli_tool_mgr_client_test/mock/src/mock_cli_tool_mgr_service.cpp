@@ -19,6 +19,9 @@ int32_t CliToolMgrClientFlag::retBatchRegisterFunctions = ERR_OK;
 int32_t CliToolMgrClientFlag::batchRegisterFunctionsSuccessCount = 0;
 int32_t CliToolMgrClientFlag::retResetNamespaceFunctions = ERR_OK;
 int32_t CliToolMgrClientFlag::resetNamespaceFunctionsSuccessCount = 0;
+int32_t CliToolMgrClientFlag::retBatchRegisterFunctionsAsync = ERR_OK;
+int32_t CliToolMgrClientFlag::retUnregisterIntentFunctionsByNamespaceAsync = ERR_OK;
+int32_t CliToolMgrClientFlag::retResetNamespaceFunctionsAsync = ERR_OK;
 int32_t CliToolMgrClientFlag::retGetFunctionInfo = ERR_OK;
 int32_t CliToolMgrClientFlag::retUnregisterFunction = ERR_OK;
 int32_t CliToolMgrClientFlag::retGetAllFunctions = ERR_OK;
@@ -31,8 +34,24 @@ int32_t CliToolMgrClientFlag::retQuerySession = ERR_OK;
 int32_t CliToolMgrClientFlag::retSendMessage = ERR_OK;
 int32_t CliToolMgrClientFlag::retBatchQueryPermission = ERR_OK;
 int32_t CliToolMgrClientFlag::retLoadSystemAbility = ERR_OK;
+int32_t CliToolMgrClientFlag::retRegisterCliHook = ERR_OK;
+int32_t CliToolMgrClientFlag::retUnregisterCliHook = ERR_OK;
+int32_t CliToolMgrClientFlag::retRegisterFunctionHook = ERR_OK;
+int32_t CliToolMgrClientFlag::retUnregisterFunctionHook = ERR_OK;
+int32_t CliToolMgrClientFlag::retBeforeInvokeFunction = ERR_OK;
+int32_t CliToolMgrClientFlag::retAfterInvokeFunction = ERR_OK;
+int32_t CliToolMgrClientFlag::registerCliHookCount = 0;
+int32_t CliToolMgrClientFlag::unregisterCliHookCount = 0;
+int32_t CliToolMgrClientFlag::registerFunctionHookCount = 0;
+int32_t CliToolMgrClientFlag::unregisterFunctionHookCount = 0;
+int32_t CliToolMgrClientFlag::beforeInvokeFunctionCount = 0;
+int32_t CliToolMgrClientFlag::afterInvokeFunctionCount = 0;
+int32_t CliToolMgrClientFlag::lastHookActiveMethods = 0;
+std::string CliToolMgrClientFlag::lastInvokeFunctionNamespace;
+std::string CliToolMgrClientFlag::lastInvokeFunctionName;
 bool CliToolMgrClientFlag::nullSystemAbility = false;
 bool CliToolMgrClientFlag::shouldCallback = true;
+bool CliToolMgrClientFlag::devModeEnabled = false;
 sptr<IRemoteObject> CliToolMgrClientFlag::cliToolMgr = nullptr;
 std::string CliToolMgrClientFlag::lastEventId;
 std::string CliToolMgrClientFlag::lastSubscriptionId;
@@ -52,6 +71,9 @@ void CliToolMgrClientFlag::Reset()
     batchRegisterFunctionsSuccessCount = 0;
     retResetNamespaceFunctions = ERR_OK;
     resetNamespaceFunctionsSuccessCount = 0;
+    retBatchRegisterFunctionsAsync = ERR_OK;
+    retUnregisterIntentFunctionsByNamespaceAsync = ERR_OK;
+    retResetNamespaceFunctionsAsync = ERR_OK;
     retGetFunctionInfo = ERR_OK;
     retUnregisterFunction = ERR_OK;
     retGetAllFunctions = ERR_OK;
@@ -64,8 +86,24 @@ void CliToolMgrClientFlag::Reset()
     retSendMessage = ERR_OK;
     retBatchQueryPermission = ERR_OK;
     retLoadSystemAbility = ERR_OK;
+    retRegisterCliHook = ERR_OK;
+    retUnregisterCliHook = ERR_OK;
+    retRegisterFunctionHook = ERR_OK;
+    retUnregisterFunctionHook = ERR_OK;
+    retBeforeInvokeFunction = ERR_OK;
+    retAfterInvokeFunction = ERR_OK;
+    registerCliHookCount = 0;
+    unregisterCliHookCount = 0;
+    registerFunctionHookCount = 0;
+    unregisterFunctionHookCount = 0;
+    beforeInvokeFunctionCount = 0;
+    afterInvokeFunctionCount = 0;
+    lastHookActiveMethods = 0;
+    lastInvokeFunctionNamespace.clear();
+    lastInvokeFunctionName.clear();
     nullSystemAbility = false;
     shouldCallback = true;
+    devModeEnabled = false;
     cliToolMgr = nullptr;
     lastEventId.clear();
     lastSubscriptionId.clear();
@@ -127,7 +165,7 @@ int32_t MockCliToolMgrService::GetFunctionInfo(const std::string &, const std::s
     return CliToolMgrClientFlag::retGetFunctionInfo;
 }
 
-int32_t MockCliToolMgrService::UnregisterFunction(const std::string &, const std::string &)
+int32_t MockCliToolMgrService::UnregisterFunction(int32_t, const std::string &, const std::string &)
 {
     if (!CliToolMgrClientFlag::functionInfos.empty()) {
         CliToolMgrClientFlag::functionInfos.erase(CliToolMgrClientFlag::functionInfos.begin());
@@ -135,12 +173,12 @@ int32_t MockCliToolMgrService::UnregisterFunction(const std::string &, const std
     return CliToolMgrClientFlag::retUnregisterFunction;
 }
 
-int32_t MockCliToolMgrService::UnregisterIntentFunctionsByNamespace(const std::string &)
+int32_t MockCliToolMgrService::UnregisterIntentFunctionsByNamespace(int32_t, const std::string &)
 {
     return CliToolMgrClientFlag::retUnregisterFunction;
 }
 
-int32_t MockCliToolMgrService::ResetNamespaceFunctions(const std::string &,
+int32_t MockCliToolMgrService::ResetNamespaceFunctions(int32_t, const std::string &,
     const FunctionsRawData &functions, int32_t &successCount)
 {
     std::vector<FunctionInfo> functionList;
@@ -170,12 +208,12 @@ int32_t MockCliToolMgrService::BatchRegisterFunctionsAsync(const FunctionsRawDat
     return CliToolMgrClientFlag::retBatchRegisterFunctions;
 }
 
-int32_t MockCliToolMgrService::UnregisterIntentFunctionsByNamespaceAsync(const std::string &)
+int32_t MockCliToolMgrService::UnregisterIntentFunctionsByNamespaceAsync(int32_t, const std::string &)
 {
     return CliToolMgrClientFlag::retUnregisterFunction;
 }
 
-int32_t MockCliToolMgrService::ResetNamespaceFunctionsAsync(const std::string &,
+int32_t MockCliToolMgrService::ResetNamespaceFunctionsAsync(int32_t, const std::string &,
     const FunctionsRawData &functions)
 {
     std::vector<FunctionInfo> functionList;
@@ -235,6 +273,46 @@ int32_t MockCliToolMgrService::BatchQueryPermissionBySubCommand(
 {
     cmdPermissions = CliToolMgrClientFlag::commandPermissions;
     return CliToolMgrClientFlag::retBatchQueryPermission;
+}
+
+int32_t MockCliToolMgrService::RegisterCliHook(const sptr<ICliHookInterface> &, int32_t activeMethods)
+{
+    CliToolMgrClientFlag::registerCliHookCount++;
+    CliToolMgrClientFlag::lastHookActiveMethods = activeMethods;
+    return CliToolMgrClientFlag::retRegisterCliHook;
+}
+
+int32_t MockCliToolMgrService::UnregisterCliHook(const sptr<ICliHookInterface> &)
+{
+    CliToolMgrClientFlag::unregisterCliHookCount++;
+    return CliToolMgrClientFlag::retUnregisterCliHook;
+}
+
+int32_t MockCliToolMgrService::RegisterFunctionHook(const sptr<IFunctionHookInterface> &, int32_t activeMethods)
+{
+    CliToolMgrClientFlag::registerFunctionHookCount++;
+    CliToolMgrClientFlag::lastHookActiveMethods = activeMethods;
+    return CliToolMgrClientFlag::retRegisterFunctionHook;
+}
+
+int32_t MockCliToolMgrService::UnregisterFunctionHook(const sptr<IFunctionHookInterface> &)
+{
+    CliToolMgrClientFlag::unregisterFunctionHookCount++;
+    return CliToolMgrClientFlag::retUnregisterFunctionHook;
+}
+
+int32_t MockCliToolMgrService::BeforeInvokeFunction(InvokeFunctionParam &param)
+{
+    CliToolMgrClientFlag::beforeInvokeFunctionCount++;
+    CliToolMgrClientFlag::lastInvokeFunctionNamespace = param.functionNamespace;
+    CliToolMgrClientFlag::lastInvokeFunctionName = param.functionName;
+    return CliToolMgrClientFlag::retBeforeInvokeFunction;
+}
+
+int32_t MockCliToolMgrService::AfterInvokeFunction(FunctionResultWrap &)
+{
+    CliToolMgrClientFlag::afterInvokeFunctionCount++;
+    return CliToolMgrClientFlag::retAfterInvokeFunction;
 }
 } // namespace CliTool
 } // namespace OHOS

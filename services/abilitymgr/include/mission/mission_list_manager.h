@@ -479,7 +479,7 @@ public:
      * @param targetRecord A shared pointer to the AbilityRecord that will be set to the started ability if found.
      * @return A boolean indicating whether the ability has been started.
      */
-    bool IsAbilityStarted(AbilityRequest &abilityRequest, std::shared_ptr<AbilityRecord> &targetRecord) override;
+    bool IsAbilityStarted(const AbilityRequest &abilityRequest, std::shared_ptr<AbilityRecord> &targetRecord) override;
 
     /**
      * @brief Signs an application for restart based on the provided user ID and instance key.

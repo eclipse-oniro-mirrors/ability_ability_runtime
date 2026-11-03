@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -46,6 +46,11 @@ bool UnwrapAutoStartupInfo(napi_env env, napi_value param, AutoStartupInfo &info
     }
     
     AppExecFwk::UnwrapStringByPropertyName(env, param, "moduleName", info.moduleName);
+    if (AppExecFwk::IsExistsByPropertyName(env, param, "isDirectBoot") &&
+        !AppExecFwk::UnwrapBooleanByPropertyName(env, param, "isDirectBoot", info.isDirectBoot)) {
+        TAG_LOGE(AAFwkTag::AUTO_STARTUP, "convert isDirectBoot failed");
+        return false;
+    }
     return true;
 }
 
@@ -141,6 +146,12 @@ bool AddBasicProperties(napi_env env, napi_value object, const AutoStartupInfo &
             TAG_LOGE(AAFwkTag::AUTO_STARTUP, "failed to set basic properties for js AutoStartupInfo");
             return false;
         }
+    }
+    napi_value isDirectBoot = AppExecFwk::WrapBoolToJS(env, info.isDirectBoot);
+    if (isDirectBoot == nullptr ||
+        !AppExecFwk::SetPropertyValueByPropertyName(env, object, "isDirectBoot", isDirectBoot)) {
+        TAG_LOGE(AAFwkTag::AUTO_STARTUP, "failed to set isDirectBoot for js AutoStartupInfo");
+        return false;
     }
     return true;
 }

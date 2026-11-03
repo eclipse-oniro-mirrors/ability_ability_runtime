@@ -27,19 +27,23 @@ public:
     explicit EtsUIExtensionCallback(ani_vm *vm) : vm_(vm) {}
     ~EtsUIExtensionCallback() override;
     void OnError(int32_t number) override;
+    void OnAbilityByTypeResult(int32_t errorCode) override;
     void OnResult(int32_t resultCode, const AAFwk::Want &want) override;
     void SetEtsCallbackObject(ani_object aniObject);
     void SetCompletionHandler(ani_env *env, ani_object completionHandler);
+    void SetAsyncCallback(ani_env *env, ani_object asyncCallback);
     void OnRequestSuccess(const std::string& name) override;
     void OnRequestFailure(const std::string& name, int32_t failureCode, const std::string& failureMessage) override;
 
 private:
-    ani_env *GetAniEnv();
+    void InvokeAsyncCallback(int32_t errCode);
     void CallObjectMethod(const char *name, const char *signature, ...);
+    ani_env* GetAniEnv();
 
     ani_vm *vm_ = nullptr;
     ani_ref callback_ = nullptr;
     ani_ref completionHandler_ = nullptr;
+    ani_ref asyncCallback_ = nullptr;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

@@ -23,6 +23,7 @@
 #include "iremote_object.h"
 #include "nocopyable.h"
 #include "permission_verification.h"
+#include "start_ability_context.h"
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -102,7 +103,8 @@ public:
      * @return Whether the app is either multi-instance or app-clone.
      */
     int32_t CheckMultiInstanceAndAppClone(Want &want, int32_t userId, int32_t appIndex,
-        sptr<IRemoteObject> callerToken, bool isScbCall);
+        sptr<IRemoteObject> callerToken, bool isScbCall,
+        const StartAbilityContext &ctx = StartAbilityContext{});
 
     /**
      * CheckMultiInstanceKeyForExtension, check multi-instance key for extension.

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,8 @@ public:
     virtual ~AbilityManagerStubMock()
     {}
 
+    static constexpr int32_t TEST_PID = 5678;
+
     MOCK_METHOD4(SendRequest, int(uint32_t, MessageParcel&, MessageParcel&, MessageOption&));
 
     int InvokeSendRequest(uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option)
@@ -38,6 +40,14 @@ public:
         code_ = code;
 
         return 0;
+    }
+
+    int InvokeGetPidByCallStubSuccess(uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option)
+    {
+        code_ = code;
+        reply.WriteInt32(ERR_OK);
+        reply.WriteInt32(TEST_PID);
+        return NO_ERROR;
     }
 
     int InvokeErrorSendRequest(uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option)
@@ -378,7 +388,7 @@ public:
         return 0;
     }
 
-    int GetTopAbility(sptr<IRemoteObject>& token) override
+    int GetTopAbility(sptr<IRemoteObject>& token, int32_t userId = INVALID_USER_ID) override
     {
         return 0;
     }
@@ -432,6 +442,9 @@ public:
     MOCK_METHOD1(IsAbilityControllerStart, bool(const Want& want));
     MOCK_METHOD3(ExecuteIntent, int32_t(uint64_t key, const sptr<IRemoteObject> &callerToken,
         const InsightIntentExecuteParam &param));
+    MOCK_METHOD4(ExecuteUIAbilityForegroundIntentWithSpecifyTokenId,
+    int32_t(const Want &want, const sptr<IRemoteObject> &callerAbilityToken,
+        const InsightIntentExecuteLiteParam &param, uint64_t specifiedFullTokenId));
     MOCK_METHOD3(ExecuteInsightIntentDone, int32_t(const sptr<IRemoteObject> &token, uint64_t intentId,
         const InsightIntentExecuteResult &result));
 };

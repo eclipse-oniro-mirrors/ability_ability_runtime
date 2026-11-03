@@ -102,6 +102,7 @@ struct FaultData : public Parcelable {
     bool isInForeground;
     bool isEnableMainThreadSample;
     bool reportLifecycleToFreeze = false;
+    bool abilityPendingBackground = false;
     std::string applicationHeapInfo;
     std::string applicationGCInfo;
     std::string applicationIOInfo;
@@ -114,6 +115,9 @@ struct FaultData : public Parcelable {
     std::string callbackLog;
     AppTelemetryLeakType atLeakType;
     std::string gpuHookSize;
+    std::string heaviestStack;
+    int64_t ipcLatency = 0;
+    std::string logValidity;
 };
 
 /**
@@ -150,6 +154,7 @@ struct AppFaultDataBySA : public Parcelable {
     bool isInForeground;
     bool isEnableMainThreadSample;
     bool reportLifecycleToFreeze = false;
+    bool abilityPendingBackground = false;
     std::string applicationHeapInfo;
     std::string applicationGCInfo;
     std::string applicationIOInfo;

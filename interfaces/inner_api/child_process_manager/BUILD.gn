@@ -61,8 +61,10 @@ ohos_shared_library("child_process_manager") {
     "init:libbegetutil",
     "ipc:ipc_capi",
     "ipc:ipc_core",
+    "libuv:uv",
     "napi:ace_napi",
     "samgr:samgr_proxy",
+    "node:node_header_notice",
   ]
 
   defines = []

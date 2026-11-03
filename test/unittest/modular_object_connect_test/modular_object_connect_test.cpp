@@ -317,7 +317,7 @@ HWTEST_F(ModularObjectConnectTest, ModularObjectExtensionInfo_001, TestSize.Leve
     EXPECT_EQ(info.processMode, MoeProcessMode::BUNDLE);
     EXPECT_EQ(info.threadMode, MoeThreadMode::BUNDLE);
     EXPECT_FALSE(info.isDisabled);
-    EXPECT_EQ(info.appIndex, 0);
+    EXPECT_EQ(info.appIndex, -1);
     EXPECT_TRUE(info.bundleName.empty());
     EXPECT_TRUE(info.abilityName.empty());
 }

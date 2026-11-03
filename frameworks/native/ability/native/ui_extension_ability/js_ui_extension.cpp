@@ -19,6 +19,7 @@
 #include "ability_info.h"
 #include "ability_manager_client.h"
 #include "ability_start_setting.h"
+#include "accesstoken_kit.h"
 #include "array_wrapper.h"
 #include "configuration_utils.h"
 #include "connection_manager.h"
@@ -29,6 +30,7 @@
 #include "insight_intent_delay_result_callback_mgr.h"
 #include "insight_intent_executor_mgr.h"
 #include "int_wrapper.h"
+#include "ipc_skeleton.h"
 #include "js_ability_lifecycle_callback.h"
 #include "js_data_struct_converter.h"
 #include "js_embeddable_ui_ability_context.h"
@@ -46,6 +48,7 @@
 #include "napi_common_want.h"
 #include "napi_remote_object.h"
 #include "string_wrapper.h"
+#include "tokenid_kit.h"
 #include "ui_extension_window_command.h"
 #include "want_params_wrapper.h"
 #include "ohos_application.h"
@@ -64,13 +67,30 @@ bool IsEmbeddableStart(int32_t screenMode)
     return screenMode == AAFwk::EMBEDDED_FULL_SCREEN_MODE ||
         screenMode == AAFwk::EMBEDDED_HALF_SCREEN_MODE;
 }
+
+void *DetachNewUIExtensionContext(napi_env, void *nativeObject, void *)
+{
+    auto *origContext = static_cast<std::weak_ptr<UIExtensionContext> *>(nativeObject);
+    if (origContext == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "origContext is null");
+        return nullptr;
+    }
+    TAG_LOGD(AAFwkTag::UI_EXT, "new detached ui extension context");
+    return new (std::nothrow) std::weak_ptr<UIExtensionContext>(*origContext);
 }
 
-napi_value AttachUIExtensionContext(napi_env env, void *value, void *extValue)
+void DetachFinalizeUIExtensionContext(void *detachedObject, void *)
+{
+    TAG_LOGD(AAFwkTag::UI_EXT, "finalize detached ui extension context");
+    delete static_cast<std::weak_ptr<UIExtensionContext> *>(detachedObject);
+}
+}
+
+napi_value AttachUIExtensionContext(napi_env env, void *value, void *)
 {
     TAG_LOGD(AAFwkTag::UI_EXT, "called");
     HandleEscape handleEscape(env);
-    if (value == nullptr || extValue == nullptr) {
+    if (value == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "invalid parameter");
         return nullptr;
     }
@@ -92,9 +112,15 @@ napi_value AttachUIExtensionContext(napi_env env, void *value, void *extValue)
         TAG_LOGE(AAFwkTag::UI_EXT, "null contextObj");
         return nullptr;
     }
-    napi_coerce_to_native_binding_object(env, contextObj, DetachCallbackFunc,
-        AttachUIExtensionContext, value, extValue);
     auto workContext = new (std::nothrow) std::weak_ptr<UIExtensionContext>(ptr);
+    napi_status coerceStatus = napi_coerce_to_native_binding_object(env, contextObj, DetachNewUIExtensionContext,
+        AttachUIExtensionContext, workContext, nullptr);
+    if (coerceStatus != napi_ok) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "coerce ui extension context failed: %{public}d", coerceStatus);
+        delete workContext;
+        return nullptr;
+    }
+    napi_add_detached_finalizer(env, contextObj, DetachFinalizeUIExtensionContext, nullptr);
     napi_status status = napi_wrap(env, contextObj, workContext,
         [](napi_env, void *data, void *) {
             TAG_LOGD(AAFwkTag::UI_EXT, "Finalizer for weak_ptr ui extension context is called");
@@ -234,15 +260,14 @@ void JsUIExtension::BindContext(napi_env env, napi_value obj, std::shared_ptr<AA
     }
     auto workContext = new (std::nothrow) std::weak_ptr<UIExtensionContext>(context);
     CHECK_POINTER(workContext);
-    screenModePtr_ = std::make_shared<int32_t>(screenMode);
-    auto workScreenMode = new (std::nothrow) std::weak_ptr<int32_t>(screenModePtr_);
-    if (workScreenMode == nullptr) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "workScreenMode is null");
+    napi_status coerceStatus = napi_coerce_to_native_binding_object(
+        env, contextObj, DetachNewUIExtensionContext, AttachUIExtensionContext, workContext, nullptr);
+    if (coerceStatus != napi_ok) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "coerce ui extension context failed: %{public}d", coerceStatus);
         delete workContext;
         return;
     }
-    napi_coerce_to_native_binding_object(
-        env, contextObj, DetachCallbackFunc, AttachUIExtensionContext, workContext, workScreenMode);
+    napi_add_detached_finalizer(env, contextObj, DetachFinalizeUIExtensionContext, nullptr);
     context->Bind(jsRuntime_, shellContextRef_.get());
     napi_set_named_property(env, obj, "context", contextObj);
     napi_status status = napi_wrap(env, contextObj, workContext,
@@ -292,7 +317,58 @@ void JsUIExtension::OnStart(const AAFwk::Want &want, sptr<AAFwk::SessionInfo> se
         napi_value argv[] = {CreateJsLaunchParam(env, launchParam) };
         CallObjectMethod("onCreate", argv, ARGC_ONE);
     }
+
+    if (!OnGetConfigurationStrategy(sessionInfo)) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "OnGetConfigurationStrategy failed");
+    }
+
     TAG_LOGD(AAFwkTag::UI_EXT, "end");
+}
+
+bool JsUIExtension::OnGetConfigurationStrategy(const sptr<AAFwk::SessionInfo> &sessionInfo)
+{
+    TAG_LOGD(AAFwkTag::UI_EXT, "OnGetConfigurationStrategy begin");
+    auto selfToken = IPCSkeleton::GetSelfTokenID();
+    if (!Security::AccessToken::TokenIdKit::IsSystemAppByFullTokenID(selfToken)) {
+        TAG_LOGW(AAFwkTag::UI_EXT, "not system app, can not use onGetConfigurationStrategy");
+        return false;
+    }
+    HandleScope handleScope(jsRuntime_);
+    napi_env env = jsRuntime_.GetNapiEnv();
+
+    napi_value result = CallObjectMethod("onGetConfigurationStrategy", nullptr, 0, true);
+    if (result == nullptr) {
+        TAG_LOGI(AAFwkTag::UI_EXT, "onGetConfigurationStrategy not implemented");
+        return true;
+    }
+
+    napi_value brandColorValue = nullptr;
+    napi_status status = napi_get_named_property(env, result, "brandColorStrategy", &brandColorValue);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "brandColorStrategy not found in ConfigurationStrategy");
+        return false;
+    }
+
+    int32_t brandColorStrategy = 0;
+    if (!ConvertFromJsValue(env, brandColorValue, brandColorStrategy)) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "Convert brandColorStrategy failed");
+        return false;
+    }
+
+    auto strategy =
+        brandColorStrategy == static_cast<int32_t>(AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC)
+            ? AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC
+            : AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM;
+    auto context = GetContext();
+    if (!context || sessionInfo  == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "ptr null");
+        return false;
+    }
+    if (!context->ApplyBrandColorStrategy(strategy, sessionInfo->brandColorStr)) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "ApplyBrandColorStrategy failed");
+        return false;
+    }
+    return true;
 }
 
 void JsUIExtension::OnStop()
@@ -561,10 +637,7 @@ void JsUIExtension::PostInsightIntentExecuted(const sptr<AAFwk::SessionInfo> &se
         CallObjectMethod("onForeground");
     }
 
-    auto filtered = result;
-    filtered.interactionInfo = nullptr;
-    TAG_LOGW(AAFwkTag::UI_EXT, "filter interactionInfo in window path");
-    OnInsightIntentExecuteDone(sessionInfo, filtered);
+    OnInsightIntentExecuteDone(sessionInfo, result);
 
     if (needForeground) {
         // If need foreground, that means triggered by onForeground.
@@ -669,6 +742,7 @@ bool JsUIExtension::HandleSessionCreate(const AAFwk::Want &want, const sptr<AAFw
         } else {
             napi_value argv[] = {napiWant, nativeContentSession};
             CallObjectMethod("onSessionCreate", argv, ARGC_TWO);
+            RegisterBrandColorChangeListener(uiWindow);
         }
         uiWindowMap_[compId] = uiWindow;
 #ifdef SUPPORT_GRAPHICS
@@ -707,7 +781,7 @@ sptr<Rosen::Window> JsUIExtension::CreateUIWindow(const std::shared_ptr<UIExtens
     option->SetParentWindowType(static_cast<Rosen::WindowType>(sessionInfo->parentWindowType));
     option->SetUIExtensionUsage(static_cast<uint32_t>(sessionInfo->uiExtensionUsage));
     option->SetDensity(sessionInfo->density);
-    option->SetIsDensityFollowHost(sessionInfo->isDensityFollowHost);
+    option->SetDpiFollowStrategy(static_cast<Rosen::DpiFollowStrategy>(sessionInfo->dpiFollowStrategy));
     option->SetDisplayId(sessionInfo->displayId);
     if (context->isNotAllow != -1) {
         bool isNotAllow = context->isNotAllow == 1 ? true : false;
@@ -769,12 +843,16 @@ void JsUIExtension::DestroyWindow(const sptr<AAFwk::SessionInfo> &sessionInfo)
     TAG_LOGI(AAFwkTag::UI_EXT, "Befor window destory, UIExtcomponent id: %{public}" PRId64,
         sessionInfo->uiExtensionComponentId);
     auto uiWindow = uiWindowMap_[componentId];
+    auto context = GetContext();
     if (uiWindow) {
+        if (context != nullptr &&
+            context->GetBrandColorStrategy() == AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC) {
+            uiWindow->UnregisterAbilityDataConsumer();
+        }
         uiWindow->Destroy();
     }
     uiWindowMap_.erase(componentId);
 #ifdef SUPPORT_GRAPHICS
-    auto context = GetContext();
     if (context != nullptr && context->GetWindow() == uiWindow) {
         context->SetWindow(nullptr);
         for (auto it : uiWindowMap_) {

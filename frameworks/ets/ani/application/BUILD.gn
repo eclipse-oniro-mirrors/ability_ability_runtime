@@ -62,7 +62,9 @@ ohos_shared_library("application_ani") {
     "hilog:libhilog",
     "ipc:ipc_core",
     "json:nlohmann_json_static",
+    "libuv:uv",
     "napi:ace_napi",
+    "node:node_header_notice",
     "runtime_core:ani",
   ]
 

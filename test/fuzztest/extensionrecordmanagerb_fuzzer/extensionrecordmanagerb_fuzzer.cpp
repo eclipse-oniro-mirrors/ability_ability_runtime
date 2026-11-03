@@ -23,18 +23,19 @@
 #include <list>
 #include <string>
 
-#include "base_extension_record.h"
-#include "extension_record_factory.h"
-#include "ui_extension_record.h"
 #define private public
-#define inline
-#include "extension_record.h"
+#define protected public
 #include "extension_record_manager.h"
-#define inline
+#undef protected
 #undef private
+
 #include "ability_fuzz_util.h"
-#include "ipc_skeleton.h"
 #include "ability_record.h"
+#include "base_extension_record.h"
+#include "extension_record.h"
+#include "extension_record_factory.h"
+#include "ipc_skeleton.h"
+#include "ui_extension_record.h"
 
 using namespace OHOS::AAFwk;
 using namespace OHOS::AbilityRuntime;
@@ -65,13 +66,10 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
         std::make_shared<ExtensionRecordManager>(DEFAULT_USER_ID);
     FuzzedDataProvider fdp(data, size);
 
-    int32_t userId = fdp.ConsumeIntegral<int32_t>();
     int32_t extensionRecordId = fdp.ConsumeIntegral<int32_t>();
     int32_t validExtId = extensionRecordManager->GenerateExtensionRecordId(INVALID_EXTENSION_RECORD_ID);
     int32_t pid = fdp.ConsumeIntegral<int32_t>();
     int32_t hostPid = fdp.ConsumeIntegral<int32_t>();
-    int32_t recordNum = fdp.ConsumeIntegral<int32_t>();
-    int32_t requestCode = fdp.ConsumeIntegral<int32_t>();
     bool isLoaded = fdp.ConsumeBool();
     bool preloadFlag = fdp.ConsumeBool();
     bool isolationProcess = fdp.ConsumeBool();
@@ -95,7 +93,6 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
         std::make_shared<BaseExtensionRecord>(want, abilityInfo, applicationInfo);
     std::list<sptr<IRemoteObject>> callerList;
     std::vector<std::string> extensionList;
-    std::vector<std::shared_ptr<ExtensionRecord>> recordsToUnload;
     AbilityFuzzUtil::GetRandomAbilityInfo(fdp, abilityInfo);
     abilityInfo.isolationProcess = isolationProcess;
     abilityInfo.extensionAbilityType =
@@ -116,12 +113,10 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     ElementName element;
     AbilityFuzzUtil::GenerateElementName(fdp, element);
 
-    UIExtensionSessionInfo uiExtensionSessionInfo;
     sptr<SessionInfo> sessionInfo = new (std::nothrow) SessionInfo();
     sptr<SessionInfo> nullSessionInfo = nullptr;
     sptr<IRemoteObject> token;
     sptr<IRemoteObject> nullToken = nullptr;
-    sptr<IRemoteObject::DeathRecipient> deathRecipient = nullptr;
     ExtensionRecordManager::PreLoadUIExtensionMapKey preLoadUIExtensionInfo =
         std::make_tuple(element.GetAbilityName(), element.GetBundleName(), moduleName, hostPid);
     std::tuple<std::string, std::string, std::string, int32_t> extensionRecordMapKey = preLoadUIExtensionInfo;

@@ -238,7 +238,7 @@ public:
         return 0;
     }
 
-    bool IsAbilityStarted(AbilityRequest& abilityRequest, std::shared_ptr<AbilityRecord>& targetRecord) override
+    bool IsAbilityStarted(const AbilityRequest& abilityRequest, std::shared_ptr<AbilityRecord>& targetRecord) override
     {
         return false;
     }

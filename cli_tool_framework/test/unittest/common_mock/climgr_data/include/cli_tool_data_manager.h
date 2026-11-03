@@ -36,14 +36,15 @@ public:
 
     static CliFunctionDataManager &GetInstance();
     int32_t RegisterFunction(const FunctionInfo &function);
-    int32_t GetFunctionByName(const std::string &functionNamespace, const std::string &functionName,
-        FunctionInfo &function);
-    int32_t UnregisterFunction(const std::string &functionNamespace, const std::string &functionName);
-    int32_t UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace);
-    int32_t GetAllFunctions(std::vector<FunctionInfo> &functions);
+    int32_t GetFunctionByName(int32_t userId, const std::string &functionNamespace,
+        const std::string &functionName, FunctionInfo &function);
+    int32_t UnregisterFunction(int32_t userId, const std::string &functionNamespace,
+        const std::string &functionName);
+    int32_t UnregisterIntentFunctionsByNamespace(int32_t userId, const std::string &functionNamespace);
+    int32_t GetAllFunctions(int32_t userId, std::vector<FunctionInfo> &functions);
     int32_t BatchRegisterFunctions(const std::vector<FunctionInfo> &functions, int32_t &successCount);
     int32_t EnsureFunctionsInitialized();
-    int32_t ResetNamespaceFunctions(const std::string &functionNamespace,
+    int32_t ResetNamespaceFunctions(int32_t userId, const std::string &functionNamespace,
         const std::vector<FunctionInfo> &functions, int32_t &successCount);
 };
 } // namespace CliTool

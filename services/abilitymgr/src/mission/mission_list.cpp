@@ -121,7 +121,7 @@ std::shared_ptr<AbilityRecord> MissionList::GetAbilityRecordByToken(const sptr<I
             continue;
         }
         std::shared_ptr<AbilityRecord> abilityRecord = mission->GetAbilityRecord();
-        if (abilityRecord && token == abilityRecord->GetToken()->AsObject()) {
+        if (abilityRecord && abilityRecord->GetToken() && token == abilityRecord->GetToken()->AsObject()) {
             return abilityRecord;
         }
     }

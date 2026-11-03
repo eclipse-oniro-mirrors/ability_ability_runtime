@@ -60,6 +60,7 @@ ohos_unittest("want_utils_test") {
     "hisysevent:libhisysevent",
     "image_framework:image_native",
     "ipc:ipc_core",
+    "samgr:samgr_proxy",
   ]
 
   defines = [ "APP_DOMAIN_VERIFY_ENABLED" ]

@@ -16,6 +16,8 @@
 #ifndef OHOS_ABILITY_RUNTIME_EXTENSION_ABILITY_THREAD_H
 #define OHOS_ABILITY_RUNTIME_EXTENSION_ABILITY_THREAD_H
 
+#include <mutex>
+
 #include "ability_thread.h"
 #include "extension_impl.h"
 #include "want.h"
@@ -253,6 +255,7 @@ private:
     std::shared_ptr<ExtensionImpl> extensionImpl_ = nullptr;
     std::shared_ptr<Extension> currentExtension_ = nullptr;
     static std::shared_ptr<AppExecFwk::EventRunner> contentEmbedEventRunner_;
+    static std::mutex contentEmbedMutex_;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

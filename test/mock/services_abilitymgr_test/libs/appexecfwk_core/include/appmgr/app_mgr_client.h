@@ -125,7 +125,7 @@ public:
      * @return ERR_OK, return back success, others fail.
      */
     virtual AppMgrResultCode KillApplication(const std::string& bundleName, bool clearPageStack = false,
-        int32_t appIndex = 0, const std::string& reason = "KillApplication");
+        int32_t appIndex = 0, const std::string& reason = "KillApplication", int32_t userId = -1);
 
     /**
      * ClearUpApplicationData, call ClearUpApplicationData() through proxy project,

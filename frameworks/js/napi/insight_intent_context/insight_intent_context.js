@@ -37,6 +37,11 @@ class InsightIntentContext {
     hilog.sLogI(domainID, TAG, 'setReturnModeForUIExtensionAbility');
     return this.__context_impl__.setReturnModeForUIExtensionAbility(returnMode);
   }
+
+  get insightIntentExecutionInfo() {
+    hilog.sLogI(domainID, TAG, 'insightIntentExecutionInfo');
+    return this.__context_impl__.insightIntentExecutionInfo;
+  }
 }
 
 export default InsightIntentContext;

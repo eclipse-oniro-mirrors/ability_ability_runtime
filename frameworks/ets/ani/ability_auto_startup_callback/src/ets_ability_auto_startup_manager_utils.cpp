@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License"),
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -52,6 +52,11 @@ bool UnwrapAutoStartupInfo(ani_env *env, ani_object param, AutoStartupInfo &info
         TAG_LOGE(AAFwkTag::AUTO_STARTUP, "Failed to get moduleName");
         return false;
     }
+    if (AppExecFwk::IsExistsProperty(env, param, "isDirectBoot") &&
+        !AppExecFwk::GetBooleanPropertyObject(env, param, "isDirectBoot", info.isDirectBoot)) {
+        TAG_LOGE(AAFwkTag::AUTO_STARTUP, "Failed to get isDirectBoot");
+        return false;
+    }
     return true;
 }
 
@@ -95,6 +100,11 @@ static bool SetAutoStartupInfo(ani_env *env, ani_object object, const AutoStartu
     if (!AppExecFwk::SetRefProperty(
         env, object, "canUserModify", AppExecFwk::CreateBoolean(env, info.canUserModify))) {
         TAG_LOGE(AAFwkTag::AUTO_STARTUP, "Failed to set canUserModify");
+        return false;
+    }
+    if (!AppExecFwk::SetRefProperty(
+        env, object, "isDirectBoot", AppExecFwk::CreateBoolean(env, info.isDirectBoot))) {
+        TAG_LOGE(AAFwkTag::AUTO_STARTUP, "Failed to set isDirectBoot");
         return false;
     }
     return true;

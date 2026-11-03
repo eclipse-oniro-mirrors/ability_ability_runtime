@@ -684,6 +684,11 @@ public:
      */
     int32_t UnregisterAppForegroundStateObserver(const sptr<IAppForegroundStateObserver> &observer) override;
 
+    int32_t RegisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer) override;
+    int32_t UnregisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer) override;
+    int32_t RegisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer) override;
+    int32_t UnregisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer) override;
+
     /**
      * Check whether the bundle is running.
      *
@@ -766,6 +771,15 @@ public:
      * @return Returns true is final application process, others return false.
      */
     bool IsFinalAppProcess() override;
+
+    /**
+     * Query whether the current process is doing snapshot initialization.
+     *
+     * @return Returns true if the current process is doing snapshot initialization,
+     *         false otherwise (completed, failed, not a template process,
+     *         or service unavailable).
+     */
+    bool IsHyperSnapInitializing() override;
 
     /**
      * Register render state observer.
@@ -1032,6 +1046,8 @@ public:
      */
     int32_t EnableDelayedProcessExit(bool enabled) override;
     void CancelDelayedExitTask(int32_t pid) override;
+    int32_t StartTask(const std::string &taskId, int32_t priority) override;
+    int32_t FinishTask(const std::string &taskId) override;
 private:
     bool SendTransactCmd(AppMgrInterfaceCode code, MessageParcel &data, MessageParcel &reply);
     bool WriteInterfaceToken(MessageParcel &data);

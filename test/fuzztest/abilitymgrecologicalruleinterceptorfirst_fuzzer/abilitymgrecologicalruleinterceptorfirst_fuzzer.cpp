@@ -195,16 +195,10 @@ AbilityInterceptorParam BuildFuzzInterceptorParam(const Want& want, const char* 
     bool isStartAsCaller = (GetU32Data(data, size, offset) % 2 == 1);
     int32_t appIndex = static_cast<int32_t>(GetU32Data(data, size, offset));
 
-    AbilityInterceptorParam param(
-        want,
-        requestCode,
-        userId,
-        isWithUI,
-        callerToken,
-        abilityInfo,
-        isStartAsCaller,
-        appIndex
-    );
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI)
+        .CallerToken(callerToken).AbilityInfo(abilityInfo)
+        .Context<AbilityInterceptorParam::EcologicalCtx>({isStartAsCaller, false, ""})
+        .Context<AbilityInterceptorParam::DisposedCtx>({appIndex, nullptr}).Build();
 
     return param;
 }
@@ -223,18 +217,19 @@ void CallEcologicalRuleFunctions(
     ErmsCallerInfo callerInfo;
     AtomicServiceStartupRule rule;
     sptr<Want> replaceWant = new Want(want);
+    StartAbilityContext ctx;
 
-    (void)executer->GetEcologicalTargetInfo(want, abilityInfo, callerInfo);
+    (void)executer->GetEcologicalTargetInfo(ctx, want, abilityInfo, callerInfo);
     
-    (void)executer->GetEcologicalCallerInfo(want, callerInfo, userId, token);
+    (void)executer->GetEcologicalCallerInfo(ctx, want, callerInfo, userId, token);
     
-    (void)executer->InitErmsCallerInfo(want, abilityInfo, callerInfo, userId, token);
+    (void)executer->InitErmsCallerInfo(ctx, want, abilityInfo, callerInfo, userId, token);
     
     Want atomicWant = want;
     std::string callerBundle = GetStringFromFuzz(data, size, paramOffset);
     atomicWant.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, callerBundle);
     (void)executer->QueryAtomicServiceStartupRule(
-        atomicWant, token, userId, rule, replaceWant);
+        ctx, atomicWant, token, userId, rule, replaceWant);
 }
 
 bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)

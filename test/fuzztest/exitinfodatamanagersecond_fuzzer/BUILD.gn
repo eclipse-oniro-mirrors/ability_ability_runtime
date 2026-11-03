@@ -94,7 +94,7 @@ ohos_fuzztest("ExitInfoDataManagerSecondFuzzTest") {
     "window_manager:libwsutils",
     "window_manager:scene_session",
     "window_manager:session_manager_lite",
-    "window_manager:sms",
+    "window_manager:sms"
   ]
 
   if (ability_runtime_dsoftbus_enable) {

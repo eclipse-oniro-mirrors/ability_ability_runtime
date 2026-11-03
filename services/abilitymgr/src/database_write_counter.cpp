@@ -23,15 +23,17 @@ constexpr int32_t DATABASE_WRITE_COUNT = 20;
 
 void DatabaseWriteCounter::ResetWriteCount()
 {
+    std::lock_guard<std::mutex> lock(writeCountMutex_);
     writeCount_ = DEFAULT_WRITE_COUNT;
 }
 
 void DatabaseWriteCounter::UpdateWriteCount(const std::string &dbPath)
 {
+    std::lock_guard<std::mutex> lock(writeCountMutex_);
     writeCount_++;
     if (writeCount_ >= DATABASE_WRITE_COUNT) {
         ReportDataPartitionUsageManager::SendReportDatabaseReadEvent(dbPath);
-        ResetWriteCount();
+        writeCount_ = DEFAULT_WRITE_COUNT;
     }
 }
 

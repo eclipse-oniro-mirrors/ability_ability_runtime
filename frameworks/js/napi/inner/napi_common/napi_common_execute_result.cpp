@@ -113,6 +113,64 @@ bool UnwrapModalUIExtensionFields(napi_env env, napi_value obj,
     return true;
 }
 
+bool UnwrapTextFields(napi_env env, napi_value obj,
+    std::shared_ptr<AppExecFwk::InteractionText> &textUI)
+{
+    if (textUI == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "null textUI");
+        return false;
+    }
+    if (IsExistsByPropertyName(env, obj, "parameters")) {
+        napi_value params = nullptr;
+        napi_get_named_property(env, obj, "parameters", &params);
+        napi_valuetype vt = napi_undefined;
+        napi_typeof(env, params, &vt);
+        if (vt == napi_object) {
+            auto wp = std::make_shared<AAFwk::WantParams>();
+            if (!AppExecFwk::UnwrapWantParams(env, params, *wp)) {
+                TAG_LOGE(AAFwkTag::JSNAPI, "unwrap parameters fail");
+                return false;
+            }
+            textUI->parameters = wp;
+        }
+    }
+    if (IsExistsByPropertyName(env, obj, "buttons")) {
+        if (!UnwrapStringArrayByPropertyName(env, obj, "buttons", textUI->buttons)) {
+            TAG_LOGE(AAFwkTag::JSNAPI, "unwrap buttons fail");
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool CreateInteractionUIForNapi(napi_env env, napi_value interactionUI,
+    const std::string &uiType, InsightIntentExecuteResult &executeResult)
+{
+    if (uiType == INTERACTION_UI_TYPE_MODAL_UIEXTENSION) {
+        auto modalUI = std::make_shared<AppExecFwk::InteractionModalUIExtension>();
+        modalUI->interactionUIType = uiType;
+        if (!UnwrapModalUIExtensionFields(env, interactionUI, modalUI)) {
+            return false;
+        }
+        executeResult.interactionInfo = std::make_shared<AppExecFwk::InteractionInfo>();
+        executeResult.interactionInfo->interactionUI = modalUI;
+    } else if (uiType == INTERACTION_UI_TYPE_TEXT) {
+        auto textUI = std::make_shared<AppExecFwk::InteractionText>();
+        textUI->interactionUIType = uiType;
+        if (!UnwrapTextFields(env, interactionUI, textUI)) {
+            return false;
+        }
+        executeResult.interactionInfo = std::make_shared<AppExecFwk::InteractionInfo>();
+        executeResult.interactionInfo->interactionUI = textUI;
+    } else {
+        auto ui = std::make_shared<AppExecFwk::InteractionUI>();
+        ui->interactionUIType = uiType;
+        executeResult.interactionInfo = std::make_shared<AppExecFwk::InteractionInfo>();
+        executeResult.interactionInfo->interactionUI = ui;
+    }
+    return true;
+}
+
 bool UnwrapInteractionInfoOfExecuteResult(
     napi_env env, napi_value param, InsightIntentExecuteResult &executeResult)
 {
@@ -138,19 +196,8 @@ bool UnwrapInteractionInfoOfExecuteResult(
         TAG_LOGE(AAFwkTag::JSNAPI, "get interactionUIType fail");
         return false;
     }
-    if (uiType == INTERACTION_UI_TYPE_MODAL_UIEXTENSION) {
-        auto modalUI = std::make_shared<AppExecFwk::InteractionModalUIExtension>();
-        modalUI->interactionUIType = uiType;
-        if (!UnwrapModalUIExtensionFields(env, interactionUI, modalUI)) {
-            return false;
-        }
-        executeResult.interactionInfo = std::make_shared<AppExecFwk::InteractionInfo>();
-        executeResult.interactionInfo->interactionUI = modalUI;
-    } else {
-        auto ui = std::make_shared<AppExecFwk::InteractionUI>();
-        ui->interactionUIType = uiType;
-        executeResult.interactionInfo = std::make_shared<AppExecFwk::InteractionInfo>();
-        executeResult.interactionInfo->interactionUI = ui;
+    if (!CreateInteractionUIForNapi(env, interactionUI, uiType, executeResult)) {
+        return false;
     }
     if (!InsightIntentExecuteResult::CheckInteractionInfo(*executeResult.interactionInfo)) {
         TAG_LOGE(AAFwkTag::JSNAPI, "Check interactionInfo fail");

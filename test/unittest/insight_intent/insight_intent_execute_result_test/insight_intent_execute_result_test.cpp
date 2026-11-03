@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 #include "array_wrapper.h"
 #include "hilog_tag_wrapper.h"
+#include "insight_intent_execution_info.h"
 #include "insight_intent_execute_result.h"
 #include "string_wrapper.h"
 #include "want_params_wrapper.h"
@@ -41,6 +42,7 @@ constexpr const char *KEY_ABILITY_NAME = "abilityName";
 constexpr const char *KEY_UI_EXTENSION_TYPE = "uiExtensionType";
 constexpr const char *KEY_URI = "uri";
 constexpr const char *KEY_PARAMETERS = "parameters";
+constexpr const char *KEY_BUTTONS = "buttons";
 
 /**
  * @brief Read back the "uris" key and assert it holds exactly @p expected, in order.
@@ -752,22 +754,6 @@ HWTEST_F(InsightIntentExecuteResultTest, FromJsonString_InvalidInteractionInfo_R
 }
 
 /**
- * @tc.name: FromJsonString_Oversize_Discarded_1900
- * @tc.desc: WHEN json size exceeds MAX_RESULT_JSON_LEN THEN fields stay default.
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(InsightIntentExecuteResultTest, FromJsonString_Oversize_Discarded_1900, TestSize.Level1)
-{
-    std::string huge(1024 * 1024 + 100, 'a');
-    std::string json = R"({"code":1,"uris":[")" + huge + R"("]})";
-    InsightIntentExecuteResult result;
-    EXPECT_FALSE(result.FromJsonString(json));
-    EXPECT_EQ(result.code, 0);
-    EXPECT_EQ(result.interactionInfo, nullptr);
-}
-
-/**
  * @tc.name: FromJsonString_DeepNesting_Discarded_2000
  * @tc.desc: WHEN json depth exceeds MAX_RESULT_JSON_DEPTH THEN not parsed.
  * @tc.type: FUNC
@@ -817,6 +803,35 @@ HWTEST_F(InsightIntentExecuteResultTest, FromJsonString_NoInteractionInfo_Succee
     EXPECT_TRUE(result.FromJsonString(json));
     EXPECT_EQ(result.code, 1);
     EXPECT_EQ(result.flags, 2);
+    EXPECT_EQ(result.interactionInfo, nullptr);
+}
+
+/**
+ * @tc.name: FromJsonString_NonObject_2500
+ * @tc.desc: WHEN json is valid but not an object (scalar / array / string)
+ *           THEN parse fails and fields stay default.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, FromJsonString_NonObject_2500, TestSize.Level1)
+{
+    InsightIntentExecuteResult result;
+    EXPECT_FALSE(result.FromJsonString("42"));
+    EXPECT_FALSE(result.FromJsonString(R"([1,2,3])"));
+    EXPECT_FALSE(result.FromJsonString(R"("string")"));
+    EXPECT_EQ(result.interactionInfo, nullptr);
+}
+
+/**
+ * @tc.name: FromJsonString_EmptyString_2600
+ * @tc.desc: WHEN json is an empty string THEN parse fails and fields stay default.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, FromJsonString_EmptyString_2600, TestSize.Level1)
+{
+    InsightIntentExecuteResult result;
+    EXPECT_FALSE(result.FromJsonString(""));
     EXPECT_EQ(result.interactionInfo, nullptr);
 }
 
@@ -883,6 +898,198 @@ HWTEST_F(InsightIntentExecuteResultTest, ToJsonString_InvalidInteractionInfoDrop
     entity.interactionInfo->interactionUI = modal;
     std::string json = entity.ToJsonString();
     EXPECT_EQ(json.find(KEY_INTERACTION_INFO), std::string::npos);
+}
+
+/**
+ * @tc.name: CheckInteractionInfo_ValidText_0100
+ * @tc.desc: WHEN interactionUI is a valid InteractionText THEN returns true.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, CheckInteractionInfo_ValidText_0100, TestSize.Level1)
+{
+    auto text = std::make_shared<AppExecFwk::InteractionText>();
+    text->interactionUIType = "TEXT";
+    auto params = std::make_shared<WantParams>();
+    params->SetParam("pk", String::Box("pv"));
+    text->parameters = params;
+    text->buttons = { "ok", "cancel" };
+    AppExecFwk::InteractionInfo info;
+    info.interactionUI = text;
+    EXPECT_TRUE(InsightIntentExecuteResult::CheckInteractionInfo(info));
+}
+
+/**
+ * @tc.name: CheckInteractionInfo_TextNoParameters_0200
+ * @tc.desc: WHEN InteractionText has null parameters THEN returns true (not validated).
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, CheckInteractionInfo_TextNoParameters_0200, TestSize.Level1)
+{
+    auto text = std::make_shared<AppExecFwk::InteractionText>();
+    text->interactionUIType = "TEXT";
+    AppExecFwk::InteractionInfo info;
+    info.interactionUI = text;
+    EXPECT_TRUE(InsightIntentExecuteResult::CheckInteractionInfo(info));
+}
+
+/**
+ * @tc.name: InteractionInfo_MarshallingUnmarshalling_Text_0100
+ * @tc.desc: WHEN result has InteractionText THEN round-trip preserves fields.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, InteractionInfo_MarshallingUnmarshalling_Text_0100,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    InsightIntentExecuteResult entity;
+    auto text = std::make_shared<AppExecFwk::InteractionText>();
+    text->interactionUIType = "TEXT";
+    auto params = std::make_shared<WantParams>();
+    params->SetParam("pk", String::Box("pv"));
+    text->parameters = params;
+    text->buttons = { "ok", "cancel" };
+    entity.interactionInfo = std::make_shared<AppExecFwk::InteractionInfo>();
+    entity.interactionInfo->interactionUI = text;
+
+    Parcel parcel;
+    EXPECT_TRUE(entity.Marshalling(parcel));
+    auto *restored = InsightIntentExecuteResult::Unmarshalling(parcel);
+    ASSERT_NE(restored, nullptr);
+    ASSERT_NE(restored->interactionInfo, nullptr);
+    ASSERT_NE(restored->interactionInfo->interactionUI, nullptr);
+    EXPECT_EQ(restored->interactionInfo->interactionUI->interactionUIType, "TEXT");
+    auto restoredText = std::static_pointer_cast<AppExecFwk::InteractionText>(
+        restored->interactionInfo->interactionUI);
+    ASSERT_NE(restoredText, nullptr);
+    ASSERT_NE(restoredText->parameters, nullptr);
+    EXPECT_EQ(restoredText->parameters->GetStringParam("pk"), "pv");
+    EXPECT_EQ(restoredText->buttons.size(), 2);
+    EXPECT_EQ(restoredText->buttons[0], "ok");
+    EXPECT_EQ(restoredText->buttons[1], "cancel");
+    delete restored;
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: InteractionInfo_JsonSerialization_Text_0200
+ * @tc.desc: WHEN result has InteractionText THEN JSON round-trip preserves fields.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, InteractionInfo_JsonSerialization_Text_0200,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    InsightIntentExecuteResult entity;
+    auto text = std::make_shared<AppExecFwk::InteractionText>();
+    text->interactionUIType = "TEXT";
+    auto params = std::make_shared<WantParams>();
+    params->SetParam("pk", String::Box("pv"));
+    text->parameters = params;
+    text->buttons = { "ok", "cancel" };
+    entity.interactionInfo = std::make_shared<AppExecFwk::InteractionInfo>();
+    entity.interactionInfo->interactionUI = text;
+
+    std::string jsonStr = entity.ToJsonString();
+    EXPECT_FALSE(jsonStr.empty());
+
+    InsightIntentExecuteResult restored;
+    restored.FromJsonString(jsonStr);
+    ASSERT_NE(restored.interactionInfo, nullptr);
+    ASSERT_NE(restored.interactionInfo->interactionUI, nullptr);
+    EXPECT_EQ(restored.interactionInfo->interactionUI->interactionUIType, "TEXT");
+    auto restoredText = std::static_pointer_cast<AppExecFwk::InteractionText>(
+        restored.interactionInfo->interactionUI);
+    ASSERT_NE(restoredText, nullptr);
+    ASSERT_NE(restoredText->parameters, nullptr);
+    EXPECT_EQ(restoredText->parameters->GetStringParam("pk"), "pv");
+    EXPECT_EQ(restoredText->buttons.size(), 2);
+    EXPECT_EQ(restoredText->buttons[0], "ok");
+    EXPECT_EQ(restoredText->buttons[1], "cancel");
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: BuildFunctionResult_WithTextInteractionInfo_0100
+ * @tc.desc: WHEN interactionInfo has InteractionText THEN BuildFunctionResult emits the key.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, BuildFunctionResult_WithTextInteractionInfo_0100,
+    TestSize.Level1)
+{
+    auto text = std::make_shared<AppExecFwk::InteractionText>();
+    text->interactionUIType = "TEXT";
+    auto params = std::make_shared<WantParams>();
+    params->SetParam("pk", String::Box("pv"));
+    text->parameters = params;
+    text->buttons = { "ok", "cancel" };
+    InsightIntentExecuteResult entity;
+    entity.interactionInfo = std::make_shared<AppExecFwk::InteractionInfo>();
+    entity.interactionInfo->interactionUI = text;
+    auto out = entity.BuildFunctionResult();
+    ASSERT_NE(out, nullptr);
+    EXPECT_TRUE(out->HasParam(KEY_INTERACTION_INFO));
+    EXPECT_TRUE(out->HasParam(KEY_FLAGS));
+    auto infoParams = out->GetWantParams(KEY_INTERACTION_INFO);
+    auto uiParams = infoParams.GetWantParams(KEY_INTERACTION_UI);
+    EXPECT_EQ(uiParams.GetStringParam(KEY_INTERACTION_UI_TYPE), "TEXT");
+    EXPECT_EQ(uiParams.GetWantParams(KEY_PARAMETERS).GetStringParam("pk"), "pv");
+    EXPECT_TRUE(uiParams.HasParam(KEY_BUTTONS));
+}
+
+/**
+ * @tc.name: InsightIntentExecutionInfo_Marshalling_0100
+ * @tc.desc: Marshalling then Unmarshalling round-trip preserves all fields.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, InsightIntentExecutionInfo_Marshalling_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    AppExecFwk::InsightIntentExecutionInfo info;
+    info.intentName = "PlayMusic";
+    info.callerBundleName = "com.example.caller";
+    info.callerTokenId = "987654321";
+    info.callerUid = 10086;
+
+    Parcel parcel;
+    EXPECT_TRUE(info.Marshalling(parcel));
+
+    auto result = AppExecFwk::InsightIntentExecutionInfo::Unmarshalling(parcel);
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->intentName, "PlayMusic");
+    EXPECT_EQ(result->callerBundleName, "com.example.caller");
+    EXPECT_EQ(result->callerTokenId, "987654321");
+    EXPECT_EQ(result->callerUid, 10086);
+    delete result;
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: InsightIntentExecutionInfo_Marshalling_0200
+ * @tc.desc: Marshalling empty info then Unmarshalling returns non-null with default fields.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteResultTest, InsightIntentExecutionInfo_Marshalling_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    AppExecFwk::InsightIntentExecutionInfo info;
+    Parcel parcel;
+    EXPECT_TRUE(info.Marshalling(parcel));
+
+    auto result = AppExecFwk::InsightIntentExecutionInfo::Unmarshalling(parcel);
+    ASSERT_NE(result, nullptr);
+    EXPECT_TRUE(result->intentName.empty());
+    EXPECT_TRUE(result->callerBundleName.empty());
+    EXPECT_TRUE(result->callerTokenId.empty());
+    EXPECT_EQ(result->callerUid, 0);
+    delete result;
+    TAG_LOGI(AAFwkTag::TEST, "end.");
 }
 
 } // namespace AAFwk

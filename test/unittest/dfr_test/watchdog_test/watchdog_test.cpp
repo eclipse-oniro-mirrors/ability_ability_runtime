@@ -285,6 +285,9 @@ HWTEST_F(WatchdogTest, WatchdogTest_SetBackgroundStatus_001, TestSize.Level0)
     EXPECT_TRUE(watchdog_->isInBackground_);
     watchdog_->SetBackgroundStatus(isInBackground);
     EXPECT_FALSE(watchdog_->isInBackground_);
+    isInBackground = true;
+    watchdog_->SetBackgroundStatus(isInBackground);
+    EXPECT_FALSE(!watchdog_->isInBackground_);
     GTEST_LOG_(INFO) << "WatchdogTest_SetBackgroundStatus_001 end";
 }
 

@@ -18,6 +18,7 @@
 #include <parcel.h>
 
 #include "exec_result.h"
+#include "exec_result_wrap.h"
 
 using namespace testing::ext;
 
@@ -103,6 +104,37 @@ HWTEST_F(ExecResultTest, ExecResult_Unmarshalling_0200, TestSize.Level1)
     ASSERT_TRUE(missingExecutionTimeParcel.WriteBool(false));
     missingExecutionTimeParcel.RewindRead(0);
     EXPECT_EQ(ExecResult::Unmarshalling(missingExecutionTimeParcel), nullptr);
+}
+
+// ==================== ExecResultWrap Tests ====================
+
+/**
+ * @tc.name: ExecResultWrap_Parcelable_0100
+ * @tc.desc: Test ExecResultWrap marshalling and unmarshalling success path
+ * @tc.type: FUNC
+ */
+HWTEST_F(ExecResultTest, ExecResultWrap_Parcelable_0100, TestSize.Level1)
+{
+    ExecResultWrap wrap;
+    wrap.execResult.exitCode = TEST_EXIT_CODE;
+    wrap.execResult.outputText = "wrap_stdout";
+    wrap.execResult.errorText = "wrap_stderr";
+    wrap.execResult.signalNumber = 15;
+    wrap.execResult.timeout = true;
+    wrap.execResult.executionTime = TEST_TIMEOUT;
+
+    Parcel parcel;
+    ASSERT_TRUE(wrap.Marshalling(parcel));
+    parcel.RewindRead(0);
+
+    std::unique_ptr<ExecResultWrap> unmarshalled(ExecResultWrap::Unmarshalling(parcel));
+    ASSERT_NE(unmarshalled, nullptr);
+    EXPECT_EQ(unmarshalled->execResult.exitCode, TEST_EXIT_CODE);
+    EXPECT_EQ(unmarshalled->execResult.outputText, "wrap_stdout");
+    EXPECT_EQ(unmarshalled->execResult.errorText, "wrap_stderr");
+    EXPECT_EQ(unmarshalled->execResult.signalNumber, 15);
+    EXPECT_TRUE(unmarshalled->execResult.timeout);
+    EXPECT_EQ(unmarshalled->execResult.executionTime, TEST_TIMEOUT);
 }
 } // namespace CliTool
 } // namespace OHOS

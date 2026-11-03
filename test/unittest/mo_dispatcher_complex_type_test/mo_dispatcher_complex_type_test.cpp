@@ -2998,5 +2998,54 @@ HWTEST_F(ModObjDispatcherComplexTypeTest, Dedup_MapStringKey_SameContent, TestSi
     ModObjDispatcherComplexTypeManager::MapRelease(&map);
 }
 
+// Regression: after a DeepCopyStorage failure (circular reference), the source data
+// must remain intact. Before the fix, DeepCopyStorage did dst.value = src.value
+// (shallow copy) before the deep copy. On failure, the local MoVariantStorage in the
+// caller retained the source's heap pointer, and its destructor deleted the source's
+// container — causing use-after-free/double-free on subsequent access or release.
+HWTEST_F(ModObjDispatcherComplexTypeTest, Nested_Circular_SourceIntactAfterDeepCopyFailure, TestSize.Level1)
+{
+    auto elemTi = MakeStringTypeInfo();
+    OH_AbilityRuntime_ModObjDispatcher_VectorHandle vec = nullptr;
+    auto ret = ModObjDispatcherComplexTypeManager::VectorCreate(&elemTi, &vec);
+    ASSERT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
+    ASSERT_NE(vec, nullptr);
+
+    auto var1 = MakeStringVariant("a");
+    ret = ModObjDispatcherComplexTypeManager::VectorAdd(vec, &var1);
+    EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
+    ModObjDispatcherComplexTypeManager::Variant_Clear(&var1);
+
+    auto var2 = MakeStringVariant("b");
+    ret = ModObjDispatcherComplexTypeManager::VectorAdd(vec, &var2);
+    EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
+    ModObjDispatcherComplexTypeManager::Variant_Clear(&var2);
+
+    auto* vecInternal = reinterpret_cast<OH_AbilityRuntime_ModularObjectDispatcher_Vector*>(vec);
+    MoVariantStorage cycleElem;
+    cycleElem.value.vt = OH_ABILITY_RUNTIME_MOD_OBJ_DISPATCHER_VT_VECTOR;
+    cycleElem.value.u.pvectorVal = vec;
+    vecInternal->elements.push_back(std::move(cycleElem));
+
+    OH_AbilityRuntime_ModObjDispatcher_Variant out = {};
+    ret = ModObjDispatcherComplexTypeManager::VectorGet(vec, 2, &out);
+    EXPECT_NE(ret, ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
+
+    uint32_t sz = 0;
+    ModObjDispatcherComplexTypeManager::VectorGetSize(vec, &sz);
+    EXPECT_EQ(sz, 3u);
+
+    ret = ModObjDispatcherComplexTypeManager::VectorGet(vec, 0, &out);
+    EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_NO_ERROR);
+    EXPECT_NE(out.u.bstrVal, nullptr);
+    if (out.u.bstrVal != nullptr) {
+        EXPECT_STREQ(out.u.bstrVal, "a");
+    }
+    ModObjDispatcherComplexTypeManager::Variant_Clear(&out);
+
+    vecInternal->elements[2].value.u.pvectorVal = nullptr;
+    ModObjDispatcherComplexTypeManager::VectorRelease(&vec);
+}
+
 } // namespace AbilityRuntime
 } // namespace OHOS

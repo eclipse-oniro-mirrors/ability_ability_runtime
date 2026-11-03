@@ -149,6 +149,10 @@ int32_t AppStateCallbackHost::HandleOnAbilityRequestDone(MessageParcel &data, Me
     if (data.ReadBool()) {
         obj = data.ReadRemoteObject();
     }
+    if (!obj) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Read obj failed.");
+        return ERR_INVALID_VALUE;
+    }
     int32_t state = data.ReadInt32();
     OnAbilityRequestDone(obj, static_cast<AbilityState>(state));
     return NO_ERROR;

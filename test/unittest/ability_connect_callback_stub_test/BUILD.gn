@@ -30,7 +30,7 @@ ohos_unittest("ability_connect_callback_stub_test") {
     "${ability_runtime_services_path}/abilitymgr:abilityms_config",
     "${ability_runtime_test_path}/mock/services_abilitymgr_test:aafwk_mock_config",
   ]
-  cflags = []
+  cflags = [ "-fno-access-control" ]
   if (target_cpu == "arm") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }

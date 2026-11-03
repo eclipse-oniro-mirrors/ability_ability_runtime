@@ -48,10 +48,12 @@ public:
 
     MOCK_METHOD0(Init, int32_t());
     MOCK_METHOD2(VerifyConfigurationPermissions, int32_t(const std::string &bundleName, const std::string &callerName));
+    MOCK_METHOD2(VerifySaConfigurationPermissions, int32_t(const std::string &bundleName, int32_t callerUid));
     MOCK_METHOD2(GetResidentProcessEnable, int32_t(const std::string &bundleName, bool &enable));
     MOCK_METHOD2(UpdateResidentProcessEnable, int32_t(const std::string &bundleName, bool enable));
     MOCK_METHOD1(RemoveData, int32_t(const std::string &bundleName));
     MOCK_METHOD2(GetResidentProcessRawData, int32_t(const std::string &bundleName, const std::string &callerName));
+    MOCK_METHOD2(GetSaResidentProcessRawData, int32_t(const std::string &bundleName, int32_t callerUid));
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

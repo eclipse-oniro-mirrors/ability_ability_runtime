@@ -28,6 +28,7 @@
 #include "napi_common_util.h"
 #include "napi_common_want.h"
 #include "native_reference.h"
+#include "path_utils.h"
 
 #undef STATE_PATTERN_NAIVE_H
 #define STATE_PATTERN_NAIVE_STATE state_
@@ -111,6 +112,14 @@ bool JsInsightIntentPage::LoadJsCode(const InsightIntentExecutorInfo& info, JsRu
     auto executeParam = info.executeParam;
     if (executeParam == nullptr) {
         TAG_LOGE(AAFwkTag::INTENT, "null executeParam");
+        return false;
+    }
+    if (!IsPathValid(executeParam->moduleName_) || !IsPathValid(executeParam->srcEntrance_)) {
+        TAG_LOGE(AAFwkTag::INTENT, "invalid moduleName or srcEntrance");
+        return false;
+    }
+    if (!info.hapPath.empty() && !IsPathValid(info.hapPath)) {
+        TAG_LOGE(AAFwkTag::INTENT, "invalid hapPath");
         return false;
     }
 

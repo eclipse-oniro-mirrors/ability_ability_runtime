@@ -122,6 +122,10 @@ public:
      */
     static napi_value QueryTools(napi_env env, napi_callback_info info);
 
+    static napi_value RegisterCliHook(napi_env env, napi_callback_info info);
+
+    static napi_value UnregisterCliHook(napi_env env, napi_callback_info info);
+
 private:
     /**
      * @brief Implementation for executing a CLI tool.
@@ -212,6 +216,10 @@ private:
      * @return Returns the N-API value.
      */
     napi_value OnQueryTools(napi_env env, size_t argc, napi_value *argv);
+
+    napi_value OnRegisterCliHook(napi_env env, size_t argc, napi_value *argv);
+
+    napi_value OnUnregisterCliHook(napi_env env, size_t argc, napi_value *argv);
 };
 
 /**

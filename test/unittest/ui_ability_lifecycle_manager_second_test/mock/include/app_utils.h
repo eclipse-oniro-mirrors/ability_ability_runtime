@@ -34,6 +34,8 @@ public:
     bool IsProductAppbootSettingEnabled();
     bool IsAutoStartupSupported();
     bool IsBopdOrRescueMode();
+    int32_t GetCollaboratorBrokerUID();
+    std::string GetBrokerDelegateBundleName();
 
 private:
     AppUtils();

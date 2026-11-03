@@ -38,6 +38,8 @@ public:
     static void TriggerCallbackInner(std::unique_ptr<InsightIntentExecutorAsyncCallback> callback, int32_t errCode);
 
 private:
+    std::shared_ptr<InsightIntentExecutor> CreateExecutor(
+        Runtime& runtime, InsightIntentType type, const InsightIntentExecutorInfo &executeInfo);
     void AddInsightIntentExecutor(uint64_t intentId, const std::shared_ptr<InsightIntentExecutor>& executor);
     void RemoveInsightIntentExecutor(uint64_t intentId);
 

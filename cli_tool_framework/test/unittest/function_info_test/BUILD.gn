@@ -26,7 +26,10 @@ ohos_unittest("function_info_test") {
 
   module_out_path = module_output_path
 
-  include_dirs = [ "${cli_tool_framework_path}/interfaces/function/include" ]
+  include_dirs = [
+    "${cli_tool_framework_path}/interfaces/function/include",
+    "${ability_runtime_services_path}/common/include",
+  ]
 
   sources = [ "function_info_test.cpp" ]
 

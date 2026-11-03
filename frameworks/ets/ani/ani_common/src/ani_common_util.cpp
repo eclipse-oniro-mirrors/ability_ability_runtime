@@ -575,6 +575,10 @@ bool AsyncCallback(ani_env *env, ani_object call, ani_object error, ani_object r
         TAG_LOGE(AAFwkTag::ANI, "null env");
         return false;
     }
+    if (call == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "null call");
+        return false;
+    }
     ani_class clsCall = nullptr;
     ani_status status = env->FindClass(CLASSNAME_ASYNC_CALLBACK_WRAPPER, &clsCall);
     if (status!= ANI_OK || clsCall == nullptr) {
@@ -607,6 +611,10 @@ bool AsyncCallback(ani_env *env, const char *signature, ani_object call, ani_obj
 {
     if (env == nullptr) {
         TAG_LOGE(AAFwkTag::ANI, "null env");
+        return false;
+    }
+    if (call == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "null call");
         return false;
     }
     ani_class clsCall = nullptr;

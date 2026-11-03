@@ -35,6 +35,9 @@
 #include "double_wrapper.h"
 #include "exec_cmd_param.h"
 #include "exec_tool_param.h"
+#include "ipc_skeleton.h"          // mock (mock/include shadows real ipc_core)
+#include "bundle_mgr_helper.h"     // mock
+#include "accesstoken_kit_mock.h"  // mock state for AccessTokenKit overrides
 #include "float_wrapper.h"
 #include "int_wrapper.h"
 #include "long_wrapper.h"
@@ -100,11 +103,17 @@ void ToolUtilTest::TearDownTestCase(void)
 void ToolUtilTest::SetUp()
 {
     // Reset state before each test
+    IPCSkeleton::Reset();
+    AppExecFwk::BundleMgrHelper::Reset();
+    CliToolTest::AccessTokenKitMock::Reset();
 }
 
 void ToolUtilTest::TearDown()
 {
     // Cleanup after each test
+    IPCSkeleton::Reset();
+    AppExecFwk::BundleMgrHelper::Reset();
+    CliToolTest::AccessTokenKitMock::Reset();
 }
 
 /**
@@ -125,6 +134,201 @@ HWTEST_F(ToolUtilTest, ValidateInputSchemaProperties_0100, TestSize.Level1)
     EXPECT_EQ(result, ERR_OK);
 
     GTEST_LOG_(INFO) << "ToolUtil_ValidateInputSchemaProperties_0100 end";
+}
+
+// ==================== ParseToolCommand Tests ====================
+
+namespace {
+ToolInfo BuildParseToolInfo(const std::string &name, const std::string &inputSchema)
+{
+    ToolInfo tool;
+    tool.name = name;
+    tool.version = "1.0.0";
+    tool.description = "parse test tool";
+    tool.executablePath = "/system/bin/" + name;
+    tool.inputSchema = inputSchema;
+    tool.outputSchema = "{}";
+    tool.hasSubCommand = false;
+    return tool;
+}
+
+ToolInfo BuildSubCommandToolInfo(const std::string &name, const std::string &subName,
+    const std::string &subSchema)
+{
+    ToolInfo tool;
+    tool.name = name;
+    tool.version = "1.0.0";
+    tool.description = "subcommand test tool";
+    tool.executablePath = "/system/bin/" + name;
+    tool.inputSchema = "{}";
+    tool.outputSchema = "{}";
+    tool.hasSubCommand = true;
+    SubCommandInfo sub;
+    sub.inputSchema = subSchema;
+    tool.subcommands[subName] = sub;
+    return tool;
+}
+} // namespace
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_KeyEqualsValue_0100
+ * @tc.desc: Test ParseToolCommand rejects --key=value format (only --key value is supported)
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_KeyEqualsValue_0100, TestSize.Level1)
+{
+    auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"bundleName":{"type":"string"}}})");
+    ExecToolParam param;
+    std::string detail;
+    // --key=value format is not supported
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --bundleName=com.example", toolInfo, param, detail),
+        ERR_INVALID_PARAM);
+}
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_KeySpaceValue_0100
+ * @tc.desc: Test ParseToolCommand with --key value format
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_KeySpaceValue_0100, TestSize.Level1)
+{
+    auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"bundleName":{"type":"string"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --bundleName com.example", toolInfo, param, detail), ERR_OK);
+    EXPECT_EQ(param.toolName, "ohos-aa");
+    EXPECT_NE(param.args.GetParam("bundleName"), nullptr);
+}
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_BooleanFlag_0100
+ * @tc.desc: Test ParseToolCommand with --flag (boolean true) format
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_BooleanFlag_0100, TestSize.Level1)
+{
+    auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"verbose":{"type":"boolean"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --verbose", toolInfo, param, detail), ERR_OK);
+    EXPECT_EQ(param.toolName, "ohos-aa");
+    EXPECT_NE(param.args.GetParam("verbose"), nullptr);
+}
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_BooleanFalse_0100
+ * @tc.desc: Test ParseToolCommand with --flag false (explicit boolean false) format
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_BooleanFalse_0100, TestSize.Level1)
+{
+    auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"verbose":{"type":"boolean"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --verbose false", toolInfo, param, detail), ERR_OK);
+    EXPECT_NE(param.args.GetParam("verbose"), nullptr);
+}
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_HelpWithOtherArgs_0100
+ * @tc.desc: Test ParseToolCommand rejects --help combined with other args
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_HelpWithOtherArgs_0100, TestSize.Level1)
+{
+    auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"bundleName":{"type":"string"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --help --bundleName com.x", toolInfo, param, detail),
+        ERR_INVALID_PARAM);
+}
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_HelpAlone_0100
+ * @tc.desc: Test ParseToolCommand accepts --help alone
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_HelpAlone_0100, TestSize.Level1)
+{
+    auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"bundleName":{"type":"string"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --help", toolInfo, param, detail), ERR_OK);
+    EXPECT_NE(param.args.GetParam("help"), nullptr);
+}
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_SingleQuoteSpace_0100
+ * @tc.desc: Test ParseToolCommand with single-quoted value containing spaces
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_SingleQuoteSpace_0100, TestSize.Level1)
+{
+    auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"name":{"type":"string"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --name 'hello world'", toolInfo, param, detail), ERR_OK);
+    EXPECT_NE(param.args.GetParam("name"), nullptr);
+}
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_UnknownFlag_0100
+ * @tc.desc: Test ParseToolCommand rejects unknown flag not in schema
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_UnknownFlag_0100, TestSize.Level2)
+{
+    auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"bundleName":{"type":"string"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa --unknownFlag foo", toolInfo, param, detail),
+        ERR_INVALID_PARAM);
+}
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_UnknownSubCommand_0100
+ * @tc.desc: Test ParseToolCommand rejects unknown subcommand
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_UnknownSubCommand_0100, TestSize.Level2)
+{
+    auto toolInfo = BuildSubCommandToolInfo("ohos-aa", "start",
+        R"({"properties":{"bundleName":{"type":"string"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa nonexistent --flag", toolInfo, param, detail),
+        ERR_TOOL_NOT_EXIST);
+}
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_EmptyCmd_0100
+ * @tc.desc: Test ParseToolCommand with empty command string
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_EmptyCmd_0100, TestSize.Level2)
+{
+    auto toolInfo = BuildParseToolInfo("ohos-aa", R"({"properties":{"bundleName":{"type":"string"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("", toolInfo, param, detail), ERR_INVALID_PARAM);
+}
+
+/**
+ * @tc.name: ToolUtil_ParseToolCommand_SubCommandSchema_0100
+ * @tc.desc: Test ParseToolCommand uses subcommand schema for args
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, ParseToolCommand_SubCommandSchema_0100, TestSize.Level1)
+{
+    auto toolInfo = BuildSubCommandToolInfo("ohos-aa", "start",
+        R"({"properties":{"bundleName":{"type":"string"}}})");
+    ExecToolParam param;
+    std::string detail;
+    EXPECT_EQ(ToolUtil::ParseToolCommand("ohos-aa start --bundleName com.x", toolInfo, param, detail),
+        ERR_OK);
+    EXPECT_EQ(param.toolName, "ohos-aa");
+    EXPECT_EQ(param.subcommand, "start");
+    EXPECT_NE(param.args.GetParam("bundleName"), nullptr);
 }
 
 /**
@@ -1313,6 +1517,7 @@ HWTEST_F(ToolUtilTest, ExpandArgsFromJson_0300, TestSize.Level1)
         "target": "device",
         "count": 2,
         "enabled": true,
+        "toolCallId": "business-value",
         "bundleName": "reserved.bundle",
         "nested": {"ignored": true}
     })";
@@ -1332,6 +1537,7 @@ HWTEST_F(ToolUtilTest, ExpandArgsFromJson_0300, TestSize.Level1)
     EXPECT_TRUE(enabled);
     EXPECT_TRUE(args.GetStringParam("bundleName").empty());
     EXPECT_TRUE(args.GetStringParam("nested").empty());
+    EXPECT_EQ(args.GetStringParam("toolCallId"), "business-value");
 
     GTEST_LOG_(INFO) << "ToolUtil_ExpandArgsFromJson_0300 end";
 }
@@ -1365,6 +1571,7 @@ HWTEST_F(ToolUtilTest, ExpandArgsFromWantParams_0100, TestSize.Level1)
     AAFwk::WantParams nestedArgs;
     nestedArgs.SetParam("target", AAFwk::String::Box("device"));
     nestedArgs.SetParam("bundleName", AAFwk::String::Box("reserved.bundle"));
+    nestedArgs.SetParam("toolCallId", AAFwk::String::Box("business-value"));
 
     AAFwk::WantParams args;
     args.SetParam("args", AAFwk::WantParamWrapper::Box(nestedArgs));
@@ -1374,6 +1581,7 @@ HWTEST_F(ToolUtilTest, ExpandArgsFromWantParams_0100, TestSize.Level1)
     EXPECT_TRUE(args.GetStringParam("args").empty());
     EXPECT_EQ(args.GetStringParam("target"), "device");
     EXPECT_TRUE(args.GetStringParam("bundleName").empty());
+    EXPECT_EQ(args.GetStringParam("toolCallId"), "business-value");
 
     GTEST_LOG_(INFO) << "ToolUtil_ExpandArgsFromWantParams_0100 end";
 }
@@ -1496,6 +1704,7 @@ HWTEST_F(ToolUtilTest, FilterSkillArgs_0100, TestSize.Level1)
     args.SetParam("bundleName", AAFwk::String::Box("reserved.bundle"));
     args.SetParam("target", AAFwk::String::Box("device"));
     args.SetParam("moduleName", AAFwk::String::Box("module"));
+    args.SetParam("toolCallId", AAFwk::String::Box("business-value"));
 
     auto filteredArgs = ToolUtil::FilterSkillArgs(args);
 
@@ -1503,8 +1712,32 @@ HWTEST_F(ToolUtilTest, FilterSkillArgs_0100, TestSize.Level1)
     EXPECT_EQ(filteredArgs->GetStringParam("target"), "device");
     EXPECT_TRUE(filteredArgs->GetStringParam("bundleName").empty());
     EXPECT_TRUE(filteredArgs->GetStringParam("moduleName").empty());
+    EXPECT_EQ(filteredArgs->GetStringParam("toolCallId"), "business-value");
 
     GTEST_LOG_(INFO) << "ToolUtil_FilterSkillArgs_0100 end";
+}
+
+/**
+ * @tc.name: SkillArgs_ToolCallIdIndependentOfOptions
+ * @tc.desc: Expanding and filtering business args preserves the separate options toolCallId.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, SkillArgs_ToolCallIdIndependentOfOptions, TestSize.Level1)
+{
+    ExecToolParam param;
+    param.options.toolCallId = "trace-id";
+    param.args.SetParam("bundleName", AAFwk::String::Box("com.example.skill"));
+    param.args.SetParam("args", AAFwk::String::Box(R"({"toolCallId":"business-value","city":"Shanghai"})"));
+
+    ToolUtil::ExpandArgsJsonString(param.args);
+    auto skillArgs = ToolUtil::FilterSkillArgs(param.args);
+
+    ASSERT_NE(skillArgs, nullptr);
+    EXPECT_EQ(param.options.toolCallId, "trace-id");
+    EXPECT_EQ(skillArgs->GetStringParam("toolCallId"), "business-value");
+    EXPECT_EQ(skillArgs->GetStringParam("city"), "Shanghai");
+    EXPECT_FALSE(skillArgs->HasParam("bundleName"));
+    EXPECT_FALSE(skillArgs->HasParam("args"));
 }
 
 /**
@@ -1867,9 +2100,9 @@ HWTEST_F(ToolUtilTest, GenerateCmdSandboxConfig_0100, TestSize.Level1)
 
     ExecCmdParam param;
     param.cmd = "echo hello";
-    param.policy = "allow";
-    param.workDir = "/data/local/tmp";
-    param.env = "PATH=/bin";
+    param.execCmdOptions.policy = "allow";
+    param.execCmdOptions.workDir = "/data/local/tmp";
+    param.execCmdOptions.env = "PATH=/bin";
 
     std::string sandboxConfig;
     std::string bundleName;
@@ -1895,9 +2128,9 @@ HWTEST_F(ToolUtilTest, GenerateCmdSandboxConfig_0200, TestSize.Level1)
 
     ExecCmdParam param;
     param.cmd = "";
-    param.policy = "";
-    param.workDir = "";
-    param.env = "";
+    param.execCmdOptions.policy = "";
+    param.execCmdOptions.workDir = "";
+    param.execCmdOptions.env = "";
 
     std::string sandboxConfig;
     std::string bundleName;
@@ -1921,9 +2154,9 @@ HWTEST_F(ToolUtilTest, GenerateCmdSandboxConfig_0300, TestSize.Level1)
 
     ExecCmdParam param;
     param.cmd = "ls /data";
-    param.policy = "strict";
-    param.workDir = "/data/local/tmp";
-    param.env = "LANG=en_US.UTF-8";
+    param.execCmdOptions.policy = "strict";
+    param.execCmdOptions.workDir = "/data/local/tmp";
+    param.execCmdOptions.env = "LANG=en_US.UTF-8";
 
     std::string sandboxConfig;
     std::string bundleName;
@@ -1947,9 +2180,9 @@ HWTEST_F(ToolUtilTest, GenerateCmdSandboxConfig_0400, TestSize.Level1)
 
     ExecCmdParam param;
     param.cmd = "pwd";
-    param.policy = "allow";
-    param.workDir = "";  // empty workDir
-    param.env = "";
+    param.execCmdOptions.policy = "allow";
+    param.execCmdOptions.workDir = "";  // empty workDir
+    param.execCmdOptions.env = "";
 
     std::string sandboxConfig;
     std::string bundleName;
@@ -1958,6 +2191,158 @@ HWTEST_F(ToolUtilTest, GenerateCmdSandboxConfig_0400, TestSize.Level1)
     EXPECT_FALSE(result);
 
     GTEST_LOG_(INFO) << "ToolUtil_GenerateCmdSandboxConfig_0400 end";
+}
+
+// ---- GenerateSandboxConfig: ForCli callerIdentity env injection (issue-16055) ----
+// The callerIdentity env branch lives in GenerateSandboxConfig (type="cli"), distinct from
+// GenerateCmdSandboxConfig (type="shell"). These cover the success path (env injection) + the
+// three early-return failure branches, so the newly-added branch is exercised.
+
+/**
+ * @tc.name: ToolUtil_GenerateSandboxConfig_InjectsCallerIdentityEnv_0100
+ * @tc.desc: GenerateSandboxConfig injects ohos_cli_callerIdentity + the caller env block into the
+ *           sandbox config env (the ForCli callerIdentity propagation branch in tool_util.cpp).
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, GenerateSandboxConfig_InjectsCallerIdentityEnv_0100, TestSize.Level1)
+{
+    using json = nlohmann::json;
+    CliToolTest::AccessTokenKitMock::getTokenTypeFlagIsHap = true;
+    CliToolTest::AccessTokenKitMock::getHapTokenInfoRet = 0;
+    CliToolTest::AccessTokenKitMock::hapBundleName = "com.test.agent";
+    CliToolTest::AccessTokenKitMock::hapInstIndex = 0;
+    CliToolTest::AccessTokenKitMock::hapUserID = 100;
+    AppExecFwk::BundleMgrHelper::getBundleInfoResult = 0;  // ERR_OK
+    AppExecFwk::BundleMgrHelper::gid = 2000;
+    AppExecFwk::BundleMgrHelper::appId = "app-id-xxx";
+    AppExecFwk::BundleMgrHelper::bundleName = "com.test.agent";
+    IPCSkeleton::callingIdentity = "caller-id-str";
+    IPCSkeleton::callingUid = 12345;
+    IPCSkeleton::callingPid = 1000;
+    IPCSkeleton::callingTokenId = 999;
+    IPCSkeleton::callingFullTokenId = 88888;
+
+    ExecToolParam param;
+    param.toolName = "ohos-agent";
+    param.subcommand = "connect";
+    param.challenge = "challenge-abc";
+
+    std::string sandboxConfig;
+    std::string outBundleName;
+    AccessToken::AccessTokenID tokenId = 12345;
+    EXPECT_TRUE(ToolUtil::GenerateSandboxConfig(param, tokenId, sandboxConfig, outBundleName));
+
+    auto cfg = json::parse(sandboxConfig, nullptr, false);
+    ASSERT_FALSE(cfg.is_discarded());
+    // KEY new branch: callerIdentity propagated end-to-end into the sandbox env.
+    EXPECT_EQ(cfg["env"]["ohos_cli_callerIdentity"].get<std::string>(), "caller-id-str");
+    EXPECT_EQ(cfg["env"]["ohos_cli_callerBundleName"].get<std::string>(), "com.test.agent");
+    EXPECT_EQ(cfg["env"]["ohos_cli_callerUid"].get<std::string>(), "12345");
+    EXPECT_EQ(cfg["env"]["ohos_cli_callerTokenId"].get<std::string>(), "999");
+    // top-level caller identity fields (restored app A identity).
+    EXPECT_EQ(cfg["callerTokenId"].get<uint64_t>(), 88888ULL);
+    EXPECT_EQ(cfg["uid"].get<int32_t>(), 12345);
+    EXPECT_EQ(cfg["callerPid"].get<int32_t>(), 1000);
+    // bundle + cli metadata.
+    EXPECT_EQ(cfg["bundleName"].get<std::string>(), "com.test.agent");
+    EXPECT_EQ(cfg["cliName"].get<std::string>(), "ohos-agent");
+    EXPECT_EQ(cfg["subCliName"].get<std::string>(), "connect");
+    EXPECT_EQ(cfg["challenge"].get<std::string>(), "challenge-abc");
+    EXPECT_EQ(cfg["gid"].get<int32_t>(), 2000);
+    EXPECT_EQ(cfg["appId"].get<std::string>(), "app-id-xxx");
+    EXPECT_EQ(cfg["type"].get<std::string>(), "cli");
+    EXPECT_EQ(outBundleName, "com.test.agent");
+}
+
+/**
+ * @tc.name: ToolUtil_GenerateSandboxConfig_NotHapToken_ReturnsFalse_0200
+ * @tc.desc: GenerateSandboxConfig returns false when the caller token is not a HAP token
+ *           (GetTokenTypeFlag != TOKEN_HAP); the callerIdentity env branch is never reached.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, GenerateSandboxConfig_NotHapToken_ReturnsFalse_0200, TestSize.Level1)
+{
+    // SetUp leaves getTokenTypeFlagIsHap = false (non-HAP).
+    ExecToolParam param;
+    param.toolName = "ohos-agent";
+    param.subcommand = "connect";
+    std::string sandboxConfig;
+    std::string outBundleName;
+    AccessToken::AccessTokenID tokenId = 1;
+    EXPECT_FALSE(ToolUtil::GenerateSandboxConfig(param, tokenId, sandboxConfig, outBundleName));
+    EXPECT_TRUE(sandboxConfig.empty());
+    EXPECT_TRUE(outBundleName.empty());
+}
+
+/**
+ * @tc.name: ToolUtil_GenerateSandboxConfig_GetHapTokenInfoFails_ReturnsFalse_0300
+ * @tc.desc: GenerateSandboxConfig returns false when GetHapTokenInfo fails (non-zero ret); the
+ *           callerIdentity env branch is never reached.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, GenerateSandboxConfig_GetHapTokenInfoFails_ReturnsFalse_0300, TestSize.Level1)
+{
+    CliToolTest::AccessTokenKitMock::getTokenTypeFlagIsHap = true;
+    CliToolTest::AccessTokenKitMock::getHapTokenInfoRet = 1;  // failure
+    ExecToolParam param;
+    param.toolName = "ohos-agent";
+    param.subcommand = "connect";
+    std::string sandboxConfig;
+    std::string outBundleName;
+    AccessToken::AccessTokenID tokenId = 2;
+    EXPECT_FALSE(ToolUtil::GenerateSandboxConfig(param, tokenId, sandboxConfig, outBundleName));
+    EXPECT_TRUE(sandboxConfig.empty());
+}
+
+/**
+ * @tc.name: ToolUtil_GenerateSandboxConfig_GetBundleInfoFails_ReturnsFalse_0400
+ * @tc.desc: GenerateSandboxConfig returns false when BundleMgrHelper::GetBundleInfoV9 fails
+ *           (non-ERR_OK) after token validation succeeds; the callerIdentity env branch is never
+ *           reached.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, GenerateSandboxConfig_GetBundleInfoFails_ReturnsFalse_0400, TestSize.Level1)
+{
+    CliToolTest::AccessTokenKitMock::getTokenTypeFlagIsHap = true;
+    CliToolTest::AccessTokenKitMock::getHapTokenInfoRet = 0;
+    CliToolTest::AccessTokenKitMock::hapBundleName = "com.test.agent";
+    CliToolTest::AccessTokenKitMock::hapInstIndex = 0;
+    CliToolTest::AccessTokenKitMock::hapUserID = 100;
+    AppExecFwk::BundleMgrHelper::getBundleInfoResult = 1;  // non-ERR_OK -> GetBundleInfoV9 fails
+    ExecToolParam param;
+    param.toolName = "ohos-agent";
+    param.subcommand = "connect";
+    std::string sandboxConfig;
+    std::string outBundleName;
+    AccessToken::AccessTokenID tokenId = 3;
+    EXPECT_FALSE(ToolUtil::GenerateSandboxConfig(param, tokenId, sandboxConfig, outBundleName));
+    EXPECT_TRUE(sandboxConfig.empty());
+}
+
+/**
+ * @tc.name: ToolUtil_GenerateSandboxConfig_SetCallingIdentityFails_ReturnsFalse_0500
+ * @tc.desc: GenerateSandboxConfig returns false when restoring the caller identity via
+ *           SetCallingIdentity fails (malformed identity string); fails closed before env build.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, GenerateSandboxConfig_SetCallingIdentityFails_ReturnsFalse_0500, TestSize.Level1)
+{
+    CliToolTest::AccessTokenKitMock::getTokenTypeFlagIsHap = true;
+    CliToolTest::AccessTokenKitMock::getHapTokenInfoRet = 0;
+    CliToolTest::AccessTokenKitMock::hapBundleName = "com.test.agent";
+    CliToolTest::AccessTokenKitMock::hapInstIndex = 0;
+    CliToolTest::AccessTokenKitMock::hapUserID = 100;
+    AppExecFwk::BundleMgrHelper::getBundleInfoResult = 0;
+    IPCSkeleton::setCallingIdentityRet = false;  // SetCallingIdentity fails
+    ExecToolParam param;
+    param.toolName = "ohos-agent";
+    param.subcommand = "connect";
+    std::string sandboxConfig;
+    std::string outBundleName;
+    AccessToken::AccessTokenID tokenId = 12345;
+    EXPECT_FALSE(ToolUtil::GenerateSandboxConfig(param, tokenId, sandboxConfig, outBundleName));
+    EXPECT_TRUE(sandboxConfig.empty());
+    IPCSkeleton::setCallingIdentityRet = true;
 }
 
 } // namespace CliTool

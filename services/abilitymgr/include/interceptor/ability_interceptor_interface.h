@@ -16,36 +16,121 @@
 #ifndef OHOS_ABILITY_RUNTIME_ABILITY_INTERCEPTOR_INTERFACE_H
 #define OHOS_ABILITY_RUNTIME_ABILITY_INTERCEPTOR_INTERFACE_H
 
+#include <functional>
+#include <variant>
+#include <vector>
+
 #include "ability_info.h"
 #include "ability_manager_errors.h"
+#include "start_ability_context.h"
 #include "start_options.h"
 #include "want.h"
 
 namespace OHOS {
 namespace AAFwk {
 struct AbilityInterceptorParam {
-    AbilityInterceptorParam(const Want &want, int requestCode, int32_t userId, bool isWithUI,
-        const sptr<IRemoteObject> &callerToken, const std::function<bool(void)> &shouldBlockAllAppStartFunc)
-        : want(want), requestCode(requestCode), userId(userId),
-        isWithUI(isWithUI), callerToken(callerToken), shouldBlockAllAppStartFunc_(shouldBlockAllAppStartFunc){};
-    AbilityInterceptorParam(const Want &want, int requestCode, int32_t userId, bool isWithUI,
-        const sptr<IRemoteObject> &callerToken, const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo,
-        bool isStartAsCaller = false, int32_t appIndex = 0, const StartOptions* startOptions = nullptr) : want(want),
-        requestCode(requestCode), userId(userId), isWithUI(isWithUI), callerToken(callerToken),
-        abilityInfo(abilityInfo), isStartAsCaller(isStartAsCaller), appIndex(appIndex), startOptions(startOptions){};
-    const Want &want;
-    int32_t requestCode;
-    int32_t userId;
-    bool isWithUI = false;
+    // Core fields (read by 3+ interceptors)
+    Want want;
+    int32_t requestCode = 0;
+    int32_t userId = 0;
+    bool isWithUI = false;       // CrowdTest/Control: "should show modal/redirect?"
+    bool isVisible = false;     // DisposedRule/EcologicalRule: "is this a visible start?"
     sptr<IRemoteObject> callerToken = nullptr;
-    std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo;  // target abilityInfo get in afterCheckExecuter_
-    bool isStartAsCaller = false;
-    int32_t appIndex = 0;
-    std::function<bool(void)> shouldBlockAllAppStartFunc_;
-    bool isTargetPlugin = false; //Is it pulling up a plugin
-    std::string hostBundleName;
-    const StartOptions* startOptions = nullptr;
-    bool fromConnect = false;
+    std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo;  // resolved target abilityInfo passed to the interceptor
+    StartAbilityContext startAbilityCtx;  // start-ability request-scoped context (default-constructed = absent)
+
+    // Per-interceptor contexts, accessed via GetContext<T>()
+    struct EcologicalCtx {
+        bool isStartAsCaller = false;
+        bool isTargetPlugin = false; // Is it pulling up a plugin
+        std::string hostBundleName;
+    };
+    struct DisposedCtx {
+        int32_t appIndex = 0;
+        const StartOptions* startOptions = nullptr;
+    };
+    // Marker context: this DoProcess call guards a remote dispatch. Interceptors that
+    // require a locally-resolved target (DisposedRule / ExtensionControl / EcologicalRule)
+    // defer to the remote device's own enforcement when this context is present.
+    struct RemoteDispatchCtx {};
+
+    using Context = std::variant<std::monostate, EcologicalCtx, DisposedCtx, RemoteDispatchCtx>;
+    std::vector<Context> contexts;
+
+    // Lambda for BlockAllAppStart's escape-hatch query (is the already-started PAGE UIAbility
+    // allowed through in low-memory block mode). Set at post-resolution chain sites where a
+    // non-const AbilityRequest is in scope; when unset (empty), BlockAllAppStart fails-closed.
+    std::function<bool(int32_t)> blockAllEscapeCheck;
+
+    template<typename T>
+    const T* GetContext() const
+    {
+        for (const auto &c : contexts) {
+            if (const auto *p = std::get_if<T>(&c)) {
+                return p;
+            }
+        }
+        return nullptr;
+    }
+};
+
+// Fluent builder: setters mutate an internal AbilityInterceptorParam directly, Build() moves it out.
+// Defined after AbilityInterceptorParam so it can hold one by value.
+class InterceptorParamBuilder {
+public:
+    InterceptorParamBuilder(const Want &want, int32_t requestCode, int32_t userId)
+    {
+        param_.want = want;
+        param_.requestCode = requestCode;
+        param_.userId = userId;
+    }
+    ~InterceptorParamBuilder() = default;
+    InterceptorParamBuilder(const InterceptorParamBuilder&) = delete;
+    InterceptorParamBuilder &operator=(const InterceptorParamBuilder&) = delete;
+    InterceptorParamBuilder &WithUI(bool isWithUI)
+    {
+        param_.isWithUI = isWithUI;
+        return *this;
+    }
+    InterceptorParamBuilder &Visible(bool isVisible)
+    {
+        param_.isVisible = isVisible;
+        return *this;
+    }
+    InterceptorParamBuilder &CallerToken(const sptr<IRemoteObject> &callerToken)
+    {
+        param_.callerToken = callerToken;
+        return *this;
+    }
+    InterceptorParamBuilder &AbilityInfo(const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo)
+    {
+        param_.abilityInfo = abilityInfo;
+        return *this;
+    }
+    InterceptorParamBuilder &StartAbilityCtx(const StartAbilityContext &ctx)
+    {
+        param_.startAbilityCtx = ctx;
+        return *this;
+    }
+
+    // Push a per-interceptor context struct onto the param.
+    template<typename T>
+    InterceptorParamBuilder &Context(const T &ctx)
+    {
+        param_.contexts.push_back(ctx);
+        return *this;
+    }
+    InterceptorParamBuilder &BlockAllEscapeCheck(std::function<bool(int32_t)> check)
+    {
+        param_.blockAllEscapeCheck = std::move(check);
+        return *this;
+    }
+    [[nodiscard]] AbilityInterceptorParam Build()
+    {
+        return std::move(param_);
+    }
+private:
+    AbilityInterceptorParam param_;
 };
 
 /**
@@ -59,7 +144,7 @@ public:
     /**
      * Excute interception processing.
      */
-    virtual ErrCode DoProcess(const AbilityInterceptorParam &param) = 0;
+    virtual ErrCode DoProcess(AbilityInterceptorParam &param) = 0;
 };
 } // namespace AAFwk
 } // namespace OHOS

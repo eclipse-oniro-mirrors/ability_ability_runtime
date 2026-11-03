@@ -118,7 +118,8 @@ sptr<IRemoteObject> CallRecord::GetCallerToken() const
 
 bool CallRecord::SchedulerConnectDone()
 {
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "Scheduler Connect Done by callback. id:%{public}d", recordId_);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "Scheduler Connect Done by callback. id:%{public}d, %{public}d",
+        recordId_, isPrelaunch_);
     std::shared_ptr<AbilityRecord> tmpService = service_.lock();
     auto remoteObject = callRemoteObject_;
     auto callback = connCallback_;
@@ -158,7 +159,8 @@ bool CallRecord::SchedulerDisconnectDone()
         abilityInfo.name, abilityInfo.moduleName);
     auto handler = DelayedSingleton<AbilityManagerService>::GetInstance()->GetTaskHandler();
     CHECK_POINTER_AND_RETURN(handler, false);
-    ffrt::submit([callback, element]() {
+    ffrt::submit([callback, element, id = recordId_]() {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "OnAbilityDisconnectDone begin, recordId:%{public}d, reason:0", id);
         callback->OnAbilityDisconnectDone(element,  ERR_OK);
         }, ffrt::task_attr().timeout(AbilityRuntime::GlobalConstant::DEFAULT_FFRT_TASK_TIMEOUT));
 
@@ -226,6 +228,16 @@ bool CallRecord::IsCallState(const CallState &state) const
 void CallRecord::SetCallState(const CallState &state)
 {
     state_ = state;
+}
+
+void CallRecord::SetPrelaunchFlag(bool isPrelaunch)
+{
+    isPrelaunch_ = isPrelaunch;
+}
+
+bool CallRecord::IsPrelaunch() const
+{
+    return isPrelaunch_;
 }
 
 int CallRecord::GetCallRecordId() const

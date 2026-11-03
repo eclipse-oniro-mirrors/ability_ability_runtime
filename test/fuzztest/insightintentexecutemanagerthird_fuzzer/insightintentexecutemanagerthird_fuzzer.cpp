@@ -73,7 +73,8 @@ void ExerciseQueryEntityWant(FuzzedDataProvider &fdp, const std::shared_ptr<Insi
     sptr<IRemoteObject> callerToken = nullptr;
     uint64_t key = fdp.ConsumeIntegral<uint64_t>();
     std::string callerBundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
-    mgr->CheckAndUpdateQueryEntityParam(key, callerToken, param, callerBundleName);
+    mgr->CheckAndUpdateQueryEntityParam(key, callerToken, param,
+        callerBundleName);
 }
 
 bool DoSomethingInterestingWithMyAPI(const uint8_t *data, size_t size)

@@ -27,6 +27,7 @@
 #include "cpp/mutex.h"
 #include "iremote_object.h"
 #include "irender_scheduler.h"
+#include "ui_ability_last_caller_info.h"
 #include "ability_running_record.h"
 #include "render_record.h"
 #include "ability_state_data.h"
@@ -115,6 +116,20 @@ public:
     void SetCallerUid(int32_t uid);
 
     /**
+     * @brief Obtains the app record CallerBundleName.
+     *
+     * @return Returns app record CallerBundleName.
+     */
+    std::string GetCallerBundleName() const;
+
+    /**
+     * @brief Setting the CallerBundleName.
+     *
+     * @param name, the caller bundle name.
+     */
+    void SetCallerBundleName(const std::string &name);
+
+    /**
      * @brief Obtains the app record CallerTokenId.
      *
      * @return Returns app record CallerTokenId.
@@ -127,6 +142,34 @@ public:
      * @param CallerToken, the Caller tokenId.
      */
     void SetCallerTokenId(int32_t tokenId);
+
+    /**
+     * @brief Obtains the app record lastUIAbilityCallerUid.
+     *
+     * @return Returns app record lastUIAbilityCallerUid.
+     */
+    int32_t GetLastUIAbilityCallerUid() const;
+
+    /**
+     * @brief Setting the lastUIAbilityCallerUid.
+     *
+     * @param uid the lastUIAbilityCallerUid.
+     */
+    void SetLastUIAbilityCallerUid(int32_t uid);
+
+    /**
+     * @brief Obtains the app record lastUIAbilityCallerName.
+     *
+     * @return Returns app record lastUIAbilityCallerName.
+     */
+    std::string GetLastUIAbilityCallerName() const;
+
+    /**
+     * @brief Setting the lastUIAbilityCallerName.
+     *
+     * @param name the lastUIAbilityCallerName.
+     */
+    void SetLastUIAbilityCallerName(const std::string &name);
 
     /**
      * @brief Obtains the app record isLauncherApp flag.
@@ -197,34 +240,6 @@ public:
      * @param flag, the the flag of custom process.
      */
     void SetCustomProcessFlag(const std::string &flag);
-
-    /**
-     * @brief Obtains the sign code.
-     *
-     * @return Returns the sign code.
-     */
-    const std::string &GetSignCode() const;
-
-    /**
-     * @brief Setting the sign code.
-     *
-     * @param code, the sign code.
-     */
-    void SetSignCode(const std::string &signCode);
-
-    /**
-     * @brief Obtains the jointUserId.
-     *
-     * @return Returns the jointUserId.
-     */
-    const std::string &GetJointUserId() const;
-
-    /**
-     * @brief Setting the jointUserId.
-     *
-     * @param jointUserId, the jointUserId.
-     */
-    void SetJointUserId(const std::string &jointUserId);
 
     /**
      * @brief Obtains the application uid.
@@ -535,11 +550,13 @@ public:
      *
      * @param token, the unique identification to update the ability.
      * @param state, ability status that needs to be updated.
+     * @param isFromScreenOffBackground Whether from screen off background.
+     * @param callerInfo The caller info including uid and bundle name.
      *
      * @return
      */
     void UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state,
-        bool isFromScreenOffBackground = false);
+        bool isFromScreenOffBackground = false, const UiAbilityLastCallerInfo &callerInfo = {});
 
     /**
      * PopForegroundingAbilityTokens, Extract the token record from the foreground tokens list.
@@ -740,6 +757,9 @@ public:
         int32_t state,
         bool isAbility,
         bool isFromWindowFocusChanged);
+    AbilityStateData BuildAbilityStateData(
+        const std::shared_ptr<AbilityRunningRecord> &ability,
+        int32_t state, bool isAbility);
 
     void insertAbilityStageInfo(std::vector<HapModuleInfo> moduleInfos);
 
@@ -1056,8 +1076,14 @@ public:
     void SetKillMsg(const std::string &killMsg);
     std::string GetKillMsg() const;
 
+    bool SetKillReasonIfAbsent(int32_t killId, const std::string &killMsg);
+
     void SetInnerMsg(const std::string &innerMsg);
     std::string GetInnerMsg() const;
+
+    void SetKillCallerInfo(int32_t killCallerPid, const std::string &killCallerProcessName);
+    int32_t GetKillCallerPid() const;
+    std::string GetKillCallerProcessName() const;
 
     bool SetSupportedProcessCache(bool isSupport);
     SupportProcessCacheState GetSupportProcessCacheState();
@@ -1347,10 +1373,21 @@ private:
      * AbilityForeground, Handling the ability process when switching to the foreground.
      *
      * @param ability, the ability info.
+     * @param callerInfo The caller info including uid and bundle name.
      *
      * @return
      */
-    void AbilityForeground(const std::shared_ptr<AbilityRunningRecord> &ability);
+    void AbilityForeground(const std::shared_ptr<AbilityRunningRecord> &ability,
+        const UiAbilityLastCallerInfo &callerInfo = {});
+
+    /**
+     * Handle foreground state change when application is already foregrounded,
+     * just switch the ability to foreground and notify observers.
+     *
+     * @param ability the ability info.
+     * @return whether handled.
+     */
+    bool HandleForegroundStateChange(const std::shared_ptr<AbilityRunningRecord> &ability);
 
     /**
      * AbilityBackground, Handling the ability process when switching to the background.
@@ -1403,6 +1440,7 @@ private:
     std::map<std::string, std::vector<std::shared_ptr<ModuleRunningRecord>>> hapModules_;
     std::map<int32_t, std::shared_ptr<RenderRecord>> renderRecordMap_; // render record
     std::map<pid_t, std::weak_ptr<AppRunningRecord>> childAppRecordMap_;
+    mutable ffrt::mutex childAppRecordMapLock_;
     std::unordered_set<sptr<IRemoteObject>, RemoteObjHash> foregroundingAbilityTokens_;
     std::set<pid_t> renderPidSet_; // Contains all render pid added, whether died or not
     std::set<uint32_t> windowIds_;
@@ -1460,7 +1498,7 @@ private:
     std::atomic<ProcessChangeReason> processChangeReason_ = ProcessChangeReason::REASON_NONE; // render record
     std::chrono::system_clock::time_point preloadAttachTimeoutStartTime_;
 
-    MakeImageState makeImageState_ = MakeImageState::NONE;
+    std::atomic<MakeImageState> makeImageState_ = MakeImageState::NONE;
     bool isCreateFromImage_ = false;
     ImageProcessType imageProcessType_ = ImageProcessType::UNSPECIFIED;
     bool needRemoveDeathRecipient_ = true;
@@ -1476,21 +1514,25 @@ private:
     int32_t callerPid_ = -1;
     int32_t callerTokenId_ = -1;
     int32_t callerUid_ = -1;
+    std::string callerBundleName_;
+    mutable ffrt::mutex callerBundleNameLock_;
+    int32_t lastUIAbilityCallerUid_ = -1;
+    std::string lastUIAbilityCallerName_;
+    mutable ffrt::mutex lastUIAbilityCallerLock_;
     int32_t exitReason_ = 0;
     std::atomic_int32_t pssValue_ = 0;
     std::atomic<bool> isUIExtensionPreload_ = false;
     int32_t requestProcCode_ = 0; // render record
     std::atomic_int32_t rssValue_ = 0;
     int32_t killId_ = -1;
-    int restartResidentProcCount_ = 0;
+    int32_t killCallerPid_ = -1;
+    int32_t restartResidentProcCount_ = 0;
     pid_t gpuPid_ = 0;
     int32_t byCallStatus_ = 0;
 
     std::string processName_;  // name of this process
     std::string specifiedProcessFlag_; // flag of specified Process
     std::string customProcessFlag_; // flag of custom process
-    std::string signCode_;  // sign of this hap
-    std::string jointUserId_;
     std::string mainBundleName_;
     std::string mainAppName_;
     std::string appIdentifier_;
@@ -1503,6 +1545,7 @@ private:
     std::string killReason_ = "";
     std::string killMsg_ = "";
     std::string innerMsg_ = "";
+    std::string killCallerProcessName_ = "";
 
     bool isLauncherApp_;
     bool isAllowedNWebPreload_ = false;
@@ -1533,7 +1576,7 @@ private:
     bool isNeedPreloadModule_ = false;
     bool delayedProcessExitEnabled_ = false;
     bool isPrepareExit_ = false;
-    bool isRestartApp_ = false; // Only app calling RestartApp can be set to true
+    std::atomic_bool isRestartApp_ = false; // Only app calling RestartApp can be set to true
     bool isSingleton_ = false;
     bool isStageBasedModel_ = false;
     std::atomic_bool isStrictMode_ = false;
@@ -1557,8 +1600,9 @@ private:
     mutable ffrt::mutex killReasonLock_;
     mutable ffrt::mutex exitReasonLock_;
     mutable ffrt::mutex exitMsgLock_;
-    mutable ffrt::mutex killMsgLock_;
+    mutable ffrt::mutex killInfoLock_; // protects killId_ and killMsg_
     mutable ffrt::mutex innerMsgLock_;
+    mutable ffrt::mutex killCallerLock_;
     mutable ffrt::mutex supportMultiProcessDeviceFeatureLock_;
     mutable ffrt::mutex hapModulesLock_;
     mutable std::mutex specifiedMutex_;

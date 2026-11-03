@@ -47,6 +47,7 @@ ohos_shared_library("agentextensionability") {
 }
 
 ohos_shared_library("js_agent_connection") {
+  version_script = "libjs_agent_connection.map"
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -183,6 +184,8 @@ ohos_shared_library("js_agent_extension") {
       "window_manager:libwsutils",
     ]
   }
+
+  version_script = "libjs_agent_extension.map"
 
   subsystem_name = "ability"
   part_name = "ability_runtime"

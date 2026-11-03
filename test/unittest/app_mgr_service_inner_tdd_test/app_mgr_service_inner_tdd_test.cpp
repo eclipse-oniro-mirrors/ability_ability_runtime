@@ -20,6 +20,7 @@
 #include "app_mgr_service_inner.h"
 #include "app_running_record.h"
 #include "remote_client_manager.h"
+#include "process_state_callback.h"
 #undef private
 #include "app_scheduler.h"
 #include "app_utils.h"
@@ -905,6 +906,98 @@ HWTEST_F(AppMgrServiceInnerTest, SendProcessKillEvent_003, TestSize.Level1)
 }
 
 /**
+ * @tc.name: SetKillCallerInfo_001
+ * @tc.desc: Verify kill caller info storage and getters of AppRunningRecord
+ * @tc.type: FUNC
+ * @tc.Function: SetKillCallerInfo
+ * @tc.SubFunction: NA
+ * @tc.EnvConditions: NA
+ */
+HWTEST_F(AppMgrServiceInnerTest, SetKillCallerInfo_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetKillCallerInfo_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrServiceInner->Init();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    BundleInfo bundleInfo;
+    std::string processName = "AppMgrServiceInnerTest";
+    std::shared_ptr<AppRunningRecord> appRecord =
+        appMgrServiceInner->appRunningManager_->CreateAppRunningRecord(applicationInfo_, processName, bundleInfo, "");
+    ASSERT_NE(appRecord, nullptr);
+    // default: no kill caller info recorded
+    EXPECT_EQ(appRecord->GetKillCallerPid(), -1);
+    EXPECT_TRUE(appRecord->GetKillCallerProcessName().empty());
+    // store kill caller info and read back
+    appRecord->SetKillCallerInfo(1234, "sceneboard");
+    EXPECT_EQ(appRecord->GetKillCallerPid(), 1234);
+    EXPECT_EQ(appRecord->GetKillCallerProcessName(), "sceneboard");
+    // overwrite with new caller
+    appRecord->SetKillCallerInfo(5678, "appspawn");
+    EXPECT_EQ(appRecord->GetKillCallerPid(), 5678);
+    EXPECT_EQ(appRecord->GetKillCallerProcessName(), "appspawn");
+    TAG_LOGI(AAFwkTag::TEST, "SetKillCallerInfo_001 end");
+}
+
+/**
+ * @tc.name: SendProcessKillEvent_009
+ * @tc.desc: Verify SendProcessKillEvent reads kill caller info from appRecord for PROCESS_KILL params
+ * @tc.type: FUNC
+ * @tc.Function: SendProcessKillEvent
+ * @tc.SubFunction: NA
+ * @tc.EnvConditions: NA
+ */
+HWTEST_F(AppMgrServiceInnerTest, SendProcessKillEvent_009, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SendProcessKillEvent_009 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrServiceInner->Init();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    BundleInfo bundleInfo;
+    std::string processName = "AppMgrServiceInnerTest";
+    std::shared_ptr<AppRunningRecord> appRecord =
+        appMgrServiceInner->appRunningManager_->CreateAppRunningRecord(applicationInfo_, processName, bundleInfo, "");
+    ASSERT_NE(appRecord, nullptr);
+    // store kill reason and kill caller info, then report exit event with caller attribution
+    appRecord->SetKillId(2);
+    appRecord->SetKillMsg("testKillMsg");
+    appRecord->SetKillCallerInfo(1234, "sceneboard");
+    appMgrServiceInner->SendProcessKillEvent(appRecord, "OnRemoteDied");
+    // caller info keeps stable after event reporting
+    EXPECT_EQ(appRecord->GetKillCallerPid(), 1234);
+    EXPECT_EQ(appRecord->GetKillCallerProcessName(), "sceneboard");
+    // default kill id branch (killId == DEFAULT_KILL_ID) with caller info
+    appRecord->SetKillId(-1);
+    appMgrServiceInner->SendProcessKillEvent(appRecord, "OnRemoteDied");
+    EXPECT_EQ(appRecord->GetKillCallerPid(), 1234);
+    EXPECT_EQ(appRecord->GetKillCallerProcessName(), "sceneboard");
+    TAG_LOGI(AAFwkTag::TEST, "SendProcessKillEvent_009 end");
+}
+
+/**
+ * @tc.name: NotifyAppMgrRecordExitReasonCompability_001
+ * @tc.desc: Verify NotifyAppMgrRecordExitReasonCompability guard branches with callerPid
+ * @tc.type: FUNC
+ * @tc.Function: NotifyAppMgrRecordExitReasonCompability
+ * @tc.SubFunction: NA
+ * @tc.EnvConditions: NA
+ */
+HWTEST_F(AppMgrServiceInnerTest, NotifyAppMgrRecordExitReasonCompability_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyAppMgrRecordExitReasonCompability_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrServiceInner->Init();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    // guard branches: not foundation caller or no appRecord for pid, nothing recorded
+    int32_t ret = appMgrServiceInner->NotifyAppMgrRecordExitReasonCompability(
+        getpid(), 2, "killMsg", "innerMsg", 0, 1234);
+    EXPECT_NE(ret, ERR_OK);
+    // invalid callerPid (<= 0) also records nothing
+    ret = appMgrServiceInner->NotifyAppMgrRecordExitReasonCompability(getpid(), 2, "killMsg", "innerMsg", 0, -1);
+    EXPECT_NE(ret, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "NotifyAppMgrRecordExitReasonCompability_001 end");
+}
+
+/**
  * @tc.name: CheckIsolationMode_001
  * @tc.desc: CheckIsolationMode
  * @tc.type: FUNC
@@ -1606,13 +1699,13 @@ HWTEST_F(AppMgrServiceInnerTest, UpdateForeground_001, TestSize.Level1)
     EXPECT_NE(appRecord, nullptr);
     appRecord->SetState(ApplicationState::APP_STATE_FOREGROUND);
     std::string eventName = AppFreezeType::THREAD_BLOCK_3S;
-    bool ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
+    bool ret = appMgrServiceInner->UpdateForeground(appRecord, eventName, false, true);
     EXPECT_TRUE(ret);
     appRecord->SetState(ApplicationState::APP_STATE_FOCUS);
-    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
+    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName, false, true);
     EXPECT_TRUE(ret);
     appRecord->SetState(ApplicationState::APP_STATE_BACKGROUND);
-    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
+    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName, false, false);
     EXPECT_TRUE(!ret);
     TAG_LOGI(AAFwkTag::TEST, "UpdateForeground_001 end");
 }
@@ -1638,15 +1731,15 @@ HWTEST_F(AppMgrServiceInnerTest, UpdateForeground_002, TestSize.Level1)
     EXPECT_NE(appRecord, nullptr);
     appRecord->SetState(ApplicationState::APP_STATE_FOREGROUND);
     std::string eventName = AppFreezeType::BUSSINESS_THREAD_BLOCK_3S;
-    bool ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
+    bool ret = appMgrServiceInner->UpdateForeground(appRecord, eventName, false, true);
     EXPECT_TRUE(ret);
     appRecord->SetState(ApplicationState::APP_STATE_FOCUS);
     eventName = AppFreezeType::BUSSINESS_THREAD_BLOCK_6S;
-    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
+    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName, false, true);
     EXPECT_TRUE(ret);
     eventName = AppFreezeType::THREAD_BLOCK_6S;
     appRecord->SetState(ApplicationState::APP_STATE_BACKGROUND);
-    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
+    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName, false, false);
     EXPECT_TRUE(!ret);
     TAG_LOGI(AAFwkTag::TEST, "UpdateForeground_002 end");
 }
@@ -1701,9 +1794,16 @@ HWTEST_F(AppMgrServiceInnerTest, UpdateForeground_004, TestSize.Level1)
     std::string eventName = AppFreezeType::LIFECYCLE_TIMEOUT;
     bool ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
     EXPECT_TRUE(ret);
+    ret = appMgrServiceInner->UpdateForeground(appRecord, eventName, true);
+    EXPECT_TRUE(!ret);
     appRecord->SetApplicationPendingState(ApplicationPendingState::BACKGROUNDING);
     ret = appMgrServiceInner->UpdateForeground(appRecord, eventName);
     EXPECT_TRUE(!ret);
+    std::string blockEventName = AppFreezeType::THREAD_BLOCK_6S;
+    ret = appMgrServiceInner->UpdateForeground(appRecord, blockEventName, false, true);
+    EXPECT_TRUE(ret);
+    ret = appMgrServiceInner->UpdateForeground(appRecord, blockEventName, false, false);
+    EXPECT_FALSE(ret);
     TAG_LOGI(AAFwkTag::TEST, "UpdateForeground_004 end");
 }
 
@@ -1867,6 +1967,135 @@ HWTEST_F(AppMgrServiceInnerTest, SendProcessKillEvent_008, TestSize.Level1)
     appMgrServiceInner->NotifyAppMgrRecordExitReasonCompability(pid, killId, reason, reason, exitreason);
     appMgrServiceInner->SendProcessKillEvent(appRecord);
     TAG_LOGI(AAFwkTag::TEST, "SendProcessKillEvent_008 end");
+}
+
+/**
+ * @tc.name: CheckProcessAvailable_001
+ * @tc.desc: CheckProcessAvailable with null appRecord, expect return true
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, CheckProcessAvailable_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckProcessAvailable_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    auto result = appMgrServiceInner->CheckProcessAvailable(nullptr);
+    EXPECT_TRUE(result);
+    TAG_LOGI(AAFwkTag::TEST, "CheckProcessAvailable_001 end");
+}
+
+/**
+ * @tc.name: CheckProcessAvailable_002
+ * @tc.desc: CheckProcessAvailable with appRecord that has null priorityObject, expect return true
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, CheckProcessAvailable_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckProcessAvailable_002 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, 0, "test_process");
+    ASSERT_NE(appRecord, nullptr);
+
+    auto result = appMgrServiceInner->CheckProcessAvailable(appRecord);
+    EXPECT_TRUE(result);
+    TAG_LOGI(AAFwkTag::TEST, "CheckProcessAvailable_002 end");
+}
+
+/**
+ * @tc.name: CheckProcessAvailable_003
+ * @tc.desc: CheckProcessAvailable with appRecord that has pid <= 0, expect return true
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, CheckProcessAvailable_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckProcessAvailable_003 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, 0, "test_process");
+    ASSERT_NE(appRecord, nullptr);
+
+    auto priorityObject = appRecord->GetPriorityObject();
+    ASSERT_NE(priorityObject, nullptr);
+    priorityObject->pid_ = 0;
+
+    auto result = appMgrServiceInner->CheckProcessAvailable(appRecord);
+    EXPECT_TRUE(result);
+    TAG_LOGI(AAFwkTag::TEST, "CheckProcessAvailable_003 end");
+}
+
+/**
+ * @tc.name: SetProcessPrepareExit_001
+ * @tc.desc: SetProcessPrepareExit with non-existent pid, expect no crash
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, SetProcessPrepareExit_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetProcessPrepareExit_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    appMgrServiceInner->Init();
+
+    int32_t nonExistentPid = 99999;
+    appMgrServiceInner->SetProcessPrepareExit(nonExistentPid);
+
+    SUCCEED();
+    TAG_LOGI(AAFwkTag::TEST, "SetProcessPrepareExit_001 end");
+}
+
+/**
+ * @tc.name: ProcessStateCallback_001
+ * @tc.desc: ProcessStateCallback OnProcessAvailable and WaitForResult timeout
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, ProcessStateCallback_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ProcessStateCallback_001 start");
+    auto callback = sptr<ProcessStateCallback>::MakeSptr();
+    ASSERT_NE(callback, nullptr);
+
+    EXPECT_TRUE(callback->IsAvailable());
+
+    bool waitResult = callback->WaitForResult(50);
+    EXPECT_FALSE(waitResult);
+
+    callback->OnProcessAvailable(false);
+    EXPECT_FALSE(callback->IsAvailable());
+
+    callback->OnProcessAvailable(true);
+    EXPECT_TRUE(callback->IsAvailable());
+    TAG_LOGI(AAFwkTag::TEST, "ProcessStateCallback_001 end");
+}
+
+/**
+ * @tc.name: ProcessStateCallback_002
+ * @tc.desc: ProcessStateCallback Reset and WaitForResult after callback
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, ProcessStateCallback_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ProcessStateCallback_002 start");
+    auto callback = sptr<ProcessStateCallback>::MakeSptr();
+    ASSERT_NE(callback, nullptr);
+
+    callback->OnProcessAvailable(false);
+    EXPECT_FALSE(callback->IsAvailable());
+
+    bool waitResult = callback->WaitForResult(100);
+    EXPECT_TRUE(waitResult);
+
+    callback->Reset();
+    EXPECT_TRUE(callback->IsAvailable());
+
+    waitResult = callback->WaitForResult(50);
+    EXPECT_FALSE(waitResult);
+    TAG_LOGI(AAFwkTag::TEST, "ProcessStateCallback_002 end");
 }
 
 } // namespace AppExecFwk

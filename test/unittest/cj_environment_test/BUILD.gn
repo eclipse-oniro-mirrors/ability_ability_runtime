@@ -41,6 +41,11 @@ ohos_unittest("cj_environment_other_test") {
   if (target_cpu == "arm") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
+
+  configs = [
+    "${ability_runtime_path}/cj_environment/frameworks/cj_environment:cj_rt_public_config",
+  ]
+
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",

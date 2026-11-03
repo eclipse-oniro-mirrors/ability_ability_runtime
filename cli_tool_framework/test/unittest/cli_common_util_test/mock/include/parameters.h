@@ -27,6 +27,16 @@ T GetIntParameter(const std::string &, T)
 {
     return static_cast<T>(CliTool::CliCommonMock::intParameterValue);
 }
+
+inline std::string GetParameter(const std::string &, const std::string &)
+{
+    return CliTool::CliCommonMock::stringParameterValue;
+}
+
+inline bool GetBoolParameter(const std::string &, bool)
+{
+    return CliTool::CliCommonMock::boolParameterValue;
+}
 } // namespace system
 } // namespace OHOS
 

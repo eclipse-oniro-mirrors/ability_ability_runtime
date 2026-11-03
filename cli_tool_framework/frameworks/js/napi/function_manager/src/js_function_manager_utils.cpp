@@ -15,8 +15,10 @@
 
 #include "js_function_manager_utils.h"
 
+#include "exec_options.h"
 #include "function_info.h"
 #include "hilog_tag_wrapper.h"
+#include "invoke_function_param.h"
 #include "napi_common_util.h"
 #include "napi_common_want.h"
 
@@ -26,6 +28,7 @@ namespace OHOS {
 namespace CliTool {
 
 namespace {
+
 // Helper: set string property with null check and error handling
 inline bool SetStringProperty(napi_env env, napi_value obj, const char* name, const std::string& value)
 {
@@ -55,6 +58,81 @@ inline bool SetOptionalStringProperty(napi_env env, napi_value obj, const char* 
     }
     return SetStringProperty(env, obj, name, value);
 }
+
+// Same trace-id rule as exec_options.h; an empty string is a valid provided value.
+inline bool UnwrapOptionalTraceId(napi_env env, napi_value options, const char* name,
+    std::string& out, std::string& msg)
+{
+    bool hasProperty = false;
+    if (napi_has_named_property(env, options, name, &hasProperty) != napi_ok) {
+        msg = std::string("has ") + name + " failed";
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
+        return false;
+    }
+    if (!hasProperty) {
+        return true;
+    }
+    napi_value prop = nullptr;
+    if (napi_get_named_property(env, options, name, &prop) != napi_ok) {
+        msg = std::string("invalid ") + name + " property";
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
+        return false;
+    }
+    // Explicit undefined/null is treated as absent (spec AC-1.7: "not provided").
+    napi_valuetype valueType = napi_undefined;
+    if (napi_typeof(env, prop, &valueType) != napi_ok) {
+        msg = std::string("invalid ") + name + " property";
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
+        return false;
+    }
+    if (valueType == napi_undefined || valueType == napi_null) {
+        return true;
+    }
+    std::string traceId;
+    if (!AppExecFwk::UnwrapStringFromJS2(env, prop, traceId)) {
+        msg = std::string("Parameter error. The type of \"") + name + "\" must be string.";
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
+        return false;
+    }
+    if (!IsValidTraceId(traceId)) {
+        msg = std::string("Parameter error. The ") + name + " is invalid.";
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
+        return false;
+    }
+    out = std::move(traceId);
+    return true;
+}
+
+// Classification of the JS options value before field parsing.
+enum class OptionsKind {
+    ABSENT,   // nullptr / undefined / null: nothing to parse
+    OBJECT,   // an object: parse the optional trace identifiers
+    INVALID,  // non-object value or typeof failure: reported via msg
+};
+
+// Helper: classify the options parameter. Sets msg and logs on a non-object
+// value or a typeof failure (INVALID).
+inline OptionsKind GetOptionsKind(napi_env env, napi_value options, std::string& msg)
+{
+    if (options == nullptr) {
+        return OptionsKind::ABSENT;
+    }
+    napi_valuetype optionsType = napi_undefined;
+    if (napi_typeof(env, options, &optionsType) != napi_ok) {
+        msg = "Parameter error. Failed to parse the option.";
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
+        return OptionsKind::INVALID;
+    }
+    if (optionsType == napi_undefined || optionsType == napi_null) {
+        return OptionsKind::ABSENT;
+    }
+    if (optionsType != napi_object) {
+        msg = "Parameter error. The type of \"option\" must be object.";
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
+        return OptionsKind::INVALID;
+    }
+    return OptionsKind::OBJECT;
+}
 } // namespace
 
 napi_value CreateJsFunctionInfo(napi_env env, const FunctionInfo& function)
@@ -78,8 +156,7 @@ napi_value CreateJsFunctionInfo(napi_env env, const FunctionInfo& function)
     return jsObj;
 }
 
-napi_value CreateJsInvokeResult(napi_env env, int32_t resultCode,
-    const std::shared_ptr<AAFwk::WantParams>& result, const std::string& message)
+napi_value CreateJsInvokeResult(napi_env env, const InvokeFunctionResult &result)
 {
     napi_value jsObj = nullptr;
     napi_status status = napi_create_object(env, &jsObj);
@@ -88,26 +165,117 @@ napi_value CreateJsInvokeResult(napi_env env, int32_t resultCode,
         return nullptr;
     }
 
-    napi_value jsSuccess = AppExecFwk::WrapBoolToJS(env, resultCode == 0);
+    napi_value jsSuccess = AppExecFwk::WrapBoolToJS(env, result.success);
     if (!SetProperty(env, jsObj, "success", jsSuccess)) {
         return nullptr;
     }
 
-    if (result != nullptr) {
-        napi_value jsData = AppExecFwk::CreateJsWantParams(env, *result);
+    if (result.data != nullptr) {
+        napi_value jsData = AppExecFwk::CreateJsWantParams(env, *result.data);
         if (jsData != nullptr && !SetProperty(env, jsObj, "data", jsData)) {
             return nullptr;
         }
     }
 
-    napi_value jsErrorCode = AppExecFwk::WrapInt32ToJS(env, resultCode);
-    napi_value jsMessage = AppExecFwk::WrapStringToJS(env, message);
+    napi_value jsErrorCode = AppExecFwk::WrapInt32ToJS(env, result.errorCode);
+    napi_value jsErrorMsg = AppExecFwk::WrapStringToJS(env, result.errorMsg);
     if (!SetProperty(env, jsObj, "errorCode", jsErrorCode) ||
-        !SetProperty(env, jsObj, "message", jsMessage)) {
+        !SetProperty(env, jsObj, "errorMsg", jsErrorMsg)) {
         return nullptr;
     }
 
     return jsObj;
+}
+
+void UnwrapInvokeResult(napi_env env, napi_value jsObj, InvokeFunctionResult &result)
+{
+    if (jsObj == nullptr) {
+        return;
+    }
+    result = InvokeFunctionResult{};
+    bool hasProp = false;
+    if (napi_has_named_property(env, jsObj, "success", &hasProp) == napi_ok && hasProp) {
+        napi_value prop = nullptr;
+        napi_get_named_property(env, jsObj, "success", &prop);
+        AppExecFwk::UnwrapBoolFromJS2(env, prop, result.success);
+    }
+    if (napi_has_named_property(env, jsObj, "errorCode", &hasProp) == napi_ok && hasProp) {
+        napi_value prop = nullptr;
+        napi_get_named_property(env, jsObj, "errorCode", &prop);
+        AppExecFwk::UnwrapInt32FromJS2(env, prop, result.errorCode);
+    }
+    if (napi_has_named_property(env, jsObj, "errorMsg", &hasProp) == napi_ok && hasProp) {
+        napi_value prop = nullptr;
+        napi_get_named_property(env, jsObj, "errorMsg", &prop);
+        AppExecFwk::UnwrapStringFromJS2(env, prop, result.errorMsg);
+    }
+    if (napi_has_named_property(env, jsObj, "data", &hasProp) == napi_ok && hasProp) {
+        napi_value prop = nullptr;
+        napi_get_named_property(env, jsObj, "data", &prop);
+        if (prop != nullptr) {
+            auto wantParams = std::make_shared<AAFwk::WantParams>();
+            AppExecFwk::UnwrapWantParams(env, prop, *wantParams);
+            result.data = wantParams;
+        }
+    }
+}
+
+napi_value CreateJsInvokeFunctionParam(napi_env env, const InvokeFunctionParam &param)
+{
+    napi_value jsObj = nullptr;
+    napi_create_object(env, &jsObj);
+    napi_set_named_property(env, jsObj, "functionNamespace",
+        AppExecFwk::WrapStringToJS(env, param.functionNamespace));
+    napi_set_named_property(env, jsObj, "functionName",
+        AppExecFwk::WrapStringToJS(env, param.functionName));
+    napi_set_named_property(env, jsObj, "args", AppExecFwk::WrapWantParams(env, param.args));
+    // Matches FunctionHook.d.ts InvokeFunctionParam {invokeOptions?: InvokeOptions}; the ids
+    // are read-only for the hook (not parsed back from the hook result).
+    if (!param.invokeOptions.toolCallId.empty() || !param.invokeOptions.dmSessionId.empty() ||
+        !param.invokeOptions.taskId.empty()) {
+        napi_value jsOptions = nullptr;
+        napi_create_object(env, &jsOptions);
+        SetOptionalStringProperty(env, jsOptions, "toolCallId", param.invokeOptions.toolCallId);
+        SetOptionalStringProperty(env, jsOptions, "dmSessionId", param.invokeOptions.dmSessionId);
+        SetOptionalStringProperty(env, jsOptions, "taskId", param.invokeOptions.taskId);
+        napi_set_named_property(env, jsObj, "invokeOptions", jsOptions);
+    }
+    return jsObj;
+}
+
+void UnwrapInvokeFunctionParam(napi_env env, napi_value jsObj, InvokeFunctionParam &param)
+{
+    if (jsObj == nullptr) {
+        return;
+    }
+    param = InvokeFunctionParam{};
+    bool hasProp = false;
+    if (napi_has_named_property(env, jsObj, "functionNamespace", &hasProp) == napi_ok && hasProp) {
+        napi_value prop = nullptr;
+        napi_get_named_property(env, jsObj, "functionNamespace", &prop);
+        AppExecFwk::UnwrapStringFromJS2(env, prop, param.functionNamespace);
+    }
+    if (napi_has_named_property(env, jsObj, "functionName", &hasProp) == napi_ok && hasProp) {
+        napi_value prop = nullptr;
+        napi_get_named_property(env, jsObj, "functionName", &prop);
+        AppExecFwk::UnwrapStringFromJS2(env, prop, param.functionName);
+    }
+    if (napi_has_named_property(env, jsObj, "args", &hasProp) == napi_ok && hasProp) {
+        napi_value prop = nullptr;
+        napi_get_named_property(env, jsObj, "args", &prop);
+        AppExecFwk::UnwrapWantParams(env, prop, param.args);
+    }
+}
+
+bool UnwrapInvokeOptions(napi_env env, napi_value options, InvokeOptions& invokeOptions, std::string& msg)
+{
+    OptionsKind kind = GetOptionsKind(env, options, msg);
+    if (kind != OptionsKind::OBJECT) {
+        return kind == OptionsKind::ABSENT;
+    }
+    return UnwrapOptionalTraceId(env, options, "toolCallId", invokeOptions.toolCallId, msg) &&
+        UnwrapOptionalTraceId(env, options, "dmSessionId", invokeOptions.dmSessionId, msg) &&
+        UnwrapOptionalTraceId(env, options, "taskId", invokeOptions.taskId, msg);
 }
 
 } // namespace CliTool

@@ -740,11 +740,6 @@ enum {
     ERR_NULL_INTERCEPTOR_EXECUTER = 2097312,
 
     /**
-     * Result (2097313) for after check executer is nullptr.
-     */
-    ERR_NULL_AFTER_CHECK_EXECUTER = 2097313,
-
-    /**
      * Result (2097314) for mission list manager is nullptr.
      */
     ERR_NULL_MISSION_LIST_MANAGER = 2097314,
@@ -853,6 +848,8 @@ enum {
     ERR_UPMS_KEY_IS_NOT_CREATE_BY_CALLER = 2097348,
 
     ERR_UPMS_SERVICE_NOT_START = 2097349,
+
+    ERR_UPMS_INVALID_USER_ID = 2097350,
 
     /**
      * Result (2097351) target not in whitelist.
@@ -1199,6 +1196,36 @@ enum {
     ERR_QUERY_DISPOSED_RULE_FAILED = 2099422,
 
     /**
+     * Result(2099423) for the UIAbility is not a native ability.
+     */
+    ERR_NOT_NATIVE_UI_ABILITY = 2099423,
+
+    /**
+     * Result(2099501) for task manager: the task already exists.
+     */
+    ERR_TASK_ALREADY_EXISTS = 2099501,
+
+    /**
+     * Result(2099502) for task manager: the task does not exist.
+     */
+    ERR_TASK_NOT_FOUND = 2099502,
+
+    /**
+     * Result(2099503) for task manager: the attribution record does not exist.
+     */
+    ERR_ATTRIBUTION_NOT_FOUND = 2099503,
+
+    /**
+     * Result(2099504) for get pid by call stub failed, callee record not found.
+     */
+    ERR_CALL_STUB_NOT_FOUND = 2099504,
+
+    /**
+     * Result(2099505) for get pid by call stub failed, callee pid is invalid (<=0).
+     */
+    ERR_CALLEE_PID_INVALID = 2099505,
+
+    /**
      * Native error(3000000) for target bundle not exist.
      */
     ERR_CODE_NOT_EXIST = 3000000,
@@ -1474,6 +1501,11 @@ enum NativeFreeInstallError {
      * Result(29360228) for sandbox clone index is invalid.
      */
     ERR_SANDBOX_CLONE_INDEX_INVALID = 29360228,
+
+    /*
+     * The target application is not authorized for startup before the first unlock.
+     */
+    ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT = 29360229,
 
     /* codes 29360270 - 29360280 are reserved for StartSelfUIAbility by delayed process exit */
     /*

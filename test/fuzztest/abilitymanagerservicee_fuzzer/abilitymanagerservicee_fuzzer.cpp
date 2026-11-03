@@ -81,7 +81,7 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     std::shared_ptr<OHOS::Media::PixelMap> icon;
     abilityms->SetMissionIcon(token, icon);
     sptr<IWindowManagerServiceHandler> windowManagerServiceHandler;
-    abilityms->RegisterWindowManagerServiceHandler(windowManagerServiceHandler);
+    abilityms->RegisterWindowManagerServiceHandler(windowManagerServiceHandler, false);
 
     return true;
 }

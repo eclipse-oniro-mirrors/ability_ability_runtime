@@ -37,8 +37,8 @@ bool DoSomethingInterestingWithMyAPI(FuzzedDataProvider *fdp)
     js.needSnapshot = fdp->ConsumeBool();
     js.needLeakobj = fdp->ConsumeBool();
     js.needBinary = fdp->ConsumeBool();
-    js.pid = fdp->ConsumeIntegral<int32_t>()
-    js.tid = fdp->ConsumeIntegral<int32_t>()
+    js.pid = fdp->ConsumeIntegral<int32_t>();
+    js.tid = fdp->ConsumeIntegral<int32_t>();
     Parcel parcel;
     js.Marshalling(parcel);
     return true;

@@ -265,7 +265,10 @@ bool EtsInsightIntentEntry::PrepareExecuteEnvironment(ani_env *env, InsightInten
     }
 
     ani_enum_item executeModeItem {};
-    OHOS::AAFwk::AniEnumConvertUtil::EnumConvert_NativeToEts(env, EXECUTE_MODE_ENUM_NAME, mode, executeModeItem);
+    if (!OHOS::AAFwk::AniEnumConvertUtil::EnumConvert_NativeToEts(env, EXECUTE_MODE_ENUM_NAME, mode, executeModeItem)) {
+        TAG_LOGE(AAFwkTag::INTENT, "EnumConvert_NativeToEts failed");
+        return false;
+    }
     ani_status status = env->Object_SetPropertyByName_Ref(etsObj_->aniObj, "executeMode", executeModeItem);
     if (status != ANI_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "set executeMode failed, status: %{public}d", status);

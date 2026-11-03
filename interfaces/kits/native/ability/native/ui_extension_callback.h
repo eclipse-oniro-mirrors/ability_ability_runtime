@@ -30,6 +30,7 @@ public:
     UIExtensionCallback() = default;
     virtual ~UIExtensionCallback() = default;
     virtual void OnError(int32_t number) = 0;
+    virtual void OnAbilityByTypeResult(int32_t errorCode) = 0;
     virtual void OnResult(int32_t resultCode, const AAFwk::Want &want) = 0;
     void OnRelease(int32_t code);
     void SetSessionId(int32_t sessionId);

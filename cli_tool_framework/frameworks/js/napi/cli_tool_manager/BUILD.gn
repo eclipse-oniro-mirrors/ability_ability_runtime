@@ -40,6 +40,8 @@ ohos_source_set("cli_manager_error_utils_src") {
   external_deps = [
     "hilog:libhilog",
     "napi:ace_napi",
+    "node:node_header_notice",
+    "libuv:uv",
   ]
 
   subsystem_name = "ability"
@@ -89,6 +91,7 @@ ohos_shared_library("climanager_napi") {
 
   sources = [
     "src/cli_tool_manager_module.cpp",
+    "src/js_cli_hook.cpp",
     "src/js_cli_manager.cpp",
     "src/js_cli_manager_utils.cpp",
     "src/js_cli_session_event_callback.cpp",
@@ -110,6 +113,8 @@ ohos_shared_library("climanager_napi") {
     "hilog:libhilog",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "node:node_header_notice",
+    "libuv:uv",
   ]
 
   relative_install_dir = "module/app/cli"

@@ -1590,6 +1590,54 @@ HWTEST_F(ApplicationContextTest, SetFont_0100, TestSize.Level1)
     EXPECT_TRUE(context_ != nullptr);
 }
 
+#ifdef SUPPORT_GRAPHICS
+/**
+ * @tc.number:SetFont_0200
+ * @tc.name: SetFont
+ * @tc.desc: Verify SetFont passes font and enableAnimation to app font callback
+ */
+HWTEST_F(ApplicationContextTest, SetFont_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SetFont_0200 start";
+    bool called = false;
+    AppExecFwk::Configuration capturedConfig;
+    context_->RegisterAppFontObserver([&called, &capturedConfig](const AppExecFwk::Configuration &config) {
+        called = true;
+        capturedConfig = config;
+    });
+    context_->SetFont("SetFontTestCustom", false);
+    ASSERT_TRUE(called);
+    std::string fontKey = AppExecFwk::ConfigurationInner::APPLICATION_FONT;
+    std::string animationKey = AppExecFwk::ConfigurationInner::APPLICATION_FONT_ANIMATION;
+    EXPECT_EQ(capturedConfig.GetItem(fontKey), "SetFontTestCustom");
+    EXPECT_EQ(capturedConfig.GetItem(animationKey), "false");
+    GTEST_LOG_(INFO) << "SetFont_0200 end";
+}
+
+/**
+ * @tc.number:SetFont_0300
+ * @tc.name: SetFont
+ * @tc.desc: Verify one-arg SetFont passes default enableAnimation true to app font callback
+ */
+HWTEST_F(ApplicationContextTest, SetFont_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SetFont_0300 start";
+    bool called = false;
+    AppExecFwk::Configuration capturedConfig;
+    context_->RegisterAppFontObserver([&called, &capturedConfig](const AppExecFwk::Configuration &config) {
+        called = true;
+        capturedConfig = config;
+    });
+    context_->SetFont("SetFontTestCustom");
+    ASSERT_TRUE(called);
+    std::string fontKey = AppExecFwk::ConfigurationInner::APPLICATION_FONT;
+    std::string animationKey = AppExecFwk::ConfigurationInner::APPLICATION_FONT_ANIMATION;
+    EXPECT_EQ(capturedConfig.GetItem(fontKey), "SetFontTestCustom");
+    EXPECT_EQ(capturedConfig.GetItem(animationKey), "true");
+    GTEST_LOG_(INFO) << "SetFont_0300 end";
+}
+#endif
+
 /**
  * @tc.number:SetMcc_0100
  * @tc.name: SetMcc

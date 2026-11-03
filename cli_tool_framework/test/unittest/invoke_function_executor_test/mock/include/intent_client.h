@@ -44,6 +44,11 @@ public:
     int32_t ExecuteIntentByFunctionCall(const ExecuteIntentParam &param);
 
     int32_t mockStatus_ = 0;
+
+    // Capture of the wantParam handed to the intent execution (reset by the
+    // test fixture SetUp) so tests can assert the reserved-key injection.
+    bool executeCalled_ = false;
+    WantParams lastWantParam_;
 };
 
 } // namespace AAFwk

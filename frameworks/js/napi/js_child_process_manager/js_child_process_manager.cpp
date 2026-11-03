@@ -342,7 +342,7 @@ private:
             if (!innerErrorCode || !childInfos) {
                 TAG_LOGE(AAFwkTag::PROCESSMGR, "null innerErrorCode or childInfos");
                 task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
-                    GetInnerErrorMsg(AbilityInnerErrorMsg::GET_PROCESS_INFO_FAILED)));
+                    GetErrorMsg(AbilityErrorCode::ERROR_CODE_INNER)));
                 return;
             }
             if (*innerErrorCode == ChildProcessManagerErrorCode::ERR_OK) {

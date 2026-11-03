@@ -105,6 +105,9 @@ constexpr int EXTRA_ARGUMENTS_FOR_NULL_STRING = 0;
 constexpr int PARAM_LENGTH = 20;
 constexpr int INDEX_OFFSET = 3;
 
+// Tool identifier env var set by SA-CLI when the tool is pulled via execTool.
+const std::string ENV_TOOL_CALL_ID = "TOOL_CALL_ID";
+
 enum OptionType {
     OPTION_PARAMETER_INTEGER = 1000,
     OPTION_PARAMETER_STRING,
@@ -120,7 +123,7 @@ enum OptionType {
     OPTION_TYPE,
     OPTION_TIME,
     OPTION_SANDBOX_CLONE_INDEX,      // Sandbox clone index for clone application
-    OPTION_CREATOR_BUNDLE    // Creator bundle name (untrusted, from command line)
+    OPTION_CREATOR_BUNDLE,    // Creator bundle name (untrusted, from command line)
 };
 
 const std::string SHORT_OPTIONS = "";
@@ -144,6 +147,8 @@ struct option LONG_OPTIONS[] = {
     {0, 0, 0, 0}
 };
 }
+
+bool IsValidToolCallId(const std::string &toolCallId);
 
 class ClawAaShellCommand : public ShellCommand {
 public:
@@ -185,6 +190,8 @@ private:
 
     bool startAbilityWithWaitFlag_ = false;
     bool startSandboxCloneAbilityFlag_ = false;
+    // Resolved tool call id (param first, env fallback) for result output.
+    std::string toolCallId_;
     std::map<int32_t, AaToolErrorInfo> errorInfoMap_;
 };
 }  // namespace AAFwk

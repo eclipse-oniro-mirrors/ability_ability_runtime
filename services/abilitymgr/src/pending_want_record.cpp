@@ -213,6 +213,16 @@ void PendingWantRecord::BuildSendWant(SenderInfo &senderInfo, Want &want)
         immutable = true;
     }
     bool constant = (flags & static_cast<uint32_t>(Flags::CONSTANT_FLAG)) != 0;
+    if (constant) {
+        auto isSACall = AAFwk::PermissionVerification::GetInstance()->IsSACallByTokenId(
+            static_cast<uint32_t>(callerTokenId_));
+        auto isSystemAppCall = AAFwk::PermissionVerification::GetInstance()->IsSystemAppCallByTokenId(
+            static_cast<uint32_t>(callerTokenId_));
+        if (isSACall || isSystemAppCall) {
+            constant = false;
+            TAG_LOGI(AAFwkTag::WANTAGENT, "constant flag bypassed, tokenId: %{public}d", callerTokenId_);
+        }
+    }
     senderInfo.resolvedType = key_->GetRequestResolvedType();
     if (!immutable) {
         want.AddFlags(key_->GetFlags());
@@ -254,11 +264,11 @@ int32_t PendingWantRecord::GetUid() const
 
 void PendingWantRecord::SetCanceled()
 {
-    canceled_ = true;
+    canceled_.store(true);
 }
 bool PendingWantRecord::GetCanceled()
 {
-    return canceled_;
+    return canceled_.load();
 }
 
 void PendingWantRecord::SetCallerUid(const int32_t callerUid)
@@ -274,6 +284,48 @@ void PendingWantRecord::SetPublisherUid(int32_t publisherUid)
 int32_t PendingWantRecord::GetPublisherUid() const
 {
     return publisherUid_;
+}
+
+void PendingWantRecord::SetCreatorPid(int32_t pid)
+{
+    creatorPid_ = pid;
+}
+
+int32_t PendingWantRecord::GetCreatorPid() const
+{
+    return creatorPid_;
+}
+
+void PendingWantRecord::SetShared(bool shared)
+{
+    std::lock_guard<std::mutex> guard(sharedMutex_);
+    isShared_ = shared;
+}
+
+bool PendingWantRecord::GetShared() const
+{
+    std::lock_guard<std::mutex> guard(sharedMutex_);
+    return isShared_;
+}
+
+void PendingWantRecord::MarkSharedIfNeeded(int32_t holderPid)
+{
+    if (holderPid != creatorPid_ && !GetShared()) {
+        SetShared(true);
+        TAG_LOGI(AAFwkTag::WANTAGENT,
+            "holder pid=%{public}d != creator pid=%{public}d, isShared=true, code=%{public}d",
+            holderPid, creatorPid_, key_ != nullptr ? key_->GetCode() : -1);
+    }
+}
+
+void PendingWantRecord::SetIsThirdParty(bool isThirdParty)
+{
+    isThirdParty_ = isThirdParty;
+}
+
+bool PendingWantRecord::GetIsThirdParty() const
+{
+    return isThirdParty_;
 }
 
 std::list<sptr<IWantReceiver>> PendingWantRecord::GetCancelCallbacks()

@@ -57,10 +57,9 @@ bool UnwrapExecuteParam(napi_env env, napi_value param, InsightIntentExecutePara
     }
     executeParam.insightIntentName_ = insightIntentName;
 
-    napi_value napiIntentParam = nullptr;
-    napi_get_named_property(env, param, "insightIntentParam", &napiIntentParam);
+    napi_value napiIntentParam = GetPropertyValueByPropertyName(env, param, "insightIntentParam", napi_object);
     if (napiIntentParam == nullptr) {
-        TAG_LOGE(AAFwkTag::JSNAPI, "null napiIntentParam");
+        TAG_LOGE(AAFwkTag::JSNAPI, "null or non-object napiIntentParam");
         return false;
     }
 
@@ -74,12 +73,17 @@ bool UnwrapExecuteParam(napi_env env, napi_value param, InsightIntentExecutePara
         executeParam.deviceId_ = deviceId;
     }
 
-    napi_valuetype valueType = napi_undefined;
-    napi_typeof(env, napiIntentParam, &valueType);
-    if (valueType != napi_object) {
-        TAG_LOGE(AAFwkTag::JSNAPI, "wrong argument type intentParam");
-        return false;
+    // toolCallId is an optional parameter: a non-string value is treated as unspecified (no 401 is thrown)
+    if (IsExistsByPropertyName(env, param, "toolCallId")) {
+        std::string toolCallId {""};
+        if (UnwrapStringByPropertyName(env, param, "toolCallId", toolCallId)) {
+            TAG_LOGI(AAFwkTag::JSNAPI, "toolCallId %{public}s", toolCallId.c_str());
+            executeParam.toolCallId_ = toolCallId;
+        } else {
+            TAG_LOGW(AAFwkTag::JSNAPI, "toolCallId is not a string, ignored");
+        }
     }
+
     auto wp = std::make_shared<WantParams>();
     if (!AppExecFwk::UnwrapWantParams(env, napiIntentParam, *wp)) {
         TAG_LOGE(AAFwkTag::JSNAPI, "unwrap want fail");

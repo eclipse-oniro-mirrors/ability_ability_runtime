@@ -29,6 +29,7 @@ public:
     ErrCode GetBundleInfoV9(const std::string &bundleName, int32_t flags, BundleInfo &bundleInfo, int32_t userId);
     ErrCode GetCloneBundleInfo(
         const std::string &bundleName, int32_t flags, int32_t appIndex, BundleInfo &bundleInfo, int32_t userId);
+    ErrCode GetDualModeBundleInfo(const std::string &bundleName, int32_t userId, int32_t &appIndex);
 
     static void Reset();
 

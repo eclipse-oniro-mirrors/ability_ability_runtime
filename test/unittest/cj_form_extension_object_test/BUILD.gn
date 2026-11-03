@@ -31,7 +31,7 @@ ohos_unittest("cj_form_extension_object_test") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
   deps = [
-    "${ability_runtime_native_path}/ability/native:cj_form_extension",
+    "${ability_runtime_native_path}/ability/native:cj_form_extension_source",
     "${ability_runtime_path}/frameworks/cj/ffi:cj_ability_ffi",
   ]
 

@@ -74,6 +74,7 @@ ohos_fuzztest("StartAbilityUtilsFirstFuzzTest") {
     "ffrt:libffrt",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
+    "safwk:api_cache_manager",
     "hitrace:hitrace_meter",
     "hitrace:libhitracechain",
     "input:libmmi-client",

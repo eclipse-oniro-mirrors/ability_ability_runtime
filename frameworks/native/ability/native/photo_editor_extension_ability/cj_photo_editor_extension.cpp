@@ -57,6 +57,10 @@ void CJPhotoEditorExtension::Init(const std::shared_ptr<AppExecFwk::AbilityLocal
     }
     TAG_LOGD(AAFwkTag::UI_EXT, "Begin init abilityInfo");
     auto abilityInfo = record->GetAbilityInfo();
+    if (abilityInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null abilityInfo");
+        return;
+    }
     context->SetAbilityInfo(abilityInfo);
     context->InitHapModuleInfo(abilityInfo);
     context->SetConfiguration(appContext->GetConfiguration());

@@ -36,6 +36,7 @@
 #include "res_sched_util.h"
 #include "server_constant.h"
 #include "startup_util.h"
+#include "start_ability_utils.h"
 #include "param.h"
 #include "ui_extension_wrapper.h"
 #ifdef SUPPORT_GRAPHICS
@@ -571,8 +572,9 @@ bool MissionListManager::HandleReusedMissionAndAbility(const AbilityRequest &abi
 
 std::string MissionListManager::GetMissionName(const AbilityRequest &abilityRequest) const
 {
-    int32_t appIndex = 0;
-    (void)AbilityRuntime::StartupUtil::GetAppIndex(abilityRequest.want, appIndex);
+    int32_t appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
+    (void)StartAbilityUtils::GetAppIndex(abilityRequest.want, abilityRequest.callerToken,
+                                         abilityRequest.callerUid, appIndex);
     return AbilityUtil::ConvertBundleNameSingleton(abilityRequest.abilityInfo.bundleName,
         abilityRequest.abilityInfo.name, abilityRequest.abilityInfo.moduleName, appIndex);
 }
@@ -1162,7 +1164,7 @@ MissionAbilityRecordPtr MissionListManager::GetAbilityRecordByTokenInner(
     }
     // first find in terminating list
     for (auto ability : terminateAbilityList_) {
-        if (ability && token == ability->GetToken()->AsObject()) {
+        if (ability && ability->GetToken() && token == ability->GetToken()->AsObject()) {
             return MissionAbilityRecord::FromBaseRecord(ability);
         }
     }
@@ -2276,6 +2278,7 @@ void MissionListManager::PrintTimeOutLog(const std::shared_ptr<AbilityRecord> &a
         .pid = processInfo.pid_,
         .eventName = eventName,
         .bundleName = ability->GetAbilityInfo().bundleName,
+        .abilityPendingBackground = ability->GetPendingState() == AbilityState::BACKGROUND,
     };
     FreezeUtil::LifecycleFlow flow;
     if (state != FreezeUtil::TimeoutState::UNKNOWN) {
@@ -3342,7 +3345,7 @@ int MissionListManager::ResolveLocked(const AbilityRequest &abilityRequest)
     return CallAbilityLocked(abilityRequest);
 }
 
-bool MissionListManager::IsAbilityStarted(AbilityRequest &abilityRequest,
+bool MissionListManager::IsAbilityStarted(const AbilityRequest &abilityRequest,
     std::shared_ptr<AbilityRecord> &targetRecord)
 {
     std::shared_ptr<Mission> targetMission;
@@ -3385,6 +3388,7 @@ int MissionListManager::CallAbilityLocked(const AbilityRequest &abilityRequest)
 #ifdef SUPPORT_UPMS
     if (InsightIntentExecuteParam::IsInsightIntentExecute(abilityRequest.want)) {
         targetAbilityRecord->GrantUriPermission();
+        targetAbilityRecord->GrantFileEntityUriPermission();
     }
 #endif // SUPPORT_UPMS
 

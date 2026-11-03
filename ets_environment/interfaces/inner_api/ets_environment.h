@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -48,7 +48,7 @@ public:
     ETSEnvironment() {};
     ~ETSEnvironment();
 
-    static std::unique_ptr<ETSEnvironment> &GetInstance();
+    static std::shared_ptr<ETSEnvironment> GetInstance();
     static void InitETSSDKNS(const std::string &path);
     static void InitETSSysNS(const std::string &path);
     static ETSEnvFuncs *RegisterFuncs();
@@ -69,13 +69,17 @@ public:
         const std::vector<std::string> &staticPluginHspPathList, const std::string &bundleName);
     bool PreloadSystemClass(const char *className);
 
+    int32_t HotReload(const std::string &target, const std::string &patch);
+    int32_t ColdReload(const std::string &patch);
+
     void RemoveInstance(uint32_t instanceId);
     void StopDebugMode(void *jsVm);
     void StartDebuggerForSocketPair(std::string &option, int32_t socketFd);
     void NotifyDebugMode(uint32_t tid, uint32_t instanceId, bool isStartWithDebug, void *jsVm, bool isDebugApp);
     void PostTask(const std::function<void()> &task, const std::string &name, int64_t delayTime);
     void BroadcastAndConnect(const std::string& bundleName, int socketFd);
-
+    bool StartProfiler(int tid, int32_t instanceId, bool debugApp, void *jsVm,
+        EtsProfilerType profiler, uint32_t interval);
     DebuggerPostTask GetDebuggerPostTask();
 
     struct VMEntry {

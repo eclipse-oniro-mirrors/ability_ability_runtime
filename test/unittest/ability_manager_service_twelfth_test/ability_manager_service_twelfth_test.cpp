@@ -13,13 +13,18 @@
  * limitations under the License.
  */
 
+#include <chrono>
 #include <gtest/gtest.h>
+#include <thread>
 
 #include "mock_ipc_skeleton.h"
 #include "mock_permission_verification.h"
 #include "mock_my_flag.h"
 #include "mock_ability_connect_callback.h"
 #include "ability_manager_service.h"
+#include "ability_manager_event_subscriber.h"
+#include "common_event_support.h"
+#include "matching_skills.h"
 #include "modal_system_dialog/modal_system_dialog_ui_extension.h"
 #include "utils/modal_system_dialog_util.h"
 #include "user_controller/user_controller.h"
@@ -36,6 +41,8 @@
 #include "mock_parameters.h"
 #include "mock_scene_board_judgement.h"
 #include "mock_test_object.h"
+#include "global_constant.h"
+#include "server_constant.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -842,7 +849,7 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, CheckProcessIsBackground_001, TestSiz
     auto abilityMs = std::make_shared<AbilityManagerService>();
     int32_t pid = 1234;
     AbilityState currentState = AbilityState::BACKGROUND;
-    abilityMs->windowVisibleList_.insert(pid);
+    abilityMs->windowVisibleList_[pid] = 100;
     bool result = abilityMs->CheckProcessIsBackground(pid, currentState);
     ASSERT_FALSE(result);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest CheckProcessIsBackground_001 end");
@@ -878,7 +885,7 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, CheckProcessIsBackground_003, TestSiz
     auto abilityMs = std::make_shared<AbilityManagerService>();
     int32_t pid = 1234;
     AbilityState currentState = AbilityState::FOREGROUND;
-    abilityMs->windowVisibleList_.insert(pid);
+    abilityMs->windowVisibleList_[pid] = 100;
     bool result = abilityMs->CheckProcessIsBackground(pid, currentState);
     ASSERT_FALSE(result);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest CheckProcessIsBackground_003 end");
@@ -1355,6 +1362,7 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, HandleExtensionAbility_001, TestSize.
  * FunctionPoints: AbilityManagerService EnterKioskMode
  */
 HWTEST_F(AbilityManagerServiceTwelfthTest, EnterKioskMode_003, TestSize.Level1) {
+    system::SetBoolParameter(KIOSK_MODE_ENABLED, true);
     IPCSkeleton::SetCallingUid(BASE_USER_RANGE);
     IPCSkeleton::SetCallingTokenID(ONE);
     MyFlag::flag_ = true;
@@ -1364,7 +1372,8 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, EnterKioskMode_003, TestSize.Level1) 
     auto callerToken = MockToken(AbilityType::PAGE, tokenId);
     ASSERT_NE(callerToken, nullptr);
     auto result = abilityManagerService->EnterKioskMode(callerToken);
-    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
+    EXPECT_EQ(result, ERR_KIOSK_MODE_NOT_IN_WHITELIST);
+    system::SetBoolParameter(KIOSK_MODE_ENABLED, false);
 }
 
 /*
@@ -1374,6 +1383,7 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, EnterKioskMode_003, TestSize.Level1) 
  * FunctionPoints: AbilityManagerService ExitKioskMode
  */
 HWTEST_F(AbilityManagerServiceTwelfthTest, ExitKioskMode_003, TestSize.Level1) {
+    system::SetBoolParameter(KIOSK_MODE_ENABLED, true);
     IPCSkeleton::SetCallingUid(BASE_USER_RANGE);
     IPCSkeleton::SetCallingTokenID(ONE);
     MyFlag::flag_ = true;
@@ -1383,7 +1393,8 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, ExitKioskMode_003, TestSize.Level1) {
     auto callerToken = MockToken(AbilityType::PAGE, tokenId);
     ASSERT_NE(callerToken, nullptr);
     auto result = abilityManagerService->ExitKioskMode(callerToken);
-    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
+    EXPECT_EQ(result, ERR_KIOSK_MODE_NOT_IN_WHITELIST);
+    system::SetBoolParameter(KIOSK_MODE_ENABLED, false);
 }
 
 /*
@@ -1401,6 +1412,106 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, SubscribeScreenUnlockedEvent_001, Tes
     EXPECT_EQ(abilityMs->isSubscribed_, true);
     abilityMs->UnSubscribeScreenUnlockedEvent();
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest SubscribeScreenUnlockedEvent_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: UnSubscribeScreenUnlockedEvent
+ * SubFunction: NA
+ * Function: AbilityManagerService UnSubscribeScreenUnlockedEvent
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, UnSubscribeScreenUnlockedEvent_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest UnSubscribeScreenUnlockedEvent_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    abilityMs->SubscribeScreenUnlockedEvent();
+    EXPECT_EQ(abilityMs->isSubscribed_, true);
+    EXPECT_NE(abilityMs->screenSubscriber_, nullptr);
+    abilityMs->UnSubscribeScreenUnlockedEvent();
+    EXPECT_EQ(abilityMs->isSubscribed_, false);
+    EXPECT_EQ(abilityMs->screenSubscriber_, nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest UnSubscribeScreenUnlockedEvent_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: RetrySubscribeUnlockedEvent
+ * SubFunction: NA
+ * Function: verify retry aborts when screenSubscriber_ is reset by UnSubscribe (scenario A)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, RetrySubscribeUnlockedEvent_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RetrySubscribeUnlockedEvent_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_UNLOCKED);
+    EventFwk::CommonEventSubscribeInfo subscribeInfo(matchingSkills);
+    auto staleSubscriber = std::make_shared<AbilityRuntime::AbilityScreenUnlockEventSubscriber>(
+        subscribeInfo, std::function<void(int32_t)>([](int32_t) {}));
+    ASSERT_NE(staleSubscriber, nullptr);
+    abilityMs->screenSubscriber_.reset();
+    abilityMs->isSubscribed_ = false;
+    abilityMs->RetrySubscribeUnlockedEvent(1, staleSubscriber, false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    EXPECT_EQ(abilityMs->isSubscribed_, false);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RetrySubscribeUnlockedEvent_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: RetrySubscribeUnlockedEvent
+ * SubFunction: NA
+ * Function: verify retry aborts when screenSubscriber_ is replaced by a new Subscribe call (scenario B)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, RetrySubscribeUnlockedEvent_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RetrySubscribeUnlockedEvent_002 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_UNLOCKED);
+    EventFwk::CommonEventSubscribeInfo subscribeInfo(matchingSkills);
+    auto staleSubscriber = std::make_shared<AbilityRuntime::AbilityScreenUnlockEventSubscriber>(
+        subscribeInfo, std::function<void(int32_t)>([](int32_t) {}));
+    ASSERT_NE(staleSubscriber, nullptr);
+    auto newSubscriber = std::make_shared<AbilityRuntime::AbilityScreenUnlockEventSubscriber>(
+        subscribeInfo, std::function<void(int32_t)>([](int32_t) {}));
+    ASSERT_NE(newSubscriber, nullptr);
+    abilityMs->screenSubscriber_ = newSubscriber;
+    abilityMs->isSubscribed_ = false;
+    abilityMs->RetrySubscribeUnlockedEvent(1, staleSubscriber, false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    EXPECT_EQ(abilityMs->isSubscribed_, false);
+    EXPECT_EQ(abilityMs->screenSubscriber_.get(), newSubscriber.get());
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RetrySubscribeUnlockedEvent_002 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: RetrySubscribeUnlockedEvent
+ * SubFunction: NA
+ * Function: verify retry succeeds when subscriber is still current (positive control)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, RetrySubscribeUnlockedEvent_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RetrySubscribeUnlockedEvent_003 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_UNLOCKED);
+    EventFwk::CommonEventSubscribeInfo subscribeInfo(matchingSkills);
+    auto subscriber = std::make_shared<AbilityRuntime::AbilityScreenUnlockEventSubscriber>(
+        subscribeInfo, std::function<void(int32_t)>([](int32_t) {}));
+    ASSERT_NE(subscriber, nullptr);
+    abilityMs->screenSubscriber_ = subscriber;
+    abilityMs->isSubscribed_ = false;
+    abilityMs->RetrySubscribeUnlockedEvent(1, subscriber, false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    EXPECT_EQ(abilityMs->isSubscribed_, true);
+    abilityMs->UnSubscribeScreenUnlockedEvent();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest RetrySubscribeUnlockedEvent_003 end");
 }
 
 /*
@@ -2551,13 +2662,19 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_Implicit_001
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_TRUE(abilityMs_ != nullptr);
     Want want; // empty abilityName + bundle -> implicit start
-    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 5), ERR_INVALID_VALUE);
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr), ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_Implicit_001 end");
 }
 
-HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_CloneForceZero_001, TestSize.Level1)
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityForPrelaunch app clone index handling (non-car branch)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_CloneIndexPreserved_001, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_CloneForceZero_001 start");
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_CloneIndexPreserved_001 start");
     IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
     EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
         .WillRepeatedly(Return(true));
@@ -2566,17 +2683,588 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_CloneForceZe
     Want want;
     want.SetElementName("com.test.bundle", "MainAbility");
     want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 2);
-    abilityMs_->StartAbilityForPrelaunch(want, 5);
-    // non-car (#else): a specified appIndex is forced to the base instance (0)
+    abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr);
+    // non-car (#else): a specified valid appIndex is preserved for app clone prelaunch
+    EXPECT_EQ(want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1), 2);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_CloneIndexPreserved_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityForPrelaunch rejects an invalid app clone index (non-car branch)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_InvalidCloneIndex_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_InvalidCloneIndex_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    // -5 is neither a valid clone index (1..1000 / PC tablet range) nor 0 / PC_TABLET_INDEX
+    want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, -5);
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr), ERR_APP_CLONE_INDEX_INVALID);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_InvalidCloneIndex_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityForPrelaunch does not force an app clone index when none is set (non-car branch)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_NoCloneIndex_Default_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_NoCloneIndex_Default_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr);
+    // non-car (#else): no index param is set, prelaunch must not force an index onto the want.
+    // When the device reports an app-clone preference for the bundle, ResolveTargetAppCloneIndex
+    // legitimately writes the preferred instance index by design, so the environment-independent
+    // invariant is: any index present must be a legitimate instance index (main instance 0 /
+    // PC tablet index / valid clone range), never a forced invalid value.
+    if (want.HasParameter(Want::PARAM_APP_CLONE_INDEX_KEY)) {
+        int32_t resolvedIndex = want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1);
+        EXPECT_TRUE(resolvedIndex == 0 ||
+            resolvedIndex == OHOS::AbilityRuntime::GlobalConstant::PC_TABLET_INDEX ||
+            OHOS::AbilityRuntime::GlobalConstant::IsAppCloneIndex(resolvedIndex))
+            << "prelaunch forced an illegitimate clone index: " << resolvedIndex;
+    }
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_NoCloneIndex_Default_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityForPrelaunch rejects callers other than RSS
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_PermissionDenied_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_PermissionDenied_001 start");
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    // only RSS (uid 1096) is allowed to trigger prelaunch
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr), RESOLVE_CALL_NO_PERMISSIONS);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_PermissionDenied_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityForPrelaunch rejects prelaunch when SceneBoard is disabled
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_SceneBoardDisabled_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_SceneBoardDisabled_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(false));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr), ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_SceneBoardDisabled_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityForPrelaunch does not support implicit start with empty bundle
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_EmptyBundle_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_EmptyBundle_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    Want want;
+    // abilityName is set but bundle is empty, still treated as implicit start
+    want.SetElementName("", "MainAbility");
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr), ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_EmptyBundle_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityForPrelaunch propagates CheckMultiInstanceAndAppClone rejection (instance key)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_InstanceKeyRejected_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_InstanceKeyRejected_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    want.SetParam(Want::APP_INSTANCE_KEY, std::string("prelaunch_instance"));
+    // multi-instance support is disabled on UT products, the instance key is rejected
+    // and the rejection is propagated by the prelaunch entry
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr), ERR_MULTI_INSTANCE_NOT_SUPPORTED);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_InstanceKeyRejected_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityForPrelaunch propagates CheckMultiInstanceAndAppClone rejection (create instance)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_CreateInstanceRejected_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_CreateInstanceRejected_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    want.SetParam(Want::CREATE_APP_INSTANCE_KEY, true);
+    // creating a new app instance is rejected with multi-instance support disabled
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr), ERR_MULTI_INSTANCE_NOT_SUPPORTED);
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_CreateInstanceRejected_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityForPrelaunch keeps an explicit main-instance index (0)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_MainInstanceIndexPreserved_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_MainInstanceIndexPreserved_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    // explicit main-instance index is a valid selector and must be preserved
+    want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 0);
+    abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr);
     EXPECT_EQ(want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1), 0);
-    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_CloneForceZero_001 end");
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_MainInstanceIndexPreserved_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityForPrelaunch keeps an explicit PC tablet index (10000)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_PcTabletIndexPreserved_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_PcTabletIndexPreserved_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    // PC tablet mode index is a valid selector and must be preserved
+    want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY,
+        OHOS::AbilityRuntime::GlobalConstant::PC_TABLET_INDEX);
+    abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr);
+    EXPECT_EQ(want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1),
+        OHOS::AbilityRuntime::GlobalConstant::PC_TABLET_INDEX);
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_PcTabletIndexPreserved_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityForPrelaunch keeps a valid PC tablet clone index (10001)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_PcCloneIndexPreserved_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_PcCloneIndexPreserved_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    // 10001 is the first valid PC tablet clone index (10001..11000)
+    want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY,
+        OHOS::AbilityRuntime::GlobalConstant::MIN_PC_TABLET_CLONE_INDEX);
+    abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr);
+    EXPECT_EQ(want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1),
+        OHOS::AbilityRuntime::GlobalConstant::MIN_PC_TABLET_CLONE_INDEX);
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_PcCloneIndexPreserved_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityForPrelaunch rejects clone indexes outside the valid ranges
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_InvalidCloneIndex_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_InvalidCloneIndex_002 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    // 1001 is just above the max phone clone index (1..1000)
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 1001);
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr), ERR_APP_CLONE_INDEX_INVALID);
+    // 11001 is just above the max PC tablet clone index (10001..11000)
+    Want wantTwo;
+    wantTwo.SetElementName("com.test.bundle", "MainAbility");
+    wantTwo.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 11001);
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(wantTwo, 5, nullptr), ERR_APP_CLONE_INDEX_INVALID);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_InvalidCloneIndex_002 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityForPrelaunch rejects an invalid DLP index selector
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_InvalidDlpIndex_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_InvalidDlpIndex_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    // a negative DLP index is not a valid DLP selector, GetAppIndex must reject it
+    want.SetParam(OHOS::AbilityRuntime::ServerConstant::DLP_INDEX, -1);
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr), ERR_APP_CLONE_INDEX_INVALID);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_InvalidDlpIndex_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityForPrelaunch rejects DLP wants: DLP instances are out of prelaunch scope
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_DlpIndexRejected_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_DlpIndexRejected_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    // 11001 is a valid PC tablet DLP index: it passes GetAppIndex validation, but DLP instances
+    // are out of the prelaunch scope and must be rejected with a permission failure, never preloaded.
+    want.SetParam(OHOS::AbilityRuntime::ServerConstant::DLP_INDEX,
+        OHOS::AbilityRuntime::GlobalConstant::MIN_PC_TABLET_DLP_INDEX);
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr), CHECK_PERMISSION_FAILED);
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_DlpIndexRejected_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityForPrelaunch does not support implicit start with an empty ability name
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_EmptyAbilityName_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_EmptyAbilityName_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    Want want;
+    // bundle is set but abilityName is empty, still treated as implicit start
+    want.SetElementName("com.test.bundle", "");
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr), ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_EmptyAbilityName_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityForPrelaunch keeps phone clone index boundary values (1 / max)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_PhoneCloneIndexBoundary_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_PhoneCloneIndexBoundary_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    // 1 is the minimum valid phone clone index (1..1000)
+    want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 1);
+    abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr);
+    EXPECT_EQ(want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1), 1);
+    Want wantTwo;
+    wantTwo.SetElementName("com.test.bundle", "MainAbility");
+    // 1000 (MAX_APP_CLONE_INDEX) is the maximum valid phone clone index
+    wantTwo.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY,
+        OHOS::AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX);
+    abilityMs_->StartAbilityForPrelaunch(wantTwo, 5, nullptr);
+    EXPECT_EQ(wantTwo.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1),
+        OHOS::AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX);
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_PhoneCloneIndexBoundary_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityForPrelaunch keeps the max PC tablet clone index (11000)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_PcCloneIndexBoundary_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_PcCloneIndexBoundary_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    // 11000 (MAX_PC_TABLET_CLONE_INDEX) is the maximum valid PC tablet clone index (10001..11000)
+    want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY,
+        OHOS::AbilityRuntime::GlobalConstant::MAX_PC_TABLET_CLONE_INDEX);
+    abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr);
+    EXPECT_EQ(want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1),
+        OHOS::AbilityRuntime::GlobalConstant::MAX_PC_TABLET_CLONE_INDEX);
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_PcCloneIndexBoundary_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityForPrelaunch rejects sandbox-clone / AI-agent indexes via the clone key
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_SandboxCloneIndexRejected_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_SandboxCloneIndexRejected_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    // 2000 belongs to the sandbox clone range (2000..3000), not a valid prelaunch clone selector
+    want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY,
+        OHOS::AbilityRuntime::GlobalConstant::MIN_SANDBOX_CLONE_INDEX);
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr), ERR_APP_CLONE_INDEX_INVALID);
+    Want wantTwo;
+    wantTwo.SetElementName("com.test.bundle", "MainAbility");
+    // 12000 belongs to the AI agent sandbox range (12000..13000), not a valid prelaunch clone selector
+    wantTwo.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY,
+        OHOS::AbilityRuntime::GlobalConstant::MIN_PC_TABLET_AI_AGENT_INDEX);
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(wantTwo, 5, nullptr), ERR_APP_CLONE_INDEX_INVALID);
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_SandboxCloneIndexRejected_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityForPrelaunch DLP selector boundary values (0 invalid / 11999 rejected)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_DlpSelectorBoundary_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_DlpSelectorBoundary_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    // 0 is the main-instance value, but as a DLP selector it is not a valid DLP index
+    want.SetParam(OHOS::AbilityRuntime::ServerConstant::DLP_INDEX, 0);
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr), ERR_APP_CLONE_INDEX_INVALID);
+    Want wantTwo;
+    wantTwo.SetElementName("com.test.bundle", "MainAbility");
+    // 11999 (MAX_PC_TABLET_DLP_INDEX) is a valid DLP selector: passes validation,
+    // then rejected as out of prelaunch scope
+    wantTwo.SetParam(OHOS::AbilityRuntime::ServerConstant::DLP_INDEX,
+        OHOS::AbilityRuntime::GlobalConstant::MAX_PC_TABLET_DLP_INDEX);
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(wantTwo, 5, nullptr), CHECK_PERMISSION_FAILED);
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_DlpSelectorBoundary_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityForPrelaunch DLP selector takes precedence over the clone index
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_DlpPrecedenceOverCloneIndex_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_DlpPrecedenceOverCloneIndex_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    // both selectors present: GetAppIndex validates DLP_INDEX first (DLP takes precedence)
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 2);
+    want.SetParam(OHOS::AbilityRuntime::ServerConstant::DLP_INDEX,
+        OHOS::AbilityRuntime::GlobalConstant::MIN_PC_TABLET_DLP_INDEX);
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr), CHECK_PERMISSION_FAILED);
+    Want wantTwo;
+    wantTwo.SetElementName("com.test.bundle", "MainAbility");
+    // an invalid DLP selector shadows a valid clone index: index validation is never reached
+    wantTwo.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 2);
+    wantTwo.SetParam(OHOS::AbilityRuntime::ServerConstant::DLP_INDEX, 0);
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(wantTwo, 5, nullptr), ERR_APP_CLONE_INDEX_INVALID);
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_DlpPrecedenceOverCloneIndex_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: StartAbilityForPrelaunch rejects instance key and create-instance set together
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_InstanceKeyAndCreatingRejected_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_InstanceKeyAndCreatingRejected_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    want.SetParam(Want::APP_INSTANCE_KEY, std::string("prelaunch_instance"));
+    want.SetParam(Want::CREATE_APP_INSTANCE_KEY, true);
+    // both multi-instance selectors set together: still rejected with multi-instance unsupported
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr), ERR_MULTI_INSTANCE_NOT_SUPPORTED);
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_InstanceKeyAndCreatingRejected_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: a valid clone index does not bypass the instance key rejection
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_InstanceKeyWithCloneIndexRejected_001,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_InstanceKeyWithCloneIndexRejected_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    // a valid clone selector together with an instance key: the instance key rejection wins
+    want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 2);
+    want.SetParam(Want::APP_INSTANCE_KEY, std::string("prelaunch_instance"));
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr), ERR_MULTI_INSTANCE_NOT_SUPPORTED);
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_InstanceKeyWithCloneIndexRejected_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: an explicitly empty instance key is equivalent to an absent key
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_EmptyInstanceKeyNotRejected_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_EmptyInstanceKeyNotRejected_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_TRUE(abilityMs_ != nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    // an explicitly empty instance key is treated as an absent key by the multi-instance check:
+    // it must not be rejected as a multi-instance request (environment-independent assertion)
+    want.SetParam(Want::APP_INSTANCE_KEY, std::string(""));
+    EXPECT_NE(abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr), ERR_MULTI_INSTANCE_NOT_SUPPORTED);
+    TAG_LOGI(AAFwkTag::TEST,
+        "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_EmptyInstanceKeyNotRejected_001 end");
 }
 
 namespace {
 class MockAfterCheckInterceptor : public IAbilityInterceptor {
 public:
     MockAfterCheckInterceptor(ErrCode code, bool setRedirect = false) : code_(code), setRedirect_(setRedirect) {}
-    ErrCode DoProcess(const AbilityInterceptorParam &param) override
+    ErrCode DoProcess(AbilityInterceptorParam &param) override
     {
         if (setRedirect_) {
             (const_cast<Want &>(param.want)).SetParam("queryWantFromErms", true);
@@ -2591,7 +3279,7 @@ private:
 
 /*
  * Feature: AbilityManagerService
- * Function: ExecutePrelaunchAfterCheck
+ * Function: ExecutePrelaunchInterceptors
  * SubFunction: NA
  * FunctionPoints: afterCheck success path coverage (round-3 C3)
  */
@@ -2600,20 +3288,20 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_AfterCheck_S
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_AfterCheck_Success_001 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityMs_, nullptr);
-    abilityMs_->afterCheckExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
-    abilityMs_->afterCheckExecuter_->AddInterceptor("Mock",
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs_->interceptorExecuter_->AddInterceptor("Mock",
         std::make_shared<MockAfterCheckInterceptor>(ERR_OK));
     AbilityRequest abilityRequest;
     abilityRequest.abilityInfo.bundleName = "com.test.bundle";
     abilityRequest.abilityInfo.name = "MainAbility";
     auto eventInfo = std::make_shared<EventInfo>();
-    EXPECT_EQ(abilityMs_->ExecutePrelaunchAfterCheck(abilityRequest, 100, eventInfo), ERR_OK);
+    EXPECT_EQ(abilityMs_->ExecutePrelaunchInterceptors(abilityRequest, 100, 0, eventInfo), ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_AfterCheck_Success_001 end");
 }
 
 /*
  * Feature: AbilityManagerService
- * Function: ExecutePrelaunchAfterCheck
+ * Function: ExecutePrelaunchInterceptors
  * SubFunction: NA
  * FunctionPoints: afterCheck null-executer coverage (round-3 C3)
  */
@@ -2622,16 +3310,17 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_AfterCheck_N
     TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_AfterCheck_NullExecuter_001 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityMs_, nullptr);
-    // afterCheckExecuter_ left null (no Init/OnStart)
+    // interceptorExecuter_ left null (no Init/OnStart)
     AbilityRequest abilityRequest;
     auto eventInfo = std::make_shared<EventInfo>();
-    EXPECT_EQ(abilityMs_->ExecutePrelaunchAfterCheck(abilityRequest, 100, eventInfo), ERR_NULL_AFTER_CHECK_EXECUTER);
+    EXPECT_EQ(abilityMs_->ExecutePrelaunchInterceptors(abilityRequest, 100, 0, eventInfo),
+        ERR_NULL_INTERCEPTOR_EXECUTER);
     TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_AfterCheck_NullExecuter_001 end");
 }
 
 /*
  * Feature: AbilityManagerService
- * Function: ExecutePrelaunchAfterCheck
+ * Function: ExecutePrelaunchInterceptors
  * SubFunction: NA
  * FunctionPoints: afterCheck non-redirect failure path + START_ABILITY_ERROR fault event coverage (round-3 C1/C3)
  */
@@ -2640,22 +3329,22 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_AfterCheck_D
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_AfterCheck_Deny_001 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityMs_, nullptr);
-    abilityMs_->afterCheckExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
     // a non-redirect afterCheck failure must abort + report the fault event.
     const ErrCode deny = ERR_ECOLOGICAL_CONTROL_STATUS;
-    abilityMs_->afterCheckExecuter_->AddInterceptor("Mock", std::make_shared<MockAfterCheckInterceptor>(deny));
+    abilityMs_->interceptorExecuter_->AddInterceptor("Mock", std::make_shared<MockAfterCheckInterceptor>(deny));
     AbilityRequest abilityRequest;
     abilityRequest.abilityInfo.bundleName = "com.test.bundle";
     abilityRequest.abilityInfo.name = "MainAbility";
     auto eventInfo = std::make_shared<EventInfo>();
     // deny without redirect -> reports START_ABILITY_ERROR fault event and returns the error
-    EXPECT_EQ(abilityMs_->ExecutePrelaunchAfterCheck(abilityRequest, 100, eventInfo), deny);
+    EXPECT_EQ(abilityMs_->ExecutePrelaunchInterceptors(abilityRequest, 100, 0, eventInfo), deny);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_AfterCheck_Deny_001 end");
 }
 
 /*
  * Feature: AbilityManagerService
- * Function: ExecutePrelaunchAfterCheck
+ * Function: ExecutePrelaunchInterceptors
  * SubFunction: NA
  * FunctionPoints: afterCheck ERMS redirect marker stripped + non-silent drop coverage (round-3 C2/C3)
  */
@@ -2664,19 +3353,298 @@ HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_AfterCheck_R
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_AfterCheck_Redirect_001 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     ASSERT_NE(abilityMs_, nullptr);
-    abilityMs_->afterCheckExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
     const ErrCode deny = ERR_ECOLOGICAL_CONTROL_STATUS;
-    abilityMs_->afterCheckExecuter_->AddInterceptor("Mock",
+    abilityMs_->interceptorExecuter_->AddInterceptor("Mock",
         std::make_shared<MockAfterCheckInterceptor>(deny, true /*setRedirect*/));
     AbilityRequest abilityRequest;
     abilityRequest.want.SetElementName("com.test.bundle", "MainAbility");
     abilityRequest.abilityInfo.bundleName = "com.test.bundle";
     abilityRequest.abilityInfo.name = "MainAbility";
     auto eventInfo = std::make_shared<EventInfo>();
-    EXPECT_EQ(abilityMs_->ExecutePrelaunchAfterCheck(abilityRequest, 100, eventInfo), deny);
+    EXPECT_EQ(abilityMs_->ExecutePrelaunchInterceptors(abilityRequest, 100, 0, eventInfo), deny);
     // redirect marker must be stripped so it never leaks into the dispatched request
     EXPECT_FALSE(abilityRequest.want.GetBoolParam("queryWantFromErms", false));
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest StartAbilityForPrelaunch_AfterCheck_Redirect_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: ExecutePrelaunchInterceptors
+ * SubFunction: NA
+ * FunctionPoints: afterCheck deny with null eventInfo must not dereference it
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_AfterCheck_Deny_NullEventInfo_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_AfterCheck_Deny_NullEventInfo_001 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    // a non-redirect afterCheck failure must abort without dereferencing a null eventInfo.
+    const ErrCode deny = ERR_ECOLOGICAL_CONTROL_STATUS;
+    abilityMs_->interceptorExecuter_->AddInterceptor("Mock", std::make_shared<MockAfterCheckInterceptor>(deny));
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.bundleName = "com.test.bundle";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    // null eventInfo: the deny path skips the fault-event report and still returns the error
+    EXPECT_EQ(abilityMs_->ExecutePrelaunchInterceptors(abilityRequest, 100, 0, nullptr), deny);
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_AfterCheck_Deny_NullEventInfo_001 end");
+}
+
+namespace {
+class TrackableConnection : public IAbilityConnection {
+public:
+    TrackableConnection() = default;
+    ~TrackableConnection() = default;
+    void OnAbilityConnectDone(const AppExecFwk::ElementName &element,
+        const sptr<IRemoteObject> &remoteObject, int resultCode) override
+    {
+        connectDoneCount_++;
+        remoteObject_ = remoteObject;
+    }
+    void OnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode) override
+    {
+        disconnectDoneCount_++;
+    }
+    sptr<IRemoteObject> AsObject() override
+    {
+        return remoteObject_;
+    }
+    int GetConnectDoneCount() const { return connectDoneCount_; }
+    int GetDisconnectDoneCount() const { return disconnectDoneCount_; }
+    sptr<IRemoteObject> GetRemoteObject() const { return remoteObject_; }
+    void Reset()
+    {
+        connectDoneCount_ = 0;
+        disconnectDoneCount_ = 0;
+        remoteObject_ = nullptr;
+    }
+private:
+    int connectDoneCount_ = 0;
+    int disconnectDoneCount_ = 0;
+    sptr<IRemoteObject> remoteObject_ = nullptr;
+};
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: connect != nullptr — prelaunch fails, no callback invoked (AC-2.1)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_WithConnect_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_WithConnect_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    sptr<TrackableConnection> connect = new TrackableConnection();
+    ASSERT_NE(connect, nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    auto result = abilityMs_->StartAbilityForPrelaunch(want, 0, connect);
+    EXPECT_NE(result, ERR_OK);
+    EXPECT_EQ(connect->GetConnectDoneCount(), 0);
+    EXPECT_EQ(connect->GetDisconnectDoneCount(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_WithConnect_001 end, result=%{public}d", result);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: connect == nullptr — regression, prelaunch fails (AC-3.1)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_NullConnect_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_NullConnect_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    auto result = abilityMs_->StartAbilityForPrelaunch(want, 5, nullptr);
+    EXPECT_NE(result, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_NullConnect_001 end, result=%{public}d", result);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: non-RSS UID with connect — permission check unchanged (AC-1.2)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_WithConnect_Permission_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_WithConnect_Permission_001 start");
+    IPCSkeleton::SetCallingUid(0);
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    sptr<TrackableConnection> connect = new TrackableConnection();
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 0, connect), RESOLVE_CALL_NO_PERMISSIONS);
+    EXPECT_EQ(connect->GetConnectDoneCount(), 0);
+    EXPECT_EQ(connect->GetDisconnectDoneCount(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_WithConnect_Permission_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForPrelaunch
+ * SubFunction: NA
+ * FunctionPoints: implicit want with connect — validation unchanged (AC-1.3)
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_WithConnect_Implicit_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_WithConnect_Implicit_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    sptr<TrackableConnection> connect = new TrackableConnection();
+    Want want;
+    EXPECT_EQ(abilityMs_->StartAbilityForPrelaunch(want, 0, connect), ERR_INVALID_VALUE);
+    EXPECT_EQ(connect->GetConnectDoneCount(), 0);
+    EXPECT_EQ(connect->GetDisconnectDoneCount(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_WithConnect_Implicit_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: ExecutePrelaunchInterceptors
+ * SubFunction: NA
+ * FunctionPoints: afterCheck success path must also strip the ERMS redirect marker
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, StartAbilityForPrelaunch_AfterCheck_Success_StripRedirect_001,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_AfterCheck_Success_StripRedirect_001 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+    // interceptor succeeds but leaves a redirect marker: success path strips it as well
+    abilityMs_->interceptorExecuter_->AddInterceptor("Mock",
+        std::make_shared<MockAfterCheckInterceptor>(ERR_OK, true /*setRedirect*/));
+    AbilityRequest abilityRequest;
+    abilityRequest.want.SetElementName("com.test.bundle", "MainAbility");
+    abilityRequest.abilityInfo.bundleName = "com.test.bundle";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    auto eventInfo = std::make_shared<EventInfo>();
+    EXPECT_EQ(abilityMs_->ExecutePrelaunchInterceptors(abilityRequest, 100, 0, eventInfo), ERR_OK);
+    // redirect marker must be stripped so it never leaks into the dispatched request
+    EXPECT_FALSE(abilityRequest.want.GetBoolParam("queryWantFromErms", false));
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityForPrelaunch_AfterCheck_Success_StripRedirect_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetPidByCallStub
+ * SubFunction: NA
+ * FunctionPoints: GetPidByCallStub rejects callers other than RSS
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, GetPidByCallStub_PermissionDenied_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetPidByCallStub_PermissionDenied_001 start");
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID);
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    sptr<IRemoteObject> callStub = MockToken(AbilityType::PAGE);
+    int32_t pid = 0;
+    EXPECT_EQ(abilityMs_->GetPidByCallStub(callStub, pid), RESOLVE_CALL_NO_PERMISSIONS);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetPidByCallStub_PermissionDenied_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetPidByCallStub
+ * SubFunction: NA
+ * FunctionPoints: GetPidByCallStub rejects null callStub
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, GetPidByCallStub_NullCallStub_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetPidByCallStub_NullCallStub_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    sptr<IRemoteObject> callStub = nullptr;
+    int32_t pid = 0;
+    EXPECT_EQ(abilityMs_->GetPidByCallStub(callStub, pid), ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetPidByCallStub_NullCallStub_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetPidByCallStub
+ * SubFunction: NA
+ * FunctionPoints: GetPidByCallStub returns not found when callStub is unknown
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, GetPidByCallStub_NotFound_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetPidByCallStub_NotFound_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    sptr<IRemoteObject> callStub = MockToken(AbilityType::PAGE);
+    int32_t pid = 0;
+    EXPECT_EQ(abilityMs_->GetPidByCallStub(callStub, pid), ERR_CALL_STUB_NOT_FOUND);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetPidByCallStub_NotFound_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetPidByCallStub
+ * SubFunction: NA
+ * FunctionPoints: GetPidByCallStub returns ERR_CALLEE_PID_INVALID when callee record exists but pid is invalid
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, GetPidByCallStub_InvalidPid_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetPidByCallStub_InvalidPid_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    auto record = MockAbilityRecord(AbilityType::PAGE);
+    ASSERT_NE(record, nullptr);
+    sptr<Token> token = record->GetToken();
+    ASSERT_NE(token, nullptr);
+    sptr<IRemoteObject> callStub = MockToken(AbilityType::DATA);
+    ASSERT_NE(callStub, nullptr);
+    abilityMs_->callStubTokenMap_[callStub] = token;
+    int32_t pid = 0;
+    EXPECT_EQ(abilityMs_->GetPidByCallStub(callStub, pid), ERR_CALLEE_PID_INVALID);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetPidByCallStub_InvalidPid_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetPidByCallStub
+ * SubFunction: NA
+ * FunctionPoints: GetPidByCallStub returns ERR_OK with correct pid when callStub maps to a valid callee record
+ */
+HWTEST_F(AbilityManagerServiceTwelfthTest, GetPidByCallStub_Success_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetPidByCallStub_Success_001 start");
+    IPCSkeleton::SetCallingUid(RESOURCE_SCHEDULE_UID);
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    auto record = MockAbilityRecord(AbilityType::PAGE);
+    ASSERT_NE(record, nullptr);
+    const int32_t expectedPid = 4321;
+    record->SetPid(expectedPid);
+    sptr<Token> token = record->GetToken();
+    ASSERT_NE(token, nullptr);
+    sptr<IRemoteObject> callStub = MockToken(AbilityType::DATA);
+    ASSERT_NE(callStub, nullptr);
+    abilityMs_->callStubTokenMap_[callStub] = token;
+    int32_t pid = 0;
+    EXPECT_EQ(abilityMs_->GetPidByCallStub(callStub, pid), ERR_OK);
+    EXPECT_EQ(pid, expectedPid);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTwelfthTest GetPidByCallStub_Success_001 end");
 }
 } // namespace AAFwk
 } // namespace OHOS

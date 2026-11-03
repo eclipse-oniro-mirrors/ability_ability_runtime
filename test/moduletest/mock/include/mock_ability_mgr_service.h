@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,7 +63,7 @@ public:
     MOCK_METHOD3(StopServiceAbility, int(const Want&, int32_t userId, const sptr<IRemoteObject> &token));
     MOCK_METHOD1(GetMissionIdByToken, int32_t(const sptr<IRemoteObject>& token));
     MOCK_METHOD2(GetAbilityTokenByCalleeObj, void(const sptr<IRemoteObject> &callStub, sptr<IRemoteObject> &token));
-    MOCK_METHOD4(KillProcess, int(const std::string&, const bool clearPageStack, int32_t appIndex,
+    MOCK_METHOD4(KillProcess, int(const std::string& bundleName, const bool clearPageStack, int32_t appIndex,
         const std::string& reason));
     MOCK_METHOD2(UninstallApp, int(const std::string&, int32_t));
     MOCK_METHOD3(UninstallApp, int32_t(const std::string&, int32_t, int32_t));
@@ -114,6 +114,7 @@ public:
         const std::shared_ptr<OHOS::Media::PixelMap>& icon));
 
     MOCK_METHOD2(GetWantSenderInfo, int(const sptr<IWantSender>& target, std::shared_ptr<WantSenderInfo>& info));
+    MOCK_METHOD1(RegisterWantAgentHolder, void(const sptr<IWantSender>& target));
 
     MOCK_METHOD1(GetAbilityRunningInfos, int(std::vector<AbilityRunningInfo>& info));
     MOCK_METHOD2(GetExtensionRunningInfos, int(int upperLimit, std::vector<ExtensionRunningInfo>& info));
@@ -220,7 +221,7 @@ public:
         return 0;
     }
 
-    virtual int GetTopAbility(sptr<IRemoteObject>& token) override
+    virtual int GetTopAbility(sptr<IRemoteObject>& token, int32_t userId = INVALID_USER_ID) override
     {
         return 0;
     }
@@ -279,6 +280,9 @@ public:
     MOCK_METHOD2(DetachAppDebug, int32_t(const std::string &bundleName, bool isDebugFromLocal));
     MOCK_METHOD3(ExecuteIntent, int32_t(uint64_t key, const sptr<IRemoteObject> &callerToken,
         const InsightIntentExecuteParam &param));
+    MOCK_METHOD4(ExecuteUIAbilityForegroundIntentWithSpecifyTokenId,
+    int32_t(const Want &want, const sptr<IRemoteObject> &callerAbilityToken,
+        const InsightIntentExecuteLiteParam &param, uint64_t specifiedFullTokenId));
     MOCK_METHOD3(ExecuteInsightIntentDone, int32_t(const sptr<IRemoteObject> &token, uint64_t intentId,
         const InsightIntentExecuteResult &result));
     MOCK_METHOD5(StartAbilityWithSpecifyTokenId, int(const Want& want, const sptr<IRemoteObject>& callerToken,

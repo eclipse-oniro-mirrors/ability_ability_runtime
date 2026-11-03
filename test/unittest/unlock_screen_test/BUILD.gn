@@ -56,6 +56,7 @@ ohos_unittest("unlock_screen_test") {
     "init:libbeget_proxy",
     "ipc:ipc_core",
     "napi:ace_napi",
+    "relational_store:native_rdb",
   ]
 
   defines = []

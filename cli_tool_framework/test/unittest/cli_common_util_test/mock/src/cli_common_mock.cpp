@@ -23,6 +23,8 @@ int32_t CliCommonMock::intParameterValue = 8;
 int32_t CliCommonMock::vectorPermissionResult = Security::AccessToken::PermissionState::PERMISSION_GRANTED;
 int32_t CliCommonMock::singlePermissionResult = Security::AccessToken::PermissionState::PERMISSION_GRANTED;
 std::vector<int32_t> CliCommonMock::permissionStateList;
+std::string CliCommonMock::stringParameterValue;
+bool CliCommonMock::boolParameterValue = false;
 
 void CliCommonMock::Reset()
 {
@@ -30,6 +32,8 @@ void CliCommonMock::Reset()
     vectorPermissionResult = Security::AccessToken::PermissionState::PERMISSION_GRANTED;
     singlePermissionResult = Security::AccessToken::PermissionState::PERMISSION_GRANTED;
     permissionStateList.clear();
+    stringParameterValue.clear();
+    boolParameterValue = false;
 }
 } // namespace CliTool
 

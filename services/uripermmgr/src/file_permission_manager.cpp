@@ -19,6 +19,7 @@
 #include <strings.h>
 
 #include "accesstoken_kit.h"
+#include "event_report.h"
 #include "file_uri.h"
 #include "hilog_tag_wrapper.h"
 #include "ipc_skeleton.h"
@@ -47,6 +48,11 @@ bool IsPathInDir(const std::string &path, const std::string &dir)
 {
     if (path.compare(0, dir.size(), dir) != 0) {
         return false;
+    }
+    if (path.size() > dir.size() && path[dir.size()] != '/') {
+        EventInfo eventInfo;
+        eventInfo.uri = "AttackPath";
+        EventReport::SendGrantUriPermissionEvent(EventName::GRANT_URI_PERMISSION, eventInfo);
     }
     return path.size() == dir.size() || path[dir.size()] == '/';
 }

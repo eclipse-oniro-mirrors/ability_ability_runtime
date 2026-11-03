@@ -59,6 +59,8 @@ ohos_shared_library("cj_errormanager_ffi") {
     "cj_error_observer.cpp",
   ]
 
+  version_script = "libcj_errormanager_ffi.map"
+
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"

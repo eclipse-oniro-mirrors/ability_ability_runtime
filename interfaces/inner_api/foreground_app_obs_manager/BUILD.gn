@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Copyright (c) 2025-2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -20,10 +20,10 @@ config("foreground_app_obs_manager_public_config") {
   visibility = [ ":*" ]
   visibility += [
     "${ability_runtime_test_path}/unittest/foreground_app_connection_test/*",
+    "${ability_runtime_test_path}/fuzztest/*",
   ]
   include_dirs = [
     "include",
-    "${ability_runtime_services_path}/common/include",
     "${ability_runtime_innerkits_path}/connectionobs_manager/include",
   ]
   cflags = []
@@ -33,6 +33,7 @@ config("foreground_app_obs_manager_public_config") {
 }
 
 ohos_shared_library("foreground_app_obs_manager") {
+  version_script = "libforeground_app_obs_manager.map"
   branch_protector_ret = "pac_ret"
   branch_protector_frt = "bti"
   sanitize = {
@@ -53,6 +54,8 @@ ohos_shared_library("foreground_app_obs_manager") {
   ]
 
   public_configs = [ ":foreground_app_obs_manager_public_config" ]
+
+  include_dirs = [ "${ability_runtime_services_path}/common/include" ]
 
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
 

@@ -19,6 +19,7 @@
 #include "gmock/gmock.h"
 #include <cstdint>
 #include "semaphore_ex.h"
+#include "ui_ability_last_caller_info.h"
 #include "app_mgr_stub.h"
 #include "app_malloc_info.h"
 
@@ -31,8 +32,8 @@ public:
             const std::shared_ptr<AbilityInfo>& abilityInfo, const std::shared_ptr<ApplicationInfo>& appInfo,
             const std::shared_ptr<AAFwk::Want>& want, int32_t abilityRecordId));
     MOCK_METHOD2(TerminateAbility, void(const sptr<IRemoteObject>& token, bool clearMissionFlag));
-    MOCK_METHOD3(UpdateAbilityState, void(const sptr<IRemoteObject>& token, const AbilityState state,
-        bool isFromScreenOffBackground));
+    MOCK_METHOD4(UpdateAbilityState, void(const sptr<IRemoteObject>& token, const AbilityState state,
+        bool isFromScreenOffBackground, const UiAbilityLastCallerInfo& callerInfo));
     MOCK_METHOD1(AttachApplication, void(const sptr<IRemoteObject>& app));
     MOCK_METHOD1(NotifyMemoryLevel, int(int32_t level));
     MOCK_METHOD1(NotifyProcMemoryLevel, int32_t(const std::map<pid_t, MemoryLevel> &procLevelMap));
@@ -45,8 +46,8 @@ public:
     MOCK_METHOD3(ForceKillApplication, int32_t(const std::string& appName, const int userId, const int appIndex));
     MOCK_METHOD3(KillApplicationWithUserId, int32_t(const std::string& appName, const int userId, const int appIndex));
     MOCK_METHOD1(KillProcessesByAccessTokenId, int32_t(const uint32_t accessTokenId));
-    MOCK_METHOD4(KillApplication, int32_t(const std::string& appName, const bool clearPageStack, int32_t appIndex,
-        const std::string& reason));
+    MOCK_METHOD5(KillApplication, int32_t(const std::string& appName, const bool clearPageStack, int32_t appIndex,
+        const std::string& reason, int32_t userId));
     MOCK_METHOD3(KillApplicationByUid, int(const std::string&, const int uid, const std::string&));
     MOCK_METHOD1(IsBackgroundRunningRestricted, int(const std::string& bundleName));
     MOCK_METHOD1(GetAllRunningProcesses, int(std::vector<RunningProcessInfo>& info));
@@ -129,6 +130,7 @@ public:
     MOCK_METHOD2(UpdateRenderState, int32_t(pid_t renderPid, int32_t state));
 
     MOCK_METHOD0(IsFinalAppProcess, bool());
+    MOCK_METHOD0(IsHyperSnapInitializing, bool());
     MOCK_METHOD1(SetSupportedProcessCacheSelf, int32_t(bool isSupport));
     MOCK_METHOD2(IsProcessCacheSupported, int32_t(int32_t pid, bool &isSupported));
     MOCK_METHOD2(IsChildProcessSupported, int32_t(bool isNative, bool &isSupported));
@@ -154,6 +156,8 @@ public:
     MOCK_METHOD2(GetAllAbilityInfos, int32_t(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos));
     MOCK_METHOD1(EnableDelayedProcessExit, int32_t(bool enabled));
     MOCK_METHOD1(CancelDelayedExitTask, void(int32_t pid));
+    MOCK_METHOD2(StartTask, int32_t(const std::string &taskId, int32_t priority));
+    MOCK_METHOD1(FinishTask, int32_t(const std::string &taskId));
     MOCK_METHOD2(DumpMem, int32_t(MemDumpInfo &info, sptr<IMemDumpCallback> callback));
     MOCK_METHOD2(ReportDumpMemResult, int32_t(sptr<IMemDumpCallback>, const std::string&));
     MOCK_METHOD1(DumpJsHandleMap, int32_t(OHOS::AppExecFwk::JsHandleMapInfo &));

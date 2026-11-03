@@ -160,6 +160,12 @@ private:
     int32_t HandleUnregisterAppRunningStatusListener(MessageParcel &data, MessageParcel &reply);
     int32_t HandleRegisterAppForegroundStateObserver(MessageParcel &data, MessageParcel &reply);
     int32_t HandleUnregisterAppForegroundStateObserver(MessageParcel &data, MessageParcel &reply);
+
+    int32_t HandleRegisterProcessLifecycleObserver(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleUnregisterProcessLifecycleObserver(MessageParcel &data, MessageParcel &reply);
+
+    int32_t HandleRegisterFocusedApplicationObserver(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleUnregisterFocusedApplicationObserver(MessageParcel &data, MessageParcel &reply);
     int32_t HandleIsApplicationRunning(MessageParcel &data, MessageParcel &reply);
 #ifdef SUPPORT_CHILD_PROCESS
     int32_t HandleStartChildProcess(MessageParcel &data, MessageParcel &reply);
@@ -169,6 +175,7 @@ private:
 #endif // SUPPORT_CHILD_PROCESS
     int32_t HandleClearUpApplicationDataBySelf(MessageParcel &data, MessageParcel &reply);
     int32_t HandleIsFinalAppProcess(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleIsHyperSnapInitializing(MessageParcel &data, MessageParcel &reply);
     int32_t HandleRegisterRenderStateObserver(MessageParcel &data, MessageParcel &reply);
     int32_t HandleRegisterKiaInterceptor(MessageParcel &data, MessageParcel &reply);
     int32_t HandleCheckIsKiaProcess(MessageParcel &data, MessageParcel &reply);
@@ -235,6 +242,8 @@ private:
     int32_t HandleGetAllAbilityInfos(MessageParcel &data, MessageParcel &reply);
     int32_t HandleEnableDelayedProcessExit(MessageParcel &data, MessageParcel &reply);
     int32_t HandleCancelDelayedExitTask(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleStartTask(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleFinishTask(MessageParcel &data, MessageParcel &reply);
     DISALLOW_COPY_AND_MOVE(AppMgrStub);
 };
 }  // namespace AppExecFwk

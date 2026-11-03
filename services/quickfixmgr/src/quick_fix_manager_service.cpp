@@ -18,6 +18,7 @@
 #include "bundle_mgr_helper.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
+#include "ipc_skeleton.h"
 #include "parameters.h"
 #include "permission_constants.h"
 #include "permission_verification.h"
@@ -41,6 +42,14 @@ sptr<QuickFixManagerService> QuickFixManagerService::GetInstance()
     return instance_;
 }
 
+void QuickFixManagerService::ResetInstance()
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (instance_ != nullptr) {
+        instance_ = nullptr;
+    }
+}
+
 bool QuickFixManagerService::Init()
 {
     std::lock_guard<std::mutex> lock(eventMutex_);
@@ -57,6 +66,27 @@ bool QuickFixManagerService::Init()
     }
 
     return true;
+}
+
+void QuickFixManagerService::Stop()
+{
+    TAG_LOGI(AAFwkTag::QUICKFIX, "Stop begin, clear pending apply tasks");
+    {
+        std::lock_guard<std::mutex> lock(taskMutex_);
+        applyTasks_.clear();
+    }
+    {
+        std::lock_guard<std::mutex> lock(eventMutex_);
+        if (eventHandler_ != nullptr) {
+            eventHandler_->RemoveAllEvents();
+            eventHandler_ = nullptr;
+        }
+        if (eventRunner_ != nullptr) {
+            eventRunner_->Stop();
+            eventRunner_ = nullptr;
+        }
+    }
+    TAG_LOGI(AAFwkTag::QUICKFIX, "Stop end");
 }
 
 int32_t QuickFixManagerService::ApplyQuickFix(const std::vector<std::string> &quickFixFiles, bool isDebug,
@@ -92,7 +122,12 @@ int32_t QuickFixManagerService::ApplyQuickFix(const std::vector<std::string> &qu
         TAG_LOGE(AAFwkTag::QUICKFIX, "null appMgr");
         return QUICK_FIX_CONNECT_FAILED;
     }
-    auto applyTask = std::make_shared<QuickFixManagerApplyTask>(bundleQfMgr, appMgr, eventHandler_, this);
+    auto handler = GetEventHandler();
+    if (handler == nullptr) {
+        TAG_LOGE(AAFwkTag::QUICKFIX, "null eventHandler");
+        return QUICK_FIX_CONNECT_FAILED;
+    }
+    auto applyTask = std::make_shared<QuickFixManagerApplyTask>(bundleQfMgr, appMgr, handler, this);
     AddApplyTask(applyTask);
     applyTask->Run(quickFixFiles, isDebug, isReplace, isCheckDebugApp);
 
@@ -121,6 +156,20 @@ int32_t QuickFixManagerService::GetApplyedQuickFixInfo(const std::string &bundle
         isCheckDebugApp = true;
     }
 
+    int32_t userId = IPCSkeleton::GetCallingUid() / AppExecFwk::Constants::BASE_USER_RANGE;
+    return GetApplyedQuickFixInfoInner(bundleName, quickFixInfo, userId, isCheckDebugApp);
+}
+
+int32_t QuickFixManagerService::GetApplyedQuickFixInfoForApply(const std::string &bundleName,
+    ApplicationQuickFixInfo &quickFixInfo, int32_t userId, bool isCheckDebugApp)
+{
+    TAG_LOGD(AAFwkTag::QUICKFIX, "called, userId: %{public}d", userId);
+    return GetApplyedQuickFixInfoInner(bundleName, quickFixInfo, userId, isCheckDebugApp);
+}
+
+int32_t QuickFixManagerService::GetApplyedQuickFixInfoInner(const std::string &bundleName,
+    ApplicationQuickFixInfo &quickFixInfo, int32_t userId, bool isCheckDebugApp)
+{
     auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
     if (bundleMgrHelper == nullptr) {
         TAG_LOGE(AAFwkTag::QUICKFIX, "null bundleMgrHelper");
@@ -128,8 +177,9 @@ int32_t QuickFixManagerService::GetApplyedQuickFixInfo(const std::string &bundle
     }
 
     AppExecFwk::BundleInfo bundleInfo;
+    int32_t queryUserId = isCheckDebugApp ? userId : AppExecFwk::Constants::ANY_USERID;
     if (!bundleMgrHelper->GetBundleInfo(bundleName, AppExecFwk::BundleFlag::GET_BUNDLE_DEFAULT, bundleInfo,
-        AppExecFwk::Constants::ANY_USERID)) {
+        queryUserId)) {
         TAG_LOGE(AAFwkTag::QUICKFIX, "get bundleInfo failed");
         return QUICK_FIX_GET_BUNDLE_INFO_FAILED;
     }
@@ -186,12 +236,12 @@ int32_t QuickFixManagerService::RevokeQuickFix(const std::string &bundleName)
         return QUICK_FIX_CONNECT_FAILED;
     }
 
-    auto applyTask = std::make_shared<QuickFixManagerApplyTask>(bundleQfMgr, appMgr, eventHandler_, this);
-    if (applyTask == nullptr) {
-        TAG_LOGE(AAFwkTag::QUICKFIX, "null applyTask");
+    auto handler = GetEventHandler();
+    if (handler == nullptr) {
+        TAG_LOGE(AAFwkTag::QUICKFIX, "null eventHandler");
         return QUICK_FIX_CONNECT_FAILED;
     }
-
+    auto applyTask = std::make_shared<QuickFixManagerApplyTask>(bundleQfMgr, appMgr, handler, this);
     applyTask->InitRevokeTask(bundleName, isSoContained);
     AddApplyTask(applyTask);
     applyTask->RunRevoke();
@@ -202,6 +252,12 @@ void QuickFixManagerService::AddApplyTask(std::shared_ptr<QuickFixManagerApplyTa
 {
     std::lock_guard<std::mutex> lock(taskMutex_);
     applyTasks_.emplace_back(applyTask);
+}
+
+std::shared_ptr<AppExecFwk::EventHandler> QuickFixManagerService::GetEventHandler()
+{
+    std::lock_guard<std::mutex> lock(eventMutex_);
+    return eventHandler_;
 }
 
 void QuickFixManagerService::RemoveApplyTask(std::shared_ptr<QuickFixManagerApplyTask> applyTask)
@@ -229,7 +285,8 @@ bool QuickFixManagerService::CheckTaskRunningState(const std::string &bundleName
     return false;
 }
 
-int32_t QuickFixManagerService::GetQuickFixInfo(const std::string &bundleName, bool &patchExists, bool &isSoContained)
+int32_t QuickFixManagerService::GetQuickFixInfo(const std::string &bundleName, bool &patchExists,
+    bool &isSoContained)
 {
     auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
     if (bundleMgrHelper == nullptr) {

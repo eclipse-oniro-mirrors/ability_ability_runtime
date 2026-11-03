@@ -22,7 +22,8 @@
 namespace OHOS {
 namespace AbilityRuntime {
 StartupTaskDispatcher::StartupTaskDispatcher(const std::map<std::string, std::shared_ptr<StartupTask>> &tasks,
-    const std::shared_ptr<StartupSortResult> &sortResult) : tasks_(tasks), sortResult_(sortResult)
+    const std::shared_ptr<StartupSortResult> &sortResult, bool preAbilityStageLoad)
+    : tasks_(tasks), sortResult_(sortResult), preAbilityStageLoad_(preAbilityStageLoad)
 {}
 
 StartupTaskDispatcher::~StartupTaskDispatcher()
@@ -51,7 +52,7 @@ int32_t StartupTaskDispatcher::Run(const std::shared_ptr<OnCompletedCallback> &c
     completedCallback_ = completedCallback;
     mainThreadAwaitCallback_ = mainThreadAwaitCallback;
 
-    if (mainThreadAwaitCount_ == 0) {
+    if (!preAbilityStageLoad_ && mainThreadAwaitCount_ == 0) {
         TAG_LOGD(AAFwkTag::STARTUP, "no main thread await task");
         if (mainThreadAwaitCallback_ != nullptr) {
             auto result = std::make_shared<StartupTaskResult>();
@@ -77,6 +78,11 @@ int32_t StartupTaskDispatcher::Run(const std::shared_ptr<OnCompletedCallback> &c
         if (result != ERR_OK) {
             return result;
         }
+    }
+    if (preAbilityStageLoad_ && mainThreadAwaitCount_ == 0 && mainThreadAwaitCallback_ != nullptr) {
+        TAG_LOGD(AAFwkTag::STARTUP, "pre-ability-stage load: main thread await callback after dispatch");
+        auto result = std::make_shared<StartupTaskResult>();
+        mainThreadAwaitCallback_->Call(result);
     }
     return ERR_OK;
 }

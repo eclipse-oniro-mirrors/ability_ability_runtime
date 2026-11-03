@@ -1,0 +1,43 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+{
+  global:
+    extern "C" {
+      FFI*;
+      Ffi*;
+    };
+    extern "C++" {
+      "OHOS::AbilityRuntime::CJUIExtensionBase::OnAbilityResult(int, int, OHOS::AAFwk::Want const&)";
+      "OHOS::AbilityRuntime::CJUIExtensionBase::OnStopCallBack()";
+      "OHOS::AbilityRuntime::CJUIExtensionBase::~CJUIExtensionBase()";
+      "OHOS::AbilityRuntime::CJUIExtensionBase::OnStop()";
+      "OHOS::AbilityRuntime::CJUIExtensionBase::OnStop(OHOS::AppExecFwk::AbilityTransactionCallbackInfo<void>*, bool&)";
+      "OHOS::AbilityRuntime::CJUIExtensionBase::ConfigurationUpdated()";
+      "OHOS::AbilityRuntime::CJUIExtensionBase::OnConfigurationUpdated(OHOS::AppExecFwk::Configuration const&)";
+      "OHOS::AbilityRuntime::CJUIExtensionBase::OnBackground()";
+      "OHOS::AbilityRuntime::CJUIExtensionBase::CJUIExtensionBase(std::__h::unique_ptr<OHOS::AbilityRuntime::Runtime, std::__h::default_delete<OHOS::AbilityRuntime::Runtime>> const&)";
+      "OHOS::AbilityRuntime::CJUIExtensionBase::OnCommand(OHOS::AAFwk::Want const&, bool, int)";
+      "OHOS::AbilityRuntime::CJUIExtensionBase::Dump(std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>> const&, std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>>&)";
+      "OHOS::AbilityRuntime::CJUIExtensionBase::OnStart(OHOS::AAFwk::Want const&, OHOS::AAFwk::LaunchParam&, OHOS::sptr<OHOS::AAFwk::SessionInfo>)";
+      "OHOS::AbilityRuntime::CJUIExtensionBase::BindContext()";
+      "OHOS::AbilityRuntime::CJUIExtensionBase::OnForeground(OHOS::AAFwk::Want const&, OHOS::sptr<OHOS::AAFwk::SessionInfo>)";
+      "OHOS::AbilityRuntime::CJUIExtensionBase::SetContext(std::__h::shared_ptr<OHOS::AbilityRuntime::UIExtensionContext> const&)";
+      "OHOS::AbilityRuntime::CJUIExtensionBase::OnCommandWindow(OHOS::AAFwk::Want const&, OHOS::sptr<OHOS::AAFwk::SessionInfo> const&, OHOS::AAFwk::WindowCommand)";
+      "OHOS::AbilityRuntime::CJUIExtensionBase::Init(std::__h::shared_ptr<OHOS::AppExecFwk::AbilityLocalRecord> const&, std::__h::shared_ptr<OHOS::AppExecFwk::OHOSApplication> const&, std::__h::shared_ptr<OHOS::AppExecFwk::AbilityHandler>&, OHOS::sptr<OHOS::IRemoteObject> const&)";
+      "OHOS::AbilityRuntime::CJUIExtensionBase::SetAbilityInfo(std::__h::shared_ptr<OHOS::AppExecFwk::AbilityInfo> const&)";
+      "OHOS::AbilityRuntime::CJUIExtensionContext::CJUIExtensionContext(std::__h::shared_ptr<OHOS::AbilityRuntime::UIExtensionContext> const&)";
+    };
+  local:
+    *;
+};

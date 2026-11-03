@@ -112,6 +112,7 @@
 #endif
 
 #include "sleep_clean.h"
+#include "extractor.h"
 
 #if defined(NWEB)
 #include <thread>
@@ -149,12 +150,14 @@ constexpr char FORM_RENDER_LIB_PATH[] = "/system/lib64/libformrender.z.so";
 #else
 constexpr char FORM_RENDER_LIB_PATH[] = "/system/lib64/libformrender.z.so";
 #endif
-
+using ExtractorUtil = AbilityBase::ExtractorUtil;
 constexpr int32_t DELIVERY_TIME = 200;
 constexpr int32_t DISTRIBUTE_TIME = 100;
 constexpr int32_t START_HIGH_SENSITIVE = 1;
 constexpr int32_t EXIT_HIGH_SENSITIVE = 2;
 constexpr int32_t UNSPECIFIED_USERID = -2;
+constexpr int32_t APP_UNVISIBLE_STATE = 4;
+constexpr int32_t APP_VISIBLE_STATE = 5;
 constexpr int32_t JS_ERROR_EXIT = -2;
 constexpr int32_t TIME_OUT = 120;
 constexpr int32_t DEFAULT_SLEEP_TIME = 100000;
@@ -271,7 +274,7 @@ void MainThread::GetNativeLibPath(const BundleInfo &bundleInfo, const HspList &h
             "moduleName: %{public}s, isLibIsolated: %{public}d, compressNativeLibs: %{public}d.",
             hapInfo.moduleName.c_str(), hapInfo.isLibIsolated, hapInfo.compressNativeLibs);
         GetPatchNativeLibPath(hapInfo, patchNativeLibraryPath, appLibPaths);
-        GetHapSoPath(hapInfo, appLibPaths, hapInfo.hapPath.find(ABS_CODE_PATH));
+        GetHapSoPath(hapInfo, appLibPaths, hapInfo.hapPath.find(ABS_CODE_PATH) != 0u);
     }
 
     for (auto &hspInfo : hspList) {
@@ -1290,11 +1293,10 @@ void MainThread::OnStartAbility(const std::string &bundleName,
     std::shared_ptr<Global::Resource::ResourceManager> &resourceManager,
     const AppExecFwk::HapModuleInfo &entryHapModuleInfo, const bool isDebugApp)
 {
-    std::regex pattern(std::string(ABS_CODE_PATH) + std::string(FILE_SEPARATOR) + bundleName);
     std::string loadPath =
         (!entryHapModuleInfo.hapPath.empty()) ? entryHapModuleInfo.hapPath : entryHapModuleInfo.resourcePath;
     if (!loadPath.empty()) {
-        loadPath = std::regex_replace(loadPath, pattern, std::string(LOCAL_CODE_PATH));
+        loadPath = ExtractorUtil::GetLoadFilePath(loadPath);
         TAG_LOGD(AAFwkTag::APPKIT, "ModuleResPath: %{public}s", loadPath.c_str());
         // getOverlayPath
         if (overlayModuleInfos_.empty()) {
@@ -1311,7 +1313,7 @@ void MainThread::OnStartAbility(const std::string &bundleName,
         }
         std::string hqfPath = entryHapModuleInfo.hqfInfo.hqfFilePath;
         if (!hqfPath.empty() && isDebugApp) {
-            hqfPath = std::regex_replace(hqfPath, pattern, std::string(LOCAL_CODE_PATH));
+            hqfPath = ExtractorUtil::GetLoadFilePath(hqfPath);
             TAG_LOGI(AAFwkTag::APPKIT, "AddPatchResource hapPath:%{public}s, patchPath:%{public}s",
                 loadPath.c_str(), hqfPath.c_str());
             if (!resourceManager->AddPatchResource(loadPath.c_str(), hqfPath.c_str())) {
@@ -1327,8 +1329,7 @@ std::vector<std::string> MainThread::GetOverlayPaths(const std::string &bundleNa
     std::vector<std::string> overlayPaths;
     for (auto &it : overlayModuleInfos_) {
         if (std::regex_search(it.hapPath, std::regex(bundleName))) {
-            it.hapPath = std::regex_replace(it.hapPath, std::regex(std::string(ABS_CODE_PATH) +
-                std::string(FILE_SEPARATOR) + bundleName), std::string(LOCAL_CODE_PATH));
+            it.hapPath = ExtractorUtil::GetLoadFilePath(it.hapPath);
         } else {
             it.hapPath = std::regex_replace(it.hapPath, std::regex(ABS_CODE_PATH), LOCAL_BUNDLES);
         }
@@ -2108,8 +2109,7 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
     auto moduleName = entryHapModuleInfo.moduleName;
     std::string loadPath =
         entryHapModuleInfo.hapPath.empty() ? entryHapModuleInfo.resourcePath : entryHapModuleInfo.hapPath;
-    std::regex inner_pattern(std::string(ABS_CODE_PATH) + std::string(FILE_SEPARATOR) + bundleInfo.name);
-    loadPath = std::regex_replace(loadPath, inner_pattern, LOCAL_CODE_PATH);
+    loadPath = ExtractorUtil::GetLoadFilePath(loadPath);
     application_->SetEntryLoadPath(loadPath);
     auto res = GetOverlayModuleInfos(bundleInfo.name, moduleName, overlayModuleInfos_);
     std::vector<std::string> overlayPaths;
@@ -2154,7 +2154,7 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
         return;
     }
     contextImpl->SetResourceManager(resourceManager);
-    AbilityBase::ExtractResourceManager::GetExtractResourceManager().SetGlobalObject(resourceManager);
+    AbilityRuntime::ExtractResourceManager::GetExtractResourceManager().SetGlobalObject(resourceManager);
 
     contextDeal->initResourceManager(resourceManager);
     contextDeal->SetApplicationContext(application_);
@@ -2346,6 +2346,7 @@ void MainThread::HandleNWebPreload()
             return;
         }
         auto initArgs = std::make_shared<NWeb::NWebEngineInitArgsImpl>();
+        initArgs->SetIsPreloadNWeb(true);
         preloadNWeb_ = NWeb::NWebAdapterHelper::Instance().CreateNWeb(surface, initArgs,
             NWEB_SURFACE_SIZE, NWEB_SURFACE_SIZE, false);
         if (!preloadNWeb_) {
@@ -2542,21 +2543,17 @@ void MainThread::LoadNativeLibrary(const BundleInfo &bundleInfo, std::string &na
 void MainThread::ChangeToLocalPath(const std::string &bundleName,
     const std::vector<std::string> &sourceDirs, std::vector<std::string> &localPath)
 {
-    std::regex pattern(std::string(ABS_CODE_PATH) + std::string(FILE_SEPARATOR) + bundleName
-        + std::string(FILE_SEPARATOR));
     for (auto item : sourceDirs) {
         if (item.empty()) {
             continue;
         }
-        localPath.emplace_back(
-            std::regex_replace(item, pattern, std::string(LOCAL_CODE_PATH) + std::string(FILE_SEPARATOR)));
+        localPath.emplace_back(ExtractorUtil::GetLoadFilePath(item));
     }
 }
 
 void MainThread::ChangeToLocalPath(const std::string &bundleName,
     const std::string &sourceDir, std::string &localPath)
 {
-    std::regex pattern(std::string(ABS_CODE_PATH) + std::string(FILE_SEPARATOR) + bundleName);
     if (sourceDir.empty()) {
         return;
     }
@@ -2568,7 +2565,7 @@ void MainThread::ChangeToLocalPath(const std::string &bundleName,
             localPath.c_str(), bundleName.c_str());
     }
     if (isExist) {
-        localPath = std::regex_replace(localPath, pattern, std::string(LOCAL_CODE_PATH));
+        localPath = ExtractorUtil::GetLoadFilePath(localPath);
     } else {
         localPath = std::regex_replace(localPath, std::regex(ABS_CODE_PATH), LOCAL_BUNDLES);
     }
@@ -4197,6 +4194,15 @@ int32_t MainThread::ChangeAppGcState(int32_t state, uint64_t tid)
     if (runtime->GetLanguage() == AbilityRuntime::Runtime::Language::CJ) {
         return NO_ERROR;
     }
+    if (state == APP_UNVISIBLE_STATE) {
+        TAG_LOGI(AAFwkTag::APPKIT, "notify application unvisible state for GC");
+        runtime->NotifyApplicationState(true);
+        return NO_ERROR;
+    } else if (state == APP_VISIBLE_STATE) {
+        TAG_LOGI(AAFwkTag::APPKIT, "notify application visible state for GC");
+        runtime->NotifyApplicationState(false);
+        return NO_ERROR;
+    }
 
     NativeEngine* nativeEngine = nullptr;
 
@@ -4774,8 +4780,12 @@ void MainThread::SleepCleanKill()
         }
         if (AbilityRuntime::TimeUtil::SystemTimeMillisecond() - beginTime < AppExecFwk::SLEEP_CLEAN_TIMEOUT &&
             appThread->applicationImpl_->GetState() != ApplicationImpl::APP_STATE_FOREGROUND) {
-            AbilityManagerClient::GetInstance()->RecordAppExitReason({ REASON_RESOURCE_CONTROL,
-                "Js_Heap_Sleep_Clean_Kill" });
+            int32_t pid = getpid();
+            AAFwk::ExitReasonCompability exitReason = { REASON_RESOURCE_CONTROL, "Js_Heap_Sleep_Clean_Kill" };
+            exitReason.killId = HiviewDFX::ProcessKillReason::KillEventId::REASON_JS_HEAP_SLEEP_CLEAN_KILL;
+            exitReason.killMsg = "Js_Heap_Sleep_Clean_Kill";
+            exitReason.innerMsg = "Js_Heap_Sleep_Clean_Kill";
+            AbilityManagerClient::GetInstance()->RecordAppWithReason(pid, getuid(), exitReason);
             _exit(0);
         }
     };

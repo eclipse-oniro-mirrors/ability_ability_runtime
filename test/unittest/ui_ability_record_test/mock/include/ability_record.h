@@ -23,6 +23,7 @@
 
 #include "ability_info.h"
 #include "ability_state.h"
+#include "session_info_constants.h"
 #include "want.h"
 
 namespace OHOS {
@@ -35,6 +36,7 @@ enum class AbilityRecordType {
 
 struct AbilityRequest {
     bool isStartByOEExt = false;
+    bool isPrelaunch = false;
     int32_t requestCode = 0;
     Want want;
     AppExecFwk::AbilityInfo abilityInfo;
@@ -44,6 +46,11 @@ struct AbilityRequest {
 class LifecycleDeal {
 public:
     MOCK_METHOD(void, ScheduleCollaborate, (Want), ());
+};
+
+class CallContainer {
+public:
+    MOCK_METHOD(void, NotifyDisconnectOnTimeout, (const AppExecFwk::ElementName&), ());
 };
 
 class AbilityRecord : public std::enable_shared_from_this<AbilityRecord> {
@@ -89,6 +96,7 @@ protected:
     std::atomic_bool isLastWantBackgroundDriven_ = false;
     std::mutex collaborateWantLock_;
     std::shared_ptr<LifecycleDeal> lifecycleDeal_;
+    std::shared_ptr<CallContainer> callContainer_ = nullptr;
 
     AppExecFwk::AbilityInfo abilityInfo_;
 

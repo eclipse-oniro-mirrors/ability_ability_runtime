@@ -65,6 +65,33 @@ void AppRunningRecord::SetCallerTokenId(int32_t tokenId)
 {
 }
 
+std::string AppRunningRecord::GetCallerBundleName() const
+{
+    return "";
+}
+
+void AppRunningRecord::SetCallerBundleName(const std::string &name)
+{
+}
+
+int32_t AppRunningRecord::GetLastUIAbilityCallerUid() const
+{
+    return -1;
+}
+
+void AppRunningRecord::SetLastUIAbilityCallerUid(int32_t uid)
+{
+}
+
+std::string AppRunningRecord::GetLastUIAbilityCallerName() const
+{
+    return "";
+}
+
+void AppRunningRecord::SetLastUIAbilityCallerName(const std::string &name)
+{
+}
+
 bool AppRunningRecord::IsLauncherApp() const
 {
     return false;
@@ -78,24 +105,6 @@ int32_t AppRunningRecord::GetRecordId() const
 const std::string &AppRunningRecord::GetName() const
 {
     return mainAppName_;
-}
-
-const std::string &AppRunningRecord::GetSignCode() const
-{
-    return signCode_;
-}
-
-void AppRunningRecord::SetSignCode(const std::string &signCode)
-{
-}
-
-const std::string &AppRunningRecord::GetJointUserId() const
-{
-    return jointUserId_;
-}
-
-void AppRunningRecord::SetJointUserId(const std::string &jointUserId)
-{
 }
 
 const std::string &AppRunningRecord::GetProcessName() const
@@ -337,11 +346,12 @@ bool AppRunningRecord::UpdateAbilityFocusState(const sptr<IRemoteObject> &token,
 }
 
 void AppRunningRecord::UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state,
-    bool isFromScreenOffBackground)
+    bool isFromScreenOffBackground, const UiAbilityLastCallerInfo &callerInfo)
 {
 }
 
-void AppRunningRecord::AbilityForeground(const std::shared_ptr<AbilityRunningRecord> &ability)
+void AppRunningRecord::AbilityForeground(const std::shared_ptr<AbilityRunningRecord> &ability,
+    const UiAbilityLastCallerInfo &callerInfo)
 {
 }
 
@@ -1382,6 +1392,16 @@ std::string AppRunningRecord::GetKillMsg() const
     return killMsg_;
 }
 
+bool AppRunningRecord::SetKillReasonIfAbsent(int32_t killId, const std::string &killMsg)
+{
+    if (killId_ != -1) {
+        return false;
+    }
+    killId_ = killId;
+    killMsg_ = killMsg;
+    return true;
+}
+
 void AppRunningRecord::SetInnerMsg(const std::string &innerMsg)
 {
     innerMsg_ = innerMsg;
@@ -1447,6 +1467,20 @@ void AppRunningRecord::GetAllAbilityInfos(std::vector<AppExecFwk::AbilityStateDa
 
 void AppRunningRecord::ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
 {
+}
+
+void AppRunningRecord::SetKillCallerInfo(int32_t killCallerPid, const std::string &killCallerProcessName)
+{
+}
+
+int32_t AppRunningRecord::GetKillCallerPid() const
+{
+    return 0;
+}
+
+std::string AppRunningRecord::GetKillCallerProcessName() const
+{
+    return "";
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

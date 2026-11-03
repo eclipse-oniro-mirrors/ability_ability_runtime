@@ -245,6 +245,12 @@ HWTEST_F(CliToolMGRClientTest, NullProxyInterfaces_0100, TestSize.Level1)
     int32_t successCount = 0;
     EXPECT_EQ(CliToolMGRClient::GetInstance().BatchRegisterFunctions(functions, successCount),
         GET_CLI_TOOL_MGR_SERVICE_FAILED);
+    EXPECT_EQ(CliToolMGRClient::GetInstance().BatchRegisterFunctionsAsync(functions),
+        GET_CLI_TOOL_MGR_SERVICE_FAILED);
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterIntentFunctionsByNamespaceAsync(0, "null_ns"),
+        GET_CLI_TOOL_MGR_SERVICE_FAILED);
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ResetNamespaceFunctionsAsync(0, "null_ns", functions),
+        GET_CLI_TOOL_MGR_SERVICE_FAILED);
 }
 
 /**
@@ -415,7 +421,7 @@ HWTEST_F(CliToolMGRClientTest, ExecCmd_0100, TestSize.Level1)
     SetMockService();
     ExecCmdParam param;
     param.cmd = "echo test_cmd";
-    param.options.timeout = 30;
+    param.execCmdOptions.timeout = 30;
     int32_t callbackCode = -1;
     auto sessionCallback = std::make_shared<MockSessionCallback>();
 
@@ -440,7 +446,7 @@ HWTEST_F(CliToolMGRClientTest, ExecCmd_0200, TestSize.Level1)
     SetMockService();
     ExecCmdParam param;
     param.cmd = "ls /data";
-    param.options.timeout = 30;
+    param.execCmdOptions.timeout = 30;
     int32_t callbackCode = -1;
     auto sessionCallback = std::make_shared<MockSessionCallback>();
 
@@ -459,6 +465,65 @@ HWTEST_F(CliToolMGRClientTest, ExecCmd_0200, TestSize.Level1)
     EXPECT_EQ(CliEventReplyManager::GetInstance().HandleEventReply(
         CliToolMgrClientFlag::lastEventId, result), ERR_OK);
     EXPECT_EQ(callbackCode, ERR_OK);
+}
+
+/**
+ * @tc.name: ExecCmd_0300
+ * @tc.desc: Test ExecCmd rejects whitespace-only cmd in tool command mode before IPC dispatch
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, ExecCmd_0300, TestSize.Level1)
+{
+    SetMockService();
+    ExecCmdParam param;
+    param.cmd = "   ";
+    param.execCmdOptions.isShellCommand = false;
+
+    auto sessionCallback = std::make_shared<MockSessionCallback>();
+    // Tool command mode with whitespace-only cmd is rejected before IPC dispatch
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ExecCmd(param,
+        [](int32_t, const CliSessionInfo &) {}, sessionCallback), ERR_INVALID_PARAM);
+
+    // No event reply callback should have been registered (rejection precedes AddEventReplyCallback)
+    EXPECT_EQ(CliEventReplyManager::GetInstance().HandleEventReply(
+        CliToolMgrClientFlag::lastEventId, CliEventReplyResult {}), -1);
+}
+
+/**
+ * @tc.name: ExecCmd_0700
+ * @tc.desc: Test ExecCmd no longer rejects oversized cmd in shell mode at client side
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, ExecCmd_0700, TestSize.Level1)
+{
+    SetMockService();
+    ExecCmdParam param;
+    param.cmd = std::string(MAX_CMD_LENGTH + 1, 'a');
+    param.execCmdOptions.timeout = 30;
+
+    CliToolMgrClientFlag::retExecCmd = ERR_OK;
+    auto sessionCallback = std::make_shared<MockSessionCallback>();
+    // Client no longer checks cmd length in shell mode; passes through to service
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ExecCmd(param,
+        [](int32_t, const CliSessionInfo &) {}, sessionCallback), ERR_OK);
+}
+
+/**
+ * @tc.name: ExecCmd_0800
+ * @tc.desc: Test ExecCmd accepts cmd whose length equals MAX_CMD_LENGTH (boundary value)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, ExecCmd_0800, TestSize.Level1)
+{
+    SetMockService();
+    ExecCmdParam param;
+    param.cmd = std::string(MAX_CMD_LENGTH, 'a');
+    param.execCmdOptions.timeout = 30;
+
+    CliToolMgrClientFlag::retExecCmd = ERR_OK;
+    auto sessionCallback = std::make_shared<MockSessionCallback>();
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ExecCmd(param,
+        [](int32_t, const CliSessionInfo &) {}, sessionCallback), ERR_OK);
 }
 
 /**
@@ -582,8 +647,8 @@ HWTEST_F(CliToolMGRClientTest, FunctionInterfaces_0200, TestSize.Level1)
     std::vector<FunctionInfo> functions;
     EXPECT_EQ(CliToolMGRClient::GetInstance().GetAllFunctions(functions), ERR_INVALID_VALUE);
 
-    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterFunction("error_ns", "error_function"), ERR_INVALID_VALUE);
-    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterIntentFunctionsByNamespace("error_ns"), ERR_INVALID_VALUE);
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterFunction(0, "error_ns", "error_function"), ERR_INVALID_VALUE);
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterIntentFunctionsByNamespace(0, "error_ns"), ERR_INVALID_VALUE);
 }
 
 /**
@@ -603,9 +668,9 @@ HWTEST_F(CliToolMGRClientTest, FunctionInterfaces_0300, TestSize.Level1)
     EXPECT_EQ(CliToolMGRClient::GetInstance().GetFunctionInfo("null_ns", "null_function", retrievedFunction),
         GET_CLI_TOOL_MGR_SERVICE_FAILED);
     EXPECT_EQ(CliToolMGRClient::GetInstance().GetAllFunctions(functions), GET_CLI_TOOL_MGR_SERVICE_FAILED);
-    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterFunction("null_ns", "null_function"),
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterFunction(0, "null_ns", "null_function"),
         GET_CLI_TOOL_MGR_SERVICE_FAILED);
-    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterIntentFunctionsByNamespace("null_ns"),
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterIntentFunctionsByNamespace(0, "null_ns"),
         GET_CLI_TOOL_MGR_SERVICE_FAILED);
 }
 
@@ -619,7 +684,7 @@ HWTEST_F(CliToolMGRClientTest, UnregisterFunction_0100, TestSize.Level1)
     SetMockService();
     CliToolMgrClientFlag::functionInfos = {BuildFunctionInfo("unreg_ns", "unreg_function")};
 
-    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterFunction("unreg_ns", "unreg_function"), ERR_OK);
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterFunction(0, "unreg_ns", "unreg_function"), ERR_OK);
 }
 
 /**
@@ -631,7 +696,7 @@ HWTEST_F(CliToolMGRClientTest, UnregisterIntentFunctionsByNamespace_0100, TestSi
 {
     SetMockService();
 
-    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterIntentFunctionsByNamespace("intent_ns"), ERR_OK);
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterIntentFunctionsByNamespace(0, "intent_ns"), ERR_OK);
 }
 
 /**
@@ -723,7 +788,8 @@ HWTEST_F(CliToolMGRClientTest, ResetNamespaceFunctions_0100, TestSize.Level1)
     functions.push_back(BuildFunctionInfo("test_ns", "func3"));
 
     int32_t successCount = 0;
-    EXPECT_EQ(CliToolMGRClient::GetInstance().ResetNamespaceFunctions("test_ns", functions, successCount), ERR_OK);
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ResetNamespaceFunctions(0, "test_ns", functions, successCount),
+        ERR_OK);
     EXPECT_EQ(successCount, 3);
 }
 
@@ -741,7 +807,7 @@ HWTEST_F(CliToolMGRClientTest, ResetNamespaceFunctions_0200, TestSize.Level1)
     functions.push_back(BuildFunctionInfo("error_ns", "func1"));
 
     int32_t successCount = 0;
-    EXPECT_EQ(CliToolMGRClient::GetInstance().ResetNamespaceFunctions("error_ns", functions, successCount),
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ResetNamespaceFunctions(0, "error_ns", functions, successCount),
         ERR_INVALID_VALUE);
 }
 
@@ -758,7 +824,7 @@ HWTEST_F(CliToolMGRClientTest, ResetNamespaceFunctions_0300, TestSize.Level1)
     functions.push_back(BuildFunctionInfo("null_ns", "func1"));
 
     int32_t successCount = 0;
-    EXPECT_EQ(CliToolMGRClient::GetInstance().ResetNamespaceFunctions("null_ns", functions, successCount),
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ResetNamespaceFunctions(0, "null_ns", functions, successCount),
         GET_CLI_TOOL_MGR_SERVICE_FAILED);
 }
 
@@ -775,7 +841,8 @@ HWTEST_F(CliToolMGRClientTest, ResetNamespaceFunctions_0400, TestSize.Level1)
 
     std::vector<FunctionInfo> functions;  // Empty vector
     int32_t successCount = -1;  // Initialize to non-zero
-    EXPECT_EQ(CliToolMGRClient::GetInstance().ResetNamespaceFunctions("empty_ns", functions, successCount), ERR_OK);
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ResetNamespaceFunctions(0, "empty_ns", functions, successCount),
+        ERR_OK);
     EXPECT_EQ(successCount, 0);
 }
 
@@ -822,7 +889,7 @@ HWTEST_F(CliToolMGRClientTest, UnregisterIntentFunctionsByNamespaceAsync_0100, T
     SetMockService();
     CliToolMgrClientFlag::retUnregisterFunction = ERR_OK;
 
-    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterIntentFunctionsByNamespaceAsync("async_ns"), ERR_OK);
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterIntentFunctionsByNamespaceAsync(0, "async_ns"), ERR_OK);
 }
 
 /**
@@ -834,7 +901,7 @@ HWTEST_F(CliToolMGRClientTest, UnregisterIntentFunctionsByNamespaceAsync_0200, T
 {
     CliToolMgrClientFlag::nullSystemAbility = true;
 
-    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterIntentFunctionsByNamespaceAsync("null_ns"),
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterIntentFunctionsByNamespaceAsync(0, "null_ns"),
         GET_CLI_TOOL_MGR_SERVICE_FAILED);
 }
 
@@ -852,7 +919,7 @@ HWTEST_F(CliToolMGRClientTest, ResetNamespaceFunctionsAsync_0100, TestSize.Level
     functions.push_back(BuildFunctionInfo("async_ns", "func1"));
     functions.push_back(BuildFunctionInfo("async_ns", "func2"));
 
-    EXPECT_EQ(CliToolMGRClient::GetInstance().ResetNamespaceFunctionsAsync("async_ns", functions), ERR_OK);
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ResetNamespaceFunctionsAsync(0, "async_ns", functions), ERR_OK);
 }
 
 /**
@@ -867,9 +934,326 @@ HWTEST_F(CliToolMGRClientTest, ResetNamespaceFunctionsAsync_0200, TestSize.Level
     std::vector<FunctionInfo> functions;
     functions.push_back(BuildFunctionInfo("null_ns", "func1"));
 
-    EXPECT_EQ(CliToolMGRClient::GetInstance().ResetNamespaceFunctionsAsync("null_ns", functions),
+    EXPECT_EQ(CliToolMGRClient::GetInstance().ResetNamespaceFunctionsAsync(0, "null_ns", functions),
         GET_CLI_TOOL_MGR_SERVICE_FAILED);
 }
 
+// ==================== Hook Tests ====================
+
+class MockCliHookStub : public IRemoteStub<ICliHookInterface> {
+public:
+    ErrCode BeforeCallTool(ExecToolParam &) override { return ERR_OK; }
+    ErrCode AfterCallTool(ExecResultWrap &) override { return ERR_OK; }
+    ErrCode BeforeCallCmd(ExecCmdParam &) override { return ERR_OK; }
+    ErrCode AfterCallCmd(ExecResultWrap &) override { return ERR_OK; }
+};
+
+class MockFunctionHookStub : public IRemoteStub<IFunctionHookInterface> {
+public:
+    ErrCode BeforeInvokeFunction(InvokeFunctionParam &) override { return ERR_OK; }
+    ErrCode AfterInvokeFunction(FunctionResultWrap &) override { return ERR_OK; }
+};
+
+static void SetDevMode(bool enabled)
+{
+    CliToolMgrClientFlag::devModeEnabled = enabled;
+}
+
+/**
+ * @tc.name: Hook_RegisterCliHook_0100
+ * @tc.desc: Test RegisterCliHook success path
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, Hook_RegisterCliHook_0100, TestSize.Level1)
+{
+    SetMockService();
+    auto hook = sptr<MockCliHookStub>::MakeSptr();
+    EXPECT_EQ(CliToolMGRClient::GetInstance().RegisterCliHook(hook, 0x0F), ERR_OK);
+    EXPECT_EQ(CliToolMgrClientFlag::registerCliHookCount, 1);
+    EXPECT_EQ(CliToolMgrClientFlag::lastHookActiveMethods, 0x0F);
+}
+
+/**
+ * @tc.name: Hook_RegisterCliHook_0200
+ * @tc.desc: Test RegisterCliHook error path (proxy returns error)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, Hook_RegisterCliHook_0200, TestSize.Level1)
+{
+    SetMockService();
+    CliToolMgrClientFlag::retRegisterCliHook = ERR_INVALID_VALUE;
+    auto hook = sptr<MockCliHookStub>::MakeSptr();
+    EXPECT_EQ(CliToolMGRClient::GetInstance().RegisterCliHook(hook, 0x0F), ERR_INVALID_VALUE);
+    EXPECT_EQ(CliToolMgrClientFlag::registerCliHookCount, 1);
+}
+
+/**
+ * @tc.name: Hook_RegisterCliHook_0300
+ * @tc.desc: Test RegisterCliHook with null proxy
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, Hook_RegisterCliHook_0300, TestSize.Level1)
+{
+    CliToolMgrClientFlag::nullSystemAbility = true;
+    auto hook = sptr<MockCliHookStub>::MakeSptr();
+    EXPECT_EQ(CliToolMGRClient::GetInstance().RegisterCliHook(hook, 0x0F),
+        GET_CLI_TOOL_MGR_SERVICE_FAILED);
+    EXPECT_EQ(CliToolMgrClientFlag::registerCliHookCount, 0);
+}
+
+/**
+ * @tc.name: Hook_UnregisterCliHook_0100
+ * @tc.desc: Test UnregisterCliHook success path
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, Hook_UnregisterCliHook_0100, TestSize.Level1)
+{
+    SetMockService();
+    auto hook = sptr<MockCliHookStub>::MakeSptr();
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterCliHook(hook), ERR_OK);
+    EXPECT_EQ(CliToolMgrClientFlag::unregisterCliHookCount, 1);
+}
+
+/**
+ * @tc.name: Hook_UnregisterCliHook_0200
+ * @tc.desc: Test UnregisterCliHook error path
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, Hook_UnregisterCliHook_0200, TestSize.Level1)
+{
+    SetMockService();
+    CliToolMgrClientFlag::retUnregisterCliHook = ERR_INVALID_VALUE;
+    auto hook = sptr<MockCliHookStub>::MakeSptr();
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterCliHook(hook), ERR_INVALID_VALUE);
+    EXPECT_EQ(CliToolMgrClientFlag::unregisterCliHookCount, 1);
+}
+
+/**
+ * @tc.name: Hook_UnregisterCliHook_0300
+ * @tc.desc: Test UnregisterCliHook with null proxy
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, Hook_UnregisterCliHook_0300, TestSize.Level1)
+{
+    CliToolMgrClientFlag::nullSystemAbility = true;
+    auto hook = sptr<MockCliHookStub>::MakeSptr();
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterCliHook(hook),
+        GET_CLI_TOOL_MGR_SERVICE_FAILED);
+    EXPECT_EQ(CliToolMgrClientFlag::unregisterCliHookCount, 0);
+}
+
+/**
+ * @tc.name: Hook_RegisterFunctionHook_0100
+ * @tc.desc: Test RegisterFunctionHook success path
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, Hook_RegisterFunctionHook_0100, TestSize.Level1)
+{
+    SetMockService();
+    auto hook = sptr<MockFunctionHookStub>::MakeSptr();
+    EXPECT_EQ(CliToolMGRClient::GetInstance().RegisterFunctionHook(hook, 0x03), ERR_OK);
+    EXPECT_EQ(CliToolMgrClientFlag::registerFunctionHookCount, 1);
+    EXPECT_EQ(CliToolMgrClientFlag::lastHookActiveMethods, 0x03);
+}
+
+/**
+ * @tc.name: Hook_RegisterFunctionHook_0200
+ * @tc.desc: Test RegisterFunctionHook error path
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, Hook_RegisterFunctionHook_0200, TestSize.Level1)
+{
+    SetMockService();
+    CliToolMgrClientFlag::retRegisterFunctionHook = ERR_INVALID_VALUE;
+    auto hook = sptr<MockFunctionHookStub>::MakeSptr();
+    EXPECT_EQ(CliToolMGRClient::GetInstance().RegisterFunctionHook(hook, 0x03), ERR_INVALID_VALUE);
+    EXPECT_EQ(CliToolMgrClientFlag::registerFunctionHookCount, 1);
+}
+
+/**
+ * @tc.name: Hook_RegisterFunctionHook_0300
+ * @tc.desc: Test RegisterFunctionHook with null proxy
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, Hook_RegisterFunctionHook_0300, TestSize.Level1)
+{
+    CliToolMgrClientFlag::nullSystemAbility = true;
+    auto hook = sptr<MockFunctionHookStub>::MakeSptr();
+    EXPECT_EQ(CliToolMGRClient::GetInstance().RegisterFunctionHook(hook, 0x03),
+        GET_CLI_TOOL_MGR_SERVICE_FAILED);
+    EXPECT_EQ(CliToolMgrClientFlag::registerFunctionHookCount, 0);
+}
+
+/**
+ * @tc.name: Hook_UnregisterFunctionHook_0100
+ * @tc.desc: Test UnregisterFunctionHook success path
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, Hook_UnregisterFunctionHook_0100, TestSize.Level1)
+{
+    SetMockService();
+    auto hook = sptr<MockFunctionHookStub>::MakeSptr();
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterFunctionHook(hook), ERR_OK);
+    EXPECT_EQ(CliToolMgrClientFlag::unregisterFunctionHookCount, 1);
+}
+
+/**
+ * @tc.name: Hook_UnregisterFunctionHook_0200
+ * @tc.desc: Test UnregisterFunctionHook error path
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, Hook_UnregisterFunctionHook_0200, TestSize.Level1)
+{
+    SetMockService();
+    CliToolMgrClientFlag::retUnregisterFunctionHook = ERR_INVALID_VALUE;
+    auto hook = sptr<MockFunctionHookStub>::MakeSptr();
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterFunctionHook(hook), ERR_INVALID_VALUE);
+    EXPECT_EQ(CliToolMgrClientFlag::unregisterFunctionHookCount, 1);
+}
+
+/**
+ * @tc.name: Hook_UnregisterFunctionHook_0300
+ * @tc.desc: Test UnregisterFunctionHook with null proxy
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, Hook_UnregisterFunctionHook_0300, TestSize.Level1)
+{
+    CliToolMgrClientFlag::nullSystemAbility = true;
+    auto hook = sptr<MockFunctionHookStub>::MakeSptr();
+    EXPECT_EQ(CliToolMGRClient::GetInstance().UnregisterFunctionHook(hook),
+        GET_CLI_TOOL_MGR_SERVICE_FAILED);
+    EXPECT_EQ(CliToolMgrClientFlag::unregisterFunctionHookCount, 0);
+}
+
+/**
+ * @tc.name: Hook_BeforeInvokeFunction_DeveloperModeOff_0100
+ * @tc.desc: Test BeforeInvokeFunction returns ERR_OK early when developer mode is off
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, Hook_BeforeInvokeFunction_DeveloperModeOff_0100, TestSize.Level1)
+{
+    SetDevMode(false);
+    InvokeFunctionParam param;
+    param.functionNamespace = "test_ns";
+    param.functionName = "test_fn";
+    EXPECT_EQ(CliToolMGRClient::GetInstance().BeforeInvokeFunction(param), ERR_OK);
+    EXPECT_EQ(CliToolMgrClientFlag::beforeInvokeFunctionCount, 0);
+    SetDevMode(true);
+}
+
+/**
+ * @tc.name: Hook_BeforeInvokeFunction_Success_0200
+ * @tc.desc: Test BeforeInvokeFunction success path when developer mode is on
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, Hook_BeforeInvokeFunction_Success_0200, TestSize.Level1)
+{
+    SetDevMode(true);
+    SetMockService();
+    InvokeFunctionParam param;
+    param.functionNamespace = "test_ns";
+    param.functionName = "test_fn";
+    EXPECT_EQ(CliToolMGRClient::GetInstance().BeforeInvokeFunction(param), ERR_OK);
+    EXPECT_EQ(CliToolMgrClientFlag::beforeInvokeFunctionCount, 1);
+    EXPECT_EQ(CliToolMgrClientFlag::lastInvokeFunctionNamespace, "test_ns");
+    EXPECT_EQ(CliToolMgrClientFlag::lastInvokeFunctionName, "test_fn");
+}
+
+/**
+ * @tc.name: Hook_BeforeInvokeFunction_Error_0300
+ * @tc.desc: Test BeforeInvokeFunction error path (proxy returns error)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, Hook_BeforeInvokeFunction_Error_0300, TestSize.Level1)
+{
+    SetDevMode(true);
+    SetMockService();
+    CliToolMgrClientFlag::retBeforeInvokeFunction = ERR_INVALID_VALUE;
+    InvokeFunctionParam param;
+    param.functionNamespace = "test_ns";
+    param.functionName = "test_fn";
+    EXPECT_EQ(CliToolMGRClient::GetInstance().BeforeInvokeFunction(param), ERR_INVALID_VALUE);
+    EXPECT_EQ(CliToolMgrClientFlag::beforeInvokeFunctionCount, 1);
+    EXPECT_EQ(CliToolMgrClientFlag::lastInvokeFunctionName, "test_fn");
+}
+
+/**
+ * @tc.name: Hook_BeforeInvokeFunction_NullProxy_0400
+ * @tc.desc: Test BeforeInvokeFunction with null proxy
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, Hook_BeforeInvokeFunction_NullProxy_0400, TestSize.Level1)
+{
+    SetDevMode(true);
+    CliToolMgrClientFlag::nullSystemAbility = true;
+    InvokeFunctionParam param;
+    param.functionNamespace = "test_ns";
+    param.functionName = "test_fn";
+    EXPECT_EQ(CliToolMGRClient::GetInstance().BeforeInvokeFunction(param),
+        GET_CLI_TOOL_MGR_SERVICE_FAILED);
+    EXPECT_EQ(CliToolMgrClientFlag::beforeInvokeFunctionCount, 0);
+}
+
+/**
+ * @tc.name: Hook_AfterInvokeFunction_DeveloperModeOff_0100
+ * @tc.desc: Test AfterInvokeFunction returns ERR_OK early when developer mode is off
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, Hook_AfterInvokeFunction_DeveloperModeOff_0100, TestSize.Level1)
+{
+    SetDevMode(false);
+    FunctionResultWrap wrap;
+    wrap.result.success = true;
+    EXPECT_EQ(CliToolMGRClient::GetInstance().AfterInvokeFunction(wrap), ERR_OK);
+    EXPECT_EQ(CliToolMgrClientFlag::afterInvokeFunctionCount, 0);
+    SetDevMode(true);
+}
+
+/**
+ * @tc.name: Hook_AfterInvokeFunction_Success_0200
+ * @tc.desc: Test AfterInvokeFunction success path when developer mode is on
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, Hook_AfterInvokeFunction_Success_0200, TestSize.Level1)
+{
+    SetDevMode(true);
+    SetMockService();
+    FunctionResultWrap wrap;
+    wrap.result.success = true;
+    EXPECT_EQ(CliToolMGRClient::GetInstance().AfterInvokeFunction(wrap), ERR_OK);
+    EXPECT_EQ(CliToolMgrClientFlag::afterInvokeFunctionCount, 1);
+}
+
+/**
+ * @tc.name: Hook_AfterInvokeFunction_Error_0300
+ * @tc.desc: Test AfterInvokeFunction error path (proxy returns error)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, Hook_AfterInvokeFunction_Error_0300, TestSize.Level1)
+{
+    SetDevMode(true);
+    SetMockService();
+    CliToolMgrClientFlag::retAfterInvokeFunction = ERR_INVALID_VALUE;
+    FunctionResultWrap wrap;
+    wrap.result.success = true;
+    EXPECT_EQ(CliToolMGRClient::GetInstance().AfterInvokeFunction(wrap), ERR_INVALID_VALUE);
+    EXPECT_EQ(CliToolMgrClientFlag::afterInvokeFunctionCount, 1);
+}
+
+/**
+ * @tc.name: Hook_AfterInvokeFunction_NullProxy_0400
+ * @tc.desc: Test AfterInvokeFunction with null proxy
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, Hook_AfterInvokeFunction_NullProxy_0400, TestSize.Level1)
+{
+    SetDevMode(true);
+    CliToolMgrClientFlag::nullSystemAbility = true;
+    FunctionResultWrap wrap;
+    wrap.result.success = true;
+    EXPECT_EQ(CliToolMGRClient::GetInstance().AfterInvokeFunction(wrap),
+        GET_CLI_TOOL_MGR_SERVICE_FAILED);
+    EXPECT_EQ(CliToolMgrClientFlag::afterInvokeFunctionCount, 0);
+}
 } // namespace CliTool
 } // namespace OHOS

@@ -15,12 +15,27 @@
 
 #include "dump_runtime_helper.h"
 
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cerrno>
+#include <cinttypes>
 #include <dfx_signal_handler.h>
+#include <fcntl.h>
 #include <malloc.h>
 #include <pthread.h>
+#include <securec.h>
 #include <sys/statvfs.h>
 #include <sys/stat.h>
+#include <sys/uio.h>
 #include <sys/xattr.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <fstream>
+#include <memory>
+#include <sstream>
+#include <string>
+#include <vector>
 #include "app_mgr_client.h"
 #include "faultloggerd_client.h"
 #include "hilog_tag_wrapper.h"
@@ -29,11 +44,15 @@
 #include "ets_runtime.h"
 #include "singleton.h"
 #include "dfx_jsnapi.h"
+#include "dfx_frame.h"
+#include "dfx_frame_formatter.h"
+#include "unwinder.h"
 #include "parameters.h"
 #include "ffrt.h"
 #include "directory_ex.h"
 #include "storage_acl.h"
 #include "hidebug_dump.h"
+#include "dump_fd_guard.h"
 #ifdef CJ_FRONTEND
 #include "cj_runtime.h"
 #endif
@@ -56,26 +75,61 @@ static constexpr const char* const EVENT_XATTR_NAME = "user.appevent";
 static constexpr const char* const OOM_QUOTA_XATTR_NAME = "user.oomdump.quota";
 static constexpr const char* const RUNNING_ID_NAME = "user.runningId";
 static constexpr const char* const PROPERTY2C = "user.oomdumptelemetry.quota";
+static constexpr const char* const TELEMETRY_ENABLE_PROPERTY = "user.oomdumptelemetry.enable";
 static constexpr const char* const HIAPPEVENT_PATH = "/data/storage/el2/base/cache/hiappevent";
 static constexpr const char* const OOM_QUOTA_PATH = "/data/storage/el2/base/cache/rawheap";
 static constexpr const char* const JS_HEAP_LOGTYPE = "user.event_config.js_heap_logtype";
 static constexpr const char* const EVENT_RAWHEAP = "event_rawheap";
 #ifdef __LP64__
-static constexpr const char* const SO_NAME = "libmemleak.z.so";
+static constexpr const char* const SO_NAME = "liborphanmem.z.so";
 #else
 static constexpr const char* const SO_NAME = "";
 #endif
 static constexpr const char* const GET_MEM_LEAK_STRING_SYMBOL = "OHOS_GetMemLeakString";
 static constexpr uint64_t OOM_DUMP_INTERVAL = 7 * 24 * 60 * 60;
-static constexpr uint64_t OOM_DUMP_SPACE_LIMIT = 30ull * 1024 * 1024 * 1024;
+static constexpr uint64_t OOM_DUMP_SPACE_LIMIT = 30uLL * 1024 * 1024 * 1024;
 static constexpr uint32_t EVENT_RESOURCE_OVERLIMIT_MASK = 6;
 static constexpr uint64_t BIT_MASK = 1;
 static constexpr uint32_t BUF_SIZE_256 = 256;
-static constexpr int DECIMAL_BASE = 10;
+static constexpr int32_t DECIMAL_BASE = 10;
+static constexpr int32_t HEX_BASE = 16;
 static constexpr int KB_PER_MB = 1024;
 static constexpr size_t MEM_LEAK_MAX_SIZE = 100;
 static constexpr int JSVM_SNAPSHOT = 0;
 static constexpr int JSVM_RAW = 1;
+static constexpr const char* const THREAD_STACK_MAP_PREFIX = "[anon:stack:";
+static constexpr const char* const SELF_SMAPS_PATH = "/proc/self/smaps";
+static constexpr const char* const SELF_TASK_PATH = "/proc/self/task";
+static constexpr size_t THREAD_STACK_LEAK_MAX_FRAMES = 64;
+static constexpr size_t THREAD_STACK_LEAK_MAX_STACKS = 10;
+static constexpr size_t THREAD_STACK_SCAN_UNIT = sizeof(uintptr_t);
+static constexpr size_t THREAD_STACK_READ_CHUNK = 4096; // 4KB batch read size
+
+// Scan a buffer of stack memory for candidate PC values that fall inside
+// executable maps. Called by CollectPcsFromStack after a chunk is read.
+static void ScanChunkForPcs(const uint8_t *buf, uint64_t bytesValid,
+    const std::shared_ptr<OHOS::HiviewDFX::DfxMaps> &maps, std::vector<uintptr_t> &pcs)
+{
+    // Defensive null check: callers currently guard maps before calling, but
+    // keep this function self-consistent so future callers cannot deref null.
+    if (maps == nullptr) {
+        return;
+    }
+    for (uint64_t offset = bytesValid; offset >= sizeof(uintptr_t) &&
+        pcs.size() < THREAD_STACK_LEAK_MAX_FRAMES; offset -= THREAD_STACK_SCAN_UNIT) {
+        uintptr_t value = 0;
+        if (memcpy_s(&value, sizeof(value), buf + offset - sizeof(uintptr_t), sizeof(value)) != EOK) {
+            continue;
+        }
+        if (value == 0) {
+            continue;
+        }
+        std::shared_ptr<OHOS::HiviewDFX::DfxMap> map = nullptr;
+        if (maps->FindMapByAddr(static_cast<uintptr_t>(value), map) && map && map->IsMapExec()) {
+            pcs.push_back(value);
+        }
+    }
+}
 
 enum {
     INDEX_DELIVERY_TS = 0,
@@ -138,24 +192,11 @@ void DumpRuntimeHelper::SetAppFreezeFilterCallback()
             TAG_LOGE(AAFwkTag::APPKIT, "failed to check oomdump switch");
             return false;
         }
-        if (g_betaVersion || g_developMode || !needDecreaseQuota) {
-            TAG_LOGI(AAFwkTag::APPKIT, "no need to check quota, just dump."
-                " beta: %{public}d, develop: %{public}d, hidumper: %{public}d",
-                g_betaVersion, g_developMode, !needDecreaseQuota);
+        if (CheckDumpQuota(eventConfig, needDecreaseQuota)) {
             client->SetAppFreezeFilter(pid);
             return true;
         }
-        bool ret2custom = (eventConfig == EVENT_RAWHEAP);
-        bool ret2D = Check2DQuota(needDecreaseQuota);
-        bool ret2C = Check2CQuota();
-        if (!ret2custom && !ret2D && !ret2C) {
-            TAG_LOGI(AAFwkTag::APPKIT, "check custom|2C|2D quota both failed, no dump.");
-            return false;
-        }
-        TAG_LOGI(AAFwkTag::APPKIT, "check success, will dump. custom: %{public}d 2C: %{public}d, 2D: %{public}d",
-                 ret2custom, ret2C, ret2D);
-        client->SetAppFreezeFilter(pid);
-        return true;
+        return false;
     };
     auto vm = (static_cast<AbilityRuntime::JsRuntime&>(*runtime)).GetEcmaVm();
     panda::DFXJSNApi::SetAppFreezeFilterCallback(vm, appfreezeFilterCallback);
@@ -250,7 +291,10 @@ bool DumpRuntimeHelper::Check2DQuota(bool needDecreaseQuota)
         TAG_LOGE(AAFwkTag::APPKIT, "Check2DOOMDumpQuota failed");
         return false;
     }
-    Set2DQuota(OOM_QUOTA_PATH, GetCurrentTimestamp(), g_oomDumpProcessQuota - 1);
+    if (!Set2DQuota(OOM_QUOTA_PATH, GetCurrentTimestamp(), g_oomDumpProcessQuota - 1)) {
+        TAG_LOGE(AAFwkTag::APPKIT, "failed to Set2DQuota");
+        return false;
+    }
 
     TAG_LOGI(AAFwkTag::APPKIT, "succeed to Check2DQuota");
     return true;
@@ -366,8 +410,8 @@ void DumpRuntimeHelper::DumpCjHeap(const OHOS::AppExecFwk::CjHeapDumpInfo &info)
             TAG_LOGE(AAFwkTag::APPKIT, "fd:%{public}d.\n", fd);
             return;
         }
+        DumpFdGuard snapshotFdGuard(fd);
         cjEnv->dumpHeapSnapshot(fd);
-        close(fd);
         return;
     }
     if (info.needGc) {
@@ -393,6 +437,11 @@ void DumpRuntimeHelper::DumpMem(const OHOS::AppExecFwk::MemDumpInfo &info, sptr<
         return;
     }
 
+    if (info.dumpType == MemDumpType::THREAD_STACK_LEAK) {
+        SubmitThreadStackLeakTask(callback);
+        return;
+    }
+
     std::string dumpResult;
     if (info.dumpType == MemDumpType::KMP_KOTLIN) {
         DumpKmpKotlinHeap(info);
@@ -411,6 +460,65 @@ void DumpRuntimeHelper::DumpMem(const OHOS::AppExecFwk::MemDumpInfo &info, sptr<
     }
 }
 
+bool DumpRuntimeHelper::ReportThreadStackLeakResult(const sptr<IMemDumpCallback> &callback,
+    const std::string &dumpResult)
+{
+    auto client = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+    if (client == nullptr) {
+        return false;
+    }
+    try {
+        auto ret = client->ReportDumpMemResult(callback, dumpResult);
+        if (ret == RESULT_OK) {
+            return true;
+        }
+        TAG_LOGE(AAFwkTag::APPKIT, "ReportDumpMemResult failed: %{public}d", static_cast<int32_t>(ret));
+    } catch (const std::exception &e) {
+        TAG_LOGE(AAFwkTag::APPKIT, "ReportDumpMemResult exception: %{public}s", e.what());
+    } catch (...) {
+        TAG_LOGE(AAFwkTag::APPKIT, "ReportDumpMemResult unknown exception");
+    }
+    return false;
+}
+
+void DumpRuntimeHelper::SubmitThreadStackLeakTask(sptr<IMemDumpCallback> callback)
+{
+    // Async branch: result is reported via IPC callback. On success, the service
+    // invokes the callback. On failure, we fall back to invoking the callback
+    // directly on this ffrt worker thread so the caller does not hang.
+    auto task = [callback]() {
+        if (callback == nullptr) {
+            TAG_LOGE(AAFwkTag::APPKIT, "callback is null, cannot report thread stack leak result");
+            return;
+        }
+        std::string dumpResult;
+        try {
+            dumpResult = DumpRuntimeHelper::DetectAndUnwindThreadStackLeak();
+        } catch (const std::exception &e) {
+            TAG_LOGE(AAFwkTag::APPKIT, "DetectAndUnwindThreadStackLeak exception: %{public}s", e.what());
+            dumpResult = "DetectAndUnwindThreadStackLeak failed: exception occurred\n";
+        } catch (...) {
+            TAG_LOGE(AAFwkTag::APPKIT, "DetectAndUnwindThreadStackLeak unknown exception");
+            dumpResult = "DetectAndUnwindThreadStackLeak failed: unknown exception\n";
+        }
+        if (!ReportThreadStackLeakResult(callback, dumpResult)) {
+            // Fallback: invoke callback directly on this ffrt worker thread so the
+            // caller does not hang waiting for the result. The callback is expected
+            // to be a Binder proxy whose OnMemDumpDone marshals across the binder
+            // driver (thread-safe); an in-process stub implementation must guarantee
+            // its own thread-safety since this call runs off the caller's thread.
+            try {
+                callback->OnMemDumpDone(dumpResult);
+            } catch (const std::exception &e) {
+                TAG_LOGE(AAFwkTag::APPKIT, "OnMemDumpDone exception: %{public}s", e.what());
+            } catch (...) {
+                TAG_LOGE(AAFwkTag::APPKIT, "OnMemDumpDone unknown exception");
+            }
+        }
+    };
+    ffrt::submit(task, {}, {}, {ffrt::task_attr().name("ffrt_DumpThreadStackLeak")});
+}
+
 void DumpRuntimeHelper::DumpNativeHeap(const OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
 {
     if (info.needLeakobj) {
@@ -422,10 +530,10 @@ void DumpRuntimeHelper::DumpNativeHeap(const OHOS::AppExecFwk::MemDumpInfo &info
         TAG_LOGI(AAFwkTag::APPKIT, "dump native no need leakobj");
         int32_t fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::NATIVE_SNAPSHOT));
         if (fd > 0) {
+            DumpFdGuard nativeFdGuard(fd);
             if (!GetSnapshot(fd)) {
                 TAG_LOGE(AAFwkTag::APPKIT, "GetSnapshot failed");
             }
-            close(fd);
         } else {
             TAG_LOGE(AAFwkTag::APPKIT, "RequestFileDescriptor failed");
         }
@@ -530,6 +638,249 @@ bool DumpRuntimeHelper::GetSnapshot(int fd)
     return true;
 }
 
+// Extract tid from a thread stack map name like "[anon:stack:11111]".
+// Returns 0 if the tid cannot be parsed.
+int32_t DumpRuntimeHelper::ParseTidFromMapName(const std::string &mapName)
+{
+    auto pos = mapName.find(THREAD_STACK_MAP_PREFIX);
+    if (pos == std::string::npos) {
+        return 0;
+    }
+    pos += std::string(THREAD_STACK_MAP_PREFIX).size();
+    std::string tidStr;
+    for (; pos < mapName.size(); pos++) {
+        if (mapName[pos] >= '0' && mapName[pos] <= '9') {
+            tidStr.push_back(mapName[pos]);
+        } else {
+            break;
+        }
+    }
+    if (tidStr.empty()) {
+        return 0;
+    }
+    errno = 0;
+    char *end = nullptr;
+    int64_t val = strtoll(tidStr.c_str(), &end, DECIMAL_BASE);
+    if (errno != 0 || end == tidStr.c_str() || *end != '\0') {
+        return 0;
+    }
+    if (val > INT32_MAX || val < INT32_MIN) {
+        return 0;
+    }
+    return static_cast<int32_t>(val);
+}
+
+// Check whether the given tid is still alive in current process by looking up
+// /proc/self/task/<tid>. Returns true if the tid directory exists.
+bool DumpRuntimeHelper::IsTidAlive(int32_t tid)
+{
+    if (tid <= 0) {
+        return false;
+    }
+    std::string taskPath = std::string(SELF_TASK_PATH) + "/" + std::to_string(tid);
+    struct stat st{};
+    if (stat(taskPath.c_str(), &st) != 0) {
+        return false;
+    }
+    return S_ISDIR(st.st_mode);
+}
+
+// Count total alive threads by listing /proc/self/task entries.
+size_t DumpRuntimeHelper::CountTotalThreads()
+{
+    DIR *dir = opendir(SELF_TASK_PATH);
+    if (dir == nullptr) {
+        return 0;
+    }
+    size_t count = 0;
+    struct dirent *entry = nullptr;
+    while ((entry = readdir(dir)) != nullptr) {
+        if (entry->d_name[0] == '.') {
+            continue;
+        }
+        count++;
+    }
+    closedir(dir);
+    return count;
+}
+
+// Parse /proc/self/smaps and collect all thread stack map regions whose name
+// starts with THREAD_STACK_MAP_PREFIX. Each region's tid is extracted from the
+// map name and validated against /proc/self/task.
+std::vector<ThreadStackRegion> DumpRuntimeHelper::ParseLeakedThreadStackRegions()
+{
+    std::vector<ThreadStackRegion> regions;
+    std::ifstream smaps(SELF_SMAPS_PATH);
+    if (!smaps.is_open()) {
+        TAG_LOGE(AAFwkTag::APPKIT, "open smaps failed");
+        return regions;
+    }
+    std::string line;
+    while (std::getline(smaps, line)) {
+        if (line.find(THREAD_STACK_MAP_PREFIX) == std::string::npos) {
+            continue;
+        }
+        auto headerEnd = line.find(' ');
+        auto dashPos = line.find('-');
+        if (headerEnd == std::string::npos || dashPos == std::string::npos || dashPos >= headerEnd) {
+            continue;
+        }
+        ThreadStackRegion region;
+        errno = 0;
+        char *end = nullptr;
+        std::string beginStr = line.substr(0, dashPos);
+        region.begin = strtoull(beginStr.c_str(), &end, HEX_BASE);
+        if (errno != 0 || end == beginStr.c_str() || *end != '\0') {
+            continue;
+        }
+        errno = 0;
+        end = nullptr;
+        std::string endStr = line.substr(dashPos + 1, headerEnd - dashPos - 1);
+        region.end = strtoull(endStr.c_str(), &end, HEX_BASE);
+        if (errno != 0 || end == endStr.c_str() || *end != '\0') {
+            continue;
+        }
+        auto namePos = line.find(THREAD_STACK_MAP_PREFIX);
+        region.mapName = line.substr(namePos);
+        region.tid = ParseTidFromMapName(region.mapName);
+        if (region.tid > 0 && region.begin < region.end && !IsTidAlive(region.tid)) {
+            regions.emplace_back(std::move(region));
+        }
+    }
+    return regions;
+}
+
+// Scan a leaked thread stack region for candidate PC values. The PC values are
+// read from the stack memory as uintptr_t values that fall inside executable
+// maps. Memory is read in 4KB chunks via process_vm_readv to minimize system
+// call overhead, then each uintptr_t in the buffer is checked against DfxMaps
+// for executable mapping. process_vm_readv returns an error instead of
+// triggering SIGSEGV on unmapped pages, so the readv itself is the safety
+// boundary — no prior address readability check is needed.
+// NOTE: DfxMaps is a snapshot created once in DetectAndUnwindThreadStackLeak.
+// Between snapshot creation and the readv call, the process's virtual memory
+// layout may change (munmap, page reclaim). process_vm_readv handles this
+// safely by returning an error rather than triggering SIGSEGV.
+std::vector<uintptr_t> DumpRuntimeHelper::CollectPcsFromStack(
+    uint64_t begin, uint64_t end, const std::shared_ptr<OHOS::HiviewDFX::DfxMaps> &maps)
+{
+    std::vector<uintptr_t> pcs;
+    if (maps == nullptr) {
+        return pcs;
+    }
+    if (end < begin || end - begin < THREAD_STACK_SCAN_UNIT) {
+        return pcs;
+    }
+    end &= ~static_cast<uint64_t>(sizeof(uintptr_t) - 1);
+    std::vector<uint8_t> buffer;
+    buffer.reserve(THREAD_STACK_READ_CHUNK);
+    for (uint64_t chunkEnd = end; chunkEnd > begin && pcs.size() < THREAD_STACK_LEAK_MAX_FRAMES;) {
+        uint64_t chunkBegin = chunkEnd - std::min(static_cast<uint64_t>(THREAD_STACK_READ_CHUNK), chunkEnd - begin);
+        chunkBegin = (chunkBegin + sizeof(uintptr_t) - 1) & ~static_cast<uint64_t>(sizeof(uintptr_t) - 1);
+        if (chunkBegin >= chunkEnd) {
+            break;
+        }
+        uint64_t chunkSize = chunkEnd - chunkBegin;
+        // Use explicit cast to silence narrowing/portability warnings:
+        // chunkSize is uint64_t but resize() takes size_t, and the remote
+        // address must go through uintptr_t before reinterpret_cast to void*
+        // to avoid truncation on 32-bit targets.
+        buffer.resize(static_cast<size_t>(chunkSize));
+        size_t readLen = static_cast<size_t>(chunkSize);
+        struct iovec localiov = {buffer.data(), readLen};
+        struct iovec remoteiov = {reinterpret_cast<void *>(static_cast<uintptr_t>(chunkBegin)), readLen};
+        ssize_t nread = process_vm_readv(getpid(), &localiov, 1, &remoteiov, 1, 0);
+        if (nread <= 0) {
+            TAG_LOGW(AAFwkTag::APPKIT, "process_vm_readv failed, errno:%{public}d", errno);
+            chunkEnd = chunkBegin;
+            continue;
+        }
+        uint64_t bytesValid = static_cast<uint64_t>(nread) &
+            ~static_cast<uint64_t>(sizeof(uintptr_t) - 1);
+        ScanChunkForPcs(buffer.data(), bytesValid, maps, pcs);
+        chunkEnd = chunkBegin;
+    }
+    TAG_LOGI(AAFwkTag::APPKIT, "CollectPcsFromStack: pcs:%{public}zu", pcs.size());
+    return pcs;
+}
+
+// Build a standardized stack string for one leaked thread stack using
+// faultloggerd's Unwinder + DfxFrameFormatter, which produces the canonical
+// "#00 pc <pc> <mapName>(<funcName>+<offset>)" format.
+// Returns empty string if no frames could be resolved.
+std::string DumpRuntimeHelper::FormatLeakedStack(int32_t tid, const std::vector<uintptr_t> &pcs)
+{
+    if (pcs.empty()) {
+        return "";
+    }
+    std::vector<OHOS::HiviewDFX::DfxFrame> frames;
+    OHOS::HiviewDFX::Unwinder::GetLocalFramesByPcs(frames, pcs);
+    if (frames.empty()) {
+        return "";
+    }
+    std::ostringstream oss;
+    oss << "tid:" << tid << "\n";
+    oss << OHOS::HiviewDFX::DfxFrameFormatter::GetFramesStr(frames);
+    return oss.str();
+}
+
+std::string DumpRuntimeHelper::DetectAndUnwindThreadStackLeak()
+{
+    size_t totalThreadCount = CountTotalThreads();
+    auto regions = ParseLeakedThreadStackRegions();
+    size_t leakCount = regions.size();
+    std::string statusSuffix;
+    std::string body;
+
+    if (regions.empty()) {
+        TAG_LOGI(AAFwkTag::APPKIT, "no leaked thread stack found, total thread count:%{public}zu",
+            totalThreadCount);
+    } else {
+        auto maps = OHOS::HiviewDFX::DfxMaps::Create(0, true, false);
+        if (maps == nullptr) {
+            TAG_LOGE(AAFwkTag::APPKIT, "failed to create DfxMaps, skip stack unwinding");
+            statusSuffix = " (unwind failed)";
+        } else {
+            body = UnwindLeakedStacks(regions, maps);
+        }
+    }
+
+    std::ostringstream header;
+    header << "total thread count: " << totalThreadCount
+           << ", leak thread stack count: " << leakCount << statusSuffix << "\n";
+    return header.str() + body;
+}
+
+std::string DumpRuntimeHelper::UnwindLeakedStacks(
+    const std::vector<ThreadStackRegion> &regions,
+    std::shared_ptr<OHOS::HiviewDFX::DfxMaps> &maps)
+{
+    std::string dumpResult;
+    size_t printedStacks = 0;
+    for (const auto &region : regions) {
+        if (printedStacks >= THREAD_STACK_LEAK_MAX_STACKS) {
+            TAG_LOGI(AAFwkTag::APPKIT,
+                "max stack limit reached, printedStacks:%{public}zu totalOrphan:%{public}zu",
+                printedStacks, regions.size());
+            break;
+        }
+        TAG_LOGW(AAFwkTag::APPKIT, "leaked stack found, tid:%{public}d not alive", region.tid);
+        if (IsTidAlive(region.tid)) {
+            TAG_LOGI(AAFwkTag::APPKIT, "tid:%{public}d became alive before scan, skipping", region.tid);
+            continue;
+        }
+        auto pcs = CollectPcsFromStack(region.begin, region.end, maps);
+        std::string stackStr = FormatLeakedStack(region.tid, pcs);
+        if (stackStr.empty()) {
+            TAG_LOGW(AAFwkTag::APPKIT, "no frames resolved for tid:%{public}d, skipping", region.tid);
+            continue;
+        }
+        printedStacks++;
+        dumpResult.append(stackStr);
+    }
+    return dumpResult;
+}
+
 void DumpRuntimeHelper::DumpKmpKotlinHeap(const OHOS::AppExecFwk::MemDumpInfo &info)
 {
     int32_t fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::KMP_HEAP_SNAPSHOT));
@@ -537,15 +888,32 @@ void DumpRuntimeHelper::DumpKmpKotlinHeap(const OHOS::AppExecFwk::MemDumpInfo &i
         TAG_LOGE(AAFwkTag::APPKIT, "RequestFileDescriptor failed");
         return;
     }
+    DumpFdGuard kmpFdGuard(fd);
+    if (info.needGc) {
+        DumpKmpGc(fd);
+    } else {
+        DumpKmpSnapshot(fd, info.mayReportToOEM);
+    }
+}
+
+void DumpRuntimeHelper::DumpKmpGc(int32_t fd)
+{
+    auto& dumpListener = OHOS::HiviewDFX::HidebugMemDumpListener::GetInstance();
+    bool gcRet = dumpListener.TriggerListener("KMP", fd,
+        OH_HiDebug_MemListenerType::OH_HIDEBUG_RUNNING_GC, false, nullptr);
+    if (!gcRet) {
+        TAG_LOGE(AAFwkTag::APPKIT, "TriggerListener gc failed");
+    }
+}
+
+void DumpRuntimeHelper::DumpKmpSnapshot(int32_t fd, bool mayReportToOEM)
+{
     auto& dumpListener = OHOS::HiviewDFX::HidebugMemDumpListener::GetInstance();
     bool ret = dumpListener.TriggerListener("KMP", fd,
-        OH_HiDebug_MemListenerType::OH_HIDEBUG_DUMP_SNAPSHOT, info.mayReportToOEM, nullptr);
+        OH_HiDebug_MemListenerType::OH_HIDEBUG_DUMP_SNAPSHOT, mayReportToOEM, nullptr);
     if (!ret) {
         TAG_LOGE(AAFwkTag::APPKIT, "TriggerListener failed");
-        close(fd);
-        return;
     }
-    close(fd);
 }
 
 void DumpRuntimeHelper::DumpJsvmHeap(const OHOS::AppExecFwk::MemDumpInfo &info)
@@ -713,12 +1081,11 @@ void DumpRuntimeHelper::WriteCheckList(const std::string &checkList)
         TAG_LOGE(AAFwkTag::APPKIT, "fd:%{public}d.\n", fd);
         return;
     }
+    DumpFdGuard checkListFdGuard(fd);
     if (write(fd, checkList.c_str(), strlen(checkList.c_str())) == -1) {
         TAG_LOGE(AAFwkTag::APPKIT, "fd:%{public}d, errno:%{public}d.\n", fd, errno);
-        close(fd);
         return;
     }
-    close(fd);
 }
 
 void DumpRuntimeHelper::CreateDirDelay(const std::string &path)
@@ -1032,6 +1399,122 @@ std::string DumpRuntimeHelper::GetEventConfig(const std::string &key)
 
     TAG_LOGI(AAFwkTag::APPKIT, "succeed to getEventConfig, value: %{public}s", value.c_str());
     return value;
+}
+
+bool DumpRuntimeHelper::IsInFilterList()
+{
+    std::string value;
+    if (GetDirXattr(OOM_QUOTA_PATH, TELEMETRY_ENABLE_PROPERTY, value) && value == "disable") {
+        TAG_LOGI(AAFwkTag::APPKIT, "app is in filter list, xattr value: %{public}s", value.c_str());
+        return true;
+    }
+    return false;
+}
+
+bool DumpRuntimeHelper::CheckRandomTelemetryQuota()
+{
+    // 1. Check if random telemetry is enabled (system property exists)
+    std::string value = OHOS::system::GetParameter("persist.hiview.oomdump.random.telemetry", "");
+    if (value.empty()) {
+        TAG_LOGE(AAFwkTag::APPKIT, "no random telemetry property");
+        return false;
+    }
+
+    // 2. Check if current app is in filter list
+    if (IsInFilterList()) {
+        return false;
+    }
+
+    // 3. Parse property values
+    std::vector<int64_t> quotaValues;
+    std::stringstream ss(value);
+    std::string segment;
+    while (std::getline(ss, segment, ',')) {
+        long long tmp;
+        if (!SafeStoll(segment, tmp)) {
+            TAG_LOGE(AAFwkTag::APPKIT, "failed to SafeStoll segment: %{public}s", segment.c_str());
+            return false;
+        }
+        quotaValues.push_back(static_cast<int64_t>(tmp));
+    }
+
+    if (quotaValues.size() != PROPERTY2C_SIZE) {
+        TAG_LOGE(AAFwkTag::APPKIT, "invalid random telemetry property size: %zu", quotaValues.size());
+        return false;
+    }
+
+    int compressQuota = GetCompressQuota(quotaValues);
+    int appQuota = static_cast<int>(quotaValues[INDEX_APP_QUOTA]);
+    int leftQuota = MIN(compressQuota, appQuota) - static_cast<int>(quotaValues[INDEX_HAS_SENT]);
+    if (leftQuota <= 0) {
+        TAG_LOGE(AAFwkTag::APPKIT, "compress: %{public}d, app: %{public}d, sent: %{public}" PRId64,
+                 compressQuota, appQuota, quotaValues[INDEX_HAS_SENT]);
+        return false;
+    }
+
+    uint64_t now = GetCurrentTimestamp();
+    if (quotaValues[INDEX_DELIVERY_TS] < 0) {
+        TAG_LOGE(AAFwkTag::APPKIT, "invalid deliveryTs");
+        return false;
+    }
+    uint64_t deliveryTs = static_cast<uint64_t>(quotaValues[INDEX_DELIVERY_TS]);
+    if (now < deliveryTs || now - deliveryTs > OOM_DUMP_INTERVAL) {
+        TAG_LOGE(AAFwkTag::APPKIT, "random telemetry deliveryTs expired, deliveryTs: %{public}" PRIu64, deliveryTs);
+        return false;
+    }
+
+    uint64_t spaceQuota = static_cast<uint64_t>(quotaValues[INDEX_ROM_RSV_SIZE]) * KB_PER_MB;
+    if (!CheckOOMFreeSpace(spaceQuota)) {
+        TAG_LOGE(AAFwkTag::APPKIT, "random telemetry rom space insufficient, spaceQuota: %{public}" PRIu64, spaceQuota);
+        return false;
+    }
+
+    TAG_LOGI(AAFwkTag::APPKIT, "random telemetry check success");
+    return true;
+}
+
+bool DumpRuntimeHelper::CheckDumpQuota(const std::string &eventConfig, bool needDecreaseQuota)
+{
+    // Step 1: 2custom — highest priority
+    if (eventConfig == EVENT_RAWHEAP) {
+        TAG_LOGI(AAFwkTag::APPKIT, "2custom matched, must dump.");
+        return true;
+    }
+
+    // Step 2: DFX_ARKTS_SNAPSHOT env check
+    char* snapshotEnv = getenv("DFX_ARKTS_SNAPSHOT");
+    if (snapshotEnv != nullptr && (strcmp(snapshotEnv, "disable") == 0 || strcmp(snapshotEnv, "false") == 0)) {
+        TAG_LOGI(AAFwkTag::APPKIT, "DFX_ARKTS_SNAPSHOT is %{public}s, no dump.", snapshotEnv);
+        return false;
+    }
+
+    // Step 3: beta / developer mode
+    if (g_betaVersion || g_developMode || !needDecreaseQuota) {
+        TAG_LOGI(AAFwkTag::APPKIT, "beta or developMode, dump directly."
+            " beta: %{public}d, develop: %{public}d, hidumper: %{public}d",
+            g_betaVersion, g_developMode, !needDecreaseQuota);
+        return true;
+    }
+
+    // Step 4: 2C / 2D / random telemetry
+    if (Check2CQuota()) {
+        TAG_LOGI(AAFwkTag::APPKIT, "2C quota check passed, will dump.");
+        return true;
+    }
+
+    if (Check2DQuota(needDecreaseQuota)) {
+        TAG_LOGI(AAFwkTag::APPKIT, "2D quota check passed, will dump.");
+        return true;
+    }
+
+    if (CheckRandomTelemetryQuota()) {
+        TAG_LOGI(AAFwkTag::APPKIT, "random telemetry check passed, will dump.");
+        return true;
+    }
+
+    // Step 5: all checks failed
+    TAG_LOGI(AAFwkTag::APPKIT, "all quota checks failed, no dump.");
+    return false;
 }
 } // namespace AppExecFwk
 } // namespace OHOS

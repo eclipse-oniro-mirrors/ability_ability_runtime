@@ -201,6 +201,12 @@ bool UnwrapStartOptions(ani_env *env, ani_object param, AAFwk::StartOptions &sta
         startOptions.SetHideStartWindow(hideStartWindow);
     }
 
+    bool preferDefaultBrowser = false;
+    if (GetFieldBoolByName(env, param, "preferDefaultBrowser", preferDefaultBrowser)) {
+        TAG_LOGD(AAFwkTag::ANI, "preferDefaultBrowser:%{public}hhu", preferDefaultBrowser);
+        startOptions.SetPreferDefaultBrowser(preferDefaultBrowser);
+    }
+
     if (!SetSupportWindowModes(env, param, startOptions)) {
         TAG_LOGE(AAFwkTag::ANI, "SetSupportWindowModes failed");
         return false;

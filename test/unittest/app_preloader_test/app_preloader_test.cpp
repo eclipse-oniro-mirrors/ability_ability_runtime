@@ -430,7 +430,7 @@ HWTEST_F(AppPreloaderTest, AppPreloaderTest_GetLaunchAbilityInfo_0100, TestSize.
     Want want;
     int32_t userId = -2;
     AbilityInfo abilityInfo;
-    auto ret = manager->GetLaunchAbilityInfo(want, userId, abilityInfo);
+    auto ret = manager->GetLaunchAbilityInfo(want, userId, 0, abilityInfo);
     manager->remoteClientManager_ = remoteClientManager_;
     EXPECT_FALSE(ret);
 }
@@ -587,7 +587,7 @@ HWTEST_F(AppPreloaderTest, AppPreloaderTest_GetBundleAndHapInfo_0300, TestSize.L
     AbilityInfo abilityInfo;
     BundleInfo bundleInfo;
     HapModuleInfo hapModuleInfo;
-    auto ret = manager->GetBundleAndHapInfo(bundleName, userId, abilityInfo, bundleInfo, hapModuleInfo);
+    auto ret = manager->GetBundleAndHapInfo(bundleName, userId, 0, abilityInfo, bundleInfo, hapModuleInfo);
     manager->remoteClientManager_ = remoteClientManager_;
     EXPECT_FALSE(ret);
 }
@@ -752,6 +752,95 @@ HWTEST_F(AppPreloaderTest, AppPreloaderTest_GetAbilityInfo_0100, TestSize.Level2
     auto ret = manager->GetAbilityInfo(want, userId, appIndex, request, abilityInfo);
     EXPECT_TRUE(ret);
     TAG_LOGI(AAFwkTag::TEST, "AppPreloaderTest_GetAbilityInfo_0100 end.");
+}
+
+/**
+ * @tc.number: AppPreloaderTest_GetBundleAndHapInfo_CloneAppIndex
+ * @tc.desc: Test appIndex>0 calls GetCloneBundleInfo and returns clone uid
+ * @tc.type: FUNC
+ * @tc.Function: GetBundleAndHapInfo
+ */
+HWTEST_F(AppPreloaderTest, AppPreloaderTest_GetBundleAndHapInfo_CloneAppIndex, TestSize.Level2)
+{
+    TAG_LOGD(AAFwkTag::TEST, "AppPreloaderTest_GetBundleAndHapInfo_CloneAppIndex start.");
+    auto manager = std::make_shared<AppPreloader>(remoteClientManager_);
+    EXPECT_NE(manager, nullptr);
+
+    std::string bundleName = "com.acts.preloadtest";
+    int32_t userId = 100;
+    int32_t appIndex = 1;
+    AbilityInfo abilityInfo;
+    abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    abilityInfo.isStageBasedModel = true;
+    abilityInfo.name = "MainAbility";
+    abilityInfo.applicationName = "com.acts.preloadtest";
+    abilityInfo.applicationInfo.name = abilityInfo.applicationName;
+    BundleInfo bundleInfo;
+    HapModuleInfo hapModuleInfo;
+
+    auto ret = manager->GetBundleAndHapInfo(bundleName, userId, appIndex, abilityInfo, bundleInfo, hapModuleInfo);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(bundleInfo.applicationInfo.uid, appIndex + 10000);
+    TAG_LOGD(AAFwkTag::TEST, "AppPreloaderTest_GetBundleAndHapInfo_CloneAppIndex end.");
+}
+
+/**
+ * @tc.number: AppPreloaderTest_GetBundleAndHapInfo_AppIndex0_UsesGetBundleInfo
+ * @tc.desc: Test appIndex=0 calls GetBundleInfo (not GetCloneBundleInfo)
+ * @tc.type: FUNC
+ * @tc.Function: GetBundleAndHapInfo
+ */
+HWTEST_F(AppPreloaderTest, AppPreloaderTest_GetBundleAndHapInfo_AppIndex0_UsesGetBundleInfo, TestSize.Level2)
+{
+    TAG_LOGD(AAFwkTag::TEST, "AppPreloaderTest_GetBundleAndHapInfo_AppIndex0_UsesGetBundleInfo start.");
+    auto manager = std::make_shared<AppPreloader>(remoteClientManager_);
+    EXPECT_NE(manager, nullptr);
+
+    std::string bundleName = "com.acts.preloadtest";
+    int32_t userId = 100;
+    int32_t appIndex = 0;
+    AbilityInfo abilityInfo;
+    abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    abilityInfo.isStageBasedModel = true;
+    abilityInfo.name = "MainAbility";
+    abilityInfo.applicationName = "com.acts.preloadtest";
+    abilityInfo.applicationInfo.name = abilityInfo.applicationName;
+    BundleInfo bundleInfo;
+    HapModuleInfo hapModuleInfo;
+
+    auto ret = manager->GetBundleAndHapInfo(bundleName, userId, appIndex, abilityInfo, bundleInfo, hapModuleInfo);
+    EXPECT_TRUE(ret);
+    EXPECT_NE(bundleInfo.applicationInfo.uid, 0 + 10000);
+    TAG_LOGD(AAFwkTag::TEST, "AppPreloaderTest_GetBundleAndHapInfo_AppIndex0_UsesGetBundleInfo end.");
+}
+
+/**
+ * @tc.number: AppPreloaderTest_GetBundleAndHapInfo_CloneAppIndex_Failure
+ * @tc.desc: Test GetCloneBundleInfo failure returns false
+ * @tc.type: FUNC
+ * @tc.Function: GetBundleAndHapInfo
+ */
+HWTEST_F(AppPreloaderTest, AppPreloaderTest_GetBundleAndHapInfo_CloneAppIndex_Failure, TestSize.Level2)
+{
+    TAG_LOGD(AAFwkTag::TEST, "AppPreloaderTest_GetBundleAndHapInfo_CloneAppIndex_Failure start.");
+    auto manager = std::make_shared<AppPreloader>(remoteClientManager_);
+    EXPECT_NE(manager, nullptr);
+
+    std::string bundleName = "com.acts.preloadtest";
+    int32_t userId = UID_CHECK_BUNDLE_INFO;
+    int32_t appIndex = 1;
+    AbilityInfo abilityInfo;
+    abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    abilityInfo.isStageBasedModel = true;
+    abilityInfo.name = "MainAbility";
+    abilityInfo.applicationName = "com.acts.preloadtest";
+    abilityInfo.applicationInfo.name = abilityInfo.applicationName;
+    BundleInfo bundleInfo;
+    HapModuleInfo hapModuleInfo;
+
+    auto ret = manager->GetBundleAndHapInfo(bundleName, userId, appIndex, abilityInfo, bundleInfo, hapModuleInfo);
+    EXPECT_FALSE(ret);
+    TAG_LOGD(AAFwkTag::TEST, "AppPreloaderTest_GetBundleAndHapInfo_CloneAppIndex_Failure end.");
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

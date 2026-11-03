@@ -34,4 +34,5 @@ group("unittest") {
   deps += [ "unittest/ability_delegator:unittest" ]
   deps += [ "unittest/system_time:unittest" ]
   deps += [ "${ability_runtime_path}/tools/ohos-aa/tests:unittest"]
+  deps += [ "${ability_runtime_path}/tools/ohos-agent/tests:unittest"]
 }

@@ -22,7 +22,7 @@
 
 namespace OHOS {
 namespace AAFwk {
-int KioskInterceptor::DoProcess(const AbilityInterceptorParam &param)
+int KioskInterceptor::DoProcess(AbilityInterceptorParam &param)
 {
 #ifdef SUPPORT_SCREEN
     if (ImplicitStartProcessor::IsImplicitStartAction(param.want)) {

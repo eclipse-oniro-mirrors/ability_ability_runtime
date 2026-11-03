@@ -19,6 +19,7 @@
 #include "datetime_ex.h"
 #include "exit_reason.h"
 #include "iremote_object.h"
+#include "task_mgr/task_manager_service.h"
 
 #include "appexecfwk_errors.h"
 #include "app_utils.h"
@@ -80,10 +81,7 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::CreateAppRunningRecord(
     auto recordId = AppRecordId::Create();
     auto appRecord = std::make_shared<AppRunningRecord>(appInfo, recordId, processName);
 
-    std::regex rule("[a-zA-Z.]+[-_#]{1}");
-    std::string signCode;
     bool isStageBasedModel = false;
-    ClipStringContent(rule, bundleInfo.appId, signCode);
     if (!bundleInfo.hapModuleInfos.empty()) {
         isStageBasedModel = bundleInfo.hapModuleInfos.back().isStageBasedModel;
     }
@@ -94,8 +92,6 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::CreateAppRunningRecord(
     appRecord->SetStageModelState(isStageBasedModel);
     appRecord->SetSingleton(bundleInfo.singleton);
     appRecord->SetKeepAliveBundle(bundleInfo.isKeepAlive);
-    appRecord->SetSignCode(signCode);
-    appRecord->SetJointUserId(bundleInfo.jointUserId);
     appRecord->SetAppIdentifier(bundleInfo.signatureInfo.appIdentifier);
     appRecord->SetInstanceKey(instanceKey);
     appRecord->SetCustomProcessFlag(customProcessFlag);
@@ -120,6 +116,17 @@ bool AppRunningManager::CheckAppProcessNameIsSame(const std::shared_ptr<AppRunni
         || appRecord->GetPreloadMode() == PreloadMode::PRELOAD_MODULE || !(appRecord->GetExtensionSandBoxFlag()));
 }
 
+bool AppRunningManager::IsAppInfoMatch(const std::shared_ptr<ApplicationInfo> &appInfo, const std::string &appName,
+    int uid, const std::shared_ptr<AppRunningRecord> &appRecord)
+{
+    if (appInfo == nullptr) {
+        return false;
+    }
+    TAG_LOGD(AAFwkTag::APPMGR, "appInfo->name: %{public}s", appInfo->name.c_str());
+    return (appInfo->name == appName && appInfo->uid == uid) ||
+        (appInfo->bundleType == BundleType::APP_PLUGIN && appRecord->GetUid() == uid);
+}
+
 std::shared_ptr<AppRunningRecord> AppRunningManager::CheckAppRunningRecordIsExist(const std::string &appName,
     const std::string &processName, const int uid, const BundleInfo &bundleInfo,
     const std::string &specifiedProcessFlag, bool *isProCache, const std::string &instanceKey,
@@ -130,27 +137,7 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::CheckAppRunningRecordIsExis
         "appName: %{public}s, processName: %{public}s, uid: %{public}d, specifiedProcessFlag: %{public}s, \
          customProcessFlag: %{public}s",
         appName.c_str(), processName.c_str(), uid, specifiedProcessFlag.c_str(), customProcessFlag.c_str());
-    std::regex rule("[a-zA-Z.]+[-_#]{1}");
-    std::string signCode;
-    auto jointUserId = bundleInfo.jointUserId;
-    TAG_LOGD(AAFwkTag::APPMGR, "jointUserId : %{public}s", jointUserId.c_str());
-    ClipStringContent(rule, bundleInfo.appId, signCode);
-    auto findSameProcess = [signCode, specifiedProcessFlag, processName, jointUserId, customProcessFlag, isFromPreload]
-        (const auto &pair) {
-            return (pair.second != nullptr) &&
-            (specifiedProcessFlag.empty() || pair.second->GetSpecifiedProcessFlag() == specifiedProcessFlag) &&
-            (pair.second->GetCustomProcessFlag() == customProcessFlag) &&
-            (pair.second->GetSignCode() == signCode) &&
-            AppRunningManager::CheckAppProcessNameIsSame(pair.second, processName, isFromPreload) &&
-            (pair.second->GetJointUserId() == jointUserId) && !(pair.second->IsTerminating()) &&
-            !(pair.second->IsKilling()) && !(pair.second->GetRestartAppFlag()) &&
-            !(pair.second->IsKillPrecedeStart());
-    };
     auto appRunningMap = GetAppRunningRecordMap();
-    if (!jointUserId.empty()) {
-        auto iter = std::find_if(appRunningMap.begin(), appRunningMap.end(), findSameProcess);
-        return ((iter == appRunningMap.end()) ? nullptr : iter->second);
-    }
     for (const auto &item : appRunningMap) {
         const auto &appRecord = item.second;
         if (appRecord && CheckAppProcessNameIsSame(appRecord, processName, isFromPreload) &&
@@ -168,9 +155,7 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::CheckAppRunningRecordIsExis
                 appInfoList.size(), appRecord->GetProcessName().c_str(), specifiedProcessFlag.c_str(),
                 customProcessFlag.c_str());
             auto isExist = [&appName, &uid, &appRecord](const std::shared_ptr<ApplicationInfo> &appInfo) {
-                TAG_LOGD(AAFwkTag::APPMGR, "appInfo->name: %{public}s", appInfo->name.c_str());
-                return (appInfo->name == appName && appInfo->uid == uid) ||
-                    (appInfo->bundleType == BundleType::APP_PLUGIN && appRecord->GetUid() == uid);
+                return IsAppInfoMatch(appInfo, appName, uid, appRecord);
             };
             auto appInfoIter = std::find_if(appInfoList.begin(), appInfoList.end(), isExist);
             if (appInfoIter == appInfoList.end()) {
@@ -648,7 +633,7 @@ bool AppRunningManager::ProcessExitByPid(int32_t pid, const KillProcessConfig &c
 }
 
 bool AppRunningManager::ProcessExitByBundleNameAndAppIndex(const std::string &bundleName, int32_t appIndex,
-    std::list<pid_t> &pids, bool clearPageStack)
+    std::list<pid_t> &pids, bool clearPageStack, int32_t userId)
 {
     auto appRunningMap = GetAppRunningRecordMap();
     for (const auto &item : appRunningMap) {
@@ -667,7 +652,8 @@ bool AppRunningManager::ProcessExitByBundleNameAndAppIndex(const std::string &bu
             continue;
         }
 
-        if (appInfo->bundleName == bundleName && appRecord->GetAppIndex() == appIndex) {
+        if (appInfo->bundleName == bundleName && appRecord->GetAppIndex() == appIndex
+            && (userId == -1 || appRecord->GetUserId() == userId)) {
             pid_t pid = appRecord->GetPid();
             if (pid <= 0) {
                 continue;
@@ -778,6 +764,9 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::OnRemoteDied(const wptr<IRe
         appRunningRecordMap_.erase(iter);
     }
     if (appRecord != nullptr) {
+        TaskManagerService::GetInstance().OnProcessDied(appRecord->GetPid(), appRecord->GetUid());
+    }
+    if (appRecord != nullptr) {
         {
             std::lock_guard guard(updateConfigurationDelayedLock_);
             updateConfigurationDelayedMap_.erase(appRecord->GetRecordId());
@@ -821,6 +810,10 @@ void AppRunningManager::RemoveAppRunningRecordById(const int32_t recordId)
     {
         std::lock_guard guard(updateConfigurationDelayedLock_);
         updateConfigurationDelayedMap_.erase(recordId);
+    }
+
+    if (appRecord != nullptr) {
+        TaskManagerService::GetInstance().OnProcessDied(appRecord->GetPid(), appRecord->GetUid());
     }
 
     if (appRecord != nullptr && appRecord->GetPriorityObject() != nullptr) {
@@ -998,8 +991,11 @@ void AppRunningManager::TerminateAbility(const sptr<IRemoteObject> &token, bool 
             return;
         }
         auto result = inner->KillProcessByPid(pid, "TerminateAbility", false, appRecordSptr->GetRecordId());
-        if (result < 0) {
-            TAG_LOGW(AAFwkTag::APPMGR, "failed, pid: %{public}d", pid);
+        if (result != 0) {
+            TAG_LOGW(AAFwkTag::APPMGR, "KillProcess failed, result: %{public}d, pid: %{public}d", result, pid);
+        } else {
+            appRecordSptr->SetKillReasonIfAbsent(
+                HiviewDFX::ProcessKillReason::KillEventId::REASON_APP_EXIT, "Kill Reason:app exit");
         }
         inner->NotifyAppStatus(appRecordSptr->GetBundleName(), appRecordSptr->GetAppIndex(),
             CommonEventSupport::COMMON_EVENT_PACKAGE_RESTARTED);

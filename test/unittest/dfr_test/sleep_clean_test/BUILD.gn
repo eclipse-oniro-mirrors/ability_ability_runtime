@@ -59,7 +59,6 @@ ohos_unittest("sleep_clean_test") {
     "hilog:libhilog",
     "init:libbegetutil",
     "ability_base:configuration",
-    "ability_base:extractresourcemanager",
     "ability_base:string_utils",
     "ability_base:want",
     "bundle_framework:appexecfwk_base",

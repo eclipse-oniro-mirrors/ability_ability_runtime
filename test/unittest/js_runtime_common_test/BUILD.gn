@@ -34,7 +34,9 @@ ohos_unittest("js_runtime_common_test") {
     "ffrt:libffrt",
     "googletest:gtest_main",
     "hilog:libhilog",
+    "libuv:uv",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
 }
 

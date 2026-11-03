@@ -170,6 +170,10 @@ void PageAbilityImpl::DoKeyDown(const std::shared_ptr<MMI::KeyEvent>& keyEvent)
         return;
     }
     auto abilityInfo = ability_->GetAbilityInfo();
+    if (abilityInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITY, "null abilityInfo");
+        return;
+    }
     TAG_LOGI(AAFwkTag::ABILITY, "called %{public}s,Focus:%{public}s",
         abilityInfo->name.c_str(),
         ability_->HasWindowFocus() ? "true" : "false");
@@ -193,6 +197,10 @@ void PageAbilityImpl::DoKeyUp(const std::shared_ptr<MMI::KeyEvent>& keyEvent)
         return;
     }
     auto abilityInfo = ability_->GetAbilityInfo();
+    if (abilityInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITY, "null abilityInfo");
+        return;
+    }
     TAG_LOGI(AAFwkTag::ABILITY, "called %{public}s,Focus:%{public}s",
         abilityInfo->name.c_str(),
         ability_->HasWindowFocus() ? "true" : "false");
@@ -216,6 +224,10 @@ void PageAbilityImpl::DoPointerEvent(std::shared_ptr<MMI::PointerEvent>& pointer
         return;
     }
     auto abilityInfo = ability_->GetAbilityInfo();
+    if (abilityInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITY, "null abilityInfo");
+        return;
+    }
     TAG_LOGI(AAFwkTag::ABILITY, "called %{public}s,Focus:%{public}s",
         abilityInfo->name.c_str(),
         ability_->HasWindowFocus() ? "true" : "false");

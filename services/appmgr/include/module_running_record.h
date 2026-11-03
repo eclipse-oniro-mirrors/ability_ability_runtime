@@ -85,6 +85,13 @@ public:
     int32_t GetPageAbilitySize();
 
     int32_t GetAbilitySize();
+    /**
+     * @brief Counts page/embedded-UI abilities that are not terminating. The queried token
+     *        itself always counts (it may already be marked terminating by its own close
+     *        flow before this judgment), so the result answers "anyone else still alive".
+     *        Concurrently cleaned siblings are already marked and thus excluded.
+     */
+    int32_t GetActivePageAbilitySize(const sptr<IRemoteObject> &token);
 
     bool ExtensionAbilityRecordExists();
 

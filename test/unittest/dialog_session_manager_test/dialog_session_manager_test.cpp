@@ -23,6 +23,7 @@
 #include "hilog_tag_wrapper.h"
 #include "mock_ability_token.h"
 #include "request_start_ability_callback_stub.h"
+#include "start_ability_context.h"
 #include "start_ability_utils.h"
 
 using OHOS::AppExecFwk::AbilityType;
@@ -153,11 +154,11 @@ HWTEST_F(DialogSessionManagerTest, SendDialogResultTest_0200, TestSize.Level1)
 
     dialogSessionManager.SetDialogSessionInfo(TEST_DIALOG_SESSION_ID, dilogSessionInfo, dialogCallerInfo);
     int32_t ret = dialogSessionManager.SendDialogResult(want, TEST_DIALOG_SESSION_ID, isAllowed);
-    EXPECT_EQ(ret, ERR_NULL_INTERCEPTOR_EXECUTER);
+    EXPECT_EQ(ret, ERR_IMPLICIT_START_ABILITY_FAIL);
 
     want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 0);
     ret = dialogSessionManager.SendDialogResult(want, TEST_DIALOG_SESSION_ID, isAllowed);
-    EXPECT_EQ(ret, ERR_NULL_INTERCEPTOR_EXECUTER);
+    EXPECT_EQ(ret, ERR_IMPLICIT_START_ABILITY_FAIL);
     GTEST_LOG_(INFO) << "SendDialogResultTest_0200 end";
 }
 
@@ -273,8 +274,9 @@ HWTEST_F(DialogSessionManagerTest, IsCreateCloneSelectorDialogTest_0100, TestSiz
     GTEST_LOG_(INFO) << "IsCreateCloneSelectorDialogTest_0100 start";
     DialogSessionManager dialogSessionManager;
 
-    StartAbilityUtils::isWantWithAppCloneIndex = true;
-    bool ret = dialogSessionManager.IsCreateCloneSelectorDialog(TEST_BUNDLE_NAME, TEST_USER_ID);
+    StartAbilityContext ctx;
+    ctx.isWantWithAppCloneIndex = true;
+    bool ret = dialogSessionManager.IsCreateCloneSelectorDialog(ctx, TEST_BUNDLE_NAME, TEST_USER_ID);
     EXPECT_FALSE(ret);
     GTEST_LOG_(INFO) << "IsCreateCloneSelectorDialogTest_0100 end";
 }
@@ -964,9 +966,49 @@ HWTEST_F(DialogSessionManagerTest, HandleErmsResult_001, TestSize.Level1)
     DialogSessionManager dialogSessionManager;
     AbilityRequest abilityRequest;
     Want replaceWant;
-    int result = dialogSessionManager.HandleErmsResult(abilityRequest, 0, replaceWant);
+    StartAbilityContext ctx;
+    int result = dialogSessionManager.HandleErmsResult(ctx, abilityRequest, 0, replaceWant);
     EXPECT_NE(result, ERR_INVALID_VALUE);
     GTEST_LOG_(INFO) << "HandleErmsResult_001 end";
+}
+
+/**
+ * @tc.name: HandleErmsResult_002
+ * @tc.desc: test HandleErmsResult with PARAM_APP_CLONE_INDEX_KEY in want takes CreateJumpModalDialog path
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogSessionManagerTest, HandleErmsResult_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HandleErmsResult_002 start";
+    DialogSessionManager dialogSessionManager;
+    AbilityRequest abilityRequest;
+    abilityRequest.want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 1);
+    Want replaceWant;
+    StartAbilityContext ctx;
+    ctx.isWantWithAppCloneIndex = true;
+    int result = dialogSessionManager.HandleErmsResult(ctx, abilityRequest, 0, replaceWant);
+    EXPECT_NE(result, ERR_INVALID_VALUE);
+    EXPECT_TRUE(ctx.isWantWithAppCloneIndex);
+    GTEST_LOG_(INFO) << "HandleErmsResult_002 end";
+}
+
+/**
+ * @tc.name: HandleErmsResult_003
+ * @tc.desc: test HandleErmsResult without PARAM_APP_CLONE_INDEX_KEY calls IsCreateCloneSelectorDialog
+ * @tc.type: FUNC
+ */
+HWTEST_F(DialogSessionManagerTest, HandleErmsResult_003, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HandleErmsResult_003 start";
+    DialogSessionManager dialogSessionManager;
+    AbilityRequest abilityRequest;
+    Want replaceWant;
+    StartAbilityContext ctx;
+    ctx.isWantWithAppCloneIndex = true;
+    int result = dialogSessionManager.HandleErmsResult(ctx, abilityRequest, 0, replaceWant);
+    EXPECT_NE(result, ERR_INVALID_VALUE);
+    EXPECT_FALSE(ctx.isWantWithAppCloneIndex);
+    GTEST_LOG_(INFO) << "HandleErmsResult_003 end";
 }
 
 /**

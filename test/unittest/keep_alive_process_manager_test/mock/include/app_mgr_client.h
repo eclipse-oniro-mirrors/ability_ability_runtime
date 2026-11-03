@@ -35,7 +35,7 @@ public:
      * @return ERR_OK, return back success, others fail.
      */
     int32_t KillApplication(const std::string &bundleName, bool clearPageStack = false,
-        int32_t appIndex = 0, const std::string& reason = "KillApplication");
+        int32_t appIndex = 0, const std::string& reason = "KillApplication", int32_t userId = -1);
 
     /**
      * Check whether the process of the application under the specified user exists.

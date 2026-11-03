@@ -161,7 +161,7 @@ HWTEST_F(AbilityManagerClientBranchSecondTest, AbilityManagerClient_BackToCaller
     sptr<IRemoteObject> token = nullptr;
     int32_t resultCode = 0;
     int64_t callerRequestCode = 0;
-    EXPECT_EQ(abilityManagerClient->BackToCallerAbilityWithResult(token, resultCode, &resultWant, callerRequestCode),
+    EXPECT_EQ(abilityManagerClient->BackToCallerAbilityWithResult(token, resultCode, resultWant, callerRequestCode),
         ERR_INVALID_VALUE);
 
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerClient_BackToCallerAbilityWithResult_0100 end");

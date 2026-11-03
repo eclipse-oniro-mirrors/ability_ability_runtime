@@ -54,6 +54,10 @@ int32_t AppNativeSpawnManager::RegisterNativeChildExitNotify(const sptr<INativeC
         return ERR_INVALID_VALUE;
     }
     int32_t callingPid = IPCSkeleton::GetCallingPid();
+    if (!appRunningManager_) {
+        TAG_LOGE(AAFwkTag::APPMGR, "appRunningManager_ is null");
+        return ERR_INVALID_VALUE;
+    }
     auto appRecord = appRunningManager_->GetAppRunningRecordByPid(callingPid);
     if (!appRecord) {
         TAG_LOGE(AAFwkTag::APPMGR, "no appRecord, parentPid:%{public}d", callingPid);
@@ -220,6 +224,8 @@ void AppNativeSpawnManager::InitNativeSpawnMsgPipe(std::shared_ptr<AppRunningMan
         TAG_LOGE(AAFwkTag::APPMGR, "send fd to native spawn failed, ret: %{public}d", ret);
         fdsan_close_with_tag(nrFd_, static_cast<uint32_t>(AAFwkTag::APPMGR));
         fdsan_close_with_tag(nwFd_, static_cast<uint32_t>(AAFwkTag::APPMGR));
+        nrFd_ = -1;
+        nwFd_ = -1;
         return;
     }
     ret = WatchParameter(NATIVESPAWN_EXIT, AppNativeSpawnStartCallback, nullptr);
@@ -227,14 +233,22 @@ void AppNativeSpawnManager::InitNativeSpawnMsgPipe(std::shared_ptr<AppRunningMan
         TAG_LOGE(AAFwkTag::APPMGR, "watch native parameter, ret :%{public}d", ret);
         fdsan_close_with_tag(nrFd_, static_cast<uint32_t>(AAFwkTag::APPMGR));
         fdsan_close_with_tag(nwFd_, static_cast<uint32_t>(AAFwkTag::APPMGR));
+        nrFd_ = -1;
+        nwFd_ = -1;
         return;
     }
     ffrt_qos_t taskQos = 0;
     ret = ffrt_epoll_ctl(taskQos, EPOLL_CTL_ADD, nrFd_, EPOLLIN, nullptr, ProcessSignalData);
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "ffrt_epoll_ctl failed, ret :%{public}d", ret);
+        int32_t unwatchRet = RemoveParameterWatcher(NATIVESPAWN_EXIT, AppNativeSpawnStartCallback, nullptr);
+        if (unwatchRet != 0) {
+            TAG_LOGW(AAFwkTag::APPMGR, "remove parameter watcher failed, ret: %{public}d", unwatchRet);
+        }
         fdsan_close_with_tag(nrFd_, static_cast<uint32_t>(AAFwkTag::APPMGR));
         fdsan_close_with_tag(nwFd_, static_cast<uint32_t>(AAFwkTag::APPMGR));
+        nrFd_ = -1;
+        nwFd_ = -1;
         return;
     }
     TAG_LOGI(AAFwkTag::APPMGR, "Listen native signal msg ...");

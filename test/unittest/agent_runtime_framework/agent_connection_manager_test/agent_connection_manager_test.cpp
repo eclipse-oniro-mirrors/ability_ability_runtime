@@ -1300,6 +1300,76 @@ HWTEST_F(AgentConnectionManagerTest, ReplayLowCodeConnectDoneIfReady_002, TestSi
 }
 
 /**
+* @tc.name  : ReplayLowCodeConnectDoneIfReady_ShouldRefuseSnapshot_WhenDisconnectedWithRemoteSet
+* @tc.number: ReplayLowCodeConnectDoneIfReady_003
+* @tc.desc  : The atomic snapshot must let the state, not the remote object, decide: a DISCONNECTED
+*            connection whose remote is still set is refused. The snapshot is asserted directly
+*            because the replay path additionally skips DISCONNECTED records while finding them,
+*            so a replay-level assertion alone cannot observe this branch (R2-02).
+*/
+HWTEST_F(AgentConnectionManagerTest, ReplayLowCodeConnectDoneIfReady_003, TestSize.Level1)
+{
+    sptr<IRemoteObject> hostProxy = sptr<MockIRemoteObject>::MakeSptr();
+    sptr<IRemoteObject> remoteObj = sptr<MockIRemoteObject>::MakeSptr();
+    Want storedWant = BuildAgentConnectionWant("agentA", hostProxy);
+    Want reuseWant = BuildAgentConnectionWant("agentB", hostProxy);
+
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+    // ASSERT (not EXPECT): the connection entry below is dereferenced right after, so a failed
+    // connect must abort the test instead of dereferencing end() on an empty list.
+    ASSERT_EQ(AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(storedWant, callback), ERR_OK);
+
+    auto &connectionEntry = *AgentConnectionManager::GetInstance().agentConnections_.begin();
+    connectionEntry.first.agentConnection->SetConnectionState(CONNECTION_STATE_DISCONNECTED);
+    connectionEntry.first.agentConnection->SetRemoteObject(remoteObj);
+    connectionEntry.first.agentConnection->SetResultCode(ERR_OK);
+
+    // Direct assertion on the snapshot: even with a remote object still set, a non-CONNECTED
+    // state must be refused. If the state check regressed, this would return true.
+    sptr<IRemoteObject> snapshotRemote;
+    int32_t snapshotCode = -1;
+    EXPECT_FALSE(connectionEntry.first.agentConnection->SnapshotConnectedState(snapshotRemote, snapshotCode));
+
+    // End to end the replay also stays silent (the Find stage skips DISCONNECTED records).
+    MyFlag::onAbilityConnectDoneCount = 0;
+    AgentConnectionManager::GetInstance().ReplayLowCodeConnectDoneIfReady(reuseWant, callback);
+    EXPECT_EQ(MyFlag::onAbilityConnectDoneCount, 0);
+}
+
+/**
+* @tc.name  : ReplayLowCodeConnectDoneIfReady_ShouldNotNotify_WhenConnectingWithRemoteSet
+* @tc.number: ReplayLowCodeConnectDoneIfReady_004
+* @tc.desc  : A connection still CONNECTING is found for reuse and reaches the snapshot, which must
+*            refuse the replay even though a remote object is already set: state has priority
+*            over the remote (R2-02).
+*/
+HWTEST_F(AgentConnectionManagerTest, ReplayLowCodeConnectDoneIfReady_004, TestSize.Level1)
+{
+    sptr<IRemoteObject> hostProxy = sptr<MockIRemoteObject>::MakeSptr();
+    sptr<IRemoteObject> remoteObj = sptr<MockIRemoteObject>::MakeSptr();
+    Want storedWant = BuildAgentConnectionWant("agentA", hostProxy);
+    Want reuseWant = BuildAgentConnectionWant("agentB", hostProxy);
+
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+    // ASSERT (not EXPECT): the connection entry below is dereferenced right after, so a failed
+    // connect must abort the test instead of dereferencing end() on an empty list.
+    ASSERT_EQ(AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(storedWant, callback), ERR_OK);
+
+    // Leave the state at CONNECTING (as left by the connect call) but set a remote: the snapshot
+    // must still refuse because only CONNECTION_STATE_CONNECTED may be replayed. If the state
+    // check regressed, the set remote would be replayed and the callback would fire.
+    auto &connectionEntry = *AgentConnectionManager::GetInstance().agentConnections_.begin();
+    connectionEntry.first.agentConnection->SetRemoteObject(remoteObj);
+    connectionEntry.first.agentConnection->SetResultCode(ERR_OK);
+
+    MyFlag::onAbilityConnectDoneCount = 0;
+    AgentConnectionManager::GetInstance().ReplayLowCodeConnectDoneIfReady(reuseWant, callback);
+    EXPECT_EQ(MyFlag::onAbilityConnectDoneCount, 0);
+}
+
+/**
 * @tc.name  : IsConnectingTimeout_ShouldReturnFalse_WhenConnectingTimeIsZero
 * @tc.number: IsConnectingTimeout_001
 * @tc.desc  : Test IsConnectingTimeout returns false when connectingTime is 0

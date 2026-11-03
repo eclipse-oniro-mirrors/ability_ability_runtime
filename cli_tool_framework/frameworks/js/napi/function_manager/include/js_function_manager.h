@@ -59,6 +59,10 @@ public:
      */
     static napi_value InvokeFunction(napi_env env, napi_callback_info info);
 
+    static napi_value RegisterFunctionHook(napi_env env, napi_callback_info info);
+
+    static napi_value UnregisterFunctionHook(napi_env env, napi_callback_info info);
+
 private:
     /**
      * @brief Implementation for querying all functions.
@@ -79,6 +83,10 @@ private:
      * @return Returns the N-API value.
      */
     napi_value OnInvokeFunction(napi_env env, size_t argc, napi_value *argv);
+
+    napi_value OnRegisterFunctionHook(napi_env env, size_t argc, napi_value *argv);
+
+    napi_value OnUnregisterFunctionHook(napi_env env, size_t argc, napi_value *argv);
 };
 
 /**

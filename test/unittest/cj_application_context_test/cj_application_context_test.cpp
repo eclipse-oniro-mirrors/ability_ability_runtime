@@ -365,12 +365,16 @@ HWTEST_F(CjApplicationContextTest, CJApplicationContextTestDispatchOnWindowStage
     std::shared_ptr<CjAbilityLifecycleCallbackImpl> mock;
     CJApplicationContext::GetInstance()->RegisterAbilityLifecycleCallback(mock);
     auto win = std::make_shared<Rosen::WindowScene>();
-    auto winStage = new Rosen::CJWindowStageImpl(win);
-    WindowStagePtr windowStage = reinterpret_cast<WindowStagePtr>(winStage);
+    int64_t winStageId = OHOS_CreateCJWindowStage(win);
+    auto winStage = FFIData::GetData<Rosen::CJWindowStageImpl>(winStageId);
+    if (winStage.GetRefPtr() == nullptr) {
+        return;
+    }
+    WindowStagePtr windowStage = reinterpret_cast<WindowStagePtr>(winStage.GetRefPtr());
     CJApplicationContext::GetInstance()->DispatchOnWindowStageCreate(10, windowStage);
     CJApplicationContext::GetInstance()->UnregisterAbilityLifecycleCallback(mock);
     EXPECT_TRUE(CJApplicationContext::callbacks_.empty());
-    delete winStage;
+    FFIDataManager::GetInstance()->RemoveFFIData(winStageId);
 }
 
 /**
@@ -383,13 +387,17 @@ HWTEST_F(CjApplicationContextTest, CJApplicationContextTestDispatchWindowStageFo
     std::shared_ptr<CjAbilityLifecycleCallbackImpl> mock;
     CJApplicationContext::GetInstance()->RegisterAbilityLifecycleCallback(mock);
     auto win = std::make_shared<Rosen::WindowScene>();
-    auto winStage = new Rosen::CJWindowStageImpl(win);
-    WindowStagePtr windowStage = reinterpret_cast<WindowStagePtr>(winStage);
+    int64_t winStageId = OHOS_CreateCJWindowStage(win);
+    auto winStage = FFIData::GetData<Rosen::CJWindowStageImpl>(winStageId);
+    if (winStage.GetRefPtr() == nullptr) {
+        return;
+    }
+    WindowStagePtr windowStage = reinterpret_cast<WindowStagePtr>(winStage.GetRefPtr());
     CJApplicationContext::GetInstance()->DispatchWindowStageFocus(10, windowStage);
     CJApplicationContext::GetInstance()->DispatchWindowStageUnfocus(10, windowStage);
     CJApplicationContext::GetInstance()->DispatchOnWindowStageDestroy(10, windowStage);
     CJApplicationContext::GetInstance()->UnregisterAbilityLifecycleCallback(mock);
-    delete winStage;
+    FFIDataManager::GetInstance()->RemoveFFIData(winStageId);
     EXPECT_TRUE(CJApplicationContext::callbacks_.empty());
 }
 
@@ -421,14 +429,18 @@ HWTEST_F(CjApplicationContextTest, CJApplicationContextTest_Ability_002, TestSiz
     std::shared_ptr<CjAbilityLifecycleCallbackImpl> mock;
     CJApplicationContext::GetInstance()->RegisterAbilityLifecycleCallback(mock);
     auto win = std::make_shared<Rosen::WindowScene>();
-    auto winStage = new Rosen::CJWindowStageImpl(win);
-    WindowStagePtr windowStage = reinterpret_cast<WindowStagePtr>(winStage);
+    int64_t winStageId = OHOS_CreateCJWindowStage(win);
+    auto winStage = FFIData::GetData<Rosen::CJWindowStageImpl>(winStageId);
+    if (winStage.GetRefPtr() == nullptr) {
+        return;
+    }
+    WindowStagePtr windowStage = reinterpret_cast<WindowStagePtr>(winStage.GetRefPtr());
     CJApplicationContext::GetInstance()->DispatchOnWindowStageWillCreate(10, windowStage);
     CJApplicationContext::GetInstance()->DispatchOnWindowStageWillDestroy(10, windowStage);
     CJApplicationContext::GetInstance()->DispatchOnAbilityWillDestroy(10);
     CJApplicationContext::GetInstance()->DispatchOnAbilityWillForeground(10);
     CJApplicationContext::GetInstance()->UnregisterAbilityLifecycleCallback(mock);
-    delete winStage;
+    FFIDataManager::GetInstance()->RemoveFFIData(winStageId);
     EXPECT_TRUE(CJApplicationContext::callbacks_.empty());
 }
 
@@ -442,8 +454,12 @@ HWTEST_F(CjApplicationContextTest, CJApplicationContextTest_Ability_003, TestSiz
     std::shared_ptr<CjAbilityLifecycleCallbackImpl> mock;
     CJApplicationContext::GetInstance()->RegisterAbilityLifecycleCallback(mock);
     auto win = std::make_shared<Rosen::WindowScene>();
-    auto winStage = new Rosen::CJWindowStageImpl(win);
-    WindowStagePtr windowStage = reinterpret_cast<WindowStagePtr>(winStage);
+    int64_t winStageId = OHOS_CreateCJWindowStage(win);
+    auto winStage = FFIData::GetData<Rosen::CJWindowStageImpl>(winStageId);
+    if (winStage.GetRefPtr() == nullptr) {
+        return;
+    }
+    WindowStagePtr windowStage = reinterpret_cast<WindowStagePtr>(winStage.GetRefPtr());
     CJApplicationContext::GetInstance()->DispatchOnAbilityWillBackground(10);
     CJApplicationContext::GetInstance()->DispatchOnNewWant(10);
     CJApplicationContext::GetInstance()->DispatchOnWillNewWant(10);
@@ -453,7 +469,7 @@ HWTEST_F(CjApplicationContextTest, CJApplicationContextTest_Ability_003, TestSiz
     CJApplicationContext::GetInstance()->DispatchOnAbilityWillSaveState(10);
     CJApplicationContext::GetInstance()->DispatchOnAbilitySaveState(10);
     CJApplicationContext::GetInstance()->UnregisterAbilityLifecycleCallback(mock);
-    delete winStage;
+    FFIDataManager::GetInstance()->RemoveFFIData(winStageId);
     EXPECT_TRUE(CJApplicationContext::callbacks_.empty());
 }
 

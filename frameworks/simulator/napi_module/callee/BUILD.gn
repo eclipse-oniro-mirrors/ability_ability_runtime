@@ -25,6 +25,8 @@ ohos_shared_library("callee") {
 
   if (is_mingw) {
     defines = [ "WINDOWS_PLATFORM" ]
+  } else if (is_linux) {
+    defines = [ "LINUX_PLATFORM" ]
   } else {
     defines = [ "MAC_PLATFORM" ]
   }

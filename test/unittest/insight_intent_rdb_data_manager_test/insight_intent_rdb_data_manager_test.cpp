@@ -367,4 +367,43 @@ HWTEST_F(InsightIntentRdbDataManagerTest, InsightIntentRdbDataManager_1700, Func
     std::unordered_map<std::string, std::string> datas;
     EXPECT_TRUE(rdbMgr->QueryAllData(datas));
 }
+
+/**
+ * @tc.number: InsightIntentRdbDataManager_1800
+ * @tc.desc: BatchInsertData inserts multiple rows and overwrites on conflict.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentRdbDataManagerTest, InsightIntentRdbDataManager_1800, Function | SmallTest | Level1)
+{
+    auto rdbMgr = DelayedSingleton<InsightIntentRdbDataMgr>::GetInstance();
+
+    std::vector<std::pair<std::string, std::string>> emptyKeyValues;
+    EXPECT_TRUE(rdbMgr->BatchInsertData(emptyKeyValues));
+
+    std::vector<std::pair<std::string, std::string>> keyValues = {
+        {"BATCH_KEY_1800_A", "BATCH_VAL_A"},
+        {"BATCH_KEY_1800_B", "BATCH_VAL_B"},
+        {"BATCH_KEY_1800_C", "BATCH_VAL_C"},
+    };
+    EXPECT_TRUE(rdbMgr->BatchInsertData(keyValues));
+
+    std::string value;
+    EXPECT_TRUE(rdbMgr->QueryData("BATCH_KEY_1800_A", value));
+    EXPECT_EQ(value, "BATCH_VAL_A");
+    EXPECT_TRUE(rdbMgr->QueryData("BATCH_KEY_1800_B", value));
+    EXPECT_EQ(value, "BATCH_VAL_B");
+    EXPECT_TRUE(rdbMgr->QueryData("BATCH_KEY_1800_C", value));
+    EXPECT_EQ(value, "BATCH_VAL_C");
+
+    std::vector<std::pair<std::string, std::string>> replaceKeyValues = {
+        {"BATCH_KEY_1800_A", "BATCH_VAL_UPDATED"},
+    };
+    EXPECT_TRUE(rdbMgr->BatchInsertData(replaceKeyValues));
+    EXPECT_TRUE(rdbMgr->QueryData("BATCH_KEY_1800_A", value));
+    EXPECT_EQ(value, "BATCH_VAL_UPDATED");
+
+    EXPECT_TRUE(rdbMgr->DeleteData("BATCH_KEY_1800_A"));
+    EXPECT_TRUE(rdbMgr->DeleteData("BATCH_KEY_1800_B"));
+    EXPECT_TRUE(rdbMgr->DeleteData("BATCH_KEY_1800_C"));
+}
 }  // namespace

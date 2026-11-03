@@ -45,6 +45,11 @@ public:
     static int retNotifyLowCodeAgentComplete;
     static int retVerifyAgentConnectRequest;
     static int retVerifyAgentDisconnectRequests;
+    static int retConnectAgentExtensionAbilityForCli;
+    static int retDisconnectAgentExtensionAbilityForCli;
+    static AAFwk::Want lastForCliConnectWant;
+    static sptr<AAFwk::IAbilityConnection> lastForCliConnection;
+    static std::string lastForCliCallerIdentity;
     static std::vector<AgentCard> convertedCards;
     static AgentCard lastRegisterCard;
     static AgentCard lastUpdateCard;

@@ -45,6 +45,7 @@ Status DataObsMgrInnerExt::HandleRegisterObserver(Uri &uri, sptr<IDataAbilityObs
     uri.GetPathSegments(path);
     if (path.size() >= MAX_URI_PATH_SIZE) {
         TAG_LOGE(AAFwkTag::DBOBSMGR, "path size:%{public}zu invalid", path.size());
+        RemoveObsDeathRecipient(dataObserver->AsObject());
         return DATAOBS_INVALID_URI;
     }
     Entry entry = Entry(dataObserver, info.userId, info.tokenId, deathRecipientRef, isDescendants);

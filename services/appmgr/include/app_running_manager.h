@@ -143,6 +143,18 @@ public:
         const std::string &processName, bool isFromPreload = false);
 
     /**
+     * IsAppInfoMatch, check whether the appInfo matches the appName and uid.
+     *
+     * @param appInfo, the app info to be checked.
+     * @param appName, the application name.
+     * @param uid, the process uid.
+     * @param appRecord, the ptr of the AppRunningRecord.
+     * @return, Return true if matches.
+     */
+    static bool IsAppInfoMatch(const std::shared_ptr<ApplicationInfo> &appInfo, const std::string &appName,
+        int uid, const std::shared_ptr<AppRunningRecord> &appRecord);
+
+    /**
      * CheckAppRunningRecordIsExistByUid, check app exist when concurrent.
      *
      * @param uid, the process uid.
@@ -365,7 +377,7 @@ public:
     bool ProcessExitByBundleNameAndUid(
         const std::string &bundleName, const int uid, std::list<pid_t> &pids, const KillProcessConfig &config = {});
     bool ProcessExitByBundleNameAndAppIndex(const std::string &bundleName, int32_t appIndex, std::list<pid_t> &pids,
-        bool clearPageStack);
+        bool clearPageStack, int32_t userId = -1);
     bool ProcessExitByTokenIdAndInstance(uint32_t accessTokenId, const std::string &instanceKey, std::list<pid_t> &pids,
         bool clearPageStack);
     bool ProcessExitByPid(int32_t pid, const KillProcessConfig &config);

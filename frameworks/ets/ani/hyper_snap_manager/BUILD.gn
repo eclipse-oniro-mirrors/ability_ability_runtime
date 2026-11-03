@@ -53,7 +53,9 @@ ohos_shared_library("hyper_snap_manager_ani") {
   external_deps = [
     "c_utils:utils",
     "hilog:libhilog",
+    "libuv:uv",
     "napi:ace_napi",
+    "node:node_header_notice",
     "runtime_core:ani",
     "samgr:samgr_proxy",
   ]

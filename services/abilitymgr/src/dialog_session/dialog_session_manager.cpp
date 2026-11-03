@@ -28,6 +28,7 @@
 #include "session_manager_lite.h"
 #endif
 #include "session/host/include/zidl/session_interface.h"
+#include "start_ability_context.h"
 #include "start_ability_utils.h"
 #include "string_wrapper.h"
 #include "want.h"
@@ -38,7 +39,6 @@ namespace AAFwk {
 using OHOS::AppExecFwk::BundleInfo;
 namespace {
 constexpr const char* UIEXTENSION_MODAL_TYPE = "ability.want.params.modalType";
-constexpr int32_t ERMS_ISALLOW_RESULTCODE = 10;
 constexpr const char* SUPPORT_CLOSE_ON_BLUR = "supportCloseOnBlur";
 constexpr const char* DIALOG_SESSION_ID = "dialogSessionId";
 constexpr const char* PICKER_ERMS_POLICY = "ability.params.picker.erms.policy";
@@ -517,9 +517,10 @@ int DialogSessionManager::CreateModalDialogCommon(const Want &replaceWant, sptr<
     sptr<IRemoteObject> token;
     bool isParent = false;
     int32_t ret = ERR_INVALID_VALUE;
+    int32_t userId = callerRecord->GetOwnerMissionUserId();
 #ifdef SUPPORT_SCREEN
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto sceneSessionManager = Rosen::SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        auto sceneSessionManager = Rosen::SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         if (sceneSessionManager == nullptr) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "sceneSessionManager null");
             return ERR_INVALID_VALUE;
@@ -545,15 +546,16 @@ int DialogSessionManager::CreateModalDialogCommon(const Want &replaceWant, sptr<
     TAG_LOGD(AAFwkTag::ABILITYMGR, "create modal ui extension for system");
     (const_cast<Want &>(replaceWant)).SetParam(UIEXTENSION_MODAL_TYPE, 1);
     (const_cast<Want &>(replaceWant)).SetParam(SUPPORT_CLOSE_ON_BLUR, true);
-    return IN_PROCESS_CALL(connection->CreateModalUIExtension(replaceWant)) ? ERR_OK : INNER_ERR;
+    return IN_PROCESS_CALL(connection->CreateModalUIExtension(replaceWant, userId)) ? ERR_OK : INNER_ERR;
 }
 
-int DialogSessionManager::HandleErmsResult(AbilityRequest &abilityRequest, int32_t userId,
-    const Want &replaceWant)
+int DialogSessionManager::HandleErmsResult(StartAbilityContext &ctx,
+    AbilityRequest &abilityRequest, int32_t userId, const Want &replaceWant)
 {
     std::string bundleName = abilityRequest.abilityInfo.bundleName;
-    if (StartAbilityUtils::ermsResultCode < ERMS_ISALLOW_RESULTCODE ||
-        !IsCreateCloneSelectorDialog(bundleName, userId)) {
+    if (ctx.ermsResultCode < ERMS_ISALLOW_RESULTCODE ||
+        abilityRequest.want.HasParameter(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY) ||
+        !IsCreateCloneSelectorDialog(ctx, bundleName, userId)) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "create jump modal dialog");
         return CreateJumpModalDialog(abilityRequest, userId, replaceWant);
     }
@@ -582,15 +584,17 @@ int32_t DialogSessionManager::HandleErmsResultBySCB(AbilityRequest &abilityReque
         ERR_ECOLOGICAL_CONTROL_STATUS : INNER_ERR;
 }
 
-bool DialogSessionManager::IsCreateCloneSelectorDialog(const std::string &bundleName, int32_t userId)
+bool DialogSessionManager::IsCreateCloneSelectorDialog(StartAbilityContext &ctx,
+    const std::string &bundleName, int32_t userId)
 {
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    StartAbilityUtils::isWantWithAppCloneIndex = false;
+    (void)ctx.ConsumeIsWantWithAppCloneIndex();
     return false;
 #else
-    if (StartAbilityUtils::isWantWithAppCloneIndex || StartAbilityUtils::isSandBoxClone) {
+    bool wantWithClone = ctx.ConsumeIsWantWithAppCloneIndex();
+    bool sandboxClone = ctx.isSandBoxClone;
+    if (wantWithClone || sandboxClone) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "with clone index");
-        StartAbilityUtils::isWantWithAppCloneIndex = false;
         return false;
     }
     auto appIndexes = StartAbilityUtils::GetCloneAppIndexes(bundleName, userId);

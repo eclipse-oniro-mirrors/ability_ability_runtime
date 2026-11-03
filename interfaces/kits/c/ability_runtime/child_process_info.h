@@ -112,6 +112,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ChildProcessInfo_GetParentPid(
  *      <li>{@link ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID} if processName or requiredSize is NULL,
  *      or processNameSize is 0.</li>
  *      <li>{@link ABILITY_RUNTIME_ERROR_CODE_BUFFER_TOO_SMALL} if the buffer is too small.</li>
+ *      <li>{@link ABILITY_RUNTIME_ERROR_CODE_INTERNAL} if string copy operation failed.</li>
  *      </ul>
  * @since 26.1.0
  */

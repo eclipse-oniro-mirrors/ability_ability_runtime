@@ -264,7 +264,9 @@ void BaseExtensionRecord::DumpUIExtensionRootHostInfo(std::vector<std::string> &
     }
 
     UIExtensionHostInfo hostInfo;
-    auto ret = IN_PROCESS_CALL(AAFwk::AbilityManagerClient::GetInstance()->GetUIExtensionRootHostInfo(token, hostInfo));
+    int32_t ownerUserId = ownerMissionUserId_ >= 0 ? ownerMissionUserId_ : DEFAULT_INVAL_VALUE;
+    auto ret = IN_PROCESS_CALL(AAFwk::AbilityManagerClient::GetInstance()->GetUIExtensionRootHostInfo(token, hostInfo,
+        ownerUserId));
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "failed: %{public}d", ret);
         return;

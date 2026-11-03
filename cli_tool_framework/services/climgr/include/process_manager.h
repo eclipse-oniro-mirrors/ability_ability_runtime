@@ -55,7 +55,7 @@ private:
     void CloseAllPipes(SessionRecord &record) const;
     void CloseNonStdFds() const;
     void SetupChildPipesAndExec(const SessionRecord &record,
-        std::vector<char *> &execArgs) const;
+        std::vector<char *> &execArgs, std::vector<char *> &envp) const;
 
     static const char *clawSandboxPath_;
 };

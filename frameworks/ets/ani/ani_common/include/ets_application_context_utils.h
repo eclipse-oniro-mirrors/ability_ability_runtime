@@ -26,6 +26,7 @@
 #include "ets_application_state_change_callback.h"
 #include "ets_context_utils.h"
 #include "ets_enviroment_callback.h"
+#include "ets_app_process_state_observer.h"
 #include "ets_system_configuration_updated_callback.h"
 
 namespace OHOS {
@@ -40,7 +41,7 @@ public:
     static void NativeOnInteropLifecycleCallbackSync(ani_env *env, ani_object aniObj, ani_object callback);
     static void NativeOffInteropLifecycleCallbackSync(ani_env *env, ani_object aniObj, ani_object callback);
     static void RestartApp(ani_env *env, ani_object aniObj, ani_object wantObj);
-    static void SetFont(ani_env *env, ani_object aniObj, ani_string font);
+    static void SetFont(ani_env *env, ani_object aniObj, ani_string font, ani_boolean enableAnimation);
     static void SetColorMode(ani_env *env, ani_object aniObj, ani_enum_item colorMode);
     static void SetLanguage(ani_env *env, ani_object aniObj, ani_string language);
     static void SetFontSizeScale(ani_env *env, ani_object aniObj, ani_double fontSizeScale);
@@ -71,6 +72,8 @@ public:
     static void NativeOffAbilityLifecycleCheck(ani_env *env, ani_object aniObj);
     static void NativeOffApplicationStateChangeSync(ani_env *env, ani_object aniObj, ani_object callback);
     static void NativeOnApplicationStateChangeSync(ani_env *env, ani_object aniObj, ani_object callback);
+    static void NativeOnAppProcessStateChangeSync(ani_env *env, ani_object aniObj, ani_object observer);
+    static void NativeOffAppProcessStateChangeSync(ani_env *env, ani_object aniObj, ani_object observer);
 
     static void NativeOnSystemConfigurationUpdatedSync(ani_env *env, ani_object aniObj, ani_object callback);
     static void NativeOffSystemConfigurationUpdatedSync(ani_env *env, ani_object aniObj, ani_object callback);
@@ -86,7 +89,7 @@ private:
     void RegisterInteropAbilityLifecycleCallback(ani_env *env, ani_object callback);
     void UnregisterInteropAbilityLifecycleCallback(ani_env *env, ani_object callback);
     void OnRestartApp(ani_env *env, ani_object aniObj, ani_object wantObj);
-    void OnSetFont(ani_env *env, ani_object aniObj, ani_string font);
+    void OnSetFont(ani_env *env, ani_object aniObj, ani_string font, ani_boolean enableAnimation);
     void OnSetColorMode(ani_env *env, ani_object aniObj, ani_enum_item colorMode);
     void OnSetLanguage(ani_env *env, ani_object aniObj, ani_string language);
     void OnSetFontSizeScale(ani_env *env, ani_object aniObj, ani_double fontSizeScale);
@@ -102,6 +105,8 @@ private:
     void OnGetAllWindowStages(ani_env *env, ani_object aniObj, ani_object callback);
     void OnNativeOffApplicationStateChangeSync(ani_env *env, ani_object aniObj, ani_object callback);
     void OnNativeOnApplicationStateChangeSync(ani_env *env, ani_object aniObj, ani_object callback);
+    void OnNativeOnAppProcessStateChangeSync(ani_env *env, ani_object aniObj, ani_object observer);
+    void OnNativeOffAppProcessStateChangeSync(ani_env *env, ani_object aniObj, ani_object observer);
     void OnNativeOffEnvironmentSync(ani_env *env, ani_object aniObj, ani_int callbackId, ani_object callback);
     void OnNativeSystemConfigurationUpdatedSync(ani_env *env, ani_object aniObj, ani_object callback);
     void OffNativeSystemConfigurationUpdatedSync(ani_env *env, ani_object aniObj, ani_object callback);
@@ -114,6 +119,7 @@ private:
     void OnStartSelfUIAbility(ani_env *env, ani_object aniObj, ani_object wantObj, ani_object callback);
     std::shared_ptr<EtsEnviromentCallback> etsEnviromentCallback_;
     std::shared_ptr<EtsApplicationStateChangeCallback> applicationStateCallback_;
+    sptr<EtsAppProcessStateObserver> appProcessStateObserver_;
     std::shared_ptr<EtsSystemConfigurationUpdatedCallback> systemConfigurationUpdatedCallback_;
     static std::mutex abilityLifecycleCallbackLock_;
     static std::shared_ptr<EtsAbilityLifecycleCallback> abilityLifecycleCallback_ ;

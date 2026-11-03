@@ -32,7 +32,6 @@ public:
     static napi_value EvictModuleFilePages(napi_env env, napi_callback_info info);
 
 private:
-    static bool CheckCallerIsSystemApp();
 
     napi_value OnEvictFilePages(napi_env env, NapiCallbackInfo &info);
     napi_value OnEvictModuleFilePages(napi_env env, NapiCallbackInfo &info);

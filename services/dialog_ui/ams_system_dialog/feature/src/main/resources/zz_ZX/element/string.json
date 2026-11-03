@@ -1,0 +1,56 @@
+{
+    "string":[
+        {
+            "name":"Btn_qr",
+            "value":"[TS_1099164]_OK"
+        },
+        {
+            "name":"Detail_subtitle_ytxx",
+            "value":"[TS_1099171]_Intent information"
+        },
+        {
+            "name":"Detail_title_ytts",
+            "value":"[TS_1099163]_InsightIntent debugging"
+        },
+        {
+            "name":"Detail_ytmc",
+            "value":"[TS_1099170]_Intent name"
+        },
+        {
+            "name":"Btn_sc",
+            "value":"[TS_1099172]_Delete"
+        },
+        {
+            "name":"Tips_bt",
+            "value":"[TS_1099157]_Required field"
+        },
+        {
+            "name":"Detail_subtitle_ytcs",
+            "value":"[TS_1099167]_Intent parameters"
+        },
+        {
+            "name":"Detail_ytbm",
+            "value":"[TS_1102142]_Package name"
+        },
+        {
+            "name":"Btn_tj",
+            "value":"[TS_1099159]_Add"
+        },
+        {
+            "name":"Cont_title_syyt",
+            "value":"[TS_1099158]_All intents"
+        },
+        {
+            "name":"Detail_btn_zxyt",
+            "value":"[TS_1099165]_Run intent"
+        },
+        {
+            "name":"Detail_stitle_zxjg",
+            "value":"[TS_1099162]_Execution result"
+        },
+        {
+            "name":"Detail_zxms",
+            "value":"[TS_1099169]_Execution mode"
+        }
+    ]
+}

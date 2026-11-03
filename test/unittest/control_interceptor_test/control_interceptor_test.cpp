@@ -162,8 +162,8 @@ HWTEST_F(ControlInterceptorTest, DoProcess_001, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     bool isWithUI = false;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, nullptr, shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, -1);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_001 end");
@@ -189,8 +189,8 @@ HWTEST_F(ControlInterceptorTest, DoProcess_002, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     bool isWithUI = true;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, nullptr, shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, -1);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_002 end");
@@ -219,8 +219,8 @@ HWTEST_F(ControlInterceptorTest, DoProcess_003, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     bool isWithUI = true;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, nullptr, shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, -2);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_003 end");
@@ -250,8 +250,8 @@ HWTEST_F(ControlInterceptorTest, DoProcess_004, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     bool isWithUI = true;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, nullptr, shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, -3);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_004 end");
@@ -281,8 +281,8 @@ HWTEST_F(ControlInterceptorTest, DoProcess_005, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     bool isWithUI = true;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, nullptr, shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_005 end");
@@ -304,8 +304,8 @@ HWTEST_F(ControlInterceptorTest, DoProcess_006, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     bool isWithUI = true;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, nullptr, shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_006 end");
@@ -328,8 +328,8 @@ HWTEST_F(ControlInterceptorTest, DoProcess_007, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     bool isWithUI = true;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, nullptr, shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_007 end");
@@ -354,11 +354,136 @@ HWTEST_F(ControlInterceptorTest, DoProcess_008, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     bool isWithUI = true;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, nullptr, shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_008 end");
+}
+
+/**
+ * @tc.name: ControlInterceptorTest_DoProcess_009
+ * @tc.desc: DoProcess skip StartAbility when control want target same as intercepted ability
+ * @tc.type: FUNC
+ * @tc.require: DoProcess
+ */
+HWTEST_F(ControlInterceptorTest, DoProcess_009, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DoProcess_009 start");
+    MyFlag::bundleMgrHelper_ = AppExecFwk::BundleMgrHelper::GetInstance();
+    auto appControlMgr = new (std::nothrow) AppControlProxy(nullptr);
+    MyFlag::mockAppControlManager_ = appControlMgr;
+    MyFlag::retGetAppRunningControlRule_ = ERR_OK;
+    MyFlag::appRunningControlRuleResult_.controlWant = std::make_shared<Want>();
+    MyFlag::appRunningControlRuleResult_.controlWant->SetElementName("", "bundle", "ability", "module");
+    MyFlag::startAbilityRet_ = -200;
+    MyFlag::edmCode_ = -100;
+
+    ControlInterceptor interceptor;
+    Want want;
+    want.SetElementName("", "bundle", "ability", "module");
+    int requestCode = 0;
+    int userId = 100;
+    bool isWithUI = true;
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
+    auto ret = interceptor.DoProcess(param);
+    EXPECT_EQ(ret, -100);
+    TAG_LOGI(AAFwkTag::TEST, "DoProcess_009 end");
+}
+
+/**
+ * @tc.name: ControlInterceptorTest_DoProcess_010
+ * @tc.desc: DoProcess skip StartAbility when target same as intercepted ability with parent control
+ * @tc.type: FUNC
+ * @tc.require: DoProcess
+ */
+HWTEST_F(ControlInterceptorTest, DoProcess_010, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DoProcess_010 start");
+    MyFlag::bundleMgrHelper_ = AppExecFwk::BundleMgrHelper::GetInstance();
+    auto appControlMgr = new (std::nothrow) AppControlProxy(nullptr);
+    MyFlag::mockAppControlManager_ = appControlMgr;
+    MyFlag::retGetAppRunningControlRule_ = ERR_OK;
+    MyFlag::appRunningControlRuleResult_.controlWant = std::make_shared<Want>();
+    MyFlag::appRunningControlRuleResult_.controlWant->SetParam(IS_FROM_PARENTCONTROL, true);
+    MyFlag::appRunningControlRuleResult_.controlWant->SetElementName("", "bundle", "ability", "module");
+    MyFlag::startAbilityRet_ = -200;
+    MyFlag::edmCode_ = -100;
+
+    ControlInterceptor interceptor;
+    Want want;
+    want.SetElementName("", "bundle", "ability", "module");
+    int requestCode = 0;
+    int userId = 100;
+    bool isWithUI = true;
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
+    auto ret = interceptor.DoProcess(param);
+    EXPECT_EQ(ret, -100);
+    TAG_LOGI(AAFwkTag::TEST, "DoProcess_010 end");
+}
+
+/**
+ * @tc.name: ControlInterceptorTest_DoProcess_011
+ * @tc.desc: DoProcess skip StartAbility when only bundleName same but abilityName different
+ * @tc.type: FUNC
+ * @tc.require: DoProcess
+ */
+HWTEST_F(ControlInterceptorTest, DoProcess_011, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DoProcess_011 start");
+    MyFlag::bundleMgrHelper_ = AppExecFwk::BundleMgrHelper::GetInstance();
+    auto appControlMgr = new (std::nothrow) AppControlProxy(nullptr);
+    MyFlag::mockAppControlManager_ = appControlMgr;
+    MyFlag::retGetAppRunningControlRule_ = ERR_OK;
+    MyFlag::appRunningControlRuleResult_.controlWant = std::make_shared<Want>();
+    MyFlag::appRunningControlRuleResult_.controlWant->SetElementName("", "bundle", "otherAbility", "module");
+    MyFlag::startAbilityRet_ = -200;
+    MyFlag::edmCode_ = -100;
+
+    ControlInterceptor interceptor;
+    Want want;
+    want.SetElementName("", "bundle", "ability", "module");
+    int requestCode = 0;
+    int userId = 100;
+    bool isWithUI = true;
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
+    auto ret = interceptor.DoProcess(param);
+    EXPECT_EQ(ret, -100);
+    TAG_LOGI(AAFwkTag::TEST, "DoProcess_011 end");
+}
+
+/**
+ * @tc.name: ControlInterceptorTest_DoProcess_012
+ * @tc.desc: DoProcess not skip when only abilityName same but bundleName different
+ * @tc.type: FUNC
+ * @tc.require: DoProcess
+ */
+HWTEST_F(ControlInterceptorTest, DoProcess_012, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DoProcess_012 start");
+    MyFlag::bundleMgrHelper_ = AppExecFwk::BundleMgrHelper::GetInstance();
+    auto appControlMgr = new (std::nothrow) AppControlProxy(nullptr);
+    MyFlag::mockAppControlManager_ = appControlMgr;
+    MyFlag::retGetAppRunningControlRule_ = ERR_OK;
+    MyFlag::appRunningControlRuleResult_.controlWant = std::make_shared<Want>();
+    MyFlag::appRunningControlRuleResult_.controlWant->SetElementName("", "otherBundle", "ability", "module");
+    MyFlag::startAbilityRet_ = -200;
+    MyFlag::edmCode_ = -100;
+
+    ControlInterceptor interceptor;
+    Want want;
+    want.SetElementName("", "bundle", "ability", "module");
+    int requestCode = 0;
+    int userId = 100;
+    bool isWithUI = true;
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(nullptr).Build();
+    auto ret = interceptor.DoProcess(param);
+    EXPECT_EQ(ret, -200);
+    TAG_LOGI(AAFwkTag::TEST, "DoProcess_012 end");
 }
 #endif
 } // namespace AAFwk

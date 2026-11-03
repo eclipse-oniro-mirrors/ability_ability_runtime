@@ -287,8 +287,7 @@ bool AppRecovery::ScheduleRecoverApp(StateReason reason)
     
     if (!isEnable_) {
         if (OHOS::system::GetParameter("const.dfx.sub_health_recovery.enable", "") == "true") {
-            DoRecoverMainApp(reason);
-            return true;
+            return DoRecoverMainApp(reason);
         }
         return false;
     }
@@ -364,21 +363,23 @@ void AppRecovery::DoRecoverApp(StateReason reason)
     }
 }
 
-void AppRecovery::DoRecoverMainApp(StateReason reason)
+bool AppRecovery::DoRecoverMainApp(StateReason reason)
 {
     TAG_LOGD(AAFwkTag::RECOVERY, "DoReciverMainApp begin");
     AAFwk::Want *want = &mainWant_;
     want->SetParam(AAFwk::Want::PARAM_ABILITY_RECOVERY_RESTART, false);
     auto token = token_.promote();
     if (token == nullptr) {
-        return;
+        TAG_LOGE(AAFwkTag::RECOVERY, "DoReciverMainApp token is null, recovery aborted");
+        return false;
     }
     auto abilityMgr = AAFwk::AbilityManagerClient::GetInstance();
     if (abilityMgr == nullptr) {
         TAG_LOGE(AAFwkTag::RECOVERY, "null abilityMgr");
-        return;
+        return false;
     }
     abilityMgr->ScheduleRecoverAbility(token, reason, want);
+    return true;
 }
  
 void AppRecovery::DoSaveAppState(StateReason reason, uintptr_t ability)

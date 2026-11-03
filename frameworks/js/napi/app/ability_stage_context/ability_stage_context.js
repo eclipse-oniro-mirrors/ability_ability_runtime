@@ -17,15 +17,20 @@ let Context = requireNapi('application.Context');
 
 class AbilityStageContext extends Context {
   constructor(obj) {
+    if (!obj) {
+      obj = {};
+    }
     super(obj);
 
-    this.currentHapModuleInfo = obj.currentHapModuleInfo;
-    this.config = obj.config;
-    this.launchElement = obj.launchElement;
+    this.currentHapModuleInfo = obj ? obj.currentHapModuleInfo : null;
+    this.config = obj ? obj.config : null;
+    this.launchElement = obj ? obj.launchElement : null;
   }
 
   onUpdateConfiguration(config) {
-    this.config = config;
+    if (config) {
+      this.config = config;
+    }
   }
 }
 

@@ -125,13 +125,15 @@ int AppScheduler::UpdateApplicationInfoInstalled(const std::string &bundleName, 
     return ERR_OK;
 }
 
-void AppScheduler::MoveToForeground(const sptr<IRemoteObject> &token)
+void AppScheduler::MoveToForeground(const sptr<IRemoteObject> &token,
+    const AppExecFwk::UiAbilityLastCallerInfo &callerInfo)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Start to move the ability to foreground.");
     CHECK_POINTER(appMgrClient_);
     IN_PROCESS_CALL_WITHOUT_RET(
-        appMgrClient_->UpdateAbilityState(token, AppExecFwk::AbilityState::ABILITY_STATE_FOREGROUND));
+        appMgrClient_->UpdateAbilityState(token, AppExecFwk::AbilityState::ABILITY_STATE_FOREGROUND, false,
+            callerInfo));
 }
 
 void AppScheduler::MoveToBackground(const sptr<IRemoteObject> &token, bool isFromScreenOffBackground)
@@ -197,6 +199,13 @@ int32_t AppScheduler::KillProcessesByPids(const std::vector<int32_t> &pids, cons
         return ret;
     }
     return ERR_OK;
+}
+
+bool AppScheduler::CheckProcessAvailable(int32_t pid)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "pid:%{public}d", pid);
+    CHECK_POINTER_AND_RETURN(appMgrClient_, true);
+    return IN_PROCESS_CALL(appMgrClient_->CheckProcessAvailable(pid));
 }
 
 void AppScheduler::AttachPidToParent(const sptr<IRemoteObject> &token, const sptr<IRemoteObject> &callerToken)
@@ -303,11 +312,11 @@ void AppScheduler::RecordAppExitSignalReason(int32_t pid, int32_t uid, int32_t s
 }
 
 int AppScheduler::KillApplication(const std::string &bundleName, bool clearPageStack, int32_t appIndex,
-    const std::string &reason)
+    const std::string &reason, int32_t userId)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "call");
     CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
-    int ret = (int)appMgrClient_->KillApplication(bundleName, clearPageStack, appIndex, reason);
+    int ret = (int)appMgrClient_->KillApplication(bundleName, clearPageStack, appIndex, reason, userId);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "failed kill app");
         return INNER_ERR;
@@ -336,7 +345,9 @@ int AppScheduler::KillApplicationWithUserId(const std::string &bundleName,
     CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
     int ret = (int)appMgrClient_->KillApplicationWithUserId(bundleName, userId, appIndex);
     if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "failed kill app");
+        TAG_LOGE(AAFwkTag::ABILITYMGR,
+            "failed kill app, bundleName:%{public}s userId:%{public}d appIndex:%{public}d ret:%{public}d",
+            bundleName.c_str(), userId, appIndex, ret);
         return INNER_ERR;
     }
 
@@ -608,7 +619,8 @@ int32_t AppScheduler::NotifyAppMgrRecordExitReason(int32_t pid, int32_t reason, 
 }
 
 int32_t AppScheduler::NotifyAppMgrRecordExitReasonCompability(
-    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg, int32_t reason)
+    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg,
+    int32_t reason, int32_t callerPid)
 {
     if (pid <= 0) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "pid is invalid");
@@ -616,7 +628,7 @@ int32_t AppScheduler::NotifyAppMgrRecordExitReasonCompability(
     }
     CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
     auto ret = static_cast<int32_t>(IN_PROCESS_CALL(appMgrClient_->NotifyAppMgrRecordExitReasonCompability(
-        pid, killId, killMsg, innerMsg, reason)));
+        pid, killId, killMsg, innerMsg, reason, callerPid)));
     return ret;
 }
 

@@ -37,6 +37,7 @@ ohos_shared_library("insightintentdecorator_napi") {
     "hilog:libhilog",
     "ipc:ipc_core",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
   cflags_cc = []
   if (os_dlp_part_enabled) {

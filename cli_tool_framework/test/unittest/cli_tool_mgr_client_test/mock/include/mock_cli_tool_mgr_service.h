@@ -7,7 +7,9 @@
 #define OHOS_ABILITY_RUNTIME_MOCK_CLI_TOOL_MGR_SERVICE_H
 
 #include "function_info.h"
+#include "function_result_wrap.h"
 #include "icli_tool_manager.h"
+#include "invoke_function_param.h"
 #include "iremote_stub.h"
 
 namespace OHOS {
@@ -20,16 +22,18 @@ public:
     int32_t RegisterFunction(const FunctionInfo &function) override;
     int32_t BatchRegisterFunctions(const FunctionsRawData &functions,
         int32_t &successCount) override;
-    int32_t GetFunctionInfo(const std::string &functionNamespace, const std::string &functionName,
-        FunctionInfo &function) override;
-    int32_t UnregisterFunction(const std::string &functionNamespace, const std::string &functionName) override;
-    int32_t UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace) override;
-    int32_t ResetNamespaceFunctions(const std::string &functionNamespace,
+    int32_t GetFunctionInfo(const std::string &functionNamespace,
+        const std::string &functionName, FunctionInfo &function) override;
+    int32_t UnregisterFunction(int32_t userId, const std::string &functionNamespace,
+        const std::string &functionName) override;
+    int32_t UnregisterIntentFunctionsByNamespace(int32_t userId, const std::string &functionNamespace) override;
+    int32_t ResetNamespaceFunctions(int32_t userId, const std::string &functionNamespace,
         const FunctionsRawData &functions, int32_t &successCount) override;
     int32_t GetAllFunctions(FunctionsRawData &functions) override;
     int32_t BatchRegisterFunctionsAsync(const FunctionsRawData &functions) override;
-    int32_t UnregisterIntentFunctionsByNamespaceAsync(const std::string &functionNamespace) override;
-    int32_t ResetNamespaceFunctionsAsync(const std::string &functionNamespace,
+    int32_t UnregisterIntentFunctionsByNamespaceAsync(int32_t userId,
+        const std::string &functionNamespace) override;
+    int32_t ResetNamespaceFunctionsAsync(int32_t userId, const std::string &functionNamespace,
         const FunctionsRawData &functions) override;
     int32_t ExecTool(const ExecToolParam &param, const std::string &eventId,
         const sptr<ICliToolManagerScheduler> &scheduler) override;
@@ -44,6 +48,12 @@ public:
         const std::string &eventId, const sptr<ICliToolManagerScheduler> &scheduler) override;
     int32_t BatchQueryPermissionBySubCommand(
         const std::vector<Command> &cmds, std::vector<CommandPermission> &cmdPermissions) override;
+    int32_t RegisterCliHook(const sptr<ICliHookInterface> &hook, int32_t activeMethods) override;
+    int32_t UnregisterCliHook(const sptr<ICliHookInterface> &hook) override;
+    int32_t RegisterFunctionHook(const sptr<IFunctionHookInterface> &hook, int32_t activeMethods) override;
+    int32_t UnregisterFunctionHook(const sptr<IFunctionHookInterface> &hook) override;
+    int32_t BeforeInvokeFunction(InvokeFunctionParam &param) override;
+    int32_t AfterInvokeFunction(FunctionResultWrap &functionResultWrap) override;
 };
 } // namespace CliTool
 } // namespace OHOS

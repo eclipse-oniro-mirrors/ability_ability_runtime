@@ -33,15 +33,21 @@ PhotoEditorErrorCode PhotoEditorExtensionContext::SaveEditedContent(const std::s
 {
     TAG_LOGD(AAFwkTag::UI_EXT, "Save content editing with uri begin, uri: %{public}s", uri.c_str());
 
+    auto pos = uri.find_last_of(".");
+    auto sep = uri.find_last_of('/');
+    if (pos == std::string::npos || (sep != std::string::npos && pos < sep) || pos + 1 >= uri.size()) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "uri has no valid extension");
+        return PhotoEditorErrorCode::ERROR_CODE_PARAM_ERROR;
+    }
+
     const std::string panelUri = want_->GetStringParam(PANEL_TRANSFER_FILE_PATH);
     TAG_LOGD(AAFwkTag::UI_EXT, "PanelUri: %{public}s", panelUri.c_str());
 
     PhotoEditorErrorCode errCode = CopyImageToPanel(uri, panelUri);
     if (errCode == PhotoEditorErrorCode::ERROR_OK) {
         TAG_LOGD(AAFwkTag::UI_EXT, "Save content succeed");
-        auto pos = uri.find_last_of(".");
-        newWant.SetUri(panelUri);
         newWant.SetType("image/" + uri.substr(pos + 1));
+        newWant.SetUri(panelUri);
     }
     return errCode;
 }

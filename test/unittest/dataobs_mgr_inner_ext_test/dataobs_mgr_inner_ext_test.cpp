@@ -691,9 +691,19 @@ HWTEST_F(DataObsMgrInnerExtTest, DataObsMgrInnerExt_RegisterAndUnRegister_0300, 
 
     int res = dataObsMgrInnerExt->HandleRegisterObserver(uri1, observer1, info, true);
     EXPECT_EQ(res, DATAOBS_INVALID_URI);
+    // death recipient added by the failed registration must be rolled back
+    EXPECT_TRUE(dataObsMgrInnerExt->obsRecipientRefs.empty());
+    EXPECT_TRUE(dataObsMgrInnerExt->root_->childrens_.empty());
 
     res = dataObsMgrInnerExt->HandleUnregisterObserver(uri1, observer1);
     EXPECT_EQ(res, DATAOBS_INVALID_URI);
+
+    // the same observer can still register and unregister normally with a valid uri
+    Uri uriValid("datashare://Authority/com.domainname.dataability.persondata/Person1");
+    EXPECT_EQ(dataObsMgrInnerExt->HandleRegisterObserver(uriValid, observer1, info, true), SUCCESS);
+    EXPECT_EQ(dataObsMgrInnerExt->obsRecipientRefs.size(), 1);
+    EXPECT_EQ(dataObsMgrInnerExt->HandleUnregisterObserver(uriValid, observer1), SUCCESS);
+    EXPECT_TRUE(dataObsMgrInnerExt->obsRecipientRefs.empty());
     TAG_LOGE(AAFwkTag::DBOBSMGR, "DataObsMgrInnerExt_RegisterAndUnRegister_0300::Start");
 }
 

@@ -77,7 +77,7 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     appMgrService->RegisterNativeChildExitNotify(nativeChildNotify);
     appMgrService->UnregisterNativeChildExitNotify(nativeChildNotify);
     pid_t pid = static_cast<pid_t>(GetU32Data(data));
-    appMgrService->AddAppDeathRecipient(pid);
+    // appMgrService->AddAppDeathRecipient(pid);
     appMgrService->QueryServiceState();
     sptr<IRemoteObject> app = nullptr;
     appMgrService->AttachApplication(app);

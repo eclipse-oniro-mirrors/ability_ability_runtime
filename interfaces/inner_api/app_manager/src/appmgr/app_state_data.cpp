@@ -29,7 +29,8 @@ bool AppStateData::Marshalling(Parcel &parcel) const
         parcel.WriteString(callerBundleName) && parcel.WriteBool(isSplitScreenMode) && parcel.WriteInt32(callerUid) &&
         parcel.WriteBool(isFloatingWindowMode) && parcel.WriteInt32(appIndex) && parcel.WriteBool(isPreloadModule) &&
         parcel.WriteBool(isFromWindowFocusChanged) && parcel.WriteInt32(preloadMode) &&
-        parcel.WriteInt32(byCallStatus);
+        parcel.WriteInt32(byCallStatus) && parcel.WriteInt32(lastUIAbilityCallerUid) &&
+        parcel.WriteString(lastUIAbilityCallerName);
 }
 
 bool AppStateData::ReadFromParcel(Parcel &parcel)
@@ -51,6 +52,8 @@ bool AppStateData::ReadFromParcel(Parcel &parcel)
     isFromWindowFocusChanged = parcel.ReadBool();
     preloadMode = parcel.ReadInt32();
     byCallStatus = parcel.ReadInt32();
+    lastUIAbilityCallerUid = parcel.ReadInt32();
+    lastUIAbilityCallerName = parcel.ReadString();
     return true;
 }
 

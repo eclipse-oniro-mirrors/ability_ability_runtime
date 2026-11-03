@@ -356,7 +356,7 @@ HWTEST_F(AppExitReasonHelperTest, RecordAppWithReason_0100, TestSize.Level1)
     ExitReasonCompability exitReason;
     int32_t pid = 1;
     int32_t uid = 1;
-    int32_t result = appExitReasonHelper->RecordAppWithReason(pid, uid, exitReason);
+    int32_t result = appExitReasonHelper->RecordAppWithReason(pid, uid, exitReason, DEFAULT_INVAL_VALUE);
     EXPECT_EQ(result, ERR_INVALID_VALUE);
 
     AbilityUtil::GetBundleManagerHelper()->getNameAndIndexForUid_ = true;
@@ -365,17 +365,17 @@ HWTEST_F(AppExitReasonHelperTest, RecordAppWithReason_0100, TestSize.Level1)
     std::shared_ptr<SubManagersHelper> subManagersHelper = std::make_shared<SubManagersHelper>(nullptr, nullptr);
     EXPECT_NE(subManagersHelper, nullptr);
     appExitReasonHelper->subManagersHelper_ = subManagersHelper;
-    result = appExitReasonHelper->RecordAppWithReason(pid, uid, exitReason);
+    result = appExitReasonHelper->RecordAppWithReason(pid, uid, exitReason, DEFAULT_INVAL_VALUE);
     EXPECT_EQ(result, ERR_INVALID_VALUE);
     MyStatus::GetInstance().getOsAccountRet_ = 0;
     auto currentUIAbilityManager = std::make_shared<UIAbilityLifecycleManager>(0);
     EXPECT_NE(currentUIAbilityManager, nullptr);
-    result = appExitReasonHelper->RecordAppWithReason(pid, uid, exitReason);
+    result = appExitReasonHelper->RecordAppWithReason(pid, uid, exitReason, DEFAULT_INVAL_VALUE);
     EXPECT_EQ(result, ERR_INVALID_VALUE);
 
     int32_t userId = AbilityRuntime::UserController::GetInstance().GetForegroundUserId(0);
     appExitReasonHelper->subManagersHelper_->uiAbilityManagers_[userId] = currentUIAbilityManager;
-    result = appExitReasonHelper->RecordAppWithReason(pid, uid, exitReason);
+    result = appExitReasonHelper->RecordAppWithReason(pid, uid, exitReason, DEFAULT_INVAL_VALUE);
     EXPECT_EQ(result, ERR_INVALID_VALUE);
 
     Want want;
@@ -390,7 +390,7 @@ HWTEST_F(AppExitReasonHelperTest, RecordAppWithReason_0100, TestSize.Level1)
     abilityRecord->sessionInfo_ = new SessionInfo();
     EXPECT_NE(abilityRecord->sessionInfo_, nullptr);
     appExitReasonHelper->subManagersHelper_->uiAbilityManagers_[userId]->sessionAbilityMap_.emplace(pid, abilityRecord);
-    result = appExitReasonHelper->RecordAppWithReason(pid, uid, exitReason);
+    result = appExitReasonHelper->RecordAppWithReason(pid, uid, exitReason, DEFAULT_INVAL_VALUE);
     EXPECT_EQ(result, ERR_INVALID_VALUE);
 }
 
@@ -411,10 +411,11 @@ HWTEST_F(AppExitReasonHelperTest, AddAppExitReason_0100, TestSize.Level1)
     int32_t uid = 1;
     int32_t appIndex = 0;
     MyStatus::GetInstance().getOsAccountRet_ = MOCK_ERROR;
-    int32_t result = appExitReasonHelper->AddAppExitReason(bundleName, pid, uid, appIndex, exitReason);
+    int32_t result = appExitReasonHelper->AddAppExitReason(
+        bundleName, pid, uid, appIndex, exitReason, DEFAULT_INVAL_VALUE);
     EXPECT_EQ(result, MOCK_ERROR);
     MyStatus::GetInstance().getOsAccountRet_ = 0;
-    result = appExitReasonHelper->AddAppExitReason(bundleName, pid, uid, appIndex, exitReason);
+    result = appExitReasonHelper->AddAppExitReason(bundleName, pid, uid, appIndex, exitReason, DEFAULT_INVAL_VALUE);
     EXPECT_EQ(result, ERR_NULL_OBJECT);
 }
 
@@ -433,8 +434,95 @@ HWTEST_F(AppExitReasonHelperTest, AddBundleExitReason_0100, TestSize.Level1)
     std::string bundleName = "test";
     int32_t userId = 0;
     int32_t appIndex = 0;
-    int32_t result = appExitReasonHelper->AddBundleExitReason(bundleName, userId, appIndex, exitReason);
+    int32_t result = appExitReasonHelper->AddBundleExitReason(
+        bundleName, userId, appIndex, exitReason, DEFAULT_INVAL_VALUE);
     EXPECT_EQ(result, MOCK_ERROR);
+}
+
+/**
+ * @tc.name: AddAppExitReason_0200
+ * @tc.desc: AddAppExitReason with specific callerPid.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(AppExitReasonHelperTest, AddAppExitReason_0200, TestSize.Level1)
+{
+    auto appExitReasonHelper = std::make_shared<AppExitReasonHelper>(nullptr);
+    EXPECT_NE(appExitReasonHelper, nullptr);
+
+    ExitReasonCompability exitReason;
+    std::string bundleName = "test_caller";
+    int32_t pid = 1;
+    int32_t uid = 1;
+    int32_t appIndex = 0;
+    int32_t callerPid = 12345;
+    MyStatus::GetInstance().getOsAccountRet_ = MOCK_ERROR;
+    int32_t result = appExitReasonHelper->AddAppExitReason(
+        bundleName, pid, uid, appIndex, exitReason, callerPid);
+    EXPECT_EQ(result, MOCK_ERROR);
+    MyStatus::GetInstance().getOsAccountRet_ = 0;
+    result = appExitReasonHelper->AddAppExitReason(
+        bundleName, pid, uid, appIndex, exitReason, callerPid);
+    EXPECT_EQ(result, ERR_NULL_OBJECT);
+}
+
+/**
+ * @tc.name: AddBundleExitReason_0200
+ * @tc.desc: AddBundleExitReason with specific callerPid.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(AppExitReasonHelperTest, AddBundleExitReason_0200, TestSize.Level1)
+{
+    auto appExitReasonHelper = std::make_shared<AppExitReasonHelper>(nullptr);
+    EXPECT_NE(appExitReasonHelper, nullptr);
+
+    ExitReasonCompability exitReason;
+    std::string bundleName = "test_caller";
+    int32_t userId = 0;
+    int32_t appIndex = 0;
+    int32_t callerPid = 12345;
+    int32_t result = appExitReasonHelper->AddBundleExitReason(
+        bundleName, userId, appIndex, exitReason, callerPid);
+    EXPECT_EQ(result, MOCK_ERROR);
+}
+
+/**
+ * @tc.name: RecordAppWithReason_0200
+ * @tc.desc: RecordAppWithReason with specific callerPid.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(AppExitReasonHelperTest, RecordAppWithReason_0200, TestSize.Level1)
+{
+    auto appExitReasonHelper = std::make_shared<AppExitReasonHelper>(nullptr);
+    EXPECT_NE(appExitReasonHelper, nullptr);
+    AbilityUtil::GetBundleManagerHelper()->getNameAndIndexForUid_ = false;
+    ExitReasonCompability exitReason;
+    int32_t pid = 1;
+    int32_t uid = 1;
+    int32_t callerPid = 12345;
+    int32_t result = appExitReasonHelper->RecordAppWithReason(pid, uid, exitReason, callerPid);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: RecordInvalidKillId_0100
+ * @tc.desc: RecordInvalidKillId with specific callerPid.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(AppExitReasonHelperTest, RecordInvalidKillId_0100, TestSize.Level1)
+{
+    auto appExitReasonHelper = std::make_shared<AppExitReasonHelper>(nullptr);
+    EXPECT_NE(appExitReasonHelper, nullptr);
+
+    ExitReasonCompability exitReason;
+    int32_t pid = 1;
+    int32_t callerPid = 12345;
+    appExitReasonHelper->RecordInvalidKillId(pid, exitReason, "", 0, callerPid);
+    appExitReasonHelper->RecordInvalidKillId(pid, exitReason);
+    EXPECT_NE(appExitReasonHelper, nullptr);
 }
 
 /**

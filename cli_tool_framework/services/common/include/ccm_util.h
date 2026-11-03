@@ -47,6 +47,8 @@ public:
      */
     int32_t GetCliConcurrencyLimit();
 
+    bool IsSupportExecCmd();
+
 private:
     /**
      * CcmUtil, private constructor.
@@ -55,6 +57,8 @@ private:
     CcmUtil() = default;
 
     volatile DeviceConfiguration<int32_t> maxCliQuantity_ = {false, DEFAULT_MAX_CLI_QUANTITY};
+    volatile DeviceConfiguration<bool> isSupportExecCmd_ = {false, false};
+    std::mutex isSupportExecCmdMutex_;
 };
 
 } // namespace CliTool

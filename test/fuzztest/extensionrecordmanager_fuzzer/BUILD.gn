@@ -78,6 +78,7 @@ ohos_fuzztest("ExtensionRecordManagerFuzzTest") {
   ]
 
   external_deps = [
+    "ability_base:session_info",
     "ability_base:want",
     "ability_base:zuri",
     "bundle_framework:appexecfwk_base",
@@ -95,7 +96,7 @@ ohos_fuzztest("ExtensionRecordManagerFuzzTest") {
     "napi:ace_napi",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
-    "window_manager:libwsutils",
+    "window_manager:libwsutils"
   ]
   if (ability_runtime_child_process) {
     defines = [ "SUPPORT_CHILD_PROCESS" ]

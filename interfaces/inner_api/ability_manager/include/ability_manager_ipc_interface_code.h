@@ -498,6 +498,9 @@ enum class AbilityManagerInterfaceCode {
     // Execute intent by function call (1146)
     EXECUTE_INTENT_BY_FUNCTION_CALL = 1146,
 
+    // Execute intent with specify token id (1147)
+    EXECUTE_INTENT_WITH_SPECIFY_TOKEN_ID = 1147,
+
     // ipc id 2001-3000 for tools
     // ipc id for dumping state (2001)
     DUMP_STATE = 2001,
@@ -756,9 +759,6 @@ enum class AbilityManagerInterfaceCode {
     // start self uiability with start options and caller token
     START_SELF_UI_ABILITY_WITH_OPTIONS_AND_TOKEN = 6168,
 
-    // execute in-app skill
-    EXECUTE_IN_APP_SKILL = 6169,
-
     // query skill type (independent or in-app)
     QUERY_SKILL_TYPE = 6171,
 
@@ -782,6 +782,36 @@ enum class AbilityManagerInterfaceCode {
 
     // unregister sa interceptor
     UNREGISTER_SA_INTERCEPTOR = 6178,
+
+    // set the list of applications allowed in kiosk mode with caller uid isolation
+    ADD_KIOSK_APP_LIST = 6179,
+
+    // delete caller's own kiosk application list entries
+    DELETE_KIOSK_APP_FROM_LIST = 6180,
+    
+    // register want agent holder for shared detection
+    REGISTER_WANT_AGENT_HOLDER = 6181,
+
+    // notify that an insight intent execution has started
+    NOTIFY_INSIGHT_INTENT_EXECUTE = 6182,
+
+    // kill process with user id
+    KILL_PROCESS_WITH_USER_ID = 6183,
+
+    // extend game prelaunch timeout
+    EXTEND_GAME_PRELAUNCH_TIMEOUT = 6184,
+
+    // register listener that an insight intent is about to be executed
+    REGISTER_WILL_INSIGHT_INTENT_EXECUTE_CALLBACK = 6185,
+
+    // unregister listener that an insight intent is about to be executed
+    UNREGISTER_WILL_INSIGHT_INTENT_EXECUTE_CALLBACK = 6186,
+
+    // get pid by call stub (RSS only)
+    GET_PID_BY_CALL_STUB = 6187,
+
+    // get dynamic agent cards (API-source) from the old KV store for migration
+    GET_DYNAMIC_AGENT_CARDS_FOR_MIGRATION = 6188,
 };
 }  // namespace AAFwk
 }  // namespace OHOS

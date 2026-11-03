@@ -52,11 +52,17 @@ std::string DisposedRuleInterceptor::GenerateEventTaskName(int32_t uid)
     return UNREGISTER_EVENT_TASK + std::to_string(uid);
 }
 
-ErrCode DisposedRuleInterceptor::DoProcess(const AbilityInterceptorParam &param)
+ErrCode DisposedRuleInterceptor::DoProcess(AbilityInterceptorParam &param)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Call");
+    if (param.GetContext<AbilityInterceptorParam::RemoteDispatchCtx>() != nullptr) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "remote dispatch, defer to remote device");
+        return ERR_OK;
+    }
+    const auto *dispCtx = param.GetContext<AbilityInterceptorParam::DisposedCtx>();
+    int32_t appIndex = dispCtx ? dispCtx->appIndex : 0;
     AppExecFwk::DisposedRule disposedRule;
-    DisposedRuleResult result = CheckControl(param.want, param.userId, disposedRule, param.appIndex);
+    DisposedRuleResult result = CheckControl(param.want, param.userId, disposedRule, appIndex);
     switch (result) {
         case DisposedRuleResult::BLOCK_RULE:
             return HandleBlockRule(param, disposedRule);
@@ -78,7 +84,7 @@ ErrCode DisposedRuleInterceptor::HandleBlockRule(
         "disposedType: %{public}d, controlType: %{public}d, componentType: %{public}d",
         disposedRule.disposedType, disposedRule.controlType, disposedRule.componentType);
 #ifdef SUPPORT_GRAPHICS
-    if (!param.isWithUI || disposedRule.want == nullptr) {
+    if (!param.isVisible || disposedRule.want == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "no dispose want");
         return AbilityUtil::EdmErrorType(disposedRule.isEdm);
     }
@@ -114,8 +120,8 @@ ErrCode DisposedRuleInterceptor::HandleNonBlockRule(
     const AbilityInterceptorParam &param, AppExecFwk::DisposedRule &disposedRule)
 {
     if (param.abilityInfo == nullptr) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "disposed abilityInfo is nullptr.");
-        return RESOLVE_ABILITY_ERR;
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "disposed abilityInfo is nullptr, skip non-block rule");
+        return ERR_OK;
     }
     return StartNonBlockRule(param.want, disposedRule, param.abilityInfo);
 }
@@ -141,14 +147,8 @@ DisposedRuleResult DisposedRuleInterceptor::CheckControl(const Want &want, int32
     std::vector<AppExecFwk::DisposedRule> disposedRuleList;
     {
         HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, "GetAbilityRunningControlRule");
-        int32_t ret = ERR_OK;
-        if (appIndex > 0 && appIndex <= AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
-            ret = IN_PROCESS_CALL(appControlMgr->GetAbilityRunningControlRule(bundleName,
-                userId, disposedRuleList, appIndex));
-        } else {
-            ret = IN_PROCESS_CALL(appControlMgr->GetAbilityRunningControlRule(bundleName,
-                userId, disposedRuleList, 0));
-        }
+        int32_t ret = IN_PROCESS_CALL(appControlMgr->GetAbilityRunningControlRule(bundleName,
+            userId, disposedRuleList, appIndex));
         if (ret != ERR_OK) {
             TAG_LOGW(AAFwkTag::ABILITYMGR, "GetAbilityRunningControlRule failed, err:%{public}d", ret);
             return DisposedRuleResult::NO_RULE;
@@ -348,12 +348,14 @@ void DisposedRuleInterceptor::SetInterceptInfo(const Want &want, AppExecFwk::Dis
 
 bool DisposedRuleInterceptor::IsSkipDisposeRule(AppExecFwk::PageJumpMode mode, const AbilityInterceptorParam &param)
 {
-    if (param.startOptions == nullptr || param.startOptions->processOptions == nullptr) {
+    const auto *dispCtx = param.GetContext<AbilityInterceptorParam::DisposedCtx>();
+    const StartOptions *startOptions = dispCtx ? dispCtx->startOptions : nullptr;
+    if (startOptions == nullptr || startOptions->processOptions == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null startOptions or processOptions");
         return false;
     }
     return mode == AppExecFwk::PageJumpMode::PAGE_JUMP_WINDOW_NOT_SHOW &&
-        param.startOptions->processOptions->startupVisibility == StartupVisibility::STARTUP_HIDE;
+        startOptions->processOptions->startupVisibility == StartupVisibility::STARTUP_HIDE;
 }
 } // namespace AAFwk
 } // namespace OHOS

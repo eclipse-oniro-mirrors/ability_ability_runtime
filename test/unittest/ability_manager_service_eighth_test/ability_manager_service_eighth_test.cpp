@@ -21,6 +21,7 @@
 #include "app_utils.h"
 #include "app_mgr_util.h"
 #include "hilog_tag_wrapper.h"
+#include "mission_list_manager.h"
 #include "process_options.h"
 #include "ipc_skeleton.h"
 #include "mock_app_mgr_service.h"
@@ -746,6 +747,200 @@ HWTEST_F(AbilityManagerServiceEighthTest, TerminateUIServiceExtensionAbility_002
     result = abilityMs_->TerminateUIServiceExtensionAbility(token);
     EXPECT_NE(result, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest TerminateUIServiceExtensionAbility_002 end");
+}
+
+namespace {
+const std::string DUMP_INVALID_ARG_MSG = "error: invalid argument, please see 'hidumper -s AbilityManagerService"
+                                         " -a '-h''.";
+const std::string DUMP_NO_USER_MSG = "error: No user found.";
+constexpr int32_t DUMP_TEST_USER_ID = 100;
+} // namespace
+
+/*
+ * Feature: AbilityManagerService
+ * Name: DumpSysAbilityInner_001
+ * Function: DumpSysAbilityInner
+ * SubFunction: NA
+ */
+HWTEST_F(AbilityManagerServiceEighthTest, DumpSysAbilityInner_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest DumpSysAbilityInner_001 start");
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(false));
+    abilityMs_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    std::vector<std::string> info;
+    abilityMs_->DumpSysAbilityInner("-i 1", info, false, true, DUMP_TEST_USER_ID);
+    ASSERT_EQ(info.size(), 1);
+    EXPECT_EQ(info[0], DUMP_NO_USER_MSG);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest DumpSysAbilityInner_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: DumpSysAbilityInner_002
+ * Function: DumpSysAbilityInner
+ * SubFunction: NA
+ */
+HWTEST_F(AbilityManagerServiceEighthTest, DumpSysAbilityInner_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest DumpSysAbilityInner_002 start");
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(false));
+    abilityMs_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    abilityMs_->subManagersHelper_->currentMissionListManager_ = std::make_shared<MissionListManager>(
+        DUMP_TEST_USER_ID);
+    std::vector<std::string> info;
+    abilityMs_->DumpSysAbilityInner("-i abc", info, false, false, 0);
+    EXPECT_FALSE(info.empty());
+    EXPECT_EQ(info.back(), DUMP_INVALID_ARG_MSG);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest DumpSysAbilityInner_002 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: DumpSysAbilityInner_003
+ * Function: DumpSysAbilityInner
+ * SubFunction: NA
+ */
+HWTEST_F(AbilityManagerServiceEighthTest, DumpSysAbilityInner_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest DumpSysAbilityInner_003 start");
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(false));
+    abilityMs_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    abilityMs_->subManagersHelper_->currentMissionListManager_ = std::make_shared<MissionListManager>(
+        DUMP_TEST_USER_ID);
+    std::vector<std::string> info;
+    abilityMs_->DumpSysAbilityInner("-i 9999999999", info, false, false, 0);
+    EXPECT_FALSE(info.empty());
+    EXPECT_EQ(info.back(), DUMP_INVALID_ARG_MSG);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest DumpSysAbilityInner_003 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: DumpSysAbilityInner_004
+ * Function: DumpSysAbilityInner
+ * SubFunction: NA
+ */
+HWTEST_F(AbilityManagerServiceEighthTest, DumpSysAbilityInner_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest DumpSysAbilityInner_004 start");
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(false));
+    abilityMs_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    abilityMs_->subManagersHelper_->currentMissionListManager_ = std::make_shared<MissionListManager>(
+        DUMP_TEST_USER_ID);
+    std::vector<std::string> info;
+    abilityMs_->DumpSysAbilityInner("-i 12ab", info, false, false, 0);
+    EXPECT_FALSE(info.empty());
+    EXPECT_EQ(info.back(), DUMP_INVALID_ARG_MSG);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest DumpSysAbilityInner_004 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: DumpSysAbilityInner_005
+ * Function: DumpSysAbilityInner
+ * SubFunction: NA
+ */
+HWTEST_F(AbilityManagerServiceEighthTest, DumpSysAbilityInner_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest DumpSysAbilityInner_005 start");
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(false));
+    abilityMs_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    abilityMs_->subManagersHelper_->currentMissionListManager_ = std::make_shared<MissionListManager>(
+        DUMP_TEST_USER_ID);
+    std::vector<std::string> info;
+    abilityMs_->DumpSysAbilityInner("-i", info, false, false, 0);
+    EXPECT_FALSE(info.empty());
+    EXPECT_EQ(info.back(), DUMP_INVALID_ARG_MSG);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest DumpSysAbilityInner_005 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: DumpSysAbilityInner_006
+ * Function: DumpSysAbilityInner
+ * SubFunction: NA
+ */
+HWTEST_F(AbilityManagerServiceEighthTest, DumpSysAbilityInner_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest DumpSysAbilityInner_006 start");
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(false));
+    abilityMs_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    abilityMs_->subManagersHelper_->missionListManagers_[DUMP_TEST_USER_ID] =
+        std::make_shared<MissionListManager>(DUMP_TEST_USER_ID);
+    std::vector<std::string> info;
+    abilityMs_->DumpSysAbilityInner("-i abc", info, false, true, DUMP_TEST_USER_ID);
+    EXPECT_FALSE(info.empty());
+    EXPECT_EQ(info.back(), DUMP_INVALID_ARG_MSG);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest DumpSysAbilityInner_006 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: DumpSysAbilityInnerBySCB_001
+ * Function: DumpSysAbilityInnerBySCB
+ * SubFunction: NA
+ */
+HWTEST_F(AbilityManagerServiceEighthTest, DumpSysAbilityInnerBySCB_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest DumpSysAbilityInnerBySCB_001 start");
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    abilityMs_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    abilityMs_->subManagersHelper_->uiAbilityManagers_[DUMP_TEST_USER_ID] =
+        std::make_shared<UIAbilityLifecycleManager>();
+    std::vector<std::string> info;
+    abilityMs_->DumpSysAbilityInner("-i abc", info, false, true, DUMP_TEST_USER_ID);
+    EXPECT_FALSE(info.empty());
+    EXPECT_EQ(info.back(), DUMP_INVALID_ARG_MSG);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest DumpSysAbilityInnerBySCB_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: DumpSysAbilityInnerBySCB_002
+ * Function: DumpSysAbilityInnerBySCB
+ * SubFunction: NA
+ */
+HWTEST_F(AbilityManagerServiceEighthTest, DumpSysAbilityInnerBySCB_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest DumpSysAbilityInnerBySCB_002 start");
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    abilityMs_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    abilityMs_->subManagersHelper_->uiAbilityManagers_[DUMP_TEST_USER_ID] =
+        std::make_shared<UIAbilityLifecycleManager>();
+    std::vector<std::string> info;
+    abilityMs_->DumpSysAbilityInnerBySCB("-i 5", info, false, true, DUMP_TEST_USER_ID);
+    EXPECT_FALSE(info.empty());
+    EXPECT_TRUE(info.front().rfind("User ID #", 0) == 0);
+    for (const auto &item : info) {
+        EXPECT_NE(item, DUMP_INVALID_ARG_MSG);
+    }
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest DumpSysAbilityInnerBySCB_002 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: DumpSysAbilityInnerBySCB_003
+ * Function: DumpSysAbilityInnerBySCB
+ * SubFunction: NA
+ */
+HWTEST_F(AbilityManagerServiceEighthTest, DumpSysAbilityInnerBySCB_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest DumpSysAbilityInnerBySCB_003 start");
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(Return(true));
+    abilityMs_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    std::vector<std::string> info;
+    abilityMs_->DumpSysAbilityInnerBySCB("-i 5", info, false, true, DUMP_TEST_USER_ID);
+    EXPECT_TRUE(info.empty());
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceEighthTest DumpSysAbilityInnerBySCB_003 end");
 }
 } // namespace AAFwk
 } // namespace OHOS

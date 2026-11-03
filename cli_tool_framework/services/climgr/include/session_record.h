@@ -33,6 +33,7 @@ namespace CliTool {
 enum class SessionType {
     CLI = 0,
     SKILL,
+    CLI_CMD,
 };
 
 enum class SessionState {
@@ -54,6 +55,8 @@ public:
     std::string sessionId = "";
     std::string toolName = "";
     std::string eventId = "";
+    std::string toolCallId = "";
+    std::string dmSessionId = "";
     pid_t processId = -1;
     int64_t startTime = 0;
     int32_t timeoutMs = 0;

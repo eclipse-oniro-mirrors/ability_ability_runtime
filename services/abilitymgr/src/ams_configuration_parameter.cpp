@@ -95,7 +95,14 @@ int AmsConfigurationParameter::GetBootAnimationTimeoutTime() const
 
 int AmsConfigurationParameter::GetAppStartTimeoutTime() const
 {
-    return timeoutUnitTime_ * AppUtils::GetInstance().GetTimeoutUnitTimeRatio();
+    constexpr int64_t MAX_TIMEOUT_MULTIPLE = 50;
+    int64_t ratio = static_cast<int64_t>(AppUtils::GetInstance().GetTimeoutUnitTimeRatio());
+    int64_t result = static_cast<int64_t>(timeoutUnitTime_) * ratio;
+    if (result < 0 || ratio > MAX_TIMEOUT_MULTIPLE) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "timeout value overflow, clamped to 1 ratio");
+        result = static_cast<int64_t>(timeoutUnitTime_);
+    }
+    return static_cast<int>(result);
 }
 
 void AmsConfigurationParameter::SetPickerJsonObject(nlohmann::json Object)

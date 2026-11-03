@@ -31,16 +31,22 @@ constexpr const char* ERROR_MSG_INNER = "Inner error.";
 #endif // SUPPORT_SCREEN
 JsUIExtensionCallback::~JsUIExtensionCallback()
 {
-    if (jsCallbackObject_  == nullptr) {
+    ReleaseJsCallbackObjectAsync();
+    FreeNativeReference(onRequestSuccess_);
+    FreeNativeReference(onRequestFailure_);
+    FreeNativeReference(completionCallback_);
+}
+
+void JsUIExtensionCallback::ReleaseJsCallbackObjectAsync()
+{
+    if (jsCallbackObject_ == nullptr) {
         return;
     }
-
     uv_loop_t *loop = nullptr;
     napi_get_uv_event_loop(env_, &loop);
     if (loop == nullptr) {
         return;
     }
-
     uv_work_t *work = new (std::nothrow) uv_work_t;
     if (work == nullptr) {
         return;
@@ -67,8 +73,6 @@ JsUIExtensionCallback::~JsUIExtensionCallback()
         delete work;
         work = nullptr;
     }
-    FreeNativeReference(onRequestSuccess_);
-    FreeNativeReference(onRequestFailure_);
 }
 
 void JsUIExtensionCallback::FreeNativeReference(std::unique_ptr<NativeReference>& reference)
@@ -130,7 +134,7 @@ void JsUIExtensionCallback::OnError(int32_t number)
     std::unique_ptr<NapiAsyncTask::CompleteCallback> complete = std::make_unique<NapiAsyncTask::CompleteCallback>
         ([jsUIExtensionCallback, number](napi_env env, NapiAsyncTask &task, int32_t status) {
             if (jsUIExtensionCallback != nullptr) {
-                jsUIExtensionCallback->CallJsError(number);
+                jsUIExtensionCallback->ProcessOnErrorComplete(number);
             }
         });
     napi_ref callback = nullptr;
@@ -138,6 +142,95 @@ void JsUIExtensionCallback::OnError(int32_t number)
     NapiAsyncTask::Schedule("JsUIExtensionCallback::OnError:",
         env_, std::make_unique<NapiAsyncTask>(callback, std::move(execute), std::move(complete)));
     CloseModalUIExtension();
+}
+#endif // SUPPORT_SCREEN
+
+void JsUIExtensionCallback::ProcessOnErrorComplete(int32_t number)
+{
+    CallJsError(number);
+    if (deferred_ != nullptr || completionCallback_ != nullptr) {
+        RejectAsyncResult(
+            static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            "StartAbilityByType failed.");
+    }
+}
+
+void JsUIExtensionCallback::ClearAsyncResult()
+{
+    deferred_ = nullptr;
+    if (completionCallback_ != nullptr) {
+        FreeNativeReference(completionCallback_);
+    }
+}
+
+void JsUIExtensionCallback::RejectAsyncResult(int32_t jsErrCode, const std::string& innerMsg)
+{
+    if (deferred_ != nullptr) {
+        napi_value error = CreateJsError(env_, jsErrCode, innerMsg);
+        napi_reject_deferred(env_, deferred_, error);
+        deferred_ = nullptr;
+    }
+    if (completionCallback_ != nullptr) {
+        napi_value callback = completionCallback_->GetNapiValue();
+        if (callback != nullptr) {
+            napi_value error = CreateJsError(env_, jsErrCode, innerMsg);
+            napi_value undefined = CreateJsUndefined(env_);
+            napi_value argv[] = { error, undefined };
+            napi_status callStatus = napi_call_function(env_, nullptr, callback, ArraySize(argv), argv, nullptr);
+            if (callStatus != napi_ok) {
+                TAG_LOGE(AAFwkTag::UI_EXT, "RejectAsyncResult napi_call_function failed: %{public}d", callStatus);
+            }
+        }
+        FreeNativeReference(completionCallback_);
+    }
+}
+
+void JsUIExtensionCallback::OnAbilityByTypeResult(int32_t errorCode)
+{
+    TAG_LOGI(AAFwkTag::UI_EXT, "call, errorCode: %{public}d", errorCode);
+    if (env_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null env_");
+        return;
+    }
+    int32_t jsErrCode = static_cast<int32_t>(GetJsErrorCodeByNativeError(errorCode));
+    std::string innerMsg = GetErrorMsgByNativeError(errorCode);
+    std::shared_ptr<JsUIExtensionCallback> jsUIExtensionCallback = shared_from_this();
+    std::unique_ptr<NapiAsyncTask::CompleteCallback> complete = std::make_unique<NapiAsyncTask::CompleteCallback>
+        ([jsUIExtensionCallback, errorCode, jsErrCode, innerMsg](napi_env env, NapiAsyncTask &task, int32_t status) {
+            if (jsUIExtensionCallback == nullptr) {
+                return;
+            }
+            if (errorCode == 0) {
+                jsUIExtensionCallback->ResolveAsyncResult();
+            } else {
+                jsUIExtensionCallback->RejectAsyncResult(jsErrCode, innerMsg);
+            }
+        });
+    napi_ref callback = nullptr;
+    std::unique_ptr<NapiAsyncTask::ExecuteCallback> execute = nullptr;
+    NapiAsyncTask::Schedule("JsUIExtensionCallback::OnAbilityByTypeResult:",
+        env_, std::make_unique<NapiAsyncTask>(callback, std::move(execute), std::move(complete)));
+}
+
+void JsUIExtensionCallback::ResolveAsyncResult()
+{
+    if (deferred_ != nullptr) {
+        napi_value value = CreateJsUndefined(env_);
+        napi_resolve_deferred(env_, deferred_, value);
+        deferred_ = nullptr;
+    }
+    if (completionCallback_ != nullptr) {
+        napi_value callback = completionCallback_->GetNapiValue();
+        if (callback != nullptr) {
+            napi_value argv[] = { CreateJsNull(env_), CreateJsUndefined(env_) };
+            napi_status callStatus = napi_call_function(env_, nullptr, callback,
+                ArraySize(argv), argv, nullptr);
+            if (callStatus != napi_ok) {
+                TAG_LOGE(AAFwkTag::UI_EXT, "resolve napi_call_function failed: %{public}d", callStatus);
+            }
+        }
+        FreeNativeReference(completionCallback_);
+    }
 }
 
 void JsUIExtensionCallback::OnResult(int32_t resultCode, const AAFwk::Want &want)
@@ -159,7 +252,9 @@ void JsUIExtensionCallback::OnResult(int32_t resultCode, const AAFwk::Want &want
     std::unique_ptr<NapiAsyncTask::ExecuteCallback> execute = nullptr;
     NapiAsyncTask::Schedule("JsUIExtensionCallback::OnResult:",
         env_, std::make_unique<NapiAsyncTask>(callback, std::move(execute), std::move(complete)));
+#ifdef SUPPORT_SCREEN
     CloseModalUIExtension();
+#endif
 }
 
 void JsUIExtensionCallback::CallJsResult(int32_t resultCode, const AAFwk::Want &want)
@@ -198,7 +293,6 @@ void JsUIExtensionCallback::CallJsResult(int32_t resultCode, const AAFwk::Want &
     TAG_LOGI(AAFwkTag::UI_EXT, "end");
 }
 
-#endif // SUPPORT_SCREEN
 void JsUIExtensionCallback::CallJsError(int32_t number)
 {
     TAG_LOGI(AAFwkTag::UI_EXT, "call");
@@ -238,6 +332,24 @@ void JsUIExtensionCallback::CallJsError(int32_t number)
     napi_value argv[] = { nativeNumber, nativeName, nativeMessage };
     napi_call_function(env_, obj, method, ArraySize(argv), argv, nullptr);
     TAG_LOGI(AAFwkTag::UI_EXT, "end");
+}
+
+bool JsUIExtensionCallback::SetCompletionCallback(napi_env env, napi_value callback)
+{
+    AbilityRuntime::HandleScope handleScope(env);
+    TAG_LOGI(AAFwkTag::UI_EXT, "call");
+    if (env == nullptr || callback == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "invalid parameters");
+        return false;
+    }
+    napi_ref ref = nullptr;
+    napi_status status = napi_create_reference(env, callback, 1, &ref);
+    if (status == napi_ok) {
+        completionCallback_ = std::unique_ptr<NativeReference>(reinterpret_cast<NativeReference*>(ref));
+        return true;
+    }
+    TAG_LOGE(AAFwkTag::UI_EXT, "create completionCallback_ failed: %{public}d", status);
+    return false;
 }
 
 void JsUIExtensionCallback::SetCompletionHandler(napi_env env, napi_value completionHandler)

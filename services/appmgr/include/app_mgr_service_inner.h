@@ -25,6 +25,7 @@
 #include <utility>
 #include <vector>
 
+#include "ui_ability_last_caller_info.h"
 #include "ability_debug_response_interface.h"
 #include "ability_foreground_state_observer_interface.h"
 #include "ability_info.h"
@@ -33,9 +34,12 @@
 #include "app_debug_listener_interface.h"
 #include "app_debug_manager.h"
 #include "app_foreground_state_observer_interface.h"
+#include "process_lifecycle_observer_interface.h"
+#include "focused_application_observer_interface.h"
 #include "app_malloc_info.h"
 #include "app_mgr_constants.h"
 #include "app_mgr_event.h"
+#include "app_query_helper.h"
 #include "hyper_snap_error_record.h"
 #include "app_preloader.h"
 #include "app_record_id.h"
@@ -104,6 +108,7 @@ class WindowPidVisibilityInfo;
 class FocusChangeInfo;
 }
 namespace AppExecFwk {
+struct AppfreezeAppInfo;
 using OHOS::AAFwk::Want;
 using AAFwk::FdGuard;
 using ImageError = IImageErrorHandler::ImageError;
@@ -215,11 +220,13 @@ public:
      *
      * @param token, the unique identification to update the ability.
      * @param state, ability status that needs to be updated.
+     * @param isFromScreenOffBackground Whether from screen off background.
+     * @param callerInfo The caller info including uid and bundle name.
      *
      * @return
      */
     virtual void UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state,
-        bool isFromScreenOffBackground = false);
+        bool isFromScreenOffBackground = false, const UiAbilityLastCallerInfo &callerInfo = {});
 
     /**
      * UpdateExtensionState, call UpdateExtensionState() through the proxy object, update the extension status.
@@ -415,7 +422,7 @@ public:
      * @return ERR_OK, return back success, others fail.
      */
     virtual int32_t KillApplication(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = 0,
-        const std::string &reason = "KillApplication");
+        const std::string &reason = "KillApplication", int32_t userId = -1);
 
     /**
      * ForceKillApplication, force kill the application.
@@ -426,7 +433,7 @@ public:
      * @return ERR_OK, return back success, others fail.
      */
     virtual int32_t ForceKillApplication(const std::string &bundleName, const int userId = -1,
-        const int appIndex = 0);
+        int appIndex = 0);
 
     /**
      * KillApplicationWithUserId, force kill the application.
@@ -467,9 +474,9 @@ public:
      *
      * @param errType Error type.
      * @param record Error record output.
-     * @return true if call succeeded (whether error exists or not), false if parameter error.
+     * @return ERR_OK if call succeeded (whether error exists or not), ERR_INVALID_VALUE on parameter error.
      */
-    bool GetHyperSnapLastError(HyperSnapErrorType errType, HyperSnapErrorRecord& record);
+    int32_t GetHyperSnapLastError(HyperSnapErrorType errType, HyperSnapErrorRecord& record);
 
     /**
      * KillApplicationSelf, this allows app to terminate itself.
@@ -1163,7 +1170,8 @@ public:
     int32_t NotifyAppMgrRecordExitReason(int32_t pid, int32_t reason, const std::string &exitMsg);
 
     int32_t NotifyAppMgrRecordExitReasonCompability(
-        int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg, int32_t reason);
+        int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg,
+        int32_t reason, int32_t callerPid = -1);
 #ifdef APP_MGR_KILL_REASON_TAG
     void RecordAppWithReasonByUserId(int32_t userId, int32_t killId);
 #endif
@@ -1225,6 +1233,8 @@ public:
 #ifdef SUPPORT_SCREEN
     void HandleFocused(const sptr<OHOS::Rosen::FocusChangeInfo> &focusChangeInfo);
     void HandleUnfocused(const sptr<OHOS::Rosen::FocusChangeInfo> &focusChangeInfo);
+    void NotifyFocusedApplicationChanged(int32_t focusedUid, int32_t unfocusedUid,
+        uint64_t displayGroupId, const std::shared_ptr<AppRunningRecord> &appRecord);
 
     /**
      * Handle window visibility changed.
@@ -1502,6 +1512,11 @@ public:
      */
     int32_t UnregisterAppForegroundStateObserver(const sptr<IAppForegroundStateObserver> &observer);
 
+    int32_t RegisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer);
+    int32_t UnregisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer);
+    int32_t RegisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer);
+    int32_t UnregisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer);
+
 #ifdef SUPPORT_CHILD_PROCESS
     /**
      * Start child process, called by ChildProcessManager.
@@ -1599,6 +1614,13 @@ public:
      * @return Returns true is final application process, others return false.
      */
     bool IsFinalAppProcessByBundleName(const std::string &bundleName);
+
+    /**
+     * Query whether the calling process is doing snapshot initialization.
+     * @return Returns true if the calling process is doing snapshot initialization,
+     *         false otherwise (completed, failed, or not a template process).
+     */
+    bool IsHyperSnapInitializing();
 
     /**
      * @brief Notify memory size state changed: LOW_MEMORY, MEMORY_RECOVERY, REQUIRE_BIG_MEMORY, NO_REQUIRE_BIG_MEMORY.
@@ -1880,6 +1902,15 @@ public:
 
     int32_t CheckAppProvisionType(
         const std::string &bundleName, int32_t callerUid, int32_t appCloneIndex, int32_t userId);
+    
+    /**
+     * Async query memmgr whether the process is available for reuse.
+     * If memmgr is unreachable, tolerate and return true (backward compatible).
+     *
+     * @param appRecord Current app running record.
+     * @return true if process is available or memmgr unreachable; false if being killed.
+     */
+    bool CheckProcessAvailable(const std::shared_ptr<AppRunningRecord> &appRecord);
 
 private:
     int32_t ForceKillApplicationInner(const std::string &bundleName, const int userId = -1,
@@ -2104,10 +2135,8 @@ private:
 
     void HandleAddAbilityStageTimeOut(std::shared_ptr<AppRunningRecord> appRecord);
 
-    void ClipStringContent(const std::regex &re, const std::string &source, std::string &afterCutStr);
-
     bool GetBundleAndHapInfo(const AbilityInfo &abilityInfo, const std::shared_ptr<ApplicationInfo> &appInfo,
-        BundleInfo &bundleInfo, HapModuleInfo &hapModuleInfo, int32_t appIndex = 0) const;
+        BundleInfo &bundleInfo, HapModuleInfo &hapModuleInfo, int32_t appIndex) const;
     AppProcessData WrapAppProcessData(const std::shared_ptr<AppRunningRecord> &appRecord,
         const ApplicationState state, bool isFromWindowFocusChanged = false);
 
@@ -2135,22 +2164,15 @@ private:
     /**
      * @brief Another way of GetRunningProcess, only one item will be filled into the info
      */
-    void GetRunningProcesses(const std::shared_ptr<AppRunningRecord> &appRecord, std::vector<RunningProcessInfo> &info);
     /**
      * @brief Retrieve a process's running info
      */
-    void GetRunningProcess(const std::shared_ptr<AppRunningRecord> &appRecord, RunningProcessInfo &info);
 
     /**
      * @brief query a process's render process info
      * @param appRecord the main process
      * @param info to retrieve render process info
      */
-    void GetRenderProcesses(const std::shared_ptr<AppRunningRecord> &appRecord, std::vector<RenderProcessInfo> &info);
-
-#ifdef SUPPORT_CHILD_PROCESS
-    void GetChildrenProcesses(const std::shared_ptr<AppRunningRecord> &appRecord, std::vector<ChildProcessInfo> &info);
-#endif // SUPPORT_CHILD_PROCESS
 
 #ifdef ABILITY_PLATFORM_CHECK_PERMISSION
     int CheckStablePermission(const BundleInfo &bundleInfo);
@@ -2262,8 +2284,6 @@ private:
         int32_t callerUid, pid_t callerPid, int32_t appCloneIndex, int32_t userId, bool isBySelf = false,
         const std::string& reason = "ClearUpApplicationDataByUserId");
 
-    bool CheckGetRunningInfoPermission() const;
-
     /**
      * kill all processes of a bundleName
      * @param bundleName bundleName of which to be killed
@@ -2271,7 +2291,7 @@ private:
      * @param reason caller function name
      */
     int32_t KillApplicationByBundleName(const std::string &bundleName, int32_t appIndex, bool clearPageStack = false,
-        const std::string& reason = "KillApplicationByBundleName");
+        const std::string& reason = "KillApplicationByBundleName", int32_t userId = -1);
 
     bool SendProcessStartEvent(const std::shared_ptr<AppRunningRecord> &appRecord, bool isPreload,
         AppExecFwk::PreloadMode preloadMode);
@@ -2307,9 +2327,6 @@ private:
     void SetOverlayInfo(const std::string& bundleName, const int32_t userId, AppSpawnStartMsg& startMsg);
     void SetAppEnvInfo(const BundleInfo &bundleInfo, AppSpawnStartMsg& startMsg);
 
-    void TimeoutNotifyApp(int32_t pid, int32_t uid, const std::string& bundleName, const std::string& processName,
-        const FaultData &faultData, int32_t recordId);
-
     void AppRecoveryNotifyApp(int32_t pid, const std::string& bundleName,
         FaultDataType faultType, const std::string& markers, int32_t recordId);
     
@@ -2344,8 +2361,6 @@ private:
         RunningMultiAppInfo &info);
 #endif // SUPPORT_CHILD_PROCESS
 
-    void GetRunningMultiInstanceKeys(const std::shared_ptr<AppRunningRecord> &appRecord,
-        std::vector<std::string> &instanceKeys);
     /**
      * To Prevent process being killed when ability is starting in an existing process,
      * we need notify memmgr to increase process priority.
@@ -2449,7 +2464,12 @@ private:
     void HandleConfigurationChange(const Configuration &config, const int32_t userId = -1);
     void HandleConfigurationChange(const Configuration &config, const std::set<int32_t> &userIds);
     bool CheckIsThreadInFoundation(pid_t pid);
+    bool ValidateFreezeTargetSnapshot(int32_t pid, int32_t uid, const std::string &bundleName);
     bool CheckAppFault(const std::shared_ptr<AppRunningRecord> &appRecord, const FaultData &faultData);
+    int64_t GetAppFaultNotifyLatency(const std::string& marker, int32_t pid, int32_t recordId,
+        int64_t receiveTime) const;
+    bool HandleFaultTimeout(FaultData &faultData, int32_t pid, int32_t recordId,
+        int64_t receiveTime, bool isThreadBlock);
     int32_t KillFaultApp(int32_t pid, const std::string &bundleName, const FaultData &faultData,
         bool isNeedExit = false, int32_t recordId = -1);
 #ifdef APP_MGR_KILL_REASON_TAG
@@ -2485,20 +2505,24 @@ private:
     int32_t RestartExitKeepAliveProcess(const std::vector<ExitResidentProcessInfo> &exitProcessInfos);
     bool IsNeedRestartKeepAliveProcess(const std::string &bundleName, int32_t uid);
     bool IsAsanEnabled(const std::shared_ptr<AppRunningRecord> &record);
-    int32_t GetAllRunningInstanceKeysByBundleNameInner(const std::string &bundleName,
-        std::vector<std::string> &instanceKeys, int32_t userId);
     int32_t KillProcessByPidInner(const pid_t pid, const std::string& reason,
         const std::string& killReason, std::shared_ptr<AppRunningRecord> appRecord, bool isKillPrecedeStart);
-    void SetKilledEventInfo(std::shared_ptr<AppRunningRecord> appRecord, AAFwk::EventInfo &eventInfo);
+    static void SetKilledEventInfo(std::shared_ptr<AppRunningRecord> appRecord, AAFwk::EventInfo &eventInfo);
     void AddToKillProcessMap(const std::string &processName);
     bool IsAllowedNWebPreload(const std::string &processName);
     void ParseInfoToAppfreeze(const FaultData &faultData, int32_t pid, int32_t uid, const std::string &bundleName,
         const std::string &processName, const bool isOccurException = false);
     int GetExceptionTimerId(const FaultData &faultData, const std::string &bundleName,
         const std::shared_ptr<AppRunningRecord> &appRecord, const int32_t pid, const int32_t callerUid);
-    bool UpdateForeground(const std::shared_ptr<AppRunningRecord> &appRecord, const std::string &eventName);
+    bool UpdateForeground(const std::shared_ptr<AppRunningRecord> &appRecord, const std::string &eventName,
+        bool abilityPendingBackground = false, bool isInForeground = false);
     int32_t SubmitDfxFaultTask(const FaultData &faultData, const std::string &bundleName,
         const std::shared_ptr<AppRunningRecord> &appRecord, const int32_t pid);
+    int32_t SubmitAppFault(FaultData& faultData, const std::shared_ptr<AppRunningRecord>& appRecord,
+        int32_t pid, int64_t receiveTime);
+    AppfreezeAppInfo GetAppfreezeAppInfo(const std::shared_ptr<AppRunningRecord>& record);
+    __attribute__((visibility("hidden"))) void HandleFaultDisposition(const FaultData& faultData,
+        const std::shared_ptr<AppRunningRecord>& record, bool saTimeout, bool focusFlag);
     void AddAbilityStageForSpecified(std::shared_ptr<AppRunningRecord> appRecord);
     void ReportAbilityStartInfoForSpecified(std::shared_ptr<AppRunningRecord> appRecord,
         const AbilityInfo &abilityInfo);
@@ -2514,6 +2538,7 @@ private:
         const std::shared_ptr<AppRunningRecord> &appRecord, const UIExtensionProcessBindInfo &bindInfo);
     void UnBindUIExtensionProcess(
         const std::shared_ptr<AppRunningRecord> &appRecord, const UIExtensionProcessBindInfo &bindInfo);
+    std::string GetStoragePath(const std::string& hapPath);
     bool WrapBindInfo(std::shared_ptr<AAFwk::Want> &want, std::shared_ptr<AppRunningRecord> &appRecord,
         UIExtensionProcessBindInfo &bindInfo);
     void ReportEventToRSS(const AppExecFwk::AbilityInfo &abilityInfo,
@@ -2567,7 +2592,7 @@ private:
         std::shared_ptr<ApplicationInfo> appInfo, sptr<IRemoteObject> token, const std::string& callerKey,
         int32_t appIndex, const std::string& processName, const std::string& instanceKey,
         const std::string& specifiedProcessFlag, const std::string& customProcessFlag,
-        std::shared_ptr<AppRunningRecord>& appRecord);
+        std::shared_ptr<AppRunningRecord>& appRecord, bool isPrelaunch);
 
     void SnapshotStartReport(int32_t uid, const std::string &bundleName, const std::string &appVersionName,
         int32_t result, const std::string &reason);
@@ -2648,6 +2673,8 @@ private:
 
     std::mutex imageInfoLock_;
     std::unordered_map<MakeImageRequest, std::shared_ptr<ForkImageInfo>, MakeImageRequest::Hash> imageInfoMap_;
+
+    AppQueryHelper appQueryHelper_;
 
     // Minimal in-memory error state: only what cannot be derived later.
     // Error message is generated from the code at query time to save memory.

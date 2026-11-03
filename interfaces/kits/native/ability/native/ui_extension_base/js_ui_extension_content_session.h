@@ -25,8 +25,15 @@
 #include "window.h"
 
 namespace OHOS {
+#ifdef SUPPORT_SCREEN
+namespace Ace {
+struct ModalUIExtensionCallbacks;
+}
+#endif
 namespace AbilityRuntime {
 using RuntimeTask = std::function<void(int, const AAFwk::Want&, bool)>;
+
+class JsUIExtensionCallback;
 
 class UISessionAbilityResultListener : public AbilityResultListener {
 public:
@@ -120,6 +127,15 @@ protected:
         AAFwk::WantParams& wantParam);
     void SetCallbackForTerminateWithResult(int32_t resultCode, AAFwk::Want& want,
         NapiAsyncTask::CompleteCallback& complete);
+    static void ProcessStartAbilityByTypeComplete(napi_env env, const sptr<Rosen::Window>& uiWindow,
+        const AAFwk::Want& want, std::shared_ptr<JsUIExtensionCallback> uiExtensionCallback);
+    napi_value DispatchStartAbilityByTypeResult(napi_env env, napi_value lastParam,
+        HandleEscape& handleEscape, std::shared_ptr<JsUIExtensionCallback> uiExtensionCallback,
+        NapiAsyncTask::CompleteCallback& complete);
+#ifdef SUPPORT_SCREEN
+    static void SetupModalUIExtensionCallbacks(Ace::ModalUIExtensionCallbacks& callback,
+        std::shared_ptr<JsUIExtensionCallback> uiExtensionCallback);
+#endif
 
 private:
     sptr<AAFwk::SessionInfo> sessionInfo_;
@@ -136,6 +152,7 @@ private:
     void InitDisplayId(AAFwk::Want &want);
     void InitDisplayId(AAFwk::Want &want, AAFwk::StartOptions &startOptions, napi_env &env, NapiCallbackInfo& info);
 #endif
+    void RegisterReceiveDataForResultListener(napi_env env);
 };
 
 class JsUIExtensionContentSession::CallbackWrapper {

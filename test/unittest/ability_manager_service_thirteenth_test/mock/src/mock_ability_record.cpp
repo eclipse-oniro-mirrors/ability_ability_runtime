@@ -39,6 +39,8 @@
 #include "ui_service_extension_connection_constants.h"
 #include "res_sched_util.h"
 #include "scene_board_judgement.h"
+#include "server_constant.h"
+#include "skill_execute_param.h"
 #include "startup_util.h"
 #include "system_ability_token_callback.h"
 #include "ui_extension_wrapper.h"
@@ -211,7 +213,11 @@ std::shared_ptr<AbilityRecord> AbilityRecord::CreateAbilityRecord(const AbilityR
     CHECK_POINTER_AND_RETURN(abilityRecord, nullptr);
     abilityRecord->SetUid(abilityRequest.uid);
     int32_t appIndex = 0;
-    (void)AbilityRuntime::StartupUtil::GetAppIndex(abilityRequest.want, appIndex);
+    if (abilityRequest.want.HasParameter(ServerConstant::DLP_INDEX)) {
+        appIndex = abilityRequest.want.GetIntParam(ServerConstant::DLP_INDEX, 0);
+    } else {
+        appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
+    }
     abilityRecord->SetAppIndex(appIndex);
     abilityRecord->SetSecurityFlag(abilityRequest.want.GetBoolParam(DLP_PARAMS_SECURITY_FLAG, false));
     abilityRecord->SetCallerAccessTokenId(abilityRequest.callerAccessTokenId);
@@ -373,7 +379,8 @@ void AbilityRecord::ForegroundUIExtensionAbility(uint32_t sceneFlag)
 {
 }
 
-void AbilityRecord::ProcessForegroundAbility(uint32_t tokenId, const ForegroundOptions &options)
+void AbilityRecord::ProcessForegroundAbility(uint32_t tokenId, const ForegroundOptions &options,
+    bool isCallBySCB)
 {
 }
 
@@ -1361,6 +1368,24 @@ int32_t AbilityRecord::GetWantAppIndex() const
 {
     std::lock_guard guard(wantLock_);
     return want_.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, 0);
+}
+
+void AbilityRecord::SetWantParam(const std::string &key, int32_t value)
+{
+    std::lock_guard guard(wantLock_);
+    want_.SetParam(key, value);
+}
+
+void AbilityRecord::RemoveInsightIntent()
+{
+    std::lock_guard guard(wantLock_);
+    InsightIntentExecuteParam::RemoveInsightIntent(want_);
+}
+
+void AbilityRecord::RemoveSkillParam()
+{
+    std::lock_guard guard(wantLock_);
+    SkillExecuteParam::RemoveSkillParam(want_);
 }
 
 bool AbilityRecord::IsMinimizeFromUser() const

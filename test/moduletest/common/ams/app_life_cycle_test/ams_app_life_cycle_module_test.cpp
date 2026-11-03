@@ -184,7 +184,7 @@ std::shared_ptr<AppRunningRecord> AmsAppLifeCycleModuleTest::StartProcessAndLoad
     serviceInner_->LoadAbility(abilityInfo, appInfo, nullptr, loadParamPtr);
     BundleInfo bundleInfo;
     HapModuleInfo hapModuleInfo;
-    EXPECT_TRUE(serviceInner_->GetBundleAndHapInfo(*abilityInfo, appInfo, bundleInfo, hapModuleInfo));
+    EXPECT_TRUE(serviceInner_->GetBundleAndHapInfo(*abilityInfo, appInfo, bundleInfo, hapModuleInfo, 0));
 
     std::shared_ptr<AppRunningRecord> record = serviceInner_->appRunningManager_->CheckAppRunningRecordIsExist(
         appInfo->name, abilityInfo->process, abilityInfo->applicationInfo.uid, bundleInfo);

@@ -19,18 +19,29 @@ module_output_path = "ability_runtime/ability_runtime/clitool"
 ohos_unittest("invoke_function_callback_client_test") {
   module_out_path = module_output_path
 
+  use_exceptions = true
+
   include_dirs = [
     "${cli_tool_framework_path}/frameworks/js/napi/function_manager/include",
     "${cli_tool_framework_path}/interfaces/cli_tool/include",
+    "${ability_runtime_innerkits_path}/ability_manager/include",
+    "${ability_runtime_innerkits_path}/ability_manager/include/insight_intent",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native",
+    "${ability_runtime_services_path}/abilitymgr/include/insight_intent",
+    "${ability_runtime_path}/utils/global/common/include",
+    "${ability_runtime_services_path}/common/include",
   ]
 
   sources = [
     "invoke_function_callback_client_test.cpp",
     "${cli_tool_framework_path}/frameworks/js/napi/function_manager/src/invoke_function_callback_client.cpp",
+    "${cli_tool_framework_path}/interfaces/cli_tool/src/invoke_function_result.cpp",
+    "${cli_tool_framework_path}/interfaces/cli_tool/src/function_result_wrap.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_execute_result.cpp",
   ]
 
   deps = [
-    "${ability_runtime_path}/interfaces/inner_api/insight_intent/intent_client:intent_client",
+    "${ability_runtime_path}/utils/global/common:runtime_utils",
   ]
 
   external_deps = [
@@ -41,6 +52,7 @@ ohos_unittest("invoke_function_callback_client_test") {
     "googletest:gtest_main",
     "hilog:libhilog",
     "ipc:ipc_core",
+    "json:nlohmann_json_static",
   ]
 }
 

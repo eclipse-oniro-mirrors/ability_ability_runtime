@@ -24,9 +24,9 @@ class CrowdTestInterceptor : public IAbilityInterceptor {
 public:
     CrowdTestInterceptor() = default;
     ~CrowdTestInterceptor() = default;
-    ErrCode DoProcess(const AbilityInterceptorParam &param) override;
+    ErrCode DoProcess(AbilityInterceptorParam &param) override;
 private:
-    bool CheckCrowdtest(const Want &want, int32_t userId);
+    bool CheckCrowdtest(const StartAbilityContext &ctx, const Want &want, int32_t userId);
 };
 } // namespace AAFwk
 } // namespace OHOS

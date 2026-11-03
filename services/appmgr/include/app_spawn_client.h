@@ -89,15 +89,10 @@ struct AppSpawnStartMsg {
     uint8_t allowInternet; // hap socket allowed
     uint8_t reserved1;
     uint8_t reserved2;
-    bool atomicServiceFlag = false;
-    bool isolatedExtension = false; // whether is isolatedExtension
     bool strictMode = false; // whether is strict mode
-    bool isolationMode = false;
     bool isolatedNetworkFlag = false;
     bool isolatedSELinuxFlag = false;
-    bool isolatedSandboxFlagLegacy = false; // APP_FLAGS_EXTENSION_SANDBOX legacy
     bool isScreenLockDataProtect = false;
-    bool isCustomSandboxFlag = false;
 };
 
 constexpr auto LEN_PID = sizeof(pid_t);
@@ -116,9 +111,15 @@ struct StartFlags {
     static const int GWP_ENABLED_NORMAL = 11;
     static const int TSANENABLED = 12;
     static const int EXTENSION_CONTROLLED = 13;
+    static const int ISOLATED_SANDBOX = 14;
+    static const int EXTENSION_SANDBOX = 15;
+    static const int ATOMIC_SERVICE = 19;
     static const int HWASANENABLED = 21;
     static const int UBSANENABLED = 22;
+    static const int ISOLATED_SANDBOX_TYPE = 23;
+    static const int ISOLATED_NETWORK = 26;
     static const int TEMP_JIT_ALLOW = 28;
+    static const int CUSTOM_SANDBOX = 31;
     static const int DLP_MANAGER_FULL_CONTROL = 37;
     static const int DLP_MANAGER_READ_ONLY = 38;
     static const int CLOUD_FILE_SYNC_ENABLED = 39;
@@ -293,8 +294,6 @@ private:
 #endif  // SUPPORT_CHILD_PROCESS
 
     int32_t SetExtMsgFds(const AppSpawnReqMsgHandle &reqHandle, const std::map<std::string, int32_t> &fds);
-
-    int32_t SetIsolationModeFlag(const AppSpawnStartMsg &startMsg, const AppSpawnReqMsgHandle &reqHandle);
 
     int32_t SetStrictMode(const AppSpawnStartMsg &startMsg, const AppSpawnReqMsgHandle &reqHandle);
 

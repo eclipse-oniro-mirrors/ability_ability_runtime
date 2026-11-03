@@ -27,6 +27,7 @@
 #include "hitrace_meter.h"
 #include "ipc_skeleton.h"
 #include "global_constant.h"
+#include "exec_options.h"
 #include "permission_verification.h"
 #include "scene_board_judgement.h"
 #include "start_ability_utils.h"
@@ -413,8 +414,45 @@ void UpdateCallerInfoUtil::UpdateCallerAppCloneIndex(Want& want, int32_t appInde
     want.SetParam(Want::PARAM_RESV_CALLER_APP_CLONE_INDEX, appIndex);
 }
 
+void UpdateCallerInfoUtil::CacheCallerInfoFromWant(const Want &want, AbilitySessionInfo &info)
+{
+    info.callerUid = want.GetIntParam(Want::PARAM_RESV_CALLER_UID, 0);
+    info.callerPid = want.GetIntParam(Want::PARAM_RESV_CALLER_PID, 0);
+    info.callerNativeName = want.GetStringParam(Want::PARAM_RESV_CALLER_NATIVE_NAME);
+    info.hasCallerNativeName = want.HasParameter(Want::PARAM_RESV_CALLER_NATIVE_NAME);
+    info.callerAbilityName = want.GetStringParam(Want::PARAM_RESV_CALLER_ABILITY_NAME);
+    info.callerAppId = want.GetStringParam(Want::PARAM_RESV_CALLER_APP_ID);
+    info.callerAppIdentifier = want.GetStringParam(Want::PARAM_RESV_CALLER_APP_IDENTIFIER);
+    info.callerAppCloneIndex = want.GetIntParam(Want::PARAM_RESV_CALLER_APP_CLONE_INDEX, 0);
+}
+
+void UpdateCallerInfoUtil::RestoreCallerInfoToWant(Want &want, const AbilitySessionInfo &info)
+{
+    want.SetParam(Want::PARAM_RESV_CALLER_TOKEN, static_cast<int32_t>(info.callerTokenId));
+    want.SetParam(Want::PARAM_RESV_CALLER_UID, info.callerUid);
+    want.SetParam(Want::PARAM_RESV_CALLER_PID, info.callerPid);
+    want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, info.callerBundleName);
+    if (info.hasCallerNativeName) {
+        want.SetParam(Want::PARAM_RESV_CALLER_NATIVE_NAME, info.callerNativeName);
+    } else {
+        want.RemoveParam(Want::PARAM_RESV_CALLER_NATIVE_NAME);
+    }
+    want.SetParam(Want::PARAM_RESV_CALLER_ABILITY_NAME, info.callerAbilityName);
+    want.SetParam(Want::PARAM_RESV_CALLER_APP_ID, info.callerAppId);
+    want.SetParam(Want::PARAM_RESV_CALLER_APP_IDENTIFIER, info.callerAppIdentifier);
+    want.SetParam(Want::PARAM_RESV_CALLER_APP_CLONE_INDEX, info.callerAppCloneIndex);
+}
+
 void UpdateCallerInfoUtil::ClearProtectedWantParam(Want &want)
 {
+    // Trace-only reserved param, unified cleanup point: every start-scheduling chain funnels
+    // through one of the Update* entries (and therefore here), so the param is logged once and
+    // stripped for any value before the Want reaches the app side or mission snapshots.
+    const std::string toolCallId = want.GetStringParam("ohos.aafwk.param.toolCallId");
+    if (!toolCallId.empty() && CliTool::IsValidTraceId(toolCallId)) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "start ability with toolCallId: %{public}s", toolCallId.c_str());
+    }
+    want.RemoveParam("ohos.aafwk.param.toolCallId");
     if (want.HasParameter(HIDE_SENSITIVE_TYPE)) {
         EventInfo eventInfo;
         const auto &bundleName = want.GetBundleNameRef();

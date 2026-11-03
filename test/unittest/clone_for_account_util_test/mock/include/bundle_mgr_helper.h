@@ -30,6 +30,7 @@ public:
     bool QueryEnabledAbilityInfo(const Want &want, int32_t userId, AbilityInfo &abilityInfo);
 
     bool QueryEnabledExtensionAbilityInfo(const Want &want, int32_t userId, ExtensionAbilityInfo &extensionInfo);
+    ErrCode GetDualModeBundleInfo(const std::string &bundleName, int32_t userId, int32_t &appIndex);
 
     static bool isBundleManagerHelperNull;
     static bool retQueryEnabledAbilityInfo;

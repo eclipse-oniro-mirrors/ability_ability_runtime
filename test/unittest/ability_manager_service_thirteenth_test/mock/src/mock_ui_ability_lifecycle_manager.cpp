@@ -208,7 +208,7 @@ void UIAbilityLifecycleManager::UpdateAbilityRecordLaunchReason(
 UIAbilityRecordPtr UIAbilityLifecycleManager::GetUIAbilityRecordBySessionInfo(
     const sptr<SessionInfo> &sessionInfo)
 {
-    return nullptr;
+    return MyStatus::GetInstance().ualmGetUIAbilityRecordBySessionInfo_;
 }
 
 int32_t UIAbilityLifecycleManager::NotifySCBToMinimizeUIAbility(const sptr<IRemoteObject> token,
@@ -218,6 +218,11 @@ int32_t UIAbilityLifecycleManager::NotifySCBToMinimizeUIAbility(const sptr<IRemo
 }
 
 int32_t UIAbilityLifecycleManager::SetGamePreLaunchCompleteTime(int64_t completeTime)
+{
+    return 0;
+}
+
+int32_t UIAbilityLifecycleManager::ExtendGamePreLaunchTimeout(int32_t pid, int64_t extendTime)
 {
     return 0;
 }
@@ -252,7 +257,7 @@ int UIAbilityLifecycleManager::PrelaunchAbilityLocked(const AbilityRequest &abil
     return 0;
 }
 
-bool UIAbilityLifecycleManager::IsAbilityStarted(AbilityRequest &abilityRequest,
+bool UIAbilityLifecycleManager::IsAbilityStarted(const AbilityRequest &abilityRequest,
     std::shared_ptr<AbilityRecord> &targetRecord)
 {
     return false;
@@ -310,8 +315,9 @@ void UIAbilityLifecycleManager::CompleteBackground(const UIAbilityRecordPtr &abi
 }
 
 int32_t UIAbilityLifecycleManager::BackToCallerAbilityWithResult(std::shared_ptr<AbilityRecord> abilityRecord,
-    int resultCode, const Want *resultWant, int64_t callerRequestCode)
+    int resultCode, const Want &resultWant, int64_t callerRequestCode, bool isBackToCallerApp)
 {
+    MyStatus::GetInstance().ualmIsBackToCallerApp_ = isBackToCallerApp;
     return ERR_OK;
 }
 

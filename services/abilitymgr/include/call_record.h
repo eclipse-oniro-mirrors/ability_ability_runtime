@@ -80,6 +80,8 @@ public:
     AppExecFwk::ElementName GetTargetServiceName() const;
     sptr<IRemoteObject> GetCallerToken() const;
     int32_t GetUserId() const;
+    void SetPrelaunchFlag(bool isPrelaunch);
+    bool IsPrelaunch() const;
 
 private:
     static int64_t callRecordId;
@@ -92,6 +94,7 @@ private:
     sptr<IAbilityConnection> connCallback_ = nullptr;    // service connect callback
     sptr<IRemoteObject> callerToken_ = nullptr;          // caller token
     int recordId_;                             // record id
+    bool isPrelaunch_ = false;                 // whether this call record is from prelaunch
 
     DISALLOW_COPY_AND_MOVE(CallRecord);
 };

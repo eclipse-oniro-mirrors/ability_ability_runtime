@@ -41,6 +41,7 @@ ohos_fuzztest("LocalPendingWantFuzzTest") {
   ]
 
   external_deps = [
+    "eventhandler:libeventhandler",
     "ability_base:base",
     "ability_base:want",
     "c_utils:utils",

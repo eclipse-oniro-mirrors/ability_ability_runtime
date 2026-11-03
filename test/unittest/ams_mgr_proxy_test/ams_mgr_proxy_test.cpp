@@ -186,6 +186,48 @@ HWTEST_F(AmsMgrProxyTest, NotifyAppMgrRecordExitReason_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: NotifyAppMgrRecordExitReasonCompability_0100
+ * @tc.desc: NotifyAppMgrRecordExitReasonCompability with callerPid.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrProxyTest, NotifyAppMgrRecordExitReasonCompability_0100, TestSize.Level1)
+{
+    EXPECT_NE(amsMgrProxy_, nullptr);
+    EXPECT_NE(response_, nullptr);
+    EXPECT_CALL(*mockAmsMgrScheduler_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(NO_ERROR));
+
+    int32_t pid = 1;
+    int32_t killId = 1;
+    std::string killMsg = "killMsg";
+    std::string innerMsg = "innerMsg";
+    int32_t reason = 0;
+    int32_t callerPid = 12345;
+    auto result = amsMgrProxy_->NotifyAppMgrRecordExitReasonCompability(
+        pid, killId, killMsg, innerMsg, reason, callerPid);
+    EXPECT_EQ(result, NO_ERROR);
+}
+
+/**
+ * @tc.name: NotifyAppMgrRecordExitReasonCompability_0200
+ * @tc.desc: NotifyAppMgrRecordExitReasonCompability when SendRequest fails.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrProxyTest, NotifyAppMgrRecordExitReasonCompability_0200, TestSize.Level1)
+{
+    EXPECT_NE(amsMgrProxy_, nullptr);
+    EXPECT_NE(response_, nullptr);
+    EXPECT_CALL(*mockAmsMgrScheduler_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(ERR_NULL_OBJECT));
+
+    auto result = amsMgrProxy_->NotifyAppMgrRecordExitReasonCompability(
+        1, 1, "kill", "inner", 0, 12345);
+    EXPECT_NE(result, NO_ERROR);
+}
+
+/**
  * @tc.name: PreloadApplicationByPhase_0100
  * @tc.desc: PreloadApplicationByPhase.
  * @tc.type: FUNC

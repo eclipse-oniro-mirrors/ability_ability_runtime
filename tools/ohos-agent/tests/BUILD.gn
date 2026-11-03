@@ -1,0 +1,65 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//build/test.gni")
+import("//foundation/ability/ability_runtime/ability_runtime.gni")
+
+# Unit tests for the ohos-agent CLI tool (issue-16055). Compiles cli_agent_connection.cpp +
+# session_protocol.cpp directly so the public entry RunCommandLoop (and thus the file-local
+# DispatchLine) is exercised, alongside the pure-logic helpers (EscapeJsonString, event builders),
+# the CliAgentConnectorStub host callbacks, the OnAbilityConnectDone CR-1 proxy-null guard, and the
+# disconnect 防重入 state machine (TASK-5).
+ohos_unittest("ohos_agent_test") {
+  module_out_path = "ability_runtime/ability_runtime/tools/ohos_agent_test"
+
+  sources = [
+    "ohos_agent_test.cpp",
+    "../src/cli_agent_connection.cpp",
+    "../src/session_protocol.cpp",
+  ]
+
+  include_dirs = [
+    "../include",
+    "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
+    "${agent_runtime_framework_path}/interfaces/inner_api/include",
+    "${ability_runtime_services_path}/common/include",
+  ]
+
+  deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_connect_callback_stub",
+    "${agent_runtime_framework_path}/interfaces/inner_api:agent_manager",
+    "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection:agent_extension_connection",
+  ]
+
+  external_deps = [
+    "ability_base:base",
+    "ability_base:want",
+    # snprintf_s (EscapeJsonString) comes from securec.
+    "bounds_checking_function:libsec_shared",
+    "bundle_framework:appexecfwk_base",
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "init:libbegetutil",
+    "ipc:ipc_core",
+    "json:nlohmann_json_static",
+  ]
+
+  cflags_cc = []
+}
+
+group("unittest") {
+  testonly = true
+  deps = [ ":ohos_agent_test" ]
+}

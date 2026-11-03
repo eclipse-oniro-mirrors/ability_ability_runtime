@@ -20,6 +20,7 @@
 #include "native_ability_util.h"
 
 using namespace testing::ext;
+using namespace testing;
 using namespace OHOS::AppExecFwk;
 
 namespace OHOS {
@@ -511,6 +512,150 @@ HWTEST_F(UIAbilityRecordTest, CreateAbilityRecord_ByOeExt_0100, TestSize.Level1)
     abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
     ASSERT_NE(abilityRecord, nullptr);
     EXPECT_FALSE(abilityRecord->IsByOeExt());
+}
+
+/**
+ * @tc.name: UpdatePendingStateByCall_0100
+ * @tc.desc: Background call on initial-state record should set pending state to BACKGROUND.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, UpdatePendingStateByCall_0100, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    EXPECT_EQ(abilityRecord->GetPendingState(), AbilityState::INITIAL);
+
+    abilityRecord->UpdatePendingStateByCall(CallToState::BACKGROUND);
+    EXPECT_EQ(abilityRecord->GetPendingState(), AbilityState::BACKGROUND);
+}
+
+/**
+ * @tc.name: UpdatePendingStateByCall_0200
+ * @tc.desc: Foreground call should set pending state to FOREGROUND regardless of current state.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, UpdatePendingStateByCall_0200, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->SetPendingState(AbilityState::BACKGROUND);
+
+    abilityRecord->UpdatePendingStateByCall(CallToState::FOREGROUND);
+    EXPECT_EQ(abilityRecord->GetPendingState(), AbilityState::FOREGROUND);
+}
+
+/**
+ * @tc.name: UpdatePendingStateByCall_0300
+ * @tc.desc: Background call when pending state is already FOREGROUND should keep FOREGROUND (race condition fix).
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, UpdatePendingStateByCall_0300, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->SetPendingState(AbilityState::FOREGROUND);
+
+    abilityRecord->UpdatePendingStateByCall(CallToState::BACKGROUND);
+    EXPECT_EQ(abilityRecord->GetPendingState(), AbilityState::FOREGROUND);
+}
+
+/**
+ * @tc.name: UpdatePendingStateByCall_0400
+ * @tc.desc: UNKNOW call state should set pending state to FOREGROUND (non-BACKGROUND branch).
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, UpdatePendingStateByCall_0400, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->SetPendingState(AbilityState::BACKGROUND);
+
+    abilityRecord->UpdatePendingStateByCall(CallToState::UNKNOW);
+    EXPECT_EQ(abilityRecord->GetPendingState(), AbilityState::FOREGROUND);
+}
+
+/**
+ * @tc.name: UpdatePendingStateByCall_0500
+ * @tc.desc: Background call after foreground call should keep FOREGROUND (simulates the race condition).
+ *          StartUIAbility sets FOREGROUND, then CallUIAbilityBySCB arrives with BACKGROUND but should not override.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, UpdatePendingStateByCall_0500, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+
+    abilityRecord->UpdatePendingStateByCall(CallToState::BACKGROUND);
+    EXPECT_EQ(abilityRecord->GetPendingState(), AbilityState::BACKGROUND);
+
+    abilityRecord->SetPendingState(AbilityState::FOREGROUND);
+    abilityRecord->UpdatePendingStateByCall(CallToState::BACKGROUND);
+    EXPECT_EQ(abilityRecord->GetPendingState(), AbilityState::FOREGROUND);
+}
+
+/**
+ * @tc.name: NotifyCallersOnPrelaunchTimeout_NullContainer_0100
+ * @tc.desc: NotifyCallersOnPrelaunchTimeout with null callContainer, should not crash
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, NotifyCallersOnPrelaunchTimeout_NullContainer_0100, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.bundleName = "testBundle";
+    abilityRequest.abilityInfo.name = "testAbility";
+    abilityRequest.abilityInfo.moduleName = "testModule";
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+
+    abilityRecord->SetPrelaunchFlag(true);
+    EXPECT_EQ(abilityRecord->callContainer_, nullptr);
+    abilityRecord->NotifyCallersOnPrelaunchTimeout();
+}
+
+/**
+ * @tc.name: NotifyCallersOnPrelaunchTimeout_NoPrelaunch_0100
+ * @tc.desc: NotifyCallersOnPrelaunchTimeout with prelaunch flag false, should return early
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, NotifyCallersOnPrelaunchTimeout_NoPrelaunch_0100, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.bundleName = "testBundle";
+    abilityRequest.abilityInfo.name = "testAbility";
+    abilityRequest.abilityInfo.moduleName = "testModule";
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+
+    auto callContainer = std::make_shared<CallContainer>();
+    abilityRecord->callContainer_ = callContainer;
+    EXPECT_CALL(*callContainer, NotifyDisconnectOnTimeout(_)).Times(0);
+    abilityRecord->NotifyCallersOnPrelaunchTimeout();
+}
+
+/**
+ * @tc.name: NotifyCallersOnPrelaunchTimeout_0100
+ * @tc.desc: NotifyCallersOnPrelaunchTimeout with prelaunch flag true and valid callContainer
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, NotifyCallersOnPrelaunchTimeout_0100, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.bundleName = "testBundle";
+    abilityRequest.abilityInfo.name = "testAbility";
+    abilityRequest.abilityInfo.moduleName = "testModule";
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+
+    abilityRecord->SetPrelaunchFlag(true);
+    auto callContainer = std::make_shared<CallContainer>();
+    abilityRecord->callContainer_ = callContainer;
+    EXPECT_CALL(*callContainer, NotifyDisconnectOnTimeout(_)).Times(1);
+    abilityRecord->NotifyCallersOnPrelaunchTimeout();
 }
 }  // namespace AAFwk
 }  // namespace OHOS

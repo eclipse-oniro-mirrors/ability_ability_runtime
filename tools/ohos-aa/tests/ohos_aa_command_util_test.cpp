@@ -1642,3 +1642,147 @@ HWTEST_F(OhosAaCommandUtilTest, Ohos_Aa_CreateErrorInfoMap_0100, Function | Medi
     EXPECT_NE(cmd.errorInfoMap_.find(KILL_PROCESS_FAILED), cmd.errorInfoMap_.end());
     EXPECT_NE(cmd.errorInfoMap_.find(INNER_ERR_START), cmd.errorInfoMap_.end());
 }
+
+// ==================== IsValidToolCallId tests ====================
+
+/**
+ * @tc.number: Ohos_Aa_IsValidToolCallId_0100
+ * @tc.name: IsValidToolCallId
+ * @tc.desc: Verify empty toolCallId is valid (an empty string is a provided value)
+ */
+HWTEST_F(OhosAaCommandUtilTest, Ohos_Aa_IsValidToolCallId_0100, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ohos_Aa_IsValidToolCallId_0100");
+
+    EXPECT_TRUE(IsValidToolCallId(""));
+}
+
+/**
+ * @tc.number: Ohos_Aa_IsValidToolCallId_0200
+ * @tc.name: IsValidToolCallId
+ * @tc.desc: Verify single character toolCallId is valid.
+ */
+HWTEST_F(OhosAaCommandUtilTest, Ohos_Aa_IsValidToolCallId_0200, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ohos_Aa_IsValidToolCallId_0200");
+
+    EXPECT_TRUE(IsValidToolCallId("a"));
+}
+
+/**
+ * @tc.number: Ohos_Aa_IsValidToolCallId_0300
+ * @tc.name: IsValidToolCallId
+ * @tc.desc: Verify toolCallId of exactly 256 characters is valid.
+ */
+HWTEST_F(OhosAaCommandUtilTest, Ohos_Aa_IsValidToolCallId_0300, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ohos_Aa_IsValidToolCallId_0300");
+
+    std::string maxLengthId(256, 'a');
+    EXPECT_EQ(maxLengthId.length(), 256u);
+    EXPECT_TRUE(IsValidToolCallId(maxLengthId));
+}
+
+/**
+ * @tc.number: Ohos_Aa_IsValidToolCallId_0400
+ * @tc.name: IsValidToolCallId
+ * @tc.desc: Verify toolCallId longer than 256 characters is invalid.
+ */
+HWTEST_F(OhosAaCommandUtilTest, Ohos_Aa_IsValidToolCallId_0400, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ohos_Aa_IsValidToolCallId_0400");
+
+    std::string tooLongId(257, 'a');
+    EXPECT_EQ(tooLongId.length(), 257u);
+    EXPECT_FALSE(IsValidToolCallId(tooLongId));
+}
+
+/**
+ * @tc.number: Ohos_Aa_IsValidToolCallId_0500
+ * @tc.name: IsValidToolCallId
+ * @tc.desc: Verify toolCallId with letters, digits, hyphen and underscore is valid.
+ */
+HWTEST_F(OhosAaCommandUtilTest, Ohos_Aa_IsValidToolCallId_0500, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ohos_Aa_IsValidToolCallId_0500");
+
+    EXPECT_TRUE(IsValidToolCallId("call-id_001"));
+}
+
+/**
+ * @tc.number: Ohos_Aa_IsValidToolCallId_0600
+ * @tc.name: IsValidToolCallId
+ * @tc.desc: Verify mixed case alphanumeric toolCallId is valid.
+ */
+HWTEST_F(OhosAaCommandUtilTest, Ohos_Aa_IsValidToolCallId_0600, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ohos_Aa_IsValidToolCallId_0600");
+
+    EXPECT_TRUE(IsValidToolCallId("AbC-123_xyz"));
+}
+
+/**
+ * @tc.number: Ohos_Aa_IsValidToolCallId_0700
+ * @tc.name: IsValidToolCallId
+ * @tc.desc: Verify toolCallId containing a space is invalid.
+ */
+HWTEST_F(OhosAaCommandUtilTest, Ohos_Aa_IsValidToolCallId_0700, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ohos_Aa_IsValidToolCallId_0700");
+
+    EXPECT_FALSE(IsValidToolCallId("call id"));
+}
+
+/**
+ * @tc.number: Ohos_Aa_IsValidToolCallId_0800
+ * @tc.name: IsValidToolCallId
+ * @tc.desc: Verify toolCallId containing an at-sign is invalid.
+ */
+HWTEST_F(OhosAaCommandUtilTest, Ohos_Aa_IsValidToolCallId_0800, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ohos_Aa_IsValidToolCallId_0800");
+
+    EXPECT_FALSE(IsValidToolCallId("call@id"));
+}
+
+/**
+ * @tc.number: Ohos_Aa_IsValidToolCallId_0900
+ * @tc.name: IsValidToolCallId
+ * @tc.desc: Verify toolCallId containing a dot is invalid.
+ */
+HWTEST_F(OhosAaCommandUtilTest, Ohos_Aa_IsValidToolCallId_0900, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ohos_Aa_IsValidToolCallId_0900");
+
+    EXPECT_FALSE(IsValidToolCallId("call.id"));
+}
+
+/**
+ * @tc.number: Ohos_Aa_IsValidToolCallId_1000
+ * @tc.name: IsValidToolCallId
+ * @tc.desc: Verify toolCallId of exactly 256 characters ending with a hyphen is valid.
+ */
+HWTEST_F(OhosAaCommandUtilTest, Ohos_Aa_IsValidToolCallId_1000, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ohos_Aa_IsValidToolCallId_1000");
+
+    std::string maxLengthWithHyphen(255, 'a');
+    maxLengthWithHyphen += '-';
+    EXPECT_EQ(maxLengthWithHyphen.length(), 256u);
+    EXPECT_TRUE(IsValidToolCallId(maxLengthWithHyphen));
+}
+
+/**
+ * @tc.number: Ohos_Aa_IsValidToolCallId_1100
+ * @tc.name: IsValidToolCallId
+ * @tc.desc: Verify toolCallId of valid length containing an invalid character is invalid.
+ */
+HWTEST_F(OhosAaCommandUtilTest, Ohos_Aa_IsValidToolCallId_1100, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Ohos_Aa_IsValidToolCallId_1100");
+
+    std::string validLengthInvalidCharset(255, 'a');
+    validLengthInvalidCharset += '!';
+    EXPECT_EQ(validLengthInvalidCharset.length(), 256u);
+    EXPECT_FALSE(IsValidToolCallId(validLengthInvalidCharset));
+}

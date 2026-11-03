@@ -46,6 +46,11 @@ bool IsArrayForNapiValue(napi_env env, napi_value param, uint32_t &arraySize)
     bool isArray = false;
     arraySize = 0;
 
+    if (param == nullptr) {
+        TAG_LOGD(AAFwkTag::JSNAPI, "param is nullptr");
+        return false;
+    }
+
     if (napi_is_array(env, param, &isArray) != napi_ok || !isArray) {
         return false;
     }

@@ -78,6 +78,11 @@ public:
      *                         caller is a privileged SA (holding
      *                         PERMISSION_GRANT_URI_PERMISSION_PRIVILEGED); otherwise the
      *                         server uses the IPC calling token ID instead.
+     * @param userId Target user ID for multi-foreground user adaptation. Default -1.
+     *                For SA/broker callers: -1 falls back to GetCurrentAccountId,
+     *                >= 0 uses the passed-in value directly, other negative values
+     *                return ERR_UPMS_INVALID_USER_ID. For system-app callers: ignored,
+     *                the server resolves the user from the IPC calling token ID.
      * @return Returns ERR_OK on success; returns ERR_NOT_SYSTEM_APP if the caller is not a
      *         system app/SA, ERR_CODE_INVALID_URI_TYPE for unsupported URI,
      *         CHECK_PERMISSION_FAILED if the caller has no permission on the URI,
@@ -86,7 +91,7 @@ public:
      *       application exits (ClearPermissionTokenByMap). Sandbox applications cannot call.
      */
     int GrantUriPermission(const Uri &uri, uint32_t flag, const std::string targetBundleName, int32_t appIndex = 0,
-        uint32_t initiatorTokenId = 0);
+        uint32_t initiatorTokenId = 0, int32_t userId = -1);
 
     /**
      * @brief Grant the read/write permission of a batch of file URIs to a target application.
@@ -107,6 +112,11 @@ public:
      * @param initiatorTokenId Token ID of the real initiator. Only effective when the IPC
      *                         caller is a privileged SA; otherwise the server uses the IPC
      *                         calling token ID.
+     * @param userId Target user ID for multi-foreground user adaptation. Default -1.
+     *                For SA/broker callers: -1 falls back to GetCurrentAccountId,
+     *                >= 0 uses the passed-in value directly, other negative values
+     *                return ERR_UPMS_INVALID_USER_ID. For system-app callers: ignored,
+     *                the server resolves the user from the IPC calling token ID.
      * @return Returns ERR_OK if at least one URI is granted successfully; returns
      *         ERR_URI_LIST_OUT_OF_RANGE for empty/oversized list, ERR_NOT_SYSTEM_APP if the
      *         caller is not a system app/SA, ERR_CODE_INVALID_URI_TYPE if all URIs are
@@ -116,7 +126,7 @@ public:
      *       granted. Temporary authorization, auto-revoked on target application exit.
      */
     int GrantUriPermission(const std::vector<Uri> &uriVec, uint32_t flag, const std::string targetBundleName,
-        int32_t appIndex = 0, uint32_t initiatorTokenId = 0);
+        int32_t appIndex = 0, uint32_t initiatorTokenId = 0, int32_t userId = -1);
 
     /**
      * @brief Privileged batch grant of URI permission, skipping the caller's own permission
@@ -147,6 +157,11 @@ public:
      * @param hideSensitiveType Hide-sensitive level applied to media URI grants.
      *                          Only effective for foundation callers; ignored (reset to
      *                          the default value 4) for other callers.
+     * @param userId Target user ID for multi-foreground user adaptation. Default -1.
+     *                For SA/broker callers: -1 falls back to GetCurrentAccountId,
+     *                >= 0 uses the passed-in value directly, other negative values
+     *                return ERR_UPMS_INVALID_USER_ID. For system-app callers: ignored,
+     *                the server resolves the user from the IPC calling token ID.
      * @return Returns ERR_OK if at least one URI is granted successfully; returns
      *         CHECK_PERMISSION_FAILED without the privileged permission,
      *         ERR_URI_LIST_OUT_OF_RANGE for empty/oversized list,
@@ -157,8 +172,39 @@ public:
      */
     int32_t GrantUriPermissionPrivileged(const std::vector<Uri> &uriVec, uint32_t flag,
         const std::string &targetBundleName, int32_t appIndex = 0, uint32_t initiatorTokenId = 0,
-        int32_t hideSensitiveType = DEFAULT_HIDE_SENSITIVE_TYPE);
-    
+        int32_t hideSensitiveType = DEFAULT_HIDE_SENSITIVE_TYPE, int32_t userId = -1);
+
+    /**
+     * @brief Privileged batch grant of URI permission to a target application
+     * identified by token ID, skipping the caller's own permission check on the
+     * URIs. Only for SA/system-app callers holding the
+     * PERMISSION_GRANT_URI_PERMISSION_PRIVILEGED permission.
+     *
+     * Unlike the bundle-name based overload, the target is identified directly by
+     * token ID and must be a HAP-type application token; native SA tokens are
+     * rejected with ERR_UPMS_INVALID_TARGET_TOKENID.
+     *
+     * @param uriVec The file URI list, size must be in range (0, 200000]. URI type
+     *               restrictions are the same as GrantUriPermissionPrivileged.
+     * @param flag Must be Want::FLAG_AUTH_READ_URI_PERMISSION or
+     *             Want::FLAG_AUTH_WRITE_URI_PERMISSION (or both). Granting write
+     *             also implies read.
+     * @param targetTokenId Token ID of the application that receives the
+     *                      permission. Must be non-zero and belong to a HAP-type
+     *                      application.
+     * @return Returns ERR_OK if at least one URI is granted successfully; returns
+     *         CHECK_PERMISSION_FAILED without the privileged permission,
+     *         ERR_URI_LIST_OUT_OF_RANGE for empty/oversized list,
+     *         ERR_CODE_INVALID_URI_FLAG for an invalid flag,
+     *         ERR_UPMS_INVALID_TARGET_TOKENID for a zero, non-existent or
+     *         non-HAP target token ID, ERR_CODE_INVALID_URI_TYPE if all URIs
+     *         are invalid, INNER_ERR on IPC/service errors.
+     * @note The IPC caller itself is treated as the URI sharer (no initiator
+     *       token forwarding). Temporary authorization, auto-revoked on target
+     *       application exit. Sandbox applications cannot call.
+     */
+    int32_t GrantUriPermissionPrivileged(const std::vector<Uri> &uriVec, uint32_t flag, uint32_t targetTokenId);
+
     /**
      * @brief Privileged batch grant with an explicit policy type per URI. Only for
      * foundation-process callers (calling uid must be the foundation uid); other callers
@@ -178,16 +224,21 @@ public:
      * @param hideSensitiveType Hide-sensitive level applied to media URI grants.
      * @param permissionTypes Per-URI sandbox policy type (PolicyType) applied to the
      *                        docs/sandbox policy grant; must have the same size as uriVec.
+     * @param userId Target user ID for multi-foreground user adaptation. Must be >= 0;
+     *                negative values return ERR_UPMS_INVALID_USER_ID. Since this interface
+     *                is only callable by the foundation process, the userId is used directly
+     *                without fallback.
      * @return Returns ERR_OK if at least one URI is granted successfully; returns
      *         CHECK_PERMISSION_FAILED for non-foundation callers,
      *         ERR_URI_LIST_OUT_OF_RANGE for size mismatch or out-of-range list,
      *         ERR_CODE_INVALID_URI_FLAG for an invalid flag,
      *         ERR_UPMS_INVALID_CALLER_TOKENID if initiatorTokenId is 0,
+     *         ERR_UPMS_INVALID_USER_ID if userId is negative,
      *         ERR_CODE_INVALID_URI_TYPE if all URIs are invalid.
      */
     int32_t GrantUriPermissionWithType(const std::vector<Uri> &uriVec, uint32_t flag,
         const std::string &targetBundleName, int32_t appIndex, uint32_t initiatorTokenId,
-        int32_t hideSensitiveType, const std::vector<int32_t> &permissionTypes);
+        int32_t hideSensitiveType, const std::vector<int32_t> &permissionTypes, int32_t userId = -1);
 
     /**
      * @brief Grant URI permission identified by token IDs. Only for SA callers holding the
@@ -250,6 +301,11 @@ public:
      *            their respective revoke paths.
      * @param bundleName Bundle name of the application whose permission is revoked.
      * @param appIndex Index of the target application instance, 0 for the default instance.
+     * @param userId Target user ID for multi-foreground user adaptation. Default -1.
+     *                For SA/broker callers: -1 falls back to GetCurrentAccountId,
+     *                >= 0 uses the passed-in value directly, other negative values
+     *                return ERR_UPMS_INVALID_USER_ID. For system-app callers: ignored,
+     *                the server resolves the user from the IPC calling token ID.
      * @return Returns ERR_OK on success or when no matching grant record exists;
      *         returns CHECK_PERMISSION_FAILED if the caller is neither a system app nor
      *         the pasteboard broker, ERR_CODE_INVALID_URI_TYPE for an unsupported URI,
@@ -257,7 +313,8 @@ public:
      * @note Permission required: caller must be a system application (or the pasteboard
      *       broker uid).
      */
-    int RevokeUriPermissionManually(const Uri &uri, const std::string bundleName, int32_t appIndex = 0);
+    int RevokeUriPermissionManually(const Uri &uri, const std::string bundleName, int32_t appIndex = 0,
+        int32_t userId = -1);
 
     /**
      * @brief Verify whether a token ID holds the read/write permission on a URI, including

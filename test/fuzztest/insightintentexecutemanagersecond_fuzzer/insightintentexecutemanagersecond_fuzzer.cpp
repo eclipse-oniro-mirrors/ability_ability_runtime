@@ -36,16 +36,18 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     uint64_t intentId;
     std::string callerBundleName;
     int32_t uid;
+    int32_t pid;
     FuzzedDataProvider fdp(data, size);
     intentId = fdp.ConsumeIntegral<uint64_t>();
     callerBundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
     uid = fdp.ConsumeIntegral<int32_t>();
+    pid = fdp.ConsumeIntegral<int32_t>();
     DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->GetCallerBundleName(intentId, callerBundleName);
     DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->SetIntentExemptionInfo(uid);
     DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->CheckIntentIsExemption(uid);
     DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->CheckGetInsightIntenInfoPermission();
     DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->GetAllIntentExemptionInfo();
-    DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->OnInsightAppDied(callerBundleName);
+    DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->OnInsightAppDied(callerBundleName, pid);
 
     return true;
 }

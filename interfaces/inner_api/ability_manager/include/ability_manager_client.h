@@ -236,9 +236,10 @@ public:
      * otherwise from the mission stack.
      *
      * @param isNeedLocalDeviceId If true, fill an empty deviceId field with the local device id.
+     * @param userId The user id.
      * @return The ElementName of the focus ability, or an empty ElementName on failure/no focus.
      */
-    AppExecFwk::ElementName GetTopAbility(bool isNeedLocalDeviceId = true);
+    AppExecFwk::ElementName GetTopAbility(bool isNeedLocalDeviceId = true, int32_t userId = INVALID_USER_ID);
 
     /**
      * Get the ElementName of the ability identified by token. No permission check — returns an
@@ -572,7 +573,8 @@ public:
     ErrCode StartAbilityOnlyUIAbility(
         const Want &want,
         sptr<IRemoteObject> callerToken,
-        uint32_t specifyTokenId);
+        uint32_t specifyTokenId,
+        int32_t userId = DEFAULT_INVAL_VALUE);
 
     /**
      * Start a UIAbility and receive an asynchronous result callback. IMPORTANT: the callback is
@@ -768,20 +770,21 @@ public:
     ErrCode StartSelf(sptr<IRemoteObject> token);
 
     /**
-     * Return the result to the CALLER ability and finish (terminateSelfWithResult for FA/
-     * delegated scenarios). The callerRequestCode (int64) identifies the caller's outstanding
+     * Return the result to the CALLER ability without terminating the current ability.
+     * The callerRequestCode (int64) identifies the caller's outstanding
      * request. The ability record must exist; the caller must have started this ability for
      * result, otherwise the result is dropped with an error.
      *
      * @param token The token of the ability returning the result.
      * @param resultCode Result code delivered to the caller.
-     * @param resultWant Result data delivered to the caller; may be nullptr.
+     * @param resultWant Result data delivered to the caller.
      * @param callerRequestCode The request code under which the caller awaits the result.
+     * @param isBackToCallerApp Whether the request is from backToCallerAppWithResult.
      * @return ERR_OK on success; ERR_INVALID_VALUE for unknown token; error when no caller
      *         request matches.
      */
     ErrCode BackToCallerAbilityWithResult(const sptr<IRemoteObject> &token, int resultCode,
-        const Want *resultWant, int64_t callerRequestCode);
+        const Want &resultWant, int64_t callerRequestCode, bool isBackToCallerApp = false);
 
     /**
      * Terminate a UIServiceExtensionAbility. SceneBoard callers ONLY (ERR_WRONG_INTERFACE_CALL
@@ -1202,6 +1205,21 @@ public:
     ErrCode KillProcess(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = 0,
         const std::string& reason = "Abilityms::KillProcess");
 
+    /**
+     * Kill the process immediately with a specified userId.
+     *
+     * @param bundleName Bundle name of the application to kill.
+     * @param clearPageStack true to also clear mission/page-stack records of the app.
+     * @param appIndex Clone application index; 0 means the base application.
+     * @param reason Kill reason string recorded in exit statistics.
+     * @param userId The user id to kill process for, -1 means use caller's userId.
+     * @return ERR_OK on success; ERR_PERMISSION_DENIED without permission;
+     *         GET_BUNDLE_INFO_FAILED when the bundle cannot be resolved;
+     *         KILL_PROCESS_KEEP_ALIVE for persistent apps; KILL_PROCESS_FAILED on failure.
+     */
+    ErrCode KillProcessWithUserId(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = 0,
+        const std::string& reason = "Abilityms::KillProcess", int32_t userId = -1);
+
     #ifdef ABILITY_COMMAND_FOR_TEST
     /**
      * Force a lifecycle timeout for the named ability for testing (simulates ANR/timeout paths).
@@ -1303,7 +1321,7 @@ public:
      * @return ERR_OK on success; ERR_NOT_SYSTEM_APP; CHECK_PERMISSION_FAILED without
      *         MANAGE_MISSIONS; ERR_NO_INIT when the mission manager is unavailable.
      */
-    ErrCode LockMissionForCleanup(int32_t missionId);
+    ErrCode LockMissionForCleanup(int32_t missionId, int32_t userId = -1);
 
     /**
      * Unlock a previously locked mission so it can be cleaned again. System-app callers only +
@@ -1312,7 +1330,7 @@ public:
      * @param missionId The id of the mission to unlock.
      * @return ERR_OK on success; ERR_NOT_SYSTEM_APP; CHECK_PERMISSION_FAILED; ERR_NO_INIT.
      */
-    ErrCode UnlockMissionForCleanup(int32_t missionId);
+    ErrCode UnlockMissionForCleanup(int32_t missionId, int32_t userId = -1);
 
     /**
      * Set the locked state of an ability record (session) directly. SceneBoard callers ONLY —
@@ -1331,7 +1349,7 @@ public:
      * @param listener The mission listener to register; must be non-null.
      * @return ERR_OK on success; ERR_NOT_SYSTEM_APP; CHECK_PERMISSION_FAILED; ERR_NO_INIT.
      */
-    ErrCode RegisterMissionListener(sptr<IMissionListener> listener);
+    ErrCode RegisterMissionListener(sptr<IMissionListener> listener, int32_t userId = -1);
 
     /**
      * Unregister a mission listener. System-app callers only + ohos.permission.MANAGE_MISSIONS.
@@ -1339,7 +1357,7 @@ public:
      * @param listener The mission listener to remove; must be non-null.
      * @return ERR_OK on success; ERR_NOT_SYSTEM_APP; CHECK_PERMISSION_FAILED; ERR_NO_INIT.
      */
-    ErrCode UnRegisterMissionListener(sptr<IMissionListener> listener);
+    ErrCode UnRegisterMissionListener(sptr<IMissionListener> listener, int32_t userId = -1);
 
     /**
      * Register a remote mission listener for a remote device (distributed mission sync).
@@ -1392,7 +1410,8 @@ public:
      * @return ERR_OK on success; ERR_NOT_SYSTEM_APP; CHECK_PERMISSION_FAILED without
      *         MANAGE_MISSIONS; ERR_NO_INIT; DMS errors for remote queries.
      */
-    ErrCode GetMissionInfos(const std::string &deviceId, int32_t numMax, std::vector<MissionInfo> &missionInfos);
+    ErrCode GetMissionInfos(const std::string &deviceId, int32_t numMax, std::vector<MissionInfo> &missionInfos,
+        int32_t userId = -1);
 
     /**
      * Query a single mission info by id. System-app callers only +
@@ -1404,7 +1423,8 @@ public:
      * @return ERR_OK on success; ERR_NOT_SYSTEM_APP; CHECK_PERMISSION_FAILED; ERR_NO_INIT;
      *         INVALID_PARAMETERS_ERR / MISSION_NOT_FOUND variants; DMS errors.
      */
-    ErrCode GetMissionInfo(const std::string &deviceId, int32_t missionId, MissionInfo &missionInfo);
+    ErrCode GetMissionInfo(const std::string &deviceId, int32_t missionId, MissionInfo &missionInfo,
+        int32_t userId = -1);
 
     /**
      * Query a single mission info together with the display info of its window. SceneBoard
@@ -1420,7 +1440,7 @@ public:
      *         CHECK_PERMISSION_FAILED without MANAGE_MISSIONS; SCB-mapped errors.
      */
     ErrCode GetMissionInfo(const std::string& deviceId, int32_t missionId, MissionInfo &missionInfo,
-        DisplayInfo &displayInfo);
+        DisplayInfo &displayInfo, int32_t userId = -1);
 
     /**
      * Get the snapshot (screenshot pixel map) of a mission. System-app callers only +
@@ -1435,7 +1455,7 @@ public:
      *         snapshot cannot be captured; DMS errors for remote.
      */
     ErrCode GetMissionSnapshot(const std::string& deviceId, int32_t missionId,
-        MissionSnapshot& snapshot, bool isLowResolution = false);
+        MissionSnapshot& snapshot, bool isLowResolution = false, int32_t userId = -1);
 
     /**
      * Clean (destroy) a single mission. On SceneBoard devices the request is routed to the
@@ -1445,7 +1465,7 @@ public:
      * @return ERR_OK on success; INVALID_PARAMETERS_ERR / MISSION_NOT_FOUND variants;
      *         CHECK_PERMISSION_FAILED (mapped from SCB permission error); ERR_NO_INIT.
      */
-    ErrCode CleanMission(int32_t missionId);
+    ErrCode CleanMission(int32_t missionId, int32_t userId = -1);
 
     /**
      * Clean all missions in the system (except locked/protected ones). SCB path uses
@@ -1453,7 +1473,7 @@ public:
      *
      * @return ERR_OK on success; CHECK_PERMISSION_FAILED; ERR_NO_INIT; SCB-mapped errors.
      */
-    ErrCode CleanAllMissions();
+    ErrCode CleanAllMissions(int32_t userId = -1);
 
     /**
      * Bring a mission to the front (switch to it). System-app callers only +
@@ -1489,7 +1509,7 @@ public:
      * @return ERR_OK on success; ERR_NOT_SYSTEM_APP; CHECK_PERMISSION_FAILED;
      *         ERR_INVALID_VALUE for an empty list; ERR_NO_INIT.
      */
-    ErrCode MoveMissionsToForeground(const std::vector<int32_t>& missionIds, int32_t topMissionId);
+    ErrCode MoveMissionsToForeground(const std::vector<int32_t>& missionIds, int32_t topMissionId, int32_t userId = -1);
 
     /**
      * Move multiple missions to background in one operation. System-app callers only +
@@ -1501,7 +1521,8 @@ public:
      * @return ERR_OK on success; ERR_NOT_SYSTEM_APP; CHECK_PERMISSION_FAILED; ERR_NO_INIT /
      *         ERR_INVALID_VALUE.
      */
-    ErrCode MoveMissionsToBackground(const std::vector<int32_t>& missionIds, std::vector<int32_t>& result);
+    ErrCode MoveMissionsToBackground(const std::vector<int32_t>& missionIds, std::vector<int32_t>& result,
+        int32_t userId = -1);
 
     /**
      * Get the mission (session) id of the ability identified by token. Self-call or DMS callers
@@ -1587,11 +1608,14 @@ public:
      *
      * @param want The want of the ability to prelaunch (explicit element required).
      * @param frameNum Frame number used to remove the start window; 0 means not specified.
+     * @param connect Optional IAbilityConnection callback; when non-null, OnAbilityConnectDone
+     *        is called after prelaunch completes to return the caller object.
      * @return ERR_OK on success; RESOLVE_CALL_NO_PERMISSIONS for non-RSS callers;
      *         ERR_INVALID_VALUE for implicit want / SCB disabled; RESOLVE_CALL_ABILITY_TYPE_ERR /
      *         RESOLVE_CALL_ABILITY_VERSION_ERR for unsupported targets; interceptor errors.
      */
-    ErrCode StartAbilityForPrelaunch(const Want &want, const int32_t frameNum = 0);
+    ErrCode StartAbilityForPrelaunch(const Want &want, const int32_t frameNum = 0,
+        const sptr<IAbilityConnection> &connect = nullptr);
 
     /**
      * Start a sandbox-clone instance of an application (CLI-tool driven sandbox scenario).
@@ -1629,6 +1653,19 @@ public:
      * @param token Output: the owning ability token, or nullptr if not found.
      */
     void GetAbilityTokenByCalleeObj(sptr<IRemoteObject> callStub, sptr<IRemoteObject> &token);
+
+    /**
+     * Get the callee process pid by the call stub returned via OnAbilityConnectDone.
+     * RSS process ONLY (RSS_UID check) — all other callers get RESOLVE_CALL_NO_PERMISSIONS.
+     *
+     * @param callStub The callee stub received in OnAbilityConnectDone.
+     * @param pid Output: the callee process pid.
+     * @return ERR_OK on success; RESOLVE_CALL_NO_PERMISSIONS for non-RSS callers;
+     *         ERR_INVALID_VALUE for null callStub;
+     *         ERR_CALL_STUB_NOT_FOUND when no callee record maps to the callStub;
+     *         ERR_CALLEE_PID_INVALID when the callee record exists but pid is invalid.
+     */
+    ErrCode GetPidByCallStub(sptr<IRemoteObject> callStub, int32_t &pid);
 
     /**
      * Release a call established by StartAbilityByCall: disconnect the connection and, when the
@@ -1879,6 +1916,15 @@ public:
     ErrCode SetGamePreLaunchCompleteTime(int32_t userId, int64_t completeTime);
 
     /**
+     * @brief Extend game prelaunch timeout (reset the pre-launch foreground countdown).
+     * Internal: only game SA (GAME_SA_UID) may call.
+     * @param pid Process ID of the game pre-launch ability to extend.
+     * @param extendTime Extended time in microseconds, must be in range (30s, 4h).
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode ExtendGamePreLaunchTimeout(int32_t pid, int64_t extendTime);
+
+    /**
      * @brief Query whether a UIAbility's onPrepareToTerminate allows termination.
      * SCB only (IsCallerSceneBoard); sessionInfo with valid sessionToken required.
      * @param sessionInfo Session info of the ability to terminate.
@@ -1899,7 +1945,7 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     ErrCode SetMissionContinueState(sptr<IRemoteObject> token, const AAFwk::ContinueState &state,
-        sptr<IRemoteObject> sessionToken);
+        sptr<IRemoteObject> sessionToken, int32_t userId = -1);
 
 #ifdef SUPPORT_SCREEN
     /**
@@ -1910,7 +1956,7 @@ public:
      * @param label Label displayed in recent missions.
      * @return Returns ERR_OK on success, others on failure.
      */
-    ErrCode SetMissionLabel(sptr<IRemoteObject> abilityToken, const std::string &label);
+    ErrCode SetMissionLabel(sptr<IRemoteObject> abilityToken, const std::string &label, int32_t userId = -1);
 
     /**
      * @brief Set the mission icon shown in recent missions.
@@ -1921,7 +1967,7 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     ErrCode SetMissionIcon(sptr<IRemoteObject> abilityToken,
-        std::shared_ptr<OHOS::Media::PixelMap> icon);
+        std::shared_ptr<OHOS::Media::PixelMap> icon, int32_t userId = -1);
 
     /**
      * @brief Register the window manager service handler. Internal use:
@@ -2000,13 +2046,14 @@ public:
     ErrCode FinishUserTest(const std::string &msg, const int64_t &resultCode, const std::string &bundleName);
 
     /**
-     * @brief Get the token of the current top ability. System ability only:
+     * @brief Get the token of the top ability. System ability only:
      * the caller must be an SA (IsSACall), otherwise CHECK_PERMISSION_FAILED.
      * Client side: when SCB is enabled the client routes to scene board first.
      * @param token Output, top ability token.
+     * @param userId The user id, INVALID_USER_ID for the caller's user.
      * @return Returns ERR_OK on success, others on failure.
      */
-    ErrCode GetTopAbility(sptr<IRemoteObject> &token);
+    ErrCode GetTopAbility(sptr<IRemoteObject> &token, int32_t userId = INVALID_USER_ID);
 
     /**
      * @brief Check whether a UIExtension (or window extension) belongs to the
@@ -2143,7 +2190,8 @@ public:
      * @param results Output, up to 20 validity results.
      * @return Returns ERR_OK on success, others on failure.
      */
-    int32_t IsValidMissionIds(const std::vector<int32_t> &missionIds, std::vector<MissionValidResult> &results);
+    int32_t IsValidMissionIds(const std::vector<int32_t> &missionIds, std::vector<MissionValidResult> &results,
+        int32_t userId = -1);
 
     /**
      * @brief Verify whether the application owning the uid has been granted a
@@ -2446,6 +2494,17 @@ public:
         uint64_t requestCode, uint64_t specifiedFullTokenId = 0);
 
     /**
+     * @brief Execute UIAbility foreground intent with specified token id.
+     * @param want The info of the target ability and custom parameters.
+     * @param callerAbilityToken The caller ability token.
+     * @param param The lightweight intent execute param.
+     * @param specifiedFullTokenId The specified access token id for permission checking.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode ExecuteUIAbilityForegroundIntentWithSpecifyTokenId(const Want &want, sptr<IRemoteObject> callerAbilityToken,
+        const InsightIntentExecuteLiteParam &param, uint64_t specifiedFullTokenId = 0);
+
+    /**
      * @brief Query entity info of a target app via insight intent (background
      * call to its entity provider). Cross-user requires account permission and
      * multi-user concurrency. Result is returned asynchronously via the intent
@@ -2458,19 +2517,6 @@ public:
      */
     ErrCode QueryEntityInfo(uint64_t key, sptr<IRemoteObject> callerToken,
         const InsightIntentQueryParam &param);
-     
-    /**
-     * @brief Execute an insight intent synchronously and wait for the result.
-     * Client-side wrapper over ExecuteIntent using a promise; blocks up to
-     * timeoutMs (default 30000 ms) and returns INSIGHT_INTENT_EXECUTE_TIMEOUT
-     * on timeout (the underlying execution continues).
-     * @param param The intent execute param.
-     * @param result Output, intent execute result filled by the target app.
-     * @param timeoutMs Timeout in milliseconds, default 30000.
-     * @return Returns ERR_OK on success, others on failure.
-     */
-    ErrCode ExecuteIntentWithResult(const InsightIntentExecuteParam &param, InsightIntentExecuteResult &result,
-        int32_t timeoutMs = 30000);
 
     /**
      * @brief Report insight intent execution result from the target ability.
@@ -2689,7 +2735,7 @@ public:
      * @param missionId The mission id of the UIAbility to terminate.
      * @return Returns ERR_OK on success, others on failure.
      */
-    ErrCode TerminateMission(int32_t missionId);
+    ErrCode TerminateMission(int32_t missionId, int32_t userId = -1);
 
     /**
      * @brief Set the global flag to block all app starting (low-memory emergency
@@ -2898,9 +2944,14 @@ public:
      * @brief Enter kiosk mode. The caller must be the ability owning the token
      * (self only).
      * @param callerToken Caller ability token.
+     * @param kioskType Distinguish between regular kiosk mode and exam mode.
      * @return Returns ERR_OK on success; CHECK_PERMISSION_FAILED if not self.
      */
-    ErrCode EnterKioskMode(sptr<IRemoteObject> callerToken);
+    ErrCode EnterKioskMode(sptr<IRemoteObject> callerToken, int32_t kioskType = 0);
+
+    ErrCode AddKioskApplicationList(const std::vector<std::string> &appList);
+
+    ErrCode DeleteKioskApplicationList(const std::vector<std::string> &appList);
 
     /**
      * @brief Exit kiosk mode. Self only (same as EnterKioskMode).
@@ -3105,26 +3156,6 @@ public:
     int32_t SetAppRecoveryFlag(const sptr<IRemoteObject>& token, int flag);
 
     /**
-     * @brief Execute an in-app skill (skill entry defined in the target bundle).
-     * The skill config is queried from bundle framework; caller permission is
-     * verified against the skill's configured allow rules (CheckSkillPermission).
-     * Result is delivered asynchronously via callback with a requestCode.
-     * @param bundleName Target bundle name.
-     * @param moduleName Target module name.
-     * @param skillName Target skill name.
-     * @param arkTSPath Optional skill script path override, default "".
-     * @param funcName Optional function name override, default "".
-     * @param skillArgs Optional skill arguments, default nullptr.
-     * @param callback Optional result callback, default nullptr.
-     * @return Returns ERR_OK on success, others on failure.
-     */
-    ErrCode ExecuteInAppSkill(const std::string &bundleName, const std::string &moduleName,
-        const std::string &skillName, const std::string &arkTSPath = "",
-        const std::string &funcName = "",
-        const std::shared_ptr<AAFwk::WantParams> &skillArgs = nullptr,
-        const sptr<ISkillExecuteCallback> &callback = nullptr);
-
-    /**
      * @brief Execute an in-app skill on behalf of an explicit caller token id
      * (used by broker/framework scenarios). The request.callerTokenId must
      * resolve to a valid HAP token; permission is checked with that identity.
@@ -3158,6 +3189,19 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     ErrCode NotifySkillFunctionInvoked(sptr<IRemoteObject> token, const std::string &requestCode);
+
+    /**
+     * @brief Notify that an insight intent execution has started.
+     * @param intentId The insight intent id.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode NotifyInsightIntentExecute(uint64_t intentId);
+
+    ErrCode RegisterWillInsightIntentExecuteCallback(const sptr<IRemoteObject> &callback);
+
+    ErrCode UnregisterWillInsightIntentExecuteCallback();
+
+    ErrCode GetDynamicAgentCardsForMigration(std::string &jsonStr);
 
     /**
      * @brief Query the type of a configured skill (e.g. UI ability vs service

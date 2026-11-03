@@ -64,7 +64,9 @@ ohos_shared_library("insight_intent_context_ani_kit") {
     "hilog:libhilog",
     "ipc:ipc_single",
     "hitrace:hitrace_meter",
+    "libuv:uv",
     "napi:ace_napi",
+    "node:node_header_notice",
     "runtime_core:ani",
     "runtime_core:ani_helpers",
   ]

@@ -136,6 +136,9 @@ public:
 
     void SetSplitRatioPreference(int32_t splitRatioPreference);
     int32_t GetSplitRatioPreference() const;
+
+    void SetPreferDefaultBrowser(bool preferDefaultBrowser);
+    bool GetPreferDefaultBrowser() const;
 private:
     bool withAnimation_ = true;
     bool windowFocused_ = true;
@@ -152,6 +155,7 @@ private:
     int32_t maxWindowHeight_ = 0;
     int32_t splitRatioPreference_ = 0;
     std::string currentProcessName_ = "";
+    bool preferDefaultBrowser_ = false;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

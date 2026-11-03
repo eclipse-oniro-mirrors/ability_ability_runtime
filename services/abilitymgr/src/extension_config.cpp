@@ -95,23 +95,23 @@ bool ExtensionConfig::IsExtensionStartThirdPartyAppEnable(const std::string &ext
     return EXTENSION_THIRD_PARTY_APP_ENABLE_FLAG_DEFAULT;
 }
 
-bool ExtensionConfig::IsExtensionStartServiceEnable(const std::string &extensionTypeName, const std::string &targetUri)
+bool ExtensionConfig::IsExtensionStartServiceEnable(const std::string &extensionTypeName,
+    const AppExecFwk::ElementName &targetElement)
 {
-    AppExecFwk::ElementName targetElementName;
     std::lock_guard lock(configMapMutex_);
     if (configMap_.find(extensionTypeName) != configMap_.end() &&
         !configMap_[extensionTypeName].serviceEnableFlag) {
         return false;
     }
-    if (!targetElementName.ParseURI(targetUri) ||
+    if (targetElement.GetBundleName().empty() ||
         configMap_.find(extensionTypeName) == configMap_.end()) {
         return EXTENSION_START_SERVICE_ENABLE_FLAG_DEFAULT;
     }
     for (const auto& iter : configMap_[extensionTypeName].serviceBlockedList) {
         AppExecFwk::ElementName iterElementName;
         if (iterElementName.ParseURI(iter) &&
-            iterElementName.GetBundleName() == targetElementName.GetBundleName() &&
-            iterElementName.GetAbilityName() == targetElementName.GetAbilityName()) {
+            iterElementName.GetBundleName() == targetElement.GetBundleName() &&
+            iterElementName.GetAbilityName() == targetElement.GetAbilityName()) {
             return false;
         }
     }
@@ -418,29 +418,31 @@ std::optional<bool> ExtensionConfig::GetSingleAccessFlag(const std::string &exte
 }
 
 bool ExtensionConfig::IsExtensionStartThirdPartyAppEnableNew(const std::string &extensionTypeName,
-    const std::string &targetUri)
+    const AppExecFwk::ElementName &targetElement)
 {
-    return IsExtensionAbilityAccessEnable(extensionTypeName, targetUri, [](const AbilityAccessItem &abilityAccess) {
+    return IsExtensionAbilityAccessEnable(extensionTypeName, targetElement, [](const AbilityAccessItem &abilityAccess) {
         return abilityAccess.thirdPartyAppAccessFlag;
     });
 }
 
 bool ExtensionConfig::IsExtensionStartServiceEnableNew(const std::string &extensionTypeName,
-    const std::string &targetUri)
+    const AppExecFwk::ElementName &targetElement)
 {
-    return IsExtensionAbilityAccessEnable(extensionTypeName, targetUri, [](const AbilityAccessItem &abilityAccess) {
+    return IsExtensionAbilityAccessEnable(extensionTypeName, targetElement, [](const AbilityAccessItem &abilityAccess) {
         return abilityAccess.serviceAccessFlag;
     });
 }
 
-bool ExtensionConfig::IsExtensionStartDefaultEnable(const std::string &extensionTypeName, const std::string &targetUri)
+bool ExtensionConfig::IsExtensionStartDefaultEnable(const std::string &extensionTypeName,
+    const AppExecFwk::ElementName &targetElement)
 {
-    return IsExtensionAbilityAccessEnable(extensionTypeName, targetUri, [](const AbilityAccessItem &abilityAccess) {
+    return IsExtensionAbilityAccessEnable(extensionTypeName, targetElement, [](const AbilityAccessItem &abilityAccess) {
         return abilityAccess.defaultAccessFlag;
     });
 }
 
-bool ExtensionConfig::IsExtensionAbilityAccessEnable(const std::string &extensionTypeName, const std::string &targetUri,
+bool ExtensionConfig::IsExtensionAbilityAccessEnable(const std::string &extensionTypeName,
+    const AppExecFwk::ElementName &targetElement,
     std::function<std::optional<bool>(const AbilityAccessItem&)> getAccessFlag)
 {
     AbilityAccessItem abilityAccess;
@@ -457,16 +459,15 @@ bool ExtensionConfig::IsExtensionAbilityAccessEnable(const std::string &extensio
         // flag not configured, allow access
         return true;
     }
-    AppExecFwk::ElementName targetElementName;
-    if (!targetElementName.ParseURI(targetUri)) {
+    if (targetElement.GetBundleName().empty()) {
         return accessFlag.value();
     }
     if (accessFlag.value()) {
         //flag true, deny access in block list
-        return !FindTargetUriInList(targetElementName, abilityAccess.blockList);
+        return !FindTargetUriInList(targetElement, abilityAccess.blockList);
     }
     // flag false, allow access in allow list
-    return FindTargetUriInList(targetElementName, abilityAccess.allowList);
+    return FindTargetUriInList(targetElement, abilityAccess.allowList);
 }
 
 bool ExtensionConfig::FindTargetUriInList(const AppExecFwk::ElementName &targetElementName,

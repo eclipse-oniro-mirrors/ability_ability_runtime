@@ -38,6 +38,9 @@
 #include "js_runtime_utils.h"
 #include "js_system_configuration_updated_callback.h"
 #include "napi_common_want.h"
+#include "app_mgr_client.h"
+#include "singleton.h"
+#include "js_process_lifecycle_observer.h"
 #include "tokenid_kit.h"
 #ifdef SUPPORT_SCREEN
 #include "ui_ability.h"
@@ -898,10 +901,10 @@ napi_value JsApplicationContextUtils::SetFont(napi_env env, napi_callback_info i
 
 napi_value JsApplicationContextUtils::OnSetFont(napi_env env, NapiCallbackInfo& info)
 {
-    // only support one params
-    if (info.argc == ARGC_ZERO) {
-        TAG_LOGE(AAFwkTag::APPKIT, "Not enough params");
-        ThrowInvalidParamError(env, "Not enough params.");
+    // support one or two params
+    if (info.argc == ARGC_ZERO || info.argc > ARGC_TWO) {
+        TAG_LOGE(AAFwkTag::APPKIT, "params count error, only support one or two params");
+        ThrowInvalidParamError(env, "Params count error, only support one or two params.");
         return CreateJsUndefined(env);
     }
     auto applicationContext = applicationContext_.lock();
@@ -915,7 +918,16 @@ napi_value JsApplicationContextUtils::OnSetFont(napi_env env, NapiCallbackInfo& 
         ThrowInvalidParamError(env, "Parse param font failed, font must be string.");
         return CreateJsUndefined(env);
     }
-    applicationContext->SetFont(font);
+    bool enableAnimation = true;
+    if (info.argc == ARGC_TWO && !CheckTypeForNapiValue(env, info.argv[INDEX_ONE], napi_undefined)) {
+        if (!ConvertFromJsValue(env, info.argv[INDEX_ONE], enableAnimation)) {
+            TAG_LOGE(AAFwkTag::APPKIT, "Parse enableAnimation failed");
+            ThrowInvalidParamError(env,
+                "Parse param enableAnimation failed, enableAnimation must be boolean.");
+            return CreateJsUndefined(env);
+        }
+    }
+    applicationContext->SetFont(font, enableAnimation);
     return CreateJsUndefined(env);
 }
 
@@ -2080,6 +2092,103 @@ napi_value JsApplicationContextUtils::OnOffApplicationStateChange(
     return CreateJsUndefined(env);
 }
 
+napi_value JsApplicationContextUtils::OnAppProcessStateChange(napi_env env, napi_callback_info info)
+{
+    GET_NAPI_INFO_WITH_NAME_AND_CALL(env, info, JsApplicationContextUtils,
+        OnOnAppProcessStateChange, APPLICATION_CONTEXT_NAME);
+}
+
+napi_value JsApplicationContextUtils::OnOnAppProcessStateChange(napi_env env, NapiCallbackInfo& info)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "called");
+    if (info.argc < ARGC_ONE) {
+        TAG_LOGE(AAFwkTag::APPKIT, "Not enough params");
+        ThrowInvalidParamError(env, "Not enough params.");
+        return CreateJsUndefined(env);
+    }
+    if (!CheckTypeForNapiValue(env, info.argv[INDEX_ZERO], napi_object)) {
+        TAG_LOGE(AAFwkTag::APPKIT, "param invalid");
+        ThrowInvalidParamError(env, "Parse param type failed, observer must be object.");
+        return CreateJsUndefined(env);
+    }
+
+    std::lock_guard<std::mutex> lock(processLifecycleObserverLock_);
+    if (processLifecycleObserver_ == nullptr) {
+        processLifecycleObserver_ = new (std::nothrow) JsProcessLifecycleObserver(env);
+        if (processLifecycleObserver_ == nullptr) {
+            TAG_LOGE(AAFwkTag::APPKIT, "null processLifecycleObserver_");
+            AbilityRuntimeErrorUtil::Throw(env, ERR_ABILITY_RUNTIME_EXTERNAL_INTERNAL_ERROR);
+            return CreateJsUndefined(env);
+        }
+        auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+        if (appMgrClient == nullptr) {
+            TAG_LOGE(AAFwkTag::APPKIT, "null appMgrClient");
+            AbilityRuntimeErrorUtil::Throw(env, ERR_ABILITY_RUNTIME_EXTERNAL_INTERNAL_ERROR);
+            return CreateJsUndefined(env);
+        }
+        int32_t ret = appMgrClient->RegisterProcessLifecycleObserver(processLifecycleObserver_);
+        if (ret != ERR_OK) {
+            TAG_LOGE(AAFwkTag::APPKIT, "RegisterProcessLifecycleObserver failed: %{public}d", ret);
+            processLifecycleObserver_ = nullptr;
+            if (ret == ERR_ABILITY_RUNTIME_EXTERNAL_PROCESS_LIFECYCLE_OBSERVER_EXCEED_LIMIT) {
+                AbilityRuntimeErrorUtil::Throw(env, ret);
+            } else {
+                AbilityRuntimeErrorUtil::Throw(env, ERR_ABILITY_RUNTIME_EXTERNAL_INTERNAL_ERROR);
+            }
+            return CreateJsUndefined(env);
+        }
+    }
+    processLifecycleObserver_->Register(info.argv[INDEX_ZERO]);
+    return CreateJsUndefined(env);
+}
+
+napi_value JsApplicationContextUtils::OffAppProcessStateChange(napi_env env, napi_callback_info info)
+{
+    GET_NAPI_INFO_WITH_NAME_AND_CALL(env, info, JsApplicationContextUtils,
+        OnOffAppProcessStateChange, APPLICATION_CONTEXT_NAME);
+}
+
+napi_value JsApplicationContextUtils::OnOffAppProcessStateChange(napi_env env, NapiCallbackInfo& info)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "called");
+    std::lock_guard<std::mutex> lock(processLifecycleObserverLock_);
+    TAG_LOGI(AAFwkTag::APPKIT, "info.argc: %{public}zu", info.argc);
+    if (info.argc == ARGC_ZERO) {
+        if (processLifecycleObserver_) {
+            processLifecycleObserver_->UnRegister();
+            auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+            if (appMgrClient != nullptr) {
+                int32_t ret = appMgrClient->UnregisterProcessLifecycleObserver(processLifecycleObserver_);
+                if (ret != ERR_OK) {
+                    TAG_LOGE(AAFwkTag::APPKIT, "UnregisterProcessLifecycleObserver failed: %{public}d", ret);
+                }
+            }
+            processLifecycleObserver_ = nullptr;
+        }
+        return CreateJsUndefined(env);
+    } else if (!CheckTypeForNapiValue(env, info.argv[INDEX_ZERO], napi_object)) {
+        TAG_LOGE(AAFwkTag::APPKIT, "param invalid");
+        ThrowInvalidParamError(env, "Parse param type failed, observer must be object.");
+        return CreateJsUndefined(env);
+    } else if (!(processLifecycleObserver_ && processLifecycleObserver_->UnRegister(info.argv[INDEX_ZERO]))) {
+        TAG_LOGE(AAFwkTag::APPKIT, "call UnRegister failed, observer does not exist");
+        ThrowError(env, AbilityErrorCode::ERROR_CODE_OBSERVER_NOT_FOUND);
+        return CreateJsUndefined(env);
+    }
+
+    if (processLifecycleObserver_ && processLifecycleObserver_->IsEmpty()) {
+        auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+        if (appMgrClient != nullptr) {
+            int32_t ret = appMgrClient->UnregisterProcessLifecycleObserver(processLifecycleObserver_);
+            if (ret != ERR_OK) {
+                TAG_LOGE(AAFwkTag::APPKIT, "UnregisterProcessLifecycleObserver failed: %{public}d", ret);
+            }
+        }
+        processLifecycleObserver_ = nullptr;
+    }
+    return CreateJsUndefined(env);
+}
+
 napi_value JsApplicationContextUtils::GetApplicationContext(napi_env env, napi_callback_info info)
 {
     GET_NAPI_INFO_WITH_NAME_AND_CALL(env, info, JsApplicationContextUtils,
@@ -2362,6 +2471,10 @@ void JsApplicationContextUtils::BindNativeApplicationContextTwo(napi_env env, na
         JsApplicationContextUtils::DisableDelayedProcessExit);
     BindNativeFunction(env, object, "startSelfUIAbility", MD_NAME,
         JsApplicationContextUtils::StartSelfUIAbility);
+    BindNativeFunction(env, object, "onAppProcessStateChange", MD_NAME,
+        JsApplicationContextUtils::OnAppProcessStateChange);
+    BindNativeFunction(env, object, "offAppProcessStateChange", MD_NAME,
+        JsApplicationContextUtils::OffAppProcessStateChange);
 }
 }  // namespace AbilityRuntime
 }  // namespace OHOS

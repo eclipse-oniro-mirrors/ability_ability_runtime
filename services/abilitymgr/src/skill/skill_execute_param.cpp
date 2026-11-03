@@ -63,6 +63,7 @@ bool SkillExecuteParam::ReadFromParcel(Parcel &parcel)
     }
     requestCode_ = Str16ToStr8(parcel.ReadString16());
     hapPath_ = Str16ToStr8(parcel.ReadString16());
+    toolCallId_ = Str16ToStr8(parcel.ReadString16());
     return true;
 }
 
@@ -98,6 +99,7 @@ bool SkillExecuteParam::Marshalling(Parcel &parcel) const
     }
     parcel.WriteString16(Str8ToStr16(requestCode_));
     parcel.WriteString16(Str8ToStr16(hapPath_));
+    parcel.WriteString16(Str8ToStr16(toolCallId_));
     return true;
 }
 
@@ -147,6 +149,7 @@ bool SkillExecuteParam::GenerateFromWant(const AAFwk::Want &want, SkillExecutePa
     }
     param.requestCode_ = wantParams.GetStringParam(SKILL_EXECUTE_PARAM_REQUEST_CODE);
     param.hapPath_ = wantParams.GetStringParam(SKILL_EXECUTE_PARAM_HAP_PATH);
+    param.toolCallId_ = wantParams.GetStringParam(SKILL_EXECUTE_PARAM_TOOL_CALL_ID);
     return true;
 }
 
@@ -165,6 +168,7 @@ bool SkillExecuteParam::RemoveSkillParam(AAFwk::Want &want)
     want.RemoveParam(SKILL_EXECUTE_PARAM_SRC_ENTRIES_COUNT);
     want.RemoveParam(SKILL_EXECUTE_PARAM_HAP_PATH);
     want.RemoveParam(SKILL_EXECUTE_PARAM_REQUEST_CODE);
+    want.RemoveParam(SKILL_EXECUTE_PARAM_TOOL_CALL_ID);
 
     if (!argsKeysStr.empty()) {
         std::istringstream stream(argsKeysStr);
@@ -190,7 +194,8 @@ void SkillExecuteParam::WriteToWant(AAFwk::Want &want, const std::string &bundle
     const std::string &scriptPath, const std::string &functionName,
     const std::shared_ptr<AAFwk::WantParams> &skillArgs,
     const std::vector<std::string> &srcEntries,
-    const std::string &requestCode, const std::string &hapPath)
+    const std::string &requestCode, const std::string &hapPath,
+    const std::string &toolCallId)
 {
     want.SetParam(SKILL_EXECUTE_PARAM_BUNDLE_NAME, bundleName);
     want.SetParam(SKILL_EXECUTE_PARAM_MODULE_NAME, moduleName);
@@ -225,6 +230,9 @@ void SkillExecuteParam::WriteToWant(AAFwk::Want &want, const std::string &bundle
     }
     if (!hapPath.empty()) {
         want.SetParam(SKILL_EXECUTE_PARAM_HAP_PATH, hapPath);
+    }
+    if (!toolCallId.empty()) {
+        want.SetParam(SKILL_EXECUTE_PARAM_TOOL_CALL_ID, toolCallId);
     }
 }
 

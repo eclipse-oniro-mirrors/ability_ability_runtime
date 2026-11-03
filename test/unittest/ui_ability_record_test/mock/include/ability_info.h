@@ -29,6 +29,9 @@ struct Metadata {
 
 struct AbilityInfo {
     std::string name;
+    std::string bundleName;
+    std::string moduleName;
+    std::string deviceId;
     ApplicationInfo applicationInfo;
     std::vector<Metadata> metadata;
 };

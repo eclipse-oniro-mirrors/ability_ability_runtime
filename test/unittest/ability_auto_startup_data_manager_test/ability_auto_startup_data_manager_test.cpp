@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1545,6 +1545,199 @@ HWTEST_F(AbilityAutoStartupDataManagerTest, GetAutoStartupStatusForSelf_200, Tes
     EXPECT_EQ(result, ERR_INVALID_OPERATION);
     kvStorePtr->GetEntries_ = DistributedKv::Status::SUCCESS;
     GTEST_LOG_(INFO) << "GetAutoStartupStatusForSelf_200 end";
+}
+
+/**
+ * Feature: AbilityAutoStartupDataManager
+ * Function: BackupKvStore
+ * SubFunction: NA
+ * FunctionPoints: AbilityAutoStartupDataManager BackupKvStore
+ */
+HWTEST_F(AbilityAutoStartupDataManagerTest, BackupKvStore_100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "BackupKvStore_100 start";
+    AbilityAutoStartupDataManager abilityAutoStartupDataManager;
+    std::shared_ptr<MockSingleKvStore> kvStorePtr = std::make_shared<MockSingleKvStore>();
+    abilityAutoStartupDataManager.kvStorePtr_ = kvStorePtr;
+    EXPECT_EQ(true, abilityAutoStartupDataManager.CheckKvStore());
+    abilityAutoStartupDataManager.BackupKvStore();
+    GTEST_LOG_(INFO) << "BackupKvStore_100 end";
+}
+
+/**
+ * Feature: AbilityAutoStartupDataManager
+ * Function: BackupKvStore
+ * SubFunction: NA
+ * FunctionPoints: AbilityAutoStartupDataManager BackupKvStore delete backup then retry
+ */
+HWTEST_F(AbilityAutoStartupDataManagerTest, BackupKvStore_200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "BackupKvStore_200 start";
+    AbilityAutoStartupDataManager abilityAutoStartupDataManager;
+    std::shared_ptr<MockSingleKvStore> kvStorePtr = std::make_shared<MockSingleKvStore>();
+    abilityAutoStartupDataManager.kvStorePtr_ = kvStorePtr;
+    EXPECT_EQ(true, abilityAutoStartupDataManager.CheckKvStore());
+    kvStorePtr->Backup_ = DistributedKv::Status::ERROR;
+    abilityAutoStartupDataManager.BackupKvStore();
+    kvStorePtr->Backup_ = DistributedKv::Status::SUCCESS;
+    GTEST_LOG_(INFO) << "BackupKvStore_200 end";
+}
+
+/**
+ * Feature: AbilityAutoStartupDataManager
+ * Function: RestoreKvStore
+ * SubFunction: NA
+ * FunctionPoints: AbilityAutoStartupDataManager restore on recoverable status
+ */
+HWTEST_F(AbilityAutoStartupDataManagerTest, RestoreKvStore_300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RestoreKvStore_300 start";
+    AbilityAutoStartupDataManager abilityAutoStartupDataManager;
+    DistributedKv::Status status = DistributedKv::Status::DB_ERROR;
+
+    auto result = abilityAutoStartupDataManager.RestoreKvStore(status);
+    EXPECT_NE(result, status);
+    GTEST_LOG_(INFO) << "RestoreKvStore_300 end";
+}
+
+/**
+ * Feature: AbilityAutoStartupDataManager
+ * Function: BackupKvStore
+ * SubFunction: NA
+ * FunctionPoints: backup DB_ERROR with readable store does not trigger rebuild
+ */
+HWTEST_F(AbilityAutoStartupDataManagerTest, BackupKvStore_400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "BackupKvStore_400 start";
+    AbilityAutoStartupDataManager abilityAutoStartupDataManager;
+    std::shared_ptr<MockSingleKvStore> kvStorePtr = std::make_shared<MockSingleKvStore>();
+    abilityAutoStartupDataManager.kvStorePtr_ = kvStorePtr;
+    EXPECT_EQ(true, abilityAutoStartupDataManager.CheckKvStore());
+    kvStorePtr->Backup_ = DistributedKv::Status::DB_ERROR;
+    abilityAutoStartupDataManager.BackupKvStore();
+    EXPECT_EQ(kvStorePtr->backupCallCount_, 2);
+    EXPECT_EQ(abilityAutoStartupDataManager.kvStorePtr_, kvStorePtr);
+    GTEST_LOG_(INFO) << "BackupKvStore_400 end";
+}
+
+/**
+ * Feature: AbilityAutoStartupDataManager
+ * Function: RestoreFromBackupWithRetry
+ * SubFunction: NA
+ * FunctionPoints: no backup file stops retrying immediately
+ */
+HWTEST_F(AbilityAutoStartupDataManagerTest, RestoreFromBackupWithRetry_100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RestoreFromBackupWithRetry_100 start";
+    AbilityAutoStartupDataManager abilityAutoStartupDataManager;
+    std::shared_ptr<MockSingleKvStore> kvStorePtr = std::make_shared<MockSingleKvStore>();
+    abilityAutoStartupDataManager.kvStorePtr_ = kvStorePtr;
+    kvStorePtr->Restore_ = DistributedKv::Status::INVALID_ARGUMENT;
+    auto result = abilityAutoStartupDataManager.RestoreFromBackupWithRetry();
+    EXPECT_EQ(result, DistributedKv::Status::INVALID_ARGUMENT);
+    EXPECT_EQ(kvStorePtr->restoreCallCount_, 1);
+    GTEST_LOG_(INFO) << "RestoreFromBackupWithRetry_100 end";
+}
+
+/**
+ * Feature: AbilityAutoStartupDataManager
+ * Function: RestoreFromBackupWithRetry
+ * SubFunction: NA
+ * FunctionPoints: transient restore failure retries up to 3 attempts
+ */
+HWTEST_F(AbilityAutoStartupDataManagerTest, RestoreFromBackupWithRetry_200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RestoreFromBackupWithRetry_200 start";
+    AbilityAutoStartupDataManager abilityAutoStartupDataManager;
+    std::shared_ptr<MockSingleKvStore> kvStorePtr = std::make_shared<MockSingleKvStore>();
+    abilityAutoStartupDataManager.kvStorePtr_ = kvStorePtr;
+    kvStorePtr->Restore_ = DistributedKv::Status::DB_ERROR;
+    auto result = abilityAutoStartupDataManager.RestoreFromBackupWithRetry();
+    EXPECT_EQ(result, DistributedKv::Status::DB_ERROR);
+    EXPECT_EQ(kvStorePtr->restoreCallCount_, 3);
+    GTEST_LOG_(INFO) << "RestoreFromBackupWithRetry_200 end";
+}
+
+/**
+ * Feature: AbilityAutoStartupDataManager
+ * Function: RestoreIfStoreEmpty
+ * SubFunction: NA
+ * FunctionPoints: unreadable store triggers restore from backup
+ */
+HWTEST_F(AbilityAutoStartupDataManagerTest, RestoreIfStoreEmpty_100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RestoreIfStoreEmpty_100 start";
+    AbilityAutoStartupDataManager abilityAutoStartupDataManager;
+    std::shared_ptr<MockSingleKvStore> kvStorePtr = std::make_shared<MockSingleKvStore>();
+    abilityAutoStartupDataManager.kvStorePtr_ = kvStorePtr;
+    kvStorePtr->GetEntries_ = DistributedKv::Status::DATA_CORRUPTED;
+    abilityAutoStartupDataManager.RestoreIfStoreEmpty();
+    EXPECT_EQ(kvStorePtr->restoreCallCount_, 1);
+    kvStorePtr->GetEntries_ = DistributedKv::Status::SUCCESS;
+    GTEST_LOG_(INFO) << "RestoreIfStoreEmpty_100 end";
+}
+
+/**
+ * Feature: AbilityAutoStartupDataManager
+ * Function: RestoreIfStoreEmpty
+ * SubFunction: NA
+ * FunctionPoints: empty store triggers restore from backup
+ */
+HWTEST_F(AbilityAutoStartupDataManagerTest, RestoreIfStoreEmpty_200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RestoreIfStoreEmpty_200 start";
+    AbilityAutoStartupDataManager abilityAutoStartupDataManager;
+    std::shared_ptr<MockSingleKvStore> kvStorePtr = std::make_shared<MockSingleKvStore>();
+    abilityAutoStartupDataManager.kvStorePtr_ = kvStorePtr;
+    abilityAutoStartupDataManager.RestoreIfStoreEmpty();
+    EXPECT_EQ(kvStorePtr->restoreCallCount_, 1);
+    GTEST_LOG_(INFO) << "RestoreIfStoreEmpty_200 end";
+}
+
+/**
+ * Feature: AbilityAutoStartupDataManager
+ * Function: ConvertAutoStartupStatusToValue
+ * FunctionPoints: Both query representations retain the startup mode and existing EDM policy.
+ */
+HWTEST_F(AbilityAutoStartupDataManagerTest, BootAppValueRoundTrip, TestSize.Level1)
+{
+    AbilityAutoStartupDataManager manager;
+    AutoStartupInfo input;
+    input.isDirectBoot = true;
+    input.isHiddenStart = true;
+    input.setterUserId = 101;
+    input.setterType = AutoStartupSetterType::SYSTEM;
+    auto value = manager.ConvertAutoStartupStatusToValue(input, true, true);
+    AutoStartupInfo output;
+    AutoStartupStatus status;
+    manager.ConvertAutoStartupInfoFromValue(value, output);
+    manager.ConvertAutoStartupStatusFromValue(value, status);
+    EXPECT_TRUE(output.isDirectBoot);
+    EXPECT_TRUE(status.isDirectBoot);
+    EXPECT_TRUE(status.isAutoStartup);
+    EXPECT_TRUE(status.isEdmForce);
+    EXPECT_TRUE(output.isHiddenStart);
+    EXPECT_EQ(output.setterUserId, 101);
+}
+
+/**
+ * Feature: AbilityAutoStartupDataManager
+ * Function: ConvertAutoStartupStatusFromValue
+ * FunctionPoints: Old or malformed values cannot enable pre-unlock startup.
+ */
+HWTEST_F(AbilityAutoStartupDataManagerTest, BootAppOldAndInvalidValues, TestSize.Level1)
+{
+    AbilityAutoStartupDataManager manager;
+    for (const auto &json : {R"({"isAutoStartup":true})", R"({"isDirectBoot":"true"})",
+        R"({"isDirectBoot":false})"}) {
+        DistributedKv::Value value(json);
+        AutoStartupInfo info;
+        AutoStartupStatus status;
+        manager.ConvertAutoStartupInfoFromValue(value, info);
+        manager.ConvertAutoStartupStatusFromValue(value, status);
+        EXPECT_FALSE(info.isDirectBoot);
+        EXPECT_FALSE(status.isDirectBoot);
+    }
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

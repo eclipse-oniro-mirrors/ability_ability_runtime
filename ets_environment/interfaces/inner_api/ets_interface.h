@@ -16,9 +16,11 @@
 #ifndef OHOS_ABILITY_RUNTIME_ETS_INTERFACE_H
 #define OHOS_ABILITY_RUNTIME_ETS_INTERFACE_H
 
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <string>
+#include <vector>
 #include "ets_exception_callback.h"
 #include "ets_native_reference.h"
 #include "napi/native_api.h"
@@ -33,6 +35,11 @@ namespace AbilityRuntime {
 }
 
 extern "C" {
+enum EtsProfilerType {
+    ETS_PROFILERTYPE_CPU = 0,
+    ETS_PROFILERTYPE_HEAP = 1
+};
+
 struct ETSEnvFuncs {
     void (*InitETSSDKNS)(const std::string &path) = nullptr;
     void (*InitETSSysNS)(const std::string &path) = nullptr;
@@ -64,6 +71,10 @@ struct ETSEnvFuncs {
     void (*NotifyDebugMode)(uint32_t tid, uint32_t instanceId, bool isStartWithDebug,
         void *jsVm, bool isDebugApp) = nullptr;
     void (*BroadcastAndConnect)(const std::string& bundleName, int socketFd) = nullptr;
+    bool (*StartProfiler)(int tid, int32_t instanceId, bool debugApp, void *jsVm,
+        EtsProfilerType profiler, uint32_t interval) = nullptr;
+    int32_t (*HotReload)(const std::string &target, const std::string &patch) = nullptr;
+    int32_t (*ColdReload)(const std::string &patch) = nullptr;
 };
 }
 #endif // OHOS_ABILITY_RUNTIME_ETS_INTERFACE_H

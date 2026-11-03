@@ -50,9 +50,7 @@ HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_001, TestSize.Level2)
     AppSpawnClient appSpawnClient;
     AppSpawnStartMsg startMsg;
     startMsg.flags = 0;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
 #ifdef SUPPORT_CHILD_PROCESS
     startMsg.childProcessType = 0;
 #endif // SUPPORT_CHILD_PROCESS
@@ -66,9 +64,7 @@ HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_002, TestSize.Level2)
     AppSpawnClient appSpawnClient;
     AppSpawnStartMsg startMsg;
     startMsg.flags = 1;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
 #ifdef SUPPORT_CHILD_PROCESS
     startMsg.childProcessType = 0;
 #endif // SUPPORT_CHILD_PROCESS
@@ -76,15 +72,14 @@ HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_002, TestSize.Level2)
     EXPECT_NE(appSpawnClient.SetStartFlags(startMsg, reqHandle), 0);
 }
 
-// Scenario3: Test when startMsg.atomicServiceFlag is true and all other flags are false.
+// Scenario3: Test when startMsg.flags has ATOMIC_SERVICE bit set and all other flags are false.
 HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_003, TestSize.Level2)
 {
     AppSpawnClient appSpawnClient;
     AppSpawnStartMsg startMsg;
     startMsg.flags = 0;
-    startMsg.atomicServiceFlag = true;
+    startMsg.flags |= (1ULL << StartFlags::ATOMIC_SERVICE);
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
 #ifdef SUPPORT_CHILD_PROCESS
     startMsg.childProcessType = 0;
 #endif // SUPPORT_CHILD_PROCESS
@@ -98,9 +93,7 @@ HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_004, TestSize.Level2)
     AppSpawnClient appSpawnClient;
     AppSpawnStartMsg startMsg;
     startMsg.flags = 0;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = true;
-    startMsg.isolatedExtension = false;
 #ifdef SUPPORT_CHILD_PROCESS
     startMsg.childProcessType = 0;
 #endif // SUPPORT_CHILD_PROCESS
@@ -108,15 +101,14 @@ HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_004, TestSize.Level2)
     EXPECT_NE(appSpawnClient.SetStartFlags(startMsg, reqHandle), 0);
 }
 
-// Scenario5: Test when startMsg.isolatedExtension is true and all other flags are false.
+// Scenario5: Test when startMsg.flags has EXTENSION_SANDBOX bit set and all other flags are false.
 HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_005, TestSize.Level2)
 {
     AppSpawnClient appSpawnClient;
     AppSpawnStartMsg startMsg;
     startMsg.flags = 0;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = true;
+    startMsg.flags |= (1ULL << StartFlags::EXTENSION_SANDBOX);
 #ifdef SUPPORT_CHILD_PROCESS
     startMsg.childProcessType = 0;
 #endif // SUPPORT_CHILD_PROCESS
@@ -130,9 +122,7 @@ HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_006, TestSize.Level2)
     AppSpawnClient appSpawnClient;
     AppSpawnStartMsg startMsg;
     startMsg.flags = 0;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
 #ifdef SUPPORT_CHILD_PROCESS
     startMsg.childProcessType = 1;
 #endif // SUPPORT_CHILD_PROCESS
@@ -146,9 +136,9 @@ HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_007, TestSize.Level2)
     AppSpawnClient appSpawnClient;
     AppSpawnStartMsg startMsg;
     startMsg.flags = 1;
-    startMsg.atomicServiceFlag = true;
+    startMsg.flags |= (1ULL << StartFlags::ATOMIC_SERVICE);
     startMsg.strictMode = true;
-    startMsg.isolatedExtension = true;
+    startMsg.flags |= (1ULL << StartFlags::EXTENSION_SANDBOX);
 #ifdef SUPPORT_CHILD_PROCESS
     startMsg.childProcessType = 1;
 #endif // SUPPORT_CHILD_PROCESS
@@ -156,16 +146,14 @@ HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_007, TestSize.Level2)
     EXPECT_NE(appSpawnClient.SetStartFlags(startMsg, reqHandle), 0);
 }
 
-// Scenario8: Test when startMsg.isCustomSandboxFlag is true and all other flags are false.
+// Scenario8: Test when startMsg.flags has CUSTOM_SANDBOX bit set and all other flags are false.
 HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_008, TestSize.Level2)
 {
     AppSpawnClient appSpawnClient;
     AppSpawnStartMsg startMsg;
     startMsg.flags = 0;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
-    startMsg.isCustomSandboxFlag = true;
+    startMsg.flags |= (1ULL << StartFlags::CUSTOM_SANDBOX);
 #ifdef SUPPORT_CHILD_PROCESS
     startMsg.childProcessType = 0;
 #endif // SUPPORT_CHILD_PROCESS
@@ -568,32 +556,6 @@ HWTEST_F(AppSpawnClientSecondTest, StartProcess_002, TestSize.Level2)
     startMsg.procName = "testProcName";
     ret = asc->StartProcess(startMsg, pid);
     EXPECT_NE(ret, ERR_OK);
-}
-
-// Scenario1: Test when reqHandle is nullptr returns ERR_OK
-HWTEST_F(AppSpawnClientSecondTest, SetIsolationModeFlag_001, TestSize.Level2)
-{
-    auto asc = std::make_shared<AppSpawnClient>(true);
-    AppSpawnReqMsgHandle reqHandle = nullptr;
-    AppSpawnStartMsg startMsg;
-    startMsg.isolationMode = false;
-    int ret = asc->SetIsolationModeFlag(startMsg, reqHandle);
-    EXPECT_EQ(ret, ERR_OK);
-}
-
-// Scenario2: Test when startMsg.isolationMode is true returns ERR_OK
-HWTEST_F(AppSpawnClientSecondTest, SetIsolationModeFlag_002, TestSize.Level2)
-{
-    auto asc = std::make_shared<AppSpawnClient>(true);
-    AppSpawnStartMsg startMsg;
-    startMsg.isolationMode = true;
-    startMsg.code = MSG_APP_SPAWN;
-    startMsg.procName = "testProcName";
-    AppSpawnReqMsgHandle reqHandle = nullptr;
-    int ret = AppSpawnReqMsgCreate(static_cast<AppSpawnMsgType>(startMsg.code), startMsg.procName.c_str(), &reqHandle);
-    EXPECT_EQ(ret, ERR_OK);
-    ret = asc->SetIsolationModeFlag(startMsg, reqHandle);
-    EXPECT_EQ(ret, ERR_OK);
 }
 
 // Scenario1: Test when AppSpawnReqMsgAddFd returns ERR_OK for all items in fds.

@@ -34,6 +34,11 @@ struct task_attr {
 };
 struct task_handle {};
 
+inline bool operator==(const task_handle &, std::nullptr_t)
+{
+    return false;  // mock submit never fails, handle is never null
+}
+
 inline void submit(std::function<void()> &&task, task_attr attr = {})
 {
     OHOS::AAFwk::MyFlag::ffrtSubmitFlag_++;
@@ -45,6 +50,17 @@ inline void submit(std::function<void()> &&task, task_attr attr = {})
 
 inline task_handle submit_h(std::function<void()> &&task)
 {
+    return task_handle{};
+}
+
+inline task_handle submit_h(std::function<void()> &&task,
+    const std::vector<task_handle> &in, const std::vector<task_handle> &out, task_attr attr = {})
+{
+    OHOS::AAFwk::MyFlag::ffrtSubmitFlag_++;
+    if (task) {
+        std::thread taskThread(task);
+        taskThread.detach();
+    }
     return task_handle{};
 }
 

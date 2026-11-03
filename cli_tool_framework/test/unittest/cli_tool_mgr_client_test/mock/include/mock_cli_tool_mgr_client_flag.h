@@ -11,7 +11,9 @@
 
 #include "cli_session_info.h"
 #include "function_info.h"
+#include "function_result_wrap.h"
 #include "icli_tool_data.h"
+#include "invoke_function_param.h"
 #include "iremote_object.h"
 #include "tool_info.h"
 #include "tool_summary.h"
@@ -28,6 +30,9 @@ public:
     static int32_t batchRegisterFunctionsSuccessCount;
     static int32_t retResetNamespaceFunctions;
     static int32_t resetNamespaceFunctionsSuccessCount;
+    static int32_t retBatchRegisterFunctionsAsync;
+    static int32_t retUnregisterIntentFunctionsByNamespaceAsync;
+    static int32_t retResetNamespaceFunctionsAsync;
     static int32_t retGetFunctionInfo;
     static int32_t retUnregisterFunction;
     static int32_t retGetAllFunctions;
@@ -40,8 +45,24 @@ public:
     static int32_t retSendMessage;
     static int32_t retBatchQueryPermission;
     static int32_t retLoadSystemAbility;
+    static int32_t retRegisterCliHook;
+    static int32_t retUnregisterCliHook;
+    static int32_t retRegisterFunctionHook;
+    static int32_t retUnregisterFunctionHook;
+    static int32_t retBeforeInvokeFunction;
+    static int32_t retAfterInvokeFunction;
+    static int32_t registerCliHookCount;
+    static int32_t unregisterCliHookCount;
+    static int32_t registerFunctionHookCount;
+    static int32_t unregisterFunctionHookCount;
+    static int32_t beforeInvokeFunctionCount;
+    static int32_t afterInvokeFunctionCount;
+    static int32_t lastHookActiveMethods;
+    static std::string lastInvokeFunctionNamespace;
+    static std::string lastInvokeFunctionName;
     static bool nullSystemAbility;
     static bool shouldCallback;
+    static bool devModeEnabled;
     static sptr<IRemoteObject> cliToolMgr;
     static std::string lastEventId;
     static std::string lastSubscriptionId;

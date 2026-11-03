@@ -95,7 +95,6 @@ public:
         permissionGrantUriPermissionAsCaller_ = false;
         processUdmfKeyRet_ = 0;
         udmfUtilsUris_ = {};
-        upmsUtilsCheckIsSystemAppByBundleNameRet_ = true;
         upmsUtilsCheckIsSystemAppByTokenIdRet_ = false;
         upmsUtilsGetDirByBundleNameAndAppIndexRet_ = true;
         upmsUtilsAlterBundleName_ = "";
@@ -114,6 +113,9 @@ public:
         isDFSCallRet_ = false;
         isSandboxAppRet_ = false;
         isSACall_ = false;
+        isSAOrBrokerCall_ = false;
+        getUserIdByTokenIdRet_ = false;
+        getUserIdByTokenIdUserId_ = -1;
     }
 
     static void PushGenerateFUDAppInfoResult(bool success, int32_t userId,
@@ -155,7 +157,6 @@ public:
     static int32_t getTokenIdByBundleNameStatus_;
     static int32_t processUdmfKeyRet_;
     static std::vector<std::string> udmfUtilsUris_;
-    static bool upmsUtilsCheckIsSystemAppByBundleNameRet_;
     static bool upmsUtilsCheckIsSystemAppByTokenIdRet_;
     static bool upmsUtilsGetDirByBundleNameAndAppIndexRet_;
     static std::string upmsUtilsAlterBundleName_ ;
@@ -175,6 +176,9 @@ public:
     static bool isDFSCallRet_;
     static bool isSandboxAppRet_;
     static bool isSACall_;
+    static bool isSAOrBrokerCall_;
+    static bool getUserIdByTokenIdRet_;
+    static int32_t getUserIdByTokenIdUserId_;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

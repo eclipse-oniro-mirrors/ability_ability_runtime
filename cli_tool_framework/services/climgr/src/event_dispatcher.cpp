@@ -16,6 +16,7 @@
 #include "event_dispatcher.h"
 
 #include <chrono>
+#include <nlohmann/json.hpp>
 #include <vector>
 
 #include "hilog_tag_wrapper.h"
@@ -227,8 +228,10 @@ void EventDispatcher::DispatchExitEvent(const std::string &sessionId, int32_t ex
 {
     CliToolEvent event;
     event.type = "exit";
-    event.eventData = "";
     event.exitCode = exitCode;
+    nlohmann::json exitData;
+    exitData["exitCode"] = exitCode;
+    event.eventData = exitData.dump();
     event.timestamp = GetCurrentTimeMs();
     DispatchEvent(sessionId, event);
 }
@@ -277,6 +280,27 @@ void EventDispatcher::ClearSessionSubscribers(const std::string &sessionId)
     sessionSubscribers_.erase(sessionId);
 }
 
+void EventDispatcher::RegisterTraceIds(const std::string &sessionId,
+    const std::string &toolCallId, const std::string &dmSessionId)
+{
+    if (sessionId.empty() || (toolCallId.empty() && dmSessionId.empty())) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    sessionTraceIds_[sessionId] = SessionTraceIds {toolCallId, dmSessionId};
+}
+
+void EventDispatcher::UnregisterTraceIds(const std::string &sessionId)
+{
+    if (sessionId.empty()) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    sessionTraceIds_.erase(sessionId);
+}
+
 void EventDispatcher::ClearAll()
 {
     std::vector<std::pair<sptr<IRemoteObject>, sptr<IRemoteObject::DeathRecipient>>> cleanupList;
@@ -287,6 +311,7 @@ void EventDispatcher::ClearAll()
         }
         schedulers_.clear();
         sessionSubscribers_.clear();
+        sessionTraceIds_.clear();
     }
     for (const auto &[remote, deathRecipient] : cleanupList) {
         if (remote != nullptr && deathRecipient != nullptr) {
@@ -298,8 +323,13 @@ void EventDispatcher::ClearAll()
 void EventDispatcher::DispatchEvent(const std::string &sessionId, const CliToolEvent &event)
 {
     std::vector<SubscriberState> subscribers;
+    SessionTraceIds traceIds;
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        auto traceIt = sessionTraceIds_.find(sessionId);
+        if (traceIt != sessionTraceIds_.end()) {
+            traceIds = traceIt->second;
+        }
         auto sessionIt = sessionSubscribers_.find(sessionId);
         if (sessionIt == sessionSubscribers_.end()) {
             TAG_LOGW(AAFwkTag::CLI_TOOL,
@@ -310,6 +340,13 @@ void EventDispatcher::DispatchEvent(const std::string &sessionId, const CliToolE
         for (const auto &[key, state] : sessionIt->second) {
             subscribers.push_back(state);
         }
+    }
+
+    if (!traceIds.toolCallId.empty() || !traceIds.dmSessionId.empty()) {
+        TAG_LOGI(AAFwkTag::CLI_TOOL,
+            "DispatchEvent: sessionId=%{public}s, eventType=%{public}s, toolCallId=%{public}s, "
+            "dmSessionId=%{public}s", sessionId.c_str(), event.type.c_str(),
+            traceIds.toolCallId.c_str(), traceIds.dmSessionId.c_str());
     }
 
     std::vector<SubscriberKey> failedSubscribers;

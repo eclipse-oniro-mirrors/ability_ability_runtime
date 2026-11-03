@@ -37,6 +37,7 @@ enum DeviceType : int32_t;
 }
 namespace AbilityRuntime {
 using AppExecFwk::ConfigUpdateReason;
+using AppExecFwk::BrandColorStrategy;
 class ApplicationContext;
 
 class Context : public Bindable,
@@ -319,6 +320,16 @@ public:
     virtual ConfigUpdateReason GetConfigUpdateReason()
     {
         return ConfigUpdateReason::CONFIG_UPDATE_REASON_DEFAULT;
+    }
+
+    virtual BrandColorStrategy GetBrandColorStrategy() const
+    {
+        return BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM;
+    }
+
+    virtual std::string GetBrandColorValue() const
+    {
+        return "";
     }
 
 #ifdef SUPPORT_GRAPHICS

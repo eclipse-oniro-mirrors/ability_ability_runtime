@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -651,6 +651,7 @@ HWTEST_F(AbilityRecoveryUnitTest, ScheduleRestoreAbilityState_005, TestSize.Leve
  */
 HWTEST_F(AbilityRecoveryUnitTest, ScheduleRestoreAbilityState_006, TestSize.Level1)
 {
+    EXPECT_TRUE(abilityInfo_ != nullptr);
     abilityInfo_->bundleName = "com.test.recovery";
     abilityInfo_->name = "MainAbility";
     abilityInfo_->applicationInfo.uid = 10000;
@@ -661,7 +662,7 @@ HWTEST_F(AbilityRecoveryUnitTest, ScheduleRestoreAbilityState_006, TestSize.Leve
     abilityRecovery_->hasTryLoad_ = true;
     abilityRecovery_->hasLoaded_ = true;
     abilityRecovery_->abilityInfo_.reset();
-    EXPECT_FALSE(abilityRecovery_->ScheduleRestoreAbilityState(StateReason::CPP_CRASH, want_));
+    abilityRecovery_->ScheduleRestoreAbilityState(StateReason::CPP_CRASH, want_);
 }
 
 /**

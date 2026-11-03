@@ -1,0 +1,54 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//foundation/ability/ability_runtime/ability_runtime.gni")
+
+module_output_path = "ability_runtime/ability_runtime/ability_cloud_push"
+
+ohos_unittest("ability_cloud_push_test") {
+  module_out_path = module_output_path
+
+  configs = [ "${ability_runtime_services_path}/common:common_config" ]
+
+  if (target_cpu == "arm") {
+    cflags = [ "-DBINDER_IPC_32BIT" ]
+  }
+
+  sources = [
+    "ability_cloud_push_manager_test.cpp",
+    "ability_cloud_push_reader_test.cpp",
+    "ability_cloud_push_sign_tools_test.cpp",
+    "${ability_runtime_services_path}/common/src/param_update/ability_cloud_push_manager.cpp",
+    "${ability_runtime_services_path}/common/src/param_update/ability_cloud_push_reader.cpp",
+    "${ability_runtime_services_path}/common/src/param_update/ability_cloud_push_sign_tools.cpp",
+  ]
+
+  deps = [
+    "${ability_runtime_services_path}/common:app_util",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "openssl:libcrypto_shared",
+  ]
+}
+
+group("unittest") {
+  testonly = true
+  deps = [ ":ability_cloud_push_test" ]
+}

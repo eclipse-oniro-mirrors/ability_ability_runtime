@@ -164,7 +164,8 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartServiceEnable_001, TestSize
     ASSERT_NE(extensionConfig_, nullptr);
     extensionConfig_->configMap_.clear();
     extensionConfig_->configMap_[extType].serviceEnableFlag = false;
-    bool enable = extensionConfig_->IsExtensionStartServiceEnable(extType, "form");
+    AppExecFwk::ElementName targetElement;
+    bool enable = extensionConfig_->IsExtensionStartServiceEnable(extType, targetElement);
     EXPECT_EQ(enable, false);
 }
 
@@ -179,7 +180,8 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartServiceEnable_002, TestSize
     ASSERT_NE(extensionConfig_, nullptr);
     extensionConfig_->configMap_.clear();
     extensionConfig_->configMap_[extType].serviceEnableFlag = true;
-    bool enable = extensionConfig_->IsExtensionStartServiceEnable(extType, "bbb");
+    AppExecFwk::ElementName targetElement;
+    bool enable = extensionConfig_->IsExtensionStartServiceEnable(extType, targetElement);
     EXPECT_EQ(enable, true);
 }
 
@@ -196,7 +198,8 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartServiceEnable_003, TestSize
     jsOnFile[EXTENSION_SERVICE_BLOCKED_LIST_NAME] = {"aa", "bb", "/bundle/module/ability"};
     extensionConfig_->LoadExtensionServiceBlockedList(jsOnFile, extType);
     // uri not valid
-    bool enable = extensionConfig_->IsExtensionStartServiceEnable(extType, "bb");
+    AppExecFwk::ElementName targetElement;
+    bool enable = extensionConfig_->IsExtensionStartServiceEnable(extType, targetElement);
     EXPECT_EQ(enable, true);
 }
 
@@ -213,7 +216,9 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartServiceEnable_004, TestSize
     jsOnFile[EXTENSION_SERVICE_BLOCKED_LIST_NAME] = {"aa", "bb", "/bundle/module/ability"};
     extensionConfig_->LoadExtensionServiceBlockedList(jsOnFile, extType);
     // uri is valid
-    bool enable = extensionConfig_->IsExtensionStartServiceEnable(extType, "/bundle/module/ability");
+    AppExecFwk::ElementName targetElement;
+    targetElement.ParseURI("/bundle/module/ability");
+    bool enable = extensionConfig_->IsExtensionStartServiceEnable(extType, targetElement);
     EXPECT_EQ(enable, false);
 }
 
@@ -749,8 +754,9 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartThirdPartyAppEnableNew_001,
     ASSERT_NE(extensionConfig_, nullptr);
     LoadTestConfig(configStr);
 
-    bool enable = extensionConfig_->IsExtensionStartThirdPartyAppEnableNew("form",
-        "/com.acts.helloworld/entry/AllowAbility1");
+    AppExecFwk::ElementName targetElement;
+    targetElement.ParseURI("/com.acts.helloworld/entry/AllowAbility1");
+    bool enable = extensionConfig_->IsExtensionStartThirdPartyAppEnableNew("form", targetElement);
     EXPECT_TRUE(enable);
     TAG_LOGI(AAFwkTag::TEST, "IsExtensionStartThirdPartyAppEnableNew_001 end.");
 }
@@ -772,8 +778,9 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartThirdPartyAppEnableNew_002,
     })";
     ASSERT_NE(extensionConfig_, nullptr);
     LoadTestConfig(configStr);
-    bool enable = extensionConfig_->IsExtensionStartThirdPartyAppEnableNew("form",
-        "/com.acts.helloworld/entry/AllowAbility1");
+    AppExecFwk::ElementName targetElement;
+    targetElement.ParseURI("/com.acts.helloworld/entry/AllowAbility1");
+    bool enable = extensionConfig_->IsExtensionStartThirdPartyAppEnableNew("form", targetElement);
     EXPECT_TRUE(enable);
     TAG_LOGI(AAFwkTag::TEST, "IsExtensionStartThirdPartyAppEnableNew_002 end.");
 }
@@ -797,7 +804,8 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartThirdPartyAppEnableNew_003,
     })";
     ASSERT_NE(extensionConfig_, nullptr);
     LoadTestConfig(configStr);
-    bool enable = extensionConfig_->IsExtensionStartThirdPartyAppEnableNew("form", "invalid_uri");
+    AppExecFwk::ElementName targetElement;
+    bool enable = extensionConfig_->IsExtensionStartThirdPartyAppEnableNew("form", targetElement);
     EXPECT_FALSE(enable);
     TAG_LOGI(AAFwkTag::TEST, "IsExtensionStartThirdPartyAppEnableNew_003 end.");
 }
@@ -821,7 +829,8 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartThirdPartyAppEnableNew_004,
     })";
     ASSERT_NE(extensionConfig_, nullptr);
     LoadTestConfig(configStr);
-    bool enable = extensionConfig_->IsExtensionStartThirdPartyAppEnableNew("form", "invalid_uri");
+    AppExecFwk::ElementName targetElement;
+    bool enable = extensionConfig_->IsExtensionStartThirdPartyAppEnableNew("form", targetElement);
     EXPECT_TRUE(enable);
     TAG_LOGI(AAFwkTag::TEST, "IsExtensionStartThirdPartyAppEnableNew_004 end.");
 }
@@ -846,8 +855,9 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartThirdPartyAppEnableNew_005,
     })";
     ASSERT_NE(extensionConfig_, nullptr);
     LoadTestConfig(configStr);
-    bool enable = extensionConfig_->IsExtensionStartThirdPartyAppEnableNew("form",
-        "/com.acts.helloworld/entry/BlockAbility1");
+    AppExecFwk::ElementName targetElement;
+    targetElement.ParseURI("/com.acts.helloworld/entry/BlockAbility1");
+    bool enable = extensionConfig_->IsExtensionStartThirdPartyAppEnableNew("form", targetElement);
     EXPECT_TRUE(enable);
     TAG_LOGI(AAFwkTag::TEST, "IsExtensionStartThirdPartyAppEnableNew_005 end.");
 }
@@ -872,8 +882,9 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartThirdPartyAppEnableNew_006,
     })";
     ASSERT_NE(extensionConfig_, nullptr);
     LoadTestConfig(configStr);
-    bool enable = extensionConfig_->IsExtensionStartThirdPartyAppEnableNew("form",
-        "/com.acts.helloworld/entry/BlockAbility1");
+    AppExecFwk::ElementName targetElement;
+    targetElement.ParseURI("/com.acts.helloworld/entry/BlockAbility1");
+    bool enable = extensionConfig_->IsExtensionStartThirdPartyAppEnableNew("form", targetElement);
     EXPECT_TRUE(enable);
     TAG_LOGI(AAFwkTag::TEST, "IsExtensionStartThirdPartyAppEnableNew_006 end.");
 }
@@ -898,8 +909,9 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartThirdPartyAppEnableNew_007,
     })";
     ASSERT_NE(extensionConfig_, nullptr);
     LoadTestConfig(configStr);
-    bool enable = extensionConfig_->IsExtensionStartThirdPartyAppEnableNew("form",
-        "/com.acts.helloworld/entry/BlockAbility1");
+    AppExecFwk::ElementName targetElement;
+    targetElement.ParseURI("/com.acts.helloworld/entry/BlockAbility1");
+    bool enable = extensionConfig_->IsExtensionStartThirdPartyAppEnableNew("form", targetElement);
     EXPECT_FALSE(enable);
     TAG_LOGI(AAFwkTag::TEST, "IsExtensionStartThirdPartyAppEnableNew_007 end.");
 }
@@ -924,8 +936,9 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartThirdPartyAppEnableNew_008,
     })";
     ASSERT_NE(extensionConfig_, nullptr);
     LoadTestConfig(configStr);
-    bool enable = extensionConfig_->IsExtensionStartThirdPartyAppEnableNew("form",
-        "/com.acts.helloworld/entry/BlockAbility1");
+    AppExecFwk::ElementName targetElement;
+    targetElement.ParseURI("/com.acts.helloworld/entry/BlockAbility1");
+    bool enable = extensionConfig_->IsExtensionStartThirdPartyAppEnableNew("form", targetElement);
     EXPECT_TRUE(enable);
     TAG_LOGI(AAFwkTag::TEST, "IsExtensionStartThirdPartyAppEnableNew_008 end.");
 }
@@ -950,8 +963,9 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartThirdPartyAppEnableNew_009,
     })";
     ASSERT_NE(extensionConfig_, nullptr);
     LoadTestConfig(configStr);
-    bool enable = extensionConfig_->IsExtensionStartThirdPartyAppEnableNew("form",
-        "/com.acts.helloworld/entry/AllowAbility1");
+    AppExecFwk::ElementName targetElement;
+    targetElement.ParseURI("/com.acts.helloworld/entry/AllowAbility1");
+    bool enable = extensionConfig_->IsExtensionStartThirdPartyAppEnableNew("form", targetElement);
     EXPECT_TRUE(enable);
     TAG_LOGI(AAFwkTag::TEST, "IsExtensionStartThirdPartyAppEnableNew_009 end.");
 }
@@ -976,8 +990,9 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartThirdPartyAppEnableNew_010,
     })";
     ASSERT_NE(extensionConfig_, nullptr);
     LoadTestConfig(configStr);
-    bool enable = extensionConfig_->IsExtensionStartThirdPartyAppEnableNew("form",
-        "/com.acts.helloworld/entry/AllowAbility1");
+    AppExecFwk::ElementName targetElement;
+    targetElement.ParseURI("/com.acts.helloworld/entry/AllowAbility1");
+    bool enable = extensionConfig_->IsExtensionStartThirdPartyAppEnableNew("form", targetElement);
     EXPECT_FALSE(enable);
     TAG_LOGI(AAFwkTag::TEST, "IsExtensionStartThirdPartyAppEnableNew_010 end.");
 }
@@ -1002,8 +1017,9 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartServiceEnableNew_001, TestS
     })";
     ASSERT_NE(extensionConfig_, nullptr);
     LoadTestConfig(configStr);
-    bool enable = extensionConfig_->IsExtensionStartServiceEnableNew("form",
-        "/com.acts.helloworld/entry/BlockAbility1");
+    AppExecFwk::ElementName targetElement;
+    targetElement.ParseURI("/com.acts.helloworld/entry/BlockAbility1");
+    bool enable = extensionConfig_->IsExtensionStartServiceEnableNew("form", targetElement);
     EXPECT_FALSE(enable);
     TAG_LOGI(AAFwkTag::TEST, "IsExtensionStartServiceEnableNew_001 end.");
 }
@@ -1028,8 +1044,9 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartServiceEnableNew_002, TestS
     })";
     ASSERT_NE(extensionConfig_, nullptr);
     LoadTestConfig(configStr);
-    bool enable = extensionConfig_->IsExtensionStartServiceEnableNew("form",
-        "/com.acts.helloworld/entry/BlockAbility1");
+    AppExecFwk::ElementName targetElement;
+    targetElement.ParseURI("/com.acts.helloworld/entry/BlockAbility1");
+    bool enable = extensionConfig_->IsExtensionStartServiceEnableNew("form", targetElement);
     EXPECT_TRUE(enable);
     TAG_LOGI(AAFwkTag::TEST, "IsExtensionStartServiceEnableNew_002 end.");
 }
@@ -1054,8 +1071,9 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartServiceEnableNew_003, TestS
     })";
     ASSERT_NE(extensionConfig_, nullptr);
     LoadTestConfig(configStr);
-    bool enable = extensionConfig_->IsExtensionStartServiceEnableNew("form",
-        "/com.acts.helloworld/entry/AllowAbility1");
+    AppExecFwk::ElementName targetElement;
+    targetElement.ParseURI("/com.acts.helloworld/entry/AllowAbility1");
+    bool enable = extensionConfig_->IsExtensionStartServiceEnableNew("form", targetElement);
     EXPECT_TRUE(enable);
     TAG_LOGI(AAFwkTag::TEST, "IsExtensionStartServiceEnableNew_003 end.");
 }
@@ -1080,8 +1098,9 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartServiceEnableNew_004, TestS
     })";
     ASSERT_NE(extensionConfig_, nullptr);
     LoadTestConfig(configStr);
-    bool enable = extensionConfig_->IsExtensionStartServiceEnableNew("form",
-        "/com.acts.helloworld/entry/AllowAbility1");
+    AppExecFwk::ElementName targetElement;
+    targetElement.ParseURI("/com.acts.helloworld/entry/AllowAbility1");
+    bool enable = extensionConfig_->IsExtensionStartServiceEnableNew("form", targetElement);
     EXPECT_FALSE(enable);
     TAG_LOGI(AAFwkTag::TEST, "IsExtensionStartServiceEnableNew_004 end.");
 }
@@ -1106,8 +1125,9 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartDefaultEnable_001, TestSize
     })";
     ASSERT_NE(extensionConfig_, nullptr);
     LoadTestConfig(configStr);
-    bool enable = extensionConfig_->IsExtensionStartDefaultEnable("form",
-        "/com.acts.helloworld/entry/BlockAbility1");
+    AppExecFwk::ElementName targetElement;
+    targetElement.ParseURI("/com.acts.helloworld/entry/BlockAbility1");
+    bool enable = extensionConfig_->IsExtensionStartDefaultEnable("form", targetElement);
     EXPECT_FALSE(enable);
     TAG_LOGI(AAFwkTag::TEST, "IsExtensionStartDefaultEnable_001 end.");
 }
@@ -1132,8 +1152,9 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartDefaultEnable_002, TestSize
     })";
     ASSERT_NE(extensionConfig_, nullptr);
     LoadTestConfig(configStr);
-    bool enable = extensionConfig_->IsExtensionStartDefaultEnable("form",
-        "/com.acts.helloworld/entry/BlockAbility1");
+    AppExecFwk::ElementName targetElement;
+    targetElement.ParseURI("/com.acts.helloworld/entry/BlockAbility1");
+    bool enable = extensionConfig_->IsExtensionStartDefaultEnable("form", targetElement);
     EXPECT_TRUE(enable);
     TAG_LOGI(AAFwkTag::TEST, "IsExtensionStartDefaultEnable_002 end.");
 }
@@ -1158,8 +1179,9 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartDefaultEnable_003, TestSize
     })";
     ASSERT_NE(extensionConfig_, nullptr);
     LoadTestConfig(configStr);
-    bool enable = extensionConfig_->IsExtensionStartDefaultEnable("form",
-        "/com.acts.helloworld/entry/AllowAbility1");
+    AppExecFwk::ElementName targetElement;
+    targetElement.ParseURI("/com.acts.helloworld/entry/AllowAbility1");
+    bool enable = extensionConfig_->IsExtensionStartDefaultEnable("form", targetElement);
     EXPECT_TRUE(enable);
     TAG_LOGI(AAFwkTag::TEST, "IsExtensionStartDefaultEnable_003 end.");
 }
@@ -1184,8 +1206,9 @@ HWTEST_F(AbilityExtensionConfigTest, IsExtensionStartDefaultEnable_004, TestSize
     })";
     ASSERT_NE(extensionConfig_, nullptr);
     LoadTestConfig(configStr);
-    bool enable = extensionConfig_->IsExtensionStartDefaultEnable("form",
-        "/com.acts.helloworld/entry/AllowAbility1");
+    AppExecFwk::ElementName targetElement;
+    targetElement.ParseURI("/com.acts.helloworld/entry/AllowAbility1");
+    bool enable = extensionConfig_->IsExtensionStartDefaultEnable("form", targetElement);
     EXPECT_FALSE(enable);
     TAG_LOGI(AAFwkTag::TEST, "IsExtensionStartDefaultEnable_004 end.");
 }

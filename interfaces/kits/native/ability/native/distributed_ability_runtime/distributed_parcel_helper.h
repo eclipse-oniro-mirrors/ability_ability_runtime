@@ -97,6 +97,17 @@ namespace AAFwk {
         } \
     } while (0)
 
+#define PARCEL_TRANSACT_ASYNC_RET_INT(remote, code, data, reply) \
+    do { \
+        MessageOption option(MessageOption::TF_ASYNC); \
+        int32_t error = remote->SendRequest(code, data, reply, option); \
+        if (error != ERR_NONE) { \
+            TAG_LOGE(AAFwkTag::DISTRIBUTED, "error: %{public}d", error); \
+            return error; \
+        } \
+        return ERR_OK; \
+    } while (0)
+
 #define PARCEL_WRITE_REPLY_NOERROR(reply, type, result) \
     do { \
         bool ret = reply.Write##type(result); \

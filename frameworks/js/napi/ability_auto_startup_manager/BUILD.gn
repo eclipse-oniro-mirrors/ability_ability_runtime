@@ -54,9 +54,11 @@ ohos_shared_library("autostartupmanager") {
     "common_event_service:cesfwk_innerkits",
     "eventhandler:libeventhandler",
     "hilog:libhilog",
+    "libuv:uv",
     "ipc:ipc_core",
     "napi:ace_napi",
     "samgr:samgr_proxy",
+    "node:node_header_notice",
   ]
 
   relative_install_dir = "module/app/ability"

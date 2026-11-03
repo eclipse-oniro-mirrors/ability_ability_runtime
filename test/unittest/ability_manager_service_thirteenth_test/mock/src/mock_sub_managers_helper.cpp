@@ -242,5 +242,9 @@ std::shared_ptr<MissionListManagerInterface> SubManagersHelper::CreateMissionLis
 {
     return nullptr;
 }
+
+void SubManagersHelper::HandlePendingWantDeathCleanup(const std::string &bundleName, int32_t pid)
+{
+}
 }  // namespace AAFwk
 }  // namespace OHOS

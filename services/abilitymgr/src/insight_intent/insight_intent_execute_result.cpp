@@ -18,7 +18,7 @@
 #include "array_wrapper.h"
 #include "hilog_tag_wrapper.h"
 #include "int_wrapper.h"
-#include "intent_json_safe_get.h"
+#include "json_safe_util.h"
 #include "nlohmann/json.hpp"
 #include "string_wrapper.h"
 #include "want_params_wrapper.h"
@@ -31,8 +31,6 @@ constexpr size_t MAX_BUNDLE_NAME_LEN = 127;
 constexpr size_t MAX_MODULE_NAME_LEN = 31;
 constexpr size_t MAX_ABILITY_NAME_LEN = 255;
 constexpr size_t MAX_UI_EXTENSION_TYPE_LEN = 255;
-constexpr size_t MAX_RESULT_JSON_LEN = 1024 * 1024;
-constexpr size_t MAX_RESULT_JSON_DEPTH = 100;
 namespace {
 constexpr const char *KEY_INNER_ERR = "innerErr";
 constexpr const char *KEY_CODE = "code";
@@ -52,6 +50,7 @@ constexpr const char *KEY_ABILITY_NAME = "abilityName";
 constexpr const char *KEY_UI_EXTENSION_TYPE = "uiExtensionType";
 constexpr const char *KEY_URI = "uri";
 constexpr const char *KEY_PARAMETERS = "parameters";
+constexpr const char *KEY_BUTTONS = "buttons";
 } // namespace
 
 bool InteractionUI::Marshalling(Parcel &parcel) const
@@ -67,6 +66,9 @@ std::shared_ptr<InteractionUI> InteractionUI::Unmarshalling(Parcel &parcel)
     }
     if (type == INTERACTION_UI_TYPE_MODAL_UIEXTENSION) {
         return InteractionModalUIExtension::UnmarshallingModal(parcel);
+    }
+    if (type == INTERACTION_UI_TYPE_TEXT) {
+        return InteractionText::UnmarshallingText(parcel);
     }
     auto ui = std::make_shared<InteractionUI>();
     ui->interactionUIType = type;
@@ -99,6 +101,24 @@ std::shared_ptr<InteractionModalUIExtension> InteractionModalUIExtension::Unmars
     return modal;
 }
 
+bool InteractionText::Marshalling(Parcel &parcel) const
+{
+    if (!InteractionUI::Marshalling(parcel)) {
+        return false;
+    }
+    if (!parcel.WriteParcelable(parameters.get())) { return false; }
+    return parcel.WriteStringVector(buttons);
+}
+
+std::shared_ptr<InteractionText> InteractionText::UnmarshallingText(Parcel &parcel)
+{
+    auto text = std::make_shared<InteractionText>();
+    text->interactionUIType = INTERACTION_UI_TYPE_TEXT;
+    text->parameters = std::shared_ptr<WantParams>(parcel.ReadParcelable<WantParams>());
+    if (!parcel.ReadStringVector(&text->buttons)) { return nullptr; }
+    return text;
+}
+
 bool InteractionInfo::Marshalling(Parcel &parcel) const
 {
     bool hasUI = (interactionUI != nullptr);
@@ -107,6 +127,9 @@ bool InteractionInfo::Marshalling(Parcel &parcel) const
         if (interactionUI->interactionUIType == INTERACTION_UI_TYPE_MODAL_UIEXTENSION) {
             auto modal = std::static_pointer_cast<InteractionModalUIExtension>(interactionUI);
             if (!modal->Marshalling(parcel)) { return false; }
+        } else if (interactionUI->interactionUIType == INTERACTION_UI_TYPE_TEXT) {
+            auto text = std::static_pointer_cast<InteractionText>(interactionUI);
+            if (!text->Marshalling(parcel)) { return false; }
         } else {
             if (!interactionUI->Marshalling(parcel)) { return false; }
         }
@@ -237,6 +260,46 @@ static void ParseWantParamsField(const nlohmann::json &jsonObject,
     }
 }
 
+static void ParseModalUIFields(const nlohmann::json &uiJson,
+    const std::string &uiType, std::shared_ptr<InteractionInfo> &info)
+{
+    auto modal = std::make_shared<InteractionModalUIExtension>();
+    modal->interactionUIType = uiType;
+    if (uiJson.contains(KEY_BUNDLE_NAME) && uiJson.at(KEY_BUNDLE_NAME).is_string()) {
+        modal->bundleName = uiJson.at(KEY_BUNDLE_NAME).get<std::string>();
+    }
+    if (uiJson.contains(KEY_ABILITY_NAME) && uiJson.at(KEY_ABILITY_NAME).is_string()) {
+        modal->abilityName = uiJson.at(KEY_ABILITY_NAME).get<std::string>();
+    }
+    if (uiJson.contains(KEY_MODULE_NAME) && uiJson.at(KEY_MODULE_NAME).is_string()) {
+        modal->moduleName = uiJson.at(KEY_MODULE_NAME).get<std::string>();
+    }
+    if (uiJson.contains(KEY_UI_EXTENSION_TYPE) && uiJson.at(KEY_UI_EXTENSION_TYPE).is_string()) {
+        modal->uiExtensionType = uiJson.at(KEY_UI_EXTENSION_TYPE).get<std::string>();
+    }
+    if (uiJson.contains(KEY_URI) && uiJson.at(KEY_URI).is_string()) {
+        modal->uri = uiJson.at(KEY_URI).get<std::string>();
+    }
+    ParseWantParamsField(uiJson, KEY_PARAMETERS, modal->parameters);
+    info->interactionUI = modal;
+}
+
+static void ParseTextUIFields(const nlohmann::json &uiJson,
+    const std::string &uiType, std::shared_ptr<InteractionInfo> &info)
+{
+    auto text = std::make_shared<InteractionText>();
+    text->interactionUIType = uiType;
+    ParseWantParamsField(uiJson, KEY_PARAMETERS, text->parameters);
+    if (uiJson.contains(KEY_BUTTONS) && uiJson.at(KEY_BUTTONS).is_array()) {
+        for (const auto &item : uiJson.at(KEY_BUTTONS)) {
+            if (item.is_string()) {
+                text->buttons.emplace_back(item.get<std::string>());
+            }
+        }
+    }
+    info->interactionUI = text;
+}
+
 static bool ParseInteractionInfo(const nlohmann::json &jsonObject,
     std::shared_ptr<InteractionInfo> &interactionInfo)
 {
@@ -253,81 +316,20 @@ static bool ParseInteractionInfo(const nlohmann::json &jsonObject,
         uiType = uiJson.at(KEY_INTERACTION_UI_TYPE).get<std::string>();
     }
     auto info = std::make_shared<InteractionInfo>();
-    if (uiType != INTERACTION_UI_TYPE_MODAL_UIEXTENSION) {
+    if (uiType == INTERACTION_UI_TYPE_MODAL_UIEXTENSION) {
+        ParseModalUIFields(uiJson, uiType, info);
+    } else if (uiType == INTERACTION_UI_TYPE_TEXT) {
+        ParseTextUIFields(uiJson, uiType, info);
+    } else {
         auto ui = std::make_shared<InteractionUI>();
         ui->interactionUIType = uiType;
         info->interactionUI = ui;
-    } else {
-        auto modal = std::make_shared<InteractionModalUIExtension>();
-        modal->interactionUIType = uiType;
-        if (uiJson.contains(KEY_BUNDLE_NAME) && uiJson.at(KEY_BUNDLE_NAME).is_string()) {
-            modal->bundleName = uiJson.at(KEY_BUNDLE_NAME).get<std::string>();
-        }
-        if (uiJson.contains(KEY_ABILITY_NAME) && uiJson.at(KEY_ABILITY_NAME).is_string()) {
-            modal->abilityName = uiJson.at(KEY_ABILITY_NAME).get<std::string>();
-        }
-        if (uiJson.contains(KEY_MODULE_NAME) && uiJson.at(KEY_MODULE_NAME).is_string()) {
-            modal->moduleName = uiJson.at(KEY_MODULE_NAME).get<std::string>();
-        }
-        if (uiJson.contains(KEY_UI_EXTENSION_TYPE) && uiJson.at(KEY_UI_EXTENSION_TYPE).is_string()) {
-            modal->uiExtensionType = uiJson.at(KEY_UI_EXTENSION_TYPE).get<std::string>();
-        }
-        if (uiJson.contains(KEY_URI) && uiJson.at(KEY_URI).is_string()) {
-            modal->uri = uiJson.at(KEY_URI).get<std::string>();
-        }
-        ParseWantParamsField(uiJson, KEY_PARAMETERS, modal->parameters);
-        info->interactionUI = modal;
     }
     if (!InsightIntentExecuteResult::CheckInteractionInfo(*info)) {
         interactionInfo = nullptr;
         return false;
     }
     interactionInfo = info;
-    return true;
-}
-
-namespace {
-class DepthLimitSax : public nlohmann::json_sax<nlohmann::json> {
-public:
-    explicit DepthLimitSax(size_t maxDepth) : maxDepth_(maxDepth) {}
-    bool null() override { return true; }
-    bool boolean(bool) override { return true; }
-    bool number_integer(nlohmann::json::number_integer_t) override { return true; }
-    bool number_unsigned(nlohmann::json::number_unsigned_t) override { return true; }
-    bool number_float(nlohmann::json::number_float_t, const nlohmann::json::string_t&) override { return true; }
-    bool string(nlohmann::json::string_t&) override { return true; }
-    bool binary(nlohmann::json::binary_t&) override { return true; }
-    bool start_object(size_t) override { return ++depth_ <= maxDepth_; }
-    bool end_object() override
-    {
-        if (depth_ > 0) {
-            --depth_;
-        }
-        return true;
-    }
-    bool start_array(size_t) override { return ++depth_ <= maxDepth_; }
-    bool end_array() override
-    {
-        if (depth_ > 0) {
-            --depth_;
-        }
-        return true;
-    }
-    bool key(nlohmann::json::string_t&) override { return true; }
-    bool parse_error(size_t, const std::string&, const nlohmann::detail::exception&) override { return false; }
-private:
-    size_t depth_ = 0;
-    size_t maxDepth_ = 0;
-};
-}
-
-static bool CheckJsonDepth(const std::string &jsonStr, size_t maxDepth)
-{
-    DepthLimitSax handler(maxDepth);
-    if (!nlohmann::json::sax_parse(jsonStr, &handler)) {
-        TAG_LOGW(AAFwkTag::INTENT, "json depth exceeds limit or parse error");
-        return false;
-    }
     return true;
 }
 
@@ -379,15 +381,8 @@ static void ParseCollectionFields(const nlohmann::json &jsonObject, InsightInten
 
 bool InsightIntentExecuteResult::FromJsonString(const std::string &jsonStr)
 {
-    if (jsonStr.size() > MAX_RESULT_JSON_LEN) {
-        TAG_LOGW(AAFwkTag::INTENT, "json size exceeds limit: %{public}zu", jsonStr.size());
-        return false;
-    }
-    if (!CheckJsonDepth(jsonStr, MAX_RESULT_JSON_DEPTH)) {
-        return false;
-    }
-    nlohmann::json jsonObject = nlohmann::json::parse(jsonStr, nullptr, false);
-    if (jsonObject.is_discarded() || !jsonObject.is_object()) {
+    nlohmann::json jsonObject;
+    if (!AbilityRuntime::SafeParse(jsonStr, jsonObject) || !jsonObject.is_object()) {
         return false;
     }
     ParseScalarFields(jsonObject, *this);
@@ -399,19 +394,28 @@ static nlohmann::json BuildInteractionUIJson(const std::shared_ptr<InteractionUI
 {
     nlohmann::json uiJson;
     uiJson[KEY_INTERACTION_UI_TYPE] = ui->interactionUIType;
-    if (ui->interactionUIType != INTERACTION_UI_TYPE_MODAL_UIEXTENSION) {
-        return uiJson;
-    }
-    auto modalUI = std::static_pointer_cast<InteractionModalUIExtension>(ui);
-    uiJson[KEY_BUNDLE_NAME] = modalUI->bundleName;
-    uiJson[KEY_ABILITY_NAME] = modalUI->abilityName;
-    uiJson[KEY_MODULE_NAME] = modalUI->moduleName;
-    uiJson[KEY_UI_EXTENSION_TYPE] = modalUI->uiExtensionType;
-    uiJson[KEY_URI] = modalUI->uri;
-    if (modalUI->parameters != nullptr) {
-        nlohmann::json paramsJson;
-        OHOS::AAFwk::to_json(paramsJson, *modalUI->parameters);
-        uiJson[KEY_PARAMETERS] = paramsJson;
+    if (ui->interactionUIType == INTERACTION_UI_TYPE_MODAL_UIEXTENSION) {
+        auto modalUI = std::static_pointer_cast<InteractionModalUIExtension>(ui);
+        uiJson[KEY_BUNDLE_NAME] = modalUI->bundleName;
+        uiJson[KEY_ABILITY_NAME] = modalUI->abilityName;
+        uiJson[KEY_MODULE_NAME] = modalUI->moduleName;
+        uiJson[KEY_UI_EXTENSION_TYPE] = modalUI->uiExtensionType;
+        uiJson[KEY_URI] = modalUI->uri;
+        if (modalUI->parameters != nullptr) {
+            nlohmann::json paramsJson;
+            OHOS::AAFwk::to_json(paramsJson, *modalUI->parameters);
+            uiJson[KEY_PARAMETERS] = paramsJson;
+        }
+    } else if (ui->interactionUIType == INTERACTION_UI_TYPE_TEXT) {
+        auto textUI = std::static_pointer_cast<InteractionText>(ui);
+        if (textUI->parameters != nullptr) {
+            nlohmann::json paramsJson;
+            OHOS::AAFwk::to_json(paramsJson, *textUI->parameters);
+            uiJson[KEY_PARAMETERS] = paramsJson;
+        }
+        if (!textUI->buttons.empty()) {
+            uiJson[KEY_BUTTONS] = textUI->buttons;
+        }
     }
     return uiJson;
 }
@@ -496,6 +500,9 @@ bool InsightIntentExecuteResult::CheckInteractionInfo(const InteractionInfo &int
         TAG_LOGW(AAFwkTag::INTENT, "CheckInteractionInfo failed: empty interactionUIType");
         return false;
     }
+    if (type == INTERACTION_UI_TYPE_TEXT) {
+        return true;
+    }
     if (type != INTERACTION_UI_TYPE_MODAL_UIEXTENSION) {
         TAG_LOGW(AAFwkTag::INTENT, "CheckInteractionInfo failed: unsupported interactionUIType");
         return false;
@@ -514,6 +521,48 @@ bool InsightIntentExecuteResult::CheckInteractionInfo(const InteractionInfo &int
         return false;
     }
     return true;
+}
+
+static void SetStringArrayParam(const std::shared_ptr<WantParams> &params,
+    const char *key, const std::vector<std::string> &values)
+{
+    if (values.empty()) {
+        return;
+    }
+    auto size = values.size();
+    sptr<OHOS::AAFwk::IArray> array =
+        sptr<AAFwk::Array>::MakeSptr(size, AAFwk::g_IID_IString);
+    if (array == nullptr) {
+        return;
+    }
+    for (std::size_t i = 0; i < size; i++) {
+        array->Set(i, OHOS::AAFwk::String::Box(values[i]));
+    }
+    params->SetParam(key, array);
+}
+
+static void BuildInteractionUIParams(const std::shared_ptr<InteractionUI> &ui,
+    const std::shared_ptr<WantParams> &uiParams)
+{
+    if (ui->interactionUIType == INTERACTION_UI_TYPE_MODAL_UIEXTENSION) {
+        auto modalUI = std::static_pointer_cast<InteractionModalUIExtension>(ui);
+        uiParams->SetParam(KEY_BUNDLE_NAME, OHOS::AAFwk::String::Box(modalUI->bundleName));
+        uiParams->SetParam(KEY_ABILITY_NAME, OHOS::AAFwk::String::Box(modalUI->abilityName));
+        uiParams->SetParam(KEY_MODULE_NAME, OHOS::AAFwk::String::Box(modalUI->moduleName));
+        uiParams->SetParam(KEY_UI_EXTENSION_TYPE, OHOS::AAFwk::String::Box(modalUI->uiExtensionType));
+        uiParams->SetParam(KEY_URI, OHOS::AAFwk::String::Box(modalUI->uri));
+        if (modalUI->parameters != nullptr) {
+            uiParams->SetParam(KEY_PARAMETERS,
+                OHOS::AAFwk::WantParamWrapper::Box(*modalUI->parameters));
+        }
+    } else if (ui->interactionUIType == INTERACTION_UI_TYPE_TEXT) {
+        auto textUI = std::static_pointer_cast<InteractionText>(ui);
+        if (textUI->parameters != nullptr) {
+            uiParams->SetParam(KEY_PARAMETERS,
+                OHOS::AAFwk::WantParamWrapper::Box(*textUI->parameters));
+        }
+        SetStringArrayParam(uiParams, KEY_BUTTONS, textUI->buttons);
+    }
 }
 
 std::shared_ptr<WantParams> InsightIntentExecuteResult::BuildFunctionResult() const
@@ -539,20 +588,7 @@ std::shared_ptr<WantParams> InsightIntentExecuteResult::BuildFunctionResult() co
         auto uiParams = std::make_shared<WantParams>();
         uiParams->SetParam(KEY_INTERACTION_UI_TYPE,
             OHOS::AAFwk::String::Box(interactionInfo->interactionUI->interactionUIType));
-        if (interactionInfo->interactionUI->interactionUIType ==
-            INTERACTION_UI_TYPE_MODAL_UIEXTENSION) {
-            auto modalUI = std::static_pointer_cast<InteractionModalUIExtension>(
-                interactionInfo->interactionUI);
-            uiParams->SetParam(KEY_BUNDLE_NAME, OHOS::AAFwk::String::Box(modalUI->bundleName));
-            uiParams->SetParam(KEY_ABILITY_NAME, OHOS::AAFwk::String::Box(modalUI->abilityName));
-            uiParams->SetParam(KEY_MODULE_NAME, OHOS::AAFwk::String::Box(modalUI->moduleName));
-            uiParams->SetParam(KEY_UI_EXTENSION_TYPE, OHOS::AAFwk::String::Box(modalUI->uiExtensionType));
-            uiParams->SetParam(KEY_URI, OHOS::AAFwk::String::Box(modalUI->uri));
-            if (modalUI->parameters != nullptr) {
-                uiParams->SetParam(KEY_PARAMETERS,
-                    OHOS::AAFwk::WantParamWrapper::Box(*modalUI->parameters));
-            }
-        }
+        BuildInteractionUIParams(interactionInfo->interactionUI, uiParams);
         infoParams->SetParam(KEY_INTERACTION_UI, OHOS::AAFwk::WantParamWrapper::Box(*uiParams));
         resultParams->SetParam(KEY_INTERACTION_INFO, OHOS::AAFwk::WantParamWrapper::Box(*infoParams));
     } else if (interactionInfo != nullptr && interactionInfo->interactionUI != nullptr) {

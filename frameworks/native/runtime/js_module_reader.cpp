@@ -125,9 +125,7 @@ std::string JsModuleReader::GetPluginHspPath(const std::string& inputPath) const
                 && sharedBundleName == pluginBundleInfo.pluginBundleName) {
                 presetAppHapPath = pluginModuleInfo.hapPath;
                 TAG_LOGD(AAFwkTag::JSRUNTIME, "presetAppHapPath %{public}s", presetAppHapPath.c_str());
-                std::regex pattern(std::string(ABS_DATA_CODE_PATH) + bundleName_ + "/");
-                presetAppHapPath = std::regex_replace(
-                    presetAppHapPath, pattern, std::string(ABS_CODE_PATH) + std::string(BUNDLE));
+                presetAppHapPath = ExtractorUtil::GetLoadFilePath(presetAppHapPath);
                 TAG_LOGD(AAFwkTag::JSRUNTIME, "presetAppHapPath %{public}s", presetAppHapPath.c_str());
                 return presetAppHapPath;
             }
@@ -286,6 +284,10 @@ void JsModuleReader::GetHapPathList(const std::string &bundleName, std::vector<s
         return;
     }
     auto bundleMgrProxy = iface_cast<IBundleMgr>(remoteObject);
+    if (bundleMgrProxy == nullptr) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "null bundleMgrProxy");
+        return;
+    }
     AppExecFwk::BundleInfo bundleInfo;
     auto getInfoResult = bundleMgrProxy->GetBundleInfoForSelf(static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::
         GET_BUNDLE_INFO_WITH_HAP_MODULE), bundleInfo);

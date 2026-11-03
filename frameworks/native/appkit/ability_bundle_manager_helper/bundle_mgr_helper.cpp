@@ -23,6 +23,7 @@
 #include "system_ability_definition.h"
 #include "app_utils.h"
 #include "record_cost_time_util.h"
+#include "in_process_call_wrapper.h"
 
 namespace OHOS {
 using AAFwk::RecordCostTimeUtil;
@@ -195,6 +196,25 @@ ErrCode BundleMgrHelper::GetSandboxExtAbilityInfos(const Want &want, int32_t app
     RecordCostTimeUtil timeRecord("GetSandboxExtAbilityInfos");
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     return bundleMgr->GetSandboxExtAbilityInfos(want, appIndex, flags, userId, extensionInfos);
+}
+
+ErrCode BundleMgrHelper::GetSandboxExtAbilityInfoOptimal(const Want &want, int32_t appIndex, int32_t flags,
+    int32_t userId, ExtensionAbilityInfo &extensionInfo)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");
+    if (appIndex <= AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "invalid params");
+        return ERR_APPEXECFWK_SANDBOX_INSTALL_PARAM_ERROR;
+    }
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        return ERR_APPEXECFWK_SANDBOX_INSTALL_INTERNAL_ERROR;
+    }
+
+    RecordCostTimeUtil timeRecord("GetSandboxExtAbilityInfoOptimal");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    return bundleMgr->GetSandboxExtAbilityInfoOptimal(want, appIndex, flags, userId, extensionInfo);
 }
 
 ErrCode BundleMgrHelper::GetSandboxHapModuleInfo(const AbilityInfo &abilityInfo, int32_t appIndex, int32_t userId,
@@ -599,6 +619,23 @@ bool BundleMgrHelper::QueryExtensionAbilityInfos(const Want &want, const int32_t
     return bundleMgr->QueryExtensionAbilityInfos(newWant, flag, userId, extensionInfos);
 }
 
+ErrCode BundleMgrHelper::QueryExtensionAbilityInfoOptimal(const Want &want, const int32_t &flag,
+    const int32_t &userId, ExtensionAbilityInfo &extensionInfo)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        return false;
+    }
+
+    AAFwk::Want newWant = want;
+    newWant.RemoveAllFd();
+    RecordCostTimeUtil timeRecord("QueryExtensionAbilityInfoOptimal");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    return bundleMgr->QueryExtensionAbilityInfoOptimal(newWant, flag, userId, extensionInfo);
+}
+
 ErrCode BundleMgrHelper::GetBundleInfoV9(
     const std::string &bundleName, int32_t flags, BundleInfo &bundleInfo, int32_t userId)
 {
@@ -679,6 +716,7 @@ bool BundleMgrHelper::GetApplicationInfoWithAppIndex(
             return true;
         }
     } else if (AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex) ||
+               appIndex == AbilityRuntime::GlobalConstant::PC_TABLET_INDEX ||
                AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(appIndex)) {
         if (bundleMgr->GetCloneBundleInfo(appName,
             static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION),
@@ -1060,6 +1098,27 @@ ErrCode BundleMgrHelper::GetAppClonePreference(const std::string &bundleName, in
 
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     return bundleMgr->GetAppClonePreference(bundleName, userId, preference);
+}
+
+ErrCode BundleMgrHelper::GetDualModeBundleInfo(const std::string &bundleName, int32_t userId,
+    int32_t &appIndex)
+{
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        appIndex = 0;
+        return ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
+    }
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    DualModeBundleInfo preference;
+    auto ret = IN_PROCESS_CALL(bundleMgr->GetDualModeBundleInfo(bundleName, userId, preference));
+    if (ret == ERR_OK) {
+        appIndex = preference.appIndex;
+    } else {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "GetDualModeBundleInfo ERROR");
+        appIndex = 0;
+    }
+    return ret;
 }
 
 ErrCode BundleMgrHelper::GetSignatureInfoByBundleName(const std::string &bundleName, SignatureInfo &signatureInfo)

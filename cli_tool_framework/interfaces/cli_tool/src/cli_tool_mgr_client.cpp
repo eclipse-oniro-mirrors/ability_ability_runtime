@@ -23,6 +23,7 @@
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
 #include "if_system_ability_manager.h"
+#include "syspara/parameters.h"
 #include "iservice_registry.h"
 #include "system_ability_definition.h"
 
@@ -85,7 +86,13 @@ ErrCode CliToolMGRClient::ExecCmd(const ExecCmdParam &param,
         return GET_CLI_TOOL_MGR_SERVICE_FAILED;
     }
 
-    std::string eventId = CliEventReplyManager::GetInstance().AddEventReplyCallback("shell",
+    if (!param.execCmdOptions.isShellCommand && param.cmd.find_first_not_of(" \t") == std::string::npos) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "cmd is empty in tool command mode");
+        return ERR_INVALID_PARAM;
+    }
+
+    std::string eventKey = param.execCmdOptions.isShellCommand ? "shell" : ExecCmdParam::ExtractToolName(param.cmd);
+    std::string eventId = CliEventReplyManager::GetInstance().AddEventReplyCallback(eventKey,
         [cb = std::move(callback)](const CliEventReplyResult &result) {
             if (cb) {
                 CliSessionInfo sessionInfo;
@@ -96,7 +103,7 @@ ErrCode CliToolMGRClient::ExecCmd(const ExecCmdParam &param,
             }
         });
     
-    std::string subscriptionId = CliSessionSubscriptionManager::GetInstance().AddProvisionalSubscription("shell",
+    std::string subscriptionId = CliSessionSubscriptionManager::GetInstance().AddProvisionalSubscription(eventKey,
         [sessionEventCallback](const std::string &sessionId,
             const std::string &subscriptionId, const CliToolEvent &event) {
             if (sessionEventCallback) {
@@ -213,36 +220,39 @@ ErrCode CliToolMGRClient::GetFunctionInfo(const std::string &functionNamespace, 
     return proxy->GetFunctionInfo(functionNamespace, functionName, function);
 }
 
-ErrCode CliToolMGRClient::UnregisterFunction(const std::string &functionNamespace, const std::string &functionName)
+ErrCode CliToolMGRClient::UnregisterFunction(int32_t userId, const std::string &functionNamespace,
+    const std::string &functionName)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterFunction: %{public}s/%{public}s",
-        functionNamespace.c_str(), functionName.c_str());
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterFunction: userId=%{public}d, %{public}s/%{public}s",
+        userId, functionNamespace.c_str(), functionName.c_str());
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto proxy = GetCliToolMgrProxy();
     if (proxy == nullptr) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
         return GET_CLI_TOOL_MGR_SERVICE_FAILED;
     }
-    return proxy->UnregisterFunction(functionNamespace, functionName);
+    return proxy->UnregisterFunction(userId, functionNamespace, functionName);
 }
 
-ErrCode CliToolMGRClient::UnregisterIntentFunctionsByNamespace(const std::string &functionNamespace)
+ErrCode CliToolMGRClient::UnregisterIntentFunctionsByNamespace(int32_t userId,
+    const std::string &functionNamespace)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespace: %{public}s", functionNamespace.c_str());
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespace: userId=%{public}d, %{public}s",
+        userId, functionNamespace.c_str());
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto proxy = GetCliToolMgrProxy();
     if (proxy == nullptr) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
         return GET_CLI_TOOL_MGR_SERVICE_FAILED;
     }
-    return proxy->UnregisterIntentFunctionsByNamespace(functionNamespace);
+    return proxy->UnregisterIntentFunctionsByNamespace(userId, functionNamespace);
 }
 
-ErrCode CliToolMGRClient::ResetNamespaceFunctions(const std::string &functionNamespace,
+ErrCode CliToolMGRClient::ResetNamespaceFunctions(int32_t userId, const std::string &functionNamespace,
     const std::vector<FunctionInfo> &functions, int32_t &successCount)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctions: %{public}s, %{public}zu functions",
-        functionNamespace.c_str(), functions.size());
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctions: userId=%{public}d, %{public}s, %{public}zu functions",
+        userId, functionNamespace.c_str(), functions.size());
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto proxy = GetCliToolMgrProxy();
     if (proxy == nullptr) {
@@ -255,7 +265,7 @@ ErrCode CliToolMGRClient::ResetNamespaceFunctions(const std::string &functionNam
         TAG_LOGE(AAFwkTag::CLI_TOOL, "FromFunctionInfoVec failed: %{public}d", ret);
         return ret;
     }
-    return proxy->ResetNamespaceFunctions(functionNamespace, rawData, successCount);
+    return proxy->ResetNamespaceFunctions(userId, functionNamespace, rawData, successCount);
 }
 
 ErrCode CliToolMGRClient::GetAllFunctions(std::vector<FunctionInfo> &functions)
@@ -294,23 +304,25 @@ ErrCode CliToolMGRClient::BatchRegisterFunctionsAsync(const std::vector<Function
     return proxy->BatchRegisterFunctionsAsync(rawData);
 }
 
-ErrCode CliToolMGRClient::UnregisterIntentFunctionsByNamespaceAsync(const std::string &functionNamespace)
+ErrCode CliToolMGRClient::UnregisterIntentFunctionsByNamespaceAsync(int32_t userId,
+    const std::string &functionNamespace)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespaceAsync: %{public}s", functionNamespace.c_str());
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespaceAsync: userId=%{public}d, %{public}s",
+        userId, functionNamespace.c_str());
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto proxy = GetCliToolMgrProxy();
     if (proxy == nullptr) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
         return GET_CLI_TOOL_MGR_SERVICE_FAILED;
     }
-    return proxy->UnregisterIntentFunctionsByNamespaceAsync(functionNamespace);
+    return proxy->UnregisterIntentFunctionsByNamespaceAsync(userId, functionNamespace);
 }
 
-ErrCode CliToolMGRClient::ResetNamespaceFunctionsAsync(const std::string &functionNamespace,
+ErrCode CliToolMGRClient::ResetNamespaceFunctionsAsync(int32_t userId, const std::string &functionNamespace,
     const std::vector<FunctionInfo> &functions)
 {
-    TAG_LOGI(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctionsAsync: %{public}s, %{public}zu functions",
-        functionNamespace.c_str(), functions.size());
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctionsAsync: userId=%{public}d, %{public}s, %{public}zu functions",
+        userId, functionNamespace.c_str(), functions.size());
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto proxy = GetCliToolMgrProxy();
     if (proxy == nullptr) {
@@ -323,7 +335,86 @@ ErrCode CliToolMGRClient::ResetNamespaceFunctionsAsync(const std::string &functi
         TAG_LOGE(AAFwkTag::CLI_TOOL, "FromFunctionInfoVec failed: %{public}d", ret);
         return ret;
     }
-    return proxy->ResetNamespaceFunctionsAsync(functionNamespace, rawData);
+    return proxy->ResetNamespaceFunctionsAsync(userId, functionNamespace, rawData);
+}
+
+ErrCode CliToolMGRClient::RegisterCliHook(const sptr<ICliHookInterface> &hook, int32_t activeMethods)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "RegisterCliHook");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+    return proxy->RegisterCliHook(hook, activeMethods);
+}
+
+ErrCode CliToolMGRClient::UnregisterCliHook(const sptr<ICliHookInterface> &hook)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterCliHook");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+    return proxy->UnregisterCliHook(hook);
+}
+
+ErrCode CliToolMGRClient::RegisterFunctionHook(const sptr<IFunctionHookInterface> &hook, int32_t activeMethods)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "RegisterFunctionHook");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+    return proxy->RegisterFunctionHook(hook, activeMethods);
+}
+
+ErrCode CliToolMGRClient::UnregisterFunctionHook(const sptr<IFunctionHookInterface> &hook)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterFunctionHook");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+    return proxy->UnregisterFunctionHook(hook);
+}
+
+ErrCode CliToolMGRClient::BeforeInvokeFunction(InvokeFunctionParam &param)
+{
+    if (!system::GetBoolParameter("const.security.developermode.state", false)) {
+        return ERR_OK;
+    }
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "BeforeInvokeFunction: ns=%{public}s, name=%{public}s",
+        param.functionNamespace.c_str(), param.functionName.c_str());
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+    return proxy->BeforeInvokeFunction(param);
+}
+
+ErrCode CliToolMGRClient::AfterInvokeFunction(FunctionResultWrap &functionResultWrap)
+{
+    if (!system::GetBoolParameter("const.security.developermode.state", false)) {
+        return ERR_OK;
+    }
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "AfterInvokeFunction");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+    return proxy->AfterInvokeFunction(functionResultWrap);
 }
 
 int32_t CliToolMGRClient::BatchQueryPermissionBySubCommand(

@@ -16,6 +16,7 @@
 #ifndef OHOS_AGENT_RUNTIME_AGENT_MANAGER_CLIENT_H
 #define OHOS_AGENT_RUNTIME_AGENT_MANAGER_CLIENT_H
 
+#include <functional>
 #include <memory>
 
 #include "ability_connect_callback_interface.h"
@@ -29,6 +30,9 @@ public:
     AgentManagerClient() = default;
     ~AgentManagerClient() = default;
     static AgentManagerClient &GetInstance();
+
+    using DeathCallback = std::function<void()>;
+    void RegisterDeathCallback(DeathCallback callback);
 
     int32_t ConnectAgentExtensionAbility(const AAFwk::Want &want,
         const sptr<AAFwk::IAbilityConnection> &connection);

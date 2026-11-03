@@ -60,6 +60,8 @@ ohos_shared_library("cj_app_recovery_ffi") {
 
   sources = [ "cj_app_recovery.cpp" ]
 
+  version_script = "libcj_app_recovery_ffi.map"
+
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"

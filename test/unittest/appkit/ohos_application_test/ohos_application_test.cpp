@@ -16,6 +16,8 @@
 #include <gtest/gtest.h>
 #define private public
 #include "ability.h"
+#include "event_runner.h"
+#include "main_thread.h"
 #include "ability_local_record.h"
 #include "ability_record_mgr.h"
 #include "application_context.h"

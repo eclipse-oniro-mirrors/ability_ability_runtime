@@ -84,6 +84,7 @@ ohos_unittest("uri_permission_impl_test") {
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
+    "samgr:samgr_proxy",
     "selinux_adapter:librestorecon",
     "storage_service:storage_manager_sa_proxy",
   ]

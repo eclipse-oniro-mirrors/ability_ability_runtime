@@ -62,6 +62,7 @@ ohos_unittest("lifecycle_test") {
     "init:libbegetutil",
     "ipc:ipc_core",
     "safwk:api_cache_manager",
+    "samgr:samgr_proxy",
   ]
 
   if (ability_runtime_graphics) {

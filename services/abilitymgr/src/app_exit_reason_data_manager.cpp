@@ -24,6 +24,7 @@
 #include "ffrt.h"
 #include "hitrace_meter.h"
 #include "os_account_manager_wrapper.h"
+#include "parameters.h"
 #include "record_cost_time_util.h"
 
 namespace OHOS {
@@ -53,6 +54,20 @@ const std::string JSON_KEY_RSS_VALUE = "rss_value";
 const std::string JSON_KEY_PROSESS_STATE = "process_state";
 constexpr const char* PUT_TASK_NAME = "kvStorePtr_->Put";
 const std::string JSON_KEY_KILL_ID = "kill_id";
+const std::string KEY_OTA_FINGERPRINT = "ota_system_fingerprint";
+constexpr const char *TEST_UPGRADE_PARAM = "persist.bms.test-upgrade";
+constexpr const char *FINGERPRINT_SEPARATOR = "/";
+constexpr const char *VALUE_TRUE = "true";
+// keep in sync with BMSEventHandler::FINGERPRINTS
+const std::vector<std::string> FINGERPRINT_PARAMS = {
+    "const.product.software.version",
+    "const.product.build.type",
+    "const.product.brand",
+    "const.product.name",
+    "const.product.devicetype",
+    "const.product.incremental.version",
+    "const.comp.hl.product_base_version.real"
+};
 } // namespace
 AppExitReasonDataManager::AppExitReasonDataManager() {}
 
@@ -529,6 +544,121 @@ int32_t AppExitReasonDataManager::DeleteAllRecoverInfoByTokenId(uint32_t tokenId
 
     InnerDeleteAbilityRecoverInfo(tokenId);
     return ERR_OK;
+}
+
+int32_t AppExitReasonDataManager::DeleteAllRecoverInfo()
+{
+    AAFwk::RecordCostTimeUtil timeRecord("DeleteAllRecoverInfo");
+    {
+        std::lock_guard lock(kvStorePtrMutex_);
+        if (!CheckKvStore()) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "null kvStore");
+            return ERR_NO_INIT;
+        }
+    }
+
+    std::vector<DistributedKv::Entry> allEntries;
+    DistributedKv::Status status;
+    {
+        std::lock_guard lock(kvStorePtrMutex_);
+        status = kvStorePtr_->GetEntries(DistributedKv::Key(KEY_RECOVER_INFO_PREFIX), allEntries);
+    }
+    if (status != DistributedKv::Status::SUCCESS) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "get entries error: %{public}d", status);
+        return ERR_INVALID_OPERATION;
+    }
+
+    std::vector<DistributedKv::Key> recoverInfoKeys;
+    for (const auto &item : allEntries) {
+        const std::string keyStr = item.key.ToString();
+        if (keyStr.compare(0, KEY_RECOVER_INFO_PREFIX.size(), KEY_RECOVER_INFO_PREFIX) == 0) {
+            recoverInfoKeys.push_back(item.key);
+        }
+    }
+    if (recoverInfoKeys.empty()) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "no recover info to delete");
+        return ERR_OK;
+    }
+
+    {
+        std::lock_guard lock(kvStorePtrMutex_);
+        status = kvStorePtr_->DeleteBatch(recoverInfoKeys);
+    }
+    if (status != DistributedKv::Status::SUCCESS) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "delete %{public}zu recover info error: %{public}d",
+            recoverInfoKeys.size(), status);
+        return ERR_INVALID_OPERATION;
+    }
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "delete %{public}zu recover info done", recoverInfoKeys.size());
+    return ERR_OK;
+}
+
+int32_t AppExitReasonDataManager::ResetRecoverInfoOnOtaUpgrade()
+{
+    AAFwk::RecordCostTimeUtil timeRecord("ResetRecoverInfoOnOtaUpgrade");
+    {
+        std::lock_guard lock(kvStorePtrMutex_);
+        if (!CheckKvStore()) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "null kvStore");
+            return ERR_NO_INIT;
+        }
+    }
+
+    std::string curFingerprint = GetCurSystemFingerprint();
+    DistributedKv::Key markerKey(KEY_OTA_FINGERPRINT);
+    DistributedKv::Value markerValue;
+    bool isOta = IsTestUpgrade();
+    if (!isOta) {
+        DistributedKv::Status status;
+        {
+            std::lock_guard lock(kvStorePtrMutex_);
+            status = kvStorePtr_->Get(markerKey, markerValue);
+        }
+        isOta = (status != DistributedKv::Status::SUCCESS) ||
+            (markerValue.ToString() != curFingerprint);
+    }
+    if (!isOta) {
+        return ERR_OK;
+    }
+
+    int32_t ret = DeleteAllRecoverInfo();
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
+    DistributedKv::Status status;
+    {
+        std::lock_guard lock(kvStorePtrMutex_);
+        status = kvStorePtr_->Put(markerKey, DistributedKv::Value(curFingerprint));
+    }
+    if (status != DistributedKv::Status::SUCCESS) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "save fingerprint marker error: %{public}d", status);
+        return ERR_INVALID_OPERATION;
+    }
+    dbWriteCounter_.UpdateWriteCount(APP_EXIT_REASON_STORAGE_DIR);
+    return ERR_OK;
+}
+
+std::string AppExitReasonDataManager::GetCurSystemFingerprint() const
+{
+    std::string fingerprint;
+    for (const auto &param : FINGERPRINT_PARAMS) {
+        std::string value = OHOS::system::GetParameter(param, "");
+        if (value.empty()) {
+            continue;
+        }
+        if (!fingerprint.empty()) {
+            fingerprint.append(FINGERPRINT_SEPARATOR);
+        }
+        fingerprint.append(value);
+    }
+    return fingerprint;
+}
+
+bool AppExitReasonDataManager::IsTestUpgrade() const
+{
+    std::string value = OHOS::system::GetParameter(TEST_UPGRADE_PARAM, "");
+    return value == VALUE_TRUE;
 }
 
 int32_t AppExitReasonDataManager::DeleteAbilityRecoverInfoBySessionId(const int32_t sessionId)

@@ -18,6 +18,8 @@
 #include "ability_foreground_state_observer_interface.h"
 #include "app_foreground_state_observer_stub.h"
 #include "app_mgr_proxy.h"
+#include "focused_application_observer_stub.h"
+#include "ability_manager_errors.h"
 #include "hilog_tag_wrapper.h"
 #include "image_error_handler_stub.h"
 #include "image_process_state_observer_stub.h"
@@ -44,6 +46,15 @@ public:
     virtual ~AppForegroundStateObserverMock() = default;
 
     void OnAppStateChanged(const AppStateData &appStateData) override
+    {}
+};
+
+class FocusedApplicationObserverMock : public FocusedApplicationObserverStub {
+public:
+    FocusedApplicationObserverMock() = default;
+    virtual ~FocusedApplicationObserverMock() = default;
+
+    void OnFocusedApplicationChanged(const FocusedApplicationInfo &focusedApplicationInfo) override
     {}
 };
 
@@ -594,6 +605,32 @@ HWTEST_F(AppMgrProxyTest, UnregisterAppForegroundStateObserver_0100, TestSize.Le
     EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _)).Times(1);
     sptr<IAppForegroundStateObserver> observer = new (std::nothrow) AppForegroundStateObserverMock();
     auto res = appMgrProxy_->RegisterAppForegroundStateObserver(observer);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/**
+ * @tc.name: RegisterFocusedApplicationObserver_0100
+ * @tc.desc: Test registerFocusedApplicationObserver sendRequest.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, RegisterFocusedApplicationObserver_0100, TestSize.Level1)
+{
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _)).Times(1);
+    sptr<IFocusedApplicationObserver> observer = new (std::nothrow) FocusedApplicationObserverMock();
+    auto res = appMgrProxy_->RegisterFocusedApplicationObserver(observer);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/**
+ * @tc.name: UnregisterFocusedApplicationObserver_0100
+ * @tc.desc: Test unregisterFocusedApplicationObserver sendRequest.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, UnregisterFocusedApplicationObserver_0100, TestSize.Level1)
+{
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _)).Times(1);
+    sptr<IFocusedApplicationObserver> observer = new (std::nothrow) FocusedApplicationObserverMock();
+    auto res = appMgrProxy_->UnregisterFocusedApplicationObserver(observer);
     EXPECT_EQ(res, NO_ERROR);
 }
 
@@ -1708,6 +1745,78 @@ HWTEST_F(AppMgrProxyTest, CancelDelayedExitTask_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: StartTask_0100
+ * @tc.desc: Test StartTask with successful SendRequest.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, StartTask_0100, TestSize.Level1)
+{
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce([](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
+            reply.WriteInt32(ERR_OK);
+            return NO_ERROR;
+        });
+
+    auto ret = appMgrProxy_->StartTask("proxy_start_task_0100", 200);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: StartTask_0200
+ * @tc.desc: Test StartTask with the task already exists error.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, StartTask_0200, TestSize.Level1)
+{
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce([](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
+            reply.WriteInt32(AAFwk::ERR_TASK_ALREADY_EXISTS);
+            return NO_ERROR;
+        });
+
+    auto ret = appMgrProxy_->StartTask("proxy_start_task_0200", 200);
+    EXPECT_EQ(ret, AAFwk::ERR_TASK_ALREADY_EXISTS);
+}
+
+/**
+ * @tc.name: FinishTask_0100
+ * @tc.desc: Test FinishTask with successful SendRequest.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, FinishTask_0100, TestSize.Level1)
+{
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce([](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
+            reply.WriteInt32(ERR_OK);
+            return NO_ERROR;
+        });
+
+    auto ret = appMgrProxy_->FinishTask("proxy_finish_task_0100");
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: FinishTask_0200
+ * @tc.desc: Test FinishTask with the task not found error.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, FinishTask_0200, TestSize.Level1)
+{
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce([](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
+            reply.WriteInt32(AAFwk::ERR_TASK_NOT_FOUND);
+            return NO_ERROR;
+        });
+
+    auto ret = appMgrProxy_->FinishTask("proxy_finish_task_0200");
+    EXPECT_EQ(ret, AAFwk::ERR_TASK_NOT_FOUND);
+}
+
+/**
  * @tc.name: AppMgrProxy_DumpMem_001
  * @tc.desc: DumpMem with valid info and null callback.
  * @tc.type: FUNC
@@ -1829,9 +1938,15 @@ HWTEST_F(AppMgrProxyTest, AppMgrProxy_GetHyperSnapLastError_0300, TestSize.Level
 
     // Dispatch the proxy request to the real stub: data already carries the interface token,
     // HandleGetHyperSnapLastError falls back to the stub default (ERR_OK, default record).
+    // Record the code before dispatching: InvokeSendRequest is bypassed here, so code_ stays
+    // untouched unless the action sets it explicitly.
     EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
         .Times(1)
-        .WillOnce(Invoke(mockAppMgrService_.GetRefPtr(), &AppMgrStub::OnRemoteRequest));
+        .WillOnce(Invoke([this](uint32_t code, MessageParcel& data, MessageParcel& reply,
+            MessageOption& option) {
+            mockAppMgrService_->code_ = code;
+            return mockAppMgrService_->OnRemoteRequest(code, data, reply, option);
+        }));
 
     HyperSnapErrorRecord record;
     int32_t result = appMgrProxy_->GetHyperSnapLastError(static_cast<int32_t>(HyperSnapErrorType::CREATE_SNAPSHOT),
@@ -1868,6 +1983,77 @@ HWTEST_F(AppMgrProxyTest, AppMgrProxy_GetHyperSnapLastError_0400, TestSize.Level
     EXPECT_EQ(result, ERR_INVALID_VALUE);
 
     GTEST_LOG_(INFO) << "AppMgrProxy_GetHyperSnapLastError_0400 end";
+}
+
+/**
+ * @tc.name: AppMgrProxy_IsHyperSnapInitializing_0100
+ * @tc.desc: IsHyperSnapInitializing sends the correct interface code and returns the reply bool.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, AppMgrProxy_IsHyperSnapInitializing_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppMgrProxy_IsHyperSnapInitializing_0100 start";
+
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke([this](uint32_t code, MessageParcel& data, MessageParcel& reply,
+            MessageOption& option) {
+            mockAppMgrService_->code_ = code;
+            (void)reply.WriteBool(true);
+            return NO_ERROR;
+        }));
+
+    bool result = appMgrProxy_->IsHyperSnapInitializing();
+    EXPECT_EQ(result, true);
+    EXPECT_EQ(mockAppMgrService_->code_, static_cast<uint32_t>(AppMgrInterfaceCode::IS_HYPER_SNAP_INITIALIZING));
+
+    GTEST_LOG_(INFO) << "AppMgrProxy_IsHyperSnapInitializing_0100 end";
+}
+
+/**
+ * @tc.name: AppMgrProxy_IsHyperSnapInitializing_0200
+ * @tc.desc: IsHyperSnapInitializing returns false when SendRequest fails.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, AppMgrProxy_IsHyperSnapInitializing_0200, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "AppMgrProxy_IsHyperSnapInitializing_0200 start";
+
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(ERR_INVALID_VALUE));
+
+    bool result = appMgrProxy_->IsHyperSnapInitializing();
+    EXPECT_EQ(result, false);
+
+    GTEST_LOG_(INFO) << "AppMgrProxy_IsHyperSnapInitializing_0200 end";
+}
+
+/**
+ * @tc.name: AppMgrProxy_IsHyperSnapInitializing_0300
+ * @tc.desc: IsHyperSnapInitializing goes through the real stub handler and returns the service result.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrProxyTest, AppMgrProxy_IsHyperSnapInitializing_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppMgrProxy_IsHyperSnapInitializing_0300 start";
+
+    EXPECT_CALL(*mockAppMgrService_, IsHyperSnapInitializing())
+        .Times(1)
+        .WillOnce(Return(true));
+    EXPECT_CALL(*mockAppMgrService_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke([this](uint32_t code, MessageParcel& data, MessageParcel& reply,
+            MessageOption& option) {
+            mockAppMgrService_->code_ = code;
+            return mockAppMgrService_->OnRemoteRequest(code, data, reply, option);
+        }));
+
+    bool result = appMgrProxy_->IsHyperSnapInitializing();
+    EXPECT_EQ(result, true);
+    EXPECT_EQ(mockAppMgrService_->code_, static_cast<uint32_t>(AppMgrInterfaceCode::IS_HYPER_SNAP_INITIALIZING));
+
+    GTEST_LOG_(INFO) << "AppMgrProxy_IsHyperSnapInitializing_0300 end";
 }
 
 } // namespace AppExecFwk

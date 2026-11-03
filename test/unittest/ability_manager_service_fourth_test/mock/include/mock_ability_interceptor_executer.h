@@ -45,11 +45,11 @@ public:
     /**
      * Excute the DoProcess of the interceptors.
      */
-    ErrCode DoProcess(const AbilityInterceptorParam &param);
+    ErrCode DoProcess(AbilityInterceptorParam &param);
 private:
     InterceptorMap GetInterceptorMapCopy();
 private:
-    std::mutex interceptorMapLock_;
+    std::mutex interceptorListLock_;
     std::unordered_map<std::string, std::shared_ptr<IAbilityInterceptor>> interceptorMap_;
 };
 } // namespace AAFwk

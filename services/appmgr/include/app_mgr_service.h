@@ -419,6 +419,21 @@ public:
     int Dump(int fd, const std::vector<std::u16string>& args) override;
 
     /**
+     * @brief Starts a task with the specified task id and priority.
+     * @param taskId Indicates the attribution key of the task.
+     * @param priority Indicates the task priority.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    int32_t StartTask(const std::string &taskId, int32_t priority) override;
+
+    /**
+     * @brief Finishes the task with the specified task id.
+     * @param taskId Indicates the attribution key of the task.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    int32_t FinishTask(const std::string &taskId) override;
+
+    /**
      * @brief called when the abilityStage's onAcceptWant lifecycle completed.
      * @param recordId record id of the ability.
      * @param want want has been accepted.
@@ -766,6 +781,11 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     int32_t UnregisterAppForegroundStateObserver(const sptr<IAppForegroundStateObserver> &observer) override;
+
+    int32_t RegisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer) override;
+    int32_t UnregisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer) override;
+    int32_t RegisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer) override;
+    int32_t UnregisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer) override;
 
 #ifdef SUPPORT_CHILD_PROCESS
     /**
@@ -1124,6 +1144,7 @@ private:
 
     int Dump(const std::vector<std::u16string>& args, std::string& result);
     int ShowHelp(const std::vector<std::u16string>& args, std::string& result);
+    int DumpTask(const std::vector<std::u16string>& args, std::string& result);
     int DumpIpc(const std::vector<std::u16string>& args, std::string& result);
     int DumpIpcAllStart(std::string& result);
     int DumpIpcAllStop(std::string& result);
@@ -1190,6 +1211,15 @@ private:
      * @return Returns true is final application process, others return false.
      */
     bool IsFinalAppProcess() override;
+
+    /**
+     * Query whether the current process is doing snapshot initialization.
+     *
+     * @return Returns true if the current process is doing snapshot initialization,
+     *         false otherwise (completed, failed, not a template process,
+     *         or service unavailable).
+     */
+    bool IsHyperSnapInitializing() override;
 
     /**
      * Get pids of processes which belong to specific bundle name and support process cache feature.

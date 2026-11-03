@@ -62,6 +62,8 @@ ohos_shared_library("auto_fill_extension_context_ani_kit") {
     "ipc:ipc_single",
     "hitrace:hitrace_meter",
     "napi:ace_napi",
+    "node:node_header_notice",
+    "libuv:uv",
     "runtime_core:ani",
     "runtime_core:ani_helpers",
   ]

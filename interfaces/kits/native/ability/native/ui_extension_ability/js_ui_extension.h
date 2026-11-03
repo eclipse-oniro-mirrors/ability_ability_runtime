@@ -192,6 +192,7 @@ private:
     sptr<Rosen::Window> CreateUIWindow(const std::shared_ptr<UIExtensionContext> context,
         const sptr<AAFwk::SessionInfo> &sessionInfo, const AAFwk::Want &want);
     void ExecuteInsightIntentDone(uint64_t intentId, const InsightIntentExecuteResult &result);
+    bool OnGetConfigurationStrategy(const sptr<AAFwk::SessionInfo> &sessionInfo);
 
     JsRuntime& jsRuntime_;
     std::shared_ptr<NativeReference> jsObj_ = nullptr;
@@ -199,7 +200,6 @@ private:
     std::map<uint64_t, std::shared_ptr<NativeReference>> contentSessions_;
     std::shared_ptr<AbilityResultListeners> abilityResultListeners_ = nullptr;
     int32_t screenMode_ = AAFwk::IDLE_SCREEN_MODE;
-    std::shared_ptr<int32_t> screenModePtr_;
     sptr<IRemoteObject> token_ = nullptr;
     std::shared_ptr<AbilityHandler> handler_ = nullptr;
 

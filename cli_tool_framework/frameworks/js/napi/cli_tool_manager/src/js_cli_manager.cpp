@@ -15,6 +15,10 @@
 
 #include "js_cli_manager.h"
 
+#include <iomanip>
+#include <mutex>
+#include <set>
+#include <sstream>
 #include <string>
 
 #include "cli_error_code.h"
@@ -25,6 +29,7 @@
 #include "exec_result.h"
 #include "hilog_tag_wrapper.h"
 #include "js_cli_event_handler_manager.h"
+#include "js_cli_hook.h"
 #include "js_cli_manager_utils.h"
 #include "js_cli_session_event_callback.h"
 #include "js_error_utils.h"
@@ -41,6 +46,101 @@ constexpr int32_t INDEX_ONE = 1;
 constexpr int32_t INDEX_TWO = 2;
 constexpr int32_t INDEX_THREE = 3;
 constexpr int32_t INDEX_FOUR = 4;
+constexpr int32_t SKILL_ARG_ORDINAL_WIDTH = 3;
+constexpr size_t DOUBLE_DASH_PREFIX_LEN = 2;
+constexpr const char *SKILL_TOOL_NAME = "ohos-arkTSScript";
+
+bool IsReservedSkillKey(const std::string &key)
+{
+    static const std::set<std::string> RESERVED = {
+        "bundleName", "moduleName", "skillName", "scriptPath", "functionName"
+    };
+    return RESERVED.count(key) > 0;
+}
+
+std::string NormalizeSkillKey(const std::string &key)
+{
+    if (key.rfind("--", 0) == 0) {
+        return key.substr(DOUBLE_DASH_PREFIX_LEN);
+    }
+    if (!key.empty() && key[0] == '-') {
+        return key.substr(1);
+    }
+    return key;
+}
+
+std::string FormatSkillArgKey(int32_t ordinal)
+{
+    std::ostringstream oss;
+    oss << "arg_" << std::setw(SKILL_ARG_ORDINAL_WIDTH) << std::setfill('0') << ordinal;
+    return oss.str();
+}
+
+// 展开嵌套 args 对象：按插入序把非保留 key 重命名为 arg_001/arg_002/...
+void FlattenNestedArgs(napi_env env, napi_value argsObj, napi_value ordered, int32_t &ordinal)
+{
+    napi_value argsNameList = nullptr;
+    uint32_t argsCount = 0;
+    if (napi_get_property_names(env, argsObj, &argsNameList) != napi_ok ||
+        napi_get_array_length(env, argsNameList, &argsCount) != napi_ok) {
+        return;
+    }
+    for (uint32_t j = 0; j < argsCount; j++) {
+        napi_value argName = nullptr;
+        if (napi_get_element(env, argsNameList, j, &argName) != napi_ok) {
+            continue;
+        }
+        std::string argRawKey = AppExecFwk::UnwrapStringFromJS(env, argName);
+        std::string argKey = NormalizeSkillKey(argRawKey);
+        if (argKey.empty() || IsReservedSkillKey(argKey)) {
+            continue;
+        }
+        napi_value argValue = nullptr;
+        napi_get_named_property(env, argsObj, argRawKey.c_str(), &argValue);
+        std::string orderedKey = FormatSkillArgKey(ordinal++);
+        napi_set_named_property(env, ordered, orderedKey.c_str(), argValue);
+    }
+}
+
+// 保序重排 skill args 对象：控制 key 保留原名，嵌套 args 对象按插入序
+// 展开重命名为 arg_001/arg_002/...，避免 UnwrapWantParams 递归转 std::map 丢序。
+napi_value ReorderSkillArgs(napi_env env, napi_value obj)
+{
+    napi_value ordered = nullptr;
+    napi_create_object(env, &ordered);
+
+    napi_value nameList = nullptr;
+    uint32_t count = 0;
+    if (napi_get_property_names(env, obj, &nameList) != napi_ok ||
+        napi_get_array_length(env, nameList, &count) != napi_ok) {
+        return ordered;
+    }
+
+    int32_t ordinal = 1;
+    for (uint32_t i = 0; i < count; i++) {
+        napi_value name = nullptr;
+        if (napi_get_element(env, nameList, i, &name) != napi_ok) {
+            continue;
+        }
+        std::string rawKey = AppExecFwk::UnwrapStringFromJS(env, name);
+        std::string key = NormalizeSkillKey(rawKey);
+        if (key.empty()) {
+            continue;
+        }
+        napi_value value = nullptr;
+        napi_get_named_property(env, obj, rawKey.c_str(), &value);
+        if (key == "args") {
+            napi_valuetype argsType = napi_undefined;
+            napi_typeof(env, value, &argsType);
+            if (argsType == napi_object) {
+                FlattenNestedArgs(env, value, ordered, ordinal);
+                continue;
+            }
+        }
+        napi_set_named_property(env, ordered, key.c_str(), value);
+    }
+    return ordered;
+}
 
 int32_t DispatchCliTool(const ExecToolParam &param, napi_env env,
     std::shared_ptr<NapiAsyncTask> asyncTask)
@@ -161,7 +261,11 @@ napi_value JSCliManager::OnExecTool(napi_env env, size_t argc, napi_value *argv)
         return CreateJsUndefined(env);
     }
 
-    if (!AppExecFwk::UnwrapWantParams(env, argv[INDEX_TWO], param.args)) {
+    napi_value skillArgsValue = argv[INDEX_TWO];
+    if (param.toolName == SKILL_TOOL_NAME) {
+        skillArgsValue = ReorderSkillArgs(env, argv[INDEX_TWO]);
+    }
+    if (!AppExecFwk::UnwrapWantParams(env, skillArgsValue, param.args)) {
         ThrowInvalidParamError(env, "Tool args is required");
         return CreateJsUndefined(env);
     }
@@ -172,8 +276,9 @@ napi_value JSCliManager::OnExecTool(napi_env env, size_t argc, napi_value *argv)
     }
 
     if (argc > INDEX_FOUR && argv[INDEX_FOUR] != nullptr) {
-        if (!UnwrapExecOptions(env, argv[INDEX_FOUR], param.options)) {
-            ThrowInvalidParamError(env, "Tool options is required");
+        std::string optionsMsg;
+        if (!UnwrapExecOptions(env, argv[INDEX_FOUR], param.options, optionsMsg)) {
+            ThrowInvalidParamError(env, optionsMsg.empty() ? "Tool options is required" : optionsMsg.c_str());
             return CreateJsUndefined(env);
         }
     }
@@ -212,7 +317,7 @@ napi_value JSCliManager::OnExecCmd(napi_env env, size_t argc, napi_value *argv)
         if (status == napi_ok && valueType == napi_object) {
             // Parse the rest of the options into param
             std::string cmdOptionsMsg;
-            if (!UnwrapExecCmdOptions(env, argv[INDEX_ONE], param, callback, cmdOptionsMsg)) {
+            if (!UnwrapExecCmdParam(env, argv[INDEX_ONE], param, callback, cmdOptionsMsg)) {
                 ThrowInvalidParamError(env, cmdOptionsMsg.empty() ? "Invalid ExecCmdOptions" : cmdOptionsMsg.c_str());
                 return CreateJsUndefined(env);
             }
@@ -524,6 +629,170 @@ napi_value JSCliManager::OnQueryTools(napi_env env, size_t argc, napi_value *arg
     return handleEscape.Escape(asyncResult);
 }
 
+napi_value JSCliManager::RegisterCliHook(napi_env env, napi_callback_info info)
+{
+    GET_CB_INFO_AND_CALL(env, info, JSCliManager, OnRegisterCliHook);
+}
+
+napi_value JSCliManager::UnregisterCliHook(napi_env env, napi_callback_info info)
+{
+    GET_CB_INFO_AND_CALL(env, info, JSCliManager, OnUnregisterCliHook);
+}
+
+namespace {
+sptr<JsCliHook> g_cliHookStub = nullptr;
+std::mutex g_cliHookMutex;
+
+void CleanupCliHookOnEnvDestroy(void* data)
+{
+    auto* envPtr = static_cast<napi_env*>(data);
+    if (envPtr == nullptr) {
+        return;
+    }
+    napi_env hookEnv = *envPtr;
+    delete envPtr;
+
+    sptr<JsCliHook> stub;
+    {
+        std::lock_guard<std::mutex> lock(g_cliHookMutex);
+        if (g_cliHookStub == nullptr || !g_cliHookStub->IsSameEnv(hookEnv)) {
+            return;
+        }
+        stub = g_cliHookStub;
+        g_cliHookStub = nullptr;
+    }
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CleanupCliHookOnEnvDestroy: auto unregister on env destroy");
+    stub->ReleaseResources();
+    CliToolMGRClient::GetInstance().UnregisterCliHook(stub);
+}
+
+bool ValidateCliHookObject(napi_env env, napi_value obj, uint32_t &activeMethods)
+{
+    activeMethods = 0;
+    napi_valuetype type = napi_undefined;
+    napi_typeof(env, obj, &type);
+    if (type != napi_object) {
+        return false;
+    }
+    static const struct {
+        const char* name;
+        uint32_t bit;
+    } methodBits[] = {
+        {"onBeforeCallTool",  0x01},
+        {"onAfterCallTool",   0x02},
+        {"onBeforeCallCmd",   0x04},
+        {"onAfterCallCmd",    0x08},
+    };
+    for (auto& m : methodBits) {
+        napi_value fn = nullptr;
+        napi_get_named_property(env, obj, m.name, &fn);
+        napi_typeof(env, fn, &type);
+        if (type == napi_function) {
+            activeMethods |= m.bit;
+        }
+    }
+    return activeMethods != 0; // 0 means no valid methods found — reject at NAPI layer
+}
+} // namespace
+
+napi_value JSCliManager::OnRegisterCliHook(napi_env env, size_t argc, napi_value *argv)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "JSCliManager::OnRegisterCliHook called");
+    HandleEscape handleEscape(env);
+    napi_deferred deferred = nullptr;
+    napi_value promise = nullptr;
+    napi_create_promise(env, &deferred, &promise);
+
+    if (argc < INDEX_ONE) {
+        napi_reject_deferred(env, deferred, CreateCliJsErrorByNativeErr(env, ERR_INVALID_PARAM));
+        return handleEscape.Escape(promise);
+    }
+
+    uint32_t activeMethods = 0;
+    if (!ValidateCliHookObject(env, argv[0], activeMethods)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "OnRegisterCliHook: invalid hook object");
+        napi_reject_deferred(env, deferred, CreateCliJsErrorByNativeErr(env, ERR_INVALID_PARAM));
+        return handleEscape.Escape(promise);
+    }
+
+    std::lock_guard<std::mutex> lock(g_cliHookMutex);
+    if (g_cliHookStub != nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "OnRegisterCliHook: cliHook stub already exists");
+        napi_reject_deferred(env, deferred, CreateCliJsErrorByNativeErr(env, ERR_HOOK_ALREADY_REGISTERED));
+        return handleEscape.Escape(promise);
+    }
+
+    auto stub = sptr<JsCliHook>(new JsCliHook(env, argv[0]));
+    if (!stub->IsValid()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "OnRegisterCliHook: JsCliHook init failed");
+        napi_reject_deferred(env, deferred, CreateCliJsErrorByNativeErr(env, ERR_NO_INIT));
+        return handleEscape.Escape(promise);
+    }
+    ErrCode ret = CliToolMGRClient::GetInstance().RegisterCliHook(stub, static_cast<int32_t>(activeMethods));
+    if (ret == ERR_OK) {
+        g_cliHookStub = stub;
+        napi_add_env_cleanup_hook(env, &CleanupCliHookOnEnvDestroy, new napi_env(env));
+        napi_resolve_deferred(env, deferred, CreateJsUndefined(env));
+    } else {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "RegisterCliHook failed: %{public}d", ret);
+        napi_reject_deferred(env, deferred, CreateCliJsErrorByNativeErr(env, ret));
+    }
+    return handleEscape.Escape(promise);
+}
+
+napi_value JSCliManager::OnUnregisterCliHook(napi_env env, size_t argc, napi_value *argv)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "JSCliManager::OnUnregisterCliHook called");
+    HandleEscape handleEscape(env);
+
+    napi_deferred deferred = nullptr;
+    napi_value promise = nullptr;
+    napi_create_promise(env, &deferred, &promise);
+
+    if (argc < INDEX_ONE) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "OnUnregisterCliHook: missing hook argument");
+        napi_reject_deferred(env, deferred, CreateCliJsErrorByNativeErr(env, ERR_INVALID_PARAM));
+        return handleEscape.Escape(promise);
+    }
+
+    std::lock_guard<std::mutex> lock(g_cliHookMutex);
+    if (g_cliHookStub == nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "OnUnregisterCliHook: no cliHook stub registered");
+        napi_reject_deferred(env, deferred, CreateCliJsErrorByNativeErr(env, ERR_HOOK_NOT_REGISTERED));
+        return handleEscape.Escape(promise);
+    }
+
+    if (!g_cliHookStub->IsSameEnv(env)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "OnUnregisterCliHook: cross-thread unregister not supported");
+        napi_reject_deferred(env, deferred, CreateCliJsErrorByNativeErr(env, ERR_INVALID_PARAM));
+        return handleEscape.Escape(promise);
+    }
+
+    napi_value storedObj = nullptr;
+    napi_get_reference_value(env, g_cliHookStub->GetCallbackRef(), &storedObj);
+    bool same = false;
+    napi_strict_equals(env, argv[0], storedObj, &same);
+    if (!same) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "OnUnregisterCliHook: hook object does not match registered one");
+        napi_reject_deferred(env, deferred, CreateCliJsErrorByNativeErr(env, ERR_INVALID_PARAM));
+        return handleEscape.Escape(promise);
+    }
+
+    auto stub = g_cliHookStub;
+    ErrCode ret = CliToolMGRClient::GetInstance().UnregisterCliHook(stub);
+    if (ret == ERR_OK || ret == GET_CLI_TOOL_MGR_SERVICE_FAILED || ret == ERR_HOOK_NOT_REGISTERED) {
+        if (ret != ERR_OK) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "OnUnregisterCliHook: ret=%{public}d, cleanup local stub", ret);
+        }
+        stub->ReleaseResources();
+        g_cliHookStub = nullptr;
+        napi_resolve_deferred(env, deferred, CreateJsUndefined(env));
+    } else {
+        napi_reject_deferred(env, deferred, CreateCliJsErrorByNativeErr(env, ret));
+    }
+    return handleEscape.Escape(promise);
+}
+
 napi_value JSCliManagerInit(napi_env env, napi_value exportObj)
 {
     TAG_LOGD(AAFwkTag::CLI_TOOL, "Init JSCliManager");
@@ -546,6 +815,17 @@ napi_value JSCliManagerInit(napi_env env, napi_value exportObj)
     BindNativeFunction(env, exportObj, "getToolInfoByName", moduleName, JSCliManager::GetToolInfoByName);
     BindNativeFunction(env, exportObj, "queryToolSummaries", moduleName, JSCliManager::QueryToolSummaries);
     BindNativeFunction(env, exportObj, "queryTools", moduleName, JSCliManager::QueryTools);
+    BindNativeFunction(env, exportObj, "registerCliHook", moduleName, JSCliManager::RegisterCliHook);
+    BindNativeFunction(env, exportObj, "unregisterCliHook", moduleName, JSCliManager::UnregisterCliHook);
+
+    napi_value sessionStatus = CreateJsSessionStatus(env);
+    if (sessionStatus == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "CreateJsSessionStatus failed");
+        return CreateJsUndefined(env);
+    }
+    if (napi_set_named_property(env, exportObj, "SessionStatus", sessionStatus) != napi_ok) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "napi_set_named_property SessionStatus failed");
+    }
 
     TAG_LOGD(AAFwkTag::CLI_TOOL, "JSCliManagerInit end");
     return CreateJsUndefined(env);

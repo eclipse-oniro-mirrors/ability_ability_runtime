@@ -70,6 +70,7 @@ ohos_unittest("call_container_test") {
     "ipc:ipc_core",
     "napi:ace_napi",
     "safwk:api_cache_manager",
+    "samgr:samgr_proxy",
   ]
 
   if (ability_runtime_graphics) {

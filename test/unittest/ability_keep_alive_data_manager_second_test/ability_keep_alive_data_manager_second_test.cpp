@@ -421,6 +421,7 @@ HWTEST_F(AbilityKeepAliveDataManagerTest, QueryKeepAliveApplications_300, TestSi
 {
     GTEST_LOG_(INFO) << "QueryKeepAliveApplications_300 start";
     AbilityKeepAliveDataManager abilityKeepAliveDataManager;
+    DistributedKv::DistributedKvDataManager::isAlreadySet_ = false;
     KeepAliveInfo info;
     info.bundleName = "testDemoBundle";
     info.userId = -1;
@@ -432,6 +433,7 @@ HWTEST_F(AbilityKeepAliveDataManagerTest, QueryKeepAliveApplications_300, TestSi
 
     int32_t result = abilityKeepAliveDataManager.QueryKeepAliveApplications(params, infoList);
     EXPECT_EQ(result, ERR_NO_INIT);
+    DistributedKv::DistributedKvDataManager::isAlreadySet_ = true;
     GTEST_LOG_(INFO) << "QueryKeepAliveData_300 end";
 }
 

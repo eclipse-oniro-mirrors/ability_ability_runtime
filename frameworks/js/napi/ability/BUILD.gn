@@ -49,7 +49,11 @@ template("ohos_ability_napi") {
       ":ability_js",
     ]
 
-    external_deps = [ "napi:ace_napi" ]
+    external_deps = [
+      "napi:ace_napi",
+      "node:node_header_notice",
+      "libuv:uv",
+    ]
 
     subsystem_name = "ability"
     part_name = "ability_runtime"

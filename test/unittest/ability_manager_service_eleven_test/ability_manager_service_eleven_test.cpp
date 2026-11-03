@@ -1577,12 +1577,14 @@ HWTEST_F(AbilityManagerServiceElevenTest, SetBackgroundCall_002, TestSize.Level1
 HWTEST_F(AbilityManagerServiceElevenTest, SetResidentProcessEnabled_001, TestSize.Level1)
 {
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceElevenTest SetResidentProcessEnabled_001 start");
+    MyFlag::flag_ = 0;
     auto abilityMs = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs, nullptr);
     std::string bundleName = "";
     bool enable = false;
+    MyFlag::flag_ = MyFlag::FLAG::IS_SA_CALL;
     int result = abilityMs->SetResidentProcessEnabled(bundleName, enable);
-    EXPECT_EQ(result, INNER_ERR);
+    EXPECT_EQ(result, INVALID_PARAMETERS_ERR);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceElevenTest SetResidentProcessEnabled_001 end");
 }
 

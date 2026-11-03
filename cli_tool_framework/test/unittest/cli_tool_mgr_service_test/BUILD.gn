@@ -27,7 +27,9 @@ ohos_unittest("cli_tool_mgr_service_test") {
   module_out_path = module_output_path
 
   include_dirs = [
+    "${ability_runtime_innerkits_path}/ability_manager/include",
     "${ability_runtime_innerkits_path}/app_manager/include/appmgr",
+    "${ability_runtime_services_path}/common/include",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
     "${ability_runtime_path}/test/unittest/cli_tool_mgr/cli_tool_mgr_service_test",
     "${cli_tool_framework_path}/interfaces/cli_tool/include",
@@ -51,7 +53,8 @@ ohos_unittest("cli_tool_mgr_service_test") {
     "${cli_tool_framework_path}/services/common/src/ccm_util.cpp",
     "mock/src/accesstoken_kit.cpp",
     "mock/src/ipc_skeleton.cpp",
-    "permission_util_mock.cpp",
+    "mock/src/mock_parameters.cpp",
+    "mock/src/permission_util_mock.cpp",
     "${cli_tool_framework_path}/test/unittest/common_mock/climgr_data/src/cli_tool_data_manager_mock.cpp",
   ]
 
@@ -82,7 +85,6 @@ ohos_unittest("cli_tool_mgr_service_test") {
     "googletest:gtest_main",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
-    "init:libbegetutil",
     "ipc:ipc_core",
     "json:nlohmann_json_static",
     "kv_store:distributeddata_inner",

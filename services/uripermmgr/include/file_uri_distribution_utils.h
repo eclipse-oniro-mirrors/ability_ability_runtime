@@ -22,6 +22,7 @@
 
 namespace OHOS {
 namespace AAFwk {
+constexpr int32_t UPMS_INVALID_USER_ID = -1;
 struct FUDAppInfo {
     uint32_t tokenId = 0;
     std::string bundleName;
@@ -40,15 +41,19 @@ public:
     static bool IsSAOrSystemAppCall();
     static bool IsSystemAppCall();
     static bool IsPrivilegedSACall();
+    static bool IsSAOrBrokerCall();
+    static bool GetUserIdByTokenId(uint32_t tokenId, int32_t &userId);
+    static int32_t ResolveUserIdForSAOrBroker(int32_t userId);
+    static int32_t ResolveCurUserId(int32_t userId, int32_t &curUserId);
     static bool CheckIsSystemAppByTokenId(uint32_t tokenId);
     static bool GetDirByBundleNameAndAppIndex(const std::string &bundleName, int32_t appIndex, std::string &dirName);
     static bool GetBundleNameByTokenId(uint32_t tokenId, std::string &bundleName);
     static bool GetAlterableBundleNameByTokenId(uint32_t tokenId, std::string &bundleName);
-    static int32_t GetAppIdByBundleName(const std::string &bundleName, std::string &appId);
+    static int32_t GetAppIdByBundleName(const std::string &bundleName, int32_t userId, std::string &appId);
     static int32_t GetTokenIdByBundleName(const std::string &bundleName, int32_t appIndex, int32_t userId,
                                           uint32_t &tokenId);
     static bool CheckUriTypeIsValid(Uri &uri);
-    static bool GetBundleApiTargetVersion(const std::string &bundleName, int32_t &targetApiVersion);
+    static bool GetBundleApiTargetVersion(const std::string &bundleName, int32_t userId, int32_t &targetApiVersion);
     static bool IsDocsCloudUri(Uri &uri);
     static bool GenerateFUDAppInfo(FUDAppInfo &info, bool supportSA = false);
     static bool IsUdmfOrPasteboardCall();
@@ -58,7 +63,6 @@ public:
 
 private:
     static bool CheckAndCreateEventInfo(uint32_t callerTokenId, uint32_t targetTokenId, EventInfo &eventInfo);
-    static bool CheckIsSystemAppByBundleName(std::string &bundleName);
 };
 }  // OHOS
 }  // AAFwk

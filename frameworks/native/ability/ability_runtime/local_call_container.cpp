@@ -501,7 +501,11 @@ void CallerConnection::OnRemoteStateChanged(const AppExecFwk::ElementName &eleme
 int32_t LocalCallContainer::GetCurrentUserId()
 {
     if (currentUserId_ == DEFAULT_INVAL_VALUE) {
-        AppExecFwk::OsAccountManagerWrapper::GetOsAccountLocalIdFromProcess(currentUserId_);
+        ErrCode err = AppExecFwk::OsAccountManagerWrapper::GetOsAccountLocalIdFromProcess(currentUserId_);
+        if (err != ERR_OK) {
+            TAG_LOGE(AAFwkTag::LOCAL_CALL, "GetOsAccountLocalIdFromProcess failed: %{public}d", err);
+            return DEFAULT_INVAL_VALUE;
+        }
     }
     TAG_LOGD(AAFwkTag::LOCAL_CALL, "currentUserId %{public}d", currentUserId_);
     return currentUserId_;

@@ -23,7 +23,7 @@
 #include "cli_tool_mgr_client.h"
 #include "hilog_tag_wrapper.h"
 #include "insight_intent_execute_param.h"
-#include "intent_json_safe_get.h"
+#include "json_safe_util.h"
 
 namespace OHOS {
 namespace CliTool {
@@ -50,17 +50,11 @@ void BuildOptionsSchema(nlohmann::json &schema, const IntentOptionDefaults &defa
 void AddInsightIntentOptions(FunctionInfo &func, const IntentOptionDefaults &defaults = {})
 {
     nlohmann::json schema;
-    if (!func.inputSchema.empty()) {
-        schema = nlohmann::json::parse(func.inputSchema, nullptr, false);
-        if (schema.is_discarded()) {
-            schema = nlohmann::json();
-        }
-    }
-    if (!schema.is_object()) {
+    if (!func.inputSchema.empty() && !AbilityRuntime::SafeParse(func.inputSchema, schema)) {
+        TAG_LOGW(AAFwkTag::INTENT, "inputSchema parse failed, reset to empty");
         schema = nlohmann::json();
     }
-    if (!AbilityRuntime::IsJsonDepthOk(schema, AbilityRuntime::JSON_DUMP_MAX_DEPTH)) {
-        TAG_LOGW(AAFwkTag::INTENT, "inputSchema depth exceeds limit, reset to empty");
+    if (!schema.is_object()) {
         schema = nlohmann::json();
     }
     if (!schema.contains("type") || schema["type"] != "object") {
@@ -70,7 +64,7 @@ void AddInsightIntentOptions(FunctionInfo &func, const IntentOptionDefaults &def
         schema["properties"] = nlohmann::json();
     }
     BuildOptionsSchema(schema, defaults);
-    if (!AbilityRuntime::SafeDumpTo(schema, func.inputSchema)) {
+    if (!AbilityRuntime::SafeDump(schema, func.inputSchema)) {
         func.inputSchema.clear();
     }
 }
@@ -195,7 +189,7 @@ bool ConvertFromConfigIntent(const std::vector<AbilityRuntime::InsightIntentInfo
                 properties[param] = {{"type", "string"}};
             }
             inputSchema["properties"] = properties;
-            if (!AbilityRuntime::SafeDumpTo(inputSchema, func.inputSchema)) {
+            if (!AbilityRuntime::SafeDump(inputSchema, func.inputSchema)) {
                 func.inputSchema.clear();
             }
         }
@@ -208,7 +202,7 @@ bool ConvertFromConfigIntent(const std::vector<AbilityRuntime::InsightIntentInfo
                 properties[param] = {{"type", "string"}};
             }
             outputSchema["properties"] = properties;
-            if (!AbilityRuntime::SafeDumpTo(outputSchema, func.outputSchema)) {
+            if (!AbilityRuntime::SafeDump(outputSchema, func.outputSchema)) {
                 func.outputSchema.clear();
             }
         }
@@ -227,7 +221,8 @@ bool RegisterInsightIntentFunctions(
     const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
     const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
     const std::string &bundleName,
-    uint32_t versionCode)
+    uint32_t versionCode,
+    int32_t userId)
 {
     TAG_LOGI(AAFwkTag::CLI_TOOL, "register intents, bundle:%{public}s intent:%{public}zu config:%{public}zu",
         bundleName.c_str(), intentInfos.size(), configInfos.size());
@@ -245,6 +240,7 @@ bool RegisterInsightIntentFunctions(
             func.functionNamespace = bundleName;
         }
         func.version = std::to_string(versionCode);
+        func.userId = userId;
     }
 
     auto &client = CliToolMGRClient::GetInstance();
@@ -254,14 +250,14 @@ bool RegisterInsightIntentFunctions(
     return true;
 }
 
-bool UnregisterInsightIntentFunctions(const std::string &bundleName)
+bool UnregisterInsightIntentFunctions(const std::string &bundleName, int32_t userId)
 {
     if (bundleName.empty()) {
         TAG_LOGW(AAFwkTag::CLI_TOOL, "empty bundleName");
         return false;
     }
     auto &client = CliToolMGRClient::GetInstance();
-    auto ret = client.UnregisterIntentFunctionsByNamespaceAsync(bundleName);
+    auto ret = client.UnregisterIntentFunctionsByNamespaceAsync(userId, bundleName);
     if (ret != ERR_OK) {
         TAG_LOGW(AAFwkTag::CLI_TOOL, "unregister functions request failed: %{public}s, ret: %{public}d",
             bundleName.c_str(), ret);
@@ -348,7 +344,8 @@ void IntentFilterUtil::FilterGeneric(std::vector<AbilityRuntime::ExtractInsightI
 bool BatchRegisterInsightIntentFunctions(
     const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
     const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
-    const std::unordered_map<std::string, uint32_t> &bundleVersionMap)
+    const std::unordered_map<std::string, uint32_t> &bundleVersionMap,
+    int32_t userId)
 {
     std::vector<FunctionInfo> functions;
     ConvertFromConfigIntent(configInfos, functions);
@@ -364,6 +361,7 @@ bool BatchRegisterInsightIntentFunctions(
         if (it != bundleVersionMap.end()) {
             func.version = std::to_string(it->second);
         }
+        func.userId = userId;
     }
     auto &client = CliToolMGRClient::GetInstance();
     ErrCode ret = client.BatchRegisterFunctionsAsync(functions);
@@ -379,7 +377,8 @@ bool BatchUpdateInsightIntentFunctions(
     const std::vector<AbilityRuntime::ExtractInsightIntentInfo> &intentInfos,
     const std::vector<AbilityRuntime::InsightIntentInfo> &configInfos,
     const std::string &bundleName,
-    uint32_t versionCode)
+    uint32_t versionCode,
+    int32_t userId)
 {
     if (bundleName.empty()) {
         TAG_LOGW(AAFwkTag::CLI_TOOL, "batch update failed: empty bundleName");
@@ -393,9 +392,10 @@ bool BatchUpdateInsightIntentFunctions(
             func.functionNamespace = bundleName;
         }
         func.version = std::to_string(versionCode);
+        func.userId = userId;
     }
     auto &client = CliToolMGRClient::GetInstance();
-    ErrCode ret = client.ResetNamespaceFunctionsAsync(bundleName, functions);
+    ErrCode ret = client.ResetNamespaceFunctionsAsync(userId, bundleName, functions);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "batch update request failed, bundle: %{public}s, ret: %{public}d",
             bundleName.c_str(), ret);

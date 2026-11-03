@@ -44,7 +44,6 @@ bool MyFlag::isDocsCloudUri_ = false;
 int32_t MyFlag::getTokenIdByBundleNameStatus_ = 0;
 int32_t MyFlag::processUdmfKeyRet_ = 0;
 std::vector<std::string> MyFlag::udmfUtilsUris_ = {};
-bool MyFlag::upmsUtilsCheckIsSystemAppByBundleNameRet_ = true;
 bool MyFlag::upmsUtilsCheckIsSystemAppByTokenIdRet_ = false;
 bool MyFlag::upmsUtilsGetDirByBundleNameAndAppIndexRet_ = true;
 std::string MyFlag::upmsUtilsAlterBundleName_ = "";
@@ -64,5 +63,8 @@ bool MyFlag::isUdmfOrPasteboardCallRet_ = false;
 bool MyFlag::isDFSCallRet_ = false;
 bool MyFlag::isSandboxAppRet_ = false;
 bool MyFlag::isSACall_ = false;
+bool MyFlag::isSAOrBrokerCall_ = false;
+bool MyFlag::getUserIdByTokenIdRet_ = false;
+int32_t MyFlag::getUserIdByTokenIdUserId_ = -1;
 } // namespace AAFwk
 } // namespace OHOS

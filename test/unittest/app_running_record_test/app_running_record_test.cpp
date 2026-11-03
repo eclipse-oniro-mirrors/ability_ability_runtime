@@ -1070,24 +1070,6 @@ HWTEST_F(AppRunningRecordTest, AppRunningRecord_GetNeedLimitPrio_0100, TestSize.
 }
 
 /**
- * @tc.name: AppRunningRecord_GetSignCode_0100
- * @tc.desc: Test GetSignCode works.
- * @tc.type: FUNC
- */
-HWTEST_F(AppRunningRecordTest, AppRunningRecord_GetSignCode_0100, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "AppRunningRecord_GetSignCode_0100 start.");
-    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
-    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, RECORD_ID, "com.example.child");
-    ASSERT_NE(appRecord, nullptr);
-    std::string signCodeString = "testSignCode";
-    appRecord->signCode_ = signCodeString;
-    std::string result  = appRecord->GetSignCode();
-    EXPECT_EQ(result, signCodeString);
-    TAG_LOGI(AAFwkTag::TEST, "AppRunningRecord_GetSignCode_0100 end.");
-}
-
-/**
  * @tc.name: AppRunningRecord_SetNeedLimitPrio_0100
  * @tc.desc: Test SetNeedLimitPrio works.
  * @tc.type: FUNC
@@ -1101,23 +1083,6 @@ HWTEST_F(AppRunningRecordTest, AppRunningRecord_SetNeedLimitPrio_0100, TestSize.
     appRecord->SetNeedLimitPrio(true);
     EXPECT_TRUE(appRecord->isNeedLimitPrio_);
     TAG_LOGI(AAFwkTag::TEST, "AppRunningRecord_SetNeedLimitPrio_0100 end.");
-}
-
-/**
- * @tc.name: AppRunningRecord_SetJointUserId_0100
- * @tc.desc: Test SetJointUserId works.
- * @tc.type: FUNC
- */
-HWTEST_F(AppRunningRecordTest, AppRunningRecord_SetJointUserId_0100, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "AppRunningRecord_SetJointUserId_0100 start.");
-    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
-    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, RECORD_ID, "com.example.child");
-    ASSERT_NE(appRecord, nullptr);
-    std::string jointUserId = "testJointUserId";
-    appRecord->SetJointUserId(jointUserId);
-    EXPECT_EQ(appRecord->jointUserId_, jointUserId);
-    TAG_LOGI(AAFwkTag::TEST, "AppRunningRecord_SetJointUserId_0100 end.");
 }
 
 /**
@@ -1854,6 +1819,29 @@ HWTEST_F(AppRunningRecordTest, AppRunningRecord_SetKillAppReason_0100, TestSize.
     EXPECT_EQ(appRunningRecord->GetKillMsg(), reason);
     appRunningRecord->SetInnerMsg(reason);
     EXPECT_EQ(appRunningRecord->GetInnerMsg(), reason);
+}
+
+/**
+ * @tc.name: AppRunningRecord_SetKillReasonIfAbsent_0100
+ * @tc.desc: SetKillReasonIfAbsent writes killId and killMsg only when killId is default.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningRecordTest, AppRunningRecord_SetKillReasonIfAbsent_0100, TestSize.Level1)
+{
+    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
+    ASSERT_NE(appInfo, nullptr);
+    int32_t recordId = RECORD_ID;
+    std::string processName;
+    auto appRunningRecord = std::make_shared<AppRunningRecord>(appInfo, recordId, processName);
+    ASSERT_NE(appRunningRecord, nullptr);
+
+    EXPECT_TRUE(appRunningRecord->SetKillReasonIfAbsent(1, "firstKillMsg"));
+    EXPECT_EQ(appRunningRecord->GetKillId(), 1);
+    EXPECT_EQ(appRunningRecord->GetKillMsg(), "firstKillMsg");
+
+    EXPECT_FALSE(appRunningRecord->SetKillReasonIfAbsent(2, "secondKillMsg"));
+    EXPECT_EQ(appRunningRecord->GetKillId(), 1);
+    EXPECT_EQ(appRunningRecord->GetKillMsg(), "firstKillMsg");
 }
 
 /**

@@ -30,15 +30,11 @@ using namespace OHOS::AbilityRuntime;
 
 namespace OHOS {
 namespace {
-constexpr size_t STRING_MAX_LENGTH = 128;
-const std::string KEY_BUNDLE_NAME = "KEY_BUNDLE_NAME";
-const std::string KEY_KEEP_ALIVE_ENABLE = "KEEP_ALIVE_ENABLE";
-const std::string KEY_KEEP_ALIVE_CONFIGURED_LIST = "KEEP_ALIVE_CONFIGURED_LIST";
 }
 
 bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
 {
-    (void)data;
+    
     struct AmsRdbConfig amsRdbConfig;
     amsRdbConfig.tableName = "resident_process_list";
     AmsResidentProcessRdbCallBack amsCallback(amsRdbConfig);
@@ -46,6 +42,7 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
         std::make_unique<RdbDataManager>(amsRdbConfig);
     rdbMgr->Init(amsCallback);
     rdbMgr->ClearCache();
+
     return true;
 }
 }

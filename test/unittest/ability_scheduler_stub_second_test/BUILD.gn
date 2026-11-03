@@ -60,6 +60,7 @@ ohos_unittest("ability_scheduler_stub_second_test") {
     "init:libbeget_proxy",
     "ipc:ipc_core",
     "napi:ace_napi",
+    "samgr:samgr_proxy",
   ]
 
   if (background_task_mgr_continuous_task_enable) {

@@ -23,6 +23,7 @@ pid_t IPCSkeleton::callingUid = FOUNDATION_UID;
 pid_t IPCSkeleton::callingPid = DEFAULT_CALLING_PID;
 uint64_t IPCSkeleton::callingFullTokenId = 0;
 uint64_t IPCSkeleton::callingTokenId = TOKEN_NATIVE;
+std::string IPCSkeleton::callingIdentity;
 
 pid_t IPCSkeleton::GetCallingUid()
 {
@@ -50,6 +51,8 @@ void IPCSkeleton::Reset()
     callingPid = DEFAULT_CALLING_PID;
     callingFullTokenId = 0;
     callingTokenId = TOKEN_NATIVE;
+    callingIdentity.clear();
+    setCallingIdentityRet = true;
 }
 
 void IPCSkeleton::SetCallingTokenID(uint64_t tokenID)
@@ -60,6 +63,19 @@ void IPCSkeleton::SetCallingTokenID(uint64_t tokenID)
 void IPCSkeleton::SetCallingUid(pid_t uid)
 {
     callingUid = uid;
+}
+
+std::string IPCSkeleton::ResetCallingIdentity()
+{
+    return callingIdentity;
+}
+
+bool IPCSkeleton::setCallingIdentityRet = true;
+
+bool IPCSkeleton::SetCallingIdentity(const std::string &identity)
+{
+    callingIdentity = identity;
+    return setCallingIdentityRet;
 }
 
 } // namespace OHOS

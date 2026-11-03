@@ -91,6 +91,8 @@ public:
     bool VerificationAllToken(const sptr<IRemoteObject> &token);
     bool VerificationAllTokenForConnectManagers(const sptr<IRemoteObject> &token);
 
+    void HandlePendingWantDeathCleanup(const std::string &bundleName, int32_t pid);
+
     std::shared_ptr<MissionListWrap> GetMissionListWrap();
     std::shared_ptr<MissionListManagerInterface> CreateMissionListMgr(int32_t userId);
 private:

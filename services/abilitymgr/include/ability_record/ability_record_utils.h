@@ -113,6 +113,8 @@ struct ForegroundOptions {
     uint64_t loadAbilityCallbackId = 0;
     int32_t callerTypeForAnco = 0;
     uint32_t realCallerTokenId = 0;
+    int32_t callerUid = -1;
+    std::string callerBundleName;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

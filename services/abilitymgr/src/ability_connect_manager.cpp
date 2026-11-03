@@ -36,6 +36,7 @@
 #include "global_constant.h"
 #include "hitrace_meter.h"
 #include "init_reboot.h"
+#include "insight_intent_execute_param.h"
 #include "int_wrapper.h"
 #include "multi_instance_utils.h"
 #include "modular_object_manager.h"
@@ -107,6 +108,18 @@ int AbilityConnectManager::StartAbility(const AbilityRequest &abilityRequest)
 #ifdef SUPPORT_UPMS
     // grant uri permission to service extension and ui extension, must call out of serialMutext_.
     UriUtils::GetInstance().GrantUriPermissionForUIOrServiceExtension(abilityRequest);
+    if (InsightIntentExecuteParam::IsInsightIntentExecute(abilityRequest.want)) {
+        std::vector<std::vector<std::string>> uriGroups;
+        std::vector<int32_t> flags;
+        InsightIntentExecuteParam::GetFileEntityUrisAndFlags(abilityRequest.want, uriGroups, flags);
+        auto callerTokenId = abilityRequest.specifyTokenId > 0 ? abilityRequest.specifyTokenId :
+            static_cast<uint32_t>(abilityRequest.want.GetIntParam(Want::PARAM_RESV_CALLER_TOKEN, 0));
+        for (size_t i = 0; i < uriGroups.size() && i < flags.size(); i++) {
+            UriUtils::GetInstance().GrantUriPermission(uriGroups[i], flags[i],
+                abilityRequest.abilityInfo.bundleName, abilityRequest.abilityInfo.applicationInfo.appIndex,
+                callerTokenId);
+        }
+    }
 #endif // SUPPORT_UPMS
     std::lock_guard guard(serialMutex_);
     return StartAbilityLocked(abilityRequest);
@@ -155,6 +168,11 @@ int AbilityConnectManager::StartAbilityLocked(const AbilityRequest &abilityReque
         return ERR_INVALID_VALUE;
     }
 
+    ret = ReportXiaoYiToRSSIfNeeded(abilityRequest.abilityInfo);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
     std::shared_ptr<BaseExtensionRecord> targetService;
     bool isLoadedAbility = false;
     std::string hostBundleName;
@@ -171,11 +189,6 @@ int AbilityConnectManager::StartAbilityLocked(const AbilityRequest &abilityReque
     targetService->DoBackgroundAbilityWindowDelayed(false);
 
     targetService->SetSessionInfo(abilityRequest.sessionInfo);
-
-    ret = ReportXiaoYiToRSSIfNeeded(abilityRequest.abilityInfo);
-    if (ret != ERR_OK) {
-        return ret;
-    }
 
     ReportEventToRSS(abilityRequest.abilityInfo, targetService, abilityRequest.callerToken);
     if (!isLoadedAbility) {
@@ -592,7 +605,11 @@ int AbilityConnectManager::DisconnectAbilityLocked(const sptr<IAbilityConnection
     for (auto &connectRecord : connectRecordList) {
         if (connectRecord) {
             auto abilityRecord = connectRecord->GetAbilityRecord();
-            CHECK_POINTER_AND_RETURN(abilityRecord, ERR_INVALID_VALUE);
+            if (abilityRecord == nullptr) {
+                TAG_LOGW(AAFwkTag::EXT, "null abilityRecord, skip");
+                result = ERR_INVALID_VALUE;
+                continue;
+            }
             TAG_LOGD(AAFwkTag::EXT, "abilityName: %{public}s, bundleName: %{public}s",
                 abilityRecord->GetAbilityInfo().name.c_str(), abilityRecord->GetAbilityInfo().bundleName.c_str());
             if (abilityRecord->GetAbilityInfo().type == AbilityType::EXTENSION) {
@@ -600,20 +617,24 @@ int AbilityConnectManager::DisconnectAbilityLocked(const sptr<IAbilityConnection
             }
             AgentCallerIdentityScope agentCallerIdentityScope;
             if (abilityRecord->GetAbilityInfo().extensionAbilityType == AppExecFwk::ExtensionAbilityType::AGENT) {
-                std::string callerIdentity;
-                std::vector<Want> verificationWants = { connectRecord->GetConnectWant() };
-                result = IN_PROCESS_CALL(
-                    AgentRuntime::AgentManagerClient::GetInstance().VerifyAgentDisconnectRequests(
-                        verificationWants, connect, callerIdentity));
-                if (result != ERR_OK) {
-                    TAG_LOGE(AAFwkTag::SER_ROUTER, "AGENT disconnect is not confirmed by AgentMgr: %{public}d",
-                        result);
-                    break;
-                }
-                result = agentCallerIdentityScope.ApplyIfNeeded(
-                    AppExecFwk::ExtensionAbilityType::AGENT, callerIdentity);
-                if (result != ERR_OK) {
-                    break;
+                if (callerDied) {
+                    TAG_LOGI(AAFwkTag::SER_ROUTER, "subfoundation is died");
+                } else {
+                    std::string callerIdentity;
+                    std::vector<Want> verificationWants = { connectRecord->GetConnectWant() };
+                    result = IN_PROCESS_CALL(
+                        AgentRuntime::AgentManagerClient::GetInstance().VerifyAgentDisconnectRequests(
+                            verificationWants, connect, callerIdentity));
+                    if (result != ERR_OK) {
+                        TAG_LOGE(AAFwkTag::SER_ROUTER, "AGENT disconnect is not confirmed by AgentMgr: %{public}d",
+                            result);
+                        break;
+                    }
+                    result = agentCallerIdentityScope.ApplyIfNeeded(
+                        AppExecFwk::ExtensionAbilityType::AGENT, callerIdentity);
+                    if (result != ERR_OK) {
+                        break;
+                    }
                 }
             } else if (connectRecord->GetDirectCallerTokenId() != IPCSkeleton::GetCallingTokenID() &&
                 IPCSkeleton::GetSelfTokenID() != IPCSkeleton::GetCallingTokenID()) {
@@ -2617,6 +2638,10 @@ void AbilityConnectManager::RestartAbility(const std::shared_ptr<BaseExtensionRe
 
 std::string AbilityConnectManager::GetServiceKey(const std::shared_ptr<BaseExtensionRecord> &service)
 {
+    if (service == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "null service");
+        return "";
+    }
     std::string serviceKey = service->GetURI();
     if (FRS_BUNDLE_NAME == service->GetAbilityInfo().bundleName) {
         serviceKey = serviceKey + std::to_string(service->GetIntParam(FRS_APP_INDEX, 0));
@@ -2673,6 +2698,9 @@ void AbilityConnectManager::DumpState(ServiceMapType &serviceMapBack, std::vecto
 
         std::string serviceKey;
         auto iter = std::find_if(cacheList.begin(), cacheList.end(), [&args, &serviceKey](const auto &service) {
+            if (service == nullptr) {
+                return false;
+            }
             serviceKey = GetServiceKey(service);
             return serviceKey.compare(args) == 0;
         });
@@ -2693,11 +2721,12 @@ void AbilityConnectManager::DumpState(ServiceMapType &serviceMapBack, std::vecto
             }
         }
         for (auto &&service : cacheList) {
+            if (service == nullptr) {
+                continue;
+            }
             std::string serviceKey = GetServiceKey(service);
             info.emplace_back("    uri [" + serviceKey + "]");
-            if (service != nullptr) {
-                service->DumpService(info, isClient);
-            }
+            service->DumpService(info, isClient);
         }
     }
 }
@@ -3404,6 +3433,16 @@ void AbilityConnectManager::GetOrCreateServiceRecord(const AbilityRequest &abili
         targetService = AbilityCacheManager::GetInstance().Get(abilityRequest);
         if (targetService != nullptr) {
             AddToServiceMap(serviceKey, targetService);
+        }
+    }
+    if (targetService != nullptr) {
+        pid_t recordPid = targetService->GetPid();
+        if (recordPid > 0 && !DelayedSingleton<AppScheduler>::GetInstance()->CheckProcessAvailable(recordPid)) {
+            TAG_LOGD(AAFwkTag::EXT,
+                "service process pid:%{public}d is not available, recreate: %{public}s/%{public}s",
+                recordPid, element.GetBundleName().c_str(), element.GetAbilityName().c_str());
+            MoveToTerminatingMap(targetService);
+            targetService = nullptr;
         }
     }
     if (abilityRequest.abilityInfo.extensionAbilityType == AppExecFwk::ExtensionAbilityType::AGENT &&

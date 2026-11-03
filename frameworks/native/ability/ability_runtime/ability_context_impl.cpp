@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,8 +15,11 @@
 
 #include "ability_context_impl.h"
 
+#include <atomic>
+
 #include <native_engine/native_engine.h>
 
+#include "ability_business_error.h"
 #include "ability_manager_client.h"
 #include "app_utils.h"
 #include "application_configuration_manager.h"
@@ -203,6 +206,9 @@ ErrCode AbilityContextImpl::StartAbility(const AAFwk::Want& want, int requestCod
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::CONTEXT, "called");
     ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->StartAbility(want, token_, requestCode);
+    if (err == AAFwk::START_ABILITY_WAITING && !Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
+        return ERR_OK;
+    }
     if (err != ERR_OK) {
         TAG_LOGE(AAFwkTag::CONTEXT, "ret=%{public}d", err);
     }
@@ -214,6 +220,9 @@ ErrCode AbilityContextImpl::StartAbilityAsCaller(const AAFwk::Want &want, int re
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::CONTEXT, "called");
     ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->StartAbilityAsCaller(want, token_, nullptr, requestCode);
+    if (err == AAFwk::START_ABILITY_WAITING && !Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
+        return ERR_OK;
+    }
     if (err != ERR_OK) {
         TAG_LOGE(AAFwkTag::CONTEXT, "ret=%{public}d", err);
     }
@@ -225,6 +234,9 @@ ErrCode AbilityContextImpl::StartAbilityWithAccount(const AAFwk::Want& want, int
     TAG_LOGD(AAFwkTag::CONTEXT, "called");
     (const_cast<Want &>(want)).SetParam(START_ABILITY_TYPE, true);
     ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->StartAbility(want, token_, requestCode, accountId);
+    if (err == AAFwk::START_ABILITY_WAITING && !Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
+        return ERR_OK;
+    }
     if (err != ERR_OK) {
         TAG_LOGE(AAFwkTag::CONTEXT, "ret=%{public}d", err);
     }
@@ -237,6 +249,9 @@ ErrCode AbilityContextImpl::StartAbility(const AAFwk::Want& want, const AAFwk::S
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::CONTEXT, "called");
     ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->StartAbility(want, startOptions, token_, requestCode);
+    if (err == AAFwk::START_ABILITY_WAITING && !Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
+        return ERR_OK;
+    }
     if (err != ERR_OK) {
         TAG_LOGE(AAFwkTag::CONTEXT, "ret=%{public}d", err);
     }
@@ -250,6 +265,9 @@ ErrCode AbilityContextImpl::StartAbilityAsCaller(const AAFwk::Want &want, const 
     TAG_LOGD(AAFwkTag::CONTEXT, "called");
     ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->StartAbilityAsCaller(want,
         startOptions, token_, nullptr, requestCode);
+    if (err == AAFwk::START_ABILITY_WAITING && !Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
+        return ERR_OK;
+    }
     if (err != ERR_OK) {
         TAG_LOGE(AAFwkTag::CONTEXT, "ret=%{public}d", err);
     }
@@ -264,6 +282,9 @@ ErrCode AbilityContextImpl::StartAbilityWithAccount(
     (const_cast<Want &>(want)).SetParam(START_ABILITY_TYPE, true);
     ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->StartAbility(
         want, startOptions, token_, requestCode, accountId);
+    if (err == AAFwk::START_ABILITY_WAITING && !Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
+        return ERR_OK;
+    }
     if (err != ERR_OK) {
         TAG_LOGE(AAFwkTag::CONTEXT, "ret=%{public}d", err);
     }
@@ -419,6 +440,10 @@ ErrCode AbilityContextImpl::TerminateAbilityWithResult(const AAFwk::Want& want, 
         info->want = want;
         info->resultCode = resultCode;
         auto ifaceSessionToken = iface_cast<Rosen::ISession>(sessionToken);
+        if (ifaceSessionToken == nullptr) {
+            TAG_LOGE(AAFwkTag::CONTEXT, "null ifaceSessionToken");
+            return ERR_INVALID_VALUE;
+        }
         TAG_LOGI(AAFwkTag::CONTEXT, "scb call, TerminateAbilityWithResult");
         ErrCode ret = static_cast<int32_t>(ifaceSessionToken->TerminateSession(info));
         if (ret != ERR_OK) {
@@ -437,12 +462,13 @@ ErrCode AbilityContextImpl::TerminateAbilityWithResult(const AAFwk::Want& want, 
 #endif
 }
 
-ErrCode AbilityContextImpl::BackToCallerAbilityWithResult(const AAFwk::Want& want, int resultCode, int64_t requestCode)
+ErrCode AbilityContextImpl::BackToCallerAbilityWithResult(const AAFwk::Want& want, int resultCode, int64_t requestCode,
+    bool isBackToCallerApp)
 {
     ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->BackToCallerAbilityWithResult(
-        token_, resultCode, &want, requestCode);
+        token_, resultCode, want, requestCode, isBackToCallerApp);
     TAG_LOGI(AAFwkTag::CONTEXT, "ret:%{public}d", err);
-    return static_cast<int32_t>(err);
+    return err;
 }
 
 void AbilityContextImpl::SetWeakSessionToken(const wptr<IRemoteObject>& sessionToken)
@@ -757,6 +783,10 @@ ErrCode AbilityContextImpl::TerminateSelf()
         info->want = resultWant;
         info->resultCode = -1;
         auto ifaceSessionToken = iface_cast<Rosen::ISession>(sessionToken);
+        if (ifaceSessionToken == nullptr) {
+            TAG_LOGE(AAFwkTag::CONTEXT, "null ifaceSessionToken");
+            return ERR_INVALID_VALUE;
+        }
         ErrCode ret = static_cast<int32_t>(ifaceSessionToken->TerminateSession(info));
         if (ret != ERR_OK) {
             TAG_LOGE(AAFwkTag::CONTEXT, "scb call, TerminateSelf err: %{public}d", ret);
@@ -1147,7 +1177,7 @@ ErrCode AbilityContextImpl::SetMissionWindowIcon(std::shared_ptr<OHOS::Media::Pi
 }
 
 ErrCode AbilityContextImpl::SetAbilityInstanceInfo(const std::string& label,
-    std::shared_ptr<OHOS::Media::PixelMap> icon)
+    std::shared_ptr<OHOS::Media::PixelMap> icon, const std::string& groupId)
 {
     TAG_LOGD(AAFwkTag::CONTEXT, "SetAbilityInstanceInfo");
     if (!Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
@@ -1161,7 +1191,7 @@ ErrCode AbilityContextImpl::SetAbilityInstanceInfo(const std::string& label,
     }
 
     TAG_LOGI(AAFwkTag::CONTEXT, "SetSessionLabelAndIcon");
-    auto errCode = ifaceSession->SetSessionLabelAndIcon(label, icon);
+    auto errCode = ifaceSession->SetSessionLabelAndIcon(label, icon, groupId);
     auto ret = TransferSetAbilityInstanceInfoErr(errCode);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::CONTEXT, "SetSessionLabelAndIcon err: %{public}d", ret);
@@ -1222,15 +1252,50 @@ ErrCode AbilityContextImpl::StartAbilityByType(
         want.SetFlags(flag);
         wantParams.Remove(FLAG_AUTH_READ_URI_PERMISSION);
     }
-    Ace::ModalUIExtensionCallbacks callback;
+    auto errorFired = std::make_shared<std::atomic<bool>>(false);
     if (uiExtensionCallback == nullptr) {
         TAG_LOGE(AAFwkTag::CONTEXT, "null uiExtensionCallback");
         return ERR_INVALID_VALUE;
     }
-    callback.onError = [uiExtensionCallback](int32_t arg, const std::string &str1, const std::string &str2) {
+    Ace::ModalUIExtensionCallbacks callback = SetupModalUIExtensionCallbacks(uiExtensionCallback, errorFired);
+    Ace::ModalUIExtensionConfig config;
+    int32_t sessionId = uiContent->CreateModalUIExtension(want, callback, config);
+    if (sessionId == 0) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "createModalUIExtension failed");
+        return ERR_INVALID_VALUE;
+    }
+    uiExtensionCallback->SetUIContent(uiContent);
+    uiExtensionCallback->SetSessionId(sessionId);
+    return ERR_OK;
+}
+
+Ace::ModalUIExtensionCallbacks AbilityContextImpl::SetupModalUIExtensionCallbacks(
+    std::shared_ptr<UIExtensionCallback> uiExtensionCallback, std::shared_ptr<std::atomic<bool>> errorFired)
+{
+    Ace::ModalUIExtensionCallbacks callback;
+    callback.onError = [uiExtensionCallback](int32_t arg, const std::string &str1,
+        const std::string &str2) {
         uiExtensionCallback->OnError(arg);
     };
-    callback.onRelease = [uiExtensionCallback](int32_t arg) {
+    callback.onAbilityErrorCode = [uiExtensionCallback, errorFired](const Ace::UIExtensionOperationPhase& phase,
+        int32_t errorCode) {
+        if (phase != Ace::UIExtensionOperationPhase::FOREGROUND) {
+            return;
+        }
+        bool expected = false;
+        if (!errorFired->compare_exchange_strong(expected, true)) {
+            if (errorCode != 0) {
+                TAG_LOGW(AAFwkTag::CONTEXT, "error %{public}d dropped, callback already fired", errorCode);
+            }
+            return;
+        }
+        uiExtensionCallback->OnAbilityByTypeResult(errorCode);
+    };
+    callback.onRelease = [uiExtensionCallback, errorFired](int32_t arg) {
+        bool expected = false;
+        if (errorFired->compare_exchange_strong(expected, true)) {
+            uiExtensionCallback->OnAbilityByTypeResult(0);
+        }
         uiExtensionCallback->OnRelease(arg);
     };
     callback.onResult = [uiExtensionCallback](int32_t arg1, const OHOS::AAFwk::Want arg2) {
@@ -1253,15 +1318,7 @@ ErrCode AbilityContextImpl::StartAbilityByType(
             uiExtensionCallback->OnRequestFailure(elementName, failureCode, failureMsg);
         }
     };
-    Ace::ModalUIExtensionConfig config;
-    int32_t sessionId = uiContent->CreateModalUIExtension(want, callback, config);
-    if (sessionId == 0) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "createModalUIExtension failed");
-        return ERR_INVALID_VALUE;
-    }
-    uiExtensionCallback->SetUIContent(uiContent);
-    uiExtensionCallback->SetSessionId(sessionId);
-    return ERR_OK;
+    return callback;
 }
 
 bool AbilityContextImpl::IsUIExtensionExist(const AAFwk::Want &want)

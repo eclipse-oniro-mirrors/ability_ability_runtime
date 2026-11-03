@@ -16,6 +16,7 @@
 #ifndef MOCK_OHOS_ABILITY_RUNTIME_MOCK_APP_MGR_SERVICE_H
 #define MOCK_OHOS_ABILITY_RUNTIME_MOCK_APP_MGR_SERVICE_H
 
+#include "ui_ability_last_caller_info.h"
 #include "gmock/gmock.h"
 #include "semaphore_ex.h"
 #include "app_mgr_stub.h"
@@ -30,8 +31,8 @@ public:
             const std::shared_ptr<AbilityInfo>& abilityInfo, const std::shared_ptr<ApplicationInfo>& appInfo,
             const std::shared_ptr<AAFwk::Want>& want, int32_t abilityRecordId));
     MOCK_METHOD2(TerminateAbility, void(const sptr<IRemoteObject>& token, bool clearMissionFlag));
-    MOCK_METHOD3(UpdateAbilityState, void(const sptr<IRemoteObject>& token, const AbilityState state,
-        bool isFromScreenOffBackground));
+    MOCK_METHOD4(UpdateAbilityState, void(const sptr<IRemoteObject>& token, const AbilityState state,
+        bool isFromScreenOffBackground, const UiAbilityLastCallerInfo& callerInfo));
     MOCK_METHOD1(AttachApplication, void(const sptr<IRemoteObject>& app));
     MOCK_METHOD1(NotifyMemoryLevel, int(int32_t level));
     MOCK_METHOD1(NotifyProcMemoryLevel, int32_t(const std::map<pid_t, MemoryLevel> &procLevelMap));
@@ -41,8 +42,8 @@ public:
     MOCK_METHOD1(ApplicationTerminated, void(const int32_t recordId));
     MOCK_METHOD1(AbilityCleaned, void(const sptr<IRemoteObject>& token));
     MOCK_METHOD4(UpdateApplicationInfoInstalled, int(const std::string&, const int uid, const std::string&, bool));
-    MOCK_METHOD4(KillApplication, int32_t(const std::string& appName, const bool clearPageStack, int32_t appIndex,
-    const std::string& reason));
+    MOCK_METHOD5(KillApplication, int32_t(const std::string& appName, const bool clearPageStack, int32_t appIndex,
+    const std::string& reason, int32_t userId));
     MOCK_METHOD3(ForceKillApplication, int32_t(const std::string& appName, const int userId, const int appIndex));
     MOCK_METHOD3(KillApplicationWithUserId, int32_t(const std::string& appName, const int userId, const int appIndex));
     MOCK_METHOD1(KillProcessesByAccessTokenId, int32_t(const uint32_t accessTokenId));
@@ -120,6 +121,7 @@ public:
     MOCK_METHOD2(UpdateRenderState, int32_t(pid_t renderPid, int32_t state));
 
     MOCK_METHOD0(IsFinalAppProcess, bool());
+    MOCK_METHOD0(IsHyperSnapInitializing, bool());
     MOCK_METHOD1(SetSupportedProcessCacheSelf, int32_t(bool isSupport));
     MOCK_METHOD2(IsProcessCacheSupported, int32_t(int32_t pid, bool &isSupported));
     MOCK_METHOD2(SetProcessCacheEnable, int32_t(int32_t pid, bool enable));

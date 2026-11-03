@@ -33,12 +33,12 @@ public:
         int32_t abilityRecordId));
 
     MOCK_METHOD1(TerminateAbility, AppMgrResultCode(const sptr<IRemoteObject>&));
-    MOCK_METHOD3(UpdateAbilityState, AppMgrResultCode(const sptr<IRemoteObject>& token, const AbilityState state,
-        bool isFromScreenOffBackground));
+    MOCK_METHOD4(UpdateAbilityState, AppMgrResultCode(const sptr<IRemoteObject>& token,
+        const AbilityState state, bool isFromScreenOffBackground, const UiAbilityLastCallerInfo& callerInfo));
     MOCK_METHOD1(RegisterAppStateCallback, AppMgrResultCode(const sptr<IAppStateCallback>& callback));
     MOCK_METHOD0(ConnectAppMgrService, AppMgrResultCode());
-    MOCK_METHOD4(KillApplication, AppMgrResultCode(const std::string&, const bool clearPageStack, int32_t,
-        const std::string& reason));
+    MOCK_METHOD5(KillApplication, AppMgrResultCode(const std::string&, const bool clearPageStack, int32_t,
+        const std::string& reason, int32_t userId));
     MOCK_METHOD1(KillProcessByAbilityToken, AppMgrResultCode(const sptr<IRemoteObject>& token));
     MOCK_METHOD3(KillProcessesByUserId, AppMgrResultCode(int32_t userId, bool isNeedSendAppSpawnMsg,
        sptr<AAFwk::IUserCallback> callback));

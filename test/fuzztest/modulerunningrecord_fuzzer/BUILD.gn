@@ -43,6 +43,7 @@ ohos_fuzztest("ModuleRunningRecordFuzzTest") {
   ]
 
   external_deps = [
+    "eventhandler:libeventhandler",
     "ability_base:session_info",
     "ability_base:want",
     "ability_base:zuri",

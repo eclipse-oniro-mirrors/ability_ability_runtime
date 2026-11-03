@@ -14,6 +14,12 @@
  */
 
 #include <gtest/gtest.h>
+#include <climits>
+#include <cstdint>
+#include <cstdio>
+#include <fstream>
+#include <string>
+#include <vector>
 
 #define private public
 #include "app_utils.h"
@@ -1148,5 +1154,217 @@ HWTEST_F(AppUtilsTest, IsBopdOrRescueMode_0200, TestSize.Level2)
     appUtils.isBopdOrRescueMode_.value = false;
     EXPECT_FALSE(appUtils.IsBopdOrRescueMode());
 }
+
+/**
+ * @tc.number: AppUtilsTest_4200
+ * @tc.desc: Test ReloadAllowNativeChildProcessApps marks the list loaded
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, AppUtilsTest_4200, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppUtilsTest_4200 called.");
+    auto &appUtils = AAFwk::AppUtils::GetInstance();
+    appUtils.allowStartNativeProcessApps_.isLoaded = false;
+    appUtils.allowStartNativeProcessApps_.value.clear();
+    appUtils.ReloadAllowNativeChildProcessApps();
+    EXPECT_TRUE(appUtils.allowStartNativeProcessApps_.isLoaded);
+}
+
+/**
+ * @tc.number: AppUtilsTest_4300
+ * @tc.desc: Test ParseAllowAppsJsonFromPath parses identifiers from a valid file
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, AppUtilsTest_4300, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppUtilsTest_4300 called.");
+    const std::string tmpPath = "/data/local/tmp/app_utils_allow_apps_4300.json";
+    std::ofstream ofs(tmpPath, std::ios::binary);
+    ASSERT_TRUE(ofs.is_open());
+    ofs << R"({"allowNativeChildProcessApps":[)" <<
+        R"({"identifier":"com.test.app1"},)" <<
+        R"({"identifier":"com.test.app2"}]})";
+    ofs.close();
+    std::vector<std::string> out;
+    bool ret = AAFwk::AppUtils::ParseAllowAppsJsonFromPath(tmpPath, out);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(out.size(), 2u);
+    if (out.size() == 2) {
+        EXPECT_EQ(out[0], "com.test.app1");
+        EXPECT_EQ(out[1], "com.test.app2");
+    }
+    std::remove(tmpPath.c_str());
+}
+
+/**
+ * @tc.number: AppUtilsTest_4400
+ * @tc.desc: Test ParseAllowAppsJsonFromPath returns false for non-existent path
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, AppUtilsTest_4400, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppUtilsTest_4400 called.");
+    std::vector<std::string> out;
+    out.emplace_back("stale");
+    bool ret = AAFwk::AppUtils::ParseAllowAppsJsonFromPath(
+        "/data/local/tmp/app_utils_not_exist_4400.json", out);
+    EXPECT_FALSE(ret);
+    EXPECT_FALSE(out.empty());
+    EXPECT_EQ(out.size(), 1u);
+    EXPECT_EQ(out[0], "stale");
+}
+
+/**
+ * @tc.number: AppUtilsTest_4500
+ * @tc.desc: Test ParseAllowAppsJsonFromPath returns false for invalid json content
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, AppUtilsTest_4500, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppUtilsTest_4500 called.");
+    const std::string tmpPath = "/data/local/tmp/app_utils_allow_apps_4500.json";
+    std::ofstream ofs(tmpPath, std::ios::binary);
+    ASSERT_TRUE(ofs.is_open());
+    ofs << "not a json";
+    ofs.close();
+    std::vector<std::string> out;
+    bool ret = AAFwk::AppUtils::ParseAllowAppsJsonFromPath(tmpPath, out);
+    EXPECT_FALSE(ret);
+    EXPECT_TRUE(out.empty());
+    std::remove(tmpPath.c_str());
+}
+
+/**
+ * @tc.number: IsRescueMode_0100
+ * @tc.desc: Test IsRescueMode when not loaded, parameter is "rescue"
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, IsRescueMode_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsRescueMode_0100 called.");
+    auto &appUtils = AAFwk::AppUtils::GetInstance();
+    appUtils.isRescueMode_.isLoaded = false;
+    appUtils.isRescueMode_.value = false;
+    bool result = appUtils.IsRescueMode();
+    EXPECT_TRUE(appUtils.isRescueMode_.isLoaded);
+    // The value depends on system parameter "soc.boot.mode"; on non-rescue devices it is false.
+    EXPECT_EQ(result, appUtils.isRescueMode_.value);
+}
+
+/**
+ * @tc.number: IsRescueMode_0200
+ * @tc.desc: Test IsRescueMode when already loaded with true
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, IsRescueMode_0200, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsRescueMode_0200 called.");
+    auto &appUtils = AAFwk::AppUtils::GetInstance();
+    appUtils.isRescueMode_.isLoaded = true;
+    appUtils.isRescueMode_.value = true;
+    EXPECT_TRUE(appUtils.IsRescueMode());
+}
+
+/**
+ * @tc.number: IsRescueMode_0300
+ * @tc.desc: Test IsRescueMode when already loaded with false
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, IsRescueMode_0300, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsRescueMode_0300 called.");
+    auto &appUtils = AAFwk::AppUtils::GetInstance();
+    appUtils.isRescueMode_.isLoaded = true;
+    appUtils.isRescueMode_.value = false;
+    EXPECT_FALSE(appUtils.IsRescueMode());
+}
+
+/**
+ * @tc.number: GetTimeoutUnitTimeRatio_RescueMode_0100
+ * @tc.desc: Test GetTimeoutUnitTimeRatio multiplies by RESCUE_MODE_TIMEOUT_RATIO in rescue mode
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, GetTimeoutUnitTimeRatio_RescueMode_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetTimeoutUnitTimeRatio_RescueMode_0100 called.");
+    auto &appUtils = AAFwk::AppUtils::GetInstance();
+    // Force rescue mode on, and reset ratio to trigger reload path.
+    appUtils.isRescueMode_.isLoaded = true;
+    appUtils.isRescueMode_.value = true;
+    appUtils.timeoutUnitTimeRatio_.isLoaded = false;
+    appUtils.timeoutUnitTimeRatio_.value = 0;
+    int32_t ratio = appUtils.GetTimeoutUnitTimeRatio();
+    EXPECT_TRUE(appUtils.timeoutUnitTimeRatio_.isLoaded);
+    EXPECT_EQ(ratio, appUtils.timeoutUnitTimeRatio_.value);
+    // In rescue mode the ratio equals the raw parameter value multiplied by 5 (or clamped to INT32_MAX).
+    int32_t rawParam = OHOS::system::GetIntParameter<int32_t>("persist.sys.abilityms.timeout_unit_time_ratio", 1);
+    if (rawParam <= INT32_MAX / 5) {
+        EXPECT_EQ(ratio, rawParam * 5);
+    } else {
+        EXPECT_EQ(ratio, INT32_MAX);
+    }
+}
+
+/**
+ * @tc.number: GetTimeoutUnitTimeRatio_RescueMode_0200
+ * @tc.desc: Test GetTimeoutUnitTimeRatio in rescue mode returns a value no larger than INT32_MAX
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, GetTimeoutUnitTimeRatio_RescueMode_0200, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetTimeoutUnitTimeRatio_RescueMode_0200 called.");
+    auto &appUtils = AAFwk::AppUtils::GetInstance();
+    // Force rescue mode on and reset ratio to trigger reload path (exercises the clamp guard).
+    appUtils.isRescueMode_.isLoaded = true;
+    appUtils.isRescueMode_.value = true;
+    appUtils.timeoutUnitTimeRatio_.isLoaded = false;
+    appUtils.timeoutUnitTimeRatio_.value = 0;
+    int32_t ratio = appUtils.GetTimeoutUnitTimeRatio();
+    EXPECT_TRUE(appUtils.timeoutUnitTimeRatio_.isLoaded);
+    // The rescue-mode branch guarantees ratio <= INT32_MAX (either multiplied within bounds or clamped).
+    EXPECT_LE(ratio, INT32_MAX);
+}
+
+/**
+ * @tc.number: GetTimeoutUnitTimeRatio_RescueMode_0300
+ * @tc.desc: Test GetTimeoutUnitTimeRatio does not multiply when not in rescue mode
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, GetTimeoutUnitTimeRatio_RescueMode_0300, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetTimeoutUnitTimeRatio_RescueMode_0300 called.");
+    auto &appUtils = AAFwk::AppUtils::GetInstance();
+    // Force rescue mode off and reset ratio to trigger reload path.
+    appUtils.isRescueMode_.isLoaded = true;
+    appUtils.isRescueMode_.value = false;
+    appUtils.timeoutUnitTimeRatio_.isLoaded = false;
+    appUtils.timeoutUnitTimeRatio_.value = 0;
+    int32_t ratio = appUtils.GetTimeoutUnitTimeRatio();
+    EXPECT_TRUE(appUtils.timeoutUnitTimeRatio_.isLoaded);
+    // Without rescue mode, the value comes directly from the system parameter without multiplication.
+    EXPECT_EQ(ratio, appUtils.timeoutUnitTimeRatio_.value);
+    // Verify the rescue-mode multiplication path was NOT taken: the value should equal the
+    // raw parameter value. We compare against a fresh read of the same parameter.
+    int32_t rawParam = OHOS::system::GetIntParameter<int32_t>("persist.sys.abilityms.timeout_unit_time_ratio", 1);
+    EXPECT_EQ(ratio, rawParam);
+}
+
+/**
+ * @tc.number: GetTimeoutUnitTimeRatio_RescueMode_0400
+ * @tc.desc: Test GetTimeoutUnitTimeRatio returns cached value when already loaded
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppUtilsTest, GetTimeoutUnitTimeRatio_RescueMode_0400, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetTimeoutUnitTimeRatio_RescueMode_0400 called.");
+    auto &appUtils = AAFwk::AppUtils::GetInstance();
+    appUtils.timeoutUnitTimeRatio_.isLoaded = true;
+    appUtils.timeoutUnitTimeRatio_.value = 7;
+    // Already loaded: the rescue-mode branch is skipped entirely.
+    appUtils.isRescueMode_.isLoaded = true;
+    appUtils.isRescueMode_.value = true;
+    EXPECT_EQ(appUtils.GetTimeoutUnitTimeRatio(), 7);
+}
+
 }  // namespace AbilityRuntime
 }  // namespace OHOS

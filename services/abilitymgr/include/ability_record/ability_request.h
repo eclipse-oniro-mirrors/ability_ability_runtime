@@ -117,6 +117,7 @@ struct AbilityRequest {
     bool promotePriority = false;
     bool isFromOpenLink = false;
     bool isStartByOEExt = false;
+    bool isPrelaunch = false;
     std::pair<bool, LaunchReason> IsContinuation() const;
 
     bool IsAcquireShareData() const

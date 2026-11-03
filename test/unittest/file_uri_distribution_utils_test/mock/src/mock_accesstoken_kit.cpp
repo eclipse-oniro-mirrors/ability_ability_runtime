@@ -42,6 +42,7 @@ int AccessTokenKit::GetHapTokenInfo(AccessTokenID tokenID, HapTokenInfo &hapInfo
 {
     if (MyFlag::tokenInfos_.find(tokenID) != MyFlag::tokenInfos_.end()) {
         hapInfo.bundleName = MyFlag::tokenInfos_[tokenID].bundleName;
+        hapInfo.userID = MyFlag::tokenInfos_[tokenID].userID;
         return MyFlag::retHapSuccValue_;
     }
     return MyFlag::retHapFailValue_;

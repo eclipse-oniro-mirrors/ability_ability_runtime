@@ -16,6 +16,7 @@ import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 ohos_shared_library("embedded_ui_extension_ani") {
+  version_script = "libembedded_ui_extension_ani.map"
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -68,6 +69,7 @@ ohos_shared_library("embedded_ui_extension_ani") {
     "hitrace:hitrace_meter",
     "ipc:ipc_napi",
     "ipc:ipc_single",
+    "node:node_header_notice",
     "runtime_core:ani",
   ]
 

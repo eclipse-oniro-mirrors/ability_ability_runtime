@@ -81,7 +81,7 @@ public:
         return false;
     }
 
-    static int32_t GetAppIdByBundleName(const std::string &bundleName, std::string &appId)
+    static int32_t GetAppIdByBundleName(const std::string &bundleName, int32_t userId, std::string &appId)
     {
         return 0;
     }
@@ -97,7 +97,7 @@ public:
         return 0;
     }
 
-    static bool GetBundleApiTargetVersion(const std::string &bundleName, int32_t &targetApiVersion)
+    static bool GetBundleApiTargetVersion(const std::string &bundleName, int32_t userId, int32_t &targetApiVersion)
     {
         return 0;
     }

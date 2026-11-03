@@ -38,6 +38,8 @@ public:
 
     bool QueryExtensionAbilityInfos(const AAFwk::Want &want, const int32_t &flag, const int32_t &userId,
         std::vector<ExtensionAbilityInfo> &extensionInfos);
+    
+    ErrCode GetDualModeBundleInfo(const std::string &bundleName, int32_t userId, int32_t &appIndex);
 
 private:
     DECLARE_DELAYED_SINGLETON(BundleMgrHelper)

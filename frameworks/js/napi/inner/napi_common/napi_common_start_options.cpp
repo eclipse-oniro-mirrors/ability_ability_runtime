@@ -232,6 +232,11 @@ bool UnwrapStartOptions(napi_env env, napi_value param, AAFwk::StartOptions &sta
         startOptions.SetHideStartWindow(hideStartWindow);
     }
 
+    bool preferDefaultBrowser = false;
+    if (UnwrapBooleanByPropertyName(env, param, "preferDefaultBrowser", preferDefaultBrowser)) {
+        startOptions.SetPreferDefaultBrowser(preferDefaultBrowser);
+    }
+
     std::vector<int32_t> supportWindowModes;
     if (UnwrapInt32ArrayByPropertyName(env, param, "supportWindowModes", supportWindowModes)) {
         for (int32_t mode : supportWindowModes) {

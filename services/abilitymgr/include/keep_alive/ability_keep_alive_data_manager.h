@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_ABILITY_KEEP_ALIVE_DATA_MANAGER_H
 #define OHOS_ABILITY_RUNTIME_ABILITY_KEEP_ALIVE_DATA_MANAGER_H
 
+#include <chrono>
 #include <mutex>
 #include <vector>
 
@@ -40,10 +41,23 @@ public:
 
     int32_t DeleteKeepAliveDataWithSetterId(const KeepAliveInfo &info);
 
+    /**
+     * @brief Backs up the whole kv store to a backup file in the storage directory.
+     * Called after successful data mutations so the corrupted-store recovery can
+     * restore keep-alive settings instead of starting empty.
+     */
+    void BackupKvStore();
+
 private:
     AbilityKeepAliveDataManager();
     ~AbilityKeepAliveDataManager();
     DistributedKv::Status RestoreKvStore(DistributedKv::Status status);
+    bool IsRecoverableStatus(DistributedKv::Status status);
+    DistributedKv::Status RestoreFromBackupWithRetry();
+    void RestoreIfStoreEmpty();
+    void ScheduleBackupFlush(const std::chrono::steady_clock::time_point &now);
+    DistributedKv::Status RetryBackup();
+    void DetectAndHealCorruptedStore(DistributedKv::Status status);
     DistributedKv::Status GetKvStore();
     bool CheckKvStore();
     DistributedKv::Value ConvertKeepAliveStatusToValue(const KeepAliveInfo &info);
@@ -58,6 +72,8 @@ private:
     DistributedKv::DistributedKvDataManager dataManager_;
     std::shared_ptr<DistributedKv::SingleKvStore> kvStorePtr_;
     mutable std::mutex kvStorePtrMutex_;
+    std::chrono::steady_clock::time_point lastBackupTime_{};
+    bool backupFlushScheduled_ = false;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

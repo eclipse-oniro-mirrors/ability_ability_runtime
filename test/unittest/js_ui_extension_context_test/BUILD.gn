@@ -70,6 +70,7 @@ ohos_unittest("js_ui_extension_context_test") {
     "ipc:ipc_napi",
     "libuv:uv",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
 }
 

@@ -335,10 +335,12 @@ HWTEST_F(AppMgrServiceInnerSixthTest, GetRenderProcessTerminationStatus_002, Tes
     int status = 0;
 
     appMgrServiceInner->appRunningManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = nullptr;
     int result = appMgrServiceInner->GetRenderProcessTerminationStatus(renderPid, status);
     EXPECT_NE(result, 0);
 
     appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = appMgrServiceInner->appRunningManager_;
     EXPECT_NE(appMgrServiceInner->appRunningManager_, nullptr);
     result = appMgrServiceInner->GetRenderProcessTerminationStatus(renderPid, status);
     EXPECT_NE(result, 0);
@@ -353,10 +355,12 @@ HWTEST_F(AppMgrServiceInnerSixthTest, GetRenderProcessTerminationStatus_002, Tes
 
     appRunningRecord->renderPidSet_.emplace(renderPid);
     appMgrServiceInner->remoteClientManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.remoteClientManager_ = nullptr;
     result = appMgrServiceInner->GetRenderProcessTerminationStatus(renderPid, status);
     EXPECT_NE(result, 0);
 
     appMgrServiceInner->remoteClientManager_ = std::make_shared<RemoteClientManager>();
+    appMgrServiceInner->appQueryHelper_.remoteClientManager_ = appMgrServiceInner->remoteClientManager_;
     EXPECT_NE(appMgrServiceInner->remoteClientManager_, nullptr);
     appMgrServiceInner->remoteClientManager_->nwebSpawnClient_ = nullptr;
     result = appMgrServiceInner->GetRenderProcessTerminationStatus(renderPid, status);
@@ -391,10 +395,7 @@ HWTEST_F(AppMgrServiceInnerSixthTest, GetExceptionTimerId_002, TestSize.Level1)
     EXPECT_NE(appMgrServiceInner, nullptr);
 #ifdef APP_MGR_SERVICE_HICOLLIE_ENABLE
 #else
-    FaultData faultData;
-    int32_t pid = 0;
-    int32_t callerUid = 0;
-    int result = appMgrServiceInner->GetExceptionTimerId(faultData, "", nullptr, pid, callerUid);
+    int result = AppfreezeManager::GetInstance()->GetExceptionTimerId([] {});
     EXPECT_NE(result, 0);
 #endif
 
@@ -528,11 +529,13 @@ HWTEST_F(AppMgrServiceInnerSixthTest, IsAppRunningByBundleNameAndUserId_006, Tes
 
     IPCSkeleton::SetCallingUid(FOUNDATION_UID);
     appMgrServiceInner->appRunningManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = nullptr;
     EXPECT_EQ(IPCSkeleton::GetCallingUid(), FOUNDATION_UID);
     result = appMgrServiceInner->IsAppRunningByBundleNameAndUserId("", userId, isRunning);
     EXPECT_NE(result, 0);
 
     appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = appMgrServiceInner->appRunningManager_;
     EXPECT_NE(appMgrServiceInner->appRunningManager_, nullptr);
     result = appMgrServiceInner->IsAppRunningByBundleNameAndUserId("", userId, isRunning);
     EXPECT_EQ(result, 0);
@@ -632,6 +635,7 @@ HWTEST_F(AppMgrServiceInnerSixthTest, PreloadModuleFinished_ShouldUpdateImageSta
     int32_t pid = 100;
     auto applicationInfo = std::make_shared<ApplicationInfo>();
     appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = appMgrServiceInner->appRunningManager_;
     auto appRunningRecord = std::make_shared<AppRunningRecord>(applicationInfo, 0, "PROCESS_NAME");
     appRunningRecord->GetPriorityObject()->SetPid(pid);
     appRunningRecord->SetMakeImageState(MakeImageState::MAKE_PRELOAD_START);
@@ -662,7 +666,7 @@ HWTEST_F(AppMgrServiceInnerSixthTest, TryToUseImageInfo_ShouldReturnErrOkWhenApp
     std::shared_ptr<AppRunningRecord> appRecord;
     appMgrServiceInner->appRunningManager_ = nullptr;
     EXPECT_EQ(appMgrServiceInner->TryToUseImageInfo(nullptr, nullptr, nullptr, "callerKey", appIndex, processName,
-        instanceKey, specifiedProcessFlag, customProcessFlag, appRecord), ERR_OK);
+        instanceKey, specifiedProcessFlag, customProcessFlag, appRecord, false), ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "TryToUseImageInfo_ShouldReturnErrOkWhenAppRunningManagerIsNullptr end");
 }
 
@@ -686,7 +690,7 @@ HWTEST_F(AppMgrServiceInnerSixthTest, TryToUseImageInfo_ShouldReturnErrOkWhenIma
     appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
     auto appInfo = std::make_shared<ApplicationInfo>();
     EXPECT_EQ(appMgrServiceInner->TryToUseImageInfo(nullptr, appInfo, nullptr, "callerKey", appIndex, processName,
-        instanceKey, specifiedProcessFlag, customProcessFlag, appRecord), ERR_OK);
+        instanceKey, specifiedProcessFlag, customProcessFlag, appRecord, false), ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "TryToUseImageInfo_ShouldReturnErrOkWhenImageInfoNotExist end");
 }
 
@@ -716,7 +720,7 @@ HWTEST_F(AppMgrServiceInnerSixthTest, TryToUseImageInfo_ShouldReturnErrOkWhenIma
     PreloadRequest preloadRequest;
     appMgrServiceInner->PreAddImageInfo(bundleName, userId, appIndex, nullptr, preloadRequest);
     EXPECT_EQ(appMgrServiceInner->TryToUseImageInfo(nullptr, appInfo, nullptr, "callerKey", appIndex, processName,
-        instanceKey, specifiedProcessFlag, customProcessFlag, appRecord), ERR_OK);
+        instanceKey, specifiedProcessFlag, customProcessFlag, appRecord, false), ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "TryToUseImageInfo_ShouldReturnErrOkWhenImageInfoNotMatch end");
 }
 } // namespace AppExecFwk

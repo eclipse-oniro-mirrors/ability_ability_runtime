@@ -49,6 +49,7 @@ ohos_fuzztest("DataAbilityManagerFuzzTest") {
   ]
 
   external_deps = [
+    "ability_base:session_info",
     "ability_base:want",
     "ability_base:zuri",
     "background_task_mgr:bgtaskmgr_innerkits",
@@ -64,7 +65,7 @@ ohos_fuzztest("DataAbilityManagerFuzzTest") {
     "relational_store:native_dataability",
     "relational_store:native_rdb",
     "safwk:system_ability_fwk",
-    "samgr:samgr_proxy",
+    "samgr:samgr_proxy"
   ]
 
   if (ability_runtime_graphics) {

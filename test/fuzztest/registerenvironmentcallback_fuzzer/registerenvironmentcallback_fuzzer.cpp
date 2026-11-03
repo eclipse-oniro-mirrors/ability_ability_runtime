@@ -21,6 +21,7 @@
 #include "environment_callback.h"
 #include "application_context.h"
 #include "securec.h"
+#include <fuzzer/FuzzedDataProvider.h>
 
 using namespace OHOS::AAFwk;
 using namespace OHOS::AppExecFwk;
@@ -38,15 +39,13 @@ public:
 };
 bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
 {
-    (void)data;
+    
     auto context = ApplicationContext::GetInstance();
     if (!context) {
         return false;
     }
 
-    std::shared_ptr<EnvironmentCallbackFuzz> callback = nullptr;
-    context->RegisterEnvironmentCallback(callback);
-    callback = std::make_shared<EnvironmentCallbackFuzz>();
+    auto callback = std::make_shared<EnvironmentCallbackFuzz>();
     if (!callback) {
         return false;
     }

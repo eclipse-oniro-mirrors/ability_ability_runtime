@@ -21,6 +21,8 @@
 #include "ams_mgr_interface.h"
 #include "app_foreground_state_observer_interface.h"
 #include "app_malloc_info.h"
+#include "process_lifecycle_observer_interface.h"
+#include "focused_application_observer_interface.h"
 #include "app_mem_dump_info.h"
 #include "app_mgr_ipc_interface_code.h"
 #include "app_record_id.h"
@@ -134,6 +136,18 @@ public:
     virtual int32_t NotifyTemplateProcessReadyDone()
     {
         return 0;
+    }
+
+    /**
+     * Query whether the current process is doing snapshot initialization.
+     *
+     * @return Returns true if the current process is doing snapshot initialization,
+     *         false otherwise (completed, failed, not a template process,
+     *         or service unavailable).
+     */
+    virtual bool IsHyperSnapInitializing()
+    {
+        return false;
     }
 
     /**
@@ -870,6 +884,36 @@ public:
      */
     virtual int32_t UnregisterAppForegroundStateObserver(const sptr<IAppForegroundStateObserver> &observer) = 0;
 
+    virtual int32_t RegisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer)
+    {
+        return 0;
+    }
+
+    virtual int32_t UnregisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer)
+    {
+        return 0;
+    }
+
+    /**
+     * Register focused application observer.
+     * @param observer Is focused application observer
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t RegisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer)
+    {
+        return 0;
+    }
+
+    /**
+     * Unregister focused application observer.
+     * @param observer Is focused application observer.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t UnregisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer)
+    {
+        return 0;
+    }
+
     /**
      * Check whether the bundle is running.
      *
@@ -1307,6 +1351,31 @@ public:
     }
 
     virtual void CancelDelayedExitTask(int32_t pid) {}
+
+    /**
+     * @brief Starts a task with the specified task id and priority.
+     * @param taskId Indicates the attribution key of the task.
+     * @param priority Indicates the task priority.
+     * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
+     *         ERR_NOT_SYSTEM_APP if the caller is not a system app;
+     *         ERR_TASK_ALREADY_EXISTS if the task already exists.
+     */
+    virtual int32_t StartTask(const std::string &taskId, int32_t priority)
+    {
+        return ERR_OK;
+    }
+
+    /**
+     * @brief Finishes the task with the specified task id.
+     * @param taskId Indicates the attribution key of the task.
+     * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
+     *         ERR_NOT_SYSTEM_APP if the caller is not a system app;
+     *         ERR_TASK_NOT_FOUND if the task does not exist (idempotent).
+     */
+    virtual int32_t FinishTask(const std::string &taskId)
+    {
+        return ERR_OK;
+    }
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

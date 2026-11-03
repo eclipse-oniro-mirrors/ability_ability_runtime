@@ -153,7 +153,7 @@ HWTEST_F(MultiAppUtilsTest, GetPreferredAppCloneIndex_0300, TestSize.Level1)
 
     EXPECT_TRUE(MultiAppUtils::GetPreferredAppCloneIndex("testBundleName", 100, appIndex));
 
-    EXPECT_EQ(appIndex, 0);
+    EXPECT_EQ(appIndex, 2);
     EXPECT_EQ(MockBundleMgrHelperStatus::lastClonePreferenceBundleName_, "testBundleName");
     EXPECT_EQ(MockBundleMgrHelperStatus::lastClonePreferenceUserId_, 100);
     TAG_LOGI(AAFwkTag::TEST, "GetPreferredAppCloneIndex_0300 end");
@@ -193,13 +193,13 @@ HWTEST_F(MultiAppUtilsTest, GetPreferredAppCloneIndex_0500, TestSize.Level1)
     MockBundleMgrHelperStatus::appClonePreference_.mode = AppExecFwk::AppClonePreferenceMode::CLONE_APP;
 
     MockBundleMgrHelperStatus::appClonePreference_.appIndex = 0;
-    EXPECT_FALSE(MultiAppUtils::GetPreferredAppCloneIndex("testBundleName", 100, appIndex));
-    EXPECT_EQ(appIndex, -1);
+    EXPECT_TRUE(MultiAppUtils::GetPreferredAppCloneIndex("testBundleName", 100, appIndex));
+    EXPECT_EQ(appIndex, 0);
 
     MockBundleMgrHelperStatus::appClonePreference_.appIndex =
         AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX + 1;
     EXPECT_FALSE(MultiAppUtils::GetPreferredAppCloneIndex("testBundleName", 100, appIndex));
-    EXPECT_EQ(appIndex, -1);
+    EXPECT_EQ(appIndex, 0);
 
     MockBundleMgrHelperStatus::appClonePreference_.appIndex =
         AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX;

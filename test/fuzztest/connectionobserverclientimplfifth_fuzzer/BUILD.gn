@@ -49,6 +49,7 @@ ohos_fuzztest("ConnectionObserverClientImplFifthFuzzTest") {
   ]
 
   external_deps = [
+    "eventhandler:libeventhandler",
     "ability_base:want",
     "ability_base:zuri",
     "background_task_mgr:bgtaskmgr_innerkits",

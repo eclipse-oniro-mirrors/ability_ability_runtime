@@ -43,6 +43,7 @@
 #include "lifecycle_state_info.h"
 #include "sandbox_clone_params.h"
 #include "session_info.h"
+#include "ui_ability_last_caller_info.h"
 #include "ui_extension_window_command.h"
 #include "uri.h"
 #include "want.h"
@@ -111,8 +112,25 @@ public:
     /**
      * process request of foregrounding the ability.
      *
+     * @param tokenId the caller token id.
+     * @param options foreground options.
+     * @param isCallBySCB whether the foreground request is initiated by SCB.
      */
-    void ProcessForegroundAbility(uint32_t tokenId, const ForegroundOptions &options = {});
+    void ProcessForegroundAbility(uint32_t tokenId, const ForegroundOptions &options = {},
+        bool isCallBySCB = false);
+    void HandleBackgroundToForeground(const ForegroundOptions &options, bool isCallBySCB);
+
+    /**
+     * Get the real caller info of last UIAbility foreground, replace caller with SCB(launcher)
+     * when the foreground request is initiated by SCB or the caller info is unavailable.
+     *
+     * @param callerUid the caller uid.
+     * @param callerBundleName the caller bundle name.
+     * @param isCallBySCB whether the foreground request is initiated by SCB.
+     * @return the real caller info including uid and bundle name.
+     */
+    AppExecFwk::UiAbilityLastCallerInfo GetRealLastCallerInfo(int32_t callerUid,
+        const std::string &callerBundleName, bool isCallBySCB);
 
      /**
      * post foreground timeout task for ui ability.
@@ -570,6 +588,9 @@ public:
     int32_t GetAppIndex() const;
     void SetWantAppIndex(const int32_t appIndex);
     int32_t GetWantAppIndex() const;
+    void SetWantParam(const std::string &key, int32_t value);
+    void RemoveInsightIntent();
+    void RemoveSkillParam();
     bool IsRestarting() const;
     void SetAppState(const AppState &state);
     AppState GetAppState() const;
@@ -719,6 +740,12 @@ public:
 #ifdef SUPPORT_UPMS
     void GrantUriPermission();
 
+    // Grant FileEntity URIs grouped by their own flag, reusing the generic grant in UriUtils.
+    void GrantFileEntityUriPermission();
+
+    // Grant foreground URI permission (generic URI and FileEntity) for the foreground start.
+    void GrantForegroundUriPermission(uint32_t tokenId, const ForegroundOptions &options);
+
     void GrantUriPermission(const std::vector<std::string> &uriVec, int32_t flag,
         const std::string &targetBundleName, uint32_t callerTokenId);
 #endif // SUPPORT_UPMS
@@ -741,6 +768,16 @@ public:
     bool GetSecurityFlag() const
     {
         return securityFlag_;
+    }
+
+    void SetDlpCustomFlag(int32_t dlpCustomFlag)
+    {
+        dlpCustomFlag_ = dlpCustomFlag;
+    }
+
+    int32_t GetDlpCustomFlag() const
+    {
+        return dlpCustomFlag_;
     }
 
     bool IsPluginAbility() const
@@ -956,6 +993,7 @@ protected:
     bool isRestartApp_ = false; // Only app calling RestartApp can be set to true
     bool isLaunching_ = true;
     bool securityFlag_ = false;
+    int32_t dlpCustomFlag_ = 0;
     bool isHook_ = false;
     bool isPluginAbility_ = false;
     bool isPrelaunch_ = false;
@@ -967,6 +1005,8 @@ protected:
     pid_t pid_ = 0;
     int32_t missionId_ = -1;
     int32_t ownerMissionUserId_ = -1;
+    int32_t scbUid_ = -1;
+    mutable ffrt::mutex scbUidLock_;
     uint32_t extensionProcessMode_ = 0;       // new version
     int32_t appIndex_ = 0;          // new version
     int32_t restartCount_ = -1;

@@ -17,8 +17,10 @@
 #define MOCK_MY_STATUS_H
 
 #include <string>
+#include <vector>
 
 #include "appmgr/running_process_info.h"
+#include "iremote_object.h"
 #include "scene_board/ui_ability_record.h"
 #include "base_extension_record.h"
 
@@ -33,6 +35,7 @@ public:
     };
 
     bool auIsLaunchEmbededUIAbility_ = true;
+    bool auIsForbidStart_ = false;
     int atkGetTokenTypeFlag_ = 0;
     bool smhGetUIAbilityManagerByUid_ = true;
     bool smhGetUIAbilityManagerByUserId_ = true;
@@ -42,6 +45,7 @@ public:
     bool smhVerificationAllToken_ = true;
     std::shared_ptr<UIAbilityRecord> ualmGetAbilityRecordByToken_ = nullptr;
     int ualmGetSessionIdByAbilityToken_ = 0;
+    bool ualmIsBackToCallerApp_ = false;
     int fimStartFreeInstall_ = ERR_OK;
     int eriQueryAtomicServiceStartupRule_ = ERR_OK;
     std::shared_ptr<AbilityRecord> arGetAbilityRecord_ = nullptr;
@@ -52,6 +56,7 @@ public:
     uint32_t ipcGetCallingTokenID_ = 1;
     uint32_t ipcGetSelfTokenID_ = 1;
     int permPermission_ = 1;
+    int permConnectAgentFromBackground_ = 0;
     bool permVerifyBlockAllAppStartPermission_ = false;
     bool perJudgeCallerIsAllowedToUseSystemAPI_ = true;
     bool paramGetBoolParameter_ = true;
@@ -72,6 +77,12 @@ public:
     std::string oeuValidateCallerHostBundleName_;
     int32_t amcGetProcessInfoRet_ = ERR_OK;
     AppExecFwk::AppProcessState amcProcessState_ = AppExecFwk::AppProcessState::APP_STATE_FOREGROUND;
+    // AppScheduler mock: tokens returned by GetAbilityRecordsByProcessID and the call
+    // counter of NotifyAppMgrRecordExitReasonCompability, for kill-info gating tests.
+    std::vector<sptr<IRemoteObject>> asGetAbilityRecordsTokens_;
+    int asNotifyExitReasonCompabilityCount_ = 0;
+    // UIAbilityLifecycleManager mock: record returned by GetUIAbilityRecordBySessionInfo.
+    std::shared_ptr<UIAbilityRecord> ualmGetUIAbilityRecordBySessionInfo_ = nullptr;
 };
 } // namespace AAFwk
 } // namespace OHOS

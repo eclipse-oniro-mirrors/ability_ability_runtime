@@ -448,5 +448,50 @@ HWTEST_F(ExtensionPermissionsUtilTest, CheckSAPermissionMore_007, TestSize.Level
     EXPECT_TRUE(ExtensionPermissionsUtil::CheckSAPermissionMore(ExtensionAbilityType::VPN));
     TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckSAPermissionMore_007 end");
 }
+/*
+ * Feature: ExtensionPermissionsUtil
+ * Function: CheckCallerPermission
+ * SubFunction: NA
+ * FunctionPoints: ukeyAuth caller permission denied
+ */
+HWTEST_F(ExtensionPermissionsUtilTest, CheckCallerPermission_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckCallerPermission_001 start");
+    MyFlag::flag_ = 0;
+    MyFlag::hasPerm_ = false;
+    EXPECT_FALSE(ExtensionPermissionsUtil::CheckCallerPermission(ExtensionAbilityType::UKEY_AUTH));
+    TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckCallerPermission_001 end");
+}
+
+/*
+ * Feature: ExtensionPermissionsUtil
+ * Function: CheckCallerPermission
+ * SubFunction: NA
+ * FunctionPoints: ukeyAuth caller permission granted
+ */
+HWTEST_F(ExtensionPermissionsUtilTest, CheckCallerPermission_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckCallerPermission_002 start");
+    MyFlag::flag_ = 0;
+    MyFlag::hasPerm_ = true;
+    EXPECT_TRUE(ExtensionPermissionsUtil::CheckCallerPermission(ExtensionAbilityType::UKEY_AUTH));
+    MyFlag::flag_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckCallerPermission_002 end");
+}
+
+/*
+ * Feature: ExtensionPermissionsUtil
+ * Function: CheckCallerPermission
+ * SubFunction: NA
+ * FunctionPoints: extension types without a dedicated caller rule are bypassed
+ */
+HWTEST_F(ExtensionPermissionsUtilTest, CheckCallerPermission_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckCallerPermission_003 start");
+    MyFlag::flag_ = 0;
+    MyFlag::hasPerm_ = false;
+    EXPECT_TRUE(ExtensionPermissionsUtil::CheckCallerPermission(ExtensionAbilityType::VPN));
+    TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckCallerPermission_003 end");
+}
 } // namespace AAFwk
 } // namespace OHOS

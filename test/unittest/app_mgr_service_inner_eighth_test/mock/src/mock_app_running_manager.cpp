@@ -58,6 +58,9 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::CreateAppRunningRecord(
 bool AppRunningManager::CheckAppProcessNameIsSame(const std::shared_ptr<AppRunningRecord> &appRecord,
     const std::string &processName, bool isFromPreload)
 {
+    if (AAFwk::MyStatus::GetInstance().checkAppProcessNameIsSame_) {
+        return true;
+    }
     return false;
 }
 
@@ -156,7 +159,7 @@ bool AppRunningManager::ProcessExitByBundleNameAndUid(
 }
 
 bool AppRunningManager::ProcessExitByBundleNameAndAppIndex(const std::string &bundleName, int32_t appIndex,
-    std::list<pid_t> &pids, bool clearPageStack)
+    std::list<pid_t> &pids, bool clearPageStack, int32_t userId)
 {
     return false;
 }

@@ -161,6 +161,7 @@ HWTEST_F(ContextImplTest, GetBundleCodeDir_0100, TestSize.Level1)
     auto applicationInfo = std::make_shared<AppExecFwk::ApplicationInfo>();
     EXPECT_NE(applicationInfo, nullptr);
     applicationInfo->codePath = "/data/app/el1/bundle/public/testCodeDir";
+    applicationInfo->bundleName = "testCodeDir";
     contextImpl->SetApplicationInfo(applicationInfo);
 
     // not create by system app
@@ -1963,6 +1964,51 @@ HWTEST_F(ContextImplTest, AppExecFwk_ContextImpl_Bind_001, Function | MediumTest
     TAG_LOGI(AAFwkTag::TEST, "ContextImpl_Bind_001 end");
 }
 
+/**
+ * @tc.number: ChangeToLocalPath_0300
+ * @tc.name: ChangeToLocalPath_0300
+ * @tc.desc: Change the inner path to local path in PC dual mode (clone bundle).
+ */
+HWTEST_F(ContextImplTest, ChangeToLocalPath_0300, TestSize.Level1)
+{
+    auto contextImpl = std::make_shared<AbilityRuntime::ContextImpl>();
+    EXPECT_NE(contextImpl, nullptr);
+    std::string bundleName = "com.ohos.demo";
+    std::string localPath = "/data/app/el1/bundle/public/+clone-10000+com.ohos.demo/";
+    contextImpl->ChangeToLocalPath(bundleName, localPath, localPath);
+    EXPECT_TRUE(localPath == "/data/storage/el1/bundle/");
+}
+
+/**
+ * @tc.number: ChangeToLocalPath_0400
+ * @tc.name: ChangeToLocalPath_0400
+ * @tc.desc: Change the outer path to local path in PC dual mode (clone bundle).
+ */
+HWTEST_F(ContextImplTest, ChangeToLocalPath_0400, TestSize.Level1)
+{
+    auto contextImpl = std::make_shared<AbilityRuntime::ContextImpl>();
+    EXPECT_NE(contextImpl, nullptr);
+    std::string bundleName = "com.ohos.demo";
+    std::string localPath = "/data/app/el1/bundle/public/+clone-10000+com.example.demo/";
+    contextImpl->ChangeToLocalPath(bundleName, localPath, localPath);
+    EXPECT_TRUE(localPath == "/data/bundles/+clone-10000+com.example.demo/");
+}
+
+/**
+ * @tc.number: ChangeToLocalPath_0500
+ * @tc.name: ChangeToLocalPath_0500
+ * @tc.desc: ChangeToLocalPath with non-matching bundle (else branch).
+ */
+HWTEST_F(ContextImplTest, ChangeToLocalPath_0500, TestSize.Level1)
+{
+    auto contextImpl =std::make_shared<AbilityRuntime::ContextImpl>();
+    EXPECT_NE(contextImpl, nullptr);
+    std::string bundleName = "com.ohos.demo";
+    std::string localPath ="/data/app/el1/bundle/public/com.example.other/entry.hap";
+    contextImpl->ChangeToLocalPath(bundleName, localPath, localPath);
+    EXPECT_TRUE(localPath == "/data/bundles/com.example.other/entry.hap");
+}
+
 #ifdef SUPPORT_SCREEN
 /**
  * @tc.number: RegisterGetAllUIAbilitiesCallback_001
@@ -1988,4 +2034,11 @@ HWTEST_F(ContextImplTest, RegisterGetAllUIAbilitiesCallback_001, Function | Medi
 }
 #endif
 }  // namespace AppExecFwk
+}  // namespace OHOS
+
+int main(int argc, char** argv)
+{
+    testing::InitGoogleTest(&argc, argv);
+    int ret = RUN_ALL_TESTS();
+    ::_exit(ret);
 }

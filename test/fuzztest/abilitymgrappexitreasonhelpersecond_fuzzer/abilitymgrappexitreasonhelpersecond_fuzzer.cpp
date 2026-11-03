@@ -70,9 +70,10 @@ void ExerciseRecordPaths(FuzzedDataProvider &fdp, const std::shared_ptr<AppExitR
     AppExecFwk::RunningProcessInfo invalidInfo;
     processInfoList.emplace_back(invalidInfo);
 
-    helper->RecordAppWithReason(param.pid, param.uid, exitReason);
+    int32_t fuzzCallerPid = fdp.ConsumeIntegral<int32_t>();
+    helper->RecordAppWithReason(param.pid, param.uid, exitReason, fuzzCallerPid);
     helper->RecordAppsWithReasonByProcessInfoList(exitReason, processInfoList);
-    helper->RecordInvalidKillId(param.pid, exitReason, param.bundleName, param.userId);
+    helper->RecordInvalidKillId(param.pid, exitReason, param.bundleName, param.userId, fuzzCallerPid);
     helper->RecordInvalidKillId(param.pid, exitReason);
 
     std::vector<std::string> abilityList;
@@ -97,17 +98,19 @@ void ExerciseAddPaths(FuzzedDataProvider &fdp, const std::shared_ptr<AppExitReas
     params.exitReason = exitReason;
     params.processInfo = processInfo;
     params.fromKillWithReason = fdp.ConsumeBool();
+    params.callerPid = fdp.ConsumeIntegral<int32_t>();
     helper->AddProcessExitReason(params);
 
-    helper->AddAppExitReason(param.bundleName, param.pid, param.uid, param.appIndex, exitReason);
-    helper->AddBundleExitReason(param.bundleName, param.userId, param.appIndex, exitReason);
+    int32_t fuzzCallerPid = fdp.ConsumeIntegral<int32_t>();
+    helper->AddAppExitReason(param.bundleName, param.pid, param.uid, param.appIndex, exitReason, fuzzCallerPid);
+    helper->AddBundleExitReason(param.bundleName, param.userId, param.appIndex, exitReason, fuzzCallerPid);
 
     std::vector<AppExecFwk::RunningProcessInfo> infos = helper->GetRunningProcessInfos(param.userId,
         param.bundleName);
     (void)infos;
-    helper->RecordAppWithReasonInner(exitReason, processInfo);
+    helper->RecordAppWithReasonInner(exitReason, processInfo, fuzzCallerPid);
     AppExecFwk::RunningProcessInfo emptyInfo;
-    helper->RecordAppWithReasonInner(exitReason, emptyInfo);
+    helper->RecordAppWithReasonInner(exitReason, emptyInfo, DEFAULT_INVAL_VALUE);
 }
 
 bool DoSomethingInterestingWithMyAPI(const uint8_t *data, size_t size)

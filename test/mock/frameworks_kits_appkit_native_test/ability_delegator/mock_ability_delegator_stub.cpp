@@ -106,7 +106,8 @@ int MockAbilityDelegatorStub::StartAbilityByCall(const Want& want, const sptr<IA
     return 0;
 }
 
-int MockAbilityDelegatorStub::StartAbilityForPrelaunch(const Want& want, const int32_t frameNum)
+int MockAbilityDelegatorStub::StartAbilityForPrelaunch(const Want& want, const int32_t frameNum,
+    const sptr<IAbilityConnection> &connect)
 {
     return 0;
 }
@@ -169,7 +170,7 @@ int MockAbilityDelegatorStub::StopServiceAbility(const Want& want, int32_t userI
     return 0;
 }
 
-int MockAbilityDelegatorStub::GetTopAbility(sptr<IRemoteObject>& token)
+int MockAbilityDelegatorStub::GetTopAbility(sptr<IRemoteObject>& token, int32_t userId)
 {
     TAG_LOGI(AAFwkTag::TEST, "MockAbilityDelegatorStub::GetTopAbility is called");
     token = sptr<IRemoteObject>(new MockAbilityDelegatorStub);
@@ -307,7 +308,8 @@ int MockAbilityDelegatorStub2::StartAbilityByCall(const Want& want, const sptr<I
     return 0;
 }
 
-int MockAbilityDelegatorStub2::StartAbilityForPrelaunch(const Want& want, const int32_t frameNum)
+int MockAbilityDelegatorStub2::StartAbilityForPrelaunch(const Want& want, const int32_t frameNum,
+    const sptr<IAbilityConnection> &connect)
 {
     return 0;
 }
@@ -360,13 +362,14 @@ int MockAbilityDelegatorStub2::StartUserTest(const Want& want, const sptr<IRemot
     return OHOS::ERR_OK;
 }
 
-int MockAbilityDelegatorStub2::GetTopAbility(sptr<IRemoteObject>& token)
+int MockAbilityDelegatorStub2::GetTopAbility(sptr<IRemoteObject>& token, int32_t userId)
 {
     TAG_LOGI(AAFwkTag::TEST, "MockAbilityDelegatorStub2::GetTopAbility is called");
     return OHOS::ERR_INVALID_VALUE;
 }
 
-AppExecFwk::ElementName MockAbilityDelegatorStub2::GetTopAbility(bool isNeedLocalDeviceId)
+AppExecFwk::ElementName MockAbilityDelegatorStub2::GetTopAbility(bool isNeedLocalDeviceId,
+    int32_t userId)
 {
     TAG_LOGI(AAFwkTag::TEST, "GetTopAbility.");
     AppExecFwk::ElementName elementName = {};

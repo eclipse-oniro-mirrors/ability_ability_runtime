@@ -22,24 +22,17 @@
 
 namespace OHOS {
 namespace AAFwk {
-struct AbilityRequest;
 class BlockAllAppStartInterceptor : public IAbilityInterceptor {
 public:
     BlockAllAppStartInterceptor() = default;
     ~BlockAllAppStartInterceptor() = default;
-    ErrCode DoProcess(const AbilityInterceptorParam &param) override;
 
     void SetShouldBlockFunc(const std::function<bool()>& func);
 
-    using IsAbilityStartedFunc = std::function<bool(AbilityRequest&, int32_t)>;
-    void SetIsAbilityStartedFunc(const IsAbilityStartedFunc& func);
-
-    ErrCode Execute();
-    ErrCode Execute(AbilityRequest& abilityRequest, int32_t validUserId);
+    ErrCode DoProcess(AbilityInterceptorParam& param) override;
 
 private:
     std::function<bool()> shouldBlockFunc_;
-    IsAbilityStartedFunc isAbilityStartedFunc_;
 };
 } // namespace AAFwk
 } // namespace OHOS

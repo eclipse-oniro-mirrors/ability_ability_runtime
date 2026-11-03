@@ -23,6 +23,7 @@
 #include "extension_ability_info.h"
 #include "irequest_start_ability_callback.h"
 #include "sandbox_clone_params.h"
+#include "start_ability_context.h"
 #include "start_specified_ability_params.h"
 #include "want.h"
 
@@ -38,7 +39,7 @@ struct StartAbilityInfo {
     /**
      * Create the caller ability info from the caller token.
      */
-    static std::shared_ptr<StartAbilityInfo> CreateCallerAbilityInfo(const sptr<IRemoteObject> &callerToken);
+    static std::shared_ptr<AppExecFwk::AbilityInfo> CreateCallerAbilityInfo(const sptr<IRemoteObject> &callerToken);
 
     /**
      * Create the target extension ability info by querying BMS.
@@ -66,20 +67,14 @@ struct StartAbilityInfo {
 };
 
 struct StartAbilityUtils {
-    /**
-     * Get the app clone index from the caller record or the want.
-     */
-    static bool GetAppIndex(const Want &want, sptr<IRemoteObject> callerToken, int32_t &appIndex);
-    /**
-     * Get the application info from the cached start info or BMS.
-     */
-    static bool GetApplicationInfo(const std::string &bundleName, int32_t userId,
-        AppExecFwk::ApplicationInfo &appInfo);
+    static bool GetAppIndex(const Want &want, sptr<IRemoteObject> callerToken, int userId, int32_t &appIndex);
+    static bool GetApplicationInfo(const StartAbilityContext &ctx,
+        const std::string &bundleName, int32_t userId, AppExecFwk::ApplicationInfo &appInfo);
     /**
      * Get the caller ability info from the cached info or the caller token.
      */
-    static bool GetCallerAbilityInfo(const sptr<IRemoteObject> &callerToken,
-        AppExecFwk::AbilityInfo &abilityInfo);
+    static bool GetCallerAbilityInfo(const StartAbilityContext &ctx,
+        const sptr<IRemoteObject> &callerToken, AppExecFwk::AbilityInfo &abilityInfo);
     /**
      * Check whether the target app is in debug provision mode.
      */
@@ -91,8 +86,11 @@ struct StartAbilityUtils {
 
     /**
      * Check whether the call is from the Anco shell or a broker delegate.
+     * ctx is optional: a default-constructed ctx (cache empty) bypasses the caller-ability cache
+     * (Token fallback is equivalent).
      */
-    static bool IsCallFromAncoShellOrBroker(const sptr<IRemoteObject> &callerToken);
+    static bool IsCallFromAncoShellOrBroker(const sptr<IRemoteObject> &callerToken,
+        const StartAbilityContext &ctx = StartAbilityContext{});
     /**
      * Set the clone index on the want when caller and target are in the same bundle.
      */
@@ -105,10 +103,7 @@ struct StartAbilityUtils {
      * Process the app clone index for a UI ability start.
      */
     static int32_t StartUIAbilitiesProcessAppIndex(Want &want,
-        sptr<IRemoteObject> callerToken, int32_t &appIndex);
-    /**
-     * Check whether a self-redirection should be disallowed for an open link.
-     */
+        sptr<IRemoteObject> callerToken, int userId, int32_t &appIndex);
     static int32_t HandleSelfRedirection(bool isFromOpenLink,
         const std::vector<AppExecFwk::AbilityInfo> &abilityInfos);
     /**
@@ -121,33 +116,15 @@ struct StartAbilityUtils {
      */
     static void RemoveAtomicServiceShareRouterIfNeeded(Want &want, const AppExecFwk::AbilityInfo &targetAbilityInfo,
         uint32_t callerTokenId);
-
-    static thread_local std::shared_ptr<StartAbilityInfo> startAbilityInfo;
-    static thread_local std::shared_ptr<StartAbilityInfo> callerAbilityInfo;
-    static thread_local bool skipCrowTest;
-    static thread_local bool skipErms;
-    static thread_local int32_t ermsResultCode;
-    static thread_local bool isWantWithAppCloneIndex;
-    static thread_local bool ermsSupportBackToCallerFlag;
-    static thread_local bool startSpecifiedBySCB;
-    static thread_local bool isSandBoxClone;
-};
-
-struct StartAbilityInfoWrap {
     /**
-     * Resolve and cache the target and caller ability info for the current start operation.
+     * Resolve and cache the target and caller ability info for the current start operation into ctx.
      */
-    StartAbilityInfoWrap(const Want &want, int32_t validUserId, int32_t appIndex,
-        const sptr<IRemoteObject> &callerToken, bool isExtension = false);
-    /**
-     * Reset the thread-local StartAbilityUtils state.
-     */
-    StartAbilityInfoWrap();
-    ~StartAbilityInfoWrap();
+    static void ResolveAndCacheStartAbilityInfo(StartAbilityContext &ctx, const Want &want, int32_t validUserId,
+        int32_t appIndex, const sptr<IRemoteObject> &callerToken, bool isExtension = false);
     /**
      * Set the cached start ability info from an existing AbilityInfo.
      */
-    void SetStartAbilityInfo(const AppExecFwk::AbilityInfo& abilityInfo);
+    static void SetStartAbilityInfo(StartAbilityContext &ctx, const AppExecFwk::AbilityInfo &abilityInfo);
 };
 
 struct StartAbilityWrapParam {
@@ -175,6 +152,8 @@ struct StartAbilityWrapParam {
     bool isGamePrelaunch = false;
     sptr<IRequestStartAbilityCallback> requestCallback = nullptr;
     std::shared_ptr<SandboxCloneParams> sandboxCloneParams = nullptr;
+    bool isLaunchSCB = false;
+    StartAbilityContext startAbilityCtx;
 };
 }
 }

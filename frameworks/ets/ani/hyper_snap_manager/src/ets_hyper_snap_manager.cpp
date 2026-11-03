@@ -103,6 +103,8 @@ public:
     static void RequestRebuildHyperSnap(ani_env *env);
 
     static void NativeGetLastError(ani_env *env, ani_enum_item errType, ani_object call);
+
+    static void NativeIsHyperSnapInitializing(ani_env *env, ani_object call);
 };
 
 void EtsHyperSnapManager::SetHyperSnapEnabled(ani_env *env, ani_boolean enabledFlag)
@@ -180,18 +182,41 @@ void EtsHyperSnapManager::NativeGetLastError(ani_env *env, ani_enum_item errType
     AppExecFwk::HyperSnapErrorRecord record;
     int32_t result = appMgrClient->GetHyperSnapLastError(typeValue, record);
     if (result != ERR_OK) {
-        TAG_LOGE(AAFwkTag::APPKIT, "NativeGetLastError: IPC failed, result %{public}d", result);
-        ani_object error = AbilityRuntime::EtsErrorUtil::CreateError(env,
-            AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
+        TAG_LOGE(AAFwkTag::APPKIT, "NativeGetLastError: failed, result %{public}d", result);
+        ani_object error = AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env, result);
         AppExecFwk::AsyncCallback(env, call, error, nullptr);
         return;
     }
 
     TAG_LOGI(AAFwkTag::APPKIT, "NativeGetLastError success, errType:%{public}d, code:%{public}d",
         typeValue, static_cast<int32_t>(record.code));
-    ani_object error = AbilityRuntime::EtsErrorUtil::CreateError(env, AbilityRuntime::AbilityErrorCode::ERROR_OK);
+    ani_object errOk = AbilityRuntime::EtsErrorUtil::CreateError(env, AbilityRuntime::AbilityErrorCode::ERROR_OK);
     ani_object info = BuildHyperSnapErrorInfo(env, record);
-    AppExecFwk::AsyncCallback(env, call, error, info);
+    AppExecFwk::AsyncCallback(env, call, errOk, info);
+}
+
+void EtsHyperSnapManager::NativeIsHyperSnapInitializing(ani_env *env, ani_object call)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "NativeIsHyperSnapInitializing called");
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "NativeIsHyperSnapInitializing: null env");
+        return;
+    }
+
+    auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+    if (appMgrClient == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "NativeIsHyperSnapInitializing: null appMgrClient");
+        ani_object error = AbilityRuntime::EtsErrorUtil::CreateError(env,
+            AbilityRuntime::AbilityErrorCode::ERROR_CODE_INNER);
+        AppExecFwk::AsyncCallback(env, call, error, nullptr);
+        return;
+    }
+
+    bool result = appMgrClient->IsHyperSnapInitializing();
+    TAG_LOGI(AAFwkTag::APPKIT, "NativeIsHyperSnapInitializing result: %{public}d", result);
+    ani_object errOk = AbilityRuntime::EtsErrorUtil::CreateError(env, AbilityRuntime::AbilityErrorCode::ERROR_OK);
+    ani_object aniResult = AppExecFwk::CreateBoolean(env, static_cast<ani_boolean>(result));
+    AppExecFwk::AsyncCallback(env, call, errOk, aniResult);
 }
 
 void EtsHyperSnapManagerRegisterInit(ani_env *env)
@@ -219,6 +244,8 @@ void EtsHyperSnapManagerRegisterInit(ani_env *env)
             reinterpret_cast<void *>(EtsHyperSnapManager::RequestRebuildHyperSnap)},
         ani_native_function{"nativeGetLastError", nullptr,
             reinterpret_cast<void *>(EtsHyperSnapManager::NativeGetLastError)},
+        ani_native_function{"nativeIsHyperSnapInitializing", nullptr,
+            reinterpret_cast<void *>(EtsHyperSnapManager::NativeIsHyperSnapInitializing)},
     };
     status = env->Namespace_BindNativeFunctions(ns, kitFunctions.data(), kitFunctions.size());
     if (status != ANI_OK) {

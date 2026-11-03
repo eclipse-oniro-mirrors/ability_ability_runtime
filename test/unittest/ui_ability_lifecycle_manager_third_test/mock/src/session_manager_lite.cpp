@@ -22,6 +22,12 @@ SessionManagerLite& SessionManagerLite::GetInstance()
     return instance_;
 }
 
+SessionManagerLite& SessionManagerLite::GetInstance(int32_t userId)
+{
+    GetInstance().lastGetInstanceUserId_ = userId;
+    return GetInstance();
+}
+
 sptr<ISceneSessionManagerLite> SessionManagerLite::GetSceneSessionManagerLiteProxy()
 {
     return sceneSessionManagerLiteProxy_;

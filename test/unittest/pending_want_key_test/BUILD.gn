@@ -49,6 +49,7 @@ ohos_unittest("pending_want_key_test") {
     "hilog:libhilog",
     "ipc:ipc_core",
     "napi:ace_napi",
+    "samgr:samgr_proxy",
   ]
 
   if (background_task_mgr_continuous_task_enable) {

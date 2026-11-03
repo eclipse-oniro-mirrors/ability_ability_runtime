@@ -26,6 +26,7 @@
 #include "ability_manager_constants.h"
 #include "ability_record.h"
 #include "isession_handler_interface.h"
+#include "scene_board/ability_session_info.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -50,14 +51,6 @@ struct SpecifiedRequest {
     AbilityRequest abilityRequest;
 
     SpecifiedRequest(int32_t requestId, AbilityRequest request) : requestId(requestId), abilityRequest(request) {}
-};
-
-struct AbilitySessionInfo {
-    std::string callerBundleName;
-    uint32_t callerTokenId = 0;
-    bool isWebSandBoxClone = false;
-    int32_t sandBoxCloneIndex = 0;
-    std::string creatorBundleName;
 };
 
 class UIAbilityLifecycleManager : public std::enable_shared_from_this<UIAbilityLifecycleManager> {
@@ -141,6 +134,15 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     int32_t SetGamePreLaunchCompleteTime(int64_t completeTime);
+
+    /**
+     * ExtendGamePreLaunchTimeout, reset the game pre-launch foreground countdown.
+     *
+     * @param pid The process ID of the game pre-launch ability to extend.
+     * @param extendTime The extended time in microseconds for the game pre-launch.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t ExtendGamePreLaunchTimeout(int32_t pid, int64_t extendTime);
     
     /**
      * @brief Cancel game prelaunch and kill the game process.
@@ -175,7 +177,7 @@ public:
     std::shared_ptr<AbilityRecord> GetUIAbilityRecordBySessionInfo(const sptr<SessionInfo> &sessionInfo);
 
     int32_t BackToCallerAbilityWithResult(std::shared_ptr<AbilityRecord> abilityRecord,
-        int resultCode, const Want *resultWant, int64_t callerRequestCode);
+        int resultCode, const Want &resultWant, int64_t callerRequestCode, bool isBackToCallerApp = false);
 
     /**
      * CloseUIAbility, close the special ability by scb.
@@ -398,7 +400,7 @@ public:
 
     int MoveMissionToFront(int32_t sessionId, std::shared_ptr<StartOptions> startOptions = nullptr);
 
-    bool IsAbilityStarted(AbilityRequest &abilityRequest, std::shared_ptr<AbilityRecord> &targetRecord);
+    bool IsAbilityStarted(const AbilityRequest &abilityRequest, std::shared_ptr<AbilityRecord> &targetRecord);
 
     /**
      * @brief Update session info.

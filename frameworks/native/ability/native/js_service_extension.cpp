@@ -28,13 +28,13 @@
 #include "hitrace_meter.h"
 #include "hilog_tag_wrapper.h"
 #include "insight_intent_execute_param.h"
-#include "skill/skill_path_validator.h"
 #include "insight_intent_execute_result.h"
 #include "insight_intent_executor_info.h"
 #include "insight_intent_executor_mgr.h"
 #include "js_extension_common.h"
 #include "js_extension_context.h"
 #include "js_runtime.h"
+#include "path_utils.h"
 #include "js_runtime_utils.h"
 #include "js_service_extension_context.h"
 #include "napi/native_api.h"
@@ -167,6 +167,7 @@ JsServiceExtension::~JsServiceExtension()
         context->Unbind();
     }
 
+    SetExtensionCommon(nullptr);
     jsRuntime_.FreeNativeReference(std::move(jsObj_));
     jsRuntime_.FreeNativeReference(std::move(shellContextRef_));
 }
@@ -622,7 +623,7 @@ napi_value JsServiceExtension::LoadSkillFunction(
     napi_value method = nullptr;
 
     if (!param->scriptPath_.empty()) {
-        if (!IsSafeSkillPath(param->scriptPath_)) {
+        if (!IsPathValid(param->scriptPath_)) {
             TAG_LOGW(AAFwkTag::SERVICE_EXT, "invalid scriptPath");
             return nullptr;
         }
@@ -661,11 +662,11 @@ bool JsServiceExtension::TryLoadSkillEntry(const std::string &srcEntry,
         TAG_LOGW(AAFwkTag::SERVICE_EXT, "param is null");
         return false;
     }
-    if (!IsSafeSkillPath(param->moduleName_)) {
+    if (!IsPathValid(param->moduleName_)) {
         TAG_LOGW(AAFwkTag::SERVICE_EXT, "invalid moduleName");
         return false;
     }
-    if (!param->hapPath_.empty() && !IsSafeHapPath(param->hapPath_)) {
+    if (!param->hapPath_.empty() && !IsPathValid(param->hapPath_)) {
         TAG_LOGW(AAFwkTag::SERVICE_EXT, "invalid hapPath");
         return false;
     }
@@ -732,6 +733,11 @@ std::vector<napi_value> JsServiceExtension::BuildSkillCallArgs(napi_env env,
         contextObj = shellContextRef_->GetNapiValue();
     }
     napi_set_named_property(env, info, "context", contextObj);
+    if (!param->toolCallId_.empty()) {
+        napi_value toolCallIdVal = nullptr;
+        napi_create_string_utf8(env, param->toolCallId_.c_str(), param->toolCallId_.length(), &toolCallIdVal);
+        napi_set_named_property(env, info, "toolCallId", toolCallIdVal);
+    }
 
     std::vector<napi_value> args;
     args.push_back(info);

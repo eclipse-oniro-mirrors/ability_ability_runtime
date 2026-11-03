@@ -50,20 +50,25 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     Want want;
     bool boolParam;
     sptr<IRemoteObject> token = GetFuzzAbilityToken();
-    auto shouldBlockFunc = []() { return false; };
     FuzzedDataProvider fdp(data, size);
     intParam = fdp.ConsumeIntegral<int>();
     int32Param = fdp.ConsumeIntegral<int32_t>();
     boolParam = fdp.ConsumeBool();
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, intParam, int32Param, boolParam, token,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, intParam, int32Param).WithUI(boolParam).CallerToken(token).Build();
+    auto fuzzAbilityInfo = std::make_shared<AbilityInfo>();
+    AbilityInterceptorParam param2 =
+        InterceptorParamBuilder(want, intParam, int32Param).WithUI(boolParam).CallerToken(token)
+        .AbilityInfo(fuzzAbilityInfo).Build();
     AbilityInfo targetAbilityInfo;
     AbilityInfo callerAbilityInfo;
     extensionControlInterceptor->DoProcess(param);
+    extensionControlInterceptor->DoProcess(param2);
     extensionControlInterceptor->ProcessInterceptOld(param, targetAbilityInfo, callerAbilityInfo);
     extensionControlInterceptor->ProcessInterceptNew(param, targetAbilityInfo, callerAbilityInfo);
     extensionControlInterceptor->GetCallerAbilityInfo(param, callerAbilityInfo);
     extensionControlInterceptor->GetTargetAbilityInfo(param, targetAbilityInfo);
+    extensionControlInterceptor->GetTargetAbilityInfo(param2, targetAbilityInfo);
     return true;
 }
 }

@@ -17,10 +17,13 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cerrno>
+#include <cstdint>
 #include <cstdlib>
 #include <dlfcn.h>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <nlohmann/json.hpp>
 #include <regex>
 #include <sys/mman.h>
@@ -71,6 +74,8 @@ const std::string ARK_CACHE_NATIVE_PATH = "arm64/";
 
 const char *ETS_ENV_LIBNAME = "libets_environment.z.so";
 const char *ETS_ENV_REGISTER_FUNCS = "OHOS_ETS_ENV_RegisterFuncs";
+
+constexpr int32_t DEFAULT_INTER_VAL = 500;
 
 ETSEnvFuncs *g_etsEnvFuncs = nullptr;
 
@@ -472,6 +477,19 @@ void ETSRuntime::DumpHeapSnapshot(uint32_t tid, const OHOS::AbilityRuntime::Runt
     }
 }
 
+void ETSRuntime::NotifyApplicationState(bool isBackground)
+{
+    TAG_LOGI(AAFwkTag::ETSRUNTIME, "ETSRuntime delegates NotifyApplicationState");
+    if (jsRuntime_ != nullptr) {
+        // Native engine is a responsible component for the event loop, application state notification, etc
+        // for dynamic (js) and static (ets) ArkTS runtimes,
+        // so ETSRuntime delegates to JSRuntime foreground/background application state notifications
+        jsRuntime_->NotifyApplicationState(isBackground);
+    } else {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "ETSRuntime::NotifyApplicationState jsRuntime_ is null");
+    }
+}
+
 void ETSRuntime::ForceFullGC(uint32_t tid)
 {
     auto env = GetAniEnv();
@@ -704,6 +722,69 @@ std::unique_ptr<AppExecFwk::ETSNativeReference> ETSRuntime::LoadEtsModule(const 
     return etsNativeReference;
 }
 
+bool ETSRuntime::LoadRepairPatch(const std::string &hqfFile, const std::string &hapPath)
+{
+    std::string target = ExtractorUtil::GetLoadFilePath(hapPath);
+    if (g_etsEnvFuncs == nullptr || g_etsEnvFuncs->HotReload == nullptr) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "null g_etsEnvFuncs or HotReload");
+        return false;
+    }
+    return g_etsEnvFuncs->HotReload(target, hqfFile) == 0;
+}
+
+bool ETSRuntime::NotifyHotReloadPage()
+{
+#ifdef SUPPORT_SCREEN
+    Ace::HotReloader::HotReload();
+    return true;
+#else
+    return false;
+#endif
+}
+
+void ETSRuntime::RegisterQuickFixQueryFunc(const std::map<std::string, std::string> &moduleAndPath)
+{
+    if (g_etsEnvFuncs == nullptr || g_etsEnvFuncs->ColdReload == nullptr) {
+        std::lock_guard<std::mutex> lock(quickFixMutex_);
+        for (const auto &item : moduleAndPath) {
+            std::string patchPath = GetLoadPath(item.second);
+            if (std::find(cachedPatches_.begin(), cachedPatches_.end(), patchPath) == cachedPatches_.end()) {
+                cachedPatches_.push_back(std::move(patchPath));
+            }
+        }
+        return;
+    }
+    for (const auto &item : moduleAndPath) {
+        std::string patch = GetLoadPath(item.second);
+        if (g_etsEnvFuncs->ColdReload(patch) != 0) {
+            TAG_LOGE(AAFwkTag::ETSRUNTIME, "ColdReload failed, patch: %{public}s", patch.c_str());
+        }
+    }
+}
+
+void ETSRuntime::ApplyCachedColdReload()
+{
+    std::vector<std::string> patches;
+    {
+        std::lock_guard<std::mutex> lock(quickFixMutex_);
+        if (cachedPatches_.empty()) {
+            return;
+        }
+        patches = std::move(cachedPatches_);
+    }
+    if (g_etsEnvFuncs == nullptr || g_etsEnvFuncs->ColdReload == nullptr) {
+        std::lock_guard<std::mutex> lock(quickFixMutex_);
+        cachedPatches_.insert(cachedPatches_.end(),
+            std::make_move_iterator(patches.begin()), std::make_move_iterator(patches.end()));
+        return;
+    }
+    for (const auto &patch : patches) {
+        if (g_etsEnvFuncs->ColdReload(patch) != 0) {
+            TAG_LOGE(AAFwkTag::ETSRUNTIME, "ColdReload failed, patch: %{public}s", patch.c_str());
+        }
+    }
+}
+
 bool ETSRuntime::HandleUncaughtError()
 {
     TAG_LOGD(AAFwkTag::ETSRUNTIME, "HandleUncaughtError called");
@@ -916,6 +997,71 @@ void ETSRuntime::StopDebugMode()
     g_etsEnvFuncs->StopDebugMode(vm);
 }
 
+int32_t ETSRuntime::JsperfProfilerCommandParse(const std::string &command, int32_t defaultValue)
+{
+    TAG_LOGD(AAFwkTag::ETSRUNTIME, "profiler command parse %{public}s", command.c_str());
+    auto findPos = command.find("jsperf");
+    if (findPos == std::string::npos) {
+        TAG_LOGW(AAFwkTag::ETSRUNTIME, "jsperf command not found");
+        return 0;
+    }
+    auto jsPerfStr = command.substr(findPos, command.length() - findPos);
+    const std::regex regexJsperf(R"(^jsperf($|\s+($|\d*\s*($|nativeperf.*))))");
+    std::match_results<std::string::const_iterator> matchResults;
+    if (!std::regex_match(jsPerfStr, matchResults, regexJsperf)) {
+        TAG_LOGW(AAFwkTag::ETSRUNTIME, "the order not match");
+        return defaultValue;
+    }
+    auto jsperfResuflt = matchResults[1].str();
+    const std::regex regexJsperfNum(R"(^\s*(\d+).*)");
+    std::match_results<std::string::const_iterator> jsperfMatchResults;
+    if (!std::regex_match(jsperfResuflt, jsperfMatchResults, regexJsperfNum)) {
+        TAG_LOGW(AAFwkTag::ETSRUNTIME, "the jsperf results not match");
+        return defaultValue;
+    }
+    auto interval = jsperfMatchResults[1].str();
+    errno = 0;
+    char *endPtr = nullptr;
+    long result = strtol(interval.c_str(), &endPtr, 10);
+    if (errno != 0 || endPtr == interval.c_str() || result > INT32_MAX) {
+        return defaultValue;
+    }
+    return static_cast<int32_t>(result);
+}
+
+void ETSRuntime::StartProfilerTask(const DebugOption &dOption)
+{
+    const std::string baseLineProfileCommand("baseLineProfile");
+    if (dOption.perfCmd.find(baseLineProfileCommand) != std::string::npos) {
+        return;
+    }
+    EtsProfilerType profiler = ETS_PROFILERTYPE_HEAP;
+    uint32_t interval = DEFAULT_INTER_VAL;
+    const std::string profilerCommand("profile");
+    if (dOption.perfCmd.find(profilerCommand) != std::string::npos) {
+        profiler = ETS_PROFILERTYPE_CPU;
+        uint32_t jsperfInterval = static_cast<uint32_t>(
+            JsperfProfilerCommandParse(dOption.perfCmd, DEFAULT_INTER_VAL));
+        if (jsperfInterval != 0) {
+            interval = jsperfInterval;
+        }
+    }
+    if (jsRuntime_ == nullptr) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "null jsRuntime_ for profiler");
+        return;
+    }
+    auto vm = static_cast<JsRuntime &>(*jsRuntime_).GetEcmaVm();
+    if (vm == nullptr || g_etsEnvFuncs == nullptr || g_etsEnvFuncs->StartProfiler == nullptr) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "null vm or g_etsEnvFuncs or StartProfiler");
+        return;
+    }
+    bool ret = g_etsEnvFuncs->StartProfiler(getproctid(), static_cast<int32_t>(instanceId_),
+        dOption.isDebugApp, vm, profiler, interval);
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "StartProfiler failed");
+    }
+}
+
 void ETSRuntime::StartProfiler(const DebugOption dOption)
 {
     TAG_LOGD(AAFwkTag::ETSRUNTIME, "localDebug %{public}d", dOption.isDebugFromLocal);
@@ -959,6 +1105,8 @@ void ETSRuntime::StartProfiler(const DebugOption dOption)
             g_etsEnvFuncs->StartDebuggerForSocketPair(option, socketFd);
         }
     });
+
+    StartProfilerTask(dOption);
 }
 
 void ETSRuntime::SetJsRuntime(std::unique_ptr<AbilityRuntime::Runtime> &jsRuntime)

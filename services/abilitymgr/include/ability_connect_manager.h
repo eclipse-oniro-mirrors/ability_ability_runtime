@@ -431,11 +431,15 @@ protected:
     /**
      * When a service is under starting, enque the request and handle it after the service starting completes
      */
-    void EnqueueStartServiceReq(const AbilityRequest &abilityRequest, const std::string &serviceUri = "");
+    void EnqueueStartServiceReq(const AbilityRequest &abilityRequest)
+    {
+        EnqueueStartServiceReq(abilityRequest, "");
+    }
+    virtual void EnqueueStartServiceReq(const AbilityRequest &abilityRequest, const std::string &serviceUri);
     /**
      * After the service starting completes, complete the request list
      */
-    void CompleteStartServiceReq(const std::string &serviceUri);
+    virtual void CompleteStartServiceReq(const std::string &serviceUri);
 
     bool IsCacheExtensionAbility(const std::shared_ptr<BaseExtensionRecord> &abilityRecord);
 

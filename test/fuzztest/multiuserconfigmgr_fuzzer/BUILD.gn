@@ -43,6 +43,8 @@ ohos_fuzztest("MultiUserConfigMgrFuzzTest") {
     "ability_base:configuration",
     "c_utils:utils",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "safwk:api_cache_manager",
     "hitrace:hitrace_meter",
     "i18n:i18n_sa_client",
     "ipc:ipc_single",

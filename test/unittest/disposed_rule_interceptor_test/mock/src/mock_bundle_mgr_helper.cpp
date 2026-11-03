@@ -67,5 +67,11 @@ bool BundleMgrHelper::QueryAppGalleryBundleName(std::string &appGalleryBundleNam
     appGalleryBundleName = "com.example.appstore";
     return true;
 }
+
+ErrCode BundleMgrHelper::GetDualModeBundleInfo(
+    const std::string &bundleName, int32_t userId, int32_t &appIndex)
+{
+    return ERR_OK;
+}
 } // namespace AppExecFwk
 } // namespace OHOS

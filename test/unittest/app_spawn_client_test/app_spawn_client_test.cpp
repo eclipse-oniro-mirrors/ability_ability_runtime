@@ -234,11 +234,8 @@ HWTEST_F(AppSpawnClientTest, SetDacInfo_001, TestSize.Level2)
     startMsg.permissions.insert(permission2);
     startMsg.permissions.insert(permission3);
     startMsg.flags = 0x1000;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
     startMsg.childProcessType = 1;
-    startMsg.isolationMode = false;
     std::string provisionType("test_provisionType");
     startMsg.provisionType = provisionType;
     std::string processType("test_processType");
@@ -282,11 +279,8 @@ HWTEST_F(AppSpawnClientTest, SetMountPermission_001, TestSize.Level2)
     startMsg.permissions.insert(permission2);
     startMsg.permissions.insert(permission3);
     startMsg.flags = 0x1000;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
     startMsg.childProcessType = 1;
-    startMsg.isolationMode = false;
     std::string provisionType("test_provisionType");
     startMsg.provisionType = provisionType;
     std::string processType("test_processType");
@@ -330,11 +324,8 @@ HWTEST_F(AppSpawnClientTest, SetStartFlags_001, TestSize.Level2)
     startMsg.permissions.insert(permission2);
     startMsg.permissions.insert(permission3);
     startMsg.flags = 0x1000;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
     startMsg.childProcessType = 1;
-    startMsg.isolationMode = false;
     std::string provisionType("test_provisionType");
     startMsg.provisionType = provisionType;
     std::string processType("test_processType");
@@ -378,11 +369,8 @@ HWTEST_F(AppSpawnClientTest, AppspawnSetExtMsgMore_001, TestSize.Level2)
     startMsg.permissions.insert(permission2);
     startMsg.permissions.insert(permission3);
     startMsg.flags = 0x1000;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
     startMsg.childProcessType = 1;
-    startMsg.isolationMode = false;
     std::string provisionType("test_provisionType");
     startMsg.provisionType = provisionType;
     std::string processType("test_processType");
@@ -433,11 +421,8 @@ HWTEST_F(AppSpawnClientTest, AppspawnCreateDefaultMsg_001, TestSize.Level2)
     startMsg.permissions.insert(permission2);
     startMsg.permissions.insert(permission3);
     startMsg.flags = 0x1000;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
     startMsg.childProcessType = 1;
-    startMsg.isolationMode = false;
     std::string provisionType("test_provisionType");
     startMsg.provisionType = provisionType;
     std::string processType("test_processType");
@@ -482,11 +467,8 @@ HWTEST_F(AppSpawnClientTest, VerifyMsg_001, TestSize.Level2)
     startMsg.permissions.insert(permission2);
     startMsg.permissions.insert(permission3);
     startMsg.flags = 0x1000;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
     startMsg.childProcessType = 1;
-    startMsg.isolationMode = false;
     std::string provisionType("test_provisionType");
     startMsg.provisionType = provisionType;
     std::string processType("test_processType");
@@ -532,11 +514,8 @@ HWTEST_F(AppSpawnClientTest, VerifyMsg_002, TestSize.Level2)
     startMsg.permissions.insert(permission2);
     startMsg.permissions.insert(permission3);
     startMsg.flags = 0x1000;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
     startMsg.childProcessType = 1;
-    startMsg.isolationMode = false;
     std::string provisionType("test_provisionType");
     startMsg.provisionType = provisionType;
     std::string processType("test_processType");
@@ -582,11 +561,8 @@ HWTEST_F(AppSpawnClientTest, VerifyMsg_003, TestSize.Level2)
     startMsg.permissions.insert(permission2);
     startMsg.permissions.insert(permission3);
     startMsg.flags = 0x1000;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
     startMsg.childProcessType = 1;
-    startMsg.isolationMode = false;
     std::string provisionType("test_provisionType");
     startMsg.provisionType = provisionType;
     std::string processType("test_processType");
@@ -632,11 +608,8 @@ HWTEST_F(AppSpawnClientTest, VerifyMsg_004, TestSize.Level2)
     startMsg.permissions.insert(permission2);
     startMsg.permissions.insert(permission3);
     startMsg.flags = 0x1000;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
     startMsg.childProcessType = 1;
-    startMsg.isolationMode = false;
     std::string provisionType("test_provisionType");
     startMsg.provisionType = provisionType;
     std::string processType("test_processType");
@@ -678,11 +651,8 @@ HWTEST_F(AppSpawnClientTest, VerifyMsg_005, TestSize.Level2)
     startMsg.permissions.insert(permission2);
     startMsg.permissions.insert(permission3);
     startMsg.flags = 0x1000;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
     startMsg.childProcessType = 1;
-    startMsg.isolationMode = false;
     std::string provisionType("test_provisionType");
     startMsg.provisionType = provisionType;
     std::string processType("test_processType");
@@ -719,11 +689,8 @@ HWTEST_F(AppSpawnClientTest, VerifyMsg_006, TestSize.Level2)
     std::string permission1("permission_for_test_1");
     startMsg.permissions.insert(permission1);
     startMsg.flags = 0x1000;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
     startMsg.childProcessType = 1;
-    startMsg.isolationMode = false;
     startMsg.maxChildProcess = 1;
     auto asc = std::make_shared<AppSpawnClient>(false);
     int32_t ret = 0;
@@ -768,11 +735,8 @@ HWTEST_F(AppSpawnClientTest, VerifyMsg_007, TestSize.Level2)
     std::string permission1("permission_for_test_1");
     startMsg.permissions.insert(permission1);
     startMsg.flags = 0x1000;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
     startMsg.childProcessType = 1;
-    startMsg.isolationMode = false;
     startMsg.maxChildProcess = 1;
     auto asc = std::make_shared<AppSpawnClient>(false);
     int32_t ret = 0;
@@ -904,57 +868,6 @@ HWTEST_F(AppSpawnClientTest, SetExtMsgFds_002, TestSize.Level2)
 }
 
 /**
- * @tc.name: SetIsolationModeFlag_001
- * @tc.desc: appspawn SetIsolationModeFlag
- * @tc.type: FUNC
- * @tc.require: issueI5W4S7
- */
-HWTEST_F(AppSpawnClientTest, SetIsolationModeFlag_001, TestSize.Level2)
-{
-    TAG_LOGI(AAFwkTag::TEST, "SetIsolationModeFlag_001 start");
-    AppSpawnStartMsg startMsg = {0};
-    std::string procName("test_proc_name");
-    startMsg.procName = procName;
-    startMsg.isolationMode = true;
-    auto asc = std::make_shared<AppSpawnClient>(false);
-    int32_t ret = 0;
-    AppSpawnReqMsgHandle reqHandle = nullptr;
-    ret = asc->OpenConnection();
-    EXPECT_EQ(ret, ERR_OK);
-    ret = AppSpawnReqMsgCreate(static_cast<AppSpawnMsgType>(startMsg.code), startMsg.procName.c_str(), &reqHandle);
-    EXPECT_EQ(ret, ERR_OK);
-    ret = asc->SetIsolationModeFlag(startMsg, reqHandle);
-    EXPECT_EQ(ret, ERR_OK);
-    TAG_LOGI(AAFwkTag::TEST, "SetIsolationModeFlag_001 end");
-}
-
-/**
- * @tc.name: SetIsolationModeFlag_002
- * @tc.desc: appspawn SetIsolationModeFlag
- * @tc.type: FUNC
- * @tc.require: issueI5W4S7
- */
-HWTEST_F(AppSpawnClientTest, SetIsolationModeFlag_002, TestSize.Level2)
-{
-    TAG_LOGI(AAFwkTag::TEST, "SetIsolationModeFlag_002 start");
-    AppSpawnStartMsg startMsg = {0};
-    std::string procName("test_proc_name");
-    startMsg.procName = procName;
-    startMsg.isolationMode = false;
-    auto asc = std::make_shared<AppSpawnClient>(false);
-    int32_t ret = 0;
-    AppSpawnReqMsgHandle reqHandle = nullptr;
-    ret = asc->OpenConnection();
-    EXPECT_EQ(ret, ERR_OK);
-    ret = AppSpawnReqMsgCreate(static_cast<AppSpawnMsgType>(startMsg.code), startMsg.procName.c_str(), &reqHandle);
-    EXPECT_EQ(ret, ERR_OK);
-    ret = asc->SetIsolationModeFlag(startMsg, reqHandle);
-    EXPECT_EQ(ret, ERR_OK);
-    TAG_LOGI(AAFwkTag::TEST, "SetIsolationModeFlag_002 end");
-}
-
-
-/**
  * @tc.name: StartProcess_001
  * @tc.desc: appspawn StartProcess
  * @tc.type: FUNC
@@ -976,11 +889,8 @@ HWTEST_F(AppSpawnClientTest, StartProcess_001, TestSize.Level2)
     startMsg.permissions.insert(permission2);
     startMsg.permissions.insert(permission3);
     startMsg.flags = 0x1000;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
     startMsg.childProcessType = 1;
-    startMsg.isolationMode = false;
     std::string provisionType("test_provisionType");
     startMsg.provisionType = provisionType;
     std::string processType("test_processType");
@@ -1020,11 +930,8 @@ HWTEST_F(AppSpawnClientTest, StartProcess_002, TestSize.Level2)
     startMsg.permissions.insert(permission2);
     startMsg.permissions.insert(permission3);
     startMsg.flags = 0x1000;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
     startMsg.childProcessType = 1;
-    startMsg.isolationMode = false;
     std::string provisionType("test_provisionType");
     startMsg.provisionType = provisionType;
     std::string processType("test_processType");

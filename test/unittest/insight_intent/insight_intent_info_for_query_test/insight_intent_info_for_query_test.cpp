@@ -711,6 +711,25 @@ HWTEST_F(InsightIntentInfoForQueryTest, ReadFromParcel_0200, TestSize.Level1)
 }
 
 /**
+ * @tc.name: ReadFromParcel_0300
+ * @tc.desc: Test ReadFromParcel with valid length but invalid JSON content
+ *           returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, ReadFromParcel_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    std::string invalid = "not a json";
+    parcel.WriteUint32(static_cast<uint32_t>(invalid.size() + 1));
+    parcel.WriteRawData(invalid.c_str(), invalid.size() + 1);
+
+    InsightIntentInfoForQuery info;
+    EXPECT_FALSE(info.ReadFromParcel(parcel));
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
  * @tc.name: UnmarshallingVector_0300
  * @tc.desc: Test UnmarshallingVector with length exceeding MAX_IPC_REWDATA_SIZE returns false.
  * @tc.type: FUNC
@@ -723,6 +742,43 @@ HWTEST_F(InsightIntentInfoForQueryTest, UnmarshallingVector_0300, TestSize.Level
     uint32_t oversizedLength = static_cast<uint32_t>(MAX_IPC_REWDATA_SIZE + 1);
     parcel.WriteUint32(oversizedLength);
     
+    std::vector<InsightIntentInfoForQuery> readInfos;
+    EXPECT_FALSE(InsightIntentInfoForQuery::UnmarshallingVector(parcel, readInfos));
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: UnmarshallingVector_0400
+ * @tc.desc: Test UnmarshallingVector with valid JSON that is not an array
+ *           returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, UnmarshallingVector_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    std::string nonArray = R"({"key":"value"})";
+    parcel.WriteUint32(static_cast<uint32_t>(nonArray.size() + 1));
+    parcel.WriteRawData(nonArray.c_str(), nonArray.size() + 1);
+
+    std::vector<InsightIntentInfoForQuery> readInfos;
+    EXPECT_FALSE(InsightIntentInfoForQuery::UnmarshallingVector(parcel, readInfos));
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: UnmarshallingVector_0500
+ * @tc.desc: Test UnmarshallingVector with invalid JSON string returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, UnmarshallingVector_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    std::string invalid = "not a json";
+    parcel.WriteUint32(static_cast<uint32_t>(invalid.size() + 1));
+    parcel.WriteRawData(invalid.c_str(), invalid.size() + 1);
+
     std::vector<InsightIntentInfoForQuery> readInfos;
     EXPECT_FALSE(InsightIntentInfoForQuery::UnmarshallingVector(parcel, readInfos));
     TAG_LOGI(AAFwkTag::TEST, "end.");
@@ -813,6 +869,58 @@ HWTEST_F(InsightIntentInfoForQueryTest, MarshallingVector_0500, TestSize.Level1)
         EXPECT_EQ(readInfos[i].bundleName.size(), 2 * 1024U);
         EXPECT_EQ(readInfos[i].intentType, std::string(INSIGHT_INTENTS_TYPE_PAGE));
     }
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: UnmarshallingVector_0600
+ * @tc.desc: Test UnmarshallingVector skips a corrupt item and keeps the other valid item.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, UnmarshallingVector_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    std::string validItem = R"({"isConfig":false,"bundleName":"com.test.bundle","moduleName":"entry",)"
+        R"("intentName":"PlayMusic","domain":"testDomain","intentVersion":"1.0",)"
+        R"("displayName":"Play Music","intentType":"@InsightIntentLink",)"
+        R"("linkInfo":{"uri":"https://example.com/play"}})";
+    // inputParams is expected to be an array, so this item makes the parser set g_parseResult to
+    // ERR_INVALID_VALUE while SafeJsonGet still succeeds.
+    std::string corruptItem = R"({"isConfig":true,"inputParams":{}})";
+    std::string jsonStr = "[" + validItem + "," + corruptItem + "]";
+    parcel.WriteUint32(static_cast<uint32_t>(jsonStr.size() + 1));
+    parcel.WriteRawData(jsonStr.c_str(), jsonStr.size() + 1);
+
+    std::vector<InsightIntentInfoForQuery> readInfos;
+    EXPECT_TRUE(InsightIntentInfoForQuery::UnmarshallingVector(parcel, readInfos));
+    ASSERT_EQ(readInfos.size(), 1U);
+    EXPECT_EQ(readInfos[0].bundleName, TEST_BUNDLE_NAME);
+    EXPECT_EQ(readInfos[0].intentName, TEST_INTENT_NAME);
+    EXPECT_EQ(readInfos[0].intentType, std::string(INSIGHT_INTENTS_TYPE_LINK));
+    EXPECT_EQ(readInfos[0].linkInfo.uri, TEST_URI);
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: UnmarshallingVector_0700
+ * @tc.desc: Test UnmarshallingVector returns true with an empty vector when every item is corrupt.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, UnmarshallingVector_0700, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    std::string jsonStr = R"([{"inputParams":{}},{"inputParams":{}}])";
+    parcel.WriteUint32(static_cast<uint32_t>(jsonStr.size() + 1));
+    parcel.WriteRawData(jsonStr.c_str(), jsonStr.size() + 1);
+
+    std::vector<InsightIntentInfoForQuery> readInfos;
+    InsightIntentInfoForQuery sentinel;
+    sentinel.bundleName = TEST_BUNDLE_NAME;
+    readInfos.push_back(sentinel);
+    EXPECT_TRUE(InsightIntentInfoForQuery::UnmarshallingVector(parcel, readInfos));
+    EXPECT_TRUE(readInfos.empty());
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
 } // namespace AbilityRuntime

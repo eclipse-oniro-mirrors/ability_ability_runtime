@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_APP_MGR_CLIENT_H
 #define OHOS_ABILITY_RUNTIME_APP_MGR_CLIENT_H
 
+#include "ui_ability_last_caller_info.h"
 #include "ability_debug_response_interface.h"
 #include "ability_info.h"
 #include "app_debug_listener_interface.h"
@@ -33,6 +34,7 @@
 #include "iconfiguration_observer.h"
 #include "image_error_handler_interface.h"
 #include "image_process_state_observer_interface.h"
+#include "process_lifecycle_observer_interface.h"
 #include "iremote_object.h"
 #include "irender_scheduler.h"
 #include "irender_state_observer.h"
@@ -121,7 +123,7 @@ public:
      * @return RESULT_OK if dispatched, otherwise ERROR_SERVICE_NOT_CONNECTED.
      */
     virtual AppMgrResultCode UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state,
-        bool isFromScreenOffBackground = false);
+        bool isFromScreenOffBackground = false, const UiAbilityLastCallerInfo &callerInfo = {});
 
     /**
      * Update the running state of an extension ability identified by token.
@@ -209,6 +211,8 @@ public:
     virtual AppMgrResultCode KillProcessesByPids(const std::vector<int32_t> &pids,
         const std::string &reason = "KillProcessesByPids", bool subProcess = false, bool isKillPrecedeStart = false);
 
+    virtual bool CheckProcessAvailable(int32_t pid);
+
     /**
      * Establish the parent-child relationship between two ability processes.
      * Internal use (multi-process/child-process framework). If the caller token
@@ -254,7 +258,7 @@ public:
      *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual AppMgrResultCode KillApplication(const std::string &bundleName, bool clearPageStack = false,
-        int32_t appIndex = 0, const std::string &reason = "KillApplication");
+        int32_t appIndex = 0, const std::string &reason = "KillApplication", int32_t userId = -1);
 
     /**
      * Force kill the application. Restricted: the server only accepts calls from
@@ -1155,6 +1159,9 @@ public:
      */
     int32_t UnregisterImageProcessStateObserver(const sptr<IImageProcessStateObserver> &observer);
 
+    int32_t RegisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer);
+    int32_t UnregisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer);
+
     /**
      * Register a callback to be notified when native child processes exit.
      *
@@ -1231,6 +1238,15 @@ public:
      *         when the service is unavailable.
      */
     bool IsFinalAppProcess();
+
+    /**
+     * Query whether the current process is doing snapshot initialization.
+     *
+     * @return Returns true if the current process is doing snapshot initialization,
+     *         false otherwise (completed, failed, not a template process,
+     *         or service unavailable).
+     */
+    bool IsHyperSnapInitializing();
 
     /**
      * Register an observer for render process state changes.
@@ -1350,10 +1366,12 @@ public:
      *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     virtual int32_t NotifyAppMgrRecordExitReasonCompability(
-        int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg, int32_t reason);
+        int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg,
+        int32_t reason, int32_t callerPid = -1);
 
     /**
      * Preload an application (press-down / pre-make / preload-module /
+
      * pre-launch / game-prelaunch modes) to accelerate later startup.
      *
      * Permission: system-app caller required (CHECK_CALLER_IS_SYSTEM_APP) and
@@ -1823,6 +1841,26 @@ public:
      * @param pid Pid of the process whose delayed-exit task should be cancelled.
      */
     virtual void CancelDelayedExitTask(int32_t pid) const;
+
+    /**
+     * Start a task. The caller must be a system app.
+     *
+     * @param taskId Attribution key of the task (1~256 characters).
+     * @param priority One of the TaskPriority values.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
+    int32_t StartTask(const std::string &taskId, int32_t priority);
+
+    /**
+     * Finish a task. The caller must be the creating system app.
+     *
+     * @param taskId Attribution key of the task (1~256 characters).
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
+    int32_t FinishTask(const std::string &taskId);
+
 private:
     void SetServiceManager(std::unique_ptr<AppServiceManager> serviceMgr);
     /**

@@ -40,11 +40,21 @@ public:
     static sptr<QuickFixManagerService> GetInstance();
 
     /**
+     * @brief Reset the instance of quick fix manager service.
+     */
+    static void ResetInstance();
+
+    /**
      * @brief Init quick fix manager service, such as event runner and event handler.
      *
      * @return Returns true when init succeed, false when init failed.
      */
     bool Init();
+
+    /**
+     * @brief Stop service, clear pending apply tasks.
+     */
+    void Stop();
 
     /**
      * @brief Apply quick fix.
@@ -80,10 +90,27 @@ public:
      */
     void RemoveApplyTask(std::shared_ptr<QuickFixManagerApplyTask> applyTask);
 
+    /**
+     * @brief Get applyed quick fix info with explicit userId and isCheckDebugApp.
+     *        For internal apply task use: caller permissions verified at ApplyQuickFix IPC entry.
+     *
+     * @param bundleName Bundle name of quick fix info.
+     * @param quickFixInfo Quick fix info, including bundleName, bundleVersion and so on.
+     * @param userId The caller's userId to scope bundle query.
+     * @param isCheckDebugApp Whether to check debug app provision type.
+     * @return Returns 0 on success, error code on failure.
+     */
+    int32_t GetApplyedQuickFixInfoForApply(const std::string &bundleName,
+        ApplicationQuickFixInfo &quickFixInfo, int32_t userId, bool isCheckDebugApp);
+
 private:
     bool CheckTaskRunningState(const std::string &bundleName);
     void AddApplyTask(std::shared_ptr<QuickFixManagerApplyTask> applyTask);
-    int32_t GetQuickFixInfo(const std::string &bundleName, bool &patchExists, bool &isSoContained);
+    int32_t GetQuickFixInfo(const std::string &bundleName, bool &patchExists,
+        bool &isSoContained);
+    int32_t GetApplyedQuickFixInfoInner(const std::string &bundleName,
+        ApplicationQuickFixInfo &quickFixInfo, int32_t userId, bool isCheckDebugApp);
+    std::shared_ptr<AppExecFwk::EventHandler> GetEventHandler();
 
     static std::mutex mutex_;
     static sptr<QuickFixManagerService> instance_;

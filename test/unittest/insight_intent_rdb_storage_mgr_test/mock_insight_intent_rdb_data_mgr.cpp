@@ -22,6 +22,7 @@ namespace AbilityRuntime {
 bool g_mockQueryDataRet = true;
 bool g_mockQueryDataBeginWithKeyRet = true;
 bool g_mockInsertDataRet = true;
+bool g_mockBatchInsertDataRet = true;
 bool g_mockDeleteDataRet = true;
 bool g_mockDeleteDataBeginWithKeyRet = true;
 std::string g_mockQueryDataKey = "";
@@ -67,6 +68,11 @@ bool GetMockDeleteDataBeginWithKeyCalled()
 void MockInsertData(bool mockRet)
 {
     g_mockInsertDataRet = mockRet;
+}
+
+void MockBatchInsertData(bool mockRet)
+{
+    g_mockBatchInsertDataRet = mockRet;
 }
 
 void MockDeleteData(bool mockRet)
@@ -116,6 +122,14 @@ bool InsightIntentRdbDataMgr::QueryDataBeginWithKey(const std::string &key,
 bool InsightIntentRdbDataMgr::InsertData(const std::string &key, const std::string &value)
 {
     if (g_mockInsertDataRet) {
+        return true;
+    }
+    return false;
+}
+
+bool InsightIntentRdbDataMgr::BatchInsertData(const std::vector<std::pair<std::string, std::string>> &keyValues)
+{
+    if (g_mockBatchInsertDataRet) {
         return true;
     }
     return false;

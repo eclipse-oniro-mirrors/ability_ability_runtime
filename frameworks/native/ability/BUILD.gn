@@ -76,6 +76,7 @@ ohos_shared_library("ability_context_native") {
     "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_napi_path}/inner/napi_common:napi_common",
+    "${ability_runtime_native_path}/ability/native:ability_business_error",
     "${ability_runtime_native_path}/ability/native:dialog_request_callback",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_native_path}/appkit:app_context_utils",
@@ -99,6 +100,8 @@ ohos_shared_library("ability_context_native") {
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
     "napi:ace_napi",
+    "node:node_header_notice",
+    "libuv:uv",
   ]
   public_external_deps = [
     "ability_base:extractortool",
@@ -188,6 +191,7 @@ ohos_shared_library("cj_ability_context_native") {
   }
 
   innerapi_tags = [ "platformsdk" ]
+  version_script = "libcj_ability_context_native.map"
   subsystem_name = "ability"
   part_name = "ability_runtime"
   configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]

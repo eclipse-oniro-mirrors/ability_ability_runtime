@@ -35,9 +35,9 @@ public:
     bool CreateRunner();
 
 private:
-    static std::mutex mutex_;
-    static std::shared_ptr<TaskHandlerClient> instance_;
+    bool InitHandlerLocked();
     std::shared_ptr<TaskHandler> taskHandler_;
+    std::mutex taskHandlerMutex_;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

@@ -57,7 +57,7 @@ ohos_fuzztest("AppMgrRestFuzzTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
-    "window_manager:libwm",
+    "window_manager:libwm"
   ]
 
   if (ability_runtime_graphics) {

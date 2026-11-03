@@ -59,6 +59,8 @@ public:
         isPrelaunch_ = isPrelaunch;
     }
 
+    void NotifyCallersOnPrelaunchTimeout();
+
     void ScheduleCollaborate(const Want &want);
 
     inline bool IsHook () const
@@ -131,6 +133,8 @@ public:
         return pendingState == AbilityState::INITIAL || (pendingState == AbilityState::FOREGROUND &&
             GetNativeState() == AbilityNativeState::ON_FOREGROUND && requestId == startSelfRequestId_);
     }
+
+    void UpdatePendingStateByCall(CallToState state);
 
     inline void SetStartSelfRequestId(int32_t startSelfRequestId)
     {

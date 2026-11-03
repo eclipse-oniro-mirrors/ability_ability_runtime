@@ -22,8 +22,10 @@ namespace OHOS::Rosen {
 class SessionManagerLite {
 public:
     static SessionManagerLite& GetInstance();
+    static SessionManagerLite& GetInstance(int32_t userId);
     sptr<ISceneSessionManagerLite> GetSceneSessionManagerLiteProxy();
     sptr<ISceneSessionManagerLite> sceneSessionManagerLiteProxy_ = nullptr;
+    int32_t lastGetInstanceUserId_ = -1;
 };
 } // namespace OHOS::Rosen
 

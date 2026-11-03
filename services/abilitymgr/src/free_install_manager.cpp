@@ -101,8 +101,9 @@ bool FreeInstallManager::IsTopAbility(sptr<IRemoteObject> callerToken)
     }
 #ifdef SUPPORT_SCREEN
     if (OHOS::Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
+        int32_t userId = caller->GetOwnerMissionUserId();
         OHOS::Rosen::FocusChangeInfo focusChangeInfo;
-        OHOS::Rosen::WindowManager::GetInstance().GetFocusWindowInfoByAbilityToken(focusChangeInfo, callerToken);
+        OHOS::Rosen::WindowManager::GetInstance(userId).GetFocusWindowInfoByAbilityToken(focusChangeInfo, callerToken);
         return focusChangeInfo.abilityToken_ == callerToken;
     } else {
         auto wmsHandler = DelayedSingleton<AbilityManagerService>::GetInstance()->GetWMSHandler();

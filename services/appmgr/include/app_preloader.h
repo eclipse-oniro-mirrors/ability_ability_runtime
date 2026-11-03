@@ -56,12 +56,13 @@ public:
 private:
     bool GetLaunchWant(const std::string &bundleName, int32_t userId, AAFwk::Want &want);
 
-    bool GetLaunchAbilityInfo(const AAFwk::Want &want, int32_t userId, AbilityInfo &abilityInfo);
+    bool GetLaunchAbilityInfo(const AAFwk::Want &want, int32_t userId, int32_t appIndex,
+        AbilityInfo &abilityInfo);
 
     bool GetAbilityInfo(const AAFwk::Want &want, int32_t userId, int32_t appIndex,
         PreloadRequest &request, AbilityInfo &abilityInfo);
 
-    bool GetBundleAndHapInfo(const std::string &bundleName, int32_t userId,
+    bool GetBundleAndHapInfo(const std::string &bundleName, int32_t userId, int32_t appIndex,
         const AbilityInfo &abilityInfo, BundleInfo &bundleInfo, HapModuleInfo &hapModuleInfo);
 
     bool CheckPreloadConditions(const AbilityInfo &abilityInfo);

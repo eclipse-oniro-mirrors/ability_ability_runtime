@@ -26,7 +26,6 @@
 #undef protected
 #undef private
 
-#include "ability_fuzz_util.h"
 #include "ability_record.h"
 #include "continuous_task_callback_info.h"
 #include "connection_observer.h"
@@ -37,13 +36,20 @@ using namespace OHOS::AbilityRuntime;
 
 namespace OHOS {
 namespace {
-constexpr size_t STRING_MAX_LENGTH = 128;
 }
+
+class ConnectionObserverFuzz : public ConnectionObserver {
+public:
+    void OnExtensionConnected(const ConnectionData& data) override {}
+    void OnExtensionDisconnected(const ConnectionData& data) override {}
+    void OnDlpAbilityOpened(const DlpStateData& data) override {}
+    void OnDlpAbilityClosed(const DlpStateData& data) override {}
+};
 
 bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
 {
     auto connectionObserverClientImpl = std::make_shared<ConnectionObserverClientImpl>();
-    std::shared_ptr<ConnectionObserver> observer;
+    auto observer = std::make_shared<ConnectionObserverFuzz>();
     std::shared_ptr<ServiceProxyAdapter> proxy;
     FuzzedDataProvider fdp(data, size);
 

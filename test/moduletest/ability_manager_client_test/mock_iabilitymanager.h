@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -294,7 +294,8 @@ public:
     {
         return 0;
     }
-    int StartAbilityForPrelaunch(const Want &want, const int32_t frameNum)  override
+    int StartAbilityForPrelaunch(const Want &want, const int32_t frameNum,
+        const sptr<IAbilityConnection> &connect) override
     {
         return 0;
     }
@@ -375,7 +376,7 @@ public:
     {
         return 0;
     }
-    int GetTopAbility(sptr<IRemoteObject> &token) override
+    int GetTopAbility(sptr<IRemoteObject> &token, int32_t userId = INVALID_USER_ID) override
     {
         return 0;
     }
@@ -430,6 +431,12 @@ public:
     }
     int32_t ExecuteIntent(uint64_t key, const sptr<IRemoteObject> &callerToken,
         const InsightIntentExecuteParam &param) override
+    {
+        return 0;
+    }
+    int32_t ExecuteUIAbilityForegroundIntentWithSpecifyTokenId(const Want &want,
+        const sptr<IRemoteObject> &callerAbilityToken, const InsightIntentExecuteLiteParam &param,
+        uint64_t specifiedFullTokenId) override
     {
         return 0;
     }

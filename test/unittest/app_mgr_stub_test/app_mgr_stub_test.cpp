@@ -21,6 +21,7 @@
 #define protected public
 #include "app_foreground_state_observer_stub.h"
 #include "app_mgr_stub.h"
+#include "focused_application_observer_stub.h"
 #include "image_error_handler_stub.h"
 #include "image_process_state_observer_stub.h"
 #undef private
@@ -29,6 +30,7 @@
 #include "hilog_tag_wrapper.h"
 #include "ipc_types.h"
 #include "errors.h"
+#include "ability_manager_errors.h"
 #include "hyper_snap_error_record.h"
 #include "mem_dump_callback_interface.h"
 #include "mem_dump_callback_stub.h"
@@ -51,6 +53,14 @@ public:
     AppForegroundStateObserverMock() = default;
     virtual ~AppForegroundStateObserverMock() = default;
     void OnAppStateChanged(const AppStateData &appStateData) override
+    {}
+};
+
+class FocusedApplicationObserverMock : public FocusedApplicationObserverStub {
+public:
+    FocusedApplicationObserverMock() = default;
+    virtual ~FocusedApplicationObserverMock() = default;
+    void OnFocusedApplicationChanged(const FocusedApplicationInfo &focusedApplicationInfo) override
     {}
 };
 
@@ -313,6 +323,79 @@ HWTEST_F(AppMgrStubTest, HandleGetHyperSnapLastError_0200, TestSize.Level1)
     EXPECT_EQ(recordReply->code, HyperSnapErrorCode::ERR_SNAPSHOT_EXIST);
     EXPECT_EQ(recordReply->msg, "test msg");
     EXPECT_EQ(recordReply->occurTimeStamp, 12345);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: HandleIsHyperSnapInitializing_0100
+ * @tc.desc: HandleIsHyperSnapInitializing dispatches via OnRemoteRequest and writes bool result.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleIsHyperSnapInitializing_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    EXPECT_CALL(*mockAppMgrService_, IsHyperSnapInitializing())
+        .Times(1)
+        .WillOnce(Return(true));
+    auto result = mockAppMgrService_->OnRemoteRequest(
+        static_cast<uint32_t>(AppMgrInterfaceCode::IS_HYPER_SNAP_INITIALIZING), data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+    EXPECT_EQ(reply.ReadBool(), true);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: HandleIsHyperSnapInitializing_0200
+ * @tc.desc: HandleIsHyperSnapInitializing writes false when service returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleIsHyperSnapInitializing_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    EXPECT_CALL(*mockAppMgrService_, IsHyperSnapInitializing())
+        .Times(1)
+        .WillOnce(Return(false));
+    int32_t ret = mockAppMgrService_->HandleIsHyperSnapInitializing(data, reply);
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadBool(), false);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: HandleIsHyperSnapInitializing_0300
+ * @tc.desc: HandleIsHyperSnapInitializing writes true when service returns true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleIsHyperSnapInitializing_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    EXPECT_CALL(*mockAppMgrService_, IsHyperSnapInitializing())
+        .Times(1)
+        .WillOnce(Return(true));
+    int32_t ret = mockAppMgrService_->HandleIsHyperSnapInitializing(data, reply);
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadBool(), true);
 
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }
@@ -609,6 +692,40 @@ HWTEST_F(AppMgrStubTest, HandleUnregisterAppForegroundStateObserver_0100, TestSi
     int32_t pid = 1;
     reply.WriteInt32(pid);
     auto res = mockAppMgrService_->HandleUnregisterAppForegroundStateObserver(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/**
+ * @tc.name: HandleRegisterFocusedApplicationObserver_0100
+ * @tc.desc: Test HandleRegisterFocusedApplicationObserver with valid observer.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleRegisterFocusedApplicationObserver_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    sptr<IRemoteObject> object = new (std::nothrow) FocusedApplicationObserverMock();
+    data.WriteRemoteObject(object);
+    int32_t pid = 1;
+    reply.WriteInt32(pid);
+    auto res = mockAppMgrService_->HandleRegisterFocusedApplicationObserver(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/**
+ * @tc.name: HandleUnregisterFocusedApplicationObserver_0100
+ * @tc.desc: Test HandleUnregisterFocusedApplicationObserver with valid observer.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleUnregisterFocusedApplicationObserver_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    sptr<IRemoteObject> object = new (std::nothrow) FocusedApplicationObserverMock();
+    data.WriteRemoteObject(object);
+    int32_t pid = 1;
+    reply.WriteInt32(pid);
+    auto res = mockAppMgrService_->HandleUnregisterFocusedApplicationObserver(data, reply);
     EXPECT_EQ(res, NO_ERROR);
 }
 
@@ -1598,6 +1715,58 @@ HWTEST_F(AppMgrStubTest, HandleCancelDelayedExitTask_0100, TestSize.Level1)
     auto ret = mockAppMgrService_->OnRemoteRequest(
         static_cast<uint32_t>(AppMgrInterfaceCode::CANCEL_DELAYED_EXIT_TASK), data, reply, option);
     EXPECT_EQ(ret, NO_ERROR);
+}
+
+/**
+ * @tc.name: HandleStartTask_0100
+ * @tc.desc: Test HandleStartTask.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleStartTask_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    std::string taskId = "stub_start_task_0100";
+    constexpr int32_t priority = 300;
+    data.WriteString16(Str8ToStr16(taskId));
+    data.WriteInt32(priority);
+
+    EXPECT_CALL(*mockAppMgrService_, StartTask(_, _))
+        .Times(1)
+        .WillOnce(Return(AAFwk::ERR_TASK_ALREADY_EXISTS));
+
+    auto ret = mockAppMgrService_->OnRemoteRequest(
+        static_cast<uint32_t>(AppMgrInterfaceCode::START_TASK), data, reply, option);
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), AAFwk::ERR_TASK_ALREADY_EXISTS);
+}
+
+/**
+ * @tc.name: HandleFinishTask_0100
+ * @tc.desc: Test HandleFinishTask.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrStubTest, HandleFinishTask_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+    std::string taskId = "stub_finish_task_0100";
+    data.WriteString16(Str8ToStr16(taskId));
+
+    EXPECT_CALL(*mockAppMgrService_, FinishTask(_))
+        .Times(1)
+        .WillOnce(Return(AAFwk::ERR_TASK_NOT_FOUND));
+
+    auto ret = mockAppMgrService_->OnRemoteRequest(
+        static_cast<uint32_t>(AppMgrInterfaceCode::FINISH_TASK), data, reply, option);
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), AAFwk::ERR_TASK_NOT_FOUND);
 }
 
 /**

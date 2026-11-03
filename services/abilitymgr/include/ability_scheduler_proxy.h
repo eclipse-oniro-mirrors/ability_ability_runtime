@@ -345,6 +345,8 @@ public:
 private:
     bool WriteInterfaceToken(MessageParcel &data);
     int32_t SendTransactCmd(uint32_t code, MessageParcel &data, MessageParcel &reply, MessageOption &option);
+    const Want &SanitizeWant(const Want &want, Want &sanitized);
+    bool SanitizeSessionInfo(const sptr<SessionInfo> &sessionInfo, sptr<SessionInfo> &sanitized);
 
 private:
     static inline BrokerDelegator<AbilitySchedulerProxy> delegator_;

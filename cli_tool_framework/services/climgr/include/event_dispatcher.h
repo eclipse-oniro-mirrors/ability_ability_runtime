@@ -86,6 +86,11 @@ public:
         sptr<ICliToolManagerScheduler> scheduler;
     };
 
+    struct SessionTraceIds {
+        std::string toolCallId;
+        std::string dmSessionId;
+    };
+
     static EventDispatcher &GetInstance();
 
     bool SetScheduler(int32_t callerPid, int32_t callerUid, const sptr<ICliToolManagerScheduler> &remote);
@@ -109,6 +114,11 @@ public:
 
     void ClearSessionSubscribers(const std::string &sessionId);
 
+    void RegisterTraceIds(const std::string &sessionId, const std::string &toolCallId,
+        const std::string &dmSessionId);
+
+    void UnregisterTraceIds(const std::string &sessionId);
+
     void ClearAll();
 
 private:
@@ -125,6 +135,7 @@ private:
     std::unordered_map<SchedulerKey, SchedulerState, SchedulerKeyHash> schedulers_;
     std::unordered_map<std::string, std::unordered_map<SubscriberKey, SubscriberState, SubscriberKeyHash>>
         sessionSubscribers_;
+    std::unordered_map<std::string, SessionTraceIds> sessionTraceIds_;
     std::mutex mutex_;
 };
 

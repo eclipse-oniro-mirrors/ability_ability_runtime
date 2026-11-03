@@ -191,7 +191,8 @@ public:
 
     virtual ErrCode TerminateAbilityWithResult(const AAFwk::Want &want, int resultCode) = 0;
 
-    virtual ErrCode BackToCallerAbilityWithResult(const AAFwk::Want &want, int resultCode, int64_t requestCode) = 0;
+    virtual ErrCode BackToCallerAbilityWithResult(const AAFwk::Want &want, int resultCode, int64_t requestCode,
+        bool isBackToCallerApp = false) = 0;
 
     virtual ErrCode RestoreWindowStage(napi_env env, napi_value contentStorage) = 0;
 
@@ -484,9 +485,11 @@ public:
      *
      * @param label the label of this ability.
      * @param icon the icon of this ability.
+     * @param groupId the group id of this ability.
      * @return Returns ERR_OK if success.
      */
-    virtual ErrCode SetAbilityInstanceInfo(const std::string& label, std::shared_ptr<OHOS::Media::PixelMap> icon) = 0;
+    virtual ErrCode SetAbilityInstanceInfo(const std::string& label, std::shared_ptr<OHOS::Media::PixelMap> icon,
+        const std::string& groupId) = 0;
 
     virtual int GetCurrentWindowMode() = 0;
 

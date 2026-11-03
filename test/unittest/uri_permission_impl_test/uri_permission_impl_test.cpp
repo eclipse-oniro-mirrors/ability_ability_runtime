@@ -41,6 +41,7 @@
 #include "dynamic_feature_manager.h"
 #undef private
 #include "mock_dynamic_features.h"
+#include "bundle_mgr_helper.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -103,7 +104,7 @@ HWTEST_F(UriPermissionImplTest, Upms_GrantUriPermission_001, TestSize.Level1)
     uint32_t flag = 0;
     std::string targetBundleName = "name2";
     int32_t funcResult = -1;
-    upms->GrantUriPermission(uri, flag, targetBundleName, 0, 0, funcResult);
+    upms->GrantUriPermission(uri, flag, targetBundleName, 0, 0, -1, funcResult);
     EXPECT_EQ(funcResult, ERR_NOT_SYSTEM_APP);
 }
 
@@ -123,7 +124,7 @@ HWTEST_F(UriPermissionImplTest, Upms_GrantUriPermission_002, TestSize.Level1)
     uint32_t flag = 1;
     std::string targetBundleName = "name2";
     int32_t funcResult = -1;
-    upms->GrantUriPermission(uri, flag, targetBundleName, 0, 0, funcResult);
+    upms->GrantUriPermission(uri, flag, targetBundleName, 0, 0, -1, funcResult);
     EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
 }
 
@@ -143,7 +144,7 @@ HWTEST_F(UriPermissionImplTest, Upms_GrantUriPermission_003, TestSize.Level1)
     uint32_t flag = 1;
     std::string targetBundleName = "name2";
     int32_t funcResult = -1;
-    upms->GrantUriPermission(uri, flag, targetBundleName, 0, 0, funcResult);
+    upms->GrantUriPermission(uri, flag, targetBundleName, 0, 0, -1, funcResult);
     EXPECT_EQ(funcResult, ERR_CODE_GRANT_URI_PERMISSION);
 }
 
@@ -162,7 +163,7 @@ HWTEST_F(UriPermissionImplTest, Upms_GrantUriPermission_004, TestSize.Level1)
     uint32_t flag = 0;
     std::string targetBundleName = "name2";
     int32_t funcResult = -1;
-    upms->GrantUriPermission(uri, flag, targetBundleName, 0, 0, funcResult);
+    upms->GrantUriPermission(uri, flag, targetBundleName, 0, 0, -1, funcResult);
     EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_FLAG);
 }
 
@@ -182,7 +183,7 @@ HWTEST_F(UriPermissionImplTest, Upms_GrantUriPermission_005, TestSize.Level1)
     std::string targetBundleName = "name2";
     int32_t funcResult = -1;
     MyFlag::getTokenIdByBundleNameStatus_ = ERR_GET_TARGET_BUNDLE_INFO_FAILED;
-    upms->GrantUriPermission(uri, flag, targetBundleName, 0, 0, funcResult);
+    upms->GrantUriPermission(uri, flag, targetBundleName, 0, 0, -1, funcResult);
     EXPECT_EQ(funcResult, ERR_GET_TARGET_BUNDLE_INFO_FAILED);
 }
 
@@ -201,7 +202,7 @@ HWTEST_F(UriPermissionImplTest, Upms_GrantUriPermission_006, TestSize.Level1)
     uint32_t flag = 1;
     std::string targetBundleName = "com.example.app1001";
     int32_t funcResult = -1;
-    upms->GrantUriPermission(uri, flag, targetBundleName, 0, 0, funcResult);
+    upms->GrantUriPermission(uri, flag, targetBundleName, 0, 0, -1, funcResult);
     EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_TYPE);
 }
 
@@ -223,7 +224,7 @@ HWTEST_F(UriPermissionImplTest, Upms_GrantUriPermission_007, TestSize.Level1)
         "com.example.app1001", "com.example.app1001");
     std::string targetBundleName = "com.example.app1003";
     int32_t funcResult = -1;
-    upms->GrantUriPermission(uri, flag, targetBundleName, 0, 0, funcResult);
+    upms->GrantUriPermission(uri, flag, targetBundleName, 0, 0, -1, funcResult);
     EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
 }
 
@@ -251,7 +252,7 @@ HWTEST_F(UriPermissionImplTest, Upms_GrantUriPermission_009, TestSize.Level1)
     uint32_t flag = 0;
     std::string targetBundleName = "name2";
     int32_t funcResult = -1;
-    upms->GrantUriPermission(stubRawData, flag, targetBundleName, 0, 0, funcResult);
+    upms->GrantUriPermission(stubRawData, flag, targetBundleName, 0, 0, -1, funcResult);
     EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_FLAG);
 }
 
@@ -279,7 +280,7 @@ HWTEST_F(UriPermissionImplTest, Upms_GrantUriPermission_010, TestSize.Level1)
     uint32_t flag = 1;
     std::string targetBundleName = "name2";
     int32_t funcResult = -1;
-    upms->GrantUriPermission(stubRawData, flag, targetBundleName, 0, 0, funcResult);
+    upms->GrantUriPermission(stubRawData, flag, targetBundleName, 0, 0, -1, funcResult);
     EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
 }
 
@@ -308,7 +309,7 @@ HWTEST_F(UriPermissionImplTest, Upms_GrantUriPermission_011, TestSize.Level1)
     MockSystemAbilityManager::isNullptr = false;
     std::string targetBundleName = "name2";
     int32_t funcResult = -1;
-    upms->GrantUriPermission(stubRawData, flag, targetBundleName, 0, 0, funcResult);
+    upms->GrantUriPermission(stubRawData, flag, targetBundleName, 0, 0, -1, funcResult);
     EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
     MockSystemAbilityManager::isNullptr = true;
 }
@@ -339,7 +340,7 @@ HWTEST_F(UriPermissionImplTest, Upms_GrantUriPermission_012, TestSize.Level1)
     MockSystemAbilityManager::isNullptr = false;
     StorageManager::StorageManagerServiceMock::isZero = false;
     int32_t funcResult = -1;
-    upms->GrantUriPermission(stubRawData, flag, targetBundleName, 0, 0, funcResult);
+    upms->GrantUriPermission(stubRawData, flag, targetBundleName, 0, 0, -1, funcResult);
     EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
     MockSystemAbilityManager::isNullptr = true;
     StorageManager::StorageManagerServiceMock::isZero = true;
@@ -375,7 +376,7 @@ HWTEST_F(UriPermissionImplTest, Upms_GrantUriPermission_013, TestSize.Level1)
 
     MockSystemAbilityManager::isNullptr = false;
     int32_t funcResult = -1;
-    upms->GrantUriPermission(stubRawData, tmpFlag, targetBundleName, 0, 0, funcResult);
+    upms->GrantUriPermission(stubRawData, tmpFlag, targetBundleName, 0, 0, -1, funcResult);
     EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
     MockSystemAbilityManager::isNullptr = true;
 }
@@ -411,7 +412,7 @@ HWTEST_F(UriPermissionImplTest, Upms_GrantUriPermission_014, TestSize.Level1)
     MockSystemAbilityManager::isNullptr = false;
     uint32_t flag = 2;
     int32_t funcResult = -1;
-    upms->GrantUriPermission(stubRawData, flag, targetBundleName, 0, 0, funcResult);
+    upms->GrantUriPermission(stubRawData, flag, targetBundleName, 0, 0, -1, funcResult);
     EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
     MockSystemAbilityManager::isNullptr = true;
 }
@@ -447,7 +448,7 @@ HWTEST_F(UriPermissionImplTest, Upms_GrantUriPermission_015, TestSize.Level1)
     MockSystemAbilityManager::isNullptr = false;
     uint32_t flag = 2;
     int32_t funcResult = -1;
-    upms->GrantUriPermission(stubRawData, flag, targetBundleName, 0, 0, funcResult);
+    upms->GrantUriPermission(stubRawData, flag, targetBundleName, 0, 0, -1, funcResult);
     EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
     MockSystemAbilityManager::isNullptr = true;
 }
@@ -476,7 +477,7 @@ HWTEST_F(UriPermissionImplTest, Upms_GrantUriPermission_016, TestSize.Level1)
     uint32_t flag = 1;
     std::string targetBundleName = "name1001";
     int32_t funcResult = -1;
-    upms->GrantUriPermission(stubRawData, flag, targetBundleName, 0, 0, funcResult);
+    upms->GrantUriPermission(stubRawData, flag, targetBundleName, 0, 0, -1, funcResult);
     EXPECT_EQ(funcResult, ERR_NOT_SYSTEM_APP);
 }
 
@@ -504,7 +505,7 @@ HWTEST_F(UriPermissionImplTest, Upms_GrantUriPermission_017, TestSize.Level1)
     uint32_t flag = 1;
     std::string targetBundleName = "name1001";
     int32_t funcResult = -1;
-    upms->GrantUriPermission(stubRawData, flag, targetBundleName, 0, 0, funcResult);
+    upms->GrantUriPermission(stubRawData, flag, targetBundleName, 0, 0, -1, funcResult);
     EXPECT_EQ(funcResult, ERR_URI_LIST_OUT_OF_RANGE);
 }
 
@@ -531,7 +532,7 @@ HWTEST_F(UriPermissionImplTest, Upms_GrantUriPermission_018, TestSize.Level1)
     uint32_t flag = 1;
     std::string targetBundleName = "name1001";
     int32_t funcResult = -1;
-    upms->GrantUriPermission(stubRawData, flag, targetBundleName, 0, 0, funcResult);
+    upms->GrantUriPermission(stubRawData, flag, targetBundleName, 0, 0, -1, funcResult);
     EXPECT_EQ(funcResult, ERR_URI_LIST_OUT_OF_RANGE);
 }
 
@@ -549,7 +550,7 @@ HWTEST_F(UriPermissionImplTest, Upms_RevokeUriPermissionManually_001, TestSize.L
     std::string targetBundleName = "com.example.testB1002";
     auto uri = Uri("file://com.example.testA/data/storage/el2/base/haps/entry/files/tets_A.txt");
     int32_t funcResult = -1;
-    upms->RevokeUriPermissionManually(uri, targetBundleName, appIndex, funcResult);
+    upms->RevokeUriPermissionManually(uri, targetBundleName, appIndex, -1, funcResult);
     EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
 }
 
@@ -568,7 +569,7 @@ HWTEST_F(UriPermissionImplTest, Upms_RevokeUriPermissionManually_002, TestSize.L
     std::string targetBundleName = "com.example.testB1002";
     auto uri = Uri("invalid://com.example.testA/data/storage/el2/base/haps/entry/files/test_A.txt");
     int32_t funcResult = -1;
-    upms->RevokeUriPermissionManually(uri, targetBundleName, appIndex, funcResult);
+    upms->RevokeUriPermissionManually(uri, targetBundleName, appIndex, -1, funcResult);
     EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_TYPE);
 }
 
@@ -599,8 +600,10 @@ HWTEST_F(UriPermissionImplTest, Upms_RevokeUriPermissionManually_005, TestSize.L
     MyFlag::isUriTypeValid_ = true;
     MyFlag::upmsUtilsTokenId_ = 1002;
     MyFlag::getTokenIdByBundleNameStatus_ = ERR_OK;
+    MyFlag::getUserIdByTokenIdRet_ = true;
+    MyFlag::getUserIdByTokenIdUserId_ = 100;
     int32_t funcResult = -1;
-    upms->RevokeUriPermissionManually(docsUri, targetBundleName, appIndex, funcResult);
+    upms->RevokeUriPermissionManually(docsUri, targetBundleName, appIndex, -1, funcResult);
     EXPECT_EQ(funcResult, INNER_ERR);
 }
 
@@ -630,8 +633,10 @@ HWTEST_F(UriPermissionImplTest, Upms_RevokeUriPermissionManually_006, TestSize.L
     MyFlag::isUriTypeValid_ = true;
     MyFlag::upmsUtilsTokenId_ = 1002;
     MyFlag::getTokenIdByBundleNameStatus_ = ERR_OK;
+    MyFlag::getUserIdByTokenIdRet_ = true;
+    MyFlag::getUserIdByTokenIdUserId_ = 100;
     int32_t funcResult = -1;
-    upms->RevokeUriPermissionManually(docsUri, targetBundleName, appIndex, funcResult);
+    upms->RevokeUriPermissionManually(docsUri, targetBundleName, appIndex, -1, funcResult);
     EXPECT_EQ(funcResult, ERR_OK);
     recordExists = (upms->policyMap_.find(path) != upms->policyMap_.end());
     EXPECT_EQ(recordExists, false);
@@ -664,7 +669,9 @@ HWTEST_F(UriPermissionImplTest, Upms_RevokeUriPermissionManually_007, TestSize.L
     MyFlag::isUriTypeValid_ = true;
     MyFlag::upmsUtilsTokenId_ = 1002;
     MyFlag::getTokenIdByBundleNameStatus_ = ERR_OK;
-    upms->RevokeUriPermissionManually(docsUri, targetBundleName, appIndex, funcResult);
+    MyFlag::getUserIdByTokenIdRet_ = true;
+    MyFlag::getUserIdByTokenIdUserId_ = 100;
+    upms->RevokeUriPermissionManually(docsUri, targetBundleName, appIndex, -1, funcResult);
     EXPECT_EQ(funcResult, ERR_OK);
     recordExists = (upms->policyMap_.find(path) != upms->policyMap_.end());
     EXPECT_EQ(recordExists, false);
@@ -1397,7 +1404,7 @@ HWTEST_F(UriPermissionImplTest, GrantUriPermissionPrivileged_001, TestSize.Level
     }
     const std::vector<std::string> stringUriVec = stringUris;
     int32_t funcResult = -1;
-    upms->GrantUriPermissionPrivileged(stringUriVec, flag, targetBundleName, 0, 0, 0, funcResult);
+    upms->GrantUriPermissionPrivileged(stringUriVec, flag, targetBundleName, 0, 0, 0, -1, funcResult);
     EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
 }
 
@@ -1426,7 +1433,7 @@ HWTEST_F(UriPermissionImplTest, GrantUriPermissionPrivileged_002, TestSize.Level
     }
     const std::vector<std::string> stringUriVec = stringUris;
     int32_t funcResult = -1;
-    upms->GrantUriPermissionPrivileged(stringUriVec, flag, targetBundleName, 0, 0, 0, funcResult);
+    upms->GrantUriPermissionPrivileged(stringUriVec, flag, targetBundleName, 0, 0, 0, -1, funcResult);
     MyFlag::permissionPrivileged_ = false;
     EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_FLAG);
 }
@@ -1445,6 +1452,7 @@ HWTEST_F(UriPermissionImplTest, GrantUriPermissionPrivileged_003, TestSize.Level
     MyFlag::tokenInfos[1001] = TokenInfo(1001, MyATokenTypeEnum::TOKEN_NATIVE, "foundation");
     IPCSkeleton::callerTokenId = 1001;
     MyFlag::permissionPrivileged_ = true;
+    MyFlag::isSAOrBrokerCall_ = true;
 
     auto uri1 = Uri("file://com.example.app1001/data/storage/el2/base/haps/entry/files/test_001.txt");
     std::string targetBundleName = "com.example.invalid";
@@ -1458,7 +1466,7 @@ HWTEST_F(UriPermissionImplTest, GrantUriPermissionPrivileged_003, TestSize.Level
     int32_t funcResult = -1;
     MyFlag::isUriTypeValid_ = true;
     MyFlag::getTokenIdByBundleNameStatus_ = ERR_GET_TARGET_BUNDLE_INFO_FAILED;
-    upms->GrantUriPermissionPrivileged(stringUriVec, flag, targetBundleName, 0, 0, 0, funcResult);
+    upms->GrantUriPermissionPrivileged(stringUriVec, flag, targetBundleName, 0, 0, 0, -1, funcResult);
     MyFlag::permissionPrivileged_ = false;
     EXPECT_EQ(funcResult, ERR_GET_TARGET_BUNDLE_INFO_FAILED);
 }
@@ -1477,6 +1485,7 @@ HWTEST_F(UriPermissionImplTest, GrantUriPermissionPrivileged_004, TestSize.Level
     MyFlag::tokenInfos[1001] = TokenInfo(1001, MyATokenTypeEnum::TOKEN_NATIVE, "foundation");
     IPCSkeleton::callerTokenId = 1001;
     MyFlag::permissionPrivileged_ = true;
+    MyFlag::isSAOrBrokerCall_ = true;
 
     auto uri1 = Uri("http://com.example.app1001/data/storage/el2/base/haps/entry/files/test_001.txt");
     std::string targetBundleName = "com.example.app1002";
@@ -1488,7 +1497,7 @@ HWTEST_F(UriPermissionImplTest, GrantUriPermissionPrivileged_004, TestSize.Level
     }
     const std::vector<std::string> stringUriVec = stringUris;
     int32_t funcResult = -1;
-    upms->GrantUriPermissionPrivileged(stringUriVec, flag, targetBundleName, 0, 0, 0, funcResult);
+    upms->GrantUriPermissionPrivileged(stringUriVec, flag, targetBundleName, 0, 0, 0, -1, funcResult);
     MyFlag::permissionPrivileged_ = false;
     EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_TYPE);
 }
@@ -1507,6 +1516,7 @@ HWTEST_F(UriPermissionImplTest, GrantUriPermissionPrivileged_005, TestSize.Level
     IPCSkeleton::callerTokenId = 1001;
     IPCSkeleton::callerUId = 5523;
     MyFlag::permissionPrivileged_ = true;
+    MyFlag::isSAOrBrokerCall_ = true;
     MyFlag::permissionAllMedia_ = true;
 
     auto uri1 = Uri("file://docs/Photo/1/IMG_001/test_001.jpg?networkid=10001");
@@ -1521,7 +1531,7 @@ HWTEST_F(UriPermissionImplTest, GrantUriPermissionPrivileged_005, TestSize.Level
     StorageManager::StorageManagerServiceMock::isZero = false;
     int32_t funcResult = -1;
     MyFlag::isUriTypeValid_ = true;
-    upms->GrantUriPermissionPrivileged(stringUriVec, flag, targetBundleName, 0, 0, 0, funcResult);
+    upms->GrantUriPermissionPrivileged(stringUriVec, flag, targetBundleName, 0, 0, 0, -1, funcResult);
     EXPECT_EQ(funcResult, INNER_ERR);
 }
 
@@ -1553,7 +1563,7 @@ HWTEST_F(UriPermissionImplTest, GrantUriPermissionPrivileged_007, TestSize.Level
     upmc.StringVecToRawData(stringUris, rawData);
     int32_t funcResult = -1;
     MyFlag::isUriTypeValid_ = true;
-    upms->GrantUriPermissionPrivileged(rawData, flag, targetBundleName, 0, 0, 0, funcResult);
+    upms->GrantUriPermissionPrivileged(rawData, flag, targetBundleName, 0, 0, 0, -1, funcResult);
     EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
 }
 
@@ -1585,7 +1595,7 @@ HWTEST_F(UriPermissionImplTest, GrantUriPermissionPrivileged_008, TestSize.Level
     upmc.StringVecToRawData(stringUris, rawData);
     int32_t funcResult = -1;
     MyFlag::isUriTypeValid_ = true;
-    upms->GrantUriPermissionPrivileged(rawData, flag, targetBundleName, 0, 0, 0, funcResult);
+    upms->GrantUriPermissionPrivileged(rawData, flag, targetBundleName, 0, 0, 0, -1, funcResult);
     MyFlag::permissionPrivileged_ = false;
     EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_FLAG);
 }
@@ -1605,6 +1615,7 @@ HWTEST_F(UriPermissionImplTest, GrantUriPermissionPrivileged_009, TestSize.Level
     MyFlag::tokenInfos[1001] = TokenInfo(1001, MyATokenTypeEnum::TOKEN_NATIVE, "foundation");
     IPCSkeleton::callerTokenId = 1001;
     MyFlag::permissionPrivileged_ = true;
+    MyFlag::isSAOrBrokerCall_ = true;
 
     auto uri1 = Uri("file://com.example.app1001/data/storage/el2/base/haps/entry/files/test_001.txt");
     std::string targetBundleName = "com.example.invalid";
@@ -1619,7 +1630,7 @@ HWTEST_F(UriPermissionImplTest, GrantUriPermissionPrivileged_009, TestSize.Level
     int32_t funcResult = -1;
     MyFlag::isUriTypeValid_ = true;
     MyFlag::getTokenIdByBundleNameStatus_ = ERR_GET_TARGET_BUNDLE_INFO_FAILED;
-    upms->GrantUriPermissionPrivileged(rawData, flag, targetBundleName, 0, 0, 0, funcResult);
+    upms->GrantUriPermissionPrivileged(rawData, flag, targetBundleName, 0, 0, 0, -1, funcResult);
     MyFlag::permissionPrivileged_ = false;
     EXPECT_EQ(funcResult, ERR_GET_TARGET_BUNDLE_INFO_FAILED);
 }
@@ -1639,6 +1650,7 @@ HWTEST_F(UriPermissionImplTest, GrantUriPermissionPrivileged_010, TestSize.Level
     MyFlag::tokenInfos[1001] = TokenInfo(1001, MyATokenTypeEnum::TOKEN_NATIVE, "foundation");
     IPCSkeleton::callerTokenId = 1001;
     MyFlag::permissionPrivileged_ = true;
+    MyFlag::isSAOrBrokerCall_ = true;
 
     auto uri1 = Uri("http://com.example.app1001/data/storage/el2/base/haps/entry/files/test_001.txt");
     std::string targetBundleName = "com.example.app1002";
@@ -1652,7 +1664,7 @@ HWTEST_F(UriPermissionImplTest, GrantUriPermissionPrivileged_010, TestSize.Level
     upmc.StringVecToRawData(stringUris, rawData);
     int32_t funcResult = -1;
     MyFlag::isUriTypeValid_ = false;
-    upms->GrantUriPermissionPrivileged(rawData, flag, targetBundleName, 0, 0, 0, funcResult);
+    upms->GrantUriPermissionPrivileged(rawData, flag, targetBundleName, 0, 0, 0, -1, funcResult);
     MyFlag::permissionPrivileged_ = false;
     EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_TYPE);
 }
@@ -1672,6 +1684,7 @@ HWTEST_F(UriPermissionImplTest, GrantUriPermissionPrivileged_011, TestSize.Level
     MyFlag::tokenInfos[1001] = TokenInfo(1001, MyATokenTypeEnum::TOKEN_NATIVE, "foundation");
     IPCSkeleton::callerTokenId = 1001;
     MyFlag::permissionPrivileged_ = true;
+    MyFlag::isSAOrBrokerCall_ = true;
 
     auto uri1 = Uri("file://com.example.app1001/data/storage/el2/base/haps/entry/files/test_001.txt");
     std::string targetBundleName = "com.example.app1002";
@@ -1686,7 +1699,7 @@ HWTEST_F(UriPermissionImplTest, GrantUriPermissionPrivileged_011, TestSize.Level
     StorageManager::StorageManagerServiceMock::isZero = false;
     int32_t funcResult = -1;
     MyFlag::isUriTypeValid_ = true;
-    upms->GrantUriPermissionPrivileged(rawData, flag, targetBundleName, 0, 0, -1, funcResult);
+    upms->GrantUriPermissionPrivileged(rawData, flag, targetBundleName, 0, 0, -1, -1, funcResult);
     MyFlag::permissionPrivileged_ = false;
     EXPECT_EQ(funcResult, INNER_ERR);
 }
@@ -3246,51 +3259,51 @@ HWTEST_F(UriPermissionImplTest, GrantUriPermissionWithType_001, TestSize.Level1)
     // not foundation call
     MyFlag::upmsUtilsIsFoundationCallRet_ = false;
     auto ret = upms->GrantUriPermissionWithType(uriVec, flag, targetBundleName, appIndex, initialTokenId,
-        hideSensitiveType, permissionTypes, funcResult);
+        hideSensitiveType, permissionTypes, -1, funcResult);
     EXPECT_EQ(funcResult, CHECK_PERMISSION_FAILED);
 
     MyFlag::upmsUtilsIsFoundationCallRet_ = true;
     // uriVec empty
     ret = upms->GrantUriPermissionWithType(uriVec, flag, targetBundleName, appIndex, initialTokenId,
-        hideSensitiveType, permissionTypes, funcResult);
+        hideSensitiveType, permissionTypes, -1, funcResult);
     EXPECT_EQ(funcResult, ERR_URI_LIST_OUT_OF_RANGE);
 
     // uriVec out of range
     uriVec = std::vector<Uri>(MAX_URI_COUNT + 1, Uri("file://test/1.txt"));
     ret = upms->GrantUriPermissionWithType(uriVec, flag, targetBundleName, appIndex, initialTokenId,
-        hideSensitiveType, permissionTypes, funcResult);
+        hideSensitiveType, permissionTypes, -1, funcResult);
     EXPECT_EQ(funcResult, ERR_URI_LIST_OUT_OF_RANGE);
 
     // uriVec not match with permissionTypes
     uriVec = { Uri("http://com.example.test/temp.txt") };
     ret = upms->GrantUriPermissionWithType(uriVec, flag, targetBundleName, appIndex, initialTokenId,
-        hideSensitiveType, permissionTypes, funcResult);
+        hideSensitiveType, permissionTypes, -1, funcResult);
     EXPECT_EQ(funcResult, ERR_URI_LIST_OUT_OF_RANGE);
 
     permissionTypes = { 0 };
     // invalid flag
     MyFlag::upmsUtilsIsFoundationCallRet_ = true;
     ret = upms->GrantUriPermissionWithType(uriVec, flag, targetBundleName, appIndex, initialTokenId,
-        hideSensitiveType, permissionTypes, funcResult);
+        hideSensitiveType, permissionTypes, -1, funcResult);
     EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_FLAG);
 
     // invalid initialTokenId
     flag = 1;
     ret = upms->GrantUriPermissionWithType(uriVec, flag, targetBundleName, appIndex, initialTokenId,
-        hideSensitiveType, permissionTypes, funcResult);
+        hideSensitiveType, permissionTypes, -1, funcResult);
     EXPECT_EQ(funcResult, ERR_UPMS_INVALID_CALLER_TOKENID);
 
     // get tokenId failed
     initialTokenId = 1001;
     MyFlag::getTokenIdByBundleNameStatus_ = -1;
     ret = upms->GrantUriPermissionWithType(uriVec, flag, targetBundleName, appIndex, initialTokenId,
-        hideSensitiveType, permissionTypes, funcResult);
+        hideSensitiveType, permissionTypes, 1, funcResult);
     EXPECT_EQ(funcResult, -1);
 
     // invalid uri
     MyFlag::getTokenIdByBundleNameStatus_ = 0;
     ret = upms->GrantUriPermissionWithType(uriVec, flag, targetBundleName, appIndex, initialTokenId,
-        hideSensitiveType, permissionTypes, funcResult);
+        hideSensitiveType, permissionTypes, 1, funcResult);
     EXPECT_EQ(funcResult, ERR_CODE_INVALID_URI_TYPE);
 }
 

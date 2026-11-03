@@ -65,6 +65,7 @@ ohos_shared_library("dialogrequest_ani_kit") {
     "hilog:libhilog",
     "ipc:ipc_core",
     "ipc:ipc_napi",
+    "node:node_header_notice",
     "runtime_core:ani",
   ]
 

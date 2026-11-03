@@ -186,7 +186,7 @@ napi_status JsRuntimeLite::CreateJsEnv(const Options& options, std::shared_ptr<J
     if (jsEnv == nullptr || !jsEnv->Initialize(pandaOption, static_cast<void*>(this))
         || jsEnv->GetNativeEngine() == nullptr) {
         TAG_LOGE(AAFwkTag::JSRUNTIME, "Initialize js environment failed");
-        return napi_status::napi_ok;
+        return napi_status::napi_generic_failure;
     }
     jsEnv->GetNativeEngine()->MarkNativeThread();
     return AddEnv(reinterpret_cast<napi_env>(jsEnv->GetNativeEngine()), jsEnv);

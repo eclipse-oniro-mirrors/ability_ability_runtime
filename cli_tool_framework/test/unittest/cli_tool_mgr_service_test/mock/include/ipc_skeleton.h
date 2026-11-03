@@ -18,6 +18,7 @@
 
 #include <cstdint>
 #include <sys/types.h>
+#include <string>
 
 namespace OHOS {
 // Constants for testing
@@ -34,11 +35,15 @@ public:
     static void Reset();
     static void SetCallingTokenID(uint64_t tokenID);
     static void SetCallingUid(pid_t uid);
+    static std::string ResetCallingIdentity();
+    static bool SetCallingIdentity(const std::string &identity);
+    static bool setCallingIdentityRet;  // return seam (malformed identity -> false)
 
     static pid_t callingUid;
     static pid_t callingPid;
     static uint64_t callingFullTokenId;
     static uint64_t callingTokenId;
+    static std::string callingIdentity;
 };
 } // namespace OHOS
 

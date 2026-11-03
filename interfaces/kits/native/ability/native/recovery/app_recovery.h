@@ -66,7 +66,7 @@ private:
     bool ShouldRecoverApp(StateReason reason);
 
     void DoRecoverApp(StateReason reason);
-    void DoRecoverMainApp(StateReason reason);
+    bool DoRecoverMainApp(StateReason reason);
     void DoSaveAppState(StateReason reason, uintptr_t ability = 0);
     void DeleteInValidMissionFileById(std::string path, int32_t missionId);
     bool GetMissionIds(std::string path, std::vector<int32_t> &missionIds);

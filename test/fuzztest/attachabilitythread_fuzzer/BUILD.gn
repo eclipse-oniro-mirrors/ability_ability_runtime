@@ -46,6 +46,7 @@ ohos_fuzztest("AttachAbilityThreadFuzzTest") {
   ]
 
   external_deps = [
+    "ability_base:session_info",
     "ability_base:want",
     "ability_base:zuri",
     "bundle_framework:appexecfwk_base",
@@ -57,7 +58,7 @@ ohos_fuzztest("AttachAbilityThreadFuzzTest") {
     "napi:ace_napi",
     "relational_store:native_dataability",
     "relational_store:native_rdb",
-    "samgr:samgr_proxy",
+    "samgr:samgr_proxy"
   ]
 
   if (ability_runtime_graphics) {

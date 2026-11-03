@@ -27,7 +27,7 @@ class ControlInterceptor : public IAbilityInterceptor {
 public:
     ControlInterceptor() = default;
     ~ControlInterceptor() = default;
-    ErrCode DoProcess(const AbilityInterceptorParam &param) override;
+    ErrCode DoProcess(AbilityInterceptorParam &param) override;
 private:
     bool CheckControl(const Want &want, int32_t userId, AppExecFwk::AppRunningControlRuleResult &controlRule);
 };

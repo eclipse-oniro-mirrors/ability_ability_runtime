@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_AMS_MGR_INTERFACE_H
 #define OHOS_ABILITY_RUNTIME_AMS_MGR_INTERFACE_H
 
+#include "ui_ability_last_caller_info.h"
 #include "ability_debug_response_interface.h"
 #include "ability_info.h"
 #include "app_debug_listener_interface.h"
@@ -76,10 +77,11 @@ public:
      * @param token, the unique identification to update the ability.
      * @param state, ability status that needs to be updated.
      * @param isFromScreenOffBackground Whether from screen off background.
+     * @param callerInfo The caller info including uid and bundle name.
      * @return
      */
     virtual void UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state,
-        bool isFromScreenOffBackground = false) = 0;
+        bool isFromScreenOffBackground = false, const UiAbilityLastCallerInfo &callerInfo = {}) = 0;
 
     /**
      * UpdateExtensionState, call UpdateExtensionState() through the proxy object, update the extension status.
@@ -142,6 +144,15 @@ public:
         bool isKillPrecedeStart = false) = 0;
 
     /**
+     * CheckProcessAvailable, async query memmgr whether the process is available.
+     * If memmgr is unreachable, tolerate and return true.
+     *
+     * @param pid, the process id to check.
+     * @return true if process is available or memmgr unreachable; false if being killed.
+     */
+    virtual bool CheckProcessAvailable(int32_t pid) { return true; }
+
+    /**
      * Set child and parent relationship
      * @param token child process
      * @param callerToken parent process
@@ -186,7 +197,7 @@ public:
      * @return ERR_OK, return back success, others fail.
      */
     virtual int KillApplication(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = 0,
-        const std::string &reason = "KillApplication") = 0;
+        const std::string &reason = "KillApplication", int32_t userId = -1) = 0;
 
     /**
      * ForceKillApplication, call ForceKillApplication() through proxy object, force kill the application.
@@ -207,7 +218,7 @@ public:
      * @return ERR_OK, return back success, others fail.
      */
     virtual int KillApplicationWithUserId(const std::string &bundleName,
-        const int userId = -1, const int appIndex = 0) = 0;
+        const int userId = -1, const int appIndex = -1) = 0;
 
     /**
      * KillProcessesByAccessTokenId, call KillProcessesByAccessTokenId() through proxy object,
@@ -340,10 +351,12 @@ public:
      * @param killMsg Kill message.
      * @param innerMsg Inner message.
      * @param reason reason enum
+     * @param callerPid caller pid
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int32_t NotifyAppMgrRecordExitReasonCompability(
-        int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg, int32_t reason) = 0;
+        int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg,
+        int32_t reason, int32_t callerPid = -1) = 0;
 
     /**
      * Set enable start process flag by userId
@@ -599,6 +612,7 @@ public:
         CLEAR_PROCESS_BY_TOKEN,
         REGISTER_ABILITY_MS_DELEGATE,
         KILL_PROCESSES_BY_PIDS,
+        CHECK_PROCESS_AVAILABLE,
         ATTACH_PID_TO_PARENT,
         IS_MEMORY_SIZE_SUFFICIENT,
         NOTIFY_APP_MGR_RECORD_EXIT_REASON,

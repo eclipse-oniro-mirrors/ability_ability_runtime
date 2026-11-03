@@ -240,14 +240,19 @@ std::shared_ptr<AppExecFwk::ContextDeal> FAAbilityThread::CreateAndInitContextDe
     }
 
     contextDeal = std::make_shared<AppExecFwk::ContextDeal>();
-    contextDeal->SetAbilityInfo(abilityRecord->GetAbilityInfo());
+    auto abilityInfo = abilityRecord->GetAbilityInfo();
+    if (abilityInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::FA, "null abilityInfo");
+        return contextDeal;
+    }
+    contextDeal->SetAbilityInfo(abilityInfo);
     contextDeal->SetApplicationInfo(application->GetApplicationInfo());
     abilityObject->SetProcessInfo(application->GetProcessInfo());
 
     std::shared_ptr<AppExecFwk::Context> tmpContext = application->GetApplicationContext();
     contextDeal->SetApplicationContext(tmpContext);
 
-    contextDeal->SetBundleCodePath(abilityRecord->GetAbilityInfo()->codePath);
+    contextDeal->SetBundleCodePath(abilityInfo->codePath);
     contextDeal->SetContext(abilityObject);
     return contextDeal;
 }
@@ -1369,7 +1374,9 @@ void FAAbilityThread::DumpAbilityInfoInner(const std::vector<std::string> &param
         return;
     }
     if (currentAbility_ != nullptr) {
-        if (abilityImpl_->IsStageBasedModel()) {
+        if (abilityImpl_ == nullptr) {
+            TAG_LOGE(AAFwkTag::FA, "null abilityImpl_");
+        } else if (abilityImpl_->IsStageBasedModel()) {
             auto scene = currentAbility_->GetScene();
             if (scene == nullptr) {
                 TAG_LOGE(AAFwkTag::FA, "null scene");
@@ -1475,6 +1482,9 @@ void FAAbilityThread::HandlePrepareTerminateAbility()
     std::unique_lock<std::mutex> lock(mutex_);
     if (abilityImpl_ == nullptr) {
         TAG_LOGE(AAFwkTag::FA, "null abilityImpl_");
+        isPrepareTerminate_ = false;
+        isPrepareTerminateAbilityDone_.store(true);
+        cv_.notify_all();
         return;
     }
     isPrepareTerminate_ = abilityImpl_->PrepareTerminateAbility();

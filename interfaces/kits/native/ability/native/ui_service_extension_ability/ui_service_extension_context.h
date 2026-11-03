@@ -25,12 +25,17 @@
 #include "iability_callback.h"
 #include "want.h"
 #include "wm/window.h"
+#include <atomic>
+#include <memory>
 #ifdef SUPPORT_SCREEN
 #include "scene_board_judgement.h"
 #include "ui_content.h"
 #endif // SUPPORT_SCREEN
 
 namespace OHOS {
+namespace Ace {
+struct ModalUIExtensionCallbacks;
+}
 namespace AbilityRuntime {
 /**
  * @brief context supply for ui_service
@@ -113,6 +118,9 @@ protected:
 private:
     static int ILLEGAL_REQUEST_CODE;
     sptr<Rosen::Window> window_ = nullptr;
+    Ace::ModalUIExtensionCallbacks SetupModalUIExtensionCallbacks(
+        std::shared_ptr<UIExtensionCallback> uiExtensionCallback,
+        std::shared_ptr<std::atomic<bool>> errorFired);
 };
 }  // namespace AbilityRuntime
 }  // namespace OHOS

@@ -378,6 +378,9 @@ HWTEST_F(AppMgrServiceModuleTest, ApplicationTerminated_001, TestSize.Level1)
  */
 HWTEST_F(AppMgrServiceModuleTest, ClearUpApplicationData_001, TestSize.Level1)
 {
+#ifdef __x86_64__
+    GTEST_SKIP() << "not supported on x86_64";
+#else
     auto appMgrService = std::make_shared<AppMgrService>();
     std::shared_ptr<OHOS::AAFwk::TaskHandlerWrap> taskHandler_ =
         OHOS::AAFwk::TaskHandlerWrap::CreateQueueHandler(Constants::APP_MGR_SERVICE_NAME);
@@ -386,6 +389,7 @@ HWTEST_F(AppMgrServiceModuleTest, ClearUpApplicationData_001, TestSize.Level1)
     appMgrService->eventHandler_ = std::make_shared<AMSEventHandler>(taskHandler_, appMgrService->appMgrServiceInner_);
     int32_t res = appMgrService->ClearUpApplicationData(bundleName, 0);
     EXPECT_EQ(res, ERR_INVALID_OPERATION);
+#endif
 }
 
 /*
@@ -489,7 +493,7 @@ HWTEST_F(AppMgrServiceModuleTest, KillApplication_001, TestSize.Level1)
 
     auto mockHandler = [&testResult, testBundleName, &sem](
         const std::string& bundleName, const bool clearPageStack = false, int32_t appIndex = 0,
-        const std::string& reason = "KillApplication") {
+        const std::string& reason = "KillApplication", int32_t userId = -1) {
         testResult = (bundleName == testBundleName);
         sem.Post();
         return 0;
@@ -498,7 +502,7 @@ HWTEST_F(AppMgrServiceModuleTest, KillApplication_001, TestSize.Level1)
     for (int i = 0; i < COUNT; ++i) {
         testResult = false;
 
-        EXPECT_CALL(*mockAppMgrServiceInner_, KillApplication(_, _, _, _)).Times(1).WillOnce(Invoke(mockHandler));
+        EXPECT_CALL(*mockAppMgrServiceInner_, KillApplication(_, _, _, _, _)).Times(1).WillOnce(Invoke(mockHandler));
 
         int ret = appMgrService_->GetAmsMgr()->KillApplication(testBundleName);
 

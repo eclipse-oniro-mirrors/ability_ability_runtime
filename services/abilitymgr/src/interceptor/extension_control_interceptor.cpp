@@ -16,17 +16,22 @@
 #include "interceptor/extension_control_interceptor.h"
 
 #include "ability_manager_constants.h"
-#include "ability_util.h"
 #include "app_scheduler.h"
 #include "extension_config.h"
+#include "hilog_tag_wrapper.h"
+#include "start_ability_context.h"
 #include "start_ability_utils.h"
 
 namespace OHOS {
 namespace AAFwk {
 
-ErrCode ExtensionControlInterceptor::DoProcess(const AbilityInterceptorParam &param)
+ErrCode ExtensionControlInterceptor::DoProcess(AbilityInterceptorParam &param)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "call.");
+    if (param.GetContext<AbilityInterceptorParam::RemoteDispatchCtx>() != nullptr) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "remote dispatch, defer to remote device");
+        return ERR_OK;
+    }
     if (param.callerToken == nullptr) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "callerToken is nullptr.");
         return ERR_OK;
@@ -64,7 +69,7 @@ int32_t ExtensionControlInterceptor::ProcessInterceptOld(const AbilityIntercepto
     if ((targetAbilityInfo.extensionAbilityType == AppExecFwk::ExtensionAbilityType::SERVICE ||
         targetAbilityInfo.extensionAbilityType == AppExecFwk::ExtensionAbilityType::DATASHARE) &&
         !DelayedSingleton<ExtensionConfig>::GetInstance()->IsExtensionStartServiceEnable(
-            callerAbilityInfo.extensionTypeName, param.want.GetElement().GetURI())) {
+            callerAbilityInfo.extensionTypeName, param.want.GetElement())) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "service list block extension call, bundleName: %{public}s",
             callerAbilityInfo.bundleName.c_str());
         return EXTENSION_BLOCKED_BY_SERVICE_LIST;
@@ -83,10 +88,11 @@ int32_t ExtensionControlInterceptor::ProcessInterceptNew(const AbilityIntercepto
         return ERR_OK;
     }
 
-    auto targetUri = param.want.GetElement().GetURI();
+    auto targetElement = param.want.GetElement();
     if (!targetAbilityInfo.applicationInfo.isSystemApp &&
         extensionConfig->HasThridPartyAppAccessFlag(callerAbilityInfo.extensionTypeName)) {
-        if (!extensionConfig->IsExtensionStartThirdPartyAppEnableNew(callerAbilityInfo.extensionTypeName, targetUri)) {
+        if (!extensionConfig->IsExtensionStartThirdPartyAppEnableNew(
+            callerAbilityInfo.extensionTypeName, targetElement)) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "start third party app controlled by extension, bundleName: %{public}s",
                 callerAbilityInfo.bundleName.c_str());
             return EXTENSION_BLOCKED_BY_THIRD_PARTY_APP_FLAG;
@@ -97,7 +103,7 @@ int32_t ExtensionControlInterceptor::ProcessInterceptNew(const AbilityIntercepto
     auto isServiceOrDataShare = targetAbilityInfo.extensionAbilityType == AppExecFwk::ExtensionAbilityType::SERVICE ||
         targetAbilityInfo.extensionAbilityType == AppExecFwk::ExtensionAbilityType::DATASHARE;
     if (isServiceOrDataShare && extensionConfig->HasServiceAccessFlag(callerAbilityInfo.extensionTypeName)) {
-        if (!extensionConfig->IsExtensionStartServiceEnableNew(callerAbilityInfo.extensionTypeName, targetUri)) {
+        if (!extensionConfig->IsExtensionStartServiceEnableNew(callerAbilityInfo.extensionTypeName, targetElement)) {
             TAG_LOGE(AAFwkTag::ABILITYMGR,
                 "start service or datashare controlled by extension, bundleName: %{public}s",
                 callerAbilityInfo.bundleName.c_str());
@@ -107,7 +113,7 @@ int32_t ExtensionControlInterceptor::ProcessInterceptNew(const AbilityIntercepto
     }
 
     if (extensionConfig->HasDefaultAccessFlag(callerAbilityInfo.extensionTypeName)) {
-        if (!extensionConfig->IsExtensionStartDefaultEnable(callerAbilityInfo.extensionTypeName, targetUri)) {
+        if (!extensionConfig->IsExtensionStartDefaultEnable(callerAbilityInfo.extensionTypeName, targetElement)) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "start ability controlled by extension, bundleName: %{public}s",
                 callerAbilityInfo.bundleName.c_str());
             return ERR_EXTENSION_START_ABILITY_CONTROLEED;
@@ -121,7 +127,7 @@ int32_t ExtensionControlInterceptor::ProcessInterceptNew(const AbilityIntercepto
 bool ExtensionControlInterceptor::GetCallerAbilityInfo(const AbilityInterceptorParam& param,
     AppExecFwk::AbilityInfo& callerAbilityInfo)
 {
-    if (StartAbilityUtils::GetCallerAbilityInfo(param.callerToken, callerAbilityInfo)) {
+    if (StartAbilityUtils::GetCallerAbilityInfo(param.startAbilityCtx, param.callerToken, callerAbilityInfo)) {
         if (callerAbilityInfo.type != AppExecFwk::AbilityType::EXTENSION ||
             callerAbilityInfo.extensionAbilityType == AppExecFwk::ExtensionAbilityType::SERVICE ||
             callerAbilityInfo.bundleName == param.want.GetBundleNameRef()) {
@@ -144,20 +150,11 @@ bool ExtensionControlInterceptor::GetCallerAbilityInfo(const AbilityInterceptorP
 bool ExtensionControlInterceptor::GetTargetAbilityInfo(const AbilityInterceptorParam& param,
     AppExecFwk::AbilityInfo& targetAbilityInfo)
 {
-    if (StartAbilityUtils::startAbilityInfo != nullptr &&
-        StartAbilityUtils::startAbilityInfo->abilityInfo.bundleName == param.want.GetBundleNameRef() &&
-        StartAbilityUtils::startAbilityInfo->abilityInfo.name == param.want.GetAbilityNameRef()) {
-        TAG_LOGD(AAFwkTag::ABILITYMGR, "targetAbilityInfo get from startAbiiltyInfo");
-        targetAbilityInfo = StartAbilityUtils::startAbilityInfo->abilityInfo;
-    } else {
-        auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
-        if (bundleMgrHelper == nullptr) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "null bundleMgrHelper");
-            return true;
-        }
-        IN_PROCESS_CALL_WITHOUT_RET(bundleMgrHelper->QueryAbilityInfo(param.want,
-            AppExecFwk::AbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION, param.userId, targetAbilityInfo));
+    if (param.abilityInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "param.abilityInfo is nullptr");
+        return true;
     }
+    targetAbilityInfo = *param.abilityInfo;
     return false;
 }
 } // namespace AAFwk

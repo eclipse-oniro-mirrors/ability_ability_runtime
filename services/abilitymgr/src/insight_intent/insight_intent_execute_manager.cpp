@@ -14,8 +14,11 @@
  */
 
 #include "insight_intent_execute_manager.h"
+#include "json_safe_util.h"
 
 #include <algorithm>
+#include <cinttypes>
+#include <new>
 #include <unordered_map>
 
 #include "ability_config.h"
@@ -25,10 +28,12 @@
 #include "extract_insight_intent_profile.h"
 #include "ffrt.h"
 #include "hilog_tag_wrapper.h"
+#include "in_process_call_wrapper.h"
 #include "insight_intent_execute_callback_interface.h"
 #include "insight_intent_db_cache.h"
 #include "insight_intent_utils.h"
 #include "permission_verification.h"
+#include "task_mgr/task_manager_service.h"
 #include "want_params_wrapper.h"
 #include "time_util.h"
 #include "res_sched_util.h"
@@ -97,8 +102,8 @@ bool GetMethodParamNamesFromSchema(const std::vector<std::string> &methodParams,
     std::unordered_map<std::string, ParamType> typeMap;
     std::vector<std::string> requiredList;
     if (!parameters.empty()) {
-        auto jsonObj = nlohmann::json::parse(parameters, nullptr, false);
-        if (jsonObj.is_discarded() || !jsonObj.is_object()) {
+        nlohmann::json jsonObj;
+        if (!AbilityRuntime::SafeParse(parameters, jsonObj) || !jsonObj.is_object()) {
             TAG_LOGW(AAFwkTag::INTENT, "parameters parse failed or not object");
         } else {
             GetMethodParamTypeMap(jsonObj, typeMap);
@@ -141,16 +146,15 @@ InsightIntentExecuteManager::InsightIntentExecuteManager() = default;
 InsightIntentExecuteManager::~InsightIntentExecuteManager() = default;
 
 int32_t InsightIntentExecuteManager::CheckAndUpdateParam(uint64_t key, const sptr<IRemoteObject> &callerToken,
-    const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param, std::string callerBundleName,
-    const bool ignoreAbilityName, bool isDistributed, const std::string &srcDeviceId, uint64_t requestCode,
-    uint64_t specifiedFullTokenId)
+    const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param, const ExecuteParam &execParam)
 {
     std::string targetBundleName = (param != nullptr) ? param->bundleName_ : "";
-    int32_t result = CheckCallerPermission(specifiedFullTokenId, callerBundleName, targetBundleName);
+    int32_t result = CheckCallerPermission(execParam.specifiedFullTokenId, execParam.callerBundleName,
+        targetBundleName);
     if (result != ERR_OK) {
         return result;
     }
-    if (!isDistributed && callerToken == nullptr) {
+    if (!execParam.isDistributed && callerToken == nullptr) {
         TAG_LOGE(AAFwkTag::INTENT, "null callerToken");
         return ERR_INVALID_VALUE;
     }
@@ -160,13 +164,12 @@ int32_t InsightIntentExecuteManager::CheckAndUpdateParam(uint64_t key, const spt
     }
 
     if (param->bundleName_.empty() || param->moduleName_.empty() ||
-        (!ignoreAbilityName && param->abilityName_.empty()) || param->insightIntentName_.empty()) {
+        (!execParam.ignoreAbilityName && param->abilityName_.empty()) || param->insightIntentName_.empty()) {
         TAG_LOGE(AAFwkTag::INTENT, "invalid param");
         return ERR_INVALID_VALUE;
     }
     uint64_t intentId = 0;
-    result = AddRecord(key, callerToken, param->bundleName_,
-        intentId, callerBundleName, isDistributed, srcDeviceId, requestCode);
+    result = AddRecord(key, callerToken, param->bundleName_, intentId, execParam, param->taskId_);
     if (result != ERR_OK) {
         return result;
     }
@@ -192,7 +195,9 @@ int32_t InsightIntentExecuteManager::CheckAndUpdateWant(Want &want, ExecuteMode 
     }
     uint64_t intentId = 0;
     ElementName elementName = want.GetElement();
-    result = AddRecord(0, nullptr, want.GetBundleNameRef(), intentId, callerBundleName);
+    ExecuteParam execParam;
+    execParam.callerBundleName = callerBundleName;
+    result = AddRecord(0, nullptr, want.GetBundleNameRef(), intentId, execParam);
     if (result != ERR_OK) {
         return result;
     }
@@ -208,6 +213,7 @@ int32_t InsightIntentExecuteManager::CheckAndUpdateWant(Want &want, ExecuteMode 
         if (UpdateEntryDecoratorParams(want, executeMode, userId) != ERR_OK) {
             return ERR_INVALID_VALUE;
         }
+        srcEntry = want.GetStringParam(INSIGHT_INTENT_SRC_ENTRANCE);
     }
 
     want.SetParam(INSIGHT_INTENT_SRC_ENTRY, srcEntry);
@@ -229,7 +235,7 @@ int32_t InsightIntentExecuteManager::UpdateEntryDecoratorParams(Want &want, Exec
         userId = IPCSkeleton::GetCallingUid() / AppExecFwk::Constants::BASE_USER_RANGE;
     }
     DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->GetInsightIntentInfo(
-        want.GetBundleNameRef(), want.GetModuleNameRef(), intentName, userId, info);
+        AbilityRuntime::IntentKey{want.GetBundleNameRef(), want.GetModuleNameRef(), intentName, userId}, info);
     if (info.genericInfo.decoratorType != AbilityRuntime::INSIGHT_INTENTS_DECORATOR_TYPE_ENTRY) {
         TAG_LOGW(AAFwkTag::INTENT, "decorator %{public}s misMatch", info.genericInfo.decoratorType.c_str());
         return ERR_INVALID_VALUE;
@@ -253,8 +259,7 @@ int32_t InsightIntentExecuteManager::UpdateEntryDecoratorParams(Want &want, Exec
 }
 
 int32_t InsightIntentExecuteManager::AddRecord(uint64_t key, const sptr<IRemoteObject> &callerToken,
-    const std::string &bundleName, uint64_t &intentId, const std::string &callerBundleName,
-    bool isDistributed, const std::string &deviceId, uint64_t requestCode)
+    const std::string &bundleName, uint64_t &intentId, const ExecuteParam &execParam, const std::string &taskId)
 {
     std::lock_guard<ffrt::mutex> lock(mutex_);
     intentId = ++intentIdCount_;
@@ -263,10 +268,11 @@ int32_t InsightIntentExecuteManager::AddRecord(uint64_t key, const sptr<IRemoteO
     record->state = InsightIntentExecuteState::EXECUTING;
     record->callerToken = callerToken;
     record->bundleName = bundleName;
-    record->callerBundleName = callerBundleName;
-    record->isDistributed = isDistributed;
-    record->deviceId = deviceId;
-    record->requestCode = requestCode;
+    record->callerBundleName = execParam.callerBundleName;
+    record->isDistributed = execParam.isDistributed;
+    record->deviceId = execParam.srcDeviceId;
+    record->requestCode = execParam.requestCode;
+    record->taskId = taskId;
     if (callerToken != nullptr) {
         record->deathRecipient = sptr<InsightIntentExecuteRecipient>::MakeSptr(intentId);
         callerToken->AddDeathRecipient(record->deathRecipient);
@@ -276,6 +282,13 @@ int32_t InsightIntentExecuteManager::AddRecord(uint64_t key, const sptr<IRemoteO
     records_[intentId] = record;
     if (intentId > INSIGHT_INTENT_EXECUTE_RECORDS_MAX_SIZE) {
         // save the latest INSIGHT_INTENT_EXECUTE_RECORDS_MAX_SIZE records
+        auto oldIt = records_.find(intentId - INSIGHT_INTENT_EXECUTE_RECORDS_MAX_SIZE);
+        if (oldIt != records_.end() && oldIt->second != nullptr) {
+            auto &oldRecord = oldIt->second;
+            if (oldRecord->callerToken != nullptr && oldRecord->deathRecipient != nullptr) {
+                oldRecord->callerToken->RemoveDeathRecipient(oldRecord->deathRecipient);
+            }
+        }
         records_.erase(intentId - INSIGHT_INTENT_EXECUTE_RECORDS_MAX_SIZE);
     }
     return ERR_OK;
@@ -283,10 +296,24 @@ int32_t InsightIntentExecuteManager::AddRecord(uint64_t key, const sptr<IRemoteO
 
 int32_t InsightIntentExecuteManager::RemoveExecuteIntent(uint64_t intentId)
 {
-    std::lock_guard<ffrt::mutex> lock(mutex_);
-    records_.erase(intentId);
-    TAG_LOGI(AAFwkTag::INTENT, "remove intentId: %{public}" PRIu64 ", records_ size: %{public}zu",
-        intentId, records_.size());
+    std::string taskId;
+    int64_t attributionId = 0;
+    {
+        std::lock_guard<ffrt::mutex> lock(mutex_);
+        auto it = records_.find(intentId);
+        if (it != records_.end() && it->second != nullptr) {
+            taskId = it->second->taskId;
+            attributionId = it->second->attributionId;
+        }
+        records_.erase(intentId);
+        TAG_LOGI(AAFwkTag::INTENT, "remove intentId: %{public}" PRIu64 ", records_ size: %{public}zu",
+            intentId, records_.size());
+    }
+    // Every intent failure path funnels into this removal, so the attribution
+    // unregister must live here as the single point: by this moment most
+    // failures happened before SetTargetPid (attributionId 0 -> helper no-op,
+    // the attribution was never registered), which is the expected safe net.
+    UnregisterAttributedProcess(taskId, attributionId);
     return ERR_OK;
 }
 
@@ -319,6 +346,14 @@ int32_t InsightIntentExecuteManager::ExecuteIntentDone(uint64_t intentId, int32_
         return ERR_INVALID_OPERATION;
     }
     record->state = InsightIntentExecuteState::EXECUTE_DONE;
+    // The intent lifecycle ends here (both success and error results funnel
+    // into this state transition), so the task attribution registered in
+    // SetTargetPid is no longer needed. attributionId 0 (SetTargetPid not
+    // reached, e.g. immediate-completion links) is skipped inside the helper.
+    // The call is an in-process direct call to TaskManagerService, which never
+    // calls back into this manager, so holding mutex_ here is safe.
+    UnregisterAttributedProcess(record->taskId, record->attributionId);
+    record->attributionId = 0;
 
     AppExecFwk::InsightIntentExecuteResult filteredResult = result;
     bool isSystemApp = PermissionVerification::GetInstance()->IsSACallByTokenId(accessToken) ||
@@ -576,20 +611,11 @@ int32_t InsightIntentExecuteManager::UpdateEntryDecoratorParams(
 
 int32_t InsightIntentExecuteManager::CheckAndUpdateDecoratorParams(
     const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param,
-    const AbilityRuntime::ExtractInsightIntentGenericInfo &decoratorInfo,
+    AbilityRuntime::ExtractInsightIntentInfo &extractInfo,
     Want &want)
 {
-    // ExtractInsightIntentGenericInfo don't satisfy for now
-    ExtractInsightIntentInfo info;
-    int32_t userId = param->userId_;
-    if (userId == DEFAULT_INVAL_VALUE) {
-        userId = IPCSkeleton::GetCallingUid() / AppExecFwk::Constants::BASE_USER_RANGE;
-    }
-    DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->GetInsightIntentInfo(
-        param->bundleName_, param->moduleName_, param->insightIntentName_, userId, info);
-
     InsightIntentType type = InsightIntentType::DECOR_NONE;
-    std::string decoratorType = info.genericInfo.decoratorType;
+    std::string decoratorType = extractInfo.genericInfo.decoratorType;
     TAG_LOGD(AAFwkTag::INTENT, "intentName %{public}s, decoratorType %{public}s", param->insightIntentName_.c_str(),
         decoratorType.c_str());
     static const std::unordered_map<std::string, InsightIntentType> mapping = {
@@ -609,13 +635,13 @@ int32_t InsightIntentExecuteManager::CheckAndUpdateDecoratorParams(
         static_cast<int8_t>(type));
     switch (type) {
         case InsightIntentType::DECOR_FUNC: {
-            return UpdateFuncDecoratorParams(param, info, want);
+            return UpdateFuncDecoratorParams(param, extractInfo, want);
         }
         case InsightIntentType::DECOR_PAGE: {
-            return UpdatePageDecoratorParams(param, info, want);
+            return UpdatePageDecoratorParams(param, extractInfo, want);
         }
         case InsightIntentType::DECOR_ENTRY: {
-            return UpdateEntryDecoratorParams(param, info, want);
+            return UpdateEntryDecoratorParams(param, extractInfo, want);
         }
         case InsightIntentType::DECOR_NONE:
         case InsightIntentType::DECOR_LINK:
@@ -629,6 +655,7 @@ int32_t InsightIntentExecuteManager::CheckAndUpdateDecoratorParams(
 int32_t InsightIntentExecuteManager::GenerateWant(
     const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param,
     const AbilityRuntime::ExtractInsightIntentGenericInfo &decoratorInfo,
+    AbilityRuntime::ExtractInsightIntentInfo &extractInfo,
     Want &want)
 {
     if (param == nullptr) {
@@ -636,16 +663,73 @@ int32_t InsightIntentExecuteManager::GenerateWant(
         return ERR_INVALID_VALUE;
     }
     want.SetElementName("", param->bundleName_, param->abilityName_, param->moduleName_);
+    SetInsightIntentExecuteParam(want, param);
 
+    auto srcRet = ResolveSrcEntry(want, param, decoratorInfo);
+    if (srcRet != ERR_OK) {
+        return srcRet;
+    }
+    SetInsightIntentBaseParams(want, param);
+
+    auto intRet = AddWantUirsAndFlagsFromParam(param, want);
+    if (intRet != ERR_OK) {
+        return intRet;
+    }
+
+    intRet = CheckAndUpdateDecoratorParams(param, extractInfo, want);
+    if (intRet != ERR_OK) {
+        return intRet;
+    }
+    return ERR_OK;
+}
+
+void InsightIntentExecuteManager::SetInsightIntentExecuteParam(
+    Want &want, const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param)
+{
+    if (!param->toolCallId_.empty()) {
+        want.SetParam(INSIGHT_INTENT_TOOL_CALL_ID, param->toolCallId_);
+        TAG_LOGI(AAFwkTag::INTENT, "GenerateWant with toolCallId: %{public}s", param->toolCallId_.c_str());
+    }
     if (param->insightIntentParam_ != nullptr) {
         sptr<AAFwk::IWantParams> pExecuteParams = WantParamWrapper::Box(*param->insightIntentParam_);
         if (pExecuteParams != nullptr) {
             WantParams wantParams;
             wantParams.SetParam(INSIGHT_INTENT_EXECUTE_PARAM_PARAM, pExecuteParams);
-            want.SetParams(wantParams);
+            WantParams merged = want.GetParams();
+            for (const auto &p : wantParams.GetParams()) {
+                merged.SetParam(p.first, p.second);
+            }
+            want.SetParams(merged);
         }
     }
+}
 
+void InsightIntentExecuteManager::SetInsightIntentBaseParams(
+    Want &want, const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param)
+{
+    want.SetParam(INSIGHT_INTENT_EXECUTE_PARAM_NAME, param->insightIntentName_);
+    want.SetParam(INSIGHT_INTENT_EXECUTE_PARAM_MODE, param->executeMode_);
+    want.SetParam(INSIGHT_INTENT_EXECUTE_PARAM_ID, std::to_string(param->insightIntentId_));
+    want.SetParam(INSIGHT_INTENT_PARAM_USER_ID, param->userId_);
+    want.SetParam(INSIGHT_INTENT_CALLER_BUNDLE_NAME, param->callerBundleName_);
+    want.SetParam(INSIGHT_INTENT_CALLER_TOKEN_ID, param->callerTokenId_);
+    want.SetParam(INSIGHT_INTENT_CALLER_UID, param->callerUid_);
+    if (param->displayId_ != INVALID_DISPLAY_ID) {
+        want.SetParam(Want::PARAM_RESV_DISPLAY_ID, param->displayId_);
+        TAG_LOGD(AAFwkTag::INTENT, "Generate want with displayId: %{public}d", param->displayId_);
+    }
+    if (!param->deviceId_.empty()) {
+        want.SetDeviceId(param->deviceId_);
+    }
+    if (!param->uris_.empty()) {
+        want.SetParam(INSIGHT_INTENT_EXECUTE_PARAM_URI, param->uris_);
+    }
+}
+
+int32_t InsightIntentExecuteManager::ResolveSrcEntry(Want &want,
+    const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param,
+    const AbilityRuntime::ExtractInsightIntentGenericInfo &decoratorInfo)
+{
     std::string srcEntry;
     std::string arkTSMode;
     std::string decoratorClass;
@@ -660,6 +744,11 @@ int32_t InsightIntentExecuteManager::GenerateWant(
     }
     if (!srcEntry.empty()) {
         want.SetParam(INSIGHT_INTENT_SRC_ENTRY, srcEntry);
+    } else if (!decoratorClass.empty()) {
+        srcEntry = want.GetStringParam(INSIGHT_INTENT_SRC_ENTRANCE);
+        if (!srcEntry.empty()) {
+            want.SetParam(INSIGHT_INTENT_SRC_ENTRY, srcEntry);
+        }
     } else if (decoratorInfo.decoratorType == "" && ret == ERR_INSIGHT_INTENT_GET_PROFILE_FAILED &&
         param->executeMode_ == AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND) {
         TAG_LOGI(AAFwkTag::INTENT, "insight intent srcEntry invalid, try free install ondemand");
@@ -668,38 +757,9 @@ int32_t InsightIntentExecuteManager::GenerateWant(
         want.SetParam(Want::PARAM_RESV_START_TIME, startTime);
         want.AddFlags(Want::FLAG_INSTALL_ON_DEMAND);
     } else if (decoratorInfo.decoratorType == "" && param->deviceId_.empty()) {
-        // decoratorType is empty indicate no decorator
         TAG_LOGE(AAFwkTag::INTENT, "insight intent srcEntry invalid");
         return ERR_INVALID_VALUE;
     }
-
-    want.SetParam(INSIGHT_INTENT_EXECUTE_PARAM_NAME, param->insightIntentName_);
-    want.SetParam(INSIGHT_INTENT_EXECUTE_PARAM_MODE, param->executeMode_);
-    want.SetParam(INSIGHT_INTENT_EXECUTE_PARAM_ID, std::to_string(param->insightIntentId_));
-    want.SetParam(INSIGHT_INTENT_PARAM_USER_ID, param->userId_);
-    if (param->displayId_ != INVALID_DISPLAY_ID) {
-        want.SetParam(Want::PARAM_RESV_DISPLAY_ID, param->displayId_);
-        TAG_LOGD(AAFwkTag::INTENT, "Generate want with displayId: %{public}d", param->displayId_);
-    }
-
-    if (!param->deviceId_.empty()) {
-        want.SetDeviceId(param->deviceId_);
-    }
-    if (!param->uris_.empty()) {
-        want.SetParam(INSIGHT_INTENT_EXECUTE_PARAM_URI, param->uris_);
-    }
-
-    auto intRet = AddWantUirsAndFlagsFromParam(param, want);
-    if (intRet != ERR_OK) {
-        return intRet;
-    }
-
-    intRet = CheckAndUpdateDecoratorParams(param, decoratorInfo, want);
-    if (intRet != ERR_OK) {
-        // log has print in sub method
-        return intRet;
-    }
-
     return ERR_OK;
 }
 
@@ -834,9 +894,56 @@ void InsightIntentExecuteManager::SendIntentReport(EventInfo &eventInfo, int32_t
     EventReport::SendExecuteIntentEvent(EventName::EXECUTE_INSIGHT_INTENT_ERROR, HISYSEVENT_FAULT, eventInfo);
 }
 
-void InsightIntentExecuteManager::OnInsightAppDied(const std::string &bundleName)
+void InsightIntentExecuteManager::UnregisterAttributedProcess(const std::string &taskId, int64_t attributionId)
 {
-    TAG_LOGD(AAFwkTag::INTENT, "app died: %{public}s", bundleName.c_str());
+    // Failure paths mostly happen before SetTargetPid, leaving attributionId 0
+    // and no attribution registered yet; guard here to avoid noisy no-op calls.
+    if (taskId.empty() || attributionId <= 0) {
+        return;
+    }
+    // Best-effort: attribution is a side capability and its failure must never
+    // affect the intent result flow. ERR_TASK_NOT_FOUND means the task already
+    // finished, which is a legal timing rather than an error.
+    auto ret = IN_PROCESS_CALL(AppExecFwk::TaskManagerService::GetInstance().UnregisterManagedProcess(
+        taskId, attributionId));
+    if (ret != ERR_OK && ret != AAFwk::ERR_TASK_NOT_FOUND && ret != AAFwk::ERR_ATTRIBUTION_NOT_FOUND) {
+        TAG_LOGW(AAFwkTag::INTENT, "unregister attributed process failed, ret: %{public}d, "
+            "attributionId: %{public}" PRId64, ret, attributionId);
+    } else {
+        TAG_LOGI(AAFwkTag::INTENT, "attributed process unregistered, taskId: %{public}s, "
+            "attributionId: %{public}" PRId64, taskId.c_str(), attributionId);
+    }
+}
+
+void InsightIntentExecuteManager::RegisterAttributedProcess(const std::string &taskId, pid_t pid,
+    int64_t &attributionId)
+{
+    attributionId = 0;
+    if (taskId.empty() || pid <= 0) {
+        return;
+    }
+    // Best-effort: each intent registers its own attribution (server-allocated
+    // attributionId) and unregisters exactly that id on completion, so warm
+    // start re-invocations of the same process each get a fresh record.
+    AppExecFwk::AttributionRecord attribution;
+    attribution.pid = pid;
+    attribution.tool = AppExecFwk::AttributionTool::INSIGHT;
+    auto ret = IN_PROCESS_CALL(AppExecFwk::TaskManagerService::GetInstance().RegisterManagedProcess(
+        taskId, attribution, attributionId));
+    if (ret != ERR_OK || attributionId <= 0) {
+        // ERR_TASK_NOT_FOUND is normal when the caller has not started the task.
+        TAG_LOGW(AAFwkTag::INTENT, "register attributed process failed, ret: %{public}d, pid: %{public}d",
+            ret, pid);
+        attributionId = 0;
+    } else {
+        TAG_LOGI(AAFwkTag::INTENT, "attributed process registered, taskId: %{public}s, pid: %{public}d, "
+            "attributionId: %{public}" PRId64, taskId.c_str(), pid, attributionId);
+    }
+}
+
+void InsightIntentExecuteManager::OnInsightAppDied(const std::string &bundleName, pid_t pid)
+{
+    TAG_LOGD(AAFwkTag::INTENT, "app died: %{public}s, pid: %{public}d", bundleName.c_str(), pid);
     AppExecFwk::InsightIntentExecuteResult errorResult{};
     errorResult.innerErr = AbilityRuntime::InsightIntentInnerErr::INSIGHT_INTENT_EXECUTE_REPLY_FAILED;
 
@@ -845,6 +952,11 @@ void InsightIntentExecuteManager::OnInsightAppDied(const std::string &bundleName
         std::lock_guard<ffrt::mutex> lock(mutex_);
         for (const auto &[intentId, record] : records_) {
             if (record == nullptr || bundleName != record->bundleName) {
+                continue;
+            }
+            // Only clean records whose target pid exactly matches this died process;
+            // skip targetPid == 0 (not reported yet, gap window) and other-process records.
+            if (record->targetPid != pid) {
                 continue;
             }
             toRemove.push_back(intentId);
@@ -860,6 +972,46 @@ void InsightIntentExecuteManager::OnInsightAppDied(const std::string &bundleName
         self->HandleDiedRecordsCleanup(toRemove, errorResult);
         }, ffrt::task_attr().delay(static_cast<uint64_t>(DYING_CALLBACK_DELAY_MS) * MICROSECONDS_PER_MILLISECOND)
         .name("InsightIntentDiedCleanup"));
+}
+
+void InsightIntentExecuteManager::SetTargetPid(uint64_t intentId, pid_t pid)
+{
+    std::string taskId;
+    AppExecFwk::InsightIntentExecutionInfo executionInfo;
+    {
+        std::lock_guard<ffrt::mutex> lock(mutex_);
+        auto it = records_.find(intentId);
+        if (it == records_.end() || it->second == nullptr) {
+            TAG_LOGD(AAFwkTag::INTENT, "SetTargetPid: record not found, intentId: %{public}" PRIu64, intentId);
+            return;
+        }
+        it->second->targetPid = pid;
+        taskId = it->second->taskId;
+        executionInfo = it->second->executionInfo;
+        TAG_LOGD(AAFwkTag::INTENT, "SetTargetPid: intentId: %{public}" PRIu64 ", pid: %{public}d", intentId, pid);
+    }
+    NotifyInsightIntentWillExecute(pid, executionInfo);
+    // The target process is attributed to the task here (in-process direct
+    // call to TaskManagerService). The call runs outside mutex_: it takes the
+    // TaskManagerService inner lock, and keeping that ordering avoids any
+    // potential lock cycle.
+    int64_t attributionId = 0;
+    RegisterAttributedProcess(taskId, pid, attributionId);
+    if (attributionId <= 0) {
+        return;
+    }
+    std::lock_guard<ffrt::mutex> lock(mutex_);
+    auto it = records_.find(intentId);
+    if (it == records_.end() || it->second == nullptr) {
+        TAG_LOGD(AAFwkTag::INTENT, "SetTargetPid: record gone after register, intentId: %{public}" PRIu64,
+            intentId);
+        // The record was removed concurrently (RemoveExecuteIntent saw
+        // attributionId 0 and skipped the unregister), so compensate here to
+        // avoid leaking the attribution just registered.
+        UnregisterAttributedProcess(taskId, attributionId);
+        return;
+    }
+    it->second->attributionId = attributionId;
 }
 
 void InsightIntentExecuteManager::HandleDiedRecordsCleanup(const std::vector<uint64_t> &toRemove,
@@ -895,7 +1047,7 @@ void InsightIntentExecuteManager::HandleDiedRecordsCleanup(const std::vector<uin
 
 int32_t InsightIntentExecuteManager::CheckAndUpdateQueryEntityParam(uint64_t key,
     const sptr<IRemoteObject> &callerToken, std::shared_ptr<AppExecFwk::InsightIntentQueryParam> &param,
-    const std::string& callerBundleName)
+    const std::string &callerBundleName)
 {
     TAG_LOGD(AAFwkTag::INTENT, "called");
     int32_t result = CheckCallerPermission();
@@ -913,7 +1065,9 @@ int32_t InsightIntentExecuteManager::CheckAndUpdateQueryEntityParam(uint64_t key
     }
 
     uint64_t intentId = 0;
-    result = AddRecord(key, callerToken, param->bundleName_, intentId, callerBundleName);
+    ExecuteParam execParam;
+    execParam.callerBundleName = callerBundleName;
+    result = AddRecord(key, callerToken, param->bundleName_, intentId, execParam);
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "add record failed, result:%{public}d", result);
         return result;
@@ -1000,7 +1154,8 @@ int32_t InsightIntentExecuteManager::GenerateQueryEntityWant(
 
     ExtractInsightIntentInfo intentInfo;
     DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance()->GetInsightIntentInfo(
-        param->bundleName_, param->moduleName_, param->intentName_, param->userId_, intentInfo);
+        AbilityRuntime::IntentKey{param->bundleName_, param->moduleName_, param->intentName_, param->userId_},
+        intentInfo);
 
     auto entity = CheckEntityQueryable(intentInfo, param->className_, param->queryEntityParam_);
     if (entity == nullptr) {
@@ -1019,34 +1174,127 @@ int32_t InsightIntentExecuteManager::GenerateQueryEntityWant(
     }
     want.SetElementName("", param->bundleName_, abilityName, param->moduleName_);
 
-    WantParams wantParams;
-    sptr<AAFwk::IWantParams> pExecuteParams = WantParamWrapper::Box(wantParams);
-    if (pExecuteParams != nullptr) {
-        wantParams.SetParam(INSIGHT_INTENT_EXECUTE_PARAM_PARAM, pExecuteParams);
-    }
-    if (param->queryEntityParam_.parameters_ != nullptr) {
-        sptr<AAFwk::IWantParams> pQueryEntityParams = WantParamWrapper::Box(*param->queryEntityParam_.parameters_);
-        wantParams.SetParam(INSIGHT_INTENT_QUERY_ENTITY_PARAM_PARAM, pQueryEntityParams);
-    }
-    want.SetParams(wantParams);
-
+    BuildQueryEntityWantParams(want, *param);
     intentInfo.decoratorFile = entity->decoratorFile;
     TAG_LOGD(AAFwkTag::INTENT, "intentId %{public}" PRIu64 ", arkTSMode is %{public}s, srcEntry is %{public}s,"
         "intentName is %{public}s, className is %{public}s, queryType is %{public}s", param->intentId_,
         intentInfo.arkTSMode.c_str(), intentInfo.decoratorFile.c_str(), param->intentName_.c_str(),
         param->className_.c_str(), param->queryEntityParam_.queryType_.c_str());
+    SetQueryEntityWantExtras(want, *param, intentInfo);
+    return ERR_OK;
+}
 
+void InsightIntentExecuteManager::BuildQueryEntityWantParams(Want &want,
+    const AppExecFwk::InsightIntentQueryParam &param)
+{
+    WantParams wantParams;
+    sptr<AAFwk::IWantParams> pExecuteParams = WantParamWrapper::Box(wantParams);
+    if (pExecuteParams != nullptr) {
+        wantParams.SetParam(INSIGHT_INTENT_EXECUTE_PARAM_PARAM, pExecuteParams);
+    }
+    if (param.queryEntityParam_.parameters_ != nullptr) {
+        sptr<AAFwk::IWantParams> pQueryEntityParams = WantParamWrapper::Box(*param.queryEntityParam_.parameters_);
+        wantParams.SetParam(INSIGHT_INTENT_QUERY_ENTITY_PARAM_PARAM, pQueryEntityParams);
+    }
+    want.SetParams(wantParams);
+}
+
+void InsightIntentExecuteManager::SetQueryEntityWantExtras(Want &want,
+    const AppExecFwk::InsightIntentQueryParam &param,
+    const AbilityRuntime::ExtractInsightIntentInfo &intentInfo)
+{
     want.SetParam(INSIGHT_INTENT_ARKTS_MODE, intentInfo.arkTSMode);
     want.SetParam(INSIGHT_INTENT_SRC_ENTRANCE, intentInfo.decoratorFile);
-    want.SetParam(INSIGHT_INTENT_EXECUTE_PARAM_NAME, param->intentName_);
+    want.SetParam(INSIGHT_INTENT_EXECUTE_PARAM_NAME, param.intentName_);
     want.SetParam(INSIGHT_INTENT_EXECUTE_PARAM_MODE,
         static_cast<int32_t>(AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND));
-    want.SetParam(INSIGHT_INTENT_EXECUTE_PARAM_ID, std::to_string(param->intentId_));
+    want.SetParam(INSIGHT_INTENT_EXECUTE_PARAM_ID, std::to_string(param.intentId_));
     want.SetParam(INSIGHT_INTENT_DECORATOR_TYPE, static_cast<int>(InsightIntentType::DECOR_QUERY_ENTITY));
+    want.SetParam(INSIGHT_INTENT_QUERY_ENTITY_CLASS_NAME, param.className_);
+    want.SetParam(INSIGHT_INTENT_QUERY_TYPE, param.queryEntityParam_.queryType_);
+}
 
-    want.SetParam(INSIGHT_INTENT_QUERY_ENTITY_CLASS_NAME, param->className_);
-    want.SetParam(INSIGHT_INTENT_QUERY_TYPE, param->queryEntityParam_.queryType_);
+namespace {
+class InsightIntentWillExecuteDeathRecipient : public IRemoteObject::DeathRecipient {
+public:
+    explicit InsightIntentWillExecuteDeathRecipient(pid_t pid) : pid_(pid) {}
+
+    void OnRemoteDied(const wptr<IRemoteObject> &remote) override
+    {
+        DelayedSingleton<InsightIntentExecuteManager>::GetInstance()
+            ->RemoveInsightIntentWillExecuteCallback(pid_);
+    }
+
+private:
+    pid_t pid_ = 0;
+};
+} // namespace
+
+int32_t InsightIntentExecuteManager::RegisterWillInsightIntentExecuteCallback(
+    pid_t pid, const sptr<IRemoteObject> &callback)
+{
+    TAG_LOGD(AAFwkTag::INTENT, "register will insight intent execute callback, pid:%{public}d", pid);
+    auto proxy = iface_cast<IInsightIntentWillExecuteCallback>(callback);
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "iface_cast failed");
+        return ERR_INVALID_VALUE;
+    }
+    sptr<IRemoteObject::DeathRecipient> deathRecipient =
+        new (std::nothrow) InsightIntentWillExecuteDeathRecipient(pid);
+    if (deathRecipient != nullptr) {
+        callback->AddDeathRecipient(deathRecipient);
+    } else {
+        TAG_LOGE(AAFwkTag::INTENT, "new death recipient failed");
+    }
+    std::lock_guard<std::mutex> lock(insightIntentWillExecuteMutex_);
+    insightIntentWillExecuteCallbacks_[pid] = proxy;
     return ERR_OK;
+}
+
+int32_t InsightIntentExecuteManager::UnregisterWillInsightIntentExecuteCallback(pid_t pid)
+{
+    TAG_LOGD(AAFwkTag::INTENT, "unregister will insight intent execute callback, pid:%{public}d", pid);
+    std::lock_guard<std::mutex> lock(insightIntentWillExecuteMutex_);
+    insightIntentWillExecuteCallbacks_.erase(pid);
+    return ERR_OK;
+}
+
+void InsightIntentExecuteManager::NotifyInsightIntentWillExecute(
+    pid_t pid, const AppExecFwk::InsightIntentExecutionInfo &info)
+{
+    TAG_LOGD(AAFwkTag::INTENT, "notify will insight intent execute, pid:%{public}d, intent:%{public}s",
+        pid, info.intentName.c_str());
+    sptr<IInsightIntentWillExecuteCallback> callback;
+    {
+        std::lock_guard<std::mutex> lock(insightIntentWillExecuteMutex_);
+        auto it = insightIntentWillExecuteCallbacks_.find(pid);
+        if (it == insightIntentWillExecuteCallbacks_.end()) {
+            return;
+        }
+        callback = it->second;
+    }
+    if (callback != nullptr) {
+        callback->OnWillInsightIntentExecute(info);
+    }
+}
+
+void InsightIntentExecuteManager::RemoveInsightIntentWillExecuteCallback(pid_t pid)
+{
+    TAG_LOGD(AAFwkTag::INTENT, "remove will insight intent execute callback, pid:%{public}d", pid);
+    std::lock_guard<std::mutex> lock(insightIntentWillExecuteMutex_);
+    insightIntentWillExecuteCallbacks_.erase(pid);
+}
+
+void InsightIntentExecuteManager::SetInsightIntentExecutionInfo(uint64_t intentId,
+    const AppExecFwk::InsightIntentExecutionInfo &info)
+{
+    std::lock_guard<ffrt::mutex> lock(mutex_);
+    auto it = records_.find(intentId);
+    if (it == records_.end() || it->second == nullptr) {
+        TAG_LOGW(AAFwkTag::INTENT, "record not found, intentId: %{public}" PRIu64, intentId);
+        return;
+    }
+    it->second->executionInfo = info;
 }
 } // namespace AAFwk
 } // namespace OHOS

@@ -14,6 +14,7 @@
  */
 
 #include "form_runtime/js_form_extension.h"
+#include "form_runtime/form_binding_data_utils.h"
 
 #include "ability_info.h"
 #include "connection_manager.h"
@@ -122,8 +123,8 @@ void JsFormExtension::Init(const std::shared_ptr<AbilityLocalRecord> &record,
     HandleScope handleScope(jsRuntime_);
     auto env = jsRuntime_.GetNapiEnv();
 
-    jsObj_ = jsRuntime_.LoadModule(
-        moduleName, srcPath, abilityInfo_->hapPath, abilityInfo_->compileMode == CompileMode::ES_MODULE);
+    jsObj_ = jsRuntime_.LoadModule(moduleName, srcPath, abilityInfo_->hapPath,
+        abilityInfo_->compileMode == CompileMode::ES_MODULE, false, abilityInfo_->srcEntrance);
     if (jsObj_ == nullptr) {
         TAG_LOGE(AAFwkTag::FORM_EXT, "null jsObj");
         return;
@@ -203,6 +204,9 @@ OHOS::AppExecFwk::FormProviderInfo JsFormExtension::OnCreate(const OHOS::AAFwk::
         return formProviderInfo;
     }
     AppExecFwk::FormProviderData formData = AppExecFwk::FormProviderData(formDataStr);
+
+    formProviderInfo.SetSupportMoreImages(GetIsSupportMoreImages(env, nativeResult));
+
     formProviderInfo.SetFormData(formData);
 
     napi_value nativeProxies = nullptr;

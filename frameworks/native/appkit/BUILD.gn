@@ -48,6 +48,9 @@ config("appkit_config") {
     "${ability_runtime_path}/interfaces/kits/native/appkit/app",
     "${ability_runtime_path}/interfaces/kits/native/appkit/dfr",
     "${ability_runtime_path}/interfaces/kits/native/ability/native",
+    "${ability_runtime_services_path}/common/include",
+    "${ability_runtime_services_path}/abilitymgr/include/utils",
+    "${ability_runtime_services_path}/abilitymgr/include",
   ]
 }
 
@@ -186,6 +189,7 @@ ohos_shared_library("appkit_native") {
     "${ability_runtime_native_path}/appkit:app_context_utils",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_native_path}/appkit:application_image_observer_manager",
+    "${ability_runtime_native_path}/appkit:extractresourcemanager",
     "${ability_runtime_path}/js_environment/frameworks/js_environment:js_environment",
     "${ability_runtime_path}/utils/global/common:runtime_utils",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
@@ -198,7 +202,6 @@ ohos_shared_library("appkit_native") {
   external_deps = [
     "ability_base:base",
     "ability_base:extractortool",
-    "ability_base:extractresourcemanager",
     "ability_base:string_utils",
     "ability_base:want",
     "access_token:libaccesstoken_sdk",
@@ -213,6 +216,7 @@ ohos_shared_library("appkit_native") {
     "faultloggerd:libbacktrace_local",
     "faultloggerd:libdfx_procinfo",
     "faultloggerd:libfaultloggerd",
+    "faultloggerd:libunwinder",
     "ffrt:libffrt",
     "graphic_2d:2d_graphics",
     "graphic_2d:EGL",
@@ -356,6 +360,7 @@ ohos_shared_library("appkit_native") {
 }
 
 ohos_shared_library("ability_stage_ani") {
+  version_script = "libability_stage_ani.map"
   branch_protector_ret = "pac_ret"
   branch_protector_frt = "bti"
 
@@ -452,6 +457,7 @@ ohos_shared_library("ability_stage_ani") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "ipc:ipc_single",
+    "node:node_header_notice",
     "resource_management:global_resmgr",
     "runtime_core:ani",
     "runtime_core:ani_helpers",
@@ -478,13 +484,13 @@ ohos_shared_library("app_context") {
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
   ]
 
+  public_configs = [ ":appkit_public_config" ]
+
   configs = [
     ":appkit_config",
     ":appkit_exception_config",
     "${ability_runtime_services_path}/common:optimize_config",
   ]
-
-  public_configs = [ ":appkit_public_config" ]
 
   sources = [
     "${ability_runtime_native_path}/appkit/ability_runtime/context/ability_stage_context.cpp",
@@ -496,6 +502,7 @@ ohos_shared_library("app_context") {
     "${ability_runtime_native_path}/appkit/ability_runtime/context/interop_object_instance.cpp",
     "${ability_runtime_native_path}/appkit/ability_runtime/context/js_ability_lifecycle_callback.cpp",
     "${ability_runtime_native_path}/appkit/ability_runtime/context/js_system_configuration_updated_callback.cpp",
+    "${ability_runtime_native_path}/appkit/ability_runtime/context/js_process_lifecycle_observer.cpp",
     "${ability_runtime_native_path}/appkit/ability_runtime/context/ability_native_thread.cpp",
     "${ability_runtime_native_path}/appkit/app/overlay_event_subscriber.cpp",
     "${ability_runtime_native_path}/appkit/app/sys_mgr_client.cpp",
@@ -715,6 +722,7 @@ ohos_shared_library("appkit_delegator") {
 }
 
 ohos_shared_library("test_runner_ani") {
+  version_script = "libtest_runner_ani.map"
   branch_protector_ret = "pac_ret"
 
   sanitize = {
@@ -785,7 +793,6 @@ ohos_shared_library("test_runner_ani") {
 config("application_context_manager_config") {
   include_dirs = [
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_runtime/context",
-    "${ability_runtime_services_path}/common/include",
   ]
 }
 
@@ -852,6 +859,7 @@ ohos_shared_library("application_context_manager") {
   include_dirs = [
     "${ability_runtime_path}/interfaces/inner_api/runtime/include",
     "${ability_runtime_path}/interfaces/kits/native/ability/native",
+    "${ability_runtime_services_path}/common/include",
   ]
 
   sources = [ "${ability_runtime_native_path}/appkit/ability_runtime/context/application_context_manager.cpp" ]
@@ -973,6 +981,7 @@ ohos_shared_library("appkit_child") {
     "napi:ace_napi",
     "libuv:uv",
     "node:node_header_notice",
+    "samgr:samgr_proxy",
   ]
 
   defines = [ "SUPPORT_CHILD_PROCESS" ]
@@ -1023,5 +1032,38 @@ ohos_shared_library("appkit_child_entry") {
 
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
+  part_name = "ability_runtime"
+}
+
+################################### extractresourcemanager ########################################
+ohos_shared_library("extractresourcemanager") {
+  branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
+
+  sources = [
+    "${ability_runtime_native_path}/appkit/app/extract_resource_manager.cpp",
+  ]
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+
+  cflags = []
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+
+  external_deps = [
+    "resource_management:global_resmgr",
+    "icu:shared_icuuc",
+  ]
+
+  public_configs = [ ":appkit_public_config" ]
+
+  subsystem_name = "ability"
+  innerapi_tags = [ "platformsdk" ]
   part_name = "ability_runtime"
 }

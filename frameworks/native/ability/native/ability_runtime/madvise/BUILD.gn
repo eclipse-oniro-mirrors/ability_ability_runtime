@@ -18,7 +18,6 @@ config("madvise_public_config") {
   visibility = [ ":*" ]
   include_dirs = [
     "${ability_runtime_path}/frameworks/native/ability/native/ability_runtime/madvise",
-    "${ability_runtime_services_path}/common/include",
   ]
   defines = [ "AMS_LOG_TAG = \"Madvise\"" ]
   defines += [ "AMS_LOG_DOMAIN = 0xD001300" ]

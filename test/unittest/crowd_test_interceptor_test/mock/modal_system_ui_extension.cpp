@@ -33,5 +33,14 @@ bool ModalSystemUiExtension::CreateModalUIExtension(const AAFwk::Want &want)
     }
     return false;
 }
+
+bool ModalSystemUiExtension::CreateModalUIExtension(const AAFwk::Want &want, int32_t userId)
+{
+    auto myStatus = AAFwk::MyStatus::GetInstance();
+    if (myStatus.retCreateModalUIExtension) {
+        return true;
+    }
+    return false;
+}
 }
 }

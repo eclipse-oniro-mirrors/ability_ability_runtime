@@ -84,6 +84,8 @@ public:
         ani_int accountId, ani_object callbackobj);
     static void BackToCallerAbilityWithResult(ani_env *env, ani_object aniObj,
         ani_object abilityResultObj, ani_string requestCodeObj, ani_object callBackObj);
+    static void BackToCallerAppWithResult(ani_env *env, ani_object aniObj,
+        ani_object abilityResultObj, ani_string requestCodeObj, ani_object callBackObj);
     static void SetMissionLabel(ani_env *env, ani_object aniObj, ani_string labelObj,
         ani_object callbackObj);
     static ani_long ConnectServiceExtensionAbility(ani_env *env, ani_object aniObj, ani_object wantObj,
@@ -91,8 +93,9 @@ public:
     static void DisconnectServiceExtensionAbility(ani_env *env, ani_object aniObj, ani_long connectId,
         ani_object callback);
     static void SetColorMode(ani_env *env, ani_object aniObj, ani_enum_item colorMode);
-    static ani_object StartAbilityByType(
-        ani_env *env, ani_object aniObj, ani_string aniType, ani_ref aniWantParam, ani_object startCallback);
+    static void StartAbilityByType(
+        ani_env *env, ani_object aniObj, ani_string aniType, ani_ref aniWantParam,
+        ani_object startCallback, ani_object asyncCallback);
     static void OpenAtomicService(
         ani_env *env, ani_object aniObj, ani_string aniAppId, ani_object callbackObj, ani_object optionsObj);
     static void StartSelfUIAbilityInCurrentProcess(
@@ -163,10 +166,10 @@ public:
 #ifdef SUPPORT_GRAPHICS
 public:
     static void SetAbilityInstanceInfo(ani_env *env, ani_object aniObj, ani_string labelObj, ani_object iconObj,
-        ani_object callback);
+        ani_string groupIdObj, ani_object callback);
     static void SetMissionIcon(ani_env *env, ani_object aniObj, ani_object pixelMapObj, ani_object callbackObj);
     static void SetAbilityInstanceInfoCheck(ani_env *env, ani_object aniObj, ani_string labelObj,
-        ani_object iconObj);
+        ani_object iconObj, ani_string groupIdObj);
     static void SetMissionIconCheck(ani_env *env, ani_object aniObj, ani_object pixelMapObj);
     static void SetMissionWindowIcon(ani_env *env, ani_object aniObj, ani_object pixelMapObj,
         ani_object callbackobj);
@@ -174,9 +177,10 @@ public:
 
 private:
     void OnSetAbilityInstanceInfo(ani_env *env, ani_object aniObj, ani_string labelObj, ani_object iconObj,
-        ani_object callback);
+        ani_string groupIdObj, ani_object callback);
     void OnSetAbilityInstanceInfoInner(ani_env *env, std::string& label,
-        std::shared_ptr<OHOS::Media::PixelMap> icon, ani_object callback, ani_vm *etsVm, ani_ref callbackRef);
+        std::shared_ptr<OHOS::Media::PixelMap> icon, std::string& groupId, ani_object callback, ani_vm *etsVm,
+        ani_ref callbackRef);
     void OnSetMissionIcon(ani_env *env, ani_object aniObj, ani_object pixelMapObj, ani_object callbackObj);
     void OnSetMissionContinueState(ani_env *env, ani_object aniObj, ani_object stateObj, ani_object callbackObj);
 #endif
@@ -209,6 +213,8 @@ private:
         ani_int accountId, ani_object callbackObj);
     void OnBackToCallerAbilityWithResult(ani_env *env, ani_object aniObj,
         ani_object abilityResultObj, ani_string requestCodeObj, ani_object callBackObj);
+    void OnBackToCallerAppWithResult(ani_env *env, ani_object aniObj,
+        ani_object abilityResultObj, ani_string requestCodeObj, ani_object callBackObj);
     void OnSetMissionLabel(ani_env *env, ani_object aniObj, ani_string labelObj, ani_object callbackObj);
     ani_long OnConnectServiceExtensionAbility(ani_env *env, ani_object aniObj, ani_object wantObj,
         ani_object connectOptionsObj, AppExecFwk::ExtensionAbilityType extensionType);
@@ -217,8 +223,12 @@ private:
     void OnStopServiceExtensionAbility(ani_env *env, ani_object aniObj, ani_object wantObj,
         ani_object callbackobj, AppExecFwk::ExtensionAbilityType extensionType);
     void OnSetColorMode(ani_env *env, ani_object aniObj, ani_enum_item colorMode);
-    ani_object OnStartAbilityByType(
-        ani_env *env, ani_object aniObj, ani_string aniType, ani_ref aniWantParam, ani_object startCallback);
+    void OnStartAbilityByType(
+        ani_env *env, ani_object aniObj, ani_string aniType, ani_ref aniWantParam,
+        ani_object startCallback, ani_object asyncCallback);
+    bool ParseStartAbilityByTypeParams(ani_env *env, ani_string aniType,
+        ani_ref aniWantParam, ani_object asyncCallback, std::string &type,
+        AAFwk::WantParams &wantParam, ani_vm *&vm);
     void OnOpenAtomicService(
         ani_env *env, ani_object aniObj, ani_string aniAppId, ani_object callbackObj, ani_object optionsObj);
     void OnStartSelfUIAbilityInCurrentProcess(ani_env *env, ani_object aniObj,

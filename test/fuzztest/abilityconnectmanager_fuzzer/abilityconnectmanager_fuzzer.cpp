@@ -19,8 +19,10 @@
 #include <cstdint>
 
 #define private public
+#define protected public
 #include "ability_connect_manager.h"
 #undef private
+#undef protected
 
 #include "ability_connect_callback_interface.h"
 #include "ability_connect_callback_stub.h"
@@ -101,7 +103,7 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     abilityConnectManager->GetConnectRecordListFromMap(connect, connectRecordList);
     sptr<IRemoteObject> callerToken = GetFuzzAbilityToken();
     abilityConnectManager->ConnectAbilityLocked(abilityRequest, connect, callerToken);
-    abilityConnectManager->DisconnectAbilityLocked(connect);
+    abilityConnectManager->DisconnectAbilityLocked(connect, false);
     sptr<IAbilityScheduler> scheduler = nullptr;
     abilityConnectManager->AttachAbilityThreadLocked(scheduler, token);
     AppInfo appInfo;
@@ -119,7 +121,7 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     sptr<IAbilityConnection> callback = new AbilityConnectCallback();
     abilityConnectManager->GetConnectRecordListByCallback(callback);
     int64_t int64Param = static_cast<int64_t>(GetU32Data(data));
-    abilityConnectManager->GetAbilityRecordById(int64Param);
+    abilityConnectManager->GetExtensionByIdFromServiceMap(int64Param);
     abilityConnectManager->LoadAbility(abilityRecord);
     uint32_t uint32Param = GetU32Data(data);
     abilityConnectManager->PostTimeOutTask(abilityRecord, uint32Param);
@@ -137,19 +139,19 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     std::shared_ptr<ConnectionRecord> connection;
     abilityConnectManager->RemoveConnectionRecordFromMap(connection);
     abilityConnectManager->RemoveServiceAbility(abilityRecord);
-    abilityConnectManager->AddConnectDeathRecipient(connect);
-    abilityConnectManager->RemoveConnectDeathRecipient(connect);
+    abilityConnectManager->AddConnectDeathRecipient(connect->AsObject());
+    abilityConnectManager->RemoveConnectDeathRecipient(connect->AsObject());
     sptr<IRemoteObject> connectRemoteObject = GetFuzzAbilityToken();
     wptr<IRemoteObject> remote = connectRemoteObject;
     abilityConnectManager->OnCallBackDied(remote);
     abilityConnectManager->HandleCallBackDiedTask(connectRemoteObject);
     int int32Param = static_cast<int32_t>(GetU32Data(data));
-    abilityConnectManager->OnAbilityDied(abilityRecord, int32Param);
+    abilityConnectManager->OnAbilityDied(abilityRecord);
     abilityConnectManager->OnTimeOut(uint32Param, int64Param);
-    std::shared_ptr<AbilityRecord> ability = GetFuzzAbilityRecord();
+    std::shared_ptr<BaseExtensionRecord> ability = GetFuzzAbilityRecord();
     abilityConnectManager->HandleInactiveTimeout(ability);
     abilityConnectManager->IsAbilityNeedKeepAlive(abilityRecord);
-    abilityConnectManager->HandleAbilityDiedTask(abilityRecord, int32Param);
+    abilityConnectManager->HandleAbilityDiedTask(abilityRecord);
     std::vector<std::string> info;
     AbilityConnectManager::ServiceMapType serviceMap;
     AbilityConnectManager::DumpState(serviceMap, info, boolParam, stringParam);

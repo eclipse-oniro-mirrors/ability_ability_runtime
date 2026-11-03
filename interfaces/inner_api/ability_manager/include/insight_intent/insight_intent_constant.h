@@ -48,6 +48,7 @@ namespace OHOS::AbilityRuntime {
     constexpr char INSIGHT_INTENT_PARAMETERS[] = "parameters";
     constexpr char INSIGHT_INTENT_RESULT[] = "result";
     constexpr char INSIGHT_INTENT_KEYWORDS[] = "keywords";
+    constexpr char INSIGHT_INTENT_PERMISSIONS[] = "permissions";
     constexpr char INSIGHT_INTENT_LINK_INFO[] = "linkInfo";
     constexpr char INSIGHT_INTENT_PAGE_INFO[] = "pageInfo";
     constexpr char INSIGHT_INTENT_ENTRY_INFO[] = "entryInfo";

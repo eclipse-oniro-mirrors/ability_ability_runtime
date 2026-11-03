@@ -118,14 +118,9 @@ HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_CheckAppRunningRecordIsE
     std::string customProcessFlag;
     std::string specifiedProcessFlag = "specifiedProcessFlag";
 
-    bundleInfo.jointUserId = "joint456";
     auto ret = appRunningManager_->CheckAppRunningRecordIsExist(APP_NAME_EMPTY, processName,
         uid, bundleInfo, specifiedProcessFlag, isProCache, instanceKey, customProcessFlag);
     EXPECT_EQ(ret, nullptr);
-
-    bundleInfo.jointUserId = "";
-    ret = appRunningManager_->CheckAppRunningRecordIsExist(APP_NAME_EMPTY, processName,
-        uid, bundleInfo, specifiedProcessFlag, isProCache, instanceKey, customProcessFlag);
 
     std::shared_ptr<AppRunningRecord> record =
         appRunningManager_->CreateAppRunningRecord(appInfo_, processName, bundleInfo, "");
@@ -1092,6 +1087,111 @@ HWTEST_F(AppRunningManagerFourthTest, ProcessExitByBundleNameAndAppIndex_0600, T
     bool clearPageStack = true;
     auto ret = appRunningManager->ProcessExitByBundleNameAndAppIndex(bundleName, appIndex, pids, clearPageStack);
     EXPECT_EQ(ret, true);
+}
+
+/**
+ * @tc.name: ProcessExitByBundleNameAndAppIndex_0700
+ * @tc.desc: test ProcessExitByBundleNameAndAppIndex with userId=-1 (no userId filter, backward compatible)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, ProcessExitByBundleNameAndAppIndex_0700, TestSize.Level1)
+{
+    static std::shared_ptr<AppRunningManager> appRunningManager = std::make_shared<AppRunningManager>();
+    ASSERT_NE(appRunningManager, nullptr);
+
+    std::shared_ptr<ApplicationInfo> info = std::make_shared<ApplicationInfo>();
+    info->bundleName = "bundleName";
+    int32_t recordId = 100;
+    std::string processName = "processName";
+    auto appRunningRecord = std::make_shared<AppRunningRecord>(info, recordId, processName);
+    ASSERT_NE(appRunningRecord, nullptr);
+
+    appRunningRecord->priorityObject_ = std::make_shared<PriorityObject>();
+    int32_t priorityPid = 66;
+    appRunningRecord->priorityObject_->SetPid(priorityPid);
+    int32_t priorityUid = 2000000;
+    appRunningRecord->SetUid(priorityUid);
+    int32_t num = 100;
+    appRunningManager->appRunningRecordMap_.insert(std::make_pair(num, appRunningRecord));
+    int32_t appIndex = 8;
+    appRunningRecord->SetAppIndex(appIndex);
+    std::string bundleName = "bundleName";
+    std::list<pid_t> pids;
+    bool clearPageStack = true;
+    int32_t userId = -1;
+    auto ret = appRunningManager->ProcessExitByBundleNameAndAppIndex(
+        bundleName, appIndex, pids, clearPageStack, userId);
+    EXPECT_EQ(ret, true);
+}
+
+/**
+ * @tc.name: ProcessExitByBundleNameAndAppIndex_0800
+ * @tc.desc: test ProcessExitByBundleNameAndAppIndex with matching userId
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, ProcessExitByBundleNameAndAppIndex_0800, TestSize.Level1)
+{
+    static std::shared_ptr<AppRunningManager> appRunningManager = std::make_shared<AppRunningManager>();
+    ASSERT_NE(appRunningManager, nullptr);
+
+    std::shared_ptr<ApplicationInfo> info = std::make_shared<ApplicationInfo>();
+    info->bundleName = "bundleName";
+    int32_t recordId = 100;
+    std::string processName = "processName";
+    auto appRunningRecord = std::make_shared<AppRunningRecord>(info, recordId, processName);
+    ASSERT_NE(appRunningRecord, nullptr);
+
+    appRunningRecord->priorityObject_ = std::make_shared<PriorityObject>();
+    int32_t priorityPid = 66;
+    appRunningRecord->priorityObject_->SetPid(priorityPid);
+    int32_t priorityUid = 2000000;
+    appRunningRecord->SetUid(priorityUid);
+    int32_t num = 100;
+    appRunningManager->appRunningRecordMap_.insert(std::make_pair(num, appRunningRecord));
+    int32_t appIndex = 8;
+    appRunningRecord->SetAppIndex(appIndex);
+    std::string bundleName = "bundleName";
+    std::list<pid_t> pids;
+    bool clearPageStack = true;
+    int32_t userId = 10;
+    auto ret = appRunningManager->ProcessExitByBundleNameAndAppIndex(
+        bundleName, appIndex, pids, clearPageStack, userId);
+    EXPECT_EQ(ret, true);
+}
+
+/**
+ * @tc.name: ProcessExitByBundleNameAndAppIndex_0900
+ * @tc.desc: test ProcessExitByBundleNameAndAppIndex with non-matching userId
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, ProcessExitByBundleNameAndAppIndex_0900, TestSize.Level1)
+{
+    static std::shared_ptr<AppRunningManager> appRunningManager = std::make_shared<AppRunningManager>();
+    ASSERT_NE(appRunningManager, nullptr);
+
+    std::shared_ptr<ApplicationInfo> info = std::make_shared<ApplicationInfo>();
+    info->bundleName = "bundleName";
+    int32_t recordId = 100;
+    std::string processName = "processName";
+    auto appRunningRecord = std::make_shared<AppRunningRecord>(info, recordId, processName);
+    ASSERT_NE(appRunningRecord, nullptr);
+
+    appRunningRecord->priorityObject_ = std::make_shared<PriorityObject>();
+    int32_t priorityPid = 66;
+    appRunningRecord->priorityObject_->SetPid(priorityPid);
+    int32_t priorityUid = 2000000;
+    appRunningRecord->SetUid(priorityUid);
+    int32_t num = 100;
+    appRunningManager->appRunningRecordMap_.insert(std::make_pair(num, appRunningRecord));
+    int32_t appIndex = 8;
+    appRunningRecord->SetAppIndex(appIndex);
+    std::string bundleName = "bundleName";
+    std::list<pid_t> pids;
+    bool clearPageStack = true;
+    int32_t userId = 999;
+    auto ret = appRunningManager->ProcessExitByBundleNameAndAppIndex(
+        bundleName, appIndex, pids, clearPageStack, userId);
+    EXPECT_EQ(ret, false);
 }
 
 /**

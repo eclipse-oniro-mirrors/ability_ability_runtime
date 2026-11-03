@@ -19,6 +19,7 @@
 #define protected public
 #include "app_scheduler.h"
 #include "app_mgr_client.h"
+#include "app_service_manager.h"
 #include "ability_record.h"
 #include "app_mgr_constants.h"
 #include "hilog_tag_wrapper.h"
@@ -1222,6 +1223,25 @@ HWTEST_F(AppMgrClientTest, AppMgrClient_IsFinalAppProcess_001, TestSize.Level2)
 }
 
 /**
+ * @tc.name: AppMgrClient_IsHyperSnapInitializing_001
+ * @tc.desc: IsHyperSnapInitializing.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrClientTest, AppMgrClient_IsHyperSnapInitializing_001, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrClient_IsHyperSnapInitializing_001 start");
+    auto appMgrClient = std::make_unique<AppMgrClient>();
+    EXPECT_NE(appMgrClient, nullptr);
+
+    auto result = appMgrClient->ConnectAppMgrService();
+    EXPECT_EQ(result, AppMgrResultCode::RESULT_OK);
+
+    auto ret = appMgrClient->IsHyperSnapInitializing();
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrClient_IsHyperSnapInitializing_001 end");
+}
+
+/**
  * @tc.name: AppMgrClient_ClearProcessByToken_001
  * @tc.desc: ClearProcessByToken.
  * @tc.type: FUNC
@@ -2040,6 +2060,7 @@ HWTEST_F(AppMgrClientTest, GetHyperSnapLastError_0100, TestSize.Level2)
     AAFwk::IsMockSaCall::IsMockSpecificSystemAbilityAccessPermission();
     auto appMgrClient = std::make_unique<AppMgrClient>();
     ASSERT_NE(appMgrClient, nullptr);
+    appMgrClient->SetServiceManager(nullptr);
 
     HyperSnapErrorRecord record;
     record.code = HyperSnapErrorCode::ERR_OK;
@@ -2061,6 +2082,7 @@ HWTEST_F(AppMgrClientTest, GetHyperSnapLastError_0200, TestSize.Level2)
     AAFwk::IsMockSaCall::IsMockSpecificSystemAbilityAccessPermission();
     auto appMgrClient = std::make_unique<AppMgrClient>();
     ASSERT_NE(appMgrClient, nullptr);
+    appMgrClient->SetServiceManager(nullptr);
 
     HyperSnapErrorRecord record;
     int32_t result = appMgrClient->GetHyperSnapLastError(99, record);

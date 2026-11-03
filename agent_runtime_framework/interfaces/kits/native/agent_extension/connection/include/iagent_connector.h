@@ -25,8 +25,8 @@ namespace AgentRuntime {
 
 /**
  * @interface IAgentConnector
- * Interface for calls FROM host application TO agent extension.
- * The agent extension implements this interface to receive calls from the host.
+ * Inbound channel of the host application: implemented by the host side and called by the agent
+ * through AgentConnectorProxy to push data to the host.
  * Corresponds to the JS AgentConnector object.
  */
 class IAgentConnector : public IRemoteBroker {
@@ -34,18 +34,18 @@ public:
     DECLARE_INTERFACE_DESCRIPTOR(u"ohos.agentruntime.IAgentConnector");
 
     /**
-     * Send data from host to agent extension.
+     * Push data from the agent extension to the host application.
      *
-     * @param data The string data to send to agent extension.
-     * @return Returns 0 on success, error code otherwise.
+     * @param data The string data to send to the host application.
+     * @return Returns the transport result only (oneway call; remote-side failures are not reflected).
      */
     virtual int32_t SendData(const std::string &data) = 0;
 
     /**
-     * Send authorization from host to agent extension.
+     * Push an authorization response from the agent extension to the host application.
      *
-     * @param data The authorization data to send to agent extension.
-     * @return Returns 0 on success, error code otherwise.
+     * @param data The authorization data to send to the host application.
+     * @return Returns the transport result only (oneway call; remote-side failures are not reflected).
      */
     virtual int32_t Authorize(const std::string &data) = 0;
 

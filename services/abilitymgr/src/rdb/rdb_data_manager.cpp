@@ -40,35 +40,24 @@ int32_t RdbDataManager::Init(NativeRdb::RdbOpenCallback &rdbCallback)
     return NativeRdb::E_OK;
 }
 
-int32_t RdbDataManager::InsertData(const NativeRdb::ValuesBucket &valuesBucket)
+int32_t RdbDataManager::InsertData(const std::string &tableName, const NativeRdb::ValuesBucket &valuesBucket)
 {
     std::lock_guard<std::mutex> lock(rdbMutex_);
     if (rdbStore_ == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null rdbStore_");
         return NativeRdb::E_ERROR;
     }
-
+    if (tableName != amsRdbConfig_.tableName && tableName != amsRdbConfig_.metaTableName) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid rdb store table");
+        return NativeRdb::E_ERROR;
+    }
     int64_t rowId = -1;
     int32_t errCode = rdbStore_->InsertWithConflictResolution(
-        rowId, amsRdbConfig_.tableName, valuesBucket, NativeRdb::ConflictResolution::ON_CONFLICT_REPLACE);
+        rowId, tableName, valuesBucket, NativeRdb::ConflictResolution::ON_CONFLICT_REPLACE);
     if (errCode == NativeRdb::E_OK) {
         dbWriteCounter_.UpdateWriteCount(ABILITY_RDB_PATH);
     }
     return errCode;
-}
-
-int32_t RdbDataManager::BatchInsert(int64_t &outInsertNum, const std::vector<NativeRdb::ValuesBucket> &valuesBuckets)
-{
-    std::lock_guard<std::mutex> lock(rdbMutex_);
-    if (rdbStore_ == nullptr) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "null rdbStore_");
-        return NativeRdb::E_ERROR;
-    }
-    auto ret = rdbStore_->BatchInsert(outInsertNum, amsRdbConfig_.tableName, valuesBuckets);
-    if (ret == NativeRdb::E_OK) {
-        dbWriteCounter_.UpdateWriteCount(ABILITY_RDB_PATH);
-    }
-    return ret == NativeRdb::E_OK;
 }
 
 int32_t RdbDataManager::UpdateData(
@@ -79,7 +68,8 @@ int32_t RdbDataManager::UpdateData(
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null rdbStore_");
         return NativeRdb::E_ERROR;
     }
-    if (absRdbPredicates.GetTableName() != amsRdbConfig_.tableName) {
+    const auto &tableName = absRdbPredicates.GetTableName();
+    if (tableName != amsRdbConfig_.tableName && tableName != amsRdbConfig_.metaTableName) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid rdb store table");
         return NativeRdb::E_ERROR;
     }
@@ -98,7 +88,8 @@ int32_t RdbDataManager::DeleteData(const NativeRdb::AbsRdbPredicates &absRdbPred
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null rdbStore_");
         return NativeRdb::E_ERROR;
     }
-    if (absRdbPredicates.GetTableName() != amsRdbConfig_.tableName) {
+    const auto &tableName = absRdbPredicates.GetTableName();
+    if (tableName != amsRdbConfig_.tableName && tableName != amsRdbConfig_.metaTableName) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid rdb store table");
         return NativeRdb::E_ERROR;
     }
@@ -114,7 +105,8 @@ std::shared_ptr<NativeRdb::AbsSharedResultSet> RdbDataManager::QueryData(
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null rdbStore_");
         return nullptr;
     }
-    if (absRdbPredicates.GetTableName() != amsRdbConfig_.tableName) {
+    const auto &tableName = absRdbPredicates.GetTableName();
+    if (tableName != amsRdbConfig_.tableName && tableName != amsRdbConfig_.metaTableName) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid rdb store table");
         return nullptr;
     }

@@ -72,6 +72,12 @@ public:
 
     int32_t DisconnectAgentExtensionAbility(const sptr<AAFwk::IAbilityConnection> &connection) override;
 
+    int32_t ConnectAgentExtensionAbilityForCli(const AAFwk::Want &want,
+        const sptr<AAFwk::IAbilityConnection> &connection, const std::string &callerIdentity) override;
+
+    int32_t DisconnectAgentExtensionAbilityForCli(const sptr<AAFwk::IAbilityConnection> &connection,
+        const std::string &callerIdentity) override;
+
     int32_t ConnectServiceExtensionAbility(const sptr<IRemoteObject> &callerToken, const AAFwk::Want &want,
         const sptr<AAFwk::IAbilityConnection> &connection) override;
 
@@ -97,6 +103,9 @@ private:
     void RegisterBundleEventCallback();
     /**
      * @brief Triggers the pre-install AgentCard backfill once both BMS and accountmgr are ready.
+     * On first start after migration to subfoundation, also migrates dynamic (API-source) cards
+     * from the old KV store via AMS, and backfills ALL installed apps (not just pre-installed).
+     * Subsequent starts skip migration and run pre-install backfill only.
      */
     void TryBackfillPreInstallCards();
     /**
