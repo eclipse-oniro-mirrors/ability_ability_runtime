@@ -53,6 +53,7 @@ ohos_shared_library("taskmanager_ani") {
     "c_utils:utils",
     "hilog:libhilog",
     "ipc:ipc_core",
+    "libuv:uv",
     "napi:ace_napi",
     "node:node_header_notice",
     "runtime_core:ani",

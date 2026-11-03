@@ -66,6 +66,7 @@ ohos_shared_library("applicationcontext_napi") {
   ]
 
   external_deps = [
+    "libuv:uv",
     "napi:ace_napi",
     "node:node_header_notice",
   ]

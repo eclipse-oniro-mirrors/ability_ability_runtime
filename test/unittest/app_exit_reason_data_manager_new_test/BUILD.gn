@@ -57,6 +57,7 @@ ohos_unittest("app_exit_reason_data_manager_new_test") {
     "hisysevent:libhisysevent",
     "image_framework:image_native",
     "kv_store:distributeddata_inner",
+    "samgr:samgr_proxy",
   ]
 
   cflags = [

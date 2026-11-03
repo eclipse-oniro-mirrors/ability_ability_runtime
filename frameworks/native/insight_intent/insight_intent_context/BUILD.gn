@@ -56,6 +56,7 @@ ohos_shared_library("insightintentcontext") {
     "image_framework:image_native",
     "ipc:ipc_core",
     "ipc:ipc_single",
+    "libuv:uv",
     "napi:ace_napi",
     "node:node_header_notice",
   ]

@@ -54,6 +54,7 @@ ohos_unittest("uri_permission_test") {
     "init:libbeget_proxy",
     "init:libbegetutil",
     "relational_store:native_rdb",
+    "samgr:samgr_proxy",
     "storage_service:storage_manager_sa_proxy",
   ]
   if (ability_runtime_feature_sandboxmanager) {

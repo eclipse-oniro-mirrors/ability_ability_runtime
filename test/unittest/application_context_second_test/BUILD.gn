@@ -60,6 +60,7 @@ ohos_unittest("application_context_second_test") {
     "ipc:ipc_core",
     "napi:ace_napi",
     "resource_management:global_resmgr",
+    "samgr:samgr_proxy",
   ]
 }
 

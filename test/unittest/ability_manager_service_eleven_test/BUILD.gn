@@ -108,6 +108,7 @@ ohos_unittest("ability_manager_service_eleven_test") {
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
     "kv_store:distributeddata_inner",
+    "samgr:samgr_proxy",
     "safwk:api_cache_manager",
     "selinux_adapter:librestorecon",
     "window_manager:session_manager_lite",

@@ -75,6 +75,7 @@ ohos_unittest("free_install_manager_fourth_test") {
     "init:libbegetutil",
     "ipc:ipc_core",
     "safwk:api_cache_manager",
+    "samgr:samgr_proxy",
   ]
 
   if (ability_runtime_graphics) {

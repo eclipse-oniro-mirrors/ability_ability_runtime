@@ -75,6 +75,7 @@ ohos_unittest("implicit_start_processor_test") {
     "hisysevent:libhisysevent",
     "init:libbeget_proxy",
     "ipc:ipc_core",
+    "samgr:samgr_proxy",
   ]
 
   if (include_app_domain_verify) {

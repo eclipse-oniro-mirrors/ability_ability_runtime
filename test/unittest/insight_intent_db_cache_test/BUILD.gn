@@ -65,6 +65,7 @@ ohos_unittest("insight_intent_db_cache_test") {
     "hilog:libhilog",
     "ipc:ipc_core",
     "relational_store:native_rdb",
+    "samgr:samgr_proxy",
   ]
 }
 

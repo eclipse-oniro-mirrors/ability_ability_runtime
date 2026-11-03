@@ -59,6 +59,8 @@ ohos_shared_library("vertical_panel_manager_ani_kit") {
     "c_utils:utils",
     "hilog:libhilog",
     "ipc:ipc_core",
+    "libuv:uv",
+    "node:node_header_notice",
     "runtime_core:ani",
     "window_manager:session_manager_lite",
   ]
