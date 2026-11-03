@@ -421,7 +421,7 @@ public:
      *
      * @return ERR_OK, return back success, others fail.
      */
-    virtual int32_t KillApplication(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = -1,
+    virtual int32_t KillApplication(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = 0,
         const std::string &reason = "KillApplication", int32_t userId = -1);
 
     /**
@@ -433,7 +433,7 @@ public:
      * @return ERR_OK, return back success, others fail.
      */
     virtual int32_t ForceKillApplication(const std::string &bundleName, const int userId = -1,
-        int appIndex = -1);
+        int appIndex = 0);
 
     /**
      * KillApplicationWithUserId, force kill the application.
@@ -444,7 +444,7 @@ public:
      * @return ERR_OK, return back success, others fail.
      */
     virtual int32_t KillApplicationWithUserId(const std::string &bundleName, const int userId = -1,
-        const int appIndex = -1);
+        const int appIndex = 0);
 
     /**
      * KillProcessesByAccessTokenId.
@@ -1914,10 +1914,10 @@ public:
 
 private:
     int32_t ForceKillApplicationInner(const std::string &bundleName, const int userId = -1,
-        const int appIndex = -1);
+        const int appIndex = 0);
     
     int32_t KillApplicationWithUserIdInner(const std::string &bundleName, const int userId = -1,
-        const int appIndex = -1);
+        const int appIndex = 0);
 
     std::string FaultTypeToString(FaultDataType type);
 

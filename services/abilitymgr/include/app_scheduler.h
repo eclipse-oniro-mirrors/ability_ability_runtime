@@ -364,7 +364,7 @@ public:
      *
      * @param bundleName.
      */
-    int KillApplication(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = -1,
+    int KillApplication(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = 0,
         const std::string &reason = "KillApplication", int32_t userId = -1);
 
     /**
@@ -376,7 +376,7 @@ public:
      * @return ERR_OK, return back success, others fail.
      */
     int ForceKillApplication(const std::string &bundleName, const int userId = -1,
-        const int appIndex = -1);
+        const int appIndex = 0);
 
     /**
      * KillApplicationWithUserId, kill designated user application.
@@ -386,7 +386,7 @@ public:
      * @param  appIndex, appIndex.
      * @return ERR_OK, return back success, others fail.
      */
-    int KillApplicationWithUserId(const std::string &bundleName, const int userId = -1, const int appIndex = -1);
+    int KillApplicationWithUserId(const std::string &bundleName, const int userId = -1, const int appIndex = 0);
 
     /**
      * KillProcessesByAccessTokenId.

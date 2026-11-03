@@ -59,7 +59,7 @@ struct ModularObjectExtensionInfo : public Parcelable {
     std::string bundleName;
     std::string moduleName;
     std::string abilityName;
-    int32_t appIndex = -1;
+    int32_t appIndex = 0;
     MoeLaunchMode launchMode = MoeLaunchMode::IN_PROCESS;
     MoeProcessMode processMode = MoeProcessMode::BUNDLE;
     MoeThreadMode threadMode = MoeThreadMode::BUNDLE;

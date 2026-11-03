@@ -36,6 +36,7 @@
 #include "res_sched_util.h"
 #include "server_constant.h"
 #include "startup_util.h"
+#include "start_ability_utils.h"
 #include "param.h"
 #include "ui_extension_wrapper.h"
 #ifdef SUPPORT_GRAPHICS
@@ -572,7 +573,8 @@ bool MissionListManager::HandleReusedMissionAndAbility(const AbilityRequest &abi
 std::string MissionListManager::GetMissionName(const AbilityRequest &abilityRequest) const
 {
     int32_t appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
-    (void)AbilityRuntime::StartupUtil::GetAppIndex(abilityRequest.want, appIndex);
+    (void)StartAbilityUtils::GetAppIndex(abilityRequest.want, abilityRequest.callerToken,
+                                         abilityRequest.callerUid, appIndex);
     return AbilityUtil::ConvertBundleNameSingleton(abilityRequest.abilityInfo.bundleName,
         abilityRequest.abilityInfo.name, abilityRequest.abilityInfo.moduleName, appIndex);
 }

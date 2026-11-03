@@ -21,7 +21,8 @@
 #include "ffrt.h"
 #include "hilog_tag_wrapper.h"
 #include "startup_util.h"
-
+#include "start_ability_utils.h"
+#include "global_constant.h"
 namespace OHOS {
 namespace AAFwk {
 namespace {
@@ -79,8 +80,9 @@ int32_t OEExtensionUtils::ValidateCaller(
     }
 
     int32_t appIndex = 0;
-    if (!AbilityRuntime::StartupUtil::GetAppIndex(want, appIndex) ||
-        (appIndex != 0 && appIndex != abilityRecord->GetAppIndex())) {
+    if (!StartAbilityUtils::GetAppIndex(want, callerToken, userId, appIndex) ||
+        (appIndex != 0 && appIndex != abilityRecord->GetAppIndex() &&
+         appIndex != AbilityRuntime::GlobalConstant::PC_TABLET_INDEX)) {
         return ERR_APP_CLONE_INDEX_INVALID;
     }
     const_cast<Want &>(want).SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, appIndex);

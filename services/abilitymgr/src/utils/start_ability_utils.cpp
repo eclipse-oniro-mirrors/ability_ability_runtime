@@ -48,24 +48,28 @@ bool HasAppInstanceSelector(const Want &want)
 bool StartAbilityUtils::GetAppIndex(const Want &want, sptr<IRemoteObject> callerToken, int32_t userId,
                                     int32_t &appIndex)
 {
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "GetDualModeBundleInfo appIndex:%{public}d", appIndex);
     auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
     if (abilityRecord && abilityRecord->GetApplicationInfo().bundleName == want.GetBundleNameRef() &&
         AbilityRuntime::GlobalConstant::IsDlpIndex(abilityRecord->GetAppIndex())) {
         appIndex = abilityRecord->GetAppIndex();
         return true;
     }
-    int32_t defaultAppIndex = -1;
-    auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
-    auto ret = IN_PROCESS_CALL(bundleMgrHelper->GetDualModeBundleInfo(want.GetBundleNameRef(),
-                                                                      userId, defaultAppIndex));
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "GetDualModeBundleInfo appIndex:%{public}d", defaultAppIndex);
- 
     if (want.HasParameter(AbilityRuntime::ServerConstant::DLP_INDEX)) {
         appIndex = want.GetIntParam(AbilityRuntime::ServerConstant::DLP_INDEX, 0);
         return AbilityRuntime::GlobalConstant::IsDlpIndex(appIndex);
     }
+
+    int32_t defaultAppIndex = -1;
+    auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
+    bundleMgrHelper->GetDualModeBundleInfo(want.GetBundleNameRef(), userId, defaultAppIndex);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "GetDualModeBundleInfo defaultAppIndex:%{public}d", defaultAppIndex);
+
     if (want.HasParameter(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY)) {
         appIndex = want.GetIntParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, defaultAppIndex);
+        if (appIndex == 0) {
+            appIndex = defaultAppIndex;
+        }
         return AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex) ||
             appIndex == 0 || appIndex == AbilityRuntime::GlobalConstant::PC_TABLET_INDEX;
     }
@@ -126,7 +130,7 @@ std::vector<int32_t> StartAbilityUtils::GetCloneAppIndexes(const std::string &bu
 
 int32_t StartAbilityUtils::CheckAppProvisionMode(const Want& want, int32_t userId, sptr<IRemoteObject> callerToken)
 {
-    int32_t appIndex = -1;
+    int32_t appIndex = 0;
     if (!GetAppIndex(want, callerToken, userId, appIndex)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid app clone index");
         return ERR_APP_CLONE_INDEX_INVALID;
@@ -207,7 +211,8 @@ std::shared_ptr<StartAbilityInfo> QueryAbilityInfo(const Want &want, int32_t use
     CHECK_POINTER_AND_RETURN(bms, nullptr);
     abilityInfoFlag |= static_cast<uint32_t>(AppExecFwk::AbilityInfoFlag::GET_ABILITY_INFO_WITH_FUSION);
     auto request = std::make_shared<StartAbilityInfo>();
-    if (AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex)) {
+    if (AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex) ||
+        appIndex == AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
         IN_PROCESS_CALL_WITHOUT_RET(bms->QueryCloneAbilityInfo(want.GetElement(), abilityInfoFlag, appIndex,
             request->abilityInfo, userId));
         if (appIndex != request->abilityInfo.applicationInfo.appIndex) {
@@ -274,9 +279,12 @@ std::shared_ptr<StartAbilityInfo> StartAbilityInfo::CreateStartAbilityInfo(const
         // try to find extension
         AppExecFwk::ExtensionAbilityInfo extensionInfo;
         ErrCode res = ERR_OK;
-        if (appIndex == 0 || appIndex == AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
+        if (appIndex == 0) {
             res = IN_PROCESS_CALL(bms->QueryExtensionAbilityInfoOptimal(want, abilityInfoFlag,
                 userId, extensionInfo));
+        } else if (appIndex == AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
+            IN_PROCESS_CALL_WITHOUT_RET(bms->QueryCloneExtensionAbilityInfoWithAppIndex(want.GetElement(),
+                abilityInfoFlag, appIndex, extensionInfo, userId));
         } else {
             res = IN_PROCESS_CALL(bms->GetSandboxExtAbilityInfoOptimal(want, appIndex,
                 abilityInfoFlag, userId, extensionInfo));
@@ -315,12 +323,15 @@ std::shared_ptr<StartAbilityInfo> StartAbilityInfo::CreateStartExtensionInfo(con
 
     AppExecFwk::ExtensionAbilityInfo extensionInfo;
     ErrCode res = ERR_OK;
-    if (appIndex == 0 || appIndex == AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
+    if (appIndex == 0) {
         if (AbilityRuntime::StartupUtil::IsStartPlugin(want)) {
             res = IN_PROCESS_CALL(bms->GetPluginExtensionInfo(hostBundleName, want, userId, extensionInfo));
         } else {
             res = IN_PROCESS_CALL(bms->QueryExtensionAbilityInfoOptimal(want, abilityInfoFlag, userId, extensionInfo));
         }
+    } else if (appIndex == AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
+            IN_PROCESS_CALL_WITHOUT_RET(bms->QueryCloneExtensionAbilityInfoWithAppIndex(want.GetElement(),
+                abilityInfoFlag, appIndex, extensionInfo, userId));
     } else {
         res = IN_PROCESS_CALL(bms->GetSandboxExtAbilityInfoOptimal(
             want, appIndex, abilityInfoFlag, userId, extensionInfo));
@@ -437,7 +448,7 @@ void StartAbilityUtils::ResolveTargetAppCloneIndex(const Want &want, sptr<IRemot
         return;
     }
 
-    int32_t appIndex = -1;
+    int32_t appIndex = 0;
     if (MultiAppUtils::GetPreferredAppCloneIndex(want.GetBundleNameRef(), userId, appIndex)) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "resolve app clone preference, bundle:%{public}s appIndex:%{public}d",
             want.GetBundleNameRef().c_str(), appIndex);
@@ -452,9 +463,6 @@ int32_t StartAbilityUtils::StartUIAbilitiesProcessAppIndex(Want &want,
     if (!StartAbilityUtils::GetAppIndex(want, callerToken, userId, appIndex)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "StartUIAbilities GetAppIndex failed.");
         return ERR_APP_CLONE_INDEX_INVALID;
-    }
-    if (!want.HasParameter(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY)) {
-        want.SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, appIndex);
     }
     return ERR_OK;
 }

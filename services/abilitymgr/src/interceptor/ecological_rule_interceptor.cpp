@@ -134,7 +134,7 @@ bool EcologicalRuleInterceptor::DoProcess(StartAbilityContext &ctx, Want &want, 
     }
     want.SetElement(launchWant.GetElement());
 
-    int32_t appIndex = -1;
+    int32_t appIndex = 0;
     bundleMgrHelper->GetDualModeBundleInfo(want.GetBundleNameRef(), userId, appIndex);
     auto startAbilityInfo = StartAbilityInfo::CreateStartAbilityInfo(want, userId, appIndex, nullptr);
     if (startAbilityInfo == nullptr || startAbilityInfo->status != ERR_OK) {
@@ -174,7 +174,7 @@ ErrCode EcologicalRuleInterceptor::QueryAtomicServiceStartupRule(
     CHECK_RET_RETURN_RET(errCode, "GetLaunchWantForBundle failed");
     want.SetElement(launchWant.GetElement());
 
-    int32_t appIndex = -1;
+    int32_t appIndex = 0;
     bundleMgrHelper->GetDualModeBundleInfo(want.GetBundleNameRef(), userId, appIndex);
     auto startAbilityInfo = StartAbilityInfo::CreateStartAbilityInfo(want, userId, appIndex, nullptr);
     CHECK_POINTER_AND_RETURN_LOG(startAbilityInfo, INNER_ERR, "null startAbilityInfo");

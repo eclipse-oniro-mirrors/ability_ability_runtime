@@ -577,7 +577,15 @@ void AppMgrServiceInner::StartSpecifiedProcess(const AAFwk::Want &want, const Ap
     HapModuleInfo hapModuleInfo;
     auto appInfo = std::make_shared<ApplicationInfo>(abilityInfo.applicationInfo);
 
-    int32_t appIndex = abilityInfo.applicationInfo.appIndex;
+    int32_t appIndex = 0;
+    if (want.HasParameter(DLP_INDEX)) {
+        int32_t defaultAppIndex = 0;
+        auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
+        bundleMgrHelper->GetDualModeBundleInfo(appInfo->bundleName, GetUserIdByUid(appInfo->uid), defaultAppIndex);
+        appIndex = want.GetIntParam(DLP_INDEX, defaultAppIndex);
+    } else {
+        appIndex = abilityInfo.appIndex;
+    }
     if (!GetBundleAndHapInfo(abilityInfo, appInfo, bundleInfo, hapModuleInfo, appIndex)) {
         return;
     }
@@ -678,7 +686,7 @@ int32_t AppMgrServiceInner::PreloadApplication(const std::string &bundleName, in
         TAG_LOGE(AAFwkTag::APPMGR, "permission verify fail");
         return ERR_PERMISSION_DENIED;
     }
-    if (appIndex == -1) {
+    if (appIndex == 0) {
         auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
         bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appIndex);
     }
@@ -1989,7 +1997,7 @@ bool AppMgrServiceInner::CheckPreloadAppRecordExist(const std::string &bundleNam
         TAG_LOGE(AAFwkTag::APPMGR, "null appPreloader");
         return false;
     }
-    if (appIndex == -1) {
+    if (appIndex == 0) {
         auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
         bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appIndex);
     }
@@ -2257,6 +2265,14 @@ void AppMgrServiceInner::LoadAbility(std::shared_ptr<AbilityInfo> abilityInfo, s
     std::string customProcessFlag = loadParam->customProcessFlag;
     bool isExtensionSandBox = false;
     if (want != nullptr) {
+        if (want->HasParameter(DLP_INDEX)) {
+            int32_t defaultAppIndex = 0;
+            auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
+            bundleMgrHelper->GetDualModeBundleInfo(appInfo->bundleName, GetUserIdByUid(appInfo->uid), defaultAppIndex);
+            appIndex = want->GetIntParam(DLP_INDEX, defaultAppIndex);
+        } else {
+            appIndex = abilityInfo->appIndex;
+        }
         callerKey = want->GetStringParam(Want::PARAMS_REAL_CALLER_KEY);
         want->RemoveParam(Want::PARAMS_REAL_CALLER_KEY);
     }
@@ -3487,7 +3503,7 @@ int32_t AppMgrServiceInner::KillApplication(const std::string &bundleName, bool 
         return result;
     }
 
-    if (appIndex == -1) {
+    if (appIndex == 0) {
         auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
         int32_t localUserId = GetValidUserId(userId);
         bundleMgrHelper->GetDualModeBundleInfo(bundleName, localUserId, appIndex);
@@ -3504,7 +3520,7 @@ int32_t AppMgrServiceInner::ForceKillApplication(const std::string &bundleName,
         return AAFwk::CHECK_PERMISSION_FAILED;
     }
 
-    if (appIndex == -1) {
+    if (appIndex == 0) {
         auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
         bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appIndex);
     }
@@ -3526,7 +3542,7 @@ int32_t AppMgrServiceInner::KillApplicationWithUserId(const std::string &bundleN
         return result;
     }
 
-    if (appIndex == -1) {
+    if (appIndex == 0) {
         auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
         bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appIndex);
     }
@@ -4720,7 +4736,15 @@ std::shared_ptr<AppRunningRecord> AppMgrServiceInner::CreateAppRunningRecord(
         appRecord->SetPerfCmd(want->GetStringParam(PERF_CMD));
         appRecord->SetErrorInfoEnhance(want->GetBoolParam(ERROR_INFO_ENHANCE, false));
         appRecord->SetMultiThread(want->GetBoolParam(MULTI_THREAD, false));
-        int32_t appIndex = abilityInfo->applicationInfo.appIndex;
+        int32_t appIndex = 0;
+        if (want->HasParameter(DLP_INDEX)) {
+            int32_t defaultAppIndex = 0;
+            auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
+            bundleMgrHelper->GetDualModeBundleInfo(appInfo->bundleName, GetUserIdByUid(appInfo->uid), defaultAppIndex);
+            appIndex = want->GetIntParam(DLP_INDEX, defaultAppIndex);
+        } else {
+            appIndex = abilityInfo->appIndex;
+        }
         appRecord->SetAppIndex(appIndex);
         if (loadParam->isGamePrelaunch) {
             appRecord->SetPreloadMode(AppExecFwk::PreloadMode::GAME_PRELAUNCH);
@@ -5682,6 +5706,9 @@ int32_t AppMgrServiceInner::CreatNewStartMsg(const Want &want, const AbilityInfo
     BundleInfo bundleInfo;
     HapModuleInfo hapModuleInfo;
     int32_t appIndex = want.GetIntParam(AppspawnUtil::DLP_PARAMS_INDEX, 0);
+    if (appIndex == 0) {
+        appIndex = appInfo->appIndex;
+    }
     if (!GetBundleAndHapInfo(abilityInfo, appInfo, bundleInfo, hapModuleInfo, appIndex)) {
         TAG_LOGE(AAFwkTag::APPMGR, "getBundleAndHapInfo fail");
         return ERR_NO_INIT;
@@ -7157,7 +7184,10 @@ int AppMgrServiceInner::StartUserTestProcess(
     }
 
     KillProcessConfig config{false, false, "StartUserTestProcess"};
-    if (KillApplicationByUserIdLocked(bundleName, 0, userId, config)) {
+    int32_t appIndex = 0;
+    auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
+    bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appIndex);
+    if (KillApplicationByUserIdLocked(bundleName, appIndex, userId, config)) {
         TAG_LOGE(AAFwkTag::APPMGR, "kill app fail");
         return ERR_INVALID_VALUE;
     }
@@ -7170,6 +7200,9 @@ int AppMgrServiceInner::StartUserTestProcess(
 
     std::string processName;
     MakeProcessName(std::make_shared<ApplicationInfo>(bundleInfo.applicationInfo), hapModuleInfo, processName);
+    if (appIndex == AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
+        processName += std::to_string(appIndex);
+    }
     TAG_LOGI(AAFwkTag::APPMGR, "processName: [%{public}s]", processName.c_str());
 
     // Inspection records
@@ -7274,7 +7307,15 @@ int AppMgrServiceInner::StartEmptyProcess(const AAFwk::Want &want, const sptr<IR
     testRecord->userId = userId;
     appRecord->SetUserTestInfo(testRecord);
 
-    int32_t appIndex = info.applicationInfo.appIndex;
+    int32_t appIndex = 0;
+    if (want.HasParameter(DLP_INDEX)) {
+        int32_t defaultAppIndex = 0;
+        auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
+        bundleMgrHelper->GetDualModeBundleInfo(appInfo->bundleName, GetUserIdByUid(appInfo->uid), defaultAppIndex);
+        appIndex = want.GetIntParam(DLP_INDEX, defaultAppIndex);
+    } else {
+        appIndex = appInfo->appIndex;
+    }
     uint64_t startFlags = AppspawnUtil::BuildStartFlags(want, info.applicationInfo);
     StartProcess(appInfo->name, processName, startFlags, appRecord, appInfo->uid, info, appInfo->bundleName,
         appIndex, appExistFlag);
@@ -7378,7 +7419,15 @@ void AppMgrServiceInner::StartSpecifiedAbility(const AAFwk::Want &want, const Ap
     HapModuleInfo hapModuleInfo;
     auto appInfo = std::make_shared<ApplicationInfo>(abilityInfo.applicationInfo);
 
-    int32_t appIndex = abilityInfo.applicationInfo.appIndex;
+    int32_t appIndex = 0;
+    if (want.HasParameter(DLP_INDEX)) {
+        int32_t defaultAppIndex = 0;
+        auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
+        bundleMgrHelper->GetDualModeBundleInfo(appInfo->bundleName, GetUserIdByUid(appInfo->uid), defaultAppIndex);
+        appIndex = want.GetIntParam(DLP_INDEX, defaultAppIndex);
+    } else {
+        appIndex = abilityInfo.appIndex;
+    }
     if (!GetBundleAndHapInfo(abilityInfo, appInfo, bundleInfo, hapModuleInfo, appIndex)) {
         return;
     }
@@ -7793,7 +7842,7 @@ int32_t AppMgrServiceInner::UpdateConfigurationByBundleName(const Configuration 
     if (ret != ERR_OK) {
         return ret;
     }
-    if (appIndex == -1) {
+    if (appIndex == 0) {
         auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
         int userId = -1;
         userId = GetValidUserId(userId);
@@ -12334,7 +12383,15 @@ bool AppMgrServiceInner::IsSpecifiedModuleLoaded(const AAFwk::Want &want, const 
         return false;
     }
     auto appInfo = std::make_shared<ApplicationInfo>(abilityInfo.applicationInfo);
-    int32_t appIndex = abilityInfo.applicationInfo.appIndex;
+    int32_t appIndex = 0;
+    if (want.HasParameter(DLP_INDEX)) {
+        int32_t defaultAppIndex = 0;
+        auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
+        bundleMgrHelper->GetDualModeBundleInfo(appInfo->bundleName, GetUserIdByUid(appInfo->uid), defaultAppIndex);
+        appIndex = want.GetIntParam(DLP_INDEX, defaultAppIndex);
+    } else {
+        appIndex = abilityInfo.appIndex;
+    }
     BundleInfo bundleInfo;
     HapModuleInfo hapModuleInfo;
     if (!GetBundleAndHapInfo(abilityInfo, appInfo, bundleInfo, hapModuleInfo, appIndex)) {

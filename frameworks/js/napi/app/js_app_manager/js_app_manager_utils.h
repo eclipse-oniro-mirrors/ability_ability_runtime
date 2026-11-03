@@ -41,7 +41,7 @@ struct PreloadApplicationParam {
     std::string bundleName;
     int32_t userId;
     AppExecFwk::PreloadMode preloadMode;
-    int32_t appIndex = -1;
+    int32_t appIndex = 0;
 };
 
 napi_value CreateJsAppStateData(napi_env env, const AppStateData &appStateData);
