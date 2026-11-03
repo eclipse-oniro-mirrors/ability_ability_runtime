@@ -856,7 +856,7 @@ int AbilityManagerProxy::StartAbilityByUIContentSession(const Want &want, const 
 }
 
 int AbilityManagerProxy::StartAbilityOnlyUIAbility(const Want &want, const sptr<IRemoteObject> &callerToken,
-    uint32_t specifyTokenId)
+    uint32_t specifyTokenId, int32_t userId)
 {
     if (AppUtils::GetInstance().IsForbidStart()) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "forbid start: %{public}s", want.GetElement().GetBundleName().c_str());
@@ -885,6 +885,11 @@ int AbilityManagerProxy::StartAbilityOnlyUIAbility(const Want &want, const sptr<
 
     if (!data.WriteUint32(specifyTokenId)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "specifyTokenId write fail");
+        return ERR_NATIVE_IPC_PARCEL_FAILED;
+    }
+
+    if (!data.WriteInt32(userId)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "userId write fail");
         return ERR_NATIVE_IPC_PARCEL_FAILED;
     }
 

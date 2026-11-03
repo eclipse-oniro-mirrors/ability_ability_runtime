@@ -337,7 +337,8 @@ public:
     virtual int StartAbilityOnlyUIAbility(
         const Want &want,
         const sptr<IRemoteObject> &callerToken,
-        uint32_t specifyTokenId) override;
+        uint32_t specifyTokenId,
+        int32_t userId = DEFAULT_INVAL_VALUE) override;
 
     /**
      * Start extension ability with want, send want to ability manager service.

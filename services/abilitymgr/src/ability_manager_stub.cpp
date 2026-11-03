@@ -4820,7 +4820,8 @@ int32_t AbilityManagerStub::StartAbilityOnlyUIAbilityInner(MessageParcel &data, 
     }
     callerToken = data.ReadRemoteObject();
     uint32_t specifyTokenId = data.ReadUint32();
-    int32_t result = StartAbilityOnlyUIAbility(*want, callerToken, specifyTokenId);
+    int32_t userId = data.ReadInt32();
+    int32_t result = StartAbilityOnlyUIAbility(*want, callerToken, specifyTokenId, userId);
     reply.WriteInt32(result);
     return NO_ERROR;
 }
