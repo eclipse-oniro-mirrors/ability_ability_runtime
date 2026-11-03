@@ -33,6 +33,8 @@ constexpr int32_t RESTORE_RETRY_TIMES = 3;                     // restore attemp
 constexpr useconds_t RESTORE_RETRY_INTERVAL = 100000;          // 100ms
 constexpr const char *AGENT_CARD_STORAGE_DIR = "/data/service/el1/public/database/agent_manager_service/agent_card";
 constexpr const char *AGENT_CARD_BACKUP_NAME = "agent_card_backup";
+constexpr const char *MIGRATION_STATUS_KEY = "migration_status";
+constexpr const char *MIGRATION_STATUS_COMPLETED = "completed";
 const std::string JSON_KEY_BUNDLE_NAME = "bundleName";
 const std::string JSON_KEY_CARD = "card";
 const std::string JSON_KEY_CARDS = "cards";
@@ -427,6 +429,10 @@ int32_t AgentCardDbMgr::QueryAllData(std::vector<StoredAgentCardEntry> &cards)
     }
 
     for (const auto &item : allEntries) {
+        if (item.key.ToString() == MIGRATION_STATUS_KEY) {
+            continue;
+        }
+
         int32_t ret = ParseStoredEntries(item.value.ToString(), cards);
         if (ret != ERR_OK) {
             return ret;
@@ -461,6 +467,39 @@ DistributedKv::Key AgentCardDbMgr::ConvertKey(const std::string &bundleName, int
     DistributedKv::Key key(jsonObject.dump());
     TAG_LOGD(AAFwkTag::SER_ROUTER, "key: %{private}s", key.ToString().c_str());
     return key;
+}
+
+bool AgentCardDbMgr::IsMigrationCompleted()
+{
+    std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
+    if (!CheckKvStore()) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null kvStore");
+        return false;
+    }
+    DistributedKv::Value value;
+    DistributedKv::Status status = kvStorePtr_->Get(DistributedKv::Key(MIGRATION_STATUS_KEY), value);
+    if (status != DistributedKv::Status::SUCCESS) {
+        return false;
+    }
+    return value.ToString() == MIGRATION_STATUS_COMPLETED;
+}
+
+void AgentCardDbMgr::MarkMigrationCompleted()
+{
+    {
+        std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
+        if (!CheckKvStore()) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "null kvStore");
+            return;
+        }
+        DistributedKv::Status status = kvStorePtr_->Put(
+            DistributedKv::Key(MIGRATION_STATUS_KEY), DistributedKv::Value(MIGRATION_STATUS_COMPLETED));
+        if (status != DistributedKv::Status::SUCCESS) {
+            TAG_LOGE(AAFwkTag::SER_ROUTER, "mark migration completed failed: %{public}d", status);
+            return;
+        }
+    }
+    BackupKvStore();
 }
 } // namespace AgentRuntime
 } // namespace OHOS

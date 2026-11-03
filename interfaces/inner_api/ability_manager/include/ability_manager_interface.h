@@ -2998,6 +2998,11 @@ public:
     {
         return ERR_OK;
     }
+
+    virtual int32_t GetDynamicAgentCardsForMigration(std::string &jsonStr)
+    {
+        return ERR_OK;
+    }
 };
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -1109,6 +1109,9 @@ int AbilityManagerStub::OnRemoteRequestInnerTwentySecond(uint32_t code, MessageP
     if (interfaceCode == AbilityManagerInterfaceCode::EXTEND_GAME_PRELAUNCH_TIMEOUT) {
         return ExtendGamePreLaunchTimeoutInner(data, reply);
     }
+    if (interfaceCode == AbilityManagerInterfaceCode::GET_DYNAMIC_AGENT_CARDS_FOR_MIGRATION) {
+        return GetDynamicAgentCardsForMigrationInner(data, reply);
+    }
     return ERR_CODE_NOT_EXIST;
 }
 
@@ -6326,6 +6329,18 @@ int32_t AbilityManagerStub::StartSandboxCloneAbilityInner(MessageParcel &data, M
 
     int32_t result = StartSandboxCloneAbility(*want, *params);
     reply.WriteInt32(result);
+    return NO_ERROR;
+}
+
+int32_t AbilityManagerStub::GetDynamicAgentCardsForMigrationInner(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "GetDynamicAgentCardsForMigration stub called");
+    std::string jsonStr;
+    int32_t ret = GetDynamicAgentCardsForMigration(jsonStr);
+    reply.WriteInt32(ret);
+    if (ret == ERR_OK) {
+        reply.WriteString(jsonStr);
+    }
     return NO_ERROR;
 }
 } // namespace AAFwk

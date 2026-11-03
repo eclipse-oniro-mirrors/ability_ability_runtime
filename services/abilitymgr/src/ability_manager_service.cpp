@@ -136,6 +136,7 @@
 #include "uri_utils.h"
 #include "user_controller/user_controller.h"
 #include "utils/agent_ability_util.h"
+#include "agent_extension/agent_card_migration_helper.h"
 #include "utils/agent_caller_identity_util.h"
 #include "utils/ability_permission_util.h"
 #include "utils/dump_utils.h"
@@ -16469,6 +16470,17 @@ int32_t AbilityManagerService::UnregisterWillInsightIntentExecuteCallback()
     pid_t pid = IPCSkeleton::GetCallingPid();
     return DelayedSingleton<InsightIntentExecuteManager>::GetInstance()
         ->UnregisterWillInsightIntentExecuteCallback(pid);
+}
+
+int32_t AbilityManagerService::GetDynamicAgentCardsForMigration(std::string &jsonStr)
+{
+    constexpr const char *SUBFOUNDATION_PROCESS_NAME = "subfoundation";
+    if (!PermissionVerification::GetInstance()->CheckSpecificSystemAbilityAccessPermission(
+        SUBFOUNDATION_PROCESS_NAME)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "non-subfoundation caller, denied");
+        return CHECK_PERMISSION_FAILED;
+    }
+    return AgentCardMigrationHelper::GetInstance().GetDynamicAgentCardsAsJson(jsonStr);
 }
 
 int32_t AbilityManagerService::QuerySkillType(const std::string &bundleName, const std::string &moduleName,

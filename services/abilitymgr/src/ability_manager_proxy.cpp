@@ -8801,5 +8801,26 @@ int32_t AbilityManagerProxy::StartSandboxCloneAbility(const Want &want, const Sa
 
     return reply.ReadInt32();
 }
+
+int32_t AbilityManagerProxy::GetDynamicAgentCardsForMigration(std::string &jsonStr)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write token fail");
+        return ERR_WRITE_INTERFACE_TOKEN_FAILED;
+    }
+    auto ret = SendRequest(AbilityManagerInterfaceCode::GET_DYNAMIC_AGENT_CARDS_FOR_MIGRATION, data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "send request error:%{public}d", ret);
+        return ret;
+    }
+    int32_t result = reply.ReadInt32();
+    if (result == ERR_OK) {
+        jsonStr = reply.ReadString();
+    }
+    return result;
+}
 } // namespace AAFwk
 } // namespace OHOS

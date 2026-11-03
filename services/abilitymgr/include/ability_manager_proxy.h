@@ -2267,6 +2267,8 @@ private:
         MessageParcel& data);
     bool ExtendMaxIpcCapacityForWant(const Want &want, MessageParcel &data);
 
+    virtual int32_t GetDynamicAgentCardsForMigration(std::string &jsonStr) override;
+
 private:
     static inline BrokerDelegator<AbilityManagerProxy> delegator_;
 };

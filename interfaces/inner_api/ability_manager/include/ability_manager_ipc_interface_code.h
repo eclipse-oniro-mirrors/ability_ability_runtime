@@ -809,6 +809,9 @@ enum class AbilityManagerInterfaceCode {
 
     // get pid by call stub (RSS only)
     GET_PID_BY_CALL_STUB = 6187,
+
+    // get dynamic agent cards (API-source) from the old KV store for migration
+    GET_DYNAMIC_AGENT_CARDS_FOR_MIGRATION = 6188,
 };
 }  // namespace AAFwk
 }  // namespace OHOS

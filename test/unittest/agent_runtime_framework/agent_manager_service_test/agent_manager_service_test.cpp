@@ -20,6 +20,7 @@
 #include <limits>
 #include <map>
 #include <set>
+#include <thread>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -469,10 +470,12 @@ HWTEST_F(AgentManagerServiceTest, OnAddSystemAbility_005, TestSize.Level1)
 {
     AgentManagerService::GetInstance()->OnAddSystemAbility(BUNDLE_MGR_SERVICE_SYS_ABILITY_ID, "123");
     AgentManagerService::GetInstance()->OnAddSystemAbility(SUBSYS_ACCOUNT_SYS_ABILITY_ID_BEGIN, "123");
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     EXPECT_EQ(MyFlag::backfillPreInstallCardsCallCount, 1);
     // Repeated ready signals must not re-trigger.
     AgentManagerService::GetInstance()->OnAddSystemAbility(BUNDLE_MGR_SERVICE_SYS_ABILITY_ID, "123");
     AgentManagerService::GetInstance()->OnAddSystemAbility(SUBSYS_ACCOUNT_SYS_ABILITY_ID_BEGIN, "123");
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     EXPECT_EQ(MyFlag::backfillPreInstallCardsCallCount, 1);
 }
 
