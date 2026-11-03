@@ -1315,8 +1315,7 @@ int AbilityManagerService::CheckExtensionCallPermission(const Want& want, const 
         isSystemAppCall = AAFwk::PermissionVerification::GetInstance()->IsSystemAppCallByTokenId(specifyTokenId);
     }
     auto isShellCall = AAFwk::PermissionVerification::GetInstance()->IsShellCallByTokenId(specifyTokenId);
-    auto isToPermissionMgr = IsTargetPermission(want);
-    if (!isSACall && !isSystemAppCall && !isShellCall && !isToPermissionMgr &&
+    if (!isSACall && !isSystemAppCall && !isShellCall && !IsTargetPermission(want) &&
         !AAFwk::PermissionVerification::GetInstance()->
             IsLocalDebugOtherAppsCall(specifyTokenId, abilityRequest.userId) &&
         !AAFwk::PermissionVerification::GetInstance()->
