@@ -16,6 +16,7 @@
 #ifndef OHOS_AAFWK_STORAGE_SHARE_FEATURE_IMPL_H
 #define OHOS_AAFWK_STORAGE_SHARE_FEATURE_IMPL_H
 
+#include <memory>
 #include <mutex>
 #include <sstream>
 #include <string>
@@ -35,7 +36,7 @@ namespace AAFwk {
 // dangling callback remains in unloaded memory.
 class StorageShareFeatureImpl : public IStorageShareFeature {
 public:
-    StorageShareFeatureImpl() = default;
+    StorageShareFeatureImpl() : handle_(std::make_shared<StorageManagerHandle>()) {}
     ~StorageShareFeatureImpl() override;
 
     void CreateShareFile(const std::vector<std::string> &uris, uint32_t targetTokenId, uint32_t flag,
@@ -43,22 +44,26 @@ public:
     int32_t DeleteShareFile(uint32_t targetTokenId, const std::vector<std::string> &uris) override;
 
 private:
+    class StorageDeathRecipient;
+    struct StorageManagerHandle {
+        std::mutex mutex;
+        sptr<StorageManager::IStorageManager> storageManager;
+        sptr<StorageDeathRecipient> deathRecipient;
+    };
+
     class StorageDeathRecipient : public IRemoteObject::DeathRecipient {
     public:
-        explicit StorageDeathRecipient(StorageShareFeatureImpl *owner) : owner_(owner) {}
+        explicit StorageDeathRecipient(std::shared_ptr<StorageManagerHandle> handle) : handle_(handle) {}
         void OnRemoteDied(const wptr<IRemoteObject> &remote) override;
 
     private:
-        friend class StorageShareFeatureImpl;
-        StorageShareFeatureImpl *owner_ = nullptr;
+        std::weak_ptr<StorageManagerHandle> handle_;
     };
 
     sptr<StorageManager::IStorageManager> GetStorageManager();
     void StringVecToRawData(const std::vector<std::string> &stringVec, StorageFileRawData &rawData);
 
-    std::mutex mutex_;
-    sptr<StorageManager::IStorageManager> storageManager_;
-    sptr<StorageDeathRecipient> deathRecipient_;
+    std::shared_ptr<StorageManagerHandle> handle_;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

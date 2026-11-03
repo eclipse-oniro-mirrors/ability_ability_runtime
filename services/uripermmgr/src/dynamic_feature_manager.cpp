@@ -16,6 +16,7 @@
 #include "dynamic_feature_manager.h"
 
 #include <dlfcn.h>
+#include <vector>
 
 #include "c/ffrt_ipc.h"
 #include "hilog_tag_wrapper.h"
@@ -37,9 +38,39 @@ DynamicFeatureManager &DynamicFeatureManager::GetInstance()
 
 DynamicFeatureManager::~DynamicFeatureManager()
 {
+    // Phase 1: skip pending idle-unload tasks; for tasks already executing (skip
+    // returns -1), snapshot the handle so Phase 2 can drain it. ffrt::skip only
+    // cancels tasks still pending — running tasks are unaffected and must be waited.
+    std::vector<ffrt::task_handle> inFlight;
+    {
+        std::lock_guard<std::mutex> lk(mutex_);
+        for (auto &item : registry_) {
+            auto &entry = item.second;
+            if (!entry.unloadHandle.has_value()) {
+                continue;
+            }
+            if (ffrt::skip(*entry.unloadHandle) == 0) {
+                // Task was still pending — cancelled, will not run.
+                entry.unloadHandle.reset();
+                continue;
+            }
+            // Task is already executing (or completed): skip is a no-op. Capture the
+            // handle so Phase 2 can wait it out before tearing down the object.
+            TAG_LOGW(AAFwkLogTag::URIPERMMGR,
+                "destructor racing with in-flight unload task for feature %{public}s",
+                entry.soname.c_str());
+            inFlight.push_back(*entry.unloadHandle);
+            entry.unloadHandle.reset();
+        }
+    }
+    // Phase 2: wait WITHOUT the lock. The in-flight task body itself tries to acquire
+    // mutex_ (in UnloadFeatureIfIdle); holding it here would deadlock.
+    for (auto &h : inFlight) {
+        ffrt::wait({h});
+    }
+    // Phase 3: no task can touch the object now; safe to dlclose plugins.
     std::lock_guard<std::mutex> lk(mutex_);
     for (auto &item : registry_) {
-        CancelUnloadLocked(item.second);
         if (item.second.loaded) {
             UnloadLocked(item.second);
         }
@@ -74,6 +105,8 @@ bool DynamicFeatureManager::LoadLocked(Entry &entry)
         TAG_LOGE(AAFwkLogTag::URIPERMMGR, "dlsym factory failed: %{public}s", err ? err : "unknown");
         dlclose(entry.handle);
         entry.handle = nullptr;
+        entry.create = nullptr;
+        entry.destroy = nullptr;
         return false;
     }
     IDynamicFeature *raw = entry.create();
@@ -120,12 +153,10 @@ void DynamicFeatureManager::CancelUnloadLocked(Entry &entry)
 void DynamicFeatureManager::ArmUnloadLocked(Entry &entry, FeatureId id)
 {
     CancelUnloadLocked(entry);
-    // Per-feature delayed unload. Captures `this` (singleton, lives till process exit)
-    // and `id`; fires UnloadFeatureIfIdle after the idle delay, unloading ONLY this feature.
     entry.unloadHandle = ffrt::submit_h(
-        [this, id]() {
+        [id]() {
             ffrt_this_task_set_legacy_mode(true);
-            UnloadFeatureIfIdle(id);
+            DynamicFeatureManager::GetInstance().UnloadFeatureIfIdle(id);
         }, {}, {},
         ffrt::task_attr().delay(UNLOAD_DELAY_TIME_US).name(UNLOAD_TASK_PREFIX));
 }

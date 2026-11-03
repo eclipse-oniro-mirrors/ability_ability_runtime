@@ -26,37 +26,40 @@ namespace AAFwk {
 
 StorageShareFeatureImpl::~StorageShareFeatureImpl()
 {
-    // Unregister the death recipient BEFORE the plugin is dlclose'd (the framework
-    // calls DestroyFeature, then dlclose). Prevents a dangling callback into
-    // unloaded memory if the storage SA dies later.
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (storageManager_ != nullptr && storageManager_->AsObject() != nullptr && deathRecipient_ != nullptr) {
-        storageManager_->AsObject()->RemoveDeathRecipient(deathRecipient_);
+    auto handle = handle_;
+    if (handle == nullptr) {
+        return;
     }
-    storageManager_ = nullptr;
-    if (deathRecipient_ != nullptr) {
-        deathRecipient_->owner_ = nullptr;
+    std::lock_guard<std::mutex> lock(handle->mutex);
+    if (handle->storageManager != nullptr && handle->storageManager->AsObject() != nullptr &&
+        handle->deathRecipient != nullptr) {
+        handle->storageManager->AsObject()->RemoveDeathRecipient(handle->deathRecipient);
     }
-    deathRecipient_ = nullptr;
+    handle->storageManager = nullptr;
+    handle->deathRecipient = nullptr;
 }
 
 void StorageShareFeatureImpl::StorageDeathRecipient::OnRemoteDied(const wptr<IRemoteObject> &remote)
 {
-    if (owner_ == nullptr) {
+    auto handle = handle_.lock();
+    if (handle == nullptr) {
         return;
     }
-    std::lock_guard<std::mutex> lock(owner_->mutex_);
-    if (owner_->storageManager_ != nullptr && owner_->storageManager_->AsObject() == remote.promote()) {
-        owner_->storageManager_ = nullptr;
-        owner_->deathRecipient_ = nullptr;
+    std::lock_guard<std::mutex> lock(handle->mutex);
+    if (handle->storageManager != nullptr && handle->storageManager->AsObject() == remote.promote()) {
+        handle->storageManager = nullptr;
     }
 }
 
 sptr<StorageManager::IStorageManager> StorageShareFeatureImpl::GetStorageManager()
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (storageManager_ != nullptr) {
-        return storageManager_;
+    auto handle = handle_;
+    if (handle == nullptr) {
+        return nullptr;
+    }
+    std::lock_guard<std::mutex> lock(handle->mutex);
+    if (handle->storageManager != nullptr) {
+        return handle->storageManager;
     }
     auto systemAbilityMgr = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
     if (systemAbilityMgr == nullptr) {
@@ -68,14 +71,14 @@ sptr<StorageManager::IStorageManager> StorageShareFeatureImpl::GetStorageManager
         TAG_LOGE(AAFwkTag::URIPERMMGR, "null storage SA");
         return nullptr;
     }
-    storageManager_ = iface_cast<StorageManager::IStorageManager>(remoteObj);
-    if (storageManager_ == nullptr || storageManager_->AsObject() == nullptr) {
-        storageManager_ = nullptr;
+    handle->storageManager = iface_cast<StorageManager::IStorageManager>(remoteObj);
+    if (handle->storageManager == nullptr || handle->storageManager->AsObject() == nullptr) {
+        handle->storageManager = nullptr;
         return nullptr;
     }
-    deathRecipient_ = sptr<StorageDeathRecipient>::MakeSptr(this);
-    storageManager_->AsObject()->AddDeathRecipient(deathRecipient_);
-    return storageManager_;
+    handle->deathRecipient = sptr<StorageDeathRecipient>::MakeSptr(handle);
+    handle->storageManager->AsObject()->AddDeathRecipient(handle->deathRecipient);
+    return handle->storageManager;
 }
 
 void StorageShareFeatureImpl::StringVecToRawData(const std::vector<std::string> &stringVec,
