@@ -3969,7 +3969,7 @@ int32_t AppMgrServiceInner::KillApplicationByUserId(
     }
 
     KillProcessConfig config{clearPageStack, true, reason};
-    if(appCloneIndex == -1) {
+    if (appCloneIndex == 0) {
         auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
         bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appCloneIndex);
     }
@@ -4000,7 +4000,7 @@ int32_t AppMgrServiceInner::KillApplicationByUserIdLocked(
         userId, bundleName.c_str(), appCloneIndex);
     int uid = IN_PROCESS_CALL(bundleMgrHelper->GetUidByBundleName(bundleName, userId, appCloneIndex));
     TAG_LOGI(AAFwkTag::APPMGR, "KillApplicationByUserIdLocked value: %{public}d", uid);
-    if(appCloneIndex == -1) {
+    if (appCloneIndex == 0) {
         bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appCloneIndex);
     }
     if (!appRunningManager_->ProcessExitByBundleNameAndUid(bundleName, uid, pids, config)) {
