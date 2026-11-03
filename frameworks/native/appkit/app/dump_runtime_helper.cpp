@@ -37,6 +37,7 @@
 #include <string>
 #include <vector>
 #include "app_mgr_client.h"
+#include "application_context.h"
 #include "faultloggerd_client.h"
 #include "hilog_tag_wrapper.h"
 #include "js_runtime.h"
@@ -80,6 +81,9 @@ static constexpr const char* const HIAPPEVENT_PATH = "/data/storage/el2/base/cac
 static constexpr const char* const OOM_QUOTA_PATH = "/data/storage/el2/base/cache/rawheap";
 static constexpr const char* const JS_HEAP_LOGTYPE = "user.event_config.js_heap_logtype";
 static constexpr const char* const EVENT_RAWHEAP = "event_rawheap";
+static constexpr const char* const JSVM_HEAP_LOGTYPE = "user.event_config.jsvm_heap_log_enable";
+static constexpr const char* const V8_HEAP_LOGTYPE = "user.event_config.v8_heap_log_enable";
+static constexpr const char* const HEAP_LOG_ENABLE_VALUE = "1";
 #ifdef __LP64__
 static constexpr const char* const SO_NAME = "liborphanmem.z.so";
 #else
@@ -181,8 +185,13 @@ void DumpRuntimeHelper::SetAppFreezeFilterCallback()
         return;
     }
     auto appfreezeFilterCallback =
-        [this] (const int32_t pid, const bool needDecreaseQuota, std::string &eventConfig) -> bool {
-        eventConfig = GetEventConfig(JS_HEAP_LOGTYPE);
+        [] (const int32_t pid, const bool needDecreaseQuota, std::string &eventConfigKey) -> bool {
+        TAG_LOGI(AAFwkTag::APPKIT, "enter appfreezeFilterCallback");
+        if (eventConfigKey.empty()) {
+            TAG_LOGW(AAFwkTag::APPKIT, "eventConfigKey is empty, fallback to JS_HEAP_LOGTYPE");
+            eventConfigKey = JS_HEAP_LOGTYPE;
+        }
+        std::string configValue = GetEventConfig(eventConfigKey);
         auto client = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
         if (client == nullptr) {
             TAG_LOGE(AAFwkTag::APPKIT, "null client");
@@ -192,14 +201,23 @@ void DumpRuntimeHelper::SetAppFreezeFilterCallback()
             TAG_LOGE(AAFwkTag::APPKIT, "failed to check oomdump switch");
             return false;
         }
-        if (CheckDumpQuota(eventConfig, needDecreaseQuota)) {
+        if (CheckDumpQuota(configValue, needDecreaseQuota, eventConfigKey)) {
             client->SetAppFreezeFilter(pid);
+            eventConfigKey = configValue;
+            TAG_LOGI(AAFwkTag::APPKIT, "appfreezeFilterCallback return true");
             return true;
         }
         return false;
     };
     auto vm = (static_cast<AbilityRuntime::JsRuntime&>(*runtime)).GetEcmaVm();
     panda::DFXJSNApi::SetAppFreezeFilterCallback(vm, appfreezeFilterCallback);
+
+    auto applicationContext = AbilityRuntime::ApplicationContext::GetInstance();
+    if (applicationContext == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null applicationContext");
+        return;
+    }
+    applicationContext->RegisterAppFreezeFilterCallback(appfreezeFilterCallback);
 }
 
 void DumpRuntimeHelper::WriteRunningId()
@@ -1473,10 +1491,17 @@ bool DumpRuntimeHelper::CheckRandomTelemetryQuota()
     return true;
 }
 
-bool DumpRuntimeHelper::CheckDumpQuota(const std::string &eventConfig, bool needDecreaseQuota)
+bool DumpRuntimeHelper::CheckDumpQuota(const std::string &configValue, bool needDecreaseQuota,
+                                       const std::string &eventConfigKey)
 {
     // Step 1: 2custom — highest priority
-    if (eventConfig == EVENT_RAWHEAP) {
+    if (eventConfigKey == JS_HEAP_LOGTYPE && configValue == EVENT_RAWHEAP) {
+        TAG_LOGI(AAFwkTag::APPKIT, "2custom matched, must dump.");
+        return true;
+    }
+
+    if ((eventConfigKey == JSVM_HEAP_LOGTYPE || eventConfigKey == V8_HEAP_LOGTYPE) &&
+        configValue == HEAP_LOG_ENABLE_VALUE) {
         TAG_LOGI(AAFwkTag::APPKIT, "2custom matched, must dump.");
         return true;
     }
