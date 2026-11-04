@@ -2739,7 +2739,7 @@ void AppMgrServiceInner::MakeProcessName(const std::shared_ptr<AbilityInfo> &abi
             processName = abilityInfo->process;
         }
         if (appIndex != 0) {
-            processName += std::to_string(appIndex);
+            processName += ":" + std::to_string(appIndex);
         }
         return;
     }
