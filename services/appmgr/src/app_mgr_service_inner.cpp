@@ -2738,16 +2738,16 @@ void AppMgrServiceInner::MakeProcessName(const std::shared_ptr<AbilityInfo> &abi
         } else {
             processName = abilityInfo->process;
         }
-        if (appIndex >= AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
-            processName += ":" + std::to_string(appIndex);
-        } else if (appIndex != 0) {
+        if (appIndex != 0) {
             processName += std::to_string(appIndex);
         }
         return;
     }
     MakeProcessName(appInfo, hapModuleInfo, processName);
     MakeServiceExtProcessName(abilityInfo, appInfo, processName);
-    if (appIndex != 0) {
+    if (appIndex >= AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
+        processName += ":" + std::to_string(appIndex);
+    } else if (appIndex != 0) {
         processName += std::to_string(appIndex);
     }
 
