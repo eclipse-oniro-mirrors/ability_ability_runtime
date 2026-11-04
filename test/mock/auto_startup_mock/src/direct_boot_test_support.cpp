@@ -33,6 +33,20 @@ DirectBootTestState &GetDirectBootTestState()
     return state;
 }
 
+DistributedKv::Status DirectBootTestStore::Get(const DistributedKv::Key &key, DistributedKv::Value &value)
+{
+    if (readResult != DistributedKv::Status::SUCCESS) {
+        return readResult;
+    }
+    for (const auto &entry : entries) {
+        if (entry.key == key) {
+            value = entry.value;
+            return DistributedKv::Status::SUCCESS;
+        }
+    }
+    return DistributedKv::Status::KEY_NOT_FOUND;
+}
+
 DistributedKv::Status DirectBootTestStore::GetEntries(const DistributedKv::Key &prefix,
     std::vector<DistributedKv::Entry> &result) const
 {
@@ -43,6 +57,12 @@ DistributedKv::Status DirectBootTestStore::GetEntries(const DistributedKv::Key &
 DistributedKv::Status DirectBootTestStore::Put(const DistributedKv::Key &key, const DistributedKv::Value &value)
 {
     ++writes;
+    if (writeResult != DistributedKv::Status::SUCCESS) {
+        return writeResult;
+    }
+    if (writes == writeFailureCall) {
+        return DistributedKv::Status::ERROR;
+    }
     for (auto &entry : entries) {
         if (entry.key == key) {
             entry.value = value;

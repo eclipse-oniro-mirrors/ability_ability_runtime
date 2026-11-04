@@ -105,6 +105,8 @@ public:
     int32_t GetCurrentAppAutoStartupData(const std::string &bundleName,
         std::vector<AutoStartupInfo> &infoList, const std::string &accessTokenId);
 
+    int32_t ResetAutoStartupDirectBoot(const AutoStartupInfo &info);
+
     int32_t GetAutoStartupStatusForSelf(uint32_t callerTokenId, bool &isAutoStartEnabled);
 
     /**

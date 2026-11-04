@@ -328,6 +328,7 @@ int32_t AbilityAutoStartupService::CheckAutoStartupData(const std::string &bundl
     int32_t appIndex = 0;
     AppExecFwk::BundleInfo bundleInfo;
     int32_t userId = uid / AppExecFwk::Constants::BASE_USER_RANGE;
+    ResetDirectBootOnBundleUpdate(bundleName, uid);
     int32_t validUserId = GetValidUserId(userId);
     if (!GetBundleInfo(bundleName, validUserId, appIndex, bundleInfo)) {
         return INNER_ERR;
@@ -361,6 +362,50 @@ int32_t AbilityAutoStartupService::CheckAutoStartupData(const std::string &bundl
             tokenId);
     }
     return ERR_OK;
+}
+
+void AbilityAutoStartupService::ResetDirectBootOnBundleUpdate(const std::string &bundleName, int32_t uid)
+{
+    int32_t userId = uid / AppExecFwk::Constants::BASE_USER_RANGE;
+    auto dataManager = DelayedSingleton<AbilityAutoStartupDataManager>::GetInstance();
+    std::vector<AutoStartupInfo> infoList;
+    int32_t result = dataManager->QueryAllAutoStartupApplications(infoList, userId, false);
+    if (result != ERR_OK) {
+        TAG_LOGE(AAFwkTag::AUTO_STARTUP, "query direct boot data failed, bundle:%{public}s user:%{public}d "
+            "result:%{public}d", bundleName.c_str(), userId, result);
+        return;
+    }
+    for (const auto &info : infoList) {
+        if (info.bundleName != bundleName || info.userId != userId || !info.isDirectBoot) {
+            continue;
+        }
+        AppExecFwk::BundleInfo bundleInfo;
+        if (!GetBundleInfo(info.bundleName, info.userId, info.appCloneIndex, bundleInfo) ||
+            bundleInfo.applicationInfo.accessTokenId == Security::AccessToken::INVALID_TOKENID) {
+            TAG_LOGE(AAFwkTag::AUTO_STARTUP, "get updated target token failed, bundle:%{public}s user:%{public}d "
+                "appIndex:%{public}d module:%{public}s ability:%{public}s", info.bundleName.c_str(), info.userId,
+                info.appCloneIndex, info.moduleName.c_str(), info.abilityName.c_str());
+            continue;
+        }
+        if (bundleInfo.applicationInfo.uid != uid) {
+            continue;
+        }
+        AutoStartupInfo targetInfo(info);
+        targetInfo.accessTokenId = std::to_string(bundleInfo.applicationInfo.accessTokenId);
+        if (CheckBootAppPermission(targetInfo) == ERR_OK) {
+            continue;
+        }
+        result = dataManager->ResetAutoStartupDirectBoot(info);
+        if (result != ERR_OK) {
+            TAG_LOGE(AAFwkTag::AUTO_STARTUP, "reset direct boot failed, bundle:%{public}s user:%{public}d "
+                "appIndex:%{public}d module:%{public}s ability:%{public}s result:%{public}d",
+                info.bundleName.c_str(), info.userId, info.appCloneIndex, info.moduleName.c_str(),
+                info.abilityName.c_str(), result);
+            continue;
+        }
+        TAG_LOGI(AAFwkTag::AUTO_STARTUP, "reset direct boot after update, bundle:%{public}s user:%{public}d "
+            "appIndex:%{public}d", info.bundleName.c_str(), info.userId, info.appCloneIndex);
+    }
 }
 
 void AbilityAutoStartupService::GetCallbackVector(std::vector<sptr<IRemoteObject>>& callbackVector)

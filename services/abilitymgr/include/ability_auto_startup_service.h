@@ -173,6 +173,7 @@ private:
     std::string GetExtensionTypeName(const AppExecFwk::ExtensionAbilityInfo &extensionInfo);
     std::shared_ptr<AppExecFwk::BundleMgrClient> GetBundleMgrClient();
     int32_t CheckBootAppPermission(const AutoStartupInfo &info);
+    void ResetDirectBootOnBundleUpdate(const std::string &bundleName, int32_t uid);
     int32_t CheckPermissionForSystem();
     int32_t CheckPermissionForEDM();
     int32_t VerifyCrossUserAccountPermission(const AutoStartupAbilityData &abilityData);

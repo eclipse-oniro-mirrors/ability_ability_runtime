@@ -543,6 +543,48 @@ int32_t AbilityAutoStartupDataManager::GetCurrentAppAutoStartupData(
     return ERR_OK;
 }
 
+int32_t AbilityAutoStartupDataManager::ResetAutoStartupDirectBoot(const AutoStartupInfo &info)
+{
+    if (info.bundleName.empty() || info.abilityName.empty() || info.accessTokenId.empty() || info.userId < 0) {
+        return ERR_INVALID_VALUE;
+    }
+    auto key = ConvertAutoStartupDataToKey(info);
+    {
+        std::lock_guard<std::mutex> lock(kvStorePtrMutex_);
+        if (!CheckKvStore()) {
+            return ERR_NO_INIT;
+        }
+        DistributedKv::Value value;
+        auto status = kvStorePtr_->Get(key, value);
+        if (status == DistributedKv::Status::KEY_NOT_FOUND) {
+            return ERR_OK;
+        }
+        if (status != DistributedKv::Status::SUCCESS) {
+            TAG_LOGE(AAFwkTag::AUTO_STARTUP, "get direct boot data error: %{public}d", status);
+            RestoreKvStore(status);
+            return ERR_INVALID_OPERATION;
+        }
+        auto jsonObject = nlohmann::json::parse(value.ToString(), nullptr, false);
+        if (jsonObject.is_discarded() || !jsonObject.is_object()) {
+            return ERR_INVALID_VALUE;
+        }
+        if (!jsonObject.contains(JSON_KEY_IS_DIRECT_BOOT) || !jsonObject[JSON_KEY_IS_DIRECT_BOOT].is_boolean() ||
+            !jsonObject[JSON_KEY_IS_DIRECT_BOOT].get<bool>()) {
+            return ERR_OK;
+        }
+        jsonObject[JSON_KEY_IS_DIRECT_BOOT] = false;
+        status = kvStorePtr_->Put(key, DistributedKv::Value(jsonObject.dump()));
+        if (status != DistributedKv::Status::SUCCESS) {
+            TAG_LOGE(AAFwkTag::AUTO_STARTUP, "reset direct boot data error: %{public}d", status);
+            RestoreKvStore(status);
+            return ERR_INVALID_OPERATION;
+        }
+    }
+    dbWriteCounter_.UpdateWriteCount(AUTO_STARTUP_STORAGE_DIR);
+    BackupKvStore();
+    return ERR_OK;
+}
+
 int32_t AbilityAutoStartupDataManager::GetAutoStartupStatusForSelf(uint32_t callerTokenId, bool &isAutoStartEnabled)
 {
     auto callerTokenIdStr = std::to_string(callerTokenId);

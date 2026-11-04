@@ -21,11 +21,14 @@ namespace OHOS::AAFwk {
 bool GetDirectBootBundleInfo(const std::string &bundleName, AppExecFwk::BundleInfo &bundleInfo, int32_t userId)
 {
     auto &state = AAFwk::GetDirectBootTestState();
+    ++state.bundleInfoCalls;
     auto target = state.targets.find(bundleName);
-    if (!state.bundleAvailable || target == state.targets.end() || target->second.userId != userId) {
+    if (!state.bundleAvailable || state.bundleInfoCalls == state.bundleInfoFailureCall ||
+        target == state.targets.end() || target->second.userId != userId) {
         return false;
     }
-    bundleInfo.applicationInfo.accessTokenId = target->second.tokenId;
+    bundleInfo.applicationInfo.accessTokenId = state.bundleInfoCalls == state.invalidBundleTokenCall ?
+        Security::AccessToken::INVALID_TOKENID : target->second.tokenId;
     bundleInfo.applicationInfo.appIndex = target->second.appIndex;
     bundleInfo.applicationInfo.uid = userId * AppExecFwk::Constants::BASE_USER_RANGE;
     AppExecFwk::AbilityInfo ability;
@@ -34,6 +37,7 @@ bool GetDirectBootBundleInfo(const std::string &bundleName, AppExecFwk::BundleIn
     ability.name = "EntryAbility";
     ability.visible = true;
     ability.type = AppExecFwk::AbilityType::PAGE;
+    bundleInfo.abilityInfos.push_back(ability);
     AppExecFwk::HapModuleInfo module;
     module.abilityInfos.push_back(ability);
     bundleInfo.hapModuleInfos.push_back(module);
