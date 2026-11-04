@@ -130,6 +130,53 @@ HWTEST_F(UpdateCallerInfoUtilTest, UpdateCallerInfoFromToken_0001, TestSize.Leve
 }
 
 /**
+ * @tc.name: UpdateCallerInfoUtilTest_CacheRestoreTaskId_0001
+ * @tc.desc: Task attribution key cached from the original want survives the restore.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, CacheRestoreTaskId_0001, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+    Want originalWant;
+    originalWant.SetParam("ohos.aafwk.param.taskId", std::string("task-ut-773"));
+    originalWant.SetParam(Want::PARAM_RESV_CALLER_UID, 20000001);
+    originalWant.SetParam(Want::PARAM_RESV_CALLER_PID, 100);
+
+    AbilitySessionInfo info;
+    updateCallerUtil.CacheCallerInfoFromWant(originalWant, info);
+    EXPECT_EQ(info.taskId, "task-ut-773");
+    EXPECT_EQ(info.callerUid, 20000001);
+    EXPECT_EQ(info.callerPid, 100);
+
+    // Simulate the SCB-returned want with the key lost on the round trip.
+    Want scbWant;
+    updateCallerUtil.RestoreCallerInfoToWant(scbWant, info);
+    EXPECT_EQ(scbWant.GetStringParam("ohos.aafwk.param.taskId"), "task-ut-773");
+    EXPECT_EQ(scbWant.GetIntParam(Want::PARAM_RESV_CALLER_UID, -1), 20000001);
+    EXPECT_EQ(scbWant.GetIntParam(Want::PARAM_RESV_CALLER_PID, -1), 100);
+}
+
+/**
+ * @tc.name: UpdateCallerInfoUtilTest_CacheRestoreTaskId_0002
+ * @tc.desc: Empty cache strips the key from the SCB-returned want (fail-closed).
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, CacheRestoreTaskId_0002, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+    Want originalWant; // no key: the caller never supplied one
+    AbilitySessionInfo info;
+    updateCallerUtil.CacheCallerInfoFromWant(originalWant, info);
+    EXPECT_TRUE(info.taskId.empty());
+
+    // Simulate a replayed/injected key on the SCB-returned want.
+    Want scbWant;
+    scbWant.SetParam("ohos.aafwk.param.taskId", std::string("task-replay-999"));
+    updateCallerUtil.RestoreCallerInfoToWant(scbWant, info);
+    EXPECT_FALSE(scbWant.HasParameter("ohos.aafwk.param.taskId"));
+}
+
+/**
  * @tc.name: UpdateCallerInfoUtilTest_ClearProtectedWantParam_001
  * @tc.desc: The caller is not system app, remove udKey.
  * @tc.type: FUNC
@@ -742,6 +789,83 @@ HWTEST_F(UpdateCallerInfoUtilTest, UpdateCallerInfoByHapTokenId_0002, TestSize.L
 
     // Want baseline value must remain (failure-path early-return verified)
     EXPECT_EQ(want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME), "baseline_bundle");
+}
+
+/**
+ * @tc.name: FailClosedIdentityCleanup_0003
+ * @tc.desc: Stamping failure paths strip any caller-supplied identity params; anco
+ *           params are DFX-only and keep their pre-existing passthrough.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, FailClosedIdentityCleanup_0003, TestSize.Level1)
+{
+    auto updateCallerUtil = std::make_shared<UpdateCallerInfoUtil>();
+
+    // tokenId == 0: invalid param early-return
+    Want want;
+    want.SetParam(Want::PARAM_RESV_CALLER_UID, 1234);
+    want.SetParam(Want::PARAM_RESV_CALLER_PID, 5678);
+    want.SetParam(Want::PARAM_RESV_CALLER_TOKEN, 9);
+    want.SetParam("ohos.anco.param.callerUid", 4321);
+    want.SetParam("ohos.anco.param.callerBundleName", std::string("forged_bundle"));
+    updateCallerUtil->UpdateCallerInfoByHapTokenId(want, 0);
+    EXPECT_FALSE(want.HasParameter(Want::PARAM_RESV_CALLER_UID));
+    EXPECT_FALSE(want.HasParameter(Want::PARAM_RESV_CALLER_PID));
+    EXPECT_FALSE(want.HasParameter(Want::PARAM_RESV_CALLER_TOKEN));
+    // anco params are not identity for attribution and are left untouched
+    EXPECT_TRUE(want.HasParameter("ohos.anco.param.callerUid"));
+    EXPECT_TRUE(want.HasParameter("ohos.anco.param.callerBundleName"));
+
+    // unresolvable HAP token: GetHapTokenInfo failure early-return
+    Want want2;
+    want2.SetParam(Want::PARAM_RESV_CALLER_UID, 1234);
+    updateCallerUtil->UpdateCallerInfoByHapTokenId(want2, 0xFFFFFFFF);
+    EXPECT_FALSE(want2.HasParameter(Want::PARAM_RESV_CALLER_UID));
+
+    // unresolvable caller token: caller abilityRecord null early-return
+    Want want3;
+    want3.SetParam(Want::PARAM_RESV_CALLER_UID, 1234);
+    updateCallerUtil->UpdateCallerInfoFromToken(want3, nullptr);
+    EXPECT_FALSE(want3.HasParameter(Want::PARAM_RESV_CALLER_UID));
+}
+
+/**
+ * @tc.name: UpdateCallerInfoUtilTest_CacheRestoreTaskId_0003
+ * @tc.desc: The cached taskId wins over a stale SCB-returned value.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, CacheRestoreTaskId_0003, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+    Want originalWant;
+    originalWant.SetParam("ohos.aafwk.param.taskId", std::string("task-cached-55"));
+    AbilitySessionInfo info;
+    updateCallerUtil.CacheCallerInfoFromWant(originalWant, info);
+    EXPECT_EQ(info.taskId, "task-cached-55");
+
+    // SCB round trip returned a different (stale) value: the cache overwrites it.
+    Want scbWant;
+    scbWant.SetParam("ohos.aafwk.param.taskId", std::string("task-stale-66"));
+    updateCallerUtil.RestoreCallerInfoToWant(scbWant, info);
+    EXPECT_EQ(scbWant.GetStringParam("ohos.aafwk.param.taskId"), "task-cached-55");
+}
+
+/**
+ * @tc.name: UpdateCallerInfoUtilTest_CacheRestoreTaskId_0004
+ * @tc.desc: With no key on either side the restore stays clean (no key injected).
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, CacheRestoreTaskId_0004, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+    Want originalWant; // no task key anywhere
+    AbilitySessionInfo info;
+    updateCallerUtil.CacheCallerInfoFromWant(originalWant, info);
+    EXPECT_TRUE(info.taskId.empty());
+
+    Want scbWant; // no key on the round trip either
+    updateCallerUtil.RestoreCallerInfoToWant(scbWant, info);
+    EXPECT_FALSE(scbWant.HasParameter("ohos.aafwk.param.taskId"));
 }
 } // namespace AAFwk
 } // namespace OHOS

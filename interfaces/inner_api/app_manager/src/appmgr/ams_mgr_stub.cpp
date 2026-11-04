@@ -101,6 +101,10 @@ int32_t AmsMgrStub::OnRemoteRequestInnerFirst(uint32_t code, MessageParcel &data
             return HandleKillProcessByAbilityToken(data, reply);
         case static_cast<uint32_t>(IAmsMgr::Message::SET_GAME_SA_PRELAUNCH):
             return HandleSetGameSAPrelaunch(data, reply);
+        case static_cast<uint32_t>(IAmsMgr::Message::ATTRIBUTE_PROCESS_FOR_ABILITY):
+            return HandleAttributeProcessForAbility(data, reply);
+        case static_cast<uint32_t>(IAmsMgr::Message::UNREGISTER_TASK_ATTRIBUTION):
+            return HandleUnregisterTaskAttribution(data, reply);
         case static_cast<uint32_t>(IAmsMgr::Message::KILL_PROCESSES_BY_USERID):
             return HandleKillProcessesByUserId(data, reply);
         case static_cast<uint32_t>(IAmsMgr::Message::KILL_PROCESS_WITH_ACCOUNT):
@@ -336,6 +340,37 @@ ErrCode AmsMgrStub::HandleKillProcessByAbilityToken(MessageParcel &data, Message
     sptr<IRemoteObject> token = data.ReadRemoteObject();
 
     KillProcessByAbilityToken(token);
+    return NO_ERROR;
+}
+
+ErrCode AmsMgrStub::HandleAttributeProcessForAbility(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::string taskId = data.ReadString();
+    int32_t callerUid = data.ReadInt32();
+    int32_t callerPid = data.ReadInt32();
+    int32_t targetPid = data.ReadInt32();
+
+    int64_t attributionId = 0;
+    ErrCode result = AttributeProcessForAbility(taskId, callerUid, callerPid, targetPid, attributionId);
+    if (!reply.WriteInt32(result) || !reply.WriteInt64(attributionId)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Failed to write result");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+ErrCode AmsMgrStub::HandleUnregisterTaskAttribution(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::string taskId = data.ReadString();
+    int64_t attributionId = data.ReadInt64();
+
+    ErrCode result = UnregisterTaskAttribution(taskId, attributionId);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Failed to write result");
+        return ERR_INVALID_VALUE;
+    }
     return NO_ERROR;
 }
 

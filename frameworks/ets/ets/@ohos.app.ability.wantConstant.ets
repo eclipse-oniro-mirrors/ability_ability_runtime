@@ -47,6 +47,7 @@ namespace wantConstant {
     APP_LAUNCH_TRUSTLIST = 'ohos.params.appLaunchTrustList',
     ABILITY_UNIFIED_DATA_KEY = 'ohos.param.ability.udKey',
     UI_EXTENSION_ROOT_TOKEN = 'ohos.param.uiExtension.rootHostToken',
+    TASK_ID = 'ohos.aafwk.param.taskId',
   }
 
   export enum Flags {

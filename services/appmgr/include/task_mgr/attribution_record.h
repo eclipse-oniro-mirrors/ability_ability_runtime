@@ -36,9 +36,12 @@ enum class AttributionTool : int32_t {
 using AttributionId = int64_t;
 
 struct AttributionRecord {
+    // Pid of the attributed target process, not the caller's.
     pid_t pid = -1;
+    // Channel that created this attribution.
     AttributionTool tool = AttributionTool::UNKNOWN;
-    int64_t attributedTimeMillis = 0;  // server-authoritative, set at registration
+    // Registration time, assigned by the task manager.
+    int64_t attributedTimeMillis = 0;
 };
 
 const char *AttributionToolToString(AttributionTool tool);

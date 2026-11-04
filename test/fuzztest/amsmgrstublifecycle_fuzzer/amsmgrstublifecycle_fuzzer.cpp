@@ -43,7 +43,7 @@ class AmsMgrStubLifecycleFuzz : public AmsMgrStubFuzzBase {};
 
 void DoFuzzCases(uint32_t code, MessageParcel &parcel, FuzzedDataProvider &fdp, uint32_t &actualCode)
 {
-    switch (code % 12) {
+    switch (code % 14) {
         case 0: {
             // LOAD_ABILITY: AbilityInfo, ApplicationInfo, Want, LoadParam
             actualCode = static_cast<uint32_t>(IAmsMgr::Message::LOAD_ABILITY);
@@ -136,6 +136,22 @@ void DoFuzzCases(uint32_t code, MessageParcel &parcel, FuzzedDataProvider &fdp, 
             actualCode = static_cast<uint32_t>(IAmsMgr::Message::UPDATE_EXTENSION_STATE);
             parcel.WriteRemoteObject(nullptr);
             parcel.WriteInt32(FuzzUtil::BuildInvalidEnum(fdp, 20));
+            break;
+        }
+        case 12: {
+            // ATTRIBUTE_PROCESS_FOR_ABILITY: taskId, callerUid, callerPid, targetPid
+            actualCode = static_cast<uint32_t>(IAmsMgr::Message::ATTRIBUTE_PROCESS_FOR_ABILITY);
+            parcel.WriteString(FuzzUtil::BuildSpecialCharString(fdp));
+            parcel.WriteInt32(FuzzUtil::BuildIntegerOverflow(fdp));
+            parcel.WriteInt32(FuzzUtil::BuildIntegerOverflow(fdp));
+            parcel.WriteInt32(FuzzUtil::BuildIntegerOverflow(fdp));
+            break;
+        }
+        case 13: {
+            // UNREGISTER_TASK_ATTRIBUTION: taskId, attributionId
+            actualCode = static_cast<uint32_t>(IAmsMgr::Message::UNREGISTER_TASK_ATTRIBUTION);
+            parcel.WriteString(FuzzUtil::BuildSpecialCharString(fdp));
+            parcel.WriteInt64(fdp.ConsumeIntegral<int64_t>());
             break;
         }
         default:

@@ -41,6 +41,9 @@ public:
     void RegisterAppStateCallback(const sptr<IAppStateCallback> &callback) override {}
     void KillProcessByAbilityToken(const sptr<IRemoteObject> &token) override {}
     int32_t SetGameSAPrelaunch(const sptr<IRemoteObject> &token, bool isGameSAPrelaunch) override { return 0; }
+    int32_t AttributeProcessForAbility(const std::string &taskId, int32_t callerUid, int32_t callerPid,
+        int32_t targetPid, int64_t &attributionId) override { return 0; }
+    int32_t UnregisterTaskAttribution(const std::string &taskId, int64_t attributionId) override { return 0; }
     void KillProcessesByUserId(int32_t userId, bool isNeedSendAppSpawnMsg = false,
         sptr<AAFwk::IUserCallback> callback = nullptr) override {}
     int32_t KillProcessesByPids(const std::vector<int32_t> &pids,

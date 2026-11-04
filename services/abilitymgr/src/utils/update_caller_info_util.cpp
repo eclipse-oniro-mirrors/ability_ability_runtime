@@ -129,6 +129,8 @@ void UpdateCallerInfoUtil::UpdateCallerInfoByHapTokenId(Want& want, uint32_t cal
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (callerTokenId == 0) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "UpdateCallerInfoByHapTokenId: invalid tokenId 0");
+        // fail-closed: no proven identity, so no identity at all
+        ClearCallerIdentityParam(want);
         return;
     }
     Security::AccessToken::HapTokenInfo hapInfo;
@@ -136,6 +138,8 @@ void UpdateCallerInfoUtil::UpdateCallerInfoByHapTokenId(Want& want, uint32_t cal
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR,
             "UpdateCallerInfoByHapTokenId: GetHapTokenInfo failed, tokenId=%{public}u", callerTokenId);
+        // fail-closed: no proven identity, so no identity at all
+        ClearCallerIdentityParam(want);
         return;
     }
 
@@ -306,6 +310,8 @@ void UpdateCallerInfoUtil::UpdateCallerInfoFromToken(Want& want, const sptr<IRem
     auto abilityRecord = Token::GetAbilityRecordByToken(token);
     if (!abilityRecord) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "caller abilityRecord null");
+        // fail-closed: drop any caller-supplied identity instead of trusting it downstream
+        ClearCallerIdentityParam(want);
         return;
     }
     ClearProtectedWantParam(want);
@@ -424,6 +430,7 @@ void UpdateCallerInfoUtil::CacheCallerInfoFromWant(const Want &want, AbilitySess
     info.callerAppId = want.GetStringParam(Want::PARAM_RESV_CALLER_APP_ID);
     info.callerAppIdentifier = want.GetStringParam(Want::PARAM_RESV_CALLER_APP_IDENTIFIER);
     info.callerAppCloneIndex = want.GetIntParam(Want::PARAM_RESV_CALLER_APP_CLONE_INDEX, 0);
+    info.taskId = want.GetStringParam(Want::PARAM_RESV_TASK_ID);
 }
 
 void UpdateCallerInfoUtil::RestoreCallerInfoToWant(Want &want, const AbilitySessionInfo &info)
@@ -441,6 +448,22 @@ void UpdateCallerInfoUtil::RestoreCallerInfoToWant(Want &want, const AbilitySess
     want.SetParam(Want::PARAM_RESV_CALLER_APP_ID, info.callerAppId);
     want.SetParam(Want::PARAM_RESV_CALLER_APP_IDENTIFIER, info.callerAppIdentifier);
     want.SetParam(Want::PARAM_RESV_CALLER_APP_CLONE_INDEX, info.callerAppCloneIndex);
+    // No key in the original want: strip whatever the SCB round trip returned.
+    if (info.taskId.empty()) {
+        want.RemoveParam(Want::PARAM_RESV_TASK_ID);
+    } else {
+        want.SetParam(Want::PARAM_RESV_TASK_ID, info.taskId);
+    }
+}
+
+void UpdateCallerInfoUtil::ClearCallerIdentityParam(Want &want)
+{
+    // Fail-closed cleanup for stamping failure paths: identity params are system-stamped
+    // only, so they are dropped when stamping is not possible. Anco params are DFX-only
+    // and keep their pre-existing passthrough semantics.
+    want.RemoveParam(Want::PARAM_RESV_CALLER_UID);
+    want.RemoveParam(Want::PARAM_RESV_CALLER_PID);
+    want.RemoveParam(Want::PARAM_RESV_CALLER_TOKEN);
 }
 
 void UpdateCallerInfoUtil::ClearProtectedWantParam(Want &want)

@@ -255,6 +255,45 @@ AppMgrResultCode AppMgrClient::KillProcessByAbilityToken(const sptr<IRemoteObjec
     return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
 }
 
+int32_t AppMgrClient::AttributeProcessForAbility(const std::string &taskId, int32_t callerUid, int32_t callerPid,
+    int32_t targetPid, int64_t &attributionId)
+{
+    if (mgrHolder_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "mgrHolder is nullptr.");
+        return ERROR_SERVICE_NOT_CONNECTED;
+    }
+    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
+    if (service == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Service is nullptr.");
+        return ERROR_SERVICE_NOT_CONNECTED;
+    }
+    sptr<IAmsMgr> amsService = service->GetAmsMgr();
+    if (amsService == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "AmsMgr service is nullptr.");
+        return ERROR_SERVICE_NOT_CONNECTED;
+    }
+    return amsService->AttributeProcessForAbility(taskId, callerUid, callerPid, targetPid, attributionId);
+}
+
+int32_t AppMgrClient::UnregisterTaskAttribution(const std::string &taskId, int64_t attributionId)
+{
+    if (mgrHolder_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "mgrHolder is nullptr.");
+        return ERROR_SERVICE_NOT_CONNECTED;
+    }
+    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
+    if (service == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Service is nullptr.");
+        return ERROR_SERVICE_NOT_CONNECTED;
+    }
+    sptr<IAmsMgr> amsService = service->GetAmsMgr();
+    if (amsService == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "AmsMgr service is nullptr.");
+        return ERROR_SERVICE_NOT_CONNECTED;
+    }
+    return amsService->UnregisterTaskAttribution(taskId, attributionId);
+}
+
 AppMgrResultCode AppMgrClient::SetGameSAPrelaunch(const sptr<IRemoteObject> &token, bool isGameSAPrelaunch)
 {
     sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
