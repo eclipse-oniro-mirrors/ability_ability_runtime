@@ -221,6 +221,7 @@ constexpr size_t OFFSET = 32;
 constexpr int32_t PENG_LAI_UID = 7655;
 constexpr int32_t TASKMGR_UID = 7005;
 constexpr int32_t RSS_UID = 1096;
+constexpr int32_t ERECT_SAFE_UID = 8088;
 constexpr int64_t MIN_EXTEND_TIME = 30 * 1000 * 1000; // 30s in microseconds
 constexpr int64_t MAX_EXTEND_TIME = 4LL * 60 * 60 * 1000 * 1000; // 4h in microseconds
 constexpr const char* IS_DELEGATOR_CALL = "isDelegatorCall";
@@ -19723,7 +19724,8 @@ std::shared_ptr<AbilityInterceptorExecuter> AbilityManagerService::GetAbilityInt
 int32_t AbilityManagerService::RegisterSAInterceptor(sptr<AbilityRuntime::ISAInterceptor> interceptor)
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "call RegisterSaInterceptor, callingPid:%{public}d", IPCSkeleton::GetCallingPid());
-    if (IPCSkeleton::GetCallingUid() != PENG_LAI_UID && IPCSkeleton::GetCallingUid() != TASKMGR_UID) {
+    auto callingUid = IPCSkeleton::GetCallingUid();
+    if (callingUid != PENG_LAI_UID && callingUid != TASKMGR_UID && callingUid != ERECT_SAFE_UID) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "no permission call");
         return CHECK_PERMISSION_FAILED;
     }
