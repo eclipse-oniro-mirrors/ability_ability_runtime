@@ -306,6 +306,53 @@ int32_t AmsMgrProxy::SetGameSAPrelaunch(const sptr<IRemoteObject> &token, bool i
     return reply.ReadInt32();
 }
 
+int32_t AmsMgrProxy::AttributeProcessForAbility(const std::string &taskId, int32_t callerUid, int32_t callerPid,
+    int32_t targetPid, int64_t &attributionId)
+{
+    attributionId = 0;
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    if (!WriteInterfaceToken(data)) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteString(taskId) || !data.WriteInt32(callerUid) || !data.WriteInt32(callerPid) ||
+        !data.WriteInt32(targetPid)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Failed to write attribution params");
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret = SendTransactCmd(static_cast<uint32_t>(IAmsMgr::Message::ATTRIBUTE_PROCESS_FOR_ABILITY),
+        data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGW(AAFwkTag::APPMGR, "SendRequest err: %{public}d", ret);
+        return ret;
+    }
+    int32_t result = reply.ReadInt32();
+    attributionId = reply.ReadInt64();
+    return result;
+}
+
+int32_t AmsMgrProxy::UnregisterTaskAttribution(const std::string &taskId, int64_t attributionId)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    if (!WriteInterfaceToken(data)) {
+        return ERR_INVALID_DATA;
+    }
+    if (!data.WriteString(taskId) || !data.WriteInt64(attributionId)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Failed to write unregistration params");
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret = SendTransactCmd(static_cast<uint32_t>(IAmsMgr::Message::UNREGISTER_TASK_ATTRIBUTION),
+        data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGW(AAFwkTag::APPMGR, "SendRequest err: %{public}d", ret);
+        return ret;
+    }
+    return reply.ReadInt32();
+}
+
 void AmsMgrProxy::KillProcessesByUserId(int32_t userId, bool isNeedSendAppSpawnMsg,
     sptr<AAFwk::IUserCallback> callback)
 {

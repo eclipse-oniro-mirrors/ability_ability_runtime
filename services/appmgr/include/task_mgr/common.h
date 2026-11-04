@@ -43,6 +43,20 @@ constexpr size_t TASK_MAX_ACTIVE_TASKS = 10;
 // Safety ceiling on the managed attributions of one task.
 constexpr size_t TASK_MAX_ATTRIBUTIONS_PER_TASK = 1000;
 
+// Valid attribution key: length-bounded, no control characters (log injection guard).
+inline bool IsTaskIdValidForAttribution(const std::string &taskId)
+{
+    if (taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN) {
+        return false;
+    }
+    for (char c : taskId) {
+        if (static_cast<unsigned char>(c) < 0x20 || c == static_cast<char>(0x7f)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 // How a task reached its end; logged with a unified tag and dumped for DFX.
 enum class TaskFinishReason : int32_t {
     FINISHED_BY_CALLER = 0,

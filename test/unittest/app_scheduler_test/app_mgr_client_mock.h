@@ -61,6 +61,9 @@ public:
     MOCK_METHOD2(GetAbilityRecordsByProcessID, int(
         const int pid, std::vector<sptr<IRemoteObject>> &tokens));
     MOCK_METHOD2(SetGameSAPrelaunch, AppMgrResultCode(const sptr<IRemoteObject> &token, bool isGameSAPrelaunch));
+    MOCK_METHOD5(AttributeProcessForAbility, int32_t(const std::string &taskId, int32_t callerUid,
+        int32_t callerPid, int32_t targetPid, int64_t &attributionId));
+    MOCK_METHOD2(UnregisterTaskAttribution, int32_t(const std::string &taskId, int64_t attributionId));
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

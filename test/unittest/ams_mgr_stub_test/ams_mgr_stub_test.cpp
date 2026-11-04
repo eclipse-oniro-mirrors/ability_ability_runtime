@@ -701,5 +701,66 @@ HWTEST_F(AmsMgrStubTest, HandleSetGameSAPrelaunch_004, TestSize.Level1)
     EXPECT_EQ(result, NO_ERROR);
     TAG_LOGI(AAFwkTag::TEST, "HandleSetGameSAPrelaunch_004 end.");
 }
+
+/**
+ * @tc.name: HandleAttributeProcessForAbility_001
+ * @tc.desc: HandleAttributeProcessForAbility dispatches params and writes back the handle.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrStubTest, HandleAttributeProcessForAbility_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleAttributeProcessForAbility_001 start.");
+    EXPECT_NE(mockAmsMgrScheduler_, nullptr);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    WriteInterfaceToken(data);
+
+    const std::string taskId = "task-stub-ut";
+    data.WriteString(taskId);
+    data.WriteInt32(100);  // callerUid
+    data.WriteInt32(200);  // callerPid
+    data.WriteInt32(300);  // targetPid
+
+    const int64_t serverHandle = 42;
+    EXPECT_CALL(*mockAmsMgrScheduler_, AttributeProcessForAbility(taskId, 100, 200, 300, _))
+        .Times(1)
+        .WillOnce(DoAll(SetArgReferee<4>(serverHandle), Return(NO_ERROR)));
+    auto result = mockAmsMgrScheduler_->OnRemoteRequest(
+        static_cast<uint32_t>(IAmsMgr::Message::ATTRIBUTE_PROCESS_FOR_ABILITY), data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), NO_ERROR);
+    EXPECT_EQ(reply.ReadInt64(), serverHandle);
+    TAG_LOGI(AAFwkTag::TEST, "HandleAttributeProcessForAbility_001 end.");
+}
+
+/**
+ * @tc.name: HandleUnregisterTaskAttribution_001
+ * @tc.desc: HandleUnregisterTaskAttribution dispatches params and returns the result code.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrStubTest, HandleUnregisterTaskAttribution_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleUnregisterTaskAttribution_001 start.");
+    EXPECT_NE(mockAmsMgrScheduler_, nullptr);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    WriteInterfaceToken(data);
+
+    const std::string taskId = "task-stub-ut";
+    const int64_t attributionId = 42;
+    data.WriteString(taskId);
+    data.WriteInt64(attributionId);
+
+    EXPECT_CALL(*mockAmsMgrScheduler_, UnregisterTaskAttribution(taskId, attributionId))
+        .Times(1)
+        .WillOnce(Return(ERR_INVALID_VALUE));
+    auto result = mockAmsMgrScheduler_->OnRemoteRequest(
+        static_cast<uint32_t>(IAmsMgr::Message::UNREGISTER_TASK_ATTRIBUTION), data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "HandleUnregisterTaskAttribution_001 end.");
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

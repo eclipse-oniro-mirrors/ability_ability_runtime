@@ -28,6 +28,7 @@
 #include "hilog_tag_wrapper.h"
 #include "param.h"
 #include "perf_profile.h"
+#include "task_mgr/task_manager_service.h"
 #include "permission_constants.h"
 #include "permission_verification.h"
 #include "xcollie/process_kill_reason.h"
@@ -255,6 +256,34 @@ int32_t AmsMgrScheduler::SetGameSAPrelaunch(const sptr<IRemoteObject> &token, bo
     }
 
     return amsMgrServiceInner_->SetGameSAPrelaunch(token, isGameSAPrelaunch);
+}
+
+int32_t AmsMgrScheduler::AttributeProcessForAbility(const std::string &taskId, int32_t callerUid,
+    int32_t callerPid, int32_t targetPid, int64_t &attributionId)
+{
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "AmsMgrScheduler is not ready");
+        return ERR_INVALID_VALUE;
+    }
+    if (IPCSkeleton::GetCallingUid() != FOUNDATION_UID) {
+        TAG_LOGE(AAFwkTag::APPMGR, "not foundation call, uid: %{public}d", IPCSkeleton::GetCallingUid());
+        return ERR_PERMISSION_DENIED;
+    }
+    return TaskManagerService::GetInstance().AttributeProcessForAbility(
+        taskId, callerUid, callerPid, targetPid, attributionId);
+}
+
+int32_t AmsMgrScheduler::UnregisterTaskAttribution(const std::string &taskId, int64_t attributionId)
+{
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "AmsMgrScheduler is not ready");
+        return ERR_INVALID_VALUE;
+    }
+    if (IPCSkeleton::GetCallingUid() != FOUNDATION_UID) {
+        TAG_LOGE(AAFwkTag::APPMGR, "not foundation call, uid: %{public}d", IPCSkeleton::GetCallingUid());
+        return ERR_PERMISSION_DENIED;
+    }
+    return TaskManagerService::GetInstance().UnregisterManagedProcess(taskId, attributionId);
 }
 
 void AmsMgrScheduler::KillProcessesByUserId(int32_t userId, bool isNeedSendAppSpawnMsg,

@@ -50,10 +50,11 @@ int LocalCallContainer::StartAbilityByCallInner(const Want& want, std::shared_pt
     }
     localCallRecord->AddCaller(callback);
     auto remote = localCallRecord->GetRemoteObject();
-    // already finish call request.
+    // already finish call request; taskId still needs the AMS round trip for attribution.
     if (remote) {
         callback->InvokeCallBack(remote);
-        if (!want.GetBoolParam(Want::PARAM_RESV_CALL_TO_FOREGROUND, false)) {
+        if (!want.GetBoolParam(Want::PARAM_RESV_CALL_TO_FOREGROUND, false) &&
+            !want.HasParameter(Want::PARAM_RESV_TASK_ID)) {
             return ERR_OK;
         }
     }

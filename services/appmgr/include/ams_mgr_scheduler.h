@@ -121,6 +121,30 @@ public:
     virtual int32_t SetGameSAPrelaunch(const sptr<IRemoteObject> &token, bool isGameSAPrelaunch) override;
 
     /**
+     * AttributeProcessForAbility, report task attribution for a start-ability call;
+     * only the foundation process (abilitymgr) is allowed to call.
+     *
+     * @param taskId, the attribution key of the task.
+     * @param callerUid, the uid of the start caller (system stamped).
+     * @param callerPid, the pid of the start caller (system stamped).
+     * @param targetPid, the pid of the target process.
+     * @param attributionId, the server-assigned handle of the created attribution.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t AttributeProcessForAbility(const std::string &taskId, int32_t callerUid, int32_t callerPid,
+        int32_t targetPid, int64_t &attributionId) override;
+
+    /**
+     * UnregisterTaskAttribution, remove an attribution by its handle; only the
+     * foundation process (abilitymgr) is allowed to call.
+     *
+     * @param taskId, the attribution key of the task.
+     * @param attributionId, the handle returned by AttributeProcessForAbility.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t UnregisterTaskAttribution(const std::string &taskId, int64_t attributionId) override;
+
+    /**
      * KillProcessesByUserId, call KillProcessesByUserId() through proxy object,
      * kill the processes by userId.
      * Send appSpawn uninstall debug hap message.

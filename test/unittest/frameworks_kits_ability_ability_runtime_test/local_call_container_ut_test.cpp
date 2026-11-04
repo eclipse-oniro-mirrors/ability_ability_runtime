@@ -170,6 +170,52 @@ HWTEST_F(LocalCallContainerTest, Local_Call_Container_StartAbilityInner_0500, Fu
 }
 
 /**
+ * @tc.number: Local_Call_Container_StartAbilityInner_0600
+ * @tc.name: StartAbility
+ * @tc.desc: Cached remote plus a want carrying taskId is not short-circuited;
+ *           the request goes to AMS for attribution.
+ */
+HWTEST_F(LocalCallContainerTest, Local_Call_Container_StartAbilityInner_0600, Function | MediumTest | Level1)
+{
+    auto localCallContainer = std::make_shared<LocalCallContainer>();
+    Want want;
+    want.SetElementName("", "DemoBundleNameB", "DemoAbilityNameB");
+    want.SetParam(Want::PARAM_RESV_TASK_ID, std::string("task-bypass-short-circuit-ut"));
+    std::shared_ptr<CallerCallBack> callback = std::make_shared<CallerCallBack>();
+    callback->SetCallBack([](const sptr<IRemoteObject>&) {});
+    auto localCallRecord = std::make_shared<LocalCallRecord>(want.GetElement());
+    sptr<CallerConnection> connect = new (std::nothrow) CallerConnection();
+    localCallRecord->remoteObject_ = connect;
+    localCallContainer->SetCallLocalRecord(localCallRecord);
+    ErrCode ret = localCallContainer->StartAbilityByCallInner(want, callback, nullptr);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(callback->IsCallBack());
+    EXPECT_EQ(localCallContainer->connections_.size(), 1u);
+}
+
+/**
+ * @tc.number: Local_Call_Container_StartAbilityInner_0700
+ * @tc.name: StartAbility
+ * @tc.desc: Cached remote without taskId is still short-circuited locally.
+ */
+HWTEST_F(LocalCallContainerTest, Local_Call_Container_StartAbilityInner_0700, Function | MediumTest | Level1)
+{
+    auto localCallContainer = std::make_shared<LocalCallContainer>();
+    Want want;
+    want.SetElementName("", "DemoBundleNameB", "DemoAbilityNameB");
+    std::shared_ptr<CallerCallBack> callback = std::make_shared<CallerCallBack>();
+    callback->SetCallBack([](const sptr<IRemoteObject>&) {});
+    auto localCallRecord = std::make_shared<LocalCallRecord>(want.GetElement());
+    sptr<CallerConnection> connect = new (std::nothrow) CallerConnection();
+    localCallRecord->remoteObject_ = connect;
+    localCallContainer->SetCallLocalRecord(localCallRecord);
+    ErrCode ret = localCallContainer->StartAbilityByCallInner(want, callback, nullptr);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(callback->IsCallBack());
+    EXPECT_EQ(localCallContainer->connections_.size(), 0u);
+}
+
+/**
  * @tc.number: Local_Call_Container_Release_0100
  * @tc.name: Release
  * @tc.desc: Local Call Container to process Release, and the result is success.

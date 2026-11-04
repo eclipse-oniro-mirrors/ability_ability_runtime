@@ -32,6 +32,7 @@
 #include "mock_task_handler_wrap.h"
 #include "param.h"
 #include "perf_profile.h"
+#include "task_mgr/task_manager_service.h"
 #include "want.h"
 
 using namespace testing;
@@ -2499,6 +2500,275 @@ HWTEST_F(AmsMgrSchedulerSecondTest, CheckPreloadAppRecordExist_003, TestSize.Lev
     EXPECT_EQ(ret, ERR_OK);
     EXPECT_TRUE(isExist);
     TAG_LOGI(AAFwkTag::TEST, "AmsMgrSchedulerSecondTest_CheckPreloadAppRecordExist_003 end");
+}
+namespace {
+constexpr int32_t TEST_SCHED_CREATOR_UID = 20010001;
+constexpr int32_t TEST_SCHED_OTHER_UID = 20010002;
+constexpr int32_t TEST_SCHED_TARGET_PID = 8300;
+constexpr AttributionId TEST_SCHED_INVALID_ATTRIBUTION_ID = -1;
+const std::string TEST_SCHED_TASK_PREFIX = "ams_sched_attr_";
+}  // namespace
+
+/*
+ * @tc.name: AmsMgrSchedulerSecondTest_AttributeProcessForAbility_001
+ * @tc.desc: Test AttributeProcessForAbility when scheduler is not ready
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrSchedulerSecondTest, AmsMgrSchedulerSecondTest_AttributeProcessForAbility_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AmsMgrSchedulerSecondTest_AttributeProcessForAbility_001 start");
+    IPCSkeleton::SetCallingUid(Constants::FOUNDATION_UID);
+    std::string taskId = TEST_SCHED_TASK_PREFIX + "001";
+    AttributionId attributionId = TEST_SCHED_INVALID_ATTRIBUTION_ID;
+
+    /**
+     * @tc.steps: step1. AttributeProcessForAbility with null appMgrServiceInner
+     * @tc.expected: step1. expect ret ERR_INVALID_VALUE
+     */
+    std::shared_ptr<AmsMgrScheduler> nullInnerScheduler =
+        std::make_shared<AmsMgrScheduler>(nullptr, taskHandler_);
+    EXPECT_EQ(nullInnerScheduler->AttributeProcessForAbility(taskId, TEST_SCHED_CREATOR_UID, 1,
+        TEST_SCHED_TARGET_PID, attributionId), ERR_INVALID_VALUE);
+
+    /**
+     * @tc.steps: step2. AttributeProcessForAbility with null taskHandler
+     * @tc.expected: step2. expect ret ERR_INVALID_VALUE and no attributionId writeback
+     */
+    auto appMgrServiceInner = std::make_shared<MockAppMgrServiceInner>();
+    std::shared_ptr<AmsMgrScheduler> nullHandlerScheduler =
+        std::make_shared<AmsMgrScheduler>(appMgrServiceInner, nullptr);
+    EXPECT_EQ(nullHandlerScheduler->AttributeProcessForAbility(taskId, TEST_SCHED_CREATOR_UID, 1,
+        TEST_SCHED_TARGET_PID, attributionId), ERR_INVALID_VALUE);
+    EXPECT_EQ(attributionId, TEST_SCHED_INVALID_ATTRIBUTION_ID);
+    TAG_LOGI(AAFwkTag::TEST, "AmsMgrSchedulerSecondTest_AttributeProcessForAbility_001 end");
+}
+
+/*
+ * @tc.name: AmsMgrSchedulerSecondTest_AttributeProcessForAbility_002
+ * @tc.desc: Test AttributeProcessForAbility when caller uid is not foundation
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrSchedulerSecondTest, AmsMgrSchedulerSecondTest_AttributeProcessForAbility_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AmsMgrSchedulerSecondTest_AttributeProcessForAbility_002 start");
+    IPCSkeleton::SetCallingUid(TEST_SCHED_CREATOR_UID);
+    std::string taskId = TEST_SCHED_TASK_PREFIX + "002";
+    auto appMgrServiceInner = std::make_shared<MockAppMgrServiceInner>();
+    std::shared_ptr<AmsMgrScheduler> amsMgrScheduler =
+        std::make_shared<AmsMgrScheduler>(appMgrServiceInner, taskHandler_);
+
+    /**
+     * @tc.steps: step1. AttributeProcessForAbility with a non-foundation calling uid
+     * @tc.expected: step1. expect ret ERR_PERMISSION_DENIED, no writeback, no task leaked
+     */
+    AttributionId attributionId = TEST_SCHED_INVALID_ATTRIBUTION_ID;
+    EXPECT_EQ(amsMgrScheduler->AttributeProcessForAbility(taskId, TEST_SCHED_CREATOR_UID, 1,
+        TEST_SCHED_TARGET_PID, attributionId), ERR_PERMISSION_DENIED);
+    EXPECT_EQ(attributionId, TEST_SCHED_INVALID_ATTRIBUTION_ID);
+    EXPECT_EQ(TaskManagerService::GetInstance().DumpActiveTasks().find(taskId), std::string::npos);
+    TAG_LOGI(AAFwkTag::TEST, "AmsMgrSchedulerSecondTest_AttributeProcessForAbility_002 end");
+}
+
+/*
+ * @tc.name: AmsMgrSchedulerSecondTest_AttributeProcessForAbility_003
+ * @tc.desc: Test AttributeProcessForAbility forwarded to the task manager on success
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrSchedulerSecondTest, AmsMgrSchedulerSecondTest_AttributeProcessForAbility_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AmsMgrSchedulerSecondTest_AttributeProcessForAbility_003 start");
+    auto &taskManager = TaskManagerService::GetInstance();
+    std::string taskId = TEST_SCHED_TASK_PREFIX + "003";
+    // create the task as the creator uid, then switch the caller to foundation
+    IPCSkeleton::SetCallingUid(TEST_SCHED_CREATOR_UID);
+    EXPECT_EQ(taskManager.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+
+    IPCSkeleton::SetCallingUid(Constants::FOUNDATION_UID);
+    auto appMgrServiceInner = std::make_shared<MockAppMgrServiceInner>();
+    std::shared_ptr<AmsMgrScheduler> amsMgrScheduler =
+        std::make_shared<AmsMgrScheduler>(appMgrServiceInner, taskHandler_);
+
+    /**
+     * @tc.steps: step1. AttributeProcessForAbility twice with a valid live task
+     * @tc.expected: step1. expect ret ERR_OK and each call writes back a fresh handle
+     */
+    AttributionId firstId = 0;
+    EXPECT_EQ(amsMgrScheduler->AttributeProcessForAbility(taskId, TEST_SCHED_CREATOR_UID, 1,
+        TEST_SCHED_TARGET_PID, firstId), ERR_OK);
+    EXPECT_GT(firstId, 0);
+    AttributionId secondId = 0;
+    EXPECT_EQ(amsMgrScheduler->AttributeProcessForAbility(taskId, TEST_SCHED_CREATOR_UID, 1,
+        TEST_SCHED_TARGET_PID, secondId), ERR_OK);
+    EXPECT_GT(secondId, 0);
+    EXPECT_NE(secondId, firstId);
+
+    /**
+     * @tc.steps: step2. UnregisterTaskAttribution through the scheduler with both handles
+     * @tc.expected: step2. the handles are really registered downstream: unregister
+     *                    succeeds once and a retired handle is rejected
+     */
+    EXPECT_EQ(amsMgrScheduler->UnregisterTaskAttribution(taskId, firstId), ERR_OK);
+    EXPECT_EQ(amsMgrScheduler->UnregisterTaskAttribution(taskId, secondId), ERR_OK);
+    EXPECT_EQ(amsMgrScheduler->UnregisterTaskAttribution(taskId, firstId), ERR_ATTRIBUTION_NOT_FOUND);
+
+    // finish as the creator uid, otherwise FinishTask rejects the caller
+    IPCSkeleton::SetCallingUid(TEST_SCHED_CREATOR_UID);
+    EXPECT_EQ(taskManager.FinishTask(taskId), ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "AmsMgrSchedulerSecondTest_AttributeProcessForAbility_003 end");
+}
+
+/*
+ * @tc.name: AmsMgrSchedulerSecondTest_AttributeProcessForAbility_004
+ * @tc.desc: Test AttributeProcessForAbility passthrough of downstream error codes
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrSchedulerSecondTest, AmsMgrSchedulerSecondTest_AttributeProcessForAbility_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AmsMgrSchedulerSecondTest_AttributeProcessForAbility_004 start");
+    auto &taskManager = TaskManagerService::GetInstance();
+    std::string taskId = TEST_SCHED_TASK_PREFIX + "004";
+    IPCSkeleton::SetCallingUid(TEST_SCHED_CREATOR_UID);
+    EXPECT_EQ(taskManager.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+
+    IPCSkeleton::SetCallingUid(Constants::FOUNDATION_UID);
+    auto appMgrServiceInner = std::make_shared<MockAppMgrServiceInner>();
+    std::shared_ptr<AmsMgrScheduler> amsMgrScheduler =
+        std::make_shared<AmsMgrScheduler>(appMgrServiceInner, taskHandler_);
+    AttributionId attributionId = 0;
+
+    /**
+     * @tc.steps: step1. attribute on a task that is not alive
+     * @tc.expected: step1. expect ret ERR_TASK_NOT_FOUND
+     */
+    EXPECT_EQ(amsMgrScheduler->AttributeProcessForAbility(TEST_SCHED_TASK_PREFIX + "004_none",
+        TEST_SCHED_CREATOR_UID, 1, TEST_SCHED_TARGET_PID, attributionId), ERR_TASK_NOT_FOUND);
+
+    /**
+     * @tc.steps: step2. attribute with a caller uid that is not the task creator
+     * @tc.expected: step2. expect ret ERR_TASK_NOT_FOUND
+     */
+    EXPECT_EQ(amsMgrScheduler->AttributeProcessForAbility(taskId, TEST_SCHED_OTHER_UID, 1,
+        TEST_SCHED_TARGET_PID, attributionId), ERR_TASK_NOT_FOUND);
+
+    /**
+     * @tc.steps: step3. attribute with an invalid taskId or an invalid target pid
+     * @tc.expected: step3. expect ret INVALID_PARAMETERS_ERR and no usable handle
+     */
+    std::string tooLongTaskId(TASK_ID_MAX_LEN + 1, 'a');
+    EXPECT_EQ(amsMgrScheduler->AttributeProcessForAbility("", TEST_SCHED_CREATOR_UID, 1,
+        TEST_SCHED_TARGET_PID, attributionId), INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(amsMgrScheduler->AttributeProcessForAbility(tooLongTaskId, TEST_SCHED_CREATOR_UID, 1,
+        TEST_SCHED_TARGET_PID, attributionId), INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(amsMgrScheduler->AttributeProcessForAbility(taskId, TEST_SCHED_CREATOR_UID, 1, 0,
+        attributionId), INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(amsMgrScheduler->AttributeProcessForAbility(taskId, TEST_SCHED_CREATOR_UID, 1, -1,
+        attributionId), INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(attributionId, 0);
+
+    IPCSkeleton::SetCallingUid(TEST_SCHED_CREATOR_UID);
+    EXPECT_EQ(taskManager.FinishTask(taskId), ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "AmsMgrSchedulerSecondTest_AttributeProcessForAbility_004 end");
+}
+
+/*
+ * @tc.name: AmsMgrSchedulerSecondTest_UnregisterTaskAttribution_001
+ * @tc.desc: Test UnregisterTaskAttribution when scheduler is not ready
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrSchedulerSecondTest, AmsMgrSchedulerSecondTest_UnregisterTaskAttribution_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AmsMgrSchedulerSecondTest_UnregisterTaskAttribution_001 start");
+    IPCSkeleton::SetCallingUid(Constants::FOUNDATION_UID);
+    std::string taskId = TEST_SCHED_TASK_PREFIX + "unreg_001";
+
+    /**
+     * @tc.steps: step1. UnregisterTaskAttribution with null appMgrServiceInner or null taskHandler
+     * @tc.expected: step1. expect ret ERR_INVALID_VALUE
+     */
+    std::shared_ptr<AmsMgrScheduler> nullInnerScheduler =
+        std::make_shared<AmsMgrScheduler>(nullptr, taskHandler_);
+    EXPECT_EQ(nullInnerScheduler->UnregisterTaskAttribution(taskId, 1), ERR_INVALID_VALUE);
+    auto appMgrServiceInner = std::make_shared<MockAppMgrServiceInner>();
+    std::shared_ptr<AmsMgrScheduler> nullHandlerScheduler =
+        std::make_shared<AmsMgrScheduler>(appMgrServiceInner, nullptr);
+    EXPECT_EQ(nullHandlerScheduler->UnregisterTaskAttribution(taskId, 1), ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "AmsMgrSchedulerSecondTest_UnregisterTaskAttribution_001 end");
+}
+
+/*
+ * @tc.name: AmsMgrSchedulerSecondTest_UnregisterTaskAttribution_002
+ * @tc.desc: Test UnregisterTaskAttribution when caller uid is not foundation
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrSchedulerSecondTest, AmsMgrSchedulerSecondTest_UnregisterTaskAttribution_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AmsMgrSchedulerSecondTest_UnregisterTaskAttribution_002 start");
+    IPCSkeleton::SetCallingUid(TEST_SCHED_CREATOR_UID);
+    auto appMgrServiceInner = std::make_shared<MockAppMgrServiceInner>();
+    std::shared_ptr<AmsMgrScheduler> amsMgrScheduler =
+        std::make_shared<AmsMgrScheduler>(appMgrServiceInner, taskHandler_);
+
+    /**
+     * @tc.steps: step1. UnregisterTaskAttribution with a non-foundation calling uid
+     * @tc.expected: step1. expect ret ERR_PERMISSION_DENIED
+     */
+    EXPECT_EQ(amsMgrScheduler->UnregisterTaskAttribution(TEST_SCHED_TASK_PREFIX + "unreg_002", 1),
+        ERR_PERMISSION_DENIED);
+    TAG_LOGI(AAFwkTag::TEST, "AmsMgrSchedulerSecondTest_UnregisterTaskAttribution_002 end");
+}
+
+/*
+ * @tc.name: AmsMgrSchedulerSecondTest_UnregisterTaskAttribution_003
+ * @tc.desc: Test UnregisterTaskAttribution forwarded to the task manager
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrSchedulerSecondTest, AmsMgrSchedulerSecondTest_UnregisterTaskAttribution_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AmsMgrSchedulerSecondTest_UnregisterTaskAttribution_003 start");
+    auto &taskManager = TaskManagerService::GetInstance();
+    std::string taskId = TEST_SCHED_TASK_PREFIX + "unreg_003";
+    IPCSkeleton::SetCallingUid(TEST_SCHED_CREATOR_UID);
+    EXPECT_EQ(taskManager.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    AttributionRecord attribution;
+    attribution.pid = TEST_SCHED_TARGET_PID;
+    attribution.tool = AttributionTool::INSIGHT;
+    AttributionId attributionId = 0;
+    EXPECT_EQ(taskManager.RegisterManagedProcess(taskId, attribution, attributionId), ERR_OK);
+
+    IPCSkeleton::SetCallingUid(Constants::FOUNDATION_UID);
+    auto appMgrServiceInner = std::make_shared<MockAppMgrServiceInner>();
+    std::shared_ptr<AmsMgrScheduler> amsMgrScheduler =
+        std::make_shared<AmsMgrScheduler>(appMgrServiceInner, taskHandler_);
+
+    /**
+     * @tc.steps: step1. UnregisterTaskAttribution with a live handle
+     * @tc.expected: step1. expect ret ERR_OK (the downstream registration is removed)
+     */
+    EXPECT_EQ(amsMgrScheduler->UnregisterTaskAttribution(taskId, attributionId), ERR_OK);
+
+    /**
+     * @tc.steps: step2. UnregisterTaskAttribution with invalid params
+     * @tc.expected: step2. expect ret INVALID_PARAMETERS_ERR
+     */
+    EXPECT_EQ(amsMgrScheduler->UnregisterTaskAttribution(taskId, 0), INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(amsMgrScheduler->UnregisterTaskAttribution(taskId, -1), INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(amsMgrScheduler->UnregisterTaskAttribution("", attributionId), INVALID_PARAMETERS_ERR);
+    std::string tooLongTaskId(TASK_ID_MAX_LEN + 1, 'a');
+    EXPECT_EQ(amsMgrScheduler->UnregisterTaskAttribution(tooLongTaskId, attributionId),
+        INVALID_PARAMETERS_ERR);
+
+    /**
+     * @tc.steps: step3. UnregisterTaskAttribution on a task that is not alive
+     *                    and on an already retired handle
+     * @tc.expected: step3. expect ret ERR_TASK_NOT_FOUND / ERR_ATTRIBUTION_NOT_FOUND
+     */
+    EXPECT_EQ(amsMgrScheduler->UnregisterTaskAttribution(TEST_SCHED_TASK_PREFIX + "unreg_003_none",
+        attributionId), ERR_TASK_NOT_FOUND);
+    EXPECT_EQ(amsMgrScheduler->UnregisterTaskAttribution(taskId, attributionId), ERR_ATTRIBUTION_NOT_FOUND);
+
+    IPCSkeleton::SetCallingUid(TEST_SCHED_CREATOR_UID);
+    EXPECT_EQ(taskManager.FinishTask(taskId), ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "AmsMgrSchedulerSecondTest_UnregisterTaskAttribution_003 end");
 }
 } // AppExecFwk
 } // OHOS

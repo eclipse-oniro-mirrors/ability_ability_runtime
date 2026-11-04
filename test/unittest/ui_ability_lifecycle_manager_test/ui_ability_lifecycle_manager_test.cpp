@@ -9601,5 +9601,270 @@ HWTEST_F(UIAbilityLifecycleManagerTest, BackToCallerAppWithResultLocked_006, Tes
     EXPECT_FALSE(activation->want.HasParameter(Want::PARAM_APP_CLONE_INDEX_KEY));
 }
 
+/**
+ * @tc.name: StartUIAbility_TaskAttributionColdStartStash_0100
+ * @tc.desc: A cold start with the task-attribution key stashes the caller identity
+ *           into the record's pending map for the attach-time report.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionColdStartStash_0100, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    abilityRequest.want.SetParam(Want::PARAM_RESV_TASK_ID, std::string("task-cold-ut"));
+    abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_UID, 3001);
+    abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_PID, 4001);
+
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 51;
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    EXPECT_EQ(mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart), ERR_OK);
+    EXPECT_TRUE(isColdStart);
+    auto record = mgr->sessionAbilityMap_[51];
+    ASSERT_NE(record, nullptr);
+    const auto &pending = record->GetPendingTaskAttributions();
+    ASSERT_EQ(pending.size(), static_cast<size_t>(1));
+    EXPECT_EQ(pending.at("task-cold-ut").callerUid, 3001);
+    EXPECT_EQ(pending.at("task-cold-ut").callerPid, 4001);
+}
+
+/**
+ * @tc.name: StartUIAbility_TaskAttributionNoKeyNoStash_0200
+ * @tc.desc: A cold start without the task-attribution key leaves the pending map empty.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionNoKeyNoStash_0200, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 52;
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    EXPECT_EQ(mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart), ERR_OK);
+    auto record = mgr->sessionAbilityMap_[52];
+    ASSERT_NE(record, nullptr);
+    EXPECT_TRUE(record->GetPendingTaskAttributions().empty());
+    EXPECT_TRUE(record->GetTaskAttributions().empty());
+}
+
+/**
+ * @tc.name: StartUIAbility_TaskAttributionReusePreAttachStash_0300
+ * @tc.desc: A warm reuse before the ability thread attached (pid unknown) stashes the
+ *           context into the pending map instead of dropping the key.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionReusePreAttachStash_0300, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 53;
+
+    AbilityRequest createRequest;
+    createRequest.abilityInfo.name = "MainAbility";
+    createRequest.abilityInfo.bundleName = "com.example.unittest";
+    createRequest.abilityInfo.moduleName = "entry";
+    createRequest.sessionInfo = sessionInfo;
+    auto record = UIAbilityRecord::CreateAbilityRecord(createRequest);
+    ASSERT_NE(record, nullptr);
+    EXPECT_LE(record->GetPid(), 0);
+    mgr->sessionAbilityMap_.emplace(53, record);
+
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo = createRequest.abilityInfo;
+    abilityRequest.want.SetParam(Want::PARAM_RESV_TASK_ID, std::string("task-warm-ut"));
+    abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_UID, 5001);
+    abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_PID, 6001);
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    EXPECT_EQ(mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart), ERR_OK);
+    EXPECT_FALSE(isColdStart);
+    const auto &pending = record->GetPendingTaskAttributions();
+    ASSERT_EQ(pending.size(), static_cast<size_t>(1));
+    EXPECT_EQ(pending.at("task-warm-ut").callerUid, 5001);
+    EXPECT_EQ(pending.at("task-warm-ut").callerPid, 6001);
+}
+
+/**
+ * @tc.name: StartUIAbility_TaskAttributionReusePidReadyDropped_0400
+ * @tc.desc: A warm reuse with a live pid reports immediately; with the appmgr service
+ *           unreachable in UT the report is dropped (no accounting, no residue).
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionReusePidReadyDropped_0400, TestSize.Level1)
+{
+    // shared_ptr ownership: the warm-reuse deep path (MarkStartingFlag -> AddStartingPid)
+    // captures shared_from_this(); a make_unique manager would abort on bad_weak_ptr.
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 54;
+
+    AbilityRequest createRequest;
+    createRequest.abilityInfo.name = "MainAbility";
+    createRequest.abilityInfo.bundleName = "com.example.unittest";
+    createRequest.abilityInfo.moduleName = "entry";
+    createRequest.sessionInfo = sessionInfo;
+    auto record = UIAbilityRecord::CreateAbilityRecord(createRequest);
+    ASSERT_NE(record, nullptr);
+    record->SetPid(4321);
+    mgr->sessionAbilityMap_.emplace(54, record);
+
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo = createRequest.abilityInfo;
+    abilityRequest.want.SetParam(Want::PARAM_RESV_TASK_ID, std::string("task-warm-live-ut"));
+    abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_UID, 5001);
+    abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_PID, 6001);
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    EXPECT_EQ(mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart), ERR_OK);
+    // report attempted and dropped: neither accounted nor left pending
+    EXPECT_TRUE(record->GetTaskAttributions().empty());
+    EXPECT_TRUE(record->GetPendingTaskAttributions().empty());
+}
+
+/**
+ * @tc.name: GenerateAbilityRecord_TaskAttributionRetargetedStash_0100
+ * @tc.desc: A retargeted start (tmp map hit) before attach stashes the context into
+ *           the pending map.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, GenerateAbilityRecord_TaskAttributionRetargetedStash_0100, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest createRequest;
+    createRequest.abilityInfo.name = "MainAbility";
+    createRequest.abilityInfo.bundleName = "com.example.unittest";
+    createRequest.abilityInfo.moduleName = "entry";
+    auto record = UIAbilityRecord::CreateAbilityRecord(createRequest);
+    ASSERT_NE(record, nullptr);
+    mgr->tmpAbilityMap_[101] = record;
+
+    AbilityRequest request;
+    request.abilityInfo = createRequest.abilityInfo;
+    request.want.SetParam(Want::PARAM_RESV_TASK_ID, std::string("task-retarget-ut"));
+    request.want.SetParam(Want::PARAM_RESV_CALLER_UID, 7001);
+    request.want.SetParam(Want::PARAM_RESV_CALLER_PID, 8001);
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->persistentId = 55;
+    bool isColdStart = false;
+
+    auto ret = mgr->GenerateAbilityRecord(request, sessionInfo, isColdStart);
+    EXPECT_EQ(ret, record);
+    const auto &pending = record->GetPendingTaskAttributions();
+    ASSERT_EQ(pending.size(), static_cast<size_t>(1));
+    EXPECT_EQ(pending.at("task-retarget-ut").callerUid, 7001);
+    EXPECT_EQ(pending.at("task-retarget-ut").callerPid, 8001);
+}
+
+/**
+ * @tc.name: GenerateAbilityRecord_TaskAttributionRetargetedPidReadyDropped_0200
+ * @tc.desc: A retargeted start with a live pid reports immediately; with the appmgr
+ *           service unreachable in UT the report is dropped.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, GenerateAbilityRecord_TaskAttributionRetargetedPidReadyDropped_0200,
+    TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest createRequest;
+    createRequest.abilityInfo.name = "MainAbility";
+    createRequest.abilityInfo.bundleName = "com.example.unittest";
+    createRequest.abilityInfo.moduleName = "entry";
+    auto record = UIAbilityRecord::CreateAbilityRecord(createRequest);
+    ASSERT_NE(record, nullptr);
+    record->SetPid(4322);
+    mgr->tmpAbilityMap_[102] = record;
+
+    AbilityRequest request;
+    request.abilityInfo = createRequest.abilityInfo;
+    request.want.SetParam(Want::PARAM_RESV_TASK_ID, std::string("task-retarget-live-ut"));
+    request.want.SetParam(Want::PARAM_RESV_CALLER_UID, 7001);
+    request.want.SetParam(Want::PARAM_RESV_CALLER_PID, 8001);
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->persistentId = 56;
+    bool isColdStart = false;
+
+    auto ret = mgr->GenerateAbilityRecord(request, sessionInfo, isColdStart);
+    EXPECT_EQ(ret, record);
+    EXPECT_TRUE(record->GetTaskAttributions().empty());
+    EXPECT_TRUE(record->GetPendingTaskAttributions().empty());
+}
+
+/**
+ * @tc.name: AttachAbilityThread_TaskAttributionConsumesPending_0100
+ * @tc.desc: The attach-time report consumes the stashed contexts (pending cleared
+ *           even for an invalid empty key); with the appmgr service unreachable in
+ *           UT the report is dropped without accounting.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, AttachAbilityThread_TaskAttributionConsumesPending_0100, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.sessionInfo = new SessionInfo();
+    abilityRequest.sessionInfo->persistentId = 57;
+
+    auto record = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(record, nullptr);
+    record->SetPendingTaskAttribution("task-attach-ut", 9001, 1001);
+    // empty key: gated inside the report core, but still consumed on clear
+    record->SetPendingTaskAttribution("", 9002, 1002);
+    auto token = record->GetToken();
+    mgr->sessionAbilityMap_.emplace(57, record);
+
+    auto result = mgr->AttachAbilityThread(nullptr, token->AsObject());
+    EXPECT_EQ(result, ERR_OK);
+    // the pending contexts were consumed and cleared at attach
+    EXPECT_TRUE(record->GetPendingTaskAttributions().empty());
+    // report dropped (appmgr service unreachable in UT): no accounting
+    EXPECT_TRUE(record->GetTaskAttributions().empty());
+}
+
+/**
+ * @tc.name: OnAbilityDied_TaskAttributionUnregister_0100
+ * @tc.desc: An unexpected death iterates every attribution handle held by the record
+ *           and attempts to unregister it (both per-entry outcomes stay safe).
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, OnAbilityDied_TaskAttributionUnregister_0100, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.sessionInfo = new SessionInfo();
+    abilityRequest.sessionInfo->persistentId = 58;
+
+    auto record = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(record, nullptr);
+    record->AddTaskAttribution("task-died-1", 11);
+    record->AddTaskAttribution("task-died-2", 22);
+    mgr->sessionAbilityMap_.emplace(58, record);
+
+    // unregistration fails (appmgr service unreachable in UT) for every entry: no crash,
+    // and the death sweep reads the bookkeeping without mutating it (iterator-stability)
+    mgr->OnAbilityDied(record);
+    EXPECT_EQ(record->GetTaskAttributions().size(), static_cast<size_t>(2));
+    mgr.reset();
+}
+
 }  // namespace AAFwk
 }  // namespace OHOS

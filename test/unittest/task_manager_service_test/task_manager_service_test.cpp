@@ -50,6 +50,7 @@ constexpr pid_t TEST_OTHER_PID = 101;
 constexpr pid_t TEST_MANAGED_PID = 4321;
 constexpr AttributionId TEST_UNKNOWN_ATTRIBUTION_ID = 9999;
 constexpr int32_t TEST_HIDUMPER_SERVICE_UID = 1212;
+constexpr int32_t TEST_TARGET_UID = 20000003;
 constexpr int64_t TEST_SLEEP_MILLIS = 20;
 // same bit the access token kit checks in IsSystemAppByFullTokenID
 constexpr uint64_t TEST_SYSTEM_APP_FLAG = (1ULL << 32);
@@ -904,6 +905,427 @@ HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0400, TestSize.Level1
     EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task"}), result),
         DumpErrorCode::ERR_PERMISSION_DENY_ERROR);
     EXPECT_NE(result.find("permission deny"), std::string::npos);
+}
+
+/**
+ * @tc.number: TaskManagerService_AttributeProcessForAbility_0100
+ * @tc.name: attribute process via startAbility by the creator
+ * @tc.desc: a creator-uid caller attributes the target process with the ability tool and
+ *           the inactivity window restarts.
+ */
+HWTEST_F(TaskManagerServiceTest, TaskManagerService_AttributeProcessForAbility_0100, TestSize.Level1)
+{
+    auto &service = TaskManagerService::GetInstance();
+    std::string taskId = MakeTaskId("attr_0100");
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    int64_t deadline = 0;
+    {
+        std::lock_guard<ffrt::mutex> lock(service.tasksMutex_);
+        deadline = service.tasks_[taskId].deadlineMillis;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(TEST_SLEEP_MILLIS));
+    AttributionId attributionId = 0;
+    EXPECT_EQ(service.AttributeProcessForAbility(taskId, TEST_CREATOR_UID, TEST_CREATOR_PID,
+        TEST_MANAGED_PID, attributionId), ERR_OK);
+    EXPECT_NE(attributionId, 0);
+    EXPECT_NE(service.DumpActiveTasks().find(std::to_string(attributionId) + ":" +
+        std::to_string(TEST_MANAGED_PID) + "(ability)"), std::string::npos);
+    int64_t newDeadline = 0;
+    {
+        std::lock_guard<ffrt::mutex> lock(service.tasksMutex_);
+        newDeadline = service.tasks_[taskId].deadlineMillis;
+        EXPECT_EQ(service.tasks_[taskId].attributions.size(), static_cast<size_t>(1));
+        EXPECT_EQ(service.tasks_[taskId].attributions[attributionId].tool, AttributionTool::ABILITY);
+        EXPECT_EQ(service.tasks_[taskId].attributions[attributionId].pid, TEST_MANAGED_PID);
+    }
+    // the window restart must be a fresh full window: the deadline moved forward by the
+    // elapsed time (>= sleep) but never by more than one full timeout.
+    EXPECT_GE(newDeadline - deadline, TEST_SLEEP_MILLIS);
+    EXPECT_LE(newDeadline - deadline,
+        static_cast<int64_t>(service.GetTimeoutSeconds()) * 1000);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
+}
+
+/**
+ * @tc.number: TaskManagerService_AttributeProcessForAbility_0200
+ * @tc.name: attribute process via startAbility by a task member
+ * @tc.desc: the startAbility channel trusts the task creator alone: a managed member
+ *           process carrying the key is not a reporter and no attribution happens.
+ */
+HWTEST_F(TaskManagerServiceTest, TaskManagerService_AttributeProcessForAbility_0200, TestSize.Level1)
+{
+    auto &service = TaskManagerService::GetInstance();
+    std::string taskId = MakeTaskId("attr_0200");
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    AttributionRecord attribution;
+    attribution.pid = TEST_OTHER_PID;
+    attribution.tool = AttributionTool::INSIGHT;
+    AttributionId memberId = 0;
+    EXPECT_EQ(service.RegisterManagedProcess(taskId, attribution, memberId), ERR_OK);
+
+    // the managed member (different uid than the creator) is rejected while its entry is alive
+    AttributionId attributionId = 0;
+    EXPECT_EQ(service.AttributeProcessForAbility(taskId, TEST_OTHER_UID, TEST_OTHER_PID,
+        TEST_MANAGED_PID, attributionId), AAFwk::ERR_TASK_NOT_FOUND);
+    EXPECT_EQ(attributionId, 0);
+    EXPECT_EQ(service.DumpActiveTasks().find(std::to_string(TEST_MANAGED_PID) + "(ability)"),
+        std::string::npos);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
+}
+
+/**
+ * @tc.number: TaskManagerService_AttributeProcessForAbility_0300
+ * @tc.name: attribute process via startAbility with a spoofed taskId
+ * @tc.desc: a caller that is not the task creator is rejected: no attribution happens
+ *           and the code does not disclose existence.
+ */
+HWTEST_F(TaskManagerServiceTest, TaskManagerService_AttributeProcessForAbility_0300, TestSize.Level1)
+{
+    auto &service = TaskManagerService::GetInstance();
+    std::string taskId = MakeTaskId("attr_0300");
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    AttributionId attributionId = 0;
+    EXPECT_EQ(service.AttributeProcessForAbility(taskId, TEST_OTHER_UID, TEST_OTHER_PID,
+        TEST_MANAGED_PID, attributionId), AAFwk::ERR_TASK_NOT_FOUND);
+    EXPECT_EQ(attributionId, 0);
+    EXPECT_EQ(service.DumpActiveTasks().find(std::to_string(TEST_MANAGED_PID) + "(ability)"),
+        std::string::npos);
+    // a negative uid is not the creator either
+    EXPECT_EQ(service.AttributeProcessForAbility(taskId, -1, TEST_CREATOR_PID, TEST_MANAGED_PID,
+        attributionId), AAFwk::ERR_TASK_NOT_FOUND);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
+}
+
+/**
+ * @tc.number: TaskManagerService_AttributeProcessForAbility_0400
+ * @tc.name: attribute process via startAbility with a replayed taskId
+ * @tc.desc: a taskId of a finished or never-existing task is not trusted: no attribution
+ *           happens.
+ */
+HWTEST_F(TaskManagerServiceTest, TaskManagerService_AttributeProcessForAbility_0400, TestSize.Level1)
+{
+    auto &service = TaskManagerService::GetInstance();
+    std::string taskId = MakeTaskId("attr_0400");
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
+    AttributionId attributionId = 0;
+    // finished task: replay
+    EXPECT_EQ(service.AttributeProcessForAbility(taskId, TEST_CREATOR_UID, TEST_CREATOR_PID,
+        TEST_MANAGED_PID, attributionId), AAFwk::ERR_TASK_NOT_FOUND);
+    // never-existing task
+    EXPECT_EQ(service.AttributeProcessForAbility(MakeTaskId("attr_0400_none"), TEST_CREATOR_UID,
+        TEST_CREATOR_PID, TEST_MANAGED_PID, attributionId), AAFwk::ERR_TASK_NOT_FOUND);
+    EXPECT_EQ(service.DumpActiveTasks().find(std::to_string(TEST_MANAGED_PID) + "(ability)"),
+        std::string::npos);
+}
+
+/**
+ * @tc.number: TaskManagerService_AttributeProcessForAbility_0500
+ * @tc.name: attribute process via startAbility with invalid params
+ * @tc.desc: an empty/oversized taskId or a non-positive target pid is rejected.
+ */
+HWTEST_F(TaskManagerServiceTest, TaskManagerService_AttributeProcessForAbility_0500, TestSize.Level1)
+{
+    auto &service = TaskManagerService::GetInstance();
+    std::string taskId = MakeTaskId("attr_0500");
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    AttributionId attributionId = 0;
+    EXPECT_EQ(service.AttributeProcessForAbility("", TEST_CREATOR_UID, TEST_CREATOR_PID,
+        TEST_MANAGED_PID, attributionId), AAFwk::INVALID_PARAMETERS_ERR);
+    std::string tooLongTaskId(TASK_ID_MAX_LEN + 1, 'd');
+    EXPECT_EQ(service.AttributeProcessForAbility(tooLongTaskId, TEST_CREATOR_UID, TEST_CREATOR_PID,
+        TEST_MANAGED_PID, attributionId), AAFwk::INVALID_PARAMETERS_ERR);
+    // control characters are never legitimate in a taskId and would allow log-line
+    // injection in the security logs
+    std::string injectedTaskId = "evil\r\n2026-10-15 fake-audit-line";
+    EXPECT_EQ(service.AttributeProcessForAbility(injectedTaskId, TEST_CREATOR_UID, TEST_CREATOR_PID,
+        TEST_MANAGED_PID, attributionId), AAFwk::INVALID_PARAMETERS_ERR);
+    // one-character taskId is the valid length boundary
+    EXPECT_EQ(service.StartTask("x", TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.AttributeProcessForAbility("x", TEST_CREATOR_UID, TEST_CREATOR_PID,
+        TEST_MANAGED_PID, attributionId), ERR_OK);
+    EXPECT_EQ(service.FinishTask("x"), ERR_OK);
+    EXPECT_EQ(service.AttributeProcessForAbility(taskId, TEST_CREATOR_UID, TEST_CREATOR_PID, 0,
+        attributionId), AAFwk::INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(service.DumpActiveTasks().find("(ability)"), std::string::npos);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
+}
+
+/**
+ * @tc.number: TaskManagerService_AttributeProcessForAbility_0600
+ * @tc.name: warm restart re-attribution retires the previous handle
+ * @tc.desc: each attribution gets a fresh handle; retiring the previous one before
+ *           re-registering keeps a single live entry and restarts the window again.
+ */
+HWTEST_F(TaskManagerServiceTest, TaskManagerService_AttributeProcessForAbility_0600, TestSize.Level1)
+{
+    auto &service = TaskManagerService::GetInstance();
+    std::string taskId = MakeTaskId("attr_0600");
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    AttributionId firstId = 0;
+    EXPECT_EQ(service.AttributeProcessForAbility(taskId, TEST_CREATOR_UID, TEST_CREATOR_PID,
+        TEST_MANAGED_PID, firstId), ERR_OK);
+    int64_t deadline = 0;
+    {
+        std::lock_guard<ffrt::mutex> lock(service.tasksMutex_);
+        deadline = service.tasks_[taskId].deadlineMillis;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(TEST_SLEEP_MILLIS));
+    // the same pid is re-attributed on a warm start after retiring the previous handle
+    EXPECT_EQ(service.UnregisterManagedProcess(taskId, firstId), ERR_OK);
+    AttributionId secondId = 0;
+    EXPECT_EQ(service.AttributeProcessForAbility(taskId, TEST_CREATOR_UID, TEST_CREATOR_PID,
+        TEST_MANAGED_PID, secondId), ERR_OK);
+    EXPECT_NE(secondId, firstId);
+    {
+        std::lock_guard<ffrt::mutex> lock(service.tasksMutex_);
+        EXPECT_EQ(service.tasks_[taskId].attributions.size(), static_cast<size_t>(1));
+        EXPECT_EQ(service.tasks_[taskId].attributions[secondId].tool, AttributionTool::ABILITY);
+        // the window restart must be a fresh full window: the deadline
+        // moved forward by at least the sleep but by no more than one full timeout.
+        EXPECT_GE(service.tasks_[taskId].deadlineMillis - deadline, TEST_SLEEP_MILLIS);
+        EXPECT_LE(service.tasks_[taskId].deadlineMillis - deadline,
+            static_cast<int64_t>(service.GetTimeoutSeconds()) * 1000);
+    }
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
+}
+
+/**
+ * @tc.number: TaskManagerService_AttributeProcessForAbility_0700
+ * @tc.name: member rejection holds regardless of the member entry lifecycle
+ * @tc.desc: creator-only authorization is independent of the managed set: a member is
+ *           rejected whether its attribution entry is alive or already retired.
+ */
+HWTEST_F(TaskManagerServiceTest, TaskManagerService_AttributeProcessForAbility_0700, TestSize.Level1)
+{
+    auto &service = TaskManagerService::GetInstance();
+    std::string taskId = MakeTaskId("attr_0700");
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    AttributionRecord attribution;
+    attribution.pid = TEST_OTHER_PID;
+    attribution.tool = AttributionTool::INSIGHT;
+    AttributionId memberId = 0;
+    EXPECT_EQ(service.RegisterManagedProcess(taskId, attribution, memberId), ERR_OK);
+
+    // the member is rejected while its entry is alive
+    AttributionId attributionId = 0;
+    EXPECT_EQ(service.AttributeProcessForAbility(taskId, TEST_OTHER_UID, TEST_OTHER_PID,
+        TEST_MANAGED_PID, attributionId), AAFwk::ERR_TASK_NOT_FOUND);
+    // the member entry is retired by its handle: the rejection is unchanged
+    EXPECT_EQ(service.UnregisterManagedProcess(taskId, memberId), ERR_OK);
+    EXPECT_EQ(service.AttributeProcessForAbility(taskId, TEST_OTHER_UID, TEST_OTHER_PID,
+        TEST_MANAGED_PID + 1, attributionId), AAFwk::ERR_TASK_NOT_FOUND);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
+}
+
+/**
+ * @tc.number: TaskManagerService_AttributeProcessForAbility_0800
+ * @tc.name: attribution quota bounds the startAbility channel
+ * @tc.desc: once the per-task attribution set reaches TASK_MAX_ATTRIBUTIONS_PER_TASK,
+ *           further attributions are dropped.
+ */
+HWTEST_F(TaskManagerServiceTest, TaskManagerService_AttributeProcessForAbility_0800, TestSize.Level1)
+{
+    auto &service = TaskManagerService::GetInstance();
+    std::string taskId = MakeTaskId("attr_0800");
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    AttributionId attributionId = 0;
+    for (size_t i = 0; i < TASK_MAX_ATTRIBUTIONS_PER_TASK; ++i) {
+        EXPECT_EQ(service.AttributeProcessForAbility(taskId, TEST_CREATOR_UID, TEST_CREATOR_PID,
+            static_cast<pid_t>(5000 + i), attributionId), ERR_OK);
+    }
+    // quota reached: a new attribution is dropped
+    EXPECT_EQ(service.AttributeProcessForAbility(taskId, TEST_CREATOR_UID, TEST_CREATOR_PID,
+        TEST_MANAGED_PID, attributionId), ERR_INVALID_OPERATION);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
+}
+
+/**
+ * @tc.number: TaskManagerService_RegisterManagedProcessQuota_0900
+ * @tc.name: attribution quota bounds the register channel
+ * @tc.desc: the per-task attribution quota also bounds RegisterManagedProcess: once the
+ *           set reaches TASK_MAX_ATTRIBUTIONS_PER_TASK, further registrations are dropped.
+ */
+HWTEST_F(TaskManagerServiceTest, TaskManagerService_RegisterManagedProcessQuota_0900, TestSize.Level1)
+{
+    auto &service = TaskManagerService::GetInstance();
+    std::string taskId = MakeTaskId("attr_0900");
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    AttributionId attributionId = 0;
+    for (size_t i = 0; i < TASK_MAX_ATTRIBUTIONS_PER_TASK; ++i) {
+        AttributionRecord record;
+        record.pid = static_cast<pid_t>(6000 + i);
+        record.tool = AttributionTool::INSIGHT;
+        EXPECT_EQ(service.RegisterManagedProcess(taskId, record, attributionId), ERR_OK);
+    }
+    // quota reached: a new registration is dropped
+    AttributionRecord overflow;
+    overflow.pid = TEST_MANAGED_PID;
+    overflow.tool = AttributionTool::INSIGHT;
+    EXPECT_EQ(service.RegisterManagedProcess(taskId, overflow, attributionId), ERR_INVALID_OPERATION);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
+}
+
+/**
+ * @tc.number: TaskManagerService_ReservedKeyLiteralAnchored_1000
+ * @tc.name: reserved key literal cross-anchor
+ * @tc.desc: the reserved key literal must stay in sync with the ams_want_param_filter
+ *           entry, otherwise the strip defense silently drifts while tests stay green.
+ */
+HWTEST_F(TaskManagerServiceTest, TaskManagerService_ReservedKeyLiteralAnchored_1000, TestSize.Level1)
+{
+    EXPECT_STREQ(Want::PARAM_RESV_TASK_ID.c_str(), "ohos.aafwk.param.taskId");
+}
+
+/**
+ * @tc.number: TaskManagerService_OnProcessDiedCleanup_1100
+ * @tc.name: process death removes attribution entries
+ * @tc.desc: entries of a dead pid are removed from every task, so the quota slot is
+ *           freed for new attributions.
+ */
+HWTEST_F(TaskManagerServiceTest, TaskManagerService_OnProcessDiedCleanup_1100, TestSize.Level1)
+{
+    auto &service = TaskManagerService::GetInstance();
+    std::string taskId = MakeTaskId("attr_1100");
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    AttributionId attributionId = 0;
+    EXPECT_EQ(service.AttributeProcessForAbility(taskId, TEST_CREATOR_UID, TEST_CREATOR_PID,
+        TEST_MANAGED_PID, attributionId), ERR_OK);
+    service.OnProcessDied(TEST_MANAGED_PID, TEST_TARGET_UID);
+    {
+        std::lock_guard<ffrt::mutex> lock(service.tasksMutex_);
+        EXPECT_EQ(service.tasks_[taskId].attributions.size(), static_cast<size_t>(0));
+    }
+    // the freed quota slot is usable again
+    EXPECT_EQ(service.AttributeProcessForAbility(taskId, TEST_CREATOR_UID, TEST_CREATOR_PID,
+        TEST_MANAGED_PID, attributionId), ERR_OK);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
+}
+
+/**
+ * @tc.number: TaskManagerService_AttributeRegisterReuse_1200
+ * @tc.name: ability attribution funnels into the shared registration path
+ * @tc.desc: attribution and explicit registration write the same managed set with
+ *           distinct handles; a process death sweeps every entry of the pid from that
+ *           set.
+ */
+HWTEST_F(TaskManagerServiceTest, TaskManagerService_AttributeRegisterReuse_1200, TestSize.Level1)
+{
+    auto &service = TaskManagerService::GetInstance();
+    std::string taskId = MakeTaskId("attr_1200");
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    // creator attributes a process; the refresh path (retire + re-register) keeps one entry
+    AttributionId abilityId = 0;
+    EXPECT_EQ(service.AttributeProcessForAbility(taskId, TEST_CREATOR_UID, TEST_CREATOR_PID,
+        TEST_MANAGED_PID, abilityId), ERR_OK);
+    EXPECT_EQ(service.UnregisterManagedProcess(taskId, abilityId), ERR_OK);
+    EXPECT_EQ(service.AttributeProcessForAbility(taskId, TEST_CREATOR_UID, TEST_CREATOR_PID,
+        TEST_MANAGED_PID, abilityId), ERR_OK);
+    // register the same pid explicitly with a different tool: the same set, a distinct handle
+    AttributionRecord attribution;
+    attribution.pid = TEST_MANAGED_PID;
+    attribution.tool = AttributionTool::CLI;
+    AttributionId cliId = 0;
+    EXPECT_EQ(service.RegisterManagedProcess(taskId, attribution, cliId), ERR_OK);
+    EXPECT_NE(cliId, abilityId);
+    {
+        std::lock_guard<ffrt::mutex> lock(service.tasksMutex_);
+        EXPECT_EQ(service.tasks_[taskId].attributions.size(), static_cast<size_t>(2));
+    }
+    // the shared death sweep retires every entry of the pid at once
+    service.OnProcessDied(TEST_MANAGED_PID, TEST_TARGET_UID);
+    {
+        std::lock_guard<ffrt::mutex> lock(service.tasksMutex_);
+        EXPECT_EQ(service.tasks_[taskId].attributions.size(), static_cast<size_t>(0));
+    }
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
+}
+
+/**
+ * @tc.number: TaskManagerService_AttributeProcessForAbility_1300
+ * @tc.name: creator authorization is uid-only
+ * @tc.desc: the startAbility channel trusts the creator uid alone: any caller pid is
+ *           accepted for the task creator.
+ */
+HWTEST_F(TaskManagerServiceTest, TaskManagerService_AttributeProcessForAbility_1300, TestSize.Level1)
+{
+    auto &service = TaskManagerService::GetInstance();
+    std::string taskId = MakeTaskId("attr_1300");
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    // creator uid with an arbitrary (unrelated) caller pid: accepted
+    AttributionId attributionId = 0;
+    EXPECT_EQ(service.AttributeProcessForAbility(taskId, TEST_CREATOR_UID, 98765,
+        TEST_MANAGED_PID, attributionId), ERR_OK);
+    EXPECT_NE(attributionId, 0);
+    {
+        std::lock_guard<ffrt::mutex> lock(service.tasksMutex_);
+        EXPECT_EQ(service.tasks_[taskId].attributions.size(), static_cast<size_t>(1));
+        EXPECT_EQ(service.tasks_[taskId].attributions[attributionId].pid, TEST_MANAGED_PID);
+    }
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
+}
+
+/**
+ * @tc.number: TaskManagerService_AttributeProcessForAbility_1400
+ * @tc.name: taskId validity boundary cases
+ * @tc.desc: a taskId of exactly TASK_ID_MAX_LEN is accepted; DEL (0x7f) and 0x1f
+ *           control characters are rejected (log injection guard); high-bit UTF-8
+ *           bytes are legitimate.
+ */
+HWTEST_F(TaskManagerServiceTest, TaskManagerService_AttributeProcessForAbility_1400, TestSize.Level1)
+{
+    auto &service = TaskManagerService::GetInstance();
+    std::string maxLenTaskId(TASK_ID_MAX_LEN, 'a');
+    EXPECT_EQ(service.StartTask(maxLenTaskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    AttributionId attributionId = 0;
+    EXPECT_EQ(service.AttributeProcessForAbility(maxLenTaskId, TEST_CREATOR_UID, TEST_CREATOR_PID,
+        TEST_MANAGED_PID, attributionId), ERR_OK);
+    EXPECT_NE(attributionId, 0);
+    EXPECT_EQ(service.FinishTask(maxLenTaskId), ERR_OK);
+
+    std::string delTaskId = "evil\x7f";
+    EXPECT_EQ(service.AttributeProcessForAbility(delTaskId, TEST_CREATOR_UID, TEST_CREATOR_PID,
+        TEST_MANAGED_PID, attributionId), AAFwk::INVALID_PARAMETERS_ERR);
+    std::string unitSepTaskId = "evil\x1f";
+    EXPECT_EQ(service.AttributeProcessForAbility(unitSepTaskId, TEST_CREATOR_UID, TEST_CREATOR_PID,
+        TEST_MANAGED_PID, attributionId), AAFwk::INVALID_PARAMETERS_ERR);
+
+    // multi-byte UTF-8 (bytes >= 0x80) is legitimate
+    std::string utf8TaskId = "\u4efb\u52a1";
+    EXPECT_EQ(service.StartTask(utf8TaskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.AttributeProcessForAbility(utf8TaskId, TEST_CREATOR_UID, TEST_CREATOR_PID,
+        TEST_MANAGED_PID, attributionId), ERR_OK);
+    EXPECT_EQ(service.FinishTask(utf8TaskId), ERR_OK);
+}
+
+/**
+ * @tc.number: TaskManagerService_OnProcessDiedCleanup_1500
+ * @tc.name: process death sweeps the pid from every task
+ * @tc.desc: a pid attributed in two different tasks is removed from both at once.
+ */
+HWTEST_F(TaskManagerServiceTest, TaskManagerService_OnProcessDiedCleanup_1500, TestSize.Level1)
+{
+    auto &service = TaskManagerService::GetInstance();
+    std::string taskId1 = MakeTaskId("attr_1500_a");
+    std::string taskId2 = MakeTaskId("attr_1500_b");
+    EXPECT_EQ(service.StartTask(taskId1, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.StartTask(taskId2, TASK_PRIORITY_DEFAULT), ERR_OK);
+    AttributionId id1 = 0;
+    EXPECT_EQ(service.AttributeProcessForAbility(taskId1, TEST_CREATOR_UID, TEST_CREATOR_PID,
+        TEST_MANAGED_PID, id1), ERR_OK);
+    AttributionId id2 = 0;
+    EXPECT_EQ(service.AttributeProcessForAbility(taskId2, TEST_CREATOR_UID, TEST_CREATOR_PID,
+        TEST_MANAGED_PID, id2), ERR_OK);
+
+    // one death event sweeps the pid from both tasks
+    service.OnProcessDied(TEST_MANAGED_PID, TEST_TARGET_UID);
+    {
+        std::lock_guard<ffrt::mutex> lock(service.tasksMutex_);
+        EXPECT_EQ(service.tasks_[taskId1].attributions.size(), static_cast<size_t>(0));
+        EXPECT_EQ(service.tasks_[taskId2].attributions.size(), static_cast<size_t>(0));
+    }
+    EXPECT_EQ(service.FinishTask(taskId1), ERR_OK);
+    EXPECT_EQ(service.FinishTask(taskId2), ERR_OK);
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS
