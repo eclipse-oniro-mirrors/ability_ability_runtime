@@ -268,6 +268,8 @@ constexpr static char WANT_PARAMS_VIEW_DATA_KEY[] = "ohos.ability.params.viewDat
 constexpr const char* WANT_PARAMS_HOST_WINDOW_ID_KEY = "ohos.extra.param.key.hostwindowid";
 
 constexpr int32_t FOUNDATION_UID = 5523;
+constexpr int32_t SUBFOUNDATION_UID = 6061;
+
 constexpr const char* FRS_BUNDLE_NAME = "com.ohos.formrenderservice";
 constexpr const char* FOUNDATION_PROCESS_NAME = "foundation";
 constexpr const char* RSS_PROCESS_NAME = "resource_schedule_service";
@@ -343,6 +345,13 @@ bool IsEmbeddableStart(int32_t screenMode)
 {
     return screenMode == AAFwk::EMBEDDED_FULL_SCREEN_MODE ||
         screenMode == AAFwk::EMBEDDED_HALF_SCREEN_MODE;
+}
+
+// Check whether the caller is the foundation or subfoundation process.
+bool IsFoundationCall()
+{
+    auto callingUid = IPCSkeleton::GetCallingUid();
+    return callingUid == FOUNDATION_UID || callingUid == SUBFOUNDATION_UID;
 }
 
 } // namespace
@@ -913,7 +922,7 @@ int AbilityManagerService::StartAbilityWithSpecifyTokenId(const Want &want, cons
         return INNER_ERR;
     }
     XCOLLIE_TIMER_LESS_IGNORE(__PRETTY_FUNCTION__, !want.GetDeviceIdRef().empty());
-    if (IPCSkeleton::GetCallingUid() != FOUNDATION_UID) {
+    if (!IsFoundationCall()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "startAbility with specialId, current process not foundation process");
         return CHECK_PERMISSION_FAILED;
     }
@@ -1144,7 +1153,7 @@ int AbilityManagerService::StartAbilityOnlyUIAbility(const Want &want, const spt
         return INNER_ERR;
     }
     XCOLLIE_TIMER_LESS_IGNORE(__PRETTY_FUNCTION__, !want.GetDeviceIdRef().empty());
-    if (IPCSkeleton::GetCallingUid() != FOUNDATION_UID) {
+    if (!IsFoundationCall()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbility with specialId, process not foundation process");
         return CHECK_PERMISSION_FAILED;
     }
@@ -10750,7 +10759,7 @@ int AbilityManagerService::StartAbilityByCallWithErrMsg(const Want &want, const 
     }
 
     auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
-    if (abilityRecord && !JudgeSelfCalled(abilityRecord)) {
+    if (abilityRecord && !JudgeSelfCalled(abilityRecord) && !IsFoundationCall()) {
         errMsg = "verify account permission failed";
         AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, CHECK_PERMISSION_FAILED,
             "startAbilityByCall verify caller permission failed");
@@ -15493,7 +15502,7 @@ int32_t AbilityManagerService::ExecuteUIAbilityForegroundIntentWithSpecifyTokenI
     const sptr<IRemoteObject> &callerAbilityToken, const InsightIntentExecuteLiteParam &param,
     uint64_t specifiedFullTokenId)
 {
-    if (IPCSkeleton::GetCallingUid() != FOUNDATION_UID) {
+    if (!IsFoundationCall()) {
         TAG_LOGE(AAFwkTag::INTENT, "not foundation process, reject");
         return CHECK_PERMISSION_FAILED;
     }
