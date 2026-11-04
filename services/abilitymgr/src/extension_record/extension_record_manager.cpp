@@ -421,7 +421,7 @@ int32_t ExtensionRecordManager::UpdateProcessName(const AAFwk::AbilityRequest &a
             if (!abilityRequest.moduleProcess.empty()) {
                 std::string process = abilityRequest.moduleProcess;
                 TAG_LOGD(AAFwkTag::ABILITYMGR, "moduleProcess: %{public}s", process.c_str());
-                if (processAppIndex >= AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
+                if (abilityRecord->GetAppIndex() >= AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
                     process += ":" + std::to_string(abilityRecord->GetAppIndex());
                 } else if (abilityRecord->GetAppIndex() > 0) {
                     process += std::to_string(abilityRecord->GetAppIndex());
