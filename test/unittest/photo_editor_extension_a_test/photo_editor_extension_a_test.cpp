@@ -130,8 +130,8 @@ HWTEST_F(PhotoEditorExtensionContextTest, SaveEditedContent_0300, Function | Med
     PhotoInfos->SetWant(want);
     want->SetParam(PANEL_TRANSFER_FILE_PATHS, uri);
     PhotoEditorErrorCode res = PhotoInfos->SaveEditedContent(uri, newWant);
-    // 参数校验前置：无扩展名直接返回 PARAM_ERROR，不进入 CopyImageToPanel
-    EXPECT_EQ(res, PhotoEditorErrorCode::ERROR_CODE_PARAM_ERROR);
+    // 参数校验前置：无扩展名直接返回 ERROR_CODE_IMAGE_INPUT_ERROR，不进入 CopyImageToPanel
+    EXPECT_EQ(res, PhotoEditorErrorCode::ERROR_CODE_IMAGE_INPUT_ERROR);
     GTEST_LOG_(INFO) << "SaveEditedContent_0300 end";
 }
 
@@ -151,7 +151,7 @@ HWTEST_F(PhotoEditorExtensionContextTest, SaveEditedContent_0400, Function | Med
     PhotoInfos->SetWant(want);
     want->SetParam(PANEL_TRANSFER_FILE_PATHS, uri);
     PhotoEditorErrorCode res = PhotoInfos->SaveEditedContent(uri, newWant);
-    EXPECT_EQ(res, PhotoEditorErrorCode::ERROR_CODE_PARAM_ERROR);
+    EXPECT_EQ(res, PhotoEditorErrorCode::ERROR_CODE_IMAGE_INPUT_ERROR);
     GTEST_LOG_(INFO) << "SaveEditedContent_0400 end";
 }
 

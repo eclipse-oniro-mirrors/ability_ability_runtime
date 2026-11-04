@@ -37,7 +37,7 @@ PhotoEditorErrorCode PhotoEditorExtensionContext::SaveEditedContent(const std::s
     auto sep = uri.find_last_of('/');
     if (pos == std::string::npos || (sep != std::string::npos && pos < sep) || pos + 1 >= uri.size()) {
         TAG_LOGE(AAFwkTag::UI_EXT, "uri has no valid extension");
-        return PhotoEditorErrorCode::ERROR_CODE_PARAM_ERROR;
+        return PhotoEditorErrorCode::ERROR_CODE_IMAGE_INPUT_ERROR;
     }
 
     const std::string panelUri = want_->GetStringParam(PANEL_TRANSFER_FILE_PATH);
