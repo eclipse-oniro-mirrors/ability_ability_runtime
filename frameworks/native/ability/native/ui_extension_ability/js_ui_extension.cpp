@@ -319,7 +319,7 @@ void JsUIExtension::OnStart(const AAFwk::Want &want, sptr<AAFwk::SessionInfo> se
     }
 
     if (!OnGetConfigurationStrategy(sessionInfo)) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "OnGetConfigurationStrategy failed");
+        TAG_LOGW(AAFwkTag::UI_EXT, "OnGetConfigurationStrategy failed");
     }
 
     TAG_LOGD(AAFwkTag::UI_EXT, "end");

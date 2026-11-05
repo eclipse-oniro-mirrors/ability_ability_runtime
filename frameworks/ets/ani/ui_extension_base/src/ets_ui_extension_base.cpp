@@ -193,7 +193,7 @@ void EtsUIExtensionBase::RegisterAbilityConfigUpdateCallback()
         }
         if (abilityContext->GetAbilityConfiguration() == nullptr) {
             auto abilityModuleContext = abilityContext->CreateModuleContext(
-                abilityContext->GetAbilityInfo()->moduleName);
+                abilityContext->GetAbilityInfo()->moduleName, abilityContext);
             if (abilityModuleContext == nullptr) {
                 TAG_LOGE(AAFwkTag::UI_EXT, "null abilityModuleContext");
                 return;
@@ -322,7 +322,7 @@ void EtsUIExtensionBase::OnStart(
     CallObjectMethod(false, "onCreate", UIEXT_ONCREATE_SIGNATURE, launchParamObj, wantObj);
 
     if (!OnGetConfigurationStrategy(sessionInfo)) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "OnGetConfigurationStrategy failed");
+        TAG_LOGW(AAFwkTag::UI_EXT, "OnGetConfigurationStrategy failed");
     }
 }
 
@@ -1043,15 +1043,20 @@ int32_t EtsUIExtensionBase::WindowNotifeBrandColorChange(Rosen::SubSystemId id, 
 
     AppExecFwk::Configuration config;
     config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED, "true");
-    context_->SetAbilityConfiguration(config);
     auto self = std::static_pointer_cast<EtsUIExtensionBase>(shared_from_this());
     auto task = [self, config]() {
         if (self == nullptr) {
             TAG_LOGE(AAFwkTag::UI_EXT, "null self");
             return;
         }
+        auto context = self->context_;
+        if (context == nullptr) {
+            TAG_LOGE(AAFwkTag::UI_EXT, "null context");
+            return;
+        }
+        context->SetAbilityConfiguration(config);
         self->OnAbilityConfigurationUpdated(config);
-        auto abilityConfig = self->context_->GetAbilityConfiguration();
+        auto abilityConfig = context->GetAbilityConfiguration();
         if (abilityConfig != nullptr) {
             abilityConfig->RemoveItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED);
         }
@@ -1080,9 +1085,9 @@ void EtsUIExtensionBase::OnConfigurationUpdated(const AppExecFwk::Configuration 
 
     auto abilityConfig = context_->GetAbilityConfiguration();
     auto configUtils = std::make_shared<ConfigurationUtils>();
-
+    auto fullConfig = context_->GetConfiguration();
     if (abilityConfig != nullptr) {
-        auto newConfig = configUtils->UpdateGlobalConfig(config, context_->GetConfiguration(),
+        auto newConfig = configUtils->UpdateGlobalConfig(config, fullConfig,
             abilityConfig, context_->GetResourceManager());
         if (newConfig.GetItemSize() == 0) {
             return;
@@ -1094,10 +1099,14 @@ void EtsUIExtensionBase::OnConfigurationUpdated(const AppExecFwk::Configuration 
         }
     } else {
         auto configUtils = std::make_shared<ConfigurationUtils>();
-        configUtils->UpdateGlobalConfig(config, context_->GetConfiguration(), context_->GetResourceManager());
+        configUtils->UpdateGlobalConfig(config, fullConfig, context_->GetResourceManager());
     }
 
     ConfigurationUpdated();
+    if (fullConfig != nullptr &&
+        !fullConfig->GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty()) {
+        fullConfig->RemoveItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED);
+    }
 }
 
 void EtsUIExtensionBase::OnAbilityConfigurationUpdated(const AppExecFwk::Configuration& configuration)

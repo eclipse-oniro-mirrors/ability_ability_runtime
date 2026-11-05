@@ -292,7 +292,7 @@ void EtsUIExtension::OnStart(const AAFwk::Want &want, sptr<AAFwk::SessionInfo> s
     }
 
     if (!OnGetConfigurationStrategy(sessionInfo)) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "OnGetConfigurationStrategy failed");
+        TAG_LOGW(AAFwkTag::UI_EXT, "OnGetConfigurationStrategy failed");
     }
 }
 

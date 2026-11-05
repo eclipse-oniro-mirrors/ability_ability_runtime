@@ -222,15 +222,20 @@ int32_t UIExtension::WindowNotifeBrandColorChange(Rosen::SubSystemId id, uint32_
     }
     AppExecFwk::Configuration config;
     config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED, "true");
-    context->SetAbilityConfiguration(config);
     auto self = std::static_pointer_cast<UIExtension>(shared_from_this());
     auto task = [self, config]() {
         if (self == nullptr) {
             TAG_LOGE(AAFwkTag::UI_EXT, "null self");
             return;
         }
+        auto context = self->GetContext();
+        if (context == nullptr) {
+            TAG_LOGE(AAFwkTag::UI_EXT, "null context");
+            return;
+        }
+        context->SetAbilityConfiguration(config);
         self->OnAbilityConfigurationUpdated(config);
-        auto abilityConfig = self->GetContext()->GetAbilityConfiguration();
+        auto abilityConfig = context->GetAbilityConfiguration();
         if (abilityConfig != nullptr) {
             abilityConfig->RemoveItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED);
         }
@@ -371,11 +376,12 @@ void UIExtension::OnConfigurationUpdated(const AppExecFwk::Configuration &config
         configuration.RemoveItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED);
         configuration.RemoveItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID);
     }
+    auto fullConfig = context->GetConfiguration();
     auto abilityConfig = context->GetAbilityConfiguration();
     auto configUtils = std::make_shared<ConfigurationUtils>();
     if (abilityConfig != nullptr) {
         auto newConfig = configUtils->UpdateGlobalConfig(
-            configuration, context->GetConfiguration(), abilityConfig, context->GetResourceManager());
+            configuration, fullConfig, abilityConfig, context->GetResourceManager());
         if (newConfig.GetItemSize() == 0) {
             return;
         }
@@ -386,9 +392,13 @@ void UIExtension::OnConfigurationUpdated(const AppExecFwk::Configuration &config
         }
     } else {
         auto configUtils = std::make_shared<ConfigurationUtils>();
-        configUtils->UpdateGlobalConfig(configuration, context->GetConfiguration(), context->GetResourceManager());
+        configUtils->UpdateGlobalConfig(configuration, fullConfig, context->GetResourceManager());
     }
     ConfigurationUpdated();
+    if (fullConfig != nullptr &&
+        !fullConfig->GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty()) {
+        fullConfig->RemoveItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED);
+    }
 }
 
 void UIExtension::ConfigurationUpdated()
@@ -435,7 +445,7 @@ void UIExtension::RegisterAbilityConfigUpdateCallback()
         }
         if (abilityContext->GetAbilityConfiguration() == nullptr) {
             auto abilityModuleContext = abilityContext->CreateModuleContext(
-                abilityContext->GetAbilityInfo()->moduleName);
+                abilityContext->GetAbilityInfo()->moduleName, abilityContext);
             if (abilityModuleContext == nullptr) {
                 TAG_LOGE(AAFwkTag::UI_EXT, "null abilityModuleContext");
                 return;

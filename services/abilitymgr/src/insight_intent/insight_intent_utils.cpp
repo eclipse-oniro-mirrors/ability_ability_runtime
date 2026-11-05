@@ -111,7 +111,7 @@ uint32_t InsightIntentUtils::GetSrcEntry(const AppExecFwk::ElementName &elementN
     for (const auto &info : extractInfos.insightIntents) {
         if (info.intentName == intentName) {
             *arkTSMode = info.arkTSMode;
-            if (info.decoratorType == "@InsightIntentEntry") {
+            if (info.decoratorType == "@InsightIntentEntry" && decoratorClass != nullptr) {
                 *decoratorClass = info.decoratorClass;
             }
             return ERR_OK;
