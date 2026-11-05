@@ -5729,16 +5729,14 @@ void AppMgrServiceInner::SetAppInfo(const BundleInfo &bundleInfo, AppSpawnStartM
     startMsg.apl = bundleInfo.applicationInfo.appPrivilegeLevel;
     startMsg.ownerId = bundleInfo.signatureInfo.appIdentifier;
     auto token = bundleInfo.applicationInfo.accessTokenId;
-    bool hasExecCliToolPerm = Security::AccessToken::AccessTokenKit::VerifyAccessToken(
-        token, PERMISSION_EXEC_CLI_TOOL, false) == Security::AccessToken::PERMISSION_GRANTED;
-    bool hasExecPublicCliToolPerm = Security::AccessToken::AccessTokenKit::VerifyAccessToken(
-        token, PERMISSION_EXEC_PUBLIC_CLI_TOOL, false) == Security::AccessToken::PERMISSION_GRANTED;
-    if (hasExecCliToolPerm || hasExecPublicCliToolPerm) {
+    if (Security::AccessToken::AccessTokenKit::VerifyAccessToken(
+            token, PERMISSION_EXEC_CLI_TOOL, false) == Security::AccessToken::PERMISSION_GRANTED ||
+        Security::AccessToken::AccessTokenKit::VerifyAccessToken(
+            token, PERMISSION_EXEC_PUBLIC_CLI_TOOL, false) == Security::AccessToken::PERMISSION_GRANTED) {
         startMsg.agentId = bundleInfo.signatureInfo.appIdentifier;
         startMsg.flags |= (START_FLAG_BASE << AppFlagsIndex::APP_FLAGS_AGENT);
+        TAG_LOGI(AAFwkTag::APPMGR, "agentId: %{private}s", startMsg.agentId.c_str());
     }
-    TAG_LOGI(AAFwkTag::APPMGR, "agentId check: %{public}d, %{public}d, agentId:%{private}s",
-        hasExecCliToolPerm, hasExecPublicCliToolPerm, startMsg.agentId.c_str());
     startMsg.provisionType = bundleInfo.applicationInfo.appProvisionType;
     startMsg.appDistributionType = bundleInfo.applicationInfo.appDistributionType;
     startMsg.apiTargetVersion = bundleInfo.applicationInfo.apiTargetVersion % API_VERSION_MOD;
