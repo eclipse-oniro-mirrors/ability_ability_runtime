@@ -5737,7 +5737,7 @@ void AppMgrServiceInner::SetAppInfo(const BundleInfo &bundleInfo, AppSpawnStartM
         startMsg.agentId = bundleInfo.signatureInfo.appIdentifier;
         startMsg.flags |= (START_FLAG_BASE << AppFlagsIndex::APP_FLAGS_AGENT);
     }
-    TAG_LOGI(AAFwkTag::APPMGR, "agentId check: %{public}d, %{public}d, agentId:%{public}s",
+    TAG_LOGI(AAFwkTag::APPMGR, "agentId check: %{public}d, %{public}d, agentId:%{private}s",
         hasExecCliToolPerm, hasExecPublicCliToolPerm, startMsg.agentId.c_str());
     startMsg.provisionType = bundleInfo.applicationInfo.appProvisionType;
     startMsg.appDistributionType = bundleInfo.applicationInfo.appDistributionType;
