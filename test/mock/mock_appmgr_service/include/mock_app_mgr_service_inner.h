@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -42,6 +42,8 @@ public:
     MOCK_METHOD4(UpdateApplicationInfoInstalled, int(const std::string&, const int uid, const std::string&, bool));
     MOCK_METHOD5(KillApplication, int32_t(const std::string& bundleName, const bool clearPageStack, int32_t appIndex,
         const std::string& reason, int32_t userId));
+    MOCK_METHOD5(KillApplicationByUserIdSafely, int32_t(const std::string &bundleName, int32_t appCloneIndex,
+        int userId, const bool clearPageStack, const std::string &reason));
     MOCK_METHOD3(KillApplicationByUid, int(const std::string&, const int uid, const std::string&));
     MOCK_METHOD1(AbilityTerminated, void(const sptr<IRemoteObject>& token));
     MOCK_METHOD5(ClearUpApplicationData,

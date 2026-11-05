@@ -50,12 +50,19 @@ void BundleMgrHelperThirdTest::SetUp()
     MockBundleMgrStub::mockAbilityInfos.clear();
     MockBundleMgrStub::mockQueryExtensionAbilityInfosV9Ret = ERR_OK;
     MockBundleMgrStub::mockExtensionInfos.clear();
+    MockBundleMgrStub::mockIsApplicationDisableForbiddenRet = ERR_OK;
+    MockBundleMgrStub::mockForbidden = false;
+    MockBundleMgrStub::mockIsApplicationDisableForbiddenCall = 0;
+    MockBundleMgrStub::mockBundleName.clear();
+    MockBundleMgrStub::mockUserId = 0;
+    MockBundleMgrStub::mockAppIndex = 0;
     bundleMgrHelper->bundleMgr_ = new MockBundleMgrStub();
 }
 
 void BundleMgrHelperThirdTest::TearDown()
 {
     bundleMgrHelper->bundleMgr_ = nullptr;
+    bundleMgrHelper->bmsReady_ = true;
 }
 
 // ========== QueryAbilityInfos tests ==========
@@ -424,6 +431,44 @@ HWTEST_F(BundleMgrHelperThirdTest, QueryEnabledExtensionAbilityInfo_005, TestSiz
 
     ExtensionAbilityInfo result;
     EXPECT_FALSE(bundleMgrHelper->QueryEnabledExtensionAbilityInfo(want, DEFAULT_USERID, result));
+}
+
+/**
+ * @tc.name: IsApplicationDisableForbidden_001
+ * @tc.desc: Test IsApplicationDisableForbidden forwards arguments, result, and output value.
+ * @tc.type: FUNC
+ */
+HWTEST_F(BundleMgrHelperThirdTest, IsApplicationDisableForbidden_001, TestSize.Level1)
+{
+    MockBundleMgrStub::mockIsApplicationDisableForbiddenRet = ERR_OK;
+    MockBundleMgrStub::mockForbidden = true;
+    bool forbidden = false;
+
+    ErrCode ret = bundleMgrHelper->IsApplicationDisableForbidden("com.example.protected", 100, 2, forbidden);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(forbidden);
+    EXPECT_EQ(MockBundleMgrStub::mockIsApplicationDisableForbiddenCall, 1);
+    EXPECT_EQ(MockBundleMgrStub::mockBundleName, "com.example.protected");
+    EXPECT_EQ(MockBundleMgrStub::mockUserId, 100);
+    EXPECT_EQ(MockBundleMgrStub::mockAppIndex, 2);
+}
+
+/**
+ * @tc.name: IsApplicationDisableForbidden_002
+ * @tc.desc: Test IsApplicationDisableForbidden returns an internal error when the bundle manager is unavailable.
+ * @tc.type: FUNC
+ */
+HWTEST_F(BundleMgrHelperThirdTest, IsApplicationDisableForbidden_002, TestSize.Level1)
+{
+    bundleMgrHelper->bundleMgr_ = nullptr;
+    bundleMgrHelper->bmsReady_ = false;
+    bool forbidden = true;
+
+    ErrCode ret = bundleMgrHelper->IsApplicationDisableForbidden("com.example.test", DEFAULT_USERID, 0, forbidden);
+
+    EXPECT_EQ(ret, ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR);
+    EXPECT_TRUE(forbidden);
 }
 
 }  // namespace AppExecFwk

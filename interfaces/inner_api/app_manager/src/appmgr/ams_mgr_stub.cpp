@@ -167,6 +167,8 @@ int32_t AmsMgrStub::OnRemoteRequestInnerSecond(uint32_t code, MessageParcel &dat
             return HandleGetWaitingDebugApp(data, reply);
         case static_cast<uint32_t>(IAmsMgr::Message::IS_WAITING_DEBUG_APP):
             return HandleIsWaitingDebugApp(data, reply);
+        case static_cast<uint32_t>(IAmsMgr::Message::KILL_PROCESS_WITH_ACCOUNT_SAFELY):
+            return HandleKillProcessWithAccountSafely(data, reply);
     }
     return AAFwk::ERR_CODE_NOT_EXIST;
 }
@@ -462,6 +464,29 @@ ErrCode AmsMgrStub::HandleKillProcessWithAccount(MessageParcel &data, MessagePar
     reply.WriteInt32(result);
 
     TAG_LOGI(AAFwkTag::APPMGR, "end");
+
+    return NO_ERROR;
+}
+
+ErrCode AmsMgrStub::HandleKillProcessWithAccountSafely(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "enter");
+
+    HITRACE_METER(HITRACE_TAG_APP);
+
+    std::string bundleName = data.ReadString();
+    int accountId = data.ReadInt32();
+    bool clearPageStack = data.ReadBool();
+    auto appIndex = data.ReadInt32();
+
+    TAG_LOGD(AAFwkTag::APPMGR,
+        "bundleName = %{public}s, accountId = %{public}d, clearPageStack = %{public}d",
+        bundleName.c_str(), accountId, clearPageStack);
+
+    int32_t result = KillProcessWithAccountSafely(bundleName, accountId, clearPageStack, appIndex);
+    reply.WriteInt32(result);
+
+    TAG_LOGD(AAFwkTag::APPMGR, "end");
 
     return NO_ERROR;
 }

@@ -1025,6 +1025,11 @@ enum {
     ERR_LOW_MEM_SAINTERCEPTOR_START_BLOCK = 2097404,
 
     /**
+     * Result (2097405) The target process is protected by an MDM application.
+     */
+    ERR_KILL_PROCESS_MDM_PROTECTED = 2097405,
+
+    /**
      * Result (2098000-2098049) Error code refinement INVALID_VALUE.
      */
     ERR_REFINEMENT_INVALID_VALUE_BEGIN = 2098000,

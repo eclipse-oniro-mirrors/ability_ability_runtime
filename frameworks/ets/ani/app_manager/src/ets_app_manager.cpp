@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -105,6 +105,8 @@ public:
         ani_object callback);
     static void NativeKillProcessWithAccount(ani_env *env, ani_object callback, ani_string aniBundleName,
         ani_int aniAccountId, ani_boolean clearPageStack, ani_object aniAppIndex);
+    static void NativeKillProcessWithAccountSafely(ani_env *env, ani_object callback, ani_string aniBundleName,
+        ani_int aniAccountId, ani_boolean clearPageStack, ani_object aniAppIndex);
     static void NativeGetProcessMemoryByPid(ani_env *env, ani_int aniPid, ani_object callback);
     static void GetRunningProcessInformationByBundleType(
         ani_env *env, ani_enum_item aniBundleType, ani_object callback);
@@ -151,10 +153,11 @@ private:
         ani_object observer, const ani_object &etsAppStateFilter, OHOS::AppExecFwk::AppStateFilter &appStateFilter);
     static ani_int OnOnApplicationStateInner(
         ani_env *env, ani_string type, ani_object observer, ani_object aniBundleNameList);
+    static bool GetAppIndex(ani_env *env, ani_object aniAppIndex, int32_t &appIndex);
     static void KillProcessesByBundleNameInner(ani_env *env, ani_object callback, ani_string etsBundleName,
         ani_boolean clearPageStack, ani_object etsAppIndex);
     static void KillProcessWithAccountInner(ani_env *env, ani_object callback, ani_string aniBundleName,
-        ani_int aniAccountId, ani_boolean clearPageStack, ani_object aniAppIndex);
+        ani_int aniAccountId, ani_boolean clearPageStack, ani_object aniAppIndex, bool safely);
     static void OnOnAbilityFirstFrameStateInner(ani_env *env, ani_object aniObserver, const std::string &strBundleName);
     static void OnOffInner(ani_env *env, ani_int etsObserverId, ani_object callback);
     static int32_t GetObserverId();
@@ -961,7 +964,7 @@ void EtsAppManager::NativeKillProcessWithAccountSync(ani_env *env, ani_string an
     ani_ref undefined = nullptr;
     env->GetUndefined(&undefined);
     KillProcessWithAccountInner(env, callback, aniBundleName, aniAccountId,
-        false, static_cast<ani_object>(undefined));
+        false, static_cast<ani_object>(undefined), false);
 }
 
 void EtsAppManager::NativeKillProcessWithAccount(ani_env *env, ani_object callback, ani_string aniBundleName,
@@ -976,11 +979,45 @@ void EtsAppManager::NativeKillProcessWithAccount(ani_env *env, ani_object callba
         return;
     }
     KillProcessWithAccountInner(env, callback, aniBundleName, aniAccountId,
-        clearPageStack, aniAppIndex);
+        clearPageStack, aniAppIndex, false);
+}
+
+void EtsAppManager::NativeKillProcessWithAccountSafely(ani_env *env, ani_object callback,
+    ani_string aniBundleName, ani_int aniAccountId, ani_boolean clearPageStack, ani_object aniAppIndex)
+{
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "env null ptr");
+        return;
+    }
+    if (callback == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "callback null ptr");
+        return;
+    }
+    KillProcessWithAccountInner(env, callback, aniBundleName, aniAccountId,
+        clearPageStack, aniAppIndex, true);
+}
+
+bool EtsAppManager::GetAppIndex(ani_env *env, ani_object aniAppIndex, int32_t &appIndex)
+{
+    ani_boolean isUndefined = false;
+    ani_status status = env->Reference_IsUndefined(aniAppIndex, &isUndefined);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Failed to check undefined status : %{public}d", status);
+        return false;
+    }
+    if (isUndefined) {
+        return true;
+    }
+    status = env->Object_CallMethodByName_Int(aniAppIndex, "toInt", nullptr, &appIndex);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Object_CallMethodByName_Int status : %{public}d", status);
+        return false;
+    }
+    return true;
 }
 
 void EtsAppManager::KillProcessWithAccountInner(ani_env *env, ani_object callback, ani_string aniBundleName,
-    ani_int aniAccountId, ani_boolean clearPageStack, ani_object aniAppIndex)
+    ani_int aniAccountId, ani_boolean clearPageStack, ani_object aniAppIndex, bool safely)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "KillProcessWithAccountInner called");
     if (env == nullptr) {
@@ -1009,21 +1046,18 @@ void EtsAppManager::KillProcessWithAccountInner(ani_env *env, ani_object callbac
     }
     TAG_LOGD(AAFwkTag::APPMGR, "KillProcessWithAccount accountId:%{public}d", aniAccountId);
     int32_t appIndex = 0;
-    ani_status status = ANI_OK;
-    ani_boolean isUndefined = false;
-    if ((status = env->Reference_IsUndefined(aniAppIndex, &isUndefined)) != ANI_OK) {
-        TAG_LOGE(AAFwkTag::APPMGR, "Failed to check undefined status : %{public}d", status);
+    if (!GetAppIndex(env, aniAppIndex, appIndex)) {
         return;
     }
-    if (!isUndefined) {
-        if ((status = env->Object_CallMethodByName_Int(aniAppIndex,
-            "toInt", nullptr, &appIndex)) != ANI_OK) {
-            TAG_LOGE(AAFwkTag::APPMGR, "Object_CallMethodByName_Int status : %{public}d", status);
-            return;
-        }
-        TAG_LOGD(AAFwkTag::APPMGR, "stsAppIndex: %{public}d", appIndex);
+    TAG_LOGD(AAFwkTag::APPMGR, "appIndex: %{public}d", appIndex);
+    int32_t ret = 0;
+    if (safely) {
+        ret = appMgr->GetAmsMgr()->KillProcessWithAccountSafely(
+            bundleName, aniAccountId, clearPageStack, appIndex);
+    } else {
+        ret = appMgr->GetAmsMgr()->KillProcessWithAccount(
+            bundleName, aniAccountId, clearPageStack, appIndex);
     }
-    auto ret = appMgr->GetAmsMgr()->KillProcessWithAccount(bundleName, aniAccountId, clearPageStack, appIndex);
     TAG_LOGD(AAFwkTag::APPMGR, "KillProcessWithAccount ret: %{public}d", ret);
     AppExecFwk::AsyncCallback(env, callback,
         AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret)), nullptr);
@@ -2085,6 +2119,8 @@ void EtsAppManagerRegistryInit(ani_env *env)
             reinterpret_cast<void *>(EtsAppManager::NativeKillProcessWithAccountSync)},
         ani_native_function {"nativeKillProcessWithAccount", nullptr,
             reinterpret_cast<void *>(EtsAppManager::NativeKillProcessWithAccount)},
+        ani_native_function {"nativeKillProcessWithAccountSafely", nullptr,
+            reinterpret_cast<void *>(EtsAppManager::NativeKillProcessWithAccountSafely)},
         ani_native_function {"nativeGetProcessMemoryByPid", nullptr,
             reinterpret_cast<void *>(EtsAppManager::NativeGetProcessMemoryByPid)},
         ani_native_function {"nativeGetRunningProcessInformationByBundleType", nullptr,

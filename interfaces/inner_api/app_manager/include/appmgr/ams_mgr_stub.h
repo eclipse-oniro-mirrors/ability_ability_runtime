@@ -67,6 +67,7 @@ private:
     int32_t HandleCheckProcessAvailable(MessageParcel &data, MessageParcel &reply);
     int32_t HandleAttachPidToParent(MessageParcel &data, MessageParcel &reply);
     int32_t HandleKillProcessWithAccount(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleKillProcessWithAccountSafely(MessageParcel &data, MessageParcel &reply);
     int32_t HandleKillProcessesInBatch(MessageParcel &data, MessageParcel &reply);
     int32_t HandleKillApplication(MessageParcel &data, MessageParcel &reply);
     int32_t HandleForceKillApplication(MessageParcel &data, MessageParcel &reply);

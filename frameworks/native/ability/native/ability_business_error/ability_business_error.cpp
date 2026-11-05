@@ -45,6 +45,8 @@ constexpr const char* ERROR_MSG_INVALID_CONTEXT = "The context does not exist.";
 constexpr const char* ERROR_MSG_INVALID_MODULENAME = "Invalid moduleName.";
 constexpr const char* ERROR_MSG_CONTROLLED = "The application is controlled.";
 constexpr const char* ERROR_MSG_EDM_CONTROLLED = "The application is controlled by EDM.";
+constexpr const char* ERROR_MSG_KILL_PROCESS_KEEP_ALIVE =
+    "The target process is protected by an MDM application and cannot be terminated.";
 constexpr const char* ERROR_MSG_NETWORK_ABNORMAL = "Network error.";
 constexpr const char* ERROR_MSG_NOT_SUPPORT_FREE_INSTALL = "Installation-free is not supported.";
 constexpr const char* ERROR_MSG_NOT_TOP_ABILITY = "The ability is not on the top of the UI.";
@@ -383,6 +385,7 @@ static std::unordered_map<AbilityErrorCode, const char*> ERR_CODE_MAP = {
     { AbilityErrorCode::ERROR_CODE_INVALID_MODULENAME, ERROR_MSG_INVALID_MODULENAME },
     { AbilityErrorCode::ERROR_CODE_CONTROLLED, ERROR_MSG_CONTROLLED },
     { AbilityErrorCode::ERROR_CODE_EDM_CONTROLLED, ERROR_MSG_EDM_CONTROLLED },
+    { AbilityErrorCode::ERROR_CODE_KILL_PROCESS_KEEP_ALIVE, ERROR_MSG_KILL_PROCESS_KEEP_ALIVE },
     { AbilityErrorCode::ERROR_CODE_NETWORK_ABNORMAL, ERROR_MSG_NETWORK_ABNORMAL },
     { AbilityErrorCode::ERROR_CODE_NOT_SUPPORT_FREE_INSTALL, ERROR_MSG_NOT_SUPPORT_FREE_INSTALL },
     { AbilityErrorCode::ERROR_CODE_NOT_TOP_ABILITY, ERROR_MSG_NOT_TOP_ABILITY },
@@ -532,6 +535,7 @@ static std::unordered_map<int32_t, AbilityErrorCode> INNER_TO_JS_ERROR_CODE_MAP 
     {START_ABILITY_WAITING, AbilityErrorCode::ERROR_START_ABILITY_WAITTING},
     {ERR_APP_CONTROLLED, AbilityErrorCode::ERROR_CODE_CONTROLLED},
     {ERR_EDM_APP_CONTROLLED, AbilityErrorCode::ERROR_CODE_EDM_CONTROLLED},
+    {ERR_KILL_PROCESS_MDM_PROTECTED, AbilityErrorCode::ERROR_CODE_KILL_PROCESS_KEEP_ALIVE},
     {ERR_INSIGHT_INTENT_START_INVALID_COMPONENT, AbilityErrorCode::ERROR_CODE_OPERATION_NOT_SUPPORTED},
     {ERR_RESTART_APP_INCORRECT_ABILITY, AbilityErrorCode::ERROR_CODE_RESTART_APP_INCORRECT_ABILITY},
     {ERR_RESTART_APP_FREQUENT, AbilityErrorCode::ERROR_CODE_RESTART_APP_FREQUENT},

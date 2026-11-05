@@ -56,6 +56,9 @@ HWTEST_F(AbilityBusinessErrorTest, GetErrorMsg_0100, TestSize.Level2)
 
     result = GetErrorMsg(static_cast<AbilityErrorCode>(-1000));
     EXPECT_TRUE(result == "");
+
+    result = GetErrorMsg(AbilityErrorCode::ERROR_CODE_KILL_PROCESS_KEEP_ALIVE);
+    EXPECT_TRUE(result == "The target process is protected by an MDM application and cannot be terminated.");
 }
 
 /**
@@ -120,6 +123,9 @@ HWTEST_F(AbilityBusinessErrorTest, GetJsErrorCodeByNativeError_0100, TestSize.Le
 
     result = GetJsErrorCodeByNativeError(OHOS::AAFwk::ERR_NOT_NATIVE_UI_ABILITY);
     EXPECT_TRUE(result == AbilityErrorCode::ERROR_CODE_INNER);
+
+    result = GetJsErrorCodeByNativeError(OHOS::AAFwk::ERR_KILL_PROCESS_MDM_PROTECTED);
+    EXPECT_TRUE(result == AbilityErrorCode::ERROR_CODE_KILL_PROCESS_KEEP_ALIVE);
 }
 
 /**
@@ -143,6 +149,8 @@ HWTEST_F(AbilityBusinessErrorTest, GetErrorMsgByNativeError_0100, TestSize.Level
         "Internal error. IPC failed. Try again later.");
     EXPECT_EQ(GetErrorMsgByNativeError(AAFwk::ERR_NOT_NATIVE_UI_ABILITY),
         "Internal error. Non-native UIAbility cannot call this method.");
+    EXPECT_EQ(GetErrorMsgByNativeError(AAFwk::ERR_KILL_PROCESS_MDM_PROTECTED),
+        "The target process is protected by an MDM application and cannot be terminated.");
     EXPECT_EQ(GetErrorMsgByNativeError(AAFwk::CONNECTION_NOT_EXIST, innerErrMsg),
         "Internal error. The service connection does not exist. Use a connection ID returned by "
         "connectServiceExtensionAbility.");

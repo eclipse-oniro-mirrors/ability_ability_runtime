@@ -48,16 +48,39 @@ public:
         return mockQueryExtensionAbilityInfosV9Ret;
     }
 
+    ErrCode IsApplicationDisableForbidden(const std::string &bundleName, int32_t userId, int32_t appIndex,
+        bool &forbidden) override
+    {
+        mockIsApplicationDisableForbiddenCall++;
+        mockBundleName = bundleName;
+        mockUserId = userId;
+        mockAppIndex = appIndex;
+        forbidden = mockForbidden;
+        return mockIsApplicationDisableForbiddenRet;
+    }
+
     static ErrCode mockQueryAbilityInfosV9Ret;
     static std::vector<AbilityInfo> mockAbilityInfos;
     static ErrCode mockQueryExtensionAbilityInfosV9Ret;
     static std::vector<ExtensionAbilityInfo> mockExtensionInfos;
+    static ErrCode mockIsApplicationDisableForbiddenRet;
+    static bool mockForbidden;
+    static int32_t mockIsApplicationDisableForbiddenCall;
+    static std::string mockBundleName;
+    static int32_t mockUserId;
+    static int32_t mockAppIndex;
 };
 
 ErrCode MockBundleMgrStub::mockQueryAbilityInfosV9Ret = ERR_OK;
 std::vector<AbilityInfo> MockBundleMgrStub::mockAbilityInfos;
 ErrCode MockBundleMgrStub::mockQueryExtensionAbilityInfosV9Ret = ERR_OK;
 std::vector<ExtensionAbilityInfo> MockBundleMgrStub::mockExtensionInfos;
+ErrCode MockBundleMgrStub::mockIsApplicationDisableForbiddenRet = ERR_OK;
+bool MockBundleMgrStub::mockForbidden = false;
+int32_t MockBundleMgrStub::mockIsApplicationDisableForbiddenCall = 0;
+std::string MockBundleMgrStub::mockBundleName;
+int32_t MockBundleMgrStub::mockUserId = 0;
+int32_t MockBundleMgrStub::mockAppIndex = 0;
 }  // namespace AppExecFwk
 }  // namespace OHOS
 
