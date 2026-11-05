@@ -51,6 +51,8 @@ public:
         bool isKillPrecedeStart = false) override { return 0; }
     int KillProcessWithAccount(const std::string &bundleName, const int accountId,
         const bool clearPageStack = false, int32_t appIndex = 0) override { return 0; }
+    int32_t KillProcessWithAccountSafely(const std::string &bundleName, const int accountId,
+        const bool clearPageStack = false, int32_t appIndex = 0) override { return 0; }
     int32_t KillProcessesInBatch(const std::vector<int32_t> &pids) override { return 0; }
     int UpdateApplicationInfoInstalled(const std::string &bundleName, const int uid,
         const std::string &moduleName, bool isPlugin) override { return 0; }

@@ -384,6 +384,20 @@ int32_t AmsMgrScheduler::KillProcessWithAccount(
         "KillProcessWithAccount");
 }
 
+int32_t AmsMgrScheduler::KillProcessWithAccountSafely(
+    const std::string &bundleName, const int accountId, const bool clearPageStack, int32_t appIndex)
+{
+    if (!IsReady()) {
+        return ERR_INVALID_OPERATION;
+    }
+#ifdef APP_MGR_KILL_REASON_TAG
+    amsMgrServiceInner_->RecordAppWithReasonByUserId(accountId,
+        HiviewDFX::ProcessKillReason::KillEventId::REASON_KILL_PROCESS_WITH_ACCOUNT);
+#endif
+    return amsMgrServiceInner_->KillApplicationByUserIdSafely(bundleName, appIndex, accountId, clearPageStack,
+        "KillProcessWithAccountSafely");
+}
+
 int32_t AmsMgrScheduler::KillProcessesInBatch(const std::vector<int32_t> &pids)
 {
     TAG_LOGI(AAFwkTag::APPMGR, "pids.size=%{public}zu", pids.size());
