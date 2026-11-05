@@ -3851,7 +3851,7 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, KillApplicationByUserIdSafely_005, TestS
 
 /**
  * @tc.name: KillApplicationByUserIdSafely_006
- * @tc.desc: Propagate a bundle manager policy-query failure without killing the process.
+ * @tc.desc: Continue the legacy kill path when the bundle manager policy query fails.
  * @tc.type: FUNC
  */
 HWTEST_F(AppMgrServiceInnerSeventhTest, KillApplicationByUserIdSafely_006, TestSize.Level1)
@@ -3864,9 +3864,12 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, KillApplicationByUserIdSafely_006, TestS
 
     int32_t ret = appMgrServiceInner->KillApplicationByUserIdSafely("com.example.test", 2, 100, true, "test");
 
-    EXPECT_EQ(ret, ERR_INVALID_OPERATION);
+    EXPECT_EQ(ret, ERR_OK);
     EXPECT_EQ(status.isApplicationDisableForbiddenCall_, 1);
-    EXPECT_EQ(status.processExitCall_, 0);
+    EXPECT_EQ(status.processExitCall_, 1);
+    EXPECT_TRUE(status.processExitClearPageStack_);
+    EXPECT_TRUE(status.processExitAddKillingCaller_);
+    EXPECT_EQ(status.processExitReason_, "test");
 }
 
 /**
@@ -3979,6 +3982,30 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, KillApplicationByUserIdSafely_010, TestS
     EXPECT_EQ(ret, ERR_PERMISSION_DENIED);
     EXPECT_EQ(status.isApplicationDisableForbiddenCall_, 0);
     EXPECT_EQ(status.processExitCall_, 0);
+}
+
+/**
+ * @tc.name: KillApplicationByUserIdSafely_011
+ * @tc.desc: Continue the legacy kill path when the target bundle does not exist.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerSeventhTest, KillApplicationByUserIdSafely_011, TestSize.Level1)
+{
+    SafeKillMockStatusGuard guard;
+    auto &status = AAFwk::MyStatus::GetInstance();
+    status.getBundleManagerHelper_ = std::make_shared<BundleMgrHelper>();
+    status.isApplicationDisableForbiddenRet_ = ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST;
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+
+    int32_t ret = appMgrServiceInner->KillApplicationByUserIdSafely(
+        "com.example.missing", 2, 100, true, "test");
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(status.isApplicationDisableForbiddenCall_, 1);
+    EXPECT_EQ(status.processExitCall_, 1);
+    EXPECT_TRUE(status.processExitClearPageStack_);
+    EXPECT_TRUE(status.processExitAddKillingCaller_);
+    EXPECT_EQ(status.processExitReason_, "test");
 }
 } // namespace AppExecFwk
 } // namespace OHOS
