@@ -342,7 +342,7 @@ int32_t AppSpawnClient::AppspawnSetExtMsg(const AppSpawnStartMsg &startMsg, AppS
     }
 
     if (!startMsg.agentId.empty()) {
-        ret = AppSpawnReqMsgAddStringInfo(reqHandle, "agentId", startMsg.agentId.c_str());
+        ret = AppSpawnReqMsgAddStringInfo(reqHandle, MSG_EXT_NAME_AGENT_ID, startMsg.agentId.c_str());
         if (ret) {
             TAG_LOGE(AAFwkTag::APPMGR, "send agentId fail, ret: %{public}d", ret);
         } else {

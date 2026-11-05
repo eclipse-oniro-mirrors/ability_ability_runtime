@@ -5735,9 +5735,10 @@ void AppMgrServiceInner::SetAppInfo(const BundleInfo &bundleInfo, AppSpawnStartM
         token, PERMISSION_EXEC_PUBLIC_CLI_TOOL, false) == Security::AccessToken::PERMISSION_GRANTED;
     if (hasExecCliToolPerm || hasExecPublicCliToolPerm) {
         startMsg.agentId = bundleInfo.signatureInfo.appIdentifier;
+        startMsg.flags |= (START_FLAG_BASE << AppFlagsIndex::APP_FLAGS_AGENT);
     }
-    TAG_LOGI(AAFwkTag::APPMGR, "execCmd permission check: EXEC_CLI_TOOL=%{public}d, EXEC_PUBLIC_CLI_TOOL=%{public}d, "
-        "agentId:%{public}s", hasExecCliToolPerm, hasExecPublicCliToolPerm, startMsg.agentId.c_str());
+    TAG_LOGI(AAFwkTag::APPMGR, "agentId check: %{public}d, %{public}d, agentId:%{public}s",
+        hasExecCliToolPerm, hasExecPublicCliToolPerm, startMsg.agentId.c_str());
     startMsg.provisionType = bundleInfo.applicationInfo.appProvisionType;
     startMsg.appDistributionType = bundleInfo.applicationInfo.appDistributionType;
     startMsg.apiTargetVersion = bundleInfo.applicationInfo.apiTargetVersion % API_VERSION_MOD;
