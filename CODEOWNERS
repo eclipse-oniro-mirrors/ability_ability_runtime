@@ -25,7 +25,7 @@ interfaces/ @afwk_helper
 js_environment/ @afwk_helper
 service_router_framework/ @afwk_helper
 services/ @afwk_helper
-services/appmgr/ @afwk_helper @xialiangwei @jsjzju
+services/appmgr/ @afwk_helper @SKY2001
 test/ @afwk_helper
 tools/ @afwk_helper
 utils/ @afwk_helper
