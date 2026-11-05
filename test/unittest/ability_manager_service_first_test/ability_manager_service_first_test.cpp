@@ -48,6 +48,7 @@
 #undef private
 #undef protected
 #include "ability_manager_errors.h"
+#include "ability_config.h"
 #include "connection_observer_errors.h"
 #include "appexecfwk_errors.h"
 #include "hilog_tag_wrapper.h"
@@ -4528,6 +4529,165 @@ HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_QueriesOnlyLaunchTargetsForT
     context.DrainTasks();
     EXPECT_EQ(context.abilityManager_->launched, (std::vector<std::string>{first.bundleName, other.bundleName}));
     EXPECT_EQ(context.abilityManager_->launchUsers, (std::vector<int32_t>{DIRECT_BOOT_TEST_USER, OTHER_USER}));
+}
+
+namespace {
+class DirectBootKillClient : public AppMgrClient {
+public:
+    MOCK_METHOD(AppMgrResultCode, KillApplication,
+        (const std::string &, bool, int32_t, const std::string &, int32_t), (override));
+};
+
+class DirectBootKillContext : public DirectBootTestContext {
+public:
+    DirectBootKillContext()
+    {
+        auto scheduler = DelayedSingleton<AppScheduler>::GetInstance();
+        oldClient_ = std::move(scheduler->appMgrClient_);
+        auto client = std::make_unique<StrictMock<DirectBootKillClient>>();
+        client_ = client.get();
+        scheduler->appMgrClient_ = std::move(client);
+        abilityManager_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    }
+
+    ~DirectBootKillContext()
+    {
+        DelayedSingleton<AppScheduler>::GetInstance()->appMgrClient_ = std::move(oldClient_);
+    }
+
+    std::shared_ptr<AbilityRecord> SceneBoardRecord()
+    {
+        AbilityRequest request;
+        request.abilityInfo.bundleName = AbilityConfig::SCENEBOARD_BUNDLE_NAME;
+        request.abilityInfo.name = AbilityConfig::SCENEBOARD_ABILITY_NAME;
+        request.abilityInfo.type = AbilityType::EXTENSION;
+        auto record = AbilityRecord::CreateAbilityRecord(request);
+        if (record != nullptr) {
+            record->SetOwnerMissionUserId(DIRECT_BOOT_TEST_USER);
+        }
+        return record;
+    }
+
+    StrictMock<DirectBootKillClient> *client_ = nullptr;
+    std::unique_ptr<AppMgrClient> oldClient_;
+};
+} // namespace
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_ScbDeathKillsOnlyEnabledDirectBootApps, TestSize.Level1)
+{
+    DirectBootKillContext context;
+    context.Register(context.Target("direct.app"));
+    context.Register(context.Target("normal.app", false));
+    context.Register(context.Target("disabled.app"), false);
+    auto other = context.Target("other.user");
+    other.userId = OTHER_USER;
+    context.Register(other);
+    auto record = context.SceneBoardRecord();
+    ASSERT_NE(record, nullptr);
+    ASSERT_TRUE(record->IsSceneBoard());
+    EXPECT_CALL(*context.client_, KillApplication("direct.app", false, 0,
+        "SceneBoardDiedDirectBoot", DIRECT_BOOT_TEST_USER)).WillOnce(Return(RESULT_OK));
+    context.abilityManager_->OnAbilityDied(record);
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_OtherAbilityDeathDoesNotKillApps, TestSize.Level1)
+{
+    DirectBootKillContext context;
+    context.Register(context.Target("direct.app"));
+    auto record = MockAbilityRecord(AbilityType::EXTENSION);
+    ASSERT_NE(record, nullptr);
+    record->SetOwnerMissionUserId(DIRECT_BOOT_TEST_USER);
+    EXPECT_CALL(*context.client_, KillApplication(_, _, _, _, _)).Times(0);
+    context.abilityManager_->OnAbilityDied(nullptr);
+    context.abilityManager_->OnAbilityDied(record);
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_ScbCleanupDeduplicatesAppsAndSeparatesClones, TestSize.Level1)
+{
+    DirectBootKillContext context;
+    auto first = context.Target("direct.app");
+    context.Register(first);
+    auto second = first;
+    second.abilityName = "SecondAbility";
+    context.Register(second);
+    auto clone = first;
+    clone.appCloneIndex = 1;
+    context.Register(clone);
+    EXPECT_CALL(*context.client_, KillApplication("direct.app", false, 0,
+        "SceneBoardDiedDirectBoot", DIRECT_BOOT_TEST_USER)).WillOnce(Return(RESULT_OK));
+    EXPECT_CALL(*context.client_, KillApplication("direct.app", false, 1,
+        "SceneBoardDiedDirectBoot", DIRECT_BOOT_TEST_USER)).WillOnce(Return(RESULT_OK));
+    context.abilityManager_->KillDirectBootApps(DIRECT_BOOT_TEST_USER);
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_ScbCleanupContinuesAfterKillFailure, TestSize.Level1)
+{
+    DirectBootKillContext context;
+    context.Register(context.Target("first.app"));
+    context.Register(context.Target("second.app"));
+    InSequence sequence;
+    EXPECT_CALL(*context.client_, KillApplication("first.app", false, 0,
+        "SceneBoardDiedDirectBoot", DIRECT_BOOT_TEST_USER)).WillOnce(Return(ERROR_KILL_APPLICATION));
+    EXPECT_CALL(*context.client_, KillApplication("second.app", false, 0,
+        "SceneBoardDiedDirectBoot", DIRECT_BOOT_TEST_USER)).WillOnce(Return(RESULT_OK));
+    context.abilityManager_->KillDirectBootApps(DIRECT_BOOT_TEST_USER);
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_ScbCleanupDoesNotChangeRegistrationAfterUnlock, TestSize.Level1)
+{
+    DirectBootKillContext context;
+    context.Register(context.Target("direct.app"));
+    auto entries = context.store_->entries;
+    auto writes = context.store_->writes;
+    UserController::GetInstance().DeleteUserLockStatus(DIRECT_BOOT_TEST_USER);
+    UserController::GetInstance().SetUserLockStatus(DIRECT_BOOT_TEST_USER, UserLockStatus::USER_UNLOCKED);
+    EXPECT_CALL(*context.client_, KillApplication("direct.app", false, 0,
+        "SceneBoardDiedDirectBoot", DIRECT_BOOT_TEST_USER)).WillOnce(Return(RESULT_OK));
+    context.abilityManager_->KillDirectBootApps(DIRECT_BOOT_TEST_USER);
+    EXPECT_EQ(context.store_->writes, writes);
+    ASSERT_EQ(context.store_->entries.size(), entries.size());
+    for (size_t i = 0; i < entries.size(); ++i) {
+        EXPECT_EQ(context.store_->entries[i].key.ToString(), entries[i].key.ToString());
+        EXPECT_EQ(context.store_->entries[i].value.ToString(), entries[i].value.ToString());
+    }
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_ScbCleanupInvalidContextDoesNotKillApps, TestSize.Level1)
+{
+    DirectBootKillContext context;
+    context.Register(context.Target("direct.app"));
+    EXPECT_CALL(*context.client_, KillApplication(_, _, _, _, _)).Times(0);
+    context.abilityManager_->KillDirectBootApps(-1);
+    context.store_->readResult = DistributedKv::Status::ERROR;
+    context.abilityManager_->KillDirectBootApps(DIRECT_BOOT_TEST_USER);
+    context.abilityManager_->abilityAutoStartupService_.reset();
+    context.abilityManager_->KillDirectBootApps(DIRECT_BOOT_TEST_USER);
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_ScbCleanupUsesExecutionUserForSharedRecords, TestSize.Level1)
+{
+    DirectBootKillContext context;
+    auto info = context.Target("shared.app");
+    info.userId = 0;
+    context.Register(info);
+    EXPECT_CALL(*context.client_, KillApplication("shared.app", false, 0,
+        "SceneBoardDiedDirectBoot", DIRECT_BOOT_TEST_USER)).WillOnce(Return(RESULT_OK));
+    context.abilityManager_->KillDirectBootApps(DIRECT_BOOT_TEST_USER);
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_ScbCleanupSkipsInvalidAppIdentity, TestSize.Level1)
+{
+    DirectBootKillContext context;
+    auto info = context.Target("invalid.app");
+    info.appCloneIndex = -1;
+    context.Register(info);
+    info.appCloneIndex = AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX + 1;
+    context.Register(info);
+    info.appCloneIndex = 0;
+    info.bundleName.clear();
+    context.Register(info);
+    EXPECT_CALL(*context.client_, KillApplication(_, _, _, _, _)).Times(0);
+    context.abilityManager_->KillDirectBootApps(DIRECT_BOOT_TEST_USER);
 }
 
 } // namespace AAFwk

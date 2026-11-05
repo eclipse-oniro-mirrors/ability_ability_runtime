@@ -16,6 +16,7 @@
 #include "ability_manager_service.h"
 
 #include <dlfcn.h>
+#include <set>
 #include <sys/epoll.h>
 #include <unordered_map>
 
@@ -9543,6 +9544,9 @@ void AbilityManagerService::OnAbilityDied(std::shared_ptr<AbilityRecord> ability
         }
     }
     FreezeUtil::GetInstance().DeleteAppLifecycleEvent(abilityRecord->GetPid());
+    if (abilityRecord->IsSceneBoard()) {
+        KillDirectBootApps(abilityRecord->GetOwnerMissionUserId());
+    }
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
         if (abilityRecord->GetAbilityInfo().type == AbilityType::PAGE) {
             auto uiAbilityManager = GetUIAbilityManagerByUserId(abilityRecord->GetOwnerMissionUserId());
@@ -10310,6 +10314,34 @@ bool AbilityManagerService::IsAutoStartupAllowed(int32_t userId, bool isEDMStart
         return false;
     }
     return true;
+}
+
+void AbilityManagerService::KillDirectBootApps(int32_t userId)
+{
+    if (userId < 0 || abilityAutoStartupService_ == nullptr) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "skip direct boot cleanup, user:%{public}d or service invalid", userId);
+        return;
+    }
+    std::vector<AutoStartupInfo> infoList;
+    int32_t result = abilityAutoStartupService_->QueryAllAutoStartupApplicationsWithoutPermission(infoList, userId);
+    if (result != ERR_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "query direct boot apps failed, user:%{public}d ret:%{public}d", userId, result);
+        return;
+    }
+    std::set<std::pair<std::string, int32_t>> handledApps;
+    for (const auto &info : infoList) {
+        if (!info.isDirectBoot || info.bundleName.empty() || info.appCloneIndex < 0 ||
+            info.appCloneIndex > AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
+            continue;
+        }
+        if (!handledApps.emplace(info.bundleName, info.appCloneIndex).second) {
+            continue;
+        }
+        result = DelayedSingleton<AppScheduler>::GetInstance()->KillApplication(
+            info.bundleName, false, info.appCloneIndex, "SceneBoardDiedDirectBoot", userId);
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "SCB died, kill direct boot app user:%{public}d bundle:%{public}s "
+            "appIndex:%{public}d ret:%{public}d", userId, info.bundleName.c_str(), info.appCloneIndex, result);
+    }
 }
 
 void AbilityManagerService::StartAutoStartupApps(int32_t userId, bool isEDMStart, bool isDirectBoot)
