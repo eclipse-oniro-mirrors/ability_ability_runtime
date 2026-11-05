@@ -72,6 +72,7 @@ public:
         o.timeout = timeout;
         o.toolCallId = toolCallId;
         o.dmSessionId = dmSessionId;
+        o.policy = policy;
         return o;
     }
 };

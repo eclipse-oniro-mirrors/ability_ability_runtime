@@ -180,5 +180,47 @@ HWTEST_F(ExecOptionsTest, ExecOptions_Unmarshalling_0300, TestSize.Level1)
     missingDmParcel.RewindRead(0);
     EXPECT_EQ(ExecOptions::Unmarshalling(missingDmParcel), nullptr);
 }
+
+/**
+ * @tc.name: ExecOptions_PolicyParcelable_0100
+ * @tc.desc: Test ExecOptions marshalling/unmarshalling round-trips the policy field
+ * @tc.type: FUNC
+ */
+HWTEST_F(ExecOptionsTest, ExecOptions_PolicyParcelable_0100, TestSize.Level1)
+{
+    const std::string testPolicy = "default";
+
+    ExecOptions options;
+    options.background = true;
+    options.yieldMs = TEST_YIELD_MS;
+    options.timeout = TEST_TIMEOUT;
+    options.policy = testPolicy;
+
+    Parcel parcel;
+    ASSERT_TRUE(options.Marshalling(parcel));
+    parcel.RewindRead(0);
+    std::unique_ptr<ExecOptions> result(ExecOptions::Unmarshalling(parcel));
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->policy, testPolicy);
+
+    // Default-constructed options carry an empty policy through a round-trip.
+    ExecOptions empty;
+    Parcel emptyParcel;
+    ASSERT_TRUE(empty.Marshalling(emptyParcel));
+    emptyParcel.RewindRead(0);
+    std::unique_ptr<ExecOptions> emptyResult(ExecOptions::Unmarshalling(emptyParcel));
+    ASSERT_NE(emptyResult, nullptr);
+    EXPECT_TRUE(emptyResult->policy.empty());
+
+    // A parcel missing the trailing policy field is rejected (strict tail read).
+    Parcel noPolicyParcel;
+    ASSERT_TRUE(noPolicyParcel.WriteBool(true));
+    ASSERT_TRUE(noPolicyParcel.WriteInt64(TEST_YIELD_MS));
+    ASSERT_TRUE(noPolicyParcel.WriteInt64(TEST_TIMEOUT));
+    ASSERT_TRUE(noPolicyParcel.WriteString(TEST_TOOL_CALL_ID));
+    ASSERT_TRUE(noPolicyParcel.WriteString(TEST_DM_SESSION_ID));
+    noPolicyParcel.RewindRead(0);
+    EXPECT_EQ(ExecOptions::Unmarshalling(noPolicyParcel), nullptr);
+}
 } // namespace CliTool
 } // namespace OHOS
