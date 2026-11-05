@@ -347,6 +347,38 @@ HWTEST_F(AppSpawnClientSecondTest, AppspawnSetExtMsgSec_002, TestSize.Level2)
 }
 
 /**
+ * @tc.name: AppspawnSetExtMsgSec_003
+ * @tc.desc: AppspawnSetExtMsgSec, cover the ipcGroupInfoList branch:
+ *           1) single entry + valid reqHandle -> success;
+ *           2) single entry + nullptr reqHandle -> AppSpawnReqMsgAddStringInfo fails, returns non-zero;
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppSpawnClientSecondTest, AppspawnSetExtMsgSec_003, TestSize.Level2)
+{
+    auto asc = std::make_shared<AppSpawnClient>(true);
+    IpcGroupInfo info1;
+    info1.ipcGroupId = "ipcGroup1";
+    info1.gid = 100;
+    info1.uid = 200;
+
+    AppSpawnStartMsg startMsg;
+    startMsg.code = MSG_APP_SPAWN;
+    startMsg.procName = "testProcName";
+    startMsg.ipcGroupInfoList.push_back(info1);
+    AppSpawnReqMsgHandle reqHandle = nullptr;
+    int ret = AppSpawnReqMsgCreate(
+        static_cast<AppSpawnMsgType>(startMsg.code), startMsg.procName.c_str(), &reqHandle);
+    EXPECT_EQ(ret, ERR_OK);
+    ret = asc->AppspawnSetExtMsgSec(startMsg, reqHandle);
+    EXPECT_EQ(ret, ERR_OK);
+    AppSpawnReqMsgFree(reqHandle);
+
+    reqHandle = nullptr;
+    ret = asc->AppspawnSetExtMsgSec(startMsg, reqHandle);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
  * @tc.name: AppspawnSetExtMsg_001
  * @tc.desc: AppspawnSetExtMsg.
  * @tc.type: FUNC

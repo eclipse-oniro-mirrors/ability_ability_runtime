@@ -16,6 +16,7 @@
 #ifndef MOCK_MY_STATUS_H
 #define MOCK_MY_STATUS_H
 #include "bundle_mgr_helper.h"
+#include "ipc_group_info.h"
 #include "remote_client_manager.h"
 #include "app_running_record.h"
 #include "iservice_registry.h"
@@ -84,6 +85,8 @@ public:
     std::vector<AppExecFwk::BaseSharedBundleInfo> baseSharedBundleInfos_;
     bool queryDataGroupInfos_ = false;
     std::vector<AppExecFwk::DataGroupInfo> queryData_;
+    ErrCode queryIpcGroupInfosRet_ = ERR_OK;
+    std::vector<AppExecFwk::IpcGroupInfo> queryIpcGroupInfoData_;
     ErrCode isApplicationDisableForbiddenRet_ = ERR_OK;
     bool isApplicationDisableForbidden_ = false;
     int32_t isApplicationDisableForbiddenCall_ = 0;

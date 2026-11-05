@@ -286,6 +286,12 @@ bool BundleMgrHelper::QueryDataGroupInfos(const std::string& bundleName,
     return AAFwk::MyStatus::GetInstance().queryDataGroupInfos_;
 }
 
+ErrCode BundleMgrHelper::QueryIpcGroupInfos(
+    const std::string& bundleName, int32_t userId, std::vector<IpcGroupInfo>& infos)
+{
+    return ERR_OK;
+}
+
 bool BundleMgrHelper::RegisterBundleEventCallback(const sptr<IBundleEventCallback>& bundleEventCallback)
 {
     return false;

@@ -1527,6 +1527,63 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, CreateStartMsg_004, TestSize.Level1)
 }
 
 /**
+* @tc.name: CreateStartMsg_005
+* @tc.desc: CreateStartMsg, QueryIpcGroupInfos succeeds with non-empty list,
+*           ipcGroupInfoList is assigned to startMsg (branch false-side: no early log).
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, CreateStartMsg_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CreateStartMsg_005 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().getBundleManagerHelper_ = std::make_shared<BundleMgrHelper>();
+    AAFwk::MyStatus::GetInstance().getBaseSharedBundleInfos_ = ERR_OK;
+    AppExecFwk::IpcGroupInfo info;
+    info.ipcGroupId = "ipcGroup1";
+    info.gid = 100;
+    info.uid = 200;
+    AAFwk::MyStatus::GetInstance().queryIpcGroupInfosRet_ = ERR_OK;
+    AAFwk::MyStatus::GetInstance().queryIpcGroupInfoData_ = {info};
+
+    CreateStartMsgParam param;
+    AppSpawnStartMsg startMsg;
+    auto ret = appMgrServiceInner->CreateStartMsg(param, startMsg);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(startMsg.ipcGroupInfoList.size(), 1U);
+    EXPECT_EQ(startMsg.ipcGroupInfoList[0].ipcGroupId, "ipcGroup1");
+    AAFwk::MyStatus::GetInstance().queryIpcGroupInfoData_.clear();
+    TAG_LOGI(AAFwkTag::TEST, "CreateStartMsg_005 end");
+}
+
+/**
+* @tc.name: CreateStartMsg_006
+* @tc.desc: CreateStartMsg, QueryIpcGroupInfos returns error (ret != ERR_OK),
+*           the log branch is taken and startMsg.ipcGroupInfoList stays empty.
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, CreateStartMsg_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CreateStartMsg_006 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().getBundleManagerHelper_ = std::make_shared<BundleMgrHelper>();
+    AAFwk::MyStatus::GetInstance().getBaseSharedBundleInfos_ = ERR_OK;
+    AAFwk::MyStatus::GetInstance().queryIpcGroupInfosRet_ = ERR_INVALID_VALUE;
+    AAFwk::MyStatus::GetInstance().queryIpcGroupInfoData_.clear();
+
+    CreateStartMsgParam param;
+    AppSpawnStartMsg startMsg;
+    auto ret = appMgrServiceInner->CreateStartMsg(param, startMsg);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(startMsg.ipcGroupInfoList.empty());
+
+    AAFwk::MyStatus::GetInstance().queryIpcGroupInfosRet_ = ERR_OK;
+    ret = appMgrServiceInner->CreateStartMsg(param, startMsg);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(startMsg.ipcGroupInfoList.empty());
+    TAG_LOGI(AAFwkTag::TEST, "CreateStartMsg_006 end");
+}
+
+/**
 * @tc.name: CheckGetRunningInfoPermission_001
 * @tc.desc: test CheckGetRunningInfoPermission_001
 * @tc.type: FUNC
