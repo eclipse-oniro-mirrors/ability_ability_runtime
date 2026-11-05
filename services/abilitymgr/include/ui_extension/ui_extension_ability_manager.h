@@ -245,6 +245,8 @@ private:
 
     void TerminateDone(const std::shared_ptr<BaseExtensionRecord> &abilityRecord) override;
 
+    void CleanupUIExtensionSessionOnTerminated(const std::shared_ptr<BaseExtensionRecord> &abilityRecord);
+
     bool HandleExtensionAbilityRemove(const std::shared_ptr<BaseExtensionRecord> &abilityRecord) override;
 
     void HandleAbilityDiedTaskInner(const std::shared_ptr<BaseExtensionRecord> &abilityRecord) override;

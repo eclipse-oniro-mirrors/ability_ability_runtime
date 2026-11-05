@@ -356,6 +356,61 @@ HWTEST_F(UIExtensionAbilityManagerTest, HandleUIExtensionDied_001, TestSize.Leve
 
 /*
  * Feature: UIExtensionAbilityManager
+ * Function: CleanupUIExtensionSessionOnTerminated
+ */
+HWTEST_F(UIExtensionAbilityManagerTest, CleanupUIExtensionSessionOnTerminated_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CleanupUIExtensionSessionOnTerminated_001 start");
+    std::shared_ptr<UIExtensionAbilityManager> connectManager = std::make_shared<UIExtensionAbilityManager>(0);
+    EXPECT_NE(connectManager, nullptr);
+    connectManager->uiExtensionMap_.clear();
+
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo1(new SessionInfo());
+    sessionInfo1->sessionToken = new Rosen::Session(info);
+    sptr<SessionInfo> sessionInfo2(new SessionInfo());
+    sessionInfo2->sessionToken = new Rosen::Session(info);
+    sptr<SessionInfo> sessionInfo3(new SessionInfo());
+    sessionInfo3->sessionToken = new Rosen::Session(info);
+
+    std::shared_ptr<BaseExtensionRecord> terminatedRecord = serviceRecord_;
+    std::shared_ptr<BaseExtensionRecord> aliveRecord = serviceRecord1_;
+    std::weak_ptr<BaseExtensionRecord> expiredRecord;
+    connectManager->uiExtensionMap_.emplace(sessionInfo1->sessionToken,
+        UIExtensionAbilityManager::UIExtWindowMapValType(terminatedRecord, sessionInfo1));
+    connectManager->uiExtensionMap_.emplace(sessionInfo2->sessionToken,
+        UIExtensionAbilityManager::UIExtWindowMapValType(aliveRecord, sessionInfo2));
+    connectManager->uiExtensionMap_.emplace(sessionInfo3->sessionToken,
+        UIExtensionAbilityManager::UIExtWindowMapValType(expiredRecord, sessionInfo3));
+    EXPECT_EQ(connectManager->uiExtensionMap_.size(), 3);
+
+    connectManager->CleanupUIExtensionSessionOnTerminated(terminatedRecord);
+    EXPECT_EQ(connectManager->uiExtensionMap_.size(), 1);
+    EXPECT_EQ(connectManager->uiExtensionMap_.count(sessionInfo2->sessionToken), 1);
+    EXPECT_EQ(connectManager->uiExtensionMap_.count(sessionInfo1->sessionToken), 0);
+    EXPECT_EQ(connectManager->uiExtensionMap_.count(sessionInfo3->sessionToken), 0);
+    TAG_LOGI(AAFwkTag::TEST, "CleanupUIExtensionSessionOnTerminated_001 end");
+}
+
+/*
+ * Feature: UIExtensionAbilityManager
+ * Function: CleanupUIExtensionSessionOnTerminated
+ */
+HWTEST_F(UIExtensionAbilityManagerTest, CleanupUIExtensionSessionOnTerminated_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CleanupUIExtensionSessionOnTerminated_002 start");
+    std::shared_ptr<UIExtensionAbilityManager> connectManager = std::make_shared<UIExtensionAbilityManager>(0);
+    EXPECT_NE(connectManager, nullptr);
+    connectManager->uiExtensionMap_.clear();
+
+    connectManager->CleanupUIExtensionSessionOnTerminated(nullptr);
+    connectManager->CleanupUIExtensionSessionOnTerminated(serviceRecord_);
+    EXPECT_EQ(connectManager->uiExtensionMap_.size(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "CleanupUIExtensionSessionOnTerminated_002 end");
+}
+
+/*
+ * Feature: UIExtensionAbilityManager
  * Function: GetUIExtensionSessionInfo
  */
 HWTEST_F(UIExtensionAbilityManagerTest, GetUIExtensionSessionInfo_001, TestSize.Level1)
