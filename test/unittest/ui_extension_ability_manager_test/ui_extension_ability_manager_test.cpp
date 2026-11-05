@@ -367,9 +367,9 @@ HWTEST_F(UIExtensionAbilityManagerTest, TerminateDone_CleanupSession_001, TestSi
 
     Rosen::SessionInfo info;
     sptr<SessionInfo> sessionInfo1(new SessionInfo());
-    sessionInfo1->sessionToken = new Rosen::Session(info);
+    sessionInfo1->sessionToken = sptr<Rosen::Session>(new Rosen::Session(info));
     sptr<SessionInfo> sessionInfo2(new SessionInfo());
-    sessionInfo2->sessionToken = new Rosen::Session(info);
+    sessionInfo2->sessionToken = sptr<Rosen::Session>(new Rosen::Session(info));
 
     AbilityRequest terminatedRequest;
     terminatedRequest.abilityInfo.extensionAbilityType = ExtensionAbilityType::SYS_COMMON_UI;
@@ -418,7 +418,7 @@ HWTEST_F(UIExtensionAbilityManagerTest, TerminateDone_CleanupSession_002, TestSi
 
     Rosen::SessionInfo info;
     sptr<SessionInfo> sessionInfo(new SessionInfo());
-    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->sessionToken = sptr<Rosen::Session>(new Rosen::Session(info));
     abilityRecord->sessionInfo_ = sessionInfo;
     abilityRecord->SetAbilityState(AbilityState::TERMINATING);
     connectManager->TerminateDone(abilityRecord);
