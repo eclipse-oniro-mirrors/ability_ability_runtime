@@ -458,6 +458,66 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, KillApplication_001, TestSize.Level1)
 }
 
 /**
+ * @tc.name: KillApplication_002
+ * @tc.desc: test KillApplication_002 when VerifyKillProcessPermission fails but caller is local debug,
+ *     userId should be overridden to calling user and kill proceeds
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerSeventhTest, KillApplication_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "KillApplication_002 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().verifyCallingPermission_ = false;
+    AAFwk::MyStatus::GetInstance().isSACall_ = false;
+    AAFwk::MyStatus::GetInstance().isShellCall_ = false;
+    AAFwk::MyStatus::GetInstance().isCliToolToken_ = false;
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = true;
+    AAFwk::MyStatus::GetInstance().isCustomSandboxCall_ = false;
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = nullptr;
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 200000;
+
+    std::string bundleName = "test_bundle";
+    bool clearPageStack = false;
+    int32_t appIndex = 1;
+    int32_t ret = appMgrServiceInner->KillApplication(bundleName, clearPageStack, appIndex);
+    EXPECT_EQ(ret, ERR_OK);
+
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = false;
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "KillApplication_002 end");
+}
+
+/**
+ * @tc.name: KillApplication_003
+ * @tc.desc: test KillApplication_003 when VerifyKillProcessPermission fails but caller is custom sandbox,
+ *     userId should be overridden to calling user and kill proceeds
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerSeventhTest, KillApplication_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "KillApplication_003 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().verifyCallingPermission_ = false;
+    AAFwk::MyStatus::GetInstance().isSACall_ = false;
+    AAFwk::MyStatus::GetInstance().isShellCall_ = false;
+    AAFwk::MyStatus::GetInstance().isCliToolToken_ = false;
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = false;
+    AAFwk::MyStatus::GetInstance().isCustomSandboxCall_ = true;
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = nullptr;
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 200000;
+
+    std::string bundleName = "test_bundle";
+    bool clearPageStack = false;
+    int32_t appIndex = 1;
+    int32_t ret = appMgrServiceInner->KillApplication(bundleName, clearPageStack, appIndex);
+    EXPECT_EQ(ret, ERR_OK);
+
+    AAFwk::MyStatus::GetInstance().isCustomSandboxCall_ = false;
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "KillApplication_003 end");
+}
+
+/**
  * @tc.name: ForceKillApplication_001
  * @tc.desc: test ForceKillApplication_001
  * @tc.type: FUNC
@@ -2531,8 +2591,8 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, VerifyKillProcessPermissionCommon_007, T
 
 /**
 * @tc.name: VerifyKillProcessPermissionCommon_008
-* @tc.desc: test VerifyKillProcessPermissionCommon_008 when caller is treated as shell by
-*     LOCAL_DEBUG_OTHER_APPS permission in developer mode
+* @tc.desc: test VerifyKillProcessPermissionCommon_008 when caller has LOCAL_DEBUG_OTHER_APPS permission
+*     but no other permission and no valid app record, should be denied
 * @tc.type: FUNC
 */
 HWTEST_F(AppMgrServiceInnerSeventhTest, VerifyKillProcessPermissionCommon_008, TestSize.Level1)
@@ -2544,11 +2604,39 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, VerifyKillProcessPermissionCommon_008, T
     AAFwk::MyStatus::GetInstance().isShellCall_ = false;
     AAFwk::MyStatus::GetInstance().isCliToolToken_ = false;
     AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = true;
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = nullptr;
+
+    auto ret = appMgrServiceInner->VerifyKillProcessPermissionCommon();
+    EXPECT_EQ(ret, ERR_PERMISSION_DENIED);
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = false;
+    TAG_LOGI(AAFwkTag::TEST, "VerifyKillProcessPermissionCommon_008 end");
+}
+
+/**
+* @tc.name: VerifyKillProcessPermissionCommon_009
+* @tc.desc: test VerifyKillProcessPermissionCommon_009 when caller has LOCAL_DEBUG_OTHER_APPS permission
+*     and also has valid APL (system_basic), should pass via VerifyAPL
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, VerifyKillProcessPermissionCommon_009, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "VerifyKillProcessPermissionCommon_009 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().verifyCallingPermission_ = false;
+    AAFwk::MyStatus::GetInstance().isSACall_ = false;
+    AAFwk::MyStatus::GetInstance().isShellCall_ = false;
+    AAFwk::MyStatus::GetInstance().isCliToolToken_ = false;
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = true;
+    std::string temp = "";
+    std::shared_ptr<ApplicationInfo> info1 = std::make_shared<ApplicationInfo>();
+    info1->appPrivilegeLevel = "system_basic";
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = std::make_shared<AppRunningRecord>(info1, 0, temp);
 
     auto ret = appMgrServiceInner->VerifyKillProcessPermissionCommon();
     EXPECT_EQ(ret, ERR_OK);
     AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = false;
-    TAG_LOGI(AAFwkTag::TEST, "VerifyKillProcessPermissionCommon_008 end");
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "VerifyKillProcessPermissionCommon_009 end");
 }
 
 /**
@@ -2596,6 +2684,108 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, NotifyProcMemoryLevel_003, TestSize.Leve
     int32_t ret = appMgrServiceInner->NotifyProcMemoryLevel(procLevelMap);
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "NotifyProcMemoryLevel_003 end");
+}
+
+/**
+* @tc.name: NotifyProcMemoryLevel_004
+* @tc.desc: test NotifyProcMemoryLevel_004 when caller is local debug and process belongs to same user
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, NotifyProcMemoryLevel_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyProcMemoryLevel_004 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().checkSpecific_ = false;
+    AAFwk::MyStatus::GetInstance().isShellCall_ = false;
+    AAFwk::MyStatus::GetInstance().getBoolParameter_ = false;
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = true;
+    AAFwk::MyStatus::GetInstance().notifyProcMemory_ = ERR_OK;
+    AAFwk::MyStatus::GetInstance().notifyProcMemoryShellCall_ = 0;
+    AAFwk::MyStatus::GetInstance().notifyProcMemoryMapSize_ = 0;
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+
+    std::string temp = "";
+    std::shared_ptr<ApplicationInfo> info = std::make_shared<ApplicationInfo>();
+    auto appRecord = std::make_shared<AppRunningRecord>(info, 0, temp);
+    appRecord->SetUid(0);
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = appRecord;
+
+    std::map<pid_t, MemoryLevel> procLevelMap;
+    procLevelMap.emplace(1000, MemoryLevel::MEMORY_LEVEL_MODERATE);
+    int32_t ret = appMgrServiceInner->NotifyProcMemoryLevel(procLevelMap);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(AAFwk::MyStatus::GetInstance().notifyProcMemoryShellCall_, 1);
+    EXPECT_EQ(AAFwk::MyStatus::GetInstance().notifyProcMemoryMapSize_, 1);
+
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = false;
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "NotifyProcMemoryLevel_004 end");
+}
+
+/**
+* @tc.name: NotifyProcMemoryLevel_005
+* @tc.desc: test NotifyProcMemoryLevel_005 when caller is local debug and process belongs to different user
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, NotifyProcMemoryLevel_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyProcMemoryLevel_005 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().checkSpecific_ = false;
+    AAFwk::MyStatus::GetInstance().isShellCall_ = false;
+    AAFwk::MyStatus::GetInstance().getBoolParameter_ = false;
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = true;
+    AAFwk::MyStatus::GetInstance().notifyProcMemory_ = ERR_OK;
+    AAFwk::MyStatus::GetInstance().notifyProcMemoryShellCall_ = 0;
+    AAFwk::MyStatus::GetInstance().notifyProcMemoryMapSize_ = 0;
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 200000;
+
+    std::string temp = "";
+    std::shared_ptr<ApplicationInfo> info = std::make_shared<ApplicationInfo>();
+    auto appRecord = std::make_shared<AppRunningRecord>(info, 0, temp);
+    appRecord->SetUid(400000);
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = appRecord;
+
+    std::map<pid_t, MemoryLevel> procLevelMap;
+    procLevelMap.emplace(1000, MemoryLevel::MEMORY_LEVEL_MODERATE);
+    int32_t ret = appMgrServiceInner->NotifyProcMemoryLevel(procLevelMap);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(AAFwk::MyStatus::GetInstance().notifyProcMemoryMapSize_, 0);
+
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = false;
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "NotifyProcMemoryLevel_005 end");
+}
+
+/**
+* @tc.name: NotifyProcMemoryLevel_006
+* @tc.desc: test NotifyProcMemoryLevel_006 when caller is local debug and appRecord is null
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, NotifyProcMemoryLevel_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyProcMemoryLevel_006 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().checkSpecific_ = false;
+    AAFwk::MyStatus::GetInstance().isShellCall_ = false;
+    AAFwk::MyStatus::GetInstance().getBoolParameter_ = false;
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = true;
+    AAFwk::MyStatus::GetInstance().notifyProcMemory_ = ERR_OK;
+    AAFwk::MyStatus::GetInstance().notifyProcMemoryMapSize_ = 0;
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 200000;
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = nullptr;
+
+    std::map<pid_t, MemoryLevel> procLevelMap;
+    procLevelMap.emplace(1000, MemoryLevel::MEMORY_LEVEL_MODERATE);
+    int32_t ret = appMgrServiceInner->NotifyProcMemoryLevel(procLevelMap);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(AAFwk::MyStatus::GetInstance().notifyProcMemoryMapSize_, 0);
+
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = false;
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "NotifyProcMemoryLevel_006 end");
 }
 
 /**

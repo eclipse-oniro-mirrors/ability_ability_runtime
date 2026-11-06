@@ -9641,7 +9641,9 @@ int AbilityManagerService::KillProcessWithUserId(const std::string &bundleName, 
     // check permission first
     auto isAllowKillProcessForCollaborator = CheckPermissionForKillCollaborator();
     if (!isAllowKillProcessForCollaborator &&
-        DelayedSingleton<AppScheduler>::GetInstance()->VerifyKillProcessPermission(bundleName) != ERR_OK) {
+        DelayedSingleton<AppScheduler>::GetInstance()->VerifyKillProcessPermission(bundleName) != ERR_OK &&
+        !AAFwk::PermissionVerification::GetInstance()->IsLocalDebugOtherAppsCall() &&
+        !AAFwk::PermissionVerification::GetInstance()->IsCustomSandboxCall()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "KillProcess permission verification fail");
         return ERR_PERMISSION_DENIED;
     }

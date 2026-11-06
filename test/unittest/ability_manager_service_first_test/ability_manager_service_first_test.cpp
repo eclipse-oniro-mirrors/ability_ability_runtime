@@ -86,6 +86,8 @@ using OHOS::AppExecFwk::AbilityType;
 using OHOS::AppExecFwk::ExtensionAbilityType;
 namespace OHOS {
 namespace AAFwk {
+void SetLocalDebugOtherAppsCall(bool value);
+void SetCustomSandboxCall(bool value);
 namespace {
 const int32_t USER_ID_U100 = 100;
 const int32_t APP_MEMORY_SIZE = 512;
@@ -2706,6 +2708,46 @@ HWTEST_F(AbilityManagerServiceFirstTest, KillProcess_0100, TestSize.Level1)
     auto resultFunction = abilityMs->KillProcess("test");
     EXPECT_EQ(resultFunction, GET_BUNDLE_INFO_FAILED);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest KillProcess_0100 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_KillProcessWithUserId_0100
+ * @tc.desc: Test KillProcessWithUserId when caller is local debug, should bypass permission check
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, KillProcessWithUserId_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest KillProcessWithUserId_0100 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    MyFlag::flag_ = 0;
+    SetLocalDebugOtherAppsCall(true);
+
+    auto result = abilityMs->KillProcess("test");
+    EXPECT_NE(result, ERR_PERMISSION_DENIED);
+
+    SetLocalDebugOtherAppsCall(false);
+    MyFlag::flag_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest KillProcessWithUserId_0100 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_KillProcessWithUserId_0200
+ * @tc.desc: Test KillProcessWithUserId when caller is custom sandbox, should bypass permission check
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, KillProcessWithUserId_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest KillProcessWithUserId_0200 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    MyFlag::flag_ = 0;
+    SetCustomSandboxCall(true);
+
+    auto result = abilityMs->KillProcess("test");
+    EXPECT_NE(result, ERR_PERMISSION_DENIED);
+
+    SetCustomSandboxCall(false);
+    MyFlag::flag_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest KillProcessWithUserId_0200 end");
 }
 
 /**

@@ -2316,6 +2316,99 @@ HWTEST_F(AppMgrServiceInnerEighthTest, GetAppRunningUniqueIdByPid_001, TestSize.
 }
 
 /**
+ * @tc.name: GetAppRunningUniqueIdByPid_002
+ * @tc.desc: test GetAppRunningUniqueIdByPid_002 when caller is local debug and target process is same user
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, GetAppRunningUniqueIdByPid_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetAppRunningUniqueIdByPid_002 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().isSACall_ = false;
+    AAFwk::MyStatus::GetInstance().verifyRunningInfoPerm_ = false;
+    AAFwk::MyStatus::GetInstance().isShellCall_ = false;
+    AAFwk::MyStatus::GetInstance().getBoolParameter_ = false;
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = true;
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+
+    std::string temp = "";
+    std::shared_ptr<ApplicationInfo> info = std::make_shared<ApplicationInfo>();
+    auto appRecord = std::make_shared<AppRunningRecord>(info, 0, temp);
+    appRecord->SetUid(0);
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = appRecord;
+
+    pid_t pid = 1000;
+    std::string appRunningUniqueId = "";
+    auto ret = appMgrServiceInner->GetAppRunningUniqueIdByPid(pid, appRunningUniqueId);
+    EXPECT_EQ(ret, ERR_OK);
+
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = false;
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "GetAppRunningUniqueIdByPid_002 end");
+}
+
+/**
+ * @tc.name: GetAppRunningUniqueIdByPid_003
+ * @tc.desc: test GetAppRunningUniqueIdByPid_003 when caller is local debug and target process is different user
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, GetAppRunningUniqueIdByPid_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetAppRunningUniqueIdByPid_003 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().isSACall_ = false;
+    AAFwk::MyStatus::GetInstance().verifyRunningInfoPerm_ = false;
+    AAFwk::MyStatus::GetInstance().isShellCall_ = false;
+    AAFwk::MyStatus::GetInstance().getBoolParameter_ = false;
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = true;
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 200000;
+
+    std::string temp = "";
+    std::shared_ptr<ApplicationInfo> info = std::make_shared<ApplicationInfo>();
+    auto appRecord = std::make_shared<AppRunningRecord>(info, 0, temp);
+    appRecord->SetUid(400000);
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = appRecord;
+
+    pid_t pid = 1000;
+    std::string appRunningUniqueId = "";
+    auto ret = appMgrServiceInner->GetAppRunningUniqueIdByPid(pid, appRunningUniqueId);
+    EXPECT_EQ(ret, ERR_PERMISSION_DENIED);
+
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = false;
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "GetAppRunningUniqueIdByPid_003 end");
+}
+
+/**
+ * @tc.name: GetAppRunningUniqueIdByPid_004
+ * @tc.desc: test GetAppRunningUniqueIdByPid_004 when caller is local debug and appRecord is null
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, GetAppRunningUniqueIdByPid_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetAppRunningUniqueIdByPid_004 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().isSACall_ = false;
+    AAFwk::MyStatus::GetInstance().verifyRunningInfoPerm_ = false;
+    AAFwk::MyStatus::GetInstance().isShellCall_ = false;
+    AAFwk::MyStatus::GetInstance().getBoolParameter_ = false;
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = true;
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 200000;
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = nullptr;
+
+    pid_t pid = 1000;
+    std::string appRunningUniqueId = "";
+    auto ret = appMgrServiceInner->GetAppRunningUniqueIdByPid(pid, appRunningUniqueId);
+    EXPECT_EQ(ret, ERR_PERMISSION_DENIED);
+
+    AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_ = false;
+    AAFwk::MyStatus::GetInstance().getCallingUid_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "GetAppRunningUniqueIdByPid_004 end");
+}
+
+/**
  * @tc.name: NotifyMemMgrPriorityChanged_001
  * @tc.desc: test NotifyMemMgrPriorityChanged_001
  * @tc.type: FUNC

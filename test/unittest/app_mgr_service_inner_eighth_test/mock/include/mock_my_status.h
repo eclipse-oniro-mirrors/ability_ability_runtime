@@ -45,6 +45,7 @@ public:
     bool verifySuperviseKiaServicePermission_ = false;
     bool isSACall_ = false;
     bool isShellCall_ = false;
+    bool isLocalDebugOtherAppsCall_ = false;
     std::shared_ptr<AppExecFwk::AppRunningRecord> getAppRunningRecordByPid_ = nullptr;
     std::string getNameForUid_ = "";
     // mock app running manager

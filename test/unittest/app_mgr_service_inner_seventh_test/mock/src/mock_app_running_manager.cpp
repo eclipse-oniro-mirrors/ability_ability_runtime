@@ -290,6 +290,7 @@ int32_t AppRunningManager::NotifyMemoryLevel(int32_t level)
 int32_t AppRunningManager::NotifyProcMemoryLevel(const std::map<pid_t, MemoryLevel> &procLevelMap, bool isShellCall)
 {
     AAFwk::MyStatus::GetInstance().notifyProcMemoryCall_++;
+    AAFwk::MyStatus::GetInstance().notifyProcMemoryMapSize_ = procLevelMap.size();
     if (isShellCall) {
         AAFwk::MyStatus::GetInstance().notifyProcMemoryShellCall_++;
     }

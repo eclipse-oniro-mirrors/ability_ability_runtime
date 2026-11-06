@@ -46,6 +46,7 @@ public:
     bool isShellCall_ = false;
     bool isCliToolToken_ = false;
     bool isLocalDebugOtherAppsCall_ = false;
+    bool isCustomSandboxCall_ = false;
     std::shared_ptr<AppExecFwk::AppRunningRecord> getAppRunningRecordByPid_ = nullptr;
     std::string getNameForUid_ = "";
     ErrCode getNameAndIndexForUidRet_ = ERR_OK;
@@ -59,6 +60,7 @@ public:
     int notifyProcMemoryCall_ = 0;
     int notifyProcMemory_ = 0;
     int notifyProcMemoryShellCall_ = 0;
+    size_t notifyProcMemoryMapSize_ = 0;
     int dumpHeapMemory_ = 0;
     int dumpJsHeapMemory_ = 0;
     bool processExit_ = false;

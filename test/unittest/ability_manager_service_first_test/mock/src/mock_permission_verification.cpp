@@ -21,6 +21,21 @@
 namespace OHOS {
 namespace AAFwk {
 
+namespace {
+bool g_isLocalDebugOtherAppsCall = false;
+bool g_isCustomSandboxCall = false;
+}
+
+void SetLocalDebugOtherAppsCall(bool value)
+{
+    g_isLocalDebugOtherAppsCall = value;
+}
+
+void SetCustomSandboxCall(bool value)
+{
+    g_isCustomSandboxCall = value;
+}
+
 bool PermissionVerification::VerifyPermissionByTokenId(const int &tokenId, const std::string &permissionName) const
 {
     TAG_LOGI(AAFwkTag::TEST, "%{public}s enter", __func__);
@@ -330,12 +345,12 @@ bool PermissionVerification::VerifySupportCrossAppEmbedForOaPermission() const
 
 bool PermissionVerification::IsLocalDebugOtherAppsCall(const uint32_t specifyTokenId, int32_t targetUserId) const
 {
-    return false;
+    return g_isLocalDebugOtherAppsCall;
 }
 
 bool PermissionVerification::IsCustomSandboxCall(const uint32_t specifyTokenId, int32_t targetUserId) const
 {
-    return false;
+    return g_isCustomSandboxCall;
 }
 }  // namespace AAFwk
 }  // namespace OHOS
