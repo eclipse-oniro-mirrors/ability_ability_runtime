@@ -37,12 +37,7 @@
 namespace OHOS {
 namespace AppExecFwk {
 using namespace OHOS::AbilityRuntime;
-namespace {
 const int PROPERTIES_SIZE = 2;
-
-napi_value WrapWantParamsInner(
-    napi_env env, const AAFwk::WantParams &wantParams, bool isFirstLayer = false);
-}  // namespace
 /**
  * @brief Init param of wantOptions.
  *
@@ -309,7 +304,7 @@ bool InnerWrapWantParamsWantParams(
     }
 
     AAFwk::WantParams wp = AAFwk::WantParamWrapper::Unbox(o);
-    napi_value jsValue = WrapWantParamsInner(env, wp);
+    napi_value jsValue = WrapWantParams(env, wp);
     if (jsValue == nullptr) {
         return false;
     }
@@ -564,7 +559,7 @@ napi_value WrapArrayWantParamsToJS(napi_env env, const std::vector<WantParams> &
 
     NAPI_CALL(env, napi_create_array(env, &jsArray));
     for (uint32_t i = 0; i < value.size(); i++) {
-        jsValue = WrapWantParamsInner(env, value[i]);
+        jsValue = WrapWantParams(env, value[i]);
         if (jsValue != nullptr) {
             if (napi_set_element(env, jsArray, index, jsValue) == napi_ok) {
                 index++;
@@ -657,25 +652,13 @@ bool InnerWrapWantParamsArray(napi_env env, napi_value jsObject, const std::stri
     }
 }
 
-namespace {
-napi_value WrapWantParamsInner(
-    napi_env env, const AAFwk::WantParams &wantParams, bool isFirstLayer)
+napi_value WrapWantParams(napi_env env, const AAFwk::WantParams &wantParams)
 {
     AbilityRuntime::HandleEscape handleEscape(env);
     napi_value jsObject = nullptr;
     NAPI_CALL(env, napi_create_object(env, &jsObject));
 
-    // PARAM_SET_URI_WITH_ORIGIN_STRING is an internal system parameter used to
-    // pass through an origin uri that bypasses scheme validation. It is only set
-    // at the first layer of the want parameters, and is not visible to third-party
-    // apps, so it is stripped here (first layer only) for non-system apps.
-    bool isSystemApp = Security::AccessToken::TokenIdKit::IsSystemAppByFullTokenID(
-        IPCSkeleton::GetSelfTokenID());
-
-    std::map<std::string, sptr<AAFwk::IInterface>> paramList = wantParams.GetParams();
-    if (isFirstLayer && !isSystemApp) {
-        paramList.erase(Want::PARAM_SET_URI_WITH_ORIGIN_STRING);
-    }
+    const std::map<std::string, sptr<AAFwk::IInterface>> paramList = wantParams.GetParams();
 
     napi_value jsValue = nullptr;
     for (auto iter = paramList.begin(); iter != paramList.end(); iter++) {
@@ -711,12 +694,6 @@ napi_value WrapWantParamsInner(
         }
     }
     return handleEscape.Escape(jsObject);
-}
-}  // namespace
-
-napi_value WrapWantParams(napi_env env, const AAFwk::WantParams &wantParams)
-{
-    return WrapWantParamsInner(env, wantParams, true);
 }
 
 bool InnerSetWantParamsArrayObject(napi_env env, const std::string &key,
