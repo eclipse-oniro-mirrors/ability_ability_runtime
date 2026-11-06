@@ -24,6 +24,7 @@ ohos_unittest("ui_ability_record_test") {
   }
   include_dirs = [
     "mock/include",
+    "${ability_runtime_services_path}/abilitymgr/include",
     "${ability_runtime_services_path}/abilitymgr/include/scene_board",
     "${ability_runtime_services_path}/common/include",
     "${ability_runtime_path}/interfaces/inner_api/ability_manager/include",
@@ -33,6 +34,7 @@ ohos_unittest("ui_ability_record_test") {
   sources = [
     "${ability_runtime_services_path}/abilitymgr/src/scene_board/ui_ability_record.cpp",
     "mock/src/mock_ability_record.cpp",
+    "mock/src/mock_app_scheduler.cpp",
     "mock/src/mock_native_ability_util.cpp",
     "ui_ability_record_test.cpp",
   ]
@@ -45,6 +47,8 @@ ohos_unittest("ui_ability_record_test") {
   external_deps = [
     "ability_base:session_info",
     "ability_base:want",
+    "c_utils:utils",
+    "ffrt:libffrt",
     "googletest:gmock_main",
     "hilog:libhilog",
     "hitrace:hitrace_meter",

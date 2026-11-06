@@ -101,8 +101,8 @@ const std::map<std::string, std::string> THIRD_PARTY_PARAMS_TO_STRIP = {
     { "ohos.param.uiExtension.rootHostToken", "uiextension root host token" },
 
     // Task-attribution reserved key: a system-app-only capability, stripped from
-    // third-party callers here. Single source: Want::PARAM_RESV_TASK_ID (ability_base).
-    { Want::PARAM_RESV_TASK_ID, "task attribution task id" },
+    // third-party callers here. Single source: Want::PARAM_RESV_AGENT_TASK_ID (ability_base).
+    { Want::PARAM_RESV_AGENT_TASK_ID, "task attribution task id" },
 };
 
 // Dynamic system-internal params (e.g. skill args / src entries) are constructed

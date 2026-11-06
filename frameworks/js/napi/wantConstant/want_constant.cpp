@@ -142,7 +142,7 @@ napi_value WantConstantInit(napi_env env, napi_value exports)
     SetNamedProperty(env, params, "ohos.param.ability.udKey", "ABILITY_UNIFIED_DATA_KEY");
     SetNamedProperty(env, params, "ohos.params.atomicservice.shareRouter", "ATOMIC_SERVICE_SHARE_ROUTER");
     SetNamedProperty(env, params, "ohos.param.uiExtension.rootHostToken", "UI_EXTENSION_ROOT_TOKEN");
-    SetNamedProperty(env, params, "ohos.aafwk.param.taskId", "TASK_ID");
+    SetNamedProperty(env, params, "ohos.aafwk.param.agent.taskId", "AGENT_TASK_ID");
     napi_property_descriptor exportFuncs[] = {
         DECLARE_NAPI_PROPERTY("Action", action),
         DECLARE_NAPI_PROPERTY("Entity", entity),

@@ -180,7 +180,7 @@ HWTEST_F(LocalCallContainerTest, Local_Call_Container_StartAbilityInner_0600, Fu
     auto localCallContainer = std::make_shared<LocalCallContainer>();
     Want want;
     want.SetElementName("", "DemoBundleNameB", "DemoAbilityNameB");
-    want.SetParam(Want::PARAM_RESV_TASK_ID, std::string("task-bypass-short-circuit-ut"));
+    want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-bypass-short-circuit-ut"));
     std::shared_ptr<CallerCallBack> callback = std::make_shared<CallerCallBack>();
     callback->SetCallBack([](const sptr<IRemoteObject>&) {});
     auto localCallRecord = std::make_shared<LocalCallRecord>(want.GetElement());

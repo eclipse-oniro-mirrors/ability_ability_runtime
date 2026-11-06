@@ -408,5 +408,12 @@ bool AppScheduler::CheckProcessAvailable(int32_t pid)
 {
     return true;
 }
+
+int32_t AppScheduler::UnregisterTaskAttribution(const std::string &taskId, int64_t attributionId)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::UnregisterTaskAttribution, taskId: %{public}s, "
+        "attributionId: %{public}" PRId64, taskId.c_str(), attributionId);
+    return ERR_OK;
+}
 } // namespace AAFwk
 } // namespace OHOS

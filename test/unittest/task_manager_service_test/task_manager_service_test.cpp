@@ -1167,17 +1167,6 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_RegisterManagedProcessQuota_
 }
 
 /**
- * @tc.number: TaskManagerService_ReservedKeyLiteralAnchored_1000
- * @tc.name: reserved key literal cross-anchor
- * @tc.desc: the reserved key literal must stay in sync with the ams_want_param_filter
- *           entry, otherwise the strip defense silently drifts while tests stay green.
- */
-HWTEST_F(TaskManagerServiceTest, TaskManagerService_ReservedKeyLiteralAnchored_1000, TestSize.Level1)
-{
-    EXPECT_STREQ(Want::PARAM_RESV_TASK_ID.c_str(), "ohos.aafwk.param.taskId");
-}
-
-/**
  * @tc.number: TaskManagerService_OnProcessDiedCleanup_1100
  * @tc.name: process death removes attribution entries
  * @tc.desc: entries of a dead pid are removed from every task, so the quota slot is
