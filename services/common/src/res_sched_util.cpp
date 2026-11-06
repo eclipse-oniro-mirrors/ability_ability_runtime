@@ -22,6 +22,7 @@
 #include "hilog_tag_wrapper.h"
 #ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
 #include "res_sched_client.h"
+#include "res_sched_json_client.h"
 #include "res_type.h"
 #endif
 
@@ -234,7 +235,7 @@ void ResSchedUtil::ReportEventToRSS(const int32_t uid, const std::string &bundle
     payload.emplace("isCreateFromImage", isCreateFromImage);
     nlohmann::json reply;
     TAG_LOGD(AAFwkTag::DEFAULT, "call");
-    ResourceSchedule::ResSchedClient::GetInstance().ReportSyncEvent(resType, 0, payload, reply);
+    ResourceSchedule::ResSchedJsonClient::GetInstance().ReportSyncEvent(resType, 0, payload, reply);
 #endif
 }
 
@@ -263,7 +264,7 @@ void ResSchedUtil::GetAllFrozenPidsFromRSS(std::unordered_set<int32_t> &frozenPi
     nlohmann::json payload;
     nlohmann::json reply;
     TAG_LOGD(AAFwkTag::DEFAULT, "call");
-    int32_t ret = ResourceSchedule::ResSchedClient::GetInstance().ReportSyncEvent(resType, 0, payload, reply);
+    int32_t ret = ResourceSchedule::ResSchedJsonClient::GetInstance().ReportSyncEvent(resType, 0, payload, reply);
     if (ret != 0 || !reply.contains("allSuspendState") || !reply["allSuspendState"].is_array()) {
         TAG_LOGE(AAFwkTag::DEFAULT, "ReportSyncEvent fail");
         return;
@@ -300,7 +301,7 @@ bool ResSchedUtil::CheckShouldForceKillProcess(int32_t pid, const std::string& b
     nlohmann::json payload;
     nlohmann::json reply;
     payload.emplace("pid", pid);
-    ResourceSchedule::ResSchedClient::GetInstance().ReportSyncEvent(resType, 0, payload, reply);
+    ResourceSchedule::ResSchedJsonClient::GetInstance().ReportSyncEvent(resType, 0, payload, reply);
     if (!reply.contains("ShouldForceKillProcess") || !reply["ShouldForceKillProcess"].is_number_integer()) {
         return true;
     }
@@ -347,7 +348,7 @@ std::unordered_set<std::string> ResSchedUtil::GetNWebPreloadSet() const
     uint32_t resType = ResourceSchedule::ResType::SYNC_RES_TYPE_GET_NWEB_PRELOAD_SET;
     nlohmann::json payload;
     nlohmann::json reply;
-    ResourceSchedule::ResSchedClient::GetInstance().ReportSyncEvent(resType, 0, payload, reply);
+    ResourceSchedule::ResSchedJsonClient::GetInstance().ReportSyncEvent(resType, 0, payload, reply);
     if (!reply.contains("NWebPreloadSet")) {
         TAG_LOGW(AAFwkTag::DEFAULT, "does not get preload process set");
         return {};
