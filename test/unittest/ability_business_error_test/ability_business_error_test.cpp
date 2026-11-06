@@ -165,13 +165,13 @@ HWTEST_F(AbilityBusinessErrorTest, GetErrorMsgByNativeError_0100, TestSize.Level
 
 /**
  * @tc.name: DirectBootPermissionError
- * @tc.desc: Target permission failure uses 16000206; caller permission failure keeps 201.
+ * @tc.desc: Target permission failure uses 16000207; caller permission failure keeps 201.
  * @tc.type: FUNC
  */
 HWTEST_F(AbilityBusinessErrorTest, DirectBootPermissionError, TestSize.Level1)
 {
     EXPECT_EQ(static_cast<int32_t>(GetJsErrorCodeByNativeError(AAFwk::ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT)),
-        16000206);
+        16000207);
     EXPECT_EQ(GetErrorMsgByNativeError(AAFwk::ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT),
         "The specified application is not authorized to start before the user is unlocked.");
     EXPECT_EQ(GetJsErrorCodeByNativeError(AAFwk::CHECK_PERMISSION_FAILED),
