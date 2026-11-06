@@ -2400,7 +2400,7 @@ bool AppMgrProxy::IsHyperSnapInitializing()
     }
 
     MessageParcel reply;
-    MessageOption option;
+    MessageOption option(MessageOption::TF_SYNC | MessageOption::TF_IMAGE);
     auto ret = SendRequest(AppMgrInterfaceCode::IS_HYPER_SNAP_INITIALIZING,
         data, reply, option);
     if (ret != NO_ERROR) {
