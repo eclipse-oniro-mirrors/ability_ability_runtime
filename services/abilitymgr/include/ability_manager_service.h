@@ -1928,12 +1928,20 @@ public:
     void AppUpgradeCompleted(int32_t uid, int32_t installType);
 
     /**
-     * Verify permission and user for app upgrade.
+     * Get the bundle info of the upgraded app for upgrade completion handling.
      * @param uid The uid of the app.
      * @param userId The userId.
-     * @return Returns true if verification passed, others false.
+     * @param bundleInfo The bundle info of the app.
+     * @return Returns true if the bundle info is fetched, others false.
      */
-    bool VerifyPermissionAndUserForUpgrade(int32_t uid, int32_t userId) const;
+    bool GetUpgradeBundleInfo(int32_t uid, int32_t userId, AppExecFwk::BundleInfo &bundleInfo);
+
+    /**
+     * Handle the upgrade completed event when the user check fails (background user).
+     * @param uid The uid of the app.
+     * @param userId The userId.
+     */
+    void HandleUpgradeCompletedForBackgroundUser(int32_t uid, int32_t userId);
 
     /**
      * Record app exit reason.

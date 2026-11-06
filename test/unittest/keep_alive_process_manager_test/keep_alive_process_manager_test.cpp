@@ -849,6 +849,36 @@ HWTEST_F(KeepAliveProcessManagerTest, AddNeedRestartKeepAliveUid_001, TestSize.L
 }
 
 /*
+ * Feature: KeepAliveProcessManager
+ * Function: AddNeedRestartKeepAliveUid
+ * SubFunction: NA
+ * FunctionPoints:KeepAliveProcessManager AddNeedRestartKeepAliveUid
+ * EnvConditions: NA
+ * CaseDescription: add same uid twice is idempotent, filter consumes the marker once
+ */
+HWTEST_F(KeepAliveProcessManagerTest, AddNeedRestartKeepAliveUid_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "KeepAliveProcessManagerTest AddNeedRestartKeepAliveUid_002 start";
+    int32_t uid = 12345;
+    KeepAliveProcessManager::GetInstance().needRestartKeepAliveUidSet_.clear();
+    KeepAliveProcessManager::GetInstance().AddNeedRestartKeepAliveUid(uid);
+    KeepAliveProcessManager::GetInstance().AddNeedRestartKeepAliveUid(uid);
+    EXPECT_EQ(KeepAliveProcessManager::GetInstance().needRestartKeepAliveUidSet_.size(), 1u);
+    std::vector<AppExecFwk::BundleInfo> bundleInfos;
+    AppExecFwk::BundleInfo bundleInfo;
+    bundleInfo.uid = uid;
+    bundleInfos.emplace_back(bundleInfo);
+    KeepAliveProcessManager::GetInstance().FilterNeedRestartKeepAliveBundleInfos(bundleInfos);
+    EXPECT_EQ(bundleInfos.size(), 1u);
+    EXPECT_EQ(bundleInfos[0].uid, uid);
+    EXPECT_EQ(KeepAliveProcessManager::GetInstance().needRestartKeepAliveUidSet_.empty(), true);
+    KeepAliveProcessManager::GetInstance().FilterNeedRestartKeepAliveBundleInfos(bundleInfos);
+    EXPECT_EQ(bundleInfos.empty(), true);
+    KeepAliveProcessManager::GetInstance().needRestartKeepAliveUidSet_.clear();
+    GTEST_LOG_(INFO) << "KeepAliveProcessManagerTest AddNeedRestartKeepAliveUid_002 end";
+}
+
+/*
  * Feature: CheckStatusBarTask
  * Function: Cancel
  * SubFunction: NA

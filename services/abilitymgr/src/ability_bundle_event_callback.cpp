@@ -61,15 +61,15 @@ void AbilityBundleEventCallback::OnReceiveEvent(const EventFwk::CommonEventData 
     int appIndex = want.GetIntParam(KEY_APP_INDEX, 0);
     // verify data
     if (action.empty() || bundleName.empty()) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "OnReceiveEvent failed, empty action/bundleName");
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "OnReceiveEvent failed, empty action/bundleName, uid:%{public}d", uid);
         return;
     }
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "OnReceiveEvent, action:%{public}s.", action.c_str());
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "OnReceiveEvent, action:%{public}s, uid:%{public}d.", action.c_str(), uid);
     if (bundleType == static_cast<int32_t>(AppExecFwk::BundleType::APP_PLUGIN)) {
         if (action == EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_ADDED ||
             action == EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_CHANGED) {
-            TAG_LOGI(AAFwkTag::ABILITYMGR, "plugin action: %{public}s, bundleName: %{public}s",
-                action.c_str(), bundleName.c_str());
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "plugin action: %{public}s, bundleName: %{public}s, uid:%{public}d",
+                action.c_str(), bundleName.c_str(), uid);
             HandleUpdatedModuleInfo(bundleName, uid, moduleName, true);
         }
         return;

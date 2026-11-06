@@ -35,7 +35,7 @@ ohos_unittest("ability_manager_service_eighth_test") {
   ]
 
   sources = [
-    "${ability_runtime_path}/services/abilitymgr/src/ability_auto_startup_service.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/ability_auto_startup_service.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/ability_connect_callback_stub.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/window_options_utils.cpp",
     "ability_manager_service_eighth_test.cpp",
