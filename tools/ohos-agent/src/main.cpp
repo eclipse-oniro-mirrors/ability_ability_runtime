@@ -60,10 +60,15 @@ int main(int argc, char* argv[])
         CommandTimer commandTimer("ability::ohos_agent_cli_command", COMMAND_TIME_OUT, operation);
         OHOS::AAFwk::OhosAgentShellCommand cmd(argc, argv);
         cmd.CreateErrorInfoMap();
-        // Pre-loop argument errors never reach RunAsConnect's event emission; they surface via
-        // exitCode=1 -> CliToolEvent{EXIT} + status=FAILED (R-20 failure contract). The "result"
-        // event is reserved for the framework (tools may not declare/emit it).
-        (void)cmd.ExecCommand();
+        // ExecCommand() returns non-empty text only when the run ended before any session/IPC
+        // activity (a help request or a usage error, e.g. missing required connect options);
+        // such a run emits no session events, so stdout can carry the text in every mode
+        // (bare shell or under cliMgr). Post-parse failures report via events and exit code
+        // and keep the text empty.
+        std::string preLoopText = cmd.ExecCommand();
+        if (!preLoopText.empty()) {
+            std::cout << preLoopText;
+        }
         OHOS::AAFwk::DrainStdoutForExit();
         _exit(cmd.GetExitCode());
     }

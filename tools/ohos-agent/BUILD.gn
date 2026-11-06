@@ -20,7 +20,6 @@ config("ohos_agent_command_config") {
     "include",
     "${ability_runtime_path}/tools/aa/include",
     "${ability_runtime_innerkits_path}/ability_manager/include",
-    "${ability_runtime_innerkits_path}/app_manager/include/appmgr",
     "${ability_runtime_path}/interfaces/kits/native/ability/native",
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
     "${agent_runtime_framework_path}/interfaces/inner_api/include",
@@ -66,10 +65,8 @@ ohos_static_library("ohos_agent_cli_source_set") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
 
-  # TASK-2: connect logic depends on AgentManagerClient (inner_api :agent_manager) + the
-  # agent extension connection kit (:agent_extension_connection). Only the shell framework base
-  # (shell_command.cpp / shell_command_result.cpp) is reused from tools/aa; the executor and the
-  # config loader are aa-specific (popen / aa command whitelist) and unreferenced here.
+  # Only the shell framework base (shell_command*.cpp) is reused from tools/aa; the executor and
+  # config loader there are aa-specific and unreferenced here.
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_connect_callback_stub",
     "${agent_runtime_framework_path}/interfaces/inner_api:agent_manager",

@@ -87,9 +87,8 @@ public:
     ErrCode CreateErrorInfoMap();
     AaToolErrorInfo GetErrorInfoFromCode(const int32_t code);
 
-    // Exit code surfaced to main(): 0 on clean disconnect / --help; non-zero on connect failure
-    // (preflight/connect IPC error, OnAbilityConnectDone non-zero/timeout, invalid args) so the host
-    // detects failure via the cliMgr exit event (BR-12).
+    // Exit code surfaced to main(): 0 on clean disconnect / --help, non-zero on connect failure
+    // or invalid args, so the host detects failure via the exit event.
     int GetExitCode() const { return exitCode_; }
 
 private:
