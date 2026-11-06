@@ -138,7 +138,7 @@ HWTEST_F(UpdateCallerInfoUtilTest, CacheRestoreTaskId_0001, TestSize.Level1)
 {
     auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
     Want originalWant;
-    originalWant.SetParam("ohos.aafwk.param.taskId", std::string("task-ut-773"));
+    originalWant.SetParam("ohos.aafwk.param.agent.taskId", std::string("task-ut-773"));
     originalWant.SetParam(Want::PARAM_RESV_CALLER_UID, 20000001);
     originalWant.SetParam(Want::PARAM_RESV_CALLER_PID, 100);
 
@@ -151,7 +151,7 @@ HWTEST_F(UpdateCallerInfoUtilTest, CacheRestoreTaskId_0001, TestSize.Level1)
     // Simulate the SCB-returned want with the key lost on the round trip.
     Want scbWant;
     updateCallerUtil.RestoreCallerInfoToWant(scbWant, info);
-    EXPECT_EQ(scbWant.GetStringParam("ohos.aafwk.param.taskId"), "task-ut-773");
+    EXPECT_EQ(scbWant.GetStringParam("ohos.aafwk.param.agent.taskId"), "task-ut-773");
     EXPECT_EQ(scbWant.GetIntParam(Want::PARAM_RESV_CALLER_UID, -1), 20000001);
     EXPECT_EQ(scbWant.GetIntParam(Want::PARAM_RESV_CALLER_PID, -1), 100);
 }
@@ -171,9 +171,9 @@ HWTEST_F(UpdateCallerInfoUtilTest, CacheRestoreTaskId_0002, TestSize.Level1)
 
     // Simulate a replayed/injected key on the SCB-returned want.
     Want scbWant;
-    scbWant.SetParam("ohos.aafwk.param.taskId", std::string("task-replay-999"));
+    scbWant.SetParam("ohos.aafwk.param.agent.taskId", std::string("task-replay-999"));
     updateCallerUtil.RestoreCallerInfoToWant(scbWant, info);
-    EXPECT_FALSE(scbWant.HasParameter("ohos.aafwk.param.taskId"));
+    EXPECT_FALSE(scbWant.HasParameter("ohos.aafwk.param.agent.taskId"));
 }
 
 /**
@@ -838,16 +838,16 @@ HWTEST_F(UpdateCallerInfoUtilTest, CacheRestoreTaskId_0003, TestSize.Level1)
 {
     auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
     Want originalWant;
-    originalWant.SetParam("ohos.aafwk.param.taskId", std::string("task-cached-55"));
+    originalWant.SetParam("ohos.aafwk.param.agent.taskId", std::string("task-cached-55"));
     AbilitySessionInfo info;
     updateCallerUtil.CacheCallerInfoFromWant(originalWant, info);
     EXPECT_EQ(info.taskId, "task-cached-55");
 
     // SCB round trip returned a different (stale) value: the cache overwrites it.
     Want scbWant;
-    scbWant.SetParam("ohos.aafwk.param.taskId", std::string("task-stale-66"));
+    scbWant.SetParam("ohos.aafwk.param.agent.taskId", std::string("task-stale-66"));
     updateCallerUtil.RestoreCallerInfoToWant(scbWant, info);
-    EXPECT_EQ(scbWant.GetStringParam("ohos.aafwk.param.taskId"), "task-cached-55");
+    EXPECT_EQ(scbWant.GetStringParam("ohos.aafwk.param.agent.taskId"), "task-cached-55");
 }
 
 /**
@@ -865,7 +865,7 @@ HWTEST_F(UpdateCallerInfoUtilTest, CacheRestoreTaskId_0004, TestSize.Level1)
 
     Want scbWant; // no key on the round trip either
     updateCallerUtil.RestoreCallerInfoToWant(scbWant, info);
-    EXPECT_FALSE(scbWant.HasParameter("ohos.aafwk.param.taskId"));
+    EXPECT_FALSE(scbWant.HasParameter("ohos.aafwk.param.agent.taskId"));
 }
 } // namespace AAFwk
 } // namespace OHOS

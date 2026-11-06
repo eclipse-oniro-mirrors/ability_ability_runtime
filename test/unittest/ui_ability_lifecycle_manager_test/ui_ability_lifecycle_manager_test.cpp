@@ -9614,7 +9614,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionColdStartS
     abilityRequest.appInfo.bundleName = "com.example.unittest";
     abilityRequest.abilityInfo.name = "MainAbility";
     abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
-    abilityRequest.want.SetParam(Want::PARAM_RESV_TASK_ID, std::string("task-cold-ut"));
+    abilityRequest.want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-cold-ut"));
     abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_UID, 3001);
     abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_PID, 4001);
 
@@ -9688,7 +9688,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionReusePreAt
 
     AbilityRequest abilityRequest;
     abilityRequest.abilityInfo = createRequest.abilityInfo;
-    abilityRequest.want.SetParam(Want::PARAM_RESV_TASK_ID, std::string("task-warm-ut"));
+    abilityRequest.want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-warm-ut"));
     abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_UID, 5001);
     abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_PID, 6001);
     AbilityRuntime::StartParamsBySCB params;
@@ -9730,7 +9730,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionReusePidRe
 
     AbilityRequest abilityRequest;
     abilityRequest.abilityInfo = createRequest.abilityInfo;
-    abilityRequest.want.SetParam(Want::PARAM_RESV_TASK_ID, std::string("task-warm-live-ut"));
+    abilityRequest.want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-warm-live-ut"));
     abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_UID, 5001);
     abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_PID, 6001);
     AbilityRuntime::StartParamsBySCB params;
@@ -9761,7 +9761,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, GenerateAbilityRecord_TaskAttributionRet
 
     AbilityRequest request;
     request.abilityInfo = createRequest.abilityInfo;
-    request.want.SetParam(Want::PARAM_RESV_TASK_ID, std::string("task-retarget-ut"));
+    request.want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-retarget-ut"));
     request.want.SetParam(Want::PARAM_RESV_CALLER_UID, 7001);
     request.want.SetParam(Want::PARAM_RESV_CALLER_PID, 8001);
     sptr<SessionInfo> sessionInfo(new SessionInfo());
@@ -9797,7 +9797,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, GenerateAbilityRecord_TaskAttributionRet
 
     AbilityRequest request;
     request.abilityInfo = createRequest.abilityInfo;
-    request.want.SetParam(Want::PARAM_RESV_TASK_ID, std::string("task-retarget-live-ut"));
+    request.want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-retarget-live-ut"));
     request.want.SetParam(Want::PARAM_RESV_CALLER_UID, 7001);
     request.want.SetParam(Want::PARAM_RESV_CALLER_PID, 8001);
     sptr<SessionInfo> sessionInfo(new SessionInfo());
@@ -9841,12 +9841,11 @@ HWTEST_F(UIAbilityLifecycleManagerTest, AttachAbilityThread_TaskAttributionConsu
 }
 
 /**
- * @tc.name: OnAbilityDied_TaskAttributionUnregister_0100
- * @tc.desc: An unexpected death iterates every attribution handle held by the record
- *           and attempts to unregister it (both per-entry outcomes stay safe).
+ * @tc.name: OnAbilityDied_TaskAttributionKeptUntilDestructor_0100
+ * @tc.desc: The death path keeps the bookkeeping; release happens at record destruction.
  * @tc.type: FUNC
  */
-HWTEST_F(UIAbilityLifecycleManagerTest, OnAbilityDied_TaskAttributionUnregister_0100, TestSize.Level1)
+HWTEST_F(UIAbilityLifecycleManagerTest, OnAbilityDied_TaskAttributionKeptUntilDestructor_0100, TestSize.Level1)
 {
     auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     AbilityRequest abilityRequest;
@@ -9859,11 +9858,123 @@ HWTEST_F(UIAbilityLifecycleManagerTest, OnAbilityDied_TaskAttributionUnregister_
     record->AddTaskAttribution("task-died-2", 22);
     mgr->sessionAbilityMap_.emplace(58, record);
 
-    // unregistration fails (appmgr service unreachable in UT) for every entry: no crash,
-    // and the death sweep reads the bookkeeping without mutating it (iterator-stability)
+    // unexpected death: bookkeeping stays for the destructor-time release
     mgr->OnAbilityDied(record);
     EXPECT_EQ(record->GetTaskAttributions().size(), static_cast<size_t>(2));
+    // destructor posts the async unregister (appmgr unreachable in UT), no crash
+    record.reset();
     mgr.reset();
+    SUCCEED();
+}
+
+/**
+ * @tc.name: CompleteTerminate_TaskAttributionKeptUntilDestructor_0100
+ * @tc.desc: The funnel keeps the bookkeeping; release happens at record destruction.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CompleteTerminate_TaskAttributionKeptUntilDestructor_0100, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.sessionInfo = new SessionInfo();
+    abilityRequest.sessionInfo->persistentId = 59;
+
+    auto record = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(record, nullptr);
+    record->AddTaskAttribution("task-close-1", 31);
+    record->AddTaskAttribution("task-close-2", 32);
+    record->SetAbilityState(AbilityState::TERMINATING);
+    mgr->terminateAbilityList_.push_back(record);
+
+    mgr->CompleteTerminate(record);
+    EXPECT_TRUE(mgr->terminateAbilityList_.empty());
+    // funnel completes without touching the bookkeeping
+    EXPECT_EQ(record->GetTaskAttributions().size(), static_cast<size_t>(2));
+    record.reset();
+    mgr.reset();
+    SUCCEED();
+}
+
+/**
+ * @tc.name: CloseUIAbility_InitialBranch_TaskAttributionKeptUntilDestructor_0100
+ * @tc.desc: The INITIAL close bypass keeps the bookkeeping for destructor-time release.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest,
+    CloseUIAbility_InitialBranch_TaskAttributionKeptUntilDestructor_0100, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.sessionInfo = new SessionInfo();
+    abilityRequest.sessionInfo->persistentId = 60;
+
+    auto record = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(record, nullptr);
+    record->SetAbilityState(AbilityState::INITIAL);
+    record->AddTaskAttribution("task-initial-close", 41);
+    mgr->sessionAbilityMap_.emplace(60, record);
+
+    // event handler unavailable in UT: the bookkeeping must stay intact
+    mgr->CloseUIAbility(record, 0, nullptr, false, false);
+    EXPECT_EQ(record->GetTaskAttributions().size(), static_cast<size_t>(1));
+    record.reset();
+    mgr.reset();
+    SUCCEED();
+}
+
+/**
+ * @tc.name: UIAbilityRecord_Destructor_TaskAttributionAsyncRelease_0100
+ * @tc.desc: A destroyed record posts an async unregister from the destructor, no sync IPC.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, UIAbilityRecord_Destructor_TaskAttributionAsyncRelease_0100, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    abilityRequest.sessionInfo = new SessionInfo();
+    {
+        auto record = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+        ASSERT_NE(record, nullptr);
+        record->AddTaskAttribution("task-dtor", 61);
+    }
+    // async unregister posted, no sync IPC, no crash
+    SUCCEED();
+}
+
+/**
+ * @tc.name: ManagerTeardown_TaskAttributionReleasedAtDestructor_0100
+ * @tc.desc: Teardown destroys all four containers' records; each destructor releases.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, ManagerTeardown_TaskAttributionReleasedAtDestructor_0100, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+
+    auto makeRecord = [](int32_t persistentId, const std::string &taskId) {
+        AbilityRequest abilityRequest;
+        abilityRequest.sessionInfo = new SessionInfo();
+        abilityRequest.sessionInfo->persistentId = persistentId;
+        auto record = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+        record->AddTaskAttribution(taskId, persistentId);
+        return record;
+    };
+
+    auto sessionRecord = makeRecord(71, "task-batch-session");
+    auto lowMemKillRecord = makeRecord(72, "task-batch-lowmem");
+    auto terminateRecord = makeRecord(73, "task-batch-terminate");
+    auto reuseRecord = makeRecord(74, "task-batch-reuse");
+
+    mgr->sessionAbilityMap_.emplace(71, sessionRecord);
+    mgr->lowMemKillAbilityMap_.emplace(72, lowMemKillRecord);
+    mgr->terminateAbilityList_.push_back(terminateRecord);
+    mgr->reuseWindowRecords_.emplace(reuseRecord);
+
+    // every destructor posts the async unregister (appmgr unreachable in UT), no crash
+    sessionRecord.reset();
+    lowMemKillRecord.reset();
+    terminateRecord.reset();
+    reuseRecord.reset();
+    mgr.reset();
+    SUCCEED();
 }
 
 }  // namespace AAFwk

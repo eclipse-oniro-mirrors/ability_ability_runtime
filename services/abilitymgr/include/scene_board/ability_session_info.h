@@ -34,7 +34,7 @@ struct AbilitySessionInfo {
     std::string callerAppId;
     std::string callerAppIdentifier;
     int32_t callerAppCloneIndex = 0;
-    // Task attribution key (ohos.aafwk.param.taskId) cached from the original caller want.
+    // Task attribution key (ohos.aafwk.param.agent.taskId) cached from the original caller want.
     std::string taskId;
 };
 

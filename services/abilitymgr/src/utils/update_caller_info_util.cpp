@@ -430,7 +430,7 @@ void UpdateCallerInfoUtil::CacheCallerInfoFromWant(const Want &want, AbilitySess
     info.callerAppId = want.GetStringParam(Want::PARAM_RESV_CALLER_APP_ID);
     info.callerAppIdentifier = want.GetStringParam(Want::PARAM_RESV_CALLER_APP_IDENTIFIER);
     info.callerAppCloneIndex = want.GetIntParam(Want::PARAM_RESV_CALLER_APP_CLONE_INDEX, 0);
-    info.taskId = want.GetStringParam(Want::PARAM_RESV_TASK_ID);
+    info.taskId = want.GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID);
 }
 
 void UpdateCallerInfoUtil::RestoreCallerInfoToWant(Want &want, const AbilitySessionInfo &info)
@@ -450,9 +450,9 @@ void UpdateCallerInfoUtil::RestoreCallerInfoToWant(Want &want, const AbilitySess
     want.SetParam(Want::PARAM_RESV_CALLER_APP_CLONE_INDEX, info.callerAppCloneIndex);
     // No key in the original want: strip whatever the SCB round trip returned.
     if (info.taskId.empty()) {
-        want.RemoveParam(Want::PARAM_RESV_TASK_ID);
+        want.RemoveParam(Want::PARAM_RESV_AGENT_TASK_ID);
     } else {
-        want.SetParam(Want::PARAM_RESV_TASK_ID, info.taskId);
+        want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, info.taskId);
     }
 }
 

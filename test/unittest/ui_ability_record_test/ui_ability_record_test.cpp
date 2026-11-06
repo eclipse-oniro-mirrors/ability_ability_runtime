@@ -13,8 +13,17 @@
  * limitations under the License.
  */
 
+#include <unistd.h>
+
+#include <algorithm>
+#include <mutex>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include <gtest/gtest.h>
 
+#include "app_scheduler.h"
 #include "ui_ability_record.h"
 #include "global_constant.h"
 #include "native_ability_util.h"
@@ -853,6 +862,44 @@ HWTEST_F(UIAbilityRecordTest, PendingTaskAttribution_0003, TestSize.Level1)
     const auto &pending = abilityRecord->GetPendingTaskAttributions();
     ASSERT_EQ(pending.size(), static_cast<size_t>(1));
     EXPECT_EQ(pending.at("task-b").callerUid, 12);
+}
+
+/**
+ * @tc.name: TaskAttributionDestructorAsyncUnregister_0001
+ * @tc.desc: The destructor must post the async unregister with the bookkept pairs.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, TaskAttributionDestructorAsyncUnregister_0001, TestSize.Level1)
+{
+    AppScheduler::ResetUnregisterRecords();
+
+    {
+        AbilityRequest abilityRequest;
+        auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+        ASSERT_NE(abilityRecord, nullptr);
+        abilityRecord->AddTaskAttribution("task-dtor-async-1", 101);
+        abilityRecord->AddTaskAttribution("task-dtor-async-2", 102);
+    } // record dropped: ~UIAbilityRecord posts the async unregister task
+
+    // bounded poll for the posted task; unique taskIds avoid straggler collision
+    for (int waitedMs = 0; waitedMs < 5000; waitedMs += 10) {
+        if (AppScheduler::unregisterCallCount.load() >= 2) {
+            break;
+        }
+        usleep(10 * 1000); // 10ms
+    }
+    ASSERT_GE(AppScheduler::unregisterCallCount.load(), 2);
+
+    // copy the records under the mutex before asserting on them
+    std::vector<std::pair<std::string, int64_t>> recorded;
+    {
+        std::lock_guard lock(AppScheduler::unregisterMutex);
+        recorded = AppScheduler::recordedUnregisters;
+    }
+    auto first = std::make_pair(std::string("task-dtor-async-1"), static_cast<int64_t>(101));
+    auto second = std::make_pair(std::string("task-dtor-async-2"), static_cast<int64_t>(102));
+    EXPECT_EQ(std::count(recorded.begin(), recorded.end(), first), 1);
+    EXPECT_EQ(std::count(recorded.begin(), recorded.end(), second), 1);
 }
 }  // namespace AAFwk
 }  // namespace OHOS

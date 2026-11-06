@@ -54,7 +54,7 @@ int LocalCallContainer::StartAbilityByCallInner(const Want& want, std::shared_pt
     if (remote) {
         callback->InvokeCallBack(remote);
         if (!want.GetBoolParam(Want::PARAM_RESV_CALL_TO_FOREGROUND, false) &&
-            !want.HasParameter(Want::PARAM_RESV_TASK_ID)) {
+            !want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID)) {
             return ERR_OK;
         }
     }
