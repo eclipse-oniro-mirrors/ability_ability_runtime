@@ -22,7 +22,7 @@ interfaces/inner_api/app_manager/include/appmgr/app_mgr_ipc_interface_code.h @cc
 js_environment/ @afwk_helper
 service_router_framework/ @afwk_helper
 services/ @afwk_helper
-services/appmgr/ @afwk_helper @xialiangwei @jsjzju
+services/appmgr/ @afwk_helper @SKY2001
 services/common/include/ui_extension_utils.h @li-weifeng2024
 services/uripermmgr/ @afwk_helper @dsz2025
 test/ @afwk_helper
