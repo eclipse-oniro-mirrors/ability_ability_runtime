@@ -23,6 +23,8 @@
 #include "dialog_session_manager.h"
 #undef private
 #undef protected
+#include "insight_intent_execute_param.h"
+#include "skill/skill_execute_param.h"
 #include "ability_manager_errors.h"
 #include "hilog_tag_wrapper.h"
 #include "string_wrapper.h"
@@ -866,6 +868,154 @@ HWTEST_F(UpdateCallerInfoUtilTest, CacheRestoreTaskId_0004, TestSize.Level1)
     Want scbWant; // no key on the round trip either
     updateCallerUtil.RestoreCallerInfoToWant(scbWant, info);
     EXPECT_FALSE(scbWant.HasParameter("ohos.aafwk.param.agent.taskId"));
+}
+
+/**
+ * @tc.name: CacheIntentAndSkillParams_0001
+ * @tc.desc: Snapshots insight-intent and skill execute params while skipping unrelated params.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, CacheIntentAndSkillParams_0001, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+    Want want;
+    want.SetElementName("", "com.test.target", "TestAbility", "entry");
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME, std::string("PlayMusic"));
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, std::string("42"));
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_CALLER_UID, 20000001);
+    want.SetParam(AppExecFwk::SKILL_EXECUTE_PARAM_BUNDLE_NAME, std::string("com.test.skill.bundle"));
+    want.SetParam(AppExecFwk::SKILL_EXECUTE_PARAM_SKILL_NAME, std::string("WeatherSkill"));
+    // Dynamic skill args keys share the skill prefix and must be snapshotted too.
+    want.SetParam("ohos.skill.executeParam.args.city", std::string("Beijing"));
+    want.SetParam("ohos.aafwk.param.taskId", std::string("task-1"));
+
+    AbilitySessionInfo info;
+    updateCallerUtil.CacheCallerInfoFromWant(want, info);
+
+    const auto &params = info.intentAndSkillParams.GetParams();
+    EXPECT_EQ(params.count(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME), 1u);
+    EXPECT_EQ(params.count(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID), 1u);
+    EXPECT_EQ(params.count(AppExecFwk::INSIGHT_INTENT_CALLER_UID), 1u);
+    EXPECT_EQ(params.count(AppExecFwk::SKILL_EXECUTE_PARAM_BUNDLE_NAME), 1u);
+    EXPECT_EQ(params.count(AppExecFwk::SKILL_EXECUTE_PARAM_SKILL_NAME), 1u);
+    EXPECT_EQ(params.count("ohos.skill.executeParam.args.city"), 1u);
+    EXPECT_EQ(params.count("ohos.aafwk.param.taskId"), 0u);
+}
+
+/**
+ * @tc.name: CacheIntentAndSkillParams_0002
+ * @tc.desc: A want without system-stamped execute params produces an empty snapshot.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, CacheIntentAndSkillParams_0002, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+    Want want;
+    want.SetElementName("", "com.test.target", "TestAbility", "entry");
+    want.SetParam("ohos.aafwk.param.taskId", std::string("task-1"));
+
+    AbilitySessionInfo info;
+    updateCallerUtil.CacheCallerInfoFromWant(want, info);
+    EXPECT_TRUE(info.intentAndSkillParams.GetParams().empty());
+}
+
+/**
+ * @tc.name: RestoreIntentAndSkillParams_0001
+ * @tc.desc: The AMS snapshot overwrites stale SCB values and drops keys absent from the snapshot.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, RestoreIntentAndSkillParams_0001, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+    Want originalWant;
+    originalWant.SetElementName("", "com.test.target", "TestAbility", "entry");
+    originalWant.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME, std::string("PlayMusic"));
+    originalWant.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, std::string("42"));
+
+    AbilitySessionInfo info;
+    updateCallerUtil.CacheCallerInfoFromWant(originalWant, info);
+
+    // SCB returns stale values for the same keys plus an extra injected key.
+    Want scbWant;
+    scbWant.SetElementName("", "com.test.target", "TestAbility", "entry");
+    scbWant.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME, std::string("forged"));
+    scbWant.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, std::string("999"));
+    scbWant.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_MODE, 1);
+
+    updateCallerUtil.RestoreCallerInfoToWant(scbWant, info);
+    EXPECT_EQ(scbWant.GetStringParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME), "PlayMusic");
+    EXPECT_EQ(scbWant.GetStringParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID), "42");
+    EXPECT_FALSE(scbWant.HasParameter(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_MODE));
+}
+
+/**
+ * @tc.name: RestoreIntentAndSkillParams_0002
+ * @tc.desc: With no snapshot the restore strips every injected system param (fail closed).
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, RestoreIntentAndSkillParams_0002, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+    Want originalWant;
+    originalWant.SetElementName("", "com.test.target", "TestAbility", "entry");
+
+    AbilitySessionInfo info;
+    updateCallerUtil.CacheCallerInfoFromWant(originalWant, info);
+    EXPECT_TRUE(info.intentAndSkillParams.GetParams().empty());
+
+    Want scbWant;
+    scbWant.SetElementName("", "com.test.target", "TestAbility", "entry");
+    scbWant.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME, std::string("forged"));
+    scbWant.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, std::string("42"));
+
+    updateCallerUtil.RestoreCallerInfoToWant(scbWant, info);
+    EXPECT_FALSE(scbWant.HasParameter(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME));
+    EXPECT_FALSE(scbWant.HasParameter(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID));
+}
+
+/**
+ * @tc.name: RemoveIntentAndSkillParams_0001
+ * @tc.desc: Removes all intent and skill execute params while leaving unrelated params untouched.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, RemoveIntentAndSkillParams_0001, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+    Want want;
+    want.SetElementName("", "com.test.target", "TestAbility", "entry");
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME, std::string("PlayMusic"));
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, std::string("42"));
+    want.SetParam(AppExecFwk::SKILL_EXECUTE_PARAM_SKILL_NAME, std::string("WeatherSkill"));
+    want.SetParam("ohos.skill.executeParam.args.city", std::string("Beijing"));
+    want.SetParam("ohos.aafwk.param.taskId", std::string("task-1"));
+
+    updateCallerUtil.RemoveIntentAndSkillParams(want);
+    EXPECT_FALSE(want.HasParameter(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME));
+    EXPECT_FALSE(want.HasParameter(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID));
+    EXPECT_FALSE(want.HasParameter(AppExecFwk::SKILL_EXECUTE_PARAM_SKILL_NAME));
+    EXPECT_FALSE(want.HasParameter("ohos.skill.executeParam.args.city"));
+    EXPECT_TRUE(want.HasParameter("ohos.aafwk.param.taskId"));
+}
+
+/**
+ * @tc.name: RemoveIntentAndSkillParams_0002
+ * @tc.desc: Partial injection and an empty want are handled without side effects.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, RemoveIntentAndSkillParams_0002, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+
+    Want want;
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, std::string("42"));
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_CALLER_UID, 20000001);
+    updateCallerUtil.RemoveIntentAndSkillParams(want);
+    EXPECT_FALSE(want.HasParameter(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID));
+    EXPECT_FALSE(want.HasParameter(AppExecFwk::INSIGHT_INTENT_CALLER_UID));
+
+    Want emptyWant;
+    updateCallerUtil.RemoveIntentAndSkillParams(emptyWant);
+    EXPECT_FALSE(emptyWant.HasParameter(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID));
 }
 } // namespace AAFwk
 } // namespace OHOS

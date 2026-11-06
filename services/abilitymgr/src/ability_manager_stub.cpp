@@ -2962,6 +2962,7 @@ int AbilityManagerStub::StartUIAbilityBySCBInner(MessageParcel &data, MessagePar
     }
     if (sessionInfo != nullptr) {
         sessionInfo->want.AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
+        SanitizeWantParams(sessionInfo->want);
     }
     std::unique_ptr<AbilityRuntime::StartParamsBySCB> params(data.ReadParcelable<AbilityRuntime::StartParamsBySCB>());
     if (params == nullptr) {

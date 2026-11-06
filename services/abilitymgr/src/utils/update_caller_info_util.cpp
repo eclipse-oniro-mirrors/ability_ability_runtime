@@ -53,6 +53,13 @@ constexpr const char* UIEXTENSION_TYPE_KEY = "ability.want.params.uiExtensionTyp
 const std::string HIDE_SENSITIVE_TYPE = "ohos.media.params.hideSensitiveType";
 constexpr int32_t DEFAULT_HIDE_SENSITIVE_TYPE = 4;
 constexpr int32_t BROKER_UID = 5557;
+
+// Intent and skill param namespaces. These keys are stamped by AMS (never the app) and
+// must round-trip through SCB from the AMS snapshot rather than the SCB-returned copy.
+bool IsIntentOrSkillParam(const std::string &key)
+{
+    return key.rfind("ohos.insightIntent.", 0) == 0 || key.rfind("ohos.skill.executeParam.", 0) == 0;
+}
 }
 
 UpdateCallerInfoUtil &UpdateCallerInfoUtil::GetInstance()
@@ -431,6 +438,7 @@ void UpdateCallerInfoUtil::CacheCallerInfoFromWant(const Want &want, AbilitySess
     info.callerAppIdentifier = want.GetStringParam(Want::PARAM_RESV_CALLER_APP_IDENTIFIER);
     info.callerAppCloneIndex = want.GetIntParam(Want::PARAM_RESV_CALLER_APP_CLONE_INDEX, 0);
     info.taskId = want.GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID);
+    CacheIntentAndSkillParams(want, info);
 }
 
 void UpdateCallerInfoUtil::RestoreCallerInfoToWant(Want &want, const AbilitySessionInfo &info)
@@ -454,6 +462,7 @@ void UpdateCallerInfoUtil::RestoreCallerInfoToWant(Want &want, const AbilitySess
     } else {
         want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, info.taskId);
     }
+    RestoreIntentAndSkillParams(want, info);
 }
 
 void UpdateCallerInfoUtil::ClearCallerIdentityParam(Want &want)
@@ -464,6 +473,41 @@ void UpdateCallerInfoUtil::ClearCallerIdentityParam(Want &want)
     want.RemoveParam(Want::PARAM_RESV_CALLER_UID);
     want.RemoveParam(Want::PARAM_RESV_CALLER_PID);
     want.RemoveParam(Want::PARAM_RESV_CALLER_TOKEN);
+}
+
+void UpdateCallerInfoUtil::CacheIntentAndSkillParams(const Want &want, AbilitySessionInfo &info)
+{
+    // Snapshot every intent and skill param before handing the want to SCB, so the
+    // returned copy can be discarded and the AMS-authored values restored verbatim.
+    const auto &params = want.GetParams().GetParams();
+    for (const auto &[key, value] : params) {
+        if (IsIntentOrSkillParam(key)) {
+            info.intentAndSkillParams.SetParam(key, value);
+        }
+    }
+}
+
+void UpdateCallerInfoUtil::RemoveIntentAndSkillParams(Want &want)
+{
+    auto keys = want.GetParams().KeySet();
+    for (const auto &key : keys) {
+        if (IsIntentOrSkillParam(key)) {
+            TAG_LOGD(AAFwkTag::ABILITYMGR, "remove intent/skill param: %{public}s", key.c_str());
+            want.RemoveParam(key);
+        }
+    }
+}
+
+void UpdateCallerInfoUtil::RestoreIntentAndSkillParams(Want &want, const AbilitySessionInfo &info)
+{
+    // Strip whatever the SCB round trip returned for the intent/skill keys, then put the
+    // AMS snapshot back. An empty snapshot leaves the want stripped (fail closed).
+    RemoveIntentAndSkillParams(want);
+    WantParams params = want.GetParams();
+    for (const auto &[key, value] : info.intentAndSkillParams.GetParams()) {
+        params.SetParam(key, value);
+    }
+    want.SetParams(params);
 }
 
 void UpdateCallerInfoUtil::ClearProtectedWantParam(Want &want)
