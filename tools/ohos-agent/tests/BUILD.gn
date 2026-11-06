@@ -15,22 +15,22 @@ import("//build/ohos.gni")
 import("//build/test.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
-# Unit tests for the ohos-agent CLI tool (issue-16055). Compiles cli_agent_connection.cpp +
-# session_protocol.cpp directly so the public entry RunCommandLoop (and thus the file-local
-# DispatchLine) is exercised, alongside the pure-logic helpers (EscapeJsonString, event builders),
-# the CliAgentConnectorStub host callbacks, the OnAbilityConnectDone CR-1 proxy-null guard, and the
-# disconnect 防重入 state machine (TASK-5).
+# Unit tests for the ohos-agent CLI tool. The tool sources are compiled in directly so the
+# command surface (help/exit codes), the session loop and the event/JSON helpers are covered.
 ohos_unittest("ohos_agent_test") {
   module_out_path = "ability_runtime/ability_runtime/tools/ohos_agent_test"
 
   sources = [
     "ohos_agent_test.cpp",
     "../src/cli_agent_connection.cpp",
+    "../src/ohos_agent_command.cpp",
     "../src/session_protocol.cpp",
+    "${ability_runtime_path}/tools/aa/src/shell_command.cpp",
   ]
 
   include_dirs = [
     "../include",
+    "${ability_runtime_path}/tools/aa/include",
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
     "${agent_runtime_framework_path}/interfaces/inner_api/include",
     "${ability_runtime_services_path}/common/include",

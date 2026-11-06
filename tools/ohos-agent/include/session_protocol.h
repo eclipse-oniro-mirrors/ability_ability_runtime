@@ -28,7 +28,7 @@ namespace AAFwk {
 //   - disconnect -> AgentManagerClient::DisconnectAgentExtensionAbilityForCli (OnAbilityDisconnectDone
 //     then emits disconnect-done and wakes the loop).
 // Returns true if the loop exited on a FATAL infra error (poll/read failure) so the caller surfaces
-// a non-zero exit code (BR-12); false on a normal exit (peer disconnect / stdin EOF).
+// a non-zero exit code; false on a normal exit (peer disconnect / stdin EOF).
 bool RunCommandLoop(const sptr<CliAgentConnection> &connection,
     const sptr<AgentRuntime::IAgentReceiver> &receiver, const sptr<IRemoteObject> &hostObj);
 

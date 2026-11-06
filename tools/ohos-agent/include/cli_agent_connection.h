@@ -35,8 +35,8 @@ namespace AAFwk {
 // connect timeout (1000ms * 10), the same path JS/ETS uses.
 constexpr int32_t CONNECT_WAIT_TIMEOUT_MS = 10 * 1000;
 
-// OnAbilityConnectDone reported success but no usable IAgentReceiver proxy was delivered
-// (CR-1). Distinct from -1 (WaitForConnect timeout); treated as connect failure so the caller
+// OnAbilityConnectDone reported success but no usable IAgentReceiver proxy was delivered.
+// Distinct from -1 (WaitForConnect timeout); treated as connect failure so the caller
 // exits instead of idling on a receiver-less connection.
 constexpr int32_t CONNECT_RESULT_PROXY_NULL = -2;
 
@@ -108,7 +108,7 @@ public:
     // Whether the self-pipe wakeup channel was created (pipe2 may fail under fd exhaustion).
     bool HasWakeup() const { return wakeupPipe_[0] >= 0; }
     // Set the disconnect-done reason ("user" for host-initiated, "peer"/"error" otherwise).
-    // Guarded by mtx_: OnAbilityDisconnectDone reads it under the same lock (DR-1).
+    // Guarded by mtx_: OnAbilityDisconnectDone reads it under the same lock.
     void SetDisconnectReason(const std::string &reason)
     {
         std::lock_guard<std::mutex> lock(mtx_);

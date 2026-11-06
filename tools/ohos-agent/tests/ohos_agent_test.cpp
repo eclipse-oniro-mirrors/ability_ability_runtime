@@ -15,14 +15,17 @@
 
 #include <gtest/gtest.h>
 
+#include <cstring>
 #include <fcntl.h>
 #include <sstream>
 #include <string>
 #include <unistd.h>
+#include <vector>
 
 #include "agent_receiver_stub.h"
 #include "cli_agent_connection.h"
 #include "ipc_object_stub.h"
+#include "ohos_agent_command.h"
 #include "session_protocol.h"
 #include "want.h"
 
@@ -196,7 +199,7 @@ HWTEST(OhosAgentCliTest, ConnectorStub_Authorize_EmitsOnAuthorize, TestSize.Leve
     EXPECT_NE(out.find("\"data\":\"decision\""), std::string::npos);
 }
 
-// ---- OnAbilityConnectDone + CR-1 proxy-null guard ----
+// ---- OnAbilityConnectDone (incl. proxy-null guard) ----
 
 HWTEST(OhosAgentCliTest, ConnectDone_Success_OkProxy, TestSize.Level1)
 {
@@ -214,9 +217,8 @@ HWTEST(OhosAgentCliTest, ConnectDone_Success_OkProxy, TestSize.Level1)
     EXPECT_NE(proxy, nullptr);
 }
 
-// CR-1: resultCode==0 but the remoteObject is not an IAgentReceiver (null remoteObject or iface_cast
-// mismatch) -> connect-done(fail, CONNECT_RESULT_PROXY_NULL=-2), not connect-done(ok)+idle spin.
-HWTEST(OhosAgentCliTest, ConnectDone_ProxyNull_FailNeg2_Cr1, TestSize.Level1)
+// resultCode==0 but the remote object is not an IAgentReceiver -> connect-done(fail, proxy null).
+HWTEST(OhosAgentCliTest, ConnectDone_ProxyNull_FailNeg2, TestSize.Level1)
 {
     StdoutCapture cap;
     auto conn = sptr<CliAgentConnection>::MakeSptr();
@@ -301,7 +303,7 @@ HWTEST(OhosAgentCliTest, DisconnectDone_NonZeroResult_ErrorReason, TestSize.Leve
     EXPECT_NE(out.find("\"reason\":\"error\""), std::string::npos);
 }
 
-// ---- 防重入 state machine (TASK-5) ----
+// ---- Disconnect re-entry guard ----
 
 HWTEST(OhosAgentCliTest, TryInitiateDisconnect_Cas, TestSize.Level1)
 {
@@ -312,7 +314,7 @@ HWTEST(OhosAgentCliTest, TryInitiateDisconnect_Cas, TestSize.Level1)
     EXPECT_FALSE(conn->TryInitiateDisconnect());  // second is suppressed (no double RPC)
 }
 
-// ---- RunCommandLoop: dispatch + reassembly + caps + 防重入 skip-dispatch ----
+// ---- RunCommandLoop: dispatch + reassembly + caps + post-disconnect draining ----
 
 HWTEST(OhosAgentCliTest, RunCommandLoop_SendMessage_Success, TestSize.Level1)
 {
@@ -416,9 +418,8 @@ HWTEST(OhosAgentCliTest, RunCommandLine_ReassemblesAcrossBlocks, TestSize.Level1
     EXPECT_EQ(receiver->lastData, "split");
 }
 
-// 200 KiB buffer cap (R-32): an oversized incomplete value is NON-fatal — one bad line must not
-// kill a long-lived session. The oversized partial line is dropped (memory bounded) and the loop
-// continues; here it then drains the rest and exits normally on EOF.
+// 200 KiB buffer cap: an oversized incomplete value is non-fatal — the partial line is dropped and
+// the loop continues; here it then drains the rest and exits normally on EOF.
 HWTEST(OhosAgentCliTest, RunCommandLoop_LineExceeds200KB_NonFatal, TestSize.Level1)
 {
     StdioRedirect io;
@@ -445,8 +446,8 @@ HWTEST(OhosAgentCliTest, RunCommandLoop_EOF_NormalExit, TestSize.Level1)
     EXPECT_FALSE(RunCommandLoop(conn, receiver, receiver->AsObject()));  // normal exit
 }
 
-// 防重入 skip-dispatch: once disconnect is initiated, subsequent stdin commands are drained but not
-// dispatched (the connection is tearing down; no sendData on a disconnecting connection).
+// Once disconnect is initiated, subsequent stdin commands are drained but not dispatched
+// (the connection is tearing down; no sendData on a disconnecting connection).
 HWTEST(OhosAgentCliTest, RunCommandLoop_AfterDisconnectInitiated_SkipsDispatch, TestSize.Level1)
 {
     StdioRedirect io;
@@ -626,4 +627,144 @@ HWTEST(OhosAgentCliTest, RunCommandLoop_EscapedNewlineInData_Preserved, TestSize
     EXPECT_FALSE(RunCommandLoop(conn, receiver, receiver->AsObject()));
     EXPECT_EQ(receiver->sendDataCount, 1);
     EXPECT_EQ(receiver->lastData, "line1\nline2");  // decoded real newline
+}
+
+// ---- Pre-IPC command surface: help and exit codes ----
+// These paths return before any IPC, so no live agentmgr is needed.
+
+namespace {
+// argv_ is kept for getopt parsing; the vector must outlive the command object.
+std::vector<char *> MakeArgv(std::initializer_list<const char *> args)
+{
+    std::vector<char *> argv;
+    for (const char *arg : args) {
+        argv.push_back(const_cast<char *>(arg));
+    }
+    argv.push_back(nullptr);
+    return argv;
+}
+}  // namespace
+
+// "ohos-agent help": explicit help -> HELP_MSG, exit 0.
+HWTEST(OhosAgentCliTest, Command_Help_ExitZero, TestSize.Level1)
+{
+    auto argv = MakeArgv({"ohos-agent", "help"});
+    OhosAgentShellCommand cmd(2, argv.data());
+    cmd.CreateErrorInfoMap();
+    EXPECT_EQ(cmd.ExecCommand(), HELP_MSG);
+    EXPECT_EQ(cmd.GetExitCode(), 0);
+}
+
+// "ohos-agent --help": double-dash form -> exit 0.
+HWTEST(OhosAgentCliTest, Command_DoubleDashHelp_ExitZero, TestSize.Level1)
+{
+    auto argv = MakeArgv({"ohos-agent", "--help"});
+    OhosAgentShellCommand cmd(2, argv.data());
+    cmd.CreateErrorInfoMap();
+    EXPECT_EQ(cmd.ExecCommand(), HELP_MSG);
+    EXPECT_EQ(cmd.GetExitCode(), 0);
+}
+
+// "ohos-agent" with no arguments (the ctor maps that to "help") -> exit 1.
+HWTEST(OhosAgentCliTest, Command_NoArgs_ExitNonZero, TestSize.Level1)
+{
+    auto argv = MakeArgv({"ohos-agent"});
+    OhosAgentShellCommand cmd(1, argv.data());
+    cmd.CreateErrorInfoMap();
+    EXPECT_EQ(cmd.ExecCommand(), HELP_MSG);
+    EXPECT_EQ(cmd.GetExitCode(), 1);
+}
+
+// Unknown subcommand falls back to help but is not an explicit help request -> exit 1.
+HWTEST(OhosAgentCliTest, Command_UnknownSubcommand_ExitNonZero, TestSize.Level1)
+{
+    auto argv = MakeArgv({"ohos-agent", "disconnect"});
+    OhosAgentShellCommand cmd(2, argv.data());
+    cmd.CreateErrorInfoMap();
+    EXPECT_EQ(cmd.ExecCommand(), HELP_MSG);
+    EXPECT_EQ(cmd.GetExitCode(), 1);
+}
+
+// Unknown subcommand with trailing arguments -> exit 1.
+HWTEST(OhosAgentCliTest, Command_UnknownSubcommandWithArgs_ExitNonZero, TestSize.Level1)
+{
+    auto argv = MakeArgv({"ohos-agent", "foo", "--bar"});
+    OhosAgentShellCommand cmd(3, argv.data());
+    cmd.CreateErrorInfoMap();
+    EXPECT_EQ(cmd.ExecCommand(), HELP_MSG);
+    EXPECT_EQ(cmd.GetExitCode(), 1);
+}
+
+// "connect --help": help wins regardless of other options -> exit 0.
+HWTEST(OhosAgentCliTest, Command_ConnectHelp_ExitZero, TestSize.Level1)
+{
+    optind = 0;  // reset getopt state
+    auto argv = MakeArgv({"ohos-agent", "connect", "--help"});
+    OhosAgentShellCommand cmd(3, argv.data());
+    cmd.CreateErrorInfoMap();
+    EXPECT_EQ(cmd.ExecCommand(), HELP_MSG_CONNECT);
+    EXPECT_EQ(cmd.GetExitCode(), 0);
+}
+
+// "connect" with no options: required-args check fails -> error + usage, exit 1.
+HWTEST(OhosAgentCliTest, Command_ConnectMissingArgs_ExitNonZero, TestSize.Level1)
+{
+    optind = 0;
+    auto argv = MakeArgv({"ohos-agent", "connect"});
+    OhosAgentShellCommand cmd(2, argv.data());
+    cmd.CreateErrorInfoMap();
+    std::string result = cmd.ExecCommand();
+    EXPECT_EQ(result.compare(0, strlen("error:"), "error:"), 0);
+    EXPECT_NE(result.find(HELP_MSG_CONNECT), std::string::npos);
+    EXPECT_EQ(cmd.GetExitCode(), 1);
+}
+
+// "connect --foo": unknown option -> error + usage, exit 1.
+HWTEST(OhosAgentCliTest, Command_ConnectUnknownOption_ExitNonZero, TestSize.Level1)
+{
+    optind = 0;
+    auto argv = MakeArgv({"ohos-agent", "connect", "--foo"});
+    OhosAgentShellCommand cmd(3, argv.data());
+    cmd.CreateErrorInfoMap();
+    std::string result = cmd.ExecCommand();
+    EXPECT_EQ(result.compare(0, strlen("error:"), "error:"), 0);
+    EXPECT_NE(result.find(HELP_MSG_CONNECT), std::string::npos);
+    EXPECT_EQ(cmd.GetExitCode(), 1);
+}
+
+// Locks the stdout contract behind main()'s unconditional print: once connect options parse
+// OK, every failure path (here: agentmgr IPC unavailable in the test environment) reports via
+// session events and exit code, leaving ExecCommand()'s text empty — so post-event runs never
+// print extra text on the event stream.
+HWTEST(OhosAgentCliTest, Command_ConnectFullArgs_IpcFailure_NoText, TestSize.Level1)
+{
+    optind = 0;  // reset getopt state
+    StdoutCapture cap;  // swallow the connect-done(fail) event printed by the IPC-failure path
+    char *argv[] = {
+        const_cast<char *>("ohos-agent"), const_cast<char *>("connect"),
+        const_cast<char *>("--bundlename"), const_cast<char *>("b"),
+        const_cast<char *>("--abilityname"), const_cast<char *>("a"),
+        const_cast<char *>("--agentid"), const_cast<char *>("i"),
+        nullptr,
+    };
+    OhosAgentShellCommand cmd(8, argv);
+    cmd.CreateErrorInfoMap();
+    EXPECT_EQ(cmd.ExecCommand(), "");
+    EXPECT_EQ(cmd.GetExitCode(), 1);
+}
+
+// >4096 arguments: the ctor falls back to "help", but that is not an explicit help request.
+HWTEST(OhosAgentCliTest, Command_OverlongCommandLine_ExitNonZero, TestSize.Level1)
+{
+    std::vector<char *> argv;
+    argv.push_back(const_cast<char *>("ohos-agent"));
+    argv.push_back(const_cast<char *>("help"));
+    while (argv.size() < 4100) {  // argc 4100 > MAX_ARGUMENT_NUMBER (4096)
+        argv.push_back(const_cast<char *>("x"));
+    }
+    argv.push_back(nullptr);
+    OhosAgentShellCommand cmd(static_cast<int>(argv.size() - 1), argv.data());
+    cmd.CreateErrorInfoMap();
+    EXPECT_EQ(cmd.ExecCommand(), HELP_MSG);
+    EXPECT_EQ(cmd.GetExitCode(), 1);
 }
