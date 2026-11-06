@@ -372,6 +372,8 @@ int32_t AbilityKeepAliveDataManager::DeleteKeepAliveData(const KeepAliveInfo &in
         }
     }
     if (deleted) {
+        TAG_LOGI(AAFwkTag::KEEP_ALIVE, "delete keep-alive data, bundleName: %{public}s, userId: %{public}d",
+            info.bundleName.c_str(), info.userId);
         BackupKvStore();
     }
 

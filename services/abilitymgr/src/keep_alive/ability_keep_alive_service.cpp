@@ -79,6 +79,8 @@ int32_t AbilityKeepAliveService::CancelKeepAlive(const KeepAliveInfo &info)
     }
 
     if (status.code == ERR_NAME_NOT_FOUND) {
+        TAG_LOGW(AAFwkTag::KEEP_ALIVE, "cancel keep-alive but record not found, bundleName: %{public}s, "
+            "userId: %{public}d", info.bundleName.c_str(), info.userId);
         return ERR_TARGET_BUNDLE_NOT_EXIST;
     }
 
