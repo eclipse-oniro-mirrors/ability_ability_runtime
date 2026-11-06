@@ -1420,6 +1420,15 @@ void UIExtensionAbilityManager::TerminateDone(const std::shared_ptr<BaseExtensio
     DelayedSingleton<AppScheduler>::GetInstance()->TerminateAbility(abilityRecord->GetToken(), false);
     if (UIExtensionWrapper::IsUIExtension(abilityRecord->GetAbilityInfo().extensionAbilityType)) {
         RemoveUIExtensionAbilityRecord(abilityRecord);
+        auto sessionInfo = abilityRecord->GetSessionInfo();
+        if (sessionInfo != nullptr && sessionInfo->sessionToken != nullptr) {
+            TAG_LOGI(AAFwkTag::UI_EXT, "uiExtAbility terminated, cleanup session, persistentId: %{public}d",
+                sessionInfo->persistentId);
+            RemoveUIExtWindowDeathRecipient(sessionInfo->sessionToken);
+            RemoveUIExtensionBySessionInfoToken(sessionInfo->sessionToken);
+        } else {
+            TAG_LOGW(AAFwkTag::UI_EXT, "uiExtAbility terminated without valid sessionInfo");
+        }
     }
     RemoveServiceAbility(abilityRecord);
 }
