@@ -1467,8 +1467,7 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
     int32_t oriValidUserId = GetValidUserId(param.userId);
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
     if ((param.callerToken == nullptr || !CheckIfOperateRemote(param.want)) &&
-        !AbilityUtil::IsStartFreeInstall(param.want) &&
-        !AbilityRuntime::StartupUtil::IsStartPlugin(param.want)) {
+        !AbilityUtil::IsStartFreeInstall(param.want) && !AbilityRuntime::StartupUtil::IsStartPlugin(param.want)) {
         if (!CloneForAccountUtil::ProcessAppIndex(param.want, oriValidUserId)) {
             // Self free install target (caller's own bundle with module name) may be not installed,
             // keep going and let selfFreeInstallEnable handle it.
@@ -2610,7 +2609,7 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
         CHECK_CALLER_IS_SYSTEM_APP;
     }
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    if (!AbilityUtil::IsStartFreeInstall(want)) {
+    if (!AbilityUtil::IsStartFreeInstall(want) && !AbilityRuntime::StartupUtil::IsStartPlugin(want)) {
         CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), oriValidUserId),
             RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
     }
