@@ -217,30 +217,15 @@
 
 ## 5. 代码检视
 
-当用户表达"检视一下代码""帮我审一下""做一次 code review""深度扫描""安全审计""查高危 bug""接口审计"等检视意图时，**不要凭记忆审查**——从代码检视工作台出发：
+当用户提出“检视代码 / review / codecheck / 审查 PR / 安全审计 / 查高风险 Bug / API 兼容性检视”等请求时，统一从 [`skills/codecheck/SKILL.md`](skills/codecheck/SKILL.md) 开始，而不是调用旧版 scanner。
 
-**入口**：[`skills/codecheck/README.md`](skills/codecheck/README.md)
+Codecheck V2 工作方式：**确定范围 → 依据行为建立 Concern Map → 自主基础检视 → 按真实风险挑战关键假设 → 独立证伪 → 报告与覆盖核对**。攻防不设置固定反例数量或轮次。
 
-该 README 是检视的导航与编排中枢，按以下顺序使用：
+- **动态发现**：根据代码实际的行为变化、不变量、跨模块调用与资源/状态依赖生成检视问题。不按文件名、grep 信号选择固定 Security/Logic/Input/API Scanner，也不加载内置 Pattern 列表。
+- **知识按需检索**：需要判断团队约定或业务语义时，从外部 [`abilitykit_sdd`](https://gitcode.com/abilitykit_public/abilitykit_sdd) 的 `standards/`、`specifications/` 查找真实适用文档并记录 revision、路径与章节。不可访问时记录未知，不能编造规则。
+- **按风险攻防**：基础检视后，根据潜在影响、假设不确定性和验证收益决定探索深度。高影响风险不得无理由跳过；低风险可记录不适用。源码推导和经授权的隔离测试须如实区分。
+- **独立 Refute**：每个正式候选必须核验触发、现有防护、影响、基线归因与证据；新线索返回检视阶段，未证实问题独立列为 unresolved。
+- **报告契约**：输出 `skills/codecheck/codecheck_report_TEMPLATE.md` 约定的 17 字段机器元数据（schema 2.0）与 P0–P3 门禁。`dimensions_*` 使用 V2 能力名（`behavior/security/input/api`）记录实际检视覆盖，不声明 Scanner 运行记录；真实检视过程放在 `review_trace_*.json`，同时提供 `refute_log_*.md`。
+- **范围和权限**：默认排除 `frameworks/ets/ani/`、`frameworks/ets/ets/`、`frameworks/cj/ffi/` 以及 `ets_*.cpp`、`cj_*.cpp` 的静态语言实现，除非用户明确要求；读取相关边界代码可作为证据。检视不修改源码；测试和外部访问须得到适当授权。
 
-1. **先读 README**：了解每个子 skill 的检视维度、触发场景、输出格式，以及按场景选择的 skill 组合表。
-2. **界定范围**：明确目标路径或 Kit、检视重点（通用/安全/高危 bug/API/外部输入）。未明确时向用户确认。
-3. **调用子 skill**：读对应子目录的 `SKILL.md` 按其工作流执行。通用检视默认走 `deep-scan {path}`（一次拿 bug+logic+security 三维度）；接口/SDK 变更补 `api-audit`；服务侧 IPC/持久化密集区补 `external-input-audit`。
-4. **合并报告**：把各 skill 产出汇总为一份 `codecheck_report_<scope>_<YYYYMMDD>.md`，跨维度去重后按 P0/P1/P1 排序。报告结构见 README 的 Step 4。
-
-### 检视维度速查
-
-| 维度 | 子 skill | 何时用 |
-|------|---------|--------|
-| 高影响缺陷（崩溃/挂死/OOM/UAF/死锁/泄漏） | `high-impact-bug-audit` | 通用检视、合入前排查 |
-| 逻辑影响与一致性 | `logic_analyzer` | 变更影响评估、状态机/边界 |
-| 安全/商用前审查 | `security_review` | 安全专项、商用前 |
-| 外部输入→持久化健壮性 | `external-input-audit` | 服务侧、IPC/DB/文件密集区 |
-| 对外 API 一致性 | `api-audit` | 接口/SDK 变更、Kit 级审计 |
-| 三层编排（bug+logic+security） | `deep-scan` | 通用深度扫描的默认入口 |
-
-### 检视约束
-
-- **静态语言实现默认排除**（`frameworks/ets/ani/`、`frameworks/ets/ets/`、`frameworks/cj/ffi/`、`ets_*.cpp`、`cj_*.cpp`），除非用户明确要求包含。
-- **证据要求**：每条发现可追溯到 `file:line` + 触发路径，不收无证据的代码气味项。
-- **检视阶段不改源码**：只产出报告与建议；修复由用户确认后另起任务，并回到本 AGENTS.md 的 Constraints/Verification 章节执行。
+入口和执行合约见 [`skills/codecheck/SKILL.md`](skills/codecheck/SKILL.md)，适配说明见 `skills/codecheck/README.md` 与本次交付包 `MIGRATION.md`。
