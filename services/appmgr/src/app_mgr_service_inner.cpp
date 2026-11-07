@@ -221,6 +221,8 @@ constexpr const char* ENTER_SANDBOX = "sandboxApp";
 constexpr const char* PERMISSION_INTERNET = "ohos.permission.INTERNET";
 constexpr const char* PERMISSION_MANAGE_VPN = "ohos.permission.MANAGE_VPN";
 constexpr const char* PERMISSION_ACCESS_BUNDLE_DIR = "ohos.permission.ACCESS_BUNDLE_DIR";
+constexpr const char* PERMISSION_EXEC_CLI_TOOL = "ohos.permission.EXEC_CLI_TOOL";
+constexpr const char* PERMISSION_EXEC_PUBLIC_CLI_TOOL = "ohos.permission.EXEC_PUBLIC_CLI_TOOL";
 constexpr const char* PERMISSION_PROTECT_SCREEN_LOCK_DATA = "ohos.permission.PROTECT_SCREEN_LOCK_DATA";
 constexpr const char* PERMISSION_TEMP_JIT_ALLOW = "TEMPJITALLOW";
 constexpr const char* TARGET_UID_KEY = "ohos.aafwk.param.targetUid";
@@ -5838,6 +5840,15 @@ void AppMgrServiceInner::SetAppInfo(const BundleInfo &bundleInfo, AppSpawnStartM
     startMsg.accessTokenIdEx = bundleInfo.applicationInfo.accessTokenIdEx;
     startMsg.apl = bundleInfo.applicationInfo.appPrivilegeLevel;
     startMsg.ownerId = bundleInfo.signatureInfo.appIdentifier;
+    auto token = bundleInfo.applicationInfo.accessTokenId;
+    if (Security::AccessToken::AccessTokenKit::VerifyAccessToken(
+            token, PERMISSION_EXEC_CLI_TOOL, false) == Security::AccessToken::PERMISSION_GRANTED ||
+        Security::AccessToken::AccessTokenKit::VerifyAccessToken(
+            token, PERMISSION_EXEC_PUBLIC_CLI_TOOL, false) == Security::AccessToken::PERMISSION_GRANTED) {
+        startMsg.agentId = bundleInfo.signatureInfo.appIdentifier;
+        startMsg.flags |= (START_FLAG_BASE << AppFlagsIndex::APP_FLAGS_AGENT);
+        TAG_LOGI(AAFwkTag::APPMGR, "agentId: %{private}s", startMsg.agentId.c_str());
+    }
     startMsg.provisionType = bundleInfo.applicationInfo.appProvisionType;
     startMsg.appDistributionType = bundleInfo.applicationInfo.appDistributionType;
     startMsg.apiTargetVersion = bundleInfo.applicationInfo.apiTargetVersion % API_VERSION_MOD;

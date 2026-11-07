@@ -56,6 +56,7 @@ struct AppSpawnStartMsg {
     std::string renderParam; // only nweb spawn need this param.
     std::string overlayInfo; // overlay hap resource path list
     std::string ownerId;
+    std::string agentId;
     std::string provisionType;
     std::string appDistributionType;
     std::string atomicAccount = "";

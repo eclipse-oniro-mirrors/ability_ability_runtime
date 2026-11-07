@@ -341,6 +341,16 @@ int32_t AppSpawnClient::AppspawnSetExtMsg(const AppSpawnStartMsg &startMsg, AppS
         }
     }
 
+    if (!startMsg.agentId.empty()) {
+        ret = AppSpawnReqMsgAddStringInfo(reqHandle, MSG_EXT_NAME_AGENT_ID, startMsg.agentId.c_str());
+        if (ret) {
+            TAG_LOGE(AAFwkTag::APPMGR, "send agentId fail, ret: %{public}d, agentId:%{private}s",
+                ret, startMsg.agentId.c_str());
+        } else {
+            TAG_LOGI(AAFwkTag::APPMGR, "send agentId: %{private}s", startMsg.agentId.c_str());
+        }
+    }
+
     if (!startMsg.appEnv.empty()) {
         std::string appEnv = DumpAppEnvToJson(startMsg.appEnv);
         TAG_LOGD(AAFwkTag::APPMGR, "bundleName: %{public}s, appEnv: %{public}s",
