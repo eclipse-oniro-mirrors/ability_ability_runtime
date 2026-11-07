@@ -168,6 +168,7 @@ private:
     static sptr<AbilityRuntime::ETSFocusedApplicationObserver> observerFocusedApp_;
 #endif
     static std::mutex appStateObserverLock_;
+    static std::mutex observerForegroundLock_;
 };
 
 std::atomic<int32_t> EtsAppManager::serialNumber_(0);
@@ -177,6 +178,7 @@ sptr<OHOS::AbilityRuntime::ETSAppForegroundStateObserver> EtsAppManager::observe
 sptr<AbilityRuntime::ETSFocusedApplicationObserver> EtsAppManager::observerFocusedApp_ = nullptr;
 #endif
 std::mutex EtsAppManager::appStateObserverLock_;
+std::mutex EtsAppManager::observerForegroundLock_;
 
 sptr<AppExecFwk::IAppMgr> EtsAppManager::GetAppManagerInstance()
 {
@@ -568,21 +570,21 @@ ani_int EtsAppManager::OnOnApplicationStateInner(ani_env *env, ani_string type, 
                 return ANI_ERROR;
             }
         }
-    }
-    if (appStateObserver_->GetEtsObserverMapSize() == 0) {
-        int32_t ret = appManager->RegisterApplicationStateObserver(appStateObserver_, bundleNameList);
-        TAG_LOGD(AAFwkTag::APPMGR, "err:%{public}d", ret);
-        if (ret != ERR_OK) {
-            EtsErrorUtil::ThrowError(env,
-                EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret), "",
-                    GetInnerErrorMsg(AbilityInnerErrorMsg::REGISTER_OBSERVER_FAILED)));
-            return ANI_ERROR;
+        if (appStateObserver_->GetEtsObserverMapSize() == 0) {
+            int32_t ret = appManager->RegisterApplicationStateObserver(appStateObserver_, bundleNameList);
+            TAG_LOGD(AAFwkTag::APPMGR, "err:%{public}d", ret);
+            if (ret != ERR_OK) {
+                EtsErrorUtil::ThrowError(env,
+                    EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret), "",
+                        GetInnerErrorMsg(AbilityInnerErrorMsg::REGISTER_OBSERVER_FAILED)));
+                return ANI_ERROR;
+            }
         }
+        int32_t observerId = GetObserverId();
+        appStateObserver_->AddEtsObserverObject(env, observerId, observer);
+        TAG_LOGD(AAFwkTag::APPMGR, "OnOnApplicationStateInner end");
+        return observerId;
     }
-    int32_t observerId = GetObserverId();
-    appStateObserver_->AddEtsObserverObject(env, observerId, observer);
-    TAG_LOGD(AAFwkTag::APPMGR, "OnOnApplicationStateInner end");
-    return observerId;
 }
 
 ani_int EtsAppManager::OnOnApplicationStateWithBundleList(ani_env *env, ani_string type,
@@ -667,20 +669,20 @@ ani_int EtsAppManager::OnOnApplicationStateWithAppStateFilter(ani_env *env, ani_
                 return ANI_ERROR;
             }
         }
+        std::vector<std::string> bundleNameList;
+        int32_t ret = appManager->RegisterApplicationStateObserverWithFilter(
+            appStateObserver_, bundleNameList, appStateFilter, true);
+        TAG_LOGD(AAFwkTag::APPMGR, "err:%{public}d", ret);
+        if (ret == ERR_OK) {
+            int32_t observerId = GetObserverId();
+            appStateObserver_->AddEtsObserverObject(env, observerId, observer);
+            TAG_LOGD(AAFwkTag::APPMGR, "OnOnApplicationStateInner end");
+            return observerId;
+        }
+        EtsErrorUtil::ThrowError(env, EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret), "",
+                GetInnerErrorMsg(AbilityInnerErrorMsg::REGISTER_OBSERVER_FAILED)));
+        return ANI_ERROR;
     }
-    std::vector<std::string> bundleNameList;
-    int32_t ret = appManager->RegisterApplicationStateObserverWithFilter(
-        appStateObserver_, bundleNameList, appStateFilter, true);
-    TAG_LOGD(AAFwkTag::APPMGR, "err:%{public}d", ret);
-    if (ret == ERR_OK) {
-        int32_t observerId = GetObserverId();
-        appStateObserver_->AddEtsObserverObject(env, observerId, observer);
-        TAG_LOGD(AAFwkTag::APPMGR, "OnOnApplicationStateInner end");
-        return observerId;
-    }
-    EtsErrorUtil::ThrowError(env, EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret), "",
-            GetInnerErrorMsg(AbilityInnerErrorMsg::REGISTER_OBSERVER_FAILED)));
-    return ANI_ERROR;
 }
 
 void EtsAppManager::OffApplicationStateCheck(ani_env *env, ani_int etsObserverId)
@@ -1545,25 +1547,28 @@ void EtsAppManager::OnOnAppForegroundState(ani_env *env, ani_string type, ani_ob
         return;
     }
     //Create Observer
-    if (observerForeground_ == nullptr) {
-        observerForeground_ = new (std::nothrow) ETSAppForegroundStateObserver(aniVM);
-    }
-    if (observerForeground_ == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "null appMgr or observer");
-        EtsErrorUtil::ThrowError(env, EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(
-            AbilityErrorCode::ERROR_CODE_INNER), "", GetInnerErrorMsg(AbilityInnerErrorMsg::MEMORY_ALLOC_FAILED)));
-        return;
-    }
-    if (observerForeground_->IsEmpty()) {
-        int32_t ret = appMgr->RegisterAppForegroundStateObserver(observerForeground_);
-        TAG_LOGD(AAFwkTag::APPMGR, "RegisterAppForegroundStateObserver ret: %{public}d", ret);
-        if (ret != NO_ERROR) {
-            EtsErrorUtil::ThrowError(env, EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret), "",
-                    GetInnerErrorMsg(AbilityInnerErrorMsg::REGISTER_OBSERVER_FAILED)));
+    {
+        std::lock_guard<std::mutex> fgLock(observerForegroundLock_);
+        if (observerForeground_ == nullptr) {
+            observerForeground_ = new (std::nothrow) ETSAppForegroundStateObserver(aniVM);
+        }
+        if (observerForeground_ == nullptr) {
+            TAG_LOGE(AAFwkTag::APPMGR, "null appMgr or observer");
+            EtsErrorUtil::ThrowError(env, EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(
+                AbilityErrorCode::ERROR_CODE_INNER), "", GetInnerErrorMsg(AbilityInnerErrorMsg::MEMORY_ALLOC_FAILED)));
             return;
         }
+        if (observerForeground_->IsEmpty()) {
+            int32_t ret = appMgr->RegisterAppForegroundStateObserver(observerForeground_);
+            TAG_LOGD(AAFwkTag::APPMGR, "RegisterAppForegroundStateObserver ret: %{public}d", ret);
+            if (ret != NO_ERROR) {
+                EtsErrorUtil::ThrowError(env, EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret), "",
+                        GetInnerErrorMsg(AbilityInnerErrorMsg::REGISTER_OBSERVER_FAILED)));
+                return;
+            }
+        }
+        observerForeground_->AddEtsObserverObject(observer);
     }
-    observerForeground_->AddEtsObserverObject(observer);
     TAG_LOGD(AAFwkTag::APPMGR, "OnOnAppForegroundState end");
 }
 
@@ -1640,30 +1645,33 @@ void EtsAppManager::OnOffAppForegroundState(ani_env *env, ani_string type, ani_o
             AbilityErrorCode::ERROR_CODE_INNER), "", GetInnerErrorMsg(AbilityInnerErrorMsg::SERVICE_UNAVAILABLE)));
         return;
     }
-    if (observerForeground_ == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "null observer");
-        EtsErrorUtil::ThrowError(env, EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(
-            AbilityErrorCode::ERROR_CODE_INNER), "", GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED)));
-        return;
-    }
     ani_status status = ANI_OK;
     ani_boolean isUndefined = false;
     if ((status = env->Reference_IsUndefined(observer, &isUndefined)) != ANI_OK) {
         TAG_LOGE(AAFwkTag::APPMGR, "Failed to check undefined status : %{public}d", status);
         return;
     }
-    if (isUndefined) {
-        TAG_LOGI(AAFwkTag::APPMGR, "SubEvent op=off_all kit=AbilityKit event=appForegroundState");
-        observerForeground_->RemoveAllEtsObserverObjects();
-    } else {
-        observerForeground_->RemoveEtsObserverObject(observer);
-    }
-    if (observerForeground_->IsEmpty()) {
-        int32_t ret = appMgr->UnregisterAppForegroundStateObserver(observerForeground_);
-        TAG_LOGD(AAFwkTag::APPMGR, "ret: %{public}d.", ret);
-        if (ret != NO_ERROR) {
-            EtsErrorUtil::ThrowError(env, EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret), "",
-            GetInnerErrorMsg(AbilityInnerErrorMsg::UNREGISTER_OBSERVER_FAILED)));
+    {
+        std::lock_guard<std::mutex> fgLock(observerForegroundLock_);
+        if (observerForeground_ == nullptr) {
+            TAG_LOGE(AAFwkTag::APPMGR, "null observer");
+            EtsErrorUtil::ThrowError(env, EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(
+                AbilityErrorCode::ERROR_CODE_INNER), "", GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED)));
+            return;
+        }
+        if (isUndefined) {
+            TAG_LOGI(AAFwkTag::APPMGR, "SubEvent op=off_all kit=AbilityKit event=appForegroundState");
+            observerForeground_->RemoveAllEtsObserverObjects();
+        } else {
+            observerForeground_->RemoveEtsObserverObject(observer);
+        }
+        if (observerForeground_->IsEmpty()) {
+            int32_t ret = appMgr->UnregisterAppForegroundStateObserver(observerForeground_);
+            TAG_LOGD(AAFwkTag::APPMGR, "ret: %{public}d.", ret);
+            if (ret != NO_ERROR) {
+                EtsErrorUtil::ThrowError(env, EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret), "",
+                GetInnerErrorMsg(AbilityInnerErrorMsg::UNREGISTER_OBSERVER_FAILED)));
+            }
         }
     }
     TAG_LOGD(AAFwkTag::APPMGR, "OnOffAppForegroundState end");

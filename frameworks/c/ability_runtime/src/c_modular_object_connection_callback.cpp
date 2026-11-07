@@ -111,6 +111,11 @@ void CModularObjectConnectionCallback::OnAbilityConnectDone(const AppExecFwk::El
     if (callback == nullptr) {
         return;
     }
+    if (owner == nullptr) {
+        TAG_LOGW(AAFwkTag::EXT, "owner null");
+        CModularObjectUtils::NotifyFailed(state, ABILITY_RUNTIME_ERROR_CODE_INTERNAL);
+        return;
+    }
 
     AbilityBase_Element cElement;
     if (!CModularObjectUtils::BuildElement(element, cElement)) {
@@ -152,6 +157,12 @@ void CModularObjectConnectionCallback::OnAbilityDisconnectDone(const AppExecFwk:
 
     if (callback == nullptr) {
         TAG_LOGW(AAFwkTag::EXT, "callback null");
+        CModularObjectConnectionUtils::RemoveConnectionCallback(connectionId_);
+        return;
+    }
+    if (owner == nullptr) {
+        TAG_LOGW(AAFwkTag::EXT, "owner null");
+        CModularObjectUtils::NotifyFailed(state, ABILITY_RUNTIME_ERROR_CODE_INTERNAL);
         CModularObjectConnectionUtils::RemoveConnectionCallback(connectionId_);
         return;
     }

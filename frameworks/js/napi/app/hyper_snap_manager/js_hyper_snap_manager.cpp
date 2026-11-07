@@ -282,8 +282,13 @@ napi_value JsHyperSnapManagerInit(napi_env env, napi_value exportObj)
 
     std::unique_ptr<JsHyperSnapManager> jsHyperSnapManager =
         std::make_unique<JsHyperSnapManager>();
-    napi_wrap(env, exportObj, jsHyperSnapManager.release(),
+    napi_status wrapStatus = napi_wrap(env, exportObj, jsHyperSnapManager.get(),
         JsHyperSnapManager::Finalizer, nullptr, nullptr);
+    if (wrapStatus != napi_ok) {
+        TAG_LOGE(AAFwkTag::APPKIT, "napi_wrap failed: %{public}d", wrapStatus);
+        return nullptr;
+    }
+    jsHyperSnapManager.release();
 
     napi_value hyperSnapErrorType = InitHyperSnapErrorTypeEnum(env);
     if (hyperSnapErrorType == nullptr || napi_set_named_property(env, exportObj,

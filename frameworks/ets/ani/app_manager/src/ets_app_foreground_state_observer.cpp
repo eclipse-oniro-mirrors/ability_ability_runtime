@@ -72,8 +72,12 @@ void ETSAppForegroundStateObserver::HandleOnAppStateChanged(const AppStateData &
         AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
         return;
     }
-    std::lock_guard<std::mutex> lock(etsObserverObjectSetLock_);
-    for (auto &item : etsObserverObjects_) {
+    std::vector<ani_ref> snapshot;
+    {
+        std::lock_guard<std::mutex> lock(etsObserverObjectSetLock_);
+        snapshot = etsObserverObjects_;
+    }
+    for (auto &item : snapshot) {
         if (item != nullptr) {
             CallEtsFunction(env, reinterpret_cast<ani_object>(item), "onAppStateChanged", nullptr, appStateDataObj);
         }
