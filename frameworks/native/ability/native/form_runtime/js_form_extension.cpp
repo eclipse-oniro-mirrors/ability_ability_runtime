@@ -559,7 +559,15 @@ void JsFormExtension::OnFormLocationChanged(const int64_t formId, const int32_t 
     HandleScope handleScope(env);
 
     napi_value napiFormId = WrapStringToJS(env, std::to_string(formId));
+    if (napiFormId == nullptr) {
+        TAG_LOGE(AAFwkTag::FORM_EXT, "napiFormId nullptr");
+        return;
+    }
     napi_value napiLocation = WrapInt32ToJS(env, formLocation);
+    if (napiLocation == nullptr) {
+        TAG_LOGE(AAFwkTag::FORM_EXT, "napiLocation nullptr");
+        return;
+    }
     napi_value argv[] = {napiFormId, napiLocation};
     CallObjectMethod("onFormLocationChanged", "OnFormLocationChanged", argv, ARGC_TWO);
 }

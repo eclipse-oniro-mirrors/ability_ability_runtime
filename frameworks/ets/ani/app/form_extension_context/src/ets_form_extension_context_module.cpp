@@ -187,8 +187,8 @@ napi_value EtsFormExtensionContextModule::GetOrCreateDynamicObject(napi_env napi
         auto boundObj = static_cast<NativeReference *>(
             formExtContext->GetSubThreadObject(static_cast<void *>(napiEnv)));
         if (boundObj != subThreadRef.get()) {
-            TAG_LOGE(AAFwkTag::FORM_EXT, "BindSubThreadObject failed, object already bound");
-            return nullptr;
+            TAG_LOGW(AAFwkTag::FORM_EXT, "BindSubThreadObject failed, object already bound");
+            return boundObj != nullptr ? boundObj->Get() : nullptr;
         }
         subThreadRef.release();
         return newObject;

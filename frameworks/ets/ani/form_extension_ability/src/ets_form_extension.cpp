@@ -812,7 +812,7 @@ void ETSFormExtension::OnFormLocationChanged(const int64_t formId, const int32_t
         return;
     }
 
-    ani_enum_item formLocationStateItem {};
+    ani_enum_item formLocationStateItem = nullptr;
     if (!OHOS::AAFwk::AniEnumConvertUtil::EnumConvert_NativeToEts(
         env, FORM_LOCATION_STATE_ENUM_NAME, formLocation, formLocationStateItem) || formLocationStateItem == nullptr) {
         TAG_LOGE(AAFwkTag::FORM_EXT, "formLocationStateItem NativeToEts failed");
