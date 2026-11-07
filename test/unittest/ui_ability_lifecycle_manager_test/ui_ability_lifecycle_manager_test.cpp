@@ -4785,7 +4785,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, CheckProperties_003, TestSize.Level1)
     abilityRecord->SetAppIndex(1);
     AppExecFwk::LaunchMode launchMode = AppExecFwk::LaunchMode::SPECIFIED;
     auto ret = uiAbilityLifecycleManager->CheckProperties(abilityRecord, abilityRequest, launchMode);
-    EXPECT_EQ(ret, false);
+    EXPECT_EQ(ret,  true);
 }
 #endif // WITH_DLP
 

@@ -2750,7 +2750,9 @@ void AppMgrServiceInner::MakeProcessName(const std::shared_ptr<AbilityInfo> &abi
     }
     MakeProcessName(appInfo, hapModuleInfo, processName);
     MakeServiceExtProcessName(abilityInfo, appInfo, processName);
-    if (appIndex != 0) {
+    if (appIndex >= AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
+        processName += ":" + std::to_string(appIndex);
+    } else if (appIndex != 0) {
         processName += std::to_string(appIndex);
     }
 
@@ -3979,7 +3981,7 @@ int32_t AppMgrServiceInner::KillApplicationByUserId(
     }
 
     KillProcessConfig config{clearPageStack, true, reason};
-    if(appCloneIndex == -1) {
+    if (appCloneIndex == 0) {
         auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
         bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appCloneIndex);
     }
@@ -4050,7 +4052,7 @@ int32_t AppMgrServiceInner::KillApplicationByUserIdLocked(
         userId, bundleName.c_str(), appCloneIndex);
     int uid = IN_PROCESS_CALL(bundleMgrHelper->GetUidByBundleName(bundleName, userId, appCloneIndex));
     TAG_LOGI(AAFwkTag::APPMGR, "KillApplicationByUserIdLocked value: %{public}d", uid);
-    if(appCloneIndex == -1) {
+    if (appCloneIndex == 0) {
         bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appCloneIndex);
     }
     if (!appRunningManager_->ProcessExitByBundleNameAndUid(bundleName, uid, pids, config)) {

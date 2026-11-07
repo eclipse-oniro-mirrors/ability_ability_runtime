@@ -1395,7 +1395,6 @@ public:
 
     /**
      * Preload an application (press-down / pre-make / preload-module /
-
      * pre-launch / game-prelaunch modes) to accelerate later startup.
      *
      * Permission: system-app caller required (CHECK_CALLER_IS_SYSTEM_APP) and

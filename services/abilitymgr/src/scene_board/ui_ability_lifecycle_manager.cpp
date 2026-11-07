@@ -2969,7 +2969,7 @@ bool UIAbilityLifecycleManager::CheckProperties(const UIAbilityRecordPtr &abilit
 {
     CHECK_POINTER_RETURN_BOOL(abilityRecord);
     const auto& abilityInfo = abilityRecord->GetAbilityInfo();
-    int appIndex = 0;
+    int32_t appIndex = 0;
     if (abilityRequest.want.HasParameter(ServerConstant::DLP_INDEX)) {
         appIndex = abilityRequest.want.GetIntParam(ServerConstant::DLP_INDEX, 0);
     } else {

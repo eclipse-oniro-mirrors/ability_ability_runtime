@@ -69,11 +69,13 @@ bool StartAbilityUtils::GetAppIndex(const Want &want, sptr<IRemoteObject> caller
         appIndex = want.GetIntParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, defaultAppIndex);
         if (appIndex == 0) {
             appIndex = defaultAppIndex;
+            const_cast<Want &>(want).SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, appIndex);
         }
         return AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex) ||
             appIndex == 0 || appIndex == AbilityRuntime::GlobalConstant::PC_TABLET_INDEX;
     }
     appIndex = defaultAppIndex;
+    const_cast<Want &>(want).SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, appIndex);
     return true;
 }
 
