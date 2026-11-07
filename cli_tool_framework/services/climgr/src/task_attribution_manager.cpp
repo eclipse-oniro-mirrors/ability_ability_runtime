@@ -41,7 +41,7 @@ int32_t TaskAttributionManager::AttachProcess(const std::string &taskId, pid_t p
     int64_t &attributionId)
 {
     attributionId = 0;
-    if (!IsValidTraceId(taskId) || pid <= 0) {
+    if (taskId.empty() || !IsValidTraceId(taskId) || pid <= 0) {
         TAG_LOGW(AAFwkTag::CLI_TOOL, "attach skipped: invalid taskId or pid: %{public}d", pid);
         return AAFwk::INVALID_PARAMETERS_ERR;
     }
@@ -86,7 +86,7 @@ int32_t TaskAttributionManager::AttachInAppSkillProcess(const std::string &taskI
 {
     outPid = -1;
     attributionId = 0;
-    if (!IsValidTraceId(taskId) || bundleName.empty()) {
+    if (taskId.empty() || !IsValidTraceId(taskId) || bundleName.empty()) {
         TAG_LOGW(AAFwkTag::CLI_TOOL, "in-app skill attach skipped: invalid taskId or empty bundleName");
         return AAFwk::INVALID_PARAMETERS_ERR;
     }

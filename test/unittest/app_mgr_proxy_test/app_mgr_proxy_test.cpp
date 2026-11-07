@@ -1833,7 +1833,7 @@ HWTEST_F(AppMgrProxyTest, RegisterManagedProcess_0100, TestSize.Level1)
         .WillOnce([&](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
             EXPECT_EQ(code, static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_MANAGED_PROCESS));
             data.RewindRead(0);
-            data.ReadString16(); // interface token
+            data.ReadInterfaceToken();
             readTaskId = Str16ToStr8(data.ReadString16());
             readPid = data.ReadInt32();
             readTool = data.ReadInt32();
@@ -1892,7 +1892,7 @@ HWTEST_F(AppMgrProxyTest, UnregisterManagedProcess_0100, TestSize.Level1)
         .WillOnce([&](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
             EXPECT_EQ(code, static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_MANAGED_PROCESS));
             data.RewindRead(0);
-            data.ReadString16(); // interface token
+            data.ReadInterfaceToken();
             readTaskId = Str16ToStr8(data.ReadString16());
             readAttributionId = data.ReadInt64();
             readCallerUid = data.ReadInt32();
@@ -1924,7 +1924,7 @@ HWTEST_F(AppMgrProxyTest, RegisterInAppSkillProcess_0100, TestSize.Level1)
         .WillOnce([&](uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option) {
             EXPECT_EQ(code, static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_IN_APP_SKILL_PROCESS));
             data.RewindRead(0);
-            data.ReadString16(); // interface token
+            data.ReadInterfaceToken();
             readTaskId = Str16ToStr8(data.ReadString16());
             readBundleName = Str16ToStr8(data.ReadString16());
             readCallerUid = data.ReadInt32();

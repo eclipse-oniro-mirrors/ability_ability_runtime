@@ -4614,6 +4614,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_TaskIdHookScenario_0100, TestSize.Le
 
     ExecCmdParam param;
     param.cmd = "echo test";
+    param.execCmdOptions.isShellCommand = false; // bypass the unset capability param (hook fires before routing)
     param.execCmdOptions.taskId = "task_hook-002";
     sptr<TestScheduler> scheduler = new TestScheduler();
 
@@ -4668,6 +4669,7 @@ HWTEST_F(CliToolManagerServiceTest, ExecCmd_TaskIdInvalid_0100, TestSize.Level1)
 
     ExecCmdParam param;
     param.cmd = "echo test";
+    param.execCmdOptions.isShellCommand = false; // bypass the unset capability param (sanitize path still runs)
     sptr<TestScheduler> scheduler = new TestScheduler();
 
     int32_t notCarried = service_->ExecCmd(param, "event_cmd_no_task", scheduler, "sub_invalid");
@@ -5181,6 +5183,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleProcessTimeout_NoDetach_0100, TestSize
     record->taskId = "task_timeout_0100";
     record->processId = 999999; // not a live pid: Killpg fails harmlessly
     record->attributionId = ATTR_TEST_ATTRIBUTION_ID;
+    record->attributionState = AttributionState::ATTACHED;
     record->callerUid = ATTR_TEST_CALLER_UID;
     record->SetBackground(true); // already background: avoid the reply dispatch branch
     service_->AddSessionRecord(record);
@@ -5689,6 +5692,7 @@ HWTEST_F(CliToolManagerServiceTest, HandleSkillSessionTimeout_Detach_0100, TestS
     record->eventId = "skill_timeout_detach_event";
     record->taskId = "task_skill_timeout_0100";
     record->attributionId = ATTR_TEST_ATTRIBUTION_ID;
+    record->attributionState = AttributionState::ATTACHED;
     record->callerUid = ATTR_TEST_CALLER_UID;
     record->sessionType = SessionType::SKILL;
     service_->AddSessionRecord(record);
@@ -5720,7 +5724,9 @@ HWTEST_F(CliToolManagerServiceTest, ClearSession_SKILL_Detach_0100, TestSize.Lev
     record->sessionId = "skill_clear_detach_session";
     record->taskId = "task_skill_clear_0100";
     record->attributionId = ATTR_TEST_ATTRIBUTION_ID;
+    record->attributionState = AttributionState::ATTACHED;
     record->callerUid = ATTR_TEST_CALLER_UID;
+    record->callerPid = IPCSkeleton::GetCallingPid(); // satisfy the ClearSession owner gate
     record->sessionType = SessionType::SKILL;
     record->SetState(SessionState::RUNNING);
     service_->AddSessionRecord(record);

@@ -144,7 +144,11 @@ public:
  */
 HWTEST_F(TaskAttributionManagerTest, GetInstance_0100, TestSize.Level1)
 {
-    EXPECT_EQ(&TaskAttributionManager::GetInstance(), &TaskAttributionManager::GetInstance());
+    auto *first = &TaskAttributionManager::GetInstance();
+    auto *second = &TaskAttributionManager::GetInstance();
+    ASSERT_NE(first, nullptr);
+    ASSERT_NE(second, nullptr);
+    EXPECT_EQ(first, second);
 }
 
 /**
