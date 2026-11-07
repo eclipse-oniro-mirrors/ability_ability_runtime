@@ -1957,6 +1957,13 @@ private:
     int32_t KillApplicationWithUserIdInner(const std::string &bundleName, const int userId = -1,
         const int appIndex = 0);
 
+    int32_t KillApplicationByUserIdImpl(
+        const std::string &bundleName, int32_t appCloneIndex, int32_t userId,
+        const bool clearPageStack, const std::string& reason, bool checkMDM);
+
+    int32_t GetCollaboratorTypeForKill(
+        const std::string &bundleName, int32_t &appCloneIndex, int32_t userId, int32_t &collaboratorType);
+
     std::string FaultTypeToString(FaultDataType type);
 
     FaultData ConvertDataTypes(const AppFaultDataBySA &faultData);

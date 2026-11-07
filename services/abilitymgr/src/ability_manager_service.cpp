@@ -9701,6 +9701,16 @@ int AbilityManagerService::KillProcessWithUserId(const std::string &bundleName, 
     return ret == ERR_OK ? ERR_OK : KILL_PROCESS_FAILED;
 }
 
+int32_t AbilityManagerService::KillCollaboratorProcess(int32_t collaboratorType,
+    const std::string &bundleName, int32_t userId)
+{
+    if (IPCSkeleton::GetCallingUid() != FOUNDATION_UID) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "not foundation call");
+        return ERR_PERMISSION_DENIED;
+    }
+    return KillProcessForCollaborator(collaboratorType, bundleName, userId);
+}
+
 int32_t AbilityManagerService::KillProcessForCollaborator(int32_t collaboratorType,
     const std::string &bundleName, int32_t userId)
 {

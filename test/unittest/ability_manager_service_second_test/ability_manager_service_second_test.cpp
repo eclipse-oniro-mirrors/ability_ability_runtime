@@ -1928,6 +1928,22 @@ HWTEST_F(AbilityManagerServiceSecondTest, CheckPermissionForKillCollaborator_002
 
 /*
  * Feature: AbilityManagerService
+ * Function: KillCollaboratorProcess
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService KillCollaboratorProcess validates FOUNDATION_UID
+ */
+HWTEST_F(AbilityManagerServiceSecondTest, KillCollaboratorProcess_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSecondTest KillCollaboratorProcess_001 start");
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    // test process uid is not FOUNDATION_UID(5523) → ERR_PERMISSION_DENIED
+    int32_t result = abilityMs_->KillCollaboratorProcess(1, "test_bundle", 0);
+    EXPECT_EQ(result, ERR_PERMISSION_DENIED);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSecondTest KillCollaboratorProcess_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: PreLoadAppDataAbilities
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService PreLoadAppDataAbilities

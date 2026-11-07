@@ -1299,6 +1299,26 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_KillProcessInner_001, TestSi
 
 /*
  * Feature: AbilityManagerService
+ * Function: KillCollaboratorProcessInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub KillCollaboratorProcessInner
+ * EnvConditions: NA
+ * CaseDescription: Verify the function KillCollaboratorProcessInner is normal flow.
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_KillCollaboratorProcessInner_001, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    data.WriteInt32(1);
+    data.WriteString16(Str8ToStr16("test_bundle"));
+    data.WriteInt32(0);
+    auto res = stub_->KillCollaboratorProcessInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), 0);
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: UninstallAppInner
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService UninstallAppInner

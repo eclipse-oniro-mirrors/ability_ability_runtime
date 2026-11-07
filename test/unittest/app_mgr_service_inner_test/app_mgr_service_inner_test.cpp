@@ -1362,6 +1362,133 @@ HWTEST_F(AppMgrServiceInnerTest, KillApplicationByUserId_001, TestSize.Level1)
 }
 
 /**
+ * @tc.name: KillApplicationByUserId_Collaborator_001
+ * @tc.desc: Test permission check before null check returns ERR_PERMISSION_DENIED.
+ * @tc.type: FUNC
+ * @tc.require: REQ-killprocess-account-collaborator
+ */
+HWTEST_F(AppMgrServiceInnerTest, KillApplicationByUserId_Collaborator_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "KillApplicationByUserId_Collaborator_001 start");
+    AAFwk::IsMockSaCall::IsMockSpecificSystemAbilityAccessPermission();
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+
+    std::string bundleName = "test_collaborator_bundle";
+    appMgrServiceInner->remoteClientManager_ = nullptr;
+    int result = appMgrServiceInner->KillApplicationByUserId(bundleName, 0, 0);
+    EXPECT_EQ(result, ERR_PERMISSION_DENIED);
+
+    TAG_LOGI(AAFwkTag::TEST, "KillApplicationByUserId_Collaborator_001 end");
+}
+
+/**
+ * @tc.name: KillApplicationByUserId_Collaborator_002
+ * @tc.desc: Test SetBundleManagerHelper(nullptr) still reconnects, falls through to permission check.
+ * @tc.type: FUNC
+ * @tc.require: REQ-killprocess-account-collaborator
+ */
+HWTEST_F(AppMgrServiceInnerTest, KillApplicationByUserId_Collaborator_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "KillApplicationByUserId_Collaborator_002 start");
+    AAFwk::IsMockSaCall::IsMockSpecificSystemAbilityAccessPermission();
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+
+    std::string bundleName = "test_collaborator_bundle";
+    appMgrServiceInner->remoteClientManager_->SetBundleManagerHelper(nullptr);
+    int result = appMgrServiceInner->KillApplicationByUserId(bundleName, 0, 0);
+    EXPECT_EQ(result, ERR_PERMISSION_DENIED);
+
+    TAG_LOGI(AAFwkTag::TEST, "KillApplicationByUserId_Collaborator_002 end");
+}
+
+/**
+ * @tc.name: KillApplicationByUserId_Collaborator_003
+ * @tc.desc: Test GetCollaboratorTypeForKill failure falls through to original path.
+ * @tc.type: FUNC
+ * @tc.require: REQ-killprocess-account-collaborator
+ */
+HWTEST_F(AppMgrServiceInnerTest, KillApplicationByUserId_Collaborator_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "KillApplicationByUserId_Collaborator_003 start");
+    AAFwk::IsMockSaCall::IsMockSpecificSystemAbilityAccessPermission();
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+
+    std::string bundleName = "test_collaborator_bundle";
+    int result = appMgrServiceInner->KillApplicationByUserId(bundleName, 0, 0);
+    EXPECT_NE(result, 0);
+
+    TAG_LOGI(AAFwkTag::TEST, "KillApplicationByUserId_Collaborator_003 end");
+}
+
+/**
+ * @tc.name: GetCollaboratorTypeForKill_001
+ * @tc.desc: Test null remoteClientManager returns ERR_NO_INIT.
+ * @tc.type: FUNC
+ * @tc.require: REQ-killprocess-account-collaborator
+ */
+HWTEST_F(AppMgrServiceInnerTest, GetCollaboratorTypeForKill_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetCollaboratorTypeForKill_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+
+    appMgrServiceInner->remoteClientManager_ = nullptr;
+    int32_t appCloneIndex = 0;
+    int32_t collaboratorType = 0;
+    int32_t result = appMgrServiceInner->GetCollaboratorTypeForKill("test_bundle", appCloneIndex, 0, collaboratorType);
+    EXPECT_EQ(result, ERR_NO_INIT);
+    EXPECT_EQ(collaboratorType, 0);
+
+    TAG_LOGI(AAFwkTag::TEST, "GetCollaboratorTypeForKill_001 end");
+}
+
+/**
+ * @tc.name: GetCollaboratorTypeForKill_002
+ * @tc.desc: Test SetBundleManagerHelper(nullptr) still reconnects, GetCloneBundleInfoExt fails.
+ * @tc.type: FUNC
+ * @tc.require: REQ-killprocess-account-collaborator
+ */
+HWTEST_F(AppMgrServiceInnerTest, GetCollaboratorTypeForKill_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetCollaboratorTypeForKill_002 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+
+    appMgrServiceInner->remoteClientManager_->SetBundleManagerHelper(nullptr);
+    int32_t appCloneIndex = 0;
+    int32_t collaboratorType = 0;
+    int32_t result = appMgrServiceInner->GetCollaboratorTypeForKill("test_bundle", appCloneIndex, 0, collaboratorType);
+    EXPECT_EQ(result, AAFwk::GET_BUNDLE_INFO_FAILED);
+    EXPECT_EQ(collaboratorType, 0);
+
+    TAG_LOGI(AAFwkTag::TEST, "GetCollaboratorTypeForKill_002 end");
+}
+
+/**
+ * @tc.name: GetCollaboratorTypeForKill_003
+ * @tc.desc: Test GetCloneBundleInfoExt failure returns GET_BUNDLE_INFO_FAILED in test env.
+ * @tc.type: FUNC
+ * @tc.require: REQ-killprocess-account-collaborator
+ */
+HWTEST_F(AppMgrServiceInnerTest, GetCollaboratorTypeForKill_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetCollaboratorTypeForKill_003 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+
+    int32_t appCloneIndex = 0;
+    int32_t collaboratorType = 0;
+    int32_t result = appMgrServiceInner->GetCollaboratorTypeForKill("test_bundle", appCloneIndex, 0, collaboratorType);
+    EXPECT_EQ(result, GET_BUNDLE_INFO_FAILED);
+    EXPECT_EQ(collaboratorType, 0);
+
+    TAG_LOGI(AAFwkTag::TEST, "GetCollaboratorTypeForKill_003 end");
+}
+
+/**
  * @tc.name: KillApplicationByUserIdLocked_001
  * @tc.desc: kill application by user id locked.
  * @tc.type: FUNC

@@ -136,8 +136,8 @@
 #include "xcollie/xcollie.h"
 #include "xcollie/xcollie_define.h"
 #endif
-#ifdef APP_MGR_KILL_REASON_TAG
 #include "ability_manager_client.h"
+#ifdef APP_MGR_KILL_REASON_TAG
 #include "ability_state.h"
 #include "exit_reason.h"
 #endif
@@ -236,6 +236,8 @@ constexpr size_t MAX_PROCESS_NAME_LENGTH = 64;
 constexpr const int32_t DEFAULT_APPFREEZE_KILL_WAIT_TIME = 3500; // 3.5s
 constexpr const int32_t BETA_APPFREEZE_KILL_WAIT_TIME = 6000; // 6s
 constexpr const int64_t PROCESS_KILL_DELAY_TIME = 600 * 1000; // 600ms
+constexpr const int32_t COLLABORATOR_TYPE_RESERVE = 1;
+constexpr const int32_t COLLABORATOR_TYPE_OTHERS = 2;
 
 #ifdef WITH_DLP
 constexpr const char* DLP_PARAMS_SECURITY_FLAG = "ohos.dlp.params.securityFlag";
@@ -3976,6 +3978,20 @@ int32_t AppMgrServiceInner::KillApplicationByUserId(
     const std::string &bundleName, int32_t appCloneIndex, const int userId,
     const bool clearPageStack, const std::string& reason)
 {
+    return KillApplicationByUserIdImpl(bundleName, appCloneIndex, userId, clearPageStack, reason, false);
+}
+
+int32_t AppMgrServiceInner::KillApplicationByUserIdSafely(
+    const std::string &bundleName, int32_t appCloneIndex, const int userId,
+    const bool clearPageStack, const std::string& reason)
+{
+    return KillApplicationByUserIdImpl(bundleName, appCloneIndex, userId, clearPageStack, reason, true);
+}
+
+int32_t AppMgrServiceInner::KillApplicationByUserIdImpl(
+    const std::string &bundleName, int32_t appCloneIndex, int32_t userId,
+    const bool clearPageStack, const std::string& reason, bool checkMDM)
+{
     CHECK_CALLER_IS_SYSTEM_APP;
     if (VerifyAccountPermission(
         AAFwk::PermissionConstants::PERMISSION_KILL_APP_PROCESSES, userId) == ERR_PERMISSION_DENIED &&
@@ -3984,53 +4000,79 @@ int32_t AppMgrServiceInner::KillApplicationByUserId(
         TAG_LOGE(AAFwkTag::APPMGR, "permission verify fail");
         return ERR_PERMISSION_DENIED;
     }
-
-    KillProcessConfig config{clearPageStack, true, reason};
+    CHECK_POINTER_AND_RETURN_VALUE(remoteClientManager_, ERR_NO_INIT);
+    auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
+    CHECK_POINTER_AND_RETURN_VALUE(bundleMgrHelper, ERR_NO_INIT);
+    TAG_LOGI(AAFwkTag::APPMGR, "KillApplicationByUserId bundle=%{public}s, userId=%{public}d, checkMDM=%{public}d",
+        bundleName.c_str(), userId, checkMDM);
+    int32_t collaboratorType = 0;
+    GetCollaboratorTypeForKill(bundleName, appCloneIndex, userId, collaboratorType);
+    if (collaboratorType != 0) {
+        TAG_LOGI(AAFwkTag::APPMGR, "collaborator type=%{public}d, kill via KillCollaboratorProcess",
+            collaboratorType);
+        if (VerifyAccountPermission(
+            AAFwk::PermissionConstants::PERMISSION_KILL_APP_PROCESSES, userId) == ERR_PERMISSION_DENIED) {
+            TAG_LOGE(AAFwkTag::APPMGR, "collaborator kill permission denied");
+            return ERR_PERMISSION_DENIED;
+        }
+        return IN_PROCESS_CALL(
+            AbilityManagerClient::GetInstance()->KillCollaboratorProcess(collaboratorType, bundleName, userId));
+    }
     if (appCloneIndex == 0) {
-        auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
         bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appCloneIndex);
     }
+    if (checkMDM) {
+        bool isDisableForbidden = false;
+        auto ret = IN_PROCESS_CALL(bundleMgrHelper->IsApplicationDisableForbidden(
+            bundleName, userId, appCloneIndex, isDisableForbidden));
+        if (ret != ERR_OK) {
+            TAG_LOGW(AAFwkTag::APPMGR,
+                "query disable forbidden failed, continue safe kill, ret=%{public}d", ret);
+        }
+        if (ret == ERR_OK && isDisableForbidden) {
+            TAG_LOGW(AAFwkTag::APPMGR, "safe kill rejected for disable forbidden bundle=%{public}s",
+                bundleName.c_str());
+            return AAFwk::ERR_KILL_PROCESS_MDM_PROTECTED;
+        }
+    }
+    KillProcessConfig config{clearPageStack, true, reason};
     return KillApplicationByUserIdLocked(bundleName, appCloneIndex, userId, config);
 }
 
-int32_t AppMgrServiceInner::KillApplicationByUserIdSafely(
-    const std::string &bundleName, int32_t appCloneIndex, const int userId,
-    const bool clearPageStack, const std::string& reason)
+int32_t AppMgrServiceInner::GetCollaboratorTypeForKill(
+    const std::string &bundleName, int32_t &appCloneIndex, int32_t userId, int32_t &collaboratorType)
 {
-    CHECK_CALLER_IS_SYSTEM_APP;
-    if (VerifyAccountPermission(
-        AAFwk::PermissionConstants::PERMISSION_KILL_APP_PROCESSES, userId) == ERR_PERMISSION_DENIED &&
-        VerifyAccountPermission(
-            AAFwk::PermissionConstants::PERMISSION_CLEAN_BACKGROUND_PROCESSES, userId) == ERR_PERMISSION_DENIED) {
-        TAG_LOGE(AAFwkTag::APPMGR, "safe kill permission verify fail");
-        return ERR_PERMISSION_DENIED;
-    }
-    if (appRunningManager_ == nullptr || remoteClientManager_ == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "safe kill failed, appRunningManager_ or remoteClientManager_ null");
-        return ERR_NO_INIT;
-    }
+    collaboratorType = 0;
+    CHECK_POINTER_AND_RETURN_VALUE(remoteClientManager_, ERR_NO_INIT);
     auto bundleMgrHelper = remoteClientManager_->GetBundleManagerHelper();
-    if (bundleMgrHelper == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "safe kill failed, bundleMgrHelper null");
-        return ERR_NO_INIT;
+    CHECK_POINTER_AND_RETURN_VALUE(bundleMgrHelper, ERR_NO_INIT);
+    AppExecFwk::BundleInfo bundleInfo;
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    if (appCloneIndex == 0) {
+        auto res = IN_PROCESS_CALL(bundleMgrHelper->GetBundleInfoV9(bundleName,
+            static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION),
+            bundleInfo, userId));
+        if (res == ERR_OK && bundleInfo.applicationInfo.enabled) {
+            appCloneIndex = bundleInfo.applicationInfo.appIndex;
+        }
     }
+#endif
     if (appCloneIndex == 0) {
         bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appCloneIndex);
     }
-    bool isDisableForbidden = false;
-    auto ret = IN_PROCESS_CALL(bundleMgrHelper->IsApplicationDisableForbidden(
-        bundleName, userId, appCloneIndex, isDisableForbidden));
-    if (ret != ERR_OK) {
-        TAG_LOGW(AAFwkTag::APPMGR,
-            "query disable forbidden failed, continue safe kill, ret=%{public}d", ret);
+    if (IN_PROCESS_CALL(bundleMgrHelper->GetCloneBundleInfoExt(bundleName,
+        static_cast<uint32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION),
+        appCloneIndex, userId, bundleInfo)) != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "get bundle info for collaborator type failed");
+        return AAFwk::GET_BUNDLE_INFO_FAILED;
     }
-    if (ret == ERR_OK && isDisableForbidden) {
-        TAG_LOGW(AAFwkTag::APPMGR, "safe kill rejected for disable forbidden bundle=%{public}s",
-            bundleName.c_str());
-        return AAFwk::ERR_KILL_PROCESS_MDM_PROTECTED;
+    const std::string &codePath = bundleInfo.applicationInfo.codePath;
+    if (codePath == std::to_string(COLLABORATOR_TYPE_RESERVE)) {
+        collaboratorType = COLLABORATOR_TYPE_RESERVE;
+    } else if (codePath == std::to_string(COLLABORATOR_TYPE_OTHERS)) {
+        collaboratorType = COLLABORATOR_TYPE_OTHERS;
     }
-    KillProcessConfig config{clearPageStack, true, reason};
-    return KillApplicationByUserIdLocked(bundleName, appCloneIndex, userId, config);
+    return ERR_OK;
 }
 
 int32_t AppMgrServiceInner::KillApplicationByUserIdLocked(

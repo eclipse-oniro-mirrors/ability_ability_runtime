@@ -2821,6 +2821,16 @@ public:
         TERMINATE_ABILITY_CODE
     };
 
+    /**
+     * @brief Kill collaborator process (public, called via AbilityManagerClient IPC).
+     *        Validates FOUNDATION_UID before delegating to private KillProcessForCollaborator.
+     * @param collaboratorType collaborator type (1=RESERVE, 2=OTHERS).
+     * @param bundleName destination bundleName.
+     * @param userId process user id.
+     * @return ERR_OK on success, KILL_PROCESS_FAILED on failure, ERR_PERMISSION_DENIED if not foundation.
+     */
+    int32_t KillCollaboratorProcess(int32_t collaboratorType, const std::string &bundleName, int32_t userId) override;
+
 protected:
     /**
      * AbilityMgr's request is done.
@@ -2907,12 +2917,6 @@ protected:
 
     int32_t GetCollaboratorType(const std::string &codePath) const;
 
-    /**
-     * @brief kill process for Collaborator
-     * @param collaboratorType collaborator type.
-     * @param bundleName destination bundleName.
-     * @param userId process user id.
-     */
     int32_t KillProcessForCollaborator(int32_t collaboratorType, const std::string &bundleName, int32_t userId);
     
     /**

@@ -1025,6 +1025,20 @@ public:
         return 0;
     }
 
+    /**
+     * Kill collaborator process. Validates FOUNDATION_UID on service side.
+     *
+     * @param collaboratorType collaborator type (1=RESERVE, 2=OTHERS).
+     * @param bundleName target bundle name.
+     * @param userId target user id.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t KillCollaboratorProcess(int32_t collaboratorType,
+        const std::string &bundleName, int32_t userId)
+    {
+        return 0;
+    }
+
     #ifdef ABILITY_COMMAND_FOR_TEST
     /**
      * force timeout ability.
