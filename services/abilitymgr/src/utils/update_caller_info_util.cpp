@@ -500,9 +500,8 @@ void UpdateCallerInfoUtil::RemoveIntentAndSkillParams(Want &want)
 
 void UpdateCallerInfoUtil::RestoreIntentAndSkillParams(Want &want, const AbilitySessionInfo &info)
 {
-    // Strip whatever the SCB round trip returned for the intent/skill keys, then put the
-    // AMS snapshot back. An empty snapshot leaves the want stripped (fail closed).
-    RemoveIntentAndSkillParams(want);
+    // The SCB-returned copy is already stripped by SanitizeWantParams in the stub, so only
+    // the AMS snapshot is written back here.
     WantParams params = want.GetParams();
     for (const auto &[key, value] : info.intentAndSkillParams.GetParams()) {
         params.SetParam(key, value);

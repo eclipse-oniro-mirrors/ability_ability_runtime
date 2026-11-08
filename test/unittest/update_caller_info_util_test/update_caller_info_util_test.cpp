@@ -941,6 +941,8 @@ HWTEST_F(UpdateCallerInfoUtilTest, RestoreIntentAndSkillParams_0001, TestSize.Le
     scbWant.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME, std::string("forged"));
     scbWant.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, std::string("999"));
     scbWant.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_MODE, 1);
+    // The stub boundary (SanitizeWantParams) strips the returned copy before AMS sees it.
+    updateCallerUtil.RemoveIntentAndSkillParams(scbWant);
 
     updateCallerUtil.RestoreCallerInfoToWant(scbWant, info);
     EXPECT_EQ(scbWant.GetStringParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME), "PlayMusic");
@@ -967,6 +969,8 @@ HWTEST_F(UpdateCallerInfoUtilTest, RestoreIntentAndSkillParams_0002, TestSize.Le
     scbWant.SetElementName("", "com.test.target", "TestAbility", "entry");
     scbWant.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME, std::string("forged"));
     scbWant.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, std::string("42"));
+    // The stub boundary (SanitizeWantParams) strips the returned copy before AMS sees it.
+    updateCallerUtil.RemoveIntentAndSkillParams(scbWant);
 
     updateCallerUtil.RestoreCallerInfoToWant(scbWant, info);
     EXPECT_FALSE(scbWant.HasParameter(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME));
