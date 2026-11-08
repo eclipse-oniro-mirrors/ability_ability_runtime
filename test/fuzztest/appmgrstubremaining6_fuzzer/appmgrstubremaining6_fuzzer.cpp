@@ -37,9 +37,16 @@ using namespace OHOS::AppExecFwk;
 namespace OHOS {
 class AppMgrStubRemaining6Fuzz : public AppMgrStubFuzzBase {};
 
+// Case selectors for the managed-process attribution commands appended after the inherited
+// case 0-8 block; STUB_CASE_COUNT bounds the dispatch table modulus.
+constexpr uint32_t STUB_CASE_REGISTER_MANAGED_PROCESS = 9;
+constexpr uint32_t STUB_CASE_UNREGISTER_MANAGED_PROCESS = 10;
+constexpr uint32_t STUB_CASE_REGISTER_IN_APP_SKILL_PROCESS = 11;
+constexpr uint32_t STUB_CASE_COUNT = 12;
+
 void DoFuzzCases(uint32_t code, MessageParcel &parcel, FuzzedDataProvider &fdp, uint32_t &actualCode)
 {
-    switch (code % 9) {
+    switch (code % STUB_CASE_COUNT) {
         case 0: {
             // HandleUpdateFreezeExcludedPid: ReadBool, ReadInt32, ReadInt32
             actualCode = static_cast<uint32_t>(AppMgrInterfaceCode::UPDATE_FREEZE_EXCLUDED_PID);
@@ -97,6 +104,28 @@ void DoFuzzCases(uint32_t code, MessageParcel &parcel, FuzzedDataProvider &fdp, 
         case 8: {
             // HandleNotifyTemplateProcessReadyDone: no input field
             actualCode = static_cast<uint32_t>(AppMgrInterfaceCode::NOTIFY_TEMPLATE_PROCESS_READY_DONE);
+            break;
+        }
+        case STUB_CASE_REGISTER_MANAGED_PROCESS: {
+            actualCode = static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_MANAGED_PROCESS);
+            parcel.WriteString16(Str8ToStr16(fdp.ConsumeRandomLengthString()));
+            parcel.WriteInt32(FuzzUtil::BuildIntegerOverflow(fdp));
+            parcel.WriteInt32(FuzzUtil::BuildIntegerOverflow(fdp));
+            parcel.WriteInt32(FuzzUtil::BuildIntegerOverflow(fdp));
+            break;
+        }
+        case STUB_CASE_UNREGISTER_MANAGED_PROCESS: {
+            actualCode = static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_MANAGED_PROCESS);
+            parcel.WriteString16(Str8ToStr16(fdp.ConsumeRandomLengthString()));
+            parcel.WriteInt64(FuzzUtil::BuildIntegerOverflow(fdp));
+            parcel.WriteInt32(FuzzUtil::BuildIntegerOverflow(fdp));
+            break;
+        }
+        case STUB_CASE_REGISTER_IN_APP_SKILL_PROCESS: {
+            actualCode = static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_IN_APP_SKILL_PROCESS);
+            parcel.WriteString16(Str8ToStr16(fdp.ConsumeRandomLengthString()));
+            parcel.WriteString16(Str8ToStr16(fdp.ConsumeRandomLengthString()));
+            parcel.WriteInt32(FuzzUtil::BuildIntegerOverflow(fdp));
             break;
         }
         default:

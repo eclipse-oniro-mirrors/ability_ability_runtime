@@ -25,6 +25,12 @@
 #include "app_scheduler_proxy.h"
 #include "mock_app_mgr_service_inner.h"
 #include "mock_native_token.h"
+#include "mock_ipc_skeleton.h"
+#include "ability_manager_errors.h"
+#include "task_mgr/task_manager_service.h"
+#include "app_running_manager.h"
+#include "application_info.h"
+#include "bundle_info.h"
 #include "semaphore_ex.h"
 
 using namespace testing::ext;
@@ -542,6 +548,149 @@ HWTEST_F(AppMgrServiceModuleTest, QueryServiceState_001, TestSize.Level1)
 
         EXPECT_EQ(serviceState.connectionState, testSpawnConnectionState);
     }
+}
+
+/**
+ * @tc.name: AppMgrService_RegisterManagedProcess_0100
+ * @tc.desc: The wrapper only admits the climgr process: any non-climgr uid is rejected
+ *           at the uid gate.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceModuleTest, AppMgrService_RegisterManagedProcess_0100, TestSize.Level1)
+{
+    IPCSkeleton::SetCallingUid(3093); // any uid other than climgr (aimgr, 3092)
+    int64_t attributionId = 1;
+    auto ret = appMgrService_->RegisterManagedProcess("appmgr_register_managed_0100", 4321, 2, 3099,
+        attributionId);
+    EXPECT_EQ(ret, AAFwk::ERR_NOT_SYSTEM_APP);
+    EXPECT_EQ(attributionId, 0);
+    IPCSkeleton::SetCallingUid(-1); // restore the real process identity
+}
+
+/**
+ * @tc.name: AppMgrService_RegisterManagedProcess_0200
+ * @tc.desc: With the climgr calling uid the gate passes and the call is delegated to the
+ *           task manager (an unknown task surfaces as ERR_TASK_NOT_FOUND, not as a
+ *           permission rejection).
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceModuleTest, AppMgrService_RegisterManagedProcess_0200, TestSize.Level1)
+{
+    IPCSkeleton::SetCallingUid(3092); // climgr runs in the aimgr process (uid 3092)
+    int64_t attributionId = 1;
+    auto ret = appMgrService_->RegisterManagedProcess("appmgr_register_managed_0200", 4321, 2, 3099,
+        attributionId);
+    EXPECT_EQ(ret, AAFwk::ERR_TASK_NOT_FOUND);
+    EXPECT_EQ(attributionId, 0);
+    ret = appMgrService_->UnregisterManagedProcess("appmgr_register_managed_0200", 1, 3099);
+    EXPECT_EQ(ret, AAFwk::ERR_TASK_NOT_FOUND);
+    IPCSkeleton::SetCallingUid(-1);
+}
+
+/**
+ * @tc.name: AppMgrService_RegisterInAppSkillProcess_0100
+ * @tc.desc: With the climgr calling uid and no running application record for the
+ *           bundle, the server-side location fails: INNER_ERR, resolvedPid stays -1
+ *           and nothing is registered.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceModuleTest, AppMgrService_RegisterInAppSkillProcess_0100, TestSize.Level1)
+{
+    IPCSkeleton::SetCallingUid(3092);
+    int32_t resolvedPid = 0;
+    int64_t attributionId = 1;
+    auto ret = appMgrService_->RegisterInAppSkillProcess("appmgr_in_app_skill_0100",
+        "com.example.skill.host.missing", 3099, resolvedPid, attributionId);
+    EXPECT_EQ(ret, AAFwk::INNER_ERR);
+    EXPECT_EQ(resolvedPid, -1);
+    EXPECT_EQ(attributionId, 0);
+    IPCSkeleton::SetCallingUid(-1);
+}
+
+/**
+ * @tc.name: AppMgrService_RegisterInAppSkillProcess_0200
+ * @tc.desc: With a running main-process record for the bundle, the wrapper resolves the
+ *           main-process pid server-side, registers it into the task owned by the
+ *           forwarded callerUid and returns the resolved pid. A same-bundle record under
+ *           another user must not be resolved (SEC-03).
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceModuleTest, AppMgrService_RegisterInAppSkillProcess_0200, TestSize.Level1)
+{
+    constexpr int32_t creatorUid = 3099;
+    constexpr int32_t mainPid = 5555;
+    const std::string taskId = "appmgr_in_app_skill_0200";
+    const std::string bundleName = "com.example.skill.host";
+
+    IPCSkeleton::SetCallingUid(creatorUid);
+    ASSERT_EQ(TaskManagerService::GetInstance().StartTask(taskId, 200), ERR_OK);
+
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->bundleName = bundleName;
+    BundleInfo bundleInfo;
+    auto appRunningManager = appMgrService_->appMgrServiceInner_->appRunningManager_;
+    ASSERT_NE(appRunningManager, nullptr);
+    auto appRecord = appRunningManager->CreateAppRunningRecord(appInfo, "appmgr_in_app_skill_0200", bundleInfo, "");
+    ASSERT_NE(appRecord, nullptr);
+    appRecord->GetPriorityObject()->SetPid(mainPid);
+    int32_t recordId = appRecord->GetRecordId();
+
+    // Cross-user interference (SEC-03): the same bundle running under user 1 must never be resolved.
+    constexpr int32_t OTHER_USER_RANGE = 200000;
+    constexpr int32_t otherUserUid = OTHER_USER_RANGE + 1234;
+    constexpr int32_t otherUserPid = 6666;
+    auto otherUserAppInfo = std::make_shared<ApplicationInfo>();
+    otherUserAppInfo->bundleName = bundleName;
+    otherUserAppInfo->uid = otherUserUid;
+    auto otherUserRecord = appRunningManager->CreateAppRunningRecord(otherUserAppInfo,
+        "appmgr_in_app_skill_0200_other", bundleInfo, "");
+    ASSERT_NE(otherUserRecord, nullptr);
+    otherUserRecord->GetPriorityObject()->SetPid(otherUserPid);
+    int32_t otherUserRecordId = otherUserRecord->GetRecordId();
+
+    // The IPC caller is climgr (3092); the forensic creator uid travels in the parameter, as in production.
+    IPCSkeleton::SetCallingUid(3092);
+    int32_t resolvedPid = 0;
+    int64_t attributionId = 0;
+    auto ret = appMgrService_->RegisterInAppSkillProcess(taskId, bundleName, creatorUid, resolvedPid,
+        attributionId);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(resolvedPid, mainPid);
+    EXPECT_GT(attributionId, 0);
+
+    int32_t otherPid = 0;
+    int64_t otherAttributionId = 0;
+    ret = appMgrService_->RegisterInAppSkillProcess(taskId, bundleName, creatorUid + 1, otherPid,
+        otherAttributionId);
+    EXPECT_EQ(ret, AAFwk::ERR_TASK_NOT_FOUND);
+    EXPECT_EQ(otherPid, -1);
+    EXPECT_EQ(otherAttributionId, 0);
+
+    ret = appMgrService_->UnregisterManagedProcess(taskId, attributionId, creatorUid);
+    EXPECT_EQ(ret, ERR_OK);
+    IPCSkeleton::SetCallingUid(creatorUid);
+    EXPECT_EQ(TaskManagerService::GetInstance().FinishTask(taskId), ERR_OK);
+    appRunningManager->appRunningRecordMap_.erase(recordId);
+    IPCSkeleton::SetCallingUid(-1);
+}
+
+/**
+ * @tc.name: AppMgrService_RegisterInAppSkillProcess_0300
+ * @tc.desc: A non-climgr calling uid is rejected at the uid gate before any location
+ *           attempt, keeping resolvedPid invalid.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceModuleTest, AppMgrService_RegisterInAppSkillProcess_0300, TestSize.Level1)
+{
+    IPCSkeleton::SetCallingUid(3093);
+    int32_t resolvedPid = 0;
+    int64_t attributionId = 1;
+    auto ret = appMgrService_->RegisterInAppSkillProcess("appmgr_in_app_skill_0300",
+        "com.example.skill.host", 3099, resolvedPid, attributionId);
+    EXPECT_EQ(ret, AAFwk::ERR_NOT_SYSTEM_APP);
+    EXPECT_EQ(resolvedPid, -1);
+    EXPECT_EQ(attributionId, 0);
+    IPCSkeleton::SetCallingUid(-1);
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

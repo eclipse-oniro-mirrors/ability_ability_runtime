@@ -273,6 +273,28 @@ private:
     std::shared_ptr<SessionRecord> GetSessionRecord(const std::string &sessionId);
     std::vector<std::shared_ptr<SessionRecord>> GetSessionRecords();
     void RemoveSessionRecord(const std::string &sessionId);
+
+    void AttachTaskAttribution(const std::shared_ptr<SessionRecord> &record);
+    void AttachSkillTaskAttribution(const std::shared_ptr<SessionRecord> &record, const std::string &bundleName);
+    void PostDetachTaskAttribution(const std::string &taskId, int64_t attributionId, int32_t callerUid);
+    // Caller must hold sessionsMutex_. Consumes an ATTACHED attribution into the detach triple
+    // (returns true) or relays a PENDING one to the write-back (CONSUMED, nothing to detach now).
+    bool TryConsumeAttribution(SessionRecord &record, std::string &taskId, int64_t &attributionId,
+        int32_t &callerUid);
+    // Writes the IPC verdict back under sessionsMutex_ (PENDING -> ATTACHED/FAILED). Returns true
+    // when a teardown consumed the record while the IPC was in flight: the caller must post the
+    // compensating detach (it is the single finisher).
+    bool WriteBackAttachResult(const std::shared_ptr<SessionRecord> &record, const char *action,
+        bool attributed, int32_t ret, pid_t reportedPid, const std::string &taskId,
+        int64_t attributionId);
+    // Caller must hold sessionsMutex_. Collects an ATTACHED record's detach triple; a PENDING one
+    // is relayed to the write-back instead.
+    void CollectDetachRequest(SessionRecord &record, std::vector<std::string> &taskIds,
+        std::vector<int64_t> &attributionIds, std::vector<int32_t> &uids);
+    // Posts every triple collected by CollectDetachRequest (off-lock, off-thread).
+    void PostDetachRequests(const std::vector<std::string> &taskIds,
+        const std::vector<int64_t> &attributionIds, const std::vector<int32_t> &uids);
+
     bool IsSessionOwner(const std::shared_ptr<SessionRecord> &record, const char *action) const;
 
     bool RegisterSessionWithMonitors(const std::shared_ptr<SessionRecord> &record, const ExecOptions &options);

@@ -89,6 +89,36 @@ HWTEST_F(SessionRecordTest, SessionRecord_OutputAndTerminal_0100, TestSize.Level
 }
 
 /**
+ * @tc.name: SessionRecord_TaskAttribution_0100
+ * @tc.desc: the task-attribution mapping rides the session
+ *           record lifetime — defaults are "not carried / not attributed",
+ *           the setup path writes both members, and the one-shot consume
+ *           (teardown) resets attributionId to 0 so later teardown paths
+ *           (finalize/timeout) stay no-ops.
+ * @tc.type: FUNC
+ */
+HWTEST_F(SessionRecordTest, SessionRecord_TaskAttribution_0100, TestSize.Level1)
+{
+    SessionRecord record;
+    EXPECT_TRUE(record.taskId.empty());
+    EXPECT_EQ(record.attributionId, 0);
+
+    record.taskId = "task_record_0100";
+    record.processId = 4242;
+    record.attributionId = 7;
+    EXPECT_EQ(record.taskId, "task_record_0100");
+    EXPECT_EQ(record.processId, 4242);
+    EXPECT_EQ(record.attributionId, 7);
+
+    record.attributionId = 0;
+    EXPECT_EQ(record.attributionId, 0);
+
+    record.taskId = "task_record_0100";
+    record.taskId.clear();
+    EXPECT_TRUE(record.taskId.empty());
+}
+
+/**
  * @tc.name: SessionRecord_BuildSessionInfo_0100
  * @tc.desc: Test running, completed, failed and timeout session info branches
  * @tc.type: FUNC

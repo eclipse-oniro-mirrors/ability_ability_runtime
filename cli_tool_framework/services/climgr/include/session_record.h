@@ -44,6 +44,19 @@ enum class SessionState {
     FAILED,
 };
 
+// Attribution lifecycle (SEC-01): every transition happens under CliToolManagerService::sessionsMutex_.
+// NONE -> PENDING (attach snapshotted while the session is still live in the table) -> ATTACHED (IPC ok)
+// or FAILED (IPC rejected, nothing registered); PENDING/ATTACHED -> CONSUMED when a teardown grabs the
+// single detach-consumption right. Exactly one side detaches: the teardown that saw ATTACHED, or the
+// attach write-back that returns to a CONSUMED record and compensates its own registration.
+enum class AttributionState : int32_t {
+    NONE = 0,
+    PENDING = 1,
+    ATTACHED = 2,
+    FAILED = 3,
+    CONSUMED = 4,
+};
+
 class SessionRecord {
 public:
     SessionRecord() = default;
@@ -58,6 +71,12 @@ public:
     std::string toolCallId = "";
     std::string dmSessionId = "";
     pid_t processId = -1;
+    // taskId = attribution key (empty = not attributed); attributionId = server-assigned handle,
+    // sole detach key (0 = not attributed, no unregister fires).
+    std::string taskId = "";
+    int64_t attributionId = 0;
+    // Guarded by sessionsMutex_; see AttributionState above for the transition contract.
+    AttributionState attributionState = AttributionState::NONE;
     int64_t startTime = 0;
     int32_t timeoutMs = 0;
     int32_t stdinPipe[2] = {-1, -1};        // [0]=read, [1]=write

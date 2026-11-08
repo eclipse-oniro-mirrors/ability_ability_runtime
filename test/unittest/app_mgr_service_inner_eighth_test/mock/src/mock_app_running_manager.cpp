@@ -109,6 +109,11 @@ int32_t AppRunningManager::IsAppRunningByBundleName(const std::string &bundleNam
     return ERR_OK;
 }
 
+pid_t AppRunningManager::GetMainProcessPidByBundleName(const std::string &bundleName, int32_t userId)
+{
+    return -1;
+}
+
 int32_t AppRunningManager::GetAllAppRunningRecordCountByBundleName(const std::string &bundleName)
 {
     return AAFwk::MyStatus::GetInstance().getAllAppRunningRecordCount_;

@@ -1376,6 +1376,65 @@ public:
     {
         return ERR_OK;
     }
+
+    /**
+     * @brief Attributes a process into the task owned by the caller and hands back the
+     *        server-assigned attribution id used for later unregistration.
+     * @param taskId Indicates the attribution key of the task.
+     * @param pid Indicates the pid of the managed process to attribute.
+     * @param tool Indicates the tool type of the attribution (AttributionTool value).
+     * @param callerUid Indicates the forensic uid of the original task creator, forwarded
+     *        by the trusted caller; a negative value skips the ownership check.
+     * @param attributionId Outputs the server-assigned attribution id on success,
+     *        or 0 on any failure.
+     * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
+     *         ERR_TASK_NOT_FOUND if the task does not exist or the caller does not own it.
+     */
+    virtual int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t tool,
+        int32_t callerUid, int64_t &attributionId)
+    {
+        attributionId = 0;
+        return ERR_OK;
+    }
+
+    /**
+     * @brief Removes the attribution record with the given id from the task owned by
+     *        the caller (idempotent).
+     * @param taskId Indicates the attribution key of the task.
+     * @param attributionId Indicates the id returned by RegisterManagedProcess.
+     * @param callerUid Indicates the forensic uid of the original task creator, forwarded
+     *        by the trusted caller; a negative value skips the ownership check.
+     * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
+     *         ERR_TASK_NOT_FOUND if the task does not exist or the caller does not own it.
+     */
+    virtual int32_t UnregisterManagedProcess(const std::string &taskId, int64_t attributionId,
+        int32_t callerUid)
+    {
+        return ERR_OK;
+    }
+
+    /**
+     * @brief Attributes the main process of the running application into the task. The
+     *        target process is located server-side by the bundle name, so the caller does
+     *        not need any process-query capability.
+     * @param taskId Indicates the attribution key of the task.
+     * @param bundleName Indicates the bundle name used only for process location.
+     * @param callerUid Indicates the forensic uid of the original task creator, forwarded
+     *        by the trusted caller; a negative value skips the ownership check.
+     * @param resolvedPid Outputs the located pid on success, or -1 on any failure.
+     * @param attributionId Outputs the server-assigned attribution id on success,
+     *        or 0 on any failure.
+     * @return Returns ERR_OK on success; INNER_ERR when the target application is not
+     *         running or is still being started; ERR_TASK_NOT_FOUND if the task does not
+     *         exist or the caller does not own it.
+     */
+    virtual int32_t RegisterInAppSkillProcess(const std::string &taskId, const std::string &bundleName,
+        int32_t callerUid, int32_t &resolvedPid, int64_t &attributionId)
+    {
+        resolvedPid = -1;
+        attributionId = 0;
+        return ERR_OK;
+    }
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

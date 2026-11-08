@@ -1,0 +1,73 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//foundation/ability/ability_runtime/ability_runtime.gni")
+
+module_output_path = "ability_runtime/ability_runtime/clitool"
+
+ohos_unittest("task_attribution_manager_test") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  module_out_path = module_output_path
+
+  include_dirs = [
+    "${ability_runtime_innerkits_path}/ability_manager/include",
+    "${ability_runtime_innerkits_path}/app_manager/include/appmgr",
+    "${ability_runtime_services_path}/appmgr/include",
+    "${ability_runtime_services_path}/common/include",
+    "${ability_runtime_test_path}/mock/services_appmgr_test/include",
+    "${cli_tool_framework_path}/interfaces/cli_tool/include",
+    "${cli_tool_framework_path}/services/climgr/include",
+  ]
+
+  sources = [
+    # The client implementation is compiled into the test binary so the connection path
+    # resolves to the test-side AppServiceManager::GetAppMgrService definition below,
+    # which hands out the in-process mock endpoint. The real app_service_manager.cpp is
+    # intentionally NOT compiled in.
+    "${ability_runtime_innerkits_path}/app_manager/src/appmgr/app_mgr_client.cpp",
+    "${cli_tool_framework_path}/services/climgr/src/task_attribution_manager.cpp",
+    "task_attribution_manager_test.cpp",
+  ]
+
+  cflags = []
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+
+  deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_path}/utils/server/startup:startup_util",
+    "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+  ]
+}
+
+group("unittest") {
+  testonly = true
+  deps = [ ":task_attribution_manager_test" ]
+}

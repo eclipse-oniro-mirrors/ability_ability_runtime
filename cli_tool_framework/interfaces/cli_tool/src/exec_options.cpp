@@ -14,6 +14,7 @@
  */
 
 #include "exec_options.h"
+#include "hilog_tag_wrapper.h"
 
 namespace OHOS {
 namespace CliTool {
@@ -35,6 +36,9 @@ bool ExecOptions::Marshalling(Parcel &parcel) const
         return false;
     }
     if (!parcel.WriteString(policy)) {
+        return false;
+    }
+    if (!parcel.WriteString(taskId)) {
         return false;
     }
     return true;
@@ -69,6 +73,11 @@ ExecOptions *ExecOptions::Unmarshalling(Parcel &parcel)
     if (!parcel.ReadString(options->policy)) {
         delete options;
         return nullptr;
+    }
+    // Options tail, not message tail: valid for same-image upgrades only (mixed deploy mis-aligns).
+    options->taskId = "";
+    if (!parcel.ReadString(options->taskId)) {
+        TAG_LOGD(AAFwkTag::CLI_TOOL, "taskId not present, using default(\"\").");
     }
     return options;
 }

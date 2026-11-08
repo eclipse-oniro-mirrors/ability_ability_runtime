@@ -309,6 +309,9 @@ bool UnwrapExecOptions(napi_env env, napi_value obj, ExecOptions &options, std::
     }
 
     UnwrapStringProperty(env, obj, "policy", options.policy);
+    if (!UnwrapOptionalTraceId(env, obj, "taskId", options.taskId, msg)) {
+        return false;
+    }
     return true;
 }
 
@@ -350,7 +353,8 @@ bool UnwrapExecCmdOptions(napi_env env, napi_value obj, ExecCmdOptions &options,
     // a present value must satisfy the shared trace-id rule (1~256 [A-Za-z0-9_-]).
     std::string traceMsg;
     if (!UnwrapOptionalTraceId(env, obj, "toolCallId", options.toolCallId, traceMsg) ||
-        !UnwrapOptionalTraceId(env, obj, "dmSessionId", options.dmSessionId, traceMsg)) {
+        !UnwrapOptionalTraceId(env, obj, "dmSessionId", options.dmSessionId, traceMsg) ||
+        !UnwrapOptionalTraceId(env, obj, "taskId", options.taskId, traceMsg)) {
         msg = traceMsg;
         TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
         return false;

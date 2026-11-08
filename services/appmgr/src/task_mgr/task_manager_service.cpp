@@ -293,6 +293,39 @@ int32_t TaskManagerService::RegisterManagedProcess(const std::string &taskId,
     return RegisterManagedProcessInner(taskId, attribution, attributionId);
 }
 
+int32_t TaskManagerService::RegisterManagedProcessForCaller(const std::string &taskId,
+    const AttributionRecord &attribution, int32_t callerUid, AttributionId &attributionId)
+{
+    // CLI channel: no pid-liveness check (uid-gated reporter; pid is climgr's fork child).
+    // Ownership gate then the shared kernel; the two-lock gap is benign (creatorUid immutable).
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    int32_t toolType = static_cast<int32_t>(attribution.tool);
+    if (attribution.pid <= 0 ||
+        taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN ||
+        toolType < static_cast<int32_t>(AttributionTool::INSIGHT) ||
+        toolType > static_cast<int32_t>(AttributionTool::ABILITY)) {
+        TAG_LOGW(AAFwkTag::APPMGR, "invalid param, taskId size: %{public}zu, pid: %{public}d, "
+            "toolType: %{public}d", taskId.size(), attribution.pid, toolType);
+        return INVALID_PARAMETERS_ERR;
+    }
+    {
+        std::lock_guard<ffrt::mutex> lock(tasksMutex_);
+        auto it = tasks_.find(taskId);
+        if (it == tasks_.end()) {
+            TAG_LOGW(AAFwkTag::APPMGR, "task not found, taskId: %{public}s", taskId.c_str());
+            return ERR_TASK_NOT_FOUND;
+        }
+        if (callerUid >= 0 && it->second.creatorUid != callerUid) {
+            TAG_LOGW(AAFwkTag::APPMGR, "caller is not the creator, rejected, taskId: %{public}s, "
+                "creator uid: %{public}d, caller uid: %{public}d", taskId.c_str(), it->second.creatorUid,
+                callerUid);
+            return ERR_TASK_NOT_FOUND;
+        }
+    }
+    return RegisterManagedProcessInner(taskId, attribution, attributionId);
+}
+
 void TaskManagerService::SetPidValidator(std::function<bool(pid_t)> validator)
 {
     std::lock_guard<ffrt::mutex> lock(tasksMutex_);
@@ -321,6 +354,34 @@ int32_t TaskManagerService::UnregisterManagedProcess(const std::string &taskId,
         return INVALID_PARAMETERS_ERR;
     }
     return UnregisterManagedProcessInner(taskId, attributionId);
+}
+
+int32_t TaskManagerService::UnregisterManagedProcessForCaller(const std::string &taskId,
+    AttributionId attributionId, int32_t callerUid)
+{
+    // Ownership gate then delegation; see RegisterManagedProcessForCaller for the gap note.
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    if (attributionId <= 0 || taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN) {
+        TAG_LOGW(AAFwkTag::APPMGR, "invalid param, taskId size: %{public}zu, "
+            "attributionId: %{public}" PRId64, taskId.size(), attributionId);
+        return INVALID_PARAMETERS_ERR;
+    }
+    {
+        std::lock_guard<ffrt::mutex> lock(tasksMutex_);
+        auto it = tasks_.find(taskId);
+        if (it == tasks_.end()) {
+            TAG_LOGW(AAFwkTag::APPMGR, "task not found, taskId: %{public}s", taskId.c_str());
+            return ERR_TASK_NOT_FOUND;
+        }
+        if (callerUid >= 0 && it->second.creatorUid != callerUid) {
+            TAG_LOGW(AAFwkTag::APPMGR, "caller is not the creator, rejected, taskId: %{public}s, "
+                "creator uid: %{public}d, caller uid: %{public}d", taskId.c_str(), it->second.creatorUid,
+                callerUid);
+            return ERR_TASK_NOT_FOUND;
+        }
+    }
+    return UnregisterManagedProcess(taskId, attributionId);
 }
 
 int32_t TaskManagerService::RegisterManagedProcessInner(const std::string &taskId,

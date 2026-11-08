@@ -207,6 +207,7 @@ HWTEST_F(ExecCmdParamTest, ExecCmdParam_AsExecOptions_0100, TestSize.Level1)
     options.challenge = TEST_CHALLENGE;
     options.toolCallId = TEST_TOOL_CALL_ID;
     options.dmSessionId = TEST_DM_SESSION_ID;
+    options.taskId = "task_view-777";
 
     ExecOptions view = options.AsExecOptions();
     EXPECT_TRUE(view.background);
@@ -215,6 +216,7 @@ HWTEST_F(ExecCmdParamTest, ExecCmdParam_AsExecOptions_0100, TestSize.Level1)
     EXPECT_EQ(view.toolCallId, TEST_TOOL_CALL_ID);
     EXPECT_EQ(view.dmSessionId, TEST_DM_SESSION_ID);
     EXPECT_EQ(view.policy, "default");
+    EXPECT_EQ(view.taskId, "task_view-777");
 
     // Default-constructed options map to an all-default view.
     ExecCmdOptions defaults;
@@ -225,6 +227,32 @@ HWTEST_F(ExecCmdParamTest, ExecCmdParam_AsExecOptions_0100, TestSize.Level1)
     EXPECT_TRUE(defaultsView.toolCallId.empty());
     EXPECT_TRUE(defaultsView.dmSessionId.empty());
     EXPECT_TRUE(defaultsView.policy.empty());
+    EXPECT_TRUE(defaultsView.taskId.empty());
+}
+
+/**
+ * @tc.name: ExecCmdParam_TaskId_SerializedTail_0100
+ * @tc.desc: ExecCmdOptions.taskId rides the serialized options tail:
+ *           a round trip preserves it with the legacy field order intact in front of it
+ * @tc.type: FUNC
+ */
+HWTEST_F(ExecCmdParamTest, ExecCmdParam_TaskId_SerializedTail_0100, TestSize.Level1)
+{
+    ExecCmdParam param;
+    param.cmd = "echo task";
+    param.execCmdOptions.toolCallId = TEST_TOOL_CALL_ID;
+    param.execCmdOptions.dmSessionId = TEST_DM_SESSION_ID;
+    param.execCmdOptions.taskId = "task_round_trip";
+
+    Parcel parcel;
+    ASSERT_TRUE(param.Marshalling(parcel));
+    parcel.RewindRead(0);
+    std::unique_ptr<ExecCmdParam> result(ExecCmdParam::Unmarshalling(parcel));
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->cmd, "echo task");
+    EXPECT_EQ(result->execCmdOptions.toolCallId, TEST_TOOL_CALL_ID);
+    EXPECT_EQ(result->execCmdOptions.dmSessionId, TEST_DM_SESSION_ID);
+    EXPECT_EQ(result->execCmdOptions.taskId, "task_round_trip");
 }
 
 /**
