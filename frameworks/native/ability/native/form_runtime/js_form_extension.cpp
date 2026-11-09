@@ -592,9 +592,9 @@ void JsFormExtension::OnSizeChanged(int64_t formId, int32_t newDimension, const 
         TAG_LOGE(AAFwkTag::FORM_EXT, "napiFormId nullptr");
         return;
     }
-    napi_value napinewDimension = WrapInt32ToJS(env, newDimension);
-    if (napinewDimension == nullptr) {
-        TAG_LOGE(AAFwkTag::FORM_EXT, "napinewDimension nullptr");
+    napi_value napiNewDimension = WrapInt32ToJS(env, newDimension);
+    if (napiNewDimension == nullptr) {
+        TAG_LOGE(AAFwkTag::FORM_EXT, "napiNewDimension nullptr");
         return;
     }
     napi_value napiNewRect = nullptr;
@@ -613,7 +613,7 @@ void JsFormExtension::OnSizeChanged(int64_t formId, int32_t newDimension, const 
             return;
         }
     }
-    napi_value argv[] = {napiFormId, napinewDimension, napiNewRect};
+    napi_value argv[] = {napiFormId, napiNewDimension, napiNewRect};
     CallObjectMethod("onSizeChanged", "onSizeChanged", argv, ARGC_THREE);
 }
 } // namespace AbilityRuntime
