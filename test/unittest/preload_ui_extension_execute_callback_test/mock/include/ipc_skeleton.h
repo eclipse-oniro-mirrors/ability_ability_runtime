@@ -28,8 +28,8 @@ public:
     static void JoinWorkThread();
     static void StopWorkThread();
 
-    static pid_t GetCallingPid();
-    static pid_t GetCallingUid();
+    static int32_t GetCallingPid();
+    static int32_t GetCallingUid();
     static uint32_t GetCallingTokenID();
 
     static std::string GetLocalDeviceID();
@@ -46,8 +46,8 @@ public:
 
     // Test-only setters so cases can simulate a foundation-caller / non-foundation-caller
     // without touching production code paths.
-    static void SetCallingUid(pid_t uid);
-    static uint32_t SetCallingTokenID(pid_t tokenId);
+    static void SetCallingUid(int32_t uid);
+    static uint32_t SetCallingTokenID(uint32_t tokenId);
 };
 } // namespace OHOS
 #endif // OHOS_IPC_IPC_SKELETON_H

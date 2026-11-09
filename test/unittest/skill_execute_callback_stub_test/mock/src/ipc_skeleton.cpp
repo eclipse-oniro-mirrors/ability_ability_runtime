@@ -17,7 +17,7 @@
 
 namespace OHOS {
 namespace {
-pid_t g_mockUid = 0;
+int32_t g_mockUid = 0;
 uint32_t g_mockTokenId = 0;
 }
 
@@ -29,12 +29,12 @@ bool IPCSkeleton::SetMaxWorkThreadNum(int maxThreadNum)
 void IPCSkeleton::JoinWorkThread() {}
 void IPCSkeleton::StopWorkThread() {}
 
-pid_t IPCSkeleton::GetCallingPid()
+int32_t IPCSkeleton::GetCallingPid()
 {
     return 1;
 }
 
-pid_t IPCSkeleton::GetCallingUid()
+int32_t IPCSkeleton::GetCallingUid()
 {
     return g_mockUid;
 }
@@ -90,14 +90,14 @@ bool IPCSkeleton::SetCallingIdentity(std::string &identity)
     return true;
 }
 
-void IPCSkeleton::SetCallingUid(pid_t uid)
+void IPCSkeleton::SetCallingUid(int32_t uid)
 {
     g_mockUid = uid;
 }
 
-uint32_t IPCSkeleton::SetCallingTokenID(pid_t tokenId)
+uint32_t IPCSkeleton::SetCallingTokenID(uint32_t tokenId)
 {
-    g_mockTokenId = static_cast<uint32_t>(tokenId);
+    g_mockTokenId = tokenId;
     return g_mockTokenId;
 }
 }  // namespace OHOS
