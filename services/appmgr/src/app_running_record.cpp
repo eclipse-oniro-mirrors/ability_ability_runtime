@@ -708,6 +708,14 @@ void AppRunningRecord::ScheduleTrimMemory()
 
 void AppRunningRecord::ScheduleMemoryLevel(int32_t level, bool isShellCall)
 {
+    auto state = makeImageState_.load(std::memory_order_relaxed);
+    if (state == MakeImageState::MAKE_PRELOAD_START
+        || state == MakeImageState::MAKE_PRELOAD_FINISH
+        || state == MakeImageState::MAKE_IMAGE_START) {
+        TAG_LOGI(AAFwkTag::APPMGR, "skip memory level schedule, makeImageState is %{public}d",
+            static_cast<int32_t>(state));
+        return;
+    }
     if (appLifeCycleDeal_) {
         appLifeCycleDeal_->ScheduleMemoryLevel(level, isShellCall);
     }
