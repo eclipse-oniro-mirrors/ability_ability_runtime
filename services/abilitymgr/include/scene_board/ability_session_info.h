@@ -19,6 +19,8 @@
 #include <cstdint>
 #include <string>
 
+#include "want_params.h"
+
 struct AbilitySessionInfo {
     std::string callerBundleName;
     uint32_t callerTokenId = 0;
@@ -36,6 +38,9 @@ struct AbilitySessionInfo {
     int32_t callerAppCloneIndex = 0;
     // Task attribution key (ohos.aafwk.param.agent.taskId) cached from the original caller want.
     std::string taskId;
+    // System-stamped intent and skill params snapshotted before the SCB round-trip and
+    // restored after it, so SCB-returned copies can't override the originals.
+    OHOS::AAFwk::WantParams intentAndSkillParams;
 };
 
 #endif // OHOS_ABILITY_RUNTIME_ABILITY_SESSION_INFO_H
