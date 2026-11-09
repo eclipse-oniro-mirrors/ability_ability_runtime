@@ -64,9 +64,9 @@ public:
     void OnTimeout(int64_t requestCodeSeq);
 
     void OnLaunchCompleted(const std::string &requestCode);
-    // Early attribution anchors (UIAbility scope only; extension skill executions run
-    // unattributed this phase): register once the pid is provably the skill host and the
-    // skill Want has not left AMS yet; the targetPid latch keeps a double-fire idempotent.
+    // Early attribution anchors: register once the pid is provably the skill host and the
+    // skill Want has not left AbilityManagerService yet (cold attach / warm dispatch, UIAbility and service
+    // extension targets); the targetPid latch keeps a double-fire idempotent.
     void RegisterAttributionForRecord(const std::string &requestCode, pid_t pid,
         const std::string &expectedBundle);
     void TryRegisterAttributionFromWant(const Want &want, pid_t pid,

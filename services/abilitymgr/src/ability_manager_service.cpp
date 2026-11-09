@@ -16453,13 +16453,6 @@ int32_t AbilityManagerService::ExecuteInAppSkillWithTokenId(const AppExecFwk::Sk
     // 5. Launch target based on type
     int32_t launchRet = ERR_OK;
     if (targetType == AppExecFwk::ExtensionAbilityType::SERVICE) {
-        // Scope constraint: extension targets are not attributed in the current phase —
-        // both early anchors are UIAbility-only, so an attribution-eligible session runs
-        // unattributed by design (taskId/callerUid stay on the record for audit only).
-        if (!taskId.empty()) {
-            TAG_LOGI(AAFwkTag::ABILITYMGR, "skill target is an extension, runs unattributed this phase, "
-                "taskId:%{public}s, req:%{public}s", taskId.c_str(), requestCode.c_str());
-        }
         launchRet = StartExtensionAbilityWithSkill(want, userId, request.callerTokenId);
     } else {
         launchRet = StartAbilityByCallWithSkill(want, nullptr, userId, request.callerTokenId);
