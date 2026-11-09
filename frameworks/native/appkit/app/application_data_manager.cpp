@@ -451,5 +451,14 @@ void ApplicationDataManager::NotifyAppFault(const FaultData &faultData)
     };
     NotifyExceptionObject(faultErrorObj);
 }
+
+// Cross-library bridge for uiabilitykit_native (app_recovery.cpp) to check
+// whether the app has registered an error handler via errormanager.
+// Uses C++ linkage so the symbol is exported by libappkit_native.map via
+// the *ApplicationDataManager* wildcard pattern.
+bool ApplicationDataManagerHasOnErrorCallback()
+{
+    return ApplicationDataManager::GetInstance().GetHasOnErrorCallback();
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS
