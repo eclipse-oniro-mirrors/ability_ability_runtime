@@ -849,6 +849,28 @@ void AgentConnectManager::ReleaseTrackedConnectionByRemote(const sptr<IRemoteObj
     ReleaseTrackedConnectionByRemoteLocked(callerRemote);
 }
 
+sptr<AAFwk::IAbilityConnection> AgentConnectManager::GetServiceConnectionForTracked(
+    const sptr<AAFwk::IAbilityConnection> &connection)
+{
+    if (connection == nullptr) {
+        return nullptr;
+    }
+    std::lock_guard<std::mutex> lock(stateLock_);
+    auto callerRemote = GetConnectionIdentityRemote(connection);
+    if (callerRemote == nullptr) {
+        return nullptr;
+    }
+    auto it = trackedConnections_.find(callerRemote);
+    if (it == trackedConnections_.end()) {
+        TAG_LOGW(AAFwkTag::SER_ROUTER, "tracked connection not found for attribution");
+        return nullptr;
+    }
+    // CreateServiceConnection(connection, serviceConnection) returns the stored
+    // serviceConnection when non-null (the AgentServiceConnection AMS already knows),
+    // otherwise wraps a fresh one. Reuse the stored wrapper so AMS matches the same record.
+    return CreateServiceConnection(connection, it->second.serviceConnection);
+}
+
 void AgentConnectManager::ReleaseTrackedConnectionByRemoteLocked(const sptr<IRemoteObject> &callerRemote)
 {
     auto it = trackedConnections_.find(callerRemote);

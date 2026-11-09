@@ -696,5 +696,11 @@ int32_t AbilityConnectManager::ConnectAbilityLockedInner(bool isLoadedAbility,
 {
     return 0;
 }
+
+int32_t AbilityConnectManager::AttributeTaskForA2AReusedConnectionRecordLocked(
+    const AbilityRequest &abilityRequest, sptr<IAbilityConnection> connect)
+{
+    return ERR_OK;
+}
 }  // namespace AAFwk
 }  // namespace OHOS

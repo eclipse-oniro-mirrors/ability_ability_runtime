@@ -508,6 +508,10 @@ int32_t AppMgrStub::OnRemoteRequestInnerNinth(uint32_t code, MessageParcel &data
             return HandleRegisterChildProcessStateObserver(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_CHILD_PROCESS_STATE_OBSERVER):
             return HandleUnregisterChildProcessStateObserver(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::ATTRIBUTE_TASK_FOR_A2A):
+            return HandleAttributeTaskForA2A(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_TASK_FOR_A2A):
+            return HandleUnregisterTaskForA2A(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_MANAGED_PROCESS):
             return HandleRegisterManagedProcess(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_MANAGED_PROCESS):
@@ -2856,6 +2860,29 @@ int32_t AppMgrStub::HandleFinishTask(MessageParcel &data, MessageParcel &reply)
         TAG_LOGE(AAFwkTag::APPMGR, "write result fail");
         return ERR_APPEXECFWK_PARCEL_ERROR;
     }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleAttributeTaskForA2A(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::string taskId = Str16ToStr8(data.ReadString16());
+    uint32_t callerTokenId = static_cast<uint32_t>(data.ReadUint32());
+    pid_t targetPid = data.ReadInt32();
+    int64_t attributionId = 0;
+    int32_t result = AttributeTaskForA2A(taskId, callerTokenId, targetPid, attributionId);
+    reply.WriteInt32(result);
+    reply.WriteInt64(attributionId);
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleUnregisterTaskForA2A(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::string taskId = Str16ToStr8(data.ReadString16());
+    int64_t attributionId = data.ReadInt64();
+    int32_t result = UnregisterTaskForA2A(taskId, attributionId);
+    reply.WriteInt32(result);
     return NO_ERROR;
 }
 

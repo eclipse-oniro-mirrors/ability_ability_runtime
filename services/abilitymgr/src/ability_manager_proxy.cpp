@@ -8822,5 +8822,36 @@ int32_t AbilityManagerProxy::GetDynamicAgentCardsForMigration(std::string &jsonS
     }
     return result;
 }
+
+int32_t AbilityManagerProxy::AttributeTaskForA2AReusedConnectionRecord(const Want &want,
+    sptr<IAbilityConnection> connect)
+{
+    // oneway: TF_ASYNC, no reply read. Best-effort attribution for a reused connection.
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_ASYNC);
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write token fail");
+        return ERR_WRITE_INTERFACE_TOKEN_FAILED;
+    }
+    if (!data.WriteParcelable(&want)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write want fail");
+        return ERR_INVALID_VALUE;
+    }
+    if (connect == nullptr || connect->AsObject() == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "connect null");
+        return ERR_INVALID_VALUE;
+    }
+    if (!data.WriteRemoteObject(connect->AsObject())) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write connect fail");
+        return ERR_INVALID_VALUE;
+    }
+    auto ret = SendRequest(AbilityManagerInterfaceCode::ATTRIBUTE_SAME_CONNECTION_RECORD_TASK_ID,
+        data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "AttributeTaskForA2AReusedConnectionRecord send error:%{public}d", ret);
+    }
+    return ret;
+}
 } // namespace AAFwk
 } // namespace OHOS

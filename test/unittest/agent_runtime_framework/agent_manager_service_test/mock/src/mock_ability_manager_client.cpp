@@ -54,5 +54,11 @@ ErrCode AbilityManagerClient::DisconnectAbility(sptr<IAbilityConnection> connect
     AgentRuntime::MyFlag::disconnectAbilityCallCount++;
     return AgentRuntime::MyFlag::retDisconnectAbility;
 }
+
+ErrCode AbilityManagerClient::AttributeTaskForA2AReusedConnectionRecord(const Want &want,
+    sptr<IAbilityConnection> connect)
+{
+    return ERR_OK;
+}
 }  // namespace AAFwk
 }  // namespace OHOS

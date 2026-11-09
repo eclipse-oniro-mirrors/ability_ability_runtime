@@ -1398,6 +1398,30 @@ public:
         return ERR_OK;
     }
 
+    /*
+     * @brief Attributes the target Agent process into the task after a successful
+     *        A2A connect. Performs ownership + alive-state verification, then
+     *        registers an AttributionRecord with AttributionTool::A2A. Best-effort:
+     *        failures are logged and do NOT fail the connect result.
+     * @param taskId Indicates the task id claimed in Want.parameters[ohos.aafwk.param.agent.taskId].
+     * @param callerTokenId Indicates the app's token id captured at the convergence point.
+     * @param targetPid Indicates the target Agent process pid (resolved post-connect).
+     * @param attributionId Indicates the server-assigned attribution handle for later
+     *        unregister; 0 on failure.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    virtual int32_t AttributeTaskForA2A(const std::string &taskId, uint32_t callerTokenId,
+        pid_t targetPid, int64_t &attributionId) { return ERR_OK; }
+
+    /**
+     * @brief Unregisters the A2A attribution previously created by AttributeTaskForA2A.
+     *        Only the Foundation process may call this.
+     * @param taskId Indicates the task id.
+     * @param attributionId Indicates the attribution handle returned by AttributeTaskForA2A.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    virtual int32_t UnregisterTaskForA2A(const std::string &taskId, int64_t attributionId) { return ERR_OK; }
+
     /**
      * @brief Attributes a process into the task owned by the caller and hands back the
      *        server-assigned attribution id used for later unregistration.

@@ -42,4 +42,9 @@ interface OHOS.AgentRuntime.IAgentManager {
     void ConnectAgentExtensionAbilityForCli([in] Want want, [in] IAbilityConnection connect,
         [in] String callerIdentity);
     void DisconnectAgentExtensionAbilityForCli([in] IAbilityConnection connect, [in] String callerIdentity);
+    // Best-effort, oneway: notifies the service that a connect request hit an already-connected
+    // AgentConnection on the client side (reused connection). The service resolves the tracked
+    // serviceConnection and forwards to AMS so AMS can attribute the task id onto the same
+    // ConnectionRecord. Appended at the END per IDL codegen ordering rule.
+    [oneway] void AttributeTaskForA2AReusedConnectionRecord([in] Want want, [in] IAbilityConnection connect);
 }

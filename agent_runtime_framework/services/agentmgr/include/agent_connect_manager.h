@@ -63,6 +63,16 @@ public:
         std::string &callerIdentity);
     void ReleaseTrackedConnection(const sptr<AAFwk::IAbilityConnection> &connection);
     void ReleaseTrackedConnectionByRemote(const sptr<IRemoteObject> &callerRemote);
+    /**
+     * @brief Resolves the AgentServiceConnection previously registered for the given caller
+     *        connection. Used when a reused client-side connection must forward an attribution
+     *        to AMS against the SAME ConnectionRecord AMS already knows (the wrapped
+     *        AgentServiceConnection, not the raw caller connection).
+     * @param connection Indicates the caller's IAbilityConnection (as registered on connect).
+     * @return Returns the tracked AgentServiceConnection; nullptr if not tracked.
+     */
+    sptr<AAFwk::IAbilityConnection> GetServiceConnectionForTracked(
+        const sptr<AAFwk::IAbilityConnection> &connection);
     bool PrepareCallerDeathRequest(const sptr<IRemoteObject> &remote, AgentCallerDeathRequest &request);
     void CleanupLowCodeCallerDeathTargets(const AgentHostKey &hostKey, const sptr<IRemoteObject> &remote,
         const std::set<std::string> &agentIds);

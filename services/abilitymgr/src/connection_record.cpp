@@ -33,6 +33,7 @@ const int DISCONNECT_TIMEOUT_MULTIPLE = 75;
 #else
 const int DISCONNECT_TIMEOUT_MULTIPLE = 1;
 #endif
+constexpr const char* WANT_PARAMS_TASK_ID_KEY = "ohos.aafwk.param.agent.taskId";
 
 ConnectionRecord::ConnectionRecord(const sptr<IRemoteObject> &callerToken,
     const std::shared_ptr<BaseExtensionRecord> &targetService, const sptr<IAbilityConnection> &connCallback,
@@ -369,6 +370,10 @@ void ConnectionRecord::ScheduleConnectAbilityDone()
     bool isLowCodeAgentConnect = IsLowCodeAgentWant(connectWant_);
     bool hasAgentNonce = connectWant_.HasParameter(AgentRuntime::AGENT_VERIFICATION_NONCE_KEY);
     int64_t agentNonce = AgentAbilityUtil::GetAgentVerificationNonceParam(connectWant_);
+    std::string taskId;
+    if (connectWant_.HasParameter(WANT_PARAMS_TASK_ID_KEY)) {
+        taskId = connectWant_.GetStringParam(WANT_PARAMS_TASK_ID_KEY);
+    }
     auto element = connectWant_.GetElement();
     Want::ClearWant(&connectWant_);
     connectWant_.SetElement(element);
@@ -386,6 +391,9 @@ void ConnectionRecord::ScheduleConnectAbilityDone()
     }
     if (hasAgentNonce && !isLowCodeAgentConnect) {
         AgentAbilityUtil::SetAgentVerificationNonceParam(connectWant_, agentNonce);
+    }
+    if (!taskId.empty()) {
+        connectWant_.SetParam(WANT_PARAMS_TASK_ID_KEY, taskId);
     }
 
     CancelConnectTimeoutTask();

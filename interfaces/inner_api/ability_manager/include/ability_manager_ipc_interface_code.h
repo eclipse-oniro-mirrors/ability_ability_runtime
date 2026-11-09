@@ -812,6 +812,9 @@ enum class AbilityManagerInterfaceCode {
 
     // get dynamic agent cards (API-source) from the old KV store for migration
     GET_DYNAMIC_AGENT_CARDS_FOR_MIGRATION = 6188,
+
+    // attribute the task id onto an existing ConnectionRecord after a reused agent connect (oneway)
+    ATTRIBUTE_SAME_CONNECTION_RECORD_TASK_ID = 6189,
 };
 }  // namespace AAFwk
 }  // namespace OHOS

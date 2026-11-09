@@ -241,7 +241,7 @@ napi_value CreateResolvedConnectPromise(napi_env env, napi_value proxy)
 }
 
 // Helper function to check for duplicate connections
-bool CheckConnectAlreadyExist(napi_env env, const AAFwk::Want &want, napi_value callback, napi_value &result)
+bool CheckConnectAlreadyExist(napi_env env, AAFwk::Want &want, napi_value callback, napi_value &result)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "CheckConnectAlreadyExist called");
 
@@ -253,6 +253,11 @@ bool CheckConnectAlreadyExist(napi_env env, const AAFwk::Want &want, napi_value 
     }
 
     TAG_LOGI(AAFwkTag::SER_ROUTER, "Duplicate connection found");
+    // Populate AGENTEXTENSIONHOSTPROXY_KEY so the inner-API FindConnectionLocked can match
+    // this connection (MatchConnection checks agentId + agentExtProxy + element).
+    if (connection->GetServiceHostStub() != nullptr) {
+        want.SetParam(AGENTEXTENSIONHOSTPROXY_KEY, connection->GetServiceHostStub()->AsObject());
+    }
     if (connection->IsDisconnecting()) {
         TAG_LOGI(AAFwkTag::SER_ROUTER, "Connection is disconnecting, queue reconnect");
         std::unique_ptr<NapiAsyncTask> asyncTask =
@@ -373,7 +378,7 @@ napi_value ScheduleExistingLowCodeAgentConnection(napi_env env, AAFwk::Want want
     return ScheduleResolvedLowCodeConnect(env, want, connection);
 }
 
-bool TryReuseLowCodeAgentConnection(napi_env env, const AAFwk::Want &want, napi_value callbackObject,
+bool TryReuseLowCodeAgentConnection(napi_env env, AAFwk::Want &want, napi_value callbackObject,
     napi_value &result)
 {
     sptr<JSAgentConnection> connection = nullptr;
@@ -387,6 +392,10 @@ bool TryReuseLowCodeAgentConnection(napi_env env, const AAFwk::Want &want, napi_
             CreateAsyncTaskWithLastParam(env, nullptr, nullptr, nullptr, &result);
         connection->AddReconnectPendingTask(want, asyncTask);
         return true;
+    }
+    // Populate AGENTEXTENSIONHOSTPROXY_KEY so the inner-API FindConnectionLocked can match.
+    if (connection->GetServiceHostStub() != nullptr) {
+        want.SetParam(AGENTEXTENSIONHOSTPROXY_KEY, connection->GetServiceHostStub()->AsObject());
     }
     TAG_LOGI(AAFwkTag::SER_ROUTER, "Reuse low-code connection for new agentId");
     result = ScheduleExistingLowCodeAgentConnection(env, want, connection);
@@ -667,7 +676,7 @@ void ReconnectPendingAgentExtensionAbility(const wptr<JSAgentConnection> &weakOl
 }
 
 // Resolve a duplicate or reusable low-code connection (connect entry early-returns).
-bool ResolveExistingAgentConnection(napi_env env, const AAFwk::Want &want, napi_value callbackObject,
+bool ResolveExistingAgentConnection(napi_env env, AAFwk::Want &want, napi_value callbackObject,
     int32_t currentType, napi_value &result)
 {
     bool duplicated = CheckConnectAlreadyExist(env, want, callbackObject, result);
@@ -966,6 +975,10 @@ napi_value JsAgentManager::OnConnectAgentExtensionAbility(napi_env env, size_t a
         return CreateRejectedConnectResult(env, errorCode);
     }
     if (ResolveExistingAgentConnection(env, want, callbackObject, currentType, result)) {
+        // want has been enriched with AGENTEXTENSIONHOSTPROXY_KEY by the sub-functions above,
+        // so AttributeTaskForA2AReusedConnection can match the existing AgentConnection via
+        // FindConnectionLocked (agentId + agentExtProxy + element). Best-effort, oneway.
+        AgentConnectionManager::GetInstance().AttributeTaskForA2AReusedConnection(want);
         return result;
     }
 

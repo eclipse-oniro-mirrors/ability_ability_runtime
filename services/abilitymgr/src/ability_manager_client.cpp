@@ -2897,6 +2897,14 @@ ErrCode AbilityManagerClient::GetDynamicAgentCardsForMigration(std::string &json
     return abms->GetDynamicAgentCardsForMigration(jsonStr);
 }
 
+ErrCode AbilityManagerClient::AttributeTaskForA2AReusedConnectionRecord(const Want &want,
+    sptr<IAbilityConnection> connect)
+{
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    return abms->AttributeTaskForA2AReusedConnectionRecord(want, connect);
+}
+
 ErrCode AbilityManagerClient::QuerySkillType(const std::string &bundleName, const std::string &moduleName,
     const std::string &skillName, int32_t &skillType)
 {

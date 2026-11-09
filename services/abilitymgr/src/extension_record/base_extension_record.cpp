@@ -15,6 +15,7 @@
 
 #include "base_extension_record.h"
 
+#include <algorithm>
 #include <singleton.h>
 
 #include "ability_manager_service.h"
@@ -390,6 +391,40 @@ void BaseExtensionRecord::PostUIExtensionAbilityTimeoutTask(uint32_t messageId)
         default: {
             break;
         }
+    }
+}
+
+void BaseExtensionRecord::AddTaskAttribution(int32_t recordId, const AgentTaskAttribution &attribution)
+{
+    std::lock_guard<ffrt::mutex> lock(taskAttributionsMutex_);
+    taskAttributions_[recordId].push_back(attribution);
+}
+
+std::vector<AgentTaskAttribution> BaseExtensionRecord::GetTaskAttributions(int32_t recordId) const
+{
+    std::lock_guard<ffrt::mutex> lock(taskAttributionsMutex_);
+    auto it = taskAttributions_.find(recordId);
+    if (it != taskAttributions_.end()) {
+        return it->second;
+    }
+    return {};
+}
+
+void BaseExtensionRecord::RemoveTaskAttribution(int32_t recordId, const std::string &taskId,
+    int64_t attributionId)
+{
+    std::lock_guard<ffrt::mutex> lock(taskAttributionsMutex_);
+    auto it = taskAttributions_.find(recordId);
+    if (it == taskAttributions_.end()) {
+        return;
+    }
+    auto &vec = it->second;
+    vec.erase(std::remove_if(vec.begin(), vec.end(),
+        [&taskId, attributionId](const AgentTaskAttribution &a) {
+            return a.taskId == taskId && a.attributionId == attributionId;
+        }), vec.end());
+    if (vec.empty()) {
+        taskAttributions_.erase(it);
     }
 }
 } // namespace AAFwk

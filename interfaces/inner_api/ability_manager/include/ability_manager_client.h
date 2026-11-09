@@ -3204,6 +3204,18 @@ public:
     ErrCode GetDynamicAgentCardsForMigration(std::string &jsonStr);
 
     /**
+     * @brief Best-effort attribution of the task id onto an existing ConnectionRecord
+     *        after a reused Agent-to-Agent (A2A) connect. The connect MUST be the
+     *        AgentServiceConnection that AbilityManagerService (AMS) already holds.
+     *        This is an oneway IPC: the caller does not wait for a reply, so failure
+     *        is logged and never blocks the connect result.
+     * @param want Indicates the original connect want (carries agentId / taskId params).
+     * @param connect Indicates the AgentServiceConnection AMS already holds for this connection.
+     * @return Returns ERR_OK on success; others on local/proxy failure.
+     */
+    ErrCode AttributeTaskForA2AReusedConnectionRecord(const Want &want, sptr<IAbilityConnection> connect);
+
+    /**
      * @brief Query the type of a configured skill (e.g. UI ability vs service
      * extension). No special permission; queried for the caller's user.
      * @param bundleName Target bundle name.
