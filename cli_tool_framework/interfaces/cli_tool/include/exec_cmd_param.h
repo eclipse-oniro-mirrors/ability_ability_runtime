@@ -52,6 +52,7 @@ public:
     int64_t timeout = 0;
     bool isShellCommand = true;
     std::string challenge;
+    std::string subjectId;
     // Trace identifiers for log correlation; empty means "not provided".
     std::string toolCallId;
     std::string dmSessionId;
@@ -78,6 +79,9 @@ public:
         o.taskId = taskId;
         return o;
     }
+
+private:
+    bool MarshallingTail(Parcel &parcel) const;
 };
 
 /**

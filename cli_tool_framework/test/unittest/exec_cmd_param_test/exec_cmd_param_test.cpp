@@ -30,6 +30,7 @@ const std::string TEST_CMD = "ohos-aa start --bundleName=com.example";
 const std::string TEST_CHALLENGE = "test_challenge_token";
 const std::string TEST_TOOL_CALL_ID = "tool-call-123_ABC";
 const std::string TEST_DM_SESSION_ID = "dm-session-456_xyz";
+const std::string TEST_SUBJECT_ID = "test_agent_subject_id";
 constexpr int64_t TEST_YIELD_MS = 50;
 constexpr int64_t TEST_TIMEOUT = 3000;
 }
@@ -187,6 +188,78 @@ HWTEST_F(ExecCmdParamTest, ExecCmdParam_Parcelable_0300, TestSize.Level1)
     EXPECT_EQ(result->challenge, TEST_CHALLENGE);
     EXPECT_EQ(result->toolCallId, TEST_TOOL_CALL_ID);
     EXPECT_EQ(result->dmSessionId, TEST_DM_SESSION_ID);
+}
+
+/**
+ * @tc.name: ExecCmdParam_SubjectId_0100
+ * @tc.desc: Test ExecCmdParam marshalling and unmarshalling preserves subjectId value
+ * @tc.type: FUNC
+ */
+HWTEST_F(ExecCmdParamTest, ExecCmdParam_SubjectId_0100, TestSize.Level1)
+{
+    ExecCmdParam param;
+    param.cmd = TEST_CMD;
+    param.execCmdOptions.isShellCommand = false;
+    param.execCmdOptions.challenge = TEST_CHALLENGE;
+    param.execCmdOptions.subjectId = TEST_SUBJECT_ID;
+
+    Parcel parcel;
+    ASSERT_TRUE(param.Marshalling(parcel));
+    parcel.RewindRead(0);
+
+    std::unique_ptr<ExecCmdParam> result(ExecCmdParam::Unmarshalling(parcel));
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->execCmdOptions.subjectId, TEST_SUBJECT_ID);
+}
+
+/**
+ * @tc.name: ExecCmdParam_SubjectId_0200
+ * @tc.desc: Test ExecCmdParam round-trip keeps the default empty subjectId
+ * @tc.type: FUNC
+ */
+HWTEST_F(ExecCmdParamTest, ExecCmdParam_SubjectId_0200, TestSize.Level1)
+{
+    ExecCmdParam param;
+    param.cmd = TEST_CMD;
+    EXPECT_TRUE(param.execCmdOptions.subjectId.empty());
+
+    Parcel parcel;
+    ASSERT_TRUE(param.Marshalling(parcel));
+    parcel.RewindRead(0);
+
+    std::unique_ptr<ExecCmdParam> result(ExecCmdParam::Unmarshalling(parcel));
+    ASSERT_NE(result, nullptr);
+    EXPECT_TRUE(result->execCmdOptions.subjectId.empty());
+}
+
+/**
+ * @tc.name: ExecCmdParam_SubjectId_0300
+ * @tc.desc: Test legacy ExecCmdParam Parcel without subjectId defaults to empty
+ * @tc.type: FUNC
+ */
+HWTEST_F(ExecCmdParamTest, ExecCmdParam_SubjectId_0300, TestSize.Level1)
+{
+    Parcel legacyWithoutSubjectIdParcel;
+    ASSERT_TRUE(legacyWithoutSubjectIdParcel.WriteString(TEST_CMD));
+    ASSERT_TRUE(legacyWithoutSubjectIdParcel.WriteInt32(1)); // WriteParcelable placeholder
+    ASSERT_TRUE(legacyWithoutSubjectIdParcel.WriteString("")); // workDir
+    ASSERT_TRUE(legacyWithoutSubjectIdParcel.WriteString("")); // env
+    ASSERT_TRUE(legacyWithoutSubjectIdParcel.WriteString("")); // policy
+    ASSERT_TRUE(legacyWithoutSubjectIdParcel.WriteBool(false)); // background
+    ASSERT_TRUE(legacyWithoutSubjectIdParcel.WriteInt64(TEST_YIELD_MS)); // yieldMs
+    ASSERT_TRUE(legacyWithoutSubjectIdParcel.WriteInt64(TEST_TIMEOUT)); // timeout
+    ASSERT_TRUE(legacyWithoutSubjectIdParcel.WriteBool(false)); // isShellCommand
+    ASSERT_TRUE(legacyWithoutSubjectIdParcel.WriteString(TEST_CHALLENGE)); // challenge
+    ASSERT_TRUE(legacyWithoutSubjectIdParcel.WriteString(TEST_TOOL_CALL_ID)); // toolCallId
+    ASSERT_TRUE(legacyWithoutSubjectIdParcel.WriteString(TEST_DM_SESSION_ID)); // dmSessionId
+    ASSERT_TRUE(legacyWithoutSubjectIdParcel.WriteString("")); // taskId placeholder
+    legacyWithoutSubjectIdParcel.RewindRead(0);
+
+    std::unique_ptr<ExecCmdParam> result(ExecCmdParam::Unmarshalling(legacyWithoutSubjectIdParcel));
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->execCmdOptions.toolCallId, TEST_TOOL_CALL_ID);
+    EXPECT_EQ(result->execCmdOptions.dmSessionId, TEST_DM_SESSION_ID);
+    EXPECT_TRUE(result->execCmdOptions.subjectId.empty());
 }
 
 /**
