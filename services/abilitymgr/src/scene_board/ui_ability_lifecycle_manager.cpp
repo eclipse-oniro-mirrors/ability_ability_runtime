@@ -756,7 +756,7 @@ void UIAbilityLifecycleManager::OnAbilityRequestDone(const sptr<IRemoteObject> &
     AppAbilityState abilityState = DelayedSingleton<AppScheduler>::GetInstance()->ConvertToAppAbilityState(state);
     if (abilityState == AppAbilityState::ABILITY_STATE_FOREGROUND) {
         std::lock_guard<ffrt::mutex> guard(sessionLock_);
-        auto abilityRecord = GetAbilityRecordByToken(token);
+        auto abilityRecord = GetAbilityRecordByTokenLocked(token);
         CHECK_POINTER(abilityRecord);
         TAG_LOGI(AAFwkTag::ABILITYMGR, "Ability is %{public}s/%{public}s, start to foreground.",
             abilityRecord->GetInfoBundleName().c_str(),
@@ -775,7 +775,7 @@ int UIAbilityLifecycleManager::AbilityTransactionDone(const sptr<IRemoteObject> 
     TAG_LOGD(AAFwkTag::ABILITYMGR, "AbilityTransactionDone, state: %{public}s.", abilityState.c_str());
 
     std::lock_guard<ffrt::mutex> guard(sessionLock_);
-    auto abilityRecord = GetAbilityRecordByToken(token);
+    auto abilityRecord = GetAbilityRecordByTokenLocked(token);
     CHECK_POINTER_AND_RETURN(abilityRecord, ERR_INVALID_VALUE);
     if (state == AbilityLifeCycleState::ABILITY_STATE_FOREGROUND_NEW &&
         abilityRecord->IsPreloadStart() && !abilityRecord->IsPreloaded()) {
@@ -800,7 +800,7 @@ int UIAbilityLifecycleManager::AbilityWindowConfigTransactionDone(const sptr<IRe
     const WindowConfig &windowConfig)
 {
     std::lock_guard<ffrt::mutex> guard(sessionLock_);
-    auto abilityRecord = GetAbilityRecordByToken(token);
+    auto abilityRecord = GetAbilityRecordByTokenLocked(token);
     CHECK_POINTER_AND_RETURN(abilityRecord, ERR_INVALID_VALUE);
     abilityRecord->SaveAbilityWindowConfig(windowConfig);
     return ERR_OK;
@@ -1184,7 +1184,7 @@ int32_t UIAbilityLifecycleManager::BatchNotifySCBPendingActivations(const Abilit
                 AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_UNDEFINED));
     }
 
-    auto callerAbilityRecord = GetAbilityRecordByToken(abilitiesRequest.callerToken);
+    auto callerAbilityRecord = GetAbilityRecordByTokenLocked(abilitiesRequest.callerToken);
     if (callerAbilityRecord == nullptr || callerAbilityRecord->GetRestartAppFlag()) {
         auto tmpSceneSession = iface_cast<Rosen::ISession>(GetRootSceneSession());
         if (tmpSceneSession == nullptr) {
@@ -1605,6 +1605,14 @@ void UIAbilityLifecycleManager::HandleForegroundFailed(const UIAbilityRecordPtr 
 UIAbilityRecordPtr UIAbilityLifecycleManager::GetAbilityRecordByToken(const sptr<IRemoteObject> &token)
     const
 {
+    std::lock_guard<ffrt::mutex> guard(sessionLock_);
+    return GetAbilityRecordByTokenLocked(token);
+}
+
+// Caller must hold sessionLock_.
+UIAbilityRecordPtr UIAbilityLifecycleManager::GetAbilityRecordByTokenLocked(const sptr<IRemoteObject> &token)
+    const
+{
     if (token == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null");
         return nullptr;
@@ -1638,7 +1646,7 @@ void UIAbilityLifecycleManager::CompleteFirstFrameDrawing(const sptr<IRemoteObje
         TAG_LOGW(AAFwkTag::ABILITYMGR, "Not in running list");
         return;
     }
-    auto abilityRecord = GetAbilityRecordByToken(token);
+    auto abilityRecord = GetAbilityRecordByTokenLocked(token);
     CHECK_POINTER(abilityRecord);
     if (abilityRecord->IsCompleteFirstFrameDrawing()) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "First frame drawing has completed.");
@@ -2327,7 +2335,7 @@ int UIAbilityLifecycleManager::NotifySCBPendingActivation(sptr<SessionInfo> &ses
         TAG_LOGD(AAFwkTag::ABILITYMGR, "isTargetPlugin:%{public}d, callerBundleName:%{public}s ",
             sessionInfo->isTargetPlugin, sessionInfo->hostBundleName.c_str());
     }
-    auto abilityRecord = GetAbilityRecordByToken(abilityRequest.callerToken);
+    auto abilityRecord = GetAbilityRecordByTokenLocked(abilityRequest.callerToken);
     if (abilityRecord != nullptr && !abilityRecord->GetRestartAppFlag()) {
         auto callerSessionInfo = abilityRecord->GetSessionInfo();
         CHECK_POINTER_AND_RETURN(callerSessionInfo, ERR_INVALID_VALUE);
@@ -3256,7 +3264,7 @@ void UIAbilityLifecycleManager::HandleLegacyAcceptWantDone(SpecifiedRequest &spe
     TAG_LOGI(AAFwkTag::ABILITYMGR, "HandleLegacyAcceptWantDone, ability:%{public}s/%{public}s",
         want.GetBundleNameRef().c_str(), want.GetAbilityNameRef().c_str());
     auto &abilityRequest = specifiedRequest.abilityRequest;
-    auto callerAbility = GetAbilityRecordByToken(abilityRequest.callerToken);
+    auto callerAbility = GetAbilityRecordByTokenLocked(abilityRequest.callerToken);
     abilityRequest.specifiedFlag = flag;
     if (!flag.empty()) {
         bool reuse = false;
@@ -3618,7 +3626,7 @@ int32_t UIAbilityLifecycleManager::StartSpecifiedAbilityDirectlyWithFlag(const A
     sessionInfo->requestCode = abilityRequest.requestCode;
     sessionInfo->specifiedFlag = abilityRequest.specifiedFlag;
     sessionInfo->nativeHideWindow = NativeAbilityMetaData::HideWindowOnStartup(abilityRequest.abilityInfo);
-    auto callerAbility = GetAbilityRecordByToken(abilityRequest.callerToken);
+    auto callerAbility = GetAbilityRecordByTokenLocked(abilityRequest.callerToken);
     return SendSessionInfoToSCB(callerAbility, sessionInfo);
 }
 
@@ -4568,7 +4576,7 @@ int UIAbilityLifecycleManager::ChangeAbilityVisibility(sptr<IRemoteObject> token
     UIAbilityRecordPtr abilityRecord;
     {
         std::lock_guard<ffrt::mutex> guard(sessionLock_);
-        abilityRecord = GetAbilityRecordByToken(token);
+        abilityRecord = GetAbilityRecordByTokenLocked(token);
     }
     CHECK_POINTER_AND_RETURN(abilityRecord, ERR_INVALID_VALUE);
     if (IPCSkeleton::GetCallingTokenID() != abilityRecord->GetApplicationInfo().accessTokenId) {
