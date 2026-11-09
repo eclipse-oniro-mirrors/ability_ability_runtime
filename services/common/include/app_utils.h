@@ -394,6 +394,15 @@ public:
      * @return Whether system is in bopd or rescue mode.
      */
     bool IsBopdOrRescueMode();
+
+    /**
+     * @brief Check if subspawn is supported on this device.
+     * This interface is provided by appspawn. When subspawn is not ready,
+     * returns false and child process creation falls back to nativespawn.
+     * @return Whether subspawn is supported.
+     */
+    bool IsSupportSubSpawn();
+
 private:
     /**
      * LoadResidentProcessInExtremeMemory, load resident process in extreme low memory.

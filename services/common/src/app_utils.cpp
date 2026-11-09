@@ -1060,3 +1060,19 @@ bool AppUtils::IsBopdOrRescueMode()
 }
 }  // namespace AAFwk
 }  // namespace OHOS
+
+// appspawn-provided interface (weak symbol until appspawn team implements it)
+extern "C" __attribute__((weak)) bool IsSupportSubSpawn();
+
+namespace OHOS {
+namespace AAFwk {
+bool AppUtils::IsSupportSubSpawn()
+{
+    if (::IsSupportSubSpawn) {
+        return ::IsSupportSubSpawn();
+    }
+    TAG_LOGD(AAFwkTag::DEFAULT, "IsSupportSubSpawn: appspawn interface not available, return false");
+    return false;
+}
+}  // namespace AAFwk
+}  // namespace OHOS
