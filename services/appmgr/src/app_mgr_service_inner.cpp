@@ -4021,10 +4021,10 @@ int32_t AppMgrServiceInner::KillApplicationByUserIdSafely(
     auto ret = IN_PROCESS_CALL(bundleMgrHelper->IsApplicationDisableForbidden(
         bundleName, userId, appCloneIndex, isDisableForbidden));
     if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::APPMGR, "query disable forbidden failed, ret=%{public}d", ret);
-        return ret;
+        TAG_LOGW(AAFwkTag::APPMGR,
+            "query disable forbidden failed, continue safe kill, ret=%{public}d", ret);
     }
-    if (isDisableForbidden) {
+    if (ret == ERR_OK && isDisableForbidden) {
         TAG_LOGW(AAFwkTag::APPMGR, "safe kill rejected for disable forbidden bundle=%{public}s",
             bundleName.c_str());
         return AAFwk::ERR_KILL_PROCESS_MDM_PROTECTED;
