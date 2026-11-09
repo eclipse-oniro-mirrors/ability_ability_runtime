@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include <gtest/gtest.h>
+#include <unistd.h>
 
 #include "ability_manager_service.h"
 #include "app_exit_reason_helper.h"
@@ -24,11 +25,17 @@
 #include "insight_intent_execute_manager.h"
 #include "dialog_session_manager.h"
 #include "agent_extension_connection_constants.h"
+#include "iremote_object.h"
+#include "message_parcel.h"
 #include "mission_list_manager.h"
 #include "mock_my_status.h"
+#include "skill_execute_manager.h"
+#include "skill/skill_execute_param.h"
 #include "start_ability_context.h"
 #include "start_ability_utils.h"
 #include "sub_managers_helper.h"
+#include "task_mgr/attribution_record.h"
+#include "../../moduletest/mock/include/mock_ability_scheduler.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -5794,6 +5801,615 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, BackToCallerAppWithResult_005, Tes
     EXPECT_EQ(ret, ERR_OK);
     EXPECT_TRUE(status.ualmIsBackToCallerApp_);
     status = previousStatus;
+}
+
+namespace {
+// Skill attribution anchor tests: shared constants for the seeded SkillExecuteRecord and
+// the mocked AppScheduler managed-process observability.
+constexpr char SKILL_TEST_TARGET_BUNDLE[] = "com.test.skill.target";
+constexpr char SKILL_TEST_CALLER_BUNDLE[] = "com.test.skill.caller";
+constexpr char SKILL_TEST_MODULE[] = "entry";
+constexpr char SKILL_TEST_SKILL_NAME[] = "TestSkill";
+constexpr int32_t SKILL_TEST_HOST_PID = 4321;
+constexpr int32_t SKILL_TEST_OTHER_PID = 8765;
+constexpr int32_t SKILL_TEST_CALLER_UID = 1245;
+constexpr uint32_t SKILL_TEST_CALLER_TOKEN_ID = 100;
+constexpr int64_t SKILL_TEST_ATTRIBUTION_ID = 1;
+// AttributionTool::CLI wire value expected on the register call.
+constexpr int32_t SKILL_TEST_ATTRIBUTION_TOOL_CLI = 2;
+
+void ResetSkillAttributionStatus()
+{
+    auto &status = MyStatus::GetInstance();
+    status.asRegisterManagedCount_ = 0;
+    status.asRegisterManagedTaskId_.clear();
+    status.asRegisterManagedPid_ = 0;
+    status.asRegisterManagedTool_ = 0;
+    status.asRegisterManagedCallerUid_ = 0;
+    status.asRegisterManagedRet_ = ERR_OK;
+    status.asRegisterManagedAttributionId_ = SKILL_TEST_ATTRIBUTION_ID;
+    status.asRegisterManagedHook_ = nullptr;
+    status.asUnregisterManagedCount_ = 0;
+    status.asUnregisterManagedTaskId_.clear();
+    status.asUnregisterManagedAttributionId_ = 0;
+    status.asUnregisterManagedCallerUid_ = 0;
+    status.atkGetHapTokenInfoRet_ = -1;
+    status.atkHapTokenInfoBundleName_.clear();
+}
+
+Want MakeSkillExecuteWant(const std::string &requestCode)
+{
+    Want want;
+    ElementName element("", SKILL_TEST_TARGET_BUNDLE, "MainAbility", SKILL_TEST_MODULE);
+    want.SetElement(element);
+    AppExecFwk::SkillExecuteParam::WriteToWant(want, SKILL_TEST_TARGET_BUNDLE, SKILL_TEST_MODULE,
+        SKILL_TEST_SKILL_NAME, "", "", nullptr, {}, requestCode, "", "");
+    return want;
+}
+
+// The test constant is pinned to the enum so a reorder of AttributionTool (appmgr) or of
+// the mirrored ATTRIBUTION_TOOL_CLI constants (abilitymgr skill executor / climgr) fails
+// here, in the binary that also observes the value the skill executor puts on the wire.
+static_assert(SKILL_TEST_ATTRIBUTION_TOOL_CLI == static_cast<int32_t>(AttributionTool::CLI),
+    "SKILL_TEST_ATTRIBUTION_TOOL_CLI drifted from AppExecFwk::AttributionTool::CLI");
+
+// A caller-side token that captures the death recipient wired by
+// SkillExecuteManager::CreateExecuteRecord, so a caller death can be triggered
+// deterministically in-process; the captured recipient runs the production OnCallerDied.
+class SkillCallerDeathProbe : public IRemoteObject {
+public:
+    SkillCallerDeathProbe() = default;
+    ~SkillCallerDeathProbe() override = default;
+
+    int32_t GetObjectRefCount() override
+    {
+        return 1;
+    }
+    int SendRequest(uint32_t, MessageParcel &, MessageParcel &, MessageOption &) override
+    {
+        return 0;
+    }
+    bool AddDeathRecipient(const sptr<DeathRecipient> &recipient) override
+    {
+        deathRecipient_ = recipient;
+        return true;
+    }
+    bool RemoveDeathRecipient(const sptr<DeathRecipient> &recipient) override
+    {
+        bool hit = deathRecipient_ == recipient;
+        if (hit) {
+            deathRecipient_ = nullptr;
+        }
+        return hit;
+    }
+    int Dump(int, const std::vector<std::u16string> &) override
+    {
+        return 0;
+    }
+
+    sptr<DeathRecipient> deathRecipient_;
+};
+} // namespace
+
+/*
+ * Feature: AbilityManagerService
+ * Name: SkillExecuteAttribution_NonSkillWant_NoRegister_001
+ * Function: SkillExecuteManager::TryRegisterAttributionFromWant
+ * SubFunction: NA
+ * FunctionPoints: a Want without skill markers (or with a requestCode no record was seeded
+ *                 for) must not trigger a managed-process registration, and a never-anchored
+ *                 record unregisters nothing when it completes
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, SkillExecuteAttribution_NonSkillWant_NoRegister_001,
+    TestSize.Level1)
+{
+    ResetSkillAttributionStatus();
+    auto &status = MyStatus::GetInstance();
+    auto manager = DelayedSingleton<SkillExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+    // Seed an anchorable record so the assertions below cannot hide behind "record gone".
+    std::string requestCode = manager->CreateExecuteRecord(nullptr, SKILL_TEST_TARGET_BUNDLE,
+        SKILL_TEST_CALLER_BUNDLE, SKILL_TEST_CALLER_TOKEN_ID, nullptr, "skill-attribution-001",
+        "task-001", SKILL_TEST_CALLER_UID);
+    EXPECT_EQ(requestCode, "skill-attribution-001");
+
+    // A plain Want without skill markers never reaches the registration path.
+    Want plainWant;
+    ElementName element("", SKILL_TEST_TARGET_BUNDLE, "MainAbility");
+    plainWant.SetElement(element);
+    manager->TryRegisterAttributionFromWant(plainWant, SKILL_TEST_HOST_PID, SKILL_TEST_TARGET_BUNDLE);
+    EXPECT_EQ(status.asRegisterManagedCount_, 0);
+
+    // A skill Want whose requestCode has no live record is equally inert.
+    manager->TryRegisterAttributionFromWant(MakeSkillExecuteWant("skill-attribution-unknown"),
+        SKILL_TEST_HOST_PID, SKILL_TEST_TARGET_BUNDLE);
+    EXPECT_EQ(status.asRegisterManagedCount_, 0);
+
+    // Terminal before any anchor: nothing was registered, so nothing is unregistered.
+    AppExecFwk::SkillExecuteResult result;
+    EXPECT_EQ(manager->ExecuteSkillDone(requestCode, ERR_OK, result, SKILL_TEST_TARGET_BUNDLE), ERR_OK);
+    EXPECT_EQ(status.asRegisterManagedCount_, 0);
+    EXPECT_EQ(status.asUnregisterManagedCount_, 0);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: SkillExecuteAttribution_ValidSkillWant_RegisterOnce_002
+ * Function: SkillExecuteManager::TryRegisterAttributionFromWant
+ * SubFunction: NA
+ * FunctionPoints: a valid skill Want with a matching bundle registers the seeded task exactly
+ *                 once with the anchor pid/callerUid and tool=CLI without mutating the Want,
+ *                 and ExecuteSkillDone unregisters through the handed-out attributionId
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, SkillExecuteAttribution_ValidSkillWant_RegisterOnce_002,
+    TestSize.Level1)
+{
+    ResetSkillAttributionStatus();
+    auto &status = MyStatus::GetInstance();
+    auto manager = DelayedSingleton<SkillExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+    std::string requestCode = manager->CreateExecuteRecord(nullptr, SKILL_TEST_TARGET_BUNDLE,
+        SKILL_TEST_CALLER_BUNDLE, SKILL_TEST_CALLER_TOKEN_ID, nullptr, "skill-attribution-002",
+        "task-002", SKILL_TEST_CALLER_UID);
+
+    Want want = MakeSkillExecuteWant("skill-attribution-002");
+    manager->TryRegisterAttributionFromWant(want, SKILL_TEST_HOST_PID, SKILL_TEST_TARGET_BUNDLE);
+
+    EXPECT_EQ(status.asRegisterManagedCount_, 1);
+    EXPECT_EQ(status.asRegisterManagedTaskId_, "task-002");
+    EXPECT_EQ(status.asRegisterManagedPid_, SKILL_TEST_HOST_PID);
+    EXPECT_EQ(status.asRegisterManagedTool_, SKILL_TEST_ATTRIBUTION_TOOL_CLI);
+    EXPECT_EQ(status.asRegisterManagedCallerUid_, SKILL_TEST_CALLER_UID);
+    EXPECT_EQ(status.asUnregisterManagedCount_, 0);
+
+    // The anchor only reads the Want: skill markers and requestCode survive the call.
+    EXPECT_TRUE(AppExecFwk::SkillExecuteParam::IsSkillExecute(want));
+    EXPECT_EQ(want.GetParams().GetStringParam(AppExecFwk::SKILL_EXECUTE_PARAM_REQUEST_CODE),
+        "skill-attribution-002");
+
+    // Terminal path unregisters with the attribution handle handed out at registration.
+    AppExecFwk::SkillExecuteResult result;
+    EXPECT_EQ(manager->ExecuteSkillDone(requestCode, ERR_OK, result, SKILL_TEST_TARGET_BUNDLE), ERR_OK);
+    EXPECT_EQ(status.asUnregisterManagedCount_, 1);
+    EXPECT_EQ(status.asUnregisterManagedTaskId_, "task-002");
+    EXPECT_EQ(status.asUnregisterManagedAttributionId_, SKILL_TEST_ATTRIBUTION_ID);
+    EXPECT_EQ(status.asUnregisterManagedCallerUid_, SKILL_TEST_CALLER_UID);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: SkillExecuteAttribution_LatchIdempotent_RegisterOnce_003
+ * Function: SkillExecuteManager::RegisterAttributionForRecord
+ * SubFunction: NA
+ * FunctionPoints: the targetPid latch makes a double-fired anchor (Want-driven or direct,
+ *                 same or different pid) register exactly once and keeps the record pointed
+ *                 at the first pid
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, SkillExecuteAttribution_LatchIdempotent_RegisterOnce_003,
+    TestSize.Level1)
+{
+    ResetSkillAttributionStatus();
+    auto &status = MyStatus::GetInstance();
+    auto manager = DelayedSingleton<SkillExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+    std::string requestCode = manager->CreateExecuteRecord(nullptr, SKILL_TEST_TARGET_BUNDLE,
+        SKILL_TEST_CALLER_BUNDLE, SKILL_TEST_CALLER_TOKEN_ID, nullptr, "skill-attribution-003",
+        "task-003", SKILL_TEST_CALLER_UID);
+
+    Want want = MakeSkillExecuteWant("skill-attribution-003");
+    // First anchor latches the host pid and registers once.
+    manager->TryRegisterAttributionFromWant(want, SKILL_TEST_HOST_PID, SKILL_TEST_TARGET_BUNDLE);
+    EXPECT_EQ(status.asRegisterManagedCount_, 1);
+    EXPECT_EQ(status.asRegisterManagedPid_, SKILL_TEST_HOST_PID);
+
+    // Double fire with a different pid: the latch keeps a single registration.
+    manager->TryRegisterAttributionFromWant(want, SKILL_TEST_OTHER_PID, SKILL_TEST_TARGET_BUNDLE);
+    EXPECT_EQ(status.asRegisterManagedCount_, 1);
+    EXPECT_EQ(status.asRegisterManagedPid_, SKILL_TEST_HOST_PID);
+
+    // A direct late anchor is equally idempotent.
+    manager->RegisterAttributionForRecord(requestCode, SKILL_TEST_OTHER_PID,
+        SKILL_TEST_TARGET_BUNDLE);
+    EXPECT_EQ(status.asRegisterManagedCount_, 1);
+    EXPECT_EQ(status.asRegisterManagedPid_, SKILL_TEST_HOST_PID);
+
+    // The latched pid is provably unchanged: a non-anchored pid's death does not touch the
+    // record, while the anchored pid's death unregisters the attribution.
+    manager->OnTargetProcessDied(SKILL_TEST_TARGET_BUNDLE, SKILL_TEST_OTHER_PID);
+    EXPECT_EQ(status.asUnregisterManagedCount_, 0);
+    manager->OnTargetProcessDied(SKILL_TEST_TARGET_BUNDLE, SKILL_TEST_HOST_PID);
+    EXPECT_EQ(status.asUnregisterManagedCount_, 1);
+    EXPECT_EQ(status.asUnregisterManagedAttributionId_, SKILL_TEST_ATTRIBUTION_ID);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: SkillExecuteAttribution_BundleMismatch_NoRegister_004
+ * Function: SkillExecuteManager::RegisterAttributionForRecord
+ * SubFunction: NA
+ * FunctionPoints: an anchor whose expected bundle does not match the record's target bundle
+ *                 registers nothing, while the same record stays anchorable under the
+ *                 matching bundle
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, SkillExecuteAttribution_BundleMismatch_NoRegister_004,
+    TestSize.Level1)
+{
+    ResetSkillAttributionStatus();
+    auto &status = MyStatus::GetInstance();
+    auto manager = DelayedSingleton<SkillExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+    std::string requestCode = manager->CreateExecuteRecord(nullptr, SKILL_TEST_TARGET_BUNDLE,
+        SKILL_TEST_CALLER_BUNDLE, SKILL_TEST_CALLER_TOKEN_ID, nullptr, "skill-attribution-004",
+        "task-004", SKILL_TEST_CALLER_UID);
+
+    manager->TryRegisterAttributionFromWant(MakeSkillExecuteWant("skill-attribution-004"),
+        SKILL_TEST_HOST_PID, "com.other.bundle");
+    EXPECT_EQ(status.asRegisterManagedCount_, 0);
+
+    // The direct entry agrees with the Want-driven one.
+    manager->RegisterAttributionForRecord("skill-attribution-004", SKILL_TEST_HOST_PID,
+        "com.other.bundle");
+    EXPECT_EQ(status.asRegisterManagedCount_, 0);
+
+    // Control: with the matching bundle the same record is anchorable, proving the skip
+    // came from the bundle check.
+    manager->RegisterAttributionForRecord("skill-attribution-004", SKILL_TEST_HOST_PID,
+        SKILL_TEST_TARGET_BUNDLE);
+    EXPECT_EQ(status.asRegisterManagedCount_, 1);
+
+    AppExecFwk::SkillExecuteResult result;
+    EXPECT_EQ(manager->ExecuteSkillDone(requestCode, ERR_OK, result, SKILL_TEST_TARGET_BUNDLE), ERR_OK);
+    EXPECT_EQ(status.asUnregisterManagedCount_, 1);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: SkillExecuteAttribution_NoAnchorCallerUid_NoRegister_005
+ * Function: SkillExecuteManager::RegisterAttributionForRecord
+ * SubFunction: NA
+ * FunctionPoints: a non-positive callerUid (degraded 0 or missing -1) or an empty taskId
+ *                 means "no attribution anchor": registration is skipped entirely and the
+ *                 terminal paths unregister nothing
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, SkillExecuteAttribution_NoAnchorCallerUid_NoRegister_005,
+    TestSize.Level1)
+{
+    ResetSkillAttributionStatus();
+    auto &status = MyStatus::GetInstance();
+    auto manager = DelayedSingleton<SkillExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+    std::string reqZero = manager->CreateExecuteRecord(nullptr, SKILL_TEST_TARGET_BUNDLE,
+        SKILL_TEST_CALLER_BUNDLE, SKILL_TEST_CALLER_TOKEN_ID, nullptr, "skill-attribution-005a",
+        "task-005a", 0);
+    std::string reqAbsent = manager->CreateExecuteRecord(nullptr, SKILL_TEST_TARGET_BUNDLE,
+        SKILL_TEST_CALLER_BUNDLE, SKILL_TEST_CALLER_TOKEN_ID, nullptr, "skill-attribution-005b",
+        "task-005b", -1);
+    std::string reqNoTask = manager->CreateExecuteRecord(nullptr, SKILL_TEST_TARGET_BUNDLE,
+        SKILL_TEST_CALLER_BUNDLE, SKILL_TEST_CALLER_TOKEN_ID, nullptr, "skill-attribution-005c",
+        "", SKILL_TEST_CALLER_UID);
+
+    manager->RegisterAttributionForRecord("skill-attribution-005a", SKILL_TEST_HOST_PID,
+        SKILL_TEST_TARGET_BUNDLE);
+    manager->RegisterAttributionForRecord("skill-attribution-005b", SKILL_TEST_HOST_PID,
+        SKILL_TEST_TARGET_BUNDLE);
+    manager->RegisterAttributionForRecord("skill-attribution-005c", SKILL_TEST_HOST_PID,
+        SKILL_TEST_TARGET_BUNDLE);
+    // A non-positive pid is rejected before anything else.
+    manager->RegisterAttributionForRecord("skill-attribution-005a", 0, SKILL_TEST_TARGET_BUNDLE);
+    EXPECT_EQ(status.asRegisterManagedCount_, 0);
+
+    // Terminal paths on anchorless records unregister nothing.
+    AppExecFwk::SkillExecuteResult result;
+    EXPECT_EQ(manager->ExecuteSkillDone(reqZero, ERR_OK, result, SKILL_TEST_TARGET_BUNDLE), ERR_OK);
+    EXPECT_EQ(manager->ExecuteSkillDone(reqAbsent, ERR_OK, result, SKILL_TEST_TARGET_BUNDLE), ERR_OK);
+    EXPECT_EQ(manager->ExecuteSkillDone(reqNoTask, ERR_OK, result, SKILL_TEST_TARGET_BUNDLE), ERR_OK);
+    EXPECT_EQ(status.asUnregisterManagedCount_, 0);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: SkillExecuteAttribution_RecordGoneDuringRegister_Compensate_006
+ * Function: SkillExecuteManager::RegisterAttributionForRecord
+ * SubFunction: NA
+ * FunctionPoints: when the record vanishes between the register call and the attributionId
+ *                 write-back, the anchor compensates with exactly one unregister carrying
+ *                 the handle the register call handed out
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest,
+    SkillExecuteAttribution_RecordGoneDuringRegister_Compensate_006, TestSize.Level1)
+{
+    ResetSkillAttributionStatus();
+    auto &status = MyStatus::GetInstance();
+    auto manager = DelayedSingleton<SkillExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+    std::string requestCode = manager->CreateExecuteRecord(nullptr, SKILL_TEST_TARGET_BUNDLE,
+        SKILL_TEST_CALLER_BUNDLE, SKILL_TEST_CALLER_TOKEN_ID, nullptr, "skill-attribution-006",
+        "task-006", SKILL_TEST_CALLER_UID);
+
+    // The hook removes the record synchronously while RegisterManagedProcess is in flight,
+    // deterministically opening the record-gone-before-write-back window. The terminal path
+    // itself cannot unregister (the handle is not written back yet), so the single
+    // unregister below must come from the compensation.
+    status.asRegisterManagedHook_ = [&manager, &requestCode]() {
+        AppExecFwk::SkillExecuteResult result;
+        EXPECT_EQ(manager->ExecuteSkillDone(requestCode, ERR_OK, result,
+            SKILL_TEST_TARGET_BUNDLE), ERR_OK);
+    };
+    manager->RegisterAttributionForRecord(requestCode, SKILL_TEST_HOST_PID,
+        SKILL_TEST_TARGET_BUNDLE);
+
+    EXPECT_EQ(status.asRegisterManagedCount_, 1);
+    EXPECT_EQ(status.asRegisterManagedTaskId_, "task-006");
+    EXPECT_EQ(status.asUnregisterManagedCount_, 1);
+    EXPECT_EQ(status.asUnregisterManagedTaskId_, "task-006");
+    EXPECT_EQ(status.asUnregisterManagedAttributionId_, SKILL_TEST_ATTRIBUTION_ID);
+    EXPECT_EQ(status.asUnregisterManagedCallerUid_, SKILL_TEST_CALLER_UID);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: SkillExecuteAttribution_NotifyPathNoRegister_007
+ * Function: SkillExecuteManager::OnLaunchCompleted
+ * SubFunction: NA
+ * FunctionPoints: the app notify only does bookkeeping: it neither adds a second registration
+ *                 nor re-points the latched pid, so only the anchored pid's death unregisters
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, SkillExecuteAttribution_NotifyPathNoRegister_007,
+    TestSize.Level1)
+{
+    ResetSkillAttributionStatus();
+    auto &status = MyStatus::GetInstance();
+    auto manager = DelayedSingleton<SkillExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+    // Make the hap-token lookup behind the notify path succeed for the target bundle.
+    status.atkGetHapTokenInfoRet_ = 0;
+    status.atkHapTokenInfoBundleName_ = SKILL_TEST_TARGET_BUNDLE;
+    std::string requestCode = manager->CreateExecuteRecord(nullptr, SKILL_TEST_TARGET_BUNDLE,
+        SKILL_TEST_CALLER_BUNDLE, SKILL_TEST_CALLER_TOKEN_ID, nullptr, "skill-attribution-007",
+        "task-007", SKILL_TEST_CALLER_UID);
+
+    manager->RegisterAttributionForRecord(requestCode, SKILL_TEST_HOST_PID,
+        SKILL_TEST_TARGET_BUNDLE);
+    EXPECT_EQ(status.asRegisterManagedCount_, 1);
+
+    // The notify keeps pid bookkeeping and timeout cancellation only: no second
+    // registration and no re-pointing of the latched pid.
+    manager->OnLaunchCompleted(requestCode);
+    EXPECT_EQ(status.asRegisterManagedCount_, 1);
+    EXPECT_EQ(status.asRegisterManagedPid_, SKILL_TEST_HOST_PID);
+
+    // The anchored pid survived the notify: a non-anchored pid's death does not hit the
+    // record, the anchored pid's death unregisters the attribution.
+    manager->OnTargetProcessDied(SKILL_TEST_TARGET_BUNDLE, SKILL_TEST_OTHER_PID);
+    EXPECT_EQ(status.asUnregisterManagedCount_, 0);
+    manager->OnTargetProcessDied(SKILL_TEST_TARGET_BUNDLE, SKILL_TEST_HOST_PID);
+    EXPECT_EQ(status.asUnregisterManagedCount_, 1);
+    EXPECT_EQ(status.asUnregisterManagedAttributionId_, SKILL_TEST_ATTRIBUTION_ID);
+
+    // Restore the notify-path knobs for the rest of the binary.
+    status.atkGetHapTokenInfoRet_ = -1;
+    status.atkHapTokenInfoBundleName_.clear();
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: SkillExecuteAttribution_LaunchFailedUnregisters_008
+ * Function: SkillExecuteManager::OnLaunchFailed
+ * SubFunction: NA
+ * FunctionPoints: launch failure is a terminal path: the anchored attribution is unregistered
+ *                 with the registered attributionId
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, SkillExecuteAttribution_LaunchFailedUnregisters_008,
+    TestSize.Level1)
+{
+    ResetSkillAttributionStatus();
+    auto &status = MyStatus::GetInstance();
+    auto manager = DelayedSingleton<SkillExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+    std::string requestCode = manager->CreateExecuteRecord(nullptr, SKILL_TEST_TARGET_BUNDLE,
+        SKILL_TEST_CALLER_BUNDLE, SKILL_TEST_CALLER_TOKEN_ID, nullptr, "skill-attribution-008",
+        "task-008", SKILL_TEST_CALLER_UID);
+
+    manager->RegisterAttributionForRecord(requestCode, SKILL_TEST_HOST_PID,
+        SKILL_TEST_TARGET_BUNDLE);
+    EXPECT_EQ(status.asRegisterManagedCount_, 1);
+
+    manager->OnLaunchFailed(requestCode, ERR_INVALID_VALUE);
+    EXPECT_EQ(status.asUnregisterManagedCount_, 1);
+    EXPECT_EQ(status.asUnregisterManagedTaskId_, "task-008");
+    EXPECT_EQ(status.asUnregisterManagedAttributionId_, SKILL_TEST_ATTRIBUTION_ID);
+    EXPECT_EQ(status.asUnregisterManagedCallerUid_, SKILL_TEST_CALLER_UID);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: SkillExecuteAttribution_NotifyWithoutAnchor_NoRegister_009
+ * Function: SkillExecuteManager::OnLaunchCompleted
+ * SubFunction: NA
+ * FunctionPoints: the notify is bookkeeping-only even when no anchor ever fired: with a
+ *                 seedable record (taskId + callerUid > 0) and no prior anchor,
+ *                 OnLaunchCompleted registers nothing, but still latches the notify pid
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, SkillExecuteAttribution_NotifyWithoutAnchor_NoRegister_009,
+    TestSize.Level1)
+{
+    ResetSkillAttributionStatus();
+    auto &status = MyStatus::GetInstance();
+    auto manager = DelayedSingleton<SkillExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+    // Make the hap-token lookup behind the notify path succeed for the target bundle.
+    status.atkGetHapTokenInfoRet_ = 0;
+    status.atkHapTokenInfoBundleName_ = SKILL_TEST_TARGET_BUNDLE;
+    // The mock GetCallingPid reads this knob; pin the notify pid for the death probe.
+    status.ipcGetCallingUid_ = SKILL_TEST_HOST_PID;
+    std::string requestCode = manager->CreateExecuteRecord(nullptr, SKILL_TEST_TARGET_BUNDLE,
+        SKILL_TEST_CALLER_BUNDLE, SKILL_TEST_CALLER_TOKEN_ID, nullptr, "skill-attribution-009",
+        "task-009", SKILL_TEST_CALLER_UID);
+
+    // No anchor fires: the notify alone must not register anything.
+    manager->OnLaunchCompleted(requestCode);
+    EXPECT_EQ(status.asRegisterManagedCount_, 0);
+
+    // Bookkeeping still happened: the notify pid was latched (its death unregisters
+    // nothing because no attribution exists, but the pid matches the record).
+    manager->OnTargetProcessDied(SKILL_TEST_TARGET_BUNDLE, SKILL_TEST_OTHER_PID);
+    EXPECT_EQ(status.asUnregisterManagedCount_, 0);
+    manager->OnTargetProcessDied(SKILL_TEST_TARGET_BUNDLE, SKILL_TEST_HOST_PID);
+    EXPECT_EQ(status.asUnregisterManagedCount_, 0);
+
+    // Restore the knobs for the rest of the binary.
+    status.ipcGetCallingUid_ = 1;
+    status.atkGetHapTokenInfoRet_ = -1;
+    status.atkHapTokenInfoBundleName_.clear();
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: SkillExecuteAttribution_TimeoutAfterAnchor_UnregistersOnce_010
+ * Function: SkillExecuteManager::OnTimeout
+ * SubFunction: NA
+ * FunctionPoints: after an anchored registration, the timeout sweep unregisters exactly
+ *                 once with the registered attributionId, and a replayed OnTimeout for the
+ *                 consumed seq is inert
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest,
+    SkillExecuteAttribution_TimeoutAfterAnchor_UnregistersOnce_010, TestSize.Level1)
+{
+    ResetSkillAttributionStatus();
+    auto &status = MyStatus::GetInstance();
+    auto manager = DelayedSingleton<SkillExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+    std::string requestCode = manager->CreateExecuteRecord(nullptr, SKILL_TEST_TARGET_BUNDLE,
+        SKILL_TEST_CALLER_BUNDLE, SKILL_TEST_CALLER_TOKEN_ID, nullptr, "skill-attribution-010",
+        "task-010", SKILL_TEST_CALLER_UID);
+
+    manager->RegisterAttributionForRecord(requestCode, SKILL_TEST_HOST_PID,
+        SKILL_TEST_TARGET_BUNDLE);
+    EXPECT_EQ(status.asRegisterManagedCount_, 1);
+
+    // The test process has no AMS event handler, so PostSkillExecuteTimeout cannot seed the
+    // seq map. Seed it exactly as the handler path would (the seq is read from the live
+    // record) and drive the production OnTimeout entry directly.
+    int64_t requestCodeSeq = -1;
+    {
+        auto it = manager->records_.find(requestCode);
+        ASSERT_NE(it, manager->records_.end());
+        requestCodeSeq = static_cast<int64_t>(it->second->requestCodeSeq);
+        manager->seqToRequestCodeMap_[requestCodeSeq] = requestCode;
+    }
+
+    manager->OnTimeout(requestCodeSeq);
+    EXPECT_EQ(status.asUnregisterManagedCount_, 1);
+    EXPECT_EQ(status.asUnregisterManagedTaskId_, "task-010");
+    EXPECT_EQ(status.asUnregisterManagedAttributionId_, SKILL_TEST_ATTRIBUTION_ID);
+    EXPECT_EQ(status.asUnregisterManagedCallerUid_, SKILL_TEST_CALLER_UID);
+
+    // The seq is consumed by the first sweep: a replayed timeout unregisters nothing more.
+    manager->OnTimeout(requestCodeSeq);
+    EXPECT_EQ(status.asUnregisterManagedCount_, 1);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: SkillExecuteAttribution_CallerDiedAfterAnchor_UnregistersOnce_011
+ * Function: SkillExecuteManager::OnCallerDied
+ * SubFunction: NA
+ * FunctionPoints: after an anchored registration, a caller death funnels into RemoveRecord
+ *                 and unregisters exactly once with the registered attributionId; a
+ *                 replayed death notification is inert because the record is gone
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest,
+    SkillExecuteAttribution_CallerDiedAfterAnchor_UnregistersOnce_011, TestSize.Level1)
+{
+    ResetSkillAttributionStatus();
+    auto &status = MyStatus::GetInstance();
+    auto manager = DelayedSingleton<SkillExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+    auto callerToken = sptr<SkillCallerDeathProbe>::MakeSptr();
+    ASSERT_NE(callerToken, nullptr);
+    std::string requestCode = manager->CreateExecuteRecord(callerToken, SKILL_TEST_TARGET_BUNDLE,
+        SKILL_TEST_CALLER_BUNDLE, SKILL_TEST_CALLER_TOKEN_ID, nullptr, "skill-attribution-011",
+        "task-011", SKILL_TEST_CALLER_UID);
+    // The production path wired the recipient to the token at record creation.
+    ASSERT_NE(callerToken->deathRecipient_, nullptr);
+
+    manager->RegisterAttributionForRecord(requestCode, SKILL_TEST_HOST_PID,
+        SKILL_TEST_TARGET_BUNDLE);
+    EXPECT_EQ(status.asRegisterManagedCount_, 1);
+
+    // Trigger the caller-side terminal path through the production death recipient.
+    sptr<IRemoteObject::DeathRecipient> recipient = callerToken->deathRecipient_;
+    recipient->OnRemoteDied(sptr<IRemoteObject>(callerToken));
+    EXPECT_EQ(status.asUnregisterManagedCount_, 1);
+    EXPECT_EQ(status.asUnregisterManagedTaskId_, "task-011");
+    EXPECT_EQ(status.asUnregisterManagedAttributionId_, SKILL_TEST_ATTRIBUTION_ID);
+    EXPECT_EQ(status.asUnregisterManagedCallerUid_, SKILL_TEST_CALLER_UID);
+
+    // The record is gone: a replayed death notification unregisters nothing more.
+    recipient->OnRemoteDied(sptr<IRemoteObject>(callerToken));
+    EXPECT_EQ(status.asUnregisterManagedCount_, 1);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: SkillExecuteAttribution_ColdAttachAnchor_Wired_012
+ * Function: AbilityManagerService::AttachAbilityThread
+ * SubFunction: NA
+ * FunctionPoints: the UIAbility attach branch drives the early attribution anchor: a skill
+ *                 Want on the attaching record, gated by the self-call check and the bundle
+ *                 match, registers the seeded task exactly once with the attaching pid
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, SkillExecuteAttribution_ColdAttachAnchor_Wired_012,
+    TestSize.Level1)
+{
+    ResetSkillAttributionStatus();
+    auto &status = MyStatus::GetInstance();
+    auto manager = DelayedSingleton<SkillExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+    std::string requestCode = manager->CreateExecuteRecord(nullptr, SKILL_TEST_TARGET_BUNDLE,
+        SKILL_TEST_CALLER_BUNDLE, SKILL_TEST_CALLER_TOKEN_ID, nullptr, "skill-attribution-012",
+        "task-012", SKILL_TEST_CALLER_UID);
+
+    // A PAGE record whose Want still carries the skill markers and whose bundle matches.
+    AppExecFwk::AbilityInfo abilityInfo;
+    abilityInfo.type = AbilityType::PAGE;
+    abilityInfo.bundleName = SKILL_TEST_TARGET_BUNDLE;
+    auto abilityRecord = std::make_shared<AbilityRecord>(
+        MakeSkillExecuteWant("skill-attribution-012"), abilityInfo, AppExecFwk::ApplicationInfo());
+    ASSERT_NE(abilityRecord, nullptr);
+
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    auto subManagersHelper = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    ASSERT_NE(subManagersHelper, nullptr);
+    subManagersHelper->currentUIAbilityManager_ = std::make_shared<UIAbilityLifecycleManager>(0);
+    abilityMs->subManagersHelper_ = subManagersHelper;
+
+    // Self-call on the attach path; the same mock value doubles as the anchor-supplied pid.
+    status.ipcGetCallingUid_ = getprocpid();
+    status.arGetAbilityRecord_ = abilityRecord;
+    status.sbjIsSceneBoardEnabled_ = true;
+    status.smhGetUIAbilityManagerByUserId_ = true;
+    sptr<MockAbilityScheduler> scheduler = new MockAbilityScheduler();
+    ASSERT_NE(scheduler, nullptr);
+    sptr<IRemoteObject> token = MockToken(AbilityType::PAGE);
+
+    EXPECT_EQ(abilityMs->AttachAbilityThread(scheduler, token), ERR_OK);
+    EXPECT_EQ(status.asRegisterManagedCount_, 1);
+    EXPECT_EQ(status.asRegisterManagedTaskId_, "task-012");
+    EXPECT_EQ(status.asRegisterManagedPid_, getprocpid());
+    EXPECT_EQ(status.asRegisterManagedTool_, SKILL_TEST_ATTRIBUTION_TOOL_CLI);
+    EXPECT_EQ(status.asRegisterManagedCallerUid_, SKILL_TEST_CALLER_UID);
+
+    // Restore the knobs for the rest of the binary, and sweep the seeded record.
+    status.ipcGetCallingUid_ = 1;
+    status.arGetAbilityRecord_ = nullptr;
+    status.sbjIsSceneBoardEnabled_ = false;
+    status.smhGetUIAbilityManagerByUserId_ = true;
+    AppExecFwk::SkillExecuteResult result;
+    EXPECT_EQ(manager->ExecuteSkillDone(requestCode, ERR_OK, result, SKILL_TEST_TARGET_BUNDLE), ERR_OK);
+    EXPECT_EQ(status.asUnregisterManagedCount_, 1);
+    EXPECT_EQ(status.asUnregisterManagedAttributionId_, SKILL_TEST_ATTRIBUTION_ID);
 }
 
 } // namespace AAFwk

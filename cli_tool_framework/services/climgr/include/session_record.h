@@ -44,11 +44,11 @@ enum class SessionState {
     FAILED,
 };
 
-// Attribution lifecycle (SEC-01): every transition happens under CliToolManagerService::sessionsMutex_.
-// NONE -> PENDING (attach snapshotted while the session is still live in the table) -> ATTACHED (IPC ok)
-// or FAILED (IPC rejected, nothing registered); PENDING/ATTACHED -> CONSUMED when a teardown grabs the
-// single detach-consumption right. Exactly one side detaches: the teardown that saw ATTACHED, or the
-// attach write-back that returns to a CONSUMED record and compensates its own registration.
+// Attribution lifecycle (SEC-01), all transitions under CliToolManagerService::sessionsMutex_:
+// NONE -> PENDING (attach snapshotted while the session is live in the table) -> ATTACHED
+// (IPC ok) or FAILED (nothing registered); PENDING/ATTACHED -> CONSUMED when a teardown grabs
+// the single detach-consumption right. Exactly one side detaches: the teardown that saw
+// ATTACHED, or the attach write-back returning to CONSUMED, compensating its own registration.
 enum class AttributionState : int32_t {
     NONE = 0,
     PENDING = 1,

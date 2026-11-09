@@ -41,8 +41,7 @@ class AppMgrStubRemaining6Fuzz : public AppMgrStubFuzzBase {};
 // case 0-8 block; STUB_CASE_COUNT bounds the dispatch table modulus.
 constexpr uint32_t STUB_CASE_REGISTER_MANAGED_PROCESS = 9;
 constexpr uint32_t STUB_CASE_UNREGISTER_MANAGED_PROCESS = 10;
-constexpr uint32_t STUB_CASE_REGISTER_IN_APP_SKILL_PROCESS = 11;
-constexpr uint32_t STUB_CASE_COUNT = 12;
+constexpr uint32_t STUB_CASE_COUNT = 11;
 
 void DoFuzzCases(uint32_t code, MessageParcel &parcel, FuzzedDataProvider &fdp, uint32_t &actualCode)
 {
@@ -118,13 +117,6 @@ void DoFuzzCases(uint32_t code, MessageParcel &parcel, FuzzedDataProvider &fdp, 
             actualCode = static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_MANAGED_PROCESS);
             parcel.WriteString16(Str8ToStr16(fdp.ConsumeRandomLengthString()));
             parcel.WriteInt64(FuzzUtil::BuildIntegerOverflow(fdp));
-            parcel.WriteInt32(FuzzUtil::BuildIntegerOverflow(fdp));
-            break;
-        }
-        case STUB_CASE_REGISTER_IN_APP_SKILL_PROCESS: {
-            actualCode = static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_IN_APP_SKILL_PROCESS);
-            parcel.WriteString16(Str8ToStr16(fdp.ConsumeRandomLengthString()));
-            parcel.WriteString16(Str8ToStr16(fdp.ConsumeRandomLengthString()));
             parcel.WriteInt32(FuzzUtil::BuildIntegerOverflow(fdp));
             break;
         }

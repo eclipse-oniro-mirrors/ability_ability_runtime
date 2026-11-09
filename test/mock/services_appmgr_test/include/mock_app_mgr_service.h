@@ -163,8 +163,6 @@ public:
             int64_t &attributionId));
     MOCK_METHOD3(UnregisterManagedProcess,
         int32_t(const std::string &taskId, int64_t attributionId, int32_t callerUid));
-    MOCK_METHOD5(RegisterInAppSkillProcess, int32_t(const std::string &taskId, const std::string &bundleName,
-        int32_t callerUid, int32_t &resolvedPid, int64_t &attributionId));
     MOCK_METHOD2(DumpMem, int32_t(MemDumpInfo &info, sptr<IMemDumpCallback> callback));
     MOCK_METHOD2(ReportDumpMemResult, int32_t(sptr<IMemDumpCallback>, const std::string&));
     MOCK_METHOD1(DumpJsHandleMap, int32_t(OHOS::AppExecFwk::JsHandleMapInfo &));

@@ -1334,5 +1334,80 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_OnProcessDiedCleanup_1500, T
     EXPECT_EQ(service.FinishTask(taskId1), ERR_OK);
     EXPECT_EQ(service.FinishTask(taskId2), ERR_OK);
 }
+
+/**
+ * @tc.number: TaskManagerService_RegisterManagedProcessForCaller_0100
+ * @tc.name: creator-ownership gate on the trusted in-process channel
+ * @tc.desc: registration only succeeds on the task owned by the forwarded callerUid;
+ *           a mismatched uid is rejected, a negative uid is rejected (no anchor)
+ */
+HWTEST_F(TaskManagerServiceTest, TaskManagerService_RegisterManagedProcessForCaller_0100, TestSize.Level1)
+{
+    auto &service = TaskManagerService::GetInstance();
+    std::string taskId = MakeTaskId("for_caller_0100");
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+
+    AttributionRecord attribution;
+    attribution.pid = TEST_MANAGED_PID;
+    attribution.tool = AttributionTool::CLI;
+    AttributionId ownerId = 0;
+    EXPECT_EQ(service.RegisterManagedProcessForCaller(taskId, attribution, TEST_CREATOR_UID, ownerId),
+        ERR_OK);
+    EXPECT_GT(ownerId, 0);
+
+    // Forged taskId of another app's task: ownership mismatch must reject.
+    AttributionId intruderId = 0;
+    EXPECT_EQ(service.RegisterManagedProcessForCaller(taskId, attribution, TEST_CREATOR_UID + 1,
+        intruderId), AAFwk::ERR_TASK_NOT_FOUND);
+    EXPECT_EQ(intruderId, 0);
+
+    // A negative or zero callerUid has no creator anchor: no anchorless attribution
+    // records (uid 0 is the broken-derivation signature, never a legitimate app uid).
+    AttributionId anchorlessId = 0;
+    EXPECT_EQ(service.RegisterManagedProcessForCaller(taskId, attribution, -1, anchorlessId),
+        AAFwk::INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(service.RegisterManagedProcessForCaller(taskId, attribution, 0, anchorlessId),
+        AAFwk::INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(anchorlessId, 0);
+    EXPECT_EQ(service.UnregisterManagedProcessForCaller(taskId, ownerId, -1),
+        AAFwk::INVALID_PARAMETERS_ERR);
+    EXPECT_EQ(service.UnregisterManagedProcessForCaller(taskId, ownerId, 0),
+        AAFwk::INVALID_PARAMETERS_ERR);
+
+    EXPECT_EQ(service.UnregisterManagedProcessForCaller(taskId, ownerId, TEST_CREATOR_UID), ERR_OK);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
+}
+
+/**
+ * @tc.number: TaskManagerService_UnregisterManagedProcessForCaller_0100
+ * @tc.name: creator-ownership gate and idempotency on unregister
+ * @tc.desc: unregister is keyed by attributionId; a mismatched uid is rejected,
+ *           an already-removed attribution returns ERR_ATTRIBUTION_NOT_FOUND
+ */
+HWTEST_F(TaskManagerServiceTest, TaskManagerService_UnregisterManagedProcessForCaller_0100, TestSize.Level1)
+{
+    auto &service = TaskManagerService::GetInstance();
+    std::string taskId = MakeTaskId("for_caller_unreg_0100");
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+
+    AttributionRecord attribution;
+    attribution.pid = TEST_MANAGED_PID;
+    attribution.tool = AttributionTool::CLI;
+    AttributionId attributionId = 0;
+    EXPECT_EQ(service.RegisterManagedProcessForCaller(taskId, attribution, TEST_CREATOR_UID,
+        attributionId), ERR_OK);
+    EXPECT_GT(attributionId, 0);
+
+    // Ownership mismatch must reject.
+    EXPECT_EQ(service.UnregisterManagedProcessForCaller(taskId, attributionId, TEST_CREATOR_UID + 1),
+        AAFwk::ERR_TASK_NOT_FOUND);
+
+    // Owner unregister succeeds; a repeat is the legal already-removed timing.
+    EXPECT_EQ(service.UnregisterManagedProcessForCaller(taskId, attributionId, TEST_CREATOR_UID), ERR_OK);
+    EXPECT_EQ(service.UnregisterManagedProcessForCaller(taskId, attributionId, TEST_CREATOR_UID),
+        AAFwk::ERR_ATTRIBUTION_NOT_FOUND);
+
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

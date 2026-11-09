@@ -23,6 +23,11 @@
 namespace OHOS {
 namespace AppExecFwk {
 
+// Wire values of the registering tool; the enum is not exported across the service boundary,
+// so CLI is mirrored as plain int32_t constants in climgr (task_attribution_manager.h) and the
+// AMS skill executor (skill_execute_manager.cpp); the climgr copy is pinned by the static_assert
+// in task_attribution_manager_test.cpp. Reordering breaks the mirrors silently: never reshuffle,
+// only append.
 enum class AttributionTool : int32_t {
     UNKNOWN = 0,
     INSIGHT = 1,

@@ -1079,8 +1079,6 @@ public:
         int32_t callerUid, int64_t &attributionId) override;
     int32_t UnregisterManagedProcess(const std::string &taskId, int64_t attributionId,
         int32_t callerUid) override;
-    int32_t RegisterInAppSkillProcess(const std::string &taskId, const std::string &bundleName,
-        int32_t callerUid, int32_t &resolvedPid, int64_t &attributionId) override;
 private:
     bool SendTransactCmd(AppMgrInterfaceCode code, MessageParcel &data, MessageParcel &reply);
     bool WriteInterfaceToken(MessageParcel &data);

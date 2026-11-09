@@ -1935,8 +1935,8 @@ public:
      * @param taskId Attribution key of the task (1~256 characters).
      * @param pid Pid of the managed process to attribute (> 0).
      * @param tool Tool type of the attribution (AttributionTool value).
-     * @param callerUid Forensic uid of the original task creator; negative skips the
-     *        ownership check.
+     * @param callerUid Forensic uid of the original task creator; non-positive is rejected:
+     *        an attribution always carries its creator anchor.
      * @param attributionId Outputs the server-assigned attribution id on success,
      *        or 0 on any failure.
      * @return ERR_OK on success, server error code otherwise;
@@ -1952,31 +1952,13 @@ public:
      *
      * @param taskId Attribution key of the task (1~256 characters).
      * @param attributionId Id returned by RegisterManagedProcess (> 0).
-     * @param callerUid Forensic uid of the original task creator; negative skips the
-     *        ownership check.
+     * @param callerUid Forensic uid of the original task creator; non-positive is rejected:
+     *        an attribution always carries its creator anchor.
      * @return ERR_OK on success, server error code otherwise;
      *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t UnregisterManagedProcess(const std::string &taskId, int64_t attributionId,
         int32_t callerUid);
-
-    /**
-     * Attribute the main process of the running application into the task. The target
-     * process is located server-side by the bundle name. Reserved for the trusted caller
-     * process that forwards the forensic creator uid.
-     *
-     * @param taskId Attribution key of the task (1~256 characters).
-     * @param bundleName Bundle name used only for process location.
-     * @param callerUid Forensic uid of the original task creator; negative skips the
-     *        ownership check.
-     * @param resolvedPid Outputs the located pid on success, or -1 on any failure.
-     * @param attributionId Outputs the server-assigned attribution id on success,
-     *        or 0 on any failure.
-     * @return ERR_OK on success, server error code otherwise;
-     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
-     */
-    int32_t RegisterInAppSkillProcess(const std::string &taskId, const std::string &bundleName,
-        int32_t callerUid, int32_t &resolvedPid, int64_t &attributionId);
 
 private:
     void SetServiceManager(std::unique_ptr<AppServiceManager> serviceMgr);

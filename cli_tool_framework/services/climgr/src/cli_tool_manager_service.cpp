@@ -415,15 +415,14 @@ void CliToolManagerService::OnStop()
 
     PostDetachRequests(detachTaskIds, detachAttributionIds, detachUids);
 
-    // Stop the reaper subsystem: disarms SIGCHLD (SIG_IGN auto-reaps future exits; status discarded is fine —
-    // sessions are already cleared so no FinalizeBackgroundSession is needed), stops the loop, joins it, and
-    // closes the pipe. With sessionRecords_ cleared, any in-flight WaitPid on the reaper finds no record and
-    // only runs AccessTokenKit::DeleteToolTokenByPid (bounded IPC).
+    // Stop the reaper: disarm SIGCHLD (SIG_IGN auto-reaps future exits; discarded status is fine —
+    // sessions are cleared, so no FinalizeBackgroundSession is needed), stop/join the loop, close
+    // the pipe. With sessionRecords_ cleared, an in-flight WaitPid finds no record and only runs
+    // AccessTokenKit::DeleteToolTokenByPid (bounded IPC).
     StopReaper();
 
-    // Kill each active child and clean up its tool token. SIG_IGN (set in StopReaper) auto-reaps the killed
-    // children; WaitPid is called for the unconditional AccessTokenKit::DeleteToolTokenByPid(pid) — it finds no
-    // record (sessions cleared) so it does NOT run FinalizeBackgroundSession/IPC beyond token deletion.
+    // Kill each active child and clean up its tool token: SIG_IGN (set in StopReaper) auto-reaps
+    // them; WaitPid runs only for DeleteToolTokenByPid (no record, so no FinalizeBackgroundSession).
     auto &processManager = ProcessManager::GetInstance();
     for (pid_t pid : activePids) {
         processManager.Killpg(pid);
@@ -527,9 +526,9 @@ void CliToolManagerService::AttachTaskAttribution(const std::shared_ptr<SessionR
     if (record == nullptr) {
         return;
     }
-    // Phase 1 — snapshot under the session-table lock and mark PENDING. A record that already left
-    // the table (or was attached twice) must not register: no later teardown could consume an ATTACHED
-    // written to an off-table record, which would leak the attribution to the appmgr backstop.
+    // Phase 1 — snapshot under the table lock and mark PENDING. A record that already left
+    // the table (or was attached twice) must not register: no teardown could consume an
+    // ATTACHED written to an off-table record, leaking the attribution to the appmgr backstop.
     std::string taskId;
     pid_t anchor = -1;
     int32_t callerUid = -1;
@@ -554,50 +553,12 @@ void CliToolManagerService::AttachTaskAttribution(const std::shared_ptr<SessionR
         callerUid = record->callerUid;
         record->attributionState = AttributionState::PENDING;
     }
-    // Phase 2 — sync IPC outside the lock: holding sessionsMutex_ across the round trip would stall
-    // every IPC handler and the reaper (lock-held long IPC is forbidden).
+    // Phase 2 — sync IPC outside the lock (lock-held long IPC is forbidden).
     int64_t attributionId = 0;
     int32_t ret = TaskAttributionManager::GetInstance().AttachProcess(taskId, anchor, callerUid, attributionId);
-    // Phase 3+4 — reconcile the verdict under the lock; a teardown that consumed while the IPC was
-    // in flight leaves this side as the single finisher (it compensates its own registration).
+    // Phase 3+4 — reconcile the verdict under the lock; a teardown that consumed while the IPC
+    // was in flight leaves this side the single finisher, compensating its own registration.
     if (WriteBackAttachResult(record, "AttachTaskAttribution", ret == ERR_OK, ret, anchor, taskId,
-        attributionId)) {
-        PostDetachTaskAttribution(taskId, attributionId, callerUid);
-    }
-}
-
-void CliToolManagerService::AttachSkillTaskAttribution(const std::shared_ptr<SessionRecord> &record,
-    const std::string &bundleName)
-{
-    if (record == nullptr) {
-        return;
-    }
-    // Phase 1 — snapshot under the session-table lock and mark PENDING (same liveness contract as
-    // AttachTaskAttribution: an off-table record must never register).
-    std::string taskId;
-    int32_t callerUid = -1;
-    {
-        std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
-        if (record->taskId.empty() || record->attributionState != AttributionState::NONE) {
-            return;
-        }
-        auto it = sessionRecords_.find(record->sessionId);
-        if (it == sessionRecords_.end() || it->second != record) {
-            return;
-        }
-        taskId = record->taskId;
-        callerUid = record->callerUid;
-        record->attributionState = AttributionState::PENDING;
-    }
-    // Phase 2 — server-located anchor IPC outside the lock.
-    pid_t resolvedPid = -1;
-    int64_t attributionId = 0;
-    int32_t ret = TaskAttributionManager::GetInstance().AttachInAppSkillProcess(
-        taskId, bundleName, resolvedPid, attributionId, callerUid);
-    bool attributed = (ret == ERR_OK && resolvedPid > 0);
-    // Phase 3+4 — reconcile the verdict under the lock; a teardown that consumed while the IPC was
-    // in flight leaves this side as the single finisher (it compensates its own registration).
-    if (WriteBackAttachResult(record, "AttachSkillTaskAttribution", attributed, ret, resolvedPid, taskId,
         attributionId)) {
         PostDetachTaskAttribution(taskId, attributionId, callerUid);
     }
@@ -1502,7 +1463,7 @@ sptr<ICliHookInterface> CliToolManagerService::CheckCliHook(uint32_t flag)
     if (cliHook_ == nullptr) {
         return nullptr;
     }
-    if (cliHookActiveMethods_ != 0 && !(cliHookActiveMethods_ & flag)) { // 仅当hook存在且对应hookMethod有效
+    if (cliHookActiveMethods_ != 0 && !(cliHookActiveMethods_ & flag)) { // hook active and method enabled
         return nullptr;
     }
     return cliHook_;
@@ -1722,11 +1683,9 @@ int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::str
         return ret;
     }
 
-    // Hook is registered via RegisterCliHook which requires system permission
-    // (PERMISSION_REGISTER_AGENT_HOOK) and developer mode. It is a trusted component.
-    // The hook may modify actualParam.cmd but is not expected to change
-    // actualParam.execCmdOptions.isShellCommand, as that would alter the routing
-    // after the permission/capability check at ValidateExecCmdPublicPermissions above.
+    // The before-hook is trusted (RegisterCliHook gates PERMISSION_REGISTER_AGENT_HOOK and
+    // developer mode). It may modify cmd but is not expected to change
+    // execCmdOptions.isShellCommand, which would reroute past the permission check above.
     ExecCmdParam actualParam = param;
     // taskId discipline mirrors ExecTool: snapshot before the hook, re-assert after (read-only).
     std::string taskId = actualParam.execCmdOptions.taskId;
@@ -1936,7 +1895,6 @@ void CliToolManagerService::PostExecToolTask(int64_t time, const std::string &se
 void CliToolManagerService::WaitPid(pid_t pid, int32_t status, int32_t sig)
 {
     std::shared_ptr<SessionRecord> record = nullptr;
-    // Consume the attribution inside the lock: exactly one detach per attribution.
     std::string detachTaskId;
     int64_t detachAttributionId = 0;
     int32_t detachCallerUid = -1;
@@ -2038,11 +1996,10 @@ void CliToolManagerService::StopReaper()
     if (!reaperStarted_.exchange(false)) {
         return;
     }
-    // (1) Disarm the handler FIRST: SIG_IGN auto-reaps future (and, on Linux, already-zombied) child exits
-    //     with status discarded, and guarantees no new wake byte is written to the pipe we are about to close.
-    //     By the time StopReaper runs, OnStop has already cleared sessionRecords_, so discarded status is fine
-    //     (no FinalizeBackgroundSession needed); token cleanup for explicitly-killed active pids is done by the
-    //     caller (OnStop) after StopReaper returns.
+    // (1) Disarm the handler FIRST: SIG_IGN auto-reaps future (and, on Linux, already-zombied) child
+    //     exits with status discarded, and guarantees no wake byte is written to the pipe we are
+    //     about to close. sessionRecords_ is already cleared by OnStop (no FinalizeBackgroundSession
+    //     needed); token cleanup for explicitly-killed active pids is done by the caller after return.
     struct sigaction sa = {};
     sa.sa_handler = SIG_IGN;
     sigemptyset(&sa.sa_mask);
@@ -2056,10 +2013,9 @@ void CliToolManagerService::StopReaper()
         (void)write(wakeFd, &wake, 1);
     }
 
-    // (3) Join the reaper. Bounded in practice: once woken, the loop finishes at most the current waitpid drain
-    //     pass (each WaitPid finds no record because sessions were cleared, so it only runs a bounded
-    //     DeleteToolTokenByPid IPC) and then sees reaperRunning_==false and exits. This matches the existing
-    //     ioMonitor_->Stop() posture. The singleton sptr held by GetInstance keeps `this` valid throughout.
+    // (3) Join the reaper. Bounded: once woken, the loop finishes at most the current waitpid drain
+    //     (no records, only bounded DeleteToolTokenByPid IPCs) then exits. The singleton sptr held
+    //     by GetInstance keeps `this` valid throughout.
     if (reaperThread_.joinable()) {
         reaperThread_.join();
     }
@@ -2508,6 +2464,10 @@ int32_t CliToolManagerService::SetupAndStartSkillSession(const ExecToolParam &pa
     skillRequest.functionName = funcName;
     skillRequest.skillArgs = skillArgs;
     skillRequest.toolCallId = toolCallId;
+    // Stamped from the sanitized options; consumed by the AMS-side registration.
+    skillRequest.taskId = record->taskId;
+    // Forensic creator uid; the ownership anchor for the AMS-side registration.
+    skillRequest.callerUid = record->callerUid;
 
     TAG_LOGD(AAFwkTag::CLI_TOOL, "execSkill before ExecuteInAppSkillWithTokenId");
     int32_t ret = AAFwk::AbilityManagerClient::GetInstance()->ExecuteInAppSkillWithTokenId(
@@ -2518,7 +2478,8 @@ int32_t CliToolManagerService::SetupAndStartSkillSession(const ExecToolParam &pa
         return ret;
     }
 
-    AttachSkillTaskAttribution(record, bundleName);
+    // Attribution is AMS-owned (cold UIAbility attach / warm dispatch before ExecuteSkill);
+    // a climgr-side attach would double-register and can anchor the wrong pid.
 
     if (param.options.background) {
         HandleBackgroundSessionReply(record, eventId);

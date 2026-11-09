@@ -298,13 +298,16 @@ int32_t TaskManagerService::RegisterManagedProcess(const std::string &taskId,
 int32_t TaskManagerService::RegisterManagedProcessForCaller(const std::string &taskId,
     const AttributionRecord &attribution, int32_t callerUid, AttributionId &attributionId)
 {
-    // CLI channel: no pid-liveness check (uid-gated reporter; pid is climgr's fork child).
-    // Ownership gate then the shared kernel; the two-lock gap is benign (creatorUid immutable).
+    // Trusted channel: no pid-liveness check; ownership gate then the shared kernel.
+    // The two-lock gap can only misplace one attribution (dump/quota pollution); revisit
+    // creatorUid if attribution ever gains authority semantics.
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::APPMGR, "called");
     int32_t toolType = static_cast<int32_t>(attribution.tool);
-    if (attribution.pid <= 0 ||
-        taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN ||
+    // Shared IsTaskIdValidForAttribution check, aligned with AttributeProcessForAbility.
+    // A non-positive callerUid has no creator anchor and is rejected — attributions always
+    // carry their anchor (uid 0 is never a legitimate app uid).
+    if (attribution.pid <= 0 || callerUid <= 0 || !IsTaskIdValidForAttribution(taskId) ||
         toolType < static_cast<int32_t>(AttributionTool::INSIGHT) ||
         toolType > static_cast<int32_t>(AttributionTool::ABILITY)) {
         TAG_LOGW(AAFwkTag::APPMGR, "invalid param, taskId size: %{public}zu, pid: %{public}d, "
@@ -318,7 +321,7 @@ int32_t TaskManagerService::RegisterManagedProcessForCaller(const std::string &t
             TAG_LOGW(AAFwkTag::APPMGR, "task not found, taskId: %{public}s", taskId.c_str());
             return ERR_TASK_NOT_FOUND;
         }
-        if (callerUid >= 0 && it->second.creatorUid != callerUid) {
+        if (it->second.creatorUid != callerUid) {
             TAG_LOGW(AAFwkTag::APPMGR, "caller is not the creator, rejected, taskId: %{public}s, "
                 "creator uid: %{public}d, caller uid: %{public}d", taskId.c_str(), it->second.creatorUid,
                 callerUid);
@@ -415,10 +418,11 @@ int32_t TaskManagerService::AttributeTaskForA2A(const std::string &taskId, uint3
 int32_t TaskManagerService::UnregisterManagedProcessForCaller(const std::string &taskId,
     AttributionId attributionId, int32_t callerUid)
 {
-    // Ownership gate then delegation; see RegisterManagedProcessForCaller for the gap note.
+    // Ownership gate then delegation; see RegisterManagedProcessForCaller for the gap
+    // note. A non-positive callerUid has no anchor and is rejected.
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::APPMGR, "called");
-    if (attributionId <= 0 || taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN) {
+    if (attributionId <= 0 || callerUid <= 0 || !IsTaskIdValidForAttribution(taskId)) {
         TAG_LOGW(AAFwkTag::APPMGR, "invalid param, taskId size: %{public}zu, "
             "attributionId: %{public}" PRId64, taskId.size(), attributionId);
         return INVALID_PARAMETERS_ERR;
@@ -430,7 +434,7 @@ int32_t TaskManagerService::UnregisterManagedProcessForCaller(const std::string 
             TAG_LOGW(AAFwkTag::APPMGR, "task not found, taskId: %{public}s", taskId.c_str());
             return ERR_TASK_NOT_FOUND;
         }
-        if (callerUid >= 0 && it->second.creatorUid != callerUid) {
+        if (it->second.creatorUid != callerUid) {
             TAG_LOGW(AAFwkTag::APPMGR, "caller is not the creator, rejected, taskId: %{public}s, "
                 "creator uid: %{public}d, caller uid: %{public}d", taskId.c_str(), it->second.creatorUid,
                 callerUid);

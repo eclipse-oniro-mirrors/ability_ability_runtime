@@ -516,8 +516,6 @@ int32_t AppMgrStub::OnRemoteRequestInnerNinth(uint32_t code, MessageParcel &data
             return HandleRegisterManagedProcess(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_MANAGED_PROCESS):
             return HandleUnregisterManagedProcess(data, reply);
-        case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_IN_APP_SKILL_PROCESS):
-            return HandleRegisterInAppSkillProcess(data, reply);
     }
     return INVALID_FD;
 }
@@ -2915,30 +2913,6 @@ int32_t AppMgrStub::HandleUnregisterManagedProcess(MessageParcel &data, MessageP
     auto result = UnregisterManagedProcess(taskId, attributionId, callerUid);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::APPMGR, "write result fail");
-        return ERR_APPEXECFWK_PARCEL_ERROR;
-    }
-    return NO_ERROR;
-}
-
-int32_t AppMgrStub::HandleRegisterInAppSkillProcess(MessageParcel &data, MessageParcel &reply)
-{
-    HITRACE_METER(HITRACE_TAG_APP);
-    std::string taskId = Str16ToStr8(data.ReadString16());
-    std::string bundleName = Str16ToStr8(data.ReadString16());
-    int32_t callerUid = data.ReadInt32();
-    int32_t resolvedPid = -1;
-    int64_t attributionId = 0;
-    auto result = RegisterInAppSkillProcess(taskId, bundleName, callerUid, resolvedPid, attributionId);
-    if (!reply.WriteInt32(result)) {
-        TAG_LOGE(AAFwkTag::APPMGR, "write result fail");
-        return ERR_APPEXECFWK_PARCEL_ERROR;
-    }
-    if (!reply.WriteInt32(resolvedPid)) {
-        TAG_LOGE(AAFwkTag::APPMGR, "write resolvedPid fail");
-        return ERR_APPEXECFWK_PARCEL_ERROR;
-    }
-    if (!reply.WriteInt64(attributionId)) {
-        TAG_LOGE(AAFwkTag::APPMGR, "write attributionId fail");
         return ERR_APPEXECFWK_PARCEL_ERROR;
     }
     return NO_ERROR;

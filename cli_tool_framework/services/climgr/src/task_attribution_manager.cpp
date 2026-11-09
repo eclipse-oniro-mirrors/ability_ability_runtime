@@ -80,33 +80,5 @@ int32_t TaskAttributionManager::DetachProcess(const std::string &taskId, int64_t
     }
     return result;
 }
-
-int32_t TaskAttributionManager::AttachInAppSkillProcess(const std::string &taskId,
-    const std::string &bundleName, pid_t &outPid, int64_t &attributionId, int32_t callerUid)
-{
-    outPid = -1;
-    attributionId = 0;
-    if (taskId.empty() || !IsValidTraceId(taskId) || bundleName.empty()) {
-        TAG_LOGW(AAFwkTag::CLI_TOOL, "in-app skill attach skipped: invalid taskId or empty bundleName");
-        return AAFwk::INVALID_PARAMETERS_ERR;
-    }
-    AppExecFwk::AppMgrClient *appMgrClient = appMgrClient_.get();
-    if (appMgrClient->ConnectAppMgrService() != AppExecFwk::AppMgrResultCode::RESULT_OK) {
-        TAG_LOGW(AAFwkTag::CLI_TOOL, "in-app skill attach failed: appmgr unreachable, taskId: %{public}s",
-            taskId.c_str());
-        return AAFwk::INNER_ERR;
-    }
-    int32_t resolvedPid = -1;
-    int32_t result = appMgrClient->RegisterInAppSkillProcess(taskId, bundleName, callerUid, resolvedPid,
-        attributionId);
-    if (result != ERR_OK || resolvedPid <= 0) {
-        attributionId = 0;
-        TAG_LOGW(AAFwkTag::CLI_TOOL, "in-app skill attach rejected, taskId: %{public}s, "
-            "bundle: %{public}s, ret: %{public}d", taskId.c_str(), bundleName.c_str(), result);
-        return result == ERR_OK ? AAFwk::INNER_ERR : result;
-    }
-    outPid = static_cast<pid_t>(resolvedPid);
-    return ERR_OK;
-}
 } // namespace CliTool
 } // namespace OHOS

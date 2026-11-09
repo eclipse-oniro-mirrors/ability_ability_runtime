@@ -53,7 +53,9 @@ public:
         const std::string &targetBundleName, const std::string &callerBundleName,
         uint32_t callerTokenId,
         const sptr<ISkillExecuteCallback> &callback = nullptr,
-        const std::string &externalRequestCode = "");
+        const std::string &externalRequestCode = "",
+        const std::string &taskId = "",
+        int32_t callerUid = -1);
 
     int32_t ExecuteSkillDone(const std::string &requestCode, int32_t resultCode,
         const AppExecFwk::SkillExecuteResult &result,
@@ -62,10 +64,24 @@ public:
     void OnTimeout(int64_t requestCodeSeq);
 
     void OnLaunchCompleted(const std::string &requestCode);
+    // Early attribution anchors (UIAbility scope only; extension skill executions run
+    // unattributed this phase): register once the pid is provably the skill host and the
+    // skill Want has not left AMS yet; the targetPid latch keeps a double-fire idempotent.
+    void RegisterAttributionForRecord(const std::string &requestCode, pid_t pid,
+        const std::string &expectedBundle);
+    void TryRegisterAttributionFromWant(const Want &want, pid_t pid,
+        const std::string &expectedBundle);
     void OnLaunchFailed(const std::string &requestCode, int32_t errCode);
     void OnTargetProcessDied(const std::string &bundleName, pid_t pid);
 
 private:
+    // Attribution handed out by RemoveRecord for the lock-external unregister.
+    struct AttributionSnapshot {
+        std::string taskId;
+        int64_t attributionId = 0;
+        int32_t callerUid = -1;
+    };
+
     class CallerDeathRecipient : public IRemoteObject::DeathRecipient {
     public:
         CallerDeathRecipient(std::function<void(const std::string &)> callback, std::string requestCode)
@@ -107,11 +123,16 @@ private:
         const std::string &moduleName, int32_t userId);
     AppExecFwk::ExtensionAbilityType ResolveTargetType(const std::string &bundleName,
         const std::string &moduleName, const std::string &abilityName, int32_t userId);
-    void RemoveRecord(const std::string &requestCode);
+    void RemoveRecord(const std::string &requestCode, AttributionSnapshot &snapshot);
     void OnCallerDied(const std::string &requestCode);
     void PostSkillExecuteTimeout(const std::string &requestCode, uint64_t requestCodeSeq);
     void RemoveSkillExecuteTimeoutLocked(uint64_t requestCodeSeq);
     void EnsureAppStateObserverRegistered();
+    // Attribution register/unregister delegated to appmgr via AppScheduler; must run
+    // outside mutex_. Ownership is enforced server-side against callerUid.
+    void RegisterAttributedProcess(const std::string &taskId, pid_t pid, int32_t callerUid,
+        int64_t &attributionId);
+    void UnregisterAttributedProcess(const AttributionSnapshot &snapshot);
 
     ffrt::mutex mutex_;
     uint64_t requestCodeSeq_ = 0;

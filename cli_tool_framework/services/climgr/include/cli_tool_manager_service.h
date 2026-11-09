@@ -275,7 +275,6 @@ private:
     void RemoveSessionRecord(const std::string &sessionId);
 
     void AttachTaskAttribution(const std::shared_ptr<SessionRecord> &record);
-    void AttachSkillTaskAttribution(const std::shared_ptr<SessionRecord> &record, const std::string &bundleName);
     void PostDetachTaskAttribution(const std::string &taskId, int64_t attributionId, int32_t callerUid);
     // Caller must hold sessionsMutex_. Consumes an ATTACHED attribution into the detach triple
     // (returns true) or relays a PENDING one to the write-back (CONSUMED, nothing to detach now).

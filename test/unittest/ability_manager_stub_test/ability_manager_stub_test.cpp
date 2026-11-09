@@ -6574,6 +6574,96 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_ExecuteInAppSkillWithTokenId
 
 /*
  * Feature: AbilityManagerService
+ * Function: OnRemoteRequest
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub ExecuteInAppSkillWithTokenIdInner
+ * EnvConditions: code is EXECUTE_IN_APP_SKILL_WITH_TOKEN_ID, peer writes tail toolCallId
+ *                  followed by the attribution taskId
+ * CaseDescription: Verify taskId is parsed from the appended tail field (after toolCallId)
+ *                  without disturbing the wire positions of the preceding fields
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_ExecuteInAppSkillWithTokenId_TaskId_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    const uint32_t callerTokenId = 3200003;
+
+    WriteInterfaceToken(data);
+    data.WriteUint32(callerTokenId);
+    data.WriteString16(Str8ToStr16("com.example.skill"));
+    data.WriteString16(Str8ToStr16("entry"));
+    data.WriteString16(Str8ToStr16("demoSkill"));
+    data.WriteString16(Str8ToStr16("ets/script.abc"));
+    data.WriteString16(Str8ToStr16("onExecute"));
+    AAFwk::WantParams skillArgs;
+    skillArgs.SetParam("key0", String::Box("value0"));
+    data.WriteParcelable(&skillArgs);
+    data.WriteBool(false);
+    data.WriteString16(Str8ToStr16("tc-20260804-0002"));
+    data.WriteString16(Str8ToStr16("task-skill-0001"));
+    data.WriteInt32(20000123);
+
+    AppExecFwk::SkillExecuteRequest captured;
+    EXPECT_CALL(*stub_, ExecuteInAppSkillWithTokenId(_, _))
+        .WillOnce(DoAll(SaveArg<0>(&captured), Return(ERR_OK)));
+    int res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::EXECUTE_IN_APP_SKILL_WITH_TOKEN_ID),
+        data, reply, option);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+    EXPECT_EQ(captured.toolCallId, "tc-20260804-0002");
+    EXPECT_EQ(captured.taskId, "task-skill-0001");
+    EXPECT_EQ(captured.callerUid, 20000123);
+    EXPECT_EQ(data.GetReadableBytes(), 0u);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: OnRemoteRequest
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub ExecuteInAppSkillWithTokenIdInner
+ * EnvConditions: code is EXECUTE_IN_APP_SKILL_WITH_TOKEN_ID, peer is an older proxy
+ *                  that writes neither the tail toolCallId nor the tail taskId
+ * CaseDescription: Verify both tail fields are treated as absent (taskId and toolCallId
+ *                  fall back to empty) and every preceding field still parses
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_ExecuteInAppSkillWithTokenId_TaskId_0200, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    const uint32_t callerTokenId = 3200004;
+
+    WriteInterfaceToken(data);
+    data.WriteUint32(callerTokenId);
+    data.WriteString16(Str8ToStr16("com.example.skill"));
+    data.WriteString16(Str8ToStr16("entry"));
+    data.WriteString16(Str8ToStr16("demoSkill"));
+    data.WriteString16(Str8ToStr16("ets/script.abc"));
+    data.WriteString16(Str8ToStr16("onExecute"));
+    AAFwk::WantParams skillArgs;
+    skillArgs.SetParam("key0", String::Box("value0"));
+    data.WriteParcelable(&skillArgs);
+    data.WriteBool(false);
+
+    AppExecFwk::SkillExecuteRequest captured;
+    EXPECT_CALL(*stub_, ExecuteInAppSkillWithTokenId(_, _))
+        .WillOnce(DoAll(SaveArg<0>(&captured), Return(ERR_OK)));
+    int res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::EXECUTE_IN_APP_SKILL_WITH_TOKEN_ID),
+        data, reply, option);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+    EXPECT_EQ(captured.toolCallId, "");
+    EXPECT_EQ(captured.taskId, "");
+    EXPECT_EQ(captured.callerUid, -1);
+    ASSERT_NE(captured.skillArgs, nullptr);
+    EXPECT_EQ(captured.skillArgs->GetStringParam("key0"), "value0");
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: BackToCallerInner
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService BackToCallerInner

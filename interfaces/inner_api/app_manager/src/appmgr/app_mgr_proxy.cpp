@@ -3532,29 +3532,5 @@ int32_t AppMgrProxy::UnregisterManagedProcess(const std::string &taskId, int64_t
     return reply.ReadInt32();
 }
 
-int32_t AppMgrProxy::RegisterInAppSkillProcess(const std::string &taskId, const std::string &bundleName,
-    int32_t callerUid, int32_t &resolvedPid, int64_t &attributionId)
-{
-    resolvedPid = -1;
-    attributionId = 0;
-    MessageParcel data;
-    MessageParcel reply;
-    MessageOption option(MessageOption::TF_SYNC);
-
-    if (!WriteInterfaceToken(data)) {
-        TAG_LOGE(AAFwkTag::APPMGR, "Write interface token failed.");
-        return IPC_PROXY_ERR;
-    }
-
-    PARCEL_UTIL_WRITE_RET_INT(data, String16, Str8ToStr16(taskId));
-    PARCEL_UTIL_WRITE_RET_INT(data, String16, Str8ToStr16(bundleName));
-    PARCEL_UTIL_WRITE_RET_INT(data, Int32, callerUid);
-    PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::REGISTER_IN_APP_SKILL_PROCESS, data, reply, option);
-    int32_t result = reply.ReadInt32();
-    resolvedPid = reply.ReadInt32();
-    attributionId = reply.ReadInt64();
-    return result;
-}
-
 }  // namespace AppExecFwk
 }  // namespace OHOS

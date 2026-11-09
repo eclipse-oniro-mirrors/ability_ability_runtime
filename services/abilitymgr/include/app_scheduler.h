@@ -338,6 +338,30 @@ public:
     int32_t UnregisterTaskAttribution(const std::string &taskId, int64_t attributionId);
 
     /**
+     * RegisterManagedProcess, attribute a skill-launched process to a task by key;
+     * forwarded to appmgr over its IPC face.
+     *
+     * @param taskId, the attribution key of the task.
+     * @param pid, the pid of the process to attribute.
+     * @param tool, the AttributionTool wire value of the attribution.
+     * @param callerUid, the forensic creator uid; non-positive is rejected (no anchor).
+     * @param attributionId, outputs the server-assigned handle (> 0) on success.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t tool,
+        int32_t callerUid, int64_t &attributionId);
+
+    /**
+     * UnregisterManagedProcess, remove a skill-path attribution by its handle.
+     *
+     * @param taskId, the attribution key of the task.
+     * @param attributionId, the handle returned by RegisterManagedProcess.
+     * @param callerUid, the forensic creator uid; non-positive is rejected (no anchor).
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t UnregisterManagedProcess(const std::string &taskId, int64_t attributionId, int32_t callerUid);
+
+    /**
      * KillProcessesByUserId, call KillProcessesByUserId() through proxy object,
      * kill the process by user id.
      * Send appSpawn uninstall debug hap message.

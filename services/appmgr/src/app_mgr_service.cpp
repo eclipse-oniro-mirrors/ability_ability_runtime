@@ -72,6 +72,8 @@ const int32_t HIDUMPER_SERVICE_UID = 1212;
 // attribution IPC face; uid 3092 per base/startup/init/services/etc/passwd:183 and
 // cli_tool_framework/etc/profile/aimgr.cfg — keep both in sync.
 const int32_t AIMGR_SERVICE_UID = 3092;
+// Foundation uid: AMS (SA 180) relays climgr-stamped attribution requests here.
+const int32_t FOUNDATION_UID = 5523;
 constexpr int32_t RESOURCE_MANAGER_UID = 1096;
 constexpr const int INDEX_PID = 1;
 constexpr const int INDEX_CMD = 2;
@@ -230,15 +232,22 @@ bool IsTaskIdSanitized(const std::string &taskId)
         return c >= 0x20 && c != 0x7f;
     });
 }
+
+bool IsTrustedAttributionCaller()
+{
+    // climgr stamps the creator uid itself; foundation (AMS) only relays it.
+    auto callingUid = IPCSkeleton::GetCallingUid();
+    return callingUid == AIMGR_SERVICE_UID || callingUid == FOUNDATION_UID;
+}
 } // namespace
 
 int32_t AppMgrService::RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t tool,
     int32_t callerUid, int64_t &attributionId)
 {
     attributionId = 0;
-    // The native climgr token never carries the system-app flag: gate on the aimgr uid alone.
-    if (IPCSkeleton::GetCallingUid() != AIMGR_SERVICE_UID) {
-        TAG_LOGW(AAFwkTag::APPMGR, "caller is not climgr process, rejected, calling uid: %{public}d",
+    // The native climgr token never carries the system-app flag: gate on the uid alone.
+    if (!IsTrustedAttributionCaller()) {
+        TAG_LOGW(AAFwkTag::APPMGR, "caller is not climgr/foundation process, rejected, calling uid: %{public}d",
             IPCSkeleton::GetCallingUid());
         return AAFwk::ERR_NOT_SYSTEM_APP;
     }
@@ -257,8 +266,8 @@ int32_t AppMgrService::RegisterManagedProcess(const std::string &taskId, int32_t
 int32_t AppMgrService::UnregisterManagedProcess(const std::string &taskId, int64_t attributionId,
     int32_t callerUid)
 {
-    if (IPCSkeleton::GetCallingUid() != AIMGR_SERVICE_UID) {
-        TAG_LOGW(AAFwkTag::APPMGR, "caller is not climgr process, rejected, calling uid: %{public}d",
+    if (!IsTrustedAttributionCaller()) {
+        TAG_LOGW(AAFwkTag::APPMGR, "caller is not climgr/foundation process, rejected, calling uid: %{public}d",
             IPCSkeleton::GetCallingUid());
         return AAFwk::ERR_NOT_SYSTEM_APP;
     }
@@ -269,42 +278,6 @@ int32_t AppMgrService::UnregisterManagedProcess(const std::string &taskId, int64
     }
     return TaskManagerService::GetInstance().UnregisterManagedProcessForCaller(taskId, attributionId,
         callerUid);
-}
-
-int32_t AppMgrService::RegisterInAppSkillProcess(const std::string &taskId, const std::string &bundleName,
-    int32_t callerUid, int32_t &resolvedPid, int64_t &attributionId)
-{
-    resolvedPid = -1;
-    attributionId = 0;
-    if (IPCSkeleton::GetCallingUid() != AIMGR_SERVICE_UID) {
-        TAG_LOGW(AAFwkTag::APPMGR, "caller is not climgr process, rejected, calling uid: %{public}d",
-            IPCSkeleton::GetCallingUid());
-        return AAFwk::ERR_NOT_SYSTEM_APP;
-    }
-    if (!IsTaskIdSanitized(taskId) || bundleName.empty()) {
-        TAG_LOGW(AAFwkTag::APPMGR, "invalid param, taskId size: %{public}zu, bundle size: %{public}zu",
-            taskId.size(), bundleName.size());
-        return AAFwk::INVALID_PARAMETERS_ERR;
-    }
-    if (appMgrServiceInner_ == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "inner service is not ready");
-        return AAFwk::INNER_ERR;
-    }
-    int32_t taskUserId = callerUid >= 0 ? callerUid / BASE_USER_RANGE : -1;
-    pid_t targetPid = appMgrServiceInner_->ResolveMainProcessPidByBundleName(bundleName, taskUserId);
-    if (targetPid <= 0) {
-        TAG_LOGW(AAFwkTag::APPMGR, "main process not found, bundle: %{public}s", bundleName.c_str());
-        return AAFwk::INNER_ERR;
-    }
-    AttributionRecord attribution;
-    attribution.pid = targetPid;
-    attribution.tool = AttributionTool::CLI;
-    int32_t result = TaskManagerService::GetInstance().RegisterManagedProcessForCaller(taskId, attribution,
-        callerUid, attributionId);
-    if (result == ERR_OK) {
-        resolvedPid = static_cast<int32_t>(targetPid);
-    }
-    return result;
 }
 
 AppMgrServiceState AppMgrService::QueryServiceState()

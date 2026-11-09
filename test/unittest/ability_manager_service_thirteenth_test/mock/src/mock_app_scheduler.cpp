@@ -415,5 +415,41 @@ int32_t AppScheduler::UnregisterTaskAttribution(const std::string &taskId, int64
         "attributionId: %{public}" PRId64, taskId.c_str(), attributionId);
     return ERR_OK;
 }
+
+int32_t AppScheduler::RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t tool,
+    int32_t callerUid, int64_t &attributionId)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::RegisterManagedProcess, taskId: %{public}s, pid: %{public}d",
+        taskId.c_str(), pid);
+    auto &status = MyStatus::GetInstance();
+    // Synchronous re-entrancy hook: fired before the counters update so a test can act
+    // while the register call is in flight (e.g. remove the record to open the
+    // record-gone-before-write-back window deterministically).
+    if (status.asRegisterManagedHook_ != nullptr) {
+        auto hook = status.asRegisterManagedHook_;
+        status.asRegisterManagedHook_ = nullptr;
+        hook();
+    }
+    status.asRegisterManagedCount_++;
+    status.asRegisterManagedTaskId_ = taskId;
+    status.asRegisterManagedPid_ = pid;
+    status.asRegisterManagedTool_ = tool;
+    status.asRegisterManagedCallerUid_ = callerUid;
+    attributionId = status.asRegisterManagedAttributionId_;
+    return status.asRegisterManagedRet_;
+}
+
+int32_t AppScheduler::UnregisterManagedProcess(const std::string &taskId, int64_t attributionId,
+    int32_t callerUid)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::UnregisterManagedProcess, taskId: %{public}s, "
+        "attributionId: %{public}" PRId64, taskId.c_str(), attributionId);
+    auto &status = MyStatus::GetInstance();
+    status.asUnregisterManagedCount_++;
+    status.asUnregisterManagedTaskId_ = taskId;
+    status.asUnregisterManagedAttributionId_ = attributionId;
+    status.asUnregisterManagedCallerUid_ = callerUid;
+    return ERR_OK;
+}
 } // namespace AAFwk
 } // namespace OHOS

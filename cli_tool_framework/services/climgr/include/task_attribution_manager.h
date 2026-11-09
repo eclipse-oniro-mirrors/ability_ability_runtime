@@ -26,7 +26,10 @@
 namespace OHOS {
 namespace CliTool {
 
-// Numeric contract with AppExecFwk::AttributionTool::CLI (enum not exported here); keep in sync.
+// Numeric contract with AppExecFwk::AttributionTool::CLI (enum not exported here; defined
+// in services/appmgr/include/task_mgr/attribution_record.h): keep in sync. AMS-side mirror:
+// skill_execute_manager.cpp. Drift is caught by the static_assert in
+// task_attribution_manager_test/task_attribution_manager_test.cpp.
 constexpr int32_t ATTRIBUTION_TOOL_CLI = 2;
 
 class TaskAttributionManager {
@@ -42,10 +45,6 @@ public:
 
     // Detach is keyed by the server-assigned handle (attributionId <= 0 is a no-op); idempotent.
     int32_t DetachProcess(const std::string &taskId, int64_t attributionId, int32_t callerUid);
-
-    // A cold-start / not-running target is a known failure (the skill execution stands); non-blocking.
-    int32_t AttachInAppSkillProcess(const std::string &taskId, const std::string &bundleName, pid_t &outPid,
-        int64_t &attributionId, int32_t callerUid);
 
     // Test seam only: drop the cached appmgr connection; production never calls.
     void ResetConnection();

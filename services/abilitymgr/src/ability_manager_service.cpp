@@ -38,6 +38,7 @@
 #include "app_exit_reason_data_manager.h"
 #include "app_mgr_constants.h"
 #include "app_mgr_util.h"
+#include "task_mgr/common.h"
 #include "app_recovery_mgr.h"
 #include "application_util.h"
 #include "assert_fault_callback_death_mgr.h"
@@ -411,6 +412,8 @@ constexpr uint32_t GET_PARAMETER_VALUE_LEN = 128;
 constexpr int32_t SIZE_10 = 10;
 constexpr int32_t HIDUMPER_SERVICE_UID = 1212;
 constexpr int32_t ACCOUNT_MGR_SERVICE_UID = 3058;
+// Aimgr user running climgr; the only stamper trusted for the forensic callerUid.
+constexpr int32_t AIMGR_SERVICE_UID = 3092;
 constexpr int32_t DMS_UID = 5522;
 constexpr int32_t SAMGR_UID = 5555;
 constexpr int32_t BOOTEVENT_COMPLETED_DELAY_TIME = 1000;
@@ -8259,6 +8262,10 @@ int AbilityManagerService::AttachAbilityThread(
     } else {
         std::string entry = "AbilityManagerService::AttachAbilityThread; the end of load lifecycle.";
         FreezeUtil::GetInstance().AddLifecycleEvent(token, entry);
+        // Early attribution anchor (cold UIAbility): the attaching pid is the skill host
+        // process and the skill Want has not left AMS yet.
+        DelayedSingleton<SkillExecuteManager>::GetInstance()->TryRegisterAttributionFromWant(
+            abilityRecord->GetWant(), IPCSkeleton::GetCallingPid(), abilityRecord->GetInfoBundleName());
         int32_t ownerMissionUserId = abilityRecord->GetOwnerMissionUserId();
         if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
             auto uiAbilityManager = GetUIAbilityManagerByUserId(ownerMissionUserId);
@@ -16349,6 +16356,23 @@ int32_t AbilityManagerService::ExecuteInAppSkillWithTokenId(const AppExecFwk::Sk
     }
     int32_t userId = hapInfo.userID;
     std::string callerBundleName = hapInfo.bundleName;
+    // Forensic creator uid, honored only when climgr (aimgr uid) is the direct IPC caller;
+    // otherwise degrades to -1, which skips the ownership check. HapTokenInfo.uid is not
+    // usable: it is not serialized by HapTokenInfoParcel (indeterminate over IPC).
+    int32_t callerUid = (IPCSkeleton::GetCallingUid() == AIMGR_SERVICE_UID) ? request.callerUid : -1;
+    // Defense in depth: re-validate the climgr-stamped taskId; it never enters the skill Want.
+    std::string taskId = request.taskId;
+    if (!taskId.empty() && !AppExecFwk::IsTaskIdValidForAttribution(taskId)) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "ExecuteInAppSkillWithTokenId taskId invalid, length: %{public}zu",
+            taskId.length());
+        taskId.clear();
+    }
+    // Anchorless attribution (callerUid < 0) never registers; keep an audit trail of the reporter.
+    if (callerUid < 0 && !taskId.empty()) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR,
+            "anchorless attribution requested, calling uid:%{public}d, tokenId:%{public}u",
+            IPCSkeleton::GetCallingUid(), request.callerTokenId);
+    }
 
     // 1. Query skill configuration from bundle framework
     AppExecFwk::SkillInfo skillInfo;
@@ -16369,7 +16393,8 @@ int32_t AbilityManagerService::ExecuteInAppSkillWithTokenId(const AppExecFwk::Sk
 
     // 3. Create execute record with requestCode and callback
     std::string requestCode = DelayedSingleton<SkillExecuteManager>::GetInstance()->CreateExecuteRecord(
-        nullptr, request.bundleName, callerBundleName, request.callerTokenId, callback);
+        nullptr, request.bundleName, callerBundleName, request.callerTokenId, callback,
+        "", taskId, callerUid);
 
     // 4. Generate Want with abilityName, srcEntries and requestCode
     Want want;
@@ -16386,6 +16411,13 @@ int32_t AbilityManagerService::ExecuteInAppSkillWithTokenId(const AppExecFwk::Sk
     // 5. Launch target based on type
     int32_t launchRet = ERR_OK;
     if (targetType == AppExecFwk::ExtensionAbilityType::SERVICE) {
+        // Scope constraint: extension targets are not attributed in the current phase —
+        // both early anchors are UIAbility-only, so an attribution-eligible session runs
+        // unattributed by design (taskId/callerUid stay on the record for audit only).
+        if (!taskId.empty()) {
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "skill target is an extension, runs unattributed this phase, "
+                "taskId:%{public}s, req:%{public}s", taskId.c_str(), requestCode.c_str());
+        }
         launchRet = StartExtensionAbilityWithSkill(want, userId, request.callerTokenId);
     } else {
         launchRet = StartAbilityByCallWithSkill(want, nullptr, userId, request.callerTokenId);
@@ -16439,6 +16471,10 @@ int32_t AbilityManagerService::StartAbilityByCallWithSkill(const Want &want,
             TAG_LOGE(AAFwkTag::ABILITYMGR, "null scheduler");
             return ERR_INVALID_VALUE;
         }
+        // Early attribution anchor (warm UIAbility): register before the ExecuteSkill
+        // dispatch carries the skill Want to the app.
+        DelayedSingleton<SkillExecuteManager>::GetInstance()->TryRegisterAttributionFromWant(
+            abilityRequest.want, targetRecord->GetPid(), targetRecord->GetInfoBundleName());
         targetRecord->GetScheduler()->ExecuteSkill(abilityRequest.want);
     } else {
         result = StartAbilityByCall(want, connect, callerToken, oriValidUserId);
