@@ -9757,7 +9757,11 @@ int32_t AbilityManagerService::UninstallAppInner(const std::string &bundleName, 
     } else {
         AAFwk::ExitReasonCompability exitReasonCompability(
             HiviewDFX::ProcessKillReason::KillEventId::REASON_UNINSTALL_APP);
-        RecordAppWithReason(NO_PID, uid, exitReasonCompability);
+        // Same-process BMS caller: call the helper directly to bypass the wrapper's self-call guard.
+        if (appExitReasonHelper_ != nullptr) {
+            appExitReasonHelper_->RecordAppWithReason(NO_PID, uid, exitReasonCompability,
+                IPCSkeleton::GetCallingPid());
+        }
         IN_PROCESS_CALL_WITHOUT_RET(
             KeepAliveProcessManager::GetInstance().SetApplicationKeepAlive(bundleName, userId, false, true, false));
         if (userId == U1_USER_ID) {
