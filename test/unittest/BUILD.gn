@@ -383,6 +383,7 @@ group("unittest") {
       "dynamic_loader_ohos_test:unittest",
       "dynamic_loader_test:unittest",
       "ecological_rule_interceptor_test:unittest",
+      "ets_context_utils_test:unittest",
       "ets_ui_ability_instance_test:unittest",
       "event_handler_wrap_test:unittest",
       "event_report_test:unittest",
