@@ -52,6 +52,38 @@ constexpr const char* JITPERMISSIONSLIST_PERMISSIONS_NAME = "permissions";
 constexpr const char* UNINSTALL_BUNDLE_NAME = "uninstallDebugHapMsg";
 constexpr const char* IPCGROUPINFOLIST_IPCGROUPID = "ipcGroupId";
 constexpr const char* IPCGROUPINFOLIST_GID = "ipcGroupGid";
+constexpr const char* MSG_EXT_NAME_PRELOAD_SO_LIST = "PreloadSoList";
+constexpr const char* PRELOAD_SO_KEY_LIB_PATH = "libPath";
+constexpr const char* PRELOAD_SO_KEY_SO = "so";
+constexpr size_t MAX_SO_NAME_LENGTH = 255;
+
+std::string SerializePreloadSoList(const std::vector<std::string>& soNames,
+    const std::string& libPath)
+{
+    nlohmann::json jsonArray = nlohmann::json::array();
+    nlohmann::json soArray = nlohmann::json::array();
+    for (const auto& soName : soNames) {
+        if (soName.empty() || soName.size() > MAX_SO_NAME_LENGTH) {
+            TAG_LOGE(AAFwkTag::APPMGR, "invalid so name length: %{public}s", soName.c_str());
+            continue;
+        }
+        if (soName.find('/') != std::string::npos ||
+            soName.find('\\') != std::string::npos ||
+            soName.find("..") != std::string::npos) {
+            TAG_LOGE(AAFwkTag::APPMGR, "invalid so name (path traversal): %{public}s", soName.c_str());
+            continue;
+        }
+        soArray.push_back(soName);
+    }
+    if (soArray.empty()) {
+        return jsonArray.dump();
+    }
+    nlohmann::json entry;
+    entry[PRELOAD_SO_KEY_LIB_PATH] = nlohmann::json::array({libPath});
+    entry[PRELOAD_SO_KEY_SO] = soArray;
+    jsonArray.push_back(entry);
+    return jsonArray.dump();
+}
 }
 AppSpawnClient::AppSpawnClient(bool isNWebSpawn)
 {
@@ -471,6 +503,16 @@ int32_t AppSpawnClient::AppspawnSetExtMsgMore(const AppSpawnStartMsg &startMsg, 
             return ret;
         }
         TAG_LOGD(AAFwkTag::APPMGR, "Send JIT Permission: %{public}s", jitPermissionsStr.c_str());
+    }
+
+    if (!startMsg.preloadSoList.empty()) {
+        std::string preloadSoListJson = SerializePreloadSoList(startMsg.preloadSoList);
+        ret = AppSpawnReqMsgAddStringInfo(reqHandle, MSG_EXT_NAME_PRELOAD_SO_LIST, preloadSoListJson.c_str());
+        if (ret) {
+            TAG_LOGE(AAFwkTag::APPMGR, "PreloadSoList add fail, ret: %{public}d", ret);
+            return ret;
+        }
+        TAG_LOGD(AAFwkTag::APPMGR, "Send PreloadSoList success");
     }
 
     return AppspawnSetExtMsgSec(startMsg, reqHandle);
