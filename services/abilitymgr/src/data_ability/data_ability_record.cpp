@@ -78,6 +78,7 @@ int DataAbilityRecord::WaitForLoaded(ffrt::mutex &mutex, const std::chrono::syst
 
     std::unique_lock<ffrt::mutex> lock(mutex, std::adopt_lock);
     auto ret = loadedCond_.wait_for(lock, timeout, [this] { return ability_->GetAbilityState() == ACTIVE; });
+    lock.release();
     if (!ret) {
         return ERR_TIMED_OUT;
     }

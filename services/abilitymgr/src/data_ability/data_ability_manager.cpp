@@ -371,7 +371,7 @@ std::shared_ptr<AbilityRecord> DataAbilityManager::GetAbilityRecordById(int64_t 
             continue;
         }
         auto abilityRecord = it->second->GetAbilityRecord();
-        if (abilityRecord->GetRecordId() == id) {
+        if (abilityRecord && abilityRecord->GetRecordId() == id) {
             return abilityRecord;
         }
     }
