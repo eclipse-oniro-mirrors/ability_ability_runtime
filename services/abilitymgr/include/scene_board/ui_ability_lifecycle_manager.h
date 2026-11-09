@@ -361,28 +361,6 @@ public:
     UIAbilityRecordPtr GetAbilityRecordsById(int32_t sessionId) const;
 
     /**
-     * Get check ability number.
-     *
-     * @param bundleName record ability info bundle name.
-     * @param abilityName record ability info ability name.
-     * @param moduleName recode ability info module name.
-     * @return Return find ability number.
-     */
-    int32_t CheckAbilityNumber(
-        const std::string &bundleName, const std::string &abilityName, const std::string &moduleName) const;
-
-    /**
-     * If ability number more then one, send event info.
-     *
-     * @param userId record ability info user id.
-     * @param bundleName record ability info bundle name.
-     * @param abilityName record ability info ability name.
-     * @param moduleName recode ability info module name.
-     */
-    void MoreAbilityNumbersSendEventInfo(
-        int32_t userId, const std::string &bundleName, const std::string &abilityName, const std::string &moduleName);
-
-    /**
      * Report grant uri permission event.
      *
      * @param abilityRequest ability request info.
@@ -508,7 +486,9 @@ public:
         int32_t appIndex);
 
     /**
-     * @brief Get ability record by token
+     * @brief Get ability record by token (thread-safe).
+     *        Acquires sessionLock_ internally; do NOT call while holding sessionLock_
+     *        (use GetAbilityRecordByTokenLocked instead).
      * @param token The ability token
      * @return Shared pointer to the ability record, nullptr if not found
      */
@@ -831,6 +811,38 @@ private:
      * @return true if contained, false otherwise
      */
     bool IsContainsAbilityInner(const sptr<IRemoteObject> &token) const;
+
+    /**
+     * @brief Get ability record by token, caller must hold sessionLock_.
+     *        Iterates terminateAbilityList_ and sessionAbilityMap_ without locking.
+     * @param token The ability token
+     * @return Shared pointer to the ability record, nullptr if not found
+     */
+    UIAbilityRecordPtr GetAbilityRecordByTokenLocked(const sptr<IRemoteObject> &token) const;
+
+    /**
+     * @brief Get check ability number, caller must hold sessionLock_.
+     *        Iterates sessionAbilityMap_ without locking.
+     *
+     * @param bundleName record ability info bundle name.
+     * @param abilityName record ability info ability name.
+     * @param moduleName recode ability info module name.
+     * @return Return find ability number.
+     */
+    int32_t CheckAbilityNumber(
+        const std::string &bundleName, const std::string &abilityName, const std::string &moduleName) const;
+
+    /**
+     * @brief If ability number more then one, send event info.
+     *        Caller must hold sessionLock_ (delegates to CheckAbilityNumber).
+     *
+     * @param userId record ability info user id.
+     * @param bundleName record ability info bundle name.
+     * @param abilityName record ability info ability name.
+     * @param moduleName recode ability info module name.
+     */
+    void MoreAbilityNumbersSendEventInfo(
+        int32_t userId, const std::string &bundleName, const std::string &abilityName, const std::string &moduleName);
 
     /**
      * @brief Check ability properties against request
