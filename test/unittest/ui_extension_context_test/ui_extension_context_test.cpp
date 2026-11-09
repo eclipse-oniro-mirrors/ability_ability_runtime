@@ -1977,5 +1977,818 @@ HWTEST_F(UIExtensionContextTest, SetupModalUIExtensionCallbacks_0100, TestSize.L
     TAG_LOGI(AAFwkTag::TEST, "SetupModalUIExtensionCallbacks_0100 end");
 }
 
+/**
+ * @tc.number: GetBrandColorValue_0100
+ * @tc.name: GetBrandColorValue
+ * @tc.desc: Verify GetBrandColorValue returns empty by default and returns stored value under lock.
+ */
+HWTEST_F(UIExtensionContextTest, GetBrandColorValue_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetBrandColorValue_0100 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    EXPECT_EQ(context->GetBrandColorValue(), "");
+    const std::string expectedColor = "#FF0000FF";
+    context->brandColorValue_ = expectedColor;
+    EXPECT_EQ(context->GetBrandColorValue(), expectedColor);
+    context->brandColorValue_.clear();
+    TAG_LOGI(AAFwkTag::TEST, "GetBrandColorValue_0100 end");
+}
+
+/**
+ * @tc.number: GetBrandColorStrategy_0100
+ * @tc.name: GetBrandColorStrategy
+ * @tc.desc: Verify GetBrandColorStrategy returns BRAND_COLOR_FOLLOW_SYSTEM by default.
+ */
+HWTEST_F(UIExtensionContextTest, GetBrandColorStrategy_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetBrandColorStrategy_0100 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    EXPECT_EQ(context->GetBrandColorStrategy(), AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM);
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC;
+    EXPECT_EQ(context->GetBrandColorStrategy(), AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC);
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM;
+    TAG_LOGI(AAFwkTag::TEST, "GetBrandColorStrategy_0100 end");
+}
+
+/**
+ * @tc.number: CreateNewResourceMgr_0100
+ * @tc.name: CreateNewResourceMgr
+ * @tc.desc: Verify CreateNewResourceMgr returns false when abilityInfo is null.
+ */
+HWTEST_F(UIExtensionContextTest, CreateNewResourceMgr_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CreateNewResourceMgr_0100 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    EXPECT_EQ(context->abilityInfo_, nullptr);
+    EXPECT_FALSE(context->CreateNewResourceMgr());
+    TAG_LOGI(AAFwkTag::TEST, "CreateNewResourceMgr_0100 end");
+}
+
+/**
+ * @tc.number: ApplyBrandColorStrategy_0100
+ * @tc.name: ApplyBrandColorStrategy
+ * @tc.desc: Verify ApplyBrandColorStrategy returns false when strategy is BRAND_COLOR_FOLLOW_SYSTEM.
+ */
+HWTEST_F(UIExtensionContextTest, ApplyBrandColorStrategy_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ApplyBrandColorStrategy_0100 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    auto ret = context->ApplyBrandColorStrategy(
+        AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM, "#FF0000FF");
+    EXPECT_FALSE(ret);
+    EXPECT_EQ(context->brandColorStrategy_, AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM);
+    EXPECT_EQ(context->GetBrandColorValue(), "");
+    TAG_LOGI(AAFwkTag::TEST, "ApplyBrandColorStrategy_0100 end");
+}
+
+/**
+ * @tc.number: ApplyBrandColorStrategy_0200
+ * @tc.name: ApplyBrandColorStrategy
+ * @tc.desc: Verify ApplyBrandColorStrategy returns false
+ */
+HWTEST_F(UIExtensionContextTest, ApplyBrandColorStrategy_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ApplyBrandColorStrategy_0200 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    EXPECT_EQ(context->abilityInfo_, nullptr);
+    auto ret = context->ApplyBrandColorStrategy(
+        AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC, "#FF0000FF");
+    EXPECT_FALSE(ret);
+    EXPECT_EQ(context->GetBrandColorValue(), "");
+    TAG_LOGI(AAFwkTag::TEST, "ApplyBrandColorStrategy_0200 end");
+}
+
+/**
+ * @tc.number: HandleBrandColorChange_0100
+ * @tc.name: HandleBrandColorChange
+ * @tc.desc: Verify HandleBrandColorChange returns ERR_INVALID_VALUE when customId is invalid.
+ */
+HWTEST_F(UIExtensionContextTest, HandleBrandColorChange_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_0100 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    AAFwk::Want data;
+    data.SetParam("ohos.application.brandColor", std::string("#FF0000FF"));
+    auto ret = context->HandleBrandColorChange(0, std::move(data));
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(context->GetBrandColorValue(), "");
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_0100 end");
+}
+
+/**
+ * @tc.number: HandleBrandColorChange_0200
+ * @tc.name: HandleBrandColorChange
+ * @tc.desc: Verify HandleBrandColorChange returns ERR_INVALID_VALUE when strategy is BRAND_COLOR_FOLLOW_SYSTEM.
+ */
+HWTEST_F(UIExtensionContextTest, HandleBrandColorChange_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_0200 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    EXPECT_EQ(context->GetBrandColorStrategy(), AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM);
+    AAFwk::Want data;
+    data.SetParam("ohos.application.brandColor", std::string("#FF0000FF"));
+    constexpr uint32_t BRAND_COLOR_BUSINESS = 4001;
+    auto ret = context->HandleBrandColorChange(BRAND_COLOR_BUSINESS, std::move(data));
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(context->GetBrandColorValue(), "");
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_0200 end");
+}
+
+/**
+ * @tc.number: HandleBrandColorChange_0300
+ * @tc.name: HandleBrandColorChange
+ * @tc.desc: Verify HandleBrandColorChange returns ERR_INVALID_VALUE when brandColor is empty.
+ */
+HWTEST_F(UIExtensionContextTest, HandleBrandColorChange_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_0300 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC;
+    AAFwk::Want data;
+    constexpr uint32_t BRAND_COLOR_BUSINESS = 4001;
+    auto ret = context->HandleBrandColorChange(BRAND_COLOR_BUSINESS, std::move(data));
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(context->GetBrandColorValue(), "");
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM;
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_0300 end");
+}
+
+/**
+ * @tc.number: HandleBrandColorChange_0400
+ * @tc.name: HandleBrandColorChange
+ * @tc.desc: Verify HandleBrandColorChange returns ERR_INVALID_VALUE when brandColor equals current value.
+ */
+HWTEST_F(UIExtensionContextTest, HandleBrandColorChange_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_0400 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC;
+    const std::string sameColor = "#FF0000FF";
+    context->brandColorValue_ = sameColor;
+    AAFwk::Want data;
+    data.SetParam("ohos.application.brandColor", sameColor);
+    constexpr uint32_t BRAND_COLOR_BUSINESS = 4001;
+    auto ret = context->HandleBrandColorChange(BRAND_COLOR_BUSINESS, std::move(data));
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(context->GetBrandColorValue(), sameColor);
+    context->brandColorValue_.clear();
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM;
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_0400 end");
+}
+
+/**
+ * @tc.number: HandleBrandColorChange_0500
+ * @tc.name: HandleBrandColorChange
+ * @tc.desc: Verify HandleBrandColorChange returns ERR_INVALID_VALUE when abilityResourceMgr is null.
+ */
+HWTEST_F(UIExtensionContextTest, HandleBrandColorChange_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_0500 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC;
+    context->abilityResourceMgr_ = nullptr;
+    context->resourceManager_ = nullptr;
+    AAFwk::Want data;
+    data.SetParam("ohos.application.brandColor", std::string("#FF0000FF"));
+    constexpr uint32_t BRAND_COLOR_BUSINESS = 4001;
+    auto ret = context->HandleBrandColorChange(BRAND_COLOR_BUSINESS, std::move(data));
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(context->GetBrandColorValue(), "");
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM;
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_0500 end");
+}
+
+/**
+ * @tc.number: HandleBrandColorChange_0600
+ * @tc.name: HandleBrandColorChange
+ * @tc.desc: Verify HandleBrandColorChange returns ERR_OK and updates value when resourceMgr is set.
+ */
+HWTEST_F(UIExtensionContextTest, HandleBrandColorChange_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_0600 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC;
+    std::shared_ptr<Global::Resource::ResourceManager> resourceMgr(Global::Resource::CreateResourceManager());
+    ASSERT_NE(resourceMgr, nullptr);
+    context->SetAbilityResourceManager(resourceMgr);
+    const std::string newColor = "#FF0000FF";
+    AAFwk::Want data;
+    data.SetParam("ohos.application.brandColor", newColor);
+    constexpr uint32_t BRAND_COLOR_BUSINESS = 4001;
+    auto ret = context->HandleBrandColorChange(BRAND_COLOR_BUSINESS, std::move(data));
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(context->GetBrandColorValue(), newColor);
+    context->brandColorValue_.clear();
+    context->abilityResourceMgr_ = nullptr;
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM;
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_0600 end");
+}
+
+/**
+ * @tc.number: GetBrandColorValue_0200
+ * @tc.name: GetBrandColorValue
+ * @tc.desc: Verify GetBrandColorValue handles very long string correctly.
+ */
+HWTEST_F(UIExtensionContextTest, GetBrandColorValue_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetBrandColorValue_0200 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    std::string longColor(1024, 'A');
+    context->brandColorValue_ = longColor;
+    EXPECT_EQ(context->GetBrandColorValue(), longColor);
+    context->brandColorValue_.clear();
+    TAG_LOGI(AAFwkTag::TEST, "GetBrandColorValue_0200 end");
+}
+
+/**
+ * @tc.number: GetBrandColorValue_0300
+ * @tc.name: GetBrandColorValue
+ * @tc.desc: Verify GetBrandColorValue handles special characters (spaces, newlines, unicode).
+ */
+HWTEST_F(UIExtensionContextTest, GetBrandColorValue_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetBrandColorValue_0300 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    std::string specialColor = " #FF00 00\nFF\t\xE4\xB8\xAD ";
+    context->brandColorValue_ = specialColor;
+    EXPECT_EQ(context->GetBrandColorValue(), specialColor);
+    context->brandColorValue_.clear();
+    TAG_LOGI(AAFwkTag::TEST, "GetBrandColorValue_0300 end");
+}
+
+/**
+ * @tc.number: GetBrandColorValue_0400
+ * @tc.name: GetBrandColorValue
+ * @tc.desc: Verify GetBrandColorValue returns consistent value across multiple reads.
+ */
+HWTEST_F(UIExtensionContextTest, GetBrandColorValue_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetBrandColorValue_0400 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    const std::string color = "#AABBCCDD";
+    context->brandColorValue_ = color;
+    for (int i = 0; i < 10; ++i) {
+        EXPECT_EQ(context->GetBrandColorValue(), color);
+    }
+    context->brandColorValue_.clear();
+    TAG_LOGI(AAFwkTag::TEST, "GetBrandColorValue_0400 end");
+}
+
+/**
+ * @tc.number: GetBrandColorStrategy_0200
+ * @tc.name: GetBrandColorStrategy
+ * @tc.desc: Verify GetBrandColorStrategy after switching between all enum values back and forth.
+ */
+HWTEST_F(UIExtensionContextTest, GetBrandColorStrategy_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetBrandColorStrategy_0200 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    EXPECT_EQ(context->GetBrandColorStrategy(), AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM);
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC;
+    EXPECT_EQ(context->GetBrandColorStrategy(), AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC);
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM;
+    EXPECT_EQ(context->GetBrandColorStrategy(), AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM);
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC;
+    EXPECT_EQ(context->GetBrandColorStrategy(), AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC);
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM;
+    TAG_LOGI(AAFwkTag::TEST, "GetBrandColorStrategy_0200 end");
+}
+
+/**
+ * @tc.number: BrandColor_SetAbilityResourceManager_0100
+ * @tc.name: SetAbilityResourceManager
+ * @tc.desc: Verify SetAbilityResourceManager stores and GetResourceManager returns the manager.
+ */
+HWTEST_F(UIExtensionContextTest, BrandColor_SetAbilityResourceManager_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_SetAbilityResourceManager_0100 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    EXPECT_EQ(context->abilityResourceMgr_, nullptr);
+    std::shared_ptr<Global::Resource::ResourceManager> resourceMgr(Global::Resource::CreateResourceManager());
+    ASSERT_NE(resourceMgr, nullptr);
+    context->SetAbilityResourceManager(resourceMgr);
+    EXPECT_EQ(context->abilityResourceMgr_, resourceMgr);
+    EXPECT_EQ(context->GetResourceManager(), resourceMgr);
+    context->abilityResourceMgr_.reset();
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_SetAbilityResourceManager_0100 end");
+}
+
+/**
+ * @tc.number: BrandColor_GetResourceManager_0100
+ * @tc.name: GetResourceManager
+ * @tc.desc: Verify GetResourceManager returns abilityResourceMgr_ when set (non-null path).
+ */
+HWTEST_F(UIExtensionContextTest, BrandColor_GetResourceManager_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_GetResourceManager_0100 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    std::shared_ptr<Global::Resource::ResourceManager> resourceMgr(Global::Resource::CreateResourceManager());
+    ASSERT_NE(resourceMgr, nullptr);
+    context->SetAbilityResourceManager(resourceMgr);
+    auto ret = context->GetResourceManager();
+    EXPECT_EQ(ret, resourceMgr);
+    context->abilityResourceMgr_.reset();
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_GetResourceManager_0100 end");
+}
+
+/**
+ * @tc.number: BrandColor_RegisterAbilityConfigUpdateCallback_0100
+ * @tc.name: RegisterAbilityConfigUpdateCallback
+ * @tc.desc: Verify RegisterAbilityConfigUpdateCallback stores callback and it can be invoked.
+ */
+HWTEST_F(UIExtensionContextTest, BrandColor_RegisterAbilityConfigUpdateCallback_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_RegisterAbilityConfigUpdateCallback_0100 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    EXPECT_EQ(context->abilityConfigUpdateCallback_, nullptr);
+    bool callbackCalled = false;
+    context->RegisterAbilityConfigUpdateCallback(
+        [&callbackCalled](AppExecFwk::Configuration &config) {
+            callbackCalled = true;
+        });
+    EXPECT_NE(context->abilityConfigUpdateCallback_, nullptr);
+    AppExecFwk::Configuration config;
+    context->abilityConfigUpdateCallback_(config);
+    EXPECT_TRUE(callbackCalled);
+    context->abilityConfigUpdateCallback_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_RegisterAbilityConfigUpdateCallback_0100 end");
+}
+
+/**
+ * @tc.number: BrandColor_SetAbilityFontSize_0100
+ * @tc.name: SetAbilityFontSize
+ * @tc.desc: Verify SetAbilityFontSize rejects negative font size and does not call callback.
+ */
+HWTEST_F(UIExtensionContextTest, BrandColor_SetAbilityFontSize_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_SetAbilityFontSize_0100 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    bool callbackCalled = false;
+    context->RegisterAbilityConfigUpdateCallback(
+        [&callbackCalled](AppExecFwk::Configuration &config) {
+            callbackCalled = true;
+        });
+    context->SetAbilityFontSize(-1.0);
+    EXPECT_FALSE(callbackCalled);
+    context->abilityConfigUpdateCallback_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_SetAbilityFontSize_0100 end");
+}
+
+/**
+ * @tc.number: BrandColor_SetAbilityFontSize_0200
+ * @tc.name: SetAbilityFontSize
+ * @tc.desc: Verify SetAbilityFontSize accepts zero font size and triggers callback.
+ */
+HWTEST_F(UIExtensionContextTest, BrandColor_SetAbilityFontSize_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_SetAbilityFontSize_0200 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    bool callbackCalled = false;
+    context->RegisterAbilityConfigUpdateCallback(
+        [&callbackCalled](AppExecFwk::Configuration &config) {
+            callbackCalled = true;
+        });
+    context->SetAbilityFontSize(0.0);
+    EXPECT_TRUE(callbackCalled);
+    context->abilityConfigUpdateCallback_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_SetAbilityFontSize_0200 end");
+}
+
+/**
+ * @tc.number: BrandColor_SetAbilityFontSize_0300
+ * @tc.name: SetAbilityFontSize
+ * @tc.desc: Verify SetAbilityFontSize with positive value triggers callback with correct scale.
+ */
+HWTEST_F(UIExtensionContextTest, BrandColor_SetAbilityFontSize_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_SetAbilityFontSize_0300 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    std::string capturedScale;
+    context->RegisterAbilityConfigUpdateCallback(
+        [&capturedScale](AppExecFwk::Configuration &config) {
+            capturedScale = config.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_FONT_SIZE_SCALE);
+        });
+    context->SetAbilityFontSize(1.5);
+    EXPECT_FALSE(capturedScale.empty());
+    context->abilityConfigUpdateCallback_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_SetAbilityFontSize_0300 end");
+}
+
+/**
+ * @tc.number: BrandColor_SetAbilityFontSize_0400
+ * @tc.name: SetAbilityFontSize
+ * @tc.desc: Verify SetAbilityFontSize does nothing when callback is null.
+ */
+HWTEST_F(UIExtensionContextTest, BrandColor_SetAbilityFontSize_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_SetAbilityFontSize_0400 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    EXPECT_EQ(context->abilityConfigUpdateCallback_, nullptr);
+    context->SetAbilityFontSize(1.0);
+    // No crash, no callback — just returns
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_SetAbilityFontSize_0400 end");
+}
+
+/**
+ * @tc.number: BrandColor_SetAbilityColorMode_0100
+ * @tc.name: SetAbilityColorMode
+ * @tc.desc: Verify SetAbilityColorMode rejects out-of-range values (< -1 and > 1).
+ */
+HWTEST_F(UIExtensionContextTest, BrandColor_SetAbilityColorMode_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_SetAbilityColorMode_0100 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    bool callbackCalled = false;
+    context->RegisterAbilityConfigUpdateCallback(
+        [&callbackCalled](AppExecFwk::Configuration &config) {
+            callbackCalled = true;
+        });
+    context->SetAbilityColorMode(-2);
+    EXPECT_FALSE(callbackCalled);
+    context->SetAbilityColorMode(2);
+    EXPECT_FALSE(callbackCalled);
+    context->abilityConfigUpdateCallback_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_SetAbilityColorMode_0100 end");
+}
+
+/**
+ * @tc.number: BrandColor_SetAbilityColorMode_0200
+ * @tc.name: SetAbilityColorMode
+ * @tc.desc: Verify SetAbilityColorMode accepts boundary values -1, 0, 1 and triggers callback.
+ */
+HWTEST_F(UIExtensionContextTest, BrandColor_SetAbilityColorMode_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_SetAbilityColorMode_0200 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    int callCount = 0;
+    context->RegisterAbilityConfigUpdateCallback(
+        [&callCount](AppExecFwk::Configuration &config) {
+            callCount++;
+        });
+    context->SetAbilityColorMode(-1);
+    context->SetAbilityColorMode(0);
+    context->SetAbilityColorMode(1);
+    EXPECT_EQ(callCount, 3);
+    context->abilityConfigUpdateCallback_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_SetAbilityColorMode_0200 end");
+}
+
+/**
+ * @tc.number: BrandColor_SetAbilityColorMode_0300
+ * @tc.name: SetAbilityColorMode
+ * @tc.desc: Verify SetAbilityColorMode does nothing when callback is null.
+ */
+HWTEST_F(UIExtensionContextTest, BrandColor_SetAbilityColorMode_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_SetAbilityColorMode_0300 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    EXPECT_EQ(context->abilityConfigUpdateCallback_, nullptr);
+    context->SetAbilityColorMode(0);
+    // No crash, no callback — just returns
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_SetAbilityColorMode_0300 end");
+}
+
+/**
+ * @tc.number: ApplyBrandColorStrategy_0300
+ * @tc.name: ApplyBrandColorStrategy
+ * @tc.desc: Verify ApplyBrandColorStrategy with FOLLOW_UEC and empty brandColor string (CreateNewResourceMgr fails).
+ */
+HWTEST_F(UIExtensionContextTest, ApplyBrandColorStrategy_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ApplyBrandColorStrategy_0300 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    EXPECT_EQ(context->abilityInfo_, nullptr);
+    auto ret = context->ApplyBrandColorStrategy(
+        AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC, "");
+    EXPECT_FALSE(ret);
+    EXPECT_EQ(context->GetBrandColorValue(), "");
+    EXPECT_EQ(context->brandColorStrategy_, AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM);
+    TAG_LOGI(AAFwkTag::TEST, "ApplyBrandColorStrategy_0300 end");
+}
+
+/**
+ * @tc.number: ApplyBrandColorStrategy_0400
+ * @tc.name: ApplyBrandColorStrategy
+ * @tc.desc: Verify ApplyBrandColorStrategy with FOLLOW_UEC and very long brandColor string
+ */
+HWTEST_F(UIExtensionContextTest, ApplyBrandColorStrategy_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ApplyBrandColorStrategy_0400 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    EXPECT_EQ(context->abilityInfo_, nullptr);
+    std::string longColor(2048, 'X');
+    auto ret = context->ApplyBrandColorStrategy(
+        AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC, longColor);
+    EXPECT_FALSE(ret);
+    EXPECT_EQ(context->GetBrandColorValue(), "");
+    TAG_LOGI(AAFwkTag::TEST, "ApplyBrandColorStrategy_0400 end");
+}
+
+/**
+ * @tc.number: HandleBrandColorChange_0700
+ * @tc.name: HandleBrandColorChange
+ * @tc.desc: Verify HandleBrandColorChange rejects customId = 0 (boundary).
+ */
+HWTEST_F(UIExtensionContextTest, HandleBrandColorChange_0700, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_0700 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    AAFwk::Want data;
+    data.SetParam("ohos.application.brandColor", std::string("#FF0000FF"));
+    auto ret = context->HandleBrandColorChange(0, std::move(data));
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(context->GetBrandColorValue(), "");
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_0700 end");
+}
+
+/**
+ * @tc.number: HandleBrandColorChange_0800
+ * @tc.name: HandleBrandColorChange
+ * @tc.desc: Verify HandleBrandColorChange rejects customId = UINT32_MAX (boundary).
+ */
+HWTEST_F(UIExtensionContextTest, HandleBrandColorChange_0800, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_0800 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    AAFwk::Want data;
+    data.SetParam("ohos.application.brandColor", std::string("#FF0000FF"));
+    auto ret = context->HandleBrandColorChange(UINT32_MAX, std::move(data));
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(context->GetBrandColorValue(), "");
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_0800 end");
+}
+
+/**
+ * @tc.number: HandleBrandColorChange_0900
+ * @tc.name: HandleBrandColorChange
+ * @tc.desc: Verify HandleBrandColorChange with multiple alternating color calls updates value correctly.
+ */
+HWTEST_F(UIExtensionContextTest, HandleBrandColorChange_0900, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_0900 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC;
+    std::shared_ptr<Global::Resource::ResourceManager> resourceMgr(Global::Resource::CreateResourceManager());
+    ASSERT_NE(resourceMgr, nullptr);
+    context->SetAbilityResourceManager(resourceMgr);
+    constexpr uint32_t BRAND_COLOR_BUSINESS = 4001;
+    // First color
+    {
+        AAFwk::Want data;
+        data.SetParam("ohos.application.brandColor", std::string("#11111111"));
+        auto ret = context->HandleBrandColorChange(BRAND_COLOR_BUSINESS, std::move(data));
+        EXPECT_EQ(ret, ERR_OK);
+        EXPECT_EQ(context->GetBrandColorValue(), "#11111111");
+    }
+    // Same color — should be rejected
+    {
+        AAFwk::Want data;
+        data.SetParam("ohos.application.brandColor", std::string("#11111111"));
+        auto ret = context->HandleBrandColorChange(BRAND_COLOR_BUSINESS, std::move(data));
+        EXPECT_EQ(ret, ERR_INVALID_VALUE);
+        EXPECT_EQ(context->GetBrandColorValue(), "#11111111");
+    }
+    // Different color
+    {
+        AAFwk::Want data;
+        data.SetParam("ohos.application.brandColor", std::string("#22222222"));
+        auto ret = context->HandleBrandColorChange(BRAND_COLOR_BUSINESS, std::move(data));
+        EXPECT_EQ(ret, ERR_OK);
+        EXPECT_EQ(context->GetBrandColorValue(), "#22222222");
+    }
+    // Back to first color
+    {
+        AAFwk::Want data;
+        data.SetParam("ohos.application.brandColor", std::string("#11111111"));
+        auto ret = context->HandleBrandColorChange(BRAND_COLOR_BUSINESS, std::move(data));
+        EXPECT_EQ(ret, ERR_OK);
+        EXPECT_EQ(context->GetBrandColorValue(), "#11111111");
+    }
+    context->brandColorValue_.clear();
+    context->abilityResourceMgr_.reset();
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM;
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_0900 end");
+}
+
+/**
+ * @tc.number: HandleBrandColorChange_1000
+ * @tc.name: HandleBrandColorChange
+ * @tc.desc: Verify HandleBrandColorChange handles brandColor with special characters.
+ */
+HWTEST_F(UIExtensionContextTest, HandleBrandColorChange_1000, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_1000 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC;
+    std::shared_ptr<Global::Resource::ResourceManager> resourceMgr(Global::Resource::CreateResourceManager());
+    ASSERT_NE(resourceMgr, nullptr);
+    context->SetAbilityResourceManager(resourceMgr);
+    AAFwk::Want data;
+    std::string specialColor = " #FF00\n00\t";
+    data.SetParam("ohos.application.brandColor", specialColor);
+    constexpr uint32_t BRAND_COLOR_BUSINESS = 4001;
+    auto ret = context->HandleBrandColorChange(BRAND_COLOR_BUSINESS, std::move(data));
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(context->GetBrandColorValue(), specialColor);
+    context->brandColorValue_.clear();
+    context->abilityResourceMgr_.reset();
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM;
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_1000 end");
+}
+
+/**
+ * @tc.number: HandleBrandColorChange_1100
+ * @tc.name: HandleBrandColorChange
+ * @tc.desc: Verify HandleBrandColorChange handles very long brandColor string.
+ */
+HWTEST_F(UIExtensionContextTest, HandleBrandColorChange_1100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_1100 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC;
+    std::shared_ptr<Global::Resource::ResourceManager> resourceMgr(Global::Resource::CreateResourceManager());
+    ASSERT_NE(resourceMgr, nullptr);
+    context->SetAbilityResourceManager(resourceMgr);
+    AAFwk::Want data;
+    std::string longColor(1024, 'B');
+    data.SetParam("ohos.application.brandColor", longColor);
+    constexpr uint32_t BRAND_COLOR_BUSINESS = 4001;
+    auto ret = context->HandleBrandColorChange(BRAND_COLOR_BUSINESS, std::move(data));
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(context->GetBrandColorValue(), longColor);
+    context->brandColorValue_.clear();
+    context->abilityResourceMgr_.reset();
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM;
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_1100 end");
+}
+
+/**
+ * @tc.number: HandleBrandColorChange_1200
+ * @tc.name: HandleBrandColorChange
+ * @tc.desc: Verify HandleBrandColorChange treats brandColor key with empty value as invalid.
+ */
+HWTEST_F(UIExtensionContextTest, HandleBrandColorChange_1200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_1200 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC;
+    AAFwk::Want data;
+    data.SetParam("ohos.application.brandColor", std::string(""));
+    constexpr uint32_t BRAND_COLOR_BUSINESS = 4001;
+    auto ret = context->HandleBrandColorChange(BRAND_COLOR_BUSINESS, std::move(data));
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(context->GetBrandColorValue(), "");
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM;
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_1200 end");
+}
+
+/**
+ * @tc.number: HandleBrandColorChange_1300
+ * @tc.name: HandleBrandColorChange
+ * @tc.desc: Verify HandleBrandColorChange with empty Want (no brandColor key at all).
+ */
+HWTEST_F(UIExtensionContextTest, HandleBrandColorChange_1300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_1300 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC;
+    AAFwk::Want data;
+    constexpr uint32_t BRAND_COLOR_BUSINESS = 4001;
+    auto ret = context->HandleBrandColorChange(BRAND_COLOR_BUSINESS, std::move(data));
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(context->GetBrandColorValue(), "");
+    context->brandColorStrategy_ = AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM;
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_1300 end");
+}
+
+/**
+ * @tc.number: HandleBrandColorChange_1400
+ * @tc.name: HandleBrandColorChange
+ * @tc.desc: Verify HandleBrandColorChange rejects when customId is BRAND_COLOR_BUSINESS - 1 (off-by-one).
+ */
+HWTEST_F(UIExtensionContextTest, HandleBrandColorChange_1400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_1400 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    AAFwk::Want data;
+    data.SetParam("ohos.application.brandColor", std::string("#FF0000FF"));
+    constexpr uint32_t BRAND_COLOR_BUSINESS = 4001;
+    auto ret = context->HandleBrandColorChange(BRAND_COLOR_BUSINESS - 1, std::move(data));
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(context->GetBrandColorValue(), "");
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_1400 end");
+}
+
+/**
+ * @tc.number: HandleBrandColorChange_1500
+ * @tc.name: HandleBrandColorChange
+ * @tc.desc: Verify HandleBrandColorChange rejects when customId is BRAND_COLOR_BUSINESS + 1 (off-by-one).
+ */
+HWTEST_F(UIExtensionContextTest, HandleBrandColorChange_1500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_1500 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    AAFwk::Want data;
+    data.SetParam("ohos.application.brandColor", std::string("#FF0000FF"));
+    constexpr uint32_t BRAND_COLOR_BUSINESS = 4001;
+    auto ret = context->HandleBrandColorChange(BRAND_COLOR_BUSINESS + 1, std::move(data));
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(context->GetBrandColorValue(), "");
+    TAG_LOGI(AAFwkTag::TEST, "HandleBrandColorChange_1500 end");
+}
+
+/**
+ * @tc.number: BrandColor_IsTerminating_0100
+ * @tc.name: IsTerminating
+ * @tc.desc: Verify IsTerminating returns false by default and reflects SetTerminating state.
+ */
+HWTEST_F(UIExtensionContextTest, BrandColor_IsTerminating_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_IsTerminating_0100 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    EXPECT_FALSE(context->IsTerminating());
+    context->SetTerminating(true);
+    EXPECT_TRUE(context->IsTerminating());
+    context->SetTerminating(false);
+    EXPECT_FALSE(context->IsTerminating());
+    context->SetTerminating(true);
+    EXPECT_TRUE(context->IsTerminating());
+    context->isTerminating_ = false;
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_IsTerminating_0100 end");
+}
+
+/**
+ * @tc.number: BrandColor_GetScreenMode_0100
+ * @tc.name: GetScreenMode
+ * @tc.desc: Verify GetScreenMode returns default IDLE_SCREEN_MODE and reflects SetScreenMode.
+ */
+HWTEST_F(UIExtensionContextTest, BrandColor_GetScreenMode_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_GetScreenMode_0100 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    EXPECT_EQ(context->GetScreenMode(), AAFwk::IDLE_SCREEN_MODE);
+    context->SetScreenMode(AAFwk::EMBEDDED_FULL_SCREEN_MODE);
+    EXPECT_EQ(context->GetScreenMode(), AAFwk::EMBEDDED_FULL_SCREEN_MODE);
+    context->SetScreenMode(AAFwk::EMBEDDED_HALF_SCREEN_MODE);
+    EXPECT_EQ(context->GetScreenMode(), AAFwk::EMBEDDED_HALF_SCREEN_MODE);
+    context->SetScreenMode(AAFwk::IDLE_SCREEN_MODE);
+    EXPECT_EQ(context->GetScreenMode(), AAFwk::IDLE_SCREEN_MODE);
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_GetScreenMode_0100 end");
+}
+
+/**
+ * @tc.number: BrandColor_RequestComponentTerminate_0100
+ * @tc.name: RequestComponentTerminate
+ * @tc.desc: Verify RequestComponentTerminate does not crash when window_ is null.
+ */
+HWTEST_F(UIExtensionContextTest, BrandColor_RequestComponentTerminate_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_RequestComponentTerminate_0100 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    EXPECT_EQ(context->window_, nullptr);
+    context->RequestComponentTerminate();
+    // No crash — function returns early on null window_
+    TAG_LOGI(AAFwkTag::TEST, "BrandColor_RequestComponentTerminate_0100 end");
+}
+
 } // namespace AbilityRuntime
 } // namespace OHOS

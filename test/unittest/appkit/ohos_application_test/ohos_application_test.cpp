@@ -2646,5 +2646,207 @@ HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_AddAbilityStage_Pre
 
     GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_PreloadScenario_0100 end.";
 }
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0100
+* @tc.name: MarkBrandColorChanged
+* @tc.desc: Verify MarkBrandColorChanged does not add change flag when BRAND_COLOR_ID is the same.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0100 start.";
+    ohosApplication_->configuration_ = std::make_shared<Configuration>();
+    const std::string colorId = "100";
+    ohosApplication_->configuration_->AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, colorId);
+    Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, colorId);
+    ohosApplication_->MarkBrandColorChanged(config);
+    EXPECT_TRUE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0100 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0200
+* @tc.name: MarkBrandColorChanged
+* @tc.desc: Verify MarkBrandColorChanged adds change flag when BRAND_COLOR_ID is different.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0200 start.";
+    ohosApplication_->configuration_ = std::make_shared<Configuration>();
+    ohosApplication_->configuration_->AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, "100");
+    Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, "200");
+    ohosApplication_->MarkBrandColorChanged(config);
+    EXPECT_EQ(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED), "true");
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0200 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0300
+* @tc.name: MarkBrandColorChanged
+* @tc.desc: Verify MarkBrandColorChanged does not add change flag when new BRAND_COLOR_ID is empty.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0300 start.";
+    ohosApplication_->configuration_ = std::make_shared<Configuration>();
+    ohosApplication_->configuration_->AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, "100");
+    Configuration config;
+    ohosApplication_->MarkBrandColorChanged(config);
+    EXPECT_TRUE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0300 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0100
+* @tc.name: UnMarkBrandColorChanged
+* @tc.desc: Verify UnMarkBrandColorChanged removes the change flag when present.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0100 start.";
+    Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED, "true");
+    EXPECT_FALSE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    ohosApplication_->UnMarkBrandColorChanged(config);
+    EXPECT_TRUE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0100 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0200
+* @tc.name: UnMarkBrandColorChanged
+* @tc.desc: Verify UnMarkBrandColorChanged is a no-op when the change flag is absent.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0200 start.";
+    Configuration config;
+    EXPECT_TRUE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    ohosApplication_->UnMarkBrandColorChanged(config);
+    EXPECT_TRUE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0200 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0500
+* @tc.name: MarkBrandColorChanged
+* @tc.desc: Verify MarkBrandColorChanged does not add flag when both old and new BRAND_COLOR_ID are empty.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0500, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0500 start.";
+    ohosApplication_->configuration_ = std::make_shared<Configuration>();
+    Configuration config;
+    ohosApplication_->MarkBrandColorChanged(config);
+    EXPECT_TRUE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0500 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0600
+* @tc.name: MarkBrandColorChanged
+* @tc.desc: Verify MarkBrandColorChanged adds flag when new BRAND_COLOR_ID is a very long string.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0600, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0600 start.";
+    ohosApplication_->configuration_ = std::make_shared<Configuration>();
+    ohosApplication_->configuration_->AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, "100");
+    Configuration config;
+    std::string longId(1024, 'X');
+    config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, longId);
+    ohosApplication_->MarkBrandColorChanged(config);
+    EXPECT_EQ(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED), "true");
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0600 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0700
+* @tc.name: MarkBrandColorChanged
+* @tc.desc: Verify MarkBrandColorChanged handles BRAND_COLOR_ID with special characters.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0700, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0700 start.";
+    ohosApplication_->configuration_ = std::make_shared<Configuration>();
+    ohosApplication_->configuration_->AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, "100");
+    Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, std::string("100\n\t abc"));
+    ohosApplication_->MarkBrandColorChanged(config);
+    EXPECT_EQ(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED), "true");
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0700 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0800
+* @tc.name: MarkBrandColorChanged
+* @tc.desc: Verify MarkBrandColorChanged is idempotent — calling twice with same config does not duplicate flag.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0800, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0800 start.";
+    ohosApplication_->configuration_ = std::make_shared<Configuration>();
+    ohosApplication_->configuration_->AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, "100");
+    Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, "200");
+    ohosApplication_->MarkBrandColorChanged(config);
+    EXPECT_EQ(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED), "true");
+    // Second call — flag already present, value stays "true" (not duplicated)
+    ohosApplication_->MarkBrandColorChanged(config);
+    EXPECT_EQ(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED), "true");
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0800 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0900
+* @tc.name: MarkBrandColorChanged
+* @tc.desc: Verify MarkBrandColorChanged adds flag when only new BRAND_COLOR_ID is set and old is empty.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0900, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0900 start.";
+    ohosApplication_->configuration_ = std::make_shared<Configuration>();
+    // old BRAND_COLOR_ID is empty (not set)
+    Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, "300");
+    ohosApplication_->MarkBrandColorChanged(config);
+    EXPECT_EQ(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED), "true");
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0900 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0400
+* @tc.name: UnMarkBrandColorChanged
+* @tc.desc: Verify UnMarkBrandColorChanged removes flag regardless of its value (not just "true").
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0400 start.";
+    Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED, "false");
+    EXPECT_FALSE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    ohosApplication_->UnMarkBrandColorChanged(config);
+    EXPECT_TRUE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0400 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0500
+* @tc.name: UnMarkBrandColorChanged
+* @tc.desc: Verify UnMarkBrandColorChanged is idempotent — calling twice with no flag is a no-op.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0500, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0500 start.";
+    Configuration config;
+    EXPECT_TRUE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    ohosApplication_->UnMarkBrandColorChanged(config);
+    ohosApplication_->UnMarkBrandColorChanged(config);
+    EXPECT_TRUE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0500 end.";
+}
+
 }  // namespace AppExecFwk
 }  // namespace OHOS

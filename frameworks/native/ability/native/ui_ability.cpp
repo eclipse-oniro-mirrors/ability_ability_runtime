@@ -214,14 +214,19 @@ void UIAbility::AttachAbilityContext(const std::shared_ptr<AbilityRuntime::Abili
         [abilityWptr, abilityContextWptr](AppExecFwk::Configuration &config) {
         std::shared_ptr<UIAbility> abilitySptr = abilityWptr.lock();
         std::shared_ptr<AbilityRuntime::AbilityContext> abilityContext = abilityContextWptr.lock();
-        if (abilitySptr == nullptr || abilityContext == nullptr ||
-            abilityContext->GetAbilityInfo() == nullptr) {
+        if (abilitySptr == nullptr || abilityContext == nullptr || abilityContext->GetAbilityInfo() == nullptr) {
             TAG_LOGE(AAFwkTag::UIABILITY, "null abilitySptr or null abilityContext or null GetAbilityInfo");
             return;
         }
         if (abilityContext->GetAbilityConfiguration() == nullptr) {
-            auto abilityModuleContext = abilityContext->CreateModuleContext(
-                abilityContext->GetAbilityInfo()->moduleName);
+            auto abilityContextImpl = std::static_pointer_cast<AbilityContextImpl>(abilityContext);
+            auto abilityContextBase = std::static_pointer_cast<AbilityRuntime::Context>(abilityContext);
+            if (abilityContextImpl == nullptr || abilityContextBase == nullptr) {
+                TAG_LOGE(AAFwkTag::UIABILITY, "nullptr");
+                return;
+            }
+            auto abilityModuleContext = abilityContextImpl->CreateModuleContext(
+                abilityContext->GetAbilityInfo()->moduleName, abilityContextBase);
             if (abilityModuleContext == nullptr) {
                 TAG_LOGE(AAFwkTag::UIABILITY, "null abilityModuleContext");
                 return;
@@ -241,8 +246,7 @@ void UIAbility::AttachAbilityContext(const std::shared_ptr<AbilityRuntime::Abili
                 config.AddItem(AAFwk::GlobalConfigurationKey::COLORMODE_IS_SET_BY_APP,
                     AppExecFwk::ConfigurationInner::IS_SET_BY_APP);
             }
-            abilityContext->GetAbilityConfiguration()->
-                RemoveItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE);
+            abilityContext->GetAbilityConfiguration()->RemoveItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE);
             abilityContext->GetAbilityConfiguration()->
                 RemoveItem(AAFwk::GlobalConfigurationKey::COLORMODE_IS_SET_BY_APP);
         }
