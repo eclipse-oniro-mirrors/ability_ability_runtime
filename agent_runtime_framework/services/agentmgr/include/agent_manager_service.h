@@ -94,6 +94,9 @@ public:
     int32_t VerifyAgentDisconnectRequests(const std::vector<AAFwk::Want> &wants,
         const sptr<AAFwk::IAbilityConnection> &connection, std::string &callerIdentity) override;
 
+    int32_t AttributeTaskForA2AReusedConnectionRecord(const AAFwk::Want &want,
+        const sptr<AAFwk::IAbilityConnection> &connection) override;
+
 private:
     friend class AgentServiceConnection;
     friend class AgentHostConnection;

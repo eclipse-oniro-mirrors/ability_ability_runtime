@@ -169,6 +169,16 @@ public:
      */
     ErrCode ConnectAgentExtensionAbility(const AAFwk::Want &want,
         const sptr<AbilityRuntime::AbilityConnectCallback> &connectCallback);
+    /**
+     * @brief Best-effort task-id attribution for a reused agent connection. Looks up the
+     *        existing AgentConnection by (agentId, want) in the inner-API store and forwards
+     *        to AgentManagerClient::AttributeTaskForA2AReusedConnectionRecord (oneway). Called by
+     *        the JS layer when ResolveExistingAgentConnection short-circuits before
+     *        ConnectAbilityInner is reached. The want MUST carry AGENTID_KEY and
+     *        AGENTEXTENSIONHOSTPROXY_KEY for FindConnectionLocked to match.
+     * @param want Indicates the connect want (must have AGENTID_KEY + AGENTEXTENSIONHOSTPROXY_KEY).
+     */
+    void AttributeTaskForA2AReusedConnection(const AAFwk::Want &want);
     ErrCode ReuseLowCodeAgentExtensionAbility(const AAFwk::Want &want,
         const sptr<AbilityRuntime::AbilityConnectCallback> &connectCallback);
     void ReplayLowCodeConnectDoneIfReady(const AAFwk::Want &want,

@@ -123,6 +123,21 @@ public:
     int32_t UnregisterManagedProcess(const std::string &taskId, AttributionId attributionId);
 
     /**
+     * @brief Attributes the target Agent process into the task after the A2A connect
+     *        succeeds. Performs ownership + alive-state verification, and on success
+     *        registers an AttributionRecord with AttributionTool::A2A. Best-effort:
+     *        failures are logged and do NOT fail the connect result.
+     * @param taskId Indicates the task id claimed in Want.parameters[ohos.aafwk.param.agent.taskId].
+     * @param callerTokenId Indicates the caller token id.
+     * @param targetPid Indicates the target Agent process pid (resolved post-connect).
+     * @param attributionId Indicates the server-assigned attribution handle for later
+     *        unregister; 0 on failure.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    int32_t AttributeTaskForA2A(const std::string &taskId, uint32_t callerTokenId,
+        pid_t targetPid, AttributionId &attributionId);
+
+    /**
      * @brief Wires the pid validator used by RegisterManagedProcess to reject pids
      *        that are not live appmgr-managed processes; called when the app manager
      *        service assembles. An unwired validator skips the check.
@@ -208,6 +223,17 @@ public:
 private:
     TaskManagerService();
     ~TaskManagerService();
+
+    /**
+     * @brief Verifies task alive-state and caller ownership
+     *        (callerTokenId == TaskRecord.creatorTokenId). Called internally by
+     *        AttributeTaskForA2A before registering the managed process.
+     * @param taskId Indicates the task id claimed in Want.parameters[ohos.aafwk.param.agent.taskId].
+     * @param callerTokenId Indicates the caller token id.
+     * @return Returns true if the task is alive and the caller is its creator;
+     *         false on any failure (not found / mismatch).
+     */
+    bool PrecheckTaskForA2A(const std::string &taskId, uint32_t callerTokenId);
 
     /**
      * @brief Creates the task record and starts its timeout timer; locks tasksMutex_

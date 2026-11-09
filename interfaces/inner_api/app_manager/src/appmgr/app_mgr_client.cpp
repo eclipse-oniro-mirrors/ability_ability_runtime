@@ -2303,6 +2303,36 @@ int32_t AppMgrClient::FinishTask(const std::string &taskId)
     return service->FinishTask(taskId);
 }
 
+int32_t AppMgrClient::AttributeTaskForA2A(const std::string &taskId, uint32_t callerTokenId,
+    pid_t targetPid, int64_t &attributionId)
+{
+    attributionId = 0;
+    if (mgrHolder_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "mgrHolder is nullptr.");
+        return ERR_INVALID_VALUE;
+    }
+    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
+    if (service == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Service is nullptr.");
+        return ERR_INVALID_VALUE;
+    }
+    return service->AttributeTaskForA2A(taskId, callerTokenId, targetPid, attributionId);
+}
+
+int32_t AppMgrClient::UnregisterTaskForA2A(const std::string &taskId, int64_t attributionId)
+{
+    if (mgrHolder_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "mgrHolder is nullptr.");
+        return ERR_INVALID_VALUE;
+    }
+    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
+    if (service == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Service is nullptr.");
+        return ERR_INVALID_VALUE;
+    }
+    return service->UnregisterTaskForA2A(taskId, attributionId);
+}
+
 int32_t AppMgrClient::RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t tool,
     int32_t callerUid, int64_t &attributionId)
 {

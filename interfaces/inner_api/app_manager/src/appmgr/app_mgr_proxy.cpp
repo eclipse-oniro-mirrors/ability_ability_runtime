@@ -3430,6 +3430,66 @@ int32_t AppMgrProxy::FinishTask(const std::string &taskId)
     return reply.ReadInt32();
 }
 
+int32_t AppMgrProxy::AttributeTaskForA2A(const std::string &taskId, uint32_t callerTokenId,
+    pid_t targetPid, int64_t &attributionId)
+{
+    attributionId = 0;
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+ 
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write interface token failed.");
+        return ERR_INVALID_VALUE;
+    }
+    if (!data.WriteString16(Str8ToStr16(taskId))) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write taskId failed.");
+        return ERR_INVALID_VALUE;
+    }
+    if (!data.WriteUint32(callerTokenId)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write callerTokenId failed.");
+        return ERR_INVALID_VALUE;
+    }
+    if (!data.WriteInt32(targetPid)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write targetPid failed.");
+        return ERR_INVALID_VALUE;
+    }
+    int32_t err = SendRequest(AppMgrInterfaceCode::ATTRIBUTE_TASK_FOR_A2A, data, reply, option);
+    if (err != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::APPMGR, "AttributeTaskForA2A send request failed: %{public}d", err);
+        return err;
+    }
+    int32_t result = reply.ReadInt32();
+    attributionId = reply.ReadInt64();
+    return result;
+}
+
+int32_t AppMgrProxy::UnregisterTaskForA2A(const std::string &taskId, int64_t attributionId)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+ 
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write interface token failed.");
+        return ERR_INVALID_VALUE;
+    }
+    if (!data.WriteString16(Str8ToStr16(taskId))) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write taskId failed.");
+        return ERR_INVALID_VALUE;
+    }
+    if (!data.WriteInt64(attributionId)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write attributionId failed.");
+        return ERR_INVALID_VALUE;
+    }
+    int32_t err = SendRequest(AppMgrInterfaceCode::UNREGISTER_TASK_FOR_A2A, data, reply, option);
+    if (err != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::APPMGR, "UnregisterTaskForA2A send request failed: %{public}d", err);
+        return err;
+    }
+    return reply.ReadInt32();
+}
+
 int32_t AppMgrProxy::RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t tool,
     int32_t callerUid, int64_t &attributionId)
 {

@@ -16,11 +16,21 @@
 #ifndef OHOS_ABILITY_RUNTIME_EXTENSION_RECORD_BASE_H
 #define OHOS_ABILITY_RUNTIME_EXTENSION_RECORD_BASE_H
 
+#include <map>
+#include <utility>
+#include <vector>
+
 #include "ability_record.h"
 
 namespace OHOS {
 namespace AAFwk {
 class ConnectionRecord;
+
+struct AgentTaskAttribution {
+    std::string taskId;
+    int64_t attributionId = 0;
+    std::string agentId;
+};
 
 class BaseExtensionRecord : public AbilityRecord {
 public:
@@ -149,6 +159,30 @@ public:
     void SetRequestId(const std::string &requestId);
     std::string GetRequestId() const;
 
+    /**
+     * Add a task attribution entry keyed by the connection record id. A recordId may carry
+     * multiple attributions (one per task), so entries are appended to a vector.
+     *
+     */
+    void AddTaskAttribution(int32_t recordId, const AgentTaskAttribution &attribution);
+
+    /**
+     * Get all task attribution entries matching recordId.
+     *
+     */
+    std::vector<AgentTaskAttribution> GetTaskAttributions(int32_t recordId) const;
+
+    /**
+     * @brief Remove the task attribution entry matching both taskId and attributionId
+     *        from the recordId's vector. Matching by attributionId prevents accidentally
+     *        erasing a concurrently-inserted entry that shares the same taskId but has
+     *        a different attributionId.
+     * @param recordId Indicates the connection record id.
+     * @param taskId Indicates the task id to match.
+     * @param attributionId Indicates the attribution handle to match (must be > 0).
+     */
+    void RemoveTaskAttribution(int32_t recordId, const std::string &taskId, int64_t attributionId);
+
 private:
     void DumpUIExtensionRootHostInfo(std::vector<std::string> &info) const;
 
@@ -163,6 +197,8 @@ private:
     sptr<IRemoteObject> connRemoteObject_ = {};
     bool isConnected = false;
     std::string requestId_;
+    mutable ffrt::mutex taskAttributionsMutex_;
+    std::map<int32_t, std::vector<AgentTaskAttribution>> taskAttributions_;
 };
 } // namespace AAFwk
 } // namespace OHOS

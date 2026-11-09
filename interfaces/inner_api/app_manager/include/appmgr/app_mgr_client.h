@@ -1913,6 +1913,21 @@ public:
      */
     int32_t FinishTask(const std::string &taskId);
 
+    /*
+     * Attribute the target Agent process into the task after a successful A2A
+     * connect. Best-effort: failures are logged and do NOT fail the connect result.
+     *
+     * @param taskId Task id claimed in Want.parameters[ohos.aafwk.param.agent.taskId].
+     * @param callerTokenId App's token id captured at the convergence point.
+     * @param targetPid Target Agent process pid (resolved post-connect).
+     * @param attributionId Server-assigned attribution handle for later unregister; 0 on failure.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    int32_t AttributeTaskForA2A(const std::string &taskId, uint32_t callerTokenId,
+        pid_t targetPid, int64_t &attributionId);
+
+    int32_t UnregisterTaskForA2A(const std::string &taskId, int64_t attributionId);
+
     /**
      * Attribute a process into the task owned by the caller. Reserved for the trusted
      * caller process that forwards the forensic creator uid.

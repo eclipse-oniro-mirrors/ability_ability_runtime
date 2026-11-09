@@ -1112,6 +1112,9 @@ int AbilityManagerStub::OnRemoteRequestInnerTwentySecond(uint32_t code, MessageP
     if (interfaceCode == AbilityManagerInterfaceCode::GET_DYNAMIC_AGENT_CARDS_FOR_MIGRATION) {
         return GetDynamicAgentCardsForMigrationInner(data, reply);
     }
+    if (interfaceCode == AbilityManagerInterfaceCode::ATTRIBUTE_SAME_CONNECTION_RECORD_TASK_ID) {
+        return AttributeSameConnectionRecordTaskIDInner(data, reply);
+    }
     return ERR_CODE_NOT_EXIST;
 }
 
@@ -6342,6 +6345,24 @@ int32_t AbilityManagerStub::GetDynamicAgentCardsForMigrationInner(MessageParcel 
     if (ret == ERR_OK) {
         reply.WriteString(jsonStr);
     }
+    return NO_ERROR;
+}
+
+int32_t AbilityManagerStub::AttributeSameConnectionRecordTaskIDInner(MessageParcel &data, MessageParcel &reply)
+{
+    // oneway dispatch: reply is not delivered to the async proxy, but keep the write for uniformity.
+    std::shared_ptr<Want> want(data.ReadParcelable<Want>());
+    if (want == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "AttributeTaskForA2AReusedConnectionRecord null want");
+        return ERR_INVALID_VALUE;
+    }
+    sptr<IAbilityConnection> connect = iface_cast<IAbilityConnection>(data.ReadRemoteObject());
+    if (connect == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "AttributeTaskForA2AReusedConnectionRecord null connect");
+        return ERR_INVALID_VALUE;
+    }
+    int32_t ret = AttributeTaskForA2AReusedConnectionRecord(*want, connect);
+    reply.WriteInt32(ret);
     return NO_ERROR;
 }
 } // namespace AAFwk

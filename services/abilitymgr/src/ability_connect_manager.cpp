@@ -21,7 +21,9 @@
 #include "ability_manager_service.h"
 #include "ability_permission_util.h"
 #include "ability_resident_process_rdb.h"
+#include "app_mgr_client.h"
 #include "ability_util.h"
+#include "utils/agent_ability_util.h"
 #include "agent_card.h"
 #include "agent_extension_connection_constants.h"
 #include "agent_manager_client.h"
@@ -87,6 +89,7 @@ constexpr char BUNDLE_NAME_DIALOG[] = "com.ohos.amsdialog";
 constexpr char ABILITY_NAME_ASSERT_FAULT_DIALOG[] = "AssertFaultDialog";
 constexpr const char* WANT_PARAMS_APP_RESTART_FLAG = "ohos.aafwk.app.restart";
 constexpr const char* PARAM_SPECIFIED_PROCESS_FLAG = "ohoSpecifiedProcessFlag";
+constexpr const char* WANT_PARAMS_TASK_ID_KEY = "ohos.aafwk.param.agent.taskId";
 constexpr int32_t HALF_TIMEOUT = 2;
 const std::string IS_PRELOAD_UIEXTENSION_ABILITY = "ability.want.params.is_preload_uiextension_ability";
 
@@ -420,6 +423,7 @@ int AbilityConnectManager::ConnectAbilityLocked(const AbilityRequest &abilityReq
                 abilityRequest.want.GetIntParam(AgentRuntime::AGENT_CARD_TYPE_KEY, -1),
                 static_cast<int32_t>(connectedRecord->GetConnectState()));
             connectedRecord->QueueLowCodeAgentInvocation(abilityRequest.want, connect);
+            AttributeTaskForA2AReusedConnectionRecord(abilityRequest, connect);
         } else if (isAgentConnect) {
             TAG_LOGI(AAFwkTag::SER_ROUTER,
                 "AGENT service/callback connected: agentId=%{public}s, cardType=%{public}d, "
@@ -428,6 +432,7 @@ int AbilityConnectManager::ConnectAbilityLocked(const AbilityRequest &abilityReq
                 abilityRequest.want.GetIntParam(AgentRuntime::AGENT_CARD_TYPE_KEY, -1),
                 static_cast<int32_t>(connectedRecord->GetConnectState()));
             connectedRecord->CompleteConnectAndOnlyCallConnectDone();
+            AttributeTaskForA2AReusedConnectionRecord(abilityRequest, connect);
         } else {
             TAG_LOGI(AAFwkTag::EXT, "service/callback connected");
             connectedRecord->CompleteConnectAndOnlyCallConnectDone();
@@ -913,52 +918,265 @@ int AbilityConnectManager::ScheduleConnectAbilityDoneLocked(
     const sptr<IRemoteObject> &token, const sptr<IRemoteObject> &remoteObject)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    std::shared_ptr<BaseExtensionRecord> abilityRecordForA2A;
+    std::shared_ptr<ConnectionRecord> connectingRecordForA2A;
+    {
+        std::lock_guard guard(serialMutex_);
+        CHECK_POINTER_AND_RETURN(token, ERR_INVALID_VALUE);
+
+        auto abilityRecord = BaseExtensionRecord::TransferToExtensionRecordBase(Token::GetAbilityRecordByToken(token));
+        CHECK_POINTER_AND_RETURN(abilityRecord, ERR_INVALID_VALUE);
+
+        TAG_LOGI(AAFwkTag::EXT, "%{public}s/%{public}s", abilityRecord->GetInfoBundleName().c_str(),
+            abilityRecord->GetInfoAbilityName().c_str());
+
+        if ((!abilityRecord->IsAbilityState(AbilityState::INACTIVE)) &&
+            (!abilityRecord->IsAbilityState(AbilityState::ACTIVE))) {
+            TAG_LOGE(AAFwkTag::EXT, "ability not inactive, state: %{public}d",
+                abilityRecord->GetAbilityState());
+            return INVALID_CONNECTION_STATE;
+        }
+        abilityRecord->RemoveConnectWant();
+        abilityRecord->RemoveSignatureInfo();
+
+        if (abilityRecord->GetAbilityInfo().type == AbilityType::SERVICE) {
+            DelayedSingleton<AppScheduler>::GetInstance()->UpdateAbilityState(
+                token, AppExecFwk::AbilityState::ABILITY_STATE_CONNECTED);
+        } else {
+            DelayedSingleton<AppScheduler>::GetInstance()->UpdateExtensionState(
+                token, AppExecFwk::ExtensionState::EXTENSION_STATE_CONNECTED);
+        }
+        EventInfo eventInfo = BuildEventInfo(abilityRecord);
+        eventInfo.userId = userId_;
+        eventInfo.bundleName = abilityRecord->GetAbilityInfo().bundleName;
+        eventInfo.moduleName = abilityRecord->GetAbilityInfo().moduleName;
+        eventInfo.abilityName = abilityRecord->GetAbilityInfo().name;
+        EventReport::SendConnectServiceEvent(EventName::CONNECT_SERVICE, eventInfo);
+
+        abilityRecord->SetConnRemoteObject(remoteObject);
+        // There may be multiple callers waiting for the connection result
+        auto connectingRecord = abilityRecord->GetConnectingRecord();
+        auto connectRecordList = abilityRecord->GetConnectRecordList();
+        for (auto &connectRecord : connectRecordList) {
+            CHECK_POINTER_CONTINUE(connectRecord);
+            connectRecord->ScheduleConnectAbilityDone();
+            if (abilityRecord->GetAbilityInfo().type == AbilityType::EXTENSION &&
+                abilityRecord->GetAbilityInfo().extensionAbilityType != AppExecFwk::ExtensionAbilityType::SERVICE) {
+                PostExtensionDelayDisconnectTask(connectRecord);
+            }
+        }
+        CompleteStartServiceReq(abilityRecord->GetURI());
+        ReportConnectEventToRss(LoadingStage::CONNECT_END, abilityRecord, connectingRecord, 0);
+        abilityRecordForA2A = abilityRecord;
+        connectingRecordForA2A = connectingRecord;
+    }
+    // serialMutex_ released — TryAttributeTaskForA2A does a synchronous IPC to AppMgr;
+    // running it outside the lock avoids blocking connect/disconnect scheduling and
+    // eliminates the risk of deadlock if AppMgr calls back into AMS.
+    TryAttributeTaskForA2A(abilityRecordForA2A, connectingRecordForA2A);
+    return ERR_OK;
+}
+
+void AbilityConnectManager::TryAttributeTaskForA2A(
+    const std::shared_ptr<BaseExtensionRecord> &abilityRecord,
+    const std::shared_ptr<ConnectionRecord> &connectingRecord)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (abilityRecord == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "A2A abilityRecord is nullptr, skipping attribution");
+        return;
+    }
+    if (connectingRecord == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "A2A connectingRecord is nullptr, skipping attribution");
+        return;
+    }
+    const auto &abilityInfo = abilityRecord->GetAbilityInfo();
+    if (!AgentAbilityUtil::IsAgentExtensionType(abilityInfo.extensionAbilityType)) {
+        TAG_LOGE(AAFwkTag::EXT,
+            "A2A not agent extension type, skipping attribution, type: %{public}d",
+            static_cast<int32_t>(abilityInfo.extensionAbilityType));
+        return;
+    }
+    std::string taskId = abilityRecord->GetWant().GetStringParam(WANT_PARAMS_TASK_ID_KEY);
+    if (taskId.empty()) {
+        TAG_LOGE(AAFwkTag::EXT, "A2A taskId is empty, skipping attribution");
+        return;
+    }
+    pid_t targetPid = abilityRecord->GetPid();
+    if (targetPid <= 0) {
+        TAG_LOGE(AAFwkTag::EXT,
+            "A2A target pid not resolved, skipping attribution, taskId: %{public}s", taskId.c_str());
+        return;
+    }
+    uint32_t callerTokenId = connectingRecord->GetCallerTokenId();
+    if (callerTokenId == 0) {
+        TAG_LOGE(AAFwkTag::EXT,
+            "A2A callerTokenId not resolved, skipping attribution, taskId: %{public}s", taskId.c_str());
+        return;
+    }
+    int32_t recordId = connectingRecord->GetRecordId();
+    int64_t attributionId = 0;
+    int32_t ret = IN_PROCESS_CALL(
+        DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance()->AttributeTaskForA2A(
+            taskId, callerTokenId, targetPid, attributionId));
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::EXT,
+            "A2A attribute failed, taskId: %{public}s, ret: %{public}d", taskId.c_str(), ret);
+        return;
+    }
+    AgentTaskAttribution attribution;
+    attribution.taskId = taskId;
+    attribution.attributionId = attributionId;
+    attribution.agentId = connectingRecord->GetConnectWant().GetStringParam(AgentRuntime::AGENTID_KEY);
+    abilityRecord->AddTaskAttribution(recordId, attribution);
+}
+
+int32_t AbilityConnectManager::AttributeTaskForA2AReusedConnectionRecordLocked(const AbilityRequest &abilityRequest,
+    sptr<IAbilityConnection> connect)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     std::lock_guard guard(serialMutex_);
-    CHECK_POINTER_AND_RETURN(token, ERR_INVALID_VALUE);
+    return AttributeTaskForA2AReusedConnectionRecord(abilityRequest, connect);
+}
 
-    auto abilityRecord = BaseExtensionRecord::TransferToExtensionRecordBase(Token::GetAbilityRecordByToken(token));
-    CHECK_POINTER_AND_RETURN(abilityRecord, ERR_INVALID_VALUE);
-
-    TAG_LOGI(AAFwkTag::EXT, "%{public}s/%{public}s", abilityRecord->GetInfoBundleName().c_str(),
-        abilityRecord->GetInfoAbilityName().c_str());
-
-    if ((!abilityRecord->IsAbilityState(AbilityState::INACTIVE)) &&
-        (!abilityRecord->IsAbilityState(AbilityState::ACTIVE))) {
-        TAG_LOGE(AAFwkTag::EXT, "ability not inactive, state: %{public}d",
-            abilityRecord->GetAbilityState());
-        return INVALID_CONNECTION_STATE;
+int32_t AbilityConnectManager::PrepareAttributeTaskForA2AReusedConnectionRecord(
+    const AbilityRequest &abilityRequest, sptr<IAbilityConnection> connect,
+    A2AReusedAttributionCtx &ctx,
+    bool &isAlreadyAttribute)
+{
+    isAlreadyAttribute = false;
+    if (connect == nullptr || connect->AsObject() == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "null connect");
+        return ERR_INVALID_VALUE;
     }
-    abilityRecord->RemoveConnectWant();
-    abilityRecord->RemoveSignatureInfo();
-
-    if (abilityRecord->GetAbilityInfo().type == AbilityType::SERVICE) {
-        DelayedSingleton<AppScheduler>::GetInstance()->UpdateAbilityState(
-            token, AppExecFwk::AbilityState::ABILITY_STATE_CONNECTED);
-    } else {
-        DelayedSingleton<AppScheduler>::GetInstance()->UpdateExtensionState(
-            token, AppExecFwk::ExtensionState::EXTENSION_STATE_CONNECTED);
+    std::string taskId = abilityRequest.want.GetStringParam(WANT_PARAMS_TASK_ID_KEY);
+    if (taskId.empty()) {
+        TAG_LOGW(AAFwkTag::EXT, "empty taskId");
+        return ERR_INVALID_VALUE;
     }
-    EventInfo eventInfo = BuildEventInfo(abilityRecord);
-    eventInfo.userId = userId_;
-    eventInfo.bundleName = abilityRecord->GetAbilityInfo().bundleName;
-    eventInfo.moduleName = abilityRecord->GetAbilityInfo().moduleName;
-    eventInfo.abilityName = abilityRecord->GetAbilityInfo().name;
-    EventReport::SendConnectServiceEvent(EventName::CONNECT_SERVICE, eventInfo);
-
-    abilityRecord->SetConnRemoteObject(remoteObject);
-    // There may be multiple callers waiting for the connection result
-    auto connectingRecord = abilityRecord->GetConnectingRecord();
+    std::string serviceKey = GetServiceKey(abilityRequest);
+    std::shared_ptr<BaseExtensionRecord> abilityRecord;
+    {
+        std::lock_guard lock(serviceMapMutex_);
+        auto it = serviceMap_.find(serviceKey);
+        if (it == serviceMap_.end()) {
+            TAG_LOGE(AAFwkTag::EXT, "A2A reused-attribution service not in map, key: %{public}s",
+                serviceKey.c_str());
+            return ERR_INVALID_VALUE;
+        }
+        abilityRecord = it->second;
+    }
+    if (abilityRecord == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "A2A reused-attribution null abilityRecord");
+        return ERR_INVALID_VALUE;
+    }
     auto connectRecordList = abilityRecord->GetConnectRecordList();
-    for (auto &connectRecord : connectRecordList) {
-        CHECK_POINTER_CONTINUE(connectRecord);
-        connectRecord->ScheduleConnectAbilityDone();
-        if (abilityRecord->GetAbilityInfo().type == AbilityType::EXTENSION &&
-            abilityRecord->GetAbilityInfo().extensionAbilityType != AppExecFwk::ExtensionAbilityType::SERVICE) {
-            PostExtensionDelayDisconnectTask(connectRecord);
+    auto connectRemote = connect->AsObject();
+    auto requestAgentId = abilityRequest.want.GetStringParam(AgentRuntime::AGENTID_KEY);
+    auto requestCardType = abilityRequest.want.GetIntParam(AgentRuntime::AGENT_CARD_TYPE_KEY, -1);
+    auto lowCodeType = static_cast<int32_t>(AgentRuntime::AgentCardType::LOW_CODE);
+    bool isLowCodeRequest = requestCardType == lowCodeType;
+    std::shared_ptr<ConnectionRecord> targetConnectRecord;
+    bool alreadyAttributed = false;
+    for (const auto &record : connectRecordList) {
+        if (!record || record->GetConnection() != connectRemote) {
+            continue;
+        }
+        auto recordWant = record->GetConnectWant();
+        auto recordCardType = recordWant.GetIntParam(AgentRuntime::AGENT_CARD_TYPE_KEY, -1);
+        auto recordAgentId = recordWant.GetStringParam(AgentRuntime::AGENTID_KEY);
+        // Unified record filtering: cardType must always match;
+        // agentId is additionally checked for non-LOW_CODE requests.
+        if (recordCardType != requestCardType) {
+            continue;
+        }
+        if (!isLowCodeRequest && recordAgentId != requestAgentId) {
+            continue;
+        }
+        alreadyAttributed = IsRecordAlreadyAttributed(abilityRecord, record, taskId, requestAgentId,
+            isLowCodeRequest);
+        if (alreadyAttributed) {
+            TAG_LOGD(AAFwkTag::EXT,
+                "A2A reused-attribution taskId already attributed, skip: %{public}s", taskId.c_str());
+            isAlreadyAttribute = true;
+            return ERR_OK;
+        }
+        targetConnectRecord = record;
+    }
+    if (targetConnectRecord == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "A2A reused-attribution connectRecord not found in record list");
+        return ERR_INVALID_VALUE;
+    }
+    pid_t targetPid = abilityRecord->GetPid();
+    if (targetPid <= 0) {
+        TAG_LOGE(AAFwkTag::EXT, "A2A reused-attribution target pid not resolved, taskId: %{public}s",
+            taskId.c_str());
+        return ERR_INVALID_VALUE;
+    }
+    uint32_t callerTokenId = targetConnectRecord->GetCallerTokenId();
+    if (callerTokenId == 0) {
+        TAG_LOGE(AAFwkTag::EXT, "A2A reused-attribution callerTokenId not resolved, taskId: %{public}s",
+            taskId.c_str());
+        return ERR_INVALID_VALUE;
+    }
+    ctx.abilityRecord = abilityRecord;
+    ctx.taskId = taskId;
+    ctx.agentId = requestAgentId;
+    ctx.targetPid = targetPid;
+    ctx.callerTokenId = callerTokenId;
+    ctx.recordId = targetConnectRecord->GetRecordId();
+    return ERR_OK;
+}
+
+bool AbilityConnectManager::IsRecordAlreadyAttributed(
+    const std::shared_ptr<BaseExtensionRecord> &abilityRecord,
+    const std::shared_ptr<ConnectionRecord> &record, const std::string &taskId,
+    const std::string &requestAgentId, bool isLowCodeRequest)
+{
+    if (abilityRecord == nullptr || record == nullptr) {
+        return false;
+    }
+    auto attributions = abilityRecord->GetTaskAttributions(record->GetRecordId());
+    for (const auto &attr : attributions) {
+        if (attr.taskId == taskId && attr.attributionId > 0 &&
+            (!isLowCodeRequest || attr.agentId == requestAgentId)) {
+            return true;
         }
     }
-    CompleteStartServiceReq(abilityRecord->GetURI());
-    ReportConnectEventToRss(LoadingStage::CONNECT_END, abilityRecord, connectingRecord, 0);
+    return false;
+}
+
+int32_t AbilityConnectManager::AttributeTaskForA2AReusedConnectionRecord(
+    const AbilityRequest &abilityRequest, sptr<IAbilityConnection> connect)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    A2AReusedAttributionCtx ctx;
+    bool isAlreadyAttribute = false;
+    int32_t ret = PrepareAttributeTaskForA2AReusedConnectionRecord(abilityRequest, connect, ctx, isAlreadyAttribute);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    if (isAlreadyAttribute) {
+        TAG_LOGD(AAFwkTag::EXT, "taskId already attributed");
+        return ERR_OK;
+    }
+    int64_t attributionId = 0;
+    ret = IN_PROCESS_CALL(
+        DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance()->AttributeTaskForA2A(
+            ctx.taskId, ctx.callerTokenId, ctx.targetPid, attributionId));
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::EXT, "A2A reused-attribution failed, taskId: %{public}s, ret: %{public}d",
+            ctx.taskId.c_str(), ret);
+        return ret;
+    }
+    AgentTaskAttribution attribution;
+    attribution.taskId = ctx.taskId;
+    attribution.attributionId = attributionId;
+    attribution.agentId = ctx.agentId;
+    if (ctx.abilityRecord != nullptr) {
+        TAG_LOGD(AAFwkTag::EXT, "add task attribution");
+        ctx.abilityRecord->AddTaskAttribution(ctx.recordId, attribution);
+    }
     return ERR_OK;
 }
 
@@ -1001,43 +1219,81 @@ int AbilityConnectManager::ScheduleDisconnectAbilityDoneLocked(const sptr<IRemot
         return AAFwk::INNER_ERR;
     }
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    std::lock_guard guard(serialMutex_);
-    auto abilityRecord = GetExtensionByTokenFromServiceMap(token);
-    CHECK_POINTER_AND_RETURN(abilityRecord, CONNECTION_NOT_EXIST);
+    std::shared_ptr<BaseExtensionRecord> abilityRecordForA2A;
+    std::shared_ptr<BaseExtensionRecord> abilityRecordForEvent;
+    int32_t a2aRecordId = 0;
+    bool needA2AUnregister = false;
+    std::vector<AgentTaskAttribution> attributionsToUnregister;
+    {
+        std::lock_guard guard(serialMutex_);
+        auto abilityRecord = GetExtensionByTokenFromServiceMap(token);
+        CHECK_POINTER_AND_RETURN(abilityRecord, CONNECTION_NOT_EXIST);
 
-    auto records = abilityRecord->GetConnectRecordList();
-    TAG_LOGD(AAFwkTag::EXT,
-        "Schedule disconnect done, ability=%{public}s/%{public}s, extType=%{public}d, "
-        "abilityState=%{public}d, recordCount=%{public}zu, startId=%{public}d",
-        abilityRecord->GetInfoBundleName().c_str(), abilityRecord->GetInfoAbilityName().c_str(),
-        static_cast<int32_t>(abilityRecord->GetAbilityInfo().extensionAbilityType),
-        abilityRecord->GetAbilityState(), records.size(), abilityRecord->GetStartId());
+        auto records = abilityRecord->GetConnectRecordList();
+        TAG_LOGD(AAFwkTag::EXT,
+            "Schedule disconnect done, ability=%{public}s/%{public}s, extType=%{public}d, "
+            "abilityState=%{public}d, recordCount=%{public}zu, startId=%{public}d",
+            abilityRecord->GetInfoBundleName().c_str(), abilityRecord->GetInfoAbilityName().c_str(),
+            static_cast<int32_t>(abilityRecord->GetAbilityInfo().extensionAbilityType),
+            abilityRecord->GetAbilityState(), records.size(), abilityRecord->GetStartId());
 
-    auto connect = abilityRecord->GetDisconnectingRecord();
-    CHECK_POINTER_AND_RETURN(connect, CONNECTION_NOT_EXIST);
-    auto connectWant = connect->GetConnectWant();
-    TAG_LOGD(AAFwkTag::EXT,
-        "Selected disconnecting record, recordId=%{public}d, state=%{public}d, agentId=%{public}s, "
-        "cardType=%{public}d, callbackNull=%{public}d",
-        connect->GetRecordId(), static_cast<int32_t>(connect->GetConnectState()),
-        connectWant.GetStringParam(AgentRuntime::AGENTID_KEY).c_str(),
-        connectWant.GetIntParam(AgentRuntime::AGENT_CARD_TYPE_KEY, -1),
-        connect->GetAbilityConnectCallback() == nullptr ? 1 : 0);
+        auto connect = abilityRecord->GetDisconnectingRecord();
+        CHECK_POINTER_AND_RETURN(connect, CONNECTION_NOT_EXIST);
+        auto connectWant = connect->GetConnectWant();
+        TAG_LOGD(AAFwkTag::EXT,
+            "Selected disconnecting record, recordId=%{public}d, state=%{public}d, agentId=%{public}s, "
+            "cardType=%{public}d, callbackNull=%{public}d",
+            connect->GetRecordId(), static_cast<int32_t>(connect->GetConnectState()),
+            connectWant.GetStringParam(AgentRuntime::AGENTID_KEY).c_str(),
+            connectWant.GetIntParam(AgentRuntime::AGENT_CARD_TYPE_KEY, -1),
+            connect->GetAbilityConnectCallback() == nullptr ? 1 : 0);
 
-    int ret = CheckAbilityStateForDisconnect(abilityRecord);
-    if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::EXT, "Disconnect state check failed: %{public}d", ret);
-        return ret;
+        int ret = CheckAbilityStateForDisconnect(abilityRecord);
+        if (ret != ERR_OK) {
+            TAG_LOGE(AAFwkTag::EXT, "Disconnect state check failed: %{public}d", ret);
+            return ret;
+        }
+
+        UpdateStateAndCompleteDisconnect(abilityRecord, connect, token);
+
+        // Collect A2A attributions to unregister under lock, before cleanup removes
+        // the connection record from the map (after which no new attributions can arrive).
+        if (abilityRecord->GetAbilityInfo().extensionAbilityType == AppExecFwk::ExtensionAbilityType::AGENT) {
+            needA2AUnregister = true;
+            a2aRecordId = connect->GetRecordId();
+            abilityRecordForA2A = abilityRecord;
+            attributionsToUnregister = abilityRecord->GetTaskAttributions(a2aRecordId);
+        }
+
+        abilityRecordForEvent = abilityRecord;
+        CleanupConnectionAndTerminateIfNeeded(abilityRecord);
+
+        RemoveConnectionRecordFromMap(connect);
+        TAG_LOGD(AAFwkTag::EXT, "Schedule disconnect done finished, recordId=%{public}d", connect->GetRecordId());
+    }
+    // serialMutex_ released — UnregisterTaskForA2A does a synchronous IPC to AppMgr;
+    // running it outside the lock avoids blocking connect/disconnect scheduling.
+    // The connection record has already been removed from the map, so no concurrent
+    // AddTaskAttribution can target this recordId.
+    if (needA2AUnregister) {
+        for (const auto &attr : attributionsToUnregister) {
+            if (attr.taskId.empty() || attr.attributionId <= 0) {
+                continue;
+            }
+            int32_t ret = IN_PROCESS_CALL(
+                DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance()->UnregisterTaskForA2A(
+                    attr.taskId, attr.attributionId));
+            if (ret == ERR_OK) {
+                abilityRecordForA2A->RemoveTaskAttribution(a2aRecordId, attr.taskId, attr.attributionId);
+            } else {
+                TAG_LOGE(AAFwkTag::EXT,
+                    "A2A unregister failed, recordId=%{public}d, taskId=%{public}s, ret=%{public}d",
+                    a2aRecordId, attr.taskId.c_str(), ret);
+            }
+        }
     }
 
-    UpdateStateAndCompleteDisconnect(abilityRecord, connect, token);
-
-    CleanupConnectionAndTerminateIfNeeded(abilityRecord);
-
-    RemoveConnectionRecordFromMap(connect);
-    TAG_LOGD(AAFwkTag::EXT, "Schedule disconnect done finished, recordId=%{public}d", connect->GetRecordId());
-
-    EventInfo eventInfo = BuildEventInfo(abilityRecord);
+    EventInfo eventInfo = BuildEventInfo(abilityRecordForEvent);
     EventReport::SendDisconnectServiceEvent(EventName::DISCONNECT_SERVICE, eventInfo);
     return ERR_OK;
 }

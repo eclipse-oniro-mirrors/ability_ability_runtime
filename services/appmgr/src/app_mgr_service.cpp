@@ -198,6 +198,28 @@ int32_t AppMgrService::FinishTask(const std::string &taskId)
     return TaskManagerService::GetInstance().FinishTask(taskId);
 }
 
+int32_t AppMgrService::AttributeTaskForA2A(const std::string &taskId, uint32_t callerTokenId,
+    pid_t targetPid, int64_t &attributionId)
+{
+    if (!AAFwk::PermissionVerification::GetInstance()->CheckSpecificSystemAbilityAccessPermission(
+        FOUNDATION_PROCESS)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "non-foundation caller");
+        return ERR_PERMISSION_DENIED;
+    }
+    return TaskManagerService::GetInstance().AttributeTaskForA2A(taskId, callerTokenId, targetPid,
+        attributionId);
+}
+
+int32_t AppMgrService::UnregisterTaskForA2A(const std::string &taskId, int64_t attributionId)
+{
+    if (!AAFwk::PermissionVerification::GetInstance()->CheckSpecificSystemAbilityAccessPermission(
+        FOUNDATION_PROCESS)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "non-foundation caller");
+        return ERR_PERMISSION_DENIED;
+    }
+    return TaskManagerService::GetInstance().UnregisterManagedProcess(taskId, attributionId);
+}
+
 namespace {
 bool IsTaskIdSanitized(const std::string &taskId)
 {

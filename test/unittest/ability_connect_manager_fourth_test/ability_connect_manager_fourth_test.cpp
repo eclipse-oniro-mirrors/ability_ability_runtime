@@ -28,6 +28,8 @@
 #include "ability_manager_errors.h"
 #include "ability_scheduler.h"
 #include "ability_util.h"
+#include "agent_card.h"
+#include "agent_extension_connection_constants.h"
 #include "bundlemgr/mock_bundle_manager.h"
 #include "hilog_tag_wrapper.h"
 #include "mock_ability_connect_callback.h"
@@ -883,6 +885,508 @@ HWTEST_F(AbilityConnectManagerFourthTest, ReportConnectEventToRss_003, TestSize.
         10000);
     EXPECT_EQ(ret, true);
     TAG_LOGI(AAFwkTag::TEST, "ReportConnectEventToRss_003 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: TryAttributeTaskForA2A
+ * SubFunction:
+ * FunctionPoints: TryAttributeTaskForA2A guard paths
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. Null abilityRecord → early return without crash
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, TryAttributeTargetAgentForA2A_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "TryAttributeTargetAgentForA2A_001 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    std::shared_ptr<BaseExtensionRecord> nullRecord = nullptr;
+    auto connectRecord = std::make_shared<ConnectionRecord>(nullptr, nullptr, callbackA_, nullptr);
+    connectManager->TryAttributeTaskForA2A(nullRecord, connectRecord);
+    SUCCEED();
+    TAG_LOGI(AAFwkTag::TEST, "TryAttributeTargetAgentForA2A_001 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: TryAttributeTaskForA2A
+ * SubFunction:
+ * FunctionPoints: TryAttributeTaskForA2A guard paths
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. Null connectingRecord → early return without crash
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, TryAttributeTargetAgentForA2A_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "TryAttributeTargetAgentForA2A_002 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    auto abilityRecord = BaseExtensionRecord::CreateBaseExtensionRecord(abilityRequest_);
+    ASSERT_NE(abilityRecord, nullptr);
+    std::shared_ptr<ConnectionRecord> nullConnectRecord = nullptr;
+    connectManager->TryAttributeTaskForA2A(abilityRecord, nullConnectRecord);
+    SUCCEED();
+    TAG_LOGI(AAFwkTag::TEST, "TryAttributeTargetAgentForA2A_002 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: TryAttributeTaskForA2A
+ * SubFunction:
+ * FunctionPoints: TryAttributeTaskForA2A guard paths
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. Non-agent extension type → early return without crash
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, TryAttributeTargetAgentForA2A_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "TryAttributeTargetAgentForA2A_003 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    auto abilityRecord = BaseExtensionRecord::CreateBaseExtensionRecord(abilityRequest_);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->abilityInfo_.extensionAbilityType = AppExecFwk::ExtensionAbilityType::SERVICE;
+
+    sptr<IRemoteObject> callerToken = abilityRecord->GetToken();
+    auto connectRecord = std::make_shared<ConnectionRecord>(callerToken, abilityRecord, callbackA_, nullptr);
+
+    connectManager->TryAttributeTaskForA2A(abilityRecord, connectRecord);
+    auto attributions = abilityRecord->GetTaskAttributions(connectRecord->GetRecordId());
+    EXPECT_EQ(attributions.size(), 0u);
+    TAG_LOGI(AAFwkTag::TEST, "TryAttributeTargetAgentForA2A_003 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: TryAttributeTaskForA2A
+ * SubFunction:
+ * FunctionPoints: TryAttributeTaskForA2A guard paths
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. Agent type but empty taskId → early return without crash
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, TryAttributeTargetAgentForA2A_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "TryAttributeTargetAgentForA2A_004 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    auto abilityRecord = BaseExtensionRecord::CreateBaseExtensionRecord(abilityRequest_);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->abilityInfo_.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    Want want;
+    abilityRecord->SetWant(want);
+
+    sptr<IRemoteObject> callerToken = abilityRecord->GetToken();
+    auto connectRecord = std::make_shared<ConnectionRecord>(callerToken, abilityRecord, callbackA_, nullptr);
+
+    connectManager->TryAttributeTaskForA2A(abilityRecord, connectRecord);
+    auto attributions = abilityRecord->GetTaskAttributions(connectRecord->GetRecordId());
+    EXPECT_EQ(attributions.size(), 0u);
+    TAG_LOGI(AAFwkTag::TEST, "TryAttributeTargetAgentForA2A_004 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: TryAttributeTaskForA2A
+ * SubFunction:
+ * FunctionPoints: TryAttributeTaskForA2A guard paths
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. Agent type with taskId but pid <= 0 → early return without crash
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, TryAttributeTargetAgentForA2A_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "TryAttributeTargetAgentForA2A_005 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    auto abilityRecord = BaseExtensionRecord::CreateBaseExtensionRecord(abilityRequest_);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->abilityInfo_.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    Want want;
+    want.SetParam("ohos.aafwk.param.agent.taskId", std::string("testTaskId"));
+    abilityRecord->SetWant(want);
+    abilityRecord->SetPid(0);
+
+    sptr<IRemoteObject> callerToken = abilityRecord->GetToken();
+    auto connectRecord = std::make_shared<ConnectionRecord>(callerToken, abilityRecord, callbackA_, nullptr);
+
+    connectManager->TryAttributeTaskForA2A(abilityRecord, connectRecord);
+    auto attributions = abilityRecord->GetTaskAttributions(connectRecord->GetRecordId());
+    EXPECT_EQ(attributions.size(), 0u);
+    TAG_LOGI(AAFwkTag::TEST, "TryAttributeTargetAgentForA2A_005 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: TryAttributeTaskForA2A
+ * SubFunction:
+ * FunctionPoints: TryAttributeTaskForA2A guard paths
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. Agent type with taskId and pid > 0 but callerTokenId == 0 → early return without crash
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, TryAttributeTargetAgentForA2A_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "TryAttributeTargetAgentForA2A_006 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    auto abilityRecord = BaseExtensionRecord::CreateBaseExtensionRecord(abilityRequest_);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->abilityInfo_.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    Want want;
+    want.SetParam("ohos.aafwk.param.agent.taskId", std::string("testTaskId"));
+    abilityRecord->SetWant(want);
+    abilityRecord->SetPid(1000);
+
+    sptr<IRemoteObject> callerToken = abilityRecord->GetToken();
+    auto connectRecord = std::make_shared<ConnectionRecord>(callerToken, abilityRecord, callbackA_, nullptr);
+    connectRecord->callerTokenId_ = 0;
+
+    connectManager->TryAttributeTaskForA2A(abilityRecord, connectRecord);
+    auto attributions = abilityRecord->GetTaskAttributions(connectRecord->GetRecordId());
+    EXPECT_EQ(attributions.size(), 0u);
+    TAG_LOGI(AAFwkTag::TEST, "TryAttributeTargetAgentForA2A_006 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: TryAttributeTaskForA2A
+ * SubFunction:
+ * FunctionPoints: TryAttributeTaskForA2A full path with AppMgrClient failure
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. All guards pass but AppMgrClient::AttributeTaskForA2A fails (no real service in test env)
+ * 2. No attribution should be stored on the abilityRecord
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, TryAttributeTargetAgentForA2A_007, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "TryAttributeTargetAgentForA2A_007 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    auto abilityRecord = BaseExtensionRecord::CreateBaseExtensionRecord(abilityRequest_);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->abilityInfo_.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    Want want;
+    want.SetParam("ohos.aafwk.param.agent.taskId", std::string("testTaskId"));
+    abilityRecord->SetWant(want);
+    abilityRecord->SetPid(1000);
+
+    sptr<IRemoteObject> callerToken = abilityRecord->GetToken();
+    auto connectRecord = std::make_shared<ConnectionRecord>(callerToken, abilityRecord, callbackA_, nullptr);
+    connectRecord->callerTokenId_ = 12345;
+
+    connectManager->TryAttributeTaskForA2A(abilityRecord, connectRecord);
+    auto attributions = abilityRecord->GetTaskAttributions(connectRecord->GetRecordId());
+    EXPECT_EQ(attributions.size(), 0u);
+    TAG_LOGI(AAFwkTag::TEST, "TryAttributeTargetAgentForA2A_007 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: AttributeTaskForA2AReusedConnectionRecord
+ * SubFunction:
+ * FunctionPoints: AttributeTaskForA2AReusedConnectionRecord guard paths
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. Null connect → returns ERR_INVALID_VALUE
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, AttributeSameConnectionRecordTaskID_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AttributeSameConnectionRecordTaskID_001 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    sptr<IAbilityConnection> nullConnect = nullptr;
+    auto ret = connectManager->AttributeTaskForA2AReusedConnectionRecord(abilityRequest_, nullConnect);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "AttributeSameConnectionRecordTaskID_001 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: AttributeTaskForA2AReusedConnectionRecord
+ * SubFunction:
+ * FunctionPoints: AttributeTaskForA2AReusedConnectionRecord guard paths
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. Empty taskId in want → returns ERR_INVALID_VALUE
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, AttributeSameConnectionRecordTaskID_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AttributeSameConnectionRecordTaskID_002 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    AbilityRequest request = abilityRequest_;
+    request.want.RemoveParam("ohos.aafwk.param.agent.taskId");
+    auto ret = connectManager->AttributeTaskForA2AReusedConnectionRecord(request, callbackA_);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "AttributeSameConnectionRecordTaskID_002 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: AttributeTaskForA2AReusedConnectionRecord
+ * SubFunction:
+ * FunctionPoints: AttributeTaskForA2AReusedConnectionRecord guard paths
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. Service not in serviceMap_ → returns ERR_INVALID_VALUE
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, AttributeSameConnectionRecordTaskID_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AttributeSameConnectionRecordTaskID_003 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    AbilityRequest request = abilityRequest_;
+    request.abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    request.want.SetParam("ohos.aafwk.param.agent.taskId", std::string("testTaskId"));
+    request.want.SetParam(AgentRuntime::AGENTID_KEY, std::string("testAgentId"));
+    request.want.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY,
+        static_cast<int32_t>(AgentRuntime::AgentCardType::APP));
+
+    auto ret = connectManager->AttributeTaskForA2AReusedConnectionRecord(request, callbackA_);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "AttributeSameConnectionRecordTaskID_003 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: AttributeTaskForA2AReusedConnectionRecord
+ * SubFunction:
+ * FunctionPoints: AttributeTaskForA2AReusedConnectionRecord guard paths
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. Service in map but connectRecord not found in record list → returns ERR_INVALID_VALUE
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, AttributeSameConnectionRecordTaskID_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AttributeSameConnectionRecordTaskID_004 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    AbilityRequest request = abilityRequest_;
+    request.abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    request.want.SetParam("ohos.aafwk.param.agent.taskId", std::string("testTaskId"));
+    request.want.SetParam(AgentRuntime::AGENTID_KEY, std::string("testAgentId"));
+    request.want.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY,
+        static_cast<int32_t>(AgentRuntime::AgentCardType::APP));
+
+    auto abilityRecord = BaseExtensionRecord::CreateBaseExtensionRecord(request);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->abilityInfo_.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    std::string serviceKey = connectManager->GetServiceKey(request);
+    connectManager->AddToServiceMap(serviceKey, abilityRecord);
+
+    auto ret = connectManager->AttributeTaskForA2AReusedConnectionRecord(request, callbackA_);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    connectManager->GetServiceMap().clear();
+    TAG_LOGI(AAFwkTag::TEST, "AttributeSameConnectionRecordTaskID_004 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: AttributeTaskForA2AReusedConnectionRecord
+ * SubFunction:
+ * FunctionPoints: AttributeTaskForA2AReusedConnectionRecord dedup logic
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. Non-LOW_CODE: connectRecord found but already attributed with same taskId → returns ERR_OK
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, AttributeSameConnectionRecordTaskID_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AttributeSameConnectionRecordTaskID_005 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    AbilityRequest request = abilityRequest_;
+    request.abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    request.want.SetParam("ohos.aafwk.param.agent.taskId", std::string("testTaskId"));
+    request.want.SetParam(AgentRuntime::AGENTID_KEY, std::string("testAgentId"));
+    request.want.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY,
+        static_cast<int32_t>(AgentRuntime::AgentCardType::APP));
+
+    auto abilityRecord = BaseExtensionRecord::CreateBaseExtensionRecord(request);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->abilityInfo_.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    abilityRecord->SetPid(1000);
+    std::string serviceKey = connectManager->GetServiceKey(request);
+    connectManager->AddToServiceMap(serviceKey, abilityRecord);
+
+    sptr<IRemoteObject> callerToken = abilityRecord->GetToken();
+    auto connectRecord = std::make_shared<ConnectionRecord>(callerToken, abilityRecord, callbackA_, nullptr);
+    connectRecord->callerTokenId_ = 12345;
+    Want connectWant;
+    connectWant.SetParam(AgentRuntime::AGENTID_KEY, std::string("testAgentId"));
+    connectWant.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY,
+        static_cast<int32_t>(AgentRuntime::AgentCardType::APP));
+    connectRecord->SetConnectWant(connectWant);
+    abilityRecord->AddConnectRecordToList(connectRecord);
+
+    AgentTaskAttribution existingAttribution;
+    existingAttribution.taskId = "testTaskId";
+    existingAttribution.attributionId = 100;
+    existingAttribution.agentId = "testAgentId";
+    abilityRecord->AddTaskAttribution(connectRecord->GetRecordId(), existingAttribution);
+
+    auto ret = connectManager->AttributeTaskForA2AReusedConnectionRecord(request, callbackA_);
+    EXPECT_EQ(ret, ERR_OK);
+    connectManager->GetServiceMap().clear();
+    TAG_LOGI(AAFwkTag::TEST, "AttributeSameConnectionRecordTaskID_005 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: AttributeTaskForA2AReusedConnectionRecord
+ * SubFunction:
+ * FunctionPoints: AttributeTaskForA2AReusedConnectionRecord full path with AppMgrClient failure
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. Non-LOW_CODE: connectRecord found, not yet attributed, but AppMgrClient fails (no real service)
+ * 2. Should return non-ERR_OK and no attribution stored
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, AttributeSameConnectionRecordTaskID_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AttributeSameConnectionRecordTaskID_006 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    AbilityRequest request = abilityRequest_;
+    request.abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    request.want.SetParam("ohos.aafwk.param.agent.taskId", std::string("testTaskId"));
+    request.want.SetParam(AgentRuntime::AGENTID_KEY, std::string("testAgentId"));
+    request.want.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY,
+        static_cast<int32_t>(AgentRuntime::AgentCardType::APP));
+
+    auto abilityRecord = BaseExtensionRecord::CreateBaseExtensionRecord(request);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->abilityInfo_.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    abilityRecord->SetPid(1000);
+    std::string serviceKey = connectManager->GetServiceKey(request);
+    connectManager->AddToServiceMap(serviceKey, abilityRecord);
+
+    sptr<IRemoteObject> callerToken = abilityRecord->GetToken();
+    auto connectRecord = std::make_shared<ConnectionRecord>(callerToken, abilityRecord, callbackA_, nullptr);
+    connectRecord->callerTokenId_ = 12345;
+    Want connectWant;
+    connectWant.SetParam(AgentRuntime::AGENTID_KEY, std::string("testAgentId"));
+    connectWant.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY,
+        static_cast<int32_t>(AgentRuntime::AgentCardType::APP));
+    connectRecord->SetConnectWant(connectWant);
+    abilityRecord->AddConnectRecordToList(connectRecord);
+
+    auto ret = connectManager->AttributeTaskForA2AReusedConnectionRecord(request, callbackA_);
+    EXPECT_NE(ret, ERR_OK);
+    auto attributions = abilityRecord->GetTaskAttributions(connectRecord->GetRecordId());
+    EXPECT_EQ(attributions.size(), 0u);
+    connectManager->GetServiceMap().clear();
+    TAG_LOGI(AAFwkTag::TEST, "AttributeSameConnectionRecordTaskID_006 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: AttributeTaskForA2AReusedConnectionRecord
+ * SubFunction:
+ * FunctionPoints: AttributeTaskForA2AReusedConnectionRecord LOW_CODE dedup logic
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. LOW_CODE: connectRecord found with LOW_CODE card type, already attributed with same taskId+agentId
+ * 2. Should return ERR_OK (dedup hit)
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, AttributeSameConnectionRecordTaskID_007, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AttributeSameConnectionRecordTaskID_007 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    AbilityRequest request = abilityRequest_;
+    request.abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    request.want.SetParam("ohos.aafwk.param.agent.taskId", std::string("testTaskId"));
+    request.want.SetParam(AgentRuntime::AGENTID_KEY, std::string("lowCodeAgentId"));
+    request.want.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY,
+        static_cast<int32_t>(AgentRuntime::AgentCardType::LOW_CODE));
+
+    auto abilityRecord = BaseExtensionRecord::CreateBaseExtensionRecord(request);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->abilityInfo_.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    abilityRecord->SetPid(1000);
+    std::string serviceKey = connectManager->GetServiceKey(request);
+    connectManager->AddToServiceMap(serviceKey, abilityRecord);
+
+    sptr<IRemoteObject> callerToken = abilityRecord->GetToken();
+    auto connectRecord = std::make_shared<ConnectionRecord>(callerToken, abilityRecord, callbackA_, nullptr);
+    connectRecord->callerTokenId_ = 12345;
+    Want connectWant;
+    connectWant.SetParam(AgentRuntime::AGENTID_KEY, std::string("lowCodeAgentId"));
+    connectWant.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY,
+        static_cast<int32_t>(AgentRuntime::AgentCardType::LOW_CODE));
+    connectRecord->SetConnectWant(connectWant);
+    abilityRecord->AddConnectRecordToList(connectRecord);
+
+    AgentTaskAttribution existingAttribution;
+    existingAttribution.taskId = "testTaskId";
+    existingAttribution.attributionId = 200;
+    existingAttribution.agentId = "lowCodeAgentId";
+    abilityRecord->AddTaskAttribution(connectRecord->GetRecordId(), existingAttribution);
+
+    auto ret = connectManager->AttributeTaskForA2AReusedConnectionRecord(request, callbackA_);
+    EXPECT_EQ(ret, ERR_OK);
+    connectManager->GetServiceMap().clear();
+    TAG_LOGI(AAFwkTag::TEST, "AttributeSameConnectionRecordTaskID_007 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: AttributeTaskForA2AReusedConnectionRecord
+ * SubFunction:
+ * FunctionPoints: AttributeTaskForA2AReusedConnectionRecord guard paths for pid and callerTokenId
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. connectRecord found, not yet attributed, but target pid <= 0 → returns ERR_INVALID_VALUE
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, AttributeSameConnectionRecordTaskID_008, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AttributeSameConnectionRecordTaskID_008 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    AbilityRequest request = abilityRequest_;
+    request.abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    request.want.SetParam("ohos.aafwk.param.agent.taskId", std::string("testTaskId"));
+    request.want.SetParam(AgentRuntime::AGENTID_KEY, std::string("testAgentId"));
+    request.want.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY,
+        static_cast<int32_t>(AgentRuntime::AgentCardType::APP));
+
+    auto abilityRecord = BaseExtensionRecord::CreateBaseExtensionRecord(request);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->abilityInfo_.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    abilityRecord->SetPid(0);
+    std::string serviceKey = connectManager->GetServiceKey(request);
+    connectManager->AddToServiceMap(serviceKey, abilityRecord);
+
+    sptr<IRemoteObject> callerToken = abilityRecord->GetToken();
+    auto connectRecord = std::make_shared<ConnectionRecord>(callerToken, abilityRecord, callbackA_, nullptr);
+    connectRecord->callerTokenId_ = 12345;
+    Want connectWant;
+    connectWant.SetParam(AgentRuntime::AGENTID_KEY, std::string("testAgentId"));
+    connectWant.SetParam(AgentRuntime::AGENT_CARD_TYPE_KEY,
+        static_cast<int32_t>(AgentRuntime::AgentCardType::APP));
+    connectRecord->SetConnectWant(connectWant);
+    abilityRecord->AddConnectRecordToList(connectRecord);
+
+    auto ret = connectManager->AttributeTaskForA2AReusedConnectionRecord(request, callbackA_);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    connectManager->GetServiceMap().clear();
+    TAG_LOGI(AAFwkTag::TEST, "AttributeSameConnectionRecordTaskID_008 end");
 }
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -3003,6 +3003,22 @@ public:
     {
         return ERR_OK;
     }
+
+    /**
+     * @brief Best-effort, oneway attribution of the task id (carried in Want.parameters) onto
+     *        an existing ConnectionRecord that AMS already holds for a reused agent connection.
+     *        Called by AgentManagerService when a client-side connect hit an already-connected
+     *        AgentConnection (so ScheduleConnectAbilityDoneLocked will not fire again). The
+     *        connect argument MUST be the same AgentServiceConnection AMS received on the first
+     *        connect. Failures are logged and do NOT affect the connect result.
+     * @param want Indicates the original connect want (carries taskId / agentId params).
+     * @param connect Indicates the AgentServiceConnection AMS already holds for this connection.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    virtual int32_t AttributeTaskForA2AReusedConnectionRecord(const Want &want, sptr<IAbilityConnection> connect)
+    {
+        return ERR_OK;
+    }
 };
 }  // namespace AAFwk
 }  // namespace OHOS

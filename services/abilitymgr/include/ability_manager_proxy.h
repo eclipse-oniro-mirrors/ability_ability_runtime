@@ -2269,6 +2269,9 @@ private:
 
     virtual int32_t GetDynamicAgentCardsForMigration(std::string &jsonStr) override;
 
+    virtual int32_t AttributeTaskForA2AReusedConnectionRecord(const Want &want,
+        sptr<IAbilityConnection> connect) override;
+
 private:
     static inline BrokerDelegator<AbilityManagerProxy> delegator_;
 };

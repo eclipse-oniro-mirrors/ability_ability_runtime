@@ -120,6 +120,12 @@ public:
     {
         return 0;
     }
+
+    virtual int32_t AttributeTaskForA2AReusedConnectionRecord(const AAFwk::Want &,
+        const sptr<AAFwk::IAbilityConnection> &)
+    {
+        return 0;
+    }
 };
 }  // namespace AgentRuntime
 }  // namespace OHOS

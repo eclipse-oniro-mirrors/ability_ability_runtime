@@ -232,6 +232,22 @@ int32_t AgentManagerClient::VerifyAgentDisconnectRequests(const std::vector<AAFw
     return agentMgr->VerifyAgentDisconnectRequests(wants, connection, callerIdentity);
 }
 
+int32_t AgentManagerClient::AttributeTaskForA2AReusedConnectionRecord(const AAFwk::Want &want,
+    const sptr<AAFwk::IAbilityConnection> &connection)
+{
+    auto agentMgr = GetAgentMgrProxy();
+    if (agentMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null agentmgr");
+        return ERR_NULL_AGENT_MGR_PROXY;
+    }
+    // oneway IPC: proxy sends TF_ASYNC and does not read reply. Best-effort: log only.
+    auto ret = agentMgr->AttributeTaskForA2AReusedConnectionRecord(want, connection);
+    if (ret != ERR_OK) {
+        TAG_LOGW(AAFwkTag::SER_ROUTER, "AttributeTaskForA2AReusedConnectionRecord send failed: %{public}d", ret);
+    }
+    return ret;
+}
+
 sptr<IAgentManager> AgentManagerClient::GetAgentMgrProxy()
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);

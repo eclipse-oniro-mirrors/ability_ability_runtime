@@ -156,7 +156,7 @@ sptr<EtsAgentConnection> CreateAgentConnectionInner(ani_vm *aniVM, AAFwk::Want &
     return connection;
 }
 
-bool CheckConnectAlreadyExist(ani_env *env, const AAFwk::Want &want, ani_object callback, ani_object asyncCallback)
+bool CheckConnectAlreadyExist(ani_env *env, AAFwk::Want &want, ani_object callback, ani_object asyncCallback)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "CheckConnectAlreadyExist called");
     sptr<EtsAgentConnection> connection = nullptr;
@@ -164,6 +164,11 @@ bool CheckConnectAlreadyExist(ani_env *env, const AAFwk::Want &want, ani_object 
     if (connection == nullptr) {
         TAG_LOGD(AAFwkTag::SER_ROUTER, "null connection");
         return false;
+    }
+    // Populate AGENTEXTENSIONHOSTPROXY_KEY so the inner-API FindConnectionLocked can match
+    // this connection (MatchConnection checks agentId + agentExtProxy + element).
+    if (connection->GetServiceHostStub() != nullptr) {
+        want.SetParam(AGENTEXTENSIONHOSTPROXY_KEY, connection->GetServiceHostStub()->AsObject());
     }
     if (connection->IsDisconnecting()) {
         if (AgentConnectionUtils::QueueReconnectIfActive(env, want, asyncCallback, connection)) {
@@ -344,7 +349,7 @@ bool ReuseLowCodeConnection(ani_env *env, AAFwk::Want &want, ani_object asyncCal
     return ReuseLowCodeWithProxy(env, want, asyncCallback, connection, agentId, isAdded, proxy);
 }
 
-bool TryReuseLowCodeAgentConnection(ani_env *env, AAFwk::Want want, ani_object callbackObj,
+bool TryReuseLowCodeAgentConnection(ani_env *env, AAFwk::Want &want, ani_object callbackObj,
     ani_object asyncCallback)
 {
     sptr<EtsAgentConnection> connection = nullptr;
@@ -945,10 +950,12 @@ void EtsAgentManager::ConnectAgentExtensionAbility(ani_env *env, ani_object aniW
     }
     if (CheckConnectAlreadyExist(env, want, callbackObj, asyncCallback)) {
         TAG_LOGI(AAFwkTag::SER_ROUTER, "Duplicate canonical connection found");
+        AgentConnectionManager::GetInstance().AttributeTaskForA2AReusedConnection(want);
         return;
     }
     if (currentType == static_cast<int32_t>(AgentCardType::LOW_CODE) &&
         TryReuseLowCodeAgentConnection(env, want, callbackObj, asyncCallback)) {
+        AgentConnectionManager::GetInstance().AttributeTaskForA2AReusedConnection(want);
         return;
     }
 
