@@ -19,10 +19,14 @@ module_output_path = "ability_runtime/ability_runtime/skill"
 ohos_unittest("skill_execute_callback_stub_test") {
   module_out_path = module_output_path
 
-  include_dirs = [ "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/system_ability_mock" ]
+  include_dirs = [
+    "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/system_ability_mock",
+    "mock/include",
+  ]
 
   sources = [
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/appexecfwk_core/src/appmgr/mock_app_scheduler.cpp",
+    "mock/src/ipc_skeleton.cpp",
     "skill_execute_callback_stub_test.cpp",
   ]
 

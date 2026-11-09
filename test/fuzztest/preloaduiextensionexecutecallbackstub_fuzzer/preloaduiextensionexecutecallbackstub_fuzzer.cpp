@@ -22,7 +22,9 @@
 #include <iostream>
 
 #include "parcel.h"
+#define private public
 #include "preload_ui_extension_execute_callback_stub.h"
+#undef private
 #include "securec.h"
 
 using namespace OHOS::AAFwk;
@@ -80,6 +82,13 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     std::shared_ptr<PreloadUIExtensionExecuteCallbackStub> stub =
         std::make_shared<PreloadUIExtensionExecuteCallbackStubFuzz>();
     stub->OnRemoteRequest(actualCode, parcel, reply, option);
+    // calling uid in fuzz process is not foundation, dispatch inner handlers directly to keep parser covered
+    parcel.RewindRead(0);
+    stub->HandleOnLoadedDone(parcel, reply);
+    parcel.RewindRead(0);
+    stub->HandleOnDestroyDone(parcel, reply);
+    parcel.RewindRead(0);
+    stub->HandleOnPreloadSuccess(parcel, reply);
     return true;
 }
 }

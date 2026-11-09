@@ -15,10 +15,18 @@
 
 #include "remote_intent_result_callback_stub.h"
 
+#include "ability_manager_errors.h"
 #include "hilog_tag_wrapper.h"
+#include "ipc_skeleton.h"
 
 namespace OHOS {
 namespace AAFwk {
+namespace {
+// keep consistent with DMS_UID in services/abilitymgr/src/utils/dms_util.cpp:
+// the only legit caller is dtbschedmgr (dms), which relays remote intent results locally
+constexpr int32_t DMS_UID = 5522;
+} // namespace
+
 RemoteIntentResultCallbackStub::RemoteIntentResultCallbackStub() {}
 
 int RemoteIntentResultCallbackStub::OnIntentResultInner(MessageParcel &data, MessageParcel &reply)
@@ -46,6 +54,13 @@ int RemoteIntentResultCallbackStub::OnRemoteRequest(
     if (descriptor != remoteDescriptor) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "descriptor not equal to remote");
         return ERR_INVALID_STATE;
+    }
+
+    // only dms(relayed remote result) is allowed to invoke
+    int32_t callingUid = IPCSkeleton::GetCallingUid();
+    if (callingUid != DMS_UID) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "reject: callingUid=%{public}d, expected dms uid", callingUid);
+        return CHECK_PERMISSION_FAILED;
     }
 
     switch (code) {

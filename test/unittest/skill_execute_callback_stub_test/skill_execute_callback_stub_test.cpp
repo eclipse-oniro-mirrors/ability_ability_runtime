@@ -15,7 +15,9 @@
 
 #include <gtest/gtest.h>
 
+#include "ability_manager_errors.h"
 #include "hilog_tag_wrapper.h"
+#include "ipc_skeleton.h"
 #include "mock_skill_execute_callback_stub_for_stub_test.h"
 #include "skill/skill_execute_callback_proxy.h"
 #include "skill_execute_result.h"
@@ -25,6 +27,9 @@ using namespace testing::ext;
 using namespace testing;
 namespace OHOS {
 namespace AAFwk {
+namespace {
+constexpr int32_t FOUNDATION_UID = 5523;
+}
 
 class SkillExecuteCallbackStubTest : public testing::Test {
 public:
@@ -41,9 +46,13 @@ void SkillExecuteCallbackStubTest::SetUpTestCase(void)
 void SkillExecuteCallbackStubTest::TearDownTestCase(void)
 {}
 void SkillExecuteCallbackStubTest::SetUp()
-{}
+{
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID);
+}
 void SkillExecuteCallbackStubTest::TearDown()
-{}
+{
+    IPCSkeleton::SetCallingUid(0);
+}
 
 void SkillExecuteCallbackStubTest::WriteInterfaceToken(MessageParcel &data)
 {
@@ -203,6 +212,35 @@ HWTEST_F(SkillExecuteCallbackStubTest, OnRemoteRequest_0600, TestSize.Level1)
     int res = mockStub->OnRemoteRequest(ISkillExecuteCallback::ON_SKILL_EXECUTE_DONE,
         data, reply, option);
     EXPECT_EQ(res, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: OnRemoteRequest_0700
+ * @tc.desc: Test OnRemoteRequest with non-foundation calling uid, expect permission rejected.
+ * @tc.type: FUNC
+ */
+HWTEST_F(SkillExecuteCallbackStubTest, OnRemoteRequest_0700, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    sptr<MockSkillExecuteCallback> mockStub(new MockSkillExecuteCallback());
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    IPCSkeleton::SetCallingUid(0); // simulate a non-foundation caller
+    WriteInterfaceToken(data);
+    data.WriteString("req001");
+    data.WriteInt32(0);
+    AppExecFwk::SkillExecuteResult result;
+    result.result = std::make_shared<AAFwk::WantParams>();
+    data.WriteParcelable(&result);
+
+    EXPECT_CALL(*mockStub, OnExecuteDone(_, _, _)).Times(0);
+    int res = mockStub->OnRemoteRequest(ISkillExecuteCallback::ON_SKILL_EXECUTE_DONE,
+        data, reply, option);
+    EXPECT_EQ(res, CHECK_PERMISSION_FAILED);
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID);
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
 
