@@ -30,6 +30,7 @@
 #include "child_process_info.h"
 #endif  // SUPPORT_CHILD_PROCESS
 #include "data_group_info.h"
+#include "ipc_group_info.h"
 #include "nocopyable.h"
 #include "shared/base_shared_bundle_info.h"
 
@@ -38,6 +39,7 @@ namespace AppExecFwk {
 enum class SpawnConnectionState { STATE_NOT_CONNECT, STATE_CONNECTED, STATE_CONNECT_FAILED };
 using HspList = std::vector<BaseSharedBundleInfo>;
 using DataGroupInfoList = std::vector<DataGroupInfo>;
+using IpcGroupInfoList = std::vector<IpcGroupInfo>;
 using JITPermissionsMap = std::map<std::string, std::string>;
 const int32_t MAX_FLAG_INDEX = 32;
 const int32_t MAX_PROC_NAME_LEN = 256;
@@ -70,6 +72,7 @@ struct AppSpawnStartMsg {
     std::map<std::string, std::string> appEnv; // environment variable to be set to the process
     std::map<std::string, int32_t> fds;
     DataGroupInfoList dataGroupInfoList; // list of harmony shared package
+    IpcGroupInfoList ipcGroupInfoList;
     JITPermissionsMap jitPermissionsMap; // map of JIT permissions
     uint32_t mountPermissionFlags;
     uint32_t apiTargetVersion = 0;

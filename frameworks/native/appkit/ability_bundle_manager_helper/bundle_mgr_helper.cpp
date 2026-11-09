@@ -897,6 +897,20 @@ bool BundleMgrHelper::QueryDataGroupInfos(
     return bundleMgr->QueryDataGroupInfos(bundleName, userId, infos);
 }
 
+ErrCode BundleMgrHelper::QueryIpcGroupInfos(
+    const std::string &bundleName, int32_t userId, std::vector<IpcGroupInfo> &infos)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        return ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
+    }
+
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    return bundleMgr->QueryIpcGroupInfos(bundleName, userId, infos);
+}
+
 bool BundleMgrHelper::RegisterBundleEventCallback(const sptr<IBundleEventCallback> &bundleEventCallback)
 {
     TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");

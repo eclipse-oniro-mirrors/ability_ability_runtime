@@ -50,6 +50,8 @@ constexpr const char* JITPERMISSIONSLIST_NAME_VALUE = "Permissions";
 constexpr const char* JITPERMISSIONSLIST_COUNT = "ohos.encaps.count";
 constexpr const char* JITPERMISSIONSLIST_PERMISSIONS_NAME = "permissions";
 constexpr const char* UNINSTALL_BUNDLE_NAME = "uninstallDebugHapMsg";
+constexpr const char* IPCGROUPINFOLIST_IPCGROUPID = "ipcGroupId";
+constexpr const char* IPCGROUPINFOLIST_GID = "ipcGroupGid";
 }
 AppSpawnClient::AppSpawnClient(bool isNWebSpawn)
 {
@@ -160,6 +162,20 @@ static std::string DumpDataGroupInfoListToJson(const DataGroupInfoList &dataGrou
     }
     TAG_LOGD(AAFwkTag::APPMGR, "dataGroupInfoListJson %{public}s", dataGroupInfoListJson.dump().c_str());
     return dataGroupInfoListJson.dump();
+}
+
+static std::string DumpIpcGroupInfoListToJson(const IpcGroupInfoList &ipcGroupInfoList)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "ipcGroupInfoList size: %{public}zu", ipcGroupInfoList.size());
+    nlohmann::json ipcGroupInfoListJson;
+    for (auto& ipcGroupInfo : ipcGroupInfoList) {
+        nlohmann::json ipcGroupInfoJson;
+        ipcGroupInfoJson[IPCGROUPINFOLIST_IPCGROUPID] = ipcGroupInfo.ipcGroupId;
+        ipcGroupInfoJson[IPCGROUPINFOLIST_GID] = std::to_string(ipcGroupInfo.gid);
+        ipcGroupInfoListJson.emplace_back(ipcGroupInfoJson);
+    }
+    TAG_LOGD(AAFwkTag::APPMGR, "ipcGroupInfoListJson %{public}s", ipcGroupInfoListJson.dump().c_str());
+    return ipcGroupInfoListJson.dump();
 }
 
 static std::string DumpHspListToJson(const HspList &hspList)
@@ -495,6 +511,15 @@ int32_t AppSpawnClient::AppspawnSetExtMsgSec(const AppSpawnStartMsg &startMsg, A
             return ret;
         }
         TAG_LOGD(AAFwkTag::APPMGR, "Send appSignType: %{public}s", startMsg.appSignType.c_str());
+    }
+
+    if (!startMsg.ipcGroupInfoList.empty()) {
+        ret = AppSpawnReqMsgAddStringInfo(reqHandle, MSG_EXT_NAME_IPC_GROUP,
+            DumpIpcGroupInfoListToJson(startMsg.ipcGroupInfoList).c_str());
+        if (ret) {
+            TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
+            return ret;
+        }
     }
     return ret;
 }
