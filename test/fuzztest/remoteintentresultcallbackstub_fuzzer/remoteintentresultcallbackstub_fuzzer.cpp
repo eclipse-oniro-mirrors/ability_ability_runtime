@@ -14,8 +14,10 @@
  */
 #include "attack_vectors.h"
 #include "fuzz_util.h"
-#include "remoteintentresultcallbackstub_fuzzer.h"
+#define private public
 #include "remote_intent_result_callback_stub.h"
+#undef private
+#include "remoteintentresultcallbackstub_fuzzer.h"
 #include "remote_intent_result_callback_interface.h"
 
 using namespace OHOS::AAFwk;
@@ -47,5 +49,25 @@ void DoFuzzCases(uint32_t code, MessageParcel &parcel, FuzzedDataProvider &fdp, 
     }
 }
 
-FUZZ_STUB_ENTRY_IMPL(RemoteIntentResultCallbackStubFuzzTest, FuzzUtil::Tokens::REMOTE_INTENT_CB)
+bool DoSomethingInterestingWithMyAPI(const char *data, size_t size)
+{
+    FUZZ_EXTRACT_CODE(data, size);
+    MessageParcel parcel;
+    MessageParcel reply;
+    MessageOption option;
+    uint32_t actualCode = 0;
+    parcel.WriteInterfaceToken(std::u16string(FuzzUtil::Tokens::REMOTE_INTENT_CB));
+    DoFuzzCases(code, parcel, fdp, actualCode);
+    parcel.RewindRead(0);
+    auto stub = std::make_shared<RemoteIntentResultCallbackStubFuzzTest>();
+    stub->OnRemoteRequest(actualCode, parcel, reply, option);
+    // calling uid in fuzz process is not dms, dispatch inner handlers directly to keep parser covered
+    parcel.RewindRead(0);
+    stub->OnIntentResultInner(parcel, reply);
+    parcel.RewindRead(0);
+    stub->OnLinkDisconnectedInner(parcel, reply);
+    return true;
+}
 } // namespace OHOS
+
+FUZZ_ENTRY_IMPL(OHOS::DoSomethingInterestingWithMyAPI)

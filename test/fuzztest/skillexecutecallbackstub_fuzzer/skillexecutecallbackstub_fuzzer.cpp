@@ -14,7 +14,9 @@
  */
 #include "attack_vectors.h"
 #include "fuzz_util.h"
+#define private public
 #include "skill/skill_execute_callback_stub.h"
+#undef private
 #include "skillexecutecallbackstub_fuzzer.h"
 
 using namespace OHOS::AAFwk;
@@ -44,5 +46,23 @@ void DoFuzzCases(uint32_t code, MessageParcel &parcel, FuzzedDataProvider &fdp, 
     }
 }
 
-FUZZ_STUB_ENTRY_IMPL(SkillExecuteCallbackStubFuzz, FuzzUtil::Tokens::SKILL_EXECUTE_CB)
+bool DoSomethingInterestingWithMyAPI(const char *data, size_t size)
+{
+    FUZZ_EXTRACT_CODE(data, size);
+    MessageParcel parcel;
+    MessageParcel reply;
+    MessageOption option;
+    uint32_t actualCode = 0;
+    parcel.WriteInterfaceToken(std::u16string(FuzzUtil::Tokens::SKILL_EXECUTE_CB));
+    DoFuzzCases(code, parcel, fdp, actualCode);
+    parcel.RewindRead(0);
+    auto stub = std::make_shared<SkillExecuteCallbackStubFuzz>();
+    stub->OnRemoteRequest(actualCode, parcel, reply, option);
+    // calling uid in fuzz process is not foundation, dispatch inner handler directly to keep parser covered
+    parcel.RewindRead(0);
+    stub->OnExecuteDoneInner(parcel, reply);
+    return true;
+}
 } // namespace OHOS
+
+FUZZ_ENTRY_IMPL(OHOS::DoSomethingInterestingWithMyAPI)

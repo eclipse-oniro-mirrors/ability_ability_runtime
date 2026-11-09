@@ -14,10 +14,16 @@
  */
 
 #include "skill/skill_execute_callback_stub.h"
+#include "ability_manager_errors.h"
 #include "hilog_tag_wrapper.h"
+#include "ipc_skeleton.h"
 
 namespace OHOS {
 namespace AAFwk {
+namespace {
+// only foundation (abilitymgr) is allowed to invoke this callback
+constexpr int32_t FOUNDATION_UID = 5523;
+} // namespace
 
 SkillExecuteCallbackStub::SkillExecuteCallbackStub() {}
 
@@ -29,6 +35,12 @@ int32_t SkillExecuteCallbackStub::OnRemoteRequest(
     if (data.ReadInterfaceToken() != ISkillExecuteCallback::GetDescriptor()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "interface token not match");
         return ERR_INVALID_STATE;
+    }
+
+    if (IPCSkeleton::GetCallingUid() != FOUNDATION_UID) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "reject: callingUid=%{public}d, expected foundation uid",
+            IPCSkeleton::GetCallingUid());
+        return CHECK_PERMISSION_FAILED;
     }
 
     if (code == ON_SKILL_EXECUTE_DONE) {
