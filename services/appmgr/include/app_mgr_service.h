@@ -880,6 +880,22 @@ public:
     int32_t UnregisterRenderStateObserver(const sptr<IRenderStateObserver> &observer) override;
 
     /**
+     * @brief register a child process state observer to receive change.
+     * @param observer the child process state observer to receive notify.
+     *
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t RegisterChildProcessStateObserver(const sptr<IChildProcessStateObserver> &observer) override;
+
+    /**
+     * @brief unregister a child process state observer registered before.
+     * @param observer the child process state observer registered before.
+     *
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t UnregisterChildProcessStateObserver(const sptr<IChildProcessStateObserver> &observer) override;
+
+    /**
      * @brief update a render process state.
      * @param renderPid the pid of the render process to be updated.
      * @param state the new state value of the render process.
@@ -1110,6 +1126,16 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int32_t GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos) override;
+
+    /**
+     * Notify the state change of a child process.
+     *
+     * @param pid The pid of the child process whose state has changed.
+     * @param state The new state of the child process.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
+    int32_t NotifyChildProcessState(int32_t pid, int32_t state) override;
 
 private:
     /**

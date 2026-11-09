@@ -796,6 +796,20 @@ public:
     virtual int32_t UnregisterRenderStateObserver(const sptr<IRenderStateObserver> &observer) override;
 
     /**
+     * Register child process state observer.
+     * @param observer Child process state observer.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t RegisterChildProcessStateObserver(const sptr<IChildProcessStateObserver> &observer) override;
+
+    /**
+     * Unregister child process state observer.
+     * @param observer Child process state observer.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t UnregisterChildProcessStateObserver(const sptr<IChildProcessStateObserver> &observer) override;
+
+    /**
      * Register KIA interceptor.
      * @param interceptor KIA interceptor.
      * @return Returns ERR_OK on success, others on failure.
@@ -1037,6 +1051,16 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int32_t GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos) override;
+
+    /**
+     * Notify the state change of a child process.
+     *
+     * @param pid The pid of the child process whose state has changed.
+     * @param state The new state of the child process.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
+    int32_t NotifyChildProcessState(int32_t pid, int32_t state) override;
 
     /**
      * Enable delayed process exit.

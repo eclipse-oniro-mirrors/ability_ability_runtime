@@ -425,6 +425,40 @@ int AppQueryHelper::GetSelfChildrenProcesses(std::vector<ChildProcessInfo> &info
     }
     return ERR_OK;
 }
+
+bool AppQueryHelper::QueryIsSelfChildrenProcesses(int32_t pid, int32_t &uid)
+{
+    if (appRunningManager_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "appRunningManager_ null");
+        return false;
+    }
+    auto callingTokenId = IPCSkeleton::GetCallingTokenID();
+    auto callingPid = IPCSkeleton::GetCallingPid();
+    bool isMainProcessCall = false;
+    bool iscallerChildProcess = false;
+    for (const auto &item : appRunningManager_->GetAppRunningRecordMap()) {
+        const auto &appRecord = item.second;
+        if (!appRecord) {
+            continue;
+        }
+        auto applicationInfo = appRecord->GetApplicationInfo();
+        if (!applicationInfo) {
+            continue;
+        }
+        if (callingTokenId != applicationInfo->accessTokenId) {
+            continue;
+        }
+        if (appRecord->GetPid() == callingPid) {
+            isMainProcessCall = true;
+        }
+        auto childProcessRecord = appRecord->GetChildProcessRecordByPid(pid);
+        if (childProcessRecord != nullptr) {
+            uid = childProcessRecord->GetUid();
+            iscallerChildProcess = true;
+        }
+    }
+    return isMainProcessCall && iscallerChildProcess;
+}
 #endif // SUPPORT_CHILD_PROCESS
 
 void AppQueryHelper::GetRunningProcesses(const std::shared_ptr<AppRunningRecord> &appRecord,

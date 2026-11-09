@@ -155,6 +155,7 @@ public:
         const std::shared_ptr<AppRunningRecord> appRecord, ChildProcessInfo &info);
     int GetAllChildrenProcesses(std::vector<ChildProcessInfo> &info);
     int GetSelfChildrenProcesses(std::vector<ChildProcessInfo> &info);
+    bool QueryIsSelfChildrenProcesses(int32_t pid, int32_t &uid);
     void GetChildrenProcesses(const std::shared_ptr<AppRunningRecord> &appRecord,
         std::vector<ChildProcessInfo> &info);
 #endif // SUPPORT_CHILD_PROCESS

@@ -56,6 +56,7 @@ ohos_shared_library("ability_runtime") {
 
   sources = [
     "src/ability_business_error_utils.cpp",
+    "src/app_memory_optimizer.cpp",
     "src/application_context.cpp",
     "src/c_modular_object_connection_callback.cpp",
     "src/c_modular_object_utils.cpp",

@@ -1799,6 +1799,85 @@ HWTEST_F(AppMgrServiceTest, UnregisterRenderStateObserver_001, TestSize.Level1)
 }
 
 /**
+ * @tc.name: RegisterChildProcessStateObserver_001
+ * @tc.desc: Test RegisterChildProcessStateObserver when inpit is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, RegisterChildProcessStateObserver_001, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    appMgrService->appMgrServiceInner_ = nullptr;
+    sptr<IChildProcessStateObserver> observer = nullptr;
+    auto res = appMgrService->RegisterChildProcessStateObserver(observer);
+    EXPECT_EQ(ERR_INVALID_OPERATION, res);
+}
+
+/**
+ * @tc.name: UnregisterChildProcessStateObserver_001
+ * @tc.desc: Test UnregisterChildProcessStateObserver when input is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, UnregisterChildProcessStateObserver_001, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    appMgrService->appMgrServiceInner_ = nullptr;
+    sptr<IChildProcessStateObserver> observer = nullptr;
+    auto res = appMgrService->UnregisterChildProcessStateObserver(observer);
+    EXPECT_EQ(ERR_INVALID_OPERATION, res);
+}
+
+/**
+ * @tc.name: RegisterChildProcessStateObserver_002
+ * @tc.desc: Test RegisterChildProcessStateObserver when permission verification failed.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, RegisterChildProcessStateObserver_002, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    appMgrService->appMgrServiceInner_ = std::make_shared<AppMgrServiceInner>();
+    appMgrService->taskHandler_ = taskHandler_;
+    appMgrService->eventHandler_ = std::make_shared<AMSEventHandler>(taskHandler_,
+        appMgrService->appMgrServiceInner_);
+    OHOS::AppExecFwk::MockNativeToken::SetNativeToken();
+    sptr<IChildProcessStateObserver> observer = nullptr;
+    auto res = appMgrService->RegisterChildProcessStateObserver(observer);
+    EXPECT_EQ(ERR_PERMISSION_DENIED, res);
+}
+
+/**
+ * @tc.name: UnregisterChildProcessStateObserver_002
+ * @tc.desc: Test UnregisterChildProcessStateObserver when permission verification failed.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, UnregisterChildProcessStateObserver_002, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    appMgrService->appMgrServiceInner_ = std::make_shared<AppMgrServiceInner>();
+    appMgrService->taskHandler_ = taskHandler_;
+    appMgrService->eventHandler_ = std::make_shared<AMSEventHandler>(taskHandler_,
+        appMgrService->appMgrServiceInner_);
+    OHOS::AppExecFwk::MockNativeToken::SetNativeToken();
+    sptr<IChildProcessStateObserver> observer = nullptr;
+    auto res = appMgrService->UnregisterChildProcessStateObserver(observer);
+    EXPECT_EQ(ERR_PERMISSION_DENIED, res);
+}
+
+/**
+ * @tc.name: NotifyChildProcessState_001
+ * @tc.desc: Test NotifyChildProcessState when inpit is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, NotifyChildProcessState_001, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    appMgrService->appMgrServiceInner_ = nullptr;
+    int32_t state = 0;
+    int32_t pid = 0;
+    auto res = appMgrService->NotifyChildProcessState(pid, state);
+    EXPECT_EQ(AAFwk::ERR_APP_MGR_SERVICE_NOT_READY, res);
+}
+
+/**
  * @tc.name: UpdateRenderState_0100
  * @tc.desc: Test updateRenderState when appMgrServiceInner_ is nullptr.
  * @tc.type: FUNC

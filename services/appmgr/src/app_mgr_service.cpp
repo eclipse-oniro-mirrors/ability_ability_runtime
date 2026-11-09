@@ -29,6 +29,7 @@
 #include "app_mgr_constants.h"
 #include "app_utils.h"
 #include "application_state_filter.h"
+#include "child_process_state_observer_manager.h"
 #include "datetime_ex.h"
 #include "task_mgr/common.h"
 #include "fd_guard.h"
@@ -2180,6 +2181,34 @@ int32_t AppMgrService::UnregisterRenderStateObserver(const sptr<IRenderStateObse
     return appMgrServiceInner_->UnregisterRenderStateObserver(observer);
 }
 
+int32_t AppMgrService::RegisterChildProcessStateObserver(const sptr<IChildProcessStateObserver> &observer)
+{
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "not ready");
+        return ERR_INVALID_OPERATION;
+    }
+    if (AAFwk::PermissionVerification::GetInstance()->VerifyAppStateObserverPermission() == ERR_PERMISSION_DENIED) {
+        TAG_LOGE(AAFwkTag::APPMGR, "verification failed");
+        return ERR_PERMISSION_DENIED;
+    }
+    return DelayedSingleton<ChildProcessStateObserverManager>::GetInstance()->RegisterChildProcessStateObserver(
+        observer);
+}
+
+int32_t AppMgrService::UnregisterChildProcessStateObserver(const sptr<IChildProcessStateObserver> &observer)
+{
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "not ready");
+        return ERR_INVALID_OPERATION;
+    }
+    if (AAFwk::PermissionVerification::GetInstance()->VerifyAppStateObserverPermission() == ERR_PERMISSION_DENIED) {
+        TAG_LOGE(AAFwkTag::APPMGR, "verification failed");
+        return ERR_PERMISSION_DENIED;
+    }
+    return DelayedSingleton<ChildProcessStateObserverManager>::GetInstance()->UnregisterChildProcessStateObserver(
+        observer);
+}
+
 int32_t AppMgrService::UpdateRenderState(pid_t renderPid, int32_t state)
 {
     if (!IsReady()) {
@@ -2693,6 +2722,16 @@ int32_t AppMgrService::GetAllAbilityInfos(const int32_t pid, std::vector<AppExec
         return AAFwk::ERR_APP_MGR_SERVICE_NOT_READY;
     }
     return appMgrServiceInner_->GetAllAbilityInfos(pid, infos);
+}
+
+int32_t AppMgrService::NotifyChildProcessState(int32_t pid, int32_t state)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (!IsReady()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Service not ready");
+        return AAFwk::ERR_APP_MGR_SERVICE_NOT_READY;
+    }
+    return appMgrServiceInner_->NotifyChildProcessState(pid, state);
 }
 
 int32_t AppMgrService::EnableDelayedProcessExit(bool enabled)

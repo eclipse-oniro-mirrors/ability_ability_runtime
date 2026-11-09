@@ -2451,6 +2451,46 @@ int32_t AppMgrProxy::UnregisterRenderStateObserver(const sptr<IRenderStateObserv
     return reply.ReadInt32();
 }
 
+int32_t AppMgrProxy::RegisterChildProcessStateObserver(const sptr<IChildProcessStateObserver> &observer)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    MessageParcel data;
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write interface token failed.");
+        return ERR_INVALID_DATA;
+    }
+    if (observer == nullptr || !data.WriteRemoteObject(observer->AsObject())) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Observer is null or Write Remote failed.");
+        return ERR_FLATTEN_OBJECT;
+    }
+
+    MessageParcel reply;
+    MessageOption option;
+
+    PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::REGISTER_CHILD_PROCESS_STATE_OBSERVER, data, reply, option);
+    return reply.ReadInt32();
+}
+
+int32_t AppMgrProxy::UnregisterChildProcessStateObserver(const sptr<IChildProcessStateObserver> &observer)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    MessageParcel data;
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write interface token failed.");
+        return ERR_INVALID_DATA;
+    }
+    if (observer == nullptr || !data.WriteRemoteObject(observer->AsObject())) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Observer is null or Write Remote failed.");
+        return ERR_FLATTEN_OBJECT;
+    }
+
+    MessageParcel reply;
+    MessageOption option;
+
+    PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::UNREGISTER_CHILD_PROCESS_STATE_OBSERVER, data, reply, option);
+    return reply.ReadInt32();
+}
+
 int32_t AppMgrProxy::UpdateRenderState(pid_t renderPid, int32_t state)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");
@@ -3307,6 +3347,23 @@ int32_t AppMgrProxy::GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFw
     }
 
     return ret;
+}
+
+int32_t AppMgrProxy::NotifyChildProcessState(int32_t pid, int32_t state)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write interface token failed.");
+        return IPC_PROXY_ERR;
+    }
+
+    PARCEL_UTIL_WRITE_RET_INT(data, Int32, pid);
+    PARCEL_UTIL_WRITE_RET_INT(data, Int32, state);
+    PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::NOTIFY_CHILD_PROCESS_STATE, data, reply, option);
+    return reply.ReadInt32();
 }
 
 int32_t AppMgrProxy::EnableDelayedProcessExit(bool enabled)
