@@ -24,6 +24,9 @@
 #undef private
 #include "ability_manager_errors.h"
 #include "accesstoken_kit.h"
+#ifdef SUPPORT_CHILD_PROCESS
+#include "child_process_record.h"
+#endif // SUPPORT_CHILD_PROCESS
 #include "app_scheduler.h"
 #include "appspawn_util.h"
 #include "app_spawn_client.h"
@@ -74,6 +77,8 @@ constexpr int32_t APP_DEBUG_INFO_PID = 0;
 constexpr int32_t APP_DEBUG_INFO_UID = 0;
 constexpr const char* PERMISSION_PROTECT_SCREEN_LOCK_DATA_TEST = "ohos.permission.PROTECT_SCREEN_LOCK_DATA";
 constexpr int32_t FUN_TEST_PID = 0;
+constexpr int32_t TEST_CHILD_PROCESS_PID = 100;
+constexpr int32_t TEST_CHILD_PROCESS_STATE = 1;
 }
 static int recordId_ = 0;
 class AppMgrServiceInnerTest : public testing::Test {
@@ -6007,6 +6012,52 @@ HWTEST_F(AppMgrServiceInnerTest, UnregisterRenderStateObserver_0200, TestSize.Le
     auto res = appMgrServiceInner->RegisterRenderStateObserver(observer);
     EXPECT_EQ(ERR_OK, res);
 }
+
+#ifdef SUPPORT_CHILD_PROCESS
+/**
+ * @tc.name: NotifyChildProcessState_0100
+ * @tc.desc: Test NotifyChildProcessState when the child process does not exist.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, NotifyChildProcessState_0100, TestSize.Level1)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    auto res = appMgrServiceInner->NotifyChildProcessState(TEST_CHILD_PROCESS_PID, TEST_CHILD_PROCESS_STATE);
+    EXPECT_EQ(res, AAFwk::ERR_CHECK_CHILD_PROCESS_FAILED);
+}
+
+/**
+ * @tc.name: NotifyChildProcessState_0200
+ * @tc.desc: Test NotifyChildProcessState when the child process belongs to the caller.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, NotifyChildProcessState_0200, TestSize.Level1)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    ASSERT_NE(appMgrServiceInner->appRunningManager_, nullptr);
+    appMgrServiceInner->Init();
+
+    auto callerApplicationInfo = std::make_shared<ApplicationInfo>(*applicationInfo_);
+    callerApplicationInfo->accessTokenId = IPCSkeleton::GetCallingTokenID();
+    BundleInfo bundleInfo;
+    auto appRecord = appMgrServiceInner->appRunningManager_->CreateAppRunningRecord(callerApplicationInfo,
+        "test_processName", bundleInfo, "");
+    ASSERT_NE(appRecord, nullptr);
+    appRecord->GetPriorityObject()->SetPid(static_cast<int32_t>(getpid()));
+
+    ChildProcessRequest request;
+    request.srcEntry = "test_entry:Main";
+    auto childProcessRecord = ChildProcessRecord::CreateChildProcessRecord(TEST_CHILD_PROCESS_PID, request, appRecord);
+    ASSERT_NE(childProcessRecord, nullptr);
+    appRecord->AddChildProcessRecord(TEST_CHILD_PROCESS_PID, childProcessRecord);
+
+    auto res = appMgrServiceInner->NotifyChildProcessState(TEST_CHILD_PROCESS_PID, TEST_CHILD_PROCESS_STATE);
+    EXPECT_EQ(res, ERR_OK);
+}
+#endif // SUPPORT_CHILD_PROCESS
 
 /**
  * @tc.name: GetAllUIExtensionRootHostPid_0100

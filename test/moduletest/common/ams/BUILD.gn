@@ -19,6 +19,7 @@ ohos_source_set("appmgr_mst_source") {
   cflags_cc = []
   sources = [
     "${ability_runtime_services_path}/appmgr/src/app_mgr_service.cpp",
+    "${ability_runtime_services_path}/appmgr/src/child_process_state_observer_manager.cpp",
     "${ability_runtime_test_path}/mock/services_appmgr_test/src/mock_bundle_manager.cpp",
   ]
 

@@ -274,6 +274,8 @@ int32_t AppMgrStub::OnRemoteRequestInnerFourth(uint32_t code, MessageParcel &dat
             return HandleSignRestartProcess(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::GET_ALL_ABILITY_INFOS):
             return HandleGetAllAbilityInfos(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::NOTIFY_CHILD_PROCESS_STATE):
+            return HandleNotifyChildProcessState(data, reply);
     }
     return INVALID_FD;
 }
@@ -502,6 +504,10 @@ int32_t AppMgrStub::OnRemoteRequestInnerNinth(uint32_t code, MessageParcel &data
             return HandleRegisterFocusedApplicationObserver(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_FOCUSED_APPLICATION_OBSERVER):
             return HandleUnregisterFocusedApplicationObserver(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_CHILD_PROCESS_STATE_OBSERVER):
+            return HandleRegisterChildProcessStateObserver(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_CHILD_PROCESS_STATE_OBSERVER):
+            return HandleUnregisterChildProcessStateObserver(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_MANAGED_PROCESS):
             return HandleRegisterManagedProcess(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_MANAGED_PROCESS):
@@ -2159,6 +2165,38 @@ int32_t AppMgrStub::HandleUnregisterRenderStateObserver(MessageParcel &data, Mes
     return NO_ERROR;
 }
 
+int32_t AppMgrStub::HandleRegisterChildProcessStateObserver(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    auto callback = iface_cast<AppExecFwk::IChildProcessStateObserver>(data.ReadRemoteObject());
+    if (callback == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Callback is null.");
+        return ERR_INVALID_VALUE;
+    }
+    int32_t result = RegisterChildProcessStateObserver(callback);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Fail to write result.");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleUnregisterChildProcessStateObserver(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    auto callback = iface_cast<AppExecFwk::IChildProcessStateObserver>(data.ReadRemoteObject());
+    if (callback == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Callback is null.");
+        return ERR_INVALID_VALUE;
+    }
+    int32_t result = UnregisterChildProcessStateObserver(callback);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Fail to write result.");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
 int32_t AppMgrStub::HandleUpdateRenderState(MessageParcel &data, MessageParcel &reply)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");
@@ -2760,6 +2798,19 @@ int32_t AppMgrStub::HandleGetAllAbilityInfos(MessageParcel &data, MessageParcel 
             TAG_LOGE(AAFwkTag::APPMGR, "fail to write info.");
             return ERR_APPEXECFWK_PARCEL_ERROR;
         }
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleNotifyChildProcessState(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "HandleNotifyChildProcessState call");
+    int32_t pid = data.ReadInt32();
+    int32_t state = data.ReadInt32();
+    auto result = NotifyChildProcessState(pid, state);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write result fail");
+        return AAFwk::ERR_WRITE_RESULT_CODE_FAILED;
     }
     return NO_ERROR;
 }

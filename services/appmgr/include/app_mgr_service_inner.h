@@ -69,6 +69,7 @@
 #include "hisysevent_report.h"
 #include "iapp_state_callback.h"
 #include "iapplication_state_observer.h"
+#include "ichild_process_state_observer.h"
 #include "iconfiguration_observer.h"
 #include "image_error_handler_interface.h"
 #include "image_process_state_observer_interface.h"
@@ -1922,6 +1923,16 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     int32_t GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos);
+
+    /**
+     * Notify the state change of a child process.
+     *
+     * @param pid The pid of the child process whose state has changed.
+     * @param state The new state of the child process.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
+    int32_t NotifyChildProcessState(int32_t pid, int32_t state);
 
     int32_t EnableDelayedProcessExit(int32_t pid, bool enabled);
     

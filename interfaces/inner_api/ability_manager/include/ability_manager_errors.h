@@ -1231,6 +1231,11 @@ enum {
     ERR_CALLEE_PID_INVALID = 2099505,
 
     /**
+     * Result(2099506) for child process not exit or is not created by the current application, or is caller
+     */
+    ERR_CHECK_CHILD_PROCESS_FAILED = 2099506,
+
+    /**
      * Native error(3000000) for target bundle not exist.
      */
     ERR_CODE_NOT_EXIST = 3000000,

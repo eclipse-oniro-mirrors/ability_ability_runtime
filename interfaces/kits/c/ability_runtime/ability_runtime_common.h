@@ -231,6 +231,13 @@ typedef enum {
      * @since 26.1.0
      */
     ABILITY_RUNTIME_ERROR_CODE_BUFFER_TOO_SMALL = 16000179,
+    /**
+     * The child process does not exist, or is not created by the current application,
+     * or the API is called in a child process.
+     *
+     * @since 26.1.0
+     */
+    ABILITY_RUNTIME_ERROR_CODE_CHILD_PROCESS_NOT_EXIST = 16000206,
 } AbilityRuntime_ErrorCode;
 
 #ifdef __cplusplus

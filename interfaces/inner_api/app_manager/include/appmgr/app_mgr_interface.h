@@ -39,6 +39,7 @@
 #include "kia_interceptor_interface.h"
 #include "iapp_state_callback.h"
 #include "iapplication_state_observer.h"
+#include "ichild_process_state_observer.h"
 #include "iconfiguration_observer.h"
 #include "image_error_handler_interface.h"
 #include "image_process_state_observer_interface.h"
@@ -1003,6 +1004,26 @@ public:
     virtual int32_t UnregisterRenderStateObserver(const sptr<IRenderStateObserver> &observer) = 0;
 
     /**
+     * Register child process state observer.
+     * @param observer Child process state observer.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t RegisterChildProcessStateObserver(const sptr<IChildProcessStateObserver> &observer)
+    {
+        return 0;
+    }
+
+    /**
+     * Unregister child process state observer.
+     * @param observer Child process state observer.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t UnregisterChildProcessStateObserver(const sptr<IChildProcessStateObserver> &observer)
+    {
+        return 0;
+    }
+
+    /**
      * Register KIA interceptor.
      * @param interceptor KIA interceptor.
      * @return Returns ERR_OK on success, others on failure.
@@ -1434,6 +1455,19 @@ public:
         resolvedPid = -1;
         attributionId = 0;
         return ERR_OK;
+    }
+
+    /**
+     * Notify the state change of a child process.
+     *
+     * @param pid The pid of the child process whose state has changed.
+     * @param state The new state of the child process.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
+    virtual int32_t NotifyChildProcessState(int32_t pid, int32_t state)
+    {
+        return 0;
     }
 };
 }  // namespace AppExecFwk

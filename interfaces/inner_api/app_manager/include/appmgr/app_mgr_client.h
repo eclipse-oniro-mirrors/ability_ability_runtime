@@ -31,6 +31,7 @@
 #include "fault_data.h"
 #include "iapplication_state_observer.h"
 #include "iapp_state_callback.h"
+#include "ichild_process_state_observer.h"
 #include "iconfiguration_observer.h"
 #include "image_error_handler_interface.h"
 #include "image_process_state_observer_interface.h"
@@ -1291,6 +1292,24 @@ public:
     int32_t UnregisterRenderStateObserver(const sptr<IRenderStateObserver> &observer);
 
     /**
+     * Register an observer for child process state changes.
+     *
+     * @param observer Child process state observer.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
+    int32_t RegisterChildProcessStateObserver(const sptr<IChildProcessStateObserver> &observer);
+
+    /**
+     * Unregister a child process state observer.
+     *
+     * @param observer The observer to remove.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
+    int32_t UnregisterChildProcessStateObserver(const sptr<IChildProcessStateObserver> &observer);
+
+    /**
      * Update the foreground/background state of a render process; registered
      * observers are notified.
      *
@@ -1845,6 +1864,16 @@ public:
      *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
     int32_t GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos);
+
+    /**
+     * Notify the state change of a child process.
+     *
+     * @param pid The pid of the child process whose state has changed.
+     * @param state The new state of the child process.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
+    int32_t NotifyChildProcessState(int32_t pid, int32_t state);
 
     /**
      * Enable/disable delayed exit for the calling process: when enabled, the
