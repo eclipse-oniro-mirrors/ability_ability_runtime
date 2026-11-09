@@ -345,6 +345,24 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_FinishTask_0300, TestSize.Le
 }
 
 /**
+ * @tc.number: TaskManagerService_FinishTask_0400
+ * @tc.name: finish task by a sibling process of the creator app
+ * @tc.desc: a process of the creator app that did not create the task (same uid,
+ *           different pid) cannot finish it, the creating process still can.
+ */
+HWTEST_F(TaskManagerServiceTest, TaskManagerService_FinishTask_0400, TestSize.Level1)
+{
+    auto &service = TaskManagerService::GetInstance();
+    std::string taskId = MakeTaskId("finish_0400");
+    EXPECT_EQ(service.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    SetTestCaller(TEST_CREATOR_UID, TEST_OTHER_PID);
+    EXPECT_EQ(service.FinishTask(taskId), AAFwk::ERR_TASK_NOT_FOUND);
+    EXPECT_NE(service.DumpActiveTasks().find(taskId), std::string::npos);
+    SetTestCaller(TEST_CREATOR_UID, TEST_CREATOR_PID);
+    EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
+}
+
+/**
  * @tc.number: TaskManagerService_OnTaskTimeout_0100
  * @tc.name: task timeout with stale and current deadline
  * @tc.desc: a stale timeout fire is a no-op and a current deadline finishes the task.

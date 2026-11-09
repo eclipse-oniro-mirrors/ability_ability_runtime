@@ -228,18 +228,23 @@ private:
      * @param taskId Indicates the attribution key of the task.
      * @param reason Indicates why the task ends.
      * @param callerUid Indicates the uid of the finishing caller; a non-negative value
-     *        enables the ownership check (only the creating app, matched by uid, may finish
-     *        the task) and a mismatch returns ERR_TASK_NOT_FOUND without existence
-     *        disclosure, while the system-initiated paths pass a negative value to skip it.
+     *        enables the ownership check and a mismatch returns ERR_TASK_NOT_FOUND without
+     *        existence disclosure, while the system-initiated paths pass a negative value
+     *        to skip it.
+     * @param callerPid Indicates the pid of the finishing caller; the check enabled by a
+     *        non-negative callerUid requires the creating process itself (uid and pid both
+     *        match), because one app uid hosts several processes and a sibling process of
+     *        the creator app must not finish the task, while the system-initiated paths
+     *        pass a negative value to skip it.
      * @param expectedDeadline Indicates the deadline captured when the timer was started;
      *        a positive value enables the staleness check for the timeout path (a mismatch
      *        means the record was rebuilt and nothing is finished), while the other paths
      *        pass zero to skip it.
      * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist, the
-     *         deadline mismatches or the caller is not the creator.
+     *         deadline mismatches or the caller is not the creator process.
      */
     int32_t FinishTaskInner(const std::string &taskId, TaskFinishReason reason, int32_t callerUid,
-        int64_t expectedDeadline);
+        pid_t callerPid, int64_t expectedDeadline);
 
     /**
      * @brief Ends every task whose creator matches the (pid, uid) pair of the dead process.
