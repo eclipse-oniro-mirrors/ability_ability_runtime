@@ -41,11 +41,9 @@ namespace {
 constexpr int32_t TEST_CALLER_UID = 3099;
 constexpr int32_t TEST_OTHER_UID = 3100;
 constexpr pid_t TEST_TOOL_PID = 4321;
-constexpr int32_t TEST_RESOLVED_PID = 8765;
 constexpr int64_t TEST_ATTRIBUTION_ID = 77;
 
-// In-process appmgr endpoint overriding the three attribution methods; AppMgrClient
-// reaches it via the test-side GetAppMgrService below.
+// In-process appmgr endpoint reached via the test-side GetAppMgrService below.
 class MockAppMgrEndpoint : public AppExecFwk::MockAppMgrService {
 public:
     std::string lastRegisterTaskId;
@@ -55,17 +53,11 @@ public:
     std::string lastUnregisterTaskId;
     int64_t lastUnregisterAttributionId = 0;
     int32_t lastUnregisterCallerUid = -1;
-    std::string lastInAppSkillTaskId;
-    std::string lastInAppSkillBundle;
-    int32_t lastInAppSkillCallerUid = -1;
     int32_t registerRet = ERR_OK;
     int32_t unregisterRet = ERR_OK;
-    int32_t inAppSkillRet = ERR_OK;
-    int32_t resolvedPid = TEST_RESOLVED_PID;
     int64_t registerAttributionId = TEST_ATTRIBUTION_ID;
     int registerCalls = 0;
     int unregisterCalls = 0;
-    int inAppSkillCalls = 0;
 
     int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t tool,
         int32_t callerUid, int64_t &outAttributionId) override
@@ -87,18 +79,6 @@ public:
         lastUnregisterAttributionId = attributionId;
         lastUnregisterCallerUid = callerUid;
         return unregisterRet;
-    }
-
-    int32_t RegisterInAppSkillProcess(const std::string &taskId, const std::string &bundleName,
-        int32_t callerUid, int32_t &outPid, int64_t &outAttributionId) override
-    {
-        ++inAppSkillCalls;
-        lastInAppSkillTaskId = taskId;
-        lastInAppSkillBundle = bundleName;
-        lastInAppSkillCallerUid = callerUid;
-        outPid = this->resolvedPid;
-        outAttributionId = inAppSkillRet == ERR_OK ? registerAttributionId : 0;
-        return inAppSkillRet;
     }
 };
 
@@ -298,120 +278,6 @@ HWTEST_F(TaskAttributionManagerTest, DetachProcess_0300, TestSize.Level1)
     EXPECT_EQ(g_mockEndpoint->unregisterCalls, 1);
 }
 
-/**
- * @tc.name: AttachInAppSkillProcess_0100
- * @tc.desc: A pass verdict attributes the located main process and returns the resolved
- *           pid through the out parameter (for the later detach).
- * @tc.type: FUNC
- */
-HWTEST_F(TaskAttributionManagerTest, AttachInAppSkillProcess_0100, TestSize.Level1)
-{
-    g_mockEndpoint->inAppSkillRet = ERR_OK;
-    g_mockEndpoint->resolvedPid = TEST_RESOLVED_PID;
-    pid_t outPid = -1;
-    int64_t attributionId = 0;
-    auto ret = TaskAttributionManager::GetInstance().AttachInAppSkillProcess("task_skill_0100",
-        "com.example.skill.host", outPid, attributionId, TEST_CALLER_UID);
-    EXPECT_EQ(ret, ERR_OK);
-    EXPECT_EQ(outPid, static_cast<pid_t>(TEST_RESOLVED_PID));
-    EXPECT_EQ(g_mockEndpoint->inAppSkillCalls, 1);
-    EXPECT_EQ(g_mockEndpoint->lastInAppSkillTaskId, "task_skill_0100");
-    EXPECT_EQ(g_mockEndpoint->lastInAppSkillBundle, "com.example.skill.host");
-    EXPECT_EQ(g_mockEndpoint->lastInAppSkillCallerUid, TEST_CALLER_UID);
-}
-
-/**
- * @tc.name: AttachInAppSkillProcess_0200
- * @tc.desc: A locate failure (target application not running / on-demand startup not
- *           finished) means no attribution object: INNER_ERR and outPid = -1, the skill
- *           execution itself is unaffected.
- * @tc.type: FUNC
- */
-HWTEST_F(TaskAttributionManagerTest, AttachInAppSkillProcess_0200, TestSize.Level1)
-{
-    g_mockEndpoint->inAppSkillRet = AAFwk::INNER_ERR;
-    g_mockEndpoint->resolvedPid = -1;
-    pid_t outPid = 0;
-    int64_t attributionId = 0;
-    auto ret = TaskAttributionManager::GetInstance().AttachInAppSkillProcess("task_skill_0200",
-        "com.example.skill.host", outPid, attributionId, TEST_CALLER_UID);
-    EXPECT_EQ(ret, AAFwk::INNER_ERR);
-    EXPECT_EQ(outPid, -1);
-    EXPECT_EQ(g_mockEndpoint->inAppSkillCalls, 1);
-}
-
-/**
- * @tc.name: AttachInAppSkillProcess_0300
- * @tc.desc: A spoofed caller uid is rejected: ERR_TASK_NOT_FOUND and outPid = -1.
- * @tc.type: FUNC
- */
-HWTEST_F(TaskAttributionManagerTest, AttachInAppSkillProcess_0300, TestSize.Level1)
-{
-    g_mockEndpoint->inAppSkillRet = AAFwk::ERR_TASK_NOT_FOUND;
-    pid_t outPid = 0;
-    int64_t attributionId = 0;
-    auto ret = TaskAttributionManager::GetInstance().AttachInAppSkillProcess("task_skill_0300",
-        "com.example.skill.host", outPid, attributionId, TEST_OTHER_UID);
-    EXPECT_EQ(ret, AAFwk::ERR_TASK_NOT_FOUND);
-    EXPECT_EQ(outPid, -1);
-    EXPECT_EQ(g_mockEndpoint->inAppSkillCalls, 1);
-}
-
-/**
- * @tc.name: AttachInAppSkillProcess_0400
- * @tc.desc: Locally invalid parameters are rejected before any IPC: outPid = -1 and the
- *           server is never reached.
- * @tc.type: FUNC
- */
-HWTEST_F(TaskAttributionManagerTest, AttachInAppSkillProcess_0400, TestSize.Level1)
-{
-    pid_t outPid = 0;
-    int64_t attributionId = 0;
-    auto ret = TaskAttributionManager::GetInstance().AttachInAppSkillProcess("", "com.example.skill.host",
-        outPid, attributionId, TEST_CALLER_UID);
-    EXPECT_EQ(ret, AAFwk::INVALID_PARAMETERS_ERR);
-    EXPECT_EQ(outPid, -1);
-    ret = TaskAttributionManager::GetInstance().AttachInAppSkillProcess("task_skill_0400", "", outPid,
-        attributionId, TEST_CALLER_UID);
-    EXPECT_EQ(ret, AAFwk::INVALID_PARAMETERS_ERR);
-    EXPECT_EQ(outPid, -1);
-    EXPECT_EQ(g_mockEndpoint->inAppSkillCalls, 0);
-}
-
-/**
- * @tc.name: AttachInAppSkillProcess_0500
- * @tc.desc: An inconsistent server reply (ERR_OK without a usable resolved pid) is
- *           treated as a locate failure: INNER_ERR and outPid = -1.
- * @tc.type: FUNC
- */
-HWTEST_F(TaskAttributionManagerTest, AttachInAppSkillProcess_0500, TestSize.Level1)
-{
-    g_mockEndpoint->inAppSkillRet = ERR_OK;
-    g_mockEndpoint->resolvedPid = -1;
-    pid_t outPid = 0;
-    int64_t attributionId = 0;
-    auto ret = TaskAttributionManager::GetInstance().AttachInAppSkillProcess("task_skill_0500",
-        "com.example.skill.host", outPid, attributionId, TEST_CALLER_UID);
-    EXPECT_EQ(ret, AAFwk::INNER_ERR);
-    EXPECT_EQ(outPid, -1);
-    EXPECT_EQ(g_mockEndpoint->inAppSkillCalls, 1);
-}
-
-/**
- * @tc.name: AttachInAppSkillProcess_0600
- * @tc.desc: An unreachable appmgr means no attribution: INNER_ERR and outPid = -1.
- * @tc.type: FUNC
- */
-HWTEST_F(TaskAttributionManagerTest, AttachInAppSkillProcess_0600, TestSize.Level1)
-{
-    g_mockEndpoint = nullptr;
-    pid_t outPid = 0;
-    int64_t attributionId = 0;
-    auto ret = TaskAttributionManager::GetInstance().AttachInAppSkillProcess("task_skill_0600",
-        "com.example.skill.host", outPid, attributionId, TEST_CALLER_UID);
-    EXPECT_EQ(ret, AAFwk::INNER_ERR);
-    EXPECT_EQ(outPid, -1);
-}
 
 /**
  * @tc.name: DetachProcess_0400

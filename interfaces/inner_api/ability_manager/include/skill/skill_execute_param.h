@@ -37,6 +37,11 @@ struct SkillExecuteRequest {
     std::string functionName;
     std::shared_ptr<WantParams> skillArgs;
     std::string toolCallId;
+    // Task attribution key stamped by climgr; never written into the skill Want.
+    std::string taskId;
+    // Forensic creator uid stamped by climgr; the ownership anchor (-1 = not provided,
+    // registration is skipped — attribution records always carry their anchor).
+    int32_t callerUid = -1;
 };
 
 // Want parameter keys for skill execution

@@ -2364,22 +2364,5 @@ int32_t AppMgrClient::UnregisterManagedProcess(const std::string &taskId, int64_
     return service->UnregisterManagedProcess(taskId, attributionId, callerUid);
 }
 
-int32_t AppMgrClient::RegisterInAppSkillProcess(const std::string &taskId, const std::string &bundleName,
-    int32_t callerUid, int32_t &resolvedPid, int64_t &attributionId)
-{
-    resolvedPid = -1;
-    attributionId = 0;
-    if (mgrHolder_ == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "mgrHolder is nullptr.");
-        return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
-    }
-    sptr<IAppMgr> service = iface_cast<IAppMgr>(mgrHolder_->GetRemoteObject());
-    if (service == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "Service is nullptr.");
-        return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
-    }
-    return service->RegisterInAppSkillProcess(taskId, bundleName, callerUid, resolvedPid, attributionId);
-}
-
 }  // namespace AppExecFwk
 }  // namespace OHOS

@@ -16,6 +16,7 @@
 #ifndef MOCK_MY_STATUS_H
 #define MOCK_MY_STATUS_H
 
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -81,6 +82,25 @@ public:
     // counter of NotifyAppMgrRecordExitReasonCompability, for kill-info gating tests.
     std::vector<sptr<IRemoteObject>> asGetAbilityRecordsTokens_;
     int asNotifyExitReasonCompabilityCount_ = 0;
+    // AppScheduler mock: managed-process (skill attribution) observability.
+    int asRegisterManagedCount_ = 0;
+    std::string asRegisterManagedTaskId_;
+    int32_t asRegisterManagedPid_ = 0;
+    int32_t asRegisterManagedTool_ = 0;
+    int32_t asRegisterManagedCallerUid_ = 0;
+    int32_t asRegisterManagedRet_ = ERR_OK;
+    int64_t asRegisterManagedAttributionId_ = 1;
+    // Synchronous hook fired inside RegisterManagedProcess before the counters update;
+    // lets a test act while the register call is still in flight (deterministic window).
+    std::function<void()> asRegisterManagedHook_ = nullptr;
+    int asUnregisterManagedCount_ = 0;
+    std::string asUnregisterManagedTaskId_;
+    int64_t asUnregisterManagedAttributionId_ = 0;
+    int32_t asUnregisterManagedCallerUid_ = 0;
+    // AccessTokenKit mock: GetHapTokenInfo result for the skill notify path (-1 = keep the
+    // legacy "lookup fails" behavior).
+    int atkGetHapTokenInfoRet_ = -1;
+    std::string atkHapTokenInfoBundleName_;
     // UIAbilityLifecycleManager mock: record returned by GetUIAbilityRecordBySessionInfo.
     std::shared_ptr<UIAbilityRecord> ualmGetUIAbilityRecordBySessionInfo_ = nullptr;
 };

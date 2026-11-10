@@ -420,22 +420,6 @@ int32_t AppRunningManager::IsAppRunningByBundleNameAndUserId(const std::string &
     return ERR_OK;
 }
 
-pid_t AppRunningManager::GetMainProcessPidByBundleName(const std::string &bundleName, int32_t userId)
-{
-    constexpr int32_t MAIN_APP_INDEX = 0;
-    auto appRunningMap = GetAppRunningRecordMap();
-    for (const auto &item : appRunningMap) {
-        const auto &appRecord = item.second;
-        // a negative userId skips the user filter.
-        if (appRecord && appRecord->GetBundleName() == bundleName && !(appRecord->GetRestartAppFlag()) &&
-            appRecord->GetAppIndex() == MAIN_APP_INDEX && appRecord->GetPid() > 0 &&
-            (userId < 0 || appRecord->GetUid() / BASE_USER_RANGE == userId)) {
-            return appRecord->GetPid();
-        }
-    }
-    return -1;
-}
-
 int32_t AppRunningManager::GetAllAppRunningRecordCountByBundleName(const std::string &bundleName)
 {
     int32_t count = 0;

@@ -302,32 +302,5 @@ HWTEST_F(AppMgrClientTest, AppMgrClient_UnregisterManagedProcess_0100, TestSize.
 
     TAG_LOGI(AAFwkTag::TEST, "AppMgrClient_UnregisterManagedProcess_0100 end");
 }
-
-/**
- * @tc.name: AppMgrClient_RegisterInAppSkillProcess_0100
- * @tc.desc: The client forwards RegisterInAppSkillProcess over the real service chain;
- *           non-climgr callers are rejected at the uid gate and resolvedPid stays
- *           invalid.
- * @tc.type: FUNC
- */
-HWTEST_F(AppMgrClientTest, AppMgrClient_RegisterInAppSkillProcess_0100, TestSize.Level1)
-{
-    AAFwk::IsMockSaCall::IsMockSaCallWithPermission();
-    auto appMgrClient = std::make_unique<AppMgrClient>();
-    ASSERT_NE(appMgrClient, nullptr);
-
-    auto result = appMgrClient->ConnectAppMgrService();
-    EXPECT_EQ(result, AppMgrResultCode::RESULT_OK);
-
-    int32_t resolvedPid = 0;
-    int64_t attributionId = 1;
-    int32_t ret = appMgrClient->RegisterInAppSkillProcess("client_in_app_skill_0100",
-        "com.example.skill.host", 3099, resolvedPid, attributionId);
-    EXPECT_EQ(ret, AAFwk::ERR_NOT_SYSTEM_APP);
-    EXPECT_EQ(resolvedPid, -1);
-    EXPECT_EQ(attributionId, 0);
-
-    TAG_LOGI(AAFwkTag::TEST, "AppMgrClient_RegisterInAppSkillProcess_0100 end");
-}
 }  // namespace AppExecFwk
 }  // namespace OHOS

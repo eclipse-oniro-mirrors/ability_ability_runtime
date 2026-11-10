@@ -199,6 +199,26 @@ int32_t AppScheduler::UnregisterTaskAttribution(const std::string &taskId, int64
     return IN_PROCESS_CALL(appMgrClient_->UnregisterTaskAttribution(taskId, attributionId));
 }
 
+int32_t AppScheduler::RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t tool,
+    int32_t callerUid, int64_t &attributionId)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "RegisterManagedProcess");
+    CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
+    // IN_PROCESS_CALL resets the binder identity to this process, satisfying the appmgr caller check.
+    return IN_PROCESS_CALL(
+        appMgrClient_->RegisterManagedProcess(taskId, pid, tool, callerUid, attributionId));
+}
+
+int32_t AppScheduler::UnregisterManagedProcess(const std::string &taskId, int64_t attributionId,
+    int32_t callerUid)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "UnregisterManagedProcess");
+    CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
+    // IN_PROCESS_CALL resets the binder identity to this process, satisfying the appmgr caller check.
+    return IN_PROCESS_CALL(
+        appMgrClient_->UnregisterManagedProcess(taskId, attributionId, callerUid));
+}
+
 void AppScheduler::KillProcessesByUserId(int32_t userId, bool isNeedSendAppSpawnMsg,
     sptr<AAFwk::IUserCallback> callback)
 {

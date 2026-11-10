@@ -1331,12 +1331,8 @@ HWTEST_F(CliToolMGRClientTest, ExecCmd_TaskIdPassThrough_0200, TestSize.Level1)
 
 /**
  * @tc.name: ExecCmd_MixedDeploy_NewWriteOldRead_0100
- * @tc.desc: A new-format ExecCmdOptions parcelable (taskId tail present) read
- *           with the pre-taskId field order keeps all fields aligned; the
- *           tail bytes are simply left unread by the old reader. Options-level
- *           standalone parcel only — a message-level mixed deploy mis-aligns
- *           (bytes after the options block would be mis-consumed; known
- *           boundary, the one-image synchronized upgrade makes it unreachable today)
+ * @tc.desc: New-format ExecCmdOptions parcel (taskId tail) read with the
+ *           pre-taskId field order: all fields aligned, taskId tail left unread
  * @tc.type: FUNC
  */
 HWTEST_F(CliToolMGRClientTest, ExecCmd_MixedDeploy_NewWriteOldRead_0100, TestSize.Level1)

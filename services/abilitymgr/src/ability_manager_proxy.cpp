@@ -8630,6 +8630,14 @@ int32_t AbilityManagerProxy::ExecuteInAppSkillWithTokenId(const AppExecFwk::Skil
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write toolCallId fail");
         return INNER_ERR;
     }
+    if (!data.WriteString16(Str8ToStr16(request.taskId))) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write taskId fail");
+        return INNER_ERR;
+    }
+    if (!data.WriteInt32(request.callerUid)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write callerUid fail");
+        return INNER_ERR;
+    }
     MessageParcel reply;
     MessageOption option;
     auto ret = SendRequest(AbilityManagerInterfaceCode::EXECUTE_IN_APP_SKILL_WITH_TOKEN_ID,
