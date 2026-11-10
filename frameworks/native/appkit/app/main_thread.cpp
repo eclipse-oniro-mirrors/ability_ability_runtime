@@ -246,42 +246,7 @@ public:
 
 void MainThread::GetNativeLibPath(const BundleInfo &bundleInfo, const HspList &hspList, AppLibPathMap &appLibPaths)
 {
-    std::string patchNativeLibraryPath = bundleInfo.applicationInfo.appQuickFix.deployedAppqfInfo.nativeLibraryPath;
-    if (!patchNativeLibraryPath.empty()) {
-        // libraries in patch lib path has a higher priority when loading.
-        std::string patchLibPath = LOCAL_CODE_PATH;
-        patchLibPath += (patchLibPath.back() == '/') ? patchNativeLibraryPath : "/" + patchNativeLibraryPath;
-        TAG_LOGD(AAFwkTag::APPKIT, "lib path = %{private}s", patchLibPath.c_str());
-        appLibPaths["default"].emplace_back(patchLibPath);
-    }
-
-    std::string nativeLibraryPath = bundleInfo.applicationInfo.nativeLibraryPath;
-    if (!nativeLibraryPath.empty()) {
-        if (nativeLibraryPath.back() == '/') {
-            nativeLibraryPath.pop_back();
-        }
-        std::string libPath = LOCAL_CODE_PATH;
-        libPath += (libPath.back() == '/') ? nativeLibraryPath : "/" + nativeLibraryPath;
-        TAG_LOGD(AAFwkTag::APPKIT, "lib path = %{private}s", libPath.c_str());
-        appLibPaths["default"].emplace_back(libPath);
-        GetLibrarySupportDirectory(bundleInfo.hapModuleInfos, nativeLibraryPath, appLibPaths);
-    } else {
-        TAG_LOGI(AAFwkTag::APPKIT, "NativeLibPath empty");
-    }
-
-    for (auto &hapInfo : bundleInfo.hapModuleInfos) {
-        TAG_LOGD(AAFwkTag::APPKIT,
-            "moduleName: %{public}s, isLibIsolated: %{public}d, compressNativeLibs: %{public}d.",
-            hapInfo.moduleName.c_str(), hapInfo.isLibIsolated, hapInfo.compressNativeLibs);
-        GetPatchNativeLibPath(hapInfo, patchNativeLibraryPath, appLibPaths);
-        GetHapSoPath(hapInfo, appLibPaths, hapInfo.hapPath.find(ABS_CODE_PATH) != 0u);
-    }
-
-    for (auto &hspInfo : hspList) {
-        TAG_LOGD(AAFwkTag::APPKIT, "bundle:%s, module:%s, nativeLibraryPath:%s", hspInfo.bundleName.c_str(),
-            hspInfo.moduleName.c_str(), hspInfo.nativeLibraryPath.c_str());
-        GetHspNativeLibPath(hspInfo, appLibPaths, hspInfo.hapPath.find(ABS_CODE_PATH) != 0u);
-    }
+    GetModuleSoPaths(bundleInfo, hspList, appLibPaths);
 }
 
 void MainThread::GetPluginNativeLibPath(std::vector<AppExecFwk::PluginBundleInfo> &pluginBundleInfos,
