@@ -33,6 +33,7 @@
 - `references/report-contract.md`：报告、审计 trace 与旧门禁兼容。
 - `codecheck_report_TEMPLATE.md`：17 字段机器元数据（schema 2.0）、决策与章节格式。
 - `conventions.md`：版本、等级、检视能力维度与计分决策的唯一说明。
+- `CHANGELOG.md`：技能演进与报告契约变更历史（含破坏性变更声明）。
 - `scripts/kb_lookup.py`：只读本地知识库候选检索（路径/版本/行号，需二次确认）。
 - `scripts/validate_report.py`：校验门禁元数据及 V2 trace 基本一致性。
 - `evals/`：真实历史缺陷回放、消融测试与人工裁决规程。
