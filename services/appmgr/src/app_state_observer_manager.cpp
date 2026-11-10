@@ -1212,7 +1212,6 @@ void AppStateObserverManager::HandleOnProcessDied(const std::shared_ptr<ProcessD
     DispatchProcessLifecycleDied(*data);
 }
 
-#ifdef SUPPORT_SUBSPAWN
 void AppStateObserverManager::OnSubSpawnProcessCreated(pid_t pid, const std::string &bundleName,
     int32_t uid, const std::string &processName)
 {
@@ -1236,7 +1235,6 @@ void AppStateObserverManager::OnSubSpawnProcessDied(pid_t pid, const std::string
     data->processType = "subspawn";
     HandleOnProcessDied(data, BundleType::APP);
 }
-#endif
 
 std::shared_ptr<ProcessData> AppStateObserverManager::WrapProcessData(
     const std::shared_ptr<AppRunningRecord> &appRecord, bool isFromWindowFocusChanged, bool isFromScreenOffBackground)

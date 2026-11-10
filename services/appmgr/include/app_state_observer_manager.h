@@ -111,12 +111,10 @@ public:
 #ifdef SUPPORT_CHILD_PROCESS
     void OnChildProcessDied(std::shared_ptr<ChildProcessRecord> childRecord);
 #endif // SUPPORT_CHILD_PROCESS
-#ifdef SUPPORT_SUBSPAWN
     void OnSubSpawnProcessCreated(pid_t pid, const std::string &bundleName,
                                   int32_t uid, const std::string &processName);
     void OnSubSpawnProcessDied(pid_t pid, const std::string &bundleName,
                                int32_t uid, const std::string &processName);
-#endif
     void OnProcessReused(const std::shared_ptr<AppRunningRecord> &appRecord);
     void OnPageShow(const PageStateData pageStateData);
     void OnPageHide(const PageStateData pageStateData);

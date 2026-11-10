@@ -198,10 +198,6 @@ ohos_shared_library("libappms") {
     sources += [ "src/child_process_record.cpp" ]
   }
 
-  if (ability_runtime_subspawn) {
-    defines += [ "SUPPORT_SUBSPAWN" ]
-  }
-
   if (ability_runtime_graphics) {
     defines += [
       "SUPPORT_GRAPHICS",
