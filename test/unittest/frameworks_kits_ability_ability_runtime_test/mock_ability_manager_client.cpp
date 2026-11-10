@@ -1164,6 +1164,11 @@ ErrCode AbilityManagerClient::NotifyCompleteGamePreLaunch(const sptr<IRemoteObje
     return ERR_OK;
 }
 
+ErrCode AbilityManagerClient::NotifyCompleteGamePreLaunchByPid(int32_t pid)
+{
+    return ERR_OK;
+}
+
 ErrCode GetUserLockedBundleList(int32_t userId, std::unordered_set<std::string> &userLockedBundleList)
 {
     return ERR_OK;

@@ -310,6 +310,7 @@ private:
     int32_t LaunchGameCustomizedInner(MessageParcel &data, MessageParcel &reply);
     int32_t NotifyCancelGamePreLaunchInner(MessageParcel &data, MessageParcel &reply);
     int32_t NotifyCompleteGamePreLaunchInner(MessageParcel &data, MessageParcel &reply);
+    int32_t NotifyCompleteGamePreLaunchByPidInner(MessageParcel &data, MessageParcel &reply);
     int32_t SetGamePreLaunchCompleteTimeInner(MessageParcel &data, MessageParcel &reply);
     int32_t ExtendGamePreLaunchTimeoutInner(MessageParcel &data, MessageParcel &reply);
 

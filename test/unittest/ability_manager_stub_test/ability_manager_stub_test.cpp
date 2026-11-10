@@ -5461,6 +5461,54 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_NotifyCompleteGamePreLaunchI
 
 /*
  * Feature: AbilityManagerStub
+ * Function: NotifyCompleteGamePreLaunchByPidInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub NotifyCompleteGamePreLaunchByPidInner
+ * EnvConditions: NA
+ * CaseDescription: Verify NotifyCompleteGamePreLaunchByPidInner with invalid pid.
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_NotifyCompleteGamePreLaunchByPidInner_001, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+ 
+    // Write invalid pid
+    data.WriteInt32(0);
+ 
+    auto res = stub_->NotifyCompleteGamePreLaunchByPidInner(data, reply);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+ 
+    // Verify the result was written to reply
+    int32_t result = reply.ReadInt32();
+    EXPECT_EQ(result, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerStub
+ * Function: NotifyCompleteGamePreLaunchByPidInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub NotifyCompleteGamePreLaunchByPidInner
+ * EnvConditions: NA
+ * CaseDescription: Verify NotifyCompleteGamePreLaunchByPidInner with valid pid.
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_NotifyCompleteGamePreLaunchByPidInner_002, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+ 
+    // Write valid pid
+    data.WriteInt32(12345);
+    // Write valid token
+    auto res = stub_->NotifyCompleteGamePreLaunchByPidInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+ 
+    // Verify the result was written to reply
+    int32_t result = reply.ReadInt32();
+    EXPECT_EQ(result, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerStub
  * Function: SetGamePreLaunchCompleteTimeInner
  * SubFunction: NA
  * FunctionPoints: AbilityManagerStub SetGamePreLaunchCompleteTimeInner

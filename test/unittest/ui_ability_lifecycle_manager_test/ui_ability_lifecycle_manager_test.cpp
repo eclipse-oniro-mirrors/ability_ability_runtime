@@ -8581,6 +8581,130 @@ HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunch_005, TestSiz
 }
 
 /**
+ * @tc.name: NotifyCompleteGamePreLaunchByPid_001
+ * @tc.desc: Test NotifyCompleteGamePreLaunchByPid with invalid pid.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunchByPid_001, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    auto result = mgr->NotifyCompleteGamePreLaunchByPid(0);
+    EXPECT_EQ(result, ERR_NOT_GAME_PRELOAD_STATE);
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunchByPid_002
+ * @tc.desc: Test NotifyCompleteGamePreLaunchByPid when no ability record matches the pid.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunchByPid_002, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    auto abilityRecord = InitAbilityRecord();
+    EXPECT_NE(abilityRecord, nullptr);
+    abilityRecord->SetPid(12345);
+    mgr->sessionAbilityMap_.emplace(1, abilityRecord);
+    auto result = mgr->NotifyCompleteGamePreLaunchByPid(99999);
+    EXPECT_EQ(result, ERR_NOT_GAME_PRELOAD_STATE);
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunchByPid_003
+ * @tc.desc: Test NotifyCompleteGamePreLaunchByPid with matching record but not game SA prelaunch.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunchByPid_003, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    auto abilityRecord = InitAbilityRecord();
+    EXPECT_NE(abilityRecord, nullptr);
+    abilityRecord->SetPid(12345);
+    abilityRecord->SetGameSAPreLaunch(false);
+    mgr->sessionAbilityMap_.emplace(1, abilityRecord);
+    auto result = mgr->NotifyCompleteGamePreLaunchByPid(12345);
+    EXPECT_EQ(result, ERR_NOT_GAME_PRELOAD_STATE);
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunchByPid_004
+ * @tc.desc: Test NotifyCompleteGamePreLaunchByPid whit game SA prelaunch record.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunchByPid_004, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    auto abilityRecord = InitAbilityRecord();
+    EXPECT_NE(abilityRecord, nullptr);
+    abilityRecord->SetPid(12345);
+    abilityRecord->SetGameSAPreLaunch(true);
+    mgr->sessionAbilityMap_.emplace(1, abilityRecord);
+    auto result = mgr->NotifyCompleteGamePreLaunchByPid(12345);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunchByPid_005
+ * @tc.desc: Test NotifyCompleteGamePreLaunchByPid picks the game SA prelaunch record among multiple
+ *      records sharing the same pid (multiple instances in one process).
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunchByPid_005, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    auto normalRecord = InitAbilityRecord();
+    EXPECT_NE(normalRecord, nullptr);
+    normalRecord->SetPid(12345);
+    normalRecord->SetGameSAPreLaunch(false);
+    mgr->sessionAbilityMap_.emplace(1, normalRecord);
+ 
+    auto prelaunchRecord = InitAbilityRecord();
+    EXPECT_NE(prelaunchRecord, nullptr);
+    prelaunchRecord->SetPid(12345);
+    prelaunchRecord->SetGameSAPreLaunch(true);
+    mgr->sessionAbilityMap_.emplace(2, prelaunchRecord);
+ 
+    auto result = mgr->NotifyCompleteGamePreLaunchByPid(12345);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunchByPid_006
+ * @tc.desc: Test NotifyCompleteGamePreLaunchByPid skips null record in sessionAbilityMap and still
+ *      finds the game SA prelaunch record.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunchByPid_006, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    mgr->sessionAbilityMap_.emplace(1, nullptr);
+    auto abilityRecord = InitAbilityRecord();
+    EXPECT_NE(abilityRecord, nullptr);
+    abilityRecord->SetPid(12345);
+    abilityRecord->SetGameSAPreLaunch(true);
+    mgr->sessionAbilityMap_.emplace(2, abilityRecord);
+    auto result = mgr->NotifyCompleteGamePreLaunchByPid(12345);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunchByPid_007
+ * @tc.desc: Test NotifyCompleteGamePreLaunchByPid with prelaunch record whose token is null.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunchByPid_007, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    auto abilityRecord = InitAbilityRecord();
+    EXPECT_NE(abilityRecord, nullptr);
+    abilityRecord->SetPid(12345);
+    abilityRecord->SetGameSAPreLaunch(true);
+    abilityRecord->token_ = nullptr;
+    mgr->sessionAbilityMap_.emplace(1, abilityRecord);
+    auto result = mgr->NotifyCompleteGamePreLaunchByPid(12345);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+}
+
+/**
  * @tc.name: SetGamePreLaunchCompleteTime_001
  * @tc.desc: Test SetGamePreLaunchCompleteTime with valid completeTime.
  * @tc.type: FUNC

@@ -2748,6 +2748,15 @@ ErrCode AbilityManagerClient::NotifyCompleteGamePreLaunch(const sptr<IRemoteObje
     return abms->NotifyCompleteGamePreLaunch(callerToken);
 }
 
+ErrCode AbilityManagerClient::NotifyCompleteGamePreLaunchByPid(int32_t pid)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "NotifyCompleteGamePreLaunchByPid called");
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    return abms->NotifyCompleteGamePreLaunchByPid(pid);
+}
+
 ErrCode AbilityManagerClient::SetGamePreLaunchCompleteTime(int32_t userId, int64_t completeTime)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);

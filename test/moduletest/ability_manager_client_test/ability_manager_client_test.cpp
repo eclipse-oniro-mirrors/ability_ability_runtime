@@ -826,6 +826,19 @@ HWTEST_F(AbilityManagerClientTest, NotifyCompleteGamePreLaunch_002, TestSize.Lev
 }
 
 /**
+ * @tc.name: NotifyCompleteGamePreLaunchByPid_001
+ * @tc.desc: NotifyCompleteGamePreLaunchByPid with valid pid.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientTest, NotifyCompleteGamePreLaunchByPid_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyCompleteGamePreLaunchByPid_001 start");
+    auto result = AbilityManagerClient::GetInstance()->NotifyCompleteGamePreLaunchByPid(12345);
+    EXPECT_EQ(result, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "NotifyCompleteGamePreLaunchByPid_001 end");
+}
+
+/**
  * @tc.name: QueryCallerTokenIdForAnco_0100
  * @tc.desc: QueryCallerTokenIdForAnco with valid dialogSessionId
  * @tc.type: FUNC

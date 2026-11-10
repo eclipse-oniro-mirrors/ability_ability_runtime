@@ -4004,6 +4004,56 @@ HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_NotifyCompleteGamePreLaunc
 
 /*
  * Feature: AbilityManagerService
+ * Function: NotifyCompleteGamePreLaunchByPid
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerProxy NotifyCompleteGamePreLaunchByPid
+ * EnvConditions: NA
+ * CaseDescription: Verify NotifyCompleteGamePreLaunchByPid with invalid pid
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_NotifyCompleteGamePreLaunchByPid_001, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(0);
+    auto res = proxy_->NotifyCompleteGamePreLaunchByPid(0);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: NotifyCompleteGamePreLaunchByPid
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerProxy NotifyCompleteGamePreLaunchByPid
+ * EnvConditions: NA
+ * CaseDescription: Verify NotifyCompleteGamePreLaunchByPid with valid pid
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_NotifyCompleteGamePreLaunchByPid_002, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(NO_ERROR));
+    auto res = proxy_->NotifyCompleteGamePreLaunchByPid(12345);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: NotifyCompleteGamePreLaunchByPid
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerProxy NotifyCompleteGamePreLaunchByPid
+ * EnvConditions: NA
+ * CaseDescription: Verify NotifyCompleteGamePreLaunchByPid with SendRequest failure
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_NotifyCompleteGamePreLaunchByPid_003, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(ERR_INVALID_VALUE));
+    auto res = proxy_->NotifyCompleteGamePreLaunchByPid(12345);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: QueryEntityInfo
  * SubFunction: NA
  * FunctionPoints: AbilityManagerProxy QueryEntityInfo
