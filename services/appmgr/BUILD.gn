@@ -26,6 +26,8 @@ config("appmgr_config") {
     "${ability_runtime_path}/utils/global/time/include",
     "${ability_runtime_path}/utils/server/startup/include",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
+    "${ability_runtime_path}/interfaces/kits/native/appkit/app",
+    "${ability_runtime_innerkits_path}/runtime/include",
     "${ability_runtime_utils_path}/global/constant",
   ]
 }
@@ -62,6 +64,7 @@ ohos_shared_library("libappms") {
     "src/app_mgr_service_inner.cpp",
     "src/app_native_spawn_manager.cpp",
     "src/sub_spawn_manager.cpp",
+    "${ability_runtime_native_path}/appkit/app/native_lib_util.cpp",
     "src/app_pidfd_manager.cpp",
     "src/app_preloader.cpp",
     "src/app_query_helper.cpp",

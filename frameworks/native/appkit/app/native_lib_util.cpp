@@ -20,6 +20,7 @@
 
 namespace OHOS {
 namespace AppExecFwk {
+
 std::string GetLibPath(const std::string &hapPath, bool isPreInstallApp)
 {
     std::string libPath = AbilityBase::Constants::LOCAL_CODE_PATH;
@@ -138,6 +139,56 @@ void TraverseLibrarySupportDirectory(
         std::string supportLibPath = prefixPath + "/" + dir;
         TAG_LOGD(AAFwkTag::APPKIT, "supportLibPath: %{public}s", supportLibPath.c_str());
         appLibPaths[appLibPathKey].emplace_back(supportLibPath);
+    }
+}
+
+std::string GetDefaultAppLibPath(const std::string &nativeLibraryPath)
+{
+    if (nativeLibraryPath.empty()) {
+        return "";
+    }
+    std::string path = nativeLibraryPath;
+    if (path.back() == '/') {
+        path.pop_back();
+    }
+    std::string libPath = AbilityBase::Constants::LOCAL_CODE_PATH;
+    libPath += (libPath.back() == '/') ? path : "/" + path;
+    TAG_LOGD(AAFwkTag::APPKIT, "default app lib path: %{private}s", libPath.c_str());
+    return libPath;
+}
+
+void GetModuleSoPaths(const BundleInfo &bundleInfo, const HspList &hspList,
+    AppLibPathMap &appLibPaths)
+{
+    std::string patchNativeLibraryPath =
+        bundleInfo.applicationInfo.appQuickFix.deployedAppqfInfo.nativeLibraryPath;
+    if (!patchNativeLibraryPath.empty()) {
+        std::string patchLibPath = AbilityBase::Constants::LOCAL_CODE_PATH;
+        patchLibPath += (patchLibPath.back() == '/') ?
+            patchNativeLibraryPath : "/" + patchNativeLibraryPath;
+        appLibPaths["default"].emplace_back(patchLibPath);
+    }
+
+    std::string nativeLibraryPath = bundleInfo.applicationInfo.nativeLibraryPath;
+    if (!nativeLibraryPath.empty()) {
+        if (nativeLibraryPath.back() == '/') {
+            nativeLibraryPath.pop_back();
+        }
+        std::string libPath = AbilityBase::Constants::LOCAL_CODE_PATH;
+        libPath += (libPath.back() == '/') ? nativeLibraryPath : "/" + nativeLibraryPath;
+        appLibPaths["default"].emplace_back(libPath);
+        GetLibrarySupportDirectory(bundleInfo.hapModuleInfos, nativeLibraryPath, appLibPaths);
+    }
+
+    for (auto &hapInfo : bundleInfo.hapModuleInfos) {
+        GetPatchNativeLibPath(hapInfo, patchNativeLibraryPath, appLibPaths);
+        GetHapSoPath(hapInfo, appLibPaths,
+            hapInfo.hapPath.find(AbilityBase::Constants::ABS_CODE_PATH) != 0u);
+    }
+
+    for (auto &hspInfo : hspList) {
+        GetHspNativeLibPath(hspInfo, appLibPaths,
+            hspInfo.hapPath.find(AbilityBase::Constants::ABS_CODE_PATH) != 0u);
     }
 }
 } // AppExecFwk

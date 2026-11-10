@@ -83,6 +83,7 @@
 #include "app_native_spawn_manager.h"
 #include "app_pidfd_manager.h"
 #include "sub_spawn_manager.h"
+#include "native_lib_util.h"
 #ifdef SUPPORT_SCREEN
 #include "locale_config.h"
 #endif
@@ -11068,11 +11069,8 @@ int32_t AppMgrServiceInner::StartChildProcessImpl(const std::shared_ptr<ChildPro
         if (SubSpawnManager::GetInstance().ShouldUseSubSpawn(
                 preloadSoList, options.isolationMode)) {
             startMsg.preloadSoList = preloadSoList;
-            if (appInfo && !appInfo->nativeLibraryPath.empty()) {
-                std::string libPath = LOCAL_CODE_PATH;
-                libPath += (libPath.back() == '/') ?
-                    appInfo->nativeLibraryPath : "/" + appInfo->nativeLibraryPath;
-                startMsg.appLibPath = libPath;
+            if (appInfo) {
+                startMsg.appLibPath = GetDefaultAppLibPath(appInfo->nativeLibraryPath);
             }
             startMsg.bundleName = appRecord->GetBundleName();
             pid_t subSpawnChildPid = SubSpawnManager::GetInstance().StartChildViaSubSpawn(
