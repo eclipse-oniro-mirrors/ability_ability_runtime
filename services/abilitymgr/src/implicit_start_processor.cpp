@@ -174,23 +174,7 @@ int ImplicitStartProcessor::ImplicitStartAbility(AbilityRequest &request, int32_
         TAG_LOGE(AAFwkTag::ABILITYMGR, "generate request failed");
         return ret;
     }
-    if (request.specifyTokenId > 0 && !dialogAppInfos.empty() &&
-        !PermissionVerification::GetInstance()->VerifyCallingPermission(
-            PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY, request.specifyTokenId)) {
-        for (auto it = dialogAppInfos.begin(); it != dialogAppInfos.end();) {
-            if (!it->visible) {
-                TAG_LOGW(AAFwkTag::ABILITYMGR, "Caller without permission, erase: %{public}s",
-                    it->bundleName.c_str());
-                it = dialogAppInfos.erase(it);
-            } else {
-                it++;
-            }
-        }
-        if (dialogAppInfos.empty()) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "Caller without permission");
-            return CHECK_PERMISSION_FAILED;
-        }
-    }
+    EraseInvisibleAppInfos(request, dialogAppInfos);
     AbilityUtil::WantSetParameterWindowMode(request.want, windowMode);
     request.callerAccessTokenId = IPCSkeleton::GetCallingTokenID();
 
@@ -269,6 +253,9 @@ int ImplicitStartProcessor::ImplicitStartAbility(AbilityRequest &request, int32_
             TAG_LOGE(AAFwkTag::ABILITYMGR, "request failed");
             return ret;
         }
+        // The wildcard "more apps" fallback is not covered by the primary candidate gate,
+        // so filter invisible candidates again before showing the list.
+        EraseInvisibleAppInfos(request, dialogAllAppInfos);
         if (dialogAllAppInfos.size() == 0) {
             Want dialogWant = IN_PROCESS_CALL(sysDialogScheduler->GetTipsDialogWant(request.callerToken));
             IN_PROCESS_CALL_WITHOUT_RET(abilityMgr->StartAbility(dialogWant));
@@ -1060,6 +1047,25 @@ void ImplicitStartProcessor::AddAbilityInfoToDialogInfos(const AddInfoParam &par
     dialogAppInfo.codePath = param.info.applicationInfo.codePath;
     dialogAppInfo.installSource = param.info.applicationInfo.installSource;
     dialogAppInfos.emplace_back(dialogAppInfo);
+}
+
+void ImplicitStartProcessor::EraseInvisibleAppInfos(const AbilityRequest &request,
+    std::vector<DialogAppInfo> &dialogAppInfos)
+{
+    if (request.specifyTokenId == 0 || dialogAppInfos.empty() ||
+        PermissionVerification::GetInstance()->VerifyCallingPermission(
+            PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY, request.specifyTokenId)) {
+        return;
+    }
+    for (auto it = dialogAppInfos.begin(); it != dialogAppInfos.end();) {
+        if (!it->visible) {
+            TAG_LOGW(AAFwkTag::ABILITYMGR, "Caller without permission, erase: %{public}s",
+                it->bundleName.c_str());
+            it = dialogAppInfos.erase(it);
+        } else {
+            it++;
+        }
+    }
 }
 
 bool ImplicitStartProcessor::IsExistDefaultApp(int32_t userId, const std::string &typeName)

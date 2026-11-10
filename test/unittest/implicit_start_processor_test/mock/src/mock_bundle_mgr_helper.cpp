@@ -15,6 +15,9 @@ AppExecFwk::BundleInfo MockBundleMgrHelperStatus::defaultBundleInfo_ = {};
 
 bool MockBundleMgrHelperStatus::implicitQueryInfosRet_ = false;
 std::vector<AppExecFwk::AbilityInfo> MockBundleMgrHelperStatus::queryAbilityInfos_ = {};
+int32_t MockBundleMgrHelperStatus::implicitQueryCallCount_ = 0;
+bool MockBundleMgrHelperStatus::queryMoreHapListEnabled_ = false;
+std::vector<AppExecFwk::AbilityInfo> MockBundleMgrHelperStatus::queryMoreHapListInfos_ = {};
 std::vector<AppExecFwk::ExtensionAbilityInfo> MockBundleMgrHelperStatus::queryExtensionInfos_ = {};
 bool MockBundleMgrHelperStatus::queryFindDefaultApp_ = false;
 
@@ -51,6 +54,9 @@ void MockBundleMgrHelperStatus::Reset()
     queryAbilityInfos_ = {};
     queryExtensionInfos_ = {};
     queryFindDefaultApp_ = false;
+    implicitQueryCallCount_ = 0;
+    queryMoreHapListEnabled_ = false;
+    queryMoreHapListInfos_ = {};
 
     getBundleInfoRet_ = false;
     bundleInfo_ = {};
@@ -102,7 +108,17 @@ bool BundleMgrHelper::ImplicitQueryInfos(const Want &want, int32_t flags, int32_
     std::vector<AbilityInfo> &abilityInfos, std::vector<ExtensionAbilityInfo> &extensionInfos,
     bool &findDefaultApp)
 {
-    abilityInfos = AAFwk::MockBundleMgrHelperStatus::queryAbilityInfos_;
+    // The primary candidate query is the first ImplicitQueryInfos call of a start flow and
+    // always returns queryAbilityInfos_. The PC "more apps" re-query issues later calls:
+    // return the dedicated list when enabled, and echo the primary list otherwise so that
+    // existing tests keep the legacy behavior.
+    if (AAFwk::MockBundleMgrHelperStatus::implicitQueryCallCount_ > 0 &&
+        AAFwk::MockBundleMgrHelperStatus::queryMoreHapListEnabled_) {
+        abilityInfos = AAFwk::MockBundleMgrHelperStatus::queryMoreHapListInfos_;
+    } else {
+        abilityInfos = AAFwk::MockBundleMgrHelperStatus::queryAbilityInfos_;
+    }
+    AAFwk::MockBundleMgrHelperStatus::implicitQueryCallCount_++;
     extensionInfos = AAFwk::MockBundleMgrHelperStatus::queryExtensionInfos_;
     findDefaultApp = AAFwk::MockBundleMgrHelperStatus::queryFindDefaultApp_;
     return AAFwk::MockBundleMgrHelperStatus::implicitQueryInfosRet_;
