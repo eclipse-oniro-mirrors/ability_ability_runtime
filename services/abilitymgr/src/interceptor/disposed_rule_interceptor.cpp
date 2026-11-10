@@ -24,6 +24,7 @@
 #include "in_process_call_wrapper.h"
 #include "modal_system_ui_extension.h"
 #include "process_options.h"
+#include "security_audit_report.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -65,6 +66,9 @@ ErrCode DisposedRuleInterceptor::DoProcess(AbilityInterceptorParam &param)
     DisposedRuleResult result = CheckControl(param.want, param.userId, disposedRule, appIndex);
     switch (result) {
         case DisposedRuleResult::BLOCK_RULE:
+            if (disposedRule.isEdm) {
+                SecurityAuditReport::ReportEdmBlockedStart(param);
+            }
             return HandleBlockRule(param, disposedRule);
         case DisposedRuleResult::NON_BLOCK_RULE:
             return HandleNonBlockRule(param, disposedRule);

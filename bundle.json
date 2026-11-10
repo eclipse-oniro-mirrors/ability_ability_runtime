@@ -113,6 +113,7 @@
             "samgr",
             "sandbox_manager",
             "screenlock_mgr",
+            "security_guard",
             "selinux_adapter",
             "storage_service",
             "toolchain",

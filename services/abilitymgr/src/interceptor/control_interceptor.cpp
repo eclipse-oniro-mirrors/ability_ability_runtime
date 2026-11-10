@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,6 +17,7 @@
 
 #include "ability_util.h"
 #include "hitrace_meter.h"
+#include "security_audit_report.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -32,8 +33,10 @@ ErrCode ControlInterceptor::DoProcess(AbilityInterceptorParam &param)
 {
     AppExecFwk::AppRunningControlRuleResult controlRule;
     if (CheckControl(param.want, param.userId, controlRule)) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR,
-            "app is intercepted %{public}s", controlRule.controlMessage.c_str());
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "app is intercepted %{public}s", controlRule.controlMessage.c_str());
+        if (controlRule.isEdm) {
+            SecurityAuditReport::ReportEdmBlockedStart(param);
+        }
 #ifdef SUPPORT_GRAPHICS
         if (!param.isWithUI || controlRule.controlWant == nullptr) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "no control want");
