@@ -112,6 +112,12 @@ bool ModuleRunningRecord::IsLastAbilityRecord(const sptr<IRemoteObject> &token)
     return ((abilities_.size() == 1) && (abilities_.find(token) != abilities_.end()));
 }
 
+int32_t ModuleRunningRecord::GetAbilitySize()
+{
+    std::lock_guard<ffrt::mutex> lock(abilitiesMutex_);
+    return static_cast<int32_t>(abilities_.size());
+}
+
 int32_t ModuleRunningRecord::GetPageAbilitySize()
 {
     int pageAbilitySize = 0;

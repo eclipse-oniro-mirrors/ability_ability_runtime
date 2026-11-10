@@ -84,6 +84,7 @@ public:
 
     int32_t GetPageAbilitySize();
 
+    int32_t GetAbilitySize();
     /**
      * @brief Counts page/embedded-UI abilities that are not terminating. The queried token
      *        itself always counts (it may already be marked terminating by its own close

@@ -3223,6 +3223,18 @@ HWTEST_F(AmsAppRunningRecordTest, GetPageAbilitySize_001, TestSize.Level1)
 }
 
 /**
+ * @tc.name: GetAbilitySize_001
+ * @tc.desc: verify that GetAbilitySize works.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsAppRunningRecordTest, GetAbilitySize_001, TestSize.Level1)
+{
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    auto moduleRecord = std::make_shared<ModuleRunningRecord>(appInfo, nullptr);
+    EXPECT_EQ(moduleRecord->GetAbilitySize(), 0);
+}
+
+/**
  * @tc.name: ExtensionAbilityRecordExists_001
  * @tc.desc: verify that ExtensionAbilityRecordExists works.
  * @tc.type: FUNC
