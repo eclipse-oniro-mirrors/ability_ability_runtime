@@ -191,5 +191,64 @@ HWTEST_F(QuickFixManagerClientTest, GetInstance_0100, TestSize.Level1)
 
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end", __func__);
 }
+
+/**
+ * @tc.name: ClearProxyWithRemote_0100
+ * @tc.desc: ClearProxy(remote) clears the proxy when remote matches the proxy's binder object.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerClientTest, ClearProxyWithRemote_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start", __func__);
+
+    quickFixClient_->quickFixMgr_ = mockQuickFixMgrService_;
+    wptr<IRemoteObject> diedRemote = mockQuickFixMgrService_->AsObject();
+    ASSERT_NE(diedRemote.promote(), nullptr);
+
+    quickFixClient_->ClearProxy(diedRemote);
+    EXPECT_EQ(quickFixClient_->quickFixMgr_, nullptr);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end", __func__);
+}
+
+/**
+ * @tc.name: ClearProxyWithRemote_0200
+ * @tc.desc: ClearProxy(remote) keeps the proxy when remote belongs to another binder object.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerClientTest, ClearProxyWithRemote_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start", __func__);
+
+    quickFixClient_->quickFixMgr_ = mockQuickFixMgrService_;
+    sptr<MockQuickFixManagerStub> otherService = new MockQuickFixManagerStub();
+    wptr<IRemoteObject> otherRemote = otherService->AsObject();
+
+    quickFixClient_->ClearProxy(otherRemote);
+    EXPECT_NE(quickFixClient_->quickFixMgr_, nullptr);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end", __func__);
+}
+
+/**
+ * @tc.name: ClearProxyWithRemote_0300
+ * @tc.desc: ClearProxy(remote) with null proxy should not crash.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerClientTest, ClearProxyWithRemote_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start", __func__);
+
+    quickFixClient_->quickFixMgr_ = nullptr;
+    wptr<IRemoteObject> diedRemote = mockQuickFixMgrService_->AsObject();
+
+    quickFixClient_->ClearProxy(diedRemote);
+    EXPECT_EQ(quickFixClient_->quickFixMgr_, nullptr);
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end", __func__);
+}
 } // namespace AppExecFwk
 } // namespace OHOS

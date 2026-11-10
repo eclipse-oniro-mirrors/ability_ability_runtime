@@ -105,7 +105,7 @@ public:
 
 private:
     bool CheckTaskRunningState(const std::string &bundleName);
-    void AddApplyTask(std::shared_ptr<QuickFixManagerApplyTask> applyTask);
+    bool AddApplyTask(std::shared_ptr<QuickFixManagerApplyTask> applyTask);
     int32_t GetQuickFixInfo(const std::string &bundleName, bool &patchExists,
         bool &isSoContained);
     int32_t GetApplyedQuickFixInfoInner(const std::string &bundleName,

@@ -105,9 +105,12 @@ sptr<IQuickFixManager> QuickFixManagerClient::GetQuickFixMgrProxy()
 
     auto self = weak_from_this();
     const auto &onClearProxyCallback = [self](const wptr<IRemoteObject> &remote) {
+        // Do not touch quickFixMgr_ without mutex_ here; the identity check and reset
+        // are both done under the lock inside ClearProxy(remote) to avoid racing with
+        // SetQuickFixMgr/ClearProxy from samgr callback or other threads.
         auto impl = self.lock();
-        if (impl && impl->quickFixMgr_ == remote) {
-            impl->ClearProxy();
+        if (impl != nullptr) {
+            impl->ClearProxy(remote);
         }
     };
 
@@ -137,6 +140,26 @@ void QuickFixManagerClient::ClearProxy()
     TAG_LOGD(AAFwkTag::QUICKFIX, "called");
     std::lock_guard<std::mutex> lock(mutex_);
     quickFixMgr_ = nullptr;
+}
+
+void QuickFixManagerClient::ClearProxy(const wptr<IRemoteObject> &remote)
+{
+    TAG_LOGD(AAFwkTag::QUICKFIX, "called");
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (quickFixMgr_ == nullptr) {
+        TAG_LOGI(AAFwkTag::QUICKFIX, "null proxy_, no need clear");
+        return;
+    }
+
+    // Compare the remote binder object with the one wrapped by current proxy, instead of
+    // the proxy object itself: quickFixMgr_ points to a QuickFixManagerProxy instance whose
+    // address never equals the binder object's. Check and reset under the same lock so that
+    // a proxy reconnected by SetQuickFixMgr right after the SA died will not be cleared.
+    auto serviceRemote = quickFixMgr_->AsObject();
+    if (serviceRemote != nullptr && serviceRemote == remote.promote()) {
+        TAG_LOGI(AAFwkTag::QUICKFIX, "quick fix manager service died, clear proxy");
+        quickFixMgr_ = nullptr;
+    }
 }
 
 void QuickFixManagerClient::QfmsDeathRecipient::OnRemoteDied([[maybe_unused]] const wptr<IRemoteObject> &remote)

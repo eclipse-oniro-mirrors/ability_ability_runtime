@@ -1030,6 +1030,35 @@ HWTEST_F(QuickFixManagerApplyTaskTest, ExtractQuickFixDataFromJson_0100, TestSiz
 }
 
 /**
+ * @tc.name: BundleNameSnapshot_0100
+ * @tc.desc: Verify bundleName snapshot sync: InitRevokeTask sets snapshot, deploy-result parsing updates it.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerApplyTaskTest, BundleNameSnapshot_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto applyTask = std::make_shared<QuickFixManagerApplyTask>(nullptr, appMgr_,
+        quickFixMs_->eventHandler_, quickFixMs_);
+    ASSERT_NE(applyTask, nullptr);
+
+    applyTask->InitRevokeTask("com.example.revoked", true);
+    EXPECT_EQ(applyTask->GetBundleNameSnapshot(), "com.example.revoked");
+
+    nlohmann::json jsonData = {
+        {QUICK_FIX_BUNDLE_NAME, "com.example.bundle"},
+        {QUICK_FIX_BUNDLE_VERSION_CODE, 123},
+        {QUICK_FIX_PATCH_VERSION_CODE, 456},
+        {QUICK_FIX_IS_SO_CONTAINED, true},
+        {QUICK_FIX_TYPE, 2}
+    };
+    EXPECT_TRUE(applyTask->ExtractQuickFixDataFromJson(jsonData));
+    EXPECT_EQ(applyTask->GetBundleNameSnapshot(), "com.example.bundle");
+    EXPECT_EQ(applyTask->GetBundleNameSnapshot(), applyTask->bundleName_);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
  * @tc.name: ExtractQuickFixDataFromJson_0200
  * @tc.desc: Verify the parsing fail, when QUICK_FIX_BUNDLE_NAME is missing
  * @tc.type: FUNC

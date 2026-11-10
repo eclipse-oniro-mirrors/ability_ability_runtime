@@ -66,6 +66,7 @@ public:
 private:
     sptr<IQuickFixManager> GetQuickFixMgrProxy();
     void ClearProxy();
+    void ClearProxy(const wptr<IRemoteObject> &remote);
     bool LoadQuickFixMgrService();
     void SetQuickFixMgr(const sptr<IRemoteObject> &remoteObject);
     sptr<IQuickFixManager> GetQuickFixMgr();
