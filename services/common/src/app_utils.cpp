@@ -1061,14 +1061,13 @@ bool AppUtils::IsBopdOrRescueMode()
 }  // namespace AAFwk
 }  // namespace OHOS
 
-// appspawn-provided interface
-extern "C" bool IsSupportSubSpawn();
+bool IsSupportSubSpawn();
 
 namespace OHOS {
 namespace AAFwk {
 bool AppUtils::IsSupportSubSpawn()
 {
-    return ::IsSupportSubSpawn();
+    return IsSupportSubSpawn();
 }
 }  // namespace AAFwk
 }  // namespace OHOS

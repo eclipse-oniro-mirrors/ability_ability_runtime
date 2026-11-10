@@ -53,33 +53,43 @@ constexpr const char* UNINSTALL_BUNDLE_NAME = "uninstallDebugHapMsg";
 constexpr const char* IPCGROUPINFOLIST_IPCGROUPID = "ipcGroupId";
 constexpr const char* IPCGROUPINFOLIST_GID = "ipcGroupGid";
 constexpr const char* MSG_EXT_NAME_SUBSPAWN_PRELOAD = "SubspawnPreload";
-constexpr size_t MAX_SO_NAME_LENGTH = 255;
+constexpr size_t MAX_SO_PATH_LENGTH = 255;
 
-std::string SerializePreloadSoList(const std::vector<std::string>& soNames,
+std::string SerializePreloadSoList(const std::vector<std::string>& soPaths,
     const std::string& libPath)
 {
     nlohmann::json jsonArray = nlohmann::json::array();
-    nlohmann::json soArray = nlohmann::json::array();
-    for (const auto& soName : soNames) {
-        if (soName.empty() || soName.size() > MAX_SO_NAME_LENGTH) {
-            TAG_LOGE(AAFwkTag::APPMGR, "invalid so name length: %{public}s", soName.c_str());
+    std::map<std::string, nlohmann::json> groupedSo;
+    for (const auto& soPath : soPaths) {
+        if (soPath.empty() || soPath.size() > MAX_SO_PATH_LENGTH) {
+            TAG_LOGE(AAFwkTag::APPMGR, "invalid so path length: %{public}s", soPath.c_str());
             continue;
         }
-        if (soName.find('/') != std::string::npos ||
-            soName.find('\\') != std::string::npos ||
-            soName.find("..") != std::string::npos) {
-            TAG_LOGE(AAFwkTag::APPMGR, "invalid so name (path traversal): %{public}s", soName.c_str());
+        if (soPath.find("..") != std::string::npos) {
+            TAG_LOGE(AAFwkTag::APPMGR, "invalid so path (traversal): %{public}s", soPath.c_str());
             continue;
         }
-        soArray.push_back(soName);
+        auto lastSlash = soPath.find_last_of('/');
+        std::string dir;
+        std::string soName;
+        if (lastSlash != std::string::npos) {
+            dir = libPath + "/" + soPath.substr(0, lastSlash);
+            soName = soPath.substr(lastSlash + 1);
+        } else {
+            dir = libPath;
+            soName = soPath;
+        }
+        if (soName.empty()) {
+            continue;
+        }
+        groupedSo[dir].push_back(soName);
     }
-    if (soArray.empty()) {
-        return jsonArray.dump();
+    for (const auto& [dir, soList] : groupedSo) {
+        nlohmann::json entry;
+        entry["libPath"] = nlohmann::json::array({dir});
+        entry["so"] = soList;
+        jsonArray.push_back(entry);
     }
-    nlohmann::json entry;
-    entry["libPath"] = nlohmann::json::array({libPath});
-    entry["so"] = soArray;
-    jsonArray.push_back(entry);
     return jsonArray.dump();
 }
 }

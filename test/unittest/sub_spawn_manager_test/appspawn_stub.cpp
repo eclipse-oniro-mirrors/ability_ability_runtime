@@ -26,16 +26,6 @@ struct AppSpawnResult {
 };
 
 extern "C" {
-char *GetSubSpawnSocketName(int uid)
-{
-    return nullptr;
-}
-
-int AppSpawnClientInitSubSpawn(const char *socketName, AppSpawnClientHandle *handle)
-{
-    return -1;
-}
-
 int AppSpawnClientInit(const char *serviceName, AppSpawnClientHandle *handle)
 {
     return -1;
@@ -60,9 +50,19 @@ int AppSpawnReqMsgAddStringInfo(AppSpawnReqMsgHandle reqHandle,
 {
     return 0;
 }
+}
+
+char *GetSubSpawnSocketName(int uid)
+{
+    return nullptr;
+}
+
+int AppSpawnClientInitSubSpawn(const char *socketName, AppSpawnClientHandle *handle)
+{
+    return -1;
+}
 
 bool IsSupportSubSpawn()
 {
     return false;
-}
 }

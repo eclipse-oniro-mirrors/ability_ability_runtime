@@ -18,16 +18,19 @@
 #include <csignal>
 #include <unistd.h>
 
+#include "app_pidfd_manager.h"
+#include "app_state_observer_manager.h"
 #include "app_utils.h"
 #include "ffrt_inner.h"
 #include "hilog_tag_wrapper.h"
+#include "singleton.h"
 #include "appspawn.h"
 
 namespace OHOS {
 namespace AppExecFwk {
 
-extern "C" char *GetSubSpawnSocketName(int uid);
-extern "C" int AppSpawnClientInitSubSpawn(const char *socketName, AppSpawnClientHandle *handle);
+char *GetSubSpawnSocketName(int uid);
+int AppSpawnClientInitSubSpawn(const char *socketName, AppSpawnClientHandle *handle);
 
 namespace {
 constexpr const char* SUBSPAWN_PROCESS_NAME_SUFFIX = ":subspawn";
@@ -88,7 +91,7 @@ void SubSpawnManager::SendSubSpawnShutdown(const std::string &bundleName)
 
 std::string SubSpawnManager::QuerySocketNameByUid(int32_t uid)
 {
-    char *socketName = ::GetSubSpawnSocketName(uid);
+    char *socketName = GetSubSpawnSocketName(uid);
     if (socketName == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "GetSubSpawnSocketName returned null for uid:%{public}d", uid);
         return "";
@@ -167,6 +170,7 @@ void SubSpawnManager::AsyncCreateSubSpawn(pid_t appPid, int32_t uid,
         }
 
         std::string socketName = GetInstance().QuerySocketNameByUid(uid);
+        std::string savedBundleName = bundleNameCopy;
 
         {
             std::lock_guard<std::mutex> lock(GetInstance().mutex_);
@@ -180,6 +184,10 @@ void SubSpawnManager::AsyncCreateSubSpawn(pid_t appPid, int32_t uid,
             GetInstance().pidToAppMap_[subSpawnPid] = appPid;
         }
 
+        AppPidFdManager::GetInstance().AddWatcher(subSpawnPid, PidFdType::CHILD);
+        DelayedSingleton<AppStateObserverManager>::GetInstance()->OnSubSpawnProcessCreated(
+            subSpawnPid, savedBundleName, uid, savedBundleName + SUBSPAWN_PROCESS_NAME_SUFFIX);
+
         TAG_LOGI(AAFwkTag::APPMGR, "subspawn ready, pid:%{public}d, appPid:%{public}d",
             subSpawnPid, appPid);
     });
@@ -187,38 +195,30 @@ void SubSpawnManager::AsyncCreateSubSpawn(pid_t appPid, int32_t uid,
 
 pid_t SubSpawnManager::StartChildViaSubSpawn(pid_t appPid, int32_t uid, const AppSpawnStartMsg &startMsg)
 {
-    std::string bundleName;
+    std::string socketName;
     bool needAsyncCreate = false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = subSpawnMap_.find(appPid);
         if (it == subSpawnMap_.end() || it->second.subSpawnPid <= 0) {
-            bundleName = it != subSpawnMap_.end() ? it->second.bundleName : "";
             needAsyncCreate = true;
+        } else if (it->second.terminating) {
+            TAG_LOGD(AAFwkTag::APPMGR, "subspawn terminating, appPid:%{public}d", appPid);
+            return -1;
+        } else if (it->second.socketName.empty()) {
+            TAG_LOGE(AAFwkTag::APPMGR, "subspawn socketName empty, appPid:%{public}d", appPid);
+            return -1;
+        } else {
+            socketName = it->second.socketName;
         }
     }
     if (needAsyncCreate) {
-        AsyncCreateSubSpawn(appPid, uid, bundleName, startMsg);
-        return -1;
-    }
-
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto it = subSpawnMap_.find(appPid);
-    if (it == subSpawnMap_.end()) {
-        return -1;
-    }
-    auto &record = it->second;
-    if (record.terminating) {
-        TAG_LOGD(AAFwkTag::APPMGR, "subspawn terminating, appPid:%{public}d", appPid);
-        return -1;
-    }
-    if (record.socketName.empty()) {
-        TAG_LOGE(AAFwkTag::APPMGR, "subspawn socketName empty, appPid:%{public}d", appPid);
+        AsyncCreateSubSpawn(appPid, uid, startMsg.bundleName, startMsg);
         return -1;
     }
 
     AppSpawnClientHandle handle = nullptr;
-    int ret = ::AppSpawnClientInitSubSpawn(record.socketName.c_str(), &handle);
+    int ret = AppSpawnClientInitSubSpawn(socketName.c_str(), &handle);
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "AppSpawnClientInitSubSpawn fail, ret:%{public}d", ret);
         return -1;
@@ -242,16 +242,13 @@ pid_t SubSpawnManager::StartChildViaSubSpawn(pid_t appPid, int32_t uid, const Ap
 
     AppSpawnResult result = {0};
     ret = AppSpawnClientSendMsg(handle, reqHandle, &result);
+    AppSpawnClientDestroy(handle);
     if (ret != 0 || result.pid <= 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "subspawn fork child fail, ret:%{public}d, pid:%{public}d",
             ret, result.pid);
-        AppSpawnClientDestroy(handle);
         return -1;
     }
 
-    AppSpawnClientDestroy(handle);
-    record.childProcessCount++;
-    CancelIdleTimer(appPid);
     TAG_LOGI(AAFwkTag::APPMGR, "child created via subspawn, pid:%{public}d, appPid:%{public}d",
         result.pid, appPid);
     return result.pid;
@@ -260,6 +257,8 @@ pid_t SubSpawnManager::StartChildViaSubSpawn(pid_t appPid, int32_t uid, const Ap
 void SubSpawnManager::OnSubSpawnExited(pid_t subSpawnPid)
 {
     pid_t appPid = 0;
+    std::string bundleName;
+    int32_t uid = 0;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto pidIt = pidToAppMap_.find(subSpawnPid);
@@ -269,8 +268,15 @@ void SubSpawnManager::OnSubSpawnExited(pid_t subSpawnPid)
         }
         appPid = pidIt->second;
         pidToAppMap_.erase(pidIt);
-        subSpawnMap_.erase(appPid);
+        auto appIt = subSpawnMap_.find(appPid);
+        if (appIt != subSpawnMap_.end()) {
+            bundleName = appIt->second.bundleName;
+            uid = appIt->second.uid;
+            subSpawnMap_.erase(appIt);
+        }
     }
+    DelayedSingleton<AppStateObserverManager>::GetInstance()->OnSubSpawnProcessDied(
+        subSpawnPid, bundleName, uid, bundleName + SUBSPAWN_PROCESS_NAME_SUFFIX);
     TAG_LOGI(AAFwkTag::APPMGR, "subspawn exited, pid:%{public}d, appPid:%{public}d",
         subSpawnPid, appPid);
 }

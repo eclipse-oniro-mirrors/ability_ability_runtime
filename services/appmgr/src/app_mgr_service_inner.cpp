@@ -11068,6 +11068,13 @@ int32_t AppMgrServiceInner::StartChildProcessImpl(const std::shared_ptr<ChildPro
         if (SubSpawnManager::GetInstance().ShouldUseSubSpawn(
                 preloadSoList, options.isolationMode)) {
             startMsg.preloadSoList = preloadSoList;
+            if (appInfo && !appInfo->nativeLibraryPath.empty()) {
+                std::string libPath = LOCAL_CODE_PATH;
+                libPath += (libPath.back() == '/') ?
+                    appInfo->nativeLibraryPath : "/" + appInfo->nativeLibraryPath;
+                startMsg.appLibPath = libPath;
+            }
+            startMsg.bundleName = appRecord->GetBundleName();
             pid_t subSpawnChildPid = SubSpawnManager::GetInstance().StartChildViaSubSpawn(
                 appRecord->GetPid(), startMsg.uid, startMsg);
             if (subSpawnChildPid > 0) {
