@@ -127,8 +127,11 @@ pid_t SubSpawnManager::DoCreateSubSpawn(pid_t appPid, int32_t uid,
         return -1;
     }
 
+    AppSpawnStartMsg subSpawnMsg = startMsg;
+    subSpawnMsg.fds.clear();
+    subSpawnMsg.procName = procName;
     AppSpawnClient spawnClient(APPSPAWN_SERVER_NAME);
-    ret = spawnClient.AppspawnCreateDefaultMsg(startMsg, reqHandle);
+    ret = spawnClient.AppspawnCreateDefaultMsg(subSpawnMsg, reqHandle);
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "AppspawnCreateDefaultMsg fail, ret:%{public}d", ret);
         AppSpawnClientDestroy(handle);
@@ -239,8 +242,11 @@ pid_t SubSpawnManager::StartChildViaSubSpawn(pid_t appPid, int32_t uid, const Ap
         return -1;
     }
 
+    AppSpawnStartMsg childMsg = startMsg;
+    childMsg.preloadSoList.clear();
+    childMsg.appLibPath.clear();
     AppSpawnClient spawnClient(APPSPAWN_SERVER_NAME);
-    ret = spawnClient.AppspawnCreateDefaultMsg(startMsg, reqHandle);
+    ret = spawnClient.AppspawnCreateDefaultMsg(childMsg, reqHandle);
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "AppspawnCreateDefaultMsg fail, ret:%{public}d", ret);
         AppSpawnClientDestroy(handle);
