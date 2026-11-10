@@ -506,7 +506,7 @@ int32_t AppSpawnClient::AppspawnSetExtMsgMore(const AppSpawnStartMsg &startMsg, 
     }
 
     if (!startMsg.preloadSoList.empty()) {
-        std::string preloadSoListJson = SerializePreloadSoList(startMsg.preloadSoList);
+        std::string preloadSoListJson = SerializePreloadSoList(startMsg.preloadSoList, startMsg.appLibPath);
         ret = AppSpawnReqMsgAddStringInfo(reqHandle, MSG_EXT_NAME_PRELOAD_SO_LIST, preloadSoListJson.c_str());
         if (ret) {
             TAG_LOGE(AAFwkTag::APPMGR, "PreloadSoList add fail, ret: %{public}d", ret);

@@ -26,9 +26,8 @@
 namespace OHOS {
 namespace AppExecFwk {
 
-extern "C" __attribute__((weak)) char *GetSubSpawnSocketName(int uid);
-extern "C" __attribute__((weak)) int AppSpawnClientInitSubSpawn(const char *socketName,
-    AppSpawnClientHandle *handle);
+extern "C" char *GetSubSpawnSocketName(int uid);
+extern "C" int AppSpawnClientInitSubSpawn(const char *socketName, AppSpawnClientHandle *handle);
 
 namespace {
 constexpr const char* SUBSPAWN_PROCESS_NAME_SUFFIX = ":subspawn";
@@ -60,10 +59,6 @@ bool SubSpawnManager::ShouldUseSubSpawn(const std::vector<std::string> &preloadS
 
 std::string SubSpawnManager::QuerySocketNameByUid(int32_t uid)
 {
-    if (!::GetSubSpawnSocketName) {
-        TAG_LOGE(AAFwkTag::APPMGR, "GetSubSpawnSocketName not available");
-        return "";
-    }
     char *socketName = ::GetSubSpawnSocketName(uid);
     if (socketName == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "GetSubSpawnSocketName returned null for uid:%{public}d", uid);
@@ -188,11 +183,6 @@ pid_t SubSpawnManager::StartChildViaSubSpawn(pid_t appPid, int32_t uid, const Ap
         return -1;
     }
 
-    if (!::AppSpawnClientInitSubSpawn) {
-        TAG_LOGE(AAFwkTag::APPMGR, "AppSpawnClientInitSubSpawn not available");
-        return -1;
-    }
-
     AppSpawnClientHandle handle = nullptr;
     int ret = ::AppSpawnClientInitSubSpawn(record.socketName.c_str(), &handle);
     if (ret != 0) {
@@ -284,8 +274,6 @@ void SubSpawnManager::OnAppProcessDied(pid_t appPid)
             return;
         }
         subSpawnPid = it->second.subSpawnPid;
-        pidToAppMap_.erase(subSpawnPid);
-        subSpawnMap_.erase(it);
     }
 
     if (subSpawnPid > 0) {
@@ -336,8 +324,6 @@ void SubSpawnManager::HandleIdleTimeout(pid_t appPid)
             return;
         }
         subSpawnPid = it->second.subSpawnPid;
-        pidToAppMap_.erase(subSpawnPid);
-        subSpawnMap_.erase(it);
     }
 
     if (subSpawnPid > 0) {
