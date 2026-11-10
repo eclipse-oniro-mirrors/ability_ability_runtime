@@ -719,6 +719,17 @@ HWTEST_F(AbilityManagerClientBranchTest, KillProcess_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: AbilityManagerClient_KillCollaboratorProcess_0100
+ * @tc.desc: KillCollaboratorProcess
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, KillCollaboratorProcess_0100, TestSize.Level1)
+{
+    auto result = client_->KillCollaboratorProcess(1, BUNDLE_NAME, 0);
+    EXPECT_EQ(ERR_OK, result);
+}
+
+/**
  * @tc.name: AbilityManagerClient_ContinueMission_0100
  * @tc.desc: ContinueMission
  * @tc.type: FUNC

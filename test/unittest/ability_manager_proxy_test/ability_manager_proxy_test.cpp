@@ -1160,6 +1160,27 @@ HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_KillProcess_001, TestSize.
     EXPECT_EQ(res, NO_ERROR);
 }
 
+/*
+ * Feature: AbilityManagerService
+ * Function: KillCollaboratorProcess
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerProxy KillCollaboratorProcess
+ * EnvConditions: NA
+ * CaseDescription: Verify the normal process of KillCollaboratorProcess
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_KillCollaboratorProcess_001, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+    int32_t collaboratorType = 1;
+    std::string bundleName = "test_bundle";
+    int32_t userId = 0;
+    auto res = proxy_->KillCollaboratorProcess(collaboratorType, bundleName, userId);
+    EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::KILL_COLLABORATOR_PROCESS), mock_->code_);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
 #ifdef ABILITY_COMMAND_FOR_TEST
 /*
  * Feature: AbilityManagerService

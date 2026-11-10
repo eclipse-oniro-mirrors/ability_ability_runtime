@@ -749,6 +749,9 @@ public:
     virtual int KillProcessWithUserId(const std::string &bundleName, bool clearPageStack = false,
         int32_t appIndex = 0, const std::string& reason = "Abilityms::KillProcess", int32_t userId = -1) override;
 
+    virtual int32_t KillCollaboratorProcess(int32_t collaboratorType,
+        const std::string &bundleName, int32_t userId) override;
+
     #ifdef ABILITY_COMMAND_FOR_TEST
     /**
      * force timeout ability.

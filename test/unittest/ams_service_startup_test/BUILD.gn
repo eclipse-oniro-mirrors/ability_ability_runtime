@@ -21,6 +21,7 @@ ohos_unittest("AmsServiceStartupTest") {
   module_out_path = module_output_path
   cflags_cc = []
   include_dirs = [
+    "${ability_runtime_services_path}/appmgr/include",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
     "${ability_runtime_test_path}/mock/services_appmgr_test/include",
     "${ability_runtime_innerkits_path}/ability_manager/include/insight_intent",
@@ -65,6 +66,7 @@ ohos_unittest("AmsServiceStartupTest") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/ability_manager:process_options",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",

@@ -815,6 +815,9 @@ enum class AbilityManagerInterfaceCode {
 
     // attribute the task id onto an existing ConnectionRecord after a reused agent connect (oneway)
     ATTRIBUTE_SAME_CONNECTION_RECORD_TASK_ID = 6189,
+
+    // kill collaborator process
+    KILL_COLLABORATOR_PROCESS = 6190,
 };
 }  // namespace AAFwk
 }  // namespace OHOS

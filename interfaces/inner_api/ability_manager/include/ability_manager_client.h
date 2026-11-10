@@ -1220,6 +1220,18 @@ public:
     ErrCode KillProcessWithUserId(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = 0,
         const std::string& reason = "Abilityms::KillProcess", int32_t userId = -1);
 
+    /**
+     * Kill collaborator process. Delegates to AbilityManagerService which validates FOUNDATION_UID.
+     *
+     * @param collaboratorType collaborator type (1=RESERVE, 2=OTHERS).
+     * @param bundleName Bundle name of the application to kill.
+     * @param userId The user id to kill process for.
+     * @return ERR_OK on success; ERR_PERMISSION_DENIED if not foundation call;
+     *         KILL_PROCESS_FAILED on failure.
+     */
+    ErrCode KillCollaboratorProcess(int32_t collaboratorType,
+        const std::string &bundleName, int32_t userId);
+
     #ifdef ABILITY_COMMAND_FOR_TEST
     /**
      * Force a lifecycle timeout for the named ability for testing (simulates ANR/timeout paths).

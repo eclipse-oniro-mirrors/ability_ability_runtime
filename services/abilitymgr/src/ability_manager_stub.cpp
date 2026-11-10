@@ -139,6 +139,9 @@ int AbilityManagerStub::OnRemoteRequestInnerSecond(uint32_t code, MessageParcel 
     if (interfaceCode == AbilityManagerInterfaceCode::KILL_PROCESS_WITH_USER_ID) {
         return KillProcessWithUserIdInner(data, reply);
     }
+    if (interfaceCode == AbilityManagerInterfaceCode::KILL_COLLABORATOR_PROCESS) {
+        return KillCollaboratorProcessInner(data, reply);
+    }
     if (interfaceCode == AbilityManagerInterfaceCode::UNINSTALL_APP) {
         return UninstallAppInner(data, reply);
     }
@@ -1637,6 +1640,32 @@ int AbilityManagerStub::KillProcessWithUserIdInner(MessageParcel &data, MessageP
     int result = KillProcessWithUserId(bundleName, clearPageStack, appIndex, reason, userId);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "remove stack error");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int AbilityManagerStub::KillCollaboratorProcessInner(MessageParcel &data, MessageParcel &reply)
+{
+    int32_t collaboratorType = 0;
+    if (!data.ReadInt32(collaboratorType)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "read collaboratorType failed");
+        return ERR_INVALID_VALUE;
+    }
+    std::u16string bundleNameU16;
+    if (!data.ReadString16(bundleNameU16)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "read bundleName failed");
+        return ERR_INVALID_VALUE;
+    }
+    std::string bundleName = Str16ToStr8(bundleNameU16);
+    int32_t userId = -1;
+    if (!data.ReadInt32(userId)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "read userId failed");
+        return ERR_INVALID_VALUE;
+    }
+    int result = KillCollaboratorProcess(collaboratorType, bundleName, userId);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write result failed");
         return ERR_INVALID_VALUE;
     }
     return NO_ERROR;

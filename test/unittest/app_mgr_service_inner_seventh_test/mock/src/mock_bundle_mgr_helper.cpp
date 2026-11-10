@@ -418,5 +418,11 @@ ErrCode BundleMgrHelper::GetDualModeBundleInfo(const std::string& bundleName, in
     appIndex = status.dualModeAppIndex_;
     return ERR_OK;
 }
+
+ErrCode BundleMgrHelper::GetCloneBundleInfoExt(const std::string& bundleName,
+    uint32_t flags, int32_t appIndex, int32_t userId, BundleInfo& bundleInfo)
+{
+    return ERR_OK;
+}
 } // namespace AppExecFwk
 } // namespace OHOS

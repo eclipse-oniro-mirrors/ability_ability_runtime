@@ -113,6 +113,10 @@ ohos_shared_library("libappms") {
     defines += [ "ABILITY_PLATFORM_CHECK_PERMISSION" ]
   }
 
+  if (ability_runtime_enable_clone_for_account) {
+    defines += [ "ENABLE_CLONE_FOR_ACCOUNT" ]
+  }
+
   configs = [ ":appmgr_config" ]
   cflags = []
   if (target_cpu == "arm") {

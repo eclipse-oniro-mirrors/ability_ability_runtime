@@ -30,9 +30,9 @@ ohos_unittest("app_mgr_service_inner_eighth_test") {
     "mock/include",
     "${ability_runtime_innerkits_path}/app_manager/include/appmgr",
     "${ability_runtime_services_path}/abilitymgr/include/utils",
+    "${ability_runtime_services_path}/appmgr/include",
     "${ability_runtime_services_path}/abilitymgr/include",
     "${ability_runtime_services_path}/appdfr/include",
-    "${ability_runtime_services_path}/appmgr/include",
     "${ability_runtime_services_path}/appmgr/include/utils",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
     "${ability_runtime_path}/utils/global/time/include",
@@ -101,6 +101,7 @@ ohos_unittest("app_mgr_service_inner_eighth_test") {
   configs = []
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/ability_manager:process_options",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
@@ -161,6 +162,7 @@ ohos_unittest("app_mgr_service_inner_eighth_test") {
   }
   if (ability_runtime_graphics) {
     defines += [ "SUPPORT_GRAPHICS" ]
+    defines += [ "SUPPORT_SCREEN" ]
     external_deps += [
       "i18n:intl_util",
       "window_manager:libdm",
