@@ -47,6 +47,8 @@ void TraverseLibrarySupportDirectory(
 
 std::string GetDefaultAppLibPath(const std::string &nativeLibraryPath);
 
+void GetDefaultNamespacePaths(const BundleInfo &bundleInfo, AppLibPathMap &appLibPaths);
+
 void GetModuleSoPaths(const BundleInfo &bundleInfo, const HspList &hspList,
     AppLibPathMap &appLibPaths);
 }  // namespace AppExecFwk

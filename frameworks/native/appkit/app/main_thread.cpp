@@ -246,6 +246,7 @@ public:
 
 void MainThread::GetNativeLibPath(const BundleInfo &bundleInfo, const HspList &hspList, AppLibPathMap &appLibPaths)
 {
+    GetDefaultNamespacePaths(bundleInfo, appLibPaths);
     GetModuleSoPaths(bundleInfo, hspList, appLibPaths);
 }
 

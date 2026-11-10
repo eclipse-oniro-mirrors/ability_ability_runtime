@@ -1067,7 +1067,9 @@ namespace OHOS {
 namespace AAFwk {
 bool AppUtils::IsSupportSubSpawn()
 {
-    return IsSupportSubSpawn();
+    bool result = IsSupportSubSpawn();
+    TAG_LOGD(AAFwkTag::DEFAULT, "IsSupportSubSpawn: %{public}d", result);
+    return result;
 }
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -455,6 +455,7 @@ void ChildMainThread::UpdateNativeChildLibModuleName(const AppLibPathMap &appLib
 void ChildMainThread::GetNativeLibPath(const BundleInfo &bundleInfo, const HspList &hspList,
     AppLibPathMap &appLibPaths)
 {
+    GetDefaultNamespacePaths(bundleInfo, appLibPaths);
     GetModuleSoPaths(bundleInfo, hspList, appLibPaths);
 }
 

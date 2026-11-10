@@ -157,8 +157,7 @@ std::string GetDefaultAppLibPath(const std::string &nativeLibraryPath)
     return libPath;
 }
 
-void GetModuleSoPaths(const BundleInfo &bundleInfo, const HspList &hspList,
-    AppLibPathMap &appLibPaths)
+void GetDefaultNamespacePaths(const BundleInfo &bundleInfo, AppLibPathMap &appLibPaths)
 {
     std::string patchNativeLibraryPath =
         bundleInfo.applicationInfo.appQuickFix.deployedAppqfInfo.nativeLibraryPath;
@@ -166,27 +165,40 @@ void GetModuleSoPaths(const BundleInfo &bundleInfo, const HspList &hspList,
         std::string patchLibPath = AbilityBase::Constants::LOCAL_CODE_PATH;
         patchLibPath += (patchLibPath.back() == '/') ?
             patchNativeLibraryPath : "/" + patchNativeLibraryPath;
+        TAG_LOGD(AAFwkTag::APPKIT, "default patch lib path: %{private}s", patchLibPath.c_str());
         appLibPaths["default"].emplace_back(patchLibPath);
     }
 
     std::string nativeLibraryPath = bundleInfo.applicationInfo.nativeLibraryPath;
     if (!nativeLibraryPath.empty()) {
-        if (nativeLibraryPath.back() == '/') {
-            nativeLibraryPath.pop_back();
+        std::string libPath = GetDefaultAppLibPath(nativeLibraryPath);
+        if (!libPath.empty()) {
+            appLibPaths["default"].emplace_back(libPath);
         }
-        std::string libPath = AbilityBase::Constants::LOCAL_CODE_PATH;
-        libPath += (libPath.back() == '/') ? nativeLibraryPath : "/" + nativeLibraryPath;
-        appLibPaths["default"].emplace_back(libPath);
         GetLibrarySupportDirectory(bundleInfo.hapModuleInfos, nativeLibraryPath, appLibPaths);
     }
+    TAG_LOGD(AAFwkTag::APPKIT, "default namespace paths count: %{public}zu",
+        appLibPaths["default"].size());
+}
+
+void GetModuleSoPaths(const BundleInfo &bundleInfo, const HspList &hspList,
+    AppLibPathMap &appLibPaths)
+{
+    std::string patchNativeLibraryPath =
+        bundleInfo.applicationInfo.appQuickFix.deployedAppqfInfo.nativeLibraryPath;
 
     for (auto &hapInfo : bundleInfo.hapModuleInfos) {
+        TAG_LOGD(AAFwkTag::APPKIT,
+            "moduleName: %{public}s, isLibIsolated: %{public}d, compressNativeLibs: %{public}d",
+            hapInfo.moduleName.c_str(), hapInfo.isLibIsolated, hapInfo.compressNativeLibs);
         GetPatchNativeLibPath(hapInfo, patchNativeLibraryPath, appLibPaths);
         GetHapSoPath(hapInfo, appLibPaths,
             hapInfo.hapPath.find(AbilityBase::Constants::ABS_CODE_PATH) != 0u);
     }
 
     for (auto &hspInfo : hspList) {
+        TAG_LOGD(AAFwkTag::APPKIT, "bundle:%s, module:%s, nativeLibraryPath:%s",
+            hspInfo.bundleName.c_str(), hspInfo.moduleName.c_str(), hspInfo.nativeLibraryPath.c_str());
         GetHspNativeLibPath(hspInfo, appLibPaths,
             hspInfo.hapPath.find(AbilityBase::Constants::ABS_CODE_PATH) != 0u);
     }

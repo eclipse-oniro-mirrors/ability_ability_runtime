@@ -84,6 +84,8 @@ void SubSpawnManager::SendSubSpawnShutdown(const std::string &bundleName)
         return;
     }
     AppSpawnResult result = {0};
+    TAG_LOGD(AAFwkTag::APPMGR, "SendSubSpawnShutdown: sending MSG_SUBSPAWN_SHUTDOWN for bundle:%{public}s",
+        bundleName.c_str());
     AppSpawnClientSendMsg(handle, reqHandle, &result);
     AppSpawnClientDestroy(handle);
     TAG_LOGD(AAFwkTag::APPMGR, "SendSubSpawnShutdown: sent for bundle:%{public}s", bundleName.c_str());
@@ -91,12 +93,14 @@ void SubSpawnManager::SendSubSpawnShutdown(const std::string &bundleName)
 
 std::string SubSpawnManager::QuerySocketNameByUid(int32_t uid)
 {
+    TAG_LOGD(AAFwkTag::APPMGR, "QuerySocketNameByUid uid:%{public}d", uid);
     char *socketName = GetSubSpawnSocketName(uid);
     if (socketName == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "GetSubSpawnSocketName returned null for uid:%{public}d", uid);
         return "";
     }
     std::string result(socketName);
+    TAG_LOGD(AAFwkTag::APPMGR, "socketName: %{public}s", result.c_str());
     return result;
 }
 
@@ -132,6 +136,7 @@ pid_t SubSpawnManager::DoCreateSubSpawn(pid_t appPid, int32_t uid,
     }
 
     AppSpawnResult result = {0};
+    TAG_LOGD(AAFwkTag::APPMGR, "DoCreateSubSpawn: sending MSG_SUBSPAWN_CREATE to appspawn");
     ret = AppSpawnClientSendMsg(handle, reqHandle, &result);
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "AppSpawnClientSendMsg fail, ret:%{public}d", ret);
@@ -218,6 +223,8 @@ pid_t SubSpawnManager::StartChildViaSubSpawn(pid_t appPid, int32_t uid, const Ap
     }
 
     AppSpawnClientHandle handle = nullptr;
+    TAG_LOGD(AAFwkTag::APPMGR, "StartChildViaSubSpawn: connecting to subspawn socket: %{public}s",
+        socketName.c_str());
     int ret = AppSpawnClientInitSubSpawn(socketName.c_str(), &handle);
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "AppSpawnClientInitSubSpawn fail, ret:%{public}d", ret);
@@ -241,6 +248,7 @@ pid_t SubSpawnManager::StartChildViaSubSpawn(pid_t appPid, int32_t uid, const Ap
     }
 
     AppSpawnResult result = {0};
+    TAG_LOGD(AAFwkTag::APPMGR, "StartChildViaSubSpawn: sending MSG_APP_SPAWN to subspawn");
     ret = AppSpawnClientSendMsg(handle, reqHandle, &result);
     AppSpawnClientDestroy(handle);
     if (ret != 0 || result.pid <= 0) {
