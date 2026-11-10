@@ -31,6 +31,8 @@ extern "C" int AppSpawnClientInitSubSpawn(const char *socketName, AppSpawnClient
 
 namespace {
 constexpr const char* SUBSPAWN_PROCESS_NAME_SUFFIX = ":subspawn";
+constexpr int32_t MSG_SUBSPAWN_CREATE_CODE = 3;
+constexpr int32_t MSG_SUBSPAWN_SHUTDOWN_CODE = 4;
 }
 
 SubSpawnManager::SubSpawnManager() {}
@@ -46,15 +48,42 @@ SubSpawnManager &SubSpawnManager::GetInstance()
 bool SubSpawnManager::ShouldUseSubSpawn(const std::vector<std::string> &preloadSoList, bool isolationMode)
 {
     if (!AppUtils::GetInstance().IsSupportSubSpawn()) {
+        TAG_LOGD(AAFwkTag::APPMGR, "ShouldUseSubSpawn: device not support");
         return false;
     }
     if (preloadSoList.empty()) {
+        TAG_LOGD(AAFwkTag::APPMGR, "ShouldUseSubSpawn: preloadSoList empty");
         return false;
     }
     if (!isolationMode) {
+        TAG_LOGD(AAFwkTag::APPMGR, "ShouldUseSubSpawn: not isolated mode");
         return false;
     }
+    TAG_LOGD(AAFwkTag::APPMGR, "ShouldUseSubSpawn: true, soList size:%{public}zu", preloadSoList.size());
     return true;
+}
+
+void SubSpawnManager::SendSubSpawnShutdown(const std::string &bundleName)
+{
+    AppSpawnClientHandle handle = nullptr;
+    ErrCode ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &handle);
+    if (ret != 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "SendSubSpawnShutdown: init fail, ret:%{public}d", ret);
+        return;
+    }
+    std::string procName = bundleName + SUBSPAWN_PROCESS_NAME_SUFFIX;
+    AppSpawnReqMsgHandle reqHandle = nullptr;
+    ret = AppSpawnReqMsgCreate(static_cast<AppSpawnMsgType>(MSG_SUBSPAWN_SHUTDOWN_CODE),
+        procName.c_str(), &reqHandle);
+    if (ret != 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "SendSubSpawnShutdown: create msg fail, ret:%{public}d", ret);
+        AppSpawnClientDestroy(handle);
+        return;
+    }
+    AppSpawnResult result = {0};
+    AppSpawnClientSendMsg(handle, reqHandle, &result);
+    AppSpawnClientDestroy(handle);
+    TAG_LOGD(AAFwkTag::APPMGR, "SendSubSpawnShutdown: sent for bundle:%{public}s", bundleName.c_str());
 }
 
 std::string SubSpawnManager::QuerySocketNameByUid(int32_t uid)
@@ -83,7 +112,8 @@ pid_t SubSpawnManager::DoCreateSubSpawn(pid_t appPid, int32_t uid,
 
     std::string procName = bundleName + SUBSPAWN_PROCESS_NAME_SUFFIX;
     AppSpawnReqMsgHandle reqHandle = nullptr;
-    ret = AppSpawnReqMsgCreate(static_cast<AppSpawnMsgType>(startMsg.code), procName.c_str(), &reqHandle);
+    ret = AppSpawnReqMsgCreate(static_cast<AppSpawnMsgType>(MSG_SUBSPAWN_CREATE_CODE),
+        procName.c_str(), &reqHandle);
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "AppSpawnReqMsgCreate fail, ret:%{public}d", ret);
         AppSpawnClientDestroy(handle);
@@ -178,6 +208,10 @@ pid_t SubSpawnManager::StartChildViaSubSpawn(pid_t appPid, int32_t uid, const Ap
         return -1;
     }
     auto &record = it->second;
+    if (record.terminating) {
+        TAG_LOGD(AAFwkTag::APPMGR, "subspawn terminating, appPid:%{public}d", appPid);
+        return -1;
+    }
     if (record.socketName.empty()) {
         TAG_LOGE(AAFwkTag::APPMGR, "subspawn socketName empty, appPid:%{public}d", appPid);
         return -1;
@@ -248,6 +282,8 @@ void SubSpawnManager::OnChildProcessCreated(pid_t appPid)
     if (it != subSpawnMap_.end()) {
         it->second.childProcessCount++;
         CancelIdleTimer(appPid);
+        TAG_LOGD(AAFwkTag::APPMGR, "OnChildProcessCreated: appPid:%{public}d, count:%{public}d",
+            appPid, it->second.childProcessCount);
     }
 }
 
@@ -257,9 +293,12 @@ void SubSpawnManager::OnChildProcessExited(pid_t appPid)
     auto it = subSpawnMap_.find(appPid);
     if (it != subSpawnMap_.end()) {
         it->second.childProcessCount--;
+        TAG_LOGD(AAFwkTag::APPMGR, "OnChildProcessExited: appPid:%{public}d, count:%{public}d",
+            appPid, it->second.childProcessCount);
         if (it->second.childProcessCount <= 0) {
             it->second.childProcessCount = 0;
             StartIdleTimer(appPid);
+            TAG_LOGD(AAFwkTag::APPMGR, "OnChildProcessExited: start idle timer, appPid:%{public}d", appPid);
         }
     }
 }
@@ -267,19 +306,27 @@ void SubSpawnManager::OnChildProcessExited(pid_t appPid)
 void SubSpawnManager::OnAppProcessDied(pid_t appPid)
 {
     pid_t subSpawnPid = 0;
+    std::string bundleName;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = subSpawnMap_.find(appPid);
         if (it == subSpawnMap_.end()) {
             return;
         }
+        if (it->second.terminating) {
+            TAG_LOGD(AAFwkTag::APPMGR, "subspawn already terminating, appPid:%{public}d", appPid);
+            return;
+        }
+        it->second.terminating = true;
         subSpawnPid = it->second.subSpawnPid;
+        bundleName = it->second.bundleName;
     }
 
     if (subSpawnPid > 0) {
         kill(subSpawnPid, SIGKILL);
         TAG_LOGI(AAFwkTag::APPMGR, "killed subspawn pid:%{public}d for appPid:%{public}d",
             subSpawnPid, appPid);
+        SendSubSpawnShutdown(bundleName);
     }
 }
 
@@ -314,22 +361,33 @@ void SubSpawnManager::CancelIdleTimer(pid_t appPid)
 void SubSpawnManager::HandleIdleTimeout(pid_t appPid)
 {
     pid_t subSpawnPid = 0;
+    std::string bundleName;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = subSpawnMap_.find(appPid);
         if (it == subSpawnMap_.end()) {
+            TAG_LOGD(AAFwkTag::APPMGR, "HandleIdleTimeout: no record, appPid:%{public}d", appPid);
             return;
         }
         if (it->second.childProcessCount > 0 || !it->second.idleTimerActive) {
+            TAG_LOGD(AAFwkTag::APPMGR, "HandleIdleTimeout: skip, count:%{public}d, active:%{public}d",
+                it->second.childProcessCount, it->second.idleTimerActive);
             return;
         }
+        if (it->second.terminating) {
+            TAG_LOGD(AAFwkTag::APPMGR, "HandleIdleTimeout: already terminating, appPid:%{public}d", appPid);
+            return;
+        }
+        it->second.terminating = true;
         subSpawnPid = it->second.subSpawnPid;
+        bundleName = it->second.bundleName;
     }
 
     if (subSpawnPid > 0) {
         kill(subSpawnPid, SIGKILL);
         TAG_LOGI(AAFwkTag::APPMGR, "idle timeout, killed subspawn pid:%{public}d for appPid:%{public}d",
             subSpawnPid, appPid);
+        SendSubSpawnShutdown(bundleName);
     }
 }
 

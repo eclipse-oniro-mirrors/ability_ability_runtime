@@ -115,6 +115,7 @@ private:
         int32_t uid = 0;
         int32_t childProcessCount = 0;
         bool idleTimerActive = false;
+        bool terminating = false;
         std::string socketName;
     };
 
@@ -123,6 +124,7 @@ private:
     void HandleIdleTimeout(pid_t appPid);
 
     std::string QuerySocketNameByUid(int32_t uid);
+    void SendSubSpawnShutdown(const std::string &bundleName);
 
     pid_t DoCreateSubSpawn(pid_t appPid, int32_t uid, const std::string &bundleName,
                            const AppSpawnStartMsg &startMsg);

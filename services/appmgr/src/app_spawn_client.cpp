@@ -52,9 +52,7 @@ constexpr const char* JITPERMISSIONSLIST_PERMISSIONS_NAME = "permissions";
 constexpr const char* UNINSTALL_BUNDLE_NAME = "uninstallDebugHapMsg";
 constexpr const char* IPCGROUPINFOLIST_IPCGROUPID = "ipcGroupId";
 constexpr const char* IPCGROUPINFOLIST_GID = "ipcGroupGid";
-constexpr const char* MSG_EXT_NAME_PRELOAD_SO_LIST = "PreloadSoList";
-constexpr const char* PRELOAD_SO_KEY_LIB_PATH = "libPath";
-constexpr const char* PRELOAD_SO_KEY_SO = "so";
+constexpr const char* MSG_EXT_NAME_SUBSPAWN_PRELOAD = "SubspawnPreload";
 constexpr size_t MAX_SO_NAME_LENGTH = 255;
 
 std::string SerializePreloadSoList(const std::vector<std::string>& soNames,
@@ -79,8 +77,8 @@ std::string SerializePreloadSoList(const std::vector<std::string>& soNames,
         return jsonArray.dump();
     }
     nlohmann::json entry;
-    entry[PRELOAD_SO_KEY_LIB_PATH] = nlohmann::json::array({libPath});
-    entry[PRELOAD_SO_KEY_SO] = soArray;
+    entry["libPath"] = nlohmann::json::array({libPath});
+    entry["so"] = soArray;
     jsonArray.push_back(entry);
     return jsonArray.dump();
 }
@@ -507,12 +505,12 @@ int32_t AppSpawnClient::AppspawnSetExtMsgMore(const AppSpawnStartMsg &startMsg, 
 
     if (!startMsg.preloadSoList.empty()) {
         std::string preloadSoListJson = SerializePreloadSoList(startMsg.preloadSoList, startMsg.appLibPath);
-        ret = AppSpawnReqMsgAddStringInfo(reqHandle, MSG_EXT_NAME_PRELOAD_SO_LIST, preloadSoListJson.c_str());
+        ret = AppSpawnReqMsgAddStringInfo(reqHandle, MSG_EXT_NAME_SUBSPAWN_PRELOAD, preloadSoListJson.c_str());
         if (ret) {
-            TAG_LOGE(AAFwkTag::APPMGR, "PreloadSoList add fail, ret: %{public}d", ret);
+            TAG_LOGE(AAFwkTag::APPMGR, "SubspawnPreload add fail, ret: %{public}d", ret);
             return ret;
         }
-        TAG_LOGD(AAFwkTag::APPMGR, "Send PreloadSoList success");
+        TAG_LOGD(AAFwkTag::APPMGR, "Send SubspawnPreload success");
     }
 
     return AppspawnSetExtMsgSec(startMsg, reqHandle);
