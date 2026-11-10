@@ -2051,10 +2051,14 @@ HWTEST_F(ImplicitStartProcessorTest, GenerateAbilityRequestByAction_DefaultOpen_
 }
 namespace {
 int32_t RunImplicitStartWithCandidates(const std::vector<AppExecFwk::AbilityInfo> &candidates,
-    uint32_t specifyTokenId)
+    uint32_t specifyTokenId,
+    const std::vector<AppExecFwk::AbilityInfo> &moreHapListCandidates = {})
 {
     MockBundleMgrHelperStatus::implicitQueryInfosRet_ = true;
     MockBundleMgrHelperStatus::queryAbilityInfos_ = candidates;
+    MockBundleMgrHelperStatus::implicitQueryCallCount_ = 0;
+    MockBundleMgrHelperStatus::queryMoreHapListEnabled_ = !moreHapListCandidates.empty();
+    MockBundleMgrHelperStatus::queryMoreHapListInfos_ = moreHapListCandidates;
     PermissionVerification::verifyBackgroundCallPermissionRet_ = true;
     PermissionVerification::verifyCallingPermissionCount_ = 0;
     AbilityManagerService::startAbilityInnerCount_ = 0;
@@ -2068,9 +2072,9 @@ int32_t RunImplicitStartWithCandidates(const std::vector<AppExecFwk::AbilityInfo
         AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_UNDEFINED, "", false);
 }
 
-void ExpectGateCalledWith(uint32_t specifyTokenId)
+void ExpectGateCalledWith(uint32_t specifyTokenId, int32_t expectedCount = 1)
 {
-    EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, 1);
+    EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, expectedCount);
     EXPECT_EQ(PermissionVerification::lastPermissionName_,
         PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY);
     EXPECT_EQ(PermissionVerification::lastSpecifyTokenId_, specifyTokenId);
@@ -2088,15 +2092,21 @@ AppExecFwk::AbilityInfo MakeCandidateInfo(const std::string &bundleName, bool vi
 
 /**
  * @tc.name: ImplicitStartAbility_Permission_001
- * @tc.desc: single invisible candidate without permission is rejected
+ * @tc.desc: single invisible candidate without permission is erased on the primary list and
+ *           on the PC "more apps" re-query, and the empty list falls through to the
+ *           no-candidate dialog path
  */
 HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_001, TestSize.Level1)
 {
     TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_001 start");
     PermissionVerification::verifyCallingPermissionRet_ = false;
     auto ret = RunImplicitStartWithCandidates({ MakeCandidateInfo("com.test.implicit", false) }, 1);
-    EXPECT_EQ(ret, CHECK_PERMISSION_FAILED);
-    ExpectGateCalledWith(1);
+    // The erased-to-empty list flows to the no-candidate dialog path, not a permission failure.
+    EXPECT_NE(ret, CHECK_PERMISSION_FAILED);
+    // The PC "more apps" re-query echoes the invisible candidate, so the gate filters both
+    // lists and the permission is verified once per list.
+    ExpectGateCalledWith(1, 2);
+    EXPECT_EQ(AbilityManagerService::startAbilityInnerCount_, 0);
     TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_001 end");
 }
 
@@ -2146,7 +2156,9 @@ HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_004, TestSi
 
 /**
  * @tc.name: ImplicitStartAbility_Permission_005
- * @tc.desc: all invisible candidates without permission are erased and the start is rejected
+ * @tc.desc: all invisible candidates without permission are erased on the primary list and
+ *           on the PC "more apps" re-query, and the empty list falls through to the
+ *           no-candidate dialog path
  */
 HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_005, TestSize.Level1)
 {
@@ -2154,12 +2166,12 @@ HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_005, TestSi
     PermissionVerification::verifyCallingPermissionRet_ = false;
     auto ret = RunImplicitStartWithCandidates(
         { MakeCandidateInfo("com.test.implicit", false), MakeCandidateInfo("com.test.other", false) }, 1);
-    EXPECT_EQ(ret, CHECK_PERMISSION_FAILED);
-    // Permission is verified once regardless of candidate count.
-    EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, 1);
-    EXPECT_EQ(PermissionVerification::lastPermissionName_,
-        PermissionConstants::PERMISSION_START_INVISIBLE_ABILITY);
-    EXPECT_EQ(PermissionVerification::lastSpecifyTokenId_, 1);
+    // The erased-to-empty list flows to the no-candidate dialog path, not a permission failure.
+    EXPECT_NE(ret, CHECK_PERMISSION_FAILED);
+    // The PC "more apps" re-query echoes both invisible candidates, so the gate filters both
+    // lists; the permission is verified once per list regardless of candidate count.
+    ExpectGateCalledWith(1, 2);
+    EXPECT_EQ(AbilityManagerService::startAbilityInnerCount_, 0);
     TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_005 end");
 }
 
@@ -2216,6 +2228,61 @@ HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_008, TestSi
     EXPECT_EQ(PermissionVerification::lastSpecifyTokenId_, 1);
     EXPECT_NE(ret, CHECK_PERMISSION_FAILED);
     TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_008 end");
+}
+
+/**
+ * @tc.name: ImplicitStartAbility_Permission_009
+ * @tc.desc: on PC, a visible candidate from the "more apps" re-query survives the
+ *           invisible-ability gate and the list reaches the PC selector
+ */
+HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_009, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_009 start");
+    PermissionVerification::verifyCallingPermissionRet_ = false;
+    auto ret = RunImplicitStartWithCandidates({ MakeCandidateInfo("com.test.implicit", false) }, 1,
+        { MakeCandidateInfo("com.test.visible", true) });
+    // The invisible primary candidate is erased; the visible "more apps" candidate survives
+    // the gate, so the non-empty list reaches the PC selector start instead of the tips dialog.
+    EXPECT_EQ(ret, ERR_OK);
+    ExpectGateCalledWith(1, 2);
+    EXPECT_EQ(AbilityManagerService::startAbilityInnerCount_, 0);
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_009 end");
+}
+
+/**
+ * @tc.name: ImplicitStartAbility_Permission_010
+ * @tc.desc: on PC, a caller holding the permission keeps invisible "more apps" candidates
+ */
+HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_010, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_010 start");
+    PermissionVerification::verifyCallingPermissionRet_ = true;
+    auto ret = RunImplicitStartWithCandidates({}, 1, { MakeCandidateInfo("com.test.implicit", false) });
+    // The empty primary list reaches the "more apps" re-query; the permission is granted, so
+    // the invisible candidate is kept and the PC selector start proceeds.
+    EXPECT_EQ(ret, ERR_OK);
+    ExpectGateCalledWith(1);
+    EXPECT_EQ(AbilityManagerService::startAbilityInnerCount_, 0);
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_010 end");
+}
+
+/**
+ * @tc.name: ImplicitStartAbility_Permission_011
+ * @tc.desc: on PC, a start without specifyTokenId skips the invisible-ability gate on both
+ *           the primary list and the "more apps" re-query (baseline: the selector may show
+ *           invisible apps; the final start is still guarded by the caller permission check)
+ */
+HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_011, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_011 start");
+    PermissionVerification::verifyCallingPermissionRet_ = false;
+    auto ret = RunImplicitStartWithCandidates({}, 0, { MakeCandidateInfo("com.test.implicit", false) });
+    // No specifyTokenId: both gates are skipped, no permission verification happens, and the
+    // invisible "more apps" candidate is shown in the PC selector (documented baseline).
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, 0);
+    EXPECT_EQ(AbilityManagerService::startAbilityInnerCount_, 0);
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_011 end");
 }
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -32,6 +32,12 @@ struct MockBundleMgrHelperStatus {
     static std::vector<AppExecFwk::AbilityInfo> queryAbilityInfos_;
     static std::vector<AppExecFwk::ExtensionAbilityInfo> queryExtensionInfos_;
     static bool queryFindDefaultApp_;
+    // PC "more apps" re-query control: the first ImplicitQueryInfos call of a start flow
+    // always returns queryAbilityInfos_; later calls return queryMoreHapListInfos_ when
+    // queryMoreHapListEnabled_ is true and echo queryAbilityInfos_ otherwise (legacy behavior).
+    static int32_t implicitQueryCallCount_;
+    static bool queryMoreHapListEnabled_;
+    static std::vector<AppExecFwk::AbilityInfo> queryMoreHapListInfos_;
 
     // GetBundleInfo (BundleFlag version)
     static bool getBundleInfoRet_;

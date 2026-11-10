@@ -112,6 +112,8 @@ private:
 
     void AddAbilityInfoToDialogInfos(const AddInfoParam &param, std::vector<DialogAppInfo> &dialogAppInfos);
 
+    void EraseInvisibleAppInfos(const AbilityRequest &request, std::vector<DialogAppInfo> &dialogAppInfos);
+
     bool IsExistDefaultApp(int32_t userId, const std::string &typeName);
 
     void FilterClonesByPreferredIndex(std::vector<DialogAppInfo> &dialogAppInfos, int32_t userId);
