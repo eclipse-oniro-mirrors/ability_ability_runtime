@@ -11070,7 +11070,7 @@ int32_t AppMgrServiceInner::StartChildProcessImpl(const std::shared_ptr<ChildPro
                 preloadSoList, options.isolationMode)) {
             startMsg.preloadSoList = preloadSoList;
             if (appInfo) {
-                startMsg.appLibPath = GetDefaultAppLibPath(appInfo->nativeLibraryPath);
+                startMsg.appLibPath = LOCAL_CODE_PATH;
             }
             startMsg.bundleName = appRecord->GetBundleName();
             pid_t subSpawnChildPid = SubSpawnManager::GetInstance().StartChildViaSubSpawn(
