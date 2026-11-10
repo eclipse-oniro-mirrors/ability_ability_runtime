@@ -192,6 +192,7 @@ void BindApplicationInfo(ani_env *aniEnv, ani_class contextClass, ani_object con
 {
     if (aniEnv == nullptr || context ==  nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "null aniEnv or null context");
+        return;
     }
     ani_field applicationInfoField;
     if (ANI_OK != aniEnv->Class_FindField(contextClass, "applicationInfo", &applicationInfoField)) {
@@ -212,6 +213,7 @@ void BindResourceManager(ani_env *aniEnv, ani_class contextClass, ani_object con
 {
     if (aniEnv == nullptr || context ==  nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "null aniEnv or null context");
+        return;
     }
     ani_field resourceManagerField;
     if (ANI_OK != aniEnv->Class_FindField(contextClass, "resourceManager", &resourceManagerField)) {
@@ -232,6 +234,7 @@ void BindParentProperty(ani_env *aniEnv, ani_class contextClass, ani_object cont
 {
     if (aniEnv == nullptr || context ==  nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "null aniEnv or null context");
+        return;
     }
     BindApplicationInfo(aniEnv, contextClass, contextObj, context);
     BindResourceManager(aniEnv, contextClass, contextObj, context);
@@ -718,6 +721,7 @@ void SwitchArea(ani_env *env, ani_object obj, ani_enum_item areaModeItem)
 {
     if (env == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "null env");
+        return;
     }
     int32_t areaMode = 0;
     if (!AAFwk::AniEnumConvertUtil::EnumConvert_EtsToNative(env, areaModeItem, areaMode)) {
