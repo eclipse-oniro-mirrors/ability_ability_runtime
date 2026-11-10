@@ -873,6 +873,9 @@ HWTEST_F(UIAbilityRecordTest, TaskAttributionDestructorAsyncUnregister_0001, Tes
 {
     AppScheduler::ResetUnregisterRecords();
 
+    auto first = std::make_pair(std::string("task-dtor-async-1"), static_cast<int64_t>(101));
+    auto second = std::make_pair(std::string("task-dtor-async-2"), static_cast<int64_t>(102));
+
     {
         AbilityRequest abilityRequest;
         auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
@@ -881,14 +884,24 @@ HWTEST_F(UIAbilityRecordTest, TaskAttributionDestructorAsyncUnregister_0001, Tes
         abilityRecord->AddTaskAttribution("task-dtor-async-2", 102);
     } // record dropped: ~UIAbilityRecord posts the async unregister task
 
-    // bounded poll for the posted task; unique taskIds avoid straggler collision
-    for (int waitedMs = 0; waitedMs < 5000; waitedMs += 10) {
-        if (AppScheduler::unregisterCallCount.load() >= 2) {
-            break;
+    // Poll on the expected pairs, never on the raw call count: unregister tasks
+    // posted by earlier tests may execute after the reset and inflate the
+    // counter without ever recording this test's pairs. The unique taskIds
+    // guarantee only this test's destructor tasks can satisfy the condition.
+    bool bothRecorded = false;
+    for (int waitedMs = 0; waitedMs < 5000 && !bothRecorded; waitedMs += 10) {
+        std::vector<std::pair<std::string, int64_t>> snapshot;
+        {
+            std::lock_guard lock(AppScheduler::unregisterMutex);
+            snapshot = AppScheduler::recordedUnregisters;
         }
-        usleep(10 * 1000); // 10ms
+        bothRecorded = std::count(snapshot.begin(), snapshot.end(), first) == 1 &&
+            std::count(snapshot.begin(), snapshot.end(), second) == 1;
+        if (!bothRecorded) {
+            usleep(10 * 1000); // 10ms
+        }
     }
-    ASSERT_GE(AppScheduler::unregisterCallCount.load(), 2);
+    ASSERT_TRUE(bothRecorded);
 
     // copy the records under the mutex before asserting on them
     std::vector<std::pair<std::string, int64_t>> recorded;
@@ -896,8 +909,6 @@ HWTEST_F(UIAbilityRecordTest, TaskAttributionDestructorAsyncUnregister_0001, Tes
         std::lock_guard lock(AppScheduler::unregisterMutex);
         recorded = AppScheduler::recordedUnregisters;
     }
-    auto first = std::make_pair(std::string("task-dtor-async-1"), static_cast<int64_t>(101));
-    auto second = std::make_pair(std::string("task-dtor-async-2"), static_cast<int64_t>(102));
     EXPECT_EQ(std::count(recorded.begin(), recorded.end(), first), 1);
     EXPECT_EQ(std::count(recorded.begin(), recorded.end(), second), 1);
 }
