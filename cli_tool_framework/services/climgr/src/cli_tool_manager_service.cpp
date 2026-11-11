@@ -474,6 +474,22 @@ void CliToolManagerService::AddSessionRecord(const std::shared_ptr<SessionRecord
     sessionRecords_[record->sessionId] = record;
 }
 
+int32_t CliToolManagerService::TryAddSessionRecord(const std::shared_ptr<SessionRecord> &record)
+{
+    if (record == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "null record");
+        return ERR_NO_INIT;
+    }
+    auto cliQuantity = CcmUtil::GetInstance().GetCliConcurrencyLimit();
+    std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
+    if (static_cast<int32_t>(sessionRecords_.size()) >= cliQuantity) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Session limit exceeded: %{public}d", cliQuantity);
+        return ERR_SESSION_LIMIT_EXCEEDED;
+    }
+    sessionRecords_[record->sessionId] = record;
+    return ERR_OK;
+}
+
 std::shared_ptr<SessionRecord> CliToolManagerService::GetSessionRecord(const std::string &sessionId)
 {
     std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
@@ -1244,7 +1260,10 @@ int32_t CliToolManagerService::SetupAndStartSession(const ExecToolParam &param, 
     if (createRet != ERR_OK) {
         return createRet;
     }
-    AddSessionRecord(record);
+    if (auto limitRet = TryAddSessionRecord(record); limitRet != ERR_OK) {
+        ProcessManager::GetInstance().Killpg(record->processId);
+        return limitRet;
+    }
     EventDispatcher::GetInstance().RegisterTraceIds(
         record->sessionId, record->toolCallId, record->dmSessionId);
 
@@ -1734,7 +1753,9 @@ int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::str
     record->SetState(SessionState::RUNNING);
     record->SetBackground(actualParam.execCmdOptions.background);
     record->eventId = eventId;
-    AddSessionRecord(record);
+    if (auto limitRet = TryAddSessionRecord(record); limitRet != ERR_OK) {
+        return limitRet;
+    }
     EventDispatcher::GetInstance().RegisterTraceIds(
         record->sessionId, record->toolCallId, record->dmSessionId);
     auto subscribeRet = SubscribeSessionInternal(record->sessionId, subscriptionId, scheduler);
@@ -1835,7 +1856,10 @@ int32_t CliToolManagerService::SetupCmdSession(const ExecToolParam &toolParam, c
         return ERR_NO_INIT;
     }
     record->sessionType = SessionType::CLI_CMD;
-    AddSessionRecord(record);
+    if (auto limitRet = TryAddSessionRecord(record); limitRet != ERR_OK) {
+        ReportCliExecuteFailed(context.callerBundleName, toolName, GetFailureReason(limitRet));
+        return limitRet;
+    }
 
     auto subscribeRet = SubscribeSessionInternal(record->sessionId, context.subscriptionId, context.scheduler);
     if (subscribeRet != ERR_OK) {
@@ -2447,7 +2471,9 @@ int32_t CliToolManagerService::SetupAndStartSkillSession(const ExecToolParam &pa
         return ERR_NO_INIT;
     }
     record->sessionType = SessionType::SKILL;
-    AddSessionRecord(record);
+    if (auto limitRet = TryAddSessionRecord(record); limitRet != ERR_OK) {
+        return limitRet;
+    }
     EventDispatcher::GetInstance().RegisterTraceIds(
         record->sessionId, record->toolCallId, record->dmSessionId);
 
