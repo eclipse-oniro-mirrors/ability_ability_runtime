@@ -2369,5 +2369,269 @@ HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokeUriPermissionManually_Use
     EXPECT_EQ(result, ERR_OK);
 }
 
+// ==================== RevokeMapUriPermission Tests (lock scope reduction) ====================
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RevokeMapUriPermission
+ * SubFunction: NA
+ * FunctionPoints: RevokeMapUriPermission removes matching tokenId records and empties list entries
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokeMapUriPermission_001, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    upmsi->uriMap_.clear();
+    uint32_t tokenId = 100;
+    GrantInfo info = { 1, 1, tokenId };
+    upmsi->uriMap_.insert({ "file://test/a.txt", { info } });
+
+    upmsi->RevokeMapUriPermission(tokenId);
+
+    EXPECT_EQ(upmsi->uriMap_.find("file://test/a.txt"), upmsi->uriMap_.end());
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RevokeMapUriPermission
+ * SubFunction: NA
+ * FunctionPoints: RevokeMapUriPermission with non-matching tokenId leaves records unchanged
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokeMapUriPermission_002, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    upmsi->uriMap_.clear();
+    uint32_t tokenId = 100;
+    GrantInfo info = { 1, 1, 200 };
+    upmsi->uriMap_.insert({ "file://test/b.txt", { info } });
+
+    upmsi->RevokeMapUriPermission(tokenId);
+
+    EXPECT_NE(upmsi->uriMap_.find("file://test/b.txt"), upmsi->uriMap_.end());
+    EXPECT_EQ(upmsi->uriMap_["file://test/b.txt"].size(), 1u);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RevokeMapUriPermission
+ * SubFunction: NA
+ * FunctionPoints: RevokeMapUriPermission on empty map does not crash
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokeMapUriPermission_003, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    upmsi->uriMap_.clear();
+
+    upmsi->RevokeMapUriPermission(999);
+
+    EXPECT_EQ(upmsi->uriMap_.size(), 0u);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RevokeMapUriPermission
+ * SubFunction: NA
+ * FunctionPoints: RevokeMapUriPermission removes only matching records, keeps non-matching
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokeMapUriPermission_004, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    upmsi->uriMap_.clear();
+    uint32_t tokenId = 100;
+    GrantInfo matchInfo = { 1, 1, tokenId };
+    GrantInfo nonMatchInfo = { 1, 1, 200 };
+    upmsi->uriMap_.insert({ "file://test/c.txt", { matchInfo, nonMatchInfo } });
+
+    upmsi->RevokeMapUriPermission(tokenId);
+
+    auto it = upmsi->uriMap_.find("file://test/c.txt");
+    ASSERT_NE(it, upmsi->uriMap_.end());
+    EXPECT_EQ(it->second.size(), 1u);
+    EXPECT_EQ(it->second.begin()->targetTokenId, 200u);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RevokeMapUriPermission
+ * SubFunction: NA
+ * FunctionPoints: RevokeMapUriPermission collects all matching URIs across multiple entries
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokeMapUriPermission_005, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    upmsi->uriMap_.clear();
+    uint32_t tokenId = 100;
+    GrantInfo info1 = { 1, 1, tokenId };
+    GrantInfo info2 = { 1, 1, tokenId };
+    GrantInfo info3 = { 1, 1, 300 };
+    upmsi->uriMap_.insert({ "file://test/d1.txt", { info1 } });
+    upmsi->uriMap_.insert({ "file://test/d2.txt", { info2 } });
+    upmsi->uriMap_.insert({ "file://test/d3.txt", { info3 } });
+
+    upmsi->RevokeMapUriPermission(tokenId);
+
+    EXPECT_EQ(upmsi->uriMap_.find("file://test/d1.txt"), upmsi->uriMap_.end());
+    EXPECT_EQ(upmsi->uriMap_.find("file://test/d2.txt"), upmsi->uriMap_.end());
+    auto it3 = upmsi->uriMap_.find("file://test/d3.txt");
+    ASSERT_NE(it3, upmsi->uriMap_.end());
+    EXPECT_EQ(it3->second.size(), 1u);
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RevokeMapUriPermission
+ * SubFunction: NA
+ * FunctionPoints: RevokeMapUriPermission with multiple records for same URI, partial removal keeps entry
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokeMapUriPermission_006, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    upmsi->uriMap_.clear();
+    uint32_t tokenId = 100;
+    GrantInfo info1 = { 1, 1, tokenId };
+    GrantInfo info2 = { 1, 1, 200 };
+    GrantInfo info3 = { 1, 1, 300 };
+    upmsi->uriMap_.insert({ "file://test/e.txt", { info1, info2, info3 } });
+
+    upmsi->RevokeMapUriPermission(tokenId);
+
+    auto it = upmsi->uriMap_.find("file://test/e.txt");
+    ASSERT_NE(it, upmsi->uriMap_.end());
+    EXPECT_EQ(it->second.size(), 2u);
+}
+
+// ==================== RevokePolicyUriPermissionManually Tests (lock scope reduction) ====================
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RevokePolicyUriPermissionManually
+ * SubFunction: NA
+ * FunctionPoints: RevokePolicyUriPermissionManually returns ERR_OK when path not found
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokePolicyUriPermissionManually_001, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    upmsi->policyMap_.clear();
+    uint32_t callerTokenId = 1;
+    uint32_t targetTokenId = 1;
+    Uri uri("file://com.example.test/data/storage/test.txt");
+
+    auto result = upmsi->RevokePolicyUriPermissionManually(callerTokenId, targetTokenId, uri);
+
+    EXPECT_EQ(result, ERR_OK);
+}
+
+// ==================== RevokeFileUriPermission Tests (reorder: erase before revoke) ====================
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RevokeFileUriPermission
+ * SubFunction: NA
+ * FunctionPoints: RevokeFileUriPermission returns ERR_OK early when tokenId not in permissionTokenMap_
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokeFileUriPermission_001, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    upmsi->permissionTokenMap_.clear();
+    upmsi->uriMap_.clear();
+    uint32_t tokenId = 100;
+    int32_t funcResult = 0;
+
+    auto result = upmsi->RevokeFileUriPermission(tokenId, funcResult);
+
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(upmsi->permissionTokenMap_.find(tokenId), upmsi->permissionTokenMap_.end());
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RevokeFileUriPermission
+ * SubFunction: NA
+ * FunctionPoints: RevokeFileUriPermission erases tokenId from permissionTokenMap_ and revokes map entries
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokeFileUriPermission_002, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    upmsi->permissionTokenMap_.clear();
+    upmsi->uriMap_.clear();
+    uint32_t tokenId = 100;
+    upmsi->permissionTokenMap_.insert(tokenId);
+    GrantInfo info = { 1, 1, tokenId };
+    upmsi->uriMap_.insert({ "file://test/revoke.txt", { info } });
+    int32_t funcResult = 0;
+
+    auto result = upmsi->RevokeFileUriPermission(tokenId, funcResult);
+
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(upmsi->permissionTokenMap_.find(tokenId), upmsi->permissionTokenMap_.end());
+    EXPECT_EQ(upmsi->uriMap_.find("file://test/revoke.txt"), upmsi->uriMap_.end());
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RevokeFileUriPermission
+ * SubFunction: NA
+ * FunctionPoints: RevokeFileUriPermission erases from permissionTokenMap_ before calling RevokeMapUriPermission
+ *                 (prevents deadlock: ptMapMutex_ is released before mutex_ is acquired)
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokeFileUriPermission_003, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    upmsi->permissionTokenMap_.clear();
+    upmsi->uriMap_.clear();
+    uint32_t tokenId = 200;
+    upmsi->permissionTokenMap_.insert(tokenId);
+    int32_t funcResult = 0;
+
+    auto result = upmsi->RevokeFileUriPermission(tokenId, funcResult);
+
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(upmsi->permissionTokenMap_.find(tokenId), upmsi->permissionTokenMap_.end());
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RevokeFileUriPermission
+ * SubFunction: NA
+ * FunctionPoints: RevokeFileUriPermission does not affect other tokens in permissionTokenMap_
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokeFileUriPermission_004, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    upmsi->permissionTokenMap_.clear();
+    uint32_t tokenId = 100;
+    upmsi->permissionTokenMap_.insert(tokenId);
+    upmsi->permissionTokenMap_.insert(300u);
+    upmsi->permissionTokenMap_.insert(400u);
+    int32_t funcResult = 0;
+
+    upmsi->RevokeFileUriPermission(tokenId, funcResult);
+
+    EXPECT_EQ(upmsi->permissionTokenMap_.find(tokenId), upmsi->permissionTokenMap_.end());
+    EXPECT_NE(upmsi->permissionTokenMap_.find(300u), upmsi->permissionTokenMap_.end());
+    EXPECT_NE(upmsi->permissionTokenMap_.find(400u), upmsi->permissionTokenMap_.end());
+}
+
+/*
+ * Feature: UriPermissionManagerService
+ * Function: RevokeFileUriPermission
+ * SubFunction: NA
+ * FunctionPoints: RevokeFileUriPermission with tokenId in map but no uriMap entries still succeeds
+ */
+HWTEST_F(UriPermissionManagerStubImplTest, Upmsi_RevokeFileUriPermission_005, TestSize.Level1)
+{
+    auto upmsi = std::make_shared<UriPermissionManagerStubImpl>();
+    upmsi->permissionTokenMap_.clear();
+    upmsi->uriMap_.clear();
+    uint32_t tokenId = 100;
+    upmsi->permissionTokenMap_.insert(tokenId);
+    int32_t funcResult = 0;
+
+    auto result = upmsi->RevokeFileUriPermission(tokenId, funcResult);
+
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(upmsi->permissionTokenMap_.find(tokenId), upmsi->permissionTokenMap_.end());
+    EXPECT_EQ(upmsi->uriMap_.size(), 0u);
+}
+
 }  // namespace AAFwk
 }  // namespace OHOS

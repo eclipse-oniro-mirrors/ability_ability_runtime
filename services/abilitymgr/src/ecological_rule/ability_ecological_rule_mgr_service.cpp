@@ -95,7 +95,6 @@ sptr<IAbilityEcologicalRuleMgrService> AbilityEcologicalRuleMgrServiceClient::Co
 
 bool AbilityEcologicalRuleMgrServiceClient::CheckConnectService()
 {
-    std::lock_guard<std::mutex> autoLock(proxyLock_);
     if (ecologicalRuleMgrServiceProxy_ == nullptr) {
         TAG_LOGW(AAFwkTag::ECOLOGICAL_RULE, "redo ConnectService");
         ecologicalRuleMgrServiceProxy_ = ConnectService();
@@ -121,10 +120,15 @@ int32_t AbilityEcologicalRuleMgrServiceClient::EvaluateResolveInfos(const AAFwk:
     RecordCostTimeUtil timeRecord("EvaluateResolveInfos");
     TAG_LOGD(AAFwkTag::ECOLOGICAL_RULE, "want: %{private}s, callerInfo: %{public}s, type: %{public}d",
         want.ToString().c_str(), callerInfo.ToString().c_str(), type);
-    if (!CheckConnectService()) {
-        return AAFwk::ERR_CONNECT_ERMS_FAILED;
+    sptr<IAbilityEcologicalRuleMgrService> proxy;
+    {
+        std::lock_guard<std::mutex> autoLock(proxyLock_);
+        if (!CheckConnectService()) {
+            return AAFwk::ERR_CONNECT_ERMS_FAILED;
+        }
+        proxy = ecologicalRuleMgrServiceProxy_;
     }
-    return ecologicalRuleMgrServiceProxy_->EvaluateResolveInfos(want, callerInfo, type, abilityInfos);
+    return proxy->EvaluateResolveInfos(want, callerInfo, type, abilityInfos);
 }
 
 int32_t AbilityEcologicalRuleMgrServiceClient::QueryStartExperience(const OHOS::AAFwk::Want &want,
@@ -135,10 +139,15 @@ int32_t AbilityEcologicalRuleMgrServiceClient::QueryStartExperience(const OHOS::
     TAG_LOGD(AAFwkTag::ECOLOGICAL_RULE, "callerInfo: %{public}s, want: %{private}s", callerInfo.ToString().c_str(),
         want.ToString().c_str());
 
-    if (!CheckConnectService()) {
-        return AAFwk::ERR_CONNECT_ERMS_FAILED;
+    sptr<IAbilityEcologicalRuleMgrService> proxy;
+    {
+        std::lock_guard<std::mutex> autoLock(proxyLock_);
+        if (!CheckConnectService()) {
+            return AAFwk::ERR_CONNECT_ERMS_FAILED;
+        }
+        proxy = ecologicalRuleMgrServiceProxy_;
     }
-    int32_t res = ecologicalRuleMgrServiceProxy_->QueryStartExperience(want, callerInfo, rule);
+    int32_t res = proxy->QueryStartExperience(want, callerInfo, rule);
     if (rule.replaceWant != nullptr) {
         rule.replaceWant->SetParam(ERMS_ORIGINAL_TARGET, want.ToString());
         TAG_LOGD(AAFwkTag::ECOLOGICAL_RULE,

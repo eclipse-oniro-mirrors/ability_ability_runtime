@@ -1438,29 +1438,31 @@ void UriPermissionManagerStubImpl::RevokeMapUriPermission(uint32_t tokenId)
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     // revoke uri permission record cache of tokenId when application exit
     TAG_LOGD(AAFwkTag::URIPERMMGR, "RevokeMapUriPermission call");
-    std::lock_guard<std::mutex> guard(mutex_);
     std::vector<std::string> uriList;
     int32_t deleteCount = 0;
-    for (auto iter = uriMap_.begin(); iter != uriMap_.end();) {
-        auto& list = iter->second;
-        bool findUriRecord = false;
-        for (auto it = list.begin(); it != list.end();) {
-            if (it->targetTokenId == tokenId) {
-                deleteCount++;
-                it = list.erase(it);
-                findUriRecord = true;
+    {
+        std::lock_guard<std::mutex> guard(mutex_);
+        for (auto iter = uriMap_.begin(); iter != uriMap_.end();) {
+            auto& list = iter->second;
+            bool findUriRecord = false;
+            for (auto it = list.begin(); it != list.end();) {
+                if (it->targetTokenId == tokenId) {
+                    deleteCount++;
+                    it = list.erase(it);
+                    findUriRecord = true;
+                    continue;
+                }
+                it++;
+            }
+            if (findUriRecord) {
+                uriList.emplace_back(iter->first);
+            }
+            if (list.empty()) {
+                iter = uriMap_.erase(iter);
                 continue;
             }
-            it++;
+            ++iter;
         }
-        if (findUriRecord) {
-            uriList.emplace_back(iter->first);
-        }
-        if (list.empty()) {
-            iter = uriMap_.erase(iter);
-            continue;
-        }
-        ++iter;
     }
     if (!uriList.empty()) {
         DeleteShareFile(tokenId, uriList);
@@ -1690,25 +1692,27 @@ int32_t UriPermissionManagerStubImpl::RevokePolicyUriPermissionManually(uint32_t
 #ifdef ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
     auto policyInfo = FilePermissionManager::GetPathPolicyInfoFromUri(uri, FLAG_READ_WRITE_URI);
     TAG_LOGD(AAFwkTag::URIPERMMGR, "path is %{private}s.", policyInfo.path.c_str());
-    std::lock_guard<std::mutex> guard(policyMapMutex_);
-    auto searchPathIter = policyMap_.find(policyInfo.path);
-    if (searchPathIter == policyMap_.end()) {
-        TAG_LOGD(AAFwkTag::URIPERMMGR, "Do not found policy info record by path.");
-        return ERR_OK;
-    }
     bool ispolicyVectorByCaller = false;
-    auto &grantPolicyInfoList = searchPathIter->second;
-    for (auto it = grantPolicyInfoList.begin(); it != grantPolicyInfoList.end();) {
-        if ((targetTokenId == it->targetTokenId) &&
-            (callerTokenId == it->targetTokenId || callerTokenId == it->callerTokenId)) {
-            it = grantPolicyInfoList.erase(it);
-            ispolicyVectorByCaller = true;
-            continue;
+    {
+        std::lock_guard<std::mutex> guard(policyMapMutex_);
+        auto searchPathIter = policyMap_.find(policyInfo.path);
+        if (searchPathIter == policyMap_.end()) {
+            TAG_LOGD(AAFwkTag::URIPERMMGR, "Do not found policy info record by path.");
+            return ERR_OK;
         }
-        it++;
-    }
-    if (grantPolicyInfoList.empty()) {
-        policyMap_.erase(searchPathIter);
+        auto &grantPolicyInfoList = searchPathIter->second;
+        for (auto it = grantPolicyInfoList.begin(); it != grantPolicyInfoList.end();) {
+            if ((targetTokenId == it->targetTokenId) &&
+                (callerTokenId == it->targetTokenId || callerTokenId == it->callerTokenId)) {
+                it = grantPolicyInfoList.erase(it);
+                ispolicyVectorByCaller = true;
+                continue;
+            }
+            it++;
+        }
+        if (grantPolicyInfoList.empty()) {
+            policyMap_.erase(searchPathIter);
+        }
     }
     if (ispolicyVectorByCaller) {
         TAG_LOGI(AAFwkTag::URIPERMMGR, "Start to unSetPolicy, path is %{private}s.", policyInfo.path.c_str());
@@ -1811,25 +1815,31 @@ ErrCode UriPermissionManagerStubImpl::ClearPermissionTokenByMap(uint32_t tokenId
 int32_t UriPermissionManagerStubImpl::RevokeFileUriPermission(uint32_t tokenId, int32_t& funcResult)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    std::lock_guard<std::mutex> lock(ptMapMutex_);
-    if (permissionTokenMap_.find(tokenId) == permissionTokenMap_.end()) {
-        TAG_LOGD(AAFwkTag::URIPERMMGR, "permissionTokenMap_ empty");
-        return ERR_OK;
-    }
-    RevokeMapUriPermission(tokenId);
-#ifdef ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
-    RevokePolicyUriPermission(tokenId);
     uint64_t timeNow = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
         std::chrono::high_resolution_clock::now().time_since_epoch()).count());
     TAG_LOGI(AAFwkTag::URIPERMMGR, "clear permission, tokenId: %{public}d, timeNow: %{public}" PRIu64 "",
         tokenId, timeNow);
+    {
+        std::lock_guard<std::mutex> lock(ptMapMutex_);
+        if (permissionTokenMap_.find(tokenId) == permissionTokenMap_.end()) {
+            TAG_LOGD(AAFwkTag::URIPERMMGR, "permissionTokenMap_ empty");
+            return ERR_OK;
+        }
+        permissionTokenMap_.erase(tokenId);
+    }
+    RevokeMapUriPermission(tokenId);
+#ifdef ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
+    RevokePolicyUriPermission(tokenId);
     auto ret = SandboxManagerKit::UnSetAllPolicyByTokenAsync(tokenId, timeNow);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "UnSetAllPolicyByTokenAsync failed, ret: %{public}d", ret);
+        {
+            std::lock_guard<std::mutex> lock(ptMapMutex_);
+            permissionTokenMap_.insert(tokenId);
+        }
         return WrapErrorCode(ret, funcResult);
     }
 #endif // ABILITY_RUNTIME_FEATURE_SANDBOXMANAGER
-    permissionTokenMap_.erase(tokenId);
     return ERR_OK;
 }
 

@@ -7067,5 +7067,160 @@ HWTEST_F(CliToolManagerServiceTest, UnregisterFunctionHook_PermissionDenied_0100
     IPCSkeleton::Reset();
     TAG_LOGI(AAFwkTag::TEST, "UnregisterFunctionHook_PermissionDenied_0100 end");
 }
+
+// ==================== TryAddSessionRecord Tests ====================
+
+/**
+ * @tc.name: CliToolManagerService_TryAddSessionRecord_0100
+ * @tc.desc: Test TryAddSessionRecord returns ERR_NO_INIT when record is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, TryAddSessionRecord_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_TryAddSessionRecord_0100 start");
+
+    EXPECT_EQ(service_->TryAddSessionRecord(nullptr), ERR_NO_INIT);
+    EXPECT_EQ(service_->sessionRecords_.size(), 0u);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_TryAddSessionRecord_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_TryAddSessionRecord_0200
+ * @tc.desc: Test TryAddSessionRecord returns ERR_SESSION_LIMIT_EXCEEDED when limit is reached
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, TryAddSessionRecord_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_TryAddSessionRecord_0200 start");
+
+    auto cliQuantity = CcmUtil::GetInstance().GetCliConcurrencyLimit();
+    for (int32_t i = 0; i < cliQuantity; ++i) {
+        auto record = std::make_shared<SessionRecord>();
+        record->sessionId = "try_limit_session_" + std::to_string(i);
+        service_->AddSessionRecord(record);
+    }
+
+    auto newRecord = std::make_shared<SessionRecord>();
+    newRecord->sessionId = "try_overflow_session";
+    EXPECT_EQ(service_->TryAddSessionRecord(newRecord), ERR_SESSION_LIMIT_EXCEEDED);
+    EXPECT_EQ(service_->sessionRecords_.find("try_overflow_session"), service_->sessionRecords_.end());
+    EXPECT_EQ(static_cast<int32_t>(service_->sessionRecords_.size()), cliQuantity);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_TryAddSessionRecord_0200 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_TryAddSessionRecord_0300
+ * @tc.desc: Test TryAddSessionRecord succeeds when below limit and stores the record
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, TryAddSessionRecord_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_TryAddSessionRecord_0300 start");
+
+    auto record = std::make_shared<SessionRecord>();
+    record->sessionId = "try_success_session";
+    EXPECT_EQ(service_->TryAddSessionRecord(record), ERR_OK);
+    EXPECT_EQ(service_->GetSessionRecord("try_success_session"), record);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_TryAddSessionRecord_0300 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_TryAddSessionRecord_0400
+ * @tc.desc: Test TryAddSessionRecord succeeds at exactly one below the limit boundary
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, TryAddSessionRecord_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_TryAddSessionRecord_0400 start");
+
+    auto cliQuantity = CcmUtil::GetInstance().GetCliConcurrencyLimit();
+    for (int32_t i = 0; i < cliQuantity - 1; ++i) {
+        auto record = std::make_shared<SessionRecord>();
+        record->sessionId = "boundary_session_" + std::to_string(i);
+        ASSERT_EQ(service_->TryAddSessionRecord(record), ERR_OK);
+    }
+
+    auto lastRecord = std::make_shared<SessionRecord>();
+    lastRecord->sessionId = "boundary_last_session";
+    EXPECT_EQ(service_->TryAddSessionRecord(lastRecord), ERR_OK);
+    EXPECT_EQ(static_cast<int32_t>(service_->sessionRecords_.size()), cliQuantity);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_TryAddSessionRecord_0400 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_TryAddSessionRecord_0500
+ * @tc.desc: Test TryAddSessionRecord with null does not affect existing sessions
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, TryAddSessionRecord_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_TryAddSessionRecord_0500 start");
+
+    auto existingRecord = std::make_shared<SessionRecord>();
+    existingRecord->sessionId = "existing_before_null";
+    ASSERT_EQ(service_->TryAddSessionRecord(existingRecord), ERR_OK);
+
+    EXPECT_EQ(service_->TryAddSessionRecord(nullptr), ERR_NO_INIT);
+
+    EXPECT_EQ(service_->GetSessionRecord("existing_before_null"), existingRecord);
+    EXPECT_EQ(service_->sessionRecords_.size(), 1u);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_TryAddSessionRecord_0500 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_TryAddSessionRecord_0600
+ * @tc.desc: Test TryAddSessionRecord overwrites when sessionId already exists
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, TryAddSessionRecord_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_TryAddSessionRecord_0600 start");
+
+    auto firstRecord = std::make_shared<SessionRecord>();
+    firstRecord->sessionId = "duplicate_session";
+    ASSERT_EQ(service_->TryAddSessionRecord(firstRecord), ERR_OK);
+
+    auto secondRecord = std::make_shared<SessionRecord>();
+    secondRecord->sessionId = "duplicate_session";
+    EXPECT_EQ(service_->TryAddSessionRecord(secondRecord), ERR_OK);
+    EXPECT_EQ(service_->GetSessionRecord("duplicate_session"), secondRecord);
+    EXPECT_EQ(service_->sessionRecords_.size(), 1u);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_TryAddSessionRecord_0600 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_TryAddSessionRecord_0700
+ * @tc.desc: Test TryAddSessionRecord fails at limit but prior sessions remain intact
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, TryAddSessionRecord_0700, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_TryAddSessionRecord_0700 start");
+
+    auto cliQuantity = CcmUtil::GetInstance().GetCliConcurrencyLimit();
+    for (int32_t i = 0; i < cliQuantity; ++i) {
+        auto record = std::make_shared<SessionRecord>();
+        record->sessionId = "intact_session_" + std::to_string(i);
+        ASSERT_EQ(service_->TryAddSessionRecord(record), ERR_OK);
+    }
+
+    auto overflowRecord = std::make_shared<SessionRecord>();
+    overflowRecord->sessionId = "overflow_should_fail";
+    EXPECT_EQ(service_->TryAddSessionRecord(overflowRecord), ERR_SESSION_LIMIT_EXCEEDED);
+
+    for (int32_t i = 0; i < cliQuantity; ++i) {
+        auto sid = "intact_session_" + std::to_string(i);
+        EXPECT_NE(service_->GetSessionRecord(sid), nullptr);
+    }
+    EXPECT_EQ(service_->GetSessionRecord("overflow_should_fail"), nullptr);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_TryAddSessionRecord_0700 end");
+}
 } // namespace CliTool
 } // namespace OHOS
