@@ -479,5 +479,32 @@ bool ModuleRunningRecord::IsAllAbilityReadyToCleanedByUserRequest()
     }
     return true;
 }
+
+bool ModuleRunningRecord::IsAllAbilityReadyToCleanedByClearSession()
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    std::lock_guard<ffrt::mutex> lock(abilitiesMutex_);
+    for (const auto &iter : abilities_) {
+        const auto &ability = iter.second;
+        if (ability == nullptr) {
+            TAG_LOGE(AAFwkTag::APPMGR, "null ability");
+            continue;
+        }
+        const auto &abilityInfo = ability->GetAbilityInfo();
+        if (abilityInfo != nullptr && abilityInfo->type != AbilityType::PAGE) {
+            continue;
+        }
+        if (!ability->IsClearSession()) {
+            return false;
+        }
+        const auto &state = ability->GetState();
+        if (state != AbilityState::ABILITY_STATE_BACKGROUND &&
+            state != AbilityState::ABILITY_STATE_TERMINATED &&
+            state != AbilityState::ABILITY_STATE_END) {
+            return false;
+        }
+    }
+    return true;
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

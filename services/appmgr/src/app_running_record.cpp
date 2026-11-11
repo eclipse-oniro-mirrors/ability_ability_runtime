@@ -3082,6 +3082,27 @@ bool AppRunningRecord::IsAllAbilityReadyToCleanedByUserRequest()
     return true;
 }
 
+bool AppRunningRecord::IsAllAbilityReadyToCleanedByClearSession()
+{
+    std::lock_guard<ffrt::mutex> lock(hapModulesLock_);
+    bool hasPageAbility = false;
+    for (const auto &iter : hapModules_) {
+        for (const auto &moduleRecord : iter.second) {
+            if (moduleRecord == nullptr) {
+                TAG_LOGE(AAFwkTag::APPMGR, "null moduleRecord");
+                continue;
+            }
+            if (!moduleRecord->IsAllAbilityReadyToCleanedByClearSession()) {
+                return false;
+            }
+            if (moduleRecord->GetPageAbilitySize() > 0) {
+                hasPageAbility = true;
+            }
+        }
+    }
+    return hasPageAbility;
+}
+
 void AppRunningRecord::SetUserRequestCleaning()
 {
     isUserRequestCleaning_ = true;

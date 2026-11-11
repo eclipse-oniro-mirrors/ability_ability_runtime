@@ -443,5 +443,10 @@ bool ModuleRunningRecord::IsAllAbilityReadyToCleanedByUserRequest()
     }
     return true;
 }
+
+bool ModuleRunningRecord::IsAllAbilityReadyToCleanedByClearSession()
+{
+    return false;
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

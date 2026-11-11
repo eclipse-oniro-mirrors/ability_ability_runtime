@@ -72,5 +72,45 @@ HWTEST_F(AppMgrServiceInnerTest, SetStartMsgCustomSandboxFlag_0100, TestSize.Lev
     EXPECT_TRUE(startMsg.flags & (1ULL << StartFlags::CUSTOM_SANDBOX));
     TAG_LOGI(AAFwkTag::TEST, "SetStartMsgCustomSandboxFlag_0100 end");
 }
+
+/**
+ * @tc.name: IsLowMem_001
+ * @tc.desc: Test IsLowMem when memory pool value is below threshold
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, IsLowMem_001, TestSize.Level1)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    AppMgrServiceInner::memoryPoolValue_.store(0);
+    EXPECT_FALSE(appMgrServiceInner->IsLowMem());
+}
+
+/**
+ * @tc.name: IsLowMem_002
+ * @tc.desc: Test IsLowMem when memory pool value is at threshold
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, IsLowMem_002, TestSize.Level1)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    AppMgrServiceInner::memoryPoolValue_.store(10);
+    EXPECT_TRUE(appMgrServiceInner->IsLowMem());
+}
+
+/**
+ * @tc.name: IsLowMem_003
+ * @tc.desc: Test IsLowMem when memory pool value is above threshold
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, IsLowMem_003, TestSize.Level1)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    AppMgrServiceInner::memoryPoolValue_.store(20);
+    EXPECT_TRUE(appMgrServiceInner->IsLowMem());
+    AppMgrServiceInner::memoryPoolValue_.store(0);
+}
 } // namespace AppExecFwk
 } // namespace OHOS

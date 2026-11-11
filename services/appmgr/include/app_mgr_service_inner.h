@@ -2498,6 +2498,11 @@ private:
     bool IsSceneBoardCall();
     void CheckCleanAbilityByUserRequest(const std::shared_ptr<AppRunningRecord> &appRecord,
         const std::shared_ptr<AbilityRunningRecord> &abilityRecord, const AbilityState state);
+    void CheckCleanAbilityByLowMem(const std::shared_ptr<AppRunningRecord> &appRecord,
+        const std::shared_ptr<AbilityRunningRecord> &abilityRecord, const AbilityState state);
+    void KillProcessesByLowMem();
+    static void HandleMemoryPoolPrepareCallback(const char *key, const char *value, void *context);
+    bool IsLowMem() const;
     int32_t GetPidsByAccessTokenId(const uint32_t accessTokenId, std::vector<pid_t> &pids);
     bool IsIsolateExtensionSandBox(const std::shared_ptr<AbilityInfo> &abilityInfo,
         const HapModuleInfo &hapModuleInfo) const;
@@ -2640,6 +2645,8 @@ private:
 #endif //SUPPORT_SCREEN
     std::atomic<bool> sceneBoardAttachFlag_ = true;
     std::atomic<int32_t> willKillPidsNum_ = 0;
+    static std::atomic<int32_t> memoryPoolValue_;
+    static std::atomic<int64_t> lastLowMemKillTimeMs_;
     std::unordered_map<int32_t, int32_t> lastRenderProcessIsolationIdMap_;
     std::unordered_map<int32_t, int32_t> lastChildProcessIsolationIdMap_;
     mutable std::map<int64_t, std::string> killedProcessMap_;

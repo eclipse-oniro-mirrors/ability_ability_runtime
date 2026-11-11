@@ -142,6 +142,8 @@ public:
     int32_t GetUIExtensionAbilityId() const;
     void SetUserRequestCleaningStatus();
     bool IsUserRequestCleaning() const;
+    void SetClearSessionStatus();
+    bool IsClearSession() const;
 
     /**
      * @brief Whether the ability is scene board.
@@ -169,6 +171,7 @@ private:
     bool isFocused_ = false;
     bool isSingleUser_ = false;
     bool isUserRequestCleaning_ = false;
+    bool isClearSession_ = false;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

@@ -159,6 +159,16 @@ bool AbilityRunningRecord::IsUserRequestCleaning() const
     return isUserRequestCleaning_;
 }
 
+void AbilityRunningRecord::SetClearSessionStatus()
+{
+    isClearSession_ = true;
+}
+
+bool AbilityRunningRecord::IsClearSession() const
+{
+    return isClearSession_;
+}
+
 bool AbilityRunningRecord::IsSceneBoard() const
 {
     if (info_ == nullptr) {
