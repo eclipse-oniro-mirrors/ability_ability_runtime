@@ -1061,7 +1061,9 @@ bool AppUtils::IsBopdOrRescueMode()
 }  // namespace AAFwk
 }  // namespace OHOS
 
-bool IsSupportSubSpawn();
+extern "C" {
+bool IsSupportSubSpawn(void);
+}
 
 namespace OHOS {
 namespace AAFwk {
