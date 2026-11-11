@@ -25,6 +25,7 @@
 #include "hilog_tag_wrapper.h"
 #include "parameters.h"
 #include "mock_parameters.h"
+#include "mock_app_utils_status.h"
 #include "mock_bundle_mgr_helper_status.h"
 #include "mock_multi_app_utils_status.h"
 #include "permission_constants.h"
@@ -69,6 +70,7 @@ void ImplicitStartProcessorTest::SetUp()
 {
     MockBundleMgrHelperStatus::Reset();
     MockMultiAppUtilsStatus::Reset();
+    MockAppUtilsStatus::Reset();
     OHOS::system::ResetParameters();
     StartAbilityUtils::CloneAppIndexesResult().clear();
 }
@@ -2059,6 +2061,10 @@ int32_t RunImplicitStartWithCandidates(const std::vector<AppExecFwk::AbilityInfo
     MockBundleMgrHelperStatus::implicitQueryCallCount_ = 0;
     MockBundleMgrHelperStatus::queryMoreHapListEnabled_ = !moreHapListCandidates.empty();
     MockBundleMgrHelperStatus::queryMoreHapListInfos_ = moreHapListCandidates;
+    // The permission family pins the PC selector layout: the "more apps" wildcard
+    // re-query and the second invisible-ability gate only run when the selector dialog
+    // is not in the default (phone) position.
+    MockAppUtilsStatus::isSelectorDialogDefaultPossion_ = false;
     PermissionVerification::verifyBackgroundCallPermissionRet_ = true;
     PermissionVerification::verifyCallingPermissionCount_ = 0;
     AbilityManagerService::startAbilityInnerCount_ = 0;

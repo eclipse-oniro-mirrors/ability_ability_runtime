@@ -7,6 +7,7 @@
 #include "ability_record.h"
 #include "bundle_mgr_helper.h"
 #include "ability_ecological_rule_mgr_service_param.h"
+#include "mock_app_utils_status.h"
 #include "mock_multi_app_utils_status.h"
 
 namespace OHOS {
@@ -17,6 +18,15 @@ std::map<std::string, int32_t> MockMultiAppUtilsStatus::preferredIndexMap_ = {};
 void MockMultiAppUtilsStatus::Reset()
 {
     preferredIndexMap_.clear();
+}
+
+// Mirrors the on-device default of persist.sys.abilityms.selector_dialog_possion
+// (unset -> true -> phone selector layout).
+bool MockAppUtilsStatus::isSelectorDialogDefaultPossion_ = true;
+
+void MockAppUtilsStatus::Reset()
+{
+    isSelectorDialogDefaultPossion_ = true;
 }
 
 AbilityManagerService::AbilityManagerService() = default;
