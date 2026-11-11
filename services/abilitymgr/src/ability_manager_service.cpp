@@ -168,6 +168,7 @@
 #endif
 #ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
 #include "res_sched_client.h"
+#include "nlohmann/json.hpp"
 #endif
 #include "xcollie/process_kill_reason.h"
 #include "xcollie/watchdog.h"
