@@ -179,6 +179,7 @@ abilityms_files = [
   #utils
   "src/utils/request_id_util.cpp",
   "src/utils/ability_event_util.cpp",
+  "src/utils/security_audit_report.cpp",
   "src/utils/agent_ability_util.cpp",
   "src/utils/agent_caller_identity_util.cpp",
   "src/agent_extension/agent_card_migration_helper.cpp",

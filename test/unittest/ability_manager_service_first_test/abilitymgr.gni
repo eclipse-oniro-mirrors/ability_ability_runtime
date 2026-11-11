@@ -173,6 +173,7 @@ abilityms_files = [
   "${ability_runtime_services_path}/abilitymgr/src/utils/multi_app_utils.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/multi_instance_utils.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/oe_extension_utils.cpp",
+  "${ability_runtime_services_path}/abilitymgr/src/utils/security_audit_report.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/start_ability_utils.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/start_options_utils.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/hidden_start_utils.cpp",

@@ -28,6 +28,7 @@ ohos_unittest("control_interceptor_test") {
 
   sources = [
     "${ability_runtime_services_path}/abilitymgr/src/interceptor/control_interceptor.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/utils/security_audit_report.cpp",
     "mock/src/mock_ability_manager_client.cpp",
     "mock/src/mock_app_control_manager.cpp",
     "mock/src/mock_bundle_mgr_helper.cpp",

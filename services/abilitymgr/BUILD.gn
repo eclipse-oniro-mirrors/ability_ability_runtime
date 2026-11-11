@@ -333,6 +333,11 @@ ohos_shared_library("abilityms") {
     defines += [ "DISABLE_LAUNCHER" ]
   }
 
+  if (abilityms_security_guard_enabled) {
+    defines += [ "ABILITYMS_SECURITY_GUARD_ENABLE" ]
+    external_deps += [ "security_guard:libsg_collect_sdk" ]
+  }
+
   ldflags = [ "-Wl,-Bsymbolic" ]
 
   version_script = "libabilityms.map"
