@@ -70,6 +70,7 @@ constexpr const char* OPTION_KEY_DUMP_WEB = "--web";
 constexpr const char* OPTION_KEY_DUMP_TASK = "--task";
 constexpr size_t SIZE_ONE = 1;
 constexpr size_t SIZE_TWO = 2;
+constexpr size_t SIZE_THREE = 3;
 constexpr size_t SIZE_FOUR = 4;
 constexpr size_t SIZE_FIVE = 5;
 constexpr size_t INDEX_ONE = 1;
@@ -1249,11 +1250,12 @@ int AppMgrService::ShowHelp(const std::vector<std::u16string>& args, std::string
         .append("dump agent task manager active tasks\n")
         .append("--task psched               ")
         .append("dump process schedule index, effective levels and judge state\n")
-
+        .append("--task grep <taskId>        ")
+        .append("dump the active tasks whose id contains the taskId\n")
         .append("--task register <taskId> <pid> <insight|cli|a2a|ability>    ")
-        .append("test hook: attribute an entity into the task\n")
+        .append("test hook: attribute an entity into the task (developer mode only)\n")
         .append("--task unregister <taskId> <attributionId>    ")
-        .append("test hook: remove an attribution from the task\n");
+        .append("test hook: remove an attribution from the task (developer mode only)\n");
 
     return ERR_OK;
 }
@@ -1270,24 +1272,45 @@ int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string
     }
     if (args.size() > SIZE_ONE) {
         std::string subCmd = Str16ToStr8(args[INDEX_ONE]);
-        if (subCmd == "register") {
-            if (args.size() != SIZE_FIVE) {
-                result.append("usage: --task register <taskId> <pid> <insight|cli|a2a|ability>\n");
-                return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
+        if (subCmd == "register" || subCmd == "unregister") {
+            // Test hooks only: developer mode is off on commercial builds, keeping the
+            // register/unregister channels away from end users.
+            if (!OHOS::system::GetBoolParameter(DEVELOPER_MODE_STATE, false)) {
+                result.append(MSG_DUMP_FAIL, strlen(MSG_DUMP_FAIL))
+                    .append(MSG_DUMP_FAIL_REASON_PERMISSION_DENY,
+                        strlen(MSG_DUMP_FAIL_REASON_PERMISSION_DENY))
+                    .append("register/unregister test hooks are developer mode only.\n");
+                TAG_LOGE(AAFwkTag::APPMGR, "test hooks are developer mode only");
+                return DumpErrorCode::ERR_PERMISSION_DENY_ERROR;
             }
-            auto ret = TaskManagerService::GetInstance().DumpRegisterManagedProcess(
-                Str16ToStr8(args[INDEX_TWO]), Str16ToStr8(args[INDEX_THREE]),
-                Str16ToStr8(args[INDEX_FOUR]), result);
-            return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
+            if (subCmd == "register") {
+                if (args.size() != SIZE_FIVE) {
+                    result.append("usage: --task register <taskId> <pid> <insight|cli|a2a|ability>\n");
+                    return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
+                }
+                auto ret = TaskManagerService::GetInstance().DumpRegisterManagedProcess(
+                    Str16ToStr8(args[INDEX_TWO]), Str16ToStr8(args[INDEX_THREE]),
+                    Str16ToStr8(args[INDEX_FOUR]), result);
+                return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
+            }
+            if (subCmd == "unregister") {
+                if (args.size() != SIZE_FOUR) {
+                    result.append("usage: --task unregister <taskId> <attributionId>\n");
+                    return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
+                }
+                auto ret = TaskManagerService::GetInstance().DumpUnregisterManagedProcess(
+                    Str16ToStr8(args[INDEX_TWO]), Str16ToStr8(args[INDEX_THREE]), result);
+                return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
+            }
         }
-        if (subCmd == "unregister") {
-            if (args.size() != SIZE_FOUR) {
-                result.append("usage: --task unregister <taskId> <attributionId>\n");
+        if (subCmd == "grep") {
+            if (args.size() != SIZE_THREE) {
+                result.append("usage: --task grep <taskId>\n");
                 return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
             }
-            auto ret = TaskManagerService::GetInstance().DumpUnregisterManagedProcess(
-                Str16ToStr8(args[INDEX_TWO]), Str16ToStr8(args[INDEX_THREE]), result);
-            return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
+            result.append(TaskManagerService::GetInstance().DumpActiveTasks(
+                Str16ToStr8(args[INDEX_TWO])));
+            return ERR_OK;
         }
         if (subCmd == "psched") {
             if (args.size() != SIZE_TWO) {

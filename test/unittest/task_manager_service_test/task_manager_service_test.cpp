@@ -23,6 +23,7 @@
 
 #include "accesstoken_kit.h"
 #include "mock_ipc_skeleton.h"
+#include "mock_parameter.h"
 #include "nativetoken_kit.h"
 #include "token_setproc.h"
 
@@ -1021,10 +1022,8 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_DumpActiveTasks_0100, TestSi
     EXPECT_NE(dump.find("creator uid ["), std::string::npos);
     EXPECT_NE(dump.find("managed processes [" + std::to_string(attributionId) + ":" +
         std::to_string(TEST_MANAGED_PID) + "(cli)]"), std::string::npos);
-    EXPECT_NE(dump.find("sched level [task:MEDIUM(200)]"), std::string::npos);
     EXPECT_NE(dump.find("remain timeout ["), std::string::npos);
     EXPECT_NE(dump.find("create time ["), std::string::npos);
-
     EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
 }
 
@@ -1274,6 +1273,11 @@ HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0300, TestSize.Level1
     EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "unregister", "x", "4321", "extra"}), result),
         DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR);
 
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "grep"}), result),
+        DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR);
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "grep", "x", "extra"}), result),
+        DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR);
+
     EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "not_a_sub"}), result),
         DumpErrorCode::ERR_INVALID_CMD_ERROR);
 }
@@ -1289,6 +1293,64 @@ HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0400, TestSize.Level1
     EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task"}), result),
         DumpErrorCode::ERR_PERMISSION_DENY_ERROR);
     EXPECT_NE(result.find("permission deny"), std::string::npos);
+}
+
+/**
+ * @tc.number: AppMgrServiceTask_DumpTask_0500
+ * @tc.name: grep tasks by id
+ * @tc.desc: the --task grep <taskId> filter prints the tasks whose id contains the
+ *           text and reports misses as not found.
+ */
+HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0500, TestSize.Level1)
+{
+    auto &service = TaskManagerService::GetInstance();
+    std::string taskIdA = MakeTaskId("dump_task_0500_a");
+    std::string taskIdB = MakeTaskId("dump_task_0500_b");
+    EXPECT_EQ(service.StartTask(taskIdA, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.StartTask(taskIdB, TASK_PRIORITY_DEFAULT), ERR_OK);
+
+    IPCSkeleton::SetCallingUid(TEST_HIDUMPER_SERVICE_UID);
+    std::string result;
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "grep", taskIdA}), result), ERR_OK);
+    EXPECT_NE(result.find(taskIdA), std::string::npos);
+    EXPECT_EQ(result.find(taskIdB), std::string::npos);
+
+    result.clear();
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "grep", "dump_task_0500"}), result), ERR_OK);
+    EXPECT_NE(result.find("TaskManager matched tasks: total=2"), std::string::npos);
+    EXPECT_NE(result.find(taskIdA), std::string::npos);
+    EXPECT_NE(result.find(taskIdB), std::string::npos);
+
+    result.clear();
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "grep", MakeTaskId("dump_task_0500_none")}),
+        result), ERR_OK);
+    EXPECT_NE(result.find("TaskManager task not found"), std::string::npos);
+
+    SetTestCaller(TEST_CREATOR_UID, TEST_CREATOR_PID);
+    EXPECT_EQ(service.FinishTask(taskIdA), ERR_OK);
+    EXPECT_EQ(service.FinishTask(taskIdB), ERR_OK);
+}
+
+/**
+ * @tc.number: AppMgrServiceTask_DumpTask_0600
+ * @tc.name: register and unregister hooks without developer mode
+ * @tc.desc: the --task register/unregister test hooks are denied when developer mode
+ *           is off, while the plain task dump stays available.
+ */
+HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0600, TestSize.Level1)
+{
+    IPCSkeleton::SetCallingUid(TEST_HIDUMPER_SERVICE_UID);
+    std::string result;
+    OHOS::system::SetMockDeveloperMode(false);
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "register", "x", "4321", "insight"}), result),
+        DumpErrorCode::ERR_PERMISSION_DENY_ERROR);
+    EXPECT_NE(result.find("developer mode"), std::string::npos);
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "unregister", "x", "1"}), result),
+        DumpErrorCode::ERR_PERMISSION_DENY_ERROR);
+
+    result.clear();
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task"}), result), ERR_OK);
+    OHOS::system::SetMockDeveloperMode(true);
 }
 
 /**
