@@ -9810,12 +9810,6 @@ int32_t AppMgrServiceInner::TransformedNotifyAppFault(const AppFaultDataBySA &fa
         AppRecoveryNotifyApp(ctx.pid, ctx.bundleName, faultData.faultType, "appRecovery", ctx.recordId);
         return ERR_OK;
     }
-    if (!AppExecFwk::AppfreezeManager::GetInstance()->IsValidFreezeTypeName(ctx.eventName)) {
-        auto pos = ctx.eventName.find_first_of("\r\n");
-        std::string safeName = (pos == std::string::npos) ? ctx.eventName : ctx.eventName.substr(0, pos);
-        TAG_LOGE(AAFwkTag::APPDFR, "TransformedNotifyAppFault invalid freeze name: %{public}s", safeName.c_str());
-        return ERR_INVALID_VALUE;
-    }
     if (transformedFaultData.timeoutMarkers.empty()) {
         transformedFaultData.timeoutMarkers = "notifyFault:" + ctx.eventName +
             std::to_string(ctx.pid) + "-" + std::to_string(SystemTimeMillisecond());

@@ -30,6 +30,7 @@
 #include "hitrace/hitracechain.h"
 #endif
 #include "appfreeze_util.h"
+#include "task_handler_wrap.h"
 #include "xcollie/process_kill_reason.h"
 
 using namespace testing;
@@ -1476,6 +1477,7 @@ HWTEST_F(AppfreezeManagerTest, Req2LogChainDoesNotStoreFaultCount, TestSize.Leve
     result.dumpResult = 0;
     result.dumpLatency = 15;
     result.processStart = 1000;
+    result.stackTraceStartTime = "2026-11-11 10:00:00.000";
     FaultData first;
     first.errorObject.name = AppFreezeType::THREAD_BLOCK_3S;
     first.detectTime = 980;
@@ -1501,6 +1503,7 @@ HWTEST_F(AppfreezeManagerTest, Req2MissingCountRemainsFourItems, TestSize.Level1
     result.processStart = 1000;
     result.dumpResult = 0;
     result.dumpLatency = 11;
+    result.stackTraceStartTime = "2026-11-11 10:00:00.000";
     FaultData fault;
     fault.errorObject.name = AppFreezeType::LIFECYCLE_HALF_TIMEOUT;
     fault.detectTime = 990;
@@ -1563,6 +1566,102 @@ HWTEST_F(AppfreezeManagerTest, Req2LifecycleCaptureAlwaysCreatesFreshStackFiles,
             previous = result.stack;
             if (!result.stack.empty()) { std::remove(result.stack.c_str()); }
         }
+    }
+    appfreezeManager->DeleteStack(app.pid);
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest_PrepareAppfreezeNotification_001
+ * @tc.desc: Test PrepareAppfreezeNotification returns ERR_OK for both valid and invalid freeze names,
+ *           since validation moved to the async timeoutNotifyApp lambda.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_PrepareAppfreezeNotification_001, TestSize.Level1)
+{
+    AppfreezeManager::AppInfo app;
+    app.pid = 99990;
+    app.uid = 200001;
+    app.bundleName = "test.prepare.appfreeze";
+    app.processName = "test_process";
+    app.instanceId = 1;
+    app.refresh = [](AppfreezeAppInfo& current, bool checkDebug) -> bool {
+        current.pid = 99990;
+        current.uid = 200001;
+        current.bundleName = "test.prepare.appfreeze";
+        current.processName = "test_process";
+        current.instanceId = 1;
+        return true;
+    };
+    app.handleFault = [](const FaultData&, const AppfreezeAppInfo&, bool) {};
+
+    auto handler = AAFwk::TaskHandlerWrap::CreateQueueHandler("test_freeze_queue");
+    ASSERT_NE(handler, nullptr);
+
+    FaultData validFault;
+    validFault.errorObject.name = AppFreezeType::THREAD_BLOCK_3S;
+    validFault.faultType = FaultDataType::APP_FREEZE;
+    AppfreezeManager::FreezeInfo reserved;
+    int32_t ret = appfreezeManager->PrepareAppfreezeNotification(validFault, app, handler, reserved);
+    EXPECT_EQ(ret, ERR_OK);
+    appfreezeManager->ClearAppfreezeTasks(app.pid, app.uid, app.instanceId);
+
+    FaultData invalidFault;
+    invalidFault.errorObject.name = "INVALID_FREEZE_NAME";
+    invalidFault.faultType = FaultDataType::APP_FREEZE;
+    AppfreezeManager::FreezeInfo invalidReserved;
+    ret = appfreezeManager->PrepareAppfreezeNotification(invalidFault, app, handler, invalidReserved);
+    EXPECT_EQ(ret, ERR_OK);
+    appfreezeManager->ClearAppfreezeTasks(app.pid, app.uid, app.instanceId);
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest_ReportAppfreeze_StackTraceTime_001
+ * @tc.desc: Test ReportAppfreeze adds "Catche stack trace start/end time:" to errorObject.message.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_ReportAppfreeze_StackTraceTime_001, TestSize.Level1)
+{
+    AppfreezeManager::AppInfo app {false, false, 987660, 200001, "", "req2.test"};
+    app.request = std::make_shared<AppFreezeInfo>();
+    AppfreezeCaptureResult result;
+    result.stack = "test-stack";
+    result.dumpResult = 0;
+    result.dumpLatency = 10;
+    result.processStart = 1000;
+    result.stackTraceStartTime = "2026-11-11 10:00:00.000";
+    FaultData fault;
+    fault.errorObject.name = AppFreezeType::THREAD_BLOCK_3S;
+    fault.detectTime = 980;
+    fault.ipcLatency = 0;
+    appfreezeManager->ReportAppfreeze(fault, app, result);
+    EXPECT_EQ(appfreezeManager->freezeLogInfo_.at(app.pid).validity, "20:0:10:0");
+    appfreezeManager->ClearLogValidity(app.pid);
+}
+
+/**
+ * @tc.number: AppfreezeManagerTest_CaptureAppfreeze_StackTraceStartTime_001
+ * @tc.desc: Test CaptureAppfreeze sets stackTraceStartTime in capture result.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeManagerTest, AppfreezeManagerTest_CaptureAppfreeze_StackTraceStartTime_001, TestSize.Level1)
+{
+    AppfreezeManager::AppInfo app;
+    app.pid = 987661;
+    app.uid = 200031;
+    const std::string cached = "cached-stack-must-not-be-reused";
+    appfreezeManager->collector_->catchStackMap_[app.pid] = cached;
+    FaultData fault;
+    fault.faultType = FaultDataType::APP_FREEZE;
+    fault.errorObject.name = AppFreezeType::LIFECYCLE_HALF_TIMEOUT;
+    auto info = std::make_shared<AppFreezeInfo>();
+    info->pid = app.pid;
+    info->requestId = 1;
+    info->episodeId = "stack-start-time-test";
+    AppfreezeCaptureResult result;
+    ASSERT_TRUE(appfreezeManager->CaptureAppfreeze(fault, app, info, result));
+    EXPECT_FALSE(result.stackTraceStartTime.empty());
+    if (!result.stack.empty()) {
+        std::remove(result.stack.c_str());
     }
     appfreezeManager->DeleteStack(app.pid);
 }
