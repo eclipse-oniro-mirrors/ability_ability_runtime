@@ -165,8 +165,8 @@ pid_t SubSpawnManager::DoCreateSubSpawn(pid_t appPid, int32_t uid,
 
     auto costMs = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now() - startTime).count();
-    TAG_LOGI(AAFwkTag::APPMGR, "subspawn created, pid:%{public}d, cost:%{public}lldms",
-        result.pid, static_cast<ll>(costMs));
+    TAG_LOGI(AAFwkTag::APPMGR, "subspawn created, pid:%{public}d, cost:%{public}lld ms",
+        result.pid, costMs);
     return result.pid;
 }
 
@@ -317,8 +317,8 @@ pid_t SubSpawnManager::StartChildViaSubSpawn(pid_t appPid, int32_t uid, const Ap
 
     auto costMs = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now() - forkStartTime).count();
-    TAG_LOGI(AAFwkTag::APPMGR, "child created via subspawn, pid:%{public}d, appPid:%{public}d, cost:%{public}lldms",
-        result.pid, appPid, static_cast<ll>(costMs));
+    TAG_LOGI(AAFwkTag::APPMGR, "child created via subspawn, pid:%{public}d, appPid:%{public}d, cost:%{public}lld ms",
+        result.pid, appPid, costMs);
     return result.pid;
 }
 
