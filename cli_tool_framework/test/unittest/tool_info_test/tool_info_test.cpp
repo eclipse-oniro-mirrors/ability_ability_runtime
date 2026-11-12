@@ -3319,6 +3319,678 @@ HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_0700, TestSize.Level1)
     GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_0700 end";
 }
 
+// ==================== ToolInfo Visibility/SupportedDevices Tests (REQ 20260812019200) ====================
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_Visibility_0100
+ * @tc.desc: TC-1.1 (VM-8/AC-3.1) ParseFromJson with declared visibility=public and supportedDevices
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_Visibility_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Visibility_0100 start";
+
+    nlohmann::json json = R"({
+        "name": "ohos-public_tool",
+        "version": "1.0.0",
+        "description": "Public tool with device list",
+        "executablePath": "/bin/public_tool",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "visibility": "public",
+        "supportedDevices": ["default", "tablet"]
+    })"_json;
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(json, tool);
+
+    EXPECT_TRUE(result);
+    EXPECT_EQ(tool.visibility, "public");
+    ASSERT_EQ(tool.supportedDevices.size(), 2u);
+    EXPECT_EQ(tool.supportedDevices[0], "default");
+    EXPECT_EQ(tool.supportedDevices[1], "tablet");
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Visibility_0100 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_Visibility_0200
+ * @tc.desc: TC-1.2 (AC-3.1/R-1) ParseFromJson with explicitly declared visibility=private
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_Visibility_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Visibility_0200 start";
+
+    nlohmann::json json = R"({
+        "name": "ohos-explicit_private",
+        "version": "1.0.0",
+        "description": "Explicitly private tool",
+        "executablePath": "/bin/explicit_private",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "visibility": "private"
+    })"_json;
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(json, tool);
+
+    EXPECT_TRUE(result);
+    EXPECT_EQ(tool.visibility, "private");
+    EXPECT_TRUE(tool.supportedDevices.empty());
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Visibility_0200 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_Visibility_0300
+ * @tc.desc: TC-1.3 (VM-9/AC-3.2/INV-6) ParseFromJson without new keys (KVStore old value form)
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_Visibility_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Visibility_0300 start";
+
+    // Value written by an earlier version: neither visibility nor supportedDevices present
+    nlohmann::json json = R"({
+        "name": "ohos-legacy_tool",
+        "version": "1.0.0",
+        "description": "Tool stored by an earlier version without new keys",
+        "executablePath": "/bin/legacy_tool",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {}
+    })"_json;
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(json, tool);
+
+    EXPECT_TRUE(result);
+    EXPECT_EQ(tool.visibility, "private");
+    EXPECT_TRUE(tool.supportedDevices.empty());
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Visibility_0300 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_Visibility_0400
+ * @tc.desc: TC-1.4 (VM-10/AC-3.3/R-7) ParseFromJson with invalid visibility string falls back to private
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_Visibility_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Visibility_0400 start";
+
+    nlohmann::json json = R"({
+        "name": "ohos-invalid_visibility",
+        "version": "1.0.0",
+        "description": "Tool with invalid visibility value",
+        "executablePath": "/bin/invalid_visibility",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "visibility": "invalid"
+    })"_json;
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(json, tool);
+
+    EXPECT_TRUE(result);
+    EXPECT_EQ(tool.visibility, "private");
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Visibility_0400 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_Visibility_0500
+ * @tc.desc: TC-1.5 (VM-10/R-1) ParseFromJson with "Public" is case-sensitive and falls back to private
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_Visibility_0500, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Visibility_0500 start";
+
+    nlohmann::json json = R"({
+        "name": "ohos-case_tool",
+        "version": "1.0.0",
+        "description": "Tool with case-mismatched visibility",
+        "executablePath": "/bin/case_tool",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "visibility": "Public"
+    })"_json;
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(json, tool);
+
+    EXPECT_TRUE(result);
+    EXPECT_EQ(tool.visibility, "private");
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Visibility_0500 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_Visibility_0600
+ * @tc.desc: TC-1.6 (VM-10/R-7) ParseFromJson with non-string visibility falls back to private
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_Visibility_0600, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Visibility_0600 start";
+
+    auto baseJson = R"({
+        "name": "ohos-type_tool",
+        "version": "1.0.0",
+        "description": "Tool with non-string visibility type",
+        "executablePath": "/bin/type_tool",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {}
+    })"_json;
+
+    auto numberJson = baseJson;
+    numberJson["visibility"] = 123;
+    ToolInfo tool;
+    EXPECT_TRUE(ToolInfo::ParseFromJson(numberJson, tool));
+    EXPECT_EQ(tool.visibility, "private");
+
+    auto boolJson = baseJson;
+    boolJson["visibility"] = true;
+    EXPECT_TRUE(ToolInfo::ParseFromJson(boolJson, tool));
+    EXPECT_EQ(tool.visibility, "private");
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Visibility_0600 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_SupportedDevices_0100
+ * @tc.desc: TC-1.7 (VM-9/AC-3.2) ParseFromJson with explicitly empty supportedDevices array
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_SupportedDevices_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_SupportedDevices_0100 start";
+
+    nlohmann::json json = R"({
+        "name": "ohos-empty_devices",
+        "version": "1.0.0",
+        "description": "Tool with explicit empty device list",
+        "executablePath": "/bin/empty_devices",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "supportedDevices": []
+    })"_json;
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(json, tool);
+
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(tool.supportedDevices.empty());
+    EXPECT_EQ(tool.visibility, "private");
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_SupportedDevices_0100 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_SupportedDevices_0200
+ * @tc.desc: TC-1.8 (R-2/R-3) ParseFromJson with non-array supportedDevices falls back to empty
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_SupportedDevices_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_SupportedDevices_0200 start";
+
+    auto baseJson = R"({
+        "name": "ohos-nonarray_devices",
+        "version": "1.0.0",
+        "description": "Tool with non-array supportedDevices",
+        "executablePath": "/bin/nonarray_devices",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {}
+    })"_json;
+
+    auto stringJson = baseJson;
+    stringJson["supportedDevices"] = "default";
+    ToolInfo tool;
+    EXPECT_TRUE(ToolInfo::ParseFromJson(stringJson, tool));
+    EXPECT_TRUE(tool.supportedDevices.empty());
+
+    auto numberJson = baseJson;
+    numberJson["supportedDevices"] = 123;
+    EXPECT_TRUE(ToolInfo::ParseFromJson(numberJson, tool));
+    EXPECT_TRUE(tool.supportedDevices.empty());
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_SupportedDevices_0200 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_SupportedDevices_0300
+ * @tc.desc: TC-1.9 (R-2/R-3) ParseFromJson with non-string element falls back to empty array
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_SupportedDevices_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_SupportedDevices_0300 start";
+
+    auto baseJson = R"({
+        "name": "ohos-mixed_devices",
+        "version": "1.0.0",
+        "description": "Tool with non-string device element",
+        "executablePath": "/bin/mixed_devices",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {}
+    })"_json;
+
+    auto mixedJson = baseJson;
+    mixedJson["supportedDevices"] = {1, "default"};
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(mixedJson, tool);
+
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(tool.supportedDevices.empty());
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_SupportedDevices_0300 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_SupportedDevices_0400
+ * @tc.desc: TC-1.14 (R-3) ParseFromJson with an oversized supportedDevices array (exceeds
+ *           MAX_SUPPORTED_DEVICES_COUNT = 32 in tool_info.cpp) falls back to an empty array
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_SupportedDevices_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_SupportedDevices_0400 start";
+
+    auto baseJson = R"({
+        "name": "ohos-oversized_devices",
+        "version": "1.0.0",
+        "description": "Tool with an oversized supportedDevices array",
+        "executablePath": "/bin/oversized_devices",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {}
+    })"_json;
+
+    auto oversizedJson = baseJson;
+    auto devices = nlohmann::json::array();
+    // MAX_SUPPORTED_DEVICES_COUNT is 32 (anonymous namespace in tool_info.cpp, not exported);
+    // 33 valid string elements exceed the bound and must trigger the conservative fallback.
+    for (int i = 0; i < 33; i++) {
+        devices.push_back("default");
+    }
+    oversizedJson["supportedDevices"] = devices;
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(oversizedJson, tool);
+
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(tool.supportedDevices.empty());
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_SupportedDevices_0400 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_SupportedDevices_0500
+ * @tc.desc: TC-1.15 (R-3 boundary) ParseFromJson with exactly MAX_SUPPORTED_DEVICES_COUNT (32)
+ *           elements is accepted (boundary is inclusive); duplicates inside the boundary-size
+ *           array are deduplicated, keeping the first occurrence order
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_SupportedDevices_0500, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_SupportedDevices_0500 start";
+
+    auto baseJson = R"({
+        "name": "ohos-boundary_devices",
+        "version": "1.0.0",
+        "description": "Tool with a boundary-size supportedDevices array",
+        "executablePath": "/bin/boundary_devices",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {}
+    })"_json;
+
+    auto boundaryJson = baseJson;
+    auto devices = nlohmann::json::array();
+    // Exactly 32 elements equals MAX_SUPPORTED_DEVICES_COUNT and must be accepted; the
+    // alternating values intentionally contain duplicates, which are deduplicated
+    // (first occurrence order preserved).
+    for (int i = 0; i < 16; i++) {
+        devices.push_back("default");
+        devices.push_back("tablet");
+    }
+    boundaryJson["supportedDevices"] = devices;
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(boundaryJson, tool);
+
+    EXPECT_TRUE(result);
+    ASSERT_EQ(tool.supportedDevices.size(), 2u);
+    EXPECT_EQ(tool.supportedDevices[0], "default");
+    EXPECT_EQ(tool.supportedDevices[1], "tablet");
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_SupportedDevices_0500 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_SupportedDevices_0600
+ * @tc.desc: TC-1.16 (R-2/R-3) ParseFromJson with a device type of invalid format (a character
+ *           outside letters/digits/underscores/hyphens) falls back to an empty array, even
+ *           when other elements are valid
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_SupportedDevices_0600, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_SupportedDevices_0600 start";
+
+    auto baseJson = R"({
+        "name": "ohos-invalid_device_type",
+        "version": "1.0.0",
+        "description": "Tool with an invalid-format device type",
+        "executablePath": "/bin/invalid_device_type",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {}
+    })"_json;
+
+    // "phone!" contains a character outside the allowed set (letters, digits, underscore
+    // and hyphen only); one invalid item discards the whole array (conservative fallback).
+    auto invalidJson = baseJson;
+    invalidJson["supportedDevices"] = nlohmann::json::array({"default", "phone!", "tablet"});
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(invalidJson, tool);
+
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(tool.supportedDevices.empty());
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_SupportedDevices_0600 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_SupportedDevices_0700
+ * @tc.desc: TC-1.17 (R-2) ParseFromJson deduplicates duplicate device types by exact string
+ *           match, keeping the first occurrence order; "watch" and "wearable" are distinct
+ *           strings and are not merged
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_SupportedDevices_0700, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_SupportedDevices_0700 start";
+
+    auto baseJson = R"({
+        "name": "ohos-dedup_devices",
+        "version": "1.0.0",
+        "description": "Tool with duplicate device types",
+        "executablePath": "/bin/dedup_devices",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {}
+    })"_json;
+
+    // Duplicates collapse (first occurrence order preserved). "watch" and "wearable" are
+    // distinct strings: plain string deduplication keeps both and never merges them
+    // into one entry.
+    auto dedupJson = baseJson;
+    dedupJson["supportedDevices"] =
+        nlohmann::json::array({"tablet", "watch", "default", "wearable", "tablet", "watch"});
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(dedupJson, tool);
+
+    EXPECT_TRUE(result);
+    ASSERT_EQ(tool.supportedDevices.size(), 4u);
+    EXPECT_EQ(tool.supportedDevices[0], "tablet");
+    EXPECT_EQ(tool.supportedDevices[1], "watch");
+    EXPECT_EQ(tool.supportedDevices[2], "default");
+    EXPECT_EQ(tool.supportedDevices[3], "wearable");
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_SupportedDevices_0700 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_SupportedDevices_0800
+ * @tc.desc: TC-1.18 (R-2 boundary) ParseFromJson accepts a 19-character device type (the
+ *           length limit is exclusive) and falls back to an empty array for a
+ *           20-character item or an empty string item
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_SupportedDevices_0800, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_SupportedDevices_0800 start";
+
+    auto baseJson = R"({
+        "name": "ohos-format_boundary",
+        "version": "1.0.0",
+        "description": "Tool with boundary-length device types",
+        "executablePath": "/bin/format_boundary",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {}
+    })"_json;
+
+    // The length limit is exclusive: 19 characters are accepted, while 20 characters and
+    // the empty string are rejected (an empty device type identifier is meaningless).
+    auto acceptedJson = baseJson;
+    acceptedJson["supportedDevices"] = nlohmann::json::array({std::string(19, 'a')});
+    ToolInfo accepted;
+    EXPECT_TRUE(ToolInfo::ParseFromJson(acceptedJson, accepted));
+    ASSERT_EQ(accepted.supportedDevices.size(), 1u);
+    EXPECT_EQ(accepted.supportedDevices[0], std::string(19, 'a'));
+
+    auto tooLongJson = baseJson;
+    tooLongJson["supportedDevices"] = nlohmann::json::array({std::string(20, 'a')});
+    ToolInfo tooLong;
+    EXPECT_TRUE(ToolInfo::ParseFromJson(tooLongJson, tooLong));
+    EXPECT_TRUE(tooLong.supportedDevices.empty());
+
+    auto emptyItemJson = baseJson;
+    emptyItemJson["supportedDevices"] = nlohmann::json::array({""});
+    ToolInfo emptyItem;
+    EXPECT_TRUE(ToolInfo::ParseFromJson(emptyItemJson, emptyItem));
+    EXPECT_TRUE(emptyItem.supportedDevices.empty());
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_SupportedDevices_0800 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseToJson_Visibility_0100
+ * @tc.desc: TC-1.10 (VM-8/AC-3.1) ParseToJson emits visibility and supportedDevices keys with values
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_Visibility_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_Visibility_0100 start";
+
+    ToolInfo tool;
+    tool.name = "ohos-json_output";
+    tool.version = "1.0.0";
+    tool.description = "Tool with declared visibility and devices";
+    tool.executablePath = "/bin/json_output";
+    tool.inputSchema = "{}";
+    tool.outputSchema = "{}";
+    tool.visibility = "public";
+    tool.supportedDevices = {"default", "tablet"};
+
+    nlohmann::json json = tool.ParseToJson();
+
+    EXPECT_TRUE(json.contains("visibility"));
+    EXPECT_EQ(json["visibility"], "public");
+    EXPECT_TRUE(json.contains("supportedDevices"));
+    ASSERT_EQ(json["supportedDevices"].size(), 2u);
+    EXPECT_EQ(json["supportedDevices"][0], "default");
+    EXPECT_EQ(json["supportedDevices"][1], "tablet");
+
+    // Default values are emitted as well: KVStore value stays self-describing after reload
+    ToolInfo defaultTool;
+    defaultTool.name = "ohos-default_output";
+    nlohmann::json defaultJson = defaultTool.ParseToJson();
+    EXPECT_EQ(defaultJson["visibility"], "private");
+    EXPECT_TRUE(defaultJson["supportedDevices"].is_array());
+    EXPECT_TRUE(defaultJson["supportedDevices"].empty());
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_Visibility_0100 end";
+}
+
+/**
+ * @tc.name: ToolInfo_Visibility_RoundTripJson_0100
+ * @tc.desc: TC-1.11 (VM-8/INV-1) JSON round trip preserves visibility and supportedDevices
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_Visibility_RoundTripJson_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_Visibility_RoundTripJson_0100 start";
+
+    nlohmann::json originalJson = R"({
+        "name": "ohos-json_roundtrip",
+        "version": "1.0.0",
+        "description": "JSON round trip tool",
+        "executablePath": "/bin/json_roundtrip",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "visibility": "public",
+        "supportedDevices": ["default", "tablet"]
+    })"_json;
+
+    ToolInfo tool;
+    ASSERT_TRUE(ToolInfo::ParseFromJson(originalJson, tool));
+    nlohmann::json dumpedJson = tool.ParseToJson();
+    EXPECT_EQ(dumpedJson["visibility"], "public");
+    EXPECT_EQ(dumpedJson["supportedDevices"], originalJson["supportedDevices"]);
+
+    ToolInfo reparsed;
+    ASSERT_TRUE(ToolInfo::ParseFromJson(dumpedJson, reparsed));
+    EXPECT_EQ(reparsed.visibility, "public");
+    ASSERT_EQ(reparsed.supportedDevices.size(), 2u);
+    EXPECT_EQ(reparsed.supportedDevices[0], "default");
+    EXPECT_EQ(reparsed.supportedDevices[1], "tablet");
+
+    GTEST_LOG_(INFO) << "ToolInfo_Visibility_RoundTripJson_0100 end";
+}
+
+/**
+ * @tc.name: ToolInfo_Visibility_RoundTripParcel_0100
+ * @tc.desc: TC-1.12 (VM-8/OH-ARCH-IPC-SAF) Parcel round trip with declared and default values
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_Visibility_RoundTripParcel_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_Visibility_RoundTripParcel_0100 start";
+
+    // Group 1: declared values
+    ToolInfo declared;
+    declared.name = "ohos-parcel_tool";
+    declared.version = "1.0.0";
+    declared.description = "Parcel round trip tool";
+    declared.executablePath = "/bin/parcel_tool";
+    declared.inputSchema = "{}";
+    declared.outputSchema = "{}";
+    declared.visibility = "public";
+    declared.supportedDevices = {"default", "tablet"};
+
+    Parcel parcel;
+    ASSERT_TRUE(declared.Marshalling(parcel));
+    parcel.RewindRead(0);
+    ToolInfo *result = ToolInfo::Unmarshalling(parcel);
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->name, "ohos-parcel_tool");
+    EXPECT_EQ(result->visibility, "public");
+    ASSERT_EQ(result->supportedDevices.size(), 2u);
+    EXPECT_EQ(result->supportedDevices[0], "default");
+    EXPECT_EQ(result->supportedDevices[1], "tablet");
+    delete result;
+
+    // Group 2: default values
+    ToolInfo defaults;
+    defaults.name = "ohos-default_parcel";
+    defaults.version = "1.0.0";
+    defaults.description = "Parcel default values tool";
+    defaults.executablePath = "/bin/default_parcel";
+    defaults.inputSchema = "{}";
+    defaults.outputSchema = "{}";
+
+    Parcel defaultParcel;
+    ASSERT_TRUE(defaults.Marshalling(defaultParcel));
+    defaultParcel.RewindRead(0);
+    ToolInfo *defaultResult = ToolInfo::Unmarshalling(defaultParcel);
+    ASSERT_NE(defaultResult, nullptr);
+    EXPECT_EQ(defaultResult->visibility, "private");
+    EXPECT_TRUE(defaultResult->supportedDevices.empty());
+    delete defaultResult;
+
+    GTEST_LOG_(INFO) << "ToolInfo_Visibility_RoundTripParcel_0100 end";
+}
+
+/**
+ * @tc.name: ToolInfo_Visibility_RoundTripRawData_0100
+ * @tc.desc: RawData round trip preserves new fields; legacy blob without new keys parses to defaults
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_Visibility_RoundTripRawData_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_Visibility_RoundTripRawData_0100 start";
+
+    // Round trip with declared values (SA packaging channel)
+    ToolInfo tool;
+    tool.name = "ohos-rawdata_tool";
+    tool.version = "1.0.0";
+    tool.description = "RawData round trip tool";
+    tool.executablePath = "/bin/rawdata_tool";
+    tool.inputSchema = "{}";
+    tool.outputSchema = "{}";
+    tool.visibility = "public";
+    tool.supportedDevices = {"default", "tablet"};
+
+    std::vector<ToolInfo> original = {tool};
+    ToolsRawData rawData;
+    ToolsRawData::FromToolInfoVec(original, rawData);
+    std::vector<ToolInfo> parsed;
+    EXPECT_EQ(ToolsRawData::ToToolInfoVec(rawData, parsed), ERR_OK);
+    ASSERT_EQ(parsed.size(), 1u);
+    EXPECT_EQ(parsed[0].visibility, "public");
+    ASSERT_EQ(parsed[0].supportedDevices.size(), 2u);
+    EXPECT_EQ(parsed[0].supportedDevices[0], "default");
+    EXPECT_EQ(parsed[0].supportedDevices[1], "tablet");
+
+    // Legacy blob written by an earlier version: item JSON carries no new keys (INV-6)
+    nlohmann::json legacyJson = R"({
+        "name": "ohos-legacy_rawdata",
+        "version": "1.0.0",
+        "description": "Legacy tool without new keys",
+        "executablePath": "/bin/legacy_rawdata",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {}
+    })"_json;
+    std::string dumped = legacyJson.dump();
+    uint32_t count = 1;
+    uint32_t strLen = static_cast<uint32_t>(dumped.length());
+    std::string blob(reinterpret_cast<const char *>(&count), sizeof(count));
+    blob.append(reinterpret_cast<const char *>(&strLen), sizeof(strLen));
+    blob.append(dumped);
+    ToolsRawData legacyRawData;
+    legacyRawData.ownedData = blob;
+    legacyRawData.data = legacyRawData.ownedData.data();
+    legacyRawData.size = legacyRawData.ownedData.size();
+    legacyRawData.isMalloc = false;
+    std::vector<ToolInfo> legacyTools;
+    EXPECT_EQ(ToolsRawData::ToToolInfoVec(legacyRawData, legacyTools), ERR_OK);
+    ASSERT_EQ(legacyTools.size(), 1u);
+    EXPECT_EQ(legacyTools[0].visibility, "private");
+    EXPECT_TRUE(legacyTools[0].supportedDevices.empty());
+
+    GTEST_LOG_(INFO) << "ToolInfo_Visibility_RoundTripRawData_0100 end";
+}
+
 // ==================== ParseToJson Schema String Tests ====================
 
 /**

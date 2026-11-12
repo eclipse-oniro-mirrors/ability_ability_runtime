@@ -6456,6 +6456,382 @@ HWTEST_F(CliToolManagerServiceTest, UnregisterFunctionHook_NotRegistered_0100, T
     TAG_LOGI(AAFwkTag::TEST, "UnregisterFunctionHook_NotRegistered_0100 end");
 }
 
+// ==================== SA Query Permission Tiers & Visibility Filtering Tests (REQ 20260812019200) ====================
+
+namespace {
+// RAII scope for the two query permission toggles; restores previous state on scope exit.
+class QueryPermScope {
+public:
+    QueryPermScope(bool queryCliTool, bool queryPublicCliTool)
+        : prevQueryCliTool_(PermissionUtilMock::queryCliToolPermitted),
+          prevQueryPublicCliTool_(PermissionUtilMock::queryPublicCliToolPermitted)
+    {
+        PermissionUtilMock::queryCliToolPermitted = queryCliTool;
+        PermissionUtilMock::queryPublicCliToolPermitted = queryPublicCliTool;
+    }
+    ~QueryPermScope()
+    {
+        PermissionUtilMock::queryCliToolPermitted = prevQueryCliTool_;
+        PermissionUtilMock::queryPublicCliToolPermitted = prevQueryPublicCliTool_;
+    }
+    QueryPermScope(const QueryPermScope &) = delete;
+    QueryPermScope &operator=(const QueryPermScope &) = delete;
+private:
+    bool prevQueryCliTool_;
+    bool prevQueryPublicCliTool_;
+};
+
+// Mixed-visibility fixture tools: one public, one private, a second public.
+constexpr const char *PUBLIC_TOOL_NAME = "ohos-public_tool";
+constexpr const char *PRIVATE_TOOL_NAME = "ohos-private_tool";
+constexpr const char *OTHER_PUBLIC_TOOL_NAME = "ohos-public_tool2";
+
+ToolInfo MakeVisibilityTool(const std::string &name, const std::string &visibility)
+{
+    ToolInfo tool;
+    tool.name = name;
+    tool.version = "1.0.0";
+    tool.description = "description of " + name;
+    tool.executablePath = "/system/bin/" + name;
+    tool.inputSchema = "{}";
+    tool.outputSchema = "{}";
+    tool.visibility = visibility;
+    return tool;
+}
+
+std::vector<ToolInfo> MakeMixedTools()
+{
+    return {
+        MakeVisibilityTool(PUBLIC_TOOL_NAME, "public"),
+        MakeVisibilityTool(PRIVATE_TOOL_NAME, "private"),
+        MakeVisibilityTool(OTHER_PUBLIC_TOOL_NAME, "public"),
+    };
+}
+} // namespace
+
+/**
+ * @tc.name: CliToolManagerService_GetAllToolInfos_PublicPermReturnsOnlyPublic_0100
+ * @tc.desc: TC-2.1 (VM-1/AC-1.1) Only QUERY_PUBLIC_CLI_TOOL granted: returns only visibility=="public" tools
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetAllToolInfos_PublicPermReturnsOnlyPublic_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetAllToolInfos_PublicPermReturnsOnlyPublic_0100 start");
+
+    QueryPermScope permScope(false, true); // QUERY_CLI_TOOL denied, QUERY_PUBLIC_CLI_TOOL granted
+    CliToolDataManagerMock::allTools = MakeMixedTools();
+
+    ToolsRawData rawData;
+    EXPECT_EQ(service_->GetAllToolInfos(rawData), ERR_OK);
+    std::vector<ToolInfo> tools;
+    ASSERT_EQ(ToolsRawData::ToToolInfoVec(rawData, tools), ERR_OK);
+    ASSERT_EQ(tools.size(), 2u);
+    EXPECT_EQ(tools[0].name, PUBLIC_TOOL_NAME);
+    EXPECT_EQ(tools[0].visibility, "public");
+    EXPECT_EQ(tools[1].name, OTHER_PUBLIC_TOOL_NAME);
+    EXPECT_EQ(tools[1].visibility, "public");
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetAllToolInfos_PublicPermReturnsOnlyPublic_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_GetAllToolSummaries_PublicPermReturnsOnlyPublic_0100
+ * @tc.desc: TC-2.2 (VM-2/AC-1.2) Only QUERY_PUBLIC_CLI_TOOL granted: public-only summaries with projected fields
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetAllToolSummaries_PublicPermReturnsOnlyPublic_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetAllToolSummaries_PublicPermReturnsOnlyPublic_0100 start");
+
+    QueryPermScope permScope(false, true);
+    CliToolDataManagerMock::allTools = MakeMixedTools();
+
+    std::vector<ToolSummary> summaries;
+    EXPECT_EQ(service_->GetAllToolSummaries(summaries), ERR_OK);
+    ASSERT_EQ(summaries.size(), 2u);
+    // Projection fields name/version/description match the source tool data
+    EXPECT_EQ(summaries[0].name, PUBLIC_TOOL_NAME);
+    EXPECT_EQ(summaries[0].version, "1.0.0");
+    EXPECT_EQ(summaries[0].description, std::string("description of ") + PUBLIC_TOOL_NAME);
+    EXPECT_EQ(summaries[1].name, OTHER_PUBLIC_TOOL_NAME);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetAllToolSummaries_PublicPermReturnsOnlyPublic_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_QueryMethods_NoPermDenied_0100
+ * @tc.desc: TC-2.3 (VM-3/AC-1.3) All three query methods with no query permission return ERR_PERMISSION_DENIED
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, QueryMethods_NoPermDenied_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_QueryMethods_NoPermDenied_0100 start");
+
+    QueryPermScope permScope(false, false); // neither query permission granted
+    CliToolDataManagerMock::allTools = MakeMixedTools();
+
+    ToolsRawData rawData;
+    EXPECT_EQ(service_->GetAllToolInfos(rawData), ERR_PERMISSION_DENIED);
+    std::vector<ToolSummary> summaries;
+    EXPECT_EQ(service_->GetAllToolSummaries(summaries), ERR_PERMISSION_DENIED);
+    ToolInfo tool;
+    EXPECT_EQ(service_->GetToolInfoByName(PUBLIC_TOOL_NAME, tool), ERR_PERMISSION_DENIED);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_QueryMethods_NoPermDenied_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_QueryMethods_BothPermsFullReturn_0100
+ * @tc.desc: TC-2.4 (INV-2/AC-2.1) Both permissions granted: QUERY_CLI_TOOL wins, full result returned
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, QueryMethods_BothPermsFullReturn_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_QueryMethods_BothPermsFullReturn_0100 start");
+
+    QueryPermScope permScope(true, true); // QUERY_CLI_TOOL takes priority over QUERY_PUBLIC_CLI_TOOL
+    CliToolDataManagerMock::allTools = MakeMixedTools();
+
+    ToolsRawData rawData;
+    EXPECT_EQ(service_->GetAllToolInfos(rawData), ERR_OK);
+    std::vector<ToolInfo> tools;
+    ASSERT_EQ(ToolsRawData::ToToolInfoVec(rawData, tools), ERR_OK);
+    ASSERT_EQ(tools.size(), 3u); // unfiltered: includes the private tool
+
+    std::vector<ToolSummary> summaries;
+    EXPECT_EQ(service_->GetAllToolSummaries(summaries), ERR_OK);
+    EXPECT_EQ(summaries.size(), 3u);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_QueryMethods_BothPermsFullReturn_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_QueryMethods_FullPermOnlyUnfiltered_0100
+ * @tc.desc: TC-2.5 (VM-6/AC-2.1/INV-4) Only QUERY_CLI_TOOL granted: unfiltered result, same as before the change
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, QueryMethods_FullPermOnlyUnfiltered_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_QueryMethods_FullPermOnlyUnfiltered_0100 start");
+
+    QueryPermScope permScope(true, false);
+    CliToolDataManagerMock::allTools = MakeMixedTools();
+
+    ToolsRawData rawData;
+    EXPECT_EQ(service_->GetAllToolInfos(rawData), ERR_OK);
+    std::vector<ToolInfo> tools;
+    ASSERT_EQ(ToolsRawData::ToToolInfoVec(rawData, tools), ERR_OK);
+    ASSERT_EQ(tools.size(), 3u);
+    EXPECT_EQ(tools[1].name, PRIVATE_TOOL_NAME); // private tool still present for full permission
+
+    std::vector<ToolSummary> summaries;
+    EXPECT_EQ(service_->GetAllToolSummaries(summaries), ERR_OK);
+    EXPECT_EQ(summaries.size(), 3u);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_QueryMethods_FullPermOnlyUnfiltered_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_GetAllToolInfos_NonSystemAppPublicPerm_0100
+ * @tc.desc: TC-2.6 (ADR-2/AC-1.1) Non-system app holding only QUERY_PUBLIC_CLI_TOOL gets the public subset,
+ *           no longer ERR_NOT_SYSTEM_APP (system app check removed from query paths)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetAllToolInfos_NonSystemAppPublicPerm_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetAllToolInfos_NonSystemAppPublicPerm_0100 start");
+
+    IPCSkeleton::callingFullTokenId = 1; // non-zero -> IsSystemApp() returns false
+    QueryPermScope permScope(false, true);
+    CliToolDataManagerMock::allTools = MakeMixedTools();
+
+    ToolsRawData rawData;
+    EXPECT_EQ(service_->GetAllToolInfos(rawData), ERR_OK); // NOT ERR_NOT_SYSTEM_APP
+    std::vector<ToolInfo> tools;
+    ASSERT_EQ(ToolsRawData::ToToolInfoVec(rawData, tools), ERR_OK);
+    ASSERT_EQ(tools.size(), 2u); // public subset only
+
+    IPCSkeleton::Reset();
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetAllToolInfos_NonSystemAppPublicPerm_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_GetAllToolInfos_NonSystemAppFullPerm_0100
+ * @tc.desc: TC-2.7 (ADR-2) Non-system app holding QUERY_CLI_TOOL gets the full result;
+ *           access control is fully permission-based (same semantics as the execCmd precedent)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetAllToolInfos_NonSystemAppFullPerm_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetAllToolInfos_NonSystemAppFullPerm_0100 start");
+
+    IPCSkeleton::callingFullTokenId = 1; // IsSystemApp() returns false
+    QueryPermScope permScope(true, false);
+    CliToolDataManagerMock::allTools = MakeMixedTools();
+
+    ToolsRawData rawData;
+    EXPECT_EQ(service_->GetAllToolInfos(rawData), ERR_OK); // NOT ERR_NOT_SYSTEM_APP
+    std::vector<ToolInfo> tools;
+    ASSERT_EQ(ToolsRawData::ToToolInfoVec(rawData, tools), ERR_OK);
+    ASSERT_EQ(tools.size(), 3u); // full result, access control carried by permission alone
+
+    IPCSkeleton::Reset();
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetAllToolInfos_NonSystemAppFullPerm_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_GetToolInfoByName_PublicPermPrivateTool_0100
+ * @tc.desc: TC-2.8 (VM-4/AC-1.4/INV-3) Only public permission + existing private tool -> ERR_TOOL_NOT_EXIST
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetToolInfoByName_PublicPermPrivateTool_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetToolInfoByName_PublicPermPrivateTool_0100 start");
+
+    QueryPermScope permScope(false, true);
+    CliToolDataManagerMock::getToolByNameResult = ERR_OK; // tool exists in the store
+    CliToolDataManagerMock::toolVisibility = "private";
+
+    ToolInfo tool;
+    EXPECT_EQ(service_->GetToolInfoByName(PRIVATE_TOOL_NAME, tool), ERR_TOOL_NOT_EXIST);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetToolInfoByName_PublicPermPrivateTool_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_GetToolInfoByName_PublicPermUnknownTool_0100
+ * @tc.desc: TC-2.9 (VM-4/AC-1.4/INV-3) Only public permission + truly absent tool -> ERR_TOOL_NOT_EXIST;
+ *           paired with TC-2.8: indistinguishable from the private-tool case
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetToolInfoByName_PublicPermUnknownTool_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetToolInfoByName_PublicPermUnknownTool_0100 start");
+
+    QueryPermScope permScope(false, true);
+    CliToolDataManagerMock::getToolByNameResult = ERR_TOOL_NOT_EXIST; // tool does not exist
+
+    ToolInfo tool;
+    EXPECT_EQ(service_->GetToolInfoByName("ohos-not_exist_tool", tool), ERR_TOOL_NOT_EXIST);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetToolInfoByName_PublicPermUnknownTool_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_GetToolInfoByName_FullPermPrivateTool_0100
+ * @tc.desc: TC-2.10 (VM-7/AC-2.2) Full permission + private tool -> returns the ToolInfo incl. internal visibility
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetToolInfoByName_FullPermPrivateTool_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetToolInfoByName_FullPermPrivateTool_0100 start");
+
+    QueryPermScope permScope(true, false);
+    CliToolDataManagerMock::getToolByNameResult = ERR_OK;
+    CliToolDataManagerMock::toolVisibility = "private";
+
+    ToolInfo tool;
+    EXPECT_EQ(service_->GetToolInfoByName(PRIVATE_TOOL_NAME, tool), ERR_OK);
+    EXPECT_EQ(tool.name, PRIVATE_TOOL_NAME);
+    EXPECT_EQ(tool.visibility, "private"); // internal field visible to the full-permission caller
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetToolInfoByName_FullPermPrivateTool_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_QueryMethods_PublicPermNoPublicTools_0100
+ * @tc.desc: TC-2.11 (VM-5/AC-1.5) Only public permission + no public tools: empty result with ERR_OK, not an error
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, QueryMethods_PublicPermNoPublicTools_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_QueryMethods_PublicPermNoPublicTools_0100 start");
+
+    QueryPermScope permScope(false, true);
+    CliToolDataManagerMock::allTools = {
+        MakeVisibilityTool(PRIVATE_TOOL_NAME, "private"),
+        MakeVisibilityTool("ohos-private_tool2", "private"),
+    };
+
+    ToolsRawData rawData;
+    EXPECT_EQ(service_->GetAllToolInfos(rawData), ERR_OK);
+    std::vector<ToolInfo> tools;
+    ASSERT_EQ(ToolsRawData::ToToolInfoVec(rawData, tools), ERR_OK);
+    EXPECT_TRUE(tools.empty());
+
+    std::vector<ToolSummary> summaries;
+    EXPECT_EQ(service_->GetAllToolSummaries(summaries), ERR_OK);
+    EXPECT_TRUE(summaries.empty());
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_QueryMethods_PublicPermNoPublicTools_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_QueryMethods_EmptyStore_0100
+ * @tc.desc: TC-2.12 (AC-1.5) Empty store (no tools at all): both permission tiers get empty results with ERR_OK
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, QueryMethods_EmptyStore_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_QueryMethods_EmptyStore_0100 start");
+
+    // allTools left empty (mock default) for both permission tiers
+    {
+        QueryPermScope permScope(true, false); // full permission
+        ToolsRawData rawData;
+        EXPECT_EQ(service_->GetAllToolInfos(rawData), ERR_OK);
+        std::vector<ToolInfo> tools;
+        ASSERT_EQ(ToolsRawData::ToToolInfoVec(rawData, tools), ERR_OK);
+        EXPECT_TRUE(tools.empty());
+
+        std::vector<ToolSummary> summaries;
+        EXPECT_EQ(service_->GetAllToolSummaries(summaries), ERR_OK);
+        EXPECT_TRUE(summaries.empty());
+    }
+    {
+        QueryPermScope permScope(false, true); // public-only permission
+        ToolsRawData rawData;
+        EXPECT_EQ(service_->GetAllToolInfos(rawData), ERR_OK);
+        std::vector<ToolInfo> tools;
+        ASSERT_EQ(ToolsRawData::ToToolInfoVec(rawData, tools), ERR_OK);
+        EXPECT_TRUE(tools.empty());
+
+        std::vector<ToolSummary> summaries;
+        EXPECT_EQ(service_->GetAllToolSummaries(summaries), ERR_OK);
+        EXPECT_TRUE(summaries.empty());
+    }
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_QueryMethods_EmptyStore_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_QueryMethods_DataManagerErrorPropagates_0100
+ * @tc.desc: TC-2.13 (R-8) GetAllTools failure (ERR_NO_INIT) propagates unchanged through both permission tiers
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, QueryMethods_DataManagerErrorPropagates_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_QueryMethods_DataManagerErrorPropagates_0100 start");
+
+    CliToolDataManagerMock::getAllToolsResult = ERR_NO_INIT;
+    {
+        QueryPermScope permScope(true, false); // full permission
+        ToolsRawData rawData;
+        EXPECT_EQ(service_->GetAllToolInfos(rawData), ERR_NO_INIT);
+        std::vector<ToolSummary> summaries;
+        EXPECT_EQ(service_->GetAllToolSummaries(summaries), ERR_NO_INIT);
+    }
+    {
+        QueryPermScope permScope(false, true); // public-only permission
+        ToolsRawData rawData;
+        EXPECT_EQ(service_->GetAllToolInfos(rawData), ERR_NO_INIT);
+        std::vector<ToolSummary> summaries;
+        EXPECT_EQ(service_->GetAllToolSummaries(summaries), ERR_NO_INIT);
+    }
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_QueryMethods_DataManagerErrorPropagates_0100 end");
+}
+
 // ==================== Hook Edge Case Tests ====================
 
 /**
