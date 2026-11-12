@@ -20,6 +20,8 @@
 #include "extension_config.h"
 #include "event_report.h"
 #include "parameters.h"
+#include "permission_constants.h"
+#include "permission_verification.h"
 #ifdef SUPPORT_SCREEN
 #ifdef ABILITY_RUNTIME_SCREENLOCK_ENABLE
 #include "screenlock_manager.h"
@@ -69,6 +71,13 @@ ErrCode ScreenUnlockInterceptor::DoProcess(AbilityInterceptorParam &param)
 #endif
 
     const AppExecFwk::AbilityInfo &targetAbilityInfo = *param.abilityInfo;
+    if (param.isDirectBootStartup && targetAbilityInfo.type == AppExecFwk::AbilityType::PAGE &&
+        PermissionVerification::GetInstance()->VerifyPermissionByTokenId(
+            targetAbilityInfo.applicationInfo.accessTokenId, PermissionConstants::PERMISSION_ALLOW_DIRECT_BOOT)) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "allow direct boot startup %{public}s/%{public}s",
+            targetAbilityInfo.bundleName.c_str(), targetAbilityInfo.name.c_str());
+        return ERR_OK;
+    }
     bool isSystemApp = targetAbilityInfo.applicationInfo.isSystemApp;
     if (isSystemApp) {
         return ProcessSystemApp(targetAbilityInfo);

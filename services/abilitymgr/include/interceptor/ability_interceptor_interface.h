@@ -39,6 +39,7 @@ struct AbilityInterceptorParam {
     sptr<IRemoteObject> callerToken = nullptr;
     std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo;  // resolved target abilityInfo passed to the interceptor
     StartAbilityContext startAbilityCtx;  // start-ability request-scoped context (default-constructed = absent)
+    bool isDirectBootStartup = false;
     bool isPrelaunch = false; // true when launched via StartAbilityForPrelaunch
 
     // Per-interceptor contexts, accessed via GetContext<T>()
@@ -123,6 +124,11 @@ public:
     InterceptorParamBuilder &StartAbilityCtx(const StartAbilityContext &ctx)
     {
         param_.startAbilityCtx = ctx;
+        return *this;
+    }
+    InterceptorParamBuilder &DirectBootStartup(bool isDirectBootStartup)
+    {
+        param_.isDirectBootStartup = isDirectBootStartup;
         return *this;
     }
     InterceptorParamBuilder &Prelaunch(bool isPrelaunch)

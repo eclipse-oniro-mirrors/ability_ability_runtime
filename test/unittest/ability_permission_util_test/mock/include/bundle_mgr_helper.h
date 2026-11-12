@@ -29,6 +29,10 @@ public:
     static int32_t retGetNameForUid;
     static BundleInfo retBundleInfo;
     static bool retGetBundleInfo;
+    static BundleInfo retCloneBundleInfo;
+    static ErrCode retGetCloneBundleInfo;
+    static int32_t cloneQueryCount;
+    static int32_t lastCloneIndex;
 
 public:
     BundleMgrHelper() {}
@@ -64,6 +68,15 @@ public:
     ErrCode GetDualModeBundleInfo(const std::string &bundleName, int32_t userId, int32_t &appIndex)
     {
         return ERR_OK;
+    }
+
+    ErrCode GetCloneBundleInfo(const std::string &bundleName, int32_t flags, int32_t appIndex,
+        BundleInfo &bundleInfo, int32_t userId)
+    {
+        ++cloneQueryCount;
+        lastCloneIndex = appIndex;
+        bundleInfo = retCloneBundleInfo;
+        return retGetCloneBundleInfo;
     }
 };
 }  // namespace AppExecFwk

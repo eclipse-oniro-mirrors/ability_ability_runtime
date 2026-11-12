@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include "parameters.h"
+#include "scene_board_judgement.h"
 
 #include "direct_boot_test_support.h"
 
@@ -42,3 +43,24 @@ bool GetBoolParameter(const std::string &key, bool def)
     return def;
 }
 } // namespace OHOS::system
+
+namespace OHOS::Rosen {
+bool SceneBoardJudgement::IsSceneBoardEnabled()
+{
+    if (AAFwk::GetDirectBootTestState().active) {
+        return true;
+    }
+    static const bool enabled = [] {
+        std::ifstream configFile("/etc/sceneboard.config");
+        std::string line;
+        if (!std::getline(configFile, line)) {
+            return false;
+        }
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        return line == "ENABLED";
+    }();
+    return enabled;
+}
+}

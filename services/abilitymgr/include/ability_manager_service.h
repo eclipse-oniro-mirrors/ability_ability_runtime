@@ -3001,6 +3001,9 @@ protected:
     virtual int32_t StartSandboxCloneAbility(const Want &want, const SandboxCloneParams &params) override;
 
 private:
+    int StartAbility(const Want &want, int32_t userId, int requestCode,
+        uint64_t specifiedFullTokenId, bool isDirectBootStartup);
+
     int GetTopAbilityInner(sptr<IRemoteObject> &token, uint64_t displayId, int32_t userId);
 
     /**

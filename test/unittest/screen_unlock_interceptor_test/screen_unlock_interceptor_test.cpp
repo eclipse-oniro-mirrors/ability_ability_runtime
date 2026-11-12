@@ -26,8 +26,11 @@
 #include "event_report.h"
 #include "nlohmann/json.hpp"
 #include "parameters.h"
+#include "permission_constants.h"
+#include "permission_verification.h"
 #include "scene_board_judgement.h"
 #include "screenlock_manager.h"
+#include "start_ability_utils.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -36,6 +39,22 @@ using json = nlohmann::json;
 
 namespace OHOS {
 namespace AAFwk {
+namespace {
+int32_t grantedDirectBootToken = 0;
+int32_t lastVerifiedDirectBootToken = 0;
+std::string lastVerifiedPermission;
+int32_t directBootPermissionChecks = 0;
+}
+
+bool PermissionVerification::VerifyPermissionByTokenId(const int &tokenId, const std::string &permissionName) const
+{
+    lastVerifiedDirectBootToken = tokenId;
+    lastVerifiedPermission = permissionName;
+    ++directBootPermissionChecks;
+    return tokenId != 0 && tokenId == grantedDirectBootToken &&
+        permissionName == PermissionConstants::PERMISSION_ALLOW_DIRECT_BOOT;
+}
+
 class ScreenUnlockInterceptorTest : public testing::Test {
 public:
     static void SetUpTestCase();
@@ -61,6 +80,10 @@ void ScreenUnlockInterceptorTest::TearDownTestCase()
 
 void ScreenUnlockInterceptorTest::SetUp()
 {
+    grantedDirectBootToken = 0;
+    lastVerifiedDirectBootToken = 0;
+    lastVerifiedPermission.clear();
+    directBootPermissionChecks = 0;
     extensionConfig_->configMap_.clear();
     extensionConfig_->isConfigLoaded_.store(false);
 }
@@ -669,5 +692,134 @@ HWTEST_F(ScreenUnlockInterceptorTest, DoProcess_ThirdPartyExtension_ConfigNotLoa
     EXPECT_EQ(ret, ERR_OK);
     GTEST_LOG_(INFO) << "DoProcess_ThirdPartyExtension_ConfigNotLoaded_ShouldAllow end";
 }
+HWTEST_F(ScreenUnlockInterceptorTest, DirectBoot_RequiresInternalFlagAndTargetPermission, TestSize.Level1)
+{
+    struct Case {
+        bool isDirectBootStartup;
+        int32_t targetToken;
+        int32_t grantedToken;
+        ErrCode expected;
+    };
+    const Case cases[] = {
+        {true, 12345, 12345, ERR_OK},
+        {false, 12345, 12345, ERR_BLOCK_START_FIRST_BOOT_SCREEN_UNLOCK},
+        {true, 12345, 54321, ERR_BLOCK_START_FIRST_BOOT_SCREEN_UNLOCK},
+        {true, 12345, 0, ERR_BLOCK_START_FIRST_BOOT_SCREEN_UNLOCK},
+        {true, 0, 0, ERR_BLOCK_START_FIRST_BOOT_SCREEN_UNLOCK},
+    };
+    auto screenLockManager = OHOS::ScreenLock::ScreenLockManager::GetInstance();
+    ASSERT_NE(screenLockManager, nullptr);
+    screenLockManager->SetScreenLockedState(true);
+    ScreenUnlockInterceptor interceptor;
+    for (const auto &testCase : cases) {
+        SCOPED_TRACE(testing::Message() << testCase.isDirectBootStartup << "/" << testCase.targetToken << "/"
+            << testCase.grantedToken);
+        auto info = std::make_shared<AppExecFwk::AbilityInfo>();
+        info->type = AbilityType::PAGE;
+        info->applicationInfo.isSystemApp = false;
+        info->applicationInfo.accessTokenId = testCase.targetToken;
+        Want want;
+        auto param = InterceptorParamBuilder(want, 0, 100).AbilityInfo(info)
+            .DirectBootStartup(testCase.isDirectBootStartup).Build();
+        grantedDirectBootToken = testCase.grantedToken;
+        directBootPermissionChecks = 0;
+
+        EXPECT_EQ(interceptor.DoProcess(param), testCase.expected);
+        EXPECT_EQ(directBootPermissionChecks, testCase.isDirectBootStartup ? 1 : 0);
+        if (testCase.isDirectBootStartup) {
+            EXPECT_EQ(lastVerifiedDirectBootToken, testCase.targetToken);
+            EXPECT_EQ(lastVerifiedPermission, PermissionConstants::PERMISSION_ALLOW_DIRECT_BOOT);
+        }
+    }
+}
+
+HWTEST_F(ScreenUnlockInterceptorTest, DirectBoot_DoesNotBypassExtensionPolicy, TestSize.Level1)
+{
+    auto screenLockManager = OHOS::ScreenLock::ScreenLockManager::GetInstance();
+    ASSERT_NE(screenLockManager, nullptr);
+    screenLockManager->SetScreenLockedState(true);
+    extensionConfig_->isConfigLoaded_.store(true);
+    auto info = MakeExtensionAbilityInfo(false, false);
+    info->applicationInfo.accessTokenId = 12345;
+    grantedDirectBootToken = 12345;
+    Want want;
+    auto param = InterceptorParamBuilder(want, 0, 100).AbilityInfo(info).DirectBootStartup(true).Build();
+    ScreenUnlockInterceptor interceptor;
+
+    EXPECT_EQ(interceptor.DoProcess(param), ERR_BLOCK_START_FIRST_BOOT_SCREEN_UNLOCK);
+    EXPECT_EQ(directBootPermissionChecks, 0);
+}
+
+HWTEST_F(ScreenUnlockInterceptorTest, DirectBoot_WantDoesNotSetInternalFlag, TestSize.Level1)
+{
+    auto screenLockManager = OHOS::ScreenLock::ScreenLockManager::GetInstance();
+    ASSERT_NE(screenLockManager, nullptr);
+    screenLockManager->SetScreenLockedState(true);
+    auto info = std::make_shared<AppExecFwk::AbilityInfo>();
+    info->type = AbilityType::PAGE;
+    info->applicationInfo.isSystemApp = false;
+    info->applicationInfo.accessTokenId = 12345;
+    grantedDirectBootToken = 12345;
+    Want want;
+    want.SetParam("isDirectBootStartup", true);
+    want.SetParam("isDirectBoot", true);
+    auto param = InterceptorParamBuilder(want, 0, 100).AbilityInfo(info).Build();
+    ScreenUnlockInterceptor interceptor;
+
+    EXPECT_FALSE(param.isDirectBootStartup);
+    EXPECT_EQ(interceptor.DoProcess(param), ERR_BLOCK_START_FIRST_BOOT_SCREEN_UNLOCK);
+    EXPECT_EQ(directBootPermissionChecks, 0);
+}
+
+HWTEST_F(ScreenUnlockInterceptorTest, DirectBoot_UnlockedPreservesExistingBehavior, TestSize.Level1)
+{
+    auto screenLockManager = OHOS::ScreenLock::ScreenLockManager::GetInstance();
+    ASSERT_NE(screenLockManager, nullptr);
+    screenLockManager->SetScreenLockedState(false);
+    auto info = std::make_shared<AppExecFwk::AbilityInfo>();
+    info->type = AbilityType::PAGE;
+    info->applicationInfo.isSystemApp = false;
+    Want want;
+    auto param = InterceptorParamBuilder(want, 0, 100).AbilityInfo(info).DirectBootStartup(true).Build();
+    ScreenUnlockInterceptor interceptor;
+
+    EXPECT_EQ(interceptor.DoProcess(param), ERR_OK);
+    EXPECT_EQ(directBootPermissionChecks, 0);
+}
+
+HWTEST_F(ScreenUnlockInterceptorTest, DirectBoot_RequestDefaultsAndBuilder, TestSize.Level1)
+{
+    StartAbilityWrapParam wrapParam;
+    EXPECT_FALSE(wrapParam.isDirectBootStartup);
+    Want want;
+    EXPECT_FALSE(InterceptorParamBuilder(want, 0, 100).Build().isDirectBootStartup);
+    EXPECT_TRUE(InterceptorParamBuilder(want, 0, 100).DirectBootStartup(true).Build().isDirectBootStartup);
+    EXPECT_FALSE(InterceptorParamBuilder(want, 0, 100).DirectBootStartup(true)
+        .DirectBootStartup(false).Build().isDirectBootStartup);
+}
+
+HWTEST_F(ScreenUnlockInterceptorTest, DirectBoot_PrelaunchFlagsAreIndependent, TestSize.Level1)
+{
+    Want want;
+    auto defaults = InterceptorParamBuilder(want, 0, 100).Build();
+    EXPECT_FALSE(defaults.isDirectBootStartup);
+    EXPECT_FALSE(defaults.isPrelaunch);
+    EXPECT_FALSE(defaults.IsPreloadStartAbility());
+    auto directBoot = InterceptorParamBuilder(want, 0, 100).Prelaunch(true)
+        .DirectBootStartup(true).Prelaunch(false).Build();
+    EXPECT_TRUE(directBoot.isDirectBootStartup);
+    EXPECT_FALSE(directBoot.isPrelaunch);
+    EXPECT_FALSE(directBoot.IsPreloadStartAbility());
+    auto prelaunch = InterceptorParamBuilder(want, 0, 100).DirectBootStartup(true)
+        .Prelaunch(true).DirectBootStartup(false).Build();
+    EXPECT_FALSE(prelaunch.isDirectBootStartup);
+    EXPECT_TRUE(prelaunch.isPrelaunch);
+    EXPECT_TRUE(prelaunch.IsPreloadStartAbility());
+    auto both = InterceptorParamBuilder(want, 0, 100).Prelaunch(true).DirectBootStartup(true).Build();
+    EXPECT_TRUE(both.isDirectBootStartup);
+    EXPECT_TRUE(both.isPrelaunch);
+    EXPECT_TRUE(both.IsPreloadStartAbility());
+}
+
 } // namespace AAFwk
 } // namespace OHOS
