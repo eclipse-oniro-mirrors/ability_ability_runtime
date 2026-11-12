@@ -52,7 +52,6 @@ constexpr const char* JITPERMISSIONSLIST_PERMISSIONS_NAME = "permissions";
 constexpr const char* UNINSTALL_BUNDLE_NAME = "uninstallDebugHapMsg";
 constexpr const char* IPCGROUPINFOLIST_IPCGROUPID = "ipcGroupId";
 constexpr const char* IPCGROUPINFOLIST_GID = "ipcGroupGid";
-constexpr const char* MSG_EXT_NAME_SUBSPAWN_PRELOAD = "SubspawnPreload";
 constexpr size_t MAX_SO_PATH_LENGTH = 255;
 
 std::string SerializePreloadSoList(const std::vector<std::string>& soPaths,
