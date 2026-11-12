@@ -3081,6 +3081,14 @@ public:
     ErrCode NotifyCompleteGamePreLaunch(const sptr<IRemoteObject> callerToken);
 
     /**
+     * @brief Notify that game pre-launch is complete and clear the prelaunch
+     * flag. SCB must be enabled.
+     * @param pid The target game process pid.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode NotifyCompleteGamePreLaunchByPid(int32_t pid);
+
+    /**
      * @brief Start a self-bundle UIAbility in a new child process attached to
      * the parent. Product support (IsSupportNativeUIAbility) required; explicit
      * same-bundle want only; app clone / multi-instance rejected; caller ability

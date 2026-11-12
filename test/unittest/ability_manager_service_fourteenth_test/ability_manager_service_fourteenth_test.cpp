@@ -1878,6 +1878,88 @@ HWTEST_F(AbilityManagerServiceFourteenthTest, NotifyCompleteGamePreLaunch_001, T
 }
 
 /**
+ * @tc.name: NotifyCompleteGamePreLaunchByPid_001
+ * @tc.desc: Test NotifyCompleteGamePreLaunchByPid invalid premission (wrong UID).
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, NotifyCompleteGamePreLaunchByPid_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest NotifyCompleteGamePreLaunchByPid_001 start");
+    MyStatus::GetInstance().ipcGetCallingUid_ = 20010001;
+    MyStatus::GetInstance().sbjIsSceneBoardEnabled_ = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs_, nullptr);
+    auto result = abilityMs_->NotifyCompleteGamePreLaunchByPid(12345);
+    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest NotifyCompleteGamePreLaunchByPid_001 end");
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunchByPid_002
+ * @tc.desc: Test NotifyCompleteGamePreLaunchByPid when scene board is not enabled.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, NotifyCompleteGamePreLaunchByPid_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest NotifyCompleteGamePreLaunchByPid_002 start");
+    MyStatus::GetInstance().ipcGetCallingUid_ = GAME_SA_UID;
+    MyStatus::GetInstance().sbjIsSceneBoardEnabled_ = false;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs_, nullptr);
+    auto result = abilityMs_->NotifyCompleteGamePreLaunchByPid(12345);
+    EXPECT_EQ(result, ERR_CAPABILITY_NOT_SUPPORT);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest NotifyCompleteGamePreLaunchByPid_002 end");
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunchByPid_003
+ * @tc.desc: Test NotifyCompleteGamePreLaunchByPid when UIAbilityLifecycleManager is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, NotifyCompleteGamePreLaunchByPid_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest NotifyCompleteGamePreLaunchByPid_003 start");
+    MyStatus::GetInstance().ipcGetCallingUid_ = GAME_SA_UID;
+    MyStatus::GetInstance().sbjIsSceneBoardEnabled_ = true;
+    MyStatus::GetInstance().smhGetUIAbilityManagerByUid_ = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs_, nullptr);
+    auto mockSubManagersHelper = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    EXPECT_NE(mockSubManagersHelper, nullptr);
+    abilityMs_->subManagersHelper_ = mockSubManagersHelper;
+    abilityMs_->subManagersHelper_->currentUIAbilityManager_ = nullptr;
+ 
+    auto result = abilityMs_->NotifyCompleteGamePreLaunchByPid(12345);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest NotifyCompleteGamePreLaunchByPid_003 end");
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunchByPid_004
+ * @tc.desc: Test NotifyCompleteGamePreLaunchByPid when UIAbilityLifecycleManager is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, NotifyCompleteGamePreLaunchByPid_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest NotifyCompleteGamePreLaunchByPid_004 start");
+    MyStatus::GetInstance().ipcGetCallingUid_ = GAME_SA_UID;
+    MyStatus::GetInstance().sbjIsSceneBoardEnabled_ = true;
+    MyStatus::GetInstance().smhGetUIAbilityManagerByUid_ = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs_, nullptr);
+    auto mockSubManagersHelper = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    EXPECT_NE(mockSubManagersHelper, nullptr);
+    auto mockCurrentUIAbilityManager = std::make_shared<UIAbilityLifecycleManager>(0);
+    EXPECT_NE(mockCurrentUIAbilityManager, nullptr);
+    abilityMs_->subManagersHelper_ = mockSubManagersHelper;
+    abilityMs_->subManagersHelper_->currentUIAbilityManager_ = mockCurrentUIAbilityManager;
+ 
+    auto result = abilityMs_->NotifyCompleteGamePreLaunchByPid(12345);
+    EXPECT_EQ(result, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest NotifyCompleteGamePreLaunchByPid_004 end");
+}
+
+/**
  * @tc.number: StartSelfUIAbilityByAppContext_001
  * @tc.name: StartSelfUIAbilityByAppContext
  * @tc.desc: Test StartSelfUIAbilityByAppContext when device not supported

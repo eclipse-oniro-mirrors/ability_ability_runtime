@@ -1070,6 +1070,9 @@ int AbilityManagerStub::OnRemoteRequestInnerTwentySecond(uint32_t code, MessageP
     if (interfaceCode == AbilityManagerInterfaceCode::COMPLETE_GAME_PRELAUNCH) {
         return NotifyCompleteGamePreLaunchInner(data, reply);
     }
+    if (interfaceCode == AbilityManagerInterfaceCode::COMPLETE_GAME_PRELAUNCH_BY_PID) {
+        return NotifyCompleteGamePreLaunchByPidInner(data, reply);
+    }
     if (interfaceCode == AbilityManagerInterfaceCode::SET_GAME_PRELAUNCH_COMPLETE_TIME) {
         return SetGamePreLaunchCompleteTimeInner(data, reply);
     }
@@ -4475,6 +4478,22 @@ int32_t AbilityManagerStub::NotifyCompleteGamePreLaunchInner(MessageParcel &data
         return ERR_INVALID_VALUE;
     }
     int32_t result = NotifyCompleteGamePreLaunch(callerToken);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+ 
+int32_t AbilityManagerStub::NotifyCompleteGamePreLaunchByPidInner(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "called");
+    int32_t pid = data.ReadInt32();
+    if (pid <= 0) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid pid: %{public}d", pid);
+        return ERR_INVALID_VALUE;
+    }
+    int32_t result = NotifyCompleteGamePreLaunchByPid(pid);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");
         return ERR_INVALID_VALUE;

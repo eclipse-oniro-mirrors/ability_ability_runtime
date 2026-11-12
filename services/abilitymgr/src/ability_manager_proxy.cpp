@@ -8318,6 +8318,33 @@ int32_t AbilityManagerProxy::NotifyCompleteGamePreLaunch(const sptr<IRemoteObjec
     return reply.ReadInt32();
 }
 
+int32_t AbilityManagerProxy::NotifyCompleteGamePreLaunchByPid(int32_t pid)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (pid <= 0) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid pid: %{public}d", pid);
+        return ERR_INVALID_VALUE;
+    }
+ 
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write token fail");
+        return ERR_WRITE_INTERFACE_TOKEN_FAILED;
+    }
+ 
+    if (!data.WriteInt32(pid)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write pid fail");
+        return ERR_WRITE_INT32_FAILED;
+    }
+    auto ret = SendRequest(AbilityManagerInterfaceCode::COMPLETE_GAME_PRELAUNCH_BY_PID, data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "send request error:%{public}d", ret);
+        return ret;
+    }
+    return reply.ReadInt32();
+}
+
 int32_t AbilityManagerProxy::SetGamePreLaunchCompleteTime(int32_t userId, int64_t completeTime)
 {
     MessageParcel data;

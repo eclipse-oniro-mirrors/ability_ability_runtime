@@ -15260,6 +15260,28 @@ int32_t AbilityManagerService::NotifyCompleteGamePreLaunch(const sptr<IRemoteObj
     return uiAbilityManager->NotifyCompleteGamePreLaunch(callerToken);
 }
 
+int32_t AbilityManagerService::NotifyCompleteGamePreLaunchByPid(int32_t pid)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "NotifyCompleteGamePreLaunchByPid called, pid: %{public}d", pid);
+ 
+    auto callingUid = IPCSkeleton::GetCallingUid();
+    if (callingUid != AbilityRuntime::GlobalConstant::GAME_SA_UID) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "verify game SA failed");
+        return CHECK_PERMISSION_FAILED;
+    }
+ 
+    if (!Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "scene board not enabled");
+        return ERR_CAPABILITY_NOT_SUPPORT;
+    }
+ 
+    auto uiAbilityManager = GetUIAbilityManagerByUid(callingUid);
+    CHECK_POINTER_AND_RETURN(uiAbilityManager, ERR_INVALID_VALUE);
+ 
+    return uiAbilityManager->NotifyCompleteGamePreLaunchByPid(pid);
+}
+
 int32_t AbilityManagerService::SetGamePreLaunchCompleteTime(int32_t userId, int64_t completeTime)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
@@ -19891,7 +19913,8 @@ int32_t AbilityManagerService::RegisterSAInterceptor(sptr<AbilityRuntime::ISAInt
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "call RegisterSaInterceptor, callingPid:%{public}d", IPCSkeleton::GetCallingPid());
     auto callingUid = IPCSkeleton::GetCallingUid();
-    if (callingUid != PENG_LAI_UID && callingUid != TASKMGR_UID && callingUid != ERECT_SAFE_UID) {
+    if (callingUid != PENG_LAI_UID && callingUid != TASKMGR_UID && callingUid != ERECT_SAFE_UID &&
+        callingUid != AbilityRuntime::GlobalConstant::GAME_SA_UID) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "no permission call");
         return CHECK_PERMISSION_FAILED;
     }
@@ -19902,7 +19925,8 @@ int32_t AbilityManagerService::RegisterSAInterceptor(sptr<AbilityRuntime::ISAInt
 int32_t AbilityManagerService::UnregisterSAInterceptor(sptr<IRemoteObject> interceptor)
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "call UnregisterSaInterceptor");
-    if (IPCSkeleton::GetCallingUid() != TASKMGR_UID) {
+    auto callingUid = IPCSkeleton::GetCallingUid();
+    if (callingUid != TASKMGR_UID && callingUid != AbilityRuntime::GlobalConstant::GAME_SA_UID) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "no permission call");
         return CHECK_PERMISSION_FAILED;
     }

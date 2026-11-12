@@ -2152,6 +2152,13 @@ public:
     virtual int32_t NotifyCompleteGamePreLaunch(const sptr<IRemoteObject> callerToken) override;
 
     /**
+     * @brief Notify complete game prelaunch by pid and clear the flag.
+     * @param pid Indicates the target game process pid.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t NotifyCompleteGamePreLaunchByPid(int32_t pid) override;
+
+    /**
      * @brief Set game prelaunch complete time.
      *
      * @param userId Indicates the user ID.

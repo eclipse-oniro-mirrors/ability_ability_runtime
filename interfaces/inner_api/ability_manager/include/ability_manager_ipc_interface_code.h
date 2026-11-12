@@ -818,6 +818,9 @@ enum class AbilityManagerInterfaceCode {
 
     // kill collaborator process
     KILL_COLLABORATOR_PROCESS = 6190,
+ 
+    // complete game prelaunch by pid
+    COMPLETE_GAME_PRELAUNCH_BY_PID = 6191,
 };
 }  // namespace AAFwk
 }  // namespace OHOS
