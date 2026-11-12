@@ -52,7 +52,6 @@ constexpr const char* JITPERMISSIONSLIST_PERMISSIONS_NAME = "permissions";
 constexpr const char* UNINSTALL_BUNDLE_NAME = "uninstallDebugHapMsg";
 constexpr const char* IPCGROUPINFOLIST_IPCGROUPID = "ipcGroupId";
 constexpr const char* IPCGROUPINFOLIST_GID = "ipcGroupGid";
-constexpr size_t MAX_SO_PATH_LENGTH = 255;
 
 std::string SerializePreloadSoList(const std::vector<std::string>& soPaths,
     const std::string& libPath)
@@ -62,12 +61,16 @@ std::string SerializePreloadSoList(const std::vector<std::string>& soPaths,
     nlohmann::json jsonArray = nlohmann::json::array();
     std::map<std::string, nlohmann::json> groupedSo;
     for (const auto& soPath : soPaths) {
-        if (soPath.empty() || soPath.size() > MAX_SO_PATH_LENGTH) {
-            TAG_LOGE(AAFwkTag::APPMGR, "invalid so path length: %{public}s", soPath.c_str());
+        if (soPath.empty()) {
+            TAG_LOGE(AAFwkTag::APPMGR, "invalid so path (empty)");
             continue;
         }
         if (soPath.find("..") != std::string::npos) {
             TAG_LOGE(AAFwkTag::APPMGR, "invalid so path (traversal): %{public}s", soPath.c_str());
+            continue;
+        }
+        if (soPath[0] == '/') {
+            TAG_LOGE(AAFwkTag::APPMGR, "invalid so path (absolute): %{public}s", soPath.c_str());
             continue;
         }
         auto lastSlash = soPath.find_last_of('/');
