@@ -5858,7 +5858,11 @@ static_assert(SKILL_TEST_ATTRIBUTION_TOOL_CLI == static_cast<int32_t>(Attributio
 // deterministically in-process; the captured recipient runs the production OnCallerDied.
 class SkillCallerDeathProbe : public IRemoteObject {
 public:
-    SkillCallerDeathProbe() = default;
+    // Explicitly pass a non-null descriptor: never rely on the IRemoteObject constructor default
+    // argument. Some IPC component versions ship that default as nullptr (e.g. older
+    // 'explicit IRemoteObject(const std::u16string &descriptor = nullptr)'), and binding it here
+    // would construct std::u16string from nullptr and crash in char_traits<char16_t>::length.
+    SkillCallerDeathProbe() : IRemoteObject(u"ability.test.SkillCallerDeathProbe") {}
     ~SkillCallerDeathProbe() override = default;
 
     int32_t GetObjectRefCount() override
