@@ -89,6 +89,7 @@
 #include "cj_runtime.h"
 #endif
 #include "native_lib_util.h"
+#include "native_lib_path_util.h"
 #include "ets_native_lib_util.h"
 #include "native_startup_task.h"
 #include "nlohmann/json.hpp"

@@ -83,7 +83,7 @@
 #include "app_native_spawn_manager.h"
 #include "app_pidfd_manager.h"
 #include "sub_spawn_manager.h"
-#include "native_lib_util.h"
+#include "native_lib_path_util.h"
 #ifdef SUPPORT_SCREEN
 #include "locale_config.h"
 #endif

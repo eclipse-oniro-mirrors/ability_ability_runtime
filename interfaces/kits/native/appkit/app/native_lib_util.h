@@ -19,7 +19,6 @@
 #include <string>
 
 #include "base_shared_bundle_info.h"
-#include "bundle_info.h"
 #include "hap_module_info.h"
 #include "js_runtime.h"
 
@@ -44,14 +43,6 @@ void TraverseLibrarySupportDirectory(
     const std::string &prefixPath,
     const std::string &appLibPathKey,
     AppLibPathMap &appLibPaths);
-
-std::string GetDefaultAppLibPath(const std::string &nativeLibraryPath);
-
-void GetDefaultNamespacePaths(const BundleInfo &bundleInfo, AppLibPathMap &appLibPaths);
-
-void GetModuleSoPaths(const BundleInfo &bundleInfo,
-    const std::vector<BaseSharedBundleInfo> &hspList,
-    AppLibPathMap &appLibPaths);
 }  // namespace AppExecFwk
-}  // namespace OHOS
+} // namespace OHOS
 #endif  // OHOS_ABILITY_RUNTIME_NATIVE_LIB_UTIL_H
