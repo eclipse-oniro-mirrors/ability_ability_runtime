@@ -24,7 +24,6 @@
 #include <vector>
 
 #include "app_spawn_client.h"
-#include "child_process_options.h"
 #include "nocopyable.h"
 #include "sub_spawn_record.h"
 #include "task_handler_wrap.h"
