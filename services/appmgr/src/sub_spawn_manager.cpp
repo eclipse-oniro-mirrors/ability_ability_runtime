@@ -23,6 +23,7 @@
 #include "ffrt_inner.h"
 #include "hilog_tag_wrapper.h"
 #include "singleton.h"
+#include "task_handler_wrap.h"
 #include "appspawn.h"
 
 namespace OHOS {
@@ -39,10 +40,7 @@ constexpr const char* SUBSPAWN_PROCESS_NAME_SUFFIX = ":subspawn";
 constexpr const char* IDLE_TIMER_PREFIX = "SubSpawnIdle_";
 }
 
-SubSpawnManager::SubSpawnManager()
-{
-    taskHandler_ = AAFwk::TaskHandlerWrap::Create();
-}
+SubSpawnManager::SubSpawnManager() {}
 
 SubSpawnManager::~SubSpawnManager() {}
 
@@ -413,7 +411,7 @@ void SubSpawnManager::StartIdleTimer(const std::shared_ptr<SubSpawnRecord> &reco
     record->SetIdleTimerActive(true);
     pid_t appPid = record->GetAppPid();
     std::string taskName = std::string(IDLE_TIMER_PREFIX) + std::to_string(appPid);
-    taskHandler_->SubmitTask([appPid]() {
+    AAFwk::TaskHandlerWrap::GetFfrtHandler()->SubmitTask([appPid]() {
         GetInstance().HandleIdleTimeout(appPid);
     }, taskName, IDLE_TIMEOUT_MS);
 }
@@ -423,7 +421,7 @@ void SubSpawnManager::CancelIdleTimer(const std::shared_ptr<SubSpawnRecord> &rec
     if (record) {
         record->SetIdleTimerActive(false);
         std::string taskName = std::string(IDLE_TIMER_PREFIX) + std::to_string(record->GetAppPid());
-        taskHandler_->CancelTask(taskName);
+        AAFwk::TaskHandlerWrap::GetFfrtHandler()->CancelTask(taskName);
     }
 }
 
