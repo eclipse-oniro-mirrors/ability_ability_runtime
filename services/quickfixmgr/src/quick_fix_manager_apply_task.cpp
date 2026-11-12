@@ -376,8 +376,21 @@ void QuickFixManagerApplyTask::InitRevokeTask(const std::string &bundleName, boo
 {
     isSoContained_ = isSoContained;
     bundleName_ = bundleName;
+    SetBundleNameSnapshot(bundleName);
     TAG_LOGI(AAFwkTag::QUICKFIX, "call func:%{public}s, isSoContained:%{public}s", bundleName_.c_str(),
         isSoContained_ ? "true" : "false");
+}
+
+void QuickFixManagerApplyTask::SetBundleNameSnapshot(const std::string &bundleName)
+{
+    std::lock_guard<std::mutex> lock(bundleNameMutex_);
+    bundleNameSnapshot_ = bundleName;
+}
+
+std::string QuickFixManagerApplyTask::GetBundleNameSnapshot()
+{
+    std::lock_guard<std::mutex> lock(bundleNameMutex_);
+    return bundleNameSnapshot_;
 }
 
 void QuickFixManagerApplyTask::HandlePatchDeployed()
@@ -622,6 +635,7 @@ bool QuickFixManagerApplyTask::ExtractQuickFixDataFromJson(nlohmann::json& resul
         return false;
     }
     bundleName_ = resultJson.at(QUICK_FIX_BUNDLE_NAME).get<std::string>();
+    SetBundleNameSnapshot(bundleName_);
 
     if (!resultJson.contains(QUICK_FIX_BUNDLE_VERSION_CODE) ||
         !resultJson.at(QUICK_FIX_BUNDLE_VERSION_CODE).is_number()) {

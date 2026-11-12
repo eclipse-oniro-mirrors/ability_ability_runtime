@@ -16,6 +16,8 @@
 #ifndef OHOS_ABILITY_RUNTIME_QUICK_FIX_MANAGER_APPLY_TASK_H
 #define OHOS_ABILITY_RUNTIME_QUICK_FIX_MANAGER_APPLY_TASK_H
 
+#include <mutex>
+
 #include "app_mgr_interface.h"
 #include "event_handler.h"
 #include "quick_fix_result_info.h"
@@ -60,6 +62,12 @@ public:
     void RunRevoke();
     void InitRevokeTask(const std::string &bundleName, bool isSoContained);
     std::string GetBundleName();
+    // Cross-thread safe bundleName accessors for service-side task-list checks:
+    // bundleName_ is written on the deploy-callback thread without taskMutex_, so readers
+    // outside the task (AddApplyTask/CheckTaskRunningState under taskMutex_) must use the
+    // mutex-protected snapshot instead of bundleName_ to avoid a data race.
+    void SetBundleNameSnapshot(const std::string &bundleName);
+    std::string GetBundleNameSnapshot();
     TaskType GetTaskType();
     void HandleRevokePatchDeleted();
     void HandleRevokePatchSwitched();
@@ -84,6 +92,8 @@ private:
     std::shared_ptr<AppExecFwk::EventHandler> eventHandler_ = nullptr;
     wptr<QuickFixManagerService> quickFixMgrService_ = nullptr;
     std::string bundleName_;
+    std::mutex bundleNameMutex_;
+    std::string bundleNameSnapshot_;
     std::vector<std::string> moduleNames_;
     AppExecFwk::QuickFixType type_ = AppExecFwk::QuickFixType::UNKNOWN;
     TaskType taskType_ = TaskType::QUICK_FIX_APPLY;
