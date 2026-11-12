@@ -37,6 +37,7 @@ ohos_unittest("sub_spawn_manager_test") {
 
   sources = [
     "${ability_runtime_services_path}/appmgr/src/sub_spawn_manager.cpp",
+    "${ability_runtime_services_path}/appmgr/src/sub_spawn_record.cpp",
     "appspawn_stub.cpp",
     "sub_spawn_manager_test.cpp",
   ]

@@ -11075,7 +11075,7 @@ int32_t AppMgrServiceInner::StartChildProcessImpl(const std::shared_ptr<ChildPro
                 childProcessRecord->SetPid(subSpawnChildPid);
                 childProcessRecord->SetUid(startMsg.uid);
                 appRecord->AddChildProcessRecord(subSpawnChildPid, childProcessRecord);
-                SubSpawnManager::GetInstance().OnChildProcessCreated(appRecord->GetPid());
+                SubSpawnManager::GetInstance().OnChildProcessCreated(appRecord->GetPid(), subSpawnChildPid);
                 AppPidFdManager::GetInstance().AddWatcher(subSpawnChildPid, PidFdType::CHILD);
                 DelayedSingleton<AppStateObserverManager>::GetInstance()
                     ->OnChildProcessCreated(childProcessRecord);
@@ -11305,7 +11305,8 @@ void AppMgrServiceInner::OnChildProcessDied(std::shared_ptr<ChildProcessRecord> 
         RemoveChildProcessIsolationUid(childProcessRecord->GetUid());
         childProcessRecord->SetState(AppProcessState::APP_STATE_TERMINATED);
         DelayedSingleton<AppStateObserverManager>::GetInstance()->OnChildProcessDied(childProcessRecord);
-        SubSpawnManager::GetInstance().OnChildProcessExited(childProcessRecord->GetHostPid());
+        SubSpawnManager::GetInstance().OnChildProcessExited(childProcessRecord->GetHostPid(),
+            childProcessRecord->GetPid());
     }
 }
 

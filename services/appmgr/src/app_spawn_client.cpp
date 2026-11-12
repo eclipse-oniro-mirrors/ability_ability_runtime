@@ -58,6 +58,8 @@ constexpr size_t MAX_SO_PATH_LENGTH = 255;
 std::string SerializePreloadSoList(const std::vector<std::string>& soPaths,
     const std::string& libPath)
 {
+    TAG_LOGD(AAFwkTag::APPMGR, "SerializePreloadSoList: libPath=%{private}s, soCount=%{public}zu",
+        libPath.c_str(), soPaths.size());
     nlohmann::json jsonArray = nlohmann::json::array();
     std::map<std::string, nlohmann::json> groupedSo;
     for (const auto& soPath : soPaths) {
@@ -82,15 +84,22 @@ std::string SerializePreloadSoList(const std::vector<std::string>& soPaths,
         if (soName.empty()) {
             continue;
         }
+        TAG_LOGD(AAFwkTag::APPMGR, "soPath=%{private}s -> dir=%{private}s, soName=%{public}s",
+            soPath.c_str(), dir.c_str(), soName.c_str());
         groupedSo[dir].push_back(soName);
     }
     for (const auto& [dir, soList] : groupedSo) {
         nlohmann::json entry;
         entry["libPath"] = nlohmann::json::array({dir});
         entry["so"] = soList;
+        entry["ns"] = "default";
         jsonArray.push_back(entry);
+        TAG_LOGD(AAFwkTag::APPMGR, "grouped: dir=%{private}s, soCount=%{public}zu",
+            dir.c_str(), soList.size());
     }
-    return jsonArray.dump();
+    std::string result = jsonArray.dump();
+    TAG_LOGD(AAFwkTag::APPMGR, "SerializePreloadSoList result: %{private}s", result.c_str());
+    return result;
 }
 }
 AppSpawnClient::AppSpawnClient(bool isNWebSpawn)

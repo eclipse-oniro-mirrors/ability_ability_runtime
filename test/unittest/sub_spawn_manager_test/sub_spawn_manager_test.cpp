@@ -18,6 +18,7 @@
 #include <string>
 
 #include "sub_spawn_manager.h"
+#include "sub_spawn_record.h"
 
 using namespace testing;
 using namespace OHOS;
@@ -96,7 +97,7 @@ HWTEST_F(SubSpawnManagerTest, OnSubSpawnExited_001, TestSize.Level1)
  */
 HWTEST_F(SubSpawnManagerTest, OnChildProcessCreated_001, TestSize.Level1)
 {
-    SubSpawnManager::GetInstance().OnChildProcessCreated(99999);
+    SubSpawnManager::GetInstance().OnChildProcessCreated(99999, 88888);
     SUCCEED();
 }
 
@@ -106,7 +107,7 @@ HWTEST_F(SubSpawnManagerTest, OnChildProcessCreated_001, TestSize.Level1)
  */
 HWTEST_F(SubSpawnManagerTest, OnChildProcessExited_001, TestSize.Level1)
 {
-    SubSpawnManager::GetInstance().OnChildProcessExited(99999);
+    SubSpawnManager::GetInstance().OnChildProcessExited(99999, 88888);
     SUCCEED();
 }
 
@@ -141,4 +142,91 @@ HWTEST_F(SubSpawnManagerTest, HandleIdleTimeout_001, TestSize.Level1)
 {
     SubSpawnManager::GetInstance().HandleIdleTimeout(99999);
     SUCCEED();
+}
+
+/**
+ * @tc.name: SubSpawnRecord_Create_001
+ * @tc.desc: Test SubSpawnRecord creation with valid params
+ */
+HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_Create_001, TestSize.Level1)
+{
+    AppSpawnStartMsg startMsg;
+    auto record = SubSpawnRecord::CreateSubSpawnRecord(1000, 20000, "com.test.app", startMsg);
+    EXPECT_NE(record, nullptr);
+    EXPECT_EQ(record->GetAppPid(), 1000);
+    EXPECT_EQ(record->GetUid(), 20000);
+    EXPECT_EQ(record->GetBundleName(), "com.test.app");
+}
+
+/**
+ * @tc.name: SubSpawnRecord_Create_002
+ * @tc.desc: Test SubSpawnRecord creation with invalid params returns nullptr
+ */
+HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_Create_002, TestSize.Level1)
+{
+    AppSpawnStartMsg startMsg;
+    EXPECT_EQ(SubSpawnRecord::CreateSubSpawnRecord(0, 20000, "com.test.app", startMsg), nullptr);
+    EXPECT_EQ(SubSpawnRecord::CreateSubSpawnRecord(1000, 20000, "", startMsg), nullptr);
+}
+
+/**
+ * @tc.name: SubSpawnRecord_State_001
+ * @tc.desc: Test SubSpawnRecord state transitions
+ */
+HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_State_001, TestSize.Level1)
+{
+    AppSpawnStartMsg startMsg;
+    auto record = SubSpawnRecord::CreateSubSpawnRecord(1000, 20000, "com.test.app", startMsg);
+    ASSERT_NE(record, nullptr);
+    EXPECT_FALSE(record->IsReady());
+    EXPECT_FALSE(record->IsCreating());
+    EXPECT_FALSE(record->IsTerminating());
+    record->SetState(SubSpawnState::CREATING);
+    EXPECT_TRUE(record->IsCreating());
+    EXPECT_FALSE(record->IsReady());
+    record->SetState(SubSpawnState::READY);
+    EXPECT_TRUE(record->IsReady());
+    EXPECT_FALSE(record->IsCreating());
+    record->SetState(SubSpawnState::TERMINATING);
+    EXPECT_TRUE(record->IsTerminating());
+    EXPECT_FALSE(record->IsReady());
+}
+
+/**
+ * @tc.name: SubSpawnRecord_ChildPids_001
+ * @tc.desc: Test SubSpawnRecord child pid tracking
+ */
+HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_ChildPids_001, TestSize.Level1)
+{
+    AppSpawnStartMsg startMsg;
+    auto record = SubSpawnRecord::CreateSubSpawnRecord(1000, 20000, "com.test.app", startMsg);
+    ASSERT_NE(record, nullptr);
+    EXPECT_EQ(record->GetChildProcessCount(), 0u);
+    EXPECT_FALSE(record->HasChildProcesses());
+    record->AddChildPid(3000);
+    record->AddChildPid(3001);
+    EXPECT_EQ(record->GetChildProcessCount(), 2u);
+    EXPECT_TRUE(record->HasChildProcesses());
+    record->RemoveChildPid(3000);
+    EXPECT_EQ(record->GetChildProcessCount(), 1u);
+    record->RemoveChildPid(3001);
+    EXPECT_EQ(record->GetChildProcessCount(), 0u);
+    EXPECT_FALSE(record->HasChildProcesses());
+}
+
+/**
+ * @tc.name: SubSpawnRecord_Diagnostics_001
+ * @tc.desc: Test SubSpawnRecord kill reason and exit signal
+ */
+HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_Diagnostics_001, TestSize.Level1)
+{
+    AppSpawnStartMsg startMsg;
+    auto record = SubSpawnRecord::CreateSubSpawnRecord(1000, 20000, "com.test.app", startMsg);
+    ASSERT_NE(record, nullptr);
+    EXPECT_EQ(record->GetKillReason(), "");
+    EXPECT_EQ(record->GetExitSignal(), -1);
+    record->SetKillReason("app_died");
+    record->SetExitSignal(9);
+    EXPECT_EQ(record->GetKillReason(), "app_died");
+    EXPECT_EQ(record->GetExitSignal(), 9);
 }

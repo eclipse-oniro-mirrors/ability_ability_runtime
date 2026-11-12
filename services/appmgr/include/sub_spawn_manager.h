@@ -26,49 +26,12 @@
 #include "app_spawn_client.h"
 #include "child_process_options.h"
 #include "nocopyable.h"
+#include "sub_spawn_record.h"
 
 namespace OHOS {
 namespace AppExecFwk {
 
 class AppRunningRecord;
-
-class SubSpawnRecord {
-public:
-    static std::shared_ptr<SubSpawnRecord> CreateSubSpawnRecord(pid_t appPid, int32_t uid,
-        const std::string &bundleName);
-
-    pid_t GetSubSpawnPid() const;
-    void SetSubSpawnPid(pid_t pid);
-    pid_t GetAppPid() const;
-    int32_t GetUid() const;
-    std::string GetBundleName() const;
-    std::string GetSocketName() const;
-    void SetSocketName(const std::string &name);
-    int32_t GetChildProcessCount() const;
-    void IncrementChildProcessCount();
-    void DecrementChildProcessCount();
-    bool IsIdleTimerActive() const;
-    void SetIdleTimerActive(bool active);
-    bool IsTerminating() const;
-    void SetTerminating(bool terminating);
-    bool IsCreating() const;
-    void SetCreating(bool creating);
-    bool IsReady() const;
-
-private:
-    SubSpawnRecord(pid_t appPid, int32_t uid, const std::string &bundleName);
-    DISALLOW_COPY_AND_MOVE(SubSpawnRecord);
-
-    pid_t subSpawnPid_ = 0;
-    pid_t appPid_ = 0;
-    int32_t uid_ = 0;
-    std::string bundleName_;
-    std::string socketName_;
-    int32_t childProcessCount_ = 0;
-    bool idleTimerActive_ = false;
-    bool terminating_ = false;
-    bool creating_ = false;
-};
 
 class SubSpawnManager {
 public:
@@ -83,9 +46,9 @@ public:
 
     void OnSubSpawnExited(pid_t subSpawnPid);
 
-    void OnChildProcessCreated(pid_t appPid);
+    void OnChildProcessCreated(pid_t appPid, pid_t childPid);
 
-    void OnChildProcessExited(pid_t appPid);
+    void OnChildProcessExited(pid_t appPid, pid_t childPid);
 
     void OnAppProcessDied(pid_t appPid);
 
