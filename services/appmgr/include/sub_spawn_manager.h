@@ -27,6 +27,7 @@
 #include "child_process_options.h"
 #include "nocopyable.h"
 #include "sub_spawn_record.h"
+#include "task_handler_wrap.h"
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -74,6 +75,7 @@ private:
     std::map<pid_t /*appPid*/, std::shared_ptr<SubSpawnRecord>> subSpawnMap_;
     std::map<pid_t /*subSpawnPid*/, std::shared_ptr<SubSpawnRecord>> pidToRecordMap_;
     std::mutex mutex_;
+    std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler_;
 };
 
 } // namespace AppExecFwk

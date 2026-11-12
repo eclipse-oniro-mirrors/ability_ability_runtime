@@ -1060,18 +1060,3 @@ bool AppUtils::IsBopdOrRescueMode()
 }
 }  // namespace AAFwk
 }  // namespace OHOS
-
-extern "C" {
-bool IsSupportSubSpawn(void);
-}
-
-namespace OHOS {
-namespace AAFwk {
-bool AppUtils::IsSupportSubSpawn()
-{
-    bool result = IsSupportSubSpawn();
-    TAG_LOGD(AAFwkTag::DEFAULT, "IsSupportSubSpawn: %{public}d", result);
-    return result;
-}
-}  // namespace AAFwk
-}  // namespace OHOS

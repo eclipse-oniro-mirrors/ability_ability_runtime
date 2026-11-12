@@ -35,6 +35,23 @@ enum class SubSpawnState : int32_t {
     TERMINATING,
 };
 
+enum class SubSpawnErrorCode : int32_t {
+    ERR_OK = 0,
+    ERR_DEVICE_NOT_SUPPORT,
+    ERR_PRELOAD_SO_LIST_EMPTY,
+    ERR_NOT_ISOLATED_MODE,
+    ERR_CREATING,
+    ERR_TERMINATING,
+    ERR_SOCKET_NAME_EMPTY,
+    ERR_SOCKET_CONNECT_FAILED,
+    ERR_MSG_CREATE_FAILED,
+    ERR_MSG_FILL_FAILED,
+    ERR_SEND_FAILED,
+    ERR_FORK_FAILED,
+    ERR_CREATE_FAILED,
+    ERR_APP_DIED_DURING_CREATE,
+};
+
 class SubSpawnRecord {
 public:
     static std::shared_ptr<SubSpawnRecord> CreateSubSpawnRecord(pid_t appPid, int32_t uid,
