@@ -1216,24 +1216,32 @@ void AppStateObserverManager::OnSubSpawnProcessCreated(pid_t pid, const std::str
     int32_t uid, const std::string &processName)
 {
     auto data = std::make_shared<ProcessData>();
+    if (data == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "OnSubSpawnProcessCreated: null data");
+        return;
+    }
     data->pid = pid;
     data->bundleName = bundleName;
     data->uid = uid;
     data->processName = processName;
     data->processType = ProcessType::CHILD;
-    HandleOnProcessCreated(data, BundleType::APP);
+    HandleOnProcessCreated(*data, BundleType::APP);
 }
 
 void AppStateObserverManager::OnSubSpawnProcessDied(pid_t pid, const std::string &bundleName,
     int32_t uid, const std::string &processName)
 {
     auto data = std::make_shared<ProcessData>();
+    if (data == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "OnSubSpawnProcessDied: null data");
+        return;
+    }
     data->pid = pid;
     data->bundleName = bundleName;
     data->uid = uid;
     data->processName = processName;
     data->processType = ProcessType::CHILD;
-    HandleOnProcessDied(data, BundleType::APP);
+    HandleOnProcessDied(*data, BundleType::APP);
 }
 
 std::shared_ptr<ProcessData> AppStateObserverManager::WrapProcessData(
