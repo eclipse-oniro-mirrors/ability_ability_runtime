@@ -1220,7 +1220,7 @@ void AppStateObserverManager::OnSubSpawnProcessCreated(pid_t pid, const std::str
     data->bundleName = bundleName;
     data->uid = uid;
     data->processName = processName;
-    data->processType = "subspawn";
+    data->processType = ProcessType::CHILD;
     HandleOnProcessCreated(data, BundleType::APP);
 }
 
@@ -1232,7 +1232,7 @@ void AppStateObserverManager::OnSubSpawnProcessDied(pid_t pid, const std::string
     data->bundleName = bundleName;
     data->uid = uid;
     data->processName = processName;
-    data->processType = "subspawn";
+    data->processType = ProcessType::CHILD;
     HandleOnProcessDied(data, BundleType::APP);
 }
 
