@@ -13,15 +13,16 @@
  * limitations under the License.
  */
 
+#include <cstring>
 #include <gtest/gtest.h>
 
 #define private public
 #define protected public
 #include "application_env_impl.h"
+#include "application_context.h"
 #undef private
 #undef protected
 #include "application_env.h"
-#include "application_context.h"
 #include "context_impl.h"
 #include "mock_application.h"
 #include "app_mgr_constants.h"
@@ -236,6 +237,69 @@ HWTEST_F(ApplicationEnvImplTest, AppExecFwk_ApplicationEnvTest_SetAppInfo_0700, 
     ApplicationEnvImpl::GetInstance()->SetAppInfo(applicationInfo, preloadMode);
     EXPECT_EQ(ApplicationEnvImpl::GetInstance()->GetAppPreloadType(), 4);
     GTEST_LOG_(INFO) << "AppExecFwk_ApplicationEnvTest_SetAppInfo_0300 end";
+}
+
+/**
+ * @tc.number: AppExecFwk_ApplicationEnvTest_InvokeAppFreezeFilterCallback_0100
+ * @tc.name: InvokeAppFreezeFilterCallback null buffer
+ * @tc.desc: InvokeAppFreezeFilterCallback returns false when eventConfigKey is nullptr.
+ */
+HWTEST_F(ApplicationEnvImplTest, AppExecFwk_ApplicationEnvTest_InvokeAppFreezeFilterCallback_0100,
+         Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_ApplicationEnvTest_InvokeAppFreezeFilterCallback_0100 start";
+    EXPECT_FALSE(InvokeAppFreezeFilterCallback(1, 1, nullptr, 64));
+    GTEST_LOG_(INFO) << "AppExecFwk_ApplicationEnvTest_InvokeAppFreezeFilterCallback_0100 end";
+}
+
+/**
+ * @tc.number: AppExecFwk_ApplicationEnvTest_InvokeAppFreezeFilterCallback_0200
+ * @tc.name: InvokeAppFreezeFilterCallback invalid buffer size
+ * @tc.desc: InvokeAppFreezeFilterCallback returns false when keyBufSize <= 0.
+ */
+HWTEST_F(ApplicationEnvImplTest, AppExecFwk_ApplicationEnvTest_InvokeAppFreezeFilterCallback_0200,
+         Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_ApplicationEnvTest_InvokeAppFreezeFilterCallback_0200 start";
+    char buf[64] = "user.event_config.jsvm_heap_log_enable";
+    EXPECT_FALSE(InvokeAppFreezeFilterCallback(1, 1, buf, 0));
+    EXPECT_FALSE(InvokeAppFreezeFilterCallback(1, 1, buf, -1));
+    GTEST_LOG_(INFO) << "AppExecFwk_ApplicationEnvTest_InvokeAppFreezeFilterCallback_0200 end";
+}
+
+/**
+ * @tc.number: AppExecFwk_ApplicationEnvTest_InvokeAppFreezeFilterCallback_0300
+ * @tc.name: InvokeAppFreezeFilterCallback no callback registered
+ * @tc.desc: InvokeAppFreezeFilterCallback returns false when no callback is registered.
+ */
+HWTEST_F(ApplicationEnvImplTest, AppExecFwk_ApplicationEnvTest_InvokeAppFreezeFilterCallback_0300,
+         Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_ApplicationEnvTest_InvokeAppFreezeFilterCallback_0300 start";
+    auto applicationContext = OHOS::AbilityRuntime::ApplicationContext::GetInstance();
+    ASSERT_NE(applicationContext, nullptr);
+    applicationContext->appFreezeFilterCallback_ = nullptr;
+    char buf[64] = "user.event_config.jsvm_heap_log_enable";
+    EXPECT_FALSE(InvokeAppFreezeFilterCallback(1, 1, buf, 64));
+    GTEST_LOG_(INFO) << "AppExecFwk_ApplicationEnvTest_InvokeAppFreezeFilterCallback_0300 end";
+}
+
+/**
+ * @tc.number: AppExecFwk_ApplicationEnvTest_InvokeAppFreezeFilterCallback_0400
+ * @tc.name: InvokeAppFreezeFilterCallback callback returns false
+ * @tc.desc: InvokeAppFreezeFilterCallback returns false when callback returns false.
+ */
+HWTEST_F(ApplicationEnvImplTest, AppExecFwk_ApplicationEnvTest_InvokeAppFreezeFilterCallback_0400,
+         Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_ApplicationEnvTest_InvokeAppFreezeFilterCallback_0400 start";
+    auto applicationContext = OHOS::AbilityRuntime::ApplicationContext::GetInstance();
+    ASSERT_NE(applicationContext, nullptr);
+    auto cb = [](int32_t, bool, std::string &) -> bool { return false; };
+    applicationContext->appFreezeFilterCallback_ = cb;
+    char buf[64] = "user.event_config.jsvm_heap_log_enable";
+    EXPECT_FALSE(InvokeAppFreezeFilterCallback(1, 1, buf, 64));
+    GTEST_LOG_(INFO) << "AppExecFwk_ApplicationEnvTest_InvokeAppFreezeFilterCallback_0400 end";
 }
 
 }  // namespace AppExecFwk

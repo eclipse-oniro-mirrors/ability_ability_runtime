@@ -1486,6 +1486,16 @@ void ApplicationContext::RegisterAppGetSpecifiedRuntime(AppGetSpecifiedRuntimeCa
     appGetSpecifiedRuntimeCallback_ = appGetSpecifiedRuntimeCallback;
 }
 
+void ApplicationContext::RegisterAppFreezeFilterCallback(AppFreezeFilterCallback appFreezeFilterCallback)
+{
+    appFreezeFilterCallback_ = appFreezeFilterCallback;
+}
+
+AppFreezeFilterCallback ApplicationContext::GetAppFreezeFilterCallback() const
+{
+    return appFreezeFilterCallback_;
+}
+
 #ifdef SUPPORT_GRAPHICS
 void ApplicationContext::RegisterGetDisplayConfig(GetDisplayConfigCallback getDisplayConfigCallback)
 {

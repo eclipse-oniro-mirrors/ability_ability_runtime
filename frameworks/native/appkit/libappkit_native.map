@@ -41,6 +41,7 @@
       *ExtNativeStartupTask*;
       *GetAppPreload*;
       *ClearAppPreload*;
+      *InvokeAppFreezeFilterCallback*;
     };
     extern "C" {
       Ffi*;
