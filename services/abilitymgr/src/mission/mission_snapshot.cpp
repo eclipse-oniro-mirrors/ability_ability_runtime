@@ -15,7 +15,7 @@
 
 #include "mission_snapshot.h"
 #ifdef SUPPORT_SCREEN
-#include "pixel_map_bridge.h"
+#include "pixel_map.h"
 #endif //SUPPORT_SCREEN
 
 namespace OHOS {
@@ -28,16 +28,11 @@ bool MissionSnapshot::ReadFromParcel(Parcel &parcel)
         return false;
     }
     topAbility = *ability;
-    auto &bridge = PixelMapBridge::GetInstance();
-    Media::PixelMap *rawPtr = bridge.ReadPixelMapFromParcel(&parcel);
-    if (rawPtr == nullptr) {
+    std::shared_ptr<Media::PixelMap> pixelMap(parcel.ReadParcelable<Media::PixelMap>());
+    if (pixelMap == nullptr) {
         return false;
     }
-    // Route the delete back through the bridge so it runs inside the wrap
-    // SO (where the PixelMap was allocated), keeping allocation/release
-    // matched and CFI friendly.
-    snapshot = std::shared_ptr<Media::PixelMap>(rawPtr,
-        [&bridge](Media::PixelMap *p) { bridge.DestroyPixelMap(p); });
+    snapshot = pixelMap;
 #endif
     return true;
 }
@@ -62,7 +57,7 @@ bool MissionSnapshot::Marshalling(Parcel &parcel) const
     if (!parcel.WriteParcelable(&topAbility)) {
         return false;
     }
-    if (!PixelMapBridge::GetInstance().WritePixelMapToParcel(snapshot.get(), &parcel)) {
+    if (!parcel.WriteParcelable(snapshot.get())) {
         return false;
     }
 #endif

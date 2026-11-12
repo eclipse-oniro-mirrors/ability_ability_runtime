@@ -17,7 +17,7 @@
 
 #include "hilog_tag_wrapper.h"
 #ifdef SUPPORT_SCREEN
-#include "pixel_map_bridge.h"
+#include "pixel_map.h"
 #endif //SUPPORT_SCREEN
 
 namespace OHOS {
@@ -77,13 +77,7 @@ int MissionListenerStub::OnMissionIconUpdatedInner(MessageParcel &data, MessageP
 {
 #ifdef SUPPORT_SCREEN
     auto missionId = data.ReadInt32();
-    std::shared_ptr<Media::PixelMap> icon;
-    auto &bridge = PixelMapBridge::GetInstance();
-    Media::PixelMap *rawPtr = bridge.ReadPixelMapFromParcel(&data);
-    if (rawPtr != nullptr) {
-        icon = std::shared_ptr<Media::PixelMap>(rawPtr,
-            [&bridge](Media::PixelMap *p) { bridge.DestroyPixelMap(p); });
-    }
+    std::shared_ptr<Media::PixelMap> icon(data.ReadParcelable<Media::PixelMap>());
     OnMissionIconUpdated(missionId, icon);
     return NO_ERROR;
 #else

@@ -216,7 +216,6 @@ ohos_shared_library("ability_manager") {
   ]
 
   if (ability_runtime_graphics) {
-    deps += [ "${ability_runtime_services_path}/common:image_native_bridge" ]
     external_deps += [
       "ability_base:session_info",
       "image_framework:image_native",
@@ -314,9 +313,8 @@ ohos_shared_library("mission_info") {
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
   ]
-  deps = []
   if (ability_runtime_graphics) {
-    deps += [ "${ability_runtime_services_path}/common:image_native_bridge" ]
+    external_deps += [ "image_framework:image_native" ]
   }
 
   cflags_cc = []
@@ -442,11 +440,10 @@ ohos_shared_library("start_window_option") {
     "napi:ace_napi",
   ]
 
-  deps = []
   if (ability_runtime_graphics &&
       ability_runtime_start_window_options_with_pixelmap) {
     defines = [ "START_WINDOW_OPTIONS_WITH_PIXELMAP" ]
-    deps += [ "${ability_runtime_services_path}/common:image_native_bridge" ]
+    external_deps += [ "image_framework:image_native" ]
   }
 
   cflags_cc = []

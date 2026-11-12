@@ -281,10 +281,10 @@ ohos_shared_library("abilityms") {
 
   if (ability_runtime_graphics) {
     defines += [ "SUPPORT_GRAPHICS" ]
-    deps += [ "${ability_runtime_services_path}/common:image_native_bridge" ]
     external_deps += [
       "ability_base:session_info",
       "i18n:intl_util",
+      "image_framework:image_native",
       "input:libmmi-client",
       "window_manager:libdm",
       "window_manager:libmodal_system_ui_extension_client",
@@ -482,11 +482,11 @@ ohos_static_library("abilityms_static") {
 
   if (ability_runtime_graphics) {
     defines += [ "SUPPORT_GRAPHICS" ]
-    deps += [ "${ability_runtime_services_path}/common:image_native_bridge" ]
     external_deps += [
       "ability_base:session_info",
       "i18n:intl_util",
       "icu:shared_icuuc",
+      "image_framework:image_native",
       "input:libmmi-client",
       "window_manager:libdm",
       "window_manager:libmodal_system_ui_extension_client",

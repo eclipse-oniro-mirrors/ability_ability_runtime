@@ -504,7 +504,6 @@ group("unittest") {
       "pending_want_record_test:unittest",
       "pending_want_test:unittest",
       "permission_verification_test:unittest",
-      "pixel_map_bridge_test:unittest",
       "preload_manager_service_test:unittest",
       "preload_ui_extension_execute_callback_test:unittest",
       "preload_uiext_state_observer_test:unittest",
