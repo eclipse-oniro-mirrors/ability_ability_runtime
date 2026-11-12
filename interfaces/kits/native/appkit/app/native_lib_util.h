@@ -49,7 +49,8 @@ std::string GetDefaultAppLibPath(const std::string &nativeLibraryPath);
 
 void GetDefaultNamespacePaths(const BundleInfo &bundleInfo, AppLibPathMap &appLibPaths);
 
-void GetModuleSoPaths(const BundleInfo &bundleInfo, const HspList &hspList,
+void GetModuleSoPaths(const BundleInfo &bundleInfo,
+    const std::vector<BaseSharedBundleInfo> &hspList,
     AppLibPathMap &appLibPaths);
 }  // namespace AppExecFwk
 }  // namespace OHOS

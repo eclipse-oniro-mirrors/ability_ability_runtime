@@ -82,7 +82,7 @@ struct AppSpawnStartMsg {
     int32_t gid;
     int32_t appUid;
     int32_t pid;
-    int32_t code = 0; // 0: MSG_APP_SPAWN; 1: MSG_SPAWN_NATIVE_PROCESS; 2: MSG_GET_RENDER_TERMINATION_STATUS; MSG_SUBSPAWN_CREATE; MSG_SUBSPAWN_SHUTDOWN
+    int32_t code = 0; // 0: MSG_APP_SPAWN; 1: MSG_SPAWN_NATIVE_PROCESS; 2: MSG_GET_RENDER_TERMINATION_STATUS; 16: MSG_SUBSPAWN_CREATE; 17: MSG_SUBSPAWN_SHUTDOWN
     int32_t bundleIndex;   // when dlp launch another app used, default is 0
     int32_t maxChildProcess = 0;
 #ifdef SUPPORT_CHILD_PROCESS

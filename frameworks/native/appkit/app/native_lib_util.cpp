@@ -181,7 +181,8 @@ void GetDefaultNamespacePaths(const BundleInfo &bundleInfo, AppLibPathMap &appLi
         appLibPaths["default"].size());
 }
 
-void GetModuleSoPaths(const BundleInfo &bundleInfo, const HspList &hspList,
+void GetModuleSoPaths(const BundleInfo &bundleInfo,
+    const std::vector<BaseSharedBundleInfo> &hspList,
     AppLibPathMap &appLibPaths)
 {
     std::string patchNativeLibraryPath =
