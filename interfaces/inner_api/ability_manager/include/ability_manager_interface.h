@@ -2950,7 +2950,7 @@ public:
     }
 
     /**
-     * @brief Set app recovery galg.
+     * @brief Set app recovery flag.
      * @param token Caller ability token.
      * @param flag App recovery flag.
      * @return Returns ERR_OK on success, others on failure.

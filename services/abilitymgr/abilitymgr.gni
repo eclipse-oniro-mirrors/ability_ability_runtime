@@ -186,7 +186,6 @@ abilityms_files = [
   "src/utils/app_mgr_util.cpp",
   "src/utils/dms_util.cpp",
   "src/utils/dump_utils.cpp",
-  "src/utils/exit_reason_util.cpp",
   "src/utils/extension_permissions_util.cpp",
   "src/utils/hmsf_utils.cpp",
   "src/utils/keep_alive_utils.cpp",

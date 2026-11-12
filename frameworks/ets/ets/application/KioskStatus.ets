@@ -22,5 +22,5 @@ export interface KioskStatus{
 export default class KioskStatusInner implements KioskStatus{
     isKioskMode: boolean;
     kioskBundleUid: int;
-    kioskBundleName: string = "";
+    kioskBundleName: string = '';
 }

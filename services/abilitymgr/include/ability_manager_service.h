@@ -993,11 +993,11 @@ public:
         return taskHandler_;
     }
 
-    int32_t GetRfd() const
+    int GetRfd() const
     {
         return rFd_;
     }
-    int32_t GetWfd() const
+    int GetWfd() const
     {
         return wFd_;
     }
@@ -2326,11 +2326,11 @@ public:
 
     int32_t NotifyInsightIntentExecute(uint64_t intentId) override;
 
+    int32_t GetDynamicAgentCardsForMigration(std::string &jsonStr) override;
+
     int32_t RegisterWillInsightIntentExecuteCallback(const sptr<IRemoteObject> &callback) override;
 
     int32_t UnregisterWillInsightIntentExecuteCallback() override;
-
-    int32_t GetDynamicAgentCardsForMigration(std::string &jsonStr) override;
 
     int32_t AttributeTaskForA2AReusedConnectionRecord(const Want &want,
         sptr<IAbilityConnection> connect) override;
@@ -3894,10 +3894,10 @@ private:
     ffrt::mutex shouldBlockAllAppStartMutex_;
     mutable ffrt::mutex timeoutMapLock_;
     std::mutex whiteListMutex_;
-    ffrt::mutex delayedStartPidsLock_;
-    std::unordered_set<int32_t> delayedStartPids_;
     std::mutex floodAttackMutex_;
     std::unordered_map<int32_t, std::deque<int64_t>> floodAttackStatistics_;
+    ffrt::mutex delayedStartPidsLock_;
+    std::unordered_set<int32_t> delayedStartPids_;
 
     std::mutex prepareTermiationCallbackMutex_;
     std::map<std::string, sptr<IPrepareTerminateCallback>> prepareTermiationCallbacks_;

@@ -139,7 +139,6 @@ constexpr int32_t CALL_TO_BACKGROUND = 1;
 constexpr int32_t CALL_TO_FOREGROUND = 2;
 const bool BETA_VERSION = OHOS::system::GetParameter("const.logsystem.versiontype", "unknown") == "beta";
 
-
 auto g_addLifecycleEventTask = [](sptr<Token> token, std::string &methodName) {
     CHECK_POINTER_LOG(token, "token is nullptr");
     std::string entry = std::string("AbilityRecord::") + methodName + "; the " + methodName + " lifecycle starts.";
@@ -223,6 +222,7 @@ void AbilityRecord::Init(const AbilityRequest &abilityRequest)
 
     lifecycleDeal_ = std::make_unique<LifecycleDeal>();
     token_ = sptr<Token>::MakeSptr(weak_from_this());
+
     if (abilityInfo_.applicationInfo.isLauncherApp) {
         isLauncherAbility_ = true;
     }
@@ -387,8 +387,8 @@ int AbilityRecord::LoadAbility(bool isShellCall, bool isStartupHide, pid_t calli
         auto userId = abilityInfo_.uid / BASE_USER_RANGE;
         std::string callerBundleName = firstCallerBundleName_.empty() ? "_system" : firstCallerBundleName_;
         ffrt::submit([this, appInfo = abilityInfo_.applicationInfo, userId, callerBundleName]() {
-                AbilityEventUtil::HandleBundleFirstLaunch(appInfo, userId, callerBundleName);
-            }, ffrt::task_attr().name("HandleBundleFirstLaunch"));
+            AbilityEventUtil::HandleBundleFirstLaunch(appInfo, userId, callerBundleName);
+        }, ffrt::task_attr().name("HandleBundleFirstLaunch"));
     }
 
     return result;
@@ -1058,7 +1058,7 @@ void AbilityRecord::SetAbilityStateInner(AbilityState state)
         if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
             auto sessionInfo = GetSessionInfo();
             if (sessionInfo == nullptr) {
-                TAG_LOGE(AAFwkTag::ABILITYMGR, "null sessionInfo");
+                TAG_LOGE(AAFwkTag::ABILITYMGR, "nullSess");
                 return;
             }
             int32_t persistentId = sessionInfo->persistentId;
@@ -2558,7 +2558,7 @@ void AbilityRecord::UpdateSessionInfo(sptr<IRemoteObject> sessionToken)
     {
         std::lock_guard guard(sessionLock_);
         if (sessionInfo_ == nullptr) {
-            TAG_LOGW(AAFwkTag::ABILITYMGR, "null sessionInfo_");
+            TAG_LOGW(AAFwkTag::ABILITYMGR, "nullSess_");
             return;
         }
         sessionInfo_->sessionToken = sessionToken;
@@ -3208,7 +3208,7 @@ bool AbilityRecord::IsAbilityWindowReady()
 void AbilityRecord::SetAbilityWindowState(const sptr<SessionInfo> &sessionInfo, WindowCommand winCmd, bool isFinished)
 {
     if (sessionInfo == nullptr) {
-        TAG_LOGW(AAFwkTag::ABILITYMGR, "null sessionInfo");
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "nullSess");
         return;
     }
     if (isFinished) {
@@ -3517,7 +3517,7 @@ void AbilityRecord::SendAppStartupTypeEvent(const AppExecFwk::AppStartType start
 void AbilityRecord::AddUIExtensionLaunchTimestamp()
 {
     if (sessionInfo_ == nullptr) {
-        TAG_LOGW(AAFwkTag::UI_EXT, "null sessionInfo_");
+        TAG_LOGW(AAFwkTag::UI_EXT, "nullSess_");
         return;
     }
     if (sessionInfo_->uiExtensionUsage != AAFwk::UIExtensionUsage::MODAL) {

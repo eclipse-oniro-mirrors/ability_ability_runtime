@@ -1151,12 +1151,7 @@ enum {
     /**
      * Result (2099221) for skill execute target process died.
      */
-    ERR_SKILL_EXECUTE_TARGET_DIED = 2099221,
-
-    /**
-     * Result (2099411) for not support screen.
-     */
-    ERR_NOT_SUPPORT_SCREEN = 2099411,
+    ERR_SKILL_EXECUTE_TARGET_DIED = 2099221, 
 
     ERR_MODULAR_OBJECT_DISABLED = 2099412,
 

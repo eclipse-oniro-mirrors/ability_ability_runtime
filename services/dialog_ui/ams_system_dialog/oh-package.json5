@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 {
-  "modelVersion": "6.0.0",
   "license": "",
   "author": "",
   "name": "myapplication",
   "description": "Please describe the basic information.",
   "main": "",
   "version": "1.0.0",
-  "dependencies": {}
+  "dependencies": {},
+  "modelVersion": "6.0.0"
 }

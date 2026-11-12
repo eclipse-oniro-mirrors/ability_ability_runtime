@@ -1,4 +1,4 @@
-/*
++/*
  * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -133,6 +133,7 @@ int32_t AppExitReasonDataManager::SetAppExitReason(const std::string &bundleName
         TAG_LOGW(AAFwkTag::ABILITYMGR, "invalid value");
         return ERR_INVALID_VALUE;
     }
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "bundleName: %{public}s, tokenId: %{private}u", bundleName.c_str(), accessTokenId);
     std::string keyStr = std::to_string(accessTokenId);
     {
         std::lock_guard lock(kvStorePtrMutex_);
@@ -145,7 +146,7 @@ int32_t AppExitReasonDataManager::SetAppExitReason(const std::string &bundleName
     DistributedKv::Key key(keyStr);
     DistributedKv::Value value = ConvertAppExitReasonInfoToValue(abilityList, exitReason, processInfo, withKillMsg);
     PutAsync(key, value);
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "bundleName: %{public}s, tokenId: %{private}u", bundleName.c_str(), accessTokenId);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "set reason info: %{public}s", value.ToString().c_str());
     return ERR_OK;
 }
 
@@ -164,7 +165,8 @@ int32_t AppExitReasonDataManager::DeleteAppExitReason(const std::string &bundleN
     return DeleteAppExitReason(bundleName, accessTokenId);
 }
 
-int32_t AppExitReasonDataManager::DeleteAppExitReason(const std::string &bundleName, uint32_t accessTokenId)
+int32_t AppExitReasonDataManager::DeleteAppExitReason(const std::string &bundleName, uint32_t accessTokenId,
+    int32_t uid)
 {
     auto accessTokenIdStr = std::to_string(accessTokenId);
     if (bundleName.empty() || accessTokenId == Security::AccessToken::INVALID_TOKENID) {
@@ -315,7 +317,6 @@ int32_t AppExitReasonDataManager::RecordSignalReason(int32_t pid, int32_t uid, i
         TAG_LOGE(AAFwkTag::ABILITYMGR, "not found, pid: %{public}d, uid: %{public}d", pid, uid);
         return AAFwk::ERR_GET_EXIT_INFO_FAILED;
     }
-    auto ret = 0;
     AAFwk::ExitReason exitReason = {};
     exitReason.reason = AAFwk::REASON_NORMAL;
     exitReason.subReason = signal;
@@ -326,13 +327,12 @@ int32_t AppExitReasonDataManager::RecordSignalReason(int32_t pid, int32_t uid, i
             return 0;
         }
     }
-    ret = SetAppExitReason(cacheInfo.bundleName, accessTokenId, cacheInfo.abilityNames, exitReason,
-        cacheInfo.exitInfo, false);
-    if (ret != 0) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "SetAppExitReason failed, ret: %{public}d", ret);
-        return AAFwk::ERR_RECORD_SIGNAL_REASON_FAILED;
+    if (cacheInfo.abilityNames.empty()) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "empty abilityNames");
+        return 0;
     }
-    return ret;
+    return SetAppExitReason(cacheInfo.bundleName, accessTokenId, cacheInfo.abilityNames, exitReason,
+        cacheInfo.exitInfo, false);
 }
 
 DistributedKv::Value AppExitReasonDataManager::ConvertAppExitReasonInfoToValue(

@@ -228,6 +228,7 @@ int32_t ProcessManager::CreateChildProcess(const ExecToolParam &param, const std
     for (const auto &element : tmpExecArgs) {
         TAG_LOGI(AAFwkTag::CLI_TOOL, "%{public}s", element.c_str());
     }
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "sandboxConfig: %{public}s", sandboxConfig.c_str());
     // PARENT (pre-fork): build the child environment here so the child only passes
     // the prebuilt array to execve (async-signal-safe, no malloc in child).
     std::vector<std::string> envStorage;

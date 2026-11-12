@@ -112,8 +112,8 @@ bool ImplicitStartProcessor::IsImplicitStartAction(const Want &want)
     }
 
     if (want.GetActionRef() != BLACK_ACTION_SELECT_DATA &&
-        !want.HasParameter(AppExecFwk::INSIGHT_INTENT_EXECUTE_OPENLINK_FLAG)) {//intent openlink do not Implicit compare
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "implicit start, action:%{public}s", want.GetActionRef().data());
+        !want.HasParameter(AppExecFwk::INSIGHT_INTENT_EXECUTE_OPENLINK_FLAG)) { //intent openLink only one ability
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "implicit start, action:%{public}s", want.GetActionRef().c_str());
         return true;
     }
 
@@ -1095,7 +1095,6 @@ bool ImplicitStartProcessor::IsExistDefaultApp(int32_t userId, const std::string
 void ImplicitStartProcessor::SetTargetLinkInfo(const std::vector<AppExecFwk::SkillUriForAbilityAndExtension> &skillUri,
     Want &want)
 {
-    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     for (const auto& iter : skillUri) {
         if (iter.isMatch) {
             want.RemoveParam("send_to_erms_targetLinkFeature");

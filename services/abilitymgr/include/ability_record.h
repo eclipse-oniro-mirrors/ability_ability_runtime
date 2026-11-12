@@ -43,6 +43,7 @@
 #include "lifecycle_state_info.h"
 #include "sandbox_clone_params.h"
 #include "session_info.h"
+#include "start_specified_ability_params.h"
 #include "ui_ability_last_caller_info.h"
 #include "ui_extension_window_command.h"
 #include "uri.h"

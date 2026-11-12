@@ -393,7 +393,7 @@ int SystemDialogScheduler::GetSelectorDialogWantCommon(const std::vector<DialogA
             requestWant.SetParam(CALLER_TOKEN, callerToken);
         }
     }
-    if (ApplicationUtil::IsEnableAppGallerySelector() && Rosen::SceneBoardJudgement::IsSceneBoardEnabled() &&
+    if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled() &&
         isCallerStageBasedModel) {
         auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
         if (bundleMgrHelper == nullptr) {
