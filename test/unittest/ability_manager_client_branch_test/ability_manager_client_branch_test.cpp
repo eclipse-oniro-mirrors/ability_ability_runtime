@@ -18,6 +18,7 @@
 #define protected public
 #include "ability_manager_client.h"
 #include "ability_manager_stub_mock_test.h"
+#include "ability_manager_proxy.h"
 #include "ability_connect_manager.h"
 #include "ability_manager_interface.h"
 #undef private
@@ -2694,6 +2695,196 @@ HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_GetUIExtensionRoot
     auto result = client_->GetUIExtensionRootHostInfo(token, hostInfo, userId);
     EXPECT_EQ(result, ERR_OK);
     GTEST_LOG_(INFO) << "GetUIExtensionRootHostInfo_0100 end";
+}
+
+namespace {
+constexpr int32_t HOST_INFO_RECORD_ID = 12025;
+constexpr int32_t LEAF_RECORD_ID = 12042;
+constexpr int32_t HOST_INFO_PERSISTENT_ID = 100;
+
+UIExtensionHostInfo g_hostInfoReply;
+int32_t g_hostInfoReplyCode = ERR_OK;
+
+UIExtensionHostInfo MakeHostInfo(const char *bundle, const char *module, const char *ability,
+    const char *session, int32_t persistentId)
+{
+    UIExtensionHostInfo info;
+    info.elementName_.SetBundleName(bundle);
+    info.elementName_.SetModuleName(module);
+    info.elementName_.SetAbilityName(ability);
+    info.moduleName = module;
+    info.sessionName = session;
+    info.persistentId_ = persistentId;
+    return info;
+}
+
+// The mock transport writes a real UIExtensionHostInfo into the reply, so the case below runs the
+// production AbilityManagerProxy encoding/decoding (including the moduleName slot) end to end.
+int32_t InvokeSendRequestWithHostInfo(uint32_t code, MessageParcel &data, MessageParcel &reply, MessageOption &option)
+{
+    if (!reply.WriteParcelable(&g_hostInfoReply)) {
+        return -1;
+    }
+    if (!reply.WriteInt32(g_hostInfoReplyCode)) {
+        return -1;
+    }
+    if (!reply.WriteInt32(g_hostInfoReply.persistentId_)) {
+        return -1;
+    }
+    if (!reply.WriteString(g_hostInfoReply.moduleName)) {
+        return -1;
+    }
+    return 0;
+}
+
+int32_t InvokeSendRequestWithLegacyHostInfo(uint32_t code, MessageParcel &data, MessageParcel &reply,
+    MessageOption &option)
+{
+    if (!reply.WriteParcelable(&g_hostInfoReply)) {
+        return -1;
+    }
+    if (!reply.WriteInt32(g_hostInfoReplyCode)) {
+        return -1;
+    }
+    return 0;
+}
+} // namespace
+
+/**
+ * @tc.name: AbilityManagerClient_GetUIExtensionRootHostInfoById_0100
+ * @tc.desc: the request carries the expected IPC code and returns all host ElementName fields unchanged.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_GetUIExtensionRootHostInfoById_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetUIExtensionRootHostInfoById_0100 start";
+    client_->proxy_ = new AbilityManagerProxy(mock_);
+    g_hostInfoReply = MakeHostInfo("com.ohos.host", "entry", "MainAbility", "session_host", HOST_INFO_PERSISTENT_ID);
+    g_hostInfoReplyCode = ERR_OK;
+    EXPECT_CALL(*mock_, SendRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::GET_UI_EXTENSION_HOST_INFO_BY_ID), _, _, _))
+        .WillOnce(Invoke(InvokeSendRequestWithHostInfo));
+
+    UIExtensionHostInfo hostInfo;
+    auto ret = client_->GetUIExtensionRootHostInfoById(HOST_INFO_RECORD_ID, hostInfo);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(hostInfo.elementName_.GetBundleName(), "com.ohos.host");
+    EXPECT_EQ(hostInfo.elementName_.GetModuleName(), "entry");
+    EXPECT_EQ(hostInfo.elementName_.GetAbilityName(), "MainAbility");
+    EXPECT_EQ(hostInfo.moduleName, "entry");
+    GTEST_LOG_(INFO) << "GetUIExtensionRootHostInfoById_0100 end ret=" << ret;
+}
+
+/**
+ * @tc.name: AbilityManagerClient_GetUIExtensionRootHostInfoById_0200
+ * @tc.desc: session info is returned unchanged, and a host without a window session yields empty/0.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_GetUIExtensionRootHostInfoById_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetUIExtensionRootHostInfoById_0200 start";
+    client_->proxy_ = new AbilityManagerProxy(mock_);
+    g_hostInfoReply = MakeHostInfo("com.ohos.host", "entry", "MainAbility", "session_host", HOST_INFO_PERSISTENT_ID);
+    g_hostInfoReplyCode = ERR_OK;
+    EXPECT_CALL(*mock_, SendRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::GET_UI_EXTENSION_HOST_INFO_BY_ID), _, _, _))
+        .WillOnce(Invoke(InvokeSendRequestWithHostInfo));
+
+    UIExtensionHostInfo hostInfo;
+    EXPECT_EQ(client_->GetUIExtensionRootHostInfoById(HOST_INFO_RECORD_ID, hostInfo), ERR_OK);
+    EXPECT_EQ(hostInfo.sessionName, "session_host");
+    EXPECT_EQ(hostInfo.persistentId_, HOST_INFO_PERSISTENT_ID);
+
+    g_hostInfoReply = MakeHostInfo("com.ohos.host", "entry", "MainAbility", "", 0);
+    EXPECT_CALL(*mock_, SendRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::GET_UI_EXTENSION_HOST_INFO_BY_ID), _, _, _))
+        .WillOnce(Invoke(InvokeSendRequestWithHostInfo));
+    UIExtensionHostInfo noSession;
+    EXPECT_EQ(client_->GetUIExtensionRootHostInfoById(HOST_INFO_RECORD_ID, noSession), ERR_OK);
+    EXPECT_TRUE(noSession.sessionName.empty());
+    EXPECT_EQ(noSession.persistentId_, 0);
+    GTEST_LOG_(INFO) << "GetUIExtensionRootHostInfoById_0200 end";
+}
+
+/**
+ * @tc.name: AbilityManagerClient_GetUIExtensionRootHostInfoById_0300
+ * @tc.desc: querying the leaf id of an A->B->C chain returns the root host A without substitution.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_GetUIExtensionRootHostInfoById_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetUIExtensionRootHostInfoById_0300 start";
+    client_->proxy_ = new AbilityManagerProxy(mock_);
+    g_hostInfoReply = MakeHostInfo("com.ohos.host", "entry", "RootAbility", "session_root", HOST_INFO_PERSISTENT_ID);
+    g_hostInfoReplyCode = ERR_OK;
+    EXPECT_CALL(*mock_, SendRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::GET_UI_EXTENSION_HOST_INFO_BY_ID), _, _, _))
+        .WillOnce(Invoke(InvokeSendRequestWithHostInfo));
+
+    UIExtensionHostInfo hostInfo;
+    auto ret = client_->GetUIExtensionRootHostInfoById(LEAF_RECORD_ID, hostInfo);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(hostInfo.elementName_.GetBundleName(), "com.ohos.host");
+    EXPECT_EQ(hostInfo.elementName_.GetAbilityName(), "RootAbility");
+    EXPECT_NE(hostInfo.elementName_.GetAbilityName(), "MiddleAbility");
+    EXPECT_NE(hostInfo.elementName_.GetAbilityName(), "LeafAbility");
+    EXPECT_EQ(hostInfo.sessionName, "session_root");
+    EXPECT_EQ(hostInfo.persistentId_, HOST_INFO_PERSISTENT_ID);
+    GTEST_LOG_(INFO) << "GetUIExtensionRootHostInfoById_0300 end ret=" << ret;
+}
+
+/**
+ * @tc.name: AbilityManagerClient_GetUIExtensionRootHostInfoById_0400
+ * @tc.desc: a reply without the ById-only tail fields still decodes correctly; the extra fields fall back
+ *           to defaults instead of shifting the return code (mixed-version compatibility guard).
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_GetUIExtensionRootHostInfoById_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetUIExtensionRootHostInfoById_0400 start";
+    client_->proxy_ = new AbilityManagerProxy(mock_);
+    g_hostInfoReply = MakeHostInfo("com.ohos.host", "entry", "MainAbility", "session_host", HOST_INFO_PERSISTENT_ID);
+    g_hostInfoReplyCode = ERR_OK;
+    EXPECT_CALL(*mock_, SendRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::GET_UI_EXTENSION_HOST_INFO_BY_ID), _, _, _))
+        .WillOnce(Invoke(InvokeSendRequestWithLegacyHostInfo));
+
+    UIExtensionHostInfo hostInfo;
+    auto ret = client_->GetUIExtensionRootHostInfoById(HOST_INFO_RECORD_ID, hostInfo);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(hostInfo.elementName_.GetBundleName(), "com.ohos.host");
+    EXPECT_EQ(hostInfo.sessionName, "session_host");
+    EXPECT_EQ(hostInfo.persistentId_, 0);
+    EXPECT_TRUE(hostInfo.moduleName.empty());
+    GTEST_LOG_(INFO) << "GetUIExtensionRootHostInfoById_0400 end ret=" << ret;
+}
+
+/**
+ * @tc.name: AbilityManagerClient_UIExtensionHostInfoParcel_0100
+ * @tc.desc: UIExtensionHostInfo marshals only ElementName + sessionName, keeping the legacy wire layout of
+ *           GET_UI_EXTENSION_ROOT_HOST_INFO unchanged (persistentId/moduleName must not be serialized).
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_UIExtensionHostInfoParcel_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "UIExtensionHostInfoParcel_0100 start";
+    auto info = MakeHostInfo("com.ohos.host", "entry", "MainAbility", "session_host", HOST_INFO_PERSISTENT_ID);
+    MessageParcel parcel;
+    ASSERT_TRUE(info.Marshalling(parcel));
+
+    std::unique_ptr<UIExtensionHostInfo> parsed(UIExtensionHostInfo::Unmarshalling(parcel));
+    ASSERT_NE(parsed, nullptr);
+    EXPECT_EQ(parsed->elementName_.GetBundleName(), "com.ohos.host");
+    EXPECT_EQ(parsed->sessionName, "session_host");
+    EXPECT_EQ(parsed->persistentId_, 0);
+    EXPECT_TRUE(parsed->moduleName.empty());
+
+    int32_t extra = 0;
+    EXPECT_FALSE(parcel.ReadInt32(extra));
+    GTEST_LOG_(INFO) << "UIExtensionHostInfoParcel_0100 end";
 }
 
 /**

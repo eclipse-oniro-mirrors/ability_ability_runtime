@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -12,6 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include <cstdint>
+#include <cstdlib>
+#include <memory>
+#include <string>
 
 #include <gtest/gtest.h>
 
@@ -26,6 +31,11 @@ using namespace testing::ext;
 
 namespace OHOS {
 namespace AAFwk {
+namespace {
+constexpr int32_t HOST_RECORD_ID = 12025;
+constexpr int32_t NON_EXIST_RECORD_ID = 0x7FFFFFFF;
+} // namespace
+
 class UIExtensionGetHostInfoTest : public testing::Test {
 public:
 
@@ -35,8 +45,12 @@ public:
     void TearDown() override;
 };
 
-void UIExtensionGetHostInfoTest::SetUpTestCase(void)
-{}
+static uint32_t g_savedSelfTokenId = 0;
+
+void UIExtensionGetHostInfoTest::SetUpTestCase()
+{
+    g_savedSelfTokenId = GetSelfTokenID();
+}
 
 void UIExtensionGetHostInfoTest::TearDownTestCase(void)
 {}
@@ -130,6 +144,59 @@ HWTEST_F(UIExtensionGetHostInfoTest, GetUIExtensionRootHostInfo_0400, TestSize.L
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "Get host info uri: %{public}s", hostInfo.elementName_.GetURI().c_str());
 
+    SetSelfTokenID(currentID);
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: GetUIExtensionRootHostInfoById_0100
+ * @tc.desc: a non-SA caller is rejected with ERR_PERMISSION_DENIED and no host info is returned.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIExtensionGetHostInfoTest, GetUIExtensionRootHostInfoById_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    ASSERT_NE(g_savedSelfTokenId, 0);
+    SetSelfTokenID(g_savedSelfTokenId);
+
+    UIExtensionHostInfo hostInfo;
+    auto ret = AAFwk::AbilityManagerClient::GetInstance()->GetUIExtensionRootHostInfoById(HOST_RECORD_ID, hostInfo);
+
+    EXPECT_EQ(ret, ERR_PERMISSION_DENIED);
+    EXPECT_TRUE(hostInfo.elementName_.GetBundleName().empty());
+    EXPECT_TRUE(hostInfo.elementName_.GetAbilityName().empty());
+    EXPECT_TRUE(hostInfo.sessionName.empty());
+    EXPECT_EQ(hostInfo.persistentId_, 0);
+    SetSelfTokenID(g_savedSelfTokenId);
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: GetUIExtensionRootHostInfoById_0200
+ * @tc.desc: 0 is a legal first record id (returns ERR_INVALID_VALUE only because no record matches);
+ *           negative ids and non-exist ids also return ERR_INVALID_VALUE.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIExtensionGetHostInfoTest, GetUIExtensionRootHostInfoById_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    auto currentID = GetSelfTokenID();
+    AppExecFwk::MockNativeToken::SetNativeToken();
+    UIExtensionHostInfo hostInfo;
+    EXPECT_EQ(AbilityManagerClient::GetInstance()->GetUIExtensionRootHostInfoById(0, hostInfo), ERR_INVALID_VALUE);
+    EXPECT_EQ(AbilityManagerClient::GetInstance()->GetUIExtensionRootHostInfoById(-1, hostInfo), ERR_INVALID_VALUE);
+    EXPECT_EQ(AbilityManagerClient::GetInstance()->GetUIExtensionRootHostInfoById(INT32_MIN, hostInfo),
+        ERR_INVALID_VALUE);
+    EXPECT_TRUE(hostInfo.elementName_.GetBundleName().empty());
+
+    UIExtensionHostInfo liveInfo;
+    auto ret = AAFwk::AbilityManagerClient::GetInstance()->GetUIExtensionRootHostInfoById(
+        NON_EXIST_RECORD_ID, liveInfo);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_TRUE(liveInfo.elementName_.GetBundleName().empty());
+    EXPECT_TRUE(liveInfo.elementName_.GetAbilityName().empty());
+    EXPECT_TRUE(liveInfo.sessionName.empty());
+    EXPECT_EQ(liveInfo.persistentId_, 0);
     SetSelfTokenID(currentID);
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }

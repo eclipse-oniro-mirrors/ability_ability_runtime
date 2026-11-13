@@ -2233,6 +2233,17 @@ public:
     }
 
     /**
+     * @brief Get root host info of a UIExtension by ability record id.
+     * @param abilityRecordId The record id of the UIExtension.
+     * @param hostInfo Output host info.
+     * @return int32_t Returns 0 on success, others on failure.
+     */
+    virtual int32_t GetUIExtensionRootHostInfoById(int32_t abilityRecordId, UIExtensionHostInfo &hostInfo)
+    {
+        return 0;
+    }
+
+    /**
      * @brief Get ui extension session info
      *
      * @param token The ability token.
