@@ -89,7 +89,6 @@ constexpr char BUNDLE_NAME_DIALOG[] = "com.ohos.amsdialog";
 constexpr char ABILITY_NAME_ASSERT_FAULT_DIALOG[] = "AssertFaultDialog";
 constexpr const char* WANT_PARAMS_APP_RESTART_FLAG = "ohos.aafwk.app.restart";
 constexpr const char* PARAM_SPECIFIED_PROCESS_FLAG = "ohoSpecifiedProcessFlag";
-constexpr const char* WANT_PARAMS_TASK_ID_KEY = "ohos.aafwk.param.agent.taskId";
 constexpr int32_t HALF_TIMEOUT = 2;
 const std::string IS_PRELOAD_UIEXTENSION_ABILITY = "ability.want.params.is_preload_uiextension_ability";
 
@@ -997,7 +996,7 @@ void AbilityConnectManager::TryAttributeTaskForA2A(
             static_cast<int32_t>(abilityInfo.extensionAbilityType));
         return;
     }
-    std::string taskId = abilityRecord->GetWant().GetStringParam(WANT_PARAMS_TASK_ID_KEY);
+    std::string taskId = abilityRecord->GetWant().GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID);
     if (taskId.empty()) {
         TAG_LOGE(AAFwkTag::EXT, "A2A taskId is empty, skipping attribution");
         return;
@@ -1031,6 +1030,30 @@ void AbilityConnectManager::TryAttributeTaskForA2A(
     abilityRecord->AddTaskAttribution(recordId, attribution);
 }
 
+void AbilityConnectManager::CleanA2ATaskAttributionsByTaskId(const std::string &taskId)
+{
+    if (taskId.empty()) {
+        return;
+    }
+    auto serviceMap = GetServiceMap();
+    size_t totalRemoved = 0;
+    for (auto &[key, abilityRecord] : serviceMap) {
+        if (abilityRecord == nullptr) {
+            continue;
+        }
+        if (abilityRecord->GetAbilityInfo().extensionAbilityType !=
+            AppExecFwk::ExtensionAbilityType::AGENT) {
+            continue;
+        }
+        totalRemoved += abilityRecord->CleanTaskAttributionsByTaskId(taskId);
+    }
+    if (totalRemoved > 0) {
+        TAG_LOGI(AAFwkTag::EXT,
+            "A2A stale attributions cleaned by taskId=%{public}s, removed=%{public}zu",
+            taskId.c_str(), totalRemoved);
+    }
+}
+
 int32_t AbilityConnectManager::AttributeTaskForA2AReusedConnectionRecordLocked(const AbilityRequest &abilityRequest,
     sptr<IAbilityConnection> connect)
 {
@@ -1049,7 +1072,7 @@ int32_t AbilityConnectManager::PrepareAttributeTaskForA2AReusedConnectionRecord(
         TAG_LOGE(AAFwkTag::EXT, "null connect");
         return ERR_INVALID_VALUE;
     }
-    std::string taskId = abilityRequest.want.GetStringParam(WANT_PARAMS_TASK_ID_KEY);
+    std::string taskId = abilityRequest.want.GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID);
     if (taskId.empty()) {
         TAG_LOGW(AAFwkTag::EXT, "empty taskId");
         return ERR_INVALID_VALUE;
@@ -1283,13 +1306,17 @@ int AbilityConnectManager::ScheduleDisconnectAbilityDoneLocked(const sptr<IRemot
             int32_t ret = IN_PROCESS_CALL(
                 DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance()->UnregisterTaskForA2A(
                     attr.taskId, attr.attributionId));
-            if (ret == ERR_OK) {
-                abilityRecordForA2A->RemoveTaskAttribution(a2aRecordId, attr.taskId, attr.attributionId);
-            } else {
+            if (ret != ERR_OK && ret != ERR_TASK_NOT_FOUND && ret != ERR_ATTRIBUTION_NOT_FOUND) {
                 TAG_LOGE(AAFwkTag::EXT,
                     "A2A unregister failed, recordId=%{public}d, taskId=%{public}s, ret=%{public}d",
                     a2aRecordId, attr.taskId.c_str(), ret);
             }
+            // Always clean local entry. ERR_TASK_NOT_FOUND / ERR_ATTRIBUTION_NOT_FOUND
+            // means the server already cleared the attribution (via FinishTask, timeout,
+            // or process death), so the local entry is stale and must be removed.
+            // There is no retry mechanism for UnregisterTaskForA2A, so keeping a
+            // failed entry only causes stale data accumulation.
+            abilityRecordForA2A->RemoveTaskAttribution(a2aRecordId, attr.taskId, attr.attributionId);
         }
     }
 

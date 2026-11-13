@@ -127,6 +127,7 @@
 #include "string_wrapper.h"
 #include "array_wrapper.h"
 #include "support_system_ability_permission.h"
+#include "task_mgr/task_manager_service.h"
 #include "time_util.h"
 #include "tokenid_kit.h"
 #include "ui_extension_wrapper.h"
@@ -577,6 +578,10 @@ bool AbilityManagerService::Init()
     InitWantAgentAppStateObserver();
     DelayedSingleton<AAFwk::ExtensionRunningTimeoutMonitor>::GetInstance()->StartMonitor();
     DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance()->StartMonitor();
+    AppExecFwk::TaskManagerService::GetInstance().SetTaskFinishedCallback(
+        [this](const std::string &taskId, int32_t userId) {
+            OnTaskFinished(taskId, userId);
+        });
 #ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
     ResourceSchedule::ResSchedClient::GetInstance().InitKillReasonListener();
 #endif
@@ -10099,6 +10104,22 @@ std::vector<std::shared_ptr<AbilityConnectManager>> AbilityManagerService::GetCo
         return std::vector<std::shared_ptr<AbilityConnectManager>>();
     }
     return subManagersHelper_->GetConnectManagers();
+}
+
+void AbilityManagerService::OnTaskFinished(const std::string &taskId, int32_t userId)
+{
+    if (taskId.empty()) {
+        return;
+    }
+    TAG_LOGI(AAFwkTag::ABILITYMGR,
+        "task finished callback, taskId=%{public}s, userId=%{public}d", taskId.c_str(), userId);
+    auto manager = GetConnectManagerByUserId(userId, AppExecFwk::ExtensionAbilityType::AGENT);
+    if (manager == nullptr) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR,
+            "connect manager not found for userId=%{public}d, skip A2A cleanup", userId);
+        return;
+    }
+    manager->CleanA2ATaskAttributionsByTaskId(taskId);
 }
 
 std::shared_ptr<AbilityConnectManager> AbilityManagerService::GetConnectManagerByUserId(int32_t userId, const AppExecFwk::ExtensionAbilityType type)

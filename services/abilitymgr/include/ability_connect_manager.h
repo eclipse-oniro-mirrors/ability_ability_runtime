@@ -315,6 +315,20 @@ public:
     int32_t AttributeTaskForA2AReusedConnectionRecordLocked(const AbilityRequest &abilityRequest,
         sptr<IAbilityConnection> connect);
 
+    /**
+     * @brief Proactively clean stale A2A task attribution entries from all
+     *        extension records in the service map when the server-side task is
+     *        terminated. Iterates every BaseExtensionRecord and calls
+     *        CleanTaskAttributionsByTaskId for AGENT-type records only.
+     *        Called by the TaskFinishedCallback registered on TaskManagerService.
+     *        Does NOT acquire serialMutex_ — only uses serviceMapMutex_ (via
+     *        GetServiceMap) and taskAttributionsMutex_ (via
+     *        CleanTaskAttributionsByTaskId), so it is safe to call from the
+     *        AppMgr thread without deadlock risk.
+     * @param taskId Indicates the finished task id.
+     */
+    void CleanA2ATaskAttributionsByTaskId(const std::string &taskId);
+
 protected:
 
     /**

@@ -187,6 +187,7 @@ int32_t TaskManagerService::StartTaskInner(const TaskCallerInfo &caller, const s
 int32_t TaskManagerService::FinishTaskInner(const std::string &taskId, TaskFinishReason reason,
     int32_t callerUid, pid_t callerPid, int64_t expectedDeadline)
 {
+    int32_t taskUserId = -1;
     std::unique_ptr<TimeoutContext> timerCtx;
     {
         std::lock_guard<ffrt::mutex> lock(tasksMutex_);
@@ -207,6 +208,7 @@ int32_t TaskManagerService::FinishTaskInner(const std::string &taskId, TaskFinis
             return ERR_TASK_NOT_FOUND;
         }
         int64_t aliveMillis = NowMillis() - it->second.createTimeMillis;
+        taskUserId = it->second.userId;
         timerCtx = std::move(it->second.timeoutCtx);
         tasks_.erase(it);
         TAG_LOGI(AAFwkTag::APPMGR, "task finished, taskId: %{public}s, reason: %{public}s, "
@@ -217,7 +219,7 @@ int32_t TaskManagerService::FinishTaskInner(const std::string &taskId, TaskFinis
     } else {
         ReleaseTimeoutContext(std::move(timerCtx));
     }
-    NotifyTaskFinished(taskId, reason);
+    NotifyTaskFinished(taskId, taskUserId, reason);
     return ERR_OK;
 }
 
@@ -336,6 +338,13 @@ void TaskManagerService::SetPidValidator(std::function<bool(pid_t)> validator)
     std::lock_guard<ffrt::mutex> lock(tasksMutex_);
     pidValidator_ = validator;
     TAG_LOGI(AAFwkTag::APPMGR, "pid validator %{public}s", validator ? "wired" : "unwired");
+}
+
+void TaskManagerService::SetTaskFinishedCallback(TaskFinishedCallback callback)
+{
+    std::lock_guard<ffrt::mutex> lock(tasksMutex_);
+    taskFinishedCallback_ = std::move(callback);
+    TAG_LOGI(AAFwkTag::APPMGR, "task finished callback %{public}s", taskFinishedCallback_ ? "wired" : "unwired");
 }
 
 bool TaskManagerService::IsLiveManagedProcess(pid_t pid)
@@ -580,12 +589,14 @@ void TaskManagerService::ReleaseTimeoutContext(std::unique_ptr<TimeoutContext> c
     }
 }
 
-void TaskManagerService::NotifyTaskFinished(const std::string &taskId, TaskFinishReason reason)
+void TaskManagerService::NotifyTaskFinished(const std::string &taskId, int32_t userId,
+    TaskFinishReason reason)
 {
-    // Hook point reserved for resource-schedule control: downgrade/release the control
-    // applied to the managed processes when the task ends. Log only for now.
-    TAG_LOGI(AAFwkTag::APPMGR, "task end notified, taskId: %{public}s, reason: %{public}s",
-        taskId.c_str(), TaskFinishReasonToString(reason));
+    TAG_LOGD(AAFwkTag::APPMGR, "task end notified, taskId: %{public}s, userId: %{public}d, reason: %{public}s",
+        taskId.c_str(), userId, TaskFinishReasonToString(reason));
+    if (taskFinishedCallback_) {
+        taskFinishedCallback_(taskId, userId);
+    }
 }
 
 std::string TaskManagerService::DumpActiveTasks()

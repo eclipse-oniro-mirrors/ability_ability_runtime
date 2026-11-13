@@ -159,14 +159,26 @@ public:
     int32_t UnregisterManagedProcessForCaller(const std::string &taskId, AttributionId attributionId,
         int32_t callerUid);
 
+    using TaskFinishedCallback = std::function<void(const std::string &taskId, int32_t userId)>;
+
     /**
-     * @brief Notifies that a task has ended, reserved for the resource-schedule control to
-     *        downgrade or release the control applied to the managed processes. Only
-     *        called after tasksMutex_ is released.
+     * @brief Registers a callback invoked when a task is finished (by caller, timeout,
+     *        or creator process death). The callback runs after tasksMutex_ is released,
+     *        so it may perform synchronous IPC. Used by AbilityManagerService to proactively
+     *        clean stale A2A task attribution entries cached on BaseExtensionRecord.
+     * @param callback Indicates the callback to invoke; pass nullptr to unregister.
+     */
+    void SetTaskFinishedCallback(TaskFinishedCallback callback);
+
+    /**
+     * @brief Notifies that a task has ended. Invokes the registered TaskFinishedCallback
+     *        (if any) so that downstream owners of task attribution caches can proactively
+     *        remove stale entries. Only called after tasksMutex_ is released.
      * @param taskId Indicates the attribution key of the task.
+     * @param userId Indicates the user id of the finished task's creator.
      * @param reason Indicates why the task ends.
      */
-    void NotifyTaskFinished(const std::string &taskId, TaskFinishReason reason);
+    void NotifyTaskFinished(const std::string &taskId, int32_t userId, TaskFinishReason reason);
 
     /**
      * @brief Attributes a process started through the startAbility-family channel into the
@@ -394,6 +406,7 @@ private:
     ffrt::mutex tasksMutex_;
     std::unordered_map<std::string, TaskRecord> tasks_;
     std::function<bool(pid_t)> pidValidator_;
+    TaskFinishedCallback taskFinishedCallback_;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

@@ -1222,7 +1222,6 @@ int32_t AgentManagerService::AttributeTaskForA2AReusedConnectionRecord(const AAF
     }
     connectWant.SetParam(AGENT_CARD_TYPE_KEY, static_cast<int32_t>(card.type));
 
-    // Step 3: low-code agents use dedicated shared-host session management.
     if (card.type == AgentCardType::LOW_CODE) {
         int32_t hostUid = 0;
         ret = ResolveLowCodeHostInfo(connectWant, callerUid / BASE_USER_RANGE, hostUid);
