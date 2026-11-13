@@ -222,11 +222,11 @@ int32_t AppSpawnClient::SetDacInfo(const AppSpawnStartMsg &startMsg, AppSpawnReq
     appDacInfo.uid = startMsg.uid;
     appDacInfo.gid = startMsg.gid;
     if (startMsg.gids.size() > APP_MAX_GIDS ||
-        startMsg.dataGroupInfoList.size() > APP_MAX_GIDS) {
+        startMsg.dataGroupInfoList.size() > APP_MAX_GIDS || startMsg.ipcGroupInfoList.size() > APP_MAX_GIDS) {
         TAG_LOGE(AAFwkTag::APPMGR, "invalid gidCount, exceeds APP_MAX_GIDS");
         return ERR_INVALID_VALUE;
     }
-    size_t totalGidCount = startMsg.gids.size() + startMsg.dataGroupInfoList.size();
+    size_t totalGidCount = startMsg.gids.size() + startMsg.dataGroupInfoList.size() + startMsg.ipcGroupInfoList.size();
     if (totalGidCount > APP_MAX_GIDS) {
         TAG_LOGE(AAFwkTag::APPMGR, "invalid gidCount, exceeds APP_MAX_GIDS");
         return ERR_INVALID_VALUE;
@@ -235,8 +235,12 @@ int32_t AppSpawnClient::SetDacInfo(const AppSpawnStartMsg &startMsg, AppSpawnReq
     for (uint32_t i = 0; i < startMsg.gids.size(); i++) {
         appDacInfo.gidTable[i] = startMsg.gids[i];
     }
-    for (uint32_t i = startMsg.gids.size(); i < appDacInfo.gidCount; i++) {
+    uint32_t num = static_cast<uint32_t>(startMsg.gids.size() + startMsg.dataGroupInfoList.size());
+    for (uint32_t i = startMsg.gids.size(); i < num; i++) {
         appDacInfo.gidTable[i] = startMsg.dataGroupInfoList[i - startMsg.gids.size()].gid;
+    }
+    for (uint32_t i = num; i < appDacInfo.gidCount; i++) {
+        appDacInfo.gidTable[i] = startMsg.ipcGroupInfoList[i - num].gid;
     }
     ret = strcpy_s(appDacInfo.userName, sizeof(appDacInfo.userName), APPSPAWN_CLIENT_USER_NAME);
     if (ret) {
@@ -621,11 +625,13 @@ bool AppSpawnClient::VerifyMsg(const AppSpawnStartMsg &startMsg)
         }
 
         if (startMsg.gids.size() > APP_MAX_GIDS ||
-            startMsg.dataGroupInfoList.size() > APP_MAX_GIDS) {
+            startMsg.dataGroupInfoList.size() > APP_MAX_GIDS ||
+            startMsg.ipcGroupInfoList.size() > APP_MAX_GIDS) {
             TAG_LOGE(AAFwkTag::APPMGR, "many app gids or dataGroupInfoList");
             return false;
         }
-        if (startMsg.gids.size() + startMsg.dataGroupInfoList.size() > APP_MAX_GIDS) {
+        if (startMsg.gids.size() + startMsg.dataGroupInfoList.size() +
+            startMsg.ipcGroupInfoList.size() > APP_MAX_GIDS) {
             TAG_LOGE(AAFwkTag::APPMGR, "many app gids and dataGroupInfoList");
             return false;
         }
