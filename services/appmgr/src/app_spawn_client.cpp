@@ -59,7 +59,7 @@ std::string SerializePreloadSoList(const std::vector<std::string>& soPaths,
     TAG_LOGD(AAFwkTag::APPMGR, "SerializePreloadSoList: libPath=%{private}s, soCount=%{public}zu",
         libPath.c_str(), soPaths.size());
     nlohmann::json jsonArray = nlohmann::json::array();
-    std::map<std::string, nlohmann::json> groupedSo;
+    std::vector<std::string> absSoPaths;
     for (const auto& soPath : soPaths) {
         if (soPath.empty()) {
             TAG_LOGE(AAFwkTag::APPMGR, "invalid so path (empty)");
@@ -73,31 +73,19 @@ std::string SerializePreloadSoList(const std::vector<std::string>& soPaths,
             TAG_LOGE(AAFwkTag::APPMGR, "invalid so path (absolute): %{public}s", soPath.c_str());
             continue;
         }
-        auto lastSlash = soPath.find_last_of('/');
-        std::string dir;
-        std::string soName;
-        if (lastSlash != std::string::npos) {
-            dir = libPath + "/" + soPath.substr(0, lastSlash);
-            soName = soPath.substr(lastSlash + 1);
-        } else {
-            dir = libPath;
-            soName = soPath;
-        }
-        if (soName.empty()) {
-            continue;
-        }
-        TAG_LOGD(AAFwkTag::APPMGR, "soPath=%{private}s -> dir=%{private}s, soName=%{public}s",
-            soPath.c_str(), dir.c_str(), soName.c_str());
-        groupedSo[dir].push_back(soName);
+        std::string absSoPath = libPath + "/" + soPath;
+        TAG_LOGD(AAFwkTag::APPMGR, "soPath=%{private}s -> absSoPath=%{private}s",
+            soPath.c_str(), absSoPath.c_str());
+        absSoPaths.push_back(absSoPath);
     }
-    for (const auto& [dir, soList] : groupedSo) {
+    if (!absSoPaths.empty()) {
         nlohmann::json entry;
-        entry["libPath"] = nlohmann::json::array({dir});
-        entry["so"] = soList;
+        entry["libPath"] = nlohmann::json::array({libPath});
+        entry["so"] = absSoPaths;
         entry["ns"] = "default";
         jsonArray.push_back(entry);
-        TAG_LOGD(AAFwkTag::APPMGR, "grouped: dir=%{private}s, soCount=%{public}zu",
-            dir.c_str(), soList.size());
+        TAG_LOGD(AAFwkTag::APPMGR, "grouped: libPath=%{private}s, soCount=%{public}zu",
+            libPath.c_str(), absSoPaths.size());
     }
     std::string result = jsonArray.dump();
     TAG_LOGD(AAFwkTag::APPMGR, "SerializePreloadSoList result: %{private}s", result.c_str());
