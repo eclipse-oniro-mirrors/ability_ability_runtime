@@ -393,6 +393,7 @@ HWTEST_F(PreloadManagerServiceTest, LaunchGameCustomized_001, TestSize.Level1)
 
     // Set up for verification failure
     MyStatus::GetInstance().isMultiUserConcurrency_ = false;
+    MyStatus::GetInstance().bundleMgrHelper_ = DelayedSingleton<BundleMgrHelper>::GetInstance();
     std::string bundleName = "com.test.game";
     int32_t userId = 100;
     int32_t appIndex = 0;
@@ -419,6 +420,7 @@ HWTEST_F(PreloadManagerServiceTest, LaunchGameCustomized_002, TestSize.Level1)
     MyStatus::GetInstance().isMultiUserConcurrency_ = true;
     MyStatus::GetInstance().retCheckPreloadAppRecordExist_ = ERR_OK;
     MyStatus::GetInstance().isPreloadApplicationRecordExist_ = true;
+    MyStatus::GetInstance().bundleMgrHelper_ = DelayedSingleton<BundleMgrHelper>::GetInstance();
     std::string bundleName = "com.test.game";
     int32_t userId = 100;
     int32_t appIndex = 0;
@@ -434,7 +436,7 @@ HWTEST_F(PreloadManagerServiceTest, LaunchGameCustomized_002, TestSize.Level1)
  * Name: LaunchGameCustomized_003
  * Function: LaunchGameCustomized
  * SubFunction: NA
- * FunctionPoints: PreloadManagerService LaunchGameCustomized bundle mgr helper is null
+ * FunctionPoints: PreloadManagerService LaunchGameCustomized bundle mgr helper is null.
  */
 HWTEST_F(PreloadManagerServiceTest, LaunchGameCustomized_003, TestSize.Level1)
 {
