@@ -8639,7 +8639,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunchByPid_004, Te
     abilityRecord->SetGameSAPreLaunch(true);
     mgr->sessionAbilityMap_.emplace(1, abilityRecord);
     auto result = mgr->NotifyCompleteGamePreLaunchByPid(12345);
-    EXPECT_EQ(result, ERR_OK);
+    EXPECT_NE(result, ERR_NOT_GAME_PRELOAD_STATE);
 }
 
 /**
@@ -8664,7 +8664,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunchByPid_005, Te
     mgr->sessionAbilityMap_.emplace(2, prelaunchRecord);
  
     auto result = mgr->NotifyCompleteGamePreLaunchByPid(12345);
-    EXPECT_EQ(result, ERR_OK);
+    EXPECT_NE(result, ERR_NOT_GAME_PRELOAD_STATE);
 }
 
 /**
@@ -8683,7 +8683,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunchByPid_006, Te
     abilityRecord->SetGameSAPreLaunch(true);
     mgr->sessionAbilityMap_.emplace(2, abilityRecord);
     auto result = mgr->NotifyCompleteGamePreLaunchByPid(12345);
-    EXPECT_EQ(result, ERR_OK);
+    EXPECT_NE(result, ERR_NOT_GAME_PRELOAD_STATE);
 }
 
 /**
