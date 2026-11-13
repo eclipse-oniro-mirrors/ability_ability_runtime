@@ -39,14 +39,14 @@ class AppMgrServiceInner;
  * pidfd becomes readable, the ffrt poller invokes the callback on its own
  * thread; the fd/token lifecycle is fully handled on the poller thread (mirrors
  * appspawn ClosePidfdWatcher), and the record-level cleanup is dispatched onto
- * the appmgr task queue, keeping it consistent with the previous binder
- * OnRemoteDied scheduling.
+ * the original appmgr task queue for child/render processes or a dedicated
+ * serial task queue for launch services.
  *
  * Naming is generic on purpose: it is reused for child and render process
  * death monitoring; main process may follow.
  */
 
-enum class PidFdType { CHILD, RENDER };
+enum class PidFdType { CHILD, RENDER, LAUNCH_SERVICE };
 
 class AppPidFdManager {
 public:
@@ -55,7 +55,7 @@ public:
     ~AppPidFdManager();
 
     /**
-     * @brief Initialize with the appmgr service inner and its task handler.
+     * @brief Initialize with the appmgr service inner and the child/render task handler.
      */
     void Init(std::weak_ptr<AppMgrServiceInner> appMgrServiceInner,
         std::weak_ptr<AAFwk::TaskHandlerWrap> taskHandler);
@@ -67,7 +67,7 @@ public:
      * If pidfd_open fails (the process already exited, ESRCH), the cleanup task
      * is dispatched directly. The type selects which exit handler is dispatched.
      */
-    void AddWatcher(pid_t pid, PidFdType type);
+    bool AddWatcher(pid_t pid, PidFdType type);
 
 private:
     AppPidFdManager();
@@ -82,19 +82,22 @@ private:
     // token only carries the pid.
     static void OnChildPidfdEvent(void *data, uint32_t event);
     static void OnRenderPidfdEvent(void *data, uint32_t event);
+    static void OnLaunchServicePidfdEvent(void *data, uint32_t event);
 
     // Handles the pidfd/token lifecycle on the poller thread, then dispatches
-    // the record-level cleanup onto the appmgr task queue.
+    // the record-level cleanup onto the task queue for the process type.
     void OnPidfdFired(pid_t pid, PidFdType type);
 
     void DispatchCleanup(pid_t pid, PidFdType type);
 
     static int32_t OpenPidFd(pid_t pid, unsigned int flags);
+    void *StorePidFd(pid_t pid, int32_t pidfd);
 
     std::map<pid_t, PidFdEntry> pidfdMap_;
     std::mutex mapMutex_;
     std::weak_ptr<AppMgrServiceInner> appMgrServiceInner_;
     std::weak_ptr<AAFwk::TaskHandlerWrap> taskHandler_;
+    std::shared_ptr<AAFwk::TaskHandlerWrap> launchServiceTaskHandler_;
 
     DISALLOW_COPY_AND_MOVE(AppPidFdManager);
 };

@@ -46,6 +46,7 @@
 #include "config_policy_utils.h"
 #include "connection_state_manager.h"
 #include "c/executor_task.h"
+#include "daemon_service_manager_client.h"
 #include "display_manager.h"
 #include "display_util.h"
 #include "distributed_client.h"
@@ -10355,6 +10356,13 @@ void AbilityManagerService::StartResidentApps(int32_t userId)
         }
 #endif
         residentProcessManager->StartResidentProcess(bundleInfos);
+    }
+    if (userId == U0_USER_ID) {
+        auto result = IN_PROCESS_CALL(
+            AbilityRuntime::DaemonServiceManagerClient::GetInstance().NotifyResidentStartupCompleted());
+        if (result != ERR_OK) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "notify resident startup completed failed: %{public}d", result);
+        }
     }
 }
 

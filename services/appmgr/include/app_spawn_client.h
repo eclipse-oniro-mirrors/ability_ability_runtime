@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -45,6 +45,7 @@ const int32_t MAX_FLAG_INDEX = 32;
 const int32_t MAX_PROC_NAME_LEN = 256;
 const int64_t START_FLAG_BASE = 1;
 const int32_t MAX_COST_TIME = 500;
+
 struct AppSpawnStartMsg {
     uint64_t accessTokenIdEx;
     uint64_t flags = 0;
@@ -64,6 +65,7 @@ struct AppSpawnStartMsg {
     std::string atomicAccount = "";
     std::string extensionSandboxPath;
     std::string processType = "";
+    std::string daemonBinPath = "";
     std::string extensionTypeName;
     std::string appSignType;
     std::string imageName;
@@ -295,6 +297,11 @@ private:
     SpawnConnectionState state_ = SpawnConnectionState::STATE_NOT_CONNECT;
 
 #ifdef SUPPORT_CHILD_PROCESS
+    int32_t SetDefaultMsgIdentity(const AppSpawnStartMsg &startMsg, AppSpawnReqMsgHandle reqHandle);
+    int32_t SetDaemonMsgOptions(const AppSpawnStartMsg &startMsg, AppSpawnReqMsgHandle reqHandle);
+    int32_t SetDefaultMsgOptions(const AppSpawnStartMsg &startMsg, AppSpawnReqMsgHandle reqHandle);
+    bool VerifyStartMsgGroups(const AppSpawnStartMsg &startMsg);
+    bool VerifyProcessStartMsg(const AppSpawnStartMsg &startMsg);
     int32_t SetChildProcessTypeStartFlag(const AppSpawnReqMsgHandle &reqHandle, int32_t childProcessType);
 #endif  // SUPPORT_CHILD_PROCESS
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -270,6 +270,9 @@ int32_t AppSpawnClient::SetStartFlags(const AppSpawnStartMsg &startMsg, AppSpawn
 {
     int32_t ret = 0;
     uint64_t startFlagTmp = startMsg.flags;
+    if (startMsg.code == MSG_SPAWN_SERVICE_BIN) {
+        startFlagTmp |= (1ULL << APP_FLAGS_DAEMON_BIN);
+    }
     int flagIndex = 0;
     while (startFlagTmp > 0) {
         if (startFlagTmp & START_FLAG_TEST_NUM) {
@@ -331,10 +334,12 @@ int32_t AppSpawnClient::SetStrictMode(const AppSpawnStartMsg &startMsg, const Ap
 int32_t AppSpawnClient::AppspawnSetExtMsg(const AppSpawnStartMsg &startMsg, AppSpawnReqMsgHandle reqHandle)
 {
     int32_t ret = 0;
-    ret = AppSpawnReqMsgAddStringInfo(reqHandle, MSG_EXT_NAME_RENDER_CMD, startMsg.renderParam.c_str());
-    if (ret) {
-        TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
-        return ret;
+    if (startMsg.code != MSG_SPAWN_SERVICE_BIN || !startMsg.renderParam.empty()) {
+        ret = AppSpawnReqMsgAddStringInfo(reqHandle, MSG_EXT_NAME_RENDER_CMD, startMsg.renderParam.c_str());
+        if (ret) {
+            TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
+            return ret;
+        }
     }
 
     if (!startMsg.hspList.empty()) {
@@ -530,124 +535,183 @@ int32_t AppSpawnClient::AppspawnSetExtMsgSec(const AppSpawnStartMsg &startMsg, A
     return ret;
 }
 
+int32_t AppSpawnClient::SetDefaultMsgIdentity(const AppSpawnStartMsg &startMsg, AppSpawnReqMsgHandle reqHandle)
+{
+    int32_t ret = 0;
+    ret = SetDacInfo(startMsg, reqHandle);
+    if (ret) {
+        TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
+        return ret;
+    }
+    ret = AppSpawnReqMsgSetBundleInfo(reqHandle, startMsg.bundleIndex, startMsg.bundleName.c_str());
+    if (ret) {
+        TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
+        return ret;
+    }
+    ret = AppSpawnReqMsgSetAppInternetPermissionInfo(reqHandle, startMsg.allowInternet,
+        startMsg.setAllowInternet);
+    if (ret) {
+        TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
+        return ret;
+    }
+    if (startMsg.ownerId.size()) {
+        ret = AppSpawnReqMsgSetAppOwnerId(reqHandle, startMsg.ownerId.c_str());
+        if (ret) {
+            TAG_LOGE(AAFwkTag::APPMGR, "SetOwnerId %{public}s failed, ret: %{public}d",
+                startMsg.ownerId.c_str(), ret);
+            return ret;
+        }
+    }
+    ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, startMsg.accessTokenIdEx);
+    if (ret) {
+        TAG_LOGE(AAFwkTag::APPMGR, "ret: %{public}d", ret);
+        return ret;
+    }
+    ret = AppSpawnReqMsgSetAppDomainInfo(reqHandle, startMsg.hapFlags, startMsg.apl.c_str());
+    if (ret) {
+        TAG_LOGE(AAFwkTag::APPMGR,
+            "fail, hapFlags is %{public}d, apl is %{public}s, ret: %{public}d",
+            startMsg.hapFlags, startMsg.apl.c_str(), ret);
+        return ret;
+    }
+    return ret;
+}
+
+int32_t AppSpawnClient::SetDaemonMsgOptions(const AppSpawnStartMsg &startMsg, AppSpawnReqMsgHandle reqHandle)
+{
+    int32_t ret = 0;
+    ret = AppSpawnReqMsgAddStringInfo(reqHandle, MSG_EXT_NAME_DAEMON_BIN_PATH, startMsg.daemonBinPath.c_str());
+    if (ret) {
+        TAG_LOGE(AAFwkTag::APPMGR, "add daemon bin path failed, ret: %{public}d", ret);
+        return ret;
+    }
+    ret = SetStartFlags(startMsg, reqHandle);
+    if (ret) {
+        TAG_LOGE(AAFwkTag::APPMGR, "add daemon start flags failed, ret: %{public}d", ret);
+        return ret;
+    }
+    ret = SetMountPermission(startMsg, reqHandle);
+    if (ret) {
+        TAG_LOGE(AAFwkTag::APPMGR, "add daemon mount permission failed, ret: %{public}d", ret);
+        return ret;
+    }
+    ret = AppspawnSetExtMsg(startMsg, reqHandle);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "add daemon ext msg failed, ret: %{public}d", ret);
+        return ret;
+    }
+    return ret;
+}
+
+int32_t AppSpawnClient::SetDefaultMsgOptions(const AppSpawnStartMsg &startMsg, AppSpawnReqMsgHandle reqHandle)
+{
+    int32_t ret = 0;
+    ret = SetStartFlags(startMsg, reqHandle);
+    if (ret) {
+        TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
+        return ret;
+    }
+    ret = SetMountPermission(startMsg, reqHandle);
+    if (ret) {
+        TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
+        return ret;
+    }
+    if (startMsg.code == MSG_SPAWN_WORKER_PROCESS) {
+        ret = AppSpawnReqMsgSetCheckpointInfo(reqHandle, startMsg.imagePid, startMsg.checkpointId,
+            startMsg.imageName.c_str());
+        if (ret != ERR_OK) {
+            TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
+            return ret;
+        }
+    }
+    if (startMsg.code == MSG_SPAWN_IMAGE_PROCESS) {
+        ret = AppSpawnReqMsgSetCheckpointInfo(reqHandle, startMsg.templatePid, 0,
+            startMsg.imageName.c_str());
+        if (ret != ERR_OK) {
+            TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
+            return ret;
+        }
+    }
+    ret = AppspawnSetExtMsg(startMsg, reqHandle);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
+        return ret;
+    }
+    return ret;
+}
+
 int32_t AppSpawnClient::AppspawnCreateDefaultMsg(const AppSpawnStartMsg &startMsg, AppSpawnReqMsgHandle reqHandle)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "call");
-    int32_t ret = 0;
-    do {
-        ret = SetDacInfo(startMsg, reqHandle);
-        if (ret) {
-            TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
-            break;
-        }
-        ret = AppSpawnReqMsgSetBundleInfo(reqHandle, startMsg.bundleIndex, startMsg.bundleName.c_str());
-        if (ret) {
-            TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
-            break;
-        }
-        ret = AppSpawnReqMsgSetAppInternetPermissionInfo(reqHandle, startMsg.allowInternet,
-            startMsg.setAllowInternet);
-        if (ret) {
-            TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
-            break;
-        }
-        if (startMsg.ownerId.size()) {
-            ret = AppSpawnReqMsgSetAppOwnerId(reqHandle, startMsg.ownerId.c_str());
-            if (ret) {
-                TAG_LOGE(AAFwkTag::APPMGR, "SetOwnerId %{public}s failed, ret: %{public}d",
-                    startMsg.ownerId.c_str(), ret);
-                break;
-            }
-        }
-        ret = AppSpawnReqMsgSetAppAccessToken(reqHandle, startMsg.accessTokenIdEx);
-        if (ret) {
-            TAG_LOGE(AAFwkTag::APPMGR, "ret: %{public}d", ret);
-            break;
-        }
-        ret = AppSpawnReqMsgSetAppDomainInfo(reqHandle, startMsg.hapFlags, startMsg.apl.c_str());
-        if (ret) {
-            TAG_LOGE(AAFwkTag::APPMGR,
-                "fail, hapFlags is %{public}d, apl is %{public}s, ret: %{public}d",
-                startMsg.hapFlags, startMsg.apl.c_str(), ret);
-            break;
-        }
-        ret = SetStartFlags(startMsg, reqHandle);
-        if (ret) {
-            TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
-            break;
-        }
-        ret = SetMountPermission(startMsg, reqHandle);
-        if (ret) {
-            TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
-            break;
-        }
-        if (startMsg.code == MSG_SPAWN_WORKER_PROCESS) {
-            ret = AppSpawnReqMsgSetCheckpointInfo(reqHandle, startMsg.imagePid, startMsg.checkpointId,
-                startMsg.imageName.c_str());
-            if (ret != ERR_OK) {
-                TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
-                break;
-            }
-        }
-        if (startMsg.code == MSG_SPAWN_IMAGE_PROCESS) {
-            ret = AppSpawnReqMsgSetCheckpointInfo(reqHandle, startMsg.templatePid, 0,
-                startMsg.imageName.c_str());
-            if (ret != ERR_OK) {
-                TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
-                break;
-            }
-        }
-        ret = AppspawnSetExtMsg(startMsg, reqHandle);
-        if (ret != ERR_OK) {
-            TAG_LOGE(AAFwkTag::APPMGR, "fail, ret: %{public}d", ret);
-            break;
-        }
-        return ret;
-    } while (0);
-
-    TAG_LOGI(AAFwkTag::APPMGR, "AppSpawnReqMsgFree");
-    AppSpawnReqMsgFree(reqHandle);
-
+    int32_t ret = SetDefaultMsgIdentity(startMsg, reqHandle);
+    if (ret == ERR_OK) {
+        ret = startMsg.code == MSG_SPAWN_SERVICE_BIN ? SetDaemonMsgOptions(startMsg, reqHandle) :
+            SetDefaultMsgOptions(startMsg, reqHandle);
+    }
+    if (ret != ERR_OK) {
+        TAG_LOGI(AAFwkTag::APPMGR, "AppSpawnReqMsgFree");
+        AppSpawnReqMsgFree(reqHandle);
+    }
     return ret;
+}
+
+bool AppSpawnClient::VerifyStartMsgGroups(const AppSpawnStartMsg &startMsg)
+{
+    if (startMsg.gids.size() > APP_MAX_GIDS ||
+        startMsg.dataGroupInfoList.size() > APP_MAX_GIDS ||
+        startMsg.ipcGroupInfoList.size() > APP_MAX_GIDS) {
+        TAG_LOGE(AAFwkTag::APPMGR, "many app gids or dataGroupInfoList");
+        return false;
+    }
+    if (startMsg.gids.size() + startMsg.dataGroupInfoList.size() +
+        startMsg.ipcGroupInfoList.size() > APP_MAX_GIDS) {
+        TAG_LOGE(AAFwkTag::APPMGR, "many app gids and dataGroupInfoList");
+        return false;
+    }
+
+    for (uint32_t i = 0; i < startMsg.gids.size(); ++i) {
+        if (startMsg.gids[i] < 0) {
+            TAG_LOGE(AAFwkTag::APPMGR, "invalid gids array! [%{public}d]", startMsg.gids[i]);
+            return false;
+        }
+    }
+    return true;
+}
+
+bool AppSpawnClient::VerifyProcessStartMsg(const AppSpawnStartMsg &startMsg)
+{
+    if (startMsg.uid < 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "invalid uid! [%{public}d]", startMsg.uid);
+        return false;
+    }
+
+    if (startMsg.gid < 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "invalid gid! [%{public}d]", startMsg.gid);
+        return false;
+    }
+
+    if (!VerifyStartMsgGroups(startMsg)) {
+        return false;
+    }
+    if (startMsg.procName.empty() || startMsg.procName.size() >= MAX_PROC_NAME_LEN) {
+        TAG_LOGE(AAFwkTag::APPMGR, "invalid procName");
+        return false;
+    }
+    if (startMsg.code == MSG_SPAWN_SERVICE_BIN &&
+        (startMsg.daemonBinPath.empty() || startMsg.daemonBinPath.front() != '/')) {
+        TAG_LOGE(AAFwkTag::APPMGR, "invalid daemon bin path");
+        return false;
+    }
+    return true;
 }
 
 bool AppSpawnClient::VerifyMsg(const AppSpawnStartMsg &startMsg)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "VerifyMsg");
     if (startMsg.code == MSG_APP_SPAWN ||
-        startMsg.code == MSG_SPAWN_NATIVE_PROCESS) {
-        if (startMsg.uid < 0) {
-            TAG_LOGE(AAFwkTag::APPMGR, "invalid uid! [%{public}d]", startMsg.uid);
-            return false;
-        }
-
-        if (startMsg.gid < 0) {
-            TAG_LOGE(AAFwkTag::APPMGR, "invalid gid! [%{public}d]", startMsg.gid);
-            return false;
-        }
-
-        if (startMsg.gids.size() > APP_MAX_GIDS ||
-            startMsg.dataGroupInfoList.size() > APP_MAX_GIDS ||
-            startMsg.ipcGroupInfoList.size() > APP_MAX_GIDS) {
-            TAG_LOGE(AAFwkTag::APPMGR, "many app gids or dataGroupInfoList");
-            return false;
-        }
-        if (startMsg.gids.size() + startMsg.dataGroupInfoList.size() +
-            startMsg.ipcGroupInfoList.size() > APP_MAX_GIDS) {
-            TAG_LOGE(AAFwkTag::APPMGR, "many app gids and dataGroupInfoList");
-            return false;
-        }
-
-        for (uint32_t i = 0; i < startMsg.gids.size(); ++i) {
-            if (startMsg.gids[i] < 0) {
-                TAG_LOGE(AAFwkTag::APPMGR, "invalid gids array! [%{public}d]", startMsg.gids[i]);
-                return false;
-            }
-        }
-        if (startMsg.procName.empty() || startMsg.procName.size() >= MAX_PROC_NAME_LEN) {
-            TAG_LOGE(AAFwkTag::APPMGR, "invalid procName");
-            return false;
-        }
+        startMsg.code == MSG_SPAWN_NATIVE_PROCESS ||
+        startMsg.code == MSG_SPAWN_SERVICE_BIN) {
+        return VerifyProcessStartMsg(startMsg);
     } else if (startMsg.code == MSG_GET_RENDER_TERMINATION_STATUS) {
         if (startMsg.pid < 0) {
             TAG_LOGE(AAFwkTag::APPMGR, "invalid pid");

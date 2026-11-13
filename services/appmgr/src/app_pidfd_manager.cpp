@@ -15,6 +15,7 @@
 
 #include "app_pidfd_manager.h"
 
+#include <cerrno>
 #include <fcntl.h>
 #include <sys/epoll.h>
 #include <sys/syscall.h>
@@ -34,6 +35,7 @@
 
 namespace {
 const char *TASK_ON_CHILD_PROCESS_EXITED = "OnChildProcessExitedTask";
+constexpr const char *TASK_ON_LAUNCH_SERVICE_EXITED = "OnLaunchServiceProcessExitedTask";
 } // namespace
 
 namespace OHOS {
@@ -45,7 +47,10 @@ AppPidFdManager &AppPidFdManager::GetInstance()
     return manager;
 }
 
-AppPidFdManager::AppPidFdManager() {}
+AppPidFdManager::AppPidFdManager()
+    : launchServiceTaskHandler_(AAFwk::TaskHandlerWrap::CreateQueueHandler(
+        "launch_service_pidfd_task_queue", AAFwk::TaskQoS::USER_INTERACTIVE))
+{}
 
 AppPidFdManager::~AppPidFdManager()
 {
@@ -74,22 +79,55 @@ int32_t AppPidFdManager::OpenPidFd(pid_t pid, unsigned int flags)
     return static_cast<int32_t>(syscall(SYS_pidfd_open, pid, flags));
 }
 
-void AppPidFdManager::AddWatcher(pid_t pid, PidFdType type)
+bool AppPidFdManager::AddWatcher(pid_t pid, PidFdType type)
 {
     if (pid <= 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "invalid pid");
-        return;
+        return false;
     }
     int32_t pidfd = OpenPidFd(pid, PIDFD_NONBLOCK);
     if (pidfd < 0) {
+        const int32_t openError = errno;
         // The process has already exited (ESRCH) before we could open the pidfd.
         // Treat it as a death and dispatch the cleanup directly.
-        TAG_LOGW(AAFwkTag::APPMGR, "pidfd_open failed, pid:%{public}d, errno:%{public}d", pid, errno);
+        TAG_LOGW(AAFwkTag::APPMGR, "pidfd_open failed, pid:%{public}d, errno:%{public}d", pid, openError);
+        if (type == PidFdType::LAUNCH_SERVICE && openError != ESRCH) {
+            return false;
+        }
         DispatchCleanup(pid, type);
-        return;
+        return openError == ESRCH;
     }
     fdsan_exchange_owner_tag(pidfd, 0, static_cast<uint32_t>(AAFwkTag::APPMGR));
 
+    void *data = StorePidFd(pid, pidfd);
+    ffrt_qos_t qos = 0;
+    auto cb = &AppPidFdManager::OnChildPidfdEvent;
+    if (type == PidFdType::RENDER) {
+        cb = &AppPidFdManager::OnRenderPidfdEvent;
+    } else if (type == PidFdType::LAUNCH_SERVICE) {
+        cb = &AppPidFdManager::OnLaunchServicePidfdEvent;
+    }
+    int32_t ret = ffrt_epoll_ctl(qos, EPOLL_CTL_ADD, pidfd, EPOLLIN, data, cb);
+    if (ret != 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "ffrt_epoll_ctl add failed, pid:%{public}d, ret:%{public}d", pid, ret);
+        std::lock_guard<std::mutex> lock(mapMutex_);
+        auto it = pidfdMap_.find(pid);
+        if (it != pidfdMap_.end() && it->second.pidfd == pidfd) {
+            pidfdMap_.erase(it);
+        }
+        fdsan_close_with_tag(pidfd, static_cast<uint32_t>(AAFwkTag::APPMGR));
+        if (type != PidFdType::LAUNCH_SERVICE) {
+            DispatchCleanup(pid, type);
+        }
+        return false;
+    }
+    TAG_LOGI(AAFwkTag::APPMGR, "watch process pid:%{public}d, pidfd:%{public}d, type:%{public}d", pid, pidfd,
+        static_cast<int32_t>(type));
+    return true;
+}
+
+void *AppPidFdManager::StorePidFd(pid_t pid, int32_t pidfd)
+{
     // The pid is stored in the map entry itself; the callback reads it via the
     // stable address of entry->second.pid (std::map nodes do not relocate).
     void *data = nullptr;
@@ -111,23 +149,18 @@ void AppPidFdManager::AddWatcher(pid_t pid, PidFdType type)
         }
     }
 
-    ffrt_qos_t qos = 0;
-    auto cb = (type == PidFdType::RENDER) ? &AppPidFdManager::OnRenderPidfdEvent
-                                          : &AppPidFdManager::OnChildPidfdEvent;
-    int32_t ret = ffrt_epoll_ctl(qos, EPOLL_CTL_ADD, pidfd, EPOLLIN, data, cb);
-    if (ret != 0) {
-        TAG_LOGE(AAFwkTag::APPMGR, "ffrt_epoll_ctl add failed, pid:%{public}d, ret:%{public}d", pid, ret);
-        std::lock_guard<std::mutex> lock(mapMutex_);
-        auto it = pidfdMap_.find(pid);
-        if (it != pidfdMap_.end() && it->second.pidfd == pidfd) {
-            pidfdMap_.erase(it);
-        }
-        fdsan_close_with_tag(pidfd, static_cast<uint32_t>(AAFwkTag::APPMGR));
-        DispatchCleanup(pid, type);
+    return data;
+}
+
+void AppPidFdManager::OnLaunchServicePidfdEvent(void *data, uint32_t event)
+{
+    if (data == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null pid data");
         return;
     }
-    TAG_LOGI(AAFwkTag::APPMGR, "watch process pid:%{public}d, pidfd:%{public}d, type:%{public}d",
-        pid, pidfd, static_cast<int32_t>(type));
+    pid_t pid = static_cast<pid_t>(*static_cast<int32_t *>(data));
+    TAG_LOGI(AAFwkTag::APPMGR, "OnLaunchServicePidfdEvent pid:%{public}d, event:%{public}u", pid, event);
+    GetInstance().OnPidfdFired(pid, PidFdType::LAUNCH_SERVICE);
 }
 
 void AppPidFdManager::OnChildPidfdEvent(void *data, uint32_t event)
@@ -177,7 +210,7 @@ void AppPidFdManager::OnPidfdFired(pid_t pid, PidFdType type)
 void AppPidFdManager::DispatchCleanup(pid_t pid, PidFdType type)
 {
     auto inner = appMgrServiceInner_.lock();
-    auto handler = taskHandler_.lock();
+    auto handler = type == PidFdType::LAUNCH_SERVICE ? launchServiceTaskHandler_ : taskHandler_.lock();
     if (!inner || !handler) {
         TAG_LOGE(AAFwkTag::APPMGR, "null inner or handler, pid:%{public}d", pid);
         return;
@@ -185,6 +218,8 @@ void AppPidFdManager::DispatchCleanup(pid_t pid, PidFdType type)
     auto task = [inner, pid, type]() {
         if (type == PidFdType::RENDER) {
             inner->OnRenderProcessExited(pid);
+        } else if (type == PidFdType::LAUNCH_SERVICE) {
+            inner->OnLaunchServiceProcessExited(pid);
         } else {
 #ifdef SUPPORT_CHILD_PROCESS
             inner->OnChildProcessExited(pid);
@@ -192,7 +227,8 @@ void AppPidFdManager::DispatchCleanup(pid_t pid, PidFdType type)
         }
     };
     handler->SubmitTask(task, AAFwk::TaskAttribute{
-        .taskName_ = TASK_ON_CHILD_PROCESS_EXITED,
+        .taskName_ = type == PidFdType::LAUNCH_SERVICE ? TASK_ON_LAUNCH_SERVICE_EXITED :
+            TASK_ON_CHILD_PROCESS_EXITED,
         .taskQos_ = AAFwk::TaskQoS::USER_INTERACTIVE
     });
 }

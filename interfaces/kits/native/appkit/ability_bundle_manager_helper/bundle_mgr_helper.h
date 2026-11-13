@@ -108,6 +108,9 @@ public:
     bool GetHapModuleInfo(const AbilityInfo &abilityInfo, int32_t userId, HapModuleInfo &hapModuleInfo);
     bool QueryAppGalleryBundleName(std::string &bundleName);
     ErrCode GetUidByBundleName(const std::string &bundleName, int32_t userId, int32_t appCloneIndex);
+    ErrCode GetAppProvisionInfo(const std::string &bundleName, int32_t userId, AppProvisionInfo &appProvisionInfo);
+    ErrCode GetLaunchServices(
+        const std::string &bundleName, const std::string &moduleName, int32_t userId, LaunchServicesResult &result);
     ErrCode IsApplicationDisableForbidden(const std::string &bundleName, int32_t userId, int32_t appIndex,
         bool &forbidden);
     ErrCode QueryExtensionAbilityInfosOnlyWithTypeName(const std::string &extensionTypeName,

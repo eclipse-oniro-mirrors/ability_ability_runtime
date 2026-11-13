@@ -446,6 +446,7 @@ group("unittest") {
       "killing_process_manager_test:unittest",
       "kiosk_interceptor_test:unittest",
       "kiosk_manager_test:unittest",
+      "launch_service_test:unittest",
       "lifecycle_deal_test:unittest",
       "lifecycle_test:unittest",
       "load_ability_callback_impl_test:unittest",

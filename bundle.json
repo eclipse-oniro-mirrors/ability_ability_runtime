@@ -118,6 +118,7 @@
             "storage_service",
             "toolchain",
             "udmf",
+            "user_auth_framework",
             "webview",
             "window_manager",
             "zlib",

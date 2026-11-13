@@ -409,5 +409,18 @@ ErrCode BundleMgrHelper::UnregisterPluginEventCallback(sptr<IBundleEventCallback
 {
     return ERR_OK;
 }
+
+ErrCode BundleMgrHelper::GetLaunchServices(
+    const std::string &bundleName, const std::string &moduleName, int32_t userId, LaunchServicesResult &result)
+{
+    return ERR_OK;
+}
+
+ErrCode BundleMgrHelper::GetAppProvisionInfo(
+    const std::string &bundleName, int32_t userId, AppProvisionInfo &appProvisionInfo)
+{
+    return ERR_OK;
+}
+
 } // namespace AppExecFwk
 } // namespace OHOS

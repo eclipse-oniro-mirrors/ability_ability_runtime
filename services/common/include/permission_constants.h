@@ -94,6 +94,11 @@ constexpr const char* PERMISSION_ALL_DEBUG = "ohos.permission.kernel.ALLOW_DEBUG
 constexpr const char* PERMISSION_START_ABILITY_TO_PAGE = "ohos.permission.START_ABILITY_TO_PAGE";
 constexpr const char* PERMISSION_GET_AGENT_CARD = "ohos.permission.GET_AGENT_CARD";
 constexpr const char* PERMISSION_MODIFY_AGENT_CARD = "ohos.permission.MODIFY_AGENT_CARD";
+constexpr const char *PERMISSION_REGISTER_DAEMON_SERVICE = "ohos.permission.REGISTER_DAEMON_SERVICE";
+constexpr const char *PERMISSION_ENTERPRISE_REGISTER_DAEMON_SERVICE =
+    "ohos.permission.ENTERPRISE_REGISTER_DAEMON_SERVICE";
+constexpr const char *PERMISSION_USE_DAEMON_SERVICE = "ohos.permission.USE_DAEMON_SERVICE";
+constexpr const char *PERMISSION_MANAGE_DAEMON_SERVICE = "ohos.permission.MANAGE_DAEMON_SERVICE";
 constexpr const char* PERMISSION_CONTINUATION_NOTIFY = "ohos.permission.CONTINUATION_NOTIFY";
 constexpr const char* PERMISSION_EXECUTE_DISTRIBUTED_INTENT = "ohos.permission.EXECUTE_DISTRIBUTED_INTENT";
 constexpr const char* PERMISSION_ALLOW_USE_BM = "ohos.permission.ALLOW_USE_BM";
