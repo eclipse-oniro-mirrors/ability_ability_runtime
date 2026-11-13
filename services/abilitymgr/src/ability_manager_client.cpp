@@ -1301,14 +1301,14 @@ ErrCode AbilityManagerClient::StartAbilityByCallWithErrMsg(const Want &want, spt
 }
 
 ErrCode AbilityManagerClient::StartAbilityForPrelaunch(const Want &want, const int32_t frameNum,
-    const sptr<IAbilityConnection> &connect)
+    int32_t userId, const sptr<IAbilityConnection> &connect)
 {
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "prelaunch, ability:%{public}s/%{public}s, hasConnect:%{public}d",
-        want.GetBundle().c_str(),
-        want.GetElement().GetAbilityName().c_str(), connect != nullptr ? 1 : 0);
-    return abms->StartAbilityForPrelaunch(want, frameNum, connect);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "prelaunch, ability:%{public}s/%{public}s, hasConnect:%{public}d, "
+        "userId:%{public}d", want.GetBundle().c_str(),
+        want.GetElement().GetAbilityName().c_str(), connect != nullptr ? 1 : 0, userId);
+    return abms->StartAbilityForPrelaunch(want, frameNum, userId, connect);
 }
 
 ErrCode AbilityManagerClient::StartSandboxCloneAbility(const Want &want, const SandboxCloneParams &params)

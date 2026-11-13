@@ -6697,5 +6697,91 @@ HWTEST_F(AbilityManagerStubTest, BackToCallerAbilityWithResult_FalseFlag, TestSi
     EXPECT_EQ(reply.ReadInt32(), ERR_OK);
 }
 
+/*
+ * Feature: AbilityManagerStub
+ * Function: OnRemoteRequest
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub StartAbilityForPrelaunchInner via OnRemoteRequest
+ * EnvConditions: code is START_PRELAUNCH_ABILITY, parcel carries userId and no connect
+ * CaseDescription: Verify dispatching START_PRELAUNCH_ABILITY through OnRemoteRequest
+ *                  parses want/frameNum/userId/hasConnect in order and forwards the userId
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartPrelaunchAbility_OnRemote_WithUserId_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerStub_StartPrelaunchAbility_OnRemote_WithUserId_0100 start");
+
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    ASSERT_TRUE(data.WriteParcelable(&want));
+    const int32_t frameNum = 5;
+    ASSERT_TRUE(data.WriteInt32(frameNum));
+    ASSERT_TRUE(data.WriteInt32(USER_ID));
+    ASSERT_TRUE(data.WriteBool(false));
+
+    EXPECT_CALL(*stub_, StartAbilityForPrelaunch(_, frameNum, USER_ID, _))
+        .WillOnce(Invoke([](const Want &parsed, int32_t parsedFrameNum,
+            int32_t parsedUserId, const sptr<IAbilityConnection> &parsedConnect) {
+            EXPECT_EQ(parsed.GetBundleNameRef(), "com.test.bundle");
+            EXPECT_EQ(parsed.GetAbilityNameRef(), "MainAbility");
+            EXPECT_EQ(parsedFrameNum, 5);
+            EXPECT_EQ(parsedConnect, nullptr);
+            EXPECT_EQ(parsedUserId, USER_ID);
+            return ERR_OK;
+        }));
+    int res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::START_PRELAUNCH_ABILITY), data, reply, option);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerStub_StartPrelaunchAbility_OnRemote_WithUserId_0100 end");
+}
+
+/*
+ * Feature: AbilityManagerStub
+ * Function: OnRemoteRequest
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub StartAbilityForPrelaunchInner via OnRemoteRequest
+ * EnvConditions: code is START_PRELAUNCH_ABILITY, parcel carries userId and connect
+ * CaseDescription: Verify the optional connect object is read and the userId is
+ *                  forwarded when hasConnect is true
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartPrelaunchAbility_OnRemote_WithUserId_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerStub_StartPrelaunchAbility_OnRemote_WithUserId_0200 start");
+
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    WriteInterfaceToken(data);
+
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    ASSERT_TRUE(data.WriteParcelable(&want));
+    ASSERT_TRUE(data.WriteInt32(0));
+    ASSERT_TRUE(data.WriteInt32(USER_ID));
+    sptr<IAbilityConnection> connect = new AbilityConnectCallback();
+    ASSERT_TRUE(data.WriteBool(true));
+    ASSERT_TRUE(data.WriteRemoteObject(connect->AsObject()));
+
+    EXPECT_CALL(*stub_, StartAbilityForPrelaunch(_, 0, USER_ID, _))
+        .WillOnce(Invoke([](const Want &, int32_t, int32_t, const sptr<IAbilityConnection> &parsedConnect) {
+            EXPECT_NE(parsedConnect, nullptr);
+            return ERR_INVALID_VALUE;
+        }));
+    int res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::START_PRELAUNCH_ABILITY), data, reply, option);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerStub_StartPrelaunchAbility_OnRemote_WithUserId_0200 end");
+}
+
 } // namespace AAFwk
 } // namespace OHOS
