@@ -1070,7 +1070,20 @@ public:
      */
     int32_t EnableDelayedProcessExit(bool enabled) override;
     void CancelDelayedExitTask(int32_t pid) override;
-    int32_t StartTask(const std::string &taskId, int32_t priority) override;
+    /**
+     * Starts a task with the specified task id. The priority is judged by the service from
+     * the caller state and the system load; the caller no longer passes it.
+     * @param taskId Attribution key of the task (1~256 characters).
+     * @return ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
+     *         ERR_NOT_SYSTEM_APP if the caller is not a system app;
+     *         ERR_TASK_ALREADY_EXISTS if the task already exists.
+     */
+    int32_t StartTask(const std::string &taskId) override;
+    /**
+     * Finishes the task with the specified task id; idempotent when the task is gone.
+     * @param taskId Attribution key of the task.
+     * @return ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist.
+     */
     int32_t FinishTask(const std::string &taskId) override;
     int32_t AttributeTaskForA2A(const std::string &taskId, uint32_t callerTokenId,
         pid_t targetPid, int64_t &attributionId) override;

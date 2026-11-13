@@ -21,8 +21,8 @@
 namespace OHOS {
 namespace AbilityRuntime {
 /*
- * Initializes the task manager module: binds startTask/finishTask and exports the
- * TaskPriority enum, matching @ohos.app.agent.taskManager.
+ * Initializes the task manager module: binds startTask/finishTask, matching
+ * @ohos.app.agent.taskManager.
  */
 napi_value TaskManagerInit(napi_env env, napi_value exportObj);
 }  // namespace AbilityRuntime

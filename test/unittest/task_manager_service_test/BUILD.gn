@@ -33,6 +33,7 @@ ohos_unittest("task_manager_service_test") {
     "${ability_runtime_services_path}/appmgr/src/task_mgr/common.cpp",
     "mock/src/mock_ipc_skeleton.cpp",
     "task_manager_service_test.cpp",
+    "task_priority_judge_test.cpp",
   ]
 
   configs = [ "${ability_runtime_services_path}/appmgr:appmgr_config" ]
@@ -64,6 +65,7 @@ ohos_unittest("task_manager_service_test") {
     "init:libbegetutil",
     "ipc:ipc_core",
     "napi:ace_napi",
+    "resource_schedule_service:ressched_client",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "selinux_adapter:librestorecon"

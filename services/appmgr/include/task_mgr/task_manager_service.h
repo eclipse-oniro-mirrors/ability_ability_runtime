@@ -46,13 +46,13 @@ public:
     };
 
     /**
-     * @brief Starts a task: validate parameters, then create the record under the mutex.
+     * @brief Starts a task: validate parameters, judge the priority from the caller state and
+     *        the system load, then create the record under the mutex.
      * @param taskId Indicates the attribution key of the task.
-     * @param priority Indicates the task priority.
      * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
      *         ERR_TASK_ALREADY_EXISTS if the task already exists.
      */
-    int32_t StartTask(const std::string &taskId, int32_t priority);
+    int32_t StartTask(const std::string &taskId);
 
     /**
      * @brief Finishes a task: validate, then clean up under the mutex; the pending timeout
@@ -76,12 +76,38 @@ public:
     /**
      * @brief Ends every task whose creator matches the (pid, uid) pair of the dead process
      *        and removes the dead pid from every managed set. Thread-safe, callable from
-     *        any thread (e.g. the death-recipient thread).
+     *        any thread (e.g. the death-recipient thread). Also funnels the death into
+     *        process_schedule so its index and exemptions are cleaned within the same
+     *        second; the task itself is not finished.
      * @param pid Indicates the pid of the dead process.
      * @param uid Indicates the uid of the dead process; one uid may host several processes
      *        and only the dead process's own tasks end.
      */
     void OnProcessDied(pid_t pid, int32_t uid);
+
+    /**
+     * @brief Feeds an ability foreground/background transition of a caller process into
+     *        the judge and re-judges the tasks created by that process; unchanged levels
+     *        are not propagated.
+     * @param pid Indicates the pid of the process whose ability changed state.
+     * @param token Indicates the ability's IRObject token address (the judge's dedup key).
+     * @param foreground Indicates true when an ability entered the foreground.
+     */
+    void OnAbilityForegroundChanged(pid_t pid, uintptr_t token, bool foreground);
+
+    /**
+     * @brief Feeds a fusion load level change into the judge and re-judges every running
+     *        task; unchanged levels are not propagated.
+     * @param loadLevel Indicates the new fusion level (0~7).
+     */
+    void OnSystemLoadLevelChanged(int32_t loadLevel);
+
+    /**
+     * @brief Lazily wires the schedule listeners (system load listener + ability state
+     *        observer); idempotent and failure-tolerant (judge falls back). A failed
+     *        registration is retried on the next task start.
+     */
+    void RegisterScheduleListeners();
 
     /**
      * @brief Attributes an entity into the task and restarts its inactivity timeout
@@ -254,10 +280,11 @@ private:
 
     /**
      * @brief Creates the task record and starts its timeout timer; locks tasksMutex_
-     *        internally.
+     *        internally. The priority is the level judged by TaskPriorityJudge for the
+     *        creating caller (no longer passed in by the caller).
      * @param caller Indicates the captured caller identity.
      * @param taskId Indicates the attribution key of the task.
-     * @param priority Indicates the task priority.
+     * @param priority Indicates the judged task level.
      * @return Returns ERR_OK on success; ERR_TASK_ALREADY_EXISTS if the task already exists.
      */
     int32_t StartTaskInner(const TaskCallerInfo &caller, const std::string &taskId, int32_t priority);
@@ -372,12 +399,11 @@ private:
     static TaskCallerInfo GetCallerInfo();
 
     /**
-     * @brief Checks the task id length and the priority value.
+     * @brief Checks the task id length.
      * @param taskId Indicates the task id to check.
-     * @param priority Indicates the priority to check.
-     * @return Returns true if both are valid; false otherwise.
+     * @return Returns true if the task id is valid; false otherwise.
      */
-    static bool CheckParam(const std::string &taskId, int32_t priority);
+    static bool CheckParam(const std::string &taskId);
 
     /**
      * @brief Gets the current wall-clock time in milliseconds.
@@ -401,6 +427,15 @@ private:
      *         validator is wired; false otherwise.
      */
     bool IsLiveManagedProcess(pid_t pid);
+
+    /**
+     * @brief Re-judges the priority of running tasks and propagates level changes to
+     *        process_schedule; updates the records under tasksMutex_ and calls
+     *        process_schedule only after the mutex is released (lock order).
+     * @param pid Indicates the creator process whose tasks are re-judged; a non-positive
+     *        value re-judges every task (load changes affect all callers).
+     */
+    void RejudgeTasks(pid_t pid);
 
     static std::atomic<AttributionId> attributionRecordId_;
     ffrt::mutex tasksMutex_;
