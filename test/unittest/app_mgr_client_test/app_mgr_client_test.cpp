@@ -873,7 +873,8 @@ HWTEST_F(AppMgrClientTest, AppMgrClient_GetBundleNameByPid_001, TestSize.Level1)
     std::string name = "test";
     int32_t uid = 0;
     auto ret = appMgrClient->GetBundleNameByPid(pid, name, uid);
-    EXPECT_EQ(ret, NO_ERROR);
+    //pid不存在
+    EXPECT_EQ(ret, ERR_INVALID_OPERATION);
 }
 
 /**
