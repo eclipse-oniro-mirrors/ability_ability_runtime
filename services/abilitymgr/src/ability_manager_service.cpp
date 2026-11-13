@@ -817,7 +817,7 @@ int AbilityManagerService::StartAbility(const Want &want, int32_t userId, int re
         userId = GetValidUserId(userId);
     }
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    if (!AbilityUtil::IsStartFreeInstall(want)) {
+    if (!AbilityUtil::IsStartFreeInstall(want) && !AbilityRuntime::StartupUtil::IsStartPlugin(want)) {
         CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), userId),
             RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
     }
@@ -1479,7 +1479,7 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
     int32_t oriValidUserId = GetValidUserId(param.userId);
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
     if ((param.callerToken == nullptr || !CheckIfOperateRemote(param.want)) &&
-        !AbilityUtil::IsStartFreeInstall(param.want)) {
+        !AbilityUtil::IsStartFreeInstall(param.want) && !AbilityRuntime::StartupUtil::IsStartPlugin(param.want)) {
         if (!CloneForAccountUtil::ProcessAppIndex(param.want, oriValidUserId)) {
             // Self free install target (caller's own bundle with module name) may be not installed,
             // keep going and let selfFreeInstallEnable handle it.
@@ -2255,7 +2255,7 @@ int AbilityManagerService::StartAbilityDetails(const Want &want, const AbilitySt
     auto eventInfo = BuildEventInfo(want, userId);
     int32_t oriValidUserId = GetValidUserId(userId);
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    if (!AbilityUtil::IsStartFreeInstall(want)) {
+    if (!AbilityUtil::IsStartFreeInstall(want) && !AbilityRuntime::StartupUtil::IsStartPlugin(want)) {
         CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), oriValidUserId),
             RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
     }
@@ -2607,12 +2607,6 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
     StartAbilityContext ctx;
     auto eventInfo = BuildEventInfo(want, userId);
     int32_t oriValidUserId = GetValidUserId(userId);
-#ifdef ENABLE_CLONE_FOR_ACCOUNT
-    if (!AbilityUtil::IsStartFreeInstall(want)) {
-        CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), oriValidUserId),
-            RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
-    }
-#endif
     // prevent the app from dominating the screen
     if (callerToken == nullptr && !IsCallerSceneBoard() && !isCallByShortcut &&
         AbilityPermissionUtil::GetInstance().IsDominateScreen(want, isPendingWantCaller) && !isCallByDelayed) {
@@ -2626,6 +2620,12 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
         (const_cast<Want &>(want)).RemoveParam(START_ABILITY_TYPE);
         CHECK_CALLER_IS_SYSTEM_APP;
     }
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    if (!AbilityUtil::IsStartFreeInstall(want) && !AbilityRuntime::StartupUtil::IsStartPlugin(want)) {
+        CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), oriValidUserId),
+            RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+    }
+#endif
     InsightIntentExecuteParam::RemoveInsightIntent(const_cast<Want &>(want));
     SkillExecuteParam::RemoveSkillParam(const_cast<Want &>(want));
     eventInfo->calleeId = static_cast<int32_t>(CalleeId::START_ABILITY_FOR_OPTION_INNER);
@@ -3071,8 +3071,10 @@ int32_t AbilityManagerService::StartUIAbilitiesInSplitWindowModeHandleWant(const
     int32_t requestCode = DEFAULT_INVAL_VALUE;
     int32_t appIndex = 0;
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(secondaryWant), validUserId),
-        RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+    if (!AbilityRuntime::StartupUtil::IsStartPlugin(secondaryWant)) {
+        CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(secondaryWant), validUserId),
+            RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+    }
 #endif
     AbilityUtil::RemoveShowModeKey(const_cast<Want &>(secondaryWant));
     auto result = CheckWantForSplitMode(secondaryWant, callerToken, validUserId, appIndex);
@@ -3226,8 +3228,10 @@ int32_t AbilityManagerService::StartUIAbilitiesHandleWant(const Want &want, sptr
     uint32_t specifyTokenId = 0;
     int32_t requestCode = DEFAULT_INVAL_VALUE;
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), validUserId),
-        RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+    if (!AbilityRuntime::StartupUtil::IsStartPlugin(want)) {
+        CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), validUserId),
+            RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
+    }
 #endif
     AbilityUtil::RemoveShowModeKey(const_cast<Want &>(want));
 
@@ -3567,7 +3571,8 @@ int AbilityManagerService::StartUIAbilityBySCB(sptr<SessionInfo> sessionInfo, Ab
         sessionInfo->want.RemoveParam("ohos.aafwk.param.callerToken");
     }
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
-    if (sessionInfo->want.GetBoolParam(ServerConstant::IS_CALL_BY_SCB, true) || sessionInfo->requestId == -1) {
+    if ((sessionInfo->want.GetBoolParam(ServerConstant::IS_CALL_BY_SCB, true) || sessionInfo->requestId == -1) &&
+        !AbilityRuntime::StartupUtil::IsStartPlugin(sessionInfo->want)) {
         auto currentUserId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
         CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(sessionInfo->want, currentUserId),
             RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed");
