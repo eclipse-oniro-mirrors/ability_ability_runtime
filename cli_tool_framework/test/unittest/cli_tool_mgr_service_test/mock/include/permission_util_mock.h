@@ -27,6 +27,10 @@ public:
     static bool execCliToolPermitted;
     static bool execPublicCliToolPermitted;
     static bool registerAgentHookPermitted;
+    // Query permission toggles (REQ 20260812019200): default true keeps the permissive
+    // fallback behavior the existing suites rely on; Reset() restores them.
+    static bool queryCliToolPermitted;
+    static bool queryPublicCliToolPermitted;
 
     static void Reset();
 };

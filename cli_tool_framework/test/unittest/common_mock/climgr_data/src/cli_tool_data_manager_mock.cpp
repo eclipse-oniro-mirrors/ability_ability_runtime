@@ -18,6 +18,9 @@ bool CliToolDataManagerMock::toolIsLockScreenExecEnabled = false;
 std::string CliToolDataManagerMock::subCommandName = "build";
 std::vector<std::string> CliToolDataManagerMock::toolPermissions = {};
 std::vector<std::string> CliToolDataManagerMock::subCommandPermissions = {};
+int32_t CliToolDataManagerMock::getAllToolsResult = ERR_OK;
+std::vector<ToolInfo> CliToolDataManagerMock::allTools = {};
+std::string CliToolDataManagerMock::toolVisibility = "private";
 
 void CliToolDataManagerMock::Reset()
 {
@@ -27,6 +30,9 @@ void CliToolDataManagerMock::Reset()
     subCommandName = "build";
     toolPermissions.clear();
     subCommandPermissions.clear();
+    getAllToolsResult = ERR_OK;
+    allTools.clear();
+    toolVisibility = "private";
 }
 
 // CliFunctionDataManagerMock
@@ -66,12 +72,19 @@ int32_t CliToolDataManager::EnsureToolsLoaded()
 
 int32_t CliToolDataManager::GetAllTools(std::vector<ToolInfo> &tools)
 {
-    tools.clear();
+    if (CliToolDataManagerMock::getAllToolsResult != ERR_OK) {
+        return CliToolDataManagerMock::getAllToolsResult;
+    }
+    tools = CliToolDataManagerMock::allTools;
     return ERR_OK;
 }
 
-int32_t CliToolDataManager::GetAllToolsRawData(ToolsRawData &)
+int32_t CliToolDataManager::GetAllToolsRawData(ToolsRawData &tools)
 {
+    if (CliToolDataManagerMock::getAllToolsResult != ERR_OK) {
+        return CliToolDataManagerMock::getAllToolsResult;
+    }
+    ToolsRawData::FromToolInfoVec(CliToolDataManagerMock::allTools, tools);
     return ERR_OK;
 }
 
@@ -101,6 +114,7 @@ int32_t CliToolDataManager::GetToolByName(const std::string &name, ToolInfo &too
     toolInfo.outputSchema = "{}";
     toolInfo.hasSubCommand = CliToolDataManagerMock::toolHasSubCommand;
     toolInfo.isLockScreenExecutionAllowed = CliToolDataManagerMock::toolIsLockScreenExecEnabled;
+    toolInfo.visibility = CliToolDataManagerMock::toolVisibility;
     if (toolInfo.hasSubCommand) {
         SubCommandInfo subCommand;
         subCommand.description = "mock subcommand";

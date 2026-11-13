@@ -15,6 +15,7 @@
 
 #include "tool_info.h"
 
+#include <algorithm>
 #include <nlohmann/json.hpp>
 #include <set>
 #include <sstream>
@@ -28,6 +29,97 @@ namespace CliTool {
 
 namespace {
 constexpr uint32_t MAX_TOOL_INFO_COUNT = 200000;
+// Upper bound for the supportedDevices array. The bound only guards against oversized-array
+// memory exhaustion (PR self-check: array size validation) and leaves headroom for
+// duplicates, which are deduplicated during parsing.
+constexpr uint32_t MAX_SUPPORTED_DEVICES_COUNT = 32;
+// Exclusive upper bound for a single device type identifier: the length must be less
+// than 20 characters.
+constexpr size_t MAX_DEVICE_TYPE_LENGTH = 20;
+constexpr const char *TOOL_VISIBILITY_PUBLIC = "public";
+constexpr const char *TOOL_VISIBILITY_PRIVATE = "private";
+
+// A valid device type identifier is non-empty, shorter than MAX_DEVICE_TYPE_LENGTH
+// characters, and contains only letters, digits, underscores and hyphens.
+bool IsValidDeviceTypeFormat(const std::string &deviceType)
+{
+    if (deviceType.empty() || deviceType.size() >= MAX_DEVICE_TYPE_LENGTH) {
+        return false;
+    }
+    return std::all_of(deviceType.begin(), deviceType.end(), [](char c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+            (c >= '0' && c <= '9') || c == '_' || c == '-';
+    });
+}
+
+// Parses the optional supportedDevices field with guard clauses so that no branch exceeds
+// the code style nesting limit. A non-array value, an oversized array, a non-string item or
+// an item with an invalid format (only letters/digits/underscores/hyphens are allowed and
+// the length must be less than 20) falls back to an empty array (no device restriction,
+// R-3 conservative default); duplicate items are deduplicated by exact string match,
+// keeping the first occurrence order.
+void ParseSupportedDevices(const nlohmann::json &json, ToolInfo &tool)
+{
+    tool.supportedDevices.clear();
+    if (!json.contains("supportedDevices")) {
+        return;
+    }
+    const nlohmann::json &devicesJson = json["supportedDevices"];
+    if (!devicesJson.is_array()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL,
+            "ParseFromJson: supportedDevices of tool %{public}s is not an array, fallback to empty array",
+            tool.name.c_str());
+        return;
+    }
+    if (devicesJson.size() > MAX_SUPPORTED_DEVICES_COUNT) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL,
+            "ParseFromJson: supportedDevices of tool %{public}s exceeds max count %{public}u, "
+            "fallback to empty array", tool.name.c_str(), MAX_SUPPORTED_DEVICES_COUNT);
+        return;
+    }
+    std::vector<std::string> devices;
+    for (const auto &device : devicesJson) {
+        if (!device.is_string()) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL,
+                "ParseFromJson: supportedDevices of tool %{public}s contains a non-string item, "
+                "fallback to empty array", tool.name.c_str());
+            return;
+        }
+        std::string deviceType = device.get<std::string>();
+        if (!IsValidDeviceTypeFormat(deviceType)) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL,
+                "ParseFromJson: supportedDevices of tool %{public}s contains an invalid device "
+                "type %{public}s, fallback to empty array", tool.name.c_str(), deviceType.c_str());
+            return;
+        }
+        if (std::find(devices.begin(), devices.end(), deviceType) == devices.end()) {
+            devices.push_back(std::move(deviceType));
+        }
+    }
+    tool.supportedDevices = std::move(devices);
+}
+
+void ParseVisibility(const nlohmann::json &json, ToolInfo &tool)
+{
+    tool.visibility = TOOL_VISIBILITY_PRIVATE;
+    if (!json.contains("visibility")) {
+        return;
+    }
+    const nlohmann::json &visibilityJson = json["visibility"];
+    if (!visibilityJson.is_string()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL,
+            "ParseFromJson: visibility of tool %{public}s is not a string, fallback to private",
+            tool.name.c_str());
+        return;
+    }
+    const std::string visibility = visibilityJson.get<std::string>();
+    if (visibility != TOOL_VISIBILITY_PUBLIC && visibility != TOOL_VISIBILITY_PRIVATE) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL,
+            "ParseFromJson: unknown visibility of tool %{public}s, fallback to private", tool.name.c_str());
+        return;
+    }
+    tool.visibility = visibility;
+}
 } // namespace
 
 // ToolInfo implementation
@@ -54,7 +146,9 @@ bool ToolInfo::Marshalling(Parcel &parcel) const
            parcel.WriteStringVector(eventTypes) &&
            parcel.WriteBool(hasSubCommand) &&
            parcel.WriteString(subcommandsJson) &&
-           parcel.WriteBool(isLockScreenExecutionAllowed);
+           parcel.WriteBool(isLockScreenExecutionAllowed) &&
+           parcel.WriteString(visibility) &&
+           parcel.WriteStringVector(supportedDevices);
 }
 
 ToolInfo *ToolInfo::Unmarshalling(Parcel &parcel)
@@ -76,7 +170,9 @@ ToolInfo *ToolInfo::Unmarshalling(Parcel &parcel)
         !parcel.ReadStringVector(&tool->eventTypes) ||
         !parcel.ReadBool(tool->hasSubCommand) ||
         !parcel.ReadString(subcommandsJson) ||
-        !parcel.ReadBool(tool->isLockScreenExecutionAllowed)) {
+        !parcel.ReadBool(tool->isLockScreenExecutionAllowed) ||
+        !parcel.ReadString(tool->visibility) ||
+        !parcel.ReadStringVector(&tool->supportedDevices)) {
         delete tool;
         return nullptr;
     }
@@ -325,6 +421,16 @@ bool ToolInfo::ParseFromJson(const nlohmann::json &json, ToolInfo &tool)
         tool.isLockScreenExecutionAllowed = json["isLockScreenExecutionAllowed"];
     }
 
+    // visibility is optional; parsing (exact value-domain validation with conservative
+    // fallback per R-7) is extracted into ParseVisibility to keep the nesting depth of
+    // this function within the code style limit.
+    ParseVisibility(json, tool);
+
+    // supportedDevices is optional; parsing (format / count-bound / exact-string dedup
+    // validation with conservative fallback per R-3) is extracted into ParseSupportedDevices
+    // to keep the nesting depth of this function within the code style limit.
+    ParseSupportedDevices(json, tool);
+
     return true;
 }
 
@@ -371,6 +477,8 @@ nlohmann::json ToolInfo::ParseToJson() const
         j["subcommands"] = subcommandsJson;
     }
     j["isLockScreenExecutionAllowed"] = isLockScreenExecutionAllowed;
+    j["visibility"] = visibility;
+    j["supportedDevices"] = supportedDevices;
 
     return j;
 }
