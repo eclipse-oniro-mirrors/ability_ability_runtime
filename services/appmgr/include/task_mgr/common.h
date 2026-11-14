@@ -20,8 +20,6 @@
 #include <cstdint>
 #include <string>
 
-#include "app_mgr_constants.h"
-
 namespace OHOS {
 namespace AppExecFwk {
 // Task priority values, aligned with the TaskPriority enum of @ohos.app.agent.taskManager.
@@ -30,8 +28,9 @@ constexpr int32_t TASK_PRIORITY_MEDIUM = 200;
 constexpr int32_t TASK_PRIORITY_HIGH = 300;
 constexpr int32_t TASK_PRIORITY_DEFAULT = TASK_PRIORITY_MEDIUM;
 
-// Length limit of taskId, in bytes of the UTF-8 string handed over by the NAPI layer:
-// shared via app_mgr_constants.h with abilitymgr (single source of truth).
+// Length limit of taskId, in bytes of the UTF-8 string handed over by the NAPI layer.
+constexpr size_t TASK_ID_MIN_LEN = 1;
+constexpr size_t TASK_ID_MAX_LEN = 256;
 
 // Task timeout is a system-wide inactivity window (no per-task input): the window opens
 // at task creation and restarts on every managed-process change.
@@ -43,6 +42,20 @@ constexpr size_t TASK_MAX_ACTIVE_TASKS = 10;
 
 // Safety ceiling on the managed attributions of one task.
 constexpr size_t TASK_MAX_ATTRIBUTIONS_PER_TASK = 1000;
+
+// Valid attribution key: length-bounded, no control characters (log injection guard).
+inline bool IsTaskIdValidForAttribution(const std::string &taskId)
+{
+    if (taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN) {
+        return false;
+    }
+    for (char c : taskId) {
+        if (static_cast<unsigned char>(c) < 0x20 || c == static_cast<char>(0x7f)) {
+            return false;
+        }
+    }
+    return true;
+}
 
 // How a task reached its end; logged with a unified tag and dumped for DFX.
 enum class TaskFinishReason : int32_t {
