@@ -150,7 +150,7 @@ export class CallerImpl implements Caller {
       let retVal = retData.reply.readInt();
       let str = retData.reply.readString();
       if (retVal != REQUEST_SUCCESS || str != 'object') {
-        hilog.info(domainID, TAG, 'call retVal is [' + retVal + '], str [' + str + ']');
+        hilog.info(domainID, TAG, 'call retVal is [%{public}d], str [%{public}s]', retVal, str);
         throw buildError(retVal);
       }
     } catch (error) {
@@ -184,7 +184,7 @@ export class CallerImpl implements Caller {
       let retVal = retData.reply.readInt();
       let str = retData.reply.readString();
       if (retVal != REQUEST_SUCCESS || str != 'object') {
-        hilog.info(domainID, TAG, 'callWithResult retVal is [' + retVal + '], str [' + str + ']');
+        hilog.info(domainID, TAG, 'callWithResult retVal is [%{public}d], str [%{public}s]', retVal, str);
         throw buildError(retVal);
       }
       return retData.reply;
