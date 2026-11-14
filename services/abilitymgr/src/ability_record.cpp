@@ -388,7 +388,7 @@ int AbilityRecord::LoadAbility(bool isShellCall, bool isStartupHide, pid_t calli
         std::string callerBundleName = firstCallerBundleName_.empty() ? "_system" : firstCallerBundleName_;
         ffrt::submit([this, appInfo = abilityInfo_.applicationInfo, userId, callerBundleName]() {
             AbilityEventUtil::HandleBundleFirstLaunch(appInfo, userId, callerBundleName);
-        }, ffrt::task_attr().name("HandleBundleFirstLaunch"));
+            }, ffrt::task_attr().name("HandleBundleFirstLaunch"));
     }
 
     return result;
