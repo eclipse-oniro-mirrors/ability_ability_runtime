@@ -1388,5 +1388,263 @@ HWTEST_F(AbilityConnectManagerFourthTest, AttributeSameConnectionRecordTaskID_00
     connectManager->GetServiceMap().clear();
     TAG_LOGI(AAFwkTag::TEST, "AttributeSameConnectionRecordTaskID_008 end");
 }
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: CleanA2ATaskAttributionsByTaskId
+ * SubFunction:
+ * FunctionPoints: CleanA2ATaskAttributionsByTaskId guard paths
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. Empty taskId → early return without crash, service map unchanged
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, CleanA2ATaskAttributionsByTaskId_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CleanA2ATaskAttributionsByTaskId_001 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    auto abilityRecord = BaseExtensionRecord::CreateBaseExtensionRecord(abilityRequest_);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->abilityInfo_.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    connectManager->AddToServiceMap("testKey", abilityRecord);
+    ASSERT_EQ(connectManager->GetServiceMap().size(), 1);
+
+    connectManager->CleanA2ATaskAttributionsByTaskId("");
+    EXPECT_EQ(connectManager->GetServiceMap().size(), 1);
+    connectManager->GetServiceMap().clear();
+    TAG_LOGI(AAFwkTag::TEST, "CleanA2ATaskAttributionsByTaskId_001 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: CleanA2ATaskAttributionsByTaskId
+ * SubFunction:
+ * FunctionPoints: CleanA2ATaskAttributionsByTaskId guard paths
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. Empty service map → early return without crash
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, CleanA2ATaskAttributionsByTaskId_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CleanA2ATaskAttributionsByTaskId_002 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+    ASSERT_EQ(connectManager->GetServiceMap().size(), 0);
+
+    connectManager->CleanA2ATaskAttributionsByTaskId("testTaskId");
+    EXPECT_EQ(connectManager->GetServiceMap().size(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "CleanA2ATaskAttributionsByTaskId_002 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: CleanA2ATaskAttributionsByTaskId
+ * SubFunction:
+ * FunctionPoints: CleanA2ATaskAttributionsByTaskId type filtering
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. Non-AGENT extension records are skipped (attributions unchanged)
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, CleanA2ATaskAttributionsByTaskId_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CleanA2ATaskAttributionsByTaskId_003 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    auto abilityRecord = BaseExtensionRecord::CreateBaseExtensionRecord(abilityRequest_);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->abilityInfo_.extensionAbilityType = AppExecFwk::ExtensionAbilityType::SERVICE;
+    connectManager->AddToServiceMap("serviceKey", abilityRecord);
+
+    AgentTaskAttribution attribution;
+    attribution.taskId = "testTaskId";
+    attribution.attributionId = 100;
+    attribution.agentId = "testAgent";
+    abilityRecord->AddTaskAttribution(1, attribution);
+    ASSERT_EQ(abilityRecord->GetTaskAttributions(1).size(), 1u);
+
+    connectManager->CleanA2ATaskAttributionsByTaskId("testTaskId");
+    EXPECT_EQ(abilityRecord->GetTaskAttributions(1).size(), 1u);
+    connectManager->GetServiceMap().clear();
+    TAG_LOGI(AAFwkTag::TEST, "CleanA2ATaskAttributionsByTaskId_003 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: CleanA2ATaskAttributionsByTaskId
+ * SubFunction:
+ * FunctionPoints: CleanA2ATaskAttributionsByTaskId null record handling
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. Null records in service map are skipped without crash
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, CleanA2ATaskAttributionsByTaskId_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CleanA2ATaskAttributionsByTaskId_004 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+    ASSERT_EQ(connectManager->GetServiceMap().size(), 0);
+
+    connectManager->CleanA2ATaskAttributionsByTaskId("testTaskId");
+    EXPECT_EQ(connectManager->GetServiceMap().size(), 0);
+    connectManager->GetServiceMap().clear();
+    TAG_LOGI(AAFwkTag::TEST, "CleanA2ATaskAttributionsByTaskId_004 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: CleanA2ATaskAttributionsByTaskId
+ * SubFunction:
+ * FunctionPoints: CleanA2ATaskAttributionsByTaskId cleanup for AGENT records
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. AGENT record with matching taskId → attributions cleaned
+ * 2. AGENT record with non-matching taskId → attributions retained
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, CleanA2ATaskAttributionsByTaskId_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CleanA2ATaskAttributionsByTaskId_005 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    auto abilityRecord = BaseExtensionRecord::CreateBaseExtensionRecord(abilityRequest_);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->abilityInfo_.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    connectManager->AddToServiceMap("agentKey", abilityRecord);
+
+    AgentTaskAttribution matchAttribution;
+    matchAttribution.taskId = "finishedTaskId";
+    matchAttribution.attributionId = 100;
+    matchAttribution.agentId = "agentA";
+    abilityRecord->AddTaskAttribution(1, matchAttribution);
+
+    AgentTaskAttribution retainAttribution;
+    retainAttribution.taskId = "otherTaskId";
+    retainAttribution.attributionId = 200;
+    retainAttribution.agentId = "agentB";
+    abilityRecord->AddTaskAttribution(2, retainAttribution);
+
+    ASSERT_EQ(abilityRecord->GetTaskAttributions(1).size(), 1u);
+    ASSERT_EQ(abilityRecord->GetTaskAttributions(2).size(), 1u);
+
+    connectManager->CleanA2ATaskAttributionsByTaskId("finishedTaskId");
+
+    EXPECT_EQ(abilityRecord->GetTaskAttributions(1).size(), 0u);
+    EXPECT_EQ(abilityRecord->GetTaskAttributions(2).size(), 1u);
+    connectManager->GetServiceMap().clear();
+    TAG_LOGI(AAFwkTag::TEST, "CleanA2ATaskAttributionsByTaskId_005 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: CleanA2ATaskAttributionsByTaskId
+ * SubFunction:
+ * FunctionPoints: CleanA2ATaskAttributionsByTaskId multi-record cleanup
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. Multiple AGENT records in service map, only matching taskId entries are removed
+ * 2. Non-matching taskId entries across all records are retained
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, CleanA2ATaskAttributionsByTaskId_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CleanA2ATaskAttributionsByTaskId_006 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    AbilityRequest request1 = abilityRequest_;
+    request1.abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    auto record1 = BaseExtensionRecord::CreateBaseExtensionRecord(request1);
+    ASSERT_NE(record1, nullptr);
+    record1->abilityInfo_.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    connectManager->AddToServiceMap("agentKey1", record1);
+
+    AbilityRequest request2 = abilityRequest_;
+    request2.abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    auto record2 = BaseExtensionRecord::CreateBaseExtensionRecord(request2);
+    ASSERT_NE(record2, nullptr);
+    record2->abilityInfo_.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    connectManager->AddToServiceMap("agentKey2", record2);
+
+    AgentTaskAttribution attr1;
+    attr1.taskId = "finishedTaskId";
+    attr1.attributionId = 100;
+    attr1.agentId = "agentA";
+    record1->AddTaskAttribution(1, attr1);
+
+    AgentTaskAttribution attr2;
+    attr2.taskId = "finishedTaskId";
+    attr2.attributionId = 200;
+    attr2.agentId = "agentB";
+    record2->AddTaskAttribution(2, attr2);
+
+    AgentTaskAttribution attr3;
+    attr3.taskId = "retainedTaskId";
+    attr3.attributionId = 300;
+    attr3.agentId = "agentC";
+    record2->AddTaskAttribution(3, attr3);
+
+    ASSERT_EQ(record1->GetTaskAttributions(1).size(), 1u);
+    ASSERT_EQ(record2->GetTaskAttributions(2).size(), 1u);
+    ASSERT_EQ(record2->GetTaskAttributions(3).size(), 1u);
+
+    connectManager->CleanA2ATaskAttributionsByTaskId("finishedTaskId");
+
+    EXPECT_EQ(record1->GetTaskAttributions(1).size(), 0u);
+    EXPECT_EQ(record2->GetTaskAttributions(2).size(), 0u);
+    EXPECT_EQ(record2->GetTaskAttributions(3).size(), 1u);
+    connectManager->GetServiceMap().clear();
+    TAG_LOGI(AAFwkTag::TEST, "CleanA2ATaskAttributionsByTaskId_006 end");
+}
+
+/*
+ * Feature: AbilityConnectManager
+ * Function: CleanA2ATaskAttributionsByTaskId
+ * SubFunction:
+ * FunctionPoints: CleanA2ATaskAttributionsByTaskId multiple attributions per recordId
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. Multiple attributions under the same recordId, only matching taskId entries removed
+ * 2. Non-matching taskId entries under the same recordId are retained
+ */
+HWTEST_F(AbilityConnectManagerFourthTest, CleanA2ATaskAttributionsByTaskId_007, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CleanA2ATaskAttributionsByTaskId_007 start");
+    auto connectManager = std::make_shared<AbilityConnectManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+
+    auto abilityRecord = BaseExtensionRecord::CreateBaseExtensionRecord(abilityRequest_);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->abilityInfo_.extensionAbilityType = AppExecFwk::ExtensionAbilityType::AGENT;
+    connectManager->AddToServiceMap("agentKey", abilityRecord);
+
+    AgentTaskAttribution matchAttr1;
+    matchAttr1.taskId = "finishedTaskId";
+    matchAttr1.attributionId = 100;
+    matchAttr1.agentId = "agentA";
+    abilityRecord->AddTaskAttribution(1, matchAttr1);
+
+    AgentTaskAttribution retainAttr;
+    retainAttr.taskId = "retainedTaskId";
+    retainAttr.attributionId = 200;
+    retainAttr.agentId = "agentB";
+    abilityRecord->AddTaskAttribution(1, retainAttr);
+
+    AgentTaskAttribution matchAttr2;
+    matchAttr2.taskId = "finishedTaskId";
+    matchAttr2.attributionId = 300;
+    matchAttr2.agentId = "agentC";
+    abilityRecord->AddTaskAttribution(1, matchAttr2);
+
+    ASSERT_EQ(abilityRecord->GetTaskAttributions(1).size(), 3u);
+
+    connectManager->CleanA2ATaskAttributionsByTaskId("finishedTaskId");
+
+    auto remaining = abilityRecord->GetTaskAttributions(1);
+    EXPECT_EQ(remaining.size(), 1u);
+    EXPECT_EQ(remaining[0].taskId, "retainedTaskId");
+    connectManager->GetServiceMap().clear();
+    TAG_LOGI(AAFwkTag::TEST, "CleanA2ATaskAttributionsByTaskId_007 end");
+}
 }  // namespace AAFwk
 }  // namespace OHOS
