@@ -1286,10 +1286,6 @@ int AbilityManagerStub::GetTopAbilityInner(MessageParcel &data, MessageParcel &r
 int AbilityManagerStub::GetElementNameByTokenInner(MessageParcel &data, MessageParcel &reply)
 {
     sptr<IRemoteObject> token = data.ReadRemoteObject();
-    if (!token) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "token null");
-        return ERR_NULL_OBJECT;
-    }
     bool isNeedLocalDeviceId = data.ReadBool();
     AppExecFwk::ElementName result = GetElementNameByToken(token, isNeedLocalDeviceId);
     if (result.GetDeviceID().empty()) {

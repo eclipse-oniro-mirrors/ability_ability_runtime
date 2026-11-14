@@ -57,6 +57,7 @@ ohos_unittest("ability_manager_service_first_test") {
     "${ability_runtime_services_path}/abilitymgr/src/database_write_counter.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/preload_manager_service.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/report_data_partition_usage_manager.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/utils/exit_reason_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/request_id_util.cpp",
     "${ability_runtime_test_path}/mock/auto_startup_mock/src/direct_boot_test_support.cpp",
     "${ability_runtime_test_path}/unittest/multi_app_utils_test/src/mock_app_mgr_service.cpp",

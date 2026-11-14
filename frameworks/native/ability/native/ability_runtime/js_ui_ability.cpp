@@ -1457,7 +1457,7 @@ void JsUIAbility::RequestFocus(const Want &want)
     int32_t scbRequestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 0);
     TAG_LOGD(AAFwkTag::UIABILITY, "Get requestId: %{public}d, scbRequestId: %{public}d from want for GoForeground",
         requestId, scbRequestId);
-    scene_->GoForeground(UIAbility::sceneFlag_, false, requestId, scbRequestId);
+    scene_->GoForeground(UIAbility::sceneFlag_, requestId, scbRequestId);
     const_cast<AAFwk::Want &>(want).RemoveParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID);
     const_cast<AAFwk::Want &>(want).RemoveParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID);
     TAG_LOGD(AAFwkTag::UIABILITY, "end");

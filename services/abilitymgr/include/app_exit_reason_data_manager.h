@@ -43,7 +43,7 @@ public:
         bool &isSetReason, AAFwk::ExitReason &exitReason, AppExecFwk::RunningProcessInfo &processInfo,
         int64_t &time_stamp, bool &withKillMsg, bool cleanFlag = true);
 
-    int32_t DeleteAppExitReason(const std::string &bundleName, int32_t uid, int32_t appIndex, int32_t uid = -1);
+    int32_t DeleteAppExitReason(const std::string &bundleName, int32_t uid, int32_t appIndex);
 
     int32_t DeleteAppExitReason(const std::string &bundleName, uint32_t accessTokenId);
 

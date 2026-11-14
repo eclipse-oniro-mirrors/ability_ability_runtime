@@ -30,6 +30,7 @@ const std::string WANT_PARAMS_EXTENSION_TYPE = "autoFill/password";
 const std::string WANT_PARAMS_SMART_EXTENSION_TYPE = "autoFill/smart";
 const std::string AUTO_FILL_START_POPUP_WINDOW = "persist.sys.abilityms.autofill.is_passwd_popup_window";
 const std::string IS_SUPPORT_PC_MODE = "const.window.support_window_pcmode_switch";
+const std::string IS_PC_MODE = "persist.sceneboard.ispcmode";
 constexpr static char WANT_PARAMS_VIEW_DATA_KEY[] = "ohos.ability.params.viewData";
 constexpr static char WANT_PARAMS_AUTO_FILL_CMD_KEY[] = "ohos.ability.params.autoFillCmd";
 constexpr static char WANT_PARAMS_AUTO_FILL_POPUP_WINDOW_KEY[] = "ohos.ability.params.popupWindow";
@@ -271,6 +272,9 @@ bool AutoFillManager::ConvertAutoFillWindowType(const AutoFill::AutoFillRequest 
         autoFillType == AbilityBase::AutoFillType::NEW_PASSWORD) {
         if (system::GetBoolParameter(AUTO_FILL_START_POPUP_WINDOW, false)) {
             autoFillWindowType = AutoFill::AutoFillWindowType::POPUP_WINDOW;
+        } else if (system::GetParameter(IS_SUPPORT_PC_MODE, "false") == "true"
+            && system::GetParameter(IS_PC_MODE, "false") == "true") {
+            autoFillWindowType = AutoFill::AutoFillWindowType::POPUP_WINDOW;
         } else {
             autoFillWindowType = AutoFill::AutoFillWindowType::MODAL_WINDOW;
         }
@@ -347,6 +351,9 @@ bool AutoFillManager::IsNeedToCreatePopupWindow(const AbilityBase::AutoFillType 
         autoFillType == AbilityBase::AutoFillType::USER_NAME ||
         autoFillType == AbilityBase::AutoFillType::NEW_PASSWORD) {
         if (system::GetBoolParameter(AUTO_FILL_START_POPUP_WINDOW, false)) {
+            return true;
+        } else if (system::GetParameter(IS_SUPPORT_PC_MODE, "false") == "true"
+            && system::GetParameter(IS_PC_MODE, "false") == "true") {
             return true;
         } else {
             return false;

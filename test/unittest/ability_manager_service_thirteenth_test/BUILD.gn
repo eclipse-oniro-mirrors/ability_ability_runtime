@@ -140,6 +140,7 @@ ohos_unittest("ability_manager_service_thirteenth_test") {
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_execute_result.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_profile.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_utils.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/utils/exit_reason_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/hmsf_utils.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_rdb_data_mgr.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_rdb_storage_mgr.cpp",
