@@ -15,7 +15,9 @@
 #include <gtest/gtest.h>
 #include "mock_my_status.h"
 
+#define private public
 #include "ability_manager_service.h"
+#undef private
 #include "ability_manager_errors.h"
 #include "hilog_tag_wrapper.h"
 #include "rate_limiter.h"
@@ -2109,6 +2111,44 @@ HWTEST_F(AbilityManagerServiceFourteenthTest, IsDmsSameAPP_001, TestSize.Level1)
     abilityRequest.want.SetParam(DMS_CALLER_APP_ID, AppId);
     EXPECT_FALSE(abilityMs->IsDmsSameAPP(abilityRequest));
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest IsDmsSameAPP_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: OnTaskFinished
+ * SubFunction:
+ * FunctionPoints: OnTaskFinished guard paths
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. Empty taskId → early return without crash
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, OnTaskFinished_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest OnTaskFinished_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    abilityMs->OnTaskFinished("", 0);
+    SUCCEED();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest OnTaskFinished_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: OnTaskFinished
+ * SubFunction:
+ * FunctionPoints: OnTaskFinished guard paths
+ * EnvConditions: NA
+ * CaseDescription: Verify the following:
+ * 1. Non-empty taskId but subManagersHelper_ is null → manager not found, early return without crash
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, OnTaskFinished_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest OnTaskFinished_002 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    abilityMs->OnTaskFinished("testTaskId", 0);
+    SUCCEED();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest OnTaskFinished_002 end");
 }
 } // namespace AAFwk
 } // namespace OHOS

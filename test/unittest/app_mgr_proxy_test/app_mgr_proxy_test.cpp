@@ -1758,7 +1758,7 @@ HWTEST_F(AppMgrProxyTest, StartTask_0100, TestSize.Level1)
             return NO_ERROR;
         });
 
-    auto ret = appMgrProxy_->StartTask("proxy_start_task_0100", 200);
+    auto ret = appMgrProxy_->StartTask("proxy_start_task_0100");
     EXPECT_EQ(ret, ERR_OK);
 }
 
@@ -1776,7 +1776,7 @@ HWTEST_F(AppMgrProxyTest, StartTask_0200, TestSize.Level1)
             return NO_ERROR;
         });
 
-    auto ret = appMgrProxy_->StartTask("proxy_start_task_0200", 200);
+    auto ret = appMgrProxy_->StartTask("proxy_start_task_0200");
     EXPECT_EQ(ret, AAFwk::ERR_TASK_ALREADY_EXISTS);
 }
 

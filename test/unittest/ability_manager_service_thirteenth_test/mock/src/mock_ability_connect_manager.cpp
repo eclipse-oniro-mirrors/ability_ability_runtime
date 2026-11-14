@@ -702,5 +702,9 @@ int32_t AbilityConnectManager::AttributeTaskForA2AReusedConnectionRecordLocked(
 {
     return ERR_OK;
 }
+
+void AbilityConnectManager::CleanA2ATaskAttributionsByTaskId(const std::string &taskId)
+{
+}
 }  // namespace AAFwk
 }  // namespace OHOS

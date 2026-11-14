@@ -2628,6 +2628,99 @@ HWTEST_F(AgentConnectManagerTest, CleanupExpiredPreflightsPrunesExpiredRecord, T
     EXPECT_FALSE(mgr.connectPreflightCleanupScheduled_);
 }
 
+// ---------------------------------------------------------------------------
+// GetServiceConnectionForTracked
+// ---------------------------------------------------------------------------
+
+/**
+ * @tc.name      GetServiceConnectionForTrackedReturnsNullForNullConnection
+ * @tc.desc      A null connection yields a null service connection.
+ */
+HWTEST_F(AgentConnectManagerTest, GetServiceConnectionForTrackedReturnsNullForNullConnection, TestSize.Level1)
+{
+    EXPECT_EQ(AgentConnectManager::GetInstance().GetServiceConnectionForTracked(nullptr), nullptr);
+}
+
+/**
+ * @tc.name      GetServiceConnectionForTrackedReturnsNullForUntracked
+ * @tc.desc      An untracked connection yields a null service connection.
+ */
+HWTEST_F(AgentConnectManagerTest, GetServiceConnectionForTrackedReturnsNullForUntracked, TestSize.Level1)
+{
+    auto conn = MakeConnection();
+    EXPECT_EQ(AgentConnectManager::GetInstance().GetServiceConnectionForTracked(conn), nullptr);
+}
+
+/**
+ * @tc.name      GetServiceConnectionForTrackedReturnsStoredServiceConnection
+ * @tc.desc      A tracked standard connection returns the stored service connection.
+ */
+HWTEST_F(AgentConnectManagerTest, GetServiceConnectionForTrackedReturnsStoredServiceConnection, TestSize.Level1)
+{
+    auto &mgr = AgentConnectManager::GetInstance();
+    auto conn = MakeConnection();
+    auto request = MakeStandardRequest(conn, CALLER_UID, "agent-1", DefaultHostKey(), NONCE_A);
+    ASSERT_EQ(mgr.RegisterStandardAgentConnection(request), ERR_OK);
+    ASSERT_NE(request.serviceConnection, nullptr);
+
+    auto result = mgr.GetServiceConnectionForTracked(conn);
+    EXPECT_EQ(result, request.serviceConnection);
+}
+
+/**
+ * @tc.name      GetServiceConnectionForTrackedReturnsTrackedWithoutQuotaServiceConnection
+ * @tc.desc      A tracked connection registered without quota (RegisterTracked) returns a non-null
+ *               service connection equal to the one returned at registration time.
+ */
+HWTEST_F(AgentConnectManagerTest, GetServiceConnectionForTrackedReturnsTrackedWithoutQuotaServiceConnection,
+    TestSize.Level1)
+{
+    auto &mgr = AgentConnectManager::GetInstance();
+    auto conn = MakeConnection();
+    sptr<AAFwk::IAbilityConnection> serviceConnection;
+    ASSERT_EQ(mgr.RegisterTrackedConnectionAndGetServiceConnection(
+        conn, CALLER_UID, NoopDeathHandler(), serviceConnection), ERR_OK);
+    ASSERT_NE(serviceConnection, nullptr);
+
+    auto result = mgr.GetServiceConnectionForTracked(conn);
+    EXPECT_EQ(result, serviceConnection);
+}
+
+/**
+ * @tc.name      GetServiceConnectionForTrackedCreatesWrapperWhenServiceConnectionNull
+ * @tc.desc      When the stored record has a null serviceConnection, GetServiceConnectionForTracked
+ *               still returns a non-null wrapper via CreateServiceConnection.
+ */
+HWTEST_F(AgentConnectManagerTest, GetServiceConnectionForTrackedCreatesWrapperWhenServiceConnectionNull,
+    TestSize.Level1)
+{
+    auto &mgr = AgentConnectManager::GetInstance();
+    auto conn = MakeConnection();
+    auto request = MakeStandardRequest(conn, CALLER_UID, "agent-1", DefaultHostKey(), NONCE_A);
+    ASSERT_EQ(mgr.RegisterStandardAgentConnection(request), ERR_OK);
+    // Inject a null serviceConnection to exercise the CreateServiceConnection fallback path.
+    mgr.trackedConnections_[conn->AsObject()].serviceConnection = nullptr;
+
+    auto result = mgr.GetServiceConnectionForTracked(conn);
+    EXPECT_NE(result, nullptr);
+}
+
+/**
+ * @tc.name      GetServiceConnectionForTrackedReturnsNullAfterRelease
+ * @tc.desc      After releasing a tracked connection, GetServiceConnectionForTracked returns nullptr.
+ */
+HWTEST_F(AgentConnectManagerTest, GetServiceConnectionForTrackedReturnsNullAfterRelease, TestSize.Level1)
+{
+    auto &mgr = AgentConnectManager::GetInstance();
+    auto conn = MakeConnection();
+    auto request = MakeStandardRequest(conn, CALLER_UID, "agent-1", DefaultHostKey(), NONCE_A);
+    ASSERT_EQ(mgr.RegisterStandardAgentConnection(request), ERR_OK);
+    ASSERT_NE(mgr.GetServiceConnectionForTracked(conn), nullptr);
+
+    mgr.ReleaseTrackedConnection(conn);
+    EXPECT_EQ(mgr.GetServiceConnectionForTracked(conn), nullptr);
+}
+
 /**
  * @tc.name      ClearAgentHostSessionReleasesAllCallers
  * @tc.desc      The (currently caller-less) ClearAgentHostSessionLocked releases every caller's tracked

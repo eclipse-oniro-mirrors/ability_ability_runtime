@@ -5680,6 +5680,59 @@ HWTEST_F(AgentManagerServiceTest, DisconnectForCli_Spoof_ReturnsPermissionDenied
 }
 
 /**
+* @tc.name  : VerifyAgentDisconnectRequests_ShouldRejectWhenPermissionCheckFails
+* @tc.number: VerifyAgentDisconnectRequests_008
+* @tc.desc  : Test VerifyAgentDisconnectRequests returns CHECK_PERMISSION_FAILED when
+*             CheckSpecificSystemAbilityAccessPermission fails.
+*/
+HWTEST_F(AgentManagerServiceTest, VerifyAgentDisconnectRequests_008, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    MyFlag::retCheckSpecificSystemAbilityAccessPermission = false;
+    auto connection = sptr<MockAbilityConnection>::MakeSptr();
+    AAFwk::Want want;
+    SetAgentVerificationNonceParam(want, 1000000001);
+    std::string callerIdentity;
+    EXPECT_EQ(service->VerifyAgentDisconnectRequests({ want }, connection, callerIdentity),
+        AAFwk::CHECK_PERMISSION_FAILED);
+    EXPECT_TRUE(callerIdentity.empty());
+    MyFlag::retCheckSpecificSystemAbilityAccessPermission = true;
+}
+
+/**
+* @tc.name  : VerifyAgentDisconnectRequests_ShouldRejectNullConnection
+* @tc.number: VerifyAgentDisconnectRequests_009
+* @tc.desc  : Test VerifyAgentDisconnectRequests returns ERR_INVALID_VALUE when connection is nullptr.
+*/
+HWTEST_F(AgentManagerServiceTest, VerifyAgentDisconnectRequests_009, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    AAFwk::Want want;
+    SetAgentVerificationNonceParam(want, 1000000001);
+    sptr<AAFwk::IAbilityConnection> nullConnection = nullptr;
+    std::string callerIdentity;
+    EXPECT_EQ(service->VerifyAgentDisconnectRequests({ want }, nullConnection, callerIdentity),
+        ERR_INVALID_VALUE);
+    EXPECT_TRUE(callerIdentity.empty());
+}
+
+/**
+* @tc.name  : VerifyAgentDisconnectRequests_ShouldRejectEmptyWants
+* @tc.number: VerifyAgentDisconnectRequests_010
+* @tc.desc  : Test VerifyAgentDisconnectRequests returns ERR_INVALID_VALUE when wants vector is empty.
+*/
+HWTEST_F(AgentManagerServiceTest, VerifyAgentDisconnectRequests_010, TestSize.Level1)
+{
+    auto service = AgentManagerService::GetInstance();
+    auto connection = sptr<MockAbilityConnection>::MakeSptr();
+    std::vector<AAFwk::Want> emptyWants;
+    std::string callerIdentity;
+    EXPECT_EQ(service->VerifyAgentDisconnectRequests(emptyWants, connection, callerIdentity),
+        ERR_INVALID_VALUE);
+    EXPECT_TRUE(callerIdentity.empty());
+}
+
+/**
 * @tc.name  : DisconnectForCli_AllOk_DelegatesAndReturnsOk
 * @tc.number: DisconnectForCli_AllOk_DelegatesAndReturnsOk
 * @tc.desc  : Delegates to DisconnectAgentExtensionAbility and returns ERR_OK when all checks pass.

@@ -156,7 +156,7 @@ public:
     MOCK_METHOD2(GetAllAbilityInfos, int32_t(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos));
     MOCK_METHOD1(EnableDelayedProcessExit, int32_t(bool enabled));
     MOCK_METHOD1(CancelDelayedExitTask, void(int32_t pid));
-    MOCK_METHOD2(StartTask, int32_t(const std::string &taskId, int32_t priority));
+    MOCK_METHOD1(StartTask, int32_t(const std::string &taskId));
     MOCK_METHOD1(FinishTask, int32_t(const std::string &taskId));
     MOCK_METHOD5(RegisterManagedProcess,
         int32_t(const std::string &taskId, int32_t pid, int32_t tool, int32_t callerUid,

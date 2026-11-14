@@ -183,6 +183,17 @@ public:
      */
     void RemoveTaskAttribution(int32_t recordId, const std::string &taskId, int64_t attributionId);
 
+    /**
+     * @brief Remove all attribution entries matching the given taskId across all
+     *        recordIds. Used by the task-finished callback to proactively clean
+     *        stale local entries when the server-side task is terminated (via
+     *        FinishTask, timeout, or creator process death) before the connection
+     *        is disconnected.
+     * @param taskId Indicates the task id to match.
+     * @return Number of entries removed.
+     */
+    size_t CleanTaskAttributionsByTaskId(const std::string &taskId);
+
 private:
     void DumpUIExtensionRootHostInfo(std::vector<std::string> &info) const;
 

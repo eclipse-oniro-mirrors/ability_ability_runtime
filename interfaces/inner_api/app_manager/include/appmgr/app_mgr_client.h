@@ -1898,11 +1898,10 @@ public:
      * Start a task. The caller must be a system app.
      *
      * @param taskId Attribution key of the task (1~256 characters).
-     * @param priority One of the TaskPriority values.
      * @return ERR_OK on success, server error code otherwise;
      *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
-    int32_t StartTask(const std::string &taskId, int32_t priority);
+    int32_t StartTask(const std::string &taskId);
 
     /**
      * Finish a task. The caller must be the creating system app.

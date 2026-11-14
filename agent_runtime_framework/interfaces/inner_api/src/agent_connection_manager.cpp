@@ -31,7 +31,6 @@ namespace AgentRuntime {
 namespace {
 constexpr int64_t CONNECTING_TIMEOUT = 30000;
 constexpr int32_t DIED = -1;
-constexpr const char* WANT_PARAMS_TASK_ID_KEY = "ohos.aafwk.param.agent.taskId";
 }
 
 AgentConnectionInfo::AgentConnectionInfo(const std::string &agentId,
@@ -619,7 +618,7 @@ ErrCode AgentConnectionManager::ConnectAbilityInner(const AAFwk::Want &want,
         // Best-effort, oneway: ask the service to attribute the task id onto the same
         // ConnectionRecord AMS already holds for this reused connection. Fire-and-forget;
         // failure is logged inside the client and never blocks the connect result.
-        std::string taskId = want.GetStringParam(WANT_PARAMS_TASK_ID_KEY);
+        std::string taskId = want.GetStringParam(AAFwk::Want::PARAM_RESV_AGENT_TASK_ID);
         if (reusedConnection != nullptr && !taskId.empty()) {
             AgentManagerClient::GetInstance().AttributeTaskForA2AReusedConnectionRecord(want, reusedConnection);
         }
@@ -636,7 +635,7 @@ void AgentConnectionManager::AttributeTaskForA2AReusedConnection(const AAFwk::Wa
         TAG_LOGD(AAFwkTag::SER_ROUTER, "empty agentId, skip");
         return;
     }
-    std::string taskId = want.GetStringParam(WANT_PARAMS_TASK_ID_KEY);
+    std::string taskId = want.GetStringParam(AAFwk::Want::PARAM_RESV_AGENT_TASK_ID);
     if (taskId.empty()) {
         TAG_LOGD(AAFwkTag::SER_ROUTER, "empty taskId, skip");
         return;

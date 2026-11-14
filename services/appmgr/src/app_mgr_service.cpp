@@ -45,6 +45,8 @@
 #include "permission_verification.h"
 #include "system_ability_definition.h"
 #include "task_mgr/task_manager_service.h"
+#include "task_mgr/task_priority_judge.h"
+#include "task_mgr/process_schedule.h"
 #include "accesstoken_kit.h"
 #include "app_mgr_service_const.h"
 #include "app_mgr_service_dump_error_code.h"
@@ -61,6 +63,7 @@ constexpr const char* OPTION_KEY_DUMP_FFRT = "--ffrt";
 constexpr const char* OPTION_KEY_DUMP_WEB = "--web";
 constexpr const char* OPTION_KEY_DUMP_TASK = "--task";
 constexpr size_t SIZE_ONE = 1;
+constexpr size_t SIZE_TWO = 2;
 constexpr size_t SIZE_FOUR = 4;
 constexpr size_t SIZE_FIVE = 5;
 constexpr size_t INDEX_ONE = 1;
@@ -182,13 +185,13 @@ void AppMgrService::SetInnerService(const std::shared_ptr<AppMgrServiceInner> &i
     appMgrServiceInner_ = innerService;
 }
 
-int32_t AppMgrService::StartTask(const std::string &taskId, int32_t priority)
+int32_t AppMgrService::StartTask(const std::string &taskId)
 {
     if (!AAFwk::PermissionVerification::GetInstance()->IsSystemAppCall()) {
         TAG_LOGW(AAFwkTag::APPMGR, "caller is not system app, rejected");
         return AAFwk::ERR_NOT_SYSTEM_APP;
     }
-    return TaskManagerService::GetInstance().StartTask(taskId, priority);
+    return TaskManagerService::GetInstance().StartTask(taskId);
 }
 
 int32_t AppMgrService::FinishTask(const std::string &taskId)
@@ -306,6 +309,14 @@ ErrCode AppMgrService::Init()
     TaskManagerService::GetInstance().SetPidValidator(
         [appMgrServiceInner = appMgrServiceInner_](pid_t pid) {
             return appMgrServiceInner->GetAppRunningRecordByPid(pid) != nullptr;
+        });
+    // Reconcile the judge with the caller foreground ability tokens when a pid starts
+    // being tracked. The query is per-pid, ability-level and returns the same token
+    // identity the ability observer reports; it bypasses the IPC-facing permission gates
+    // (the startTask caller is a system app without GET_RUNNING_INFO).
+    TaskPriorityJudge::GetInstance().SetForegroundSeeder(
+        [appMgrServiceInner = appMgrServiceInner_](pid_t pid, std::vector<uintptr_t> &tokens) {
+            appMgrServiceInner->GetForegroundAbilityTokensByPid(pid, tokens);
         });
     std::function<void()> initAppMgrServiceInnerTask = [appMgrServiceInner = appMgrServiceInner_]() {
         appMgrServiceInner->Init();
@@ -1149,6 +1160,9 @@ int AppMgrService::ShowHelp(const std::vector<std::u16string>& args, std::string
         .append("dump arkweb info, ARG must be one of (--all | --nweb | ...)\n")
         .append("--task                      ")
         .append("dump agent task manager active tasks\n")
+        .append("--task psched               ")
+        .append("dump process schedule index, effective levels and judge state\n")
+
         .append("--task register <taskId> <pid> <insight|cli|a2a|ability>    ")
         .append("test hook: attribute an entity into the task\n")
         .append("--task unregister <taskId> <attributionId>    ")
@@ -1187,6 +1201,15 @@ int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string
             auto ret = TaskManagerService::GetInstance().DumpUnregisterManagedProcess(
                 Str16ToStr8(args[INDEX_TWO]), Str16ToStr8(args[INDEX_THREE]), result);
             return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
+        }
+        if (subCmd == "psched") {
+            if (args.size() != SIZE_TWO) {
+                result.append("usage: --task psched\n");
+                return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
+            }
+            result.append(ProcessSchedule::GetInstance().DumpSchedule());
+            result.append(TaskPriorityJudge::GetInstance().DumpJudgeState());
+            return ERR_OK;
         }
         result.append("error: unknown task subcommand.\n");
         return DumpErrorCode::ERR_INVALID_CMD_ERROR;

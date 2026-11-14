@@ -36,6 +36,11 @@ ohos_unittest("AmsServiceStartupTest") {
     "${ability_runtime_services_path}/appmgr/src/app_hybrid_spawn_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_mgr_event.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_mgr_service.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/process_schedule.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/attribution_record.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/common.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/system_load_provider.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/task_priority_judge.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_mgr_service_event_handler.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_mgr_service_inner.cpp",
 

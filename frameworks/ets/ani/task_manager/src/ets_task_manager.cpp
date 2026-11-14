@@ -23,7 +23,6 @@
 #include "ability_business_error.h"
 #include "ability_manager_errors.h"
 #include "ani_common_util.h"
-#include "ani_enum_convert.h"
 #include "errors.h"
 #include "ets_error_utils.h"
 #include "hilog_tag_wrapper.h"
@@ -35,11 +34,6 @@ namespace TaskManagerEts {
 namespace {
 constexpr const char *TASK_MANAGER_SPACE_NAME = "@ohos.app.agent.taskManager.taskManager";
 
-// Aligned with the TaskPriority enum of @ohos.app.agent.taskManager and the limits checked by
-// the NAPI binding and the service side.
-constexpr int32_t TASK_PRIORITY_LOW = 100;
-constexpr int32_t TASK_PRIORITY_MEDIUM = 200;
-constexpr int32_t TASK_PRIORITY_HIGH = 300;
 constexpr size_t TASK_ID_MIN_LEN = 1;
 constexpr size_t TASK_ID_MAX_LEN = 256;
 constexpr size_t NATIVE_FUNCTION_COUNT = 2;
@@ -52,19 +46,6 @@ bool ConvertTaskId(ani_env *env, ani_string aniTaskId, std::string &taskId)
     }
     if (taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN) {
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "invalid taskId length: %{public}zu", taskId.size());
-        return false;
-    }
-    return true;
-}
-
-bool ConvertPriority(ani_env *env, ani_enum_item aniPriority, int32_t &priority)
-{
-    if (!AAFwk::AniEnumConvertUtil::EnumConvert_EtsToNative<int32_t>(env, aniPriority, priority)) {
-        TAG_LOGE(AAFwkTag::ETSRUNTIME, "convert priority failed");
-        return false;
-    }
-    if (priority != TASK_PRIORITY_LOW && priority != TASK_PRIORITY_MEDIUM && priority != TASK_PRIORITY_HIGH) {
-        TAG_LOGE(AAFwkTag::ETSRUNTIME, "invalid priority: %{public}d", priority);
         return false;
     }
     return true;
@@ -83,14 +64,12 @@ public:
     EtsTaskManager() = delete;
     ~EtsTaskManager() = delete;
 
-    static void NativeStartTask(ani_env *env, ani_string aniTaskId, ani_enum_item aniPriority,
-        ani_object callback);
+    static void NativeStartTask(ani_env *env, ani_string aniTaskId, ani_object callback);
 
     static void NativeFinishTask(ani_env *env, ani_string aniTaskId, ani_object callback);
 };
 
-void EtsTaskManager::NativeStartTask(ani_env *env, ani_string aniTaskId, ani_enum_item aniPriority,
-    ani_object callback)
+void EtsTaskManager::NativeStartTask(ani_env *env, ani_string aniTaskId, ani_object callback)
 {
     TAG_LOGD(AAFwkTag::ETSRUNTIME, "called");
     if (env == nullptr || callback == nullptr) {
@@ -98,8 +77,7 @@ void EtsTaskManager::NativeStartTask(ani_env *env, ani_string aniTaskId, ani_enu
         return;
     }
     std::string taskId;
-    int32_t priority = TASK_PRIORITY_MEDIUM;
-    if (!ConvertTaskId(env, aniTaskId, taskId) || !ConvertPriority(env, aniPriority, priority)) {
+    if (!ConvertTaskId(env, aniTaskId, taskId)) {
         CallbackInvalidParam(env, callback);
         return;
     }
@@ -110,7 +88,7 @@ void EtsTaskManager::NativeStartTask(ani_env *env, ani_string aniTaskId, ani_enu
             AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env, AAFwk::INNER_ERR), nullptr);
         return;
     }
-    int32_t ret = appMgrClient->StartTask(taskId, priority);
+    int32_t ret = appMgrClient->StartTask(taskId);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "startTask failed: %{public}d", ret);
         AppExecFwk::AsyncCallback(env, callback,

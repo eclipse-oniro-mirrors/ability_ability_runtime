@@ -2615,7 +2615,7 @@ HWTEST_F(AmsMgrSchedulerSecondTest, AmsMgrSchedulerSecondTest_AttributeProcessFo
     std::string taskId = TEST_SCHED_TASK_PREFIX + "003";
     // create the task as the creator uid, then switch the caller to foundation
     IPCSkeleton::SetCallingUid(TEST_SCHED_CREATOR_UID);
-    EXPECT_EQ(taskManager.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(taskManager.StartTask(taskId), ERR_OK);
 
     IPCSkeleton::SetCallingUid(Constants::FOUNDATION_UID);
     auto appMgrServiceInner = std::make_shared<MockAppMgrServiceInner>();
@@ -2662,7 +2662,7 @@ HWTEST_F(AmsMgrSchedulerSecondTest, AmsMgrSchedulerSecondTest_AttributeProcessFo
     auto &taskManager = TaskManagerService::GetInstance();
     std::string taskId = TEST_SCHED_TASK_PREFIX + "004";
     IPCSkeleton::SetCallingUid(TEST_SCHED_CREATOR_UID);
-    EXPECT_EQ(taskManager.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(taskManager.StartTask(taskId), ERR_OK);
 
     IPCSkeleton::SetCallingUid(Constants::FOUNDATION_UID);
     auto appMgrServiceInner = std::make_shared<MockAppMgrServiceInner>();
@@ -2762,7 +2762,7 @@ HWTEST_F(AmsMgrSchedulerSecondTest, AmsMgrSchedulerSecondTest_UnregisterTaskAttr
     auto &taskManager = TaskManagerService::GetInstance();
     std::string taskId = TEST_SCHED_TASK_PREFIX + "unreg_003";
     IPCSkeleton::SetCallingUid(TEST_SCHED_CREATOR_UID);
-    EXPECT_EQ(taskManager.StartTask(taskId, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(taskManager.StartTask(taskId), ERR_OK);
     AttributionRecord attribution;
     attribution.pid = TEST_SCHED_TARGET_PID;
     attribution.tool = AttributionTool::INSIGHT;
