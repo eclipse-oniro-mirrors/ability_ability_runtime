@@ -1730,11 +1730,9 @@ HWTEST_F(AppMgrStubTest, HandleStartTask_0100, TestSize.Level1)
 
     WriteInterfaceToken(data);
     std::string taskId = "stub_start_task_0100";
-    constexpr int32_t priority = 300;
     data.WriteString16(Str8ToStr16(taskId));
-    data.WriteInt32(priority);
 
-    EXPECT_CALL(*mockAppMgrService_, StartTask(_, _))
+    EXPECT_CALL(*mockAppMgrService_, StartTask(_))
         .Times(1)
         .WillOnce(Return(AAFwk::ERR_TASK_ALREADY_EXISTS));
 

@@ -552,6 +552,7 @@ group("unittest") {
       "task_data_persistence_mgr_test:unittest",
       "task_handler_wrap_test:unittest",
       "task_manager_service_test:unittest",
+      "process_schedule_test:unittest",
       "timeout_state_utils_test:unittest",
       "trigger_Info_test:unittest",
       "udmf_utils_test:unittest",

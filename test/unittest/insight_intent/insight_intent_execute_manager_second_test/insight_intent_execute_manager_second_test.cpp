@@ -2792,7 +2792,7 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, RegisterAttributedProcess_Positi
     const std::string taskId = "ohos_task_id_positive_0100";
     pid_t pid = static_cast<pid_t>(getpid());
     auto &tms = AppExecFwk::TaskManagerService::GetInstance();
-    ASSERT_EQ(tms.StartTask(taskId, AppExecFwk::TASK_PRIORITY_DEFAULT), ERR_OK);
+    ASSERT_EQ(tms.StartTask(taskId), ERR_OK);
 
     uint64_t key = 100;
     uint64_t intentId = 0;

@@ -18,16 +18,8 @@ import { BusinessError } from '@ohos.base';
 export default namespace taskManager {
 loadLibraryWithPermissionCheck("taskmanager_ani.z", "@ohos.app.agent.taskManager")
 
-export enum TaskPriority {
-    LOW = 100,
-    MEDIUM = 200,
-    HIGH = 300
-}
-
-export native function nativeStartTask(taskId: string, priority: TaskPriority,
-    callback: AsyncCallbackWrapper<void>): void;
-export function startTask(taskId: string, priority?: TaskPriority): Promise<void> {
-    let finalPriority: TaskPriority = (priority == undefined) ? TaskPriority.MEDIUM : priority;
+export native function nativeStartTask(taskId: string, callback: AsyncCallbackWrapper<void>): void;
+export function startTask(taskId: string): Promise<void> {
     return new Promise<void>((resolve, reject) => {
         let call = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
             if (err == null || err.code == 0) {
@@ -38,7 +30,7 @@ export function startTask(taskId: string, priority?: TaskPriority): Promise<void
         });
         taskpool.execute((): void => {
             try {
-                taskManager.nativeStartTask(taskId, finalPriority, call);
+                taskManager.nativeStartTask(taskId, call);
             } catch (err) {
                 reject(err as BusinessError);
             }

@@ -21,6 +21,11 @@ ohos_source_set("appmgr_mst_source") {
     "${ability_runtime_services_path}/appmgr/src/app_mgr_service.cpp",
     "${ability_runtime_services_path}/appmgr/src/child_process_state_observer_manager.cpp",
     "${ability_runtime_test_path}/mock/services_appmgr_test/src/mock_bundle_manager.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/process_schedule.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/attribution_record.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/common.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/system_load_provider.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/task_priority_judge.cpp",
   ]
 
   defines = [ "AMS_LOG_TAG = \"AppMgrService\"" ]
@@ -66,6 +71,7 @@ ohos_source_set("appmgr_mst_source") {
     "init:libbegetutil",
     "ipc:ipc_core",
     "json:nlohmann_json_static",
+    "resource_schedule_service:ressched_client",
     "window_manager:libwsutils",
   ]
 

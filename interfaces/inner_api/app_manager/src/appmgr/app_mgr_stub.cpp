@@ -2840,8 +2840,7 @@ int32_t AppMgrStub::HandleStartTask(MessageParcel &data, MessageParcel &reply)
 {
     HITRACE_METER(HITRACE_TAG_APP);
     std::string taskId = Str16ToStr8(data.ReadString16());
-    int32_t priority = data.ReadInt32();
-    auto result = StartTask(taskId, priority);
+    auto result = StartTask(taskId);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::APPMGR, "write result fail");
         return ERR_APPEXECFWK_PARCEL_ERROR;
