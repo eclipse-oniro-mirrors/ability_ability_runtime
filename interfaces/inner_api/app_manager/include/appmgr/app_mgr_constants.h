@@ -16,6 +16,9 @@
 #ifndef OHOS_ABILITY_RUNTIME_APP_MGR_CONSTANTS_H
 #define OHOS_ABILITY_RUNTIME_APP_MGR_CONSTANTS_H
 
+#include <cstddef>
+#include <string>
+
 namespace OHOS {
 namespace AppExecFwk {
 namespace Constants {
@@ -169,6 +172,27 @@ enum class SupportProcessCacheState {
     SUPPORT,
     NOT_SUPPORT
 };
+
+// Shared taskId sanitizer for task attribution: single source of truth for appmgr
+// (TaskManagerService), abilitymgr (insight/skill executor attribution anchor) and
+// their unit tests. Keep behavior changes append-only: both services sanitize the
+// same developer-supplied taskId wire format.
+constexpr size_t TASK_ID_MIN_LEN = 1;
+constexpr size_t TASK_ID_MAX_LEN = 256;
+
+// Valid attribution key: length-bounded, no control characters (log injection guard).
+inline bool IsTaskIdValidForAttribution(const std::string &taskId)
+{
+    if (taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN) {
+        return false;
+    }
+    for (char c : taskId) {
+        if (static_cast<unsigned char>(c) < 0x20 || c == static_cast<char>(0x7f)) {
+            return false;
+        }
+    }
+    return true;
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS
 #endif  // OHOS_ABILITY_RUNTIME_APP_MGR_CONSTANTS_H

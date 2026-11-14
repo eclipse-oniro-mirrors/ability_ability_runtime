@@ -20,7 +20,7 @@
 #include <cstdint>
 #include <string>
 
-#include "task_attribution_utils.h"
+#include "app_mgr_constants.h"
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -31,7 +31,7 @@ constexpr int32_t TASK_PRIORITY_HIGH = 300;
 constexpr int32_t TASK_PRIORITY_DEFAULT = TASK_PRIORITY_MEDIUM;
 
 // Length limit of taskId, in bytes of the UTF-8 string handed over by the NAPI layer:
-// shared via task_attribution_utils.h with abilitymgr (single source of truth).
+// shared via app_mgr_constants.h with abilitymgr (single source of truth).
 
 // Task timeout is a system-wide inactivity window (no per-task input): the window opens
 // at task creation and restarts on every managed-process change.
