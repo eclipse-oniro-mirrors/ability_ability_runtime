@@ -11316,11 +11316,6 @@ void AppMgrServiceInner::OnChildProcessExited(pid_t pid)
         TAG_LOGE(AAFwkTag::APPMGR, "appRunningManager_ is null");
         return;
     }
-    if (SubSpawnManager::GetInstance().IsSubSpawn(pid)) {
-        SubSpawnManager::GetInstance().OnSubSpawnExited(pid);
-        return;
-    }
-
     auto childRecord = appRunningManager_->OnChildProcessExitedByPid(pid);
     OnChildProcessDied(childRecord);
 }

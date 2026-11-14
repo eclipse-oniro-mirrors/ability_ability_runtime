@@ -247,7 +247,7 @@ void SubSpawnManager::AsyncCreateSubSpawn(pid_t appPid, int32_t uid,
             GetInstance().pidToRecordMap_[subSpawnPid] = record;
         }
 
-        AppPidFdManager::GetInstance().AddWatcher(subSpawnPid, PidFdType::CHILD);
+        AppPidFdManager::GetInstance().AddWatcher(subSpawnPid, PidFdType::SUBSPAWN);
         DelayedSingleton<AppStateObserverManager>::GetInstance()->OnSubSpawnProcessCreated(
             subSpawnPid, bundleNameCopy, uid, bundleNameCopy + SUBSPAWN_PROCESS_NAME_SUFFIX);
 
