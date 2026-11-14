@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_INSIGHT_INTENT_EXECUTE_MANAGER_H
 #define OHOS_ABILITY_RUNTIME_INSIGHT_INTENT_EXECUTE_MANAGER_H
 
+#include <cstdint>
 #include <map>
 #include <mutex>
 #include <sys/types.h>
@@ -34,6 +35,11 @@
 
 namespace OHOS {
 namespace AAFwk {
+// Mirror of AttributionTool::INSIGHT in services/appmgr/include/task_mgr/attribution_record.h.
+// The enum is not exported across services, keep values append-only and in sync;
+// thirteenth_test pins this mirror against the enum with a static_assert.
+static constexpr int32_t ATTRIBUTION_TOOL_INSIGHT = 1;
+
 enum class InsightIntentExecuteState {
     UNKNOWN = 0,
     EXECUTING,

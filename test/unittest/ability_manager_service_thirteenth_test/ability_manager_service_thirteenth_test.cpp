@@ -5853,6 +5853,12 @@ Want MakeSkillExecuteWant(const std::string &requestCode)
 static_assert(SKILL_TEST_ATTRIBUTION_TOOL_CLI == static_cast<int32_t>(AttributionTool::CLI),
     "SKILL_TEST_ATTRIBUTION_TOOL_CLI drifted from AppExecFwk::AttributionTool::CLI");
 
+// The insight intent executor mirrors AttributionTool::INSIGHT as the
+// AAFwk::ATTRIBUTION_TOOL_INSIGHT constant; pin the mirror to the enum so a value
+// change on either side fails in this binary.
+static_assert(AAFwk::ATTRIBUTION_TOOL_INSIGHT == static_cast<int32_t>(AttributionTool::INSIGHT),
+    "AAFwk::ATTRIBUTION_TOOL_INSIGHT drifted from AppExecFwk::AttributionTool::INSIGHT");
+
 // A caller-side token that captures the death recipient wired by
 // SkillExecuteManager::CreateExecuteRecord, so a caller death can be triggered
 // deterministically in-process; the captured recipient runs the production OnCallerDied.

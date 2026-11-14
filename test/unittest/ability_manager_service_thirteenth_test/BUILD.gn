@@ -62,6 +62,7 @@ ohos_unittest("ability_manager_service_thirteenth_test") {
     "${ability_runtime_path}/utils/global/time/include",
     "${ability_runtime_services_path}/abilitymgr/data_ability/include",
     "${ability_runtime_services_path}/abilitymgr/include",
+    "${ability_runtime_services_path}/appmgr/include",
     "${ability_runtime_services_path}/abilitymgr/include/utils",
     "${ability_runtime_services_path}/appdfr/include",
     "${ability_runtime_services_path}/common/include",
