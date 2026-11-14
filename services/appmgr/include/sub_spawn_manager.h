@@ -65,7 +65,8 @@ private:
     void HandleIdleTimeout(pid_t appPid);
 
     std::string QuerySocketNameByUid(int32_t uid);
-    void SendSubSpawnShutdown(const std::string &bundleName, pid_t subSpawnPid);
+    void SendSubSpawnShutdown(const std::string &bundleName, pid_t subSpawnPid,
+        int32_t uid, const AppSpawnStartMsg &startMsg);
 
     pid_t DoCreateSubSpawn(pid_t appPid, int32_t uid, const std::string &bundleName,
                            const AppSpawnStartMsg &startMsg);
