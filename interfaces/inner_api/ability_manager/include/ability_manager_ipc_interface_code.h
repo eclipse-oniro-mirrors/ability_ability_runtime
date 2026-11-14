@@ -821,6 +821,9 @@ enum class AbilityManagerInterfaceCode {
  
     // complete game prelaunch by pid
     COMPLETE_GAME_PRELAUNCH_BY_PID = 6191,
+
+    // get ui extension root host info by ability record id
+    GET_UI_EXTENSION_HOST_INFO_BY_ID = 6192,
 };
 }  // namespace AAFwk
 }  // namespace OHOS

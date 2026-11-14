@@ -2589,6 +2589,14 @@ public:
         int32_t userId = DEFAULT_INVAL_VALUE);
 
     /**
+     * @brief Get root host info of a UIExtension by ability record id. SA only.
+     * @param abilityRecordId The record id of the UIExtension (AbilityRecord::recordId_).
+     * @param hostInfo Output root host info.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    ErrCode GetUIExtensionRootHostInfoById(int32_t abilityRecordId, UIExtensionHostInfo &hostInfo);
+
+    /**
      * @brief Get session info of a UIExtension. SA or SCB only.
      * @param token The ability token.
      * @param uiExtensionSessionInfo Output session info.
