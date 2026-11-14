@@ -80,7 +80,6 @@ void SubSpawnManager::SendSubSpawnShutdown(const std::string &bundleName, pid_t 
     ret = AppSpawnReqMsgCreate(MSG_SUBSPAWN_SHUTDOWN, bundleName.c_str(), &reqHandle);
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "SendSubSpawnShutdown: create msg fail, ret:%{public}d", ret);
-        AppSpawnClientDestroy(handle);
         return;
     }
     ret = AppSpawnReqMsgAddExtInfo(reqHandle, "SubspawnPid",
@@ -92,7 +91,6 @@ void SubSpawnManager::SendSubSpawnShutdown(const std::string &bundleName, pid_t 
     TAG_LOGD(AAFwkTag::APPMGR, "SendSubSpawnShutdown: sending MSG_SUBSPAWN_SHUTDOWN for bundle:%{public}s pid:%{public}d",
         bundleName.c_str(), subSpawnPid);
     AppSpawnClientSendMsg(handle, reqHandle, &result);
-    AppSpawnClientDestroy(handle);
     TAG_LOGD(AAFwkTag::APPMGR, "SendSubSpawnShutdown: sent, appspawn result:%{public}d", result.result);
 }
 
@@ -130,7 +128,6 @@ pid_t SubSpawnManager::DoCreateSubSpawn(pid_t appPid, int32_t uid,
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "AppSpawnReqMsgCreate fail, errCode:%{public}d, ret:%{public}d",
             static_cast<int32_t>(SubSpawnErrorCode::ERR_MSG_CREATE_FAILED), ret);
-        AppSpawnClientDestroy(handle);
         return -1;
     }
 
@@ -142,7 +139,6 @@ pid_t SubSpawnManager::DoCreateSubSpawn(pid_t appPid, int32_t uid,
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "AppspawnCreateDefaultMsg fail, errCode:%{public}d, ret:%{public}d",
             static_cast<int32_t>(SubSpawnErrorCode::ERR_MSG_FILL_FAILED), ret);
-        AppSpawnClientDestroy(handle);
         return -1;
     }
 
@@ -152,11 +148,9 @@ pid_t SubSpawnManager::DoCreateSubSpawn(pid_t appPid, int32_t uid,
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "AppSpawnClientSendMsg fail, errCode:%{public}d, ret:%{public}d",
             static_cast<int32_t>(SubSpawnErrorCode::ERR_SEND_FAILED), ret);
-        AppSpawnClientDestroy(handle);
         return -1;
     }
 
-    AppSpawnClientDestroy(handle);
     if (result.pid <= 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "subspawn create fail, errCode:%{public}d, result:%{public}d",
             static_cast<int32_t>(SubSpawnErrorCode::ERR_CREATE_FAILED), result.result);
@@ -302,7 +296,6 @@ pid_t SubSpawnManager::StartChildViaSubSpawn(pid_t appPid, int32_t uid, const Ap
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "AppSpawnReqMsgCreate fail, errCode:%{public}d, ret:%{public}d",
             static_cast<int32_t>(SubSpawnErrorCode::ERR_MSG_CREATE_FAILED), ret);
-        AppSpawnClientDestroy(handle);
         return -1;
     }
 
@@ -314,14 +307,12 @@ pid_t SubSpawnManager::StartChildViaSubSpawn(pid_t appPid, int32_t uid, const Ap
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "AppspawnCreateDefaultMsg fail, errCode:%{public}d, ret:%{public}d",
             static_cast<int32_t>(SubSpawnErrorCode::ERR_MSG_FILL_FAILED), ret);
-        AppSpawnClientDestroy(handle);
         return -1;
     }
 
     AppSpawnResult result = {0};
     TAG_LOGD(AAFwkTag::APPMGR, "StartChildViaSubSpawn: sending MSG_APP_SPAWN to subspawn");
     ret = AppSpawnClientSendMsg(handle, reqHandle, &result);
-    AppSpawnClientDestroy(handle);
     if (ret != 0 || result.pid <= 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "subspawn fork child fail, errCode:%{public}d, ret:%{public}d, pid:%{public}d",
             static_cast<int32_t>(SubSpawnErrorCode::ERR_FORK_FAILED), ret, result.pid);
