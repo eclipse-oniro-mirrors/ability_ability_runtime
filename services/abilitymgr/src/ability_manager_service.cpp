@@ -38,7 +38,6 @@
 #include "app_exit_reason_data_manager.h"
 #include "app_mgr_constants.h"
 #include "app_mgr_util.h"
-#include "task_mgr/common.h"
 #include "app_recovery_mgr.h"
 #include "application_util.h"
 #include "assert_fault_callback_death_mgr.h"
@@ -391,6 +390,26 @@ bool IsFoundationCall()
 {
     auto callingUid = IPCSkeleton::GetCallingUid();
     return callingUid == FOUNDATION_UID || callingUid == SUBFOUNDATION_UID;
+}
+
+// Local mirror of AppExecFwk::IsTaskIdValidForAttribution in
+// services/appmgr/include/task_mgr/common.h (single source of truth; keep in
+// sync). abilityms no longer links libappms, so the helper is mirrored here to
+// avoid a service-to-service dependency. Same rule: length-bounded, no control
+// characters (log injection guard).
+constexpr size_t TASK_ID_MIN_LEN = 1;
+constexpr size_t TASK_ID_MAX_LEN = 256;
+bool IsTaskIdValidForAttribution(const std::string &taskId)
+{
+    if (taskId.size() < TASK_ID_MIN_LEN || taskId.size() > TASK_ID_MAX_LEN) {
+        return false;
+    }
+    for (char c : taskId) {
+        if (static_cast<unsigned char>(c) < 0x20 || c == static_cast<char>(0x7f)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 } // namespace
@@ -15697,6 +15716,11 @@ void AbilityManagerService::HandleTaskIdAttribution(const std::shared_ptr<Insigh
         return;
     }
     param->taskId_ = taskId;
+    // Anchor the record with the real IPC caller uid (never trust the client
+    // parcel): appmgr's ownership check requires creatorUid == callerUid when
+    // the attribution is delegated over IPC, so a forged/forwarded taskId from
+    // a different uid is rejected there as a best-effort skip.
+    param->callerUid_ = static_cast<int32_t>(IPCSkeleton::GetCallingUid());
     TAG_LOGI(AAFwkTag::INTENT, "task id attribution accepted, taskId: %{public}s", taskId.c_str());
 }
 
@@ -16404,7 +16428,7 @@ int32_t AbilityManagerService::ExecuteInAppSkillWithTokenId(const AppExecFwk::Sk
     int32_t callerUid = (IPCSkeleton::GetCallingUid() == AIMGR_SERVICE_UID) ? request.callerUid : -1;
     // Defense in depth: re-validate the climgr-stamped taskId; it never enters the skill Want.
     std::string taskId = request.taskId;
-    if (!taskId.empty() && !AppExecFwk::IsTaskIdValidForAttribution(taskId)) {
+    if (!taskId.empty() && !IsTaskIdValidForAttribution(taskId)) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "ExecuteInAppSkillWithTokenId taskId invalid, length: %{public}zu",
             taskId.length());
         taskId.clear();
