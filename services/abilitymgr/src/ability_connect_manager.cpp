@@ -47,6 +47,7 @@
 #include "request_id_util.h"
 #include "res_sched_util.h"
 #include "session/host/include/zidl/session_interface.h"
+#include "skill/skill_execute_manager.h"
 #include "startup_util.h"
 #include "string_wrapper.h"
 #include "timeout_state_utils.h"
@@ -2279,6 +2280,11 @@ void AbilityConnectManager::CommandAbility(const std::shared_ptr<BaseExtensionRe
         auto commandTimeout =
             AmsConfigurationParameter::GetInstance().GetAppStartTimeoutTime() * timeoutMultiple;
         taskHandler_->SubmitTask(timeoutTask, taskName, commandTimeout);
+        // Early attribution anchor (service extension): CommandAbility is the single exit for
+        // extension command dispatch, reached by the warm start, the cold start after attach
+        // and the queued-start replay alike; non-skill Wants self-filter inside.
+        DelayedSingleton<SkillExecuteManager>::GetInstance()->TryRegisterAttributionFromWant(
+            abilityRecord->GetWant(), abilityRecord->GetPid(), abilityRecord->GetInfoBundleName());
         // scheduling command ability
         abilityRecord->CommandAbility();
     }

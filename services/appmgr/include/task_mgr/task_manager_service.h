@@ -131,8 +131,8 @@ public:
      * @brief Registers a process into the task owned by the caller (trusted in-process /
      *        uid-gated channels), skipping the pid-liveness check — the reporter holds
      *        first-hand liveness: climgr (the pid is its fork child) or SkillExecuteManager
-     *        in-process (pid latched at an early attribution anchor — cold UIAbility attach /
-     *        warm dispatch — callerUid forwarded over the AMS IPC).
+     *        in-process (pid latched at an early attribution anchor — cold attach / warm
+     *        dispatch — callerUid forwarded over the AbilityManagerService IPC).
      * @param callerUid Indicates the task creator's uid; non-positive is rejected — an
      *        attribution always carries its creator anchor (ownership is checked
      *        unconditionally).

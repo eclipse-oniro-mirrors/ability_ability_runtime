@@ -46,10 +46,9 @@ struct SkillExecuteRecord {
     sptr<ISkillExecuteCallback> callback = nullptr;
     // Attribution: taskId is the task key (empty = not attributed); callerUid is the
     // ownership anchor (IPC-forwarded by the reporter); attributionId is the unregister
-    // handle (0 = not registered). Registered at the early anchors (cold UIAbility attach /
-    // warm dispatch before ExecuteSkill), not at launch completion; every terminal path
-    // funnels into RemoveRecord. This phase attributes UIAbility targets only; extensions
-    // run unattributed by design (taskId/callerUid stay for audit).
+    // handle (0 = not registered). Registered at the early anchors (cold attach / warm
+    // dispatch, UIAbility and service extension targets), not at launch completion; every
+    // terminal path funnels into RemoveRecord.
     std::string taskId = "";
     int32_t callerUid = -1;
     int64_t attributionId = 0;
