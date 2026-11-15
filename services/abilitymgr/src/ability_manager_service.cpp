@@ -38,7 +38,6 @@
 #include "app_exit_reason_data_manager.h"
 #include "app_mgr_constants.h"
 #include "app_mgr_util.h"
-#include "task_mgr/common.h"
 #include "app_recovery_mgr.h"
 #include "application_util.h"
 #include "assert_fault_callback_death_mgr.h"
@@ -15718,6 +15717,11 @@ void AbilityManagerService::HandleTaskIdAttribution(const std::shared_ptr<Insigh
         return;
     }
     param->taskId_ = taskId;
+    // Anchor the record with the real IPC caller uid (never trust the client
+    // parcel): appmgr's ownership check requires creatorUid == callerUid when
+    // the attribution is delegated over IPC, so a forged/forwarded taskId from
+    // a different uid is rejected there as a best-effort skip.
+    param->callerUid_ = static_cast<int32_t>(IPCSkeleton::GetCallingUid());
     TAG_LOGI(AAFwkTag::INTENT, "task id attribution accepted, taskId: %{public}s", taskId.c_str());
 }
 
@@ -16424,8 +16428,10 @@ int32_t AbilityManagerService::ExecuteInAppSkillWithTokenId(const AppExecFwk::Sk
     // usable: it is not serialized by HapTokenInfoParcel (indeterminate over IPC).
     int32_t callerUid = (IPCSkeleton::GetCallingUid() == AIMGR_SERVICE_UID) ? request.callerUid : -1;
     // Defense in depth: re-validate the climgr-stamped taskId; it never enters the skill Want.
+    // Same length bound as the insight intent attribution path (HandleTaskIdAttribution);
+    // appmgr's TaskManagerService re-sanitizes every entry, this is a pre-filter only.
     std::string taskId = request.taskId;
-    if (!taskId.empty() && !AppExecFwk::IsTaskIdValidForAttribution(taskId)) {
+    if (!taskId.empty() && taskId.length() > AppExecFwk::INSIGHT_INTENT_TASK_ID_MAX_LEN) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "ExecuteInAppSkillWithTokenId taskId invalid, length: %{public}zu",
             taskId.length());
         taskId.clear();

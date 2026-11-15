@@ -27,13 +27,13 @@
 #include "distributed_ability_runtime/distributed_client.h"
 #include "extract_insight_intent_profile.h"
 #include "ffrt.h"
+#include "app_scheduler.h"
 #include "hilog_tag_wrapper.h"
 #include "in_process_call_wrapper.h"
 #include "insight_intent_execute_callback_interface.h"
 #include "insight_intent_db_cache.h"
 #include "insight_intent_utils.h"
 #include "permission_verification.h"
-#include "task_mgr/task_manager_service.h"
 #include "want_params_wrapper.h"
 #include "time_util.h"
 #include "res_sched_util.h"
@@ -169,7 +169,8 @@ int32_t InsightIntentExecuteManager::CheckAndUpdateParam(uint64_t key, const spt
         return ERR_INVALID_VALUE;
     }
     uint64_t intentId = 0;
-    result = AddRecord(key, callerToken, param->bundleName_, intentId, execParam, param->taskId_);
+    result = AddRecord(key, callerToken, param->bundleName_, intentId, execParam, param->taskId_,
+        param->callerUid_);
     if (result != ERR_OK) {
         return result;
     }
@@ -259,7 +260,8 @@ int32_t InsightIntentExecuteManager::UpdateEntryDecoratorParams(Want &want, Exec
 }
 
 int32_t InsightIntentExecuteManager::AddRecord(uint64_t key, const sptr<IRemoteObject> &callerToken,
-    const std::string &bundleName, uint64_t &intentId, const ExecuteParam &execParam, const std::string &taskId)
+    const std::string &bundleName, uint64_t &intentId, const ExecuteParam &execParam, const std::string &taskId,
+    int32_t callerUid)
 {
     std::lock_guard<ffrt::mutex> lock(mutex_);
     intentId = ++intentIdCount_;
@@ -273,6 +275,7 @@ int32_t InsightIntentExecuteManager::AddRecord(uint64_t key, const sptr<IRemoteO
     record->deviceId = execParam.srcDeviceId;
     record->requestCode = execParam.requestCode;
     record->taskId = taskId;
+    record->callerUid = callerUid;
     if (callerToken != nullptr) {
         record->deathRecipient = sptr<InsightIntentExecuteRecipient>::MakeSptr(intentId);
         callerToken->AddDeathRecipient(record->deathRecipient);
@@ -298,12 +301,14 @@ int32_t InsightIntentExecuteManager::RemoveExecuteIntent(uint64_t intentId)
 {
     std::string taskId;
     int64_t attributionId = 0;
+    int32_t callerUid = 0;
     {
         std::lock_guard<ffrt::mutex> lock(mutex_);
         auto it = records_.find(intentId);
         if (it != records_.end() && it->second != nullptr) {
             taskId = it->second->taskId;
             attributionId = it->second->attributionId;
+            callerUid = it->second->callerUid;
         }
         records_.erase(intentId);
         TAG_LOGI(AAFwkTag::INTENT, "remove intentId: %{public}" PRIu64 ", records_ size: %{public}zu",
@@ -313,7 +318,7 @@ int32_t InsightIntentExecuteManager::RemoveExecuteIntent(uint64_t intentId)
     // unregister must live here as the single point: by this moment most
     // failures happened before SetTargetPid (attributionId 0 -> helper no-op,
     // the attribution was never registered), which is the expected safe net.
-    UnregisterAttributedProcess(taskId, attributionId);
+    UnregisterAttributedProcess(taskId, attributionId, callerUid);
     return ERR_OK;
 }
 
@@ -322,87 +327,106 @@ int32_t InsightIntentExecuteManager::ExecuteIntentDone(uint64_t intentId, int32_
 {
     TAG_LOGI(AAFwkTag::INTENT, "execute start, intentId: %{public}" PRIu64 ", resultCode: %{public}d",
         intentId, resultCode);
-    std::lock_guard<ffrt::mutex> lock(mutex_);
-    EventInfo eventInfo;
-    auto findResult = records_.find(intentId);
-    if (findResult == records_.end()) {
-        TAG_LOGE(AAFwkTag::INTENT, "intent not found, id: %{public}" PRIu64, intentId);
-        eventInfo.errReason = "intent not found";
-        SendIntentReport(eventInfo, INTENT_NOT_EXIST);
-        return ERR_INVALID_VALUE;
-    }
-
-    std::shared_ptr<InsightIntentExecuteRecord> record = findResult->second;
-    if (record == nullptr) {
-        TAG_LOGE(AAFwkTag::INTENT, "null record, id: %{public}" PRIu64, intentId);
-        return ERR_INVALID_VALUE;
-    }
-
-    TAG_LOGD(AAFwkTag::INTENT, "callback start, id:%{public}" PRIu64, intentId);
-    if (record->state != InsightIntentExecuteState::EXECUTING) {
-        TAG_LOGW(AAFwkTag::INTENT, "insight intent execute state is not EXECUTING, id:%{public}" PRIu64, intentId);
-        eventInfo.errReason = "intent state error";
-        SendIntentReport(eventInfo, INTENT_STATE_NOT_EXECUTING);
-        return ERR_INVALID_OPERATION;
-    }
-    record->state = InsightIntentExecuteState::EXECUTE_DONE;
-    // The intent lifecycle ends here (both success and error results funnel
-    // into this state transition), so the task attribution registered in
-    // SetTargetPid is no longer needed. attributionId 0 (SetTargetPid not
-    // reached, e.g. immediate-completion links) is skipped inside the helper.
-    // The call is an in-process direct call to TaskManagerService, which never
-    // calls back into this manager, so holding mutex_ here is safe.
-    UnregisterAttributedProcess(record->taskId, record->attributionId);
-    record->attributionId = 0;
-
-    AppExecFwk::InsightIntentExecuteResult filteredResult = result;
-    bool isSystemApp = PermissionVerification::GetInstance()->IsSACallByTokenId(accessToken) ||
-        PermissionVerification::GetInstance()->IsShellCallByTokenId(accessToken) ||
-        PermissionVerification::GetInstance()->IsSystemAppCallByTokenId(accessToken);
-    if (!isSystemApp) {
-        filteredResult.interactionInfo = nullptr;
-        if (filteredResult.result != nullptr) {
-            filteredResult.result->Remove(KEY_INTERACTION_INFO);
-        }
-        TAG_LOGE(AAFwkTag::INTENT, "filtered interactionInfo for non-system app");
-    }
-
-    if (record->isDistributed) {
-        filteredResult.interactionInfo = nullptr;
-        if (filteredResult.result != nullptr) {
-            filteredResult.result->Remove(KEY_INTERACTION_INFO);
-        }
-        TAG_LOGW(AAFwkTag::INTENT, "filtered interactionInfo for distributed scenario");
-        std::string msg = filteredResult.ToJsonString();
-        Want want;
-        want.SetElementName(record->deviceId, record->bundleName, "", "");
-        IntentCallerInfo callerInfo;
-        callerInfo.callerUid = callerUid;
-        callerInfo.requestCode = record->requestCode;
-        callerInfo.accessToken = accessToken;
-        DistributedClient dmsClient;
-        int32_t ret = dmsClient.SendIntentResult(want, callerInfo, msg);
-        if (ret != ERR_OK) {
-            TAG_LOGE(AAFwkTag::INTENT, "SendIntentResult failed: %{public}d", ret);
-        }
-    } else {
-        sptr<IInsightIntentExecuteCallback> remoteCallback =
-            iface_cast<IInsightIntentExecuteCallback>(record->callerToken);
-        if (remoteCallback == nullptr) {
-            TAG_LOGE(AAFwkTag::INTENT, "intentExecuteCallback empty,"
-                " intentId: %{public}" PRIu64 ", records_ size: %{public}zu", intentId, records_.size());
+    // Attribution to unregister once the record is finalized: captured under the lock,
+    // the unregister IPC itself runs outside mutex_ (same pattern as SetTargetPid and
+    // RemoveExecuteIntent) because UnregisterAttributedProcess delegates to appmgr via
+    // the AppScheduler IPC channel.
+    std::string taskId;
+    int64_t attributionId = 0;
+    int32_t recordCallerUid = 0;
+    int32_t ret = ERR_OK;
+    {
+        std::lock_guard<ffrt::mutex> lock(mutex_);
+        EventInfo eventInfo;
+        auto findResult = records_.find(intentId);
+        if (findResult == records_.end()) {
+            TAG_LOGE(AAFwkTag::INTENT, "intent not found, id: %{public}" PRIu64, intentId);
+            eventInfo.errReason = "intent not found";
+            SendIntentReport(eventInfo, INTENT_NOT_EXIST);
             return ERR_INVALID_VALUE;
         }
-        remoteCallback->OnExecuteDone(record->key, resultCode, filteredResult);
+
+        std::shared_ptr<InsightIntentExecuteRecord> record = findResult->second;
+        if (record == nullptr) {
+            TAG_LOGE(AAFwkTag::INTENT, "null record, id: %{public}" PRIu64, intentId);
+            return ERR_INVALID_VALUE;
+        }
+
+        TAG_LOGD(AAFwkTag::INTENT, "callback start, id:%{public}" PRIu64, intentId);
+        if (record->state != InsightIntentExecuteState::EXECUTING) {
+            TAG_LOGW(AAFwkTag::INTENT, "insight intent execute state is not EXECUTING, id:%{public}" PRIu64, intentId);
+            eventInfo.errReason = "intent state error";
+            SendIntentReport(eventInfo, INTENT_STATE_NOT_EXECUTING);
+            return ERR_INVALID_OPERATION;
+        }
+        record->state = InsightIntentExecuteState::EXECUTE_DONE;
+        // The intent lifecycle ends here (both success and error results funnel into
+        // this state transition), so the task attribution registered in SetTargetPid
+        // is no longer needed. Capture it and clear the record field immediately so a
+        // concurrent completion path cannot double-unregister; attributionId 0
+        // (SetTargetPid not reached, e.g. immediate-completion links) is skipped
+        // inside the helper.
+        taskId = record->taskId;
+        attributionId = record->attributionId;
+        recordCallerUid = record->callerUid;
+        record->attributionId = 0;
+
+        AppExecFwk::InsightIntentExecuteResult filteredResult = result;
+        bool isSystemApp = PermissionVerification::GetInstance()->IsSACallByTokenId(accessToken) ||
+            PermissionVerification::GetInstance()->IsShellCallByTokenId(accessToken) ||
+            PermissionVerification::GetInstance()->IsSystemAppCallByTokenId(accessToken);
+        if (!isSystemApp) {
+            filteredResult.interactionInfo = nullptr;
+            if (filteredResult.result != nullptr) {
+                filteredResult.result->Remove(KEY_INTERACTION_INFO);
+            }
+            TAG_LOGE(AAFwkTag::INTENT, "filtered interactionInfo for non-system app");
+        }
+
+        if (record->isDistributed) {
+            filteredResult.interactionInfo = nullptr;
+            if (filteredResult.result != nullptr) {
+                filteredResult.result->Remove(KEY_INTERACTION_INFO);
+            }
+            TAG_LOGW(AAFwkTag::INTENT, "filtered interactionInfo for distributed scenario");
+            std::string msg = filteredResult.ToJsonString();
+            Want want;
+            want.SetElementName(record->deviceId, record->bundleName, "", "");
+            IntentCallerInfo callerInfo;
+            callerInfo.callerUid = callerUid;
+            callerInfo.requestCode = record->requestCode;
+            callerInfo.accessToken = accessToken;
+            DistributedClient dmsClient;
+            int32_t dmsRet = dmsClient.SendIntentResult(want, callerInfo, msg);
+            if (dmsRet != ERR_OK) {
+                TAG_LOGE(AAFwkTag::INTENT, "SendIntentResult failed: %{public}d", dmsRet);
+            }
+        } else {
+            sptr<IInsightIntentExecuteCallback> remoteCallback =
+                iface_cast<IInsightIntentExecuteCallback>(record->callerToken);
+            if (remoteCallback == nullptr) {
+                TAG_LOGE(AAFwkTag::INTENT, "intentExecuteCallback empty,"
+                    " intentId: %{public}" PRIu64 ", records_ size: %{public}zu", intentId, records_.size());
+                ret = ERR_INVALID_VALUE;
+            } else {
+                remoteCallback->OnExecuteDone(record->key, resultCode, filteredResult);
+            }
+        }
+
+        // The death-recipient teardown and the completion log stay on the successful
+        // callback path only, matching the previous early-return on an empty callback.
+        if (ret == ERR_OK) {
+            if (record->callerToken != nullptr) {
+                record->callerToken->RemoveDeathRecipient(record->deathRecipient);
+                record->callerToken = nullptr;
+            }
+            TAG_LOGI(AAFwkTag::INTENT, "execute done, intentId: %{public}" PRIu64 ", records_ size: %{public}zu",
+                intentId, records_.size());
+        }
     }
-    
-    if (record->callerToken != nullptr) {
-        record->callerToken->RemoveDeathRecipient(record->deathRecipient);
-        record->callerToken = nullptr;
-    }
-    TAG_LOGI(AAFwkTag::INTENT, "execute done, intentId: %{public}" PRIu64 ", records_ size: %{public}zu",
-        intentId, records_.size());
-    return ERR_OK;
+
+    UnregisterAttributedProcess(taskId, attributionId, recordCallerUid);
+    return ret;
 }
 
 int32_t InsightIntentExecuteManager::RemoteDied(uint64_t intentId)
@@ -894,7 +918,8 @@ void InsightIntentExecuteManager::SendIntentReport(EventInfo &eventInfo, int32_t
     EventReport::SendExecuteIntentEvent(EventName::EXECUTE_INSIGHT_INTENT_ERROR, HISYSEVENT_FAULT, eventInfo);
 }
 
-void InsightIntentExecuteManager::UnregisterAttributedProcess(const std::string &taskId, int64_t attributionId)
+void InsightIntentExecuteManager::UnregisterAttributedProcess(const std::string &taskId, int64_t attributionId,
+    int32_t callerUid)
 {
     // Failure paths mostly happen before SetTargetPid, leaving attributionId 0
     // and no attribution registered yet; guard here to avoid noisy no-op calls.
@@ -904,8 +929,8 @@ void InsightIntentExecuteManager::UnregisterAttributedProcess(const std::string 
     // Best-effort: attribution is a side capability and its failure must never
     // affect the intent result flow. ERR_TASK_NOT_FOUND means the task already
     // finished, which is a legal timing rather than an error.
-    auto ret = IN_PROCESS_CALL(AppExecFwk::TaskManagerService::GetInstance().UnregisterManagedProcess(
-        taskId, attributionId));
+    auto ret = DelayedSingleton<AppScheduler>::GetInstance()->UnregisterManagedProcess(
+        taskId, attributionId, callerUid);
     if (ret != ERR_OK && ret != AAFwk::ERR_TASK_NOT_FOUND && ret != AAFwk::ERR_ATTRIBUTION_NOT_FOUND) {
         TAG_LOGW(AAFwkTag::INTENT, "unregister attributed process failed, ret: %{public}d, "
             "attributionId: %{public}" PRId64, ret, attributionId);
@@ -916,25 +941,27 @@ void InsightIntentExecuteManager::UnregisterAttributedProcess(const std::string 
 }
 
 void InsightIntentExecuteManager::RegisterAttributedProcess(const std::string &taskId, pid_t pid,
-    int64_t &attributionId)
+    int32_t callerUid, int64_t &attributionId)
 {
     attributionId = 0;
-    if (taskId.empty() || pid <= 0) {
+    // No anchor, no attribution: a non-positive callerUid (degraded value or
+    // missing anchor) skips registration entirely — attributions always carry
+    // their creator anchor, mirroring the skill-path rule.
+    if (taskId.empty() || pid <= 0 || callerUid <= 0) {
         return;
     }
     // Best-effort: each intent registers its own attribution (server-allocated
     // attributionId) and unregisters exactly that id on completion, so warm
     // start re-invocations of the same process each get a fresh record.
-    AppExecFwk::AttributionRecord attribution;
-    attribution.pid = pid;
-    attribution.tool = AppExecFwk::AttributionTool::INSIGHT;
-    auto ret = IN_PROCESS_CALL(AppExecFwk::TaskManagerService::GetInstance().RegisterManagedProcess(
-        taskId, attribution, attributionId));
+    // Delegated to appmgr via AppScheduler; appmgr enforces creator ownership.
+    auto ret = DelayedSingleton<AppScheduler>::GetInstance()->RegisterManagedProcess(
+        taskId, static_cast<int32_t>(pid), ATTRIBUTION_TOOL_INSIGHT, callerUid, attributionId);
     if (ret != ERR_OK || attributionId <= 0) {
-        // ERR_TASK_NOT_FOUND is normal when the caller has not started the task.
+        // ERR_TASK_NOT_FOUND also covers a forged taskId — the ownership check
+        // holds for the forwarded callerUid; a degraded uid never gets here.
+        attributionId = 0;
         TAG_LOGW(AAFwkTag::INTENT, "register attributed process failed, ret: %{public}d, pid: %{public}d",
             ret, pid);
-        attributionId = 0;
     } else {
         TAG_LOGI(AAFwkTag::INTENT, "attributed process registered, taskId: %{public}s, pid: %{public}d, "
             "attributionId: %{public}" PRId64, taskId.c_str(), pid, attributionId);
@@ -977,6 +1004,7 @@ void InsightIntentExecuteManager::OnInsightAppDied(const std::string &bundleName
 void InsightIntentExecuteManager::SetTargetPid(uint64_t intentId, pid_t pid)
 {
     std::string taskId;
+    int32_t callerUid = 0;
     AppExecFwk::InsightIntentExecutionInfo executionInfo;
     {
         std::lock_guard<ffrt::mutex> lock(mutex_);
@@ -987,16 +1015,17 @@ void InsightIntentExecuteManager::SetTargetPid(uint64_t intentId, pid_t pid)
         }
         it->second->targetPid = pid;
         taskId = it->second->taskId;
+        callerUid = it->second->callerUid;
         executionInfo = it->second->executionInfo;
         TAG_LOGD(AAFwkTag::INTENT, "SetTargetPid: intentId: %{public}" PRIu64 ", pid: %{public}d", intentId, pid);
     }
     NotifyInsightIntentWillExecute(pid, executionInfo);
-    // The target process is attributed to the task here (in-process direct
-    // call to TaskManagerService). The call runs outside mutex_: it takes the
-    // TaskManagerService inner lock, and keeping that ordering avoids any
-    // potential lock cycle.
+    // The target process is attributed to the task here, delegated to appmgr's
+    // TaskManagerService through the AppScheduler IPC channel. The call runs
+    // outside mutex_: the server side takes its inner lock, and keeping that
+    // ordering avoids any potential lock cycle.
     int64_t attributionId = 0;
-    RegisterAttributedProcess(taskId, pid, attributionId);
+    RegisterAttributedProcess(taskId, pid, callerUid, attributionId);
     if (attributionId <= 0) {
         return;
     }
@@ -1008,7 +1037,7 @@ void InsightIntentExecuteManager::SetTargetPid(uint64_t intentId, pid_t pid)
         // The record was removed concurrently (RemoveExecuteIntent saw
         // attributionId 0 and skipped the unregister), so compensate here to
         // avoid leaking the attribution just registered.
-        UnregisterAttributedProcess(taskId, attributionId);
+        UnregisterAttributedProcess(taskId, attributionId, callerUid);
         return;
     }
     it->second->attributionId = attributionId;

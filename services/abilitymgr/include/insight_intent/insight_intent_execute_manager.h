@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_INSIGHT_INTENT_EXECUTE_MANAGER_H
 #define OHOS_ABILITY_RUNTIME_INSIGHT_INTENT_EXECUTE_MANAGER_H
 
+#include <cstdint>
 #include <map>
 #include <mutex>
 #include <sys/types.h>
@@ -34,6 +35,11 @@
 
 namespace OHOS {
 namespace AAFwk {
+// Mirror of AttributionTool::INSIGHT in services/appmgr/include/task_mgr/attribution_record.h.
+// The enum is not exported across services, keep values append-only and in sync;
+// thirteenth_test pins this mirror against the enum with a static_assert.
+static constexpr int32_t ATTRIBUTION_TOOL_INSIGHT = 1;
+
 enum class InsightIntentExecuteState {
     UNKNOWN = 0,
     EXECUTING,
@@ -54,8 +60,10 @@ struct InsightIntentExecuteRecord {
     std::string deviceId;
     uint64_t requestCode = 0;
     std::string taskId;
-    // Attribution id allocated by the in-process TaskManagerService (0 means not registered).
+    // Attribution id delegated to TaskManagerService via AppScheduler IPC (0 means not registered).
     int64_t attributionId = 0;
+    // Bundle uid of the caller that supplied the task id, used for ownership check on IPC delegation.
+    int32_t callerUid = 0;
 };
 
 class InsightIntentExecuteConnection : public AbilityConnectionStub {
@@ -179,7 +187,8 @@ private:
     std::map<pid_t, sptr<IInsightIntentWillExecuteCallback>> insightIntentWillExecuteCallbacks_;
 
     int32_t AddRecord(uint64_t key, const sptr<IRemoteObject> &callerToken, const std::string &bundleName,
-        uint64_t &intentId, const ExecuteParam &execParam = ExecuteParam{}, const std::string &taskId = "");
+        uint64_t &intentId, const ExecuteParam &execParam = ExecuteParam{}, const std::string &taskId = "",
+        int32_t callerUid = 0);
 
     static int32_t IsValidCall(const Want &want);
 
@@ -206,9 +215,9 @@ private:
 
     void SendIntentReport(EventInfo &eventInfo, int32_t errCode);
 
-    void UnregisterAttributedProcess(const std::string &taskId, int64_t attributionId);
+    void UnregisterAttributedProcess(const std::string &taskId, int64_t attributionId, int32_t callerUid);
 
-    void RegisterAttributedProcess(const std::string &taskId, pid_t pid, int64_t &attributionId);
+    void RegisterAttributedProcess(const std::string &taskId, pid_t pid, int32_t callerUid, int64_t &attributionId);
 
     void HandleDiedRecordsCleanup(const std::vector<uint64_t> &toRemove,
         const AppExecFwk::InsightIntentExecuteResult &errorResult);
