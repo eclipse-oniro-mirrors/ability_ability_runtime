@@ -386,6 +386,14 @@ public:
     UIAbilityRecordPtr GetAbilityRecordsById(int32_t sessionId) const;
 
     /**
+     * Get abilityRecord by session id, sessionLock_ must be held by the caller.
+     *
+     * @param sessionId the session id.
+     * @return Returns abilityRecord on success, nullptr on failure.
+     */
+    UIAbilityRecordPtr GetAbilityRecordByIdLocked(int32_t sessionId) const;
+
+    /**
      * Report grant uri permission event.
      *
      * @param abilityRequest ability request info.

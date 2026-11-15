@@ -4076,6 +4076,12 @@ UIAbilityRecordPtr UIAbilityLifecycleManager::GetAbilityRecordsById(int32_t sess
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     std::lock_guard<ffrt::mutex> guard(sessionLock_);
+    return GetAbilityRecordByIdLocked(sessionId);
+}
+
+// Caller must hold sessionLock_.
+UIAbilityRecordPtr UIAbilityLifecycleManager::GetAbilityRecordByIdLocked(int32_t sessionId) const
+{
     auto search = sessionAbilityMap_.find(sessionId);
     if (search == sessionAbilityMap_.end()) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "sessionId invalid");
@@ -4404,50 +4410,64 @@ int UIAbilityLifecycleManager::MoveMissionToFront(int32_t sessionId, std::shared
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto tmpSceneSession = iface_cast<Rosen::ISession>(GetRootSceneSession());
     CHECK_POINTER_AND_RETURN(tmpSceneSession, ERR_INVALID_VALUE);
-    UIAbilityRecordPtr abilityRecord = GetAbilityRecordsById(sessionId);
-    CHECK_POINTER_AND_RETURN(abilityRecord, ERR_INVALID_VALUE);
-    sptr<SessionInfo> sessionInfo = abilityRecord->GetSessionInfo();
-    CHECK_POINTER_AND_RETURN(sessionInfo, ERR_INVALID_VALUE);
-    if (startOptions != nullptr) {
-        abilityRecord->SetWindowMode(startOptions->GetWindowMode());
-        TAG_LOGI(AAFwkTag::ABILITYMGR,
-            "MoveMissionToFront, setting displayId=%{public}d, splitRatio:%{public}d, windowMode:%{public}d",
-            startOptions->GetDisplayID(), startOptions->GetSplitRatioPreference(), startOptions->GetWindowMode());
-        (sessionInfo->want).SetParam(Want::PARAM_RESV_DISPLAY_ID, startOptions->GetDisplayID());
-        (sessionInfo->want).SetParam(Want::PARAM_RESV_WINDOW_MODE, startOptions->GetWindowMode());
-        if (startOptions->GetDisplayID() == 0) {
-            (sessionInfo->want).SetParam(Want::PARAM_RESV_DISPLAY_ID, DisplayUtil::GetDefaultDisplayId());
-        }
-        WindowOptionsUtils::SetWindowPositionAndSize(sessionInfo->want, nullptr, *startOptions);
-        sessionInfo->splitRatioPreference = startOptions->GetSplitRatioPreference();
-        sessionInfo->windowCreateParams = startOptions->windowCreateParams_;
-        sessionInfo->supportWindowModes = startOptions->supportWindowModes_;
-        if (PermissionVerification::GetInstance()->IsSystemAppCall()) {
-            bool focused = (sessionInfo->want).GetBoolParam(Want::PARAM_RESV_WINDOW_FOCUSED, true);
-            if (focused) {
-                (sessionInfo->want).SetParam(Want::PARAM_RESV_WINDOW_FOCUSED,
-                    startOptions->GetWindowFocused());
+    // GetDefaultDisplayId performs synchronous IPC, resolve it before taking sessionLock_.
+    int32_t defaultDisplayId = (startOptions != nullptr && startOptions->GetDisplayID() == 0)
+        ? DisplayUtil::GetDefaultDisplayId() : 0;
+    sptr<SessionInfo> sessionInfo;
+    {
+        std::lock_guard<ffrt::mutex> guard(sessionLock_);
+        UIAbilityRecordPtr abilityRecord = GetAbilityRecordByIdLocked(sessionId);
+        CHECK_POINTER_AND_RETURN(abilityRecord, ERR_INVALID_VALUE);
+        sessionInfo = abilityRecord->GetSessionInfo();
+        CHECK_POINTER_AND_RETURN(sessionInfo, ERR_INVALID_VALUE);
+        if (startOptions != nullptr) {
+            abilityRecord->SetWindowMode(startOptions->GetWindowMode());
+            TAG_LOGI(AAFwkTag::ABILITYMGR,
+                "MoveMissionToFront, setting displayId=%{public}d, splitRatio:%{public}d, windowMode:%{public}d",
+                startOptions->GetDisplayID(), startOptions->GetSplitRatioPreference(), startOptions->GetWindowMode());
+            (sessionInfo->want).SetParam(Want::PARAM_RESV_DISPLAY_ID, startOptions->GetDisplayID());
+            (sessionInfo->want).SetParam(Want::PARAM_RESV_WINDOW_MODE, startOptions->GetWindowMode());
+            if (startOptions->GetDisplayID() == 0) {
+                (sessionInfo->want).SetParam(Want::PARAM_RESV_DISPLAY_ID, defaultDisplayId);
+            }
+            WindowOptionsUtils::SetWindowPositionAndSize(sessionInfo->want, nullptr, *startOptions);
+            sessionInfo->splitRatioPreference = startOptions->GetSplitRatioPreference();
+            sessionInfo->windowCreateParams = startOptions->windowCreateParams_;
+            sessionInfo->supportWindowModes = startOptions->supportWindowModes_;
+            if (PermissionVerification::GetInstance()->IsSystemAppCall()) {
+                bool focused = (sessionInfo->want).GetBoolParam(Want::PARAM_RESV_WINDOW_FOCUSED, true);
+                if (focused) {
+                    (sessionInfo->want).SetParam(Want::PARAM_RESV_WINDOW_FOCUSED,
+                        startOptions->GetWindowFocused());
+                }
+            } else {
+                (sessionInfo->want).RemoveParam(Want::PARAM_RESV_WINDOW_FOCUSED);
             }
         } else {
-            (sessionInfo->want).RemoveParam(Want::PARAM_RESV_WINDOW_FOCUSED);
+            (sessionInfo->want).SetParam(Want::PARAM_RESV_DISPLAY_ID, -1);
         }
-    } else {
-        (sessionInfo->want).SetParam(Want::PARAM_RESV_DISPLAY_ID, -1);
+        sessionInfo->processOptions = nullptr;
+        sessionInfo->startWindowOption = nullptr;
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "call PendingSessionActivation by rootSceneSession"
+            "windowLeft=%{public}d,windowTop=%{public}d,"
+            "windowHeight=%{public}d,windowWidth=%{public}d,windowMode=%{public}d",
+            (sessionInfo->want).GetIntParam(Want::PARAM_RESV_WINDOW_LEFT, 0),
+            (sessionInfo->want).GetIntParam(Want::PARAM_RESV_WINDOW_TOP, 0),
+            (sessionInfo->want).GetIntParam(Want::PARAM_RESV_WINDOW_HEIGHT, 0),
+            (sessionInfo->want).GetIntParam(Want::PARAM_RESV_WINDOW_WIDTH, 0),
+            (sessionInfo->want).GetIntParam(Want::PARAM_RESV_WINDOW_MODE,
+                AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_UNDEFINED));
+        sessionInfo->canStartAbilityFromBackground = true;
+        sessionInfo->scenarios = ServerConstant::SCENARIO_MOVE_MISSION_TO_FRONT;
+        SetSandboxCloneParamsForSession(sessionInfo, abilityRecord);
+        // The sessionInfo owned by the record is shared with other threads; clone it under
+        // the lock and marshal only the clone outside, so that in-lock writers can never
+        // race with the PendingSessionActivation IPC below (same pattern as
+        // ChangeAbilityVisibility; the historical deadlock of 5cc782e5a1 was caused by
+        // holding sessionLock_ across synchronous IPC, so the lock must end here).
+        sessionInfo = sessionInfo->Clone();
     }
-    sessionInfo->processOptions = nullptr;
-    sessionInfo->startWindowOption = nullptr;
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "call PendingSessionActivation by rootSceneSession"
-        "windowLeft=%{public}d,windowTop=%{public}d,"
-        "windowHeight=%{public}d,windowWidth=%{public}d,windowMode=%{public}d",
-        (sessionInfo->want).GetIntParam(Want::PARAM_RESV_WINDOW_LEFT, 0),
-        (sessionInfo->want).GetIntParam(Want::PARAM_RESV_WINDOW_TOP, 0),
-        (sessionInfo->want).GetIntParam(Want::PARAM_RESV_WINDOW_HEIGHT, 0),
-        (sessionInfo->want).GetIntParam(Want::PARAM_RESV_WINDOW_WIDTH, 0),
-        (sessionInfo->want).GetIntParam(Want::PARAM_RESV_WINDOW_MODE,
-            AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_UNDEFINED));
-    sessionInfo->canStartAbilityFromBackground = true;
-    sessionInfo->scenarios = ServerConstant::SCENARIO_MOVE_MISSION_TO_FRONT;
-    SetSandboxCloneParamsForSession(sessionInfo, abilityRecord);
+    CHECK_POINTER_AND_RETURN(sessionInfo, ERR_NO_MEMORY);
     auto ret = static_cast<int>(tmpSceneSession->PendingSessionActivation(sessionInfo));
     if (ret != ERR_OK) {
         RemoveAbilitySessionInfo(sessionInfo->requestId);
@@ -4762,17 +4782,30 @@ int UIAbilityLifecycleManager::ChangeAbilityVisibility(
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     UIAbilityRecordPtr abilityRecord;
+    // The sessionInfo owned by abilityRecord is shared: other threads mutate it (e.g. want in
+    // StartUIAbility) under sessionLock_. Clone it under sessionLock_ and touch only the private
+    // clone afterwards, otherwise marshalling want in ChangeSessionVisibilityWithStatusBar
+    // races with in-lock writers and corrupts the want params. Do not hold sessionLock_ for the
+    // rest of the flow: the delegate/session IPC calls below are synchronous and SCB may re-enter
+    // AbilityManagerService while handling them (historical deadlock, fixed by shrinking the
+    // lock scope).
+    sptr<SessionInfo> sessionInfo;
     {
         std::lock_guard<ffrt::mutex> guard(sessionLock_);
         abilityRecord = GetAbilityRecordByTokenLocked(token);
+        CHECK_POINTER_AND_RETURN(abilityRecord, ERR_INVALID_VALUE);
+        // Keep the historical error precedence: the not-self check only touches abilityRecord
+        // (no sessionInfo), so a mismatched caller is rejected before the sessionInfo check,
+        // exactly as before this fix.
+        if (IPCSkeleton::GetCallingTokenID() != abilityRecord->GetApplicationInfo().accessTokenId) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "not self");
+            return ERR_NATIVE_NOT_SELF_APPLICATION;
+        }
+        auto originSessionInfo = abilityRecord->GetSessionInfo();
+        CHECK_POINTER_AND_RETURN(originSessionInfo, ERR_INVALID_VALUE);
+        sessionInfo = originSessionInfo->Clone();
+        CHECK_POINTER_AND_RETURN(sessionInfo, ERR_INVALID_VALUE);
     }
-    CHECK_POINTER_AND_RETURN(abilityRecord, ERR_INVALID_VALUE);
-    if (IPCSkeleton::GetCallingTokenID() != abilityRecord->GetApplicationInfo().accessTokenId) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "not self");
-        return ERR_NATIVE_NOT_SELF_APPLICATION;
-    }
-    auto sessionInfo = abilityRecord->GetSessionInfo();
-    CHECK_POINTER_AND_RETURN(sessionInfo, ERR_INVALID_VALUE);
 
     do {
         if (HiddenStartObserverManager::GetInstance().IsHiddenStart(abilityRecord->GetPid())) {
@@ -4806,19 +4839,17 @@ int UIAbilityLifecycleManager::ChangeAbilityVisibility(
         }
     } while (false);
 
-    auto callerSessionInfo = abilityRecord->GetSessionInfo();
-    CHECK_POINTER_AND_RETURN(callerSessionInfo, ERR_INVALID_VALUE);
-    CHECK_POINTER_AND_RETURN(callerSessionInfo->sessionToken, ERR_INVALID_VALUE);
+    CHECK_POINTER_AND_RETURN(sessionInfo->sessionToken, ERR_INVALID_VALUE);
     if (params != nullptr) {
         TAG_LOGD(AAFwkTag::ABILITYMGR,
             "showAbility delivers showParams to window, windowFocused:%{public}d, raiseTop:%{public}d",
             params->windowFocused, params->raiseTop);
-        callerSessionInfo->showParams = params;
+        sessionInfo->showParams = params;
     }
-    auto callerSession = iface_cast<Rosen::ISession>(callerSessionInfo->sessionToken);
+    auto callerSession = iface_cast<Rosen::ISession>(sessionInfo->sessionToken);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "callerSession ChangeSessionVisibilityWithStatusBar, isShow:%{public}d", isShow);
     CHECK_POINTER_AND_RETURN(callerSession, ERR_INVALID_VALUE);
-    return static_cast<int>(callerSession->ChangeSessionVisibilityWithStatusBar(callerSessionInfo, isShow));
+    return static_cast<int>(callerSession->ChangeSessionVisibilityWithStatusBar(sessionInfo, isShow));
 }
 
 int UIAbilityLifecycleManager::ChangeUIAbilityVisibilityBySCB(sptr<SessionInfo> sessionInfo, bool isShow)
