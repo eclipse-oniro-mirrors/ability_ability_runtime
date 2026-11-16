@@ -424,7 +424,7 @@ bool AbilityPermissionUtil::CheckStartUIAbilityByUserLockStatus(const std::strin
     auto bms = AbilityUtil::GetBundleManagerHelper();
     if (bms == nullptr) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "null helper");
-        return true;
+        return false;
     }
     AppExecFwk::BundleInfo bundleInfo;
     auto ret =
