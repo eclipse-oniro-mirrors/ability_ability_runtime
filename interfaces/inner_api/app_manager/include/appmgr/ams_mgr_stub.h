@@ -49,6 +49,7 @@ private:
     int32_t HandleUpdateAbilityState(MessageParcel &data, MessageParcel &reply);
     int32_t HandleUpdateExtensionState(MessageParcel &data, MessageParcel &reply);
     int32_t HandleRegisterAppStateCallback(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleRegisterTaskStateCallback(MessageParcel &data, MessageParcel &reply);
     int32_t HandleReset(MessageParcel &data, MessageParcel &reply);
     int32_t HandleKillProcessByAbilityToken(MessageParcel &data, MessageParcel &reply);
     int32_t HandleSetGameSAPrelaunch(MessageParcel &data, MessageParcel &reply);

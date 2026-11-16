@@ -84,6 +84,7 @@ public:
     MOCK_METHOD5(AttributeProcessForAbility, int32_t(const std::string &taskId, int32_t callerUid,
         int32_t callerPid, int32_t targetPid, int64_t &attributionId));
     MOCK_METHOD2(UnregisterTaskAttribution, int32_t(const std::string &taskId, int64_t attributionId));
+    MOCK_METHOD1(RegisterTaskStateCallback, void(const sptr<ITaskStateCallback> &callback));
 
     MockAmsMgrScheduler() : AmsMgrStub() {};
     virtual ~MockAmsMgrScheduler() {};

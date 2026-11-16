@@ -126,7 +126,6 @@
 #include "string_wrapper.h"
 #include "array_wrapper.h"
 #include "support_system_ability_permission.h"
-#include "task_mgr/task_manager_service.h"
 #include "time_util.h"
 #include "tokenid_kit.h"
 #include "ui_extension_wrapper.h"
@@ -577,10 +576,6 @@ bool AbilityManagerService::Init()
     InitWantAgentAppStateObserver();
     DelayedSingleton<AAFwk::ExtensionRunningTimeoutMonitor>::GetInstance()->StartMonitor();
     DelayedSingleton<AAFwk::BackgroundUserExtensionMonitor>::GetInstance()->StartMonitor();
-    AppExecFwk::TaskManagerService::GetInstance().SetTaskFinishedCallback(
-        [this](const std::string &taskId, int32_t userId) {
-            OnTaskFinished(taskId, userId);
-        });
 #ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
     ResourceSchedule::ResSchedClient::GetInstance().InitKillReasonListener();
 #endif

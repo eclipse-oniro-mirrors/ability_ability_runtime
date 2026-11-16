@@ -284,5 +284,7 @@ bool AppScheduler::CheckProcessAvailable(int32_t pid)
 {
     return true;
 }
+
+void TaskStateCallbackImpl::OnTaskFinished(const std::string &taskId, int32_t userId) {}
 }  // namespace AAFwk
 }  // namespace OHOS

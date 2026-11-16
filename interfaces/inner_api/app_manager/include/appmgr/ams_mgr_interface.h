@@ -29,6 +29,7 @@
 #include "istart_specified_ability_response.h"
 #include "running_process_info.h"
 #include "user_callback.h"
+#include "i_task_state_callback.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -99,6 +100,14 @@ public:
      * @return
      */
     virtual void RegisterAppStateCallback(const sptr<IAppStateCallback> &callback) = 0;
+
+    /**
+     * RegisterTaskStateCallback, register a task state callback through the proxy object,
+     * so that TaskManagerService can notify task-finished events to AbilityManagerService.
+     *
+     * @param callback, the task state callback to register.
+     */
+    virtual void RegisterTaskStateCallback(const sptr<ITaskStateCallback> &callback) {}
 
     /**
      * KillProcessByAbilityToken, call KillProcessByAbilityToken() through proxy object,
@@ -681,6 +690,7 @@ public:
         KILL_PROCESS_WITH_ACCOUNT_SAFELY,
         ATTRIBUTE_PROCESS_FOR_ABILITY,
         UNREGISTER_TASK_ATTRIBUTION,
+        REGISTER_TASK_STATE_CALLBACK,
         // Add enumeration values above
         END
     };

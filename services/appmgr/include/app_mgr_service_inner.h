@@ -68,6 +68,7 @@
 #include "fork_image_info.h"
 #include "hisysevent_report.h"
 #include "iapp_state_callback.h"
+#include "i_task_state_callback.h"
 #include "iapplication_state_observer.h"
 #include "ichild_process_state_observer.h"
 #include "iconfiguration_observer.h"
@@ -256,6 +257,15 @@ public:
      * @return
      */
     virtual void RegisterAppStateCallback(const sptr<IAppStateCallback> &callback);
+
+    /**
+     * RegisterTaskStateCallback, register the task state callback so that
+     * TaskManagerService can notify task-finished events downstream.
+     *
+     * @param callback, the task state callback to register.
+     */
+    virtual void RegisterTaskStateCallback(const sptr<ITaskStateCallback> &callback);
+
     void RemoveDeadAppStateCallback(const wptr<IRemoteObject> &remote);
 
     /**

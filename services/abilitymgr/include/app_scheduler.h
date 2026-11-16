@@ -28,6 +28,7 @@
 #include "appmgr/app_mgr_client.h"
 #include "appmgr/app_state_callback_host.h"
 #include "appmgr/start_specified_ability_response_stub.h"
+#include "appmgr/task_state_callback_host.h"
 #include "bundle_info.h"
 #include "fault_data.h"
 #include "iremote_object.h"
@@ -210,6 +211,21 @@ public:
      * @param userId The user id
      */
     virtual void OnStartSpecifiedFailed(int32_t requestId, int32_t userId) override;
+};
+
+/**
+ * @class TaskStateCallbackImpl
+ * TaskStateCallbackImpl implements TaskStateCallbackHost (IPC stub) on the
+ * abilitymgr side. It receives the OnTaskFinished IPC from TaskManagerService
+ * (appmgr) and calls AbilityManagerService directly via DelayedSingleton,
+ * following the same pattern as StartSpecifiedAbilityResponse.
+ */
+class TaskStateCallbackImpl : public AppExecFwk::TaskStateCallbackHost {
+public:
+    TaskStateCallbackImpl() = default;
+    virtual ~TaskStateCallbackImpl() = default;
+
+    void OnTaskFinished(const std::string &taskId, int32_t userId) override;
 };
 
 /**
@@ -886,6 +902,7 @@ private:
     std::weak_ptr<AppStateCallback> callback_;
     std::unique_ptr<AppExecFwk::AppMgrClient> appMgrClient_;
     sptr<StartSpecifiedAbilityResponse> startSpecifiedAbilityResponse_;
+    sptr<TaskStateCallbackImpl> taskStateCallback_;
     std::mutex lock_;
 };
 }  // namespace AAFwk

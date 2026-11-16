@@ -88,6 +88,14 @@ public:
     virtual void RegisterAppStateCallback(const sptr<IAppStateCallback> &callback) override;
 
     /**
+     * RegisterTaskStateCallback, call RegisterTaskStateCallback() through the proxy object,
+     * register the task state callback.
+     *
+     * @param callback, the task state callback to register.
+     */
+    virtual void RegisterTaskStateCallback(const sptr<ITaskStateCallback> &callback) override;
+
+    /**
      * KillProcessByAbilityToken, call KillProcessByAbilityToken() through proxy object,
      * kill the process by ability token.
      *
