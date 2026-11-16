@@ -659,6 +659,7 @@ int ImplicitStartProcessor::GenerateAbilityRequestByAction(int32_t userId, Abili
         dialogAppInfo.bundleLabelId = info.applicationInfo.labelId;
         dialogAppInfo.visible = info.visible;
         dialogAppInfo.appIndex = info.applicationInfo.appIndex;
+        dialogAppInfo.accessTokenId = info.applicationInfo.accessTokenId;
         dialogAppInfo.multiAppMode = info.applicationInfo.multiAppMode;
         dialogAppInfo.codePath = info.applicationInfo.codePath;
         dialogAppInfo.installSource = info.applicationInfo.installSource;
@@ -713,6 +714,7 @@ int ImplicitStartProcessor::GenerateAbilityRequestByAppIndexes(int32_t userId, A
         dialogAppInfo.bundleLabelId = info.applicationInfo.labelId;
         dialogAppInfo.visible = info.visible;
         dialogAppInfo.appIndex = info.applicationInfo.appIndex;
+        dialogAppInfo.accessTokenId = info.applicationInfo.accessTokenId;
         dialogAppInfo.multiAppMode = info.applicationInfo.multiAppMode;
         dialogAppInfo.codePath = info.applicationInfo.codePath;
         dialogAppInfo.installSource = info.applicationInfo.installSource;
@@ -785,6 +787,7 @@ int ImplicitStartProcessor::QueryBmsAppInfos(AbilityRequest &request, int32_t us
             dialogAppInfo.bundleLabelId = abilityInfo.applicationInfo.labelId;
             dialogAppInfo.visible = abilityInfo.visible;
             dialogAppInfo.appIndex = abilityInfo.applicationInfo.appIndex;
+            dialogAppInfo.accessTokenId = abilityInfo.applicationInfo.accessTokenId;
             dialogAppInfo.multiAppMode = abilityInfo.applicationInfo.multiAppMode;
             dialogAppInfo.codePath = abilityInfo.applicationInfo.codePath;
             dialogAppInfo.installSource = abilityInfo.applicationInfo.installSource;
@@ -1042,6 +1045,7 @@ void ImplicitStartProcessor::AddAbilityInfoToDialogInfos(const AddInfoParam &par
     dialogAppInfo.bundleLabelId = param.info.applicationInfo.labelId;
     dialogAppInfo.visible = param.info.visible;
     dialogAppInfo.appIndex = param.info.appIndex;
+    dialogAppInfo.accessTokenId = param.info.applicationInfo.accessTokenId;
     dialogAppInfo.multiAppMode = param.info.applicationInfo.multiAppMode;
     dialogAppInfo.isAppLink = (param.info.linkType == AppExecFwk::LinkType::APP_LINK);
     dialogAppInfo.codePath = param.info.applicationInfo.codePath;
@@ -1058,7 +1062,7 @@ void ImplicitStartProcessor::EraseInvisibleAppInfos(const AbilityRequest &reques
         return;
     }
     for (auto it = dialogAppInfos.begin(); it != dialogAppInfos.end();) {
-        if (!it->visible) {
+        if (!it->visible && it->accessTokenId != request.specifyTokenId) {
             TAG_LOGW(AAFwkTag::ABILITYMGR, "Caller without permission, erase: %{public}s",
                 it->bundleName.c_str());
             it = dialogAppInfos.erase(it);

@@ -2086,12 +2086,13 @@ void ExpectGateCalledWith(uint32_t specifyTokenId, int32_t expectedCount = 1)
     EXPECT_EQ(PermissionVerification::lastSpecifyTokenId_, specifyTokenId);
 }
 
-AppExecFwk::AbilityInfo MakeCandidateInfo(const std::string &bundleName, bool visible)
+AppExecFwk::AbilityInfo MakeCandidateInfo(const std::string &bundleName, bool visible, uint32_t accessTokenId = 0)
 {
     AppExecFwk::AbilityInfo info;
     info.bundleName = bundleName;
     info.name = "MainAbility";
     info.visible = visible;
+    info.applicationInfo.accessTokenId = accessTokenId;
     return info;
 }
 }
@@ -2289,6 +2290,44 @@ HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_011, TestSi
     EXPECT_EQ(PermissionVerification::verifyCallingPermissionCount_, 0);
     EXPECT_EQ(AbilityManagerService::startAbilityInnerCount_, 0);
     TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_011 end");
+}
+
+/**
+ * @tc.name: ImplicitStartAbility_Permission_012
+ * @tc.desc: an invisible candidate of the proxied app itself is exempt from erasure
+ */
+HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_012, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_012 start");
+    PermissionVerification::verifyCallingPermissionRet_ = false;
+    auto ret = RunImplicitStartWithCandidates({
+        MakeCandidateInfo("com.test.implicit", false),
+        MakeCandidateInfo("com.test.self", false, 1)
+    }, 1);
+    // The candidate whose accessTokenId equals specifyTokenId mirrors the downstream
+    // JudgeStartInvisibleAbility same-token exemption: it is kept and finally started.
+    EXPECT_NE(ret, CHECK_PERMISSION_FAILED);
+    ExpectGateCalledWith(1);
+    EXPECT_EQ(AbilityManagerService::startAbilityInnerCount_, 1);
+    EXPECT_EQ(AbilityManagerService::lastStartAbilityInnerBundleName_, "com.test.self");
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_012 end");
+}
+
+/**
+ * @tc.name: ImplicitStartAbility_Permission_013
+ * @tc.desc: a different accessTokenId (e.g. another clone instance) is not exempt
+ */
+HWTEST_F(ImplicitStartProcessorTest, ImplicitStartAbility_Permission_013, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_013 start");
+    PermissionVerification::verifyCallingPermissionRet_ = false;
+    auto ret = RunImplicitStartWithCandidates({ MakeCandidateInfo("com.test.clone", false, 2) }, 1);
+    // Only exact token equality is exempt: a same-bundle/different-token candidate is still
+    // erased on both the primary list and the PC "more apps" re-query.
+    EXPECT_NE(ret, CHECK_PERMISSION_FAILED);
+    ExpectGateCalledWith(1, 2);
+    EXPECT_EQ(AbilityManagerService::startAbilityInnerCount_, 0);
+    TAG_LOGI(AAFwkTag::TEST, "ImplicitStartAbility_Permission_013 end");
 }
 }  // namespace AAFwk
 }  // namespace OHOS
