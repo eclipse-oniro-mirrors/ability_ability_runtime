@@ -138,13 +138,20 @@ int FreeInstallManager::StartFreeInstall(const Want &want, int32_t userId, int r
     int32_t recordId = GetRecordIdByToken(callerToken);
     sptr<AtomicServiceStatusCallback> callback = new AtomicServiceStatusCallback(weak_from_this(), isAsync, recordId);
     auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
-    CHECK_POINTER_AND_RETURN(bundleMgrHelper, GET_ABILITY_SERVICE_FAILED);
+    if (bundleMgrHelper == nullptr) {
+        TAG_LOGE(AAFwkTag::FREE_INSTALL, "bundleMgrHelper is null");
+        RemoveFreeInstallInfo(info.want.GetBundleNameRef(), info.want.GetAbilityNameRef(),
+            info.want.GetStringParam(Want::PARAM_RESV_START_TIME));
+        return GET_ABILITY_SERVICE_FAILED;
+    }
     if (!PermissionVerification::GetInstance()->CheckSpecificSystemAbilityAccessPermission(FOUNDATION_PROCESS_NAME)) {
         info.want.SetParam(PARAM_FREEINSTALL_UID, IPCSkeleton::GetCallingUid());
     }
     int result = SetAppRunningState(info.want);
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::FREE_INSTALL, "setAppRunningState failed");
+        RemoveFreeInstallInfo(info.want.GetBundleNameRef(), info.want.GetAbilityNameRef(),
+            info.want.GetStringParam(Want::PARAM_RESV_START_TIME));
         return result;
     }
 
@@ -198,12 +205,16 @@ int FreeInstallManager::RemoteFreeInstall(const Want &want, int32_t userId, int 
     DistributedClient dmsClient;
     auto result = dmsClient.StartRemoteFreeInstall(info.want, callerUid, info.requestCode, accessToken, callback);
     if (result != ERR_NONE) {
+        RemoveFreeInstallInfo(info.want.GetBundleNameRef(), info.want.GetAbilityNameRef(),
+            info.want.GetStringParam(Want::PARAM_RESV_START_TIME));
         return result;
     }
     auto remoteFuture = info.promise->get_future();
     std::future_status remoteStatus = remoteFuture.wait_for(std::chrono::milliseconds(
         DELAY_REMOTE_FREE_INSTALL_TIMEOUT));
     if (remoteStatus == std::future_status::timeout) {
+        RemoveFreeInstallInfo(info.want.GetBundleNameRef(), info.want.GetAbilityNameRef(),
+            info.want.GetStringParam(Want::PARAM_RESV_START_TIME));
         return FREE_INSTALL_TIMEOUT;
     }
     return remoteFuture.get();

@@ -13,26 +13,66 @@
  * limitations under the License.
  */
 
+#include <atomic>
+#include <memory>
+#include <mutex>
+
 #include <gtest/gtest.h>
 
+#include "ability_manager_errors.h"
+#include "ability_manager_interface.h"
 #include "bundle_mgr_helper.h"
 #include "distributed_client.h"
 #include "free_install_manager.h"
 #include "insight_intent_execute_manager.h"
 #include "mock_app_mgr_service.h"
 #include "mock_bundle_manager_service.h"
+#include "sys_mgr_client.h"
 #include "task_handler_wrap.h"
 #include "utils/app_mgr_util.h"
 
 using namespace testing::ext;
 using namespace OHOS::AAFwk;
 
+namespace {
+// Result returned by the mocked DistributedClient::StartRemoteFreeInstall.
+std::atomic<int32_t> g_remoteFreeInstallResult { OHOS::ERR_OK };
+// Manager watched by the mocked DistributedClient::StartRemoteFreeInstall to prove the pending
+// info has entered freeInstallList_ before the remote install is started.
+std::weak_ptr<FreeInstallManager> g_remoteFreeInstallManager;
+
+void SetRemoteFreeInstallResult(int32_t result)
+{
+    g_remoteFreeInstallResult.store(result);
+}
+}  // namespace
+
 namespace OHOS {
 namespace AAFwk {
-int32_t DistributedClient::StartRemoteFreeInstall(const Want &, int32_t, int32_t, uint32_t,
+int32_t DistributedClient::StartRemoteFreeInstall(const Want &want, int32_t, int32_t, uint32_t,
     const sptr<IRemoteObject> &)
 {
-    return ERR_OK;
+    auto freeInstallManager = g_remoteFreeInstallManager.lock();
+    if (freeInstallManager == nullptr) {
+        return g_remoteFreeInstallResult.load();
+    }
+
+    // Prove the pending info has entered freeInstallList_ before the remote install is started.
+    std::string startTime = want.GetStringParam(Want::PARAM_RESV_START_TIME);
+    bool hasPendingInfo = false;
+    {
+        std::lock_guard<ffrt::mutex> lock(freeInstallManager->freeInstallListLock_);
+        for (const auto &info : freeInstallManager->freeInstallList_) {
+            if (info.want.GetBundleNameRef() == want.GetBundleNameRef() &&
+                info.want.GetAbilityNameRef() == want.GetAbilityNameRef() &&
+                info.want.GetStringParam(Want::PARAM_RESV_START_TIME) == startTime) {
+                hasPendingInfo = true;
+                break;
+            }
+        }
+    }
+    EXPECT_TRUE(hasPendingInfo);
+    return g_remoteFreeInstallResult.load();
 }
 
 TaskHandle TaskHandlerWrap::SubmitTask(const std::function<void()> &task, const std::string &)
@@ -53,6 +93,21 @@ int32_t InsightIntentExecuteManager::ExecuteIntentDone(uint64_t, int32_t,
     return ERR_OK;
 }
 }  // namespace AAFwk
+
+namespace AppExecFwk {
+// Link-time mocks that keep SysMrgClient away from samgr, so AppMgrUtil::GetAppMgr() returns
+// nullptr deterministically when AppMgrUtil::appMgr_ is not set in tests.
+SysMrgClient::SysMrgClient() {}
+
+SysMrgClient::~SysMrgClient() {}
+
+sptr<IRemoteObject> SysMrgClient::GetSystemAbility(const int32_t)
+{
+    return nullptr;
+}
+
+void SysMrgClient::RegisterSystemAbility(const int32_t, sptr<IRemoteObject>) {}
+}  // namespace AppExecFwk
 
 namespace AppExecFwk {
 namespace {
@@ -177,6 +232,37 @@ private:
     sptr<FreeInstallAgentBundleMgrService> mockBundleMgr_;
     sptr<FreeInstallAgentAppMgrService> mockAppMgr_;
 };
+
+// Resets the mocked remote free install result back to ERR_OK when the test case ends.
+class RemoteFreeInstallResultGuard {
+public:
+    explicit RemoteFreeInstallResultGuard(int32_t result)
+    {
+        SetRemoteFreeInstallResult(result);
+    }
+
+    ~RemoteFreeInstallResultGuard()
+    {
+        SetRemoteFreeInstallResult(OHOS::ERR_OK);
+    }
+};
+
+// Restores AppMgrUtil::appMgr_ to its original value when the test case ends.
+class AppMgrClientGuard {
+public:
+    explicit AppMgrClientGuard(const sptr<IAppMgr> &appMgr) : appMgrBackup_(AppMgrUtil::appMgr_)
+    {
+        AppMgrUtil::appMgr_ = appMgr;
+    }
+
+    ~AppMgrClientGuard()
+    {
+        AppMgrUtil::appMgr_ = appMgrBackup_;
+    }
+
+private:
+    sptr<IAppMgr> appMgrBackup_;
+};
 }  // namespace
 
 class FreeInstallManagerFourthTest : public testing::Test {
@@ -289,6 +375,55 @@ HWTEST_F(FreeInstallManagerFourthTest, FreeInstall_ConnectFreeInstall_006, TestS
 
     EXPECT_EQ(agentRes, ERR_OK);
     EXPECT_EQ(mockScope.GetBundleMgr()->GetQueryAbilityInfoWithCallbackCount(), 1);
+    EXPECT_TRUE(freeInstallManager_->freeInstallList_.empty());
+}
+
+/**
+ * @tc.number: FreeInstall_RemoteFreeInstall_001
+ * @tc.name: RemoteFreeInstall
+ * @tc.desc: Test RemoteFreeInstall removes the pending info from freeInstallList_ when remote install fails.
+ */
+HWTEST_F(FreeInstallManagerFourthTest, FreeInstall_RemoteFreeInstall_001, TestSize.Level1)
+{
+    RemoteFreeInstallResultGuard resultGuard(ERR_INVALID_VALUE);
+    g_remoteFreeInstallManager = freeInstallManager_;
+
+    Want want;
+    ElementName element("", REMOTE_BUNDLE_NAME, "MainAbility");
+    want.SetElement(element);
+    want.SetParam(FROM_REMOTE_KEY, true);
+
+    int result = freeInstallManager_->RemoteFreeInstall(want, TEST_USER_ID, 0, nullptr);
+
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    EXPECT_TRUE(freeInstallManager_->freeInstallList_.empty());
+}
+
+/**
+ * @tc.number: FreeInstall_StartFreeInstall_001
+ * @tc.name: StartFreeInstall
+ * @tc.desc: Test StartFreeInstall removes the pending info from freeInstallList_ when SetAppRunningState fails.
+ */
+HWTEST_F(FreeInstallManagerFourthTest, FreeInstall_StartFreeInstall_001, TestSize.Level1)
+{
+    FreeInstallAgentMockScope mockScope(freeInstallManager_);
+    ASSERT_NE(mockScope.GetBundleMgr(), nullptr);
+    ASSERT_NE(mockScope.GetAppMgr(), nullptr);
+
+    // Force AppMgrUtil::GetAppMgr() to return nullptr so SetAppRunningState fails.
+    AppMgrClientGuard appMgrGuard(nullptr);
+
+    auto param = std::make_shared<FreeInstallParams>();
+    param->skipStartFreeInstallPermissionCheck = true;
+
+    Want want;
+    ElementName element("", REMOTE_BUNDLE_NAME, "MainAbility");
+    want.SetElement(element);
+    want.SetParam(Want::PARAM_RESV_START_TIME, std::string("0"));
+
+    int result = freeInstallManager_->StartFreeInstall(want, TEST_USER_ID, 0, nullptr, param);
+
+    EXPECT_EQ(result, ERR_NULL_APP_MGR_CLIENT);
     EXPECT_TRUE(freeInstallManager_->freeInstallList_.empty());
 }
 }  // namespace AppExecFwk
