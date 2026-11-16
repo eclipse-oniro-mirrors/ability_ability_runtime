@@ -485,7 +485,8 @@ int MissionListManager::StartAbilityLocked(const std::shared_ptr<AbilityRecord> 
 
     NotifyAbilityToken(targetAbilityRecord->GetToken(), abilityRequest);
 
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "StartAbilityLocked, abilityRequest.");
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "StartAbilityLocked, abilityRequest.specifyTokenId is %{public}u.",
+        abilityRequest.specifyTokenId);
     targetAbilityRecord->SetSpecifyTokenId(abilityRequest.specifyTokenId);
     targetAbilityRecord->SetAbilityForegroundingFlag();
 
@@ -2861,7 +2862,6 @@ void MissionListManager::HandleAbilityDiedByDefault(std::shared_ptr<AbilityRecor
     auto missionList = mission->GetMissionList();
     CHECK_POINTER_LOG(missionList, "Fail to get mission list.");
 
-    CHECK_POINTER_LOG(launcherList_, "launcherList_ is null.");
     std::shared_ptr<AbilityRecord> launcherRoot = launcherList_->GetLauncherRoot();
     bool isLauncherActive = (launcherRoot &&
         (launcherRoot->IsAbilityState(FOREGROUND) || launcherRoot->IsAbilityState(FOREGROUNDING)));
@@ -3385,6 +3385,11 @@ int MissionListManager::CallAbilityLocked(const AbilityRequest &abilityRequest)
     targetAbilityRecord->SetPromotePriority(abilityRequest.promotePriority);
     (void)targetAbilityRecord->PromotePriority();
 
+    std::string value = abilityRequest.want.GetStringParam(Want::PARM_LAUNCH_REASON_MESSAGE);
+    if (!value.empty()) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "set launchReasonMessage:%{public}s", value.c_str());
+        targetAbilityRecord->SetLaunchReasonMessage(value);
+    }
 #ifdef SUPPORT_UPMS
     if (InsightIntentExecuteParam::IsInsightIntentExecute(abilityRequest.want)) {
         targetAbilityRecord->GrantUriPermission();
@@ -3392,11 +3397,6 @@ int MissionListManager::CallAbilityLocked(const AbilityRequest &abilityRequest)
     }
 #endif // SUPPORT_UPMS
 
-    std::string value = abilityRequest.want.GetStringParam(Want::PARM_LAUNCH_REASON_MESSAGE);
-    if (!value.empty()) {
-        TAG_LOGD(AAFwkTag::ABILITYMGR, "set launchReasonMessage:%{public}s", value.c_str());
-        targetAbilityRecord->SetLaunchReasonMessage(value);
-    }
     // mission is first created, add mission to default call mission list.
     // other keep in current mission list.
     if (!targetMission->GetMissionList()) {

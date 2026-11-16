@@ -481,6 +481,10 @@ bool UriUtils::GrantUriPermissionInner(const std::vector<std::string> &uriVec,
     }
     std::vector<int32_t> permissionTypes;
     for (size_t i = 0; i < checkResults.size(); i++) {
+        if (i == 0) {
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "checkResult: %{public}d, %{public}d",
+                checkResults[i].result, checkResults[i].permissionType);
+        }
         boolResults[i] = checkResults[i].result;
         if (checkResults[i].result) {
             permissionTypes.emplace_back(checkResults[i].permissionType);

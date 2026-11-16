@@ -339,7 +339,8 @@ int DialogSessionManager::SendDialogResult(const Want &want, const std::string &
     }
     if (ret == ERR_OK) {
         ClearDialogContext(dialogSessionId);
-        abilityMgr->RemoveSelectorIdentity(dialogCallerInfo->targetWant.GetIntParam(Want::PARAM_RESV_CALLER_TOKEN, 0));
+        abilityMgr->RemoveSelectorIdentity(
+            dialogCallerInfo->targetWant.GetIntParam(Want::PARAM_RESV_CALLER_TOKEN, 0));
     }
     return ret;
 }

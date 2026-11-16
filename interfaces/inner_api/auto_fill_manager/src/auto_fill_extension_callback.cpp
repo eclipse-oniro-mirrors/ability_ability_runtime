@@ -25,8 +25,8 @@
 namespace OHOS {
 namespace AbilityRuntime {
 namespace {
-#ifdef SUPPORT_GRAPHICS
 constexpr const char* WANT_PARAMS_VIEW_DATA_KEY = "ohos.ability.params.viewData";
+#ifdef SUPPORT_GRAPHICS
 constexpr const char* WANT_PARAMS_AUTO_FILL_CMD_KEY = "ohos.ability.params.autoFillCmd";
 constexpr const char* WANT_PARAMS_FILL_CONTENT = "ohos.ability.params.fillContent";
 constexpr const char* WANT_PARAMS_CUSTOM_DATA_KEY = "ohos.ability.params.customData";

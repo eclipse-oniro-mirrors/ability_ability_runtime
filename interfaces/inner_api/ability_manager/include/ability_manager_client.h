@@ -3227,11 +3227,11 @@ public:
      */
     ErrCode NotifyInsightIntentExecute(uint64_t intentId);
 
+    ErrCode GetDynamicAgentCardsForMigration(std::string &jsonStr);
+
     ErrCode RegisterWillInsightIntentExecuteCallback(const sptr<IRemoteObject> &callback);
 
     ErrCode UnregisterWillInsightIntentExecuteCallback();
-
-    ErrCode GetDynamicAgentCardsForMigration(std::string &jsonStr);
 
     /**
      * @brief Best-effort attribution of the task id onto an existing ConnectionRecord

@@ -64,8 +64,8 @@ public:
 
     int32_t callerPid = -1;
     int32_t callerUid = -1;
-    std::string callerBundleName = "";
     std::string sessionId = "";
+    std::string callerBundleName = "";
     std::string toolName = "";
     std::string eventId = "";
     std::string toolCallId = "";

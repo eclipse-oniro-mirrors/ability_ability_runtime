@@ -133,6 +133,7 @@ int32_t AppExitReasonDataManager::SetAppExitReason(const std::string &bundleName
         TAG_LOGW(AAFwkTag::ABILITYMGR, "invalid value");
         return ERR_INVALID_VALUE;
     }
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "bundleName: %{public}s, tokenId: %{private}u", bundleName.c_str(), accessTokenId);
     std::string keyStr = std::to_string(accessTokenId);
     {
         std::lock_guard lock(kvStorePtrMutex_);
@@ -145,7 +146,7 @@ int32_t AppExitReasonDataManager::SetAppExitReason(const std::string &bundleName
     DistributedKv::Key key(keyStr);
     DistributedKv::Value value = ConvertAppExitReasonInfoToValue(abilityList, exitReason, processInfo, withKillMsg);
     PutAsync(key, value);
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "bundleName: %{public}s, tokenId: %{private}u", bundleName.c_str(), accessTokenId);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "set reason info: %{public}s", value.ToString().c_str());
     return ERR_OK;
 }
 

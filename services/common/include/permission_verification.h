@@ -132,8 +132,6 @@ struct VerificationInfo {
     bool VerifyLocalDebugOtherApps() const;
 
     bool IsAllowLocalDebugOtherApps(bool isDebugFromLocal) const;
-    bool IsLocalDebugOtherAppsCall(const uint32_t specifyTokenId = 0, int32_t targetUserId = -1) const;
-    bool IsCustomSandboxCall(const uint32_t specifyTokenId = 0, int32_t targetUserId = -1) const;
 
     bool VerifyStartSelfUIAbility(int tokenId) const;
 
@@ -142,12 +140,18 @@ struct VerificationInfo {
     bool VerifyCustomSandbox(uint32_t accessTokenId) const;
 
     bool VerifySupportCrossAppEmbedForOaPermission() const;
+
+    bool IsLocalDebugOtherAppsCall(const uint32_t specifyTokenId = 0, int32_t targetUserId = -1) const;
+
+    bool IsCustomSandboxCall(const uint32_t specifyTokenId = 0, int32_t targetUserId = -1) const;
 private:
     DISALLOW_COPY_AND_MOVE(PermissionVerification);
 
     constexpr static int32_t API8 = 8;
 
     unsigned int GetCallingTokenID() const;
+
+    bool IsCrossUserForSandboxCall(int32_t targetUserId) const;
 
     bool JudgeStartInvisibleAbility(const uint32_t accessTokenId, const bool visible,
         const uint32_t specifyTokenId = 0) const;
@@ -160,8 +164,6 @@ private:
     int JudgeInvisibleAndBackground(const VerificationInfo &verificationInfo, bool isCallByShortcut = false) const;
 
     int CheckSkillStartByCallPermission(const VerificationInfo &verificationInfo) const;
-
-    bool IsCrossUserForSandboxCall(int32_t targetUserId) const;
 
     inline bool IsCallFromSameAccessToken(const uint32_t accessTokenId) const
     {
