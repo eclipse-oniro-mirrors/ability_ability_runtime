@@ -40,6 +40,7 @@ struct DialogAppInfo {
     bool isAppLink = false;
     AppExecFwk::MultiAppModeData multiAppMode;
     int32_t appIndex = 0;
+    uint32_t accessTokenId = 0;
 };
 
 enum class DialogType {
