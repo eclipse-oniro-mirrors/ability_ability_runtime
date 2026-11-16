@@ -490,7 +490,7 @@ HWTEST_F(AppMgrServiceThirdTest, ShowHelp_001, TestSize.Level1)
     auto appMgrService = std::make_shared<AppMgrService>();
     std::vector<std::u16string> dummyArgs;
     std::string resultBuffer;
-    const std::string expectedOutput =
+    std::string expectedOutput =
         "Usage:\n"
         "-h                          help text for the tool\n"
         "--ffrt pid1[,pid2,pid3]     dump ffrt info\n"
@@ -503,11 +503,17 @@ HWTEST_F(AppMgrServiceThirdTest, ShowHelp_001, TestSize.Level1)
         "--task psched               "
         "dump process schedule index, effective levels and judge state\n"
         "--task grep <taskId>        "
-        "dump the active tasks whose id contains the taskId\n"
-        "--task register <taskId> <pid> <insight|cli|a2a|ability>    "
-        "test hook: attribute an entity into the task (developer mode only)\n"
-        "--task unregister <taskId> <attributionId>    "
-        "test hook: remove an attribution from the task (developer mode only)\n";
+        "dump the active tasks whose id contains the taskId\n";
+    // Mirrors IsDebuggableBuild() in app_mgr_service.cpp: the register/unregister
+    // test hooks are listed on debug builds only.
+    if (!OHOS::system::GetBoolParameter("const.secure", true) &&
+        OHOS::system::GetBoolParameter("const.debuggable", false)) {
+        expectedOutput +=
+            "--task register <taskId> <pid> <insight|cli|a2a|ability>    "
+            "test hook: attribute an entity into the task (debug builds only)\n"
+            "--task unregister <taskId> <attributionId>    "
+            "test hook: remove an attribution from the task (debug builds only)\n";
+    }
     int res = appMgrService->ShowHelp(dummyArgs, resultBuffer);
     EXPECT_EQ(resultBuffer, expectedOutput);
     EXPECT_EQ(res, ERR_OK);
