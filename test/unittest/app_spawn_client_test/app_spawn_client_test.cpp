@@ -258,6 +258,34 @@ HWTEST_F(AppSpawnClientTest, SetDacInfo_001, TestSize.Level2)
 }
 
 /**
+ * @tc.name: SetDacInfo_002
+ * @tc.desc: appspawn SetDacInfo
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppSpawnClientTest, SetDacInfo_002, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetDacInfo_002 start");
+    AppSpawnStartMsg startMsg = {0};
+    startMsg.uid = 20010034;
+    startMsg.gid = 20010034;
+    startMsg.appUid = 20010034;
+    std::string procName("test_proc_name");
+    startMsg.procName = procName;
+
+    auto asc = std::make_shared<AppSpawnClient>(false);
+    int32_t ret = 0;
+    AppSpawnReqMsgHandle reqHandle = nullptr;
+    ret = asc->OpenConnection();
+    EXPECT_EQ(ret, ERR_OK);
+    ret = AppSpawnReqMsgCreate(static_cast<AppSpawnMsgType>(startMsg.code), startMsg.procName.c_str(), &reqHandle);
+    EXPECT_EQ(ret, ERR_OK);
+    ret = asc->SetDacInfo(startMsg, reqHandle);
+    EXPECT_EQ(ret, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "SetDacInfo_002 end");
+}
+
+/**
  * @tc.name: SetMountPermission_001
  * @tc.desc: appspawn SetMountPermission
  * @tc.type: FUNC

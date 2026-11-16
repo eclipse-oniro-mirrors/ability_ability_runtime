@@ -361,6 +361,44 @@ HWTEST_F(AppMgrServiceInnerTenthTest, SetAppInfo_002, TestSize.Level1)
 }
 
 /**
+ * @tc.name: SetAppInfo_ShareUid_001
+ * @tc.desc: Test SetAppInfo pass-through appUid and set shareUid flag when sharedUID is true
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTenthTest, SetAppInfo_ShareUid_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetAppInfo_ShareUid_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    BundleInfo bundleInfo;
+    bundleInfo.appUid = 20010034;
+    bundleInfo.applicationInfo.sharedUID = true;
+    AppSpawnStartMsg startMsg = {};
+    appMgrServiceInner->SetAppInfo(bundleInfo, startMsg);
+    EXPECT_EQ(startMsg.appUid, 20010034);
+    EXPECT_NE(startMsg.flags & (1ULL << AppFlagsIndex::APP_FLAGS_SHAREUID_ENABLED), 0ULL);
+    TAG_LOGI(AAFwkTag::TEST, "SetAppInfo_ShareUid_001 end");
+}
+ 
+/**
+ * @tc.name: SetAppInfo_ShareUid_002
+ * @tc.desc: Test SetAppInfo pass-through appUid and not set shareUid flag when sharedUID is false
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTenthTest, SetAppInfo_ShareUid_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetAppInfo_ShareUid_002 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    BundleInfo bundleInfo;
+    bundleInfo.appUid = 20010034;
+    bundleInfo.applicationInfo.sharedUID = false;
+    AppSpawnStartMsg startMsg = {};
+    appMgrServiceInner->SetAppInfo(bundleInfo, startMsg);
+    EXPECT_EQ(startMsg.appUid, 20010034);
+    EXPECT_EQ(startMsg.flags & (1ULL << AppFlagsIndex::APP_FLAGS_SHAREUID_ENABLED), 0ULL);
+    TAG_LOGI(AAFwkTag::TEST, "SetAppInfo_ShareUid_002 end");
+}
+
+/**
  * @tc.name: SetAppInfo_003
  * @tc.desc: Test SetAppInfo function with apiTargetVersion % API_VERSION_MOD >= API15 but maxChildProcess != 0
  * @tc.type: FUNC
