@@ -48,7 +48,7 @@ void AmsMgrStub::CreateMemberFuncMap() {}
 int AmsMgrStub::OnRemoteRequest(uint32_t code, MessageParcel &data, MessageParcel &reply, MessageOption &option)
 {
     if (code != static_cast<uint32_t>(IAmsMgr::Message::Get_BUNDLE_NAME_BY_PID)) {
-        TAG_LOGI(AAFwkTag::APPMGR, "OnReceived, code: %{public}u, flags: %{public}d", code,
+        TAG_LOGI(AAFwkTag::APPMGR, "Recv,code:%{public}u,flags:%{public}d", code,
             option.GetFlags());
     }
     std::u16string descriptor = AmsMgrStub::GetDescriptor();

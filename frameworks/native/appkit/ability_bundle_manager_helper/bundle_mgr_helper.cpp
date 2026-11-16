@@ -143,7 +143,7 @@ ErrCode BundleMgrHelper::GetSandboxBundleInfo(
 {
     TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");
     if (bundleName.empty() || appIndex <= AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
-        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "invalid params");
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "invalid");
         return ERR_APPEXECFWK_SANDBOX_INSTALL_PARAM_ERROR;
     }
     auto bundleMgr = Connect();
@@ -697,7 +697,7 @@ bool BundleMgrHelper::GetApplicationInfo(
 bool BundleMgrHelper::GetApplicationInfoWithAppIndex(
     const std::string &appName, int32_t appIndex, int32_t userId, ApplicationInfo &appInfo)
 {
-    TAG_LOGI(AAFwkTag::BUNDLEMGRHELPER, "appName: %{public}s, appIndex: %{public}d", appName.c_str(), appIndex);
+    TAG_LOGI(AAFwkTag::BUNDLEMGRHELPER, "app:%{public}s,i:%{public}d", appName.c_str(), appIndex);
     if (appIndex < 0) {
         TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "Invalid appIndex");
         return false;
@@ -772,7 +772,7 @@ bool BundleMgrHelper::QueryExtensionAbilityInfoByUriOptimal(
     TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");
     auto bundleMgr = Connect();
     if (bundleMgr == nullptr) {
-        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bMgr");
         return false;
     }
 
@@ -1143,7 +1143,7 @@ ErrCode BundleMgrHelper::GetDualModeBundleInfo(const std::string &bundleName, in
     if (ret == ERR_OK) {
         appIndex = preference.appIndex;
     } else {
-        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "GetDualModeBundleInfo ERROR");
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "GDMBI ERROR");
         appIndex = 0;
     }
     return ret;

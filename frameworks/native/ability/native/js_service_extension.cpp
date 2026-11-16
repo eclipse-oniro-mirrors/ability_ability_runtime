@@ -922,7 +922,7 @@ napi_value JsServiceExtension::CallOnConnect(const AAFwk::Want &want)
         return nullptr;
     }
     napi_value remoteNative = nullptr;
-    TAG_LOGI(AAFwkTag::SERVICE_EXT, "Call onConnect");
+    TAG_LOGI(AAFwkTag::SERVICE_EXT, "Call onConn");
     napi_status status = napi_call_function(env, obj, method, ARGC_ONE, argv, &remoteNative);
     if (status != napi_ok) {
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "call js func failed %{public}d", status);
@@ -958,7 +958,7 @@ napi_value JsServiceExtension::CallOnDisconnect(const AAFwk::Want &want, bool wi
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "null method");
         return nullptr;
     }
-    TAG_LOGI(AAFwkTag::SERVICE_EXT, "Call onDisconnect");
+    TAG_LOGI(AAFwkTag::SERVICE_EXT, "Call onDisconn");
     if (withResult) {
         napi_value result = nullptr;
         napi_status status = napi_call_function(env, obj, method, ARGC_ONE, argv, &result);

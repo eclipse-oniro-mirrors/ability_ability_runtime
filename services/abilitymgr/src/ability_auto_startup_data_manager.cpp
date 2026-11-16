@@ -220,7 +220,7 @@ void AbilityAutoStartupDataManager::RestoreIfStoreEmpty()
         TAG_LOGW(AAFwkTag::AUTO_STARTUP, "GetEntries failed: %{public}d, try restore from backup", entriesStatus);
     }
     DistributedKv::Status restoreStatus = RestoreFromBackupWithRetry();
-    TAG_LOGI(AAFwkTag::AUTO_STARTUP, "restore from backup result:%{public}d", restoreStatus);
+    TAG_LOGI(AAFwkTag::AUTO_STARTUP, "restore from bk res:%{public}d", restoreStatus);
 }
 
 DistributedKv::Status AbilityAutoStartupDataManager::GetKvStore()
