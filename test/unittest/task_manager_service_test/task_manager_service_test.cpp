@@ -1273,9 +1273,9 @@ HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0300, TestSize.Level1
     EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "unregister", "x", "4321", "extra"}), result),
         DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR);
 
-    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "grep"}), result),
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "id"}), result),
         DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR);
-    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "grep", "x", "extra"}), result),
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "id", "x", "extra"}), result),
         DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR);
 
     EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "not_a_sub"}), result),
@@ -1297,32 +1297,31 @@ HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0400, TestSize.Level1
 
 /**
  * @tc.number: AppMgrServiceTask_DumpTask_0500
- * @tc.name: grep tasks by id
- * @tc.desc: the --task grep <taskId> filter prints the tasks whose id contains the
- *           text and reports misses as not found.
+ * @tc.name: dump the task with an exact id
+ * @tc.desc: the --task id <taskId> filter prints exactly the task whose id equals
+ *           the text; id fragments and unknown ids are reported as not found.
  */
 HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0500, TestSize.Level1)
 {
     auto &service = TaskManagerService::GetInstance();
     std::string taskIdA = MakeTaskId("dump_task_0500_a");
     std::string taskIdB = MakeTaskId("dump_task_0500_b");
-    EXPECT_EQ(service.StartTask(taskIdA, TASK_PRIORITY_DEFAULT), ERR_OK);
-    EXPECT_EQ(service.StartTask(taskIdB, TASK_PRIORITY_DEFAULT), ERR_OK);
+    EXPECT_EQ(service.StartTask(taskIdA), ERR_OK);
+    EXPECT_EQ(service.StartTask(taskIdB), ERR_OK);
 
     IPCSkeleton::SetCallingUid(TEST_HIDUMPER_SERVICE_UID);
     std::string result;
-    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "grep", taskIdA}), result), ERR_OK);
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "id", taskIdA}), result), ERR_OK);
     EXPECT_NE(result.find(taskIdA), std::string::npos);
     EXPECT_EQ(result.find(taskIdB), std::string::npos);
 
     result.clear();
-    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "grep", "dump_task_0500"}), result), ERR_OK);
-    EXPECT_NE(result.find("TaskManager matched tasks: total=2"), std::string::npos);
-    EXPECT_NE(result.find(taskIdA), std::string::npos);
-    EXPECT_NE(result.find(taskIdB), std::string::npos);
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "id", "dump_task_0500"}), result), ERR_OK);
+    EXPECT_NE(result.find("TaskManager task not found"), std::string::npos);
+    EXPECT_EQ(result.find(taskIdA), std::string::npos);
 
     result.clear();
-    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "grep", MakeTaskId("dump_task_0500_none")}),
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "id", MakeTaskId("dump_task_0500_none")}),
         result), ERR_OK);
     EXPECT_NE(result.find("TaskManager task not found"), std::string::npos);
 
@@ -1364,7 +1363,7 @@ HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0600, TestSize.Level1
 
     result.clear();
     EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"-h"}), result), ERR_OK);
-    EXPECT_NE(result.find("--task grep"), std::string::npos);
+    EXPECT_NE(result.find("--task id"), std::string::npos);
     EXPECT_EQ(result.find("--task register"), std::string::npos);
     EXPECT_EQ(result.find("--task unregister"), std::string::npos);
     OHOS::system::SetMockSystemDebuggable(true);

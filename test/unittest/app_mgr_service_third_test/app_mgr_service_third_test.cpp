@@ -502,8 +502,8 @@ HWTEST_F(AppMgrServiceThirdTest, ShowHelp_001, TestSize.Level1)
         "dump agent task manager active tasks\n"
         "--task psched               "
         "dump process schedule index, effective levels and judge state\n"
-        "--task grep <taskId>        "
-        "dump the active tasks whose id contains the taskId\n";
+        "--task id <taskId>          "
+        "dump the active task with the exact id\n";
     // Mirrors IsDebuggableBuild() in app_mgr_service.cpp: the register/unregister
     // test hooks are listed on debug builds only.
     if (!OHOS::system::GetBoolParameter("const.secure", true) &&

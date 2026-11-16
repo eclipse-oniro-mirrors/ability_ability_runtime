@@ -808,22 +808,13 @@ std::string TaskManagerService::DumpActiveTasks(const std::string &taskId)
     std::lock_guard<ffrt::mutex> lock(tasksMutex_);
     int64_t now = NowMillis();
     if (!taskId.empty()) {
-        // Grep semantics: the id text matches by containment, so a fragment of a task
-        // id is enough and an exact id still matches only that task.
-        std::string result;
-        size_t matched = 0;
-        for (const auto &item : tasks_) {
-            if (item.second.taskId.find(taskId) == std::string::npos) {
-                continue;
-            }
-            result += FormatTaskRecord(item.second, now);
-            ++matched;
-        }
-        if (matched == 0) {
+        // Exact-id filter: only the task whose id equals the text is dumped.
+        auto it = tasks_.find(taskId);
+        if (it == tasks_.end()) {
             TAG_LOGW(AAFwkTag::APPMGR, "task not found, taskId: %{public}s", taskId.c_str());
             return "TaskManager task not found, taskId: " + taskId + "\n";
         }
-        return "TaskManager matched tasks: total=" + std::to_string(matched) + "\n" + result;
+        return "TaskManager matched tasks: total=1\n" + FormatTaskRecord(it->second, now);
     }
     std::string result = "TaskManager active tasks: total=" + std::to_string(tasks_.size()) + "\n";
     for (const auto &item : tasks_) {

@@ -1257,8 +1257,8 @@ int AppMgrService::ShowHelp(const std::vector<std::u16string>& args, std::string
         .append("dump agent task manager active tasks\n")
         .append("--task psched               ")
         .append("dump process schedule index, effective levels and judge state\n")
-        .append("--task grep <taskId>        ")
-        .append("dump the active tasks whose id contains the taskId\n");
+        .append("--task id <taskId>          ")
+        .append("dump the active task with the exact id\n");
     // On commercial builds the system is not debuggable, so the register/unregister
     // test hooks are hidden from the help text there.
     if (IsDebuggableBuild()) {
@@ -1269,6 +1269,30 @@ int AppMgrService::ShowHelp(const std::vector<std::u16string>& args, std::string
     }
 
     return ERR_OK;
+}
+
+// Handler of the --task register/unregister test hooks; only reachable on debug builds
+// (the caller in DumpTask gates on IsDebuggableBuild).
+int AppMgrService::DumpTaskHook(const std::string &subCmd, const std::vector<std::u16string>& args,
+    std::string& result)
+{
+    if (subCmd == "register") {
+        if (args.size() != SIZE_FIVE) {
+            result.append("usage: --task register <taskId> <pid> <insight|cli|a2a|ability>\n");
+            return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
+        }
+        auto ret = TaskManagerService::GetInstance().DumpRegisterManagedProcess(
+            Str16ToStr8(args[INDEX_TWO]), Str16ToStr8(args[INDEX_THREE]),
+            Str16ToStr8(args[INDEX_FOUR]), result);
+        return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
+    }
+    if (args.size() != SIZE_FOUR) {
+        result.append("usage: --task unregister <taskId> <attributionId>\n");
+        return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
+    }
+    auto ret = TaskManagerService::GetInstance().DumpUnregisterManagedProcess(
+        Str16ToStr8(args[INDEX_TWO]), Str16ToStr8(args[INDEX_THREE]), result);
+    return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
 }
 
 int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string& result)
@@ -1289,29 +1313,11 @@ int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string
         // subcommands fall through to the unknown-command error, as if the
         // commands did not exist at all.
         if (IsDebuggableBuild() && (subCmd == "register" || subCmd == "unregister")) {
-            if (subCmd == "register") {
-                if (args.size() != SIZE_FIVE) {
-                    result.append("usage: --task register <taskId> <pid> <insight|cli|a2a|ability>\n");
-                    return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
-                }
-                auto ret = TaskManagerService::GetInstance().DumpRegisterManagedProcess(
-                    Str16ToStr8(args[INDEX_TWO]), Str16ToStr8(args[INDEX_THREE]),
-                    Str16ToStr8(args[INDEX_FOUR]), result);
-                return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
-            }
-            if (subCmd == "unregister") {
-                if (args.size() != SIZE_FOUR) {
-                    result.append("usage: --task unregister <taskId> <attributionId>\n");
-                    return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
-                }
-                auto ret = TaskManagerService::GetInstance().DumpUnregisterManagedProcess(
-                    Str16ToStr8(args[INDEX_TWO]), Str16ToStr8(args[INDEX_THREE]), result);
-                return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
-            }
+            return DumpTaskHook(subCmd, args, result);
         }
-        if (subCmd == "grep") {
+        if (subCmd == "id") {
             if (args.size() != SIZE_THREE) {
-                result.append("usage: --task grep <taskId>\n");
+                result.append("usage: --task id <taskId>\n");
                 return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
             }
             result.append(TaskManagerService::GetInstance().DumpActiveTasks(
