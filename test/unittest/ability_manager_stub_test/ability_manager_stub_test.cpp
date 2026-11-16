@@ -30,6 +30,7 @@
 #include "sandbox_clone_params.h"
 #include "string_wrapper.h"
 #include "token_setproc.h"
+#include "wm_animation_common.h"
 
 using namespace testing::ext;
 using namespace testing;
@@ -4416,6 +4417,32 @@ HWTEST_F(AbilityManagerStubTest, ChangeAbilityVisibility_0100, TestSize.Level1)
     auto token = sptr<AppExecFwk::MockAbilityToken>::MakeSptr();
     data.WriteRemoteObject(token);
     data.WriteBool(true);
+    data.WriteParcelable(nullptr);
+
+    auto ret = stub_->ChangeAbilityVisibilityInner(data, reply);
+    EXPECT_EQ(ret, NO_ERROR);
+
+    TAG_LOGI(AAFwkTag::TEST, "end");
+}
+
+/**
+ * @tc.name: ChangeAbilityVisibility_0200
+ * @tc.desc: ChangeAbilityVisibility with showParams
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerStubTest, ChangeAbilityVisibility_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin");
+
+    MessageParcel data;
+    MessageParcel reply;
+    auto token = sptr<AppExecFwk::MockAbilityToken>::MakeSptr();
+    data.WriteRemoteObject(token);
+    data.WriteBool(true);
+    Rosen::WindowShowParams showParams;
+    showParams.windowFocused = false;
+    showParams.raiseTop = false;
+    data.WriteParcelable(&showParams);
 
     auto ret = stub_->ChangeAbilityVisibilityInner(data, reply);
     EXPECT_EQ(ret, NO_ERROR);

@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+# Copyright (c) 2021-2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -34,9 +34,9 @@ ohos_unittest("ability_manager_stub_test") {
 
   sources = [
     # add mock file
-    "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/appexecfwk_core/src/appmgr/mock_app_scheduler.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/process_options.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/sender_info.cpp",
+    "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/appexecfwk_core/src/appmgr/mock_app_scheduler.cpp",
     "ability_manager_stub_test.cpp",
   ]
 
@@ -49,8 +49,8 @@ ohos_unittest("ability_manager_stub_test") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager",
     "${ability_runtime_innerkits_path}/ability_manager:ability_connect_callback_stub",
-    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/ability_manager:mission_info",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
 
@@ -77,6 +77,7 @@ ohos_unittest("ability_manager_stub_test") {
     "napi:ace_napi",
     "samgr:samgr_proxy",
     "selinux_adapter:librestorecon",
+    "window_manager:window_animation_utils",
   ]
 
   if (background_task_mgr_continuous_task_enable) {

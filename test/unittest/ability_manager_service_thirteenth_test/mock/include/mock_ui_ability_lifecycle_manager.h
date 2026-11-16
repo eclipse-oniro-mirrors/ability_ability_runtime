@@ -426,7 +426,8 @@ public:
 
     int32_t TryPrepareTerminateByPids(const std::vector<int32_t>& pids, bool clear);
 
-    int ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow);
+    int ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow,
+        const std::shared_ptr<Rosen::WindowShowParams> &params);
 
     int ChangeUIAbilityVisibilityBySCB(sptr<SessionInfo> sessionInfo, bool isShow);
 

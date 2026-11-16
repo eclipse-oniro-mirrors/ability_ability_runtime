@@ -1586,7 +1586,7 @@ HWTEST_F(AbilityManagerServiceFourthTest, ChangeAbilityVisibility_001, TestSize.
     auto callerToken = MockToken(AbilityType::PAGE);
     bool isShow{true};
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
-    abilityMs_->ChangeAbilityVisibility(callerToken, isShow);
+    abilityMs_->ChangeAbilityVisibility(callerToken, isShow, nullptr);
     EXPECT_TRUE(abilityMs_ != nullptr);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest ChangeAbilityVisibility_001 end");
 }

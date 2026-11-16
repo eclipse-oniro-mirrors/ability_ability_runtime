@@ -2095,7 +2095,7 @@ HWTEST_F(AbilityManagerServiceThirdTest, ChangeAbilityVisibility_001, TestSize.L
     auto abilityMs = std::make_shared<AbilityManagerService>();
     sptr<IRemoteObject> token;
     bool isShow = true;
-    auto result = abilityMs->ChangeAbilityVisibility(token, isShow);
+    auto result = abilityMs->ChangeAbilityVisibility(token, isShow, nullptr);
     EXPECT_EQ(result, ERR_CAPABILITY_NOT_SUPPORT);
 }
 

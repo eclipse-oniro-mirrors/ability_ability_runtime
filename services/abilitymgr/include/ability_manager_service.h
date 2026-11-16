@@ -576,7 +576,8 @@ public:
      * @param isShow The wanted state, show or hide.
      * @return Returns ERR_OK on success, others on failure.
      */
-    int ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow) override;
+    int ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow,
+        const std::shared_ptr<Rosen::WindowShowParams> &params) override;
 
     /**
      * Change the visibility state of an UIAbility by SCB.

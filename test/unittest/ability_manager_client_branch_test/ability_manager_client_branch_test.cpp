@@ -2388,7 +2388,7 @@ HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_ChangeAbilityVisib
     GTEST_LOG_(INFO) << "ChangeAbilityVisibility_0100 start";
     sptr<IRemoteObject> token = nullptr;
     bool isShow = true;
-    auto result = client_->ChangeAbilityVisibility(token, isShow);
+    auto result = client_->ChangeAbilityVisibility(token, isShow, nullptr);
     EXPECT_EQ(ERR_OK, result);
     GTEST_LOG_(INFO) << "ChangeAbilityVisibility_0100 end";
 }

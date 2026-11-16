@@ -122,7 +122,7 @@ bool DoSomethingInterestingWithMyAPI(const char *data, size_t size)
     std::vector<int32_t> pids;
     uIAbilityLifecycleManager->TryPrepareTerminateByPids(pids, false);
     sptr<IRemoteObject> token = GetFuzzAbilityToken();
-    uIAbilityLifecycleManager->ChangeAbilityVisibility(token, boolParam);
+    uIAbilityLifecycleManager->ChangeAbilityVisibility(token, boolParam, nullptr);
     sptr<SessionInfo> sessionInfo;
     uIAbilityLifecycleManager->ChangeUIAbilityVisibilityBySCB(sessionInfo, boolParam);
     AppExecFwk::ElementName element;

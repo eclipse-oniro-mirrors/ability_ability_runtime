@@ -4616,7 +4616,8 @@ void UIAbilityLifecycleManager::TerminateSession(std::shared_ptr<AbilityRecord> 
     session->TerminateSession(sessionInfo);
 }
 
-int UIAbilityLifecycleManager::ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow)
+int UIAbilityLifecycleManager::ChangeAbilityVisibility(
+    sptr<IRemoteObject> token, bool isShow, const std::shared_ptr<Rosen::WindowShowParams> &params)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     UIAbilityRecordPtr abilityRecord;
@@ -4667,6 +4668,12 @@ int UIAbilityLifecycleManager::ChangeAbilityVisibility(sptr<IRemoteObject> token
     auto callerSessionInfo = abilityRecord->GetSessionInfo();
     CHECK_POINTER_AND_RETURN(callerSessionInfo, ERR_INVALID_VALUE);
     CHECK_POINTER_AND_RETURN(callerSessionInfo->sessionToken, ERR_INVALID_VALUE);
+    if (params != nullptr) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR,
+            "showAbility delivers showParams to window, windowFocused:%{public}d, raiseTop:%{public}d",
+            params->windowFocused, params->raiseTop);
+        callerSessionInfo->showParams = params;
+    }
     auto callerSession = iface_cast<Rosen::ISession>(callerSessionInfo->sessionToken);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "callerSession ChangeSessionVisibilityWithStatusBar, isShow:%{public}d", isShow);
     CHECK_POINTER_AND_RETURN(callerSession, ERR_INVALID_VALUE);

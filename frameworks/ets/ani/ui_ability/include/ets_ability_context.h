@@ -153,6 +153,8 @@ public:
     static void NativeOnSetRestoreEnabled(ani_env *env, ani_object aniObj, ani_boolean aniEnabled);
     static void NativeChangeAbilityVisibility(ani_env *env, ani_object aniObj, ani_boolean isShow,
         ani_object callbackObj);
+    static void NativeChangeAbilityVisibilityWithParams(ani_env *env, ani_object aniObj, ani_boolean isShow,
+        ani_object paramsObj, ani_object callbackObj);
     static void StartAbilityAsCaller(ani_env *env, ani_object aniObj, ani_object wantObj,
         ani_object callbackObj, ani_object startOptionsObj);
     static void StartRecentAbility(ani_env *env, ani_object aniObj, ani_object wantObj,

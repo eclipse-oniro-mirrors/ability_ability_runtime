@@ -4856,7 +4856,8 @@ int AbilityManagerService::RequestModalUIExtensionWithAccountInner(Want want, in
     return connection->CreateModalUIExtension(want, finalUserId) ? ERR_OK : INNER_ERR;
 }
 
-int AbilityManagerService::ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow)
+int AbilityManagerService::ChangeAbilityVisibility(
+    sptr<IRemoteObject> token, bool isShow, const std::shared_ptr<Rosen::WindowShowParams> &params)
 {
     XCOLLIE_TIMER_LESS(__PRETTY_FUNCTION__);
     bool isEnable = AppUtils::GetInstance().IsStartOptionsWithProcessOptions();
@@ -4866,7 +4867,7 @@ int AbilityManagerService::ChangeAbilityVisibility(sptr<IRemoteObject> token, bo
     }
     auto uiAbilityManager = GetUIAbilityManagerByUid(IPCSkeleton::GetCallingUid());
     CHECK_POINTER_AND_RETURN(uiAbilityManager, ERR_INVALID_VALUE);
-    return uiAbilityManager->ChangeAbilityVisibility(token, isShow);
+    return uiAbilityManager->ChangeAbilityVisibility(token, isShow, params);
 }
 
 int AbilityManagerService::ChangeUIAbilityVisibilityBySCB(sptr<SessionInfo> sessionInfo, bool isShow)

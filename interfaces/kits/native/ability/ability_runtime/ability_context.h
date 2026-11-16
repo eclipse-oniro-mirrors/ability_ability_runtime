@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -41,6 +41,10 @@
 namespace OHOS {
 namespace Ace {
 class UIContent;
+}
+
+namespace Rosen {
+struct WindowShowParams;
 }
 
 namespace AbilityRuntime {
@@ -214,7 +218,8 @@ public:
 
     virtual ErrCode AddFreeInstallObserver(const sptr<AbilityRuntime::IFreeInstallObserver> &observer) = 0;
 
-    virtual ErrCode ChangeAbilityVisibility(bool isShow) { return 0; }
+    virtual ErrCode ChangeAbilityVisibility(bool isShow,
+        const std::shared_ptr<Rosen::WindowShowParams> &params = nullptr) { return 0; }
 
     /**
     * @brief Connects the current ability to an ability using the AbilityInfo.AbilityType.SERVICE template.

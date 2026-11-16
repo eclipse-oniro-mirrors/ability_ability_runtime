@@ -3116,7 +3116,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, ChangeAbilityVisibility_001, TestSize.Le
 {
     auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
     EXPECT_NE(uiAbilityLifecycleManager, nullptr);
-    int32_t ret = uiAbilityLifecycleManager->ChangeAbilityVisibility(nullptr, true);
+    int32_t ret = uiAbilityLifecycleManager->ChangeAbilityVisibility(nullptr, true, nullptr);
     EXPECT_EQ(ERR_INVALID_VALUE, ret);
 }
 
@@ -3525,7 +3525,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, ChangeAbilityVisibility_002, TestSize.Le
     EXPECT_NE(uiAbilityLifecycleManager, nullptr);
     sptr<IRemoteObject> token = nullptr;
     bool isShow = false;
-    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow), ERR_INVALID_VALUE);
+    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow, nullptr), ERR_INVALID_VALUE);
 }
 
 /**
@@ -3543,7 +3543,8 @@ HWTEST_F(UIAbilityLifecycleManagerTest, ChangeAbilityVisibility_003, TestSize.Le
     uiAbilityLifecycleManager->sessionAbilityMap_.emplace(0, abilityRecord);
     sptr<IRemoteObject> token = abilityRecord->GetToken()->AsObject();
     bool isShow = true;
-    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow), ERR_NATIVE_NOT_SELF_APPLICATION);
+    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow, nullptr),
+        ERR_NATIVE_NOT_SELF_APPLICATION);
 }
 
 /**
@@ -3562,7 +3563,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, ChangeAbilityVisibility_004, TestSize.Le
     uiAbilityLifecycleManager->sessionAbilityMap_.emplace(0, abilityRecord);
     sptr<IRemoteObject> token = abilityRecord->GetToken()->AsObject();
     bool isShow = true;
-    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow), ERR_INVALID_VALUE);
+    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow, nullptr), ERR_INVALID_VALUE);
 }
 
 /**
@@ -3583,7 +3584,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, ChangeAbilityVisibility_005, TestSize.Le
     uiAbilityLifecycleManager->sessionAbilityMap_.emplace(0, abilityRecord);
     sptr<IRemoteObject> token = abilityRecord->GetToken()->AsObject();
     bool isShow = true;
-    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow), ERR_START_OPTIONS_CHECK_FAILED);
+    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow, nullptr), ERR_START_OPTIONS_CHECK_FAILED);
 }
 
 /**
@@ -3604,7 +3605,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, ChangeAbilityVisibility_006, TestSize.Le
     uiAbilityLifecycleManager->sessionAbilityMap_.emplace(0, abilityRecord);
     sptr<IRemoteObject> token = abilityRecord->GetToken()->AsObject();
     bool isShow = true;
-    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow), ERR_START_OPTIONS_CHECK_FAILED);
+    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow, nullptr), ERR_START_OPTIONS_CHECK_FAILED);
 }
 
 /**
@@ -3627,7 +3628,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, ChangeAbilityVisibility_007, TestSize.Le
     uiAbilityLifecycleManager->sessionAbilityMap_.emplace(0, abilityRecord);
     sptr<IRemoteObject> token = abilityRecord->GetToken()->AsObject();
     bool isShow = true;
-    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow), ERR_START_OPTIONS_CHECK_FAILED);
+    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow, nullptr), ERR_START_OPTIONS_CHECK_FAILED);
 }
 
 /**
@@ -3651,7 +3652,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, ChangeAbilityVisibility_008, TestSize.Le
     uiAbilityLifecycleManager->sessionAbilityMap_.emplace(0, abilityRecord);
     sptr<IRemoteObject> token = abilityRecord->GetToken()->AsObject();
     bool isShow = true;
-    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow), ERR_START_OPTIONS_CHECK_FAILED);
+    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow, nullptr), ERR_START_OPTIONS_CHECK_FAILED);
 }
 
 /**
@@ -3675,7 +3676,8 @@ HWTEST_F(UIAbilityLifecycleManagerTest, ChangeAbilityVisibility_009, TestSize.Le
     uiAbilityLifecycleManager->sessionAbilityMap_.emplace(0, abilityRecord);
     sptr<IRemoteObject> token = abilityRecord->GetToken()->AsObject();
     bool isShow = false;
-    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow), ERR_START_OPTIONS_CHECK_FAILED);
+    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow, nullptr),
+        ERR_START_OPTIONS_CHECK_FAILED);
 }
 
 /**
