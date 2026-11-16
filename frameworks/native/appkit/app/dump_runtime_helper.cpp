@@ -934,27 +934,49 @@ void DumpRuntimeHelper::DumpKmpSnapshot(int32_t fd, bool mayReportToOEM)
     }
 }
 
-void DumpRuntimeHelper::DumpJsvmHeap(const OHOS::AppExecFwk::MemDumpInfo &info)
+void DumpRuntimeHelper::DumpJsvmGc(void *jsvmHandle, uint32_t tid)
 {
-    TAG_LOGI(AAFwkTag::APPKIT, "dump jsvm heaps, tid:%{public}d, needRaw:%{public}d", info.tid, info.needRaw);
-    void* jsvmHandle = dlopen("libjsvm.so", RTLD_LAZY);
-    if (jsvmHandle == nullptr) {
-        TAG_LOGE(AAFwkTag::APPKIT, "jsvm dlopen failed");
+    typedef int (*JsvmRequestGcFn)(uint32_t);
+    JsvmRequestGcFn jsvmGc = (JsvmRequestGcFn)dlsym(jsvmHandle, "JsvmRequestGc");
+    if (jsvmGc == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "jsvm request gc dlsym failed");
         return;
     }
+    int32_t gcRet = jsvmGc(tid);
+    if (gcRet != 0) {
+        TAG_LOGE(AAFwkTag::APPKIT, "jsvm request gc failed, ret:%{public}d", gcRet);
+    }
+    TAG_LOGI(AAFwkTag::APPKIT, "jsvm request gc done");
+}
+
+void DumpRuntimeHelper::DumpJsvmSnapshot(void *jsvmHandle, const OHOS::AppExecFwk::MemDumpInfo &info)
+{
     using jsvmFunc = int (*)(uint32_t, int);
     auto jsvmDump = reinterpret_cast<jsvmFunc>(dlsym(jsvmHandle, "jsvm_dump_heapsnapshot"));
     if (jsvmDump == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "jsvm dlsym failed");
-        dlclose(jsvmHandle);
         return;
     }
     int dumpType = info.needRaw ? JSVM_RAW : JSVM_SNAPSHOT;
     int ret = jsvmDump(info.tid, dumpType);
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::APPKIT, "jsvm dump failed");
-        dlclose(jsvmHandle);
+    }
+}
+
+void DumpRuntimeHelper::DumpJsvmHeap(const OHOS::AppExecFwk::MemDumpInfo &info)
+{
+    TAG_LOGI(AAFwkTag::APPKIT, "dump jsvm heaps, tid:%{public}d, needRaw:%{public}d, needGc:%{public}d",
+        info.tid, info.needRaw, info.needGc);
+    void* jsvmHandle = dlopen("libjsvm.so", RTLD_LAZY);
+    if (jsvmHandle == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "jsvm dlopen failed");
         return;
+    }
+    if (info.needGc) {
+        DumpJsvmGc(jsvmHandle, info.tid);
+    } else {
+        DumpJsvmSnapshot(jsvmHandle, info);
     }
     dlclose(jsvmHandle);
 }
