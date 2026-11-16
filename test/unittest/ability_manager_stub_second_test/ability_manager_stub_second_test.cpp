@@ -1353,13 +1353,14 @@ HWTEST_F(AbilityManagerStubSecondTest, StartAbilityForPrelaunchInner_0100, TestS
 
     int32_t frameNum = 0;
     data.WriteInt32(frameNum);
+    data.WriteInt32(0); // userId
 
     data.WriteBool(false); // hasConnect = false
 
     MessageParcel reply;
     MessageOption option;
 
-    EXPECT_CALL(*stub_, StartAbilityForPrelaunch(_, _, _))
+    EXPECT_CALL(*stub_, StartAbilityForPrelaunch(_, _, _, _))
         .Times(1)
         .WillOnce(Return(ERR_OK));
 
@@ -1389,6 +1390,7 @@ HWTEST_F(AbilityManagerStubSecondTest, StartAbilityForPrelaunchInner_0200, TestS
 
     int32_t frameNum = 0;
     data.WriteInt32(frameNum);
+    data.WriteInt32(0); // userId
 
     data.WriteBool(false);
 
@@ -1418,6 +1420,7 @@ HWTEST_F(AbilityManagerStubSecondTest, StartAbilityForPrelaunchInner_0300, TestS
 
     int32_t frameNum = 0;
     data.WriteInt32(frameNum);
+    data.WriteInt32(0); // userId
 
     data.WriteBool(false);
 
@@ -1449,6 +1452,7 @@ HWTEST_F(AbilityManagerStubSecondTest, StartAbilityForPrelaunchInner_0400, TestS
 
     int32_t frameNum = 5;
     data.WriteInt32(frameNum);
+    data.WriteInt32(0); // userId
 
     data.WriteBool(true); // hasConnect = true
     auto connect = sptr<AbilityConnectCallback>(new AbilityConnectCallback());
@@ -1457,7 +1461,7 @@ HWTEST_F(AbilityManagerStubSecondTest, StartAbilityForPrelaunchInner_0400, TestS
     MessageParcel reply;
     MessageOption option;
 
-    EXPECT_CALL(*stub_, StartAbilityForPrelaunch(_, _, _))
+    EXPECT_CALL(*stub_, StartAbilityForPrelaunch(_, _, _, _))
         .Times(1)
         .WillOnce(Return(ERR_OK));
 
@@ -1487,6 +1491,7 @@ HWTEST_F(AbilityManagerStubSecondTest, StartAbilityForPrelaunchInner_0500, TestS
 
     int32_t frameNum = 5;
     data.WriteInt32(frameNum);
+    data.WriteInt32(0); // userId
 
     data.WriteBool(true); // hasConnect = true
     // Not writing remote object, ReadRemoteObject returns null
@@ -1495,9 +1500,9 @@ HWTEST_F(AbilityManagerStubSecondTest, StartAbilityForPrelaunchInner_0500, TestS
     MessageOption option;
 
     sptr<IAbilityConnection> capturedConnect;
-    EXPECT_CALL(*stub_, StartAbilityForPrelaunch(_, _, _))
+    EXPECT_CALL(*stub_, StartAbilityForPrelaunch(_, _, _, _))
         .Times(1)
-        .WillOnce(DoAll(SaveArg<2>(&capturedConnect), Return(ERR_OK)));
+        .WillOnce(DoAll(SaveArg<3>(&capturedConnect), Return(ERR_OK)));
 
     auto ret = stub_->OnRemoteRequest(
         static_cast<uint32_t>(AbilityManagerInterfaceCode::START_PRELAUNCH_ABILITY), data, reply, option);

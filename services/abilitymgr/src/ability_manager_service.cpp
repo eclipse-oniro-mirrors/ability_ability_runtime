@@ -11164,12 +11164,12 @@ int32_t AbilityManagerService::ExecutePrelaunchInterceptors(AbilityRequest &abil
 }
 
 int AbilityManagerService::StartAbilityForPrelaunch(const Want &want, const int32_t frameNum,
-    const sptr<IAbilityConnection> &connect)
+    int32_t userId, const sptr<IAbilityConnection> &connect)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartAbilityForPrelaunch, bundleName: %{public}s, abilityName: %{public}s, "
-        "frameNum=%{public}d, hasConnect:%{public}d", want.GetBundleNameRef().c_str(),
-        want.GetAbilityNameRef().c_str(), frameNum, connect != nullptr ? 1 : 0);
+        "frameNum=%{public}d, hasConnect:%{public}d, userId:%{public}d", want.GetBundleNameRef().c_str(),
+        want.GetAbilityNameRef().c_str(), frameNum, connect != nullptr ? 1 : 0, userId);
     if (IPCSkeleton::GetCallingUid() != RSS_UID) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "uid check fail");
         return RESOLVE_CALL_NO_PERMISSIONS;
@@ -11178,10 +11178,14 @@ int AbilityManagerService::StartAbilityForPrelaunch(const Want &want, const int3
         TAG_LOGE(AAFwkTag::ABILITYMGR, "SceneBoard not Enabled");
         return ERR_INVALID_VALUE;
     }
-    int32_t oriValidUserId = GetValidUserId(DEFAULT_INVAL_VALUE);
     if (want.GetAbilityNameRef().empty() || want.GetBundle().empty()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbilityForPrelaunch not support implicit start");
         return ERR_INVALID_VALUE;
+    }
+    int32_t oriValidUserId = GetValidUserId(userId);
+    if (VerifyAccountPermission(oriValidUserId) != ERR_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "verify account permission failed, oriValidUserId:%{public}d", oriValidUserId);
+        return CHECK_PERMISSION_FAILED;
     }
     int32_t appIndex = 0;
     AbilityRequest abilityRequest;
@@ -11211,20 +11215,20 @@ int AbilityManagerService::GeneratePrelaunchAbilityRequest(const Want &want,
     const sptr<IAbilityConnection> &connect, int32_t oriValidUserId, AbilityRequest &abilityRequest,
     int32_t &appIndex)
 {
+    // DLP sandbox instances are out of the prelaunch scope (RSS never preloads DLP instances).
+    if (want.HasParameter(AbilityRuntime::ServerConstant::DLP_INDEX)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbilityForPrelaunch not support DLP prelaunch");
+        return CHECK_PERMISSION_FAILED;
+    }
 #ifdef ENABLE_CLONE_FOR_ACCOUNT
     CHECK_TRUE_RETURN_RET(!CloneForAccountUtil::ProcessAppIndex(const_cast<Want &>(want), oriValidUserId),
         RESOLVE_ABILITY_ERR, "CloneForAccountUtil::ProcessAppIndex failed.");
+    appIndex = want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, appIndex);
 #else
     StartAbilityUtils::ResolveTargetAppCloneIndex(want, nullptr, oriValidUserId);
     if (!StartAbilityUtils::GetAppIndex(want, nullptr, oriValidUserId, appIndex)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbilityForPrelaunch GetAppIndex failed");
         return ERR_APP_CLONE_INDEX_INVALID;
-    }
-    // DLP sandbox instances are out of the prelaunch scope (RSS never preloads DLP instances);
-    // reject the want explicitly so DLP instances cannot be preloaded without authorization.
-    if (want.HasParameter(AbilityRuntime::ServerConstant::DLP_INDEX)) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbilityForPrelaunch not support DLP prelaunch");
-        return CHECK_PERMISSION_FAILED;
     }
     auto checkRet = AbilityPermissionUtil::GetInstance().CheckMultiInstanceAndAppClone(
         const_cast<Want &>(want), oriValidUserId, appIndex, nullptr, false);

@@ -338,7 +338,7 @@ public:
     }
 
     int StartAbilityForPrelaunch(const Want &want, const int32_t frameNum,
-        const sptr<IAbilityConnection> &connect) override
+        int32_t userId, const sptr<IAbilityConnection> &connect) override
     {
         return 0;
     }

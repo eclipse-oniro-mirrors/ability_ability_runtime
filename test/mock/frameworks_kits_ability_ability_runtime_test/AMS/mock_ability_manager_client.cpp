@@ -149,7 +149,7 @@ ErrCode AbilityManagerClient::StartAbilityByCall(const Want& want, sptr<IAbility
 }
 
 ErrCode AbilityManagerClient::StartAbilityForPrelaunch(const Want& want, const int32_t frameNum,
-    const sptr<IAbilityConnection> &connect)
+    int32_t userId, const sptr<IAbilityConnection> &connect)
 {
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerClient::StartAbilityForPrelaunch start");
     if (g_remoteObject == nullptr) {
@@ -159,7 +159,7 @@ ErrCode AbilityManagerClient::StartAbilityForPrelaunch(const Want& want, const i
     }
     sptr<IAbilityManager> abms = iface_cast<IAbilityManager>(g_remoteObject);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerClient::StartAbilityForPrelaunch end");
-    return abms->StartAbilityForPrelaunch(want, frameNum, connect);
+    return abms->StartAbilityForPrelaunch(want, frameNum, userId, connect);
 }
 
 ErrCode AbilityManagerClient::ReleaseCall(

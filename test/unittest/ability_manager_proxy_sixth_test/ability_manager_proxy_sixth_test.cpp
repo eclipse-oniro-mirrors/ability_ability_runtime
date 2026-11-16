@@ -1256,7 +1256,7 @@ HWTEST_F(AbilityManagerProxySixthTest, AbilityManagerProxy_StartAbilityForPrelau
     EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
         .Times(1)
         .WillOnce(Return(-1));
-    auto res = proxy_->StartAbilityForPrelaunch(want, frameNum, connect);
+    auto res = proxy_->StartAbilityForPrelaunch(want, frameNum, DEFAULT_INVAL_VALUE, connect);
     EXPECT_EQ(res, -1);
 }
 
@@ -1274,7 +1274,7 @@ HWTEST_F(AbilityManagerProxySixthTest, AbilityManagerProxy_StartAbilityForPrelau
     EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
         .Times(1)
         .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
-    auto res = proxy_->StartAbilityForPrelaunch(want, frameNum, connect);
+    auto res = proxy_->StartAbilityForPrelaunch(want, frameNum, DEFAULT_INVAL_VALUE, connect);
     EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::START_PRELAUNCH_ABILITY), mock_->code_);
     EXPECT_EQ(res, NO_ERROR);
 }
@@ -1293,7 +1293,7 @@ HWTEST_F(AbilityManagerProxySixthTest, AbilityManagerProxy_StartAbilityForPrelau
     EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
         .Times(1)
         .WillOnce(Return(-1));
-    auto res = proxy_->StartAbilityForPrelaunch(want, frameNum, connect);
+    auto res = proxy_->StartAbilityForPrelaunch(want, frameNum, DEFAULT_INVAL_VALUE, connect);
     EXPECT_EQ(res, -1);
 }
 
@@ -1311,7 +1311,7 @@ HWTEST_F(AbilityManagerProxySixthTest, AbilityManagerProxy_StartAbilityForPrelau
     EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
         .Times(1)
         .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
-    auto res = proxy_->StartAbilityForPrelaunch(want, frameNum, connect);
+    auto res = proxy_->StartAbilityForPrelaunch(want, frameNum, DEFAULT_INVAL_VALUE, connect);
     EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::START_PRELAUNCH_ABILITY), mock_->code_);
     EXPECT_EQ(res, NO_ERROR);
 }

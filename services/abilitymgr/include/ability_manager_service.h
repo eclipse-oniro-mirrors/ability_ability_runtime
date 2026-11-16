@@ -1424,10 +1424,12 @@ public:
      *
      * @param want, Special want for service type's ability.
      * @param frameNum, Special frameNum for remove start window num.
+     * @param userId, Target user id for the prelaunch, DEFAULT_INVAL_VALUE for the caller-derived user.
+     * @param connect, Optional IAbilityConnection callback for receiving caller object after prelaunch.
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int StartAbilityForPrelaunch(const Want &want, const int32_t frameNum,
-        const sptr<IAbilityConnection> &connect) override;
+        int32_t userId, const sptr<IAbilityConnection> &connect) override;
 
     int GeneratePrelaunchAbilityRequest(const Want &want, const sptr<IAbilityConnection> &connect,
         int32_t oriValidUserId, AbilityRequest &abilityRequest, int32_t &appIndex);
