@@ -20,19 +20,22 @@
 namespace OHOS {
 namespace system {
 // ELF interposition over the syspara export for this executable: the libappms dump
-// gate binds here. Developer mode defaults on so the hook tests run; other keys
-// keep their defaults, matching the real library on the host.
-static bool g_mockDeveloperMode = true;
+// gate binds here. The system is debuggable by default (userdebug-like) so the hook
+// tests run; other keys keep their defaults, matching the real library on the host.
+static bool g_mockSystemDebuggable = true;
 
-void SetMockDeveloperMode(bool enabled)
+void SetMockSystemDebuggable(bool enabled)
 {
-    g_mockDeveloperMode = enabled;
+    g_mockSystemDebuggable = enabled;
 }
 
 bool GetBoolParameter(const std::string &key, bool def)
 {
-    if (key == MOCK_DEVELOPER_MODE_KEY) {
-        return g_mockDeveloperMode;
+    if (key == MOCK_SECURE_KEY) {
+        return !g_mockSystemDebuggable;
+    }
+    if (key == MOCK_DEBUGGABLE_KEY) {
+        return g_mockSystemDebuggable;
     }
     return def;
 }

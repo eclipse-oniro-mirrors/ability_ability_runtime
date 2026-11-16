@@ -1333,24 +1333,41 @@ HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0500, TestSize.Level1
 
 /**
  * @tc.number: AppMgrServiceTask_DumpTask_0600
- * @tc.name: register and unregister hooks without developer mode
- * @tc.desc: the --task register/unregister test hooks are denied when developer mode
- *           is off, while the plain task dump stays available.
+ * @tc.name: register and unregister hooks on a non-debuggable build
+ * @tc.desc: the --task register/unregister subcommands do not exist when the system
+ *           is not a debug build (commercial-like): they answer with the same
+ *           unknown-command error and text as any other unknown subcommand and
+ *           stay hidden from the help text, while the plain task dump stays
+ *           available.
  */
 HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0600, TestSize.Level1)
 {
     IPCSkeleton::SetCallingUid(TEST_HIDUMPER_SERVICE_UID);
     std::string result;
-    OHOS::system::SetMockDeveloperMode(false);
+    std::string unknownResult;
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "not_a_sub"}), unknownResult),
+        DumpErrorCode::ERR_INVALID_CMD_ERROR);
+
+    OHOS::system::SetMockSystemDebuggable(false);
+    result.clear();
     EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "register", "x", "4321", "insight"}), result),
-        DumpErrorCode::ERR_PERMISSION_DENY_ERROR);
-    EXPECT_NE(result.find("developer mode"), std::string::npos);
+        DumpErrorCode::ERR_INVALID_CMD_ERROR);
+    EXPECT_EQ(result, unknownResult);
+    result.clear();
     EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "unregister", "x", "1"}), result),
-        DumpErrorCode::ERR_PERMISSION_DENY_ERROR);
+        DumpErrorCode::ERR_INVALID_CMD_ERROR);
+    EXPECT_EQ(result, unknownResult);
 
     result.clear();
     EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task"}), result), ERR_OK);
-    OHOS::system::SetMockDeveloperMode(true);
+    EXPECT_NE(result.find("TaskManager active tasks: total="), std::string::npos);
+
+    result.clear();
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"-h"}), result), ERR_OK);
+    EXPECT_NE(result.find("--task grep"), std::string::npos);
+    EXPECT_EQ(result.find("--task register"), std::string::npos);
+    EXPECT_EQ(result.find("--task unregister"), std::string::npos);
+    OHOS::system::SetMockSystemDebuggable(true);
 }
 
 /**

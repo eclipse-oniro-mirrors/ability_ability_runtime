@@ -18,11 +18,12 @@
 
 namespace OHOS {
 namespace system {
-// Mirrors DEVELOPER_MODE_STATE in app_mgr_service.cpp.
-constexpr const char *MOCK_DEVELOPER_MODE_KEY = "const.security.developermode.state";
+// Mirrors SECURE_STATE/DEBUGGABLE_STATE in app_mgr_service.cpp.
+constexpr const char *MOCK_SECURE_KEY = "const.secure";
+constexpr const char *MOCK_DEBUGGABLE_KEY = "const.debuggable";
 
-// Test seam for the developer-mode gate of the --task register/unregister hooks.
-void SetMockDeveloperMode(bool enabled);
+// Test seam for the debug-build gate of the --task register/unregister hooks.
+void SetMockSystemDebuggable(bool enabled);
 } // namespace system
 } // namespace OHOS
 #endif // MOCK_PARAMETER_H

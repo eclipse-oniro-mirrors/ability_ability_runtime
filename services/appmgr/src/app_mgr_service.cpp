@@ -134,6 +134,8 @@ constexpr const char* LAUNCH_SERVICE_MAIN_MODE_PARAM = "const.sceneboard.mainmod
 constexpr const char* LAUNCH_SERVICE_PC_MODE_PARAM = "persist.sceneboard.ispcmode";
 constexpr const char* ALLOW_LAUNCH_SERVICE_ON_NON_DUAL_MODE_DEVICE_PARAM =
     "const.sys.appms.allow_launch_service_on_non_dual_mode_device";
+constexpr const char* SECURE_STATE = "const.secure";
+constexpr const char* DEBUGGABLE_STATE = "const.debuggable";
 
 bool IsDaemonDeviceSupported()
 {
@@ -195,6 +197,11 @@ bool CheckLaunchServicesEnabledIdentity(const std::string &bundleName, int32_t u
     return true;
 }
 
+bool IsDebuggableBuild()
+{
+    return !OHOS::system::GetBoolParameter(SECURE_STATE, true) &&
+        OHOS::system::GetBoolParameter(DEBUGGABLE_STATE, false);
+}
 }  // namespace
 
 REGISTER_SYSTEM_ABILITY_BY_ID(AppMgrService, APP_MGR_SERVICE_ID, true);
@@ -1251,11 +1258,15 @@ int AppMgrService::ShowHelp(const std::vector<std::u16string>& args, std::string
         .append("--task psched               ")
         .append("dump process schedule index, effective levels and judge state\n")
         .append("--task grep <taskId>        ")
-        .append("dump the active tasks whose id contains the taskId\n")
-        .append("--task register <taskId> <pid> <insight|cli|a2a|ability>    ")
-        .append("test hook: attribute an entity into the task (developer mode only)\n")
-        .append("--task unregister <taskId> <attributionId>    ")
-        .append("test hook: remove an attribution from the task (developer mode only)\n");
+        .append("dump the active tasks whose id contains the taskId\n");
+    // On commercial builds the system is not debuggable, so the register/unregister
+    // test hooks are hidden from the help text there.
+    if (IsDebuggableBuild()) {
+        result.append("--task register <taskId> <pid> <insight|cli|a2a|ability>    ")
+            .append("test hook: attribute an entity into the task (debug builds only)\n")
+            .append("--task unregister <taskId> <attributionId>    ")
+            .append("test hook: remove an attribution from the task (debug builds only)\n");
+    }
 
     return ERR_OK;
 }
@@ -1272,17 +1283,12 @@ int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string
     }
     if (args.size() > SIZE_ONE) {
         std::string subCmd = Str16ToStr8(args[INDEX_ONE]);
-        if (subCmd == "register" || subCmd == "unregister") {
-            // Test hooks only: developer mode is off on commercial builds, keeping the
-            // register/unregister channels away from end users.
-            if (!OHOS::system::GetBoolParameter(DEVELOPER_MODE_STATE, false)) {
-                result.append(MSG_DUMP_FAIL, strlen(MSG_DUMP_FAIL))
-                    .append(MSG_DUMP_FAIL_REASON_PERMISSION_DENY,
-                        strlen(MSG_DUMP_FAIL_REASON_PERMISSION_DENY))
-                    .append("register/unregister test hooks are developer mode only.\n");
-                TAG_LOGE(AAFwkTag::APPMGR, "test hooks are developer mode only");
-                return DumpErrorCode::ERR_PERMISSION_DENY_ERROR;
-            }
+        // The register/unregister test hooks exist on debug builds only: commercial
+        // (user) builds bake const.secure=true and const.debuggable=false at build
+        // time and neither value can be flipped at runtime, so on them both
+        // subcommands fall through to the unknown-command error, as if the
+        // commands did not exist at all.
+        if (IsDebuggableBuild() && (subCmd == "register" || subCmd == "unregister")) {
             if (subCmd == "register") {
                 if (args.size() != SIZE_FIVE) {
                     result.append("usage: --task register <taskId> <pid> <insight|cli|a2a|ability>\n");
