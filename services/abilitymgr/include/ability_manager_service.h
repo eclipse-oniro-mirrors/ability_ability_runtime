@@ -993,11 +993,11 @@ public:
         return taskHandler_;
     }
 
-    int32_t GetRfd() const
+    int GetRfd() const
     {
         return rFd_;
     }
-    int32_t GetWfd() const
+    int GetWfd() const
     {
         return wFd_;
     }
