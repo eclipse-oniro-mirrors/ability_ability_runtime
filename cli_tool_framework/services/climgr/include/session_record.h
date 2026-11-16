@@ -70,7 +70,10 @@ public:
     std::string eventId = "";
     std::string toolCallId = "";
     std::string dmSessionId = "";
-    pid_t processId = -1;
+    // Concurrent by design: the reaper invalidates it to -1 (under sessionsMutex_) while the timeout/IPC
+    // paths read it lock-free (e.g. HandleProcessTimeout/ClearSession before Killpg). Must stay atomic —
+    // a plain pid_t here would be a data race (UB), unlike the atomics below that guard the same paths.
+    std::atomic<pid_t> processId { -1 };
     // taskId = attribution key (empty = not attributed); attributionId = server-assigned handle,
     // sole detach key (0 = not attributed, no unregister fires).
     std::string taskId = "";

@@ -391,6 +391,46 @@ HWTEST_F(CliToolManagerServiceTest, Init_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: CliToolManagerService_GetIOMonitor_0100
+ * @tc.desc: GetIOMonitor must hand out mutex-guarded snapshots: the current monitor while it
+ *           is set, nullptr after the OnStop-style locked clear, and a snapshot taken before
+ *           the clear keeps the monitor alive via the shared_ptr refcount (in-flight readers
+ *           cannot UAF after unload).
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetIOMonitor_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetIOMonitor_0100 start");
+
+    auto oldMonitor = service_->ioMonitor_;
+    auto monitor = IOMonitor::Create();
+    ASSERT_NE(monitor, nullptr);
+    service_->ioMonitor_ = monitor;
+
+    auto snapshot = service_->GetIOMonitor();
+    EXPECT_EQ(snapshot, monitor);
+
+    // OnStop-style teardown: swap the monitor out under ioMonitorMutex_, then Stop outside the lock.
+    std::shared_ptr<IOMonitor> stopped;
+    {
+        std::lock_guard<ffrt::mutex> guard(service_->ioMonitorMutex_);
+        stopped = std::move(service_->ioMonitor_);
+    }
+    EXPECT_EQ(service_->GetIOMonitor(), nullptr);
+    stopped->Stop();
+
+    // The pre-clear snapshot is still valid — same contract that protects in-flight IPC readers.
+    EXPECT_NE(snapshot, nullptr);
+    EXPECT_EQ(snapshot, monitor);
+
+    snapshot = nullptr;
+    monitor = nullptr;
+    service_->ioMonitor_ = oldMonitor;
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetIOMonitor_0100 end");
+}
+
+/**
  * @tc.name: CliToolManagerService_OnIdle_0100
  * @tc.desc: Test OnIdle blocks unload when IPC or session is active
  * @tc.type: FUNC

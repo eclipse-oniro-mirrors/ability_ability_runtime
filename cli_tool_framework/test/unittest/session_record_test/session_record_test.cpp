@@ -14,7 +14,9 @@
  */
 
 #include <gtest/gtest.h>
+#include <atomic>
 #include <string>
+#include <thread>
 
 #include "session_record.h"
 
@@ -86,6 +88,40 @@ HWTEST_F(SessionRecordTest, SessionRecord_OutputAndTerminal_0100, TestSize.Level
     EXPECT_EQ(session.result->signalNumber, TEST_SIGNAL);
     EXPECT_EQ(session.result->outputText, "stdout");
     EXPECT_EQ(session.result->errorText, "stderr");
+}
+
+/**
+ * @tc.name: SessionRecord_ProcessId_Atomic_0100
+ * @tc.desc: processId must be a lock-free atomic: the reaper invalidates it to -1
+ *           (under sessionsMutex_) while timeout/IPC paths read it outside the lock
+ *           (HandleProcessTimeout/ClearSession before Killpg). A concurrent reader must
+ *           always observe either the live pid or -1, never a torn/UB value.
+ * @tc.type: FUNC
+ */
+HWTEST_F(SessionRecordTest, SessionRecord_ProcessId_Atomic_0100, TestSize.Level1)
+{
+    constexpr pid_t LIVE_PID = 4242;
+    SessionRecord record;
+    record.processId = LIVE_PID;
+    EXPECT_EQ(record.processId.load(), LIVE_PID);
+    EXPECT_TRUE(std::atomic<pid_t>::is_always_lock_free);
+
+    std::atomic<bool> stop {false};
+    std::thread reaper([&record, &stop, LIVE_PID]() {
+        while (!stop.load(std::memory_order_acquire)) {
+            record.processId = -1; // reaper-style invalidation after waitpid
+            record.processId = LIVE_PID;
+        }
+    });
+    for (int32_t i = 0; i < 10000; ++i) {
+        pid_t observed = record.processId.load();
+        EXPECT_TRUE(observed == -1 || observed == LIVE_PID);
+    }
+    stop.store(true, std::memory_order_release);
+    reaper.join();
+
+    record.processId = -1;
+    EXPECT_EQ(record.processId.load(), -1);
 }
 
 /**
