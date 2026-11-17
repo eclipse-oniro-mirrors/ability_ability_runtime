@@ -144,6 +144,8 @@ struct VerificationInfo {
     bool IsLocalDebugOtherAppsCall(const uint32_t specifyTokenId = 0, int32_t targetUserId = -1) const;
 
     bool IsCustomSandboxCall(const uint32_t specifyTokenId = 0, int32_t targetUserId = -1) const;
+
+    bool CheckPermissionForForceStopProcess(int32_t targetUserId) const;
 private:
     DISALLOW_COPY_AND_MOVE(PermissionVerification);
 

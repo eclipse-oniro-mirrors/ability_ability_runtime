@@ -37,7 +37,6 @@
 #include "system_ability_definition.h"
 #include "test_observer.h"
 #include "app_mem_info.h"
-#include "xcollie/process_kill_reason.h"
 
 using namespace OHOS::AppExecFwk;
 
@@ -828,16 +827,9 @@ ErrCode AbilityManagerShellCommand::RunAsForceStop()
 
     TAG_LOGI(AAFwkTag::AA_TOOL, "pid %{public}d, reason %{public}s, userId %{public}d", pid, inputReason.c_str(),
         userId);
-    if (pid > 0 && reason != Reason::REASON_UNKNOWN) {
-        ExitReason exitReason = {reason, "aa force-stop"};
-        exitReason.killId = HiviewDFX::ProcessKillReason::KillEventId::REASON_AA_FORCE_STOP;
-        if (AbilityManagerClient::GetInstance()->RecordProcessExitReason(pid, exitReason) != ERR_OK) {
-            TAG_LOGE(AAFwkTag::AA_TOOL, "bundle %{public}s save reason %{public}d failed", bundleName.c_str(), reason);
-        }
-    }
-
-    ErrCode result = OHOS::ERR_OK;
-    result = AbilityManagerClient::GetInstance()->KillProcessWithUserId(bundleName, false, 0, inputReason, userId);
+    int32_t recordPid = pid > 0 ? static_cast<int32_t>(pid) : -1;
+    ErrCode result = AbilityManagerClient::GetInstance()->ForceStopProcess(bundleName, inputReason, userId,
+        static_cast<int32_t>(reason), recordPid);
     if (result == OHOS::ERR_OK) {
         TAG_LOGI(AAFwkTag::AA_TOOL, "%{public}s", STRING_FORCE_STOP_OK.c_str());
         resultReceiver_ = STRING_FORCE_STOP_OK + "\n";

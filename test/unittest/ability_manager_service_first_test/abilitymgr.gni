@@ -162,7 +162,6 @@ abilityms_files = [
   "${ability_runtime_services_path}/abilitymgr/src/utils/agent_ability_util.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/agent_caller_identity_util.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/ability_permission_util.cpp",
-  "${ability_runtime_services_path}/abilitymgr/src/utils/app_mgr_util.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/dms_util.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/dump_utils.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/extension_permissions_util.cpp",

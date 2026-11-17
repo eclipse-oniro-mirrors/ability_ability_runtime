@@ -3581,6 +3581,66 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_KillAppWithReasonInner_001, 
 
 /*
  * Feature: AbilityManagerService
+ * Function: ForceStopProcessInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService ForceStopProcessInner
+ * EnvConditions: NA
+ * CaseDescription: Verify the function ForceStopProcessInner is normal flow.
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_ForceStopProcessInner_001, TestSize.Level1)
+{
+    // scenario 1: empty parcel, bundleName read fails
+    MessageParcel data;
+    MessageParcel reply;
+    auto res = stub_->ForceStopProcessInner(data, reply);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+
+    // scenario 2: bundleName only, reason read fails
+    data.WriteString16(u"com.example.test");
+    res = stub_->ForceStopProcessInner(data, reply);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+
+    // scenario 3: bundleName + reason, userId read fails
+    data.WriteString16(u"aa force-stop");
+    res = stub_->ForceStopProcessInner(data, reply);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+
+    // scenario 4: userId written, exitReason read fails
+    data.WriteInt32(-1);
+    res = stub_->ForceStopProcessInner(data, reply);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+
+    // scenario 5: exitReason written, recordPid read fails
+    data.WriteInt32(0);
+    res = stub_->ForceStopProcessInner(data, reply);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: ForceStopProcessInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService ForceStopProcessInner
+ * EnvConditions: NA
+ * CaseDescription: Verify ForceStopProcessInner parses a complete parcel and dispatches with
+ *                   all five fields (stub layer returns NO_ERROR, dispatch result in reply).
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_ForceStopProcessInner_002, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    data.WriteString16(u"com.example.test");
+    data.WriteString16(u"aa force-stop");
+    data.WriteInt32(-1);
+    data.WriteInt32(0);
+    data.WriteInt32(-1);
+    auto res = stub_->ForceStopProcessInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), 0);
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: KillBundleWithReasonInner
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService KillBundleWithReasonInner

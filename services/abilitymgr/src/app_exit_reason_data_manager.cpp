@@ -150,6 +150,41 @@ int32_t AppExitReasonDataManager::SetAppExitReason(const std::string &bundleName
     return ERR_OK;
 }
 
+int32_t AppExitReasonDataManager::UpdateAppKillId(const std::string &bundleName, uint32_t accessTokenId,
+    const std::vector<std::string> &abilityList, int32_t killId)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    AAFwk::RecordCostTimeUtil timeRecord("UpdateAppKillId");
+    if (bundleName.empty() || accessTokenId == Security::AccessToken::INVALID_TOKENID) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "invalid value");
+        return ERR_INVALID_VALUE;
+    }
+    // kill-id-only record of THIS force stop event, inserted with a minimal field set
+    // {reason: REASON_NORMAL, kill_id, ability_list, pid: -1, uid: -1} — the same
+    // lastExitReason the app reads pre-change (REASON_NORMAL via the signal-death path),
+    // with the new killReason obtainable on its next launch; every other field is left
+    // absent so the read side falls back to its initialization defaults (empty exit msg,
+    // zero timestamp/rss/pss, default process state), matching the pre-change baseline
+    DistributedKv::Key key(std::to_string(accessTokenId));
+    nlohmann::json jsonObject = nlohmann::json::object();
+    {
+        std::lock_guard lock(kvStorePtrMutex_);
+        if (!CheckKvStore()) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "null kvStore");
+            return ERR_NO_INIT;
+        }
+    }
+    jsonObject[JSON_KEY_REASON] = static_cast<int32_t>(AAFwk::Reason::REASON_NORMAL);
+    jsonObject[JSON_KEY_KILL_ID] = killId;
+    jsonObject[JSON_KEY_ABILITY_LIST] = abilityList;
+    jsonObject[JSON_KEY_PID] = -1;
+    jsonObject[JSON_KEY_UID] = -1;
+    PutAsync(key, DistributedKv::Value(jsonObject.dump()));
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "bundleName: %{public}s, tokenId: %{private}u, killId: %{public}d",
+        bundleName.c_str(), accessTokenId, killId);
+    return ERR_OK;
+}
+
 
 int32_t AppExitReasonDataManager::DeleteAppExitReason(const std::string &bundleName, int32_t uid, int32_t appIndex)
 {

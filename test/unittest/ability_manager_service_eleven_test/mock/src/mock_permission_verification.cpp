@@ -138,5 +138,13 @@ bool PermissionVerification::IsLocalDebugOtherAppsCall(const uint32_t specifyTok
 {
     return false;
 }
+bool PermissionVerification::IsCustomSandboxCall(const uint32_t specifyTokenId, int32_t targetUserId) const
+{
+    return false;
+}
+bool PermissionVerification::CheckPermissionForForceStopProcess(int32_t targetUserId) const
+{
+    return IsShellCall() || IsLocalDebugOtherAppsCall(0, targetUserId) || IsCustomSandboxCall(0, targetUserId);
+}
 } // namespace AAFwk
 } // namespace OHOS

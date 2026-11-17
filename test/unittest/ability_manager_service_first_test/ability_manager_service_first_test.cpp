@@ -2876,6 +2876,144 @@ HWTEST_F(AbilityManagerServiceFirstTest, KillProcessWithUserId_0200, TestSize.Le
 }
 
 /**
+ * @tc.name: AbilityManagerServiceFirstTest_ForceStopProcess_0100
+ * @tc.desc: Test ForceStopProcess is denied when caller is not shell and holds no debug tool permission.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ForceStopProcess_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ForceStopProcess_0100 start");
+    MyFlag::flag_ = 0;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    EXPECT_EQ(abilityMs->ForceStopProcess("test", "aa force-stop", -1,
+        static_cast<int32_t>(Reason::REASON_UNKNOWN), -1), ERR_PERMISSION_DENIED);
+    MyFlag::flag_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ForceStopProcess_0100 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_ForceStopProcess_0101
+ * @tc.desc: Test ForceStopProcess is admitted for shell callers and rejects an empty bundle name.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ForceStopProcess_0101, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ForceStopProcess_0101 start");
+    MyFlag::flag_ = MyFlag::IS_SHELL_CALL;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    EXPECT_EQ(abilityMs->ForceStopProcess("", "aa force-stop", -1,
+        static_cast<int32_t>(Reason::REASON_UNKNOWN), -1), ERR_INVALID_VALUE);
+    EXPECT_EQ(abilityMs->ForceStopProcess("test", "aa force-stop", -1,
+        static_cast<int32_t>(Reason::REASON_UNKNOWN), -1), GET_BUNDLE_INFO_FAILED);
+    MyFlag::flag_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ForceStopProcess_0101 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_ForceStopProcess_0102
+ * @tc.desc: Test ForceStopProcess is admitted for local debug tool callers in developer mode.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ForceStopProcess_0102, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ForceStopProcess_0102 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    MyFlag::flag_ = 0;
+    SetLocalDebugOtherAppsCall(true);
+    EXPECT_EQ(abilityMs->ForceStopProcess("test", "aa force-stop", -1,
+        static_cast<int32_t>(Reason::REASON_UNKNOWN), -1), GET_BUNDLE_INFO_FAILED);
+    SetLocalDebugOtherAppsCall(false);
+    MyFlag::flag_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ForceStopProcess_0102 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_ForceStopProcess_0103
+ * @tc.desc: Test ForceStopProcess is admitted for custom sandbox tool callers in developer mode.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ForceStopProcess_0103, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ForceStopProcess_0103 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    MyFlag::flag_ = 0;
+    SetCustomSandboxCall(true);
+    EXPECT_EQ(abilityMs->ForceStopProcess("test", "aa force-stop", -1,
+        static_cast<int32_t>(Reason::REASON_UNKNOWN), -1), GET_BUNDLE_INFO_FAILED);
+    SetCustomSandboxCall(false);
+    MyFlag::flag_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ForceStopProcess_0103 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_CollectForceStopProcessInfos_0100
+ * @tc.desc: Test CollectForceStopProcessInfos forwards the user id to appmgr and returns the
+ *           queried process list for an explicit origin user.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, CollectForceStopProcessInfos_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest CollectForceStopProcessInfos_0100 start");
+    auto mockAppMgr = sptr<AppExecFwk::MockAppMgrService>::MakeSptr();
+    ASSERT_NE(mockAppMgr, nullptr);
+    std::vector<AppExecFwk::RunningProcessInfo> preset;
+    AppExecFwk::RunningProcessInfo info;
+    info.pid_ = 1234;
+    preset.emplace_back(info);
+    EXPECT_CALL(*mockAppMgr, GetRunningProcessInformation(::testing::_, 100, ::testing::_))
+        .Times(1)
+        .WillOnce(::testing::DoAll(::testing::SetArgReferee<2>(preset),
+            ::testing::Return(ERR_OK)));
+    AppMgrUtil::appMgr_ = mockAppMgr;
+    auto list = AppExitReasonHelper::CollectForceStopProcessInfos("bundle", 100, 100);
+    AppMgrUtil::appMgr_ = nullptr;
+    EXPECT_EQ(list.size(), static_cast<size_t>(1));
+    ASSERT_FALSE(list.empty());
+    EXPECT_EQ(list[0].pid_, 1234);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest CollectForceStopProcessInfos_0100 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_ReportForceStopKillIdForPid_0100
+ * @tc.desc: Test ReportForceStopKillIdForPid filter branches: non-positive pid and recordPid
+ *           mismatch return without any record or stamp.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ReportForceStopKillIdForPid_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ReportForceStopKillIdForPid_0100 start");
+    auto helper = std::make_shared<AppExitReasonHelper>(nullptr);
+    ASSERT_NE(helper, nullptr);
+    helper->ReportForceStopKillIdForPid(-1, "bundle", 0, -1,
+        static_cast<int32_t>(Reason::REASON_UNKNOWN), -1, false);
+    helper->ReportForceStopKillIdForPid(1234, "bundle", 0, 9999,
+        static_cast<int32_t>(Reason::REASON_UNKNOWN), -1, true);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ReportForceStopKillIdForPid_0100 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_ReportForceStopKillId_0100
+ * @tc.desc: Test ReportForceStopKillId returns when no running process of the bundle is found.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ReportForceStopKillId_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ReportForceStopKillId_0100 start");
+    auto mockAppMgr = sptr<AppExecFwk::MockAppMgrService>::MakeSptr();
+    ASSERT_NE(mockAppMgr, nullptr);
+    EXPECT_CALL(*mockAppMgr, GetRunningProcessInformation(::testing::_, ::testing::_, ::testing::_))
+        .Times(1)
+        .WillOnce(::testing::Return(ERR_OK));
+    AppMgrUtil::appMgr_ = mockAppMgr;
+    auto helper = std::make_shared<AppExitReasonHelper>(nullptr);
+    ASSERT_NE(helper, nullptr);
+    helper->ReportForceStopKillId("bundle", 0, 100, 100, -1,
+        static_cast<int32_t>(Reason::REASON_UNKNOWN), -1);
+    AppMgrUtil::appMgr_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ReportForceStopKillId_0100 end");
+}
+
+/**
  * @tc.name: AbilityManagerServiceFirstTest_ExecuteIntent_0100
  * @tc.desc: Test ExecuteIntent without permission.
  * @tc.type: FUNC

@@ -43,6 +43,10 @@ bool PermissionVerification::IsCustomSandboxCall(const uint32_t specifyTokenId, 
 {
     return AAFwk::MyStatus::GetInstance().isCustomSandboxCall_;
 }
+bool PermissionVerification::CheckPermissionForForceStopProcess(int32_t targetUserId) const
+{
+    return IsShellCall() || IsLocalDebugOtherAppsCall(0, targetUserId) || IsCustomSandboxCall(0, targetUserId);
+}
 bool PermissionVerification::CheckSpecificSystemAbilityAccessPermission(const std::string &processName) const
 {
     return AAFwk::MyStatus::GetInstance().checkSpecific_;
