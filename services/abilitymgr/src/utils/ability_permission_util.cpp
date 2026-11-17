@@ -430,9 +430,18 @@ bool AbilityPermissionUtil::CheckStartUIAbilityByUserLockStatus(const std::strin
     auto ret =
         IN_PROCESS_CALL(bms->GetBundleInfo(bundleName,
             static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION), bundleInfo, userId));
-    bool isSystemApp = ret ? bundleInfo.applicationInfo.isSystemApp : false;
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "GetBundleInfo failed");
+        return false;
+    }
+    bool isSystemApp = bundleInfo.applicationInfo.isSystemApp;
     if (!isSystemApp) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "not system app");
+        auto tokenId = bundleInfo.applicationInfo.accessTokenId;
+        if (PermissionVerification::GetInstance()->VerifyPermissionByTokenId(
+            tokenId, PermissionConstants::PERMISSION_ALLOW_DIRECT_BOOT)) {
+            return true;
+        }
     }
     return isSystemApp;
 }

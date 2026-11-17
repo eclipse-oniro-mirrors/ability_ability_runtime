@@ -153,6 +153,7 @@ struct StartAbilityWrapParam {
     sptr<IRequestStartAbilityCallback> requestCallback = nullptr;
     std::shared_ptr<SandboxCloneParams> sandboxCloneParams = nullptr;
     bool isLaunchSCB = false;
+    bool isDirectBootStartup = false;
     StartAbilityContext startAbilityCtx;
 };
 }

@@ -546,6 +546,10 @@ int32_t AbilityAutoStartupDataManager::GetCurrentAppAutoStartupData(
 int32_t AbilityAutoStartupDataManager::ResetAutoStartupDirectBoot(const AutoStartupInfo &info)
 {
     if (info.bundleName.empty() || info.abilityName.empty() || info.accessTokenId.empty() || info.userId < 0) {
+        TAG_LOGE(AAFwkTag::AUTO_STARTUP, "invalid direct boot target, bundle:%{public}s module:%{public}s "
+            "ability:%{public}s user:%{public}d appIndex:%{public}d tokenEmpty:%{public}d",
+            info.bundleName.c_str(), info.moduleName.c_str(), info.abilityName.c_str(), info.userId,
+            info.appCloneIndex, info.accessTokenId.empty());
         return ERR_INVALID_VALUE;
     }
     auto key = ConvertAutoStartupDataToKey(info);
@@ -557,6 +561,9 @@ int32_t AbilityAutoStartupDataManager::ResetAutoStartupDirectBoot(const AutoStar
         DistributedKv::Value value;
         auto status = kvStorePtr_->Get(key, value);
         if (status == DistributedKv::Status::KEY_NOT_FOUND) {
+            TAG_LOGI(AAFwkTag::AUTO_STARTUP, "direct boot record not found, bundle:%{public}s module:%{public}s "
+                "ability:%{public}s user:%{public}d appIndex:%{public}d", info.bundleName.c_str(),
+                info.moduleName.c_str(), info.abilityName.c_str(), info.userId, info.appCloneIndex);
             return ERR_OK;
         }
         if (status != DistributedKv::Status::SUCCESS) {

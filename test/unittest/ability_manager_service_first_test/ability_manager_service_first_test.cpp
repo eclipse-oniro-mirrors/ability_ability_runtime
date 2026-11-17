@@ -26,6 +26,7 @@
 #include "server_constant.h"
 
 #include "direct_boot_test_support.h"
+#include "ffrt.h"
 
 #define private public
 #define protected public
@@ -44,6 +45,7 @@
 #include "ability_start_setting.h"
 #include "skill/skill_execute_param.h"
 #include "app_utils.h"
+#include "bundle_mgr_helper.h"
 #include "recovery_param.h"
 #undef private
 #undef protected
@@ -70,6 +72,9 @@
 #include "global_constant.h"
 #include "app_mgr_stub.h"
 #include "mock_app_mgr_service.h"
+#include "mock_bundle_manager_service.h"
+#include "interceptor/ability_interceptor_executer.h"
+#include "utils/ability_permission_util.h"
 #include "pending_want_record.h"
 #include "want_sender_interface.h"
 #include "user_controller/user_controller.h"
@@ -95,6 +100,7 @@ const std::string COMPONENT_STARTUP_NEW_RULES = "component.startup.newRules";
 }  // namespace
 namespace {
 constexpr int32_t OTHER_USER = 101;
+constexpr uint64_t OTHER_DISPLAY = 1;
 constexpr size_t MAX_TEST_TASKS = 64;
 constexpr int32_t TEST_RETRY_COUNT = 2;
 using UserLockStatus = UserController::UserLockStatus;
@@ -114,6 +120,100 @@ public:
     std::vector<int32_t> launchUsers;
     std::string failedBundle;
 };
+
+class StartAbilityFlagInterceptor : public IAbilityInterceptor {
+public:
+    struct RecordedParam {
+        bool isDirectBootStartup;
+        int32_t requestCode;
+        int32_t userId;
+    };
+
+    ErrCode DoProcess(AbilityInterceptorParam &param) override
+    {
+        params.push_back({param.isDirectBootStartup, param.requestCode, param.userId});
+        return handler ? handler(param) : ERR_BLOCK_START_FIRST_BOOT_SCREEN_UNLOCK;
+    }
+
+    std::function<ErrCode(AbilityInterceptorParam &)> handler;
+    std::vector<RecordedParam> params;
+};
+
+class StartAbilityFlagTestContext {
+public:
+    explicit StartAbilityFlagTestContext(
+        std::shared_ptr<AbilityManagerService> abilityManager = std::make_shared<AbilityManagerService>())
+        : oldBundleMgr_(DelayedSingleton<BundleMgrHelper>::GetInstance()->bundleMgr_),
+          oldFlag_(MyFlag::flag_),
+          oldAnimationLoaded_(AppUtils::GetInstance().isStartOptionsWithAnimation_.isLoaded),
+          oldAnimationValue_(AppUtils::GetInstance().isStartOptionsWithAnimation_.value),
+          selfStartGuard_(IPCSkeleton::GetCallingPid(), 0)
+    {
+        MyFlag::flag_ = MyFlag::IS_SA_CALL;
+        auto &animation = AppUtils::GetInstance().isStartOptionsWithAnimation_;
+        animation.isLoaded = true;
+        animation.value = true;
+        sptr<NiceMock<MockBundleManagerService>> bundleMgr = new NiceMock<MockBundleManagerService>();
+        ON_CALL(*bundleMgr, QueryAbilityInfo(_, _, _, _))
+            .WillByDefault([](const Want &want, int32_t, int32_t userId, AbilityInfo &abilityInfo) {
+                abilityInfo.name = want.GetAbilityNameRef();
+                abilityInfo.bundleName = want.GetBundleNameRef();
+                abilityInfo.moduleName = "entry";
+                abilityInfo.type = AbilityType::PAGE;
+                abilityInfo.visible = true;
+                abilityInfo.applicationInfo.name = abilityInfo.bundleName;
+                abilityInfo.applicationInfo.bundleName = abilityInfo.bundleName;
+                abilityInfo.applicationInfo.uid = userId * AppExecFwk::Constants::BASE_USER_RANGE;
+                return true;
+            });
+        DelayedSingleton<BundleMgrHelper>::GetInstance()->bundleMgr_ = bundleMgr;
+        abilityManager_ = std::move(abilityManager);
+        interceptor_ = std::make_shared<StartAbilityFlagInterceptor>();
+        abilityManager_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+        abilityManager_->interceptorExecuter_->AddInterceptor("startAbilityFlag", interceptor_);
+        want_.SetElementName("com.example.directboot", "MainAbility");
+    }
+
+    ~StartAbilityFlagTestContext()
+    {
+        abilityManager_.reset();
+        DelayedSingleton<BundleMgrHelper>::GetInstance()->bundleMgr_ = oldBundleMgr_;
+        MyFlag::flag_ = oldFlag_;
+        auto &animation = AppUtils::GetInstance().isStartOptionsWithAnimation_;
+        animation.isLoaded = oldAnimationLoaded_;
+        animation.value = oldAnimationValue_;
+    }
+
+    std::shared_ptr<AbilityManagerService> abilityManager_;
+    std::shared_ptr<StartAbilityFlagInterceptor> interceptor_;
+    Want want_;
+
+private:
+    sptr<IBundleMgr> oldBundleMgr_;
+    int oldFlag_;
+    bool oldAnimationLoaded_;
+    bool oldAnimationValue_;
+    StartSelfUIAbilityRecordGuard selfStartGuard_;
+};
+
+class HiddenStartWithoutStatusBarContext {
+public:
+    HiddenStartWithoutStatusBarContext()
+        : abilityManager_(DelayedSingleton<AbilityManagerService>::GetInstance()),
+          oldSubManagersHelper_(abilityManager_->subManagersHelper_)
+    {
+        abilityManager_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    }
+
+    ~HiddenStartWithoutStatusBarContext()
+    {
+        abilityManager_->subManagersHelper_ = oldSubManagersHelper_;
+    }
+
+private:
+    std::shared_ptr<AbilityManagerService> abilityManager_;
+    std::shared_ptr<SubManagersHelper> oldSubManagersHelper_;
+};
 } // namespace
 
 class DirectBootTestContext : public DirectBootServiceTestContext {
@@ -124,15 +224,33 @@ public:
         oldStatus_ = controller.GetUserLockStatus(DIRECT_BOOT_TEST_USER);
         oldOtherStatus_ = controller.GetUserLockStatus(OTHER_USER);
         oldForeground_ = controller.GetForegroundUserId(ServerConstant::DEFAULT_DISPLAY_ID);
+        oldOtherDisplayExists_ = controller.IsExistDisplayId(OTHER_DISPLAY);
+        oldOtherForeground_ = controller.GetForegroundUserId(OTHER_DISPLAY);
         controller.DeleteUserLockStatus(DIRECT_BOOT_TEST_USER);
         controller.DeleteUserLockStatus(OTHER_USER);
         controller.SetUserLockStatus(DIRECT_BOOT_TEST_USER, UserLockStatus::USER_LOCKED);
         controller.SetUserLockStatus(OTHER_USER, UserLockStatus::USER_LOCKED);
         controller.SetForegroundUserId(DIRECT_BOOT_TEST_USER, ServerConstant::DEFAULT_DISPLAY_ID);
+        controller.SetForegroundUserId(OTHER_USER, OTHER_DISPLAY);
         Rosen::SessionInfo sessionInfo;
         sptr<Rosen::ISession> session = new Rosen::Session(sessionInfo);
         rootSession_ = session->AsObject();
         abilityManager_ = std::make_shared<RecordingAbilityManager>();
+        startAbilityContext_ = std::make_unique<StartAbilityFlagTestContext>(abilityManager_);
+        startAbilityContext_->abilityManager_.reset();
+        std::weak_ptr<RecordingAbilityManager> manager = abilityManager_;
+        startAbilityContext_->interceptor_->handler = [manager](AbilityInterceptorParam &param) {
+            EXPECT_TRUE(param.isDirectBootStartup);
+            auto abilityManager = manager.lock();
+            return abilityManager ? abilityManager->StartAbility(param.want, param.userId, param.requestCode, 0) :
+                ERR_INVALID_VALUE;
+        };
+        abilityManager_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+        for (int32_t userId : {0, DIRECT_BOOT_TEST_USER, OTHER_USER}) {
+            auto uiManager = std::make_shared<UIAbilityLifecycleManager>(userId);
+            uiManager->rootSceneSession_ = rootSession_;
+            abilityManager_->subManagersHelper_->uiAbilityManagers_[userId] = uiManager;
+        }
         abilityManager_->abilityAutoStartupService_ = service_;
         handler_ = std::make_shared<NiceMock<AppExecFwk::MockTaskHandlerWrap>>();
         ON_CALL(*handler_, SubmitTaskInner(_, _)).WillByDefault(
@@ -149,12 +267,19 @@ public:
     ~DirectBootTestContext()
     {
         tasks_.clear();
+        ffrt::wait();
         abilityManager_.reset();
+        startAbilityContext_.reset();
         handler_.reset();
         auto &controller = UserController::GetInstance();
         RestoreStatus(DIRECT_BOOT_TEST_USER, oldStatus_);
         RestoreStatus(OTHER_USER, oldOtherStatus_);
         controller.SetForegroundUserId(oldForeground_, ServerConstant::DEFAULT_DISPLAY_ID);
+        if (oldOtherDisplayExists_) {
+            controller.SetForegroundUserId(oldOtherForeground_, OTHER_DISPLAY);
+        } else {
+            controller.ClearDisplayId(OTHER_DISPLAY);
+        }
         auto &events = AbilityEventMapManager::GetInstance();
         events.RemovePendingUserId(DIRECT_BOOT_TEST_USER);
         if (oldPending_) {
@@ -194,13 +319,10 @@ public:
 
     void PrepareSceneBoard()
     {
-        abilityManager_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
         int32_t userId = GetDirectBootTestState().callingUid / AppExecFwk::Constants::BASE_USER_RANGE;
         auto connect = std::make_shared<CommonExtensionManager>(userId);
         connect->sceneBoardTokenId_ = DIRECT_BOOT_TEST_CALLER_TOKEN;
         abilityManager_->subManagersHelper_->commonExtensionManagers_[userId] = connect;
-        abilityManager_->subManagersHelper_->uiAbilityManagers_[userId] =
-            std::make_shared<UIAbilityLifecycleManager>(userId);
     }
 
     sptr<IRemoteObject> rootSession_;
@@ -210,7 +332,10 @@ public:
     UserLockStatus oldStatus_;
     UserLockStatus oldOtherStatus_;
     int32_t oldForeground_ = 0;
+    int32_t oldOtherForeground_ = 0;
+    bool oldOtherDisplayExists_ = false;
     bool oldPending_ = false;
+    std::unique_ptr<StartAbilityFlagTestContext> startAbilityContext_;
 };
 
 class AbilityManagerServiceFirstTest : public testing::Test {
@@ -2898,6 +3023,46 @@ HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithToolCallId_0100, TestSi
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0100 end");
 }
 
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbility_DefaultDirectBootStartupFalse, TestSize.Level1)
+{
+    StartAbilityFlagTestContext context;
+
+    EXPECT_EQ(context.abilityManager_->StartAbility(context.want_, 1, 42, uint64_t{0}),
+        ERR_BLOCK_START_FIRST_BOOT_SCREEN_UNLOCK);
+    ASSERT_EQ(context.interceptor_->params.size(), 1);
+    EXPECT_FALSE(context.interceptor_->params.front().isDirectBootStartup);
+    EXPECT_EQ(context.interceptor_->params.front().requestCode, 42);
+    EXPECT_EQ(context.interceptor_->params.front().userId, 1);
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbility_WantCannotEnableDirectBootStartup, TestSize.Level1)
+{
+    StartAbilityFlagTestContext context;
+    context.want_.SetParam("isDirectBootStartup", true);
+    context.want_.SetParam("isDirectBoot", true);
+
+    EXPECT_EQ(context.abilityManager_->StartAbility(context.want_, 1, 42, uint64_t{0}),
+        ERR_BLOCK_START_FIRST_BOOT_SCREEN_UNLOCK);
+    ASSERT_EQ(context.interceptor_->params.size(), 1);
+    EXPECT_FALSE(context.interceptor_->params.front().isDirectBootStartup);
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbility_ExplicitDirectBootStartupForwarded, TestSize.Level1)
+{
+    StartAbilityFlagTestContext context;
+    for (bool isDirectBootStartup : {false, true}) {
+        SCOPED_TRACE(isDirectBootStartup);
+        context.interceptor_->params.clear();
+
+        EXPECT_EQ(context.abilityManager_->StartAbility(context.want_, 1, 42, uint64_t{0}, isDirectBootStartup),
+            ERR_BLOCK_START_FIRST_BOOT_SCREEN_UNLOCK);
+        ASSERT_EQ(context.interceptor_->params.size(), 1);
+        EXPECT_EQ(context.interceptor_->params.front().isDirectBootStartup, isDirectBootStartup);
+        EXPECT_EQ(context.interceptor_->params.front().requestCode, 42);
+        EXPECT_EQ(context.interceptor_->params.front().userId, 1);
+    }
+}
+
 /**
  * @tc.name: AbilityManagerServiceFirstTest_StartAbilityWithToolCallId_0200
  * @tc.desc: StartAbility with an illegal char in ohos.aafwk.param.toolCallId, silently ignored and schedule result
@@ -4372,6 +4537,51 @@ HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_TenTargetsAreLaunchedSequent
     context.DrainTasks();
     EXPECT_EQ(context.abilityManager_->launched, expected);
     EXPECT_EQ(context.abilityManager_->launchUsers, std::vector<int32_t>(10, DIRECT_BOOT_TEST_USER));
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_HiddenUIStartupTakesPriorityAndRetries, TestSize.Level1)
+{
+    DirectBootTestContext context;
+    HiddenStartWithoutStatusBarContext hiddenStartContext;
+    auto hidden = context.Target("direct.hidden");
+    hidden.isHiddenStart = true;
+    hidden.retryCount = TEST_RETRY_COUNT;
+    auto following = context.Target("direct.following");
+    EXPECT_FALSE(DelayedSingleton<AbilityManagerService>::GetInstance()->IsSupportStatusBarByUserId(
+        DIRECT_BOOT_TEST_USER));
+    EXPECT_CALL(*context.handler_, SubmitTaskInner(_, _)).Times(AnyNumber());
+    EXPECT_CALL(*context.handler_, SubmitTaskInner(_, Field(&TaskAttribute::taskName_, "StartAutoStartupApps")))
+        .Times(TEST_RETRY_COUNT + 2);
+
+    context.StartQueue({hidden, following});
+    EXPECT_TRUE(context.abilityManager_->launched.empty());
+    context.DrainTasks();
+
+    EXPECT_EQ(context.abilityManager_->launched, (std::vector<std::string>{following.bundleName}));
+    EXPECT_EQ(context.abilityManager_->launchUsers, (std::vector<int32_t>{DIRECT_BOOT_TEST_USER}));
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_NonUIQueueItemsUseOrdinaryStartup, TestSize.Level1)
+{
+    DirectBootTestContext context;
+    std::vector<AutoStartupInfo> infos;
+    std::vector<std::string> expected;
+    for (bool hidden : {false, true}) {
+        for (bool directBoot : {false, true}) {
+            auto info = context.Target("direct.nonui" + std::to_string(infos.size()), directBoot);
+            info.abilityTypeName = AbilityRuntime::EXTENSION_TYPE_SERVICE_EXTENSION;
+            info.isHiddenStart = hidden;
+            infos.push_back(info);
+            expected.push_back(info.bundleName);
+        }
+    }
+
+    context.StartQueue(infos);
+    context.DrainTasks();
+
+    EXPECT_EQ(context.abilityManager_->launched, expected);
+    EXPECT_EQ(context.abilityManager_->launchUsers, std::vector<int32_t>(infos.size(), DIRECT_BOOT_TEST_USER));
+    EXPECT_TRUE(context.startAbilityContext_->interceptor_->params.empty());
 }
 
 HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_RetryIsBoundedAndDoesNotRepeatSuccessfulItem, TestSize.Level1)

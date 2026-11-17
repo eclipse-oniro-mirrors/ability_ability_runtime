@@ -809,6 +809,12 @@ void AbilityManagerService::HandleAutoStartupReadyCallback(const char *key, cons
 int AbilityManagerService::StartAbility(const Want &want, int32_t userId, int requestCode,
     uint64_t specifiedFullTokenId)
 {
+    return StartAbility(want, userId, requestCode, specifiedFullTokenId, false);
+}
+
+int AbilityManagerService::StartAbility(const Want &want, int32_t userId, int requestCode,
+    uint64_t specifiedFullTokenId, bool isDirectBootStartup)
+{
     if (AppUtils::GetInstance().IsForbidStart()) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "forbid start: %{public}s", want.GetBundleNameRef().c_str());
         return INNER_ERR;
@@ -884,6 +890,7 @@ int AbilityManagerService::StartAbility(const Want &want, int32_t userId, int re
         .requestCode = requestCode,
         .userId = userId,
         .specifiedFullTokenId = specifiedFullTokenId,
+        .isDirectBootStartup = isDirectBootStartup,
     };
     int32_t ret = StartAbilityInner(startAbilityWrapParam);
     AAFWK::ContinueRadar::GetInstance().ClickIconStartAbility("StartAbilityInner", want.GetFlags(), ret);
@@ -1841,7 +1848,7 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
                     {param.isStartAsCaller, isTargetPlugin, param.hostBundleName})
                 .Context<AbilityInterceptorParam::DisposedCtx>({appIndex, nullptr})
                 .BlockAllEscapeCheck(MakeBlockAllEscapeCheck(abilityRequest))
-                .StartAbilityCtx(param.startAbilityCtx).Build();
+                .StartAbilityCtx(param.startAbilityCtx).DirectBootStartup(param.isDirectBootStartup).Build();
             result = interceptorExecuter_ == nullptr ? ERR_NULL_INTERCEPTOR_EXECUTER :
                 interceptorExecuter_->DoProcess(interceptorParam);
             param.startAbilityCtx.SyncFrom(interceptorParam.startAbilityCtx);
@@ -10481,12 +10488,12 @@ void AbilityManagerService::StartAutoStartupApps(std::queue<AutoStartupInfo> inf
     if (info.abilityTypeName == AbilityRuntime::EXTENSION_TYPE_APP_SERVICE) {
         result = StartExtensionAbility(
             want, nullptr, userId, AppExecFwk::ExtensionAbilityType::APP_SERVICE);
+    } else if (info.isHiddenStart && info.abilityTypeName == AbilityRuntime::ABILITY_TYPE_UI_ABILITY) {
+        result = abilityAutoStartupService_->HiddenStartAutoStartupApp(want, userId);
+    } else if (info.isDirectBoot && info.abilityTypeName == AbilityRuntime::ABILITY_TYPE_UI_ABILITY) {
+        result = StartAbility(want, userId, DEFAULT_INVAL_VALUE, 0, info.isDirectBoot);
     } else {
-        if (info.isHiddenStart && info.abilityTypeName == AbilityRuntime::ABILITY_TYPE_UI_ABILITY) {
-            result = abilityAutoStartupService_->HiddenStartAutoStartupApp(want, userId);
-        } else {
-            result = StartAbility(want, userId);
-        }
+        result = StartAbility(want, userId);
     }
     if ((result != ERR_OK) && (info.retryCount > 0)) {
         info.retryCount--;
