@@ -5956,7 +5956,7 @@ int32_t AppMgrServiceInner::CreateStartMsg(const CreateStartMsgParam &param, App
 
     auto userId = GetUserIdByUid(param.uid);
     DataGroupInfoList dataGroupInfoList;
-    bool result = bundleMgrHelper->QueryDataGroupInfos(bundleInfo.name, userId, dataGroupInfoList);
+    bool result = IN_PROCESS_CALL(bundleMgrHelper->QueryDataGroupInfos(bundleInfo.name, userId, dataGroupInfoList));
     if (!result || dataGroupInfoList.empty()) {
         TAG_LOGD(AAFwkTag::APPMGR, "the bundle has no groupInfos.");
     }
