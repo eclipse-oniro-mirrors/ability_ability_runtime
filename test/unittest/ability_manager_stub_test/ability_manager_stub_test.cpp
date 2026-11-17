@@ -1831,6 +1831,48 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartAbilityForOptionsInner_
 
 /*
  * Feature: AbilityManagerService
+ * Function: StartUIAbilityWithDisplayIdPassthroughInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub StartUIAbilityWithDisplayIdPassthroughInner
+ * EnvConditions: NA
+ * CaseDescription: Verify the uid gate rejects non-softbus_service callers before parcel parsing.
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartUIAbilityWithDisplayIdPassthroughInner_RejectNonSoftbus_001, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    auto res = stub_->StartUIAbilityWithDisplayIdPassthroughInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_PERMISSION_DENIED);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartUIAbilityWithDisplayIdPassthroughInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerStub StartUIAbilityWithDisplayIdPassthroughInner
+ * EnvConditions: NA
+ * CaseDescription: Verify the uid gate fires before parcel parsing; a non-softbus caller is rejected even when the parcel carries a valid Want/StartOptions.
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartUIAbilityWithDisplayIdPassthroughInner_RejectNonSoftbus_002, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    Want want;
+    want.SetElementName("test.bundle", "test.ability");
+    data.WriteParcelable(&want);
+    StartOptions startOptions;
+    data.WriteParcelable(&startOptions);
+    data.WriteBool(false);
+    data.WriteInt32(0);
+    data.WriteInt32(0);
+    auto res = stub_->StartUIAbilityWithDisplayIdPassthroughInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_PERMISSION_DENIED);
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: CloseUIAbilityBySCBInner
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService CloseUIAbilityBySCBInner

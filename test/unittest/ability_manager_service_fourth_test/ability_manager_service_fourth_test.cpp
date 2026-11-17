@@ -487,6 +487,177 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartAbilityForOptionInner_001, TestSi
     EXPECT_NE(result, ERR_INVALID_VALUE);
 }
 
+/*
+ * Feature: AbilityManagerService
+ * Function: StartUIAbilityWithDisplayIdPassthrough
+ * FunctionPoints: AbilityManagerService StartUIAbilityWithDisplayIdPassthrough
+ * CaseDescription: Exercise the softbus passthrough entry with displayId=0; the method body
+ *                 (forbidStart/RemoveShowModeKey/CheckProcessOptions/dispatch to StartAbilityForOptionInner
+ *                 with passthroughDisplayId=true) is covered. Without a BMS mock the start cannot resolve
+ *                 an ability, so a non-OK result is expected.
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityWithDisplayIdPassthrough_001, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    want.SetElementName("test.bundleName", "test.abilityName");
+    StartOptions startOptions;
+    startOptions.SetDisplayID(0);
+    const sptr<IRemoteObject> callerToken;
+    int32_t userId = 0;
+    int requestCode = 0;
+    auto result = abilityMs->StartUIAbilityWithDisplayIdPassthrough(want, startOptions, callerToken, userId, requestCode);
+    EXPECT_NE(result, ERR_OK);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartUIAbilityWithDisplayIdPassthrough
+ * FunctionPoints: AbilityManagerService StartUIAbilityWithDisplayIdPassthrough
+ * CaseDescription: Exercise the softbus passthrough entry with a non-zero displayId; verifies the path does
+ *                 not substitute or crash on explicit displayId values.
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityWithDisplayIdPassthrough_002, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    want.SetElementName("test.bundleName", "test.abilityName");
+    StartOptions startOptions;
+    startOptions.SetDisplayID(5);
+    const sptr<IRemoteObject> callerToken;
+    int32_t userId = 0;
+    int requestCode = 0;
+    auto result = abilityMs->StartUIAbilityWithDisplayIdPassthrough(want, startOptions, callerToken, userId, requestCode);
+    EXPECT_NE(result, ERR_OK);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForOptionInner
+ * FunctionPoints: passthroughDisplayId parameter threading
+ * CaseDescription: Call StartAbilityForOptionInner with passthroughDisplayId=true so the new parameter
+ *                 is exercised on the explicit-start path. Without a BMS mock the call returns early,
+ *                 but the parameter binding and dispatch are covered.
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, StartAbilityForOptionInner_PassthroughDisplayId_001, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    want.SetElementName("test.bundleName", "test.abilityName");
+    StartOptions startOptions;
+    startOptions.SetDisplayID(0);
+    const sptr<IRemoteObject> callerToken;
+    int32_t userId = 0;
+    int requestCode = 0;
+    bool isStartAsCaller = false;
+    uint32_t specifyTokenId = 0;
+    bool isImplicit = false;
+    auto result = abilityMs->StartAbilityForOptionInner(want, startOptions, callerToken, false, userId, requestCode,
+        isStartAsCaller, specifyTokenId, isImplicit, false, false, true);
+    EXPECT_NE(result, ERR_OK);
+}
+
+/*
+ * Feature: AbilityManagerStub
+ * Function: StartUIAbilityWithDisplayIdPassthroughInner
+ * FunctionPoints: AbilityManagerStub StartUIAbilityWithDisplayIdPassthroughInner
+ * CaseDescription: With the caller uid mocked to SOFTBUS_SERVICE_UID (4700), the uid gate passes and the
+ *                 handler reads the parcel and dispatches to StartUIAbilityWithDisplayIdPassthrough. This
+ *                 covers the code path after the uid check (parcel parsing + virtual dispatch). Without a
+ *                 BMS mock the downstream start cannot resolve an ability, but the result is NOT a
+ *                 permission-denied error.
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityWithDisplayIdPassthroughInner_SoftbusUid_001, TestSize.Level1)
+{
+    IPCSkeleton::SetCallingUid(4700); // SOFTBUS_SERVICE_UID
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    MessageParcel data;
+    MessageParcel reply;
+    Want want;
+    want.SetElementName("test.bundleName", "test.abilityName");
+    data.WriteParcelable(&want);
+    StartOptions startOptions;
+    startOptions.SetDisplayID(0);
+    data.WriteParcelable(&startOptions);
+    data.WriteBool(false); // no callerToken
+    data.WriteInt32(0);    // userId
+    data.WriteInt32(0);    // requestCode
+    auto res = abilityMs->StartUIAbilityWithDisplayIdPassthroughInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_NE(reply.ReadInt32(), ERR_PERMISSION_DENIED);
+    IPCSkeleton::SetCallingUid(0); // reset for other tests
+}
+
+/*
+ * Feature: AbilityManagerStub
+ * Function: StartUIAbilityWithDisplayIdPassthroughInner
+ * FunctionPoints: want null branch
+ * CaseDescription: With uid mocked to 4700 the uid gate passes; an empty parcel makes
+ *                 ReadParcelable<Want> return nullptr, covering the `if (want == nullptr)` branch.
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityWithDisplayIdPassthroughInner_WantNull_001, TestSize.Level1)
+{
+    IPCSkeleton::SetCallingUid(4700);
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    MessageParcel data;
+    MessageParcel reply;
+    auto res = abilityMs->StartUIAbilityWithDisplayIdPassthroughInner(data, reply);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+    IPCSkeleton::SetCallingUid(0);
+}
+
+/*
+ * Feature: AbilityManagerStub
+ * Function: StartUIAbilityWithDisplayIdPassthroughInner
+ * FunctionPoints: startOptions null branch
+ * CaseDescription: With uid mocked to 4700 and a valid Want written, the parcel has no StartOptions,
+ *                 so ReadParcelable<StartOptions> returns nullptr, covering the
+ *                 `if (startOptions == nullptr)` branch.
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityWithDisplayIdPassthroughInner_StartOptionsNull_001, TestSize.Level1)
+{
+    IPCSkeleton::SetCallingUid(4700);
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    MessageParcel data;
+    MessageParcel reply;
+    Want want;
+    want.SetElementName("test.bundleName", "test.abilityName");
+    data.WriteParcelable(&want);
+    auto res = abilityMs->StartUIAbilityWithDisplayIdPassthroughInner(data, reply);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+    IPCSkeleton::SetCallingUid(0);
+}
+
+/*
+ * Feature: AbilityManagerStub
+ * Function: StartUIAbilityWithDisplayIdPassthroughInner
+ * FunctionPoints: callerToken present branch (data.ReadBool() == true)
+ * CaseDescription: With uid mocked to 4700, a valid Want, StartOptions, and WriteBool(true) followed by a
+ *                 callerToken, the `if (data.ReadBool())` true branch is covered (ReadRemoteObject executed).
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityWithDisplayIdPassthroughInner_WithCallerToken_001, TestSize.Level1)
+{
+    IPCSkeleton::SetCallingUid(4700);
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    MessageParcel data;
+    MessageParcel reply;
+    Want want;
+    want.SetElementName("test.bundleName", "test.abilityName");
+    data.WriteParcelable(&want);
+    StartOptions startOptions;
+    startOptions.SetDisplayID(0);
+    data.WriteParcelable(&startOptions);
+    data.WriteBool(true); // callerToken present
+    auto callerToken = MockToken(AbilityType::PAGE);
+    data.WriteRemoteObject(callerToken);
+    data.WriteInt32(0); // userId
+    data.WriteInt32(0); // requestCode
+    auto res = abilityMs->StartUIAbilityWithDisplayIdPassthroughInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_NE(reply.ReadInt32(), ERR_PERMISSION_DENIED);
+    IPCSkeleton::SetCallingUid(0);
+}
+
 
 /*
  * Feature: AbilityManagerService

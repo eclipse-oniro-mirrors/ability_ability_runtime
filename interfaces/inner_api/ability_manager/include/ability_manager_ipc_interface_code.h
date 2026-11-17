@@ -825,6 +825,9 @@ enum class AbilityManagerInterfaceCode {
     // get ui extension root host info by ability record id
     GET_UI_EXTENSION_HOST_INFO_BY_ID = 6192,
 
+    // start ui ability with displayId passthrough, restricted to softbus_service
+    START_UI_ABILITY_WITH_DISPLAY_ID_PASSTHROUGH = 6193,
+
     // force stop process with kill id for cli tool
     FORCE_STOP_PROCESS = 6195,
 };

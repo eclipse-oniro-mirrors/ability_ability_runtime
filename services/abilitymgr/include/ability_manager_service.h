@@ -351,6 +351,19 @@ public:
         int requestCode = DEFAULT_INVAL_VALUE) override;
 
     /**
+     * Starts a new ability with displayId passthrough, restricted to softbus_service.
+     * Same as StartAbility(want, startOptions) but the displayId==0 -> default-display
+     * substitution in StartAbilityForOptionInner is skipped so the displayId carried in
+     * startOptions is used as-is (e.g. 0 -> display 0).
+     */
+    virtual int StartUIAbilityWithDisplayIdPassthrough(
+        const Want &want,
+        const StartOptions &startOptions,
+        const sptr<IRemoteObject> &callerToken,
+        int32_t userId = DEFAULT_INVAL_VALUE,
+        int requestCode = DEFAULT_INVAL_VALUE) override;
+
+    /**
      * Starts a new ability using the original caller information.
      *
      * @param want the want of the ability to start.
@@ -1552,7 +1565,8 @@ public:
         uint32_t specifyTokenId = 0,
         bool isImplicit = false,
         bool isCallByShortcut = false,
-        bool isCallByDelayed = false);
+        bool isCallByDelayed = false,
+        bool passthroughDisplayId = false);
 
     int ImplicitStartAbility(
         const Want &want,
@@ -2681,7 +2695,7 @@ public:
 
     int StartUIAbilityForOptionWrap(const Want &want, const StartOptions &options, sptr<IRemoteObject> callerToken,
         bool isPendingWantCaller, int32_t userId, int requestCode, uint32_t callerTokenId = 0, bool isImplicit = false,
-        bool isCallByShortcut = false, bool isCallByDelayed = false);
+        bool isCallByShortcut = false, bool isCallByDelayed = false, bool passthroughDisplayId = false);
 
     /**
      * KillProcessForPermissionUpdate, call KillProcessForPermissionUpdate() through proxy object,

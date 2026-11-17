@@ -2504,6 +2504,20 @@ int AbilityManagerService::StartAbility(const Want &want, const StartOptions &st
     return StartUIAbilityForOptionWrap(want, startOptions, callerToken, false, userId, requestCode);
 }
 
+int AbilityManagerService::StartUIAbilityWithDisplayIdPassthrough(const Want &want,
+    const StartOptions &startOptions, const sptr<IRemoteObject> &callerToken, int32_t userId, int requestCode)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "StartUIAbilityWithDisplayIdPassthrough, displayId:%{public}d",
+        startOptions.GetDisplayID());
+    AbilityUtil::RemoveShowModeKey(const_cast<Want &>(want));
+#ifdef SUPPORT_SCREEN
+    DmsUtil::GetInstance().UpdateFlagForCollaboration(want);
+#endif
+    return StartUIAbilityForOptionWrap(want, startOptions, callerToken, false, userId, requestCode, 0, false, false,
+        false, true);
+}
+
 int AbilityManagerService::ImplicitStartAbility(const Want &want, const StartOptions &startOptions,
     const sptr<IRemoteObject> &callerToken, int32_t userId, int requestCode)
 {
@@ -2515,7 +2529,7 @@ int AbilityManagerService::ImplicitStartAbility(const Want &want, const StartOpt
 int AbilityManagerService::StartUIAbilityForOptionWrap(const Want &want, const StartOptions &options,
     sptr<IRemoteObject> callerToken, bool isPendingWantCaller, int32_t userId,
     int requestCode, uint32_t callerTokenId, bool isImplicit,
-    bool isCallByShortcut, bool isCallByDelayed)
+    bool isCallByShortcut, bool isCallByDelayed, bool passthroughDisplayId)
 {
     if (AppUtils::GetInstance().IsForbidStart()) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "forbid start: %{public}s", want.GetBundleNameRef().c_str());
@@ -2528,7 +2542,7 @@ int AbilityManagerService::StartUIAbilityForOptionWrap(const Want &want, const S
         return ret;
     }
     return StartAbilityForOptionInner(want, options, callerToken, isPendingWantCaller, userId, requestCode, false,
-        callerTokenId, isImplicit, isCallByShortcut, isCallByDelayed);
+        callerTokenId, isImplicit, isCallByShortcut, isCallByDelayed, passthroughDisplayId);
 }
 
 int AbilityManagerService::StartAbilityAsCaller(const Want &want, const StartOptions &startOptions,
@@ -2608,7 +2622,8 @@ int AbilityManagerService::StartAbilityForResultAsCaller(const Want &want, const
 
 int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const StartOptions &startOptions,
     const sptr<IRemoteObject> &callerToken, bool isPendingWantCaller, int32_t userId, int requestCode,
-    bool isStartAsCaller, uint32_t specifyTokenId, bool isImplicit, bool isCallByShortcut, bool isCallByDelayed)
+    bool isStartAsCaller, uint32_t specifyTokenId, bool isImplicit, bool isCallByShortcut, bool isCallByDelayed,
+    bool passthroughDisplayId)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     StartAbilityContext ctx;
@@ -2922,7 +2937,7 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
         return ERR_AAFWK_INVALID_WINDOW_MODE;
     }
 #endif
-    if (startOptions.GetDisplayID() == 0) {
+    if (startOptions.GetDisplayID() == 0 && !passthroughDisplayId) {
         abilityRequest.want.SetParam(Want::PARAM_RESV_DISPLAY_ID,
             DisplayUtil::GetDefaultDisplayId());
     } else {
