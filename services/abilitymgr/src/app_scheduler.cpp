@@ -758,13 +758,8 @@ int32_t AppScheduler::RegisterAbilityDebugResponse(const sptr<AppExecFwk::IAbili
 
 bool AppScheduler::IsAttachDebug(const std::string &bundleName)
 {
-    CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
-    auto ret = static_cast<int32_t>(appMgrClient_->IsAttachDebug(bundleName));
-    if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "call attach debug failed");
-        return INNER_ERR;
-    }
-    return ERR_OK;
+    CHECK_POINTER_AND_RETURN(appMgrClient_, false);
+    return appMgrClient_->IsAttachDebug(bundleName);
 }
 
 bool AppScheduler::IsMainProcessDebug(int32_t uid)

@@ -6872,6 +6872,10 @@ int32_t AbilityManagerService::ConnectLocalAbility(const Want &want, const int32
     if(AAFwk::UIExtensionWrapper::IsUIExtension(abilityInfo.extensionAbilityType)) {
         abilityRequest.uiExtensionAbilityConnectInfo = connectInfo;
         auto uiExtensionManager = GetUIExtensionAbilityManagerByUserId(validUserId);
+        if (uiExtensionManager == nullptr) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "uiExtensionManager nullptr");
+            return ERR_INVALID_VALUE;
+        }
         ret = uiExtensionManager->ConnectAbilityLocked(abilityRequest, connect, callerToken, sessionInfo,
             indirectCallerInfo);
     }else{
@@ -7629,12 +7633,29 @@ int AbilityManagerService::GetPendingWantUid(const sptr<IWantSender> &target)
 int AbilityManagerService::GetPendingWantUserId(const sptr<IWantSender> &target)
 {
     TAG_LOGI(AAFwkTag::WANTAGENT, "%{public}s:begin", __func__);
-    auto pendingWantManager = GetCurrentPendingWantManager();
-    CHECK_POINTER_AND_RETURN(pendingWantManager, -1);
     if (target == nullptr) {
         TAG_LOGE(AAFwkTag::WANTAGENT, "%s, target null", __func__);
         return -1;
     }
+    sptr<IRemoteObject> obj = target->AsObject();
+    if (!obj || obj->IsProxyObject()) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "obj null or proxy obj");
+        return -1;
+    }
+    sptr<PendingWantRecord> record = static_cast<PendingWantRecord*>(target.GetRefPtr());
+    CHECK_POINTER_AND_RETURN(record, -1);
+
+    int32_t userId = -1;
+    if (record->GetKey() != nullptr) {
+        userId = record->GetKey()->GetUserId();
+    }
+    std::shared_ptr<PendingWantManager> pendingWantManager;
+    if (userId > 0 && userId <= AccountSA::Constants::MAX_USER_ID) {
+        pendingWantManager = GetPendingWantManagerByUserId(userId);
+    } else {
+        pendingWantManager = GetCurrentPendingWantManager();
+    }
+    CHECK_POINTER_AND_RETURN(pendingWantManager, -1);
     return pendingWantManager->GetPendingWantUserId(target);
 }
 
@@ -13988,7 +14009,7 @@ bool AbilityManagerService::CheckStartCallHasFloatingWindowForUIExtension(const 
         int32_t userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
         auto sceneSessionManager = IN_PROCESS_CALL(
             Rosen::SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy());
-        CHECK_POINTER_AND_RETURN_LOG(sceneSessionManager, CHECK_PERMISSION_FAILED, "sceneSessionManager is nullptr");
+        CHECK_POINTER_AND_RETURN_LOG(sceneSessionManager, false, "sceneSessionManager is nullptr");
         bool hasFloatingWindow = false;
         auto err = sceneSessionManager->HasFloatingWindowForeground(callerToken, hasFloatingWindow);
         TAG_LOGI(AAFwkTag::ABILITYMGR,
@@ -15415,10 +15436,6 @@ int32_t AbilityManagerService::UnregisterAppDebugListener(sptr<AppExecFwk::IAppD
 
 std::shared_ptr<AbilityDebugDeal> AbilityManagerService::ConnectInitAbilityDebugDeal()
 {
-    if (abilityDebugDeal_ != nullptr) {
-        return abilityDebugDeal_;
-    }
-
     std::unique_lock<ffrt::mutex> lock(abilityDebugDealLock_);
     if (abilityDebugDeal_ != nullptr) {
         return abilityDebugDeal_;
