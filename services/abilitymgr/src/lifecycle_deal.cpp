@@ -155,8 +155,9 @@ void LifecycleDeal::BackgroundNew(const Want &want, LifeCycleStateInfo &stateInf
 void LifecycleDeal::ContinueAbility(const std::string& deviceId, uint32_t versionCode)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "call");
-    CHECK_POINTER(abilityScheduler_);
-    abilityScheduler_->ContinueAbility(deviceId, versionCode);
+    auto abilityScheduler = GetScheduler();
+    CHECK_POINTER(abilityScheduler);
+    abilityScheduler->ContinueAbility(deviceId, versionCode);
 }
 
 void LifecycleDeal::NotifyContinuationResult(int32_t result)
