@@ -655,7 +655,8 @@ void UIAbilityLifecycleManager::TerminateSession(std::shared_ptr<AbilityRecord> 
 {
 }
 
-int UIAbilityLifecycleManager::ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow)
+int UIAbilityLifecycleManager::ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow,
+    const std::shared_ptr<Rosen::WindowShowParams> &params)
 {
     return 0;
 }

@@ -673,7 +673,8 @@ public:
      * @return ERR_OK on success; ERR_CAPABILITY_NOT_SUPPORT when unsupported;
      *         ERR_INVALID_VALUE when the manager cannot be resolved.
      */
-    ErrCode ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow);
+    ErrCode ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow,
+        const std::shared_ptr<Rosen::WindowShowParams> &params);
 
     /**
      * Change a UIAbility's visibility at SCB's request (window hide from the window manager).

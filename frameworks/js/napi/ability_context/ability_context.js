@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -229,8 +229,11 @@ class AbilityContext extends Context {
     return this.__context_impl__.requestModalUIExtensionWithAccount(want, accountId, callback);
   }
 
-  showAbility() {
-    return this.__context_impl__.showAbility();
+  showAbility(params) {
+    if (arguments.length === 0) {
+      return this.__context_impl__.showAbility();
+    }
+    return this.__context_impl__.showAbility(params);
   }
 
   hideAbility() {

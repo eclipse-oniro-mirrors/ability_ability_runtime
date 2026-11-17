@@ -21,7 +21,10 @@
 #include "ani_common_ability_result.h"
 #include "ani_common_configuration.h"
 #include "ani_common_start_options.h"
+#include "ani_common_util.h"
+#include "ani_window_animation_utils.h"
 #include "ani_common_want.h"
+#include "wm_animation_common.h"
 #include "ani_enum_convert.h"
 #include "ani_task.h"
 #include "remote_object_taihe_ani.h"
@@ -2433,7 +2436,52 @@ void EtsAbilityContext::NativeChangeAbilityVisibility(ani_env *env, ani_object a
         return;
     }
     bool showFlag = static_cast<bool>(isShow);
-    ErrCode errCode = context->ChangeAbilityVisibility(showFlag);
+    ErrCode errCode = context->ChangeAbilityVisibility(showFlag, nullptr);
+    if (errCode != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "failed, errCode: %{public}d", errCode);
+        AppExecFwk::AsyncCallback(env, callbackObj, EtsErrorUtil::CreateErrorByNativeErr(env, errCode), nullptr);
+        return;
+    }
+    AppExecFwk::AsyncCallback(env, callbackObj, EtsErrorUtil::CreateErrorByNativeErr(env, ERR_OK), nullptr);
+}
+
+void EtsAbilityContext::NativeChangeAbilityVisibilityWithParams(ani_env *env, ani_object aniObj,
+    ani_boolean isShow, ani_object paramsObj, ani_object callbackObj)
+{
+    TAG_LOGD(AAFwkTag::CONTEXT, "ChangeAbilityVisibilityWithParams");
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null env");
+        return;
+    }
+    auto etsContext = EtsAbilityContext::GetEtsAbilityContext(env, aniObj);
+    if (etsContext == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null etsContext");
+        return;
+    }
+    auto context = etsContext->context_.lock();
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null context");
+        AppExecFwk::AsyncCallback(env, callbackObj,
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT), nullptr);
+        return;
+    }
+    bool showFlag = static_cast<bool>(isShow);
+    std::shared_ptr<Rosen::WindowShowParams> params;
+    ani_ref windowShowParamsRef = nullptr;
+    if (!AppExecFwk::GetFieldRefByName(env, paramsObj, "windowShowParams", windowShowParamsRef)) {
+        AppExecFwk::AsyncCallback(env, callbackObj,
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM), nullptr);
+        return;
+    }
+    Rosen::WindowShowParams paramsTmp;
+    if (!Rosen::ConvertWindowShowParamsFromAniValue(
+        env, static_cast<ani_object>(windowShowParamsRef), paramsTmp)) {
+        AppExecFwk::AsyncCallback(env, callbackObj,
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM), nullptr);
+        return;
+    }
+    params = std::make_shared<Rosen::WindowShowParams>(paramsTmp);
+    ErrCode errCode = context->ChangeAbilityVisibility(showFlag, params);
     if (errCode != ERR_OK) {
         TAG_LOGE(AAFwkTag::CONTEXT, "failed, errCode: %{public}d", errCode);
         AppExecFwk::AsyncCallback(env, callbackObj, EtsErrorUtil::CreateErrorByNativeErr(env, errCode), nullptr);
@@ -3301,6 +3349,9 @@ bool BindNativeMethods(ani_env *env, ani_class &cls)
                 reinterpret_cast<void*>(EtsAbilityContext::StartServiceExtensionAbilityWithAccount) },
             ani_native_function { "nativeChangeAbilityVisibility", "zC{utils.AbilityUtils.AsyncCallbackWrapper}:",
                 reinterpret_cast<void*>(EtsAbilityContext::NativeChangeAbilityVisibility) },
+            ani_native_function { "nativeChangeAbilityVisibility",
+                "zC{@ohos.app.ability.ShowParams.ShowParams}C{utils.AbilityUtils.AsyncCallbackWrapper}:",
+                reinterpret_cast<void*>(EtsAbilityContext::NativeChangeAbilityVisibilityWithParams) },
             ani_native_function { "nativeConnectAppServiceExtensionAbility", SIGNATURE_CONNECT_SERVICE_EXTENSION,
                 reinterpret_cast<void *>(EtsAbilityContext::ConnectAppServiceExtensionAbility) },
             ani_native_function { "nativeDisconnectAppServiceExtensionAbility", SIGNATURE_DISCONNECT_SERVICE_EXTENSION,

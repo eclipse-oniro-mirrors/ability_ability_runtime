@@ -421,12 +421,13 @@ ErrCode AbilityManagerClient::PreloadUIExtensionAbility(
     return abms->PreloadUIExtensionAbility(want, hostBundleName, userId, hostPid, requestCode);
 }
 
-ErrCode AbilityManagerClient::ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow)
+ErrCode AbilityManagerClient::ChangeAbilityVisibility(
+    sptr<IRemoteObject> token, bool isShow, const std::shared_ptr<Rosen::WindowShowParams> &params)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto abms = GetAbilityManager();
     CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
-    return abms->ChangeAbilityVisibility(token, isShow);
+    return abms->ChangeAbilityVisibility(token, isShow, params);
 }
 
 ErrCode AbilityManagerClient::ChangeUIAbilityVisibilityBySCB(sptr<SessionInfo> sessionInfo, bool isShow)

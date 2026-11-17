@@ -1421,9 +1421,10 @@ ErrCode AbilityContextImpl::RequestModalUIExtension(const AAFwk::Want& want)
     return err;
 }
 
-ErrCode AbilityContextImpl::ChangeAbilityVisibility(bool isShow)
+ErrCode AbilityContextImpl::ChangeAbilityVisibility(
+    bool isShow, const std::shared_ptr<Rosen::WindowShowParams> &params)
 {
-    ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->ChangeAbilityVisibility(token_, isShow);
+    ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->ChangeAbilityVisibility(token_, isShow, params);
     if (err != ERR_OK) {
         TAG_LOGE(AAFwkTag::CONTEXT, "failed %{public}d", err);
     }

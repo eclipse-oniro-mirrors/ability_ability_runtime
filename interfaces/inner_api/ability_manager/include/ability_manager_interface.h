@@ -90,6 +90,10 @@ namespace AbilityRuntime {
 class IStatusBarDelegate;
 }
 
+namespace Rosen {
+struct WindowShowParams;
+}
+
 namespace AAFwk {
 class Snapshot;
 class IMissionListener;
@@ -556,7 +560,8 @@ public:
      * @param isShow The wanted state, show or hide.
      * @return Returns ERR_OK on success, others on failure.
      */
-    virtual int ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow)
+    virtual int ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow,
+        const std::shared_ptr<Rosen::WindowShowParams> &params)
     {
         return 0;
     }

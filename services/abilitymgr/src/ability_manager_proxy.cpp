@@ -27,6 +27,7 @@
 #include "mission_listener_interface.h"
 #include "mission_snapshot.h"
 #include "snapshot.h"
+#include "wm_animation_common.h"
 #ifdef SUPPORT_SCREEN
 #include "pixel_map_bridge.h"
 #endif //SUPPORT_SCREEN
@@ -1038,7 +1039,8 @@ int AbilityManagerProxy::PreloadUIExtensionAbility(
     return reply.ReadInt32();
 }
 
-int AbilityManagerProxy::ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow)
+int AbilityManagerProxy::ChangeAbilityVisibility(
+    sptr<IRemoteObject> token, bool isShow, const std::shared_ptr<Rosen::WindowShowParams> &params)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -1052,6 +1054,10 @@ int AbilityManagerProxy::ChangeAbilityVisibility(sptr<IRemoteObject> token, bool
     }
     if (!data.WriteBool(isShow)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write isShow fail");
+        return ERR_NATIVE_IPC_PARCEL_FAILED;
+    }
+    if (!data.WriteParcelable(params.get())) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write params fail");
         return ERR_NATIVE_IPC_PARCEL_FAILED;
     }
     auto error = SendRequest(AbilityManagerInterfaceCode::CHANGE_ABILITY_VISIBILITY, data, reply, option);

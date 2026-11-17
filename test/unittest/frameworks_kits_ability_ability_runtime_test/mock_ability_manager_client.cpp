@@ -183,7 +183,8 @@ ErrCode AbilityManagerClient::PreloadUIExtensionAbility(const Want &want, std::s
     return ERR_OK;
 }
 
-ErrCode AbilityManagerClient::ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow)
+ErrCode AbilityManagerClient::ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow,
+    const std::shared_ptr<Rosen::WindowShowParams> &params)
 {
     return MyFlag::GetInstance()->GetChangeAbilityVisibility();
 }

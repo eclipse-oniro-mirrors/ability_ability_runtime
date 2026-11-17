@@ -32,6 +32,7 @@
 namespace OHOS {
 namespace Rosen {
 struct PendingSessionActivationConfig;
+struct WindowShowParams;
 }
 namespace AbilityRuntime {
 struct StartSpecifiedParam;
@@ -467,7 +468,8 @@ public:
      * @param isShow Whether to show the ability
      * @return ERR_OK if successful, error code otherwise
      */
-    int ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow);
+    int ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow,
+        const std::shared_ptr<Rosen::WindowShowParams> &params);
 
     /**
      * @brief Change UI ability visibility through SCB

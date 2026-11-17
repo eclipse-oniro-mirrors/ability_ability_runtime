@@ -16,6 +16,7 @@
 import { AbilityInfo } from 'bundleManager.AbilityInfo';
 import Want from '@ohos.app.ability.Want';
 import StartOptions from '@ohos.app.ability.StartOptions';
+import ShowParams from '@ohos.app.ability.ShowParams';
 import { Caller } from '@ohos.app.ability.UIAbility';
 import { BusinessError, AsyncCallback, RecordData } from '@ohos.base';
 import { AbilityResult } from 'ability.abilityResult';
@@ -168,6 +169,8 @@ export default class UIAbilityContext extends Context {
   private native nativeSetColorMode(colorMode: ConfigurationConstant.ColorMode): void;
 
   private native nativeChangeAbilityVisibility(isShow: boolean, callback: AsyncCallbackWrapper<void>): void;
+  
+  private native nativeChangeAbilityVisibility(isShow: boolean, params: ShowParams, callback: AsyncCallbackWrapper<void>): void;
 
   private native nativeStartAbilityByType(type: string, wantParam: Record<string, RecordData>,
     startCallback: AbilityStartCallback, callback: AsyncCallbackWrapper<void>): void;
@@ -614,6 +617,23 @@ export default class UIAbilityContext extends Context {
       });
     taskpool.execute((): void => {
       this.nativeChangeAbilityVisibility(true, myCall);
+    });
+  });
+  return p;
+}
+
+  showAbility(params: ShowParams): Promise<void> {
+  let p: Promise<void> =
+    new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
+      let myCall = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+        if (err == null || err.code == 0) {
+          resolve(undefined);
+        } else {
+          reject(err);
+        }
+      });
+    taskpool.execute((): void => {
+      this.nativeChangeAbilityVisibility(true, params, myCall);
     });
   });
   return p;

@@ -35,6 +35,7 @@
 #include "mission_snapshot.h"
 #include "snapshot.h"
 #include "sandbox_clone_params.h"
+#include "wm_animation_common.h"
 
 using namespace testing::ext;
 using namespace testing;
@@ -3155,7 +3156,30 @@ HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_ChangeAbilityVisibility_01
         .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
 
     auto token = sptr<MockAbilityToken>::MakeSptr();
-    proxy_->ChangeAbilityVisibility(token, true);
+    proxy_->ChangeAbilityVisibility(token, true, nullptr);
+    EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::CHANGE_ABILITY_VISIBILITY), mock_->code_);
+
+    TAG_LOGI(AAFwkTag::TEST, "end");
+}
+
+/**
+ * @tc.name: AbilityManagerProxy_ChangeAbilityVisibility_0200
+ * @tc.desc: ChangeAbilityVisibility with showParams
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_ChangeAbilityVisibility_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin");
+
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+
+    auto token = sptr<MockAbilityToken>::MakeSptr();
+    auto params = std::make_shared<Rosen::WindowShowParams>();
+    params->windowFocused = false;
+    params->raiseTop = false;
+    proxy_->ChangeAbilityVisibility(token, true, params);
     EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::CHANGE_ABILITY_VISIBILITY), mock_->code_);
 
     TAG_LOGI(AAFwkTag::TEST, "end");

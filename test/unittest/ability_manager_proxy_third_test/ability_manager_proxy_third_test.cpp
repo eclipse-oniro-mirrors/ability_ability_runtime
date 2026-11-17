@@ -747,14 +747,14 @@ HWTEST_F(AbilityManagerProxyTest, ChangeAbilityVisibility_1800, TestSize.Level1)
         .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeErrorSendRequest));
     sptr<IRemoteObject> token = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
     EXPECT_NE(token, nullptr);
-    int32_t result = proxy_->ChangeAbilityVisibility(token, false);
+    int32_t result = proxy_->ChangeAbilityVisibility(token, false, nullptr);
     EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::CHANGE_ABILITY_VISIBILITY), mock_->code_);
     EXPECT_NE(result, NO_ERROR);
 
     EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
         .Times(1)
         .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
-    result = proxy_->ChangeAbilityVisibility(token, false);
+    result = proxy_->ChangeAbilityVisibility(token, false, nullptr);
     EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::CHANGE_ABILITY_VISIBILITY), mock_->code_);
     EXPECT_EQ(result, NO_ERROR);
 
