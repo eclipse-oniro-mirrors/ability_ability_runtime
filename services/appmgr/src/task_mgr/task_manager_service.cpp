@@ -798,6 +798,7 @@ static std::string FormatTaskRecord(const TaskRecord &record, int64_t now)
     result += "        creator uid [" + std::to_string(record.creatorUid) + "] pid [" +
         std::to_string(record.creatorPid) + "] bundle [" + record.creatorBundleName + "]\n";
     result += "        managed processes [" + AttributionsToString(record.attributions) + "]\n";
+    result += std::string("        sched level [task:") + TaskPriorityToString(record.priority) + "]\n";
     result += "        remain timeout [" + std::to_string(remainSeconds) + "s]\n";
     result += "        create time [" + FormatCreateTime(record.createTimeMillis) + "]\n";
     return result;
