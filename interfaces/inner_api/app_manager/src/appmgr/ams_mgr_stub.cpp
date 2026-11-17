@@ -97,6 +97,8 @@ int32_t AmsMgrStub::OnRemoteRequestInnerFirst(uint32_t code, MessageParcel &data
             return HandleUpdateExtensionState(data, reply);
         case static_cast<uint32_t>(IAmsMgr::Message::REGISTER_APP_STATE_CALLBACK):
             return HandleRegisterAppStateCallback(data, reply);
+        case static_cast<uint32_t>(IAmsMgr::Message::REGISTER_TASK_STATE_CALLBACK):
+            return HandleRegisterTaskStateCallback(data, reply);
         case static_cast<uint32_t>(IAmsMgr::Message::KILL_PEOCESS_BY_ABILITY_TOKEN):
             return HandleKillProcessByAbilityToken(data, reply);
         case static_cast<uint32_t>(IAmsMgr::Message::SET_GAME_SA_PRELAUNCH):
@@ -333,6 +335,18 @@ ErrCode AmsMgrStub::HandleRegisterAppStateCallback(MessageParcel &data, MessageP
         callback = iface_cast<IAppStateCallback>(obj);
     }
     RegisterAppStateCallback(callback);
+    return NO_ERROR;
+}
+
+ErrCode AmsMgrStub::HandleRegisterTaskStateCallback(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    sptr<ITaskStateCallback> callback = nullptr;
+    if (data.ReadBool()) {
+        sptr<IRemoteObject> obj = data.ReadRemoteObject();
+        callback = iface_cast<ITaskStateCallback>(obj);
+    }
+    RegisterTaskStateCallback(callback);
     return NO_ERROR;
 }
 

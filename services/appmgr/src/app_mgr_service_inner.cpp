@@ -105,6 +105,7 @@
 #include "sandbox_manager_kit.h"
 #endif
 #include "system_ability_definition.h"
+#include "task_mgr/task_manager_service.h"
 #include "time_util.h"
 #include "ui_extension_wrapper.h"
 #ifdef SUPPORT_UPMS
@@ -5069,6 +5070,16 @@ void AppMgrServiceInner::RegisterAppStateCallback(const sptr<IAppStateCallback>&
                 sptr<AppStateCallbackDeathRecipient>(new AppStateCallbackDeathRecipient(weak_from_this())));
         }
     }
+}
+
+void AppMgrServiceInner::RegisterTaskStateCallback(const sptr<ITaskStateCallback> &callback)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
+    if (callback == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "callback null");
+        return;
+    }
+    TaskManagerService::GetInstance().SetTaskStateCallback(callback);
 }
 
 void AppMgrServiceInner::RemoveDeadAppStateCallback(const wptr<IRemoteObject> &remote)

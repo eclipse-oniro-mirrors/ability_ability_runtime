@@ -226,6 +226,21 @@ void AmsMgrScheduler::RegisterAppStateCallback(const sptr<IAppStateCallback> &ca
     amsHandler_->SubmitTask(registerAppStateCallbackFunc, TASK_REGISTER_APP_STATE_CALLBACK);
 }
 
+void AmsMgrScheduler::RegisterTaskStateCallback(const sptr<ITaskStateCallback> &callback)
+{
+    if (!AAFwk::PermissionVerification::GetInstance()->IsSACall()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "caller is not SA");
+        return;
+    }
+    if (!IsReady()) {
+        return;
+    }
+    std::function<void()> registerTaskStateCallbackFunc = [amsMgrServiceInner = amsMgrServiceInner_, callback]() {
+        amsMgrServiceInner->RegisterTaskStateCallback(callback);
+    };
+    amsHandler_->SubmitTask(registerTaskStateCallbackFunc, "registerTaskStateCallback");
+}
+
 void AmsMgrScheduler::KillProcessByAbilityToken(const sptr<IRemoteObject> &token)
 {
     if (!IsReady()) {

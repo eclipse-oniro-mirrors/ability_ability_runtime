@@ -24,6 +24,7 @@
 
 #include "ffrt.h"
 
+#include "i_task_state_callback.h"
 #include "task_mgr/task_record.h"
 
 namespace OHOS {
@@ -185,16 +186,15 @@ public:
     int32_t UnregisterManagedProcessForCaller(const std::string &taskId, AttributionId attributionId,
         int32_t callerUid);
 
-    using TaskFinishedCallback = std::function<void(const std::string &taskId, int32_t userId)>;
-
     /**
-     * @brief Registers a callback invoked when a task is finished (by caller, timeout,
-     *        or creator process death). The callback runs after tasksMutex_ is released,
-     *        so it may perform synchronous IPC. Used by AbilityManagerService to proactively
-     *        clean stale A2A task attribution entries cached on BaseExtensionRecord.
-     * @param callback Indicates the callback to invoke; pass nullptr to unregister.
+     * @brief Wires the task state callback used to notify downstream owners of task
+     *        attribution caches when a task is finished. The callback runs after
+     *        tasksMutex_ is released, so it may perform synchronous IPC. Used by
+     *        AbilityManagerService to proactively clean stale A2A task attribution
+     *        entries cached on BaseExtensionRecord.
+     * @param callback Indicates the IPC callback to invoke; pass nullptr to unregister.
      */
-    void SetTaskFinishedCallback(TaskFinishedCallback callback);
+    void SetTaskStateCallback(const sptr<ITaskStateCallback> &callback);
 
     /**
      * @brief Notifies that a task has ended. Invokes the registered TaskFinishedCallback
@@ -441,7 +441,7 @@ private:
     ffrt::mutex tasksMutex_;
     std::unordered_map<std::string, TaskRecord> tasks_;
     std::function<bool(pid_t)> pidValidator_;
-    TaskFinishedCallback taskFinishedCallback_;
+    sptr<ITaskStateCallback> taskStateCallback_;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

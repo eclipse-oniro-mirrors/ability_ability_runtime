@@ -103,6 +103,14 @@ public:
     virtual void RegisterAppStateCallback(const sptr<IAppStateCallback> &callback) override;
 
     /**
+     * RegisterTaskStateCallback, register the task state callback so that
+     * TaskManagerService can notify task-finished events downstream.
+     *
+     * @param callback, the task state callback to register.
+     */
+    virtual void RegisterTaskStateCallback(const sptr<ITaskStateCallback> &callback) override;
+
+    /**
      * KillProcessByAbilityToken, call KillProcessByAbilityToken() through proxy object,
      * kill the process by ability token.
      *

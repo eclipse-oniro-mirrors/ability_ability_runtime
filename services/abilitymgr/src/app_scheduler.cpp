@@ -18,8 +18,10 @@
 #include "ability_manager_service.h"
 #include "ability_util.h"
 #include "app_utils.h"
+#include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
 #include "param.h"
+#include "singleton.h"
 #include "utils/state_utils.h"
 
 namespace OHOS {
@@ -62,6 +64,13 @@ bool AppScheduler::Init(const std::weak_ptr<AppStateCallback> &callback)
     }
     appMgrClient_->RegisterStartSpecifiedAbilityResponse(startSpecifiedAbilityResponse_);
 
+    taskStateCallback_ = sptr<TaskStateCallbackImpl>(new TaskStateCallbackImpl());
+    if (taskStateCallback_ != nullptr) {
+        appMgrClient_->RegisterTaskStateCallback(taskStateCallback_);
+    } else {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "null taskStateCallback");
+        return false;
+    }
     TAG_LOGI(AAFwkTag::ABILITYMGR, "success to ConnectAppMgrService");
     isInit_ = true;
     return true;
@@ -546,6 +555,13 @@ void StartSpecifiedAbilityResponse::OnNewProcessRequestTimeoutResponse(int32_t r
 void StartSpecifiedAbilityResponse::OnStartSpecifiedFailed(int32_t requestId, int32_t userId)
 {
     DelayedSingleton<AbilityManagerService>::GetInstance()->OnStartSpecifiedFailed(requestId, userId);
+}
+
+void TaskStateCallbackImpl::OnTaskFinished(const std::string &taskId, int32_t userId)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR,
+        "task finished callback, taskId=%{public}s, userId=%{public}d", taskId.c_str(), userId);
+    DelayedSingleton<AbilityManagerService>::GetInstance()->OnTaskFinished(taskId, userId);
 }
 
 int AppScheduler::GetProcessRunningInfos(std::vector<AppExecFwk::RunningProcessInfo> &info)

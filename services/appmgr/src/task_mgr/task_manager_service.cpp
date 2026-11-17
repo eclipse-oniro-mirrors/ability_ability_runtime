@@ -236,6 +236,7 @@ int32_t TaskManagerService::FinishTaskInner(const std::string &taskId, TaskFinis
     int32_t taskUserId = -1;
     std::unique_ptr<TimeoutContext> timerCtx;
     std::vector<pid_t> managedPids;
+    sptr<ITaskStateCallback> callback;
     {
         std::lock_guard<ffrt::mutex> lock(tasksMutex_);
         auto it = tasks_.find(taskId);
@@ -283,11 +284,17 @@ int32_t TaskManagerService::FinishTaskInner(const std::string &taskId, TaskFinis
         if (!creatorHasTask) {
             TaskPriorityJudge::GetInstance().UntrackForeground(creatorPid);
         }
+        // Snapshot the callback under the mutex so the notification cannot be lost
+        // to a concurrent SetTaskStateCallback, and the IPC runs lock-free below.
+        callback = taskStateCallback_;
     }
     if (reason == TaskFinishReason::FINISHED_BY_TIMEOUT) {
         timerCtx.reset();
     } else {
         ReleaseTimeoutContext(std::move(timerCtx));
+    }
+    if (callback) {
+        callback->OnTaskFinished(taskId, taskUserId);
     }
     NotifyTaskFinished(taskId, taskUserId, reason);
     return ERR_OK;
@@ -509,11 +516,11 @@ void TaskManagerService::SetPidValidator(std::function<bool(pid_t)> validator)
     TAG_LOGI(AAFwkTag::APPMGR, "pid validator %{public}s", validator ? "wired" : "unwired");
 }
 
-void TaskManagerService::SetTaskFinishedCallback(TaskFinishedCallback callback)
+void TaskManagerService::SetTaskStateCallback(const sptr<ITaskStateCallback> &callback)
 {
     std::lock_guard<ffrt::mutex> lock(tasksMutex_);
-    taskFinishedCallback_ = std::move(callback);
-    TAG_LOGI(AAFwkTag::APPMGR, "task finished callback %{public}s", taskFinishedCallback_ ? "wired" : "unwired");
+    taskStateCallback_ = callback;
+    TAG_LOGI(AAFwkTag::APPMGR, "task state callback %{public}s", taskStateCallback_ ? "wired" : "unwired");
 }
 
 bool TaskManagerService::IsLiveManagedProcess(pid_t pid)
@@ -778,9 +785,6 @@ void TaskManagerService::NotifyTaskFinished(const std::string &taskId, int32_t u
 {
     TAG_LOGD(AAFwkTag::APPMGR, "task end notified, taskId: %{public}s, userId: %{public}d, reason: %{public}s",
         taskId.c_str(), userId, TaskFinishReasonToString(reason));
-    if (taskFinishedCallback_) {
-        taskFinishedCallback_(taskId, userId);
-    }
 }
 
 std::string TaskManagerService::DumpActiveTasks()
