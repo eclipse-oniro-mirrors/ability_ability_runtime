@@ -209,7 +209,7 @@ public:
         return E_OK;
     }
 
-    virtual int32_t SetRecoverKey(const std::vector<uint8_t> &key) override
+    virtual int32_t SetRecoverKey(const std::vector<uint8_t> &key, bool needMountPath) override
     {
         return E_OK;
     }
