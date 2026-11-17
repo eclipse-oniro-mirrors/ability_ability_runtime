@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_LOCAL_CALL_RECORD_H
 #define OHOS_ABILITY_RUNTIME_LOCAL_CALL_RECORD_H
 
+#include <atomic>
 #include <mutex>
 
 #include "caller_callback.h"
@@ -63,7 +64,7 @@ private:
     mutable std::mutex callersMutex_;  // Protect callers_ from concurrent access
     std::vector<std::shared_ptr<CallerCallBack>> callers_;
     AppExecFwk::ElementName elementName_ = {};
-    bool isSingleton_ = false;
+    std::atomic<bool> isSingleton_ = false;
 };
 
 /**
