@@ -95,6 +95,10 @@ bool PermissionVerification::VerifyBlockAllAppStartPermission() const
 {
     return MyStatus::GetInstance().permVerifyBlockAllAppStartPermission_;
 }
+bool PermissionVerification::VerifySAInterceptorPermission() const
+{
+    return IsSACall() && VerifyCallingPermission(PermissionConstants::PERMISSION_SA_INTERCEPTOR);
+}
 int PermissionVerification::CheckCallDataAbilityPermission(const VerificationInfo &verificationInfo, bool isShell) const
 {
     return MyStatus::GetInstance().permPermission_;
