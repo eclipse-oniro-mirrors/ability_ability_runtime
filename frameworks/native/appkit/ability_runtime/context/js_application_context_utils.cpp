@@ -1995,7 +1995,7 @@ napi_value JsApplicationContextUtils::OnOffEnvironment(
                 return;
             }
 
-            TAG_LOGI(AAFwkTag::APPKIT, "off environment");
+            TAG_LOGI(AAFwkTag::APPKIT, "off env");
             if (!env_callback->UnRegister(callbackId, false)) {
                 TAG_LOGE(AAFwkTag::APPKIT, "call UnRegister failed");
                 task.Reject(env, CreateJsError(env, ERR_ABILITY_RUNTIME_EXTERNAL_INVALID_PARAMETER,

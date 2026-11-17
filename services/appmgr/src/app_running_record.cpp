@@ -1202,7 +1202,7 @@ bool AppRunningRecord::AbilityUnfocused(const std::shared_ptr<AbilityRunningReco
 
 void AppRunningRecord::PopForegroundingAbilityTokens()
 {
-    TAG_LOGI(AAFwkTag::PROCESSMGR, "ability size: %{public}d",
+    TAG_LOGI(AAFwkTag::PROCESSMGR, "absize: %{public}d",
         static_cast<int32_t>(foregroundingAbilityTokens_.size()));
     for (auto iter = foregroundingAbilityTokens_.begin(); iter != foregroundingAbilityTokens_.end();) {
         auto ability = GetAbilityRunningRecordByToken(*iter);

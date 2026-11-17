@@ -179,7 +179,7 @@ void ConnectionRecord::CompleteConnect()
         });
     }
     DelayedSingleton<ConnectionStateManager>::GetInstance()->AddConnection(shared_from_this());
-    TAG_LOGI(AAFwkTag::CONNECTION, "state:%{public}d", state_);
+    TAG_LOGD(AAFwkTag::CONNECTION, "state:%{public}d", state_);
 }
 
 void ConnectionRecord::CompleteConnectAndOnlyCallConnectDone()

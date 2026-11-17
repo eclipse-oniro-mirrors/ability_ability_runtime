@@ -197,7 +197,7 @@ ErrCode ConnectionManager::DisconnectAbility(const sptr<IRemoteObject>& connectC
     bool found = false;
     auto item = abilityConnections_.begin();
     if (!abilityConnections_.empty()) {
-        TAG_LOGI(AAFwkTag::CONNECTION, "Connection size:%{public}zu", abilityConnections_.size());
+        TAG_LOGI(AAFwkTag::CONNECTION, "Conn size:%{public}zu", abilityConnections_.size());
     }
     while (item != abilityConnections_.end()) {
         if (!MatchConnection(connectCaller, connectReceiver, accountId, *item) ||
@@ -246,7 +246,7 @@ bool ConnectionManager::DisconnectCaller(const sptr<IRemoteObject>& connectCalle
         return false;
     }
     std::lock_guard<std::recursive_mutex> lock(connectionsLock_);
-    TAG_LOGD(AAFwkTag::CONNECTION, "abilityConnectionsSize:%{public}zu", abilityConnections_.size());
+    TAG_LOGD(AAFwkTag::CONNECTION, "abConnSize:%{public}zu", abilityConnections_.size());
 
     bool isDisconnect = false;
     auto iter = abilityConnections_.begin();

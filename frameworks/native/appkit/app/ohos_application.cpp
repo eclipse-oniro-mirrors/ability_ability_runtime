@@ -336,7 +336,7 @@ void OHOSApplication::OnConfigurationUpdated(
 #ifdef SUPPORT_GRAPHICS
     auto diffConfiguration = std::make_shared<AppExecFwk::Configuration>(config);
     auto ignoreWindowContext = AbilityRuntime::ApplicationConfigurationManager::GetInstance().GetIgnoreContext();
-    TAG_LOGI(AAFwkTag::APPKIT, "ignoreWindowContext size %{public}zu", ignoreWindowContext.size());
+    TAG_LOGI(AAFwkTag::APPKIT, "igWC size:%{public}zu", ignoreWindowContext.size());
     Rosen::Window::UpdateConfigurationForAll(diffConfiguration, ignoreWindowContext);
 #endif
     abilityRuntimeContext_->DispatchConfigurationUpdated(*configuration_);
@@ -1263,7 +1263,7 @@ bool OHOSApplication::IsUpdateColorNeeded(Configuration &config, AbilityRuntime:
         level = AbilityRuntime::SetLevel::SA;
     }
 
-    TAG_LOGI(AAFwkTag::APPKIT, "current %{public}d, pre %{public}d",
+    TAG_LOGI(AAFwkTag::APPKIT, "cur:%{public}d,pre:%{public}d",
         static_cast<uint8_t>(level),
         static_cast<uint8_t>(AbilityRuntime::ApplicationConfigurationManager::GetInstance().GetColorModeSetLevel()));
 
@@ -1294,7 +1294,7 @@ bool OHOSApplication::isUpdateFontSize(Configuration &config, AbilityRuntime::Se
 {
     std::string fontSize = config.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_FONT_SIZE_SCALE);
     if (fontSize.empty()) {
-        TAG_LOGW(AAFwkTag::APPKIT, "fontSize empty");
+        TAG_LOGW(AAFwkTag::APPKIT, "fs empty");
         return false;
     }
 
@@ -1329,7 +1329,7 @@ bool OHOSApplication::IsUpdateLanguageNeeded(Configuration &config, AbilityRunti
 
     std::string language = config.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE);
     if (language.empty()) {
-        TAG_LOGW(AAFwkTag::APPKIT, "language empty");
+        TAG_LOGW(AAFwkTag::APPKIT, "lang empty");
         return false;
     }
     if (level < AbilityRuntime::ApplicationConfigurationManager::GetInstance().GetLanguageSetLevel()) {
@@ -1348,7 +1348,7 @@ bool OHOSApplication::IsUpdateLocaleNeeded(const Configuration& updatedConfig, C
     std::string language = config.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE);
     std::string locale = config.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_LOCALE);
     if (language.empty() && locale.empty()) {
-        TAG_LOGW(AAFwkTag::APPKIT, "language and locale empty");
+        TAG_LOGW(AAFwkTag::APPKIT, "lang empty");
         return false;
     }
     std::string updatedLocale;

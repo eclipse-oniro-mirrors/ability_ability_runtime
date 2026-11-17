@@ -2581,7 +2581,7 @@ void AppMgrServiceInner::HandleExistingAppRecordAfterFound(std::shared_ptr<AppRu
     std::shared_ptr<AbilityInfo> abilityInfo, const HapModuleInfo &hapModuleInfo,
     std::shared_ptr<AAFwk::Want> want, bool isProcCache, const std::shared_ptr<AbilityRuntime::LoadParam> &loadParam)
 {
-    TAG_LOGI(AAFwkTag::APPMGR, "have apprecord");
+    TAG_LOGI(AAFwkTag::APPMGR, "have rec");
     CheckMakeImageState(appRecord, ImageError::ERR_TEMPLATE_HAS_BEEN_USED);
     if (!appRecord->IsKeepAliveDkv()) {
         TAG_LOGD(AAFwkTag::APPMGR, "appRecord setKeepAlive");
@@ -4440,7 +4440,7 @@ int AppMgrServiceInner::GetSelfChildrenProcesses(std::vector<ChildProcessInfo> &
 
 int32_t AppMgrServiceInner::NotifyMemoryLevel(int32_t level)
 {
-    TAG_LOGI(AAFwkTag::APPMGR, "start");
+    TAG_LOGD(AAFwkTag::APPMGR, "start");
 
     bool isMemmgrCall = AAFwk::PermissionVerification::GetInstance()->CheckSpecificSystemAbilityAccessPermission(
         MEMMGR_PROC_NAME);
@@ -4463,7 +4463,7 @@ int32_t AppMgrServiceInner::NotifyMemoryLevel(int32_t level)
 
 int32_t AppMgrServiceInner::NotifyProcMemoryLevel(const std::map<pid_t, MemoryLevel> &procLevelMap)
 {
-    TAG_LOGI(AAFwkTag::APPMGR, "start");
+    TAG_LOGD(AAFwkTag::APPMGR, "start");
 
     bool isMemmgrCall = AAFwk::PermissionVerification::GetInstance()->CheckSpecificSystemAbilityAccessPermission(
         MEMMGR_PROC_NAME);
@@ -6485,7 +6485,7 @@ static bool GetAbilityNames(
 void AppMgrServiceInner::CacheExitInfo(const std::shared_ptr<AppRunningRecord> &appRecord)
 {
     if (appRecord == nullptr) {
-        TAG_LOGE(AAFwkTag::APPMGR, "appRecord null");
+        TAG_LOGE(AAFwkTag::APPMGR, "null rec");
         return;
     }
     if (appRecord->GetReasonExist()) {

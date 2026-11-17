@@ -311,7 +311,7 @@ void BaseExtensionRecord::ConnectAbilityWithWant(const Want &want)
 
 void BaseExtensionRecord::ConnectAbility()
 {
-    TAG_LOGI(AAFwkTag::SERVICE_EXT, "ConnectAbility");
+    TAG_LOGI(AAFwkTag::SERVICE_EXT, "ConnA");
     Want want = GetWant();
     UpdateDmsCallerInfo(want);
     ConnectAbilityWithWant(want);

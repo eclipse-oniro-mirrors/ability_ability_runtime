@@ -742,7 +742,7 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::OnRemoteDied(const wptr<IRe
     TAG_LOGD(AAFwkTag::APPMGR, "called");
     sptr<IRemoteObject> object = remote.promote();
     if (!object) {
-        TAG_LOGE(AAFwkTag::APPMGR, "null object");
+        TAG_LOGE(AAFwkTag::APPMGR, "null obj");
         return nullptr;
     }
 
@@ -1018,7 +1018,7 @@ void AppRunningManager::TerminateAbility(const sptr<IRemoteObject> &token, bool 
     }
     auto isLauncherApp = appInfo->isLauncherApp;
     auto isKeepAliveApp = appRecord->IsKeepAliveApp();
-    TAG_LOGI(AAFwkTag::PROCESSMGR, "term isLast:%{public}d,%{public}d alive:%{public}d",
+    TAG_LOGI(AAFwkTag::PROCESSMGR, "term il:%{public}d,%{public}d al:%{public}d",
         isLastAbility, isLastAgentAbility, isKeepAliveApp);
     if ((isLastAbility || isLastAgentAbility) && !isKeepAliveApp && !isLauncherApp) {
         auto cacheProcMgr = DelayedSingleton<CacheProcessManager>::GetInstance();
@@ -1034,7 +1034,7 @@ void AppRunningManager::TerminateAbility(const sptr<IRemoteObject> &token, bool 
             }
             return;
         }
-        TAG_LOGI(AAFwkTag::PROCESSMGR, "Terminate last:%{public}s.", appRecord->GetName().c_str());
+        TAG_LOGI(AAFwkTag::PROCESSMGR, "Term last:%{public}s.", appRecord->GetName().c_str());
         appRecord->SetTerminating();
         if (!isLastAbility && isLastAgentAbility && appMgrServiceInner != nullptr) {
             TAG_LOGD(AAFwkTag::APPMGR, "NotifyTerminateAgentUIExtensionAbility");
