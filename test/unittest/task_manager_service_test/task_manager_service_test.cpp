@@ -1022,6 +1022,7 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_DumpActiveTasks_0100, TestSi
     EXPECT_NE(dump.find("creator uid ["), std::string::npos);
     EXPECT_NE(dump.find("managed processes [" + std::to_string(attributionId) + ":" +
         std::to_string(TEST_MANAGED_PID) + "(cli)]"), std::string::npos);
+    EXPECT_NE(dump.find("sched level [task:MEDIUM(200)]"), std::string::npos);
     EXPECT_NE(dump.find("remain timeout ["), std::string::npos);
     EXPECT_NE(dump.find("create time ["), std::string::npos);
     EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
