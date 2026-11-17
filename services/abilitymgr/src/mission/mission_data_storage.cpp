@@ -237,7 +237,14 @@ void MissionDataStorage::SaveSnapshotFile(int32_t missionId, const std::shared_p
 
     if (isPrivate) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "snapshot: the param isPrivate is true.");
-        ssize_t dataLength = snapshot->GetWidth() * snapshot->GetHeight() * RGB888_PIXEL_BYTES;
+        int32_t width = snapshot->GetWidth();
+        int32_t height = snapshot->GetHeight();
+        if (width <= 0 || height <= 0) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid snapshot size, width: %{public}d, height: %{public}d",
+                width, height);
+            return;
+        }
+        size_t dataLength = static_cast<size_t>(width) * static_cast<size_t>(height) * RGB888_PIXEL_BYTES;
         uint8_t* data = (uint8_t*) malloc(dataLength);
         if (data == nullptr) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "malloc fail");
@@ -247,6 +254,11 @@ void MissionDataStorage::SaveSnapshotFile(int32_t missionId, const std::shared_p
             Media::SourceOptions sourceOptions;
             uint32_t errCode = 0;
             auto imageSource = Media::ImageSource::CreateImageSource(data, dataLength, sourceOptions, errCode);
+            if (errCode != OHOS::Media::SUCCESS || imageSource == nullptr) {
+                TAG_LOGE(AAFwkTag::ABILITYMGR, "CreateImageSource fail, errCode = %{public}d", errCode);
+                free(data);
+                return;
+            }
             WriteToJpeg(filePath, *imageSource);
         }
         free(data);

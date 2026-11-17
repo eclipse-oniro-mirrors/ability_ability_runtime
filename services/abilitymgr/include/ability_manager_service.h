@@ -3912,6 +3912,7 @@ private:
     std::weak_ptr<AbilityManagerService> appSpawnContext_;
     ffrt::mutex appSpawnPipeMutex_;
     ffrt::mutex globalLock_;
+    ffrt::mutex abilityControllerLock_;
     ffrt::mutex bgtaskObserverMutex_;
     ffrt::mutex abilityTokenLock_;
     ffrt::mutex preStartSessionMapLock_;
