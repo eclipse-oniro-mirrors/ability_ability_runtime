@@ -204,6 +204,7 @@ bool ToolUtil::GenerateSandboxConfig(const ExecToolParam &param, AccessToken::Ac
     config["cliName"] = param.toolName;
     config["subCliName"] = param.subcommand;
     config["type"] = "cli";
+    config["nsFlags"] = {"pid"};
     config["policy"] = param.options.policy;
     nlohmann::json envConfig;
     // Capture app A's calling-identity string (cliMgr's caller IS app A) so the ForCli agentmgr
@@ -219,7 +220,6 @@ bool ToolUtil::GenerateSandboxConfig(const ExecToolParam &param, AccessToken::Ac
     envConfig["ohos_cli_callerUid"] = std::to_string(IPCSkeleton::GetCallingUid());
     envConfig["ohos_cli_callerTokenId"] = std::to_string(IPCSkeleton::GetCallingTokenID());
     config["env"] = envConfig;
-    config["nsFlags"] = {"pid"};
 
     sandboxConfig = config.dump();
     bundleName = bundleInfo.name;
