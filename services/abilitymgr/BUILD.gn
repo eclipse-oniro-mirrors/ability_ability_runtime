@@ -259,6 +259,10 @@ ohos_shared_library("abilityms") {
 
   defines = []
 
+  if (ability_runtime_app_no_response_dialog) {
+    defines += [ "APP_NO_RESPONSE_DIALOG" ]
+  }
+
   if (ability_runtime_dsoftbus_enable) {
     external_deps += [ "dsoftbus:softbus_client" ]
     defines += [ "SUPPORT_RECORDER_DSOFTBUS" ]
@@ -464,6 +468,10 @@ ohos_static_library("abilityms_static") {
   }
 
   defines = []
+
+  if (ability_runtime_app_no_response_dialog) {
+    defines += [ "APP_NO_RESPONSE_DIALOG" ]
+  }
 
   if (ability_runtime_dsoftbus_enable) {
     external_deps += [ "dsoftbus:softbus_client" ]

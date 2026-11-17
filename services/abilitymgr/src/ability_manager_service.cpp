@@ -12043,7 +12043,11 @@ void AbilityManagerService::ScheduleRecoverAbility(const sptr<IRemoteObject>& to
 
         ReportAppRecoverResult(record->GetUid(), appInfo, abilityInfo.name, "SUCCESS");
     }
+#ifdef APP_NO_RESPONSE_DIALOG
+    RestartApp(curWant, true, record->GetPid());
+#else
     RestartAppWithWindowForRecovery(curWant, record);
+#endif
 }
 
 void AbilityManagerService::RestartAppWithWindowForRecovery(
