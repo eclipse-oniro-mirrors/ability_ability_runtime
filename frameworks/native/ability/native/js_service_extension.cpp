@@ -724,7 +724,11 @@ std::vector<napi_value> JsServiceExtension::BuildSkillCallArgs(napi_env env,
     const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param)
 {
     napi_value info = nullptr;
-    napi_create_object(env, &info);
+    napi_status createStatus = napi_create_object(env, &info);
+    if (createStatus != napi_ok || info == nullptr) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "napi_create_object failed");
+        return {};
+    }
     napi_value requestCodeVal = nullptr;
     napi_create_string_utf8(env, param->requestCode_.c_str(), param->requestCode_.length(), &requestCodeVal);
     napi_set_named_property(env, info, "requestCode", requestCodeVal);

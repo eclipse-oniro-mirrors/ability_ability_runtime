@@ -1672,6 +1672,10 @@ void EtsServiceExtensionContext::OnRequestModalUIExtensionWithAccount(
     ani_env *env, ani_object aniObj, ani_object wantObj, ani_int accountId, ani_object callbackobj)
 {
     TAG_LOGD(AAFwkTag::SERVICE_EXT, "OnRequestModalUIExtensionWithAccount");
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "null env");
+        return;
+    }
     ani_object aniObject = nullptr;
     AAFwk::Want want;
     if (!AppExecFwk::UnwrapWant(env, wantObj, want)) {
