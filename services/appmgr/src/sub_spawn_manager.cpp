@@ -88,6 +88,11 @@ void SubSpawnManager::SendSubSpawnShutdown(const std::string &bundleName, pid_t 
     shutdownMsg.fds.clear();
     shutdownMsg.preloadSoList.clear();
     shutdownMsg.appLibPath.clear();
+    shutdownMsg.uid = uid;
+    shutdownMsg.gid = uid;
+#ifdef SUPPORT_CHILD_PROCESS
+    shutdownMsg.childProcessType = CHILD_PROCESS_TYPE_NOT_CHILD;
+#endif
     AppSpawnClient spawnClient(APPSPAWN_SERVER_NAME);
     ret = spawnClient.AppspawnCreateDefaultMsg(shutdownMsg, reqHandle);
     if (ret != 0) {
@@ -147,6 +152,11 @@ pid_t SubSpawnManager::DoCreateSubSpawn(pid_t appPid, int32_t uid,
     AppSpawnStartMsg subSpawnMsg = startMsg;
     subSpawnMsg.fds.clear();
     subSpawnMsg.procName = bundleName;
+    subSpawnMsg.uid = uid;
+    subSpawnMsg.gid = uid;
+#ifdef SUPPORT_CHILD_PROCESS
+    subSpawnMsg.childProcessType = CHILD_PROCESS_TYPE_NOT_CHILD;
+#endif
     AppSpawnClient spawnClient(APPSPAWN_SERVER_NAME);
     ret = spawnClient.AppspawnCreateDefaultMsg(subSpawnMsg, reqHandle);
     if (ret != 0) {
@@ -273,6 +283,16 @@ void SubSpawnManager::AsyncCreateSubSpawn(pid_t appPid, int32_t uid,
             return;
         }
 
+        {
+            std::lock_guard<std::mutex> lock(GetInstance().mutex_);
+            auto it = GetInstance().subSpawnMap_.find(appPid);
+            if (it == GetInstance().subSpawnMap_.end()) {
+                TAG_LOGW(AAFwkTag::APPMGR, "record removed before created notify, skip notify, pid:%{public}d",
+                    subSpawnPid);
+                return;
+            }
+            it->second->SetCreatedNotified(true);
+        }
         DelayedSingleton<AppStateObserverManager>::GetInstance()->OnSubSpawnProcessCreated(
             subSpawnPid, bundleNameCopy, uid, bundleNameCopy + SUBSPAWN_PROCESS_NAME_SUFFIX);
 
@@ -371,9 +391,11 @@ void SubSpawnManager::OnSubSpawnExited(pid_t subSpawnPid)
         pidToRecordMap_.erase(pidIt);
         subSpawnMap_.erase(record->GetAppPid());
     }
-    DelayedSingleton<AppStateObserverManager>::GetInstance()->OnSubSpawnProcessDied(
-        subSpawnPid, record->GetBundleName(), record->GetUid(),
-        record->GetBundleName() + SUBSPAWN_PROCESS_NAME_SUFFIX);
+    if (record->IsCreatedNotified()) {
+        DelayedSingleton<AppStateObserverManager>::GetInstance()->OnSubSpawnProcessDied(
+            subSpawnPid, record->GetBundleName(), record->GetUid(),
+            record->GetBundleName() + SUBSPAWN_PROCESS_NAME_SUFFIX);
+    }
     TAG_LOGI(AAFwkTag::APPMGR, "subspawn exited, pid:%{public}d, appPid:%{public}d, killReason:%{public}s",
         subSpawnPid, record->GetAppPid(), record->GetKillReason().c_str());
 }
@@ -436,9 +458,11 @@ void SubSpawnManager::OnAppProcessDied(pid_t appPid)
             record->GetUid(), record->GetStartMsg());
     }
 
-    DelayedSingleton<AppStateObserverManager>::GetInstance()->OnSubSpawnProcessDied(
-        subSpawnPid, record->GetBundleName(), record->GetUid(),
-        record->GetBundleName() + SUBSPAWN_PROCESS_NAME_SUFFIX);
+    if (record->IsCreatedNotified()) {
+        DelayedSingleton<AppStateObserverManager>::GetInstance()->OnSubSpawnProcessDied(
+            subSpawnPid, record->GetBundleName(), record->GetUid(),
+            record->GetBundleName() + SUBSPAWN_PROCESS_NAME_SUFFIX);
+    }
     TAG_LOGI(AAFwkTag::APPMGR, "subspawn cleanup done for appPid:%{public}d, killReason:%{public}s",
         appPid, record->GetKillReason().c_str());
 }
@@ -507,9 +531,11 @@ void SubSpawnManager::HandleIdleTimeout(pid_t appPid)
             record->GetUid(), record->GetStartMsg());
     }
 
-    DelayedSingleton<AppStateObserverManager>::GetInstance()->OnSubSpawnProcessDied(
-        subSpawnPid, record->GetBundleName(), record->GetUid(),
-        record->GetBundleName() + SUBSPAWN_PROCESS_NAME_SUFFIX);
+    if (record->IsCreatedNotified()) {
+        DelayedSingleton<AppStateObserverManager>::GetInstance()->OnSubSpawnProcessDied(
+            subSpawnPid, record->GetBundleName(), record->GetUid(),
+            record->GetBundleName() + SUBSPAWN_PROCESS_NAME_SUFFIX);
+    }
     TAG_LOGI(AAFwkTag::APPMGR, "subspawn idle timeout cleanup done, appPid:%{public}d", appPid);
 }
 

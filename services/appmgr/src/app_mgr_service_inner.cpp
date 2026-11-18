@@ -11069,7 +11069,7 @@ int32_t AppMgrServiceInner::StartChildProcessImpl(const std::shared_ptr<ChildPro
             }
             startMsg.bundleName = appRecord->GetBundleName();
             pid_t subSpawnChildPid = SubSpawnManager::GetInstance().StartChildViaSubSpawn(
-                appRecord->GetPid(), startMsg.uid, startMsg);
+                appRecord->GetPid(), appRecord->GetUid(), startMsg);
             if (subSpawnChildPid > 0) {
                 childPid = subSpawnChildPid;
                 childProcessRecord->SetPid(subSpawnChildPid);

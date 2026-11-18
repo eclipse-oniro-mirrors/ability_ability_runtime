@@ -80,6 +80,9 @@ public:
     bool IsIdleTimerActive() const;
     void SetIdleTimerActive(bool active);
 
+    bool IsCreatedNotified() const;
+    void SetCreatedNotified(bool notified);
+
     std::chrono::system_clock::time_point GetStartTime() const;
     const AppSpawnStartMsg &GetStartMsg() const;
 
@@ -100,6 +103,7 @@ private:
     std::string socketName_;
     std::set<pid_t> childPids_;
     bool idleTimerActive_ = false;
+    std::atomic<bool> createdNotified_ {false};
     std::atomic<SubSpawnState> state_ {SubSpawnState::IDLE};
     std::chrono::system_clock::time_point startTime_;
     AppSpawnStartMsg startMsg_;

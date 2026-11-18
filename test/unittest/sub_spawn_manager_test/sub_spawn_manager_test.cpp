@@ -230,3 +230,19 @@ HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_Diagnostics_001, TestSize.Level1)
     EXPECT_EQ(record->GetKillReason(), "app_died");
     EXPECT_EQ(record->GetExitSignal(), 9);
 }
+
+/**
+ * @tc.name: SubSpawnRecord_CreatedNotified_001
+ * @tc.desc: Test SubSpawnRecord created-notified flag defaults false and toggles
+ */
+HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_CreatedNotified_001, TestSize.Level1)
+{
+    AppSpawnStartMsg startMsg;
+    auto record = SubSpawnRecord::CreateSubSpawnRecord(1000, 20000, "com.test.app", startMsg);
+    ASSERT_NE(record, nullptr);
+    EXPECT_FALSE(record->IsCreatedNotified());
+    record->SetCreatedNotified(true);
+    EXPECT_TRUE(record->IsCreatedNotified());
+    record->SetCreatedNotified(false);
+    EXPECT_FALSE(record->IsCreatedNotified());
+}

@@ -58,6 +58,9 @@ bool SubSpawnRecord::HasChildProcesses() const { return !childPids_.empty(); }
 bool SubSpawnRecord::IsIdleTimerActive() const { return idleTimerActive_; }
 void SubSpawnRecord::SetIdleTimerActive(bool active) { idleTimerActive_ = active; }
 
+bool SubSpawnRecord::IsCreatedNotified() const { return createdNotified_.load(); }
+void SubSpawnRecord::SetCreatedNotified(bool notified) { createdNotified_.store(notified); }
+
 std::chrono::system_clock::time_point SubSpawnRecord::GetStartTime() const { return startTime_; }
 const AppSpawnStartMsg &SubSpawnRecord::GetStartMsg() const { return startMsg_; }
 
