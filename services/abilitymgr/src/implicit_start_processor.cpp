@@ -584,7 +584,7 @@ int ImplicitStartProcessor::GenerateAbilityRequestByAction(int32_t userId, Abili
 
     if (abilityInfos.size() + extensionInfos.size() > 1) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "filter applications by erms");
-        bool ret = FilterAbilityList(request.want, abilityInfos, extensionInfos, userId);
+        bool ret = FilterAbilityList(request.want, abilityInfos, userId);
         FindAppClone(abilityInfos, extensionInfos, genReqParam.isAppCloneSelector);
         if (!ret) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "FilterAbilityList failed");
@@ -918,12 +918,12 @@ sptr<AppExecFwk::IDefaultApp> ImplicitStartProcessor::GetDefaultAppProxy()
 }
 
 bool ImplicitStartProcessor::FilterAbilityList(const Want &want, std::vector<AppExecFwk::AbilityInfo> &abilityInfos,
-    std::vector<AppExecFwk::ExtensionAbilityInfo> extensionInfos, int32_t userId)
+    int32_t userId)
 {
     ErmsCallerInfo callerInfo;
     GetEcologicalCallerInfo(want, callerInfo, userId);
     int ret = IN_PROCESS_CALL(AbilityEcologicalRuleMgrServiceClient::GetInstance()->
-        EvaluateResolveInfos(want, callerInfo, 0, abilityInfos, extensionInfos));
+        EvaluateResolveInfos(want, callerInfo, 0, abilityInfos));
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "resolve infos failed");
         return false;
@@ -1153,8 +1153,6 @@ int32_t ImplicitStartProcessor::FindAppClone(std::vector<AppExecFwk::AbilityInfo
         return ERR_OK;
     }
 
-    bool isExitAbilityAppClone = FindAbilityAppClone(abilityInfos);
-    bool isExitExtensionAppClone = FindExtensionAppClone(extensionInfos);
     if ((abilityInfos.size() == 0 && FindExtensionAppClone(extensionInfos)) ||
         (extensionInfos.size() == 0 && FindAbilityAppClone(abilityInfos))) {
         isAppCloneSelector = true;

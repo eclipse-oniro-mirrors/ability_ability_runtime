@@ -113,8 +113,7 @@ void AbilityEcologicalRuleMgrServiceClient::OnRemoteSaDied(const wptr<IRemoteObj
 }
 
 int32_t AbilityEcologicalRuleMgrServiceClient::EvaluateResolveInfos(const AAFwk::Want &want,
-    const AbilityCallerInfo &callerInfo, int32_t type, vector<AbilityInfo> &abilityInfos,
-    const vector<AppExecFwk::ExtensionAbilityInfo> &extInfos)
+    const AbilityCallerInfo &callerInfo, int32_t type, vector<AbilityInfo> &abilityInfos)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     RecordCostTimeUtil timeRecord("EvaluateResolveInfos");

@@ -22,7 +22,7 @@
 
 namespace OHOS {
 namespace AAFwk {
-int64_t CallRecord::callRecordId = 0;
+std::atomic<int64_t> CallRecord::callRecordId = 0;
 
 CallRecord::CallRecord(const int32_t callerUid, const std::shared_ptr<AbilityRecord> &targetService,
     const sptr<IAbilityConnection> &connCallback, const sptr<IRemoteObject> &callToken)

@@ -102,8 +102,7 @@ private:
     bool CheckImplicitStartExtensionIsValid(const AbilityRequest &request,
         const AppExecFwk::ExtensionAbilityInfo &extensionInfo);
 
-    bool FilterAbilityList(const Want &want, std::vector<AppExecFwk::AbilityInfo> &abilityInfos,
-        std::vector<AppExecFwk::ExtensionAbilityInfo> extensionInfos, int32_t userId);
+    bool FilterAbilityList(const Want &want, std::vector<AppExecFwk::AbilityInfo> &abilityInfos, int32_t userId);
     sptr<AppExecFwk::IDefaultApp> GetDefaultAppProxy();
 
     void GetEcologicalCallerInfo(const Want &want, ErmsCallerInfo &callerInfo, int32_t userId);

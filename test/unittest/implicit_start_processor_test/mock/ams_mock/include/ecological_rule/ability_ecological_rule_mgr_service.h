@@ -34,9 +34,7 @@ public:
         return instance;
     }
     int32_t EvaluateResolveInfos(const AAFwk::Want &want, const AbilityCallerInfo &callerInfo, int32_t type,
-        std::vector<AppExecFwk::AbilityInfo> &abInfo,
-        const std::vector<AppExecFwk::ExtensionAbilityInfo> &extInfo =
-            std::vector<AppExecFwk::ExtensionAbilityInfo>())
+        std::vector<AppExecFwk::AbilityInfo> &abInfo)
     {
         return 0;
     }
