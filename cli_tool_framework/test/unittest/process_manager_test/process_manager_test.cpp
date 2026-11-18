@@ -488,6 +488,50 @@ HWTEST_F(ProcessManagerTest, Killpg_0200, TestSize.Level1)
     EXPECT_FALSE(manager.Killpg(-1));
 }
 
+/**
+ * @tc.name: ProcessManager_SendSignalToProcess_0100
+ * @tc.desc: Test SendSignalToProcess directly delivers the signal to a live process
+ * @tc.type: FUNC
+ */
+HWTEST_F(ProcessManagerTest, SendSignalToProcess_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ProcessManager_SendSignalToProcess_0100 start";
+
+    pid_t pid = fork();
+    ASSERT_GE(pid, 0) << "fork failed: " << errno;
+    if (pid == 0) {
+        pause();
+        _exit(0);
+    }
+    EXPECT_EQ(ProcessManager::GetInstance().SendSignalToProcess(pid, SIGTERM), ERR_OK);
+    int32_t status = 0;
+    ASSERT_EQ(waitpid(pid, &status, 0), pid);
+    EXPECT_TRUE(WIFSIGNALED(status) && WTERMSIG(status) == SIGTERM);
+
+    GTEST_LOG_(INFO) << "ProcessManager_SendSignalToProcess_0100 end";
+}
+
+/**
+ * @tc.name: ProcessManager_SendSignalToProcess_0200
+ * @tc.desc: Test SendSignalToProcess fails with ERR_CLI_SEND_SIGNAL on a nonexistent pid
+ * @tc.type: FUNC
+ */
+HWTEST_F(ProcessManagerTest, SendSignalToProcess_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ProcessManager_SendSignalToProcess_0200 start";
+
+    // pidMax is never allocatable, so the kill deterministically fails with ESRCH and the
+    // error branch is exercised with zero risk of signalling a real process (see Killpg_0100
+    // for the literal-pid collision rationale).
+    int32_t pidMax = ReadKernelPidMax();
+    ASSERT_GT(pidMax, 0) << "/proc/sys/kernel/pid_max unreadable: kill-test safety cannot be established";
+    EXPECT_EQ(ProcessManager::GetInstance().SendSignalToProcess(static_cast<pid_t>(pidMax), SIGINT),
+        ERR_CLI_SEND_SIGNAL);
+    EXPECT_EQ(ProcessManager::GetInstance().SendSignalToProcess(-1, SIGINT), ERR_CLI_SEND_SIGNAL);
+
+    GTEST_LOG_(INFO) << "ProcessManager_SendSignalToProcess_0200 end";
+}
+
 // ==================== CreateShellProcess Tests ====================
 
 /**

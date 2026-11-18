@@ -120,7 +120,8 @@ void ParseVisibility(const nlohmann::json &json, ToolInfo &tool)
     }
     tool.visibility = visibility;
 }
-} // namespace
+
+}
 
 // ToolInfo implementation
 bool ToolInfo::Marshalling(Parcel &parcel) const
@@ -148,7 +149,8 @@ bool ToolInfo::Marshalling(Parcel &parcel) const
            parcel.WriteString(subcommandsJson) &&
            parcel.WriteBool(isLockScreenExecutionAllowed) &&
            parcel.WriteString(visibility) &&
-           parcel.WriteStringVector(supportedDevices);
+           parcel.WriteStringVector(supportedDevices) &&
+           parcel.WriteBool(cancelable);
 }
 
 ToolInfo *ToolInfo::Unmarshalling(Parcel &parcel)
@@ -172,7 +174,8 @@ ToolInfo *ToolInfo::Unmarshalling(Parcel &parcel)
         !parcel.ReadString(subcommandsJson) ||
         !parcel.ReadBool(tool->isLockScreenExecutionAllowed) ||
         !parcel.ReadString(tool->visibility) ||
-        !parcel.ReadStringVector(&tool->supportedDevices)) {
+        !parcel.ReadStringVector(&tool->supportedDevices) ||
+        !parcel.ReadBool(tool->cancelable)) {
         delete tool;
         return nullptr;
     }
@@ -420,6 +423,15 @@ bool ToolInfo::ParseFromJson(const nlohmann::json &json, ToolInfo &tool)
         }
         tool.isLockScreenExecutionAllowed = json["isLockScreenExecutionAllowed"];
     }
+    if (json.contains("cancelable")) {
+        if (!json["cancelable"].is_boolean()) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: cancelable is not a boolean");
+            return false;
+        }
+        tool.cancelable = json["cancelable"];
+    }
+    // cancelable declarations are independent: an undeclared subcommand stays false and
+    // never falls back to the tool level (removed after review: no two-level inheritance).
 
     // visibility is optional; parsing (exact value-domain validation with conservative
     // fallback per R-7) is extracted into ParseVisibility to keep the nesting depth of
@@ -477,6 +489,9 @@ nlohmann::json ToolInfo::ParseToJson() const
         j["subcommands"] = subcommandsJson;
     }
     j["isLockScreenExecutionAllowed"] = isLockScreenExecutionAllowed;
+    // The key is written unconditionally so a KVStore value stays self-describing: legacy
+    // data without this key parses back with the false default, no migration needed.
+    j["cancelable"] = cancelable;
     j["visibility"] = visibility;
     j["supportedDevices"] = supportedDevices;
 

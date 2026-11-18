@@ -92,6 +92,11 @@ constexpr const char* PERMISSION_REGISTER_AGENT_HOOK = "ohos.permission.REGISTER
 // Only the exact string "public" opens a tool to QUERY_PUBLIC_CLI_TOOL callers (REQ 20260812019200).
 constexpr const char* TOOL_VISIBILITY_PUBLIC = "public";
 
+// Cooperative cancel signals (INV-5): values must stay in sync with the CancellationSignal enum
+// declared in ICliToolData.idl (SIGINT = 2, SIGTERM = 15); the service whitelists exactly these.
+constexpr int32_t CANCEL_SIGNAL_SIGINT = 2;
+constexpr int32_t CANCEL_SIGNAL_SIGTERM = 15;
+
 constexpr int32_t FOUNDATION_UID = 5523;
 constexpr int32_t COEFFICIENT = 1000;
 constexpr int32_t QUERY_SUCCESS = 0;
@@ -863,6 +868,21 @@ bool CliToolManagerService::IsSessionOwner(const std::shared_ptr<SessionRecord> 
         return false;
     }
     return true;
+}
+
+int32_t CliToolManagerService::CheckCancelSessionOwner(const std::shared_ptr<SessionRecord> &record) const
+{
+    if (record == nullptr) {
+        return ERR_CLI_NOT_SESSION_OWNER;
+    }
+    auto callingPid = IPCSkeleton::GetCallingPid();
+    if (record->callerPid != callingPid) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL,
+            "CancelSession failed: caller pid=%{public}d is not session owner pid=%{public}d, sessionId=%{public}s",
+            callingPid, record->callerPid, record->sessionId.c_str());
+        return ERR_CLI_NOT_SESSION_OWNER;
+    }
+    return ERR_OK;
 }
 
 std::shared_ptr<IOMonitor> CliToolManagerService::GetIOMonitor()
@@ -1956,6 +1976,9 @@ int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::str
     record->sessionId = ToolUtil::GenerateCliSessionId("shell", record);
     record->toolName = "shell";
     record->sessionType = SessionType::CLI_CMD;
+    // Snapshot from the command string: a registered CLI tool keeps its declared eligibility
+    // even when reached via execCmd (shell mode); anything else is best-effort true.
+    record->cancelable = SnapshotShellCancelable(actualParam.cmd);
     record->toolCallId = actualParam.execCmdOptions.toolCallId;
     record->dmSessionId = actualParam.execCmdOptions.dmSessionId;
     // Hand-built record: write the attribution key explicitly, or it is silently lost.
@@ -2385,6 +2408,10 @@ std::shared_ptr<SessionRecord> CliToolManagerService::CreateSessionRecord(const 
     }
     record->sessionId = ToolUtil::GenerateCliSessionId(param.toolName, record);
     record->toolName = param.toolName;
+    record->subcommand = param.subcommand;
+    // Snapshot the cancel eligibility at creation (CC-001, dev-spec 6.2): later tool config
+    // changes must not affect existing sessions, so cooperative cancel only reads this field.
+    record->cancelable = SnapshotCancelable(param.toolName, param.subcommand);
     record->toolCallId = param.options.toolCallId;
     record->dmSessionId = param.options.dmSessionId;
     record->taskId = param.options.taskId;
@@ -2440,6 +2467,209 @@ int32_t CliToolManagerService::ClearSession(const std::string &sessionId)
         return ERR_NOT_KILL;
     }
     record->SetState(SessionState::CANCELLING);
+    return ERR_OK;
+}
+
+bool CliToolManagerService::SnapshotCancelable(const std::string &toolName,
+    const std::string &subcommand) const
+{
+    ToolInfo toolInfo;
+    if (CliToolDataManager::GetInstance().GetToolByName(toolName, toolInfo) != ERR_OK) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "SnapshotCancelable: tool=%{public}s not found", toolName.c_str());
+        return false;
+    }
+    if (!subcommand.empty()) {
+        auto it = toolInfo.subcommands.find(subcommand);
+        if (it == toolInfo.subcommands.end()) {
+            // An unregistered subcommand has no declaration: false, no tool-level fallback.
+            return false;
+        }
+        // The subcommand's own declared value, independent of the tool-level flag.
+        return it->second.cancelable;
+    }
+    // No subcommand dimension: the tool-level declaration governs the session.
+    return toolInfo.cancelable;
+}
+
+namespace {
+// Second whitespace-delimited token of cmd (subcommand candidate); empty if absent.
+// Deliberately lenient: an unregistered candidate falls back to the tool-level declaration
+// (the subcommand dimension is unknown, not declared-false), unlike SnapshotCancelable.
+std::string ExtractSecondToken(const std::string &cmd)
+{
+    auto first = cmd.find_first_not_of(" \t");
+    if (first == std::string::npos) {
+        return "";
+    }
+    auto second = cmd.find_first_not_of(" \t", cmd.find_first_of(" \t", first));
+    if (second == std::string::npos) {
+        return "";
+    }
+    auto end = cmd.find_first_of(" \t", second);
+    return (end == std::string::npos) ? cmd.substr(second) : cmd.substr(second, end - second);
+}
+} // namespace
+
+bool CliToolManagerService::SnapshotShellCancelable(const std::string &cmd) const
+{
+    // execCmd (shell mode) sessions: resolve the command against the tool registry first.
+    // A registered CLI tool is governed by its own declaration (same model as execTool
+    // sessions, so a tool's cancelable value is honored no matter which exec path was
+    // taken); anything else (arbitrary shell command, unresolvable input) has no
+    // declaration to consult and returns true (best-effort cooperative cancel).
+    std::string toolName = ExecCmdParam::ExtractToolName(cmd);
+    if (toolName.empty()) {
+        return true;
+    }
+    ToolInfo toolInfo;
+    if (CliToolDataManager::GetInstance().GetToolByName(toolName, toolInfo) != ERR_OK) {
+        return true;
+    }
+    // Try the second token as a subcommand: a registered one contributes its own declared
+    // value; anything else (options, paths, arguments) leaves the subcommand dimension
+    // unknown, so the tool-level declaration is the best information available.
+    const std::string subcommand = ExtractSecondToken(cmd);
+    if (!subcommand.empty()) {
+        auto it = toolInfo.subcommands.find(subcommand);
+        if (it != toolInfo.subcommands.end()) {
+            return it->second.cancelable;
+        }
+    }
+    return toolInfo.cancelable;
+}
+
+bool CliToolManagerService::IsCancelable(const std::shared_ptr<SessionRecord> &record) const
+{
+    if (record == nullptr) {
+        return false;
+    }
+    // SKILL sessions have no child process to signal, so cooperative cancel is rejected by
+    // definition. All other session kinds (execTool, execCmd shell mode) are governed by
+    // the creation-time snapshot: registered tools keep their declared value whichever
+    // exec path was taken; unresolvable shell commands are best-effort true.
+    if (record->sessionType == SessionType::SKILL) {
+        return false;
+    }
+    // Read the snapshot taken at session creation: tool config hot-updates during the session
+    // lifetime do not affect existing sessions' cancel eligibility (dev-spec 6.2).
+    return record->cancelable;
+}
+
+int32_t CliToolManagerService::CheckCancelEligibility(const std::shared_ptr<SessionRecord> &record,
+    const std::string &sessionId, int32_t signal) const
+{
+    auto ownerRet = CheckCancelSessionOwner(record);
+    if (ownerRet != ERR_OK) {
+        return ownerRet;
+    }
+    if (record->GetState() != SessionState::RUNNING && record->GetState() != SessionState::SPAWNING) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL,
+            "CancelSession failed: sessionId=%{public}s state=%{public}d is not cancellable",
+            sessionId.c_str(), static_cast<int32_t>(record->GetState()));
+        return ERR_CLI_SESSION_NOT_FOUND;
+    }
+    if (!IsCancelable(record)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL,
+            "CancelSession failed: sessionId=%{public}s tool=%{public}s does not support cancel",
+            sessionId.c_str(), record->toolName.c_str());
+        return ERR_CLI_NOT_SUPPORT_CANCEL;
+    }
+    if (signal != CANCEL_SIGNAL_SIGINT && signal != CANCEL_SIGNAL_SIGTERM) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "CancelSession failed: invalid signal=%{public}d", signal);
+        return ERR_INVALID_PARAM;
+    }
+    // Snapshot semantics: the session may be torn down concurrently after GetSessionRecord,
+    // so re-confirm the pid right before signaling (same reason the reaper invalidates it
+    // under sessionsMutex_). No state/subscription change on any failure (INV-3).
+    if (record->processId <= 0) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "CancelSession failed: invalid processId, sessionId=%{public}s",
+            sessionId.c_str());
+        return ERR_CLI_SEND_SIGNAL;
+    }
+    return ERR_OK;
+}
+
+pid_t CliToolManagerService::ResolveCommandPid(const std::shared_ptr<SessionRecord> &record,
+    const std::string &sessionId)
+{
+    // The signal goes to the real tool process only (direct delivery): the anchor-keyed
+    // process-group delivery is not reachable from the outer namespace on this deployment.
+    pid_t commandPid = record->commandPid.load(std::memory_order_relaxed);
+    if (commandPid > 0) {
+        // Pid-reuse guard: the tool process may have exited and been reaped while the
+        // session stays RUNNING (state is driven by the anchor), and a recycled pid would
+        // send the signal to an unrelated process. Re-verify with a fresh scan (same
+        // ppid-filtered live-child semantics) and prefer its result.
+        pid_t fresh = ProcScanner::FindCommandProcess(record->processId.load(std::memory_order_relaxed));
+        if (fresh != commandPid) {
+            commandPid = fresh;
+            record->commandPid.store(commandPid, std::memory_order_relaxed);
+        }
+    }
+    if (commandPid <= 0) {
+        // The attribution chain (and thus commandPid resolution) only starts when the caller
+        // passed a taskId; without one, resolve the tool process here with the same bounded
+        // polling the discovery chain uses: the sandbox forks the command child some delay
+        // after the anchor, so a single scan may run before the child even exists.
+        int32_t pollMs = std::max(commandDiscoveryPollMs_.load(std::memory_order_relaxed), 1);
+        int32_t timeoutMs = std::max(commandDiscoveryTimeoutMs_.load(std::memory_order_relaxed), 0);
+        auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+        pid_t anchor = record->processId.load(std::memory_order_relaxed);
+        while (commandPid <= 0) {
+            commandPid = ProcScanner::FindCommandProcess(anchor);
+            if (commandPid > 0 || std::chrono::steady_clock::now() >= deadline
+                || ProcScanner::CheckLiveness(anchor) == ProcLiveness::DEAD) {
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(pollMs));
+        }
+        if (commandPid > 0) {
+            record->commandPid.store(commandPid, std::memory_order_relaxed);
+        }
+    }
+    if (commandPid <= 0) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL,
+            "CancelSession failed: tool process not found, sessionId=%{public}s processId:%{public}d",
+            sessionId.c_str(), record->processId.load(std::memory_order_relaxed));
+    }
+    return commandPid;
+}
+
+int32_t CliToolManagerService::CancelSession(const std::string &sessionId, int32_t signal)
+{
+    InterfaceCallCounter counter(interfaceCalledCount_);
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "CancelSession: sessionId=%{public}s, signal=%{public}d",
+        sessionId.c_str(), signal);
+    auto ret = PermissionUtil::CheckSystemAppAndPermission(PERMISSION_EXEC_CLI_TOOL);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    auto record = GetSessionRecord(sessionId);
+    if (record == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "CancelSession failed: sessionId=%{public}s not found", sessionId.c_str());
+        return ERR_CLI_SESSION_NOT_FOUND;
+    }
+    auto eligibility = CheckCancelEligibility(record, sessionId, signal);
+    if (eligibility != ERR_OK) {
+        return eligibility;
+    }
+    pid_t commandPid = ResolveCommandPid(record, sessionId);
+    if (commandPid <= 0) {
+        return ERR_CLI_SEND_SIGNAL;
+    }
+    int32_t sendRet = ProcessManager::GetInstance().SendSignalToProcess(commandPid, signal);
+    if (sendRet != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL,
+            "CancelSession failed to send signal: %{public}d commandPid:%{public}d processId:%{public}d",
+            signal, commandPid, record->processId.load(std::memory_order_relaxed));
+        return sendRet;
+    }
+    // Best-effort semantics (ADR-6): signal delivered; no CANCELLING state, no subscription
+    // cleanup, no wait for the tool to exit.
+    TAG_LOGI(AAFwkTag::CLI_TOOL,
+        "CancelSession: signal sent, sessionId=%{public}s, signal=%{public}d, "
+        "commandPid:%{public}d, processId:%{public}d",
+        sessionId.c_str(), signal, commandPid, record->processId.load(std::memory_order_relaxed));
     return ERR_OK;
 }
 

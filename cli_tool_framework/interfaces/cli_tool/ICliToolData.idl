@@ -28,3 +28,13 @@ struct CommandPermission
     boolean isLockScreenExecutionAllowed;
     int queryRet;
 };
+
+// Enum member names deliberately avoid the POSIX signal macro names (SIGINT/SIGTERM),
+// which would otherwise be macro-expanded while parsing the generated header.
+// The enum values stay aligned with the Linux signal numbers and the public
+// JS CancellationSignal contract (SIGINT = 2, SIGTERM = 15).
+enum CancellationSignal
+{
+    CANCEL_SIGINT = 2,
+    CANCEL_SIGTERM = 15
+};

@@ -67,6 +67,19 @@ public:
     std::string sessionId = "";
     std::string callerBundleName = "";
     std::string toolName = "";
+    // Sub-command executed by this session (empty for execCmd/shell sessions). Written once at
+    // CreateSessionRecord from ExecToolParam.subcommand and never mutated afterwards (INV-1):
+    // cooperative cancel reads it lock-free to look up the tool's cancel declaration.
+    std::string subcommand = "";
+    // Cancel eligibility snapshotted at CreateSessionRecord (CC-001, dev-spec 6.2): the
+    // subcommand's own declaration governs sessions with a subcommand dimension (independent
+    // of the tool-level flag), the tool-level declaration governs the rest, and execCmd
+    // (shell) sessions snapshot true (no declaration to consult, cooperative cancel is
+    // best-effort); SKILL sessions keep the false default (rejected before the snapshot).
+    // Written once at creation and never mutated afterwards, so tool config changes during the
+    // session lifetime do not affect an existing session's cancel eligibility. In-memory service
+    // object only - no Parcel serialization, no compatibility handling needed.
+    bool cancelable = false;
     std::string eventId = "";
     std::string toolCallId = "";
     std::string dmSessionId = "";

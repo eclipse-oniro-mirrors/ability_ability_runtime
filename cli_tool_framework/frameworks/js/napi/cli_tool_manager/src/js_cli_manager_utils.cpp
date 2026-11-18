@@ -739,6 +739,11 @@ napi_value CreateJsSubCommandInfo(napi_env env, const SubCommandInfo &subcmd)
     napi_value jsEventSchemas = ParseJsonStringToJsObject(env, subcmd.eventSchemas);
     napi_set_named_property(env, jsObj, "eventSchemas", jsEventSchemas);
 
+    // Set cancelable (the subcommand's own declaration; defaults to false when not
+    // declared, independent of the tool-level flag)
+    napi_value jsCancelable = AppExecFwk::WrapBoolToJS(env, subcmd.cancelable);
+    napi_set_named_property(env, jsObj, "cancelable", jsCancelable);
+
     return jsObj;
 }
 
@@ -880,6 +885,11 @@ napi_value CreateJsToolInfo(napi_env env, const ToolInfo &tool)
         napi_set_element(env, jsSupportedDevices, i, jsDevice);
     }
     napi_set_named_property(env, jsObj, "supportedDevices", jsSupportedDevices);
+
+    // Set cancelable (tool-level declaration, independent of the subcommand-level ones;
+    // the subcommand-level value is carried by the corresponding SubCommandInfo object)
+    napi_value jsCancelable = AppExecFwk::WrapBoolToJS(env, tool.cancelable);
+    napi_set_named_property(env, jsObj, "cancelable", jsCancelable);
 
     return jsObj;
 }

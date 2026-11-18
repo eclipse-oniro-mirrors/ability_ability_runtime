@@ -204,6 +204,14 @@ public:
 
     ErrCode ClearSession(const std::string &sessionId);
 
+    /**
+     * @brief Send a cooperative cancel signal (SIGINT/SIGTERM) to a running tool session.
+     * @param sessionId The session id to cancel.
+     * @param signal The cancel signal value; the service only accepts CancellationSignal members (2/15).
+     * @return Returns ERR_OK if the signal was delivered, error code otherwise.
+     */
+    ErrCode CancelSession(const std::string &sessionId, int32_t signal);
+
     ErrCode QuerySession(const std::string &sessionId, CliSessionInfo &session);
 
     ErrCode SendMessage(const std::string &sessionId,

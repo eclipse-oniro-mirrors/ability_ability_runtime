@@ -43,6 +43,7 @@ public:
         const sptr<ICliToolManagerScheduler> &scheduler) override;
     int32_t UnsubscribeSession(const std::string &sessionId, const std::string &subscriptionId) override;
     int32_t ClearSession(const std::string &sessionId) override;
+    int32_t CancelSession(const std::string &sessionId, int32_t signal) override;
     int32_t QuerySession(const std::string &sessionId, CliSessionInfo &session) override;
     int32_t SendMessage(const std::string &sessionId, const std::string &inputText,
         const std::string &eventId, const sptr<ICliToolManagerScheduler> &scheduler) override;

@@ -361,6 +361,48 @@ HWTEST_F(CliToolMGRClientTest, SendMessage_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: CancelSession_0100
+ * @tc.desc: Test CancelSession forwards sessionId and signal to the service proxy
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, CancelSession_0100, TestSize.Level1)
+{
+    SetMockService();
+    EXPECT_EQ(CliToolMGRClient::GetInstance().CancelSession("cancel_session", 2), ERR_OK);
+    EXPECT_EQ(CliToolMgrClientFlag::lastCancelSessionId, "cancel_session");
+    EXPECT_EQ(CliToolMgrClientFlag::lastCancelSignal, 2);
+
+    EXPECT_EQ(CliToolMGRClient::GetInstance().CancelSession("cancel_session", 15), ERR_OK);
+    EXPECT_EQ(CliToolMgrClientFlag::lastCancelSessionId, "cancel_session");
+    EXPECT_EQ(CliToolMgrClientFlag::lastCancelSignal, 15);
+}
+
+/**
+ * @tc.name: CancelSession_0200
+ * @tc.desc: Test CancelSession propagates the service return code
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, CancelSession_0200, TestSize.Level1)
+{
+    SetMockService();
+    CliToolMgrClientFlag::retCancelSession = ERR_INVALID_VALUE;
+    EXPECT_EQ(CliToolMGRClient::GetInstance().CancelSession("cancel_session", 2), ERR_INVALID_VALUE);
+    EXPECT_EQ(CliToolMgrClientFlag::lastCancelSignal, 2);
+}
+
+/**
+ * @tc.name: CancelSession_0300
+ * @tc.desc: Test CancelSession reports service-unavailable when the proxy is null
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolMGRClientTest, CancelSession_0300, TestSize.Level1)
+{
+    EXPECT_EQ(CliToolMGRClient::GetInstance().CancelSession("cancel_session", 2),
+        GET_CLI_TOOL_MGR_SERVICE_FAILED);
+    EXPECT_TRUE(CliToolMgrClientFlag::lastCancelSessionId.empty());
+}
+
+/**
  * @tc.name: BatchQueryPermission_0100
  * @tc.desc: Test batch query permission success and failure forwarding
  * @tc.type: FUNC

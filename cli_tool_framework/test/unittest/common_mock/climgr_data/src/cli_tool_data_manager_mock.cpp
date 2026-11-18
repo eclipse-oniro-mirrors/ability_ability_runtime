@@ -15,6 +15,8 @@ namespace CliTool {
 int32_t CliToolDataManagerMock::getToolByNameResult = ERR_TOOL_NOT_EXIST;
 bool CliToolDataManagerMock::toolHasSubCommand = false;
 bool CliToolDataManagerMock::toolIsLockScreenExecEnabled = false;
+bool CliToolDataManagerMock::toolCancelable = false;
+bool CliToolDataManagerMock::subCommandCancelable = false;
 std::string CliToolDataManagerMock::subCommandName = "build";
 std::vector<std::string> CliToolDataManagerMock::toolPermissions = {};
 std::vector<std::string> CliToolDataManagerMock::subCommandPermissions = {};
@@ -27,6 +29,8 @@ void CliToolDataManagerMock::Reset()
     getToolByNameResult = ERR_TOOL_NOT_EXIST;
     toolHasSubCommand = false;
     toolIsLockScreenExecEnabled = false;
+    toolCancelable = false;
+    subCommandCancelable = false;
     subCommandName = "build";
     toolPermissions.clear();
     subCommandPermissions.clear();
@@ -114,6 +118,7 @@ int32_t CliToolDataManager::GetToolByName(const std::string &name, ToolInfo &too
     toolInfo.outputSchema = "{}";
     toolInfo.hasSubCommand = CliToolDataManagerMock::toolHasSubCommand;
     toolInfo.isLockScreenExecutionAllowed = CliToolDataManagerMock::toolIsLockScreenExecEnabled;
+    toolInfo.cancelable = CliToolDataManagerMock::toolCancelable;
     toolInfo.visibility = CliToolDataManagerMock::toolVisibility;
     if (toolInfo.hasSubCommand) {
         SubCommandInfo subCommand;
@@ -121,6 +126,7 @@ int32_t CliToolDataManager::GetToolByName(const std::string &name, ToolInfo &too
         subCommand.requirePermissions = CliToolDataManagerMock::subCommandPermissions;
         subCommand.inputSchema = "{}";
         subCommand.outputSchema = "{}";
+        subCommand.cancelable = CliToolDataManagerMock::subCommandCancelable;
         toolInfo.subcommands[CliToolDataManagerMock::subCommandName] = subCommand;
     }
     return ERR_OK;

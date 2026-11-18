@@ -323,10 +323,28 @@ bool ProcessManager::Killpg(pid_t pid) const
     }
     int32_t killRet = kill(0 - pid, SIGKILL);
     if (killRet != 0) {
-        TAG_LOGW(AAFwkTag::CLI_TOOL, "killpg result:%{public}d", killRet);
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "killpg result:%{public}d errno:%{public}d pid:%{public}d",
+            killRet, errno, pid);
         return false;
     }
     return true;
+}
+
+int32_t ProcessManager::SendSignalToProcess(pid_t pid, int32_t sig) const
+{
+    if (pid <= 0) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "SendSignalToProcess skipped: invalid pid=%{public}d", pid);
+        return ERR_CLI_SEND_SIGNAL;
+    }
+    // Direct single-process delivery to the tool process resolved as commandPid.
+    int32_t killRet = kill(pid, sig);
+    if (killRet != 0) {
+        int32_t savedErrno = errno; // snapshot before logging (logging may touch errno)
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "SendSignalToProcess result:%{public}d errno:%{public}d pid:%{public}d"
+            " sig:%{public}d", killRet, savedErrno, pid, sig);
+        return ERR_CLI_SEND_SIGNAL;
+    }
+    return ERR_OK;
 }
 
 } // namespace CliTool

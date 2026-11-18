@@ -4,6 +4,7 @@
   "description": "Example CLI tool, demonstrates CLI tool specification implementation (with subcommand format)",
   "executablePath": "/system/bin/cli_tool/executable/ohos-example",
   "hasSubCommand": true,
+  "cancelable": true,
   "requirePermissions": [],
   "inputSchema": {
     "type": "object",

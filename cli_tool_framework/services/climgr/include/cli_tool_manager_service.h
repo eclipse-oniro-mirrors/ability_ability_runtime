@@ -95,6 +95,7 @@ public:
         const sptr<ICliToolManagerScheduler> &scheduler, const std::string &subscriptionId) override;
 
     int32_t ClearSession(const std::string &sessionId) override;
+    int32_t CancelSession(const std::string &sessionId, int32_t signal) override;
     int32_t SubscribeSession(const std::string &sessionId, const std::string &subscriptionId,
         const sptr<ICliToolManagerScheduler> &scheduler) override;
     int32_t UnsubscribeSession(const std::string &sessionId, const std::string &subscriptionId) override;
@@ -269,6 +270,17 @@ private:
     void DelayUnloadTask();
 
     std::shared_ptr<SessionRecord> CreateSessionRecord(const ExecToolParam &param, const std::string &eventId);
+    // Cancel eligibility snapshotted at execTool session creation: registered tools return
+    // the subcommand's own declared value when a subcommand dimension exists (no
+    // tool-level fallback), the tool-level declaration otherwise; unregistered tools and
+    // subcommands default to false.
+    bool SnapshotCancelable(const std::string &toolName, const std::string &subcommand) const;
+    // Cancel eligibility snapshotted at execCmd (shell mode) session creation. The command
+    // is resolved against the tool registry first: a registered CLI tool is governed by its
+    // own declaration (same model as execTool sessions, so a tool's cancelable value is
+    // honored no matter which exec path was taken); anything else (arbitrary shell command,
+    // unresolvable input) has no declaration to consult and returns true (best-effort).
+    bool SnapshotShellCancelable(const std::string &cmd) const;
     void AddSessionRecord(const std::shared_ptr<SessionRecord> &record);
     int32_t TryAddSessionRecord(const std::shared_ptr<SessionRecord> &record);
     std::shared_ptr<SessionRecord> GetSessionRecord(const std::string &sessionId);
@@ -346,6 +358,56 @@ private:
         const std::vector<int64_t> &attributionIds, const std::vector<int32_t> &uids);
 
     bool IsSessionOwner(const std::shared_ptr<SessionRecord> &record, const char *action) const;
+
+    /**
+     * @brief CancelSession-specific session-owner check with a dedicated error code.
+     *
+     * Same pid-comparison semantics as IsSessionOwner, but reports the failure through the
+     * cancelSession-only ERR_CLI_NOT_SESSION_OWNER instead of the generic permission error,
+     * so JS callers can distinguish "not the session owner" from missing permissions.
+     * Other session APIs (clearSession/subscribeSession/querySession/sendMessage) keep using
+     * IsSessionOwner and must not be affected.
+     *
+     * @param record Session record to check against the calling pid.
+     * @return int32_t ERR_OK when the caller owns the session, ERR_CLI_NOT_SESSION_OWNER otherwise.
+     */
+    int32_t CheckCancelSessionOwner(const std::shared_ptr<SessionRecord> &record) const;
+
+    /**
+     * @brief Cooperative-cancel eligibility of a session, read from the cancelable snapshot
+     *        taken at CreateSessionRecord (dev-spec 6.2: tool config hot-updates during the
+     *        session lifetime do not affect existing sessions).
+     *
+     * SKILL sessions (no child process to signal) never support cancel. execCmd sessions
+     * have no ToolInfo declaration to consult; their snapshot (true for "shell" sessions,
+     * the registered tool declaration for tool-mode sessions) decides. Otherwise the
+     * creation-time snapshot decides.
+     */
+    bool IsCancelable(const std::shared_ptr<SessionRecord> &record) const;
+
+    /**
+     * @brief CancelSession eligibility checks: owner, state, cancelable snapshot, signal
+     *        whitelist and processId validity. Call after the record lookup in CancelSession.
+     *
+     * @param record Non-null session record.
+     * @param sessionId For failure logging only.
+     * @param signal Requested signal number.
+     * @return int32_t ERR_OK when cancellable, the matching error code otherwise.
+     */
+    int32_t CheckCancelEligibility(const std::shared_ptr<SessionRecord> &record,
+        const std::string &sessionId, int32_t signal) const;
+
+    /**
+     * @brief Resolve the tool process pid for signal delivery: re-verify the cached
+     *        commandPid against a fresh ppid-filtered scan (pid-reuse guard), then bounded
+     *        polling when unresolved (no-taskId cold path; the sandbox forks the command
+     *        child some delay after the anchor). Caches any resolved pid back into the record.
+     *
+     * @param record Non-null session record with a valid processId.
+     * @param sessionId For failure logging only.
+     * @return pid_t The live tool process pid, or -1 when not found within the window.
+     */
+    pid_t ResolveCommandPid(const std::shared_ptr<SessionRecord> &record, const std::string &sessionId);
 
     /**
      * @brief Mutex-guarded snapshot of ioMonitor_.

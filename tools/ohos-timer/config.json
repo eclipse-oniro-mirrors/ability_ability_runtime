@@ -1,77 +1,115 @@
 {
   "name": "ohos-timer",
   "version": "1.0.0",
-  "description": "Timer tool example, supports progress event output",
+  "description": "Timer tool example with subcommands, run declares subcommand-level cancelable and handles SIGINT/SIGTERM",
   "executablePath": "/system/bin/cli_tool/executable/ohos-timer",
+  "hasSubCommand": true,
   "requirePermissions": [],
-  "eventTypes": ["progress"],
   "inputSchema": {
     "type": "object",
     "description": "Tool input parameters",
-    "properties": {
-      "duration": {
-        "type": "integer",
-        "description": "Running duration (seconds)",
-        "minimum": 1
-      },
-      "interval": {
-        "type": "integer",
-        "description": "Progress update interval (seconds)",
-        "default": 1,
-        "minimum": 1
-      },
-      "errMsg": {
-        "type": "string",
-        "description": "Error message written to stderr when duration elapses"
-      },
-      "showProgress": {
-        "type": "boolean",
-        "description": "Show progress events",
-        "default": false
-      },
-      "verbose": {
-        "type": "boolean",
-        "description": "Verbose mode",
-        "default": false
-      }
-    },
-    "required": ["duration"]
+    "properties": {}
   },
   "outputSchema": {
     "type": "object",
     "description": "Tool output result",
-    "properties": {
-      "duration": {
-        "type": "integer",
-        "description": "Planned duration (seconds)"
+    "properties": {}
+  },
+  "subcommands": {
+    "run": {
+      "description": "Run the timer; declares subcommand-level cancelable so the framework routes cancelSession signals to it",
+      "requirePermissions": [],
+      "cancelable": true,
+      "inputSchema": {
+        "type": "object",
+        "description": "Run subcommand input parameters",
+        "properties": {
+          "duration": {
+            "type": "integer",
+            "description": "Running duration (seconds)",
+            "minimum": 1
+          },
+          "interval": {
+            "type": "integer",
+            "description": "Progress update interval (seconds)",
+            "default": 1,
+            "minimum": 1
+          },
+          "errMsg": {
+            "type": "string",
+            "description": "Error message written to stderr when duration elapses"
+          },
+          "showProgress": {
+            "type": "boolean",
+            "description": "Show progress events",
+            "default": false
+          },
+          "verbose": {
+            "type": "boolean",
+            "description": "Verbose mode",
+            "default": false
+          }
+        },
+        "required": ["duration"]
       },
-      "actual_duration": {
-        "type": "integer",
-        "description": "Actual duration (seconds)"
+      "outputSchema": {
+        "type": "object",
+        "description": "Run result; actual_duration may be smaller than duration when cancelled by a signal",
+        "properties": {
+          "duration": {
+            "type": "integer",
+            "description": "Planned duration (seconds)"
+          },
+          "actual_duration": {
+            "type": "integer",
+            "description": "Actual duration (seconds)"
+          }
+        },
+        "required": ["duration", "actual_duration"]
+      },
+      "eventTypes": ["progress"],
+      "eventSchemas": {
+        "progress": {
+          "type": "object",
+          "description": "Progress event",
+          "properties": {
+            "type": {
+              "const": "progress"
+            },
+            "percentage": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Completion percentage"
+            },
+            "status": {
+              "type": "string",
+              "description": "Current status"
+            }
+          },
+          "required": ["type", "percentage", "status"]
+        }
       }
     },
-    "required": ["duration", "actual_duration"]
-  },
-  "eventSchemas": {
-    "progress": {
-      "type": "object",
-      "description": "Progress event",
-      "properties": {
-        "type": {
-          "const": "progress"
-        },
-        "percentage": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 100,
-          "description": "Completion percentage"
-        },
-        "status": {
-          "type": "string",
-          "description": "Current status"
-        }
+    "version": {
+      "description": "Display version information; cancelable is deliberately not declared here, so this subcommand does not support cancel (defaults to false, no tool-level inheritance)",
+      "requirePermissions": [],
+      "inputSchema": {
+        "type": "object",
+        "description": "Version subcommand input parameters",
+        "properties": {}
       },
-      "required": ["type", "percentage", "status"]
+      "outputSchema": {
+        "type": "object",
+        "description": "Version information",
+        "properties": {
+          "version": {
+            "type": "string",
+            "description": "Tool version number"
+          }
+        },
+        "required": ["version"]
+      }
     }
   }
 }

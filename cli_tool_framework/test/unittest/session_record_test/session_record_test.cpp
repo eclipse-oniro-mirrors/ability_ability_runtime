@@ -275,5 +275,40 @@ HWTEST_F(SessionRecordTest, SessionRecord_TrimBufferedOutput_0100, TestSize.Leve
     EXPECT_EQ(session.result->outputText, tail);
     EXPECT_EQ(session.result->errorText, tail);
 }
+
+/**
+ * @tc.name: SessionRecord_Subcommand_0100
+ * @tc.desc: Test subcommand defaults to empty (execCmd/shell sessions never populate it, the
+ *           ExecCmd path never writes it) and keeps the value assigned at session creation
+ * @tc.type: FUNC
+ */
+HWTEST_F(SessionRecordTest, SessionRecord_Subcommand_0100, TestSize.Level1)
+{
+    SessionRecord record;
+    EXPECT_TRUE(record.subcommand.empty());
+
+    record.subcommand = "build";
+    EXPECT_EQ(record.subcommand, "build");
+}
+
+/**
+ * @tc.name: SessionRecord_Cancelable_0100
+ * @tc.desc: Test cancelable defaults to false (unregistered tools and undeclared
+ *           subcommands snapshot false; SKILL sessions stay false as rejected before the
+ *           snapshot) and keeps the creation-time snapshot value: written once by
+ *           CreateSessionRecord, never mutated afterwards (dev-spec 6.2)
+ * @tc.type: FUNC
+ */
+HWTEST_F(SessionRecordTest, SessionRecord_Cancelable_0100, TestSize.Level1)
+{
+    SessionRecord record;
+    EXPECT_FALSE(record.cancelable);
+
+    record.cancelable = true;
+    EXPECT_TRUE(record.cancelable);
+
+    record.cancelable = false;
+    EXPECT_FALSE(record.cancelable);
+}
 } // namespace CliTool
 } // namespace OHOS
