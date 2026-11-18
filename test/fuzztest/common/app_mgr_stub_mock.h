@@ -114,7 +114,7 @@ public:
     int32_t GetProcessMemoryByPid(const int32_t pid, int32_t &memorySize) override { return 0; }
     int32_t GetRunningProcessInformation(const std::string &bundleName, int32_t userId,
         std::vector<RunningProcessInfo> &info) override { return 0; }
-    int32_t ChangeAppGcState(pid_t pid, int32_t state, uint64_t tid) override { return 0; }
+    int32_t ChangeAppGcState(pid_t pid, int32_t state, uint64_t tid, bool ipcPrio) override { return 0; }
     int32_t RegisterAppRunningStatusListener(const sptr<IRemoteObject> &listener) override { return 0; }
     int32_t UnregisterAppRunningStatusListener(const sptr<IRemoteObject> &listener) override { return 0; }
     int32_t RegisterAppForegroundStateObserver(const sptr<IAppForegroundStateObserver> &observer) override

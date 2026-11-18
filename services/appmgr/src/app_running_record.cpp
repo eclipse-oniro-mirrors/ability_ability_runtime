@@ -2510,14 +2510,14 @@ void AppRunningRecord::SetProcessType(ProcessType processType)
     processType_ = processType;
 }
 
-int32_t AppRunningRecord::ChangeAppGcState(int32_t state, uint64_t tid)
+int32_t AppRunningRecord::ChangeAppGcState(int32_t state, uint64_t tid, bool ipcPrioTrans)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");
     if (appLifeCycleDeal_ == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "null appLifeCycleDeal_");
         return ERR_INVALID_VALUE;
     }
-    return appLifeCycleDeal_->ChangeAppGcState(state, tid);
+    return appLifeCycleDeal_->ChangeAppGcState(state, tid, ipcPrioTrans);
 }
 
 void AppRunningRecord::SetAttachDebug(bool isAttachDebug, bool isDebugFromLocal)

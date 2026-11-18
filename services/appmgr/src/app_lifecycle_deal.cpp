@@ -391,7 +391,7 @@ int32_t AppLifeCycleDeal::NotifyAppFault(const FaultData &faultData)
     return appThread->ScheduleNotifyAppFault(faultData);
 }
 
-int32_t AppLifeCycleDeal::ChangeAppGcState(int32_t state, uint64_t tid)
+int32_t AppLifeCycleDeal::ChangeAppGcState(int32_t state, uint64_t tid, bool ipcPrioTrans)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");
     auto appThread = GetApplicationClient();
@@ -399,7 +399,7 @@ int32_t AppLifeCycleDeal::ChangeAppGcState(int32_t state, uint64_t tid)
         TAG_LOGE(AAFwkTag::APPMGR, "null appThread");
         return ERR_INVALID_VALUE;
     }
-    return appThread->ScheduleChangeAppGcState(state, tid);
+    return appThread->ScheduleChangeAppGcState(state, tid, ipcPrioTrans);
 }
 
 int32_t AppLifeCycleDeal::PreTemplateProcessDeepFrozen()

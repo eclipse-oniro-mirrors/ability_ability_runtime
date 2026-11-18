@@ -169,7 +169,7 @@ public:
     MOCK_METHOD1(GetProcessRunningInformation, int32_t(RunningProcessInfo &));
     MOCK_METHOD4(SendRequest, int(uint32_t, MessageParcel&, MessageParcel&, MessageOption&));
     MOCK_METHOD1(DumpJsHeapMemory, bool(int32_t));
-    MOCK_METHOD3(ChangeAppGcState, int32_t(pid_t, int32_t, uint64_t));
+    MOCK_METHOD4(ChangeAppGcState, int32_t(pid_t, int32_t, uint64_t, bool));
     MOCK_METHOD1(RegisterAppRunningStatusListener, int32_t(const sptr<IRemoteObject> &));
     MOCK_METHOD1(UnregisterAppRunningStatusListener, int32_t(const sptr<IRemoteObject> &));
     MOCK_METHOD1(DumpJsHeapMemory, int32_t(JsHeapDumpInfo &));

@@ -376,7 +376,7 @@ public:
      *
      * @return Is the status change completed.
      */
-    int32_t ScheduleChangeAppGcState(int32_t state, uint64_t tid = 0) override;
+    int32_t ScheduleChangeAppGcState(int32_t state, uint64_t tid = 0, bool ipcPrioTrans = false) override;
 
     void AttachAppDebug(bool isDebugFromLocal) override;
     void DetachAppDebug() override;

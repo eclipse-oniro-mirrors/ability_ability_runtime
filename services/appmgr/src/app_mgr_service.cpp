@@ -1816,13 +1816,13 @@ void AppMgrService::OnRemoveSystemAbility(int32_t systemAbilityId, const std::st
 #endif
 }
 
-int32_t AppMgrService::ChangeAppGcState(pid_t pid, int32_t state, uint64_t tid)
+int32_t AppMgrService::ChangeAppGcState(pid_t pid, int32_t state, uint64_t tid, bool ipcPrioTrans)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");
     if (!appMgrServiceInner_) {
         return ERR_INVALID_VALUE;
     }
-    return appMgrServiceInner_->ChangeAppGcState(pid, state, tid);
+    return appMgrServiceInner_->ChangeAppGcState(pid, state, tid, ipcPrioTrans);
 }
 
 int32_t AppMgrService::NotifyPageShow(const sptr<IRemoteObject> &token, const PageStateData &pageStateData)

@@ -1333,7 +1333,7 @@ void AppMgrClient::UpdateFreezeExcludedPid(bool isAdd, int32_t targetPid, int32_
     service->UpdateFreezeExcludedPid(isAdd, targetPid, profilerPid);
 }
 
-int32_t AppMgrClient::ChangeAppGcState(pid_t pid, int32_t state, uint64_t tid)
+int32_t AppMgrClient::ChangeAppGcState(pid_t pid, int32_t state, uint64_t tid, bool ipcPrioTrans)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "tid is %{private}" PRIu64, tid);
     if (mgrHolder_ == nullptr) {
@@ -1343,7 +1343,7 @@ int32_t AppMgrClient::ChangeAppGcState(pid_t pid, int32_t state, uint64_t tid)
     if (service == nullptr) {
         return AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED;
     }
-    return service->ChangeAppGcState(pid, state, tid);
+    return service->ChangeAppGcState(pid, state, tid, ipcPrioTrans);
 }
 
 int32_t AppMgrClient::RegisterAppDebugListener(const sptr<IAppDebugListener> &listener)

@@ -852,7 +852,7 @@ public:
      *
      * @return Is the status change completed.
      */
-    virtual int32_t ChangeAppGcState(pid_t pid, int32_t state, uint64_t tid = 0) = 0;
+    virtual int32_t ChangeAppGcState(pid_t pid, int32_t state, uint64_t tid = 0, bool ipcPrioTrans = false) = 0;
 
     /**
      * Register appRunning status listener.

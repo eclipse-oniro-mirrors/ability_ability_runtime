@@ -134,7 +134,7 @@ public:
         return (profile.GetName() == profile_.GetName());
     }
 
-    int32_t ScheduleChangeAppGcState(int32_t state, uint64_t tid = 0) override
+    int32_t ScheduleChangeAppGcState(int32_t state, uint64_t tid = 0, bool ipcPrio = false) override
     {
         return 0;
     }
