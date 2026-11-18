@@ -46,6 +46,7 @@ struct AppfreezeCaptureResult {
     std::string stack;
     std::string binderInfo;
     std::string memoryContent;
+    std::string stackTraceStartTime;
     int dumpResult = -1;
     int64_t dumpLatency = -1;
     int64_t processStart = 0;
