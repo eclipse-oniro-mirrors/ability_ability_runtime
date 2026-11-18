@@ -17,6 +17,8 @@ import ExtensionContext from 'application.ExtensionContext';
 import CustomData from 'application.CustomData';
 import AsyncCallbackWrapper from '../utils/AbilityUtils';
 import { BusinessError } from '@ohos.base';
+import { ConnectOptions } from 'ability.connectOptions';
+import Want from '@ohos.app.ability.Want';
 
 export class Cleaner {
   public ptr: long = 0;
@@ -72,6 +74,31 @@ export default class AutoFillExtensionContext extends ExtensionContext {
         });
       });
     return p;
+  }
+
+  private native nativeConnectServiceExtensionAbility(want: Want, options: ConnectOptions): long;
+  private native nativeDisconnectServiceExtensionAbilitySync(connection: long, callback: AsyncCallbackWrapper<void>): void;
+  private native nativeCheckConnectionAbility(): void;
+  connectServiceExtensionAbility(want: Want, options: ConnectOptions): long {
+    return this.nativeConnectServiceExtensionAbility(want, options);
+  }
+
+  disconnectServiceExtensionAbility(connection: long): Promise<void> {
+    this.nativeCheckConnectionAbility();
+    return new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
+      let syncCall = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+        if (err == null || err.code == 0) {
+          resolve(undefined);
+        } else {
+          reject(err);
+        }
+      });
+      taskpool.execute((): void => {
+        this.nativeDisconnectServiceExtensionAbilitySync(connection, syncCall);
+      }).catch((err: Error): void => {
+        reject(err as BusinessError);
+      });
+    });
   }
 
   private static native nativeTransferStatic(input: ESValue, type: string): Object;

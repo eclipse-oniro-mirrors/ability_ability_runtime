@@ -3817,6 +3817,7 @@ ohos_shared_library("auto_fill_extension_ani") {
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
     "ipc:ipc_napi",
+    "ipc:rpc_taihe",
     "node:node_header_notice",
     "runtime_core:ani",
     "window_manager:embeddablewindowstage_kit",
