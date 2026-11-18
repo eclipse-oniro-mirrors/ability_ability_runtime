@@ -1171,7 +1171,7 @@ void UIExtensionAbilityManager::UpdateUIExtensionBindInfo(
     }
 
     if (callerBundleName == AbilityConfig::SCENEBOARD_BUNDLE_NAME) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "scb not allow bind process");
+        TAG_LOGW(AAFwkTag::UI_EXT, "scb not allow bind");
         return;
     }
 
@@ -1183,7 +1183,7 @@ void UIExtensionAbilityManager::UpdateUIExtensionBindInfo(
         }
     } else {
         if (sessionInfo->uiExtensionUsage == AAFwk::UIExtensionUsage::MODAL) {
-            TAG_LOGE(AAFwkTag::UI_EXT, "modal not allow bind process");
+            TAG_LOGW(AAFwkTag::UI_EXT, "modal not allow bind");
             return;
         }
     }

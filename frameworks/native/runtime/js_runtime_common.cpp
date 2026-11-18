@@ -77,14 +77,14 @@ napi_status JsRuntimeCommon::StartDebugMode(NativeEngine* nativeEngine, const st
         TAG_LOGE(AAFwkTag::JSRUNTIME, "null nativeEngine");
         return napi_status::napi_invalid_arg;
     }
-    TAG_LOGI(AAFwkTag::JSRUNTIME, "debug mode is %{public}d, debug app is %{public}d", IsDebugMode(), IsDebugApp());
     auto arkNativeEngine = static_cast<NativeEngine*>(nativeEngine);
     auto instanceId = panda::DFXJSNApi::GetCurrentThreadId();
-    TAG_LOGI(AAFwkTag::JSRUNTIME, "Create instanceId is %{public}d", instanceId);
+    TAG_LOGI(AAFwkTag::JSRUNTIME, "mode:%{public}d, app:%{public}d, id:%{public}d",
+        IsDebugMode(), IsDebugApp(), instanceId);
     std::string instanceName = threadName + "_" + std::to_string(instanceId);
     bool isAddInstance = ConnectServerManager::Get().AddInstance(instanceId, instanceId, instanceName);
     if (IsNativeStart()) {
-        TAG_LOGE(AAFwkTag::JSRUNTIME, "native: true, set isAddInstance: false");
+        TAG_LOGW(AAFwkTag::JSRUNTIME, "native start, skip addInstance");
         isAddInstance = false;
     }
     auto postTask = [nativeEngine](std::function<void()>&& callback) {
@@ -105,7 +105,7 @@ napi_status JsRuntimeCommon::StopDebugMode(NativeEngine* nativeEngine)
         return napi_status::napi_invalid_arg;
     }
     auto instanceId = panda::DFXJSNApi::GetCurrentThreadId();
-    TAG_LOGI(AAFwkTag::JSRUNTIME, "destroy instanceId is %{public}d", instanceId);
+    TAG_LOGI(AAFwkTag::JSRUNTIME, "stop id:%{public}d", instanceId);
     ConnectServerManager::Get().RemoveInstance(instanceId);
     auto arkNativeEngine = static_cast<NativeEngine*>(nativeEngine);
     auto vm = const_cast<EcmaVM*>(arkNativeEngine->GetEcmaVm());

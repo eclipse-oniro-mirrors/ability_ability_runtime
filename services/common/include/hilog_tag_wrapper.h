@@ -247,6 +247,112 @@ static bool ConvertFileName(const std::string& fileBaseName, std::string& abbrFi
         abbrFileName = "WAH";
     }  else if (fileBaseName == "connection_manager") {
         abbrFileName = "CONM";
+    }  else if (fileBaseName == "permission_verification") {
+        abbrFileName = "PV";
+    }  else if (fileBaseName == "task_handler_wrap") {
+        abbrFileName = "THW";
+    }  else if (fileBaseName == "appfreeze_util") {
+        abbrFileName = "AU";
+    }  else if (fileBaseName == "appfreeze_binder_collector") {
+        abbrFileName = "ABC";
+    }  else if (fileBaseName == "appfreeze_manager") {
+        abbrFileName = "AM";
+    }  else if (fileBaseName == "js_application_context_utils") {
+        abbrFileName = "JACU";
+    }  else if (fileBaseName == "ams_mgr_stub") {
+        abbrFileName = "AMS";
+    }  else if (fileBaseName == "js_auto_fill_extension") {
+        abbrFileName = "JAFE";
+    }  else if (fileBaseName == "auto_fill_extension_callback") {
+        abbrFileName = "AFEC";
+    }  else if (fileBaseName == "auto_fill_manager") {
+        abbrFileName = "AFM";
+    }  else if (fileBaseName == "ability_auto_startup_data_manager") {
+        abbrFileName = "AASDM";
+    }  else if (fileBaseName == "bundle_mgr_helper") {
+        abbrFileName = "BMH";
+    }  else if (fileBaseName == "js_ability_context") {
+        abbrFileName = "JAC";
+    }  else if (fileBaseName == "ability_context_impl") {
+        abbrFileName = "ACI";
+    }  else if (fileBaseName == "dataobs_mgr_inner") {
+        abbrFileName = "DOMI";
+    }  else if (fileBaseName == "js_ability_delegator_registry") {
+        abbrFileName = "JADR";
+    }  else if (fileBaseName == "js_dialog_session") {
+        abbrFileName = "JDS";
+    }  else if (fileBaseName == "js_dialog_request") {
+        abbrFileName = "JDR";
+    }  else if (fileBaseName == "system_dialog_scheduler") {
+        abbrFileName = "SDS";
+    }  else if (fileBaseName == "distributed_client") {
+        abbrFileName = "DC";
+    }  else if (fileBaseName == "extension_manager_client") {
+        abbrFileName = "EMC";
+    }  else if (fileBaseName == "form_extension") {
+        abbrFileName = "FE";
+    }  else if (fileBaseName == "form_extension_provider_client") {
+        abbrFileName = "FEPC";
+    }  else if (fileBaseName == "js_form_extension") {
+        abbrFileName = "JFE";
+    }  else if (fileBaseName == "free_install_observer_manager") {
+        abbrFileName = "FIOM";
+    }  else if (fileBaseName == "free_install_manager") {
+        abbrFileName = "FIM";
+    }  else if (fileBaseName == "insight_intent_execute_manager") {
+        abbrFileName = "IIEM";
+    }  else if (fileBaseName == "ability_manager_stub") {
+        abbrFileName = "AMSTUB";
+    }  else if (fileBaseName == "insight_intent_execute_callback_proxy") {
+        abbrFileName = "IIECP";
+    }  else if (fileBaseName == "js_insight_intent_driver") {
+        abbrFileName = "JID";
+    }  else if (fileBaseName == "js_error_manager") {
+        abbrFileName = "JEM";
+    }  else if (fileBaseName == "napi_common_want") {
+        abbrFileName = "NCW";
+    }  else if (fileBaseName == "keep_alive_process_manager") {
+        abbrFileName = "KAPM";
+    }  else if (fileBaseName == "local_call_record") {
+        abbrFileName = "LCR";
+    }  else if (fileBaseName == "local_call_container") {
+        abbrFileName = "LCC";
+    }  else if (fileBaseName == "distributed_mission_manager") {
+        abbrFileName = "DMM";
+    }  else if (fileBaseName == "dms_sa_client") {
+        abbrFileName = "DMSC";
+    }  else if (fileBaseName == "query_erms_manager") {
+        abbrFileName = "QEM";
+    }  else if (fileBaseName == "query_erms_observer_manager") {
+        abbrFileName = "QEOM";
+    }  else if (fileBaseName == "app_recovery") {
+        abbrFileName = "AR";
+    }  else if (fileBaseName == "startup_manager") {
+        abbrFileName = "SM";
+    }  else if (fileBaseName == "startup_task_manager") {
+        abbrFileName = "STM";
+    }  else if (fileBaseName == "ui_extension_ability_manager") {
+        abbrFileName = "UEAM";
+    }  else if (fileBaseName == "preload_ui_extension_host_client") {
+        abbrFileName = "PUIEHC";
+    }  else if (fileBaseName == "js_ui_extension") {
+        abbrFileName = "JUE";
+    }  else if (fileBaseName == "js_ui_extension_context") {
+        abbrFileName = "JUEC";
+    }  else if (fileBaseName == "uri_permission_manager_stub_impl") {
+        abbrFileName = "UPMSI";
+    }  else if (fileBaseName == "file_uri_distribution_utils") {
+        abbrFileName = "FUDU";
+    }  else if (fileBaseName == "napi_common_want_agent") {
+        abbrFileName = "NCWA";
+    }  else if (fileBaseName == "agent_bundle_event_callback") {
+        abbrFileName = "ABEC";
+    }  else if (fileBaseName == "agent_card_db_mgr") {
+        abbrFileName = "ACDM";
+    }  else if (fileBaseName == "cli_tool_manager_service") {
+        abbrFileName = "CTMS";
+    }  else if (fileBaseName == "js_runtime_common") {
+        abbrFileName = "JRC";
     } else {
         return false;
     }
