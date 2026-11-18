@@ -1969,7 +1969,7 @@ private:
 
     int32_t KillApplicationByUserIdImpl(
         const std::string &bundleName, int32_t appCloneIndex, int32_t userId,
-        const bool clearPageStack, const std::string& reason, bool checkMDM);
+        const bool clearPageStack, const std::string& reason, bool checkMDM, bool checkCollaborator);
 
     int32_t GetCollaboratorTypeForKill(
         const std::string &bundleName, int32_t &appCloneIndex, int32_t userId, int32_t &collaboratorType);
