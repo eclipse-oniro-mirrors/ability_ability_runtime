@@ -1844,6 +1844,7 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
                 .Context<AbilityInterceptorParam::EcologicalCtx>(
                     {param.isStartAsCaller, isTargetPlugin, param.hostBundleName})
                 .Context<AbilityInterceptorParam::DisposedCtx>({appIndex, nullptr})
+                .GamePrelaunch(param.isGamePrelaunch)
                 .BlockAllEscapeCheck(MakeBlockAllEscapeCheck(abilityRequest))
                 .StartAbilityCtx(param.startAbilityCtx).DirectBootStartup(param.isDirectBootStartup).Build();
             result = interceptorExecuter_ == nullptr ? ERR_NULL_INTERCEPTOR_EXECUTER :

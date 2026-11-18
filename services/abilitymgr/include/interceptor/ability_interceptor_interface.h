@@ -41,6 +41,7 @@ struct AbilityInterceptorParam {
     StartAbilityContext startAbilityCtx;  // start-ability request-scoped context (default-constructed = absent)
     bool isDirectBootStartup = false;
     bool isPrelaunch = false; // true when launched via StartAbilityForPrelaunch
+    bool isGamePrelaunch = false; // true when launched as game SA prelaunch
 
     // Per-interceptor contexts, accessed via GetContext<T>()
     struct EcologicalCtx {
@@ -79,6 +80,9 @@ struct AbilityInterceptorParam {
     bool IsPreloadStartAbility() const
     {
         if (isPrelaunch) {
+            return true;
+        }
+        if (isGamePrelaunch) {
             return true;
         }
         const auto *dispCtx = GetContext<DisposedCtx>();
@@ -134,6 +138,11 @@ public:
     InterceptorParamBuilder &Prelaunch(bool isPrelaunch)
     {
         param_.isPrelaunch = isPrelaunch;
+        return *this;
+    }
+    InterceptorParamBuilder &GamePrelaunch(bool isGamePrelaunch)
+    {
+        param_.isGamePrelaunch = isGamePrelaunch;
         return *this;
     }
 
