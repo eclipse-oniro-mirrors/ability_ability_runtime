@@ -343,6 +343,8 @@ int AbilityRecord::LoadAbility(bool isShellCall, bool isStartupHide, pid_t calli
     if (caller) {
         callerToken = caller->GetToken();
     }
+    // Call before wantLock_ to avoid recursive-lock deadlock
+    int32_t byCallStatus = GetByCallStatus();
     std::lock_guard guard(wantLock_);
     want_.SetParam(ABILITY_OWNER_USERID, ownerMissionUserId_);
     want_.SetParam(IS_HOOK, isHook_);
@@ -361,7 +363,7 @@ int AbilityRecord::LoadAbility(bool isShellCall, bool isStartupHide, pid_t calli
     loadParam.isPrelaunch = isPrelaunch_;
     loadParam.isPreloadStart = isPreloadStart_;
     loadParam.selfPid = selfPid;
-    loadParam.byCallStatus = GetByCallStatus();
+    loadParam.byCallStatus = byCallStatus;
     loadParam.isGamePrelaunch = IsGameSAPreLaunch();
     FillProcessInfoFromSession(loadParam);
     auto userId = abilityInfo_.uid / BASE_USER_RANGE;
@@ -2672,6 +2674,7 @@ void AbilityRecord::SetStartedByCall(const bool isFlag)
 
 int32_t AbilityRecord::GetByCallStatus() const
 {
+    std::lock_guard guard(wantLock_);
     if (!isStartedByCall_) {
         return NON_BY_CALL;
     }
