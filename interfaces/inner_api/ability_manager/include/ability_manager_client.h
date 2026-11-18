@@ -2992,7 +2992,9 @@ public:
 
     /**
      * @brief Register a start-interceptor SA (ability start rule interception).
-     * Internal: only specific partner uids (PENG_LAI_UID / TASKMGR_UID) allowed;
+     * Internal: allowed callers are partner UIDs (PENG_LAI_UID / TASKMGR_UID /
+     * ERECT_SAFE_UID / GAME_SA_UID, kept until the SAs obtain the permission)
+     * or SA callers holding ohos.permission.REGISTER_SA_INTERCEPTOR;
      * others get CHECK_PERMISSION_FAILED.
      * @param interceptor The SA interceptor.
      * @return Returns ERR_OK on success, others on failure.
@@ -3000,7 +3002,10 @@ public:
     ErrCode RegisterSAInterceptor(sptr<AbilityRuntime::ISAInterceptor> interceptor);
 
     /**
-     * @brief Unregister a start-interceptor SA. TASKMGR_UID only.
+     * @brief Unregister a start-interceptor SA.
+     * Internal: allowed callers are partner UIDs (TASKMGR_UID / GAME_SA_UID, kept
+     * until the SAs obtain the permission) or SA callers holding
+     * ohos.permission.REGISTER_SA_INTERCEPTOR; others get CHECK_PERMISSION_FAILED.
      * @param interceptor The interceptor remote object to remove.
      * @return Returns ERR_OK on success; CHECK_PERMISSION_FAILED otherwise.
      */

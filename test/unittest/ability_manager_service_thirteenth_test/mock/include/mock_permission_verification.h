@@ -72,6 +72,8 @@ public:
 
     bool VerifyBlockAllAppStartPermission() const;
 
+    bool VerifySAInterceptorPermission() const;
+
     int CheckCallDataAbilityPermission(const VerificationInfo &verificationInfo, bool isShell) const;
 
     int CheckCallServiceAbilityPermission(const VerificationInfo &verificationInfo) const;

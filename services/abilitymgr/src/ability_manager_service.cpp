@@ -20022,8 +20022,9 @@ int32_t AbilityManagerService::RegisterSAInterceptor(sptr<AbilityRuntime::ISAInt
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "call RegisterSaInterceptor, callingPid:%{public}d", IPCSkeleton::GetCallingPid());
     auto callingUid = IPCSkeleton::GetCallingUid();
-    if (callingUid != PENG_LAI_UID && callingUid != TASKMGR_UID && callingUid != ERECT_SAFE_UID &&
-        callingUid != AbilityRuntime::GlobalConstant::GAME_SA_UID) {
+    bool isAllowCaller = callingUid == PENG_LAI_UID || callingUid == TASKMGR_UID ||
+        callingUid == ERECT_SAFE_UID || callingUid == AbilityRuntime::GlobalConstant::GAME_SA_UID;
+    if (!isAllowCaller && !AAFwk::PermissionVerification::GetInstance()->VerifySAInterceptorPermission()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "no permission call");
         return CHECK_PERMISSION_FAILED;
     }
@@ -20035,7 +20036,9 @@ int32_t AbilityManagerService::UnregisterSAInterceptor(sptr<IRemoteObject> inter
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "call UnregisterSaInterceptor");
     auto callingUid = IPCSkeleton::GetCallingUid();
-    if (callingUid != TASKMGR_UID && callingUid != AbilityRuntime::GlobalConstant::GAME_SA_UID) {
+    bool isAllowCaller = callingUid == TASKMGR_UID ||
+        callingUid == AbilityRuntime::GlobalConstant::GAME_SA_UID;
+    if (!isAllowCaller && !AAFwk::PermissionVerification::GetInstance()->VerifySAInterceptorPermission()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "no permission call");
         return CHECK_PERMISSION_FAILED;
     }

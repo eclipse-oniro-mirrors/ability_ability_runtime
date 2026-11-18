@@ -652,6 +652,16 @@ bool PermissionVerification::VerifySuperviseKiaServicePermission() const
     return false;
 }
 
+bool PermissionVerification::VerifySAInterceptorPermission() const
+{
+    if (IsSACall() && VerifyCallingPermission(PermissionConstants::PERMISSION_SA_INTERCEPTOR)) {
+        TAG_LOGD(AAFwkTag::DEFAULT, "Permission granted");
+        return true;
+    }
+    TAG_LOGE(AAFwkTag::DEFAULT, "Permission denied");
+    return false;
+}
+
 bool PermissionVerification::VerifyStartLocalDebug(int32_t tokenId) const
 {
     if (VerifyPermissionByTokenId(tokenId, PermissionConstants::PERMISSION_PERFORM_LOCAL_DEBUG)) {

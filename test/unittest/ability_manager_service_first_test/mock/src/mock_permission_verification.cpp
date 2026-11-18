@@ -14,6 +14,7 @@
  */
 
 #include "ability_manager_errors.h"
+#include "permission_constants.h"
 #include "permission_verification.h"
 #include "hilog_tag_wrapper.h"
 #include "mock_my_flag.h"
@@ -302,6 +303,12 @@ bool PermissionVerification::VerifySuperviseKiaServicePermission() const
 {
     TAG_LOGI(AAFwkTag::TEST, "%{public}s enter", __func__);
     return true;
+}
+
+bool PermissionVerification::VerifySAInterceptorPermission() const
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s enter", __func__);
+    return IsSACall() && VerifyCallingPermission(PermissionConstants::PERMISSION_SA_INTERCEPTOR);
 }
 
 bool PermissionVerification::VerifyStartLocalDebug(int32_t tokenId) const

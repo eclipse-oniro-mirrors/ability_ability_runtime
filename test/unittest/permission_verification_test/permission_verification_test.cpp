@@ -963,5 +963,16 @@ HWTEST_F(PermissionVerificationTest, VerifyContinuationNotifyPermission_0100, Te
     bool result = AAFwk::PermissionVerification::GetInstance()->VerifyContinuationNotifyPermission();
     EXPECT_FALSE(result);
 }
+
+/**
+ * @tc.name: VerifySAInterceptorPermission_0100
+ * @tc.desc: VerifySAInterceptorPermission Test
+ * @tc.type: FUNC
+ */
+HWTEST_F(PermissionVerificationTest, VerifySAInterceptorPermission_0100, TestSize.Level1)
+{
+    bool result = AAFwk::PermissionVerification::GetInstance()->VerifySAInterceptorPermission();
+    EXPECT_FALSE(result);
+}
 }  // namespace AAFwk
 }  // namespace OHOS
