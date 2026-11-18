@@ -1002,9 +1002,8 @@ HWTEST_F(ImplicitStartProcessorTest, FilterAbilityList_001, TestSize.Level1)
     auto processor = std::make_shared<ImplicitStartProcessor>();
     Want want;
     std::vector<AppExecFwk::AbilityInfo> abilityInfos;
-    std::vector<AppExecFwk::ExtensionAbilityInfo> extensionAbInfos;
     int32_t  userId = 100;
-    auto result = processor->FilterAbilityList(want, abilityInfos, extensionAbInfos, userId);
+    auto result = processor->FilterAbilityList(want, abilityInfos, userId);
     EXPECT_EQ(result, true);
 }
 

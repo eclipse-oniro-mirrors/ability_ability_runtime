@@ -36,8 +36,7 @@ public:
     void OnRemoteSaDied(const wptr<IRemoteObject> &object);
 
     int32_t EvaluateResolveInfos(const Want &want, const AbilityCallerInfo &callerInfo, int32_t type,
-        vector<AbilityInfo> &abInfo, const vector<AppExecFwk::ExtensionAbilityInfo> &extInfo =
-        vector<AppExecFwk::ExtensionAbilityInfo>());
+        vector<AbilityInfo> &abInfo);
     int32_t QueryStartExperience(const Want &want, const AbilityCallerInfo &callerInfo, AbilityExperienceRule &rule);
 
 private:
