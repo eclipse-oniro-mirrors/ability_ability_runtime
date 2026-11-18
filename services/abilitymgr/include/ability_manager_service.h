@@ -3931,8 +3931,8 @@ private:
     ffrt::mutex delayedStartPidsLock_;
     std::unordered_set<int32_t> delayedStartPids_;
 
-    std::mutex prepareTermiationCallbackMutex_;
-    std::map<std::string, sptr<IPrepareTerminateCallback>> prepareTermiationCallbacks_;
+    std::mutex prepareTerminationCallbackMutex_;
+    std::map<std::string, sptr<IPrepareTerminateCallback>> prepareTerminationCallbacks_;
 
     ffrt::mutex remoteTaskHandlesMutex_;
     std::map<uint32_t, std::shared_ptr<ffrt::task_handle>> remoteTaskHandles_;

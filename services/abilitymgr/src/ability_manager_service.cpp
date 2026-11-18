@@ -892,7 +892,7 @@ int AbilityManagerService::StartAbility(const Want &want, int32_t userId, int re
     int32_t ret = StartAbilityInner(startAbilityWrapParam);
     AAFWK::ContinueRadar::GetInstance().ClickIconStartAbility("StartAbilityInner", want.GetFlags(), ret);
     if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbilityError:%{public}d", eventInfo->errCode);
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbilityError:%{public}d", ret);
     }
     return ret;
 }
@@ -9307,7 +9307,7 @@ int AbilityManagerService::StartHighestPriorityAbility(int32_t userId, uint64_t 
     int32_t ret = StartAbilityInner(startAbilityWrapParam);
     AAFWK::ContinueRadar::GetInstance().ClickIconStartAbility("StartAbilityInner", abilityWant.GetFlags(), ret);
     if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbilityError:%{public}d", eventInfo->errCode);
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbilityError:%{public}d", ret);
     }
     return ret;
 }
@@ -13425,13 +13425,13 @@ int AbilityManagerService::PrepareTerminateAbility(const sptr<IRemoteObject> &to
         callback->DoPrepareTerminate();
         return ERR_OK;
     }
-    std::lock_guard<std::mutex> guard(prepareTermiationCallbackMutex_);
+    std::lock_guard<std::mutex> guard(prepareTerminationCallbackMutex_);
     auto abilityRecordId = std::to_string(abilityRecord->GetAbilityRecordId());
-    if (prepareTermiationCallbacks_.find(abilityRecordId) != prepareTermiationCallbacks_.end()) {
+    if (prepareTerminationCallbacks_.find(abilityRecordId) != prepareTerminationCallbacks_.end()) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "abilityRecordId=%{public}s already exists", abilityRecordId.c_str());
         return ERR_OK;
     }
-    prepareTermiationCallbacks_[abilityRecordId] = callback;
+    prepareTerminationCallbacks_[abilityRecordId] = callback;
 
     auto timeoutTask = [callback]() {
         if (callback != nullptr) {
@@ -13461,9 +13461,9 @@ void AbilityManagerService::PrepareTerminateAbilityDone(const sptr<IRemoteObject
         return;
     }
     auto abilityRecordId = std::to_string(abilityRecord->GetAbilityRecordId());
-    std::lock_guard<std::mutex> guard(prepareTermiationCallbackMutex_);
-    auto iter = prepareTermiationCallbacks_.find(abilityRecordId);
-    if (iter == prepareTermiationCallbacks_.end()) {
+    std::lock_guard<std::mutex> guard(prepareTerminationCallbackMutex_);
+    auto iter = prepareTerminationCallbacks_.find(abilityRecordId);
+    if (iter == prepareTerminationCallbacks_.end()) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "scb call, abilityRecordId=%{public}s not found", abilityRecordId.c_str());
         uiAbilityManager->PrepareTerminateAbilityDone(
             std::static_pointer_cast<UIAbilityRecord>(abilityRecord), isTerminate);
@@ -13473,7 +13473,7 @@ void AbilityManagerService::PrepareTerminateAbilityDone(const sptr<IRemoteObject
         TAG_LOGI(AAFwkTag::ABILITYMGR, "abilityRecordId=%{public}s, calling callback", abilityRecordId.c_str());
         iter->second->DoPrepareTerminate();
     }
-    prepareTermiationCallbacks_.erase(iter);
+    prepareTerminationCallbacks_.erase(iter);
     if (taskHandler_) {
         taskHandler_->CancelTask("PrepareTerminate_" + abilityRecordId);
     }
@@ -15643,7 +15643,7 @@ int32_t AbilityManagerService::StartAbilityWithServiceMatch(const InsightIntentE
     int32_t ret = StartAbilityInner(startAbilityWrapParam);
     AAFWK::ContinueRadar::GetInstance().ClickIconStartAbility("StartAbilityInner", want.GetFlags(), ret);
     if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbilityError:%{public}d", eventInfo->errCode);
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "StartAbilityError:%{public}d", ret);
     }
     return ret;
 
