@@ -264,7 +264,7 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermission(const std::vector<std::
     int32_t& funcResult)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    TAG_LOGI(AAFwkTag::URIPERMMGR, "BundleName:%{public}s, appIndex:%{public}d, flag:%{public}u, uris:%{public}zu",
+    TAG_LOGI(AAFwkTag::URIPERMMGR, "bn:%{public}s,appIdx:%{public}d,fg:%{public}u,uris:%{public}zu",
         targetBundleName.c_str(), appIndex, flag, uriVec.size());
     auto ret = CheckGrantUriPermission(uriVec, flag, targetBundleName, appIndex);
     if (ret != ERR_OK) {
@@ -808,7 +808,7 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermissionPrivileged(const std::ve
         funcResult = ERR_URI_LIST_OUT_OF_RANGE;
         return ERR_URI_LIST_OUT_OF_RANGE;
     }
-    TAG_LOGI(AAFwkTag::URIPERMMGR, "BundleName:%{public}s, appIndex:%{public}d, flag:%{public}u, uris:%{public}zu",
+    TAG_LOGI(AAFwkTag::URIPERMMGR, "bn:%{public}s,appIdx:%{public}d,fg:%{public}u,uris:%{public}zu",
         targetBundleName.c_str(), appIndex, flag, uriVec.size());
     uint32_t callerTokenId = IPCSkeleton::GetCallingTokenID();
     auto checkRes = CheckGrantUriPermissionPrivileged(callerTokenId, flag);
@@ -955,7 +955,7 @@ ErrCode UriPermissionManagerStubImpl::GrantUriPermissionWithType(const std::vect
         TAG_LOGE(AAFwkTag::URIPERMMGR, "Not foundation call");
         return WrapErrorCode(CHECK_PERMISSION_FAILED, funcResult);
     }
-    TAG_LOGI(AAFwkTag::URIPERMMGR, "BundleName:%{public}s, appIndex:%{public}d, flag:%{public}u, uris:%{public}zu",
+    TAG_LOGI(AAFwkTag::URIPERMMGR, "bn:%{public}s,appIdx:%{public}d,fg:%{public}u,uris:%{public}zu",
         targetBundleName.c_str(), appIndex, flag, uriVec.size());
     if (uriVec.empty() || uriVec.size() > MAX_URI_COUNT || uriVec.size() != permissionTypes.size()) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "Out of range: %{public}zu,%{public}zu", uriVec.size(), permissionTypes.size());
@@ -1169,7 +1169,7 @@ int32_t UriPermissionManagerStubImpl::CheckGrantUriPermissionByKeyAsCaller()
     uint32_t callingTokenId = IPCSkeleton::GetCallingTokenID();
     auto permissionName = PermissionConstants::PERMISSION_GRANT_URI_PERMISSION_AS_CALLER;
     if (!PermissionVerification::GetInstance()->VerifyPermissionByTokenId(callingTokenId, permissionName)) {
-        TAG_LOGE(AAFwkTag::URIPERMMGR, "No permission to call");
+        TAG_LOGE(AAFwkTag::URIPERMMGR, "No perm call");
         return CHECK_PERMISSION_FAILED;
     }
     auto ret = CheckCalledBySandBox();
@@ -1586,7 +1586,7 @@ ErrCode UriPermissionManagerStubImpl::RevokeUriPermissionManually(const Uri& uri
     int32_t appIndex, int32_t userId, int32_t& funcResult)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    TAG_LOGI(AAFwkTag::URIPERMMGR, "uri:%{private}s, bundleName:%{public}s, appIndex:%{public}d",
+    TAG_LOGI(AAFwkTag::URIPERMMGR, "uri:%{private}s,bn:%{public}s,appIdx:%{public}d",
         uri.ToString().c_str(), bundleName.c_str(), appIndex);
     if (!FUDUtils::IsSystemAppCall() && !FUDUtils::IsBrokerCaller()) {
         TAG_LOGE(AAFwkTag::URIPERMMGR, "not SystemApp call");

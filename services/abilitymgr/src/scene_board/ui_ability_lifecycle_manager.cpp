@@ -848,7 +848,7 @@ bool UIAbilityLifecycleManager::GetAbilitySessionInfo(int32_t requestId, Ability
     std::lock_guard<ffrt::mutex> guard(abilitySessionInfoMapLock_);
     auto it = abilitySessionInfoMap_.find(requestId);
     if (it == abilitySessionInfoMap_.end()) {
-        TAG_LOGW(AAFwkTag::ABILITYMGR, "GetAbilitySessionInfo not found requestId=%{public}d", requestId);
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "sess not found,reqId=%{public}d", requestId);
         return false;
     }
     info = it->second;
@@ -1897,7 +1897,7 @@ int UIAbilityLifecycleManager::MinimizeUIAbility(const UIAbilityRecordPtr &abili
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null ability record");
         return ERR_INVALID_VALUE;
     }
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "infoName:%{public}s, backgroundReason:%{public}d",
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "infoName:%{public}s,bgReason:%{public}d",
         abilityRecord->GetAbilityInfo().name.c_str(), backgroundReason);
     abilityRecord->SetMinimizeReason(fromUser);
     abilityRecord->SetSceneFlag(sceneFlag);

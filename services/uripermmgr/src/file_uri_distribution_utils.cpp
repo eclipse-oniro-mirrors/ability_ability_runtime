@@ -325,14 +325,14 @@ int32_t FUDUtils::GetTokenIdByBundleName(const std::string &bundleName, int32_t 
         AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(appIndex)) {
         auto bundleFlag = static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION);
         if (IN_PROCESS_CALL(bms->GetCloneBundleInfo(bundleName, bundleFlag, appIndex, bundleInfo, userId)) != ERR_OK) {
-            TAG_LOGW(AAFwkTag::URIPERMMGR, "Failed GetCloneBundleInfo");
+            TAG_LOGW(AAFwkTag::URIPERMMGR, "Fail GetSandboxBI");
             return ERR_GET_TARGET_BUNDLE_INFO_FAILED;
         }
         tokenId = bundleInfo.applicationInfo.accessTokenId;
         return ERR_OK;
     }
     if (IN_PROCESS_CALL(bms->GetSandboxBundleInfo(bundleName, appIndex, userId, bundleInfo) != ERR_OK)) {
-        TAG_LOGW(AAFwkTag::URIPERMMGR, "Failed GetSandboxBundleInfo");
+        TAG_LOGW(AAFwkTag::URIPERMMGR, "Fail GetSandboxBI");
         return ERR_GET_TARGET_BUNDLE_INFO_FAILED;
     }
     tokenId = bundleInfo.applicationInfo.accessTokenId;

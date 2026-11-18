@@ -1688,7 +1688,7 @@ void AbilityRecord::AddCallerRecord(const sptr<IRemoteObject> &callerToken, int 
     }
 
     if (!abilityRecord) {
-        TAG_LOGW(AAFwkTag::ABILITYMGR, "nullptr");
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "abilityRecord null");
         return;
     }
 

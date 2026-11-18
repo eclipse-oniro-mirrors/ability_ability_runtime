@@ -160,7 +160,7 @@ int32_t ResidentProcessManager::SetResidentProcessEnabled(
     auto &rdb = AmsResidentProcessRdb::GetInstance();
     auto rdbResult = rdb.VerifyConfigurationPermissions(bundleName, callerName);
     if (rdbResult != Rdb_OK) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "db verify failed[%{public}d], fallback to config file", rdbResult);
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "db verify failed[%{public}d], use config", rdbResult);
         auto configResult = rdb.GetResidentProcessRawData(bundleName, callerName);
         if (configResult != Rdb_OK) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "obtain permissions failed. db: %{public}d, config: %{public}d",
@@ -184,7 +184,7 @@ int32_t ResidentProcessManager::SetResidentProcessEnabledForSA(
     auto &rdb = AmsResidentProcessRdb::GetInstance();
     auto rdbResult = rdb.VerifySaConfigurationPermissions(bundleName, callerUid);
     if (rdbResult != Rdb_OK) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "db sa verify failed[%{public}d], fallback to config file", rdbResult);
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "db sa verify failed[%{public}d], use config", rdbResult);
         auto configResult = rdb.GetSaResidentProcessRawData(bundleName, callerUid);
         if (configResult != Rdb_OK) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "obtain sa permissions failed. db: %{public}d, config: %{public}d",
@@ -299,7 +299,7 @@ void ResidentProcessManager::OnAppStateChanged(const AppInfo &info)
     bool localEnable = false;
     auto rdbResult = AmsResidentProcessRdb::GetInstance().GetResidentProcessEnable(bundleName, localEnable);
     if (rdbResult != Rdb_OK) {
-        TAG_LOGW(AAFwkTag::ABILITYMGR, "rdbResult: %{public}d", rdbResult);
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "rdbResult:%{public}d", rdbResult);
         return;
     }
 

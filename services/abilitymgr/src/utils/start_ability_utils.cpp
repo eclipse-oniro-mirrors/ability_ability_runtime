@@ -63,8 +63,10 @@ bool StartAbilityUtils::GetAppIndex(const Want &want, sptr<IRemoteObject> caller
     int32_t defaultAppIndex = -1;
     auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
     bundleMgrHelper->GetDualModeBundleInfo(want.GetBundleNameRef(), userId, defaultAppIndex);
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "GetDualModeBundleInfo defaultAppIndex:%{public}d", defaultAppIndex);
-
+    if (defaultAppIndex != 0) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "GetDualModeBundleInfo defaultAppIndex:%{public}d", defaultAppIndex);
+    }
+    
     if (want.HasParameter(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY)) {
         appIndex = want.GetIntParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, defaultAppIndex);
         if (appIndex == 0) {

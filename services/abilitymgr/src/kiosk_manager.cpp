@@ -401,7 +401,7 @@ int32_t KioskManager::GetKioskStatus(KioskStatus &kioskStatus)
         !(PermissionVerification::GetInstance()->IsSACall() &&
         PermissionVerification::GetInstance()->VerifyCallingPermission(
             PermissionConstants::PERMISSION_GET_EDM_CONFIG))) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "perm deny");
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "perm deny");
         return ERR_NOT_SYSTEM_APP;
     }
     std::lock_guard<std::mutex> lock(kioskManagerMutex_);

@@ -2613,7 +2613,7 @@ void JsUIAbility::SetContinueState(int32_t state)
         return;
     }
     window->SetContinueState(state);
-    TAG_LOGI(AAFwkTag::UIABILITY, "window SetContinueState, state: %{public}d.", state);
+    TAG_LOGI(AAFwkTag::UIABILITY, "win SecCS:%{public}d", state);
 }
 
 void JsUIAbility::NotifyWindowDestroy()

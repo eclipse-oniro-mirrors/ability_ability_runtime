@@ -260,7 +260,7 @@ void EcologicalRuleInterceptor::GetEcologicalCallerInfo(const StartAbilityContex
         std::string callerBundleName;
         ErrCode err = IN_PROCESS_CALL(bundleMgrHelper->GetNameForUid(callerInfo.uid, callerBundleName));
         if (err != ERR_OK) {
-            TAG_LOGW(AAFwkTag::ECOLOGICAL_RULE, "failed,uid: %{public}d", callerInfo.uid);
+            TAG_LOGW(AAFwkTag::ECOLOGICAL_RULE, "failUID %{public}d", callerInfo.uid);
             return;
         }
         bool getCallerResult = IN_PROCESS_CALL(bundleMgrHelper->GetApplicationInfo(callerBundleName,
