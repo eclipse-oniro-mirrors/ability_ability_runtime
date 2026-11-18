@@ -130,10 +130,14 @@ private:
     template<typename F, typename... Args>
     void CallListeners(F func, Args&&... args)
     {
-        std::lock_guard<ffrt::mutex> guard(listenerLock_);
-        for (auto listener : missionListeners_) {
+        std::vector<sptr<IMissionListener>> listeners;
+        {
+            std::lock_guard<ffrt::mutex> guard(listenerLock_);
+            listeners = missionListeners_;
+        }
+        for (auto listener : listeners) {
             if (listener) {
-                (listener->*func)(std::forward<Args>(args)...);
+                (listener->*func)(args...);
             }
         }
     }

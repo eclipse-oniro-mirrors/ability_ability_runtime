@@ -451,7 +451,7 @@ bool AbilityManagerCollaboratorProxy::UpdateConfiguration(const AppExecFwk::Conf
     auto error = SendTransactCmd(IAbilityManagerCollaborator::UPDATE_CONFIGURATION, data, reply, option);
     if (error != NO_ERROR) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "request error:%{public}d", error);
-        return true;
+        return false;
     }
     return true;
 }

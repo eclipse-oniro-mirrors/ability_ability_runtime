@@ -3234,6 +3234,11 @@ int AbilityManagerProxy::RegisterMissionListener(const std::string &deviceId,
     MessageParcel data;
     MessageParcel reply;
     MessageOption option;
+    if (!listener) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "listener null");
+        return ERR_INVALID_VALUE;
+    }
+
     if (!WriteInterfaceToken(data)) {
         return INNER_ERR;
     }

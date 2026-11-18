@@ -1478,7 +1478,7 @@ HWTEST_F(AbilityPermissionUtilTest, CheckStartUIAbilityByUserLockStatus_0300, Te
 
 /**
  * @tc.name: CheckStartUIAbilityByUserLockStatus_0400
- * @tc.desc: user locked + bms is null, should return true (fail open)
+ * @tc.desc: user locked + bms is null, should return false (fail closed)
  * @tc.type: FUNC
  * @tc.require: NA
  */
@@ -1490,7 +1490,7 @@ HWTEST_F(AbilityPermissionUtilTest, CheckStartUIAbilityByUserLockStatus_0400, Te
     BundleMgrHelper::isNullBundleMgrInstance = true;
     std::string bundleName = "com.example.test";
     auto ret = AbilityPermissionUtil::GetInstance().CheckStartUIAbilityByUserLockStatus(bundleName);
-    EXPECT_EQ(ret, true);
+    EXPECT_EQ(ret, false);
     BundleMgrHelper::isNullBundleMgrInstance = false;
     TAG_LOGI(AAFwkTag::TEST, "CheckStartUIAbilityByUserLockStatus_0400 end");
 }

@@ -1494,6 +1494,7 @@ HWTEST_F(AbilityManagerServiceFourthTest, UnSubscribeBackgroundTask_001, TestSiz
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     abilityMs_->SubscribeBackgroundTask();
     abilityMs_->UnSubscribeBackgroundTask();
+    EXPECT_FALSE(abilityMs_->IsBackgroundTaskUid(-1));
     EXPECT_TRUE(abilityMs_ != nullptr);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourthTest UnSubscribeBackgroundTask_001 end");
 }

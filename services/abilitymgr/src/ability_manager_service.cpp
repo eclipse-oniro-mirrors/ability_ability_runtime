@@ -506,6 +506,8 @@ void AbilityManagerService::OnStart()
     bool ret = Publish(instance_);
     if (!ret) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "publish failed");
+        state_ = ServiceRunningState::STATE_NOT_START;
+        instance_ = nullptr;
         return;
     }
 
@@ -4424,6 +4426,7 @@ void AbilityManagerService::UnSubscribeBackgroundTask()
     if (!bgtaskObserver_) {
         return;
     }
+    bgtaskObserver_ = nullptr;
     TAG_LOGI(AAFwkTag::ABILITYMGR, "%{public}s success", __func__);
 #endif
 }
@@ -4437,6 +4440,12 @@ void AbilityManagerService::SubscribeBundleEventCallback()
         taskHandler_->SubmitTask(startResidentAppsTask, "StartResidentApps");
     }
 
+    auto bms = AbilityUtil::GetBundleManagerHelper();
+    if (!bms) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "get bundleManager failed");
+        return;
+    }
+
     if (abilityBundleEventCallback_) {
         return;
     }
@@ -4447,18 +4456,13 @@ void AbilityManagerService::SubscribeBundleEventCallback()
     if (abilityBundleEventCallback_ != nullptr) {
         abilityBundleEventCallback_->SetNotifyAllUsers(true);
     }
-    auto bms = AbilityUtil::GetBundleManagerHelper();
-    if (bms) {
-        bool ret = IN_PROCESS_CALL(bms->RegisterBundleEventCallback(abilityBundleEventCallback_));
-        if (!ret) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "registerBundleEventCallback failed");
-        }
-        auto pluginRet = IN_PROCESS_CALL(bms->RegisterPluginEventCallback(abilityBundleEventCallback_));
-        if (pluginRet != ERR_OK) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "RegisterPluginEventCallback failed %{public}d", pluginRet);
-        }
-    } else {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "get bundleManager failed");
+    bool ret = IN_PROCESS_CALL(bms->RegisterBundleEventCallback(abilityBundleEventCallback_));
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "registerBundleEventCallback failed");
+    }
+    auto pluginRet = IN_PROCESS_CALL(bms->RegisterPluginEventCallback(abilityBundleEventCallback_));
+    if (pluginRet != ERR_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "RegisterPluginEventCallback failed %{public}d", pluginRet);
     }
     TAG_LOGD(AAFwkTag::ABILITYMGR, "SubscribeBundleEventCallback success.");
 }
