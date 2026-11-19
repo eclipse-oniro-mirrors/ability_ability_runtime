@@ -23,6 +23,7 @@
 
 #include "accesstoken_kit.h"
 #include "mock_ipc_skeleton.h"
+#include "mock_parameter.h"
 #include "nativetoken_kit.h"
 #include "token_setproc.h"
 
@@ -1024,7 +1025,6 @@ HWTEST_F(TaskManagerServiceTest, TaskManagerService_DumpActiveTasks_0100, TestSi
     EXPECT_NE(dump.find("sched level [task:MEDIUM(200)]"), std::string::npos);
     EXPECT_NE(dump.find("remain timeout ["), std::string::npos);
     EXPECT_NE(dump.find("create time ["), std::string::npos);
-
     EXPECT_EQ(service.FinishTask(taskId), ERR_OK);
 }
 
@@ -1274,6 +1274,11 @@ HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0300, TestSize.Level1
     EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "unregister", "x", "4321", "extra"}), result),
         DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR);
 
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "id"}), result),
+        DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR);
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "id", "x", "extra"}), result),
+        DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR);
+
     EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "not_a_sub"}), result),
         DumpErrorCode::ERR_INVALID_CMD_ERROR);
 }
@@ -1289,6 +1294,80 @@ HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0400, TestSize.Level1
     EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task"}), result),
         DumpErrorCode::ERR_PERMISSION_DENY_ERROR);
     EXPECT_NE(result.find("permission deny"), std::string::npos);
+}
+
+/**
+ * @tc.number: AppMgrServiceTask_DumpTask_0500
+ * @tc.name: dump the task with an exact id
+ * @tc.desc: the --task id <taskId> filter prints exactly the task whose id equals
+ *           the text; id fragments and unknown ids are reported as not found.
+ */
+HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0500, TestSize.Level1)
+{
+    auto &service = TaskManagerService::GetInstance();
+    std::string taskIdA = MakeTaskId("dump_task_0500_a");
+    std::string taskIdB = MakeTaskId("dump_task_0500_b");
+    EXPECT_EQ(service.StartTask(taskIdA), ERR_OK);
+    EXPECT_EQ(service.StartTask(taskIdB), ERR_OK);
+
+    IPCSkeleton::SetCallingUid(TEST_HIDUMPER_SERVICE_UID);
+    std::string result;
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "id", taskIdA}), result), ERR_OK);
+    EXPECT_NE(result.find(taskIdA), std::string::npos);
+    EXPECT_EQ(result.find(taskIdB), std::string::npos);
+
+    result.clear();
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "id", "dump_task_0500"}), result), ERR_OK);
+    EXPECT_NE(result.find("TaskManager task not found"), std::string::npos);
+    EXPECT_EQ(result.find(taskIdA), std::string::npos);
+
+    result.clear();
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "id", MakeTaskId("dump_task_0500_none")}),
+        result), ERR_OK);
+    EXPECT_NE(result.find("TaskManager task not found"), std::string::npos);
+
+    SetTestCaller(TEST_CREATOR_UID, TEST_CREATOR_PID);
+    EXPECT_EQ(service.FinishTask(taskIdA), ERR_OK);
+    EXPECT_EQ(service.FinishTask(taskIdB), ERR_OK);
+}
+
+/**
+ * @tc.number: AppMgrServiceTask_DumpTask_0600
+ * @tc.name: register and unregister hooks on a non-debuggable build
+ * @tc.desc: the --task register/unregister subcommands do not exist when the system
+ *           is not a debug build (commercial-like): they answer with the same
+ *           unknown-command error and text as any other unknown subcommand and
+ *           stay hidden from the help text, while the plain task dump stays
+ *           available.
+ */
+HWTEST_F(AppMgrServiceTaskTest, AppMgrServiceTask_DumpTask_0600, TestSize.Level1)
+{
+    IPCSkeleton::SetCallingUid(TEST_HIDUMPER_SERVICE_UID);
+    std::string result;
+    std::string unknownResult;
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "not_a_sub"}), unknownResult),
+        DumpErrorCode::ERR_INVALID_CMD_ERROR);
+
+    OHOS::system::SetMockSystemDebuggable(false);
+    result.clear();
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "register", "x", "4321", "insight"}), result),
+        DumpErrorCode::ERR_INVALID_CMD_ERROR);
+    EXPECT_EQ(result, unknownResult);
+    result.clear();
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task", "unregister", "x", "1"}), result),
+        DumpErrorCode::ERR_INVALID_CMD_ERROR);
+    EXPECT_EQ(result, unknownResult);
+
+    result.clear();
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"--task"}), result), ERR_OK);
+    EXPECT_NE(result.find("TaskManager active tasks: total="), std::string::npos);
+
+    result.clear();
+    EXPECT_EQ(appMgrService_->Dump(MakeDumpArgs({"-h"}), result), ERR_OK);
+    EXPECT_NE(result.find("--task id"), std::string::npos);
+    EXPECT_EQ(result.find("--task register"), std::string::npos);
+    EXPECT_EQ(result.find("--task unregister"), std::string::npos);
+    OHOS::system::SetMockSystemDebuggable(true);
 }
 
 /**

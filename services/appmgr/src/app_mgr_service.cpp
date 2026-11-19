@@ -70,6 +70,7 @@ constexpr const char* OPTION_KEY_DUMP_WEB = "--web";
 constexpr const char* OPTION_KEY_DUMP_TASK = "--task";
 constexpr size_t SIZE_ONE = 1;
 constexpr size_t SIZE_TWO = 2;
+constexpr size_t SIZE_THREE = 3;
 constexpr size_t SIZE_FOUR = 4;
 constexpr size_t SIZE_FIVE = 5;
 constexpr size_t INDEX_ONE = 1;
@@ -133,6 +134,8 @@ constexpr const char* LAUNCH_SERVICE_MAIN_MODE_PARAM = "const.sceneboard.mainmod
 constexpr const char* LAUNCH_SERVICE_PC_MODE_PARAM = "persist.sceneboard.ispcmode";
 constexpr const char* ALLOW_LAUNCH_SERVICE_ON_NON_DUAL_MODE_DEVICE_PARAM =
     "const.sys.appms.allow_launch_service_on_non_dual_mode_device";
+constexpr const char* SECURE_STATE = "const.secure";
+constexpr const char* DEBUGGABLE_STATE = "const.debuggable";
 
 bool IsDaemonDeviceSupported()
 {
@@ -194,6 +197,11 @@ bool CheckLaunchServicesEnabledIdentity(const std::string &bundleName, int32_t u
     return true;
 }
 
+bool IsDebuggableBuild()
+{
+    return !OHOS::system::GetBoolParameter(SECURE_STATE, true) &&
+        OHOS::system::GetBoolParameter(DEBUGGABLE_STATE, false);
+}
 }  // namespace
 
 REGISTER_SYSTEM_ABILITY_BY_ID(AppMgrService, APP_MGR_SERVICE_ID, true);
@@ -1249,13 +1257,42 @@ int AppMgrService::ShowHelp(const std::vector<std::u16string>& args, std::string
         .append("dump agent task manager active tasks\n")
         .append("--task psched               ")
         .append("dump process schedule index, effective levels and judge state\n")
-
-        .append("--task register <taskId> <pid> <insight|cli|a2a|ability>    ")
-        .append("test hook: attribute an entity into the task\n")
-        .append("--task unregister <taskId> <attributionId>    ")
-        .append("test hook: remove an attribution from the task\n");
+        .append("--task id <taskId>          ")
+        .append("dump the active task with the exact id\n");
+    // On commercial builds the system is not debuggable, so the register/unregister
+    // test hooks are hidden from the help text there.
+    if (IsDebuggableBuild()) {
+        result.append("--task register <taskId> <pid> <insight|cli|a2a|ability>    ")
+            .append("test hook: attribute an entity into the task (debug builds only)\n")
+            .append("--task unregister <taskId> <attributionId>    ")
+            .append("test hook: remove an attribution from the task (debug builds only)\n");
+    }
 
     return ERR_OK;
+}
+
+// Handler of the --task register/unregister test hooks; only reachable on debug builds
+// (the caller in DumpTask gates on IsDebuggableBuild).
+int AppMgrService::DumpTaskHook(const std::string &subCmd, const std::vector<std::u16string>& args,
+    std::string& result)
+{
+    if (subCmd == "register") {
+        if (args.size() != SIZE_FIVE) {
+            result.append("usage: --task register <taskId> <pid> <insight|cli|a2a|ability>\n");
+            return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
+        }
+        auto ret = TaskManagerService::GetInstance().DumpRegisterManagedProcess(
+            Str16ToStr8(args[INDEX_TWO]), Str16ToStr8(args[INDEX_THREE]),
+            Str16ToStr8(args[INDEX_FOUR]), result);
+        return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
+    }
+    if (args.size() != SIZE_FOUR) {
+        result.append("usage: --task unregister <taskId> <attributionId>\n");
+        return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
+    }
+    auto ret = TaskManagerService::GetInstance().DumpUnregisterManagedProcess(
+        Str16ToStr8(args[INDEX_TWO]), Str16ToStr8(args[INDEX_THREE]), result);
+    return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
 }
 
 int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string& result)
@@ -1270,24 +1307,22 @@ int AppMgrService::DumpTask(const std::vector<std::u16string>& args, std::string
     }
     if (args.size() > SIZE_ONE) {
         std::string subCmd = Str16ToStr8(args[INDEX_ONE]);
-        if (subCmd == "register") {
-            if (args.size() != SIZE_FIVE) {
-                result.append("usage: --task register <taskId> <pid> <insight|cli|a2a|ability>\n");
-                return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
-            }
-            auto ret = TaskManagerService::GetInstance().DumpRegisterManagedProcess(
-                Str16ToStr8(args[INDEX_TWO]), Str16ToStr8(args[INDEX_THREE]),
-                Str16ToStr8(args[INDEX_FOUR]), result);
-            return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
+        // The register/unregister test hooks exist on debug builds only: commercial
+        // (user) builds bake const.secure=true and const.debuggable=false at build
+        // time and neither value can be flipped at runtime, so on them both
+        // subcommands fall through to the unknown-command error, as if the
+        // commands did not exist at all.
+        if (IsDebuggableBuild() && (subCmd == "register" || subCmd == "unregister")) {
+            return DumpTaskHook(subCmd, args, result);
         }
-        if (subCmd == "unregister") {
-            if (args.size() != SIZE_FOUR) {
-                result.append("usage: --task unregister <taskId> <attributionId>\n");
+        if (subCmd == "id") {
+            if (args.size() != SIZE_THREE) {
+                result.append("usage: --task id <taskId>\n");
                 return DumpErrorCode::ERR_INVALID_NUM_ARGS_ERROR;
             }
-            auto ret = TaskManagerService::GetInstance().DumpUnregisterManagedProcess(
-                Str16ToStr8(args[INDEX_TWO]), Str16ToStr8(args[INDEX_THREE]), result);
-            return ret == ERR_OK ? ERR_OK : DumpErrorCode::ERR_INTERNAL_ERROR;
+            result.append(TaskManagerService::GetInstance().DumpActiveTasks(
+                Str16ToStr8(args[INDEX_TWO])));
+            return ERR_OK;
         }
         if (subCmd == "psched") {
             if (args.size() != SIZE_TWO) {

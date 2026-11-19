@@ -32,6 +32,7 @@ ohos_unittest("task_manager_service_test") {
     "${ability_runtime_services_path}/appmgr/src/task_mgr/attribution_record.cpp",
     "${ability_runtime_services_path}/appmgr/src/task_mgr/common.cpp",
     "mock/src/mock_ipc_skeleton.cpp",
+    "mock/src/mock_parameter.cpp",
     "task_manager_service_test.cpp",
     "task_priority_judge_test.cpp",
   ]

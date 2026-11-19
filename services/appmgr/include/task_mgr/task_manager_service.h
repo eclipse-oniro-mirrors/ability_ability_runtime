@@ -231,9 +231,12 @@ public:
     /**
      * @brief Dumps the snapshot of active tasks, taken under the mutex for consistency
      *        with lifecycle actions.
+     * @param taskId Indicates the task id text to look up; an empty id dumps every
+     *        active task, otherwise only the task whose id equals it is dumped and
+     *        a miss reports not found.
      * @return Returns the dump text of the active task list.
      */
-    std::string DumpActiveTasks();
+    std::string DumpActiveTasks(const std::string &taskId = "");
 
     /**
      * @brief Dump hook of the register channel: parses the dump texts and attributes the

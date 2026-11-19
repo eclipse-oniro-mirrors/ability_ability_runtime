@@ -787,23 +787,39 @@ void TaskManagerService::NotifyTaskFinished(const std::string &taskId, int32_t u
         taskId.c_str(), userId, TaskFinishReasonToString(reason));
 }
 
-std::string TaskManagerService::DumpActiveTasks()
+// Shared by the all-tasks and single-task dump paths; the field layout is fixed so
+// scripts can rely on it.
+static std::string FormatTaskRecord(const TaskRecord &record, int64_t now)
+{
+    int64_t remainSeconds = std::max((record.deadlineMillis - now) / MILLIS_PER_SECOND,
+        static_cast<int64_t>(0));
+    std::string result = "      task ID #" + record.taskId + "\n";
+    result += std::string("        priority [") + TaskPriorityToString(record.priority) + "]\n";
+    result += "        creator uid [" + std::to_string(record.creatorUid) + "] pid [" +
+        std::to_string(record.creatorPid) + "] bundle [" + record.creatorBundleName + "]\n";
+    result += "        managed processes [" + AttributionsToString(record.attributions) + "]\n";
+    result += std::string("        sched level [task:") + TaskPriorityToString(record.priority) + "]\n";
+    result += "        remain timeout [" + std::to_string(remainSeconds) + "s]\n";
+    result += "        create time [" + FormatCreateTime(record.createTimeMillis) + "]\n";
+    return result;
+}
+
+std::string TaskManagerService::DumpActiveTasks(const std::string &taskId)
 {
     std::lock_guard<ffrt::mutex> lock(tasksMutex_);
-    std::string result = "TaskManager active tasks: total=" + std::to_string(tasks_.size()) + "\n";
     int64_t now = NowMillis();
+    if (!taskId.empty()) {
+        // Exact-id filter: only the task whose id equals the text is dumped.
+        auto it = tasks_.find(taskId);
+        if (it == tasks_.end()) {
+            TAG_LOGW(AAFwkTag::APPMGR, "task not found, taskId: %{public}s", taskId.c_str());
+            return "TaskManager task not found, taskId: " + taskId + "\n";
+        }
+        return "TaskManager matched tasks: total=1\n" + FormatTaskRecord(it->second, now);
+    }
+    std::string result = "TaskManager active tasks: total=" + std::to_string(tasks_.size()) + "\n";
     for (const auto &item : tasks_) {
-        const TaskRecord &record = item.second;
-        int64_t remainSeconds = std::max((record.deadlineMillis - now) / MILLIS_PER_SECOND,
-            static_cast<int64_t>(0));
-        result += "      task ID #" + record.taskId + "\n";
-        result += std::string("        priority [") + TaskPriorityToString(record.priority) + "]\n";
-        result += "        creator uid [" + std::to_string(record.creatorUid) + "] pid [" +
-            std::to_string(record.creatorPid) + "] bundle [" + record.creatorBundleName + "]\n";
-        result += "        managed processes [" + AttributionsToString(record.attributions) + "]\n";
-        result += std::string("        sched level [task:") + TaskPriorityToString(record.priority) + "]\n";
-        result += "        remain timeout [" + std::to_string(remainSeconds) + "s]\n";
-        result += "        create time [" + FormatCreateTime(record.createTimeMillis) + "]\n";
+        result += FormatTaskRecord(item.second, now);
     }
     return result;
 }
