@@ -1261,8 +1261,6 @@ void EtsUIAbility::AbilityContinuationOrRecover(const Want &want)
         NotifyContinuationResult(want, true);
         return;
     }
-    // In static ANI mode, only etsContentStorage_ is set. Check it locally instead of
-    // UIAbility::ShouldRecoverState, which validates the napi contentStorage_.
     if (want.GetBoolParam(Want::PARAM_ABILITY_RECOVERY_RESTART, false) && abilityRecovery_ != nullptr &&
         abilityContext_ != nullptr && abilityContext_->GetEtsContentStorage() != nullptr) {
         std::string pageStack = abilityRecovery_->GetSavedPageStack(AppExecFwk::StateReason::DEVELOPER_REQUEST);
