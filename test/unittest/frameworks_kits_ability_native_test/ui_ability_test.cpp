@@ -1632,9 +1632,6 @@ HWTEST_F(UIAbilityBaseTest, UIAbility_ShouldRecoverState_0200, TestSize.Level1)
     auto abilityContext = std::make_shared<AbilityRuntime::AbilityContextImpl>();
     ability->AttachAbilityContext(abilityContext);
 
-    // static(ANI) mode: napi contentStorage_ is null, only etsContentStorage_ is set.
-    // Base ShouldRecoverState only validates the napi contentStorage_; the ets storage
-    // check is handled inline in EtsUIAbility::AbilityContinuationOrRecover.
     AAFwk::Want want;
     want.SetParam(Want::PARAM_ABILITY_RECOVERY_RESTART, true);
     EXPECT_FALSE(ability->ShouldRecoverState(want));
@@ -1643,7 +1640,6 @@ HWTEST_F(UIAbilityBaseTest, UIAbility_ShouldRecoverState_0200, TestSize.Level1)
     ASSERT_EQ(abilityContext->RestoreWindowStage(&storage), ERR_OK);
     EXPECT_FALSE(ability->ShouldRecoverState(want));
 
-    // without recovery restart param
     AAFwk::Want wantNoRecovery;
     EXPECT_FALSE(ability->ShouldRecoverState(wantNoRecovery));
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
