@@ -65,7 +65,7 @@ uint32_t LaunchServiceObserverManager::CountObserversLocked(int32_t callerUid) c
     uint32_t count = 0;
     for (const auto &[id, record] : observers_) {
         if (record->callerUid == callerUid) {
-            count += record->registrationCount;
+            ++count;
         }
     }
     return count;
@@ -79,17 +79,16 @@ int32_t LaunchServiceObserverManager::RegisterObserver(
     }
     auto remote = observer->AsObject();
     std::lock_guard<std::mutex> lock(mutex_);
-    if (CountObserversLocked(callerUid) >= MAX_OBSERVERS_PER_APP) {
-        return AAFwk::ERR_LAUNCH_SERVICE_OBSERVER_LIMIT;
-    }
     for (const auto &item : observers_) {
         if (item.second->observer->AsObject() == remote) {
             if (item.second->callerUid != callerUid) {
                 return ERR_INVALID_VALUE;
             }
-            item.second->registrationCount++;
             return ERR_OK;
         }
+    }
+    if (CountObserversLocked(callerUid) >= MAX_OBSERVERS_PER_APP) {
+        return AAFwk::ERR_LAUNCH_SERVICE_OBSERVER_LIMIT;
     }
     const int32_t id = AllocateObserverIdLocked();
     if (id <= 0) {
@@ -122,10 +121,6 @@ int32_t LaunchServiceObserverManager::UnregisterObserver(const sptr<AbilityRunti
         std::lock_guard<std::mutex> lock(mutex_);
         for (auto iter = observers_.begin(); iter != observers_.end(); ++iter) {
             if (iter->second->observer->AsObject() == observer->AsObject()) {
-                if (iter->second->registrationCount > 1) {
-                    iter->second->registrationCount--;
-                    return ERR_OK;
-                }
                 record = iter->second;
                 observers_.erase(iter);
                 break;

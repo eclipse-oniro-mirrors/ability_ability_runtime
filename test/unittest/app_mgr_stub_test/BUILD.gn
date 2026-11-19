@@ -24,11 +24,12 @@ ohos_unittest("AppMgrStubTest") {
   include_dirs =
       [ "${ability_runtime_test_path}/mock/services_appmgr_test/include" ]
 
-  sources = [ "app_mgr_stub_test.cpp" ]
-
-  deps = [
-    "${ability_runtime_innerkits_path}/app_manager:app_manager",
+  sources = [
+    "app_mgr_stub_test.cpp",
+    "launch_service_stub_test.cpp",
   ]
+
+  deps = [ "${ability_runtime_innerkits_path}/app_manager" ]
 
   external_deps = [
     "ability_base:configuration",

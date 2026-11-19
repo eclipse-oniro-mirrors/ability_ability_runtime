@@ -960,6 +960,18 @@ public:
         taskHandler_ = taskHandler;
     }
 
+    void SetLaunchServiceTaskHandler(const std::shared_ptr<AAFwk::TaskHandlerWrap> &handler)
+    {
+        std::lock_guard<std::mutex> lock(launchServiceTaskMutex_);
+        launchServiceTaskHandler_ = handler;
+    }
+
+    std::shared_ptr<AAFwk::TaskHandlerWrap> GetLaunchServiceTaskHandler() const
+    {
+        std::lock_guard<std::mutex> lock(launchServiceTaskMutex_);
+        return launchServiceTaskHandler_.lock();
+    }
+
     void SetEventHandler(const std::shared_ptr<AMSEventHandler> &eventHandler)
     {
         eventHandler_ = eventHandler;
@@ -1186,6 +1198,7 @@ public:
      */
     void OnRenderProcessExited(pid_t pid);
 
+    void DispatchLaunchServiceProcessExitCleanup(pid_t pid);
     void OnLaunchServiceProcessExited(pid_t pid);
 
     int VerifyKillProcessPermission(const sptr<IRemoteObject> &token) const;
@@ -2703,6 +2716,8 @@ private:
     std::shared_ptr<RemoteClientManager> remoteClientManager_;
     std::shared_ptr<AppRunningManager> appRunningManager_;
     std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler_;
+    mutable std::mutex launchServiceTaskMutex_;
+    std::weak_ptr<AAFwk::TaskHandlerWrap> launchServiceTaskHandler_;
     std::shared_ptr<AAFwk::TaskHandlerWrap> rssTaskHandler_;
     std::shared_ptr<AMSEventHandler> eventHandler_;
     std::shared_ptr<AAFwk::TaskHandlerWrap> dfxTaskHandler_;

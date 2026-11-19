@@ -518,11 +518,6 @@ int32_t AppMgrStub::OnRemoteRequestLaunchService(uint32_t code, MessageParcel &d
             return HandleSetLaunchServicesEnabled(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_LAUNCH_SERVICE_OBSERVER):
             return HandleRegisterLaunchServiceObserver(data, reply);
-        case static_cast<uint32_t>(AppMgrInterfaceCode::NOTIFY_RESIDENT_STARTUP_COMPLETED):
-            if (!reply.WriteInt32(NotifyResidentStartupCompleted())) {
-                return AAFwk::ERR_WRITE_RESULT_CODE_FAILED;
-            }
-            return NO_ERROR;
         case static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_LAUNCH_SERVICE_OBSERVER):
             return HandleUnregisterLaunchServiceObserver(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::START_TASK):
