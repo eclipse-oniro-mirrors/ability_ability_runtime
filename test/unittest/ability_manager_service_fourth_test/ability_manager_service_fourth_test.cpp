@@ -38,6 +38,7 @@
 #include "start_ability_utils.h"
 #include "start_params_by_SCB.h"
 #include "system_ability_definition.h"
+#include "wm_animation_common.h"
 #include "ability_util.h"
 #include "global_constant.h"
 
@@ -658,6 +659,48 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityPassthroughInner_WithCal
     EXPECT_EQ(res, NO_ERROR);
     EXPECT_NE(reply.ReadInt32(), ERR_PERMISSION_DENIED);
     IPCSkeleton::SetCallingUid(0);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForOptionInner
+ * FunctionPoints: VerifyParamsForStartAbilityToBottom ERR_OK path
+ * CaseDescription: With windowCreateParams_ set (positionZ=nullptr), VerifyParamsForStartAbilityToBottom
+ *                 returns ERR_OK, the start flow continues. Without a BMS mock the downstream resolution
+ *                 fails, covering the `windowCreateParams_ != nullptr` + `verifyRet == ERR_OK` branches.
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, StartAbilityForOptionInner_VerifyParamsOk_001, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    want.SetElementName("test.bundleName", "test.abilityName");
+    StartOptions startOptions;
+    startOptions.windowCreateParams_ = std::make_shared<Rosen::WindowCreateParams>();
+    const sptr<IRemoteObject> callerToken;
+    auto result = abilityMs->StartAbilityForOptionInner(want, startOptions, callerToken, false, 0, 0);
+    EXPECT_NE(result, ERR_OK);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: StartAbilityForOptionInner
+ * FunctionPoints: VerifyParamsForStartAbilityToBottom permission-denied path
+ * CaseDescription: With windowCreateParams_ set and positionZ=TOP, and the test process lacking
+ *                 PERMISSION_CONTROL_DEVICE, VerifyParamsForStartAbilityToBottom returns 201,
+ *                 covering the `verifyRet != ERR_OK` → return 201 branch.
+ */
+HWTEST_F(AbilityManagerServiceFourthTest, StartAbilityForOptionInner_VerifyParamsFailed_001, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    want.SetElementName("test.bundleName", "test.abilityName");
+    StartOptions startOptions;
+    startOptions.windowCreateParams_ = std::make_shared<Rosen::WindowCreateParams>();
+    startOptions.windowCreateParams_->positionZ =
+        std::make_shared<int32_t>(static_cast<int32_t>(Rosen::WindowPosition::TOP));
+    const sptr<IRemoteObject> callerToken;
+    auto result = abilityMs->StartAbilityForOptionInner(want, startOptions, callerToken, false, 0, 0);
+    EXPECT_EQ(result, 201);
 }
 
 
