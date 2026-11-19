@@ -430,7 +430,7 @@ bool UIAbility::ShouldRecoverState(const AAFwk::Want &want)
         return false;
     }
 
-    if (abilityContext_->GetContentStorage() == nullptr && abilityContext_->GetEtsContentStorage() == nullptr) {
+    if (abilityContext_->GetContentStorage() == nullptr) {
         TAG_LOGE(AAFwkTag::UIABILITY, "get content failed");
         return false;
     }
