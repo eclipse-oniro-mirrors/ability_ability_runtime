@@ -68,50 +68,6 @@ bool SubSpawnManager::ShouldUseSubSpawn(const std::vector<std::string> &preloadS
     return true;
 }
 
-void SubSpawnManager::SendSubSpawnShutdown(const std::string &bundleName, pid_t subSpawnPid,
-    int32_t uid, const AppSpawnStartMsg &startMsg)
-{
-    AppSpawnClientHandle handle = nullptr;
-    ErrCode ret = AppSpawnClientInit(APPSPAWN_SERVER_NAME, &handle);
-    if (ret != 0) {
-        TAG_LOGE(AAFwkTag::APPMGR, "SendSubSpawnShutdown: init fail, ret:%{public}d", ret);
-        return;
-    }
-    AppSpawnReqMsgHandle reqHandle = nullptr;
-    ret = AppSpawnReqMsgCreate(MSG_SUBSPAWN_SHUTDOWN, bundleName.c_str(), &reqHandle);
-    if (ret != 0) {
-        TAG_LOGE(AAFwkTag::APPMGR, "SendSubSpawnShutdown: create msg fail, ret:%{public}d", ret);
-        return;
-    }
-
-    AppSpawnStartMsg shutdownMsg = startMsg;
-    shutdownMsg.fds.clear();
-    shutdownMsg.preloadSoList.clear();
-    shutdownMsg.appLibPath.clear();
-    shutdownMsg.uid = uid;
-    shutdownMsg.gid = uid;
-#ifdef SUPPORT_CHILD_PROCESS
-    shutdownMsg.childProcessType = CHILD_PROCESS_TYPE_NOT_CHILD;
-#endif
-    AppSpawnClient spawnClient(APPSPAWN_SERVER_NAME);
-    ret = spawnClient.AppspawnCreateDefaultMsg(shutdownMsg, reqHandle);
-    if (ret != 0) {
-        TAG_LOGE(AAFwkTag::APPMGR, "SendSubSpawnShutdown: fill msg fail, ret:%{public}d", ret);
-        return;
-    }
-
-    ret = AppSpawnReqMsgAddExtInfo(reqHandle, "SubspawnPid",
-        reinterpret_cast<const uint8_t *>(&subSpawnPid), sizeof(pid_t));
-    if (ret != 0) {
-        TAG_LOGE(AAFwkTag::APPMGR, "SendSubSpawnShutdown: add SubspawnPid fail, ret:%{public}d", ret);
-    }
-    AppSpawnResult result = {0};
-    TAG_LOGD(AAFwkTag::APPMGR, "SendSubSpawnShutdown: sending MSG_SUBSPAWN_SHUTDOWN for bundle:%{public}s pid:%{public}d",
-        bundleName.c_str(), subSpawnPid);
-    AppSpawnClientSendMsg(handle, reqHandle, &result);
-    TAG_LOGD(AAFwkTag::APPMGR, "SendSubSpawnShutdown: sent, appspawn result:%{public}d", result.result);
-}
-
 std::string SubSpawnManager::QuerySocketNameByUid(int32_t uid)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "QuerySocketNameByUid uid:%{public}d", uid);
@@ -151,7 +107,6 @@ pid_t SubSpawnManager::DoCreateSubSpawn(pid_t appPid, int32_t uid,
 
     AppSpawnStartMsg subSpawnMsg = startMsg;
     subSpawnMsg.fds.clear();
-    subSpawnMsg.procName = bundleName;
     subSpawnMsg.uid = uid;
     subSpawnMsg.gid = uid;
 #ifdef SUPPORT_CHILD_PROCESS
@@ -226,7 +181,6 @@ void SubSpawnManager::AsyncCreateSubSpawn(pid_t appPid, int32_t uid,
             TAG_LOGW(AAFwkTag::APPMGR, "app died during subspawn create, killing orphan pid:%{public}d",
                 subSpawnPid);
             kill(subSpawnPid, SIGKILL);
-            GetInstance().SendSubSpawnShutdown(bundleNameCopy, subSpawnPid, uid, *startMsgCopy);
             std::lock_guard<std::mutex> lock(GetInstance().mutex_);
             GetInstance().subSpawnMap_.erase(appPid);
             return;
@@ -237,7 +191,6 @@ void SubSpawnManager::AsyncCreateSubSpawn(pid_t appPid, int32_t uid,
             TAG_LOGE(AAFwkTag::APPMGR, "socketName empty after create, killing subspawn pid:%{public}d",
                 subSpawnPid);
             kill(subSpawnPid, SIGKILL);
-            GetInstance().SendSubSpawnShutdown(bundleNameCopy, subSpawnPid, uid, *startMsgCopy);
             std::lock_guard<std::mutex> lock(GetInstance().mutex_);
             auto it = GetInstance().subSpawnMap_.find(appPid);
             if (it != GetInstance().subSpawnMap_.end()) {
@@ -254,7 +207,6 @@ void SubSpawnManager::AsyncCreateSubSpawn(pid_t appPid, int32_t uid,
                 TAG_LOGW(AAFwkTag::APPMGR, "record removed or terminating during async create, pid:%{public}d",
                     subSpawnPid);
                 kill(subSpawnPid, SIGKILL);
-                GetInstance().SendSubSpawnShutdown(bundleNameCopy, subSpawnPid, uid, *startMsgCopy);
                 if (it != GetInstance().subSpawnMap_.end()) {
                     it->second->SetKillReason("terminated_during_create");
                     GetInstance().pidToRecordMap_.erase(subSpawnPid);
@@ -272,7 +224,6 @@ void SubSpawnManager::AsyncCreateSubSpawn(pid_t appPid, int32_t uid,
         if (!AppPidFdManager::GetInstance().AddWatcher(subSpawnPid, PidFdType::SUBSPAWN)) {
             TAG_LOGE(AAFwkTag::APPMGR, "pidfd register failed, killing subspawn pid:%{public}d", subSpawnPid);
             kill(subSpawnPid, SIGKILL);
-            GetInstance().SendSubSpawnShutdown(bundleNameCopy, subSpawnPid, uid, *startMsgCopy);
             std::lock_guard<std::mutex> lock(GetInstance().mutex_);
             auto it = GetInstance().subSpawnMap_.find(appPid);
             if (it != GetInstance().subSpawnMap_.end()) {
@@ -454,8 +405,6 @@ void SubSpawnManager::OnAppProcessDied(pid_t appPid)
         kill(subSpawnPid, SIGKILL);
         TAG_LOGI(AAFwkTag::APPMGR, "killed subspawn pid:%{public}d for appPid:%{public}d",
             subSpawnPid, appPid);
-        SendSubSpawnShutdown(record->GetBundleName(), subSpawnPid,
-            record->GetUid(), record->GetStartMsg());
     }
 
     if (record->IsCreatedNotified()) {
@@ -527,8 +476,6 @@ void SubSpawnManager::HandleIdleTimeout(pid_t appPid)
         kill(subSpawnPid, SIGKILL);
         TAG_LOGI(AAFwkTag::APPMGR, "idle timeout, killed subspawn pid:%{public}d for appPid:%{public}d",
             subSpawnPid, appPid);
-        SendSubSpawnShutdown(record->GetBundleName(), subSpawnPid,
-            record->GetUid(), record->GetStartMsg());
     }
 
     if (record->IsCreatedNotified()) {
