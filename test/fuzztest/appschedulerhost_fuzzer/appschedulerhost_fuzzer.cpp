@@ -76,7 +76,7 @@ public:
     int32_t ScheduleNotifyUnLoadRepairPatch(const std::string &bundleName,
         const sptr<IQuickFixCallback> &callback, const int32_t recordId) override { return 0; }
     int32_t ScheduleNotifyAppFault(const FaultData &faultData) override { return 0; }
-    int32_t ScheduleChangeAppGcState(int32_t state, uint64_t tid = 0) override { return 0; }
+    int32_t ScheduleChangeAppGcState(int32_t state, uint64_t tid = 0, bool ipcPrio = false) override { return 0; }
     void AttachAppDebug(bool isDebugFromLocal) override {}
     void DetachAppDebug() override {}
     int32_t ScheduleDumpIpcStart(std::string &result) override { return 0; }

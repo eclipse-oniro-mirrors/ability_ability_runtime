@@ -1000,7 +1000,7 @@ public:
      * @return ERR_OK on success, server error code otherwise;
      *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
      */
-    int32_t ChangeAppGcState(pid_t pid, int32_t state, uint64_t tid = 0);
+    int32_t ChangeAppGcState(pid_t pid, int32_t state, uint64_t tid = 0, bool ipcPrioTrans = false);
 
     /**
      * Register a listener receiving app debug attach/detach notifications.

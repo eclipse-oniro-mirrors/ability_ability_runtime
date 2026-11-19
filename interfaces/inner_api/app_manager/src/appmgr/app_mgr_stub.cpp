@@ -1973,7 +1973,8 @@ int32_t AppMgrStub::HandleChangeAppGcState(MessageParcel &data, MessageParcel &r
     int32_t pid = data.ReadInt32();
     int32_t state = data.ReadInt32();
     uint64_t tid = data.ReadUint64();
-    int32_t ret = ChangeAppGcState(pid, state, tid);
+    bool ipcPrioTrans = data.ReadBool();
+    int32_t ret = ChangeAppGcState(pid, state, tid, ipcPrioTrans);
     reply.WriteInt32(ret);
     return NO_ERROR;
 }

@@ -291,7 +291,7 @@ public:
      *
      * @return Is the status change completed.
      */
-    int32_t ChangeAppGcState(int32_t state, uint64_t tid = 0);
+    int32_t ChangeAppGcState(int32_t state, uint64_t tid = 0, bool ipcPrioTrans = false);
 
     /**
      * @brief attach to a process to debug.

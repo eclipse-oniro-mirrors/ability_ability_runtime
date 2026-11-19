@@ -290,7 +290,7 @@ public:
         return;
     }
 
-    virtual int32_t ChangeAppGcState(pid_t pid, int32_t state, uint64_t tid = 0)
+    virtual int32_t ChangeAppGcState(pid_t pid, int32_t state, uint64_t tid = 0, bool ipcPrio = false)
     {
         return 0;
     }

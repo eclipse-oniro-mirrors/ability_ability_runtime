@@ -71,7 +71,7 @@ bool AbilitySchedulerProxy::ScheduleAbilityTransaction(const Want &want, const L
     auto start = std::chrono::system_clock::now();
     MessageParcel data;
     MessageParcel reply;
-    MessageOption option(MessageOption::TF_ASYNC);
+    MessageOption option(MessageOption::TF_ASYNC | MessageOption::TF_ASYNC_FORCE_TRANS);
     AAFwk::ExtendMaxIpcCapacityForInnerWant(data);
     if (!WriteInterfaceToken(data)) {
         return false;

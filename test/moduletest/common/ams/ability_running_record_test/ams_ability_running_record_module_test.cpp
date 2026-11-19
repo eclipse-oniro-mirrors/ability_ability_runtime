@@ -184,7 +184,7 @@ public:
         return 0;
     }
 
-    int32_t ScheduleChangeAppGcState(int32_t state, uint64_t tid) override
+    int32_t ScheduleChangeAppGcState(int32_t state, uint64_t tid, bool ipcPrio) override
     {
         return 0;
     }

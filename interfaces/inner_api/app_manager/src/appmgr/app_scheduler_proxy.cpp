@@ -295,7 +295,7 @@ void AppSchedulerProxy::ScheduleLaunchAbility(const AbilityInfo &info, const spt
     MessageParcel data;
     MessageParcel reply;
     AAFwk::ExtendMaxIpcCapacityForInnerWant(data);
-    MessageOption option(MessageOption::TF_ASYNC);
+    MessageOption option(MessageOption::TF_ASYNC | MessageOption::TF_ASYNC_FORCE_TRANS);
     if (!WriteInterfaceToken(data)) {
         return;
     }
@@ -761,7 +761,7 @@ int32_t AppSchedulerProxy::ScheduleNotifyAppFault(const FaultData &faultData)
     return reply.ReadInt32();
 }
 
-int32_t AppSchedulerProxy::ScheduleChangeAppGcState(int32_t state, uint64_t tid)
+int32_t AppSchedulerProxy::ScheduleChangeAppGcState(int32_t state, uint64_t tid, bool ipcPrioTrans)
 {
     MessageParcel data;
 
@@ -773,7 +773,9 @@ int32_t AppSchedulerProxy::ScheduleChangeAppGcState(int32_t state, uint64_t tid)
     data.WriteInt32(state);
     data.WriteUint64(tid);
     MessageParcel reply;
-    MessageOption option(MessageOption::TF_ASYNC);
+    MessageOption option(ipcPrioTrans ?
+        MessageOption::TF_ASYNC | MessageOption::TF_ASYNC_FORCE_TRANS :
+        MessageOption::TF_ASYNC);
     auto ret = SendTransactCmd(static_cast<uint32_t>(IAppScheduler::Message::APP_GC_STATE_CHANGE),
         data, reply, option);
     if (ret != NO_ERROR) {

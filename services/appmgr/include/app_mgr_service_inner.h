@@ -1438,7 +1438,7 @@ public:
      *
      * @return Is the status change completed.
      */
-    int32_t ChangeAppGcState(pid_t pid, int32_t state, uint64_t tid = 0);
+    int32_t ChangeAppGcState(pid_t pid, int32_t state, uint64_t tid = 0, bool ipcPrioTrans = false);
 
     /**
      * @brief Register app debug listener.

@@ -4149,7 +4149,7 @@ std::vector<std::string> MainThread::GetRemoveOverlayPaths(const std::vector<Ove
     return removePaths;
 }
 
-int32_t MainThread::ScheduleChangeAppGcState(int32_t state, uint64_t tid)
+int32_t MainThread::ScheduleChangeAppGcState(int32_t state, uint64_t tid, bool ipcPrioTrans)
 {
     TAG_LOGD(AAFwkTag::APPKIT, "called, state is %{public}d", state);
     if (mainHandler_ == nullptr) {
