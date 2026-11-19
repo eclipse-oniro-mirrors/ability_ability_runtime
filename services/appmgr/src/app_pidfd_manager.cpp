@@ -17,6 +17,7 @@
 
 #include <cerrno>
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/epoll.h>
 #include <sys/syscall.h>
 #include <unistd.h>
@@ -175,6 +176,44 @@ void AppPidFdManager::OnSubSpawnPidfdEvent(void *data, uint32_t event)
     pid_t pid = static_cast<pid_t>(*static_cast<int32_t *>(data));
     TAG_LOGI(AAFwkTag::APPMGR, "OnSubSpawnPidfdEvent pid:%{public}d, event:%{public}u", pid, event);
     GetInstance().OnPidfdFired(pid, PidFdType::SUBSPAWN);
+}
+
+bool AppPidFdManager::KillWatchedProcess(pid_t pid)
+{
+    if (pid <= 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "invalid pid");
+        return false;
+    }
+    int32_t pidfd = -1;
+    {
+        std::lock_guard<std::mutex> lock(mapMutex_);
+        auto it = pidfdMap_.find(pid);
+        if (it != pidfdMap_.end()) {
+            pidfd = it->second.pidfd;
+            int ret = syscall(SYS_pidfd_send_signal, pidfd, SIGKILL, nullptr, 0);
+            if (ret == 0) {
+                TAG_LOGI(AAFwkTag::APPMGR, "kill by watcher pidfd, pid:%{public}d, pidfd:%{public}d", pid, pidfd);
+                return true;
+            }
+            TAG_LOGW(AAFwkTag::APPMGR, "pidfd_send_signal fail, pid:%{public}d, errno:%{public}d", pid, errno);
+            return false;
+        }
+    }
+    pidfd = OpenPidFd(pid, 0);
+    if (pidfd < 0) {
+        TAG_LOGW(AAFwkTag::APPMGR, "transient pidfd_open fail (already dead), pid:%{public}d, errno:%{public}d",
+            pid, errno);
+        return false;
+    }
+    fdsan_exchange_owner_tag(pidfd, 0, static_cast<uint32_t>(AAFwkTag::APPMGR));
+    int ret = syscall(SYS_pidfd_send_signal, pidfd, SIGKILL, nullptr, 0);
+    fdsan_close_with_tag(pidfd, static_cast<uint32_t>(AAFwkTag::APPMGR));
+    if (ret == 0) {
+        TAG_LOGI(AAFwkTag::APPMGR, "kill by transient pidfd, pid:%{public}d", pid);
+        return true;
+    }
+    TAG_LOGW(AAFwkTag::APPMGR, "transient pidfd_send_signal fail, pid:%{public}d, errno:%{public}d", pid, errno);
+    return false;
 }
 
 void AppPidFdManager::OnChildPidfdEvent(void *data, uint32_t event)

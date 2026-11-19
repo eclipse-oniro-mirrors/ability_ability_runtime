@@ -69,6 +69,14 @@ public:
      */
     bool AddWatcher(pid_t pid, PidFdType type);
 
+    /**
+     * @brief Kill a process by pidfd (pidfd_send_signal), safe against pid reuse.
+     *
+     * Uses the registered watcher pidfd when available; otherwise opens a
+     * transient pidfd. Returns false if the process is already gone.
+     */
+    bool KillWatchedProcess(pid_t pid);
+
 private:
     AppPidFdManager();
 
