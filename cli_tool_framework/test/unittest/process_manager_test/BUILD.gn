@@ -29,6 +29,7 @@ ohos_unittest("process_manager_test") {
   include_dirs = [
     "${ability_runtime_path}/cli_tool_framework/interfaces/cli_tool/include",
     "${ability_runtime_path}/cli_tool_framework/services/climgr/include",
+    "${ability_runtime_path}/cli_tool_framework/test/unittest/common_mock/test_helper/include",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
     "${ability_runtime_services_path}/common/include",
     "${cli_tool_framework_path}/services/common/include",
@@ -37,6 +38,7 @@ ohos_unittest("process_manager_test") {
   sources = [
     "process_manager_test.cpp",
     "${cli_tool_framework_path}/services/climgr/src/process_manager.cpp",
+    "${cli_tool_framework_path}/services/climgr/src/proc_scanner.cpp",
     "${cli_tool_framework_path}/services/climgr/src/tool_util.cpp",
     "${cli_tool_framework_path}/services/common/src/permission_util.cpp",
   ]
@@ -59,6 +61,7 @@ ohos_unittest("process_manager_test") {
     "ability_base:want",
     "access_token:libaccesstoken_sdk",
     "access_token:libtokenid_sdk",
+    "bounds_checking_function:libsec_shared",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",

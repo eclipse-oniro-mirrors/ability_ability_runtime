@@ -74,6 +74,13 @@ public:
     // paths read it lock-free (e.g. HandleProcessTimeout/ClearSession before Killpg). Must stay atomic —
     // a plain pid_t here would be a data race (UB), unlike the atomics below that guard the same paths.
     std::atomic<pid_t> processId { -1 };
+    // The sandboxed command process discovered inside claw_sandbox (claw_sandbox forks the real
+    // command after unshare(CLONE_NEWPID), so the anchor above is only the monitor). -1 until
+    // the discovery resolves, and only a resolved (valid) pid is ever stored. Kill paths key
+    // on the anchor's process group unconditionally (Killpg(processId)); attribution
+    // registers this pid only — an unresolved discovery registers nothing (no anchor
+    // fallback), so -1 simply means "never resolved".
+    std::atomic<pid_t> commandPid { -1 };
     // taskId = attribution key (empty = not attributed); attributionId = server-assigned handle,
     // sole detach key (0 = not attributed, no unregister fires).
     std::string taskId = "";

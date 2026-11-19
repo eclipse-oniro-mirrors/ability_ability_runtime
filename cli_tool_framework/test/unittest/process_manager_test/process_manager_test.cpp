@@ -16,14 +16,19 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <cerrno>
+#include <csignal>
 #include <fcntl.h>
+#include <string>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "cli_error_code.h"
 #include "exec_cmd_param.h"
 #include "exec_tool_param.h"
+#include "test_pid_max_helper.h"
 #define private public
 #include "process_manager.h"
 #undef private
@@ -454,9 +459,20 @@ HWTEST_F(ProcessManagerTest, CreatePipes_0100, TestSize.Level1)
  */
 HWTEST_F(ProcessManagerTest, Killpg_0100, TestSize.Level1)
 {
-    auto& manager = ProcessManager::GetInstance();
+    GTEST_LOG_(INFO) << "ProcessManager_Killpg_0100 start";
 
-    EXPECT_FALSE(manager.Killpg(999999));
+    // The never-allocatable pid_max value is the "non-existent process group": no process
+    // group can be led by a pid the kernel never allocates, so kill(-pidMax, SIGKILL)
+    // deterministically returns ESRCH and the false branch is exercised with zero risk of
+    // SIGKILLing a live process. A literal invented pid (the previous 999999) could collide
+    // with a real process group under device pid churn — it would both kill the foreign
+    // group and flip this EXPECT to a confusing failure.
+    int32_t pidMax = ReadKernelPidMax();
+    ASSERT_GT(pidMax, 0) << "/proc/sys/kernel/pid_max unreadable: kill-test safety cannot be established";
+    auto& manager = ProcessManager::GetInstance();
+    EXPECT_FALSE(manager.Killpg(static_cast<pid_t>(pidMax)));
+
+    GTEST_LOG_(INFO) << "ProcessManager_Killpg_0100 end";
 }
 
 /**
@@ -920,6 +936,59 @@ HWTEST_F(ProcessManagerTest, CreateShellProcess_ChildEnvTraceIds_0100, TestSize.
     unlink(probePath.c_str());
 
     GTEST_LOG_(INFO) << "ProcessManager_CreateShellProcess_ChildEnvTraceIds_0100 end";
+}
+
+/**
+ * @tc.name: ProcessManager_Killpg_0300
+ * @tc.desc: Group-kill true branch (the reverted kill semantics): a live process-group
+ *           leader and a plain member of the same group — both this case's own children —
+ *           are killed by the single Killpg(leader) call. The member's death is what
+ *           distinguishes the group kill kill(0 - pid) from a single-target kill(pid):
+ *           a regression to the latter leaves the member alive and flips this case red.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ProcessManagerTest, Killpg_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ProcessManager_Killpg_0300 start";
+
+    // Two children of this test process: the future group leader and a plain member of its
+    // group. setpgid from the PARENT side is the race-free idiom — no dependency on the
+    // children being scheduled first (the child-side setpgid(0,0) call may race the kill
+    // otherwise), and it is permitted until they exec; they only nanosleep, and the 5s sleep
+    // bounds the leak window if this case dies mid-flight.
+    pid_t leader = fork();
+    ASSERT_GE(leader, 0);
+    if (leader == 0) {
+        struct timespec ts = { 5, 0 };
+        nanosleep(&ts, nullptr);
+        _exit(0);
+    }
+    pid_t member = fork();
+    ASSERT_GE(member, 0);
+    if (member == 0) {
+        struct timespec ts = { 5, 0 };
+        nanosleep(&ts, nullptr);
+        _exit(0);
+    }
+    ASSERT_EQ(setpgid(leader, leader), 0) << "leader group setup failed";
+    ASSERT_EQ(setpgid(member, leader), 0) << "member group join failed";
+
+    // One group kill must reach both processes; true means kill(0 - pid, SIGKILL) == 0.
+    EXPECT_TRUE(ProcessManager::GetInstance().Killpg(leader));
+
+    // Both processes are this case's own direct children, so both are reaped here — no
+    // signal-0 liveness probing, no pid-reuse caveat. The leader's verdict proves the true
+    // branch; the member's verdict proves the kill was group-wide.
+    int leaderStatus = 0;
+    int memberStatus = 0;
+    ASSERT_EQ(waitpid(leader, &leaderStatus, 0), leader);
+    ASSERT_EQ(waitpid(member, &memberStatus, 0), member);
+    EXPECT_TRUE(WIFSIGNALED(leaderStatus)) << "leader was not killed by a signal";
+    EXPECT_EQ(WTERMSIG(leaderStatus), SIGKILL);
+    EXPECT_TRUE(WIFSIGNALED(memberStatus)) << "member survived the group kill";
+    EXPECT_EQ(WTERMSIG(memberStatus), SIGKILL);
+
+    GTEST_LOG_(INFO) << "ProcessManager_Killpg_0300 end";
 }
 
 } // namespace CliTool
