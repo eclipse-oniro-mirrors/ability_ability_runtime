@@ -12349,7 +12349,7 @@ int AbilityManagerService::SetAbilityController(const sptr<IAbilityController> &
         return CHECK_PERMISSION_FAILED;
     }
 
-    std::lock_guard<ffrt::mutex> guard(globalLock_);
+    std::lock_guard<ffrt::mutex> guard(abilityControllerLock_);
     abilityController_ = abilityController;
     controllerIsAStabilityTest_ = imAStabilityTest;
     TAG_LOGD(AAFwkTag::ABILITYMGR, "%{public}s, end", __func__);
@@ -12358,7 +12358,7 @@ int AbilityManagerService::SetAbilityController(const sptr<IAbilityController> &
 
 bool AbilityManagerService::IsRunningInStabilityTest()
 {
-    std::lock_guard<ffrt::mutex> guard(globalLock_);
+    std::lock_guard<ffrt::mutex> guard(abilityControllerLock_);
     bool ret = abilityController_ != nullptr && controllerIsAStabilityTest_;
     TAG_LOGD(AAFwkTag::ABILITYMGR, "%{public}s, IsRunningInStabilityTest: %{public}d", __func__, ret);
     return ret;
@@ -12367,14 +12367,21 @@ bool AbilityManagerService::IsRunningInStabilityTest()
 bool AbilityManagerService::IsAbilityControllerStart(const Want &want, const std::string &bundleName)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "method call, controllerIsAStabilityTest_: %{public}d", controllerIsAStabilityTest_);
-    if (abilityController_ == nullptr) {
+    sptr<AppExecFwk::IAbilityController> controller;
+    bool isStabilityTest = false;
+    {
+        std::lock_guard<ffrt::mutex> guard(abilityControllerLock_);
+        controller = abilityController_;
+        isStabilityTest = controllerIsAStabilityTest_;
+    }
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "method call, controllerIsAStabilityTest_: %{public}d", isStabilityTest);
+    if (controller == nullptr) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "abilityController_ is nullptr");
         return true;
     }
 
-    if (controllerIsAStabilityTest_) {
-        bool isStart = abilityController_->AllowAbilityStart(want, bundleName);
+    if (isStabilityTest) {
+        bool isStart = controller->AllowAbilityStart(want, bundleName);
         if (!isStart) {
             TAG_LOGI(AAFwkTag::ABILITYMGR,
                 "controller starting can't start ability:%{public}s", bundleName.c_str());
@@ -12386,14 +12393,21 @@ bool AbilityManagerService::IsAbilityControllerStart(const Want &want, const std
 
 bool AbilityManagerService::IsAbilityControllerForeground(const std::string &bundleName)
 {
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "method call, controllerIsAStabilityTest_: %{public}d", controllerIsAStabilityTest_);
-    if (abilityController_ == nullptr) {
+    sptr<AppExecFwk::IAbilityController> controller;
+    bool isStabilityTest = false;
+    {
+        std::lock_guard<ffrt::mutex> guard(abilityControllerLock_);
+        controller = abilityController_;
+        isStabilityTest = controllerIsAStabilityTest_;
+    }
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "method call, controllerIsAStabilityTest_: %{public}d", isStabilityTest);
+    if (controller == nullptr) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "abilityController_ is nullptr");
         return true;
     }
 
-    if (controllerIsAStabilityTest_) {
-        bool isResume = abilityController_->AllowAbilityBackground(bundleName);
+    if (isStabilityTest) {
+        bool isResume = controller->AllowAbilityBackground(bundleName);
         if (!isResume) {
             TAG_LOGI(AAFwkTag::ABILITYMGR,
                 "controller resuming can't terminate ability:%{public}s", bundleName.c_str());
@@ -12652,7 +12666,6 @@ int AbilityManagerService::DoAbilityForeground(const sptr<IRemoteObject> &token,
         return ERR_INVALID_VALUE;
     }
 
-    std::lock_guard<ffrt::mutex> guard(globalLock_);
     auto abilityRecord = Token::GetAbilityRecordByToken(token);
     CHECK_POINTER_AND_RETURN(abilityRecord, ERR_INVALID_VALUE);
     if (!JudgeSelfCalled(abilityRecord)) {
