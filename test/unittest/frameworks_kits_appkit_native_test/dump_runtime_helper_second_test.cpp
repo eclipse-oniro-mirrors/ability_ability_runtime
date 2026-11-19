@@ -14,9 +14,11 @@
  */
 #include <gtest/gtest.h>
 
+#include <atomic>
 #include <cerrno>
 #include <cstdio>
 #include <fcntl.h>
+#include <pthread.h>
 #include <unistd.h>
 #include <utility>
 
@@ -648,12 +650,22 @@ HWTEST_F(DumpRuntimeHelperTestSecond, DumpFdGuard_0400, TestSize.Level1)
 HWTEST_F(DumpRuntimeHelperTestSecond, DetectAndUnwindThreadStackLeak_0100, TestSize.Level1)
 {
     std::string result = DumpRuntimeHelper::DetectAndUnwindThreadStackLeak();
-    // On a normal test process there should be no leaked thread stack, so the
-    // result should contain the header with "leak thread stack count: 0".
+    // Do NOT assert "leak thread stack count: 0" here: the earlier DumpJsHeap
+    // cases in this binary create a real ArkTS runtime whose HistogramClient
+    // worker thread exits unjoined, leaving a named [anon:stack:<dead tid>]
+    // mapping in this process. That is a real leaked stack owned by another
+    // subsystem, so the reported count is environment dependent. Only the
+    // header format is verified here; the detection behavior itself is
+    // covered deterministically by ParseLeakedThreadStackRegions_0200.
     GTEST_LOG_(INFO) << "DetectAndUnwindThreadStackLeak result:" << result;
     EXPECT_FALSE(result.empty());
     EXPECT_NE(result.find("total thread count:"), std::string::npos);
-    EXPECT_NE(result.find("leak thread stack count: 0"), std::string::npos);
+    auto countPos = result.find("leak thread stack count: ");
+    ASSERT_NE(countPos, std::string::npos);
+    countPos += std::string("leak thread stack count: ").size();
+    ASSERT_LT(countPos, result.size());
+    EXPECT_TRUE(result[countPos] >= '0' && result[countPos] <= '9');
+    EXPECT_EQ(result.back(), '\n');
 }
 
 /**
@@ -714,16 +726,74 @@ HWTEST_F(DumpRuntimeHelperTestSecond, CountTotalThreads_0100, TestSize.Level1)
 /**
  * @tc.number: ParseLeakedThreadStackRegions_0100
  * @tc.name: ParseLeakedThreadStackRegions
- * @tc.desc: Test ParseLeakedThreadStackRegions returns empty on normal process.
+ * @tc.desc: Test every region returned by ParseLeakedThreadStackRegions is a well-formed leaked stack.
  */
 HWTEST_F(DumpRuntimeHelperTestSecond, ParseLeakedThreadStackRegions_0100, TestSize.Level1)
 {
     auto regions = DumpRuntimeHelper::ParseLeakedThreadStackRegions();
-    EXPECT_TRUE(regions.empty());
+    // Do NOT assert regions.empty(): the earlier DumpJsHeap cases in this
+    // binary create a real ArkTS runtime whose HistogramClient worker thread
+    // exits unjoined, leaving a genuinely leaked [anon:stack:<dead tid>]
+    // mapping in this process. Instead validate the invariant of every
+    // returned region: positive tid, valid range, dead tid, correct map name.
     GTEST_LOG_(INFO) << "ParseLeakedThreadStackRegions returned " << regions.size() << " regions";
     for (const auto &region : regions) {
         GTEST_LOG_(INFO) << "leaked region tid:" << region.tid
                          << " begin:" << region.begin << " end:" << region.end;
+        EXPECT_GT(region.tid, 0);
+        EXPECT_LT(region.begin, region.end);
+        EXPECT_EQ(region.mapName.find("[anon:stack:"), 0U) << "mapName:" << region.mapName;
+        EXPECT_FALSE(DumpRuntimeHelper::IsTidAlive(region.tid));
+    }
+}
+
+namespace {
+void *LeakedStackThreadFunc(void *arg)
+{
+    auto *tid = static_cast<std::atomic<int32_t> *>(arg);
+    tid->store(gettid());
+    return nullptr;
+}
+} // namespace
+
+/**
+ * @tc.number: ParseLeakedThreadStackRegions_0200
+ * @tc.name: ParseLeakedThreadStackRegions
+ * @tc.desc: Test ParseLeakedThreadStackRegions detects a joinable-unjoined exited thread and
+ *           stops reporting it after pthread_join frees the stack.
+ */
+HWTEST_F(DumpRuntimeHelperTestSecond, ParseLeakedThreadStackRegions_0200, TestSize.Level1)
+{
+    // musl keeps the stack of an exited joinable thread mapped (named
+    // "[anon:stack:<tid>]") until it is joined, which is exactly the leak
+    // signature this interface is designed to detect.
+    std::atomic<int32_t> tid(0);
+    pthread_t thread;
+    ASSERT_EQ(pthread_create(&thread, nullptr, LeakedStackThreadFunc, &tid), 0);
+    for (int i = 0; i < 1000 && tid.load() == 0; ++i) { // wait up to 10s for thread start
+        usleep(10 * 1000);
+    }
+    ASSERT_GT(tid.load(), 0);
+    for (int i = 0; i < 1000 && DumpRuntimeHelper::IsTidAlive(tid.load()); ++i) { // wait thread exit
+        usleep(10 * 1000);
+    }
+    ASSERT_FALSE(DumpRuntimeHelper::IsTidAlive(tid.load()));
+
+    auto regions = DumpRuntimeHelper::ParseLeakedThreadStackRegions();
+    bool found = false;
+    for (const auto &region : regions) {
+        if (region.tid == tid.load()) {
+            found = true;
+            EXPECT_LT(region.begin, region.end);
+        }
+    }
+    EXPECT_TRUE(found) << "exited joinable thread tid:" << tid.load() << " not detected as leaked";
+
+    // Joining the thread frees its stack; the region must no longer be reported.
+    EXPECT_EQ(pthread_join(thread, nullptr), 0);
+    regions = DumpRuntimeHelper::ParseLeakedThreadStackRegions();
+    for (const auto &region : regions) {
+        EXPECT_NE(region.tid, tid.load()) << "joined thread tid:" << tid.load() << " still reported";
     }
 }
 
