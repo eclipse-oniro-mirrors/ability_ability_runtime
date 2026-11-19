@@ -837,6 +837,40 @@ int32_t AppExitReasonDataManager::GetAbilityRecoverInfo(
     return ERR_OK;
 }
 
+int32_t AppExitReasonDataManager::GetRecoverSessionIdsByTokenId(uint32_t tokenId,
+    std::vector<int32_t> &sessionIds)
+{
+    AAFwk::RecordCostTimeUtil timeRecord("GetRecoverSessionIdsByTokenId");
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "tokenId: %{private}u", tokenId);
+    {
+        std::lock_guard lock(kvStorePtrMutex_);
+        if (!CheckKvStore()) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "null kvStore");
+            return ERR_NO_INIT;
+        }
+    }
+
+    DistributedKv::Key key = GetAbilityRecoverInfoKey(tokenId);
+    DistributedKv::Value value;
+    DistributedKv::Status status;
+    {
+        std::lock_guard lock(kvStorePtrMutex_);
+        status = kvStorePtr_->Get(key, value);
+    }
+    if (status != DistributedKv::Status::SUCCESS) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "failed:%{public}d", status);
+        return ERR_INVALID_VALUE;
+    }
+
+    std::vector<std::string> recoverInfoList;
+    std::vector<int> sessionIdList;
+    ConvertAbilityRecoverInfoFromValue(value, recoverInfoList, sessionIdList);
+    for (auto sessionId : sessionIdList) {
+        sessionIds.emplace_back(sessionId);
+    }
+    return ERR_OK;
+}
+
 uint32_t AppExitReasonDataManager::GetTokenIdBySessionID(const int32_t sessionId)
 {
     AAFwk::RecordCostTimeUtil timeRecord("GetTokenIdBySessionID");

@@ -460,6 +460,8 @@ public:
 
     bool IsBundleStarting(pid_t pid);
 
+    void HandleAppDataCleared(const std::string &bundleName, uint32_t accessTokenId);
+
     void RecordPidKilling(pid_t pid, const std::string &reason, bool isKillPrecedeStart);
 
     int32_t NotifyStartupExceptionBySCB(int32_t requestId, const std::string &reason);

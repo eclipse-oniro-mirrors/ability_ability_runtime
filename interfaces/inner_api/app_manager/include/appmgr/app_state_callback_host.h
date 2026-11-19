@@ -117,6 +117,8 @@ public:
      */
     virtual void RecordAppExitSignalReason(int32_t pid, int32_t uid, int32_t signal, std::string &bundleName) override;
 
+    virtual void NotifyAppDataCleared(int32_t userId, const std::string &bundleName, uint32_t accessTokenId) override;
+
 private:
     int32_t HandleOnAppStateChanged(MessageParcel &data, MessageParcel &reply);
     int32_t HandleOnAbilityRequestDone(MessageParcel &data, MessageParcel &reply);
@@ -129,6 +131,8 @@ private:
     int32_t HandleOnCacheExitInfo(MessageParcel &data, MessageParcel &reply);
     int32_t HandleNotifyAppPreCache(MessageParcel &data, MessageParcel &reply);
     int32_t HandleRecordAppExitSignalReason(MessageParcel &data, MessageParcel &reply);
+
+    int32_t HandleNotifyAppDataCleared(MessageParcel &data, MessageParcel &reply);
 
     DISALLOW_COPY_AND_MOVE(AppStateCallbackHost);
 };

@@ -76,6 +76,8 @@ public:
     int32_t GetAbilityRecoverInfo(uint32_t accessTokenId,
         const std::string &moduleName, const std::string &abilityName, bool &hasRecoverInfo);
 
+    int32_t GetRecoverSessionIdsByTokenId(uint32_t tokenId, std::vector<int32_t> &sessionIds);
+
     uint32_t GetTokenIdBySessionID(const int32_t sessionId);
 
     int32_t SetUIExtensionAbilityExitReason(const std::string &bundleName,

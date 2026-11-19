@@ -2990,6 +2990,13 @@ protected:
      */
     void RecordAppExitSignalReason(int32_t pid, int32_t uid, int32_t signal, std::string &bundleName) override;
 
+    /**
+     * Handle the application data cleared notification from the appmgr: route to the
+     * UIAbilityLifecycleManager of the given user to remove the KVStore marks and notify
+     * the window. Called on the appmgr binder callback thread, no AbilityManagerService lock is held.
+     */
+    void NotifyAppDataCleared(int32_t userId, const std::string &bundleName, uint32_t accessTokenId) override;
+
     int32_t GetCollaboratorType(const std::string &codePath) const;
 
     int32_t KillProcessForCollaborator(int32_t collaboratorType, const std::string &bundleName, int32_t userId);
@@ -3376,6 +3383,7 @@ private:
     void KillDirectBootApps(int32_t userId);
     void SubscribeUserUnlockedEvent();
     void SubscribeScreenUnlockedEvent();
+
     std::function<void(int32_t)> GetScreenUnlockCallback();
     std::function<void(int32_t)> GetUserScreenUnlockCallback();
     void UnSubscribeScreenUnlockedEvent();

@@ -93,12 +93,22 @@ public:
     {
         dealed = true;
     }
+    void NotifyAppDataCleared(int32_t userId, const std::string &bundleName, uint32_t accessTokenId) override
+    {
+        dealed = true;
+        gotUserId = userId;
+        gotBundleName = bundleName;
+        gotAccessTokenId = accessTokenId;
+    }
     sptr<IRemoteObject> AsObject()
     {
         return nullptr;
     }
     bool dealed = false;
     int32_t tokenSize = 0;
+    int32_t gotUserId = -1;
+    std::string gotBundleName = "";
+    uint32_t gotAccessTokenId = 0;
 };
 
 class AppMgrServiceInnerTest : public testing::Test {
@@ -1585,5 +1595,42 @@ HWTEST_F(AppMgrServiceInnerTest, AllowChildProcessInMultiProcessFeatureApp_NullA
     bool ret = appMgrServiceInner->AllowChildProcessInMultiProcessFeatureApp(nullptr);
     EXPECT_FALSE(ret);
 }
+
+/**
+ * @tc.name: NotifyAppDataCleared_001
+ * @tc.desc: NotifyAppDataCleared with an empty list, a null callback and a valid callback
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, NotifyAppDataCleared_001, TestSize.Level1)
+{
+    constexpr int32_t TEST_USER_ID = 100;
+    constexpr uint32_t TEST_TOKEN_ID = 123456;
+    const std::string TEST_BUNDLE_NAME = "com.test.datacleared";
+
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    // First call: the callback list is empty, no crash and nothing dispatched.
+    appMgrServiceInner->NotifyAppDataCleared(TEST_USER_ID, TEST_BUNDLE_NAME, TEST_TOKEN_ID);
+    EXPECT_EQ(appMgrServiceInner->appStateCallbacks_.size(), static_cast<size_t>(0));
+
+    // Second call: a null callback is registered, it is skipped without crash.
+    AppMgrServiceInner::AppStateCallbackWithUserId nullCallback;
+    nullCallback.callback = nullptr;
+    appMgrServiceInner->appStateCallbacks_.push_back(nullCallback);
+    appMgrServiceInner->NotifyAppDataCleared(TEST_USER_ID, TEST_BUNDLE_NAME, TEST_TOKEN_ID);
+    EXPECT_EQ(appMgrServiceInner->appStateCallbacks_.size(), static_cast<size_t>(1));
+
+    // Third call: a valid callback is registered, it is dispatched with the parsed values.
+    auto callback = sptr<MockIAppStateCallback>::MakeSptr();
+    AppMgrServiceInner::AppStateCallbackWithUserId validCallback;
+    validCallback.callback = callback;
+    appMgrServiceInner->appStateCallbacks_.push_back(validCallback);
+    appMgrServiceInner->NotifyAppDataCleared(TEST_USER_ID, TEST_BUNDLE_NAME, TEST_TOKEN_ID);
+    EXPECT_EQ(appMgrServiceInner->appStateCallbacks_.size(), static_cast<size_t>(2));
+    EXPECT_EQ(callback->dealed, true);
+    EXPECT_EQ(callback->gotUserId, TEST_USER_ID);
+    EXPECT_EQ(callback->gotBundleName, TEST_BUNDLE_NAME);
+    EXPECT_EQ(callback->gotAccessTokenId, TEST_TOKEN_ID);
+}
+
 } // namespace AppExecFwk
 } // namespace OHOS

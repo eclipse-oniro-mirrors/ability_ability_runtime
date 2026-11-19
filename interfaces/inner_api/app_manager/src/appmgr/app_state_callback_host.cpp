@@ -66,6 +66,8 @@ int AppStateCallbackHost::OnRemoteRequest(
             return HandleOnCacheExitInfo(data, reply);
         case static_cast<uint32_t>(IAppStateCallback::Message::TRANSACT_ON_RECORD_APP_EXIT_SIGNAL_REASON):
             return HandleRecordAppExitSignalReason(data, reply);
+        case static_cast<uint32_t>(IAppStateCallback::Message::TRANSACT_ON_NOTIFY_APP_DATA_CLEARED):
+            return HandleNotifyAppDataCleared(data, reply);
     }
 
     TAG_LOGD(AAFwkTag::APPMGR, "AppStateCallbackHost::OnRemoteRequest end");
@@ -125,6 +127,12 @@ void AppStateCallbackHost::OnCacheExitInfo(uint32_t accessTokenId, const Running
 }
 
 void AppStateCallbackHost::RecordAppExitSignalReason(int32_t pid, int32_t uid, int32_t signal, std::string &bundleName)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+}
+
+void AppStateCallbackHost::NotifyAppDataCleared(int32_t userId, const std::string &bundleName,
+    uint32_t accessTokenId)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");
 }
@@ -316,6 +324,27 @@ int32_t AppStateCallbackHost::HandleRecordAppExitSignalReason(MessageParcel &dat
     }
     std::string bundleName = data.ReadString();
     RecordAppExitSignalReason(pid, uid, signal, bundleName);
+    return NO_ERROR;
+}
+
+int32_t AppStateCallbackHost::HandleNotifyAppDataCleared(MessageParcel &data, MessageParcel &reply)
+{
+    int32_t userId = data.ReadInt32();
+    if (userId < 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "userId is illegal");
+        return ERR_INVALID_VALUE;
+    }
+    std::string bundleName = data.ReadString();
+    if (bundleName.empty()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "bundleName is illegal");
+        return ERR_INVALID_VALUE;
+    }
+    uint32_t accessTokenId = data.ReadUint32();
+    if (accessTokenId == 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "accessTokenId is illegal");
+        return ERR_INVALID_VALUE;
+    }
+    NotifyAppDataCleared(userId, bundleName, accessTokenId);
     return NO_ERROR;
 }
 }  // namespace AppExecFwk

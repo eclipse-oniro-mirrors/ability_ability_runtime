@@ -111,6 +111,8 @@ public:
      */
     virtual void RecordAppExitSignalReason(int32_t pid, int32_t uid, int32_t signal, std::string &bundleName) override;
 
+    virtual void NotifyAppDataCleared(int32_t userId, const std::string &bundleName, uint32_t accessTokenId) override;
+
 private:
     bool WriteInterfaceToken(MessageParcel &data);
     static inline BrokerDelegator<AppStateCallbackProxy> delegator_;

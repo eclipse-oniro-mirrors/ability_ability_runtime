@@ -53,6 +53,9 @@ public:
     std::shared_ptr<UIAbilityRecord> ualmGetAbilityRecordByToken_ = nullptr;
     int ualmGetSessionIdByAbilityToken_ = 0;
     bool ualmIsBackToCallerApp_ = false;
+    bool ualmHandleAppDataClearedCalled_ = false;
+    std::string ualmHandleAppDataClearedBundle_ = "";
+    uint32_t ualmHandleAppDataClearedTokenId_ = 0;
     int fimStartFreeInstall_ = ERR_OK;
     int eriQueryAtomicServiceStartupRule_ = ERR_OK;
     std::shared_ptr<AbilityRecord> arGetAbilityRecord_ = nullptr;

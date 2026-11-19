@@ -17142,6 +17142,18 @@ void AbilityManagerService::RecordAppExitSignalReason(int32_t pid, int32_t uid, 
     }
 }
 
+void AbilityManagerService::NotifyAppDataCleared(int32_t userId, const std::string &bundleName,
+    uint32_t accessTokenId)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "bundleName:%{public}s userId:%{public}d", bundleName.c_str(), userId);
+    auto uiAbilityManager = GetUIAbilityManagerByUserId(userId);
+    if (uiAbilityManager == nullptr) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "null uiAbilityManager, userId:%{public}d", userId);
+        return;
+    }
+    uiAbilityManager->HandleAppDataCleared(bundleName, accessTokenId);
+}
+
 int32_t AbilityManagerService::OpenFile(const Uri& uri, uint32_t flag)
 {
     auto accessTokenId = IPCSkeleton::GetCallingTokenID();
