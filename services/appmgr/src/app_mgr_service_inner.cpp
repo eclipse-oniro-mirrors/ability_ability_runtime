@@ -3427,6 +3427,8 @@ void AppMgrServiceInner::ApplicationTerminated(const int32_t recordId)
     appRunningManager_->RemoveAppRunningRecordById(recordId);
     if (!appRunningManager_->CheckAppRunningRecordIsExistByUid(appRecord->GetUid())) {
         SubSpawnManager::GetInstance().OnAppProcessDied(appRecord->GetUid());
+    } else {
+        TAG_LOGD(AAFwkTag::APPMGR, "keep subspawn, other live process with uid:%{public}d", appRecord->GetUid());
     }
     AAFwk::EventInfo eventInfo;
     auto applicationInfo = appRecord->GetApplicationInfo();
@@ -6742,6 +6744,8 @@ void AppMgrServiceInner::ClearAppRunningData(const std::shared_ptr<AppRunningRec
 #endif // SUPPORT_CHILD_PROCESS
     if (!appRunningManager_->CheckAppRunningRecordIsExistByUid(appRecord->GetUid())) {
         SubSpawnManager::GetInstance().OnAppProcessDied(appRecord->GetUid());
+    } else {
+        TAG_LOGD(AAFwkTag::APPMGR, "keep subspawn, other live process with uid:%{public}d", appRecord->GetUid());
     }
 
     SendProcessExitEvent(appRecord);
@@ -11312,6 +11316,10 @@ void AppMgrServiceInner::OnChildProcessDied(std::shared_ptr<ChildProcessRecord> 
         auto hostRecord = childProcessRecord->GetHostRecord();
         if (hostRecord) {
             SubSpawnManager::GetInstance().OnChildProcessExited(hostRecord->GetUid(),
+                childProcessRecord->GetPid());
+        } else {
+            TAG_LOGD(AAFwkTag::APPMGR,
+                "host record gone, skip subspawn child count update, childPid:%{public}d",
                 childProcessRecord->GetPid());
         }
     }
