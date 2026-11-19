@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,6 +14,9 @@
  */
 
 #include "app_mgr_proxy.h"
+#include "launch_service_operation_callback.h"
+
+#include <utility>
 
 #include "ability_manager_errors.h"
 #include "app_utils.h"
@@ -25,6 +28,8 @@
 #include "ipc_capacity_wrap.h"
 #include "ipc_types.h"
 #include "iremote_object.h"
+#include "launch_service_info.h"
+#include "launch_service_observer.h"
 #include "parcel_util.h"
 
 namespace OHOS {
@@ -119,6 +124,15 @@ int32_t AppMgrProxy::MakeImage(const AAFwk::Want &want, int32_t userId,
     PARCEL_UTIL_SENDREQ_RET_INT(AppMgrInterfaceCode::MAKE_IMAGE, data, reply, option);
     return reply.ReadInt32();
 }
+
+namespace {
+bool WriteDaemonDescriptor(MessageParcel &data, const AAFwk::LaunchServiceDescriptor &descriptor)
+{
+    return data.WriteString(descriptor.bundleName) && data.WriteString(descriptor.moduleName) &&
+        data.WriteString(descriptor.serviceName) && data.WriteInt32(descriptor.userId) &&
+        data.WriteInt32(descriptor.appIndex);
+}
+} // namespace
 
 int32_t AppMgrProxy::DestroyImage(uint64_t checkpointId, sptr<IImageErrorHandler> errorHandler)
 {
@@ -3395,6 +3409,181 @@ void AppMgrProxy::CancelDelayedExitTask(int32_t pid)
 
     PARCEL_UTIL_WRITE_NORET(data, Int32, pid);
     PARCEL_UTIL_SENDREQ_NORET(AppMgrInterfaceCode::CANCEL_DELAYED_EXIT_TASK, data, reply, option);
+}
+
+int32_t AppMgrProxy::SendDaemonRequest(
+    AppMgrInterfaceCode code, const AAFwk::LaunchServiceDescriptor &descriptor, const char *operation)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    if (!WriteInterfaceToken(data) || !WriteDaemonDescriptor(data, descriptor)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write daemon descriptor failed.");
+        return ERR_INVALID_VALUE;
+    }
+    auto ret = SendRequest(code, data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::APPMGR, "%{public}s daemon request failed: %{public}d", operation, ret);
+        return ret;
+    }
+    return reply.ReadInt32();
+}
+
+int32_t AppMgrProxy::RegisterDaemon(const AAFwk::LaunchServiceDescriptor &descriptor)
+{
+    return SendDaemonRequest(AppMgrInterfaceCode::REGISTER_LAUNCH_SERVICE, descriptor, "register");
+}
+
+int32_t AppMgrProxy::UnregisterDaemon(const AAFwk::LaunchServiceDescriptor &descriptor)
+{
+    return SendDaemonRequest(AppMgrInterfaceCode::UNREGISTER_LAUNCH_SERVICE, descriptor, "unregister");
+}
+
+int32_t AppMgrProxy::StartDaemon(const AAFwk::LaunchServiceDescriptor &descriptor)
+{
+    return SendDaemonRequest(AppMgrInterfaceCode::START_LAUNCH_SERVICE, descriptor, "start");
+}
+
+int32_t AppMgrProxy::StopDaemon(const AAFwk::LaunchServiceDescriptor &descriptor)
+{
+    return SendDaemonRequest(AppMgrInterfaceCode::STOP_LAUNCH_SERVICE, descriptor, "stop");
+}
+
+int32_t AppMgrProxy::GetLaunchServiceInformation(
+    const AbilityRuntime::LaunchServiceDescriptor &descriptor, AbilityRuntime::LaunchServiceInformation &information)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!WriteInterfaceToken(data) || !data.WriteParcelable(&descriptor)) {
+        return ERR_INVALID_VALUE;
+    }
+    int32_t ret = SendRequest(AppMgrInterfaceCode::GET_LAUNCH_SERVICE_INFORMATION, data, reply, option);
+    if (ret != NO_ERROR) {
+        return ret;
+    }
+    ret = reply.ReadInt32();
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    std::unique_ptr<AbilityRuntime::LaunchServiceInformation> result(
+        reply.ReadParcelable<AbilityRuntime::LaunchServiceInformation>());
+    if (result == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+    information = std::move(*result);
+    return ERR_OK;
+}
+
+int32_t AppMgrProxy::GetAllRegisteredInformation(
+    int32_t userId, std::vector<AbilityRuntime::LaunchServiceInformation> &informations)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!WriteInterfaceToken(data) || !data.WriteInt32(userId)) {
+        return IPC_PROXY_ERR;
+    }
+    int32_t ret = SendRequest(AppMgrInterfaceCode::GET_ALL_REGISTERED_INFORMATION, data, reply, option);
+    if (ret != NO_ERROR) {
+        return ret;
+    }
+    ret = reply.ReadInt32();
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    int32_t count = reply.ReadInt32();
+    if (count < 0 || count > CYCLE_LIMIT) {
+        return ERR_INVALID_VALUE;
+    }
+    std::vector<AbilityRuntime::LaunchServiceInformation> result;
+    result.reserve(static_cast<size_t>(count));
+    for (int32_t index = 0; index < count; ++index) {
+        std::unique_ptr<AbilityRuntime::LaunchServiceInformation> item(
+            reply.ReadParcelable<AbilityRuntime::LaunchServiceInformation>());
+        if (item == nullptr) {
+            return ERR_INVALID_VALUE;
+        }
+        result.emplace_back(std::move(*item));
+    }
+    informations = std::move(result);
+    return ERR_OK;
+}
+
+int32_t AppMgrProxy::SetLaunchServicesEnabled(const std::string &bundleName, int32_t userId, int32_t appIndex,
+    const std::vector<uint8_t> &token, bool enable,
+    const sptr<AbilityRuntime::ILaunchServiceOperationCallback> &callback)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (callback == nullptr || !WriteInterfaceToken(data) || !data.WriteString(bundleName) ||
+        !data.WriteInt32(userId) || !data.WriteInt32(appIndex) || !data.WriteUInt8Vector(token) ||
+        !data.WriteBool(enable) || !data.WriteRemoteObject(callback->AsObject())) {
+        return ERR_INVALID_VALUE;
+    }
+    auto ret = SendRequest(AppMgrInterfaceCode::SET_LAUNCH_SERVICES_ENABLED, data, reply, option);
+    if (ret != NO_ERROR) {
+        return ret;
+    }
+    int32_t result = ERR_INVALID_VALUE;
+    return reply.ReadInt32(result) ? result : ERR_INVALID_VALUE;
+}
+
+int32_t AppMgrProxy::NotifyResidentStartupCompleted()
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    if (!WriteInterfaceToken(data)) {
+        return ERR_INVALID_VALUE;
+    }
+    auto result = SendRequest(AppMgrInterfaceCode::NOTIFY_RESIDENT_STARTUP_COMPLETED, data, reply, option);
+    if (result != NO_ERROR) {
+        return result;
+    }
+    int32_t serviceResult = ERR_INVALID_VALUE;
+    return reply.ReadInt32(serviceResult) ? serviceResult : ERR_INVALID_VALUE;
+}
+
+int32_t AppMgrProxy::RegisterLaunchServiceObserver(const sptr<AbilityRuntime::ILaunchServiceObserver> &observer)
+{
+    if (observer == nullptr || observer->AsObject() == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    if (!WriteInterfaceToken(data) || !data.WriteRemoteObject(observer->AsObject())) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write launch service observer failed.");
+        return ERR_INVALID_VALUE;
+    }
+    auto ret = SendRequest(AppMgrInterfaceCode::REGISTER_LAUNCH_SERVICE_OBSERVER, data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::APPMGR, "register launch service observer request failed: %{public}d", ret);
+        return ret;
+    }
+    return reply.ReadInt32();
+}
+
+int32_t AppMgrProxy::UnregisterLaunchServiceObserver(const sptr<AbilityRuntime::ILaunchServiceObserver> &observer)
+{
+    if (observer == nullptr || observer->AsObject() == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    if (!WriteInterfaceToken(data) || !data.WriteRemoteObject(observer->AsObject())) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write launch service observer failed.");
+        return ERR_INVALID_VALUE;
+    }
+    auto ret = SendRequest(AppMgrInterfaceCode::UNREGISTER_LAUNCH_SERVICE_OBSERVER, data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::APPMGR, "unregister launch service observer request failed: %{public}d", ret);
+        return ret;
+    }
+    return reply.ReadInt32();
 }
 
 int32_t AppMgrProxy::StartTask(const std::string &taskId)

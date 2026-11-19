@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -35,6 +35,7 @@
 #ifdef SUPPORT_CHILD_PROCESS
 #include "child_process_request.h"
 #endif // SUPPORT_CHILD_PROCESS
+#include "daemon_service_info.h"
 #include "fault_data.h"
 #include "kia_interceptor_interface.h"
 #include "iapp_state_callback.h"
@@ -63,6 +64,12 @@
 #include "hyper_snap_error_record.h"
 
 namespace OHOS {
+namespace AbilityRuntime {
+class ILaunchServiceObserver;
+class ILaunchServiceOperationCallback;
+struct LaunchServiceDescriptor;
+struct LaunchServiceInformation;
+}
 namespace AppExecFwk {
 class IAppMgr : public IRemoteBroker {
 public:
@@ -1372,6 +1379,60 @@ public:
     }
 
     virtual void CancelDelayedExitTask(int32_t pid) {}
+
+    virtual int32_t RegisterDaemon(const AAFwk::LaunchServiceDescriptor &descriptor)
+    {
+        return ERR_OK;
+    }
+
+    virtual int32_t UnregisterDaemon(const AAFwk::LaunchServiceDescriptor &descriptor)
+    {
+        return ERR_OK;
+    }
+
+    virtual int32_t StartDaemon(const AAFwk::LaunchServiceDescriptor &descriptor)
+    {
+        return ERR_OK;
+    }
+
+    virtual int32_t StopDaemon(const AAFwk::LaunchServiceDescriptor &descriptor)
+    {
+        return ERR_OK;
+    }
+
+    virtual int32_t GetLaunchServiceInformation(const AbilityRuntime::LaunchServiceDescriptor &descriptor,
+        AbilityRuntime::LaunchServiceInformation &information)
+    {
+        return ERR_OK;
+    }
+
+    virtual int32_t GetAllRegisteredInformation(
+        int32_t userId, std::vector<AbilityRuntime::LaunchServiceInformation> &informations)
+    {
+        return ERR_OK;
+    }
+
+    virtual int32_t SetLaunchServicesEnabled(const std::string &bundleName, int32_t userId, int32_t appIndex,
+        const std::vector<uint8_t> &token, bool enable,
+        const sptr<AbilityRuntime::ILaunchServiceOperationCallback> &callback)
+    {
+        return ERR_INVALID_OPERATION;
+    }
+
+    virtual int32_t NotifyResidentStartupCompleted()
+    {
+        return ERR_OK;
+    }
+
+    virtual int32_t RegisterLaunchServiceObserver(const sptr<AbilityRuntime::ILaunchServiceObserver> &observer)
+    {
+        return ERR_OK;
+    }
+
+    virtual int32_t UnregisterLaunchServiceObserver(const sptr<AbilityRuntime::ILaunchServiceObserver> &observer)
+    {
+        return ERR_OK;
+    }
 
     /**
      * @brief Starts a task with the specified task id.

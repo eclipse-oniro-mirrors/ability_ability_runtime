@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+# Copyright (c) 2021-2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -75,6 +75,8 @@ ohos_shared_library("libappms") {
     "src/exit_resident_process_manager.cpp",
     "src/fork_image_info.cpp",
     "src/killing_process_manager.cpp",
+    "src/launch_service_manager.cpp",
+    "src/launch_service_observer_manager.cpp",
     "src/modal_system_app_freeze_uiextension.cpp",
     "src/module_running_record.cpp",
     "src/multi_user_config_mgr.cpp",
@@ -173,6 +175,7 @@ ohos_shared_library("libappms") {
     "resource_schedule_service:ressched_client",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "user_auth_framework:userauth_client",
     "window_manager:session_manager_lite",
   ]
   public_external_deps = [ "kv_store:distributeddata_mgr" ]

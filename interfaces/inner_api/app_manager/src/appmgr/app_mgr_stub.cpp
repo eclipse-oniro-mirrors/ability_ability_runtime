@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,6 +14,7 @@
  */
 
 #include "app_mgr_stub.h"
+#include "launch_service_operation_callback.h"
 
 #include "ability_info.h"
 #include "hyper_snap_error_record.h"
@@ -35,6 +36,8 @@
 #include "ipc_skeleton.h"
 #include "ipc_types.h"
 #include "iremote_object.h"
+#include "launch_service_info.h"
+#include "launch_service_observer.h"
 #include "mem_dump_callback_interface.h"
 #include "memory_level_info.h"
 #include "running_process_info.h"
@@ -492,6 +495,36 @@ int32_t AppMgrStub::OnRemoteRequestInnerNinth(uint32_t code, MessageParcel &data
             return HandleCancelDelayedExitTask(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::IS_CORRESPONDING_PROCESS_ATTACH_DEBUG):
             return HandleIsCorrespondingProcessAttachDebug(data, reply);
+    }
+    return OnRemoteRequestLaunchService(code, data, reply);
+}
+
+int32_t AppMgrStub::OnRemoteRequestLaunchService(uint32_t code, MessageParcel &data, MessageParcel &reply)
+{
+    switch (code) {
+        case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_LAUNCH_SERVICE):
+            return HandleRegisterDaemon(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_LAUNCH_SERVICE):
+            return HandleUnregisterDaemon(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::START_LAUNCH_SERVICE):
+            return HandleStartDaemon(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::STOP_LAUNCH_SERVICE):
+            return HandleStopDaemon(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::GET_LAUNCH_SERVICE_INFORMATION):
+            return HandleGetLaunchServiceInformation(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::GET_ALL_REGISTERED_INFORMATION):
+            return HandleGetAllRegisteredInformation(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::SET_LAUNCH_SERVICES_ENABLED):
+            return HandleSetLaunchServicesEnabled(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_LAUNCH_SERVICE_OBSERVER):
+            return HandleRegisterLaunchServiceObserver(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::NOTIFY_RESIDENT_STARTUP_COMPLETED):
+            if (!reply.WriteInt32(NotifyResidentStartupCompleted())) {
+                return AAFwk::ERR_WRITE_RESULT_CODE_FAILED;
+            }
+            return NO_ERROR;
+        case static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_LAUNCH_SERVICE_OBSERVER):
+            return HandleUnregisterLaunchServiceObserver(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::START_TASK):
             return HandleStartTask(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::FINISH_TASK):
@@ -738,6 +771,144 @@ int32_t AppMgrStub::HandleClearUpApplicationDataBySelf(MessageParcel &data, Mess
     int32_t userId = data.ReadInt32();
     int32_t result = ClearUpApplicationDataBySelf(userId);
     reply.WriteInt32(result);
+    return NO_ERROR;
+}
+
+namespace {
+int32_t ReadDaemonDescriptor(MessageParcel &data, AAFwk::LaunchServiceDescriptor &descriptor)
+{
+    if (!data.ReadString(descriptor.bundleName) || !data.ReadString(descriptor.moduleName) ||
+        !data.ReadString(descriptor.serviceName) || !data.ReadInt32(descriptor.userId) ||
+        !data.ReadInt32(descriptor.appIndex)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "read daemon descriptor failed");
+        return ERR_INVALID_VALUE;
+    }
+    if (!descriptor.IsValid()) {
+        return ERR_INVALID_VALUE;
+    }
+    return ERR_OK;
+}
+
+int32_t HandleDaemonResult(MessageParcel &reply, int32_t result)
+{
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write daemon result failed");
+        return AAFwk::ERR_WRITE_RESULT_CODE_FAILED;
+    }
+    return NO_ERROR;
+}
+
+template <typename Operation>
+int32_t HandleDaemonRequest(MessageParcel &data, MessageParcel &reply, Operation operation)
+{
+    AAFwk::LaunchServiceDescriptor descriptor;
+    auto result = ReadDaemonDescriptor(data, descriptor);
+    return HandleDaemonResult(reply, result == ERR_OK ? operation(descriptor) : result);
+}
+} // namespace
+
+int32_t AppMgrStub::HandleRegisterDaemon(MessageParcel &data, MessageParcel &reply)
+{
+    return HandleDaemonRequest(data, reply, [this](const auto &descriptor) { return RegisterDaemon(descriptor); });
+}
+
+int32_t AppMgrStub::HandleUnregisterDaemon(MessageParcel &data, MessageParcel &reply)
+{
+    return HandleDaemonRequest(data, reply, [this](const auto &descriptor) { return UnregisterDaemon(descriptor); });
+}
+
+int32_t AppMgrStub::HandleStartDaemon(MessageParcel &data, MessageParcel &reply)
+{
+    return HandleDaemonRequest(data, reply, [this](const auto &descriptor) { return StartDaemon(descriptor); });
+}
+
+int32_t AppMgrStub::HandleStopDaemon(MessageParcel &data, MessageParcel &reply)
+{
+    return HandleDaemonRequest(data, reply, [this](const auto &descriptor) { return StopDaemon(descriptor); });
+}
+
+int32_t AppMgrStub::HandleGetLaunchServiceInformation(MessageParcel &data, MessageParcel &reply)
+{
+    std::unique_ptr<AbilityRuntime::LaunchServiceDescriptor> descriptor(
+        data.ReadParcelable<AbilityRuntime::LaunchServiceDescriptor>());
+    if (descriptor == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+    AbilityRuntime::LaunchServiceInformation information;
+    int32_t result = GetLaunchServiceInformation(*descriptor, information);
+    if (!reply.WriteInt32(result)) {
+        return ERR_INVALID_VALUE;
+    }
+    if (result == ERR_OK && !reply.WriteParcelable(&information)) {
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleGetAllRegisteredInformation(MessageParcel &data, MessageParcel &reply)
+{
+    int32_t userId = 0;
+    if (!data.ReadInt32(userId)) {
+        return ERR_INVALID_VALUE;
+    }
+    std::vector<AbilityRuntime::LaunchServiceInformation> informations;
+    int32_t result = GetAllRegisteredInformation(userId, informations);
+    if (!reply.WriteInt32(result)) {
+        return ERR_INVALID_VALUE;
+    }
+    if (result != ERR_OK) {
+        return NO_ERROR;
+    }
+    if (!reply.WriteInt32(static_cast<int32_t>(informations.size()))) {
+        return ERR_INVALID_VALUE;
+    }
+    for (const auto &information : informations) {
+        if (!reply.WriteParcelable(&information)) {
+            return ERR_INVALID_VALUE;
+        }
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleSetLaunchServicesEnabled(MessageParcel &data, MessageParcel &reply)
+{
+    std::string bundleName;
+    int32_t userId = 0;
+    int32_t appIndex = 0;
+    std::vector<uint8_t> token;
+    bool enable = false;
+    if (!data.ReadString(bundleName) || !data.ReadInt32(userId) || !data.ReadInt32(appIndex) ||
+        !data.ReadUInt8Vector(&token) || !data.ReadBool(enable)) {
+        return ERR_INVALID_VALUE;
+    }
+    auto callback = iface_cast<AbilityRuntime::ILaunchServiceOperationCallback>(data.ReadRemoteObject());
+    if (callback == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+    return HandleDaemonResult(reply, SetLaunchServicesEnabled(bundleName, userId, appIndex, token, enable, callback));
+}
+
+int32_t AppMgrStub::HandleRegisterLaunchServiceObserver(MessageParcel &data, MessageParcel &reply)
+{
+    auto observer = iface_cast<AbilityRuntime::ILaunchServiceObserver>(data.ReadRemoteObject());
+    if (observer == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+    if (!reply.WriteInt32(RegisterLaunchServiceObserver(observer))) {
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleUnregisterLaunchServiceObserver(MessageParcel &data, MessageParcel &reply)
+{
+    auto observer = iface_cast<AbilityRuntime::ILaunchServiceObserver>(data.ReadRemoteObject());
+    if (observer == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+    if (!reply.WriteInt32(UnregisterLaunchServiceObserver(observer))) {
+        return ERR_INVALID_VALUE;
+    }
     return NO_ERROR;
 }
 

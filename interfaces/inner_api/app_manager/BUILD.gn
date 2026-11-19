@@ -19,6 +19,7 @@ config("appmgr_sdk_config") {
     "include/appmgr",
     "${ability_runtime_path}/interfaces/kits/native/ability/native",
     "${ability_runtime_innerkits_path}/ability_manager/include",
+    "${ability_runtime_innerkits_path}/daemon_service_manager/include",
   ]
   defines = []
   if (ability_command_for_test) {
@@ -105,6 +106,9 @@ ohos_shared_library("app_manager") {
     "src/appmgr/app_mgr_client.cpp",
     "src/appmgr/app_mgr_proxy.cpp",
     "src/appmgr/app_mgr_stub.cpp",
+    "${ability_runtime_innerkits_path}/daemon_service_manager/src/launch_service_info.cpp",
+    "${ability_runtime_innerkits_path}/daemon_service_manager/src/launch_service_observer.cpp",
+    "${ability_runtime_innerkits_path}/daemon_service_manager/src/launch_service_operation_callback.cpp",
     "src/appmgr/app_process_data.cpp",
     "src/appmgr/app_record_id.cpp",
     "src/appmgr/app_running_status_proxy.cpp",

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1035,5 +1035,56 @@ HWTEST_F(AppSpawnClientTest, SendAppSpawnUninstallDebugHapMsg_001, TestSize.Leve
     auto ret = appSpawnClient->SendAppSpawnUninstallDebugHapMsg(userId);
     ASSERT_EQ(ret, ERR_OK);
 }
+
+/**
+ * @tc.name: VerifyMsg_DaemonBinaryPath_001
+ * @tc.desc: Daemon requests require an absolute, nonempty binary path.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppSpawnClientTest, VerifyMsg_DaemonBinaryPath_001, TestSize.Level1)
+{
+    AppSpawnClient client;
+    AppSpawnStartMsg msg{};
+    msg.code = MSG_SPAWN_SERVICE_BIN;
+    msg.uid = 100;
+    msg.gid = 100;
+    msg.procName = "com.example.daemon:worker";
+    EXPECT_FALSE(client.VerifyMsg(msg));
+    msg.daemonBinPath = "relative/bin";
+    EXPECT_FALSE(client.VerifyMsg(msg));
+    msg.daemonBinPath = "/data/storage/el1/bundle/libs/arm64/daemon";
+    EXPECT_TRUE(client.VerifyMsg(msg));
+    msg.uid = -1;
+    EXPECT_FALSE(client.VerifyMsg(msg));
+    msg.uid = 100;
+    msg.gid = -1;
+    EXPECT_FALSE(client.VerifyMsg(msg));
+}
+
+/**
+ * @tc.name: VerifyMsg_DaemonGroupsBoundary_001
+ * @tc.desc: Daemon group counts include supplementary and data-group entries.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppSpawnClientTest, VerifyMsg_DaemonGroupsBoundary_001, TestSize.Level1)
+{
+    AppSpawnClient client;
+    AppSpawnStartMsg msg{};
+    msg.code = MSG_SPAWN_SERVICE_BIN;
+    msg.uid = 100;
+    msg.gid = 100;
+    msg.procName = "daemon";
+    msg.daemonBinPath = "/bin/daemon";
+    msg.gids.assign(APP_MAX_GIDS, 100);
+    EXPECT_TRUE(client.VerifyMsg(msg));
+    msg.gids.emplace_back(100);
+    EXPECT_FALSE(client.VerifyMsg(msg));
+    msg.gids = {-1};
+    EXPECT_FALSE(client.VerifyMsg(msg));
+    msg.gids.clear();
+    msg.procName.assign(MAX_PROC_NAME_LEN, 'x');
+    EXPECT_FALSE(client.VerifyMsg(msg));
+}
+
 } // namespace AppExecFwk
 } // namespace OHOS

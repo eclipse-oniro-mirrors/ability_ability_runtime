@@ -968,6 +968,34 @@ ErrCode BundleMgrHelper::GetUidByBundleName(const std::string &bundleName, int32
     return bundleMgr->GetUidByBundleName(bundleName, userId, appCloneIndex);
 }
 
+ErrCode BundleMgrHelper::GetAppProvisionInfo(
+    const std::string &bundleName, int32_t userId, AppProvisionInfo &appProvisionInfo)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        return ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
+    }
+
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    return bundleMgr->GetAppProvisionInfo(bundleName, userId, appProvisionInfo);
+}
+
+ErrCode BundleMgrHelper::GetLaunchServices(
+    const std::string &bundleName, const std::string &moduleName, int32_t userId, LaunchServicesResult &result)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        return ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
+    }
+
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    return bundleMgr->GetLaunchServices(bundleName, moduleName, userId, result);
+}
+
 ErrCode BundleMgrHelper::IsApplicationDisableForbidden(const std::string &bundleName, int32_t userId,
     int32_t appIndex, bool &forbidden)
 {

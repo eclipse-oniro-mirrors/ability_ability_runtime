@@ -15,6 +15,7 @@
 
 #include "app_mgr_service_inner.h"
 
+#include <algorithm>
 #include <atomic>
 #include <charconv>
 #include <chrono>
@@ -77,6 +78,7 @@
 #include "itest_observer.h"
 #include "killing_process_manager.h"
 #include "last_exit_detail_info.h"
+#include "launch_service_manager.h"
 #include "os_account_manager.h"
 #include "app_native_spawn_manager.h"
 #include "app_pidfd_manager.h"
@@ -3808,8 +3810,9 @@ int32_t AppMgrServiceInner::NotifyUninstallOrUpgradeApp(const std::string &bundl
     TAG_LOGD(AAFwkTag::APPMGR,
         "bundleName: %{public}s, uid: %{public}d", bundleName.c_str(), uid);
     std::unique_lock lock(startProcessLock_);
-    std::string killReason = isUpgrade ? "UpgradeApp" : "UninstallApp";
     InsertUninstallOrUpgradeUidSet(uid);
+    GetLaunchServiceManager()->HandleLaunchServiceUninstallOrUpgrade(bundleName, uid, isUpgrade);
+    std::string killReason = isUpgrade ? "UpgradeApp" : "UninstallApp";
     auto ret = KillApplicationByUid(bundleName, uid, killReason);
     DestroyImageForUninstallOrUpgrade(uid);
     ClearHyperSnapError(uid);
@@ -3820,6 +3823,7 @@ void AppMgrServiceInner::NotifyUninstallOrUpgradeAppEnd(int32_t uid)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "uid: %{public}d", uid);
     RemoveUninstallOrUpgradeUidSet(uid);
+    GetLaunchServiceManager()->HandleLaunchServiceUpgradeEnd(uid);
 }
 
 int32_t AppMgrServiceInner::UpdateProcessMemoryState(const std::vector<ProcessMemoryState> &procMemState)
@@ -5889,12 +5893,6 @@ void AppMgrServiceInner::SetAtomicServiceInfo(BundleType bundleType, AppSpawnSta
 
 void AppMgrServiceInner::SetAppInfo(const BundleInfo &bundleInfo, AppSpawnStartMsg &startMsg)
 {
-    bool hasAccessBundleDirReq;
-    bool tempJitAllow = false;
-    uint8_t setAllowInternet = 0;
-    uint8_t allowInternet = 1;
-    std::vector<int32_t> gids;
-    StartProcessVerifyPermission(bundleInfo, hasAccessBundleDirReq, setAllowInternet, allowInternet, gids);
     startMsg.uid = bundleInfo.uid;
     startMsg.gid = bundleInfo.gid;
     startMsg.appUid = bundleInfo.appUid;
@@ -5929,9 +5927,26 @@ void AppMgrServiceInner::SetAppInfo(const BundleInfo &bundleInfo, AppSpawnStartM
         }
     }
 #endif // SUPPORT_CHILD_PROCESS
+    SetAppPermissionInfo(bundleInfo, startMsg);
+}
+
+void AppMgrServiceInner::SetAppPermissionInfo(const BundleInfo &bundleInfo, AppSpawnStartMsg &startMsg)
+{
+    bool hasAccessBundleDirReq;
+    bool tempJitAllow = false;
+    uint8_t setAllowInternet = 0;
+    uint8_t allowInternet = 1;
+    std::vector<int32_t> gids;
+    StartProcessVerifyPermission(bundleInfo, hasAccessBundleDirReq, setAllowInternet, allowInternet, gids);
     startMsg.setAllowInternet = setAllowInternet;
     startMsg.allowInternet = allowInternet;
-    startMsg.gids = gids;
+    startMsg.gids = std::move(gids);
+    if (startMsg.code == MSG_SPAWN_SERVICE_BIN) {
+        if (std::find(startMsg.gids.begin(), startMsg.gids.end(), bundleInfo.gid) == startMsg.gids.end()) {
+            startMsg.gids.emplace_back(bundleInfo.gid);
+        }
+        startMsg.appUid = bundleInfo.uid;
+    }
     startMsg.flags |= hasAccessBundleDirReq ? APP_ACCESS_BUNDLE_DIR : 0;
     tempJitAllow = std::any_of(bundleInfo.reqPermissions.begin(), bundleInfo.reqPermissions.end(),
         [] (const auto &reqPermission) {
@@ -12860,6 +12875,11 @@ int32_t AppMgrServiceInner::ExitMasterProcessRole()
     return ERR_OK;
 }
 
+void AppMgrServiceInner::OnLaunchServiceProcessExited(pid_t pid)
+{
+    GetLaunchServiceManager()->HandleLaunchServiceProcessDied(pid);
+}
+
 void AppMgrServiceInner::OnProcessDied(std::shared_ptr<AppRunningRecord> appRecord)
 {
     if (appRunningManager_ == nullptr) {
@@ -13433,5 +13453,71 @@ void AppMgrServiceInner::ClearHyperSnapError(int32_t uid)
     forkFromSnapshotErrorMap_.erase(uid);
 }
 
+std::shared_ptr<LaunchServiceManager> AppMgrServiceInner::GetLaunchServiceManager()
+{
+    std::lock_guard<std::mutex> lock(launchServiceManagerMutex_);
+    if (launchServiceManager_ == nullptr) {
+        launchServiceManager_ = std::make_shared<LaunchServiceManager>(weak_from_this());
+    }
+    return launchServiceManager_;
+}
+
+int32_t AppMgrServiceInner::RegisterDaemon(const AAFwk::LaunchServiceDescriptor &descriptor, int32_t callerUid)
+{
+    return GetLaunchServiceManager()->RegisterDaemon(descriptor, callerUid);
+}
+
+int32_t AppMgrServiceInner::UnregisterDaemon(const AAFwk::LaunchServiceDescriptor &descriptor, int32_t callerUid)
+{
+    return GetLaunchServiceManager()->UnregisterDaemon(descriptor, callerUid);
+}
+
+int32_t AppMgrServiceInner::StartDaemon(const AAFwk::LaunchServiceDescriptor &descriptor, int32_t callerUid)
+{
+    return GetLaunchServiceManager()->StartDaemon(descriptor, callerUid);
+}
+
+int32_t AppMgrServiceInner::StopDaemon(const AAFwk::LaunchServiceDescriptor &descriptor, int32_t callerUid)
+{
+    return GetLaunchServiceManager()->StopDaemon(descriptor, callerUid);
+}
+
+int32_t AppMgrServiceInner::GetLaunchServiceInformation(const AbilityRuntime::LaunchServiceDescriptor &descriptor,
+    AbilityRuntime::LaunchServiceInformation &information, int32_t callerUid)
+{
+    return GetLaunchServiceManager()->GetLaunchServiceInformation(descriptor, information, callerUid);
+}
+
+int32_t AppMgrServiceInner::GetAllRegisteredInformation(
+    std::vector<AbilityRuntime::LaunchServiceInformation> &informations, int32_t userId, int32_t callerUserId)
+{
+    return GetLaunchServiceManager()->GetAllRegisteredInformation(informations, userId, callerUserId);
+}
+
+void AppMgrServiceInner::SetLaunchServicesEnabled(const std::string &bundleName, int32_t userId, int32_t appIndex,
+    const std::vector<uint8_t> &token, bool enable, int32_t callerUid, std::function<void(int32_t)> completion)
+{
+    GetLaunchServiceManager()->SetLaunchServicesEnabled(
+        bundleName, userId, appIndex, token, enable, callerUid, std::move(completion));
+}
+
+void AppMgrServiceInner::StartLaunchServicesAfterBoot()
+{
+    std::call_once(launchServicesBootFlag_, [this]() {
+        GetLaunchServiceManager()->StartLaunchServices("", Constants::ALL_USERID, Constants::INITIAL_APP_INDEX, true);
+    });
+}
+
+int32_t AppMgrServiceInner::RegisterLaunchServiceObserver(
+    const sptr<AbilityRuntime::ILaunchServiceObserver> &observer, int32_t callerUid)
+{
+    return GetLaunchServiceManager()->RegisterLaunchServiceObserver(observer, callerUid);
+}
+
+int32_t AppMgrServiceInner::UnregisterLaunchServiceObserver(
+    const sptr<AbilityRuntime::ILaunchServiceObserver> &observer)
+{
+    return GetLaunchServiceManager()->UnregisterLaunchServiceObserver(observer);
+}
 } // namespace AppExecFwk
 }  // namespace OHOS

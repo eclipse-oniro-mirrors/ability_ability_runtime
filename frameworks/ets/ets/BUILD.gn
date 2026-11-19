@@ -2176,6 +2176,103 @@ generate_static_abc("ability_runtime_kiosk_manager_abc") {
   device_dst_file = "/system/framework/ability_runtime_kiosk_manager_abc.abc"
 }
 
+generate_static_abc("ability_runtime_launch_service_descriptor_abc") {
+  base_url = "./"
+  files = [ "./application/LaunchServiceDescriptor.ets" ]
+  is_boot_abc = "True"
+  device_dst_file =
+      "/system/framework/ability_runtime_launch_service_descriptor_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_launch_service_descriptor_abc_etc") {
+  source = "$target_out_dir/ability_runtime_launch_service_descriptor_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_launch_service_descriptor_abc" ]
+}
+
+generate_static_abc("ability_runtime_launch_service_information_abc") {
+  base_url = "./"
+  files = [ "./application/LaunchServiceInformation.ets" ]
+  is_boot_abc = "True"
+  device_dst_file =
+      "/system/framework/ability_runtime_launch_service_information_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_launch_service_information_abc_etc") {
+  source = "$target_out_dir/ability_runtime_launch_service_information_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_launch_service_information_abc" ]
+}
+
+generate_static_abc("ability_runtime_launch_service_manager_abc") {
+  base_url = "./"
+  files = [ "./@ohos.app.ability.launchServiceManager.ets" ]
+  is_boot_abc = "True"
+  device_dst_file =
+      "/system/framework/ability_runtime_launch_service_manager_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_launch_service_manager_abc_etc") {
+  source = "$target_out_dir/ability_runtime_launch_service_manager_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_launch_service_manager_abc" ]
+}
+
+generate_static_abc("ability_runtime_launch_service_observer_abc") {
+  base_url = "./"
+  files = [ "./application/LaunchServiceObserver.ets" ]
+  is_boot_abc = "True"
+  device_dst_file =
+      "/system/framework/ability_runtime_launch_service_observer_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_launch_service_observer_abc_etc") {
+  source = "$target_out_dir/ability_runtime_launch_service_observer_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_launch_service_observer_abc" ]
+}
+
+generate_static_abc("ability_runtime_launch_service_process_state_data_abc") {
+  base_url = "./"
+  files = [ "./application/LaunchServiceProcessStateData.ets" ]
+  is_boot_abc = "True"
+  device_dst_file =
+      "/system/framework/ability_runtime_launch_service_process_state_data_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_launch_service_process_state_data_abc_etc") {
+  source =
+      "$target_out_dir/ability_runtime_launch_service_process_state_data_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_launch_service_process_state_data_abc" ]
+}
+
+generate_static_abc("ability_runtime_launch_service_state_data_abc") {
+  base_url = "./"
+  files = [ "./application/LaunchServiceStateData.ets" ]
+  is_boot_abc = "True"
+  device_dst_file =
+      "/system/framework/ability_runtime_launch_service_state_data_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_launch_service_state_data_abc_etc") {
+  source = "$target_out_dir/ability_runtime_launch_service_state_data_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_launch_service_state_data_abc" ]
+}
+
 ohos_prebuilt_etc("ability_runtime_kiosk_manager_abc_etc") {
   source = "$target_out_dir/ability_runtime_kiosk_manager_abc.abc"
   module_install_dir = "framework"
@@ -2330,6 +2427,12 @@ group("ets_packages") {
     ":ability_runtime_interop_ability_lifecycle_callback_abc_etc",
     ":ability_runtime_kiosk_manager_abc_etc",
     ":ability_runtime_kiosk_status_abc_etc",
+    ":ability_runtime_launch_service_descriptor_abc_etc",
+    ":ability_runtime_launch_service_information_abc_etc",
+    ":ability_runtime_launch_service_manager_abc_etc",
+    ":ability_runtime_launch_service_observer_abc_etc",
+    ":ability_runtime_launch_service_process_state_data_abc_etc",
+    ":ability_runtime_launch_service_state_data_abc_etc",
     ":ability_runtime_mission_info_abc_etc",
     ":ability_runtime_mission_listener_abc_etc",
     ":ability_runtime_mission_snapshot_abc_etc",
