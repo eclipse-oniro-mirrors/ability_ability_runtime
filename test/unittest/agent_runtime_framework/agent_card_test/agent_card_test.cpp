@@ -52,6 +52,33 @@ void AgentCardTest::SetUp(void)
 void AgentCardTest::TearDown(void)
 {}
 
+namespace {
+nlohmann::json BuildValidSkillJson(const std::string &id = "test")
+{
+    return nlohmann::json {
+        { "id", id },
+        { "name", "test" },
+        { "description", "test" },
+        { "tags", nlohmann::json::array({ "test" }) },
+    };
+}
+
+nlohmann::json BuildValidAgentCardJson()
+{
+    return nlohmann::json {
+        { "agentId", "1" },
+        { "name", "test" },
+        { "description", "test description" },
+        { "version", "1.0" },
+        { "category", "productivity" },
+        { "defaultInputModes", nlohmann::json::array({ "text" }) },
+        { "defaultOutputModes", nlohmann::json::array({ "text" }) },
+        { "skills", nlohmann::json::array({ BuildValidSkillJson() }) },
+        { "iconUrl", "http://example.com/icon.png" },
+    };
+}
+}
+
 /**
  * @tc.name: ProviderMarshallingTest_001
  * @tc.desc: Test AgentProvider Marshalling method with valid data
@@ -3938,6 +3965,801 @@ HWTEST_F(AgentCardTest, CapabilitiesFromJson_010, TestSize.Level1)
     };
     AgentCapabilities capabilities = AgentCapabilities::FromJson(jsonObject);
     EXPECT_TRUE(capabilities.extension.empty());
+}
+
+/**
+ * @tc.name: CapabilitiesFromJson_011
+ * @tc.desc: Test Capabilities FromJson ignores wrong types and clears invalid extension json
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, CapabilitiesFromJson_011, TestSize.Level1)
+{
+    nlohmann::json jsonObject = nlohmann::json {
+        { "streaming", "true" },
+        { "pushNotifications", 1 },
+        { "stateTransitionHistory", nullptr },
+        { "extendedAgentCard", "false" },
+        { "extension", "{invalid json" },
+    };
+
+    AgentCapabilities capabilities = AgentCapabilities::FromJson(jsonObject);
+
+    EXPECT_FALSE(capabilities.streaming);
+    EXPECT_FALSE(capabilities.pushNotifications);
+    EXPECT_FALSE(capabilities.stateTransitionHistory);
+    EXPECT_FALSE(capabilities.extendedAgentCard);
+    EXPECT_TRUE(capabilities.extension.empty());
+}
+
+/**
+ * @tc.name: AgentCardFromJson_050
+ * @tc.desc: Test FromJson rejects invalid type value kinds
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentCardFromJson_050, TestSize.Level1)
+{
+    auto jsonObject = BuildValidAgentCardJson();
+    jsonObject["type"] = true;
+
+    AgentCard agentCard;
+    EXPECT_FALSE(AgentCard::FromJson(jsonObject, agentCard));
+}
+
+/**
+ * @tc.name: AgentCardFromJson_051
+ * @tc.desc: Test FromJson rejects missing and invalid default mode arrays
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentCardFromJson_051, TestSize.Level1)
+{
+    auto missingInputModes = BuildValidAgentCardJson();
+    missingInputModes.erase("defaultInputModes");
+    AgentCard agentCard;
+    EXPECT_FALSE(AgentCard::FromJson(missingInputModes, agentCard));
+
+    auto invalidInputModes = BuildValidAgentCardJson();
+    invalidInputModes["defaultInputModes"] = nlohmann::json::array({ "", 1, std::string(33, 'a') });
+    EXPECT_FALSE(AgentCard::FromJson(invalidInputModes, agentCard));
+
+    auto missingOutputModes = BuildValidAgentCardJson();
+    missingOutputModes.erase("defaultOutputModes");
+    EXPECT_FALSE(AgentCard::FromJson(missingOutputModes, agentCard));
+
+    auto invalidOutputModes = BuildValidAgentCardJson();
+    invalidOutputModes["defaultOutputModes"] = nlohmann::json::array({ "", false, std::string(33, 'b') });
+    EXPECT_FALSE(AgentCard::FromJson(invalidOutputModes, agentCard));
+}
+
+/**
+ * @tc.name: AgentCardFromJson_052
+ * @tc.desc: Test FromJson skips invalid optional provider and skill entries
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentCardFromJson_052, TestSize.Level1)
+{
+    auto jsonObject = BuildValidAgentCardJson();
+    jsonObject["provider"] = nlohmann::json {
+        { "organization", "" },
+        { "url", "http://example.com" },
+    };
+    jsonObject["skills"] = nlohmann::json::array({
+        BuildValidSkillJson("dup"),
+        nlohmann::json { { "id", "" }, { "name", "bad" }, { "description", "bad" },
+            { "tags", nlohmann::json::array({ "bad" }) } },
+        nlohmann::json { { "id", "dup" }, { "name", "replacement" }, { "description", "test" },
+            { "tags", nlohmann::json::array({ "test" }) } },
+        "notObject",
+    });
+
+    AgentCard agentCard;
+    EXPECT_TRUE(AgentCard::FromJson(jsonObject, agentCard));
+    EXPECT_EQ(agentCard.provider, nullptr);
+    ASSERT_EQ(agentCard.skills.size(), 1);
+    EXPECT_EQ(agentCard.skills[0]->id, "dup");
+    EXPECT_EQ(agentCard.skills[0]->name, "replacement");
+}
+
+/**
+ * @tc.name: AgentCardFromJson_053
+ * @tc.desc: Test FromJson clears invalid card extension json
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentCardFromJson_053, TestSize.Level1)
+{
+    auto jsonObject = BuildValidAgentCardJson();
+    jsonObject["extension"] = "{invalid json";
+
+    AgentCard agentCard;
+    EXPECT_TRUE(AgentCard::FromJson(jsonObject, agentCard));
+    EXPECT_TRUE(agentCard.extension.empty());
+}
+
+/**
+ * @tc.name: AgentAppInfoFromJson_007
+ * @tc.desc: Test AgentAppInfo FromJson ignores invalid optional value types and device type lengths
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentAppInfoFromJson_007, TestSize.Level1)
+{
+    nlohmann::json jsonObject = nlohmann::json {
+        { "bundleName", 1 },
+        { "moduleName", false },
+        { "abilityName", nullptr },
+        { "deviceTypes", nlohmann::json::array({ "", "phone", std::string(33, 'd'), 10 }) },
+        { "minAppVersion", 2 },
+    };
+
+    AgentAppInfo appInfo;
+    EXPECT_TRUE(AgentAppInfo::FromJson(jsonObject, appInfo));
+    EXPECT_TRUE(appInfo.bundleName.empty());
+    EXPECT_TRUE(appInfo.moduleName.empty());
+    EXPECT_TRUE(appInfo.abilityName.empty());
+    ASSERT_EQ(appInfo.deviceTypes.size(), 1);
+    EXPECT_EQ(appInfo.deviceTypes[0], "phone");
+    EXPECT_TRUE(appInfo.minAppVersion.empty());
+}
+
+/**
+ * @tc.name: ToAgentCardVec_005
+ * @tc.desc: Test ToAgentCardVec returns error when payload is not valid AgentCard json
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, ToAgentCardVec_005, TestSize.Level1)
+{
+    uint32_t count = 1;
+    std::string cardJson = "{invalid json";
+    uint32_t cardSize = cardJson.size();
+    std::string buffer;
+    buffer.append(reinterpret_cast<const char *>(&count), sizeof(count));
+    buffer.append(reinterpret_cast<const char *>(&cardSize), sizeof(cardSize));
+    buffer.append(cardJson);
+
+    AgentCardsRawData rawData;
+    rawData.data = buffer.data();
+    rawData.size = buffer.size();
+
+    std::vector<AgentCard> cards;
+    EXPECT_EQ(AgentCardsRawData::ToAgentCardVec(rawData, cards), ERR_INVALID_AGENT_CARD_DATA);
+}
+
+// ==================== AgentProvider::FromJson Branch Tests ====================
+
+/**
+ * @tc.name: ProviderFromJson_001
+ * @tc.desc: Test FromJson fails when organization is missing
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, ProviderFromJson_011, TestSize.Level1)
+{
+    nlohmann::json jsonObject = {{"url", "http://example.com"}};
+    AgentProvider provider;
+    EXPECT_FALSE(AgentProvider::FromJson(jsonObject, provider));
+}
+
+/**
+ * @tc.name: ProviderFromJson_012
+ * @tc.desc: Test FromJson fails when organization is not a string
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, ProviderFromJson_012, TestSize.Level1)
+{
+    nlohmann::json jsonObject = {{"organization", 123}, {"url", "http://example.com"}};
+    AgentProvider provider;
+    EXPECT_FALSE(AgentProvider::FromJson(jsonObject, provider));
+}
+
+/**
+ * @tc.name: ProviderFromJson_013
+ * @tc.desc: Test FromJson fails when organization is empty
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, ProviderFromJson_013, TestSize.Level1)
+{
+    nlohmann::json jsonObject = {{"organization", ""}, {"url", "http://example.com"}};
+    AgentProvider provider;
+    EXPECT_FALSE(AgentProvider::FromJson(jsonObject, provider));
+}
+
+/**
+ * @tc.name: ProviderFromJson_014
+ * @tc.desc: Test FromJson fails when organization exceeds 128 chars
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, ProviderFromJson_014, TestSize.Level1)
+{
+    nlohmann::json jsonObject = {{"organization", std::string(129, 'a')}, {"url", "http://example.com"}};
+    AgentProvider provider;
+    EXPECT_FALSE(AgentProvider::FromJson(jsonObject, provider));
+}
+
+/**
+ * @tc.name: ProviderFromJson_015
+ * @tc.desc: Test FromJson fails when url is missing
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, ProviderFromJson_015, TestSize.Level1)
+{
+    nlohmann::json jsonObject = {{"organization", "org"}};
+    AgentProvider provider;
+    EXPECT_FALSE(AgentProvider::FromJson(jsonObject, provider));
+}
+
+/**
+ * @tc.name: ProviderFromJson_016
+ * @tc.desc: Test FromJson fails when url is not a string
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, ProviderFromJson_016, TestSize.Level1)
+{
+    nlohmann::json jsonObject = {{"organization", "org"}, {"url", 42}};
+    AgentProvider provider;
+    EXPECT_FALSE(AgentProvider::FromJson(jsonObject, provider));
+}
+
+/**
+ * @tc.name: ProviderFromJson_017
+ * @tc.desc: Test FromJson fails when url is empty
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, ProviderFromJson_017, TestSize.Level1)
+{
+    nlohmann::json jsonObject = {{"organization", "org"}, {"url", ""}};
+    AgentProvider provider;
+    EXPECT_FALSE(AgentProvider::FromJson(jsonObject, provider));
+}
+
+/**
+ * @tc.name: ProviderFromJson_018
+ * @tc.desc: Test FromJson fails when url exceeds 512 chars
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, ProviderFromJson_018, TestSize.Level1)
+{
+    nlohmann::json jsonObject = {{"organization", "org"}, {"url", std::string(513, 'u')}};
+    AgentProvider provider;
+    EXPECT_FALSE(AgentProvider::FromJson(jsonObject, provider));
+}
+
+/**
+ * @tc.name: ProviderFromJson_019
+ * @tc.desc: Test FromJson succeeds with valid provider at boundary lengths
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, ProviderFromJson_019, TestSize.Level1)
+{
+    nlohmann::json json128 = {{"organization", std::string(128, 'a')}, {"url", "http://example.com"}};
+    AgentProvider provider;
+    EXPECT_TRUE(AgentProvider::FromJson(json128, provider));
+    EXPECT_EQ(provider.organization.length(), 128u);
+
+    nlohmann::json json512 = {{"organization", "org"}, {"url", std::string(512, 'u')}};
+    AgentProvider provider2;
+    EXPECT_TRUE(AgentProvider::FromJson(json512, provider2));
+    EXPECT_EQ(provider2.url.length(), 512u);
+}
+
+// ==================== AgentSkill::FromJson Branch Tests ====================
+
+/**
+ * @tc.name: SkillFromJson_001
+ * @tc.desc: Test FromJson fails when id is missing
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, SkillFromJson_034, TestSize.Level1)
+{
+    nlohmann::json jsonObject = {{"name", "n"}, {"description", "d"}, {"tags", {"t"}}};
+    AgentSkill skill;
+    EXPECT_FALSE(AgentSkill::FromJson(jsonObject, skill));
+}
+
+/**
+ * @tc.name: SkillFromJson_035
+ * @tc.desc: Test FromJson fails when id is not a string
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, SkillFromJson_035, TestSize.Level1)
+{
+    nlohmann::json jsonObject = {{"id", 1}, {"name", "n"}, {"description", "d"}, {"tags", {"t"}}};
+    AgentSkill skill;
+    EXPECT_FALSE(AgentSkill::FromJson(jsonObject, skill));
+}
+
+/**
+ * @tc.name: SkillFromJson_036
+ * @tc.desc: Test FromJson fails when id is empty or exceeds 64 chars
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, SkillFromJson_036, TestSize.Level1)
+{
+    AgentSkill skill;
+    auto emptyId = BuildValidSkillJson();
+    emptyId["id"] = "";
+    EXPECT_FALSE(AgentSkill::FromJson(emptyId, skill));
+
+    auto longId = BuildValidSkillJson();
+    longId["id"] = std::string(65, 'i');
+    EXPECT_FALSE(AgentSkill::FromJson(longId, skill));
+}
+
+/**
+ * @tc.name: SkillFromJson_037
+ * @tc.desc: Test FromJson fails when name is missing or wrong type
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, SkillFromJson_037, TestSize.Level1)
+{
+    AgentSkill skill;
+    auto missingName = BuildValidSkillJson();
+    missingName.erase("name");
+    EXPECT_FALSE(AgentSkill::FromJson(missingName, skill));
+
+    auto wrongName = BuildValidSkillJson();
+    wrongName["name"] = 42;
+    EXPECT_FALSE(AgentSkill::FromJson(wrongName, skill));
+}
+
+/**
+ * @tc.name: SkillFromJson_038
+ * @tc.desc: Test FromJson fails when name is empty or exceeds 128 chars
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, SkillFromJson_038, TestSize.Level1)
+{
+    AgentSkill skill;
+    auto emptyName = BuildValidSkillJson();
+    emptyName["name"] = "";
+    EXPECT_FALSE(AgentSkill::FromJson(emptyName, skill));
+
+    auto longName = BuildValidSkillJson();
+    longName["name"] = std::string(129, 'n');
+    EXPECT_FALSE(AgentSkill::FromJson(longName, skill));
+}
+
+/**
+ * @tc.name: SkillFromJson_039
+ * @tc.desc: Test FromJson fails when description is missing or wrong type
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, SkillFromJson_039, TestSize.Level1)
+{
+    AgentSkill skill;
+    auto missingDesc = BuildValidSkillJson();
+    missingDesc.erase("description");
+    EXPECT_FALSE(AgentSkill::FromJson(missingDesc, skill));
+
+    auto wrongDesc = BuildValidSkillJson();
+    wrongDesc["description"] = false;
+    EXPECT_FALSE(AgentSkill::FromJson(wrongDesc, skill));
+}
+
+/**
+ * @tc.name: SkillFromJson_040
+ * @tc.desc: Test FromJson fails when description exceeds 512 chars
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, SkillFromJson_040, TestSize.Level1)
+{
+    AgentSkill skill;
+    auto longDesc = BuildValidSkillJson();
+    longDesc["description"] = std::string(513, 'd');
+    EXPECT_FALSE(AgentSkill::FromJson(longDesc, skill));
+}
+
+/**
+ * @tc.name: SkillFromJson_041
+ * @tc.desc: Test FromJson fails when tags is missing or not array
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, SkillFromJson_041, TestSize.Level1)
+{
+    AgentSkill skill;
+    auto missingTags = BuildValidSkillJson();
+    missingTags.erase("tags");
+    EXPECT_FALSE(AgentSkill::FromJson(missingTags, skill));
+
+    auto wrongTags = BuildValidSkillJson();
+    wrongTags["tags"] = "not_array";
+    EXPECT_FALSE(AgentSkill::FromJson(wrongTags, skill));
+}
+
+/**
+ * @tc.name: SkillFromJson_042
+ * @tc.desc: Test FromJson skips non-string and out-of-range tags, rejects empty tags result
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, SkillFromJson_042, TestSize.Level1)
+{
+    AgentSkill skill;
+    auto badTags = BuildValidSkillJson();
+    badTags["tags"] = {123, "", std::string(33, 't')};
+    EXPECT_FALSE(AgentSkill::FromJson(badTags, skill));
+}
+
+/**
+ * @tc.name: SkillFromJson_043
+ * @tc.desc: Test FromJson skips non-string examples and filters length
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, SkillFromJson_043, TestSize.Level1)
+{
+    auto json = BuildValidSkillJson();
+    json["examples"] = {"valid", 42, "", std::string(257, 'e')};
+    AgentSkill skill;
+    EXPECT_TRUE(AgentSkill::FromJson(json, skill));
+    ASSERT_EQ(skill.examples.size(), 1u);
+    EXPECT_EQ(skill.examples[0], "valid");
+}
+
+/**
+ * @tc.name: SkillFromJson_044
+ * @tc.desc: Test FromJson skips non-string inputModes/outputModes
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, SkillFromJson_044, TestSize.Level1)
+{
+    auto json = BuildValidSkillJson();
+    json["inputModes"] = {"text", 42, "", std::string(33, 'i')};
+    json["outputModes"] = {true, "text", std::string(33, 'o')};
+    AgentSkill skill;
+    EXPECT_TRUE(AgentSkill::FromJson(json, skill));
+    ASSERT_EQ(skill.inputModes.size(), 1u);
+    EXPECT_EQ(skill.inputModes[0], "text");
+    ASSERT_EQ(skill.outputModes.size(), 1u);
+    EXPECT_EQ(skill.outputModes[0], "text");
+}
+
+/**
+ * @tc.name: SkillFromJson_045
+ * @tc.desc: Test FromJson clears invalid extension (too long and invalid json)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, SkillFromJson_045, TestSize.Level1)
+{
+    auto tooLong = BuildValidSkillJson();
+    tooLong["extension"] = std::string(1025, 'e');
+    AgentSkill skill1;
+    EXPECT_TRUE(AgentSkill::FromJson(tooLong, skill1));
+    EXPECT_TRUE(skill1.extension.empty());
+
+    auto badJson = BuildValidSkillJson();
+    badJson["extension"] = "{not json";
+    AgentSkill skill2;
+    EXPECT_TRUE(AgentSkill::FromJson(badJson, skill2));
+    EXPECT_TRUE(skill2.extension.empty());
+
+    auto validExt = BuildValidSkillJson();
+    validExt["extension"] = R"({"key":"value"})";
+    AgentSkill skill3;
+    EXPECT_TRUE(AgentSkill::FromJson(validExt, skill3));
+    EXPECT_EQ(skill3.extension, R"({"key":"value"})");
+}
+
+// ==================== AgentCard::FromJson Additional Branch Tests ====================
+
+/**
+ * @tc.name: AgentCardFromJson_054
+ * @tc.desc: Test FromJson with type as valid integer min and max
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentCardFromJson_054, TestSize.Level1)
+{
+    auto jsonMin = BuildValidAgentCardJson();
+    jsonMin["type"] = 0; // APP
+    AgentCard card;
+    EXPECT_TRUE(AgentCard::FromJson(jsonMin, card));
+    EXPECT_EQ(card.type, AgentCardType::APP);
+
+    auto jsonMax = BuildValidAgentCardJson();
+    jsonMax["type"] = 2; // LOW_CODE
+    AgentCard card2;
+    EXPECT_TRUE(AgentCard::FromJson(jsonMax, card2));
+    EXPECT_EQ(card2.type, AgentCardType::LOW_CODE);
+}
+
+/**
+ * @tc.name: AgentCardFromJson_055
+ * @tc.desc: Test FromJson rejects integer type out of range
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentCardFromJson_055, TestSize.Level1)
+{
+    auto jsonNeg = BuildValidAgentCardJson();
+    jsonNeg["type"] = -1;
+    AgentCard card;
+    EXPECT_FALSE(AgentCard::FromJson(jsonNeg, card));
+
+    auto jsonBig = BuildValidAgentCardJson();
+    jsonBig["type"] = 99;
+    EXPECT_FALSE(AgentCard::FromJson(jsonBig, card));
+}
+
+/**
+ * @tc.name: AgentCardFromJson_056
+ * @tc.desc: Test FromJson with type as valid string values
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentCardFromJson_056, TestSize.Level1)
+{
+    AgentCard card;
+    auto jsonApp = BuildValidAgentCardJson();
+    jsonApp["type"] = "APP";
+    EXPECT_TRUE(AgentCard::FromJson(jsonApp, card));
+    EXPECT_EQ(card.type, AgentCardType::APP);
+
+    auto jsonAtomic = BuildValidAgentCardJson();
+    jsonAtomic["type"] = "ATOMIC_SERVICE";
+    EXPECT_TRUE(AgentCard::FromJson(jsonAtomic, card));
+    EXPECT_EQ(card.type, AgentCardType::ATOMIC_SERVICE);
+
+    auto jsonLowCode = BuildValidAgentCardJson();
+    jsonLowCode["type"] = "LOW_CODE";
+    EXPECT_TRUE(AgentCard::FromJson(jsonLowCode, card));
+    EXPECT_EQ(card.type, AgentCardType::LOW_CODE);
+}
+
+/**
+ * @tc.name: AgentCardFromJson_057
+ * @tc.desc: Test FromJson rejects invalid type string
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentCardFromJson_057, TestSize.Level1)
+{
+    auto json = BuildValidAgentCardJson();
+    json["type"] = "INVALID_TYPE";
+    AgentCard card;
+    EXPECT_FALSE(AgentCard::FromJson(json, card));
+}
+
+/**
+ * @tc.name: AgentCardFromJson_058
+ * @tc.desc: Test FromJson fails when agentId is missing, empty, too long
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentCardFromJson_058, TestSize.Level1)
+{
+    AgentCard card;
+    auto missing = BuildValidAgentCardJson();
+    missing.erase("agentId");
+    EXPECT_FALSE(AgentCard::FromJson(missing, card));
+
+    auto empty = BuildValidAgentCardJson();
+    empty["agentId"] = "";
+    EXPECT_FALSE(AgentCard::FromJson(empty, card));
+
+    auto tooLong = BuildValidAgentCardJson();
+    tooLong["agentId"] = std::string(65, 'a');
+    EXPECT_FALSE(AgentCard::FromJson(tooLong, card));
+}
+
+/**
+ * @tc.name: AgentCardFromJson_059
+ * @tc.desc: Test FromJson fails when name is missing, wrong type, empty, too long
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentCardFromJson_059, TestSize.Level1)
+{
+    AgentCard card;
+    auto missing = BuildValidAgentCardJson();
+    missing.erase("name");
+    EXPECT_FALSE(AgentCard::FromJson(missing, card));
+
+    auto wrongType = BuildValidAgentCardJson();
+    wrongType["name"] = 42;
+    EXPECT_FALSE(AgentCard::FromJson(wrongType, card));
+
+    auto empty = BuildValidAgentCardJson();
+    empty["name"] = "";
+    EXPECT_FALSE(AgentCard::FromJson(empty, card));
+
+    auto tooLong = BuildValidAgentCardJson();
+    tooLong["name"] = std::string(65, 'n');
+    EXPECT_FALSE(AgentCard::FromJson(tooLong, card));
+}
+
+/**
+ * @tc.name: AgentCardFromJson_060
+ * @tc.desc: Test FromJson fails when category is missing, wrong type, empty, too long
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentCardFromJson_060, TestSize.Level1)
+{
+    AgentCard card;
+    auto missing = BuildValidAgentCardJson();
+    missing.erase("category");
+    EXPECT_FALSE(AgentCard::FromJson(missing, card));
+
+    auto wrongType = BuildValidAgentCardJson();
+    wrongType["category"] = 42;
+    EXPECT_FALSE(AgentCard::FromJson(wrongType, card));
+
+    auto tooLong = BuildValidAgentCardJson();
+    tooLong["category"] = std::string(65, 'c');
+    EXPECT_FALSE(AgentCard::FromJson(tooLong, card));
+}
+
+/**
+ * @tc.name: AgentCardFromJson_061
+ * @tc.desc: Test FromJson fails when description is missing, wrong type, empty, too long
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentCardFromJson_061, TestSize.Level1)
+{
+    AgentCard card;
+    auto missing = BuildValidAgentCardJson();
+    missing.erase("description");
+    EXPECT_FALSE(AgentCard::FromJson(missing, card));
+
+    auto wrongType = BuildValidAgentCardJson();
+    wrongType["description"] = true;
+    EXPECT_FALSE(AgentCard::FromJson(wrongType, card));
+
+    auto tooLong = BuildValidAgentCardJson();
+    tooLong["description"] = std::string(513, 'd');
+    EXPECT_FALSE(AgentCard::FromJson(tooLong, card));
+}
+
+/**
+ * @tc.name: AgentCardFromJson_062
+ * @tc.desc: Test FromJson fails when version is missing, wrong type, empty, too long
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentCardFromJson_062, TestSize.Level1)
+{
+    AgentCard card;
+    auto missing = BuildValidAgentCardJson();
+    missing.erase("version");
+    EXPECT_FALSE(AgentCard::FromJson(missing, card));
+
+    auto wrongType = BuildValidAgentCardJson();
+    wrongType["version"] = 1;
+    EXPECT_FALSE(AgentCard::FromJson(wrongType, card));
+
+    auto empty = BuildValidAgentCardJson();
+    empty["version"] = "";
+    EXPECT_FALSE(AgentCard::FromJson(empty, card));
+
+    auto tooLong = BuildValidAgentCardJson();
+    tooLong["version"] = std::string(33, 'v');
+    EXPECT_FALSE(AgentCard::FromJson(tooLong, card));
+}
+
+/**
+ * @tc.name: AgentCardFromJson_063
+ * @tc.desc: Test FromJson fails when appInfo object has invalid inner content
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentCardFromJson_063, TestSize.Level1)
+{
+    auto json = BuildValidAgentCardJson();
+    json["appInfo"] = nlohmann::json::object(); // empty object, still valid
+    AgentCard card;
+    EXPECT_TRUE(AgentCard::FromJson(json, card));
+    EXPECT_NE(card.appInfo, nullptr);
+}
+
+/**
+ * @tc.name: AgentCardFromJson_064
+ * @tc.desc: Test FromJson succeeds with valid provider
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentCardFromJson_064, TestSize.Level1)
+{
+    auto json = BuildValidAgentCardJson();
+    json["provider"] = {{"organization", "TestOrg"}, {"url", "http://example.com"}};
+    AgentCard card;
+    EXPECT_TRUE(AgentCard::FromJson(json, card));
+    ASSERT_NE(card.provider, nullptr);
+    EXPECT_EQ(card.provider->organization, "TestOrg");
+}
+
+/**
+ * @tc.name: AgentCardFromJson_065
+ * @tc.desc: Test FromJson succeeds with valid capabilities
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentCardFromJson_065, TestSize.Level1)
+{
+    auto json = BuildValidAgentCardJson();
+    json["capabilities"] = {{"streaming", true}, {"pushNotifications", false}};
+    AgentCard card;
+    EXPECT_TRUE(AgentCard::FromJson(json, card));
+    ASSERT_NE(card.capabilities, nullptr);
+    EXPECT_TRUE(card.capabilities->streaming);
+    EXPECT_FALSE(card.capabilities->pushNotifications);
+}
+
+/**
+ * @tc.name: AgentCardFromJson_066
+ * @tc.desc: Test FromJson rejects missing iconUrl and invalid iconUrl length
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentCardFromJson_066, TestSize.Level1)
+{
+    AgentCard card;
+    auto missing = BuildValidAgentCardJson();
+    missing.erase("iconUrl");
+    EXPECT_FALSE(AgentCard::FromJson(missing, card));
+
+    auto wrongType = BuildValidAgentCardJson();
+    wrongType["iconUrl"] = 42;
+    EXPECT_FALSE(AgentCard::FromJson(wrongType, card));
+
+    auto tooLong = BuildValidAgentCardJson();
+    tooLong["iconUrl"] = std::string(513, 'u');
+    EXPECT_FALSE(AgentCard::FromJson(tooLong, card));
+}
+
+/**
+ * @tc.name: AgentCardFromJson_067
+ * @tc.desc: Test FromJson with valid documentationUrl and oversized truncation
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentCardFromJson_067, TestSize.Level1)
+{
+    auto validDoc = BuildValidAgentCardJson();
+    validDoc["documentationUrl"] = "http://docs.example.com";
+    AgentCard card;
+    EXPECT_TRUE(AgentCard::FromJson(validDoc, card));
+    EXPECT_EQ(card.documentationUrl, "http://docs.example.com");
+
+    auto oversizedDoc = BuildValidAgentCardJson();
+    oversizedDoc["documentationUrl"] = std::string(513, 'd');
+    AgentCard card2;
+    EXPECT_TRUE(AgentCard::FromJson(oversizedDoc, card2));
+    EXPECT_TRUE(card2.documentationUrl.empty());
+}
+
+/**
+ * @tc.name: AgentCardFromJson_068
+ * @tc.desc: Test FromJson clears extension that exceeds 5120 chars
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentCardFromJson_068, TestSize.Level1)
+{
+    auto json = BuildValidAgentCardJson();
+    json["extension"] = std::string(5121, 'e');
+    AgentCard card;
+    EXPECT_TRUE(AgentCard::FromJson(json, card));
+    EXPECT_TRUE(card.extension.empty());
+}
+
+/**
+ * @tc.name: AgentCardsRawData_RoundTrip_001
+ * @tc.desc: Test valid round trip through FromAgentCardVec and ToAgentCardVec
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentCardsRawData_RoundTrip_001, TestSize.Level1)
+{
+    AgentCard card;
+    auto json = BuildValidAgentCardJson();
+    ASSERT_TRUE(AgentCard::FromJson(json, card));
+
+    std::vector<AgentCard> original = {card};
+    AgentCardsRawData rawData;
+    AgentCardsRawData::FromAgentCardVec(original, rawData);
+
+    std::vector<AgentCard> parsed;
+    EXPECT_EQ(AgentCardsRawData::ToAgentCardVec(rawData, parsed), ERR_OK);
+    ASSERT_EQ(parsed.size(), 1u);
+    EXPECT_EQ(parsed[0].agentId, "1");
+    EXPECT_EQ(parsed[0].name, "test");
+}
+
+/**
+ * @tc.name: AgentCardsRawData_CountOverflow_001
+ * @tc.desc: Test ToAgentCardVec rejects count exceeding MAX_AGENT_CARD_COUNT
+ * @tc.type: FUNC
+ */
+HWTEST_F(AgentCardTest, AgentCardsRawData_CountOverflow_001, TestSize.Level1)
+{
+    uint32_t tooMany = 200001;
+    std::string buffer(reinterpret_cast<const char*>(&tooMany), sizeof(tooMany));
+    AgentCardsRawData rawData;
+    rawData.data = buffer.data();
+    rawData.size = buffer.size();
+
+    std::vector<AgentCard> cards;
+    EXPECT_EQ(AgentCardsRawData::ToAgentCardVec(rawData, cards), ERR_AGENT_CARD_LIST_OUT_OF_RANGE);
 }
 } // namespace AgentRuntime
 } // namespace OHOS

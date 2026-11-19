@@ -2138,5 +2138,185 @@ HWTEST_F(UIAbilityBaseTest, UIAbility_OnConfigurationUpdatedNotify_0400, TestSiz
     EXPECT_NE(ability_, nullptr);
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }
+
+/**
+ * @tc.number: UIAbility_OnStart_WithRequestId_0100
+ * @tc.name: OnStart with requestId and scbRequestId
+ * @tc.desc: Test OnStart removes requestId and scbRequestId from want
+ */
+HWTEST_F(UIAbilityBaseTest, UIAbility_OnStart_WithRequestId_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    std::shared_ptr<AbilityInfo> abilityInfo = std::make_shared<AbilityInfo>();
+    AbilityType type = AbilityType::PAGE;
+    abilityInfo->type = type;
+    abilityInfo->isStageBasedModel = true;
+    std::shared_ptr<OHOSApplication> application = nullptr;
+    std::shared_ptr<AbilityHandler> handler = nullptr;
+    sptr<IRemoteObject> token = nullptr;
+    sptr<IRemoteObject> abilityToken = sptr<IRemoteObject>(new AbilityRuntime::FAAbilityThread());
+    auto abilityRecord = std::make_shared<AbilityLocalRecord>(abilityInfo, abilityToken, nullptr, 0);
+    bool createObjSuc = true;
+    ability_->Init(abilityRecord, application, handler, token, createObjSuc);
+
+    // Create want with requestId and scbRequestId
+    Want want;
+    want.SetParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 100);
+    want.SetParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 200);
+
+    // Call OnStart
+    ability_->OnStart(want, nullptr);
+
+    // Verify requestId and scbRequestId are removed from want
+    int32_t requestId = ability_->GetWant()->GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, -1);
+    int32_t scbRequestId = ability_->GetWant()->GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, -1);
+    EXPECT_EQ(requestId, -1);  // Should be removed
+    EXPECT_EQ(scbRequestId, -1);  // Should be removed
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.number: UIAbility_OnStart_WithRequestId_0200
+ * @tc.name: OnStart with only requestId
+ * @tc.desc: Test OnStart removes only requestId from want
+ */
+HWTEST_F(UIAbilityBaseTest, UIAbility_OnStart_WithRequestId_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    std::shared_ptr<AbilityInfo> abilityInfo = std::make_shared<AbilityInfo>();
+    AbilityType type = AbilityType::PAGE;
+    abilityInfo->type = type;
+    abilityInfo->isStageBasedModel = true;
+    std::shared_ptr<OHOSApplication> application = nullptr;
+    std::shared_ptr<AbilityHandler> handler = nullptr;
+    sptr<IRemoteObject> token = nullptr;
+    sptr<IRemoteObject> abilityToken = sptr<IRemoteObject>(new AbilityRuntime::FAAbilityThread());
+    auto abilityRecord = std::make_shared<AbilityLocalRecord>(abilityInfo, abilityToken, nullptr, 0);
+    bool createObjSuc = true;
+    ability_->Init(abilityRecord, application, handler, token, createObjSuc);
+
+    // Create want with only requestId
+    Want want;
+    want.SetParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 100);
+
+    // Call OnStart
+    ability_->OnStart(want, nullptr);
+
+    // Verify requestId is removed
+    int32_t requestId = ability_->GetWant()->GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, -1);
+    int32_t scbRequestId = ability_->GetWant()->GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, -1);
+    EXPECT_EQ(requestId, -1);  // Should be removed
+    EXPECT_EQ(scbRequestId, -1);  // Never set
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.number: UIAbility_OnStart_WithRequestId_0300
+ * @tc.name: OnStart with only scbRequestId
+ * @tc.desc: Test OnStart removes only scbRequestId from want
+ */
+HWTEST_F(UIAbilityBaseTest, UIAbility_OnStart_WithRequestId_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    std::shared_ptr<AbilityInfo> abilityInfo = std::make_shared<AbilityInfo>();
+    AbilityType type = AbilityType::PAGE;
+    abilityInfo->type = type;
+    abilityInfo->isStageBasedModel = true;
+    std::shared_ptr<OHOSApplication> application = nullptr;
+    std::shared_ptr<AbilityHandler> handler = nullptr;
+    sptr<IRemoteObject> token = nullptr;
+    sptr<IRemoteObject> abilityToken = sptr<IRemoteObject>(new AbilityRuntime::FAAbilityThread());
+    auto abilityRecord = std::make_shared<AbilityLocalRecord>(abilityInfo, abilityToken, nullptr, 0);
+    bool createObjSuc = true;
+    ability_->Init(abilityRecord, application, handler, token, createObjSuc);
+
+    // Create want with only scbRequestId
+    Want want;
+    want.SetParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 200);
+
+    // Call OnStart
+    ability_->OnStart(want, nullptr);
+
+    // Verify scbRequestId is removed
+    int32_t requestId = ability_->GetWant()->GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, -1);
+    int32_t scbRequestId = ability_->GetWant()->GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, -1);
+    EXPECT_EQ(requestId, -1);  // Never set
+    EXPECT_EQ(scbRequestId, -1);  // Should be removed
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.number: UIAbility_OnStart_WithRequestId_0400
+ * @tc.name: OnStart without requestId or scbRequestId
+ * @tc.desc: Test OnStart when want has no requestId or scbRequestId
+ */
+HWTEST_F(UIAbilityBaseTest, UIAbility_OnStart_WithRequestId_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    std::shared_ptr<AbilityInfo> abilityInfo = std::make_shared<AbilityInfo>();
+    AbilityType type = AbilityType::PAGE;
+    abilityInfo->type = type;
+    abilityInfo->isStageBasedModel = true;
+    std::shared_ptr<OHOSApplication> application = nullptr;
+    std::shared_ptr<AbilityHandler> handler = nullptr;
+    sptr<IRemoteObject> token = nullptr;
+    sptr<IRemoteObject> abilityToken = sptr<IRemoteObject>(new AbilityRuntime::FAAbilityThread());
+    auto abilityRecord = std::make_shared<AbilityLocalRecord>(abilityInfo, abilityToken, nullptr, 0);
+    bool createObjSuc = true;
+    ability_->Init(abilityRecord, application, handler, token, createObjSuc);
+
+    // Create want without requestId or scbRequestId
+    Want want;
+
+    // Call OnStart
+    ability_->OnStart(want, nullptr);
+
+    // Verify neither parameter is set
+    int32_t requestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, -1);
+    int32_t scbRequestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, -1);
+    EXPECT_EQ(requestId, -1);  // Never set
+    EXPECT_EQ(scbRequestId, -1);  // Never set
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.number: UIAbility_OnNewWant_WithRequestId_0100
+ * @tc.name: OnNewWant with requestId and scbRequestId
+ * @tc.desc: Test OnNewWant with requestId and scbRequestId (should not remove them in OnNewWant)
+ */
+HWTEST_F(UIAbilityBaseTest, UIAbility_OnNewWant_WithRequestId_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    std::shared_ptr<AbilityInfo> abilityInfo = std::make_shared<AbilityInfo>();
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    std::shared_ptr<EventRunner> eventRunner = EventRunner::Create(abilityInfo->name);
+    std::shared_ptr<AbilityHandler> handler = std::make_shared<AbilityHandler>(eventRunner);
+    sptr<IRemoteObject> token = nullptr;
+    sptr<IRemoteObject> abilityToken = sptr<IRemoteObject>(new AbilityRuntime::FAAbilityThread());
+    auto abilityRecord = std::make_shared<AbilityLocalRecord>(abilityInfo, abilityToken, nullptr, 0);
+    bool createObjSuc = true;
+    ability_->Init(abilityRecord, application, handler, token, createObjSuc);
+
+    // Create want with requestId and scbRequestId
+    Want want;
+    want.SetParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 100);
+    want.SetParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 200);
+
+    // Call OnNewWant - requestIds should remain since OnNewWant doesn't remove them
+    ability_->OnNewWant(want);
+
+    // Verify requestId and scbRequestId are still present (OnNewWant doesn't remove them)
+    int32_t requestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, -1);
+    int32_t scbRequestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, -1);
+    EXPECT_EQ(requestId, 100);  // Should still be present
+    EXPECT_EQ(scbRequestId, 200);  // Should still be present
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
 } // namespace AppExecFwk
 } // namespace OHOS

@@ -28,13 +28,15 @@ ohos_unittest("ui_extension_connect_test") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
 
-  deps = [ "${ability_runtime_innerkits_path}/ability_manager:ability_connect_callback_stub" ]
+  deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_connect_callback_stub",
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
+  ]
 
   external_deps = [
     "ability_base:session_info",
     "ability_base:want",
-    "ability_runtime:ability_manager",
-    "ability_runtime:app_manager",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",

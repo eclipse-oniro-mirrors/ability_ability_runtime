@@ -25,7 +25,9 @@
 
 #include "app_utils.h"
 #include "application_info.h"
+#include "app_mgr_client.h"
 #include "app_mgr_interface.h"
+#include "singleton.h"
 #include "bundle_info.h"
 #include "bundle_mgr_interface.h"
 #include "child_process.h"
@@ -624,6 +626,55 @@ ChildProcessManagerErrorCode ChildProcessManager::KillChildProcessByPid(int32_t 
     auto ret = appMgr->KillChildProcessByPid(pid);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::PROCESSMGR, "KillChildProcessByPid error:%{public}d, pid:%{public}d", ret, pid);
+        return ChildProcessManagerErrorUtil::GetChildProcessManagerErrorCode(ret);
+    }
+    return ChildProcessManagerErrorCode::ERR_OK;
+}
+
+bool ChildProcessManager::IsArkChildProcessSupported()
+{
+    TAG_LOGD(AAFwkTag::PROCESSMGR, "called");
+    bool isSupported = false;
+    auto client = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+    if (client == nullptr) {
+        TAG_LOGE(AAFwkTag::PROCESSMGR, "AppMgrClient instance is nullptr");
+        return false;
+    }
+    if (client->IsChildProcessSupported(false, isSupported) != ERR_OK) {
+        TAG_LOGE(AAFwkTag::PROCESSMGR, "ipc query failed");
+        return false;
+    }
+    return isSupported;
+}
+
+bool ChildProcessManager::IsNativeChildProcessSupported()
+{
+    TAG_LOGD(AAFwkTag::PROCESSMGR, "called");
+    bool isSupported = false;
+    auto client = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+    if (client == nullptr) {
+        TAG_LOGE(AAFwkTag::PROCESSMGR, "AppMgrClient instance is nullptr");
+        return false;
+    }
+    if (client->IsChildProcessSupported(true, isSupported) != ERR_OK) {
+        TAG_LOGE(AAFwkTag::PROCESSMGR, "ipc query failed");
+        return false;
+    }
+    return isSupported;
+}
+
+ChildProcessManagerErrorCode ChildProcessManager::AcquireChildProcesses(
+    std::vector<AppExecFwk::ChildProcessInfo> &infos)
+{
+    TAG_LOGD(AAFwkTag::PROCESSMGR, "called");
+    auto client = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+    if (client == nullptr) {
+        TAG_LOGE(AAFwkTag::PROCESSMGR, "AppMgrClient instance is nullptr");
+        return ChildProcessManagerErrorCode::ERR_GET_APP_MGR_FAILED;
+    }
+    auto ret = client->GetSelfChildrenProcesses(infos);
+    if (ret != AppExecFwk::AppMgrResultCode::RESULT_OK) {
+        TAG_LOGE(AAFwkTag::PROCESSMGR, "GetSelfChildrenProcesses failed, ret=%{public}d", ret);
         return ChildProcessManagerErrorUtil::GetChildProcessManagerErrorCode(ret);
     }
     return ChildProcessManagerErrorCode::ERR_OK;

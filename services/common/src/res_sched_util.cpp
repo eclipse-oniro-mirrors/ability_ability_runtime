@@ -22,6 +22,7 @@
 #include "hilog_tag_wrapper.h"
 #ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
 #include "res_sched_client.h"
+#include "res_sched_json_client.h"
 #include "res_type.h"
 #endif
 
@@ -30,6 +31,7 @@ namespace AAFwk {
 #ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
 using AssociatedStartType = ResourceSchedule::ResType::AssociatedStartType;
 static constexpr int PERF_NUM = 10202;
+static constexpr int GAME_CLICK_VALUE = 4;
 #endif
 ResSchedUtil &ResSchedUtil::GetInstance()
 {
@@ -82,8 +84,39 @@ void ResSchedUtil::ReportForkAllEventToRSS(int32_t imagePid, int32_t orginalPid,
 #endif
 }
 
+void ResSchedUtil::ReportTemplateProcessReadyToRSS(int32_t pid, int32_t uid, const std::string &bundleName)
+{
+#ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
+    uint32_t resType = ResourceSchedule::ResType::RES_TYPE_IMAGE_PROCESS_STATE_CHANGED;
+    std::unordered_map<std::string, std::string> eventParams {
+        { "pid", std::to_string(pid) },
+        { "uid", std::to_string(uid) },
+        { "bundleName", bundleName }
+    };
+    TAG_LOGI(AAFwkTag::DEFAULT, "ReportTemplateProcessReadyToRSS: pid:%{public}d uid:%{public}d bundleName:%{public}s",
+        pid, uid, bundleName.c_str());
+    ResourceSchedule::ResSchedClient::GetInstance().ReportData(resType,
+        ResourceSchedule::ResType::TEMPLATE_PROCESS_READY, eventParams);
+#endif
+}
+
+void ResSchedUtil::ReportGameClickToRSS(const std::string &bundleName, int32_t pid, int32_t uid)
+{
+#ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
+    uint32_t resType = ResourceSchedule::ResType::RES_TYPE_GAME_INFO_NOTIFY;
+    std::unordered_map<std::string, std::string> eventParams {
+        { "bundleName", bundleName },
+        { "pid", std::to_string(pid) },
+        { "uid", std::to_string(uid) }
+    };
+    TAG_LOGD(AAFwkTag::DEFAULT, "ReportGameClickToRSS: bundleName=%{public}s, pid=%{public}d, uid=%{public}d",
+        bundleName.c_str(), pid, uid);
+    ResourceSchedule::ResSchedClient::GetInstance().ReportData(resType, GAME_CLICK_VALUE, eventParams);
+#endif
+}
+
 void ResSchedUtil::ReportAbilityStartInfoToRSS(const AbilityInfo &abilityInfo, int32_t pid, bool isColdStart,
-    bool supportWarmSmartGC, int32_t preloadMode)
+    bool supportWarmSmartGC, int32_t preloadMode, bool isSuggestCache)
 {
 #ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
     uint32_t resType = ResourceSchedule::ResType::RES_TYPE_APP_ABILITY_START;
@@ -94,7 +127,8 @@ void ResSchedUtil::ReportAbilityStartInfoToRSS(const AbilityInfo &abilityInfo, i
         { "abilityName", abilityInfo.name },
         { "pid", std::to_string(pid) },
         { "supportWarmSmartGC", supportWarmSmartGC ? "1": "0" },
-        { "preloadMode", std::to_string(preloadMode) }
+        { "preloadMode", std::to_string(preloadMode) },
+        { "suggestCache", isSuggestCache ? "1": "0" }
     };
     TAG_LOGD(AAFwkTag::DEFAULT, "call");
     ResourceSchedule::ResSchedClient::GetInstance().ReportData(resType, isColdStart ? 1 : 0, eventParams);
@@ -201,7 +235,7 @@ void ResSchedUtil::ReportEventToRSS(const int32_t uid, const std::string &bundle
     payload.emplace("isCreateFromImage", isCreateFromImage);
     nlohmann::json reply;
     TAG_LOGD(AAFwkTag::DEFAULT, "call");
-    ResourceSchedule::ResSchedClient::GetInstance().ReportSyncEvent(resType, 0, payload, reply);
+    ResourceSchedule::ResSchedJsonClient::GetInstance().ReportSyncEvent(resType, 0, payload, reply);
 #endif
 }
 
@@ -230,7 +264,7 @@ void ResSchedUtil::GetAllFrozenPidsFromRSS(std::unordered_set<int32_t> &frozenPi
     nlohmann::json payload;
     nlohmann::json reply;
     TAG_LOGD(AAFwkTag::DEFAULT, "call");
-    int32_t ret = ResourceSchedule::ResSchedClient::GetInstance().ReportSyncEvent(resType, 0, payload, reply);
+    int32_t ret = ResourceSchedule::ResSchedJsonClient::GetInstance().ReportSyncEvent(resType, 0, payload, reply);
     if (ret != 0 || !reply.contains("allSuspendState") || !reply["allSuspendState"].is_array()) {
         TAG_LOGE(AAFwkTag::DEFAULT, "ReportSyncEvent fail");
         return;
@@ -267,7 +301,7 @@ bool ResSchedUtil::CheckShouldForceKillProcess(int32_t pid, const std::string& b
     nlohmann::json payload;
     nlohmann::json reply;
     payload.emplace("pid", pid);
-    ResourceSchedule::ResSchedClient::GetInstance().ReportSyncEvent(resType, 0, payload, reply);
+    ResourceSchedule::ResSchedJsonClient::GetInstance().ReportSyncEvent(resType, 0, payload, reply);
     if (!reply.contains("ShouldForceKillProcess") || !reply["ShouldForceKillProcess"].is_number_integer()) {
         return true;
     }
@@ -314,7 +348,7 @@ std::unordered_set<std::string> ResSchedUtil::GetNWebPreloadSet() const
     uint32_t resType = ResourceSchedule::ResType::SYNC_RES_TYPE_GET_NWEB_PRELOAD_SET;
     nlohmann::json payload;
     nlohmann::json reply;
-    ResourceSchedule::ResSchedClient::GetInstance().ReportSyncEvent(resType, 0, payload, reply);
+    ResourceSchedule::ResSchedJsonClient::GetInstance().ReportSyncEvent(resType, 0, payload, reply);
     if (!reply.contains("NWebPreloadSet")) {
         TAG_LOGW(AAFwkTag::DEFAULT, "does not get preload process set");
         return {};

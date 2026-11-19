@@ -26,9 +26,6 @@ public:
     BundleMgrClient();
     virtual ~BundleMgrClient();
 
-    bool GetBundleInfo(const std::string &bundleName, const BundleFlag flag, BundleInfo &bundleInfo,
-        int32_t userId = Constants::UNSPECIFIED_USERID);
-
     bool GetResConfigFile(const ExtensionAbilityInfo &extensionInfo, const std::string &metadataName,
         std::vector<std::string> &profileInfos, bool includeSysRes = true) const;
 };

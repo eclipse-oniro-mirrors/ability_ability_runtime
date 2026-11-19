@@ -60,6 +60,12 @@ public:
      */
     void NotifyAllCallDisconnect(const AppExecFwk::ElementName &element);
 
+    /**
+     * @brief Notify all callers (including REQUESTING state) that callee prelaunch timed out
+     * @param element Callee ability element name
+     */
+    void NotifyDisconnectOnTimeout(const AppExecFwk::ElementName &element);
+
 private:
     void RemoveConnectDeathRecipient(const sptr<IAbilityConnection> &connect);
     void AddConnectDeathRecipient(const sptr<IAbilityConnection> &connect);

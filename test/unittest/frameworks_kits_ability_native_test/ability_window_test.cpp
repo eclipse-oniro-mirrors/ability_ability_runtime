@@ -343,5 +343,22 @@ HWTEST_F(AbilityWindowTest, Ability_Window_SetMissionIcon_0300, TestSize.Level1)
     GTEST_LOG_(INFO) << "Ability_Window_SetMissionIcon_0300 end";
 }
 #endif
+
+/**
+ * @tc.number: Ability_Window_InitWindow_NullAbilityContext_0100
+ * @tc.name: InitWindow with null abilityContext
+ * @tc.desc: Test InitWindow returns false when abilityContext is nullptr
+ */
+HWTEST_F(AbilityWindowTest, Ability_Window_InitWindow_NullAbilityContext_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "Ability_Window_InitWindow_NullAbilityContext_0100 start";
+    std::shared_ptr<AbilityRuntime::AbilityContext> nullContext = nullptr;
+    sptr<IWindowLifeCycle> listener = nullptr;
+    auto option = sptr<WindowOption>::MakeSptr();
+    ASSERT_NE(option, nullptr);
+    auto result = abilityWindow_->InitWindow(nullContext, listener, 0, option, false);
+    EXPECT_FALSE(result);
+    GTEST_LOG_(INFO) << "Ability_Window_InitWindow_NullAbilityContext_0100 end";
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

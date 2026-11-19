@@ -28,7 +28,6 @@ ohos_fuzztest("ToolsTestObserverFuzzTest") {
     "-Wno-unused-variable",
     "-fno-omit-frame-pointer",
   ]
-  configs = []
   sources = [ "toolstestobserver_fuzzer.cpp" ]
   deps = [
     "${ability_runtime_path}/tools/aa:tools_aa_source_set",

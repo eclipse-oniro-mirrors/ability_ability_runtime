@@ -236,7 +236,11 @@ int32_t ETSStartupManager::GetStartupTaskManager(ani_env *env, ani_object startu
     if (supportFeatureModule) {
         TAG_LOGI(AAFwkTag::STARTUP, "supportFeatureModule");
         ani_ref contextRef = nullptr;
-        env->GlobalReference_Create(abilityStageContext, &contextRef);
+        ani_status grefStatus = env->GlobalReference_Create(abilityStageContext, &contextRef);
+        if (grefStatus != ANI_OK || contextRef == nullptr) {
+            TAG_LOGE(AAFwkTag::STARTUP, "create global reference failed, status:%{public}d", grefStatus);
+            return ERR_STARTUP_INVALID_VALUE;
+        }
         UpdateStartupTasks(env, tasks, contextRef);
     }
     result = startupTaskManager->Prepare();

@@ -29,7 +29,9 @@ ohos_unittest("oe_extension_utils_test") {
     "mock/include",
     "${ability_runtime_innerkits_path}/ability_manager/include",
     "${ability_runtime_services_path}/abilitymgr/include",
+    "${ability_runtime_services_path}/abilitymgr/include/utils",
     "${ability_runtime_services_path}/common/include",
+    "${ability_runtime_utils_path}/global/constant",
   ]
 
   cflags = []

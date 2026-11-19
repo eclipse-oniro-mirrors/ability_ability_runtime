@@ -49,13 +49,26 @@ private:
     int32_t HandleUpdateAbilityState(MessageParcel &data, MessageParcel &reply);
     int32_t HandleUpdateExtensionState(MessageParcel &data, MessageParcel &reply);
     int32_t HandleRegisterAppStateCallback(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleRegisterTaskStateCallback(MessageParcel &data, MessageParcel &reply);
     int32_t HandleReset(MessageParcel &data, MessageParcel &reply);
     int32_t HandleKillProcessByAbilityToken(MessageParcel &data, MessageParcel &reply);
     int32_t HandleSetGameSAPrelaunch(MessageParcel &data, MessageParcel &reply);
+
+    /**
+     * Handle the attribution report of a warm start-ability call, reply the result code.
+     *
+     * @param data, the attribution params (taskId/callerUid/callerPid/targetPid).
+     * @param reply, the result code and the assigned attribution handle.
+     * @return Returns NO_ERROR on success, others on failure.
+     */
+    int32_t HandleAttributeProcessForAbility(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleUnregisterTaskAttribution(MessageParcel &data, MessageParcel &reply);
     int32_t HandleKillProcessesByUserId(MessageParcel &data, MessageParcel &reply);
     int32_t HandleKillProcessesByPids(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleCheckProcessAvailable(MessageParcel &data, MessageParcel &reply);
     int32_t HandleAttachPidToParent(MessageParcel &data, MessageParcel &reply);
     int32_t HandleKillProcessWithAccount(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleKillProcessWithAccountSafely(MessageParcel &data, MessageParcel &reply);
     int32_t HandleKillProcessesInBatch(MessageParcel &data, MessageParcel &reply);
     int32_t HandleKillApplication(MessageParcel &data, MessageParcel &reply);
     int32_t HandleForceKillApplication(MessageParcel &data, MessageParcel &reply);

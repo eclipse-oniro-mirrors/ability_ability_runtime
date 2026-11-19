@@ -1,0 +1,128 @@
+/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "cli_manager_error_utils.h"
+
+#include "cli_error_code.h"
+#include "hilog_tag_wrapper.h"
+#include "napi_common_util.h"
+
+namespace OHOS {
+namespace CliTool {
+namespace {
+constexpr const char* ERROR_MSG_NOT_SUPPORTED =
+    "Capability not supported. Failed to call the API due to limited device capabilities.";
+
+static const std::map<CliManagerErrorCode, std::string> ERROR_MSG_MAP = {
+    {CliManagerErrorCode::ERROR_PERMISSION_DENIED, "Permission denied."},
+    {CliManagerErrorCode::ERROR_NOT_SYSTEM_APP, "Not system application."},
+    {CliManagerErrorCode::ERROR_INVALID_PARAM, "Invalid input parameter."},
+    {CliManagerErrorCode::ERROR_NOT_SUPPORTED, ERROR_MSG_NOT_SUPPORTED},
+    {CliManagerErrorCode::ERROR_TOOL_NOT_FOUND, "The tool does not exist."},
+    {CliManagerErrorCode::ERROR_REACH_LIMIT, "Maximum number of processes has been reached."},
+    {CliManagerErrorCode::ERROR_SESSION_NOT_FOUND, "The session does not exist."},
+    {CliManagerErrorCode::ERROR_SEND_MESSAGE, "Failed to write message to tool."},
+    {CliManagerErrorCode::ERROR_INNER, "Internal error."},
+    {CliManagerErrorCode::ERROR_NOT_DEVELOPER_MODE, "Not in developer mode. Hook registration is not allowed."},
+    {CliManagerErrorCode::ERROR_HOOK_ALREADY_REGISTERED, "Hook already registered. Must unregister first."},
+    {CliManagerErrorCode::ERROR_HOOK_NOT_REGISTERED, "Hook not registered. Nothing to unregister."},
+    {CliManagerErrorCode::ERROR_FUNCTION_NOT_EXIST, "The function does not exist."},
+    {CliManagerErrorCode::ERROR_FUNCTION_EXECUTE_FAILED, "The function execute failed."},
+    {CliManagerErrorCode::ERROR_FUNCTION_EXECUTE_TIMEOUT, "The function execute timeout."},
+};
+
+static const std::map<int32_t, CliManagerErrorCode> NATIVE_TO_BUSINESS_ERROR_MAP = {
+    {OHOS::ERR_PERMISSION_DENIED, CliManagerErrorCode::ERROR_PERMISSION_DENIED},
+    {AAFwk::ERR_NOT_SYSTEM_APP, CliManagerErrorCode::ERROR_NOT_SYSTEM_APP},
+    {ERR_PERMISSION_DENIED, CliManagerErrorCode::ERROR_PERMISSION_DENIED},
+    {ERR_NOT_SYSTEM_APP, CliManagerErrorCode::ERROR_NOT_SYSTEM_APP},
+    {ERR_INVALID_PARAM, CliManagerErrorCode::ERROR_INVALID_PARAM},
+    {ERR_TOOL_NOT_EXIST, CliManagerErrorCode::ERROR_TOOL_NOT_FOUND},
+    {ERR_SESSION_LIMIT_EXCEEDED, CliManagerErrorCode::ERROR_REACH_LIMIT},
+    {ERR_CLI_SESSION_NOT_FOUND, CliManagerErrorCode::ERROR_SESSION_NOT_FOUND},
+    {ERR_CLI_SEND_MESSAGE, CliManagerErrorCode::ERROR_SEND_MESSAGE},
+    {ERR_FUNCTION_NOT_EXIST, CliManagerErrorCode::ERROR_FUNCTION_NOT_EXIST},
+    {ERR_FUNCTION_EXECUTE_FAILED, CliManagerErrorCode::ERROR_FUNCTION_EXECUTE_FAILED},
+    {ERR_FUNCTION_EXECUTE_TIMEOUT, CliManagerErrorCode::ERROR_FUNCTION_EXECUTE_TIMEOUT},
+    {ERR_NOT_DEVELOPER_MODE, CliManagerErrorCode::ERROR_NOT_DEVELOPER_MODE},
+    {ERR_HOOK_ALREADY_REGISTERED, CliManagerErrorCode::ERROR_HOOK_ALREADY_REGISTERED},
+    {ERR_HOOK_NOT_REGISTERED, CliManagerErrorCode::ERROR_HOOK_NOT_REGISTERED},
+    {AAFwk::ERR_CAPABILITY_NOT_SUPPORT, CliManagerErrorCode::ERROR_NOT_SUPPORTED},
+};
+
+static const std::map<int32_t, std::string> INNER_ERROR_MSG_MAP = {
+    {GET_CLI_TOOL_MGR_SERVICE_FAILED, "Internal error. Service unavailable."},
+    {ERR_JSON_PARSE_FAILED, "Internal error. Configuration invalid."},
+    {ERR_FILE_NOT_FOUND, "Internal error. Configuration unavailable."},
+    {ERR_KVSTORE_NOT_READY, "Internal error. Database service unavailable."},
+    {ERR_KVSTORE_ERROR, "Internal error. Database operation failed."},
+};
+
+std::string GetErrorMsg(CliManagerErrorCode errCode)
+{
+    auto it = ERROR_MSG_MAP.find(errCode);
+    if (it != ERROR_MSG_MAP.end()) {
+        return it->second;
+    }
+    return "Unknown error.";
+}
+
+std::string GetInnerErrorMsg(int32_t nativeErr)
+{
+    auto it = INNER_ERROR_MSG_MAP.find(nativeErr);
+    if (it != INNER_ERROR_MSG_MAP.end()) {
+        return it->second;
+    }
+    return GetErrorMsg(CliManagerErrorCode::ERROR_INNER);
+}
+
+std::string GetErrorMsg(CliManagerErrorCode errCode, int32_t nativeErr)
+{
+    if (errCode == CliManagerErrorCode::ERROR_INNER) {
+        return GetInnerErrorMsg(nativeErr);
+    }
+    return GetErrorMsg(errCode);
+}
+
+CliManagerErrorCode GetBusinessErrorCode(int32_t nativeErr)
+{
+    auto it = NATIVE_TO_BUSINESS_ERROR_MAP.find(nativeErr);
+    if (it != NATIVE_TO_BUSINESS_ERROR_MAP.end()) {
+        return it->second;
+    }
+    return CliManagerErrorCode::ERROR_INNER;
+}
+}  // namespace
+
+napi_value CreateCliManagerError(napi_env env, int32_t errCode, const std::string& errMsg)
+{
+    AbilityRuntime::HandleEscape handleEscape(env);
+    napi_value result = nullptr;
+    napi_value codeValue = AbilityRuntime::CreateJsValue(env, errCode);
+    napi_value msgValue = AbilityRuntime::CreateJsValue(env, errMsg);
+    napi_status status = napi_create_error(env, codeValue, msgValue, &result);
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "napi_create_error returned: %{public}d", status);
+    return handleEscape.Escape(result);
+}
+
+napi_value CreateCliJsErrorByNativeErr(napi_env env, int32_t nativeErr)
+{
+    auto businessErrCode = GetBusinessErrorCode(nativeErr);
+    auto errMsg = GetErrorMsg(businessErrCode, nativeErr);
+    return CreateCliManagerError(env, static_cast<int32_t>(businessErrCode), errMsg);
+}
+
+} // namespace CliTool
+} // namespace OHOS

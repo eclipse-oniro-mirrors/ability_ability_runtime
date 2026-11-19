@@ -1,0 +1,333 @@
+/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "process_manager.h"
+
+#include <cerrno>
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <sys/prctl.h>
+#include <sys/resource.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <thread>
+#include <unistd.h>
+#include <utility>
+
+#include "bundle_info.h"
+#include "bundle_mgr_helper.h"
+#include "cli_error_code.h"
+#include "cli_event_report.h"
+#include "exec_cmd_param.h"
+#include "exec_tool_param.h"
+#include "hilog_tag_wrapper.h"
+#include "ipc_skeleton.h"
+#include "tokenid_kit.h"
+#include "tool_info.h"
+#include "tool_util.h"
+
+namespace OHOS {
+namespace CliTool {
+namespace {
+#define ACCESS_TOKENID_SET_HAP_PTOKENID _IOW('A', 0x1A, uint64_t)
+
+// Only TOOL_CALL_ID is injected into the child env (never argv).
+constexpr char ENV_TOOL_CALL_ID[] = "TOOL_CALL_ID";
+
+// PARENT-only: child env = environ + TOOL_CALL_ID, dropping stale inherited ones.
+void BuildChildEnv(const SessionRecord &record, std::vector<std::string> &envStorage,
+    std::vector<char *> &envp)
+{
+    const std::string toolCallKey = std::string(ENV_TOOL_CALL_ID) + "=";
+    for (char **entry = environ; entry != nullptr && *entry != nullptr; ++entry) {
+        std::string current(*entry);
+        if (current.rfind(toolCallKey, 0) == 0) {
+            continue;
+        }
+        envStorage.push_back(std::move(current));
+    }
+    if (!record.toolCallId.empty()) {
+        envStorage.push_back(toolCallKey + record.toolCallId);
+    }
+    for (auto &entry : envStorage) {
+        envp.push_back(entry.data());
+    }
+    envp.push_back(nullptr);
+}
+
+// Upper bound for the fallback fd-sweep when RLIMIT_NOFILE is RLIM_INFINITY. Bounded so the
+// loop stays cheap; any fd that genuinely needs to survive into claw_sandbox is dup2'd onto
+// 0/1/2 before the sweep and is therefore excluded by the fd > STDERR_FILENO condition.
+constexpr rlim_t MAX_FD_SWEEP_LIMIT = 65536;
+constexpr uint64_t FD_OWNER_TAG = static_cast<uint64_t>(AAFwkTag::CLI_TOOL);
+}
+
+const char *ProcessManager::clawSandboxPath_ = "/system/bin/claw_sandbox";
+
+ProcessManager &ProcessManager::GetInstance()
+{
+    static ProcessManager instance;
+    return instance;
+}
+
+bool ProcessManager::CreatePipes(SessionRecord &record) const
+{
+    // Create pipes for stdin, stdout and stderr
+    if (pipe2(record.stdinPipe, O_CLOEXEC) != 0) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create stdin pipe: %{public}d", errno);
+        return false;
+    }
+    fdsan_exchange_owner_tag(record.stdinPipe[0], 0, FD_OWNER_TAG);
+    fdsan_exchange_owner_tag(record.stdinPipe[1], 0, FD_OWNER_TAG);
+    if (pipe2(record.stdoutPipe, O_CLOEXEC) != 0) {
+        fdsan_close_with_tag(record.stdinPipe[0], FD_OWNER_TAG);
+        record.stdinPipe[0] = -1;
+        fdsan_close_with_tag(record.stdinPipe[1], FD_OWNER_TAG);
+        record.stdinPipe[1] = -1;
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create stdout pipe: %{public}d", errno);
+        return false;
+    }
+    fdsan_exchange_owner_tag(record.stdoutPipe[0], 0, FD_OWNER_TAG);
+    fdsan_exchange_owner_tag(record.stdoutPipe[1], 0, FD_OWNER_TAG);
+    if (pipe2(record.stderrPipe, O_CLOEXEC) != 0) {
+        fdsan_close_with_tag(record.stdinPipe[0], FD_OWNER_TAG);
+        record.stdinPipe[0] = -1;
+        fdsan_close_with_tag(record.stdinPipe[1], FD_OWNER_TAG);
+        record.stdinPipe[1] = -1;
+        fdsan_close_with_tag(record.stdoutPipe[0], FD_OWNER_TAG);
+        record.stdoutPipe[0] = -1;
+        fdsan_close_with_tag(record.stdoutPipe[1], FD_OWNER_TAG);
+        record.stdoutPipe[1] = -1;
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create stderr pipe: %{public}d", errno);
+        return false;
+    }
+    fdsan_exchange_owner_tag(record.stderrPipe[0], 0, FD_OWNER_TAG);
+    fdsan_exchange_owner_tag(record.stderrPipe[1], 0, FD_OWNER_TAG);
+    return true;
+}
+
+void ProcessManager::CloseAllPipes(SessionRecord &record) const
+{
+    fdsan_close_with_tag(record.stdinPipe[0], FD_OWNER_TAG);
+    record.stdinPipe[0] = -1;
+    fdsan_close_with_tag(record.stdinPipe[1], FD_OWNER_TAG);
+    record.stdinPipe[1] = -1;
+    fdsan_close_with_tag(record.stdoutPipe[0], FD_OWNER_TAG);
+    record.stdoutPipe[0] = -1;
+    fdsan_close_with_tag(record.stdoutPipe[1], FD_OWNER_TAG);
+    record.stdoutPipe[1] = -1;
+    fdsan_close_with_tag(record.stderrPipe[0], FD_OWNER_TAG);
+    record.stderrPipe[0] = -1;
+    fdsan_close_with_tag(record.stderrPipe[1], FD_OWNER_TAG);
+    record.stderrPipe[1] = -1;
+}
+
+void ProcessManager::CloseNonStdFds() const
+{
+    // Backstop before execvp: close every inherited fd except stdin/stdout/stderr so that
+    // only the three standard streams can cross the exec boundary into claw_sandbox.
+    // CreatePipes already sets O_CLOEXEC on our own pipe fds; this catches any fd that
+    // escaped CLOEXEC (fds inherited from the parent SA process, or opened on a path that
+    // forgot the flag). Both paths below use raw kernel syscalls: async-signal-safe
+    // (no malloc/stdio/HiLog) and bypass musl's fdsan-instrumented close(), which would
+    // mismatch on inherited tagged fds and invoke HiLog in the post-fork child (deadlock).
+
+    // Fast path: close_range (Linux 5.9+, nr 436) closes every open fd in [first, last]
+    // in a single syscall -- O(open fds), no userspace iteration. OpenHarmony musl exposes
+    // SYS_close_range and the standard kernel (5.10+) implements it.
+    unsigned int first = static_cast<unsigned int>(STDERR_FILENO + 1);
+    if (syscall(SYS_close_range, first, ~0U, 0u) == 0) {
+        return;
+    }
+    // Fallback (ENOSYS on kernels < 5.9, or any other failure): sweep the soft NOFILE range.
+    // RLIMIT_NOFILE is "the smallest fd value that cannot be opened", so every open fd is
+    // strictly below rl.rlim_cur; sweeping [STDERR_FILENO+1, rl.rlim_cur) is exhaustive.
+    // No TAG_LOGW here: CloseNonStdFds runs in the post-fork child where HiLog's internal
+    // mutex may be held by a vanished thread -> deadlock. Sweep silently.
+    // Raw SYS_close (not close()): the parent tags inherited fds with FD_OWNER_TAG, and
+    // musl's close() -> fdsan_close_with_tag(fd, 0) mismatches on tagged fds, invoking
+    // fdsan_error -> HiLog (deadlock) or abort (FATAL). SYS_close bypasses fdsan; stale
+    // tag entries are harmless because execvp replaces the process image right after.
+    struct rlimit rl;
+    if (getrlimit(RLIMIT_NOFILE, &rl) != 0) {
+        return;
+    }
+    rlim_t limit = rl.rlim_cur;
+    if (limit == RLIM_INFINITY || limit > MAX_FD_SWEEP_LIMIT) {
+        limit = MAX_FD_SWEEP_LIMIT;
+    }
+    for (rlim_t fd = STDERR_FILENO + 1; fd < limit; ++fd) {
+        syscall(SYS_close, static_cast<int>(fd)); // EBADF on non-open fds, harmless
+    }
+}
+
+void ProcessManager::SetupChildPipesAndExec(const SessionRecord &record,
+    std::vector<char *> &execArgs, std::vector<char *> &envp) const
+{
+    fdsan_close_with_tag(record.stdinPipe[1], FD_OWNER_TAG);
+    fdsan_close_with_tag(record.stdoutPipe[0], FD_OWNER_TAG);
+    fdsan_close_with_tag(record.stderrPipe[0], FD_OWNER_TAG);
+    dup2(record.stdinPipe[0], STDIN_FILENO);
+    dup2(record.stdoutPipe[1], STDOUT_FILENO);
+    dup2(record.stderrPipe[1], STDERR_FILENO);
+    fdsan_close_with_tag(record.stdinPipe[0], FD_OWNER_TAG);
+    fdsan_close_with_tag(record.stdoutPipe[1], FD_OWNER_TAG);
+    fdsan_close_with_tag(record.stderrPipe[1], FD_OWNER_TAG);
+    CloseNonStdFds();
+    // Ids reach the child via envp only (ADR-2); execve keeps the child async-signal-safe.
+    execve(execArgs[0], execArgs.data(), envp.data());
+    static const char msg[] = "claw_sandbox execve failed\n";
+    (void)write(STDERR_FILENO, msg, sizeof(msg) - 1);
+    _exit(EXIT_FAILURE);
+}
+
+int32_t ProcessManager::CreateChildProcess(const ExecToolParam &param, const std::string &sandboxConfig,
+    const ToolInfo &toolInfo, std::shared_ptr<SessionRecord> record) const
+{
+    if (!CreatePipes(*record)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create pipes");
+        ReportCliExecuteFailed(record->callerBundleName, param.toolName, REASON_PROCESS_CREATE_FAILED);
+        return ERR_NO_INIT;
+    }
+    // PARENT (pre-fork): all heap allocation happens here, never in child.
+    std::vector<std::string> tmpExecArgs;
+    ToolUtil::TransferToCmdParam(param.args, tmpExecArgs);
+
+    std::vector<char *> execArgs = {
+        const_cast<char *>(clawSandboxPath_),
+        const_cast<char *>("--config"),
+        const_cast<char *>(sandboxConfig.c_str()),
+        const_cast<char *>("--cmd"),
+        const_cast<char *>(toolInfo.executablePath.c_str()),
+    };
+    if (!param.subcommand.empty()) {
+        execArgs.push_back(const_cast<char *>(param.subcommand.c_str()));
+    }
+    for (const auto &element : tmpExecArgs) {
+        execArgs.push_back(const_cast<char *>(element.c_str()));
+    }
+    execArgs.push_back(nullptr);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "args:");
+    for (const auto &element : tmpExecArgs) {
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "%{public}s", element.c_str());
+    }
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "sandboxConfig: %{public}s", sandboxConfig.c_str());
+    // PARENT (pre-fork): build the child environment here so the child only passes
+    // the prebuilt array to execve (async-signal-safe, no malloc in child).
+    std::vector<std::string> envStorage;
+    std::vector<char *> envp;
+    BuildChildEnv(*record, envStorage, envp);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Before fork");
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to fork: %{public}d", errno);
+        CloseAllPipes(*record);
+        ReportCliExecuteFailed(record->callerBundleName, param.toolName, REASON_PROCESS_CREATE_FAILED);
+        return ERR_NO_INIT;
+    }
+    if (pid == 0) {
+        SetupChildPipesAndExec(*record, execArgs, envp);
+    }
+
+    // Parent process: close write ends of pipes
+    fdsan_close_with_tag(record->stdoutPipe[1], FD_OWNER_TAG);
+    fdsan_close_with_tag(record->stderrPipe[1], FD_OWNER_TAG);
+    // close read
+    fdsan_close_with_tag(record->stdinPipe[0], FD_OWNER_TAG);
+    record->processId = pid;
+    return ERR_OK;
+}
+
+int32_t ProcessManager::CreateShellProcess(const ExecCmdParam &param, const std::string &sandboxConfig,
+    std::shared_ptr<SessionRecord> record) const
+{
+    if (!CreatePipes(*record)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create pipes");
+        return ERR_NO_INIT;
+    }
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+    // PARENT (pre-fork): compute token flag here to keep child async-signal-safe.
+    auto atmTokenId = AccessToken::TokenIdKit::AddCliBinaryInvokerTokenFlag(tokenId);
+
+    // PARENT (pre-fork): build argv with heap allocation here, not in child.
+    std::vector<char *> execArgs = {
+        const_cast<char *>(clawSandboxPath_),
+        const_cast<char *>("--config"),
+        const_cast<char *>(sandboxConfig.c_str()),
+        const_cast<char *>("--cmd"),
+        const_cast<char *>("/bin/sh"),
+        const_cast<char *>("-c"),
+        const_cast<char *>(param.cmd.c_str()),
+        nullptr,
+    };
+    // PARENT (pre-fork): build the child environment here (see CreateChildProcess).
+    std::vector<std::string> envStorage;
+    std::vector<char *> envp;
+    BuildChildEnv(*record, envStorage, envp);
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Before fork");
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "sandboxConfig: %{public}s", sandboxConfig.c_str());
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to fork: %{public}d", errno);
+        CloseAllPipes(*record);
+        return ERR_NO_INIT;
+    }
+    if (pid == 0) {
+         // ---- CHILD: only async-signal-safe calls (open/close/dup2/execvp/_exit/write). ----
+        // Apply parent-HAP token: open/close are POSIX async-signal-safe; ioctl is not
+        // strictly POSIX-listed but is safe for this device driver on OpenHarmony (no
+        // malloc/locale/HiLog locks). No HiLog on error (HiLog mutex may be held by a
+        // vanished thread at fork -> deadlock).
+        int32_t tfd = open("/dev/access_token_id", O_RDWR | O_CLOEXEC);
+        if (tfd >= 0) {
+            fdsan_exchange_owner_tag(tfd, 0, FD_OWNER_TAG);
+            (void)ioctl(tfd, ACCESS_TOKENID_SET_HAP_PTOKENID, &atmTokenId);
+            (void)fdsan_close_with_tag(tfd, FD_OWNER_TAG);
+        }
+        SetupChildPipesAndExec(*record, execArgs, envp);
+    }
+    // Parent process: close write ends of pipes
+    fdsan_close_with_tag(record->stdoutPipe[1], FD_OWNER_TAG);
+    fdsan_close_with_tag(record->stderrPipe[1], FD_OWNER_TAG);
+    // close read end of stdin
+    fdsan_close_with_tag(record->stdinPipe[0], FD_OWNER_TAG);
+    record->processId = pid;
+    return ERR_OK;
+}
+
+bool ProcessManager::Killpg(pid_t pid) const
+{
+    if (pid <= 0) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "Killpg skipped: invalid pid=%{public}d", pid);
+        return false;
+    }
+    int32_t killRet = kill(0 - pid, SIGKILL);
+    if (killRet != 0) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "killpg result:%{public}d", killRet);
+        return false;
+    }
+    return true;
+}
+
+} // namespace CliTool
+} // namespace OHOS

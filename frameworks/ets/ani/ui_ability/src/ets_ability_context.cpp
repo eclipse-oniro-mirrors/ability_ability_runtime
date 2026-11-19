@@ -17,10 +17,14 @@
 
 #include <regex>
 
+#include "ability_util.h"
 #include "ani_common_ability_result.h"
 #include "ani_common_configuration.h"
 #include "ani_common_start_options.h"
+#include "ani_common_util.h"
+#include "ani_window_animation_utils.h"
 #include "ani_common_want.h"
+#include "wm_animation_common.h"
 #include "ani_enum_convert.h"
 #include "ani_task.h"
 #include "remote_object_taihe_ani.h"
@@ -35,6 +39,7 @@
 #include "hitrace_meter.h"
 #include "ipc_skeleton.h"
 #include "json_utils.h"
+#include "resourceManager.h"
 #include "tokenid_kit.h"
 #include "want.h"
 #ifdef SUPPORT_GRAPHICS
@@ -53,9 +58,11 @@ std::mutex EtsAbilityContext::requestCodeMutex_;
 namespace {
 static std::once_flag g_bindNativeMethodsFlag;
 std::recursive_mutex g_connectsLock;
+static ani_class g_cached_uiabilitycontext_class = nullptr;
 int64_t g_serialNumber = 0;
 constexpr uint64_t MAX_REQUEST_CODE = (1ULL << 49) - 1;
 constexpr size_t MAX_REQUEST_CODE_LENGTH = 15;
+constexpr size_t MAX_ABILITY_INSTANCE_GROUP_ID_LENGTH = 64;
 constexpr int32_t BASE_REQUEST_CODE_NUM = 10;\
 constexpr const int FAILED_CODE = -1;
 static std::mutex g_connectsMutex;
@@ -73,8 +80,8 @@ constexpr const char *SIGNATURE_OPEN_ATOMIC_SERVICE = "C{std.core.String}C{utils
     "C{@ohos.app.ability.AtomicServiceOptions.AtomicServiceOptions}:";
 const std::string ATOMIC_SERVICE_PREFIX = "com.atomicservice.";
 constexpr const char *SIGNATURE_START_ABILITY_BY_TYPE =
-    "C{std.core.String}C{std.core.Record}C{application.AbilityStartCallback.AbilityStartCallback}:C{@ohos.base."
-    "BusinessError}";
+    "C{std.core.String}C{std.core.Record}C{application.AbilityStartCallback.AbilityStartCallback}"
+    "C{utils.AbilityUtils.AsyncCallbackWrapper}:";
 constexpr const char *SIGNATURE_CONNECT_UI_SERVICE_EXTENSION =
     "C{@ohos.app.ability.Want.Want}C{application.UIServiceExtensionConnectCallback.UIServiceExtensionConnectCallback}"
     "C{utils.AbilityUtils.AsyncCallbackWrapper}:";
@@ -476,6 +483,18 @@ void EtsAbilityContext::RequestModalUIExtension(ani_env *env, ani_object aniObj,
     etsContext->OnRequestModalUIExtension(env, aniObj, pickerWantObj, callbackobj);
 }
 
+void EtsAbilityContext::RequestModalUIExtensionWithAccount(ani_env *env, ani_object aniObj, ani_object pickerWantObj,
+    ani_int accountId, ani_object callbackobj)
+{
+    TAG_LOGD(AAFwkTag::CONTEXT, "RequestModalUIExtensionWithAccount called");
+    auto etsContext = GetEtsAbilityContext(env, aniObj);
+    if (etsContext == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null etsContext");
+        return;
+    }
+    etsContext->OnRequestModalUIExtensionWithAccount(env, aniObj, pickerWantObj, accountId, callbackobj);
+}
+
 void EtsAbilityContext::SetMissionWindowIcon(ani_env *env, ani_object aniObj, ani_object pixelMapObj,
     ani_object callbackobj)
 {
@@ -498,6 +517,18 @@ void EtsAbilityContext::BackToCallerAbilityWithResult(ani_env *env, ani_object a
         return;
     }
     etsContext->OnBackToCallerAbilityWithResult(env, aniObj, abilityResultObj, requestCodeObj, callBackObj);
+}
+
+void EtsAbilityContext::BackToCallerAppWithResult(ani_env *env, ani_object aniObj,
+    ani_object abilityResultObj, ani_string requestCodeObj, ani_object callBackObj)
+{
+    TAG_LOGD(AAFwkTag::CONTEXT, "BackToCallerAppWithResult called");
+    auto etsContext = GetEtsAbilityContext(env, aniObj);
+    if (etsContext == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null etsContext");
+        return;
+    }
+    etsContext->OnBackToCallerAppWithResult(env, aniObj, abilityResultObj, requestCodeObj, callBackObj);
 }
 
 void EtsAbilityContext::SetMissionLabel(ani_env *env, ani_object aniObj, ani_string labelObj,
@@ -548,16 +579,17 @@ void EtsAbilityContext::SetColorMode(ani_env *env, ani_object aniObj, ani_enum_i
     etsContext->OnSetColorMode(env, aniObj, colorMode);
 }
 
-ani_object EtsAbilityContext::StartAbilityByType(
-    ani_env *env, ani_object aniObj, ani_string aniType, ani_ref aniWantParam, ani_object startCallback)
+void EtsAbilityContext::StartAbilityByType(
+    ani_env *env, ani_object aniObj, ani_string aniType, ani_ref aniWantParam,
+    ani_object startCallback, ani_object asyncCallback)
 {
     TAG_LOGD(AAFwkTag::CONTEXT, "StartAbilityByType called");
     auto etsContext = GetEtsAbilityContext(env, aniObj);
     if (etsContext == nullptr) {
         TAG_LOGE(AAFwkTag::CONTEXT, "null etsContext");
-        return nullptr;
+        return;
     }
-    return etsContext->OnStartAbilityByType(env, aniObj, aniType, aniWantParam, startCallback);
+    etsContext->OnStartAbilityByType(env, aniObj, aniType, aniWantParam, startCallback, asyncCallback);
 }
 
 void EtsAbilityContext::OpenAtomicService(
@@ -596,6 +628,19 @@ void EtsAbilityContext::StartSelfUIAbilityInCurrentProcessWithOptions(
         return;
     }
     etsContext->OnStartSelfUIAbilityInCurrentProcess(env, aniObj, wantObj, aniSpecifiedFlag, opt, call);
+}
+
+void EtsAbilityContext::StartSelfUIAbilityInChildProcess(
+    ani_env *env, ani_object aniObj, ani_object wantObj, ani_string aniSpecifiedFlag, ani_object call)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::CONTEXT, "StartSelfUIAbilityInChildProcess called");
+    auto etsContext = GetEtsAbilityContext(env, aniObj);
+    if (etsContext == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null etsContext");
+        return;
+    }
+    etsContext->OnStartSelfUIAbilityInChildProcess(env, wantObj, aniSpecifiedFlag, call);
 }
 
 void EtsAbilityContext::OpenAtomicServiceCheck(ani_env *env, ani_object aniObj)
@@ -746,7 +791,7 @@ void EtsAbilityContext::StartAbilityWithAccountAndOptions(
 }
 #ifdef SUPPORT_SCREEN
 void EtsAbilityContext::SetAbilityInstanceInfo(ani_env *env, ani_object aniObj, ani_string labelObj, ani_object iconObj,
-    ani_object callback)
+    ani_string groupIdObj, ani_object callback)
 {
     TAG_LOGD(AAFwkTag::CONTEXT, "SetAbilityInstanceInfo called");
     auto etsContext = GetEtsAbilityContext(env, aniObj);
@@ -754,11 +799,11 @@ void EtsAbilityContext::SetAbilityInstanceInfo(ani_env *env, ani_object aniObj, 
         TAG_LOGE(AAFwkTag::CONTEXT, "null etsContext");
         return;
     }
-    etsContext->OnSetAbilityInstanceInfo(env, aniObj, labelObj, iconObj, callback);
+    etsContext->OnSetAbilityInstanceInfo(env, aniObj, labelObj, iconObj, groupIdObj, callback);
 }
 
 void EtsAbilityContext::SetAbilityInstanceInfoCheck(ani_env *env, ani_object aniObj, ani_string labelObj,
-    ani_object iconObj)
+    ani_object iconObj, ani_string groupIdObj)
 {
     TAG_LOGD(AAFwkTag::CONTEXT, "SetAbilityInstanceInfoCheck called");
     if (env == nullptr || aniObj == nullptr) {
@@ -775,6 +820,13 @@ void EtsAbilityContext::SetAbilityInstanceInfoCheck(ani_env *env, ani_object ani
     if (icon == nullptr) {
         TAG_LOGE(AAFwkTag::CONTEXT, "parse icon failed");
         EtsErrorUtil::ThrowInvalidParamError(env, "Parse icon failed.");
+        return;
+    }
+    std::string groupId;
+    if (!AppExecFwk::GetStdString(env, groupIdObj, groupId) ||
+        groupId.length() > MAX_ABILITY_INSTANCE_GROUP_ID_LENGTH) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "Failed to parse groupId");
+        EtsErrorUtil::ThrowInvalidParamError(env, "Invalid groupId.");
         return;
     }
 }
@@ -876,6 +928,17 @@ void EtsAbilityContext::SetOnNewWantSkipScenarios(ani_env *env, ani_object aniOb
     etsContext->OnSetOnNewWantSkipScenarios(env, aniObj, etsScenarios, callback);
 }
 
+void EtsAbilityContext::StartSelf(ani_env *env, ani_object aniObj, ani_object callback)
+{
+    TAG_LOGD(AAFwkTag::CONTEXT, "StartSelf called");
+    auto etsContext = GetEtsAbilityContext(env, aniObj);
+    if (etsContext == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null etsContext");
+        return;
+    }
+    etsContext->OnStartSelf(env, callback);
+}
+
 int32_t EtsAbilityContext::GenerateRequestCode()
 {
     static int32_t curRequestCode_ = 0;
@@ -897,7 +960,8 @@ void EtsAbilityContext::InheritWindowMode(AAFwk::Want &want)
     auto windowMode = context->GetCurrentWindowMode();
     if (AAFwk::AppUtils::GetInstance().IsInheritWindowSplitScreenMode() &&
         (windowMode == AAFwk::AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_PRIMARY ||
-            windowMode == AAFwk::AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_SECONDARY)) {
+            windowMode == AAFwk::AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_SECONDARY ||
+            windowMode == AAFwk::AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_SPLIT)) {
         want.SetParam(AAFwk::Want::PARAM_RESV_WINDOW_MODE, windowMode);
     }
     TAG_LOGD(AAFwkTag::CONTEXT, "window mode is %{public}d", windowMode);
@@ -974,6 +1038,11 @@ void EtsAbilityContext::OnStartAbilityForResult(
         return;
     }
     AAFwk::Want want;
+    if (wantObj == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "wantObj is null");
+        EtsErrorUtil::ThrowInvalidParamError(env, "Parse param want failed, must be a Want");
+        return;
+    }
     AppExecFwk::UnwrapWant(env, wantObj, want);
     AAFwk::StartOptions startOptions;
     if (startOptionsObj) {
@@ -1021,7 +1090,8 @@ ani_object EtsAbilityContext::StartAbilityByCallWithAccount(
     CallUtil::WaitForCalleeObj(callData);
 
     if (callData->remoteCallee == nullptr) {
-        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        EtsErrorUtil::ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED));
         return nullptr;
     }
 
@@ -1035,7 +1105,8 @@ ani_object EtsAbilityContext::StartAbilityByCallWithAccount(
     };
     auto caller = EtsCallerComplex::CreateEtsCaller(env, releaseCallFunc, callData->remoteCallee, callerCallBack);
     if (caller == nullptr) {
-        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        EtsErrorUtil::ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED));
     }
     return caller;
 }
@@ -1215,9 +1286,10 @@ void EtsAbilityContext::OnStartServiceExtensionAbility(ani_env *env, ani_object 
     }
     AAFwk::Want want;
     if (!AppExecFwk::UnwrapWant(env, wantObj, want)) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "UnwrapWant filed");
-        errorObject = EtsErrorUtil::CreateInvalidParamError(env, "UnwrapWant filed");
+        TAG_LOGE(AAFwkTag::CONTEXT, "UnwrapWant failed");
+        errorObject = EtsErrorUtil::CreateInvalidParamError(env, "UnwrapWant failed");
         AppExecFwk::AsyncCallback(env, callbackobj, errorObject, nullptr);
+        return;
     }
     ret = context->StartExtensionAbilityWithExtensionType(want, extensionType);
     if (ret == ERR_OK) {
@@ -1386,6 +1458,31 @@ void EtsAbilityContext::OnRequestModalUIExtension(ani_env *env, ani_object aniOb
     AppExecFwk::AsyncCallback(env, callbackObj, errorObject, nullptr);
 }
 
+void EtsAbilityContext::OnRequestModalUIExtensionWithAccount(ani_env *env, ani_object aniObj, ani_object pickerWantObj,
+    ani_int accountId, ani_object callbackObj)
+{
+    ani_object errorObject = nullptr;
+    AAFwk::Want want;
+    if (!AppExecFwk::UnwrapWant(env, pickerWantObj, want)) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "parse want failed");
+        EtsErrorUtil::ThrowInvalidParamError(env, "Parse param want failed, want must be Want.");
+        return;
+    }
+    auto context = context_.lock();
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null context");
+        errorObject = EtsErrorUtil::CreateErrorByNativeErr(env,
+            static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
+        AppExecFwk::AsyncCallback(env, callbackObj, errorObject, nullptr);
+        return;
+    }
+
+    ErrCode ret = ERR_OK;
+    ret = AAFwk::AbilityManagerClient::GetInstance()->RequestModalUIExtensionWithAccount(want, accountId);
+    errorObject = EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret));
+    AppExecFwk::AsyncCallback(env, callbackObj, errorObject, nullptr);
+}
+
 void EtsAbilityContext::OnSetMissionWindowIcon(ani_env *env, ani_object aniObj, ani_object pixelMapObj,
     ani_object callbackObj)
 {
@@ -1450,6 +1547,52 @@ void EtsAbilityContext::OnBackToCallerAbilityWithResult(ani_env *env, ani_object
 
     ErrCode ret = ERR_OK;
     ret = context->BackToCallerAbilityWithResult(want, resultCode, requestCode);
+    errorObject = EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret));
+    AppExecFwk::AsyncCallback(env, callBackObj, errorObject, nullptr);
+}
+
+void EtsAbilityContext::OnBackToCallerAppWithResult(ani_env *env, ani_object aniObj,
+    ani_object abilityResultObj, ani_string requestCodeObj, ani_object callBackObj)
+{
+    TAG_LOGD(AAFwkTag::CONTEXT, "OnBackToCallerAppWithResult call");
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null env");
+        return;
+    }
+    ani_object errorObject = nullptr;
+    AAFwk::Want want;
+    int resultCode = 0;
+    if (!OHOS::AppExecFwk::UnWrapAbilityResult(env, abilityResultObj, resultCode, want)) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "UnWrapAbilityResult failed");
+        errorObject = EtsErrorUtil::CreateInvalidParamError(env, "Failed to parse abilityResult.");
+        AppExecFwk::AsyncCallback(env, callBackObj, errorObject, nullptr);
+        return;
+    }
+    std::string requestCodeStr;
+    if (!AppExecFwk::GetStdString(env, requestCodeObj, requestCodeStr)) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "Failed to parse requestCode");
+        errorObject = EtsErrorUtil::CreateInvalidParamError(env, "Failed to parse requestCode.");
+        AppExecFwk::AsyncCallback(env, callBackObj, errorObject, nullptr);
+        return;
+    }
+    auto requestCode = RequestCodeFromStringToInt64(requestCodeStr);
+    if (requestCode == 0 && requestCodeStr != "0") {
+        TAG_LOGE(AAFwkTag::CONTEXT, "invalid requestCode");
+        errorObject = EtsErrorUtil::CreateInvalidParamError(env, "Failed to parse requestCode.");
+        AppExecFwk::AsyncCallback(env, callBackObj, errorObject, nullptr);
+        return;
+    }
+    auto context = context_.lock();
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null context");
+        AppExecFwk::AsyncCallback(env, callBackObj,
+            EtsErrorUtil::CreateErrorByNativeErr(env,
+            static_cast<int32_t>(AAFwk::ERR_INVALID_CONTEXT)), nullptr);
+        return;
+    }
+
+    ErrCode ret = ERR_OK;
+    ret = context->BackToCallerAbilityWithResult(want, resultCode, requestCode, true);
     errorObject = EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(ret));
     AppExecFwk::AsyncCallback(env, callBackObj, errorObject, nullptr);
 }
@@ -1592,29 +1735,15 @@ void EtsAbilityContext::OnSetColorMode(ani_env *env, ani_object aniObj, ani_enum
     context->SetAbilityColorMode(static_cast<int32_t>(mode));
 }
 
-ani_object EtsAbilityContext::OnStartAbilityByType(
-    ani_env *env, ani_object aniObj, ani_string aniType, ani_ref aniWantParam, ani_object startCallback)
+void EtsAbilityContext::OnStartAbilityByType(
+    ani_env *env, ani_object aniObj, ani_string aniType, ani_ref aniWantParam,
+    ani_object startCallback, ani_object asyncCallback)
 {
-    ani_object aniObject = EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER);
     std::string type;
-    if (!AppExecFwk::GetStdString(env, aniType, type)) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "parse type failed");
-        EtsErrorUtil::ThrowInvalidParamError(env, "Parse param type failed, type must be string.");
-        return aniObject;
-    }
-
     AAFwk::WantParams wantParam;
-    if (!AppExecFwk::UnwrapWantParams(env, aniWantParam, wantParam)) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "parse wantParam failed");
-        EtsErrorUtil::ThrowInvalidParamError(env, "Parse param want failed, want must be Want.");
-        return aniObject;
-    }
-
     ani_vm *vm = nullptr;
-    if (env->GetVM(&vm) != ANI_OK) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "get vm failed");
-        EtsErrorUtil::ThrowInvalidParamError(env, "Internal error.");
-        return aniObject;
+    if (!ParseStartAbilityByTypeParams(env, aniType, aniWantParam, asyncCallback, type, wantParam, vm)) {
+        return;
     }
     ErrCode innerErrCode = ERR_OK;
     std::shared_ptr<EtsUIExtensionCallback> callback = std::make_shared<EtsUIExtensionCallback>(vm);
@@ -1628,18 +1757,50 @@ ani_object EtsAbilityContext::OnStartAbilityByType(
     auto context = context_.lock();
     if (context == nullptr) {
         TAG_LOGE(AAFwkTag::CONTEXT, "null context");
-        return EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
+        AppExecFwk::AsyncCallback(env, asyncCallback,
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT), nullptr);
+        return;
     }
 #ifdef SUPPORT_SCREEN
     innerErrCode = context->StartAbilityByType(type, wantParam, callback);
+#else
+    innerErrCode = static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER);
+    TAG_LOGW(AAFwkTag::CONTEXT, "StartAbilityByType not supported without screen");
 #endif
     if (innerErrCode == ERR_OK) {
-        return EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK);
-    } else if (innerErrCode == static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT)) {
-        return EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
+        callback->SetAsyncCallback(env, asyncCallback);
     } else {
-        return EtsErrorUtil::CreateErrorByNativeErr(env, innerErrCode);
+        AppExecFwk::AsyncCallback(
+            env, asyncCallback, EtsErrorUtil::CreateErrorByNativeErr(env, innerErrCode), nullptr);
     }
+}
+
+bool EtsAbilityContext::ParseStartAbilityByTypeParams(ani_env *env, ani_string aniType,
+    ani_ref aniWantParam, ani_object asyncCallback, std::string &type,
+    AAFwk::WantParams &wantParam, ani_vm *&vm)
+{
+    if (!AppExecFwk::GetStdString(env, aniType, type)) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "parse type failed");
+        EtsErrorUtil::ThrowInvalidParamError(env, "Parse param type failed, type must be string.");
+        AppExecFwk::AsyncCallback(env, asyncCallback,
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM), nullptr);
+        return false;
+    }
+    if (!AppExecFwk::UnwrapWantParams(env, aniWantParam, wantParam)) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "parse wantParam failed");
+        EtsErrorUtil::ThrowInvalidParamError(env, "Parse param want failed, want must be Want.");
+        AppExecFwk::AsyncCallback(env, asyncCallback,
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM), nullptr);
+        return false;
+    }
+    if (env->GetVM(&vm) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "get vm failed");
+        EtsErrorUtil::ThrowInvalidParamError(env, "Internal error.");
+        AppExecFwk::AsyncCallback(env, asyncCallback,
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER), nullptr);
+        return false;
+    }
+    return true;
 }
 
 void EtsAbilityContext::CreateOnAtomicRequestSuccessResultCallback(ani_env *env, ani_ref refCompletionHandler,
@@ -1871,6 +2032,36 @@ void EtsAbilityContext::OnStartSelfUIAbilityInCurrentProcess(ani_env *env, ani_o
     AppExecFwk::AsyncCallback(env, call, aniObject, nullptr);
 }
 
+void EtsAbilityContext::OnStartSelfUIAbilityInChildProcess(
+    ani_env *env, ani_object wantObj, ani_string aniSpecifiedFlag, ani_object call)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    AAFwk::Want want;
+    if (!AppExecFwk::UnwrapWant(env, wantObj, want)) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "Failed to parse want");
+        EtsErrorUtil::ThrowInvalidParamError(env, "Parse param want failed, must be a Want");
+        return;
+    }
+    std::string specifiedFlag;
+    if (!AppExecFwk::GetStdString(env, aniSpecifiedFlag, specifiedFlag)) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "Failed to parse specifiedFlag");
+        EtsErrorUtil::ThrowInvalidParamError(env, "Failed to parse specifiedFlag.");
+        return;
+    }
+    ErrCode innerErrCode = ERR_OK;
+    auto context = context_.lock();
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null context");
+        innerErrCode = static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
+        ani_object aniObject = EtsErrorUtil::CreateErrorByNativeErr(env, innerErrCode);
+        AppExecFwk::AsyncCallback(env, call, aniObject, nullptr);
+        return;
+    }
+    innerErrCode = context->StartSelfUIAbilityInChildProcess(want, specifiedFlag);
+    ani_object aniObject = EtsErrorUtil::CreateErrorByNativeErr(env, innerErrCode);
+    AppExecFwk::AsyncCallback(env, call, aniObject, nullptr);
+}
+
 ani_long EtsAbilityContext::OnConnectServiceExtensionAbilityWithAccount(ani_env *env, ani_object aniObj,
     ani_object wantObj, ani_int aniAccountId, ani_object connectOptionsObj)
 {
@@ -2083,14 +2274,16 @@ void EtsAbilityContext::OnRestoreWindowStage(
     if ((status = env->GlobalReference_Create(localStorageObj, &localStorageRef_)) != ANI_OK ||
         localStorageRef_ == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "status : %{public}d", status);
-        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        EtsErrorUtil::ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED));
         return;
     }
     auto errCode = context->RestoreWindowStage(reinterpret_cast<void *>(localStorageRef_));
     if (errCode != 0) {
         env->GlobalReference_Delete(localStorageRef_);
         localStorageRef_ = nullptr;
-        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        EtsErrorUtil::ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::RESTORE_WINDOW_STAGE_FAILED));
         return;
     }
 }
@@ -2243,7 +2436,52 @@ void EtsAbilityContext::NativeChangeAbilityVisibility(ani_env *env, ani_object a
         return;
     }
     bool showFlag = static_cast<bool>(isShow);
-    ErrCode errCode = context->ChangeAbilityVisibility(showFlag);
+    ErrCode errCode = context->ChangeAbilityVisibility(showFlag, nullptr);
+    if (errCode != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "failed, errCode: %{public}d", errCode);
+        AppExecFwk::AsyncCallback(env, callbackObj, EtsErrorUtil::CreateErrorByNativeErr(env, errCode), nullptr);
+        return;
+    }
+    AppExecFwk::AsyncCallback(env, callbackObj, EtsErrorUtil::CreateErrorByNativeErr(env, ERR_OK), nullptr);
+}
+
+void EtsAbilityContext::NativeChangeAbilityVisibilityWithParams(ani_env *env, ani_object aniObj,
+    ani_boolean isShow, ani_object paramsObj, ani_object callbackObj)
+{
+    TAG_LOGD(AAFwkTag::CONTEXT, "ChangeAbilityVisibilityWithParams");
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null env");
+        return;
+    }
+    auto etsContext = EtsAbilityContext::GetEtsAbilityContext(env, aniObj);
+    if (etsContext == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null etsContext");
+        return;
+    }
+    auto context = etsContext->context_.lock();
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null context");
+        AppExecFwk::AsyncCallback(env, callbackObj,
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT), nullptr);
+        return;
+    }
+    bool showFlag = static_cast<bool>(isShow);
+    std::shared_ptr<Rosen::WindowShowParams> params;
+    ani_ref windowShowParamsRef = nullptr;
+    if (!AppExecFwk::GetFieldRefByName(env, paramsObj, "windowShowParams", windowShowParamsRef)) {
+        AppExecFwk::AsyncCallback(env, callbackObj,
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM), nullptr);
+        return;
+    }
+    Rosen::WindowShowParams paramsTmp;
+    if (!Rosen::ConvertWindowShowParamsFromAniValue(
+        env, static_cast<ani_object>(windowShowParamsRef), paramsTmp)) {
+        AppExecFwk::AsyncCallback(env, callbackObj,
+            EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM), nullptr);
+        return;
+    }
+    params = std::make_shared<Rosen::WindowShowParams>(paramsTmp);
+    ErrCode errCode = context->ChangeAbilityVisibility(showFlag, params);
     if (errCode != ERR_OK) {
         TAG_LOGE(AAFwkTag::CONTEXT, "failed, errCode: %{public}d", errCode);
         AppExecFwk::AsyncCallback(env, callbackObj, EtsErrorUtil::CreateErrorByNativeErr(env, errCode), nullptr);
@@ -2406,6 +2644,11 @@ void EtsAbilityContext::OnRequestDialogService(ani_env *env, ani_object aniObj, 
         return;
     }
     AAFwk::Want want;
+    if (wantObj == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "wantObj is null");
+        EtsErrorUtil::ThrowInvalidParamError(env, "Parse param want failed, must be a Want");
+        return;
+    }
     AppExecFwk::UnwrapWant(env, wantObj, want);
     TAG_LOGD(AAFwkTag::CONTEXT, "target:%{public}s.%{public}s", want.GetBundle().c_str(),
         want.GetElement().GetAbilityName().c_str());
@@ -2428,7 +2671,8 @@ void EtsAbilityContext::OnRequestDialogService(ani_env *env, ani_object aniObj, 
         ani_object requestResult = EtsAbilityContext::WrapRequestDialogResult(env, resultCode, resultWant);
         if (requestResult == nullptr) {
             TAG_LOGW(AAFwkTag::CONTEXT, "null requestResult");
-            EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+            EtsErrorUtil::ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED));
         } else {
             ani_object errorObj = EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK);
             AppExecFwk::AsyncCallback(env, reinterpret_cast<ani_object>(callbackRef), errorObj, requestResult);
@@ -2634,7 +2878,7 @@ bool EtsAbilityContext::CheckConnectAlreadyExist(ani_env *env, const AAFwk::Want
 
 #ifdef SUPPORT_SCREEN
 void EtsAbilityContext::OnSetAbilityInstanceInfo(ani_env *env, ani_object aniObj, ani_string labelObj,
-    ani_object iconObj, ani_object callback)
+    ani_object iconObj, ani_string groupIdObj, ani_object callback)
 {
     TAG_LOGD(AAFwkTag::CONTEXT, "OnSetAbilityInstanceInfo called");
     if (env == nullptr) {
@@ -2651,12 +2895,21 @@ void EtsAbilityContext::OnSetAbilityInstanceInfo(ani_env *env, ani_object aniObj
 
     auto icon = OHOS::Media::PixelMapTaiheAni::GetNativePixelMap(env, iconObj);
 
+    std::string groupId;
+    if (!AppExecFwk::GetStdString(env, groupIdObj, groupId) ||
+        groupId.length() > MAX_ABILITY_INSTANCE_GROUP_ID_LENGTH) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "Failed to parse groupId");
+        EtsErrorUtil::ThrowInvalidParamError(env, "Invalid groupId.");
+        return;
+    }
+
     ani_object errorObj = nullptr;
     ani_vm *etsVm = nullptr;
     ani_status status = ANI_ERROR;
     if ((status = env->GetVM(&etsVm)) != ANI_OK || etsVm == nullptr) {
         TAG_LOGE(AAFwkTag::CONTEXT, "status: %{public}d", status);
-        errorObj = EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        errorObj = EtsErrorUtil::CreateError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED));
         AppExecFwk::AsyncCallback(env, callback, errorObj, nullptr);
         return;
     }
@@ -2664,16 +2917,18 @@ void EtsAbilityContext::OnSetAbilityInstanceInfo(ani_env *env, ani_object aniObj
     ani_ref callbackRef = nullptr;
     if ((status = env->GlobalReference_Create(callback, &callbackRef)) != ANI_OK || callbackRef == nullptr) {
         TAG_LOGE(AAFwkTag::CONTEXT, "status: %{public}d", status);
-        errorObj = EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        errorObj = EtsErrorUtil::CreateError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED));
         AppExecFwk::AsyncCallback(env, callback, errorObj, nullptr);
         return;
     }
 
-    OnSetAbilityInstanceInfoInner(env, label, icon, callback, etsVm, callbackRef);
+    OnSetAbilityInstanceInfoInner(env, label, icon, groupId, callback, etsVm, callbackRef);
 }
 
 void EtsAbilityContext::OnSetAbilityInstanceInfoInner(ani_env *env, std::string& label,
-    std::shared_ptr<OHOS::Media::PixelMap> icon, ani_object callback, ani_vm *etsVm, ani_ref callbackRef)
+    std::shared_ptr<OHOS::Media::PixelMap> icon, std::string& groupId, ani_object callback, ani_vm *etsVm,
+    ani_ref callbackRef)
 {
     if (env == nullptr || etsVm == nullptr) {
         TAG_LOGE(AAFwkTag::CONTEXT, "null env or etsVm");
@@ -2693,7 +2948,7 @@ void EtsAbilityContext::OnSetAbilityInstanceInfoInner(ani_env *env, std::string&
         return;
     }
     ani_object errorObj = nullptr;
-    auto task = [context, label, icon, etsVm, callbackRef]() {
+    auto task = [context, label, icon, groupId, etsVm, callbackRef]() {
         ani_status status = ANI_ERROR;
         ani_env *env = nullptr;
         if ((status = etsVm->GetEnv(ANI_VERSION_1, &env)) != ANI_OK || env == nullptr) {
@@ -2701,7 +2956,7 @@ void EtsAbilityContext::OnSetAbilityInstanceInfoInner(ani_env *env, std::string&
             return;
         }
         ani_object errorObj = nullptr;
-        ErrCode ret = context->SetAbilityInstanceInfo(label, icon);
+        ErrCode ret = context->SetAbilityInstanceInfo(label, icon, groupId);
         if (ret == ERR_OK) {
             errorObj = EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK);
             AppExecFwk::AsyncCallback(env, reinterpret_cast<ani_object>(callbackRef), errorObj, nullptr);
@@ -2714,7 +2969,8 @@ void EtsAbilityContext::OnSetAbilityInstanceInfoInner(ani_env *env, std::string&
     };
     if (AniTask::AniSendEvent(task) != ANI_OK) {
         TAG_LOGE(AAFwkTag::CONTEXT, "Failed to sendEvent");
-        errorObj = EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        errorObj = EtsErrorUtil::CreateError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED));
         AppExecFwk::AsyncCallback(env, callback, errorObj, nullptr);
         env->GlobalReference_Delete(callbackRef);
     }
@@ -2754,7 +3010,7 @@ void EtsAbilityContext::OnSetMissionContinueState(ani_env *env, ani_object aniOb
     }
     int state = 0;
     bool result = AAFwk::AniEnumConvertUtil::EnumConvert_EtsToNative(env, stateObj, state);
-    if (result == false) {
+    if (!result) {
         TAG_LOGE(AAFwkTag::CONTEXT, "Unwrap state failed");
         AppExecFwk::AsyncCallback(env, callbackObj,
             EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM), nullptr);
@@ -2884,6 +3140,11 @@ void EtsAbilityContext::OnStartAbilityWithAccount(
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     AAFwk::Want want;
+    if (aniWant == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "want is null");
+        EtsErrorUtil::ThrowInvalidParamError(env, "Parse param want failed, must be a Want");
+        return;
+    }
     AppExecFwk::UnwrapWant(env, aniWant, want);
     InheritWindowMode(want);
     TAG_LOGI(AAFwkTag::CONTEXT, "ability:%{public}s", want.GetElement().GetAbilityName().c_str());
@@ -2945,22 +3206,43 @@ void EtsAbilityContext::OnSetOnNewWantSkipScenarios(ani_env *env, ani_object ani
     innerErrCode = context->SetOnNewWantSkipScenarios(scenarios);
     if (innerErrCode != ERR_OK) {
         TAG_LOGE(AAFwkTag::CONTEXT, "SetOnNewWantSkipScenarios failed, innerErrCode: %{public}d", innerErrCode);
-        AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_CODE_INNER),
-            nullptr);
+        AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateError(
+            env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::OPERATION_FAILED)), nullptr);
         return;
     }
     AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateErrorByNativeErr(env, ERR_OK), nullptr);
 }
 
+void EtsAbilityContext::OnStartSelf(ani_env *env, ani_object callback)
+{
+    TAG_LOGD(AAFwkTag::CONTEXT, "OnStartSelf called");
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null env");
+        return;
+    }
+    auto context = context_.lock();
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null context");
+        EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
+        return;
+    }
+    ErrCode innerErrCode = context->StartSelf();
+    AppExecFwk::AsyncCallback(
+        env, callback, EtsErrorUtil::CreateErrorByNativeErr(env, static_cast<int32_t>(innerErrCode)), nullptr);
+}
+
 namespace {
 bool BindNativeMethods(ani_env *env, ani_class &cls)
 {
-    ani_status status = env->FindClass(UI_ABILITY_CONTEXT_CLASS_NAME, &cls);
-    if (status != ANI_OK) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "FindClass status: %{public}d", status);
-        return false;
-    }
-    std::call_once(g_bindNativeMethodsFlag, [&status, env, cls]() {
+    ani_status status = ANI_OK;
+    std::call_once(g_bindNativeMethodsFlag, [&status, env]() {
+        status = env->FindClass(UI_ABILITY_CONTEXT_CLASS_NAME, &g_cached_uiabilitycontext_class);
+        if (status != ANI_OK) {
+            TAG_LOGE(AAFwkTag::CONTEXT, "FindClass status: %{public}d", status);
+            return;
+        }
+
         std::array functions = {
             ani_native_function { "nativeStartAbilitySync",
                 "C{@ohos.app.ability.Want.Want}C{utils.AbilityUtils.AsyncCallbackWrapper}:",
@@ -3003,9 +3285,15 @@ bool BindNativeMethods(ani_env *env, ani_class &cls)
             ani_native_function { "nativeRequestModalUIExtension",
                 "C{@ohos.app.ability.Want.Want}C{utils.AbilityUtils.AsyncCallbackWrapper}:",
                 reinterpret_cast<void*>(EtsAbilityContext::RequestModalUIExtension) },
+            ani_native_function { "nativeRequestModalUIExtensionWithAccount",
+                "C{@ohos.app.ability.Want.Want}iC{utils.AbilityUtils.AsyncCallbackWrapper}:",
+                reinterpret_cast<void*>(EtsAbilityContext::RequestModalUIExtensionWithAccount) },
             ani_native_function { "nativeBackToCallerAbilityWithResult",
                 "C{ability.abilityResult.AbilityResult}C{std.core.String}C{utils.AbilityUtils.AsyncCallbackWrapper}:",
                 reinterpret_cast<void*>(EtsAbilityContext::BackToCallerAbilityWithResult) },
+            ani_native_function { "nativeBackToCallerAppWithResult",
+                "C{ability.abilityResult.AbilityResult}C{std.core.String}C{utils.AbilityUtils.AsyncCallbackWrapper}:",
+                reinterpret_cast<void*>(EtsAbilityContext::BackToCallerAppWithResult) },
             ani_native_function { "nativeSetMissionLabel",
                 "C{std.core.String}C{utils.AbilityUtils.AsyncCallbackWrapper}:",
                 reinterpret_cast<void *>(EtsAbilityContext::SetMissionLabel) },
@@ -3016,7 +3304,7 @@ bool BindNativeMethods(ani_env *env, ani_class &cls)
             ani_native_function {"nativeSetColorMode",
                 "C{@ohos.app.ability.ConfigurationConstant.ConfigurationConstant.ColorMode}:",
                 reinterpret_cast<void*>(EtsAbilityContext::SetColorMode)},
-            ani_native_function { "nativeStartAbilityByTypeSync", SIGNATURE_START_ABILITY_BY_TYPE,
+            ani_native_function { "nativeStartAbilityByType", SIGNATURE_START_ABILITY_BY_TYPE,
                 reinterpret_cast<void *>(EtsAbilityContext::StartAbilityByType) },
             ani_native_function { "nativeOpenAtomicService", SIGNATURE_OPEN_ATOMIC_SERVICE,
                 reinterpret_cast<void *>(EtsAbilityContext::OpenAtomicService) },
@@ -3042,6 +3330,9 @@ bool BindNativeMethods(ani_env *env, ani_class &cls)
                 "C{@ohos.app.ability.Want.Want}C{std.core.String}C{@ohos.app.ability.StartOptions.StartOptions}C{utils."
                 "AbilityUtils.AsyncCallbackWrapper}:",
                 reinterpret_cast<void *>(EtsAbilityContext::StartSelfUIAbilityInCurrentProcessWithOptions) },
+            ani_native_function { "nativeStartSelfUIAbilityInChildProcessSync",
+                "C{@ohos.app.ability.Want.Want}C{std.core.String}C{utils.AbilityUtils.AsyncCallbackWrapper}:",
+                reinterpret_cast<void *>(EtsAbilityContext::StartSelfUIAbilityInChildProcess) },
             ani_native_function { "nativeOnSetRestoreEnabled", "z:",
                 reinterpret_cast<void*>(EtsAbilityContext::NativeOnSetRestoreEnabled) },
             ani_native_function { "nativeConnectServiceExtensionAbilityWithAccount",
@@ -3058,6 +3349,9 @@ bool BindNativeMethods(ani_env *env, ani_class &cls)
                 reinterpret_cast<void*>(EtsAbilityContext::StartServiceExtensionAbilityWithAccount) },
             ani_native_function { "nativeChangeAbilityVisibility", "zC{utils.AbilityUtils.AsyncCallbackWrapper}:",
                 reinterpret_cast<void*>(EtsAbilityContext::NativeChangeAbilityVisibility) },
+            ani_native_function { "nativeChangeAbilityVisibility",
+                "zC{@ohos.app.ability.ShowParams.ShowParams}C{utils.AbilityUtils.AsyncCallbackWrapper}:",
+                reinterpret_cast<void*>(EtsAbilityContext::NativeChangeAbilityVisibilityWithParams) },
             ani_native_function { "nativeConnectAppServiceExtensionAbility", SIGNATURE_CONNECT_SERVICE_EXTENSION,
                 reinterpret_cast<void *>(EtsAbilityContext::ConnectAppServiceExtensionAbility) },
             ani_native_function { "nativeDisconnectAppServiceExtensionAbility", SIGNATURE_DISCONNECT_SERVICE_EXTENSION,
@@ -3074,10 +3368,11 @@ bool BindNativeMethods(ani_env *env, ani_class &cls)
                 reinterpret_cast<void *>(EtsAbilityContext::StartAbilityWithAccountAndOptions) },
 #ifdef SUPPORT_GRAPHICS
             ani_native_function { "nativeSetAbilityInstanceInfo",
-                "C{std.core.String}C{@ohos.multimedia.image.image.PixelMap}C{utils.AbilityUtils.AsyncCallbackWrapper}:",
+                "C{std.core.String}C{@ohos.multimedia.image.image.PixelMap}C{std.core.String}"
+                "C{utils.AbilityUtils.AsyncCallbackWrapper}:",
                 reinterpret_cast<void*>(EtsAbilityContext::SetAbilityInstanceInfo) },
             ani_native_function { "nativeSetAbilityInstanceInfoCheck",
-                "C{std.core.String}C{@ohos.multimedia.image.image.PixelMap}:",
+                "C{std.core.String}C{@ohos.multimedia.image.image.PixelMap}C{std.core.String}:",
                 reinterpret_cast<void *>(EtsAbilityContext::SetAbilityInstanceInfoCheck) },
             ani_native_function { "nativeSetMissionIcon",
                 "C{@ohos.multimedia.image.image.PixelMap}C{utils.AbilityUtils.AsyncCallbackWrapper}:",
@@ -3085,9 +3380,10 @@ bool BindNativeMethods(ani_env *env, ani_class &cls)
             ani_native_function { "nativeSetMissionIconCheck", "C{@ohos.multimedia.image.image.PixelMap}:",
                 reinterpret_cast<void *>(EtsAbilityContext::SetMissionIconCheck) },
 #endif
-            ani_native_function { "nativeRevokeDelegator", "C{utils.AbilityUtils.AsyncCallbackWrapper}:",
-                reinterpret_cast<void *>(EtsAbilityContext::RevokeDelegator) },
-            ani_native_function { "nativeStartAbilityForResultWithAccount",
+            ani_native_function{"nativeRevokeDelegator",
+                "C{utils.AbilityUtils.AsyncCallbackWrapper}:",
+                reinterpret_cast<void *>(EtsAbilityContext::RevokeDelegator)},
+            ani_native_function{"nativeStartAbilityForResultWithAccount",
                 "C{@ohos.app.ability.Want.Want}iC{utils.AbilityUtils.AsyncCallbackWrapper}:",
                 reinterpret_cast<void*>(EtsAbilityContext::StartAbilityForResultWithAccount) },
             ani_native_function { "nativeStartAbilityForResultWithAccountCheck", ":",
@@ -3118,8 +3414,12 @@ bool BindNativeMethods(ani_env *env, ani_class &cls)
             ani_native_function { "nativeSetOnNewWantSkipScenarios",
                 "iC{utils.AbilityUtils.AsyncCallbackWrapper}:",
                 reinterpret_cast<void*>(EtsAbilityContext::SetOnNewWantSkipScenarios) },
+            ani_native_function { "nativeStartSelf",
+                "C{utils.AbilityUtils.AsyncCallbackWrapper}:",
+                reinterpret_cast<void*>(EtsAbilityContext::StartSelf) },
         };
-        if ((status = env->Class_BindNativeMethods(cls, functions.data(), functions.size())) != ANI_OK) {
+        if ((status = env->Class_BindNativeMethods(g_cached_uiabilitycontext_class, functions.data(),
+            functions.size())) != ANI_OK) {
             TAG_LOGE(AAFwkTag::CONTEXT, "Class_BindNativeMethods failed status: %{public}d", status);
             return;
         }
@@ -3142,6 +3442,7 @@ bool BindNativeMethods(ani_env *env, ani_class &cls)
         TAG_LOGE(AAFwkTag::CONTEXT, "Class_BindNativeMethods status: %{public}d", status);
         return false;
     }
+    cls = g_cached_uiabilitycontext_class;
     return true;
 }
 } // namespace
@@ -3157,33 +3458,126 @@ ani_object CreateEtsAbilityContext(ani_env *env, std::shared_ptr<AbilityContext>
         TAG_LOGE(AAFwkTag::CONTEXT, "BindNativeMethods failed");
         return nullptr;
     }
-    ani_object contextObj = EtsAbilityContext::SetEtsAbilityContext(env, context);
-    if (contextObj == nullptr) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "null contextObj");
-        return nullptr;
-    }
-    ContextUtil::CreateEtsBaseContext(env, cls, contextObj, context);
+
+    auto hapModuleInfo = context->GetHapModuleInfo();
+    CHECK_POINTER_AND_RETURN_LOG(hapModuleInfo, nullptr, "null hapModuleInfo");
+    ani_ref hapModuleInfoRef = AppExecFwk::CommonFunAni::ConvertHapModuleInfo(env, *hapModuleInfo);
+    CHECK_POINTER_AND_RETURN_LOG(hapModuleInfoRef, nullptr, "null hapModuleInfoRef");
+
+    auto appInfo = context->GetApplicationInfo();
+    CHECK_POINTER_AND_RETURN_LOG(appInfo, nullptr, "null appInfo");
+    ani_object appInfoObj = AppExecFwk::CommonFunAni::ConvertApplicationInfo(env, *appInfo);
+    CHECK_POINTER_AND_RETURN_LOG(appInfoObj, nullptr, "null appInfoObj");
+
+    auto resourceManager = context->GetResourceManager();
+    ani_object resourceMgrObj = Global::Resource::ResMgrAddon::CreateResMgr(env, "", resourceManager, context);
+    CHECK_POINTER_AND_RETURN_LOG(resourceMgrObj, nullptr, "null resourceMgrObj");
+
+    auto preferencesDir = context->GetPreferencesDir();
+    ani_string preferencesDirString = nullptr;
+    env->String_NewUTF8(preferencesDir.c_str(), preferencesDir.size(), &preferencesDirString);
+    CHECK_POINTER_AND_RETURN_LOG(preferencesDirString, nullptr, "null preferencesDirString");
+
+    auto databaseDir = context->GetDatabaseDir();
+    ani_string databaseDirString = nullptr;
+    env->String_NewUTF8(databaseDir.c_str(), databaseDir.size(), &databaseDirString);
+    CHECK_POINTER_AND_RETURN_LOG(databaseDirString, nullptr, "null databaseDirString");
+
+    auto cacheDir = context->GetCacheDir();
+    ani_string cacheDirString = nullptr;
+    env->String_NewUTF8(cacheDir.c_str(), cacheDir.size(), &cacheDirString);
+    CHECK_POINTER_AND_RETURN_LOG(cacheDirString, nullptr, "null cacheDirString");
+
+    auto filesDir = context->GetFilesDir();
+    ani_string filesDirString = nullptr;
+    env->String_NewUTF8(filesDir.c_str(), filesDir.size(), &filesDirString);
+    CHECK_POINTER_AND_RETURN_LOG(filesDirString, nullptr, "null filesDirString");
+
+    auto tempDir = context->GetTempDir();
+    ani_string tempDirString = nullptr;
+    env->String_NewUTF8(tempDir.c_str(), tempDir.size(), &tempDirString);
+    CHECK_POINTER_AND_RETURN_LOG(tempDirString, nullptr, "null tempDirString");
+
+    auto cloudFileDir = context->GetCloudFileDir();
+    ani_string cloudFileDirString = nullptr;
+    env->String_NewUTF8(cloudFileDir.c_str(), cloudFileDir.size(), &cloudFileDirString);
+    CHECK_POINTER_AND_RETURN_LOG(cloudFileDirString, nullptr, "null cloudFileDirString");
+
+    auto distributedFilesDir = context->GetDistributedFilesDir();
+    ani_string distributedFilesDirString = nullptr;
+    env->String_NewUTF8(distributedFilesDir.c_str(), distributedFilesDir.size(), &distributedFilesDirString);
+    CHECK_POINTER_AND_RETURN_LOG(distributedFilesDirString, nullptr, "null distributedFilesDirString");
+
+    auto bundleCodeDir = context->GetBundleCodeDir();
+    ani_string bundleCodeDirString = nullptr;
+    env->String_NewUTF8(bundleCodeDir.c_str(), bundleCodeDir.size(), &bundleCodeDirString);
+    CHECK_POINTER_AND_RETURN_LOG(bundleCodeDirString, nullptr, "null bundleCodeDirString");
+
+    auto resourceDir = context->GetResourceDir();
+    ani_string resourceDirString = nullptr;
+    env->String_NewUTF8(resourceDir.c_str(), resourceDir.size(), &resourceDirString);
+    CHECK_POINTER_AND_RETURN_LOG(resourceDirString, nullptr, "null resourceDirString");
+
+    auto processName = context->GetProcessName();
+    ani_string processNameString = nullptr;
+    env->String_NewUTF8(processName.c_str(), processName.size(), &processNameString);
+    CHECK_POINTER_AND_RETURN_LOG(processNameString, nullptr, "null processNameString");
+
+    ContextUtil::BindNativeFunction(env);
 
     auto abilityInfo = context->GetAbilityInfo();
-    if (abilityInfo == nullptr) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "null abilityInfo");
-        return nullptr;
-    }
+    CHECK_POINTER_AND_RETURN_LOG(abilityInfo, nullptr, "null abilityInfo");
     ani_ref abilityInfoRef = AppExecFwk::CommonFunAni::ConvertAbilityInfo(env, *abilityInfo);
-    ani_status status = env->Object_SetFieldByName_Ref(contextObj, "abilityInfo", abilityInfoRef);
-    if (status != ANI_OK) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "Object_SetFieldByName_Ref status: %{public}d", status);
-        return nullptr;
-    }
+    CHECK_POINTER_AND_RETURN_LOG(abilityInfoRef, nullptr, "null abilityInfoRef");
 
     auto configuration = context->GetConfiguration();
-    if (configuration == nullptr) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "null configuration");
+    CHECK_POINTER_AND_RETURN_LOG(configuration, nullptr, "null configuration");
+    ani_object configurationObj = AppExecFwk::WrapConfiguration(env, *configuration);
+    CHECK_POINTER_AND_RETURN_LOG(configurationObj, nullptr, "null configurationObj");
+
+    std::unique_ptr<EtsAbilityContext> etsContext = std::make_unique<EtsAbilityContext>(env, context);
+    CHECK_POINTER_AND_RETURN_LOG(etsContext, nullptr, "null etsContext");
+    auto nativeContext = new (std::nothrow) std::weak_ptr<AbilityContext>(etsContext->GetContext());
+    CHECK_POINTER_AND_RETURN_LOG(nativeContext, nullptr, "null nativeContext");
+
+    auto eventHubNativeContext = new (std::nothrow) std::weak_ptr<AbilityRuntime::Context>(context);
+    if (eventHubNativeContext == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null eventHubNativeContext");
+        delete nativeContext;
         return nullptr;
     }
-    ani_object configurationObj = AppExecFwk::WrapConfiguration(env, *configuration);
-    if ((status = env->Object_SetFieldByName_Ref(contextObj, "config", configurationObj)) != ANI_OK) {
-        TAG_LOGE(AAFwkTag::CONTEXT, "Object_SetFieldByName_Ref status: %{public}d", status);
+    auto rowContext = etsContext.release();
+    ani_object contextObj = AppExecFwk::InitAniObjectByCreator(
+        env,
+        UI_ABILITY_CONTEXT_CLASS_NAME,
+        "llC{bundleManager.ApplicationInfo.ApplicationInfo}C{@ohos.resourceManager.resourceManager.ResourceManager}C{"
+        "std.core.String}C{std.core.String}C{std.core.String}C{std.core.String}C{std.core.String}C{std.core.String}C{"
+        "std.core.String}"
+        "C{std.core.String}C{std.core.String}C{std.core.String}lC{bundleManager.AbilityInfo.AbilityInfo}C{@ohos.app."
+        "ability.Configuration.Configuration}C{bundleManager.HapModuleInfo.HapModuleInfo}:",
+        (ani_long)nativeContext,
+        (ani_long)rowContext,
+        reinterpret_cast<ani_ref>(appInfoObj),
+        reinterpret_cast<ani_ref>(resourceMgrObj),
+        preferencesDirString,
+        databaseDirString,
+        cacheDirString,
+        filesDirString,
+        tempDirString,
+        cloudFileDirString,
+        distributedFilesDirString,
+        bundleCodeDirString,
+        resourceDirString,
+        processNameString,
+        (ani_long)eventHubNativeContext,
+        abilityInfoRef,
+        configurationObj,
+        hapModuleInfoRef);
+    if (contextObj == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null contextObj");
+        delete nativeContext;
+        delete eventHubNativeContext;
+        delete rowContext;
         return nullptr;
     }
     return contextObj;

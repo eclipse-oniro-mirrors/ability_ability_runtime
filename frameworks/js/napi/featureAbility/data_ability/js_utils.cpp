@@ -220,6 +220,10 @@ int32_t JSUtils::Convert2Value(napi_env env, napi_value jsValue, std::vector<flo
         return napi_invalid_arg;
     }
 
+    if (length > JSUtils::MAX_VALUE_LENGTH) {
+        length = (JSUtils::MAX_VALUE_LENGTH / sizeof(float)) * sizeof(float);
+    }
+
     output = (tmp != nullptr
                   ? std::vector<float>(static_cast<float *>(tmp), static_cast<float *>(tmp) + length / sizeof(float))
                   : std::vector<float>());
@@ -273,6 +277,10 @@ int32_t JSUtils::Convert2Value(napi_env env, napi_value jsValue, std::vector<uin
     auto status = napi_get_typedarray_info(env, jsValue, &type, &length, &tmp, &input_buffer, &byte_offset);
     if (status != napi_ok || type != napi_uint8_array) {
         return napi_invalid_arg;
+    }
+
+    if (length > JSUtils::MAX_VALUE_LENGTH) {
+        length = JSUtils::MAX_VALUE_LENGTH;
     }
 
     output = (tmp != nullptr ? std::vector<uint8_t>(static_cast<uint8_t *>(tmp), static_cast<uint8_t *>(tmp) + length)

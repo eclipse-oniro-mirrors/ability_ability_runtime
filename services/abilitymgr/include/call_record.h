@@ -16,6 +16,8 @@
 #ifndef OHOS_ABILITY_RUNTIME_CALL_RECORD_H
 #define OHOS_ABILITY_RUNTIME_CALL_RECORD_H
 
+#include <atomic>
+
 #include "ability_connect_callback_interface.h"
 #include "nocopyable.h"
 
@@ -80,9 +82,11 @@ public:
     AppExecFwk::ElementName GetTargetServiceName() const;
     sptr<IRemoteObject> GetCallerToken() const;
     int32_t GetUserId() const;
+    void SetPrelaunchFlag(bool isPrelaunch);
+    bool IsPrelaunch() const;
 
 private:
-    static int64_t callRecordId;
+    static std::atomic<int64_t> callRecordId;
     CallState state_;                          // call state
     int32_t callerUid_;                        // caller uid
     int64_t startTime_ = 0;                    // records first time of ability start
@@ -92,6 +96,7 @@ private:
     sptr<IAbilityConnection> connCallback_ = nullptr;    // service connect callback
     sptr<IRemoteObject> callerToken_ = nullptr;          // caller token
     int recordId_;                             // record id
+    bool isPrelaunch_ = false;                 // whether this call record is from prelaunch
 
     DISALLOW_COPY_AND_MOVE(CallRecord);
 };

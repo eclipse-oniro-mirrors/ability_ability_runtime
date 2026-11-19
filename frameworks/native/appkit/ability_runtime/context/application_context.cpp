@@ -16,15 +16,20 @@
 #include "application_context.h"
 
 #include <algorithm>
+#include <memory>
+#include <unistd.h>
 
+#include "ability_manager_client.h"
 #include "ability_manager_errors.h"
 #include "ability_util.h"
+#include "app_mgr_client.h"
 #include "app_image_observer_manager.h"
 #include "configuration_convertor.h"
 #include "exit_reason.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
 #include "js_runtime.h"
+#include "native_ability_util.h"
 #include "running_process_info.h"
 
 namespace OHOS {
@@ -286,6 +291,23 @@ void ApplicationContext::DispatchWindowStageFocus(const AbilityLifecycleCallback
     }
 }
 
+void ApplicationContext::DispatchWindowStageFocus(std::shared_ptr<InteropObject> ability,
+    std::shared_ptr<InteropObject> windowStage)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "interop DispatchWindowStageFocus");
+    if (!ability || !windowStage) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null ability or windowStage");
+        return;
+    }
+    auto callbacksCopy = GetInteropCallbacks();
+    for (auto callback : callbacksCopy) {
+        if (callback != nullptr) {
+            TAG_LOGD(AAFwkTag::APPKIT, "call interop OnWindowStageActive");
+            callback->OnWindowStageActive(ability, windowStage);
+        }
+    }
+}
+
 void ApplicationContext::DispatchWindowStageUnfocus(const AbilityLifecycleCallbackArgs &ability,
     const AbilityLifecycleCallbackArgs &windowStage)
 {
@@ -304,6 +326,23 @@ void ApplicationContext::DispatchWindowStageUnfocus(const AbilityLifecycleCallba
             continue;
         }
         callback->OnWindowStageInactive(ability, windowStage);
+    }
+}
+
+void ApplicationContext::DispatchWindowStageUnfocus(std::shared_ptr<InteropObject> ability,
+    std::shared_ptr<InteropObject> windowStage)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "interop DispatchWindowStageUnfocus");
+    if (!ability || !windowStage) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null ability or windowStage");
+        return;
+    }
+    auto callbacksCopy = GetInteropCallbacks();
+    for (auto callback : callbacksCopy) {
+        if (callback != nullptr) {
+            TAG_LOGD(AAFwkTag::APPKIT, "call interop OnWindowStageInactive");
+            callback->OnWindowStageInactive(ability, windowStage);
+        }
     }
 }
 
@@ -427,6 +466,22 @@ void ApplicationContext::DispatchOnAbilityContinue(const AbilityLifecycleCallbac
     }
 }
 
+void ApplicationContext::DispatchOnAbilityContinue(std::shared_ptr<InteropObject> ability)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "interop DispatchOnAbilityContinue");
+    if (!ability) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null ability");
+        return;
+    }
+    auto callbacksCopy = GetInteropCallbacks();
+    for (auto callback : callbacksCopy) {
+        if (callback != nullptr) {
+            TAG_LOGD(AAFwkTag::APPKIT, "call interop OnAbilityContinue");
+            callback->OnAbilityContinue(ability);
+        }
+    }
+}
+
 void ApplicationContext::DispatchOnAbilityWillContinue(const AbilityLifecycleCallbackArgs &ability)
 {
     TAG_LOGD(AAFwkTag::APPKIT, "Dispatch onAbilityWillContinue");
@@ -444,6 +499,22 @@ void ApplicationContext::DispatchOnAbilityWillContinue(const AbilityLifecycleCal
             continue;
         }
         callback->OnAbilityWillContinue(ability);
+    }
+}
+
+void ApplicationContext::DispatchOnAbilityWillContinue(std::shared_ptr<InteropObject> ability)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "interop DispatchOnAbilityWillContinue");
+    if (!ability) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null ability");
+        return;
+    }
+    auto callbacksCopy = GetInteropCallbacks();
+    for (auto callback : callbacksCopy) {
+        if (callback != nullptr) {
+            TAG_LOGD(AAFwkTag::APPKIT, "call interop OnAbilityWillContinue");
+            callback->OnAbilityWillContinue(ability);
+        }
     }
 }
 
@@ -469,6 +540,23 @@ void ApplicationContext::DispatchOnWindowStageWillRestore(const AbilityLifecycle
     }
 }
 
+void ApplicationContext::DispatchOnWindowStageWillRestore(std::shared_ptr<InteropObject> ability,
+    std::shared_ptr<InteropObject> windowStage)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "interop DispatchOnWindowStageWillRestore");
+    if (!ability || !windowStage) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null ability or windowStage");
+        return;
+    }
+    auto callbacksCopy = GetInteropCallbacks();
+    for (auto callback : callbacksCopy) {
+        if (callback != nullptr) {
+            TAG_LOGD(AAFwkTag::APPKIT, "call interop OnWindowStageWillRestore");
+            callback->OnWindowStageWillRestore(ability, windowStage);
+        }
+    }
+}
+
 void ApplicationContext::DispatchOnWindowStageRestore(const AbilityLifecycleCallbackArgs &ability,
     const AbilityLifecycleCallbackArgs &windowStage)
 {
@@ -488,6 +576,23 @@ void ApplicationContext::DispatchOnWindowStageRestore(const AbilityLifecycleCall
             continue;
         }
         callback->OnWindowStageRestore(ability, windowStage);
+    }
+}
+
+void ApplicationContext::DispatchOnWindowStageRestore(std::shared_ptr<InteropObject> ability,
+    std::shared_ptr<InteropObject> windowStage)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "interop DispatchOnWindowStageRestore");
+    if (!ability || !windowStage) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null ability or windowStage");
+        return;
+    }
+    auto callbacksCopy = GetInteropCallbacks();
+    for (auto callback : callbacksCopy) {
+        if (callback != nullptr) {
+            TAG_LOGD(AAFwkTag::APPKIT, "call interop OnWindowStageRestore");
+            callback->OnWindowStageRestore(ability, windowStage);
+        }
     }
 }
 
@@ -511,6 +616,22 @@ void ApplicationContext::DispatchOnAbilityWillSaveState(const AbilityLifecycleCa
     }
 }
 
+void ApplicationContext::DispatchOnAbilityWillSaveState(std::shared_ptr<InteropObject> ability)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "interop DispatchOnAbilityWillSaveState");
+    if (!ability) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null ability");
+        return;
+    }
+    auto callbacksCopy = GetInteropCallbacks();
+    for (auto callback : callbacksCopy) {
+        if (callback != nullptr) {
+            TAG_LOGD(AAFwkTag::APPKIT, "call interop OnAbilityWillSaveState");
+            callback->OnAbilityWillSaveState(ability);
+        }
+    }
+}
+
 void ApplicationContext::DispatchOnAbilitySaveState(const AbilityLifecycleCallbackArgs &ability)
 {
     TAG_LOGD(AAFwkTag::APPKIT, "called");
@@ -528,6 +649,22 @@ void ApplicationContext::DispatchOnAbilitySaveState(const AbilityLifecycleCallba
             continue;
         }
         callback->OnAbilitySaveState(ability);
+    }
+}
+
+void ApplicationContext::DispatchOnAbilitySaveState(std::shared_ptr<InteropObject> ability)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "interop DispatchOnAbilitySaveState");
+    if (!ability) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null ability");
+        return;
+    }
+    auto callbacksCopy = GetInteropCallbacks();
+    for (auto callback : callbacksCopy) {
+        if (callback != nullptr) {
+            TAG_LOGD(AAFwkTag::APPKIT, "call interop OnAbilitySaveState");
+            callback->OnAbilitySaveState(ability);
+        }
     }
 }
 
@@ -602,6 +739,22 @@ void ApplicationContext::DispatchOnWillNewWant(const AbilityLifecycleCallbackArg
     }
 }
 
+void ApplicationContext::DispatchOnWillNewWant(std::shared_ptr<InteropObject> ability)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "interop DispatchOnWillNewWant");
+    if (!ability) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null ability");
+        return;
+    }
+    auto callbacksCopy = GetInteropCallbacks();
+    for (auto callback : callbacksCopy) {
+        if (callback != nullptr) {
+            TAG_LOGD(AAFwkTag::APPKIT, "call interop OnWillNewWant");
+            callback->OnWillNewWant(ability);
+        }
+    }
+}
+
 void ApplicationContext::DispatchOnNewWant(const AbilityLifecycleCallbackArgs &ability)
 {
     if (!ability.IsValid()) {
@@ -617,6 +770,22 @@ void ApplicationContext::DispatchOnNewWant(const AbilityLifecycleCallbackArgs &a
             continue;
         }
         callback->OnNewWant(ability);
+    }
+}
+
+void ApplicationContext::DispatchOnNewWant(std::shared_ptr<InteropObject> ability)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "interop DispatchOnNewWant");
+    if (!ability) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null ability");
+        return;
+    }
+    auto callbacksCopy = GetInteropCallbacks();
+    for (auto callback : callbacksCopy) {
+        if (callback != nullptr) {
+            TAG_LOGD(AAFwkTag::APPKIT, "call interop OnNewWant");
+            callback->OnNewWant(ability);
+        }
     }
 }
 
@@ -636,6 +805,22 @@ void ApplicationContext::DispatchOnAbilityWillCreate(const AbilityLifecycleCallb
             continue;
         }
         callback->OnAbilityWillCreate(ability);
+    }
+}
+
+void ApplicationContext::DispatchOnAbilityWillCreate(std::shared_ptr<InteropObject> ability)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "interop DispatchOnAbilityWillCreate");
+    if (!ability) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null ability");
+        return;
+    }
+    auto callbacksCopy = GetInteropCallbacks();
+    for (auto callback : callbacksCopy) {
+        if (callback != nullptr) {
+            TAG_LOGD(AAFwkTag::APPKIT, "call interop OnAbilityWillCreate");
+            callback->OnAbilityWillCreate(ability);
+        }
     }
 }
 
@@ -660,6 +845,23 @@ void ApplicationContext::DispatchOnWindowStageWillCreate(const AbilityLifecycleC
     }
 }
 
+void ApplicationContext::DispatchOnWindowStageWillCreate(std::shared_ptr<InteropObject> ability,
+    std::shared_ptr<InteropObject> windowStage)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "interop DispatchOnWindowStageWillCreate");
+    if (!ability || !windowStage) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null ability or windowStage");
+        return;
+    }
+    auto callbacksCopy = GetInteropCallbacks();
+    for (auto callback : callbacksCopy) {
+        if (callback != nullptr) {
+            TAG_LOGD(AAFwkTag::APPKIT, "call interop OnWindowStageWillCreate");
+            callback->OnWindowStageWillCreate(ability, windowStage);
+        }
+    }
+}
+
 void ApplicationContext::DispatchOnWindowStageWillDestroy(const AbilityLifecycleCallbackArgs &ability,
     const AbilityLifecycleCallbackArgs &windowStage)
 {
@@ -678,6 +880,23 @@ void ApplicationContext::DispatchOnWindowStageWillDestroy(const AbilityLifecycle
             continue;
         }
         callback->OnWindowStageWillDestroy(ability, windowStage);
+    }
+}
+
+void ApplicationContext::DispatchOnWindowStageWillDestroy(std::shared_ptr<InteropObject> ability,
+    std::shared_ptr<InteropObject> windowStage)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "interop DispatchWindowStageWillDestroy");
+    if (!ability || !windowStage) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null ability or windowStage");
+        return;
+    }
+    auto callbacksCopy = GetInteropCallbacks();
+    for (auto callback : callbacksCopy) {
+        if (callback != nullptr) {
+            TAG_LOGD(AAFwkTag::APPKIT, "call interop OnWindowStageWillDestroy");
+            callback->OnWindowStageWillDestroy(ability, windowStage);
+        }
     }
 }
 
@@ -700,6 +919,22 @@ void ApplicationContext::DispatchOnAbilityWillDestroy(const AbilityLifecycleCall
     }
 }
 
+void ApplicationContext::DispatchOnAbilityWillDestroy(std::shared_ptr<InteropObject> ability)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "interop DispatchOnAbilityWillDestroy");
+    if (!ability) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null ability");
+        return;
+    }
+    auto callbacksCopy = GetInteropCallbacks();
+    for (auto callback : callbacksCopy) {
+        if (callback != nullptr) {
+            TAG_LOGD(AAFwkTag::APPKIT, "call interop OnAbilityWillDestroy");
+            callback->OnAbilityWillDestroy(ability);
+        }
+    }
+}
+
 void ApplicationContext::DispatchOnAbilityWillForeground(const AbilityLifecycleCallbackArgs &ability)
 {
     TAG_LOGD(AAFwkTag::APPKIT, "called");
@@ -719,6 +954,22 @@ void ApplicationContext::DispatchOnAbilityWillForeground(const AbilityLifecycleC
     }
 }
 
+void ApplicationContext::DispatchOnAbilityWillForeground(std::shared_ptr<InteropObject> ability)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "interop DispatchOnAbilityWillForeground");
+    if (!ability) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null ability");
+        return;
+    }
+    auto callbacksCopy = GetInteropCallbacks();
+    for (auto callback : callbacksCopy) {
+        if (callback != nullptr) {
+            TAG_LOGD(AAFwkTag::APPKIT, "call interop OnAbilityWillForeground");
+            callback->OnAbilityWillForeground(ability);
+        }
+    }
+}
+
 void ApplicationContext::DispatchOnAbilityWillBackground(const AbilityLifecycleCallbackArgs &ability)
 {
     TAG_LOGD(AAFwkTag::APPKIT, "called");
@@ -735,6 +986,22 @@ void ApplicationContext::DispatchOnAbilityWillBackground(const AbilityLifecycleC
             continue;
         }
         callback->OnAbilityWillBackground(ability);
+    }
+}
+
+void ApplicationContext::DispatchOnAbilityWillBackground(std::shared_ptr<InteropObject> ability)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "interop DispatchOnAbilityWillBackground");
+    if (!ability) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null ability");
+        return;
+    }
+    auto callbacksCopy = GetInteropCallbacks();
+    for (auto callback : callbacksCopy) {
+        if (callback != nullptr) {
+            TAG_LOGD(AAFwkTag::APPKIT, "call interop OnAbilityWillBackground");
+            callback->OnAbilityWillBackground(ability);
+        }
     }
 }
 
@@ -861,6 +1128,11 @@ int32_t ApplicationContext::GetProcessRunningInformation(AppExecFwk::RunningProc
     return (contextImpl_ != nullptr) ? contextImpl_->GetProcessRunningInformation(info) : -1;
 }
 
+int32_t ApplicationContext::GetUIAbilityChildProcessInfos(std::vector<AppExecFwk::ChildProcessInfo> &infos)
+{
+    return (contextImpl_ != nullptr) ? contextImpl_->GetUIAbilityChildProcessInfos(infos) : ERR_INVALID_VALUE;
+}
+
 #ifdef SUPPORT_SCREEN
 void ApplicationContext::GetAllUIAbilities(std::vector<std::shared_ptr<UIAbility>> &uiAbility)
 {
@@ -932,6 +1204,59 @@ int32_t ApplicationContext::RestartApp(const AAFwk::Want& want)
     std::string bundleName = GetBundleName();
     const_cast<AAFwk::Want &>(want).SetBundle(bundleName);
     return (contextImpl_ != nullptr) ? contextImpl_->RestartApp(want) : ERR_INVALID_VALUE;
+}
+
+int32_t ApplicationContext::EnableDelayedProcessExit()
+{
+    auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+    if (appMgrClient == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+    auto ret = appMgrClient->EnableDelayedProcessExit(true);
+    if (ret == ERR_OK) {
+        std::lock_guard<std::mutex> lock(delayedProcessExitStateLock_);
+        delayedProcessExitEnabled_ = true;
+    }
+    return ret;
+}
+
+int32_t ApplicationContext::DisableDelayedProcessExit()
+{
+    auto appMgrClient = DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance();
+    if (appMgrClient == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+
+    auto ret = appMgrClient->EnableDelayedProcessExit(false);
+    if (ret == ERR_OK) {
+        std::lock_guard<std::mutex> lock(delayedProcessExitStateLock_);
+        delayedProcessExitEnabled_ = false;
+    }
+    return ret;
+}
+
+int32_t ApplicationContext::StartSelfUIAbility(const AAFwk::Want &want)
+{
+    if (!IsDelayedProcessExitPending()) {
+        TAG_LOGE(AAFwkTag::APPKIT, "delayed process exit is not pending");
+        return AAFwk::ERR_DELAYED_PROCESS_EXIT_NOT_PENDING;
+    }
+    auto abilityMgrClient = AAFwk::AbilityManagerClient::GetInstance();
+    if (abilityMgrClient == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+    auto errCode = abilityMgrClient->StartSelfUIAbilityByAppContext(want);
+    if (errCode != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPKIT, "StartSelfUIAbility failed, errCode:%{public}d", errCode);
+        return errCode;
+    }
+    return ERR_OK;
+}
+
+bool ApplicationContext::IsDelayedProcessExitPending()
+{
+    std::lock_guard<std::mutex> lock(delayedProcessExitStateLock_);
+    return delayedProcessExitEnabled_;
 }
 
 std::string ApplicationContext::GetDistributedFilesDir()
@@ -1057,11 +1382,18 @@ void ApplicationContext::SetLanguage(const std::string &language)
 
 void ApplicationContext::SetFont(const std::string &font)
 {
-    TAG_LOGD(AAFwkTag::APPKIT, "font:%{public}s", font.c_str());
+    SetFont(font, true);
+}
+
+void ApplicationContext::SetFont(const std::string &font, bool enableAnimation)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "font:%{public}s, enableAnimation:%{public}s",
+        font.c_str(), enableAnimation ? "true" : "false");
     #ifdef SUPPORT_GRAPHICS
     // Notify Window
     AppExecFwk::Configuration config;
     config.AddItem(AppExecFwk::ConfigurationInner::APPLICATION_FONT, font);
+    config.AddItem(AppExecFwk::ConfigurationInner::APPLICATION_FONT_ANIMATION, enableAnimation ? "true" : "false");
     if (appFontCallback_ != nullptr) {
         appFontCallback_(config);
     }
@@ -1152,6 +1484,16 @@ void ApplicationContext::RegisterProcessSecurityExit(AppProcessExitCallback appP
 void ApplicationContext::RegisterAppGetSpecifiedRuntime(AppGetSpecifiedRuntimeCallback appGetSpecifiedRuntimeCallback)
 {
     appGetSpecifiedRuntimeCallback_ = appGetSpecifiedRuntimeCallback;
+}
+
+void ApplicationContext::RegisterAppFreezeFilterCallback(AppFreezeFilterCallback appFreezeFilterCallback)
+{
+    appFreezeFilterCallback_ = appFreezeFilterCallback;
+}
+
+AppFreezeFilterCallback ApplicationContext::GetAppFreezeFilterCallback() const
+{
+    return appFreezeFilterCallback_;
 }
 
 #ifdef SUPPORT_GRAPHICS
@@ -1269,7 +1611,16 @@ std::string ApplicationContext::GetDataDir()
     std::lock_guard<std::mutex> lock(dataDirMutex_);
     if (dataDir_.empty()) {
         auto bundleManagerHelper = AAFwk::AbilityUtil::GetBundleManagerHelper();
-        dataDir_ = bundleManagerHelper->GetDataDir(GetBundleName(), appIndex_);
+        if (bundleManagerHelper == nullptr) {
+            TAG_LOGD(AAFwkTag::APPKIT, "bundleManagerHelper null");
+            return "";
+        }
+        auto bundleName = GetBundleName();
+        if (bundleName.empty()) {
+            TAG_LOGD(AAFwkTag::APPKIT, "bundleName is invalid");
+            return "";
+        }
+        dataDir_ = bundleManagerHelper->GetDataDir(bundleName, appIndex_);
         if (dataDir_.empty()) {
             TAG_LOGE(AAFwkTag::APPKIT, "dataDir is empty");
             return "";
@@ -1296,5 +1647,95 @@ std::shared_ptr<Context> ApplicationContext::CreateDisplayContext(uint64_t displ
     return contextImpl_ ? contextImpl_->CreateDisplayContext(displayId) : nullptr;
 }
 #endif
+
+// Native Module related methods implementation
+bool ApplicationContext::CreateNativeThread(const AAFwk::NativeAbilityMetaData &metaData,
+    const std::string &bundleName, const std::string &moduleName)
+{
+    if (!metaData.withNativeModule) {
+        return false;
+    }
+    std::lock_guard lock(nativeMutex_);
+    if (abilityNativeThread_ != nullptr) {
+        TAG_LOGI(AAFwkTag::ABILITY, "Native thread exist");
+        return true;
+    }
+    auto nativeThread = std::make_shared<AppExecFwk::AbilityNativeThread>();
+    if (!nativeThread->LoadNativeModule(metaData, bundleName, moduleName)) {
+        return false;
+    }
+    nativeThread->RunMain();
+    abilityNativeThread_ = nativeThread;
+    return true;
+}
+
+std::shared_ptr<AppExecFwk::AbilityNativeThread> ApplicationContext::GetNativeThread()
+{
+    std::lock_guard<std::mutex> lock(nativeMutex_);
+    return abilityNativeThread_;
+}
+
+void ApplicationContext::AddNativeAbility(
+    const std::string &instanceId, std::shared_ptr<AbilityRuntime_NativeAbilityWrapper> wrapper)
+{
+    std::lock_guard<std::mutex> lock(nativeMutex_);
+    nativeAbilities_[instanceId] = wrapper;
+}
+
+std::shared_ptr<AbilityRuntime_NativeAbilityWrapper> ApplicationContext::GetNativeAbility(const std::string &instanceId)
+{
+    std::lock_guard<std::mutex> lock(nativeMutex_);
+    auto it = nativeAbilities_.find(instanceId);
+    if (it != nativeAbilities_.end()) {
+        return it->second;
+    }
+    return nullptr;
+}
+
+void ApplicationContext::RemoveNativeAbility(const std::string &instanceId)
+{
+    std::lock_guard<std::mutex> lock(nativeMutex_);
+    nativeAbilities_.erase(instanceId);
+}
+
+void ApplicationContext::PostAbility(
+    const std::string &instanceId, std::shared_ptr<AbilityRuntime_NativeAbilityWrapper> wrapper)
+{
+    if (wrapper == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITY, "NativeAbilityWrapper is null");
+        return;
+    }
+
+    AddNativeAbility(instanceId, wrapper);
+
+    auto nativeThreadInfo = GetNativeThread();
+    if (nativeThreadInfo != nullptr) {
+        nativeThreadInfo->PostAbility(wrapper.get());
+        TAG_LOGI(AAFwkTag::ABILITY, "PostAbility called for instanceId: %{public}s", instanceId.c_str());
+    } else {
+        TAG_LOGE(AAFwkTag::ABILITY, "AbilityNativeThread is null");
+    }
+}
+
+void ApplicationContext::DestroyAbility(const std::string &instanceId)
+{
+    auto nativeThreadInfo = GetNativeThread();
+    auto nativeAbility = GetNativeAbility(instanceId);
+    if (nativeThreadInfo != nullptr && nativeAbility != nullptr) {
+        nativeThreadInfo->DestroyAbility(nativeAbility.get());
+        TAG_LOGI(AAFwkTag::ABILITY, "DestroyAbility called for instanceId: %{public}s", instanceId.c_str());
+    }
+
+    RemoveNativeAbility(instanceId);
+}
+
+void ApplicationContext::NotifyProcessExit()
+{
+    auto nativeThreadInfo = GetNativeThread();
+    if (nativeThreadInfo != nullptr) {
+        nativeThreadInfo->NotifyProcessExit();
+    }
+}
+
 }  // namespace AbilityRuntime
 }  // namespace OHOS

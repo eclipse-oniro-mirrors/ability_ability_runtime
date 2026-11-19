@@ -41,6 +41,21 @@ const AppExecFwk::AbilityInfo &AbilityRecord::GetAbilityInfo() const
     return abilityInfo;
 }
 
+const Want& AbilityRecord::GetWant() const
+{
+    return want_;
+}
+
+sptr<SessionInfo> AbilityRecord::GetSessionInfo() const
+{
+    return sessionInfo_;
+}
+
+int32_t AbilityRecord::GetMissionId() const
+{
+    return missionId_;
+}
+
 int32_t AbilityRecord::CreateModalUIExtension(const Want &want)
 {
     return MyFlag::retAbilityRecordCreateModalUIExtension_;

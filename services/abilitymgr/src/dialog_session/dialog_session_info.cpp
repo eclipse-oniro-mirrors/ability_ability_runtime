@@ -15,6 +15,8 @@
 
 #include "dialog_session_info.h"
 
+#include <charconv>
+
 #include "hilog_tag_wrapper.h"
 #include "parcel_macro.h"
 
@@ -48,19 +50,28 @@ bool DialogAbilityInfo::ParseURI(const std::string &uri)
     bundleName = uriVec[index++];
     moduleName = uriVec[index++];
     abilityName = uriVec[index++];
-    try {
-        bundleIconId = static_cast<int32_t>(std::stoi(uriVec[index++]));
-        bundleLabelId = static_cast<int32_t>(std::stoi(uriVec[index++]));
-        abilityIconId = static_cast<int32_t>(std::stoi(uriVec[index++]));
-        abilityLabelId = static_cast<int32_t>(std::stoi(uriVec[index++]));
-        visible = std::stoi(uriVec[index++]);
-        appIndex = static_cast<int32_t>(std::stoi(uriVec[index++]));
-        multiAppMode.multiAppModeType = static_cast<AppExecFwk::MultiAppModeType>(std::stoi(uriVec[index++]));
-        multiAppMode.maxCount = static_cast<int32_t>(std::stoi(uriVec[index++]));
-    } catch (...) {
-        TAG_LOGW(AAFwkTag::DIALOG, "stoi(%{public}s) failed", uriVec[index++].c_str());
+    auto safeStoi = [](const std::string &str, int32_t &out) -> bool {
+        if (str.empty()) {
+            return false;
+        }
+        auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), out);
+        return ec == std::errc() && ptr == str.data() + str.size();
+    };
+    int32_t visibleValue = 0;
+    int32_t modeValue = 0;
+    if (!safeStoi(uriVec[index++], bundleIconId) ||
+        !safeStoi(uriVec[index++], bundleLabelId) ||
+        !safeStoi(uriVec[index++], abilityIconId) ||
+        !safeStoi(uriVec[index++], abilityLabelId) ||
+        !safeStoi(uriVec[index++], visibleValue) ||
+        !safeStoi(uriVec[index++], appIndex) ||
+        !safeStoi(uriVec[index++], modeValue) ||
+        !safeStoi(uriVec[index++], multiAppMode.maxCount)) {
+        TAG_LOGE(AAFwkTag::DIALOG, "parse failed, invalid uri: %{public}s", uri.c_str());
         return false;
     }
+    visible = (visibleValue != 0);
+    multiAppMode.multiAppModeType = static_cast<AppExecFwk::MultiAppModeType>(modeValue);
     return true;
 }
 

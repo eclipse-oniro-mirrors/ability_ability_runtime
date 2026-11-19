@@ -15,6 +15,9 @@
 
 #include <gtest/gtest.h>
 
+#include <fcntl.h>
+#include <unistd.h>
+
 #define private public
 #include "app_mgr_service.h"
 #include "app_utils.h"
@@ -439,7 +442,47 @@ HWTEST_F(AppMgrServiceTest, GetAllChildrenProcesses_002, TestSize.Level2)
     int32_t res = appMgrService->GetAllChildrenProcesses(info);
     EXPECT_NE(res, ERR_INVALID_OPERATION);
 }
+
+HWTEST_F(AppMgrServiceTest, GetSelfChildrenProcesses_001, TestSize.Level2)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    std::vector<ChildProcessInfo> info;
+    appMgrService->SetInnerService(nullptr);
+    int32_t res = appMgrService->GetSelfChildrenProcesses(info);
+    EXPECT_EQ(res, ERR_INVALID_OPERATION);
+}
+
+HWTEST_F(AppMgrServiceTest, GetSelfChildrenProcesses_002, TestSize.Level2)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    std::vector<ChildProcessInfo> info;
+    appMgrService->SetInnerService(std::make_shared<AppMgrServiceInner>());
+    appMgrService->taskHandler_ = taskHandler_;
+    appMgrService->eventHandler_ = std::make_shared<AMSEventHandler>(taskHandler_, appMgrService->appMgrServiceInner_);
+    int32_t res = appMgrService->GetSelfChildrenProcesses(info);
+    EXPECT_NE(res, ERR_INVALID_OPERATION);
+}
 #endif // SUPPORT_CHILD_PROCESS
+
+HWTEST_F(AppMgrServiceTest, GetSelfUIAbilityChildProcesses_001, TestSize.Level2)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    std::vector<ChildProcessInfo> info;
+    appMgrService->SetInnerService(nullptr);
+    int32_t res = appMgrService->GetSelfUIAbilityChildProcesses(info);
+    EXPECT_EQ(res, ERR_INVALID_OPERATION);
+}
+
+HWTEST_F(AppMgrServiceTest, GetSelfUIAbilityChildProcesses_002, TestSize.Level2)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    std::vector<ChildProcessInfo> info;
+    appMgrService->SetInnerService(std::make_shared<AppMgrServiceInner>());
+    appMgrService->taskHandler_ = taskHandler_;
+    appMgrService->eventHandler_ = std::make_shared<AMSEventHandler>(taskHandler_, appMgrService->appMgrServiceInner_);
+    int32_t res = appMgrService->GetSelfUIAbilityChildProcesses(info);
+    EXPECT_NE(res, ERR_INVALID_OPERATION);
+}
 
 /*
  * Feature: AppMgrService
@@ -1656,6 +1699,34 @@ HWTEST_F(AppMgrServiceTest, UnregisterAppForegroundStateObserver_001, TestSize.L
 }
 
 /**
+ * @tc.name: RegisterFocusedApplicationObserver_001
+ * @tc.desc: Test the return when service is not ready.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, RegisterFocusedApplicationObserver_001, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    appMgrService->appMgrServiceInner_ = nullptr;
+    sptr<IFocusedApplicationObserver> observer = nullptr;
+    auto res = appMgrService->RegisterFocusedApplicationObserver(observer);
+    EXPECT_EQ(ERR_INVALID_OPERATION, res);
+}
+
+/**
+ * @tc.name: UnregisterFocusedApplicationObserver_001
+ * @tc.desc: Test the return when service is not ready.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, UnregisterFocusedApplicationObserver_001, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    appMgrService->appMgrServiceInner_ = nullptr;
+    sptr<IFocusedApplicationObserver> observer = nullptr;
+    auto res = appMgrService->UnregisterFocusedApplicationObserver(observer);
+    EXPECT_EQ(ERR_INVALID_OPERATION, res);
+}
+
+/**
  * @tc.name: IsFinalAppProcess_001
  * @tc.desc: Test IsFinalAppProcess when inpit is nullptr.
  * @tc.type: FUNC
@@ -1666,6 +1737,36 @@ HWTEST_F(AppMgrServiceTest, IsFinalAppProcess_001, TestSize.Level1)
     ASSERT_NE(appMgrService, nullptr);
     appMgrService->SetInnerService(nullptr);
     bool res = appMgrService->IsFinalAppProcess();
+    EXPECT_EQ(res, false);
+}
+
+/**
+ * @tc.name: IsHyperSnapInitializing_001
+ * @tc.desc: Test IsHyperSnapInitializing when inner service is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, IsHyperSnapInitializing_001, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    ASSERT_NE(appMgrService, nullptr);
+    appMgrService->SetInnerService(nullptr);
+    bool res = appMgrService->IsHyperSnapInitializing();
+    EXPECT_EQ(res, false);
+}
+
+/**
+ * @tc.name: IsHyperSnapInitializing_002
+ * @tc.desc: Test IsHyperSnapInitializing when service is ready, delegate to inner.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, IsHyperSnapInitializing_002, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    ASSERT_NE(appMgrService, nullptr);
+    appMgrService->SetInnerService(std::make_shared<AppMgrServiceInner>());
+    appMgrService->taskHandler_ = taskHandler_;
+
+    bool res = appMgrService->IsHyperSnapInitializing();
     EXPECT_EQ(res, false);
 }
 
@@ -1695,6 +1796,85 @@ HWTEST_F(AppMgrServiceTest, UnregisterRenderStateObserver_001, TestSize.Level1)
     sptr<IRenderStateObserver> observer = nullptr;
     auto res = appMgrService->UnregisterRenderStateObserver(observer);
     EXPECT_EQ(ERR_INVALID_OPERATION, res);
+}
+
+/**
+ * @tc.name: RegisterChildProcessStateObserver_001
+ * @tc.desc: Test RegisterChildProcessStateObserver when inpit is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, RegisterChildProcessStateObserver_001, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    appMgrService->appMgrServiceInner_ = nullptr;
+    sptr<IChildProcessStateObserver> observer = nullptr;
+    auto res = appMgrService->RegisterChildProcessStateObserver(observer);
+    EXPECT_EQ(ERR_INVALID_OPERATION, res);
+}
+
+/**
+ * @tc.name: UnregisterChildProcessStateObserver_001
+ * @tc.desc: Test UnregisterChildProcessStateObserver when input is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, UnregisterChildProcessStateObserver_001, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    appMgrService->appMgrServiceInner_ = nullptr;
+    sptr<IChildProcessStateObserver> observer = nullptr;
+    auto res = appMgrService->UnregisterChildProcessStateObserver(observer);
+    EXPECT_EQ(ERR_INVALID_OPERATION, res);
+}
+
+/**
+ * @tc.name: RegisterChildProcessStateObserver_002
+ * @tc.desc: Test RegisterChildProcessStateObserver when permission verification failed.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, RegisterChildProcessStateObserver_002, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    appMgrService->appMgrServiceInner_ = std::make_shared<AppMgrServiceInner>();
+    appMgrService->taskHandler_ = taskHandler_;
+    appMgrService->eventHandler_ = std::make_shared<AMSEventHandler>(taskHandler_,
+        appMgrService->appMgrServiceInner_);
+    OHOS::AppExecFwk::MockNativeToken::SetNativeToken();
+    sptr<IChildProcessStateObserver> observer = nullptr;
+    auto res = appMgrService->RegisterChildProcessStateObserver(observer);
+    EXPECT_EQ(ERR_PERMISSION_DENIED, res);
+}
+
+/**
+ * @tc.name: UnregisterChildProcessStateObserver_002
+ * @tc.desc: Test UnregisterChildProcessStateObserver when permission verification failed.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, UnregisterChildProcessStateObserver_002, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    appMgrService->appMgrServiceInner_ = std::make_shared<AppMgrServiceInner>();
+    appMgrService->taskHandler_ = taskHandler_;
+    appMgrService->eventHandler_ = std::make_shared<AMSEventHandler>(taskHandler_,
+        appMgrService->appMgrServiceInner_);
+    OHOS::AppExecFwk::MockNativeToken::SetNativeToken();
+    sptr<IChildProcessStateObserver> observer = nullptr;
+    auto res = appMgrService->UnregisterChildProcessStateObserver(observer);
+    EXPECT_EQ(ERR_PERMISSION_DENIED, res);
+}
+
+/**
+ * @tc.name: NotifyChildProcessState_001
+ * @tc.desc: Test NotifyChildProcessState when inpit is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, NotifyChildProcessState_001, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    appMgrService->appMgrServiceInner_ = nullptr;
+    int32_t state = 0;
+    int32_t pid = 0;
+    auto res = appMgrService->NotifyChildProcessState(pid, state);
+    EXPECT_EQ(AAFwk::ERR_APP_MGR_SERVICE_NOT_READY, res);
 }
 
 /**
@@ -2122,6 +2302,78 @@ HWTEST_F(AppMgrServiceTest, CreateNativeChildProcess_0200, TestSize.Level1)
     request.options = options;
     int32_t res = appMgrService->CreateNativeChildProcess("test.so", callback, request);
     EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.name: CreateNativeChildProcess_0300
+ * @tc.desc: Start native child process with fds, verify fds are closed after the call.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, CreateNativeChildProcess_0300, TestSize.Level1)
+{
+    TAG_LOGD(AAFwkTag::TEST, "CreateNativeChildProcess_0300 called.");
+    sptr<AppMgrService> appMgrService = new (std::nothrow) AppMgrService();
+    ASSERT_NE(appMgrService, nullptr);
+
+    appMgrService->SetInnerService(mockAppMgrServiceInner_);
+    appMgrService->taskHandler_ = taskHandler_;
+    appMgrService->eventHandler_ = eventHandler_;
+
+    EXPECT_CALL(*mockAppMgrServiceInner_, CreateNativeChildProcess(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(ERR_OK));
+
+    int32_t testFd = open("/dev/null", O_RDONLY);
+    ASSERT_GE(testFd, 0);
+
+    sptr<IRemoteObject> callback;
+    ChildProcessOptions options;
+    options.isolationMode = false;
+    options.customProcessName = "";
+    options.isolationUid = false;
+    ChildProcessRequest request;
+    request.childProcessType = CHILD_PROCESS_TYPE_NATIVE;
+    request.childProcessCount = 1;
+    request.options = options;
+    request.args.fds.emplace("testFd", testFd);
+
+    int32_t res = appMgrService->CreateNativeChildProcess("test.so", callback, request);
+    EXPECT_EQ(res, ERR_OK);
+
+    int32_t fdFlags = fcntl(testFd, F_GETFD);
+    EXPECT_EQ(fdFlags, -1);
+}
+
+/**
+ * @tc.name: CreateNativeChildProcess_0400
+ * @tc.desc: Start native child process with fds when service not ready, fds must be closed.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, CreateNativeChildProcess_0400, TestSize.Level1)
+{
+    TAG_LOGD(AAFwkTag::TEST, "CreateNativeChildProcess_0400 called.");
+    sptr<AppMgrService> appMgrService = new (std::nothrow) AppMgrService();
+    ASSERT_NE(appMgrService, nullptr);
+
+    int32_t testFd = open("/dev/null", O_RDONLY);
+    ASSERT_GE(testFd, 0);
+
+    sptr<IRemoteObject> callback;
+    ChildProcessOptions options;
+    options.isolationMode = false;
+    options.customProcessName = "";
+    options.isolationUid = false;
+    ChildProcessRequest request;
+    request.childProcessType = CHILD_PROCESS_TYPE_NATIVE;
+    request.childProcessCount = 1;
+    request.options = options;
+    request.args.fds.emplace("testFd", testFd);
+
+    int32_t res = appMgrService->CreateNativeChildProcess("test.so", callback, request);
+    EXPECT_EQ(res, ERR_INVALID_OPERATION);
+
+    int32_t fdFlags = fcntl(testFd, F_GETFD);
+    EXPECT_EQ(fdFlags, -1);
 }
 #endif // SUPPORT_CHILD_PROCESS
 
@@ -2621,6 +2873,37 @@ HWTEST_F(AppMgrServiceTest, UpdateConfigurationByUserIds_001, TestSize.Level2)
     appMgrService->SetInnerService(nullptr);
     int32_t res = appMgrService->UpdateConfigurationByUserIds(config, userIds);
     EXPECT_EQ(res, ERR_INVALID_OPERATION);
+}
+
+/**
+ * @tc.name: IsChildProcessSupported_0100
+ * @tc.desc: IsChildProcessSupported when service is not ready.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, IsChildProcessSupported_0100, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    ASSERT_NE(appMgrService, nullptr);
+    bool isSupported = false;
+    auto ret = appMgrService->IsChildProcessSupported(false, isSupported);
+    EXPECT_EQ(ret, ERR_INVALID_OPERATION);
+}
+
+/**
+ * @tc.name: ClearUpApplicationData_0100
+ * @tc.desc: test ClearUpApplicationData
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceTest, ClearUpApplicationData_0100, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    ASSERT_NE(appMgrService, nullptr);
+    appMgrService->SetInnerService(std::make_shared<AppMgrServiceInner>());
+    appMgrService->taskHandler_ = taskHandler_;
+    appMgrService->eventHandler_ = std::make_shared<AMSEventHandler>(taskHandler_, appMgrService->appMgrServiceInner_);
+    std::string bundleName = "bundleName";
+    auto ret = appMgrService->ClearUpApplicationData(bundleName, 0);
+    EXPECT_EQ(ret, AAFwk::CHECK_PERMISSION_FAILED);
 }
 } // namespace AppExecFwk
 } // namespace OHOS

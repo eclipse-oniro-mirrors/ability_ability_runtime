@@ -239,6 +239,7 @@ bool NapiAsyncTask::StartWithDefaultQos(const std::string &name, napi_env env)
     if (env == nullptr) {
         return false;
     }
+    env_ = env;
     if (execute_ == nullptr) {
         return SendNapiEvent(env, napi_eprio_high);
     }
@@ -507,6 +508,12 @@ void ReleaseNativeReference(napi_env env, NativeReference* ref)
         TAG_LOGD(AAFwkTag::JSRUNTIME, "null ref");
         return;
     }
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "null env");
+        delete ref;
+        return;
+    }
+
     uv_work_t *work = new (std::nothrow) uv_work_t;
     if (work == nullptr) {
         TAG_LOGE(AAFwkTag::JSRUNTIME, "null work");

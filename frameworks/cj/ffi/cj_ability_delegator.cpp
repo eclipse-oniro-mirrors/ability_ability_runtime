@@ -22,6 +22,7 @@
 #include "cj_common_ffi.h"
 #include "hilog_tag_wrapper.h"
 #include "shell_cmd_result.h"
+#include <mutex>
 
 namespace OHOS {
 namespace AbilityDelegatorCJ {
@@ -35,6 +36,9 @@ constexpr int INCORRECT_PARAMETERS = 401;
 std::map<int64_t, std::shared_ptr<CJAbilityMonitor>> g_monitorRecord;
 std::map<int64_t, std::shared_ptr<CJAbilityStageMonitor>> g_stageMonitorRecord;
 std::map<int64_t, sptr<OHOS::IRemoteObject>> g_abilityRecord;
+std::mutex g_mutexAbilityRecord;
+std::mutex g_mtxMonitorRecord;
+std::mutex g_mtxStageMonitorRecord;
 
 CJAbilityDelegator::CJAbilityDelegator(const std::shared_ptr<AppExecFwk::CJAbilityDelegatorImpl>& abilityDelegator)
     : delegator_(abilityDelegator)
@@ -46,6 +50,7 @@ CJAbilityDelegator::CJAbilityDelegator(const std::shared_ptr<AppExecFwk::CJAbili
             return;
         }
 
+        std::unique_lock<std::mutex> lck(g_mutexAbilityRecord);
         for (auto it = g_abilityRecord.begin(); it != g_abilityRecord.end();) {
             if (it->second == property->token_) {
                 it = g_abilityRecord.erase(it);
@@ -84,6 +89,7 @@ std::shared_ptr<AppExecFwk::ACJDelegatorAbilityProperty> CJAbilityDelegator::Wai
         TAG_LOGE(AAFwkTag::DELEGATOR, "property is null");
         return nullptr;
     }
+    std::unique_lock<std::mutex> lck(g_mutexAbilityRecord);
     g_abilityRecord.emplace(property->cjObject_, property->token_);
     return property;
 }
@@ -98,6 +104,7 @@ std::shared_ptr<AppExecFwk::ACJDelegatorAbilityProperty> CJAbilityDelegator::Wai
         TAG_LOGE(AAFwkTag::DELEGATOR, "property is null");
         return nullptr;
     }
+    std::unique_lock<std::mutex> lck(g_mutexAbilityRecord);
     g_abilityRecord.emplace(property->cjObject_, property->token_);
     return property;
 }
@@ -207,38 +214,58 @@ void CJAbilityDelegator::FinishTest(const char* msg, int64_t code)
     delegator_->FinishUserTest(msg, code);
 }
 
-std::shared_ptr<CJAbilityMonitor> ParseMonitorPara(
-    int64_t monitorId, const std::string& abilityName, const std::string& moduleName, bool& isExisted)
-{
-    for (auto iter = g_monitorRecord.begin(); iter != g_monitorRecord.end(); ++iter) {
-        if (iter->first == monitorId) {
-            TAG_LOGE(AAFwkTag::DELEGATOR, "monitor existed");
-            isExisted = true;
-            return iter->second;
-        }
-    }
+enum class MonitorRecordOp {
+    ADD,
+    REMOVE,
+};
 
+std::shared_ptr<CJAbilityMonitor> GetOrCreateMonitor(
+    int64_t monitorId, const std::string& abilityName, const std::string& moduleName, MonitorRecordOp op)
+{
+    std::unique_lock<std::mutex> lck(g_mtxMonitorRecord);
+    auto iter = g_monitorRecord.find(monitorId);
+    if (iter != g_monitorRecord.end()) {
+        TAG_LOGE(AAFwkTag::DELEGATOR, "monitor existed");
+        auto existing = iter->second;
+        if (op == MonitorRecordOp::REMOVE) {
+            g_monitorRecord.erase(iter);
+        }
+        return existing;
+    }
+    if (op == MonitorRecordOp::REMOVE) {
+        TAG_LOGE(AAFwkTag::DELEGATOR, "monitor not existed");
+        return nullptr;
+    }
     auto cjMonitorObj = std::make_shared<CJMonitorObject>(monitorId);
-    std::shared_ptr<CJAbilityMonitor> cjMonitor = nullptr;
+    std::shared_ptr<CJAbilityMonitor> cjMonitor;
     if (moduleName.empty()) {
         cjMonitor = std::make_shared<CJAbilityMonitor>(abilityName, cjMonitorObj);
     } else {
         cjMonitor = std::make_shared<CJAbilityMonitor>(abilityName, moduleName, cjMonitorObj);
     }
+    g_monitorRecord.emplace(monitorId, cjMonitor);
     return cjMonitor;
 }
 
-std::shared_ptr<CJAbilityStageMonitor> ParseStageMonitorPara(
-    int64_t stageMonitorId, const std::string& moduleName, const std::string& srcEntrance, bool& isExisted)
+std::shared_ptr<CJAbilityStageMonitor> GetOrCreateStageMonitor(
+    int64_t stageMonitorId, const std::string& moduleName, const std::string& srcEntrance, MonitorRecordOp op)
 {
-    for (auto iter = g_stageMonitorRecord.begin(); iter != g_stageMonitorRecord.end(); ++iter) {
-        if (iter->first == stageMonitorId) {
-            TAG_LOGE(AAFwkTag::DELEGATOR, "stageMonitor existed");
-            isExisted = true;
-            return iter->second;
+    std::unique_lock<std::mutex> lck(g_mtxStageMonitorRecord);
+    auto iter = g_stageMonitorRecord.find(stageMonitorId);
+    if (iter != g_stageMonitorRecord.end()) {
+        TAG_LOGE(AAFwkTag::DELEGATOR, "stageMonitor existed");
+        auto existing = iter->second;
+        if (op == MonitorRecordOp::REMOVE) {
+            g_stageMonitorRecord.erase(iter);
         }
+        return existing;
+    }
+    if (op == MonitorRecordOp::REMOVE) {
+        TAG_LOGE(AAFwkTag::DELEGATOR, "stageMonitor not existed");
+        return nullptr;
     }
     auto cjStageMonitor = std::make_shared<CJAbilityStageMonitor>(moduleName, srcEntrance, stageMonitorId);
+    g_stageMonitorRecord.emplace(stageMonitorId, cjStageMonitor);
     return cjStageMonitor;
 }
 
@@ -258,10 +285,11 @@ int32_t FFIAbilityDelegatorDoAbilityForeground(int64_t id, int64_t abilityId, bo
     }
 
     sptr<OHOS::IRemoteObject> remoteObject = nullptr;
-    for (auto iter = g_abilityRecord.begin(); iter != g_abilityRecord.end(); ++iter) {
-        if (iter->first == abilityId) {
+    {
+        std::unique_lock<std::mutex> lck(g_mutexAbilityRecord);
+        auto iter = g_abilityRecord.find(abilityId);
+        if (iter != g_abilityRecord.end()) {
             remoteObject = iter->second;
-            break;
         }
     }
     if (!remoteObject) {
@@ -292,10 +320,11 @@ int32_t FFIAbilityDelegatorDoAbilityBackground(int64_t id, int64_t abilityId, bo
     }
 
     sptr<OHOS::IRemoteObject> remoteObject = nullptr;
-    for (auto iter = g_abilityRecord.begin(); iter != g_abilityRecord.end(); ++iter) {
-        if (iter->first == abilityId) {
+    {
+        std::unique_lock<std::mutex> lck(g_mutexAbilityRecord);
+        auto iter = g_abilityRecord.find(abilityId);
+        if (iter != g_abilityRecord.end()) {
             remoteObject = iter->second;
-            break;
         }
     }
     if (!remoteObject) {
@@ -331,7 +360,10 @@ int32_t FFIAbilityDelegatorGetCurrentTopAbility(int64_t id, int64_t* abilityId)
         *abilityId = 0;
         return COMMON_FAILED;
     }
-    g_abilityRecord.emplace(property->cjObject_, property->token_);
+    {
+        std::unique_lock<std::mutex> lck(g_mutexAbilityRecord);
+        g_abilityRecord.emplace(property->cjObject_, property->token_);
+    }
     *abilityId =  property->cjObject_;
     return 0;
 }
@@ -360,10 +392,11 @@ int32_t FFIAbilityDelegatorGetAbilityState(int64_t id, int64_t abilityId, int64_
     }
 
     sptr<OHOS::IRemoteObject> remoteObject = nullptr;
-    for (auto iter = g_abilityRecord.begin(); iter != g_abilityRecord.end(); ++iter) {
-        if (iter->first == abilityId) {
+    {
+        std::unique_lock<std::mutex> lck(g_mutexAbilityRecord);
+        auto iter = g_abilityRecord.find(abilityId);
+        if (iter != g_abilityRecord.end()) {
             remoteObject = iter->second;
-            break;
         }
     }
     if (!remoteObject) {
@@ -383,15 +416,10 @@ int32_t FFIAbilityDelegatorAddAbilityMonitor(
         TAG_LOGE(AAFwkTag::DELEGATOR, "null cj delegator");
         return COMMON_FAILED;
     }
-    bool isExisted = false;
-    auto cjMonitor = ParseMonitorPara(monitorId, abilityName, moduleName, isExisted);
+    auto cjMonitor = GetOrCreateMonitor(monitorId, abilityName, moduleName, MonitorRecordOp::ADD);
     if (cjMonitor == nullptr) {
         TAG_LOGE(AAFwkTag::DELEGATOR, "parase cj monitor failed");
         return INCORRECT_PARAMETERS;
-    }
-
-    if (!isExisted) {
-        g_monitorRecord.emplace(monitorId, cjMonitor);
     }
     cjDelegator->AddAbilityMonitor(cjMonitor);
     return 0;
@@ -405,20 +433,10 @@ int32_t FFIAbilityDelegatorRemoveAbilityMonitor(
         TAG_LOGE(AAFwkTag::DELEGATOR, "null cj delegator");
         return COMMON_FAILED;
     }
-    bool isExisted = false;
-    auto cjMonitor = ParseMonitorPara(monitorId, abilityName, moduleName, isExisted);
+    auto cjMonitor = GetOrCreateMonitor(monitorId, abilityName, moduleName, MonitorRecordOp::REMOVE);
     if (cjMonitor == nullptr) {
-        TAG_LOGE(AAFwkTag::DELEGATOR, "parase cj monitor failed");
+        TAG_LOGE(AAFwkTag::DELEGATOR, "monitor not existed");
         return INCORRECT_PARAMETERS;
-    }
-
-    if (isExisted) {
-        for (auto iter = g_monitorRecord.begin(); iter != g_monitorRecord.end(); ++iter) {
-            if (iter->first == monitorId) {
-                g_monitorRecord.erase(iter);
-                break;
-            }
-        }
     }
     cjDelegator->RemoveAbilityMonitor(cjMonitor);
     return 0;
@@ -440,16 +458,11 @@ int32_t FFIAbilityDelegatorWaitAbilityMonitor(
 
     const char* abilityName = abilityInfo.abilityName;
     const char* moduleName = abilityInfo.moduleName;
-    bool isExisted = false;
-    auto cjMonitor = ParseMonitorPara(monitorId, abilityName, moduleName, isExisted);
+    auto cjMonitor = GetOrCreateMonitor(monitorId, abilityName, moduleName, MonitorRecordOp::ADD);
     if (cjMonitor == nullptr) {
         TAG_LOGE(AAFwkTag::DELEGATOR, "parase cj monitor failed");
         *abilityId = 0;
         return INCORRECT_PARAMETERS;
-    }
-
-    if (!isExisted) {
-        g_monitorRecord.emplace(monitorId, cjMonitor);
     }
 
     auto property = cjDelegator->WaitAbilityMonitor(cjMonitor);
@@ -459,7 +472,10 @@ int32_t FFIAbilityDelegatorWaitAbilityMonitor(
         return COMMON_FAILED;
     }
 
-    g_abilityRecord.emplace(property->cjObject_, property->token_);
+    {
+        std::unique_lock<std::mutex> lck(g_mutexAbilityRecord);
+        g_abilityRecord.emplace(property->cjObject_, property->token_);
+    }
     *abilityId = property->cjObject_;
     return 0;
 }
@@ -480,16 +496,11 @@ int32_t FFIAbilityDelegatorWaitAbilityMonitorWithTimeout(
 
     const char* abilityName = abilityInfo.abilityName;
     const char* moduleName = abilityInfo.moduleName;
-    bool isExisted = false;
-    auto cjMonitor = ParseMonitorPara(monitorId, abilityName, moduleName, isExisted);
+    auto cjMonitor = GetOrCreateMonitor(monitorId, abilityName, moduleName, MonitorRecordOp::ADD);
     if (cjMonitor == nullptr) {
         TAG_LOGE(AAFwkTag::DELEGATOR, "parase cj monitor failed");
         *abilityId = 0;
         return INCORRECT_PARAMETERS;
-    }
-
-    if (!isExisted) {
-        g_monitorRecord.emplace(monitorId, cjMonitor);
     }
 
     auto property = cjDelegator->WaitAbilityMonitor(cjMonitor, timeout);
@@ -499,7 +510,10 @@ int32_t FFIAbilityDelegatorWaitAbilityMonitorWithTimeout(
         return COMMON_FAILED;
     }
 
-    g_abilityRecord.emplace(property->cjObject_, property->token_);
+    {
+        std::unique_lock<std::mutex> lck(g_mutexAbilityRecord);
+        g_abilityRecord.emplace(property->cjObject_, property->token_);
+    }
     *abilityId = property->cjObject_;
     return 0;
 }
@@ -512,15 +526,10 @@ int32_t FFIAbilityDelegatorAddAbilityStageMonitor(
         TAG_LOGE(AAFwkTag::DELEGATOR, "null cj delegator");
         return COMMON_FAILED;
     }
-    bool isExisted = false;
-    auto cjStageMonitor = ParseStageMonitorPara(stageMonitorId, moduleName, srcEntrance, isExisted);
+    auto cjStageMonitor = GetOrCreateStageMonitor(stageMonitorId, moduleName, srcEntrance, MonitorRecordOp::ADD);
     if (cjStageMonitor == nullptr) {
         TAG_LOGE(AAFwkTag::DELEGATOR, "parse cj stageMonitor failed");
         return INCORRECT_PARAMETERS;
-    }
-
-    if (!isExisted) {
-        g_stageMonitorRecord.emplace(stageMonitorId, cjStageMonitor);
     }
     cjDelegator->AddAbilityStageMonitor(cjStageMonitor);
     return 0;
@@ -534,20 +543,10 @@ int32_t FFIAbilityDelegatorRemoveAbilityStageMonitor(
         TAG_LOGE(AAFwkTag::DELEGATOR, "null cj delegator");
         return COMMON_FAILED;
     }
-    bool isExisted = false;
-    auto cjStageMonitor = ParseStageMonitorPara(stageMonitorId, moduleName, srcEntrance, isExisted);
+    auto cjStageMonitor = GetOrCreateStageMonitor(stageMonitorId, moduleName, srcEntrance, MonitorRecordOp::REMOVE);
     if (cjStageMonitor == nullptr) {
-        TAG_LOGE(AAFwkTag::DELEGATOR, "parse cj stageMonitor failed");
+        TAG_LOGE(AAFwkTag::DELEGATOR, "stageMonitor not existed");
         return INCORRECT_PARAMETERS;
-    }
-
-    if (isExisted) {
-        for (auto iter = g_stageMonitorRecord.begin(); iter != g_stageMonitorRecord.end(); ++iter) {
-            if (iter->first == stageMonitorId) {
-                g_stageMonitorRecord.erase(iter);
-                break;
-            }
-        }
     }
     cjDelegator->RemoveAbilityStageMonitor(cjStageMonitor);
     return 0;
@@ -568,16 +567,11 @@ int32_t FFIAbilityDelegatorWaitAbilityStageMonitor(
     }
     const char* moduleName = abilityStageInfo.moduleName;
     const char* srcEntrance = abilityStageInfo.srcEntrance;
-    bool isExisted = false;
-    auto cjStageMonitor = ParseStageMonitorPara(stageMonitorId, moduleName, srcEntrance, isExisted);
+    auto cjStageMonitor = GetOrCreateStageMonitor(stageMonitorId, moduleName, srcEntrance, MonitorRecordOp::ADD);
     if (cjStageMonitor == nullptr) {
         TAG_LOGE(AAFwkTag::DELEGATOR, "parse cj stageMonitor failed");
         *abilityStageId = 0;
         return INCORRECT_PARAMETERS;
-    }
-
-    if (!isExisted) {
-        g_stageMonitorRecord.emplace(stageMonitorId, cjStageMonitor);
     }
 
     auto property = cjDelegator->WaitAbilityStageMonitor(cjStageMonitor);
@@ -606,16 +600,11 @@ int32_t FFIAbilityDelegatorWaitAbilityStageMonitorWithTimeout(
     }
     const char* moduleName = abilityStageInfo.moduleName;
     const char* srcEntrance = abilityStageInfo.srcEntrance;
-    bool isExisted = false;
-    auto cjStageMonitor = ParseStageMonitorPara(stageMonitorId, moduleName, srcEntrance, isExisted);
+    auto cjStageMonitor = GetOrCreateStageMonitor(stageMonitorId, moduleName, srcEntrance, MonitorRecordOp::ADD);
     if (cjStageMonitor == nullptr) {
         TAG_LOGE(AAFwkTag::DELEGATOR, "parse cj stageMonitor failed");
         *abilityStageId = 0;
         return INCORRECT_PARAMETERS;
-    }
-
-    if (!isExisted) {
-        g_stageMonitorRecord.emplace(stageMonitorId, cjStageMonitor);
     }
 
     auto property = cjDelegator->WaitAbilityStageMonitor(cjStageMonitor, timeout);

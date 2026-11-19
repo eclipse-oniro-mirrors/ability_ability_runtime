@@ -29,11 +29,17 @@ config("public_js_environment_config") {
 
 ohos_shared_library("js_environment") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
 
   sources = [
     "${utils_path}/src/js_env_logger.cpp",
     "src/js_environment.cpp",
-    "src/source_map.cpp",
     "src/uncaught_exception_callback.cpp",
   ]
 
@@ -54,6 +60,8 @@ ohos_shared_library("js_environment") {
     "ffrt:libffrt",
     "hilog:libhilog",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {

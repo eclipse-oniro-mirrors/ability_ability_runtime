@@ -40,6 +40,11 @@ int AccessTokenKit::ClearUserGrantedPermissionState(AccessTokenID tokenID)
     return AAFwk::MyStatus::GetInstance().clearUserGranted_;
 }
 
+bool AccessTokenKit::IsCliToolToken(FullTokenID tokenID)
+{
+    return AAFwk::MyStatus::GetInstance().isCliToolToken_;
+}
+
 } // namespace AccessToken
 } // namespace Security
 } // namespace OHOS

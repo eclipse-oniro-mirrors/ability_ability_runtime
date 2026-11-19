@@ -25,6 +25,7 @@
 #include "freeze_util.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
+#include "skill/skill_execute_param.h"
 #include "time_util.h"
 
 namespace OHOS {
@@ -153,6 +154,30 @@ void UIAbilityThread::Attach(const std::shared_ptr<AppExecFwk::OHOSApplication> 
     AttachInner(application, abilityRecord, stageContext);
 }
 
+bool UIAbilityThread::InitNativeThread(const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo)
+{
+    auto appContext = AbilityRuntime::ApplicationContext::GetInstance();
+    if (abilityInfo == nullptr || appContext == nullptr) {
+        return false;
+    }
+    AAFwk::NativeAbilityMetaData metaData;
+    AAFwk::NativeAbilityMetaData::InitData(*abilityInfo, metaData);
+    if (!metaData.withNativeModule) {
+        return true;
+    }
+    if (!appContext->CreateNativeThread(metaData, abilityInfo->bundleName, abilityInfo->moduleName)) {
+        return false;
+    }
+    TAG_LOGI(AAFwkTag::UIABILITY, "Loading native module: %{public}s", metaData.nativeModuleSource.c_str());
+    if (currentAbility_ != nullptr) {
+        currentAbility_->SetWithNative(true);
+    }
+    if (abilityImpl_ != nullptr) {
+        abilityImpl_->SetNativeModuleMetaData(metaData);
+    }
+    return true;
+}
+
 void UIAbilityThread::AttachInner(const std::shared_ptr<AppExecFwk::OHOSApplication> &application,
     const std::shared_ptr<AppExecFwk::AbilityLocalRecord> &abilityRecord,
     const std::shared_ptr<Context> &stageContext)
@@ -168,6 +193,12 @@ void UIAbilityThread::AttachInner(const std::shared_ptr<AppExecFwk::OHOSApplicat
         return;
     }
     abilityImpl_ = uiAbilityImpl;
+
+    if (!InitNativeThread(abilityRecord->GetAbilityInfo())) {
+        TAG_LOGI(AAFwkTag::UIABILITY, "InitNativeThread failed");
+        // return to trigger load
+        return;
+    }
 
     // ability attach : ipc
     TAG_LOGI(AAFwkTag::UIABILITY, "Lifecycle:Attach");
@@ -658,10 +689,34 @@ void UIAbilityThread::OnExecuteIntent(const Want &want)
         }
         if (abilityThread->abilityImpl_ != nullptr) {
             abilityThread->abilityImpl_->HandleExecuteInsightIntentBackground(want, true);
-            return;
         }
     };
     abilityHandler_->PostTask(task, "UIAbilityThread:OnExecuteIntent");
+}
+
+void UIAbilityThread::ExecuteSkill(const Want &want)
+{
+    TAG_LOGI(AAFwkTag::UIABILITY, "execute skill");
+    if (abilityImpl_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "null abilityImpl_");
+        return;
+    }
+    if (abilityHandler_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "null abilityHandler_");
+        return;
+    }
+    wptr<UIAbilityThread> weak = this;
+    auto task = [weak, want]() {
+        auto abilityThread = weak.promote();
+        if (abilityThread == nullptr) {
+            TAG_LOGE(AAFwkTag::UIABILITY, "null AbilityThread");
+            return;
+        }
+        if (abilityThread->abilityImpl_ != nullptr) {
+            abilityThread->abilityImpl_->HandleExecuteSkill(want, true);
+        }
+    };
+    abilityHandler_->PostTask(task, "UIAbilityThread:ExecuteSkill");
 }
 
 #ifdef SUPPORT_SCREEN

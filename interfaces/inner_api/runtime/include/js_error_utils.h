@@ -36,6 +36,8 @@ napi_value CreateJsError(napi_env env, const AbilityErrorCode& err);
 napi_value CreateInvalidParamJsError(napi_env env, const std::string &message);
 napi_value CreateNoPermissionError(napi_env env, const std::string& permission);
 napi_value CreateJsErrorByNativeErr(napi_env env, int32_t err, const std::string& permission = "");
+napi_value CreateJsErrorByNativeErr(
+    napi_env env, int32_t err, const std::string& permission, const std::string& innerErrMsg);
 }  // namespace AbilityRuntime
 }  // namespace OHOS
 

@@ -37,5 +37,41 @@ sptr<IAppControlMgr> BundleMgrHelper::GetAppControlProxy()
 {
     return AAFwk::MyFlag::mockAppControlManager_;
 }
+
+bool BundleMgrHelper::GetApplicationInfo(const std::string &appName, const ApplicationFlag flag,
+    const int32_t userId, ApplicationInfo &applicationInfo)
+{
+    return true;
+}
+
+bool BundleMgrHelper::GetApplicationInfo(const std::string &appName, const ApplicationFlag flag,
+    const int32_t userId, const int32_t appIndex, ApplicationInfo &applicationInfo)
+{
+    return true;
+}
+
+bool BundleMgrHelper::GetApplicationInfoWithAppIndex(const std::string &appName, const ApplicationFlag flag,
+    const int32_t userId, const int32_t appIndex, ApplicationInfo &applicationInfo)
+{
+    return true;
+}
+
+ErrCode BundleMgrHelper::GetNameForUid(int32_t uid, std::string &name)
+{
+    name = "test.bundle.name";
+    return ERR_OK;
+}
+
+bool BundleMgrHelper::QueryAppGalleryBundleName(std::string &appGalleryBundleName)
+{
+    appGalleryBundleName = "com.example.appstore";
+    return true;
+}
+
+ErrCode BundleMgrHelper::GetDualModeBundleInfo(
+    const std::string &bundleName, int32_t userId, int32_t &appIndex)
+{
+    return ERR_OK;
+}
 } // namespace AppExecFwk
 } // namespace OHOS

@@ -44,13 +44,14 @@ int32_t SAInterceptorManager::AddSAInterceptor(sptr<ISAInterceptor> interceptor)
         return AAFwk::ERR_NULL_SA_INTERCEPTOR_EXECUTER;
     }
 
-    if (ObserverExist(interceptor)) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "interceptor exist");
-        return ERR_OK;
-    }
-
     {
         std::lock_guard<std::mutex> lock(saInterceptorLock_);
+        for (auto it = saInterceptors_.begin(); it != saInterceptors_.end(); ++it) {
+            if ((*it)->AsObject() == interceptor->AsObject()) {
+                TAG_LOGI(AAFwkTag::ABILITYMGR, "interceptor exist");
+                return ERR_OK;
+            }
+        }
         saInterceptors_.emplace_back(interceptor);
         if (!deathRecipient_) {
             // add death recipient
@@ -66,6 +67,28 @@ int32_t SAInterceptorManager::AddSAInterceptor(sptr<ISAInterceptor> interceptor)
     }
 
     return ERR_OK;
+}
+
+int32_t SAInterceptorManager::RemoveSAInterceptor(sptr<IRemoteObject> interceptor)
+{
+    if (interceptor == nullptr) {
+        TAG_LOGE(AAFwkTag::SA_INTERCEPTOR, "null interceptor");
+        return AAFwk::ERR_NULL_SA_INTERCEPTOR_EXECUTER;
+    }
+
+    std::lock_guard<std::mutex> lock(saInterceptorLock_);
+    for (auto interceptorIter = saInterceptors_.begin(); interceptorIter != saInterceptors_.end(); interceptorIter++) {
+        if (*interceptorIter && (*interceptorIter)->AsObject() == interceptor) {
+            if (interceptor && deathRecipient_) {
+                interceptor->RemoveDeathRecipient(deathRecipient_);
+            }
+            saInterceptors_.erase(interceptorIter);
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "interceptor removed");
+            return ERR_OK;
+        }
+    }
+    TAG_LOGE(AAFwkTag::ABILITYMGR, "interceptor not found");
+    return AAFwk::ERR_SA_INTERCEPTOR_NOT_EXIST;
 }
 
 bool SAInterceptorManager::SAInterceptorListIsEmpty()

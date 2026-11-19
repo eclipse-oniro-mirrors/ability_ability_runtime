@@ -220,7 +220,7 @@ HWTEST_F(AbilityConnectionTest, AbilityRuntime_AbilityConnection_SetResultCode_0
     sptr<AbilityConnection> abilityConnection = new AbilityConnection();
     int resultCode = 0;
     abilityConnection->SetResultCode(resultCode);
-    EXPECT_EQ(abilityConnection->resultCode_, 0);
+    EXPECT_EQ(abilityConnection->GetResultCode(), 0);
     GTEST_LOG_(INFO) << "AbilityRuntime_AbilityConnection_SetResultCode_0100 end";
 }
 
@@ -233,7 +233,7 @@ HWTEST_F(AbilityConnectionTest, AbilityRuntime_AbilityConnection_GetResultCode_0
 {
     GTEST_LOG_(INFO) << "AbilityRuntime_AbilityConnection_GetResultCode_0100 start";
     sptr<AbilityConnection> abilityConnection = new AbilityConnection();
-    abilityConnection->SetResultCode(abilityConnection->resultCode_);
+    abilityConnection->SetResultCode(abilityConnection->GetResultCode());
     EXPECT_EQ(abilityConnection->GetResultCode(), -1);
     GTEST_LOG_(INFO) << "AbilityRuntime_AbilityConnection_GetResultCode_0100 end";
 }
@@ -249,7 +249,7 @@ HWTEST_F(AbilityConnectionTest, AbilityRuntime_AbilityConnection_SetConnectionSt
     sptr<AbilityConnection> abilityConnection = new AbilityConnection();
     int connectionState = 0;
     abilityConnection->SetConnectionState(connectionState);
-    EXPECT_EQ(abilityConnection->connectionState_, 0);
+    EXPECT_EQ(abilityConnection->GetConnectionState(), 0);
     GTEST_LOG_(INFO) << "AbilityRuntime_AbilityConnection_SetConnectionState_0100 end";
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -985,6 +985,54 @@ HWTEST_F(AppRecoveryUnitTest, IsEtsAPP_Test_001, TestSize.Level1)
     EXPECT_EQ(ret, false);
     AppRecovery::GetInstance().InitApplicationInfo(testHandler_, applicationInfo_);
     AppRecovery::GetInstance().IsEtsAPP();
+}
+
+/**
+ * @tc.name:  ScheduleRecoverApp_008
+ * @tc.desc:  ScheduleRecoverApp when isEnable_ is false with JS_ERROR reason.
+ *            ShouldRecoverApp returns true (ALWAYS_RESTART), but
+ *            sub_health_recovery.enable is not "true" in test env, returns false.
+ * @tc.type: FUNC
+ * @tc.require: I7UL6H
+ */
+HWTEST_F(AppRecoveryUnitTest, ScheduleRecoverApp_008, TestSize.Level1)
+{
+    AppRecovery::GetInstance().isEnable_ = false;
+    AppRecovery::GetInstance().restartFlag_ = RestartFlag::ALWAYS_RESTART;
+    bool ret = AppRecovery::GetInstance().ScheduleRecoverApp(StateReason::JS_ERROR);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.name:  ScheduleRecoverApp_009
+ * @tc.desc:  ScheduleRecoverApp when isEnable_ is false with CJ_ERROR reason.
+ *            ShouldRecoverApp returns true (ALWAYS_RESTART), but
+ *            sub_health_recovery.enable is not "true" in test env, returns false.
+ * @tc.type: FUNC
+ * @tc.require: I7UL6H
+ */
+HWTEST_F(AppRecoveryUnitTest, ScheduleRecoverApp_009, TestSize.Level1)
+{
+    AppRecovery::GetInstance().isEnable_ = false;
+    AppRecovery::GetInstance().restartFlag_ = RestartFlag::ALWAYS_RESTART;
+    bool ret = AppRecovery::GetInstance().ScheduleRecoverApp(StateReason::CJ_ERROR);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.name:  ScheduleRecoverApp_010
+ * @tc.desc:  ScheduleRecoverApp with APP_FREEZE reason when isEnable_ is false.
+ *            ShouldRecoverApp returns true for APP_FREEZE with ALWAYS_RESTART,
+ *            but sub_health_recovery.enable is not "true" in test env, returns false.
+ * @tc.type: FUNC
+ * @tc.require: I7UL6H
+ */
+HWTEST_F(AppRecoveryUnitTest, ScheduleRecoverApp_010, TestSize.Level1)
+{
+    AppRecovery::GetInstance().isEnable_ = false;
+    AppRecovery::GetInstance().restartFlag_ = RestartFlag::ALWAYS_RESTART;
+    bool ret = AppRecovery::GetInstance().ScheduleRecoverApp(StateReason::APP_FREEZE);
+    EXPECT_FALSE(ret);
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

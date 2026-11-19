@@ -90,7 +90,8 @@ public:
      * @param targetBundleName Bundle name of the target application
      * @param appIndex Application index
      */
-    bool GrantDmsUriPermission(Want &want, uint32_t callerTokenId, std::string targetBundleName, int32_t appIndex);
+    bool GrantDmsUriPermission(Want &want, uint32_t callerTokenId, std::string targetBundleName, int32_t appIndex,
+        int32_t userId = -1);
 
     /**
      * @brief Grant URI permission for service extension ability
@@ -129,7 +130,8 @@ public:
      * @param initiatorTokenId Token ID of the initiator
      */
     void GrantUriPermission(const std::vector<std::string> &uriVec, int32_t flag,
-        const std::string &targetBundleName, int32_t appIndex, uint32_t initiatorTokenId);
+        const std::string &targetBundleName, int32_t appIndex, uint32_t initiatorTokenId,
+        int32_t userId = -1);
 #endif // SUPPORT_UPMS
 private:
     UriUtils();
@@ -145,7 +147,7 @@ private:
      * @return true if permission was successfully granted, false otherwise
      */
     bool GrantShellUriPermission(const std::vector<std::string> &strUriVec, uint32_t flag,
-        const std::string &targetPkg, int32_t appIndex);
+        const std::string &targetPkg, int32_t appIndex, int32_t userId = -1);
     
     /**
      * @brief Internal implementation of URI permission granting

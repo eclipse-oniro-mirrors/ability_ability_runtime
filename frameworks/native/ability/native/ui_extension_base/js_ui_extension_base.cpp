@@ -20,6 +20,7 @@
 
 #include "ability_info.h"
 #include "ability_manager_client.h"
+#include "accesstoken_kit.h"
 #include "array_wrapper.h"
 #include "configuration_utils.h"
 #include "connection_manager.h"
@@ -29,6 +30,7 @@
 #include "hitrace_meter.h"
 #include "insight_intent_executor_mgr.h"
 #include "int_wrapper.h"
+#include "ipc_skeleton.h"
 #include "js_ability_lifecycle_callback.h"
 #include "js_data_struct_converter.h"
 #include "js_extension_common.h"
@@ -44,6 +46,7 @@
 #include "napi_common_want.h"
 #include "napi_remote_object.h"
 #include "string_wrapper.h"
+#include "tokenid_kit.h"
 #include "ui_extension_window_command.h"
 #include "want_params_wrapper.h"
 #include "application_configuration_manager.h"
@@ -152,14 +155,16 @@ std::shared_ptr<ExtensionCommon> JsUIExtensionBase::Init(const std::shared_ptr<A
     }
     std::string srcPath(abilityInfo_->moduleName + "/");
     srcPath.append(abilityInfo_->srcEntrance);
-    srcPath.erase(srcPath.rfind('.'));
+    RemoveFileExtension(srcPath);
     srcPath.append(".abc");
 
     std::string moduleName(abilityInfo_->moduleName);
     moduleName.append("::").append(abilityInfo_->name);
     HandleScope handleScope(jsRuntime_);
 
-    jsObj_ = jsRuntime_.LoadModule(
+    std::string key = moduleName + "::" + srcPath;
+    std::unique_ptr<NativeReference> moduleObj = nullptr;
+    jsObj_ = jsRuntime_.PopPreloadObj(key, moduleObj) ? std::move(moduleObj) : jsRuntime_.LoadModule(
         moduleName, srcPath, abilityInfo_->hapPath, abilityInfo_->compileMode == CompileMode::ES_MODULE, false,
         abilityInfo_->srcEntrance);
     if (jsObj_ == nullptr) {
@@ -192,7 +197,7 @@ void JsUIExtensionBase::RegisterAbilityConfigUpdateCallback()
         }
         if (abilityContext->GetAbilityConfiguration() == nullptr) {
             auto abilityModuleContext = abilityContext->CreateModuleContext(
-                abilityContext->GetAbilityInfo()->moduleName);
+                abilityContext->GetAbilityInfo()->moduleName, abilityContext);
             if (abilityModuleContext == nullptr) {
                 TAG_LOGE(AAFwkTag::UIABILITY, "null abilityModuleContext");
                 return;
@@ -309,6 +314,10 @@ void JsUIExtensionBase::OnStart(
         napiWant
     };
     CallObjectMethod("onCreate", argv, ARGC_TWO);
+
+    if (!OnGetConfigurationStrategy(sessionInfo)) {
+        TAG_LOGW(AAFwkTag::UI_EXT, "OnGetConfigurationStrategy failed");
+    }
 }
 
 void JsUIExtensionBase::OnStop()
@@ -545,7 +554,7 @@ bool JsUIExtensionBase::ForegroundWindowWithInsightIntent(const AAFwk::Want &wan
             }
             InsightIntentExecuteParam executeParam;
             InsightIntentExecuteParam::GenerateFromWant(want, executeParam);
-            if (result.uris.size() > 0) {
+            if (result.uris.size() > 0 || result.interactionInfo != nullptr) {
                 extension->ExecuteInsightIntentDone(executeParam.insightIntentId_, result);
             }
             extension->PostInsightIntentExecuted(sessionInfo, result, needForeground);
@@ -640,24 +649,9 @@ void JsUIExtensionBase::OnInsightIntentExecuteDone(const sptr<AAFwk::SessionInfo
             params.SetParam(INSIGHT_INTENT_EXECUTE_RESULT, pWantParams);
             ret = res->second->TransferExtensionData(params);
         } else {
-            WantParams resultParams;
-            resultParams.SetParam("code", Integer::Box(result.code));
-            if (result.result != nullptr) {
-                sptr<AAFwk::IWantParams> pWantParams = WantParamWrapper::Box(*result.result);
-                resultParams.SetParam("result", pWantParams);
-            }
-            auto size = result.uris.size();
-            sptr<IArray> uriArray = new (std::nothrow) Array(size, g_IID_IString);
-            if (uriArray == nullptr) {
-                TAG_LOGE(AAFwkTag::UI_EXT, "new uriArray failed");
-                return;
-            }
-            for (std::size_t i = 0; i < size; i++) {
-                uriArray->Set(i, String::Box(result.uris[i]));
-            }
-            resultParams.SetParam("uris", uriArray);
-            resultParams.SetParam("flags", Integer::Box(result.flags));
-            sptr<AAFwk::IWantParams> pWantParams = WantParamWrapper::Box(resultParams);
+            auto resultParams = result.BuildFunctionResult();
+            resultParams->SetParam("code", Integer::Box(result.code));
+            sptr<AAFwk::IWantParams> pWantParams = WantParamWrapper::Box(*resultParams);
             params.SetParam(INSIGHT_INTENT_EXECUTE_RESULT, pWantParams);
 
             ret = res->second->TransferExtensionData(params);
@@ -769,7 +763,7 @@ sptr<Rosen::WindowOption> JsUIExtensionBase::CreateWindowOption(const sptr<AAFwk
     option->SetParentWindowType(static_cast<Rosen::WindowType>(sessionInfo->parentWindowType));
     option->SetUIExtensionUsage(static_cast<uint32_t>(sessionInfo->uiExtensionUsage));
     option->SetDensity(sessionInfo->density);
-    option->SetIsDensityFollowHost(sessionInfo->isDensityFollowHost);
+    option->SetDpiFollowStrategy(static_cast<Rosen::DpiFollowStrategy>(sessionInfo->dpiFollowStrategy));
     if (context_->isNotAllow != -1) {
         bool isNotAllow = context_->isNotAllow == 1 ? true : false;
         TAG_LOGD(AAFwkTag::UI_EXT, "isNotAllow: %{public}d", isNotAllow);
@@ -789,6 +783,7 @@ sptr<Rosen::WindowOption> JsUIExtensionBase::CreateWindowOption(const sptr<AAFwk
         option->SetIsBlockSubwindow(true);
     }
     option->SetStartModalExtensionTimeStamp(launchTimestamp);
+    option->SetCallerPid(want.GetIntParam(AAFwk::Want::PARAM_RESV_CALLER_PID, -1));
     return option;
 }
 
@@ -801,10 +796,6 @@ bool JsUIExtensionBase::HandleSessionCreate(const AAFwk::Want &want, const sptr<
     TAG_LOGD(AAFwkTag::UI_EXT, "UIExtension component id: %{public}" PRId64 ", bundle/ability:%{public}s/%{public}s",
         sessionInfo->uiExtensionComponentId, want.GetElement().GetBundleName().c_str(),
         want.GetElement().GetAbilityName().c_str());
-    if (sessionInfo == nullptr || sessionInfo->uiExtensionComponentId == 0) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "Invalid sessionInfo");
-        return false;
-    }
     std::shared_ptr<AAFwk::Want> sharedWant = std::make_shared<AAFwk::Want>(want);
     auto componentId = sessionInfo->uiExtensionComponentId;
     if (uiWindowMap_.find(componentId) == uiWindowMap_.end()) {
@@ -832,6 +823,7 @@ bool JsUIExtensionBase::HandleSessionCreate(const AAFwk::Want &want, const sptr<
         if (!CallJsOnSessionCreate(*sharedWant, sessionInfo, uiWindow, componentId)) {
             return false;
         }
+        RegisterBrandColorChangeListener(uiWindow);
         uiWindowMap_[componentId] = uiWindow;
 #ifdef SUPPORT_GRAPHICS
         if (context_->GetWindow() == nullptr) {
@@ -908,6 +900,10 @@ void JsUIExtensionBase::DestroyWindow(const sptr<AAFwk::SessionInfo> &sessionInf
     }
     auto &uiWindow = uiWindowMap_[componentId];
     if (uiWindow) {
+        if (context_ != nullptr &&
+            context_->GetBrandColorStrategy() == AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC) {
+            uiWindow->UnregisterAbilityDataConsumer();
+        }
         uiWindow->Destroy();
     }
     uiWindowMap_.erase(componentId);
@@ -959,11 +955,17 @@ void JsUIExtensionBase::OnConfigurationUpdated(const AppExecFwk::Configuration &
         return;
     }
 
+    AppExecFwk::Configuration config = configuration;
+    if (context_->GetBrandColorStrategy() == AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC) {
+        config.RemoveItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED);
+        config.RemoveItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID);
+    }
+
     auto abilityConfig = context_->GetAbilityConfiguration();
     auto configUtils = std::make_shared<ConfigurationUtils>();
-
+    auto fullConfig = context_->GetConfiguration();
     if (abilityConfig != nullptr) {
-        auto newConfig = configUtils->UpdateGlobalConfig(configuration, context_->GetConfiguration(),
+        auto newConfig = configUtils->UpdateGlobalConfig(config, fullConfig,
             abilityConfig, context_->GetResourceManager());
         if (newConfig.GetItemSize() == 0) {
             return;
@@ -975,10 +977,14 @@ void JsUIExtensionBase::OnConfigurationUpdated(const AppExecFwk::Configuration &
         }
     } else {
         auto configUtils = std::make_shared<ConfigurationUtils>();
-        configUtils->UpdateGlobalConfig(configuration, context_->GetConfiguration(), context_->GetResourceManager());
+        configUtils->UpdateGlobalConfig(config, fullConfig, context_->GetResourceManager());
     }
 
     ConfigurationUpdated();
+    if (fullConfig != nullptr &&
+        !fullConfig->GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty()) {
+        fullConfig->RemoveItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED);
+    }
 }
 
 void JsUIExtensionBase::OnAbilityConfigurationUpdated(const AppExecFwk::Configuration& configuration)
@@ -1001,6 +1007,120 @@ void JsUIExtensionBase::OnAbilityConfigurationUpdated(const AppExecFwk::Configur
     }
 
     ConfigurationUpdated();
+}
+
+bool JsUIExtensionBase::OnGetConfigurationStrategy(const sptr<AAFwk::SessionInfo> &sessionInfo)
+{
+    TAG_LOGD(AAFwkTag::UI_EXT, "OnGetConfigurationStrategy begin");
+    auto selfToken = IPCSkeleton::GetSelfTokenID();
+    if (!Security::AccessToken::TokenIdKit::IsSystemAppByFullTokenID(selfToken)) {
+        TAG_LOGW(AAFwkTag::UI_EXT, "not system app, can not use onGetConfigurationStrategy");
+        return false;
+    }
+    HandleScope handleScope(jsRuntime_);
+    napi_env env = jsRuntime_.GetNapiEnv();
+
+    napi_value result = CallObjectMethod("onGetConfigurationStrategy", nullptr, 0, true);
+    if (result == nullptr) {
+        TAG_LOGI(AAFwkTag::UI_EXT, "onGetConfigurationStrategy not implemented");
+        return true;
+    }
+
+    napi_value brandColorValue = nullptr;
+    napi_status status = napi_get_named_property(env, result, "brandColorStrategy", &brandColorValue);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "brandColorStrategy not found in ConfigurationStrategy");
+        return false;
+    }
+
+    int32_t brandColorStrategy = 0;
+    if (!ConvertFromJsValue(env, brandColorValue, brandColorStrategy)) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "Convert brandColorStrategy failed");
+        return false;
+    }
+
+    auto strategy =
+        brandColorStrategy == static_cast<int32_t>(AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC)
+            ? AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC
+            : AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM;
+    if (context_ == nullptr || sessionInfo  == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null ptr");
+        return false;
+    }
+    if (!context_->ApplyBrandColorStrategy(strategy, sessionInfo->brandColorStr)) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "ApplyBrandColorStrategy failed");
+        return false;
+    }
+    return true;
+}
+
+void JsUIExtensionBase::RegisterBrandColorChangeListener(const sptr<Rosen::Window> &uiWindow)
+{
+    if (uiWindow == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null uiWindow");
+        return;
+    }
+    if (context_ == nullptr ||
+        context_->GetBrandColorStrategy() != AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC) {
+        TAG_LOGI(AAFwkTag::UI_EXT, "brandColorStrategy not FOLLOW_UEC, skip register");
+        return;
+    }
+    auto self = shared_from_this();
+    std::weak_ptr<JsUIExtensionBase> weakThis = self;
+    auto windowNotifeBrandColorChange = [weakThis](Rosen::SubSystemId id,
+                                                   uint32_t customId,
+                                                   AAFwk::Want &&data,
+                                                   std::optional<AAFwk::Want> &reply) -> int32_t {
+        auto ptr = weakThis.lock();
+        if (ptr == nullptr) {
+            TAG_LOGE(AAFwkTag::UI_EXT, "null ptr");
+            return ERR_INVALID_VALUE;
+        }
+        return ptr->WindowNotifeBrandColorChange(id, customId, std::move(data), reply);
+    };
+    if (uiWindow->RegisterAbilityDataConsumer(windowNotifeBrandColorChange) != Rosen::WMError::WM_OK) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "RegisterAbilityDataConsumer error");
+    }
+    TAG_LOGD(AAFwkTag::UI_EXT, "RegisterAbilityDataConsumer ok");
+}
+
+int32_t JsUIExtensionBase::WindowNotifeBrandColorChange(Rosen::SubSystemId id, uint32_t customId, AAFwk::Want &&data,
+                                                        std::optional<AAFwk::Want> &reply)
+{
+    if (context_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "context null");
+        return ERR_INVALID_VALUE;
+    }
+    auto ret = context_->HandleBrandColorChange(customId, std::move(data));
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
+    AppExecFwk::Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED, "true");
+    auto self = std::static_pointer_cast<JsUIExtensionBase>(shared_from_this());
+    auto task = [self, config]() {
+        if (self == nullptr) {
+            TAG_LOGE(AAFwkTag::UI_EXT, "null self");
+            return;
+        }
+        auto context = self->context_;
+        if (context == nullptr) {
+            TAG_LOGE(AAFwkTag::UI_EXT, "null context");
+            return;
+        }
+        context->SetAbilityConfiguration(config);
+        self->OnAbilityConfigurationUpdated(config);
+        auto abilityConfig = context->GetAbilityConfiguration();
+        if (abilityConfig != nullptr) {
+            abilityConfig->RemoveItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED);
+        }
+    };
+    if (handler_ == nullptr || !handler_->PostTask(task, "JsUIExtensionBase:OnBrandColorChange")) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "PostTask failed");
+        return ERR_INVALID_VALUE;
+    }
+    return ERR_OK;
 }
 
 void JsUIExtensionBase::Dump(const std::vector<std::string> &params, std::vector<std::string> &info)

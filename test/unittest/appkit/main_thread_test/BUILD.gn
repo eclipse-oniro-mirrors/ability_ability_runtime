@@ -21,6 +21,7 @@ ohos_unittest("main_thread_test") {
   include_dirs = [
     "${ability_runtime_path}/interfaces/kits/native/appkit/dfr",
     "${ability_runtime_test_path}/mock/services_appmgr_test/include",
+    "${ability_runtime_test_path}/mock/frameworks_kits_runtime_test",
   ]
 
   sources = [

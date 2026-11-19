@@ -28,19 +28,6 @@ constexpr int32_t PID_LENGTH = 16;
 constexpr int32_t REQUEST_CODE_PID_LENGTH = 48;
 constexpr int32_t VALID_REQUEST_CODE_LENGTH = 49;
 }
-bool StartupUtil::GetAppIndex(const AAFwk::Want &want, int32_t &appIndex)
-{
-    if (want.HasParameter(ServerConstant::DLP_INDEX)) {
-        appIndex = want.GetIntParam(ServerConstant::DLP_INDEX, 0);
-        return appIndex > GlobalConstant::MAX_APP_CLONE_INDEX;
-    }
-    if (want.HasParameter(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY)) {
-        appIndex = want.GetIntParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, 0);
-        return (appIndex >= 0 && appIndex <= GlobalConstant::MAX_APP_CLONE_INDEX);
-    }
-    appIndex = 0;
-    return true;
-}
 
 int32_t StartupUtil::BuildAbilityInfoFlag()
 {
@@ -51,7 +38,7 @@ int32_t StartupUtil::BuildAbilityInfoFlag()
 
 bool StartupUtil::IsSupportAppClone(AppExecFwk::ExtensionAbilityType type)
 {
-    return type == AppExecFwk::ExtensionAbilityType::WORK_SCHEDULER ||
+    bool result = type == AppExecFwk::ExtensionAbilityType::WORK_SCHEDULER ||
         type == AppExecFwk::ExtensionAbilityType::BACKUP ||
         type == AppExecFwk::ExtensionAbilityType::SHARE ||
         type == AppExecFwk::ExtensionAbilityType::PUSH ||
@@ -59,7 +46,12 @@ bool StartupUtil::IsSupportAppClone(AppExecFwk::ExtensionAbilityType type)
         type == AppExecFwk::ExtensionAbilityType::REMOTE_NOTIFICATION ||
         type == AppExecFwk::ExtensionAbilityType::VOIP ||
         type == AppExecFwk::ExtensionAbilityType::FAULT_LOG ||
-        type == AppExecFwk::ExtensionAbilityType::EMBEDDED_UI;
+        type == AppExecFwk::ExtensionAbilityType::EMBEDDED_UI ||
+        type == AppExecFwk::ExtensionAbilityType::MODULAR_OBJECT;
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    result = true;
+#endif
+    return result;
 }
 
 void StartupUtil::InitAbilityInfoFromExtension(AppExecFwk::ExtensionAbilityInfo &extensionInfo,

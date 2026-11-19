@@ -69,6 +69,7 @@ ohos_unittest("extension_record_base_first_test") {
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
     "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
   ]
 
   defines = []

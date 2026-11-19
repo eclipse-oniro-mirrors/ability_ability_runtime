@@ -658,8 +658,9 @@ napi_value WrapWantParams(napi_env env, const AAFwk::WantParams &wantParams)
     napi_value jsObject = nullptr;
     NAPI_CALL(env, napi_create_object(env, &jsObject));
 
-    napi_value jsValue = nullptr;
     const std::map<std::string, sptr<AAFwk::IInterface>> paramList = wantParams.GetParams();
+
+    napi_value jsValue = nullptr;
     for (auto iter = paramList.begin(); iter != paramList.end(); iter++) {
         jsValue = nullptr;
         if (AAFwk::IString::Query(iter->second) != nullptr) {
@@ -1209,6 +1210,24 @@ bool UnwrapWant(napi_env env, napi_value param, Want &want)
     return UnwrapWant(env, param, want, "");
 }
 
+void SetUriWithPassThroughFlag(const std::string &uriString, Want &want)
+{
+    if (!want.GetBoolParam(Want::PARAM_SET_URI_WITH_ORIGIN_STRING, false)) {
+        want.SetUri(uriString);
+        return;
+    }
+    auto selfToken = IPCSkeleton::GetSelfTokenID();
+    if (Security::AccessToken::TokenIdKit::IsSystemAppByFullTokenID(selfToken)) {
+        // Restore the raw uri when the pass-through flag is set, so that the
+        // non-standard scheme uri survives re-marshalling.
+        Uri uri(uriString);
+        uri.SetUriWithOriginString();
+        want.SetUri(uri);
+    } else {
+        want.SetUri(uriString);
+    }
+}
+
 bool UnwrapWant(napi_env env, napi_value param, Want &want, const std::string &proNameNotFilter)
 {
     AbilityRuntime::HandleScope handleScope(env);
@@ -1239,7 +1258,7 @@ bool UnwrapWant(napi_env env, napi_value param, Want &want, const std::string &p
 
     natValueString = "";
     if (UnwrapStringByPropertyName(env, param, "uri", natValueString)) {
-        want.SetUri(natValueString);
+        SetUriWithPassThroughFlag(natValueString, want);
     }
 
     int32_t flags = 0;

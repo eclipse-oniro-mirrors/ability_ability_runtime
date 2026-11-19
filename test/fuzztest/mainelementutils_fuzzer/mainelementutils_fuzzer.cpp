@@ -38,7 +38,6 @@ static void GenerateLoadParam(FuzzedDataProvider& fdp, AbilityRuntime::LoadParam
     loadParam.isKeepAlive = fdp.ConsumeBool();
     loadParam.isMainElementRunning = fdp.ConsumeBool();
     loadParam.isKeepAliveAppService = fdp.ConsumeBool();
-    loadParam.isCallerSetProcess = fdp.ConsumeBool();
     loadParam.customProcessFlag = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
     loadParam.extensionProcessMode = fdp.ConsumeIntegral<uint32_t>();
     loadParam.extensionLoadParam.networkEnableFlags = fdp.ConsumeBool();

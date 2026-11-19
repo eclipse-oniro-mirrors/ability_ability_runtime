@@ -29,11 +29,7 @@ ohos_unittest("cj_application_context_test") {
     "${ability_runtime_path}/cj_environment/interfaces/inner_api",
   ]
 
-  sources = [
-    "${ability_runtime_path}/frameworks/cj/ffi/application_context/src/cj_application_context.cpp",
-    "${ability_runtime_path}/frameworks/cj/ffi/cj_application_context_ffi.cpp",
-    "cj_application_context_test.cpp",
-  ]
+  sources = [ "cj_application_context_test.cpp" ]
 
   configs =
       [ "${ability_runtime_path}/frameworks/cj/ffi:cj_ability_public_config" ]
@@ -47,16 +43,18 @@ ohos_unittest("cj_application_context_test") {
     "${ability_runtime_innerkits_path}/ability_manager:mission_info",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
-    "${ability_runtime_native_path}/ability:ability_context_native",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
+    "${ability_runtime_innerkits_path}/wantagent:wantagent_innerkits",
     "${ability_runtime_native_path}/ability/native:ability_thread",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_native_path}/ability/native:auto_startup_callback",
     "${ability_runtime_native_path}/ability/native:uiabilitykit_native",
+    "${ability_runtime_native_path}/ability:ability_context_native",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_native_path}/appkit:app_context_utils",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_native_path}/appkit:appkit_native",
-    "${ability_runtime_path}/frameworks/cj/ffi:cj_ability_ffi",
+    "${ability_runtime_path}/frameworks/cj/ffi:cj_ability_ffi_source",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
   ]
 
@@ -65,9 +63,6 @@ ohos_unittest("cj_application_context_test") {
     "ability_base:configuration",
     "ability_base:session_info",
     "ability_base:want",
-    "ability_runtime:ability_context_native",
-    "ability_runtime:runtime",
-    "ability_runtime:wantagent_innerkits",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
@@ -83,6 +78,7 @@ ohos_unittest("cj_application_context_test") {
     "napi:ace_napi",
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
+    "node:node_header_notice",
     "resource_management:global_resmgr",
     "samgr:samgr_proxy",
     "window_manager:cj_window_ffi",

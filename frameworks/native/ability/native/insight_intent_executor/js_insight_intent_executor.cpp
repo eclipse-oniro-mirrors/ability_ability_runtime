@@ -30,6 +30,7 @@
 #include "napi_common_util.h"
 #include "napi_common_want.h"
 #include "native_reference.h"
+#include "path_utils.h"
 
 #undef STATE_PATTERN_NAIVE_H
 #define STATE_PATTERN_NAIVE_STATE state_
@@ -94,6 +95,13 @@ bool JsInsightIntentExecutor::Init(const InsightIntentExecutorInfo& insightInten
     napi_value jsInstanceId = nullptr;
     napi_create_int64(env, context->GetIntentId(), &jsInstanceId);
     napi_set_named_property(env, contextNapiVal, "instanceId", jsInstanceId);
+    std::string toolCallId = context->GetToolCallId();
+    napi_value jsToolCallId = nullptr;
+    if (!toolCallId.empty() &&
+        napi_create_string_utf8(env, toolCallId.c_str(), toolCallId.size(), &jsToolCallId) == napi_ok &&
+        jsToolCallId != nullptr) {
+        napi_set_named_property(env, contextNapiVal, "toolCallId", jsToolCallId);
+    }
     if (!CheckTypeForNapiValue(env, executorNapiVal, napi_object) ||
         !CheckTypeForNapiValue(env, contextNapiVal, napi_object) ||
         napi_set_named_property(env, executorNapiVal, "context", contextNapiVal) != napi_ok) {
@@ -180,6 +188,14 @@ std::unique_ptr<NativeReference> JsInsightIntentExecutor::LoadJsCode(
     auto executeParam = info.executeParam;
     if (executeParam == nullptr) {
         TAG_LOGE(AAFwkTag::INTENT, "null executeParam");
+        return std::unique_ptr<NativeReference>();
+    }
+    if (!IsPathValid(executeParam->moduleName_) || !IsPathValid(info.srcEntry)) {
+        TAG_LOGE(AAFwkTag::INTENT, "invalid moduleName or srcEntry");
+        return std::unique_ptr<NativeReference>();
+    }
+    if (!info.hapPath.empty() && !IsPathValid(info.hapPath)) {
+        TAG_LOGE(AAFwkTag::INTENT, "invalid hapPath");
         return std::unique_ptr<NativeReference>();
     }
 

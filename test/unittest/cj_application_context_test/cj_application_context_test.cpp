@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -143,6 +143,113 @@ HWTEST_F(CjApplicationContextTest, CJApplicationContextTestOnOnEnvironment_001, 
 }
 
 /**
+ * @tc.name: CJApplicationContextTestOnOnEnvironmentV2_001
+ * @tc.desc: CjApplicationContextTest test for OnOnEnvironmentV2.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjApplicationContextTest, CJApplicationContextTestOnOnEnvironmentV2_001, TestSize.Level1)
+{
+    auto cfgCallback = [](AbilityRuntime::CConfigurationV2) {};
+    auto memCallback = [](int32_t) {};
+    int32_t err = 0;
+    auto ret =
+        CJApplicationContext::GetInstance()->OnOnEnvironmentV2(cfgCallback, memCallback, true, err);
+    EXPECT_EQ(ret, -1);
+
+    CJApplicationContext::GetInstance()->envCallback_ = nullptr;
+    ret = CJApplicationContext::GetInstance()->OnOnEnvironmentV2(cfgCallback, memCallback, true, err);
+    EXPECT_EQ(ret, -1);
+}
+
+/**
+ * @tc.name: CJApplicationContextTestOnConfigurationUpdatedDispatch_001
+ * @tc.desc: Test V2 priority - when both V1 and V2 registered, only V2 is called
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjApplicationContextTest, CJApplicationContextTestOnConfigurationUpdatedDispatch_001, TestSize.Level1)
+{
+    bool v1Called = false;
+    bool v2Called = false;
+    auto cfgCallbackV1 = [&v1Called](AbilityRuntime::CConfiguration) { v1Called = true; };
+    auto cfgCallbackV2 = [&v2Called](AbilityRuntime::CConfigurationV2) { v2Called = true; };
+    auto memCallback = [](int32_t) {};
+
+    auto cb = std::make_shared<CjEnvironmentCallback>();
+    cb->Register(cfgCallbackV1, memCallback, false);
+    cb->RegisterV2(cfgCallbackV2, memCallback, false);
+
+    AppExecFwk::Configuration config;
+    cb->OnConfigurationUpdated(config);
+
+    EXPECT_FALSE(v1Called);
+    EXPECT_TRUE(v2Called);
+}
+
+/**
+ * @tc.name: CJApplicationContextTestOnConfigurationUpdatedDispatch_002
+ * @tc.desc: Test V1 fallback - when only V1 registered, V1 is called
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjApplicationContextTest, CJApplicationContextTestOnConfigurationUpdatedDispatch_002, TestSize.Level1)
+{
+    bool v1Called = false;
+    auto cfgCallbackV1 = [&v1Called](AbilityRuntime::CConfiguration) { v1Called = true; };
+    auto memCallback = [](int32_t) {};
+
+    auto cb = std::make_shared<CjEnvironmentCallback>();
+    cb->Register(cfgCallbackV1, memCallback, false);
+
+    AppExecFwk::Configuration config;
+    cb->OnConfigurationUpdated(config);
+
+    EXPECT_TRUE(v1Called);
+}
+
+/**
+ * @tc.name: CJApplicationContextTestOnConfigurationUpdatedDispatch_003
+ * @tc.desc: Test V2 only - when only V2 registered, V2 is called
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjApplicationContextTest, CJApplicationContextTestOnConfigurationUpdatedDispatch_003, TestSize.Level1)
+{
+    bool v2Called = false;
+    auto cfgCallbackV2 = [&v2Called](AbilityRuntime::CConfigurationV2) { v2Called = true; };
+    auto memCallback = [](int32_t) {};
+
+    auto cb = std::make_shared<CjEnvironmentCallback>();
+    cb->RegisterV2(cfgCallbackV2, memCallback, false);
+
+    AppExecFwk::Configuration config;
+    cb->OnConfigurationUpdated(config);
+
+    EXPECT_TRUE(v2Called);
+}
+
+/**
+ * @tc.name: CJApplicationContextTestUnRegisterV2_001
+ * @tc.desc: Test UnRegister removes V2 callback correctly
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjApplicationContextTest, CJApplicationContextTestUnRegisterV2_001, TestSize.Level1)
+{
+    bool v2Called = false;
+    auto cfgCallbackV2 = [&v2Called](AbilityRuntime::CConfigurationV2) { v2Called = true; };
+    auto memCallback = [](int32_t) {};
+
+    auto cb = std::make_shared<CjEnvironmentCallback>();
+    int32_t callbackId = cb->RegisterV2(cfgCallbackV2, memCallback, false);
+    EXPECT_NE(callbackId, -1);
+
+    cb->UnRegister(callbackId, false);
+
+    AppExecFwk::Configuration config;
+    cb->OnConfigurationUpdated(config);
+
+    EXPECT_FALSE(v2Called);
+    EXPECT_TRUE(cb->IsEmpty());
+}
+
+/**
  * @tc.name: CJApplicationContextTestOnOnAbilityLifecycle_001
  * @tc.desc: CjApplicationContextTest test for OnOnAbilityLifecycle.
  * @tc.type: FUNC
@@ -258,12 +365,16 @@ HWTEST_F(CjApplicationContextTest, CJApplicationContextTestDispatchOnWindowStage
     std::shared_ptr<CjAbilityLifecycleCallbackImpl> mock;
     CJApplicationContext::GetInstance()->RegisterAbilityLifecycleCallback(mock);
     auto win = std::make_shared<Rosen::WindowScene>();
-    auto winStage = new Rosen::CJWindowStageImpl(win);
-    WindowStagePtr windowStage = reinterpret_cast<WindowStagePtr>(winStage);
+    int64_t winStageId = OHOS_CreateCJWindowStage(win);
+    auto winStage = FFIData::GetData<Rosen::CJWindowStageImpl>(winStageId);
+    if (winStage.GetRefPtr() == nullptr) {
+        return;
+    }
+    WindowStagePtr windowStage = reinterpret_cast<WindowStagePtr>(winStage.GetRefPtr());
     CJApplicationContext::GetInstance()->DispatchOnWindowStageCreate(10, windowStage);
     CJApplicationContext::GetInstance()->UnregisterAbilityLifecycleCallback(mock);
     EXPECT_TRUE(CJApplicationContext::callbacks_.empty());
-    delete winStage;
+    FFIDataManager::GetInstance()->RemoveFFIData(winStageId);
 }
 
 /**
@@ -276,13 +387,17 @@ HWTEST_F(CjApplicationContextTest, CJApplicationContextTestDispatchWindowStageFo
     std::shared_ptr<CjAbilityLifecycleCallbackImpl> mock;
     CJApplicationContext::GetInstance()->RegisterAbilityLifecycleCallback(mock);
     auto win = std::make_shared<Rosen::WindowScene>();
-    auto winStage = new Rosen::CJWindowStageImpl(win);
-    WindowStagePtr windowStage = reinterpret_cast<WindowStagePtr>(winStage);
+    int64_t winStageId = OHOS_CreateCJWindowStage(win);
+    auto winStage = FFIData::GetData<Rosen::CJWindowStageImpl>(winStageId);
+    if (winStage.GetRefPtr() == nullptr) {
+        return;
+    }
+    WindowStagePtr windowStage = reinterpret_cast<WindowStagePtr>(winStage.GetRefPtr());
     CJApplicationContext::GetInstance()->DispatchWindowStageFocus(10, windowStage);
     CJApplicationContext::GetInstance()->DispatchWindowStageUnfocus(10, windowStage);
     CJApplicationContext::GetInstance()->DispatchOnWindowStageDestroy(10, windowStage);
     CJApplicationContext::GetInstance()->UnregisterAbilityLifecycleCallback(mock);
-    delete winStage;
+    FFIDataManager::GetInstance()->RemoveFFIData(winStageId);
     EXPECT_TRUE(CJApplicationContext::callbacks_.empty());
 }
 
@@ -314,14 +429,18 @@ HWTEST_F(CjApplicationContextTest, CJApplicationContextTest_Ability_002, TestSiz
     std::shared_ptr<CjAbilityLifecycleCallbackImpl> mock;
     CJApplicationContext::GetInstance()->RegisterAbilityLifecycleCallback(mock);
     auto win = std::make_shared<Rosen::WindowScene>();
-    auto winStage = new Rosen::CJWindowStageImpl(win);
-    WindowStagePtr windowStage = reinterpret_cast<WindowStagePtr>(winStage);
+    int64_t winStageId = OHOS_CreateCJWindowStage(win);
+    auto winStage = FFIData::GetData<Rosen::CJWindowStageImpl>(winStageId);
+    if (winStage.GetRefPtr() == nullptr) {
+        return;
+    }
+    WindowStagePtr windowStage = reinterpret_cast<WindowStagePtr>(winStage.GetRefPtr());
     CJApplicationContext::GetInstance()->DispatchOnWindowStageWillCreate(10, windowStage);
     CJApplicationContext::GetInstance()->DispatchOnWindowStageWillDestroy(10, windowStage);
     CJApplicationContext::GetInstance()->DispatchOnAbilityWillDestroy(10);
     CJApplicationContext::GetInstance()->DispatchOnAbilityWillForeground(10);
     CJApplicationContext::GetInstance()->UnregisterAbilityLifecycleCallback(mock);
-    delete winStage;
+    FFIDataManager::GetInstance()->RemoveFFIData(winStageId);
     EXPECT_TRUE(CJApplicationContext::callbacks_.empty());
 }
 
@@ -335,8 +454,12 @@ HWTEST_F(CjApplicationContextTest, CJApplicationContextTest_Ability_003, TestSiz
     std::shared_ptr<CjAbilityLifecycleCallbackImpl> mock;
     CJApplicationContext::GetInstance()->RegisterAbilityLifecycleCallback(mock);
     auto win = std::make_shared<Rosen::WindowScene>();
-    auto winStage = new Rosen::CJWindowStageImpl(win);
-    WindowStagePtr windowStage = reinterpret_cast<WindowStagePtr>(winStage);
+    int64_t winStageId = OHOS_CreateCJWindowStage(win);
+    auto winStage = FFIData::GetData<Rosen::CJWindowStageImpl>(winStageId);
+    if (winStage.GetRefPtr() == nullptr) {
+        return;
+    }
+    WindowStagePtr windowStage = reinterpret_cast<WindowStagePtr>(winStage.GetRefPtr());
     CJApplicationContext::GetInstance()->DispatchOnAbilityWillBackground(10);
     CJApplicationContext::GetInstance()->DispatchOnNewWant(10);
     CJApplicationContext::GetInstance()->DispatchOnWillNewWant(10);
@@ -346,7 +469,7 @@ HWTEST_F(CjApplicationContextTest, CJApplicationContextTest_Ability_003, TestSiz
     CJApplicationContext::GetInstance()->DispatchOnAbilityWillSaveState(10);
     CJApplicationContext::GetInstance()->DispatchOnAbilitySaveState(10);
     CJApplicationContext::GetInstance()->UnregisterAbilityLifecycleCallback(mock);
-    delete winStage;
+    FFIDataManager::GetInstance()->RemoveFFIData(winStageId);
     EXPECT_TRUE(CJApplicationContext::callbacks_.empty());
 }
 

@@ -1,0 +1,448 @@
+/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef OHOS_APP_EXECFWK_TASK_MGR_TASK_MANAGER_SERVICE_H
+#define OHOS_APP_EXECFWK_TASK_MGR_TASK_MANAGER_SERVICE_H
+
+#include <atomic>
+#include <functional>
+#include <memory>
+#include <string>
+#include <unordered_map>
+
+#include "ffrt.h"
+
+#include "i_task_state_callback.h"
+#include "task_mgr/task_record.h"
+
+namespace OHOS {
+namespace AppExecFwk {
+    
+class TaskManagerService {
+public:
+    static TaskManagerService &GetInstance();
+
+    /**
+     * @brief Caller identity captured on the binder thread, taken from the IPC framework
+     *        so that it cannot be forged by parameters.
+     */
+    struct TaskCallerInfo {
+        int32_t uid = -1;            ///< uid of the calling app (app identity, shared by its processes)
+        pid_t pid = -1;              ///< pid of the calling process
+        uint32_t tokenId = 0;        ///< token id of the calling process
+        int32_t userId = -1;         ///< userId derived from the calling uid
+        std::string bundleName;      ///< bundle name of the calling app
+    };
+
+    /**
+     * @brief Starts a task: validate parameters, judge the priority from the caller state and
+     *        the system load, then create the record under the mutex.
+     * @param taskId Indicates the attribution key of the task.
+     * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
+     *         ERR_TASK_ALREADY_EXISTS if the task already exists.
+     */
+    int32_t StartTask(const std::string &taskId);
+
+    /**
+     * @brief Finishes a task: validate, then clean up under the mutex; the pending timeout
+     *        timer is stopped and the finish hook is notified after the mutex is released.
+     * @param taskId Indicates the attribution key of the task.
+     * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
+     *         ERR_TASK_NOT_FOUND if the task does not exist (idempotent).
+     */
+    int32_t FinishTask(const std::string &taskId);
+
+    /**
+     * @brief Handles the expiry of a task timeout, executed on the FFRT timer callback.
+     *        FinishTaskInner re-checks existence and the deadline under the mutex, so a
+     *        race with an explicit finish or a rebuilt record stays a no-op (double
+     *        insurance).
+     * @param taskId Indicates the attribution key of the task.
+     * @param expectedDeadline Indicates the deadline captured when the timer was started.
+     */
+    void OnTaskTimeout(const std::string &taskId, int64_t expectedDeadline);
+
+    /**
+     * @brief Ends every task whose creator matches the (pid, uid) pair of the dead process
+     *        and removes the dead pid from every managed set. Thread-safe, callable from
+     *        any thread (e.g. the death-recipient thread). Also funnels the death into
+     *        process_schedule so its index and exemptions are cleaned within the same
+     *        second; the task itself is not finished.
+     * @param pid Indicates the pid of the dead process.
+     * @param uid Indicates the uid of the dead process; one uid may host several processes
+     *        and only the dead process's own tasks end.
+     */
+    void OnProcessDied(pid_t pid, int32_t uid);
+
+    /**
+     * @brief Feeds an ability foreground/background transition of a caller process into
+     *        the judge and re-judges the tasks created by that process; unchanged levels
+     *        are not propagated.
+     * @param pid Indicates the pid of the process whose ability changed state.
+     * @param token Indicates the ability's IRObject token address (the judge's dedup key).
+     * @param foreground Indicates true when an ability entered the foreground.
+     */
+    void OnAbilityForegroundChanged(pid_t pid, uintptr_t token, bool foreground);
+
+    /**
+     * @brief Feeds a fusion load level change into the judge and re-judges every running
+     *        task; unchanged levels are not propagated.
+     * @param loadLevel Indicates the new fusion level (0~7).
+     */
+    void OnSystemLoadLevelChanged(int32_t loadLevel);
+
+    /**
+     * @brief Lazily wires the schedule listeners (system load listener + ability state
+     *        observer); idempotent and failure-tolerant (judge falls back). A failed
+     *        registration is retried on the next task start.
+     */
+    void RegisterScheduleListeners();
+
+    /**
+     * @brief Attributes an entity into the task and restarts its inactivity timeout
+     *        window. Every registration creates a new record under a fresh
+     *        server-assigned attribution id.
+     * @param taskId Indicates the attribution key of the task.
+     * @param attribution Indicates the attribution record (tool and pid required; the
+     *        pid must be a live appmgr-managed process; the attribution time is
+     *        stamped here).
+     * @param attributionId Indicates the server-assigned id of the created record,
+     *        handed back to the caller as the handle for later operations.
+     * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
+     *         ERR_INVALID_PID if the pid is not a live appmgr-managed process;
+     *         ERR_TASK_NOT_FOUND if the task does not exist; ERR_INVALID_OPERATION if
+     *         the per-task attribution ceiling is reached.
+     */
+    int32_t RegisterManagedProcess(const std::string &taskId, const AttributionRecord &attribution,
+        AttributionId &attributionId);
+
+    /**
+     * @brief Registers a process into the task owned by the caller (trusted in-process /
+     *        uid-gated channels), skipping the pid-liveness check — the reporter holds
+     *        first-hand liveness: climgr (the pid is its fork child) or SkillExecuteManager
+     *        in-process (pid latched at an early attribution anchor — cold attach / warm
+     *        dispatch — callerUid forwarded over the AbilityManagerService IPC).
+     * @param callerUid Indicates the task creator's uid; non-positive is rejected — an
+     *        attribution always carries its creator anchor (ownership is checked
+     *        unconditionally).
+     */
+    int32_t RegisterManagedProcessForCaller(const std::string &taskId, const AttributionRecord &attribution,
+        int32_t callerUid, AttributionId &attributionId);
+
+    /**
+     * @brief Removes the attribution record with the given id from the task; the
+     *        inactivity timeout window is left running untouched.
+     * @param taskId Indicates the attribution key of the task.
+     * @param attributionId Indicates the id returned by RegisterManagedProcess.
+     * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters;
+     *         ERR_TASK_NOT_FOUND if the task does not exist; ERR_ATTRIBUTION_NOT_FOUND
+     *         if the attribution record does not exist (idempotent).
+     */
+    int32_t UnregisterManagedProcess(const std::string &taskId, AttributionId attributionId);
+
+    /**
+     * @brief Attributes the target Agent process into the task after the A2A connect
+     *        succeeds. Performs ownership + alive-state verification, and on success
+     *        registers an AttributionRecord with AttributionTool::A2A. Best-effort:
+     *        failures are logged and do NOT fail the connect result.
+     * @param taskId Indicates the task id claimed in Want.parameters[ohos.aafwk.param.agent.taskId].
+     * @param callerTokenId Indicates the caller token id.
+     * @param targetPid Indicates the target Agent process pid (resolved post-connect).
+     * @param attributionId Indicates the server-assigned attribution handle for later
+     *        unregister; 0 on failure.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    int32_t AttributeTaskForA2A(const std::string &taskId, uint32_t callerTokenId,
+        pid_t targetPid, AttributionId &attributionId);
+
+    /**
+     * @brief Wires the pid validator used by RegisterManagedProcess to reject pids
+     *        that are not live appmgr-managed processes; called when the app manager
+     *        service assembles. An unwired validator skips the check.
+     * @param validator Indicates the pid liveness checker, or null to unwire.
+     */
+    void SetPidValidator(std::function<bool(pid_t)> validator);
+
+    /**
+     * @brief Removes the attribution record from the task owned by the caller
+     *        (trusted channels): creator-ownership check, then the shared
+     *        UnregisterManagedProcess.
+     * @param callerUid Indicates the task creator's uid; non-positive is rejected — an
+     *        attribution always carries its creator anchor (ownership is checked
+     *        unconditionally).
+     */
+    int32_t UnregisterManagedProcessForCaller(const std::string &taskId, AttributionId attributionId,
+        int32_t callerUid);
+
+    /**
+     * @brief Wires the task state callback used to notify downstream owners of task
+     *        attribution caches when a task is finished. The callback runs after
+     *        tasksMutex_ is released, so it may perform synchronous IPC. Used by
+     *        AbilityManagerService to proactively clean stale A2A task attribution
+     *        entries cached on BaseExtensionRecord.
+     * @param callback Indicates the IPC callback to invoke; pass nullptr to unregister.
+     */
+    void SetTaskStateCallback(const sptr<ITaskStateCallback> &callback);
+
+    /**
+     * @brief Notifies that a task has ended. Invokes the registered TaskFinishedCallback
+     *        (if any) so that downstream owners of task attribution caches can proactively
+     *        remove stale entries. Only called after tasksMutex_ is released.
+     * @param taskId Indicates the attribution key of the task.
+     * @param userId Indicates the user id of the finished task's creator.
+     * @param reason Indicates why the task ends.
+     */
+    void NotifyTaskFinished(const std::string &taskId, int32_t userId, TaskFinishReason reason);
+
+    /**
+     * @brief Attributes a process started through the startAbility-family channel into the
+     *        task: liveness check plus creator-only ownership check (the caller uid must be
+     *        the creator uid; a managed member carrying the key is not a trusted reporter),
+     *        then registers with AttributionTool::ABILITY and restarts the inactivity
+     *        timeout window. The caller identity is the IPC-proven one captured by the AMS
+     *        convergence point (never Want-supplied by the caller). A spoofed or replayed
+     *        taskId is not trusted: no attribution happens and a security log is recorded,
+     *        while the startup itself proceeds unaffected.
+     * @param taskId Indicates the attribution key carried by the reserved Want parameter.
+     * @param callerUid Indicates the IPC-proven uid of the startAbility caller.
+     * @param callerPid Indicates the IPC-proven pid of the startAbility caller.
+     * @param targetPid Indicates the pid of the process hosting the started ability.
+     * @param attributionId Indicates the server-assigned handle of the created attribution,
+     *        handed back to the caller for later unregistration.
+     * @return Returns ERR_OK on success; INVALID_PARAMETERS_ERR on invalid parameters or
+     *         when the per-task attribution quota is exhausted; ERR_TASK_NOT_FOUND if the
+     *         task does not exist or the ownership check fails.
+     */
+    int32_t AttributeProcessForAbility(const std::string &taskId, int32_t callerUid, pid_t callerPid,
+        pid_t targetPid, AttributionId &attributionId);
+
+    /**
+     * @brief Dumps the snapshot of active tasks, taken under the mutex for consistency
+     *        with lifecycle actions.
+     * @return Returns the dump text of the active task list.
+     */
+    std::string DumpActiveTasks();
+
+    /**
+     * @brief Dump hook of the register channel: parses the dump texts and attributes the
+     *        entity; the dump surface is gated by the dump permission at the
+     *        AppMgrService dump entry.
+     * @param taskId Indicates the attribution key of the task.
+     * @param pidText Indicates the process id text from the dump command.
+     * @param toolText Indicates the tool name text from the dump command.
+     * @param result Indicates the dump output text of the hook, carrying the assigned
+     *        attribution id on success.
+     * @return Returns the result of RegisterManagedProcess, or INVALID_PARAMETERS_ERR on
+     *         unparsable texts.
+     */
+    int32_t DumpRegisterManagedProcess(const std::string &taskId, const std::string &pidText,
+        const std::string &toolText, std::string &result);
+
+    /**
+     * @brief Dump hook of the unregister channel: parses the dump texts and removes the
+     *        attribution record; the dump surface is gated by the dump permission at the
+     *        AppMgrService dump entry.
+     * @param taskId Indicates the attribution key of the task.
+     * @param idText Indicates the attribution id text from the dump command.
+     * @param result Indicates the dump output text of the hook.
+     * @return Returns the result of UnregisterManagedProcess, or INVALID_PARAMETERS_ERR
+     *         on an unparsable text.
+     */
+    int32_t DumpUnregisterManagedProcess(const std::string &taskId, const std::string &idText,
+        std::string &result);
+
+private:
+    TaskManagerService();
+    ~TaskManagerService();
+
+    /**
+     * @brief Verifies task alive-state and caller ownership
+     *        (callerTokenId == TaskRecord.creatorTokenId). Called internally by
+     *        AttributeTaskForA2A before registering the managed process.
+     * @param taskId Indicates the task id claimed in Want.parameters[ohos.aafwk.param.agent.taskId].
+     * @param callerTokenId Indicates the caller token id.
+     * @return Returns true if the task is alive and the caller is its creator;
+     *         false on any failure (not found / mismatch).
+     */
+    bool PrecheckTaskForA2A(const std::string &taskId, uint32_t callerTokenId);
+
+    /**
+     * @brief Creates the task record and starts its timeout timer; locks tasksMutex_
+     *        internally. The priority is the level judged by TaskPriorityJudge for the
+     *        creating caller (no longer passed in by the caller).
+     * @param caller Indicates the captured caller identity.
+     * @param taskId Indicates the attribution key of the task.
+     * @param priority Indicates the judged task level.
+     * @return Returns ERR_OK on success; ERR_TASK_ALREADY_EXISTS if the task already exists.
+     */
+    int32_t StartTaskInner(const TaskCallerInfo &caller, const std::string &taskId, int32_t priority);
+
+    /**
+     * @brief Single-exit cleanup for all three finish paths (caller finish / timeout /
+     *        creator death); locks tasksMutex_ internally, and releases the extracted
+     *        timeout context and notifies the finish hook only after the mutex is
+     *        released. The terminal record leaves the map immediately, so it never shows
+     *        up in the dump.
+     * @param taskId Indicates the attribution key of the task.
+     * @param reason Indicates why the task ends.
+     * @param callerUid Indicates the uid of the finishing caller; a non-negative value
+     *        enables the ownership check and a mismatch returns ERR_TASK_NOT_FOUND without
+     *        existence disclosure, while the system-initiated paths pass a negative value
+     *        to skip it.
+     * @param callerPid Indicates the pid of the finishing caller; the check enabled by a
+     *        non-negative callerUid requires the creating process itself (uid and pid both
+     *        match), because one app uid hosts several processes and a sibling process of
+     *        the creator app must not finish the task, while the system-initiated paths
+     *        pass a negative value to skip it.
+     * @param expectedDeadline Indicates the deadline captured when the timer was started;
+     *        a positive value enables the staleness check for the timeout path (a mismatch
+     *        means the record was rebuilt and nothing is finished), while the other paths
+     *        pass zero to skip it.
+     * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist, the
+     *         deadline mismatches or the caller is not the creator process.
+     */
+    int32_t FinishTaskInner(const std::string &taskId, TaskFinishReason reason, int32_t callerUid,
+        pid_t callerPid, int64_t expectedDeadline);
+
+    /**
+     * @brief Ends every task whose creator matches the (pid, uid) pair of the dead process.
+     * @param pid Indicates the pid of the dead creator process.
+     * @param uid Indicates the uid of the dead creator process; one uid may host several
+     *        processes and only the dead process's own tasks end.
+     */
+    void FinishTasksByCreatorInner(pid_t pid, int32_t uid);
+
+    /**
+     * @brief Removes a dead process from the managed set of every surviving task; locks
+     *        tasksMutex_ internally.
+     * @param pid Indicates the pid of the dead managed process.
+     */
+    void RemoveManagedProcessFromAllTasksInner(pid_t pid);
+
+    /**
+     * @brief Attributes an entity into the task and restarts its inactivity timeout
+     *        window; locks tasksMutex_ internally, and stops the replaced timer only
+     *        after the mutex is released.
+     * @param taskId Indicates the attribution key of the task.
+     * @param attribution Indicates the attribution record; the attribution time is
+     *        stamped server-side.
+     * @param attributionId Indicates the server-assigned id of the created record.
+     * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not
+     *         exist; ERR_INVALID_OPERATION if the per-task attribution ceiling is
+     *         reached.
+     */
+    int32_t RegisterManagedProcessInner(const std::string &taskId, const AttributionRecord &attribution,
+        AttributionId &attributionId);
+
+    /**
+     * @brief Removes the attribution record with the given id from the task; locks
+     *        tasksMutex_ internally. The inactivity timeout window is left running
+     *        untouched.
+     * @param taskId Indicates the attribution key of the task.
+     * @param attributionId Indicates the id returned by RegisterManagedProcess.
+     * @return Returns ERR_OK on success; ERR_TASK_NOT_FOUND if the task does not exist;
+     *         ERR_ATTRIBUTION_NOT_FOUND if the attribution record does not exist.
+     */
+    int32_t UnregisterManagedProcessInner(const std::string &taskId, AttributionId attributionId);
+
+    /**
+     * @brief Restarts the inactivity window of the task: posts a new one-shot timer for
+     *        the configured interval and swaps its context into the record; the caller
+     *        must hold tasksMutex_. On timer failure the previous window is kept
+     *        untouched, so the record always matches an armed timer.
+     * @param taskId Indicates the attribution key of the task.
+     * @param record Indicates the task record whose window is restarted.
+     * @return Returns the replaced context for the caller to release outside the mutex,
+     *         or null if nothing was replaced.
+     */
+    std::unique_ptr<TimeoutContext> RestartTimeoutWindow(const std::string &taskId, TaskRecord &record);
+
+    /**
+     * @brief Starts the FFRT one-shot timer for the given deadline; the caller must hold
+     *        tasksMutex_ (ffrt_timer_start is non-blocking) and moves the returned
+     *        context into the record, so the timer can never fire before its context is
+     *        owned by the record. The delay is clamped to at least 1ms as defense in
+     *        depth.
+     * @param taskId Indicates the attribution key of the task.
+     * @param deadlineMillis Indicates the absolute deadline that drives the delay.
+     * @return Returns the armed timer's context (with its handle inside), or null on
+     *         failure.
+     */
+    std::unique_ptr<TimeoutContext> StartTimeoutTimer(const std::string &taskId, int64_t deadlineMillis);
+
+    /**
+     * @brief Releases an extracted timeout context: stops its timer and then deletes it.
+     *        Must only be called after tasksMutex_ is released (ffrt_timer_stop waits for
+     *        a running callback), and never from inside the fired timer's own callback
+     *        (the timeout path resets the context directly instead, because stopping it
+     *        there would deadlock).
+     * @param ctx Indicates the context extracted from a record; null is a no-op.
+     */
+    void ReleaseTimeoutContext(std::unique_ptr<TimeoutContext> ctx);
+
+    /**
+     * @brief Captures the caller identity from the IPC framework.
+     * @return Returns the captured caller information.
+     */
+    static TaskCallerInfo GetCallerInfo();
+
+    /**
+     * @brief Checks the task id length.
+     * @param taskId Indicates the task id to check.
+     * @return Returns true if the task id is valid; false otherwise.
+     */
+    static bool CheckParam(const std::string &taskId);
+
+    /**
+     * @brief Gets the current wall-clock time in milliseconds.
+     * @return Returns the current time in milliseconds.
+     */
+    static int64_t NowMillis();
+
+    /**
+     * @brief Reads the task timeout from the system parameter; the parameter is a test
+     *        knob (settable only from the root shell), and a non-positive value falls
+     *        back to the default.
+     * @return Returns the effective timeout in seconds.
+     */
+    int32_t GetTimeoutSeconds() const;
+
+    /**
+     * @brief Checks the pid against the wired validator outside tasksMutex_; an
+     *        unwired validator accepts every pid.
+     * @param pid Indicates the pid to check.
+     * @return Returns true if the pid is a live appmgr-managed process or no
+     *         validator is wired; false otherwise.
+     */
+    bool IsLiveManagedProcess(pid_t pid);
+
+    /**
+     * @brief Re-judges the priority of running tasks and propagates level changes to
+     *        process_schedule; updates the records under tasksMutex_ and calls
+     *        process_schedule only after the mutex is released (lock order).
+     * @param pid Indicates the creator process whose tasks are re-judged; a non-positive
+     *        value re-judges every task (load changes affect all callers).
+     */
+    void RejudgeTasks(pid_t pid);
+
+    static std::atomic<AttributionId> attributionRecordId_;
+    ffrt::mutex tasksMutex_;
+    std::unordered_map<std::string, TaskRecord> tasks_;
+    std::function<bool(pid_t)> pidValidator_;
+    sptr<ITaskStateCallback> taskStateCallback_;
+};
+}  // namespace AppExecFwk
+}  // namespace OHOS
+#endif  // OHOS_APP_EXECFWK_TASK_MGR_TASK_MANAGER_SERVICE_H

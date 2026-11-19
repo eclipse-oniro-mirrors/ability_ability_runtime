@@ -29,7 +29,9 @@ ohos_moduletest("ability_manager_client_other_test") {
   defines = [ "ABILITY_COMMAND_FOR_TEST" ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/ability_manager:mission_info",
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
     "${ability_runtime_services_path}/abilitymgr:mission_list",
@@ -38,8 +40,6 @@ ohos_moduletest("ability_manager_client_other_test") {
   external_deps = [
     "ability_base:session_info",
     "ability_base:want",
-    "ability_runtime:ability_manager",
-    "ability_runtime:app_manager",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -207,4 +207,224 @@ HWTEST_F(CjWantFfiTest, CjWantFfiTestFFICJWantParseUri_0100, TestSize.Level1)
     const char* uri = "test_uri";
     WantHandle want = FFICJWantParseUri(uri);
     EXPECT_EQ(want, nullptr);
+}
+
+/**
+ * @tc.name: CjWantFfiTestFFICJWantCreateWithWantInfoV2_0100
+ * @tc.desc: CjWantFfiTest test for FFICJWantCreateWithWantInfoV2.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjWantFfiTest, CjWantFfiTestFFICJWantCreateWithWantInfoV2_0100, TestSize.Level1)
+{
+    const char* deviceId = "deviceId";
+    const char* bundleName = "bundleName";
+    const char* abilityName = "abilityName";
+    const char* moduleName = "moduleName";
+    ElementNameHandle elementNameHandle = new ElementName(deviceId, bundleName, abilityName, moduleName);
+
+    CJWantParamsV2 params;
+    params.elementName = elementNameHandle;
+    params.flags = 123;
+
+    params.uri = new char[URI_SIZE];
+    strcpy_s(params.uri, URI_SIZE, "deviceId");
+
+    params.action = new char[ACTION_SIZE];
+    strcpy_s(params.action, ACTION_SIZE, "bundleName");
+
+    params.wantType = new char[WANT_TYPE_SIZE];
+    strcpy_s(params.wantType, WANT_TYPE_SIZE, "abilityName");
+
+    params.parameters = new char[PARAMETERS_SIZE];
+    strcpy_s(params.parameters, PARAMETERS_SIZE, "moduleName");
+
+    params.fds.head = nullptr;
+    params.fds.size = 0;
+
+    WantHandle want = FFICJWantCreateWithWantInfoV2(params);
+    EXPECT_NE(want, nullptr);
+    FFICJWantDelete(want);
+}
+
+/**
+ * @tc.name: CjWantFfiTestFFICJWantCreateWithWantInfoV2_0200
+ * @tc.desc: CjWantFfiTest test for FFICJWantCreateWithWantInfoV2 with fds.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjWantFfiTest, CjWantFfiTestFFICJWantCreateWithWantInfoV2_0200, TestSize.Level1)
+{
+    const char* deviceId = "deviceId";
+    const char* bundleName = "bundleName";
+    const char* abilityName = "abilityName";
+    const char* moduleName = "moduleName";
+    ElementNameHandle elementNameHandle = new ElementName(deviceId, bundleName, abilityName, moduleName);
+
+    CJWantParamsV2 params;
+    params.elementName = elementNameHandle;
+    params.flags = 123;
+
+    params.uri = new char[URI_SIZE];
+    strcpy_s(params.uri, URI_SIZE, "deviceId");
+
+    params.action = new char[ACTION_SIZE];
+    strcpy_s(params.action, ACTION_SIZE, "bundleName");
+
+    params.wantType = new char[WANT_TYPE_SIZE];
+    strcpy_s(params.wantType, WANT_TYPE_SIZE, "abilityName");
+
+    params.parameters = new char[PARAMETERS_SIZE];
+    strcpy_s(params.parameters, PARAMETERS_SIZE, "moduleName");
+
+    CJFdParam* fdParams = new CJFdParam[2];
+    fdParams[0].key = new char[4];
+    strcpy_s(fdParams[0].key, 4, "fd1");
+    fdParams[0].value = 10;
+    fdParams[1].key = new char[4];
+    strcpy_s(fdParams[1].key, 4, "fd2");
+    fdParams[1].value = 20;
+
+    params.fds.head = fdParams;
+    params.fds.size = 2;
+
+    WantHandle want = FFICJWantCreateWithWantInfoV2(params);
+    EXPECT_NE(want, nullptr);
+    FFICJWantDelete(want);
+
+    for (int i = 0; i < 2; i++) {
+        delete[] fdParams[i].key;
+    }
+    delete[] fdParams;
+}
+
+/**
+ * @tc.name: CjWantFfiTestFFICJWantGetWantInfoV2_0100
+ * @tc.desc: CjWantFfiTest test for FFICJWantGetWantInfoV2.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjWantFfiTest, CjWantFfiTestFFICJWantGetWantInfoV2_0100, TestSize.Level1)
+{
+    const char* deviceId = "deviceId";
+    const char* bundleName = "bundleName";
+    const char* abilityName = "abilityName";
+    const char* moduleName = "moduleName";
+    ElementNameHandle elementNameHandle = new ElementName(deviceId, bundleName, abilityName, moduleName);
+
+    CJWantParamsV2 params;
+    params.elementName = elementNameHandle;
+    params.flags = 123;
+
+    params.uri = new char[URI_SIZE];
+    strcpy_s(params.uri, URI_SIZE, "deviceId");
+
+    params.action = new char[ACTION_SIZE];
+    strcpy_s(params.action, ACTION_SIZE, "bundleName");
+
+    params.wantType = new char[WANT_TYPE_SIZE];
+    strcpy_s(params.wantType, WANT_TYPE_SIZE, "abilityName");
+
+    params.parameters = new char[PARAMETERS_SIZE];
+    strcpy_s(params.parameters, PARAMETERS_SIZE, "moduleName");
+
+    params.fds.head = nullptr;
+    params.fds.size = 0;
+
+    WantHandle want = FFICJWantCreateWithWantInfoV2(params);
+
+    CJWantParamsV2* paramsResult = FFICJWantGetWantInfoV2(want);
+    EXPECT_NE(paramsResult, nullptr);
+    FFICJWantParamsDeleteV2(paramsResult);
+    FFICJWantDelete(reinterpret_cast<WantHandle>(want));
+}
+
+/**
+ * @tc.name: CjWantFfiTestFFICJWantGetWantInfoV2_0200
+ * @tc.desc: CjWantFfiTest test for FFICJWantGetWantInfoV2 with fds.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjWantFfiTest, CjWantFfiTestFFICJWantGetWantInfoV2_0200, TestSize.Level1)
+{
+    const char* deviceId = "deviceId";
+    const char* bundleName = "bundleName";
+    const char* abilityName = "abilityName";
+    const char* moduleName = "moduleName";
+    ElementNameHandle elementNameHandle = new ElementName(deviceId, bundleName, abilityName, moduleName);
+
+    CJWantParamsV2 params;
+    params.elementName = elementNameHandle;
+    params.flags = 123;
+
+    params.uri = new char[URI_SIZE];
+    strcpy_s(params.uri, URI_SIZE, "deviceId");
+
+    params.action = new char[ACTION_SIZE];
+    strcpy_s(params.action, ACTION_SIZE, "bundleName");
+
+    params.wantType = new char[WANT_TYPE_SIZE];
+    strcpy_s(params.wantType, WANT_TYPE_SIZE, "abilityName");
+
+    params.parameters = new char[PARAMETERS_SIZE];
+    strcpy_s(params.parameters, PARAMETERS_SIZE, "moduleName");
+
+    CJFdParam* fdParams = new CJFdParam[2];
+    fdParams[0].key = new char[4];
+    strcpy_s(fdParams[0].key, 4, "fd1");
+    fdParams[0].value = 10;
+    fdParams[1].key = new char[4];
+    strcpy_s(fdParams[1].key, 4, "fd2");
+    fdParams[1].value = 20;
+
+    params.fds.head = fdParams;
+    params.fds.size = 2;
+
+    WantHandle want = FFICJWantCreateWithWantInfoV2(params);
+
+    CJWantParamsV2* paramsResult = FFICJWantGetWantInfoV2(want);
+    EXPECT_NE(paramsResult, nullptr);
+    FFICJWantParamsDeleteV2(paramsResult);
+    FFICJWantDelete(reinterpret_cast<WantHandle>(want));
+
+    for (int i = 0; i < 2; i++) {
+        delete[] fdParams[i].key;
+    }
+    delete[] fdParams;
+}
+
+/**
+ * @tc.name: CjWantFfiTestFFICJWantParamsDeleteV2_0100
+ * @tc.desc: CjWantFfiTest test for FFICJWantParamsDeleteV2.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjWantFfiTest, CjWantFfiTestFFICJWantParamsDeleteV2_0100, TestSize.Level1)
+{
+    const char* deviceId = "deviceId";
+    const char* bundleName = "bundleName";
+    const char* abilityName = "abilityName";
+    const char* moduleName = "moduleName";
+    ElementNameHandle elementNameHandle = new ElementName(deviceId, bundleName, abilityName, moduleName);
+
+    CJWantParamsV2 params;
+    params.elementName = elementNameHandle;
+    params.flags = 123;
+
+    params.uri = new char[URI_SIZE];
+    strcpy_s(params.uri, URI_SIZE, "deviceId");
+
+    params.action = new char[ACTION_SIZE];
+    strcpy_s(params.action, ACTION_SIZE, "bundleName");
+
+    params.wantType = new char[WANT_TYPE_SIZE];
+    strcpy_s(params.wantType, WANT_TYPE_SIZE, "abilityName");
+
+    params.parameters = new char[PARAMETERS_SIZE];
+    strcpy_s(params.parameters, PARAMETERS_SIZE, "moduleName");
+
+    params.fds.head = nullptr;
+    params.fds.size = 0;
+
+    WantHandle want = FFICJWantCreateWithWantInfoV2(params);
+
+    CJWantParamsV2* paramsResult = FFICJWantGetWantInfoV2(want);
+    EXPECT_NE(paramsResult, nullptr);
+    FFICJWantParamsDeleteV2(paramsResult);
+    FFICJWantDelete(reinterpret_cast<WantHandle>(want));
 }

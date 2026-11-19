@@ -35,21 +35,14 @@ ModularObjectExtensionRdbStorageMgr::~ModularObjectExtensionRdbStorageMgr()
     TAG_LOGD(AAFwkTag::EXT, "ModularObjectExtensionRdbStorageMgr is deleted");
 }
 
-int32_t ModularObjectExtensionRdbStorageMgr::InsertData(
+int32_t ModularObjectExtensionRdbStorageMgr::InsertOrUpdateData(
     const std::string& key, const std::vector<AAFwk::ModularObjectExtensionInfo> &infos, uint32_t versionCode)
 {
     if (infos.empty()) {
         return DelayedSingleton<ModularObjectExtensionRdbDataMgr>::GetInstance()->DeleteData(key);
     }
     std::string jsonString = ToJsonString(infos, versionCode);
-    return DelayedSingleton<ModularObjectExtensionRdbDataMgr>::GetInstance()->InsertData(key, jsonString);
-}
-
-int32_t ModularObjectExtensionRdbStorageMgr::UpdateData(
-    const std::string& key, const std::vector<AAFwk::ModularObjectExtensionInfo> &infos, uint32_t versionCode)
-{
-    std::string jsonString = ToJsonString(infos, versionCode);
-    return DelayedSingleton<ModularObjectExtensionRdbDataMgr>::GetInstance()->UpdateData(key, jsonString);
+    return DelayedSingleton<ModularObjectExtensionRdbDataMgr>::GetInstance()->InsertOrUpdateData(key, jsonString);
 }
 
 int32_t ModularObjectExtensionRdbStorageMgr::DeleteData(const std::string& key)
@@ -61,7 +54,10 @@ int32_t ModularObjectExtensionRdbStorageMgr::QueryData(const std::string& key,
     std::vector<AAFwk::ModularObjectExtensionInfo> &infos)
 {
     std::string jsonString;
-    DelayedSingleton<ModularObjectExtensionRdbDataMgr>::GetInstance()->QueryData(key, jsonString);
+    auto ret = DelayedSingleton<ModularObjectExtensionRdbDataMgr>::GetInstance()->QueryData(key, jsonString);
+    if (ret != NativeRdb::E_OK) {
+        return ret;
+    }
     FromJsonString(jsonString, infos);
     return NativeRdb::E_OK;
 }

@@ -16,8 +16,10 @@
 #include "file_permission_manager.h"
 
 #include <dlfcn.h>
+#include <strings.h>
 
 #include "accesstoken_kit.h"
+#include "event_report.h"
 #include "file_uri.h"
 #include "hilog_tag_wrapper.h"
 #include "ipc_skeleton.h"
@@ -33,6 +35,27 @@ constexpr int32_t PERMISSION_GRANTED = 1;
 constexpr int32_t PERMISSION_DENIED = 2;
 constexpr const char* URI_CHECK_SO_NAME = "libams_broker_ext.z.so";
 constexpr const char* URI_CHECK_FUNC_NAME = "CheckCollaboratorUriPermission";
+
+bool StartsWithIgnoreCase(const std::string &path, const std::string &prefix)
+{
+    return path.size() >= prefix.size() &&
+        strncasecmp(path.c_str(), prefix.c_str(), prefix.size()) == 0;
+}
+
+// path must be the dir itself or a path under dir (starts with "dir/"),
+// otherwise a sibling dir with same prefix (e.g. Desktop2) would be matched.
+bool IsPathInDir(const std::string &path, const std::string &dir)
+{
+    if (path.compare(0, dir.size(), dir) != 0) {
+        return false;
+    }
+    if (path.size() > dir.size() && path[dir.size()] != '/') {
+        EventInfo eventInfo;
+        eventInfo.uri = "AttackPath";
+        EventReport::SendGrantUriPermissionEvent(EventName::GRANT_URI_PERMISSION, eventInfo);
+    }
+    return path.size() == dir.size() || path[dir.size()] == '/';
+}
 }
 const std::string FILE_MANAGER_AUTHORITY = "docs";
 const std::string STORAGE_URI = "/storage";
@@ -93,7 +116,7 @@ DllWrapper& FilePermissionManager::GetDllWrapper()
 
 bool FilePermissionManager::CheckDocsUriPermission(TokenIdPermission &tokenPermission, const std::string &path)
 {
-    if (path.find(APPDATA_URI) == 0) {
+    if (StartsWithIgnoreCase(path, APPDATA_URI)) {
         return tokenPermission.VerifySandboxAccessPermission();
     }
 
@@ -109,7 +132,7 @@ bool FilePermissionManager::CheckDocsUriPermission(TokenIdPermission &tokenPermi
         }
     }
 
-    if (path.find(STORAGE_URI) == 0 && path.find(APPDATA_URI) != 0) {
+    if (path.find(STORAGE_URI) == 0) {
         return tokenPermission.VerifyFileAccessManagerPermission();
     }
     return false;
@@ -119,9 +142,8 @@ static bool CheckFileManagerUriPermission(TokenIdPermission &tokenPermission,
                                           const std::string &filePath,
                                           const std::string &bundleName)
 {
-    std::string path = filePath;
-    if (path.find(DOWNLOAD_PATH) == 0) {
-        path = path.substr(DOWNLOAD_PATH.size());
+    if (IsPathInDir(filePath, DOWNLOAD_PATH)) {
+        std::string path = filePath.substr(DOWNLOAD_PATH.size());
         if (path.find(BACKFLASH) == 0) {
             path = path.substr(1);
         }
@@ -132,15 +154,15 @@ static bool CheckFileManagerUriPermission(TokenIdPermission &tokenPermission,
         } else {
             dirname = path;
         }
-        if (dirname == bundleName) {
+        if (!dirname.empty() && !bundleName.empty() && dirname == bundleName) {
             return true;
         }
         return tokenPermission.VerifyRWDownloadPermission();
     }
-    if (path.find(DESKTOP_PATH) == 0) {
+    if (IsPathInDir(filePath, DESKTOP_PATH)) {
         return tokenPermission.VerifyRWDeskTopPermission();
     }
-    if (path.find(DOCUMENTS_PATH) == 0) {
+    if (IsPathInDir(filePath, DOCUMENTS_PATH)) {
         return tokenPermission.VerifyRWDocumentsPermission();
     }
     return false;

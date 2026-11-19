@@ -60,17 +60,19 @@ ani_object CreateEtsAgentExtensionContext(ani_env *env, std::shared_ptr<AgentExt
         return nullptr;
     }
 
-    std::unique_ptr<EtsAgentExtensionContext> etsContext =
-        std::make_unique<EtsAgentExtensionContext>(context);
-
-    if ((status = env->Object_New(cls, method, &contextObj,
-        (ani_long)etsContext.release())) != ANI_OK || contextObj == nullptr) {
-        TAG_LOGE(AAFwkTag::SER_ROUTER, "Failed to create object, status : %{public}d", status);
-        return nullptr;
-    }
     std::shared_ptr<AgentCard> agentCard = context->GetAgentCard();
     if (agentCard == nullptr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null agentCard");
+        return nullptr;
+    }
+
+    std::unique_ptr<EtsAgentExtensionContext> etsContext =
+        std::make_unique<EtsAgentExtensionContext>(context);
+
+    ani_long nativeContext = reinterpret_cast<ani_long>(etsContext.get());
+    if ((status = env->Object_New(cls, method, &contextObj,
+        nativeContext)) != ANI_OK || contextObj == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "Failed to create object, status : %{public}d", status);
         return nullptr;
     }
     status = env->Object_SetPropertyByName_Ref(
@@ -91,6 +93,7 @@ ani_object CreateEtsAgentExtensionContext(ani_env *env, std::shared_ptr<AgentExt
         delete workContext;
         return nullptr;
     }
+    etsContext.release();
 
     ContextUtil::CreateEtsBaseContext(env, cls, contextObj, context);
     CreateEtsExtensionContext(env, cls, contextObj, context, context->GetAbilityInfo());

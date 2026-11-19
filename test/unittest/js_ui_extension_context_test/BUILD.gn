@@ -28,31 +28,38 @@ ohos_unittest("js_ui_extension_context_test") {
     debug = false
   }
   include_dirs = [
+    "${ability_runtime_napi_path}/ability_manager",
     "${ability_runtime_path}/interfaces/kits/native/ability/native",
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ability_runtime",
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_extension_ability",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_extension_base",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_service_extension_ability/connection",
   ]
 
-  sources = [ "js_ui_extension_context_test.cpp" ]
+  sources = [
+    "${ability_runtime_napi_path}/ability_manager/js_preload_ui_extension_callback_client.cpp",
+    "js_ui_extension_context_test.cpp",
+  ]
 
   configs = []
 
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_connect_callback_stub",
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_napi_path}/inner/napi_common:napi_common",
-    "${ability_runtime_native_path}/ability:ability_context_native",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_native_path}/ability/native:extensionkit_native",
     "${ability_runtime_native_path}/ability/native:ui_extension",
+    "${ability_runtime_native_path}/ability/native:ui_service_extension_connection",
+    "${ability_runtime_native_path}/ability:ability_context_native",
     "${ability_runtime_native_path}/appkit:app_context",
+    "${ability_runtime_path}/js_environment/frameworks/js_environment:js_environment",
     "${ability_runtime_path}/services/abilitymgr:abilityms_target",
   ]
 
   external_deps = [
     "ability_base:want",
-    "ability_runtime:ability_manager",
-    "ability_runtime:js_environment",
-    "ability_runtime:runtime",
     "c_utils:utils",
     "ets_runtime:libark_jsruntime",
     "ffrt:libffrt",
@@ -63,6 +70,7 @@ ohos_unittest("js_ui_extension_context_test") {
     "ipc:ipc_napi",
     "libuv:uv",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
 }
 

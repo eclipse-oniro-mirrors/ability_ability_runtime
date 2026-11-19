@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -76,14 +76,19 @@ private:
     int32_t HandleGetAllRunningProcesses(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetRunningProcessesByBundleType(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetProcessRunningInfosByUserId(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleGetProcessRunningInfosByAccessTokenId(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetProcessRunningInformation(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetAllRenderProcesses(MessageParcel &data, MessageParcel &reply);
     int32_t HandlePreloadModuleFinished(MessageParcel &data, MessageParcel &reply);
     int32_t HandleMakeImage(MessageParcel &data, MessageParcel &reply);
     int32_t HandleDestroyImage(MessageParcel &data, MessageParcel &reply);
     int32_t HandleNotifyTemplateProcessDeepFrozen(MessageParcel &data, MessageParcel &reply);
+    int32_t HandlePreTemplateProcessDeepFrozen(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleNotifyTemplateProcessReadyDone(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleGetHyperSnapLastError(MessageParcel &data, MessageParcel &reply);
 #ifdef SUPPORT_CHILD_PROCESS
     int32_t HandleGetAllChildrenProcesses(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleGetSelfChildrenProcesses(MessageParcel &data, MessageParcel &reply);
 #endif  // SUPPORT_CHILD_PROCESS
     int32_t HandleRegisterNativeChildExitNotify(MessageParcel &data, MessageParcel &reply);
     int32_t HandleUnregisterNativeChildExitNotify(MessageParcel &data, MessageParcel &reply);
@@ -117,8 +122,10 @@ private:
     int32_t HandleUnregisterConfigurationObserver(MessageParcel &data, MessageParcel &reply);
     int32_t HandleDumpHeapMemory(MessageParcel &data, MessageParcel &reply);
     int32_t HandleDumpJsHeapMemory(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleDumpJsHandleMap(MessageParcel &data, MessageParcel &reply);
     int32_t HandleDumpCjHeapMemory(MessageParcel &data, MessageParcel &reply);
     int32_t HandleDumpMem(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleReportDumpMemResult(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetRunningMultiAppInfoByBundleName(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetAllRunningInstanceKeysBySelf(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetAllRunningInstanceKeysByBundleName(MessageParcel &data, MessageParcel &reply);
@@ -133,10 +140,13 @@ private:
     int32_t HandleSetContinuousTaskProcess(MessageParcel &data, MessageParcel &reply);
 #endif
     int32_t HandleIsSharedBundleRunning(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleIsMainProcessDebug(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleIsCorrespondingProcessAttachDebug(MessageParcel &data, MessageParcel &reply);
     int32_t HandleStartNativeProcessForDebugger(MessageParcel &data, MessageParcel &reply);
     int32_t HandleNotifyFault(MessageParcel &data, MessageParcel &reply);
     int32_t HandleNotifyFaultBySA(MessageParcel &data, MessageParcel &reply);
     int32_t HandleSetAppFreezeFilter(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleUpdateFreezeExcludedPid(MessageParcel &data, MessageParcel &reply);
     int32_t HandleIsTerminatingByPid(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetBundleNameByPid(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetRunningProcessInfoByPid(MessageParcel &data, MessageParcel &reply);
@@ -150,6 +160,12 @@ private:
     int32_t HandleUnregisterAppRunningStatusListener(MessageParcel &data, MessageParcel &reply);
     int32_t HandleRegisterAppForegroundStateObserver(MessageParcel &data, MessageParcel &reply);
     int32_t HandleUnregisterAppForegroundStateObserver(MessageParcel &data, MessageParcel &reply);
+
+    int32_t HandleRegisterProcessLifecycleObserver(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleUnregisterProcessLifecycleObserver(MessageParcel &data, MessageParcel &reply);
+
+    int32_t HandleRegisterFocusedApplicationObserver(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleUnregisterFocusedApplicationObserver(MessageParcel &data, MessageParcel &reply);
     int32_t HandleIsApplicationRunning(MessageParcel &data, MessageParcel &reply);
 #ifdef SUPPORT_CHILD_PROCESS
     int32_t HandleStartChildProcess(MessageParcel &data, MessageParcel &reply);
@@ -159,10 +175,13 @@ private:
 #endif // SUPPORT_CHILD_PROCESS
     int32_t HandleClearUpApplicationDataBySelf(MessageParcel &data, MessageParcel &reply);
     int32_t HandleIsFinalAppProcess(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleIsHyperSnapInitializing(MessageParcel &data, MessageParcel &reply);
     int32_t HandleRegisterRenderStateObserver(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleRegisterChildProcessStateObserver(MessageParcel &data, MessageParcel &reply);
     int32_t HandleRegisterKiaInterceptor(MessageParcel &data, MessageParcel &reply);
     int32_t HandleCheckIsKiaProcess(MessageParcel &data, MessageParcel &reply);
     int32_t HandleUnregisterRenderStateObserver(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleUnregisterChildProcessStateObserver(MessageParcel &data, MessageParcel &reply);
     int32_t HandleUpdateRenderState(MessageParcel &data, MessageParcel &reply);
     int32_t HandleSignRestartAppFlag(MessageParcel &data, MessageParcel &reply);
     int32_t HandleSignRestartProcess(MessageParcel &data, MessageParcel &reply);
@@ -174,6 +193,7 @@ private:
     int32_t HandleSetSupportedProcessCacheSelf(MessageParcel &data, MessageParcel &reply);
     int32_t HandleSetSupportedProcessCache(MessageParcel &data, MessageParcel &reply);
     int32_t HandleIsProcessCacheSupported(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleIsChildProcessSupported(MessageParcel &data, MessageParcel &reply);
     int32_t HandleSetProcessCacheEnable(MessageParcel &data, MessageParcel &reply);
     int32_t HandleLockProcessCache(MessageParcel &data, MessageParcel &reply);
     int32_t HandleSaveBrowserChannel(MessageParcel &data, MessageParcel &reply);
@@ -181,6 +201,7 @@ private:
 #ifdef SUPPORT_CHILD_PROCESS
     int32_t HandleCreateNativeChildProcess(MessageParcel &data, MessageParcel &reply);
 #endif // SUPPORT_CHILD_PROCESS
+    int32_t HandleGetSelfUIAbilityChildProcesses(MessageParcel &data, MessageParcel &reply);
     int32_t HandleNotifyProcessDependedOnWeb(MessageParcel &data, MessageParcel &reply);
     int32_t HandleKillProcessDependedOnWeb(MessageParcel &data, MessageParcel &reply);
     int32_t HandleRestartResidentProcessDependedOnWeb(MessageParcel &data, MessageParcel &reply);
@@ -204,6 +225,9 @@ private:
         MessageParcel &reply, MessageOption &option);
     int32_t OnRemoteRequestInnerEighth(uint32_t code, MessageParcel &data,
         MessageParcel &reply, MessageOption &option);
+    int32_t OnRemoteRequestLaunchService(uint32_t code, MessageParcel &data, MessageParcel &reply);
+    int32_t OnRemoteRequestInnerNinth(uint32_t code, MessageParcel &data,
+        MessageParcel &reply, MessageOption &option);
     int32_t HandleGetSupportedProcessCachePids(MessageParcel &data, MessageParcel &reply);
     int32_t HandleUpdateProcessMemoryState(MessageParcel &data, MessageParcel &reply);
     int32_t HandleLaunchAbility(MessageParcel &data, MessageParcel &reply);
@@ -217,7 +241,26 @@ private:
     int32_t HandleKillChildProcessByPid(MessageParcel &data, MessageParcel &reply);
     int32_t HandlePreloadExtension(MessageParcel &data, MessageParcel &reply);
     int32_t HandleSetProcessPrepareExit(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleSetTerminateTimeOutFlag(MessageParcel &data, MessageParcel &reply);
     int32_t HandleGetAllAbilityInfos(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleNotifyChildProcessState(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleEnableDelayedProcessExit(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleCancelDelayedExitTask(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleRegisterDaemon(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleUnregisterDaemon(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleStartDaemon(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleStopDaemon(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleGetLaunchServiceInformation(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleGetAllRegisteredInformation(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleSetLaunchServicesEnabled(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleRegisterLaunchServiceObserver(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleUnregisterLaunchServiceObserver(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleStartTask(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleFinishTask(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleAttributeTaskForA2A(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleUnregisterTaskForA2A(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleRegisterManagedProcess(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleUnregisterManagedProcess(MessageParcel &data, MessageParcel &reply);
     DISALLOW_COPY_AND_MOVE(AppMgrStub);
 };
 }  // namespace AppExecFwk

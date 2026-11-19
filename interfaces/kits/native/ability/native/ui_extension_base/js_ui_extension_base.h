@@ -16,6 +16,9 @@
 #ifndef OHOS_ABILITY_RUNTIME_JS_UI_EXTENSION_BASE_H
 #define OHOS_ABILITY_RUNTIME_JS_UI_EXTENSION_BASE_H
 
+#include <memory>
+#include <optional>
+
 #include "ability_handler.h"
 #include "ability_local_record.h"
 #include "configuration.h"
@@ -175,7 +178,7 @@ public:
     void RegisterAbilityConfigUpdateCallback();
 
 protected:
-    napi_value CallObjectMethod(const char *name, napi_value const *argv = nullptr, size_t argc = 0,
+    virtual napi_value CallObjectMethod(const char *name, napi_value const *argv = nullptr, size_t argc = 0,
         bool withResult = false);
     bool CheckPromise(napi_value result);
     bool CallPromise(napi_value result, AppExecFwk::AbilityTransactionCallbackInfo<> *callbackInfo);
@@ -212,6 +215,10 @@ protected:
 private:
     sptr<Rosen::WindowOption> CreateWindowOption(const sptr<AAFwk::SessionInfo> &sessionInfo,
         const AAFwk::Want &want);
+    bool OnGetConfigurationStrategy(const sptr<AAFwk::SessionInfo> &sessionInfo);
+    void RegisterBrandColorChangeListener(const sptr<Rosen::Window> &uiWindow);
+    int32_t WindowNotifeBrandColorChange(Rosen::SubSystemId id, uint32_t customId, AAFwk::Want &&data,
+        std::optional<AAFwk::Want> &reply);
 
 #ifdef SUPPORT_GRAPHICS
 private:

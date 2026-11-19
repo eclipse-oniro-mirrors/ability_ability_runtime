@@ -89,9 +89,9 @@ bool ChangeInfo::Unmarshalling(ChangeInfo &output, MessageParcel &parcel)
         return false;
     }
 
-    const uint8_t *data = size > 0 ? parcel.ReadBuffer(size) : nullptr;
+    const uint8_t *data = (size > 0 && size <= ChangeInfo::MAX_DATA_SIZE) ? parcel.ReadBuffer(size) : nullptr;
     if (size > 0 && data == nullptr) {
-        LOG_ERROR("Failed to read buffer from parcel.");
+        LOG_ERROR("Failed to read buffer from parcel. size: %{public}u", size);
         return false;
     }
     VBuckets buckets;

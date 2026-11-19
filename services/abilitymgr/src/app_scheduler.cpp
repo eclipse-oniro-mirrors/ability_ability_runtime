@@ -18,8 +18,10 @@
 #include "ability_manager_service.h"
 #include "ability_util.h"
 #include "app_utils.h"
+#include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
 #include "param.h"
+#include "singleton.h"
 #include "utils/state_utils.h"
 
 namespace OHOS {
@@ -62,6 +64,13 @@ bool AppScheduler::Init(const std::weak_ptr<AppStateCallback> &callback)
     }
     appMgrClient_->RegisterStartSpecifiedAbilityResponse(startSpecifiedAbilityResponse_);
 
+    taskStateCallback_ = sptr<TaskStateCallbackImpl>(new TaskStateCallbackImpl());
+    if (taskStateCallback_ != nullptr) {
+        appMgrClient_->RegisterTaskStateCallback(taskStateCallback_);
+    } else {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "null taskStateCallback");
+        return false;
+    }
     TAG_LOGI(AAFwkTag::ABILITYMGR, "success to ConnectAppMgrService");
     isInit_ = true;
     return true;
@@ -125,22 +134,26 @@ int AppScheduler::UpdateApplicationInfoInstalled(const std::string &bundleName, 
     return ERR_OK;
 }
 
-void AppScheduler::MoveToForeground(const sptr<IRemoteObject> &token)
+void AppScheduler::MoveToForeground(const sptr<IRemoteObject> &token,
+    const AppExecFwk::UiAbilityLastCallerInfo &callerInfo)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Start to move the ability to foreground.");
     CHECK_POINTER(appMgrClient_);
     IN_PROCESS_CALL_WITHOUT_RET(
-        appMgrClient_->UpdateAbilityState(token, AppExecFwk::AbilityState::ABILITY_STATE_FOREGROUND));
+        appMgrClient_->UpdateAbilityState(token, AppExecFwk::AbilityState::ABILITY_STATE_FOREGROUND, false,
+            callerInfo));
 }
 
-void AppScheduler::MoveToBackground(const sptr<IRemoteObject> &token)
+void AppScheduler::MoveToBackground(const sptr<IRemoteObject> &token, bool isFromScreenOffBackground)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "Move the app to background.");
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "Move the app to background, isFromScreenOffBackground:%{public}d",
+        isFromScreenOffBackground);
     CHECK_POINTER(appMgrClient_);
     IN_PROCESS_CALL_WITHOUT_RET(
-        appMgrClient_->UpdateAbilityState(token, AppExecFwk::AbilityState::ABILITY_STATE_BACKGROUND));
+        appMgrClient_->UpdateAbilityState(token, AppExecFwk::AbilityState::ABILITY_STATE_BACKGROUND,
+            isFromScreenOffBackground));
 }
 
 void AppScheduler::UpdateAbilityState(const sptr<IRemoteObject> &token, const AppExecFwk::AbilityState state)
@@ -175,6 +188,46 @@ int32_t AppScheduler::SetGameSAPrelaunch(const sptr<IRemoteObject> &token, bool 
     return appMgrClient_->SetGameSAPrelaunch(token, isGameSAPrelaunch);
 }
 
+int32_t AppScheduler::AttributeProcessForAbility(const std::string &taskId, int32_t callerUid, int32_t callerPid,
+    int32_t targetPid, int64_t &attributionId)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "AttributeProcessForAbility");
+    CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
+    // Reset the binder identity to this process so the appmgr side foundation check
+    // passes regardless of the outer caller; also skips parcel roundtrip in-process.
+    return IN_PROCESS_CALL(
+        appMgrClient_->AttributeProcessForAbility(taskId, callerUid, callerPid, targetPid, attributionId));
+}
+
+int32_t AppScheduler::UnregisterTaskAttribution(const std::string &taskId, int64_t attributionId)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "UnregisterTaskAttribution");
+    CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
+    // Reset the binder identity to this process so the appmgr side foundation check
+    // passes regardless of the outer caller; also skips parcel roundtrip in-process.
+    return IN_PROCESS_CALL(appMgrClient_->UnregisterTaskAttribution(taskId, attributionId));
+}
+
+int32_t AppScheduler::RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t tool,
+    int32_t callerUid, int64_t &attributionId)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "RegisterManagedProcess");
+    CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
+    // IN_PROCESS_CALL resets the binder identity to this process, satisfying the appmgr caller check.
+    return IN_PROCESS_CALL(
+        appMgrClient_->RegisterManagedProcess(taskId, pid, tool, callerUid, attributionId));
+}
+
+int32_t AppScheduler::UnregisterManagedProcess(const std::string &taskId, int64_t attributionId,
+    int32_t callerUid)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "UnregisterManagedProcess");
+    CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
+    // IN_PROCESS_CALL resets the binder identity to this process, satisfying the appmgr caller check.
+    return IN_PROCESS_CALL(
+        appMgrClient_->UnregisterManagedProcess(taskId, attributionId, callerUid));
+}
+
 void AppScheduler::KillProcessesByUserId(int32_t userId, bool isNeedSendAppSpawnMsg,
     sptr<AAFwk::IUserCallback> callback)
 {
@@ -195,6 +248,13 @@ int32_t AppScheduler::KillProcessesByPids(const std::vector<int32_t> &pids, cons
         return ret;
     }
     return ERR_OK;
+}
+
+bool AppScheduler::CheckProcessAvailable(int32_t pid)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "pid:%{public}d", pid);
+    CHECK_POINTER_AND_RETURN(appMgrClient_, true);
+    return IN_PROCESS_CALL(appMgrClient_->CheckProcessAvailable(pid));
 }
 
 void AppScheduler::AttachPidToParent(const sptr<IRemoteObject> &token, const sptr<IRemoteObject> &callerToken)
@@ -301,11 +361,11 @@ void AppScheduler::RecordAppExitSignalReason(int32_t pid, int32_t uid, int32_t s
 }
 
 int AppScheduler::KillApplication(const std::string &bundleName, bool clearPageStack, int32_t appIndex,
-    const std::string &reason)
+    const std::string &reason, int32_t userId)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "call");
     CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
-    int ret = (int)appMgrClient_->KillApplication(bundleName, clearPageStack, appIndex, reason);
+    int ret = (int)appMgrClient_->KillApplication(bundleName, clearPageStack, appIndex, reason, userId);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "failed kill app");
         return INNER_ERR;
@@ -334,7 +394,9 @@ int AppScheduler::KillApplicationWithUserId(const std::string &bundleName,
     CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
     int ret = (int)appMgrClient_->KillApplicationWithUserId(bundleName, userId, appIndex);
     if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "failed kill app");
+        TAG_LOGE(AAFwkTag::ABILITYMGR,
+            "failed kill app, bundleName:%{public}s userId:%{public}d appIndex:%{public}d ret:%{public}d",
+            bundleName.c_str(), userId, appIndex, ret);
         return INNER_ERR;
     }
 
@@ -448,11 +510,10 @@ void AppScheduler::StartupResidentProcess(const std::vector<AppExecFwk::BundleIn
 }
 
 void AppScheduler::StartSpecifiedAbility(const AAFwk::Want &want, const AppExecFwk::AbilityInfo &abilityInfo,
-    int32_t requestId, const std::string &customProcess, bool isWindowStagePreload)
+    const AbilityRuntime::StartSpecifiedParam &param)
 {
     CHECK_POINTER(appMgrClient_);
-    IN_PROCESS_CALL_WITHOUT_RET(appMgrClient_->StartSpecifiedAbility(want, abilityInfo, requestId,
-        customProcess, isWindowStagePreload));
+    IN_PROCESS_CALL_WITHOUT_RET(appMgrClient_->StartSpecifiedAbility(want, abilityInfo, param));
 }
 
 void StartSpecifiedAbilityResponse::OnAcceptWantResponse(
@@ -496,6 +557,13 @@ void StartSpecifiedAbilityResponse::OnStartSpecifiedFailed(int32_t requestId, in
     DelayedSingleton<AbilityManagerService>::GetInstance()->OnStartSpecifiedFailed(requestId, userId);
 }
 
+void TaskStateCallbackImpl::OnTaskFinished(const std::string &taskId, int32_t userId)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR,
+        "task finished callback, taskId=%{public}s, userId=%{public}d", taskId.c_str(), userId);
+    DelayedSingleton<AbilityManagerService>::GetInstance()->OnTaskFinished(taskId, userId);
+}
+
 int AppScheduler::GetProcessRunningInfos(std::vector<AppExecFwk::RunningProcessInfo> &info)
 {
     CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
@@ -506,6 +574,13 @@ int AppScheduler::GetProcessRunningInfosByUserId(std::vector<AppExecFwk::Running
 {
     CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
     return static_cast<int>(appMgrClient_->GetProcessRunningInfosByUserId(info, userId));
+}
+
+int AppScheduler::GetProcessRunningInfosByAccessTokenId(uint32_t accessTokenId,
+    std::vector<AppExecFwk::RunningProcessInfo> &info)
+{
+    CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
+    return static_cast<int>(appMgrClient_->GetProcessRunningInfosByAccessTokenId(accessTokenId, info));
 }
 
 std::string AppScheduler::ConvertAppState(const AppState &state)
@@ -600,7 +675,8 @@ int32_t AppScheduler::NotifyAppMgrRecordExitReason(int32_t pid, int32_t reason, 
 }
 
 int32_t AppScheduler::NotifyAppMgrRecordExitReasonCompability(
-    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg)
+    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg,
+    int32_t reason, int32_t callerPid)
 {
     if (pid <= 0) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "pid is invalid");
@@ -608,7 +684,7 @@ int32_t AppScheduler::NotifyAppMgrRecordExitReasonCompability(
     }
     CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
     auto ret = static_cast<int32_t>(IN_PROCESS_CALL(appMgrClient_->NotifyAppMgrRecordExitReasonCompability(
-        pid, killId, killMsg, innerMsg)));
+        pid, killId, killMsg, innerMsg, reason, callerPid)));
     return ret;
 }
 
@@ -698,13 +774,20 @@ int32_t AppScheduler::RegisterAbilityDebugResponse(const sptr<AppExecFwk::IAbili
 
 bool AppScheduler::IsAttachDebug(const std::string &bundleName)
 {
-    CHECK_POINTER_AND_RETURN(appMgrClient_, INNER_ERR);
-    auto ret = static_cast<int32_t>(appMgrClient_->IsAttachDebug(bundleName));
-    if (ret != ERR_OK) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "call attach debug failed");
-        return INNER_ERR;
-    }
-    return ERR_OK;
+    CHECK_POINTER_AND_RETURN(appMgrClient_, false);
+    return appMgrClient_->IsAttachDebug(bundleName);
+}
+
+bool AppScheduler::IsMainProcessDebug(int32_t uid)
+{
+    CHECK_POINTER_AND_RETURN(appMgrClient_, false);
+    return appMgrClient_->IsMainProcessDebug(uid);
+}
+
+bool AppScheduler::IsCorrespondingProcessAttachDebug(const AppExecFwk::AbilityInfo &abilityInfo)
+{
+    CHECK_POINTER_AND_RETURN(appMgrClient_, false);
+    return appMgrClient_->IsCorrespondingProcessAttachDebug(abilityInfo);
 }
 
 void AppScheduler::ClearProcessByToken(sptr<IRemoteObject> token) const

@@ -16,6 +16,8 @@
 #ifndef OHOS_ABILITY_RUNTIME_EXTENSION_ABILITY_THREAD_H
 #define OHOS_ABILITY_RUNTIME_EXTENSION_ABILITY_THREAD_H
 
+#include <mutex>
+
 #include "ability_thread.h"
 #include "extension_impl.h"
 #include "want.h"
@@ -137,6 +139,8 @@ public:
 
     void ScheduleAbilitiesRequestDone(const std::string &requestKey, int32_t resultCode) override;
 
+    void ExecuteSkill(const Want &want) override;
+
     void HandleNativeExtensionAttach(
         const std::shared_ptr<AppExecFwk::AbilityLocalRecord> &abilityRecord,
         const std::string &abilityName);
@@ -145,6 +149,8 @@ public:
         const std::shared_ptr<AppExecFwk::AbilityLocalRecord> &abilityRecord,
         const std::shared_ptr<AppExecFwk::EventRunner> &mainRunner,
         const std::string &abilityName);
+
+    int CreateModalUIExtension(const Want &want) override;
 
 private:
 
@@ -238,13 +244,18 @@ private:
      */
     void HandleInsightIntent(const Want &want);
 
+    void HandleExecuteSkill(const Want &want);
+
     void ScheduleCommandAbilityInner(const Want &want, bool restart, int32_t startId);
 
     void ScheduleInsightIntentInner(const Want &want);
 
+    void ScheduleSkillExecuteInner(const Want &want);
+
     std::shared_ptr<ExtensionImpl> extensionImpl_ = nullptr;
     std::shared_ptr<Extension> currentExtension_ = nullptr;
     static std::shared_ptr<AppExecFwk::EventRunner> contentEmbedEventRunner_;
+    static std::mutex contentEmbedMutex_;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

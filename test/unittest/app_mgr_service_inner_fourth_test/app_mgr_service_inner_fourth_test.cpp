@@ -26,13 +26,13 @@
 #include "bundle_mgr_helper.h"
 #include "event_handler.h"
 #include "hilog_tag_wrapper.h"
-#include "image_error_handler_stub.h"
 #include "mock_ability_token.h"
 #include "mock_ipc_skeleton.h"
 #include "mock_my_flag.h"
 #include "mock_permission_verification.h"
 #include "param.h"
 #include "parameters.h"
+#include "hyper_snap_error_record.h"
 #include "remote_client_manager.h"
 #include "render_state_observer_stub.h"
 
@@ -71,14 +71,6 @@ public:
     virtual ~RenderStateObserverMock() = default;
     void OnRenderStateChanged(const RenderStateData &renderStateData) override
     {}
-};
-
-class MockImageErrorHandlerStub : public ImageErrorHandlerStub {
-public:
-    MockImageErrorHandlerStub() = default;
-    virtual ~MockImageErrorHandlerStub() = default;
-
-    MOCK_METHOD1(OnError, void(int32_t errCode));
 };
 
 void AppMgrServiceInnerFourthTest::InitAppInfo(const std::string& deviceName,
@@ -141,6 +133,7 @@ HWTEST_F(AppMgrServiceInnerFourthTest, KillProcessesInBatch_0100, TestSize.Level
     EXPECT_EQ(appMgrServiceInner->GetAppRunningRecordByPid(pids[0]), nullptr);
 
     appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = appMgrServiceInner->appRunningManager_;
     auto appRunningRecord = std::make_shared<AppRunningRecord>(applicationInfo_, APP_DEBUG_INFO_UID, "PROCESS_NAME");
     appMgrServiceInner->appRunningManager_ ->appRunningRecordMap_.emplace(0, appRunningRecord);
     EXPECT_EQ(appMgrServiceInner->KillProcessesInBatch(pids), ERR_OK);
@@ -299,12 +292,14 @@ HWTEST_F(AppMgrServiceInnerFourthTest, GetRunningProcessInfoByChildProcessPid_01
     TAG_LOGI(AAFwkTag::TEST, "GetRunningProcessInfoByChildProcessPid_0100 start");
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     appMgrServiceInner->appRunningManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = nullptr;
     pid_t childPid = 1;
     AppExecFwk::RunningProcessInfo info;
     auto res = appMgrServiceInner->GetRunningProcessInfoByChildProcessPid(childPid, info);
     EXPECT_EQ(res, ERR_PERMISSION_DENIED);
 
     appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = appMgrServiceInner->appRunningManager_;
     res = appMgrServiceInner->GetRunningProcessInfoByChildProcessPid(childPid, info);
     EXPECT_NE(res, ERR_PERMISSION_DENIED);
     TAG_LOGI(AAFwkTag::TEST, "GetRunningProcessInfoByChildProcessPid_0100 end");
@@ -667,6 +662,42 @@ HWTEST_F(AppMgrServiceInnerFourthTest, GetValidUserId_ShouldReturn1WhenInputIs1,
 }
 
 /**
+ * @tc.name: GetImageReportAppVersionName_001
+ * @tc.desc: Test GetImageReportAppVersionName dependency and bundle manager result branches
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, GetImageReportAppVersionName_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetImageReportAppVersionName_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+
+    const std::string bundleName = "com.acts.imagetest";
+    constexpr int32_t userId = 100;
+    appMgrServiceInner->remoteClientManager_ = nullptr;
+    EXPECT_TRUE(appMgrServiceInner->GetImageReportAppVersionName(bundleName, userId).empty());
+
+    appMgrServiceInner->remoteClientManager_ = std::make_shared<RemoteClientManager>();
+    ASSERT_NE(appMgrServiceInner->remoteClientManager_, nullptr);
+    appMgrServiceInner->remoteClientManager_->SetBundleManagerHelper(nullptr);
+    EXPECT_TRUE(appMgrServiceInner->GetImageReportAppVersionName(bundleName, userId).empty());
+
+    auto bundleMgrHelper = std::make_shared<BundleMgrHelper>();
+    ASSERT_NE(bundleMgrHelper, nullptr);
+    appMgrServiceInner->remoteClientManager_->SetBundleManagerHelper(bundleMgrHelper);
+    BundleMgrHelper::bundleVersionName_ = "1.0.0";
+    BundleMgrHelper::getBundleInfoV9Result_ = ERR_OK;
+    EXPECT_EQ(appMgrServiceInner->GetImageReportAppVersionName(bundleName, userId), "1.0.0");
+
+    BundleMgrHelper::getBundleInfoV9Result_ = ERR_INVALID_VALUE;
+    EXPECT_TRUE(appMgrServiceInner->GetImageReportAppVersionName(bundleName, userId).empty());
+    BundleMgrHelper::getBundleInfoV9Result_ = ERR_OK;
+    BundleMgrHelper::bundleVersionName_.clear();
+
+    TAG_LOGI(AAFwkTag::TEST, "GetImageReportAppVersionName_001 end");
+}
+
+/**
  * @tc.name: IsImageInfoExist_ShouldReturnFalseWhenImageInfoNotExist
  * @tc.desc: Test IsImageInfoExist
  * @tc.type: FUNC
@@ -679,7 +710,7 @@ HWTEST_F(AppMgrServiceInnerFourthTest, IsImageInfoExist_ShouldReturnFalseWhenIma
     std::string bundleName = "com.acts.imagetest";
     int32_t userId = 1;
     int32_t appIndex = 0;
-    bool exist = appMgrServiceInner->IsImageInfoExist(bundleName, userId, appIndex);
+    bool exist = appMgrServiceInner->IsImageInfoExist(bundleName, "", userId, appIndex);
     EXPECT_FALSE(exist);
     TAG_LOGI(AAFwkTag::TEST, "IsImageInfoExist_ShouldReturnFalseWhenImageInfoNotExist end");
 }
@@ -699,7 +730,7 @@ HWTEST_F(AppMgrServiceInnerFourthTest, IsImageInfoExist_ShouldReturnTrueWhenImag
     int32_t appIndex = 0;
     PreloadRequest preloadRequest;
     appMgrServiceInner->PreAddImageInfo(bundleName, userId, appIndex, nullptr, preloadRequest);
-    bool exist = appMgrServiceInner->IsImageInfoExist(bundleName, userId, appIndex);
+    bool exist = appMgrServiceInner->IsImageInfoExist(bundleName, "", userId, appIndex);
     EXPECT_TRUE(exist);
     TAG_LOGI(AAFwkTag::TEST, "IsImageInfoExist_ShouldReturnTrueWhenImageInfoExist end");
 }
@@ -718,13 +749,13 @@ HWTEST_F(AppMgrServiceInnerFourthTest, RemoveImageInfo_ShouldRemoveImageWhenKeyI
     int32_t userId = 1;
     int32_t appIndex = 0;
     PreloadRequest preloadRequest;
-    appMgrServiceInner->RemoveImageInfo(bundleName, userId, appIndex);
-    EXPECT_FALSE(appMgrServiceInner->IsImageInfoExist(bundleName, userId, appIndex));
+    appMgrServiceInner->RemoveImageInfo(bundleName, "", userId, appIndex);
+    EXPECT_FALSE(appMgrServiceInner->IsImageInfoExist(bundleName, "", userId, appIndex));
     appMgrServiceInner->PreAddImageInfo(bundleName, userId, appIndex, nullptr, preloadRequest);
-    bool exist = appMgrServiceInner->IsImageInfoExist(bundleName, userId, appIndex);
+    bool exist = appMgrServiceInner->IsImageInfoExist(bundleName, "", userId, appIndex);
     EXPECT_TRUE(exist);
-    appMgrServiceInner->RemoveImageInfo(bundleName, userId, appIndex);
-    EXPECT_FALSE(appMgrServiceInner->IsImageInfoExist(bundleName, userId, appIndex));
+    appMgrServiceInner->RemoveImageInfo(bundleName, "", userId, appIndex);
+    EXPECT_FALSE(appMgrServiceInner->IsImageInfoExist(bundleName, "", userId, appIndex));
     TAG_LOGI(AAFwkTag::TEST, "RemoveImageInfo_ShouldRemoveImageWhenKeyIsExist end");
 }
 
@@ -774,7 +805,7 @@ HWTEST_F(AppMgrServiceInnerFourthTest, GetImageInfoByUid_ShouldReturnNullptrWhen
     };
     appMgrServiceInner->imageInfoMap_.emplace(request, nullptr);
     int32_t uid = 1;
-    EXPECT_EQ(appMgrServiceInner->GetImageInfoByUid(uid), nullptr);
+    EXPECT_EQ(appMgrServiceInner->GetImageInfosByUid(uid).size(), 0);
     TAG_LOGI(AAFwkTag::TEST, "GetImageInfoByUid_ShouldReturnNullptrWhenForkImageInfoIsNullptr end");
 }
 
@@ -802,7 +833,7 @@ HWTEST_F(AppMgrServiceInnerFourthTest, UpdateImageInfo_ShouldDoNothingWhenReques
     appRecord->SetAppIndex(appIndex);
     int32_t imagePid = 100;
     appMgrServiceInner->UpdateImageInfo(imagePid, 0, appRecord);
-    auto imageInfo = appMgrServiceInner->GetImageInfo(bundleName, userId, appIndex);
+    auto imageInfo = appMgrServiceInner->GetImageInfo(bundleName, "", userId, appIndex);
     EXPECT_NE(imageInfo, nullptr);
     EXPECT_NE(imageInfo->baseAppRecord, appRecord);
     TAG_LOGI(AAFwkTag::TEST, "UpdateImageInfo_ShouldDoNothingWhenRequestNotMatch end");
@@ -832,7 +863,7 @@ HWTEST_F(AppMgrServiceInnerFourthTest, UpdateImageInfo_ShouldUpdateWhenAppRecord
     appRecord->SetAppIndex(appIndex);
     int32_t imagePid = 100;
     appMgrServiceInner->UpdateImageInfo(imagePid, 0, appRecord);
-    auto imageInfo = appMgrServiceInner->GetImageInfo(bundleName, userId, appIndex);
+    auto imageInfo = appMgrServiceInner->GetImageInfo(bundleName, "", userId, appIndex);
     EXPECT_NE(imageInfo, nullptr);
     EXPECT_EQ(imageInfo->baseAppRecord, appRecord);
     EXPECT_EQ(imageInfo->imagePid, imagePid);
@@ -920,8 +951,8 @@ HWTEST_F(AppMgrServiceInnerFourthTest, HandleMakeImageFailed_ShouldDonothingWhen
     int32_t userId = 100;
     int32_t appIndex = 0;
     ImageError imageErr = ImageError::ERR_OK;
-    appMgrServiceInner->HandleMakeImageFailed(bundleName, userId, appIndex, imageErr);
-    EXPECT_EQ(appMgrServiceInner->GetImageInfo(bundleName, userId, appIndex), nullptr);
+    appMgrServiceInner->HandleMakeImageFailed(bundleName, "", userId, appIndex, imageErr);
+    EXPECT_EQ(appMgrServiceInner->GetImageInfo(bundleName, "", userId, appIndex), nullptr);
     TAG_LOGI(AAFwkTag::TEST, "HandleMakeImageFailed_ShouldDonothingWhenImageInfoNotExist end");
 }
 
@@ -995,37 +1026,445 @@ HWTEST_F(AppMgrServiceInnerFourthTest, MakeImage_ShouldReturnNotOkWhenImageInfoN
 }
 
 /**
- * @tc.name: NotifyImageOperationFailed_ShouldReturn_1WhenErrorHandleIsNullptr
- * @tc.desc: Test NotifyImageOperationFailed
+ * @tc.name: FindImageInfo_ShouldReturnNullptrWhenImageInfoNotExist
+ * @tc.desc: Test FindImageInfo
  * @tc.type: FUNC
  */
-HWTEST_F(AppMgrServiceInnerFourthTest, NotifyImageOperationFailed_ShouldReturn_1WhenErrorHandleIsNullptr,
-    TestSize.Level1)
+HWTEST_F(AppMgrServiceInnerFourthTest, FindImageInfo_ShouldReturnNullptrWhenImageInfoNotExist, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_ShouldReturn_1WhenErrorHandleIsNullptr start");
+    TAG_LOGI(AAFwkTag::TEST, "FindImageInfo_ShouldReturnNullptrWhenImageInfoNotExist start");
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     EXPECT_NE(appMgrServiceInner, nullptr);
-    ImageError errCode = ImageError::ERR_KILL_IMAGE_PROCESS_FAILED;
-    EXPECT_EQ(appMgrServiceInner->NotifyImageOperationFailed(nullptr, errCode), -1);
-    TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_ShouldReturn_1WhenErrorHandleIsNullptr end");
+    std::string bundleName = "com.acts.imagetest";
+    std::string abilityName = "TestAbility";
+    int32_t userId = 100;
+    int32_t appIndex = 0;
+    auto imageInfo = appMgrServiceInner->FindImageInfo(bundleName, abilityName, userId, appIndex);
+    EXPECT_EQ(imageInfo, nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "FindImageInfo_ShouldReturnNullptrWhenImageInfoNotExist end");
 }
 
 /**
- * @tc.name: NotifyImageOperationFailed_ShouldReturnErrOkWhenErrorHandleIsNullptr
- * @tc.desc: Test NotifyImageOperationFailed
+ * @tc.name: FindImageInfo_ShouldReturnImageInfoWhenExist
+ * @tc.desc: Test FindImageInfo
  * @tc.type: FUNC
  */
-HWTEST_F(AppMgrServiceInnerFourthTest, NotifyImageOperationFailed_ShouldReturnErrOkWhenErrorHandleIsNullptr,
-    TestSize.Level1)
+HWTEST_F(AppMgrServiceInnerFourthTest, FindImageInfo_ShouldReturnImageInfoWhenExist, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_ShouldReturnErrOkWhenErrorHandleIsNullptr start");
+    TAG_LOGI(AAFwkTag::TEST, "FindImageInfo_ShouldReturnImageInfoWhenExist start");
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     EXPECT_NE(appMgrServiceInner, nullptr);
-    sptr<MockImageErrorHandlerStub> errHandler = new (std::nothrow) MockImageErrorHandlerStub();
-    ImageError errCode = ImageError::ERR_KILL_IMAGE_PROCESS_FAILED;
-    EXPECT_CALL(*errHandler, OnError(_)).Times(1);
-    EXPECT_EQ(appMgrServiceInner->NotifyImageOperationFailed(errHandler, errCode), ERR_OK);
-    TAG_LOGI(AAFwkTag::TEST, "NotifyImageOperationFailed_ShouldReturnErrOkWhenErrorHandleIsNullptr end");
+    std::string bundleName = "com.acts.imagetest";
+    std::string abilityName = "TestAbility";
+    int32_t userId = 100;
+    int32_t appIndex = 0;
+    PreloadRequest preloadRequest;
+    appMgrServiceInner->PreAddImageInfo(bundleName, userId, appIndex, nullptr, preloadRequest);
+    auto imageInfo = appMgrServiceInner->FindImageInfo(bundleName, "", userId, appIndex);
+    EXPECT_NE(imageInfo, nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "FindImageInfo_ShouldReturnImageInfoWhenExist end");
 }
+
+/**
+ * @tc.name: GetImageInfoByAppRecord_ShouldReturnNullptrWhenAppRecordIsNullptr
+ * @tc.desc: Test GetImageInfo with AppRunningRecord parameter
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, GetImageInfoByAppRecord_ShouldReturnNullptrWhenAppRecordIsNullptr, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetImageInfoByAppRecord_ShouldReturnNullptrWhenAppRecordIsNullptr start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    auto imageInfo = appMgrServiceInner->GetImageInfo(nullptr);
+    EXPECT_EQ(imageInfo, nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "GetImageInfoByAppRecord_ShouldReturnNullptrWhenAppRecordIsNullptr end");
+}
+
+/**
+ * @tc.name: GetImageInfoByAppRecord_ShouldReturnNullptrWhenImageInfoNotExist
+ * @tc.desc: Test GetImageInfo with AppRunningRecord parameter
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, GetImageInfoByAppRecord_ShouldReturnNullptrWhenImageInfoNotExist, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetImageInfoByAppRecord_ShouldReturnNullptrWhenImageInfoNotExist start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    auto appRecord = std::make_shared<AppRunningRecord>(applicationInfo_, APP_DEBUG_INFO_UID, "PROCESS_NAME");
+    auto imageInfo = appMgrServiceInner->GetImageInfo(appRecord);
+    EXPECT_EQ(imageInfo, nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "GetImageInfoByAppRecord_ShouldReturnNullptrWhenImageInfoNotExist end");
+}
+
+/**
+ * @tc.name: GetImageInfoByAppRecord_ShouldReturnImageInfoWhenExist
+ * @tc.desc: Test GetImageInfo with AppRunningRecord parameter
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, GetImageInfoByAppRecord_ShouldReturnImageInfoWhenExist, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetImageInfoByAppRecord_ShouldReturnImageInfoWhenExist start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    std::string bundleName = "com.acts.imagetest";
+    int32_t userId = 100;
+    int32_t appIndex = 0;
+    PreloadRequest preloadRequest;
+    appMgrServiceInner->PreAddImageInfo(bundleName, userId, appIndex, nullptr, preloadRequest);
+
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->bundleName = bundleName;
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, APP_DEBUG_INFO_UID, "PROCESS_NAME");
+    appRecord->SetUid(userId * BASE_USER_RANGE);
+    appRecord->SetAppIndex(appIndex);
+
+    auto imageInfo = appMgrServiceInner->GetImageInfo(appRecord);
+    EXPECT_NE(imageInfo, nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "GetImageInfoByAppRecord_ShouldReturnImageInfoWhenExist end");
+}
+
+/**
+ * @tc.name: IsImageMakeSuccess_ShouldReturnFalseWhenImageInfoNotExist
+ * @tc.desc: Test IsImageMakeSuccess
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, IsImageMakeSuccess_ShouldReturnFalseWhenImageInfoNotExist, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsImageMakeSuccess_ShouldReturnFalseWhenImageInfoNotExist start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    std::string bundleName = "com.acts.imagetest";
+    std::string abilityName = "TestAbility";
+    int32_t userId = 100;
+    int32_t appIndex = 0;
+    bool isSuccess = appMgrServiceInner->IsImageMakeSuccess(bundleName, abilityName, userId, appIndex);
+    EXPECT_FALSE(isSuccess);
+    TAG_LOGI(AAFwkTag::TEST, "IsImageMakeSuccess_ShouldReturnFalseWhenImageInfoNotExist end");
+}
+
+/**
+ * @tc.name: IsImageMakeSuccess_ShouldReturnTrueWhenImageInfoExistAndPidValid
+ * @tc.desc: Test IsImageMakeSuccess
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, IsImageMakeSuccess_ShouldReturnTrueWhenImageInfoExistAndPidValid, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsImageMakeSuccess_ShouldReturnTrueWhenImageInfoExistAndPidValid start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    std::string bundleName = "com.acts.imagetest";
+    std::string abilityName = "TestAbility";
+    int32_t userId = 100;
+    int32_t appIndex = 0;
+    PreloadRequest preloadRequest;
+    preloadRequest.abilityName = abilityName;
+    appMgrServiceInner->PreAddImageInfo(bundleName, userId, appIndex, nullptr, preloadRequest);
+
+    auto imageInfo = appMgrServiceInner->GetImageInfo(bundleName, abilityName, userId, appIndex);
+    if (imageInfo != nullptr) {
+        imageInfo->imagePid = 100;
+    }
+
+    bool isSuccess = appMgrServiceInner->IsImageMakeSuccess(bundleName, abilityName, userId, appIndex);
+    EXPECT_TRUE(isSuccess);
+    TAG_LOGI(AAFwkTag::TEST, "IsImageMakeSuccess_ShouldReturnTrueWhenImageInfoExistAndPidValid end");
+}
+
+/**
+ * @tc.name: RemoveImageInfoByAppRecord_ShouldNotCrashWhenAppRecordIsNullptr
+ * @tc.desc: Test RemoveImageInfo with AppRunningRecord parameter
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, RemoveImageInfoByAppRecord_ShouldNotCrashWhenAppRecordIsNullptr, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RemoveImageInfoByAppRecord_ShouldNotCrashWhenAppRecordIsNullptr start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    appMgrServiceInner->RemoveImageInfo(nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "RemoveImageInfoByAppRecord_ShouldNotCrashWhenAppRecordIsNullptr end");
+}
+
+/**
+ * @tc.name: RemoveImageInfoByAppRecord_ShouldRemoveWhenMatch
+ * @tc.desc: Test RemoveImageInfo with AppRunningRecord parameter
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, RemoveImageInfoByAppRecord_ShouldRemoveWhenMatch, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RemoveImageInfoByAppRecord_ShouldRemoveWhenMatch start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    std::string bundleName = "com.acts.imagetest";
+    int32_t userId = 100;
+    int32_t appIndex = 0;
+    PreloadRequest preloadRequest;
+    appMgrServiceInner->PreAddImageInfo(bundleName, userId, appIndex, nullptr, preloadRequest);
+
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->bundleName = bundleName;
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, APP_DEBUG_INFO_UID, "PROCESS_NAME");
+    appRecord->SetUid(userId * BASE_USER_RANGE);
+    appRecord->SetAppIndex(appIndex);
+
+    EXPECT_TRUE(appMgrServiceInner->IsImageInfoExist(bundleName, "", userId, appIndex));
+    appMgrServiceInner->RemoveImageInfo(appRecord);
+    EXPECT_FALSE(appMgrServiceInner->IsImageInfoExist(bundleName, "", userId, appIndex));
+    TAG_LOGI(AAFwkTag::TEST, "RemoveImageInfoByAppRecord_ShouldRemoveWhenMatch end");
+}
+
+/**
+ * @tc.name: HandleMakeImageTimeout_ShouldWorkCorrectly
+ * @tc.desc: Test HandleMakeImageTimeout with abilityName parameter
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, HandleMakeImageTimeout_ShouldWorkCorrectly, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleMakeImageTimeout_ShouldWorkCorrectly start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    std::string bundleName = "com.acts.imagetest";
+    std::string abilityName = "TestAbility";
+    int32_t userId = 100;
+    int32_t appIndex = 0;
+
+    appMgrServiceInner->HandleMakeImageTimeout(bundleName, abilityName, userId, appIndex);
+    auto imageInfo = appMgrServiceInner->GetImageInfo(bundleName, abilityName, userId, appIndex);
+    EXPECT_EQ(imageInfo, nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "HandleMakeImageTimeout_ShouldWorkCorrectly end");
+}
+
+/**
+ * @tc.name: HandleMakeImageFailedByAppRecord_ShouldNotCrashWhenAppRecordIsNullptr
+ * @tc.desc: Test HandleMakeImageFailed with AppRunningRecord parameter
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, HandleMakeImageFailedByAppRecord_ShouldNotCrashWhenAppRecordIsNullptr, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleMakeImageFailedByAppRecord_ShouldNotCrashWhenAppRecordIsNullptr start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    ImageError error = ImageError::ERR_PRELOAD_FAILED;
+    appMgrServiceInner->HandleMakeImageFailed(nullptr, error);
+    TAG_LOGI(AAFwkTag::TEST, "HandleMakeImageFailedByAppRecord_ShouldNotCrashWhenAppRecordIsNullptr end");
+}
+
+/**
+ * @tc.name: HandleMakeImageFailedByAppRecord_ShouldRemoveImageInfo
+ * @tc.desc: Test HandleMakeImageFailed with AppRunningRecord parameter
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, HandleMakeImageFailedByAppRecord_ShouldRemoveImageInfo, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleMakeImageFailedByAppRecord_ShouldRemoveImageInfo start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    std::string bundleName = "com.acts.imagetest";
+    int32_t userId = 100;
+    int32_t appIndex = 0;
+    PreloadRequest preloadRequest;
+    appMgrServiceInner->PreAddImageInfo(bundleName, userId, appIndex, nullptr, preloadRequest);
+
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->bundleName = bundleName;
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, APP_DEBUG_INFO_UID, "PROCESS_NAME");
+    appRecord->SetUid(userId * BASE_USER_RANGE);
+    appRecord->SetAppIndex(appIndex);
+
+    EXPECT_TRUE(appMgrServiceInner->IsImageInfoExist(bundleName, "", userId, appIndex));
+    ImageError error = ImageError::ERR_PRELOAD_FAILED;
+    appMgrServiceInner->HandleMakeImageFailed(appRecord, error);
+    EXPECT_FALSE(appMgrServiceInner->IsImageInfoExist(bundleName, "", userId, appIndex));
+    TAG_LOGI(AAFwkTag::TEST, "HandleMakeImageFailedByAppRecord_ShouldRemoveImageInfo end");
+}
+
+/**
+ * @tc.name: DestroyImageByImageInfo_ShouldReturnNotReadyWhenImagePidInvalid
+ * @tc.desc: Test DestroyImageByImageInfo
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, DestroyImageByImageInfo_ShouldReturnNotReadyWhenImagePidInvalid, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DestroyImageByImageInfo_ShouldReturnNotReadyWhenImagePidInvalid start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    auto imageInfo = std::make_shared<ForkImageInfo>();
+    imageInfo->imagePid = -1;
+    auto ret = appMgrServiceInner->DestroyImageByImageInfo(imageInfo);
+    EXPECT_EQ(ret, ImageError::ERR_IMAGE_INFO_NOT_READY);
+    TAG_LOGI(AAFwkTag::TEST, "DestroyImageByImageInfo_ShouldReturnNotReadyWhenImagePidInvalid end");
+}
+
+/**
+ * @tc.name: DestroyImageByImageInfo_ShouldReturnNotExistWhenImageInfoIsNullptr
+ * @tc.desc: Test DestroyImageByImageInfo
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, DestroyImageByImageInfo_ShouldReturnNotExistWhenImageInfoIsNullptr, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DestroyImageByImageInfo_ShouldReturnNotExistWhenImageInfoIsNullptr start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    auto ret = appMgrServiceInner->DestroyImageByImageInfo(nullptr);
+    EXPECT_EQ(ret, ImageError::ERR_IMAGE_INFO_NOT_EXIST);
+    TAG_LOGI(AAFwkTag::TEST, "DestroyImageByImageInfo_ShouldReturnNotExistWhenImageInfoIsNullptr end");
+}
+
+/**
+ * @tc.name: IsImageInfoMatched_ShouldReturnFalseWhenProcessNameNotMatch
+ * @tc.desc: Test IsImageInfoMatched
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, IsImageInfoMatched_ShouldReturnFalseWhenProcessNameNotMatch, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsImageInfoMatched_ShouldReturnFalseWhenProcessNameNotMatch start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->bundleName = "com.acts.imagetest";
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, APP_DEBUG_INFO_UID, "com.acts.imagetest");
+
+    auto imageInfo = std::make_shared<ForkImageInfo>();
+    imageInfo->imagePid = 100;
+    imageInfo->baseAppRecord = appRecord;
+
+    int32_t appIndex = 0;
+    std::string processName = "wrong_process_name";
+    std::string instanceKey = "";
+    std::string specifiedProcessFlag = "";
+    std::string customProcessFlag = "";
+
+    bool isMatched = appMgrServiceInner->IsImageInfoMatched(imageInfo, appIndex, processName,
+        instanceKey, specifiedProcessFlag, customProcessFlag);
+    EXPECT_FALSE(isMatched);
+    TAG_LOGI(AAFwkTag::TEST, "IsImageInfoMatched_ShouldReturnFalseWhenProcessNameNotMatch end");
+}
+
+/**
+ * @tc.name: IsImageInfoMatched_ShouldReturnTrueWhenAllMatch
+ * @tc.desc: Test IsImageInfoMatched
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, IsImageInfoMatched_ShouldReturnTrueWhenAllMatch, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsImageInfoMatched_ShouldReturnTrueWhenAllMatch start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->bundleName = "com.acts.imagetest";
+    auto appRecord = std::make_shared<AppRunningRecord>(appInfo, APP_DEBUG_INFO_UID, "com.acts.imagetest");
+
+    auto imageInfo = std::make_shared<ForkImageInfo>();
+    imageInfo->imagePid = 100;
+    imageInfo->baseAppRecord = appRecord;
+
+    int32_t appIndex = 0;
+    std::string processName = "com.acts.imagetest";
+    std::string instanceKey = "";
+    std::string specifiedProcessFlag = "";
+    std::string customProcessFlag = "";
+
+    bool isMatched = appMgrServiceInner->IsImageInfoMatched(imageInfo, appIndex, processName,
+        instanceKey, specifiedProcessFlag, customProcessFlag);
+    EXPECT_TRUE(isMatched);
+    TAG_LOGI(AAFwkTag::TEST, "IsImageInfoMatched_ShouldReturnTrueWhenAllMatch end");
+}
+
+/**
+ * @tc.name: CreateAppRunningRecordFromImageInfo_ShouldReturnNullptrWhenBaseAppRecordIsNullptr
+ * @tc.desc: Test CreateAppRunningRecordFromImageInfo
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, CreateAppRunningRecordFromImageInfo_ShouldReturnNullptrWhenBaseAppRecordIsNullptr,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CreateAppRunningRecordFromImageInfo_ShouldReturnNullptrWhenBaseAppRecordIsNullptr start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    auto imageInfo = std::make_shared<ForkImageInfo>();
+    imageInfo->baseAppRecord = nullptr;
+    auto appRecord = appMgrServiceInner->CreateAppRunningRecordFromImageInfo(imageInfo);
+    EXPECT_EQ(appRecord, nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "CreateAppRunningRecordFromImageInfo_ShouldReturnNullptrWhenBaseAppRecordIsNullptr end");
+}
+
+/**
+ * @tc.name: GetImageInfoByBundleAndAbility_ShouldReturnNullptrWhenNotExist
+ * @tc.desc: Test GetImageInfo with bundleName and abilityName parameters
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, GetImageInfoByBundleAndAbility_ShouldReturnNullptrWhenNotExist, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetImageInfoByBundleAndAbility_ShouldReturnNullptrWhenNotExist start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    std::string bundleName = "com.acts.imagetest";
+    std::string abilityName = "TestAbility";
+    int32_t userId = 100;
+    int32_t appIndex = 0;
+    auto imageInfo = appMgrServiceInner->GetImageInfo(bundleName, abilityName, userId, appIndex);
+    EXPECT_EQ(imageInfo, nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "GetImageInfoByBundleAndAbility_ShouldReturnNullptrWhenNotExist end");
+}
+
+/**
+ * @tc.name: GetImageInfoByBundleAndAbility_ShouldReturnImageInfoWhenExist
+ * @tc.desc: Test GetImageInfo with bundleName and abilityName parameters
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, GetImageInfoByBundleAndAbility_ShouldReturnImageInfoWhenExist, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetImageInfoByBundleAndAbility_ShouldReturnImageInfoWhenExist start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+    std::string bundleName = "com.acts.imagetest";
+    std::string abilityName = "TestAbility";
+    int32_t userId = 100;
+    int32_t appIndex = 0;
+    PreloadRequest preloadRequest;
+    preloadRequest.abilityName = abilityName;
+    appMgrServiceInner->PreAddImageInfo(bundleName, userId, appIndex, nullptr, preloadRequest);
+    auto imageInfo = appMgrServiceInner->GetImageInfo(bundleName, abilityName, userId, appIndex);
+    EXPECT_NE(imageInfo, nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "GetImageInfoByBundleAndAbility_ShouldReturnImageInfoWhenExist end");
+}
+
+/**
+ * @tc.name: HyperSnapErrorRecord_0100
+ * @tc.desc: test HyperSnapErrorRecord parcel marshalling/unmarshalling roundtrip
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, HyperSnapErrorRecord_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HyperSnapErrorRecord_0100 start");
+    HyperSnapErrorRecord record;
+    record.code = HyperSnapErrorCode::ERR_SNAPSHOT_PROCESS_IS_DIED;
+    record.msg = "Snapshot process died";
+    record.occurTimeStamp = 1755612345000; // unix ms, checks int64 precision
+    Parcel parcel;
+    ASSERT_TRUE(record.Marshalling(parcel));
+    auto *decoded = HyperSnapErrorRecord::Unmarshalling(parcel);
+    ASSERT_NE(decoded, nullptr);
+    EXPECT_EQ(decoded->code, HyperSnapErrorCode::ERR_SNAPSHOT_PROCESS_IS_DIED);
+    EXPECT_EQ(decoded->msg, "Snapshot process died");
+    EXPECT_EQ(decoded->occurTimeStamp, 1755612345000);
+    delete decoded;
+    TAG_LOGI(AAFwkTag::TEST, "HyperSnapErrorRecord_0100 end");
+}
+
+/**
+ * @tc.name: HyperSnapErrorRecord_0200
+ * @tc.desc: test Unmarshalling on an empty parcel returns nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerFourthTest, HyperSnapErrorRecord_0200, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HyperSnapErrorRecord_0200 start");
+    Parcel parcel;
+    EXPECT_EQ(HyperSnapErrorRecord::Unmarshalling(parcel), nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "HyperSnapErrorRecord_0200 end");
+}
+
 } // namespace AppExecFwk
 } // namespace OHOS

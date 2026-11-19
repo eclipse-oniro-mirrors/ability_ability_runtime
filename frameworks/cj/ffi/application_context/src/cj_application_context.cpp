@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -451,6 +451,26 @@ int32_t CJApplicationContext::OnOnEnvironment(void (*cfgCallback)(CConfiguration
     int32_t callbackId = envCallback_->Register(CJLambda::Create(cfgCallback), CJLambda::Create(memCallback), isSync);
     context->RegisterEnvironmentCallback(envCallback_);
     TAG_LOGD(AAFwkTag::CONTEXT, "OnOnEnvironment is end");
+    return callbackId;
+}
+
+int32_t CJApplicationContext::OnOnEnvironmentV2(void (*cfgCallback)(CConfigurationV2),
+    void (*memCallback)(int32_t), bool isSync, int32_t &errCode)
+{
+    auto context = applicationContext_.lock();
+    if (context == nullptr || cfgCallback == nullptr || memCallback == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null context");
+        errCode = ERR_ABILITY_RUNTIME_EXTERNAL_INVALID_PARAMETER;
+        return -1;
+    }
+    if (envCallback_ != nullptr) {
+        TAG_LOGD(AAFwkTag::CONTEXT, "envCallback_ is not nullptr.");
+        return envCallback_->RegisterV2(CJLambda::Create(cfgCallback), CJLambda::Create(memCallback), isSync);
+    }
+    envCallback_ = std::make_shared<CjEnvironmentCallback>();
+    int32_t callbackId = envCallback_->RegisterV2(CJLambda::Create(cfgCallback), CJLambda::Create(memCallback), isSync);
+    context->RegisterEnvironmentCallback(envCallback_);
+    TAG_LOGD(AAFwkTag::CONTEXT, "OnOnEnvironmentV2 is end");
     return callbackId;
 }
 

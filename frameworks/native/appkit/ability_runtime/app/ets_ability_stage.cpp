@@ -171,8 +171,14 @@ void ETSAbilityStage::LoadModule(const AppExecFwk::HapModuleInfo &hapModuleInfo)
     }
     TAG_LOGD(AAFwkTag::APPKIT, "entry path: %{public}s", hapModuleInfo.srcEntrance.c_str());
     bool esModule = hapModuleInfo.compileMode == AppExecFwk::CompileMode::ES_MODULE;
-    etsAbilityStageObj_ = etsRuntime_.LoadModule(moduleName, srcPath,
-        hapModuleInfo.hapPath, esModule, false, hapModuleInfo.srcEntrance);
+    std::string key = moduleName + "::" + srcPath;
+    std::unique_ptr<AppExecFwk::ETSNativeReference> moduleObj = nullptr;
+    if (etsRuntime_.PopPreloadObj(key, moduleObj)) {
+        etsAbilityStageObj_ = std::move(moduleObj);
+    } else {
+        etsAbilityStageObj_ = etsRuntime_.LoadModule(moduleName, srcPath,
+            hapModuleInfo.hapPath, esModule, false, hapModuleInfo.srcEntrance);
+    }
     SetEtsAbilityStage();
 }
 
@@ -405,11 +411,12 @@ void ETSAbilityStage::OnLaunchFromHyperSnap()
     FreezeUtil::GetInstance().AddAppLifecycleEvent(0, "ETSAbilityStage::OnLaunchFromHyperSnap end");
 }
 
-void ETSAbilityStage::OnAboutToCreateAbility()
+void ETSAbilityStage::OnAboutToCreateAbility(bool &isAsyncCallback,
+    const std::function<void(const std::shared_ptr<AbilityRuntime::Context> &)> &callback) const
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::APPKIT, "OnAboutToCreateAbility called");
-    AbilityStage::OnAboutToCreateAbility();
+    AbilityStage::OnAboutToCreateAbility(isAsyncCallback, callback);
 
     FreezeUtil::GetInstance().AddAppLifecycleEvent(0, "ETSAbilityStage::OnAboutToCreateAbility begin");
     CallObjectMethod(false, "onAboutToCreateAbility", ":");

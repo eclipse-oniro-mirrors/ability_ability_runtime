@@ -140,6 +140,7 @@ class EventHub {
     if (typeof (event) !== 'string') {
       return;
     }
+    console.log('AbilityKit eventHub off event: ' + event);
     if (this.eventMap[event]) {
       if (callback) {
         let cbArray = this.eventMap[event];
@@ -230,7 +231,7 @@ class Context {
     this.__context_impl__.eventHub = eventHub;
   }
 
-  contextType(contextType) {
+  isContextOf(contextType) {
     if (typeof (contextType) !== 'number') {
       return false;
     }

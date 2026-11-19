@@ -53,6 +53,12 @@ function processArrayKey(nestedObj, parts, value) {
         }
         current = current[part];
     }
+
+    if (parts[parts.length - 1] === 'items') {
+        current[index] = value;
+        return;
+    }
+
     if (!current[index] || typeof current[index] !== 'object') {
         current[index] = {};
     }

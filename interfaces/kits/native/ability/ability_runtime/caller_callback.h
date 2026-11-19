@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_CALLER_CALLBACK_H
 #define OHOS_ABILITY_RUNTIME_CALLER_CALLBACK_H
 
+#include <atomic>
 #include <condition_variable>
 #include <mutex>
 
@@ -90,7 +91,7 @@ private:
     CallBackClosure callback_ = {};
     OnReleaseClosure onRelease_ = {};
     OnRemoteStateChangedClosure onRemoteStateChanged_ = {};
-    bool isCallBack_ = false;
+    std::atomic<bool> isCallBack_ = false;
     std::weak_ptr<LocalCallRecord> localCallRecord_;
 };
 

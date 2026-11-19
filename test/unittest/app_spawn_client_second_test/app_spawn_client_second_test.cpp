@@ -50,9 +50,7 @@ HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_001, TestSize.Level2)
     AppSpawnClient appSpawnClient;
     AppSpawnStartMsg startMsg;
     startMsg.flags = 0;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
 #ifdef SUPPORT_CHILD_PROCESS
     startMsg.childProcessType = 0;
 #endif // SUPPORT_CHILD_PROCESS
@@ -66,9 +64,7 @@ HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_002, TestSize.Level2)
     AppSpawnClient appSpawnClient;
     AppSpawnStartMsg startMsg;
     startMsg.flags = 1;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
 #ifdef SUPPORT_CHILD_PROCESS
     startMsg.childProcessType = 0;
 #endif // SUPPORT_CHILD_PROCESS
@@ -76,15 +72,14 @@ HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_002, TestSize.Level2)
     EXPECT_NE(appSpawnClient.SetStartFlags(startMsg, reqHandle), 0);
 }
 
-// Scenario3: Test when startMsg.atomicServiceFlag is true and all other flags are false.
+// Scenario3: Test when startMsg.flags has ATOMIC_SERVICE bit set and all other flags are false.
 HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_003, TestSize.Level2)
 {
     AppSpawnClient appSpawnClient;
     AppSpawnStartMsg startMsg;
     startMsg.flags = 0;
-    startMsg.atomicServiceFlag = true;
+    startMsg.flags |= (1ULL << StartFlags::ATOMIC_SERVICE);
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
 #ifdef SUPPORT_CHILD_PROCESS
     startMsg.childProcessType = 0;
 #endif // SUPPORT_CHILD_PROCESS
@@ -98,9 +93,7 @@ HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_004, TestSize.Level2)
     AppSpawnClient appSpawnClient;
     AppSpawnStartMsg startMsg;
     startMsg.flags = 0;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = true;
-    startMsg.isolatedExtension = false;
 #ifdef SUPPORT_CHILD_PROCESS
     startMsg.childProcessType = 0;
 #endif // SUPPORT_CHILD_PROCESS
@@ -108,15 +101,14 @@ HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_004, TestSize.Level2)
     EXPECT_NE(appSpawnClient.SetStartFlags(startMsg, reqHandle), 0);
 }
 
-// Scenario5: Test when startMsg.isolatedExtension is true and all other flags are false.
+// Scenario5: Test when startMsg.flags has EXTENSION_SANDBOX bit set and all other flags are false.
 HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_005, TestSize.Level2)
 {
     AppSpawnClient appSpawnClient;
     AppSpawnStartMsg startMsg;
     startMsg.flags = 0;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = true;
+    startMsg.flags |= (1ULL << StartFlags::EXTENSION_SANDBOX);
 #ifdef SUPPORT_CHILD_PROCESS
     startMsg.childProcessType = 0;
 #endif // SUPPORT_CHILD_PROCESS
@@ -130,9 +122,7 @@ HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_006, TestSize.Level2)
     AppSpawnClient appSpawnClient;
     AppSpawnStartMsg startMsg;
     startMsg.flags = 0;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
 #ifdef SUPPORT_CHILD_PROCESS
     startMsg.childProcessType = 1;
 #endif // SUPPORT_CHILD_PROCESS
@@ -146,9 +136,9 @@ HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_007, TestSize.Level2)
     AppSpawnClient appSpawnClient;
     AppSpawnStartMsg startMsg;
     startMsg.flags = 1;
-    startMsg.atomicServiceFlag = true;
+    startMsg.flags |= (1ULL << StartFlags::ATOMIC_SERVICE);
     startMsg.strictMode = true;
-    startMsg.isolatedExtension = true;
+    startMsg.flags |= (1ULL << StartFlags::EXTENSION_SANDBOX);
 #ifdef SUPPORT_CHILD_PROCESS
     startMsg.childProcessType = 1;
 #endif // SUPPORT_CHILD_PROCESS
@@ -156,16 +146,14 @@ HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_007, TestSize.Level2)
     EXPECT_NE(appSpawnClient.SetStartFlags(startMsg, reqHandle), 0);
 }
 
-// Scenario8: Test when startMsg.isCustomSandboxFlag is true and all other flags are false.
+// Scenario8: Test when startMsg.flags has CUSTOM_SANDBOX bit set and all other flags are false.
 HWTEST_F(AppSpawnClientSecondTest, SetStartFlags_008, TestSize.Level2)
 {
     AppSpawnClient appSpawnClient;
     AppSpawnStartMsg startMsg;
     startMsg.flags = 0;
-    startMsg.atomicServiceFlag = false;
     startMsg.strictMode = false;
-    startMsg.isolatedExtension = false;
-    startMsg.isCustomSandboxFlag = true;
+    startMsg.flags |= (1ULL << StartFlags::CUSTOM_SANDBOX);
 #ifdef SUPPORT_CHILD_PROCESS
     startMsg.childProcessType = 0;
 #endif // SUPPORT_CHILD_PROCESS
@@ -356,6 +344,38 @@ HWTEST_F(AppSpawnClientSecondTest, AppspawnSetExtMsgSec_002, TestSize.Level2)
     EXPECT_EQ(ret, ERR_OK);
     ret = asc->AppspawnSetExtMsgSec(startMsg, reqHandle);
     EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: AppspawnSetExtMsgSec_003
+ * @tc.desc: AppspawnSetExtMsgSec, cover the ipcGroupInfoList branch:
+ *           1) single entry + valid reqHandle -> success;
+ *           2) single entry + nullptr reqHandle -> AppSpawnReqMsgAddStringInfo fails, returns non-zero;
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppSpawnClientSecondTest, AppspawnSetExtMsgSec_003, TestSize.Level2)
+{
+    auto asc = std::make_shared<AppSpawnClient>(true);
+    IpcGroupInfo info1;
+    info1.ipcGroupId = "ipcGroup1";
+    info1.gid = 100;
+    info1.uid = 200;
+
+    AppSpawnStartMsg startMsg;
+    startMsg.code = MSG_APP_SPAWN;
+    startMsg.procName = "testProcName";
+    startMsg.ipcGroupInfoList.push_back(info1);
+    AppSpawnReqMsgHandle reqHandle = nullptr;
+    int ret = AppSpawnReqMsgCreate(
+        static_cast<AppSpawnMsgType>(startMsg.code), startMsg.procName.c_str(), &reqHandle);
+    EXPECT_EQ(ret, ERR_OK);
+    ret = asc->AppspawnSetExtMsgSec(startMsg, reqHandle);
+    EXPECT_EQ(ret, ERR_OK);
+    AppSpawnReqMsgFree(reqHandle);
+
+    reqHandle = nullptr;
+    ret = asc->AppspawnSetExtMsgSec(startMsg, reqHandle);
+    EXPECT_NE(ret, ERR_OK);
 }
 
 /**
@@ -570,32 +590,6 @@ HWTEST_F(AppSpawnClientSecondTest, StartProcess_002, TestSize.Level2)
     EXPECT_NE(ret, ERR_OK);
 }
 
-// Scenario1: Test when reqHandle is nullptr returns ERR_OK
-HWTEST_F(AppSpawnClientSecondTest, SetIsolationModeFlag_001, TestSize.Level2)
-{
-    auto asc = std::make_shared<AppSpawnClient>(true);
-    AppSpawnReqMsgHandle reqHandle = nullptr;
-    AppSpawnStartMsg startMsg;
-    startMsg.isolationMode = false;
-    int ret = asc->SetIsolationModeFlag(startMsg, reqHandle);
-    EXPECT_EQ(ret, ERR_OK);
-}
-
-// Scenario2: Test when startMsg.isolationMode is true returns ERR_OK
-HWTEST_F(AppSpawnClientSecondTest, SetIsolationModeFlag_002, TestSize.Level2)
-{
-    auto asc = std::make_shared<AppSpawnClient>(true);
-    AppSpawnStartMsg startMsg;
-    startMsg.isolationMode = true;
-    startMsg.code = MSG_APP_SPAWN;
-    startMsg.procName = "testProcName";
-    AppSpawnReqMsgHandle reqHandle = nullptr;
-    int ret = AppSpawnReqMsgCreate(static_cast<AppSpawnMsgType>(startMsg.code), startMsg.procName.c_str(), &reqHandle);
-    EXPECT_EQ(ret, ERR_OK);
-    ret = asc->SetIsolationModeFlag(startMsg, reqHandle);
-    EXPECT_EQ(ret, ERR_OK);
-}
-
 // Scenario1: Test when AppSpawnReqMsgAddFd returns ERR_OK for all items in fds.
 HWTEST_F(AppSpawnClientSecondTest, SetExtMsgFds_ShouldReturnErrOk_WhenAllItemsInFdsReturnOk, TestSize.Level2)
 {
@@ -747,6 +741,47 @@ HWTEST_F(AppSpawnClientSecondTest, SetUserIdInfo_004, TestSize.Level2)
 
     AppSpawnReqMsgFree(reqHandle);
     GTEST_LOG_(INFO) << "SetUserIdInfo_004 end";
+}
+
+// Scenario: Test when startMsg.code is MSG_APP_SPAWN and gids size equals APP_MAX_GIDS but
+// gids + dataGroupInfoList size exceeds APP_MAX_GIDS, VerifyMsg should return false.
+HWTEST_F(AppSpawnClientSecondTest, VerifyMsg_ShouldReturnFalse_WhenGidsPlusDataGroupExceedsMax, TestSize.Level2)
+{
+    AppSpawnClient appSpawnClient;
+    AppSpawnStartMsg startMsg;
+    startMsg.code = MSG_APP_SPAWN;
+    startMsg.uid = 1;
+    startMsg.gid = 1;
+    startMsg.procName = "test";
+    // gids alone equals APP_MAX_GIDS (not greater, so the old buggy check would pass),
+    // but gids + dataGroupInfoList exceeds APP_MAX_GIDS after the fix.
+    for (int32_t i = 0; i < APP_MAX_GIDS; ++i) {
+        startMsg.gids.push_back(i + 1);
+    }
+    DataGroupInfo dgi;
+    dgi.gid = 100;
+    startMsg.dataGroupInfoList.push_back(dgi);
+    EXPECT_FALSE(appSpawnClient.VerifyMsg(startMsg));
+}
+
+// Scenario: Test when startMsg.code is MSG_APP_SPAWN and gids + dataGroupInfoList size
+// equals APP_MAX_GIDS, VerifyMsg should return true (boundary not over-blocked).
+HWTEST_F(AppSpawnClientSecondTest, VerifyMsg_ShouldReturnTrue_WhenGidsPlusDataGroupEqualsMax, TestSize.Level2)
+{
+    AppSpawnClient appSpawnClient;
+    AppSpawnStartMsg startMsg;
+    startMsg.code = MSG_APP_SPAWN;
+    startMsg.uid = 1;
+    startMsg.gid = 1;
+    startMsg.procName = "test";
+    // gids(1) + dataGroupInfoList(APP_MAX_GIDS - 1) == APP_MAX_GIDS, should not be rejected.
+    startMsg.gids.push_back(1);
+    DataGroupInfo dgi;
+    dgi.gid = 100;
+    for (int32_t i = 0; i < APP_MAX_GIDS - 1; ++i) {
+        startMsg.dataGroupInfoList.push_back(dgi);
+    }
+    EXPECT_TRUE(appSpawnClient.VerifyMsg(startMsg));
 }
 } // namespace AppExecFwk
 } // namespace OHOS

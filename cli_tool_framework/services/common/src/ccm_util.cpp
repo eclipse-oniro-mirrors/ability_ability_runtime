@@ -1,0 +1,65 @@
+/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "ccm_util.h"
+
+#include "hilog_tag_wrapper.h"
+#include "parameters.h"
+
+namespace OHOS {
+namespace CliTool {
+namespace {
+constexpr const char* MAX_CLI_QUANTITY = "const.sys.cli.limit_maximum_concurrency_quantity";
+constexpr const char* SUPPORT_EXEC_CMD = "const.abilityms.support_exec_cmd";
+}
+
+CcmUtil &CcmUtil::GetInstance()
+{
+    static CcmUtil util;
+    return util;
+}
+
+int32_t CcmUtil::GetCliConcurrencyLimit()
+{
+    if (!maxCliQuantity_.isLoaded) {
+        int32_t value = system::GetIntParameter<int32_t>(MAX_CLI_QUANTITY, DEFAULT_MAX_CLI_QUANTITY);
+        if (value <= 0) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL,
+                "Invalid cli concurrency limit: %{public}d, fallback to default", value);
+            value = DEFAULT_MAX_CLI_QUANTITY;
+        }
+        maxCliQuantity_.value = value;
+        maxCliQuantity_.isLoaded = true;
+    }
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "MaxCLiQuantity: %{public}d", maxCliQuantity_.value);
+    return maxCliQuantity_.value;
+}
+
+bool CcmUtil::IsSupportExecCmd()
+{
+    bool value = false;
+    {
+        std::lock_guard lock(isSupportExecCmdMutex_);
+        if (!isSupportExecCmd_.isLoaded) {
+            isSupportExecCmd_.value = system::GetBoolParameter(SUPPORT_EXEC_CMD, false);
+            isSupportExecCmd_.isLoaded = true;
+        }
+        value = isSupportExecCmd_.value;
+    }
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "SupportExecCmd: %{public}d", value);
+    return value;
+}
+} // namespace CliTool
+} // namespace OHOS

@@ -15,7 +15,11 @@
 
 #include <gtest/gtest.h>
 
+#include <atomic>
+#include <thread>
+
 #include "bundle_mgr_interface.h"
+#include "bundle_mgr_helper.h"
 #include "hilog_tag_wrapper.h"
 #include "if_system_ability_manager.h"
 #include "mock_bundle_installer_service.h"
@@ -333,6 +337,404 @@ HWTEST_F(QuickFixManagerServiceTest, CheckTaskRunningState_0300, TestSize.Level1
     std::string bundleName = "";
     bool result = quickFixMs_->CheckTaskRunningState(bundleName);
     EXPECT_EQ(result, true);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: CheckTaskRunningState_0400
+ * @tc.desc: task with matching bundleName should return true.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerServiceTest, CheckTaskRunningState_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    EXPECT_NE(quickFixMs_, nullptr);
+    auto applyTask = std::make_shared<QuickFixManagerApplyTask>(nullptr, nullptr, nullptr, nullptr);
+    applyTask->InitRevokeTask("matchBundle", true);
+    quickFixMs_->AddApplyTask(applyTask);
+    EXPECT_TRUE(quickFixMs_->CheckTaskRunningState("matchBundle"));
+    quickFixMs_->RemoveApplyTask(applyTask);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: CheckTaskRunningState_0500
+ * @tc.desc: task with non-matching bundleName should return false.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerServiceTest, CheckTaskRunningState_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    EXPECT_NE(quickFixMs_, nullptr);
+    auto applyTask = std::make_shared<QuickFixManagerApplyTask>(nullptr, nullptr, nullptr, nullptr);
+    applyTask->InitRevokeTask("matchBundle", true);
+    quickFixMs_->AddApplyTask(applyTask);
+    EXPECT_FALSE(quickFixMs_->CheckTaskRunningState("otherBundle"));
+    quickFixMs_->RemoveApplyTask(applyTask);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: CheckTaskRunningState_0600
+ * @tc.desc: two tasks, one matching should return true.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerServiceTest, CheckTaskRunningState_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    EXPECT_NE(quickFixMs_, nullptr);
+    auto taskA = std::make_shared<QuickFixManagerApplyTask>(nullptr, nullptr, nullptr, nullptr);
+    taskA->InitRevokeTask("bundleA", true);
+    auto taskB = std::make_shared<QuickFixManagerApplyTask>(nullptr, nullptr, nullptr, nullptr);
+    taskB->InitRevokeTask("bundleB", true);
+    quickFixMs_->AddApplyTask(taskA);
+    quickFixMs_->AddApplyTask(taskB);
+    EXPECT_TRUE(quickFixMs_->CheckTaskRunningState("bundleA"));
+    EXPECT_TRUE(quickFixMs_->CheckTaskRunningState("bundleB"));
+    quickFixMs_->RemoveApplyTask(taskA);
+    quickFixMs_->RemoveApplyTask(taskB);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: CheckTaskRunningState_0700
+ * @tc.desc: two tasks, neither matching should return false.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerServiceTest, CheckTaskRunningState_0700, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    EXPECT_NE(quickFixMs_, nullptr);
+    auto taskA = std::make_shared<QuickFixManagerApplyTask>(nullptr, nullptr, nullptr, nullptr);
+    taskA->InitRevokeTask("bundleA", true);
+    auto taskB = std::make_shared<QuickFixManagerApplyTask>(nullptr, nullptr, nullptr, nullptr);
+    taskB->InitRevokeTask("bundleB", true);
+    quickFixMs_->AddApplyTask(taskA);
+    quickFixMs_->AddApplyTask(taskB);
+    EXPECT_FALSE(quickFixMs_->CheckTaskRunningState("bundleC"));
+    quickFixMs_->RemoveApplyTask(taskA);
+    quickFixMs_->RemoveApplyTask(taskB);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: AddAndRemoveTask_0300
+ * @tc.desc: add a task then remove it, CheckTaskRunningState should return false after removal.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerServiceTest, AddAndRemoveTask_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    EXPECT_NE(quickFixMs_, nullptr);
+    auto applyTask = std::make_shared<QuickFixManagerApplyTask>(nullptr, nullptr, nullptr, nullptr);
+    applyTask->InitRevokeTask("removableBundle", true);
+    quickFixMs_->AddApplyTask(applyTask);
+    EXPECT_TRUE(quickFixMs_->CheckTaskRunningState("removableBundle"));
+    quickFixMs_->RemoveApplyTask(applyTask);
+    EXPECT_FALSE(quickFixMs_->CheckTaskRunningState("removableBundle"));
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: AddAndRemoveTask_0400
+ * @tc.desc: add multiple tasks, remove one, the others should remain.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerServiceTest, AddAndRemoveTask_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    EXPECT_NE(quickFixMs_, nullptr);
+    auto taskA = std::make_shared<QuickFixManagerApplyTask>(nullptr, nullptr, nullptr, nullptr);
+    taskA->InitRevokeTask("keepBundleA", true);
+    auto taskB = std::make_shared<QuickFixManagerApplyTask>(nullptr, nullptr, nullptr, nullptr);
+    taskB->InitRevokeTask("removeBundleB", true);
+    quickFixMs_->AddApplyTask(taskA);
+    quickFixMs_->AddApplyTask(taskB);
+    quickFixMs_->RemoveApplyTask(taskB);
+    EXPECT_TRUE(quickFixMs_->CheckTaskRunningState("keepBundleA"));
+    EXPECT_FALSE(quickFixMs_->CheckTaskRunningState("removeBundleB"));
+    quickFixMs_->RemoveApplyTask(taskA);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: RemoveApplyTask_0100
+ * @tc.desc: removing a non-existent task should not crash and leave the list unchanged.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerServiceTest, RemoveApplyTask_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    EXPECT_NE(quickFixMs_, nullptr);
+    auto taskA = std::make_shared<QuickFixManagerApplyTask>(nullptr, nullptr, nullptr, nullptr);
+    taskA->InitRevokeTask("keepBundleA", true);
+    quickFixMs_->AddApplyTask(taskA);
+    auto ghost = std::make_shared<QuickFixManagerApplyTask>(nullptr, nullptr, nullptr, nullptr);
+    quickFixMs_->RemoveApplyTask(ghost);
+    EXPECT_TRUE(quickFixMs_->CheckTaskRunningState("keepBundleA"));
+    quickFixMs_->RemoveApplyTask(taskA);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: RemoveApplyTask_0200
+ * @tc.desc: removing nullptr should be a no-op without crash.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerServiceTest, RemoveApplyTask_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    EXPECT_NE(quickFixMs_, nullptr);
+    auto taskA = std::make_shared<QuickFixManagerApplyTask>(nullptr, nullptr, nullptr, nullptr);
+    taskA->InitRevokeTask("keepBundleA", true);
+    quickFixMs_->AddApplyTask(taskA);
+    quickFixMs_->RemoveApplyTask(nullptr);
+    EXPECT_TRUE(quickFixMs_->CheckTaskRunningState("keepBundleA"));
+    quickFixMs_->RemoveApplyTask(taskA);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: GetQuickFixInfo_0200
+ * @tc.desc: empty bundleName, mock GetBundleInfo returns true, so GetQuickFixInfo returns OK.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerServiceTest, GetQuickFixInfo_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto mockGetSystemAbility = [bms = mockBundleMgr, saMgr = iSystemAbilityMgr_](int32_t systemAbilityId) {
+        if (systemAbilityId == BUNDLE_MGR_SERVICE_SYS_ABILITY_ID) {
+            return bms->AsObject();
+        } else {
+            return saMgr->GetSystemAbility(systemAbilityId);
+        }
+    };
+    EXPECT_CALL(*mockSystemAbility_, GetSystemAbility(testing::_))
+        .Times(AnyNumber())
+        .WillRepeatedly(testing::Invoke(mockGetSystemAbility));
+    std::string bundleName = "";
+    auto patchExists = false;
+    auto isSoContained = false;
+    auto ret = quickFixMs_->GetQuickFixInfo(bundleName, patchExists, isSoContained);
+    EXPECT_EQ(ret, QUICK_FIX_OK);
+    EXPECT_FALSE(patchExists);
+    EXPECT_FALSE(isSoContained);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: GetQuickFixInfo_0300
+ * @tc.desc: a non-existent bundle name, mock GetBundleInfo returns true, so GetQuickFixInfo returns OK.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerServiceTest, GetQuickFixInfo_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto mockGetSystemAbility = [bms = mockBundleMgr, saMgr = iSystemAbilityMgr_](int32_t systemAbilityId) {
+        if (systemAbilityId == BUNDLE_MGR_SERVICE_SYS_ABILITY_ID) {
+            return bms->AsObject();
+        } else {
+            return saMgr->GetSystemAbility(systemAbilityId);
+        }
+    };
+    EXPECT_CALL(*mockSystemAbility_, GetSystemAbility(testing::_))
+        .Times(AnyNumber())
+        .WillRepeatedly(testing::Invoke(mockGetSystemAbility));
+    std::string bundleName = "non.existent.bundle";
+    auto patchExists = false;
+    auto isSoContained = false;
+    auto ret = quickFixMs_->GetQuickFixInfo(bundleName, patchExists, isSoContained);
+    EXPECT_EQ(ret, QUICK_FIX_OK);
+    EXPECT_FALSE(patchExists);
+    EXPECT_FALSE(isSoContained);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: ApplyQuickFix_0200
+ * @tc.desc: ApplyQuickFix with a non-empty files vector should succeed when BMS is mocked.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerServiceTest, ApplyQuickFix_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto mockGetSystemAbility = [bms = mockBundleMgr, saMgr = iSystemAbilityMgr_](int32_t systemAbilityId) {
+        if (systemAbilityId == BUNDLE_MGR_SERVICE_SYS_ABILITY_ID) {
+            return bms->AsObject();
+        } else {
+            return saMgr->GetSystemAbility(systemAbilityId);
+        }
+    };
+    ON_CALL(*mockSystemAbility_, GetSystemAbility(testing::_))
+        .WillByDefault(testing::Invoke(mockGetSystemAbility));
+
+    std::vector<std::string> quickFixFiles;
+    quickFixFiles.push_back("/data/test/test.hqf");
+    auto ret = quickFixMs_->ApplyQuickFix(quickFixFiles);
+    EXPECT_EQ(ret, QUICK_FIX_OK);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: GetApplyedQuickFixInfoForApply_0100
+ * @tc.desc: isCheckDebugApp=false uses ANY_USERID, debug check skipped.
+ * @tc.type: FUNC
+ */
+HWTEST_F(QuickFixManagerServiceTest, GetApplyedQuickFixInfoForApply_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto mockGetSystemAbility = [bms = mockBundleMgr, saMgr = iSystemAbilityMgr_](int32_t systemAbilityId) {
+        if (systemAbilityId == BUNDLE_MGR_SERVICE_SYS_ABILITY_ID) {
+            return bms->AsObject();
+        }
+        return saMgr->GetSystemAbility(systemAbilityId);
+    };
+    ON_CALL(*mockSystemAbility_, GetSystemAbility(testing::_))
+        .WillByDefault(testing::Invoke(mockGetSystemAbility));
+
+    std::string bundleName = "";
+    ApplicationQuickFixInfo quickFixInfo;
+    auto ret = quickFixMs_->GetApplyedQuickFixInfoForApply(bundleName, quickFixInfo, 100, false);
+    EXPECT_EQ(ret, QUICK_FIX_OK);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: GetApplyedQuickFixInfoForApply_0200
+ * @tc.desc: isCheckDebugApp=true runs debug provision type check.
+ * @tc.type: FUNC
+ */
+HWTEST_F(QuickFixManagerServiceTest, GetApplyedQuickFixInfoForApply_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto mockGetSystemAbility = [bms = mockBundleMgr, saMgr = iSystemAbilityMgr_](int32_t systemAbilityId) {
+        if (systemAbilityId == BUNDLE_MGR_SERVICE_SYS_ABILITY_ID) {
+            return bms->AsObject();
+        }
+        return saMgr->GetSystemAbility(systemAbilityId);
+    };
+    ON_CALL(*mockSystemAbility_, GetSystemAbility(testing::_))
+        .WillByDefault(testing::Invoke(mockGetSystemAbility));
+
+    std::string bundleName = "";
+    ApplicationQuickFixInfo quickFixInfo;
+    auto ret = quickFixMs_->GetApplyedQuickFixInfoForApply(bundleName, quickFixInfo, 100, true);
+    EXPECT_EQ(ret, QUICK_FIX_VERIFY_PERMISSION_FAILED);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: AddApplyTask_0100
+ * @tc.desc: AddApplyTask rejects a second task with the same bundleName (atomic check-and-add).
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerServiceTest, AddApplyTask_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    EXPECT_NE(quickFixMs_, nullptr);
+    auto taskA = std::make_shared<QuickFixManagerApplyTask>(nullptr, nullptr, nullptr, nullptr);
+    taskA->InitRevokeTask("dupBundle", true);
+    auto taskB = std::make_shared<QuickFixManagerApplyTask>(nullptr, nullptr, nullptr, nullptr);
+    taskB->InitRevokeTask("dupBundle", true);
+    auto taskC = std::make_shared<QuickFixManagerApplyTask>(nullptr, nullptr, nullptr, nullptr);
+    taskC->InitRevokeTask("otherBundle", true);
+
+    EXPECT_TRUE(quickFixMs_->AddApplyTask(taskA));
+    EXPECT_FALSE(quickFixMs_->AddApplyTask(taskB));
+    EXPECT_TRUE(quickFixMs_->AddApplyTask(taskC));
+    EXPECT_TRUE(quickFixMs_->CheckTaskRunningState("dupBundle"));
+    EXPECT_TRUE(quickFixMs_->CheckTaskRunningState("otherBundle"));
+    quickFixMs_->RemoveApplyTask(taskA);
+    EXPECT_FALSE(quickFixMs_->CheckTaskRunningState("dupBundle"));
+    EXPECT_TRUE(quickFixMs_->CheckTaskRunningState("otherBundle"));
+    quickFixMs_->RemoveApplyTask(taskC);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: AddApplyTask_0200
+ * @tc.desc: AddApplyTask always accepts tasks with empty bundleName (apply tasks before deploy result).
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerServiceTest, AddApplyTask_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    EXPECT_NE(quickFixMs_, nullptr);
+    auto taskA = std::make_shared<QuickFixManagerApplyTask>(nullptr, nullptr, nullptr, nullptr);
+    auto taskB = std::make_shared<QuickFixManagerApplyTask>(nullptr, nullptr, nullptr, nullptr);
+
+    EXPECT_TRUE(quickFixMs_->AddApplyTask(taskA));
+    EXPECT_TRUE(quickFixMs_->AddApplyTask(taskB));
+    quickFixMs_->RemoveApplyTask(taskA);
+    quickFixMs_->RemoveApplyTask(taskB);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: AddApplyTask_0300
+ * @tc.desc: AddApplyTask with nullptr returns false without crash.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerServiceTest, AddApplyTask_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    EXPECT_NE(quickFixMs_, nullptr);
+    EXPECT_FALSE(quickFixMs_->AddApplyTask(nullptr));
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: AddApplyTask_0400
+ * @tc.desc: concurrent AddApplyTask for the same bundleName, only one task is accepted.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerServiceTest, AddApplyTask_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    EXPECT_NE(quickFixMs_, nullptr);
+    constexpr int32_t threadNum = 8;
+    std::atomic<int> successCount = 0;
+    std::vector<std::shared_ptr<QuickFixManagerApplyTask>> tasks;
+    std::mutex tasksMutex;
+    std::vector<std::thread> threads;
+    for (int32_t i = 0; i < threadNum; i++) {
+        threads.emplace_back([this, &successCount, &tasks, &tasksMutex]() {
+            auto task = std::make_shared<QuickFixManagerApplyTask>(nullptr, nullptr, nullptr, nullptr);
+            task->InitRevokeTask("raceBundle", true);
+            {
+                std::lock_guard<std::mutex> lock(tasksMutex);
+                tasks.emplace_back(task);
+            }
+            if (quickFixMs_->AddApplyTask(task)) {
+                successCount++;
+            }
+        });
+    }
+    for (auto &thread : threads) {
+        thread.join();
+    }
+
+    EXPECT_EQ(successCount.load(), 1);
+    EXPECT_TRUE(quickFixMs_->CheckTaskRunningState("raceBundle"));
+    for (auto &task : tasks) {
+        quickFixMs_->RemoveApplyTask(task);
+    }
+    EXPECT_FALSE(quickFixMs_->CheckTaskRunningState("raceBundle"));
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }
 } // namespace AppExecFwk

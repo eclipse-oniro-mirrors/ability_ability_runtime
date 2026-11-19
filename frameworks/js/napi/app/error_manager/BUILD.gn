@@ -16,6 +16,7 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 template("errormanager") {
   ohos_shared_library(target_name) {
+    branch_protector_ret = "pac_ret"
     forward_variables_from(invoker, [ "relative_install_dir" ])
 
     if (defined(invoker.defines)) {
@@ -50,6 +51,7 @@ template("errormanager") {
       "hilog:libhilog",
       "ipc:ipc_single",
       "napi:ace_napi",
+      "node:node_header_notice",
     ]
 
     subsystem_name = "ability"

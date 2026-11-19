@@ -29,7 +29,7 @@ template("gen_js_src_binary") {
   gen_obj(target_name + "_js") {
     input = invoker.js_source
 
-    if (is_mac || is_mingw) {
+    if (is_mac || is_mingw || is_linux) {
       output = target_out_dir + "/" + invoker.target_name + "_js.c"
     } else {
       output = target_out_dir + "/" + invoker.target_name + "_js.o"
@@ -43,7 +43,7 @@ template("gen_js_src_binary") {
         get_label_info(":gen_abc_" + invoker.target_name, "target_out_dir") +
         "/" + get_path_info(invoker.js_source, "name") + ".abc"
 
-    if (is_mac || is_mingw) {
+    if (is_mac || is_mingw || is_linux) {
       output = target_out_dir + "/" + invoker.target_name + "_abc.c"
     } else {
       output = target_out_dir + "/" + invoker.target_name + "_abc.o"

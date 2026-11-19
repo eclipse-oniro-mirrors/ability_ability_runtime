@@ -118,14 +118,9 @@ HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_CheckAppRunningRecordIsE
     std::string customProcessFlag;
     std::string specifiedProcessFlag = "specifiedProcessFlag";
 
-    bundleInfo.jointUserId = "joint456";
     auto ret = appRunningManager_->CheckAppRunningRecordIsExist(APP_NAME_EMPTY, processName,
         uid, bundleInfo, specifiedProcessFlag, isProCache, instanceKey, customProcessFlag);
     EXPECT_EQ(ret, nullptr);
-
-    bundleInfo.jointUserId = "";
-    ret = appRunningManager_->CheckAppRunningRecordIsExist(APP_NAME_EMPTY, processName,
-        uid, bundleInfo, specifiedProcessFlag, isProCache, instanceKey, customProcessFlag);
 
     std::shared_ptr<AppRunningRecord> record =
         appRunningManager_->CreateAppRunningRecord(appInfo_, processName, bundleInfo, "");
@@ -345,6 +340,227 @@ HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_CheckAppRunningRecordIsE
 }
 
 /**
+ * @tc.name: CheckAppRunningRecordIsExist_ShouldReturnRecordWhenOriginalPathMatches
+ * @tc.desc: Test normal path matching
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    CheckAppRunningRecordIsExist_ShouldReturnRecordWhenOriginalPathMatches, TestSize.Level1)
+{
+    int uid = TEST_UID;
+    BundleInfo bundleInfo;
+    std::string specifiedProcessFlag;
+    bool *isProCache = nullptr;
+    std::string instanceKey;
+    std::string customProcessFlag;
+
+    appInfo_->name = APP_NAME;
+    std::shared_ptr<AppRunningRecord> record =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->appInfos_.insert(std::make_pair("test", appInfo_));
+    record->priorityObject_->SetPid(TEST_PID);
+    record->SetUid(uid);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    auto ret = appRunningManager_->CheckAppRunningRecordIsExist(APP_NAME, PROCESS_NAME,
+        uid, bundleInfo, specifiedProcessFlag, isProCache, instanceKey, customProcessFlag);
+    EXPECT_NE(ret, nullptr);
+}
+
+/**
+ * @tc.name: CheckAppRunningRecordIsExist_ShouldReturnNullptrWhenFieldMismatch
+ * @tc.desc: Test customProcessFlag/instanceKey mismatch
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    CheckAppRunningRecordIsExist_ShouldReturnNullptrWhenFieldMismatch, TestSize.Level1)
+{
+    int uid = TEST_UID;
+    BundleInfo bundleInfo;
+    std::string specifiedProcessFlag;
+    bool *isProCache = nullptr;
+    std::string instanceKey = "differentInstanceKey";
+    std::string customProcessFlag = "differentCustomFlag";
+
+    appInfo_->name = APP_NAME;
+    std::shared_ptr<AppRunningRecord> record =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->appInfos_.insert(std::make_pair("test", appInfo_));
+    record->priorityObject_->SetPid(TEST_PID);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    auto ret = appRunningManager_->CheckAppRunningRecordIsExist(APP_NAME, PROCESS_NAME,
+        uid, bundleInfo, specifiedProcessFlag, isProCache, instanceKey, customProcessFlag);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: GetValidAppRunningRecordByPid_ShouldReturnRecordWhenPidMatchesAndValid
+ * @tc.desc: Test valid record found by PID
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    GetValidAppRunningRecordByPid_ShouldReturnRecordWhenPidMatchesAndValid, TestSize.Level1)
+{
+    BundleInfo bundleInfo;
+    appInfo_->name = APP_NAME;
+    auto record = appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->GetPriorityObject()->SetPid(TEST_PID);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    auto ret = appRunningManager_->GetValidAppRunningRecordByPid(TEST_PID);
+    EXPECT_NE(ret, nullptr);
+    EXPECT_EQ(ret, record);
+}
+
+/**
+ * @tc.name: GetValidAppRunningRecordByPid_ShouldReturnNullptrWhenPidNotFound
+ * @tc.desc: Test no record with given PID
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    GetValidAppRunningRecordByPid_ShouldReturnNullptrWhenPidNotFound, TestSize.Level1)
+{
+    appRunningManager_->appRunningRecordMap_.clear();
+
+    auto ret = appRunningManager_->GetValidAppRunningRecordByPid(9999);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: GetValidAppRunningRecordByPid_ShouldReturnNullptrWhenTerminating
+ * @tc.desc: Test record is terminating
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    GetValidAppRunningRecordByPid_ShouldReturnNullptrWhenTerminating, TestSize.Level1)
+{
+    BundleInfo bundleInfo;
+    appInfo_->name = APP_NAME;
+    auto record = appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->GetPriorityObject()->SetPid(TEST_PID);
+    record->SetTerminating();
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    auto ret = appRunningManager_->GetValidAppRunningRecordByPid(TEST_PID);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: GetValidAppRunningRecordByPid_ShouldReturnNullptrWhenKilling
+ * @tc.desc: Test record is killing
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    GetValidAppRunningRecordByPid_ShouldReturnNullptrWhenKilling, TestSize.Level1)
+{
+    BundleInfo bundleInfo;
+    appInfo_->name = APP_NAME;
+    auto record = appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->GetPriorityObject()->SetPid(TEST_PID);
+    record->SetKilling();
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    auto ret = appRunningManager_->GetValidAppRunningRecordByPid(TEST_PID);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: GetValidAppRunningRecordByPid_ShouldReturnNullptrWhenRestartFlagSet
+ * @tc.desc: Test record has restart flag
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    GetValidAppRunningRecordByPid_ShouldReturnNullptrWhenRestartFlagSet, TestSize.Level1)
+{
+    BundleInfo bundleInfo;
+    appInfo_->name = APP_NAME;
+    auto record = appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->GetPriorityObject()->SetPid(TEST_PID);
+    record->SetRestartAppFlag(true);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    auto ret = appRunningManager_->GetValidAppRunningRecordByPid(TEST_PID);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: GetValidAppRunningRecordByPid_ShouldReturnNullptrWhenUserRequestCleaning
+ * @tc.desc: Test record has user request cleaning flag
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    GetValidAppRunningRecordByPid_ShouldReturnNullptrWhenUserRequestCleaning, TestSize.Level1)
+{
+    BundleInfo bundleInfo;
+    appInfo_->name = APP_NAME;
+    auto record = appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->GetPriorityObject()->SetPid(TEST_PID);
+    record->SetUserRequestCleaning();
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    auto ret = appRunningManager_->GetValidAppRunningRecordByPid(TEST_PID);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: GetValidAppRunningRecordByPid_ShouldReturnNullptrWhenCachingAndBlocked
+ * @tc.desc: Test record is caching with process cache blocked
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    GetValidAppRunningRecordByPid_ShouldReturnNullptrWhenCachingAndBlocked, TestSize.Level1)
+{
+    BundleInfo bundleInfo;
+    appInfo_->name = APP_NAME;
+    auto record = appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->GetPriorityObject()->SetPid(TEST_PID);
+    record->SetProcessCaching(true);
+    record->SetProcessCacheBlocked(true);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    auto ret = appRunningManager_->GetValidAppRunningRecordByPid(TEST_PID);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: GetValidAppRunningRecordByPid_ShouldReturnNullptrWhenKillPrecedeStart
+ * @tc.desc: Test record has kill precede start flag
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest,
+    GetValidAppRunningRecordByPid_ShouldReturnNullptrWhenKillPrecedeStart, TestSize.Level1)
+{
+    BundleInfo bundleInfo;
+    appInfo_->name = APP_NAME;
+    auto record = appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->GetPriorityObject()->SetPid(TEST_PID);
+    record->SetIsKillPrecedeStart(true);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    auto ret = appRunningManager_->GetValidAppRunningRecordByPid(TEST_PID);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
  * @tc.name: AppRunningManager_GetProcessInfosByUserId_0100
  * @tc.desc: NA
  * @tc.type: FUNC
@@ -469,6 +685,36 @@ HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_IsAppRunningByBundleName
     appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
     ret = appRunningManager_->IsAppRunningByBundleName(BUNDLE_NAME, 0, userId, isRunning);
     EXPECT_TRUE(isRunning);
+}
+
+/**
+ * @tc.name: AppRunningManager_IsAppRunningByBundleName_0200
+ * @tc.desc: verify wildcard matching is removed for negative appCloneIndex/userId
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_IsAppRunningByBundleName_0200, TestSize.Level1)
+{
+    int32_t userId = ONE;
+    bool isRunning = false;
+    BundleInfo bundleInfo;
+    std::shared_ptr<AppRunningRecord> record =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(record, nullptr);
+    record->SetRestartAppFlag(false);
+    record->SetUid(TEST_BASE_USER_RANGE);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, record));
+
+    auto ret = appRunningManager_->IsAppRunningByBundleName(BUNDLE_NAME, 0, userId, isRunning);
+    EXPECT_TRUE(isRunning);
+
+    isRunning = false;
+    ret = appRunningManager_->IsAppRunningByBundleName(BUNDLE_NAME, -1, userId, isRunning);
+    EXPECT_FALSE(isRunning);
+
+    isRunning = false;
+    ret = appRunningManager_->IsAppRunningByBundleName(BUNDLE_NAME, 0, -1, isRunning);
+    EXPECT_FALSE(isRunning);
 }
 
 /**
@@ -844,6 +1090,111 @@ HWTEST_F(AppRunningManagerFourthTest, ProcessExitByBundleNameAndAppIndex_0600, T
 }
 
 /**
+ * @tc.name: ProcessExitByBundleNameAndAppIndex_0700
+ * @tc.desc: test ProcessExitByBundleNameAndAppIndex with userId=-1 (no userId filter, backward compatible)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, ProcessExitByBundleNameAndAppIndex_0700, TestSize.Level1)
+{
+    static std::shared_ptr<AppRunningManager> appRunningManager = std::make_shared<AppRunningManager>();
+    ASSERT_NE(appRunningManager, nullptr);
+
+    std::shared_ptr<ApplicationInfo> info = std::make_shared<ApplicationInfo>();
+    info->bundleName = "bundleName";
+    int32_t recordId = 100;
+    std::string processName = "processName";
+    auto appRunningRecord = std::make_shared<AppRunningRecord>(info, recordId, processName);
+    ASSERT_NE(appRunningRecord, nullptr);
+
+    appRunningRecord->priorityObject_ = std::make_shared<PriorityObject>();
+    int32_t priorityPid = 66;
+    appRunningRecord->priorityObject_->SetPid(priorityPid);
+    int32_t priorityUid = 2000000;
+    appRunningRecord->SetUid(priorityUid);
+    int32_t num = 100;
+    appRunningManager->appRunningRecordMap_.insert(std::make_pair(num, appRunningRecord));
+    int32_t appIndex = 8;
+    appRunningRecord->SetAppIndex(appIndex);
+    std::string bundleName = "bundleName";
+    std::list<pid_t> pids;
+    bool clearPageStack = true;
+    int32_t userId = -1;
+    auto ret = appRunningManager->ProcessExitByBundleNameAndAppIndex(
+        bundleName, appIndex, pids, clearPageStack, userId);
+    EXPECT_EQ(ret, true);
+}
+
+/**
+ * @tc.name: ProcessExitByBundleNameAndAppIndex_0800
+ * @tc.desc: test ProcessExitByBundleNameAndAppIndex with matching userId
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, ProcessExitByBundleNameAndAppIndex_0800, TestSize.Level1)
+{
+    static std::shared_ptr<AppRunningManager> appRunningManager = std::make_shared<AppRunningManager>();
+    ASSERT_NE(appRunningManager, nullptr);
+
+    std::shared_ptr<ApplicationInfo> info = std::make_shared<ApplicationInfo>();
+    info->bundleName = "bundleName";
+    int32_t recordId = 100;
+    std::string processName = "processName";
+    auto appRunningRecord = std::make_shared<AppRunningRecord>(info, recordId, processName);
+    ASSERT_NE(appRunningRecord, nullptr);
+
+    appRunningRecord->priorityObject_ = std::make_shared<PriorityObject>();
+    int32_t priorityPid = 66;
+    appRunningRecord->priorityObject_->SetPid(priorityPid);
+    int32_t priorityUid = 2000000;
+    appRunningRecord->SetUid(priorityUid);
+    int32_t num = 100;
+    appRunningManager->appRunningRecordMap_.insert(std::make_pair(num, appRunningRecord));
+    int32_t appIndex = 8;
+    appRunningRecord->SetAppIndex(appIndex);
+    std::string bundleName = "bundleName";
+    std::list<pid_t> pids;
+    bool clearPageStack = true;
+    int32_t userId = 10;
+    auto ret = appRunningManager->ProcessExitByBundleNameAndAppIndex(
+        bundleName, appIndex, pids, clearPageStack, userId);
+    EXPECT_EQ(ret, true);
+}
+
+/**
+ * @tc.name: ProcessExitByBundleNameAndAppIndex_0900
+ * @tc.desc: test ProcessExitByBundleNameAndAppIndex with non-matching userId
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, ProcessExitByBundleNameAndAppIndex_0900, TestSize.Level1)
+{
+    static std::shared_ptr<AppRunningManager> appRunningManager = std::make_shared<AppRunningManager>();
+    ASSERT_NE(appRunningManager, nullptr);
+
+    std::shared_ptr<ApplicationInfo> info = std::make_shared<ApplicationInfo>();
+    info->bundleName = "bundleName";
+    int32_t recordId = 100;
+    std::string processName = "processName";
+    auto appRunningRecord = std::make_shared<AppRunningRecord>(info, recordId, processName);
+    ASSERT_NE(appRunningRecord, nullptr);
+
+    appRunningRecord->priorityObject_ = std::make_shared<PriorityObject>();
+    int32_t priorityPid = 66;
+    appRunningRecord->priorityObject_->SetPid(priorityPid);
+    int32_t priorityUid = 2000000;
+    appRunningRecord->SetUid(priorityUid);
+    int32_t num = 100;
+    appRunningManager->appRunningRecordMap_.insert(std::make_pair(num, appRunningRecord));
+    int32_t appIndex = 8;
+    appRunningRecord->SetAppIndex(appIndex);
+    std::string bundleName = "bundleName";
+    std::list<pid_t> pids;
+    bool clearPageStack = true;
+    int32_t userId = 999;
+    auto ret = appRunningManager->ProcessExitByBundleNameAndAppIndex(
+        bundleName, appIndex, pids, clearPageStack, userId);
+    EXPECT_EQ(ret, false);
+}
+
+/**
  * @tc.name: AppRunningManager_DumpIpcStop_0100
  * @tc.desc: Test the state of DumpIpcStop
  * @tc.type: FUNC
@@ -991,30 +1342,66 @@ HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_DumpArkWeb_0300, TestSiz
 }
 
 /**
- * @tc.name: AppRunningManager_OnRemoteRenderDied_0100
- * @tc.desc: Test the state of OnRemoteRenderDied
+ * @tc.name: AppRunningManager_OnRenderProcessExitedByPid_0100
+ * @tc.desc: Test the state of OnRenderProcessExitedByPid
  * @tc.type: FUNC
  */
-HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_OnRemoteRenderDied_0100, TestSize.Level1)
+HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_OnRenderProcessExitedByPid_0100, TestSize.Level1)
 {
     auto appRunningManager = std::make_shared<AppRunningManager>();
     EXPECT_NE(appRunningManager, nullptr);
 
-    auto ret = appRunningManager->OnRemoteRenderDied(nullptr);
+    // invalid pid
+    auto ret = appRunningManager->OnRenderProcessExitedByPid(0);
+    EXPECT_EQ(ret, nullptr);
+    ret = appRunningManager->OnRenderProcessExitedByPid(-1);
     EXPECT_EQ(ret, nullptr);
 
-    OHOS::sptr<IRemoteObject> remote = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    // no app record for the pid
+    int32_t pid = 1;
     appRunningManager->appRunningRecordMap_.clear();
-    int32_t recordId = 0;
-    ret  = appRunningManager->OnRemoteRenderDied(remote);
+    ret = appRunningManager->OnRenderProcessExitedByPid(pid);
     EXPECT_EQ(ret, nullptr);
 
+    // app record exists, but no render record for the pid
     std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
     auto appRunningRecord = std::make_shared<AppRunningRecord>(appInfo, RECORD_ID, PROCESS_NAME);
     appRunningRecord->appLifeCycleDeal_ = std::make_shared<AppLifeCycleDeal>();
-    appRunningManager->appRunningRecordMap_.insert(make_pair(recordId, appRunningRecord));
-    ret = appRunningManager->OnRemoteRenderDied(remote);
+    appRunningManager->appRunningRecordMap_.clear();
+    appRunningManager->appRunningRecordMap_.insert(std::make_pair(0, appRunningRecord));
+    ret = appRunningManager->OnRenderProcessExitedByPid(pid);
     EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: AppRunningManager_OnRenderProcessExitedByPid_0200
+ * @tc.desc: Test OnRenderProcessExitedByPid with a valid render record
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_OnRenderProcessExitedByPid_0200, TestSize.Level1)
+{
+    auto appRunningManager = std::make_shared<AppRunningManager>();
+    ASSERT_NE(appRunningManager, nullptr);
+
+    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
+    auto hostRecord = std::make_shared<AppRunningRecord>(appInfo, RECORD_ID, PROCESS_NAME);
+    hostRecord->appLifeCycleDeal_ = std::make_shared<AppLifeCycleDeal>();
+    appRunningManager->appRunningRecordMap_.clear();
+    appRunningManager->appRunningRecordMap_.insert(std::make_pair(RECORD_ID, hostRecord));
+
+    pid_t renderPid = 200;
+    int32_t renderUid = 100200;
+    auto renderRecord = std::make_shared<RenderRecord>(
+        100, "renderParam", AAFwk::FdGuard(), AAFwk::FdGuard(), AAFwk::FdGuard(), hostRecord);
+    renderRecord->SetPid(renderPid);
+    renderRecord->SetUid(renderUid);
+    hostRecord->AddRenderRecord(renderRecord);
+    EXPECT_NE(hostRecord->GetRenderRecordByPid(renderPid), nullptr);
+
+    auto ret = appRunningManager->OnRenderProcessExitedByPid(renderPid);
+    ASSERT_NE(ret, nullptr);
+    EXPECT_EQ(ret->GetPid(), renderPid);
+    EXPECT_EQ(hostRecord->GetRenderRecordByPid(renderPid), nullptr);
 }
 
 /**
@@ -1552,6 +1939,137 @@ HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_FindMasterProcessAppRunn
     appRunningManager_->appRunningRecordMap_.insert(std::make_pair(THREE, recordThree));
     auto ret = appRunningManager_->FindMasterProcessAppRunningRecord(APP_NAME_EMPTY, abilityInfo, uid);
     EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: AppRunningManager_FindMainProcessAppRunningRecord_0100
+ * @tc.desc: Find main process record successfully when one record is main process
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_FindMainProcessAppRunningRecord_0100, TestSize.Level1)
+{
+    int uid = 100;
+    BundleInfo bundleInfo;
+    std::shared_ptr<AppRunningRecord> recordOne =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(recordOne, nullptr);
+    std::shared_ptr<AppRunningRecord> recordTwo =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(recordTwo, nullptr);
+    std::shared_ptr<AppRunningRecord> recordThree =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(recordThree, nullptr);
+
+    recordOne->processType_ = ProcessType::NORMAL;
+    recordOne->SetMainProcess(true);
+    recordOne->SetUid(uid);
+    recordTwo->processType_ = ProcessType::NORMAL;
+    recordTwo->SetMainProcess(false);
+    recordTwo->SetUid(uid);
+    recordThree->processType_ = ProcessType::EXTENSION;
+    recordThree->SetMainProcess(false);
+    recordThree->SetUid(uid);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, recordOne));
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(TWO, recordTwo));
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(THREE, recordThree));
+    auto ret = appRunningManager_->FindMainProcessAppRunningRecord(uid);
+    EXPECT_EQ(ret, recordOne);
+}
+
+/**
+ * @tc.name: AppRunningManager_FindMainProcessAppRunningRecord_0200
+ * @tc.desc: Return nullptr when no record is main process
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_FindMainProcessAppRunningRecord_0200, TestSize.Level1)
+{
+    int uid = 100;
+    BundleInfo bundleInfo;
+    std::shared_ptr<AppRunningRecord> recordOne =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(recordOne, nullptr);
+    std::shared_ptr<AppRunningRecord> recordTwo =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(recordTwo, nullptr);
+
+    recordOne->processType_ = ProcessType::NORMAL;
+    recordOne->SetMainProcess(false);
+    recordOne->SetUid(uid);
+    recordTwo->processType_ = ProcessType::EXTENSION;
+    recordTwo->SetMainProcess(false);
+    recordTwo->SetUid(uid);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, recordOne));
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(TWO, recordTwo));
+    auto ret = appRunningManager_->FindMainProcessAppRunningRecord(uid);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: AppRunningManager_FindMainProcessAppRunningRecord_0300
+ * @tc.desc: Return nullptr when map is empty
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_FindMainProcessAppRunningRecord_0300, TestSize.Level1)
+{
+    int uid = 100;
+    appRunningManager_->appRunningRecordMap_.clear();
+    auto ret = appRunningManager_->FindMainProcessAppRunningRecord(uid);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: AppRunningManager_FindMainProcessAppRunningRecord_0400
+ * @tc.desc: Return nullptr when uid does not match any record
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_FindMainProcessAppRunningRecord_0400, TestSize.Level1)
+{
+    int uid = 100;
+    int otherUid = 200;
+    BundleInfo bundleInfo;
+    std::shared_ptr<AppRunningRecord> recordOne =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(recordOne, nullptr);
+
+    recordOne->processType_ = ProcessType::NORMAL;
+    recordOne->SetMainProcess(true);
+    recordOne->SetUid(otherUid);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, recordOne));
+    auto ret = appRunningManager_->FindMainProcessAppRunningRecord(uid);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.name: AppRunningManager_FindMainProcessAppRunningRecord_0500
+ * @tc.desc: Skip terminating records and find the next valid main process
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppRunningManagerFourthTest, AppRunningManager_FindMainProcessAppRunningRecord_0500, TestSize.Level1)
+{
+    int uid = 100;
+    BundleInfo bundleInfo;
+    std::shared_ptr<AppRunningRecord> recordOne =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(recordOne, nullptr);
+    std::shared_ptr<AppRunningRecord> recordTwo =
+        appRunningManager_->CreateAppRunningRecord(appInfo_, PROCESS_NAME, bundleInfo, "");
+    ASSERT_NE(recordTwo, nullptr);
+
+    recordOne->processType_ = ProcessType::NORMAL;
+    recordOne->SetMainProcess(true);
+    recordOne->SetUid(uid);
+    recordOne->SetTerminating();
+    recordTwo->processType_ = ProcessType::NORMAL;
+    recordTwo->SetMainProcess(true);
+    recordTwo->SetUid(uid);
+    appRunningManager_->appRunningRecordMap_.clear();
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(ONE, recordOne));
+    appRunningManager_->appRunningRecordMap_.insert(std::make_pair(TWO, recordTwo));
+    auto ret = appRunningManager_->FindMainProcessAppRunningRecord(uid);
+    EXPECT_EQ(ret, recordTwo);
 }
 
 /**

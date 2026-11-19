@@ -652,5 +652,99 @@ HWTEST_F(ContextImplSecondTest, AppExecFwk_AppContext_CreateModuleOrPluginContex
     EXPECT_EQ(context, nullptr);
     GTEST_LOG_(INFO) << "AppExecFwk_AppContext_CreateModuleOrPluginContext_004 end";
 }
+
+/**
+ * @tc.number: CreateModuleContextSync_001
+ * @tc.name: CreateModuleContextSync
+ * @tc.desc: Test CreateModuleContext sync with module name and parent context
+ * @tc.type: FUNC
+ */
+HWTEST_F(ContextImplSecondTest, CreateModuleContextSync_001, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "CreateModuleContextSync_001 start";
+    auto contextImpl = std::make_shared<AbilityRuntime::ContextImpl>();
+    auto result = contextImpl->CreateModuleContext("module_name", contextImpl);
+    EXPECT_EQ(result, nullptr);
+    GTEST_LOG_(INFO) << "CreateModuleContextSync_001 end";
+}
+
+/**
+ * @tc.number: CreateModuleContextSync_002
+ * @tc.name: CreateModuleContextSync
+ * @tc.desc: Test CreateModuleContext sync with empty module name and parent context
+ * @tc.type: FUNC
+ */
+HWTEST_F(ContextImplSecondTest, CreateModuleContextSync_002, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "CreateModuleContextSync_002 start";
+    auto contextImpl = std::make_shared<AbilityRuntime::ContextImpl>();
+    auto result = contextImpl->CreateModuleContext("", contextImpl);
+    EXPECT_EQ(result, nullptr);
+    GTEST_LOG_(INFO) << "CreateModuleContextSync_002 end";
+}
+
+/**
+ * @tc.number: CreateModuleContextSync_003
+ * @tc.name: CreateModuleContextSync
+ * @tc.desc: Test CreateModuleContext sync with long module name and parent context
+ * @tc.type: FUNC
+ */
+HWTEST_F(ContextImplSecondTest, CreateModuleContextSync_003, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "CreateModuleContextSync_003 start";
+    auto contextImpl = std::make_shared<AbilityRuntime::ContextImpl>();
+    std::string longName(256, 'a');
+    auto result = contextImpl->CreateModuleContext(longName, contextImpl);
+    EXPECT_EQ(result, nullptr);
+    GTEST_LOG_(INFO) << "CreateModuleContextSync_003 end";
+}
+
+/**
+ * @tc.number: CreateModuleContextSync_004
+ * @tc.name: CreateModuleContextSync
+ * @tc.desc: Test CreateModuleContext sync with special characters in module name
+ * @tc.type: FUNC
+ */
+HWTEST_F(ContextImplSecondTest, CreateModuleContextSync_004, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "CreateModuleContextSync_004 start";
+    auto contextImpl = std::make_shared<AbilityRuntime::ContextImpl>();
+    auto result = contextImpl->CreateModuleContext("test.module.name", contextImpl);
+    EXPECT_EQ(result, nullptr);
+    GTEST_LOG_(INFO) << "CreateModuleContextSync_004 end";
+}
+
+/**
+ * @tc.number: CreateModuleContextSync_005
+ * @tc.name: CreateModuleContextSync
+ * @tc.desc: Test CreateModuleContext sync with process name set matching sync code path
+ * @tc.type: FUNC
+ */
+HWTEST_F(ContextImplSecondTest, CreateModuleContextSync_005, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "CreateModuleContextSync_005 start";
+    auto parentContext = std::make_shared<AbilityRuntime::ContextImpl>();
+    auto contextImpl = std::make_shared<AbilityRuntime::ContextImpl>();
+    contextImpl->SetProcessName(parentContext->GetProcessName());
+    auto result = contextImpl->CreateModuleContext("module_name", parentContext);
+    EXPECT_EQ(result, nullptr);
+    GTEST_LOG_(INFO) << "CreateModuleContextSync_005 end";
+}
+
+/**
+ * @tc.number: CreateModuleContextSync_006
+ * @tc.name: CreateModuleContextSync
+ * @tc.desc: Test CreateModuleContext sync with different parent and child context
+ * @tc.type: FUNC
+ */
+HWTEST_F(ContextImplSecondTest, CreateModuleContextSync_006, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "CreateModuleContextSync_006 start";
+    auto parentContext = std::make_shared<AbilityRuntime::ContextImpl>();
+    auto childContext = std::make_shared<AbilityRuntime::ContextImpl>();
+    auto result = childContext->CreateModuleContext("entry", parentContext);
+    EXPECT_EQ(result, nullptr);
+    GTEST_LOG_(INFO) << "CreateModuleContextSync_006 end";
+}
 }  // namespace AppExecFwk
 }

@@ -67,12 +67,15 @@ public:
 
     int32_t GetUid() const;
 
+    int32_t GetOwnerMissionUserId();
+
 public:
     AppExecFwk::AbilityInfo abilityInfo;
     AppExecFwk::ApplicationInfo appInfo;
     std::string instanceKey;
     bool isTerminating = false;
     int32_t uid_ = -1;
+    int32_t ownerMissionUserId_ = 0;
 };
 
 struct AbilityRequest {

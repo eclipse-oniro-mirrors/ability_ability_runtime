@@ -27,6 +27,7 @@ ohos_unittest("ui_extension_context_second_test") {
     "${ability_runtime_test_path}/mock/frameworks_kits_ability_native_test/include",
     "${ability_runtime_test_path}/mock/services_appmgr_test/include",
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_extension_ability",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_extension_base",
   ]
 
   if (target_cpu == "arm") {

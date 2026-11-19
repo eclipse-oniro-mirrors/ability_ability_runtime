@@ -16,6 +16,8 @@
 #include <gtest/gtest.h>
 #define private public
 #include "ability.h"
+#include "event_runner.h"
+#include "main_thread.h"
 #include "ability_local_record.h"
 #include "ability_record_mgr.h"
 #include "application_context.h"
@@ -914,6 +916,36 @@ HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_AddAbilityStage_012
     ohosApplication_->AddAbilityStage(hapModuleInfo, callback, isAsyncCallback);
     EXPECT_FALSE(ohosApplication_->abilityStages_.empty());
     GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_01200 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_AddAbilityStage_01300
+* @tc.name: AddAbilityStage
+* @tc.desc: Verify function AddAbilityStage sets process name correctly in AbilityStageContext
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_AddAbilityStage_01300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_01300 start.";
+    HapModuleInfo hapModuleInfo;
+    auto callback = []() {};
+    bool isAsyncCallback = false;
+    ohosApplication_->runtime_ = std::make_unique<AbilityRuntime::MockRuntime>();
+    ohosApplication_->abilityRuntimeContext_ = std::make_shared<AbilityRuntime::ApplicationContext>();
+    std::string testProcessName = "com.example.test_process";
+    auto processInfo = std::make_shared<ProcessInfo>(testProcessName, 1234);
+    ohosApplication_->SetProcessInfo(processInfo);
+    EXPECT_TRUE(ohosApplication_->abilityStages_.empty());
+    ohosApplication_->abilityRuntimeContext_ = std::make_shared<AbilityRuntime::ApplicationContext>();
+    ohosApplication_->AddAbilityStage(hapModuleInfo, callback, isAsyncCallback);
+    auto contextImpl = std::make_shared<AbilityRuntime::ContextImpl>();
+    auto appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->multiProjects = false;
+    contextImpl->SetApplicationInfo(appInfo);
+    ohosApplication_->abilityRuntimeContext_->AttachContextImpl(contextImpl);
+    ohosApplication_->AddAbilityStage(hapModuleInfo, callback, isAsyncCallback);
+    EXPECT_FALSE(ohosApplication_->abilityStages_.empty());
+    EXPECT_EQ(ohosApplication_->GetProcessName(), testProcessName);
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_01300 end.";
 }
 
 /*
@@ -1974,10 +2006,11 @@ HWTEST_F(OHOSApplicationTest, AddAbility_ShouldDonothingWhenInputIsInvalid, Test
     ASSERT_NE(ohosApplication, nullptr);
     auto abilityStage = std::make_shared<AbilityRuntime::AbilityStage>();
     ASSERT_NE(abilityStage, nullptr);
-    ohosApplication->AddAbility(nullptr, nullptr, nullptr);
-    ohosApplication->AddAbility(abilityStage, nullptr, nullptr);
+    bool isAsyncCallback = false;
+    ohosApplication->AddAbility(nullptr, nullptr, nullptr, nullptr, isAsyncCallback);
+    ohosApplication->AddAbility(abilityStage, nullptr, nullptr, nullptr, isAsyncCallback);
     sptr<Notification::MockIRemoteObject> token = new (std::nothrow) Notification::MockIRemoteObject();
-    ohosApplication->AddAbility(abilityStage, token, nullptr);
+    ohosApplication->AddAbility(abilityStage, token, nullptr, nullptr, isAsyncCallback);
     EXPECT_FALSE(abilityStage->ContainsAbility());
     GTEST_LOG_(INFO) << "AddAbility_ShouldDonothingWhenInputIsInvalid end.";
 }
@@ -1995,8 +2028,9 @@ HWTEST_F(OHOSApplicationTest, AddAbility_ShouldAddAbilityToAbilityStageWhenInput
     auto abilityStage = std::make_shared<AbilityRuntime::AbilityStage>();
     ASSERT_NE(abilityStage, nullptr);
     sptr<Notification::MockIRemoteObject> token = new (std::nothrow) Notification::MockIRemoteObject();
-    auto abilityRecord = std::make_shared<AbilityLocalRecord>(nullptr, token, nullptr, 0);
-    ohosApplication->AddAbility(abilityStage, token, abilityRecord);
+    auto abilityRecord =  std::make_shared<AbilityLocalRecord>(nullptr, token, nullptr, 0);
+    bool isAsyncCallback = false;
+    ohosApplication->AddAbility(abilityStage, token, abilityRecord, nullptr, isAsyncCallback);
     EXPECT_TRUE(abilityStage->ContainsAbility());
 
     abilityStage->RemoveAbility(token);
@@ -2005,12 +2039,12 @@ HWTEST_F(OHOSApplicationTest, AddAbility_ShouldAddAbilityToAbilityStageWhenInput
         std::make_shared<AbilityRuntime::ApplicationContext>();
     ASSERT_NE(abilityRuntimeContext, nullptr);
     ohosApplication->SetApplicationContext(abilityRuntimeContext);
-    ohosApplication->AddAbility(abilityStage, token, abilityRecord);
+    ohosApplication->AddAbility(abilityStage, token, abilityRecord, nullptr, isAsyncCallback);
     EXPECT_TRUE(abilityStage->ContainsAbility());
 
     abilityStage->RemoveAbility(token);
     EXPECT_FALSE(abilityStage->ContainsAbility());
-    ohosApplication->AddAbility(abilityStage, token, abilityRecord);
+    ohosApplication->AddAbility(abilityStage, token, abilityRecord, nullptr, isAsyncCallback);
     EXPECT_TRUE(abilityStage->ContainsAbility());
     GTEST_LOG_(INFO) << "AddAbility_ShouldAddAbilityToAbilityStageWhenInputIsValid end.";
 }
@@ -2034,8 +2068,9 @@ HWTEST_F(OHOSApplicationTest, AddAbility_0200, TestSize.Level1)
     auto abilityRecord = std::make_shared<AbilityLocalRecord>(nullptr, token, nullptr, 0);
     ASSERT_NE(abilityRecord, nullptr);
 
-    EXPECT_CALL(*abilityStage, OnAboutToCreateAbility()).Times(0);
-    ohosApplication->AddAbility(abilityStage, token, abilityRecord);
+    bool isAsyncCallbackFlag = false;
+    EXPECT_CALL(*abilityStage, OnAboutToCreateAbility(_, _)).Times(0);
+    ohosApplication->AddAbility(abilityStage, token, abilityRecord, nullptr, isAsyncCallbackFlag);
     EXPECT_TRUE(abilityStage->ContainsAbility());
     GTEST_LOG_(INFO) << "AddAbility_0200 end.";
 }
@@ -2233,5 +2268,585 @@ HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_InitJSLeakWatcher_0
 
     GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_InitJSLeakWatcher_0400 end.";
 }
+
+/**
+* @tc.number: AppExecFwk_OHOSApplicationTest_OnTerminate_0100
+* @tc.name: OnTerminate
+* @tc.desc: Verify OnTerminate with abilityRuntimeContext_ nullptr
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_OnTerminate_0100, TestSize.Level1)
+{
+    EXPECT_EQ(ohosApplication_->abilityRuntimeContext_, nullptr);
+    ohosApplication_->OnTerminate();
+    EXPECT_EQ(ohosApplication_->abilityRuntimeContext_, nullptr);
+}
+
+/**
+* @tc.number: AppExecFwk_OHOSApplicationTest_OnTerminate_0200
+* @tc.name: OnTerminate
+* @tc.desc: Verify OnTerminate with abilityRuntimeContext_ not nullptr
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_OnTerminate_0200, TestSize.Level1)
+{
+    auto abilityRuntimeContext =
+        std::make_shared<AbilityRuntime::ApplicationContext>();
+    ohosApplication_->SetApplicationContext(abilityRuntimeContext);
+    ohosApplication_->OnTerminate();
+    EXPECT_NE(ohosApplication_->abilityRuntimeContext_, nullptr);
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0100
+* @tc.name: SetLaunchElementForStage
+* @tc.desc: Verify SetLaunchElementForStage with valid parameters
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0100 start.";
+
+    auto stageContext = std::make_shared<AbilityRuntime::AbilityStageContext>();
+    ASSERT_NE(stageContext, nullptr);
+
+    auto moduleInfo = std::make_shared<AppExecFwk::HapModuleInfo>();
+    moduleInfo->bundleName = "com.example.test";
+    moduleInfo->moduleName = "entry";
+    moduleInfo->mainAbility = "MainAbility";
+
+    std::string abilityName = "MainAbility";
+
+    ohosApplication_->SetLaunchElementForStage(stageContext, moduleInfo, abilityName);
+
+    auto launchElement = stageContext->GetLaunchElement();
+    EXPECT_EQ(launchElement.GetBundleName(), "com.example.test");
+    EXPECT_EQ(launchElement.GetModuleName(), "entry");
+    EXPECT_EQ(launchElement.GetAbilityName(), "MainAbility");
+
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0100 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0200
+* @tc.name: SetLaunchElementForStage
+* @tc.desc: Verify SetLaunchElementForStage with null stageContext
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0200 start.";
+
+    std::shared_ptr<AbilityRuntime::AbilityStageContext> stageContext = nullptr;
+    auto moduleInfo = std::make_shared<AppExecFwk::HapModuleInfo>();
+    moduleInfo->bundleName = "com.example.test";
+    moduleInfo->moduleName = "entry";
+
+    std::string abilityName = "MainAbility";
+
+    ohosApplication_->SetLaunchElementForStage(stageContext, moduleInfo, abilityName);
+
+    EXPECT_TRUE(true);
+
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0200 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0300
+* @tc.name: SetLaunchElementForStage
+* @tc.desc: Verify SetLaunchElementForStage with null moduleInfo
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0300 start.";
+
+    auto stageContext = std::make_shared<AbilityRuntime::AbilityStageContext>();
+    ASSERT_NE(stageContext, nullptr);
+
+    std::shared_ptr<AppExecFwk::HapModuleInfo> moduleInfo = nullptr;
+    std::string abilityName = "MainAbility";
+
+    ohosApplication_->SetLaunchElementForStage(stageContext, moduleInfo, abilityName);
+
+    EXPECT_TRUE(true);
+
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0300 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0400
+* @tc.name: SetLaunchElementForStage
+* @tc.desc: Verify SetLaunchElementForStage with custom abilityName (preload scenario)
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0400 start.";
+
+    auto stageContext = std::make_shared<AbilityRuntime::AbilityStageContext>();
+    ASSERT_NE(stageContext, nullptr);
+
+    auto moduleInfo = std::make_shared<AppExecFwk::HapModuleInfo>();
+    moduleInfo->bundleName = "com.example.test";
+    moduleInfo->moduleName = "entry";
+    moduleInfo->mainAbility = "MainAbility";
+
+    std::string abilityName = "PreloadAbility";
+
+    ohosApplication_->SetLaunchElementForStage(stageContext, moduleInfo, abilityName);
+
+    auto launchElement = stageContext->GetLaunchElement();
+    EXPECT_EQ(launchElement.GetBundleName(), "com.example.test");
+    EXPECT_EQ(launchElement.GetModuleName(), "entry");
+    EXPECT_EQ(launchElement.GetAbilityName(), "PreloadAbility");
+
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_SetLaunchElementForStage_0400 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_CreateAndInitStageContext_0100
+* @tc.name: CreateAndInitStageContext
+* @tc.desc: Verify CreateAndInitStageContext success
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_CreateAndInitStageContext_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_CreateAndInitStageContext_0100 start.";
+
+    // Setup application context
+    ohosApplication_->abilityRuntimeContext_ = std::make_shared<AbilityRuntime::ApplicationContext>();
+    ohosApplication_->configuration_ = std::make_shared<AppExecFwk::Configuration>();
+
+    AppExecFwk::HapModuleInfo hapModuleInfo;
+    hapModuleInfo.bundleName = "com.example.test";
+    hapModuleInfo.moduleName = "entry";
+    hapModuleInfo.mainAbility = "MainAbility";
+
+    auto stageContext = ohosApplication_->CreateAndInitStageContext(hapModuleInfo);
+
+    ASSERT_NE(stageContext, nullptr);
+
+    auto moduleInfo = stageContext->GetHapModuleInfo();
+    ASSERT_NE(moduleInfo, nullptr);
+    EXPECT_EQ(moduleInfo->bundleName, "com.example.test");
+    EXPECT_EQ(moduleInfo->moduleName, "entry");
+
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_CreateAndInitStageContext_0100 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_CreateAndInitStageContext_0200
+* @tc.name: CreateAndInitStageContext
+* @tc.desc: Verify CreateAndInitStageContext with multiProjects scenario
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_CreateAndInitStageContext_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_CreateAndInitStageContext_0200 start.";
+
+    // Setup application context with multiProjects
+    auto applicationContext = std::make_shared<AbilityRuntime::ApplicationContext>();
+    auto appInfo = std::make_shared<AppExecFwk::ApplicationInfo>();
+    appInfo->multiProjects = true;
+    applicationContext->SetApplicationInfo(appInfo);
+
+    ohosApplication_->abilityRuntimeContext_ = applicationContext;
+    ohosApplication_->configuration_ = std::make_shared<AppExecFwk::Configuration>();
+
+    AppExecFwk::HapModuleInfo hapModuleInfo;
+    hapModuleInfo.bundleName = "com.example.test";
+    hapModuleInfo.moduleName = "entry";
+
+    auto stageContext = ohosApplication_->CreateAndInitStageContext(hapModuleInfo);
+
+    ASSERT_NE(stageContext, nullptr);
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_CreateAndInitStageContext_0200 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_ExecuteAutoStartupTasks_0100
+* @tc.name: ExecuteAutoStartupTasks
+* @tc.desc: Verify ExecuteAutoStartupTasks with null abilityStage
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_ExecuteAutoStartupTasks_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_ExecuteAutoStartupTasks_0100 start.";
+
+    std::shared_ptr<AbilityRuntime::AbilityStage> abilityStage = nullptr;
+    AppExecFwk::HapModuleInfo hapModuleInfo;
+    auto callback = []() {};
+    bool isAsyncCallback = false;
+    auto stageContext = std::make_shared<AbilityRuntime::AbilityStageContext>();
+
+    auto result = ohosApplication_->ExecuteAutoStartupTasks(
+        abilityStage, hapModuleInfo, callback, isAsyncCallback, stageContext);
+
+    EXPECT_FALSE(result);
+
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_ExecuteAutoStartupTasks_0100 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0100
+* @tc.name: AddAbilityStage with preloadAbilityName
+* @tc.desc: Verify AddAbilityStage with non-empty preloadAbilityName (preload scenario)
+*/
+HWTEST_F(OHOSApplicationTest,
+    AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0100 start.";
+
+    ohosApplication_->abilityRuntimeContext_ = std::make_shared<AbilityRuntime::ApplicationContext>();
+    ohosApplication_->runtime_ = std::make_unique<AbilityRuntime::MockRuntime>();
+    ohosApplication_->configuration_ = std::make_shared<AppExecFwk::Configuration>();
+
+    AppExecFwk::HapModuleInfo hapModuleInfo;
+    hapModuleInfo.bundleName = "com.example.test";
+    hapModuleInfo.moduleName = "entry";
+    hapModuleInfo.mainAbility = "MainAbility";
+    hapModuleInfo.arkTSMode = AbilityRuntime::CODE_LANGUAGE_ARKTS_1_0;
+
+    auto callback = []() {};
+    bool isAsyncCallback = false;
+    std::string preloadAbilityName = "PreloadAbility";
+
+    auto result = ohosApplication_->AddAbilityStage(hapModuleInfo, callback, isAsyncCallback, preloadAbilityName);
+
+    EXPECT_TRUE(result);
+    EXPECT_FALSE(ohosApplication_->abilityStages_.empty());
+
+    auto abilityStage = ohosApplication_->abilityStages_["entry"];
+    ASSERT_NE(abilityStage, nullptr);
+    auto stageContext = std::static_pointer_cast<AbilityRuntime::AbilityStageContext>(abilityStage->GetContext());
+    ASSERT_NE(stageContext, nullptr);
+
+    auto launchElement = stageContext->GetLaunchElement();
+    EXPECT_EQ(launchElement.GetAbilityName(), "PreloadAbility");
+    EXPECT_EQ(launchElement.GetBundleName(), "com.example.test");
+    EXPECT_EQ(launchElement.GetModuleName(), "entry");
+
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0100 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0200
+* @tc.name: AddAbilityStage with empty preloadAbilityName
+* @tc.desc: Verify AddAbilityStage with empty preloadAbilityName (fallback to mainAbility)
+*/
+HWTEST_F(OHOSApplicationTest,
+    AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0200 start.";
+
+    ohosApplication_->abilityRuntimeContext_ = std::make_shared<AbilityRuntime::ApplicationContext>();
+    ohosApplication_->runtime_ = std::make_unique<AbilityRuntime::MockRuntime>();
+    ohosApplication_->configuration_ = std::make_shared<AppExecFwk::Configuration>();
+
+    AppExecFwk::HapModuleInfo hapModuleInfo;
+    hapModuleInfo.bundleName = "com.example.test";
+    hapModuleInfo.moduleName = "feature";
+    hapModuleInfo.mainAbility = "FeatureAbility";
+    hapModuleInfo.arkTSMode = AbilityRuntime::CODE_LANGUAGE_ARKTS_1_0;
+
+    auto callback = []() {};
+    bool isAsyncCallback = false;
+    std::string preloadAbilityName = "";
+
+    auto result = ohosApplication_->AddAbilityStage(hapModuleInfo, callback, isAsyncCallback, preloadAbilityName);
+
+    EXPECT_TRUE(result);
+    EXPECT_FALSE(ohosApplication_->abilityStages_.empty());
+
+    auto abilityStage = ohosApplication_->abilityStages_["feature"];
+    ASSERT_NE(abilityStage, nullptr);
+    auto stageContext = std::static_pointer_cast<AbilityRuntime::AbilityStageContext>(abilityStage->GetContext());
+    ASSERT_NE(stageContext, nullptr);
+
+    auto launchElement = stageContext->GetLaunchElement();
+    EXPECT_EQ(launchElement.GetAbilityName(), "FeatureAbility");
+    EXPECT_EQ(launchElement.GetBundleName(), "com.example.test");
+    EXPECT_EQ(launchElement.GetModuleName(), "feature");
+
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0200 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0300
+* @tc.name: AddAbilityStage without preloadAbilityName
+* @tc.desc: Verify AddAbilityStage backward compatibility (default parameter)
+*/
+HWTEST_F(OHOSApplicationTest,
+    AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0300 start.";
+
+    ohosApplication_->abilityRuntimeContext_ = std::make_shared<AbilityRuntime::ApplicationContext>();
+    ohosApplication_->runtime_ = std::make_unique<AbilityRuntime::MockRuntime>();
+    ohosApplication_->configuration_ = std::make_shared<AppExecFwk::Configuration>();
+
+    AppExecFwk::HapModuleInfo hapModuleInfo;
+    hapModuleInfo.bundleName = "com.example.test";
+    hapModuleInfo.moduleName = "service";
+    hapModuleInfo.mainAbility = "ServiceAbility";
+    hapModuleInfo.arkTSMode = AbilityRuntime::CODE_LANGUAGE_ARKTS_1_0;
+
+    auto callback = []() {};
+    bool isAsyncCallback = false;
+
+    auto result = ohosApplication_->AddAbilityStage(hapModuleInfo, callback, isAsyncCallback);
+
+    EXPECT_TRUE(result);
+    EXPECT_FALSE(ohosApplication_->abilityStages_.empty());
+
+    auto abilityStage = ohosApplication_->abilityStages_["service"];
+    ASSERT_NE(abilityStage, nullptr);
+    auto stageContext = std::static_pointer_cast<AbilityRuntime::AbilityStageContext>(abilityStage->GetContext());
+    ASSERT_NE(stageContext, nullptr);
+
+    auto launchElement = stageContext->GetLaunchElement();
+    EXPECT_EQ(launchElement.GetAbilityName(), "ServiceAbility");
+    EXPECT_EQ(launchElement.GetBundleName(), "com.example.test");
+    EXPECT_EQ(launchElement.GetModuleName(), "service");
+
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_WithPreloadAbilityName_0300 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_AddAbilityStage_PreloadScenario_0100
+* @tc.name: AddAbilityStage preload scenario integration test
+* @tc.desc: Verify complete preload scenario with launchElement
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_AddAbilityStage_PreloadScenario_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_PreloadScenario_0100 start.";
+
+    ohosApplication_->abilityRuntimeContext_ = std::make_shared<AbilityRuntime::ApplicationContext>();
+    ohosApplication_->runtime_ = std::make_unique<AbilityRuntime::MockRuntime>();
+    ohosApplication_->configuration_ = std::make_shared<AppExecFwk::Configuration>();
+
+    AppExecFwk::HapModuleInfo preloadModuleInfo;
+    preloadModuleInfo.bundleName = "com.example.preload";
+    preloadModuleInfo.moduleName = "preload_entry";
+    preloadModuleInfo.mainAbility = "EntryAbility";
+    preloadModuleInfo.arkTSMode = AbilityRuntime::CODE_LANGUAGE_ARKTS_1_0;
+
+    std::string preloadAbilityName = "TargetPreloadAbility";
+
+    auto callback = []() {};
+    bool isAsyncCallback = false;
+
+    auto result = ohosApplication_->AddAbilityStage(
+        preloadModuleInfo, callback, isAsyncCallback, preloadAbilityName);
+
+    EXPECT_TRUE(result);
+    EXPECT_EQ(ohosApplication_->abilityStages_.size(), 1u);
+
+    auto abilityStage = ohosApplication_->abilityStages_["preload_entry"];
+    ASSERT_NE(abilityStage, nullptr);
+    auto stageContext = std::static_pointer_cast<AbilityRuntime::AbilityStageContext>(abilityStage->GetContext());
+    ASSERT_NE(stageContext, nullptr);
+
+    auto launchElement = stageContext->GetLaunchElement();
+    EXPECT_EQ(launchElement.GetBundleName(), "com.example.preload");
+    EXPECT_EQ(launchElement.GetModuleName(), "preload_entry");
+    EXPECT_EQ(launchElement.GetAbilityName(), "TargetPreloadAbility");
+
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_AddAbilityStage_PreloadScenario_0100 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0100
+* @tc.name: MarkBrandColorChanged
+* @tc.desc: Verify MarkBrandColorChanged does not add change flag when BRAND_COLOR_ID is the same.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0100 start.";
+    ohosApplication_->configuration_ = std::make_shared<Configuration>();
+    const std::string colorId = "100";
+    ohosApplication_->configuration_->AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, colorId);
+    Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, colorId);
+    ohosApplication_->MarkBrandColorChanged(config);
+    EXPECT_TRUE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0100 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0200
+* @tc.name: MarkBrandColorChanged
+* @tc.desc: Verify MarkBrandColorChanged adds change flag when BRAND_COLOR_ID is different.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0200 start.";
+    ohosApplication_->configuration_ = std::make_shared<Configuration>();
+    ohosApplication_->configuration_->AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, "100");
+    Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, "200");
+    ohosApplication_->MarkBrandColorChanged(config);
+    EXPECT_EQ(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED), "true");
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0200 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0300
+* @tc.name: MarkBrandColorChanged
+* @tc.desc: Verify MarkBrandColorChanged does not add change flag when new BRAND_COLOR_ID is empty.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0300 start.";
+    ohosApplication_->configuration_ = std::make_shared<Configuration>();
+    ohosApplication_->configuration_->AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, "100");
+    Configuration config;
+    ohosApplication_->MarkBrandColorChanged(config);
+    EXPECT_TRUE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0300 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0100
+* @tc.name: UnMarkBrandColorChanged
+* @tc.desc: Verify UnMarkBrandColorChanged removes the change flag when present.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0100 start.";
+    Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED, "true");
+    EXPECT_FALSE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    ohosApplication_->UnMarkBrandColorChanged(config);
+    EXPECT_TRUE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0100 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0200
+* @tc.name: UnMarkBrandColorChanged
+* @tc.desc: Verify UnMarkBrandColorChanged is a no-op when the change flag is absent.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0200 start.";
+    Configuration config;
+    EXPECT_TRUE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    ohosApplication_->UnMarkBrandColorChanged(config);
+    EXPECT_TRUE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0200 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0500
+* @tc.name: MarkBrandColorChanged
+* @tc.desc: Verify MarkBrandColorChanged does not add flag when both old and new BRAND_COLOR_ID are empty.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0500, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0500 start.";
+    ohosApplication_->configuration_ = std::make_shared<Configuration>();
+    Configuration config;
+    ohosApplication_->MarkBrandColorChanged(config);
+    EXPECT_TRUE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0500 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0600
+* @tc.name: MarkBrandColorChanged
+* @tc.desc: Verify MarkBrandColorChanged adds flag when new BRAND_COLOR_ID is a very long string.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0600, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0600 start.";
+    ohosApplication_->configuration_ = std::make_shared<Configuration>();
+    ohosApplication_->configuration_->AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, "100");
+    Configuration config;
+    std::string longId(1024, 'X');
+    config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, longId);
+    ohosApplication_->MarkBrandColorChanged(config);
+    EXPECT_EQ(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED), "true");
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0600 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0700
+* @tc.name: MarkBrandColorChanged
+* @tc.desc: Verify MarkBrandColorChanged handles BRAND_COLOR_ID with special characters.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0700, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0700 start.";
+    ohosApplication_->configuration_ = std::make_shared<Configuration>();
+    ohosApplication_->configuration_->AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, "100");
+    Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, std::string("100\n\t abc"));
+    ohosApplication_->MarkBrandColorChanged(config);
+    EXPECT_EQ(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED), "true");
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0700 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0800
+* @tc.name: MarkBrandColorChanged
+* @tc.desc: Verify MarkBrandColorChanged is idempotent — calling twice with same config does not duplicate flag.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0800, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0800 start.";
+    ohosApplication_->configuration_ = std::make_shared<Configuration>();
+    ohosApplication_->configuration_->AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, "100");
+    Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, "200");
+    ohosApplication_->MarkBrandColorChanged(config);
+    EXPECT_EQ(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED), "true");
+    // Second call — flag already present, value stays "true" (not duplicated)
+    ohosApplication_->MarkBrandColorChanged(config);
+    EXPECT_EQ(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED), "true");
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0800 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0900
+* @tc.name: MarkBrandColorChanged
+* @tc.desc: Verify MarkBrandColorChanged adds flag when only new BRAND_COLOR_ID is set and old is empty.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0900, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0900 start.";
+    ohosApplication_->configuration_ = std::make_shared<Configuration>();
+    // old BRAND_COLOR_ID is empty (not set)
+    Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID, "300");
+    ohosApplication_->MarkBrandColorChanged(config);
+    EXPECT_EQ(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED), "true");
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_MarkBrandColorChanged_0900 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0400
+* @tc.name: UnMarkBrandColorChanged
+* @tc.desc: Verify UnMarkBrandColorChanged removes flag regardless of its value (not just "true").
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0400 start.";
+    Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED, "false");
+    EXPECT_FALSE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    ohosApplication_->UnMarkBrandColorChanged(config);
+    EXPECT_TRUE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0400 end.";
+}
+
+/*
+* @tc.number: AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0500
+* @tc.name: UnMarkBrandColorChanged
+* @tc.desc: Verify UnMarkBrandColorChanged is idempotent — calling twice with no flag is a no-op.
+*/
+HWTEST_F(OHOSApplicationTest, AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0500, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0500 start.";
+    Configuration config;
+    EXPECT_TRUE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    ohosApplication_->UnMarkBrandColorChanged(config);
+    ohosApplication_->UnMarkBrandColorChanged(config);
+    EXPECT_TRUE(config.GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty());
+    GTEST_LOG_(INFO) << "AppExecFwk_OHOSApplicationTest_UnMarkBrandColorChanged_0500 end.";
+}
+
 }  // namespace AppExecFwk
 }  // namespace OHOS

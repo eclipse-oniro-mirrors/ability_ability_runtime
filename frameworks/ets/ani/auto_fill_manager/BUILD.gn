@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Copyright (c) 2025-2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -25,7 +25,10 @@ ohos_shared_library("ability_auto_fill_manager_ani_kit") {
     debug = false
   }
 
-  include_dirs = [ "./include" ]
+  include_dirs = [
+    "./include",
+    "${ability_runtime_path}/frameworks/ets/ani/enum_convert",
+  ]
 
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
 
@@ -33,6 +36,8 @@ ohos_shared_library("ability_auto_fill_manager_ani_kit") {
 
   sources = [
     "./src/ets_auto_fill_manager.cpp",
+    "./src/ets_auto_fill_manager_util.cpp",
+    "./src/ets_auto_fill_request_callback.cpp",
     "./src/ets_auto_save_request_callback.cpp",
   ]
 
@@ -42,10 +47,10 @@ ohos_shared_library("ability_auto_fill_manager_ani_kit") {
   }
 
   deps = [
-    "${ability_runtime_innerkits_path}/auto_fill_manager:auto_fill_manager",
+    "${ability_runtime_innerkits_path}/auto_fill_manager",
     "${ability_runtime_native_path}/ability/native:ability_business_error",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
-    "${ability_runtime_path}/frameworks/ets/ani/ani_common:ani_common",
+    "${ability_runtime_path}/frameworks/ets/ani/ani_common",
   ]
 
   external_deps = [

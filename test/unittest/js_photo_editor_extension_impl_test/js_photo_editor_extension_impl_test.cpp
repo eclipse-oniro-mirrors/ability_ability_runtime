@@ -20,15 +20,21 @@
 #undef private
 #undef protected
 #include "hilog_tag_wrapper.h"
+#include "event_runner.h"
+#include "js_runtime.h"
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
 #include "js_photo_editor_extension_context.h"
 #include "js_ui_extension_content_session.h"
 #include "napi_common_want.h"
+#include "runtime.h"
 #include "session_info.h"
 namespace OHOS {
 namespace AbilityRuntime {
 using namespace testing::ext;
+namespace {
+constexpr char JS_PHOTO_EDITOR_EXTENSION_TASK_RUNNER[] = "JsPhotoEditorExtension";
+} // namespace
 class JsPhotoEditorExtensionImplTest : public testing::Test {
 public:
     static void SetUpTestCase(void);
@@ -57,7 +63,12 @@ void JsPhotoEditorExtensionImplTest::TearDown(void)
 HWTEST_F(JsPhotoEditorExtensionImplTest, OnStartContentEditingTest_0100, TestSize.Level1)
 {
     TAG_LOGI(AAFwkTag::TEST, "OnStartContentEditingTest_0100 start");
-    std::unique_ptr<Runtime> runtime;
+    auto eventRunner = AppExecFwk::EventRunner::Create(JS_PHOTO_EDITOR_EXTENSION_TASK_RUNNER);
+    Runtime::Options options;
+    options.preload = true;
+    options.eventRunner = eventRunner;
+    std::unique_ptr<Runtime> runtime = JsRuntime::Create(options);
+    ASSERT_NE(runtime, nullptr);
     auto jsExtension = std::make_shared<JsPhotoEditorExtensionImpl>(runtime);
     AAFwk::Want want;
     sptr<AAFwk::SessionInfo> sessionInfo;
@@ -65,6 +76,7 @@ HWTEST_F(JsPhotoEditorExtensionImplTest, OnStartContentEditingTest_0100, TestSiz
     imageUri = want.GetStringParam("ability.params.stream");
     jsExtension->OnStartContentEditing(want, sessionInfo);
     EXPECT_EQ(imageUri.empty(), true);
+    jsExtension = nullptr;
     TAG_LOGI(AAFwkTag::TEST, "OnStartContentEditingTest_0100 end");
 }
 } // namespace AbilityRuntime

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,7 +15,7 @@
 
 #include "bundle_mgr_helper.h"
 #include "mock_my_status.h"
-
+#include "bundle_info.h"
 namespace OHOS {
 namespace AppExecFwk {
 
@@ -241,6 +241,12 @@ bool BundleMgrHelper::QueryExtensionAbilityInfoByUri(
     return false;
 }
 
+bool BundleMgrHelper::QueryExtensionAbilityInfoByUriOptimal(
+    const std::string& uri, int32_t userId, ExtensionAbilityInfo& extensionAbilityInfo)
+{
+    return false;
+}
+
 bool BundleMgrHelper::ImplicitQueryInfoByPriority(
     const Want& want, int32_t flags, int32_t userId, AbilityInfo& abilityInfo, ExtensionAbilityInfo& extensionInfo)
 {
@@ -280,6 +286,12 @@ bool BundleMgrHelper::QueryDataGroupInfos(const std::string& bundleName,
     return AAFwk::MyStatus::GetInstance().queryDataGroupInfos_;
 }
 
+ErrCode BundleMgrHelper::QueryIpcGroupInfos(
+    const std::string& bundleName, int32_t userId, std::vector<IpcGroupInfo>& infos)
+{
+    return ERR_OK;
+}
+
 bool BundleMgrHelper::RegisterBundleEventCallback(const sptr<IBundleEventCallback>& bundleEventCallback)
 {
     return false;
@@ -303,6 +315,13 @@ bool BundleMgrHelper::QueryAppGalleryBundleName(std::string& bundleName)
 
 ErrCode BundleMgrHelper::GetUidByBundleName(const std::string& bundleName, int32_t userId, int32_t appCloneIndex)
 {
+    return ERR_OK;
+}
+
+ErrCode BundleMgrHelper::IsApplicationDisableForbidden(const std::string& bundleName, int32_t userId,
+    int32_t appIndex, bool& forbidden)
+{
+    forbidden = false;
     return ERR_OK;
 }
 
@@ -392,6 +411,31 @@ ErrCode BundleMgrHelper::GetPluginHapModuleInfo(const std::string &hostBundleNam
 
 ErrCode BundleMgrHelper::GetPluginExtensionInfo(const std::string &hostBundleName, const Want &want,
     int32_t userId, ExtensionAbilityInfo &pluginExtensionInfo)
+{
+    return ERR_OK;
+}
+
+ErrCode BundleMgrHelper::GetDualModeBundleInfo(const std::string& bundleName, int32_t userId,
+                                               int32_t &appIndex)
+{
+    appIndex = 0;
+    return ERR_OK;
+}
+
+ErrCode BundleMgrHelper::GetCloneBundleInfoExt(const std::string& bundleName,
+    uint32_t flags, int32_t appIndex, int32_t userId, BundleInfo& bundleInfo)
+{
+    return ERR_OK;
+}
+
+ErrCode BundleMgrHelper::GetLaunchServices(
+    const std::string &bundleName, const std::string &moduleName, int32_t userId, LaunchServicesResult &result)
+{
+    return ERR_OK;
+}
+
+ErrCode BundleMgrHelper::GetAppProvisionInfo(
+    const std::string &bundleName, int32_t userId, AppProvisionInfo &appProvisionInfo)
 {
     return ERR_OK;
 }

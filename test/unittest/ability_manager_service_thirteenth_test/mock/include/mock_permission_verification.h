@@ -50,7 +50,7 @@ public:
 
     bool IsShellCallByTokenId(uint32_t callerTokenId) const;
 
-    bool CheckSpecificSystemAbilityAccessPermission() const;
+    bool CheckSpecificSystemAbilityAccessPermission(const std::string &processName) const;
 
     bool VerifyRunningInfoPerm() const;
 
@@ -70,6 +70,10 @@ public:
 
     bool VerifyGetBundleInfoPrivilegedPermission() const;
 
+    bool VerifyBlockAllAppStartPermission() const;
+
+    bool VerifySAInterceptorPermission() const;
+
     int CheckCallDataAbilityPermission(const VerificationInfo &verificationInfo, bool isShell) const;
 
     int CheckCallServiceAbilityPermission(const VerificationInfo &verificationInfo) const;
@@ -84,7 +88,7 @@ public:
 
     bool JudgeStartInvisibleAbility(const uint32_t accessTokenId, const bool visible) const;
 
-    bool JudgeStartAbilityFromBackground(const bool isBackgroundCall) const;
+    bool JudgeStartAbilityFromBackground(const bool isBackgroundCall, const uint32_t specifyTokenId = 0) const;
 
     bool JudgeAssociatedWakeUp(const uint32_t accessTokenId, const bool associatedWakeUp) const;
 
@@ -98,6 +102,7 @@ public:
     bool JudgeCallerIsAllowedToUseSystemAPI() const;
     bool JudgeCallerIsAllowedToUseSystemAPIByTokenId(uint64_t specifiedFullTokenId) const;
     bool IsSystemAppCall() const;
+    bool IsLocalDebugOtherAppsCall(const uint32_t specifyTokenId = 0, int32_t targetUserId = -1) const;
 };
 } // namespace AAFwk
 } // namespace OHOS

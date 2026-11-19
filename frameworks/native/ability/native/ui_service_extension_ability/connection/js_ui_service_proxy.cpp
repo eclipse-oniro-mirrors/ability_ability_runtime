@@ -40,7 +40,12 @@ napi_value JsUIServiceProxy::CreateJsUIServiceProxy(napi_env env, const sptr<IRe
 
     std::unique_ptr<JsUIServiceProxy> proxy = std::make_unique<JsUIServiceProxy>(impl, hostProxy);
     proxy->SetConnectionId(connectionId);
-    napi_wrap(env, object, proxy.release(), Finalizer, nullptr, nullptr);
+    napi_status status = napi_wrap(env, object, proxy.get(), Finalizer, nullptr, nullptr);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::UISERVC_EXT, "napi_wrap failed %{public}d", status);
+        return CreateJsUndefined(env);
+    }
+    proxy.release();
 
     const char *moduleName = "JsUIServiceProxy";
     BindNativeFunction(env, object, "sendData", moduleName, JsUIServiceProxy::SendData);
@@ -79,7 +84,8 @@ napi_value JsUIServiceProxy::OnSendData(napi_env env, NapiCallbackInfo& info)
 {
     if (proxy_ == nullptr || hostProxy_ == nullptr) {
         TAG_LOGE(AAFwkTag::UISERVC_EXT, "null proxy_ or hostProxy_");
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::UI_SERVICE_PROXY_NOT_FOUND));
         return CreateJsUndefined(env);
     }
     if (info.argc < ARGC_ONE) {
@@ -98,7 +104,8 @@ napi_value JsUIServiceProxy::OnSendData(napi_env env, NapiCallbackInfo& info)
     int32_t ret = proxy_->SendData(hostProxy_, params);
     if (ret != static_cast<int32_t>(AbilityErrorCode::ERROR_OK)) {
         TAG_LOGW(AAFwkTag::UISERVC_EXT, "proxy_->SendData failed");
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::SEND_DATA_FAILED));
     }
     return CreateJsUndefined(env);
 }

@@ -640,7 +640,7 @@ HWTEST_F(AppSchedulerTest, AppScheduler_NotifyStartKeepAliveProcess_001, TestSiz
  */
 HWTEST_F(AppSchedulerTest, AppScheduler_KillApplication_001, TestSize.Level1)
 {
-    EXPECT_CALL(*clientMock_, KillApplication(_, _, _, _)).Times(1)
+    EXPECT_CALL(*clientMock_, KillApplication(_, _, _, _, _)).Times(1)
         .WillOnce(Return(AppMgrResultCode::ERROR_SERVICE_NOT_READY));
     DelayedSingleton<AppScheduler>::GetInstance()->appMgrClient_ = std::move(clientMock_);
     std::string bundleName = "bundleName";
@@ -658,7 +658,7 @@ HWTEST_F(AppSchedulerTest, AppScheduler_KillApplication_001, TestSize.Level1)
  */
 HWTEST_F(AppSchedulerTest, AppScheduler_KillApplication_002, TestSize.Level1)
 {
-    EXPECT_CALL(*clientMock_, KillApplication(_, _, _, _)).Times(1)
+    EXPECT_CALL(*clientMock_, KillApplication(_, _, _, _, _)).Times(1)
         .WillOnce(Return(AppMgrResultCode::RESULT_OK));
     DelayedSingleton<AppScheduler>::GetInstance()->appMgrClient_ = std::move(clientMock_);
     std::string bundleName = "bundleName";
@@ -812,12 +812,13 @@ HWTEST_F(AppSchedulerTest, AppScheduler_StartupResidentProcess_001, TestSize.Lev
  */
 HWTEST_F(AppSchedulerTest, AppScheduler_StartSpecifiedAbility_001, TestSize.Level1)
 {
-    EXPECT_CALL(*clientMock_, StartSpecifiedAbility(_, _, _, _, _)).Times(1);
+    EXPECT_CALL(*clientMock_, StartSpecifiedAbility(_, _, _)).Times(1);
     DelayedSingleton<AppScheduler>::GetInstance()->appMgrClient_ = std::move(clientMock_);
     ASSERT_NE(DelayedSingleton<AppScheduler>::GetInstance()->appMgrClient_, nullptr);
     AAFwk::Want want;
     AppExecFwk::AbilityInfo abilityInfo;
-    DelayedSingleton<AppScheduler>::GetInstance()->StartSpecifiedAbility(want, abilityInfo);
+    AbilityRuntime::StartSpecifiedParam param;
+    DelayedSingleton<AppScheduler>::GetInstance()->StartSpecifiedAbility(want, abilityInfo, param);
 }
 
 /*
@@ -826,16 +827,19 @@ HWTEST_F(AppSchedulerTest, AppScheduler_StartSpecifiedAbility_001, TestSize.Leve
  * SubFunction: NA
  * FunctionPoints: AppScheduler StartSpecifiedAbility forwards preload flag
  * EnvConditions: NA
- * CaseDescription: Verify StartSpecifiedAbility forwards isWindowStagePreload is true
+ * CaseDescription: Verify StartSpecifiedAbility forwards processOptions
  */
 HWTEST_F(AppSchedulerTest, AppScheduler_StartSpecifiedAbility_002, TestSize.Level1)
 {
-    EXPECT_CALL(*clientMock_, StartSpecifiedAbility(_, _, 100, "", true)).Times(1);
+    EXPECT_CALL(*clientMock_, StartSpecifiedAbility(_, _, _)).Times(1);
     DelayedSingleton<AppScheduler>::GetInstance()->appMgrClient_ = std::move(clientMock_);
     ASSERT_NE(DelayedSingleton<AppScheduler>::GetInstance()->appMgrClient_, nullptr);
     AAFwk::Want want;
     AppExecFwk::AbilityInfo abilityInfo;
-    DelayedSingleton<AppScheduler>::GetInstance()->StartSpecifiedAbility(want, abilityInfo, 100, "", true);
+    AbilityRuntime::StartSpecifiedParam param;
+    param.requestId = 100;
+    param.isPreloadStart = true;
+    DelayedSingleton<AppScheduler>::GetInstance()->StartSpecifiedAbility(want, abilityInfo, param);
 }
 
 /*
@@ -1354,6 +1358,98 @@ HWTEST_F(AppSchedulerTest, AppScheduler_SetGameSAPrelaunch_005, TestSize.Level1)
     EXPECT_CALL(*mockClient, SetGameSAPrelaunch(_, _)).Times(1)
         .WillOnce(Return(AppMgrResultCode::RESULT_OK));
     result = appScheduler->SetGameSAPrelaunch(token, isGameSAPrelaunch);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+ * @tc.name: AppScheduler_AttributeProcessForAbility_001
+ * @tc.desc: AttributeProcessForAbility with null appMgrClient.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppSchedulerTest, AppScheduler_AttributeProcessForAbility_001, TestSize.Level1)
+{
+    DelayedSingleton<AppScheduler>::GetInstance()->appMgrClient_ = nullptr;
+    int64_t attributionId = 0;
+    auto result = DelayedSingleton<AppScheduler>::GetInstance()->AttributeProcessForAbility(
+        "task-scheduler-ut", 100, 200, 300, attributionId);
+    EXPECT_EQ(result, INNER_ERR);
+}
+
+/**
+ * @tc.name: AppScheduler_AttributeProcessForAbility_002
+ * @tc.desc: AttributeProcessForAbility forwards to the client and returns its result
+ *           with the server-assigned handle written back.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppSchedulerTest, AppScheduler_AttributeProcessForAbility_002, TestSize.Level1)
+{
+    auto appScheduler = DelayedSingleton<AppScheduler>::GetInstance();
+    clientMock_ = std::make_unique<AppMgrClientMock>();
+    appScheduler->appMgrClient_ = std::move(clientMock_);
+    EXPECT_NE(appScheduler->appMgrClient_, nullptr);
+
+    const int64_t serverHandle = 42;
+    auto mockClient = static_cast<AppMgrClientMock*>(appScheduler->appMgrClient_.get());
+    EXPECT_CALL(*mockClient, AttributeProcessForAbility("task-scheduler-ut", 100, 200, 300, _)).Times(1)
+        .WillOnce(DoAll(SetArgReferee<4>(serverHandle), Return(ERR_OK)));
+
+    int64_t attributionId = 0;
+    auto result = appScheduler->AttributeProcessForAbility("task-scheduler-ut", 100, 200, 300, attributionId);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(attributionId, serverHandle);
+}
+
+/**
+ * @tc.name: AppScheduler_AttributeProcessForAbility_003
+ * @tc.desc: AttributeProcessForAbility propagates a client failure (dropped path).
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppSchedulerTest, AppScheduler_AttributeProcessForAbility_003, TestSize.Level1)
+{
+    auto appScheduler = DelayedSingleton<AppScheduler>::GetInstance();
+    clientMock_ = std::make_unique<AppMgrClientMock>();
+    appScheduler->appMgrClient_ = std::move(clientMock_);
+    EXPECT_NE(appScheduler->appMgrClient_, nullptr);
+
+    auto mockClient = static_cast<AppMgrClientMock*>(appScheduler->appMgrClient_.get());
+    EXPECT_CALL(*mockClient, AttributeProcessForAbility(_, _, _, _, _)).Times(1)
+        .WillOnce(Return(AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED));
+
+    int64_t attributionId = 0;
+    auto result = appScheduler->AttributeProcessForAbility("task-scheduler-ut", 100, 200, 300, attributionId);
+    EXPECT_EQ(result, AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED);
+    EXPECT_EQ(attributionId, 0);
+}
+
+/**
+ * @tc.name: AppScheduler_UnregisterTaskAttribution_001
+ * @tc.desc: UnregisterTaskAttribution with null appMgrClient.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppSchedulerTest, AppScheduler_UnregisterTaskAttribution_001, TestSize.Level1)
+{
+    DelayedSingleton<AppScheduler>::GetInstance()->appMgrClient_ = nullptr;
+    auto result = DelayedSingleton<AppScheduler>::GetInstance()->UnregisterTaskAttribution("task-scheduler-ut", 42);
+    EXPECT_EQ(result, INNER_ERR);
+}
+
+/**
+ * @tc.name: AppScheduler_UnregisterTaskAttribution_002
+ * @tc.desc: UnregisterTaskAttribution forwards to the client and returns its result.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppSchedulerTest, AppScheduler_UnregisterTaskAttribution_002, TestSize.Level1)
+{
+    auto appScheduler = DelayedSingleton<AppScheduler>::GetInstance();
+    clientMock_ = std::make_unique<AppMgrClientMock>();
+    appScheduler->appMgrClient_ = std::move(clientMock_);
+    EXPECT_NE(appScheduler->appMgrClient_, nullptr);
+
+    auto mockClient = static_cast<AppMgrClientMock*>(appScheduler->appMgrClient_.get());
+    EXPECT_CALL(*mockClient, UnregisterTaskAttribution("task-scheduler-ut", 42)).Times(1)
+        .WillOnce(Return(ERR_OK));
+
+    auto result = appScheduler->UnregisterTaskAttribution("task-scheduler-ut", 42);
     EXPECT_EQ(result, ERR_OK);
 }
 }  // namespace AAFwk

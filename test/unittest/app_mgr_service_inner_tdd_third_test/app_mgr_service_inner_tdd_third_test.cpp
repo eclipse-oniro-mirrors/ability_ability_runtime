@@ -61,15 +61,15 @@ HWTEST_F(AppMgrServiceInnerTest, SetStartMsgCustomSandboxFlag_0100, TestSize.Lev
     AppSpawnStartMsg startMsg = {};
     uint32_t accessTokenId = MOCKTOKENID::TOKENID_TWO;
     appMgrServiceInner->SetStartMsgCustomSandboxFlag(startMsg, accessTokenId);
-    EXPECT_EQ(startMsg.isCustomSandboxFlag, false);
+    EXPECT_FALSE(startMsg.flags & (1ULL << StartFlags::CUSTOM_SANDBOX));
 
     AAFwk::AppUtils::isStartOptionsWithAnimation_ = true;
     appMgrServiceInner->SetStartMsgCustomSandboxFlag(startMsg, accessTokenId);
-    EXPECT_EQ(startMsg.isCustomSandboxFlag, false);
+    EXPECT_FALSE(startMsg.flags & (1ULL << StartFlags::CUSTOM_SANDBOX));
 
     accessTokenId = MOCKTOKENID::TOKENID_ONE;
     appMgrServiceInner->SetStartMsgCustomSandboxFlag(startMsg, accessTokenId);
-    EXPECT_EQ(startMsg.isCustomSandboxFlag, true);
+    EXPECT_TRUE(startMsg.flags & (1ULL << StartFlags::CUSTOM_SANDBOX));
     TAG_LOGI(AAFwkTag::TEST, "SetStartMsgCustomSandboxFlag_0100 end");
 }
 } // namespace AppExecFwk

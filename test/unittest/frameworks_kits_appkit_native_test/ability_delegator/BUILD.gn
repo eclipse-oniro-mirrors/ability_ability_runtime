@@ -96,6 +96,7 @@ ohos_unittest("iability_monitor_unittest") {
   configs += [ "${ability_runtime_services_path}/common:common_config" ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_native_path}/appkit:appkit_delegator",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
@@ -103,7 +104,6 @@ ohos_unittest("iability_monitor_unittest") {
 
   external_deps = [
     "ability_base:want",
-    "ability_runtime:ability_manager",
     "c_utils:utils",
     "eventhandler:libeventhandler",
     "googletest:gmock",
@@ -126,7 +126,9 @@ ohos_unittest("ability_delegator_unittest") {
   configs += [ "${ability_runtime_services_path}/common:common_config" ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_native_path}/appkit:appkit_delegator",
     "${ability_runtime_native_path}/appkit:appkit_native",
@@ -136,8 +138,6 @@ ohos_unittest("ability_delegator_unittest") {
   external_deps = [
     "ability_base:session_info",
     "ability_base:want",
-    "ability_runtime:ability_manager",
-    "ability_runtime:runtime",
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",
     "eventhandler:libeventhandler",
@@ -192,6 +192,7 @@ ohos_unittest("ability_delegator_registry_unittest") {
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_native_path}/appkit:appkit_delegator",
@@ -201,8 +202,6 @@ ohos_unittest("ability_delegator_registry_unittest") {
   external_deps = [
     "ability_base:extractortool",
     "ability_base:want",
-    "ability_runtime:ability_manager",
-    "ability_runtime:runtime",
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",
     "eventhandler:libeventhandler",
@@ -227,7 +226,9 @@ ohos_unittest("js_test_runner_unittest") {
   configs += [ "${ability_runtime_services_path}/common:common_config" ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_native_path}/appkit:appkit_delegator",
@@ -239,8 +240,6 @@ ohos_unittest("js_test_runner_unittest") {
     "ability_base:configuration",
     "ability_base:extractortool",
     "ability_base:want",
-    "ability_runtime:ability_manager",
-    "ability_runtime:runtime",
     "bundle_framework:appexecfwk_base",
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",

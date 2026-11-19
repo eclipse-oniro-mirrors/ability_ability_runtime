@@ -46,7 +46,6 @@ public:
     {
         AddJsCallerComplex(this);
         handler_ = std::make_shared<AppExecFwk::EventHandler>(AppExecFwk::EventRunner::GetMainEventRunner());
-        currentState_ = OBJSTATE::OBJ_NORMAL;
     };
     virtual~JsCallerComplex()
     {
@@ -220,7 +219,8 @@ public:
     bool ChangeCurrentState(OBJSTATE state)
     {
         auto ret = false;
-        if (stateMechanismMutex_.try_lock() == false) {
+        std::unique_lock<std::mutex> lock(stateMechanismMutex_, std::try_to_lock);
+        if (!lock.owns_lock()) {
             TAG_LOGE(AAFwkTag::DEFAULT, "mutex try_lock false");
             return ret;
         }
@@ -237,17 +237,18 @@ public:
             TAG_LOGD(AAFwkTag::DEFAULT, "ret: false");
         }
 
-        stateMechanismMutex_.unlock();
         return ret;
     }
 
     OBJSTATE GetCurrentState()
     {
+        std::lock_guard<std::mutex> lock(stateMechanismMutex_);
         return currentState_;
     }
 
     void StateReset()
     {
+        std::lock_guard<std::mutex> lock(stateMechanismMutex_);
         currentState_ = OBJSTATE::OBJ_NORMAL;
     }
 
@@ -394,17 +395,20 @@ private:
         if (!isCallable) {
             TAG_LOGE(AAFwkTag::DEFAULT, "IsCallable %{public}s", isCallable ? "true" : "false");
             ThrowError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM);
+            return CreateJsUndefined(env);
         }
 
         if (callerCallBackObj_ == nullptr) {
             TAG_LOGE(AAFwkTag::DEFAULT, "null CallBacker");
             ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+            return CreateJsUndefined(env);
         }
 
         auto param1 = info.argv[0];
         if (param1 == nullptr) {
             TAG_LOGE(AAFwkTag::DEFAULT, "null param1");
             ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+            return CreateJsUndefined(env);
         }
 
         napi_ref ref = nullptr;
@@ -434,17 +438,20 @@ private:
         if (!isCallable) {
             TAG_LOGE(AAFwkTag::DEFAULT, "IsCallable %{public}s", isCallable ? "true" : "false");
             ThrowError(env, AbilityErrorCode::ERROR_CODE_INVALID_PARAM);
+            return CreateJsUndefined(env);
         }
 
         if (callerCallBackObj_ == nullptr) {
             TAG_LOGE(AAFwkTag::DEFAULT, "null callBacker");
             ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+            return CreateJsUndefined(env);
         }
 
         auto param1 = info.argv[0];
         if (param1 == nullptr) {
             TAG_LOGE(AAFwkTag::DEFAULT, "null param1");
             ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+            return CreateJsUndefined(env);
         }
 
         napi_ref ref = nullptr;
@@ -476,7 +483,7 @@ private:
     std::unique_ptr<NativeReference> jsRemoteObj_;
     std::shared_ptr<AppExecFwk::EventHandler> handler_;
     std::mutex stateMechanismMutex_;
-    OBJSTATE currentState_;
+    OBJSTATE currentState_ = OBJSTATE::OBJ_NORMAL;
 
     static std::set<JsCallerComplex*> jsCallerComplexManagerList;
     static std::mutex jsCallerComplexMutex;

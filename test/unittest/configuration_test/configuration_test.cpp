@@ -331,6 +331,7 @@ HWTEST_F(ConfigurationTest, CompareDifferent_001, TestSize.Level1)
     std::vector<std::string> changeKeyV;
 
     config.CompareDifferent(changeKeyV, config2);
+    EXPECT_EQ(config.GetItemSize(), 1);
     int size = changeKeyV.size();
     EXPECT_EQ(size, 1);
 }
@@ -359,6 +360,7 @@ HWTEST_F(ConfigurationTest, CompareDifferent_002, TestSize.Level1)
     std::vector<std::string> changeKeyV;
 
     config.CompareDifferent(changeKeyV, config2);
+    EXPECT_EQ(config.GetItemSize(), 1);
     int size = changeKeyV.size();
     EXPECT_EQ(size, 1);
 }
@@ -389,8 +391,10 @@ HWTEST_F(ConfigurationTest, Merge_001, TestSize.Level1)
     config.CompareDifferent(changeKeyV, config2);
     int size = changeKeyV.size();
     EXPECT_EQ(size, 1);
+    EXPECT_EQ(config.GetItemSize(), 1);
 
     config.Merge(changeKeyV, config2);
+    EXPECT_EQ(config.GetItemSize(), 2);
 
     auto item = config.GetItem(displayId2, AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE);
     EXPECT_EQ(item, English);
@@ -427,6 +431,191 @@ HWTEST_F(ConfigurationTest, Merge_002, TestSize.Level1)
     auto item = config.GetItem(displayId, AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE);
     EXPECT_EQ(item, english);
 }
+
+/*
+ * Feature: Configuration
+ * Function: CompareDifferent
+ * SubFunction: Process Configuration Change Inner
+ * FunctionPoints: NA
+ * EnvConditions:NA
+ * CaseDescription: CompareDifferent must not insert keys from other into this
+ */
+HWTEST_F(ConfigurationTest, CompareDifferent_003, TestSize.Level1)
+{
+    AppExecFwk::Configuration config;
+    int displayId = 1001;
+    config.AddItem(displayId, AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE, "zh");
+    EXPECT_EQ(config.GetItemSize(), 1);
+
+    AppExecFwk::Configuration config2;
+    config2.AddItem(displayId, AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE, "en");
+    config2.AddItem(1002, AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE, "dark");
+    EXPECT_EQ(config2.GetItemSize(), 2);
+
+    std::vector<std::string> changeKeyV;
+    config.CompareDifferent(changeKeyV, config2);
+
+    EXPECT_EQ(config.GetItemSize(), 1);
+    EXPECT_EQ(changeKeyV.size(), static_cast<size_t>(2));
+}
+
+/*
+ * Feature: Configuration
+ * Function: CompareDifferent
+ * SubFunction: Process Configuration Change Inner
+ * FunctionPoints: NA
+ * EnvConditions:NA
+ * CaseDescription: Identical configs produce empty diff
+ */
+HWTEST_F(ConfigurationTest, CompareDifferent_004, TestSize.Level1)
+{
+    AppExecFwk::Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE, "en");
+    config.AddItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE, "dark");
+
+    AppExecFwk::Configuration config2;
+    config2.AddItem(AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE, "en");
+    config2.AddItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE, "dark");
+
+    std::vector<std::string> changeKeyV;
+    config.CompareDifferent(changeKeyV, config2);
+
+    EXPECT_TRUE(changeKeyV.empty());
+    EXPECT_EQ(config.GetItemSize(), 2);
+}
+
+/*
+ * Feature: Configuration
+ * Function: CompareDifferent
+ * SubFunction: Process Configuration Change Inner
+ * FunctionPoints: NA
+ * EnvConditions:NA
+ * CaseDescription: diffKeyV is cleared when other is empty
+ */
+HWTEST_F(ConfigurationTest, CompareDifferent_005, TestSize.Level1)
+{
+    AppExecFwk::Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE, "en");
+
+    AppExecFwk::Configuration emptyConfig;
+
+    std::vector<std::string> changeKeyV;
+    changeKeyV.push_back("dummy_key");
+    ASSERT_EQ(changeKeyV.size(), static_cast<size_t>(1));
+
+    config.CompareDifferent(changeKeyV, emptyConfig);
+
+    EXPECT_TRUE(changeKeyV.empty());
+}
+
+/*
+ * Feature: Configuration
+ * Function: Marshalling
+ * SubFunction: Process Configuration Change Inner
+ * FunctionPoints: NA
+ * EnvConditions:NA
+ * CaseDescription: Marshalling and Unmarshalling round-trip preserves data
+ */
+HWTEST_F(ConfigurationTest, Marshalling_001, TestSize.Level1)
+{
+    AppExecFwk::Configuration config;
+    int displayId = 1001;
+    config.AddItem(displayId, AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE, "zh");
+    config.AddItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE, "dark");
+    EXPECT_EQ(config.GetItemSize(), 2);
+
+    Parcel parcel;
+    EXPECT_TRUE(config.Marshalling(parcel));
+
+    parcel.RewindRead(0);
+    auto *newConfig = AppExecFwk::Configuration::Unmarshalling(parcel);
+    ASSERT_NE(newConfig, nullptr);
+    EXPECT_EQ(newConfig->GetItemSize(), 2);
+    EXPECT_EQ(newConfig->GetItem(displayId, AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE), "zh");
+    EXPECT_EQ(newConfig->GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE), "dark");
+    delete newConfig;
+}
+
+/*
+ * Feature: Configuration
+ * Function: Marshalling
+ * SubFunction: Process Configuration Change Inner
+ * FunctionPoints: NA
+ * EnvConditions:NA
+ * CaseDescription: Marshalling returns false when Parcel buffer is full
+ */
+HWTEST_F(ConfigurationTest, Marshalling_002, TestSize.Level1)
+{
+    Parcel parcel;
+    int fillCount = 0;
+    while (parcel.WriteInt32(0) && fillCount < 100000) {
+        fillCount++;
+    }
+    ASSERT_GT(fillCount, 0);
+
+    AppExecFwk::Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE, "en");
+    EXPECT_FALSE(config.Marshalling(parcel));
+}
+
+/*
+ * Feature: Configuration
+ * Function: ReadFromParcel
+ * SubFunction: Process Configuration Change Inner
+ * FunctionPoints: NA
+ * EnvConditions:NA
+ * CaseDescription: ReadFromParcel clears existing data before writing new data
+ */
+HWTEST_F(ConfigurationTest, ReadFromParcel_001, TestSize.Level1)
+{
+    AppExecFwk::Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE, "old_en");
+    config.AddItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE, "light");
+    EXPECT_EQ(config.GetItemSize(), 2);
+
+    AppExecFwk::Configuration newConfig;
+    newConfig.AddItem(AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE, "new_en");
+    EXPECT_EQ(newConfig.GetItemSize(), 1);
+
+    Parcel parcel;
+    EXPECT_TRUE(newConfig.Marshalling(parcel));
+
+    parcel.RewindRead(0);
+    EXPECT_TRUE(config.ReadFromParcel(parcel));
+
+    EXPECT_EQ(config.GetItemSize(), 1);
+    EXPECT_EQ(config.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE), "new_en");
+    EXPECT_TRUE(config.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE).empty());
+}
+
+/*
+ * Feature: Configuration
+ * Function: ReadFromParcel
+ * SubFunction: Process Configuration Change Inner
+ * FunctionPoints: NA
+ * EnvConditions:NA
+ * CaseDescription: ReadFromParcel failure does not modify object state
+ */
+HWTEST_F(ConfigurationTest, ReadFromParcel_002, TestSize.Level1)
+{
+    AppExecFwk::Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE, "en");
+    config.AddItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE, "dark");
+    EXPECT_EQ(config.GetItemSize(), 2);
+    int32_t originalDisplayId = config.defaultDisplayId_;
+
+    Parcel parcel;
+    parcel.WriteInt32(999);
+    parcel.WriteInt32(1);
+
+    EXPECT_FALSE(config.ReadFromParcel(parcel));
+
+    EXPECT_EQ(config.defaultDisplayId_, originalDisplayId);
+    EXPECT_EQ(config.GetItemSize(), 2);
+    EXPECT_EQ(config.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE), "en");
+    EXPECT_EQ(config.GetItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE), "dark");
+}
+
 /*
  * Feature: Configuration
  * Function: GetName

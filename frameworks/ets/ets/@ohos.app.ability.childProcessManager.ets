@@ -17,11 +17,12 @@ import { BusinessError, AsyncCallback } from '@ohos.base';
 import AsyncCallbackWrapper from './utils/AbilityUtils';
 import { ChildProcessArgs } from '@ohos.app.ability.ChildProcessArgs';
 import { ChildProcessOptions } from '@ohos.app.ability.ChildProcessOptions';
+import { ChildProcessInformation } from 'application.ChildProcessInformation';
 
 namespace childProcessManager {
   loadLibraryWithPermissionCheck("ability_child_process_manager_ani_kit.z", "@ohos.app.ability.childProcessManager");
 
-  export const enum StartMode {
+  export enum StartMode {
     SELF_FORK = 0,
     APP_SPAWN_FORK = 1,
   }
@@ -31,6 +32,9 @@ namespace childProcessManager {
   export native function nativeStartArkChildProcess(srcEntry: string, args: ChildProcessArgs, options: ChildProcessOptions, callback: AsyncCallbackWrapper<int>): void;
   export native function nativeStartNativeChildProcess(entryPoint: string, args: ChildProcessArgs, callback: AsyncCallbackWrapper<int>): void;
   export native function nativeStartNativeChildProcess(entryPoint: string, args: ChildProcessArgs, options: ChildProcessOptions, callback: AsyncCallbackWrapper<int>): void;
+  export native function isArkChildProcessSupported(): boolean;
+  export native function isNativeChildProcessSupported(): boolean;
+  export native function nativeGetChildProcessInfos(callback: AsyncCallbackWrapper<Array<ChildProcessInformation>>): void;
 
   export native function nativeStartChildProcessCheck(srcEntry: string, startMode: StartMode): void;
   export native function nativeStartArkChildProcessCheck(srcEntry: string, args: ChildProcessArgs, options?: ChildProcessOptions): void;
@@ -104,6 +108,26 @@ namespace childProcessManager {
         } else {
           childProcessManager.nativeStartNativeChildProcess(entryPoint, args, options as ChildProcessOptions, myCall);
         }
+      }).catch((err: Error): void => {
+        reject(err as BusinessError);
+      });
+    });
+    return p;
+  }
+
+  export function getChildProcessInfos(): Promise<Array<ChildProcessInformation>> {
+    let p = new Promise<Array<ChildProcessInformation>>(
+      (resolve: (data: Array<ChildProcessInformation>) => void, reject: (err: BusinessError) => void): void => {
+      let myCall = new AsyncCallbackWrapper<Array<ChildProcessInformation>>(
+        (err: BusinessError | null, data: Array<ChildProcessInformation> | undefined) => {
+          if (err == null || err.code == 0) {
+            resolve(data as Array<ChildProcessInformation>);
+          } else {
+            reject(err);
+          }
+        });
+      taskpool.execute((): void => {
+        childProcessManager.nativeGetChildProcessInfos(myCall);
       }).catch((err: Error): void => {
         reject(err as BusinessError);
       });

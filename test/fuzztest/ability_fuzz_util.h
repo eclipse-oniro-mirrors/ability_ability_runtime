@@ -351,7 +351,6 @@ void GetRandomBundleInfo(FuzzedDataProvider& fdp, BundleInfo& info)
     info.seInfo = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
     info.label = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
     info.description = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
-    info.jointUserId = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
     GenerateSignatureInfo(fdp, info.signatureInfo);
     info.oldAppIds = GenerateStringArray(fdp);
     info.hapModuleNames = GenerateStringArray(fdp);

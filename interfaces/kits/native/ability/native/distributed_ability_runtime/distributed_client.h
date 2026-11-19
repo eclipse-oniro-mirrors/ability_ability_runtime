@@ -20,6 +20,7 @@
 #include <string>
 
 #include "dms_continueInfo.h"
+#include "dms_intent_caller_info.h"
 #include "mission_info.h"
 #include "mission_snapshot.h"
 #include "want_params.h"
@@ -63,6 +64,11 @@ public:
     int32_t SetMissionContinueState(int32_t missionId, const AAFwk::ContinueState &state, int32_t callingUid);
     int32_t OnCollaborateDone(
         const std::string &collabToken, int32_t result, int32_t pid, int32_t uid, int32_t accessTokenId);
+    int32_t StartRemoteIntent(const OHOS::AAFwk::Want& want,
+        const OHOS::AAFwk::IntentCallerInfo& callerInfo,
+        const sptr<IRemoteObject>& resultCallback);
+    int32_t SendIntentResult(const OHOS::AAFwk::Want& want, const OHOS::AAFwk::IntentCallerInfo& callerInfo,
+        const std::string& msg);
     enum {
         START_REMOTE_ABILITY = 1,
         CONNECT_REMOTE_ABILITY = 6,
@@ -84,7 +90,9 @@ public:
         REGISTER_ON_LISTENER = 260,
         REGISTER_OFF_LISTENER = 261,
         SET_MISSION_CONTINUE_STATE = 300,
-        NOTIFY_ON_COLLABORATE_DONE = 334
+        NOTIFY_ON_COLLABORATE_DONE = 334,
+        START_REMOTE_INTENT = 400,
+        SEND_INTENT_RESULT = 401
     };
 private:
     sptr<IRemoteObject> GetDmsProxy();

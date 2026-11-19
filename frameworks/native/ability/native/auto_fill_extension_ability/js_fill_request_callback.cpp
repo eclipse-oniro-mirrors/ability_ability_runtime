@@ -155,7 +155,8 @@ napi_value JsFillRequestCallback::OnFillRequestAutoFillPopupConfig(napi_env env,
     }
     if (uiWindow_ == nullptr) {
         TAG_LOGE(AAFwkTag::AUTOFILL_EXT, "null uiWindow");
-        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+            GetInnerErrorMsg(AbilityInnerErrorMsg::UI_WINDOW_NULL));
         return CreateJsUndefined(env);
     }
 
@@ -172,7 +173,8 @@ napi_value JsFillRequestCallback::OnFillRequestAutoFillPopupConfig(napi_env env,
         auto ret = uiWindow_->TransferExtensionData(wantParams);
         if (ret != Rosen::WMError::WM_OK) {
             TAG_LOGE(AAFwkTag::AUTOFILL_EXT, "Transfer ability result failed");
-            ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+            ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                GetInnerErrorMsg(AbilityInnerErrorMsg::TRANSFER_EXTENSION_DATA_FAILED));
         }
     }
     return CreateJsUndefined(env);

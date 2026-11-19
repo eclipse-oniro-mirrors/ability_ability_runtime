@@ -26,8 +26,14 @@ AppUtils::AppUtils() {}
 
 AppUtils &AppUtils::GetInstance()
 {
-    static AppUtils utils;
-    return utils;
+    // Deliberately leak the mock singleton: a function-local static instance would register an
+    // exit-time destructor that releases the vector/string members. During process exit the heap
+    // may already be corrupted by earlier static teardown (e.g. FFRT SimpleAllocator force-frees
+    // its arenas after "clear allocator failed"), making those frees crash (SIGSEGV in free).
+    // A leaked instance never destructs, so the crash site disappears; leaking test-only state
+    // at exit is harmless because the process is terminating anyway.
+    static AppUtils *utils = new AppUtils();
+    return *utils;
 }
 
 bool AppUtils::IsLauncher(const std::string &bundleName) const
@@ -83,6 +89,11 @@ bool AppUtils::IsGrantPersistUriPermission()
 bool AppUtils::IsStartOptionsWithAnimation()
 {
     return true;
+}
+
+bool AppUtils::IsSupportBlockAllAppStart()
+{
+    return MyStatus::GetInstance().auIsSupportBlockAllAppStart_;
 }
 
 bool AppUtils::IsMultiProcessModel()
@@ -159,15 +170,6 @@ int32_t AppUtils::GetLimitMaximumExtensionsPerDevice()
 std::string AppUtils::GetCacheExtensionTypeList()
 {
     return "";
-}
-
-bool AppUtils::IsAllowStartAbilityWithoutCallerToken(const std::string& bundleName, const std::string& abilityName)
-{
-    return true;
-}
-
-void AppUtils::LoadStartAbilityWithoutCallerToken()
-{
 }
 
 std::string AppUtils::GetBrokerDelegateBundleName()
@@ -256,6 +258,16 @@ bool AppUtils::IsSupportStartAbilities()
 bool AppUtils::IsPreloadApplicationEnabled()
 {
     return false;
+}
+
+bool AppUtils::IsForbidStart()
+{
+    return MyStatus::GetInstance().auIsForbidStart_;
+}
+
+bool AppUtils::IsSupportDelayedProcessExit()
+{
+    return MyStatus::GetInstance().auIsSupportDelayedProcessExit_;
 }
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -16,4 +16,10 @@
 export default class BaseContext {
   public nativeContext: long = 0;
   public stageMode: boolean = true;
+
+  constructor(ptr: long) {
+    this.nativeContext = ptr;
+  }
+  constructor() {
+  }
 }

@@ -88,13 +88,20 @@ HWTEST_F(SemVerTest, SemVerCompareTest_005, TestSize.Level1)
     EXPECT_TRUE(IsValidSemVer("1.2.3-alpha.1+build.5"));
     EXPECT_FALSE(IsValidSemVer(""));
     EXPECT_FALSE(IsValidSemVer("1.0"));
+    EXPECT_FALSE(IsValidSemVer("1.0.0.0"));
     EXPECT_FALSE(IsValidSemVer("01.0.0"));
+    EXPECT_FALSE(IsValidSemVer("1.01.0"));
+    EXPECT_FALSE(IsValidSemVer("1.0.01"));
     EXPECT_FALSE(IsValidSemVer("1.0.0-01"));
+    EXPECT_FALSE(IsValidSemVer("1.0.0-"));
     EXPECT_FALSE(IsValidSemVer("1.0.0+"));
     EXPECT_FALSE(IsValidSemVer("1.0.0-alpha..1"));
     EXPECT_FALSE(IsValidSemVer("1.0.0-alpha_1"));
     EXPECT_FALSE(IsValidSemVer("1.0.0+build_1"));
+    EXPECT_FALSE(IsValidSemVer("1.0.0+build+meta"));
+    EXPECT_FALSE(IsValidSemVer("1.0.0-001.alpha"));
     EXPECT_FALSE(IsValidSemVer("1.a.0"));
+    EXPECT_FALSE(IsValidSemVer("1.0.0+build..1"));
     EXPECT_EQ(CompareSemVer("1.0", "1.0.0"), SemVerCompareResult::INVALID);
     EXPECT_EQ(CompareSemVer("1.0.0-alpha_1", "1.0.0"), SemVerCompareResult::INVALID);
 }
@@ -108,6 +115,8 @@ HWTEST_F(SemVerTest, SemVerCompareTest_006, TestSize.Level1)
 {
     EXPECT_EQ(CompareSemVer("1.0.0-alpha.1", "1.0.0-alpha.1"), SemVerCompareResult::EQUAL);
     EXPECT_EQ(CompareSemVer("1.0.0-beta", "1.0.0-gamma"), SemVerCompareResult::LESS);
+    EXPECT_EQ(CompareSemVer("1.0.0-gamma", "1.0.0-beta"), SemVerCompareResult::GREATER);
+    EXPECT_EQ(CompareSemVer("1.0.1", "1.0.10"), SemVerCompareResult::LESS);
 }
 
 /**

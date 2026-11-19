@@ -34,6 +34,7 @@ struct InsightIntentExecutorInfo {
     std::shared_ptr<NativeReference> pageLoader = nullptr;
     void *etsPageLoader = nullptr;
     std::shared_ptr<InsightIntentExecuteParam> executeParam = nullptr;
+    std::string decoratorClass;
 };
 } // namespace OHOS::AbilityRuntime
 #endif // OHOS_ABILITY_RUNTIME_INSIGHT_INTENT_EXECUTOR_INFO_H

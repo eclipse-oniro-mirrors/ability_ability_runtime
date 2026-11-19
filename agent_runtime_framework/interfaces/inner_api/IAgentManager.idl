@@ -20,7 +20,7 @@ interface OHOS.AAFwk.IAbilityConnection;
 rawdata AgentCard..OHOS.AgentRuntime.AgentCardsRawData;
 interface OHOS.AgentRuntime.IAgentManager {
     void GetAllAgentCards([out] AgentCardsRawData cards);
-    void GetAgentCardsByBundleName([in] String bundleName, [out] AgentCard[] cards);
+    void GetAgentCardsByBundleName([in] String bundleName, [out] AgentCardsRawData cards);
     void GetAgentCardByAgentId([in] String bundleName, [in] String agentId, [out] AgentCard card);
     void GetCallerAgentCardByAgentId([in] String agentId, [out] AgentCard card);
     void RegisterAgentCard([in] AgentCard card);
@@ -28,7 +28,23 @@ interface OHOS.AgentRuntime.IAgentManager {
     void DeleteAgentCard([in] String bundleName, [in] String agentId);
     void ConnectAgentExtensionAbility([in] Want want, [in] IAbilityConnection connect);
     void DisconnectAgentExtensionAbility([in] IAbilityConnection connect);
-    void ConnectServiceExtensionAbility([in] IRemoteObject callerToken, [in] Want want, [in] IAbilityConnection connect);
+    void ConnectServiceExtensionAbility([in] IRemoteObject callerToken, [in] Want want,
+        [in] IAbilityConnection connect);
     void DisconnectServiceExtensionAbility([in] IRemoteObject callerToken, [in] IAbilityConnection connect);
     void NotifyLowCodeAgentComplete([in] String agentId);
+    void GetAgentCardTypeForConnect([inout] Want want, [out] int cardType);
+    void VerifyAgentConnectRequest([in] Want want, [in] IAbilityConnection connect, [out] String callerIdentity);
+    void VerifyAgentDisconnectRequests([in] List<Want> wants, [in] IAbilityConnection connect,
+        [out] String callerIdentity);
+    // New methods MUST be appended at the END: IDL codegen assigns transaction codes by
+    // declaration order; a mid-interface insertion shifts existing codes and breaks OTA-mixed
+    // proxy/stub interop.
+    void ConnectAgentExtensionAbilityForCli([in] Want want, [in] IAbilityConnection connect,
+        [in] String callerIdentity);
+    void DisconnectAgentExtensionAbilityForCli([in] IAbilityConnection connect, [in] String callerIdentity);
+    // Best-effort, oneway: notifies the service that a connect request hit an already-connected
+    // AgentConnection on the client side (reused connection). The service resolves the tracked
+    // serviceConnection and forwards to AMS so AMS can attribute the task id onto the same
+    // ConnectionRecord. Appended at the END per IDL codegen ordering rule.
+    [oneway] void AttributeTaskForA2AReusedConnectionRecord([in] Want want, [in] IAbilityConnection connect);
 }

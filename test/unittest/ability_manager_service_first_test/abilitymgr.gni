@@ -40,10 +40,12 @@ abilityms_files = [
   "${ability_runtime_services_path}/abilitymgr/src/ecological_rule/ability_ecological_rule_mgr_service_param.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/ecological_rule/ability_ecological_rule_mgr_service.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/extension_config.cpp",
+  "${ability_runtime_services_path}/abilitymgr/src/extension_query_event_util.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/extension_running_info.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/extension_record/base_extension_record.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/extension_record/extension_record_manager.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/extension_running_timeout_monitor.cpp",
+  "${ability_runtime_services_path}/abilitymgr/src/background_user_extension_monitor.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/extension_record/extension_record.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/extension_record/extension_record_factory.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/foreground_app_connection_manager/foreground_app_connection_manager.cpp",
@@ -53,13 +55,13 @@ abilityms_files = [
   "${ability_runtime_services_path}/abilitymgr/src/pending_want_key.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/pending_want_manager.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/pending_want_common_event.cpp",
+  "${ability_runtime_services_path}/abilitymgr/src/want_agent_app_state_observer.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/restart_app_manager.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/ams_configuration_parameter.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/recovery_info_timer.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/modal_system_dialog/modal_system_dialog_ui_extension.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/hidden_start_observer_manager.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/interceptor/ability_interceptor_executer.cpp",
-  "${ability_runtime_services_path}/abilitymgr/src/interceptor/ability_jump_interceptor.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/interceptor/block_all_app_start_interceptor.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/interceptor/control_interceptor.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/interceptor/crowd_test_interceptor.cpp",
@@ -67,15 +69,10 @@ abilityms_files = [
   "${ability_runtime_services_path}/abilitymgr/src/interceptor/ecological_rule_interceptor.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/interceptor/extension_control_interceptor.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/interceptor/screen_unlock_interceptor.cpp",
-  "${ability_runtime_services_path}/abilitymgr/src/interceptor/start_other_app_interceptor.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/interceptor/kiosk_interceptor.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/window_focus_changed_listener.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/window_visibility_changed_listener.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/common_extension_manager.cpp",
-
-  # start ability handler
-  "${ability_runtime_services_path}/abilitymgr/src/start_ability_handler.cpp",
-  "${ability_runtime_services_path}/abilitymgr/src/start_ability_handler/start_ability_sandbox_savefile.cpp",
 
   # new ability manager service here
   "${ability_runtime_services_path}/abilitymgr/src/ui_extension/ui_extension_ability_manager.cpp",
@@ -134,8 +131,18 @@ abilityms_files = [
   "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_rdb_storage_mgr.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_utils.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/insight_intent/extract_insight_intent_profile.cpp",
+  "${ability_runtime_services_path}/abilitymgr/src/insight_intent/function_call_convert.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_event_mgr.cpp",
+  "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_matcher.cpp",
+  "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_param_parser.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_sys_event_receiver.cpp",
+
+  #skill execution
+  "${ability_runtime_services_path}/abilitymgr/src/skill/skill_execute_callback_proxy.cpp",
+  "${ability_runtime_services_path}/abilitymgr/src/skill/skill_execute_callback_stub.cpp",
+  "${ability_runtime_services_path}/abilitymgr/src/skill/skill_execute_param.cpp",
+  "${ability_runtime_services_path}/abilitymgr/src/skill/skill_execute_result.cpp",
+  "${ability_runtime_services_path}/abilitymgr/src/skill/skill_execute_manager.cpp",
 
   #sa interceptor
   "${ability_runtime_services_path}/abilitymgr/src/sa_interceptor_manager.cpp",
@@ -151,6 +158,9 @@ abilityms_files = [
 
   #utils
   "${ability_runtime_services_path}/abilitymgr/src/utils/ability_event_util.cpp",
+  "${ability_runtime_services_path}/abilitymgr/src/agent_extension/agent_card_migration_helper.cpp",
+  "${ability_runtime_services_path}/abilitymgr/src/utils/agent_ability_util.cpp",
+  "${ability_runtime_services_path}/abilitymgr/src/utils/agent_caller_identity_util.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/ability_permission_util.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/app_mgr_util.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/dms_util.cpp",
@@ -163,6 +173,7 @@ abilityms_files = [
   "${ability_runtime_services_path}/abilitymgr/src/utils/multi_app_utils.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/multi_instance_utils.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/oe_extension_utils.cpp",
+  "${ability_runtime_services_path}/abilitymgr/src/utils/security_audit_report.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/start_ability_utils.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/start_options_utils.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/hidden_start_utils.cpp",
@@ -174,6 +185,7 @@ abilityms_files = [
   "${ability_runtime_services_path}/abilitymgr/src/kiosk_status.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/kiosk_manager.cpp",
   "${ability_runtime_services_path}/abilitymgr/src/utils/udmf_utils.cpp",
+  "${ability_runtime_services_path}/abilitymgr/src/modular_object_utils.cpp",
 ]
 
 if (ability_runtime_graphics) {

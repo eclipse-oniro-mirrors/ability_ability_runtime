@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,73 +24,113 @@
 #include "in_process_call_wrapper.h"
 #include "modal_system_ui_extension.h"
 #include "process_options.h"
+#include "security_audit_report.h"
 
 namespace OHOS {
 namespace AAFwk {
 namespace {
 constexpr const char* UNREGISTER_EVENT_TASK = "unregister event task";
 constexpr const char* UNREGISTER_TIMEOUT_OBSERVER_TASK = "unregister timeout observer task";
-constexpr int UNREGISTER_OBSERVER_MICRO_SECONDS = 5000;
+constexpr int UNREGISTER_OBSERVER_MILLI_SECONDS = 5000;
 constexpr const char* UIEXTENSION_MODAL_TYPE = "ability.want.params.modalType";
-constexpr const char* INTERCEPT_PARAMETERS = "intercept_parammeters";
+constexpr const char* INTERCEPT_PARAMETERS = "intercept_parameters";
 constexpr const char* INTERCEPT_BUNDLE_NAME = "intercept_bundleName";
 constexpr const char* INTERCEPT_ABILITY_NAME = "intercept_abilityName";
 constexpr const char* INTERCEPT_MODULE_NAME = "intercept_moduleName";
 constexpr const char* IS_FROM_PARENTCONTROL = "ohos.ability.isFromParentControl";
-constexpr const char* SKIP_DISPOSE_RULE_NAME = "7007";
 }
 
-ErrCode DisposedRuleInterceptor::DoProcess(AbilityInterceptorParam param)
+DisposedRuleInterceptor::DisposedRuleInterceptor(std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler)
+    : taskHandler_(taskHandler) {}
+
+std::string DisposedRuleInterceptor::GenerateTimeoutTaskName(int32_t uid)
+{
+    return UNREGISTER_TIMEOUT_OBSERVER_TASK + std::to_string(uid);
+}
+
+std::string DisposedRuleInterceptor::GenerateEventTaskName(int32_t uid)
+{
+    return UNREGISTER_EVENT_TASK + std::to_string(uid);
+}
+
+ErrCode DisposedRuleInterceptor::DoProcess(AbilityInterceptorParam &param)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Call");
-    AppExecFwk::DisposedRule disposedRule;
-    if (CheckControl(param.want, param.userId, disposedRule, param.appIndex)) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "disposedType: %{public}d, controlType: %{public}d, componentType: %{public}d",
-            disposedRule.disposedType, disposedRule.controlType, disposedRule.componentType);
-#ifdef SUPPORT_GRAPHICS
-        if (!param.isWithUI || disposedRule.want == nullptr
-            || disposedRule.disposedType == AppExecFwk::DisposedType::NON_BLOCK) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "no dispose want");
-            return AbilityUtil::EdmErrorType(disposedRule.isEdm);
-        }
-        if (IsSkipDisposeRule(disposedRule.callerName, param)) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "skip dispose rule");
-            return AbilityUtil::EdmErrorType(disposedRule.isEdm);
-        }
-        if (disposedRule.want->GetBundle() == param.want.GetBundle()) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "no dispose want, with same bundleName");
-            return AbilityUtil::EdmErrorType(disposedRule.isEdm);
-        }
-        SetInterceptInfo(param.want, disposedRule);
-        if (disposedRule.componentType == AppExecFwk::ComponentType::UI_ABILITY) {
-            int ret = IN_PROCESS_CALL(AbilityManagerClient::GetInstance()->StartAbility(*disposedRule.want,
-                param.requestCode, param.userId));
-            if (ret != ERR_OK) {
-                TAG_LOGE(AAFwkTag::ABILITYMGR, "disposedRuleInterceptor failed");
-                return ret;
-            }
-        }
-        if (disposedRule.componentType == AppExecFwk::ComponentType::UI_EXTENSION) {
-            int ret = CreateModalUIExtension(*disposedRule.want, param.callerToken);
-            if (ret != ERR_OK) {
-                TAG_LOGE(AAFwkTag::ABILITYMGR, "dispose UIExtension failed");
-                return ret;
-            }
-        }
-#endif
-        return AbilityUtil::EdmErrorType(disposedRule.isEdm);
-    }
-    if (disposedRule.disposedType != AppExecFwk::DisposedType::NON_BLOCK) {
+    if (param.GetContext<AbilityInterceptorParam::RemoteDispatchCtx>() != nullptr) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "remote dispatch, defer to remote device");
         return ERR_OK;
     }
-    if (param.abilityInfo == nullptr) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "disposed abilityInfo is nullptr");
-        return RESOLVE_ABILITY_ERR;
+    const auto *dispCtx = param.GetContext<AbilityInterceptorParam::DisposedCtx>();
+    int32_t appIndex = dispCtx ? dispCtx->appIndex : 0;
+    AppExecFwk::DisposedRule disposedRule;
+    DisposedRuleResult result = CheckControl(param.want, param.userId, disposedRule, appIndex);
+    switch (result) {
+        case DisposedRuleResult::BLOCK_RULE:
+            if (disposedRule.isEdm) {
+                SecurityAuditReport::ReportEdmBlockedStart(param);
+            }
+            return HandleBlockRule(param, disposedRule);
+        case DisposedRuleResult::NON_BLOCK_RULE:
+            return HandleNonBlockRule(param, disposedRule);
+        case DisposedRuleResult::NO_RULE:
+            return ERR_OK;
+        case DisposedRuleResult::QUERY_FAILED:
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "query disposed rule failed.");
+            return ERR_QUERY_DISPOSED_RULE_FAILED;
     }
-    return StartNonBlockRule(param.want, disposedRule, param.abilityInfo->uid);
+    return ERR_OK;
 }
 
-bool DisposedRuleInterceptor::CheckControl(const Want &want, int32_t userId,
+ErrCode DisposedRuleInterceptor::HandleBlockRule(
+    const AbilityInterceptorParam &param, AppExecFwk::DisposedRule &disposedRule)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR,
+        "disposedType: %{public}d, controlType: %{public}d, componentType: %{public}d",
+        disposedRule.disposedType, disposedRule.controlType, disposedRule.componentType);
+#ifdef SUPPORT_GRAPHICS
+    if (!param.isVisible || disposedRule.want == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "no dispose want");
+        return AbilityUtil::EdmErrorType(disposedRule.isEdm);
+    }
+    if (IsSkipDisposeRule(disposedRule.pageJump, param)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "skip dispose rule");
+        return AbilityUtil::EdmErrorType(disposedRule.isEdm);
+    }
+    if (disposedRule.want->GetBundle() == param.want.GetBundleNameRef()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "no dispose want, with same bundleName");
+        return AbilityUtil::EdmErrorType(disposedRule.isEdm);
+    }
+    SetInterceptInfo(param.want, disposedRule);
+    if (disposedRule.componentType == AppExecFwk::ComponentType::UI_ABILITY) {
+        int32_t ret = IN_PROCESS_CALL(AbilityManagerClient::GetInstance()->StartAbility(*disposedRule.want,
+            param.requestCode, param.userId));
+        if (ret != ERR_OK) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "disposedRuleInterceptor failed");
+            return ret;
+        }
+    }
+    if (disposedRule.componentType == AppExecFwk::ComponentType::UI_EXTENSION) {
+        int32_t ret = CreateModalUIExtension(*disposedRule.want, param.callerToken);
+        if (ret != ERR_OK) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "dispose UIExtension failed");
+            return ret;
+        }
+    }
+#endif
+    return AbilityUtil::EdmErrorType(disposedRule.isEdm);
+}
+
+ErrCode DisposedRuleInterceptor::HandleNonBlockRule(
+    const AbilityInterceptorParam &param, AppExecFwk::DisposedRule &disposedRule)
+{
+    if (param.abilityInfo == nullptr) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "disposed abilityInfo is nullptr, skip non-block rule");
+        return ERR_OK;
+    }
+    return StartNonBlockRule(param.want, disposedRule, param.abilityInfo);
+}
+
+DisposedRuleResult DisposedRuleInterceptor::CheckControl(const Want &want, int32_t userId,
     AppExecFwk::DisposedRule &disposedRule, int32_t appIndex)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
@@ -98,38 +138,38 @@ bool DisposedRuleInterceptor::CheckControl(const Want &want, int32_t userId,
     auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
     if (bundleMgrHelper == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null bundleMgrHelper");
-        return false;
+        return DisposedRuleResult::QUERY_FAILED;
     }
 
     // get disposed status
-    std::string bundleName = want.GetBundle();
+    const auto &bundleName = want.GetBundleNameRef();
     auto appControlMgr = bundleMgrHelper->GetAppControlProxy();
     if (appControlMgr == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null appControlMgr");
-        return false;
+        return DisposedRuleResult::QUERY_FAILED;
     }
     std::vector<AppExecFwk::DisposedRule> disposedRuleList;
     {
         HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, "GetAbilityRunningControlRule");
-        int32_t ret = ERR_OK;
-        if (appIndex > 0 && appIndex <= AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
-            ret = IN_PROCESS_CALL(appControlMgr->GetAbilityRunningControlRule(bundleName,
-                userId, disposedRuleList, appIndex));
-        } else {
-            ret = IN_PROCESS_CALL(appControlMgr->GetAbilityRunningControlRule(bundleName,
-                userId, disposedRuleList, 0));
+        int32_t ret = IN_PROCESS_CALL(appControlMgr->GetAbilityRunningControlRule(bundleName,
+            userId, disposedRuleList, appIndex));
+        if (ret != ERR_OK) {
+            TAG_LOGW(AAFwkTag::ABILITYMGR, "GetAbilityRunningControlRule failed, err:%{public}d", ret);
+            return DisposedRuleResult::NO_RULE;
         }
-        if (ret != ERR_OK || disposedRuleList.empty()) {
+        if (disposedRuleList.empty()) {
             TAG_LOGD(AAFwkTag::ABILITYMGR, "Get No DisposedRule");
-            return false;
+            return DisposedRuleResult::NO_RULE;
         }
     }
 
     if (FindBlockDisposedRule(want, disposedRuleList, disposedRule)) {
-        return true;
+        return DisposedRuleResult::BLOCK_RULE;
     }
-    FindNonBlockDisposedRule(disposedRuleList, disposedRule);
-    return false;
+    if (FindNonBlockDisposedRule(disposedRuleList, disposedRule)) {
+        return DisposedRuleResult::NON_BLOCK_RULE;
+    }
+    return DisposedRuleResult::NO_RULE;
 }
 
 bool DisposedRuleInterceptor::FindBlockDisposedRule(const Want &want,
@@ -147,11 +187,11 @@ bool DisposedRuleInterceptor::FindBlockDisposedRule(const Want &want,
             }
             continue;
         }
-        std::string moduleName = want.GetElement().GetModuleName();
-        std::string abilityName = want.GetElement().GetAbilityName();
+        const auto &moduleName = want.GetModuleNameRef();
+        const auto &abilityName = want.GetAbilityNameRef();
         auto iter = std::find_if(rule.elementList.begin(), rule.elementList.end(),
             [moduleName, abilityName](const AppExecFwk::ElementName &elementName) {
-                return moduleName == elementName.GetModuleName() && abilityName == elementName.GetAbilityName();
+                return moduleName == elementName.GetModuleNameRef() && abilityName == elementName.GetAbilityName();
             });
         if ((rule.controlType == AppExecFwk::ControlType::ALLOWED_LIST && iter == rule.elementList.end()) ||
             (rule.controlType == AppExecFwk::ControlType::DISALLOWED_LIST && iter != rule.elementList.end())) {
@@ -162,10 +202,11 @@ bool DisposedRuleInterceptor::FindBlockDisposedRule(const Want &want,
     return priority >= 0;
 }
 
-void DisposedRuleInterceptor::FindNonBlockDisposedRule(const std::vector<AppExecFwk::DisposedRule> &disposedRuleList,
+bool DisposedRuleInterceptor::FindNonBlockDisposedRule(const std::vector<AppExecFwk::DisposedRule> &disposedRuleList,
     AppExecFwk::DisposedRule &disposedRule)
 {
     int priority = -1;
+    bool found = false;
     for (const auto &rule : disposedRuleList) {
         if (rule.disposedType != AppExecFwk::DisposedType::NON_BLOCK) {
             continue;
@@ -173,89 +214,123 @@ void DisposedRuleInterceptor::FindNonBlockDisposedRule(const std::vector<AppExec
         if (rule.priority > priority) {
             priority = rule.priority;
             disposedRule = rule;
+            found = true;
         }
     }
+    return found;
 }
 
 ErrCode DisposedRuleInterceptor::StartNonBlockRule(const Want &want, AppExecFwk::DisposedRule &disposedRule,
-    int32_t uid)
+    const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "not block, dType:%{public}d, cType:%{public}d, compType:%{public}d",
-        disposedRule.disposedType, disposedRule.controlType, disposedRule.componentType);
-    if (disposedRule.want == nullptr) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "null want");
-        return ERR_OK;
-    }
-    if (disposedRule.want->GetBundle() == want.GetBundle()) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "no dispose app with same bundleName");
+    if (!ValidateNonBlockRule(want, disposedRule)) {
         return ERR_OK;
     }
     SetInterceptInfo(want, disposedRule);
-    std::string bundleName = want.GetBundle();
+
+    std::string moduleName = abilityInfo->moduleName;
+    std::string abilityName = abilityInfo->name;
+    int32_t uid = abilityInfo->applicationInfo.uid;
+
     sptr<OHOS::AppExecFwk::IAppMgr> appManager = AppMgrUtil::GetAppMgr();
     CHECK_POINTER_AND_RETURN(appManager, ERR_INVALID_VALUE);
+    CHECK_POINTER_AND_RETURN(taskHandler_, ERR_INVALID_VALUE);
+
     {
         std::lock_guard<ffrt::mutex> guard(observerLock_);
-        if (disposedObserverMap_.find(uid) != disposedObserverMap_.end()) {
-            TAG_LOGD(AAFwkTag::ABILITYMGR, "start same disposed app, do not need to register again");
-            return ERR_OK;
+        auto iter = disposedObserverMap_.find(uid);
+        if (iter != disposedObserverMap_.end()) {
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "observer exists, add key and refresh timeout: %{public}s/%{public}s",
+                moduleName.c_str(), abilityName.c_str());
+            CHECK_POINTER_AND_RETURN(iter->second, ERR_INVALID_VALUE);
+            iter->second->AddAbilityKey(moduleName, abilityName);
+            std::string timeoutTaskName = GenerateTimeoutTaskName(uid);
+            taskHandler_->CancelTask(timeoutTaskName);
+        } else {
+            auto disposedObserver = sptr<DisposedObserver>::MakeSptr(disposedRule, shared_from_this(), uid);
+            CHECK_POINTER_AND_RETURN(disposedObserver, ERR_INVALID_VALUE);
+            disposedObserver->AddAbilityKey(moduleName, abilityName);
+
+            std::vector<std::string> bundleNameList;
+            bundleNameList.push_back(want.GetBundleNameRef());
+            int32_t ret =
+                IN_PROCESS_CALL(appManager->RegisterApplicationStateObserver(disposedObserver, bundleNameList));
+            if (ret != 0) {
+                TAG_LOGE(AAFwkTag::ABILITYMGR, "register failed, err:%{public}d", ret);
+                return ret;
+            }
+            disposedObserverMap_.emplace(uid, disposedObserver);
         }
-        auto disposedObserver = sptr<DisposedObserver>::MakeSptr(disposedRule, shared_from_this(), uid);
-        CHECK_POINTER_AND_RETURN(disposedObserver, ERR_INVALID_VALUE);
-        std::vector<std::string> bundleNameList;
-        bundleNameList.push_back(bundleName);
-        int32_t ret = IN_PROCESS_CALL(appManager->RegisterApplicationStateObserver(disposedObserver, bundleNameList));
-        if (ret != 0) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "register failed, err:%{public}d", ret);
-            disposedObserver = nullptr;
-            return ret;
-        }
-        disposedObserverMap_.emplace(uid, disposedObserver);
     }
+
+    std::string timeoutTaskName = GenerateTimeoutTaskName(uid);
     auto unregisterTask = [appManager, uid, interceptor = shared_from_this()] () {
         std::lock_guard<ffrt::mutex> guard{interceptor->observerLock_};
         auto iter = interceptor->disposedObserverMap_.find(uid);
         if (iter != interceptor->disposedObserverMap_.end()) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "time out, unregister observer");
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "timeout, unregister observer for uid:%{public}d", uid);
             IN_PROCESS_CALL(appManager->UnregisterApplicationStateObserver(iter->second));
             interceptor->disposedObserverMap_.erase(iter);
         }
     };
-    CHECK_POINTER_AND_RETURN(taskHandler_, ERR_INVALID_VALUE);
-    taskHandler_->SubmitTask(unregisterTask, UNREGISTER_TIMEOUT_OBSERVER_TASK, UNREGISTER_OBSERVER_MICRO_SECONDS);
+    taskHandler_->SubmitTask(unregisterTask, timeoutTaskName, UNREGISTER_OBSERVER_MILLI_SECONDS);
     return ERR_OK;
+}
+
+bool DisposedRuleInterceptor::ValidateNonBlockRule(const Want &want, const AppExecFwk::DisposedRule &disposedRule)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "not block, dType:%{public}d, cType:%{public}d, compType:%{public}d",
+        disposedRule.disposedType, disposedRule.controlType, disposedRule.componentType);
+    if (disposedRule.want == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "null want");
+        return false;
+    }
+    if (disposedRule.want->GetBundle() == want.GetBundleNameRef()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "no dispose app with same bundleName");
+        return false;
+    }
+    return true;
 }
 
 void DisposedRuleInterceptor::UnregisterObserver(int32_t uid)
 {
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "Call");
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "Call, uid:%{public}d", uid);
     CHECK_POINTER(taskHandler_);
-    taskHandler_->CancelTask(UNREGISTER_TIMEOUT_OBSERVER_TASK);
+    std::string timeoutTaskName = GenerateTimeoutTaskName(uid);
+    taskHandler_->CancelTask(timeoutTaskName);
     auto unregisterTask = [uid, interceptor = shared_from_this()] () {
         std::lock_guard<ffrt::mutex> guard{interceptor->observerLock_};
         auto iter = interceptor->disposedObserverMap_.find(uid);
         if (iter == interceptor->disposedObserverMap_.end()) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "no find observer");
-        } else {
-            auto disposedObserver = iter->second;
-            CHECK_POINTER(disposedObserver);
-            sptr<OHOS::AppExecFwk::IAppMgr> appManager = AppMgrUtil::GetAppMgr();
-            CHECK_POINTER(appManager);
-            IN_PROCESS_CALL(appManager->UnregisterApplicationStateObserver(disposedObserver));
-            interceptor->disposedObserverMap_.erase(iter);
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "no find observer for uid:%{public}d", uid);
+            return;
         }
+
+        auto disposedObserver = iter->second;
+        CHECK_POINTER(disposedObserver);
+
+        if (disposedObserver->GetAbilityKeyCount() > 0) {
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "observer still has pending keys, skip unregister for uid:%{public}d", uid);
+            return;
+        }
+
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "unregistering observer for uid:%{public}d", uid);
+        sptr<OHOS::AppExecFwk::IAppMgr> appManager = AppMgrUtil::GetAppMgr();
+        CHECK_POINTER(appManager);
+        IN_PROCESS_CALL(appManager->UnregisterApplicationStateObserver(disposedObserver));
+        interceptor->disposedObserverMap_.erase(iter);
     };
-    taskHandler_->SubmitTask(unregisterTask, UNREGISTER_EVENT_TASK);
+    taskHandler_->SubmitTask(unregisterTask, GenerateEventTaskName(uid));
 }
 
-ErrCode DisposedRuleInterceptor::CreateModalUIExtension(const Want &want, const sptr<IRemoteObject> &callerToken)
+ErrCode DisposedRuleInterceptor::CreateModalUIExtension(Want &want, const sptr<IRemoteObject> &callerToken)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
     if (abilityRecord == nullptr || abilityRecord->GetAbilityInfo().type != AppExecFwk::AbilityType::PAGE) {
         auto systemUIExtension = std::make_shared<OHOS::Rosen::ModalSystemUiExtension>();
-        (const_cast<Want &>(want)).SetParam(UIEXTENSION_MODAL_TYPE, 1);
+        want.SetParam(UIEXTENSION_MODAL_TYPE, 1);
         return IN_PROCESS_CALL(systemUIExtension->CreateModalUIExtension(want)) ? ERR_OK : INNER_ERR;
     } else {
         return abilityRecord->CreateModalUIExtension(want);
@@ -269,20 +344,22 @@ void DisposedRuleInterceptor::SetInterceptInfo(const Want &want, AppExecFwk::Dis
         return;
     }
     if (disposedRule.want->GetBoolParam(IS_FROM_PARENTCONTROL, false)) {
-        disposedRule.want->SetParam(INTERCEPT_BUNDLE_NAME, want.GetElement().GetBundleName());
-        disposedRule.want->SetParam(INTERCEPT_ABILITY_NAME, want.GetElement().GetAbilityName());
-        disposedRule.want->SetParam(INTERCEPT_MODULE_NAME, want.GetElement().GetModuleName());
+        disposedRule.want->SetParam(INTERCEPT_BUNDLE_NAME, want.GetBundleNameRef());
+        disposedRule.want->SetParam(INTERCEPT_ABILITY_NAME, want.GetAbilityNameRef());
+        disposedRule.want->SetParam(INTERCEPT_MODULE_NAME, want.GetModuleNameRef());
     }
 }
 
-bool DisposedRuleInterceptor::IsSkipDisposeRule(const std::string &callerName, const AbilityInterceptorParam &param)
+bool DisposedRuleInterceptor::IsSkipDisposeRule(AppExecFwk::PageJumpMode mode, const AbilityInterceptorParam &param)
 {
-    if (param.startOptions == nullptr || param.startOptions->processOptions == nullptr) {
+    const auto *dispCtx = param.GetContext<AbilityInterceptorParam::DisposedCtx>();
+    const StartOptions *startOptions = dispCtx ? dispCtx->startOptions : nullptr;
+    if (startOptions == nullptr || startOptions->processOptions == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null startOptions or processOptions");
         return false;
     }
-    return callerName == SKIP_DISPOSE_RULE_NAME &&
-        param.startOptions->processOptions->startupVisibility == StartupVisibility::STARTUP_HIDE;
+    return mode == AppExecFwk::PageJumpMode::PAGE_JUMP_WINDOW_NOT_SHOW &&
+        startOptions->processOptions->startupVisibility == StartupVisibility::STARTUP_HIDE;
 }
 } // namespace AAFwk
 } // namespace OHOS

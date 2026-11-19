@@ -19,6 +19,9 @@ config("napi_ability_common_public_config") {
 }
 
 ohos_shared_library("napi_ability_common") {
+  branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
+
   public_configs = [
     ":napi_ability_common_public_config",
     "${ability_runtime_native_path}/ability/native:ability_public_config",
@@ -62,6 +65,7 @@ ohos_shared_library("napi_ability_common") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "node:node_header_notice",
     "samgr:samgr_proxy",
   ]
 

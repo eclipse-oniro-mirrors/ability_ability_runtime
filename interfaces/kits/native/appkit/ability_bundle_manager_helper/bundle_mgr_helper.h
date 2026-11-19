@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -43,6 +43,8 @@ public:
         AbilityInfo &abilityInfo);
     ErrCode GetSandboxExtAbilityInfos(const Want &want, int32_t appIndex, int32_t flags, int32_t userId,
         std::vector<ExtensionAbilityInfo> &extensionInfos);
+    ErrCode GetSandboxExtAbilityInfoOptimal(const Want &want, int32_t appIndex, int32_t flags,
+        int32_t userId, ExtensionAbilityInfo &extensionInfo);
     ErrCode GetSandboxHapModuleInfo(const AbilityInfo &abilityInfo, int32_t appIndex, int32_t userId,
         HapModuleInfo &hapModuleInfo);
     bool GetBundleInfo(const std::string &bundleName, int32_t flags, BundleInfo &bundleInfo, int32_t userId);
@@ -70,6 +72,8 @@ public:
     sptr<IAppControlMgr> GetAppControlProxy();
     bool QueryExtensionAbilityInfos(const Want &want, const int32_t &flag, const int32_t &userId,
         std::vector<ExtensionAbilityInfo> &extensionInfos);
+    ErrCode QueryExtensionAbilityInfoOptimal(const Want &want, const int32_t &flag, const int32_t &userId,
+    ExtensionAbilityInfo &extensionInfo);
     ErrCode GetBundleInfoV9(
         const std::string &bundleName, int32_t flags, BundleInfo &bundleInfo, int32_t userId);
     ErrCode GetBundleInfosV9(int32_t flags, std::vector<BundleInfo> &bundleInfos, int32_t userId);
@@ -83,6 +87,8 @@ public:
     bool UnregisterBundleEventCallback(const sptr<IBundleEventCallback> &bundleEventCallback);
     bool QueryExtensionAbilityInfoByUri(
         const std::string &uri, int32_t userId, ExtensionAbilityInfo &extensionAbilityInfo);
+    bool QueryExtensionAbilityInfoByUriOptimal(
+        const std::string &uri, int32_t userId, ExtensionAbilityInfo &extensionAbilityInfo);
     bool ImplicitQueryInfoByPriority(const Want &want, int32_t flags, int32_t userId,
         AbilityInfo &abilityInfo, ExtensionAbilityInfo &extensionInfo);
     bool QueryAbilityInfoByUri(const std::string &abilityUri, int32_t userId, AbilityInfo &abilityInfo);
@@ -95,23 +101,34 @@ public:
     bool CleanBundleDataFiles(
         const std::string &bundleName, int32_t userId, int32_t appCloneIndex, int32_t callerUid);
     bool QueryDataGroupInfos(const std::string &bundleName, int32_t userId, std::vector<DataGroupInfo> &infos);
+    ErrCode QueryIpcGroupInfos(const std::string &bundleName, int32_t userId, std::vector<IpcGroupInfo> &infos);
     bool RegisterBundleEventCallback(const sptr<IBundleEventCallback> &bundleEventCallback);
     bool GetBundleInfos(
         const BundleFlag flag, std::vector<BundleInfo> &bundleInfos, int32_t userId = Constants::UNSPECIFIED_USERID);
     bool GetHapModuleInfo(const AbilityInfo &abilityInfo, int32_t userId, HapModuleInfo &hapModuleInfo);
     bool QueryAppGalleryBundleName(std::string &bundleName);
     ErrCode GetUidByBundleName(const std::string &bundleName, int32_t userId, int32_t appCloneIndex);
+    ErrCode GetAppProvisionInfo(const std::string &bundleName, int32_t userId, AppProvisionInfo &appProvisionInfo);
+    ErrCode GetLaunchServices(
+        const std::string &bundleName, const std::string &moduleName, int32_t userId, LaunchServicesResult &result);
+    ErrCode IsApplicationDisableForbidden(const std::string &bundleName, int32_t userId, int32_t appIndex,
+        bool &forbidden);
     ErrCode QueryExtensionAbilityInfosOnlyWithTypeName(const std::string &extensionTypeName,
         const uint32_t flag, const int32_t userId, std::vector<ExtensionAbilityInfo> &extensionInfos);
     sptr<IDefaultApp> GetDefaultAppProxy();
     ErrCode GetLaunchWantForBundle(const std::string &bundleName, Want &want, int32_t userId);
     ErrCode QueryCloneAbilityInfo(const ElementName &element, int32_t flags, int32_t appCloneIndex,
         AbilityInfo &abilityInfo, int32_t userId);
+    ErrCode QuerySandboxCloneAbilityInfo(const std::string &creatorBundleName,
+        const ElementName &element, int32_t flags, int32_t sandBoxCloneIndex,
+        AbilityInfo &abilityInfo, int32_t userId);
     ErrCode GetCloneBundleInfo(const std::string &bundleName, int32_t flags, int32_t appCloneIndex,
         BundleInfo &bundleInfo, int32_t userId);
     ErrCode QueryCloneExtensionAbilityInfoWithAppIndex(const ElementName &element, int32_t flags, int32_t appCloneIndex,
         ExtensionAbilityInfo &extensionInfo, int32_t userId);
     ErrCode GetCloneAppIndexes(const std::string &bundleName, std::vector<int32_t> &appIndexes, int32_t userId);
+    ErrCode GetAppClonePreference(const std::string &bundleName, int32_t userId, AppClonePreference &preference);
+    ErrCode GetDualModeBundleInfo(const std::string &bundleName, int32_t userId, int32_t &appIndex);
     ErrCode GetSignatureInfoByBundleName(const std::string &bundleName, SignatureInfo &signatureInfo);
     std::string GetStringById(
         const std::string &bundleName, const std::string &moduleName, uint32_t resId, int32_t userId);
@@ -143,6 +160,12 @@ public:
      */
     ErrCode SetBundleFirstLaunch(const std::string &bundleName, int32_t userId, int32_t appIndex,
         bool isBundleFirstLaunched);
+
+    ErrCode QueryAbilityInfos(const Want &want, int32_t userId, std::vector<AbilityInfo> &abilityInfos);
+    bool QueryEnabledAbilityInfo(const Want &want, int32_t userId, AbilityInfo &abilityInfo);
+    ErrCode QueryExtensionAbilityInfosV9(const Want &want, int32_t userId,
+        std::vector<ExtensionAbilityInfo> &extensionInfos);
+    bool QueryEnabledExtensionAbilityInfo(const Want &want, int32_t userId, ExtensionAbilityInfo &extensionInfo);
 
 private:
     sptr<IBundleMgr> Connect();

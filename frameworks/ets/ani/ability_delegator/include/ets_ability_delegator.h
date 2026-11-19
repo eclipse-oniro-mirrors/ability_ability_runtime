@@ -22,6 +22,7 @@
 #include "ets_ability_delegator_registry.h"
 #include "ets_ability_monitor.h"
 #include "ets_ability_stage_monitor.h"
+#include "ets_interop_ability_monitor.h"
 #include "iability_monitor.h"
 #include "ets_runtime.h"
 #include "want.h"
@@ -97,6 +98,12 @@ public:
 
     static ani_ref GetCurrentTopAbility(ani_env *env, [[maybe_unused]]ani_class aniClass, ani_object callback);
 
+    static void AddInteropAbilityMonitorSync(ani_env *env, [[maybe_unused]]ani_class aniClass,
+        ani_object monitorObj);
+
+    static void RemoveInteropAbilityMonitorSync(ani_env *env, [[maybe_unused]]ani_class aniClass,
+        ani_object monitorObj);
+
 private:
     static ani_object WrapShellCmdResult(ani_env *env, std::unique_ptr<AppExecFwk::ShellCmdResult> result);
 
@@ -131,6 +138,15 @@ private:
     static void CleanAndFindMonitorRecord(ani_env *env, ani_object monitorObj);
 
     static bool CheckMonitorPara(ani_env *env, ani_object monitorObj);
+
+    static bool ParseInteropMonitorPara(ani_env *env, ani_object monitorObj,
+        std::shared_ptr<EtsInteropAbilityMonitor> &monitorImpl);
+
+    static bool ParseInteropMonitorParaInner(ani_env *env, ani_object monitorObj,
+        std::shared_ptr<EtsInteropAbilityMonitor> &monitorImpl);
+
+    static std::shared_ptr<EtsInteropAbilityMonitor> CleanAndFindInteropMonitorRecord(
+        ani_env *env, ani_object monitorObj);
 };
 } // namespace AbilityDelegatorEts
 } // namespace OHOS

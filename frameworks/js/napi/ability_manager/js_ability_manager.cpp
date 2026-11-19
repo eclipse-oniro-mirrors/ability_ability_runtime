@@ -16,6 +16,7 @@
 #include "js_ability_manager.h"
 
 #include <cstdint>
+#include <cinttypes>
 #include <memory>
 #include <regex>
 #include <future>
@@ -58,6 +59,10 @@ OHOS::sptr<OHOS::AppExecFwk::IAppMgr> GetAppManagerInstance()
 {
     OHOS::sptr<OHOS::ISystemAbilityManager> systemAbilityManager =
         OHOS::SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (systemAbilityManager == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "system ability manager is null");
+        return nullptr;
+    }
     OHOS::sptr<OHOS::IRemoteObject> appObject = systemAbilityManager->GetSystemAbility(OHOS::APP_MGR_SERVICE_ID);
     return OHOS::iface_cast<OHOS::AppExecFwk::IAppMgr>(appObject);
 }
@@ -236,7 +241,8 @@ private:
             observerForeground_ = new (std::nothrow) JSAbilityForegroundStateObserver(env);
             if (observerForeground_ == nullptr) {
                 TAG_LOGE(AAFwkTag::ABILITYMGR, "null observerForeground_");
-                ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+                ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::OBSERVER_CREATE_FAILED));
                 return CreateJsUndefined(env);
             }
             napi_add_env_cleanup_hook(env, JSAbilityForegroundStateObserver::CleanUp,
@@ -244,7 +250,14 @@ private:
         }
 
         if (observerForeground_->IsEmpty()) {
-            int32_t ret = GetAppManagerInstance()->RegisterAbilityForegroundStateObserver(observerForeground_);
+            auto appMgr = GetAppManagerInstance();
+            if (appMgr == nullptr) {
+                TAG_LOGE(AAFwkTag::ABILITYMGR, "app manager instance is null");
+                ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::SERVICE_UNAVAILABLE));
+                return CreateJsUndefined(env);
+            }
+            int32_t ret = appMgr->RegisterAbilityForegroundStateObserver(observerForeground_);
             if (ret != NO_ERROR) {
                 TAG_LOGE(AAFwkTag::ABILITYMGR, "error: %{public}d", ret);
                 ThrowErrorByNativeErr(env, ret);
@@ -351,7 +364,8 @@ private:
     {
         if (observerForeground_ == nullptr) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "null observer");
-            ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+            ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                GetInnerErrorMsg(AbilityInnerErrorMsg::OBSERVER_NOT_EXIST));
             return CreateJsUndefined(env);
         }
         if (argc == ARGC_TWO) {
@@ -361,7 +375,14 @@ private:
         }
 
         if (observerForeground_->IsEmpty()) {
-            int32_t ret = GetAppManagerInstance()->UnregisterAbilityForegroundStateObserver(observerForeground_);
+            auto appMgr = GetAppManagerInstance();
+            if (appMgr == nullptr) {
+                TAG_LOGE(AAFwkTag::ABILITYMGR, "app manager instance is null");
+                ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::SERVICE_UNAVAILABLE));
+                return CreateJsUndefined(env);
+            }
+            int32_t ret = appMgr->UnregisterAbilityForegroundStateObserver(observerForeground_);
             if (ret != NO_ERROR) {
                 TAG_LOGE(AAFwkTag::ABILITYMGR, "error: %{public}d", ret);
                 ThrowErrorByNativeErr(env, ret);
@@ -384,7 +405,8 @@ private:
 #ifdef ENABLE_ERRCODE
                     task.ResolveWithNoError(env, CreateJsAbilityRunningInfoArray(env, infos));
                 } else {
-                    task.Reject(env, CreateJsError(env, GetJsErrorCodeByNativeError(errcode)));
+                    task.Reject(env, CreateJsErrorByNativeErr(env, errcode, "",
+                        GetInnerErrorMsg(AbilityInnerErrorMsg::GET_ABILITY_RUNNING_INFOS_FAILED)));
 #else
                     task.Resolve(env, CreateJsAbilityRunningInfoArray(env, infos));
                 } else {
@@ -480,7 +502,17 @@ private:
 
             complete = [changeConfig](napi_env env, NapiAsyncTask& task, int32_t status) {
                 HandleScope handleScope(env);
-                auto errcode = GetAppManagerInstance()->UpdateConfiguration(changeConfig);
+                auto appMgr = GetAppManagerInstance();
+                if (appMgr == nullptr) {
+                    TAG_LOGE(AAFwkTag::ABILITYMGR, "app manager instance is null");
+#ifdef ENABLE_ERRCODE
+                    task.Reject(env, CreateJsError(env, GetJsErrorCodeByNativeError(AAFwk::INNER_ERR)));
+#else
+                    task.Reject(env, CreateJsError(env, AAFwk::INNER_ERR, "app manager instance is null."));
+#endif
+                    return;
+                }
+                auto errcode = appMgr->UpdateConfiguration(changeConfig);
                 if (errcode == 0) {
 #ifdef ENABLE_ERRCODE
                     task.ResolveWithNoError(env, CreateJsUndefined(env));
@@ -519,10 +551,17 @@ private:
             [](napi_env env, NapiAsyncTask &task, int32_t status) {
                 HandleScope handleScope(env);
                 AppExecFwk::ElementName elementName = AbilityManagerClient::GetInstance()->GetTopAbility();
+                napi_value elementNameObj = CreateJsElementName(env, elementName);
+                if (elementNameObj == nullptr) {
+                    task.Reject(env, CreateJsErrorByNativeErr(env,
+                        static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER), "",
+                        GetInnerErrorMsg(AbilityInnerErrorMsg::GET_TOP_ABILITY_FAILED)));
+                    return;
+                }
 #ifdef ENABLE_ERRCOE
-                task.ResolveWithNoError(env, CreateJsElementName(env, elementName));
+                task.ResolveWithNoError(env, elementNameObj);
 #else
-                task.Resolve(env, CreateJsElementName(env, elementName));
+                task.Resolve(env, elementNameObj);
 #endif
             };
 
@@ -555,12 +594,15 @@ private:
         AAFwk::ShareRuntimeTask task = [env, asyncTask](int32_t resultCode, const AAFwk::WantParams &wantParam) {
             HandleScope handleScope(env);
             if (resultCode != 0) {
-                asyncTask->Reject(env, CreateJsError(env, GetJsErrorCodeByNativeError(resultCode)));
+                asyncTask->Reject(env, CreateJsErrorByNativeErr(env, resultCode, "",
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::ACQUIRE_SHARE_DATA_FAILED)));
                 return;
             }
             napi_value abilityResult = AppExecFwk::WrapWantParams(env, wantParam);
             if (abilityResult == nullptr) {
-                asyncTask->Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+                asyncTask->Reject(env, CreateJsErrorByNativeErr(env,
+                    static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER), "",
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::ACQUIRE_SHARE_DATA_FAILED)));
             } else {
                 asyncTask->ResolveWithNoError(env, abilityResult);
             }
@@ -571,7 +613,8 @@ private:
         shareDataCallbackStub->SetShareRuntimeTask(task);
         auto err = AbilityManagerClient::GetInstance()->AcquireShareData(missionId, shareDataCallbackStub);
         if (err != 0) {
-            asyncTask->Reject(env, CreateJsError(env, GetJsErrorCodeByNativeError(err)));
+            asyncTask->Reject(env, CreateJsErrorByNativeErr(env, err, "",
+                GetInnerErrorMsg(AbilityInnerErrorMsg::ACQUIRE_SHARE_DATA_FAILED)));
         }
         return handleEscape.Escape(result);
     }
@@ -876,7 +919,8 @@ private:
         auto ret = AbilityManagerClient::GetInstance()->RestartSelfAtomicService(token);
         if (ret != ERR_OK) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "resatrt atomic service failed: %{public}d", ret);
-            ThrowErrorByNativeErr(env, ret);
+            napi_throw(env, CreateJsErrorByNativeErr(env, ret, "",
+                GetInnerErrorMsg(AbilityInnerErrorMsg::RESTART_SELF_ATOMIC_SERVICE_FAILED)));
         }
         return CreateJsUndefined(env);
     }
@@ -993,11 +1037,12 @@ private:
             loadedCallback_.clear();
             return CreateJsUndefined(env);
         }
-        auto it = std::find_if(loadedCallback_.begin(), loadedCallback_.end(), [&](const auto &cb) {
+        auto it = std::find_if(loadedCallback_.begin(), loadedCallback_.end(),
+            [env, targetFunc = info.argv[INDEX_ZERO]](const auto &cb) {
             napi_value jsFunc = nullptr;
             bool isEquals = false;
             napi_get_reference_value(env, cb.first, &jsFunc);
-            napi_strict_equals(env, info.argv[INDEX_ZERO], jsFunc, &isEquals);
+            napi_strict_equals(env, targetFunc, jsFunc, &isEquals);
             return isEquals;
         });
         if (it == loadedCallback_.end()) {
@@ -1072,11 +1117,12 @@ private:
             destroyCallback_.clear();
             return CreateJsUndefined(env);
         }
-        auto it = std::find_if(destroyCallback_.begin(), destroyCallback_.end(), [&](const auto &cb) {
+        auto it = std::find_if(destroyCallback_.begin(), destroyCallback_.end(),
+            [env, targetFunc = info.argv[INDEX_ZERO]](const auto &cb) {
             napi_value jsFunc = nullptr;
             bool isEquals = false;
             napi_get_reference_value(env, cb.first, &jsFunc);
-            napi_strict_equals(env, info.argv[INDEX_ZERO], jsFunc, &isEquals);
+            napi_strict_equals(env, targetFunc, jsFunc, &isEquals);
             return isEquals;
         });
         if (it == destroyCallback_.end()) {

@@ -18,5 +18,6 @@
 namespace OHOS {
 namespace AAFwk {
 int MyFlag::flag_ = 0;
+int MyFlag::ffrtSubmitFlag_ = 0;
 } // namespace AAFwk
 } // namespace OHOS

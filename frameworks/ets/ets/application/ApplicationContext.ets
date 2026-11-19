@@ -21,11 +21,14 @@ import AsyncCallbackWrapper from '../utils/AbilityUtils';
 import Want from '@ohos.app.ability.Want';
 import window from '@ohos.window';
 import { ProcessInformation } from 'application.ProcessInformation';
+import { ChildProcessInformation } from 'application.ChildProcessInformation';
 import ConfigurationConstant from '@ohos.app.ability.ConfigurationConstant';
 import EnvironmentCallback from '@ohos.app.ability.EnvironmentCallback';
 import type ApplicationStateChangeCallback from '@ohos.app.ability.ApplicationStateChangeCallback';
+import type AppProcessStateObserver from '@ohos.app.ability.AppProcessStateObserver';
 import { AbilityUtils } from '../utils/AbilityUtils';
 import systemConfiguration from '../@ohos.app.ability.systemConfiguration';
+import UIAbility from '@ohos.app.ability.UIAbility';
 
 export class Cleaner {
   public ptr: long = 0;
@@ -76,11 +79,12 @@ export default class ApplicationContext extends Context {
   public native nativepreloadUIExtensionAbilitySync(want: Want, callback: AsyncCallbackWrapper<void>): void;
   public native setSupportedProcessCacheSync(isSupported : boolean):void;
   public native nativegetRunningProcessInformation(callback: AsyncCallbackWrapper<Array<ProcessInformation>>): void;
+  public native nativegetUIAbilityChildProcessInfos(callback: AsyncCallbackWrapper<Array<ChildProcessInformation>>): void;
   public native nativeclearUpApplicationData(callback: AsyncCallbackWrapper<void>): void;
   public native nativesetLanguage(language: string): void;
   public native nativesetFontSizeScale(fontSizeScale: double): void;
   public native nativesetColorMode(colorMode: ConfigurationConstant.ColorMode): void;
-  public native nativesetFont(font: string): void;
+  public native nativesetFont(font: string, enableAnimation: boolean): void;
   public native nativerestartApp(want: Want): void;
   public native nativeGetAllRunningInstanceKeys(callback: AsyncCallbackWrapper<Array<string>>): void;
   public native nativeGetAllWindowStages(callback: AsyncCallbackWrapper<Array<window.WindowStage>>): void;
@@ -91,8 +95,14 @@ export default class ApplicationContext extends Context {
   public native nativeOnSystemConfigurationUpdatedSync(callback: systemConfiguration.UpdatedCallback): void;
   public native nativeOffSystemConfigurationUpdatedSync(callback: systemConfiguration.UpdatedCallback): void;
   public native nativeOffApplicationStateChangeSync(callback?: ApplicationStateChangeCallback): void;
+  public native nativeOnAppProcessStateChangeSync(observer: AppProcessStateObserver): void;
+  public native nativeOffAppProcessStateChangeSync(observer?: AppProcessStateObserver): void;
   public native nativegetCurrentAppCloneIndex(): int;
   public native nativegetCurrentInstanceKey(): string;
+  public native nativeEnableDelayedProcessExitSync(callback: AsyncCallbackWrapper<void>): void;
+  public native nativeDisableDelayedProcessExitSync(callback: AsyncCallbackWrapper<void>): void;
+  public native nativeStartSelfUIAbilitySync(want: Want, callback: AsyncCallbackWrapper<void>): void;
+  private native nativeGetUIAbilityByInstanceId(instanceId: string): UIAbility;
   private static native nativeTransferStatic(input: ESValue, type: string): Object;
   private static native nativeTransferDynamic(input: Object): ESValue;
   private static contextType: string = 'ApplicationContext';
@@ -183,6 +193,24 @@ export default class ApplicationContext extends Context {
     return p;
   }
 
+  getUIAbilityChildProcessInfos(): Promise<Array<ChildProcessInformation>> {
+    let p = new Promise<Array<ChildProcessInformation>>((resolve: (data: Array<ChildProcessInformation>) => void,
+      reject: (err: BusinessError) => void): void => {
+      let myCall = new AsyncCallbackWrapper<Array<ChildProcessInformation>>((err: BusinessError | null,
+        data: Array<ChildProcessInformation> | undefined) => {
+        if (err == null || err.code == 0) {
+          resolve(data as Array<ChildProcessInformation>);
+        } else {
+          reject(err);
+        }
+      });
+      taskpool.execute((): void => {
+        this.nativegetUIAbilityChildProcessInfos(myCall);
+      });
+    });
+    return p;
+  }
+
   clearUpApplicationData(callback: AsyncCallback<void>): void {
     let myCall = new AsyncCallbackWrapper<void>(callback);
     taskpool.execute((): void => {
@@ -220,11 +248,66 @@ export default class ApplicationContext extends Context {
   }
 
   setFont(font: string): void {
-    this.nativesetFont(font);
+    this.nativesetFont(font, true);
+  }
+
+  setFont(font: string, enableAnimation: boolean): void {
+    this.nativesetFont(font, enableAnimation);
   }
 
   restartApp(want: Want): void {
     this.nativerestartApp(want);
+  }
+
+  enableDelayedProcessExit(): Promise<void> {
+    let p =
+      new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
+        let asyncCbWrapper = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+          if (err == null || err.code == 0) {
+            resolve(undefined);
+          } else {
+            reject(err);
+          }
+        });
+        taskpool.execute((): void => {
+          this.nativeEnableDelayedProcessExitSync(asyncCbWrapper);
+        });
+      });
+    return p;
+  }
+
+  disableDelayedProcessExit(): Promise<void> {
+    let p =
+      new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
+        let asyncCbWrapper = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+          if (err == null || err.code == 0) {
+            resolve(undefined);
+          } else {
+            reject(err);
+          }
+        });
+        taskpool.execute((): void => {
+          this.nativeDisableDelayedProcessExitSync(asyncCbWrapper);
+        });
+      });
+    return p;
+  }
+
+  startSelfUIAbility(want: Want): Promise<void> {
+    let p =
+      new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
+        let asyncCbWrapper = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+          if (err == null || err.code == 0) {
+            resolve(undefined);
+          } else {
+            reject(err);
+          }
+        });
+        taskpool.execute((): void => {
+          this.nativeStartSelfUIAbilitySync(want, asyncCbWrapper);
+        });
+      });
+    return p;
   }
 
   getAllRunningInstanceKeys(): Promise<Array<string>> {
@@ -268,6 +351,7 @@ export default class ApplicationContext extends Context {
   }
 
   offEnvironment(callbackId: int, callback: AsyncCallback<void>): void {
+    console.log('AbilityKit off environment');
     this.nativeOffEnvironmentCheck();
     let myCall = new AsyncCallbackWrapper<void>(callback);
     taskpool.execute((): void => {
@@ -276,6 +360,7 @@ export default class ApplicationContext extends Context {
   }
 
   offAbilityLifecycle(callbackId: int, callback: AsyncCallback<void>): void {
+    console.log('AbilityKit off abilityLifecycle');
     this.nativeOffAbilityLifecycleCheck();
     let myCall = new AsyncCallbackWrapper<void>(callback);
     taskpool.execute((): void => {
@@ -284,6 +369,7 @@ export default class ApplicationContext extends Context {
   }
 
   offEnvironment(callbackId: int): Promise<void> {
+    console.log('AbilityKit off environment');
     this.nativeOffEnvironmentCheck();
     let p =
       new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
@@ -302,6 +388,7 @@ export default class ApplicationContext extends Context {
   }
 
   offAbilityLifecycle(callbackId: int): Promise<void> {
+    console.log('AbilityKit off abilityLifecycle');
     this.nativeOffAbilityLifecycleCheck();
     let p =
       new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
@@ -335,12 +422,24 @@ export default class ApplicationContext extends Context {
     this.nativeOffApplicationStateChangeSync(callback);
   }
 
+  onAppProcessStateChange(observer: AppProcessStateObserver): void {
+    this.nativeOnAppProcessStateChangeSync(observer);
+  }
+
+  offAppProcessStateChange(observer?: AppProcessStateObserver): void {
+    this.nativeOffAppProcessStateChangeSync(observer);
+  }
+
   getCurrentInstanceKey(): string {
     return this.nativegetCurrentInstanceKey();
   }
 
   getCurrentAppCloneIndex(): int {
     return this.nativegetCurrentAppCloneIndex();
+  }
+
+  getUIAbilityByInstanceId(instanceId: string): UIAbility {
+    return this.nativeGetUIAbilityByInstanceId(instanceId);
   }
 
   static transferStatic(input: Any): Object {

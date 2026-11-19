@@ -84,6 +84,12 @@ public:
     void OnStart(const Want &want, sptr<AAFwk::SessionInfo> sessionInfo = nullptr) override;
 
     /**
+     * @brief Handle Native Module: Create NativeAbilityWrapper and call PostAbility
+     * @param env The napi environment
+     */
+    void HandleNativeModule(napi_env env);
+
+    /**
      * @brief Called when this ability enters the <b>STATE_STOP</b> state.
      * The ability in the <b>STATE_STOP</b> is being destroyed.
      * You can override this function to implement your own processing logic.
@@ -374,6 +380,23 @@ public:
     int32_t OnCollaborate(WantParams &wantParams) override;
 
     /**
+     * @brief Execute skill by loading ArkTS script and calling the target function.
+     *
+     * @param want Want.
+     * @param param Skill execute param containing abc path, function name and arguments.
+     */
+    void ExecuteSkill(const AAFwk::Want &want,
+        const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param) override;
+    napi_value LoadSkillFunction(const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param,
+        napi_value &outJsObj);
+    bool TryLoadSkillEntry(const std::string &srcEntry,
+        const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param,
+        napi_env env, napi_value &outJsObj, napi_value &method);
+    std::vector<napi_value> BuildSkillCallArgs(napi_env env,
+        const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param);
+    void ReportSkillError(const std::string &requestCode, int32_t errCode, const std::string &errMsg);
+
+    /**
      * @brief Called when startAbility request failed.
      * @param requestId, the requestId.
      * @param element, the element to start ability.
@@ -443,10 +466,13 @@ private:
     JsRuntime &jsRuntime_;
     std::shared_ptr<NativeReference> shellContextRef_;
     std::shared_ptr<NativeReference> jsAbilityObj_;
+    std::unique_ptr<NativeReference> skillModuleRef_;
     sptr<IRemoteObject> remoteCallee_;
     bool reusingWindow_ = false;
     bool isGamePreLaunch_  = false;
     int32_t goResumeCalledFlag_ = 0;
+    bool isPrelaunch_ = false;
+    int32_t frameNum_ = 0;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

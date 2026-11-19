@@ -46,7 +46,9 @@ void QuickFixManagerServiceAbilityTest::SetUp()
 {}
 
 void QuickFixManagerServiceAbilityTest::TearDown()
-{}
+{
+    ResetMockQuickFixManagerServiceState();
+}
 
 /**
  * @tc.name: OnStart_0100
@@ -131,5 +133,5 @@ HWTEST_F(QuickFixManagerServiceAbilityTest, OnStop_0100, TestSize.Level1)
     ability.OnStop();
     EXPECT_EQ(ability.service_, nullptr);
 }
-} // namespace AppExecFwk
+} // namespace AAFwk
 } // namespace OHOS

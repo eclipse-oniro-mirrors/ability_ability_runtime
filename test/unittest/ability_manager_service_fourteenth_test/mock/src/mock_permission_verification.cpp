@@ -107,7 +107,8 @@ bool PermissionVerification::JudgeStartInvisibleAbility(const uint32_t accessTok
 {
     return !!(MyStatus::GetInstance().permPermission_);
 }
-bool PermissionVerification::JudgeStartAbilityFromBackground(const bool isBackgroundCall) const
+bool PermissionVerification::JudgeStartAbilityFromBackground(const bool isBackgroundCall,
+    const uint32_t specifyTokenId) const
 {
     return !!(MyStatus::GetInstance().permPermission_);
 }
@@ -130,6 +131,10 @@ bool PermissionVerification::JudgeCallerIsAllowedToUseSystemAPIByTokenId(uint64_
 bool PermissionVerification::IsSystemAppCall() const
 {
     return true;
+}
+bool PermissionVerification::IsLocalDebugOtherAppsCall(const uint32_t specifyTokenId, int32_t targetUserId) const
+{
+    return false;
 }
 } // namespace AAFwk
 } // namespace OHOS

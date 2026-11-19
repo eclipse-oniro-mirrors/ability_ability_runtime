@@ -20,24 +20,18 @@
 #include <vector>
 
 #include "insight_intent_execute_param.h"
-
+#include "insight_intent_profile.h"
+#include "nlohmann/json.hpp"
 namespace OHOS {
 namespace AbilityRuntime {
 using ExecuteMode = AppExecFwk::ExecuteMode;
+using ParamType = AppExecFwk::ParamType;
 
 const std::string INSIGHT_INTENTS_DECORATOR_TYPE_LINK = "@InsightIntentLink";
 const std::string INSIGHT_INTENTS_DECORATOR_TYPE_PAGE = "@InsightIntentPage";
 const std::string INSIGHT_INTENTS_DECORATOR_TYPE_ENTRY = "@InsightIntentEntry";
 const std::string INSIGHT_INTENTS_DECORATOR_TYPE_FUNCTION = "@InsightIntentFunctionMethod";
 const std::string INSIGHT_INTENTS_DECORATOR_TYPE_FORM = "@InsightIntentForm";
-
-struct InsightIntentParam {
-    std::string paramName;
-    std::string paramSchema;
-    bool isRequired = false;
-
-    InsightIntentParam() = default;
-};
 
 struct LinkIntentParamMapping {
     std::string paramName;
@@ -75,6 +69,7 @@ struct InsightIntentEntryInfo {
 
 struct InsightIntentFunctionInfo {
     std::string functionName;
+    std::string functionReturnType;
     std::vector<std::string> functionParams;
     std::string parameters;
 
@@ -135,6 +130,12 @@ struct ExtractInsightIntentGenericInfo {
         return std::get<T>(data);
     }
 
+    template<typename T>
+    const T& get() const
+    {
+        return std::get<T>(data);
+    }
+
 private:
     template<typename T>
     static InfoType TypeInfo()
@@ -156,14 +157,19 @@ struct InsightIntentEntityInfo {
     std::string entityCategory;
     std::string parameters;
     std::string parentClassName;
-
+    std::vector<std::string> supportedQueryProperties;
     InsightIntentEntityInfo() = default;
+    bool isQueryable() const
+    {
+        return parentClassName.compare("insightIntent.AppIntentEntity") == 0;
+    }
 };
 
 // 全量信息
 struct ExtractInsightIntentInfo {
     std::vector<InsightIntentEntityInfo> entities {};
     std::vector<std::string> keywords;
+    std::vector<std::string> permissions;
     ExtractInsightIntentGenericInfo genericInfo;
     std::string decoratorFile;
     std::string decoratorClass;
@@ -175,6 +181,7 @@ struct ExtractInsightIntentInfo {
     std::string llmDescription;
     std::string result;
     std::string example;
+    std::string arkTSMode;
 
     ExtractInsightIntentInfo() = default;
 };
@@ -190,6 +197,7 @@ struct ExtractInsightIntentProfileInfo {
     std::vector<std::string> executeMode {};
     std::vector<std::string> functionParams;
     std::vector<std::string> keywords;
+    std::vector<std::string> permissions;
     std::vector<LinkIntentParamProfileMapping> paramMapping {};
 
     std::string decoratorFile;
@@ -215,11 +223,26 @@ struct ExtractInsightIntentProfileInfo {
     std::string navDestinationName;
     std::string abilityName;
     std::string functionName;
+    std::string functionReturnType;
     std::string formName;
+    std::string arkTSMode;
 };
 
 struct ExtractInsightIntentProfileInfoVec {
     std::vector<ExtractInsightIntentProfileInfo> insightIntents {};
+};
+
+struct ExecuteIntentCommonOptions {
+    bool ignoreAbilityName = false;
+    ExtractInsightIntentGenericInfo infos;
+    ExtractInsightIntentInfo extractInfo;
+    InsightIntentInfo configInfo;
+    uint64_t key = 0;
+    std::string srcDeviceId;
+    uint64_t requestCode = 0;
+    uint64_t specifiedFullTokenId = 0;
+    ExecuteIntentCommonOptions(bool ignoreAbilityName, const ExtractInsightIntentGenericInfo &infos,
+        uint64_t key): ignoreAbilityName(ignoreAbilityName), infos(infos), key(key){};
 };
 
 class ExtractInsightIntentProfile {

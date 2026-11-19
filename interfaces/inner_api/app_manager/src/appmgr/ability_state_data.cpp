@@ -95,6 +95,12 @@ bool AbilityStateData::MarshallingOne(Parcel &parcel) const
     if (!parcel.WriteInt32(preloadMode)) {
         return false;
     }
+    if (!parcel.WriteInt32(lastUIAbilityCallerUid)) {
+        return false;
+    }
+    if (!parcel.WriteString(lastUIAbilityCallerName)) {
+        return false;
+    }
     return true;
 }
 
@@ -132,6 +138,8 @@ bool AbilityStateData::ReadFromParcel(Parcel &parcel)
     isInnerNotify = parcel.ReadBool();
     callerPid = parcel.ReadInt32();
     preloadMode = parcel.ReadInt32();
+    lastUIAbilityCallerUid = parcel.ReadInt32();
+    lastUIAbilityCallerName = parcel.ReadString();
     return true;
 }
 

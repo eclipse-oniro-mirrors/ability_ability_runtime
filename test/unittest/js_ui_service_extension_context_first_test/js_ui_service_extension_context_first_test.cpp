@@ -17,6 +17,7 @@
 #include <gtest/hwext/gtest-multithread.h>
 #define private public
 #include "js_ui_service_extension_context.h"
+#include "js_ui_service_extension_context.cpp"
 #undef private
 #include "ability_business_error.h"
 #include "errors.h"
@@ -272,6 +273,37 @@ HWTEST_F(JsUiServiceExtensionContextFirstTest, CallJsFailed_0200, TestSize.Level
     connection.CallJsFailed(errorCode);
     EXPECT_NE(connection.jsConnectionObject_, nullptr);
     TAG_LOGI(AAFwkTag::TEST, "CallJsFailed_0200 end");
+}
+/**
+ * @tc.name: ScheduleStartAbilityByType_0100
+ * @tc.desc: basic function test.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsUiServiceExtensionContextFirstTest, ScheduleStartAbilityByType_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ScheduleStartAbilityByType_0100 start");
+    ASSERT_NE(env_, nullptr);
+
+    std::shared_ptr<UIServiceExtensionContext> context = nullptr;
+    JSUIServiceExtensionContext jsContext(context);
+
+    NapiCallbackInfo info;
+    info.argc = 0;
+
+    auto callback = std::make_shared<JsUIExtensionCallback>(env_);
+    ASSERT_NE(callback, nullptr);
+    auto innerErrCode = std::make_shared<ErrCode>(ERR_OK);
+    ASSERT_NE(innerErrCode, nullptr);
+    NapiAsyncTask::ExecuteCallback execute = []() {};
+
+    napi_value result = jsContext.ScheduleStartAbilityByType(
+        env_, info, callback, innerErrCode, std::move(execute));
+    ASSERT_NE(result, nullptr);
+    napi_valuetype valueType = napi_undefined;
+    napi_typeof(env_, result, &valueType);
+    EXPECT_EQ(valueType, napi_object);
+
+    TAG_LOGI(AAFwkTag::TEST, "ScheduleStartAbilityByType_0100 end");
 }
 }  // namespace AbilityRuntime
 }  // namespace OHOS

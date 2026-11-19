@@ -20,8 +20,10 @@
 
 #include "app_mgr_client.h"
 #include "configuration.h"
+#include "irender_scheduler.h"
 #include "parcel.h"
 #include "securec.h"
+#include <fuzzer/FuzzedDataProvider.h>
 
 using namespace OHOS::AAFwk;
 using namespace OHOS::AppExecFwk;
@@ -30,16 +32,20 @@ namespace OHOS {
 namespace {
 constexpr size_t U32_AT_SIZE = 4;
 }
+class RenderSchedulerFuzz : public IRenderScheduler {
+public:
+    void NotifyBrowserFd(int32_t ipcFd, int32_t sharedFd, int32_t crashFd, sptr<IRemoteObject> browser) override {}
+    sptr<IRemoteObject> AsObject() override { return nullptr; }
+};
+
 bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
 {
-    (void)data;
     std::shared_ptr<AppMgrClient> appMgrClient = std::make_shared<AppMgrClient>();
     if (!appMgrClient) {
         return false;
     }
 
-    sptr<IRenderScheduler> renderScheduler = nullptr;
-
+    sptr<IRenderScheduler> renderScheduler(new RenderSchedulerFuzz);
     appMgrClient->AttachRenderProcess(renderScheduler);
 
     return true;

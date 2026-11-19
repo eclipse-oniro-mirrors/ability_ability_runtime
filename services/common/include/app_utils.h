@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -142,6 +142,13 @@ public:
     bool IsStartOptionsWithAnimation();
 
     /**
+     * IsSupportBlockAllAppStart, check whether the BlockAllAppStart interceptor is supported.
+     *
+     * @return Whether the BlockAllAppStart interceptor is supported.
+     */
+    bool IsSupportBlockAllAppStart();
+
+    /**
      * IsSupportStartAbilities, check whether the StartUIAbilities API is supported.
      *
      * @return Whether the StartUIAbilities API is supported.
@@ -215,6 +222,12 @@ public:
     bool IsAllowNativeChildProcess(const std::string &appIdentifier);
 
     /**
+     * ReloadAllowNativeChildProcessApps, reload allow native child process apps from the local param path,
+     * falling back to CCM if the local param is absent. Thread-safe.
+     */
+    void ReloadAllowNativeChildProcessApps();
+
+    /**
      * GetLimitMaximumExtensionsPerProc, get limit max extensions per proc.
      *
      * @return Limit max extensions per proc.
@@ -255,15 +268,6 @@ public:
      * @return identifiers.
      */
     std::string GetAncoAppIdentifiers();
-
-    /**
-     * IsAllowStartAbilityWithoutCallerToken, check if it allows start ability without caller token.
-     *
-     * @param bundleName The bundle name.
-     * @param abilityName The ability name.
-     * @return Whether it allows start ability without caller token.
-     */
-    bool IsAllowStartAbilityWithoutCallerToken(const std::string& bundleName, const std::string& abilityName);
 
     /**
      * GetBrokerDelegateBundleName, get broker delegate bundle name.
@@ -355,6 +359,8 @@ public:
 
     bool IsForbidStart();
 
+    bool IsRescueMode();
+
     bool IsSupportRestartAppWithWindow();
 
     bool IsSupportAllowDebugPermission();
@@ -363,6 +369,8 @@ public:
 
     bool IsSupportModularObjectExtension();
 
+    bool IsAutoStartupSupported();
+
     bool IsProductAppbootSettingEnabled();
 
     void LoadAppTransferList();
@@ -370,6 +378,22 @@ public:
     bool InAppTransferList(const std::string &bundleName);
 
     bool IsHybridSpawnUnified();
+
+    /**
+     * IsSupportNativeUIAbility, check if it supports native UI ability.
+     *
+     * @return Whether it supports native UI ability.
+     */
+    bool IsSupportNativeUIAbility();
+
+    bool IsSupportDelayedProcessExit();
+
+    /**
+     * IsBopdOrRescueMode, check if system is in bopd or rescue mode.
+     *
+     * @return Whether system is in bopd or rescue mode.
+     */
+    bool IsBopdOrRescueMode();
 private:
     /**
      * LoadResidentProcessInExtremeMemory, load resident process in extreme low memory.
@@ -384,10 +408,19 @@ private:
     void LoadAllowNativeChildProcessApps();
 
     /**
-     * LoadStartAbilityWithoutCallerToken, load start ability without caller token.
-     *
+     * LoadAllowNativeChildProcessAppsLocal, load allow native child process apps from the local param path,
+     * falling back to LoadAllowNativeChildProcessApps (CCM) if local is absent. Caller must hold lock.
      */
-    void LoadStartAbilityWithoutCallerToken();
+    void LoadAllowNativeChildProcessAppsLocal();
+
+    /**
+     * ParseAllowAppsJsonFromPath, parse allow native child process app identifiers from a direct file path.
+     *
+     * @param path The direct file path.
+     * @param out The parsed identifiers, only modified on success.
+     * @return Whether parsing succeeded.
+     */
+    static bool ParseAllowAppsJsonFromPath(const std::string &path, std::vector<std::string> &out);
 
     /**
      * IsCacheAbilityEnabled, check cache ability parameter switch.
@@ -426,6 +459,12 @@ private:
     void LoadOnNewProcessEnableList();
 
     /**
+     * IsBopdMode, check bopd mode.
+     *
+     */
+    bool IsBopdMode();
+
+    /**
      * AppUtils, private constructor.
      *
      */
@@ -441,6 +480,7 @@ private:
     volatile DeviceConfiguration<bool> isLimitMaximumOfRenderProcess_ = {false, true};
     volatile DeviceConfiguration<bool> isGrantPersistUriPermission_ = {false, false};
     volatile DeviceConfiguration<bool> isStartOptionsWithAnimation_ = {false, false};
+    volatile DeviceConfiguration<bool> isSupportBlockAllAppStart_ = {false, false};
     volatile DeviceConfiguration<bool> isMultiProcessModel_ = {false, false};
     volatile DeviceConfiguration<bool> allowChildProcessInMultiProcessFeatureApp_ = {false, false};
     volatile DeviceConfiguration<bool> isStartOptionsWithProcessOptions_ = {false, false};
@@ -455,12 +495,17 @@ private:
     volatile DeviceConfiguration<bool> isSupportStartAbilities_ = {false, false};
     volatile DeviceConfiguration<bool> isPreloadApplicationEnabled_ = {false, false};
     volatile DeviceConfiguration<bool> isForbidStart_ = {true, false};
+    volatile DeviceConfiguration<bool> isRescueMode_ = {false, false};
     volatile DeviceConfiguration<bool> isSupportRestartAppWithWindow_ = {false, false};
     volatile DeviceConfiguration<bool> isSupportAllowDebugPermission_ = {false, false};
     volatile DeviceConfiguration<bool> isStartUIAbilityInCurrentProcess_ = {false, false};
     volatile DeviceConfiguration<bool> isSupportModularObjectExtension_ = {false, false};
+    volatile DeviceConfiguration<bool> isAutoStartupSupported_ = {false, false};
     volatile DeviceConfiguration<bool> isProductAppbootSettingEnabled_ = {false, false};
     volatile DeviceConfiguration<bool> isHybridSpawnUnified_ = {false, false};
+    volatile DeviceConfiguration<bool> isSupportNativeUIAbility_ = {false, false};
+    volatile DeviceConfiguration<bool> isSupportDelayedProcessExit_ = {false, false};
+    volatile DeviceConfiguration<bool> isBopdOrRescueMode_ = {false, false};
     DeviceConfiguration<std::vector<std::pair<std::string, std::string>>>
         residentProcessInExtremeMemory_ = {false, {}};
     std::mutex residentProcessInExtremeMemoryMutex_;
@@ -473,9 +518,6 @@ private:
     std::mutex allowStartNativeProcessAppsMutex_;
     volatile DeviceConfiguration<int32_t> limitMaximumExtensionsPerProc_ = {false, DEFAULT_MAX_EXT_PER_PROC};
     volatile DeviceConfiguration<int32_t> limitMaximumExtensionsPerDevice_ = {false, DEFAULT_MAX_EXT_PER_DEV};
-    DeviceConfiguration<std::vector<std::pair<std::string, std::string>>>
-        startAbilityWithoutCallerToken_ = {false, {}};
-    std::mutex startAbilityWithoutCallerTokenMutex_;
     DeviceConfiguration<std::string> brokerDelegateBundleName_ = {false, ""};
     volatile DeviceConfiguration<int32_t> collaboratorBrokerUid_ = {false, DEFAULT_INVALID_VALUE};
     volatile DeviceConfiguration<int32_t> collaboratorBrokerReserveUid_ = {false, DEFAULT_INVALID_VALUE};

@@ -33,6 +33,8 @@
 #include "event_report.h"
 #include "extension_config.h"
 #include "extension_running_info.h"
+#include "modular_object_extension_info.h"
+#include "modular_object_manager.h"
 #include "connection_record.h"
 #include "element_name.h"
 #include "res_sched_util.h"
@@ -294,6 +296,39 @@ public:
     {
         return sceneBoardTokenId_;
     }
+
+    /**
+     * @brief Best-effort attribution of the task id onto an existing ConnectionRecord after a
+     *        reused agent connect. Caller MUST hold serialMutex_ before calling this method.
+     *        Delegates to PrepareAttributeTaskForA2AReusedConnectionRecord for data lookup and
+     *        dedup, then performs the synchronous in-process IPC to AppMgr and stores the
+     *        attribution, all under the caller's held lock.
+     *        Called from ConnectAbilityLocked (which already holds serialMutex_) on the
+     *        reused-connection fast path. The AMS IPC entry path uses
+     *        AttributeTaskForA2AReusedConnectionRecordLocked, which acquires serialMutex_
+     *        internally and delegates to this method.
+     * @param abilityRequest Indicates the resolved request (carries want with taskId + agentId +
+     *        card type).
+     * @param connect Indicates the AgentServiceConnection AMS already holds for this connection.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    int32_t AttributeTaskForA2AReusedConnectionRecordLocked(const AbilityRequest &abilityRequest,
+        sptr<IAbilityConnection> connect);
+
+    /**
+     * @brief Proactively clean stale A2A task attribution entries from all
+     *        extension records in the service map when the server-side task is
+     *        terminated. Iterates every BaseExtensionRecord and calls
+     *        CleanTaskAttributionsByTaskId for AGENT-type records only.
+     *        Called by the TaskFinishedCallback registered on TaskManagerService.
+     *        Does NOT acquire serialMutex_ — only uses serviceMapMutex_ (via
+     *        GetServiceMap) and taskAttributionsMutex_ (via
+     *        CleanTaskAttributionsByTaskId), so it is safe to call from the
+     *        AppMgr thread without deadlock risk.
+     * @param taskId Indicates the finished task id.
+     */
+    void CleanA2ATaskAttributionsByTaskId(const std::string &taskId);
+
 protected:
 
     /**
@@ -389,6 +424,7 @@ protected:
     * @param serviceKey The service key to remove.
     */
     void RemoveServiceFromMapSafe(const std::string &serviceKey);
+    void NotifyExtensionTerminated(const std::shared_ptr<BaseExtensionRecord> &record);
 
     /**
     * Load ability with optional callback.
@@ -428,11 +464,15 @@ protected:
     /**
      * When a service is under starting, enque the request and handle it after the service starting completes
      */
-    void EnqueueStartServiceReq(const AbilityRequest &abilityRequest, const std::string &serviceUri = "");
+    void EnqueueStartServiceReq(const AbilityRequest &abilityRequest)
+    {
+        EnqueueStartServiceReq(abilityRequest, "");
+    }
+    virtual void EnqueueStartServiceReq(const AbilityRequest &abilityRequest, const std::string &serviceUri);
     /**
      * After the service starting completes, complete the request list
      */
-    void CompleteStartServiceReq(const std::string &serviceUri);
+    virtual void CompleteStartServiceReq(const std::string &serviceUri);
 
     bool IsCacheExtensionAbility(const std::shared_ptr<BaseExtensionRecord> &abilityRecord);
 
@@ -550,6 +590,7 @@ protected:
     virtual void TerminateOrCacheAbility(std::shared_ptr<BaseExtensionRecord> abilityRecord);
     virtual void HandleCommandDestroy(const sptr<SessionInfo> &sessionInfo);
     virtual void CompleteBackground(const std::shared_ptr<BaseExtensionRecord> &abilityRecord);
+
 protected:
 
     /**
@@ -625,6 +666,7 @@ protected:
     {
         return 0;
     }
+
 protected:
     int userId_;
     ServiceMapType serviceMap_;
@@ -721,6 +763,8 @@ private:
     */
     void GetOrCreateServiceRecord(const AbilityRequest &abilityRequest, const bool isCreatedByConnect,
         std::shared_ptr<BaseExtensionRecord> &targetAbilityRecord, bool &isLoadedAbility);
+    int32_t HandleExtensionSetup(const AbilityRequest &abilityRequest,
+        std::shared_ptr<BaseExtensionRecord> &targetService, const std::string &serviceKey);
     void SetServiceAfterNewCreate(const AbilityRequest &abilityRequest, BaseExtensionRecord &targetService);
 
     /**
@@ -799,6 +843,81 @@ private:
      */
     void RemoveExtensionDelayDisconnectTask(const std::shared_ptr<ConnectionRecord> &connectRecord);
 
+    /**
+     * @brief Best-effort attribution of the target Agent process into the task
+     *        claimed via Want.parameters[ohos.aafwk.param.agent.taskId]. Called from
+     *        ScheduleConnectAbilityDoneLocked after the Agent extension process is
+     *        spawned and onConnect has returned. Resolves taskId and target pid
+     *        from the ability record, then calls AppMgrClient::AttributeTaskForA2A.
+     *        On success records the attribution on the extension record, keyed by
+     *        the connecting record id for precise per-connection cleanup on disconnect.
+     *        Failure here does NOT fail the connect result.
+     * @param abilityRecord Indicates the connected Agent extension record.
+     * @param connectingRecord Indicates the connecting record resolved before
+     *        ScheduleConnectAbilityDoneLocked transitions it to CONNECTED.
+     */
+    void TryAttributeTaskForA2A(const std::shared_ptr<BaseExtensionRecord> &abilityRecord,
+        const std::shared_ptr<ConnectionRecord> &connectingRecord);
+
+    /**
+     * @brief Context carrying data from the prepare phase to the execute phase of
+     *        A2A reused-connection attribution. Filled by
+     *        PrepareAttributeTaskForA2AReusedConnectionRecord under serialMutex_,
+     *        consumed by the execute phase (in-process IPC + AddTaskAttribution) under the
+     *        same lock.
+     */
+    struct A2AReusedAttributionCtx {
+        std::shared_ptr<BaseExtensionRecord> abilityRecord;
+        std::string taskId;
+        std::string agentId;
+        pid_t targetPid = -1;
+        uint32_t callerTokenId = 0;
+        int32_t recordId = 0;
+    };
+
+    /**
+     * @brief Lock-acquiring entry point for A2A reused-connection attribution, called by AMS
+     *        via IPC (AbilityManagerService::AttributeTaskForA2AReusedConnectionRecord).
+     *        Acquires serialMutex_ internally and delegates to
+     *        AttributeTaskForA2AReusedConnectionRecord, which runs Prepare + the synchronous
+     *        in-process IPC to AppMgr + AddTaskAttribution under the lock. The IPC is an
+     *        in-process call with low latency, so holding serialMutex_ across it is acceptable.
+     * @param abilityRequest Indicates the resolved request.
+     * @param connect Indicates the AgentServiceConnection.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    int32_t AttributeTaskForA2AReusedConnectionRecord(const AbilityRequest &abilityRequest,
+        sptr<IAbilityConnection> connect);
+
+    /**
+     * @brief Prepare phase: data lookup + dedup check for A2A reused-connection attribution.
+     *        Caller MUST hold serialMutex_. Does NOT perform IPC.
+     *        On success fills ctx with the data needed for the execute phase.
+     * @param abilityRequest Indicates the resolved request.
+     * @param connect Indicates the AgentServiceConnection.
+     * @param ctx Output: context for the execute phase (valid when return is ERR_OK).
+     * @param isAlreadyAttribute Output: flag indicating whether already attribute.
+     * @return Returns ERR_OK if attribution should proceed; others to skip.
+     */
+    int32_t PrepareAttributeTaskForA2AReusedConnectionRecord(const AbilityRequest &abilityRequest,
+        sptr<IAbilityConnection> connect, A2AReusedAttributionCtx &ctx, bool &isAlreadyAttribute);
+
+    /**
+     * @brief Check whether the given connection record has already been attributed
+     *        for the specified taskId. Unifies LOW_CODE and non-LOW_CODE dedup logic:
+     *        non-LOW_CODE matches on taskId only; LOW_CODE additionally requires
+     *        the same agentId.
+     * @param abilityRecord Indicates the extension record holding attributions.
+     * @param record Indicates the connection record to check.
+     * @param taskId Indicates the task id to match.
+     * @param requestAgentId Indicates the agent id from the request (checked only for LOW_CODE).
+     * @param isLowCodeRequest Indicates whether this is a LOW_CODE card type request.
+     * @return Returns true if already attributed; false otherwise.
+     */
+    bool IsRecordAlreadyAttributed(const std::shared_ptr<BaseExtensionRecord> &abilityRecord,
+        const std::shared_ptr<ConnectionRecord> &record, const std::string &taskId,
+        const std::string &requestAgentId, bool isLowCodeRequest);
+
 private:
     bool IsNeedToRestart(const std::shared_ptr<BaseExtensionRecord> &abilityRecord,
         const std::string &bundleName, const std::string &abilityName);
@@ -819,6 +938,7 @@ private:
     void ProcessEliminateAbilityRecord(std::shared_ptr<BaseExtensionRecord> eliminateRecord);
     static std::string GetServiceKey(const std::shared_ptr<BaseExtensionRecord> &service);
     static std::string GetServiceKey(const AbilityRequest &abilityRequest);
+    int32_t CheckModularObjectLimits(const AbilityRequest &abilityRequest);
 
     void SetExtensionLoadParam(AbilityRuntime::LoadParam &loadParam,
         std::shared_ptr<BaseExtensionRecord> abilityRecord);

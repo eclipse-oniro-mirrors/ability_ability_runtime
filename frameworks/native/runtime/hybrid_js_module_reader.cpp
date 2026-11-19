@@ -134,9 +134,7 @@ std::string HybridJsModuleReader::GetPluginHspPath(const std::string& inputPath)
                 && sharedBundleName == pluginBundleInfo.pluginBundleName) {
                 presetAppHapPath = pluginModuleInfo.hapPath;
                 TAG_LOGD(AAFwkTag::JSRUNTIME, "presetAppHapPath %{public}s", presetAppHapPath.c_str());
-                std::regex pattern(std::string(ABS_DATA_CODE_PATH) + bundleName_ + "/");
-                presetAppHapPath = std::regex_replace(
-                    presetAppHapPath, pattern, std::string(ABS_CODE_PATH) + std::string(BUNDLE));
+                presetAppHapPath = ExtractorUtil::GetLoadFilePath(presetAppHapPath);
                 TAG_LOGD(AAFwkTag::JSRUNTIME, "presetAppHapPath %{public}s", presetAppHapPath.c_str());
                 return presetAppHapPath;
             }

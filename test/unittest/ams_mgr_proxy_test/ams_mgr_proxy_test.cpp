@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -183,6 +183,48 @@ HWTEST_F(AmsMgrProxyTest, NotifyAppMgrRecordExitReason_0100, TestSize.Level1)
     std::string exitMsg = "JsError";
     auto result = amsMgrProxy_->NotifyAppMgrRecordExitReason(reason, pid, exitMsg);
     EXPECT_EQ(result, NO_ERROR);
+}
+
+/**
+ * @tc.name: NotifyAppMgrRecordExitReasonCompability_0100
+ * @tc.desc: NotifyAppMgrRecordExitReasonCompability with callerPid.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrProxyTest, NotifyAppMgrRecordExitReasonCompability_0100, TestSize.Level1)
+{
+    EXPECT_NE(amsMgrProxy_, nullptr);
+    EXPECT_NE(response_, nullptr);
+    EXPECT_CALL(*mockAmsMgrScheduler_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(NO_ERROR));
+
+    int32_t pid = 1;
+    int32_t killId = 1;
+    std::string killMsg = "killMsg";
+    std::string innerMsg = "innerMsg";
+    int32_t reason = 0;
+    int32_t callerPid = 12345;
+    auto result = amsMgrProxy_->NotifyAppMgrRecordExitReasonCompability(
+        pid, killId, killMsg, innerMsg, reason, callerPid);
+    EXPECT_EQ(result, NO_ERROR);
+}
+
+/**
+ * @tc.name: NotifyAppMgrRecordExitReasonCompability_0200
+ * @tc.desc: NotifyAppMgrRecordExitReasonCompability when SendRequest fails.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrProxyTest, NotifyAppMgrRecordExitReasonCompability_0200, TestSize.Level1)
+{
+    EXPECT_NE(amsMgrProxy_, nullptr);
+    EXPECT_NE(response_, nullptr);
+    EXPECT_CALL(*mockAmsMgrScheduler_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(ERR_NULL_OBJECT));
+
+    auto result = amsMgrProxy_->NotifyAppMgrRecordExitReasonCompability(
+        1, 1, "kill", "inner", 0, 12345);
+    EXPECT_NE(result, NO_ERROR);
 }
 
 /**
@@ -379,6 +421,144 @@ HWTEST_F(AmsMgrProxyTest, SetGameSAPrelaunch_003, TestSize.Level1)
     auto result = amsMgrProxy_->SetGameSAPrelaunch(token, isGameSAPrelaunch);
     EXPECT_EQ(result, ERR_INVALID_DATA);
     GTEST_LOG_(INFO) << "SetGameSAPrelaunch_003 end";
+}
+
+/**
+ * @tc.name: AttributeProcessForAbility_0100
+ * @tc.desc: AttributeProcessForAbility returns the service result and handle.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrProxyTest, AttributeProcessForAbility_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AttributeProcessForAbility_0100 start";
+    ASSERT_NE(amsMgrProxy_, nullptr);
+
+    const int64_t serverHandle = 42;
+    EXPECT_CALL(*mockAmsMgrScheduler_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke([](uint32_t code, MessageParcel& data, MessageParcel& reply,
+            MessageOption& option) {
+            reply.WriteInt32(ERR_OK);
+            reply.WriteInt64(serverHandle);
+            return static_cast<int>(ERR_OK);
+        }));
+    int64_t attributionId = 0;
+    auto result = amsMgrProxy_->AttributeProcessForAbility("task-proxy-ut", 100, 200, 300, attributionId);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(attributionId, serverHandle);
+    GTEST_LOG_(INFO) << "AttributeProcessForAbility_0100 end";
+}
+
+/**
+ * @tc.name: AttributeProcessForAbility_0200
+ * @tc.desc: AttributeProcessForAbility propagates a SendRequest failure.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrProxyTest, AttributeProcessForAbility_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AttributeProcessForAbility_0200 start";
+    ASSERT_NE(amsMgrProxy_, nullptr);
+
+    EXPECT_CALL(*mockAmsMgrScheduler_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(ERR_NULL_OBJECT));
+    int64_t attributionId = 0;
+    auto result = amsMgrProxy_->AttributeProcessForAbility("task-proxy-ut", 100, 200, 300, attributionId);
+    EXPECT_EQ(result, ERR_NULL_OBJECT);
+    EXPECT_EQ(attributionId, 0);
+    GTEST_LOG_(INFO) << "AttributeProcessForAbility_0200 end";
+}
+
+/**
+ * @tc.name: UnregisterTaskAttribution_0100
+ * @tc.desc: UnregisterTaskAttribution returns the service result code.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrProxyTest, UnregisterTaskAttribution_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "UnregisterTaskAttribution_0100 start";
+    ASSERT_NE(amsMgrProxy_, nullptr);
+
+    EXPECT_CALL(*mockAmsMgrScheduler_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke([](uint32_t code, MessageParcel& data, MessageParcel& reply,
+            MessageOption& option) {
+            reply.WriteInt32(ERR_OK);
+            return static_cast<int>(ERR_OK);
+        }));
+    auto result = amsMgrProxy_->UnregisterTaskAttribution("task-proxy-ut", 42);
+    EXPECT_EQ(result, ERR_OK);
+    GTEST_LOG_(INFO) << "UnregisterTaskAttribution_0100 end";
+}
+
+/**
+ * @tc.name: UnregisterTaskAttribution_0200
+ * @tc.desc: UnregisterTaskAttribution propagates a SendRequest failure.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrProxyTest, UnregisterTaskAttribution_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "UnregisterTaskAttribution_0200 start";
+    ASSERT_NE(amsMgrProxy_, nullptr);
+
+    EXPECT_CALL(*mockAmsMgrScheduler_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(ERR_NULL_OBJECT));
+    auto result = amsMgrProxy_->UnregisterTaskAttribution("task-proxy-ut", 42);
+    EXPECT_EQ(result, ERR_NULL_OBJECT);
+    GTEST_LOG_(INFO) << "UnregisterTaskAttribution_0200 end";
+}
+
+/**
+ * @tc.name: KillProcessWithAccountSafely_0100
+ * @tc.desc: Serialize default safe-kill arguments and return the remote service result.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrProxyTest, KillProcessWithAccountSafely_0100, TestSize.Level1)
+{
+    ASSERT_NE(amsMgrProxy_, nullptr);
+    EXPECT_CALL(*mockAmsMgrScheduler_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke([](uint32_t code, MessageParcel &data, MessageParcel &reply, MessageOption &option) {
+            EXPECT_EQ(code, static_cast<uint32_t>(IAmsMgr::Message::KILL_PROCESS_WITH_ACCOUNT_SAFELY));
+            EXPECT_EQ(data.ReadInterfaceToken(), AmsMgrStub::GetDescriptor());
+            EXPECT_EQ(data.ReadString(), "com.example.protected");
+            EXPECT_EQ(data.ReadInt32(), 100);
+            EXPECT_FALSE(data.ReadBool());
+            EXPECT_EQ(data.ReadInt32(), 0);
+            EXPECT_EQ(option.GetFlags(), MessageOption::TF_SYNC);
+            reply.WriteInt32(AAFwk::ERR_KILL_PROCESS_MDM_PROTECTED);
+            return NO_ERROR;
+        }));
+
+    int32_t ret = amsMgrProxy_->KillProcessWithAccountSafely("com.example.protected", 100);
+
+    EXPECT_EQ(ret, AAFwk::ERR_KILL_PROCESS_MDM_PROTECTED);
+}
+
+/**
+ * @tc.name: KillProcessWithAccountSafely_0200
+ * @tc.desc: Serialize explicit safe-kill arguments and propagate an IPC transport failure.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrProxyTest, KillProcessWithAccountSafely_0200, TestSize.Level1)
+{
+    ASSERT_NE(amsMgrProxy_, nullptr);
+    EXPECT_CALL(*mockAmsMgrScheduler_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke([](uint32_t code, MessageParcel &data, MessageParcel &, MessageOption &) {
+            EXPECT_EQ(code, static_cast<uint32_t>(IAmsMgr::Message::KILL_PROCESS_WITH_ACCOUNT_SAFELY));
+            EXPECT_EQ(data.ReadInterfaceToken(), AmsMgrStub::GetDescriptor());
+            EXPECT_EQ(data.ReadString(), "com.example.test");
+            EXPECT_EQ(data.ReadInt32(), 101);
+            EXPECT_TRUE(data.ReadBool());
+            EXPECT_EQ(data.ReadInt32(), 4);
+            return ERR_NULL_OBJECT;
+        }));
+
+    int32_t ret = amsMgrProxy_->KillProcessWithAccountSafely("com.example.test", 101, true, 4);
+
+    EXPECT_EQ(ret, ERR_NULL_OBJECT);
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

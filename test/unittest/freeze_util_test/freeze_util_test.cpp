@@ -104,5 +104,26 @@ HWTEST_F(FreezeUtilTest, FreezeUtilTest_003, TestSize.Level1)
 
     TAG_LOGI(AAFwkTag::TEST, "FreezeUtilTest_003 is end");
 }
+
+/*
+ * @tc.number    : FreezeUtilTest_004
+ * @tc.name      : FreezeUtilTest_IsFrozen
+ * @tc.desc      : Test Function FreezeUtil::IsFrozen()
+ */
+HWTEST_F(FreezeUtilTest, FreezeUtilTest_004, TestSize.Level1)
+{
+    pid_t invalidPid = -1;
+    bool result = FreezeUtil::GetInstance().IsFrozen(invalidPid);
+    EXPECT_TRUE(result);
+
+    pid_t zeroPid = 0;
+    result = FreezeUtil::GetInstance().IsFrozen(zeroPid);
+    EXPECT_TRUE(result);
+
+    pid_t selfPid = getpid();
+    result = FreezeUtil::GetInstance().IsFrozen(selfPid);
+    EXPECT_FALSE(result);
+    TAG_LOGI(AAFwkTag::TEST, "FreezeUtilTest_004 is end");
+}
 }
 }

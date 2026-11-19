@@ -95,7 +95,7 @@ HWTEST_F(StartOptionDisplayIdTest, start_option_display_id_002, TestSize.Level1)
     StartOptions option;
     option.SetDisplayID(DISPLAY_ID);
     auto result = abilityMs_->StartAbility(want, option, nullptr);
-    EXPECT_EQ(ERR_NULL_INTERCEPTOR_EXECUTER, result);
+    EXPECT_EQ(RESOLVE_ABILITY_ERR, result);
 }
 }  // namespace AAFwk
 }  // namespace OHOS

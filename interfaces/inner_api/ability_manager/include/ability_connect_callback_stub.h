@@ -41,6 +41,7 @@ public:
     }
 private:
     DISALLOW_COPY_AND_MOVE(AbilityConnectionStub);
+    bool CompareDMSDescriptor(const std::u16string& remoteDescriptor);
 };
 
 /**

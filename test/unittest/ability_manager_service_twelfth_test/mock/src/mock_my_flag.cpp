@@ -18,5 +18,6 @@
 namespace OHOS {
 namespace AAFwk {
 int MyFlag::flag_ = 1;
+bool MyFlag::retCreateModalUIExtension_ = true;
 } // namespace AAFwk
 } // namespace OHOS

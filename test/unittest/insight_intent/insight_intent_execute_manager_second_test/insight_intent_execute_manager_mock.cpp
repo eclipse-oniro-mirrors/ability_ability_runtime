@@ -31,11 +31,16 @@ bool PermissionVerification::JudgeCallerIsAllowedToUseSystemAPI() const
 {
     return true;
 }
+bool PermissionVerification::IsShellCall() const
+{
+    return false;
+}
 }
 
 namespace AbilityRuntime {
 uint32_t InsightIntentUtils::GetSrcEntry(const AppExecFwk::ElementName &elementName, const std::string &intentName,
-    const AppExecFwk::ExecuteMode &executeMode, std::string &srcEntry, std::string *arkTSMode, int32_t userId)
+    const AppExecFwk::ExecuteMode &executeMode, std::string &srcEntry, std::string *arkTSMode, int32_t userId,
+    std::string *decoratorClass)
 {
     if (executeMode == AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND) {
         if (intentName.empty()) {

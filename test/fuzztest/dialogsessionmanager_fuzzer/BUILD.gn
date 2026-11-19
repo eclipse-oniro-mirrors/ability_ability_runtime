@@ -37,6 +37,7 @@ ohos_fuzztest("DialogSessionManagerFuzzTest") {
   ]
   sources = [
     "${ability_runtime_path}/services/abilitymgr/src/dialog_session/dialog_session_manager.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/extension_query_event_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/start_ability_utils.cpp",
     "dialogsessionmanager_fuzzer.cpp",
   ]
@@ -62,6 +63,7 @@ ohos_fuzztest("DialogSessionManagerFuzzTest") {
   ]
 
   external_deps = [
+    "ability_base:session_info",
     "ability_base:want",
     "ability_base:zuri",
     "bundle_framework:appexecfwk_base",
@@ -79,7 +81,7 @@ ohos_fuzztest("DialogSessionManagerFuzzTest") {
     "samgr:samgr_proxy",
     "window_manager:libmodal_system_ui_extension_client",
     "window_manager:libwsutils",
-    "window_manager:session_manager_lite",
+    "window_manager:session_manager_lite"
   ]
 
   if (background_task_mgr_continuous_task_enable) {

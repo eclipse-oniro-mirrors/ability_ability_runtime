@@ -140,6 +140,13 @@ public:
      */
     bool HandleInsightIntent(const Want &want);
 
+    /**
+     * @brief Handle skill execution.
+     *
+     * @param want The Want object with skill execute params to handle.
+     */
+    bool HandleExecuteSkill(const Want &want);
+
     void CommandExtensionWindow(const Want &want, const sptr<AAFwk::SessionInfo> &sessionInfo,
         AAFwk::WindowCommand winCmd);
 
@@ -163,6 +170,13 @@ public:
         const std::string &message, int32_t resultCode = 0);
 
     void ScheduleAbilityRequestSuccess(const std::string &requestId, const AppExecFwk::ElementName &element);
+
+    /**
+     * @brief Create modal UIExtension.
+     * @param want The want of the modal UIExtension to create.
+     * @return Returns ERR_OK on success, error code on failure.
+     */
+    int CreateModalUIExtension(const AAFwk::Want &want);
 
 protected:
     /**

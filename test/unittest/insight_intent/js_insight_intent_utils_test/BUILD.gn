@@ -32,6 +32,8 @@ ohos_unittest("js_insight_intent_utils_test") {
   }
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/ability/native:insight_intent_executor",
     "${ability_runtime_native_path}/insight_intent/insight_intent_context:insightintentcontext",
@@ -42,8 +44,6 @@ ohos_unittest("js_insight_intent_utils_test") {
     "ability_base:base",
     "ability_base:want",
     "ability_base:zuri",
-    "ability_runtime:ability_deps_wrapper",
-    "ability_runtime:ability_manager",
     "bundle_framework:libappexecfwk_common",
     "c_utils:utils",
     "eventhandler:libeventhandler",

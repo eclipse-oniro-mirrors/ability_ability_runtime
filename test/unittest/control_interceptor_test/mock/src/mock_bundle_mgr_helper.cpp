@@ -37,5 +37,11 @@ sptr<IAppControlMgr> BundleMgrHelper::GetAppControlProxy()
 {
     return AAFwk::MyFlag::mockAppControlManager_;
 }
+
+ErrCode BundleMgrHelper::GetDualModeBundleInfo(
+    const std::string &bundleName, int32_t userId, int32_t &appIndex)
+{
+    return ERR_OK;
+}
 } // namespace AppExecFwk
 } // namespace OHOS

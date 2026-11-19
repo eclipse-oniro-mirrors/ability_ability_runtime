@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@
 #include <iremote_object.h>
 #include <iremote_stub.h>
 #include "ability_manager_interface.h"
+#include "sandbox_clone_params.h"
 #define private public
 #include "ability_manager_stub.h"
 #undef private
@@ -57,6 +58,7 @@ public:
     MOCK_METHOD2(GetPendingRequestWant, int(const sptr<IWantSender>& target, std::shared_ptr<Want>& want));
     MOCK_METHOD2(GetPendingRequestWantFromProxy, int(const sptr<IWantSender>& target, std::shared_ptr<Want>& want));
     MOCK_METHOD2(GetWantSenderInfo, int(const sptr<IWantSender>& target, std::shared_ptr<WantSenderInfo>& info));
+    MOCK_METHOD1(RegisterWantAgentHolder, void(const sptr<IWantSender>& target));
     MOCK_METHOD2(SetMissionContinueState, int(const sptr<IRemoteObject>& token, const AAFwk::ContinueState& state));
     MOCK_METHOD2(SetMissionLabel, int(const sptr<IRemoteObject>& token, const std::string& label));
     MOCK_METHOD2(SetMissionIcon, int(const sptr<IRemoteObject>& token,
@@ -65,16 +67,18 @@ public:
     MOCK_METHOD2(NotifyContinuationResult, int(int32_t missionId, int32_t result));
     MOCK_METHOD5(ContinueMission, int(const std::string& srcDeviceId, const std::string& dstDeviceId,
         int32_t missionId, const sptr<IRemoteObject>& callBack, AAFwk::WantParams& wantParams));
-    MOCK_METHOD3(ContinueAbility, int(const std::string& deviceId, int32_t missionId, uint32_t versionCode));
+    MOCK_METHOD4(ContinueAbility, int(const std::string& deviceId, int32_t missionId, uint32_t versionCode,
+        int32_t userId));
     MOCK_METHOD3(NotifyCompleteContinuation, void(const std::string& deviceId, int32_t sessionId, bool isSuccess));
     MOCK_METHOD1(GetAbilityRunningInfos, int(std::vector<AbilityRunningInfo>& info));
     MOCK_METHOD2(GetExtensionRunningInfos, int(int upperLimit, std::vector<ExtensionRunningInfo>& info));
     MOCK_METHOD1(GetProcessRunningInfos, int(std::vector<AppExecFwk::RunningProcessInfo>& info));
-    MOCK_METHOD7(StartAbilityByCall,
-        int(const Want&, const sptr<IAbilityConnection>&, const sptr<IRemoteObject>&, int32_t, bool, bool, bool));
+    MOCK_METHOD8(StartAbilityByCall, int(const Want&, const sptr<IAbilityConnection>&,
+        const sptr<IRemoteObject>&, int32_t, bool, bool, bool, uint64_t));
     MOCK_METHOD2(AcquireShareData, int32_t(const int32_t &missionId, const sptr<IAcquireShareDataCallback> &shareData));
     MOCK_METHOD4(ShareDataDone, int32_t(const sptr<IRemoteObject> &token,
         const int32_t &resultCode, const int32_t &uniqueId, WantParams &wantParam));
+    MOCK_METHOD2(GetPidByCallStub, int32_t(const sptr<IRemoteObject> &, int32_t &));
 
     int InvokeSendRequest(uint32_t code, MessageParcel& data, MessageParcel& reply, MessageOption& option)
     {
@@ -368,7 +372,7 @@ public:
         return 0;
     }
 
-    int GetTopAbility(sptr<IRemoteObject>& token) override
+    int GetTopAbility(sptr<IRemoteObject>& token, int32_t userId = INVALID_USER_ID) override
     {
         return 0;
     }
@@ -429,7 +433,7 @@ public:
         return ERR_OK;
     }
 
-    int32_t EnterKioskMode(sptr<IRemoteObject> callerToken) override
+    int32_t EnterKioskMode(sptr<IRemoteObject> callerToken, int32_t kioskType = 0) override
     {
         return ERR_OK;
     }
@@ -439,10 +443,22 @@ public:
         return ERR_OK;
     }
 
-    int32_t GetKioskStatus(AAFwk::KioskStatus &kioskStatus) override
+    int32_t AddKioskApplicationList(const std::vector<std::string> &appList) override
     {
         return ERR_OK;
     }
+
+    int32_t DeleteKioskApplicationList(const std::vector<std::string> &appList) override
+    {
+        return ERR_OK;
+    }
+
+    int32_t GetKioskStatus(AAFwk::KioskStatus &kioskStatus) override
+    {
+        kioskStatus.kioskToken_ = kioskToken_;
+        return ERR_OK;
+    }
+    sptr<IRemoteObject> kioskToken_ = nullptr;
 
     int32_t SetAppServiceExtensionKeepAlive(const std::string &bundleName, bool flag) override
     {
@@ -450,6 +466,12 @@ public:
     }
 
     int32_t QueryKeepAliveAppServiceExtensions(std::vector<KeepAliveInfo> &list) override
+    {
+        return ERR_OK;
+    }
+
+    int32_t StartUIAbilityWithCallback(const Want &want, sptr<IRemoteObject> callerToken,
+        sptr<IRequestStartAbilityCallback> callback)
     {
         return ERR_OK;
     }
@@ -471,12 +493,20 @@ public:
     MOCK_METHOD1(IsAbilityControllerStart, bool(const Want& want));
     MOCK_METHOD3(ExecuteIntent, int32_t(uint64_t key, const sptr<IRemoteObject> &callerToken,
         const InsightIntentExecuteParam &param));
+    MOCK_METHOD4(ExecuteUIAbilityForegroundIntentWithSpecifyTokenId,
+    int32_t(const Want &want, const sptr<IRemoteObject> &callerAbilityToken,
+        const InsightIntentExecuteLiteParam &param, uint64_t specifiedFullTokenId));
     MOCK_METHOD3(ExecuteInsightIntentDone, int32_t(const sptr<IRemoteObject> &token, uint64_t intentId,
         const InsightIntentExecuteResult &result));
     MOCK_METHOD3(GetUIExtensionRootHostInfo, int32_t(const sptr<IRemoteObject> token, UIExtensionHostInfo &hostInfo,
         int32_t userId));
     MOCK_METHOD1(GetAutoStartupStatusForSelf, int32_t(bool &isAutoStartEnabled));
     MOCK_METHOD4(StartAbilityByOEExt, int32_t(const Want&, sptr<IRemoteObject>, int32_t, const std::string&));
+    MOCK_METHOD1(StartSelf, int(sptr<IRemoteObject> token));
+    MOCK_METHOD3(StartSelfUIAbilityInChildProcess, ErrCode(const Want&, const std::string&, sptr<IRemoteObject>));
+    MOCK_METHOD4(StartAbilityForPrelaunch, int(const Want&, const int32_t, int32_t,
+        const sptr<IAbilityConnection>&));
+    MOCK_METHOD2(StartSandboxCloneAbility, int32_t(const Want&, const SandboxCloneParams&));
 
 int32_t GetUserLockedBundleList(int32_t userId, std::unordered_set<std::string> &userLockedBundleList) override
 {
@@ -484,6 +514,21 @@ int32_t GetUserLockedBundleList(int32_t userId, std::unordered_set<std::string> 
     userLockedBundleList.insert("com.ohos.test");
     return ERR_OK;
 }
+
+    MOCK_METHOD2(ExecuteInAppSkillWithTokenId, int32_t(const AppExecFwk::SkillExecuteRequest &,
+        const sptr<ISkillExecuteCallback> &));
+    MOCK_METHOD4(ExecuteSkillDone, int32_t(const sptr<IRemoteObject> &, const std::string &,
+        int32_t, const AppExecFwk::SkillExecuteResult &));
+    MOCK_METHOD2(NotifySkillFunctionInvoked, int32_t(const sptr<IRemoteObject> &,
+        const std::string &));
+    MOCK_METHOD4(QuerySkillType, int32_t(const std::string &, const std::string &,
+        const std::string &, int32_t &));
+    MOCK_METHOD5(BackToCallerAbilityWithResult, int(const sptr<IRemoteObject> &, int, const Want &, int64_t, bool));
+
+    void SanitizeWantParamsForTest(Want &want)
+    {
+        SanitizeWantParams(want);
+    }
 };
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -184,7 +184,7 @@ HWTEST_F(AmsMgrSchedulerTest, AmsMgrScheduler_003, TestSize.Level1)
     sptr<IRemoteObject> token = new MockAbilityToken();
     AbilityState abilityState = AbilityState::ABILITY_STATE_CREATE;
 
-    EXPECT_CALL(*mockAppMgrServiceInner, UpdateAbilityState(_, _))
+    EXPECT_CALL(*mockAppMgrServiceInner, UpdateAbilityState(_, _, _, _))
         .WillOnce(InvokeWithoutArgs(mockAppMgrServiceInner.get(), &MockAppMgrServiceInner::Post));
     amsMgrScheduler->UpdateAbilityState(token, abilityState);
     mockAppMgrServiceInner->Wait();
@@ -291,7 +291,7 @@ HWTEST_F(AmsMgrSchedulerTest, AmsMgrScheduler_008, TestSize.Level1)
     auto mockAppMgrServiceInner = GetMockAppMgrServiceInner();
     auto amsTaskHandler = GetAmsTaskHandler();
 
-    EXPECT_CALL(*mockAppMgrServiceInner, KillApplication(_, _, _, _)).Times(1).WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*mockAppMgrServiceInner, KillApplication(_, _, _, _, _)).Times(1).WillOnce(Return(ERR_OK));
 
     // check params AppMgrServiceInner
     std::unique_ptr<AmsMgrScheduler> amsMgrScheduler2 = std::make_unique<AmsMgrScheduler>(nullptr, amsTaskHandler);
@@ -761,10 +761,11 @@ HWTEST_F(AmsMgrSchedulerTest, StartSpecifiedAbility_001, TestSize.Level2)
     ASSERT_NE(amsMgrScheduler, nullptr);
     Want want;
     AbilityInfo abilityInfo;
-    amsMgrScheduler->StartSpecifiedAbility(want, abilityInfo);
+    AbilityRuntime::StartSpecifiedParam param;
+    amsMgrScheduler->StartSpecifiedAbility(want, abilityInfo, param);
     amsMgrScheduler->amsMgrServiceInner_ = GetMockAppMgrServiceInner();
     amsMgrScheduler->amsHandler_ = GetAmsTaskHandler();
-    amsMgrScheduler->StartSpecifiedAbility(want, abilityInfo);
+    amsMgrScheduler->StartSpecifiedAbility(want, abilityInfo, param);
 }
 
 /*

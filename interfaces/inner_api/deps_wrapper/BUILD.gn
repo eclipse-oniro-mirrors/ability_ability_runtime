@@ -33,6 +33,12 @@ config("ability_deps_wrapper_config") {
 ohos_shared_library("ability_deps_wrapper") {
   branch_protector_ret = "pac_ret"
 
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
   sources = [
     "src/os_account_manager_wrapper.cpp",
     "src/sa_mgr_client.cpp",
@@ -58,4 +64,5 @@ ohos_shared_library("ability_deps_wrapper") {
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs += [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

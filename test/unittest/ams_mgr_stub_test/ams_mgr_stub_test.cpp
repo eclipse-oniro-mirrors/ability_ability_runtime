@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -20,6 +20,7 @@
 #include "mock_ability_token.h"
 #include "mock_ams_mgr_scheduler.h"
 #include "mock_app_debug_listener_stub.h"
+#include "param.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -304,6 +305,72 @@ HWTEST_F(AmsMgrStubTest, NotifyAppMgrRecordExitReason_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: NotifyAppMgrRecordExitReasonCompability_0100
+ * @tc.desc: NotifyAppMgrRecordExitReasonCompability with callerPid.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrStubTest, NotifyAppMgrRecordExitReasonCompability_0100, TestSize.Level1)
+{
+    EXPECT_NE(mockAmsMgrScheduler_, nullptr);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    WriteInterfaceToken(data);
+
+    int32_t pid = 1;
+    int32_t killId = 1;
+    std::string killMsg = "killMsg";
+    std::string innerMsg = "innerMsg";
+    int32_t reason = 0;
+    int32_t callerPid = 12345;
+    data.WriteInt32(pid);
+    data.WriteInt32(killId);
+    data.WriteString(killMsg);
+    data.WriteString(innerMsg);
+    data.WriteInt32(reason);
+    data.WriteInt32(callerPid);
+
+    EXPECT_CALL(*mockAmsMgrScheduler_, NotifyAppMgrRecordExitReasonCompability(_, _, _, _, _, callerPid))
+        .Times(1)
+        .WillOnce(Return(NO_ERROR));
+    auto result = mockAmsMgrScheduler_->OnRemoteRequest(
+        static_cast<uint32_t>(IAmsMgr::Message::NOTIFY_APP_MGR_RECORD_EXIT_REASON_COMPABILITY), data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+}
+
+/**
+ * @tc.name: NotifyAppMgrRecordExitReasonCompability_0200
+ * @tc.desc: NotifyAppMgrRecordExitReasonCompability with missing callerPid field.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrStubTest, NotifyAppMgrRecordExitReasonCompability_0200, TestSize.Level1)
+{
+    EXPECT_NE(mockAmsMgrScheduler_, nullptr);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    WriteInterfaceToken(data);
+
+    int32_t pid = 1;
+    int32_t killId = 1;
+    std::string killMsg = "killMsg";
+    std::string innerMsg = "innerMsg";
+    int32_t reason = 0;
+    data.WriteInt32(pid);
+    data.WriteInt32(killId);
+    data.WriteString(killMsg);
+    data.WriteString(innerMsg);
+    data.WriteInt32(reason);
+
+    EXPECT_CALL(*mockAmsMgrScheduler_, NotifyAppMgrRecordExitReasonCompability(_, _, _, _, _, 0))
+        .Times(1)
+        .WillOnce(Return(NO_ERROR));
+    auto result = mockAmsMgrScheduler_->OnRemoteRequest(
+        static_cast<uint32_t>(IAmsMgr::Message::NOTIFY_APP_MGR_RECORD_EXIT_REASON_COMPABILITY), data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+}
+
+/**
  * @tc.name: HandlePreloadApplicationByPhase_0100
  * @tc.desc: Handle preload application with valid parameters.
  * @tc.type: FUNC
@@ -424,15 +491,16 @@ HWTEST_F(AmsMgrStubTest, HandleStartSpecifiedAbility_0100, TestSize.Level1)
     abilityInfo.name = "EntryAbility";
     int32_t requestId = 1001;
     std::string customProcess = "com.example.process";
-    bool isWindowStagePreload = true;
+
+    AbilityRuntime::StartSpecifiedParam param;
+    param.requestId = requestId;
+    param.customProcess = customProcess;
 
     data.WriteParcelable(&want);
     data.WriteParcelable(&abilityInfo);
-    data.WriteInt32(requestId);
-    data.WriteString(customProcess);
-    data.WriteBool(isWindowStagePreload);
+    data.WriteParcelable(&param);
 
-    EXPECT_CALL(*mockAmsMgrScheduler_, StartSpecifiedAbility(_, _, requestId, customProcess, true)).Times(1);
+    EXPECT_CALL(*mockAmsMgrScheduler_, StartSpecifiedAbility(_, _, _)).Times(1);
     auto result = mockAmsMgrScheduler_->OnRemoteRequest(
         static_cast<uint32_t>(IAmsMgr::Message::START_SPECIFIED_ABILITY), data, reply, option);
     EXPECT_EQ(result, NO_ERROR);
@@ -451,18 +519,10 @@ HWTEST_F(AmsMgrStubTest, HandleStartSpecifiedAbility_0200, TestSize.Level1)
     MessageOption option(MessageOption::TF_ASYNC);
     WriteInterfaceToken(data);
 
-    AbilityInfo abilityInfo;
-    abilityInfo.bundleName = "com.example.bundle";
-    abilityInfo.name = "EntryAbility";
-    int32_t requestId = 1001;
-    std::string customProcess = "com.example.process";
+    // ReadParcelable<Want> reads Int32 size first; size=0 means null -> stub returns early.
+    data.WriteInt32(0);
 
-    data.WriteInt32(requestId);
-    data.WriteString(customProcess);
-    data.WriteBool(true);
-    data.WriteParcelable(&abilityInfo);
-
-    EXPECT_CALL(*mockAmsMgrScheduler_, StartSpecifiedAbility(_, _, _, _, _)).Times(0);
+    EXPECT_CALL(*mockAmsMgrScheduler_, StartSpecifiedAbility(_, _, _)).Times(0);
     auto result = mockAmsMgrScheduler_->OnRemoteRequest(
         static_cast<uint32_t>(IAmsMgr::Message::START_SPECIFIED_ABILITY), data, reply, option);
     EXPECT_EQ(result, ERR_INVALID_VALUE);
@@ -482,15 +542,12 @@ HWTEST_F(AmsMgrStubTest, HandleStartSpecifiedAbility_0300, TestSize.Level1)
     WriteInterfaceToken(data);
 
     AAFwk::Want want;
-    int32_t requestId = 1001;
-    std::string customProcess = "com.example.process";
 
     data.WriteParcelable(&want);
-    data.WriteInt32(requestId);
-    data.WriteString(customProcess);
-    data.WriteBool(true);
+    // ReadParcelable<AbilityInfo> reads Int32 size first; size=0 means null -> stub returns early.
+    data.WriteInt32(0);
 
-    EXPECT_CALL(*mockAmsMgrScheduler_, StartSpecifiedAbility(_, _, _, _, _)).Times(0);
+    EXPECT_CALL(*mockAmsMgrScheduler_, StartSpecifiedAbility(_, _, _)).Times(0);
     auto result = mockAmsMgrScheduler_->OnRemoteRequest(
         static_cast<uint32_t>(IAmsMgr::Message::START_SPECIFIED_ABILITY), data, reply, option);
     EXPECT_EQ(result, ERR_INVALID_VALUE);
@@ -643,6 +700,94 @@ HWTEST_F(AmsMgrStubTest, HandleSetGameSAPrelaunch_004, TestSize.Level1)
         static_cast<uint32_t>(IAmsMgr::Message::SET_GAME_SA_PRELAUNCH), data, reply, option);
     EXPECT_EQ(result, NO_ERROR);
     TAG_LOGI(AAFwkTag::TEST, "HandleSetGameSAPrelaunch_004 end.");
+}
+
+/**
+ * @tc.name: HandleAttributeProcessForAbility_001
+ * @tc.desc: HandleAttributeProcessForAbility dispatches params and writes back the handle.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrStubTest, HandleAttributeProcessForAbility_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleAttributeProcessForAbility_001 start.");
+    EXPECT_NE(mockAmsMgrScheduler_, nullptr);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    WriteInterfaceToken(data);
+
+    const std::string taskId = "task-stub-ut";
+    data.WriteString(taskId);
+    data.WriteInt32(100);  // callerUid
+    data.WriteInt32(200);  // callerPid
+    data.WriteInt32(300);  // targetPid
+
+    const int64_t serverHandle = 42;
+    EXPECT_CALL(*mockAmsMgrScheduler_, AttributeProcessForAbility(taskId, 100, 200, 300, _))
+        .Times(1)
+        .WillOnce(DoAll(SetArgReferee<4>(serverHandle), Return(NO_ERROR)));
+    auto result = mockAmsMgrScheduler_->OnRemoteRequest(
+        static_cast<uint32_t>(IAmsMgr::Message::ATTRIBUTE_PROCESS_FOR_ABILITY), data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), NO_ERROR);
+    EXPECT_EQ(reply.ReadInt64(), serverHandle);
+    TAG_LOGI(AAFwkTag::TEST, "HandleAttributeProcessForAbility_001 end.");
+}
+
+/**
+ * @tc.name: HandleUnregisterTaskAttribution_001
+ * @tc.desc: HandleUnregisterTaskAttribution dispatches params and returns the result code.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrStubTest, HandleUnregisterTaskAttribution_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleUnregisterTaskAttribution_001 start.");
+    EXPECT_NE(mockAmsMgrScheduler_, nullptr);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    WriteInterfaceToken(data);
+
+    const std::string taskId = "task-stub-ut";
+    const int64_t attributionId = 42;
+    data.WriteString(taskId);
+    data.WriteInt64(attributionId);
+
+    EXPECT_CALL(*mockAmsMgrScheduler_, UnregisterTaskAttribution(taskId, attributionId))
+        .Times(1)
+        .WillOnce(Return(ERR_INVALID_VALUE));
+    auto result = mockAmsMgrScheduler_->OnRemoteRequest(
+        static_cast<uint32_t>(IAmsMgr::Message::UNREGISTER_TASK_ATTRIBUTION), data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "HandleUnregisterTaskAttribution_001 end.");
+}
+
+/**
+ * @tc.name: HandleKillProcessWithAccountSafely_0100
+ * @tc.desc: Deserialize safe-kill arguments and write the MDM-protected result to the reply.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrStubTest, HandleKillProcessWithAccountSafely_0100, TestSize.Level1)
+{
+    ASSERT_NE(mockAmsMgrScheduler_, nullptr);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    WriteInterfaceToken(data);
+    data.WriteString("com.example.protected");
+    data.WriteInt32(100);
+    data.WriteBool(true);
+    data.WriteInt32(3);
+    EXPECT_CALL(*mockAmsMgrScheduler_, KillProcessWithAccountSafely(
+        "com.example.protected", 100, true, 3))
+        .WillOnce(Return(AAFwk::ERR_KILL_PROCESS_MDM_PROTECTED));
+
+    int32_t ret = mockAmsMgrScheduler_->OnRemoteRequest(
+        static_cast<uint32_t>(IAmsMgr::Message::KILL_PROCESS_WITH_ACCOUNT_SAFELY), data, reply, option);
+
+    EXPECT_EQ(ret, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), AAFwk::ERR_KILL_PROCESS_MDM_PROTECTED);
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

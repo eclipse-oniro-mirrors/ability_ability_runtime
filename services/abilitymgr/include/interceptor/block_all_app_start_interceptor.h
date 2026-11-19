@@ -16,6 +16,8 @@
 #ifndef OHOS_ABILITY_RUNTIME_BLOCK_ALL_APP_START_INTERCEPTOR
 #define OHOS_ABILITY_RUNTIME_BLOCK_ALL_APP_START_INTERCEPTOR
 
+#include <functional>
+#include <memory>
 #include "ability_interceptor_interface.h"
 
 namespace OHOS {
@@ -24,11 +26,13 @@ class BlockAllAppStartInterceptor : public IAbilityInterceptor {
 public:
     BlockAllAppStartInterceptor() = default;
     ~BlockAllAppStartInterceptor() = default;
-    ErrCode DoProcess(AbilityInterceptorParam param) override;
-    virtual void SetTaskHandler(std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler) override
-    {
-        return;
-    };
+
+    void SetShouldBlockFunc(const std::function<bool()>& func);
+
+    ErrCode DoProcess(AbilityInterceptorParam& param) override;
+
+private:
+    std::function<bool()> shouldBlockFunc_;
 };
 } // namespace AAFwk
 } // namespace OHOS

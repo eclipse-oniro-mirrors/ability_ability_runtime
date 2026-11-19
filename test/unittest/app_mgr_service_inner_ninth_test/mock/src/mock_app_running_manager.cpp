@@ -123,6 +123,11 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::GetAppRunningRecordByPid(co
     return AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_;
 }
 
+std::shared_ptr<AppRunningRecord> AppRunningManager::GetValidAppRunningRecordByPid(const pid_t pid)
+{
+    return nullptr;
+}
+
 std::shared_ptr<AppRunningRecord> AppRunningManager::GetAppRunningRecordByAbilityToken(
     const sptr<IRemoteObject> &abilityToken)
 {
@@ -159,7 +164,7 @@ bool AppRunningManager::ProcessExitByBundleNameAndUid(
 }
 
 bool AppRunningManager::ProcessExitByBundleNameAndAppIndex(const std::string &bundleName, int32_t appIndex,
-    std::list<pid_t> &pids, bool clearPageStack)
+    std::list<pid_t> &pids, bool clearPageStack, int32_t userId)
 {
     return false;
 }
@@ -307,7 +312,7 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::GetAppRunningRecordByRender
     return AAFwk::MyStatus::GetInstance().getAppRunningRecordByRenderPid_;
 }
 
-std::shared_ptr<RenderRecord> AppRunningManager::OnRemoteRenderDied(const wptr<IRemoteObject> &remote)
+std::shared_ptr<RenderRecord> AppRunningManager::OnRenderProcessExitedByPid(pid_t pid)
 {
     return nullptr;
 }
@@ -392,7 +397,7 @@ bool AppRunningManager::IsChildProcessReachLimit(uint32_t accessTokenId, bool mu
     return AAFwk::MyStatus::GetInstance().isChildProcessReachLimit_;
 }
 
-std::shared_ptr<ChildProcessRecord> AppRunningManager::OnChildProcessRemoteDied(const wptr<IRemoteObject> &remote)
+std::shared_ptr<ChildProcessRecord> AppRunningManager::OnChildProcessExitedByPid(pid_t pid)
 {
     AAFwk::MyStatus::GetInstance().getChildProcessRecordByPidCall_++;
     return nullptr;
@@ -531,6 +536,12 @@ std::shared_ptr<AppRunningRecord> AppRunningManager::FindMasterProcessAppRunning
     return AAFwk::MyStatus::GetInstance().masterProcessRunningRecord_;
 }
 
+std::shared_ptr<AppRunningRecord> AppRunningManager::FindMainProcessAppRunningRecord(const int uid)
+{
+    AAFwk::MyStatus::GetInstance().isFindMainProcessAppRunningRecordCalled_ = true;
+    return AAFwk::MyStatus::GetInstance().mainProcessRunningRecord_;
+}
+
 std::shared_ptr<AppRunningRecord> AppRunningManager::CheckAppRunningRecordForSpecifiedProcess(
     int32_t uid, const std::string &instanceKey, const std::string &customProcessFlag)
 {
@@ -543,7 +554,7 @@ int32_t AppRunningManager::DumpCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &in
     return ERR_OK;
 }
 
-int32_t AppRunningManager::DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+int32_t AppRunningManager::DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback)
 {
     return ERR_OK;
 }
@@ -581,6 +592,11 @@ int32_t AppRunningManager::SignRestartProcess(int32_t)
 }
 
 int32_t AppRunningManager::GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos)
+{
+    return ERR_OK;
+}
+
+int32_t AppRunningManager::DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
 {
     return ERR_OK;
 }

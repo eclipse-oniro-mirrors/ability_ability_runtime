@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,6 +30,7 @@
 #include "child_process_info.h"
 #endif  // SUPPORT_CHILD_PROCESS
 #include "data_group_info.h"
+#include "ipc_group_info.h"
 #include "nocopyable.h"
 #include "shared/base_shared_bundle_info.h"
 
@@ -38,11 +39,13 @@ namespace AppExecFwk {
 enum class SpawnConnectionState { STATE_NOT_CONNECT, STATE_CONNECTED, STATE_CONNECT_FAILED };
 using HspList = std::vector<BaseSharedBundleInfo>;
 using DataGroupInfoList = std::vector<DataGroupInfo>;
+using IpcGroupInfoList = std::vector<IpcGroupInfo>;
 using JITPermissionsMap = std::map<std::string, std::string>;
 const int32_t MAX_FLAG_INDEX = 32;
 const int32_t MAX_PROC_NAME_LEN = 256;
 const int64_t START_FLAG_BASE = 1;
 const int32_t MAX_COST_TIME = 500;
+
 struct AppSpawnStartMsg {
     uint64_t accessTokenIdEx;
     uint64_t flags = 0;
@@ -56,22 +59,28 @@ struct AppSpawnStartMsg {
     std::string renderParam; // only nweb spawn need this param.
     std::string overlayInfo; // overlay hap resource path list
     std::string ownerId;
+    std::string agentId;
     std::string provisionType;
+    std::string appDistributionType;
     std::string atomicAccount = "";
     std::string extensionSandboxPath;
     std::string processType = "";
+    std::string daemonBinPath = "";
     std::string extensionTypeName;
     std::string appSignType;
+    std::string imageName;
     HspList hspList; // list of harmony shared package
     std::set<std::string> permissions;
     std::map<std::string, std::string> appEnv; // environment variable to be set to the process
     std::map<std::string, int32_t> fds;
     DataGroupInfoList dataGroupInfoList; // list of harmony shared package
+    IpcGroupInfoList ipcGroupInfoList;
     JITPermissionsMap jitPermissionsMap; // map of JIT permissions
     uint32_t mountPermissionFlags;
     uint32_t apiTargetVersion = 0;
     int32_t uid;
     int32_t gid;
+    int32_t appUid;
     int32_t pid;
     int32_t code = 0; // 0: default, MSG_APP_SPAWN; 1: MSG_SPAWN_NATIVE_PROCESS; 2: MSG_GET_RENDER_TERMINATION_STATUS
     int32_t bundleIndex;   // when dlp launch another app used, default is 0
@@ -87,15 +96,10 @@ struct AppSpawnStartMsg {
     uint8_t allowInternet; // hap socket allowed
     uint8_t reserved1;
     uint8_t reserved2;
-    bool atomicServiceFlag = false;
-    bool isolatedExtension = false; // whether is isolatedExtension
     bool strictMode = false; // whether is strict mode
-    bool isolationMode = false;
     bool isolatedNetworkFlag = false;
     bool isolatedSELinuxFlag = false;
-    bool isolatedSandboxFlagLegacy = false; // APP_FLAGS_EXTENSION_SANDBOX legacy
     bool isScreenLockDataProtect = false;
-    bool isCustomSandboxFlag = false;
 };
 
 constexpr auto LEN_PID = sizeof(pid_t);
@@ -114,13 +118,19 @@ struct StartFlags {
     static const int GWP_ENABLED_NORMAL = 11;
     static const int TSANENABLED = 12;
     static const int EXTENSION_CONTROLLED = 13;
+    static const int ISOLATED_SANDBOX = 14;
+    static const int EXTENSION_SANDBOX = 15;
+    static const int ATOMIC_SERVICE = 19;
     static const int HWASANENABLED = 21;
     static const int UBSANENABLED = 22;
+    static const int ISOLATED_SANDBOX_TYPE = 23;
+    static const int ISOLATED_NETWORK = 26;
     static const int TEMP_JIT_ALLOW = 28;
+    static const int CUSTOM_SANDBOX = 31;
     static const int DLP_MANAGER_FULL_CONTROL = 37;
     static const int DLP_MANAGER_READ_ONLY = 38;
     static const int CLOUD_FILE_SYNC_ENABLED = 39;
-    static const int SPAWN_IMAGE_PROCESS = 41;
+    static const int APP_FLAGS_DEBUGSERVER = 44;
 };
 
 struct CreateStartMsgParam {
@@ -287,12 +297,15 @@ private:
     SpawnConnectionState state_ = SpawnConnectionState::STATE_NOT_CONNECT;
 
 #ifdef SUPPORT_CHILD_PROCESS
+    int32_t SetDefaultMsgIdentity(const AppSpawnStartMsg &startMsg, AppSpawnReqMsgHandle reqHandle);
+    int32_t SetDaemonMsgOptions(const AppSpawnStartMsg &startMsg, AppSpawnReqMsgHandle reqHandle);
+    int32_t SetDefaultMsgOptions(const AppSpawnStartMsg &startMsg, AppSpawnReqMsgHandle reqHandle);
+    bool VerifyStartMsgGroups(const AppSpawnStartMsg &startMsg);
+    bool VerifyProcessStartMsg(const AppSpawnStartMsg &startMsg);
     int32_t SetChildProcessTypeStartFlag(const AppSpawnReqMsgHandle &reqHandle, int32_t childProcessType);
 #endif  // SUPPORT_CHILD_PROCESS
 
     int32_t SetExtMsgFds(const AppSpawnReqMsgHandle &reqHandle, const std::map<std::string, int32_t> &fds);
-
-    int32_t SetIsolationModeFlag(const AppSpawnStartMsg &startMsg, const AppSpawnReqMsgHandle &reqHandle);
 
     int32_t SetStrictMode(const AppSpawnStartMsg &startMsg, const AppSpawnReqMsgHandle &reqHandle);
 

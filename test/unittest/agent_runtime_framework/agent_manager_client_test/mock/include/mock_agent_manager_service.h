@@ -28,7 +28,7 @@ public:
 
     virtual int32_t GetAllAgentCards(AgentCardsRawData &rawData) override;
 
-    virtual int32_t GetAgentCardsByBundleName(const std::string &bundleName, std::vector<AgentCard> &cards) override;
+    virtual int32_t GetAgentCardsByBundleName(const std::string &bundleName, AgentCardsRawData &rawData) override;
 
     virtual int32_t GetAgentCardByAgentId(const std::string &bundleName,
         const std::string &agentId, AgentCard &card) override;
@@ -46,6 +46,8 @@ public:
 
     virtual int32_t DisconnectAgentExtensionAbility(const sptr<AAFwk::IAbilityConnection> &connection) override;
 
+    virtual int32_t GetAgentCardTypeForConnect(AAFwk::Want &want, int32_t &cardType) override;
+
     virtual int32_t ConnectServiceExtensionAbility(const sptr<IRemoteObject> &callerToken, const AAFwk::Want &want,
         const sptr<AAFwk::IAbilityConnection> &connection) override;
 
@@ -53,6 +55,62 @@ public:
         const sptr<AAFwk::IAbilityConnection> &connection) override;
 
     virtual int32_t NotifyLowCodeAgentComplete(const std::string &agentId) override;
+
+    virtual int32_t VerifyAgentConnectRequest(const AAFwk::Want &want,
+        const sptr<AAFwk::IAbilityConnection> &connection, std::string &callerIdentity) override;
+
+    virtual int32_t VerifyAgentDisconnectRequests(const std::vector<AAFwk::Want> &wants,
+        const sptr<AAFwk::IAbilityConnection> &connection, std::string &callerIdentity) override;
+
+    virtual int32_t ConnectAgentExtensionAbilityForCli(const AAFwk::Want &want,
+        const sptr<AAFwk::IAbilityConnection> &connection, const std::string &callerIdentity) override;
+
+    virtual int32_t DisconnectAgentExtensionAbilityForCli(const sptr<AAFwk::IAbilityConnection> &connection,
+        const std::string &callerIdentity) override;
+
+    // Records death recipients registered on this mock so tests can fire the real callback chain
+    // (GetAgentMgrProxy registration -> AgentManagerServiceDeathRecipient::OnRemoteDied ->
+    // ClearProxyIfMatch) without a real binder death. The counter and the result flag let tests
+    // assert how many recipients were attached and simulate a dead remote (AddDeathRecipient
+    // returning false).
+    bool AddDeathRecipient(const sptr<IRemoteObject::DeathRecipient> &recipient) override
+    {
+        deathRecipientCount_++;
+        deathRecipient_ = recipient;
+        return addDeathRecipientResult_;
+    }
+
+    sptr<IRemoteObject::DeathRecipient> GetDeathRecipient() const
+    {
+        return deathRecipient_;
+    }
+
+    int32_t GetDeathRecipientCount() const
+    {
+        return deathRecipientCount_;
+    }
+
+    void SetAddDeathRecipientResult(bool result)
+    {
+        addDeathRecipientResult_ = result;
+    }
+
+    // true (default) simulates a remote proxy; false simulates a same-process local stub.
+    bool IsProxyObject() const override
+    {
+        return isProxyObject_;
+    }
+
+    void SetIsProxyObject(bool isProxyObject)
+    {
+        isProxyObject_ = isProxyObject;
+    }
+
+private:
+    sptr<IRemoteObject::DeathRecipient> deathRecipient_;
+    int32_t deathRecipientCount_ = 0;
+    bool addDeathRecipientResult_ = true;
+    bool isProxyObject_ = true;
 };
 }  // namespace AgentRuntime
 }  // namespace OHOS

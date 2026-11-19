@@ -29,11 +29,6 @@ public:
     virtual ~WantSenderProxy()
     {}
 
-    virtual void Send(SenderInfo &senderInfo) override;
-
-private:
-    bool WriteInterfaceToken(MessageParcel &data);
-
 private:
     static inline BrokerDelegator<WantSenderProxy> delegator_;
 };

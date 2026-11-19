@@ -33,6 +33,7 @@
 #include "js_runtime.h"
 #include "js_runtime_utils.h"
 #include "js_ui_ability.h"
+#include "jsnapi_expo.h"
 #include "mission_info.h"
 #include "napi/native_api.h"
 #include "napi/native_common.h"
@@ -191,6 +192,9 @@ bool AppRecovery::ScheduleSaveAppState(StateReason reason, uintptr_t ability)
 {
     TAG_LOGI(AAFwkTag::RECOVERY, "begin");
     bool ret = IsNeedSaveAppState(reason);
+    if (reason == StateReason::APP_FREEZE) {
+        panda::JSNApi::NotifyOnANR();
+    }
     if (!ret && this->freezeCallback ==  nullptr) {
         return false;
     }
@@ -210,9 +214,11 @@ bool AppRecovery::ScheduleSaveAppState(StateReason reason, uintptr_t ability)
             return false;
         }
         if (!ret) {
+            DisallowCrossThreadExecutionInRecovery();
             return false;
         }
         AppRecovery::GetInstance().DoSaveAppState(reason, ability);
+        DisallowCrossThreadExecutionInRecovery();
         return true;
     }
 
@@ -238,9 +244,12 @@ bool AppRecovery::ExecuteFreezeCallbackWithVMSafety(const std::shared_ptr<OHOS::
     if (!abilityPtr) {
         return false;
     }
-    if (IsEtsAPP() && this->freezeCallback) {
-        this->freezeCallback();
-        TAG_LOGW(AAFwkTag::RECOVERY, "Freeze callback execution completed");
+
+    if (IsEtsAPP()) {
+        if (this->freezeCallback) {
+            this->freezeCallback();
+            TAG_LOGW(AAFwkTag::RECOVERY, "Ets Freeze callback execution completed");
+        }
         return true;
     }
 #ifdef SUPPORT_SCREEN
@@ -251,6 +260,7 @@ bool AppRecovery::ExecuteFreezeCallbackWithVMSafety(const std::shared_ptr<OHOS::
     }
 #endif
     if (this->freezeCallback) {
+        TAG_LOGI(AAFwkTag::RECOVERY, "Freeze callback execution enter");
         this->freezeCallback();
         TAG_LOGW(AAFwkTag::RECOVERY, "Freeze callback execution completed");
     }
@@ -267,6 +277,22 @@ void AppRecovery::SetRestartWant(std::shared_ptr<AAFwk::Want> want)
     want_ = want;
 }
 
+// Weak declaration: resolved at runtime from appkit_native (loaded later).
+// The symbol is a C++ free function whose mangled name contains
+// "ApplicationDataManager", matched by libappkit_native.map's wildcard.
+bool ApplicationDataManagerHasOnErrorCallback() __attribute__((weak));
+
+static bool CheckHasOnErrorCallback()
+{
+    if (&ApplicationDataManagerHasOnErrorCallback == nullptr) {
+        TAG_LOGI(AAFwkTag::RECOVERY, "ApplicationDataManagerHasOnErrorCallback weak symbol is null");
+        return false;
+    }
+    bool result = ApplicationDataManagerHasOnErrorCallback();
+    TAG_LOGI(AAFwkTag::RECOVERY, "CheckHasOnErrorCallback result:%{public}d", result);
+    return result;
+}
+
 bool AppRecovery::ScheduleRecoverApp(StateReason reason)
 {
     TAG_LOGI(AAFwkTag::RECOVERY, "scheduleRecoverApp  begin");
@@ -277,8 +303,16 @@ bool AppRecovery::ScheduleRecoverApp(StateReason reason)
     
     if (!isEnable_) {
         if (OHOS::system::GetParameter("const.dfx.sub_health_recovery.enable", "") == "true") {
-            DoRecoverMainApp(reason);
-            return true;
+            if (reason != StateReason::APP_FREEZE && CheckHasOnErrorCallback()) {
+                TAG_LOGI(AAFwkTag::RECOVERY,
+                    "app has error handler, skip sub_health_recovery for reason:%{public}d",
+                    static_cast<int>(reason));
+                return false;
+            }
+            TAG_LOGI(AAFwkTag::RECOVERY,
+                "DoRecoverMainApp for reason:%{public}d, isEnable_:%{public}d",
+                static_cast<int>(reason), static_cast<int>(isEnable_));
+            return DoRecoverMainApp(reason);
         }
         return false;
     }
@@ -354,21 +388,23 @@ void AppRecovery::DoRecoverApp(StateReason reason)
     }
 }
 
-void AppRecovery::DoRecoverMainApp(StateReason reason)
+bool AppRecovery::DoRecoverMainApp(StateReason reason)
 {
     TAG_LOGD(AAFwkTag::RECOVERY, "DoReciverMainApp begin");
     AAFwk::Want *want = &mainWant_;
     want->SetParam(AAFwk::Want::PARAM_ABILITY_RECOVERY_RESTART, false);
     auto token = token_.promote();
     if (token == nullptr) {
-        return;
+        TAG_LOGE(AAFwkTag::RECOVERY, "DoReciverMainApp token is null, recovery aborted");
+        return false;
     }
     auto abilityMgr = AAFwk::AbilityManagerClient::GetInstance();
     if (abilityMgr == nullptr) {
         TAG_LOGE(AAFwkTag::RECOVERY, "null abilityMgr");
-        return;
+        return false;
     }
     abilityMgr->ScheduleRecoverAbility(token, reason, want);
+    return true;
 }
  
 void AppRecovery::DoSaveAppState(StateReason reason, uintptr_t ability)
@@ -549,11 +585,6 @@ bool AppRecovery::GetMissionIds(std::string path, std::vector<int32_t> &missionI
     }
     struct dirent *ptr;
     while ((ptr = readdir(dir)) != nullptr) {
-        if (ptr == nullptr) {
-            TAG_LOGE(AAFwkTag::RECOVERY, "null ptr");
-            closedir(dir);
-            return false;
-        }
         if (strcmp(ptr->d_name, ".") == 0 || strcmp(ptr->d_name, "..") == 0) {
             continue;
         } else if (ptr->d_type == DT_REG) {
@@ -629,6 +660,10 @@ panda::ecmascript::EcmaVM* AppRecovery::GetVMFromAbility(const std::shared_ptr<A
 void AppRecovery::DisallowCrossThreadExecutionInRecovery()
 {
 #ifdef SUPPORT_SCREEN
+    if (IsEtsAPP()) {
+        TAG_LOGW(AAFwkTag::RECOVERY, "ETS application skip disallow cross-thread execution.");
+        return;
+    }
     auto abilityPtr = ability_.lock();
     if (!abilityPtr || !abilityPtr->GetAbilityContext()) {
         TAG_LOGE(AAFwkTag::RECOVERY, "null ability or context");
@@ -636,7 +671,9 @@ void AppRecovery::DisallowCrossThreadExecutionInRecovery()
     }
     panda::ecmascript::EcmaVM* vm = GetVMFromAbility(abilityPtr);
     if (vm != nullptr) {
+        TAG_LOGI(AAFwkTag::RECOVERY, "Disallow cross Thread execution enter");
         panda::JSNApi::DisallowCrossThreadExecution(vm);
+        TAG_LOGW(AAFwkTag::RECOVERY, "Disallow cross Thread execution completed");
     }
 #endif
 }

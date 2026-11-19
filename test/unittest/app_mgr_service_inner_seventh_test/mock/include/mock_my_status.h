@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,6 +16,7 @@
 #ifndef MOCK_MY_STATUS_H
 #define MOCK_MY_STATUS_H
 #include "bundle_mgr_helper.h"
+#include "ipc_group_info.h"
 #include "remote_client_manager.h"
 #include "app_running_record.h"
 #include "iservice_registry.h"
@@ -41,16 +42,26 @@ public:
     pid_t getCallingUid_ = 0;
     ErrCode processUpdate_ = ERR_OK;
     bool verifyCallingPermission_ = false;
+    std::map<std::string, bool> verifyCallingPermissionByName_;
     bool isSACall_ = false;
     bool isShellCall_ = false;
+    bool isCliToolToken_ = false;
+    bool isLocalDebugOtherAppsCall_ = false;
+    bool isCustomSandboxCall_ = false;
     std::shared_ptr<AppExecFwk::AppRunningRecord> getAppRunningRecordByPid_ = nullptr;
     std::string getNameForUid_ = "";
-    // mock app running manager
+    ErrCode getNameAndIndexForUidRet_ = ERR_OK;
     std::list<pid_t> getPidsByBundleName_;
     bool getPidsByBundleNameRet_;
+    int32_t processExitCall_ = 0;
+    bool processExitClearPageStack_ = false;
+    bool processExitAddKillingCaller_ = false;
+    std::string processExitReason_;
     std::map<const int32_t, const std::shared_ptr<AppExecFwk::AppRunningRecord>> getAppRunningRecordMap_;
     int notifyProcMemoryCall_ = 0;
     int notifyProcMemory_ = 0;
+    int notifyProcMemoryShellCall_ = 0;
+    size_t notifyProcMemoryMapSize_ = 0;
     int dumpHeapMemory_ = 0;
     int dumpJsHeapMemory_ = 0;
     bool processExit_ = false;
@@ -76,6 +87,18 @@ public:
     std::vector<AppExecFwk::BaseSharedBundleInfo> baseSharedBundleInfos_;
     bool queryDataGroupInfos_ = false;
     std::vector<AppExecFwk::DataGroupInfo> queryData_;
+    ErrCode queryIpcGroupInfosRet_ = ERR_OK;
+    std::vector<AppExecFwk::IpcGroupInfo> queryIpcGroupInfoData_;
+    ErrCode isApplicationDisableForbiddenRet_ = ERR_OK;
+    bool isApplicationDisableForbidden_ = false;
+    int32_t isApplicationDisableForbiddenCall_ = 0;
+    std::string disableForbiddenBundleName_;
+    int32_t disableForbiddenUserId_ = -1;
+    int32_t disableForbiddenAppIndex_ = -1;
+    int32_t dualModeAppIndex_ = 0;
+    int32_t getDualModeBundleInfoCall_ = 0;
+    std::string dualModeBundleName_;
+    int32_t dualModeUserId_ = -1;
     // permission verification
     bool judgeCallerIsAllowed_ = false;
     bool verifyRunningInfoPerm_ = false;
@@ -101,6 +124,7 @@ public:
     int getSpawnClientCall_ = 0;
     // app spawn client
     int32_t startProcess_ = ERR_OK;
+    bool getApplicationInfoWithAppIndexRet_ = false;
 private:
     MyStatus() = default;
 };

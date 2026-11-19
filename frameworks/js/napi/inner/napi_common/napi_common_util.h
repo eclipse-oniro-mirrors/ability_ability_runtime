@@ -57,6 +57,7 @@ bool UnwrapDoubleFromJS2(napi_env env, napi_value param, double &value);
 napi_value WrapStringToJS(napi_env env, const std::string &value);
 std::string UnwrapStringFromJS(napi_env env, napi_value param, const std::string &defaultValue = "");
 bool UnwrapStringFromJS2(napi_env env, napi_value param, std::string &value);
+bool UnwrapStringFromJSFix(napi_env env, napi_value param, std::string &value);
 
 napi_value WrapArrayInt32ToJS(napi_env env, const std::vector<int> &value);
 bool UnwrapArrayInt32FromJS(napi_env env, napi_value param, std::vector<int> &value);
@@ -75,6 +76,7 @@ bool UnwrapArrayBoolFromJS(napi_env env, napi_value param, std::vector<bool> &va
 
 napi_value WrapArrayStringToJS(napi_env env, const std::vector<std::string> &value);
 bool UnwrapArrayStringFromJS(napi_env env, napi_value param, std::vector<std::string> &value);
+bool UnwrapArrayStringFromJSFix(napi_env env, napi_value param, std::vector<std::string> &value);
 
 bool UnwrapArrayComplexFromJS(napi_env env, napi_value param, ComplexArrayData &value);
 

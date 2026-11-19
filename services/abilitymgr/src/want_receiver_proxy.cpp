@@ -32,7 +32,7 @@ void WantReceiverProxy::Send(const int32_t resultCode)
 {
     MessageParcel data;
     MessageParcel reply;
-    MessageOption option(MessageOption::TF_SYNC);
+    MessageOption option(MessageOption::TF_ASYNC);
     if (!WriteInterfaceToken(data)) {
         return;
     }
@@ -56,7 +56,7 @@ void WantReceiverProxy::PerformReceive(const Want &want, int resultCode, const s
 {
     MessageParcel msgData;
     MessageParcel reply;
-    MessageOption option(MessageOption::TF_SYNC);
+    MessageOption option(MessageOption::TF_ASYNC);
     if (!WriteInterfaceToken(msgData)) {
         return;
     }

@@ -3123,5 +3123,29 @@ HWTEST_F(AbilityImplTest, AaFwk_InputEventConsumerImpl_0200, TestSize.Level1)
     impl->OnInputEvent(pointerEvent);
     GTEST_LOG_(INFO) << "AaFwk_InputEventConsumerImpl_0200 end";
 }
+
+/**
+ * @tc.number: AaFwk_AbilityImpl_Init_NullAbilityInfo_0100
+ * @tc.name: AbilityImpl::Init with null abilityInfo
+ * @tc.desc: Test Init returns early when GetAbilityInfo returns null
+ */
+HWTEST_F(AbilityImplTest, AaFwk_AbilityImpl_Init_NullAbilityInfo_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AaFwk_AbilityImpl_Init_NullAbilityInfo_0100 start";
+    auto abilityImpl = std::make_shared<AbilityImpl>();
+    auto application = std::make_shared<AppExecFwk::OHOSApplication>();
+    auto handler = std::make_shared<AbilityHandler>(nullptr);
+    sptr<IRemoteObject> token = nullptr;
+
+    auto record = std::make_shared<AppExecFwk::AbilityLocalRecord>(nullptr, token, nullptr, -1);
+    ASSERT_NE(record, nullptr);
+    auto ability = std::make_shared<Ability>();
+
+    abilityImpl->Init(application, record, ability, handler, token);
+
+    EXPECT_EQ(abilityImpl->ability_, nullptr);
+
+    GTEST_LOG_(INFO) << "AaFwk_AbilityImpl_Init_NullAbilityInfo_0100 end";
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

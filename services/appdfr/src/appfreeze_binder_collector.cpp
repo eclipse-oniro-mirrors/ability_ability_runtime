@@ -1,0 +1,733 @@
+﻿/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include "appfreeze_binder_collector.h"
+
+#include <algorithm>
+#include <chrono>
+#include <cstring>
+#include <fstream>
+#include <sstream>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
+
+#include "faultloggerd_client.h"
+#include "file_ex.h"
+#include "ffrt.h"
+#include "dfx_dump_catcher.h"
+#include "directory_ex.h"
+#include "hilog_tag_wrapper.h"
+#include "hitrace_meter.h"
+#include "time_util.h"
+#include "parameters.h"
+#include "appfreeze_util.h"
+#include "xcollie/process_kill_reason.h"
+#ifdef ABILITY_RUNTIME_HITRACE_ENABLE
+#include "hitrace/hitracechain.h"
+#endif
+#include "singleton.h"
+#include "app_mgr_client.h"
+
+#undef FREEZE_DOMAIN
+#define FREEZE_DOMAIN 0xD001310
+namespace OHOS {
+namespace AppExecFwk {
+namespace {
+constexpr int MAX_LAYER = 8;
+static constexpr uint8_t ARR_SIZE = 7;
+static constexpr uint8_t DECIMAL = 10;
+static constexpr uint8_t FREE_ASYNC_INDEX = 6;
+static constexpr uint16_t FREE_ASYNC_MAX = 1000;
+static constexpr int DUMP_STACK_FAILED = -1;
+static constexpr int DUMP_KERNEL_STACK_SUCCESS = 1;
+static constexpr int MIN_APP_UID = 20000;
+static constexpr int UNKNOWN_FREEZE_REASON = -1;
+static constexpr int MAX_REPORT_STACK_SIZE = 256 * 1024;
+static constexpr const char* LOGGER_DEBUG_PROC_PATH = "/proc/transaction_proc";
+const std::string LOG_FILE_PATH = "/data/log/eventlog";
+static bool g_overseaVersion = OHOS::system::GetParameter("const.global.region", "CN") != "CN";
+static constexpr const char *const DEV_SYSLOAD = "/dev/sysload";
+constexpr int32_t INVALID_KILL_ID = -2;
+constexpr const char* INVALID_KILL_REASON = "InvalidKillId";
+
+#define KILL_LOG_BASE 'S'
+#define GET_KILL_INFO _IOWR(KILL_LOG_BASE, 0x06, int32_t)
+#define SET_KILL_INFO _IOWR(KILL_LOG_BASE, 0x07, int32_t)
+
+#define SYSLOAD_GET_KILL_INFO_MAGIC 0xE5AC02
+#define SYSLOAD_SET_KILL_INFO_MAGIC 0xE5AC03
+
+static std::string ReadKernelProcessName(const char* name, size_t cap)
+{
+    return std::string(name, strnlen(name, cap));
+}
+
+struct KillEventInfo {
+    int id = 0;
+    int adj = 0;
+    bool processed = false;
+    bool foreground = false;
+    pid_t pid = 0;
+    int uid = 0;
+    pid_t callingPid;
+    char callingProcessName[16];
+    int64_t timestamp = 0;
+    int64_t eventParamFirst = 0;
+    int64_t eventParamSecond = 0;
+    int64_t eventParamThird = 0;
+    int64_t eventParamFourth = 0;
+    int64_t eventParamFifth = 0;
+    int64_t eventParamSixth = 0;
+    int64_t eventParamSeventh = 0;
+};
+
+struct KillInfo {
+    unsigned int magic;
+    pid_t pid;
+    struct KillEventInfo data;
+    unsigned int structSize;
+};
+} // namespace
+bool AppfreezeBinderCollector::IsHandleAppfreeze(const std::string& bundleName)
+{
+    if (bundleName.empty()) {
+        return true;
+    }
+    return !DelayedSingleton<AppExecFwk::AppMgrClient>::GetInstance()->IsAttachDebug(bundleName);
+}
+
+void AppfreezeBinderCollector::CollectFreezeSysMemory(std::string& memoryContent)
+{
+    memoryContent = "\nGet freeze memory start time: " + AbilityRuntime::TimeUtil::DefaultCurrentTimeStr() + "\n";
+    std::string tmp = "";
+    std::string pressMemInfo = "/proc/pressure/memory";
+    OHOS::LoadStringFromFile(pressMemInfo, tmp);
+    memoryContent += tmp + "\n";
+    std::string memInfoPath = "/proc/memview";
+    if (!OHOS::FileExists(memInfoPath)) {
+        memInfoPath = "/proc/meminfo";
+    }
+    OHOS::LoadStringFromFile(memInfoPath, tmp);
+    memoryContent += tmp + "\nGet freeze memory end time: " + AbilityRuntime::TimeUtil::DefaultCurrentTimeStr();
+}
+
+std::string AppfreezeBinderCollector::GetCatcherStack(const std::string& fileName, const std::string& catcherStack)
+{
+    std::string stackFile = WriteToFile(fileName, catcherStack);
+    if (!stackFile.empty()) {
+        return stackFile;
+    }
+    if (catcherStack.size() > MAX_REPORT_STACK_SIZE) {
+        stackFile = "";
+        TAG_LOGW(AAFwkTag::APPDFR, "create stack failed, catcherStack over size: %{public}zu",
+            catcherStack.size());
+    } else {
+        stackFile = catcherStack;
+        TAG_LOGW(AAFwkTag::APPDFR, "create stack failed, catcherStack size: %{public}zu", catcherStack.size());
+    }
+    return stackFile;
+}
+
+std::string AppfreezeBinderCollector::WriteToFile(const std::string& fileName, const std::string& content)
+{
+    std::string path = LOG_FILE_PATH + "/freeze";
+    constexpr mode_t defaultLogDirMode = 0770;
+    if (!OHOS::FileExists(path)) {
+        OHOS::ForceCreateDirectory(path);
+        OHOS::ChangeModeDirectory(path, defaultLogDirMode);
+    }
+    std::string realPath = AppfreezeUtil::FreezePathToRealPath(path);
+    if (realPath.empty()) {
+        realPath = path;
+    }
+    std::string stackPath = realPath + "/" + fileName;
+    constexpr mode_t defaultLogFileMode = 0644;
+    FILE* fp = fopen(stackPath.c_str(), "w+");
+    chmod(stackPath.c_str(), defaultLogFileMode);
+    if (fp == nullptr) {
+        TAG_LOGI(AAFwkTag::APPDFR, "stackPath create failed, errno: %{public}d", errno);
+        return "";
+    } else {
+        TAG_LOGI(AAFwkTag::APPDFR, "stackPath: %{public}s", stackPath.c_str());
+    }
+    OHOS::SaveStringToFile(stackPath, content, true);
+    (void)fclose(fp);
+    return stackPath;
+}
+
+FaultData AppfreezeBinderCollector::GetFaultNotifyData(const FaultData& faultData, int pid)
+{
+    FaultData faultNotifyData;
+    faultNotifyData.samplerCount = faultData.samplerCount;
+    faultNotifyData.heaviestStack = faultData.heaviestStack;
+    faultNotifyData.logValidity = faultData.logValidity;
+    faultNotifyData.errorObject.name = faultData.errorObject.name;
+    faultNotifyData.errorObject.message = faultData.errorObject.message;
+    faultNotifyData.errorObject.stack = faultData.errorObject.stack;
+    faultNotifyData.errorObject.mainStack = faultData.errorObject.mainStack;
+    faultNotifyData.faultType = FaultDataType::APP_FREEZE;
+    faultNotifyData.eventId = faultData.eventId;
+    if (faultData.errorObject.name == AppFreezeType::APP_INPUT_BLOCK || faultData.tid <= 0) {
+        faultNotifyData.tid = pid;
+    } else {
+        faultNotifyData.tid = faultData.tid;
+    }
+    faultNotifyData.appfreezeInfo = faultData.appfreezeInfo;
+    faultNotifyData.appRunningUniqueId = faultData.appRunningUniqueId;
+    faultNotifyData.procStatm = faultData.procStatm;
+    faultNotifyData.isInForeground = faultData.isInForeground;
+    faultNotifyData.isEnableMainThreadSample = faultData.isEnableMainThreadSample;
+    faultNotifyData.reportLifecycleToFreeze = faultData.reportLifecycleToFreeze;
+    faultNotifyData.abilityPendingBackground = faultData.abilityPendingBackground;
+    faultNotifyData.applicationHeapInfo = faultData.applicationHeapInfo;
+    faultNotifyData.applicationGCInfo = faultData.applicationGCInfo;
+    faultNotifyData.applicationIOInfo = faultData.applicationIOInfo;
+    faultNotifyData.isBlockInGc = faultData.isBlockInGc;
+    faultNotifyData.processLifeTime = faultData.processLifeTime;
+    faultNotifyData.markedId = faultData.markedId;
+    faultNotifyData.processedId = faultData.processedId;
+    faultNotifyData.dispatchedEventId = faultData.dispatchedEventId;
+    faultNotifyData.callbackLog = faultData.callbackLog;
+    return faultNotifyData;
+}
+
+std::pair<std::string, std::string> AppfreezeBinderCollector::CollectSyncBinderAttachment(
+    const std::set<int>& syncPids, TerminalBinder& terminalBinder, int32_t pid,
+    const std::function<bool()>& cancelled, std::string& binderInfo)
+{
+    std::string binderPidsStr;
+    std::string terminalBinderTid;
+    std::string binderProcessNameStr;
+    std::string binderProcessStackStr;
+    for (auto& pidTemp : syncPids) {
+        if (cancelled && cancelled()) {
+            return {};
+        }
+        TAG_LOGI(AAFwkTag::APPDFR, "PeerBinder pidTemp pids:%{public}d", pidTemp);
+        if (pidTemp == pid || IsAncoProc(pidTemp)) {
+            continue;
+        }
+        std::string content = "Binder catcher stacktrace, type is peer, pid : " + std::to_string(pidTemp) + "\n";
+        content += CatcherStacktrace(pidTemp);
+        binderPidsStr += " " + std::to_string(pidTemp);
+        binderProcessNameStr += std::to_string(pidTemp) + "(" +
+            AppfreezeUtil::GetProcessNameFromProcCmdline(pidTemp) + ");";
+        if (terminalBinder.pid > 0 && pidTemp == terminalBinder.pid) {
+            terminalBinder.tid  = (terminalBinder.tid > 0) ? terminalBinder.tid : terminalBinder.pid;
+            content = "Binder catcher stacktrace, terminal binder tag\n" + content +
+                "Binder catcher stacktrace, terminal binder tag\n";
+            terminalBinderTid = std::to_string(terminalBinder.tid);
+        }
+        binderProcessStackStr += content;
+    }
+    if (syncPids.empty()) {
+        binderInfo += "PeerBinder pids is empty\n";
+    } else {
+        if (!binderProcessNameStr.empty()) {
+            binderProcessNameStr.pop_back();
+            binderProcessNameStr = "BINDER_PROC_NAME: " + binderProcessNameStr + "\n";
+        }
+        binderInfo = binderInfo + binderProcessNameStr + binderProcessStackStr;
+    }
+    return {binderPidsStr, terminalBinderTid};
+}
+
+std::string AppfreezeBinderCollector::CollectBinderAttachment(const FaultData& faultData,
+    int32_t pid, const std::function<bool()>& cancelled)
+{
+    FaultData faultNotifyData = GetFaultNotifyData(faultData, pid);
+
+    if (cancelled && cancelled()) {
+        return "";
+    }
+    std::string binderInfo;
+    AppfreezeBinderCollector::TerminalBinder terminalBinder = {0, 0};
+    AppfreezeBinderCollector::ParseBinderParam params = {pid, faultNotifyData.tid, pid, 0};
+    std::set<int> asyncPids;
+    std::set<int> syncPids = GetBinderPeerPids(binderInfo, params, asyncPids, terminalBinder);
+    auto peers = CollectSyncBinderAttachment(syncPids, terminalBinder, pid, cancelled, binderInfo);
+    for (int peer : asyncPids) {
+        if (cancelled && cancelled()) {
+            return "";
+        }
+        binderInfo += CatchASyncByPid({peer}, syncPids, pid);
+    }
+    if (cancelled && cancelled()) {
+        return "";
+    }
+    std::string fileName = faultData.errorObject.name + "_" +
+        std::to_string(AbilityRuntime::TimeUtil::SystemTimeMillisecond()) + "_" + std::to_string(pid) + "_binder";
+    std::string fullStackPath = WriteToFile(fileName, binderInfo);
+    binderInfo = fullStackPath + "," + peers.first + "," + peers.second;
+
+    return binderInfo;
+}
+
+bool AppfreezeBinderCollector::IsAncoProc(int pid)
+{
+    std::string cgroupPath = "/proc/" + std::to_string(pid) + "/cgroup";
+    std::string firstLine = GetFirstLine(cgroupPath);
+    return firstLine.find("isulad") != std::string::npos;
+}
+
+std::string AppfreezeBinderCollector::CatchASyncByPid(const std::set<int> &asyncPids,
+    const std::set<int> &syncPids, int pid)
+{
+    std::string binderInfo;
+    for (auto& pidTemp : asyncPids) {
+        int uid = AppfreezeUtil::GetUidByPid(pidTemp);
+        if (uid < 0 || uid >= MIN_APP_UID) {
+            TAG_LOGI(AAFwkTag::APPDFR, "Async stack, skip current pid:%{public}d, uid:%{public}d", pidTemp, uid);
+            continue;
+        }
+        TAG_LOGI(AAFwkTag::APPDFR, "AsyncBinder pidTemp pids:%{public}d", pidTemp);
+        if (pidTemp != pid && !IsAncoProc(pidTemp) && syncPids.find(pidTemp) == syncPids.end()) {
+            std::string content = "Binder catcher stacktrace, type is async, pid : " + std::to_string(pidTemp) + "\n";
+            content += CatcherStacktrace(pidTemp);
+            binderInfo += content;
+        }
+    }
+    return binderInfo;
+}
+
+std::string AppfreezeBinderCollector::ParseDecToHex(uint64_t id)
+{
+    std::stringstream ss;
+    ss << std::hex << id;
+    return ss.str();
+}
+
+std::string AppfreezeBinderCollector::GetHitraceInfo()
+{
+#ifdef ABILITY_RUNTIME_HITRACE_ENABLE
+    OHOS::HiviewDFX::HiTraceId hitraceId = OHOS::HiviewDFX::HiTraceChain::GetId();
+    if (hitraceId.IsValid() == 0) {
+        TAG_LOGW(AAFwkTag::APPDFR, "get hitrace id is invalid.");
+        return "";
+    }
+    std::ostringstream hitraceIdStr;
+    hitraceIdStr << "hitrace_id: " << ParseDecToHex(hitraceId.GetChainId()) <<
+        ", span_id: " << ParseDecToHex(hitraceId.GetSpanId()) <<
+        ", parent_span_id: " << ParseDecToHex(hitraceId.GetParentSpanId()) <<
+        ", trace_flag: " << ParseDecToHex(hitraceId.GetFlags());
+    std::string hiTraceIdInfo = hitraceIdStr.str();
+    TAG_LOGW(AAFwkTag::APPDFR, "hitraceIdStr: %{public}s", hiTraceIdInfo.c_str());
+    return hitraceIdStr.str();
+#endif
+    return "";
+}
+
+std::map<int, std::list<AppfreezeBinderCollector::PeerBinderInfo>> AppfreezeBinderCollector::BinderParser(
+    std::ifstream& fin, std::string& stack, std::set<int>& asyncPids) const
+{
+    std::map<uint32_t, uint32_t> asyncBinderMap;
+    std::vector<std::pair<uint32_t, uint64_t>> freeAsyncSpacePairs;
+    std::map<int, std::list<AppfreezeBinderCollector::PeerBinderInfo>> binderInfos = BinderLineParser(fin, stack,
+        asyncBinderMap, freeAsyncSpacePairs);
+
+    if (!g_overseaVersion) {
+        std::sort(freeAsyncSpacePairs.begin(), freeAsyncSpacePairs.end(),
+            [] (const auto& pairOne, const auto& pairTwo) { return pairOne.second < pairTwo.second; });
+        std::vector<std::pair<uint32_t, uint32_t>> asyncBinderPairs(asyncBinderMap.begin(), asyncBinderMap.end());
+        std::sort(asyncBinderPairs.begin(), asyncBinderPairs.end(),
+            [] (const auto& pairOne, const auto& pairTwo) { return pairOne.second > pairTwo.second; });
+
+        size_t freeAsyncSpaceSize = freeAsyncSpacePairs.size();
+        size_t asyncBinderSize = asyncBinderPairs.size();
+        size_t individualMaxSize = 2;
+        for (size_t i = 0; i < individualMaxSize; i++) {
+            if (i < freeAsyncSpaceSize) {
+                asyncPids.insert(freeAsyncSpacePairs[i].first);
+            }
+            if (i < asyncBinderSize) {
+                asyncPids.insert(asyncBinderPairs[i].first);
+            }
+        }
+    }
+    return binderInfos;
+}
+
+std::map<int, std::list<AppfreezeBinderCollector::PeerBinderInfo>> AppfreezeBinderCollector::BinderLineParser(
+    std::ifstream& fin, std::string& stack, std::map<uint32_t, uint32_t>& asyncBinderMap,
+    std::vector<std::pair<uint32_t, uint64_t>>& freeAsyncSpacePairs) const
+{
+    std::map<int, std::list<AppfreezeBinderCollector::PeerBinderInfo>> binderInfos;
+    std::string line;
+    bool isBinderMatchup = false;
+    TAG_LOGI(AAFwkTag::APPDFR, "start");
+    stack += "BinderCatcher --\n\n";
+    while (getline(fin, line)) {
+        stack += line + "\n";
+        if (g_overseaVersion) {
+            continue;
+        }
+        isBinderMatchup = (!isBinderMatchup && line.find("free_async_space") != line.npos) ? true : isBinderMatchup;
+        std::vector<std::string> strList = GetFileToList(line);
+        if (isBinderMatchup) {
+            if (line.find("free_async_space") == line.npos && strList.size() == ARR_SIZE &&
+                std::atoll(strList[FREE_ASYNC_INDEX].c_str()) < FREE_ASYNC_MAX) {
+                freeAsyncSpacePairs.emplace_back(std::atoi(strList[0].c_str()),
+                    std::atoll(strList[FREE_ASYNC_INDEX].c_str()));
+            }
+        } else if (line.find("async\t") != std::string::npos && strList.size() > ARR_SIZE) {
+            std::string serverPid = StrSplit(strList[3], 0);
+            std::string serverTid = StrSplit(strList[3], 1);
+            if (serverPid != "" && serverTid != "" && std::atoi(serverTid.c_str()) == 0) {
+                asyncBinderMap[std::atoi(serverPid.c_str())]++;
+            }
+        } else if (strList.size() >= ARR_SIZE) { // 7: valid array size
+            AppfreezeBinderCollector::PeerBinderInfo info = {0};
+            // 0: local id,
+            std::string clientPid = StrSplit(strList[0], 0);
+            std::string clientTid = StrSplit(strList[0], 1);
+            // 2: peer id,
+            std::string serverPid = StrSplit(strList[2], 0);
+            std::string serverTid = StrSplit(strList[2], 1);
+             // 5: wait time, s
+            std::string wait = StrSplit(strList[5], 1);
+            if (clientPid == "" || clientTid == "" || serverPid == "" || serverTid == "" || wait == "") {
+                continue;
+            }
+            info = {std::strtol(clientPid.c_str(), nullptr, DECIMAL), std::strtol(clientTid.c_str(), nullptr, DECIMAL),
+                    std::strtol(serverPid.c_str(), nullptr, DECIMAL), strtol(serverTid.c_str(), nullptr, DECIMAL)};
+            int waitTime = std::strtol(wait.c_str(), nullptr, DECIMAL);
+            TAG_LOGI(AAFwkTag::APPDFR, "server:%{public}d, client:%{public}d, wait:%{public}d", info.serverPid,
+                info.clientPid, waitTime);
+            binderInfos[info.clientPid].push_back(info);
+        }
+    }
+    TAG_LOGI(AAFwkTag::APPDFR, "binderInfos size: %{public}zu", binderInfos.size());
+    return binderInfos;
+}
+
+std::vector<std::string> AppfreezeBinderCollector::GetFileToList(std::string line) const
+{
+    std::vector<std::string> strList;
+    std::istringstream lineStream(line);
+    std::string tmpstr;
+    while (lineStream >> tmpstr) {
+        strList.push_back(tmpstr);
+    }
+    TAG_LOGD(AAFwkTag::APPDFR, "strList size: %{public}zu", strList.size());
+    return strList;
+}
+
+std::string AppfreezeBinderCollector::StrSplit(const std::string& str, uint16_t index) const
+{
+    std::vector<std::string> strings;
+    SplitStr(str, ":", strings);
+    return index < strings.size() ? strings[index] : "";
+}
+
+std::set<int> AppfreezeBinderCollector::GetBinderPeerPids(std::string& stack,
+    AppfreezeBinderCollector::ParseBinderParam params,
+    std::set<int>& asyncPids, AppfreezeBinderCollector::TerminalBinder& terminalBinder) const
+{
+    std::set<int> pids;
+    std::ifstream fin;
+    std::string path = LOGGER_DEBUG_PROC_PATH;
+    char resolvePath[PATH_MAX] = {0};
+    if (realpath(path.c_str(), resolvePath) == nullptr) {
+        TAG_LOGE(AAFwkTag::APPDFR, "invalid realpath");
+        return pids;
+    }
+    fin.open(resolvePath);
+    if (!fin.is_open()) {
+        TAG_LOGE(AAFwkTag::APPDFR, "open failed, %{public}s", resolvePath);
+        stack += "open file failed :" + path + "\r\n";
+        return pids;
+    }
+
+    stack += "\n\nPeerBinderCatcher -- pid==" + std::to_string(params.pid) + "\n\n";
+    std::map<int, std::list<AppfreezeBinderCollector::PeerBinderInfo>> binderInfos =
+        BinderParser(fin, stack, asyncPids);
+    fin.close();
+
+    if (g_overseaVersion || binderInfos.size() == 0 || binderInfos.find(params.pid) == binderInfos.end()) {
+        return pids;
+    }
+
+    ParseBinderPids(binderInfos, pids, params, true, terminalBinder);
+    for (auto& each : pids) {
+        TAG_LOGD(AAFwkTag::APPDFR, "each pids:%{public}d", each);
+    }
+    return pids;
+}
+
+void AppfreezeBinderCollector::ParseBinderPids(const std::map<int,
+    std::list<AppfreezeBinderCollector::PeerBinderInfo>>& binderInfos,
+    std::set<int>& pids, AppfreezeBinderCollector::ParseBinderParam params, bool getTerminal,
+    AppfreezeBinderCollector::TerminalBinder& terminalBinder) const
+{
+    auto it = binderInfos.find(params.pid);
+    params.layer++;
+    if (params.layer >= MAX_LAYER || it == binderInfos.end()) {
+        return;
+    }
+
+    for (auto& each : it->second) {
+        pids.insert(each.serverPid);
+        params.pid = each.serverPid;
+        if (getTerminal && ((each.clientPid == params.eventPid && each.clientTid == params.eventTid) ||
+            (each.clientPid == terminalBinder.pid && each.clientTid == terminalBinder.tid))) {
+            terminalBinder.pid = each.serverPid;
+            terminalBinder.tid = each.serverTid;
+            ParseBinderPids(binderInfos, pids, params, true, terminalBinder);
+        } else {
+            ParseBinderPids(binderInfos, pids, params, false, terminalBinder);
+        }
+    }
+}
+
+void AppfreezeBinderCollector::DeleteStack(int pid)
+{
+    std::lock_guard<ffrt::mutex> lock(catchStackMutex_);
+    auto it = catchStackMap_.find(pid);
+    if (it != catchStackMap_.end()) {
+        catchStackMap_.erase(it);
+    }
+}
+
+
+void AppfreezeBinderCollector::FindStackByPid(std::string& msg, int pid) const
+{
+    std::lock_guard<ffrt::mutex> lock(catchStackMutex_);
+    auto it = catchStackMap_.find(pid);
+    if (it != catchStackMap_.end()) {
+        msg = it->second;
+    }
+}
+
+std::pair<std::string, std::string> AppfreezeBinderCollector::CatchJsonStacktrace(int pid, const std::string& faultType,
+    DumpTiming* timing, bool fresh) const
+{
+    HITRACE_METER_FMT(HITRACE_TAG_APP, "CatchJsonStacktrace pid:%{public}d", pid);
+    HiviewDFX::DfxDumpCatcher dumplog;
+    std::string msg;
+    int timeout = IsHalfTimeout(faultType) ? 5000 : 3000;
+    int tid = 0;
+    const auto start = std::chrono::steady_clock::now();
+    std::pair<int, std::string> dumpResult = dumplog.DumpCatchWithTimeout(pid, msg, timeout, tid, true);
+    const auto finish = std::chrono::steady_clock::now();
+    if (timing != nullptr) {
+        timing->result = dumpResult.first;
+        timing->latency = std::chrono::duration_cast<std::chrono::milliseconds>(finish - start).count();
+    }
+    if (dumpResult.first == DUMP_STACK_FAILED) {
+        TAG_LOGI(AAFwkTag::APPDFR, "appfreeze catch json stacktrace failed, %{public}s", dumpResult.second.c_str());
+        msg = "Failed to dump stacktrace for " + std::to_string(pid) + "\n" + dumpResult.second + msg;
+        if (!fresh && faultType == AppFreezeType::APP_INPUT_BLOCK) {
+            FindStackByPid(msg, pid);
+        }
+    } else {
+        if (dumpResult.first == DUMP_KERNEL_STACK_SUCCESS) {
+            msg = "Failed to dump normal stacktrace for " + std::to_string(pid) + "\n" + dumpResult.second +
+                "Kernel stack is:\n" + msg;
+        }
+        if (!fresh && faultType == AppFreezeType::THREAD_BLOCK_3S) {
+            std::lock_guard<ffrt::mutex> lock(catchStackMutex_);
+            catchStackMap_[pid] = msg;
+        }
+    }
+    return std::make_pair(msg, dumpResult.second);
+}
+
+
+std::string AppfreezeBinderCollector::CatcherStacktrace(int pid, DumpTiming* timing) const
+{
+    HITRACE_METER_FMT(HITRACE_TAG_APP, "CatcherStacktrace pid:%{public}d", pid);
+    HiviewDFX::DfxDumpCatcher dumplog;
+    std::string msg;
+    const auto start = std::chrono::steady_clock::now();
+    std::pair<int, std::string> dumpResult = dumplog.DumpCatchWithTimeout(pid, msg);
+    const auto finish = std::chrono::steady_clock::now();
+    if (timing != nullptr) {
+        timing->result = dumpResult.first;
+        timing->latency = std::chrono::duration_cast<std::chrono::milliseconds>(finish - start).count();
+    }
+    if (dumpResult.first == DUMP_STACK_FAILED) {
+        TAG_LOGI(AAFwkTag::APPDFR, "appfreeze catch stacktrace failed, %{public}s",
+            dumpResult.second.c_str());
+        msg = "Failed to dump stacktrace for " + std::to_string(pid) + "\n" + dumpResult.second + msg;
+    } else if (dumpResult.first == DUMP_KERNEL_STACK_SUCCESS) {
+        msg = "Failed to dump normal stacktrace for " + std::to_string(pid) + "\n" + dumpResult.second +
+            "Kernel stack is:\n" + msg;
+    }
+    return msg;
+}
+
+bool AppfreezeBinderCollector::GetProcessKillReason(AppfreezeBinderCollector::ProcessKillInfo &killInfo, int32_t killId,
+    const std::string& killMsg)
+{
+    if (killId == INVALID_KILL_ID) {
+        killInfo.killReason = INVALID_KILL_REASON;
+        killInfo.killMsg = killMsg + " " + std::string(INVALID_KILL_REASON) + ":" + std::to_string(killId);
+        killInfo.killId = killId;
+    } else if (killId < 0) {
+        bool res = GetExitKernelReason(killInfo);
+        killInfo.killMsg = killMsg;
+        if (!res) {
+            return false;
+        }
+    } else {
+        killInfo.killReason = HiviewDFX::ProcessKillReason::GetKillReason(killId);
+        killInfo.killMsg = killMsg;
+        killInfo.killId = killId;
+        SetExitKernelReason(killInfo.pid);
+    }
+    return true;
+}
+
+static void FillProcessKillInfoFromKernel(const KillInfo& info, int64_t currentTimeNs,
+    AppfreezeBinderCollector::ProcessKillInfo& killInfo)
+{
+    int killId = static_cast<int>(info.data.id);
+    killInfo.killId = killId;
+    killInfo.adj = static_cast<int>(info.data.adj);
+    // foreground: signal/Exit death takes kernel record as authority (overrides AppMgr inferred value)
+    killInfo.foreground = info.data.foreground;
+    killInfo.timestamp = static_cast<int64_t>(info.data.timestamp);
+    killInfo.killReason = HiviewDFX::ProcessKillReason::GetKillReason(killId);
+    if (killInfo.killReason.find(INVALID_KILL_REASON) != std::string::npos) {
+        killInfo.killReason = INVALID_KILL_REASON;
+    }
+    killInfo.callingPid = static_cast<int32_t>(info.data.callingPid);
+    killInfo.callingProcessName = killInfo.callingPid > 0 ?
+        AppfreezeUtil::GetProcessNameByPid(killInfo.callingPid) : "";
+    if (killInfo.callingProcessName.empty()) {
+        TAG_LOGD(AAFwkTag::APPDFR, "get callingProcessName by pid failed, use kernel data, callingPid:%{public}d",
+            killInfo.callingPid);
+        killInfo.callingProcessName = ReadKernelProcessName(info.data.callingProcessName,
+            sizeof(info.data.callingProcessName));
+    }
+    killInfo.eventParamFirst = static_cast<int64_t>(info.data.eventParamFirst);
+    killInfo.eventParamSecond = static_cast<int64_t>(info.data.eventParamSecond);
+    killInfo.eventParamThird = static_cast<int64_t>(info.data.eventParamThird);
+    killInfo.eventParamFourth = static_cast<int64_t>(info.data.eventParamFourth);
+    killInfo.eventParamFifth = static_cast<int64_t>(info.data.eventParamFifth);
+    killInfo.eventParamSixth = static_cast<int64_t>(info.data.eventParamSixth);
+    killInfo.eventParamSeventh = static_cast<int64_t>(info.data.eventParamSeventh);
+    int kernelPid = static_cast<int>(info.data.pid);
+    TAG_LOGI(AAFwkTag::APPDFR, "Get killReason success, killId:%{public}d, adj:%{public}d, "
+        "timestamp:%{public}" PRId64 ", currentTimeNs:%{public}" PRId64 ", killReason:%{public}s, "
+        "ioctlPid:%{public}d, pid:%{public}d, paramFirst:%{public}" PRId64 ", paramSecond:%{public}"
+        PRId64 ", paramThird:%{public}" PRId64 ", paramFourth:%{public}" PRId64 ", paramFifth:%{public}"
+        PRId64 ", paramSixth:%{public}" PRId64 ", paramSeventh:%{public}" PRId64, killId, killInfo.adj,
+        killInfo.timestamp, currentTimeNs, killInfo.killReason.c_str(), kernelPid, killInfo.pid,
+        killInfo.eventParamFirst, killInfo.eventParamSecond, killInfo.eventParamThird, killInfo.eventParamFourth,
+        killInfo.eventParamFifth, killInfo.eventParamSixth, killInfo.eventParamSeventh);
+}
+
+
+bool AppfreezeBinderCollector::GetExitKernelReason(ProcessKillInfo& killInfo)
+{
+    int sysloadFd = open(DEV_SYSLOAD, O_RDWR);
+    if (sysloadFd < 0) {
+        TAG_LOGW(AAFwkTag::APPDFR, "open failed, errno:%{public}d", errno);
+        return false;
+    }
+    fdsan_exchange_owner_tag(sysloadFd, 0, FREEZE_DOMAIN);
+    KillInfo info = {0};
+    info.magic = SYSLOAD_GET_KILL_INFO_MAGIC;
+    info.pid = killInfo.pid;
+    info.structSize = sizeof(struct KillInfo);
+
+    struct timespec ts = {0, 0};
+    if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
+        TAG_LOGW(AAFwkTag::APPDFR, "GetExitKernelReason clock_gettime failed, errno:%{public}d", errno);
+    }
+    int64_t currentTimeNs = ((int64_t)ts.tv_sec * 1000000000) + ts.tv_nsec;
+ 
+    int res = ioctl(sysloadFd, GET_KILL_INFO, &info);
+    if (fdsan_close_with_tag(sysloadFd, FREEZE_DOMAIN) != 0) {
+        TAG_LOGW(AAFwkTag::APPDFR, "GetExitKernelReason fdsan close failed, errno:%{public}d", errno);
+    }
+    if (res == 0) {
+        FillProcessKillInfoFromKernel(info, currentTimeNs, killInfo);
+        return true;
+    } else {
+        killInfo.killReason = INVALID_KILL_REASON;
+        TAG_LOGW(AAFwkTag::APPDFR, "Get killReason ioctl failed, errno:%{public}d", errno);
+    }
+    return false;
+}
+
+void AppfreezeBinderCollector::SetExitKernelReason(int32_t pid)
+{
+    int sysloadFd = open(DEV_SYSLOAD, O_RDWR);
+    if (sysloadFd < 0) {
+        TAG_LOGW(AAFwkTag::APPDFR, "open failed, errno:%{public}d", errno);
+        return;
+    }
+    fdsan_exchange_owner_tag(sysloadFd, 0, FREEZE_DOMAIN);
+    KillInfo info = {0};
+    info.magic = SYSLOAD_SET_KILL_INFO_MAGIC;
+    info.pid = pid;
+    info.data.processed = true;
+    info.structSize = sizeof(struct KillInfo);
+    int res = ioctl(sysloadFd, SET_KILL_INFO, &info);
+    if (fdsan_close_with_tag(sysloadFd, FREEZE_DOMAIN) != 0) {
+        TAG_LOGW(AAFwkTag::APPDFR, "SetExitKernelReason fdsan close failed, errno:%{public}d", errno);
+    }
+    TAG_LOGI(AAFwkTag::APPDFR, "SetExitKernelReason pid:%{public}d, processed:%{public}d, res:%{public}d",
+        pid, info.data.processed, res);
+}
+
+int AppfreezeBinderCollector::GetFreezeExitReason(const std::string& eventName)
+{
+    if (eventName == AppFreezeType::THREAD_BLOCK_6S) {
+        return HiviewDFX::ProcessKillReason::KillEventId::REASON_THREAD_BLOCK_6S;
+    }
+    if (eventName == AppFreezeType::LIFECYCLE_TIMEOUT) {
+        return HiviewDFX::ProcessKillReason::KillEventId::REASON_LIFECYCLE_TIMEOUT;
+    }
+    if (eventName == AppFreezeType::APP_INPUT_BLOCK) {
+        return HiviewDFX::ProcessKillReason::KillEventId::REASON_APP_INPUT_BLOCK;
+    }
+    if (eventName == AppFreezeType::BUSSINESS_THREAD_BLOCK_6S) {
+        return HiviewDFX::ProcessKillReason::KillEventId::REASON_BUSINESS_THREAD_BLOCK_6S;
+    }
+    if (eventName == AppFreezeType::BUSINESS_INPUT_BLOCK) {
+        return HiviewDFX::ProcessKillReason::KillEventId::REASON_BUSINESS_INPUT_BLOCK;
+    }
+    return UNKNOWN_FREEZE_REASON;
+}
+
+std::string AppfreezeBinderCollector::GetFirstLine(const std::string& path)
+{
+    std::string realPath = AppfreezeUtil::FreezePathToRealPath(path);
+    if (realPath.empty()) {
+        return "";
+    }
+    std::ifstream inFile(realPath.c_str());
+    if (!inFile) {
+        return "";
+    }
+    std::string firstLine;
+    getline(inFile, firstLine);
+    inFile.close();
+    return firstLine;
+}
+
+bool AppfreezeBinderCollector::IsHalfTimeout(const std::string& faultType) const
+{
+    if (faultType == AppFreezeType::THREAD_BLOCK_3S ||
+        faultType == AppFreezeType::LIFECYCLE_HALF_TIMEOUT) {
+        return true;
+    }
+    return false;
+}
+} // namespace AppExecFwk
+} // namespace OHOS

@@ -157,7 +157,7 @@ int32_t StartupManager::BuildAutoAppStartupTaskManager(std::shared_ptr<AAFwk::Wa
         auto moduleMatcher = std::make_shared<ModuleStartStartupTaskMatcher>(moduleName);
         taskMatcher.SetModuleMatcher(moduleMatcher);
         if (startupConfig) {
-            TAG_LOGI(AAFwkTag::STARTUP, "customization: %{public}s", startupConfig->GetCustomization().c_str());
+            TAG_LOGI(AAFwkTag::STARTUP, "custom: %{public}s", startupConfig->GetCustomization().c_str());
             auto customizationMatcher =
                 std::make_shared<CustomizationStartupTaskMatcher>(startupConfig->GetCustomization());
             taskMatcher.SetCustomizationMatcher(customizationMatcher);
@@ -194,6 +194,7 @@ int32_t StartupManager::BuildAutoAppStartupTaskManager(std::shared_ptr<AAFwk::Wa
     if (startupConfig != nullptr) {
         startupTaskManager->SetConfig(startupConfig);
     }
+    startupTaskManager->SetPreAbilityStageLoad(preAbilityStageLoad);
     startupTaskManagerMap_.emplace(startupTaskManagerId, startupTaskManager);
     startupTaskManagerId++;
     return ERR_OK;
@@ -226,7 +227,7 @@ bool StartupManager::FilterMatchedStartupTask(const AppStartupTaskMatcher &taskM
             dependenciesSet->insert(dep);
         }
     }
-    TAG_LOGI(AAFwkTag::STARTUP, "matched task count:%{public}zu", outTasks.size());
+    TAG_LOGI(AAFwkTag::STARTUP, "mtc:%{public}zu", outTasks.size());
     return filterResult;
 }
 
@@ -1329,7 +1330,7 @@ bool StartupManager::ParsePreloadSystemSoAllowlist(
     const nlohmann::json &jsonStr, std::unordered_set<std::string> &allowlist)
 {
     if (jsonStr.is_discarded() || !jsonStr.is_object()) {
-        TAG_LOGW(AAFwkTag::STARTUP, "failed to parse JSON string for allowlist.");
+        TAG_LOGW(AAFwkTag::STARTUP, "parse fail allowlist.");
         return false;
     }
     if (!jsonStr.contains(SYSTEM_PRELOAD_SO_ALLOW_LIST) || !jsonStr[SYSTEM_PRELOAD_SO_ALLOW_LIST].is_array()) {

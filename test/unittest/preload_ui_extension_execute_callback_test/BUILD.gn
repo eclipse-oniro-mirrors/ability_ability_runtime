@@ -25,11 +25,13 @@ ohos_unittest("preload_ui_extension_execute_callback_stub_test") {
     "${ability_runtime_services_path}/abilitymgr/include",
     "${ability_runtime_services_path}/common/include",
     "${ability_runtime_services_path}/abilitymgr/include/preload_uiextension",
+    "mock/include",
   ]
 
   sources = [
     "${ability_runtime_services_path}/abilitymgr/src/ui_extension/preload_ui_extension_execute_callback_stub.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/ui_extension/preload_ui_extension_execute_callback_proxy.cpp",
+    "mock/src/ipc_skeleton.cpp",
     "preload_ui_extension_execute_callback_stub_test.cpp",
   ]
 

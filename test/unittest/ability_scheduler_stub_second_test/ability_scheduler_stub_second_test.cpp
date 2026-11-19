@@ -874,5 +874,35 @@ HWTEST_F(AbilitySchedulerStubSecondTest, AbilitySchedulerStubSecond_037, TestSiz
     res = stub_->ReloadInner(data2, reply);
     EXPECT_EQ(res, NO_ERROR);
 }
+
+/**
+ * @tc.name: AbilitySchedulerStubSecond_038
+ * @tc.desc: test ExecuteSkillInner with null want
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilitySchedulerStubSecondTest, AbilitySchedulerStubSecond_038, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+
+    auto res = stub_->ExecuteSkillInner(data, reply);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: AbilitySchedulerStubSecond_039
+ * @tc.desc: test ExecuteSkillInner with valid want
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilitySchedulerStubSecondTest, AbilitySchedulerStubSecond_039, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+
+    Want want;
+    data.WriteParcelable(&want);
+    auto res = stub_->ExecuteSkillInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+}
 }  // namespace AAFwk
 }  // namespace OHOS

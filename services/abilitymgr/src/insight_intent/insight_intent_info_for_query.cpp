@@ -17,6 +17,7 @@
 
 #include "string_wrapper.h"
 #include "hilog_tag_wrapper.h"
+#include "json_safe_util.h"
 #include "json_util.h"
 
 namespace OHOS {
@@ -25,7 +26,9 @@ using JsonType = AppExecFwk::JsonType;
 using ArrayType = AppExecFwk::ArrayType;
 namespace {
 int32_t g_parseResult = ERR_OK;
+constexpr size_t MAX_IPC_REWDATA_SIZE = 100 * 1024 * 1024;      // max ipc size 100MB
 std::mutex g_extraMutex;
+constexpr int32_t MAX_INTENT_SIZE = 100000;
 
 const std::map<AppExecFwk::ExecuteMode, std::string> EXECUTE_MODE_STRING_MAP = {
     {AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND, "UI_ABILITY_FOREGROUND"},
@@ -106,6 +109,25 @@ void to_json(nlohmann::json& jsonObject, const PageInfoForQuery &info)
     };
 }
 
+void FillExecuteModesFromJson(const nlohmann::json &modeArray,
+    std::vector<AppExecFwk::ExecuteMode> &outModes,
+    const std::map<std::string, AppExecFwk::ExecuteMode> &modeMap)
+{
+    for (const auto &modeStr : modeArray) {
+        if (!modeStr.is_string()) {
+            TAG_LOGE(AAFwkTag::INTENT, "modestr not string");
+            continue;
+        }
+        auto it = modeMap.find(modeStr.get<std::string>());
+        if (it != modeMap.end()) {
+            outModes.push_back(it->second);
+        } else {
+            TAG_LOGW(AAFwkTag::INTENT, "Unknown ExecuteMode: %{public}s",
+                SafeDump(modeStr, DUMP_TOKEN_MAX_LEN).c_str());
+        }
+    }
+}
+
 void from_json(const nlohmann::json &jsonObject, EntryInfoForQuery &entryInfo)
 {
     TAG_LOGD(AAFwkTag::INTENT, "EntryInfoForQuery from json");
@@ -118,18 +140,11 @@ void from_json(const nlohmann::json &jsonObject, EntryInfoForQuery &entryInfo)
         g_parseResult);
     if (jsonObject.find(INSIGHT_INTENT_EXECUTE_MODE) != jsonObjectEnd) {
         const auto &modeArray = jsonObject[INSIGHT_INTENT_EXECUTE_MODE];
-        for (const auto &modeStr : modeArray) {
-            if (!modeStr.is_string()) {
-                TAG_LOGE(AAFwkTag::INTENT, "modestr not string");
-                continue;
-            }
-            std::string modeStrValue = modeStr.get<std::string>();
-            auto it = STRING_EXECUTE_MODE_MAP.find(modeStrValue);
-            if (it != STRING_EXECUTE_MODE_MAP.end()) {
-                entryInfo.executeMode.push_back(it->second);
-            } else {
-                TAG_LOGW(AAFwkTag::INTENT, "Unknown ExecuteMode: %{public}s", modeStr.dump().c_str());
-            }
+        if (!modeArray.is_array()) {
+            TAG_LOGE(AAFwkTag::INTENT, "executeMode is not array");
+            g_parseResult = ERR_INVALID_VALUE;
+        } else {
+            FillExecuteModesFromJson(modeArray, entryInfo.executeMode, STRING_EXECUTE_MODE_MAP);
         }
     }
 }
@@ -213,6 +228,14 @@ void from_json(const nlohmann::json &jsonObject, EntityInfoForQuery &entityInfo)
         entityInfo.parentClassName,
         false,
         g_parseResult);
+    AppExecFwk::GetValueIfFindKey<std::vector<std::string>>(jsonObject,
+        jsonObjectEnd,
+        INSIGHT_INTENT_ENTITY_SUPPORTED_QUERY_PROPERTIES,
+        entityInfo.supportedQueryProperties,
+        JsonType::ARRAY,
+        false,
+        g_parseResult,
+        ArrayType::STRING);
 }
 
 void to_json(nlohmann::json& jsonObject, const EntityInfoForQuery &info)
@@ -223,7 +246,8 @@ void to_json(nlohmann::json& jsonObject, const EntityInfoForQuery &info)
         {INSIGHT_INTENT_ENTITY_ID, info.entityId},
         {INSIGHT_INTENT_ENTITY_CATEGORY, info.entityCategory},
         {INSIGHT_INTENT_PARAMETERS, info.parameters},
-        {INSIGHT_INTENT_ENTITY_PARENT_CLASS_NAME, info.parentClassName}
+        {INSIGHT_INTENT_ENTITY_PARENT_CLASS_NAME, info.parentClassName},
+        {INSIGHT_INTENT_ENTITY_SUPPORTED_QUERY_PROPERTIES, info.supportedQueryProperties},
     };
 }
 
@@ -239,18 +263,11 @@ void from_json(const nlohmann::json &jsonObject, UIAbilityIntentInfoForQuery &in
 
     if (jsonObject.find(INSIGHT_INTENT_EXECUTE_MODE) != jsonObjectEnd) {
         const auto &modeArray = jsonObject[INSIGHT_INTENT_EXECUTE_MODE];
-        for (const auto &modeStr : modeArray) {
-            if (!modeStr.is_string()) {
-                TAG_LOGE(AAFwkTag::INTENT, "modestr not string");
-                continue;
-            }
-            std::string modeStrValue = modeStr.get<std::string>();
-            auto it = executeModeMap.find(modeStrValue);
-            if (it != executeModeMap.end()) {
-                info.supportExecuteMode.push_back(it->second);
-            } else {
-                TAG_LOGW(AAFwkTag::INTENT, "Unknown ExecuteMode: %{public}s", modeStr.dump().c_str());
-            }
+        if (!modeArray.is_array()) {
+            TAG_LOGE(AAFwkTag::INTENT, "executeMode is not array");
+            g_parseResult = ERR_INVALID_VALUE;
+        } else {
+            FillExecuteModesFromJson(modeArray, info.supportExecuteMode, executeModeMap);
         }
     }
 }
@@ -358,7 +375,7 @@ void ProcessIntputParams(const nlohmann::json &jsonObject,
             g_parseResult = ERR_INVALID_VALUE;
             break;
         }
-        insightIntentInfo.inputParams.emplace_back(param.dump());
+        insightIntentInfo.inputParams.emplace_back(SafeDump(param));
     }
 }
 
@@ -386,7 +403,7 @@ void ProcessOutputParams(const nlohmann::json &jsonObject,
             g_parseResult = ERR_INVALID_VALUE;
             break;
         }
-        insightIntentInfo.outputParams.emplace_back(param.dump());
+        insightIntentInfo.outputParams.emplace_back(SafeDump(param));
     }
 }
 
@@ -497,6 +514,14 @@ void from_json(const nlohmann::json &jsonObject, InsightIntentInfoForQuery &insi
         false,
         g_parseResult,
         ArrayType::STRING);
+    AppExecFwk::GetValueIfFindKey<std::vector<std::string>>(jsonObject,
+        jsonObjectEnd,
+        INSIGHT_INTENT_PERMISSIONS,
+        insightIntentInfo.permissions,
+        JsonType::ARRAY,
+        false,
+        g_parseResult,
+        ArrayType::STRING);
     AppExecFwk::GetValueIfFindKey<std::vector<EntityInfoForQuery>>(jsonObject,
         jsonObjectEnd,
         INSIGHT_INTENT_ENTITY_INFO,
@@ -543,7 +568,7 @@ void from_json(const nlohmann::json &jsonObject, InsightIntentInfoForQuery &insi
 
     if (jsonObject.find(INSIGHT_INTENT_ENTITES) != jsonObjectEnd) {
         if (jsonObject.at(INSIGHT_INTENT_ENTITES).is_object()) {
-            insightIntentInfo.cfgEntities =  jsonObject[INSIGHT_INTENT_ENTITES].dump();
+            insightIntentInfo.cfgEntities = SafeDump(jsonObject[INSIGHT_INTENT_ENTITES]);
         } else {
             TAG_LOGE(AAFwkTag::INTENT, "type error: cfgEntities not object");
             g_parseResult = ERR_INVALID_VALUE;
@@ -597,8 +622,8 @@ void toJsonArray(nlohmann::json& jsonObject, const InsightIntentInfoForQuery &in
         if (paramStr.empty()) {
             continue;
         }
-        auto paramJson = nlohmann::json::parse(paramStr, nullptr, false);
-        if (!paramJson.is_discarded()) {
+        nlohmann::json paramJson;
+        if (SafeParse(paramStr, paramJson)) {
             inputArray.emplace_back(paramJson);
         }
     }
@@ -608,8 +633,8 @@ void toJsonArray(nlohmann::json& jsonObject, const InsightIntentInfoForQuery &in
         if (paramStr.empty()) {
             continue;
         }
-        auto paramJson = nlohmann::json::parse(paramStr, nullptr, false);
-        if (!paramJson.is_discarded()) {
+        nlohmann::json paramJson;
+        if (SafeParse(paramStr, paramJson)) {
             outputArray.emplace_back(paramJson);
         }
     }
@@ -637,6 +662,7 @@ void to_json(nlohmann::json& jsonObject, const InsightIntentInfoForQuery &info)
         {INSIGHT_INTENT_PARAMETERS, info.parameters},
         {INSIGHT_INTENT_RESULT, info.result},
         {INSIGHT_INTENT_KEYWORDS, info.keywords},
+        {INSIGHT_INTENT_PERMISSIONS, info.permissions},
         {INSIGHT_INTENT_LINK_INFO, info.linkInfo},
         {INSIGHT_INTENT_PAGE_INFO, info.pageInfo},
         {INSIGHT_INTENT_ENTRY_INFO, info.entryInfo},
@@ -649,8 +675,8 @@ void to_json(nlohmann::json& jsonObject, const InsightIntentInfoForQuery &info)
     };
     toJsonArray(jsonObject, info);
     if (!info.cfgEntities.empty()) {
-        auto cfgEntities = nlohmann::json::parse(info.cfgEntities, nullptr, false);
-        if (cfgEntities.is_discarded()) {
+        nlohmann::json cfgEntities;
+        if (!SafeParse(info.cfgEntities, cfgEntities)) {
             TAG_LOGE(AAFwkTag::INTENT, "discarded entity parameters");
             return;
         }
@@ -671,25 +697,34 @@ bool InsightIntentInfoForQuery::ReadFromParcel(Parcel &parcel)
         TAG_LOGE(AAFwkTag::INTENT, "Invalid data length");
         return false;
     }
+    if (length > MAX_IPC_REWDATA_SIZE) {
+        TAG_LOGE(AAFwkTag::INTENT, "Length is too large");
+        return false;
+    }
     const char *data = reinterpret_cast<const char *>(messageParcel->ReadRawData(length));
-    TAG_LOGD(AAFwkTag::INTENT, "ReadFromParcel data: %{public}s", data);
     if (!data) {
         TAG_LOGE(AAFwkTag::INTENT, "Fail read raw length = %{public}d", length);
         return false;
     }
-    nlohmann::json jsonObject = nlohmann::json::parse(data, nullptr, false);
-    if (jsonObject.is_discarded()) {
+    TAG_LOGD(AAFwkTag::INTENT, "ReadFromParcel data: %{public}s", data);
+    nlohmann::json jsonObject;
+    if (!SafeParse(data, jsonObject)) {
         TAG_LOGE(AAFwkTag::INTENT, "failed to parse BundleInfo");
         return false;
     }
     std::lock_guard<std::mutex> lock(g_extraMutex);
     g_parseResult = ERR_OK;
-    *this = jsonObject.get<InsightIntentInfoForQuery>();
+    InsightIntentInfoForQuery tmp;
+    if (!SafeJsonGet(jsonObject, tmp, "InsightIntentInfoForQuery")) {
+        g_parseResult = ERR_OK;
+        return false;
+    }
     if (g_parseResult != ERR_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "parse result: %{public}d", g_parseResult);
         g_parseResult = ERR_OK;
         return false;
     }
+    *this = std::move(tmp);
     return true;
 }
 
@@ -701,7 +736,15 @@ bool InsightIntentInfoForQuery::Marshalling(Parcel &parcel) const
         return false;
     }
     nlohmann::json jsonObject = *this;
-    std::string str = jsonObject.dump();
+    std::string str;
+    if (!SafeDump(jsonObject, str)) {
+        TAG_LOGE(AAFwkTag::INTENT, "SafeDump failed");
+        return false;
+    }
+    if (str.size() + 1 > MAX_IPC_REWDATA_SIZE) {
+        TAG_LOGE(AAFwkTag::INTENT, "Data size is too large");
+        return false;
+    }
     TAG_LOGD(AAFwkTag::INTENT, "Marshalling str: %{public}s", str.c_str());
     if (!messageParcel->WriteUint32(str.size() + 1)) {
         TAG_LOGE(AAFwkTag::INTENT, "Write intent info size failed");
@@ -741,8 +784,16 @@ bool InsightIntentInfoForQuery::MarshallingVector(
         nlohmann::json item = info;
         jsonArray.push_back(item);
     }
-    std::string str = jsonArray.dump();
+    std::string str;
+    if (!SafeDump(jsonArray, str)) {
+        TAG_LOGE(AAFwkTag::INTENT, "SafeDump failed");
+        return false;
+    }
     TAG_LOGD(AAFwkTag::INTENT, "MarshallingVector size: %{public}zu", str.size());
+    if (str.size() + 1 > MAX_IPC_REWDATA_SIZE) {
+        TAG_LOGE(AAFwkTag::INTENT, "Data size is too large");
+        return false;
+    }
     if (!messageParcel->WriteUint32(str.size() + 1)) {
         TAG_LOGE(AAFwkTag::INTENT, "Write size failed");
         return false;
@@ -767,13 +818,17 @@ bool InsightIntentInfoForQuery::UnmarshallingVector(
         TAG_LOGE(AAFwkTag::INTENT, "Invalid data length");
         return false;
     }
+    if (length > MAX_IPC_REWDATA_SIZE) {
+        TAG_LOGE(AAFwkTag::INTENT, "Length is too large");
+        return false;
+    }
     const char *data = reinterpret_cast<const char *>(messageParcel->ReadRawData(length));
     if (!data) {
         TAG_LOGE(AAFwkTag::INTENT, "Fail read raw length = %{public}u", length);
         return false;
     }
-    nlohmann::json jsonArray = nlohmann::json::parse(data, nullptr, false);
-    if (jsonArray.is_discarded() || !jsonArray.is_array()) {
+    nlohmann::json jsonArray;
+    if (!SafeParse(data, jsonArray) || !jsonArray.is_array() || jsonArray.size() >= MAX_INTENT_SIZE) {
         TAG_LOGE(AAFwkTag::INTENT, "Failed to parse JSON array");
         return false;
     }
@@ -781,11 +836,16 @@ bool InsightIntentInfoForQuery::UnmarshallingVector(
     g_parseResult = ERR_OK;
     infos.clear();
     for (const auto &item : jsonArray) {
-        InsightIntentInfoForQuery info = item.get<InsightIntentInfoForQuery>();
+        InsightIntentInfoForQuery info;
+        if (!SafeJsonGet(item, info, "InsightIntentInfoForQueryListItem")) {
+            TAG_LOGW(AAFwkTag::INTENT, "skip corrupt list item");
+            g_parseResult = ERR_OK;
+            continue;
+        }
         if (g_parseResult != ERR_OK) {
             TAG_LOGE(AAFwkTag::INTENT, "parse result: %{public}d", g_parseResult);
             g_parseResult = ERR_OK;
-            return false;
+            continue;
         }
         infos.emplace_back(std::move(info));
     }

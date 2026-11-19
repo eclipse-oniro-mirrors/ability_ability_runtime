@@ -42,7 +42,6 @@ std::shared_ptr<RenderRecord> RenderRecord::CreateRenderRecord(
         hostPid, renderParam, std::move(ipcFd), std::move(sharedFd), std::move(crashFd), host);
     renderRecord->SetHostUid(host->GetUid());
     renderRecord->SetHostBundleName(host->GetBundleName());
-    renderRecord->SetProcessName(host->GetProcessName());
     return renderRecord;
 }
 

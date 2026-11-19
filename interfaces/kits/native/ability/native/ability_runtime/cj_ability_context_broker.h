@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -71,6 +71,8 @@ CJ_EXPORT int32_t FFIAbilityContextBackToCallerAbilityWithResult(int64_t id,
     CJAbilityResult abilityResult, char* requestCode);
 CJ_EXPORT int32_t FFIAbilityContextSetMissionContinueState(int64_t id, int32_t state);
 CJ_EXPORT OHOS::AbilityRuntime::CConfiguration FFIAbilityContextPropConfiguration(
+    int64_t id, int32_t *errCode);
+CJ_EXPORT OHOS::AbilityRuntime::CConfigurationV2 FFIAbilityContextPropConfigurationV2(
     int64_t id, int32_t *errCode);
 CJ_EXPORT OHOS::AbilityRuntime::RetAbilityInfoV2 FFIAbilityContextPropAbilityInfo(
     int64_t id, int32_t *errCode);

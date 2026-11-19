@@ -54,8 +54,10 @@ ohos_shared_library("startup_manager_ani_kit") {
     "hilog:libhilog",
     "hilog:libhilog",
     "ipc:ipc_single",
+    "libuv:uv",
     "hisysevent:libhisysevent",
     "napi:ace_napi",
+    "node:node_header_notice",
     "runtime_core:ani",
     "runtime_core:ani_helpers",
   ]
@@ -63,4 +65,5 @@ ohos_shared_library("startup_manager_ani_kit") {
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs += [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

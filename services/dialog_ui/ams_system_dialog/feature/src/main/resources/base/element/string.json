@@ -18,55 +18,94 @@
     },
     {
       "name": "Cont_title_syyt",
-      "value": "All Intentions"
+      "value": "All intents",
+      "attr": {
+        "priority": "translate"
+      }
     },
     {
       "name": "Detail_title_ytts",
-      "value": "Intention Debugging"
+      "value": "InsightIntent debugging",
+      "attr": {
+        "priority": "translate"
+      }
     },
     {
       "name": "Detail_subtitle_ytxx",
-      "value": "Intention Details"
+      "value": "Intent information",
+      "attr": {
+        "priority": "translate"
+      }
     },
     {
       "name": "Detail_subtitle_ytcs",
-      "value": "Intention Parameter"
+      "value": "Intent parameters",
+      "attr": {
+        "priority": "translate"
+      }
     },
     {
       "name": "Detail_btn_zxyt",
-      "value": "Implementation Intention"
+      "value": "Run intent",
+      "attr": {
+        "priority": "translate"
+      }
     },
     {
       "name": "Detail_stitle_zxjg",
-      "value": "Results of Execution"
+      "value": "Execution result",
+      "attr": {
+        "priority": "translate"
+      }
     },
     {
       "name": "Detail_ytbm",
-      "value": "Intention Bundle Name"
+      "value": "Package name",
+      "attr": {
+        "priority": "translate"
+      }
     },
     {
       "name": "Detail_ytmc",
-      "value": "Intention Name"
+      "value": "Intent name",
+      "attr": {
+        "priority": "translate"
+      }
     },
     {
       "name": "Detail_zxms",
-      "value": "Execution Mode"
+      "value": "Execution mode",
+      "attr": {
+        "priority": "translate"
+      }
     },
     {
       "name": "Tips_bt",
-      "value": "required"
+      "value": "Required field",
+      "attr": {
+        "priority": "translate"
+      }
     },
     {
       "name": "Btn_qr",
-      "value": "confirm"
+      "value": "OK",
+      "attr": {
+        "priority": "translate"
+      }
     },
     {
       "name": "Btn_tj",
-      "value": "add"
+      "value": "Add",
+      "attr": {
+        "priority": "translate"
+      }
     },
     {
       "name": "Btn_sc",
-      "value": "delete"
+      "value": "Delete",
+      "attr": {
+        "priority": "translate"
+      }
     },
     {
       "name": "tips_qsbtzd",

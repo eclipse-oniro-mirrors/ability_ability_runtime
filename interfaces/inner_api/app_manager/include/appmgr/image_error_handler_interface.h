@@ -46,6 +46,8 @@ public:
         ERR_INNER = 11,
         ERR_TEMPLATE_DIED = 12,
         ERR_FORKALL_BUSY = 13,
+        ERR_EXISTS_ILLEGAL_BINDER = 14,
+        ERR_LAST_PROCESS_NOT_FULLY_EXITED = 15,
     };
 };
 } // namespace AppExecFwk

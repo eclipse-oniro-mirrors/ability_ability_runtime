@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,8 +15,11 @@
 
 #include "ability_auto_startup_service.h"
 
+#include <charconv>
+
 #include "ability_auto_startup_data_manager.h"
 #include "ability_manager_service.h"
+#include "accesstoken_kit.h"
 #include "app_utils.h"
 #include "auto_startup_callback_proxy.h"
 #include "auto_startup_interface.h"
@@ -43,7 +46,26 @@ constexpr const char* HIDDEN_START_AUTOSTARTUP = "hiddenStartAutoStartup";
 
 AbilityAutoStartupService::AbilityAutoStartupService() {}
 
-AbilityAutoStartupService::~AbilityAutoStartupService() {}
+AbilityAutoStartupService::~AbilityAutoStartupService()
+{
+    {
+        std::lock_guard<std::mutex> deathLock(deathRecipientsMutex_);
+        for (auto &entry : deathRecipients_) {
+            if (entry.first != nullptr && entry.second != nullptr) {
+                wptr<IRemoteObject> weakCallback = entry.first;
+                auto callback = weakCallback.promote();
+                if (callback != nullptr) {
+                    callback->RemoveDeathRecipient(entry.second);
+                }
+            }
+        }
+        deathRecipients_.clear();
+    }
+    {
+        std::lock_guard<std::mutex> lock(autoStartUpMutex_);
+        callbackVector_.clear();
+    }
+}
 
 int32_t AbilityAutoStartupService::RegisterAutoStartupSystemCallback(const sptr<IRemoteObject> &callback)
 {
@@ -81,9 +103,9 @@ int32_t AbilityAutoStartupService::UnregisterAutoStartupSystemCallback(const spt
         return code;
     }
 
+    bool isFound = false;
     {
         std::lock_guard<std::mutex> lock(autoStartUpMutex_);
-        bool isFound = false;
         auto item = callbackVector_.begin();
         while (item != callbackVector_.end()) {
             if (*item == callback) {
@@ -95,6 +117,16 @@ int32_t AbilityAutoStartupService::UnregisterAutoStartupSystemCallback(const spt
         }
         if (!isFound) {
             TAG_LOGD(AAFwkTag::AUTO_STARTUP, "Callback not exist");
+        }
+    }
+
+    // Clean up death recipients if callback was found and is not null
+    if (isFound && callback != nullptr) {
+        std::lock_guard<std::mutex> deathLock(deathRecipientsMutex_);
+        auto iter = deathRecipients_.find(callback);
+        if (iter != deathRecipients_.end()) {
+            callback->RemoveDeathRecipient(iter->second);
+            deathRecipients_.erase(iter);
         }
     }
     return ERR_OK;
@@ -122,6 +154,12 @@ int32_t AbilityAutoStartupService::SetApplicationAutoStartup(const AutoStartupIn
         return code;
     }
 
+    // Check cross-user permission with the real userId from BundleManager
+    code = VerifyCrossUserAccountPermission(abilityData);
+    if (code != ERR_OK) {
+        return code;
+    }
+
     AutoStartupInfo fullInfo(info);
     fullInfo.abilityTypeName = abilityData.abilityTypeName;
     fullInfo.setterUserId = abilityData.setterUserId;
@@ -130,6 +168,11 @@ int32_t AbilityAutoStartupService::SetApplicationAutoStartup(const AutoStartupIn
     fullInfo.canUserModify = true;
     fullInfo.setterType = AutoStartupSetterType::USER;
 
+    if (fullInfo.isDirectBoot && CheckBootAppPermission(fullInfo) != ERR_OK) {
+        TAG_LOGE(AAFwkTag::AUTO_STARTUP, "target not authorized for direct boot, bundle:%{public}s user:%{public}d",
+            fullInfo.bundleName.c_str(), fullInfo.userId);
+        return ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT;
+    }
     return InnerSetApplicationAutoStartup(fullInfo);
 }
 
@@ -180,6 +223,12 @@ int32_t AbilityAutoStartupService::CancelApplicationAutoStartup(const AutoStartu
 
     AutoStartupAbilityData abilityData;
     code = GetAbilityInfo(info, abilityData);
+    if (code != ERR_OK) {
+        return code;
+    }
+
+    // Check cross-user permission with the real userId from BundleManager
+    code = VerifyCrossUserAccountPermission(abilityData);
     if (code != ERR_OK) {
         return code;
     }
@@ -259,7 +308,7 @@ int32_t AbilityAutoStartupService::GetAutoStartupStatusForSelf(uint32_t callerTo
 int32_t AbilityAutoStartupService::QueryAllAutoStartupApplicationsWithoutPermission(
     std::vector<AutoStartupInfo> &infoList, int32_t userId)
 {
-    if (!AAFwk::AppUtils::GetInstance().IsProductAppbootSettingEnabled()) {
+    if (!AAFwk::AppUtils::GetInstance().IsAutoStartupSupported()) {
         TAG_LOGE(AAFwkTag::AUTO_STARTUP, "Disabled config");
         return ERR_NOT_SUPPORTED_PRODUCT_TYPE;
     }
@@ -279,6 +328,7 @@ int32_t AbilityAutoStartupService::CheckAutoStartupData(const std::string &bundl
     int32_t appIndex = 0;
     AppExecFwk::BundleInfo bundleInfo;
     int32_t userId = uid / AppExecFwk::Constants::BASE_USER_RANGE;
+    ResetDirectBootOnBundleUpdate(bundleName, uid);
     int32_t validUserId = GetValidUserId(userId);
     if (!GetBundleInfo(bundleName, validUserId, appIndex, bundleInfo)) {
         return INNER_ERR;
@@ -312,6 +362,50 @@ int32_t AbilityAutoStartupService::CheckAutoStartupData(const std::string &bundl
             tokenId);
     }
     return ERR_OK;
+}
+
+void AbilityAutoStartupService::ResetDirectBootOnBundleUpdate(const std::string &bundleName, int32_t uid)
+{
+    int32_t userId = uid / AppExecFwk::Constants::BASE_USER_RANGE;
+    auto dataManager = DelayedSingleton<AbilityAutoStartupDataManager>::GetInstance();
+    std::vector<AutoStartupInfo> infoList;
+    int32_t result = dataManager->QueryAllAutoStartupApplications(infoList, userId, false);
+    if (result != ERR_OK) {
+        TAG_LOGE(AAFwkTag::AUTO_STARTUP, "query direct boot data failed, bundle:%{public}s user:%{public}d "
+            "result:%{public}d", bundleName.c_str(), userId, result);
+        return;
+    }
+    for (const auto &info : infoList) {
+        if (info.bundleName != bundleName || info.userId != userId || !info.isDirectBoot) {
+            continue;
+        }
+        AppExecFwk::BundleInfo bundleInfo;
+        if (!GetBundleInfo(info.bundleName, info.userId, info.appCloneIndex, bundleInfo) ||
+            bundleInfo.applicationInfo.accessTokenId == Security::AccessToken::INVALID_TOKENID) {
+            TAG_LOGE(AAFwkTag::AUTO_STARTUP, "get updated target token failed, bundle:%{public}s user:%{public}d "
+                "appIndex:%{public}d module:%{public}s ability:%{public}s", info.bundleName.c_str(), info.userId,
+                info.appCloneIndex, info.moduleName.c_str(), info.abilityName.c_str());
+            continue;
+        }
+        if (bundleInfo.applicationInfo.uid != uid) {
+            continue;
+        }
+        AutoStartupInfo targetInfo(info);
+        targetInfo.accessTokenId = std::to_string(bundleInfo.applicationInfo.accessTokenId);
+        if (CheckBootAppPermission(targetInfo) == ERR_OK) {
+            continue;
+        }
+        result = dataManager->ResetAutoStartupDirectBoot(info);
+        if (result != ERR_OK) {
+            TAG_LOGE(AAFwkTag::AUTO_STARTUP, "reset direct boot failed, bundle:%{public}s user:%{public}d "
+                "appIndex:%{public}d module:%{public}s ability:%{public}s result:%{public}d",
+                info.bundleName.c_str(), info.userId, info.appCloneIndex, info.moduleName.c_str(),
+                info.abilityName.c_str(), result);
+            continue;
+        }
+        TAG_LOGI(AAFwkTag::AUTO_STARTUP, "reset direct boot after update, bundle:%{public}s user:%{public}d "
+            "appIndex:%{public}d", info.bundleName.c_str(), info.userId, info.appCloneIndex);
+    }
 }
 
 void AbilityAutoStartupService::GetCallbackVector(std::vector<sptr<IRemoteObject>>& callbackVector)
@@ -431,7 +525,7 @@ std::string AbilityAutoStartupService::GetSelfApplicationBundleName()
 bool AbilityAutoStartupService::CheckSelfApplication(const std::string &bundleName)
 {
     TAG_LOGD(AAFwkTag::AUTO_STARTUP, "Called, bundleName: %{public}s", bundleName.c_str());
-    return GetSelfApplicationBundleName() == bundleName ? true : false;
+    return GetSelfApplicationBundleName() == bundleName;
 }
 
 int32_t AbilityAutoStartupService::GetValidUserId(int32_t userId)
@@ -458,7 +552,7 @@ bool AbilityAutoStartupService::GetBundleInfo(const std::string &bundleName, int
         TAG_LOGE(AAFwkTag::AUTO_STARTUP, "null bundleMgrHelper");
         return false;
     }
-    if (appIndex == 0) {
+    if (appIndex == 0 || appIndex == AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) {
         auto flags =
             AppExecFwk::BundleFlag::GET_BUNDLE_WITH_ABILITIES | AppExecFwk::BundleFlag::GET_BUNDLE_WITH_EXTENSION_INFO;
         if (!IN_PROCESS_CALL(bundleMgrHelper->GetBundleInfo(
@@ -466,7 +560,7 @@ bool AbilityAutoStartupService::GetBundleInfo(const std::string &bundleName, int
             TAG_LOGE(AAFwkTag::AUTO_STARTUP, "get bundleInfo fail");
             return false;
         }
-    } else if (appIndex <= GlobalConstant::MAX_APP_CLONE_INDEX) {
+    } else if (GlobalConstant::IsAppCloneIndex(appIndex) || GlobalConstant::IsSandboxCloneIndex(appIndex)) {
         auto bundleFlag = static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION) +
             static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_ABILITY) +
             static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_EXTENSION_ABILITY) +
@@ -569,9 +663,27 @@ std::shared_ptr<AppExecFwk::BundleMgrClient> AbilityAutoStartupService::GetBundl
     return bundleMgrClient_;
 }
 
+int32_t AbilityAutoStartupService::CheckBootAppPermission(const AutoStartupInfo &info)
+{
+    Security::AccessToken::AccessTokenID tokenId = Security::AccessToken::INVALID_TOKENID;
+    const auto *end = info.accessTokenId.data() + info.accessTokenId.size();
+    auto [ptr, ec] = std::from_chars(info.accessTokenId.data(), end, tokenId);
+    if (ec != std::errc() || ptr != end || tokenId == Security::AccessToken::INVALID_TOKENID) {
+        TAG_LOGE(AAFwkTag::AUTO_STARTUP, "invalid boot app token");
+        return ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT;
+    }
+    if (Security::AccessToken::AccessTokenKit::VerifyAccessToken(tokenId,
+        PermissionConstants::PERMISSION_ALLOW_DIRECT_BOOT) != Security::AccessToken::PERMISSION_GRANTED) {
+        TAG_LOGE(AAFwkTag::AUTO_STARTUP, "target lacks ALLOW_DIRECT_BOOT permission: %{public}s",
+            info.bundleName.c_str());
+        return ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT;
+    }
+    return ERR_OK;
+}
+
 int32_t AbilityAutoStartupService::CheckPermissionForSystem()
 {
-    if (!AAFwk::AppUtils::GetInstance().IsProductAppbootSettingEnabled()) {
+    if (!AAFwk::AppUtils::GetInstance().IsAutoStartupSupported()) {
         TAG_LOGE(AAFwkTag::AUTO_STARTUP, "Disabled config");
         return ERR_NOT_SUPPORTED_PRODUCT_TYPE;
     }
@@ -587,20 +699,6 @@ int32_t AbilityAutoStartupService::CheckPermissionForSystem()
         return CHECK_PERMISSION_FAILED;
     }
 
-    return ERR_OK;
-}
-
-int32_t AbilityAutoStartupService::CheckPermissionForSelf(const std::string &bundleName)
-{
-    if (!AAFwk::AppUtils::GetInstance().IsProductAppbootSettingEnabled()) {
-        TAG_LOGE(AAFwkTag::AUTO_STARTUP, "Disabled config");
-        return ERR_NOT_SUPPORTED_PRODUCT_TYPE;
-    }
-
-    if (!CheckSelfApplication(bundleName)) {
-        TAG_LOGE(AAFwkTag::AUTO_STARTUP, "Not self application");
-        return ERR_NOT_SELF_APPLICATION;
-    }
     return ERR_OK;
 }
 
@@ -659,6 +757,11 @@ int32_t AbilityAutoStartupService::SetApplicationAutoStartupByEDM(const AutoStar
     if (errorCode != ERR_OK) {
         return errorCode;
     }
+    // Check cross-user permission with the real userId from BundleManager
+    errorCode = VerifyCrossUserAccountPermission(abilityData);
+    if (errorCode != ERR_OK) {
+        return errorCode;
+    }
     AutoStartupInfo fullInfo(info);
     fullInfo.abilityTypeName = abilityData.abilityTypeName;
     fullInfo.accessTokenId = abilityData.accessTokenId;
@@ -678,6 +781,11 @@ int32_t AbilityAutoStartupService::CancelApplicationAutoStartupByEDM(const AutoS
     }
     AutoStartupAbilityData abilityData;
     errorCode = GetAbilityInfo(info, abilityData);
+    if (errorCode != ERR_OK) {
+        return errorCode;
+    }
+    // Check cross-user permission with the real userId from BundleManager
+    errorCode = VerifyCrossUserAccountPermission(abilityData);
     if (errorCode != ERR_OK) {
         return errorCode;
     }
@@ -732,6 +840,29 @@ int32_t AbilityAutoStartupService::CheckPermissionForEDM()
         TAG_LOGE(AAFwkTag::AUTO_STARTUP, "verify PERMISSION_MANAGE_APP_BOOT_INTERNAL fail");
         return CHECK_PERMISSION_FAILED;
     }
+
+    return ERR_OK;
+}
+
+int32_t AbilityAutoStartupService::VerifyCrossUserAccountPermission(const AutoStartupAbilityData &abilityData)
+{
+    // When setterUserId is U0 or U1, allow directly
+    if (abilityData.setterUserId == U0_USER_ID || abilityData.setterUserId == U1_USER_ID) {
+        TAG_LOGD(AAFwkTag::AUTO_STARTUP, "setterUserId is U0 or U1, allow");
+        return ERR_OK;
+    }
+
+    // If setterUserId is not U0/U1 and setterUserId != userId, need to verify cross-user permission
+    if (abilityData.setterUserId != abilityData.userId) {
+        int32_t code = AAFwk::PermissionVerification::GetInstance()->VerifyAccountPermission();
+        if (code != ERR_OK) {
+            TAG_LOGE(AAFwkTag::AUTO_STARTUP,
+                "VerifyAccountPermission failed, setterUserId: %{public}d, userId: %{public}d",
+                abilityData.setterUserId, abilityData.userId);
+            return code;
+        }
+    }
+
     return ERR_OK;
 }
 

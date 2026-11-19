@@ -25,6 +25,7 @@
 
 namespace OHOS {
 namespace AppExecFwk {
+typedef double (*GetThreadCpuLoad)(int);
 class AppfreezeCpuFreqManager : public DelayedSingleton<AppfreezeCpuFreqManager>,
     public std::enable_shared_from_this<AppfreezeCpuFreqManager> {
         DISALLOW_COPY_AND_MOVE(AppfreezeCpuFreqManager);
@@ -48,6 +49,8 @@ private:
     uint64_t GetProcessCpuTime(int32_t pid);
     uint64_t GetDeviceRuntime();
     uint64_t GetAppCpuTime(int32_t pid);
+    GetThreadCpuLoad GetThreadCpuLoadFunc();
+    double GetDimps();
     double GetOptimalCpuTime(int32_t pid);
     std::string GetTimeStampStr(uint64_t start);
     std::string GetStaticInfoHead();
@@ -59,6 +62,7 @@ private:
     bool IsContainHalfData(const std::string &key, CpuDataProcessor &cpuData, int32_t pid);
     std::string GetFreezeLogHead(const std::string &bundleName);
     uint64_t GetInterval(uint64_t warnTime, uint64_t blockTime);
+    uint64_t ClockTicksToMs(uint64_t cpuTime);
 
     static ffrt::mutex freezeInfoMutex_;
     static int cpuCount_;

@@ -30,6 +30,7 @@ enum class KeepAliveSetter : int32_t {
     UNSPECIFIED = -1,
     SYSTEM = 0,
     USER = 1,
+    MAX
 };
 
 /**
@@ -40,6 +41,7 @@ enum class KeepAliveAppType : int32_t {
     UNSPECIFIED = 0,
     THIRD_PARTY = 1,
     SYSTEM = 2,
+    MAX
 };
 
 /**
@@ -50,6 +52,7 @@ enum class KeepAlivePolicy : int32_t {
     UNSPECIFIED = 0,
     NOT_ALLOW_CANCEL = 1,
     ALLOW_CANCEL = 2,
+    MAX
 };
 
 /**
@@ -71,9 +74,9 @@ public:
 };
 
 struct KeepAliveStatus {
-    int32_t code;
-    int32_t setterId;
-    KeepAliveSetter setter;
+    int32_t code = -1;
+    int32_t setterId = -1;
+    KeepAliveSetter setter = KeepAliveSetter::UNSPECIFIED;
     KeepAlivePolicy policy = KeepAlivePolicy::UNSPECIFIED;
 };
 } // namespace AbilityRuntime

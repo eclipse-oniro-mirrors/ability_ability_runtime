@@ -40,6 +40,8 @@ public:
 
     void SetConfig(const std::shared_ptr<StartupConfig> &config);
 
+    void SetPreAbilityStageLoad(bool preAbilityStageLoad);
+
     size_t GetStartupTaskCount() const;
 
     std::map<std::string, std::shared_ptr<StartupTask>> GetStartupTasks();
@@ -61,6 +63,7 @@ public:
 private:
     uint32_t startupTaskManagerId_ = 0;
     std::shared_ptr<StartupConfig> config_;
+    bool preAbilityStageLoad_ = false;
     std::shared_ptr<StartupTaskDispatcher> dispatcher_;
     std::map<std::string, std::shared_ptr<StartupTask>> tasks_;
     std::shared_ptr<AppExecFwk::EventHandler> mainHandler_;

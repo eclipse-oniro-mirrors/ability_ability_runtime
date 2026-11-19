@@ -72,6 +72,24 @@ typedef enum {
      */
     ABILITY_RUNTIME_ERROR_CODE_INCORRECT_ABILITY_TYPE = 16000002,
     /**
+     * Cannot start an invisible component.
+     *
+     * @since 26.0.0
+     */
+    ABILITY_RUNTIME_ERROR_CODE_VISIBILITY_VERIFICATION_FAILED = 16000004,
+    /**
+     * The specified process does not have permission.
+     *
+     * @since 26.0.0
+     */
+    ABILITY_RUNTIME_ERROR_CODE_STATIC_CFG_PERMISSION = 16000005,
+    /**
+     * Cross-user operations are not allowed.
+     *
+     * @since 26.0.0
+     */
+    ABILITY_RUNTIME_ERROR_CODE_CROSS_USER_OPERATION = 16000006,
+    /**
      * @error The crowdtesting application expires.
      * @since 15
      */
@@ -153,6 +171,73 @@ typedef enum {
      * @since 21
      */
     ABILITY_RUNTIME_ERROR_CODE_MAIN_THREAD_NOT_SUPPORTED = 16000134,
+    /**
+     * The target application does not have running abilities with UI.
+     *
+     * @since 26.0.0
+     */
+    ABILITY_RUNTIME_ERROR_CODE_NO_RUNNING_ABILITIES_WITH_UI = 16000170,
+    /**
+     * The API call frequency is too high and exceeds the rate control limit.
+     *
+     * @since 26.0.0
+     */
+    ABILITY_RUNTIME_ERROR_CODE_UPPER_RATE_LIMIT = 16000171,
+    /**
+     * The number of connections exceeds limit.
+     *
+     * @since 26.0.0
+     */
+    ABILITY_RUNTIME_ERROR_CODE_UPPER_CONNECTION_NUMBER_LIMIT = 16000172,
+    /**
+     * The requested property, method, enum, or struct member is not found.
+     *
+     * @since 26.0.0
+     */
+    ABILITY_RUNTIME_ERROR_CODE_PROPERTY_NOT_FOUND = 16000173,
+    /**
+     * The runtime value type does not match the expected metadata type.
+     *
+     * @since 26.0.0
+     */
+    ABILITY_RUNTIME_ERROR_CODE_TYPE_MISMATCH = 16000174,
+    /**
+     * The IPC request to the remote service fails.
+     *
+     * @since 26.0.0
+     */
+    ABILITY_RUNTIME_ERROR_CODE_SEND_REQUEST_FAILED = 16000175,
+    /**
+     * Caller and target are not in the same application for IN_PROCESS mode.
+     *
+     * @since 26.0.0
+     */
+    ABILITY_RUNTIME_ERROR_CODE_CROSS_APP_IN_PROCESS = 16000176,
+    /**
+     * The native ability wrapper is invalid or incomplete.
+     *
+     * @since 26.0.0
+     */
+    ABILITY_RUNTIME_ERROR_CODE_ABILITY_WRAPPER_INVALID = 16000177,
+    /**
+     * The type library metadata is invalid, e.g. missing or duplicate main interface.
+     *
+     * @since 26.0.0
+     */
+    ABILITY_RUNTIME_ERROR_CODE_METADATA_INVALID = 16000178,
+    /**
+     * The buffer is too small.
+     *
+     * @since 26.1.0
+     */
+    ABILITY_RUNTIME_ERROR_CODE_BUFFER_TOO_SMALL = 16000179,
+    /**
+     * The child process does not exist, or is not created by the current application,
+     * or the API is called in a child process.
+     *
+     * @since 26.1.0
+     */
+    ABILITY_RUNTIME_ERROR_CODE_CHILD_PROCESS_NOT_EXIST = 16000206,
 } AbilityRuntime_ErrorCode;
 
 #ifdef __cplusplus

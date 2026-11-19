@@ -19,6 +19,7 @@
 #include "ability_util.h"
 #include "distributed_client.h"
 #include "hitrace_meter.h"
+#include "mock_session_manager_service.h"
 #include "permission_constants.h"
 #include "session_manager_lite.h"
 #include "utils/app_mgr_util.h"
@@ -41,7 +42,8 @@ PendingWantManager::~PendingWantManager()
 }
 
 sptr<IWantSender> PendingWantManager::GetWantSender(int32_t callingUid, int32_t uid, const bool isSystemApp,
-    const WantSenderInfo &wantSenderInfo, const sptr<IRemoteObject> &callerToken, int32_t appIndex)
+    const WantSenderInfo &wantSenderInfo, const sptr<IRemoteObject> &callerToken, int32_t appIndex,
+    int32_t publisherUid)
 {
     TAG_LOGD(AAFwkTag::WANTAGENT, "begin");
     if (wantSenderInfo.type != static_cast<int32_t>(OperationType::SEND_COMMON_EVENT)) {
@@ -64,7 +66,7 @@ sptr<IWantSender> PendingWantManager::GetWantSender(int32_t callingUid, int32_t 
     if (wantSenderInfo.type != static_cast<int32_t>(OperationType::SEND_COMMON_EVENT) &&
         !isSystemApp && !AAFwk::PermissionVerification::GetInstance()->IsSACall()) {
         for (auto it = info.allWants.begin(); it != info.allWants.end();) {
-        if (info.bundleName != it->want.GetBundle()) {
+        if (info.bundleName != it->want.GetBundleNameRef()) {
                 it = info.allWants.erase(it);
             } else {
                 it->want.RemoveParam("ohos.extra.param.key.appCloneIndex");
@@ -73,22 +75,21 @@ sptr<IWantSender> PendingWantManager::GetWantSender(int32_t callingUid, int32_t 
         }
     }
 
-    return GetWantSenderLocked(callingUid, uid, wantSenderInfo.userId, info, callerToken, appIndex);
+    return GetWantSenderLocked(callingUid, uid, wantSenderInfo.userId, info, callerToken, appIndex, publisherUid);
 }
 
-void SendWantAgentNumberEvent(std::shared_ptr<PendingWantKey> pendingKey, int32_t wantAgentNumber)
+void SendWantAgentNumberEvent(std::shared_ptr<PendingWantKey> pendingKey, int32_t wantAgentNumber, int32_t callerUid)
 {
     std::string bundleName = pendingKey->GetBundleName();
-    std::int32_t appIndex = pendingKey->GetAppIndex();
 
     EventInfo eventInfo;
     eventInfo.callerBundleName = bundleName;
-    eventInfo.callerUid = appIndex;
+    eventInfo.callerUid = callerUid;
     eventInfo.wantAgentNumber = wantAgentNumber;
     EventReport::SendWantAgentEvent(EventName::WANTAGENT_NUMBER, HISYSEVENT_STATISTIC, eventInfo);
 }
 
-void PendingWantManager::HandleAddWantAgentNumber(std::shared_ptr<PendingWantKey> pendingKey)
+void PendingWantManager::HandleAddWantAgentNumber(std::shared_ptr<PendingWantKey> pendingKey, int32_t callerUid)
 {
     if (pendingKey == nullptr) {
         return;
@@ -109,18 +110,18 @@ void PendingWantManager::HandleAddWantAgentNumber(std::shared_ptr<PendingWantKey
         if ((it->second.currentNumber > WANTAGENT_NUMBER_THRESHOLD) &&
             (it->second.currentNumber - it->second.latestMinNumber > WANTAGENT_FLOAT_THRESHOLD)) {
             if (it->second.currentNumber % DFX_INTERVAL == 0) {
-                SendWantAgentNumberEvent(pendingKey, it->second.currentNumber);
+                SendWantAgentNumberEvent(pendingKey, it->second.currentNumber, callerUid);
             }
         }
     } else { // First DFX
         if (it->second.currentNumber > WANTAGENT_NUMBER_THRESHOLD) {
-            SendWantAgentNumberEvent(pendingKey, it->second.currentNumber);
+            SendWantAgentNumberEvent(pendingKey, it->second.currentNumber, callerUid);
             it->second.DFXFlag = true;
         }
     }
 }
 
-void PendingWantManager::AddWantAgentNumber(std::shared_ptr<PendingWantKey> pendingKey)
+void PendingWantManager::AddWantAgentNumber(std::shared_ptr<PendingWantKey> pendingKey, int32_t callerUid)
 {
     // check is third-party hap
     if (PermissionVerification::GetInstance()->IsSystemAppCall() ||
@@ -128,7 +129,7 @@ void PendingWantManager::AddWantAgentNumber(std::shared_ptr<PendingWantKey> pend
         TAG_LOGD(AAFwkTag::WANTAGENT, "systemCall");
         return;
     }
-    HandleAddWantAgentNumber(pendingKey);
+    HandleAddWantAgentNumber(pendingKey, callerUid);
 }
 
 void PendingWantManager::HandleReduceWantAgentNumber(std::shared_ptr<PendingWantKey> pendingKey)
@@ -164,10 +165,11 @@ void PendingWantManager::ReduceWantAgentNumber(std::shared_ptr<PendingWantKey> p
 }
 
 sptr<IWantSender> PendingWantManager::GetWantSenderLocked(const int32_t callingUid, const int32_t uid,
-    const int32_t userId, WantSenderInfo &wantSenderInfo, const sptr<IRemoteObject> &callerToken, int32_t appIndex)
+    const int32_t userId, WantSenderInfo &wantSenderInfo, const sptr<IRemoteObject> &callerToken, int32_t appIndex,
+    int32_t publisherUid)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    TAG_LOGI(AAFwkTag::WANTAGENT, "begin");
+    TAG_LOGD(AAFwkTag::WANTAGENT, "begin");
 
     bool needCreate = (static_cast<uint32_t>(wantSenderInfo.flags) &
         static_cast<uint32_t>(Flags::NO_BUILD_FLAG)) == 0;
@@ -189,63 +191,107 @@ sptr<IWantSender> PendingWantManager::GetWantSenderLocked(const int32_t callingU
         pendingKey->SetRequestResolvedType(wantSenderInfo.allWants.back().resolvedTypes);
         pendingKey->SetAllWantsInfos(wantSenderInfo.allWants);
     }
-    std::lock_guard<ffrt::mutex> locker(mutex_);
-    auto ref = GetPendingWantRecordByKey(pendingKey);
-    if (ref != nullptr) {
-        if (!needCancel) {
-            if (needUpdate && wantSenderInfo.allWants.size() > 0) {
-                ref->GetKey()->SetRequestWant(wantSenderInfo.allWants.back().want);
-                ref->GetKey()->SetRequestResolvedType(wantSenderInfo.allWants.back().resolvedTypes);
-                wantSenderInfo.allWants.back().want = ref->GetKey()->GetRequestWant();
-                wantSenderInfo.allWants.back().resolvedTypes = ref->GetKey()->GetRequestResolvedType();
-                ref->GetKey()->SetAllWantsInfos(wantSenderInfo.allWants);
-                ref->SetCallerUid(callingUid);
+    std::vector<std::pair<int32_t, sptr<IWantReceiver>>> cancelCallbacks;
+    sptr<PendingWantRecord> result;
+    {
+        std::lock_guard<ffrt::mutex> locker(mutex_);
+        auto ref = GetPendingWantRecordByKey(pendingKey);
+        if (ref != nullptr) {
+            if (!needCancel) {
+                if (needUpdate && wantSenderInfo.allWants.size() > 0) {
+                    ref->GetKey()->SetRequestWant(wantSenderInfo.allWants.back().want);
+                    ref->GetKey()->SetRequestResolvedType(wantSenderInfo.allWants.back().resolvedTypes);
+                    wantSenderInfo.allWants.back().want = ref->GetKey()->GetRequestWant();
+                    wantSenderInfo.allWants.back().resolvedTypes = ref->GetKey()->GetRequestResolvedType();
+                    ref->GetKey()->SetAllWantsInfos(wantSenderInfo.allWants);
+                    ref->SetCallerUid(callingUid);
+                    ref->SetPublisherUid(publisherUid);
+                }
+                bool isThirdParty = !PermissionVerification::GetInstance()->IsSystemAppCall() &&
+                    !PermissionVerification::GetInstance()->IsSACall();
+                if (!isThirdParty) {
+                    ref->SetIsThirdParty(false);
+                }
+                ref->MarkSharedIfNeeded(IPCSkeleton::GetCallingPid());
+                result = ref;
+            } else {
+                TAG_LOGI(AAFwkTag::WANTAGENT, "cancel");
+                CollectCancelCallbacksLocked(*ref, cancelCallbacks);
+                ReduceWantAgentNumber(ref->GetKey());
+                wantRecords_.erase(ref->GetKey());
+                if (!needCreate) {
+                    result = ref;
+                }
             }
-            return ref;
         }
-        MakeWantSenderCanceledLocked(*ref);
-        ReduceWantAgentNumber(ref->GetKey());
-        wantRecords_.erase(ref->GetKey());
-    }
 
-    if (!needCreate) {
-        return (ref != nullptr) ? ref : nullptr;
+        if (result == nullptr && needCreate) {
+            sptr<PendingWantRecord> rec =
+                new (std::nothrow) PendingWantRecord(shared_from_this(), uid, IPCSkeleton::GetCallingTokenID(),
+                callerToken, pendingKey);
+            if (rec != nullptr) {
+                rec->SetCallerUid(callingUid);
+                rec->SetPublisherUid(publisherUid);
+                rec->SetCreatorPid(IPCSkeleton::GetCallingPid());
+                rec->SetIsThirdParty(!PermissionVerification::GetInstance()->IsSystemAppCall() &&
+                    !PermissionVerification::GetInstance()->IsSACall());
+                pendingKey->SetCode(PendingRecordIdCreate());
+                AddWantAgentNumber(pendingKey, callingUid);
+                wantRecords_.insert(std::make_pair(pendingKey, rec));
+                TAG_LOGI(AAFwkTag::WANTAGENT,
+                    "wantRecords_ size %{public}zu, bundleName=%{public}s, flags=%{public}d, type=%{public}d, "
+                    "code=%{public}d",
+                    wantRecords_.size(), pendingKey->GetBundleName().c_str(), pendingKey->GetFlags(),
+                    pendingKey->GetType(), pendingKey->GetCode());
+                result = rec;
+            }
+        }
     }
-
-    sptr<PendingWantRecord> rec =
-        new (std::nothrow) PendingWantRecord(shared_from_this(), uid, IPCSkeleton::GetCallingTokenID(),
-        callerToken, pendingKey);
-    if (rec != nullptr) {
-        rec->SetCallerUid(callingUid);
-        pendingKey->SetCode(PendingRecordIdCreate());
-        AddWantAgentNumber(pendingKey);
-        wantRecords_.insert(std::make_pair(pendingKey, rec));
-        TAG_LOGI(AAFwkTag::WANTAGENT,
-            "wantRecords_ size %{public}zu, bundleName=%{public}s, flags=%{public}d, type=%{public}d, code=%{public}d",
-            wantRecords_.size(), pendingKey->GetBundleName().c_str(), pendingKey->GetFlags(), pendingKey->GetType(),
-            pendingKey->GetCode());
-        return rec;
+    if (needCancel) {
+        NotifyCancelCallbacksAsync(std::move(cancelCallbacks));
     }
-    return nullptr;
+    return result;
 }
 
-void PendingWantManager::MakeWantSenderCanceledLocked(PendingWantRecord &record)
+void PendingWantManager::CollectCancelCallbacksLocked(PendingWantRecord &record,
+    std::vector<std::pair<int32_t, sptr<IWantReceiver>>> &cancelCallbacks)
 {
-    TAG_LOGI(AAFwkTag::WANTAGENT, "cancel");
-
     record.SetCanceled();
-    for (auto &callback : record.GetCancelCallbacks()) {
-        callback->Send(record.GetKey()->GetRequestCode());
+    auto callbacks = record.GetCancelCallbacks();
+    if (record.GetKey() == nullptr) {
+        return;
     }
-    if (record.GetKey() != nullptr && record.GetKey()->GetCode() > 0) {
+    int32_t requestCode = record.GetKey()->GetRequestCode();
+    for (const auto &callback : callbacks) {
+        if (callback != nullptr) {
+            cancelCallbacks.emplace_back(requestCode, callback);
+        }
+    }
+    if (record.GetKey()->GetCode() > 0) {
         record.GetKey()->ClearAllWantsInfosFd();
     }
+}
+
+void PendingWantManager::NotifyCancelCallbacksAsync(
+    std::vector<std::pair<int32_t, sptr<IWantReceiver>>> cancelCallbacks)
+{
+    if (taskHandler_ == nullptr || cancelCallbacks.empty()) {
+        return;
+    }
+    auto task = [cancelCallbacks]() {
+        for (const auto &[requestCode, callback] : cancelCallbacks) {
+            if (callback != nullptr) {
+                callback->Send(requestCode);
+            }
+        }
+    };
+    taskHandler_->SubmitTask(task);
 }
 
 sptr<PendingWantRecord> PendingWantManager::GetPendingWantRecordByKey(const std::shared_ptr<PendingWantKey> &key)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    TAG_LOGI(AAFwkTag::WANTAGENT, "begin");
+    TAG_LOGD(AAFwkTag::WANTAGENT, "begin");
     for (const auto &item : wantRecords_) {
         const auto pendingKey = item.first;
         const auto pendingRecord = item.second;
@@ -384,12 +430,21 @@ void PendingWantManager::CancelWantSenderLocked(PendingWantRecord &record, bool 
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::WANTAGENT, "begin");
-    std::lock_guard<ffrt::mutex> locker(mutex_);
-    MakeWantSenderCanceledLocked(record);
-    if (cleanAbility) {
-        ReduceWantAgentNumber(record.GetKey());
-        wantRecords_.erase(record.GetKey());
+    std::vector<std::pair<int32_t, sptr<IWantReceiver>>> cancelCallbacks;
+    {
+        std::lock_guard<ffrt::mutex> locker(mutex_);
+        if (wantRecords_.count(record.GetKey()) == 0) {
+            TAG_LOGE(AAFwkTag::WANTAGENT, "record not found in wantRecords_, cancel failed");
+            return;
+        }
+        TAG_LOGI(AAFwkTag::WANTAGENT, "cancel");
+        CollectCancelCallbacksLocked(record, cancelCallbacks);
+        if (cleanAbility) {
+            ReduceWantAgentNumber(record.GetKey());
+            wantRecords_.erase(record.GetKey());
+        }
     }
+    NotifyCancelCallbacksAsync(std::move(cancelCallbacks));
 }
 
 int32_t PendingWantManager::DeviceIdDetermine(const Want &want, const sptr<StartOptions> &startOptions,
@@ -399,7 +454,7 @@ int32_t PendingWantManager::DeviceIdDetermine(const Want &want, const sptr<Start
     int32_t result = ERR_OK;
     std::string localDeviceId;
     DelayedSingleton<AbilityManagerService>::GetInstance()->GetLocalDeviceId(localDeviceId);
-    if (want.GetElement().GetDeviceID() == "" || want.GetElement().GetDeviceID() == localDeviceId) {
+    if (want.GetDeviceIdRef() == "" || want.GetDeviceIdRef() == localDeviceId) {
         if (!startOptions) {
             result = DelayedSingleton<AbilityManagerService>::GetInstance()->StartAbilityWithSpecifyTokenIdInner(
                 want, callerToken, callerTokenId, true, userId, requestCode);
@@ -477,7 +532,7 @@ int32_t PendingWantManager::PendingWantStartAbilitys(const std::vector<WantsInfo
 }
 
 int32_t PendingWantManager::PendingWantPublishCommonEvent(
-    const Want &want, const SenderInfo &senderInfo, int32_t callerUid, int32_t callerTokenId)
+    const Want &want, const SenderInfo &senderInfo, int32_t publisherUid, int32_t callerTokenId)
 {
     TAG_LOGI(AAFwkTag::WANTAGENT, "publish common event");
 
@@ -487,9 +542,9 @@ int32_t PendingWantManager::PendingWantPublishCommonEvent(
 
     CommonEventPublishInfo eventPublishData;
 
-    if (!want.GetBundle().empty()) {
-        TAG_LOGI(AAFwkTag::WANTAGENT, "eventPublishData set bundleName: %{public}s", want.GetBundle().c_str());
-        eventPublishData.SetBundleName(want.GetBundle());
+    if (!want.GetBundleNameRef().empty()) {
+        TAG_LOGI(AAFwkTag::WANTAGENT, "eventPublishData set bundleName: %{public}s", want.GetBundleNameRef().c_str());
+        eventPublishData.SetBundleName(want.GetBundleNameRef());
     }
 
     if (!senderInfo.requiredPermission.empty()) {
@@ -499,8 +554,8 @@ int32_t PendingWantManager::PendingWantPublishCommonEvent(
     }
 
     bool result = IN_PROCESS_CALL(DelayedSingleton<EventFwk::CommonEvent>::GetInstance()->PublishCommonEvent(
-        eventData, eventPublishData, nullptr, callerUid, callerTokenId));
-    return ((result == true) ? ERR_OK : (-1));
+        eventData, eventPublishData, nullptr, publisherUid, callerTokenId));
+    return (result ? ERR_OK : (-1));
 }
 
 int32_t PendingWantManager::PendingRecordIdCreate()
@@ -511,16 +566,50 @@ int32_t PendingWantManager::PendingRecordIdCreate()
     return ++id;
 }
 
-sptr<PendingWantRecord> PendingWantManager::GetPendingWantRecordByCode(int32_t code)
+sptr<PendingWantRecord> PendingWantManager::GetPendingWantRecordByCodeLocked(int32_t code)
 {
-    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    TAG_LOGI(AAFwkTag::WANTAGENT, "resuest code:%{public}d", code);
-
-    std::lock_guard<ffrt::mutex> locker(mutex_);
     auto iter = std::find_if(wantRecords_.begin(), wantRecords_.end(), [&code](const auto &pair) {
         return pair.second->GetKey()->GetCode() == code;
     });
     return ((iter == wantRecords_.end()) ? nullptr : iter->second);
+}
+
+sptr<PendingWantRecord> PendingWantManager::GetPendingWantRecordByCode(int32_t code)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGI(AAFwkTag::WANTAGENT, "request code:%{public}d", code);
+
+    std::lock_guard<ffrt::mutex> locker(mutex_);
+    return GetPendingWantRecordByCodeLocked(code);
+}
+
+void PendingWantManager::DeleteUnsharedRecordsOnDeath(
+    const std::string &bundleName, int32_t pid)
+{
+    std::vector<std::pair<int32_t, sptr<IWantReceiver>>> cancelCallbacks;
+
+    {
+        std::lock_guard<ffrt::mutex> locker(mutex_);
+        for (auto iter = wantRecords_.begin(); iter != wantRecords_.end();) {
+            const auto &key = iter->first;
+            sptr<PendingWantRecord> record = iter->second;
+            if (record == nullptr || key == nullptr || record->GetCreatorPid() != pid ||
+                !record->GetIsThirdParty() || key->GetBundleName() != bundleName ||
+                record->GetShared()) {
+                ++iter;
+                continue;
+            }
+            int32_t code = key->GetCode();
+            HandleReduceWantAgentNumber(key);
+            CollectCancelCallbacksLocked(*record, cancelCallbacks);
+            iter = wantRecords_.erase(iter);
+            TAG_LOGD(AAFwkTag::WANTAGENT,
+                "creator died, deleted unshared WantAgent. bundle=%{public}s, pid=%{public}d, code=%{public}d",
+                bundleName.c_str(), pid, code);
+        }
+    }
+
+    NotifyCancelCallbacksAsync(std::move(cancelCallbacks));
 }
 
 int32_t PendingWantManager::GetPendingWantUid(const sptr<IWantSender> &target)
@@ -634,15 +723,14 @@ void PendingWantManager::RegisterCancelListener(const sptr<IWantSender> &sender,
     }
 
     sptr<PendingWantRecord> targetRecord = static_cast<PendingWantRecord*>(sender.GetRefPtr());
-    auto record = GetPendingWantRecordByCode(targetRecord->GetKey()->GetCode());
+    std::lock_guard<ffrt::mutex> locker(mutex_);
+    auto record = GetPendingWantRecordByCodeLocked(targetRecord->GetKey()->GetCode());
     if (record == nullptr) {
         TAG_LOGE(AAFwkTag::WANTAGENT, "null record. code = %{public}d",
             targetRecord->GetKey()->GetCode());
         return;
     }
-    bool cancel = record->GetCanceled();
-    std::lock_guard<ffrt::mutex> locker(mutex_);
-    if (!cancel) {
+    if (!record->GetCanceled()) {
         record->RegisterCancelListener(recevier);
     }
 }
@@ -661,12 +749,12 @@ void PendingWantManager::UnregisterCancelListener(const sptr<IWantSender> &sende
     }
 
     sptr<PendingWantRecord> targetRecord = static_cast<PendingWantRecord*>(sender.GetRefPtr());
-    auto record = GetPendingWantRecordByCode(targetRecord->GetKey()->GetCode());
+    std::lock_guard<ffrt::mutex> locker(mutex_);
+    auto record = GetPendingWantRecordByCodeLocked(targetRecord->GetKey()->GetCode());
     if (record == nullptr) {
         TAG_LOGE(AAFwkTag::WANTAGENT, "null record");
         return;
     }
-    std::lock_guard<ffrt::mutex> locker(mutex_);
     record->UnregisterCancelListener(recevier);
 }
 
@@ -762,7 +850,12 @@ int32_t PendingWantManager::GetWantSenderInfo(const sptr<IWantSender> &target, s
     wantSenderInfo.allWants = record->GetKey()->GetAllWantsInfos();
     wantSenderInfo.appIndex = record->GetKey()->GetAppIndex();
     wantSenderInfo.userId = record->GetKey()->GetUserId();
-    info.reset(new (std::nothrow) WantSenderInfo(wantSenderInfo));
+    auto wantSenderInfoTemp = new (std::nothrow) WantSenderInfo(wantSenderInfo);
+    if (wantSenderInfoTemp == nullptr) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "null wantSenderInfo");
+        return ERR_INVALID_VALUE;
+    }
+    info.reset(wantSenderInfoTemp);
     return NO_ERROR;
 }
 
@@ -841,7 +934,7 @@ bool PendingWantManager::CheckCallerPermission()
         return false;
     }
     if ((!processInfo.isFocused && !processInfo.isAbilityForegrounding) ||
-        (!permission->IsSystemAppCall() && !CheckWindowState(callerPid))) {
+        (!permission->IsSystemAppCall() && !CheckWindowState(callerPid, processInfo.uid_ / BASE_USER_RANGE))) {
         TAG_LOGW(AAFwkTag::WANTAGENT, "caller unfocused");
         if (!permission->VerifyCallingPermission(PermissionConstants::PERMISSION_START_ABILITIES_FROM_BACKGROUND) &&
             !permission->VerifyCallingPermission(PermissionConstants::PERMISSION_START_ABILIIES_FROM_BACKGROUND) &&
@@ -853,15 +946,19 @@ bool PendingWantManager::CheckCallerPermission()
     return true;
 }
 
-bool PendingWantManager::CheckWindowState(int32_t pid)
+bool PendingWantManager::CheckWindowState(int32_t pid, int32_t userId)
 {
-    auto sceneSessionManager = Rosen::SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+    auto sceneSessionManager = IN_PROCESS_CALL(
+        Rosen::SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy());
     if (sceneSessionManager == nullptr) {
         TAG_LOGE(AAFwkTag::WANTAGENT, "null manager");
         return false;
     }
     std::vector<Rosen::MainWindowState> windowStates;
     Rosen::WSError ret = sceneSessionManager->GetMainWindowStatesByPid(pid, windowStates);
+    TAG_LOGD(AAFwkTag::WANTAGENT,
+        "GetMainWindowStatesByPid ret=%{public}d, windowCount=%{public}zu, userId=%{public}d, pid=%{public}d",
+        static_cast<int32_t>(ret), windowStates.size(), userId, pid);
     if (ret != Rosen::WSError::WS_OK || windowStates.empty()) {
         TAG_LOGE(AAFwkTag::WANTAGENT, "fail GetWindow");
         return false;
@@ -904,8 +1001,8 @@ void PendingWantManager::Dump(std::vector<std::string> &info)
         info.push_back(dumpInfo);
         auto Wants = pendingKey->GetAllWantsInfos();
         for (const auto &Want : Wants) {
-            dumpInfo = "          uri [" + Want.want.GetElement().GetDeviceID() + "//" +
-                Want.want.GetElement().GetBundleName() + "/" + Want.want.GetElement().GetAbilityName() + "]";
+            dumpInfo = "          uri [" + Want.want.GetDeviceIdRef() + "//" +
+                Want.want.GetBundleNameRef() + "/" + Want.want.GetAbilityNameRef() + "]";
             info.push_back(dumpInfo);
             dumpInfo = "          resolved types [" + Want.resolvedTypes + "]";
             info.push_back(dumpInfo);
@@ -939,8 +1036,8 @@ void PendingWantManager::DumpByRecordId(std::vector<std::string> &info, const st
             info.push_back(dumpInfo);
             auto Wants = pendingKey->GetAllWantsInfos();
             for (const auto& Want : Wants) {
-                dumpInfo = "          uri [" + Want.want.GetElement().GetDeviceID() + "//" +
-                    Want.want.GetElement().GetBundleName() + "/" + Want.want.GetElement().GetAbilityName() + "]";
+                dumpInfo = "          uri [" + Want.want.GetDeviceIdRef() + "//" +
+                    Want.want.GetBundleNameRef() + "/" + Want.want.GetAbilityNameRef() + "]";
                 info.push_back(dumpInfo);
                 dumpInfo = "          resolved types [" + Want.resolvedTypes + "]";
                 info.push_back(dumpInfo);

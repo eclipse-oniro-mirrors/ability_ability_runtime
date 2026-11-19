@@ -17,6 +17,7 @@
 
 #include <cstdio>
 #include <dlfcn.h>
+#include <mutex>
 #include <securec.h>
 #include <string>
 #include <unordered_set>
@@ -30,6 +31,7 @@ constexpr int32_t ERROR_BUF_SIZE = 255;
 static char g_dlError[ERROR_BUF_SIZE];
 static std::unordered_set<std::string> g_hasInited;
 static std::string g_sharedLibsSonames = "";
+static std::mutex g_dynLoaderMutex;
 constexpr int32_t OUT_OF_MEMORY = 12;
 constexpr int32_t FILE_EXISTS = 17;
 constexpr int32_t INVALID_ARGUMENT = 22;
@@ -125,6 +127,7 @@ void DynamicInitNamespace(Dl_namespace *ns, void *parent, const char *entries, c
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "Invaild args for init namespace.");
         return;
     }
+    std::lock_guard<std::mutex> lock(g_dynLoaderMutex);
     if (g_hasInited.count(std::string(name))) {
         return;
     }

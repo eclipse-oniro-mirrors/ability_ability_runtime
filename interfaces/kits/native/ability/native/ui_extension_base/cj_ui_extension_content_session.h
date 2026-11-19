@@ -25,6 +25,7 @@
 namespace OHOS {
 namespace AbilityRuntime {
 class CJUIExtensionContentSession : public FFI::FFIData {
+    DECL_TYPE(CJUIExtensionContentSession, OHOS::FFI::FFIData)
 public:
     CJUIExtensionContentSession(sptr<AAFwk::SessionInfo> sessionInfo,
         sptr<Rosen::Window> uiWindow, std::weak_ptr<AbilityRuntime::Context> context);

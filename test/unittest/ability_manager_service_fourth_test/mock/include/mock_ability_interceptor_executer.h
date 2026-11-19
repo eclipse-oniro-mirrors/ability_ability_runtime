@@ -45,13 +45,11 @@ public:
     /**
      * Excute the DoProcess of the interceptors.
      */
-    ErrCode DoProcess(AbilityInterceptorParam param);
-
-    void SetTaskHandler(std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler);
+    ErrCode DoProcess(AbilityInterceptorParam &param);
 private:
     InterceptorMap GetInterceptorMapCopy();
 private:
-    std::mutex interceptorMapLock_;
+    std::mutex interceptorListLock_;
     std::unordered_map<std::string, std::shared_ptr<IAbilityInterceptor>> interceptorMap_;
 };
 } // namespace AAFwk

@@ -50,8 +50,13 @@ export namespace AbilityInfoUtils {
             throw { code: 1000, data: 'Get module context error.' } as BusinessError<string> as Error;
         }
         const resourceManager = moduleContext.resourceManager;
-        let icon = resourceManager.getDrawableDescriptor(abilityInfoParam.abilityIconId);
-        let label = resourceManager.getStringSync(abilityInfoParam.abilityLabelId);
-        callback([icon, label]);
+        try {
+            let icon = resourceManager.getDrawableDescriptor(abilityInfoParam.abilityIconId);
+            let label = resourceManager.getStringSync(abilityInfoParam.abilityLabelId);
+            callback([icon, label]);
+        } catch (err) {
+            console.error(TAG, `Failed to getAbilityLabelAndIconSync, error: ${JSON.stringify(err)}`);
+            callback(null);
+        }
     }
 }

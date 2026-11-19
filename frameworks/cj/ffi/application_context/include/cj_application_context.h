@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -115,6 +115,8 @@ public:
     int32_t OnSetFontSizeScale(double fontSizeScale);
 
     int32_t OnOnEnvironment(void (*cfgCallback)(AbilityRuntime::CConfiguration),
+        void (*memCallback)(int32_t), bool isSync, int32_t &errCode);
+    int32_t OnOnEnvironmentV2(void (*cfgCallback)(AbilityRuntime::CConfigurationV2),
         void (*memCallback)(int32_t), bool isSync, int32_t &errCode);
     int32_t OnOnAbilityLifecycle(std::vector<int64_t> &cFuncIds, bool isSync, int32_t &errCode);
     int32_t OnOnApplicationStateChange(void (*foregroundCallback)(void),

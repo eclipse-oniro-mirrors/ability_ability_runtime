@@ -740,11 +740,6 @@ enum {
     ERR_NULL_INTERCEPTOR_EXECUTER = 2097312,
 
     /**
-     * Result (2097313) for after check executer is nullptr.
-     */
-    ERR_NULL_AFTER_CHECK_EXECUTER = 2097313,
-
-    /**
      * Result (2097314) for mission list manager is nullptr.
      */
     ERR_NULL_MISSION_LIST_MANAGER = 2097314,
@@ -854,6 +849,8 @@ enum {
 
     ERR_UPMS_SERVICE_NOT_START = 2097349,
 
+    ERR_UPMS_INVALID_USER_ID = 2097350,
+
     /**
      * Result (2097351) target not in whitelist.
      */
@@ -939,6 +936,11 @@ enum {
     ERR_PRELOAD_NOT_ENTRY_MODULE = 2097368,
 
     /**
+     * Result (2097369) for sa interceptor not found when unregister.
+     */
+    ERR_SA_INTERCEPTOR_NOT_EXIST = 2097369,
+
+    /**
      * Result (2097370-2097379) for StartUIAbilities Error.
      */
     START_UI_ABILITIES_NOT_SUPPORT_DLP = 2097370,
@@ -1016,6 +1018,32 @@ enum {
      * Result (2097403) The args of fd is invalid.
      */
     ERR_INVALID_FD = 2097403,
+
+    /**
+     * Result (2097404) for all apps are blocked from starting due to deep frozen .
+     */
+    ERR_LOW_MEM_SAINTERCEPTOR_START_BLOCK = 2097404,
+
+    /**
+     * Result (2097405) The target process is protected by an MDM application.
+     */
+    ERR_KILL_PROCESS_MDM_PROTECTED = 2097405,
+
+    ERR_LAUNCH_SERVICE_NOT_FOUND = 2097406,
+
+    ERR_LAUNCH_SERVICE_ALREADY_REGISTERED = 2097407,
+
+    ERR_LAUNCH_SERVICE_DISABLED = 2097408,
+
+    ERR_LAUNCH_SERVICE_NOT_RUNNING = 2097409,
+
+    ERR_LAUNCH_SERVICE_APPROVAL_REJECTED = 2097410,
+
+    ERR_LAUNCH_SERVICE_NOT_REGISTERED = 2097411,
+
+    ERR_LAUNCH_SERVICE_TIMEOUT = 2097412,
+
+    ERR_LAUNCH_SERVICE_OBSERVER_LIMIT = 2097413,
 
     /**
      * Result (2098000-2098049) Error code refinement INVALID_VALUE.
@@ -1104,29 +1132,32 @@ enum {
     // Result (2099210) for agent manager proxy is nullptr.
     ERR_NULL_AGENT_MGR_PROXY = 2099210,
 
-    // Result (2099211) for invalid agent card data.
+    // Result (2099211) for invalid AgentCard data.
     ERR_INVALID_AGENT_CARD_DATA = 2099211,
 
-    // Result (2099212) for agent card list is out of range.
+    // Result (2099212) for AgentCard list is out of range.
     ERR_AGENT_CARD_LIST_OUT_OF_RANGE = 2099212,
 
-    // Result (2099213) for agent card id does not exist.
+    // Result (2099213) for AgentCard id does not exist.
     ERR_INVALID_AGENT_CARD_ID = 2099213,
 
     // Result (2099214) for agent connections from the same caller reach the limit.
     ERR_MAX_AGENT_CONNECTIONS_REACHED = 2099214,
 
-    // Result (2099215) for agent card version is older than stored version.
+    // Result (2099215) for AgentCard version is older than stored version.
     ERR_AGENT_CARD_VERSION_TOO_OLD = 2099215,
 
-    // Result (2099216) for invalid agent card version.
+    // Result (2099216) for invalid AgentCard version.
     ERR_INVALID_AGENT_CARD_VERSION = 2099216,
 
-    // Result (2099217) for duplicate register of an existing agent card.
+    // Result (2099217) for duplicate register of an existing AgentCard.
     ERR_AGENT_CARD_DUPLICATE_REGISTER = 2099217,
 
     // Result (2099218) for duplicate active LOW_CODE agent invocation.
     ERR_LOW_CODE_AGENT_ALREADY_ACTIVE = 2099218,
+
+    // Result (2099219) for inconsistent LOW_CODE agent disconnect batch state.
+    ERR_LOW_CODE_AGENT_DISCONNECT_BATCH_MISMATCH = 2099219,
 
     /**
      * Result (2099220) for pid has been reused.
@@ -1134,9 +1165,86 @@ enum {
     ERR_PID_HAS_BEEN_REUSED = 2099220,
 
     /**
-     * Result (2099411) for not support screen.
+     * Result (2099221) for skill execute target process died.
      */
-    ERR_NOT_SUPPORT_SCREEN = 2099411,
+    ERR_SKILL_EXECUTE_TARGET_DIED = 2099221,
+
+    ERR_MODULAR_OBJECT_DISABLED = 2099412,
+
+    ERR_NO_RUNNING_ABILITIES_WITH_UI = 2099413,
+    
+    ERR_INVALID_DISTRIBUTION_TYPE = 2099414,
+
+    // Result (2099420) for Cross-device execution intent connection failed.
+    ERR_INTENT_CONNECTION_FAILED = 2099420,
+
+    // Result (2099421) for Device disconnected during cross-device intent execution.
+    ERR_INTENT_DEVICE_DISCONNECTED = 2099421,
+
+    /**
+     * Result (2099414) for moe connection number per caller pid reached upper limit.
+     */
+    ERR_MOE_CONNECTION_LIMIT = 2099415,
+
+    /**
+     * Result (2099415) for moe instance number reached upper limit.
+     */
+    ERR_MOE_INSTANCE_LIMIT = 2099416,
+
+    /**
+     * Result (2099417) for IN_PROCESS mode does not allow cross-application connection.
+     */
+    ERR_MOE_CROSS_APP_IN_PROCESS = 2099417,
+
+    /**
+     * Result (2099418) for evict file type error (not ending with .so/.hap/.hsp).
+     */
+    ERR_EVICT_FILE_TYPE = 2099418,
+
+    /**
+     * Result (2099419) for failed to parse memory_optimizer.json configuration file.
+     */
+    ERR_EVICT_CONFIG_PARSE = 2099419,
+
+    /**
+     * Result(2099422) for query disposed rule failed.
+     */
+    ERR_QUERY_DISPOSED_RULE_FAILED = 2099422,
+
+    /**
+     * Result(2099423) for the UIAbility is not a native ability.
+     */
+    ERR_NOT_NATIVE_UI_ABILITY = 2099423,
+
+    /**
+     * Result(2099501) for task manager: the task already exists.
+     */
+    ERR_TASK_ALREADY_EXISTS = 2099501,
+
+    /**
+     * Result(2099502) for task manager: the task does not exist.
+     */
+    ERR_TASK_NOT_FOUND = 2099502,
+
+    /**
+     * Result(2099503) for task manager: the attribution record does not exist.
+     */
+    ERR_ATTRIBUTION_NOT_FOUND = 2099503,
+
+    /**
+     * Result(2099504) for get pid by call stub failed, callee record not found.
+     */
+    ERR_CALL_STUB_NOT_FOUND = 2099504,
+
+    /**
+     * Result(2099505) for get pid by call stub failed, callee pid is invalid (<=0).
+     */
+    ERR_CALLEE_PID_INVALID = 2099505,
+
+    /**
+     * Result(2099506) for child process not exit or is not created by the current application, or is caller
+     */
+    ERR_CHECK_CHILD_PROCESS_FAILED = 2099506,
 
     /**
      * Native error(3000000) for target bundle not exist.
@@ -1409,6 +1517,32 @@ enum NativeFreeInstallError {
      * Result (29360227) The current application is not in a game preloading state.
      */
     ERR_NOT_GAME_PRELOAD_STATE = 29360227,
+    
+    /**
+     * Result(29360228) for sandbox clone index is invalid.
+     */
+    ERR_SANDBOX_CLONE_INDEX_INVALID = 29360228,
+
+    /*
+     * The target application is not authorized for startup before the first unlock.
+     */
+    ERR_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT = 29360229,
+
+    /* codes 29360270 - 29360280 are reserved for StartSelfUIAbility by delayed process exit */
+    /*
+     * Result (29360270) The current process has no UIAbility, cannot be called.
+     */
+    ERR_DELAYED_PROCESS_EXIT_NO_UIABILITY = 29360270,
+
+    /*
+     * Result (29360271) Delayed process exit is not pending in the current process, cannot be called.
+     */
+    ERR_DELAYED_PROCESS_EXIT_NOT_PENDING = 29360271,
+    
+    /*
+     * Result (29360272) The current process still has another UIAbility.
+     */
+    ERR_DELAYED_PROCESS_EXIT_HAS_OTHER_UIABILITY = 29360272,
 
     /**
      * Undefine error code.

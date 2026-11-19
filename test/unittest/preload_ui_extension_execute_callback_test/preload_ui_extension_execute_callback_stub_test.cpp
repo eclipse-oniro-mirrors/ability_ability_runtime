@@ -15,9 +15,11 @@
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include "ability_manager_errors.h"
 #include "preload_ui_extension_execute_callback_stub.h"
 #include "preload_ui_extension_execute_callback_proxy.h"
 #include "hilog_tag_wrapper.h"
+#include "ipc_skeleton.h"
 #include "iremote_object.h"
 #include "iremote_stub.h"
 
@@ -26,6 +28,9 @@ using namespace testing::ext;
 
 namespace OHOS {
 namespace AAFwk {
+namespace {
+constexpr int32_t FOUNDATION_UID = 5523;
+}
 
 class MockPreloadUIExtensionExecuteCallback : public PreloadUIExtensionExecuteCallbackStub {
 public:
@@ -114,10 +119,12 @@ public:
     static void TearDownTestCase() {}
     void SetUp() override
     {
+        IPCSkeleton::SetCallingUid(FOUNDATION_UID);
         stub_ = new (std::nothrow) MockPreloadUIExtensionExecuteCallback();
     }
     void TearDown() override
     {
+        IPCSkeleton::SetCallingUid(0);
         stub_ = nullptr;
     }
 
@@ -218,6 +225,30 @@ HWTEST_F(PreloadUIExtensionExecuteCallbackStubTest, OnRemoteRequest_TokenMismatc
         IPreloadUIExtensionExecuteCallback::ON_PRELOAD_UI_EXTENSION_ABILITY_LOADED_DONE, data, reply, option);
     EXPECT_EQ(result, ERR_INVALID_STATE);
     TAG_LOGI(AAFwkTag::TEST, "OnRemoteRequest_TokenMismatch_0100 end");
+}
+
+/**
+ * @tc.name: OnRemoteRequest_UidRejected_0100
+ * @tc.desc: Test OnRemoteRequest with non-foundation calling uid.
+ *           Expected: CHECK_PERMISSION_FAILED
+ * @tc.type: FUNC
+ */
+HWTEST_F(PreloadUIExtensionExecuteCallbackStubTest, OnRemoteRequest_UidRejected_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "OnRemoteRequest_UidRejected_0100 start");
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    data.WriteInterfaceToken(IPreloadUIExtensionExecuteCallback::GetDescriptor());
+    data.WriteInt32(100);
+
+    IPCSkeleton::SetCallingUid(0); // simulate a non-foundation caller
+    auto result = stub_->OnRemoteRequest(
+        IPreloadUIExtensionExecuteCallback::ON_PRELOAD_UI_EXTENSION_ABILITY_LOADED_DONE, data, reply, option);
+    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
+    EXPECT_FALSE(stub_->IsOnLoadedDoneCalled());
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID);
+    TAG_LOGI(AAFwkTag::TEST, "OnRemoteRequest_UidRejected_0100 end");
 }
 
 /**

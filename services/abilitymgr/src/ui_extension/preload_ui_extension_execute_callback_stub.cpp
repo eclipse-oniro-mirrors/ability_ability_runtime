@@ -15,11 +15,17 @@
 
 #include "preload_ui_extension_execute_callback_stub.h"
 
+#include "ability_manager_errors.h"
 #include "hilog_tag_wrapper.h"
+#include "ipc_skeleton.h"
 #include "preload_ui_extension_host_client.h"
 
 namespace OHOS {
 namespace AAFwk {
+namespace {
+// only foundation (abilitymgr) is allowed to invoke this callback
+constexpr int32_t FOUNDATION_UID = 5523;
+} // namespace
 
 PreloadUIExtensionExecuteCallbackStub::PreloadUIExtensionExecuteCallbackStub() {}
 
@@ -31,6 +37,12 @@ int32_t PreloadUIExtensionExecuteCallbackStub::OnRemoteRequest(
     if (data.ReadInterfaceToken() != IPreloadUIExtensionExecuteCallback::GetDescriptor()) {
         TAG_LOGE(AAFwkTag::UI_EXT, "InterfaceToken not equal");
         return ERR_INVALID_STATE;
+    }
+
+    if (IPCSkeleton::GetCallingUid() != FOUNDATION_UID) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "reject: callingUid=%{public}d, expected foundation uid",
+            IPCSkeleton::GetCallingUid());
+        return CHECK_PERMISSION_FAILED;
     }
 
     switch (code) {

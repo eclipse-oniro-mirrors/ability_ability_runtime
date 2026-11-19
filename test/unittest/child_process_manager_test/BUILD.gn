@@ -17,6 +17,13 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 module_output_path = "ability_runtime/ability_runtime/child_process_manager"
 
 ohos_unittest("child_process_manager_test") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
   module_out_path = module_output_path
 
   configs = [ "${ability_runtime_services_path}/common:common_config" ]
@@ -28,27 +35,32 @@ ohos_unittest("child_process_manager_test") {
   include_dirs = [
     "include",
     "${ability_runtime_test_path}/mock/services_appmgr_test/include",
+    "${ability_runtime_test_path}/mock/common/include",
+    "${ability_runtime_native_path}/child_process/include",
+    "${ability_runtime_path}/interfaces/kits/c/ability_runtime",
   ]
 
   sources = [
     "${ability_runtime_test_path}/mock/services_appmgr_test/src/sys_mgr_client_mock.cpp",
     "child_process_manager_test.cpp",
     "child_process_test.cpp",
+    "child_process_info_internal_test.cpp",
     "js_child_process_test.cpp",
     "mock_bundle_manager.cpp",
     "native_args_child_process_test.cpp",
+    "${ability_runtime_native_path}/child_process/src/child_process_info_internal.cpp",
   ]
 
   deps = [
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/ability/native:ability_business_error",
+    "${ability_runtime_native_path}/ability/native:ability_observer_ipc",
     "${ability_runtime_path}/interfaces/inner_api/child_process_manager:child_process_manager",
     "${ability_runtime_services_path}/common:app_util_static",
   ]
 
   external_deps = [
-    "ability_runtime:abilitykit_native",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
@@ -58,7 +70,9 @@ ohos_unittest("child_process_manager_test") {
     "init:libbegetutil",
     "ipc:ipc_capi",
     "ipc:ipc_core",
+    "libuv:uv",
     "napi:ace_napi",
+    "node:node_header_notice",
     "samgr:samgr_proxy",
   ]
 }

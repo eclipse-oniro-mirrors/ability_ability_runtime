@@ -45,47 +45,6 @@ void StartupUtilTest::TearDown()
 {}
 
 /**
- * @tc.name: GetAppIndex_001
- * @tc.desc: test class StartupUtil number function
- * @tc.type: FUNC
- */
-HWTEST_F(StartupUtilTest, GetAppIndex_001, TestSize.Level1)
-{
-    AAFwk::Want want;
-    int32_t appIndex = 0;
-    auto queryRet = StartupUtil::GetAppIndex(want, appIndex);
-    EXPECT_TRUE(queryRet);
-}
-
-/**
- * @tc.name: GetAppIndex_002
- * @tc.desc: test class StartupUtil number function
- * @tc.type: FUNC
- */
-HWTEST_F(StartupUtilTest, GetAppIndex_002, TestSize.Level1)
-{
-    AAFwk::Want want;
-    want.SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, -1);
-    int32_t appIndex = 0;
-    auto queryRet = StartupUtil::GetAppIndex(want, appIndex);
-    EXPECT_FALSE(queryRet);
-}
-
-/**
- * @tc.name: GetAppIndex_003
- * @tc.desc: test class StartupUtil number function
- * @tc.type: FUNC
- */
-HWTEST_F(StartupUtilTest, GetAppIndex_003, TestSize.Level1)
-{
-    AAFwk::Want want;
-    int32_t appIndex = 1001;
-    want.SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, appIndex);
-    auto queryRet = StartupUtil::GetAppIndex(want, appIndex);
-    EXPECT_FALSE(queryRet);
-}
-
-/**
  * @tc.name: IsSupportAppClone_001
  * @tc.desc: test class StartupUtil number function
  * @tc.type: FUNC

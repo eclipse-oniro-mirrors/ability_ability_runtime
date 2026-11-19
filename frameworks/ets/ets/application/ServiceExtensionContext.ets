@@ -111,6 +111,8 @@ export default class ServiceExtensionContext extends ExtensionContext {
 
   native nativeRequestModalUIExtension(want: Want, callback: AsyncCallbackWrapper<void>): void;
 
+  native nativeRequestModalUIExtensionWithAccount(want: Want, accountId: int, callback: AsyncCallbackWrapper<void>): void;
+
   native nativeStopServiceExtensionAbilityWithAccount(want: Want, accountId: int, callback: AsyncCallbackWrapper<void>): void;
 
   native nativeStartServiceExtensionAbilityWithAccount(want: Want, accountId: int, callback: AsyncCallbackWrapper<void>): void;
@@ -341,6 +343,23 @@ export default class ServiceExtensionContext extends ExtensionContext {
         });
         taskpool.execute((): void => {
           this.nativeRequestModalUIExtension(pickerWant, myCall);
+        }).catch((err: Error): void => {
+          reject(err as BusinessError);
+        });
+      });
+  }
+
+  requestModalUIExtensionWithAccount(pickerWant: Want, accountId: int): Promise<void> {
+    return new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
+        let myCall = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+          if (err == null || err.code == 0) {
+            resolve(undefined);
+          } else {
+            reject(err);
+          }
+        });
+        taskpool.execute((): void => {
+          this.nativeRequestModalUIExtensionWithAccount(pickerWant, accountId, myCall);
         }).catch((err: Error): void => {
           reject(err as BusinessError);
         });

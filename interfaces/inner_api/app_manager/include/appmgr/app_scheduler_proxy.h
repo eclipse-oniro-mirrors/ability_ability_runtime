@@ -20,7 +20,9 @@
 #include "app_scheduler_interface.h"
 #include "app_malloc_info.h"
 #include "app_jsheap_mem_info.h"
+#include "app_jshandle_map_info.h"
 #include "app_cjheap_mem_info.h"
+#include "mem_dump_callback_interface.h"
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -101,6 +103,16 @@ public:
     virtual void ScheduleJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info) override;
 
     /**
+     * ScheduleJsHandleMap, call ScheduleJsHandleMap() through proxy project,
+     * dump the application's jshandle map info.
+     *
+     * @param info, pid, tid
+     *
+     * @return
+     */
+    virtual void ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info) override;
+
+    /**
      * ScheduleCjHeapMemory, call ScheduleCjHeapMemory() through proxy project,
      * triggerGC and dump the application's cjheap memory info.
      *
@@ -115,11 +127,11 @@ public:
      * triggerGC and dump application's memory info.
      *
      * @param info, pid, tid, needGc, needSnapshot
-     * @param dumpResult The dump result string
+     * @param callback The callback to receive dump result
      *
      * @return
      */
-    virtual void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult) override;
+    virtual void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback) override;
 
     /**
      * ScheduleLaunchApplication, call ScheduleLaunchApplication() through proxy project,
@@ -344,6 +356,8 @@ public:
      * @param pid The resultant process id of the started ability.
      */
     virtual void OnLoadAbilityFinished(uint64_t callbackId, int32_t pid) override;
+
+    virtual int32_t SchedulePreTemplateProcessDeepFrozen() override;
 
 private:
     bool WriteInterfaceToken(MessageParcel &data);

@@ -533,7 +533,7 @@ HWTEST_F(AbilityManagerClientTest, KillProcessWithPrepareTerminateDone_0100, Tes
  */
 HWTEST_F(AbilityManagerClientTest, StartAbilityByCallWithErrMsg_0100, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "StartAbilityByCallWithErrMsg_0100 start");
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityByCallWithErrMsg_0100 start.");
     Want want;
     sptr<IAbilityConnection> connect = sptr<MockIAbilityConnection>::MakeSptr();
     int32_t accountId = 0x001;
@@ -543,7 +543,7 @@ HWTEST_F(AbilityManagerClientTest, StartAbilityByCallWithErrMsg_0100, TestSize.L
     auto result = AbilityManagerClient::GetInstance()->StartAbilityByCallWithErrMsg(want,
         connect, callToken, accountId, errMsg);
     EXPECT_EQ(result, ERR_OK);
-    TAG_LOGI(AAFwkTag::TEST, "StartAbilityByCallWithErrMsg_0100 end");
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityByCallWithErrMsg_0100 end.");
 }
 
 /**
@@ -755,6 +755,21 @@ HWTEST_F(AbilityManagerClientTest, SetGamePreLaunchCompleteTime_002, TestSize.Le
 }
 
 /**
+ * @tc.name: ExtendGamePreLaunchTimeout_001
+ * @tc.desc: ExtendGamePreLaunchTimeout with valid parameters.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientTest, ExtendGamePreLaunchTimeout_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExtendGamePreLaunchTimeout_001 start");
+    int32_t pid = 100;
+    int64_t extendTime = 60 * 1000 * 1000; // 60s in microseconds
+    auto result = AbilityManagerClient::GetInstance()->ExtendGamePreLaunchTimeout(pid, extendTime);
+    EXPECT_EQ(result, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "ExtendGamePreLaunchTimeout_001 end");
+}
+
+/**
  * @tc.name: NotifyCancelGamePreLaunch_001
  * @tc.desc: NotifyCancelGamePreLaunch with null callerToken.
  * @tc.type: FUNC
@@ -808,6 +823,19 @@ HWTEST_F(AbilityManagerClientTest, NotifyCompleteGamePreLaunch_002, TestSize.Lev
     auto result = AbilityManagerClient::GetInstance()->NotifyCompleteGamePreLaunch(callerToken);
     EXPECT_EQ(result, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "NotifyCompleteGamePreLaunch_002 end");
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunchByPid_001
+ * @tc.desc: NotifyCompleteGamePreLaunchByPid with valid pid.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientTest, NotifyCompleteGamePreLaunchByPid_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyCompleteGamePreLaunchByPid_001 start");
+    auto result = AbilityManagerClient::GetInstance()->NotifyCompleteGamePreLaunchByPid(12345);
+    EXPECT_EQ(result, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "NotifyCompleteGamePreLaunchByPid_001 end");
 }
 
 /**
@@ -870,6 +898,24 @@ HWTEST_F(AbilityManagerClientTest, AbilityManagerClient_ConnectAbilityWithIndire
     EXPECT_EQ(result, ERR_OK);
 
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerClient_ConnectAbilityWithIndirectCallerInfo_0100 end");
+}
+
+/**
+ * @tc.number: AbilityManagerClient_StartSelfUIAbilityByAppContext_0100
+ * @tc.name: StartSelfUIAbilityByAppContext
+ * @tc.desc: Test StartSelfUIAbilityByAppContext with valid parameters
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientTest, AbilityManagerClient_StartSelfUIAbilityByAppContext_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerClient_StartSelfUIAbilityByAppContext_0100 start");
+
+    Want want;
+    want.SetElementName("com.example.bundle", "com.example.ability");
+    auto result = AbilityManagerClient::GetInstance()->StartSelfUIAbilityByAppContext(want);
+    EXPECT_EQ(result, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerClient_StartSelfUIAbilityByAppContext_0100 end");
 }
 }  // namespace AAFwk
 }  // namespace OHOS

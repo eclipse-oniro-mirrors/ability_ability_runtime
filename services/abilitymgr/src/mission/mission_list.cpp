@@ -121,7 +121,7 @@ std::shared_ptr<AbilityRecord> MissionList::GetAbilityRecordByToken(const sptr<I
             continue;
         }
         std::shared_ptr<AbilityRecord> abilityRecord = mission->GetAbilityRecord();
-        if (abilityRecord && token == abilityRecord->GetToken()->AsObject()) {
+        if (abilityRecord && abilityRecord->GetToken() && token == abilityRecord->GetToken()->AsObject()) {
             return abilityRecord;
         }
     }
@@ -132,6 +132,9 @@ std::shared_ptr<AbilityRecord> MissionList::GetAbilityRecordByToken(const sptr<I
 void MissionList::RemoveMissionByAbilityRecord(const std::shared_ptr<AbilityRecord> &abilityRecord)
 {
     for (auto iter = missions_.begin(); iter != missions_.end(); iter++) {
+        if (!(*iter)) {
+            continue;
+        }
         if ((*iter)->GetAbilityRecord() == abilityRecord) {
             missions_.erase(iter);
             return;
@@ -154,18 +157,18 @@ std::shared_ptr<Mission> MissionList::GetMissionBySpecifiedFlag(const AAFwk::Wan
 {
     for (auto mission : missions_) {
         if (!mission) {
-            return nullptr;
+            continue;
         }
 
         auto ability = mission->GetAbilityRecord();
         if (!ability) {
-            return nullptr;
+            continue;
         }
 
         std::string srcAbilityName = ability->GetAbilityInfo().name;
         std::string srcBundleName = ability->GetApplicationInfo().bundleName;
-        std::string tarAbilityName = want.GetElement().GetAbilityName();
-        std::string tarBundleName = want.GetElement().GetBundleName();
+        std::string tarAbilityName = want.GetAbilityNameRef();
+        std::string tarBundleName = want.GetBundleNameRef();
         if ((srcBundleName == tarBundleName) &&
             (srcAbilityName == tarAbilityName) &&
             (ability->GetSpecifiedFlag() == flag)) {
@@ -222,8 +225,12 @@ MissionAbilityRecordPtr MissionList::GetLauncherRoot() const
 std::shared_ptr<AbilityRecord> MissionList::GetAbilityRecordById(int64_t abilityRecordId) const
 {
     for (std::shared_ptr<Mission> mission : missions_) {
-        if (mission && mission->GetAbilityRecord()->GetAbilityRecordId() == abilityRecordId) {
-            return mission->GetAbilityRecord();
+        if (!mission) {
+            continue;
+        }
+        auto abilityRecord = mission->GetAbilityRecord();
+        if (abilityRecord && abilityRecord->GetAbilityRecordId() == abilityRecordId) {
+            return abilityRecord;
         }
     }
     return nullptr;
@@ -233,14 +240,21 @@ std::shared_ptr<AbilityRecord> MissionList::GetAbilityRecordByCaller(
     const std::shared_ptr<AbilityRecord> &caller, int requestCode)
 {
     for (auto mission : missions_) {
-        auto callerList = mission->GetAbilityRecord()->GetCallerRecordList();
+        if (!mission) {
+            continue;
+        }
+        auto abilityRecord = mission->GetAbilityRecord();
+        if (!abilityRecord) {
+            continue;
+        }
+        auto callerList = abilityRecord->GetCallerRecordList();
         if (callerList.empty()) {
             continue;
         }
 
         for (auto callerAbility : callerList) {
             if (callerAbility->GetCaller() == caller && callerAbility->GetRequestCode() == requestCode) {
-                return mission->GetAbilityRecord();
+                return abilityRecord;
             }
         }
     }
@@ -250,15 +264,20 @@ std::shared_ptr<AbilityRecord> MissionList::GetAbilityRecordByCaller(
 std::shared_ptr<AbilityRecord> MissionList::GetAbilityRecordByName(const AppExecFwk::ElementName &element)
 {
     for (auto mission : missions_) {
-        if (mission) {
-            const AppExecFwk::AbilityInfo &abilityInfo = mission->GetAbilityRecord()->GetAbilityInfo();
-            AppExecFwk::ElementName localElement(abilityInfo.deviceId, abilityInfo.bundleName,
-                abilityInfo.name, abilityInfo.moduleName);
-            AppExecFwk::ElementName localElementNoModuleName(abilityInfo.deviceId,
-                abilityInfo.bundleName, abilityInfo.name); // note: moduleName of input param element maybe empty
-            if (localElement == element || localElementNoModuleName == element) {
-                return mission->GetAbilityRecord();
-            }
+        if (!mission) {
+            continue;
+        }
+        auto abilityRecord = mission->GetAbilityRecord();
+        if (!abilityRecord) {
+            continue;
+        }
+        const AppExecFwk::AbilityInfo &abilityInfo = abilityRecord->GetAbilityInfo();
+        AppExecFwk::ElementName localElement(abilityInfo.deviceId, abilityInfo.bundleName,
+            abilityInfo.name, abilityInfo.moduleName);
+        AppExecFwk::ElementName localElementNoModuleName(abilityInfo.deviceId,
+            abilityInfo.bundleName, abilityInfo.name); // note: moduleName of input param element maybe empty
+        if (localElement == element || localElementNoModuleName == element) {
+            return abilityRecord;
         }
     }
     return nullptr;

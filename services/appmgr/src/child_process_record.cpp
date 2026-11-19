@@ -60,6 +60,16 @@ ChildProcessRecord::ChildProcessRecord(pid_t hostPid, const std::string &libName
     SetHostBundleName(hostRecord->GetBundleName());
 }
 
+AppProcessState ChildProcessRecord::GetState() const
+{
+    return curState_.load();
+}
+
+void ChildProcessRecord::SetState(const AppProcessState state)
+{
+    curState_.store(state);
+}
+
 ChildProcessRecord::~ChildProcessRecord()
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");

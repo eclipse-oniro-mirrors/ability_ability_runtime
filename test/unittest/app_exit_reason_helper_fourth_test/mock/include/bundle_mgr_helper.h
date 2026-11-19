@@ -191,6 +191,12 @@ public:
         return false;
     }
 
+    bool QueryExtensionAbilityInfoByUriOptimal(
+        const std::string& uri, int32_t userId, ExtensionAbilityInfo& extensionAbilityInfo)
+    {
+        return false;
+    }
+
     bool ImplicitQueryInfoByPriority(const AAFwk::Want& want, int32_t flags, int32_t userId, AbilityInfo& abilityInfo,
         ExtensionAbilityInfo& extensionInfo)
     {
@@ -292,6 +298,8 @@ public:
     {
         return "";
     }
+
+    ErrCode GetDualModeBundleInfo(const std::string &bundleName, int32_t userId, int32_t &appIndex);
 
 public:
     static bool getNameAndIndexForUid_;

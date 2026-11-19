@@ -32,8 +32,7 @@ public:
     static const constexpr char RELATIONAL_STORE[] = "rdb";
 private:
     std::pair<bool, std::string> GetCallingInfo(uint32_t callingTokenId);
-    std::vector<std::string> GetGroupInfosFromCache(const std::string &bundleName, int32_t userId,
-        const std::string &uri);
+    std::vector<std::string> GetGroupInfosFromCache(const std::string &bundleName, int32_t userId);
     static constexpr int32_t CACHE_SIZE_THRESHOLD = 50;
     std::shared_mutex groupsIdMutex_;
     std::list<std::pair<std::string, std::vector<std::string>>> groupsIdCache_;

@@ -19,6 +19,8 @@ namespace OHOS {
 namespace AAFwk {
 int MyFlag::flag_ = 0;
 bool MyFlag::permissionFileAccessManager_ = false;
+bool MyFlag::permissionAgentFileAccess_ = false;
+bool MyFlag::permissionAgentFileAccessDeclared_ = false;
 bool MyFlag::permissionWriteImageVideo_ = false;
 bool MyFlag::permissionReadImageVideo_ = false;
 bool MyFlag::permissionAllMedia_ = false;
@@ -42,7 +44,6 @@ bool MyFlag::isDocsCloudUri_ = false;
 int32_t MyFlag::getTokenIdByBundleNameStatus_ = 0;
 int32_t MyFlag::processUdmfKeyRet_ = 0;
 std::vector<std::string> MyFlag::udmfUtilsUris_ = {};
-bool MyFlag::upmsUtilsCheckIsSystemAppByBundleNameRet_ = true;
 bool MyFlag::upmsUtilsCheckIsSystemAppByTokenIdRet_ = false;
 bool MyFlag::upmsUtilsGetDirByBundleNameAndAppIndexRet_ = true;
 std::string MyFlag::upmsUtilsAlterBundleName_ = "";
@@ -54,10 +55,16 @@ int32_t MyFlag::upmsUtilsGetAppIdByBundleNameRet_ = 0;
 bool MyFlag::upmsUtilsIsFoundationCallRet_ = false;
 uint32_t MyFlag::upmsUtilsTokenId_ = 0;
 bool MyFlag::fudUtilsGenerateFUDAppInfoRet_ = true;
+int32_t MyFlag::fudAppInfoUserId_ = -1;
 std::string MyFlag::bundleName_ = "";
+std::vector<FUDAppInfoMockResult> MyFlag::generateFUDAppInfoResults_ = {};
 TokenInfoMap MyFlag::tokenInfos = {};
 bool MyFlag::isUdmfOrPasteboardCallRet_ = false;
 bool MyFlag::isDFSCallRet_ = false;
 bool MyFlag::isSandboxAppRet_ = false;
+bool MyFlag::isSACall_ = false;
+bool MyFlag::isSAOrBrokerCall_ = false;
+bool MyFlag::getUserIdByTokenIdRet_ = false;
+int32_t MyFlag::getUserIdByTokenIdUserId_ = -1;
 } // namespace AAFwk
 } // namespace OHOS

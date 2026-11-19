@@ -15,6 +15,8 @@
 
 #include "wants_info.h"
 
+#include "hilog_tag_wrapper.h"
+
 namespace OHOS {
 namespace AAFwk {
 bool WantsInfo::ReadFromParcel(Parcel &parcel)
@@ -45,8 +47,14 @@ WantsInfo *WantsInfo::Unmarshalling(Parcel &parcel)
 
 bool WantsInfo::Marshalling(Parcel &parcel) const
 {
-    parcel.WriteParcelable(&want);
-    parcel.WriteString16(Str8ToStr16(resolvedTypes));
+    if (!parcel.WriteParcelable(&want)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write want failed");
+        return false;
+    }
+    if (!parcel.WriteString16(Str8ToStr16(resolvedTypes))) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write resolvedTypes failed");
+        return false;
+    }
     return true;
 }
 }  // namespace AAFwk

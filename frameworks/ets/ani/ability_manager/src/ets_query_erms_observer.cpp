@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -37,9 +37,15 @@ EtsQueryERMSObserver::~EtsQueryERMSObserver()
         TAG_LOGE(AAFwkTag::QUERY_ERMS, "null env");
         return;
     }
-    for (auto it = etsObserverObjectList_.begin(); it != etsObserverObjectList_.end();) {
-        env->GlobalReference_Delete(it->callback);
-        it++;
+    std::vector<ani_object> callbacks;
+    {
+        std::unique_lock<std::mutex> lock(etsObserverObjectListLock_);
+        for (auto &item : etsObserverObjectList_) {
+            callbacks.emplace_back(item.callback);
+        }
+    }
+    for (const auto &callback : callbacks) {
+        env->GlobalReference_Delete(callback);
     }
     AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
 }
@@ -97,7 +103,8 @@ void EtsQueryERMSObserver::CallCallback(ani_object callback, const AtomicService
     if (resultCode == ERR_OK) {
         aniObject = EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK);
     } else {
-        aniObject = EtsErrorUtil::CreateErrorByNativeErr(env, resultCode);
+        aniObject = EtsErrorUtil::CreateErrorByNativeErr(env, resultCode, "",
+            GetInnerErrorMsg(AbilityInnerErrorMsg::QUERY_ATOMIC_SERVICE_STARTUP_RULE_FAILED));
     }
     AppExecFwk::AsyncCallback(env, callback, aniObject, nullptr);
     AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);

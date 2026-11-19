@@ -196,6 +196,52 @@ void SetCreateCompleteCallback(ani_env *env, std::shared_ptr<std::shared_ptr<Con
     AppExecFwk::AsyncCallback(env, callback, EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK), contextObj);
 }
 
+ani_object ThrowErrorCodeAndReturnNull(ani_env *env, const AbilityErrorCode &errCode)
+{
+    EtsErrorUtil::ThrowError(env, errCode);
+    ani_ref result = nullptr;
+    env->GetNull(&result);
+    return static_cast<ani_object>(result);
+}
+
+ani_object ThrowInnerErrorAndReturnNull(ani_env *env)
+{
+    return ThrowErrorCodeAndReturnNull(env, AbilityErrorCode::ERROR_CODE_INNER);
+}
+
+ani_object ThrowParamErrorAndReturnNull(ani_env *env, const std::string &msg)
+{
+    EtsErrorUtil::ThrowInvalidParamError(env, msg);
+    ani_ref result = nullptr;
+    env->GetNull(&result);
+    return static_cast<ani_object>(result);
+}
+
+ani_object CreateSyncContextObject(ani_env *env, std::shared_ptr<Context> context)
+{
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null env");
+        return nullptr;
+    }
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null context");
+        return ThrowInnerErrorAndReturnNull(env);
+    }
+    ani_class cls {};
+    ani_status status = ANI_ERROR;
+    if ((status = env->FindClass(CONTEXT_CLASS_NAME, &cls)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPKIT, "status: %{public}d", status);
+        return ThrowInnerErrorAndReturnNull(env);
+    }
+    ani_object contextObj = nullptr;
+    if (!SetNativeContextLong(env, context, cls, contextObj)) {
+        TAG_LOGE(AAFwkTag::APPKIT, "set nativeContextLong failed");
+        return ThrowInnerErrorAndReturnNull(env);
+    }
+    ContextUtil::CreateEtsBaseContext(env, cls, contextObj, context);
+    return contextObj;
+}
+
 std::shared_ptr<Context> GetContextByStageMode(ani_env *env, ani_object &contextObj,
     ani_object callback, ani_object emptyObject)
 {
@@ -301,6 +347,49 @@ void EtsApplication::CreateModuleContext(ani_env *env,
         *moduleContext = contextImpl->CreateModuleContext(stdBundleName, stdModuleName, inputContextPtr);
     }
     SetCreateCompleteCallback(env, moduleContext, callback);
+}
+
+ani_object EtsApplication::CreateModuleContextSync(ani_env *env,
+    ani_object contextObj, ani_string moduleName)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "CreateModuleContextSync Call");
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null env");
+        return nullptr;
+    }
+    ani_boolean stageMode = false;
+    ani_status status = IsStageContext(env, contextObj, stageMode);
+    if (status != ANI_OK || !stageMode) {
+        TAG_LOGE(AAFwkTag::APPKIT, "not stageMode");
+        return ThrowParamErrorAndReturnNull(env, "Parse param context failed, must be a context of stageMode.");
+    }
+    auto context = GetStageModeContext(env, contextObj);
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null context");
+        return ThrowErrorCodeAndReturnNull(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
+    }
+    auto inputContextPtr = Context::ConvertTo<Context>(context);
+    if (inputContextPtr == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "Convert to context failed");
+        return ThrowErrorCodeAndReturnNull(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
+    }
+    std::string stdModuleName = "";
+    if (!AppExecFwk::GetStdString(env, moduleName, stdModuleName)) {
+        TAG_LOGE(AAFwkTag::APPKIT, "GetStdString failed");
+        return ThrowParamErrorAndReturnNull(env, "Parse param moduleName failed, moduleName must be string.");
+    }
+    std::shared_ptr<ContextImpl> contextImpl = std::make_shared<ContextImpl>();
+    if (contextImpl == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null contextImpl");
+        return ThrowInnerErrorAndReturnNull(env);
+    }
+    contextImpl->SetProcessName(context->GetProcessName());
+    auto moduleContext = contextImpl->CreateModuleContext(stdModuleName, inputContextPtr);
+    if (moduleContext == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "failed to create module context");
+        return ThrowErrorCodeAndReturnNull(env, AbilityErrorCode::ERROR_CODE_INVALID_MODULENAME);
+    }
+    return CreateSyncContextObject(env, moduleContext);
 }
 
 void EtsApplication::CreateBundleContextCheck(ani_env *env,
@@ -668,6 +757,11 @@ void ApplicationInit(ani_env *env)
             "nativeCreateModuleContextCheck",
             "C{application.Context.Context}C{std.core.String}C{std.core.String}:",
             reinterpret_cast<void *>(EtsApplication::CreateModuleContextCheck)
+        },
+        ani_native_function {
+            "nativeCreateModuleContextSync",
+            "C{application.Context.Context}C{std.core.String}:C{application.Context.Context}",
+            reinterpret_cast<void *>(EtsApplication::CreateModuleContextSync)
         },
         ani_native_function {
             "nativeCreateBundleContext",

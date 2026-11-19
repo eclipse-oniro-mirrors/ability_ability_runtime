@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,6 +72,8 @@ public:
 
     MOCK_METHOD4(KillProcess, int(const std::string& bundleName, const bool clearPageStack, int32_t appIndex,
         const std::string& reason));
+    MOCK_METHOD5(KillProcessWithUserId, int(const std::string& bundleName, const bool clearPageStack, int32_t appIndex,
+        const std::string& reason, int32_t userId));
     MOCK_METHOD2(UninstallApp, int(const std::string& bundleName, int32_t uid));
     MOCK_METHOD3(UninstallApp, int32_t(const std::string& bundleName, int32_t uid, int32_t appIndex));
 
@@ -99,7 +101,8 @@ public:
     MOCK_METHOD2(NotifyContinuationResult, int(int32_t missionId, int32_t result));
     MOCK_METHOD5(ContinueMission, int(const std::string& srcDeviceId, const std::string& dstDeviceId,
         int32_t missionId, const sptr<IRemoteObject>& callBack, AAFwk::WantParams& wantParams));
-    MOCK_METHOD3(ContinueAbility, int(const std::string& deviceId, int32_t missionId, uint32_t versionCode));
+    MOCK_METHOD4(ContinueAbility, int(const std::string& deviceId, int32_t missionId,
+        uint32_t versionCode, int32_t userId));
     MOCK_METHOD3(NotifyCompleteContinuation, void(const std::string& deviceId, int32_t sessionId, bool isSuccess));
 
     MOCK_METHOD1(LockMissionForCleanup, int(int32_t missionId));
@@ -124,6 +127,7 @@ public:
     MOCK_METHOD2(GetExtensionRunningInfos, int(int upperLimit, std::vector<ExtensionRunningInfo>& info));
     MOCK_METHOD1(GetProcessRunningInfos, int(std::vector<AppExecFwk::RunningProcessInfo>& info));
     MOCK_METHOD2(GetWantSenderInfo, int(const sptr<IWantSender>& target, std::shared_ptr<WantSenderInfo>& info));
+    MOCK_METHOD1(RegisterWantAgentHolder, void(const sptr<IWantSender>& target));
     MOCK_METHOD2(AcquireShareData, int32_t(const int32_t &missionId, const sptr<IAcquireShareDataCallback> &shareData));
     MOCK_METHOD4(ShareDataDone, int32_t(const sptr<IRemoteObject> &token,
         const int32_t &resultCode, const int32_t &uniqueId, WantParams &wantParam));
@@ -190,7 +194,7 @@ public:
 
     virtual int StartAbilityByCall(const Want& want, const sptr<IAbilityConnection>& connect,
         const sptr<IRemoteObject>& callerToken, int32_t userId = DEFAULT_INVAL_VALUE, bool isSilent = false,
-        bool promotePriority = false, bool isVisible = false)
+        bool promotePriority = false, bool isVisible = false, uint64_t specifiedFullTokenId = 0)
     {
         return 0;
     }
@@ -245,7 +249,7 @@ public:
         return 0;
     }
 
-    int GetTopAbility(sptr<IRemoteObject>& token) override
+    int GetTopAbility(sptr<IRemoteObject>& token, int32_t userId = INVALID_USER_ID) override
     {
         return 0;
     }
@@ -280,12 +284,32 @@ public:
     MOCK_METHOD2(DetachAppDebug, int32_t(const std::string &bundleName, bool isDebugFromLocal));
     MOCK_METHOD3(ExecuteIntent, int32_t(uint64_t key, const sptr<IRemoteObject> &callerToken,
         const InsightIntentExecuteParam &param));
+MOCK_METHOD4(ExecuteUIAbilityForegroundIntentWithSpecifyTokenId,
+    int32_t(const Want &want, const sptr<IRemoteObject> &callerAbilityToken,
+        const InsightIntentExecuteLiteParam &param, uint64_t specifiedFullTokenId));
     MOCK_METHOD3(ExecuteInsightIntentDone, int32_t(const sptr<IRemoteObject> &token, uint64_t intentId,
         const InsightIntentExecuteResult &result));
+    MOCK_METHOD3(GetAllInsightIntentInfo, int32_t(AbilityRuntime::GetInsightIntentFlag flag,
+        std::vector<AbilityRuntime::InsightIntentInfoForQuery> &infos, int32_t userId));
+    MOCK_METHOD4(GetInsightIntentInfoByBundleName, int32_t(AbilityRuntime::GetInsightIntentFlag flag,
+        const std::string &bundleName, std::vector<AbilityRuntime::InsightIntentInfoForQuery> &infos,
+        int32_t userId));
+    MOCK_METHOD6(GetInsightIntentInfoByIntentName, int32_t(AbilityRuntime::GetInsightIntentFlag flag,
+        const std::string &bundleName, const std::string &moduleName, const std::string &intentName,
+        AbilityRuntime::InsightIntentInfoForQuery &info, int32_t userId));
     MOCK_METHOD5(StartAbilityWithSpecifyTokenId, int(const Want& want, const sptr<IRemoteObject>& callerToken,
         uint32_t specifyTokenId, int32_t userId, int requestCode));
 public:
     std::string powerState_;
+
+    // Capture the Want handed to the 4-arg StartAbility so unit tests can assert on its params.
+    static const Want& GetCapturedWant();
+    static bool HasCapturedWant();
+    static void ResetCapturedWant();
+
+private:
+    static Want capturedWant_;
+    static bool captured_;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

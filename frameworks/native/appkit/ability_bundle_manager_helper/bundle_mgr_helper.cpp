@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,6 +23,7 @@
 #include "system_ability_definition.h"
 #include "app_utils.h"
 #include "record_cost_time_util.h"
+#include "in_process_call_wrapper.h"
 
 namespace OHOS {
 using AAFwk::RecordCostTimeUtil;
@@ -142,7 +143,7 @@ ErrCode BundleMgrHelper::GetSandboxBundleInfo(
 {
     TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");
     if (bundleName.empty() || appIndex <= AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
-        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "invalid params");
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "invalid");
         return ERR_APPEXECFWK_SANDBOX_INSTALL_PARAM_ERROR;
     }
     auto bundleMgr = Connect();
@@ -195,6 +196,25 @@ ErrCode BundleMgrHelper::GetSandboxExtAbilityInfos(const Want &want, int32_t app
     RecordCostTimeUtil timeRecord("GetSandboxExtAbilityInfos");
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     return bundleMgr->GetSandboxExtAbilityInfos(want, appIndex, flags, userId, extensionInfos);
+}
+
+ErrCode BundleMgrHelper::GetSandboxExtAbilityInfoOptimal(const Want &want, int32_t appIndex, int32_t flags,
+    int32_t userId, ExtensionAbilityInfo &extensionInfo)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");
+    if (appIndex <= AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "invalid params");
+        return ERR_APPEXECFWK_SANDBOX_INSTALL_PARAM_ERROR;
+    }
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        return ERR_APPEXECFWK_SANDBOX_INSTALL_INTERNAL_ERROR;
+    }
+
+    RecordCostTimeUtil timeRecord("GetSandboxExtAbilityInfoOptimal");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    return bundleMgr->GetSandboxExtAbilityInfoOptimal(want, appIndex, flags, userId, extensionInfo);
 }
 
 ErrCode BundleMgrHelper::GetSandboxHapModuleInfo(const AbilityInfo &abilityInfo, int32_t appIndex, int32_t userId,
@@ -599,6 +619,23 @@ bool BundleMgrHelper::QueryExtensionAbilityInfos(const Want &want, const int32_t
     return bundleMgr->QueryExtensionAbilityInfos(newWant, flag, userId, extensionInfos);
 }
 
+ErrCode BundleMgrHelper::QueryExtensionAbilityInfoOptimal(const Want &want, const int32_t &flag,
+    const int32_t &userId, ExtensionAbilityInfo &extensionInfo)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        return false;
+    }
+
+    AAFwk::Want newWant = want;
+    newWant.RemoveAllFd();
+    RecordCostTimeUtil timeRecord("QueryExtensionAbilityInfoOptimal");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    return bundleMgr->QueryExtensionAbilityInfoOptimal(newWant, flag, userId, extensionInfo);
+}
+
 ErrCode BundleMgrHelper::GetBundleInfoV9(
     const std::string &bundleName, int32_t flags, BundleInfo &bundleInfo, int32_t userId)
 {
@@ -660,7 +697,7 @@ bool BundleMgrHelper::GetApplicationInfo(
 bool BundleMgrHelper::GetApplicationInfoWithAppIndex(
     const std::string &appName, int32_t appIndex, int32_t userId, ApplicationInfo &appInfo)
 {
-    TAG_LOGI(AAFwkTag::BUNDLEMGRHELPER, "appName: %{public}s, appIndex: %{public}d", appName.c_str(), appIndex);
+    TAG_LOGI(AAFwkTag::BUNDLEMGRHELPER, "app:%{public}s,i:%{public}d", appName.c_str(), appIndex);
     if (appIndex < 0) {
         TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "Invalid appIndex");
         return false;
@@ -678,7 +715,9 @@ bool BundleMgrHelper::GetApplicationInfoWithAppIndex(
         if (bundleMgr->GetApplicationInfo(appName, AppExecFwk::BundleFlag::GET_BUNDLE_DEFAULT, userId, appInfo)) {
             return true;
         }
-    } else if (appIndex <= AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
+    } else if (AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex) ||
+               appIndex == AbilityRuntime::GlobalConstant::PC_TABLET_INDEX ||
+               AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(appIndex)) {
         if (bundleMgr->GetCloneBundleInfo(appName,
             static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION),
             appIndex, bundleInfo, userId) == ERR_OK) {
@@ -725,6 +764,20 @@ bool BundleMgrHelper::QueryExtensionAbilityInfoByUri(
 
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     return bundleMgr->QueryExtensionAbilityInfoByUri(uri, userId, extensionAbilityInfo);
+}
+
+bool BundleMgrHelper::QueryExtensionAbilityInfoByUriOptimal(
+    const std::string &uri, int32_t userId, ExtensionAbilityInfo &extensionAbilityInfo)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bMgr");
+        return false;
+    }
+
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    return bundleMgr->QueryExtensionAbilityInfoByUriOptimal(uri, userId, extensionAbilityInfo);
 }
 
 bool BundleMgrHelper::ImplicitQueryInfoByPriority(
@@ -844,6 +897,20 @@ bool BundleMgrHelper::QueryDataGroupInfos(
     return bundleMgr->QueryDataGroupInfos(bundleName, userId, infos);
 }
 
+ErrCode BundleMgrHelper::QueryIpcGroupInfos(
+    const std::string &bundleName, int32_t userId, std::vector<IpcGroupInfo> &infos)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        return ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
+    }
+
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    return bundleMgr->QueryIpcGroupInfos(bundleName, userId, infos);
+}
+
 bool BundleMgrHelper::RegisterBundleEventCallback(const sptr<IBundleEventCallback> &bundleEventCallback)
 {
     TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");
@@ -899,6 +966,48 @@ ErrCode BundleMgrHelper::GetUidByBundleName(const std::string &bundleName, int32
 
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     return bundleMgr->GetUidByBundleName(bundleName, userId, appCloneIndex);
+}
+
+ErrCode BundleMgrHelper::GetAppProvisionInfo(
+    const std::string &bundleName, int32_t userId, AppProvisionInfo &appProvisionInfo)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        return ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
+    }
+
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    return bundleMgr->GetAppProvisionInfo(bundleName, userId, appProvisionInfo);
+}
+
+ErrCode BundleMgrHelper::GetLaunchServices(
+    const std::string &bundleName, const std::string &moduleName, int32_t userId, LaunchServicesResult &result)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        return ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
+    }
+
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    return bundleMgr->GetLaunchServices(bundleName, moduleName, userId, result);
+}
+
+ErrCode BundleMgrHelper::IsApplicationDisableForbidden(const std::string &bundleName, int32_t userId,
+    int32_t appIndex, bool &forbidden)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        return ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
+    }
+
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    return bundleMgr->IsApplicationDisableForbidden(bundleName, userId, appIndex, forbidden);
 }
 
 ErrCode BundleMgrHelper::QueryExtensionAbilityInfosOnlyWithTypeName(const std::string &extensionTypeName,
@@ -973,6 +1082,25 @@ ErrCode BundleMgrHelper::QueryCloneAbilityInfo(const ElementName &element, int32
     return ret;
 }
 
+ErrCode BundleMgrHelper::QuerySandboxCloneAbilityInfo(const std::string &creatorBundleName,
+    const ElementName &element, int32_t flags, int32_t sandBoxCloneIndex,
+    AbilityInfo &abilityInfo, int32_t userId)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "called");
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        return ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
+    }
+
+    RecordCostTimeUtil timeRecord("QuerySandboxCloneAbilityInfo");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto ret = bundleMgr->QuerySandboxCloneAbilityInfo(creatorBundleName, element, flags,
+        sandBoxCloneIndex, abilityInfo, userId);
+    SetAbilityProcessEmpty(abilityInfo);
+    return ret;
+}
+
 ErrCode BundleMgrHelper::GetCloneBundleInfo(const std::string &bundleName, int32_t flags, int32_t appCloneIndex,
     BundleInfo &bundleInfo, int32_t userId)
 {
@@ -1013,6 +1141,40 @@ ErrCode BundleMgrHelper::GetCloneAppIndexes(const std::string &bundleName, std::
 
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     return bundleMgr->GetCloneAppIndexes(bundleName, appIndexes, userId);
+}
+
+ErrCode BundleMgrHelper::GetAppClonePreference(const std::string &bundleName, int32_t userId,
+    AppClonePreference &preference)
+{
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        return ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
+    }
+
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    return bundleMgr->GetAppClonePreference(bundleName, userId, preference);
+}
+
+ErrCode BundleMgrHelper::GetDualModeBundleInfo(const std::string &bundleName, int32_t userId,
+    int32_t &appIndex)
+{
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        appIndex = 0;
+        return ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
+    }
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    DualModeBundleInfo preference;
+    auto ret = IN_PROCESS_CALL(bundleMgr->GetDualModeBundleInfo(bundleName, userId, preference));
+    if (ret == ERR_OK) {
+        appIndex = preference.appIndex;
+    } else {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "GDMBI ERROR");
+        appIndex = 0;
+    }
+    return ret;
 }
 
 ErrCode BundleMgrHelper::GetSignatureInfoByBundleName(const std::string &bundleName, SignatureInfo &signatureInfo)
@@ -1186,6 +1348,90 @@ ErrCode BundleMgrHelper::SetBundleFirstLaunch(const std::string &bundleName, int
     }
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     return bundleMgr->SetBundleFirstLaunch(bundleName, userId, appIndex, isBundleFirstLaunched);
+}
+
+ErrCode BundleMgrHelper::QueryAbilityInfos(const Want &want, int32_t userId, std::vector<AbilityInfo> &abilityInfos)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "QueryAbilityInfos");
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        return ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
+    }
+
+    RecordCostTimeUtil timeRecord("QueryAbilityInfos");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto ret = bundleMgr->QueryAbilityInfosV9(want,
+        static_cast<int32_t>(AppExecFwk::GetAbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION),
+        userId, abilityInfos);
+    return ret;
+}
+
+bool BundleMgrHelper::QueryEnabledAbilityInfo(const Want &want, int32_t userId, AbilityInfo &abilityInfo)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "QueryEnabledAbilityInfo");
+    std::vector<AbilityInfo> abilityInfos;
+    if (auto ret = QueryAbilityInfos(want, userId, abilityInfos); ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "QueryAbilityInfos failed:  %{public}d", ret);
+        return false;
+    }
+
+    if (abilityInfos.size() != 1u) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "Invalid info size: %{public}zu", abilityInfos.size());
+        return false;
+    }
+
+    const auto &tmpInfo = abilityInfos[0];
+    if (!tmpInfo.applicationInfo.enabled) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "Disabled info bundleName=%{public}s", tmpInfo.bundleName.c_str());
+        return false;
+    }
+
+    abilityInfo = tmpInfo;
+    return true;
+}
+
+ErrCode BundleMgrHelper::QueryExtensionAbilityInfosV9(const Want &want, int32_t userId,
+    std::vector<ExtensionAbilityInfo> &extensionInfos)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "QueryExtensionAbilityInfosV9");
+    auto bundleMgr = Connect();
+    if (bundleMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "null bundleMgr");
+        return ERR_APPEXECFWK_SERVICE_INTERNAL_ERROR;
+    }
+
+    RecordCostTimeUtil timeRecord("QueryExtensionAbilityInfosV9");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto ret = bundleMgr->QueryExtensionAbilityInfosV9(want,
+        static_cast<int32_t>(AppExecFwk::GetAbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION),
+        userId, extensionInfos);
+    return ret;
+}
+
+bool BundleMgrHelper::QueryEnabledExtensionAbilityInfo(
+    const Want &want, int32_t userId, ExtensionAbilityInfo &extensionInfo)
+{
+    TAG_LOGD(AAFwkTag::BUNDLEMGRHELPER, "QueryEnabledExtensionAbilityInfo");
+    std::vector<ExtensionAbilityInfo> extensionInfos;
+    if (auto ret = QueryExtensionAbilityInfosV9(want, userId, extensionInfos); ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "QueryExtensionAbilityInfosV9 failed:  %{public}d", ret);
+        return false;
+    }
+
+    if (extensionInfos.size() != 1u) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "Invalid info size: %{public}zu", extensionInfos.size());
+        return false;
+    }
+
+    const auto &tmpInfo = extensionInfos[0];
+    if (!tmpInfo.applicationInfo.enabled) {
+        TAG_LOGE(AAFwkTag::BUNDLEMGRHELPER, "Disabled info bundleName=%{public}s", tmpInfo.bundleName.c_str());
+        return false;
+    }
+
+    extensionInfo = tmpInfo;
+    return true;
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

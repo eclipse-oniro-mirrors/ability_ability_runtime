@@ -38,6 +38,10 @@ ohos_unittest("pending_want_test") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/error_utils:ability_runtime_error_util",
+    "${ability_runtime_innerkits_path}/wantagent:wantagent_innerkits",
+    "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
     "${ability_runtime_services_path}/abilitymgr:wantagent_manager",
@@ -47,10 +51,6 @@ ohos_unittest("pending_want_test") {
     "ability_base:base",
     "ability_base:want",
     "ability_base:zuri",
-    "ability_runtime:ability_manager",
-    "ability_runtime:ability_runtime_error_util",
-    "ability_runtime:abilitykit_native",
-    "ability_runtime:wantagent_innerkits",
     "access_token:libnativetoken",
     "access_token:libtoken_setproc",
     "bundle_framework:appexecfwk_base",

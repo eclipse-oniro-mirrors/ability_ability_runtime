@@ -1,0 +1,143 @@
+/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License"),
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef OHOS_ABILITY_RUNTIME_CLI_ERROR_CODE_H
+#define OHOS_ABILITY_RUNTIME_CLI_ERROR_CODE_H
+
+#include "errors.h"
+
+namespace OHOS {
+namespace CliTool {
+
+enum {
+    /*
+     * Result (35700000) for Connect: An error of the get cli tool mgr service.
+     */
+    GET_CLI_TOOL_MGR_SERVICE_FAILED = 35700000,
+
+    /*
+     * Result (35700001): Session limit.
+     */
+    ERR_SESSION_LIMIT_EXCEEDED = 35700001,
+
+    /*
+     * Result (35700002): Invliad param.
+     */
+    ERR_INVALID_PARAM = 35700002,
+
+    /*
+     * Result (35700003): The caller is not hap.
+     */
+    ERR_NOT_HAP = 35700003,
+
+    /*
+     * Result (35700004): Fail to init.
+     */
+    ERR_NO_INIT = 35700004,
+
+    /*
+     * Result (35700005): Tool not exist.
+     */
+    ERR_TOOL_NOT_EXIST = 35700005,
+
+    /*
+     * Result (35700006): Fail to crate js CliSessionInfo.
+     */
+    ERR_INNER_PARAM_INVALID = 35700006,
+
+    /*
+     * Result (35700007): Permission denied.
+     */
+    ERR_PERMISSION_DENIED = 35700007,
+
+    /*
+     * Result (35700008): The caller is not system hap.
+     */
+    ERR_NOT_SYSTEM_APP = 35700008,
+
+    ERR_CLI_SESSION_NOT_FOUND = 35700009,
+
+    ERR_CLI_SEND_MESSAGE = 35700010,
+
+    /*
+     * Result (35700011): The caller is not SA.
+     */
+    ERR_NOT_SA_CALLER = 35700011,
+
+    /*
+     * Result (35700012): fail to kill.
+     */
+    ERR_NOT_KILL = 35700012,
+
+    /*
+     * Result (35700013): Function not exist.
+     */
+    ERR_FUNCTION_NOT_EXIST = 35700013,
+
+    /*
+     * Result (35700017): Function already exist.
+     */
+    ERR_FUNCTION_EXIST = 35700017,
+
+    /*
+     * Result (35700014): JSON parse failed.
+     */
+    ERR_JSON_PARSE_FAILED = 35700014,
+
+    /*
+     * Result (35700015): File not found.
+     */
+    ERR_FILE_NOT_FOUND = 35700015,
+
+    /*
+     * Result (35700016): KVStore not ready.
+     */
+    ERR_KVSTORE_NOT_READY = 35700016,
+
+    /*
+     * Result (35700018): KVStore operation error.
+     */
+    ERR_KVSTORE_ERROR = 35700018,
+
+    /*
+     * Result (35700019): Function execute failed.
+     */
+    ERR_FUNCTION_EXECUTE_FAILED = 35700019,
+
+    /*
+     * Result (35700020): Function execute timeout.
+     */
+    ERR_FUNCTION_EXECUTE_TIMEOUT = 35700020,
+
+    /*
+     * Result (35700021): Not in developer mode. Hook registration is not allowed.
+     */
+    ERR_NOT_DEVELOPER_MODE = 35700021,
+
+    /*
+     * Result (35700022): Hook already registered. Must unregister first.
+     */
+    ERR_HOOK_ALREADY_REGISTERED = 35700022,
+
+    /*
+     * Result (35700023): Hook not registered. Nothing to unregister.
+     */
+    ERR_HOOK_NOT_REGISTERED = 35700023,
+};
+
+} // namespace CliTool
+} // namespace OHOS
+
+#endif // OHOS_ABILITY_RUNTIME_CLI_ERROR_CODE_H

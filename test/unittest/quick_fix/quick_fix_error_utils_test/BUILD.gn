@@ -28,10 +28,11 @@ ohos_unittest("quick_fix_error_utils_test") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
 
-  deps = []
+  deps = [
+    "${ability_runtime_innerkits_path}/quick_fix:quickfix_manager",
+  ]
 
   external_deps = [
-    "ability_runtime:quickfix_manager",
     "googletest:gmock_main",
     "googletest:gtest_main",
     "hilog:libhilog",

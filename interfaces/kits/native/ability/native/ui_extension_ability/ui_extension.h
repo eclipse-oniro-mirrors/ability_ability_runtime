@@ -16,7 +16,9 @@
 #ifndef OHOS_ABILITY_RUNTIME_UI_EXTENSION_H
 #define OHOS_ABILITY_RUNTIME_UI_EXTENSION_H
 
+#include <memory>
 #include <mutex>
+#include <optional>
 #include <unordered_set>
 
 #include "extension_base.h"
@@ -92,6 +94,13 @@ public:
     void RegisterUiExtensionDelayResultCallback(uint64_t intentId, const sptr<AAFwk::SessionInfo> &sessionInfo,
         bool isDecorator = false);
 
+    /**
+     * @brief Create modal UIExtension.
+     * @param want The want of the modal UIExtension to create.
+     * @return Returns ERR_OK on success, error code on failure.
+     */
+    virtual int CreateModalUIExtension(const AAFwk::Want &want);
+
 protected:
     virtual void ForegroundWindow(const AAFwk::Want &want, const sptr<AAFwk::SessionInfo> &sessionInfo);
     virtual void BackgroundWindow(const sptr<AAFwk::SessionInfo> &sessionInfo);
@@ -99,11 +108,17 @@ protected:
     virtual bool ForegroundWindowWithInsightIntent(
         const AAFwk::Want &want, const sptr<AAFwk::SessionInfo> &sessionInfo, bool needForeground);
     virtual bool HandleSessionCreate(const AAFwk::Want &want, const sptr<AAFwk::SessionInfo> &sessionInfo);
+    void RegisterBrandColorChangeListener(const sptr<Rosen::Window> &uiWindow);
+private:
+    int32_t WindowNotifeBrandColorChange(Rosen::SubSystemId id, uint32_t customId, AAFwk::Want &&data,
+        std::optional<AAFwk::Want> &reply);
+
 protected:
     std::mutex uiWindowMutex_;
     std::map<uint64_t, sptr<Rosen::Window>> uiWindowMap_;
     std::set<uint64_t> foregroundWindows_;
     uint64_t intentId_;
+    std::shared_ptr<AbilityHandler> handler_ = nullptr;
 };
 }  // namespace AbilityRuntime
 }  // namespace OHOS

@@ -60,7 +60,7 @@ HWTEST_F(CacheProcessManagerSecondTest, CheckAndSetProcessCacheEnable_0100, Test
     auto appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
     appRecord->procCacheSupportState_ = SupportProcessCacheState::SUPPORT;
     appRecord->priorityObject_ = std::make_shared<PriorityObject>();
-    appRecord->processCacheBlocked = false;
+    appRecord->processCacheBlocked_.store(false);
     AAFwk::MyStatus::GetInstance().isShouldKillProcess_ = true;
     cacheProcMgr->CheckAndSetProcessCacheEnable(nullptr);
     EXPECT_EQ(appRecord->GetProcessCacheBlocked(), false);
@@ -79,7 +79,7 @@ HWTEST_F(CacheProcessManagerSecondTest, CheckAndSetProcessCacheEnable_0200, Test
     auto appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
     appRecord->procCacheSupportState_ = SupportProcessCacheState::NOT_SUPPORT;
     appRecord->priorityObject_ = std::make_shared<PriorityObject>();
-    appRecord->processCacheBlocked = false;
+    appRecord->processCacheBlocked_.store(false);
     AAFwk::MyStatus::GetInstance().isShouldKillProcess_ = true;
     cacheProcMgr->CheckAndSetProcessCacheEnable(appRecord);
     EXPECT_EQ(appRecord->GetProcessCacheBlocked(), false);
@@ -98,7 +98,7 @@ HWTEST_F(CacheProcessManagerSecondTest, CheckAndSetProcessCacheEnable_0300, Test
     auto appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
     appRecord->procCacheSupportState_ = SupportProcessCacheState::SUPPORT;
     appRecord->priorityObject_ = nullptr;
-    appRecord->processCacheBlocked = false;
+    appRecord->processCacheBlocked_.store(false);
     AAFwk::MyStatus::GetInstance().isShouldKillProcess_ = true;
     cacheProcMgr->CheckAndSetProcessCacheEnable(appRecord);
     EXPECT_EQ(appRecord->GetProcessCacheBlocked(), false);
@@ -117,7 +117,7 @@ HWTEST_F(CacheProcessManagerSecondTest, CheckAndSetProcessCacheEnable_0400, Test
     auto appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
     appRecord->procCacheSupportState_ = SupportProcessCacheState::SUPPORT;
     appRecord->priorityObject_ = std::make_shared<PriorityObject>();
-    appRecord->processCacheBlocked = true;
+    appRecord->processCacheBlocked_.store(true);
     AAFwk::MyStatus::GetInstance().setProcessCacheBlockedTimes_ = 0;
     AAFwk::MyStatus::GetInstance().isShouldKillProcess_ = true;
     cacheProcMgr->CheckAndSetProcessCacheEnable(appRecord);
@@ -137,7 +137,7 @@ HWTEST_F(CacheProcessManagerSecondTest, CheckAndSetProcessCacheEnable_0500, Test
     auto appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
     appRecord->procCacheSupportState_ = SupportProcessCacheState::SUPPORT;
     appRecord->priorityObject_ = std::make_shared<PriorityObject>();
-    appRecord->processCacheBlocked = false;
+    appRecord->processCacheBlocked_.store(false);
     AAFwk::MyStatus::GetInstance().isShouldKillProcess_ = true;
     cacheProcMgr->CheckAndSetProcessCacheEnable(appRecord);
     EXPECT_EQ(appRecord->GetProcessCacheBlocked(), true);

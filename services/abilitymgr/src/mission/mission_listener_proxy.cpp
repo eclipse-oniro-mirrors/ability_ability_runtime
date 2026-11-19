@@ -17,7 +17,7 @@
 
 #include "hilog_tag_wrapper.h"
 #ifdef SUPPORT_SCREEN
-#include "pixel_map.h"
+#include "pixel_map_bridge.h"
 #endif //SUPPORT_SCREEN
 
 namespace OHOS {
@@ -80,7 +80,7 @@ void MissionListenerProxy::OnMissionIconUpdated(int32_t missionId, const std::sh
         return;
     }
 
-    if (!data.WriteParcelable(icon.get())) {
+    if (!PixelMapBridge::GetInstance().WritePixelMapToParcel(icon.get(), &data)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write icon fail");
         return;
     }

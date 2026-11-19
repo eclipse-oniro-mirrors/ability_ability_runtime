@@ -71,13 +71,13 @@ export default namespace verticalPanelManager {
     onResult?: OnResultFn;
   }
 
-  export const SOURCE_APP_BUNDLE_NAME = 'bundleName';
+  export const SOURCE_APP_BUNDLE_NAME: string = 'bundleName';
 
-  export const SOURCE_APP_MODULE_NAME = 'moduleName';
+  export const SOURCE_APP_MODULE_NAME: string = 'moduleName';
 
-  export const SOURCE_APP_ABILITY_NAME = 'abilityName';
+  export const SOURCE_APP_ABILITY_NAME: string = 'abilityName';
 
-  export const SOURCE_APP_WINDOW_ID = 'windowId';
+  export const SOURCE_APP_WINDOW_ID: string = 'windowId';
 
-  export const SOURCE_APP_SCREEN_MODE = 'screenMode';
+  export const SOURCE_APP_SCREEN_MODE: string = 'screenMode';
 }

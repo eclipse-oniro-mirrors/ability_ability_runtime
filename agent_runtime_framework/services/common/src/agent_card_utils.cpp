@@ -27,30 +27,46 @@ namespace AgentRuntime {
 using namespace OHOS::AppExecFwk;
 
 namespace {
-AppExecFwk::BundleMgrClient g_bundleMgrClient;
 constexpr size_t MAX_ICON_URL_LENGTH = 512;
+constexpr int32_t GET_AGENT_EXTENSION_BUNDLE_INFO_FLAGS =
+    static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_EXTENSION_ABILITY) |
+    static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_HAP_MODULE);
+constexpr int32_t GET_AGENT_APPLICATION_BUNDLE_INFO_FLAGS =
+    static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION);
 
 bool FindAgentExtensionInfo(const BundleInfo &bundleInfo, const std::string &abilityName,
     ExtensionAbilityInfo &extensionInfo)
 {
-    auto it = std::find_if(bundleInfo.extensionInfos.begin(), bundleInfo.extensionInfos.end(),
-        [&abilityName](const ExtensionAbilityInfo &item) {
-            return item.name == abilityName;
-        });
-    if (it == bundleInfo.extensionInfos.end()) {
-        return false;
+    for (const auto &hapModuleInfo : bundleInfo.hapModuleInfos) {
+        auto it = std::find_if(hapModuleInfo.extensionInfos.begin(), hapModuleInfo.extensionInfos.end(),
+            [&abilityName](const ExtensionAbilityInfo &item) {
+                return item.name == abilityName;
+            });
+        if (it != hapModuleInfo.extensionInfos.end()) {
+            extensionInfo = *it;
+            return true;
+        }
     }
-    extensionInfo = *it;
-    return true;
+    return false;
+}
+
+std::shared_ptr<AppExecFwk::BundleMgrHelper> GetBundleMgrHelper()
+{
+    return DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
 }
 } // namespace
 
 int32_t AgentCardUtils::ValidateBundleAbility(const std::string &bundleName, const std::string &abilityName,
     int32_t userId)
 {
+    auto bundleMgrHelper = GetBundleMgrHelper();
+    if (bundleMgrHelper == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "bundleMgrHelper is null");
+        return AAFwk::ERR_BUNDLE_NOT_EXIST;
+    }
     BundleInfo bundleInfo;
-    if (!IN_PROCESS_CALL(g_bundleMgrClient.GetBundleInfo(
-        bundleName, BundleFlag::GET_BUNDLE_WITH_EXTENSION_INFO, bundleInfo, userId))) {
+    if (IN_PROCESS_CALL(bundleMgrHelper->GetBundleInfoV9(
+        bundleName, GET_AGENT_EXTENSION_BUNDLE_INFO_FLAGS, bundleInfo, userId)) != ERR_OK) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "GetBundleInfo failed");
         return AAFwk::ERR_BUNDLE_NOT_EXIST;
     }
@@ -73,9 +89,14 @@ int32_t AgentCardUtils::ValidateSystemAppRequirement(const AgentCard &card, int3
         return ERR_OK;
     }
 
+    auto bundleMgrHelper = GetBundleMgrHelper();
+    if (bundleMgrHelper == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "bundleMgrHelper is null");
+        return AAFwk::ERR_BUNDLE_NOT_EXIST;
+    }
     BundleInfo bundleInfo;
-    if (!IN_PROCESS_CALL(g_bundleMgrClient.GetBundleInfo(
-        card.appInfo->bundleName, BundleFlag::GET_BUNDLE_DEFAULT, bundleInfo, userId))) {
+    if (IN_PROCESS_CALL(bundleMgrHelper->GetBundleInfoV9(
+        card.appInfo->bundleName, GET_AGENT_APPLICATION_BUNDLE_INFO_FLAGS, bundleInfo, userId)) != ERR_OK) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "GetBundleInfo failed");
         return AAFwk::ERR_BUNDLE_NOT_EXIST;
     }
@@ -129,9 +150,14 @@ bool AgentCardUtils::BundleExists(const std::string &bundleName, int32_t userId)
         return false;
     }
 
+    auto bundleMgrHelper = GetBundleMgrHelper();
+    if (bundleMgrHelper == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "bundleMgrHelper is null");
+        return false;
+    }
     BundleInfo bundleInfo;
-    return IN_PROCESS_CALL(g_bundleMgrClient.GetBundleInfo(
-        bundleName, BundleFlag::GET_BUNDLE_DEFAULT, bundleInfo, userId));
+    return IN_PROCESS_CALL(bundleMgrHelper->GetBundleInfoV9(
+        bundleName, static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_DEFAULT), bundleInfo, userId)) == ERR_OK;
 }
 
 void AgentCardUtils::ApplyDeviceTypes(const std::vector<std::string> &hapDeviceTypes, AgentCard &card)

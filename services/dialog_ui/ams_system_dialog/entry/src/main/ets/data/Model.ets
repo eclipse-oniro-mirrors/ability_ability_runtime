@@ -53,8 +53,8 @@ export class TargetAction {
     public readonly type: TargetType;
     public readonly actionExecution: UIAbilityActionExecution | UIExtensionActionFunction | CustomActionFunction | null;
 
-    constructor(type: TargetType, actionExecution: UIAbilityActionExecution | UIExtensionActionFunction |
-        CustomActionFunction | null) {
+    constructor(type: TargetType, actionExecution: UIAbilityActionExecution 
+            | UIExtensionActionFunction | CustomActionFunction | null) {
         this.type = type;
         this.actionExecution = actionExecution;
     }

@@ -20,9 +20,11 @@ config("napi_common_public_config") {
 
 ohos_shared_library("napi_common") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
-  include_dirs = [ 
+  include_dirs = [
     "${ability_runtime_napi_path}/featureAbility",
+    "${ability_runtime_services_path}/common/include",
   ]
 
   public_configs = [
@@ -42,6 +44,8 @@ ohos_shared_library("napi_common") {
     "napi_common_start_options.cpp",
     "napi_common_util.cpp",
     "napi_common_want.cpp",
+    "napi_common_query_entity_param.cpp",
+    "napi_common_skill_execute.cpp",
     "open_link/napi_common_open_link_options.cpp",
   ]
 
@@ -70,6 +74,7 @@ ohos_shared_library("napi_common") {
     "napi:ace_napi",
     "samgr:samgr_proxy",
     "window_manager:window_animation_utils",
+    "node:node_header_notice",
   ]
 
   public_external_deps = [

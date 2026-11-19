@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,6 +19,7 @@
 #include "ability_manager_service.h"
 #include "ability_util.h"
 #include "hitrace_meter.h"
+#include "utils/update_caller_info_util.h"
 #include "int_wrapper.h"
 #include "modal_system_ui_extension.h"
 #include "query_erms_manager.h"
@@ -27,6 +28,7 @@
 #include "session_manager_lite.h"
 #endif
 #include "session/host/include/zidl/session_interface.h"
+#include "start_ability_context.h"
 #include "start_ability_utils.h"
 #include "string_wrapper.h"
 #include "want.h"
@@ -37,10 +39,10 @@ namespace AAFwk {
 using OHOS::AppExecFwk::BundleInfo;
 namespace {
 constexpr const char* UIEXTENSION_MODAL_TYPE = "ability.want.params.modalType";
-constexpr int32_t ERMS_ISALLOW_RESULTCODE = 10;
 constexpr const char* SUPPORT_CLOSE_ON_BLUR = "supportCloseOnBlur";
 constexpr const char* DIALOG_SESSION_ID = "dialogSessionId";
 constexpr const char* PICKER_ERMS_POLICY = "ability.params.picker.erms.policy";
+constexpr const char* ATOMIC_SERVICE_SHORT_LINK = "atomicServiceShortLink";
 }
 
 DialogSessionManager &DialogSessionManager::GetInstance()
@@ -244,12 +246,20 @@ void DialogSessionManager::GenerateDialogCallerInfo(AbilityRequest &abilityReque
     dialogCallerInfo->userId = userId;
     dialogCallerInfo->needGrantUriPermission = needGrantUriPermission;
     dialogCallerInfo->callerAccessTokenId = abilityRequest.callerAccessTokenId;
+    dialogCallerInfo->requestCallback = abilityRequest.requestCallback;
+    if (abilityRequest.IsCallType(AbilityCallType::START_OPTIONS_TYPE)) {
+        dialogCallerInfo->startOptions = std::make_shared<StartOptions>(abilityRequest.startOptions);
+    }
 }
 
 void DialogSessionManager::NotifyAbilityRequestFailure(const std::string &dialogSessionId, const Want &want)
 {
     auto callerInfo = GetDialogCallerInfo(dialogSessionId);
     CHECK_POINTER(callerInfo);
+    if (callerInfo->requestCallback != nullptr) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "callback request ability");
+        callerInfo->requestCallback->OnRequestStartAbilityResult(false);
+    }
     auto requestId = callerInfo->targetWant.GetStringParam(KEY_REQUEST_ID);
     if (requestId.empty() || callerInfo->callerToken == nullptr) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "no need to handle ability request");
@@ -311,12 +321,26 @@ int DialogSessionManager::SendDialogResult(const Want &want, const std::string &
     sptr<IRemoteObject> callerToken = dialogCallerInfo->callerToken;
     auto abilityMgr = DelayedSingleton<AbilityManagerService>::GetInstance();
     CHECK_POINTER_AND_RETURN(abilityMgr, INNER_ERR);
-    int ret = abilityMgr->StartAbilityAsCallerDetails(targetWant, callerToken, callerToken, dialogCallerInfo->userId,
-        dialogCallerInfo->requestCode, false, dialogCallerInfo->type == SelectorType::APP_CLONE_SELECTOR,
-        dialogCallerInfo->callerAccessTokenId);
+    int32_t ret = ERR_OK;
+    int32_t atomicServiceShortLink = want.GetIntParam(ATOMIC_SERVICE_SHORT_LINK, 0);
+    if (atomicServiceShortLink == 1) {
+        ret = abilityMgr->OpenLink(targetWant, callerToken, dialogCallerInfo->userId,
+            dialogCallerInfo->requestCode, false);
+    } else if (dialogCallerInfo->startOptions != nullptr) {
+        AAFwk::Want newWant = targetWant;
+        UpdateCallerInfoUtil::GetInstance().UpdateAsCallerSourceInfo(newWant, callerToken, callerToken);
+        ret = abilityMgr->StartAbilityForOptionInner(newWant, *dialogCallerInfo->startOptions, callerToken,
+            false, dialogCallerInfo->userId, dialogCallerInfo->requestCode, true, dialogCallerInfo->callerAccessTokenId,
+            false);
+    } else {
+        ret = abilityMgr->StartAbilityAsCallerDetails(targetWant, callerToken, callerToken, dialogCallerInfo->userId,
+            dialogCallerInfo->requestCode, false, dialogCallerInfo->type == SelectorType::APP_CLONE_SELECTOR,
+            dialogCallerInfo->callerAccessTokenId, dialogCallerInfo->requestCallback);
+    }
     if (ret == ERR_OK) {
         ClearDialogContext(dialogSessionId);
-        abilityMgr->RemoveSelectorIdentity(dialogCallerInfo->targetWant.GetIntParam(Want::PARAM_RESV_CALLER_TOKEN, 0));
+        abilityMgr->RemoveSelectorIdentity(
+            dialogCallerInfo->targetWant.GetIntParam(Want::PARAM_RESV_CALLER_TOKEN, 0));
     }
     return ret;
 }
@@ -389,6 +413,7 @@ int DialogSessionManager::CreateJumpModalDialog(AbilityRequest &abilityRequest, 
 
     parameters.SetParam("deviceType", AAFwk::String::Box(OHOS::system::GetDeviceType()));
     parameters.SetParam("userId", AAFwk::Integer::Box(userId));
+    parameters.SetParam(ATOMIC_SERVICE_SHORT_LINK, AAFwk::Integer::Box(abilityRequest.atomicServiceShortLink));
 
     std::vector<DialogAppInfo> dialogAppInfos;
     std::string dialogSessionId = GenerateDialogSessionRecordCommon(abilityRequest, userId, parameters,
@@ -410,7 +435,7 @@ int DialogSessionManager::CreateImplicitSelectorModalDialog(AbilityRequest &abil
 
     sessionWant.SetParam("deviceType", OHOS::system::GetDeviceType());
     sessionWant.SetParam("userId", userId);
-    sessionWant.SetParam("action", abilityRequest.want.GetAction());
+    sessionWant.SetParam("action", abilityRequest.want.GetActionRef());
     sessionWant.SetParam("wantType", abilityRequest.want.GetType());
     sessionWant.SetParam("uri", abilityRequest.want.GetUriString());
     sessionWant.SetParam("entities", abilityRequest.want.GetEntities());
@@ -419,6 +444,7 @@ int DialogSessionManager::CreateImplicitSelectorModalDialog(AbilityRequest &abil
     sessionWant.SetParam("showCaller", showCaller);
     sessionWant.SetParam("ohos.ability.params.showDefaultPicker",
         abilityRequest.want.GetBoolParam("ohos.ability.params.showDefaultPicker", false));
+    sessionWant.SetParam(ATOMIC_SERVICE_SHORT_LINK, abilityRequest.atomicServiceShortLink);
     if (abilityRequest.want.HasParameter(APP_LAUNCH_TRUSTLIST)) {
         sessionWant.SetParam(APP_LAUNCH_TRUSTLIST,
             abilityRequest.want.GetStringArrayParam(APP_LAUNCH_TRUSTLIST));
@@ -459,6 +485,7 @@ int DialogSessionManager::CreateCloneSelectorModalDialog(AbilityRequest &ability
     if (replaceWant !=  "") {
         parameters.SetParam("ecological.replaceWant", AAFwk::String::Box(replaceWant));
     }
+    parameters.SetParam(ATOMIC_SERVICE_SHORT_LINK, AAFwk::Integer::Box(abilityRequest.atomicServiceShortLink));
 
     std::string dialogSessionId = GenerateDialogSessionRecordCommon(abilityRequest, userId, parameters,
         dialogAppInfos, SelectorType::APP_CLONE_SELECTOR);
@@ -491,9 +518,10 @@ int DialogSessionManager::CreateModalDialogCommon(const Want &replaceWant, sptr<
     sptr<IRemoteObject> token;
     bool isParent = false;
     int32_t ret = ERR_INVALID_VALUE;
+    int32_t userId = callerRecord->GetOwnerMissionUserId();
 #ifdef SUPPORT_SCREEN
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto sceneSessionManager = Rosen::SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        auto sceneSessionManager = Rosen::SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         if (sceneSessionManager == nullptr) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "sceneSessionManager null");
             return ERR_INVALID_VALUE;
@@ -519,15 +547,16 @@ int DialogSessionManager::CreateModalDialogCommon(const Want &replaceWant, sptr<
     TAG_LOGD(AAFwkTag::ABILITYMGR, "create modal ui extension for system");
     (const_cast<Want &>(replaceWant)).SetParam(UIEXTENSION_MODAL_TYPE, 1);
     (const_cast<Want &>(replaceWant)).SetParam(SUPPORT_CLOSE_ON_BLUR, true);
-    return IN_PROCESS_CALL(connection->CreateModalUIExtension(replaceWant)) ? ERR_OK : INNER_ERR;
+    return IN_PROCESS_CALL(connection->CreateModalUIExtension(replaceWant, userId)) ? ERR_OK : INNER_ERR;
 }
 
-int DialogSessionManager::HandleErmsResult(AbilityRequest &abilityRequest, int32_t userId,
-    const Want &replaceWant)
+int DialogSessionManager::HandleErmsResult(StartAbilityContext &ctx,
+    AbilityRequest &abilityRequest, int32_t userId, const Want &replaceWant)
 {
     std::string bundleName = abilityRequest.abilityInfo.bundleName;
-    if (StartAbilityUtils::ermsResultCode < ERMS_ISALLOW_RESULTCODE ||
-        !IsCreateCloneSelectorDialog(bundleName, userId)) {
+    if (ctx.ermsResultCode < ERMS_ISALLOW_RESULTCODE ||
+        abilityRequest.want.HasParameter(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY) ||
+        !IsCreateCloneSelectorDialog(ctx, bundleName, userId)) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "create jump modal dialog");
         return CreateJumpModalDialog(abilityRequest, userId, replaceWant);
     }
@@ -556,11 +585,17 @@ int32_t DialogSessionManager::HandleErmsResultBySCB(AbilityRequest &abilityReque
         ERR_ECOLOGICAL_CONTROL_STATUS : INNER_ERR;
 }
 
-bool DialogSessionManager::IsCreateCloneSelectorDialog(const std::string &bundleName, int32_t userId)
+bool DialogSessionManager::IsCreateCloneSelectorDialog(StartAbilityContext &ctx,
+    const std::string &bundleName, int32_t userId)
 {
-    if (StartAbilityUtils::isWantWithAppCloneIndex) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "no clone index");
-        StartAbilityUtils::isWantWithAppCloneIndex = false;
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    (void)ctx.ConsumeIsWantWithAppCloneIndex();
+    return false;
+#else
+    bool wantWithClone = ctx.ConsumeIsWantWithAppCloneIndex();
+    bool sandboxClone = ctx.isSandBoxClone;
+    if (wantWithClone || sandboxClone) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "with clone index");
         return false;
     }
     auto appIndexes = StartAbilityUtils::GetCloneAppIndexes(bundleName, userId);
@@ -569,6 +604,7 @@ bool DialogSessionManager::IsCreateCloneSelectorDialog(const std::string &bundle
         return false;
     }
     return true;
+#endif
 }
 
 bool DialogSessionManager::UpdateExtensionWantWithDialogCallerInfo(AbilityRequest &abilityRequest,

@@ -42,7 +42,6 @@
 #undef protected
 #include "wants_info.h"
 #include "want_receiver_stub.h"
-#include "want_sender_stub.h"
 #include "mission_list_manager.h"
 
 using namespace std::placeholders;

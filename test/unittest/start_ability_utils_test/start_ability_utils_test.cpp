@@ -24,15 +24,22 @@
 #include "ability_manager_errors.h"
 #include "accesstoken_kit.h"
 #include "extension_ability_info.h"
+#include "global_constant.h"
 #include "hilog_tag_wrapper.h"
 #include "mock_my_flag.h"
 #include "mock_my_status.h"
+#include "server_constant.h"
+#include "start_ability_context.h"
 #include "start_ability_utils.h"
 #include "want.h"
 
 using namespace testing::ext;
 namespace OHOS {
 namespace AAFwk {
+namespace {
+constexpr int32_t TEST_USER_ID = 100;
+constexpr int32_t BASE_USER_RANGE = 200000;
+}
 
 class StartAbilityUtilsTest : public testing::Test {
 public:
@@ -40,6 +47,8 @@ public:
     static void TearDownTestCase();
     void SetUp();
     void TearDown();
+private:
+    void ResetAppClonePreferenceMock();
 };
 
 void StartAbilityUtilsTest::SetUpTestCase()
@@ -49,10 +58,23 @@ void StartAbilityUtilsTest::TearDownTestCase()
 {}
 
 void StartAbilityUtilsTest::SetUp()
-{}
+{
+    ResetAppClonePreferenceMock();
+}
 
 void StartAbilityUtilsTest::TearDown()
-{}
+{
+    ResetAppClonePreferenceMock();
+}
+
+void StartAbilityUtilsTest::ResetAppClonePreferenceMock()
+{
+    auto &status = MyStatus::GetInstance();
+    status.getAppClonePreferenceRet_ = ERR_OK;
+    status.appClonePreference_ = AppExecFwk::AppClonePreference();
+    status.lastClonePreferenceBundleName_.clear();
+    status.lastClonePreferenceUserId_ = -1;
+}
 
 /**
  * @tc.name: GetApplicationInfo_001
@@ -64,7 +86,7 @@ HWTEST_F(StartAbilityUtilsTest, GetApplicationInfo_001, TestSize.Level1)
     std::string bundleName = "";
     int32_t userId = 0;
     AppExecFwk::ApplicationInfo appInfo;
-    bool ret = StartAbilityUtils::GetApplicationInfo(bundleName, userId, appInfo);
+    bool ret = StartAbilityUtils::GetApplicationInfo(StartAbilityContext{}, bundleName, userId, appInfo);
     EXPECT_FALSE(ret);
 }
 
@@ -78,7 +100,7 @@ HWTEST_F(StartAbilityUtilsTest, GetApplicationInfo_002, TestSize.Level1)
     std::string bundleName = "test";
     int32_t userId = 0;
     AppExecFwk::ApplicationInfo appInfo;
-    bool ret = StartAbilityUtils::GetApplicationInfo(bundleName, userId, appInfo);
+    bool ret = StartAbilityUtils::GetApplicationInfo(StartAbilityContext{}, bundleName, userId, appInfo);
     EXPECT_FALSE(ret);
 }
 
@@ -93,58 +115,8 @@ HWTEST_F(StartAbilityUtilsTest, GetApplicationInfo_003, TestSize.Level1)
     int32_t userId = 0;
     AppExecFwk::ApplicationInfo appInfo;
     AAFwk::MyStatus::GetInstance().retValue_ = true;
-    bool ret = StartAbilityUtils::GetApplicationInfo(bundleName, userId, appInfo);
+    bool ret = StartAbilityUtils::GetApplicationInfo(StartAbilityContext{}, bundleName, userId, appInfo);
     EXPECT_TRUE(ret);
-}
-
-/**
- * @tc.name: CheckAppProvisionMode_004
- * @tc.desc: test class StartAbilityUtil CheckAppProvisionMode function
- * @tc.type: FUNC
- */
-HWTEST_F(StartAbilityUtilsTest, CheckAppProvisionMode_004, TestSize.Level1)
-{
-    Want want;
-    int32_t userId = 1001;
-    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
-    int32_t ret = StartAbilityUtils::CheckAppProvisionMode(want, userId, nullptr);
-    EXPECT_EQ(ret, ERR_NOT_IN_APP_PROVISION_MODE);
-}
-
-/**
- * @tc.name: CheckAppProvisionMode_005
- * @tc.desc: test class StartAbilityUtil CheckAppProvisionMode function
- * @tc.type: FUNC
- */
-HWTEST_F(StartAbilityUtilsTest, CheckAppProvisionMode_005, TestSize.Level1)
-{
-    Want want;
-    int32_t userId = 1001;
-    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
-    StartAbilityUtils::startAbilityInfo->abilityInfo.bundleName = "bundleName";
-    StartAbilityUtils::startAbilityInfo->abilityInfo.name = "name";
-    StartAbilityUtils::startAbilityInfo->status = 1;
-    int32_t ret = StartAbilityUtils::CheckAppProvisionMode(want, userId, nullptr);
-    EXPECT_EQ(ret, StartAbilityUtils::startAbilityInfo->status);
-}
-
-/**
- * @tc.name: CheckAppProvisionMode_006
- * @tc.desc: test class StartAbilityUtil CheckAppProvisionMode function
- * @tc.type: FUNC
- */
-HWTEST_F(StartAbilityUtilsTest, CheckAppProvisionMode_006, TestSize.Level1)
-{
-    std::string bundleName = "testName";
-    Want want;
-    want.SetBundle(bundleName);
-    int32_t userId = 0;
-    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
-    AppExecFwk::ApplicationInfo applicationInfo;
-    applicationInfo.bundleName = bundleName;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo = applicationInfo;
-    auto ret = StartAbilityUtils::CheckAppProvisionMode(want, userId, nullptr);
-    EXPECT_EQ(ret, ERR_NOT_IN_APP_PROVISION_MODE);
 }
 
 /**
@@ -154,36 +126,11 @@ HWTEST_F(StartAbilityUtilsTest, CheckAppProvisionMode_006, TestSize.Level1)
  */
 HWTEST_F(StartAbilityUtilsTest, CheckAppProvisionMode_007, TestSize.Level1)
 {
-    std::string bundleName = "testName";
     Want want;
     want.SetParam("ohos.dlp.params.index", 5);
     int32_t userId = 0;
-    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
-    AppExecFwk::ApplicationInfo applicationInfo;
-    applicationInfo.bundleName = bundleName;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo = applicationInfo;
     auto ret = StartAbilityUtils::CheckAppProvisionMode(want, userId, nullptr);
     EXPECT_EQ(ret, ERR_APP_CLONE_INDEX_INVALID);
-}
-
-/**
- * @tc.name: CheckAppProvisionMode_008
- * @tc.desc: test class StartAbilityUtil CheckAppProvisionMode function
- * @tc.type: FUNC
- */
-HWTEST_F(StartAbilityUtilsTest, CheckAppProvisionMode_008, TestSize.Level1)
-{
-    std::string bundleName = "testName";
-    Want want;
-    want.SetBundle(bundleName);
-    int32_t userId = 0;
-    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
-    AppExecFwk::ApplicationInfo applicationInfo;
-    applicationInfo.bundleName = bundleName;
-    applicationInfo.appProvisionType = AppExecFwk::Constants::APP_PROVISION_TYPE_DEBUG;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo = applicationInfo;
-    auto ret = StartAbilityUtils::CheckAppProvisionMode(want, userId, nullptr);
-    EXPECT_EQ(ret, ERR_OK);
 }
 
 /**
@@ -193,17 +140,12 @@ HWTEST_F(StartAbilityUtilsTest, CheckAppProvisionMode_008, TestSize.Level1)
  */
 HWTEST_F(StartAbilityUtilsTest, CheckAppProvisionMode_009, TestSize.Level1)
 {
-    std::string bundleName = "testName";
     Want want;
     int32_t dlpIndex = 1001;
     want.SetParam("ohos.dlp.params.index", dlpIndex);
     want.SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, 0);
     want.SetParam(AAFwk::Want::DESTINATION_PLUGIN_ABILITY, true);
     int32_t userId = 0;
-    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
-    AppExecFwk::ApplicationInfo applicationInfo;
-    applicationInfo.bundleName = bundleName;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo = applicationInfo;
     auto ret = StartAbilityUtils::CheckAppProvisionMode(want, userId, nullptr);
     EXPECT_EQ(ret, RESOLVE_ABILITY_ERR);
 }
@@ -247,8 +189,9 @@ HWTEST_F(StartAbilityUtilsTest, CreateStartExtensionInfo_003, TestSize.Level1)
     int32_t userId = 0;
     int32_t appIndex = 0;
     int32_t validUserId = 0;
-    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
-    StartAbilityInfoWrap threadLocalInfo(want, validUserId, appIndex, nullptr);
+    StartAbilityContext ctx;
+    ctx.startAbilityInfo = std::make_shared<StartAbilityInfo>();
+    StartAbilityUtils::ResolveAndCacheStartAbilityInfo(ctx, want, validUserId, appIndex, nullptr);
     auto ret = StartAbilityInfo::CreateStartExtensionInfo(want, userId, appIndex);
     ASSERT_NE(ret, nullptr);
 }
@@ -332,50 +275,48 @@ HWTEST_F(StartAbilityUtilsTest, CreateStartExtensionInfo_007, TestSize.Level1)
  */
 HWTEST_F(StartAbilityUtilsTest, SetStartAbilityInfo_001, TestSize.Level1)
 {
-    StartAbilityUtils::startAbilityInfo = nullptr;
+    StartAbilityContext ctx;
     AppExecFwk::AbilityInfo abilityInfo;
-    StartAbilityInfoWrap startAbilityInfoWrap;
-    startAbilityInfoWrap.SetStartAbilityInfo(abilityInfo);
-    ASSERT_NE(StartAbilityUtils::startAbilityInfo, nullptr);
+    StartAbilityUtils::SetStartAbilityInfo(ctx, abilityInfo);
+    ASSERT_NE(ctx.startAbilityInfo, nullptr);
 
-    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
+    ctx.startAbilityInfo = std::make_shared<StartAbilityInfo>();
     abilityInfo.name = "abilityName";
-    startAbilityInfoWrap.SetStartAbilityInfo(abilityInfo);
-    auto abilityName = StartAbilityUtils::startAbilityInfo->abilityInfo.name;
+    StartAbilityUtils::SetStartAbilityInfo(ctx, abilityInfo);
+    auto abilityName = ctx.startAbilityInfo->abilityInfo.name;
     EXPECT_NE(abilityName, abilityInfo.name);
 }
 
 /**
- * @tc.name: StartAbilityInfoWrap_001
- * @tc.desc: test class StartAbilityUtil StartAbilityInfoWrap constructor
+ * @tc.name: ResolveAndCacheStartAbilityInfo_001
+ * @tc.desc: test ResolveAndCacheStartAbilityInfo sets isWantWithAppCloneIndex when want has app clone index
  * @tc.type: FUNC
  */
-HWTEST_F(StartAbilityUtilsTest, StartAbilityInfoWrap_001, TestSize.Level1)
+HWTEST_F(StartAbilityUtilsTest, ResolveAndCacheStartAbilityInfo_001, TestSize.Level1)
 {
     Want want;
-    int32_t userId = 0;
+    want.SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, 0);
     int32_t appIndex = 0;
     int32_t validUserId = 0;
-    StartAbilityUtils::startSpecifiedBySCB = true;
-    StartAbilityInfoWrap threadLocalInfo(want, validUserId, appIndex, nullptr);
-    EXPECT_TRUE(StartAbilityUtils::isWantWithAppCloneIndex);
-    StartAbilityUtils::startSpecifiedBySCB = false;
+    StartAbilityContext ctx;
+    StartAbilityUtils::ResolveAndCacheStartAbilityInfo(ctx, want, validUserId, appIndex, nullptr, false);
+    EXPECT_TRUE(ctx.isWantWithAppCloneIndex);
 }
 
 /**
- * @tc.name: StartAbilityInfoWrap_002
- * @tc.desc: test class StartAbilityUtil StartAbilityInfoWrap constructor
+ * @tc.name: ResolveAndCacheStartAbilityInfo_002
+ * @tc.desc: test ResolveAndCacheStartAbilityInfo does not set isWantWithAppCloneIndex when want lacks app clone index
  * @tc.type: FUNC
  */
-HWTEST_F(StartAbilityUtilsTest, StartAbilityInfoWrap_002, TestSize.Level1)
+HWTEST_F(StartAbilityUtilsTest, ResolveAndCacheStartAbilityInfo_002, TestSize.Level1)
 {
     Want want;
     int32_t userId = 0;
     int32_t appIndex = 0;
     int32_t validUserId = 0;
-    StartAbilityUtils::startSpecifiedBySCB = false;
-    StartAbilityInfoWrap threadLocalInfo(want, validUserId, appIndex, nullptr);
-    EXPECT_FALSE(StartAbilityUtils::isWantWithAppCloneIndex);
+    StartAbilityContext ctx;
+    StartAbilityUtils::ResolveAndCacheStartAbilityInfo(ctx, want, validUserId, appIndex, nullptr, false);
+    EXPECT_FALSE(ctx.isWantWithAppCloneIndex);
 }
 
 /**
@@ -508,6 +449,214 @@ HWTEST_F(StartAbilityUtilsTest, SetTargetCloneIndexInSameBundle_005, TestSize.Le
 }
 
 /**
+ * @tc.name: ResolveTargetAppCloneIndex_001
+ * @tc.desc: test class StartAbilityUtil ResolveTargetAppCloneIndex explicit want index wins
+ * @tc.type: FUNC
+ */
+HWTEST_F(StartAbilityUtilsTest, ResolveTargetAppCloneIndex_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest ResolveTargetAppCloneIndex_001 start");
+    Want want;
+    want.SetElementName("com.ohos.test", "MainAbility");
+    want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, 1);
+    MyStatus::GetInstance().appClonePreference_.mode = AppExecFwk::AppClonePreferenceMode::CLONE_APP;
+    MyStatus::GetInstance().appClonePreference_.appIndex = 2;
+
+    StartAbilityUtils::ResolveTargetAppCloneIndex(want, nullptr, 100);
+    int32_t appCloneIndex = want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1);
+    EXPECT_EQ(appCloneIndex, 1);
+    EXPECT_TRUE(MyStatus::GetInstance().lastClonePreferenceBundleName_.empty());
+
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest ResolveTargetAppCloneIndex_001 end");
+}
+
+/**
+ * @tc.name: ResolveTargetAppCloneIndex_002
+ * @tc.desc: test class StartAbilityUtil ResolveTargetAppCloneIndex same bundle clone wins
+ * @tc.type: FUNC
+ */
+HWTEST_F(StartAbilityUtilsTest, ResolveTargetAppCloneIndex_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest ResolveTargetAppCloneIndex_002 start");
+    Want want;
+    want.SetElementName("com.ohos.test", "MainAbility");
+    AbilityRequest abilityRequest;
+    std::shared_ptr<AbilityRecord> abilityRecord = AbilityRecord::CreateAbilityRecord(abilityRequest);
+    EXPECT_NE(abilityRecord, nullptr);
+    abilityRecord->abilityInfo_.bundleName = "com.ohos.test";
+    abilityRecord->abilityInfo_.applicationInfo.appIndex = 1;
+    MyStatus::GetInstance().appClonePreference_.mode = AppExecFwk::AppClonePreferenceMode::CLONE_APP;
+    MyStatus::GetInstance().appClonePreference_.appIndex = 2;
+    sptr<IRemoteObject> callerToken = abilityRecord->GetToken();
+
+    StartAbilityUtils::ResolveTargetAppCloneIndex(want, callerToken, 100);
+    int32_t appCloneIndex = want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1);
+    EXPECT_EQ(appCloneIndex, 1);
+    EXPECT_TRUE(MyStatus::GetInstance().lastClonePreferenceBundleName_.empty());
+
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest ResolveTargetAppCloneIndex_002 end");
+}
+
+/**
+ * @tc.name: ResolveTargetAppCloneIndex_003
+ * @tc.desc: test class StartAbilityUtil ResolveTargetAppCloneIndex uses BMS clone preference
+ * @tc.type: FUNC
+ */
+HWTEST_F(StartAbilityUtilsTest, ResolveTargetAppCloneIndex_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest ResolveTargetAppCloneIndex_003 start");
+    Want want;
+    want.SetElementName("com.ohos.test", "MainAbility");
+    MyStatus::GetInstance().appClonePreference_.mode = AppExecFwk::AppClonePreferenceMode::CLONE_APP;
+    MyStatus::GetInstance().appClonePreference_.appIndex = 2;
+
+    StartAbilityUtils::ResolveTargetAppCloneIndex(want, nullptr, 100);
+    int32_t appCloneIndex = want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1);
+    EXPECT_EQ(appCloneIndex, 2);
+    EXPECT_EQ(MyStatus::GetInstance().lastClonePreferenceBundleName_, "com.ohos.test");
+    EXPECT_EQ(MyStatus::GetInstance().lastClonePreferenceUserId_, 100);
+
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest ResolveTargetAppCloneIndex_003 end");
+}
+
+/**
+ * @tc.name: ResolveTargetAppCloneIndex_004
+ * @tc.desc: test class StartAbilityUtil ResolveTargetAppCloneIndex uses main app preference
+ * @tc.type: FUNC
+ */
+HWTEST_F(StartAbilityUtilsTest, ResolveTargetAppCloneIndex_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest ResolveTargetAppCloneIndex_004 start");
+    Want want;
+    want.SetElementName("com.ohos.test", "MainAbility");
+    MyStatus::GetInstance().appClonePreference_.mode = AppExecFwk::AppClonePreferenceMode::MAIN_APP;
+    MyStatus::GetInstance().appClonePreference_.appIndex = 2;
+
+    StartAbilityUtils::ResolveTargetAppCloneIndex(want, nullptr, 100);
+    int32_t appCloneIndex = want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1);
+    EXPECT_EQ(appCloneIndex, 2);
+    EXPECT_EQ(MyStatus::GetInstance().lastClonePreferenceBundleName_, "com.ohos.test");
+    EXPECT_EQ(MyStatus::GetInstance().lastClonePreferenceUserId_, 100);
+
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest ResolveTargetAppCloneIndex_004 end");
+}
+
+/**
+ * @tc.name: ResolveTargetAppCloneIndex_005
+ * @tc.desc: ResolveTargetAppCloneIndex still queries bundle-manager default clone preference
+ *              for a same-bundle sandbox caller (sandbox clone index is not a short-circuit selector).
+ * @tc.type: FUNC
+ */
+HWTEST_F(StartAbilityUtilsTest, ResolveTargetAppCloneIndex_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest ResolveTargetAppCloneIndex_005 start");
+    Want want;
+    want.SetElementName("com.ohos.test", "MainAbility");
+    AbilityRequest abilityRequest;
+    std::shared_ptr<AbilityRecord> abilityRecord = AbilityRecord::CreateAbilityRecord(abilityRequest);
+    EXPECT_NE(abilityRecord, nullptr);
+    abilityRecord->abilityInfo_.bundleName = "com.ohos.test";
+    abilityRecord->abilityInfo_.applicationInfo.appIndex =
+        AbilityRuntime::GlobalConstant::MIN_SANDBOX_CLONE_INDEX;
+    MyStatus::GetInstance().appClonePreference_.mode = AppExecFwk::AppClonePreferenceMode::CLONE_APP;
+    MyStatus::GetInstance().appClonePreference_.appIndex = 2;
+    sptr<IRemoteObject> callerToken = abilityRecord->GetToken();
+
+    StartAbilityUtils::ResolveTargetAppCloneIndex(want, callerToken, 100);
+
+    // Sandbox clone index is not a short-circuit selector,
+    // so bundle-manager default clone preference is still queried and applied on top of it.
+    EXPECT_TRUE(want.HasParameter(Want::PARAM_APP_CLONE_INDEX_KEY));
+    EXPECT_EQ(want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1), 2);
+    EXPECT_EQ(MyStatus::GetInstance().lastClonePreferenceBundleName_, "com.ohos.test");
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest ResolveTargetAppCloneIndex_005 end");
+}
+
+/**
+ * @tc.name: ResolveTargetAppCloneIndex_006
+ * @tc.desc: test class StartAbilityUtil ResolveTargetAppCloneIndex does not override DLP selector
+ * @tc.type: FUNC
+ */
+HWTEST_F(StartAbilityUtilsTest, ResolveTargetAppCloneIndex_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest ResolveTargetAppCloneIndex_006 start");
+    Want want;
+    want.SetElementName("com.ohos.test", "MainAbility");
+    want.SetParam(AbilityRuntime::ServerConstant::DLP_INDEX, 1001);
+    MyStatus::GetInstance().appClonePreference_.mode = AppExecFwk::AppClonePreferenceMode::CLONE_APP;
+    MyStatus::GetInstance().appClonePreference_.appIndex = 2;
+
+    StartAbilityUtils::ResolveTargetAppCloneIndex(want, nullptr, 100);
+
+    EXPECT_FALSE(want.HasParameter(Want::PARAM_APP_CLONE_INDEX_KEY));
+    EXPECT_EQ(want.GetIntParam(AbilityRuntime::ServerConstant::DLP_INDEX, 0), 1001);
+    EXPECT_TRUE(MyStatus::GetInstance().lastClonePreferenceBundleName_.empty());
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest ResolveTargetAppCloneIndex_006 end");
+}
+
+/**
+ * @tc.name: ResolveTargetAppCloneIndex_007
+ * @tc.desc: ResolveTargetAppCloneIndex does not let a forged sandbox index escape a same-bundle normal clone to main.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(StartAbilityUtilsTest, ResolveTargetAppCloneIndex_007, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest ResolveTargetAppCloneIndex_007 start");
+    Want want;
+    want.SetElementName("com.ohos.test", "MainAbility");
+    want.SetParam(AbilityRuntime::GlobalConstant::SANDBOX_CLONE_INDEX,
+        AbilityRuntime::GlobalConstant::MIN_SANDBOX_CLONE_INDEX);
+    AbilityRequest abilityRequest;
+    std::shared_ptr<AbilityRecord> abilityRecord = AbilityRecord::CreateAbilityRecord(abilityRequest);
+    EXPECT_NE(abilityRecord, nullptr);
+    abilityRecord->abilityInfo_.bundleName = "com.ohos.test";
+    abilityRecord->abilityInfo_.applicationInfo.appIndex = 1;
+    MyStatus::GetInstance().appClonePreference_.mode = AppExecFwk::AppClonePreferenceMode::CLONE_APP;
+    MyStatus::GetInstance().appClonePreference_.appIndex = 2;
+    sptr<IRemoteObject> callerToken = abilityRecord->GetToken();
+
+    StartAbilityUtils::ResolveTargetAppCloneIndex(want, callerToken, 100);
+
+    // The caller's real clone index (1) must be applied; the forged sandbox index must not escape to main (0).
+    EXPECT_EQ(want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1), 1);
+    EXPECT_TRUE(MyStatus::GetInstance().lastClonePreferenceBundleName_.empty());
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest ResolveTargetAppCloneIndex_007 end");
+}
+
+/**
+ * @tc.name: ResolveTargetAppCloneIndex_008
+ * @tc.desc: ResolveTargetAppCloneIndex normalizes a forged sandbox index to the caller's real sandbox index
+ *                                      and still applies bundle-manager default clone preference.
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(StartAbilityUtilsTest, ResolveTargetAppCloneIndex_008, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest ResolveTargetAppCloneIndex_008 start");
+    Want want;
+    want.SetElementName("com.ohos.test", "MainAbility");
+    AbilityRequest abilityRequest;
+    std::shared_ptr<AbilityRecord> abilityRecord = AbilityRecord::CreateAbilityRecord(abilityRequest);
+    EXPECT_NE(abilityRecord, nullptr);
+    abilityRecord->abilityInfo_.bundleName = "com.ohos.test";
+    abilityRecord->abilityInfo_.applicationInfo.appIndex =
+        AbilityRuntime::GlobalConstant::MIN_SANDBOX_CLONE_INDEX;
+    MyStatus::GetInstance().appClonePreference_.mode = AppExecFwk::AppClonePreferenceMode::CLONE_APP;
+    MyStatus::GetInstance().appClonePreference_.appIndex = 2;
+    sptr<IRemoteObject> callerToken = abilityRecord->GetToken();
+
+    StartAbilityUtils::ResolveTargetAppCloneIndex(want, callerToken, 100);
+
+    // The sandbox clone index is not a short-circuit selector, so bundle-manager default clone preference
+    // is still queried and applied on top.
+    EXPECT_TRUE(want.HasParameter(Want::PARAM_APP_CLONE_INDEX_KEY));
+    EXPECT_EQ(want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1), 2);
+    EXPECT_EQ(MyStatus::GetInstance().lastClonePreferenceBundleName_, "com.ohos.test");
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest ResolveTargetAppCloneIndex_008 end");
+}
+
+/**
  * @tc.name: StartUIAbilitiesProcessAppIndex_001
  * @tc.desc: test class StartAbilityUtil StartUIAbilitiesProcessAppIndex bundleName not equal; no index
  * @tc.type: FUNC
@@ -525,7 +674,7 @@ HWTEST_F(StartAbilityUtilsTest, StartUIAbilitiesProcessAppIndex_001, TestSize.Le
     abilityRecord->abilityInfo_.applicationInfo.appIndex = -2;
     sptr<IRemoteObject> callerToken = abilityRecord->GetToken();
 
-    StartAbilityUtils::StartUIAbilitiesProcessAppIndex(want, callerToken, appIndex);
+    StartAbilityUtils::StartUIAbilitiesProcessAppIndex(want, callerToken, 0, appIndex);
     int32_t appCloneIndex = want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1);
     EXPECT_EQ(appCloneIndex, appIndex);
     EXPECT_EQ(appIndex, 0);
@@ -552,7 +701,7 @@ HWTEST_F(StartAbilityUtilsTest, StartUIAbilitiesProcessAppIndex_002, TestSize.Le
     abilityRecord->abilityInfo_.applicationInfo.appIndex = -2;
     sptr<IRemoteObject> callerToken = abilityRecord->GetToken();
 
-    int32_t ret = StartAbilityUtils::StartUIAbilitiesProcessAppIndex(want, callerToken, appIndex);
+    int32_t ret = StartAbilityUtils::StartUIAbilitiesProcessAppIndex(want, callerToken, 0, appIndex);
     int32_t appCloneIndex = want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1);
     EXPECT_EQ(appCloneIndex, appIndex);
     EXPECT_EQ(appIndex, 1);
@@ -580,13 +729,45 @@ HWTEST_F(StartAbilityUtilsTest, StartUIAbilitiesProcessAppIndex_003, TestSize.Le
     abilityRecord->abilityInfo_.applicationInfo.appIndex = -2;
     sptr<IRemoteObject> callerToken = abilityRecord->GetToken();
 
-    int32_t ret = StartAbilityUtils::StartUIAbilitiesProcessAppIndex(want, callerToken, appIndex);
+    int32_t ret = StartAbilityUtils::StartUIAbilitiesProcessAppIndex(want, callerToken, 0, appIndex);
     int32_t appCloneIndex = want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1);
     EXPECT_EQ(appCloneIndex, appIndex);
     EXPECT_EQ(appIndex, -5);
     EXPECT_EQ(ret, ERR_APP_CLONE_INDEX_INVALID);
 
     TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest StartUIAbilitiesProcessAppIndex_003 end");
+}
+
+/**
+ * @tc.name: StartUIAbilitiesProcessAppIndex_004
+ * @tc.desc: test class StartAbilityUtil StartUIAbilitiesProcessAppIndex does not use BMS clone preference
+ * @tc.type: FUNC
+ */
+HWTEST_F(StartAbilityUtilsTest, StartUIAbilitiesProcessAppIndex_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest StartUIAbilitiesProcessAppIndex_004 start");
+    int32_t appIndex = 0;
+    Want want;
+    want.SetElementName("com.ohos.test", "MainAbility");
+    AbilityRequest abilityRequest;
+    std::shared_ptr<AbilityRecord> abilityRecord = AbilityRecord::CreateAbilityRecord(abilityRequest);
+    EXPECT_NE(abilityRecord, nullptr);
+    abilityRecord->abilityInfo_.bundleName = "com.ohos.test1";
+    abilityRecord->abilityInfo_.applicationInfo.appIndex = -2;
+    abilityRecord->abilityInfo_.applicationInfo.uid = TEST_USER_ID * BASE_USER_RANGE;
+    MyStatus::GetInstance().appClonePreference_.mode = AppExecFwk::AppClonePreferenceMode::CLONE_APP;
+    MyStatus::GetInstance().appClonePreference_.appIndex = 2;
+    sptr<IRemoteObject> callerToken = abilityRecord->GetToken();
+
+    int32_t ret = StartAbilityUtils::StartUIAbilitiesProcessAppIndex(want, callerToken, 0, appIndex);
+    int32_t appCloneIndex = want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, -1);
+    EXPECT_EQ(appCloneIndex, appIndex);
+    EXPECT_EQ(appIndex, 0);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(MyStatus::GetInstance().lastClonePreferenceBundleName_.empty());
+    EXPECT_EQ(MyStatus::GetInstance().lastClonePreferenceUserId_, -1);
+
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest StartUIAbilitiesProcessAppIndex_004 end");
 }
 
 /**
@@ -760,7 +941,7 @@ HWTEST_F(StartAbilityUtilsTest, RemoveAtomicServiceShareRouterIfNeeded_001, Test
     AppExecFwk::AbilityInfo targetAbilityInfo;
     targetAbilityInfo.applicationInfo.bundleType = AppExecFwk::BundleType::APP;
 
-    StartAbilityUtils::RemoveAtomicServiceShareRouterIfNeeded(want, targetAbilityInfo);
+    StartAbilityUtils::RemoveAtomicServiceShareRouterIfNeeded(want, targetAbilityInfo, 0);
 
     EXPECT_FALSE(want.HasParameter(Want::ATOMIC_SERVICE_SHARE_ROUTER));
     TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest RemoveAtomicServiceShareRouterIfNeeded_001 end");
@@ -780,7 +961,7 @@ HWTEST_F(StartAbilityUtilsTest, RemoveAtomicServiceShareRouterIfNeeded_002, Test
     targetAbilityInfo.applicationInfo.bundleType = AppExecFwk::BundleType::ATOMIC_SERVICE;
     AAFwk::MyFlag::retVerifyAccessTokenId_ = Security::AccessToken::PermissionState::PERMISSION_GRANTED;
 
-    StartAbilityUtils::RemoveAtomicServiceShareRouterIfNeeded(want, targetAbilityInfo);
+    StartAbilityUtils::RemoveAtomicServiceShareRouterIfNeeded(want, targetAbilityInfo, 0);
 
     EXPECT_TRUE(want.HasParameter(Want::ATOMIC_SERVICE_SHARE_ROUTER));
     AAFwk::MyFlag::retVerifyAccessTokenId_ = 0;
@@ -801,9 +982,9 @@ HWTEST_F(StartAbilityUtilsTest, RemoveAtomicServiceShareRouterIfNeeded_003, Test
     targetAbilityInfo.applicationInfo.bundleType = AppExecFwk::BundleType::APP;
     AAFwk::MyFlag::retVerifyAccessTokenId_ = Security::AccessToken::PermissionState::PERMISSION_GRANTED;
 
-    StartAbilityUtils::RemoveAtomicServiceShareRouterIfNeeded(want, targetAbilityInfo);
+    StartAbilityUtils::RemoveAtomicServiceShareRouterIfNeeded(want, targetAbilityInfo, 0);
 
-    EXPECT_TRUE(want.HasParameter(Want::ATOMIC_SERVICE_SHARE_ROUTER));
+    EXPECT_FALSE(want.HasParameter(Want::ATOMIC_SERVICE_SHARE_ROUTER));
     AAFwk::MyFlag::retVerifyAccessTokenId_ = 0;
     TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest RemoveAtomicServiceShareRouterIfNeeded_003 end");
 }
@@ -822,7 +1003,7 @@ HWTEST_F(StartAbilityUtilsTest, RemoveAtomicServiceShareRouterIfNeeded_004, Test
     targetAbilityInfo.applicationInfo.bundleType = AppExecFwk::BundleType::APP;
     AAFwk::MyFlag::retVerifyAccessTokenId_ = Security::AccessToken::PermissionState::PERMISSION_DENIED;
 
-    StartAbilityUtils::RemoveAtomicServiceShareRouterIfNeeded(want, targetAbilityInfo);
+    StartAbilityUtils::RemoveAtomicServiceShareRouterIfNeeded(want, targetAbilityInfo, 0);
 
     EXPECT_FALSE(want.HasParameter(Want::ATOMIC_SERVICE_SHARE_ROUTER));
     AAFwk::MyFlag::retVerifyAccessTokenId_ = 0;
@@ -843,11 +1024,95 @@ HWTEST_F(StartAbilityUtilsTest, RemoveAtomicServiceShareRouterIfNeeded_005, Test
     targetAbilityInfo.applicationInfo.bundleType = AppExecFwk::BundleType::ATOMIC_SERVICE;
     AAFwk::MyFlag::retVerifyAccessTokenId_ = Security::AccessToken::PermissionState::PERMISSION_DENIED;
 
-    StartAbilityUtils::RemoveAtomicServiceShareRouterIfNeeded(want, targetAbilityInfo);
+    StartAbilityUtils::RemoveAtomicServiceShareRouterIfNeeded(want, targetAbilityInfo, 0);
 
     EXPECT_TRUE(want.HasParameter(Want::ATOMIC_SERVICE_SHARE_ROUTER));
     AAFwk::MyFlag::retVerifyAccessTokenId_ = 0;
     TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest RemoveAtomicServiceShareRouterIfNeeded_005 end");
+}
+
+/**
+ * @tc.name: RemoveAtomicServiceShareRouterIfNeeded_006
+ * @tc.desc: test RemoveAtomicServiceShareRouterIfNeeded with callerTokenId and permission granted
+ * @tc.type: FUNC
+ */
+HWTEST_F(StartAbilityUtilsTest, RemoveAtomicServiceShareRouterIfNeeded_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest RemoveAtomicServiceShareRouterIfNeeded_006 start");
+    Want want;
+    want.SetParam(Want::ATOMIC_SERVICE_SHARE_ROUTER, std::string("test_router"));
+    AppExecFwk::AbilityInfo targetAbilityInfo;
+    targetAbilityInfo.applicationInfo.bundleType = AppExecFwk::BundleType::APP;
+    AAFwk::MyFlag::retVerifyAccessTokenId_ = Security::AccessToken::PermissionState::PERMISSION_GRANTED;
+
+    StartAbilityUtils::RemoveAtomicServiceShareRouterIfNeeded(want, targetAbilityInfo, 12345);
+
+    EXPECT_FALSE(want.HasParameter(Want::ATOMIC_SERVICE_SHARE_ROUTER));
+    AAFwk::MyFlag::retVerifyAccessTokenId_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest RemoveAtomicServiceShareRouterIfNeeded_006 end");
+}
+
+/**
+ * @tc.name: RemoveAtomicServiceShareRouterIfNeeded_007
+ * @tc.desc: test RemoveAtomicServiceShareRouterIfNeeded with callerTokenId and permission denied
+ * @tc.type: FUNC
+ */
+HWTEST_F(StartAbilityUtilsTest, RemoveAtomicServiceShareRouterIfNeeded_007, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest RemoveAtomicServiceShareRouterIfNeeded_007 start");
+    Want want;
+    want.SetParam(Want::ATOMIC_SERVICE_SHARE_ROUTER, std::string("test_router"));
+    AppExecFwk::AbilityInfo targetAbilityInfo;
+    targetAbilityInfo.applicationInfo.bundleType = AppExecFwk::BundleType::APP;
+    AAFwk::MyFlag::retVerifyAccessTokenId_ = Security::AccessToken::PermissionState::PERMISSION_DENIED;
+
+    StartAbilityUtils::RemoveAtomicServiceShareRouterIfNeeded(want, targetAbilityInfo, 12345);
+
+    EXPECT_FALSE(want.HasParameter(Want::ATOMIC_SERVICE_SHARE_ROUTER));
+    AAFwk::MyFlag::retVerifyAccessTokenId_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest RemoveAtomicServiceShareRouterIfNeeded_007 end");
+}
+
+/**
+ * @tc.name: RemoveAtomicServiceShareRouterIfNeeded_008
+ * @tc.desc: test RemoveAtomicServiceShareRouterIfNeeded with callerTokenId=0 and permission granted
+ * @tc.type: FUNC
+ */
+HWTEST_F(StartAbilityUtilsTest, RemoveAtomicServiceShareRouterIfNeeded_008, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest RemoveAtomicServiceShareRouterIfNeeded_008 start");
+    Want want;
+    want.SetParam(Want::ATOMIC_SERVICE_SHARE_ROUTER, std::string("test_router"));
+    AppExecFwk::AbilityInfo targetAbilityInfo;
+    targetAbilityInfo.applicationInfo.bundleType = AppExecFwk::BundleType::APP;
+    AAFwk::MyFlag::retVerifyAccessTokenId_ = Security::AccessToken::PermissionState::PERMISSION_GRANTED;
+
+    StartAbilityUtils::RemoveAtomicServiceShareRouterIfNeeded(want, targetAbilityInfo, 0);
+
+    EXPECT_FALSE(want.HasParameter(Want::ATOMIC_SERVICE_SHARE_ROUTER));
+    AAFwk::MyFlag::retVerifyAccessTokenId_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest RemoveAtomicServiceShareRouterIfNeeded_008 end");
+}
+
+/**
+ * @tc.name: RemoveAtomicServiceShareRouterIfNeeded_009
+ * @tc.desc: test RemoveAtomicServiceShareRouterIfNeeded with atomic service and callerTokenId
+ * @tc.type: FUNC
+ */
+HWTEST_F(StartAbilityUtilsTest, RemoveAtomicServiceShareRouterIfNeeded_009, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest RemoveAtomicServiceShareRouterIfNeeded_009 start");
+    Want want;
+    want.SetParam(Want::ATOMIC_SERVICE_SHARE_ROUTER, std::string("test_router"));
+    AppExecFwk::AbilityInfo targetAbilityInfo;
+    targetAbilityInfo.applicationInfo.bundleType = AppExecFwk::BundleType::ATOMIC_SERVICE;
+    AAFwk::MyFlag::retVerifyAccessTokenId_ = Security::AccessToken::PermissionState::PERMISSION_DENIED;
+
+    StartAbilityUtils::RemoveAtomicServiceShareRouterIfNeeded(want, targetAbilityInfo, 12345);
+
+    EXPECT_TRUE(want.HasParameter(Want::ATOMIC_SERVICE_SHARE_ROUTER));
+    AAFwk::MyFlag::retVerifyAccessTokenId_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest RemoveAtomicServiceShareRouterIfNeeded_009 end");
 }
 }  // namespace AAFwk
 }  // namespace OHOS

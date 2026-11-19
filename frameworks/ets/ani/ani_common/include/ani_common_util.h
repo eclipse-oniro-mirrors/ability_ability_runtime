@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,6 +23,7 @@
 namespace OHOS {
 namespace AppExecFwk {
 struct RunningProcessInfo;
+struct ChildProcessInfo;
 bool GetFieldDoubleByName(ani_env *env, ani_object object, const char *name, double &value);
 bool SetFieldDoubleByName(ani_env *env, ani_class cls, ani_object object, const char *name, double value);
 
@@ -66,6 +67,7 @@ bool IsExistsField(ani_env *env, ani_object param, const char *name);
 bool WrapArrayString(ani_env *env, ani_object &arrayObj, const std::vector<std::string> &values);
 bool UnwrapArrayString(ani_env *env, const ani_object &arrayObj, std::vector<std::string> &stringList);
 ani_object CreateRunningProcessInfoArray(ani_env *env, std::vector<AppExecFwk::RunningProcessInfo> infos);
+ani_object CreateChildProcessInfoArray(ani_env *env, std::vector<AppExecFwk::ChildProcessInfo> infos);
 ani_object CreateEmptyArray(ani_env *env);
 
 bool IsExistsProperty(ani_env *env, ani_object param, const char *name);
@@ -94,6 +96,12 @@ bool IsValidProperty(ani_env *env, ani_ref param);
 bool CheckCallerIsSystemApp();
 ani_object WrapLocale(ani_env *env, const std::string &locale);
 ani_object CreateIntAniArray(ani_env *env, const std::vector<int32_t> &dataArry);
+bool CreateObjectByClassName(ani_env *env, const char *className, ani_object &object);
+bool CreateArrayObject(ani_env *env, ani_object &object, size_t length);
+ani_object InitAniObjectByCreator(ani_env* env,
+    const std::string& aniClassDescriptor, const std::string aniCtorSignature, ...);
+ani_status InitAniCreator(ani_env* env,
+    const std::string& aniClassDescriptor, const std::string& aniCtorSignature);
 } // namespace AppExecFwk
 } // namespace OHOS
 #endif  // OHOS_ABILITY_RUNTIME_ANI_COMMON_UTIL_H

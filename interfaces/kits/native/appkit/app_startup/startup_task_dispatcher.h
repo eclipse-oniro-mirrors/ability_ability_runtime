@@ -29,7 +29,7 @@ namespace AbilityRuntime {
 class StartupTaskDispatcher : public std::enable_shared_from_this<StartupTaskDispatcher> {
 public:
     StartupTaskDispatcher(const std::map<std::string, std::shared_ptr<StartupTask>> &tasks,
-        const std::shared_ptr<StartupSortResult> &sortResult);
+        const std::shared_ptr<StartupSortResult> &sortResult, bool preAbilityStageLoad);
 
     ~StartupTaskDispatcher();
 
@@ -47,6 +47,7 @@ private:
     std::shared_ptr<OnCompletedCallback> completedCallback_;
     std::shared_ptr<OnCompletedCallback> mainThreadAwaitCallback_;
     std::atomic<bool> isTimeoutStopped_ = false;
+    bool preAbilityStageLoad_ = false;
 
     void Dispatch(const std::string &name, const std::shared_ptr<StartupTaskResult> &result);
     int32_t NotifyChildren(const std::string &name, const std::shared_ptr<StartupTaskResult> &result);

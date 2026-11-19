@@ -23,6 +23,7 @@
 #include "hilog_tag_wrapper.h"
 #include "in_process_call_wrapper.h"
 #include "global_constant.h"
+#include "native_ability_util.h"
 #include "parameters.h"
 #include "permission_verification.h"
 #include "process_options.h"
@@ -86,6 +87,11 @@ int32_t PreloadManagerService::LaunchGameCustomized(const std::string &bundleNam
 {
     Want launchWant;
     AppExecFwk::AbilityInfo abilityInfo;
+    if (appIndex == 0) {
+        auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
+        CHECK_POINTER_AND_RETURN(bundleMgrHelper, INNER_ERR);
+        bundleMgrHelper->GetDualModeBundleInfo(bundleName, userId, appIndex);
+    }
     if (auto ret = PreloadApplicationVerification(bundleName, userId, appIndex, launchWant,
         abilityInfo); ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "verify preload game failed");
@@ -98,16 +104,14 @@ int32_t PreloadManagerService::LaunchGameCustomized(const std::string &bundleNam
     bool isDebugApp = abilityInfo.applicationInfo.appProvisionType == AppExecFwk::Constants::APP_PROVISION_TYPE_DEBUG;
     if (!(isGameSACall || (isShellCall && isDevelopMode && isDebugApp))) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Permission check failed: callingUid: %{public}d, isGameSACall = %{public}d, "
-            "isShellCall = %{public}d, isDevelopMode = %{public}d, isDebugApp = %{public}d",
+            "isShellCall = %{private}d, isDevelopMode = %{private}d, isDebugApp = %{private}d",
             IPCSkeleton::GetCallingUid(), isGameSACall, isShellCall, isDevelopMode, isDebugApp);
         return CHECK_PERMISSION_FAILED;
     }
 
-    // Set game prelaunch flag
-    launchWant.SetParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH, true);
-
     StartAbilityWrapParam startAbilityWrapParam;
-    startAbilityWrapParam.want = launchWant;
+    launchWant.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, appIndex);
+    startAbilityWrapParam.want = std::move(launchWant);
     startAbilityWrapParam.userId = userId;
     startAbilityWrapParam.isGamePrelaunch = true;
     return DelayedSingleton<AbilityManagerService>::GetInstance()->StartAbilityInner(startAbilityWrapParam);
@@ -119,7 +123,11 @@ int32_t PreloadManagerService::PreloadApplicationVerification(const std::string 
     userId = DelayedSingleton<AbilityManagerService>::GetInstance()->GetValidUserId(userId);
     CHECK_TRUE_RETURN_RET(!DelayedSingleton<AbilityManagerService>::GetInstance()->JudgeMultiUserConcurrency(userId),
         ERR_CROSS_USER, "multi-user non-concurrent unsatisfied");
-
+    if (appIndex != 0 && appIndex != AbilityRuntime::GlobalConstant::PC_TABLET_INDEX &&
+        !AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "PreloadApplicationVerification invalid appIndex: %{public}d", appIndex);
+        return ERR_APP_CLONE_INDEX_INVALID;
+    }
     bool isExist = false;
     int32_t ret = ERR_OK;
     CHECK_TRUE_RETURN_RET((ret = DelayedSingleton<AppScheduler>::GetInstance()->CheckPreloadAppRecordExist(
@@ -135,8 +143,11 @@ int32_t PreloadManagerService::PreloadApplicationVerification(const std::string 
         return errCode;
     }
     CHECK_TRUE_RETURN_RET(!IN_PROCESS_CALL(bundleMgrHelper->QueryAbilityInfo(want,
-        AppExecFwk::AbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION, userId, abilityInfo)),
+        AppExecFwk::AbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION |
+        AppExecFwk::AbilityInfoFlag::GET_ABILITY_INFO_WITH_METADATA, userId, abilityInfo)),
         RESOLVE_ABILITY_ERR, "failed to get abilityInfo");
+    CHECK_TRUE_RETURN_RET(NativeAbilityMetaData::IsWithNative(abilityInfo),
+        ERR_CAPABILITY_NOT_SUPPORT, "Native ability not supported");
     return ERR_OK;
 }
 }  // namespace AAFwk

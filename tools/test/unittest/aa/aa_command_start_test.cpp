@@ -1780,3 +1780,189 @@ HWTEST_F(AaCommandStartTest, Aa_Command_Start_5800, Function | MediumTest | Leve
     std::string result = cmd.ExecCommand();
     EXPECT_TRUE(result.find(STRING_START_ABILITY_OK) != std::string::npos);
 }
+
+/**
+ * @tc.number: Aa_Command_Start_5900
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify "aa start -a <ability> -b <bundle> --ps perfCmd <valid>" applies perfCmd the same way as -p.
+ */
+HWTEST_F(AaCommandStartTest, Aa_Command_Start_5900, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Aa_Command_Start_5900");
+    MockAbilityManagerStub::ResetCapturedWant();
+    const std::string validPerfCmd = "profile nativeperf";
+
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)cmd_.c_str(),
+        (char*)"-a",
+        (char*)STRING_ABILITY_NAME.c_str(),
+        (char*)"-b",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"--ps",
+        (char*)"perfCmd",
+        (char*)validPerfCmd.c_str(),
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    EXPECT_EQ(cmd.ExecCommand(), STRING_START_ABILITY_OK + "\n");
+    ASSERT_TRUE(MockAbilityManagerStub::HasCapturedWant());
+    EXPECT_EQ(MockAbilityManagerStub::GetCapturedWant().GetStringParam("perfCmd"), validPerfCmd);
+}
+
+/**
+ * @tc.number: Aa_Command_Start_6000
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify "aa start -a <ability> -b <bundle> --ps perfCmd <invalid>" is rejected like -p.
+ */
+HWTEST_F(AaCommandStartTest, Aa_Command_Start_6000, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Aa_Command_Start_6000");
+    MockAbilityManagerStub::ResetCapturedWant();
+    const std::string invalidPerfCmd = "evilcmd";
+
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)cmd_.c_str(),
+        (char*)"-a",
+        (char*)STRING_ABILITY_NAME.c_str(),
+        (char*)"-b",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"--ps",
+        (char*)"perfCmd",
+        (char*)invalidPerfCmd.c_str(),
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    std::string result = cmd.ExecCommand();
+    EXPECT_EQ(result.find(STRING_START_ABILITY_OK), std::string::npos);
+    EXPECT_NE(result.find("invalid perfCmd for option --ps"), std::string::npos);
+    EXPECT_FALSE(MockAbilityManagerStub::HasCapturedWant());
+}
+
+/**
+ * @tc.number: Aa_Command_Start_6100
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify "aa start -a <ability> -b <bundle> -p <valid>" still applies perfCmd.
+ */
+HWTEST_F(AaCommandStartTest, Aa_Command_Start_6100, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Aa_Command_Start_6100");
+    MockAbilityManagerStub::ResetCapturedWant();
+    const std::string validPerfCmd = "profile nativeperf";
+
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)cmd_.c_str(),
+        (char*)"-a",
+        (char*)STRING_ABILITY_NAME.c_str(),
+        (char*)"-b",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"-p",
+        (char*)validPerfCmd.c_str(),
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    EXPECT_EQ(cmd.ExecCommand(), STRING_START_ABILITY_OK + "\n");
+    ASSERT_TRUE(MockAbilityManagerStub::HasCapturedWant());
+    EXPECT_EQ(MockAbilityManagerStub::GetCapturedWant().GetStringParam("perfCmd"), validPerfCmd);
+}
+
+/**
+ * @tc.number: Aa_Command_Start_6200
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify "aa start -a <ability> -b <bundle> -p <invalid>" is rejected.
+ */
+HWTEST_F(AaCommandStartTest, Aa_Command_Start_6200, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Aa_Command_Start_6200");
+    MockAbilityManagerStub::ResetCapturedWant();
+    const std::string invalidPerfCmd = "evilcmd";
+
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)cmd_.c_str(),
+        (char*)"-a",
+        (char*)STRING_ABILITY_NAME.c_str(),
+        (char*)"-b",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"-p",
+        (char*)invalidPerfCmd.c_str(),
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    std::string result = cmd.ExecCommand();
+    EXPECT_EQ(result.find(STRING_START_ABILITY_OK), std::string::npos);
+    EXPECT_FALSE(MockAbilityManagerStub::HasCapturedWant());
+}
+
+/**
+ * @tc.number: Aa_Command_Start_6300
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify an invalid -p cannot leak into the want when a later --ps resets the result.
+ */
+HWTEST_F(AaCommandStartTest, Aa_Command_Start_6300, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Aa_Command_Start_6300");
+    MockAbilityManagerStub::ResetCapturedWant();
+    const std::string invalidPerfCmd = "evilcmd";
+
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)cmd_.c_str(),
+        (char*)"-a",
+        (char*)STRING_ABILITY_NAME.c_str(),
+        (char*)"-b",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"-p",
+        (char*)invalidPerfCmd.c_str(),
+        (char*)"--ps",
+        (char*)STRING_PARAMETER_KEY_STRING.c_str(),
+        (char*)STRING_PARAMETER_VALUE_STRING.c_str(),
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    std::string result = cmd.ExecCommand();
+    EXPECT_NE(result.find(STRING_START_ABILITY_OK), std::string::npos);
+    ASSERT_TRUE(MockAbilityManagerStub::HasCapturedWant());
+    EXPECT_TRUE(MockAbilityManagerStub::GetCapturedWant().GetStringParam("perfCmd").empty());
+}
+
+/**
+ * @tc.number: Aa_Command_Start_6400
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify "aa start -a <ability> -b <bundle> --psn perfCmd" sets an empty perfCmd (harmless, not rejected).
+ */
+HWTEST_F(AaCommandStartTest, Aa_Command_Start_6400, Function | MediumTest | Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Aa_Command_Start_6400");
+    MockAbilityManagerStub::ResetCapturedWant();
+
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)cmd_.c_str(),
+        (char*)"-a",
+        (char*)STRING_ABILITY_NAME.c_str(),
+        (char*)"-b",
+        (char*)STRING_BUNDLE_NAME.c_str(),
+        (char*)"--psn",
+        (char*)"perfCmd",
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+
+    AbilityManagerShellCommand cmd(argc, argv);
+    EXPECT_EQ(cmd.ExecCommand(), STRING_START_ABILITY_OK + "\n");
+    ASSERT_TRUE(MockAbilityManagerStub::HasCapturedWant());
+    EXPECT_TRUE(MockAbilityManagerStub::GetCapturedWant().GetStringParam("perfCmd").empty());
+}

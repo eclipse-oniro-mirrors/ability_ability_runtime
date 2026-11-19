@@ -42,8 +42,8 @@ namespace wantAgent {
     cleaner.clean();
   }
 
-  let destroyRegister = new FinalizationRegistry<Cleaner>(callback);
-  let unregisterToken = new object();
+  let destroyRegister: FinalizationRegistry<Cleaner> = new FinalizationRegistry<Cleaner>(callback);
+  let unregisterToken: object = new object();
 
   class WantAgentCls {
     wantAgentPtr: long = 0;

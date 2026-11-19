@@ -201,6 +201,32 @@ HWTEST_F(AppMgrServiceThirdTest, DumpJsHeapMemory_001, TestSize.Level1)
 
 /*
  * Feature: AppMgrService
+ * Function: DumpJsHandleMap
+ * SubFunction: NA
+ * FunctionPoints: AppMgrService DumpJsHandleMap
+ * EnvConditions: NA
+ * CaseDescription: Verify DumpJsHandleMap
+ */
+HWTEST_F(AppMgrServiceThirdTest, DumpJsHandleMap_001, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    ASSERT_NE(appMgrService, nullptr);
+    appMgrService->SetInnerService(nullptr);
+    OHOS::AppExecFwk::JsHandleMapInfo info;
+    info.pid = 1;
+    info.tid = 1;
+    int32_t res = appMgrService->DumpJsHandleMap(info);
+    EXPECT_EQ(res, ERR_INVALID_OPERATION);
+
+    appMgrService->SetInnerService(std::make_shared<AppMgrServiceInner>());
+    appMgrService->taskHandler_ = taskHandler_;
+    appMgrService->eventHandler_ = std::make_shared<AMSEventHandler>(taskHandler_, appMgrService->appMgrServiceInner_);
+    res = appMgrService->DumpJsHandleMap(info);
+    EXPECT_NE(res, ERR_INVALID_OPERATION);
+}
+
+/*
+ * Feature: AppMgrService
  * Function: DumpCjHeapMemory
  * SubFunction: NA
  * FunctionPoints: AppMgrService DumpCjHeapMemory
@@ -239,15 +265,40 @@ HWTEST_F(AppMgrServiceThirdTest, DumpMem_001, TestSize.Level1)
     appMgrService->SetInnerService(nullptr);
     OHOS::AppExecFwk::MemDumpInfo info;
     info.pid = 1;
-    std::string dumpResult;
-    int32_t res = appMgrService->DumpMem(info, dumpResult);
+    sptr<IMemDumpCallback> callback = nullptr;
+    int32_t res = appMgrService->DumpMem(info, callback);
     EXPECT_EQ(res, ERR_INVALID_OPERATION);
 
     appMgrService->SetInnerService(std::make_shared<AppMgrServiceInner>());
     appMgrService->taskHandler_ = taskHandler_;
     appMgrService->eventHandler_ = std::make_shared<AMSEventHandler>(taskHandler_, appMgrService->appMgrServiceInner_);
-    res = appMgrService->DumpMem(info, dumpResult);
+    res = appMgrService->DumpMem(info, callback);
     EXPECT_NE(res, ERR_INVALID_OPERATION);
+}
+
+/*
+ * Feature: AppMgrService
+ * Function: ReportDumpMemResult
+ * SubFunction: NA
+ * FunctionPoints: AppMgrService ReportDumpMemResult
+ * EnvConditions: NA
+ * CaseDescription: Verify ReportDumpMemResult
+ */
+HWTEST_F(AppMgrServiceThirdTest, ReportDumpMemResult_001, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    ASSERT_NE(appMgrService, nullptr);
+    appMgrService->SetInnerService(nullptr);
+    sptr<IMemDumpCallback> callback = nullptr;
+    std::string dumpResult = "test";
+    int32_t res = appMgrService->ReportDumpMemResult(callback, dumpResult);
+    EXPECT_EQ(res, ERR_INVALID_OPERATION);
+
+    appMgrService->SetInnerService(std::make_shared<AppMgrServiceInner>());
+    appMgrService->taskHandler_ = taskHandler_;
+    appMgrService->eventHandler_ = std::make_shared<AMSEventHandler>(taskHandler_, appMgrService->appMgrServiceInner_);
+    res = appMgrService->ReportDumpMemResult(callback, dumpResult);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
 }
 
 /*
@@ -446,7 +497,15 @@ HWTEST_F(AppMgrServiceThirdTest, ShowHelp_001, TestSize.Level1)
         "--ipc pid ARG               ipc load statistic; pid must be specified or set to -a dump all processes. "
         "ARG must be one of --start-stat | --stop-stat | --stat\n"
         "--web pid1[,pid2,pid3] [ARG]    "
-        "dump arkweb info, ARG must be one of (--all | --nweb | ...)\n";
+        "dump arkweb info, ARG must be one of (--all | --nweb | ...)\n"
+        "--task                      "
+        "dump agent task manager active tasks\n"
+        "--task psched               "
+        "dump process schedule index, effective levels and judge state\n"
+        "--task register <taskId> <pid> <insight|cli|a2a|ability>    "
+        "test hook: attribute an entity into the task\n"
+        "--task unregister <taskId> <attributionId>    "
+        "test hook: remove an attribution from the task\n";
     int res = appMgrService->ShowHelp(dummyArgs, resultBuffer);
     EXPECT_EQ(resultBuffer, expectedOutput);
     EXPECT_EQ(res, ERR_OK);

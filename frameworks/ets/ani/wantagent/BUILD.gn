@@ -53,6 +53,7 @@ ohos_shared_library("aniwantagent") {
     "c_utils:utils",
     "hilog:libhilog",
     "ipc:ipc_core",
+    "node:node_header_notice",
     "runtime_core:ani",
   ]
 
@@ -64,4 +65,5 @@ ohos_shared_library("aniwantagent") {
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

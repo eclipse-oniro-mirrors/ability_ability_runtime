@@ -14,10 +14,10 @@
 import("//build/test.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
-module_output_path = "ability_runtime/ability_runtime/app"
+module_output_path = "ability_runtime/ability_runtime/AppRecovery"
 
 ohos_unittest("AppRecoveryUnitTest") {
-  module_out_path = "ability_runtime/ability_runtime/app"
+  module_out_path = module_output_path
   cflags_cc = [ "-DUNITTEST" ]
   cflags = [ "-DUNITTEST" ]
   include_dirs = [
@@ -37,9 +37,15 @@ ohos_unittest("AppRecoveryUnitTest") {
 
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_connect_callback_stub",
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/dataobs_manager:dataobs_manager",
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
+    "${ability_runtime_innerkits_path}/napi_base_context:napi_base_context",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
+    "${ability_runtime_innerkits_path}/wantagent:wantagent_innerkits",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_native_path}/ability/native:uiabilitykit_native",
+    "${ability_runtime_native_path}/ability:ability_context_native",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_native_path}/appkit:app_context_utils",
     "${ability_runtime_native_path}/appkit:appkit_delegator",
@@ -52,12 +58,6 @@ ohos_unittest("AppRecoveryUnitTest") {
     "ability_base:configuration",
     "ability_base:want",
     "ability_base:zuri",
-    "ability_runtime:ability_context_native",
-    "ability_runtime:ability_deps_wrapper",
-    "ability_runtime:ability_manager",
-    "ability_runtime:napi_base_context",
-    "ability_runtime:runtime",
-    "ability_runtime:wantagent_innerkits",
     "access_token:libaccesstoken_sdk",
     "access_token:libtoken_callback_sdk",
     "bundle_framework:appexecfwk_base",
@@ -67,9 +67,8 @@ ohos_unittest("AppRecoveryUnitTest") {
     "eventhandler:libeventhandler",
     "faultloggerd:libdfx_dumpcatcher",
     "form_fwk:fmskit_native",
-    "form_fwk:form_manager",
-    "form_fwk:form_render_info",
     "form_fwk:form_common_info",
+    "form_fwk:form_render_info",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
@@ -82,7 +81,7 @@ ohos_unittest("AppRecoveryUnitTest") {
     "window_manager:windowstage_kit",
   ]
   if (hichecker_enabled) {
-    external_deps += [ "hichecker:libhichecker" ]
+    external_deps += [ "hichecker:libhichecker" ] 
   }
 }
 
@@ -104,9 +103,15 @@ ohos_unittest("AbilityRecoveryUnitTest") {
   }
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/dataobs_manager:dataobs_manager",
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
+    "${ability_runtime_innerkits_path}/napi_base_context:napi_base_context",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
+    "${ability_runtime_innerkits_path}/wantagent:wantagent_innerkits",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_native_path}/ability/native:uiabilitykit_native",
+    "${ability_runtime_native_path}/ability:ability_context_native",
     "${ability_runtime_native_path}/appkit:app_context",
     "${ability_runtime_native_path}/appkit:app_context_utils",
     "${ability_runtime_native_path}/appkit:appkit_delegator",
@@ -118,12 +123,6 @@ ohos_unittest("AbilityRecoveryUnitTest") {
     "ability_base:configuration",
     "ability_base:want",
     "ability_base:zuri",
-    "ability_runtime:ability_context_native",
-    "ability_runtime:ability_deps_wrapper",
-    "ability_runtime:ability_manager",
-    "ability_runtime:napi_base_context",
-    "ability_runtime:runtime",
-    "ability_runtime:wantagent_innerkits",
     "access_token:libaccesstoken_sdk",
     "access_token:libtoken_callback_sdk",
     "bundle_framework:appexecfwk_base",
@@ -133,9 +132,8 @@ ohos_unittest("AbilityRecoveryUnitTest") {
     "eventhandler:libeventhandler",
     "faultloggerd:libdfx_dumpcatcher",
     "form_fwk:fmskit_native",
-    "form_fwk:form_manager",
-    "form_fwk:form_render_info",
     "form_fwk:form_common_info",
+    "form_fwk:form_render_info",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
@@ -148,7 +146,7 @@ ohos_unittest("AbilityRecoveryUnitTest") {
     "window_manager:windowstage_kit",
   ]
   if (hichecker_enabled) {
-    external_deps += [ "hichecker:libhichecker" ]
+    external_deps += [ "hichecker:libhichecker" ] 
   }
 }
 

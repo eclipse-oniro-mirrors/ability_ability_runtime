@@ -17,6 +17,7 @@
 
 #include <cerrno>
 #include <climits>
+#include <cstdint>
 #include <cstdlib>
 #include <fstream>
 #include <mutex>
@@ -33,6 +34,7 @@
 #include "constants.h"
 #include "connect_server_manager.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "extract_resource_manager.h"
 #include "file_mapper.h"
 #include "file_path_utils.h"
@@ -61,9 +63,8 @@
 #include "extractor.h"
 #include "replace_intl_module.h"
 #include "system_ability_definition.h"
-#include "source_map.h"
-#include "source_map_operator.h"
 #include "worker_info.h"
+#include "ffrt.h"
 
 #ifdef SUPPORT_SCREEN
 #include "hot_reloader.h"
@@ -91,6 +92,8 @@ constexpr char MERGE_ABC_PATH[] = "/ets/modules.abc";
 constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
 constexpr const char* PERMISSION_RUN_ANY_CODE = "ohos.permission.RUN_ANY_CODE";
 constexpr const char* PERMISSION_LOAD_INDEPENDENT_LIBRARY = "ohos.permission.kernel.LOAD_INDEPENDENT_LIBRARY";
+constexpr const char* PERMISSION_LOAD_CERTSIGN_LIBRARY_FOR_WEB = "ohos.permission.kernel.LOAD_CERTSIGN_LIBRARY_FOR_WEB";
+constexpr const char* PERMISSION_LOAD_CERTSIGN_LIBRARY = "ohos.permission.kernel.LOAD_CERTSIGN_LIBRARY";
 
 const std::string CONFIG_PATH = "/etc/system_kits_config.json";
 const std::string SYSTEM_KITS_CONFIG_PATH = "/system/etc/system_kits_config.json";
@@ -118,6 +121,34 @@ int32_t PrintVmLog(int32_t, int32_t, const char*, const char*, const char* messa
 {
     TAG_LOGI(AAFwkTag::JSRUNTIME, "ArkLog: %{public}s", message);
     return 0;
+}
+
+int32_t ParseInterval(const std::string& jsperfResuflt, int32_t defaultValue)
+{
+    const std::regex regexJsperfNum(R"(^\s*(\d+).*)");
+    std::match_results<std::string::const_iterator> jsperfMatchResults;
+    if (!std::regex_match(jsperfResuflt, jsperfMatchResults, regexJsperfNum)) {
+        TAG_LOGD(AAFwkTag::JSRUNTIME, "the jsperf results not match");
+        return defaultValue;
+    }
+    constexpr size_t matchNumResultIndex = 1;
+    if (jsperfMatchResults.size() < PARAM_TWO) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "jsperfMatchResults not match");
+        return defaultValue;
+    }
+    auto interval = jsperfMatchResults[matchNumResultIndex].str();
+    if (interval.empty()) {
+        TAG_LOGD(AAFwkTag::JSRUNTIME, "empty interval");
+        return defaultValue;
+    }
+    errno = 0;
+    char *endPtr = nullptr;
+    long val = strtol(interval.c_str(), &endPtr, 10);
+    if (errno != 0 || val > INT32_MAX || val < 0 || endPtr == interval.c_str()) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "interval out of range: %{public}s", interval.c_str());
+        return defaultValue;
+    }
+    return static_cast<int32_t>(val);
 }
 } // namespace
 
@@ -258,6 +289,7 @@ void JsRuntime::DebuggerConnectionHandler(bool isDebugApp, bool isStartWithDebug
     ConnectServerManager::Get().StoreInstanceMessage(getproctid(), instanceId_);
     EcmaVM* vm = GetEcmaVm();
     CHECK_POINTER(jsEnv_);
+    CHECK_POINTER(vm);
     auto dTask = jsEnv_->GetDebuggerPostTask();
     panda::JSNApi::DebugOption option = {ARK_DEBUGGER_LIB_PATH, isDebugApp ? isStartWithDebug : false};
     ConnectServerManager::Get().StoreDebuggerInfo(getproctid(), reinterpret_cast<void*>(vm), option, dTask, isDebugApp);
@@ -320,29 +352,7 @@ int32_t JsRuntime::JsperfProfilerCommandParse(const std::string &command, int32_
     }
 
     jsperfResuflt = matchResults[matchResultIndex].str();
-    // match number result
-    const std::regex regexJsperfNum(R"(^\s*(\d+).*)");
-    std::match_results<std::string::const_iterator> jsperfMatchResults;
-    if (!std::regex_match(jsperfResuflt, jsperfMatchResults, regexJsperfNum)) {
-        TAG_LOGD(AAFwkTag::JSRUNTIME, "the jsperf results not match");
-        return defaultValue;
-    }
-
-    // get match result
-    std::string interval;
-    constexpr size_t matchNumResultIndex = 1;
-    if (jsperfMatchResults.size() < PARAM_TWO) {
-        TAG_LOGE(AAFwkTag::JSRUNTIME, "jsperfMatchResults not match");
-        return defaultValue;
-    }
-
-    interval = jsperfMatchResults[matchNumResultIndex].str();
-    if (interval.empty()) {
-        TAG_LOGD(AAFwkTag::JSRUNTIME, "empty interval");
-        return defaultValue;
-    }
-
-    return std::stoi(interval);
+    return ParseInterval(jsperfResuflt, defaultValue);
 }
 
 void JsRuntime::StartProfiler(const DebugOption dOption)
@@ -408,6 +418,7 @@ void JsRuntime::DebuggerConnectionManager(bool isDebugApp, bool isStartWithDebug
     }
     EcmaVM* vm = GetEcmaVm();
     CHECK_POINTER(jsEnv_);
+    CHECK_POINTER(vm);
     auto dTask = jsEnv_->GetDebuggerPostTask();
     panda::JSNApi::DebugOption option = {ARK_DEBUGGER_LIB_PATH, isDebugApp ? isStartWithDebug : false};
     ConnectServerManager::Get().StoreDebuggerInfo(getproctid(), reinterpret_cast<void*>(vm), option, dTask, isDebugApp);
@@ -481,7 +492,7 @@ bool JsRuntime::LoadRepairPatch(const std::string& hqfFile, const std::string& h
     auto vm = GetEcmaVm();
     CHECK_POINTER_AND_RETURN(vm, false);
 
-    InitSourceMap(hqfFile);
+    HqfInitSourceMap(hqfFile);
 
     std::string patchFile;
     auto hqfSafeData = GetSafeData(hqfFile, patchFile);
@@ -764,6 +775,7 @@ bool JsRuntime::Initialize(const Options& options)
             LoadAotFile(options);
             panda::JSNApi::SetBundle(vm, options.isBundle);
             panda::JSNApi::SetBundleName(vm, options.bundleName);
+            panda::JSNApi::SetIsMainProcess(options.isMainProcess);
             panda::JSNApi::SetHostResolveBufferTracker(
                 vm, JsModuleReader(options.bundleName, options.hapPath, options.isUnique));
             isModular = !panda::JSNApi::IsBundle(vm);
@@ -785,8 +797,7 @@ bool JsRuntime::Initialize(const Options& options)
     }
 
     if (!options.preload) {
-        auto operatorObj = std::make_shared<JsEnv::SourceMapOperator>(options.bundleName);
-        InitSourceMap(operatorObj);
+        InitSourceMap(options.bundleName);
 
         if (options.isUnique) {
             TAG_LOGD(AAFwkTag::JSRUNTIME, "Not supported TimerModule when form render");
@@ -823,6 +834,7 @@ bool JsRuntime::CreateJsEnv(const Options& options)
     pandaOption.SetMemConfigProperty(memConfigProperty);
     pandaOption.SetGcThreadNum(gcThreadNum);
     pandaOption.SetLongPauseTime(longPauseTime);
+    pandaOption.SetIsFormThread(options.isFormRender);
     TAG_LOGD(AAFwkTag::JSRUNTIME, "ark properties=%{public}d bundlename=%{public}s",
         arkProperties, bundleName.c_str());
     pandaOption.SetGcType(panda::RuntimeOption::GC_TYPE::GEN_GC);
@@ -977,8 +989,17 @@ void JsRuntime::CreatePluginDefaultNamespace(const std::string &lddictionaries)
     Security::AccessToken::AccessTokenID selfToken = IPCSkeleton::GetSelfTokenID();
     int result = Security::AccessToken::AccessTokenKit::VerifyAccessToken(selfToken,
         PERMISSION_LOAD_INDEPENDENT_LIBRARY);
-    if (result != Security::AccessToken::PermissionState::PERMISSION_GRANTED) {
-        TAG_LOGE(AAFwkTag::JSRUNTIME, "verify access token failed: %{public}d", result);
+    int resultWeb = Security::AccessToken::AccessTokenKit::VerifyAccessToken(selfToken,
+        PERMISSION_LOAD_CERTSIGN_LIBRARY_FOR_WEB);
+    int resultLoadCertSignLib = Security::AccessToken::AccessTokenKit::VerifyAccessToken(selfToken,
+        PERMISSION_LOAD_CERTSIGN_LIBRARY);
+    if (result != Security::AccessToken::PermissionState::PERMISSION_GRANTED &&
+        resultWeb != Security::AccessToken::PermissionState::PERMISSION_GRANTED &&
+        resultLoadCertSignLib != Security::AccessToken::PermissionState::PERMISSION_GRANTED) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "verify access token failed: result = %{public}d", result);
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "verify access token failed: resultWeb = %{public}d", resultWeb);
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "verify access token failed: resultLoadCertSignLib = %{public}d",
+                 resultLoadCertSignLib);
         return;
     }
     auto moduleManager = NativeModuleManager::GetInstance();
@@ -999,16 +1020,37 @@ void JsRuntime::CreatePluginDefaultNamespace(const std::string &lddictionaries)
     moduleManager->InheritNamespaceEachOther(currentNamespace, pluginDefaultNamespace);
 }
 
-void JsRuntime::InitSourceMap(const std::shared_ptr<JsEnv::SourceMapOperator> operatorObj)
+void JsRuntime::InitSourceMap(const std::string bundleName)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     CHECK_POINTER(jsEnv_);
-    JsEnv::SourceMap::RegisterReadSourceMapCallback(JsRuntime::ReadSourceMapData);
-    JsEnv::SourceMap::RegisterGetHapPathCallback(JsModuleReader::GetHapPathList);
-    jsEnv_->InitSourceMap(operatorObj);
+
+    auto init = [bundleName]() {
+        DFXJSNApi::SourceMapSetInitStatus(panda::ecmascript::InitStatus::IN_EXECUTED);
+        std::vector<std::string> hapList;
+        JsModuleReader::GetHapPathList(bundleName, hapList);
+        bool hasSourceMap = false;
+        for (auto &hapInfo : hapList) {
+            if (hapInfo.empty()) {
+                continue;
+            }
+            std::string sourceMapData;
+            if (JsRuntime::ReadSourceMapData(hapInfo, MERGE_SOURCE_MAP_PATH, sourceMapData)) {
+                hasSourceMap = true;
+            }
+            DFXJSNApi::SourceMapSplitSourceMap(sourceMapData);
+        }
+        if (hasSourceMap) {
+            DFXJSNApi::SourceMapSetInitStatus(panda::ecmascript::InitStatus::EXECUTED_SUCCESSFULLY);
+        } else {
+            DFXJSNApi::SourceMapSetInitStatus(panda::ecmascript::InitStatus::NO_SOURCEMAP);
+        }
+    };
+
+    ffrt::submit(init, {}, {}, ffrt::task_attr().qos(ffrt::qos_user_initiated));
 }
 
-void JsRuntime::InitSourceMap(const std::string hqfFilePath)
+void JsRuntime::HqfInitSourceMap(const std::string hqfFilePath)
 {
     std::string patchSoureMapFile;
     std::vector<uint8_t> soureMapBuffer;
@@ -1018,13 +1060,7 @@ void JsRuntime::InitSourceMap(const std::string hqfFilePath)
     }
     std::string str(soureMapBuffer.begin(), soureMapBuffer.end());
     CHECK_POINTER(jsEnv_);
-    auto sourceMapOperator = jsEnv_->GetSourceMapOperator();
-    if (sourceMapOperator != nullptr) {
-        auto sourceMapObj = sourceMapOperator->GetSourceMapObj();
-        if (sourceMapObj != nullptr) {
-            sourceMapObj->SplitSourceMap(str);
-        }
-    }
+    DFXJSNApi::SourceMapSplitSourceMap(str);
 }
 
 void JsRuntime::Deinitialize()
@@ -1149,7 +1185,11 @@ std::unique_ptr<NativeReference> JsRuntime::LoadModule(const std::string& module
         }
 
         napi_ref tmpRef = nullptr;
-        napi_create_reference(env, classValue, 1, &tmpRef);
+        napi_status status = napi_create_reference(env, classValue, 1, &tmpRef);
+        if (status != napi_ok || tmpRef == nullptr) {
+            TAG_LOGE(AAFwkTag::JSRUNTIME, "create reference failed");
+            return std::unique_ptr<NativeReference>();
+        }
         modules_.emplace(modulePath, reinterpret_cast<NativeReference*>(tmpRef));
     }
 
@@ -1173,6 +1213,11 @@ std::unique_ptr<NativeReference> JsRuntime::LoadSystemModule(
     CHECK_POINTER_AND_RETURN(env, std::unique_ptr<NativeReference>());
 
     HandleScope handleScope(*this);
+
+    if (methodRequireNapiRef_ == nullptr) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "null methodRequireNapiRef_");
+        return std::unique_ptr<NativeReference>();
+    }
 
     napi_value className = nullptr;
     napi_create_string_utf8(env, moduleName.c_str(), moduleName.length(), &className);
@@ -1259,7 +1304,24 @@ std::unique_ptr<AbilityBase::FileMapper> JsRuntime::ExecuteSecureWithOhmUrl(cons
     }
     return safeData;
 }
+std::shared_ptr<AbilityBase::FileMapper> JsRuntime::GetOrCreateSafeData(std::shared_ptr<Extractor> extractor,
+    const std::string &modulePath)
+{
+    //modulePath = BUNDLE_INSTALL_PATH + moduleName_ + MERGE_ABC_PATH
+    auto it = safeDataMap_.find(modulePath);
+    if (it != safeDataMap_.end()) {
+        return it->second;
+    }
 
+    std::shared_ptr<AbilityBase::FileMapper> safeData = extractor->GetSafeData(modulePath);
+    if (!safeData) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "null safeData");
+        return nullptr ;
+    }
+    //because extractor->GetSafeData will reload abc file,so need cache.
+    safeDataMap_.emplace(modulePath, safeData);
+    return safeData;
+}
 bool JsRuntime::RunScript(const std::string& srcPath, const std::string& hapPath, bool useCommonChunk,
     const std::string& srcEntrance)
 {
@@ -1287,7 +1349,7 @@ bool JsRuntime::RunScript(const std::string& srcPath, const std::string& hapPath
     if (newCreate) {
         TAG_LOGD(AAFwkTag::JSRUNTIME, "newCreate");
         panda::JSNApi::LoadAotFile(vm, moduleName_);
-        auto resourceManager = AbilityBase::ExtractResourceManager::GetExtractResourceManager().GetGlobalObject();
+        auto resourceManager = AbilityRuntime::ExtractResourceManager::GetExtractResourceManager().GetGlobalObject();
         if (resourceManager) {
             resourceManager->AddResource(loadPath.c_str());
         }
@@ -1296,7 +1358,7 @@ bool JsRuntime::RunScript(const std::string& srcPath, const std::string& hapPath
     auto func = [&](std::string modulePath, const std::string abcPath) {
         bool useSafeMempry = apiTargetVersion_ == 0 || apiTargetVersion_ > API8;
         if (!extractor->IsHapCompress(modulePath) && useSafeMempry) {
-            auto safeData = extractor->GetSafeData(modulePath);
+            auto safeData = isBundle_ ? extractor->GetSafeData(modulePath) : GetOrCreateSafeData(extractor, modulePath);
             if (!safeData) {
                 TAG_LOGE(AAFwkTag::JSRUNTIME, "null safeData");
                 return false;
@@ -1412,7 +1474,27 @@ void JsRuntime::DumpHeapSnapshot(uint32_t tid, const OHOS::AbilityRuntime::Runti
     dumpOption.isSync = false;
     dumpOption.isClearNodeIdCache = param.isClearNodeIdCache;
     dumpOption.isProcDump = param.isProcDump;
+    if (param.languageEnv == CODE_LANGUAGE_ARKTS_1_0) {
+        dumpOption.languageEnv = panda::ecmascript::LanguageEnv::DYNAMIC;
+    } else if (param.languageEnv == CODE_LANGUAGE_ARKTS_1_2) {
+        dumpOption.languageEnv = panda::ecmascript::LanguageEnv::STATIC;
+    } else if (param.languageEnv == CODE_LANGUAGE_ARKTS_HYBRID) {
+        dumpOption.languageEnv = panda::ecmascript::LanguageEnv::HYBRID;
+    } else {
+        dumpOption.languageEnv = panda::ecmascript::LanguageEnv::DYNAMIC;
+    }
+    TAG_LOGI(AAFwkTag::JSRUNTIME, "DumpHeapSnapshot languageEnv: %{public}u",
+        static_cast<uint8_t>(dumpOption.languageEnv));
     DFXJSNApi::DumpHeapSnapshot(vm, dumpOption, tid);
+}
+
+void JsRuntime::DumpJsHandleMap()
+{
+    TAG_LOGI(AAFwkTag::JSRUNTIME, "DumpJsHandleMap");
+    auto vm = GetEcmaVm();
+    CHECK_POINTER(vm);
+    DFXJSNApi::GetHandleNodeIdMap(vm);
+    DFXJSNApi::DestroyHeapProfiler(vm);
 }
 
 size_t JsRuntime::GetHeapTotalSize()
@@ -1433,6 +1515,22 @@ size_t JsRuntime::GetHeapObjectSize()
         return 0;
     }
     return DFXJSNApi::GetHeapObjectSize(vm);
+}
+
+size_t JsRuntime::GetSharedHeapSize()
+{
+    return DFXJSNApi::GetSharedHeapSize();
+}
+
+panda::GCStatistic JsRuntime::GetGCStatistic()
+{
+    auto vm = GetEcmaVm();
+    if (!vm) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "null vm");
+        panda::GCStatistic gCStatistic;
+        return gCStatistic;
+    }
+    return DFXJSNApi::GetGCStatistic(vm);
 }
 
 void JsRuntime::ForceFullGC(uint32_t tid)
@@ -1496,6 +1594,10 @@ void JsRuntime::PreloadSystemModule(const std::string& moduleName)
     HandleScope handleScope(*this);
     auto env = GetNapiEnv();
     CHECK_POINTER(env);
+    if (methodRequireNapiRef_ == nullptr) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "null methodRequireNapiRef_");
+        return;
+    }
     napi_value className = nullptr;
     napi_create_string_utf8(env, moduleName.c_str(), moduleName.length(), &className);
     napi_value globalObj = nullptr;
@@ -1534,6 +1636,7 @@ bool JsRuntime::PopPreloadObj(const std::string& key, std::unique_ptr<NativeRefe
     if (preloadList_[key] != nullptr) {
         obj = std::move(preloadList_[key]);
         preloadList_.erase(key);
+        TAG_LOGD(AAFwkTag::JSRUNTIME, "PopPreloadObj key: %{public}s", key.c_str());
         return true;
     }
     preloadList_.erase(key);
@@ -1585,18 +1688,19 @@ void JsRuntime::UpdateModuleNameAndAssetPath(const std::string& moduleName)
     panda::JSNApi::SetModuleName(vm, moduleName_);
 }
 
-void JsRuntime::RegisterUncaughtExceptionHandler(const JsEnv::UncaughtExceptionInfo& uncaughtExceptionInfo)
+void JsRuntime::RegisterUncaughtExceptionHandler(const JsEnv::UncaughtExceptionInfo& uncaughtExceptionInfo,
+                                                 bool isStatic)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     CHECK_POINTER(jsEnv_);
-    jsEnv_->RegisterUncaughtExceptionHandler(uncaughtExceptionInfo);
+    jsEnv_->RegisterUncaughtExceptionHandler(uncaughtExceptionInfo, isStatic);
 }
 
-void JsRuntime::RegisterUncatchableExceptionHandler(const JsEnv::UncatchableTask& uncatchableTask)
+void JsRuntime::RegisterUncatchableExceptionHandler(const JsEnv::UncatchableTask& uncatchableTask, bool isStatic)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     CHECK_POINTER(jsEnv_);
-    jsEnv_->RegisterUncatchableExceptionHandler(uncatchableTask);
+    jsEnv_->RegisterUncatchableExceptionHandler(uncatchableTask, isStatic);
 }
 
 void JsRuntime::RegisterQuickFixQueryFunc(const std::map<std::string, std::string>& moduleAndPath)
@@ -1606,7 +1710,7 @@ void JsRuntime::RegisterQuickFixQueryFunc(const std::map<std::string, std::strin
     CHECK_POINTER(vm);
     for (auto it = moduleAndPath.begin(); it != moduleAndPath.end(); it++) {
         std::string hqfFile(AbilityBase::GetLoadPath(it->second));
-        InitSourceMap(hqfFile);
+        HqfInitSourceMap(hqfFile);
     }
     panda::JSNApi::RegisterQuickFixQueryFunc(vm, JsQuickfixCallback(moduleAndPath));
 }

@@ -15,10 +15,16 @@
 
 #include "insight_intent_execute_callback_stub.h"
 #include "insight_intent_host_client.h"
+#include "ability_manager_errors.h"
 #include "hilog_tag_wrapper.h"
+#include "ipc_skeleton.h"
 
 namespace OHOS {
 namespace AAFwk {
+
+namespace {
+constexpr int32_t FOUNDATION_UID = 5523;
+}  // namespace
 
 InsightIntentExecuteCallbackStub::InsightIntentExecuteCallbackStub() {}
 
@@ -30,6 +36,13 @@ int32_t InsightIntentExecuteCallbackStub::OnRemoteRequest(
     if (data.ReadInterfaceToken() != IInsightIntentExecuteCallback::GetDescriptor()) {
         TAG_LOGE(AAFwkTag::INTENT, "InterfaceToken not equal");
         return ERR_INVALID_STATE;
+    }
+
+    // only foundation is allowed to invoke
+    if (IPCSkeleton::GetCallingUid() != FOUNDATION_UID) {
+        TAG_LOGE(AAFwkTag::INTENT, "reject: callingUid=%{public}d, expected foundation uid",
+            IPCSkeleton::GetCallingUid());
+        return CHECK_PERMISSION_FAILED;
     }
 
     if (code == ON_INSIGHT_INTENT_EXECUTE_DONE) {

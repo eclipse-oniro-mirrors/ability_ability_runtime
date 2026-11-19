@@ -23,6 +23,7 @@
 namespace OHOS {
 namespace AppExecFwk {
 struct RunningProcessInfo;
+struct ChildProcessInfo;
 class BundleMgrHelper;
 class OverlayEventSubscriber;
 }
@@ -396,6 +397,13 @@ public:
      * @return error code
      */
     int32_t GetProcessRunningInformation(AppExecFwk::RunningProcessInfo &info);
+
+    /**
+     * @brief Get UIAbility child process infos of the current application
+     *
+     * @return error code
+     */
+    int32_t GetUIAbilityChildProcessInfos(std::vector<AppExecFwk::ChildProcessInfo> &infos);
 
     /**
      * @brief Get all running instance keys for the current app

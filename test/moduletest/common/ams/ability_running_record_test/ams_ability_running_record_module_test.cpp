@@ -179,6 +179,11 @@ public:
         return 0;
     }
 
+    int32_t SchedulePreTemplateProcessDeepFrozen() override
+    {
+        return 0;
+    }
+
     int32_t ScheduleChangeAppGcState(int32_t state, uint64_t tid) override
     {
         return 0;
@@ -196,7 +201,7 @@ public:
     void ScheduleCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info) override
     {}
     
-    void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpresult) override
+    void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback) override
     {}
 
     int32_t ScheduleDumpIpcStart(std::string& result) override

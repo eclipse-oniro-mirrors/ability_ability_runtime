@@ -17,7 +17,9 @@
 
 #include "ability_manager_errors.h"
 #include "accesstoken_kit.h"
+#include "event_report.h"
 #include "hilog_tag_wrapper.h"
+#include "parameters.h"
 #include "permission_constants.h"
 #include "server_constant.h"
 #include "support_system_ability_permission.h"
@@ -29,6 +31,8 @@
 namespace OHOS {
 namespace AAFwk {
 const std::string DLP_PARAMS_SECURITY_FLAG = "ohos.dlp.params.securityFlag";
+const std::string DLP_PARAMS_CUSTOM_FLAG = "ohos.dlp.params.customFlag";
+
 namespace {
 const int32_t SHELL_START_EXTENSION_FLOOR = 0; // FORM
 const int32_t SHELL_START_EXTENSION_CEIL = 21; // EMBEDDED_UI
@@ -38,6 +42,7 @@ const std::set<std::string> OBSERVER_NATIVE_CALLER = {
     "memmgrservice",
     "resource_schedule_service",
 };
+const std::string DEVELOPER_MODE_STATE = "const.security.developermode.state";
 }
 bool PermissionVerification::VerifyPermissionByTokenId(const int &tokenId, const std::string &permissionName) const
 {
@@ -178,6 +183,7 @@ bool PermissionVerification::VerifyDlpPermission(Want &want) const
 {
     if (want.GetIntParam(AbilityRuntime::ServerConstant::DLP_INDEX, 0) == 0) {
         want.RemoveParam(DLP_PARAMS_SECURITY_FLAG);
+        want.RemoveParam(DLP_PARAMS_CUSTOM_FLAG);
         return true;
     }
 
@@ -199,6 +205,15 @@ bool PermissionVerification::VerifyMissionPermission() const
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (VerifyCallingPermission(PermissionConstants::PERMISSION_MANAGE_MISSION)) {
+        TAG_LOGD(AAFwkTag::DEFAULT, "Permission granted");
+        return true;
+    }
+    return false;
+}
+
+bool PermissionVerification::VerifyContinuationNotifyPermission() const
+{
+    if (VerifyCallingPermission(PermissionConstants::PERMISSION_CONTINUATION_NOTIFY)) {
         TAG_LOGD(AAFwkTag::DEFAULT, "Permission granted");
         return true;
     }
@@ -249,6 +264,16 @@ bool PermissionVerification::VerifyGetBundleInfoPrivilegedPermission() const
     if (VerifyCallingPermission(PermissionConstants::PERMISSION_GET_BUNDLE_INFO_PRIVILEGED)) {
         TAG_LOGI(AAFwkTag::DEFAULT,
             "Permission %{public}s granted", PermissionConstants::PERMISSION_GET_BUNDLE_INFO_PRIVILEGED);
+        return true;
+    }
+    return false;
+}
+
+bool PermissionVerification::VerifySupportCrossAppEmbedForOaPermission() const
+{
+    if (VerifyCallingPermission(PermissionConstants::PERMISSION_SUPPORT_CROSS_APP_EMBED_FOR_OA)) {
+        TAG_LOGI(AAFwkTag::DEFAULT,
+            "Permission %{public}s granted", PermissionConstants::PERMISSION_SUPPORT_CROSS_APP_EMBED_FOR_OA);
         return true;
     }
     return false;
@@ -319,14 +344,43 @@ int PermissionVerification::CheckCallServiceExtensionPermission(const Verificati
     return JudgeInvisibleAndBackground(verificationInfo);
 }
 
+int PermissionVerification::CheckSkillStartByCallPermission(const VerificationInfo &verificationInfo) const
+{
+    if (verificationInfo.skillCallerTokenId == verificationInfo.accessTokenId) {
+        TAG_LOGE(AAFwkTag::DEFAULT, "StartAbilityByCall reject");
+        return CHECK_PERMISSION_FAILED;
+    }
+    if (!VerifyCallingPermission(PermissionConstants::PERMISSION_ABILITY_BACKGROUND_COMMUNICATION,
+        verificationInfo.skillCallerTokenId)) {
+        TAG_LOGE(AAFwkTag::DEFAULT, "skill COMMUNICATION permission denied");
+        return CHECK_PERMISSION_FAILED;
+    }
+    if (!JudgeStartInvisibleAbility(verificationInfo.accessTokenId, verificationInfo.visible,
+        verificationInfo.skillCallerTokenId)) {
+        TAG_LOGE(AAFwkTag::DEFAULT, "skill INVISIBLE permission invalid");
+        return ABILITY_VISIBLE_FALSE_DENY_REQUEST;
+    }
+    if (!JudgeStartAbilityFromBackground(verificationInfo.isBackgroundCall,
+        verificationInfo.skillCallerTokenId)) {
+        TAG_LOGE(AAFwkTag::DEFAULT, "skill BACKGROUND permission invalid");
+        return CHECK_PERMISSION_FAILED;
+    }
+    return ERR_OK;
+}
+
 int PermissionVerification::CheckStartByCallPermission(const VerificationInfo &verificationInfo) const
 {
+    if (verificationInfo.skillCallerTokenId != 0) {
+        return CheckSkillStartByCallPermission(verificationInfo);
+    }
     if (IsCallFromSameAccessToken(verificationInfo.accessTokenId)) {
         TAG_LOGE(AAFwkTag::DEFAULT, "StartAbilityByCall reject");
         return CHECK_PERMISSION_FAILED;
     }
     // Different APP call, check permissions
-    if (!VerifyCallingPermission(PermissionConstants::PERMISSION_ABILITY_BACKGROUND_COMMUNICATION)) {
+    if (!VerifyCallingPermission(
+        PermissionConstants::PERMISSION_ABILITY_BACKGROUND_COMMUNICATION,
+        verificationInfo.specifiedFullTokenId)) {
         TAG_LOGE(AAFwkTag::DEFAULT, "Permission denied");
         return CHECK_PERMISSION_FAILED;
     }
@@ -339,6 +393,16 @@ int PermissionVerification::CheckStartByCallPermission(const VerificationInfo &v
         return CHECK_PERMISSION_FAILED;
     }
 
+    return ERR_OK;
+}
+
+int PermissionVerification::CheckCallModularObjectExtensionPermission(
+    const VerificationInfo &verificationInfo) const
+{
+    if (!JudgeStartInvisibleAbility(verificationInfo.accessTokenId, verificationInfo.visible)) {
+        TAG_LOGE(AAFwkTag::DEFAULT, "caller INVISIBLE permission invalid");
+        return ABILITY_VISIBLE_FALSE_DENY_REQUEST;
+    }
     return ERR_OK;
 }
 
@@ -372,7 +436,8 @@ bool PermissionVerification::JudgeStartInvisibleAbility(const uint32_t accessTok
     return false;
 }
 
-bool PermissionVerification::JudgeStartAbilityFromBackground(const bool isBackgroundCall) const
+bool PermissionVerification::JudgeStartAbilityFromBackground(const bool isBackgroundCall,
+    const uint32_t specifyTokenId) const
 {
     if (!isBackgroundCall) {
         TAG_LOGD(AAFwkTag::DEFAULT, "Caller not background");
@@ -381,8 +446,10 @@ bool PermissionVerification::JudgeStartAbilityFromBackground(const bool isBackgr
 
     // Temporarily supports permissions with two different spellings
     // PERMISSION_START_ABILIIES_FROM_BACKGROUND will be removed later due to misspelling
-    if (VerifyCallingPermission(PermissionConstants::PERMISSION_START_ABILITIES_FROM_BACKGROUND) ||
-        VerifyCallingPermission(PermissionConstants::PERMISSION_START_ABILIIES_FROM_BACKGROUND)) {
+    if (VerifyCallingPermission(PermissionConstants::PERMISSION_START_ABILITIES_FROM_BACKGROUND,
+        specifyTokenId) ||
+        VerifyCallingPermission(PermissionConstants::PERMISSION_START_ABILIIES_FROM_BACKGROUND,
+        specifyTokenId)) {
         TAG_LOGD(AAFwkTag::DEFAULT, "Caller PASS");
         return true;
     }
@@ -408,20 +475,28 @@ int PermissionVerification::JudgeInvisibleAndBackground(const VerificationInfo &
     bool isCallByShortcut) const
 {
     uint32_t specifyTokenId = verificationInfo.specifyTokenId;
+    if (verificationInfo.skillCallerTokenId != 0) {
+        specifyTokenId = verificationInfo.skillCallerTokenId;
+    }
     TAG_LOGD(AAFwkTag::DEFAULT, "specifyTokenId: %{public}u, isCallByShortcut %{public}d",
         specifyTokenId, isCallByShortcut);
     if (specifyTokenId == 0 &&
         SupportSystemAbilityPermission::IsSupportSaCallPermission()) {
         TAG_LOGD(AAFwkTag::DEFAULT, "Support SA call");
+        EventInfo eventInfo;
+        eventInfo.uri = std::string("IsSupportSaCallPermission://") +
+            (verificationInfo.visible ? "exported = true" : "exported = false") + "/" +
+            std::to_string(IPCSkeleton::GetCallingUid());
+        EventReport::SendGrantUriPermissionEvent(EventName::GRANT_URI_PERMISSION, eventInfo);
         return ERR_OK;
     }
     if (!isCallByShortcut &&
         !JudgeStartInvisibleAbility(verificationInfo.accessTokenId, verificationInfo.visible,
-        specifyTokenId)) {
+        specifyTokenId) && !(verificationInfo.isCliToolToken && verificationInfo.isLaunchAbility)) {
         TAG_LOGE(AAFwkTag::DEFAULT, "caller INVISIBLE permission invalid");
         return ABILITY_VISIBLE_FALSE_DENY_REQUEST;
     }
-    if (!JudgeStartAbilityFromBackground(verificationInfo.isBackgroundCall)) {
+    if (!JudgeStartAbilityFromBackground(verificationInfo.isBackgroundCall, verificationInfo.skillCallerTokenId)) {
         TAG_LOGE(AAFwkTag::DEFAULT, "caller START_ABILITIES_FROM_BACKGROUND permission invalid");
         return CHECK_PERMISSION_FAILED;
     }
@@ -577,6 +652,16 @@ bool PermissionVerification::VerifySuperviseKiaServicePermission() const
     return false;
 }
 
+bool PermissionVerification::VerifySAInterceptorPermission() const
+{
+    if (IsSACall() && VerifyCallingPermission(PermissionConstants::PERMISSION_SA_INTERCEPTOR)) {
+        TAG_LOGD(AAFwkTag::DEFAULT, "Permission granted");
+        return true;
+    }
+    TAG_LOGE(AAFwkTag::DEFAULT, "Permission denied");
+    return false;
+}
+
 bool PermissionVerification::VerifyStartLocalDebug(int32_t tokenId) const
 {
     if (VerifyPermissionByTokenId(tokenId, PermissionConstants::PERMISSION_PERFORM_LOCAL_DEBUG)) {
@@ -585,6 +670,23 @@ bool PermissionVerification::VerifyStartLocalDebug(int32_t tokenId) const
     }
     TAG_LOGE(AAFwkTag::DEFAULT, "Permission denied");
     return false;
+}
+
+
+bool PermissionVerification::VerifyLocalDebugOtherApps() const
+{
+    return VerifyCallingPermission(PermissionConstants::PERMISSION_LOCAL_DEBUG_OTHER_APPS);
+}
+
+bool PermissionVerification::IsAllowLocalDebugOtherApps(bool isDebugFromLocal) const
+{
+    if (!isDebugFromLocal) {
+        return false;
+    }
+    if (!system::GetBoolParameter(DEVELOPER_MODE_STATE, false)) {
+        return false;
+    }
+    return VerifyLocalDebugOtherApps();
 }
 
 bool PermissionVerification::VerifyStartSelfUIAbility(int tokenId) const
@@ -606,6 +708,58 @@ bool PermissionVerification::VerifyFusionAccessPermission() const
     }
     TAG_LOGE(AAFwkTag::DEFAULT, "Permission denied");
     return false;
+}
+
+bool PermissionVerification::IsLocalDebugOtherAppsCall(const uint32_t specifyTokenId, int32_t targetUserId) const
+{
+    if (!system::GetBoolParameter(DEVELOPER_MODE_STATE, false)) {
+        TAG_LOGD(AAFwkTag::DEFAULT, "not developer mode");
+        return false;
+    }
+    auto callerToken = specifyTokenId == 0 ? GetCallingTokenID() : specifyTokenId;
+    TAG_LOGD(AAFwkTag::DEFAULT, "Token: %{public}u", callerToken);
+    if (VerifyPermissionByTokenId(callerToken, PermissionConstants::PERMISSION_LOCAL_DEBUG_OTHER_APPS)) {
+        if (IsCrossUserForSandboxCall(targetUserId)) {
+            TAG_LOGE(AAFwkTag::DEFAULT, "cross-user operation not allowed for local debug other apps");
+            return false;
+        }
+        TAG_LOGD(AAFwkTag::DEFAULT, "Permission granted");
+        return true;
+    }
+    TAG_LOGE(AAFwkTag::DEFAULT, "Permission denied");
+    return false;
+}
+
+bool PermissionVerification::IsCustomSandboxCall(const uint32_t specifyTokenId, int32_t targetUserId) const
+{
+    if (!system::GetBoolParameter(DEVELOPER_MODE_STATE, false)) {
+        TAG_LOGD(AAFwkTag::DEFAULT, "not developer mode");
+        return false;
+    }
+    auto callerToken = specifyTokenId == 0 ? GetCallingTokenID() : specifyTokenId;
+    if (VerifyPermissionByTokenId(callerToken, PermissionConstants::PERMISSION_CUSTOM_SANDBOX)) {
+        if (IsCrossUserForSandboxCall(targetUserId)) {
+            TAG_LOGE(AAFwkTag::DEFAULT, "cross-user operation not allowed for custom sandbox");
+            return false;
+        }
+        TAG_LOGD(AAFwkTag::DEFAULT, "Custom sandbox permission granted");
+        return true;
+    }
+    TAG_LOGE(AAFwkTag::DEFAULT, "Custom sandbox permission denied");
+    return false;
+}
+
+bool PermissionVerification::IsCrossUserForSandboxCall(int32_t targetUserId) const
+{
+    if (targetUserId < 0) {
+        return false;
+    }
+    constexpr int32_t BASE_USER_RANGE = 200000;
+    int32_t callerUser = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+    if (callerUser <= 1) {
+        return false;
+    }
+    return callerUser != targetUserId;
 }
 }  // namespace AAFwk
 }  // namespace OHOS

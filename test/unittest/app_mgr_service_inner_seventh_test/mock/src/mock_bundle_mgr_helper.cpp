@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -47,7 +47,8 @@ ErrCode BundleMgrHelper::GetNameForUid(const int32_t uid, std::string& name)
 
 ErrCode BundleMgrHelper::GetNameAndIndexForUid(const int32_t uid, std::string& bundleName, int32_t& appIndex)
 {
-    return ERR_OK;
+    bundleName = AAFwk::MyStatus::GetInstance().getNameForUid_;
+    return AAFwk::MyStatus::GetInstance().getNameAndIndexForUidRet_;
 }
 
 bool BundleMgrHelper::GetBundleInfo(const std::string& bundleName,
@@ -219,7 +220,8 @@ bool BundleMgrHelper::GetApplicationInfo(const std::string& appName,
 bool BundleMgrHelper::GetApplicationInfoWithAppIndex(
     const std::string& appName, int32_t appIndex, int32_t userId, ApplicationInfo& appInfo)
 {
-    return false;
+    appInfo = AAFwk::MyStatus::GetInstance().applicationInfo_;
+    return AAFwk::MyStatus::GetInstance().getApplicationInfoWithAppIndexRet_;
 }
 
 ErrCode BundleMgrHelper::GetJsonProfile(ProfileType profileType, const std::string& bundleName,
@@ -234,6 +236,12 @@ bool BundleMgrHelper::UnregisterBundleEventCallback(const sptr<IBundleEventCallb
 }
 
 bool BundleMgrHelper::QueryExtensionAbilityInfoByUri(
+    const std::string& uri, int32_t userId, ExtensionAbilityInfo& extensionAbilityInfo)
+{
+    return false;
+}
+
+bool BundleMgrHelper::QueryExtensionAbilityInfoByUriOptimal(
     const std::string& uri, int32_t userId, ExtensionAbilityInfo& extensionAbilityInfo)
 {
     return false;
@@ -278,6 +286,13 @@ bool BundleMgrHelper::QueryDataGroupInfos(const std::string& bundleName,
     return AAFwk::MyStatus::GetInstance().queryDataGroupInfos_;
 }
 
+ErrCode BundleMgrHelper::QueryIpcGroupInfos(
+    const std::string& bundleName, int32_t userId, std::vector<IpcGroupInfo>& infos)
+{
+    infos = AAFwk::MyStatus::GetInstance().queryIpcGroupInfoData_;
+    return AAFwk::MyStatus::GetInstance().queryIpcGroupInfosRet_;
+}
+
 bool BundleMgrHelper::RegisterBundleEventCallback(const sptr<IBundleEventCallback>& bundleEventCallback)
 {
     return false;
@@ -302,6 +317,18 @@ bool BundleMgrHelper::QueryAppGalleryBundleName(std::string& bundleName)
 ErrCode BundleMgrHelper::GetUidByBundleName(const std::string& bundleName, int32_t userId, int32_t appCloneIndex)
 {
     return ERR_OK;
+}
+
+ErrCode BundleMgrHelper::IsApplicationDisableForbidden(const std::string& bundleName, int32_t userId,
+    int32_t appIndex, bool& forbidden)
+{
+    auto &status = AAFwk::MyStatus::GetInstance();
+    status.isApplicationDisableForbiddenCall_++;
+    status.disableForbiddenBundleName_ = bundleName;
+    status.disableForbiddenUserId_ = userId;
+    status.disableForbiddenAppIndex_ = appIndex;
+    forbidden = status.isApplicationDisableForbidden_;
+    return status.isApplicationDisableForbiddenRet_;
 }
 
 ErrCode BundleMgrHelper::QueryExtensionAbilityInfosOnlyWithTypeName(const std::string& extensionTypeName,
@@ -381,5 +408,34 @@ ErrCode BundleMgrHelper::UnregisterPluginEventCallback(sptr<IBundleEventCallback
 {
     return ERR_OK;
 }
+
+ErrCode BundleMgrHelper::GetDualModeBundleInfo(const std::string& bundleName, int32_t userId, int32_t &appIndex)
+{
+    auto &status = AAFwk::MyStatus::GetInstance();
+    status.getDualModeBundleInfoCall_++;
+    status.dualModeBundleName_ = bundleName;
+    status.dualModeUserId_ = userId;
+    appIndex = status.dualModeAppIndex_;
+    return ERR_OK;
+}
+
+ErrCode BundleMgrHelper::GetCloneBundleInfoExt(const std::string& bundleName,
+    uint32_t flags, int32_t appIndex, int32_t userId, BundleInfo& bundleInfo)
+{
+    return ERR_OK;
+}
+
+ErrCode BundleMgrHelper::GetLaunchServices(
+    const std::string &bundleName, const std::string &moduleName, int32_t userId, LaunchServicesResult &result)
+{
+    return ERR_OK;
+}
+
+ErrCode BundleMgrHelper::GetAppProvisionInfo(
+    const std::string &bundleName, int32_t userId, AppProvisionInfo &appProvisionInfo)
+{
+    return ERR_OK;
+}
+
 } // namespace AppExecFwk
 } // namespace OHOS

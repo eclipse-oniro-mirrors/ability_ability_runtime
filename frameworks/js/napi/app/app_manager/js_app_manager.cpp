@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <mutex>
 
+#include "ability_business_error.h"
 #include "ability_manager_interface.h"
 #include "ability_manager_errors.h"
 #include "app_mgr_interface.h"
@@ -186,7 +187,9 @@ private:
                 }
                 if (observer == nullptr || appManager == nullptr) {
                     TAG_LOGE(AAFwkTag::APPMGR, "null observer or appMgr");
-                    task.Reject(env, CreateJsError(env, ERROR_CODE_ONE, "observer or appManager nullptr"));
+                    task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                        observer == nullptr ? GetInnerErrorMsg(AbilityInnerErrorMsg::MEMORY_ALLOC_FAILED) :
+                        GetInnerErrorMsg(AbilityInnerErrorMsg::SERVICE_UNAVAILABLE)));
                     return;
                 }
                 int32_t ret = appManager->UnregisterApplicationStateObserver(observer);
@@ -224,7 +227,8 @@ private:
                 }
                 if (appManager == nullptr) {
                     TAG_LOGE(AAFwkTag::APPMGR, "null appMgr");
-                    task.Reject(env, CreateJsError(env, ERROR_CODE_ONE, "appManager nullptr"));
+                    task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                        GetInnerErrorMsg(AbilityInnerErrorMsg::SERVICE_UNAVAILABLE)));
                     return;
                 }
                 std::vector<AppExecFwk::AppStateData> list;
@@ -334,10 +338,11 @@ private:
                 return;
             }
             if (abilityManager == nullptr) {
-                TAG_LOGW(AAFwkTag::APPMGR, "null abilityMgr");
-                task.Reject(env, CreateJsError(env, ERROR_CODE_ONE, "abilityManager nullptr"));
-                return;
-            }
+                    TAG_LOGW(AAFwkTag::APPMGR, "null abilityMgr");
+                    task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                        GetInnerErrorMsg(AbilityInnerErrorMsg::SERVICE_UNAVAILABLE)));
+                    return;
+                }
             auto ret = abilityManager->KillProcess(bundleName);
             if (ret == 0) {
                 task.Resolve(env, CreateJsValue(env, ret));
@@ -380,7 +385,8 @@ private:
             }
             if (appManager == nullptr) {
                 TAG_LOGW(AAFwkTag::APPMGR, "null appMgr");
-                task.Reject(env, CreateJsError(env, ERROR_CODE_ONE, "appManager nullptr"));
+                task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::SERVICE_UNAVAILABLE)));
                 return;
             }
             auto ret = appManager->ClearUpApplicationData(bundleName, 0);
@@ -459,12 +465,13 @@ private:
                     task.Reject(env, CreateJsError(env, errCode, "Invalidate params."));
                     return;
                 }
-                if (abilityManager == nullptr) {
-                    TAG_LOGW(AAFwkTag::APPMGR, "null abilityMgr");
-                    task.Reject(env, CreateJsError(env, ERROR_CODE_ONE, "abilityManager nullptr"));
-                    return;
-                }
-                int32_t memorySize = abilityManager->GetAppMemorySize();
+if (abilityManager == nullptr) {
+                TAG_LOGW(AAFwkTag::APPMGR, "null abilityMgr");
+                task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::SERVICE_UNAVAILABLE)));
+                return;
+            }
+            int32_t memorySize = abilityManager->GetAppMemorySize();
                 TAG_LOGI(AAFwkTag::APPMGR, "memorySize:%{public}d", memorySize);
                 task.Resolve(env, CreateJsValue(env, memorySize));
             };
@@ -491,12 +498,13 @@ private:
                     task.Reject(env, CreateJsError(env, errCode, "Invalidate params."));
                     return;
                 }
-                if (abilityManager == nullptr) {
-                    TAG_LOGW(AAFwkTag::APPMGR, "null abilityMgr");
-                    task.Reject(env, CreateJsError(env, ERROR_CODE_ONE, "abilityManager nullptr"));
-                    return;
-                }
-                bool ret = abilityManager->IsRamConstrainedDevice();
+if (abilityManager == nullptr) {
+                TAG_LOGW(AAFwkTag::APPMGR, "null abilityMgr");
+                task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::SERVICE_UNAVAILABLE)));
+                return;
+            }
+            bool ret = abilityManager->IsRamConstrainedDevice();
                 TAG_LOGI(AAFwkTag::APPMGR, "result:%{public}d", ret);
                 task.Resolve(env, CreateJsValue(env, ret));
             };

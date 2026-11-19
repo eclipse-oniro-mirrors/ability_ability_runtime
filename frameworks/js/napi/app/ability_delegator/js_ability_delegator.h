@@ -22,6 +22,8 @@
 #include "ability_stage_monitor.h"
 #include "js_ability_delegator_registry.h"
 #include "js_ability_monitor.h"
+#include "interop_ability_monitor.h"
+#include "js_interop_ability_monitor.h"
 #include "js_runtime_utils.h"
 #include "want.h"
 
@@ -243,6 +245,24 @@ public:
      */
     static napi_value SetMockList(napi_env env, napi_callback_info info);
 
+    /**
+     * Sync adds interop ability monitor.
+     *
+     * @param env Indicates the native engine.
+     * @param info Indicates the parameters from js.
+     * @return exec result.
+     */
+    static napi_value AddInteropAbilityMonitorSync(napi_env env, napi_callback_info info);
+
+    /**
+     * Sync removes interop ability monitor.
+     *
+     * @param env Indicates the native engine.
+     * @param info Indicates the parameters from js.
+     * @return exec result.
+     */
+    static napi_value RemoveInteropAbilityMonitorSync(napi_env env, napi_callback_info info);
+
 private:
     napi_value OnAddAbilityMonitor(napi_env env, NapiCallbackInfo& info);
     napi_value OnAddAbilityMonitorSync(napi_env env, NapiCallbackInfo& info);
@@ -265,6 +285,8 @@ private:
     napi_value OnDoAbilityBackground(napi_env env, NapiCallbackInfo& info);
     napi_value OnFinishTest(napi_env env, NapiCallbackInfo& info);
     napi_value OnSetMockList(napi_env env, NapiCallbackInfo& info);
+    napi_value OnAddInteropAbilityMonitorSync(napi_env env, NapiCallbackInfo& info);
+    napi_value OnRemoveInteropAbilityMonitorSync(napi_env env, NapiCallbackInfo& info);
 
 private:
     napi_value CreateAbilityObject(napi_env env, const sptr<IRemoteObject> &remoteObject);
@@ -298,6 +320,8 @@ private:
     void AddStageMonitorRecord(
         napi_env env, napi_value value, const std::shared_ptr<AbilityStageMonitor> &monitor);
     void RemoveStageMonitorRecord(napi_env env, napi_value value);
+    napi_value ParseInteropMonitorPara(napi_env env, napi_value value,
+        std::shared_ptr<InteropAbilityMonitor> &monitor);
 };
 }  // namespace AbilityDelegatorJs
 }  // namespace OHOS

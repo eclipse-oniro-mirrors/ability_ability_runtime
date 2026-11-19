@@ -15,6 +15,8 @@
 
 #include "ui_ability_impl.h"
 
+#include <cinttypes>
+
 #include "ability_handler.h"
 #include "ability_manager_client.h"
 #include "context/application_context.h"
@@ -166,6 +168,18 @@ void UIAbilityImpl::DispatchRestoreAbilityState(const AppExecFwk::PacMap &inStat
     restoreData_ = inState;
 }
 
+namespace {
+void PreHandleTransactionParam(AAFwk::Want &want, AAFwk::LifeCycleStateInfo &targetState)
+{
+    targetState.pageConfig = want.GetStringParam(GlobalConstant::PAGE_CONFIG);
+    want.RemoveParam(GlobalConstant::PAGE_CONFIG);
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    want.RemoveParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY);
+    want.RemoveParam(AAFwk::Want::PARAM_RESV_CALLER_APP_CLONE_INDEX);
+#endif
+}
+}
+
 void UIAbilityImpl::HandleAbilityTransaction(
     const AAFwk::Want &want, const AAFwk::LifeCycleStateInfo &targetState, sptr<AAFwk::SessionInfo> sessionInfo)
 {
@@ -173,9 +187,7 @@ void UIAbilityImpl::HandleAbilityTransaction(
     TAG_LOGD(AAFwkTag::UIABILITY,
         "srcState:%{public}d; targetState: %{public}d; isNewWant: %{public}d, sceneFlag: %{public}d",
         lifecycleState_, targetState.state, targetState.isNewWant, targetState.sceneFlag);
-    const_cast<AAFwk::LifeCycleStateInfo&>(targetState).pageConfig =
-        want.GetStringParam(GlobalConstant::PAGE_CONFIG);
-    const_cast<AAFwk::Want&>(want).RemoveParam(GlobalConstant::PAGE_CONFIG);
+    PreHandleTransactionParam(const_cast<AAFwk::Want &>(want), const_cast<AAFwk::LifeCycleStateInfo &>(targetState));
     UpdateSilentForeground(targetState, sessionInfo);
 #ifdef SUPPORT_SCREEN
     if (ability_ != nullptr) {
@@ -205,6 +217,14 @@ void UIAbilityImpl::HandleAbilityTransaction(
             Start(want, sessionInfo);
             CheckAndRestore();
         }
+    }
+
+    // Check if native module startup phase is PRE_WINDOW
+    if (localNativeState_ == LocalNativeState::INIT_PRE_WINDOW) {
+        TAG_LOGI(AAFwkTag::UIABILITY, "Native module startPhase is PRE_WINDOW, skip AbilityTransaction");
+        localNativeState_ = LocalNativeState::HALF_FOREGROUND;
+        AbilityTransactionCallback(targetState.state);
+        return;
     }
 
     bool ret = false;
@@ -250,6 +270,32 @@ void UIAbilityImpl::ExecuteInsightIntentDone(uint64_t intentId, const InsightInt
         TAG_LOGE(AAFwkTag::UIABILITY, "notify execute done failed");
     }
 }
+
+bool UIAbilityImpl::HandleExecuteSkill(const AAFwk::Want &want, bool onlyExecuteSkill)
+{
+    TAG_LOGD(AAFwkTag::UIABILITY, "handle execute skill");
+    auto param = std::make_shared<SkillExecuteParam>();
+    if (!SkillExecuteParam::GenerateFromWant(want, *param)) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "generate skill param from want failed");
+        if (!onlyExecuteSkill) {
+            Background();
+        }
+        return true;
+    }
+
+    TAG_LOGD(AAFwkTag::UIABILITY,
+        "skill bundle:%{public}s module:%{public}s name:%{public}s "
+        "scriptPath:%{public}s func:%{public}s requestCode:%{public}s",
+        param->bundleName_.c_str(), param->moduleName_.c_str(),
+        param->skillName_.c_str(), param->scriptPath_.c_str(),
+        param->functionName_.c_str(), param->requestCode_.c_str());
+    ability_->ExecuteSkill(want, param);
+    if (!onlyExecuteSkill) {
+        Background();
+    }
+    return true;
+}
+
 #ifdef SUPPORT_SCREEN
 bool UIAbilityImpl::PrepareTerminateAbility(std::function<void(bool)> callback, bool &isAsync)
 {
@@ -290,10 +336,14 @@ void UIAbilityImpl::NewWant(const AAFwk::Want &want)
         TAG_LOGE(AAFwkTag::UIABILITY, "null ability_");
         return;
     }
-    ability_->SetWant(want);
-    ability_->OnNewWant(want);
+
+    AAFwk::Want wantWithoutRequestId = want;
+    wantWithoutRequestId.RemoveParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID);
+    wantWithoutRequestId.RemoveParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID);
+    ability_->SetWant(wantWithoutRequestId);
+    ability_->OnNewWant(wantWithoutRequestId);
 #ifdef SUPPORT_SCREEN
-    ability_->ContinuationRestore(want);
+    ability_->ContinuationRestore(wantWithoutRequestId);
 #endif
     TAG_LOGD(AAFwkTag::UIABILITY, "end");
 }
@@ -581,7 +631,21 @@ void UIAbilityImpl::Foreground(const AAFwk::Want &want)
         return;
     }
 
+    // Check if native module startup phase is PRE_FOREGROUND
+    if (localNativeState_ == LocalNativeState::INIT_PRE_FOREGROUND) {
+        TAG_LOGI(AAFwkTag::UIABILITY, "Native module startPhase is PRE_FOREGROUND, skip OnForeground");
+        localNativeState_ = LocalNativeState::HALF_FOREGROUND;
+        auto oldSilent = ability_->CheckIsSilentForeground();
+        ability_->SetIsSilentForeground(true);
+        ability_->OnForeground(want);
+        ability_->SetIsSilentForeground(oldSilent);
+        std::lock_guard<std::mutex> lock(notifyForegroundLock_);
+        notifyForegroundByWindow_ = true;
+        return;
+    }
+
     ability_->OnForeground(want);
+    localNativeState_ = LocalNativeState::NONE;
     if (ability_->CheckIsSilentForeground()) {
         TAG_LOGI(AAFwkTag::UIABILITY, "is silent foreground");
         std::lock_guard<std::mutex> lock(notifyForegroundLock_);
@@ -639,7 +703,7 @@ bool UIAbilityImpl::AbilityTransaction(const AAFwk::Want &want, const AAFwk::Lif
             break;
         }
         case AAFwk::ABILITY_STATE_FOREGROUND_NEW: {
-            if (targetState.isNewWant) {
+            if (targetState.isNewWant && localNativeState_ == LocalNativeState::NONE) {
                 NewWant(want);
             }
 #ifdef SUPPORT_SCREEN
@@ -649,7 +713,7 @@ bool UIAbilityImpl::AbilityTransaction(const AAFwk::Want &want, const AAFwk::Lif
                 HandleExecuteInsightIntentForeground(want, ret);
             }
             if (ability_ != nullptr) {
-                TAG_LOGD(AAFwkTag::UIABILITY, "pageConfig size:%{public}zu", targetState.pageConfig.size());
+                TAG_LOGD(AAFwkTag::UIABILITY, "pageConfigSize:%{public}zu", targetState.pageConfig.size());
                 PageConfigManager::GetInstance().Initialize(targetState.pageConfig, ability_->GetWindow());
             }
 #endif
@@ -661,11 +725,14 @@ bool UIAbilityImpl::AbilityTransaction(const AAFwk::Want &want, const AAFwk::Lif
             }
             OnWillBackground();
 #ifdef SUPPORT_GRAPHICS
-            if (!InsightIntentExecuteParam::IsInsightIntentExecute(want)) {
-                Background();
-            } else {
+            if (InsightIntentExecuteParam::IsInsightIntentExecute(want)) {
                 TAG_LOGD(AAFwkTag::UIABILITY, "handleExecuteInsightIntentBackground");
                 ret = HandleExecuteInsightIntentBackground(want);
+            } else if (SkillExecuteParam::IsSkillExecute(want)) {
+                TAG_LOGD(AAFwkTag::UIABILITY, "handleExecuteSkill");
+                ret = HandleExecuteSkill(want);
+            } else {
+                Background();
             }
 #endif
             break;
@@ -699,7 +766,8 @@ void UIAbilityImpl::HandleInitialState(bool &ret)
 #ifdef SUPPORT_SCREEN
 void UIAbilityImpl::HandleForegroundNewState(const AAFwk::Want &want, bool &bflag)
 {
-    if (lifecycleState_ == AAFwk::ABILITY_STATE_FOREGROUND_NEW) {
+    if (lifecycleState_ == AAFwk::ABILITY_STATE_FOREGROUND_NEW &&
+        localNativeState_ == LocalNativeState::NONE) {
         if (ability_) {
             ability_->RequestFocus(want);
         }
@@ -785,10 +853,23 @@ void UIAbilityImpl::ExecuteInsightIntentMoveToForeground(const Want &want,
     std::unique_ptr<InsightIntentExecutorAsyncCallback> callback)
 {
     TAG_LOGD(AAFwkTag::INTENT, "called");
+    if (ability_ == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "ability null");
+        return;
+    }
 
     {
         std::lock_guard<std::mutex> lock(notifyForegroundLock_);
         notifyForegroundByWindow_ = false;
+    }
+
+    auto oriHideValue = ability_->CheckIsSilentForeground();
+    if (localNativeState_ == LocalNativeState::INIT_PRE_FOREGROUND) {
+        TAG_LOGI(AAFwkTag::UIABILITY, "Native module startPhase is PRE_FOREGROUND, skip OnForeground");
+        localNativeState_ = LocalNativeState::HALF_FOREGROUND;
+        ability_->SetIsSilentForeground(true);
+        std::lock_guard<std::mutex> lock(notifyForegroundLock_);
+        notifyForegroundByWindow_ = true;
     }
 
     auto asyncCallback =
@@ -806,6 +887,7 @@ void UIAbilityImpl::ExecuteInsightIntentMoveToForeground(const Want &want,
 
     // private function, no need check ability_ validity.
     ability_->ExecuteInsightIntentMoveToForeground(want, executeParam, std::move(callback));
+    ability_->SetIsSilentForeground(oriHideValue);
 }
 
 void UIAbilityImpl::ExecuteInsightIntentPage(const Want &want,
@@ -975,6 +1057,18 @@ void UIAbilityImpl::ScheduleAbilityRequestSuccess(const std::string &requestId, 
         { JSON_KEY_ERR_MSG, "Succeeded" },
     };
     ability_->OnAbilityRequestSuccess(requestId, element, jsonObject.dump());
+}
+
+void UIAbilityImpl::SetNativeModuleMetaData(const AAFwk::NativeAbilityMetaData& metaData)
+{
+    nativeModuleMetaData_ = metaData;
+    if (metaData.withNativeModule) {
+        if (metaData.startupPhase == AAFwk::StartupPhase::PRE_WINDOW) {
+            localNativeState_ = LocalNativeState::INIT_PRE_WINDOW;
+        } else if (metaData.startupPhase == AAFwk::StartupPhase::PRE_FOREGROUND) {
+            localNativeState_ = LocalNativeState::INIT_PRE_FOREGROUND;
+        }
+    }
 }
 
 #ifdef SUPPORT_SCREEN

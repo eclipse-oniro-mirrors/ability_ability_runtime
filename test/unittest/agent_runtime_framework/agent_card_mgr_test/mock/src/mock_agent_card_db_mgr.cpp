@@ -27,6 +27,10 @@ std::vector<AgentRuntime::StoredAgentCardEntry> AgentRuntime::MyFlag::queryDataE
 std::vector<AgentRuntime::AgentCard> AgentRuntime::MyFlag::queryDataCards;
 std::vector<AgentRuntime::StoredAgentCardEntry> AgentRuntime::MyFlag::queryAllDataEntries;
 std::vector<AgentRuntime::AgentCard> AgentRuntime::MyFlag::queryAllDataCards;
+bool AgentRuntime::MyFlag::syncQueryDataWithInsert = false;
+std::mutex AgentRuntime::MyFlag::dbMutex;
+std::vector<std::string> AgentRuntime::MyFlag::insertDataCallNames;
+std::vector<std::string> AgentRuntime::MyFlag::deleteDataCallNames;
 
 namespace AgentRuntime {
 AgentCardDbMgr &AgentCardDbMgr::GetInstance()
@@ -44,22 +48,31 @@ AgentCardDbMgr::~AgentCardDbMgr()
 int32_t AgentCardDbMgr::InsertData(const std::string &bundleName, int32_t userId,
     const std::vector<StoredAgentCardEntry> &cards)
 {
+    std::lock_guard<std::mutex> lock(MyFlag::dbMutex);
+    MyFlag::insertDataCallNames.push_back(bundleName);
     MyFlag::insertedEntries = cards;
     MyFlag::insertedCards.clear();
     for (const auto &entry : cards) {
         MyFlag::insertedCards.emplace_back(entry.card);
+    }
+    if (MyFlag::syncQueryDataWithInsert) {
+        MyFlag::queryDataEntries = cards;
+        MyFlag::queryDataCards = MyFlag::insertedCards;
+        MyFlag::retQueryData = ERR_OK;
     }
     return MyFlag::retInsertData;
 }
 
 int32_t AgentCardDbMgr::DeleteData(const std::string &bundleName, int32_t userId)
 {
+    MyFlag::deleteDataCallNames.push_back(bundleName);
     return MyFlag::retDeleteData;
 }
 
 int32_t AgentCardDbMgr::QueryData(const std::string &bundleName, int32_t userId,
     std::vector<StoredAgentCardEntry> &cards)
 {
+    std::lock_guard<std::mutex> lock(MyFlag::dbMutex);
     if (!MyFlag::queryDataEntries.empty()) {
         cards = MyFlag::queryDataEntries;
         return MyFlag::retQueryData;

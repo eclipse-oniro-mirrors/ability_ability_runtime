@@ -1,4 +1,4 @@
-# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Copyright (c) 2023-2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -24,6 +24,7 @@ config("session_handler_public_config") {
 
 config("session_handler_config") {
   visibility = [ ":*" ]
+  visibility += [ "${ability_runtime_test_path}/fuzztest/*" ]
 
   include_dirs = [
     "include",
@@ -33,6 +34,13 @@ config("session_handler_config") {
 
 ohos_shared_library("session_handler") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
 
   sources = [
     "src/session_handler_proxy.cpp",

@@ -24,9 +24,11 @@
 #include "interop_ability_lifecycle_callback.h"
 #include "js_ability_auto_startup_callback.h"
 #include "js_ability_lifecycle_callback.h"
+#include "js_process_lifecycle_observer.h"
 #include "js_system_configuration_updated_callback.h"
 #include "native_engine/native_engine.h"
 #include "running_process_info.h"
+#include "child_process_info.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -93,6 +95,7 @@ public:
     napi_value OnGetProcessName(napi_env env, NapiCallbackInfo &info);
     napi_value OnKillProcessBySelf(napi_env env, NapiCallbackInfo& info);
     napi_value OnGetRunningProcessInformation(napi_env env, NapiCallbackInfo& info);
+    napi_value OnGetUIAbilityChildProcessInfos(napi_env env, NapiCallbackInfo& info);
     napi_value OnSetColorMode(napi_env env, NapiCallbackInfo& info);
     napi_value OnSetLanguage(napi_env env, NapiCallbackInfo& info);
     napi_value OnSetFont(napi_env env, NapiCallbackInfo& info);
@@ -105,6 +108,12 @@ public:
     napi_value OnGetAllRunningInstanceKeys(napi_env env, NapiCallbackInfo& info);
     napi_value OnSetFontSizeScale(napi_env env, NapiCallbackInfo& info);
     napi_value OnGetAllWindowStages(napi_env env, NapiCallbackInfo& info);
+    napi_value OnGetUIAbilityByInstanceId(napi_env env, NapiCallbackInfo& info);
+    napi_value OnEnableDelayedProcessExit(napi_env env, NapiCallbackInfo& info);
+    napi_value OnDisableDelayedProcessExit(napi_env env, NapiCallbackInfo& info);
+    napi_value OnStartSelfUIAbility(napi_env env, NapiCallbackInfo& info);
+    napi_value OnOnAppProcessStateChange(napi_env env, NapiCallbackInfo& info);
+    napi_value OnOffAppProcessStateChange(napi_env env, NapiCallbackInfo& info);
 
     static napi_value GetCacheDir(napi_env env, napi_callback_info info);
     static napi_value GetTempDir(napi_env env, napi_callback_info info);
@@ -125,6 +134,7 @@ public:
     static napi_value SetFont(napi_env env, napi_callback_info info);
     static napi_value ClearUpApplicationData(napi_env env, napi_callback_info info);
     static napi_value GetRunningProcessInformation(napi_env env, napi_callback_info info);
+    static napi_value GetUIAbilityChildProcessInfos(napi_env env, napi_callback_info info);
     static napi_value CreateJsApplicationContext(napi_env env);
     static napi_value RestartApp(napi_env env, napi_callback_info info);
     static napi_value SetSupportedProcessCacheSelf(napi_env env, napi_callback_info info);
@@ -136,6 +146,12 @@ public:
     static napi_value CreateAreaModeContext(napi_env env, napi_callback_info info);
     static napi_value CreateDisplayContext(napi_env env, napi_callback_info info);
     static napi_value GetAllWindowStages(napi_env env, napi_callback_info info);
+    static napi_value GetUIAbilityByInstanceId(napi_env env, napi_callback_info info);
+    static napi_value EnableDelayedProcessExit(napi_env env, napi_callback_info info);
+    static napi_value DisableDelayedProcessExit(napi_env env, napi_callback_info info);
+    static napi_value StartSelfUIAbility(napi_env env, napi_callback_info info);
+    static napi_value OnAppProcessStateChange(napi_env env, napi_callback_info info);
+    static napi_value OffAppProcessStateChange(napi_env env, napi_callback_info info);
 
 protected:
     std::weak_ptr<ApplicationContext> applicationContext_;
@@ -160,6 +176,8 @@ private:
     std::shared_ptr<JsEnvironmentCallback> envCallback_;
     std::shared_ptr<JsApplicationStateChangeCallback> applicationStateCallback_;
     std::mutex applicationStateCallbackLock_;
+    sptr<JsProcessLifecycleObserver> processLifecycleObserver_;
+    std::mutex processLifecycleObserverLock_;
     sptr<JsAbilityAutoStartupCallBack> jsAutoStartupCallback_;
     std::shared_ptr<JsSystemConfigurationUpdatedCallback> systemConfigurationUpdatedCallback_;
     std::mutex systemConfigurationUpdatedCallbackLock_;

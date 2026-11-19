@@ -413,7 +413,7 @@ void JsUIServiceExtension::OnCommand(const AAFwk::Want &want, bool restart, int 
 bool JsUIServiceExtension::CreateWindowIfNeeded()
 {
 #ifdef SUPPORT_GRAPHICS
-    if (firstRequest_ == false) {
+    if (!firstRequest_) {
         return true;
     }
     firstRequest_ = false;
@@ -574,7 +574,7 @@ void JsUIServiceExtension::GetSrcPath(std::string &srcPath)
     if (!Extension::abilityInfo_->srcEntrance.empty()) {
         srcPath.append(Extension::abilityInfo_->moduleName + "/");
         srcPath.append(Extension::abilityInfo_->srcEntrance);
-        srcPath.erase(srcPath.rfind('.'));
+        RemoveFileExtension(srcPath);
         srcPath.append(".abc");
     }
 }

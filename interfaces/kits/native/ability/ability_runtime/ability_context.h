@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -41,6 +41,10 @@
 namespace OHOS {
 namespace Ace {
 class UIContent;
+}
+
+namespace Rosen {
+struct WindowShowParams;
 }
 
 namespace AbilityRuntime {
@@ -160,6 +164,29 @@ public:
     virtual ErrCode StartAbilityForResultWithAccount(const AAFwk::Want &Want, int accountId,
         const AAFwk::StartOptions &startOptions, int requestCode, RuntimeTask &&task) = 0;
 
+    virtual ErrCode StartAbilityForResult(const AAFwk::Want &want, RuntimeTask &&task)
+    {
+        return ERR_OK;
+    }
+
+    virtual ErrCode StartAbilityForResultWithAccount(
+        const AAFwk::Want &want, int accountId, RuntimeTask &&task)
+    {
+        return ERR_OK;
+    }
+
+    virtual ErrCode StartAbilityForResult(const AAFwk::Want &want, const AAFwk::StartOptions &startOptions,
+        RuntimeTask &&task)
+    {
+        return ERR_OK;
+    }
+
+    virtual ErrCode StartAbilityForResultWithAccount(const AAFwk::Want &want, int accountId,
+        const AAFwk::StartOptions &startOptions, RuntimeTask &&task)
+    {
+        return ERR_OK;
+    }
+
     virtual ErrCode StartServiceExtensionAbility(const AAFwk::Want &want, int32_t accountId = -1) = 0;
 
     virtual ErrCode StartUIServiceExtensionAbility(const AAFwk::Want &want, int32_t accountId = -1) = 0;
@@ -168,7 +195,8 @@ public:
 
     virtual ErrCode TerminateAbilityWithResult(const AAFwk::Want &want, int resultCode) = 0;
 
-    virtual ErrCode BackToCallerAbilityWithResult(const AAFwk::Want &want, int resultCode, int64_t requestCode) = 0;
+    virtual ErrCode BackToCallerAbilityWithResult(const AAFwk::Want &want, int resultCode, int64_t requestCode,
+        bool isBackToCallerApp = false) = 0;
 
     virtual ErrCode RestoreWindowStage(napi_env env, napi_value contentStorage) = 0;
 
@@ -183,9 +211,15 @@ public:
     virtual ErrCode OpenAtomicService(AAFwk::Want& want, const AAFwk::StartOptions &options, int requestCode,
         RuntimeTask &&task) = 0;
 
+    virtual ErrCode OpenAtomicService(AAFwk::Want& want, const AAFwk::StartOptions &options, RuntimeTask &&task)
+    {
+        return ERR_OK;
+    }
+
     virtual ErrCode AddFreeInstallObserver(const sptr<AbilityRuntime::IFreeInstallObserver> &observer) = 0;
 
-    virtual ErrCode ChangeAbilityVisibility(bool isShow) { return 0; }
+    virtual ErrCode ChangeAbilityVisibility(bool isShow,
+        const std::shared_ptr<Rosen::WindowShowParams> &params = nullptr) { return 0; }
 
     /**
     * @brief Connects the current ability to an ability using the AbilityInfo.AbilityType.SERVICE template.
@@ -277,6 +311,11 @@ public:
     virtual ErrCode MoveUIAbilityToBackground() = 0;
 
     virtual ErrCode TerminateSelf() = 0;
+
+    virtual ErrCode StartSelf()
+    {
+        return 0;
+    }
 
     virtual ErrCode CloseAbility() = 0;
 
@@ -451,9 +490,11 @@ public:
      *
      * @param label the label of this ability.
      * @param icon the icon of this ability.
+     * @param groupId the group id of this ability.
      * @return Returns ERR_OK if success.
      */
-    virtual ErrCode SetAbilityInstanceInfo(const std::string& label, std::shared_ptr<OHOS::Media::PixelMap> icon) = 0;
+    virtual ErrCode SetAbilityInstanceInfo(const std::string& label, std::shared_ptr<OHOS::Media::PixelMap> icon,
+        const std::string& groupId) = 0;
 
     virtual int GetCurrentWindowMode() = 0;
 
@@ -485,6 +526,10 @@ public:
     virtual void SetTerminating(bool state) = 0;
     virtual void InsertResultCallbackTask(int requestCode, RuntimeTask&& task) = 0;
     virtual void RemoveResultCallbackTask(int requestCode) = 0;
+    virtual int32_t RegisterResultCallback(RuntimeTask&& task)
+    {
+        return 0;
+    }
     using SelfType = AbilityContext;
     static const size_t CONTEXT_TYPE_ID;
 
@@ -543,6 +588,11 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual ErrCode NotifyCompleteGamePreLaunch() = 0;
+
+    virtual ErrCode StartSelfUIAbilityInChildProcess(const AAFwk::Want &want, const std::string &specifiedFlag)
+    {
+        return ERR_INVALID_VALUE;
+    }
 
 protected:
     bool IsContext(size_t contextTypeId) override

@@ -24,12 +24,12 @@ class AppServiceExtensionContext extends ExtensionContext {
   }
 
   connectServiceExtensionAbility(want, options) {
-    hilog.sLogI(domainID, TAG, 'connectServiceExtensionAbility');
+    hilog.sLogI(domainID, TAG, 'conSrvEA');
     return this.__context_impl__.connectServiceExtensionAbility(want, options);
   }
 
   disconnectServiceExtensionAbility(connection) {
-    hilog.sLogI(domainID, TAG, 'disconnectServiceExtensionAbility');
+    hilog.sLogI(domainID, TAG, 'disConSrvEA');
     return this.__context_impl__.disconnectServiceExtensionAbility(connection);
   }
 

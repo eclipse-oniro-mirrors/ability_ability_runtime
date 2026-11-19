@@ -273,6 +273,11 @@ void ContinuationRegisterManagerProxy::SendRequest(
         continuatinConnector_ = ContinuationConnector::GetInstance(context);
     }
 
+    if (continuatinConnector_ == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTINUATION, "null continuatinConnector_");
+        return;
+    }
+
     if (!continuatinConnector_->IsAbilityConnected()) {
         continuatinConnector_->BindRemoteRegisterAbility(request);
     } else {

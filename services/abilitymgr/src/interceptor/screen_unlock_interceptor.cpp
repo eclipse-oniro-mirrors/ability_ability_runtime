@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,14 +15,13 @@
 
 #include "interceptor/screen_unlock_interceptor.h"
 
-#include "ability_record.h"
 #include "ability_util.h"
 #include "bundle_mgr_helper.h"
 #include "extension_config.h"
 #include "event_report.h"
 #include "parameters.h"
-#include "start_ability_utils.h"
-#include "startup_util.h"
+#include "permission_constants.h"
+#include "permission_verification.h"
 #ifdef SUPPORT_SCREEN
 #ifdef ABILITY_RUNTIME_SCREENLOCK_ENABLE
 #include "screenlock_manager.h"
@@ -53,10 +52,13 @@ std::string ScreenUnlockInterceptor::GetAppIdentifier(const std::string &bundleN
     return signatureInfo.appIdentifier;
 }
 
-ErrCode ScreenUnlockInterceptor::DoProcess(AbilityInterceptorParam param)
+ErrCode ScreenUnlockInterceptor::DoProcess(AbilityInterceptorParam &param)
 {
-    AppExecFwk::AbilityInfo targetAbilityInfo;
-    if (!GetTargetAbilityInfo(param, targetAbilityInfo)) {
+    // The target ability info is resolved by the caller and carried in the param;
+    // a null abilityInfo (e.g. remote dispatch without local resolution) means no
+    // screen-unlock enforcement can be applied locally.
+    if (param.abilityInfo == nullptr) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "abilityInfo is nullptr, skip screen unlock interception");
         return ERR_OK;
     }
 
@@ -68,28 +70,19 @@ ErrCode ScreenUnlockInterceptor::DoProcess(AbilityInterceptorParam param)
 #endif
 #endif
 
+    const AppExecFwk::AbilityInfo &targetAbilityInfo = *param.abilityInfo;
+    if (param.isDirectBootStartup && targetAbilityInfo.type == AppExecFwk::AbilityType::PAGE &&
+        PermissionVerification::GetInstance()->VerifyPermissionByTokenId(
+            targetAbilityInfo.applicationInfo.accessTokenId, PermissionConstants::PERMISSION_ALLOW_DIRECT_BOOT)) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "allow direct boot startup %{public}s/%{public}s",
+            targetAbilityInfo.bundleName.c_str(), targetAbilityInfo.name.c_str());
+        return ERR_OK;
+    }
     bool isSystemApp = targetAbilityInfo.applicationInfo.isSystemApp;
     if (isSystemApp) {
         return ProcessSystemApp(targetAbilityInfo);
     }
     return ProcessNonSystemApp(targetAbilityInfo);
-}
-
-bool ScreenUnlockInterceptor::GetTargetAbilityInfo(const AbilityInterceptorParam &param,
-    AppExecFwk::AbilityInfo &targetAbilityInfo)
-{
-    if (StartAbilityUtils::startAbilityInfo != nullptr) {
-        targetAbilityInfo = StartAbilityUtils::startAbilityInfo->abilityInfo;
-        return true;
-    }
-    QueryTargetAbilityInfo(param, targetAbilityInfo);
-    if (targetAbilityInfo.applicationInfo.name.empty() ||
-        targetAbilityInfo.applicationInfo.bundleName.empty()) {
-        TAG_LOGD(AAFwkTag::ABILITYMGR, "Cannot find targetAbilityInfo, element uri: %{public}s/%{public}s",
-            param.want.GetElement().GetBundleName().c_str(), param.want.GetElement().GetAbilityName().c_str());
-        return false;
-    }
-    return true;
 }
 
 ErrCode ScreenUnlockInterceptor::ProcessSystemApp(const AppExecFwk::AbilityInfo &targetAbilityInfo)
@@ -150,6 +143,10 @@ ErrCode ScreenUnlockInterceptor::CheckExtensionInterception(const std::string &e
     const std::string &bundleName, bool isSystemApp)
 {
     auto extensionConfig = DelayedSingleton<ExtensionConfig>::GetInstance();
+    if (!extensionConfig->IsConfigLoaded()) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "extension config not loaded, allow all extensions");
+        return ERR_OK;
+    }
     if (!extensionConfig->HasScreenUnlockAccessConfig(extensionTypeName)) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "no screen_unlock_access config for extension: %{public}s",
             extensionTypeName.c_str());
@@ -222,28 +219,5 @@ ErrCode ScreenUnlockInterceptor::CheckInterceptionByConfig(const std::string &ex
     return ERR_OK;
 }
 
-void ScreenUnlockInterceptor::QueryTargetAbilityInfo(const AbilityInterceptorParam &param,
-    AppExecFwk::AbilityInfo &targetAbilityInfo)
-{
-    auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
-    if (bundleMgrHelper == nullptr) {
-        TAG_LOGD(AAFwkTag::ABILITYMGR, "The bundleMgrHelper is nullptr.");
-        return;
-    }
-    IN_PROCESS_CALL_WITHOUT_RET(bundleMgrHelper->QueryAbilityInfo(param.want,
-        AppExecFwk::AbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION, param.userId, targetAbilityInfo));
-    if (!targetAbilityInfo.applicationInfo.name.empty() && !targetAbilityInfo.applicationInfo.bundleName.empty()) {
-        return;
-    }
-
-    std::vector<AppExecFwk::ExtensionAbilityInfo> extensionInfos;
-    IN_PROCESS_CALL(bundleMgrHelper->QueryExtensionAbilityInfos(param.want,
-        AppExecFwk::AbilityInfoFlag::GET_ABILITY_INFO_WITH_APPLICATION, param.userId, extensionInfos));
-    if (extensionInfos.size() <= 0) {
-        TAG_LOGD(AAFwkTag::ABILITYMGR, "extensionInfo empty");
-        return;
-    }
-    AbilityRuntime::StartupUtil::InitAbilityInfoFromExtension(extensionInfos.front(), targetAbilityInfo);
-}
 } // namespace AAFwk
 } // namespace OHOS

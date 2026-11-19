@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,11 +17,16 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cerrno>
+#include <cstdint>
+#include <cstdlib>
 #include <dlfcn.h>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <nlohmann/json.hpp>
 #include <regex>
+#include <sys/mman.h>
 #include <unistd.h>
 
 #include "bundle_constants.h"
@@ -63,14 +68,14 @@ const std::string ETS_SYSLIB_PATH =
 #endif
 constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
 constexpr char SANDBOX_ARK_CACHE_PATH[] = "/data/storage/ark-cache/";
-constexpr char SANDBOX_SHARED_BUNDLE_ARK_CACHE_PATH[] =
-    "/data/service/el1/public/for-all-app/shared_bundles_ark_cache/";
 constexpr char MERGE_ABC_PATH[] = "/ets/modules_static.abc";
-const std::string SYS_HSP_FILE_PATH_PREFIX = "/system/app/";
+const std::string PREINSTALL_HOST_AOT_ARK_CACHE_PATH = "/system/app/ark_cache/";
 const std::string ARK_CACHE_NATIVE_PATH = "arm64/";
 
 const char *ETS_ENV_LIBNAME = "libets_environment.z.so";
 const char *ETS_ENV_REGISTER_FUNCS = "OHOS_ETS_ENV_RegisterFuncs";
+
+constexpr int32_t DEFAULT_INTER_VAL = 500;
 
 ETSEnvFuncs *g_etsEnvFuncs = nullptr;
 
@@ -129,6 +134,40 @@ private:
     AppLibPathMap appLibPathMap_;
 };
 std::shared_ptr<EtsAppLibNamespaceMgr> g_etsAppLibNamespaceMgr;
+
+bool IsFileExists(const std::string &path)
+{
+    std::error_code errorCode;
+    bool isRegularFile = std::filesystem::is_regular_file(path, errorCode);
+    if (errorCode) {
+        const std::string errorMessage = errorCode.message();
+        TAG_LOGW(AAFwkTag::ETSRUNTIME,
+            "check file exists failed, path: %{public}s, errorCode: %{public}d, "
+            "category: %{public}s, message: %{public}s",
+            path.c_str(), errorCode.value(), errorCode.category().name(), errorMessage.c_str());
+    }
+    return isRegularFile;
+}
+
+std::string GetPreinstallHostAotAnPath(const std::string &bundleName, const std::string &moduleName)
+{
+    if (bundleName.empty() || moduleName.empty()) {
+        return "";
+    }
+    return PREINSTALL_HOST_AOT_ARK_CACHE_PATH + bundleName +
+        std::string(AbilityBase::Constants::FILE_SEPARATOR) + moduleName + ".an";
+}
+
+std::string GetHostPrivateHspAotAnPath(const CommonHspBundleInfo &bundleInfo)
+{
+    if (bundleInfo.bundleName.empty() || bundleInfo.moduleName.empty()) {
+        return "";
+    }
+    return SANDBOX_ARK_CACHE_PATH + ARK_CACHE_NATIVE_PATH + bundleInfo.bundleName +
+        std::string(AbilityBase::Constants::FILE_SEPARATOR) + std::to_string(bundleInfo.versionCode) +
+        std::string(AbilityBase::Constants::FILE_SEPARATOR) + bundleInfo.moduleName + ".an";
+}
+
 } // namespace
 
 std::unique_ptr<ETSRuntime> ETSRuntime::PreFork(const Options &options,
@@ -176,26 +215,43 @@ std::string ETSRuntime::GetAotPath(const Options &options)
     for (const auto& status: options.aotCompileStatusMap) {
         if (IsAotCompiledSuccess(status.second)) {
             aotFiles.push_back(SANDBOX_ARK_CACHE_PATH + ARK_CACHE_NATIVE_PATH + status.first + ".an");
+        } else {
+            std::string anPath = GetPreinstallHostAotAnPath(options.bundleName, status.first);
+            if (!IsFileExists(anPath)) {
+                TAG_LOGW(AAFwkTag::ETSRUNTIME, "preinstall host AOT file is unavailable, skip loading: %{public}s",
+                    anPath.c_str());
+                continue;
+            }
+            TAG_LOGI(AAFwkTag::ETSRUNTIME, "load preinstall host aot an: %{public}s", anPath.c_str());
+            aotFiles.push_back(anPath);
         }
     }
 
     // Handle Outer Hsp
     for (const auto& bundleInfo: options.commonHspBundleInfos) {
-        if (!IsAotCompiledSuccess(bundleInfo.aotCompileStatus) ||
-            bundleInfo.moduleArkTSMode == AppExecFwk::Constants::ARKTS_MODE_DYNAMIC) {
+        if (bundleInfo.moduleArkTSMode == AppExecFwk::Constants::ARKTS_MODE_DYNAMIC) {
+            continue;
+        }
+        if (bundleInfo.bundleName.empty() || bundleInfo.moduleName.empty()) {
+            TAG_LOGW(AAFwkTag::ETSRUNTIME,
+                "skip shared hsp aot with empty bundleName or moduleName, "
+                "bundleName:%{public}s, moduleName:%{public}s",
+                bundleInfo.bundleName.c_str(), bundleInfo.moduleName.c_str());
             continue;
         }
 
-        if (bundleInfo.hapPath.compare(0, SYS_HSP_FILE_PATH_PREFIX.size(), SYS_HSP_FILE_PATH_PREFIX) != 0 &&
-            bundleInfo.hapPath.rfind('/') == std::string::npos) {
+        // Host-private shared HSP AOT is stored in the host app ark cache and has no HSP global AOT status.
+        std::string hostPrivateHspAnPath = GetHostPrivateHspAotAnPath(bundleInfo);
+        if (!hostPrivateHspAnPath.empty() && IsFileExists(hostPrivateHspAnPath)) {
+            TAG_LOGI(AAFwkTag::ETSRUNTIME, "load versioned host private shared hsp aot an: %{public}s",
+                hostPrivateHspAnPath.c_str());
+            aotFiles.push_back(hostPrivateHspAnPath);
             continue;
         }
 
-        // path: <sandbox_path>/<bundleName>/v<versionCode>/arm64/<moduleName>.an
-        std::string outerHspAnPath = SANDBOX_SHARED_BUNDLE_ARK_CACHE_PATH + bundleInfo.bundleName +
-            std::string(AbilityBase::Constants::FILE_SEPARATOR) + std::to_string(bundleInfo.versionCode) +
-            std::string(AbilityBase::Constants::FILE_SEPARATOR) + ARK_CACHE_NATIVE_PATH + bundleInfo.moduleName + ".an";
-        aotFiles.push_back(outerHspAnPath);
+        TAG_LOGW(AAFwkTag::ETSRUNTIME,
+            "host private shared hsp aot file is unavailable, skip loading: %{public}s",
+            hostPrivateHspAnPath.c_str());
     }
 
     std::string aotFilePath;
@@ -237,8 +293,26 @@ bool ETSRuntime::PostFork(const Options &options, std::unique_ptr<Runtime> &jsRu
     }
 
     g_etsEnvFuncs->PostFork(reinterpret_cast<void *>(napiEnv), GetAotPath(options), options.appInnerHspPathList,
-        options.staticHapModuleNameList, options.commonHspBundleInfos, options.eventRunner, options.baseLineProfile);
+        options.staticHapModuleNameList, options.commonHspBundleInfos, options.eventRunner, options.baseLineProfile,
+        options.staticPluginHspPathList, options.bundleName);
     return true;
+}
+
+/*
+ * HWASan's ProtectGap() blocks [0x10000, 0x100000000) with PROT_NONE.
+ * Shadow memory and allocator are placed above 4 GB (aligned to 1 << 32).
+ * ETS runtime needs to allocate heap in the lower 4 GB.
+ * appspawn sets HWASAN_OPTIONS env var whenever HWASan is enabled for
+ * the child process — both via APP_FLAGS_HWASAN_ENABLED and wrap.<bundle>.
+ */
+static void UnmapHwasanProtectGap()
+{
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
+    if (getenv("HWASAN_OPTIONS") == nullptr) {
+        return;
+    }
+    TAG_LOGI(AAFwkTag::ETSRUNTIME, "Unmapping HWASan ProtectGap in lower 4 GB");
+    munmap(reinterpret_cast<void *>(0x10000), 0x100000000UL - 0x10000);
 }
 
 std::unique_ptr<ETSRuntime> ETSRuntime::Create(const Options &options,
@@ -246,6 +320,7 @@ std::unique_ptr<ETSRuntime> ETSRuntime::Create(const Options &options,
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::ETSRUNTIME, "Create called");
+    UnmapHwasanProtectGap();
     if (!RegisterETSEnvFuncs()) {
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "RegisterETSEnvFuncs failed");
         return std::unique_ptr<ETSRuntime>();
@@ -391,6 +466,30 @@ bool ETSRuntime::Initialize(const Options &options, std::unique_ptr<Runtime> &js
     return true;
 }
 
+void ETSRuntime::DumpHeapSnapshot(uint32_t tid, const OHOS::AbilityRuntime::Runtime::JsHeapDumpParam &param)
+{
+    TAG_LOGI(AAFwkTag::APPKIT, "ETSRuntime delegate DumpHeapSnapshot, languageEnv: %{public}s",
+        param.languageEnv.c_str());
+    if (jsRuntime_ != nullptr) {
+        jsRuntime_->DumpHeapSnapshot(tid, param);
+    } else {
+        TAG_LOGE(AAFwkTag::APPKIT, "ETSRuntime::DumpHeapSnapshot null jsRuntime_");
+    }
+}
+
+void ETSRuntime::NotifyApplicationState(bool isBackground)
+{
+    TAG_LOGI(AAFwkTag::ETSRUNTIME, "ETSRuntime delegates NotifyApplicationState");
+    if (jsRuntime_ != nullptr) {
+        // Native engine is a responsible component for the event loop, application state notification, etc
+        // for dynamic (js) and static (ets) ArkTS runtimes,
+        // so ETSRuntime delegates to JSRuntime foreground/background application state notifications
+        jsRuntime_->NotifyApplicationState(isBackground);
+    } else {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "ETSRuntime::NotifyApplicationState jsRuntime_ is null");
+    }
+}
+
 void ETSRuntime::ForceFullGC(uint32_t tid)
 {
     auto env = GetAniEnv();
@@ -466,6 +565,20 @@ void ETSRuntime::XGC()
         TAG_LOGE(AAFwkTag::APPKIT, "Class_CallStaticMethod_Long failed, status: %{public}d", status);
         return;
     }
+    ani_namespace imageNameSpace;
+    if ((status = env->FindNamespace("std.core.GC", &imageNameSpace)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPKIT, "FindNamespace failed, status: %{public}d", status);
+        return;
+    }
+    ani_function gcFunc {};
+    if ((status = env->Namespace_FindFunction(imageNameSpace, "waitForFinishGC", "l:", &gcFunc)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPKIT, "Namespace_FindFunction failed, status: %{public}d", status);
+        return;
+    }
+    if ((status = env->Function_Call_Void(gcFunc, longnum)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPKIT, "Function_Call_Void failed, status: %{public}d", status);
+        return;
+    }
 }
 
 void ETSRuntime::FinishPreload()
@@ -518,7 +631,7 @@ bool ETSRuntime::CreateEtsEnv(const Options &options)
         return false;
     }
 
-    if (!g_etsEnvFuncs->Initialize(options.eventRunner, options.isStartWithDebug)) {
+    if (!g_etsEnvFuncs->Initialize(options.eventRunner, options.isStartWithDebug, options.bundleName)) {
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "Initialize failed");
         return false;
     }
@@ -545,7 +658,7 @@ void ETSRuntime::PreloadModule(const std::string &moduleName, const std::string 
         return;
     }
 
-    std::string modulePath = BUNDLE_INSTALL_PATH + moduleName + MERGE_ABC_PATH;
+    std::string modulePath = ExtractorUtil::GetLoadFilePath(hapPath);
     if (!g_etsEnvFuncs->PreloadModule(modulePath)) {
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "PreloadModule failed");
     }
@@ -593,7 +706,7 @@ std::unique_ptr<AppExecFwk::ETSNativeReference> ETSRuntime::LoadEtsModule(const 
         return std::unique_ptr<AppExecFwk::ETSNativeReference>();
     }
 
-    std::string modulePath = BUNDLE_INSTALL_PATH + moduleName_ + MERGE_ABC_PATH;
+    std::string modulePath = ExtractorUtil::GetLoadFilePath(hapPath);
     std::string entryPath = HandleOhmUrlSrcEntry(srcEntrance);
     void *cls = nullptr;
     void *obj = nullptr;
@@ -607,6 +720,69 @@ std::unique_ptr<AppExecFwk::ETSNativeReference> ETSRuntime::LoadEtsModule(const 
     etsNativeReference->aniObj = reinterpret_cast<ani_object>(obj);
     etsNativeReference->aniRef = reinterpret_cast<ani_ref>(ref);
     return etsNativeReference;
+}
+
+bool ETSRuntime::LoadRepairPatch(const std::string &hqfFile, const std::string &hapPath)
+{
+    std::string target = ExtractorUtil::GetLoadFilePath(hapPath);
+    if (g_etsEnvFuncs == nullptr || g_etsEnvFuncs->HotReload == nullptr) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "null g_etsEnvFuncs or HotReload");
+        return false;
+    }
+    return g_etsEnvFuncs->HotReload(target, hqfFile) == 0;
+}
+
+bool ETSRuntime::NotifyHotReloadPage()
+{
+#ifdef SUPPORT_SCREEN
+    Ace::HotReloader::HotReload();
+    return true;
+#else
+    return false;
+#endif
+}
+
+void ETSRuntime::RegisterQuickFixQueryFunc(const std::map<std::string, std::string> &moduleAndPath)
+{
+    if (g_etsEnvFuncs == nullptr || g_etsEnvFuncs->ColdReload == nullptr) {
+        std::lock_guard<std::mutex> lock(quickFixMutex_);
+        for (const auto &item : moduleAndPath) {
+            std::string patchPath = GetLoadPath(item.second);
+            if (std::find(cachedPatches_.begin(), cachedPatches_.end(), patchPath) == cachedPatches_.end()) {
+                cachedPatches_.push_back(std::move(patchPath));
+            }
+        }
+        return;
+    }
+    for (const auto &item : moduleAndPath) {
+        std::string patch = GetLoadPath(item.second);
+        if (g_etsEnvFuncs->ColdReload(patch) != 0) {
+            TAG_LOGE(AAFwkTag::ETSRUNTIME, "ColdReload failed, patch: %{public}s", patch.c_str());
+        }
+    }
+}
+
+void ETSRuntime::ApplyCachedColdReload()
+{
+    std::vector<std::string> patches;
+    {
+        std::lock_guard<std::mutex> lock(quickFixMutex_);
+        if (cachedPatches_.empty()) {
+            return;
+        }
+        patches = std::move(cachedPatches_);
+    }
+    if (g_etsEnvFuncs == nullptr || g_etsEnvFuncs->ColdReload == nullptr) {
+        std::lock_guard<std::mutex> lock(quickFixMutex_);
+        cachedPatches_.insert(cachedPatches_.end(),
+            std::make_move_iterator(patches.begin()), std::make_move_iterator(patches.end()));
+        return;
+    }
+    for (const auto &patch : patches) {
+        if (g_etsEnvFuncs->ColdReload(patch) != 0) {
+            TAG_LOGE(AAFwkTag::ETSRUNTIME, "ColdReload failed, patch: %{public}s", patch.c_str());
+        }
+    }
 }
 
 bool ETSRuntime::HandleUncaughtError()
@@ -636,6 +812,31 @@ void ETSRuntime::PreloadSystemModule(const std::string &moduleName)
     if (jsRuntime_ != nullptr) {
         jsRuntime_->PreloadSystemModule(moduleName);
     }
+}
+
+void ETSRuntime::PreloadMainAbility(const std::string &moduleName, const std::string &srcPath,
+    const std::string &hapPath, bool isEsMode, const std::string &srcEntrance)
+{
+    std::string key(moduleName);
+    key.append("::");
+    key.append(srcPath);
+    TAG_LOGD(AAFwkTag::ETSRUNTIME, "PreloadMainAbility srcPath: %{public}s", srcPath.c_str());
+    preloadList_[key] = LoadModule(moduleName, srcPath, hapPath, isEsMode, false, srcEntrance);
+}
+
+bool ETSRuntime::PopPreloadObj(const std::string &key, std::unique_ptr<AppExecFwk::ETSNativeReference> &obj)
+{
+    if (preloadList_.find(key) == preloadList_.end()) {
+        return false;
+    }
+    if (preloadList_[key] != nullptr) {
+        obj = std::move(preloadList_[key]);
+        preloadList_.erase(key);
+        TAG_LOGD(AAFwkTag::ETSRUNTIME, "PopPreloadObj key: %{public}s", key.c_str());
+        return true;
+    }
+    preloadList_.erase(key);
+    return false;
 }
 
 bool ETSRuntime::PreloadSystemClass(const char *className)
@@ -714,8 +915,8 @@ void ETSRuntime::StartDebugMode(const DebugOption dOption)
         (int socketFd, std::string option) {
         TAG_LOGI(AAFwkTag::ETSRUNTIME, "HdcRegister msg, fd= %{public}d, option= %{public}s", socketFd, option.c_str());
         // system is debuggable when const.secure is false and const.debuggable is true
-        bool isSystemDebuggable = system::GetBoolParameter("const.secure", true) == false &&
-            system::GetBoolParameter("const.debuggable", false) == true;
+        bool isSystemDebuggable = !system::GetBoolParameter("const.secure", true) &&
+            system::GetBoolParameter("const.debuggable", false);
         // Don't start any server if (system not in debuggable mode) and app is release version
         // Starting ConnectServer in release app on debuggable system is only for debug mode, not for profiling mode.
         if ((!isSystemDebuggable) && appProvisionType == AppExecFwk::Constants::APP_PROVISION_TYPE_RELEASE) {
@@ -765,7 +966,7 @@ void ETSRuntime::DebuggerConnectionHandler(bool isDebugApp, bool isStartWithDebu
         TAG_LOGE(AAFwkTag::ETSRUNTIME, "null js vm");
         return;
     }
-    g_etsEnvFuncs->NotifyDebugMode(getproctid(), instanceId_, isStartWithDebug, vm);
+    g_etsEnvFuncs->NotifyDebugMode(getproctid(), instanceId_, isStartWithDebug, vm, isDebugApp);
 }
 
 void ETSRuntime::StopDebugMode()
@@ -794,6 +995,71 @@ void ETSRuntime::StopDebugMode()
         return;
     }
     g_etsEnvFuncs->StopDebugMode(vm);
+}
+
+int32_t ETSRuntime::JsperfProfilerCommandParse(const std::string &command, int32_t defaultValue)
+{
+    TAG_LOGD(AAFwkTag::ETSRUNTIME, "profiler command parse %{public}s", command.c_str());
+    auto findPos = command.find("jsperf");
+    if (findPos == std::string::npos) {
+        TAG_LOGW(AAFwkTag::ETSRUNTIME, "jsperf command not found");
+        return 0;
+    }
+    auto jsPerfStr = command.substr(findPos, command.length() - findPos);
+    const std::regex regexJsperf(R"(^jsperf($|\s+($|\d*\s*($|nativeperf.*))))");
+    std::match_results<std::string::const_iterator> matchResults;
+    if (!std::regex_match(jsPerfStr, matchResults, regexJsperf)) {
+        TAG_LOGW(AAFwkTag::ETSRUNTIME, "the order not match");
+        return defaultValue;
+    }
+    auto jsperfResuflt = matchResults[1].str();
+    const std::regex regexJsperfNum(R"(^\s*(\d+).*)");
+    std::match_results<std::string::const_iterator> jsperfMatchResults;
+    if (!std::regex_match(jsperfResuflt, jsperfMatchResults, regexJsperfNum)) {
+        TAG_LOGW(AAFwkTag::ETSRUNTIME, "the jsperf results not match");
+        return defaultValue;
+    }
+    auto interval = jsperfMatchResults[1].str();
+    errno = 0;
+    char *endPtr = nullptr;
+    long result = strtol(interval.c_str(), &endPtr, 10);
+    if (errno != 0 || endPtr == interval.c_str() || result > INT32_MAX) {
+        return defaultValue;
+    }
+    return static_cast<int32_t>(result);
+}
+
+void ETSRuntime::StartProfilerTask(const DebugOption &dOption)
+{
+    const std::string baseLineProfileCommand("baseLineProfile");
+    if (dOption.perfCmd.find(baseLineProfileCommand) != std::string::npos) {
+        return;
+    }
+    EtsProfilerType profiler = ETS_PROFILERTYPE_HEAP;
+    uint32_t interval = DEFAULT_INTER_VAL;
+    const std::string profilerCommand("profile");
+    if (dOption.perfCmd.find(profilerCommand) != std::string::npos) {
+        profiler = ETS_PROFILERTYPE_CPU;
+        uint32_t jsperfInterval = static_cast<uint32_t>(
+            JsperfProfilerCommandParse(dOption.perfCmd, DEFAULT_INTER_VAL));
+        if (jsperfInterval != 0) {
+            interval = jsperfInterval;
+        }
+    }
+    if (jsRuntime_ == nullptr) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "null jsRuntime_ for profiler");
+        return;
+    }
+    auto vm = static_cast<JsRuntime &>(*jsRuntime_).GetEcmaVm();
+    if (vm == nullptr || g_etsEnvFuncs == nullptr || g_etsEnvFuncs->StartProfiler == nullptr) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "null vm or g_etsEnvFuncs or StartProfiler");
+        return;
+    }
+    bool ret = g_etsEnvFuncs->StartProfiler(getproctid(), static_cast<int32_t>(instanceId_),
+        dOption.isDebugApp, vm, profiler, interval);
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::ETSRUNTIME, "StartProfiler failed");
+    }
 }
 
 void ETSRuntime::StartProfiler(const DebugOption dOption)
@@ -839,6 +1105,8 @@ void ETSRuntime::StartProfiler(const DebugOption dOption)
             g_etsEnvFuncs->StartDebuggerForSocketPair(option, socketFd);
         }
     });
+
+    StartProfilerTask(dOption);
 }
 
 void ETSRuntime::SetJsRuntime(std::unique_ptr<AbilityRuntime::Runtime> &jsRuntime)

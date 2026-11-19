@@ -31,6 +31,13 @@ config("abilityms_exception_config") {
   cflags_cc = [ "-fexceptions" ]
 }
 
+# 暴露 cli_tool function include 路径给依赖 abilityms 的目标（包括所有 TDD）。
+# insight_intent_db_cache.cpp 通过 function_call_convert.h 间接 include function_info.h，
+# 所有编 insight_intent_db_cache.cpp 的测试都需要这个路径。
+config("abilityms_cli_tool_function_include") {
+  include_dirs = [ "${cli_tool_framework_path}/interfaces/function/include" ]
+}
+
 config("abilityms_config") {
   include_dirs = [
     "include/",
@@ -41,6 +48,7 @@ config("abilityms_config") {
     "include/extension_record",
     "include/foreground_app_connection_manager",
     "include/insight_intent",
+    "include/skill",
     "include/mission/",
     "include/modular_object/",
     "include/rdb/",
@@ -52,6 +60,7 @@ config("abilityms_config") {
     "include/ui_extension_record",
     "include/utils/",
     "${ability_runtime_innerkits_path}/ability_manager/include",
+    "${ability_runtime_innerkits_path}/ability_manager/include/insight_intent",
     "${ability_runtime_innerkits_path}/ability_manager/include/aa_tools",
     "${ability_runtime_services_path}/appdfr/include",
     "${ability_runtime_innerkits_path}/app_manager/include",
@@ -59,10 +68,12 @@ config("abilityms_config") {
     "${ability_runtime_innerkits_path}/deps_wrapper/include",
     "${ability_runtime_innerkits_path}/foreground_app_obs_manager/include",
     "${ability_runtime_services_path}/common/include",
+    "${ability_runtime_services_path}/common/include/user_controller",
     "//prebuilts/jdk/jdk8/linux-x86/include",
     "//prebuilts/jdk/jdk8/linux-x86/include/linux",
     "${ability_runtime_path}/interfaces/kits/native/ability/native",
     "${ability_runtime_innerkits_path}/dataobs_manager/include",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native/distributed_ability_runtime",
     "${ability_runtime_path}/tools/aa/include",
     "${ability_runtime_innerkits_path}/wantagent/include",
     "${ability_runtime_innerkits_path}/session_handler/include",
@@ -71,6 +82,8 @@ config("abilityms_config") {
     "${ability_runtime_utils_path}/global/constant",
     "${ability_runtime_path}/utils/global/time/include",
     "${ability_runtime_utils_path}/server/constant",
+    "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
+    "${cli_tool_framework_path}/interfaces/cli_tool/include",
   ]
 
   defines = []
@@ -124,6 +137,7 @@ ohos_shared_library("abilityms") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
   shlib_type = "sa"
   sources = abilityms_files
   cflags_cc = []
@@ -131,11 +145,16 @@ ohos_shared_library("abilityms") {
     ":abilityms_config",
     ":abilityms_exception_config",
   ]
+  public_configs = [ ":abilityms_cli_tool_function_include" ]
   include_dirs = [
+    "${ability_runtime_services_path}/abilitymgr/include",
+    "${ability_runtime_services_path}/appmgr/include",
     "${ability_runtime_services_path}/appdfr/include",
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_service_extension_ability/connection",
+    "${agent_runtime_framework_path}/interfaces/inner_api/include",
     "${ability_runtime_path}/utils/global/time/include",
     "${ability_runtime_services_path}/abilitymgr/include/mission",
+    "${ability_runtime_services_path}/common/include/user_controller",
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
   ]
   deps = [
@@ -150,22 +169,28 @@ ohos_shared_library("abilityms") {
     "${ability_runtime_innerkits_path}/ability_manager:start_window_option",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_innerkits_path}/connectionobs_manager:connection_obs_manager",
+    "${ability_runtime_innerkits_path}/daemon_service_manager:daemon_service_manager",
     "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_innerkits_path}/foreground_app_obs_manager:foreground_app_obs_manager",
     "${ability_runtime_innerkits_path}/session_handler:session_handler",
     "${ability_runtime_native_path}/ability/native:ability_business_error",
-    "${ability_runtime_native_path}/ability/native:abilitykit_native",
+    "${ability_runtime_native_path}/ability/native:ability_observer_ipc",
     "${ability_runtime_native_path}/ability/native:auto_startup_callback",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
+    "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
     "${ability_runtime_path}/utils/server/startup:startup_util",
-    "${ability_runtime_path}/utils/global/common:runtime_utils",
+    "${ability_runtime_services_path}/appmgr:libappms",
     "${ability_runtime_services_path}/common:app_util",
     "${ability_runtime_services_path}/common:hisysevent_report",
     "${ability_runtime_services_path}/common:perm_verification",
     "${ability_runtime_services_path}/common:task_handler_wrap",
     "${ability_runtime_services_path}/common:user_controller",
+    "${agent_runtime_framework_path}/interfaces/inner_api:agent_manager",
+    "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection:agent_extension_connection",
   ]
+
+  public_deps = [ "${ability_runtime_path}/utils/global/common:runtime_utils" ]
 
   external_deps = [
     "ability_base:base",
@@ -235,6 +260,10 @@ ohos_shared_library("abilityms") {
 
   defines = []
 
+  if (ability_runtime_app_no_response_dialog) {
+    defines += [ "APP_NO_RESPONSE_DIALOG" ]
+  }
+
   if (ability_runtime_dsoftbus_enable) {
     external_deps += [ "dsoftbus:softbus_client" ]
     defines += [ "SUPPORT_RECORDER_DSOFTBUS" ]
@@ -248,15 +277,20 @@ ohos_shared_library("abilityms") {
     defines += [ "SUPPORT_CHILD_PROCESS" ]
   }
 
+  if (ability_runtime_enable_clone_for_account) {
+    defines += [ "ENABLE_CLONE_FOR_ACCOUNT" ]
+    sources += [
+      "src/utils/clone_for_account_util.cpp",
+    ]
+  }
+
   if (ability_runtime_graphics) {
     defines += [ "SUPPORT_GRAPHICS" ]
+    deps += [ "${ability_runtime_services_path}/common:image_native_bridge" ]
     external_deps += [
       "ability_base:session_info",
       "i18n:intl_util",
-      "icu:shared_icuuc",
-      "image_framework:image_native",
       "input:libmmi-client",
-      "resource_management:global_resmgr",
       "window_manager:libdm",
       "window_manager:libmodal_system_ui_extension_client",
       "window_manager:libwm",
@@ -298,11 +332,15 @@ ohos_shared_library("abilityms") {
   if (ability_runtime_graphics &&
       ability_runtime_start_window_options_with_pixelmap) {
     defines += [ "START_WINDOW_OPTIONS_WITH_PIXELMAP" ]
-    external_deps += [ "image_framework:image_native" ]
   }
 
   if (ability_runtime_no_screen) {
     defines += [ "DISABLE_LAUNCHER" ]
+  }
+
+  if (abilityms_security_guard_enabled) {
+    defines += [ "ABILITYMS_SECURITY_GUARD_ENABLE" ]
+    external_deps += [ "security_guard:libsg_collect_sdk" ]
   }
 
   ldflags = [ "-Wl,-Bsymbolic" ]
@@ -333,6 +371,7 @@ ohos_static_library("abilityms_static") {
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_service_extension_ability/connection",
     "${ability_runtime_path}/utils/global/time/include",
     "${ability_runtime_services_path}/abilitymgr/include/mission",
+    "${ability_runtime_services_path}/common/include/user_controller",
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
   ]
   deps = [
@@ -346,6 +385,7 @@ ohos_static_library("abilityms_static") {
     "${ability_runtime_innerkits_path}/ability_manager:start_window_option",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_innerkits_path}/connectionobs_manager:connection_obs_manager",
+    "${ability_runtime_innerkits_path}/daemon_service_manager:daemon_service_manager",
     "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_innerkits_path}/foreground_app_obs_manager:foreground_app_obs_manager",
     "${ability_runtime_innerkits_path}/session_handler:session_handler",
@@ -431,6 +471,10 @@ ohos_static_library("abilityms_static") {
 
   defines = []
 
+  if (ability_runtime_app_no_response_dialog) {
+    defines += [ "APP_NO_RESPONSE_DIALOG" ]
+  }
+
   if (ability_runtime_dsoftbus_enable) {
     external_deps += [ "dsoftbus:softbus_client" ]
     defines += [ "SUPPORT_RECORDER_DSOFTBUS" ]
@@ -444,15 +488,21 @@ ohos_static_library("abilityms_static") {
     defines += [ "SUPPORT_CHILD_PROCESS" ]
   }
 
+  if (ability_runtime_enable_clone_for_account) {
+    defines += [ "ENABLE_CLONE_FOR_ACCOUNT" ]
+    sources += [
+      "src/utils/clone_for_account_util.cpp",
+    ]
+  }
+
   if (ability_runtime_graphics) {
     defines += [ "SUPPORT_GRAPHICS" ]
+    deps += [ "${ability_runtime_services_path}/common:image_native_bridge" ]
     external_deps += [
       "ability_base:session_info",
       "i18n:intl_util",
       "icu:shared_icuuc",
-      "image_framework:image_native",
       "input:libmmi-client",
-      "resource_management:global_resmgr",
       "window_manager:libdm",
       "window_manager:libmodal_system_ui_extension_client",
       "window_manager:libwm",
@@ -494,7 +544,6 @@ ohos_static_library("abilityms_static") {
   if (ability_runtime_graphics &&
       ability_runtime_start_window_options_with_pixelmap) {
     defines += [ "START_WINDOW_OPTIONS_WITH_PIXELMAP" ]
-    external_deps += [ "image_framework:image_native" ]
   }
 
   if (ability_runtime_no_screen) {
@@ -527,7 +576,6 @@ ohos_shared_library("wantagent_manager") {
     "${ability_runtime_services_path}/abilitymgr/src/want_receiver_stub.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/want_sender_info.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/want_sender_proxy.cpp",
-    "${ability_runtime_services_path}/abilitymgr/src/want_sender_stub.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/wants_info.cpp",
   ]
   deps = [
@@ -564,6 +612,7 @@ ohos_shared_library("modular_object") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
   include_dirs = [
     "${ability_runtime_innerkits_path}/ability_manager/include",
@@ -583,18 +632,23 @@ ohos_shared_library("modular_object") {
   ]
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
+    "${ability_runtime_services_path}/common:app_util",
   ]
 
   external_deps = [
     "ability_base:want",
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",
+    "eventhandler:libeventhandler",
     "ffrt:libffrt",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
+    "hisysevent:libhisysevent",
     "ipc:ipc_core",
+    "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
   ]
 
@@ -627,13 +681,8 @@ ohos_prebuilt_etc("ams_extension_config.json") {
   part_name = "ability_runtime"
 }
 
-ohos_prebuilt_etc("start_ability_without_caller_token.json") {
-  source = "resource/start_ability_without_caller_token.json"
-  subsystem_name = "ability"
-  part_name = "ability_runtime"
-}
-
 ohos_shared_library("mission_list") {
+  version_script = "libmission_list.map"
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -733,7 +782,6 @@ ohos_shared_library("mission_list") {
     "config_policy:configpolicy_util",
     "eventhandler:libeventhandler",
     "ffrt:libffrt",
-    "graphic_2d:color_manager",
     "hicollie:libhicollie",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
@@ -802,7 +850,6 @@ group("ams_service_config") {
   deps = [
     ":ams_service_config.json",
     ":deeplink_reserve_config.json",
-    ":start_ability_without_caller_token.json",
     ":uiextension_picker_config.json",
     ":ams_extension_config.json",
   ]

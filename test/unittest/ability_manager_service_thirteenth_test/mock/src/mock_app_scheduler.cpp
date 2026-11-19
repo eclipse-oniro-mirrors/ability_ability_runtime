@@ -18,6 +18,7 @@
 #include "app_scheduler.h"
 #include "appmgr/app_mgr_constants.h"
 #include "hilog_tag_wrapper.h"
+#include "mock_my_status.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -59,12 +60,13 @@ int AppScheduler::TerminateAbility(const sptr<IRemoteObject>& token, bool isClea
     return ERR_OK;
 }
 
-void AppScheduler::MoveToForeground(const sptr<IRemoteObject>& token)
+void AppScheduler::MoveToForeground(const sptr<IRemoteObject>& token,
+    const AppExecFwk::UiAbilityLastCallerInfo& callerInfo)
 {
     TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::MoveToForeground()");
 }
 
-void AppScheduler::MoveToBackground(const sptr<IRemoteObject>& token)
+void AppScheduler::MoveToBackground(const sptr<IRemoteObject>& token, bool isFromScreenOffBackground)
 {
     TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::MoveToBackground()");
 }
@@ -106,7 +108,7 @@ void AppScheduler::OnAbilityRequestDone(const sptr<IRemoteObject>& token, const 
 }
 
 int AppScheduler::KillApplication(const std::string& bundleName, bool clearPageStack, int32_t appIndex,
-    const std::string& reason)
+    const std::string& reason, int32_t userId)
 {
     TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::KillApplication()");
     return ERR_OK;
@@ -224,8 +226,8 @@ bool AppScheduler::IsMemorySizeSufficient() const
     return true;
 }
 
-void AppScheduler::StartSpecifiedAbility(const AAFwk::Want&, const AppExecFwk::AbilityInfo&, int32_t,
-    const std::string&, bool) {}
+void AppScheduler::StartSpecifiedAbility(const AAFwk::Want&, const AppExecFwk::AbilityInfo&,
+    const AbilityRuntime::StartSpecifiedParam&) {}
 
 int AppScheduler::StartUserTest(
     const Want& want, const sptr<IRemoteObject>& observer, const AppExecFwk::BundleInfo& bundleInfo, int32_t userId)
@@ -252,13 +254,16 @@ int32_t AppScheduler::NotifyAppMgrRecordExitReason(int32_t pid, int32_t reason, 
 }
 
 int32_t AppScheduler::NotifyAppMgrRecordExitReasonCompability(
-    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg)
+    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg,
+    int32_t reason, int32_t callerPid)
 {
+    MyStatus::GetInstance().asNotifyExitReasonCompabilityCount_++;
     return 0;
 }
 
 int AppScheduler::GetAbilityRecordsByProcessID(const int pid, std::vector<sptr<IRemoteObject>>& tokens)
 {
+    tokens = MyStatus::GetInstance().asGetAbilityRecordsTokens_;
     return 0;
 }
 
@@ -338,6 +343,12 @@ int AppScheduler::GetProcessRunningInfosByUserId(std::vector<AppExecFwk::Running
     return 0;
 }
 
+int AppScheduler::GetProcessRunningInfosByAccessTokenId(uint32_t accessTokenId,
+    std::vector<AppExecFwk::RunningProcessInfo> &info)
+{
+    return 0;
+}
+
 std::string AppScheduler::ConvertAppState(const AppState &state)
 {
     return "INVALIDSTATE";
@@ -346,6 +357,16 @@ std::string AppScheduler::ConvertAppState(const AppState &state)
 bool AppScheduler::IsAttachDebug(const std::string &bundleName)
 {
     return 0;
+}
+
+bool AppScheduler::IsMainProcessDebug(int32_t uid)
+{
+    return false;
+}
+
+bool AppScheduler::IsCorrespondingProcessAttachDebug(const AppExecFwk::AbilityInfo &abilityInfo)
+{
+    return false;
 }
 
 void AppScheduler::OnCacheExitInfo(uint32_t accessTokenId, const AppExecFwk::RunningProcessInfo &exitInfo,
@@ -372,6 +393,63 @@ int32_t AppScheduler::PreloadApplicationByPhase(const std::string &bundleName, i
 int32_t AppScheduler::VerifyKillProcessPermission(const std::string &bundleName) const
 {
     return 0;
+}
+
+void AppScheduler::ClearProcessByToken(sptr<IRemoteObject> token) const
+{
+}
+
+bool AppScheduler::IsKilledForUpgradeWeb(const std::string &bundleName)
+{
+    return true;
+}
+
+bool AppScheduler::CheckProcessAvailable(int32_t pid)
+{
+    return true;
+}
+
+int32_t AppScheduler::UnregisterTaskAttribution(const std::string &taskId, int64_t attributionId)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::UnregisterTaskAttribution, taskId: %{public}s, "
+        "attributionId: %{public}" PRId64, taskId.c_str(), attributionId);
+    return ERR_OK;
+}
+
+int32_t AppScheduler::RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t tool,
+    int32_t callerUid, int64_t &attributionId)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::RegisterManagedProcess, taskId: %{public}s, pid: %{public}d",
+        taskId.c_str(), pid);
+    auto &status = MyStatus::GetInstance();
+    // Synchronous re-entrancy hook: fired before the counters update so a test can act
+    // while the register call is in flight (e.g. remove the record to open the
+    // record-gone-before-write-back window deterministically).
+    if (status.asRegisterManagedHook_ != nullptr) {
+        auto hook = status.asRegisterManagedHook_;
+        status.asRegisterManagedHook_ = nullptr;
+        hook();
+    }
+    status.asRegisterManagedCount_++;
+    status.asRegisterManagedTaskId_ = taskId;
+    status.asRegisterManagedPid_ = pid;
+    status.asRegisterManagedTool_ = tool;
+    status.asRegisterManagedCallerUid_ = callerUid;
+    attributionId = status.asRegisterManagedAttributionId_;
+    return status.asRegisterManagedRet_;
+}
+
+int32_t AppScheduler::UnregisterManagedProcess(const std::string &taskId, int64_t attributionId,
+    int32_t callerUid)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::UnregisterManagedProcess, taskId: %{public}s, "
+        "attributionId: %{public}" PRId64, taskId.c_str(), attributionId);
+    auto &status = MyStatus::GetInstance();
+    status.asUnregisterManagedCount_++;
+    status.asUnregisterManagedTaskId_ = taskId;
+    status.asUnregisterManagedAttributionId_ = attributionId;
+    status.asUnregisterManagedCallerUid_ = callerUid;
+    return ERR_OK;
 }
 } // namespace AAFwk
 } // namespace OHOS

@@ -36,6 +36,11 @@ class AbilityManagerService;
  */
 class QueryERMSManager {
 public:
+    /**
+     * GetInstance, get the singleton instance of QueryERMSManager.
+     *
+     * @return Returns the singleton instance.
+     */
     static QueryERMSManager &GetInstance();
 
     /**
@@ -57,13 +62,45 @@ public:
     int AddQueryERMSObserver(sptr<IRemoteObject> callerToken, sptr<AbilityRuntime::IQueryERMSObserver> observer);
 
 private:
+    /**
+     * Default constructor.
+     */
     QueryERMSManager();
+    /**
+     * Default destructor.
+     */
     ~QueryERMSManager();
 
+    /**
+     * HandleQueryERMSResult, dispatch the query result to success or fail handler.
+     *
+     * @param recordId, the record id of the ability.
+     * @param appId, appId.
+     * @param startTime, startTime.
+     * @param rule, atomic service startup rule.
+     * @param resultCode, ERR_OK on success, others on failure.
+     */
     void HandleQueryERMSResult(int32_t recordId, const std::string &appId, const std::string &startTime,
         const AtomicServiceStartupRule &rule, int32_t resultCode);
+    /**
+     * HandleOnQueryERMSSuccess, handle the query success and notify observers.
+     *
+     * @param recordId, the record id of the ability.
+     * @param appId, appId.
+     * @param startTime, startTime.
+     * @param rule, atomic service startup rule.
+     */
     void HandleOnQueryERMSSuccess(int32_t recordId, const std::string &appId, const std::string &startTime,
         const AtomicServiceStartupRule &rule);
+    /**
+     * HandleOnQueryERMSFail, handle the query failure and notify observers.
+     *
+     * @param recordId, the record id of the ability.
+     * @param appId, appId.
+     * @param startTime, startTime.
+     * @param rule, atomic service startup rule.
+     * @param resultCode, ERR_OK on success, others on failure.
+     */
     void HandleOnQueryERMSFail(int32_t recordId, const std::string &appId, const std::string &startTime,
         const AtomicServiceStartupRule &rule, int resultCode);
 

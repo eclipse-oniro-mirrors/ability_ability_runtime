@@ -27,6 +27,7 @@
 #include "hilog_tag_wrapper.h"
 #include "mission_snapshot.h"
 #include "want_sender_info.h"
+#include "skill_execute_result.h"
 
 using namespace testing::ext;
 using namespace testing;
@@ -1147,6 +1148,172 @@ HWTEST_F(AbilityManagerProxySixthTest, AbilityManagerProxy_QueryCallerTokenIdFor
     uint32_t callerTokenId = 0;
     auto res = proxy_->QueryCallerTokenIdForAnco(userId, asCallerForAncoSessionId, callerTokenId);
     EXPECT_EQ(res, 0);
+}
+
+/**
+ * @tc.name: AbilityManagerProxy_ExecuteSkillDone_001
+ * @tc.desc: ExecuteSkillDone with SendRequest success
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxySixthTest, AbilityManagerProxy_ExecuteSkillDone_001, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+    sptr<IRemoteObject> token = sptr<MockAbilityToken>::MakeSptr();
+    AppExecFwk::SkillExecuteResult result;
+    auto res = proxy_->ExecuteSkillDone(token, "requestCode", 0, result);
+    EXPECT_EQ(res, 0);
+}
+
+/**
+ * @tc.name: AbilityManagerProxy_ExecuteSkillDone_002
+ * @tc.desc: ExecuteSkillDone with SendRequest failure
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxySixthTest, AbilityManagerProxy_ExecuteSkillDone_002, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(-1));
+    sptr<IRemoteObject> token = sptr<MockAbilityToken>::MakeSptr();
+    AppExecFwk::SkillExecuteResult result;
+    auto res = proxy_->ExecuteSkillDone(token, "requestCode", 0, result);
+    EXPECT_EQ(res, -1);
+}
+
+/**
+ * @tc.name: AbilityManagerProxy_QuerySkillType_001
+ * @tc.desc: QuerySkillType with SendRequest success
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxySixthTest, AbilityManagerProxy_QuerySkillType_001, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+    int32_t skillType = 0;
+    auto res = proxy_->QuerySkillType("bundle", "module", "skill", skillType);
+    EXPECT_EQ(res, 0);
+}
+
+/**
+ * @tc.name: AbilityManagerProxy_QuerySkillType_002
+ * @tc.desc: QuerySkillType with SendRequest failure
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxySixthTest, AbilityManagerProxy_QuerySkillType_002, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(-1));
+    int32_t skillType = 0;
+    auto res = proxy_->QuerySkillType("bundle", "module", "skill", skillType);
+    EXPECT_EQ(res, -1);
+}
+
+/**
+ * @tc.name: AbilityManagerProxy_NotifySkillFunctionInvoked_001
+ * @tc.desc: NotifySkillFunctionInvoked with SendRequest success
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxySixthTest, AbilityManagerProxy_NotifySkillFunctionInvoked_001, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+    sptr<IRemoteObject> token = sptr<MockAbilityToken>::MakeSptr();
+    auto res = proxy_->NotifySkillFunctionInvoked(token, "requestCode");
+    EXPECT_EQ(res, 0);
+}
+
+/**
+ * @tc.name: AbilityManagerProxy_NotifySkillFunctionInvoked_002
+ * @tc.desc: NotifySkillFunctionInvoked with SendRequest failure
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxySixthTest, AbilityManagerProxy_NotifySkillFunctionInvoked_002, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(-1));
+    sptr<IRemoteObject> token = sptr<MockAbilityToken>::MakeSptr();
+    auto res = proxy_->NotifySkillFunctionInvoked(token, "requestCode");
+    EXPECT_EQ(res, -1);
+}
+
+/**
+ * @tc.name: AbilityManagerProxy_StartAbilityForPrelaunch_001
+ * @tc.desc: StartAbilityForPrelaunch with null connect and SendRequest failure
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxySixthTest, AbilityManagerProxy_StartAbilityForPrelaunch_001, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    int32_t frameNum = 0;
+    sptr<IAbilityConnection> connect = nullptr;
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(-1));
+    auto res = proxy_->StartAbilityForPrelaunch(want, frameNum, DEFAULT_INVAL_VALUE, connect);
+    EXPECT_EQ(res, -1);
+}
+
+/**
+ * @tc.name: AbilityManagerProxy_StartAbilityForPrelaunch_002
+ * @tc.desc: StartAbilityForPrelaunch with null connect and SendRequest success
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxySixthTest, AbilityManagerProxy_StartAbilityForPrelaunch_002, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    int32_t frameNum = 0;
+    sptr<IAbilityConnection> connect = nullptr;
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+    auto res = proxy_->StartAbilityForPrelaunch(want, frameNum, DEFAULT_INVAL_VALUE, connect);
+    EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::START_PRELAUNCH_ABILITY), mock_->code_);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/**
+ * @tc.name: AbilityManagerProxy_StartAbilityForPrelaunch_003
+ * @tc.desc: StartAbilityForPrelaunch with non-null connect and SendRequest failure
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxySixthTest, AbilityManagerProxy_StartAbilityForPrelaunch_003, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    int32_t frameNum = 5;
+    sptr<IAbilityConnection> connect = new AbilityConnectCallback();
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(-1));
+    auto res = proxy_->StartAbilityForPrelaunch(want, frameNum, DEFAULT_INVAL_VALUE, connect);
+    EXPECT_EQ(res, -1);
+}
+
+/**
+ * @tc.name: AbilityManagerProxy_StartAbilityForPrelaunch_004
+ * @tc.desc: StartAbilityForPrelaunch with non-null connect and SendRequest success
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxySixthTest, AbilityManagerProxy_StartAbilityForPrelaunch_004, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "MainAbility");
+    int32_t frameNum = 5;
+    sptr<IAbilityConnection> connect = new AbilityConnectCallback();
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+    auto res = proxy_->StartAbilityForPrelaunch(want, frameNum, DEFAULT_INVAL_VALUE, connect);
+    EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::START_PRELAUNCH_ABILITY), mock_->code_);
+    EXPECT_EQ(res, NO_ERROR);
 }
 } // namespace AAFwk
 } // namespace OHOS

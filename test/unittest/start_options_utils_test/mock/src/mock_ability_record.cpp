@@ -27,5 +27,10 @@ const AppExecFwk::AbilityInfo &AbilityRecord::GetAbilityInfo() const
 {
     return abilityInfo;
 }
+
+int32_t AbilityRecord::GetOwnerMissionUserId()
+{
+    return ownerMissionUserId_;
+}
 }  // namespace AAFwk
 }  // namespace OHOS

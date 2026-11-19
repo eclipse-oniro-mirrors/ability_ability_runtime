@@ -15,12 +15,16 @@
 
 #include "cj_environment.h"
 
+#include <unistd.h>
 #include <string>
 #include <sstream>
 #include <mutex>
 #include <charconv>
 #include "cj_hilog.h"
 #include "cj_invoker.h"
+#include "cj_envsetup.h"
+#include "cj_backtrace.h"
+
 #ifdef __OHOS__
 #include <dlfcn.h>
 #endif
@@ -75,6 +79,8 @@ const char REGISTER_ARKVM_SYMBOL_NAME[] = "RegisterArkVMInRuntime";
 const char REGISTER_STACKINFO_CALLBACKS_NAME[] = "RegisterStackInfoCallbacks";
 const char DUMP_HEAP_SNAPSHOT_NAME[] = "CJ_MRT_DumpHeapSnapshot";
 const char FORCE_FULL_GC_NAME[] = "CJ_MRT_ForceFullGC";
+const char REGISTER_EVENT_HANDLER_NAME[] = "RegisterEventHandler";
+const char REGISTER_EXCEPTION_ON_CREATED_NAME[] = "CJ_MRT_RegisterExceptionCallback";
 
 using InitCJRuntimeType = int(*)(const struct RuntimeParam*);;
 using InitUISchedulerType = void*(*)();
@@ -86,6 +92,7 @@ using RegisterArkVMType = void(*)(unsigned long long);
 using RegisterStackInfoType = void(*)(UpdateStackInfoFuncType);
 using DumpHeapSnapshotType = void(*)(int);
 using ForceFullGCType = void(*)();
+using RegisterEventReportType = void(*)(const CJEventReportInfo& handle);
 
 #ifdef __OHOS__
 const char REGISTER_UNCAUGHT_EXCEPTION_NAME[] = "RegisterUncaughtExceptionHandler";
@@ -182,6 +189,17 @@ bool LoadSymbolInitCJLibrary(void* handle, CJRuntimeAPI& apis)
     return true;
 }
 
+bool LoadSymbolRegisterEventHandler(void* handle, CJRuntimeAPI& apis)
+{
+    auto symbol = DynamicFindSymbol(handle, REGISTER_EVENT_HANDLER_NAME);
+    if (symbol == nullptr) {
+        LOGE("runtime api not found: %{public}s", REGISTER_EVENT_HANDLER_NAME);
+        return true;
+    }
+    apis.RegisterEventHandler = reinterpret_cast<RegisterEventReportType>(symbol);
+    return true;
+}
+
 bool LoadSymbolRegisterEventHandlerCallbacks(void* handle, CJRuntimeAPI& apis)
 {
     auto symbol = DynamicFindSymbol(handle, REGISTER_EVENTHANDLER_CALLBACKS_NAME);
@@ -258,6 +276,19 @@ bool LoadSymbolForceFullGC(void* handle, CJRuntimeAPI& apis)
     return true;
 }
 
+bool LoadSymbolRegisterExceptionOnCreated(void* handle, CJRuntimeAPI& apis)
+{
+    auto symbol = DynamicFindSymbol(handle, REGISTER_EXCEPTION_ON_CREATED_NAME);
+    if (symbol == nullptr) {
+        LOGE("runtime api not found: %{public}s", REGISTER_EXCEPTION_ON_CREATED_NAME);
+        // return true for compatible.
+        apis.RegisterExceptionOnCreated = nullptr;
+        return true;
+    }
+    apis.RegisterExceptionOnCreated = reinterpret_cast<decltype(apis.RegisterExceptionOnCreated)>(symbol);
+    return true;
+}
+
 bool PostTaskWrapper(void* func)
 {
     return CJEnvironment::GetInstance()->PostTask(reinterpret_cast<TaskFuncType>(func));
@@ -319,6 +350,15 @@ void CJEnvironment::SetAppPath(const std::string& appPath)
     }
     instance_ = new CJEnvironment(mode);
     instance_->InitCJNS(appPath);
+#ifdef __OHOS__
+    instance_->RegisterExceptionOnCreated([] {
+        if (getpid() != gettid()) {
+            return;
+        }
+        constexpr uint32_t removeTopFrames = 3;
+        CJDFX_Backtrace(removeTopFrames);
+    });
+#endif
     isInited = true;
 }
 
@@ -414,16 +454,7 @@ bool CJEnvironment::LoadRuntimeApis()
         return false;
     }
 #undef RTLIB_NAME
-    if (!LoadSymbolInitCJRuntime(dso, *lazyApis_) ||
-        !LoadSymbolInitUIScheduler(dso, *lazyApis_) ||
-        !LoadSymbolRunUIScheduler(dso, *lazyApis_) ||
-        !LoadSymbolFiniCJRuntime(dso, *lazyApis_) ||
-        !LoadSymbolInitCJLibrary(dso, *lazyApis_) ||
-        !LoadSymbolRegisterEventHandlerCallbacks(dso, *lazyApis_) ||
-        !LoadSymbolRegisterStackInfoCallbacks(dso, *lazyApis_) ||
-        !LoadSymbolRegisterArkVM(dso, *lazyApis_) ||
-        !LoadSymbolDumpHeapSnapshot(dso, *lazyApis_) ||
-        !LoadSymbolForceFullGC(dso, *lazyApis_)) {
+    if (LoadSymbols(dso, *lazyApis_)) {
         LOGE("load symbol failed");
         DynamicFreeLibrary(dso);
         return false;
@@ -439,12 +470,36 @@ bool CJEnvironment::LoadRuntimeApis()
     return true;
 }
 
+bool CJEnvironment::LoadSymbols(void* dso, CJRuntimeAPI& lazyApis_)
+{
+    return (!LoadSymbolInitCJRuntime(dso, lazyApis_) ||
+            !LoadSymbolInitUIScheduler(dso, lazyApis_) ||
+            !LoadSymbolRunUIScheduler(dso, lazyApis_) ||
+            !LoadSymbolFiniCJRuntime(dso, lazyApis_) ||
+            !LoadSymbolInitCJLibrary(dso, lazyApis_) ||
+            !LoadSymbolRegisterEventHandlerCallbacks(dso, lazyApis_) ||
+            !LoadSymbolRegisterStackInfoCallbacks(dso, lazyApis_) ||
+            !LoadSymbolRegisterArkVM(dso, lazyApis_) ||
+            !LoadSymbolDumpHeapSnapshot(dso, lazyApis_) ||
+            !LoadSymbolForceFullGC(dso, lazyApis_) ||
+            !LoadSymbolRegisterEventHandler(dso, lazyApis_) ||
+            !LoadSymbolRegisterExceptionOnCreated(dso, lazyApis_));
+}
+
 void CJEnvironment::RegisterArkVMInRuntime(unsigned long long externalVM)
 {
     if (!lazyApis_ || !lazyApis_->RegisterArkVMInRuntime) {
         return;
     }
     lazyApis_->RegisterArkVMInRuntime(externalVM);
+}
+
+void CJEnvironment::RegisterExceptionOnCreated(void (*callback)())
+{
+    if (!lazyApis_ || !lazyApis_->RegisterExceptionOnCreated) {
+        return;
+    }
+    lazyApis_->RegisterExceptionOnCreated(callback);
 }
 
 void CJEnvironment::RegisterStackInfoCallbacks(UpdateStackInfoFuncType uFunc)
@@ -469,6 +524,15 @@ void CJEnvironment::RegisterEventHandlerCallbacks()
         return;
     }
     lazyApis_->RegisterEventHandlerCallbacks(PostTaskWrapper, HasHigherPriorityTaskWrapper);
+}
+
+void CJEnvironment::RegisterEventHandler(const CJEventReportInfo& handle)
+{
+    if (!lazyApis_ || !lazyApis_->RegisterEventHandler) {
+        LOGE("api RegisterEventHandler is null.");
+        return;
+    }
+    lazyApis_->RegisterEventHandler(handle);
 }
 
 void CJEnvironment::DumpCjHeap(int fd)
@@ -922,6 +986,7 @@ void CJEnvironment::SetSanitizerKindRuntimeVersion(SanitizerKind kind)
 
 CJEnvMethods* CJEnvironment::CreateEnvMethods()
 {
+    static void* mainNAPIEnv = nullptr;
     static CJEnvMethods gCJEnvMethods {
         .initCJAppNS = [](const std::string& path) {
             // to keep compatibility with older version
@@ -980,7 +1045,16 @@ CJEnvMethods* CJEnvironment::CreateEnvMethods()
         },
         .forceFullGC = []() {
             CJEnvironment::GC();
-        }
+        },
+        .registerEventHandler = [](const CJEventReportInfo& handle) {
+            return CJEnvironment::GetInstance()->RegisterEventHandler(handle);
+        },
+        .setMainNAPIEnv = [](void* env) {
+            mainNAPIEnv = env;
+        },
+        .getMainNAPIEnv = []() {
+            return mainNAPIEnv;
+        },
     };
     return &gCJEnvMethods;
 }

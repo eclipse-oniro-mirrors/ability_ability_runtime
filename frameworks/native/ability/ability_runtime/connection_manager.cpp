@@ -131,15 +131,16 @@ bool ConnectionManager::MatchConnection(
     if (accountId != connection.first.userid) {
         return false;
     }
-    if (!connectReceiver.GetElement().GetAbilityName().empty()) {
+    auto receiverEle = connectReceiver.GetElement();
+    if (!receiverEle.GetAbilityName().empty()) {
         return connectCaller == connection.first.connectCaller &&
-            connectReceiver.GetElement().GetBundleName() == connection.first.connectReceiver.GetBundleName() &&
-            connectReceiver.GetElement().GetModuleName() == connection.first.connectReceiver.GetModuleName() &&
-            connectReceiver.GetElement().GetAbilityName() == connection.first.connectReceiver.GetAbilityName();
+            receiverEle.GetBundleName() == connection.first.connectReceiver.GetBundleName() &&
+            receiverEle.GetModuleName() == connection.first.connectReceiver.GetModuleName() &&
+            receiverEle.GetAbilityName() == connection.first.connectReceiver.GetAbilityName();
     } else {
         // ImplicitConnect
         return connectCaller == connection.first.connectCaller &&
-            connectReceiver.GetElement().GetBundleName() == connection.first.connectReceiver.GetBundleName() &&
+            receiverEle.GetBundleName() == connection.first.connectReceiver.GetBundleName() &&
             connectReceiver.GetOperation() == connection.first.connectReceiver;
     }
 }
@@ -196,7 +197,7 @@ ErrCode ConnectionManager::DisconnectAbility(const sptr<IRemoteObject>& connectC
     bool found = false;
     auto item = abilityConnections_.begin();
     if (!abilityConnections_.empty()) {
-        TAG_LOGI(AAFwkTag::CONNECTION, "Connection size:%{public}zu", abilityConnections_.size());
+        TAG_LOGI(AAFwkTag::CONNECTION, "Conn size:%{public}zu", abilityConnections_.size());
     }
     while (item != abilityConnections_.end()) {
         if (!MatchConnection(connectCaller, connectReceiver, accountId, *item) ||
@@ -217,7 +218,7 @@ ErrCode ConnectionManager::DisconnectAbility(const sptr<IRemoteObject>& connectC
         sptr<AbilityConnection> abilityConnection = item->first.abilityConnection;
         if (item->second.empty()) {
             item = abilityConnections_.erase(item);
-            TAG_LOGI(AAFwkTag::CONNECTION, "no callback left, disconnectAbility");
+            TAG_LOGI(AAFwkTag::CONNECTION, "no callback,disconnect");
             auto ret = AAFwk::AbilityManagerClient::GetInstance()->DisconnectAbility(abilityConnection);
             if (ret != ERR_OK) {
                 TAG_LOGE(AAFwkTag::CONNECTION, "disconnect err:%{public}d", ret);
@@ -231,7 +232,7 @@ ErrCode ConnectionManager::DisconnectAbility(const sptr<IRemoteObject>& connectC
         }
     }
     if (!found) {
-        TAG_LOGE(AAFwkTag::CONNECTION, "not find conn");
+        TAG_LOGE(AAFwkTag::CONNECTION, "not find");
         return AAFwk::CONNECTION_NOT_EXIST;
     }
     return ERR_OK;
@@ -245,7 +246,7 @@ bool ConnectionManager::DisconnectCaller(const sptr<IRemoteObject>& connectCalle
         return false;
     }
     std::lock_guard<std::recursive_mutex> lock(connectionsLock_);
-    TAG_LOGD(AAFwkTag::CONNECTION, "abilityConnectionsSize:%{public}zu", abilityConnections_.size());
+    TAG_LOGD(AAFwkTag::CONNECTION, "abConnSize:%{public}zu", abilityConnections_.size());
 
     bool isDisconnect = false;
     auto iter = abilityConnections_.begin();

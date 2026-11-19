@@ -22,6 +22,7 @@ abilityms_files = [
   "src/disposed_observer.cpp",
   "src/ability_manager_service.cpp",
   "src/ability_manager_stub.cpp",
+  "src/ams_want_param_filter.cpp",
   "src/ability_record.cpp",
   "src/ability_record/ability_record_utils.cpp",
   "src/ability_record/ability_request.cpp",
@@ -45,10 +46,12 @@ abilityms_files = [
   "src/ecological_rule/ability_ecological_rule_mgr_service_param.cpp",
   "src/ecological_rule/ability_ecological_rule_mgr_service.cpp",
   "src/extension_config.cpp",
+  "src/extension_query_event_util.cpp",
   "src/extension_running_info.cpp",
   "src/extension_record/base_extension_record.cpp",
   "src/extension_record/extension_record_manager.cpp",
   "src/extension_running_timeout_monitor.cpp",
+  "src/background_user_extension_monitor.cpp",
   "src/extension_record/extension_record.cpp",
   "src/extension_record/extension_record_factory.cpp",
   "src/foreground_app_connection_manager/foreground_app_connection_manager.cpp",
@@ -58,13 +61,13 @@ abilityms_files = [
   "src/pending_want_key.cpp",
   "src/pending_want_manager.cpp",
   "src/pending_want_common_event.cpp",
+  "src/want_agent_app_state_observer.cpp",
   "src/restart_app_manager.cpp",
   "src/ams_configuration_parameter.cpp",
   "src/recovery_info_timer.cpp",
   "src/modal_system_dialog/modal_system_dialog_ui_extension.cpp",
   "src/hidden_start_observer_manager.cpp",
   "src/interceptor/ability_interceptor_executer.cpp",
-  "src/interceptor/ability_jump_interceptor.cpp",
   "src/interceptor/block_all_app_start_interceptor.cpp",
   "src/interceptor/control_interceptor.cpp",
   "src/interceptor/crowd_test_interceptor.cpp",
@@ -72,14 +75,9 @@ abilityms_files = [
   "src/interceptor/ecological_rule_interceptor.cpp",
   "src/interceptor/extension_control_interceptor.cpp",
   "src/interceptor/screen_unlock_interceptor.cpp",
-  "src/interceptor/start_other_app_interceptor.cpp",
   "src/interceptor/kiosk_interceptor.cpp",
   "src/window_focus_changed_listener.cpp",
   "src/window_visibility_changed_listener.cpp",
-
-  # start ability handler
-  "src/start_ability_handler.cpp",
-  "src/start_ability_handler/start_ability_sandbox_savefile.cpp",
 
   # new ability manager service here
   "src/ui_extension/ui_extension_ability_manager.cpp",
@@ -98,6 +96,7 @@ abilityms_files = [
   "src/rdb/parser_util.cpp",
   "src/rdb/rdb_data_manager.cpp",
   "src/remote_mission_listener_proxy.cpp",
+  "src/request_start_ability_callback_proxy.cpp",
   "src/scene_board/status_bar_delegate_manager.cpp",
   "src/scene_board/ui_ability_lifecycle_manager.cpp",
   "src/scene_board/ui_ability_record.cpp",
@@ -115,6 +114,11 @@ abilityms_files = [
   "src/atomic_service_status_callback.cpp",
   "src/free_install_manager.cpp",
   "src/free_install_observer_manager.cpp",
+
+  #remote_intent
+  "src/remote_intent_result_callback.cpp",
+  "src/remote_intent_result_callback_proxy.cpp",
+  "src/remote_intent_result_callback_stub.cpp",
 
   #erms
   "src/query_erms_manager.cpp",
@@ -140,8 +144,18 @@ abilityms_files = [
   "src/insight_intent/insight_intent_rdb_storage_mgr.cpp",
   "src/insight_intent/insight_intent_utils.cpp",
   "src/insight_intent/extract_insight_intent_profile.cpp",
+  "src/insight_intent/function_call_convert.cpp",
   "src/insight_intent/insight_intent_event_mgr.cpp",
+  "src/insight_intent/insight_intent_matcher.cpp",
+  "src/insight_intent/insight_intent_param_parser.cpp",
   "src/insight_intent/insight_intent_sys_event_receiver.cpp",
+
+  #skill execution
+  "src/skill/skill_execute_callback_proxy.cpp",
+  "src/skill/skill_execute_callback_stub.cpp",
+  "src/skill/skill_execute_param.cpp",
+  "src/skill/skill_execute_result.cpp",
+  "src/skill/skill_execute_manager.cpp",
 
   #sa interceptor
   "src/sa_interceptor_manager.cpp",
@@ -165,6 +179,10 @@ abilityms_files = [
   #utils
   "src/utils/request_id_util.cpp",
   "src/utils/ability_event_util.cpp",
+  "src/utils/security_audit_report.cpp",
+  "src/utils/agent_ability_util.cpp",
+  "src/utils/agent_caller_identity_util.cpp",
+  "src/agent_extension/agent_card_migration_helper.cpp",
   "src/utils/ability_permission_util.cpp",
   "src/utils/app_mgr_util.cpp",
   "src/utils/dms_util.cpp",
@@ -190,6 +208,9 @@ abilityms_files = [
   "src/kiosk_status.cpp",
   "src/kiosk_manager.cpp",
   "src/utils/udmf_utils.cpp",
+
+  #modular_object utils
+  "src/modular_object_utils.cpp",
 ]
 
 if (ability_runtime_graphics) {

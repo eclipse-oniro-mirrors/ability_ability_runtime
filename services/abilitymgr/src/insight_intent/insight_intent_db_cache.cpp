@@ -15,152 +15,248 @@
 
 #include "insight_intent_db_cache.h"
 
+#include <algorithm>
+
+#include "bundle_mgr_helper.h"
+#include "in_process_call_wrapper.h"
+#include "function_call_convert.h"
+
 namespace OHOS {
 namespace AbilityRuntime {
+
+bool InsightIntentDbCache::ResolveDualMode(IntentKey &key)
+{
+    if (key.appIndex != -1) {
+        return true;
+    }
+    auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
+    if (bundleMgrHelper == nullptr) {
+        return false;
+    }
+    AppExecFwk::BundleInfo bundleInfo;
+    auto ret = IN_PROCESS_CALL(bundleMgrHelper->GetBundleInfoV9(key.bundleName,
+        static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_HAP_MODULE),
+        bundleInfo, key.userId));
+    if (ret != ERR_OK) {
+        return false;
+    }
+    auto policy = bundleInfo.deviceModeDistributionPolicy;
+    bool isDifferentPackage =
+        (policy == AppExecFwk::DeviceModeDistributionPolicy::UNIVERSAL_DIFFERENT_PACKAGE ||
+         policy == AppExecFwk::DeviceModeDistributionPolicy::PARTIAL_COMPATIBLE_DIFFERENT_PACKAGE ||
+         policy == AppExecFwk::DeviceModeDistributionPolicy::FULL_COMPATIBLE_DIFFERENT_PACKAGE);
+    if (!isDifferentPackage) {
+        return true;
+    }
+    int32_t preferredAppIndex = 0;
+    auto dualRet = IN_PROCESS_CALL(bundleMgrHelper->GetDualModeBundleInfo(
+        key.bundleName, key.userId, preferredAppIndex));
+    key.appIndex = (dualRet == ERR_OK) ? preferredAppIndex : -1;
+    TAG_LOGI(AAFwkTag::INTENT, "auto-resolved dual-mode, bundle:%{public}s, appIndex:%{public}d",
+        key.bundleName.c_str(), key.appIndex);
+    return true;
+}
+
 InsightIntentDbCache::InsightIntentDbCache()
 {}
 
 int32_t InsightIntentDbCache::InitInsightIntentCache(const int32_t userId)
 {
     std::lock_guard<std::mutex> lock(genericInfosMutex_);
-    if (userId_ == userId) {
+    if (userId_ == userId && !cacheLoadFailed_) {
         TAG_LOGD(AAFwkTag::INTENT, "no need init, userId %{public}d.", userId_);
         return ERR_OK;
     }
-    std::vector<ExtractInsightIntentInfo> totalInfos;
-    std::vector<InsightIntentInfo> configInfos;
-    totalInfos.clear();
-    configInfos.clear();
-    intentGenericInfos_.clear();
     bundleVersionMap_.clear();
-    if (DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentInfos(
-        userId, bundleVersionMap_, totalInfos, configInfos) != ERR_OK) {
-        TAG_LOGE(AAFwkTag::INTENT, "Load All IntentData failed");
+
+    if (DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentBundleInfos(
+        userId, bundleVersionMap_) != ERR_OK) {
+        TAG_LOGE(AAFwkTag::INTENT, "Load BundleVersionMap failed");
+        cacheLoadFailed_ = true;
         return ERR_INVALID_VALUE;
     }
     userId_ = userId;
+    cacheLoadFailed_ = false;
 
-    if (totalInfos.size() == 0) {
-        TAG_LOGW(AAFwkTag::INTENT, "empty intent");
-        return ERR_NULL_INTENT;
-    }
-    for (size_t i = 0; i < totalInfos.size(); i++) {
-        ExtractInsightIntentInfo info = totalInfos.at(i);
-        std::string bundleName = info.genericInfo.bundleName;
-        intentGenericInfos_[bundleName].push_back(info.genericInfo);
-    }
+    TAG_LOGI(AAFwkTag::INTENT, "Init intent done, userId:%{public}d, bundleCount:%{public}zu",
+        userId, bundleVersionMap_.size());
     return ERR_OK;
 }
 
 InsightIntentDbCache::~InsightIntentDbCache()
 {}
 
-int32_t InsightIntentDbCache::SaveInsightIntentTotalInfo(const std::string &bundleName, const std::string &moduleName,
-    const int32_t userId, uint32_t versionCode, ExtractInsightIntentProfileInfoVec profileInfos,
-    std::vector<InsightIntentInfo> configInfos)
+int32_t InsightIntentDbCache::SaveInsightIntentTotalInfo(const InsightIntentSaveParam &saveParam,
+    ExtractInsightIntentProfileInfoVec profileInfos, std::vector<InsightIntentInfo> configInfos)
 {
-    std::lock_guard<std::mutex> lock(genericInfosMutex_);
-    if (userId != userId_) {
-        TAG_LOGE(AAFwkTag::INTENT, "The userId %{public}d. is not the cache userId %{public}d.", userId, userId_);
-        return ERR_INVALID_VALUE;
-    }
-    std::vector<ExtractInsightIntentGenericInfo> genericInfos;
-    for (auto profileInfo : profileInfos.insightIntents) {
-        ExtractInsightIntentInfo info;
-        ExtractInsightIntentProfile::ProfileInfoFormat(profileInfo, info);
-        ExtractInsightIntentGenericInfo genericInfo = info.genericInfo;
-        genericInfos.emplace_back(genericInfo);
-    }
-    auto it = intentGenericInfos_.find(bundleName);
-    if (it != intentGenericInfos_.end()) {
-        TAG_LOGW(AAFwkTag::INTENT, "need update, bundleName %{public}s", bundleName.c_str());
-        for (auto iter = intentGenericInfos_[bundleName].begin(); iter != intentGenericInfos_[bundleName].end();) {
-            if (iter->moduleName == moduleName) {
-                iter = intentGenericInfos_[bundleName].erase(iter);
-            } else {
-                iter++;
-            }
+    {
+        std::lock_guard<std::mutex> lock(genericInfosMutex_);
+        if (saveParam.userId != userId_) {
+            TAG_LOGE(AAFwkTag::INTENT, "The userId %{public}d. is not the cache userId %{public}d.",
+                saveParam.userId, userId_);
+            return ERR_INVALID_VALUE;
         }
-        it->second.insert(it->second.end(), genericInfos.begin(), genericInfos.end());
-    } else {
-        intentGenericInfos_[bundleName] = genericInfos;
     }
-    bundleVersionMap_[bundleName] = std::to_string(versionCode);
-    int32_t res = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->DeleteStorageInsightIntentData(bundleName,
-        moduleName, userId);
+    int32_t res = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->DeleteStorageInsightIntentData(
+        IntentKey{saveParam.bundleName, saveParam.moduleName, "", saveParam.userId, saveParam.appIndex});
     if (res != ERR_OK) {
         TAG_LOGW(AAFwkTag::INTENT, "Save before delete key error");
         return res;
     }
-    return DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->SaveStorageInsightIntentData(
-        bundleName, moduleName, userId, versionCode, profileInfos, configInfos);
+    res = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->SaveStorageInsightIntentData(
+        saveParam, profileInfos, configInfos);
+    if (res != ERR_OK) {
+        return res;
+    }
+    {
+        std::lock_guard<std::mutex> lock(genericInfosMutex_);
+        std::string mapKey = saveParam.bundleName;
+        if (saveParam.appIndex != -1) {
+            mapKey += "/" + FormatAppIndex(saveParam.appIndex);
+        }
+        bundleVersionMap_[mapKey] = std::to_string(saveParam.versionCode);
+    }
+    return ERR_OK;
 }
 
-int32_t InsightIntentDbCache::DeleteInsightIntentTotalInfo(const std::string &bundleName,
-    const std::string &moduleName, const int32_t userId)
+int32_t InsightIntentDbCache::SaveBatchInsightIntentTotalInfo(const std::vector<InsightIntentSaveParam> &saveParams)
 {
-    std::lock_guard<std::mutex> lock(genericInfosMutex_);
-    if (userId != userId_) {
-        TAG_LOGE(AAFwkTag::INTENT, "userId %{public}d. is not the cache userId %{public}d.", userId, userId_);
-        return ERR_INVALID_VALUE;
+    if (saveParams.empty()) {
+        return ERR_OK;
     }
-    if (moduleName.empty()) {
-        intentGenericInfos_.erase(bundleName);
-        bundleVersionMap_.erase(bundleName);
-    } else if (intentGenericInfos_.find(bundleName) != intentGenericInfos_.end()) {
-        for (auto iter = intentGenericInfos_[bundleName].begin(); iter != intentGenericInfos_[bundleName].end();) {
-            if (iter->moduleName == moduleName) {
-                iter = intentGenericInfos_[bundleName].erase(iter);
-            } else {
-                iter++;
+    int32_t userId = saveParams.front().userId;
+    {
+        std::lock_guard<std::mutex> lock(genericInfosMutex_);
+        if (userId != userId_) {
+            TAG_LOGE(AAFwkTag::INTENT, "The userId %{public}d. is not the cache userId %{public}d.", userId, userId_);
+            return ERR_INVALID_VALUE;
+        }
+    }
+    for (const auto &saveParam : saveParams) {
+        int32_t res = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->DeleteStorageInsightIntentData(
+            IntentKey{saveParam.bundleName, saveParam.moduleName, "", saveParam.userId, saveParam.appIndex});
+        if (res != ERR_OK) {
+            TAG_LOGW(AAFwkTag::INTENT, "Save before delete key error");
+            return res;
+        }
+    }
+    int32_t res = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->SaveStorageInsightIntentDataBatch(saveParams);
+    if (res != ERR_OK) {
+        return res;
+    }
+    {
+        std::lock_guard<std::mutex> lock(genericInfosMutex_);
+        const auto &front = saveParams.front();
+        std::string mapKey = front.bundleName;
+        if (front.appIndex != -1) {
+            mapKey += "/" + FormatAppIndex(front.appIndex);
+        }
+        bundleVersionMap_[mapKey] = std::to_string(front.versionCode);
+    }
+    return ERR_OK;
+}
+
+bool InsightIntentDbCache::DeleteInsightIntentTotalInfo(const IntentKey &key)
+{
+    if (!HasBundleCache(key)) {
+        TAG_LOGI(AAFwkTag::INTENT, "no intent cache, skip delete, bundleName: %{public}s, "
+            "moduleName: %{public}s, userId: %{public}d",
+            key.bundleName.c_str(), key.moduleName.c_str(), key.userId);
+        return false;
+    }
+    {
+        std::lock_guard<std::mutex> lock(genericInfosMutex_);
+        std::string mapKey = key.bundleName;
+        if (key.appIndex != -1) {
+            mapKey += "/" + FormatAppIndex(key.appIndex);
+        }
+        if (key.moduleName.empty()) {
+            bundleVersionMap_.erase(mapKey);
+        }
+    }
+    int32_t ret = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->DeleteStorageInsightIntentData(
+        key);
+    if (ret != ERR_OK) {
+        TAG_LOGW(AAFwkTag::INTENT, "delete intent info failed, bundleName: %{public}s, "
+            "moduleName: %{public}s, userId: %{public}d, ret: %{public}d",
+            key.bundleName.c_str(), key.moduleName.c_str(), key.userId, ret);
+        return false;
+    }
+    if (!key.moduleName.empty()) {
+        std::vector<ExtractInsightIntentInfo> remainingInfos;
+        GetInsightIntentInfoByName(IntentKey{key.bundleName, "", "", key.userId, key.appIndex}, remainingInfos);
+        if (remainingInfos.empty()) {
+            std::lock_guard<std::mutex> lock(genericInfosMutex_);
+            std::string mapKey = key.bundleName;
+            if (key.appIndex != -1) {
+                mapKey += "/" + FormatAppIndex(key.appIndex);
             }
-        }
-        if (intentGenericInfos_[bundleName].size() == 0) {
-            intentGenericInfos_.erase(bundleName);
-            bundleVersionMap_.erase(bundleName);
+            bundleVersionMap_.erase(mapKey);
         }
     }
-    return DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->DeleteStorageInsightIntentData(bundleName,
-        moduleName, userId);
+    return true;
 }
 
 int32_t InsightIntentDbCache::DeleteInsightIntentByUserId(const int32_t userId)
 {
-    std::lock_guard<std::mutex> lock(genericInfosMutex_);
-    if (userId == userId_) {
-        TAG_LOGE(AAFwkTag::INTENT, "can't delete the current user, userId %{public}d.", userId_);
-        return ERR_INVALID_VALUE;
+    {
+        std::lock_guard<std::mutex> lock(genericInfosMutex_);
+        if (userId == userId_) {
+            TAG_LOGE(AAFwkTag::INTENT, "can't delete the current user, userId %{public}d.", userId_);
+            return ERR_INVALID_VALUE;
+        }
     }
     return DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->DeleteStorageInsightIntentByUserId(userId);
 }
 
-bool InsightIntentDbCache::HasInsightIntentByName(uint32_t versionCode,
-    const std::string &bundleName, const int32_t userId)
+bool InsightIntentDbCache::HasInsightIntentByName(uint32_t versionCode, const IntentKey &key)
 {
     std::lock_guard<std::mutex> lock(genericInfosMutex_);
-    if (userId != userId_) {
+    if (key.userId != userId_) {
         TAG_LOGW(AAFwkTag::INTENT, "error userId %{public}d.", userId_);
         return false;
     }
-    if (bundleVersionMap_.find(bundleName) != bundleVersionMap_.end() &&
-        bundleVersionMap_[bundleName].compare(std::to_string(versionCode)) == 0) {
+    std::string mapKey = key.bundleName;
+    if (key.appIndex != -1) {
+        mapKey += "/" + FormatAppIndex(key.appIndex);
+    }
+    if (bundleVersionMap_.find(mapKey) != bundleVersionMap_.end() &&
+        bundleVersionMap_[mapKey].compare(std::to_string(versionCode)) == 0) {
         return true;
     }
-    TAG_LOGD(AAFwkTag::INTENT, "null bundleName %{public}s", bundleName.c_str());
+    TAG_LOGD(AAFwkTag::INTENT, "null bundleName %{public}s", key.bundleName.c_str());
     return false;
 }
+
+bool InsightIntentDbCache::HasBundleCache(const IntentKey &key)
+{
+    std::lock_guard<std::mutex> lock(genericInfosMutex_);
+    if (key.userId != userId_) {
+        TAG_LOGE(AAFwkTag::INTENT, "userId %{public}d. is not the cache userId %{public}d.", key.userId, userId_);
+        return false;
+    }
+    if (cacheLoadFailed_) {
+        TAG_LOGW(AAFwkTag::INTENT, "cache load failed, cannot confirm bundle: %{public}s, userId: %{public}d",
+            key.bundleName.c_str(), key.userId);
+        return false;
+    }
+    std::string mapKey = key.bundleName;
+    if (key.appIndex != -1) {
+        mapKey += "/" + FormatAppIndex(key.appIndex);
+    }
+    return bundleVersionMap_.find(mapKey) != bundleVersionMap_.end();
+}
+
+bool InsightIntentDbCache::IsCacheInitialized(int32_t userId)
+{
+    std::lock_guard<std::mutex> lock(genericInfosMutex_);
+    return userId_ == userId;
+}
+
 
 void InsightIntentDbCache::GetAllInsightIntentGenericInfo(const int32_t userId,
     std::vector<ExtractInsightIntentGenericInfo> &genericInfos)
 {
-    if (userId == userId_) {
-        std::lock_guard<std::mutex> lock(genericInfosMutex_);
-        for (auto iter = intentGenericInfos_.begin(); iter != intentGenericInfos_.end(); ++iter) {
-            genericInfos.insert(genericInfos.end(), iter->second.begin(), iter->second.end());
-        }
-        return;
-    }
-
     std::vector<ExtractInsightIntentInfo> totalInfos;
     std::vector<InsightIntentInfo> configInfos;
     std::map<std::string, std::string> bundleVersionMap;
@@ -175,21 +271,16 @@ void InsightIntentDbCache::GetAllInsightIntentGenericInfo(const int32_t userId,
     }
 }
 
-void InsightIntentDbCache::GetInsightIntentGenericInfoByName(const std::string &bundleName, const int32_t userId,
+void InsightIntentDbCache::GetInsightIntentGenericInfoByName(IntentKey key,
     std::vector<ExtractInsightIntentGenericInfo> &genericInfos)
 {
-    if (userId == userId_) {
-        std::lock_guard<std::mutex> lock(genericInfosMutex_);
-        if (intentGenericInfos_.find(bundleName) != intentGenericInfos_.end()) {
-            genericInfos = intentGenericInfos_[bundleName];
-        }
+    if (!ResolveDualMode(key)) {
         return;
     }
-
     std::vector<ExtractInsightIntentInfo> totalInfos;
     genericInfos.clear();
     if (DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->
-        LoadInsightIntentInfoByName(bundleName, userId, totalInfos) != ERR_OK) {
+        LoadInsightIntentInfoByName(key, totalInfos) != ERR_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "GetInsightIntentInfoByName failed");
         return;
     }
@@ -197,27 +288,22 @@ void InsightIntentDbCache::GetInsightIntentGenericInfoByName(const std::string &
         ExtractInsightIntentInfo info = totalInfos.at(i);
         genericInfos.push_back(info.genericInfo);
     }
+    std::sort(genericInfos.begin(), genericInfos.end(),
+        [](const auto &a, const auto &b) {
+            return a.moduleName == b.moduleName ? a.intentName < b.intentName
+                                                : a.moduleName < b.moduleName;
+        });
 }
 
-void InsightIntentDbCache::GetInsightIntentGenericInfo(const std::string &bundleName, const std::string &moduleName,
-    const std::string &intentName, const int32_t userId, ExtractInsightIntentGenericInfo &genericInfo)
+void InsightIntentDbCache::GetInsightIntentGenericInfo(IntentKey key,
+    ExtractInsightIntentGenericInfo &genericInfo)
 {
-    if (userId == userId_) {
-        std::lock_guard<std::mutex> lock(genericInfosMutex_);
-        if (intentGenericInfos_.find(bundleName) == intentGenericInfos_.end()) {
-            return;
-        }
-        for (auto info : intentGenericInfos_[bundleName]) {
-            if (info.moduleName == moduleName && info.intentName == intentName) {
-                genericInfo = info;
-            }
-        }
+    if (!ResolveDualMode(key)) {
         return;
     }
-    
     ExtractInsightIntentInfo info;
     if (DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->
-        LoadInsightIntentInfo(bundleName, moduleName, intentName, userId, info) != ERR_OK) {
+        LoadInsightIntentInfo(key, info) != ERR_OK) {
         TAG_LOGW(AAFwkTag::INTENT, "GetInsightIntentInfo failed");
         return;
     }
@@ -227,7 +313,6 @@ void InsightIntentDbCache::GetInsightIntentGenericInfo(const std::string &bundle
 void InsightIntentDbCache::GetAllInsightIntentInfo(const int32_t userId, std::vector<ExtractInsightIntentInfo> &infos,
     std::vector<InsightIntentInfo> &configInfos)
 {
-    std::lock_guard<std::mutex> lock(genericInfosMutex_);
     std::map<std::string, std::string> bundleVersionMap;
     if (DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentInfos(userId,
         bundleVersionMap, infos, configInfos) != ERR_OK) {
@@ -236,10 +321,18 @@ void InsightIntentDbCache::GetAllInsightIntentInfo(const int32_t userId, std::ve
     }
 }
 
+void InsightIntentDbCache::GetAllInsightIntentInfoForRegister(const int32_t userId,
+    std::vector<ExtractInsightIntentInfo> &infos, std::vector<InsightIntentInfo> &configInfos)
+{
+    GetAllInsightIntentInfo(userId, infos, configInfos);
+    CliTool::IntentFilterUtil filter;
+    filter.FilterGeneric(infos);
+    filter.FilterConfig(configInfos);
+}
+
 void InsightIntentDbCache::GetAllConfigInsightIntentInfo(
     const int32_t userId, std::vector<InsightIntentInfo> &configInfos)
 {
-    std::lock_guard<std::mutex> lock(genericInfosMutex_);
     if (DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadConfigInsightIntentInfos(
         userId, configInfos) != ERR_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "LoadIntentData failed");
@@ -247,45 +340,52 @@ void InsightIntentDbCache::GetAllConfigInsightIntentInfo(
     }
 }
 
-void InsightIntentDbCache::GetInsightIntentInfoByName(const std::string &bundleName, const int32_t userId,
+void InsightIntentDbCache::GetInsightIntentInfoByName(IntentKey key,
     std::vector<ExtractInsightIntentInfo> &infos)
 {
-    std::lock_guard<std::mutex> lock(genericInfosMutex_);
+    if (!ResolveDualMode(key)) {
+        return;
+    }
     if (DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->
-        LoadInsightIntentInfoByName(bundleName, userId, infos) != ERR_OK) {
+        LoadInsightIntentInfoByName(key, infos) != ERR_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "GetInsightIntentInfoByName failed");
         return;
     }
 }
 
-void InsightIntentDbCache::GetConfigInsightIntentInfoByName(const std::string &bundleName, const int32_t userId,
+void InsightIntentDbCache::GetConfigInsightIntentInfoByName(IntentKey key,
     std::vector<InsightIntentInfo> &infos)
 {
-    std::lock_guard<std::mutex> lock(genericInfosMutex_);
+    if (!ResolveDualMode(key)) {
+        return;
+    }
     if (DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->
-        LoadConfigInsightIntentInfoByName(bundleName, userId, infos) != ERR_OK) {
+        LoadConfigInsightIntentInfoByName(key, infos) != ERR_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "GetConfigInsightIntentInfoByName failed");
         return;
     }
 }
 
-void InsightIntentDbCache::GetInsightIntentInfo(const std::string &bundleName, const std::string &moduleName,
-    const std::string &intentName, const int32_t userId, ExtractInsightIntentInfo &info)
+void InsightIntentDbCache::GetInsightIntentInfo(IntentKey key, ExtractInsightIntentInfo &info)
 {
-    std::lock_guard<std::mutex> lock(genericInfosMutex_);
+    if (!ResolveDualMode(key)) {
+        return;
+    }
     if (DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->
-        LoadInsightIntentInfo(bundleName, moduleName, intentName, userId, info) != ERR_OK) {
+        LoadInsightIntentInfo(key, info) != ERR_OK) {
         TAG_LOGW(AAFwkTag::INTENT, "GetInsightIntentInfo failed");
         return;
     }
 }
 
-void InsightIntentDbCache::GetConfigInsightIntentInfo(const std::string &bundleName, const std::string &moduleName,
-    const std::string &intentName, const int32_t userId, InsightIntentInfo &info)
+void InsightIntentDbCache::GetConfigInsightIntentInfo(IntentKey key, InsightIntentInfo &info)
 {
-    std::lock_guard<std::mutex> lock(genericInfosMutex_);
+    if (!ResolveDualMode(key)) {
+        return;
+    }
     if (DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->
-        LoadConfigInsightIntentInfo(bundleName, moduleName, intentName, userId, info) != ERR_OK) {
+        LoadConfigInsightIntentInfo(key, info)
+        != ERR_OK) {
         TAG_LOGW(AAFwkTag::INTENT, "GetConfigInsightIntentInfo failed");
         return;
     }
@@ -293,8 +393,27 @@ void InsightIntentDbCache::GetConfigInsightIntentInfo(const std::string &bundleN
 
 void InsightIntentDbCache::BackupRdb()
 {
-    std::lock_guard<std::mutex> lock(genericInfosMutex_);
     DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->BackupRdb();
+}
+
+void InsightIntentDbCache::RemoveBundleVersionCacheEntry(const IntentKey &key)
+{
+    std::string mapKey = key.bundleName;
+    if (key.appIndex != -1) {
+        mapKey += "/" + FormatAppIndex(key.appIndex);
+    }
+    if (key.moduleName.empty()) {
+        std::lock_guard<std::mutex> lock(genericInfosMutex_);
+        bundleVersionMap_.erase(mapKey);
+        return;
+    }
+    std::vector<ExtractInsightIntentInfo> remainingInfos;
+    DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->
+        LoadInsightIntentInfoByName(IntentKey{key.bundleName, "", "", key.userId, key.appIndex}, remainingInfos);
+    if (remainingInfos.empty()) {
+        std::lock_guard<std::mutex> lock(genericInfosMutex_);
+        bundleVersionMap_.erase(mapKey);
+    }
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

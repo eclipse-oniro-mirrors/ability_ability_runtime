@@ -19,6 +19,8 @@ config("dialog_request_external_config") {
 }
 
 ohos_shared_library("dialogrequest_napi") {
+  branch_protector_ret = "pac_ret"
+
   sources = [
     "js_dialog_request.cpp",
     "js_dialog_request_callback.cpp",
@@ -27,7 +29,10 @@ ohos_shared_library("dialogrequest_napi") {
 
   public_configs = [ ":dialog_request_external_config" ]
 
-  configs = [ "${ability_runtime_services_path}/common:common_config" ]
+  configs = [
+    "${ability_runtime_services_path}/common:common_config",
+    "${ability_runtime_services_path}/common:optimize_config",
+  ]
 
   deps = [
     "${ability_runtime_innerkits_path}/runtime:runtime",
@@ -47,6 +52,8 @@ ohos_shared_library("dialogrequest_napi") {
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "napi:ace_napi",
+    "node:node_header_notice",
+    "libuv:uv",
   ]
 
   cflags_cc = []

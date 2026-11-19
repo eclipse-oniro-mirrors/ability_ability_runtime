@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -48,12 +48,13 @@ public:
     ETSEnvironment() {};
     ~ETSEnvironment();
 
-    static std::unique_ptr<ETSEnvironment> &GetInstance();
+    static std::shared_ptr<ETSEnvironment> GetInstance();
     static void InitETSSDKNS(const std::string &path);
     static void InitETSSysNS(const std::string &path);
     static ETSEnvFuncs *RegisterFuncs();
 
-    bool Initialize(const std::shared_ptr<AppExecFwk::EventRunner> eventRunner, bool isDebug);
+    bool Initialize(const std::shared_ptr<AppExecFwk::EventRunner> eventRunner, bool isDebug,
+        const std::string &bundleName = "");
     void RegisterUncaughtExceptionHandler(const ETSUncaughtExceptionInfo &handle);
     ani_env *GetAniEnv();
     bool HandleUncaughtError();
@@ -64,17 +65,21 @@ public:
     bool PostFork(void *napiEnv, const std::string &aotPath, const std::vector<std::string>& appInnerHspPathList,
         const std::vector<std::string> &staticHapModuleNameList,
         const std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> &commonHspBundleInfos,
-        const std::shared_ptr<OHOS::AppExecFwk::EventRunner> &eventRunner,
-        const bool isBaseLineProfile);
+        const std::shared_ptr<OHOS::AppExecFwk::EventRunner> &eventRunner, const bool isBaseLineProfile,
+        const std::vector<std::string> &staticPluginHspPathList, const std::string &bundleName);
     bool PreloadSystemClass(const char *className);
+
+    int32_t HotReload(const std::string &target, const std::string &patch);
+    int32_t ColdReload(const std::string &patch);
 
     void RemoveInstance(uint32_t instanceId);
     void StopDebugMode(void *jsVm);
     void StartDebuggerForSocketPair(std::string &option, int32_t socketFd);
-    void NotifyDebugMode(uint32_t tid, uint32_t instanceId, bool isStartWithDebug, void *jsVm);
+    void NotifyDebugMode(uint32_t tid, uint32_t instanceId, bool isStartWithDebug, void *jsVm, bool isDebugApp);
     void PostTask(const std::function<void()> &task, const std::string &name, int64_t delayTime);
     void BroadcastAndConnect(const std::string& bundleName, int socketFd);
-
+    bool StartProfiler(int tid, int32_t instanceId, bool debugApp, void *jsVm,
+        EtsProfilerType profiler, uint32_t interval);
     DebuggerPostTask GetDebuggerPostTask();
 
     struct VMEntry {
@@ -129,6 +134,8 @@ private:
     bool debugMode_ = false;
     std::vector<std::string> appInnerHspPathList_;
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> commonHspBundleInfos_;
+    std::vector<std::string> staticPluginHspPathList_;
+    std::string bundleName_;
 };
 } // namespace EtsEnv
 } // namespace OHOS

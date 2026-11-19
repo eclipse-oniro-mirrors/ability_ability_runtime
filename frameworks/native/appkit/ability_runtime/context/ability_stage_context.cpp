@@ -190,6 +190,17 @@ std::shared_ptr<Context> AbilityStageContext::CreateModuleContext(const std::str
     return contextImpl_->CreateModuleContext(bundleName, moduleName);
 }
 
+std::shared_ptr<Context> AbilityStageContext::CreateModuleContext(const std::string &moduleName,
+    std::shared_ptr<Context> inputContext)
+{
+    if (contextImpl_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPKIT, "null contextImpl");
+        return nullptr;
+    }
+
+    return contextImpl_->CreateModuleContext(moduleName, inputContext);
+}
+
 std::shared_ptr<Global::Resource::ResourceManager> AbilityStageContext::CreateModuleResourceManager(
     const std::string &bundleName, const std::string &moduleName)
 {

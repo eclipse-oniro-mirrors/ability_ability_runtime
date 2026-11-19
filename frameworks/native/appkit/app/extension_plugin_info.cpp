@@ -26,11 +26,11 @@
 namespace OHOS {
 namespace AbilityRuntime {
 #ifdef APP_USE_ARM64
-const std::string EXTENSION_LIB = "system/lib64/extensionability";
+const std::string EXTENSION_LIB = "/system/lib64/extensionability";
 #elif defined(APP_USE_X86_64)
-const std::string EXTENSION_LIB = "system/lib64/extensionability";
+const std::string EXTENSION_LIB = "/system/lib64/extensionability";
 #else
-const std::string EXTENSION_LIB = "system/lib/extensionability";
+const std::string EXTENSION_LIB = "/system/lib/extensionability";
 #endif
 const std::string PATH_SEPARATOR = "/";
 const std::string LIB_TYPE = ".so";

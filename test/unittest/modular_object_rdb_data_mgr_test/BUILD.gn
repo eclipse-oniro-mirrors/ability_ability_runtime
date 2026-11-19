@@ -24,6 +24,7 @@ ohos_unittest("modular_object_rdb_data_mgr_test") {
 
   sources = [
     "${ability_runtime_services_path}/abilitymgr/src/modular_object/modular_object_rdb_data_mgr.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/modular_object/modular_object_rdb_storage_mgr.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/hmsf_utils.cpp",
     "modular_object_rdb_data_mgr_test.cpp",
   ]
@@ -41,6 +42,7 @@ ohos_unittest("modular_object_rdb_data_mgr_test") {
   deps = [
     "${ability_runtime_abilitymgr_path}/:abilityms",
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_services_path}/common:app_util",
   ]
 
   external_deps = [

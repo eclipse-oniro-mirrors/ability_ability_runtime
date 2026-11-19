@@ -24,8 +24,8 @@ namespace AgentRuntime {
 
 /**
  * @interface IAgentReceiver
- * Interface for callbacks FROM agent extension to host application.
- * The host application implements this interface to receive callbacks from the agent.
+ * Inbound channel of the agent extension: implemented by the agent side and called by the host
+ * through AgentReceiverProxy to push data to the agent.
  * Corresponds to the JS AgentReceiver object.
  */
 class IAgentReceiver : public IRemoteBroker {
@@ -33,20 +33,22 @@ public:
     DECLARE_INTERFACE_DESCRIPTOR(u"ohos.agentruntime.IAgentReceiver");
 
     /**
-     * Send data from agent extension to host application.
+     * Push data from the host application to the agent extension.
      *
-     * @param connectorProxy The proxy object for host application to call back.
-     * @param data The string data to send to host application.
-     * @return Returns 0 on success, error code otherwise.
+     * @param connectorProxy The host-side connector object, delivered to the agent
+     *                       for the agent-to-host callback channel.
+     * @param data The string data to send to the agent extension.
+     * @return Returns the transport result only (oneway call; remote-side failures are not reflected).
      */
     virtual int32_t SendData(const sptr<IRemoteObject> &connectorProxy, const std::string &data) = 0;
 
     /**
-     * Send authorization from agent extension to host application.
+     * Push an authorization request from the host application to the agent extension.
      *
-     * @param connectorProxy The proxy object for host application to call back.
-     * @param data The authorization data to send to host application.
-     * @return Returns 0 on success, error code otherwise.
+     * @param connectorProxy The host-side connector object, delivered to the agent
+     *                       for the agent-to-host callback channel.
+     * @param data The authorization data to send to the agent extension.
+     * @return Returns the transport result only (oneway call; remote-side failures are not reflected).
      */
     virtual int32_t Authorize(const sptr<IRemoteObject> &connectorProxy, const std::string &data) = 0;
 
@@ -54,7 +56,7 @@ public:
      * Notify the connected agent extension that a LOW_CODE agent has been invoked.
      *
      * @param agentId The invoked LOW_CODE agent id.
-     * @return Returns 0 on success, error code otherwise.
+     * @return Returns the transport result only (oneway call; remote-side failures are not reflected).
      */
     virtual int32_t AgentInvoked(const std::string &agentId) = 0;
 

@@ -1250,3 +1250,44 @@ HWTEST_F(DistributedClientTest, OnCollaborateDone_0100, TestSize.Level3)
     EXPECT_EQ(result, ERR_NULL_OBJECT);
     GTEST_LOG_(INFO) << "DistributedClientTest OnCollaborateDone_0100 end";
 }
+
+/**
+ * @tc.number: StartRemoteIntent_0100
+ * @tc.name: StartRemoteIntent
+ * @tc.desc: StartRemoteIntent Test.
+ */
+HWTEST_F(DistributedClientTest, StartRemoteIntent_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "DistributedClientTest StartRemoteIntent_0100 start";
+    auto client = std::make_shared<OHOS::AAFwk::DistributedClient>();
+    OHOS::AAFwk::Want want;
+    AAFwk::IntentCallerInfo callerInfo;
+    auto result = client->StartRemoteIntent(want, callerInfo, nullptr);
+    if (client->GetDmsProxy() != nullptr) {
+        EXPECT_EQ(result, OHOS::AAFwk::DMS_PERMISSION_DENIED);
+    } else {
+        EXPECT_EQ(result, OHOS::AAFwk::INVALID_PARAMETERS_ERR);
+    }
+    GTEST_LOG_(INFO) << "DistributedClientTest StartRemoteIntent_0100 end";
+}
+
+/**
+ * @tc.number: SendIntentResult_0100
+ * @tc.name: SendIntentResult
+ * @tc.desc: SendIntentResult Test.
+ */
+HWTEST_F(DistributedClientTest, SendIntentResult_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "DistributedClientTest SendIntentResult_0100 start";
+    auto client = std::make_shared<OHOS::AAFwk::DistributedClient>();
+    OHOS::AAFwk::Want want;
+    AAFwk::IntentCallerInfo callerInfo;
+    std::string msg = "test";
+    auto result = client->SendIntentResult(want, callerInfo, msg);
+    if (client->GetDmsProxy() != nullptr) {
+        EXPECT_EQ(result, OHOS::AAFwk::DMS_PERMISSION_DENIED);
+    } else {
+        EXPECT_EQ(result, OHOS::AAFwk::INVALID_PARAMETERS_ERR);
+    }
+    GTEST_LOG_(INFO) << "DistributedClientTest SendIntentResult_0100 end";
+}

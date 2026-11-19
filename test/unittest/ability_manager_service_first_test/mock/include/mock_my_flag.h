@@ -25,6 +25,11 @@ public:
         IS_SA_AND_SHELL_CALL,
     };
     static int flag_;
+    static bool isWithNative_;
+    // Mock controls for AppMgrClient (injected via AppScheduler::appMgrClient_ swap).
+    static bool mockParentHas_;
+    static int mockParentState_;
+    static unsigned int mockParentAccessTokenId_;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -50,7 +50,8 @@ AppMgrResultCode AppMgrClient::TerminateAbility(const sptr<IRemoteObject>& token
     return AppMgrResultCode::RESULT_OK;
 }
 
-AppMgrResultCode AppMgrClient::UpdateAbilityState(const sptr<IRemoteObject>& token, const AbilityState state)
+AppMgrResultCode AppMgrClient::UpdateAbilityState(const sptr<IRemoteObject>& token, const AbilityState state,
+    bool isFromScreenOffBackground)
 {
     return AppMgrResultCode::RESULT_OK;
 }

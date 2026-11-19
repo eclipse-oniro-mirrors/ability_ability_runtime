@@ -32,7 +32,7 @@ class InsightIntentUtils {
 public:
     static uint32_t GetSrcEntry(const AppExecFwk::ElementName &elementName, const std::string &intentName,
         const AppExecFwk::ExecuteMode &executeMode, std::string &srcEntry, std::string *arkTSMode = nullptr,
-        int32_t userId = DEFAULT_INVAL_VALUE);
+        int32_t userId = DEFAULT_INVAL_VALUE, std::string *decoratorClass = nullptr);
     static uint32_t ConvertExtractInsightIntentGenericInfo(
         ExtractInsightIntentGenericInfo &genericInfo, InsightIntentInfoForQuery &queryInfo);
     static uint32_t ConvertExtractInsightIntentInfo(

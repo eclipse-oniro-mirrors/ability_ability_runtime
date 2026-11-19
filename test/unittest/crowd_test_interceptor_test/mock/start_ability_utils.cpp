@@ -17,12 +17,11 @@
 
 namespace OHOS {
 namespace AAFwk {
-bool StartAbilityUtils::skipCrowTest = false;
 bool StartAbilityUtils::retGetApplicationInfo = false;
 AppExecFwk::ApplicationInfo StartAbilityUtils::applicationInfo;
 
-bool StartAbilityUtils::GetApplicationInfo(const std::string &bundleName, int32_t userId,
-    AppExecFwk::ApplicationInfo &appInfo)
+bool StartAbilityUtils::GetApplicationInfo(const StartAbilityContext &ctx,
+    const std::string &bundleName, int32_t userId, AppExecFwk::ApplicationInfo &appInfo)
 {
     appInfo = applicationInfo;
     return retGetApplicationInfo;

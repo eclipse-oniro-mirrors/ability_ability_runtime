@@ -160,15 +160,6 @@ std::string AppUtils::GetCacheExtensionTypeList()
     return "";
 }
 
-bool AppUtils::IsAllowStartAbilityWithoutCallerToken(const std::string& bundleName, const std::string& abilityName)
-{
-    return true;
-}
-
-void AppUtils::LoadStartAbilityWithoutCallerToken()
-{
-}
-
 std::string AppUtils::GetBrokerDelegateBundleName()
 {
     return "";

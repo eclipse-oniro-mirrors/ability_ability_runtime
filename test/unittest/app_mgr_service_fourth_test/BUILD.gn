@@ -55,21 +55,21 @@ ohos_unittest("app_mgr_service_fourth_test") {
   ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/appkit:appkit_native",
     "${ability_runtime_path}/utils/global/common:runtime_utils",
     "${ability_runtime_path}/utils/server/startup:startup_util",
     "${ability_runtime_services_path}/common:app_util",
     "${ability_runtime_services_path}/common:hisysevent_report",
-    "${ability_runtime_test_path}/moduletest/common/ams:appmgr_mst_source",
     "${ability_runtime_services_path}/common:task_handler_wrap",
     "${ability_runtime_services_path}/common:user_controller",
+    "${ability_runtime_test_path}/moduletest/common/ams:appmgr_mst_source",
   ]
 
   external_deps = [
     "ability_base:configuration",
     "ability_base:want",
-    "ability_runtime:app_manager",
     "access_token:libaccesstoken_sdk",
     "access_token:libnativetoken",
     "access_token:libtoken_setproc",

@@ -77,7 +77,11 @@ void JsErrorObserver::CallJsFunction(napi_value obj, const char* methodName, nap
 void JsErrorObserver::AddJsObserverObject(const int32_t observerId, napi_value jsObserverObject, bool isSync)
 {
     napi_ref ref = nullptr;
-    napi_create_reference(env_, jsObserverObject, 1, &ref);
+    napi_status status = napi_create_reference(env_, jsObserverObject, 1, &ref);
+    if (status != napi_ok || ref == nullptr) {
+        TAG_LOGE(AAFwkTag::JSNAPI, "Failed to create reference for observer");
+        return;
+    }
     if (isSync) {
         jsObserverObjectMapSync_.emplace(
             observerId, std::shared_ptr<NativeReference>(reinterpret_cast<NativeReference*>(ref)));

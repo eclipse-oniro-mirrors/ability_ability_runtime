@@ -42,11 +42,26 @@ bool AbilityFirstFrameStateData::Marshalling(Parcel &parcel) const
 
 bool AbilityFirstFrameStateData::ReadFromParcel(Parcel &parcel)
 {
-    bundleName = parcel.ReadString();
-    moduleName = parcel.ReadString();
-    abilityName = parcel.ReadString();
-    appIndex = parcel.ReadInt32();
-    coldStart = parcel.ReadBool();
+    if (!parcel.ReadString(bundleName)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Read bundleName error");
+        return false;
+    }
+    if (!parcel.ReadString(moduleName)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Read moduleName error");
+        return false;
+    }
+    if (!parcel.ReadString(abilityName)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Read abilityName error");
+        return false;
+    }
+    if (!parcel.ReadInt32(appIndex)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Read appIndex error");
+        return false;
+    }
+    if (!parcel.ReadBool(coldStart)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Read coldStart error");
+        return false;
+    }
     return true;
 }
 

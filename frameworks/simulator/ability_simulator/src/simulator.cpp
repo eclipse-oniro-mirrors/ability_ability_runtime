@@ -46,7 +46,7 @@
 #include "resource_manager.h"
 #include "window_scene.h"
 #include "sys_timer.h"
-#include "source_map.h"
+#include "dfx_jsnapi.h"
 
 
 namespace OHOS {
@@ -72,6 +72,8 @@ const std::string DEPENDENCY_ALIAS = "dependencyAlias";
 constexpr char ARK_DEBUGGER_LIB_PATH[] = "libark_inspector.dll";
 #elif defined(MAC_PLATFORM)
 constexpr char ARK_DEBUGGER_LIB_PATH[] = "libark_inspector.dylib";
+#elif defined(LINUX_PLATFORM)
+constexpr char ARK_DEBUGGER_LIB_PATH[] = "libark_inspector.so";
 #else
 #error "Unsupported platform"
 #endif
@@ -155,7 +157,7 @@ private:
     std::shared_ptr<AppExecFwk::ApplicationInfo> appInfo_;
     std::shared_ptr<AppExecFwk::HapModuleInfo> moduleInfo_;
     std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo_;
-    std::shared_ptr<JsEnv::SourceMap> sourceMapPtr_;
+    // SourceMap now uses singleton — access via DFXJSNApi
     CallbackTypePostTask postTask_ = nullptr;
     void GetPkgContextInfoListMap(const std::map<std::string, std::string> &contextInfoMap,
         std::map<std::string, std::vector<std::vector<std::string>>> &pkgContextInfoMap,
@@ -220,9 +222,8 @@ bool SimulatorImpl::Initialize(const Options &options)
     }
 
     options_ = options;
-    sourceMapPtr_ = std::make_shared<JsEnv::SourceMap>();
     auto content = ReadSourceMap();
-    sourceMapPtr_->SplitSourceMap(content);
+    DFXJSNApi::SourceMapSplitSourceMap(content);
 
     postTask_ = options.postTask;
     if (!OnInit()) {
@@ -335,7 +336,10 @@ bool SimulatorImpl::ParseAbilityInfo(const std::string &abilitySrcPath, const st
         abilityInfo_ = AppExecFwk::BundleContainer::GetInstance().GetAbilityInfo(options_.moduleName, abilityName);
     } else {
         auto path = abilitySrcPath;
-        path.erase(path.rfind("."));
+        size_t dotPos = path.rfind(".");
+        if (dotPos != std::string::npos) {
+            path.erase(dotPos);
+        }
         auto abilityNameFromPath = path.substr(path.rfind('/') + 1, path.length());
         abilityInfo_ = AppExecFwk::BundleContainer::GetInstance().GetAbilityInfo(
             options_.moduleName, abilityNameFromPath);
@@ -430,7 +434,10 @@ bool SimulatorImpl::LoadAbilityStage(uint8_t *buffer, size_t len)
         return false;
     }
     std::string srcEntrance = moduleInfo_->srcEntrance;
-    srcEntrance.erase(srcEntrance.rfind("."));
+    size_t dotPos = srcEntrance.rfind(".");
+    if (dotPos != std::string::npos) {
+        srcEntrance.erase(dotPos);
+    }
     srcEntrance.append(".abc");
     srcEntrance = srcEntrance.substr(srcEntrance.find('/') + 1, srcEntrance.length());
 
@@ -966,7 +973,7 @@ void SimulatorImpl::GetPkgContextInfoListMap(const std::map<std::string, std::st
 {
     for (auto it = contextInfoMap.begin(); it != contextInfoMap.end(); it++) {
         std::vector<std::vector<std::string>> pkgContextInfoList;
-        auto jsonObject = nlohmann::json::parse(it->second);
+        auto jsonObject = nlohmann::json::parse(it->second, nullptr, false);
         if (jsonObject.is_discarded()) {
             TAG_LOGE(AAFwkTag::JSRUNTIME, "moduleName: %{public}s parse json error", it->first.c_str());
             continue;
@@ -1090,7 +1097,7 @@ void SimulatorImpl::ReportJsError(napi_value obj)
         TAG_LOGE(AAFwkTag::ABILITY_SIM, "errorStack empty");
         return;
     }
-    auto newErrorStack = sourceMapPtr_->TranslateBySourceMap(errorStack);
+    auto newErrorStack = DFXJSNApi::SourceMapTranslateBySourceMap(errorStack, false);
     summary += "Stacktrace:\n" + newErrorStack;
 
     std::stringstream summaryBody(summary);

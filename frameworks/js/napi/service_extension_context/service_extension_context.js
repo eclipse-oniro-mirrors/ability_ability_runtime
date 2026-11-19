@@ -55,7 +55,7 @@ class ServiceExtensionContext extends ExtensionContext {
   }
 
   connectServiceExtensionAbility(want, options) {
-    hilog.sLogI(domainID, TAG, 'connectServiceExtensionAbility');
+    hilog.sLogI(domainID, TAG, 'conSrvEA');
     return this.__context_impl__.connectServiceExtensionAbility(want, options);
   }
 
@@ -110,7 +110,7 @@ class ServiceExtensionContext extends ExtensionContext {
   }
 
   disconnectServiceExtensionAbility(connection, callback) {
-    hilog.sLogI(domainID, TAG, 'disconnectServiceExtensionAbility');
+    hilog.sLogI(domainID, TAG, 'disConSrvEA');
     return this.__context_impl__.disconnectServiceExtensionAbility(connection, callback);
   }
 
@@ -121,6 +121,10 @@ class ServiceExtensionContext extends ExtensionContext {
 
   requestModalUIExtension(want, callback) {
     return this.__context_impl__.requestModalUIExtension(want, callback);
+  }
+
+  requestModalUIExtensionWithAccount(want, accountId, callback) {
+    return this.__context_impl__.requestModalUIExtensionWithAccount(want, accountId, callback);
   }
   
   startAbilityByCall(want) {

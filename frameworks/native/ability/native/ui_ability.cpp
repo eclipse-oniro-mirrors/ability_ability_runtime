@@ -38,6 +38,9 @@
 #include "reverse_continuation_scheduler_primary_stage.h"
 #include "runtime.h"
 #include "resource_config_helper.h"
+#include <random>
+#include <sstream>
+#include <iomanip>
 #ifdef WITH_DLP
 #include "set_dlp_config.h"
 #endif // WITH_DLP
@@ -61,6 +64,32 @@ constexpr char SHOW_ON_LOCK_SCREEN[] = "ShowOnLockScreen";
 constexpr char DLP_PARAMS_SECURITY_FLAG[] = "ohos.dlp.params.securityFlag";
 #endif // WITH_DLP
 constexpr char COMPONENT_STARTUP_NEW_RULES[] = "component.startup.newRules";
+
+std::string GenerateInstanceId()
+{
+    std::random_device rd;
+    std::mt19937_64 gen(rd());
+    std::uniform_int_distribution<uint64_t> dist(0, UINT64_MAX);
+    uint64_t high = dist(gen);
+    uint64_t low = dist(gen);
+    high = (high & 0xFFFFFFFFFFFF0FFFULL) | 0x0000000000004000ULL;
+    low = (low & 0x3FFFFFFFFFFFFFFFULL) | 0x8000000000000000ULL;
+    std::ostringstream oss;
+    constexpr int32_t digSize = 4;
+    constexpr uint8_t bitMoveSize1 = 48;
+    constexpr uint8_t bitMoveSize2 = 32;
+    constexpr uint8_t bitMoveSize3 = 16;
+    oss << std::hex << std::setfill('0') <<
+        std::setw(digSize) << ((high >> bitMoveSize1) & 0xFFFF) << "-" <<
+        std::setw(digSize) << ((high >> bitMoveSize2) & 0xFFFF) << "-" <<
+        std::setw(digSize) << ((high >> bitMoveSize3) & 0xFFFF) << "-" <<
+        std::setw(digSize) << (high & 0xFFFF) << "-" <<
+        std::setw(digSize) << ((low >> bitMoveSize1) & 0xFFFF) <<
+        std::setw(digSize) << ((low >> bitMoveSize2) & 0xFFFF) <<
+        std::setw(digSize) << ((low >> bitMoveSize3) & 0xFFFF) <<
+        std::setw(digSize) << (low & 0xFFFF);
+    return oss.str();
+}
 #ifdef SUPPORT_SCREEN
 constexpr int32_t ERR_INVALID_VALUE = -1;
 constexpr const char* IS_CALLING_FROM_DMS = "supportCollaborativeCallingFromDmsInAAFwk";
@@ -98,6 +127,8 @@ void UIAbility::Init(std::shared_ptr<AppExecFwk::AbilityLocalRecord> record,
         TAG_LOGE(AAFwkTag::UIABILITY, "null record");
         return;
     }
+    instanceId_ = GenerateInstanceId();
+    TAG_LOGI(AAFwkTag::UIABILITY, "instanceId: %{public}s", instanceId_.c_str());
     application_ = application;
     abilityInfo_ = record->GetAbilityInfo();
     handler_ = handler;
@@ -183,14 +214,19 @@ void UIAbility::AttachAbilityContext(const std::shared_ptr<AbilityRuntime::Abili
         [abilityWptr, abilityContextWptr](AppExecFwk::Configuration &config) {
         std::shared_ptr<UIAbility> abilitySptr = abilityWptr.lock();
         std::shared_ptr<AbilityRuntime::AbilityContext> abilityContext = abilityContextWptr.lock();
-        if (abilitySptr == nullptr || abilityContext == nullptr ||
-            abilityContext->GetAbilityInfo() == nullptr) {
+        if (abilitySptr == nullptr || abilityContext == nullptr || abilityContext->GetAbilityInfo() == nullptr) {
             TAG_LOGE(AAFwkTag::UIABILITY, "null abilitySptr or null abilityContext or null GetAbilityInfo");
             return;
         }
         if (abilityContext->GetAbilityConfiguration() == nullptr) {
-            auto abilityModuleContext = abilityContext->CreateModuleContext(
-                abilityContext->GetAbilityInfo()->moduleName);
+            auto abilityContextImpl = std::static_pointer_cast<AbilityContextImpl>(abilityContext);
+            auto abilityContextBase = std::static_pointer_cast<AbilityRuntime::Context>(abilityContext);
+            if (abilityContextImpl == nullptr || abilityContextBase == nullptr) {
+                TAG_LOGE(AAFwkTag::UIABILITY, "nullptr");
+                return;
+            }
+            auto abilityModuleContext = abilityContextImpl->CreateModuleContext(
+                abilityContext->GetAbilityInfo()->moduleName, abilityContextBase);
             if (abilityModuleContext == nullptr) {
                 TAG_LOGE(AAFwkTag::UIABILITY, "null abilityModuleContext");
                 return;
@@ -210,8 +246,7 @@ void UIAbility::AttachAbilityContext(const std::shared_ptr<AbilityRuntime::Abili
                 config.AddItem(AAFwk::GlobalConfigurationKey::COLORMODE_IS_SET_BY_APP,
                     AppExecFwk::ConfigurationInner::IS_SET_BY_APP);
             }
-            abilityContext->GetAbilityConfiguration()->
-                RemoveItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE);
+            abilityContext->GetAbilityConfiguration()->RemoveItem(AAFwk::GlobalConfigurationKey::SYSTEM_COLORMODE);
             abilityContext->GetAbilityConfiguration()->
                 RemoveItem(AAFwk::GlobalConfigurationKey::COLORMODE_IS_SET_BY_APP);
         }
@@ -255,7 +290,11 @@ void UIAbility::OnStart(const AAFwk::Want &want, sptr<AAFwk::SessionInfo> sessio
     securityFlag_ = want.GetBoolParam(DLP_PARAMS_SECURITY_FLAG, false);
     (const_cast<AAFwk::Want &>(want)).RemoveParam(DLP_PARAMS_SECURITY_FLAG);
 #endif // WITH_DLP
-    SetWant(want);
+
+    AAFwk::Want wantWithoutRequestId = want;
+    wantWithoutRequestId.RemoveParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID);
+    wantWithoutRequestId.RemoveParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID);
+    SetWant(wantWithoutRequestId);
     TAG_LOGD(AAFwkTag::UIABILITY, "ability: %{public}s", abilityInfo_->name.c_str());
 #ifdef SUPPORT_SCREEN
     if (sessionInfo != nullptr) {
@@ -313,6 +352,9 @@ void UIAbility::OnStop()
 #ifdef SUPPORT_SCREEN
     Rosen::DisplayManager::GetInstance().RemoveDisplayIdFromAms(token_);
 #endif
+
+    // Set isDestroyed to true after onDestroy callback
+    isDestroyed_ = true;
     TAG_LOGD(AAFwkTag::UIABILITY, "end");
 }
 
@@ -521,6 +563,11 @@ std::string UIAbility::GetModuleName()
     }
 
     return abilityInfo_->moduleName;
+}
+
+std::string UIAbility::GetInstanceId() const
+{
+    return instanceId_;
 }
 
 void UIAbility::OnAbilityResult(int requestCode, int resultCode, const AAFwk::Want &want)

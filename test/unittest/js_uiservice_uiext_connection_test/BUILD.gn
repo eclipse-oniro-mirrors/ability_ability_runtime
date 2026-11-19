@@ -39,14 +39,14 @@ ohos_unittest("js_uiservice_uiext_connection_test") {
   configs = []
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/ability/native:ui_extension",
     "${ability_runtime_native_path}/ability/native:ui_service_extension_connection",
   ]
 
   external_deps = [
     "ability_base:want",
-    "ability_runtime:ability_manager",
-    "ability_runtime:runtime",
     "c_utils:utils",
     "ets_runtime:libark_jsruntime",
     "googletest:gmock_main",

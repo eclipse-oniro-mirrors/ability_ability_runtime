@@ -46,6 +46,7 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     std::vector<std::string> abilityLists;
     std::vector<std::string> abilityList;
     int32_t pid;
+    int32_t callerPid;
     std::string bundleName;
     std::string abilityName;
     int32_t uid;
@@ -56,6 +57,7 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     bool fromKillWithReason;
     FuzzedDataProvider fdp(data, size);
     pid = fdp.ConsumeIntegral<int32_t>();
+    callerPid = fdp.ConsumeIntegral<int32_t>();
     fromKillWithReason = fdp.ConsumeBool();
     bundleName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
     abilityName = fdp.ConsumeRandomLengthString(STRING_MAX_LENGTH);
@@ -79,6 +81,8 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     infos->IsExitReasonValid(exitReason);
     infos->GetActiveAbilityListWithPid(uid, abilityList, pid);
     infos->RecordUIAbilityExitReason(pid, abilityName, exitReason);
+    infos->RecordUIAbilityExitReason(pid, abilityName, exitReason, callerPid);
+    infos->RecordKillCallerInfo(pid, callerPid);
     infos->GetRunningProcessInfo(pid, userId, bundleName, processInfo);
     return true;
 }

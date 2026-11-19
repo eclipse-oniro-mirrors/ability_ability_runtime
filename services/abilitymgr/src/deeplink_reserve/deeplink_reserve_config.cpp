@@ -193,7 +193,7 @@ void DeepLinkReserveConfig::LoadReservedUrilItem(const nlohmann::json &jsonUriOb
     }
     if (jsonUriObject.contains(PATH_NAME) && jsonUriObject.at(PATH_NAME).is_string()) {
         std::string pathName = jsonUriObject.at(PATH_NAME).get<std::string>();
-        reserveUri.path = PATH_NAME;
+        reserveUri.path = pathName;
         TAG_LOGD(AAFwkTag::ABILITYMGR, "path:%{public}s", reserveUri.path.c_str());
     }
     if (jsonUriObject.contains(PATH_START_WITH_NAME) && jsonUriObject.at(PATH_START_WITH_NAME).is_string()) {

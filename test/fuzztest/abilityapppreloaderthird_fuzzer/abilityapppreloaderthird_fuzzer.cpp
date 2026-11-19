@@ -93,8 +93,8 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     appPreloader->GeneratePreloadRequest(bundleName, userId, appIndex, requestPhase);
     appPreloaderNull->GeneratePreloadRequest(bundleName, userId, appIndex, request);
 
-    appPreloader->GeneratePreloadExtensionRequest(launchWant, validAbilityInfo, userId, appIndex, request);
-    appPreloaderNull->GeneratePreloadExtensionRequest(launchWant, validAbilityInfo, userId, appIndex, request);
+    appPreloader->GeneratePreloadExtensionRequest(launchWant, userId, appIndex, request);
+    appPreloaderNull->GeneratePreloadExtensionRequest(launchWant, userId, appIndex, request);
 
     appPreloader->GetBundleManagerHelper();
     appPreloaderNull->GetBundleManagerHelper();

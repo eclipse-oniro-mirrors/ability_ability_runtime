@@ -218,12 +218,10 @@ bool BundleMgrService::GetBundleInfo(
     int index4 = 104;
     if (bundleName == COM_OHOS_HELLO + std::to_string(index1) ||
         bundleName == COM_OHOS_HELLO + std::to_string(index2)) {
-        bundleInfo.jointUserId = "join";
         bundleInfo.appId = bundleName + "_xxx";
     }
     if (bundleName == COM_OHOS_HELLO + std::to_string(index3) ||
         bundleName == COM_OHOS_HELLO + std::to_string(index4)) {
-        bundleInfo.jointUserId = "";
         bundleInfo.appId = bundleName + "_xxx";
     }
     if (bundleName == "KeepAliveApplication") {

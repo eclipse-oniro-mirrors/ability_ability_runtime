@@ -16,12 +16,13 @@
 import { AbilityInfo } from 'bundleManager.AbilityInfo';
 import Want from '@ohos.app.ability.Want';
 import StartOptions from '@ohos.app.ability.StartOptions';
+import ShowParams from '@ohos.app.ability.ShowParams';
 import { Caller } from '@ohos.app.ability.UIAbility';
 import { BusinessError, AsyncCallback, RecordData } from '@ohos.base';
 import { AbilityResult } from 'ability.abilityResult';
 import { Configuration } from '@ohos.app.ability.Configuration';
 import { ConnectOptions } from 'ability.connectOptions';
-import Context from 'application.Context';
+import Context from './Context';
 import window from '@ohos.window';
 import AsyncCallbackWrapper from '../utils/AbilityUtils';
 import OpenLinkOptions from '@ohos.app.ability.OpenLinkOptions';
@@ -35,6 +36,8 @@ import dialogRequest from '@ohos.app.ability.dialogRequest';
 import image from '@ohos.multimedia.image';
 import { LocalStorage } from '@ohos.arkui.stateManagement';
 import AbilityConstant  from '@ohos.app.ability.AbilityConstant';
+import { ApplicationInfo } from 'bundleManager.ApplicationInfo'
+import resmgr from '@ohos.resourceManager'
 
 export class Cleaner {
   public ptr: long = 0;
@@ -64,6 +67,28 @@ export default class UIAbilityContext extends Context {
   abilityInfo!: AbilityInfo;
   windowStage!: window.WindowStage;
   currentHapModuleInfo!: HapModuleInfo;
+
+  constructor(workContext :long, etsContext: long, appInfoObj:ApplicationInfo, resourceMgrObj:resmgr.ResourceManager,  preferencesDirString:string,  databaseDirString:string , cacheDirString:string,
+  filesDirString:string, tempDirString:string, cloudFileDirString:string, distributedFilesDirString:string, bundleCodeDirString:string, resourceDirString:string,
+  processNameString:string, eventHubNativeContextLong: long, abilityInfoRef:AbilityInfo, configParam:Configuration ,currentHapModuleInfoParam: HapModuleInfo) {
+    super(eventHubNativeContextLong,workContext);
+    this.setEtsAbilityContextPtr(etsContext);
+    this.applicationInfo = appInfoObj;
+    this.resourceManager = resourceMgrObj;
+    this.preferencesDir =preferencesDirString;
+    this.databaseDir =databaseDirString;
+    this.cacheDir = cacheDirString;
+    this.filesDir = filesDirString;
+    this.tempDir=tempDirString;
+    this.cloudFileDir = cloudFileDirString;
+    this.distributedFilesDir = distributedFilesDirString
+    this.bundleCodeDir = bundleCodeDirString;
+    this.resourceDir = resourceDirString;
+    this.processName = processNameString;
+    this.abilityInfo = abilityInfoRef;
+    this.config = configParam;
+    this.currentHapModuleInfo =  currentHapModuleInfoParam;
+  }
 
   private setEtsAbilityContextPtr(ptr: long) {
     if (this.etsAbilityContextPtr == 0) {
@@ -128,7 +153,12 @@ export default class UIAbilityContext extends Context {
 
   private native nativeRequestModalUIExtension(pickerWant: Want, callback: AsyncCallbackWrapper<void>): void;
 
+  private native nativeRequestModalUIExtensionWithAccount(
+    pickerWant: Want, accountId: int, callback: AsyncCallbackWrapper<void>): void;
+
   private native nativeBackToCallerAbilityWithResult(abilityResult: AbilityResult, requestCode: string, callback: AsyncCallbackWrapper<void>): void;
+
+  private native nativeBackToCallerAppWithResult(abilityResult: AbilityResult, requestCode: string, callback: AsyncCallbackWrapper<void>): void;
 
   private native nativeSetMissionLabel(label: string, callback: AsyncCallbackWrapper<void>): void;
 
@@ -139,20 +169,25 @@ export default class UIAbilityContext extends Context {
   private native nativeSetColorMode(colorMode: ConfigurationConstant.ColorMode): void;
 
   private native nativeChangeAbilityVisibility(isShow: boolean, callback: AsyncCallbackWrapper<void>): void;
+  
+  private native nativeChangeAbilityVisibility(isShow: boolean, params: ShowParams, callback: AsyncCallbackWrapper<void>): void;
 
-  private native nativeStartAbilityByTypeSync(type: string, wantParam: Record<string, RecordData>,
-    startCallback: AbilityStartCallback): BusinessError;
+  private native nativeStartAbilityByType(type: string, wantParam: Record<string, RecordData>,
+    startCallback: AbilityStartCallback, callback: AsyncCallbackWrapper<void>): void;
  
   private native nativeRequestDialogService(want: Want,
     result: AsyncCallbackWrapper<dialogRequest.RequestResult>): void;
 
-  private native nativeSetAbilityInstanceInfo(label: string, icon: image.PixelMap, callback: AsyncCallbackWrapper<void>): void;
+  private native nativeSetAbilityInstanceInfo(label: string, icon: image.PixelMap, groupId: string,
+    callback: AsyncCallbackWrapper<void>): void;
 
   private native nativeOpenAtomicService(appId: string, callback: AsyncCallbackWrapper<AbilityResult>, options?: AtomicServiceOptions): void;
 
   private native nativeStartSelfUIAbilityInCurrentProcessSync(want: Want, specifiedFlag: string, callback: AsyncCallbackWrapper<void>): void;
 
   private native nativeStartSelfUIAbilityInCurrentProcessSync(want: Want, specifiedFlag: string, options: StartOptions, callback: AsyncCallbackWrapper<void>): void;
+
+  private native nativeStartSelfUIAbilityInChildProcessSync(want: Want, specifiedFlag: string, callback: AsyncCallbackWrapper<void>): void;
 
   private native nativeOnSetRestoreEnabled(enabled: boolean): void;
 
@@ -206,7 +241,7 @@ export default class UIAbilityContext extends Context {
 
   private native nativeOpenAtomicServiceCheck(): void;
 
-  private native nativeSetAbilityInstanceInfoCheck(label: string, icon: image.PixelMap): void;
+  private native nativeSetAbilityInstanceInfoCheck(label: string, icon: image.PixelMap, groupId: string): void;
 
   private native nativeSetMissionIconCheck(icon: image.PixelMap): void;
 
@@ -214,6 +249,8 @@ export default class UIAbilityContext extends Context {
   private native nativeSetMissionWindowIcon(windowIcon: image.PixelMap, callback: AsyncCallbackWrapper<void>): void;
 
   private native nativeSetOnNewWantSkipScenarios(scenarios: int, callback: AsyncCallbackWrapper<void>): void;
+
+  private native nativeStartSelf(callback: AsyncCallbackWrapper<void>): void;
 
   startAbility(want: Want, callback: AsyncCallback<void>): void {
     let myCall = new AsyncCallbackWrapper<void>(callback);
@@ -443,6 +480,21 @@ export default class UIAbilityContext extends Context {
     });
   }
 
+  requestModalUIExtensionWithAccount(pickerWant: Want, accountId: int): Promise<void> {
+    return new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
+      let syncCall = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+        if (err == null || err.code == 0) {
+          resolve(undefined);
+        } else {
+          reject(err);
+        }
+      });
+      taskpool.execute(() => {
+        this.nativeRequestModalUIExtensionWithAccount(pickerWant, accountId, syncCall);
+      });
+    });
+  }
+
   backToCallerAbilityWithResult(abilityResult: AbilityResult, requestCode: string): Promise<void> {
     return new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
       let syncCall = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
@@ -454,6 +506,21 @@ export default class UIAbilityContext extends Context {
       });
       taskpool.execute(() => {
         this.nativeBackToCallerAbilityWithResult(abilityResult, requestCode, syncCall);
+      });
+    });
+  }
+
+  backToCallerAppWithResult(abilityResult: AbilityResult, requestCode: string): Promise<void> {
+    return new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
+      let syncCall = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+        if (err == null || err.code == 0) {
+          resolve(undefined);
+        } else {
+          reject(err);
+        }
+      });
+      taskpool.execute(() => {
+        this.nativeBackToCallerAppWithResult(abilityResult, requestCode, syncCall);
       });
     });
   }
@@ -526,18 +593,15 @@ export default class UIAbilityContext extends Context {
 
   startAbilityByType(type: string, wantParam: Record<string, RecordData>, startCallback: AbilityStartCallback,
     callback: AsyncCallback<void>): void {
-    let p1 = taskpool.execute((): BusinessError => {
-      return this.nativeStartAbilityByTypeSync(type, wantParam, startCallback);
-    });
-    p1.then((e: Any) => {
-      let retError = e as BusinessError;
-      if (retError.code === 0) {
+    let asyncCall = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+      if (err == null || err.code == 0) {
         callback(null, undefined);
       } else {
-        callback(retError, undefined);
+        callback(err, undefined);
       }
-    }, (err: Error): void => {
-      callback(err as BusinessError, undefined);
+    });
+    taskpool.execute((): void => {
+      this.nativeStartAbilityByType(type, wantParam, startCallback, asyncCall);
     });
   }
 
@@ -553,6 +617,23 @@ export default class UIAbilityContext extends Context {
       });
     taskpool.execute((): void => {
       this.nativeChangeAbilityVisibility(true, myCall);
+    });
+  });
+  return p;
+}
+
+  showAbility(params: ShowParams): Promise<void> {
+  let p: Promise<void> =
+    new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
+      let myCall = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+        if (err == null || err.code == 0) {
+          resolve(undefined);
+        } else {
+          reject(err);
+        }
+      });
+    taskpool.execute((): void => {
+      this.nativeChangeAbilityVisibility(true, params, myCall);
     });
   });
   return p;
@@ -578,18 +659,15 @@ hideAbility(): Promise<void> {
   startAbilityByType(type: string, wantParam: Record<string, RecordData>,
     startCallback: AbilityStartCallback): Promise<void> {
     let p = new Promise<void>((resolve: (v: undefined) => void, reject: (error: BusinessError) => void): void => {
-      let p1 = taskpool.execute((): BusinessError => {
-        return this.nativeStartAbilityByTypeSync(type, wantParam, startCallback);
-      });
-      p1.then((e: Any) => {
-        let retError = e as BusinessError;
-        if (retError.code === 0) {
+      let myCall = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+        if (err == null || err.code == 0) {
           resolve(undefined);
         } else {
-          reject(retError);
+          reject(err);
         }
-      }).catch((err: Error): void => {
-        reject(err as BusinessError);
+      });
+      taskpool.execute((): void => {
+        this.nativeStartAbilityByType(type, wantParam, startCallback, myCall);
       });
     });
     return p;
@@ -713,8 +791,25 @@ hideAbility(): Promise<void> {
     });
   }
 
+  startSelfUIAbilityInChildProcess(want: Want, specifiedFlag: string): Promise<void> {
+    return new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
+      let syncCall = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+        if (err == null || err.code == 0) {
+          resolve(undefined);
+        } else {
+          reject(err);
+        }
+      });
+      taskpool.execute((): void => {
+        this.nativeStartSelfUIAbilityInChildProcessSync(want, specifiedFlag, syncCall);
+      }).catch((err: Error): void => {
+        reject(err as BusinessError);
+      });
+    });
+  }
+
   setAbilityInstanceInfo(label: string, icon: image.PixelMap): Promise<void> {
-    this.nativeSetAbilityInstanceInfoCheck(label, icon);
+    this.nativeSetAbilityInstanceInfoCheck(label, icon, '');
     let p:Promise<void> = new Promise<void>((resolve: (data:undefined)=>void, reject: (err: BusinessError)=>void):void => {
       let syncCall = new AsyncCallbackWrapper<void>((err: BusinessError | null)=>{
         if (err == null || err.code == 0) {
@@ -724,7 +819,24 @@ hideAbility(): Promise<void> {
         }
       });
       taskpool.execute((): void => {
-        this.nativeSetAbilityInstanceInfo(label, icon, syncCall);
+        this.nativeSetAbilityInstanceInfo(label, icon, '', syncCall);
+      });
+    });
+    return p;
+  }
+
+  setAbilityInstanceInfo(label: string, icon: image.PixelMap, groupId: string): Promise<void> {
+    this.nativeSetAbilityInstanceInfoCheck(label, icon, groupId);
+    let p:Promise<void> = new Promise<void>((resolve: (data:undefined)=>void, reject: (err: BusinessError)=>void):void => {
+      let syncCall = new AsyncCallbackWrapper<void>((err: BusinessError | null)=>{
+        if (err == null || err.code == 0) {
+          resolve(undefined);
+        } else {
+          reject(err);
+        }
+      });
+      taskpool.execute((): void => {
+        this.nativeSetAbilityInstanceInfo(label, icon, groupId, syncCall);
       });
     });
     return p;
@@ -1097,6 +1209,23 @@ hideAbility(): Promise<void> {
       });
       taskpool.execute((): void => {
         this.nativeSetOnNewWantSkipScenarios(scenarios, callback);
+      }).catch((err: Error): void => {
+        reject(err as BusinessError);
+      });
+    });
+  }
+
+  startSelf(): Promise<void> {
+    return new Promise<void>((resolve: (data: undefined) => void, reject: (err: BusinessError) => void): void => {
+      let callback = new AsyncCallbackWrapper<void>((err: BusinessError | null) => {
+        if (err == null || err.code == 0) {
+          resolve(undefined);
+        } else {
+          reject(err);
+        }
+      });
+      taskpool.execute((): void => {
+        this.nativeStartSelf(callback);
       }).catch((err: Error): void => {
         reject(err as BusinessError);
       });

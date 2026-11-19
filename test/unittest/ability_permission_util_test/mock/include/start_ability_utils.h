@@ -20,12 +20,14 @@
 
 namespace OHOS {
 namespace AAFwk {
+struct StartAbilityContext;
 class StartAbilityUtils {
 public:
     static bool retGetApplicationInfo;
     static AppExecFwk::ApplicationInfo retApplicationInfo;
 
-    static bool GetApplicationInfo(const std::string &bundleName, int32_t userId,
+    static bool GetApplicationInfo(const StartAbilityContext &ctx,
+        const std::string &bundleName, int32_t userId,
         AppExecFwk::ApplicationInfo &appInfo)
     {
         appInfo = retApplicationInfo;

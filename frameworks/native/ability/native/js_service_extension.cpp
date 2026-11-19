@@ -15,10 +15,13 @@
 
 #include "js_service_extension.h"
 
+#include <unordered_set>
+
 #include "ability_business_error.h"
 #include "ability_handler.h"
 #include "ability_info.h"
 #include "ability_manager_client.h"
+#include "ability_manager_errors.h"
 #include "configuration_utils.h"
 #include "display_util.h"
 #include "freeze_util.h"
@@ -31,6 +34,7 @@
 #include "js_extension_common.h"
 #include "js_extension_context.h"
 #include "js_runtime.h"
+#include "path_utils.h"
 #include "js_runtime_utils.h"
 #include "js_service_extension_context.h"
 #include "napi/native_api.h"
@@ -38,12 +42,20 @@
 #include "napi_common_configuration.h"
 #include "napi_common_want.h"
 #include "napi_remote_object.h"
+#include "napi_common_util.h"
+#include "skill/skill_execute_param.h"
+#include "skill/skill_execute_result.h"
+#include "string_wrapper.h"
+#include "want_params.h"
+#include "extractor.h"
 #ifdef SUPPORT_GRAPHICS
 #include "iservice_registry.h"
 #include "system_ability_definition.h"
 #include "window_scene.h"
 #endif
 
+using Extractor = OHOS::AbilityBase::Extractor;
+using ExtractorUtil = OHOS::AbilityBase::ExtractorUtil;
 namespace OHOS {
 namespace AbilityRuntime {
 namespace {
@@ -155,6 +167,7 @@ JsServiceExtension::~JsServiceExtension()
         context->Unbind();
     }
 
+    SetExtensionCommon(nullptr);
     jsRuntime_.FreeNativeReference(std::move(jsObj_));
     jsRuntime_.FreeNativeReference(std::move(shellContextRef_));
 }
@@ -563,6 +576,273 @@ bool JsServiceExtension::HandleInsightIntent(const AAFwk::Want &want)
     return true;
 }
 
+bool JsServiceExtension::HandleExecuteSkill(const AAFwk::Want &want)
+{
+    TAG_LOGI(AAFwkTag::SERVICE_EXT, "called");
+    auto param = std::make_shared<AppExecFwk::SkillExecuteParam>();
+    bool ret = AppExecFwk::SkillExecuteParam::GenerateFromWant(want, *param);
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "GenerateFromWant failed");
+        return false;
+    }
+    ExecuteSkill(want, param);
+    return true;
+}
+
+namespace {
+std::string ExtractBaseName(const std::string &path)
+{
+    auto slashPos = path.rfind('/');
+    auto dotPos = path.rfind('.');
+    if (slashPos == std::string::npos) {
+        slashPos = 0;
+    } else {
+        slashPos++;
+    }
+    if (dotPos == std::string::npos || dotPos <= slashPos) {
+        return path.substr(slashPos);
+    }
+    return path.substr(slashPos, dotPos - slashPos);
+}
+
+bool IsBlockedSkillKeyName(const std::string &name)
+{
+    static const std::unordered_set<std::string> BLOCKED = {
+        "constructor", "__proto__", "__defineGetter__", "__defineSetter__",
+        "__lookupGetter__", "__lookupSetter__", "toString", "toLocaleString",
+        "valueOf", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable"
+    };
+    return BLOCKED.count(name) > 0;
+}
+} // namespace
+
+napi_value JsServiceExtension::LoadSkillFunction(
+    const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param, napi_value &outJsObj)
+{
+    napi_env env = jsRuntime_.GetNapiEnv();
+    napi_value method = nullptr;
+
+    if (!param->scriptPath_.empty()) {
+        if (!IsPathValid(param->scriptPath_)) {
+            TAG_LOGW(AAFwkTag::SERVICE_EXT, "invalid scriptPath");
+            return nullptr;
+        }
+        auto scriptBase = ExtractBaseName(param->scriptPath_);
+        for (const auto &srcEntry : param->srcEntries_) {
+            if (ExtractBaseName(srcEntry) != scriptBase) {
+                continue;
+            }
+            if (TryLoadSkillEntry(srcEntry, param, env, outJsObj, method)) {
+                TAG_LOGI(AAFwkTag::SERVICE_EXT,
+                    "func found via scriptPath match, srcEntry:%{public}s", srcEntry.c_str());
+                return method;
+            }
+        }
+        TAG_LOGW(AAFwkTag::SERVICE_EXT,
+            "scriptPath match failed, fallback to full scan, scriptPath:%{public}s",
+            param->scriptPath_.c_str());
+    }
+
+    for (const auto &srcEntry : param->srcEntries_) {
+        if (TryLoadSkillEntry(srcEntry, param, env, outJsObj, method)) {
+            TAG_LOGI(AAFwkTag::SERVICE_EXT, "func found in srcEntry:%{public}s", srcEntry.c_str());
+            return method;
+        }
+        TAG_LOGW(AAFwkTag::SERVICE_EXT, "func not found:%{public}s in srcEntry:%{public}s",
+            param->functionName_.c_str(), srcEntry.c_str());
+    }
+    return method;
+}
+
+bool JsServiceExtension::TryLoadSkillEntry(const std::string &srcEntry,
+    const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param,
+    napi_env env, napi_value &outJsObj, napi_value &method)
+{
+    if (param == nullptr) {
+        TAG_LOGW(AAFwkTag::SERVICE_EXT, "param is null");
+        return false;
+    }
+    if (!IsPathValid(param->moduleName_)) {
+        TAG_LOGW(AAFwkTag::SERVICE_EXT, "invalid moduleName");
+        return false;
+    }
+    if (!param->hapPath_.empty() && !IsPathValid(param->hapPath_)) {
+        TAG_LOGW(AAFwkTag::SERVICE_EXT, "invalid hapPath");
+        return false;
+    }
+    if (IsBlockedSkillKeyName(param->functionName_)) {
+        TAG_LOGW(AAFwkTag::SERVICE_EXT, "blocked skill function name:%{public}s",
+            param->functionName_.c_str());
+        return false;
+    }
+    std::string srcPath(param->moduleName_ + "/" + srcEntry);
+    auto pos = srcPath.rfind('.');
+    if (pos != std::string::npos) {
+        srcPath.erase(pos);
+        srcPath.append(".abc");
+    }
+    if (Extension::abilityInfo_ == nullptr || !Extension::abilityInfo_->isStageBasedModel) {
+        TAG_LOGW(AAFwkTag::SERVICE_EXT,
+            "skill load requires stage model, srcEntry:%{public}s", srcEntry.c_str());
+        return false;
+    }
+    if (!param->hapPath_.empty()) {
+        bool newCreate = false;
+        std::string loadPath = ExtractorUtil::GetLoadFilePath(param->hapPath_);
+        std::shared_ptr<Extractor> extractor = ExtractorUtil::GetExtractor(loadPath, newCreate);
+        if (extractor == nullptr) {
+            TAG_LOGW(AAFwkTag::SERVICE_EXT, "get extractor failed, hapPath:%{private}s", param->hapPath_.c_str());
+            return false;
+        }
+        auto slashPos = srcPath.find('/');
+        std::string abcPath = (slashPos != std::string::npos) ? srcPath.substr(slashPos + 1) : srcPath;
+        bool isHapCompressed = extractor->IsHapCompress(abcPath);
+        if (isHapCompressed) {
+            TAG_LOGW(AAFwkTag::SERVICE_EXT,
+                "abc is compressed, not allowed, abcPath:%{public}s", abcPath.c_str());
+            return false;
+        }
+    }
+    skillModuleRef_ = jsRuntime_.LoadModule(param->moduleName_, srcPath, param->hapPath_, true, false, srcEntry);
+    if (skillModuleRef_ == nullptr) {
+        TAG_LOGW(AAFwkTag::SERVICE_EXT, "LoadModule failed, path:%{public}s", srcPath.c_str());
+        return false;
+    }
+    outJsObj = skillModuleRef_->GetNapiValue();
+    napi_value keyName = nullptr;
+    napi_create_string_utf8(env, param->functionName_.c_str(), NAPI_AUTO_LENGTH, &keyName);
+    bool hasOwn = false;
+    if (napi_has_own_property(env, outJsObj, keyName, &hasOwn) != napi_ok || !hasOwn) {
+        return false;
+    }
+    method = AppExecFwk::GetPropertyValueByPropertyName(
+        env, outJsObj, param->functionName_.c_str(), napi_valuetype::napi_function);
+    return method != nullptr;
+}
+
+std::vector<napi_value> JsServiceExtension::BuildSkillCallArgs(napi_env env,
+    const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param)
+{
+    napi_value info = nullptr;
+    napi_status createStatus = napi_create_object(env, &info);
+    if (createStatus != napi_ok || info == nullptr) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "napi_create_object failed");
+        return {};
+    }
+    napi_value requestCodeVal = nullptr;
+    napi_create_string_utf8(env, param->requestCode_.c_str(), param->requestCode_.length(), &requestCodeVal);
+    napi_set_named_property(env, info, "requestCode", requestCodeVal);
+    napi_value contextObj = nullptr;
+    if (shellContextRef_ != nullptr) {
+        contextObj = shellContextRef_->GetNapiValue();
+    }
+    napi_set_named_property(env, info, "context", contextObj);
+    if (!param->toolCallId_.empty()) {
+        napi_value toolCallIdVal = nullptr;
+        napi_create_string_utf8(env, param->toolCallId_.c_str(), param->toolCallId_.length(), &toolCallIdVal);
+        napi_set_named_property(env, info, "toolCallId", toolCallIdVal);
+    }
+
+    std::vector<napi_value> args;
+    args.push_back(info);
+    if (param->skillArgs_ != nullptr && !param->skillArgs_->GetParams().empty()) {
+        napi_value wrappedObj = AppExecFwk::WrapWantParams(env, *param->skillArgs_);
+        for (const auto &[key, value] : param->skillArgs_->GetParams()) {
+            auto typeId = AppExecFwk::WantParams::GetDataType(value);
+            auto valStr = AppExecFwk::WantParams::GetStringByType(value, typeId);
+            TAG_LOGI(AAFwkTag::SERVICE_EXT, "skillArg key:%{public}s value:%{public}s",
+                key.c_str(), valStr.c_str());
+            if (IsBlockedSkillKeyName(key)) {
+                TAG_LOGW(AAFwkTag::SERVICE_EXT, "skip blocked skillArg key:%{public}s", key.c_str());
+                continue;
+            }
+            napi_value keyName = nullptr;
+            napi_create_string_utf8(env, key.c_str(), NAPI_AUTO_LENGTH, &keyName);
+            bool hasOwn = false;
+            if (napi_has_own_property(env, wrappedObj, keyName, &hasOwn) != napi_ok || !hasOwn) {
+                TAG_LOGW(AAFwkTag::SERVICE_EXT, "skip non-own skillArg key:%{public}s", key.c_str());
+                continue;
+            }
+            napi_value val = nullptr;
+            napi_get_named_property(env, wrappedObj, key.c_str(), &val);
+            args.push_back(val);
+        }
+    }
+    return args;
+}
+
+void JsServiceExtension::ExecuteSkill(const AAFwk::Want &want,
+    const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param)
+{
+    TAG_LOGD(AAFwkTag::SERVICE_EXT, "ExecuteSkill requestCode:%{public}s",
+        param != nullptr ? param->requestCode_.c_str() : "");
+    if (param == nullptr) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "null param");
+        return;
+    }
+    napi_env env = jsRuntime_.GetNapiEnv();
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "null napi env");
+        ReportSkillError(param->requestCode_, ERR_TIMED_OUT,
+            "napi env unavailable, js runtime not ready");
+        return;
+    }
+    napi_value jsObj = nullptr;
+    napi_value method = LoadSkillFunction(param, jsObj);
+    if (method == nullptr) {
+        std::string errMsg = "skill function '" + param->functionName_ +
+            "' not found in srcEntries: [" + param->SrcEntriesToString() + "]";
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "%{public}s", errMsg.c_str());
+        ReportSkillError(param->requestCode_, ERR_TIMED_OUT, errMsg);
+        return;
+    }
+    auto args = BuildSkillCallArgs(env, param);
+    napi_value result = nullptr;
+    napi_status status = napi_call_function(env, jsObj, method, args.size(), args.data(), &result);
+    if (status != napi_ok) {
+        std::string errMsg = "napi_call_function status=" + std::to_string(status) +
+            " func=" + param->functionName_;
+        TAG_LOGE(AAFwkTag::SERVICE_EXT, "%{public}s", errMsg.c_str());
+        ReportSkillError(param->requestCode_, ERR_TIMED_OUT, errMsg);
+        return;
+    }
+    bool hasPending = false;
+    napi_is_exception_pending(env, &hasPending);
+    if (hasPending) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT,
+            "skill function threw exception, func:%{public}s", param->functionName_.c_str());
+        ReportSkillError(param->requestCode_, ERR_TIMED_OUT,
+            "skill function threw exception during execution");
+        return;
+    }
+    auto context = GetContext();
+    if (context != nullptr && context->GetToken() != nullptr) {
+        AAFwk::AbilityManagerClient::GetInstance()->NotifySkillFunctionInvoked(
+            context->GetToken(), param->requestCode_);
+    }
+    TAG_LOGD(AAFwkTag::SERVICE_EXT,
+        "ExecuteSkill dispatched, requestCode:%{public}s", param->requestCode_.c_str());
+}
+
+void JsServiceExtension::ReportSkillError(const std::string &requestCode,
+    int32_t errCode, const std::string &errMsg)
+{
+    auto context = GetContext();
+    if (context == nullptr || context->GetToken() == nullptr) {
+        TAG_LOGE(AAFwkTag::SERVICE_EXT,
+            "ReportSkillError: null context or token, requestCode:%{public}s", requestCode.c_str());
+        return;
+    }
+    AppExecFwk::SkillExecuteResult result;
+    result.code = errCode;
+    if (!errMsg.empty()) {
+        result.result = std::make_shared<AAFwk::WantParams>();
+        result.result->SetParam(AppExecFwk::SKILL_ERROR_MSG_KEY, AAFwk::String::Box(errMsg));
+    }
+    AAFwk::AbilityManagerClient::GetInstance()->ExecuteSkillDone(
+        context->GetToken(), requestCode, errCode, result);
+}
+
 napi_value JsServiceExtension::CallObjectMethod(const char* name, napi_value const* argv, size_t argc)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, std::string("CallObjectMethod:") + name);
@@ -588,7 +868,7 @@ napi_value JsServiceExtension::CallObjectMethod(const char* name, napi_value con
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "get '%{public}s' from ServiceExtension obj failed", name);
         return nullptr;
     }
-    TAG_LOGI(AAFwkTag::SERVICE_EXT, "CallFunc(%{public}s)", name);
+    TAG_LOGI(AAFwkTag::SERVICE_EXT, "Call(%{public}s)", name);
     napi_value result = nullptr;
     napi_status status = napi_call_function(env, obj, method, argc, argv, &result);
     if (status != napi_ok) {
@@ -614,7 +894,7 @@ void JsServiceExtension::GetSrcPath(std::string &srcPath)
     if (!Extension::abilityInfo_->srcEntrance.empty()) {
         srcPath.append(Extension::abilityInfo_->moduleName + "/");
         srcPath.append(Extension::abilityInfo_->srcEntrance);
-        srcPath.erase(srcPath.rfind('.'));
+        RemoveFileExtension(srcPath);
         srcPath.append(".abc");
     }
 }
@@ -646,7 +926,7 @@ napi_value JsServiceExtension::CallOnConnect(const AAFwk::Want &want)
         return nullptr;
     }
     napi_value remoteNative = nullptr;
-    TAG_LOGI(AAFwkTag::SERVICE_EXT, "Call onConnect");
+    TAG_LOGI(AAFwkTag::SERVICE_EXT, "Call onConn");
     napi_status status = napi_call_function(env, obj, method, ARGC_ONE, argv, &remoteNative);
     if (status != napi_ok) {
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "call js func failed %{public}d", status);
@@ -682,7 +962,7 @@ napi_value JsServiceExtension::CallOnDisconnect(const AAFwk::Want &want, bool wi
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "null method");
         return nullptr;
     }
-    TAG_LOGI(AAFwkTag::SERVICE_EXT, "Call onDisconnect");
+    TAG_LOGI(AAFwkTag::SERVICE_EXT, "Call onDisconn");
     if (withResult) {
         napi_value result = nullptr;
         napi_status status = napi_call_function(env, obj, method, ARGC_ONE, argv, &result);

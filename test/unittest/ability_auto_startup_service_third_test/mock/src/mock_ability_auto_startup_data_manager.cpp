@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -83,6 +83,11 @@ int32_t AbilityAutoStartupDataManager::QueryAllAutoStartupApplications(std::vect
     int32_t userId, bool isCalledByEDM)
 {
     return ERR_OK;
+}
+
+int32_t AbilityAutoStartupDataManager::ResetAutoStartupDirectBoot(const AutoStartupInfo &info)
+{
+    return info.userId == -1 ? ERR_INVALID_VALUE : ERR_OK;
 }
 
 int32_t AbilityAutoStartupDataManager::GetCurrentAppAutoStartupData(

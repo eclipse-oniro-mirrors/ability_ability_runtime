@@ -100,7 +100,8 @@ bool PermissionVerification::JudgeStartInvisibleAbility(const uint32_t accessTok
 {
     return !!(MyFlag::flag_);
 }
-bool PermissionVerification::JudgeStartAbilityFromBackground(const bool isBackgroundCall) const
+bool PermissionVerification::JudgeStartAbilityFromBackground(const bool isBackgroundCall,
+    const uint32_t specifyTokenId) const
 {
     return !!(MyFlag::flag_);
 }
@@ -126,12 +127,16 @@ bool PermissionVerification::VerifyPrepareTerminatePermission() const
 }
 bool PermissionVerification::IsSystemAppCall() const
 {
-    return true;
+    return (MyFlag::flag_ & MyFlag::FLAG::IS_NOT_SYSTEM_APP_CALL) == 0;
 }
 
 bool PermissionVerification::VerifySetProcessCachePermission() const
 {
     return true;
+}
+bool PermissionVerification::IsLocalDebugOtherAppsCall(const uint32_t specifyTokenId, int32_t targetUserId) const
+{
+    return false;
 }
 } // namespace AAFwk
 } // namespace OHOS

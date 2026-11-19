@@ -147,7 +147,7 @@ HWTEST_F(QuickFixManagerApplyTaskTest, Run_0100, TestSize.Level1)
         quickFixMs_->eventHandler_, quickFixMs_);
     ASSERT_NE(applyTask, nullptr);
 
-    EXPECT_CALL(*bundleQfMgr_, DeployQuickFix(_, _, _, _, _)).Times(1);
+    EXPECT_CALL(*bundleQfMgr_, DeployQuickFix(_, _, _, _, _, _, _)).Times(1);
     std::vector<std::string> quickFixFiles;
     applyTask->Run(quickFixFiles);
     WaitUntilTaskDone(quickFixMs_->eventHandler_);
@@ -1030,6 +1030,35 @@ HWTEST_F(QuickFixManagerApplyTaskTest, ExtractQuickFixDataFromJson_0100, TestSiz
 }
 
 /**
+ * @tc.name: BundleNameSnapshot_0100
+ * @tc.desc: Verify bundleName snapshot sync: InitRevokeTask sets snapshot, deploy-result parsing updates it.
+ * @tc.type: FUNC
+ * @tc.require: issueI5OD2E
+ */
+HWTEST_F(QuickFixManagerApplyTaskTest, BundleNameSnapshot_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto applyTask = std::make_shared<QuickFixManagerApplyTask>(nullptr, appMgr_,
+        quickFixMs_->eventHandler_, quickFixMs_);
+    ASSERT_NE(applyTask, nullptr);
+
+    applyTask->InitRevokeTask("com.example.revoked", true);
+    EXPECT_EQ(applyTask->GetBundleNameSnapshot(), "com.example.revoked");
+
+    nlohmann::json jsonData = {
+        {QUICK_FIX_BUNDLE_NAME, "com.example.bundle"},
+        {QUICK_FIX_BUNDLE_VERSION_CODE, 123},
+        {QUICK_FIX_PATCH_VERSION_CODE, 456},
+        {QUICK_FIX_IS_SO_CONTAINED, true},
+        {QUICK_FIX_TYPE, 2}
+    };
+    EXPECT_TRUE(applyTask->ExtractQuickFixDataFromJson(jsonData));
+    EXPECT_EQ(applyTask->GetBundleNameSnapshot(), "com.example.bundle");
+    EXPECT_EQ(applyTask->GetBundleNameSnapshot(), applyTask->bundleName_);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
  * @tc.name: ExtractQuickFixDataFromJson_0200
  * @tc.desc: Verify the parsing fail, when QUICK_FIX_BUNDLE_NAME is missing
  * @tc.type: FUNC
@@ -1261,6 +1290,85 @@ HWTEST_F(QuickFixManagerApplyTaskTest, ExtractQuickFixDataFromJson_1100, TestSiz
     EXPECT_EQ(applyTask->bundleVersionCode_, 123);
     EXPECT_EQ(applyTask->patchVersionCode_, 456);
     EXPECT_FALSE(applyTask->isSoContained_);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+/**
+ * @tc.name: NotifyApplyStatus_0200
+ * @tc.desc: notify apply status with revoke task type and scoped common event.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(QuickFixManagerApplyTaskTest, NotifyApplyStatus_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto applyTask = std::make_shared<QuickFixManagerApplyTask>(bundleQfMgr_, appMgr_,
+        quickFixMs_->eventHandler_, quickFixMs_);
+    ASSERT_NE(applyTask, nullptr);
+    applyTask->bundleName_ = "testRevokeBundle";
+    applyTask->taskType_ = QuickFixManagerApplyTask::TaskType::QUICK_FIX_REVOKE;
+    applyTask->NotifyApplyStatus(QUICK_FIX_OK);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: NotifyApplyStatus_0300
+ * @tc.desc: notify apply status with invalid task type, no common event published.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(QuickFixManagerApplyTaskTest, NotifyApplyStatus_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto applyTask = std::make_shared<QuickFixManagerApplyTask>(bundleQfMgr_, appMgr_,
+        quickFixMs_->eventHandler_, quickFixMs_);
+    ASSERT_NE(applyTask, nullptr);
+    applyTask->bundleName_ = "testInvalidBundle";
+    applyTask->taskType_ = static_cast<QuickFixManagerApplyTask::TaskType>(999);
+    applyTask->NotifyApplyStatus(QUICK_FIX_OK);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: NotifyApplyStatus_0400
+ * @tc.desc: notify apply status with empty bundle name.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(QuickFixManagerApplyTaskTest, NotifyApplyStatus_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    auto applyTask = std::make_shared<QuickFixManagerApplyTask>(bundleQfMgr_, appMgr_,
+        quickFixMs_->eventHandler_, quickFixMs_);
+    ASSERT_NE(applyTask, nullptr);
+    applyTask->bundleName_ = "";
+    applyTask->bundleVersionCode_ = 1;
+    applyTask->patchVersionCode_ = 100;
+    applyTask->NotifyApplyStatus(QUICK_FIX_OK);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: Run_0200
+ * @tc.desc: Run captures callerUserId_ and isCheckDebugApp_ from IPC context.
+ * @tc.type: FUNC
+ */
+HWTEST_F(QuickFixManagerApplyTaskTest, Run_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+
+    auto applyTask = std::make_shared<QuickFixManagerApplyTask>(bundleQfMgr_, appMgr_,
+        quickFixMs_->eventHandler_, quickFixMs_);
+    ASSERT_NE(applyTask, nullptr);
+
+    EXPECT_CALL(*bundleQfMgr_, DeployQuickFix(_, _, _, _, _, _, _)).Times(1);
+    std::vector<std::string> quickFixFiles;
+    applyTask->Run(quickFixFiles, false, false, true);
+    WaitUntilTaskDone(quickFixMs_->eventHandler_);
+
+    EXPECT_EQ(applyTask->taskType_, QuickFixManagerApplyTask::TaskType::QUICK_FIX_APPLY);
+    EXPECT_TRUE(applyTask->isCheckDebugApp_);
+    EXPECT_EQ(applyTask->callerUserId_, applyTask->callerUid_ / 200000);
+
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }
 } // namespace AppExecFwk

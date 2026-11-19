@@ -16,6 +16,7 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 template("abilitymanager") {
   ohos_shared_library(target_name) {
+    branch_protector_ret = "pac_ret"
     forward_variables_from(invoker, [ "relative_install_dir" ])
 
     configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
@@ -66,6 +67,8 @@ template("abilitymanager") {
       "ipc:ipc_core",
       "ipc:ipc_napi",
       "napi:ace_napi",
+      "node:node_header_notice",
+      "libuv:uv",
       "samgr:samgr_proxy",
     ]
     if (ability_runtime_child_process) {

@@ -62,6 +62,7 @@ ohos_fuzztest("AbilityPermissionUtilFuzzTest") {
     "${ability_runtime_services_path}/common:app_util",
     "${ability_runtime_services_path}/common:perm_verification",
     "${ability_runtime_services_path}/common:task_handler_wrap",
+    "${ability_runtime_services_path}/common:user_controller",
   ]
 
   external_deps = [

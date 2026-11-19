@@ -24,6 +24,7 @@
 #include "ability_info.h"
 #include "app_debug_listener_interface.h"
 #include "app_jsheap_mem_info.h"
+#include "app_jshandle_map_info.h"
 #include "app_cjheap_mem_info.h"
 #include "app_malloc_info.h"
 #include "app_mem_info.h"
@@ -36,6 +37,7 @@
 #include "configuration_policy.h"
 #include "iremote_object.h"
 #include "kill_process_config.h"
+#include "mem_dump_callback_interface.h"
 #include "record_query_result.h"
 #include "refbase.h"
 #include "running_process_info.h"
@@ -117,6 +119,8 @@ public:
     std::shared_ptr<AppRunningRecord> FindMasterProcessAppRunningRecord(const std::string &appName,
         const AppExecFwk::AbilityInfo &abilityInfo, const int uid);
 
+    std::shared_ptr<AppRunningRecord> FindMainProcessAppRunningRecord(const int uid);
+
     bool CheckMasterProcessAppRunningRecordIsExist(const std::string &appName,
         const AppExecFwk::AbilityInfo &abilityInfo, const int uid);
 
@@ -137,6 +141,18 @@ public:
      */
     static bool CheckAppProcessNameIsSame(const std::shared_ptr<AppRunningRecord> &appRecord,
         const std::string &processName, bool isFromPreload = false);
+
+    /**
+     * IsAppInfoMatch, check whether the appInfo matches the appName and uid.
+     *
+     * @param appInfo, the app info to be checked.
+     * @param appName, the application name.
+     * @param uid, the process uid.
+     * @param appRecord, the ptr of the AppRunningRecord.
+     * @return, Return true if matches.
+     */
+    static bool IsAppInfoMatch(const std::shared_ptr<ApplicationInfo> &appInfo, const std::string &appName,
+        int uid, const std::shared_ptr<AppRunningRecord> &appRecord);
 
     /**
      * CheckAppRunningRecordIsExistByUid, check app exist when concurrent.
@@ -179,6 +195,17 @@ public:
      * @return process record.
      */
     std::shared_ptr<AppRunningRecord> GetAppRunningRecordByPid(const pid_t pid);
+
+    /**
+     * GetValidAppRunningRecordByPid, Get valid process record by pid.
+     * Process is considered invalid if terminating, killing, restart flagged,
+     * user request cleaning, caching with blocked flag, or kill precede start.
+     *
+     * @param pid, the application pid.
+     *
+     * @return valid process record, or nullptr if not found or invalid.
+     */
+    std::shared_ptr<AppRunningRecord> GetValidAppRunningRecordByPid(const pid_t pid);
 
     /**
      * GetAppRunningRecordByAbilityToken, Get process record by ability token.
@@ -298,6 +325,15 @@ public:
     int32_t DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info);
 
     /**
+     * DumpJsHandleMap, call DumpJsHandleMap() through proxy project.
+     * dump the application's jshandle map info.
+     *
+     * @param info, pid tid
+     * @return ERR_OK ,return back success, others fail.
+     */
+    int32_t DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info);
+
+    /**
      * DumpCjHeapMemory, call DumpCjHeapMemory() through proxy project.
      * triggerGC and dump the application's cjheap memory info.
      *
@@ -311,10 +347,10 @@ public:
      * triggerGC and dump application's memory info.
      *
      * @param info The information to be dumped
-     * @param dumpResult The dump result string
+     * @param callback The callback to receive dump result
      * @return Returns ERR_OK on success, others on failure.
      */
-    int32_t DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult);
+    int32_t DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback);
 
     /**
      * Set AbilityForegroundingFlag of an app-record to true.
@@ -341,7 +377,7 @@ public:
     bool ProcessExitByBundleNameAndUid(
         const std::string &bundleName, const int uid, std::list<pid_t> &pids, const KillProcessConfig &config = {});
     bool ProcessExitByBundleNameAndAppIndex(const std::string &bundleName, int32_t appIndex, std::list<pid_t> &pids,
-        bool clearPageStack);
+        bool clearPageStack, int32_t userId = -1);
     bool ProcessExitByTokenIdAndInstance(uint32_t accessTokenId, const std::string &instanceKey, std::list<pid_t> &pids,
         bool clearPageStack);
     bool ProcessExitByPid(int32_t pid, const KillProcessConfig &config);
@@ -358,7 +394,6 @@ public:
 
     void ClipStringContent(const std::regex &re, const std::string &source, std::string &afterCutStr);
     std::shared_ptr<AppRunningRecord> GetAppRunningRecordByRenderPid(const pid_t pid);
-    std::shared_ptr<RenderRecord> OnRemoteRenderDied(const wptr<IRemoteObject> &remote);
     bool GetAppRunningStateByBundleName(const std::string &bundleName);
     int32_t NotifyLoadRepairPatch(const std::string &bundleName, const sptr<IQuickFixCallback> &callback);
     int32_t NotifyHotReloadPage(const std::string &bundleName, const sptr<IQuickFixCallback> &callback);
@@ -395,9 +430,11 @@ public:
 
 #ifdef SUPPORT_CHILD_PROCESS
     std::shared_ptr<AppRunningRecord> GetAppRunningRecordByChildProcessPid(const pid_t pid);
-    std::shared_ptr<ChildProcessRecord> OnChildProcessRemoteDied(const wptr<IRemoteObject> &remote);
+    std::shared_ptr<ChildProcessRecord> OnChildProcessExitedByPid(pid_t pid);
     bool IsChildProcessReachLimit(uint32_t accessTokenId, bool multiProcessFeature);
 #endif //SUPPORT_CHILD_PROCESS
+
+    std::shared_ptr<RenderRecord> OnRenderProcessExitedByPid(pid_t pid);
 
     /**
      * @brief Obtain number of app through bundlename.

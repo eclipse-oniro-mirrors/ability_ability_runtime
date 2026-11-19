@@ -28,6 +28,8 @@ public:
     static int systemAppFlag_;
     static int systemCallFlag_;
     static int abilityCallFlag_;
+    static int verifyStartLocalDebugFlag_;
+    static int localDebugOtherAppsCallFlag_;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

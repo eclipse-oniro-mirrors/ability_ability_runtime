@@ -430,6 +430,8 @@ enum class AbilityManagerInterfaceCode {
     // ipc id for get want from proxy
     GET_PENDING_REQUEST_WANT_FROM_PROXY = 1075,
 
+    START_UI_ABILITY_WITH_CALLBACK = 1076,
+
     // ipc id for continue ability(1101)
     START_CONTINUATION = 1101,
 
@@ -488,6 +490,16 @@ enum class AbilityManagerInterfaceCode {
     RESUME_EXTENSION_ABILITY = 1142,
     //ipc for prelaunch
     START_PRELAUNCH_ABILITY = 1143,
+    // ipc for request modal UIExtension with account
+    REQUEST_MODAL_UI_EXTENSION_WITH_ACCOUNT = 1144,
+
+    EXECUTE_INTENT_FOR_DISTRIBUTED = 1145,
+
+    // Execute intent by function call (1146)
+    EXECUTE_INTENT_BY_FUNCTION_CALL = 1146,
+
+    // Execute intent with specify token id (1147)
+    EXECUTE_INTENT_WITH_SPECIFY_TOKEN_ID = 1147,
 
     // ipc id 2001-3000 for tools
     // ipc id for dumping state (2001)
@@ -734,6 +746,84 @@ enum class AbilityManagerInterfaceCode {
 
     // complete game prelaunch
     COMPLETE_GAME_PRELAUNCH = 6164,
+
+    // query entity
+    INSIGHT_INTENT_QUERY_ENTITY = 6165,
+
+    // start self ability with token
+    START_SELF = 6166,
+
+    // start self uiability with caller token
+    START_SELF_UI_ABILITY_WITH_TOKEN = 6167,
+
+    // start self uiability with start options and caller token
+    START_SELF_UI_ABILITY_WITH_OPTIONS_AND_TOKEN = 6168,
+
+    // query skill type (independent or in-app)
+    QUERY_SKILL_TYPE = 6171,
+
+    // execute skill done with token for identity verification
+    EXECUTE_SKILL_DONE_WITH_TOKEN = 6172,
+
+    // execute in-app skill with explicit caller tokenId
+    EXECUTE_IN_APP_SKILL_WITH_TOKEN_ID = 6173,
+
+    // start self uiability in child process
+    START_SELF_UI_ABILITY_IN_CHILD_PROCESS = 6174,
+
+    // start self uiability by application context in current process
+    START_SELF_UI_ABILITY_BY_APP_CONTEXT = 6175,
+
+    // start sandbox clone ability with sandBoxCloneIndex for CLI tool
+    START_SANDBOX_CLONE_ABILITY = 6176,
+
+    // notify JS function was successfully invoked by napi_call_function
+    NOTIFY_SKILL_FUNCTION_INVOKED = 6177,
+
+    // unregister sa interceptor
+    UNREGISTER_SA_INTERCEPTOR = 6178,
+
+    // set the list of applications allowed in kiosk mode with caller uid isolation
+    ADD_KIOSK_APP_LIST = 6179,
+
+    // delete caller's own kiosk application list entries
+    DELETE_KIOSK_APP_FROM_LIST = 6180,
+    
+    // register want agent holder for shared detection
+    REGISTER_WANT_AGENT_HOLDER = 6181,
+
+    // notify that an insight intent execution has started
+    NOTIFY_INSIGHT_INTENT_EXECUTE = 6182,
+
+    // kill process with user id
+    KILL_PROCESS_WITH_USER_ID = 6183,
+
+    // extend game prelaunch timeout
+    EXTEND_GAME_PRELAUNCH_TIMEOUT = 6184,
+
+    // register listener that an insight intent is about to be executed
+    REGISTER_WILL_INSIGHT_INTENT_EXECUTE_CALLBACK = 6185,
+
+    // unregister listener that an insight intent is about to be executed
+    UNREGISTER_WILL_INSIGHT_INTENT_EXECUTE_CALLBACK = 6186,
+
+    // get pid by call stub (RSS only)
+    GET_PID_BY_CALL_STUB = 6187,
+
+    // get dynamic agent cards (API-source) from the old KV store for migration
+    GET_DYNAMIC_AGENT_CARDS_FOR_MIGRATION = 6188,
+
+    // attribute the task id onto an existing ConnectionRecord after a reused agent connect (oneway)
+    ATTRIBUTE_SAME_CONNECTION_RECORD_TASK_ID = 6189,
+
+    // kill collaborator process
+    KILL_COLLABORATOR_PROCESS = 6190,
+ 
+    // complete game prelaunch by pid
+    COMPLETE_GAME_PRELAUNCH_BY_PID = 6191,
+
+    // get ui extension root host info by ability record id
+    GET_UI_EXTENSION_HOST_INFO_BY_ID = 6192,
 };
 }  // namespace AAFwk
 }  // namespace OHOS

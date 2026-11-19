@@ -220,3 +220,22 @@ HWTEST_F(AaCommandTestTest, Aa_Command_Test_0400, Function | MediumTest | Level1
     managerClientPtr->proxy_  = nullptr;
     testing::Mock::AllowLeak(mockAbilityManagerStub);
 }
+
+/**
+ * @tc.number: Aa_Command_Test_0500
+ * @tc.name: ExecCommand
+ * @tc.desc: Verify the "aa test empty-arg" command does not crash when an empty string argument is passed.
+ */
+HWTEST_F(AaCommandTestTest, Aa_Command_Test_0500, Function | MediumTest | Level1)
+{
+    char* argv[] = {
+        (char*)TOOL_NAME.c_str(),
+        (char*)cmd_.c_str(),
+        (char*)"",
+        (char*)"",
+    };
+    int argc = sizeof(argv) / sizeof(argv[0]) - 1;
+    AbilityManagerShellCommand cmd(argc, argv);
+
+    EXPECT_NE(cmd.ExecCommand(), "");
+}

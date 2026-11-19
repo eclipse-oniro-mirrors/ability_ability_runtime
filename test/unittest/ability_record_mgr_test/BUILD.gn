@@ -38,10 +38,12 @@ ohos_unittest("ability_record_mgr_test") {
   if (target_cpu == "arm") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
-  deps = [ "${ability_runtime_native_path}/ability/native:abilitykit_utils" ]
+  deps = [
+    "${ability_runtime_native_path}/ability/native:abilitykit_native",
+    "${ability_runtime_native_path}/ability/native:abilitykit_utils",
+  ]
 
   external_deps = [
-    "ability_runtime:abilitykit_native",
     "bundle_framework:appexecfwk_base",
     "c_utils:utils",
     "eventhandler:libeventhandler",

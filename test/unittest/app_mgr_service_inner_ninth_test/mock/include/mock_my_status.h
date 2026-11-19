@@ -362,6 +362,7 @@ public:
         runningRecord_ = nullptr;
     }
     std::shared_ptr<AppExecFwk::AppRunningRecord> masterProcessRunningRecord_ = nullptr;
+    std::shared_ptr<AppExecFwk::AppRunningRecord> mainProcessRunningRecord_ = nullptr;
     std::shared_ptr<AppExecFwk::AppRunningRecord> appRecordForSpecifiedProcess_ = nullptr;
 
     bool exitByPidstatus_ = false;
@@ -370,6 +371,7 @@ private:
     MyStatus() = default;
     bool isLogoutUserCalled_ = false;
     bool isFindMasterProcessAppRunningRecordCalled_ = false;
+    bool isFindMainProcessAppRunningRecordCalled_ = false;
     bool isCheckAppRunningRecordForSpecifiedProcessCalled_ = false;
 };
 }  // namespace AAFwk

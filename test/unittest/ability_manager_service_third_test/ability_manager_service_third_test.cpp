@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,6 +14,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <unistd.h>
 
 #define private public
 #define protected public
@@ -790,6 +791,10 @@ HWTEST_F(AbilityManagerServiceThirdTest, CheckWindowMode_001, TestSize.Level1)
 
     windowMode = AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_FULLSCREEN;
     EXPECT_FALSE(abilityMs_->CheckWindowMode(windowMode, windowModes));
+
+    windowModes.emplace_back(AppExecFwk::SupportWindowMode::SPLIT);
+    windowMode = AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_SPLIT;
+    EXPECT_TRUE(abilityMs_->CheckWindowMode(windowMode, windowModes));
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirdTest CheckWindowMode_001 end");
 }
 
@@ -1095,6 +1100,39 @@ HWTEST_F(AbilityManagerServiceThirdTest, SetPickerElementNameAndParams_004, Test
 
 /*
  * Feature: AbilityManagerService
+ * Function: CloseAppSpawnMsgPipe
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService CloseAppSpawnMsgPipe
+ * EnvConditions: rFd_/wFd_ hold valid tagged fds and appSpawnContext_ is non-empty
+ * CaseDescription: Verify CloseAppSpawnMsgPipe closes fds, resets rFd_/wFd_/ptrRFd_ to -1,
+ *                  and resets appSpawnContext_ to empty
+ */
+HWTEST_F(AbilityManagerServiceThirdTest, CloseAppSpawnMsgPipe_001, TestSize.Level1)
+{
+    auto abilityMgrService = std::make_shared<AbilityManagerService>();
+    int32_t pipeFd[2];
+    ASSERT_EQ(pipe(pipeFd), 0);
+    fdsan_exchange_owner_tag(pipeFd[0], 0, static_cast<uint32_t>(AAFwkTag::ABILITYMGR));
+    fdsan_exchange_owner_tag(pipeFd[1], 0, static_cast<uint32_t>(AAFwkTag::ABILITYMGR));
+    abilityMgrService->rFd_ = pipeFd[0];
+    abilityMgrService->wFd_ = pipeFd[1];
+    *abilityMgrService->ptrRFd_ = pipeFd[0];
+    abilityMgrService->appSpawnContext_ = abilityMgrService;
+    EXPECT_NE(abilityMgrService->rFd_, -1);
+    EXPECT_NE(abilityMgrService->wFd_, -1);
+    EXPECT_FALSE(abilityMgrService->appSpawnContext_.expired());
+
+    abilityMgrService->CloseAppSpawnMsgPipe();
+
+    EXPECT_EQ(abilityMgrService->rFd_, -1);
+    EXPECT_EQ(abilityMgrService->wFd_, -1);
+    ASSERT_NE(abilityMgrService->ptrRFd_, nullptr);
+    EXPECT_EQ(*abilityMgrService->ptrRFd_, -1);
+    EXPECT_TRUE(abilityMgrService->appSpawnContext_.expired());
+}
+
+/*
+ * Feature: AbilityManagerService
  * Function: OpenAtomicService
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService OpenAtomicService
@@ -1193,7 +1231,7 @@ HWTEST_F(AbilityManagerServiceThirdTest, CheckRestartAppWant_001, TestSize.Level
     EXPECT_NE(abilityMs, nullptr);
     AAFwk::Want want;
     int32_t userId = 100;
-    int32_t res = abilityMs->CheckRestartAppWant(want, 0, userId);
+    int32_t res = abilityMs->CheckRestartAppWant(want.GetElement(), 0, userId);
     EXPECT_EQ(res, AAFwk::ERR_RESTART_APP_INCORRECT_ABILITY);
 }
 
@@ -1618,79 +1656,6 @@ HWTEST_F(AbilityManagerServiceThirdTest, StartAbilityAsCallerDetails_003, TestSi
 
 /*
  * Feature: AbilityManagerService
- * Function: StartAbilityPublicPrechainCheck
- * FunctionPoints: AbilityManagerService StartAbilityPublicPrechainCheck
- */
-HWTEST_F(AbilityManagerServiceThirdTest, StartAbilityPublicPrechainCheck_001, TestSize.Level1)
-{
-    auto abilityMs = std::make_shared<AbilityManagerService>();
-    Want want;
-    StartAbilityParams startParams(const_cast<Want &>(want));
-    auto result = abilityMs->StartAbilityPublicPrechainCheck(startParams);
-    EXPECT_EQ(result, ERR_OK);
-}
-
-/*
- * Feature: AbilityManagerService
- * Function: StartAbilityPrechainInterceptor
- * FunctionPoints: AbilityManagerService StartAbilityPrechainInterceptor
- */
-HWTEST_F(AbilityManagerServiceThirdTest, StartAbilityPrechainInterceptor_001, TestSize.Level1)
-{
-    auto abilityMs = std::make_shared<AbilityManagerService>();
-    Want want;
-    StartAbilityParams startParams(const_cast<Want &>(want));
-    auto result = abilityMs->StartAbilityPrechainInterceptor(startParams);
-    EXPECT_EQ(result, ERR_INVALID_VALUE);
-}
-
-/*
- * Feature: AbilityManagerService
- * Function: StartAbilityInChain
- * FunctionPoints: AbilityManagerService StartAbilityInChain
- */
-HWTEST_F(AbilityManagerServiceThirdTest, StartAbilityInChain_001, TestSize.Level1)
-{
-    auto abilityMs = std::make_shared<AbilityManagerService>();
-    Want want;
-    StartAbilityParams startParams(const_cast<Want &>(want));
-    int result = 0;
-    auto ret = abilityMs->StartAbilityInChain(startParams, result);
-    EXPECT_EQ(ret, ERR_OK);
-}
-
-/*
- * Feature: AbilityManagerService
- * Function: StartAbilityWrap
- * FunctionPoints: AbilityManagerService StartAbilityWrap
- */
-HWTEST_F(AbilityManagerServiceThirdTest, StartAbilityWrap_001, TestSize.Level1)
-{
-    auto abilityMs = std::make_shared<AbilityManagerService>();
-    Want want;
-    sptr<IRemoteObject> callerToken;
-    int requestCode = 0;
-    int32_t userId = 0;
-    bool isStartAsCaller = true;
-    uint32_t specifyToken = 0;
-    bool isForegroundToRestartApp = true;
-    bool isImplicit = true;
-    StartAbilityWrapParam startAbilityWrapParam = {
-        .want = want,
-        .callerToken = callerToken,
-        .requestCode = requestCode,
-        .userId = userId,
-        .isStartAsCaller = isStartAsCaller,
-        .specifyTokenId = specifyToken,
-        .isForegroundToRestartApp = isForegroundToRestartApp,
-        .isImplicit = isImplicit,
-    };
-    auto result = abilityMs->StartAbilityWrap(startAbilityWrapParam);
-    EXPECT_EQ(result, ERR_NULL_INTERCEPTOR_EXECUTER);
-}
-
-/*
- * Feature: AbilityManagerService
  * Function: SetReserveInfo
  * FunctionPoints: AbilityManagerService SetReserveInfo
  */
@@ -1754,27 +1719,6 @@ HWTEST_F(AbilityManagerServiceThirdTest, StartUIAbilityForOptionWrap_001, TestSi
     bool isImplicit = true;
     auto result = abilityMs->StartUIAbilityForOptionWrap(want, startOptions, callerToken, false, userId, requestCode,
         callerTokenId, isImplicit);
-    EXPECT_EQ(result, ERR_NULL_INTERCEPTOR_EXECUTER);
-}
-
-/*
- * Feature: AbilityManagerService
- * Function: StartAbilityForOptionWrap
- * FunctionPoints: AbilityManagerService StartAbilityForOptionWrap
- */
-HWTEST_F(AbilityManagerServiceThirdTest, StartAbilityForOptionWrap_001, TestSize.Level1)
-{
-    auto abilityMs = std::make_shared<AbilityManagerService>();
-    Want want;
-    StartOptions startOptions;
-    const sptr<IRemoteObject> callerToken;
-    int32_t userId = 0;
-    int requestCode = 0;
-    bool isStartAsCaller = true;
-    uint32_t callerTokenId = 0;
-    bool isImplicit = true;
-    auto result = abilityMs->StartAbilityForOptionWrap(want, startOptions, callerToken, false, userId, requestCode,
-        isStartAsCaller, callerTokenId, isImplicit);
     EXPECT_EQ(result, ERR_NULL_INTERCEPTOR_EXECUTER);
 }
 
@@ -1884,7 +1828,7 @@ HWTEST_F(AbilityManagerServiceThirdTest, CheckCallingTokenId_001, TestSize.Level
     auto abilityMs = std::make_shared<AbilityManagerService>();
     std::string bundleName = "test";
     int32_t userId = 0;
-    auto result = abilityMs->CheckCallingTokenId(bundleName, userId);
+    auto result = abilityMs->CheckCallingTokenId(bundleName, userId, 0);
     EXPECT_EQ(result, false);
 }
 
@@ -2151,7 +2095,7 @@ HWTEST_F(AbilityManagerServiceThirdTest, ChangeAbilityVisibility_001, TestSize.L
     auto abilityMs = std::make_shared<AbilityManagerService>();
     sptr<IRemoteObject> token;
     bool isShow = true;
-    auto result = abilityMs->ChangeAbilityVisibility(token, isShow);
+    auto result = abilityMs->ChangeAbilityVisibility(token, isShow, nullptr);
     EXPECT_EQ(result, ERR_CAPABILITY_NOT_SUPPORT);
 }
 
@@ -2626,6 +2570,26 @@ HWTEST_F(AbilityManagerServiceThirdTest, PreStartInner_001, TestSize.Level1)
     FreeInstallInfo  taskInfo;
     auto result = abilityMs_->PreStartInner(taskInfo);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirdTest PreStartInner_001 call result %{public}d", result);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: PreStartInner
+ * FunctionPoints: AbilityManagerService PreStartInner with startOptions
+ */
+HWTEST_F(AbilityManagerServiceThirdTest, PreStartInner_002, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs_, nullptr);
+
+    FreeInstallInfo taskInfo;
+    taskInfo.startOptions = std::make_shared<StartOptions>();
+    ASSERT_NE(taskInfo.startOptions, nullptr);
+    taskInfo.startOptions->SetDisplayID(1);
+    taskInfo.startOptions->SetWindowMode(100);
+    taskInfo.startOptions->requestId_ = "test_request_id";
+    auto result = abilityMs_->PreStartInner(taskInfo);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceThirdTest PreStartInner_002 call result %{public}d", result);
 }
 
 /*
@@ -3349,7 +3313,7 @@ HWTEST_F(AbilityManagerServiceThirdTest, CheckSupportVpn_001, TestSize.Level1)
     AppExecFwk::AbilityInfo abilityInfo;
     abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::VPN;
     auto result = abilityMs_->CheckSupportVpn(abilityInfo);
-    EXPECT_TRUE(result);
+    EXPECT_FALSE(result);
 }
 
 /**
@@ -3364,7 +3328,8 @@ HWTEST_F(AbilityManagerServiceThirdTest, CheckSupportVpn_002, TestSize.Level1)
     AppExecFwk::AbilityInfo abilityInfo;
     abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::SERVICE;
     auto result = abilityMs_->CheckSupportVpn(abilityInfo);
-    EXPECT_FALSE(result);
+    EXPECT_TRUE(result);
 }
+
 }  // namespace AAFwk
 }  // namespace OHOS

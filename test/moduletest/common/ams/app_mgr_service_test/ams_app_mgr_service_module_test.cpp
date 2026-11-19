@@ -25,6 +25,12 @@
 #include "app_scheduler_proxy.h"
 #include "mock_app_mgr_service_inner.h"
 #include "mock_native_token.h"
+#include "mock_ipc_skeleton.h"
+#include "ability_manager_errors.h"
+#include "task_mgr/task_manager_service.h"
+#include "app_running_manager.h"
+#include "application_info.h"
+#include "bundle_info.h"
 #include "semaphore_ex.h"
 
 using namespace testing::ext;
@@ -100,6 +106,11 @@ public:
         return 0;
     }
 
+    int32_t SchedulePreTemplateProcessDeepFrozen() override
+    {
+        return 0;
+    }
+
     int32_t ScheduleChangeAppGcState(int32_t state, uint64_t tid) override
     {
         return 0;
@@ -117,7 +128,7 @@ public:
     void ScheduleCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info) override
     {}
 
-    void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpresult) override
+    void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback) override
     {}
     
     int32_t ScheduleDumpIpcStart(std::string& result) override
@@ -373,6 +384,9 @@ HWTEST_F(AppMgrServiceModuleTest, ApplicationTerminated_001, TestSize.Level1)
  */
 HWTEST_F(AppMgrServiceModuleTest, ClearUpApplicationData_001, TestSize.Level1)
 {
+#ifdef __x86_64__
+    GTEST_SKIP() << "not supported on x86_64";
+#else
     auto appMgrService = std::make_shared<AppMgrService>();
     std::shared_ptr<OHOS::AAFwk::TaskHandlerWrap> taskHandler_ =
         OHOS::AAFwk::TaskHandlerWrap::CreateQueueHandler(Constants::APP_MGR_SERVICE_NAME);
@@ -381,6 +395,7 @@ HWTEST_F(AppMgrServiceModuleTest, ClearUpApplicationData_001, TestSize.Level1)
     appMgrService->eventHandler_ = std::make_shared<AMSEventHandler>(taskHandler_, appMgrService->appMgrServiceInner_);
     int32_t res = appMgrService->ClearUpApplicationData(bundleName, 0);
     EXPECT_EQ(res, ERR_INVALID_OPERATION);
+#endif
 }
 
 /*
@@ -484,7 +499,7 @@ HWTEST_F(AppMgrServiceModuleTest, KillApplication_001, TestSize.Level1)
 
     auto mockHandler = [&testResult, testBundleName, &sem](
         const std::string& bundleName, const bool clearPageStack = false, int32_t appIndex = 0,
-        const std::string& reason = "KillApplication") {
+        const std::string& reason = "KillApplication", int32_t userId = -1) {
         testResult = (bundleName == testBundleName);
         sem.Post();
         return 0;
@@ -493,7 +508,7 @@ HWTEST_F(AppMgrServiceModuleTest, KillApplication_001, TestSize.Level1)
     for (int i = 0; i < COUNT; ++i) {
         testResult = false;
 
-        EXPECT_CALL(*mockAppMgrServiceInner_, KillApplication(_, _, _, _)).Times(1).WillOnce(Invoke(mockHandler));
+        EXPECT_CALL(*mockAppMgrServiceInner_, KillApplication(_, _, _, _, _)).Times(1).WillOnce(Invoke(mockHandler));
 
         int ret = appMgrService_->GetAmsMgr()->KillApplication(testBundleName);
 
@@ -533,6 +548,43 @@ HWTEST_F(AppMgrServiceModuleTest, QueryServiceState_001, TestSize.Level1)
 
         EXPECT_EQ(serviceState.connectionState, testSpawnConnectionState);
     }
+}
+
+/**
+ * @tc.name: AppMgrService_RegisterManagedProcess_0100
+ * @tc.desc: The wrapper only admits the climgr process: any non-climgr uid is rejected
+ *           at the uid gate.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceModuleTest, AppMgrService_RegisterManagedProcess_0100, TestSize.Level1)
+{
+    IPCSkeleton::SetCallingUid(3093); // any uid other than climgr (aimgr, 3092)
+    int64_t attributionId = 1;
+    auto ret = appMgrService_->RegisterManagedProcess("appmgr_register_managed_0100", 4321, 2, 3099,
+        attributionId);
+    EXPECT_EQ(ret, AAFwk::ERR_NOT_SYSTEM_APP);
+    EXPECT_EQ(attributionId, 0);
+    IPCSkeleton::SetCallingUid(-1); // restore the real process identity
+}
+
+/**
+ * @tc.name: AppMgrService_RegisterManagedProcess_0200
+ * @tc.desc: With the climgr calling uid the gate passes and the call is delegated to the
+ *           task manager (an unknown task surfaces as ERR_TASK_NOT_FOUND, not as a
+ *           permission rejection).
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceModuleTest, AppMgrService_RegisterManagedProcess_0200, TestSize.Level1)
+{
+    IPCSkeleton::SetCallingUid(3092); // climgr runs in the aimgr process (uid 3092)
+    int64_t attributionId = 1;
+    auto ret = appMgrService_->RegisterManagedProcess("appmgr_register_managed_0200", 4321, 2, 3099,
+        attributionId);
+    EXPECT_EQ(ret, AAFwk::ERR_TASK_NOT_FOUND);
+    EXPECT_EQ(attributionId, 0);
+    ret = appMgrService_->UnregisterManagedProcess("appmgr_register_managed_0200", 1, 3099);
+    EXPECT_EQ(ret, AAFwk::ERR_TASK_NOT_FOUND);
+    IPCSkeleton::SetCallingUid(-1);
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

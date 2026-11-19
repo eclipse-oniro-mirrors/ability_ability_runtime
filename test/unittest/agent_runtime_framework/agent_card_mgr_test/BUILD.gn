@@ -28,22 +28,26 @@ ohos_unittest("agent_card_mgr_test") {
   sources = [
     "agent_card_mgr_test.cpp",
     "mock/src/bundle_mgr_client.cpp",
-    "mock/src/mock_agent_card_db_mgr.cpp",
+    "mock/src/bundle_mgr_helper.cpp",
     "mock/src/mock_agent_card.cpp",
+    "mock/src/mock_agent_card_db_mgr.cpp",
     "${agent_runtime_framework_path}/services/agentmgr/src/agent_card_mgr.cpp",
+    "${agent_runtime_framework_path}/services/common/src/agent_card_utils.cpp",
+    "${agent_runtime_framework_path}/services/common/src/sem_ver.cpp",
   ]
 
   include_dirs = [
     "mock/include",
     "${ability_runtime_innerkits_path}/ability_manager/include",
     "${ability_runtime_services_path}/common/include",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native",
     "${agent_runtime_framework_path}/interfaces/inner_api/include",
     "${agent_runtime_framework_path}/services/agentmgr/include",
+    "${agent_runtime_framework_path}/services/common/include",
   ]
 
   deps = [
-    "${agent_runtime_framework_path}/services/common:agent_card_utils",
-    "${agent_runtime_framework_path}/services/common:agent_semver",
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
   ]
 
   external_deps = [
@@ -51,6 +55,7 @@ ohos_unittest("agent_card_mgr_test") {
     "bundle_framework:appexecfwk_core",
     "bundle_framework:libappexecfwk_common",
     "c_utils:utils",
+    "ffrt:libffrt",
     "googletest:gmock_main",
     "googletest:gtest_main",
     "hilog:libhilog",

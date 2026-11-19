@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -47,6 +47,7 @@ struct CurrentHapModuleInfo {
 CJ_EXPORT CurrentHapModuleInfo* FFICJCurrentHapModuleInfo(int64_t id);
 CJ_EXPORT OHOS::AbilityRuntime::RetHapModuleInfoV2 FFICJGetHapModuleInfo(int64_t id);
 CJ_EXPORT OHOS::AbilityRuntime::CConfiguration FFICJGetConfiguration(int64_t id);
+CJ_EXPORT OHOS::AbilityRuntime::CConfigurationV2 FFICJGetConfigurationV2(int64_t id);
 CJ_EXPORT int64_t FFIAbilityGetAbilityStageContext(AbilityStageHandle abilityStageHandle);
 }
 

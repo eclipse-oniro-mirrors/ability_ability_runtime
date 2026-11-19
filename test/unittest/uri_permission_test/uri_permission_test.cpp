@@ -63,24 +63,14 @@ HWTEST_F(UriPermissionTest, Upms_GrantUriPermission_001, TestSize.Level1)
     uint32_t flag = 1;
     std::string targetBundleName = "name2";
     int32_t funcResult = -1;
-    upms->GrantUriPermission(uri, flag, targetBundleName, 0, 0, funcResult);
+    upms->GrantUriPermission(uri, flag, targetBundleName, 0, 0, -1, funcResult);
     EXPECT_EQ(funcResult, ERR_NOT_SYSTEM_APP);
 }
 
-/*
- * Feature: URIPermissionManagerService
- * Function: ConnectManager
- * SubFunction: NA
- * FunctionPoints: URIPermissionManagerService ConnectManager
- */
-HWTEST_F(UriPermissionTest, Upms_ConnectManager_001, TestSize.Level1)
-{
-    auto upms = std::make_unique<UriPermissionManagerStubImpl>();
-    ASSERT_NE(upms, nullptr);
-    sptr<StorageManager::IStorageManager> storageManager = nullptr;
-    upms->ConnectManager(storageManager, STORAGE_MANAGER_MANAGER_ID);
-    ASSERT_NE(storageManager, nullptr);
-}
+// Upms_ConnectManager_001 removed: stub_impl no longer uses
+// ConnectManager<IStorageManager> (storage path moved to IStorageShareFeature
+// plugin via DynamicFeatureManager::Acquire); the IStorageManager direct-connect
+// path is gone, and ConnectManager<IStorageManager> is no longer instantiated.
 
 /*
  * Feature: URIPermissionManagerService

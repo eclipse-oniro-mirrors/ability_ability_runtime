@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -33,6 +33,7 @@ namespace AbilityRuntime {
 struct NapiCallbackInfo;
 class JsEmbeddableUIAbilityContext;
 class JSUIServiceExtAbilityConnection;
+class JsUIExtensionCallback;
 class JsAbilityContext final {
 public:
     explicit JsAbilityContext(const std::shared_ptr<AbilityContext>& context) : context_(context) {}
@@ -54,12 +55,11 @@ public:
     static napi_value StopServiceExtensionAbilityWithAccount(napi_env env, napi_callback_info info);
     static napi_value ConnectAbility(napi_env env, napi_callback_info info);
     static napi_value ConnectAbilityWithAccount(napi_env env, napi_callback_info info);
-    static napi_value ConnectAbilityWithAccountRestricted(napi_env env, napi_callback_info info);
     static napi_value DisconnectAbility(napi_env env, napi_callback_info info);
-    static napi_value DisconnectAbilityRestricted(napi_env env, napi_callback_info info);
     static napi_value TerminateSelf(napi_env env, napi_callback_info info);
     static napi_value TerminateSelfWithResult(napi_env env, napi_callback_info info);
     static napi_value BackToCallerAbilityWithResult(napi_env env, napi_callback_info info);
+    static napi_value BackToCallerAppWithResult(napi_env env, napi_callback_info info);
     static napi_value RestoreWindowStage(napi_env env, napi_callback_info info);
     static napi_value RequestDialogService(napi_env env, napi_callback_info info);
     static napi_value IsTerminating(napi_env env, napi_callback_info info);
@@ -67,6 +67,7 @@ public:
     static napi_value SetMissionContinueState(napi_env env, napi_callback_info info);
     static napi_value StartAbilityByType(napi_env env, napi_callback_info info);
     static napi_value RequestModalUIExtension(napi_env env, napi_callback_info info);
+    static napi_value RequestModalUIExtensionWithAccount(napi_env env, napi_callback_info info);
     static napi_value ShowAbility(napi_env env, napi_callback_info info);
     static napi_value HideAbility(napi_env env, napi_callback_info info);
     static napi_value MoveAbilityToBackground(napi_env env, napi_callback_info info);
@@ -85,6 +86,8 @@ public:
     static napi_value StartSelfUIAbilityInCurrentProcess(napi_env env, napi_callback_info info);
     static napi_value NotifyCancelGamePreLaunch(napi_env env, napi_callback_info info);
     static napi_value NotifyCompleteGamePreLaunch(napi_env env, napi_callback_info info);
+    static napi_value StartSelf(napi_env env, napi_callback_info info);
+    static napi_value StartSelfUIAbilityInChildProcess(napi_env env, napi_callback_info info);
     static napi_value RestartAppWithWindow(napi_env env, napi_callback_info info);
     static napi_value SetMissionWindowIcon(napi_env env, napi_callback_info info);
 
@@ -111,8 +114,6 @@ private:
 private:
     static void ClearFailedCallConnection(
         const std::weak_ptr<AbilityContext>& abilityContext, const std::shared_ptr<CallerCallBack> &callback);
-    static bool CheckSatisfyTargetAPIVersion(
-        const std::weak_ptr<AbilityContext>& context, int32_t version);
     napi_value OnStartAbility(napi_env env, NapiCallbackInfo& info, bool isStartRecent = false);
     napi_value OnOpenLink(napi_env env, NapiCallbackInfo& info);
     napi_value OnOpenLinkInner(napi_env env, const AAFwk::Want &want, int requestCode, const std::string &startTime,
@@ -131,6 +132,7 @@ private:
     napi_value OnStopExtensionAbilityWithAccount(napi_env env, NapiCallbackInfo& info);
     napi_value OnTerminateSelfWithResult(napi_env env, NapiCallbackInfo& info);
     napi_value OnBackToCallerAbilityWithResult(napi_env env, NapiCallbackInfo& info);
+    napi_value OnBackToCallerAppWithResult(napi_env env, NapiCallbackInfo& info);
     napi_value OnConnectAbility(napi_env env, NapiCallbackInfo& info);
     napi_value OnConnectAbilityWithAccount(napi_env env, NapiCallbackInfo& info);
     napi_value OnDisconnectAbility(napi_env env, NapiCallbackInfo& info);
@@ -141,10 +143,18 @@ private:
     napi_value OnReportDrawnCompleted(napi_env env, NapiCallbackInfo& info);
     napi_value OnSetMissionContinueState(napi_env env, NapiCallbackInfo& info);
     napi_value OnStartAbilityByType(napi_env env, NapiCallbackInfo& info);
+    static void ProcessStartAbilityByTypeComplete(napi_env env, std::shared_ptr<ErrCode> innerErrCode,
+        std::shared_ptr<JsUIExtensionCallback> callback);
+    napi_value DispatchStartAbilityByTypeResult(napi_env env, NapiCallbackInfo& info,
+        std::shared_ptr<JsUIExtensionCallback> callback, NapiAsyncTask::ExecuteCallback& execute,
+        std::shared_ptr<ErrCode> innerErrCode);
+    napi_value OnStartSelf(napi_env env, NapiCallbackInfo& info);
     napi_value OnRequestModalUIExtension(napi_env env, NapiCallbackInfo& info);
+    napi_value OnRequestModalUIExtensionWithAccount(napi_env env, NapiCallbackInfo& info);
     napi_value OnShowAbility(napi_env env, NapiCallbackInfo& info);
     napi_value OnHideAbility(napi_env env, NapiCallbackInfo& info);
-    napi_value ChangeAbilityVisibility(napi_env env, NapiCallbackInfo& info, bool isShow);
+    napi_value ChangeAbilityVisibility(napi_env env, NapiCallbackInfo& info, bool isShow,
+        const std::shared_ptr<Rosen::WindowShowParams> &params);
     napi_value OnMoveAbilityToBackground(napi_env env, NapiCallbackInfo& info);
     napi_value OnSetRestoreEnabled(napi_env env, NapiCallbackInfo& info);
     bool CreateOpenLinkTask(const napi_env &env, const napi_value &lastParam, AAFwk::Want &want,
@@ -176,6 +186,7 @@ private:
     napi_value OnStartSelfUIAbilityInCurrentProcess(napi_env env, NapiCallbackInfo &info);
     napi_value OnNotifyCancelGamePreLaunch(napi_env env, NapiCallbackInfo &info);
     napi_value OnNotifyCompleteGamePreLaunch(napi_env env, NapiCallbackInfo &info);
+    napi_value OnStartSelfUIAbilityInChildProcess(napi_env env, NapiCallbackInfo &info);
     napi_value OnSetMissionWindowIcon(napi_env env, NapiCallbackInfo &info);
 
     static bool UnWrapWant(napi_env env, napi_value argv, AAFwk::Want& want);
@@ -192,7 +203,6 @@ private:
     bool CheckStartAbilityByCallParams(napi_env env, NapiCallbackInfo& info, AAFwk::Want &want,
         int32_t &userId, napi_value &lastParam);
     napi_value SyncSetMissionContinueState(napi_env env, NapiCallbackInfo& info, const AAFwk::ContinueState& state);
-    static int32_t GenerateRequestCode();
     void UnWrapCompletionHandlerForAtomicService(
         napi_env env, napi_value param, AAFwk::StartOptions &options, const std::string &appId);
     void AddCompletionHandlerForOpenLink(AAFwk::Want &want, OnRequestResult &onRequestSucc,
@@ -201,9 +211,6 @@ private:
         const std::shared_ptr<NativeReference> &atomicServiceRef,
         const std::shared_ptr<NativeReference> &onRequestSuccRef,
         const std::shared_ptr<NativeReference> &onRequestFailRef);
-    static int32_t curRequestCode_;
-    static std::mutex requestCodeMutex_;
-
     std::weak_ptr<AbilityContext> context_;
     sptr<JsFreeInstallObserver> freeInstallObserver_ = nullptr;
     friend class JsEmbeddableUIAbilityContext;

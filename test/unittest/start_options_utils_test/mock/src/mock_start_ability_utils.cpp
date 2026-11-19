@@ -15,15 +15,27 @@
 
 #include "start_ability_utils.h"
 
+#include "mock_my_flag.h"
+
 namespace OHOS {
 namespace AAFwk {
 
-bool StartAbilityUtils::GetAppIndex(const Want &want, sptr<IRemoteObject> callerToken, int32_t &appIndex)
+bool StartAbilityUtils::GetAppIndex(const Want &want, sptr<IRemoteObject> callerToken,
+                                    int userId, int32_t &appIndex)
 {
     appIndex = 0;
     return true;
 }
 
-void StartAbilityUtils::SetTargetCloneIndexInSameBundle(const Want &want, sptr<IRemoteObject> callerToken) {}
+void StartAbilityUtils::SetTargetCloneIndexInSameBundle(const Want &want, sptr<IRemoteObject> callerToken)
+{
+    ++MyFlag::GetInstance().setTargetCloneIndexCallCount_;
+}
+
+void StartAbilityUtils::ResolveTargetAppCloneIndex(const Want &want, sptr<IRemoteObject> callerToken, int32_t userId)
+{
+    ++MyFlag::GetInstance().resolveTargetAppCloneIndexCallCount_;
+    MyFlag::GetInstance().resolveTargetAppCloneIndexUserId_ = userId;
+}
 }
 }

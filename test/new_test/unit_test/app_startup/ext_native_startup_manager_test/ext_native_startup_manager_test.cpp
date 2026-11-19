@@ -207,6 +207,7 @@ HWTEST_F(ExtNativeStartupManagerTest, RegisterExtStartupTask_001, TestSize.Level
 HWTEST_F(ExtNativeStartupManagerTest, RegisterExtStartupTask_002, TestSize.Level1)
 {
     ExtNativeStartupManager::GetInstance().extNativeStartupTasks_.clear();
+    ExtNativeStartupManager::GetInstance().phaseFlag_ = SchedulerPhase::None;
     auto &tasks = ExtNativeStartupManager::GetInstance().extNativeStartupTasks_[SchedulerPhase::PostLaunchApplication];
     ASSERT_EQ(tasks.size(), 0);
     auto extNativeStartupTask1 = std::make_shared<TestExtNativeStartupTask>(TEST_EXT_NATIVE_STARTUP_TASK_NAME);

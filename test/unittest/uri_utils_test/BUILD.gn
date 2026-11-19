@@ -65,6 +65,7 @@ ohos_unittest("uri_utils_test") {
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
+    "samgr:samgr_proxy",
   ]
 }
 

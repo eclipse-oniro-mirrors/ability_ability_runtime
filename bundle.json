@@ -35,6 +35,7 @@
         "ability_runtime_check_internet_permission",
         "ability_runtime_no_screen",
         "ability_runtime_forbid_start_enabled",
+        "ability_runtime_enable_clone_for_account",
         "ability_runtime_dsoftbus_enable"
       ],
       "adapted_system_type": [
@@ -51,6 +52,7 @@
             "accessibility",
             "access_token",
             "ace_engine",
+            "api_metrics",
             "app_domain_verify",
             "app_file_service",
             "appspawn",
@@ -88,6 +90,7 @@
             "ipc",
             "json",
             "kv_store",
+            "libjpeg-turbo",
             "libuv",
             "libxml2",
             "media_library",
@@ -97,6 +100,7 @@
             "netmanager_base",
             "node",
             "os_account",
+            "openssl",
             "power_manager",
             "preferences",
             "previewer",
@@ -109,28 +113,35 @@
             "samgr",
             "sandbox_manager",
             "screenlock_mgr",
+            "security_guard",
             "selinux_adapter",
             "storage_service",
             "toolchain",
             "udmf",
+            "user_auth_framework",
             "webview",
             "window_manager",
             "zlib",
-            "hiperf"
-  ],
-          "third_party": [
-            "libjpeg-turbo"
+            "hiperf",
+            "hiprofiler",
+            "taihe_ffi_gen"
           ]
       },
       "build": {
         "sub_component": [
           "//foundation/ability/ability_runtime/agent_runtime_framework/interfaces/inner_api:agent_fwk",
-          "//foundation/ability/ability_runtime/agent_runtime_framework/services:agent_services_target",
+          "//foundation/ability/ability_runtime/agent_runtime_framework/services/agentmgr:agentmgr",
+          "//foundation/ability/ability_runtime/cli_tool_framework/etc/profile:aimgr_cfg",
+          "//foundation/ability/ability_runtime/cli_tool_framework/etc/profile:aimgr_trust",
+          "//foundation/ability/ability_runtime/cli_tool_framework/frameworks:cli_tool_framework_packages",
+          "//foundation/ability/ability_runtime/cli_tool_framework/interfaces/cli_tool:cli_tool_client",
+          "//foundation/ability/ability_runtime/cli_tool_framework/services/climgr:climgr",
           "//foundation/ability/ability_runtime/services:ams_target",
           "//foundation/ability/ability_runtime/services/sa_profile:ams_sa_profile",
           "//foundation/ability/ability_runtime/services/quickfixmgr:quick_fix.cfg",
           "//foundation/ability/ability_runtime/tools:tools_target",
           "//foundation/ability/ability_runtime/interfaces/inner_api:innerkits_target",
+          "//foundation/ability/ability_runtime/interfaces/inner_api/insight_intent/intent_client:intent_client",
           "//foundation/ability/ability_runtime/frameworks/native/ability/native:ability_thread",
           "//foundation/ability/ability_runtime/frameworks/native/ability/native:app_service_extension_ani",
           "//foundation/ability/ability_runtime/frameworks/native/ability/native:auto_fill_extension_ani",
@@ -165,7 +176,7 @@
           "//foundation/ability/ability_runtime/agent_runtime_framework/frameworks/native/agent_extension:agent_extension_module",
           "//foundation/ability/ability_runtime/agent_runtime_framework/frameworks/native/agent_ui_extension_ability:agent_ui_extension_module"
         ],
-        "inner_api": [
+        "inner_kits": [
           {
             "header": {
               "header_base": "//foundation/ability/ability_runtime/interfaces/inner_api/deps_wrapper/include",
@@ -697,15 +708,6 @@
           },
           {
             "header": {
-              "header_base": "//foundation/ability/ability_runtime/interfaces/inner_api/mission_manager/include",
-              "header_files": [
-                "mission_manager_client.h"
-              ]
-            },
-            "name": "//foundation/ability/ability_runtime/interfaces/inner_api/mission_manager:mission_manager"
-          },
-          {
-            "header": {
               "header_base": "//foundation/ability/ability_runtime/interfaces/inner_api/session_handler/include",
               "header_files": []
             },
@@ -759,15 +761,6 @@
               ]
             },
             "name": "//foundation/ability/ability_runtime/frameworks/cj/ffi:cj_ability_ffi"
-          },
-          {
-            "header": {
-              "header_base": "//foundation/ability/ability_runtime/interfaces/inner_api/app_manager/include",
-              "header_files": [
-                "appmgr/app_state_data.h"
-              ]
-            },
-            "name": "//foundation/ability/ability_runtime/interfaces/inner_api/app_manager:app_state_data"
           },
           {
             "header": {
@@ -849,6 +842,16 @@
           },
           {
             "header": {
+              "header_base": "//foundation/ability/ability_runtime/frameworks/native/ability/native/ability_runtime/madvise",
+              "header_files": [
+                "madvise_utils.h",
+                "vma_utils.h"
+              ]
+            },
+            "name": "//foundation/ability/ability_runtime/frameworks/native/ability/native/ability_runtime/madvise:ability_madvise"
+          },
+          {
+            "header": {
               "header_base": "//foundation/ability/ability_runtime/agent_runtime_framework/interfaces/kits/native/agent_extension/connection/include/",
               "header_files": [
                 "agent_connector_proxy.h",
@@ -861,9 +864,19 @@
               ]
             },
             "name": "//foundation/ability/ability_runtime/agent_runtime_framework/interfaces/kits/native/agent_extension/connection:agent_extension_connection"
+          },
+          {
+            "header": {
+              "header_base": "//foundation/ability/ability_runtime/cli_tool_framework/interfaces/cli_tool/include",
+              "header_files": [
+                "cli_tool_mgr_client.h"
+              ]
+            },
+            "name": "//foundation/ability/ability_runtime/cli_tool_framework/interfaces/cli_tool:cli_tool_client"
           }
         ],
         "test": [
+          "//foundation/ability/ability_runtime/cli_tool_framework/test/unittest:unittest",
           "//foundation/ability/ability_runtime/test/moduletest:moduletest",
           "//foundation/ability/ability_runtime/test/fuzztest:fuzztest",
           "//foundation/ability/ability_runtime/test/unittest:unittest",

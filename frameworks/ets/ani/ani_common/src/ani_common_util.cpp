@@ -20,8 +20,10 @@
 #include "hilog_tag_wrapper.h"
 #include "ipc_skeleton.h"
 #include "running_process_info.h"
+#include "child_process_info.h"
 #include "securec.h"
 #include "tokenid_kit.h"
+#include "hitrace_meter.h"
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -34,8 +36,12 @@ constexpr const char* CLASSNAME_INT = "std.core.Int";
 constexpr const char* CLASSNAME_ASYNC_CALLBACK_WRAPPER = "utils.AbilityUtils.AsyncCallbackWrapper";
 constexpr const char* SET_OBJECT_VOID_SIGNATURE = "iY:";
 constexpr const char* CLASSNAME_INNER = "application.ProcessInformation.ProcessInformationInner";
+constexpr const char* CLASSNAME_CHILD_PROCESS_INNER =
+    "application.ChildProcessInformation.ChildProcessInformationInner";
 constexpr const char* ENUMNAME_PROCESS = "@ohos.app.ability.appManager.appManager.ProcessState";
 constexpr const char* ENUMNAME_BUNDLE = "@ohos.bundle.bundleManager.bundleManager.BundleType";
+std::mutex g_aniCreatorsMutex;
+std::unordered_map<std::string, std::pair<ani_class, std::unordered_map<std::string, ani_method>>> globalAniCreators;
 }
 
 bool GetFieldDoubleByName(ani_env *env, ani_object object, const char *name, double &value)
@@ -569,6 +575,10 @@ bool AsyncCallback(ani_env *env, ani_object call, ani_object error, ani_object r
         TAG_LOGE(AAFwkTag::ANI, "null env");
         return false;
     }
+    if (call == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "null call");
+        return false;
+    }
     ani_class clsCall = nullptr;
     ani_status status = env->FindClass(CLASSNAME_ASYNC_CALLBACK_WRAPPER, &clsCall);
     if (status!= ANI_OK || clsCall == nullptr) {
@@ -601,6 +611,10 @@ bool AsyncCallback(ani_env *env, const char *signature, ani_object call, ani_obj
 {
     if (env == nullptr) {
         TAG_LOGE(AAFwkTag::ANI, "null env");
+        return false;
+    }
+    if (call == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "null call");
         return false;
     }
     ani_class clsCall = nullptr;
@@ -986,6 +1000,113 @@ ani_object CreateRunningProcessInfoArray(ani_env *env, std::vector<AppExecFwk::R
     ani_size index = 0;
     for (auto &processInfo : infos) {
         ani_object aniInfo = WrapProcessInformation(env, processInfo);
+        if (aniInfo == nullptr) {
+            TAG_LOGW(AAFwkTag::ANI, "null aniInfo");
+            break;
+        }
+        status = env->Object_CallMethodByName_Void(arrayObj, "$_set", "iY:", index, aniInfo);
+        if (status != ANI_OK) {
+            TAG_LOGW(AAFwkTag::ANI, "Object_CallMethodByName_Void failed status: %{public}d", status);
+            break;
+        }
+        index++;
+    }
+    return arrayObj;
+}
+
+bool SetChildProcessInfo(ani_env *env, ani_object object, const AppExecFwk::ChildProcessInfo &childInfo)
+{
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "null env");
+        return false;
+    }
+    ani_status status = ANI_OK;
+    if ((status = env->Object_SetPropertyByName_Int(object, "pid", childInfo.pid)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "pid failed status:%{public}d", status);
+        return false;
+    }
+    if ((status = env->Object_SetPropertyByName_Int(object, "parentPid", childInfo.hostPid)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "parentPid failed status:%{public}d", status);
+        return false;
+    }
+    status = env->Object_SetPropertyByName_Ref(object, "processName",
+        AppExecFwk::GetAniString(env, childInfo.processName));
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "processName failed status:%{public}d", status);
+        return false;
+    }
+    return true;
+}
+
+ani_object WrapChildProcessInfo(ani_env *env, const AppExecFwk::ChildProcessInfo &childInfo)
+{
+    ani_class cls = nullptr;
+    ani_status status = ANI_ERROR;
+    ani_method method {};
+    ani_object object = nullptr;
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "null env");
+        return nullptr;
+    }
+    if ((status = env->FindClass(CLASSNAME_CHILD_PROCESS_INNER, &cls)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "FindClass failed status: %{public}d", status);
+        return nullptr;
+    }
+    if (cls == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "null cls");
+        return nullptr;
+    }
+    if ((status = env->Class_FindMethod(cls, "<ctor>", ":", &method)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "find ctor failed status: %{public}d", status);
+        return nullptr;
+    }
+    if ((status = env->Object_New(cls, method, &object)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "Object_New ChildProcessInformationInner failed status: %{public}d", status);
+        return nullptr;
+    }
+    if (object == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "null object");
+        return nullptr;
+    }
+    if (!SetChildProcessInfo(env, object, childInfo)) {
+        TAG_LOGE(AAFwkTag::ANI, "SetChildProcessInfo failed");
+        return nullptr;
+    }
+    return object;
+}
+
+ani_object CreateChildProcessInfoArray(ani_env *env, std::vector<AppExecFwk::ChildProcessInfo> infos)
+{
+    ani_class arrayCls = nullptr;
+    ani_status status = ANI_OK;
+
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "null env");
+        return nullptr;
+    }
+
+    status = env->FindClass(CLASSNAME_ARRAY, &arrayCls);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "FindClass failed status: %{public}d", status);
+        return nullptr;
+    }
+
+    ani_method arrayCtor;
+    status = env->Class_FindMethod(arrayCls, "<ctor>", "i:", &arrayCtor);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "find ctor failed status: %{public}d", status);
+        return nullptr;
+    }
+
+    ani_object arrayObj;
+    status = env->Object_New(arrayCls, arrayCtor, &arrayObj, infos.size());
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "Object_New array status: %{public}d", status);
+        return arrayObj;
+    }
+    ani_size index = 0;
+    for (auto &childInfo : infos) {
+        ani_object aniInfo = WrapChildProcessInfo(env, childInfo);
         if (aniInfo == nullptr) {
             TAG_LOGW(AAFwkTag::ANI, "null aniInfo");
             break;
@@ -1604,6 +1725,132 @@ ani_object CreateIntAniArray(ani_env *env, const std::vector<int32_t> &dataArry)
         }
     }
     return arrayObj;
+}
+
+bool CreateObjectByClassName(ani_env *env, const char *className, ani_object &object)
+{
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "env null");
+        return false;
+    }
+
+    ani_class cls = nullptr;
+    ani_status status = env->FindClass(className, &cls);
+    if (status != ANI_OK || cls == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "FindClass status: %{public}d", status);
+        return false;
+    }
+    ani_method method = nullptr;
+    if ((status = env->Class_FindMethod(cls, "<ctor>", ":", &method)) != ANI_OK || method == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "Class_FindMethod status: %{public}d", status);
+        return false;
+    }
+    if ((status = env->Object_New(cls, method, &object)) != ANI_OK || object == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "Object_New status: %{public}d", status);
+        return false;
+    }
+    return true;
+}
+
+bool CreateArrayObject(ani_env *env, ani_object &object, size_t length)
+{
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "env null");
+        return false;
+    }
+
+    ani_class cls = nullptr;
+    ani_status status = env->FindClass(CLASSNAME_ARRAY, &cls);
+    if (status != ANI_OK || cls == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "FindClass status: %{public}d", status);
+        return false;
+    }
+    ani_method method = nullptr;
+    if ((status = env->Class_FindMethod(cls, "<ctor>", "i:", &method)) != ANI_OK || method == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "Class_FindMethod status: %{public}d", status);
+        return false;
+    }
+    if ((status = env->Object_New(cls, method, &object, length)) != ANI_OK || object == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "Object_New status: %{public}d", status);
+        return false;
+    }
+    return true;
+}
+
+ani_status InitAniCreator(ani_env *env, const std::string &aniClassDescriptor, const std::string &aniCtorSignature)
+{
+    ani_status status = ANI_OK;
+    auto aniClassIter = globalAniCreators.find(aniClassDescriptor);
+    if (aniClassIter != globalAniCreators.end()) {
+        auto &aniCtorSignatureMap = aniClassIter->second.second;
+        if (aniCtorSignatureMap.find(aniCtorSignature) != aniCtorSignatureMap.end()) {
+            TAG_LOGD(AAFwkTag::JSRUNTIME, "class %{public}s and its ctor already exist", aniClassDescriptor.c_str());
+            return status;
+        }
+    }
+    bool isNewClassEntry = false;
+    ani_class aniClass = nullptr;
+    if (aniClassIter == globalAniCreators.end()) {
+        status = env->FindClass(aniClassDescriptor.c_str(), &aniClass);
+        if (status != ANI_OK) {
+            TAG_LOGE(
+                AAFwkTag::JSRUNTIME, "class %{public}s not found, ret %{public}d", aniClassDescriptor.c_str(), status);
+            return status;
+        }
+        auto [iter, inserted] = globalAniCreators.emplace(
+            aniClassDescriptor, std::make_pair(aniClass, std::unordered_map<std::string, ani_method>()));
+        if (!inserted) {
+            TAG_LOGE(AAFwkTag::JSRUNTIME, "emplace class %{public}s failed", aniClassDescriptor.c_str());
+            return ANI_ERROR;
+        }
+        aniClassIter = iter;
+        isNewClassEntry = true;
+        auto &newClassEntry = aniClassIter->second;
+        status = env->GlobalReference_Create(static_cast<ani_ref>(newClassEntry.first),
+                                             reinterpret_cast<ani_ref *>(&(newClassEntry.first)));
+        if (status != ANI_OK) {
+            TAG_LOGE(AAFwkTag::JSRUNTIME, "GlobalReference_Create failed ret %{public}d", status);
+            globalAniCreators.erase(aniClassIter);
+            return status;
+        }
+    }
+    aniClass = aniClassIter->second.first;
+    ani_method aniCtorMethod;
+    status = env->Class_FindMethod(aniClass, "<ctor>", aniCtorSignature.c_str(), &aniCtorMethod);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "find %{public}s ctor failed ret %{public}d", aniClassDescriptor.c_str(), status);
+        if (isNewClassEntry) {
+            env->GlobalReference_Delete(static_cast<ani_ref>(aniClass));
+            globalAniCreators.erase(aniClassIter);
+        }
+        return status;
+    }
+    aniClassIter->second.second.emplace(aniCtorSignature, aniCtorMethod);
+    return status;
+}
+
+ani_object InitAniObjectByCreator(ani_env *env, const std::string &aniClassDescriptor,
+                                  const std::string aniCtorSignature, ...)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, "InitAniObjectByCreator");
+    std::lock_guard<std::mutex> lock(g_aniCreatorsMutex);
+    ani_status status = InitAniCreator(env, aniClassDescriptor, aniCtorSignature);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "InitAniCreator failed, ret %{public}d", status);
+        return nullptr;
+    }
+    va_list args;
+    va_start(args, aniCtorSignature);
+    auto &creatorEntry = globalAniCreators[aniClassDescriptor];
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, "CreateObjectByCreator");
+    ani_object aniObject;
+    status = env->Object_New_V(creatorEntry.first, creatorEntry.second[aniCtorSignature], &aniObject, args);
+    va_end(args);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::ANI, "Object_New_V failed, ret %{public}d", status);
+        return nullptr;
+    }
+    return aniObject;
 }
 } // namespace AppExecFwk
 } // namespace OHOS

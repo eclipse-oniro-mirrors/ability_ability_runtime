@@ -29,7 +29,6 @@ ohos_fuzztest("ExtensionRecordManagerFuzzTest") {
     "${ability_runtime_innerkits_path}/app_manager/include/appmgr",
     "${ability_runtime_services_path}/abilitymgr/include",
     "${ability_runtime_services_path}/abilitymgr/include/utils",
-    "${ability_runtime_test_path}/fuzztest",
   ]
   cflags = [
     "-g",
@@ -69,14 +68,17 @@ ohos_fuzztest("ExtensionRecordManagerFuzzTest") {
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/ability_manager:ability_start_options",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
+    "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_path}/utils/global/common:runtime_utils",
     "${ability_runtime_path}/utils/server/startup:startup_util",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
     "${ability_runtime_services_path}/common:task_handler_wrap",
     "${ability_runtime_services_path}/common:hisysevent_report",
+    "${ability_runtime_services_path}/common:perm_verification",
   ]
 
   external_deps = [
+    "ability_base:session_info",
     "ability_base:want",
     "ability_base:zuri",
     "bundle_framework:appexecfwk_base",
@@ -94,7 +96,7 @@ ohos_fuzztest("ExtensionRecordManagerFuzzTest") {
     "napi:ace_napi",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
-    "window_manager:libwsutils",
+    "window_manager:libwsutils"
   ]
   if (ability_runtime_child_process) {
     defines = [ "SUPPORT_CHILD_PROCESS" ]

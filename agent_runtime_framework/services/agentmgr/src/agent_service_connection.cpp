@@ -16,6 +16,7 @@
 #include "agent_service_connection.h"
 
 #include "agent_manager_service.h"
+#include "hilog_tag_wrapper.h"
 
 namespace OHOS {
 namespace AgentRuntime {
@@ -37,6 +38,11 @@ void AgentServiceConnection::OnAbilityConnectDone(
 
 void AgentServiceConnection::OnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode)
 {
+    TAG_LOGI(AAFwkTag::SER_ROUTER,
+        "AGENT service connection disconnect done: bundleName=%{public}s, abilityName=%{public}s, "
+        "resultCode=%{public}d, callerNull=%{public}d",
+        element.GetBundleName().c_str(), element.GetAbilityName().c_str(), resultCode,
+        callerConnection_ == nullptr ? 1 : 0);
     if (callerConnection_ != nullptr) {
         callerConnection_->OnAbilityDisconnectDone(element, resultCode);
     }

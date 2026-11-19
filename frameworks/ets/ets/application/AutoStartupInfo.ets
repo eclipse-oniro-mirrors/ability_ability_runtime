@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License"),
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,6 +19,7 @@ export interface AutoStartupInfo {
   abilityName: string;
   abilityTypeName?: string;
   appCloneIndex?: int;
+  isDirectBoot?: boolean;
   readonly userId?: int;
   readonly setterUserId?: int;
   readonly canUserModify?: boolean;
@@ -30,6 +31,7 @@ class AutoStartupInfoInner implements AutoStartupInfo {
   abilityName: string = '';
   abilityTypeName?: string = '';
   appCloneIndex?: int = 0;
+  isDirectBoot?: boolean = false;
   readonly userId?: int = 0;
   readonly setterUserId?: int = 0;
   readonly canUserModify?: boolean = false;

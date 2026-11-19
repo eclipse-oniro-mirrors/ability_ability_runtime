@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,6 +24,7 @@ import bundleManager from '@ohos.bundle.bundleManager';
 import _AppForegroundStateObserver from 'application.AppForegroundStateObserver';
 import { AbilityFirstFrameStateObserver as _AbilityFirstFrameStateObserver } from 'application.AbilityFirstFrameStateObserver';
 import { AbilityFirstFrameStateData as _AbilityFirstFrameStateData } from 'application.AbilityFirstFrameStateData';
+import _FocusedApplicationObserver from 'application.FocusedApplicationObserver';
 import { AbilityUtils } from './utils/AbilityUtils';
 
 const ERROR_CODE_INVALID_PARAM: int = 401;
@@ -40,6 +41,7 @@ export type ApplicationStateObserver = _ApplicationStateObserver;
 export type AppForegroundStateObserver = _AppForegroundStateObserver;
 export type AbilityFirstFrameStateObserver = _AbilityFirstFrameStateObserver;
 export type AbilityFirstFrameStateData = _AbilityFirstFrameStateData;
+export type FocusedApplicationObserver = _FocusedApplicationObserver;
 
 export enum PreloadMode {
   PRESS_DOWN
@@ -493,6 +495,26 @@ export function killProcessWithAccount(bundleName: string, accountId: int,
   return p;
 }
 
+export native function nativeKillProcessWithAccountSafely(callback: AsyncCallbackWrapper<void>,
+  bundleName: string, accountId: int, clearPageStack: boolean, appIndex?: int) : void;
+export function killProcessWithAccountSafely(bundleName: string, accountId: int,
+  clearPageStack: boolean, appIndex?: int): Promise<void>
+{
+  let p:Promise<void> = new Promise<void>((resolve: (data:undefined)=>void, reject:(err: BusinessError)=>void):void => {
+    let myCall = new AsyncCallbackWrapper<void>((err: BusinessError | null)=>{
+      if (err == null || err.code == 0) {
+        resolve(undefined);
+      } else {
+        reject(err);
+      }
+    });
+    taskpool.execute((): void => {
+      appManager.nativeKillProcessWithAccountSafely(myCall, bundleName, accountId, clearPageStack, appIndex);
+    });
+  });
+  return p;
+}
+
 export native function nativeGetProcessMemoryByPid(pid: int, callback: AsyncCallbackWrapper<int>) : void;
 export function getProcessMemoryByPid(pid: int, callback: AsyncCallback<int>): void {
   let myCall = new AsyncCallbackWrapper<int>(callback);
@@ -767,5 +789,16 @@ export function isApplicationRunning(bundleName: string, callback: AsyncCallback
   taskpool.execute((): void => {
     appManager.nativeIsApplicationRunning(bundleName, myCall);
   });
+}
+
+export native function nativeOnFocusedApplicationChanged(
+    observer: FocusedApplicationObserver): int;
+export function onFocusedApplicationChanged(observer: FocusedApplicationObserver): int {
+  return appManager.nativeOnFocusedApplicationChanged(observer);
+}
+
+export native function nativeOffFocusedApplicationChanged(observerId: int): void;
+export function offFocusedApplicationChanged(observerId: int): void {
+  appManager.nativeOffFocusedApplicationChanged(observerId);
 }
 } // namespace appManager

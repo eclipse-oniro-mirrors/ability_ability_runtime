@@ -38,6 +38,28 @@ public:
     void OnAbilityDestroy(std::shared_ptr<InteropObject> ability) override;
     void OnAbilityForeground(std::shared_ptr<InteropObject> ability) override;
     void OnAbilityBackground(std::shared_ptr<InteropObject> ability) override;
+    void OnAbilityContinue(std::shared_ptr<InteropObject> ability) override;
+    void OnWindowStageInactive(std::shared_ptr<InteropObject> ability,
+        std::shared_ptr<InteropObject> windowStage) override;
+    void OnWindowStageActive(std::shared_ptr<InteropObject> ability,
+        std::shared_ptr<InteropObject> windowStage) override;
+    void OnNewWant(std::shared_ptr<InteropObject> ability) override;
+    void OnAbilityWillBackground(std::shared_ptr<InteropObject> ability) override;
+    void OnAbilityWillForeground(std::shared_ptr<InteropObject> ability) override;
+    void OnAbilityWillCreate(std::shared_ptr<InteropObject> ability) override;
+    void OnWindowStageWillDestroy(std::shared_ptr<InteropObject> ability,
+        std::shared_ptr<InteropObject> windowStage) override;
+    void OnAbilityWillDestroy(std::shared_ptr<InteropObject> ability) override;
+    void OnWindowStageRestore(std::shared_ptr<InteropObject> ability,
+        std::shared_ptr<InteropObject> windowStage) override;
+    void OnAbilitySaveState(std::shared_ptr<InteropObject> ability) override;
+    void OnAbilityWillContinue(std::shared_ptr<InteropObject> ability) override;
+    void OnAbilityWillSaveState(std::shared_ptr<InteropObject> ability) override;
+    void OnWillNewWant(std::shared_ptr<InteropObject> ability) override;
+    void OnWindowStageWillCreate(std::shared_ptr<InteropObject> ability,
+        std::shared_ptr<InteropObject> windowStage) override;
+    void OnWindowStageWillRestore(std::shared_ptr<InteropObject> ability,
+        std::shared_ptr<InteropObject> windowStage) override;
 
     int32_t Register(void *callback) override;
     bool Unregister(void *jsVallback = nullptr) override;

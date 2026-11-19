@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -37,11 +37,16 @@ struct CJFormExtAbilityFuncs {
     void (*cjFormExtAbilityOnStop)(int64_t id);
     void (*freeCFormBindingData)(CFormBindingData data);
 };
+
+struct CJFormExtAbilityFuncsV2 {
+    void (*cjFormExtAbilityOnConfigurationUpdateV2)(int64_t id, CConfigurationV2 configuration);
+};
 } // namespace AbilityRuntime
 } // namespace OHOS
 
 namespace {
 static OHOS::AbilityRuntime::CJFormExtAbilityFuncs g_cjFuncs {};
+static OHOS::AbilityRuntime::CJFormExtAbilityFuncsV2 g_cjFuncsV2 {};
 static const int32_t CJ_OBJECT_ERR_CODE = -1;
 static const int32_t FORM_STATE_DEFAULT = 0;
 } // namespace
@@ -150,8 +155,11 @@ void CJFormExtensionObject::OnChangeFormVisibility(const std::map<int64_t, int32
         return;
     }
     int64_t i = 0;
+    std::vector<std::string> keyStrings;
+    keyStrings.reserve(formEventsMap.size());
     for (auto& item : formEventsMap) {
-        keysHead[i] = const_cast<char*>(std::to_string(item.first).c_str());
+        keyStrings.push_back(std::to_string(item.first));
+        keysHead[i] = const_cast<char*>(keyStrings.back().c_str());
         valuesHead[i] = item.second;
         i++;
     }
@@ -184,13 +192,19 @@ void CJFormExtensionObject::OnRemoveForm(const char* formId)
 
 void CJFormExtensionObject::OnConfigurationUpdate(std::shared_ptr<AppExecFwk::Configuration> fullConfig)
 {
+    if (g_cjFuncsV2.cjFormExtAbilityOnConfigurationUpdateV2 != nullptr) {
+        auto cfg = CreateCConfigurationV2(*fullConfig);
+        g_cjFuncsV2.cjFormExtAbilityOnConfigurationUpdateV2(cjID_, cfg);
+        FreeCConfigurationV2(&cfg);
+        return;
+    }
     if (g_cjFuncs.cjFormExtAbilityOnConfigurationUpdate == nullptr) {
         TAG_LOGE(AAFwkTag::FORM_EXT, "cjFormExtAbilityOnConfigurationUpdate is not registered");
         return;
     }
     auto cfg = CreateCConfiguration(*fullConfig);
     g_cjFuncs.cjFormExtAbilityOnConfigurationUpdate(cjID_, cfg);
-    FreeCConfiguration(cfg);
+    FreeCConfiguration(&cfg);
 }
 
 int32_t CJFormExtensionObject::OnAcquireFormState(const AAFwk::Want& want)
@@ -237,6 +251,22 @@ CJ_EXPORT void FFIRegisterCJFormExtAbilityFuncs(void (*registerFunc)(CJFormExtAb
 
     registerFunc(&g_cjFuncs);
     TAG_LOGD(AAFwkTag::FORM_EXT, "FFIRegisterCJFormExtAbilityFuncs end");
+}
+
+CJ_EXPORT void FFIRegisterCJFormExtAbilityFuncsV2(void (*registerFunc)(CJFormExtAbilityFuncsV2*))
+{
+    TAG_LOGD(AAFwkTag::FORM_EXT, "FFIRegisterCJFormExtAbilityFuncsV2 start");
+    if (g_cjFuncsV2.cjFormExtAbilityOnConfigurationUpdateV2 != nullptr) {
+        TAG_LOGE(AAFwkTag::FORM_EXT, "Repeated registration for cj functions V2 of CJFormExtAbility");
+        return;
+    }
+    if (registerFunc == nullptr) {
+        TAG_LOGE(AAFwkTag::FORM_EXT, "FFIRegisterCJFormExtAbilityFuncsV2 failed, registerFunc is nullptr");
+        return;
+    }
+
+    registerFunc(&g_cjFuncsV2);
+    TAG_LOGD(AAFwkTag::FORM_EXT, "FFIRegisterCJFormExtAbilityFuncsV2 end");
 }
 } // extern "C"
 } // namespace AbilityRuntime

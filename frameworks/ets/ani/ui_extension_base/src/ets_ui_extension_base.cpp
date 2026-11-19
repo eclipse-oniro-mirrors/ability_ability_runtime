@@ -21,6 +21,7 @@
 #include "ani.h"
 #include "ability_info.h"
 #include "ability_manager_client.h"
+#include "accesstoken_kit.h"
 #include "ani_common_configuration.h"
 #include "ani_common_util.h"
 #include "ani_common_want.h"
@@ -42,8 +43,10 @@
 #include "hitrace_meter.h"
 #include "insight_intent_executor_mgr.h"
 #include "int_wrapper.h"
+#include "ipc_skeleton.h"
 #include "ohos_application.h"
 #include "string_wrapper.h"
+#include "tokenid_kit.h"
 #include "ui_extension_window_command.h"
 #include "want_params_wrapper.h"
 
@@ -143,9 +146,15 @@ std::shared_ptr<ExtensionCommon> EtsUIExtensionBase::Init(const std::shared_ptr<
     }
     std::string moduleName(abilityInfo_->moduleName);
     moduleName.append("::").append(abilityInfo_->name);
-    etsObj_ = etsRuntime_.LoadModule(
-        moduleName, srcPath, abilityInfo_->hapPath, abilityInfo_->compileMode == AppExecFwk::CompileMode::ES_MODULE,
-        false, abilityInfo_->srcEntrance);
+    std::string preloadKey = moduleName + "::" + srcPath;
+    std::unique_ptr<AppExecFwk::ETSNativeReference> moduleObj = nullptr;
+    if (etsRuntime_.PopPreloadObj(preloadKey, moduleObj)) {
+        etsObj_ = std::move(moduleObj);
+    } else {
+        etsObj_ = etsRuntime_.LoadModule(
+            moduleName, srcPath, abilityInfo_->hapPath,
+            abilityInfo_->compileMode == AppExecFwk::CompileMode::ES_MODULE, false, abilityInfo_->srcEntrance);
+    }
     if (etsObj_ == nullptr) {
         TAG_LOGE(AAFwkTag::UI_EXT, "null etsObj_");
         return nullptr;
@@ -184,7 +193,7 @@ void EtsUIExtensionBase::RegisterAbilityConfigUpdateCallback()
         }
         if (abilityContext->GetAbilityConfiguration() == nullptr) {
             auto abilityModuleContext = abilityContext->CreateModuleContext(
-                abilityContext->GetAbilityInfo()->moduleName);
+                abilityContext->GetAbilityInfo()->moduleName, abilityContext);
             if (abilityModuleContext == nullptr) {
                 TAG_LOGE(AAFwkTag::UI_EXT, "null abilityModuleContext");
                 return;
@@ -311,6 +320,10 @@ void EtsUIExtensionBase::OnStart(
         return;
     }
     CallObjectMethod(false, "onCreate", UIEXT_ONCREATE_SIGNATURE, launchParamObj, wantObj);
+
+    if (!OnGetConfigurationStrategy(sessionInfo)) {
+        TAG_LOGW(AAFwkTag::UI_EXT, "OnGetConfigurationStrategy failed");
+    }
 }
 
 void EtsUIExtensionBase::OnStop()
@@ -447,6 +460,7 @@ void EtsUIExtensionBase::ForegroundWindowInitInsightIntentExecutorInfo(const AAF
     InsightIntentExecuteParam::GenerateFromWant(want, *executorInfo.executeParam);
     executorInfo.executeParam->executeMode_ = UI_EXTENSION_ABILITY;
     executorInfo.srcEntry = want.GetStringParam(INSIGHT_INTENT_SRC_ENTRY);
+    executorInfo.decoratorClass = want.GetStringParam(INSIGHT_INTENT_DECORATOR_CLASS);
     TAG_LOGD(AAFwkTag::UI_EXT, "executorInfo, insightIntentId: %{public}" PRIu64,
         executorInfo.executeParam->insightIntentId_);
     return;
@@ -478,7 +492,7 @@ bool EtsUIExtensionBase::ForegroundWindowWithInsightIntent(const AAFwk::Want &wa
             }
             InsightIntentExecuteParam executeParam;
             InsightIntentExecuteParam::GenerateFromWant(want, executeParam);
-            if (result.uris.size() > 0) {
+            if (result.uris.size() > 0 || result.interactionInfo != nullptr) {
                 extension->ExecuteInsightIntentDone(executeParam.insightIntentId_, result);
             }
             extension->PostInsightIntentExecuted(sessionInfo, result, needForeground);
@@ -579,26 +593,9 @@ void EtsUIExtensionBase::OnInsightIntentExecuteDone(const sptr<AAFwk::SessionInf
 
     WantParams params;
     params.SetParam(INSIGHT_INTENT_EXECUTE_RESULT_CODE, Integer::Box(result.innerErr));
-    WantParams resultParams;
-    resultParams.SetParam("code", Integer::Box(result.code));
-    if (result.result != nullptr) {
-        sptr<AAFwk::IWantParams> pWantParams = WantParamWrapper::Box(*result.result);
-        if (pWantParams != nullptr) {
-            resultParams.SetParam("result", pWantParams);
-        }
-    }
-    auto size = result.uris.size();
-    sptr<IArray> uriArray = new (std::nothrow) Array(size, g_IID_IString);
-    if (uriArray == nullptr) {
-        TAG_LOGE(AAFwkTag::UI_EXT, "new uriArray failed");
-        return;
-    }
-    for (std::size_t i = 0; i < size; i++) {
-        uriArray->Set(i, String::Box(result.uris[i]));
-    }
-    resultParams.SetParam("uris", uriArray);
-    resultParams.SetParam("flags", Integer::Box(result.flags));
-    sptr<AAFwk::IWantParams> pWantParams = WantParamWrapper::Box(resultParams);
+    auto resultParams = result.BuildFunctionResult();
+    resultParams->SetParam("code", Integer::Box(result.code));
+    sptr<AAFwk::IWantParams> pWantParams = WantParamWrapper::Box(*resultParams);
     if (pWantParams != nullptr) {
         params.SetParam(INSIGHT_INTENT_EXECUTE_RESULT, pWantParams);
     }
@@ -687,7 +684,8 @@ bool EtsUIExtensionBase::CallEtsOnSessionCreate(const AAFwk::Want &want, const s
     return true;
 }
 
-sptr<Rosen::WindowOption> EtsUIExtensionBase::CreateWindowOption(const sptr<AAFwk::SessionInfo> &sessionInfo)
+sptr<Rosen::WindowOption> EtsUIExtensionBase::CreateWindowOption(const sptr<AAFwk::SessionInfo> &sessionInfo,
+    const AAFwk::Want &want)
 {
     auto option = sptr<Rosen::WindowOption>::MakeSptr();
     if (option == nullptr) {
@@ -703,7 +701,7 @@ sptr<Rosen::WindowOption> EtsUIExtensionBase::CreateWindowOption(const sptr<AAFw
     option->SetParentWindowType(static_cast<Rosen::WindowType>(sessionInfo->parentWindowType));
     option->SetUIExtensionUsage(static_cast<uint32_t>(sessionInfo->uiExtensionUsage));
     option->SetDensity(sessionInfo->density);
-    option->SetIsDensityFollowHost(sessionInfo->isDensityFollowHost);
+    option->SetDpiFollowStrategy(static_cast<Rosen::DpiFollowStrategy>(sessionInfo->dpiFollowStrategy));
     if (context_->isNotAllow != -1) {
         bool isNotAllow = context_->isNotAllow == 1 ? true : false;
         TAG_LOGD(AAFwkTag::UI_EXT, "isNotAllow: %{public}d", isNotAllow);
@@ -713,6 +711,7 @@ sptr<Rosen::WindowOption> EtsUIExtensionBase::CreateWindowOption(const sptr<AAFw
         AppExecFwk::ExtensionAbilityType::AGENT_UI) {
         option->SetIsBlockSubwindow(true);
     }
+    option->SetCallerPid(want.GetIntParam(AAFwk::Want::PARAM_RESV_CALLER_PID, -1));
     return option;
 }
 
@@ -736,7 +735,7 @@ bool EtsUIExtensionBase::HandleSessionCreate(const AAFwk::Want &want, const sptr
             TAG_LOGE(AAFwkTag::UI_EXT, "null context");
             return false;
         }
-        auto option = CreateWindowOption(sessionInfo);
+        auto option = CreateWindowOption(sessionInfo, want);
         if (option == nullptr) {
             return false;
         }
@@ -754,6 +753,7 @@ bool EtsUIExtensionBase::HandleSessionCreate(const AAFwk::Want &want, const sptr
         if (!CallEtsOnSessionCreate(*sharedWant, sessionInfo, uiWindow, componentId)) {
             return false;
         }
+        RegisterBrandColorChangeListener(uiWindow);
         uiWindowMap_[componentId] = uiWindow;
 #ifdef SUPPORT_GRAPHICS
         if (context_->GetWindow() == nullptr) {
@@ -877,6 +877,10 @@ void EtsUIExtensionBase::DestroyWindow(const sptr<AAFwk::SessionInfo> &sessionIn
             UIEXT_ONSESSIONDESTROY_SIGNATURE, contentSessionObj);
     }
     if (uiWindow) {
+        if (context_ != nullptr &&
+            context_->GetBrandColorStrategy() == AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC) {
+            uiWindow->UnregisterAbilityDataConsumer();
+        }
         uiWindow->Destroy();
     }
     if (abilityResultListeners_) {
@@ -958,6 +962,112 @@ ani_object EtsUIExtensionBase::CallObjectMethod(const char *name, const char *si
     return reinterpret_cast<ani_object>(res);
 }
 
+bool EtsUIExtensionBase::OnGetConfigurationStrategy(const sptr<AAFwk::SessionInfo> &sessionInfo)
+{
+    TAG_LOGD(AAFwkTag::UI_EXT, "OnGetConfigurationStrategy begin");
+    auto selfToken = IPCSkeleton::GetSelfTokenID();
+    if (!Security::AccessToken::TokenIdKit::IsSystemAppByFullTokenID(selfToken)) {
+        TAG_LOGW(AAFwkTag::UI_EXT, "not system app, can not use onGetConfigurationStrategy");
+        return false;
+    }
+    auto env = etsRuntime_.GetAniEnv();
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null env");
+        return false;
+    }
+    ani_object result = CallObjectMethod("onGetConfigurationStrategy", nullptr);
+    if (result == nullptr) {
+        TAG_LOGI(AAFwkTag::UI_EXT, "onGetConfigurationStrategy not implemented");
+        return true;
+    }
+    int32_t brandColorStrategy = 0;
+    if (!GetFieldIntByName(env, result, "brandColorStrategy", brandColorStrategy)) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "Convert brandColorStrategy failed");
+        return false;
+    }
+    auto strategy =
+        brandColorStrategy == static_cast<int32_t>(AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC)
+            ? AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC
+            : AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM;
+    if (context_ == nullptr || sessionInfo  == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null ptr");
+        return false;
+    }
+    if (!context_->ApplyBrandColorStrategy(strategy, sessionInfo->brandColorStr)) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "ApplyBrandColorStrategy failed");
+        return false;
+    }
+    return true;
+}
+
+void EtsUIExtensionBase::RegisterBrandColorChangeListener(const sptr<Rosen::Window> &uiWindow)
+{
+    if (uiWindow == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null uiWindow");
+        return;
+    }
+    if (context_ == nullptr ||
+        context_->GetBrandColorStrategy() != AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC) {
+        TAG_LOGI(AAFwkTag::UI_EXT, "brandColorStrategy not FOLLOW_UEC, skip register");
+        return;
+    }
+    std::weak_ptr<EtsUIExtensionBase> weakThis = shared_from_this();
+    auto windowNotifeBrandColorChange = [weakThis](Rosen::SubSystemId id,
+                                                   uint32_t customId,
+                                                   AAFwk::Want &&data,
+                                                   std::optional<AAFwk::Want> &reply) -> int32_t {
+        auto ptr = weakThis.lock();
+        if (ptr == nullptr) {
+            TAG_LOGE(AAFwkTag::UI_EXT, "null ptr");
+            return ERR_INVALID_VALUE;
+        }
+        return ptr->WindowNotifeBrandColorChange(id, customId, std::move(data), reply);
+    };
+    if (uiWindow->RegisterAbilityDataConsumer(windowNotifeBrandColorChange) != Rosen::WMError::WM_OK) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "RegisterAbilityDataConsumer error");
+    }
+    TAG_LOGD(AAFwkTag::UI_EXT, "RegisterAbilityDataConsumer ok");
+}
+
+int32_t EtsUIExtensionBase::WindowNotifeBrandColorChange(Rosen::SubSystemId id, uint32_t customId, AAFwk::Want &&data,
+                                                         std::optional<AAFwk::Want> &reply)
+{
+    if (context_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "context null");
+        return ERR_INVALID_VALUE;
+    }
+    auto ret = context_->HandleBrandColorChange(customId, std::move(data));
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
+    AppExecFwk::Configuration config;
+    config.AddItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED, "true");
+    auto self = std::static_pointer_cast<EtsUIExtensionBase>(shared_from_this());
+    auto task = [self, config]() {
+        if (self == nullptr) {
+            TAG_LOGE(AAFwkTag::UI_EXT, "null self");
+            return;
+        }
+        auto context = self->context_;
+        if (context == nullptr) {
+            TAG_LOGE(AAFwkTag::UI_EXT, "null context");
+            return;
+        }
+        context->SetAbilityConfiguration(config);
+        self->OnAbilityConfigurationUpdated(config);
+        auto abilityConfig = context->GetAbilityConfiguration();
+        if (abilityConfig != nullptr) {
+            abilityConfig->RemoveItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED);
+        }
+    };
+    if (handler_ == nullptr || !handler_->PostTask(task, "EtsUIExtensionBase:OnBrandColorChange")) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "PostTask failed");
+        return ERR_INVALID_VALUE;
+    }
+    return ERR_OK;
+}
+
 void EtsUIExtensionBase::OnConfigurationUpdated(const AppExecFwk::Configuration &configuration)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
@@ -967,11 +1077,17 @@ void EtsUIExtensionBase::OnConfigurationUpdated(const AppExecFwk::Configuration 
         return;
     }
 
+    AppExecFwk::Configuration config = configuration;
+    if (context_->GetBrandColorStrategy() == AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC) {
+        config.RemoveItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED);
+        config.RemoveItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_ID);
+    }
+
     auto abilityConfig = context_->GetAbilityConfiguration();
     auto configUtils = std::make_shared<ConfigurationUtils>();
-
+    auto fullConfig = context_->GetConfiguration();
     if (abilityConfig != nullptr) {
-        auto newConfig = configUtils->UpdateGlobalConfig(configuration, context_->GetConfiguration(),
+        auto newConfig = configUtils->UpdateGlobalConfig(config, fullConfig,
             abilityConfig, context_->GetResourceManager());
         if (newConfig.GetItemSize() == 0) {
             return;
@@ -983,10 +1099,14 @@ void EtsUIExtensionBase::OnConfigurationUpdated(const AppExecFwk::Configuration 
         }
     } else {
         auto configUtils = std::make_shared<ConfigurationUtils>();
-        configUtils->UpdateGlobalConfig(configuration, context_->GetConfiguration(), context_->GetResourceManager());
+        configUtils->UpdateGlobalConfig(config, fullConfig, context_->GetResourceManager());
     }
 
     ConfigurationUpdated();
+    if (fullConfig != nullptr &&
+        !fullConfig->GetItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED).empty()) {
+        fullConfig->RemoveItem(AAFwk::GlobalConfigurationKey::BRAND_COLOR_CHANGED);
+    }
 }
 
 void EtsUIExtensionBase::OnAbilityConfigurationUpdated(const AppExecFwk::Configuration& configuration)

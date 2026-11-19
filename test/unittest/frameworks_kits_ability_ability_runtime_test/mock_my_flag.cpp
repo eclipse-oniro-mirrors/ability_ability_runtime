@@ -33,6 +33,7 @@ ErrCode MyFlag::changeAbilityVisibility_ = 0;
 ErrCode MyFlag::requestModalUIExtension_ = 0;
 ErrCode MyFlag::addFreeInstallObserver_ = 0;
 int32_t MyFlag::openAtomicService_ = 0;
+bool MyFlag::backToCallerApp_ = false;
 
 MyFlag::MyFlag() {}
 
@@ -181,6 +182,16 @@ int32_t MyFlag::GetOpenAtomicService()
 void MyFlag::SetOpenAtomicService(int32_t openAtomicService)
 {
     openAtomicService_ = openAtomicService;
+}
+
+bool MyFlag::GetBackToCallerApp()
+{
+    return backToCallerApp_;
+}
+
+void MyFlag::SetBackToCallerApp(bool isBackToCallerApp)
+{
+    backToCallerApp_ = isBackToCallerApp;
 }
 } // namespace AppExecFwk
 } // namespace OHOS

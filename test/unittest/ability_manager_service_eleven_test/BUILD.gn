@@ -36,6 +36,7 @@ ohos_unittest("ability_manager_service_eleven_test") {
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/aakit/include",
     "${ability_runtime_test_path}/unittest/app_debug_listener_stub_test",
     "${ability_runtime_test_path}/unittest/multi_app_utils_test/include",
+    "${ability_runtime_test_path}/unittest/want_receiver_stub_test",
     "${ability_runtime_services_path}/abilitymgr/include/mission",
     "${ability_runtime_services_path}/abilitymgr/include/scene_board",
     "mock/include",
@@ -67,6 +68,7 @@ ohos_unittest("ability_manager_service_eleven_test") {
   ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/ability_manager:ability_start_setting",
     "${ability_runtime_innerkits_path}/ability_manager:mission_info",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
@@ -88,7 +90,6 @@ ohos_unittest("ability_manager_service_eleven_test") {
     "ability_base:session_info",
     "ability_base:want",
     "ability_base:zuri",
-    "ability_runtime:ability_manager",
     "access_token:libaccesstoken_sdk",
     "access_token:libnativetoken",
     "access_token:libtoken_setproc",
@@ -107,6 +108,7 @@ ohos_unittest("ability_manager_service_eleven_test") {
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
     "kv_store:distributeddata_inner",
+    "samgr:samgr_proxy",
     "safwk:api_cache_manager",
     "selinux_adapter:librestorecon",
     "window_manager:session_manager_lite",

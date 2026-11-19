@@ -45,6 +45,9 @@ export interface SaveRequestCallback {
   onSuccess(): void;
   onFailure(): void;
 }
+export interface FillFailureResult {
+  errCode: int;
+}
 
 class FillRequestInner implements FillRequest {
   public type: AutoFillType = AutoFillType.UNSPECIFIED;
@@ -61,6 +64,9 @@ class UpdateRequestInner implements UpdateRequest {
 }
 class FillResponseInner implements FillResponse {
   public viewData!: ViewData;
+}
+class FillFailureResultInner implements FillFailureResult {
+  public errCode: int;
 }
 
 export class Cleaner {

@@ -35,6 +35,8 @@ Status DistributedKvDataManager::GetSingleKvStore(const Options &options, const 
     if (!isAlreadySet_) {
         return Status::INVALID_ARGUMENT;
     }
+    // Honor the API contract: SUCCESS must provide a valid store instance.
+    kvStore = std::make_shared<MockSingleKvStore>();
     return Status::SUCCESS;
 }
 

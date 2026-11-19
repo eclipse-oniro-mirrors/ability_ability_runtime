@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,6 +15,9 @@
 
 #include <gtest/gtest.h>
 #include <gtest/hwext/gtest-multithread.h>
+#include <cstdlib>
+#include <fstream>
+#include <vector>
 
 #define private public
 #define protected public
@@ -43,6 +46,65 @@ const std::string TEST_CODE_PATH = "/data/storage/el1/bundle";
 const std::string TEST_HAP_PATH = "/system/app/com.ohos.contactsdataabilityContacts_DataAbility.hap";
 const std::string TEST_LIB_PATH = "/data/storage/el1/bundle/lib/";
 const std::string TEST_MODULE_PATH = "/data/storage/el1/bundle/curJsModulePath";
+const std::string TEST_HOST_AOT_ROOT = "/system/app/ark_cache/";
+const std::string TEST_HOST_PRIVATE_HSP_AOT_ROOT = "/data/storage/ark-cache/arm64/";
+const std::string TEST_HOST_AOT_BUNDLE_NAME = "com.example.hostaot";
+const std::string TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME = "com.example.hsp1";
+
+class TestApplicationStateJsRuntime final : public JsRuntime {
+public:
+    void NotifyApplicationState(bool isBackground) override
+    {
+        applicationStates_.emplace_back(isBackground);
+    }
+
+    const std::vector<bool> &GetApplicationStates() const
+    {
+        return applicationStates_;
+    }
+
+private:
+    std::vector<bool> applicationStates_;
+};
+
+std::string GetHostAotAnPath(const std::string &bundleName, const std::string &moduleName)
+{
+    return TEST_HOST_AOT_ROOT + bundleName + "/" + moduleName + ".an";
+}
+
+void CreateHostAotAnFile(const std::string &bundleName, const std::string &moduleName)
+{
+    std::string anPath = GetHostAotAnPath(bundleName, moduleName);
+    std::string mkdirCmd = "mkdir -p " + TEST_HOST_AOT_ROOT + bundleName;
+    ASSERT_EQ(std::system(mkdirCmd.c_str()), 0);
+
+    std::ofstream anFile(anPath);
+    ASSERT_TRUE(anFile.is_open());
+    anFile << "test";
+    anFile.close();
+}
+
+std::string GetHostPrivateHspAotAnPath(
+    const std::string &bundleName, uint32_t versionCode, const std::string &moduleName)
+{
+    return TEST_HOST_PRIVATE_HSP_AOT_ROOT + bundleName + "/" + std::to_string(versionCode) + "/" +
+        moduleName + ".an";
+}
+
+std::string CreateHostPrivateHspAotAnFile(
+    const std::string &bundleName, uint32_t versionCode, const std::string &moduleName)
+{
+    std::string mkdirCmd = "mkdir -p " + TEST_HOST_PRIVATE_HSP_AOT_ROOT + bundleName + "/" +
+        std::to_string(versionCode);
+    EXPECT_EQ(std::system(mkdirCmd.c_str()), 0);
+
+    std::string hostPrivateHspAotPath = GetHostPrivateHspAotAnPath(bundleName, versionCode, moduleName);
+    std::ofstream anFile(hostPrivateHspAotPath);
+    EXPECT_TRUE(anFile.is_open());
+    anFile << "test";
+    anFile.close();
+    return hostPrivateHspAotPath;
+}
 } // namespace
 
 class EtsRuntimeTest : public testing::Test {
@@ -72,7 +134,15 @@ void EtsRuntimeTest::SetUp()
     options_.eventRunner = eventRunner;
 }
 
-void EtsRuntimeTest::TearDown() {}
+void EtsRuntimeTest::TearDown()
+{
+    std::string rmHostAotCmd = "rm -rf " + TEST_HOST_AOT_ROOT + TEST_HOST_AOT_BUNDLE_NAME;
+    std::system(rmHostAotCmd.c_str());
+
+    std::string rmHostPrivateHspAotCmd =
+        "rm -rf " + TEST_HOST_PRIVATE_HSP_AOT_ROOT + TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME;
+    std::system(rmHostPrivateHspAotCmd.c_str());
+}
 
 /**
  * @tc.name: Create_100
@@ -362,7 +432,7 @@ HWTEST_F(EtsRuntimeTest, GetHspPathList_100, TestSize.Level1)
 HWTEST_F(EtsRuntimeTest, GetHspPathList_200, TestSize.Level1)
 {
     std::unique_ptr<EtsEnv::ETSEnvironment> etsEnvironment = std::make_unique<EtsEnv::ETSEnvironment>();
-    etsEnvironment->commonHspBundleInfos_ = {{0, 0, "", "", "/system/app/path1", "static"}};
+    etsEnvironment->commonHspBundleInfos_ = {{0, "", "", "/system/app/path1", "static"}};
     auto hspPathList = etsEnvironment->GetHspPathList();
     EXPECT_EQ(hspPathList[0], "/system/app/path1");
 }
@@ -456,7 +526,7 @@ HWTEST_F(EtsRuntimeTest, GetAotPath_005, TestSize.Level1)
     options.aotCompileStatusMap = {};
     // ARKTS_MODE_DYNAMIC should be skipped
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
-        {1001, static_cast<int32_t>(AppExecFwk::AOTCompileStatus::NOT_COMPILED), "com.example.hsp1", "hspModule1",
+        {1001, "com.example.hsp1", "hspModule1",
         "/system/app/hsp1.hap", AppExecFwk::Constants::ARKTS_MODE_DYNAMIC}
     };
     options.commonHspBundleInfos = hspInfos;
@@ -476,9 +546,9 @@ HWTEST_F(EtsRuntimeTest, GetAotPath_006, TestSize.Level1)
     options.arkNativeFilePath = "arm64/";
     options.moduleName = "entry";
     options.aotCompileStatusMap = {};
-    // Static mode with system app path - should be included
+    // Static mode is skipped when the host-private HSP AOT file is unavailable.
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
-        {1001, static_cast<int32_t>(AppExecFwk::AOTCompileStatus::NOT_COMPILED), "com.example.hsp1", "hspModule1",
+        {1001, "com.example.hsp1", "hspModule1",
         "/system/app/hsp1.hap", AppExecFwk::Constants::ARKTS_MODE_STATIC}
     };
     options.commonHspBundleInfos = hspInfos;
@@ -503,7 +573,7 @@ HWTEST_F(EtsRuntimeTest, GetAotPath_007, TestSize.Level1)
     options.aotCompileStatusMap = {};
     // Non-system path (doesn't start with /system/app/) and has no '/' - should be skipped
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
-        {1001, static_cast<int32_t>(AppExecFwk::AOTCompileStatus::NOT_COMPILED), "com.example.hsp1", "hspModule1",
+        {1001, "com.example.hsp1", "hspModule1",
         "relativePathWithoutSlash", AppExecFwk::Constants::ARKTS_MODE_STATIC}
     };
     options.commonHspBundleInfos = hspInfos;
@@ -523,9 +593,9 @@ HWTEST_F(EtsRuntimeTest, GetAotPath_008, TestSize.Level1)
     options.arkNativeFilePath = "arm64/";
     options.moduleName = "entry";
     options.aotCompileStatusMap = {};
-    // Non-system path but has '/' - should be included
+    // Non-system path is skipped when the host-private HSP AOT file is unavailable.
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
-        {1001, static_cast<int32_t>(AppExecFwk::AOTCompileStatus::NOT_COMPILED), "com.example.hsp1", "hspModule1",
+        {1001, "com.example.hsp1", "hspModule1",
         "/data/app/hsp1.hap", AppExecFwk::Constants::ARKTS_MODE_STATIC}
     };
     options.commonHspBundleInfos = hspInfos;
@@ -550,32 +620,32 @@ HWTEST_F(EtsRuntimeTest, GetAotPath_009, TestSize.Level1)
     // Mix of different HSP types
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
         // Dynamic mode - should be skipped
-        {1001, static_cast<int32_t>(AppExecFwk::AOTCompileStatus::NOT_COMPILED), "com.example.hsp1", "hspModule1",
+        {1001, "com.example.hsp1", "hspModule1",
             "/system/app/hsp1.hap", AppExecFwk::Constants::ARKTS_MODE_DYNAMIC},
-        // Static mode, system path - should be included
-        {1002, static_cast<int32_t>(AppExecFwk::AOTCompileStatus::NOT_COMPILED), "com.example.hsp2", "hspModule2",
+        // Static mode without host-private AOT file - should be skipped
+        {1002, "com.example.hsp2", "hspModule2",
             "/system/app/hsp2.hap", AppExecFwk::Constants::ARKTS_MODE_STATIC},
-        // Static mode, non-system path with slash - should be included
-        {1003, static_cast<int32_t>(AppExecFwk::AOTCompileStatus::INSTALL_COMPILE_SUCCESS), "com.example.hsp3",
+        // Static mode without host-private AOT file - should be skipped
+        {1003, "com.example.hsp3",
             "hspModule3", "/data/app/hsp3.hap", AppExecFwk::Constants::ARKTS_MODE_STATIC},
-        // Non-system path without slash - should be skipped
-        {1004, static_cast<int32_t>(AppExecFwk::AOTCompileStatus::NOT_COMPILED), "com.example.hsp4", "hspModule4",
+        // Static mode without host-private AOT file - should be skipped
+        {1004, "com.example.hsp4", "hspModule4",
             "relativePath", AppExecFwk::Constants::ARKTS_MODE_STATIC}
     };
     options.commonHspBundleInfos = hspInfos;
     auto result = etsRuntime->GetAotPath(options);
     // Should contain entry.an (from aotCompileStatusMap)
     EXPECT_NE(result.find("entry.an"), std::string::npos);
-    // Should not contain hsp2 (static mode, system path) since compile status is not compiled
+    // Should not contain hsp2 because host-private AOT file is unavailable.
     EXPECT_EQ(result.find("hspModule2.an"), std::string::npos);
-    // Should contain hsp3 (non-system path with slash)
-    EXPECT_NE(result.find("hspModule3.an"), std::string::npos);
+    // Should not contain hsp3 because host-private AOT file is unavailable.
+    EXPECT_EQ(result.find("hspModule3.an"), std::string::npos);
     // Should NOT contain hsp1 (dynamic mode)
     EXPECT_EQ(result.find("hspModule1.an"), std::string::npos);
     // Should NOT contain hsp4 (relative path without slash)
     EXPECT_EQ(result.find("hspModule4.an"), std::string::npos);
-    // Check that paths are separated by colons
-    EXPECT_NE(result.find(":"), std::string::npos);
+    // Only entry.an is present, so no path separator is needed
+    EXPECT_EQ(result.find(":"), std::string::npos);
 }
 
 /**
@@ -593,15 +663,14 @@ HWTEST_F(EtsRuntimeTest, GetAotPath_010, TestSize.Level1)
         {"entry", static_cast<int32_t>(AppExecFwk::AOTCompileStatus::IDLE_COMPILE_SUCCESS)}
     };
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
-        {1002003, static_cast<int32_t>(AppExecFwk::AOTCompileStatus::IDLE_COMPILE_SUCCESS), "com.example.hsp",
+        {1002003, "com.example.hsp",
             "hspModule", "/system/app/hsp.hap", AppExecFwk::Constants::ARKTS_MODE_STATIC}
     };
     options.commonHspBundleInfos = hspInfos;
     auto result = etsRuntime->GetAotPath(options);
-    // Should include version in the path
-    EXPECT_NE(result.find("1002003"), std::string::npos);
-    // Should have proper path structure
-    EXPECT_NE(result.find("/data/service/el1/public/for-all-app/shared_bundles_ark_cache/"), std::string::npos);
+    // Shared HSP host-private AOT is ignored when the versioned file is unavailable.
+    EXPECT_EQ(result.find("1002003"), std::string::npos);
+    EXPECT_EQ(result.find("/data/service/el1/public/for-all-app/shared_bundles_ark_cache/"), std::string::npos);
 }
 
 /**
@@ -705,7 +774,7 @@ HWTEST_F(EtsRuntimeTest, GetAotPath_011, TestSize.Level1)
 
 /**
  * @tc.name: GetAotPath_012
- * @tc.desc: Test GetAotPath with INSTALL_COMPILE_SUCCESS status in commonHspBundleInfos.
+ * @tc.desc: Test GetAotPath skips static shared HSP when host-private AOT file is unavailable.
  * @tc.type: FUNC
  */
 HWTEST_F(EtsRuntimeTest, GetAotPath_012, TestSize.Level1)
@@ -716,13 +785,189 @@ HWTEST_F(EtsRuntimeTest, GetAotPath_012, TestSize.Level1)
     options.moduleName = "entry";
     options.aotCompileStatusMap = {};
     std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
-        {1001, static_cast<int32_t>(AppExecFwk::AOTCompileStatus::INSTALL_COMPILE_SUCCESS),
-         "com.example.hsp1", "hspModule1", "/system/app/hsp1.hap",
+        {1001, "com.example.hsp1", "hspModule1", "/system/app/hsp1.hap",
          AppExecFwk::Constants::ARKTS_MODE_STATIC}
     };
     options.commonHspBundleInfos = hspInfos;
     auto result = etsRuntime->GetAotPath(options);
-    EXPECT_NE(result.find("hspModule1.an"), std::string::npos);
+    EXPECT_EQ(result.find("hspModule1.an"), std::string::npos);
+}
+
+/**
+ * @tc.name: GetAotPath_0121
+ * @tc.desc: Test GetAotPath loads host-private static shared HSP AOT by file existence.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, GetAotPath_0121, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    Runtime::Options options;
+    options.aotCompileStatusMap = {};
+    std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
+        {1001, TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, "hostPrivateHspModule", "/data/app/hsp1.hap",
+         AppExecFwk::Constants::ARKTS_MODE_STATIC}
+    };
+    options.commonHspBundleInfos = hspInfos;
+    std::string hostPrivateHspAotPath =
+        CreateHostPrivateHspAotAnFile(TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, 1001, "hostPrivateHspModule");
+
+    auto result = etsRuntime->GetAotPath(options);
+    EXPECT_EQ(result, hostPrivateHspAotPath);
+}
+
+/**
+ * @tc.name: GetAotPath_0122
+ * @tc.desc: Test GetAotPath skips shared HSP AOT when bundleName or moduleName is empty.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, GetAotPath_0122, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    Runtime::Options options;
+    options.aotCompileStatusMap = {};
+    std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
+        {1001, "", "hostPrivateHspModule", "/data/app/hsp1.hap", AppExecFwk::Constants::ARKTS_MODE_STATIC},
+        {1001, TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, "", "/data/app/hsp1.hap",
+         AppExecFwk::Constants::ARKTS_MODE_STATIC}
+    };
+    options.commonHspBundleInfos = hspInfos;
+
+    auto result = etsRuntime->GetAotPath(options);
+    EXPECT_EQ(result, "");
+}
+
+/**
+ * @tc.name: GetAotPath_0123
+ * @tc.desc: Test GetAotPath only loads existing static host-private shared HSP AOT files.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, GetAotPath_0123, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    Runtime::Options options;
+    options.aotCompileStatusMap = {};
+    std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
+        {1001, TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, "dynamicHspModule", "/data/app/hsp1.hap",
+         AppExecFwk::Constants::ARKTS_MODE_DYNAMIC},
+        {1002, TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, "staticHspModule", "/data/app/hsp2.hap",
+         AppExecFwk::Constants::ARKTS_MODE_STATIC},
+        {1003, TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, "missingHspModule", "/data/app/hsp3.hap",
+         AppExecFwk::Constants::ARKTS_MODE_STATIC}
+    };
+    options.commonHspBundleInfos = hspInfos;
+    std::string hostPrivateHspAotPath =
+        CreateHostPrivateHspAotAnFile(TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, 1002, "staticHspModule");
+
+    auto result = etsRuntime->GetAotPath(options);
+    EXPECT_EQ(result, hostPrivateHspAotPath);
+}
+
+/**
+ * @tc.name: GetAotPath_0124
+ * @tc.desc: Test GetAotPath joins multiple existing static host-private shared HSP AOT files.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, GetAotPath_0124, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    Runtime::Options options;
+    options.aotCompileStatusMap = {};
+    std::vector<OHOS::AbilityRuntime::CommonHspBundleInfo> hspInfos = {
+        {1004, TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, "firstHspModule", "/data/app/hsp4.hap",
+         AppExecFwk::Constants::ARKTS_MODE_STATIC},
+        {1005, TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, "secondHspModule", "/data/app/hsp5.hap",
+         AppExecFwk::Constants::ARKTS_MODE_STATIC}
+    };
+    options.commonHspBundleInfos = hspInfos;
+    std::string firstHspAotPath =
+        CreateHostPrivateHspAotAnFile(TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, 1004, "firstHspModule");
+    std::string secondHspAotPath =
+        CreateHostPrivateHspAotAnFile(TEST_HOST_PRIVATE_HSP_AOT_BUNDLE_NAME, 1005, "secondHspModule");
+
+    auto result = etsRuntime->GetAotPath(options);
+    EXPECT_EQ(result, firstHspAotPath + ":" + secondHspAotPath);
+}
+
+/**
+ * @tc.name: GetAotPath_013
+ * @tc.desc: Test GetAotPath loads preinstall host AOT an file when aot status is failed.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, GetAotPath_013, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    Runtime::Options options;
+    options.bundleName = TEST_HOST_AOT_BUNDLE_NAME;
+    options.aotCompileStatusMap = {
+        {"entry", static_cast<int32_t>(AppExecFwk::AOTCompileStatus::NOT_COMPILED)}
+    };
+    options.commonHspBundleInfos = {};
+    CreateHostAotAnFile(TEST_HOST_AOT_BUNDLE_NAME, "entry");
+
+    auto result = etsRuntime->GetAotPath(options);
+    EXPECT_EQ(result, GetHostAotAnPath(TEST_HOST_AOT_BUNDLE_NAME, "entry"));
+}
+
+/**
+ * @tc.name: GetAotPath_014
+ * @tc.desc: Test GetAotPath skips missing preinstall host AOT an file when aot status is failed.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, GetAotPath_014, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    Runtime::Options options;
+    options.bundleName = TEST_HOST_AOT_BUNDLE_NAME;
+    options.aotCompileStatusMap = {
+        {"entry", static_cast<int32_t>(AppExecFwk::AOTCompileStatus::COMPILE_FAILED)}
+    };
+    options.commonHspBundleInfos = {};
+
+    auto result = etsRuntime->GetAotPath(options);
+    EXPECT_EQ(result, "");
+}
+
+/**
+ * @tc.name: GetAotPath_015
+ * @tc.desc: Test GetAotPath only loads existing preinstall host AOT an files for failed modules.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, GetAotPath_015, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    Runtime::Options options;
+    options.bundleName = TEST_HOST_AOT_BUNDLE_NAME;
+    options.aotCompileStatusMap = {
+        {"entry", static_cast<int32_t>(AppExecFwk::AOTCompileStatus::COMPILE_FAILED)},
+        {"feature", static_cast<int32_t>(AppExecFwk::AOTCompileStatus::COMPILE_FAILED)}
+    };
+    options.commonHspBundleInfos = {};
+    CreateHostAotAnFile(TEST_HOST_AOT_BUNDLE_NAME, "entry");
+
+    auto result = etsRuntime->GetAotPath(options);
+    EXPECT_NE(result.find(GetHostAotAnPath(TEST_HOST_AOT_BUNDLE_NAME, "entry")), std::string::npos);
+    EXPECT_EQ(result.find(GetHostAotAnPath(TEST_HOST_AOT_BUNDLE_NAME, "feature")), std::string::npos);
+}
+
+/**
+ * @tc.name: GetAotPath_016
+ * @tc.desc: Test successful AOT status still loads original sandbox an path.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, GetAotPath_016, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    Runtime::Options options;
+    options.bundleName = TEST_HOST_AOT_BUNDLE_NAME;
+    options.aotCompileStatusMap = {
+        {"entry", static_cast<int32_t>(AppExecFwk::AOTCompileStatus::IDLE_COMPILE_SUCCESS)}
+    };
+    options.commonHspBundleInfos = {};
+    CreateHostAotAnFile(TEST_HOST_AOT_BUNDLE_NAME, "entry");
+
+    auto result = etsRuntime->GetAotPath(options);
+    EXPECT_EQ(result, "/data/storage/ark-cache/arm64/entry.an");
+    EXPECT_EQ(result.find(GetHostAotAnPath(TEST_HOST_AOT_BUNDLE_NAME, "entry")), std::string::npos);
 }
 
 /**
@@ -747,6 +992,373 @@ HWTEST_F(EtsRuntimeTest, XGC_0100, TestSize.Level2)
     std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
     etsRuntime->XGC();
     ASSERT_NE(etsRuntime, nullptr);
+}
+
+/**
+ * @tc.name: NotifyApplicationState_0100
+ * @tc.desc: EtsRuntimeTest test for NotifyApplicationState when jsRuntime_ is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, NotifyApplicationState_0100, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    etsRuntime->NotifyApplicationState(true);
+    EXPECT_EQ(etsRuntime->GetJsRuntime(), nullptr);
+}
+
+/**
+ * @tc.name: NotifyApplicationState_0200
+ * @tc.desc: EtsRuntimeTest test for foreground and background states.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, NotifyApplicationState_0200, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    std::unique_ptr<Runtime> jsRuntime = std::make_unique<TestApplicationStateJsRuntime>();
+    auto *applicationStateRuntime = static_cast<TestApplicationStateJsRuntime *>(jsRuntime.get());
+    etsRuntime->SetJsRuntime(jsRuntime);
+    ASSERT_NE(etsRuntime->GetJsRuntime(), nullptr);
+
+    etsRuntime->NotifyApplicationState(false);
+    etsRuntime->NotifyApplicationState(true);
+
+    const auto &applicationStates = applicationStateRuntime->GetApplicationStates();
+    ASSERT_EQ(applicationStates.size(), 2U);
+    EXPECT_FALSE(applicationStates[0]);
+    EXPECT_TRUE(applicationStates[1]);
+}
+
+/**
+ * @tc.name: DumpHeapSnapshot_0100
+ * @tc.desc: EtsRuntimeTest test for DumpHeapSnapshot with param, jsRuntime_ is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, DumpHeapSnapshot_0100, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    OHOS::AbilityRuntime::Runtime::JsHeapDumpParam param;
+    param.languageEnv = OHOS::AbilityRuntime::CODE_LANGUAGE_ARKTS_1_0;
+    etsRuntime->DumpHeapSnapshot(1, param);
+    ASSERT_NE(etsRuntime, nullptr);
+}
+
+/**
+ * @tc.name: DumpHeapSnapshot_0200
+ * @tc.desc: EtsRuntimeTest test for DumpHeapSnapshot with param, jsRuntime_ is not nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, DumpHeapSnapshot_0200, TestSize.Level1)
+{
+    Runtime::Options options;
+    options.lang = Runtime::Language::ETS;
+    options.arkNativeFilePath = "test_app/";
+    options.moduleName = "TestModule";
+    std::unique_ptr<Runtime> jsRuntime = AbilityRuntime::JsRuntime::Create(options);
+    ASSERT_NE(jsRuntime, nullptr);
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    etsRuntime->jsRuntime_ = std::move(jsRuntime);
+    OHOS::AbilityRuntime::Runtime::JsHeapDumpParam param;
+    param.languageEnv = OHOS::AbilityRuntime::CODE_LANGUAGE_ARKTS_1_2;
+    etsRuntime->DumpHeapSnapshot(1, param);
+    ASSERT_NE(etsRuntime, nullptr);
+}
+
+HWTEST_F(EtsRuntimeTest, PreloadMainAbility_0100, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    std::string moduleName = "entry::MainAbility";
+    std::string srcPath = "ets/modules/MainAbility.abc";
+    std::string hapPath = "/system/app/test/test.hap";
+    etsRuntime->PreloadMainAbility(moduleName, srcPath, hapPath, true, "ets/modules/MainAbility");
+    std::string expectedKey = moduleName + "::" + srcPath;
+    EXPECT_EQ(etsRuntime->preloadList_.count(expectedKey), 1u);
+}
+
+HWTEST_F(EtsRuntimeTest, PopPreloadObj_0100, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    std::unique_ptr<AppExecFwk::ETSNativeReference> obj = nullptr;
+    bool ret = etsRuntime->PopPreloadObj("absent_key", obj);
+    EXPECT_FALSE(ret);
+    EXPECT_EQ(obj, nullptr);
+    EXPECT_EQ(etsRuntime->preloadList_.size(), 0u);
+}
+
+HWTEST_F(EtsRuntimeTest, PopPreloadObj_0200, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    std::string moduleName = "m";
+    std::string srcPath = "s.abc";
+    etsRuntime->PreloadMainAbility(moduleName, srcPath, "/hap", true, "s");
+    std::string key = moduleName + "::" + srcPath;
+    EXPECT_EQ(etsRuntime->preloadList_.count(key), 1u);
+    std::unique_ptr<AppExecFwk::ETSNativeReference> obj = nullptr;
+    bool ret = etsRuntime->PopPreloadObj(key, obj);
+    EXPECT_FALSE(ret);
+    EXPECT_EQ(obj, nullptr);
+    EXPECT_EQ(etsRuntime->preloadList_.count(key), 0u);
+}
+
+HWTEST_F(EtsRuntimeTest, PopPreloadObj_0300, TestSize.Level1)
+{
+    auto etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    std::string key = "entry::MainAbility";
+    auto injected = std::make_unique<AppExecFwk::ETSNativeReference>();
+    ASSERT_NE(injected, nullptr);
+    auto *rawPtr = injected.get();
+    etsRuntime->preloadList_[key] = std::move(injected);
+    ASSERT_EQ(etsRuntime->preloadList_.count(key), 1u);
+
+    std::unique_ptr<AppExecFwk::ETSNativeReference> obj = nullptr;
+    bool ret = etsRuntime->PopPreloadObj(key, obj);
+    EXPECT_TRUE(ret);
+    ASSERT_NE(obj, nullptr);
+    EXPECT_EQ(obj.get(), rawPtr);
+    EXPECT_EQ(etsRuntime->preloadList_.count(key), 0u);
+
+    std::unique_ptr<AppExecFwk::ETSNativeReference> obj2 = nullptr;
+    bool ret2 = etsRuntime->PopPreloadObj(key, obj2);
+    EXPECT_FALSE(ret2);
+    EXPECT_EQ(obj2, nullptr);
+}
+
+/**
+ * @tc.name: JsperfProfilerCommandParse_001
+ * @tc.desc: parse "profile jsperf 5000" returns 5000.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, JsperfProfilerCommandParse_001, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    int32_t result = etsRuntime->JsperfProfilerCommandParse("profile jsperf 5000", 500);
+    EXPECT_EQ(result, 5000);
+}
+
+/**
+ * @tc.name: JsperfProfilerCommandParse_002
+ * @tc.desc: command without jsperf returns 0.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, JsperfProfilerCommandParse_002, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    int32_t result = etsRuntime->JsperfProfilerCommandParse("profile nativeperf", 500);
+    EXPECT_EQ(result, 0);
+}
+
+/**
+ * @tc.name: JsperfProfilerCommandParse_003
+ * @tc.desc: jsperf without number returns defaultValue.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, JsperfProfilerCommandParse_003, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    int32_t result = etsRuntime->JsperfProfilerCommandParse("profile jsperf", 500);
+    EXPECT_EQ(result, 500);
+}
+
+/**
+ * @tc.name: JsperfProfilerCommandParse_004
+ * @tc.desc: jsperf with nativeperf suffix ignores nativeperf.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, JsperfProfilerCommandParse_004, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    int32_t result = etsRuntime->JsperfProfilerCommandParse("profile jsperf 5000 nativeperf", 500);
+    EXPECT_EQ(result, 5000);
+}
+
+/**
+ * @tc.name: JsperfProfilerCommandParse_005
+ * @tc.desc: empty command returns 0.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, JsperfProfilerCommandParse_005, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    int32_t result = etsRuntime->JsperfProfilerCommandParse("", 500);
+    EXPECT_EQ(result, 0);
+}
+
+/**
+ * @tc.name: StartProfilerTask_001
+ * @tc.desc: baseLineProfile perfCmd does not start profiler.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, StartProfilerTask_001, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    Runtime::DebugOption dOption;
+    dOption.perfCmd = "baseLineProfile";
+    etsRuntime->StartProfilerTask(dOption);
+}
+
+/**
+ * @tc.name: StartProfilerTask_002
+ * @tc.desc: profile perfCmd with null jsRuntime_ returns safely.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, StartProfilerTask_002, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    Runtime::DebugOption dOption;
+    dOption.perfCmd = "profile jsperf 5000";
+    etsRuntime->StartProfilerTask(dOption);
+}
+
+/**
+ * @tc.name: StartProfilerTask_003
+ * @tc.desc: dumpheap perfCmd with null jsRuntime_ returns safely.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, StartProfilerTask_003, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    Runtime::DebugOption dOption;
+    dOption.perfCmd = "dumpheap";
+    etsRuntime->StartProfilerTask(dOption);
+}
+
+/**
+ * @tc.name: LoadRepairPatch_0100
+ * @tc.desc: EtsRuntime test for LoadRepairPatch with placeholder paths.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, LoadRepairPatch_0100, TestSize.Level2)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    std::string hqfFile = "<hqfFile>";
+    std::string hapPath = "<hapPath>";
+    bool result = etsRuntime->LoadRepairPatch(hqfFile, hapPath);
+    EXPECT_EQ(result, false);
+}
+
+/**
+ * @tc.name: NotifyHotReloadPage_0100
+ * @tc.desc: EtsRuntime test for NotifyHotReloadPage.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, NotifyHotReloadPage_0100, TestSize.Level2)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    bool result = etsRuntime->NotifyHotReloadPage();
+#ifdef SUPPORT_SCREEN
+    EXPECT_EQ(result, true);
+#else
+    EXPECT_EQ(result, false);
+#endif
+}
+
+/**
+ * @tc.name: UnLoadRepairPatch_0100
+ * @tc.desc: EtsRuntime test for UnLoadRepairPatch.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, UnLoadRepairPatch_0100, TestSize.Level2)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    std::string hqfFile = "<hqfFile>";
+    bool result = etsRuntime->UnLoadRepairPatch(hqfFile);
+    EXPECT_EQ(result, true);
+}
+
+/**
+ * @tc.name: RegisterQuickFixQueryFunc_0100
+ * @tc.desc: EtsRuntime test for RegisterQuickFixQueryFunc with patches.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, RegisterQuickFixQueryFunc_0100, TestSize.Level2)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    etsRuntime->cachedPatches_.clear();
+    std::string moduleName = "<moduleName>";
+    std::string hqfFile = "<hqfFile>";
+    std::map<std::string, std::string> moduleAndPath;
+    moduleAndPath.insert(std::make_pair(moduleName, hqfFile));
+    etsRuntime->RegisterQuickFixQueryFunc(moduleAndPath);
+    SUCCEED();
+}
+
+/**
+ * @tc.name: RegisterQuickFixQueryFunc_0200
+ * @tc.desc: EtsRuntime test for RegisterQuickFixQueryFunc with empty map.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, RegisterQuickFixQueryFunc_0200, TestSize.Level1)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    etsRuntime->cachedPatches_.clear();
+    std::map<std::string, std::string> moduleAndPath;
+    etsRuntime->RegisterQuickFixQueryFunc(moduleAndPath);
+    SUCCEED();
+}
+
+/**
+ * @tc.name: RegisterQuickFixQueryFunc_0300
+ * @tc.desc: EtsRuntime test for RegisterQuickFixQueryFunc called twice no crash.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, RegisterQuickFixQueryFunc_0300, TestSize.Level2)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    etsRuntime->cachedPatches_.clear();
+    std::string moduleName = "<moduleName>";
+    std::string hqfFile = "<hqfFile>";
+    std::map<std::string, std::string> moduleAndPath;
+    moduleAndPath.insert(std::make_pair(moduleName, hqfFile));
+    etsRuntime->RegisterQuickFixQueryFunc(moduleAndPath);
+    etsRuntime->RegisterQuickFixQueryFunc(moduleAndPath);
+    SUCCEED();
+}
+
+/**
+ * @tc.name: ApplyCachedColdReload_0100
+ * @tc.desc: EtsRuntime test for ApplyCachedColdReload with empty cache.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, ApplyCachedColdReload_0100, TestSize.Level2)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    etsRuntime->cachedPatches_.clear();
+    etsRuntime->ApplyCachedColdReload();
+    SUCCEED();
+}
+
+/**
+ * @tc.name: ApplyCachedColdReload_0200
+ * @tc.desc: EtsRuntime test for ApplyCachedColdReload with prefilled cache.
+ * @tc.type: FUNC
+ */
+HWTEST_F(EtsRuntimeTest, ApplyCachedColdReload_0200, TestSize.Level2)
+{
+    std::unique_ptr<ETSRuntime> etsRuntime = std::make_unique<ETSRuntime>();
+    ASSERT_NE(etsRuntime, nullptr);
+    etsRuntime->cachedPatches_.clear();
+    etsRuntime->cachedPatches_.push_back("<patchPath>");
+    etsRuntime->ApplyCachedColdReload();
+    SUCCEED();
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

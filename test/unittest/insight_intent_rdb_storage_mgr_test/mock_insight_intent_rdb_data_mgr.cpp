@@ -22,8 +22,12 @@ namespace AbilityRuntime {
 bool g_mockQueryDataRet = true;
 bool g_mockQueryDataBeginWithKeyRet = true;
 bool g_mockInsertDataRet = true;
+bool g_mockBatchInsertDataRet = true;
 bool g_mockDeleteDataRet = true;
 bool g_mockDeleteDataBeginWithKeyRet = true;
+std::string g_mockQueryDataKey = "";
+std::unordered_map<std::string, std::string> g_mockQueryDatas;
+bool g_mockDeleteDataBeginWithKeyCalled = false;
 
 void MockQueryData(bool mockRet)
 {
@@ -36,9 +40,39 @@ void MockQueryDataBeginWithKey(bool mockRet)
     g_mockQueryDataBeginWithKeyRet = mockRet;
 }
 
+void MockQueryDataBeginWithKeyData(const std::string &key, const std::string &value)
+{
+    g_mockQueryDatas.emplace(key, value);
+}
+
+void MockQueryDataBeginWithKeyDataClear()
+{
+    g_mockQueryDatas.clear();
+}
+
+std::string GetMockQueryDataKey()
+{
+    return g_mockQueryDataKey;
+}
+
+void MockDeleteDataBeginWithKeyCalledReset()
+{
+    g_mockDeleteDataBeginWithKeyCalled = false;
+}
+
+bool GetMockDeleteDataBeginWithKeyCalled()
+{
+    return g_mockDeleteDataBeginWithKeyCalled;
+}
+
 void MockInsertData(bool mockRet)
 {
     g_mockInsertDataRet = mockRet;
+}
+
+void MockBatchInsertData(bool mockRet)
+{
+    g_mockBatchInsertDataRet = mockRet;
 }
 
 void MockDeleteData(bool mockRet)
@@ -73,15 +107,29 @@ bool InsightIntentRdbDataMgr::QueryData(const std::string &key, std::string &val
 bool InsightIntentRdbDataMgr::QueryDataBeginWithKey(const std::string &key,
     std::unordered_map<std::string, std::string> &datas)
 {
-    if (g_mockQueryDataBeginWithKeyRet) {
-        return true;
+    g_mockQueryDataKey = key;
+    if (!g_mockQueryDataBeginWithKeyRet) {
+        return false;
     }
-    return false;
+    for (const auto &item : g_mockQueryDatas) {
+        if (item.first.compare(0, key.size(), key) == 0) {
+            datas.emplace(item.first, item.second);
+        }
+    }
+    return true;
 }
 
 bool InsightIntentRdbDataMgr::InsertData(const std::string &key, const std::string &value)
 {
     if (g_mockInsertDataRet) {
+        return true;
+    }
+    return false;
+}
+
+bool InsightIntentRdbDataMgr::BatchInsertData(const std::vector<std::pair<std::string, std::string>> &keyValues)
+{
+    if (g_mockBatchInsertDataRet) {
         return true;
     }
     return false;
@@ -97,10 +145,26 @@ bool InsightIntentRdbDataMgr::DeleteData(const std::string &key)
 
 bool InsightIntentRdbDataMgr::DeleteDataBeginWithKey(const std::string &key)
 {
+    g_mockDeleteDataBeginWithKeyCalled = true;
     if (g_mockDeleteDataBeginWithKeyRet) {
         return true;
     }
     return false;
+}
+
+bool InsightIntentRdbDataMgr::UpdateData(const std::string &key, const std::string &value)
+{
+    return true;
+}
+
+bool InsightIntentRdbDataMgr::QueryAllData(std::unordered_map<std::string, std::string> &datas)
+{
+    return true;
+}
+
+void InsightIntentRdbDataMgr::BackupRdb()
+{
+    return;
 }
 
 IntentRdbOpenCallback::IntentRdbOpenCallback(const IntentRdbConfig &intentRdbConfig)

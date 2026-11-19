@@ -131,6 +131,12 @@ public:
         return 0;
     }
 
+    virtual int32_t GetProcessRunningInfosByAccessTokenId(uint32_t accessTokenId,
+        std::vector<RunningProcessInfo>& info)
+    {
+        return 0;
+    }
+
     virtual int32_t GetProcessRunningInformation(RunningProcessInfo& info)
     {
         return 0;
@@ -153,6 +159,11 @@ public:
     }
 
     virtual void AddAbilityStageDone(const int32_t recordId) {}
+
+    virtual int32_t NotifyTemplateProcessReadyDone()
+    {
+        return 0;
+    }
 
     virtual int DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo& info)
     {
@@ -286,6 +297,11 @@ public:
         return false;
     }
 
+    virtual void UpdateFreezeExcludedPid(bool isAdd, int32_t targetPid, int32_t profilerPid)
+    {
+        return;
+    }
+
 #ifdef BGTASKMGR_CONTINUOUS_TASK_ENABLE
 
     virtual int32_t SetContinuousTaskProcess(int32_t pid, bool isContinuousTask)
@@ -399,6 +415,11 @@ public:
 #endif // SUPPORT_CHILD_PROCESS
 
     virtual bool IsFinalAppProcess()
+    {
+        return false;
+    }
+
+    virtual bool IsHyperSnapInitializing()
     {
         return false;
     }

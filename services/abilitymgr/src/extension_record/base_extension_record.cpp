@@ -15,6 +15,7 @@
 
 #include "base_extension_record.h"
 
+#include <algorithm>
 #include <singleton.h>
 
 #include "ability_manager_service.h"
@@ -264,7 +265,9 @@ void BaseExtensionRecord::DumpUIExtensionRootHostInfo(std::vector<std::string> &
     }
 
     UIExtensionHostInfo hostInfo;
-    auto ret = IN_PROCESS_CALL(AAFwk::AbilityManagerClient::GetInstance()->GetUIExtensionRootHostInfo(token, hostInfo));
+    int32_t ownerUserId = ownerMissionUserId_ >= 0 ? ownerMissionUserId_ : DEFAULT_INVAL_VALUE;
+    auto ret = IN_PROCESS_CALL(AAFwk::AbilityManagerClient::GetInstance()->GetUIExtensionRootHostInfo(token, hostInfo,
+        ownerUserId));
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "failed: %{public}d", ret);
         return;
@@ -272,7 +275,7 @@ void BaseExtensionRecord::DumpUIExtensionRootHostInfo(std::vector<std::string> &
 
     std::string dumpInfo = "      root host bundle name [" + hostInfo.elementName_.GetBundleName() + "]";
     info.emplace_back(dumpInfo);
-    dumpInfo = "      root host module name [" + hostInfo.elementName_.GetModuleName() + "]";
+    dumpInfo = "      root host module name [" + hostInfo.elementName_.GetModuleNameRef() + "]";
     info.emplace_back(dumpInfo);
     dumpInfo = "      root host ability name [" + hostInfo.elementName_.GetAbilityName() + "]";
     info.emplace_back(dumpInfo);
@@ -308,7 +311,7 @@ void BaseExtensionRecord::ConnectAbilityWithWant(const Want &want)
 
 void BaseExtensionRecord::ConnectAbility()
 {
-    TAG_LOGI(AAFwkTag::SERVICE_EXT, "%{public}s called.", __func__);
+    TAG_LOGI(AAFwkTag::SERVICE_EXT, "ConnA");
     Want want = GetWant();
     UpdateDmsCallerInfo(want);
     ConnectAbilityWithWant(want);
@@ -322,6 +325,36 @@ void BaseExtensionRecord::SetConnRemoteObject(const sptr<IRemoteObject> &remoteO
 sptr<IRemoteObject> BaseExtensionRecord::GetConnRemoteObject() const
 {
     return connRemoteObject_;
+}
+
+void BaseExtensionRecord::SetClientPid(pid_t clientPid)
+{
+    clientPid_ = clientPid;
+}
+
+pid_t BaseExtensionRecord::GetClientPid() const
+{
+    return clientPid_;
+}
+
+void BaseExtensionRecord::SetIsInProcess(bool isInProcess)
+{
+    isInProcess_ = isInProcess;
+}
+
+bool BaseExtensionRecord::IsInProcess() const
+{
+    return isInProcess_;
+}
+
+void BaseExtensionRecord::SetRequestId(const std::string &requestId)
+{
+    requestId_ = requestId;
+}
+
+std::string BaseExtensionRecord::GetRequestId() const
+{
+    return requestId_;
 }
 
 void BaseExtensionRecord::PostUIExtensionAbilityTimeoutTask(uint32_t messageId)
@@ -359,6 +392,61 @@ void BaseExtensionRecord::PostUIExtensionAbilityTimeoutTask(uint32_t messageId)
             break;
         }
     }
+}
+
+void BaseExtensionRecord::AddTaskAttribution(int32_t recordId, const AgentTaskAttribution &attribution)
+{
+    std::lock_guard<ffrt::mutex> lock(taskAttributionsMutex_);
+    taskAttributions_[recordId].push_back(attribution);
+}
+
+std::vector<AgentTaskAttribution> BaseExtensionRecord::GetTaskAttributions(int32_t recordId) const
+{
+    std::lock_guard<ffrt::mutex> lock(taskAttributionsMutex_);
+    auto it = taskAttributions_.find(recordId);
+    if (it != taskAttributions_.end()) {
+        return it->second;
+    }
+    return {};
+}
+
+void BaseExtensionRecord::RemoveTaskAttribution(int32_t recordId, const std::string &taskId,
+    int64_t attributionId)
+{
+    std::lock_guard<ffrt::mutex> lock(taskAttributionsMutex_);
+    auto it = taskAttributions_.find(recordId);
+    if (it == taskAttributions_.end()) {
+        return;
+    }
+    auto &vec = it->second;
+    vec.erase(std::remove_if(vec.begin(), vec.end(),
+        [&taskId, attributionId](const AgentTaskAttribution &a) {
+            return a.taskId == taskId && a.attributionId == attributionId;
+        }), vec.end());
+    if (vec.empty()) {
+        taskAttributions_.erase(it);
+    }
+}
+
+size_t BaseExtensionRecord::CleanTaskAttributionsByTaskId(const std::string &taskId)
+{
+    size_t removed = 0;
+    std::lock_guard<ffrt::mutex> lock(taskAttributionsMutex_);
+    for (auto it = taskAttributions_.begin(); it != taskAttributions_.end();) {
+        auto &vec = it->second;
+        size_t before = vec.size();
+        vec.erase(std::remove_if(vec.begin(), vec.end(),
+            [&taskId](const AgentTaskAttribution &a) {
+                return a.taskId == taskId;
+            }), vec.end());
+        removed += before - vec.size();
+        if (vec.empty()) {
+            it = taskAttributions_.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    return removed;
 }
 } // namespace AAFwk
 } // namespace OHOS

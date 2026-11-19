@@ -49,6 +49,12 @@ ElementNameParams* FFICJElementNameGetElementNameInfo(ElementNameHandle elementN
     }
 
     auto actualElementName = reinterpret_cast<ElementName*>(elementNameHandle);
+    if (elementNameHandle == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "null elementNameHandle");
+        free(buffer);
+        buffer = nullptr;
+        return nullptr;
+    }
     buffer->deviceId = CreateCStringFromString(actualElementName->GetDeviceID());
     buffer->bundleName = CreateCStringFromString(actualElementName->GetBundleName());
     buffer->abilityName = CreateCStringFromString(actualElementName->GetAbilityName());

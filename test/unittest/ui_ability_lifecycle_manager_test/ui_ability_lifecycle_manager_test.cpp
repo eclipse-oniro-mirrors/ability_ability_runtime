@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,10 +31,12 @@
 #include "process_options.h"
 #include "session/host/include/session.h"
 #include "session_info.h"
+#include "server_constant.h"
 #include "startup_util.h"
 #include "ability_manager_service.h"
 #include "ability_scheduler_mock.h"
 #include "ipc_skeleton.h"
+#include "request_start_ability_callback_stub.h"
 #include "start_params_by_SCB.h"
 #include "status_bar_delegate_interface.h"
 #include "user_controller/user_controller.h"
@@ -110,6 +112,26 @@ public:
      * @param resultCode, ERR_OK on success, others on failure.
      */
     virtual void OnAbilityDisconnectDone(const AppExecFwk::ElementName& element, int resultCode) {};
+};
+
+class MockRequestStartAbilityCallback : public AAFwk::RequestStartAbilityCallbackStub {
+public:
+    bool isCallbackInvoked = false;
+    bool callbackResult = false;
+
+    void OnRequestStartAbilityResult(bool result) override
+    {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "UIAbility start request result: %{public}s",
+            result ? "true" : "false");
+        isCallbackInvoked = true;
+        callbackResult = result;
+    }
+};
+
+class MockBackToCallerSession : public Rosen::Session {
+public:
+    using Rosen::Session::Session;
+    MOCK_METHOD1(PendingSessionActivation, Rosen::WSError(const sptr<SessionInfo>));
 };
 
 UIAbilityRecordPtr UIAbilityLifecycleManagerTest::InitAbilityRecord()
@@ -428,6 +450,21 @@ HWTEST_F(UIAbilityLifecycleManagerTest, CreateSessionInfo_002, TestSize.Level1)
     sessionInfo = mgr->CreateSessionInfo(abilityRequest, requestId);
     EXPECT_NE(sessionInfo, nullptr);
     EXPECT_TRUE(sessionInfo->specifiedFlag.empty());
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_CreateSessionInfo_003
+ * @tc.desc: Verify CreateSessionInfo sets splitRatioPreference correctly
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CreateSessionInfo_003, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_unique<UIAbilityLifecycleManager>();
+    EXPECT_NE(uiAbilityLifecycleManager, nullptr);
+    AbilityRequest abilityRequest;
+    abilityRequest.startOptions.SetSplitRatioPreference(2);
+    sptr<SessionInfo> sessionInfo = uiAbilityLifecycleManager->CreateSessionInfo(abilityRequest, 0);
+    EXPECT_EQ(sessionInfo->splitRatioPreference, 2);
 }
 
 /**
@@ -1266,6 +1303,21 @@ HWTEST_F(UIAbilityLifecycleManagerTest, CloseUIAbility_008, TestSize.Level1)
     abilityRecord->SetPendingState(FOREGROUND);
     Want want;
     EXPECT_EQ(uiAbilityLifecycleManager->CloseUIAbility(abilityRecord, -1, &want, false, true), ERR_OK);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_CloseUIAbility_ByOeExt_0100
+ * @tc.desc: CloseUIAbility with isByOeExt flag set - session should not be cleared
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CloseUIAbility_ByOeExt_0100, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
+    auto abilityRecord = InitAbilityRecord();
+    abilityRecord->currentState_ = AbilityState::BACKGROUND;
+    abilityRecord->SetByOeExt(true);
+    Want want;
+    EXPECT_EQ(uiAbilityLifecycleManager->CloseUIAbility(abilityRecord, -1, &want, false, false), ERR_OK);
 }
 
 /**
@@ -3056,29 +3108,6 @@ HWTEST_F(UIAbilityLifecycleManagerTest, GetAbilityStateByPersistentId_002, TestS
 }
 
 /**
- * @tc.name: UIAbilityLifecycleManager_UpdateProcessName_0100
- * @tc.desc: UpdateProcessName
- * @tc.type: FUNC
- */
-HWTEST_F(UIAbilityLifecycleManagerTest, UpdateProcessName_001, TestSize.Level1)
-{
-    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
-    EXPECT_NE(uiAbilityLifecycleManager, nullptr);
-    sptr<SessionInfo> sessionInfo = new (std::nothrow) SessionInfo();
-    sessionInfo->processOptions = std::make_shared<ProcessOptions>();
-    EXPECT_NE(sessionInfo->processOptions, nullptr);
-    sessionInfo->processOptions->processMode = ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT;
-    AbilityRequest abilityRequest;
-    abilityRequest.sessionInfo = sessionInfo;
-    abilityRequest.abilityInfo.bundleName = "com.example.unittest";
-    abilityRequest.abilityInfo.moduleName = "entry";
-    abilityRequest.abilityInfo.name = "MainAbility";
-    UIAbilityRecordPtr abilityRecord = InitAbilityRecord();
-    uiAbilityLifecycleManager->UpdateProcessName(abilityRequest, abilityRecord);
-    EXPECT_EQ("com.example.unittest:entry:MainAbility:0", abilityRecord->GetProcessName());
-}
-
-/**
  * @tc.name: UIAbilityLifecycleManager_ChangeAbilityVisibility_0100
  * @tc.desc: ChangeAbilityVisibility
  * @tc.type: FUNC
@@ -3087,7 +3116,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, ChangeAbilityVisibility_001, TestSize.Le
 {
     auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
     EXPECT_NE(uiAbilityLifecycleManager, nullptr);
-    int32_t ret = uiAbilityLifecycleManager->ChangeAbilityVisibility(nullptr, true);
+    int32_t ret = uiAbilityLifecycleManager->ChangeAbilityVisibility(nullptr, true, nullptr);
     EXPECT_EQ(ERR_INVALID_VALUE, ret);
 }
 
@@ -3496,7 +3525,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, ChangeAbilityVisibility_002, TestSize.Le
     EXPECT_NE(uiAbilityLifecycleManager, nullptr);
     sptr<IRemoteObject> token = nullptr;
     bool isShow = false;
-    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow), ERR_INVALID_VALUE);
+    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow, nullptr), ERR_INVALID_VALUE);
 }
 
 /**
@@ -3514,7 +3543,8 @@ HWTEST_F(UIAbilityLifecycleManagerTest, ChangeAbilityVisibility_003, TestSize.Le
     uiAbilityLifecycleManager->sessionAbilityMap_.emplace(0, abilityRecord);
     sptr<IRemoteObject> token = abilityRecord->GetToken()->AsObject();
     bool isShow = true;
-    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow), ERR_NATIVE_NOT_SELF_APPLICATION);
+    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow, nullptr),
+        ERR_NATIVE_NOT_SELF_APPLICATION);
 }
 
 /**
@@ -3533,7 +3563,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, ChangeAbilityVisibility_004, TestSize.Le
     uiAbilityLifecycleManager->sessionAbilityMap_.emplace(0, abilityRecord);
     sptr<IRemoteObject> token = abilityRecord->GetToken()->AsObject();
     bool isShow = true;
-    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow), ERR_INVALID_VALUE);
+    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow, nullptr), ERR_INVALID_VALUE);
 }
 
 /**
@@ -3554,7 +3584,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, ChangeAbilityVisibility_005, TestSize.Le
     uiAbilityLifecycleManager->sessionAbilityMap_.emplace(0, abilityRecord);
     sptr<IRemoteObject> token = abilityRecord->GetToken()->AsObject();
     bool isShow = true;
-    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow), ERR_START_OPTIONS_CHECK_FAILED);
+    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow, nullptr), ERR_START_OPTIONS_CHECK_FAILED);
 }
 
 /**
@@ -3575,7 +3605,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, ChangeAbilityVisibility_006, TestSize.Le
     uiAbilityLifecycleManager->sessionAbilityMap_.emplace(0, abilityRecord);
     sptr<IRemoteObject> token = abilityRecord->GetToken()->AsObject();
     bool isShow = true;
-    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow), ERR_START_OPTIONS_CHECK_FAILED);
+    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow, nullptr), ERR_START_OPTIONS_CHECK_FAILED);
 }
 
 /**
@@ -3598,7 +3628,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, ChangeAbilityVisibility_007, TestSize.Le
     uiAbilityLifecycleManager->sessionAbilityMap_.emplace(0, abilityRecord);
     sptr<IRemoteObject> token = abilityRecord->GetToken()->AsObject();
     bool isShow = true;
-    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow), ERR_START_OPTIONS_CHECK_FAILED);
+    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow, nullptr), ERR_START_OPTIONS_CHECK_FAILED);
 }
 
 /**
@@ -3622,7 +3652,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, ChangeAbilityVisibility_008, TestSize.Le
     uiAbilityLifecycleManager->sessionAbilityMap_.emplace(0, abilityRecord);
     sptr<IRemoteObject> token = abilityRecord->GetToken()->AsObject();
     bool isShow = true;
-    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow), ERR_START_OPTIONS_CHECK_FAILED);
+    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow, nullptr), ERR_START_OPTIONS_CHECK_FAILED);
 }
 
 /**
@@ -3646,7 +3676,8 @@ HWTEST_F(UIAbilityLifecycleManagerTest, ChangeAbilityVisibility_009, TestSize.Le
     uiAbilityLifecycleManager->sessionAbilityMap_.emplace(0, abilityRecord);
     sptr<IRemoteObject> token = abilityRecord->GetToken()->AsObject();
     bool isShow = false;
-    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow), ERR_START_OPTIONS_CHECK_FAILED);
+    EXPECT_EQ(uiAbilityLifecycleManager->ChangeAbilityVisibility(token, isShow, nullptr),
+        ERR_START_OPTIONS_CHECK_FAILED);
 }
 
 /**
@@ -4520,6 +4551,34 @@ HWTEST_F(UIAbilityLifecycleManagerTest, MoveMissionToFront_004, TestSize.Level1)
 }
 
 /**
+ * @tc.name: UIAbilityLifecycleManager_MoveMissionToFront_0500
+ * @tc.desc: MoveMissionToFront with non-null startOptions
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, MoveMissionToFront_005, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_unique<UIAbilityLifecycleManager>();
+    ASSERT_NE(uiAbilityLifecycleManager, nullptr);
+    int32_t sessionId = 100;
+    auto startOptions = std::make_shared<StartOptions>();
+    ASSERT_NE(startOptions, nullptr);
+    startOptions->SetDisplayID(1);
+    startOptions->SetWindowMode(100);
+    startOptions->SetSplitRatioPreference(1);
+    Rosen::SessionInfo info;
+    uiAbilityLifecycleManager->rootSceneSession_ = new Rosen::Session(info);
+    AbilityRequest abilityRequest;
+    sptr<SessionInfo> sessionInfo = (new SessionInfo());
+    abilityRequest.sessionInfo = sessionInfo;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    uiAbilityLifecycleManager->sessionAbilityMap_.emplace(sessionId, abilityRecord);
+    auto ret = uiAbilityLifecycleManager->MoveMissionToFront(sessionId, startOptions);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(sessionInfo->want.GetIntParam(Want::PARAM_RESV_DISPLAY_ID, -1), 1);
+    EXPECT_EQ(sessionInfo->want.GetIntParam(Want::PARAM_RESV_WINDOW_MODE, -1), 100);
+}
+
+/**
  * @tc.name: UIAbilityLifecycleManager_GetReusedCollaboratorPersistentId_0100
  * @tc.desc: GetReusedCollaboratorPersistentId
  * @tc.type: FUNC
@@ -4728,9 +4787,84 @@ HWTEST_F(UIAbilityLifecycleManagerTest, CheckProperties_003, TestSize.Level1)
     abilityRecord->SetAppIndex(1);
     AppExecFwk::LaunchMode launchMode = AppExecFwk::LaunchMode::SPECIFIED;
     auto ret = uiAbilityLifecycleManager->CheckProperties(abilityRecord, abilityRequest, launchMode);
-    EXPECT_EQ(ret, true);
+    EXPECT_EQ(ret,  true);
 }
 #endif // WITH_DLP
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_CheckProperties_0400
+ * @tc.desc: CheckProperties with isWebSandBoxClone, appIndex from applicationInfo matches and launchMode matches.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CheckProperties_004, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_unique<UIAbilityLifecycleManager>();
+    EXPECT_NE(uiAbilityLifecycleManager, nullptr);
+    Want want;
+    AbilityRequest abilityRequest;
+    abilityRequest.want = want;
+    abilityRequest.isWebSandBoxClone = true;
+    abilityRequest.abilityInfo.launchMode = AppExecFwk::LaunchMode::SPECIFIED;
+    abilityRequest.abilityInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.moduleName = "entry";
+    abilityRequest.abilityInfo.applicationInfo.appIndex = 1;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    abilityRecord->SetAppIndex(1);
+    AppExecFwk::LaunchMode launchMode = AppExecFwk::LaunchMode::SPECIFIED;
+    auto ret = uiAbilityLifecycleManager->CheckProperties(abilityRecord, abilityRequest, launchMode);
+    EXPECT_EQ(ret, true);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_CheckProperties_0500
+ * @tc.desc: CheckProperties with isWebSandBoxClone, appIndex from applicationInfo mismatches the record.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CheckProperties_005, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_unique<UIAbilityLifecycleManager>();
+    EXPECT_NE(uiAbilityLifecycleManager, nullptr);
+    Want want;
+    AbilityRequest abilityRequest;
+    abilityRequest.want = want;
+    abilityRequest.isWebSandBoxClone = true;
+    abilityRequest.abilityInfo.launchMode = AppExecFwk::LaunchMode::SPECIFIED;
+    abilityRequest.abilityInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.moduleName = "entry";
+    abilityRequest.abilityInfo.applicationInfo.appIndex = 2;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    abilityRecord->SetAppIndex(1);
+    AppExecFwk::LaunchMode launchMode = AppExecFwk::LaunchMode::SPECIFIED;
+    auto ret = uiAbilityLifecycleManager->CheckProperties(abilityRecord, abilityRequest, launchMode);
+    EXPECT_EQ(ret, false);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_CheckProperties_0600
+ * @tc.desc: CheckProperties with isWebSandBoxClone, launchMode mismatches.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CheckProperties_006, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_unique<UIAbilityLifecycleManager>();
+    EXPECT_NE(uiAbilityLifecycleManager, nullptr);
+    Want want;
+    AbilityRequest abilityRequest;
+    abilityRequest.want = want;
+    abilityRequest.isWebSandBoxClone = true;
+    abilityRequest.abilityInfo.launchMode = AppExecFwk::LaunchMode::SPECIFIED;
+    abilityRequest.abilityInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.moduleName = "entry";
+    abilityRequest.abilityInfo.applicationInfo.appIndex = 1;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    abilityRecord->SetAppIndex(1);
+    AppExecFwk::LaunchMode launchMode = AppExecFwk::LaunchMode::STANDARD;
+    auto ret = uiAbilityLifecycleManager->CheckProperties(abilityRecord, abilityRequest, launchMode);
+    EXPECT_EQ(ret, false);
+}
 
 /**
  * @tc.name: UIAbilityLifecycleManager_ResolveAbility_0100
@@ -5059,7 +5193,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, BackToCallerAbilityWithResult_001, TestS
     int32_t resultCode = 100;
     int64_t callerRequestCode = 0;
     auto ret = uiAbilityLifecycleManager->BackToCallerAbilityWithResult(abilityRecord,
-        resultCode, &resultWant, callerRequestCode);
+        resultCode, resultWant, callerRequestCode);
     EXPECT_EQ(ret, ERR_CALLER_NOT_EXISTS);
 }
 
@@ -5081,7 +5215,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, BackToCallerAbilityWithResult_002, TestS
     int32_t resultCode = 100;
     int64_t callerRequestCode = 1;
     auto ret = uiAbilityLifecycleManager->BackToCallerAbilityWithResult(abilityRecord,
-        resultCode, &resultWant, callerRequestCode);
+        resultCode, resultWant, callerRequestCode);
     EXPECT_EQ(ret, ERR_CALLER_NOT_EXISTS);
 }
 
@@ -5113,7 +5247,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, BackToCallerAbilityWithResult_003, TestS
     newCallerRecord->AddHistoryRequestCode(requestCode);
     abilityRecord->callerList_.emplace_back(newCallerRecord);
     auto ret = uiAbilityLifecycleManager->BackToCallerAbilityWithResult(abilityRecord,
-        resultCode, &resultWant, callerRequestCode);
+        resultCode, resultWant, callerRequestCode);
     EXPECT_EQ(ret, ERR_NOT_SUPPORT_BACK_TO_CALLER);
 }
 
@@ -5144,7 +5278,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, BackToCallerAbilityWithResult_004, TestS
     newCallerRecord->AddHistoryRequestCode(requestCode);
     abilityRecord->callerList_.emplace_back(newCallerRecord);
     auto ret = uiAbilityLifecycleManager->BackToCallerAbilityWithResult(abilityRecord,
-        resultCode, &resultWant, callerRequestCode);
+        resultCode, resultWant, callerRequestCode);
     EXPECT_EQ(ret, ERR_OK);
 }
 
@@ -5179,7 +5313,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, BackToCallerAbilityWithResult_005, TestS
     // current ability is backgrounded
     abilityRecord->currentState_ = AbilityState::BACKGROUND;
     auto ret = uiAbilityLifecycleManager->BackToCallerAbilityWithResult(abilityRecord,
-        resultCode, &resultWant, callerRequestCode);
+        resultCode, resultWant, callerRequestCode);
     EXPECT_EQ(ret, CHECK_PERMISSION_FAILED);
 }
 
@@ -5213,7 +5347,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, BackToCallerAbilityWithResult_006, TestS
 
     abilityRecord->currentState_ = AbilityState::FOREGROUND;
     auto ret = uiAbilityLifecycleManager->BackToCallerAbilityWithResult(abilityRecord, resultCode,
-        &resultWant, callerRequestCode);
+        resultWant, callerRequestCode);
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
 }
 
@@ -6727,31 +6861,6 @@ HWTEST_F(UIAbilityLifecycleManagerTest, CompleteForegroundSuccess_IsNewWant_0001
 }
 
 /**
- * @tc.name: UpdateProcessName_0001
- * @tc.desc: processName
- */
-HWTEST_F(UIAbilityLifecycleManagerTest, UpdateProcessName_0001, TestSize.Level1)
-{
-    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
-    AbilityRequest request;
-    request.abilityInfo.bundleName = "com.example.bundle";
-    request.abilityInfo.name = "AbilityA";
-    request.abilityInfo.moduleName = "moduleA";
-    request.abilityInfo.isStageBasedModel = true;
-    request.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
-    request.sessionInfo = new SessionInfo();
-    request.sessionInfo->processOptions = std::make_shared<ProcessOptions>();
-    request.sessionInfo->processOptions->processMode = ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT;
-    request.sessionInfo->processOptions->processName = "custom.process.name";
-    auto record = UIAbilityRecord::CreateAbilityRecord(request);
-
-    mgr->UpdateProcessName(request, record);
-
-    EXPECT_EQ(record->GetProcessName(), "custom.process.name");
-    EXPECT_TRUE(record->IsCallerSetProcess());
-}
-
-/**
  * @tc.name: UpdateAbilityRecordLaunchReason_0001
  * @tc.desc: want
  */
@@ -6769,36 +6878,6 @@ HWTEST_F(UIAbilityLifecycleManagerTest, UpdateAbilityRecordLaunchReason_0001, Te
     auto record = UIAbilityRecord::CreateAbilityRecord(request);
     mgr->UpdateAbilityRecordLaunchReason(request, record);
     EXPECT_NE(record, nullptr);
-}
-
-/**
- * @tc.name: PreCreateProcessName_0001
- * @tc.desc: PreCreateProcessName
- */
-HWTEST_F(UIAbilityLifecycleManagerTest, PreCreateProcessName_0001, TestSize.Level1)
-{
-    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
-    AbilityRequest request1;
-    request1.processOptions = nullptr;
-    mgr->PreCreateProcessName(request1);
-    EXPECT_TRUE(request1.abilityInfo.process.empty());
-
-    AbilityRequest request2;
-    request2.processOptions = std::make_shared<ProcessOptions>();
-    request2.processOptions->processMode = ProcessMode::UNSPECIFIED;
-    mgr->PreCreateProcessName(request2);
-    EXPECT_TRUE(request2.abilityInfo.process.empty());
-    AbilityRequest request3;
-    request3.abilityInfo.bundleName = "com.example.bundle";
-    request3.abilityInfo.name = "AbilityA";
-    request3.abilityInfo.moduleName = "moduleA";
-    request3.abilityInfo.isStageBasedModel = true;
-    request3.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
-    request3.processOptions = std::make_shared<ProcessOptions>();
-    request3.processOptions->processMode = ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT;
-    mgr->PreCreateProcessName(request3);
-    EXPECT_FALSE(request3.abilityInfo.process.empty());
-    EXPECT_EQ(request3.abilityInfo.process, request3.processOptions->processName);
 }
 
 /**
@@ -7036,7 +7115,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, BackToCallerAbilityWithResult_0001, Test
     int pid = 1234;
     int64_t callerRequestCode = StartupUtil::GenerateFullRequestCode(pid, 1, requestCode);
     Want resultWant;
-    int ret = mgr->BackToCallerAbilityWithResult(abilityRecord, 0, &resultWant, callerRequestCode);
+    int ret = mgr->BackToCallerAbilityWithResult(abilityRecord, 0, resultWant, callerRequestCode);
 
     EXPECT_EQ(ret, ERR_CALLER_NOT_EXISTS);
 }
@@ -7346,7 +7425,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, EnableListForSCBRecovery_001, TestSize.L
 
 /**
  * @tc.name: IsUIAbilityAlreadyExist_0001
- * @tc.desc: In STANDARD launch mode if a record with same ability exists return ERROR_UIABILITY_IS_ALREADY_EXIST
+ * @tc.desc: In SINGLETON launch mode if a record with same ability exists return ERROR_UIABILITY_IS_ALREADY_EXIST
  * @tc.type: FUNC
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, IsUIAbilityAlreadyExist_0001, TestSize.Level1)
@@ -7363,7 +7442,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, IsUIAbilityAlreadyExist_0001, TestSize.L
     abilityRequest.abilityInfo.name = abilityName;
     abilityRequest.abilityInfo.bundleName = bundleName;
     abilityRequest.abilityInfo.moduleName = moduleName;
-    abilityRequest.abilityInfo.launchMode = AppExecFwk::LaunchMode::STANDARD;
+    abilityRequest.abilityInfo.launchMode = AppExecFwk::LaunchMode::SINGLETON;
     abilityRequest.sessionInfo = new SessionInfo();
     abilityRequest.sessionInfo->instanceKey = instanceKey;
     auto record = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
@@ -7373,7 +7452,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, IsUIAbilityAlreadyExist_0001, TestSize.L
 
     Want want;
     want.SetElementName("device", bundleName, abilityName, moduleName);
-    auto ret = mgr->IsUIAbilityAlreadyExist(want, "", appIndex, instanceKey, AppExecFwk::LaunchMode::STANDARD);
+    auto ret = mgr->IsUIAbilityAlreadyExist(want, "", appIndex, instanceKey, AppExecFwk::LaunchMode::SINGLETON);
     EXPECT_EQ(ret, ERROR_UIABILITY_IS_ALREADY_EXIST);
 }
 
@@ -7436,7 +7515,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, IsUIAbilityAlreadyExist_0003, TestSize.L
     record->SetAppIndex(0);
     record->SetInstanceKey("key");
     mgr->sessionAbilityMap_[5] = record;
-    ret = mgr->IsUIAbilityAlreadyExist(want, "flag", 0, "key", AppExecFwk::LaunchMode::STANDARD);
+    ret = mgr->IsUIAbilityAlreadyExist(want, "flag", 0, "key", AppExecFwk::LaunchMode::SINGLETON);
     EXPECT_EQ(ret, ERR_OK);
 }
 
@@ -7693,10 +7772,10 @@ HWTEST_F(UIAbilityLifecycleManagerTest, AttachAbilityThread_NotContains_001, Tes
 
 /**
  * @tc.name: AttachAbilityThread_ProcessAttachFail_001
- * @tc.desc: AttachAbilityThread with process attachment failure
+ * @tc.desc: AttachAbilityThread with process attachment success
  * @tc.type: FUNC
  */
-HWTEST_F(UIAbilityLifecycleManagerTest, AttachAbilityThread_ProcessAttachFail_001, TestSize.Level1)
+HWTEST_F(UIAbilityLifecycleManagerTest, AttachAbilityThread_ProcessAttachSuccess_001, TestSize.Level1)
 {
     auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     AbilityRequest abilityRequest;
@@ -7708,7 +7787,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, AttachAbilityThread_ProcessAttachFail_00
     mgr->sessionAbilityMap_.emplace(1, record);
     
     auto result = mgr->AttachAbilityThread(nullptr, token->AsObject());
-    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    EXPECT_EQ(result, ERR_OK);
 }
 
 /**
@@ -7730,7 +7809,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, AttachAbilityThread_StartedByCall_001, T
     mgr->sessionAbilityMap_.emplace(1, record);
     
     auto result = mgr->AttachAbilityThread(nullptr, token->AsObject());
-    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    EXPECT_EQ(result, ERR_OK);
 }
 
 /**
@@ -8211,6 +8290,132 @@ HWTEST_F(UIAbilityLifecycleManagerTest, BatchNotifySCBPendingActivations_Various
 }
 
 /**
+ * @tc.name: UIAbilityLifecycleManager_SendSessionInfoToSCB_RequestCallback_0100
+ * @tc.desc: SendSessionInfoToSCB callerAbility is valid, requestCallback exists, verification callback triggered
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, SendSessionInfoToSCB_RequestCallback_0100, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(uiAbilityLifecycleManager, nullptr);
+
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    AbilityRequest abilityRequest;
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sptr<MockRequestStartAbilityCallback> mockCallback = new MockRequestStartAbilityCallback();
+    sessionInfo->requestCallback = mockCallback;
+    sessionInfo->want.SetParam(KEY_REQUEST_ID, std::string("callback_test_01"));
+
+    abilityRequest.sessionInfo = sessionInfo;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    UIAbilityRecordPtr callerAbility = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+
+    int res = uiAbilityLifecycleManager->SendSessionInfoToSCB(callerAbility, sessionInfo);
+    EXPECT_EQ(res, ERR_OK);
+    EXPECT_TRUE(mockCallback->isCallbackInvoked);
+    EXPECT_TRUE(mockCallback->callbackResult);
+    EXPECT_FALSE(sessionInfo->want.HasParameter(KEY_REQUEST_ID));
+    uiAbilityLifecycleManager.reset();
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_SendSessionInfoToSCB_RequestCallback_0200
+ * @tc.desc: SendSessionInfoToSCB rootSceneSession and callerToken valid; verification callback triggered
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, SendSessionInfoToSCB_RequestCallback_0200, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(uiAbilityLifecycleManager, nullptr);
+
+    Rosen::SessionInfo info;
+    uiAbilityLifecycleManager->rootSceneSession_ = new Rosen::Session(info);
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    AbilityRequest abilityRequest;
+    sessionInfo->sessionToken = new Rosen::Session(info);
+
+    sptr<MockRequestStartAbilityCallback> mockCallback = new MockRequestStartAbilityCallback();
+    sessionInfo->requestCallback = mockCallback;
+    sessionInfo->want.SetParam(KEY_REQUEST_ID, std::string("callback_test_02"));
+
+    abilityRequest.sessionInfo = sessionInfo;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    UIAbilityRecordPtr callerAbility = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    sessionInfo->callerToken = callerAbility->GetToken();
+
+    UIAbilityRecordPtr nullCaller = nullptr;
+    int res = uiAbilityLifecycleManager->SendSessionInfoToSCB(nullCaller, sessionInfo);
+
+    EXPECT_EQ(res, ERR_OK);
+    EXPECT_TRUE(mockCallback->isCallbackInvoked);
+    EXPECT_TRUE(mockCallback->callbackResult);
+    EXPECT_FALSE(sessionInfo->want.HasParameter(KEY_REQUEST_ID));
+    uiAbilityLifecycleManager.reset();
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_SendSessionInfoToSCB_RequestCallback_0300
+ * @tc.desc: SendSessionInfoToSCB requestCallback is null, no verification callback triggered, process returns normally
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, SendSessionInfoToSCB_RequestCallback_0300, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(uiAbilityLifecycleManager, nullptr);
+
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    AbilityRequest abilityRequest;
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->want.SetParam(KEY_REQUEST_ID, std::string("callback_test_03"));
+
+    abilityRequest.sessionInfo = sessionInfo;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    UIAbilityRecordPtr callerAbility = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+
+    int res = uiAbilityLifecycleManager->SendSessionInfoToSCB(callerAbility, sessionInfo);
+    EXPECT_EQ(res, ERR_OK);
+    EXPECT_FALSE(sessionInfo->want.HasParameter(KEY_REQUEST_ID));
+    uiAbilityLifecycleManager.reset();
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_SendSessionInfoToSCB_RequestCallback_0400
+ * @tc.desc: SendSessionInfoToSCB convert requestCallback failed and no verification callback triggered
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, SendSessionInfoToSCB_RequestCallback_0400, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(uiAbilityLifecycleManager, nullptr);
+
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    AbilityRequest abilityRequest;
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->requestCallback = new UIAbilityLifecycleManagerTestStub();
+    sessionInfo->want.SetParam(KEY_REQUEST_ID, std::string("callback_test_04"));
+
+    abilityRequest.sessionInfo = sessionInfo;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    UIAbilityRecordPtr callerAbility = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+
+    int res = uiAbilityLifecycleManager->SendSessionInfoToSCB(callerAbility, sessionInfo);
+    EXPECT_EQ(res, ERR_OK);
+    EXPECT_FALSE(sessionInfo->want.HasParameter(KEY_REQUEST_ID));
+    uiAbilityLifecycleManager.reset();
+}
+
+/**
  * @tc.name: NotifyCancelGamePreLaunch_001
  * @tc.desc: Test NotifyCancelGamePreLaunch with null token.
  * @tc.type: FUNC
@@ -8261,6 +8466,26 @@ HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCancelGamePreLaunch_003, TestSize.
     auto result = mgr->NotifyCancelGamePreLaunch(record->GetToken());
     // MockAbilityToken has incorrect interface descriptor, so Token::GetAbilityRecordByToken returns nullptr
     EXPECT_NE(result, ERR_OK);
+}
+
+/**
+ * @tc.name: NotifyCancelGamePreLaunch_004
+ * @tc.desc: Test NotifyCancelGamePreLaunch when caller uid does not match the ability record uid.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCancelGamePreLaunch_004, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest request;
+    request.appInfo.bundleName = "com.example.unittest";
+    request.abilityInfo.name = "MainAbility";
+    request.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    auto record = UIAbilityRecord::CreateAbilityRecord(request);
+    ASSERT_NE(record, nullptr);
+    // The caller uid (mock default 0) does not match the ability record uid: caller does not own the record.
+    record->SetUid(100);
+    auto result = mgr->NotifyCancelGamePreLaunch(record->GetToken());
+    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
 }
 
 /**
@@ -8316,6 +8541,172 @@ HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunch_003, TestSiz
 }
 
 /**
+ * @tc.name: NotifyCompleteGamePreLaunch_004
+ * @tc.desc: Test NotifyCompleteGamePreLaunch when caller uid does not match the ability record uid.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunch_004, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest request;
+    request.appInfo.bundleName = "com.example.unittest";
+    request.abilityInfo.name = "MainAbility";
+    request.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    auto record = UIAbilityRecord::CreateAbilityRecord(request);
+    ASSERT_NE(record, nullptr);
+    // The caller uid (mock default 0) does not match the ability record uid: caller does not own the record.
+    record->SetUid(100);
+    auto result = mgr->NotifyCompleteGamePreLaunch(record->GetToken());
+    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunch_005
+ * @tc.desc: Test NotifyCompleteGamePreLaunch when caller uid is FOUNDATION_UID, uid check should pass.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunch_005, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest request;
+    request.appInfo.bundleName = "com.example.unittest";
+    request.abilityInfo.name = "MainAbility";
+    request.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    auto record = UIAbilityRecord::CreateAbilityRecord(request);
+    ASSERT_NE(record, nullptr);
+    constexpr int32_t FOUNDATION_UID = 5523;
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID);
+    record->SetUid(100);
+    // Foundation uid should pass uid check, then hit IsGameSAPreLaunch check
+    auto result = mgr->NotifyCompleteGamePreLaunch(record->GetToken());
+    EXPECT_NE(result, CHECK_PERMISSION_FAILED);
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunchByPid_001
+ * @tc.desc: Test NotifyCompleteGamePreLaunchByPid with invalid pid.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunchByPid_001, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    auto result = mgr->NotifyCompleteGamePreLaunchByPid(0);
+    EXPECT_EQ(result, ERR_NOT_GAME_PRELOAD_STATE);
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunchByPid_002
+ * @tc.desc: Test NotifyCompleteGamePreLaunchByPid when no ability record matches the pid.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunchByPid_002, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    auto abilityRecord = InitAbilityRecord();
+    EXPECT_NE(abilityRecord, nullptr);
+    abilityRecord->SetPid(12345);
+    mgr->sessionAbilityMap_.emplace(1, abilityRecord);
+    auto result = mgr->NotifyCompleteGamePreLaunchByPid(99999);
+    EXPECT_EQ(result, ERR_NOT_GAME_PRELOAD_STATE);
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunchByPid_003
+ * @tc.desc: Test NotifyCompleteGamePreLaunchByPid with matching record but not game SA prelaunch.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunchByPid_003, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    auto abilityRecord = InitAbilityRecord();
+    EXPECT_NE(abilityRecord, nullptr);
+    abilityRecord->SetPid(12345);
+    abilityRecord->SetGameSAPreLaunch(false);
+    mgr->sessionAbilityMap_.emplace(1, abilityRecord);
+    auto result = mgr->NotifyCompleteGamePreLaunchByPid(12345);
+    EXPECT_EQ(result, ERR_NOT_GAME_PRELOAD_STATE);
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunchByPid_004
+ * @tc.desc: Test NotifyCompleteGamePreLaunchByPid whit game SA prelaunch record.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunchByPid_004, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    auto abilityRecord = InitAbilityRecord();
+    EXPECT_NE(abilityRecord, nullptr);
+    abilityRecord->SetPid(12345);
+    abilityRecord->SetGameSAPreLaunch(true);
+    mgr->sessionAbilityMap_.emplace(1, abilityRecord);
+    auto result = mgr->NotifyCompleteGamePreLaunchByPid(12345);
+    EXPECT_NE(result, ERR_NOT_GAME_PRELOAD_STATE);
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunchByPid_005
+ * @tc.desc: Test NotifyCompleteGamePreLaunchByPid picks the game SA prelaunch record among multiple
+ *      records sharing the same pid (multiple instances in one process).
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunchByPid_005, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    auto normalRecord = InitAbilityRecord();
+    EXPECT_NE(normalRecord, nullptr);
+    normalRecord->SetPid(12345);
+    normalRecord->SetGameSAPreLaunch(false);
+    mgr->sessionAbilityMap_.emplace(1, normalRecord);
+ 
+    auto prelaunchRecord = InitAbilityRecord();
+    EXPECT_NE(prelaunchRecord, nullptr);
+    prelaunchRecord->SetPid(12345);
+    prelaunchRecord->SetGameSAPreLaunch(true);
+    mgr->sessionAbilityMap_.emplace(2, prelaunchRecord);
+ 
+    auto result = mgr->NotifyCompleteGamePreLaunchByPid(12345);
+    EXPECT_NE(result, ERR_NOT_GAME_PRELOAD_STATE);
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunchByPid_006
+ * @tc.desc: Test NotifyCompleteGamePreLaunchByPid skips null record in sessionAbilityMap and still
+ *      finds the game SA prelaunch record.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunchByPid_006, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    mgr->sessionAbilityMap_.emplace(1, nullptr);
+    auto abilityRecord = InitAbilityRecord();
+    EXPECT_NE(abilityRecord, nullptr);
+    abilityRecord->SetPid(12345);
+    abilityRecord->SetGameSAPreLaunch(true);
+    mgr->sessionAbilityMap_.emplace(2, abilityRecord);
+    auto result = mgr->NotifyCompleteGamePreLaunchByPid(12345);
+    EXPECT_NE(result, ERR_NOT_GAME_PRELOAD_STATE);
+}
+
+/**
+ * @tc.name: NotifyCompleteGamePreLaunchByPid_007
+ * @tc.desc: Test NotifyCompleteGamePreLaunchByPid with prelaunch record whose token is null.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifyCompleteGamePreLaunchByPid_007, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    auto abilityRecord = InitAbilityRecord();
+    EXPECT_NE(abilityRecord, nullptr);
+    abilityRecord->SetPid(12345);
+    abilityRecord->SetGameSAPreLaunch(true);
+    abilityRecord->token_ = nullptr;
+    mgr->sessionAbilityMap_.emplace(1, abilityRecord);
+    auto result = mgr->NotifyCompleteGamePreLaunchByPid(12345);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+}
+
+/**
  * @tc.name: SetGamePreLaunchCompleteTime_001
  * @tc.desc: Test SetGamePreLaunchCompleteTime with valid completeTime.
  * @tc.type: FUNC
@@ -8353,5 +8744,1364 @@ HWTEST_F(UIAbilityLifecycleManagerTest, SetGamePreLaunchCompleteTime_003, TestSi
     auto result = mgr->SetGamePreLaunchCompleteTime(completeTime);
     EXPECT_EQ(result, ERR_OK);
 }
+
+/**
+ * @tc.name: StartSelf_001
+ * @tc.desc: Test StartSelf with null abilityRecord.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_001, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    EXPECT_EQ(mgr->StartSelf(nullptr), ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: StartSelf_002
+ * @tc.desc: Test StartSelf when nativeState is NONE (not a NativeModule ability).
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_002, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    auto abilityRecord = InitAbilityRecord();
+    EXPECT_NE(abilityRecord, nullptr);
+    // Default nativeState is NONE
+    EXPECT_EQ(abilityRecord->GetNativeState(), AbilityNativeState::NONE);
+    EXPECT_EQ(mgr->StartSelf(abilityRecord), ERR_NOT_NATIVE_UI_ABILITY);
+}
+
+/**
+ * @tc.name: StartSelf_003
+ * @tc.desc: Test StartSelf with null sessionInfo.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_003, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    auto abilityRecord = InitAbilityRecord();
+    abilityRecord->SetNativeState(AbilityNativeState::NORMAL);
+    EXPECT_EQ(mgr->StartSelf(abilityRecord), ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: StartSelf_004
+ * @tc.desc: Test StartSelf with null sessionToken.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_004, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    auto abilityRecord = InitAbilityRecord();
+    abilityRecord->SetNativeState(AbilityNativeState::NORMAL);
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    abilityRecord->SetSessionInfo(sessionInfo);
+    EXPECT_EQ(mgr->StartSelf(abilityRecord), ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: StartSelf_005
+ * @tc.desc: Test StartSelf success: nativeHideWindow is set to false,
+ *           requestId is assigned, and PendingSessionActivation is called on the session.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_005, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    auto abilityRecord = InitAbilityRecord();
+    abilityRecord->SetNativeState(AbilityNativeState::NORMAL);
+
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->nativeHideWindow = true;
+    abilityRecord->SetSessionInfo(sessionInfo);
+
+    auto ret = mgr->StartSelf(abilityRecord);
+    EXPECT_EQ(ret, ERR_OK);
+    // Verify nativeHideWindow is set to false after StartSelf
+    EXPECT_EQ(sessionInfo->nativeHideWindow, false);
+    // Verify requestId is assigned (non-zero)
+    EXPECT_NE(sessionInfo->requestId, 0);
+}
+
+/**
+ * @tc.name: StartSelf_006
+ * @tc.desc: Test StartSelf when nativeState is CREATED, should transition to ON_FOREGROUND
+ *           and set requestId on sessionInfo.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_006, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    auto abilityRecord = InitAbilityRecord();
+    abilityRecord->SetNativeState(AbilityNativeState::CREATED);
+
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->nativeHideWindow = true;
+    abilityRecord->SetSessionInfo(sessionInfo);
+
+    auto ret = mgr->StartSelf(abilityRecord);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(abilityRecord->GetNativeState(), AbilityNativeState::ON_FOREGROUND);
+    EXPECT_NE(sessionInfo->requestId, 0);
+}
+
+/**
+ * @tc.name: StartSelf_007
+ * @tc.desc: Test StartSelf when nativeState is already ON_FOREGROUND, should return ERR_OK
+ *           without calling PendingSessionActivation.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartSelf_007, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    auto abilityRecord = InitAbilityRecord();
+    abilityRecord->SetNativeState(AbilityNativeState::ON_FOREGROUND);
+
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->nativeHideWindow = true;
+    abilityRecord->SetSessionInfo(sessionInfo);
+
+    auto ret = mgr->StartSelf(abilityRecord);
+    EXPECT_EQ(ret, ERR_OK);
+    // nativeHideWindow should remain true since PendingSessionActivation was not called
+    EXPECT_EQ(sessionInfo->nativeHideWindow, true);
+}
+
+/**
+ * @tc.name: DispatchForeground_NativeModuleAttached_0100
+ * @tc.desc: Test DispatchForeground when NativeModule is in ATTACHED state,
+ *           should set state to CREATED and return ERR_OK.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, DispatchForeground_NativeModuleAttached_0100, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    auto abilityRecord = InitAbilityRecord();
+    abilityRecord->SetNativeState(AbilityNativeState::ATTACHED);
+    abilityRecord->SetAbilityState(AbilityState::FOREGROUNDING);
+
+    auto ret = mgr->DispatchForeground(abilityRecord, true);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(abilityRecord->GetNativeState(), AbilityNativeState::CREATED);
+}
+
+/**
+ * @tc.name: DispatchForeground_NativeModuleOnForeground_0100
+ * @tc.desc: Test DispatchForeground when NativeModule is in ON_FOREGROUND state
+ *           and success is true, should set state to NORMAL.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, DispatchForeground_NativeModuleOnForeground_0100, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    auto abilityRecord = InitAbilityRecord();
+    abilityRecord->SetNativeState(AbilityNativeState::ON_FOREGROUND);
+    abilityRecord->SetAbilityState(AbilityState::FOREGROUNDING);
+
+    auto ret = mgr->DispatchForeground(abilityRecord, true);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(abilityRecord->GetNativeState(), AbilityNativeState::NORMAL);
+}
+
+/**
+ * @tc.name: CalcHideNativeWindow_0002
+ * @tc.desc: persistentId is 0, HideWindowOnStartup returns false (no native module metadata).
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0002, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AppExecFwk::AbilityInfo abilityInfo;
+
+    EXPECT_FALSE(mgr->CalcHideNativeWindow(0, abilityInfo));
+}
+
+/**
+ * @tc.name: CalcHideNativeWindow_0003
+ * @tc.desc: persistentId != 0 but record not found in sessionAbilityMap_, should return false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0003, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AppExecFwk::AbilityInfo abilityInfo;
+
+    EXPECT_FALSE(mgr->CalcHideNativeWindow(100, abilityInfo));
+}
+
+/**
+ * @tc.name: CalcHideNativeWindow_0004
+ * @tc.desc: persistentId != 0, record exists with nativeState=NONE, should return false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0004, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AppExecFwk::AbilityInfo abilityInfo;
+    auto abilityRecord = InitAbilityRecord();
+    mgr->sessionAbilityMap_[1] = abilityRecord;
+
+    EXPECT_EQ(abilityRecord->GetNativeState(), AbilityNativeState::NONE);
+    EXPECT_FALSE(mgr->CalcHideNativeWindow(1, abilityInfo));
+}
+
+/**
+ * @tc.name: CalcHideNativeWindow_0005
+ * @tc.desc: persistentId != 0, record exists with nativeState=NORMAL, should return false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0005, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AppExecFwk::AbilityInfo abilityInfo;
+    auto abilityRecord = InitAbilityRecord();
+    abilityRecord->SetNativeState(AbilityNativeState::NORMAL);
+    mgr->sessionAbilityMap_[1] = abilityRecord;
+
+    EXPECT_FALSE(mgr->CalcHideNativeWindow(1, abilityInfo));
+}
+
+/**
+ * @tc.name: CalcHideNativeWindow_0006
+ * @tc.desc: persistentId != 0, record exists with nativeState=INIT, should return true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0006, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AppExecFwk::AbilityInfo abilityInfo;
+    auto abilityRecord = InitAbilityRecord();
+    abilityRecord->SetNativeState(AbilityNativeState::INIT);
+    mgr->sessionAbilityMap_[1] = abilityRecord;
+
+    EXPECT_TRUE(mgr->CalcHideNativeWindow(1, abilityInfo));
+}
+
+/**
+ * @tc.name: CalcHideNativeWindow_0007
+ * @tc.desc: persistentId != 0, record exists with nativeState=ATTACHED, should return true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0007, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AppExecFwk::AbilityInfo abilityInfo;
+    auto abilityRecord = InitAbilityRecord();
+    abilityRecord->SetNativeState(AbilityNativeState::ATTACHED);
+    mgr->sessionAbilityMap_[1] = abilityRecord;
+
+    EXPECT_TRUE(mgr->CalcHideNativeWindow(1, abilityInfo));
+}
+
+/**
+ * @tc.name: CalcHideNativeWindow_0008
+ * @tc.desc: persistentId != 0, record exists with nativeState=CREATED, should return true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0008, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AppExecFwk::AbilityInfo abilityInfo;
+    auto abilityRecord = InitAbilityRecord();
+    abilityRecord->SetNativeState(AbilityNativeState::CREATED);
+    mgr->sessionAbilityMap_[1] = abilityRecord;
+
+    EXPECT_TRUE(mgr->CalcHideNativeWindow(1, abilityInfo));
+}
+
+/**
+ * @tc.name: CalcHideNativeWindow_0009
+ * @tc.desc: persistentId != 0, record exists with nativeState=ON_FOREGROUND, should return true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0009, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AppExecFwk::AbilityInfo abilityInfo;
+    auto abilityRecord = InitAbilityRecord();
+    abilityRecord->SetNativeState(AbilityNativeState::ON_FOREGROUND);
+    mgr->sessionAbilityMap_[1] = abilityRecord;
+
+    EXPECT_TRUE(mgr->CalcHideNativeWindow(1, abilityInfo));
+}
+
+/**
+ * @tc.name: CalcHideNativeWindow_0010
+ * @tc.desc: persistentId != 0, record exists but is nullptr, should return false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CalcHideNativeWindow_0010, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AppExecFwk::AbilityInfo abilityInfo;
+    mgr->sessionAbilityMap_[1] = nullptr;
+
+    EXPECT_FALSE(mgr->CalcHideNativeWindow(1, abilityInfo));
+}
+
+/**
+ * @tc.name: CompleteForegroundSuccess_GameSAPreLaunch_0001
+ * @tc.desc: CompleteForegroundSuccess with GameSAPreLaunch = true
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CompleteForegroundSuccess_GameSAPreLaunch_0001, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    abilityRecord->SetPendingState(AbilityState::FOREGROUND);
+    abilityRecord->SetGameSAPreLaunch(true);
+
+    mgr->CompleteForegroundSuccess(abilityRecord);
+
+    EXPECT_EQ(abilityRecord->GetAbilityState(), AbilityState::FOREGROUND);
+    EXPECT_TRUE(abilityRecord->IsGameSAPreLaunch());
+}
+
+/**
+ * @tc.name: CompleteForegroundSuccess_GameSAPreLaunch_0002
+ * @tc.desc: CompleteForegroundSuccess with GameSAPreLaunch = false
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CompleteForegroundSuccess_GameSAPreLaunch_0002, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    abilityRecord->SetPendingState(AbilityState::FOREGROUND);
+    abilityRecord->SetGameSAPreLaunch(false);
+
+    mgr->CompleteForegroundSuccess(abilityRecord);
+
+    EXPECT_EQ(abilityRecord->GetAbilityState(), AbilityState::FOREGROUND);
+    EXPECT_FALSE(abilityRecord->IsGameSAPreLaunch());
+}
+
+/**
+ * @tc.name: CompleteForegroundSuccess_GameSAPreLaunch_0003
+ * @tc.desc: CompleteForegroundSuccess with GameSAPreLaunch = true and startedByCall = true
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CompleteForegroundSuccess_GameSAPreLaunch_0003, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    abilityRecord->SetPendingState(AbilityState::FOREGROUND);
+    abilityRecord->SetGameSAPreLaunch(true);
+    abilityRecord->SetStartedByCall(true);
+    abilityRecord->SetStartToForeground(true);
+    abilityRecord->isReady_ = true;
+
+    mgr->CompleteForegroundSuccess(abilityRecord);
+
+    EXPECT_EQ(abilityRecord->GetAbilityState(), AbilityState::FOREGROUND);
+    EXPECT_TRUE(abilityRecord->IsGameSAPreLaunch());
+}
+
+/**
+ * @tc.name: CompleteForegroundSuccess_GameSAPreLaunch_0004
+ * @tc.desc: CompleteForegroundSuccess with GameSAPreLaunch = true and HasLastWant = true
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CompleteForegroundSuccess_GameSAPreLaunch_0004, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    Want lastWant;
+    lastWant.SetElementName("com.example.unittest", "MainAbility");
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    abilityRecord->SetPendingState(AbilityState::FOREGROUND);
+    abilityRecord->SetGameSAPreLaunch(true);
+    abilityRecord->SetLastWant(std::make_shared<Want>(lastWant));
+
+    mgr->CompleteForegroundSuccess(abilityRecord);
+
+    EXPECT_EQ(abilityRecord->GetAbilityState(), AbilityState::FOREGROUNDING);
+    EXPECT_TRUE(abilityRecord->IsGameSAPreLaunch());
+}
+
+/**
+ * @tc.name: StartUIAbility_WithRequestId_0100
+ * @tc.desc: Test StartUIAbility with requestId and scbRequestId set in sessionInfo
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_WithRequestId_0100, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 1;
+    sessionInfo->requestId = 100;
+    sessionInfo->scbRequestId = 200;
+
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    auto result = mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart);
+    EXPECT_EQ(result, ERR_OK);
+
+    // Verify that requestId and scbRequestId are set in want
+    int32_t requestId = abilityRequest.want.GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 0);
+    int32_t scbRequestId = abilityRequest.want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 0);
+    EXPECT_EQ(requestId, 100);
+    EXPECT_EQ(scbRequestId, 200);
+}
+
+/**
+ * @tc.name: StartUIAbility_WithRequestId_0200
+ * @tc.desc: Test StartUIAbility with only requestId set (scbRequestId = 0)
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_WithRequestId_0200, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 1;
+    sessionInfo->requestId = 100;
+    sessionInfo->scbRequestId = 0;  // Only requestId is set
+
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    auto result = mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart);
+    EXPECT_EQ(result, ERR_OK);
+
+    // Verify that requestId is set but scbRequestId is not
+    int32_t requestId = abilityRequest.want.GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 0);
+    int32_t scbRequestId = abilityRequest.want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 0);
+    EXPECT_EQ(requestId, 100);
+    EXPECT_EQ(scbRequestId, 0);
+}
+
+/**
+ * @tc.name: StartUIAbility_WithRequestId_0300
+ * @tc.desc: Test StartUIAbility with only scbRequestId set (requestId = 0)
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_WithRequestId_0300, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 1;
+    sessionInfo->requestId = 0;  // Only scbRequestId is set
+    sessionInfo->scbRequestId = 200;
+
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    auto result = mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart);
+    EXPECT_EQ(result, ERR_OK);
+
+    // Verify that scbRequestId is set but requestId is not
+    int32_t requestId = abilityRequest.want.GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 0);
+    int32_t scbRequestId = abilityRequest.want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 0);
+    EXPECT_EQ(requestId, 0);
+    EXPECT_EQ(scbRequestId, 200);
+}
+
+/**
+ * @tc.name: StartUIAbility_WithRequestId_0400
+ * @tc.desc: Test StartUIAbility with both requestId and scbRequestId = 0
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_WithRequestId_0400, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 1;
+    sessionInfo->requestId = 0;  // Both are 0
+    sessionInfo->scbRequestId = 0;
+
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    auto result = mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart);
+    EXPECT_EQ(result, ERR_OK);
+
+    // Verify that neither requestId nor scbRequestId is set
+    int32_t requestId = abilityRequest.want.GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 0);
+    int32_t scbRequestId = abilityRequest.want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 0);
+    EXPECT_EQ(requestId, 0);
+    EXPECT_EQ(scbRequestId, 0);
+}
+
+/**
+ * @tc.name: StartUIAbility_WithRequestId_0500
+ * @tc.desc: Test StartUIAbility with negative requestId and scbRequestId values
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_WithRequestId_0500, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 1;
+    sessionInfo->requestId = -100;  // Negative value
+    sessionInfo->scbRequestId = -200;  // Negative value
+
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    auto result = mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart);
+    EXPECT_EQ(result, ERR_OK);
+
+    // Verify that negative values are still set (no filtering in implementation)
+    int32_t requestId = abilityRequest.want.GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 0);
+    int32_t scbRequestId = abilityRequest.want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 0);
+    EXPECT_EQ(requestId, -100);
+    EXPECT_EQ(scbRequestId, -200);
+}
+
+/**
+ * @tc.name: StartUIAbility_WithRequestId_0600
+ * @tc.desc: Test StartUIAbility with requestId in ability reuse scenario
+ * @tc.type: FUNC
+ * @tc.require: issueI
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_WithRequestId_0600, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 1;
+    sessionInfo->requestId = 100;
+    sessionInfo->scbRequestId = 200;
+    sessionInfo->reuseDelegatorWindow = true;
+
+    abilityRequest.sessionInfo = sessionInfo;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    mgr->sessionAbilityMap_.emplace(sessionInfo->persistentId, abilityRecord);
+
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    auto result = mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart);
+    EXPECT_EQ(result, ERR_OK);
+
+    // In reuse scenario, requestId should still be set in want
+    int32_t requestId = abilityRequest.want.GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 0);
+    int32_t scbRequestId = abilityRequest.want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 0);
+    EXPECT_EQ(requestId, 100);
+    EXPECT_EQ(scbRequestId, 200);
+}
+
+/**
+ * @tc.name: StartUIAbility_WithRequestId_0700
+ * @tc.desc: Test StartUIAbility updates requestId when reusing existing ability record
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_WithRequestId_0700, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 1;
+    sessionInfo->requestId = 100;
+    sessionInfo->scbRequestId = 200;
+    sessionInfo->isNewWant = false;
+
+    abilityRequest.sessionInfo = sessionInfo;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    mgr->sessionAbilityMap_.emplace(sessionInfo->persistentId, abilityRecord);
+
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    auto result = mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart);
+    EXPECT_EQ(result, ERR_OK);
+
+    // Verify requestId and scbRequestId are updated in want
+    int32_t requestId = abilityRequest.want.GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 0);
+    int32_t scbRequestId = abilityRequest.want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 0);
+    EXPECT_EQ(requestId, 100);
+    EXPECT_EQ(scbRequestId, 200);
+}
+
+/**
+ * @tc.name: BackToCallerAppWithResultLocked_001
+ * @tc.desc: Invalid current session information is rejected.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, BackToCallerAppWithResultLocked_001, TestSize.Level1)
+{
+    auto manager = std::make_shared<UIAbilityLifecycleManager>();
+    auto caller = InitAbilityRecord();
+    EXPECT_EQ(manager->BackToCallerAppWithResultLocked(nullptr, caller), ERR_INVALID_VALUE);
+    sptr<SessionInfo> sessionInfo = new SessionInfo();
+    EXPECT_EQ(manager->BackToCallerAppWithResultLocked(sessionInfo, caller), ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: BackToCallerAppWithResultLocked_002
+ * @tc.desc: A missing caller and invalid caller session are rejected.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, BackToCallerAppWithResultLocked_002, TestSize.Level1)
+{
+    auto manager = std::make_shared<UIAbilityLifecycleManager>();
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo = new SessionInfo();
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    EXPECT_EQ(manager->BackToCallerAppWithResultLocked(sessionInfo, nullptr), ERR_INVALID_VALUE);
+    auto caller = InitAbilityRecord();
+    ASSERT_NE(caller, nullptr);
+    caller->SetSessionInfo(nullptr);
+    EXPECT_EQ(manager->BackToCallerAppWithResultLocked(sessionInfo, caller), ERR_INVALID_VALUE);
+    caller->SetSessionInfo(new SessionInfo());
+    EXPECT_EQ(manager->BackToCallerAppWithResultLocked(sessionInfo, caller), ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: BackToCallerAppWithResult_001
+ * @tc.desc: The new interface returns the result and activates the caller with the new scenario.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, BackToCallerAppWithResult_001, TestSize.Level1)
+{
+    auto manager = std::make_shared<UIAbilityLifecycleManager>();
+    sptr<MockBackToCallerSession> session = new MockBackToCallerSession(Rosen::SessionInfo());
+    sptr<SessionInfo> currentSession = new SessionInfo();
+    currentSession->sessionToken = session;
+    sptr<SessionInfo> callerSession = new SessionInfo();
+    callerSession->sessionToken = new Rosen::Session(Rosen::SessionInfo());
+    callerSession->persistentId = 10;
+    callerSession->identityToken = "caller";
+    callerSession->want.SetElementName("device", "com.example.test", "MainAbility", "entry");
+    callerSession->want.SetParam("original", std::string("value"));
+    auto caller = InitAbilityRecord();
+    ASSERT_NE(caller, nullptr);
+    caller->SetSessionInfo(callerSession);
+    caller->SetAppIndex(1);
+    auto skipScenarios = caller->GetOnNewWantSkipScenarios();
+    auto abilityRecord = InitAbilityRecord();
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->SetSessionInfo(currentSession);
+    abilityRecord->currentState_ = AbilityState::FOREGROUND;
+    caller->pid_ = 1;
+    auto callerRecord = std::make_shared<CallerRecord>(1, caller);
+    callerRecord->AddHistoryRequestCode(1);
+    abilityRecord->callerList_.emplace_back(callerRecord);
+    sptr<AbilitySchedulerMock> scheduler = new AbilitySchedulerMock();
+    caller->scheduler_ = scheduler;
+    Want returnedWant;
+    EXPECT_CALL(*scheduler, SendResult(1, 100, _)).WillOnce(SaveArg<2>(&returnedWant));
+    sptr<SessionInfo> activation;
+    EXPECT_CALL(*session, PendingSessionActivation(_))
+        .WillOnce(DoAll(SaveArg<0>(&activation), Return(Rosen::WSError::WS_OK)));
+
+    Want resultWant;
+    resultWant.SetParam("result", std::string("test"));
+    auto requestCode = StartupUtil::GenerateFullRequestCode(1, true, 1);
+    EXPECT_EQ(manager->BackToCallerAbilityWithResult(abilityRecord, 100, resultWant, requestCode, true), ERR_OK);
+    EXPECT_EQ(returnedWant.GetStringParam("result"), "test");
+    EXPECT_EQ(abilityRecord->GetCallerByRequestCode(1, 1), nullptr);
+    EXPECT_FALSE(abilityRecord->IsTerminating());
+    ASSERT_NE(activation, nullptr);
+    EXPECT_EQ(activation->persistentId, 10);
+    EXPECT_EQ(activation->identityToken, "caller");
+    EXPECT_GT(activation->requestId, 0);
+    EXPECT_EQ(activation->want.GetElement(), callerSession->want.GetElement());
+    EXPECT_EQ(activation->want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, 0), 1);
+    EXPECT_FALSE(activation->want.HasParameter("original"));
+    EXPECT_TRUE(activation->isBackTransition);
+    EXPECT_FALSE(activation->want.GetBoolParam(ServerConstant::IS_CALL_BY_SCB, true));
+    EXPECT_EQ(activation->scenarios, ServerConstant::SCENARIO_BACK_TO_CALLER_APP_WITH_RESULT);
+    EXPECT_EQ(caller->GetOnNewWantSkipScenarios(), skipScenarios);
+}
+
+/**
+ * @tc.name: BackToCallerAppWithResultLocked_004
+ * @tc.desc: Failed activation returns the session error.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, BackToCallerAppWithResultLocked_004, TestSize.Level1)
+{
+    auto manager = std::make_shared<UIAbilityLifecycleManager>();
+    Rosen::SessionInfo info;
+    sptr<MockBackToCallerSession> session = new MockBackToCallerSession(info);
+    sptr<SessionInfo> currentSession = new SessionInfo();
+    currentSession->sessionToken = session;
+    sptr<SessionInfo> callerSession = new SessionInfo();
+    callerSession->sessionToken = new Rosen::Session(info);
+    auto caller = InitAbilityRecord();
+    ASSERT_NE(caller, nullptr);
+    caller->SetSessionInfo(callerSession);
+    EXPECT_CALL(*session, PendingSessionActivation(_))
+        .WillOnce(Return(Rosen::WSError::WS_ERROR_INVALID_PARAM));
+
+    auto ret = manager->BackToCallerAppWithResultLocked(currentSession, caller);
+    EXPECT_EQ(ret, static_cast<int32_t>(Rosen::WSError::WS_ERROR_INVALID_PARAM));
+}
+
+/**
+ * @tc.name: StartUIAbility_BackToCallerAppWithResult_001
+ * @tc.desc: The new interface scenario suppresses a pending onNewWant.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_BackToCallerAppWithResult_001, TestSize.Level1)
+{
+    auto manager = std::make_shared<UIAbilityLifecycleManager>();
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo = new SessionInfo();
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 10;
+    sessionInfo->isNewWant = true;
+    sessionInfo->scenarios = ServerConstant::SCENARIO_BACK_TO_CALLER_APP_WITH_RESULT;
+    AbilityRequest request;
+    request.want.SetParam("value", std::string("new"));
+    auto abilityRecord = InitAbilityRecord();
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->isLaunching_ = false;
+    Want originalWant;
+    originalWant.SetParam("value", std::string("original"));
+    abilityRecord->SetWant(originalWant);
+    abilityRecord->SetSessionInfo(sessionInfo);
+    abilityRecord->SetIsNewWant(false);
+    abilityRecord->SetPendingState(AbilityState::FOREGROUND);
+    manager->sessionAbilityMap_.emplace(10, abilityRecord);
+    auto skipScenarios = abilityRecord->GetOnNewWantSkipScenarios();
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    auto ret = manager->StartUIAbility(request, sessionInfo, params, isColdStart);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_FALSE(isColdStart);
+    EXPECT_FALSE(abilityRecord->HasLastWant());
+    EXPECT_EQ(abilityRecord->GetOnNewWantSkipScenarios(), skipScenarios);
+}
+
+/**
+ * @tc.name: StartUIAbility_BackToCallerAppWithResult_002
+ * @tc.desc: The old interface scenario retains a pending onNewWant.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_BackToCallerAppWithResult_002, TestSize.Level1)
+{
+    auto manager = std::make_shared<UIAbilityLifecycleManager>();
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo = new SessionInfo();
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 10;
+    sessionInfo->isNewWant = true;
+    sessionInfo->scenarios = ServerConstant::SCENARIO_BACK_TO_CALLER_ABILITY_WITH_RESULT;
+    AbilityRequest request;
+    request.want.SetParam("value", std::string("new"));
+    auto abilityRecord = InitAbilityRecord();
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->isLaunching_ = false;
+    Want originalWant;
+    originalWant.SetParam("value", std::string("original"));
+    abilityRecord->SetWant(originalWant);
+    abilityRecord->SetSessionInfo(sessionInfo);
+    abilityRecord->SetIsNewWant(false);
+    abilityRecord->SetPendingState(AbilityState::FOREGROUND);
+    manager->sessionAbilityMap_.emplace(10, abilityRecord);
+    auto skipScenarios = abilityRecord->GetOnNewWantSkipScenarios();
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    auto ret = manager->StartUIAbility(request, sessionInfo, params, isColdStart);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_FALSE(isColdStart);
+    EXPECT_TRUE(abilityRecord->HasLastWant());
+    EXPECT_EQ(abilityRecord->GetOnNewWantSkipScenarios(), skipScenarios);
+}
+
+/**
+ * @tc.name: StartUIAbility_BackToCallerAppWithResult_005
+ * @tc.desc: The new interface scenario preserves the reused ability's Want.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_BackToCallerAppWithResult_005, TestSize.Level1)
+{
+    auto manager = std::make_shared<UIAbilityLifecycleManager>();
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo = new SessionInfo();
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 10;
+    sessionInfo->isNewWant = true;
+    sessionInfo->scenarios = ServerConstant::SCENARIO_BACK_TO_CALLER_APP_WITH_RESULT;
+    AbilityRequest request;
+    request.want.SetParam("value", std::string("new"));
+    auto abilityRecord = InitAbilityRecord();
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->isLaunching_ = false;
+    Want originalWant;
+    originalWant.SetParam("value", std::string("original"));
+    abilityRecord->SetWant(originalWant);
+    ASSERT_EQ(abilityRecord->GetWant().GetStringParam("value"), "original");
+    abilityRecord->SetSessionInfo(sessionInfo);
+    abilityRecord->SetIsNewWant(false);
+    abilityRecord->SetPendingState(AbilityState::INITIAL);
+    manager->sessionAbilityMap_.emplace(10, abilityRecord);
+    auto skipScenarios = abilityRecord->GetOnNewWantSkipScenarios();
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    auto ret = manager->StartUIAbility(request, sessionInfo, params, isColdStart);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_FALSE(isColdStart);
+    EXPECT_EQ(abilityRecord->GetWant().GetStringParam("value"), "original");
+    EXPECT_EQ(abilityRecord->GetOnNewWantSkipScenarios(), skipScenarios);
+}
+
+/**
+ * @tc.name: StartUIAbility_BackToCallerAppWithResult_006
+ * @tc.desc: The old interface scenario updates the reused ability's Want.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_BackToCallerAppWithResult_006, TestSize.Level1)
+{
+    auto manager = std::make_shared<UIAbilityLifecycleManager>();
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo = new SessionInfo();
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 10;
+    sessionInfo->isNewWant = true;
+    sessionInfo->scenarios = ServerConstant::SCENARIO_BACK_TO_CALLER_ABILITY_WITH_RESULT;
+    AbilityRequest request;
+    request.want.SetParam("value", std::string("new"));
+    auto abilityRecord = InitAbilityRecord();
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->isLaunching_ = false;
+    Want originalWant;
+    originalWant.SetParam("value", std::string("original"));
+    abilityRecord->SetWant(originalWant);
+    ASSERT_EQ(abilityRecord->GetWant().GetStringParam("value"), "original");
+    abilityRecord->SetSessionInfo(sessionInfo);
+    abilityRecord->SetIsNewWant(false);
+    abilityRecord->SetPendingState(AbilityState::INITIAL);
+    manager->sessionAbilityMap_.emplace(10, abilityRecord);
+    auto skipScenarios = abilityRecord->GetOnNewWantSkipScenarios();
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    auto ret = manager->StartUIAbility(request, sessionInfo, params, isColdStart);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_FALSE(isColdStart);
+    EXPECT_EQ(abilityRecord->GetWant().GetStringParam("value"), "new");
+    EXPECT_EQ(abilityRecord->GetOnNewWantSkipScenarios(), skipScenarios);
+}
+
+/**
+ * @tc.name: StartUIAbility_BackToCallerAppWithResult_007
+ * @tc.desc: The existing skip configuration still suppresses a pending onNewWant.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_BackToCallerAppWithResult_007, TestSize.Level1)
+{
+    auto manager = std::make_shared<UIAbilityLifecycleManager>();
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo = new SessionInfo();
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 10;
+    sessionInfo->isNewWant = true;
+    sessionInfo->scenarios = ServerConstant::SCENARIO_BACK_TO_CALLER_ABILITY_WITH_RESULT;
+    AbilityRequest request;
+    request.want.SetParam("value", std::string("new"));
+    auto abilityRecord = InitAbilityRecord();
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->isLaunching_ = false;
+    Want originalWant;
+    originalWant.SetParam("value", std::string("original"));
+    abilityRecord->SetWant(originalWant);
+    abilityRecord->SetSessionInfo(sessionInfo);
+    abilityRecord->SetIsNewWant(false);
+    abilityRecord->SetPendingState(AbilityState::FOREGROUND);
+    manager->sessionAbilityMap_.emplace(10, abilityRecord);
+    abilityRecord->SetOnNewWantSkipScenarios(ServerConstant::SCENARIO_BACK_TO_CALLER_ABILITY_WITH_RESULT);
+    auto skipScenarios = abilityRecord->GetOnNewWantSkipScenarios();
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    auto ret = manager->StartUIAbility(request, sessionInfo, params, isColdStart);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_FALSE(isColdStart);
+    EXPECT_FALSE(abilityRecord->HasLastWant());
+    EXPECT_EQ(abilityRecord->GetOnNewWantSkipScenarios(), skipScenarios);
+}
+
+/**
+ * @tc.name: BackToCallerAppWithResultLocked_005
+ * @tc.desc: Failed session conversion returns ERR_INVALID_VALUE.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, BackToCallerAppWithResultLocked_005, TestSize.Level1)
+{
+    auto manager = std::make_shared<UIAbilityLifecycleManager>();
+    auto caller = InitAbilityRecord();
+    ASSERT_NE(caller, nullptr);
+    ASSERT_NE(caller->GetToken(), nullptr);
+    sptr<SessionInfo> currentSession = new SessionInfo();
+    currentSession->sessionToken = caller->GetToken()->AsObject();
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> callerSession = new SessionInfo();
+    callerSession->sessionToken = new Rosen::Session(info);
+    caller->SetSessionInfo(callerSession);
+
+    auto ret = manager->BackToCallerAppWithResultLocked(currentSession, caller);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: BackToCallerAppWithResultLocked_006
+ * @tc.desc: Activation preserves the caller DLP index without using the clone parameter.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, BackToCallerAppWithResultLocked_006, TestSize.Level1)
+{
+    auto manager = std::make_shared<UIAbilityLifecycleManager>();
+    Rosen::SessionInfo info;
+    sptr<MockBackToCallerSession> session = new MockBackToCallerSession(info);
+    sptr<SessionInfo> currentSession = new SessionInfo();
+    currentSession->sessionToken = session;
+    sptr<SessionInfo> callerSession = new SessionInfo();
+    callerSession->sessionToken = new Rosen::Session(info);
+    callerSession->want.SetElementName("device", "com.example.test", "MainAbility", "entry");
+    constexpr int32_t appIndex = 1001;
+    callerSession->want.SetParam(ServerConstant::DLP_INDEX, appIndex);
+    auto caller = InitAbilityRecord();
+    ASSERT_NE(caller, nullptr);
+    caller->SetSessionInfo(callerSession);
+    caller->SetAppIndex(appIndex);
+    sptr<SessionInfo> activation;
+    EXPECT_CALL(*session, PendingSessionActivation(_))
+        .WillOnce(DoAll(SaveArg<0>(&activation), Return(Rosen::WSError::WS_OK)));
+
+    auto ret = manager->BackToCallerAppWithResultLocked(currentSession, caller);
+    EXPECT_EQ(ret, ERR_OK);
+    ASSERT_NE(activation, nullptr);
+    EXPECT_EQ(activation->want.GetIntParam(ServerConstant::DLP_INDEX, 0), appIndex);
+    EXPECT_FALSE(activation->want.HasParameter(Want::PARAM_APP_CLONE_INDEX_KEY));
+}
+
+/**
+ * @tc.name: StartUIAbility_TaskAttributionColdStartStash_0100
+ * @tc.desc: A cold start with the task-attribution key stashes the caller identity
+ *           into the record's pending map for the attach-time report.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionColdStartStash_0100, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    abilityRequest.want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-cold-ut"));
+    abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_UID, 3001);
+    abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_PID, 4001);
+
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 51;
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    EXPECT_EQ(mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart), ERR_OK);
+    EXPECT_TRUE(isColdStart);
+    auto record = mgr->sessionAbilityMap_[51];
+    ASSERT_NE(record, nullptr);
+    const auto &pending = record->GetPendingTaskAttributions();
+    ASSERT_EQ(pending.size(), static_cast<size_t>(1));
+    EXPECT_EQ(pending.at("task-cold-ut").callerUid, 3001);
+    EXPECT_EQ(pending.at("task-cold-ut").callerPid, 4001);
+}
+
+/**
+ * @tc.name: StartUIAbility_TaskAttributionNoKeyNoStash_0200
+ * @tc.desc: A cold start without the task-attribution key leaves the pending map empty.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionNoKeyNoStash_0200, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 52;
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    EXPECT_EQ(mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart), ERR_OK);
+    auto record = mgr->sessionAbilityMap_[52];
+    ASSERT_NE(record, nullptr);
+    EXPECT_TRUE(record->GetPendingTaskAttributions().empty());
+    EXPECT_TRUE(record->GetTaskAttributions().empty());
+}
+
+/**
+ * @tc.name: StartUIAbility_TaskAttributionReusePreAttachStash_0300
+ * @tc.desc: A warm reuse before the ability thread attached (pid unknown) stashes the
+ *           context into the pending map instead of dropping the key.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionReusePreAttachStash_0300, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 53;
+
+    AbilityRequest createRequest;
+    createRequest.abilityInfo.name = "MainAbility";
+    createRequest.abilityInfo.bundleName = "com.example.unittest";
+    createRequest.abilityInfo.moduleName = "entry";
+    createRequest.sessionInfo = sessionInfo;
+    auto record = UIAbilityRecord::CreateAbilityRecord(createRequest);
+    ASSERT_NE(record, nullptr);
+    EXPECT_LE(record->GetPid(), 0);
+    mgr->sessionAbilityMap_.emplace(53, record);
+
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo = createRequest.abilityInfo;
+    abilityRequest.want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-warm-ut"));
+    abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_UID, 5001);
+    abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_PID, 6001);
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    EXPECT_EQ(mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart), ERR_OK);
+    EXPECT_FALSE(isColdStart);
+    const auto &pending = record->GetPendingTaskAttributions();
+    ASSERT_EQ(pending.size(), static_cast<size_t>(1));
+    EXPECT_EQ(pending.at("task-warm-ut").callerUid, 5001);
+    EXPECT_EQ(pending.at("task-warm-ut").callerPid, 6001);
+}
+
+/**
+ * @tc.name: StartUIAbility_TaskAttributionReusePidReadyDropped_0400
+ * @tc.desc: A warm reuse with a live pid reports immediately; with the appmgr service
+ *           unreachable in UT the report is dropped (no accounting, no residue).
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionReusePidReadyDropped_0400, TestSize.Level1)
+{
+    // shared_ptr ownership: the warm-reuse deep path (MarkStartingFlag -> AddStartingPid)
+    // captures shared_from_this(); a make_unique manager would abort on bad_weak_ptr.
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 54;
+
+    AbilityRequest createRequest;
+    createRequest.abilityInfo.name = "MainAbility";
+    createRequest.abilityInfo.bundleName = "com.example.unittest";
+    createRequest.abilityInfo.moduleName = "entry";
+    createRequest.sessionInfo = sessionInfo;
+    auto record = UIAbilityRecord::CreateAbilityRecord(createRequest);
+    ASSERT_NE(record, nullptr);
+    record->SetPid(4321);
+    mgr->sessionAbilityMap_.emplace(54, record);
+
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo = createRequest.abilityInfo;
+    abilityRequest.want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-warm-live-ut"));
+    abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_UID, 5001);
+    abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_PID, 6001);
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    EXPECT_EQ(mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart), ERR_OK);
+    // report attempted and dropped: neither accounted nor left pending
+    EXPECT_TRUE(record->GetTaskAttributions().empty());
+    EXPECT_TRUE(record->GetPendingTaskAttributions().empty());
+}
+
+/**
+ * @tc.name: GenerateAbilityRecord_TaskAttributionRetargetedStash_0100
+ * @tc.desc: A retargeted start (tmp map hit) before attach stashes the context into
+ *           the pending map.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, GenerateAbilityRecord_TaskAttributionRetargetedStash_0100, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest createRequest;
+    createRequest.abilityInfo.name = "MainAbility";
+    createRequest.abilityInfo.bundleName = "com.example.unittest";
+    createRequest.abilityInfo.moduleName = "entry";
+    auto record = UIAbilityRecord::CreateAbilityRecord(createRequest);
+    ASSERT_NE(record, nullptr);
+    mgr->tmpAbilityMap_[101] = record;
+
+    AbilityRequest request;
+    request.abilityInfo = createRequest.abilityInfo;
+    request.want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-retarget-ut"));
+    request.want.SetParam(Want::PARAM_RESV_CALLER_UID, 7001);
+    request.want.SetParam(Want::PARAM_RESV_CALLER_PID, 8001);
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->persistentId = 55;
+    bool isColdStart = false;
+
+    auto ret = mgr->GenerateAbilityRecord(request, sessionInfo, isColdStart);
+    EXPECT_EQ(ret, record);
+    const auto &pending = record->GetPendingTaskAttributions();
+    ASSERT_EQ(pending.size(), static_cast<size_t>(1));
+    EXPECT_EQ(pending.at("task-retarget-ut").callerUid, 7001);
+    EXPECT_EQ(pending.at("task-retarget-ut").callerPid, 8001);
+}
+
+/**
+ * @tc.name: GenerateAbilityRecord_TaskAttributionRetargetedPidReadyDropped_0200
+ * @tc.desc: A retargeted start with a live pid reports immediately; with the appmgr
+ *           service unreachable in UT the report is dropped.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, GenerateAbilityRecord_TaskAttributionRetargetedPidReadyDropped_0200,
+    TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest createRequest;
+    createRequest.abilityInfo.name = "MainAbility";
+    createRequest.abilityInfo.bundleName = "com.example.unittest";
+    createRequest.abilityInfo.moduleName = "entry";
+    auto record = UIAbilityRecord::CreateAbilityRecord(createRequest);
+    ASSERT_NE(record, nullptr);
+    record->SetPid(4322);
+    mgr->tmpAbilityMap_[102] = record;
+
+    AbilityRequest request;
+    request.abilityInfo = createRequest.abilityInfo;
+    request.want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-retarget-live-ut"));
+    request.want.SetParam(Want::PARAM_RESV_CALLER_UID, 7001);
+    request.want.SetParam(Want::PARAM_RESV_CALLER_PID, 8001);
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->persistentId = 56;
+    bool isColdStart = false;
+
+    auto ret = mgr->GenerateAbilityRecord(request, sessionInfo, isColdStart);
+    EXPECT_EQ(ret, record);
+    EXPECT_TRUE(record->GetTaskAttributions().empty());
+    EXPECT_TRUE(record->GetPendingTaskAttributions().empty());
+}
+
+/**
+ * @tc.name: AttachAbilityThread_TaskAttributionConsumesPending_0100
+ * @tc.desc: The attach-time report consumes the stashed contexts (pending cleared
+ *           even for an invalid empty key); with the appmgr service unreachable in
+ *           UT the report is dropped without accounting.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, AttachAbilityThread_TaskAttributionConsumesPending_0100, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.sessionInfo = new SessionInfo();
+    abilityRequest.sessionInfo->persistentId = 57;
+
+    auto record = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(record, nullptr);
+    record->SetPendingTaskAttribution("task-attach-ut", 9001, 1001);
+    // empty key: gated inside the report core, but still consumed on clear
+    record->SetPendingTaskAttribution("", 9002, 1002);
+    auto token = record->GetToken();
+    mgr->sessionAbilityMap_.emplace(57, record);
+
+    auto result = mgr->AttachAbilityThread(nullptr, token->AsObject());
+    EXPECT_EQ(result, ERR_OK);
+    // the pending contexts were consumed and cleared at attach
+    EXPECT_TRUE(record->GetPendingTaskAttributions().empty());
+    // report dropped (appmgr service unreachable in UT): no accounting
+    EXPECT_TRUE(record->GetTaskAttributions().empty());
+}
+
+/**
+ * @tc.name: OnAbilityDied_TaskAttributionKeptUntilDestructor_0100
+ * @tc.desc: The death path keeps the bookkeeping; release happens at record destruction.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, OnAbilityDied_TaskAttributionKeptUntilDestructor_0100, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.sessionInfo = new SessionInfo();
+    abilityRequest.sessionInfo->persistentId = 58;
+
+    auto record = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(record, nullptr);
+    record->AddTaskAttribution("task-died-1", 11);
+    record->AddTaskAttribution("task-died-2", 22);
+    mgr->sessionAbilityMap_.emplace(58, record);
+
+    // unexpected death: bookkeeping stays for the destructor-time release
+    mgr->OnAbilityDied(record);
+    EXPECT_EQ(record->GetTaskAttributions().size(), static_cast<size_t>(2));
+    // destructor posts the async unregister (appmgr unreachable in UT), no crash
+    record.reset();
+    mgr.reset();
+    SUCCEED();
+}
+
+/**
+ * @tc.name: CompleteTerminate_TaskAttributionKeptUntilDestructor_0100
+ * @tc.desc: The funnel keeps the bookkeeping; release happens at record destruction.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CompleteTerminate_TaskAttributionKeptUntilDestructor_0100, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.sessionInfo = new SessionInfo();
+    abilityRequest.sessionInfo->persistentId = 59;
+
+    auto record = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(record, nullptr);
+    record->AddTaskAttribution("task-close-1", 31);
+    record->AddTaskAttribution("task-close-2", 32);
+    record->SetAbilityState(AbilityState::TERMINATING);
+    mgr->terminateAbilityList_.push_back(record);
+
+    mgr->CompleteTerminate(record);
+    EXPECT_TRUE(mgr->terminateAbilityList_.empty());
+    // funnel completes without touching the bookkeeping
+    EXPECT_EQ(record->GetTaskAttributions().size(), static_cast<size_t>(2));
+    record.reset();
+    mgr.reset();
+    SUCCEED();
+}
+
+/**
+ * @tc.name: CloseUIAbility_InitialBranch_TaskAttributionKeptUntilDestructor_0100
+ * @tc.desc: The INITIAL close bypass keeps the bookkeeping for destructor-time release.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest,
+    CloseUIAbility_InitialBranch_TaskAttributionKeptUntilDestructor_0100, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.sessionInfo = new SessionInfo();
+    abilityRequest.sessionInfo->persistentId = 60;
+
+    auto record = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(record, nullptr);
+    record->SetAbilityState(AbilityState::INITIAL);
+    record->AddTaskAttribution("task-initial-close", 41);
+    mgr->sessionAbilityMap_.emplace(60, record);
+
+    // event handler unavailable in UT: the bookkeeping must stay intact
+    mgr->CloseUIAbility(record, 0, nullptr, false, false);
+    EXPECT_EQ(record->GetTaskAttributions().size(), static_cast<size_t>(1));
+    record.reset();
+    mgr.reset();
+    SUCCEED();
+}
+
+/**
+ * @tc.name: UIAbilityRecord_Destructor_TaskAttributionAsyncRelease_0100
+ * @tc.desc: A destroyed record posts an async unregister from the destructor, no sync IPC.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, UIAbilityRecord_Destructor_TaskAttributionAsyncRelease_0100, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    abilityRequest.sessionInfo = new SessionInfo();
+    {
+        auto record = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+        ASSERT_NE(record, nullptr);
+        record->AddTaskAttribution("task-dtor", 61);
+    }
+    // async unregister posted, no sync IPC, no crash
+    SUCCEED();
+}
+
+/**
+ * @tc.name: ManagerTeardown_TaskAttributionReleasedAtDestructor_0100
+ * @tc.desc: Teardown destroys all four containers' records; each destructor releases.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, ManagerTeardown_TaskAttributionReleasedAtDestructor_0100, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+
+    auto makeRecord = [](int32_t persistentId, const std::string &taskId) {
+        AbilityRequest abilityRequest;
+        abilityRequest.sessionInfo = new SessionInfo();
+        abilityRequest.sessionInfo->persistentId = persistentId;
+        auto record = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+        record->AddTaskAttribution(taskId, persistentId);
+        return record;
+    };
+
+    auto sessionRecord = makeRecord(71, "task-batch-session");
+    auto lowMemKillRecord = makeRecord(72, "task-batch-lowmem");
+    auto terminateRecord = makeRecord(73, "task-batch-terminate");
+    auto reuseRecord = makeRecord(74, "task-batch-reuse");
+
+    mgr->sessionAbilityMap_.emplace(71, sessionRecord);
+    mgr->lowMemKillAbilityMap_.emplace(72, lowMemKillRecord);
+    mgr->terminateAbilityList_.push_back(terminateRecord);
+    mgr->reuseWindowRecords_.emplace(reuseRecord);
+
+    // every destructor posts the async unregister (appmgr unreachable in UT), no crash
+    sessionRecord.reset();
+    lowMemKillRecord.reset();
+    terminateRecord.reset();
+    reuseRecord.reset();
+    mgr.reset();
+    SUCCEED();
+}
+
 }  // namespace AAFwk
 }  // namespace OHOS

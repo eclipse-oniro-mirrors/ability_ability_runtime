@@ -81,7 +81,7 @@ struct VerificationInfo {
 
     bool JudgeStartInvisibleAbility(const uint32_t accessTokenId, const bool visible) const;
 
-    bool JudgeStartAbilityFromBackground(const bool isBackgroundCall) const;
+    bool JudgeStartAbilityFromBackground(const bool isBackgroundCall, const uint32_t specifyTokenId = 0) const;
 
     bool JudgeAssociatedWakeUp(const uint32_t accessTokenId, const bool associatedWakeUp) const;
 
@@ -95,6 +95,7 @@ struct VerificationInfo {
     bool JudgeCallerIsAllowedToUseSystemAPI() const;
     bool JudgeCallerIsAllowedToUseSystemAPIByTokenId(uint64_t specifiedFullTokenId) const;
     bool IsSystemAppCall() const;
+    bool IsLocalDebugOtherAppsCall(const uint32_t specifyTokenId = 0, int32_t targetUserId = -1) const;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

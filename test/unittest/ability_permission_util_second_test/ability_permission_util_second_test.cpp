@@ -30,6 +30,7 @@
 #include "hilog_tag_wrapper.h"
 #include "parameters.h"
 #include "mock_my_flag.h"
+#include "start_ability_context.h"
 #include "start_ability_utils.h"
 
 using namespace testing;
@@ -67,10 +68,8 @@ HWTEST_F(AbilityPermissionUtilSecondTest, AbilityPermissionUtil_IsDominateScreen
 {
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_IsDominateScreen_0100 start");
     Want want;
-    MyFlag::callCount_ = 0;
     auto result = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, false);
-    EXPECT_FALSE(result);
-    EXPECT_EQ(MyFlag::callCount_, 3);
+    EXPECT_TRUE(result);
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_IsDominateScreen_0100 end");
 }
 
@@ -84,11 +83,8 @@ HWTEST_F(AbilityPermissionUtilSecondTest, AbilityPermissionUtil_IsDominateScreen
 {
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_IsDominateScreen_0200 start");
     Want want;
-    MyFlag::mockFlag_ = 1;
-    MyFlag::callCount_ = 0;
     auto result = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, false);
-    EXPECT_FALSE(result);
-    EXPECT_EQ(MyFlag::callCount_, 3);
+    EXPECT_TRUE(result);
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_IsDominateScreen_0200 end");
 }
 
@@ -102,12 +98,8 @@ HWTEST_F(AbilityPermissionUtilSecondTest, AbilityPermissionUtil_IsDominateScreen
 {
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_IsDominateScreen_0300 start");
     Want want;
-    MyFlag::mockFlag_ = 1;
-    MyFlag::isBundleName_ = 1;
-    MyFlag::callCount_ = 0;
     auto result = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, false);
-    EXPECT_FALSE(result);
-    EXPECT_EQ(MyFlag::callCount_, 3);
+    EXPECT_TRUE(result);
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_IsDominateScreen_0300 end");
 }
 
@@ -121,12 +113,8 @@ HWTEST_F(AbilityPermissionUtilSecondTest, AbilityPermissionUtil_IsDominateScreen
 {
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_IsDominateScreen_0400 start");
     Want want;
-    MyFlag::mockFlag_ = 1;
-    MyFlag::isBundleName_ = 0;
-    MyFlag::callCount_ = 0;
     auto result = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, false);
-    EXPECT_FALSE(result);
-    EXPECT_EQ(MyFlag::callCount_, 3);
+    EXPECT_TRUE(result);
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_IsDominateScreen_0400 end");
 }
 
@@ -172,16 +160,18 @@ HWTEST_F(AbilityPermissionUtilSecondTest, AbilityPermissionUtil_CheckMultiInstan
 {
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_CheckMultiInstanceAndAppClone0100 start");
     Want want;
-    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
-    StartAbilityUtils::startAbilityInfo->abilityInfo.bundleName = "bundleName";
-    StartAbilityUtils::startAbilityInfo->abilityInfo.name = "name";
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.bundleType =
+    StartAbilityContext ctx;
+    ctx.startAbilityInfo = std::make_shared<StartAbilityInfo>();
+    ctx.startAbilityInfo->abilityInfo.bundleName = "bundleName";
+    ctx.startAbilityInfo->abilityInfo.name = "name";
+    ctx.startAbilityInfo->abilityInfo.applicationInfo.bundleType =
         static_cast<AppExecFwk::BundleType>(AppExecFwk::BundleType::APP);
-    StartAbilityUtils::startAbilityInfo->abilityInfo.type = AppExecFwk::AbilityType::PAGE;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.extensionAbilityType = ExtensionAbilityType::SERVICE;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.multiAppMode.multiAppModeType =
+    ctx.startAbilityInfo->abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    ctx.startAbilityInfo->abilityInfo.extensionAbilityType = ExtensionAbilityType::SERVICE;
+    ctx.startAbilityInfo->abilityInfo.applicationInfo.multiAppMode.multiAppModeType =
         AppExecFwk::MultiAppModeType::UNSPECIFIED;
-    int32_t result = AbilityPermissionUtil::GetInstance().CheckMultiInstanceAndAppClone(want, 1, 1, nullptr, false);
+    int32_t result = AbilityPermissionUtil::GetInstance().CheckMultiInstanceAndAppClone(want,
+        1, 1, nullptr, false, ctx);
     EXPECT_EQ(result, ERR_MULTI_APP_NOT_SUPPORTED);
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_CheckMultiInstanceAndAppClone0100 end");
 }
@@ -196,16 +186,18 @@ HWTEST_F(AbilityPermissionUtilSecondTest, AbilityPermissionUtil_CheckMultiInstan
 {
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_CheckMultiInstanceAndAppClone0200 start");
     Want want;
-    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
-    StartAbilityUtils::startAbilityInfo->abilityInfo.bundleName = "bundleName";
-    StartAbilityUtils::startAbilityInfo->abilityInfo.name = "name";
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.bundleType =
+    StartAbilityContext ctx;
+    ctx.startAbilityInfo = std::make_shared<StartAbilityInfo>();
+    ctx.startAbilityInfo->abilityInfo.bundleName = "bundleName";
+    ctx.startAbilityInfo->abilityInfo.name = "name";
+    ctx.startAbilityInfo->abilityInfo.applicationInfo.bundleType =
         static_cast<AppExecFwk::BundleType>(AppExecFwk::BundleType::APP);
-    StartAbilityUtils::startAbilityInfo->abilityInfo.type = AppExecFwk::AbilityType::PAGE;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.extensionAbilityType = ExtensionAbilityType::SERVICE;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.multiAppMode.multiAppModeType =
+    ctx.startAbilityInfo->abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    ctx.startAbilityInfo->abilityInfo.extensionAbilityType = ExtensionAbilityType::SERVICE;
+    ctx.startAbilityInfo->abilityInfo.applicationInfo.multiAppMode.multiAppModeType =
        AppExecFwk::MultiAppModeType::MULTI_INSTANCE;
-    int32_t result = AbilityPermissionUtil::GetInstance().CheckMultiInstanceAndAppClone(want, 1, 1, nullptr, false);
+    int32_t result = AbilityPermissionUtil::GetInstance().CheckMultiInstanceAndAppClone(want,
+        1, 1, nullptr, false, ctx);
     EXPECT_EQ(result, ERR_NOT_SUPPORT_APP_CLONE);
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_CheckMultiInstanceAndAppClone0200 end");
 }
@@ -220,16 +212,18 @@ HWTEST_F(AbilityPermissionUtilSecondTest, AbilityPermissionUtil_CheckMultiInstan
 {
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_CheckMultiInstanceAndAppClone0300 start");
     Want want;
-    StartAbilityUtils::startAbilityInfo = std::make_shared<StartAbilityInfo>();
-    StartAbilityUtils::startAbilityInfo->abilityInfo.bundleName = "bundleName";
-    StartAbilityUtils::startAbilityInfo->abilityInfo.name = "name";
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.bundleType =
+    StartAbilityContext ctx;
+    ctx.startAbilityInfo = std::make_shared<StartAbilityInfo>();
+    ctx.startAbilityInfo->abilityInfo.bundleName = "bundleName";
+    ctx.startAbilityInfo->abilityInfo.name = "name";
+    ctx.startAbilityInfo->abilityInfo.applicationInfo.bundleType =
         static_cast<AppExecFwk::BundleType>(AppExecFwk::BundleType::APP);
-    StartAbilityUtils::startAbilityInfo->abilityInfo.type = AppExecFwk::AbilityType::PAGE;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.extensionAbilityType = ExtensionAbilityType::SERVICE;
-    StartAbilityUtils::startAbilityInfo->abilityInfo.applicationInfo.multiAppMode.multiAppModeType =
+    ctx.startAbilityInfo->abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    ctx.startAbilityInfo->abilityInfo.extensionAbilityType = ExtensionAbilityType::SERVICE;
+    ctx.startAbilityInfo->abilityInfo.applicationInfo.multiAppMode.multiAppModeType =
        AppExecFwk::MultiAppModeType::MULTI_INSTANCE;
-    int32_t result = AbilityPermissionUtil::GetInstance().CheckMultiInstanceAndAppClone(want, 1, 0, nullptr, false);
+    int32_t result = AbilityPermissionUtil::GetInstance().CheckMultiInstanceAndAppClone(want,
+        1, 0, nullptr, false, ctx);
     EXPECT_EQ(result, ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil_CheckMultiInstanceAndAppClone0300 end");
 }

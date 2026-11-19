@@ -15,6 +15,7 @@
 
 #include "mock_permission_verification.h"
 #include "mock_my_status.h"
+#include "permission_constants.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -27,6 +28,9 @@ enum FLAG {
 bool PermissionVerification::VerifyCallingPermission(const std::string &permissionName,
     const uint32_t specifyTokenId) const
 {
+    if (permissionName == PermissionConstants::PERMISSION_CONNECT_AGENT_FROM_BACKGROUND) {
+        return !!(MyStatus::GetInstance().permConnectAgentFromBackground_);
+    }
     return !!(MyStatus::GetInstance().permPermission_);
 }
 bool PermissionVerification::IsSACall() const
@@ -45,7 +49,7 @@ bool PermissionVerification::IsShellCallByTokenId(uint32_t callerTokenId) const
 {
     return (MyStatus::GetInstance().permPermission_ & FLAG::IS_SHELL_CALL);
 }
-bool PermissionVerification::CheckSpecificSystemAbilityAccessPermission() const
+bool PermissionVerification::CheckSpecificSystemAbilityAccessPermission(const std::string &processName) const
 {
     return !!(MyStatus::GetInstance().permPermission_);
 }
@@ -87,6 +91,14 @@ bool PermissionVerification::VerifyGetBundleInfoPrivilegedPermission() const
 {
     return !!(MyStatus::GetInstance().permPermission_);
 }
+bool PermissionVerification::VerifyBlockAllAppStartPermission() const
+{
+    return MyStatus::GetInstance().permVerifyBlockAllAppStartPermission_;
+}
+bool PermissionVerification::VerifySAInterceptorPermission() const
+{
+    return IsSACall() && VerifyCallingPermission(PermissionConstants::PERMISSION_SA_INTERCEPTOR);
+}
 int PermissionVerification::CheckCallDataAbilityPermission(const VerificationInfo &verificationInfo, bool isShell) const
 {
     return MyStatus::GetInstance().permPermission_;
@@ -115,7 +127,8 @@ bool PermissionVerification::JudgeStartInvisibleAbility(const uint32_t accessTok
 {
     return !!(MyStatus::GetInstance().permPermission_);
 }
-bool PermissionVerification::JudgeStartAbilityFromBackground(const bool isBackgroundCall) const
+bool PermissionVerification::JudgeStartAbilityFromBackground(const bool isBackgroundCall,
+    const uint32_t specifyTokenId) const
 {
     return !!(MyStatus::GetInstance().permPermission_);
 }
@@ -138,6 +151,10 @@ bool PermissionVerification::JudgeCallerIsAllowedToUseSystemAPIByTokenId(uint64_
 bool PermissionVerification::IsSystemAppCall() const
 {
     return MyStatus::GetInstance().isSystemAppCall_;
+}
+bool PermissionVerification::IsLocalDebugOtherAppsCall(const uint32_t specifyTokenId, int32_t targetUserId) const
+{
+    return false;
 }
 } // namespace AAFwk
 } // namespace OHOS

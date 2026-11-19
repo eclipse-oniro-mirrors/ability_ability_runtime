@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -21,6 +21,7 @@
 #include "common_extension_manager.h"
 #include "ability_manager_errors.h"
 #include "ability_manager_service.h"
+#include "ability_manager_event_subscriber.h"
 #include "auto_startup_info.h"
 #include "ability_start_setting.h"
 #include "connection_observer_errors.h"
@@ -411,9 +412,9 @@ HWTEST_F(AbilityManagerServiceTenhtTest, GetScreenUnlockCallback_001, TestSize.L
     std::shared_ptr<AbilityManagerService> abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
     int32_t userId = 100;
-    abilityMs_->StartAutoStartupApps(userId);
+    abilityMs_->StartAutoStartupApps(userId, false, false);
     abilityMs_->abilityAutoStartupService_ = std::make_shared<AbilityAutoStartupService>();
-    abilityMs_->StartAutoStartupApps(userId);
+    abilityMs_->StartAutoStartupApps(userId, false, false);
     abilityMs_->StartKeepAliveApps(userId);
     auto screenUnlockCallback = abilityMs_->GetScreenUnlockCallback();
     screenUnlockCallback(userId);
@@ -967,6 +968,111 @@ HWTEST_F(AbilityManagerServiceTenhtTest, StartAutoStartupApps_009, TestSize.Leve
     abilityMs->StartAutoStartupApps(infoQueue, userId);
     abilityMs->RemoveScreenUnlockInterceptor();
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTenhtTest StartAutoStartupApps_009 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: StartAutoStartupApps_010
+ * Function: StartAutoStartupApps
+ * SubFunction: NA
+ * already handled user: auto flow deduplicated, manual flow not affected
+ */
+HWTEST_F(AbilityManagerServiceTenhtTest, StartAutoStartupApps_010, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTenhtTest StartAutoStartupApps_010 start");
+    const bool oldReady = MyStatus::GetInstance().paramGetBoolParameter_;
+    const bool oldPending = AbilityRuntime::AbilityEventMapManager::GetInstance().IsPendingUser(USER_ID_U100);
+    MyStatus::GetInstance().paramGetBoolParameter_ = true;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs, nullptr);
+    auto taskHandler = MockTaskHandlerWrap::CreateQueueHandler("AbilityManagerServiceTenhtTest");
+    abilityMs->taskHandler_ = taskHandler;
+    abilityMs->abilityAutoStartupService_ = std::make_shared<AbilityAutoStartupService>();
+    EXPECT_NE(abilityMs->abilityAutoStartupService_, nullptr);
+    int32_t userId = USER_ID_U100;
+
+    // The auto flow bails out for an already handled user before any task is submitted.
+    EXPECT_CALL(*taskHandler, SubmitTaskInner(_, _)).Times(0);
+    abilityMs->abilityAutoStartupService_->AddHandledAutoStartupUsers(userId);
+    // The pending record lets the flow pass the pending gate, so the rejection under
+    // test comes from the handled check.
+    AbilityRuntime::AbilityEventMapManager::GetInstance().AddPendingUserId(userId);
+    abilityMs->StartAutoStartupApps(userId, false, false);
+    EXPECT_TRUE(abilityMs->abilityAutoStartupService_->FindHandledAutoStartupUsers(userId));
+    // Verify EDM admission here; the scoped queue tests cover its actual launches.
+    EXPECT_TRUE(abilityMs->IsAutoStartupAllowed(userId, true, false));
+    EXPECT_TRUE(abilityMs->abilityAutoStartupService_->FindHandledAutoStartupUsers(userId));
+    if (!oldPending) {
+        AbilityRuntime::AbilityEventMapManager::GetInstance().RemovePendingUserId(userId);
+    }
+    MyStatus::GetInstance().paramGetBoolParameter_ = oldReady;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTenhtTest StartAutoStartupApps_010 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: StartAutoStartupApps_011
+ * Function: StartAutoStartupApps
+ * SubFunction: NA
+ * boot flow without unlock chain: no pending user, auto flow is rejected and EDM flow is exempt
+ */
+HWTEST_F(AbilityManagerServiceTenhtTest, StartAutoStartupApps_011, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTenhtTest StartAutoStartupApps_011 start");
+    const bool oldReady = MyStatus::GetInstance().paramGetBoolParameter_;
+    const bool oldPending = AbilityRuntime::AbilityEventMapManager::GetInstance().IsPendingUser(USER_ID_U100);
+    MyStatus::GetInstance().paramGetBoolParameter_ = true;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs, nullptr);
+    auto taskHandler = MockTaskHandlerWrap::CreateQueueHandler("AbilityManagerServiceTenhtTest");
+    abilityMs->taskHandler_ = taskHandler;
+    abilityMs->abilityAutoStartupService_ = std::make_shared<AbilityAutoStartupService>();
+    EXPECT_NE(abilityMs->abilityAutoStartupService_, nullptr);
+    int32_t userId = USER_ID_U100;
+    AbilityRuntime::AbilityEventMapManager::GetInstance().RemovePendingUserId(userId);
+    EXPECT_CALL(*taskHandler, SubmitTaskInner(_, _)).Times(0);
+
+    // First boot reaches ready without any unlock event, nobody is pending: reject the auto flow.
+    EXPECT_FALSE(abilityMs->IsAutoStartupAllowed(userId, false, false));
+    abilityMs->StartAutoStartupApps(userId, false, false);
+    EXPECT_FALSE(abilityMs->abilityAutoStartupService_->FindHandledAutoStartupUsers(userId));
+    // The EDM flow is an explicit command, it skips the unlock chain and stays repeatable.
+    EXPECT_TRUE(abilityMs->IsAutoStartupAllowed(userId, true, false));
+    EXPECT_FALSE(abilityMs->abilityAutoStartupService_->FindHandledAutoStartupUsers(userId));
+    if (oldPending) {
+        AbilityRuntime::AbilityEventMapManager::GetInstance().AddPendingUserId(userId);
+    }
+    MyStatus::GetInstance().paramGetBoolParameter_ = oldReady;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTenhtTest StartAutoStartupApps_011 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: StartAutoStartupApps_013
+ * Function: StartAutoStartupApps
+ * SubFunction: NA
+ * invalid user id or missing auto startup service: both flows rejected
+ */
+HWTEST_F(AbilityManagerServiceTenhtTest, StartAutoStartupApps_013, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTenhtTest StartAutoStartupApps_013 start");
+    int32_t userId = USER_ID_U100;
+    AbilityRuntime::AbilityEventMapManager::GetInstance().AddPendingUserId(userId);
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs, nullptr);
+    abilityMs->abilityAutoStartupService_ = std::make_shared<AbilityAutoStartupService>();
+    EXPECT_NE(abilityMs->abilityAutoStartupService_, nullptr);
+    // An invalid user id is rejected no matter which flow asks.
+    EXPECT_FALSE(abilityMs->IsAutoStartupAllowed(DEFAULT_INVAL_VALUE, false, false));
+    EXPECT_FALSE(abilityMs->IsAutoStartupAllowed(DEFAULT_INVAL_VALUE, true, false));
+    // Without the auto startup service nothing can be launched.
+    auto abilityMsNoService = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMsNoService, nullptr);
+    EXPECT_FALSE(abilityMsNoService->IsAutoStartupAllowed(userId, false, false));
+    EXPECT_FALSE(abilityMsNoService->IsAutoStartupAllowed(userId, true, false));
+    EXPECT_TRUE(AbilityRuntime::AbilityEventMapManager::GetInstance().IsPendingUser(userId));
+    AbilityRuntime::AbilityEventMapManager::GetInstance().RemovePendingUserId(userId);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceTenhtTest StartAutoStartupApps_013 end");
 }
 
 /*

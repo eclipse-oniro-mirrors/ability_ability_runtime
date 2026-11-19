@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,26 +24,34 @@
 
 namespace OHOS {
 namespace AAFwk {
+constexpr int32_t DEFAULT_HIDE_SENSITIVE_TYPE = 4;
 class UriPermissionManagerClient {
 public:
     static UriPermissionManagerClient& GetInstance();
     ~UriPermissionManagerClient() = default;
 
     int GrantUriPermission(const Uri &uri, uint32_t flag, const std::string targetBundleName, int32_t appIndex = 0,
-        uint32_t initiatorTokenId = 0)
+        uint32_t initiatorTokenId = 0, int32_t userId = -1)
     {
         return 0;
     }
 
     int GrantUriPermission(const std::vector<Uri> &uriVec, uint32_t flag, const std::string targetBundleName,
-        int32_t appIndex = 0, uint32_t initiatorTokenId = 0)
+        int32_t appIndex = 0, uint32_t initiatorTokenId = 0, int32_t userId = -1)
     {
         return 0;
     }
 
     int32_t GrantUriPermissionPrivileged(const std::vector<Uri> &uriVec, uint32_t flag,
         const std::string &targetBundleName, int32_t appIndex = 0, uint32_t initiatorTokenId = 0,
-        int32_t hideSensitiveType = 0)
+        int32_t hideSensitiveType = DEFAULT_HIDE_SENSITIVE_TYPE, int32_t userId = -1)
+    {
+        return 0;
+    }
+
+    int32_t GrantUriPermissionWithType(const std::vector<Uri> &uriVec, uint32_t flag,
+        const std::string &targetBundleName, int32_t appIndex, uint32_t initiatorTokenId,
+        int32_t hideSensitiveType, const std::vector<int32_t> &permissionTypes, int32_t userId = -1)
     {
         return 0;
     }
@@ -53,7 +61,8 @@ public:
         return 0;
     }
 
-    int RevokeUriPermissionManually(const Uri &uri, const std::string bundleName, int32_t appIndex = 0)
+    int RevokeUriPermissionManually(const Uri &uri, const std::string bundleName, int32_t appIndex = 0,
+        int32_t userId = -1)
     {
         return 0;
     }

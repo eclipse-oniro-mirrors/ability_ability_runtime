@@ -107,7 +107,8 @@ bool PermissionVerification::JudgeStartInvisibleAbility(const uint32_t accessTok
 {
     return false;
 }
-bool PermissionVerification::JudgeStartAbilityFromBackground(const bool isBackgroundCall) const
+bool PermissionVerification::JudgeStartAbilityFromBackground(const bool isBackgroundCall,
+    const uint32_t specifyTokenId) const
 {
     return false;
 }
@@ -139,6 +140,10 @@ int32_t PermissionVerification::VerifyUpdateAPPConfigurationPerm() const
 bool PermissionVerification::VerifySuperviseKiaServicePermission() const
 {
     return AAFwk::MyStatus::GetInstance().verifySuperviseKiaServicePermission_;
+}
+bool PermissionVerification::IsLocalDebugOtherAppsCall(const uint32_t specifyTokenId, int32_t targetUserId) const
+{
+    return AAFwk::MyStatus::GetInstance().isLocalDebugOtherAppsCall_;
 }
 }  // namespace AAFwk
 }  // namespace OHOS

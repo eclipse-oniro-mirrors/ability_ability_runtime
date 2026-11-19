@@ -19,6 +19,7 @@
 #include <string>
 
 #include "mission_info.h"
+#include "nlohmann/json.hpp"
 
 namespace OHOS {
 namespace AAFwk {

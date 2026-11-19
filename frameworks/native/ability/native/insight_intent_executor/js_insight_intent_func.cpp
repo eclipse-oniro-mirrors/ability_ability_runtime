@@ -27,6 +27,7 @@
 #include "napi_common_util.h"
 #include "napi_common_want.h"
 #include "native_reference.h"
+#include "path_utils.h"
 #include "string_wrapper.h"
 
 #undef STATE_PATTERN_NAIVE_H
@@ -37,6 +38,7 @@
 
 namespace OHOS {
 namespace AbilityRuntime {
+
 std::shared_ptr<JsInsightIntentFunc> JsInsightIntentFunc::Create(JsRuntime& runtime)
 {
     return std::make_shared<JsInsightIntentFunc>(runtime);
@@ -99,6 +101,14 @@ bool JsInsightIntentFunc::LoadJsCode(const InsightIntentExecutorInfo& info, JsRu
     auto executeParam = info.executeParam;
     if (executeParam == nullptr) {
         TAG_LOGE(AAFwkTag::INTENT, "null executeParam");
+        return false;
+    }
+    if (!IsPathValid(executeParam->moduleName_) || !IsPathValid(executeParam->srcEntrance_)) {
+        TAG_LOGE(AAFwkTag::INTENT, "invalid moduleName or srcEntrance");
+        return false;
+    }
+    if (!info.hapPath.empty() && !IsPathValid(info.hapPath)) {
+        TAG_LOGE(AAFwkTag::INTENT, "invalid hapPath");
         return false;
     }
 
@@ -187,6 +197,10 @@ std::shared_ptr<AppExecFwk::InsightIntentExecuteResult> JsInsightIntentFunc::Get
     wantParams->SetParam("methodResult", AAFwk::String::Box(resultStr));
     resultCpp->result = wantParams;
     resultCpp->code = InsightIntentInnerErr::INSIGHT_INTENT_ERR_OK;
+    if (!UnwrapInteractionInfoOfExecuteResult(env, resultJs, *resultCpp)) {
+        TAG_LOGE(AAFwkTag::INTENT, "func unwrap interactionInfo fail");
+        return nullptr;
+    }
     return resultCpp;
 }
 
@@ -218,6 +232,17 @@ bool JsInsightIntentFunc::ExecuteIntentCheckError()
     STATE_PATTERN_NAIVE_STATE_SET_AND_RETURN(State::INVALID, false);
 }
 
+void JsInsightIntentFunc::PrepareMethodParams(std::shared_ptr<InsightIntentExecuteParam> executeParam,
+    std::unordered_map<std::string, size_t> &paramMap)
+{
+    for (size_t i = 0; i < executeParam->methodParams_.size(); i++) {
+        auto methodParamName = AppExecFwk::GetMethodParamName(executeParam->methodParams_[i]);
+        if (!methodParamName.empty()) {
+            paramMap[methodParamName] = i;
+        }
+    }
+}
+
 bool JsInsightIntentFunc::ExecuteInsightIntent(std::shared_ptr<InsightIntentExecuteParam> executeParam)
 {
     if (executeParam == nullptr || executeParam->insightIntentParam_ == nullptr) {
@@ -238,11 +263,8 @@ bool JsInsightIntentFunc::ExecuteInsightIntent(std::shared_ptr<InsightIntentExec
     std::string srcEntrance = executeParam->srcEntrance_;
     std::string className = executeParam->className_;
     std::string methodName = executeParam->methodName_;
-    std::vector<std::string> methodParams = executeParam->methodParams_;
     std::unordered_map<std::string, size_t> paramMap;
-    for (size_t i = 0; i < methodParams.size(); i++) {
-        paramMap[methodParams[i]] = i;
-    }
+    PrepareMethodParams(executeParam, paramMap);
 
     size_t argc = 0;
     std::vector<napi_value> argv(1);

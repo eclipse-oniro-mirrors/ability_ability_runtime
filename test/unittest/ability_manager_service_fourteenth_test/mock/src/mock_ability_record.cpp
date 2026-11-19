@@ -39,6 +39,7 @@
 #include "ui_service_extension_connection_constants.h"
 #include "res_sched_util.h"
 #include "scene_board_judgement.h"
+#include "server_constant.h"
 #include "startup_util.h"
 #include "system_ability_token_callback.h"
 #include "ui_extension_wrapper.h"
@@ -199,7 +200,11 @@ std::shared_ptr<AbilityRecord> AbilityRecord::CreateAbilityRecord(const AbilityR
     CHECK_POINTER_AND_RETURN(abilityRecord, nullptr);
     abilityRecord->SetUid(abilityRequest.uid);
     int32_t appIndex = 0;
-    (void)AbilityRuntime::StartupUtil::GetAppIndex(abilityRequest.want, appIndex);
+    if (abilityRequest.want.HasParameter(ServerConstant::DLP_INDEX)) {
+        appIndex = abilityRequest.want.GetIntParam(ServerConstant::DLP_INDEX, 0);
+    } else {
+        appIndex = abilityRequest.abilityInfo.applicationInfo.appIndex;
+    }
     abilityRecord->SetAppIndex(appIndex);
     abilityRecord->SetSecurityFlag(abilityRequest.want.GetBoolParam(DLP_PARAMS_SECURITY_FLAG, false));
     abilityRecord->SetCallerAccessTokenId(abilityRequest.callerAccessTokenId);
@@ -332,7 +337,6 @@ int AbilityRecord::LoadAbility(bool isShellCall, bool isStartupHide, pid_t calli
     loadParam.token = token_;
     loadParam.preToken = callerToken;
     loadParam.instanceKey = instanceKey_;
-    loadParam.isCallerSetProcess = IsCallerSetProcess();
     loadParam.customProcessFlag = customProcessFlag_;
     loadParam.isStartupHide = isStartupHide;
     want_.RemoveParam(Want::PARAM_APP_KEEP_ALIVE_ENABLED);
@@ -362,7 +366,7 @@ bool AbilityRecord::CanRestartResident()
 }
 
 // only for UIAbility
-void AbilityRecord::ForegroundAbility(uint32_t sceneFlag, bool hasLastWant)
+void AbilityRecord::ForegroundAbility(uint32_t sceneFlag)
 {
 }
 
@@ -370,7 +374,8 @@ void AbilityRecord::ForegroundUIExtensionAbility(uint32_t sceneFlag)
 {
 }
 
-void AbilityRecord::ProcessForegroundAbility(uint32_t tokenId, const ForegroundOptions &options)
+void AbilityRecord::ProcessForegroundAbility(uint32_t tokenId, const ForegroundOptions &options,
+    bool isCallBySCB)
 {
 }
 
@@ -1160,6 +1165,11 @@ void AbilityRecord::RemoveWindowMode()
 
 void AbilityRecord::UpdateRecoveryInfo(bool hasRecoverInfo)
 {
+    hasRecoverInfo_ = hasRecoverInfo;
+    if (hasRecoverInfo) {
+        std::lock_guard guard(wantLock_);
+        want_.SetParam(Want::PARAM_ABILITY_RECOVERY_RESTART, true);
+    }
 }
 
 bool AbilityRecord::GetRecoveryInfo()
@@ -1167,6 +1177,8 @@ bool AbilityRecord::GetRecoveryInfo()
     std::lock_guard guard(wantLock_);
     return want_.GetBoolParam(Want::PARAM_ABILITY_RECOVERY_RESTART, false);
 }
+
+void AbilityRecord::EvaluateRecoveryLaunchReason() {}
 
 void AbilityRecord::SetStartSetting(const std::shared_ptr<AbilityStartSetting> &setting)
 {
@@ -1177,6 +1189,15 @@ std::shared_ptr<AbilityStartSetting> AbilityRecord::GetStartSetting() const
 {
     return lifeCycleStateInfo_.setting;
 }
+
+void AbilityRecord::SetSandboxCloneParams(const std::shared_ptr<SandboxCloneParams> &params) {}
+
+std::shared_ptr<SandboxCloneParams> AbilityRecord::GetSandboxCloneParams() const
+{
+    return nullptr;
+}
+
+void AbilityRecord::InitSandboxCloneParams(const AbilityRequest &abilityRequest) {}
 
 void AbilityRecord::SetRestarting(const bool isRestart)
 {
@@ -1394,16 +1415,6 @@ bool AbilityRecord::IsStartToForeground() const
 void AbilityRecord::SetStartToForeground(const bool flag)
 {
     isStartToForeground_ = flag;
-}
-
-bool AbilityRecord::IsCallerSetProcess() const
-{
-    return isCallerSetProcess_.load();
-}
-
-void AbilityRecord::SetCallerSetProcess(const bool flag)
-{
-    isCallerSetProcess_.store(flag);
 }
 
 void AbilityRecord::CallRequest()
@@ -1690,6 +1701,10 @@ void AbilityRecord::UpdateDmsCallerInfo(Want &want)
 }
 
 void AbilityRecord::SetDebugUIExtension()
+{
+}
+
+void AbilityRecord::SetDebugApp(bool isDebugApp)
 {
 }
 

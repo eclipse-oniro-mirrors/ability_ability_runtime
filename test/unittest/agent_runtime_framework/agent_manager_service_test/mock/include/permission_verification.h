@@ -29,6 +29,7 @@ public:
 
     bool VerifyCallingPermission(const std::string &permissionName, const uint32_t specifyTokenId = 0) const;
     bool JudgeCallerIsAllowedToUseSystemAPI() const;
+    bool CheckSpecificSystemAbilityAccessPermission(const std::string &processName) const;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

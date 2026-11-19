@@ -207,6 +207,11 @@ ErrCode ServiceRouterMgrService::StartUIExtensionAbility(const SessionInfo& sess
     int32_t& funcResult)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "Called");
+    if (!VerifySystemApp()) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "verify system app failed");
+        funcResult = ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+        return funcResult;
+    }
     DelayUnloadTask();
     auto shard_sessionInfo = sptr<SessionInfo>::MakeSptr(sessionInfo);
     funcResult = IN_PROCESS_CALL(AbilityManagerClient::GetInstance()->StartUIExtensionAbility(shard_sessionInfo,
@@ -218,6 +223,11 @@ ErrCode ServiceRouterMgrService::ConnectUIExtensionAbility(const Want& want, con
     const SessionInfo& sessionInfo, int32_t userId, int32_t& funcResult)
 {
     TAG_LOGD(AAFwkTag::SER_ROUTER, "Called");
+    if (!VerifySystemApp()) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "verify system app failed");
+        funcResult = ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+        return funcResult;
+    }
     DelayUnloadTask();
     auto shard_sessionInfo = sptr<SessionInfo>::MakeSptr(sessionInfo);
     funcResult = IN_PROCESS_CALL(AbilityManagerClient::GetInstance()->

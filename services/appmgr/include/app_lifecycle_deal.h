@@ -24,8 +24,10 @@
 #include "want.h"
 #include "app_malloc_info.h"
 #include "app_jsheap_mem_info.h"
+#include "app_jshandle_map_info.h"
 #include "app_cjheap_mem_info.h"
 #include "app_mem_dump_info.h"
+#include "mem_dump_callback_interface.h"
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -144,6 +146,16 @@ public:
     void ScheduleJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info);
 
     /**
+     * ScheduleJsHandleMap, call ScheduleJsHandleMap() through proxy project,
+     * dump the application's jshandle map info.
+     *
+     * @param info, pid, tid
+     *
+     * @return
+     */
+    void ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info);
+
+    /**
      * ScheduleCjHeapMemory, call ScheduleCjHeapMemory() through proxy project,
      * triggerGC and dump the application's cjheap memory info.
      *
@@ -158,11 +170,11 @@ public:
      * triggerGC and dump application's memory info.
      *
      * @param info, pid, tid, needGc, needSnapshot
-     * @param dumpResult The dump result string
+     * @param callback The callback to receive dump result
      *
      * @return
      */
-    void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult);
+    void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback);
 
     /**
      * LowMemoryWarning, call ScheduleLowMemory() through proxy project,
@@ -324,6 +336,8 @@ public:
      * @return
      */
     void SetWatchdogBackgroundStatusRunning(bool status);
+
+    int32_t PreTemplateProcessDeepFrozen();
 
 private:
     mutable std::mutex schedulerMutex_;

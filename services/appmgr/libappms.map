@@ -19,6 +19,7 @@
       *AppDeathRecipient*;
       *AppLifeCycleDeal*;
       *AppMgrServiceInner*;
+      *AppQueryHelper*;
       *AppRunningManager*;
       *AppRunningRecord*;
       *AppSpawnClient*;
@@ -30,6 +31,10 @@
       *WindowFocusChangedListener*;
       *AppMgrService*;
       *AMSEventHandler*;
+      *TaskManagerService*;
+      *TaskPriorityJudge*;
+      *SystemLoadProvider*;
+      *ProcessSchedule*;
     };
   local:
     *;

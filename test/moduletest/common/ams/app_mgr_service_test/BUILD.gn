@@ -29,12 +29,14 @@ ohos_moduletest("AmsAppMgrServiceModuleTest") {
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
     "${ability_runtime_test_path}/mock/common/include",
     "${ability_runtime_test_path}/mock/services_appmgr_test/include",
+    "mock/include",
   ]
 
   sources = [
     "${ability_runtime_services_path}/appmgr/src/cache_process_manager.cpp",
     "${ability_runtime_test_path}/mock/common/src/mock_native_token.cpp",
     "ams_app_mgr_service_module_test.cpp",
+    "mock/src/mock_ipc_skeleton.cpp",
   ]
 
   deps = [

@@ -16,18 +16,30 @@
 #ifndef OHOS_ABILITY_RUNTIME_INSIGHT_INTENT_EXECUTE_MANAGER_H
 #define OHOS_ABILITY_RUNTIME_INSIGHT_INTENT_EXECUTE_MANAGER_H
 
+#include <cstdint>
 #include <map>
+#include <mutex>
+#include <sys/types.h>
+
 #include "ability_connect_callback_stub.h"
 #include "cpp/mutex.h"
 #include "event_report.h"
 #include "extract_insight_intent_profile.h"
 #include "insight_intent_execute_param.h"
 #include "insight_intent_execute_result.h"
+#include "insight_intent_execution_info.h"
+#include "insight_intent_query_param.h"
+#include "insight_intent_will_execute_callback_interface.h"
 #include "iremote_object.h"
 #include "singleton.h"
 
 namespace OHOS {
 namespace AAFwk {
+// Mirror of AttributionTool::INSIGHT in services/appmgr/include/task_mgr/attribution_record.h.
+// The enum is not exported across services, keep values append-only and in sync;
+// thirteenth_test pins this mirror against the enum with a static_assert.
+static constexpr int32_t ATTRIBUTION_TOOL_INSIGHT = 1;
+
 enum class InsightIntentExecuteState {
     UNKNOWN = 0,
     EXECUTING,
@@ -41,7 +53,17 @@ struct InsightIntentExecuteRecord {
     uint64_t key = 0;
     std::string bundleName;
     std::string callerBundleName;
+    AppExecFwk::InsightIntentExecutionInfo executionInfo;
+    pid_t targetPid = 0;
     InsightIntentExecuteState state = InsightIntentExecuteState::UNKNOWN;
+    bool isDistributed = false;
+    std::string deviceId;
+    uint64_t requestCode = 0;
+    std::string taskId;
+    // Attribution id delegated to TaskManagerService via AppScheduler IPC (0 means not registered).
+    int64_t attributionId = 0;
+    // Bundle uid of the caller that supplied the task id, used for ownership check on IPC delegation.
+    int32_t callerUid = 0;
 };
 
 class InsightIntentExecuteConnection : public AbilityConnectionStub {
@@ -71,12 +93,21 @@ private:
     uint64_t intentId_ = 0;
 };
 
+struct ExecuteParam {
+    std::string callerBundleName;
+    bool ignoreAbilityName = false;
+    bool isDistributed = false;
+    std::string srcDeviceId;
+    uint64_t requestCode = 0;
+    uint64_t specifiedFullTokenId = 0;
+};
+
 class InsightIntentExecuteManager : public std::enable_shared_from_this<InsightIntentExecuteManager> {
-DECLARE_DELAYED_SINGLETON(InsightIntentExecuteManager)
+    DECLARE_DELAYED_SINGLETON(InsightIntentExecuteManager)
 public:
     int32_t CheckAndUpdateParam(uint64_t key, const sptr<IRemoteObject> &callerToken,
-        const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param, std::string callerBundleName = "",
-        const bool ignoreAbilityName = false);
+        const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param,
+        const ExecuteParam &execParam = ExecuteParam{});
 
     int32_t CheckAndUpdateWant(Want &want, AppExecFwk::ExecuteMode executeMode, int32_t userId,
         std::string callerBundleName = "");
@@ -84,7 +115,10 @@ public:
     int32_t RemoveExecuteIntent(uint64_t intentId);
 
     int32_t ExecuteIntentDone(uint64_t intentId, int32_t resultCode,
-        const AppExecFwk::InsightIntentExecuteResult &result);
+        const AppExecFwk::InsightIntentExecuteResult &result, int32_t callerUid = 0, uint32_t accessToken = 0);
+
+    int32_t GetDistributedInfo(uint64_t intentId, std::string &srcDeviceId,
+        int32_t &requestCode, uint64_t &callbackKey) const;
 
     int32_t RemoteDied(uint64_t intentId);
 
@@ -94,6 +128,7 @@ public:
 
     static int32_t GenerateWant(const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param,
         const AbilityRuntime::ExtractInsightIntentGenericInfo &decoratorInfo,
+        AbilityRuntime::ExtractInsightIntentInfo &extractInfo,
         Want &want);
 
     std::map<int32_t, int64_t> GetAllIntentExemptionInfo() const;
@@ -102,20 +137,58 @@ public:
 
     bool CheckIntentIsExemption(int32_t uid);
 
-    static int32_t CheckCallerPermission();
+    static int32_t CheckCallerPermission(uint64_t specifiedFullTokenId = 0,
+        const std::string &callerBundleName = "",
+        const std::string &targetBundleName = "");
 
-    static int32_t CheckGetInsightIntenInfoPermission();
+    static int32_t CheckGetInsightIntenInfoPermission(
+        const std::string &targetBundleName = "");
 
-    void OnInsightAppDied(const std::string &bundleName);
+    static std::string GetCallerBundleNameByUid();
+
+    void OnInsightAppDied(const std::string &bundleName, pid_t pid = 0);
+
+    void SetTargetPid(uint64_t intentId, pid_t pid);
+
+    int32_t CheckAndUpdateQueryEntityParam(uint64_t key, const sptr<IRemoteObject> &callerToken,
+        std::shared_ptr<OHOS::AppExecFwk::InsightIntentQueryParam> &param, const std::string &callerBundleName);
+
+    static int32_t GenerateQueryEntityWant(const std::shared_ptr<AppExecFwk::InsightIntentQueryParam> &param,
+        Want &want);
+
+    int32_t RegisterWillInsightIntentExecuteCallback(pid_t pid,
+        const sptr<IRemoteObject> &callback);
+    int32_t UnregisterWillInsightIntentExecuteCallback(pid_t pid);
+    void NotifyInsightIntentWillExecute(pid_t pid,
+        const AppExecFwk::InsightIntentExecutionInfo &info);
+    void RemoveInsightIntentWillExecuteCallback(pid_t pid);
+    void SetInsightIntentExecutionInfo(uint64_t intentId,
+        const AppExecFwk::InsightIntentExecutionInfo &info);
 private:
+    static void BuildQueryEntityWantParams(Want &want,
+        const AppExecFwk::InsightIntentQueryParam &param);
+    static void SetQueryEntityWantExtras(Want &want,
+        const AppExecFwk::InsightIntentQueryParam &param,
+        const AbilityRuntime::ExtractInsightIntentInfo &intentInfo);
+    static int32_t ResolveSrcEntry(Want &want,
+        const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param,
+        const AbilityRuntime::ExtractInsightIntentGenericInfo &decoratorInfo);
+    static void SetInsightIntentExecuteParam(Want &want,
+        const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param);
+    static void SetInsightIntentBaseParams(Want &want,
+        const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param);
     mutable ffrt::mutex mutex_;
     mutable ffrt::mutex intentExemptionLock_;
     uint64_t intentIdCount_ = 0;
     std::map<uint64_t, std::shared_ptr<InsightIntentExecuteRecord>> records_;
     std::map<int32_t, int64_t> intentExemptionDeadlineTime_;
 
+    std::mutex insightIntentWillExecuteMutex_;
+    std::map<pid_t, sptr<IInsightIntentWillExecuteCallback>> insightIntentWillExecuteCallbacks_;
+
     int32_t AddRecord(uint64_t key, const sptr<IRemoteObject> &callerToken, const std::string &bundleName,
-        uint64_t &intentId, const std::string &callerBundleName);
+        uint64_t &intentId, const ExecuteParam &execParam = ExecuteParam{}, const std::string &taskId = "",
+        int32_t callerUid = 0);
 
     static int32_t IsValidCall(const Want &want);
 
@@ -123,7 +196,7 @@ private:
         const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param, Want &want);
     static int32_t CheckAndUpdateDecoratorParams(
         const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param,
-        const AbilityRuntime::ExtractInsightIntentGenericInfo &decoratorInfo,
+        AbilityRuntime::ExtractInsightIntentInfo &extractInfo,
         Want &want);
     static int32_t UpdateFuncDecoratorParams(const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param,
         AbilityRuntime::ExtractInsightIntentInfo &info, Want &want);
@@ -132,9 +205,22 @@ private:
     static int32_t UpdateEntryDecoratorParams(const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param,
         AbilityRuntime::ExtractInsightIntentInfo &info, Want &want);
     static int32_t UpdateEntryDecoratorParams(Want &want, AppExecFwk::ExecuteMode executeMode, int32_t userId);
-    static std::string GetMainElementName(const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param);
+    static std::string GetAbilityNameFromMatched(
+        AbilityRuntime::ExtractInsightIntentGenericInfo &info);
+    static std::string GetMainElementName(
+        const std::string &bundleName, const std::string &moduleName, int32_t userId = -1);
+    static std::shared_ptr<AbilityRuntime::InsightIntentEntityInfo> CheckEntityQueryable(
+        const AbilityRuntime::ExtractInsightIntentInfo& intentInfo, const std::string& className,
+        const AppExecFwk::InsightIntentQueryEntityParam& queryParams);
 
     void SendIntentReport(EventInfo &eventInfo, int32_t errCode);
+
+    void UnregisterAttributedProcess(const std::string &taskId, int64_t attributionId, int32_t callerUid);
+
+    void RegisterAttributedProcess(const std::string &taskId, pid_t pid, int32_t callerUid, int64_t &attributionId);
+
+    void HandleDiedRecordsCleanup(const std::vector<uint64_t> &toRemove,
+        const AppExecFwk::InsightIntentExecuteResult &errorResult);
 };
 } // namespace AAFwk
 } // namespace OHOS

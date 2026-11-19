@@ -90,17 +90,17 @@ HWTEST_F(AbilityContextImplSecondTest, SetAbilityInstanceInfo_0100, Function | M
 {
     std::shared_ptr<OHOS::Media::PixelMap> icon = nullptr;
     EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled()).Times(1).WillOnce(Return(false));
-    ErrCode ret = context_->SetAbilityInstanceInfo(g_testLabel, icon);
+    ErrCode ret = context_->SetAbilityInstanceInfo(g_testLabel, icon, "");
     EXPECT_TRUE(ret == ERR_CAPABILITY_NOT_SUPPORT);
 
     EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled()).Times(1).WillOnce(Return(true));
-    ret = context_->SetAbilityInstanceInfo(g_testLabel, icon);
+    ret = context_->SetAbilityInstanceInfo(g_testLabel, icon, "");
     EXPECT_TRUE(ret == ERR_INVALID_VALUE);
 
     EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled()).Times(1).WillOnce(Return(true));
     Rosen::SessionInfo info;
     context_->sessionToken_ = wptr<IRemoteObject> (new Rosen::Session(info));
-    ret = context_->SetAbilityInstanceInfo(g_testLabel, icon);
+    ret = context_->SetAbilityInstanceInfo(g_testLabel, icon, "");
     EXPECT_FALSE(ret == ERR_INVALID_VALUE);
 }
 
@@ -170,6 +170,28 @@ HWTEST_F(AbilityContextImplSecondTest, TransferRestartWSError_0100, Function | M
 
     srcCode = Rosen::WSError::WS_ERROR_SET_SESSION_LABEL_FAILED;
     EXPECT_EQ(AbilityContextImpl::TransferRestartWSError(srcCode), ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.number: TransferSetAbilityInstanceInfoErr_0100
+ * @tc.name: TransferSetAbilityInstanceInfoErr
+ */
+HWTEST_F(AbilityContextImplSecondTest, TransferSetAbilityInstanceInfoErr_0100, Function | MediumTest | Level1)
+{
+    auto srcCode = Rosen::WSError::WS_OK;
+    EXPECT_EQ(AbilityContextImpl::TransferSetAbilityInstanceInfoErr(srcCode), ERR_OK);
+
+    srcCode = Rosen::WSError::WS_ERROR_INVALID_PERMISSION;
+    EXPECT_EQ(AbilityContextImpl::TransferSetAbilityInstanceInfoErr(srcCode), AAFwk::CHECK_PERMISSION_FAILED);
+
+    srcCode = Rosen::WSError::WS_ERROR_SET_SESSION_LABEL_FAILED;
+    EXPECT_EQ(AbilityContextImpl::TransferSetAbilityInstanceInfoErr(srcCode), AAFwk::INVALID_PARAMETERS_ERR);
+
+    srcCode = Rosen::WSError::WS_ERROR_DEVICE_NOT_SUPPORT;
+    EXPECT_EQ(AbilityContextImpl::TransferSetAbilityInstanceInfoErr(srcCode), AAFwk::ERR_CAPABILITY_NOT_SUPPORT);
+
+    srcCode = Rosen::WSError::WS_ERROR_INVALID_OPERATION;
+    EXPECT_EQ(AbilityContextImpl::TransferSetAbilityInstanceInfoErr(srcCode), static_cast<int32_t>(srcCode));
 }
 #endif
 

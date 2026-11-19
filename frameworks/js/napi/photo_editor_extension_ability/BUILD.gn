@@ -36,6 +36,8 @@ gen_js_obj("photo_editor_extension_ability_abc") {
 }
 
 ohos_shared_library("photoeditorextensionability_napi") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -54,7 +56,10 @@ ohos_shared_library("photoeditorextensionability_napi") {
     ":photo_editor_extension_ability_js",
   ]
 
-  external_deps = [ "napi:ace_napi" ]
+  external_deps = [
+    "napi:ace_napi",
+    "node:node_header_notice",
+  ]
 
   relative_install_dir = "module/app/ability"
   subsystem_name = "ability"

@@ -15,6 +15,9 @@ import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 ohos_shared_library("featureability") {
+  branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
+
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
 
   include_dirs = [ "./" ]
@@ -55,6 +58,7 @@ ohos_shared_library("featureability") {
     "ipc:ipc_core",
     "libuv:uv",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {

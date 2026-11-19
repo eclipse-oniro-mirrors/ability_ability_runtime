@@ -15,7 +15,15 @@
 
 #include "ui_ability_record.h"
 
+#include <cinttypes>
+#include <utility>
+
 #include "ability_util.h"
+#include "app_scheduler.h"
+#include "ffrt.h"
+#include "global_constant.h"
+#include "hilog_tag_wrapper.h"
+#include "native_ability_util.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -23,11 +31,59 @@ UIAbilityRecord::UIAbilityRecord(const Want &want, const AppExecFwk::AbilityInfo
     const AppExecFwk::ApplicationInfo &applicationInfo, int requestCode)
     : AbilityRecord(want, abilityInfo, applicationInfo, requestCode) {}
 
+namespace {
+void UnregisterTaskAttributions(const std::vector<std::pair<std::string, int64_t>> &attributions)
+{
+    for (const auto &item : attributions) {
+        int32_t result = DelayedSingleton<AppScheduler>::GetInstance()->UnregisterTaskAttribution(
+            item.first, item.second);
+        if (result != ERR_OK) {
+            TAG_LOGW(AAFwkTag::ABILITYMGR, "task attribution unregister failed, taskId: %{public}s, "
+                "attributionId: %{public}" PRId64 ", result: %{public}d",
+                item.first.c_str(), item.second, result);
+            continue;
+        }
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "task attribution unregistered, taskId: %{public}s, "
+            "attributionId: %{public}" PRId64, item.first.c_str(), item.second);
+    }
+}
+} // namespace
+
+UIAbilityRecord::~UIAbilityRecord()
+{
+    // The destructor may run with the session lock held: unregister asynchronously.
+    // SA processes exit via signal, so a static-teardown submit is best-effort only.
+    if (taskAttributions_.empty()) {
+        return;
+    }
+    std::vector<std::pair<std::string, int64_t>> attributions = std::move(taskAttributions_);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "post async task to release %{public}zu task attributions",
+        attributions.size());
+    ffrt::submit([attributions = std::move(attributions)]() {
+        UnregisterTaskAttributions(attributions);
+    }, ffrt::task_attr().timeout(AbilityRuntime::GlobalConstant::DEFAULT_FFRT_TASK_TIMEOUT));
+}
+
 std::shared_ptr<UIAbilityRecord> UIAbilityRecord::CreateAbilityRecord(const AbilityRequest &abilityRequest)
 {
     auto abilityRecord = std::make_shared<UIAbilityRecord>(
         abilityRequest.want, abilityRequest.abilityInfo, abilityRequest.appInfo, abilityRequest.requestCode);
     abilityRecord->Init(abilityRequest);
+    abilityRecord->SetByOeExt(abilityRequest.isStartByOEExt);
+    NativeAbilityMetaData metaData;
+    NativeAbilityMetaData::InitData(abilityRecord->abilityInfo_, metaData);
+    if (metaData.withNativeModule) {
+        if (metaData.startupPhase == AAFwk::StartupPhase::PRE_WINDOW ||
+            metaData.startupPhase == AAFwk::StartupPhase::PRE_FOREGROUND) {
+            abilityRecord->abilityNativeState_ = AbilityNativeState::INIT;
+        } else {
+            abilityRecord->abilityNativeState_ = AbilityNativeState::NORMAL;
+        }
+    }
+    if (abilityRecord->want_.GetBoolParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH, false)) {
+        TAG_LOGI(AAFwkTag::UIABILITY, "abilityRecord: Set game prelaunch flag from want");
+        abilityRecord->SetGameSAPreLaunch(true);
+    }
     return abilityRecord;
 }
 
@@ -36,11 +92,74 @@ AbilityRecordType UIAbilityRecord::GetAbilityRecordType()
     return AbilityRecordType::UI_ABILITY;
 }
 
+void UIAbilityRecord::NotifyCallersOnPrelaunchTimeout()
+{
+    if (!GetPrelaunchFlag()) {
+        return;
+    }
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "Notify callers on prelaunch timeout: %{public}s",
+        abilityInfo_.name.c_str());
+
+    if (callContainer_ == nullptr) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "callContainer_ is null, no callers to notify");
+        return;
+    }
+
+    AppExecFwk::ElementName element(abilityInfo_.deviceId, abilityInfo_.bundleName,
+        abilityInfo_.name, abilityInfo_.moduleName);
+
+    callContainer_->NotifyDisconnectOnTimeout(element);
+}
+
 void UIAbilityRecord::ScheduleCollaborate(const Want &want)
 {
     std::lock_guard guard(collaborateWantLock_);
     CHECK_POINTER(lifecycleDeal_);
     lifecycleDeal_->ScheduleCollaborate(want);
+}
+
+void UIAbilityRecord::AttachNative()
+{
+    if (GetNativeState() == AbilityNativeState::INIT) {
+        SetNativeState(AbilityNativeState::ATTACHED);
+    }
+}
+
+bool UIAbilityRecord::UpdateWantByLastWant()
+{
+    if (!ShouldUpdateWant()) {
+        return false;
+    }
+    SetShouldUpdateWant(false);
+    std::shared_ptr<Want> lastWant;
+    {
+        std::lock_guard lock(wantLock_);
+        if (lastWant_ == nullptr) {
+            return false;
+        }
+        lastWant = lastWant_;
+        lastWant_ = nullptr;
+    }
+    SetWant(*lastWant);
+#ifdef SUPPORT_UPMS
+    GrantUriPermission();
+#endif // SUPPORT_UPMS
+    SetIsNewWant(true);
+    return true;
+}
+
+void UIAbilityRecord::UpdatePendingStateByCall(CallToState state)
+{
+    if (state != CallToState::BACKGROUND) {
+        SetPendingState(AbilityState::FOREGROUND);
+        return;
+    }
+    if (GetPendingState() == AbilityState::FOREGROUND) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "pending state already FOREGROUND, keep it");
+        return;
+    }
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "set pending BACKGROUND");
+    SetPendingState(AbilityState::BACKGROUND);
 }
 }  // namespace AAFwk
 }  // namespace OHOS

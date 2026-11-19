@@ -19,14 +19,39 @@
 
 namespace OHOS {
 namespace AbilityRuntime {
+namespace {
+/**
+ * @brief Validate and convert int32_t value to enum type.
+ * @tparam EnumType The enum type with UNSPECIFIED as lower bound and MAX as upper sentinel.
+ * @param value The int32_t value to convert.
+ * @param defaultValue The default value if validation fails.
+ * @param fieldName The field name for error logging.
+ * @return The validated enum value.
+ */
+template <typename EnumType>
+EnumType ValidateEnum(int32_t value, EnumType defaultValue, const char *fieldName)
+{
+    if (value < static_cast<int32_t>(EnumType::UNSPECIFIED) ||
+        value >= static_cast<int32_t>(EnumType::MAX)) {
+        TAG_LOGE(AAFwkTag::KEEP_ALIVE, "Invalid %{public}s: %{public}d", fieldName, value);
+        return defaultValue;
+    }
+    return static_cast<EnumType>(value);
+}
+} // namespace
 bool KeepAliveInfo::ReadFromParcel(Parcel &parcel)
 {
     bundleName = Str16ToStr8(parcel.ReadString16());
     userId = parcel.ReadInt32();
-    appType = KeepAliveAppType(parcel.ReadInt32());
-    setter = KeepAliveSetter(parcel.ReadInt32());
+
+    appType = ValidateEnum<KeepAliveAppType>(parcel.ReadInt32(),
+        KeepAliveAppType::UNSPECIFIED, "appType");
+    setter = ValidateEnum<KeepAliveSetter>(parcel.ReadInt32(),
+        KeepAliveSetter::UNSPECIFIED, "setter");
     setterId = parcel.ReadInt32();
-    policy = KeepAlivePolicy(parcel.ReadInt32());
+    policy = ValidateEnum<KeepAlivePolicy>(parcel.ReadInt32(),
+        KeepAlivePolicy::UNSPECIFIED, "policy");
+
     return true;
 }
 

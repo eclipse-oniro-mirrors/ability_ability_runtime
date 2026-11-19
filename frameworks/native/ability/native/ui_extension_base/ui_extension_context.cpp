@@ -15,17 +15,22 @@
 
 #include "ui_extension_context.h"
 
+#include <atomic>
+
 #include "ability_business_error.h"
 #include "ability_manager_client.h"
+#include "application_configuration_manager.h"
 #include "bool_wrapper.h"
 #include "configuration.h"
 #include "configuration_convertor.h"
 #include "connection_manager.h"
+#include "context.h"
 #include "event_handler.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
 #include "string_wrapper.h"
 #include "ui_content.h"
+#include "ui_extension_modal_callback.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -37,6 +42,11 @@ constexpr const char* FLAG_AUTH_READ_URI_PERMISSION = "ability.want.params.uriPe
 constexpr int32_t TERMINATE_SELF_ANIMATION_TIMEOUT_MS = 2000;
 
 namespace {
+constexpr const char* DISPOSED_PROHIBIT_BACK = "ohos.disposed.prohibitBack";
+constexpr const char* IS_WINDOWMODE_FOLLOWHOST = "ohos.window.mode.followHost";
+constexpr const char* USE_GLOBAL_UICONTENT = "ohos.uec.params.useGlobalUIContent";
+constexpr uint32_t BRAND_COLOR_BUSINESS = 4001;
+
 bool IsEmbeddableStart(int32_t screenMode)
 {
     return screenMode == AAFwk::EMBEDDED_FULL_SCREEN_MODE ||
@@ -163,7 +173,7 @@ void UIExtensionContext::ExecuteTerminationWithTimeout(const sptr<IRemoteObject>
     // Execute termination
     ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->TerminateAbility(token, -1, nullptr);
 
-    // Notify callback
+    // Notify callback. Runtime bindings are responsible for dispatching to their owning thread.
     if (request.callback) {
         request.callback(err);
     }
@@ -323,7 +333,7 @@ void UIExtensionContext::TerminateSelfWithResultAndAnimation(int32_t resultCode,
 
 ErrCode UIExtensionContext::TerminateSelfInner(int32_t terminateRequestId)
 {
-    TAG_LOGD(AAFwkTag::UI_EXT, "TerminateSelfInner (embeddable), terminateRequestId=%{public}d", terminateRequestId);
+    TAG_LOGI(AAFwkTag::UI_EXT, "TerminateSelfInner (embeddable), terminateRequestId=%{public}d", terminateRequestId);
 
     // Check if this request has already been handled, and get request in one lock
     PendingTerminateRequest request;
@@ -672,6 +682,12 @@ std::shared_ptr<AppExecFwk::Configuration> UIExtensionContext::GetAbilityConfigu
     return abilityConfiguration_;
 }
 
+std::string UIExtensionContext::GetBrandColorValue() const
+{
+    std::lock_guard<std::mutex> lock(brandColorMutex_);
+    return brandColorValue_;
+}
+
 void UIExtensionContext::SetAbilityConfiguration(const AppExecFwk::Configuration &config)
 {
     if (!abilityConfiguration_) {
@@ -749,6 +765,91 @@ void UIExtensionContext::RequestComponentTerminate()
     }
 }
 
+bool UIExtensionContext::CreateNewResourceMgr()
+{
+    auto abilityContext = Context::ConvertTo<Context>(shared_from_this());
+    if (abilityContext == nullptr || GetAbilityInfo() == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "abilityContext nullptr or null abilityInfo");
+        return false;
+    }
+    auto abilityModuleContext = CreateModuleContext(GetAbilityInfo()->moduleName, abilityContext);
+    if (abilityModuleContext == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null abilityModuleContext");
+        return false;
+    }
+    auto abilityResourceMgr = abilityModuleContext->GetResourceManager();
+    SetAbilityResourceManager(abilityResourceMgr);
+    if (!abilityConfiguration_) {
+        abilityConfiguration_ = std::make_shared<AppExecFwk::Configuration>();
+    }
+    AbilityRuntime::ApplicationConfigurationManager::GetInstance().AddIgnoreContext(
+        abilityContext, abilityResourceMgr);
+    return true;
+}
+
+bool UIExtensionContext::ApplyBrandColorStrategy(
+    AppExecFwk::BrandColorStrategy strategy, const std::string &brandColorStr)
+{
+    TAG_LOGI(AAFwkTag::UI_EXT, "onGetConfigurationStrategy brandColorStrategy: %{public}d", strategy);
+    if (strategy != AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_UEC) {
+        return false;
+    }
+    if (!CreateNewResourceMgr()) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "CreateNewResourceMgr error");
+        return false;
+    }
+    auto abilityResourceMgr = GetResourceManager();
+    if (abilityResourceMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "abilityResourceMgr null");
+        return false;
+    }
+    brandColorStrategy_ = strategy;
+    abilityResourceMgr->SetBrandColor(brandColorStr);
+    {
+        std::lock_guard<std::mutex> lock(brandColorMutex_);
+        brandColorValue_ = brandColorStr;
+    }
+    TAG_LOGD(AAFwkTag::UI_EXT, "SetBrandColorValue %{public}s", brandColorStr.c_str());
+    return true;
+}
+
+int32_t UIExtensionContext::HandleBrandColorChange(uint32_t customId, AAFwk::Want &&data)
+{
+    if (customId != BRAND_COLOR_BUSINESS) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "customid invalid %{public}d", customId);
+        return ERR_INVALID_VALUE;
+    }
+    if (GetBrandColorStrategy() == AppExecFwk::BrandColorStrategy::BRAND_COLOR_FOLLOW_SYSTEM) {
+        TAG_LOGI(AAFwkTag::UI_EXT, "follow system ,no deal");
+        return ERR_INVALID_VALUE;
+    }
+    auto brandColor = data.GetStringParam("ohos.application.brandColor");
+    if (brandColor.empty()) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null brandColor");
+        return ERR_INVALID_VALUE;
+    }
+    {
+        std::lock_guard<std::mutex> lock(brandColorMutex_);
+        if (brandColorValue_ == brandColor) {
+            TAG_LOGI(AAFwkTag::UI_EXT, "brandColor is same ,no deal %{public}s", brandColorValue_.c_str());
+            return ERR_INVALID_VALUE;
+        }
+    }
+    auto abilityResourceMgr = GetResourceManager();
+    if (abilityResourceMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "abilityResourceMgr nullptr");
+        return ERR_INVALID_VALUE;
+    }
+    {
+        std::lock_guard<std::mutex> lock(brandColorMutex_);
+        TAG_LOGD(AAFwkTag::UI_EXT, "SetBrandColorValue %{public}s", brandColor.c_str());
+        brandColorValue_ = brandColor;
+    }
+
+    abilityResourceMgr->SetBrandColor(brandColor);
+    return ERR_OK;
+}
+
 bool UIExtensionContext::IsTerminating()
 {
     return isTerminating_;
@@ -781,18 +882,10 @@ ErrCode UIExtensionContext::StartAbilityByType(const std::string &type,
         wantParam.Remove(FLAG_AUTH_READ_URI_PERMISSION);
     }
 
-    OHOS::Ace::ModalUIExtensionCallbacks callback;
+    auto errorFired = std::make_shared<std::atomic<bool>>(false);
+    OHOS::Ace::ModalUIExtensionCallbacks callback =
+        SetupModalUIExtensionCallbacks(uiExtensionCallbacks, errorFired);
     OHOS::Ace::ModalUIExtensionConfig config;
-    callback.onError = [uiExtensionCallbacks](int32_t arg, const std::string &str1, const std::string &str2) {
-        uiExtensionCallbacks->OnError(arg);
-    };
-    callback.onRelease = [uiExtensionCallbacks](int32_t arg) {
-        uiExtensionCallbacks->OnRelease(arg);
-    };
-    callback.onResult = [uiExtensionCallbacks](int32_t arg1, const OHOS::AAFwk::Want arg2) {
-        uiExtensionCallbacks->OnResult(arg1, arg2);
-    };
-
     int32_t sessionId = uiContent->CreateModalUIExtension(want, callback, config);
     if (sessionId == 0) {
         TAG_LOGE(AAFwkTag::UI_EXT, "createModalUIExtension fail");
@@ -801,6 +894,42 @@ ErrCode UIExtensionContext::StartAbilityByType(const std::string &type,
     uiExtensionCallbacks->SetUIContent(uiContent);
     uiExtensionCallbacks->SetSessionId(sessionId);
     return ERR_OK;
+}
+
+Ace::ModalUIExtensionCallbacks UIExtensionContext::SetupModalUIExtensionCallbacks(
+    const std::shared_ptr<JsUIExtensionCallback> &uiExtensionCallbacks,
+    std::shared_ptr<std::atomic<bool>> errorFired)
+{
+    OHOS::Ace::ModalUIExtensionCallbacks callback;
+    callback.onError = [uiExtensionCallbacks](int32_t arg, const std::string &str1,
+        const std::string &str2) {
+        uiExtensionCallbacks->OnError(arg);
+    };
+    callback.onAbilityErrorCode = [uiExtensionCallbacks, errorFired](const OHOS::Ace::UIExtensionOperationPhase& phase,
+        int32_t errorCode) {
+        if (phase != OHOS::Ace::UIExtensionOperationPhase::FOREGROUND && errorCode == 0) {
+            return;
+        }
+        bool expected = false;
+        if (!errorFired->compare_exchange_strong(expected, true)) {
+            if (errorCode != 0) {
+                TAG_LOGW(AAFwkTag::UI_EXT, "error %{public}d dropped, callback already fired", errorCode);
+            }
+            return;
+        }
+        uiExtensionCallbacks->OnAbilityByTypeResult(errorCode);
+    };
+    callback.onRelease = [uiExtensionCallbacks, errorFired](int32_t arg) {
+        bool expected = false;
+        if (errorFired->compare_exchange_strong(expected, true)) {
+            uiExtensionCallbacks->OnAbilityByTypeResult(0);
+        }
+        uiExtensionCallbacks->OnRelease(arg);
+    };
+    callback.onResult = [uiExtensionCallbacks](int32_t arg1, const OHOS::AAFwk::Want arg2) {
+        uiExtensionCallbacks->OnResult(arg1, arg2);
+    };
+    return callback;
 }
 
 ErrCode UIExtensionContext::AddCompletionHandlerForAtomicService(const std::string &requestId,
@@ -954,6 +1083,127 @@ void UIExtensionContext::GetFailureInfoByMessage(
         failureCode = static_cast<int32_t>(FailureCode::FAILURE_CODE_SYSTEM_MALFUNCTION);
         failureMessage = "A system error occurred";
     }
+}
+
+bool UIExtensionContext::IsUIExtensionExist(const AAFwk::Want &want)
+{
+    TAG_LOGD(AAFwkTag::UI_EXT, "IsUIExtensionExist call");
+    std::lock_guard<std::mutex> lock(uiExtensionMutex_);
+    for (const auto& iter : uiExtensionMap_) {
+        const auto& wantElement = want.GetElement();
+        const auto& iterElement = iter.second.GetElement();
+        if (iterElement.GetBundleName() == wantElement.GetBundleName() &&
+            iterElement.GetModuleName() == wantElement.GetModuleName() &&
+            iterElement.GetAbilityName() == wantElement.GetAbilityName()) {
+            TAG_LOGI(AAFwkTag::UI_EXT, "UIExtension already exists: %{public}s/%{public}s/%{public}s",
+                wantElement.GetBundleName().c_str(),
+                wantElement.GetModuleName().c_str(),
+                wantElement.GetAbilityName().c_str());
+            return true;
+        }
+    }
+    return false;
+}
+
+ErrCode UIExtensionContext::CreateModalUIExtensionWithApp(const AAFwk::Want &want)
+{
+    TAG_LOGD(AAFwkTag::UI_EXT, "UIExtensionContext::CreateModalUIExtensionWithApp call");
+    auto uiContent = GetUIContent();
+    if (uiContent == nullptr) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "null uiContent");
+        return ERR_INVALID_VALUE;
+    }
+
+    // Check if UIExtension already exists
+    if (IsUIExtensionExist(want) && !want.GetBoolParam(USE_GLOBAL_UICONTENT, false)) {
+        TAG_LOGD(AAFwkTag::UI_EXT, "UIExtension already exists");
+        return ERR_OK;
+    }
+
+    // Create modal callback
+    auto modalCallback = std::make_shared<UIExtensionModalCallback>();
+
+    // Setup Ace callbacks
+    Ace::ModalUIExtensionCallbacks callback = SetupModalCallbacks(modalCallback);
+
+    // Configure modal UIExtension
+    Ace::ModalUIExtensionConfig config;
+    config.prohibitedRemoveByRouter = true;  // Prevent router from removing
+
+    // Support additional configuration parameters
+    if (want.GetBoolParam(DISPOSED_PROHIBIT_BACK, false)) {
+        config.isProhibitBack = true;
+    }
+    if (want.HasParameter(IS_WINDOWMODE_FOLLOWHOST)) {
+        config.isWindowModeFollowHost = want.GetBoolParam(IS_WINDOWMODE_FOLLOWHOST, false);
+    }
+
+    // Create modal UIExtension
+    int32_t sessionId = uiContent->CreateModalUIExtension(want, callback, config);
+    if (sessionId == 0) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "CreateModalUIExtension failed");
+        return ERR_INVALID_VALUE;
+    }
+
+    // Initialize callback with session info
+    modalCallback->SetSessionId(sessionId);
+    modalCallback->SetUIContent(uiContent);
+
+    auto contextWeak = std::static_pointer_cast<UIExtensionContext>(shared_from_this());
+    modalCallback->SetUIExtensionContext(contextWeak);
+
+    // Track the session in map
+    {
+        std::lock_guard<std::mutex> lock(uiExtensionMutex_);
+        uiExtensionMap_.emplace(sessionId, want);
+    }
+
+    TAG_LOGI(AAFwkTag::UI_EXT, "Created modal UIExtension, sessionId: %{public}d", sessionId);
+    return ERR_OK;
+}
+
+Ace::ModalUIExtensionCallbacks UIExtensionContext::SetupModalCallbacks(
+    std::shared_ptr<UIExtensionModalCallback> modalCallback)
+{
+    Ace::ModalUIExtensionCallbacks callback;
+    callback.onError = [modalCallback](int32_t code, const std::string &str1, const std::string &str2) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "Modal UIExtension error: %{public}d, msg: %{public}s",
+            code, str2.c_str());
+        modalCallback->OnError();
+    };
+    callback.onRelease = [modalCallback](int32_t code) {
+        TAG_LOGD(AAFwkTag::UI_EXT, "Modal UIExtension release: %{public}d", code);
+        modalCallback->OnRelease();
+    };
+    callback.onResult = [modalCallback](int32_t code, const AAFwk::Want &resultWant) {
+        TAG_LOGD(AAFwkTag::UI_EXT, "Modal UIExtension result: %{public}d", code);
+    };
+    callback.onDestroy = [modalCallback]() {
+        TAG_LOGD(AAFwkTag::UI_EXT, "Modal UIExtension destroy");
+        modalCallback->OnDestroy();
+    };
+    callback.onReceive = [modalCallback](const AAFwk::WantParams& data) {
+        TAG_LOGD(AAFwkTag::UI_EXT, "Modal UIExtension onReceive");
+        modalCallback->OnReceive(data);
+    };
+    return callback;
+}
+
+ErrCode UIExtensionContext::EraseUIExtension(int32_t sessionId)
+{
+    TAG_LOGD(AAFwkTag::UI_EXT, "EraseUIExtension: %{public}d", sessionId);
+
+    std::lock_guard<std::mutex> lock(uiExtensionMutex_);
+    auto it = uiExtensionMap_.find(sessionId);
+    if (it != uiExtensionMap_.end()) {
+        uiExtensionMap_.erase(it);
+        TAG_LOGI(AAFwkTag::UI_EXT, "Erased UIExtension: %{public}d, remaining: %{public}zu",
+            sessionId, uiExtensionMap_.size());
+    } else {
+        TAG_LOGW(AAFwkTag::UI_EXT, "UIExtension not found: %{public}d", sessionId);
+    }
+
+    return ERR_OK;
 }
 
 int32_t UIExtensionContext::curRequestCode_ = 0;

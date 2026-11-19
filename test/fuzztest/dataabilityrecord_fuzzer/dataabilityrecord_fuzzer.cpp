@@ -58,7 +58,9 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     isNotHap = fdp.ConsumeBool();
     info = AbilityFuzzUtil::GenerateStringArray(fdp);
     dataAbilityRecord->StartLoading();
+    mutex.lock();
     dataAbilityRecord->WaitForLoaded(mutex, timeout);
+    mutex.unlock();
     dataAbilityRecord->GetScheduler();
     dataAbilityRecord->Attach(scheduler);
     dataAbilityRecord->OnTransitionDone(state);

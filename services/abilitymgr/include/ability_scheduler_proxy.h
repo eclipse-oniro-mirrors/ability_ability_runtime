@@ -325,6 +325,8 @@ public:
 
     void OnExecuteIntent(const Want &want) override;
 
+    void ExecuteSkill(const Want &want) override;
+
     /**
      * @brief Update sessionToken.
      * @param sessionToken The token of session.
@@ -343,6 +345,8 @@ public:
 private:
     bool WriteInterfaceToken(MessageParcel &data);
     int32_t SendTransactCmd(uint32_t code, MessageParcel &data, MessageParcel &reply, MessageOption &option);
+    const Want &SanitizeWant(const Want &want, Want &sanitized);
+    bool SanitizeSessionInfo(const sptr<SessionInfo> &sessionInfo, sptr<SessionInfo> &sanitized);
 
 private:
     static inline BrokerDelegator<AbilitySchedulerProxy> delegator_;

@@ -91,6 +91,10 @@ bool SetPropertyByName(ani_env *env, ani_object &error, const std::string &value
         TAG_LOGE(AAFwkTag::RECOVERY, "null env");
         return false;
     }
+    if (name == nullptr) {
+        TAG_LOGE(AAFwkTag::RECOVERY, "null name");
+        return false;
+    }
     ani_status status = ANI_ERROR;
     ani_string valueRef {};
     if ((status = env->String_NewUTF8(value.c_str(), value.size(), &valueRef)) != ANI_OK) {

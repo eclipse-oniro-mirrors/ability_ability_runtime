@@ -75,6 +75,7 @@ ohos_unittest("ability_record_second_test") {
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
+    "samgr:samgr_proxy",
   ]
 
   defines = []

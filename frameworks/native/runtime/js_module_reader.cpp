@@ -125,9 +125,7 @@ std::string JsModuleReader::GetPluginHspPath(const std::string& inputPath) const
                 && sharedBundleName == pluginBundleInfo.pluginBundleName) {
                 presetAppHapPath = pluginModuleInfo.hapPath;
                 TAG_LOGD(AAFwkTag::JSRUNTIME, "presetAppHapPath %{public}s", presetAppHapPath.c_str());
-                std::regex pattern(std::string(ABS_DATA_CODE_PATH) + bundleName_ + "/");
-                presetAppHapPath = std::regex_replace(
-                    presetAppHapPath, pattern, std::string(ABS_CODE_PATH) + std::string(BUNDLE));
+                presetAppHapPath = ExtractorUtil::GetLoadFilePath(presetAppHapPath);
                 TAG_LOGD(AAFwkTag::JSRUNTIME, "presetAppHapPath %{public}s", presetAppHapPath.c_str());
                 return presetAppHapPath;
             }
@@ -257,20 +255,16 @@ std::string JsModuleReader::GetPresetAppHapPath(const std::string& inputPath, co
         return presetAppHapPath;
     }
     if (inputPath.find_first_of("/") == inputPath.find_last_of("/")) {
-        AppExecFwk::BundleInfo bundleInfo;
-        auto getInfoResult = bundleMgrHelper->GetBundleInfoForSelf(static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::
-            GET_BUNDLE_INFO_WITH_HAP_MODULE), bundleInfo);
-        if (getInfoResult != 0 || bundleInfo.hapModuleInfos.empty()) {
-            TAG_LOGE(AAFwkTag::JSRUNTIME, "GetBundleInfoForSelf failed");
+        AppExecFwk::AbilityInfo abilityInfo;
+        abilityInfo.bundleName = bundleName;
+        abilityInfo.package = moduleName;
+        AppExecFwk::HapModuleInfo hapModuleInfo;
+        if (!bundleMgrHelper->GetHapModuleInfo(abilityInfo, hapModuleInfo)) {
+            TAG_LOGE(AAFwkTag::JSRUNTIME, "GetHapModuleInfo failed");
             return presetAppHapPath;
         }
-        for (auto hapModuleInfo : bundleInfo.hapModuleInfos) {
-            if (hapModuleInfo.moduleName == moduleName) {
-                presetAppHapPath = hapModuleInfo.hapPath;
-                needFindPluginHsp = false;
-                break;
-            }
-        }
+        presetAppHapPath = hapModuleInfo.hapPath;
+        needFindPluginHsp = false;
     } else {
         presetAppHapPath = GetOtherHspPath(bundleName, moduleName, presetAppHapPath, needFindPluginHsp, errorMsg);
     }
@@ -290,6 +284,10 @@ void JsModuleReader::GetHapPathList(const std::string &bundleName, std::vector<s
         return;
     }
     auto bundleMgrProxy = iface_cast<IBundleMgr>(remoteObject);
+    if (bundleMgrProxy == nullptr) {
+        TAG_LOGE(AAFwkTag::JSRUNTIME, "null bundleMgrProxy");
+        return;
+    }
     AppExecFwk::BundleInfo bundleInfo;
     auto getInfoResult = bundleMgrProxy->GetBundleInfoForSelf(static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::
         GET_BUNDLE_INFO_WITH_HAP_MODULE), bundleInfo);

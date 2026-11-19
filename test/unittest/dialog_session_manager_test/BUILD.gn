@@ -34,6 +34,7 @@ ohos_unittest("dialog_session_manager_test") {
   ]
 
   sources = [
+    "${ability_runtime_services_path}/abilitymgr/src/extension_query_event_util.cpp",
     "${ability_runtime_path}/frameworks/native/appkit/ability_bundle_manager_helper/bundle_mgr_helper.cpp",
     "${ability_runtime_path}/services/abilitymgr/src/dialog_session/dialog_session_info.cpp",
     "${ability_runtime_path}/services/abilitymgr/src/dialog_session/dialog_session_manager.cpp",

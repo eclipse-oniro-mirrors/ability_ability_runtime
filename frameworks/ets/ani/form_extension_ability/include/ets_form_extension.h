@@ -82,6 +82,8 @@ private:
 
     bool ConvertFromDataProxies(ani_env *env, ani_object arrayValue, std::vector<FormDataProxy> &formDataProxies);
 
+    bool ExtractSingleDataProxy(ani_env *env, ani_ref stringEntryRef, FormDataProxy &formDataProxy);
+
     ani_object WrapFormRect(ani_env *env, const Rect &newRect);
     
     bool CreateObject(ani_env *env, ani_object &object, const std::string &className);

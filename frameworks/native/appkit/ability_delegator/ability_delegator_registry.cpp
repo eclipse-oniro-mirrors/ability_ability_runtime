@@ -20,6 +20,8 @@ namespace AppExecFwk {
 std::map<AbilityRuntime::Runtime::Language, std::shared_ptr<IAbilityDelegator>>
     AbilityDelegatorRegistry::abilityDelegator_ {};
 std::shared_ptr<AbilityDelegatorArgs> AbilityDelegatorRegistry::abilityDelegatorArgs_ {};
+void *AbilityDelegatorRegistry::napiEnv_ = nullptr;
+void *AbilityDelegatorRegistry::aniEnv_ = nullptr;
 
 std::shared_ptr<AbilityDelegator> AbilityDelegatorRegistry::GetAbilityDelegator(
     const AbilityRuntime::Runtime::Language &language)
@@ -54,6 +56,22 @@ void AbilityDelegatorRegistry::RegisterInstance(const std::shared_ptr<IAbilityDe
 {
     abilityDelegatorArgs_ = args;
     abilityDelegator_.insert_or_assign(language, delegator);
+}
+
+void AbilityDelegatorRegistry::SetRuntimeEnvs(void *napiEnv, void *aniEnv)
+{
+    napiEnv_ = napiEnv;
+    aniEnv_ = aniEnv;
+}
+
+void *AbilityDelegatorRegistry::GetNapiEnv()
+{
+    return napiEnv_;
+}
+
+void *AbilityDelegatorRegistry::GetAniEnv()
+{
+    return aniEnv_;
 }
 } // namespace AppExecFwk
 } // namespace OHOS

@@ -41,6 +41,7 @@ struct FreeInstallInfo {
     int32_t userId = -1;
     int32_t requestCode = -1;
     uint32_t specifyTokenId = 0;
+    uint32_t accessTokenId = 0;
     int resultCode = 0;
     bool isInstalled = false;
     bool isPreStartMissionCalled = false;
@@ -54,6 +55,7 @@ struct FreeInstallParams {
     std::shared_ptr<Want> originalWant = nullptr;
     std::shared_ptr<StartOptions> startOptions = nullptr;
     uint32_t specifyTokenId = 0;
+    uint32_t accessTokenId = 0;
     bool isAsync = false;
     bool isOpenAtomicServiceShortUrl = false;
     bool skipStartFreeInstallPermissionCheck = false;
@@ -229,10 +231,10 @@ private:
 
     void PostUpgradeAtomicServiceTask(int resultCode, const Want &want, int32_t userId);
 
-    void StartAbilityByFreeInstall(FreeInstallInfo &info, std::string &bundleName, std::string &abilityName,
-        std::string &startTime);
-    void StartAbilityByPreInstall(int32_t recordId, FreeInstallInfo &info, std::string &bundleName,
-        std::string &abilityName, std::string &startTime);
+    void StartAbilityByFreeInstall(FreeInstallInfo &info, const std::string &bundleName,
+        const std::string &abilityName, const std::string &startTime);
+    void StartAbilityByPreInstall(int32_t recordId, FreeInstallInfo &info, const std::string &bundleName,
+        const std::string &abilityName, const std::string &startTime);
     int32_t UpdateElementName(Want &want, int32_t userId) const;
     void HandleFreeInstallResult(int32_t recordId, FreeInstallInfo &freeInstallInfo, int resultCode, bool isAsync);
     void HandleOnFreeInstallSuccess(int32_t recordId, FreeInstallInfo &freeInstallInfo, bool isAsync);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,6 +16,8 @@
 #ifndef OHOS_ABILITY_RUNTIME_CONNECTION_RECORD_H
 #define OHOS_ABILITY_RUNTIME_CONNECTION_RECORD_H
 
+#include <cstdint>
+#include <list>
 #include <mutex>
 #include "ability_connect_callback_interface.h"
 #include "base_extension_record.h"
@@ -142,6 +144,10 @@ public:
      */
     void ScheduleConnectAbilityDone();
 
+    bool IsLowCodeAgentConnect() const;
+
+    void QueueLowCodeAgentInvocation(const Want &want, const sptr<IAbilityConnection> &callback);
+
     /**
      * cancel connect timeout task.
      *
@@ -168,13 +174,29 @@ public:
     int32_t GetCallerPid() const;
     uint32_t GetCallerTokenId() const;
     std::string GetCallerName() const;
+    int32_t GetDirectCallerUid() const;
+    int32_t GetDirectCallerPid() const;
+    uint32_t GetDirectCallerTokenId() const;
+    std::string GetDirectCallerName() const;
     sptr<IRemoteObject> GetTargetToken() const;
     sptr<IRemoteObject> GetConnection() const;
 
     void SetConnectWant(const Want &want);
     Want GetConnectWant() const;
+
 private:
+    struct LowCodeAgentInvocation {
+        Want want;
+        sptr<IAbilityConnection> callback;
+    };
+
     void ScheduleDisconnectTimeout();
+    void NotifyLowCodeAgentInvoked(const sptr<IRemoteObject> &remoteObject);
+    void NotifyLowCodeAgentInvoked(const sptr<IRemoteObject> &remoteObject, const Want &want);
+    bool IsLowCodeAgentWant(const Want &want) const;
+    void CompleteLowCodeAgentInvocation(const Want &want, const sptr<IAbilityConnection> &callback);
+    void FlushPendingLowCodeAgentInvocations();
+    void SetDirectCallerInfo();
 
     static int64_t connectRecordId;
     Want connectWant_;
@@ -183,13 +205,18 @@ private:
     std::shared_ptr<BaseExtensionRecord> targetService_ = nullptr; // target:service need to be connected
     mutable std::mutex callbackMutex_;
     sptr<IAbilityConnection> connCallback_ = nullptr;        // service connect callback
+    mutable std::mutex pendingLowCodeMutex_;
+    std::list<LowCodeAgentInvocation> pendingLowCodeInvocations_;
     std::weak_ptr<AbilityConnectManager> abilityConnectManager_;
     std::string callerName_;                           // caller bundleName or processName
     std::atomic<int32_t> recordId_ = 0;                // record id
     int32_t callerUid_ = 0;                            // caller uid
     int32_t callerPid_ = 0;                            // caller pid
     uint32_t callerTokenId_ = 0;                       // caller token id
-
+    int32_t directCallerUid_ = 0;                      // direct caller uid
+    int32_t directCallerPid_ = 0;                      // direct caller pid
+    uint32_t directCallerTokenId_ = 0;                 // direct caller token id
+    std::string directCallerName_;                     // direct caller bundleName or processName
     DISALLOW_COPY_AND_MOVE(ConnectionRecord);
 };
 }  // namespace AAFwk

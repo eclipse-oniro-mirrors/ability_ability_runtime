@@ -28,6 +28,7 @@
 #include "permission_constants.h"
 #include "permission_verification.h"
 #include "start_ability_utils.h"
+#include "user_controller/user_controller.h"
 #include "utils/app_mgr_util.h"
 #ifdef SUPPORT_SCREEN
 #include "scene_board_judgement.h"
@@ -35,12 +36,12 @@
 #endif // SUPPORT_SCREEN
 
 using OHOS::Security::AccessToken::AccessTokenKit;
+using OHOS::Security::AccessToken::HapTokenInfo;
 
 namespace OHOS {
 namespace AAFwk {
 namespace {
 constexpr const char* IS_DELEGATOR_CALL = "isDelegatorCall";
-constexpr const char* SETTINGS = "settings";
 constexpr int32_t BASE_USER_RANGE = 200000;
 constexpr int32_t INDEX_PID = 0;
 constexpr int32_t INDEX_TOKENID = 1;
@@ -61,6 +62,19 @@ AbilityPermissionUtil &AbilityPermissionUtil::GetInstance()
 {
     static AbilityPermissionUtil instance;
     return instance;
+}
+
+int32_t AbilityPermissionUtil::GetClosestHapTokenId(uint32_t tokenId, uint32_t &hapTokenId)
+{
+    HapTokenInfo hapInfo;
+    int32_t ret = AccessTokenKit::GetHapTokenInfo(tokenId, hapInfo);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "failed to get hap token info: %{public}d", ret);
+        hapTokenId = 0;
+        return ERR_INVALID_VALUE;
+    }
+    hapTokenId = hapInfo.tokenID;
+    return ERR_OK;
 }
 
 inline bool AbilityPermissionUtil::IsDelegatorCall(const AppExecFwk::RunningProcessInfo &processInfo,
@@ -89,38 +103,15 @@ bool AbilityPermissionUtil::IsDominateScreen(const Want &want, bool isPendingWan
             TAG_LOGD(AAFwkTag::ABILITYMGR, "not dominate screen.");
             return false;
         }
-        // add temporarily
-        std::string bundleName = want.GetElement().GetBundleName();
-        std::string abilityName = want.GetElement().GetAbilityName();
-        bool withoutSettings = bundleName.find(SETTINGS) == std::string::npos &&
-            abilityName.find(SETTINGS) == std::string::npos;
-        if (withoutSettings && AppUtils::GetInstance().IsAllowStartAbilityWithoutCallerToken(bundleName, abilityName)) {
-            TAG_LOGD(AAFwkTag::ABILITYMGR, "not dominate screen, allow.");
-            return false;
-        } else if (AppUtils::GetInstance().IsAllowStartAbilityWithoutCallerToken(bundleName, abilityName)) {
-            auto bms = AbilityUtil::GetBundleManagerHelper();
-            CHECK_POINTER_RETURN_BOOL(bms);
-            int32_t callerUid = IPCSkeleton::GetCallingUid();
-            std::string callerBundleName;
-            if (IN_PROCESS_CALL(bms->GetNameForUid(callerUid, callerBundleName)) != ERR_OK) {
-                TAG_LOGE(AAFwkTag::ABILITYMGR, "failed to get caller bundle name.");
-                return false;
-            }
-            auto userId = callerUid / BASE_USER_RANGE;
-            AppExecFwk::BundleInfo info;
-            TAG_LOGD(AAFwkTag::ABILITYMGR, "callerBundleName: %{public}s, userId: %{public}d",
-                callerBundleName.c_str(), userId);
-            if (!IN_PROCESS_CALL(
-                bms->GetBundleInfo(callerBundleName, AppExecFwk::BundleFlag::GET_BUNDLE_DEFAULT, info, userId))) {
-                TAG_LOGE(AAFwkTag::ABILITYMGR, "failed to get bundle info.");
-                return false;
-            }
-            if (info.applicationInfo.needAppDetail) {
-                TAG_LOGD(AAFwkTag::ABILITYMGR, "not dominate screen, app detail.");
-                return false;
-            }
-        } else if (IsStartSelfUIAbility()) {
+        if (IsStartSelfUIAbility()) {
             TAG_LOGI(AAFwkTag::ABILITYMGR, "caller from capi.");
+            return false;
+        }
+        // Bypass screen-domination when the caller resolves to a hap token (e.g. ohos-aa acting on
+        // behalf of a hap application): a resolvable hap token is not a dominate-screen caller.
+        uint32_t hapTokenId = 0;
+        if (GetClosestHapTokenId(IPCSkeleton::GetCallingTokenID(), hapTokenId) == ERR_OK && hapTokenId != 0) {
+            TAG_LOGD(AAFwkTag::ABILITYMGR, "caller resolves to a hap token, not dominate screen.");
             return false;
         }
         TAG_LOGE(AAFwkTag::ABILITYMGR, "dominate screen.");
@@ -131,20 +122,21 @@ bool AbilityPermissionUtil::IsDominateScreen(const Want &want, bool isPendingWan
 }
 
 int32_t AbilityPermissionUtil::CheckMultiInstanceAndAppClone(Want &want, int32_t userId, int32_t appIndex,
-    sptr<IRemoteObject> callerToken, bool isScbCall)
+    sptr<IRemoteObject> callerToken, bool isScbCall, const StartAbilityContext &ctx)
 {
     auto instanceKey = want.GetStringParam(Want::APP_INSTANCE_KEY);
     auto isCreating = want.GetBoolParam(Want::CREATE_APP_INSTANCE_KEY, false);
     AppExecFwk::ApplicationInfo appInfo;
     auto isSupportMultiInstance = AppUtils::GetInstance().IsSupportMultiInstance();
     if (isSupportMultiInstance) {
-        if (!StartAbilityUtils::GetApplicationInfo(want.GetBundle(), userId, appInfo)) {
+        if (!StartAbilityUtils::GetApplicationInfo(ctx, want.GetBundleNameRef(), userId, appInfo)) {
             TAG_LOGI(AAFwkTag::ABILITYMGR, "implicit start");
             return ERR_OK;
         }
         if (appInfo.multiAppMode.multiAppModeType == AppExecFwk::MultiAppModeType::UNSPECIFIED) {
             if (!instanceKey.empty() || isCreating ||
-                (appIndex != 0 && appIndex <= AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX)) {
+                (appIndex != 0 && appIndex != AbilityRuntime::GlobalConstant::PC_TABLET_INDEX &&
+                AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex))) {
                 TAG_LOGE(AAFwkTag::ABILITYMGR, "Not support multi-instance or appClone");
                 return ERR_MULTI_APP_NOT_SUPPORTED;
             }
@@ -176,7 +168,8 @@ int32_t AbilityPermissionUtil::CheckMultiInstance(Want &want, sptr<IRemoteObject
     }
     auto callerRecord = Token::GetAbilityRecordByToken(callerToken);
     std::vector<std::string> instanceKeyArray;
-    auto result = IN_PROCESS_CALL(appMgr->GetAllRunningInstanceKeysByBundleName(want.GetBundle(), instanceKeyArray));
+    auto result = IN_PROCESS_CALL(appMgr->GetAllRunningInstanceKeysByBundleName(want.GetBundleNameRef(),
+        instanceKeyArray));
     if (result != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Failed to get instance key");
         return ERR_INVALID_VALUE;
@@ -184,7 +177,7 @@ int32_t AbilityPermissionUtil::CheckMultiInstance(Want &want, sptr<IRemoteObject
     auto instanceKey = want.GetStringParam(Want::APP_INSTANCE_KEY);
     auto isCreating = want.GetBoolParam(Want::CREATE_APP_INSTANCE_KEY, false);
     // in-app launch
-    if ((callerRecord != nullptr && callerRecord->GetAbilityInfo().bundleName == want.GetBundle()) ||
+    if ((callerRecord != nullptr && callerRecord->GetAbilityInfo().bundleName == want.GetBundleNameRef()) ||
         IsStartSelfUIAbility()) {
         if (isCreating) {
             if (!instanceKey.empty()) {
@@ -257,7 +250,7 @@ int32_t AbilityPermissionUtil::CheckMultiInstanceKeyForExtension(const AbilityRe
         TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid extension type");
         return ERR_INVALID_EXTENSION_TYPE;
     }
-    if (!MultiInstanceUtils::IsInstanceKeyExist(abilityRequest.want.GetBundle(), instanceKey)) {
+    if (!MultiInstanceUtils::IsInstanceKeyExist(abilityRequest.want.GetBundleNameRef(), instanceKey)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "key not found");
         return ERR_INVALID_APP_INSTANCE_KEY;
     }
@@ -285,7 +278,9 @@ int32_t AbilityPermissionUtil::CheckStartRecentAbility(const Want &want, Ability
 int32_t AbilityPermissionUtil::CheckStartCallHasFloatingWindow(const sptr<IRemoteObject> &callerToken)
 {
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto sceneSessionManager = Rosen::SessionManagerLite::GetInstance().GetSceneSessionManagerLiteProxy();
+        auto callerRecord = Token::GetAbilityRecordByToken(callerToken);
+        int32_t userId = callerRecord ? callerRecord->GetOwnerMissionUserId() : -1;
+        auto sceneSessionManager = Rosen::SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();
         CHECK_POINTER_AND_RETURN_LOG(sceneSessionManager, CHECK_PERMISSION_FAILED, "sceneSessionManager is nullptr");
         bool hasFloatingWindow = false;
         auto err = sceneSessionManager->HasFloatingWindowForeground(callerToken, hasFloatingWindow);
@@ -413,6 +408,42 @@ bool AbilityPermissionUtil::NeedCheckStatusBar(std::shared_ptr<AbilityRecord> ab
         return false;
     }
     return true;
+}
+
+bool AbilityPermissionUtil::CheckStartUIAbilityByUserLockStatus(const std::string &bundleName)
+{
+    if (bundleName.empty()) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "empty name");
+        return true;
+    }
+    auto userId = IPCSkeleton::GetCallingUid() / BASE_USER_RANGE;
+    auto userLockStatus = AbilityRuntime::UserController::GetInstance().GetUserLockStatus(userId);
+    if (userLockStatus == AbilityRuntime::UserController::UserLockStatus::USER_UNLOCKED) {
+        return true;
+    }
+    auto bms = AbilityUtil::GetBundleManagerHelper();
+    if (bms == nullptr) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "null helper");
+        return false;
+    }
+    AppExecFwk::BundleInfo bundleInfo;
+    auto ret =
+        IN_PROCESS_CALL(bms->GetBundleInfo(bundleName,
+            static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION), bundleInfo, userId));
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "GetBundleInfo failed");
+        return false;
+    }
+    bool isSystemApp = bundleInfo.applicationInfo.isSystemApp;
+    if (!isSystemApp) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "not system app");
+        auto tokenId = bundleInfo.applicationInfo.accessTokenId;
+        if (PermissionVerification::GetInstance()->VerifyPermissionByTokenId(
+            tokenId, PermissionConstants::PERMISSION_ALLOW_DIRECT_BOOT)) {
+            return true;
+        }
+    }
+    return isSystemApp;
 }
 } // AAFwk
 } // OHOS

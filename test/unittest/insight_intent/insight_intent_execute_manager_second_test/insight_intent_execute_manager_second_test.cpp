@@ -15,10 +15,20 @@
 
 #include <gtest/gtest.h>
 
+#include <atomic>
+#include <chrono>
+#include <functional>
+#include <thread>
+#include <unistd.h>
+
 #include "hilog_tag_wrapper.h"
+#include "insight_intent_execute_callback_stub.h"
 #include "insight_intent_execute_manager.h"
 #include "insight_intent_execute_param.h"
+#include "insight_intent_query_param.h"
+#include "extract_insight_intent_profile.h"
 #include "mock_ability_token.h"
+#include "string_wrapper.h"
 #include "want.h"
 
 using namespace testing;
@@ -26,7 +36,39 @@ using namespace testing::ext;
 
 namespace {
 constexpr uint64_t NON_EXIST_ID = 12345;
+constexpr int32_t WAIT_APP_DIED_CLEANUP_MS = 300;
+
+class InsightIntentExecuteCallbackStubMock : public OHOS::AAFwk::InsightIntentExecuteCallbackStub {
+public:
+    void OnExecuteDone(uint64_t key, int32_t resultCode,
+        const OHOS::AppExecFwk::InsightIntentExecuteResult &executeResult) override
+    {
+        callbackCount.fetch_add(1);
+        lastKey = key;
+        lastResultCode = resultCode;
+        lastInnerErr = executeResult.innerErr;
+    }
+
+    std::atomic<int32_t> callbackCount = 0;
+    uint64_t lastKey = 0;
+    int32_t lastResultCode = 0;
+    int32_t lastInnerErr = 0;
 };
+
+bool WaitUntil(const std::function<bool()> &predicate, int32_t timeoutMs)
+{
+    constexpr int32_t intervalMs = 10;
+    int32_t elapsedMs = 0;
+    while (elapsedMs < timeoutMs) {
+        if (predicate()) {
+            return true;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(intervalMs));
+        elapsedMs += intervalMs;
+    }
+    return predicate();
+}
+}
 namespace OHOS {
 namespace AAFwk {
 class InsightIntentExecuteManagerSecondTest : public testing::Test {
@@ -69,7 +111,7 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateParam_0100, TestSi
     uint64_t key = 1;
     std::string callerBundleName = "com.bundlename.test";
     auto ret = DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->CheckAndUpdateParam(
-        key, callerToken, paramPtr, callerBundleName);
+        key, callerToken, paramPtr, ExecuteParam{.callerBundleName = callerBundleName});
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
@@ -94,7 +136,7 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateParam_0200, TestSi
     uint64_t key = 1;
     std::string callerBundleName = "com.bundlename.test";
     auto ret = DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->CheckAndUpdateParam(
-        key, callerToken, paramPtr, callerBundleName);
+        key, callerToken, paramPtr, ExecuteParam{.callerBundleName = callerBundleName});
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
@@ -113,7 +155,7 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateParam_0300, TestSi
     uint64_t key = 1;
     std::string callerBundleName = "com.bundlename.test";
     auto ret = DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->CheckAndUpdateParam(
-        key, callerToken, paramPtr, callerBundleName);
+        key, callerToken, paramPtr, ExecuteParam{.callerBundleName = callerBundleName});
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
@@ -137,7 +179,7 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateParam_0400, TestSi
     uint64_t key = 1;
     std::string callerBundleName = "com.bundlename.test";
     auto ret = DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->CheckAndUpdateParam(
-        key, callerToken, paramPtr, callerBundleName);
+        key, callerToken, paramPtr, ExecuteParam{.callerBundleName = callerBundleName});
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
@@ -154,25 +196,24 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateParam_0500, TestSi
     AppExecFwk::InsightIntentExecuteParam param;
     param.bundleName_ = "test.bundleName";
     param.moduleName_ = "test.entry";
-    param.abilityName_ = ""; // 空abilityName，但ignoreAbilityName为true
+    param.abilityName_ = ""; // 空abilityName
     param.insightIntentName_ = "PlayMusic";
     param.insightIntentParam_ = std::make_shared<WantParams>();
-    param.isServiceMatch_ = true; // 跳过权限和callerToken检查
     auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
-    sptr<IRemoteObject> callerToken = nullptr; // 空callerToken但isServiceMatch_为true
+    sptr<IRemoteObject> callerToken = nullptr;
     uint64_t key = 1;
     std::string callerBundleName = "com.bundlename.test";
-    
-    // 调用带ignoreAbilityName参数的重载版本
+
     std::shared_ptr<InsightIntentExecuteManager> manager = std::make_shared<InsightIntentExecuteManager>();
-    auto ret = manager->CheckAndUpdateParam(key, callerToken, paramPtr, callerBundleName, true);
-    EXPECT_EQ(ret, ERR_OK);
+    auto ret = manager->CheckAndUpdateParam(key, callerToken, paramPtr,
+        ExecuteParam{.callerBundleName = callerBundleName, .ignoreAbilityName = true});
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
 
 /**
  * @tc.name: CheckAndUpdateParam_0600
- * @tc.desc: Test CheckAndUpdateParam with permission denied but service match
+ * @tc.desc: Test CheckAndUpdateParam with valid param and callerToken
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -185,14 +226,13 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateParam_0600, TestSi
     param.abilityName_ = "test.abilityName";
     param.insightIntentName_ = "PlayMusic";
     param.insightIntentParam_ = std::make_shared<WantParams>();
-    param.isServiceMatch_ = true; // 即使权限检查失败也能通过
     auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
     sptr<IRemoteObject> callerToken = new AppExecFwk::MockAbilityToken();
     uint64_t key = 1;
     std::string callerBundleName = "com.bundlename.test";
-    
+
     auto ret = DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->CheckAndUpdateParam(
-        key, callerToken, paramPtr, callerBundleName);
+        key, callerToken, paramPtr, ExecuteParam{.callerBundleName = callerBundleName});
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
@@ -298,7 +338,7 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, ExecuteIntentDone_0200, TestSize
     uint64_t key = 1;
     std::string callerBundleName = "com.bundlename.test";
     DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->AddRecord(
-        key, callerToken, param.bundleName_, intentId, callerBundleName);
+        key, callerToken, param.bundleName_, intentId, ExecuteParam{.callerBundleName = callerBundleName});
     intentId = 1;
     auto ret = DelayedSingleton<InsightIntentExecuteManager>::GetInstance()->ExecuteIntentDone(
         intentId, resultCode, result);
@@ -477,7 +517,7 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, RemoteDied_0200, TestSize.Level1
     std::string bundleName = "test.bundleName";
     std::string callerBundleName = "test.callerBundleName";
     uint64_t intentId = 1;
-    manager->AddRecord(key, callToken, bundleName, intentId, callerBundleName);
+    manager->AddRecord(key, callToken, bundleName, intentId, ExecuteParam{.callerBundleName = callerBundleName});
 
     int32_t result = manager->RemoteDied(intentId);
     EXPECT_EQ(result, ERR_OK);
@@ -520,7 +560,7 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, GetBundleName_0200, TestSize.Lev
     std::string bundleName = "test.bundleName";
     std::string callerBundleName = "test.callerBundleName";
     uint64_t intentId = 1;
-    manager->AddRecord(key, callToken, bundleName, intentId, callerBundleName);
+    manager->AddRecord(key, callToken, bundleName, intentId, ExecuteParam{.callerBundleName = callerBundleName});
 
     std::string retBundleName;
     int32_t result = manager->GetBundleName(intentId, retBundleName);
@@ -538,8 +578,9 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, GenerateWant_0300, TestSize.Leve
 {
     TAG_LOGI(AAFwkTag::TEST, "begin.");
     AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
+    AbilityRuntime::ExtractInsightIntentInfo extractInfo;
     Want want;
-    auto ret = InsightIntentExecuteManager::GenerateWant(nullptr, decoratorInfo, want);
+    auto ret = InsightIntentExecuteManager::GenerateWant(nullptr, decoratorInfo, extractInfo, want);
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
@@ -566,90 +607,10 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, GenerateWant_0400, TestSize.Leve
     std::string startTime = want.GetStringParam(Want::PARAM_RESV_START_TIME);
     EXPECT_TRUE(startTime.empty());
     AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
-    InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, want);
+    AbilityRuntime::ExtractInsightIntentInfo extractInfo;
+    InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, extractInfo, want);
     startTime = want.GetStringParam(Want::PARAM_RESV_START_TIME);
     EXPECT_FALSE(startTime.empty());
-    TAG_LOGI(AAFwkTag::TEST, "end.");
-}
-
-/**
- * @tc.name: GenerateWant_0500
- * @tc.desc: GenerateWant_0500
- * @tc.type: FUNC
- * @tc.require: issueI8ZRAG
- */
-HWTEST_F(InsightIntentExecuteManagerSecondTest, GenerateWant_0500, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "begin.");
-    AppExecFwk::InsightIntentExecuteParam param;
-    param.bundleName_ = "test.bundleName";
-    param.moduleName_ = "test.entry";
-    param.abilityName_ = "test.abilityName";
-    param.insightIntentName_ = "test.IntentName";
-    param.insightIntentParam_ = nullptr;
-    param.displayId_ = 2;
-    param.executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND;
-    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
-    AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
-    Want want;
-    int32_t result = InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, want);
-    EXPECT_EQ(result, ERR_INVALID_VALUE);
-    TAG_LOGI(AAFwkTag::TEST, "end.");
-}
-
-/**
- * @tc.name: GenerateWant_0600
- * @tc.desc: GenerateWant_0600
- * @tc.type: FUNC
- * @tc.require: issueI8ZRAG
- */
-HWTEST_F(InsightIntentExecuteManagerSecondTest, GenerateWant_0600, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "begin.");
-    AppExecFwk::InsightIntentExecuteParam param;
-    param.bundleName_ = "test.bundleName";
-    param.moduleName_ = "test.entry";
-    param.abilityName_ = "test.abilityName";
-    param.insightIntentName_ = "test.IntentName";
-    param.insightIntentParam_ = nullptr;
-    param.displayId_ = 2;
-    param.executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND;
-    param.isServiceMatch_ = false;
-    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
-    AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
-    Want want;
-    int32_t result = InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, want);
-    EXPECT_EQ(result, ERR_OK);
-    TAG_LOGI(AAFwkTag::TEST, "end.");
-}
-
-/**
- * @tc.name: GenerateWant_0700
- * @tc.desc: Test GenerateWant with displayId
- * @tc.type: FUNC
- * @tc.require: issueI8ZRAG
- */
-HWTEST_F(InsightIntentExecuteManagerSecondTest, GenerateWant_0700, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "begin.");
-    AppExecFwk::InsightIntentExecuteParam param;
-    param.bundleName_ = "test.bundleName";
-    param.moduleName_ = "test.entry";
-    param.abilityName_ = "test.abilityName";
-    param.insightIntentName_ = "test.IntentName";
-    param.insightIntentParam_ = std::make_shared<WantParams>();
-    param.displayId_ = 10; // 有效displayId
-    param.executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND;
-    param.isServiceMatch_ = true;
-    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
-    AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
-    Want want;
-    int32_t result = InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, want);
-    EXPECT_EQ(result, ERR_OK);
-    
-    // 验证displayId参数是否正确设置
-    int32_t displayId = want.GetIntParam(Want::PARAM_RESV_DISPLAY_ID, -1);
-    EXPECT_EQ(displayId, 10);
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
 
@@ -856,7 +817,8 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, GetMainElementName_0100, TestSiz
     param.executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND;
     auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
     paramPtr->moduleName_ = "test.entry";
-    std::string retString = InsightIntentExecuteManager::GetMainElementName(paramPtr);
+    std::string retString = InsightIntentExecuteManager::GetMainElementName(paramPtr->bundleName_,
+        paramPtr->moduleName_);
     EXPECT_EQ(retString, "");
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
@@ -1244,17 +1206,22 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, OnInsightAppDied_001, TestSize.L
 {
     TAG_LOGI(AAFwkTag::TEST, "InsightIntentExecuteManagerSecondTest OnInsightAppDied_001 start");
     std::shared_ptr<InsightIntentExecuteManager> manager = std::make_shared<InsightIntentExecuteManager>();
-    EXPECT_NE(manager, nullptr);
+    ASSERT_NE(manager, nullptr);
     uint64_t key = 1;
     sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
-    EXPECT_NE(callToken, nullptr);
+    ASSERT_NE(callToken, nullptr);
     std::string bundleName = "test.bundleName";
     std::string callerBundleName = "test.callerBundleName";
     uint64_t intentId = 1;
-    manager->AddRecord(key, callToken, bundleName, intentId, callerBundleName);
-    EXPECT_EQ(manager->records_.size(), 1);
-    manager->OnInsightAppDied(bundleName);
-    EXPECT_EQ(manager->records_.size(), 0);
+    manager->AddRecord(key, callToken, bundleName, intentId, ExecuteParam{.callerBundleName = callerBundleName});
+    ASSERT_EQ(manager->records_.size(), 1);
+    manager->SetTargetPid(intentId, 1234);
+
+    manager->OnInsightAppDied(bundleName, 1234);
+
+    EXPECT_TRUE(WaitUntil([&manager]() {
+        return manager->records_.size() == 0;
+    }, WAIT_APP_DIED_CLEANUP_MS));
     TAG_LOGI(AAFwkTag::TEST, "InsightIntentExecuteManagerSecondTest OnInsightAppDied_001 end");
 }
 
@@ -1268,29 +1235,455 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, OnInsightAppDied_002, TestSize.L
 {
     TAG_LOGI(AAFwkTag::TEST, "InsightIntentExecuteManagerSecondTest OnInsightAppDied_002 start");
     std::shared_ptr<InsightIntentExecuteManager> manager = std::make_shared<InsightIntentExecuteManager>();
-    EXPECT_NE(manager, nullptr);
-    
-    // 添加多条不同bundle的记录
+    ASSERT_NE(manager, nullptr);
+
     uint64_t key1 = 1;
     uint64_t key2 = 2;
     uint64_t key3 = 3;
     sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
-    EXPECT_NE(callToken, nullptr);
-    
-    manager->AddRecord(key1, callToken, "test.bundle1", key1, "caller1");
-    manager->AddRecord(key2, callToken, "test.bundle2", key2, "caller2");
-    manager->AddRecord(key3, callToken, "test.bundle1", key3, "caller3");
-    
-    EXPECT_EQ(manager->records_.size(), 3);
-    
-    // 触发bundle1的死亡回调
-    manager->OnInsightAppDied("test.bundle1");
-    
-    // 验证只有bundle1的记录被移除
-    EXPECT_EQ(manager->records_.size(), 1);
+    ASSERT_NE(callToken, nullptr);
+
+    manager->AddRecord(key1, callToken, "test.bundle1", key1, ExecuteParam{.callerBundleName = "caller1"});
+    manager->AddRecord(key2, callToken, "test.bundle2", key2, ExecuteParam{.callerBundleName = "caller2"});
+    manager->AddRecord(key3, callToken, "test.bundle1", key3, ExecuteParam{.callerBundleName = "caller3"});
+
+    ASSERT_EQ(manager->records_.size(), 3);
+    manager->SetTargetPid(key1, 1234);
+    manager->SetTargetPid(key3, 1234);
+
+    manager->OnInsightAppDied("test.bundle1", 1234);
+
+    EXPECT_TRUE(WaitUntil([&manager]() {
+        return manager->records_.size() == 1;
+    }, WAIT_APP_DIED_CLEANUP_MS));
     auto findResult = manager->records_.find(key2);
     EXPECT_NE(findResult, manager->records_.end());
     TAG_LOGI(AAFwkTag::TEST, "InsightIntentExecuteManagerSecondTest OnInsightAppDied_002 end");
+}
+
+/**
+ * @tc.name: OnInsightAppDied_003
+ * @tc.desc: Test delayed cleanup sends error callback when execute is still pending.
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, OnInsightAppDied_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "InsightIntentExecuteManagerSecondTest OnInsightAppDied_003 start");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    uint64_t key = 11;
+    uint64_t intentId = 0;
+    sptr<InsightIntentExecuteCallbackStubMock> callback = new InsightIntentExecuteCallbackStubMock();
+    ASSERT_NE(callback, nullptr);
+
+    manager->AddRecord(
+        key, callback, "test.bundle.callback", intentId, ExecuteParam{.callerBundleName = "caller.bundle"});
+    ASSERT_EQ(manager->records_.size(), 1);
+    manager->SetTargetPid(intentId, 1234);
+
+    manager->OnInsightAppDied("test.bundle.callback", 1234);
+
+    EXPECT_TRUE(WaitUntil([&callback, key]() {
+        return callback->callbackCount.load() == 1 && callback->lastKey == key;
+    }, WAIT_APP_DIED_CLEANUP_MS));
+    EXPECT_EQ(callback->callbackCount.load(), 1);
+    EXPECT_EQ(callback->lastKey, key);
+    EXPECT_EQ(callback->lastResultCode,
+        static_cast<int32_t>(AbilityRuntime::InsightIntentInnerErr::INSIGHT_INTENT_EXECUTE_REPLY_FAILED));
+    EXPECT_EQ(callback->lastInnerErr,
+        static_cast<int32_t>(AbilityRuntime::InsightIntentInnerErr::INSIGHT_INTENT_EXECUTE_REPLY_FAILED));
+    EXPECT_EQ(manager->records_.size(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "InsightIntentExecuteManagerSecondTest OnInsightAppDied_003 end");
+}
+
+/**
+ * @tc.name: OnInsightAppDied_004
+ * @tc.desc: Test delayed cleanup skips error callback after ExecuteIntentDone finishes first.
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, OnInsightAppDied_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "InsightIntentExecuteManagerSecondTest OnInsightAppDied_004 start");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    uint64_t key = 12;
+    uint64_t intentId = 0;
+    sptr<InsightIntentExecuteCallbackStubMock> callback = new InsightIntentExecuteCallbackStubMock();
+    ASSERT_NE(callback, nullptr);
+
+    manager->AddRecord(key, callback, "test.bundle.race", intentId, ExecuteParam{.callerBundleName = "caller.bundle"});
+    ASSERT_EQ(manager->records_.size(), 1);
+    manager->SetTargetPid(intentId, 1234);
+
+    manager->OnInsightAppDied("test.bundle.race", 1234);
+    AppExecFwk::InsightIntentExecuteResult result;
+    auto ret = manager->ExecuteIntentDone(intentId, ERR_OK, result);
+    EXPECT_TRUE(ret == ERR_OK || ret == ERR_INVALID_VALUE);
+
+    EXPECT_TRUE(WaitUntil([&manager]() {
+        return manager->records_.size() == 0;
+    }, WAIT_APP_DIED_CLEANUP_MS));
+    EXPECT_EQ(callback->callbackCount.load(), 1);
+    EXPECT_EQ(callback->lastKey, key);
+    EXPECT_EQ(manager->records_.size(), 0);
+    if (ret == ERR_OK) {
+        EXPECT_EQ(callback->lastResultCode, ERR_OK);
+        EXPECT_EQ(callback->lastInnerErr, 0);
+    } else {
+        EXPECT_EQ(callback->lastResultCode,
+            static_cast<int32_t>(AbilityRuntime::InsightIntentInnerErr::INSIGHT_INTENT_EXECUTE_REPLY_FAILED));
+        EXPECT_EQ(callback->lastInnerErr,
+            static_cast<int32_t>(AbilityRuntime::InsightIntentInnerErr::INSIGHT_INTENT_EXECUTE_REPLY_FAILED));
+    }
+    TAG_LOGI(AAFwkTag::TEST, "InsightIntentExecuteManagerSecondTest OnInsightAppDied_004 end");
+}
+
+/**
+ * @tc.name: OnInsightAppDied_005
+ * @tc.desc: Test delayed cleanup handles manager destruction safely.
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, OnInsightAppDied_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "InsightIntentExecuteManagerSecondTest OnInsightAppDied_005 start");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    uint64_t key = 13;
+    uint64_t intentId = 0;
+    sptr<InsightIntentExecuteCallbackStubMock> callback = new InsightIntentExecuteCallbackStubMock();
+    ASSERT_NE(callback, nullptr);
+
+    manager->AddRecord(
+        key, callback, "test.bundle.destroy", intentId, ExecuteParam{.callerBundleName = "caller.bundle"});
+    manager->SetTargetPid(intentId, 1234);
+    manager->OnInsightAppDied("test.bundle.destroy", 1234);
+    manager.reset();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_APP_DIED_CLEANUP_MS));
+    SUCCEED();
+    TAG_LOGI(AAFwkTag::TEST, "InsightIntentExecuteManagerSecondTest OnInsightAppDied_005 end");
+}
+
+/**
+ * @tc.name: OnInsightAppDied_010
+ * @tc.desc: Test cleanup skips duplicate error callback after ExecuteIntentDone already succeeded.
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, OnInsightAppDied_010, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_010 start");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    uint64_t key = 36;
+    uint64_t intentId = 0;
+    sptr<InsightIntentExecuteCallbackStubMock> callback = new InsightIntentExecuteCallbackStubMock();
+    ASSERT_NE(callback, nullptr);
+    manager->AddRecord(key, callback, "test.bundle.done", intentId, ExecuteParam{.callerBundleName = "caller.bundle"});
+    manager->SetTargetPid(intentId, 1234);
+
+    AppExecFwk::InsightIntentExecuteResult result;
+    auto ret = manager->ExecuteIntentDone(intentId, ERR_OK, result);
+    ASSERT_EQ(ret, ERR_OK);
+    ASSERT_EQ(callback->callbackCount.load(), 1);
+    ASSERT_EQ(callback->lastKey, key);
+    ASSERT_EQ(callback->lastResultCode, ERR_OK);
+    ASSERT_EQ(callback->lastInnerErr, 0);
+
+    manager->OnInsightAppDied("test.bundle.done", 1234);
+
+    EXPECT_TRUE(WaitUntil([&manager]() {
+        return manager->records_.size() == 0;
+    }, WAIT_APP_DIED_CLEANUP_MS));
+    EXPECT_EQ(callback->callbackCount.load(), 1);
+    EXPECT_EQ(callback->lastResultCode, ERR_OK);
+    EXPECT_EQ(callback->lastInnerErr, 0);
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_010 end");
+}
+
+/**
+ * @tc.name: OnInsightAppDied_011
+ * @tc.desc: Test delayed cleanup erases record when caller token is not a callback stub.
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, OnInsightAppDied_011, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_011 start");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+    ASSERT_EQ(manager->records_.size(), 0);
+
+    manager->OnInsightAppDied("test.bundle.empty", 1234);
+
+    EXPECT_EQ(manager->records_.size(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_011 end");
+}
+
+/**
+ * @tc.name: OnInsightAppDied_012
+ * @tc.desc: Test delayed cleanup erases record when caller token becomes null before cleanup runs.
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, OnInsightAppDied_012, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_012 start");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    uint64_t key = 38;
+    uint64_t intentId = 0;
+    sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
+    ASSERT_NE(callToken, nullptr);
+    manager->AddRecord(
+        key, callToken, "test.bundle.norecipient", intentId, ExecuteParam{.callerBundleName = "caller.bundle"});
+    ASSERT_EQ(manager->records_.count(intentId), 1);
+    manager->records_[intentId]->deathRecipient = nullptr;
+    manager->SetTargetPid(intentId, 1234);
+
+    manager->OnInsightAppDied("test.bundle.norecipient", 1234);
+
+    EXPECT_TRUE(WaitUntil([&manager, intentId]() {
+        return manager->records_.count(intentId) == 0;
+    }, WAIT_APP_DIED_CLEANUP_MS));
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_012 end");
+}
+
+/**
+ * @tc.name: OnInsightAppDied_013
+ * @tc.desc: Test delayed cleanup clears a remote-died record without duplicate callback.
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, OnInsightAppDied_013, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_013 start");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    uint64_t key = 39;
+    uint64_t intentId = 0;
+    sptr<InsightIntentExecuteCallbackStubMock> callback = new InsightIntentExecuteCallbackStubMock();
+    ASSERT_NE(callback, nullptr);
+    manager->AddRecord(
+        key, callback, "test.bundle.remotedied", intentId, ExecuteParam{.callerBundleName = "caller.bundle"});
+    manager->SetTargetPid(intentId, 1234);
+
+    ASSERT_EQ(manager->RemoteDied(intentId), ERR_OK);
+    ASSERT_EQ(manager->records_[intentId]->state, InsightIntentExecuteState::REMOTE_DIED);
+    ASSERT_EQ(manager->records_[intentId]->callerToken, nullptr);
+
+    manager->OnInsightAppDied("test.bundle.remotedied", 1234);
+
+    EXPECT_TRUE(WaitUntil([&manager, intentId]() {
+        return manager->records_.count(intentId) == 0;
+    }, WAIT_APP_DIED_CLEANUP_MS));
+    EXPECT_EQ(callback->callbackCount.load(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_013 end");
+}
+
+/**
+ * @tc.name: OnInsightAppDied_014
+ * @tc.desc: Test cleanup continues after a non-callback record and still notifies later matched record.
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, OnInsightAppDied_014, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_014 start");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    uint64_t firstIntentId = 0;
+    uint64_t secondIntentId = 0;
+    uint64_t thirdIntentId = 0;
+    sptr<IRemoteObject> nonCallbackToken = new AppExecFwk::MockAbilityToken();
+    sptr<InsightIntentExecuteCallbackStubMock> callback = new InsightIntentExecuteCallbackStubMock();
+    sptr<IRemoteObject> otherToken = new AppExecFwk::MockAbilityToken();
+    ASSERT_NE(nonCallbackToken, nullptr);
+    ASSERT_NE(callback, nullptr);
+    ASSERT_NE(otherToken, nullptr);
+
+    manager->AddRecord(
+        40, nonCallbackToken, "test.bundle.mixed", firstIntentId, ExecuteParam{.callerBundleName = "caller.bundle"});
+    manager->AddRecord(
+        41, callback, "test.bundle.mixed", secondIntentId, ExecuteParam{.callerBundleName = "caller.bundle"});
+    manager->AddRecord(
+        42, otherToken, "test.bundle.other", thirdIntentId, ExecuteParam{.callerBundleName = "caller.bundle"});
+    manager->SetTargetPid(firstIntentId, 1234);
+    manager->SetTargetPid(secondIntentId, 1234);
+
+    manager->OnInsightAppDied("test.bundle.mixed", 1234);
+
+    EXPECT_TRUE(WaitUntil([&manager, secondIntentId]() {
+        return manager->records_.count(secondIntentId) == 0;
+    }, WAIT_APP_DIED_CLEANUP_MS));
+    EXPECT_EQ(callback->callbackCount.load(), 1);
+    EXPECT_EQ(callback->lastKey, 41);
+    EXPECT_EQ(manager->records_.count(firstIntentId), 0);
+    EXPECT_EQ(manager->records_.count(secondIntentId), 0);
+    EXPECT_EQ(manager->records_.count(thirdIntentId), 1);
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_014 end");
+}
+
+/**
+ * @tc.name: OnInsightAppDied_015
+ * @tc.desc: Test cleanup continues to later records after removed and null entries are skipped.
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, OnInsightAppDied_015, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_015 start");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    uint64_t nullIntentId = 43;
+    uint64_t callbackIntentId = 0;
+    sptr<InsightIntentExecuteCallbackStubMock> callback = new InsightIntentExecuteCallbackStubMock();
+    ASSERT_NE(callback, nullptr);
+
+    manager->records_[nullIntentId] = nullptr;
+    manager->AddRecord(
+        45, callback, "test.bundle.chain", callbackIntentId, ExecuteParam{.callerBundleName = "caller.bundle"});
+    manager->SetTargetPid(callbackIntentId, 1234);
+
+    manager->OnInsightAppDied("test.bundle.chain", 1234);
+
+    EXPECT_TRUE(WaitUntil([&callback]() {
+        return callback->callbackCount.load() == 1;
+    }, WAIT_APP_DIED_CLEANUP_MS));
+    EXPECT_EQ(callback->lastKey, 45);
+    EXPECT_EQ(manager->records_.count(nullIntentId), 1);
+    EXPECT_EQ(manager->records_[nullIntentId], nullptr);
+    EXPECT_EQ(manager->records_.count(callbackIntentId), 0);
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_015 end");
+}
+
+/**
+ * @tc.name: OnInsightAppDied_006
+ * @tc.desc: Test app died scan skips null and non-matching records.
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, OnInsightAppDied_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_006 start");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    manager->records_[31] = nullptr;
+    uint64_t key = 32;
+    uint64_t intentId = 0;
+    sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
+    ASSERT_NE(callToken, nullptr);
+    manager->AddRecord(
+        key, callToken, "test.bundle.other", intentId, ExecuteParam{.callerBundleName = "caller.bundle"});
+    ASSERT_EQ(manager->records_.size(), 2);
+
+    manager->OnInsightAppDied("test.bundle.target", 1234);
+    std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_APP_DIED_CLEANUP_MS));
+    EXPECT_EQ(manager->records_.size(), 2);
+    EXPECT_EQ(manager->records_.count(31), 1);
+    EXPECT_EQ(manager->records_.count(intentId), 1);
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_006 end");
+}
+
+/**
+ * @tc.name: OnInsightAppDied_007
+ * @tc.desc: Test delayed cleanup skips record that was removed before cleanup runs.
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, OnInsightAppDied_007, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_007 start");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    uint64_t key = 33;
+    uint64_t intentId = 0;
+    sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
+    ASSERT_NE(callToken, nullptr);
+    manager->AddRecord(
+        key, callToken, "test.bundle.remove", intentId, ExecuteParam{.callerBundleName = "caller.bundle"});
+    manager->SetTargetPid(intentId, 1234);
+
+    manager->OnInsightAppDied("test.bundle.remove", 1234);
+    manager->RemoveExecuteIntent(intentId);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_APP_DIED_CLEANUP_MS));
+    EXPECT_EQ(manager->records_.count(intentId), 0);
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_007 end");
+}
+
+/**
+ * @tc.name: OnInsightAppDied_008
+ * @tc.desc: Test delayed cleanup skips record that becomes null before cleanup runs.
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, OnInsightAppDied_008, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_008 start");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    uint64_t key = 34;
+    uint64_t intentId = 0;
+    sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
+    ASSERT_NE(callToken, nullptr);
+    manager->AddRecord(key, callToken, "test.bundle.null", intentId, ExecuteParam{.callerBundleName = "caller.bundle"});
+    manager->SetTargetPid(intentId, 1234);
+
+    manager->OnInsightAppDied("test.bundle.null", 1234);
+    manager->records_[intentId] = nullptr;
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_APP_DIED_CLEANUP_MS));
+    EXPECT_EQ(manager->records_.count(intentId), 1);
+    EXPECT_EQ(manager->records_[intentId], nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_008 end");
+}
+
+/**
+ * @tc.name: OnInsightAppDied_009
+ * @tc.desc: Test delayed cleanup notifies callback even when death recipient is null.
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, OnInsightAppDied_009, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_009 start");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    uint64_t key = 35;
+    uint64_t intentId = 0;
+    sptr<InsightIntentExecuteCallbackStubMock> callback = new InsightIntentExecuteCallbackStubMock();
+    ASSERT_NE(callback, nullptr);
+    manager->AddRecord(
+        key, callback, "test.bundle.deathrecipient", intentId, ExecuteParam{.callerBundleName = "caller.bundle"});
+    ASSERT_EQ(manager->records_.count(intentId), 1);
+    manager->records_[intentId]->deathRecipient = nullptr;
+    manager->SetTargetPid(intentId, 1234);
+
+    manager->OnInsightAppDied("test.bundle.deathrecipient", 1234);
+
+    EXPECT_TRUE(WaitUntil([&callback, key]() {
+        return callback->callbackCount.load() == 1 && callback->lastKey == key;
+    }, WAIT_APP_DIED_CLEANUP_MS));
+    EXPECT_EQ(callback->lastResultCode,
+        static_cast<int32_t>(AbilityRuntime::InsightIntentInnerErr::INSIGHT_INTENT_EXECUTE_REPLY_FAILED));
+    EXPECT_EQ(manager->records_.count(intentId), 0);
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_009 end");
 }
 
 /**
@@ -1347,14 +1740,1079 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateDecoratorParams_01
     param.insightIntentName_ = "test.IntentName";
     param.executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND;
     auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
-    AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
-    decoratorInfo.decoratorType = AbilityRuntime::INSIGHT_INTENTS_DECORATOR_TYPE_LINK;
+    AbilityRuntime::ExtractInsightIntentInfo extractInfo;
+    extractInfo.genericInfo.decoratorType = AbilityRuntime::INSIGHT_INTENTS_DECORATOR_TYPE_LINK;
     Want want;
     
     std::shared_ptr<InsightIntentExecuteManager> manager = std::make_shared<InsightIntentExecuteManager>();
     auto ret = manager->CheckAndUpdateDecoratorParams(
-        paramPtr, decoratorInfo, want);
+        paramPtr, extractInfo, want);
     EXPECT_EQ(ret, ERR_OK);
 }
+
+/**
+ * @tc.name: CheckAndUpdateQueryEntityParam_0100
+ * @tc.desc: Test CheckAndUpdateQueryEntityParam with null callerToken
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateQueryEntityParam_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdateQueryEntityParam_0100 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    AppExecFwk::InsightIntentQueryParam param;
+    param.bundleName_ = "test.bundleName";
+    param.moduleName_ = "test.module";
+    param.intentName_ = "test.intent";
+    param.className_ = "test.className";
+    param.queryEntityParam_.parameters_ = std::make_shared<WantParams>();
+    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentQueryParam>(param);
+
+    sptr<IRemoteObject> callerToken = nullptr;
+    uint64_t key = 1;
+    std::string callerBundleName = "com.bundlename.test";
+
+    auto ret = manager->CheckAndUpdateQueryEntityParam(key, callerToken, paramPtr,
+        callerBundleName);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdateQueryEntityParam_0100 end.");
+}
+
+/**
+ * @tc.name: CheckAndUpdateQueryEntityParam_0200
+ * @tc.desc: Test CheckAndUpdateQueryEntityParam with null param
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateQueryEntityParam_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdateQueryEntityParam_0200 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    std::shared_ptr<AppExecFwk::InsightIntentQueryParam> paramPtr = nullptr;
+    sptr<IRemoteObject> callerToken = new AppExecFwk::MockAbilityToken();
+    uint64_t key = 1;
+    std::string callerBundleName = "com.bundlename.test";
+
+    auto ret = manager->CheckAndUpdateQueryEntityParam(key, callerToken, paramPtr,
+        callerBundleName);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdateQueryEntityParam_0200 end.");
+}
+
+/**
+ * @tc.name: CheckAndUpdateQueryEntityParam_0300
+ * @tc.desc: Test CheckAndUpdateQueryEntityParam with empty bundleName
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateQueryEntityParam_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdateQueryEntityParam_0300 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    AppExecFwk::InsightIntentQueryParam param;
+    param.bundleName_ = "";  // empty bundleName
+    param.moduleName_ = "test.module";
+    param.intentName_ = "test.intent";
+    param.className_ = "test.className";
+    param.queryEntityParam_.parameters_ = std::make_shared<WantParams>();
+    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentQueryParam>(param);
+
+    sptr<IRemoteObject> callerToken = new AppExecFwk::MockAbilityToken();
+    uint64_t key = 1;
+    std::string callerBundleName = "com.bundlename.test";
+
+    auto ret = manager->CheckAndUpdateQueryEntityParam(key, callerToken, paramPtr,
+        callerBundleName);
+    EXPECT_EQ(ret, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdateQueryEntityParam_0300 end.");
+}
+
+/**
+ * @tc.name: CheckAndUpdateQueryEntityParam_0400
+ * @tc.desc: Test CheckAndUpdateQueryEntityParam with empty moduleName
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateQueryEntityParam_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdateQueryEntityParam_0400 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    AppExecFwk::InsightIntentQueryParam param;
+    param.bundleName_ = "test.bundleName";
+    param.moduleName_ = "";
+    param.intentName_ = "test.intent";
+    param.className_ = "test.className";
+    param.queryEntityParam_.parameters_ = std::make_shared<WantParams>();
+    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentQueryParam>(param);
+
+    sptr<IRemoteObject> callerToken = new AppExecFwk::MockAbilityToken();
+    uint64_t key = 1;
+    std::string callerBundleName = "com.bundlename.test";
+
+    auto ret = manager->CheckAndUpdateQueryEntityParam(key, callerToken, paramPtr,
+        callerBundleName);
+    EXPECT_EQ(ret, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdateQueryEntityParam_0400 end.");
+}
+
+/**
+ * @tc.name: CheckAndUpdateQueryEntityParam_0500
+ * @tc.desc: Test CheckAndUpdateQueryEntityParam with empty intentName
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateQueryEntityParam_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdateQueryEntityParam_0500 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    AppExecFwk::InsightIntentQueryParam param;
+    param.bundleName_ = "test.bundleName";
+    param.moduleName_ = "test.module";
+    param.intentName_ = "";
+    param.className_ = "test.className";
+    param.queryEntityParam_.parameters_ = std::make_shared<WantParams>();
+    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentQueryParam>(param);
+
+    sptr<IRemoteObject> callerToken = new AppExecFwk::MockAbilityToken();
+    uint64_t key = 1;
+    std::string callerBundleName = "com.bundlename.test";
+
+    auto ret = manager->CheckAndUpdateQueryEntityParam(key, callerToken, paramPtr,
+        callerBundleName);
+    EXPECT_EQ(ret, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdateQueryEntityParam_0500 end.");
+}
+
+/**
+ * @tc.name: CheckAndUpdateQueryEntityParam_0600
+ * @tc.desc: Test CheckAndUpdateQueryEntityParam with empty className
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateQueryEntityParam_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdateQueryEntityParam_0600 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    AppExecFwk::InsightIntentQueryParam param;
+    param.bundleName_ = "test.bundleName";
+    param.moduleName_ = "test.module";
+    param.intentName_ = "test.intent";
+    param.className_ = "";
+    param.queryEntityParam_.parameters_ = std::make_shared<WantParams>();
+    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentQueryParam>(param);
+
+    sptr<IRemoteObject> callerToken = new AppExecFwk::MockAbilityToken();
+    uint64_t key = 1;
+    std::string callerBundleName = "com.bundlename.test";
+
+    auto ret = manager->CheckAndUpdateQueryEntityParam(key, callerToken, paramPtr,
+        callerBundleName);
+    EXPECT_EQ(ret, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdateQueryEntityParam_0600 end.");
+}
+
+/**
+ * @tc.name: CheckAndUpdateQueryEntityParam_0700
+ * @tc.desc: Test CheckAndUpdateQueryEntityParam with valid params
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateQueryEntityParam_0700, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdateQueryEntityParam_0700 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    AppExecFwk::InsightIntentQueryParam param;
+    param.bundleName_ = "test.bundleName";
+    param.moduleName_ = "test.module";
+    param.intentName_ = "test.intent";
+    param.className_ = "test.className";
+    param.userId_ = 100;
+    param.queryEntityParam_.parameters_ = std::make_shared<WantParams>();
+    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentQueryParam>(param);
+
+    sptr<IRemoteObject> callerToken = new AppExecFwk::MockAbilityToken();
+    uint64_t key = 1001;
+    std::string callerBundleName = "com.bundlename.test";
+
+    auto ret = manager->CheckAndUpdateQueryEntityParam(key, callerToken, paramPtr,
+        callerBundleName);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_NE(paramPtr->intentId_, 0);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdateQueryEntityParam_0700 end.");
+}
+
+/**
+ * @tc.name: GenerateQueryEntityWant_0100
+ * @tc.desc: Test GenerateQueryEntityWant with null param
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, GenerateQueryEntityWant_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GenerateQueryEntityWant_0100 begin.");
+
+    std::shared_ptr<AppExecFwk::InsightIntentQueryParam> paramPtr = nullptr;
+    Want want;
+
+    auto ret = InsightIntentExecuteManager::GenerateQueryEntityWant(paramPtr, want);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "GenerateQueryEntityWant_0100 end.");
+}
+
+/**
+ * @tc.name: CheckCanQueryEntity_0100
+ * @tc.desc: Test CheckCanQueryEntity with empty className
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckCanQueryEntity_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckCanQueryEntity_0100 begin.");
+
+    AbilityRuntime::ExtractInsightIntentInfo intentInfo;
+    std::string className = "";
+    auto queryParams = std::make_shared<WantParams>();
+    AppExecFwk::InsightIntentQueryEntityParam param;
+    param.parameters_ = queryParams;
+    auto ret = InsightIntentExecuteManager::CheckEntityQueryable(intentInfo, className, param);
+    EXPECT_FALSE(ret);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckCanQueryEntity_0100 end.");
+}
+
+/**
+ * @tc.name: CheckCanQueryEntity_0200
+ * @tc.desc: Test CheckCanQueryEntity with empty entities
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckCanQueryEntity_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckCanQueryEntity_0200 begin.");
+
+    AbilityRuntime::ExtractInsightIntentInfo intentInfo;
+    intentInfo.entities.clear();
+    std::string className = "test.className";
+    auto queryParams = std::make_shared<WantParams>();
+    AppExecFwk::InsightIntentQueryEntityParam param;
+    param.parameters_ = queryParams;
+    auto ret = InsightIntentExecuteManager::CheckEntityQueryable(intentInfo, className, param);
+    EXPECT_FALSE(ret);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckCanQueryEntity_0200 end.");
+}
+
+/**
+ * @tc.name: CheckCanQueryEntity_0300
+ * @tc.desc: Test CheckCanQueryEntity with entity not queryable
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckCanQueryEntity_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckCanQueryEntity_0300 begin.");
+
+    AbilityRuntime::ExtractInsightIntentInfo intentInfo;
+    AbilityRuntime::InsightIntentEntityInfo entity;
+    entity.className = "test.className";
+    entity.parentClassName = "not.insightIntent.AppIntentEntity";
+    intentInfo.entities.push_back(entity);
+
+    std::string className = "test.className";
+    auto queryParams = std::make_shared<WantParams>();
+    AppExecFwk::InsightIntentQueryEntityParam param;
+    param.parameters_ = queryParams;
+    auto ret = InsightIntentExecuteManager::CheckEntityQueryable(intentInfo, className, param);
+    EXPECT_FALSE(ret);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckCanQueryEntity_0300 end.");
+}
+
+/**
+ * @tc.name: CheckCanQueryEntity_0400
+ * @tc.desc: Test CheckCanQueryEntity with className not match
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckCanQueryEntity_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckCanQueryEntity_0400 begin.");
+
+    AbilityRuntime::ExtractInsightIntentInfo intentInfo;
+    AbilityRuntime::InsightIntentEntityInfo entity;
+    entity.className = "other.className";
+    entity.parentClassName = "insightIntent.AppIntentEntity";
+    intentInfo.entities.push_back(entity);
+
+    std::string className = "test.className";
+    auto queryParams = std::make_shared<WantParams>();
+    AppExecFwk::InsightIntentQueryEntityParam param;
+    param.parameters_ = queryParams;
+    auto ret = InsightIntentExecuteManager::CheckEntityQueryable(intentInfo, className, param);
+    EXPECT_FALSE(ret);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckCanQueryEntity_0400 end.");
+}
+
+/**
+ * @tc.name: CheckCanQueryEntity_0500
+ * @tc.desc: Test CheckCanQueryEntity with queryable entity
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckCanQueryEntity_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckCanQueryEntity_0500 begin.");
+
+    AbilityRuntime::ExtractInsightIntentInfo intentInfo;
+    AbilityRuntime::InsightIntentEntityInfo entity;
+    entity.className = "test.className";
+    entity.parentClassName = "insightIntent.AppIntentEntity";
+    entity.supportedQueryProperties = {"prop1", "prop2"};
+    intentInfo.entities.push_back(entity);
+
+    std::string className = "test.className";
+    auto queryParams = std::make_shared<WantParams>();
+    AppExecFwk::InsightIntentQueryEntityParam param;
+    param.parameters_ = queryParams;
+    auto ret = InsightIntentExecuteManager::CheckEntityQueryable(intentInfo, className, param);
+    EXPECT_TRUE(ret);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckCanQueryEntity_0500 end.");
+}
+
+/**
+ * @tc.name: CheckCanQueryEntity_0600
+ * @tc.desc: Test CheckCanQueryEntity with multiple entities
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckCanQueryEntity_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckCanQueryEntity_0600 begin.");
+
+    AbilityRuntime::ExtractInsightIntentInfo intentInfo;
+
+    AbilityRuntime::InsightIntentEntityInfo entity1;
+    entity1.className = "test.className";
+    entity1.parentClassName = "not.queryable";
+    intentInfo.entities.push_back(entity1);
+
+    AbilityRuntime::InsightIntentEntityInfo entity2;
+    entity2.className = "test.className";
+    entity2.parentClassName = "insightIntent.AppIntentEntity";
+    entity2.supportedQueryProperties = {"prop1"};
+    intentInfo.entities.push_back(entity2);
+
+    std::string className = "test.className";
+    auto queryParams = std::make_shared<WantParams>();
+    AppExecFwk::InsightIntentQueryEntityParam param;
+    param.parameters_ = queryParams;
+    auto ret = InsightIntentExecuteManager::CheckEntityQueryable(intentInfo, className, param);
+    EXPECT_TRUE(ret);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckCanQueryEntity_0600 end.");
+}
+
+/**
+ * @tc.name: CheckCanQueryEntity_0700
+ * @tc.desc: Test CheckCanQueryEntity with empty queryParams
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckCanQueryEntity_0700, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckCanQueryEntity_0700 begin.");
+
+    AbilityRuntime::ExtractInsightIntentInfo intentInfo;
+    AbilityRuntime::InsightIntentEntityInfo entity;
+    entity.className = "test.className";
+    entity.parentClassName = "insightIntent.AppIntentEntity";
+    entity.supportedQueryProperties = {"prop1", "prop2"};
+    intentInfo.entities.push_back(entity);
+
+    std::string className = "test.className";
+    auto queryParams = std::make_shared<WantParams>();
+    AppExecFwk::InsightIntentQueryEntityParam param;
+    param.parameters_ = queryParams;
+    auto ret = InsightIntentExecuteManager::CheckEntityQueryable(intentInfo, className, param);
+    EXPECT_TRUE(ret);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckCanQueryEntity_0700 end.");
+}
+
+/**
+ * @tc.name: InsightIntentEntityInfo_IsQueryable_0100
+ * @tc.desc: Test InsightIntentEntityInfo::isQueryable with matching parentClassName.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, InsightIntentEntityInfo_IsQueryable_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "InsightIntentEntityInfo_IsQueryable_0100 begin.");
+
+    AbilityRuntime::InsightIntentEntityInfo entity;
+    entity.className = "TestClass";
+    entity.entityId = "testId";
+    entity.parentClassName = "insightIntent.AppIntentEntity";
+    EXPECT_TRUE(entity.isQueryable());
+
+    TAG_LOGI(AAFwkTag::TEST, "InsightIntentEntityInfo_IsQueryable_0100 end.");
+}
+
+/**
+ * @tc.name: InsightIntentEntityInfo_IsQueryable_0200
+ * @tc.desc: Test InsightIntentEntityInfo::isQueryable with non-matching parentClassName.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, InsightIntentEntityInfo_IsQueryable_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "InsightIntentEntityInfo_IsQueryable_0200 begin.");
+
+    AbilityRuntime::InsightIntentEntityInfo entity;
+    entity.className = "TestClass";
+    entity.entityId = "testId";
+    entity.parentClassName = "other.ParentClass";
+    EXPECT_FALSE(entity.isQueryable());
+
+    TAG_LOGI(AAFwkTag::TEST, "InsightIntentEntityInfo_IsQueryable_0200 end.");
+}
+
+/**
+ * @tc.name: InsightIntentEntityInfo_IsQueryable_0300
+ * @tc.desc: Test InsightIntentEntityInfo::isQueryable with empty parentClassName.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, InsightIntentEntityInfo_IsQueryable_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "InsightIntentEntityInfo_IsQueryable_0300 begin.");
+
+    AbilityRuntime::InsightIntentEntityInfo entity;
+    entity.className = "TestClass";
+    entity.entityId = "testId";
+    entity.parentClassName = "";
+    EXPECT_FALSE(entity.isQueryable());
+
+    TAG_LOGI(AAFwkTag::TEST, "InsightIntentEntityInfo_IsQueryable_0300 end.");
+}
+
+/**
+ * @tc.name: GenerateQueryEntityWant_0200
+ * @tc.desc: Test GenerateQueryEntityWant with CheckCanQueryEntity returning false.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, GenerateQueryEntityWant_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GenerateQueryEntityWant_0200 begin.");
+
+    AppExecFwk::InsightIntentQueryParam param;
+    param.bundleName_ = "test.bundleName";
+    param.moduleName_ = "test.module";
+    param.intentName_ = "test.intent";
+    param.className_ = "test.className";
+    param.queryEntityParam_.queryType_ = "all";
+    param.queryEntityParam_.parameters_ = std::make_shared<WantParams>();
+    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentQueryParam>(param);
+
+    Want want;
+    auto ret = InsightIntentExecuteManager::GenerateQueryEntityWant(paramPtr, want);
+    EXPECT_EQ(ret, INTENT_NOT_EXIST);
+
+    TAG_LOGI(AAFwkTag::TEST, "GenerateQueryEntityWant_0200 end.");
+}
+
+/**
+ * @tc.name: GetAbilityNameFromMatched_0100
+ * @tc.desc: Test getting the configured ability name from an entry profile.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, GetAbilityNameFromMatched_0100, TestSize.Level1)
+{
+    AbilityRuntime::ExtractInsightIntentGenericInfo info;
+    info.set<AbilityRuntime::InsightIntentEntryInfo>();
+    info.get<AbilityRuntime::InsightIntentEntryInfo>().abilityName = "FeatureAbility";
+
+    EXPECT_EQ(InsightIntentExecuteManager::GetAbilityNameFromMatched(info), "FeatureAbility");
+}
+
+/**
+ * @tc.name: GetAbilityNameFromMatched_0200
+ * @tc.desc: Test getting the configured UIAbility name from a page profile.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, GetAbilityNameFromMatched_0200, TestSize.Level1)
+{
+    AbilityRuntime::ExtractInsightIntentGenericInfo info;
+    info.set<AbilityRuntime::InsightIntentPageInfo>();
+    info.get<AbilityRuntime::InsightIntentPageInfo>().uiAbility = "PageAbility";
+
+    EXPECT_EQ(InsightIntentExecuteManager::GetAbilityNameFromMatched(info), "PageAbility");
+}
+
+/**
+ * @tc.name: GetAbilityNameFromMatched_0300
+ * @tc.desc: Test getting the configured ability name from a form profile.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, GetAbilityNameFromMatched_0300, TestSize.Level1)
+{
+    AbilityRuntime::ExtractInsightIntentGenericInfo info;
+    info.set<AbilityRuntime::InsightIntentFormInfo>();
+    info.get<AbilityRuntime::InsightIntentFormInfo>().abilityName = "FormAbility";
+
+    EXPECT_EQ(InsightIntentExecuteManager::GetAbilityNameFromMatched(info), "FormAbility");
+}
+
+/**
+ * @tc.name: GetAbilityNameFromMatched_0400
+ * @tc.desc: Test a profile type without an ability name uses the fallback path.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, GetAbilityNameFromMatched_0400, TestSize.Level1)
+{
+    AbilityRuntime::ExtractInsightIntentGenericInfo info;
+    info.set<AbilityRuntime::InsightIntentFunctionInfo>();
+
+    EXPECT_TRUE(InsightIntentExecuteManager::GetAbilityNameFromMatched(info).empty());
+}
+
+/**
+ * @tc.name: CheckAndUpdateQueryEntityParam_0800
+ * @tc.desc: Test CheckAndUpdateQueryEntityParam with userId set to default value.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckAndUpdateQueryEntityParam_0800, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdateQueryEntityParam_0800 begin.");
+
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    AppExecFwk::InsightIntentQueryParam param;
+    param.bundleName_ = "test.bundleName";
+    param.moduleName_ = "test.module";
+    param.intentName_ = "test.intent";
+    param.className_ = "test.className";
+    param.userId_ = -1;
+    param.queryEntityParam_.parameters_ = std::make_shared<WantParams>();
+    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentQueryParam>(param);
+
+    sptr<IRemoteObject> callerToken = new AppExecFwk::MockAbilityToken();
+    uint64_t key = 2001;
+    std::string callerBundleName = "com.bundlename.test";
+
+    auto ret = manager->CheckAndUpdateQueryEntityParam(key, callerToken, paramPtr,
+        callerBundleName);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_NE(paramPtr->userId_, -1);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdateQueryEntityParam_0800 end.");
+}
+
+/**
+ * @tc.name: CheckCanQueryEntity_0800
+ * @tc.desc: Test CheckCanQueryEntity with query key not in supported properties.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckCanQueryEntity_0800, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckCanQueryEntity_0800 begin.");
+
+    AbilityRuntime::ExtractInsightIntentInfo intentInfo;
+    AbilityRuntime::InsightIntentEntityInfo entity;
+    entity.className = "test.className";
+    entity.parentClassName = "insightIntent.AppIntentEntity";
+    entity.supportedQueryProperties = {"prop1", "prop2"};
+    intentInfo.entities.push_back(entity);
+
+    std::string className = "test.className";
+    auto queryParams = std::make_shared<WantParams>();
+    queryParams->SetParam("unsupportedKey", AAFwk::String::Box("value"));
+    AppExecFwk::InsightIntentQueryEntityParam param;
+    param.queryType_ = "all";
+    param.parameters_ = queryParams;
+    auto ret = InsightIntentExecuteManager::CheckEntityQueryable(intentInfo, className, param);
+    EXPECT_TRUE(ret);
+
+    param.queryType_ = "byProperty";
+    param.parameters_ = queryParams;
+    ret = InsightIntentExecuteManager::CheckEntityQueryable(intentInfo, className, param);
+    EXPECT_FALSE(ret);
+
+    param.queryType_ = "byProperty";
+    param.parameters_ = nullptr;
+    ret = InsightIntentExecuteManager::CheckEntityQueryable(intentInfo, className, param);
+    EXPECT_FALSE(ret);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckCanQueryEntity_0800 end.");
+}
+
+/**
+ * @tc.name: CheckCanQueryEntity_0900
+ * @tc.desc: Test CheckCanQueryEntity with query key in supported properties.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, CheckCanQueryEntity_0900, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckCanQueryEntity_0900 begin.");
+
+    AbilityRuntime::ExtractInsightIntentInfo intentInfo;
+    AbilityRuntime::InsightIntentEntityInfo entity;
+    entity.className = "test.className";
+    entity.parentClassName = "insightIntent.AppIntentEntity";
+    entity.supportedQueryProperties = {"prop1", "prop2"};
+    intentInfo.entities.push_back(entity);
+
+    std::string className = "test.className";
+    auto queryParams = std::make_shared<WantParams>();
+    queryParams->SetParam("prop1", AAFwk::String::Box("value"));
+    AppExecFwk::InsightIntentQueryEntityParam param;
+    param.parameters_ = queryParams;
+    auto ret = InsightIntentExecuteManager::CheckEntityQueryable(intentInfo, className, param);
+    EXPECT_TRUE(ret);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckCanQueryEntity_0900 end.");
+}
+
+/**
+ * @tc.name: SetTargetPid_0100
+ * @tc.desc: Test SetTargetPid sets targetPid on an existing record.
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, SetTargetPid_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetTargetPid_0100 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    uint64_t key = 100;
+    uint64_t intentId = 0;
+    sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
+    ASSERT_NE(callToken, nullptr);
+    std::string bundleName = "test.bundle.setpid";
+    manager->AddRecord(key, callToken, bundleName, intentId, ExecuteParam{.callerBundleName = "caller.bundle"});
+    ASSERT_EQ(manager->records_.count(intentId), 1);
+    EXPECT_EQ(manager->records_[intentId]->targetPid, 0);
+
+    pid_t pid = 12345;
+    manager->SetTargetPid(intentId, pid);
+    EXPECT_EQ(manager->records_[intentId]->targetPid, pid);
+    TAG_LOGI(AAFwkTag::TEST, "SetTargetPid_0100 end.");
+}
+
+/**
+ * @tc.name: SetTargetPid_0200
+ * @tc.desc: Test SetTargetPid ignores a non-existent intentId.
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, SetTargetPid_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetTargetPid_0200 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    uint64_t invalidIntentId = 99999;
+    manager->SetTargetPid(invalidIntentId, 12345);
+    EXPECT_EQ(manager->records_.size(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "SetTargetPid_0200 end.");
+}
+
+/**
+ * @tc.name: SetTargetPid_0300
+ * @tc.desc: Test SetTargetPid ignores a null record.
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, SetTargetPid_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetTargetPid_0300 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    uint64_t intentId = 888;
+    manager->records_[intentId] = nullptr;
+    manager->SetTargetPid(intentId, 12345);
+    EXPECT_EQ(manager->records_[intentId], nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "SetTargetPid_0300 end.");
+}
+
+/**
+ * @tc.name: SetTargetPid_RegisterAttribution_0100
+ * @tc.desc: Test SetTargetPid with a taskId present runs the best-effort
+ *           attribution path (AppScheduler IPC delegation; no appmgr service
+ *           in UT, so registration degrades to attributionId 0 which is only
+ *           logged) and still sets targetPid.
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, SetTargetPid_RegisterAttribution_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetTargetPid_RegisterAttribution_0100 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    uint64_t key = 100;
+    uint64_t intentId = 0;
+    sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
+    ASSERT_NE(callToken, nullptr);
+    std::string bundleName = "test.bundle.setpid.reattr";
+    manager->AddRecord(key, callToken, bundleName, intentId,
+        ExecuteParam{.callerBundleName = "caller.bundle"}, "ohos_task_id_setpid_reattr", 1245);
+    ASSERT_EQ(manager->records_.count(intentId), 1);
+
+    pid_t pid = 12345;
+    manager->SetTargetPid(intentId, pid);
+    EXPECT_EQ(manager->records_[intentId]->targetPid, pid);
+    // No appmgr service is connected in UT: registration degrades to 0 (best-effort).
+    EXPECT_EQ(manager->records_[intentId]->attributionId, 0);
+    TAG_LOGI(AAFwkTag::TEST, "SetTargetPid_RegisterAttribution_0100 end.");
+}
+
+/**
+ * @tc.name: SetTargetPid_RegisterAttribution_0200
+ * @tc.desc: Test SetTargetPid without a taskId skips the attribution call
+ *           (guard returns early) and only sets targetPid.
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, SetTargetPid_RegisterAttribution_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetTargetPid_RegisterAttribution_0200 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    uint64_t key = 100;
+    uint64_t intentId = 0;
+    sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
+    ASSERT_NE(callToken, nullptr);
+    std::string bundleName = "test.bundle.setpid.notaskid";
+    manager->AddRecord(key, callToken, bundleName, intentId,
+        ExecuteParam{.callerBundleName = "caller.bundle"});
+    ASSERT_EQ(manager->records_.count(intentId), 1);
+
+    pid_t pid = 12345;
+    manager->SetTargetPid(intentId, pid);
+    EXPECT_EQ(manager->records_[intentId]->targetPid, pid);
+    EXPECT_EQ(manager->records_[intentId]->attributionId, 0);
+    TAG_LOGI(AAFwkTag::TEST, "SetTargetPid_RegisterAttribution_0200 end.");
+}
+
+/**
+ * @tc.name: OnInsightAppDied_016
+ * @tc.desc: Test cleanup only removes the record whose targetPid matches the died pid.
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, OnInsightAppDied_016, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_016 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    const std::string bundleName = "test.bundle.multiprocess";
+    sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
+    ASSERT_NE(callToken, nullptr);
+
+    uint64_t intentIdA = 0;
+    uint64_t intentIdB = 0;
+    manager->AddRecord(100, callToken, bundleName, intentIdA, ExecuteParam{.callerBundleName = "caller.bundle"});
+    manager->AddRecord(101, callToken, bundleName, intentIdB, ExecuteParam{.callerBundleName = "caller.bundle"});
+    ASSERT_EQ(manager->records_.size(), 2);
+
+    pid_t pidA = 1000;
+    pid_t pidB = 2000;
+    manager->SetTargetPid(intentIdA, pidA);
+    manager->SetTargetPid(intentIdB, pidB);
+
+    manager->OnInsightAppDied(bundleName, pidA);
+
+    EXPECT_TRUE(WaitUntil([&manager, intentIdA]() {
+        return manager->records_.count(intentIdA) == 0;
+    }, WAIT_APP_DIED_CLEANUP_MS));
+    EXPECT_EQ(manager->records_.count(intentIdA), 0);
+    EXPECT_EQ(manager->records_.count(intentIdB), 1);
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_016 end.");
+}
+
+/**
+ * @tc.name: OnInsightAppDied_017
+ * @tc.desc: Test cleanup skips a record whose targetPid is still 0 (not dispatched).
+ * @tc.type: FUNC
+ * @tc.require: issueI8ZRAG
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, OnInsightAppDied_017, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_017 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    const std::string bundleName = "test.bundle.notdispatched";
+    sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
+    ASSERT_NE(callToken, nullptr);
+
+    uint64_t intentId = 0;
+    manager->AddRecord(100, callToken, bundleName, intentId, ExecuteParam{.callerBundleName = "caller.bundle"});
+    ASSERT_EQ(manager->records_.count(intentId), 1);
+    EXPECT_EQ(manager->records_[intentId]->targetPid, 0);
+
+    manager->OnInsightAppDied(bundleName, 3000);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(WAIT_APP_DIED_CLEANUP_MS));
+    EXPECT_EQ(manager->records_.count(intentId), 1);
+    EXPECT_EQ(manager->records_[intentId]->targetPid, 0);
+    TAG_LOGI(AAFwkTag::TEST, "OnInsightAppDied_017 end.");
+}
+
+/**
+ * @tc.name: AddRecord_WithTaskId_0100
+ * @tc.desc: Test AddRecord stores the taskId passed through the last parameter.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, AddRecord_WithTaskId_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AddRecord_WithTaskId_0100 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
+    ASSERT_NE(callToken, nullptr);
+
+    uint64_t intentId = 0;
+    manager->AddRecord(100, callToken, "test.bundle.taskid", intentId,
+        ExecuteParam{.callerBundleName = "caller.bundle"}, "ohos_task_id_0100");
+    ASSERT_EQ(manager->records_.count(intentId), 1);
+    EXPECT_EQ(manager->records_[intentId]->taskId, "ohos_task_id_0100");
+
+    uint64_t intentIdDefault = 0;
+    manager->AddRecord(101, callToken, "test.bundle.taskid", intentIdDefault,
+        ExecuteParam{.callerBundleName = "caller.bundle"});
+    ASSERT_EQ(manager->records_.count(intentIdDefault), 1);
+    EXPECT_TRUE(manager->records_[intentIdDefault]->taskId.empty());
+    TAG_LOGI(AAFwkTag::TEST, "AddRecord_WithTaskId_0100 end.");
+}
+
+/**
+ * @tc.name: RemoveExecuteIntent_Unregister_0100
+ * @tc.desc: Test RemoveExecuteIntent removes the record even when taskId/attributionId are
+ *           absent (helper guard no-op, no crash).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, RemoveExecuteIntent_Unregister_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RemoveExecuteIntent_Unregister_0100 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
+    ASSERT_NE(callToken, nullptr);
+
+    uint64_t intentId = 0;
+    manager->AddRecord(100, callToken, "test.bundle.remove", intentId,
+        ExecuteParam{.callerBundleName = "caller.bundle"}, "ohos_task_id_remove");
+    ASSERT_EQ(manager->records_.count(intentId), 1);
+
+    // No attribution registered: unregister guard skips the call, removal still happens.
+    auto ret = manager->RemoveExecuteIntent(intentId);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(manager->records_.count(intentId), 0);
+
+    // Removing a non-existent intent is still safe (no record, no crash).
+    ret = manager->RemoveExecuteIntent(999999);
+    EXPECT_EQ(ret, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "RemoveExecuteIntent_Unregister_0100 end.");
+}
+
+/**
+ * @tc.name: RemoveExecuteIntent_Unregister_0200
+ * @tc.desc: Test RemoveExecuteIntent with taskId and targetPid both present: record removed and
+ *           the unregister path runs without crash (no appmgr service in UT, the AppScheduler
+ *           IPC delegation failure is only logged).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, RemoveExecuteIntent_Unregister_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RemoveExecuteIntent_Unregister_0200 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
+    ASSERT_NE(callToken, nullptr);
+
+    uint64_t intentId = 0;
+    manager->AddRecord(100, callToken, "test.bundle.remove2", intentId,
+        ExecuteParam{.callerBundleName = "caller.bundle"}, "ohos_task_id_remove2", 1245);
+    ASSERT_EQ(manager->records_.count(intentId), 1);
+    manager->SetTargetPid(intentId, 5678);
+    EXPECT_EQ(manager->records_[intentId]->targetPid, 5678);
+
+    auto ret = manager->RemoveExecuteIntent(intentId);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(manager->records_.count(intentId), 0);
+    TAG_LOGI(AAFwkTag::TEST, "RemoveExecuteIntent_Unregister_0200 end.");
+}
+
+/**
+ * @tc.name: UnregisterAttributedProcess_Guard_0100
+ * @tc.desc: Test the unregister helper guard: empty taskId or non-positive attributionId
+ *           returns directly.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, UnregisterAttributedProcess_Guard_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "UnregisterAttributedProcess_Guard_0100 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    // Guarded cases must not reach the AppScheduler IPC channel or crash.
+    manager->UnregisterAttributedProcess("", 1234, 0);
+    manager->UnregisterAttributedProcess("ohos_task_id_guard", 0, 0);
+    manager->UnregisterAttributedProcess("ohos_task_id_guard", -1, 0);
+    TAG_LOGI(AAFwkTag::TEST, "UnregisterAttributedProcess_Guard_0100 end.");
+}
+
+/**
+ * @tc.name: UnregisterAttributedProcess_Guard_0200
+ * @tc.desc: Test the unregister helper with valid inputs runs the best-effort
+ *           AppScheduler IPC path (no appmgr service in UT, the failure is
+ *           only logged, no crash).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, UnregisterAttributedProcess_Guard_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "UnregisterAttributedProcess_Guard_0200 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    // No appmgr service is connected in UT, the AppScheduler IPC delegation
+    // fails, the helper only logs and must not crash.
+    manager->UnregisterAttributedProcess("ohos_task_id_ipc", 9999, 1245);
+    TAG_LOGI(AAFwkTag::TEST, "UnregisterAttributedProcess_Guard_0200 end.");
+}
+
+/**
+ * @tc.name: RegisterAttributedProcess_Guard_0100
+ * @tc.desc: Test the register helper guard: empty taskId or non-positive pid returns directly
+ *           and leaves attributionId 0.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, RegisterAttributedProcess_Guard_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RegisterAttributedProcess_Guard_0100 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    // Guarded cases must not reach the AppScheduler IPC channel or crash.
+    int64_t attributionId = 0;
+    manager->RegisterAttributedProcess("", 1234, 0, attributionId);
+    EXPECT_EQ(attributionId, 0);
+    manager->RegisterAttributedProcess("ohos_task_id_guard", 0, 0, attributionId);
+    EXPECT_EQ(attributionId, 0);
+    manager->RegisterAttributedProcess("ohos_task_id_guard", -1, 0, attributionId);
+    EXPECT_EQ(attributionId, 0);
+    TAG_LOGI(AAFwkTag::TEST, "RegisterAttributedProcess_Guard_0100 end.");
+}
+
+/**
+ * @tc.name: RegisterAttributedProcess_Guard_0200
+ * @tc.desc: Test the register helper with valid inputs runs the best-effort
+ *           AppScheduler IPC path (no appmgr service in UT, the failure is
+ *           only logged, attributionId stays 0, no crash).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, RegisterAttributedProcess_Guard_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RegisterAttributedProcess_Guard_0200 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    // No appmgr service is connected in UT, the AppScheduler IPC delegation
+    // fails, the helper only logs and must not crash.
+    int64_t attributionId = 0;
+    manager->RegisterAttributedProcess("ohos_task_id_ipc", 9999, 1245, attributionId);
+    EXPECT_EQ(attributionId, 0);
+    TAG_LOGI(AAFwkTag::TEST, "RegisterAttributedProcess_Guard_0200 end.");
+}
+
+/**
+ * @tc.name: RegisterAttributedProcess_Positive_0100
+ * @tc.desc: Test the attribution lifecycle through the AppScheduler IPC
+ *           channel: AddRecord with an anchored callerUid -> SetTargetPid
+ *           attempts registration; without an appmgr service in UT the
+ *           best-effort IPC degrades to attributionId 0; RemoveExecuteIntent
+ *           still unregisters without crash.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, RegisterAttributedProcess_Positive_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RegisterAttributedProcess_Positive_0100 begin.");
+    auto manager = std::make_shared<InsightIntentExecuteManager>();
+    ASSERT_NE(manager, nullptr);
+
+    // A positive anchor uid lets the record reach the AppScheduler IPC path.
+    const std::string taskId = "ohos_task_id_positive_0100";
+    pid_t pid = static_cast<pid_t>(getpid());
+
+    uint64_t key = 100;
+    uint64_t intentId = 0;
+    sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
+    ASSERT_NE(callToken, nullptr);
+    manager->AddRecord(key, callToken, "test.bundle.positive", intentId,
+        ExecuteParam{.callerBundleName = "caller.bundle"}, taskId, 1245);
+    ASSERT_EQ(manager->records_.count(intentId), 1);
+
+    manager->SetTargetPid(intentId, pid);
+    EXPECT_EQ(manager->records_[intentId]->targetPid, pid);
+    // No appmgr service is connected in UT: registration degrades to 0, which
+    // keeps the intent flow unaffected (attribution is best-effort).
+    EXPECT_EQ(manager->records_[intentId]->attributionId, 0);
+
+    // Removal with a degraded attributionId is a guard no-op (no crash, record gone).
+    auto ret = manager->RemoveExecuteIntent(intentId);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(manager->records_.count(intentId), 0);
+    TAG_LOGI(AAFwkTag::TEST, "RegisterAttributedProcess_Positive_0100 end.");
+}
+
 } // namespace AAFwk
 } // namespace OHOS

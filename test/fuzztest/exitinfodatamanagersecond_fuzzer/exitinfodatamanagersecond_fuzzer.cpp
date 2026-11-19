@@ -23,7 +23,6 @@
 #include "exit_info_data_manager.h"
 #undef private
 
-#include "ability_fuzz_util.h"
 #include "ability_record.h"
 #include "securec.h"
 

@@ -182,6 +182,22 @@ bool DataObsMgrService::IsDataMgrService(uint32_t tokenId, int32_t uid)
     return true;
 }
 
+// Check uri size and report fault when exceeds threshold, only for data collection, does not block registration.
+int32_t DataObsMgrService::CheckAndReportUriSizeFault(const Uri &uri, uint32_t tokenId, const std::string &callingFunc)
+{
+    std::string uriStr = uri.ToString();
+    if (uriStr.size() > URI_SIZE_THRESHOLD) {
+        std::string uriAnis = CommonUtils::Anonymous(uriStr);
+        std::string appendix = uriAnis + " " + callingFunc + " uriSize:" + std::to_string(uriStr.size());
+        TAG_LOGE(AAFwkTag::DBOBSMGR, "uri size exceeded, size:%{public}zu, token:%{public}u, uri:%{public}s",
+            uriStr.size(), tokenId, uriAnis.c_str());
+        // The 4th parameter of ReportExtensionFault is not used, all info is packed into the 3rd parameter.
+        DataShare::DataSharePermission::ReportExtensionFault(DATAOBS_URI_SIZE_EXCEEDED, tokenId, appendix, uriAnis);
+        return DATAOBS_URI_SIZE_EXCEEDED;
+    }
+    return SUCCESS;
+}
+
 // Check wheather calling process has system permission, with some providers who allow calls from non-system app.
 // Existing function IsCallingPermissionValid checks based on an option passed from client, which is not reliable
 // in some situation. Try use this function for system permission checking instead.
@@ -422,12 +438,12 @@ int32_t DataObsMgrService::RegisterObserverInner(const Uri &uri, sptr<IDataAbili
             return status;
         }
     }
+    CheckAndReportUriSizeFault(uri, token, __FUNCTION__);
     status = ConstructRegisterObserver(uri, dataObserver, token, userId, pid);
     if (status != NO_ERROR) {
         LOG_ERROR("register failed:%{public}d,uri:%{public}s", status, CommonUtils::Anonymous(uri.ToString()).c_str());
-        return status;
     }
-    return NO_ERROR;
+    return status;
 }
 
 int DataObsMgrService::UnregisterObserver(const Uri &uri, sptr<IDataAbilityObserver> dataObserver, int32_t userId,
@@ -515,6 +531,12 @@ bool DataObsMgrService::IsTaskOverLimit()
     }
     ++taskCount_;
     return false;
+}
+
+void DataObsMgrService::ReduceTaskCount()
+{
+    std::lock_guard<ffrt::mutex> lck(taskCountMutex_);
+    --taskCount_;
 }
 
 void DataObsMgrService::SubmitNotifyChangeTask(Uri &uri, int32_t userId, std::string readPermission, ObserverInfo &info)
@@ -631,6 +653,7 @@ Status DataObsMgrService::RegisterObserverExt(const Uri &uri, sptr<IDataAbilityO
     info.pid = IPCSkeleton::GetCallingPid();
 
     auto innerUri = uri;
+    CheckAndReportUriSizeFault(innerUri, tokenId, __FUNCTION__);
     return dataObsMgrInnerExt_->HandleRegisterObserver(innerUri, dataObserver, info, isDescendants);
 }
 
@@ -744,13 +767,10 @@ std::pair<Status, std::vector<NotifyInfo>> DataObsMgrService::MakeNotifyInfos(Ch
 
 Status DataObsMgrService::NotifyChangeExt(const ChangeInfo &changeInfo, DataObsOption opt)
 {
-    if (handler_ == nullptr) {
-        TAG_LOGE(AAFwkTag::DBOBSMGR, "null handler");
-        return DATAOBS_SERVICE_HANDLER_IS_NULL;
-    }
-    if (dataObsMgrInner_ == nullptr || dataObsMgrInnerExt_ == nullptr) {
-        LOG_ERROR("dataObsMgrInner_:%{public}d or null dataObsMgrInnerExt", dataObsMgrInner_ == nullptr);
-        return DATAOBS_SERVICE_INNER_IS_NULL;
+    if (handler_ == nullptr || dataObsMgrInner_ == nullptr || dataObsMgrInnerExt_ == nullptr) {
+        LOG_ERROR("handler_: %{public}d, dataObsMgrInner: %{public}d, dataObsMgrInnerExt: %{public}d",
+            handler_ == nullptr, dataObsMgrInner_ == nullptr, dataObsMgrInnerExt_ == nullptr);
+        return handler_ == nullptr ? DATAOBS_SERVICE_HANDLER_IS_NULL : DATAOBS_SERVICE_INNER_IS_NULL;
     }
     if (!IsCallingPermissionValid(opt)) {
         return DATAOBS_NOT_SYSTEM_APP;
@@ -761,20 +781,23 @@ Status DataObsMgrService::NotifyChangeExt(const ChangeInfo &changeInfo, DataObsO
         LOG_ERROR("GetCallingUserId fail, type:%{public}d, userId:%{public}d", changeInfo.changeType_, userId);
         return DATAOBS_INVALID_USERID;
     }
+    if (IsTaskOverLimit()) {
+        return DATAOBS_SERVICE_TASK_LIMMIT;
+    }
     ChangeInfo changes;
     Status result = DeepCopyChangeInfo(changeInfo, changes);
     if (result != SUCCESS) {
         LOG_ERROR("copy data failed,changeType:%{public}ud,uris num:%{public}zu,null data:%{public}d,size:%{public}ud",
             changeInfo.changeType_, changeInfo.uris_.size(), changeInfo.data_ == nullptr, changeInfo.size_);
+        ReduceTaskCount();
         return result;
-    }
-    if (IsTaskOverLimit()) {
-        return DATAOBS_SERVICE_TASK_LIMMIT;
     }
     std::vector<NotifyInfo> notifyInfo;
     std::tie (result, notifyInfo) = MakeNotifyInfos(changes, opt, tokenId, userId);
     if (changes.uris_.empty()) {
         TAG_LOGE(AAFwkTag::DBOBSMGR, "uris_ is empty");
+        delete [] static_cast<uint8_t *>(changes.data_);
+        ReduceTaskCount();
         return result;
     }
     handler_->SubmitTask([this, changes, userId, tokenId, notifyInfo]() {
@@ -787,8 +810,7 @@ Status DataObsMgrService::NotifyChangeExt(const ChangeInfo &changeInfo, DataObsO
             count++;
         }
         delete [] static_cast<uint8_t *>(changes.data_);
-        std::lock_guard<ffrt::mutex> lck(taskCountMutex_);
-        --taskCount_;
+        ReduceTaskCount();
     });
     return SUCCESS;
 }
@@ -824,6 +846,53 @@ DataObsMgrService::FocusedAppInfo DataObsMgrService::GetFocusedWindowInfo() cons
     return appInfo;
 }
 
+bool DataObsMgrService::IsFocusedApp(uint32_t tokenId) const
+{
+    auto tokenType = AccessTokenKit::GetTokenTypeFlag(tokenId);
+    if (tokenType == ATokenTypeEnum::TOKEN_NATIVE) {
+        TAG_LOGI(AAFwkTag::DBOBSMGR, "caller is system ability");
+        return true;
+    }
+    if (tokenType != ATokenTypeEnum::TOKEN_HAP) {
+        TAG_LOGE(AAFwkTag::DBOBSMGR, "unsupported token type:%{public}d", tokenType);
+        return false;
+    }
+    int32_t userId = GetCallingUserId(tokenId);
+    if (userId < 0) {
+        TAG_LOGE(AAFwkTag::DBOBSMGR, "userId invalid");
+        return false;
+    }
+    Rosen::FocusChangeInfo info;
+#ifdef SCENE_BOARD_ENABLE
+    Rosen::WindowManagerLite::GetInstance(userId).GetFocusWindowInfo(info);
+#else
+    Rosen::WindowManager::GetInstance(userId).GetFocusWindowInfo(info);
+#endif
+    auto callPid = IPCSkeleton::GetCallingPid();
+    if (callPid == info.pid_) {
+        return true;
+    }
+    uint64_t displayId = 0;
+    auto displayRet = AccountSA::OsAccountManager::GetForegroundOsAccountDisplayId(userId, displayId);
+    if (displayRet != ERR_OK) {
+        TAG_LOGE(AAFwkTag::DBOBSMGR, "get foreground display id failed, ret=%{public}d", displayRet);
+    }
+    auto remote = GetAbilityManagerService();
+    if (remote == nullptr) {
+        TAG_LOGE(AAFwkTag::DBOBSMGR, "Get ability manager failed");
+        return false;
+    }
+    auto abilityManager = iface_cast<IAbilityManager>(remote);
+    if (abilityManager == nullptr) {
+        TAG_LOGE(AAFwkTag::DBOBSMGR, "Get ability manager proxy failed");
+        return false;
+    }
+    bool isFocused = false;
+    int32_t ret = abilityManager->CheckUIExtensionIsFocused(tokenId, isFocused, displayId);
+    TAG_LOGI(AAFwkTag::DBOBSMGR, "check result:%{public}d, isFocused:%{public}d", ret, isFocused);
+    return ret == NO_ERROR && isFocused;
+}
+
 sptr<IRemoteObject> DataObsMgrService::GetAbilityManagerService() const
 {
     auto systemAbilityManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
@@ -839,11 +908,12 @@ sptr<IRemoteObject> DataObsMgrService::GetAbilityManagerService() const
     return remoteObject;
 }
 
-Status DataObsMgrService::NotifyProcessObserver(const std::string &key, const sptr<IRemoteObject> &observer,
-    DataObsOption opt)
+Status DataObsMgrService::NotifyProcessObserver(const std::string &key, const sptr<IRemoteObject> observer)
 {
-    if (!IsCallingPermissionValid(opt)) {
-        return DATAOBS_NOT_SYSTEM_APP;
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+    if (!IsFocusedApp(tokenId)) {
+        TAG_LOGE(AAFwkTag::DBOBSMGR, "caller is not focused, token:%{public}u", tokenId);
+        return DATAOBS_PERMISSION_DENY;
     }
     auto remote = GetAbilityManagerService();
     if (remote == nullptr) {
@@ -851,6 +921,10 @@ Status DataObsMgrService::NotifyProcessObserver(const std::string &key, const sp
         return DATAOBS_PROXY_INNER_ERR;
     }
     auto abilityManager = iface_cast<IAbilityManager>(remote);
+    if (abilityManager == nullptr) {
+        TAG_LOGE(AAFwkTag::DBOBSMGR, "Get ability manager proxy failed.");
+        return DATAOBS_PROXY_INNER_ERR;
+    }
 
     FocusedAppInfo appInfo = GetFocusedWindowInfo();
 

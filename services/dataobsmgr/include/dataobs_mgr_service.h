@@ -77,8 +77,7 @@ public:
     virtual Status UnregisterObserverExt(sptr<IDataAbilityObserver> dataObserver,
         DataObsOption opt = DataObsOption()) override;
     virtual Status NotifyChangeExt(const ChangeInfo &changeInfo, DataObsOption opt = DataObsOption()) override;
-    virtual Status NotifyProcessObserver(const std::string &key, const sptr<IRemoteObject> &observer,
-        DataObsOption opt = DataObsOption()) override;
+    virtual Status NotifyProcessObserver(const std::string &key, const sptr<IRemoteObject> observer) override;
 
     /**
      * @brief DataObs hidumper.
@@ -102,6 +101,7 @@ private:
     Status DeepCopyChangeInfo(const ChangeInfo &src, ChangeInfo &dst) const;
     FocusedAppInfo GetFocusedWindowInfo() const;
     sptr<IRemoteObject> GetAbilityManagerService() const;
+    bool IsFocusedApp(uint32_t tokenId) const;
     static int32_t GetCallingUserId(uint32_t tokenId);
     static bool IsSystemApp(uint32_t tokenId, uint64_t fullTokenId);
     static bool IsCallingPermissionValid(DataObsOption &opt, int32_t userId, int32_t callingUserId);
@@ -120,13 +120,16 @@ private:
     int32_t NotifyChangeInner(Uri &uri, int32_t userId,
         DataObsOption opt, bool isExtension);
     void OnAddSystemAbility(int32_t systemAbilityId, const std::string &deviceId) override;
+    int32_t CheckAndReportUriSizeFault(const Uri &uri, uint32_t tokenId, const std::string &callingFunc);
     bool IsTaskOverLimit();
     std::pair<Status, std::vector<NotifyInfo>> MakeNotifyInfos(ChangeInfo &changes, DataObsOption opt,
         uint32_t tokenId, int32_t userId);
     void SubmitNotifyChangeTask(Uri &uri, int32_t userId, std::string readPermission,
         ObserverInfo &info);
+    void ReduceTaskCount();
 private:
     static constexpr std::uint32_t TASK_COUNT_MAX = 50;
+    static constexpr std::uint32_t URI_SIZE_THRESHOLD = 256;
     ffrt::mutex taskCountMutex_;
     std::uint32_t taskCount_ = 0;
     std::shared_ptr<TaskHandlerWrap> handler_;

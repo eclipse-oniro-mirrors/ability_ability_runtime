@@ -37,6 +37,8 @@ gen_js_obj("application_state_change_callback_abc") {
 }
 
 ohos_shared_library("applicationstatechangecallback") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "application_state_change_callback_module.cpp" ]
 
   deps = [
@@ -44,9 +46,14 @@ ohos_shared_library("applicationstatechangecallback") {
     ":application_state_change_callback_js",
   ]
 
-  external_deps = [ "napi:ace_napi" ]
+  external_deps = [
+    "libuv:uv",
+    "napi:ace_napi",
+    "node:node_header_notice",
+  ]
 
   relative_install_dir = "module/app/ability"
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

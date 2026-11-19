@@ -650,5 +650,76 @@ HWTEST_F(FaAbilityThreadTest, AaFwk_AbilityThread_SchedulePrepareTerminateAbilit
     EXPECT_EQ(ret, false);
     GTEST_LOG_(INFO) << "AaFwk_AbilityThread_SchedulePrepareTerminateAbility_0300 end";
 }
+
+/**
+ * @tc.number: AaFwk_AbilityThread_DumpAbilityInfoInner_NullImpl_0100
+ * @tc.name: DumpAbilityInfoInner with null abilityImpl_ skips ability dump
+ * @tc.desc: Test DumpAbilityInfoInner does not crash when abilityImpl_ is null.
+ *           abilityImpl_==null means JsAbility::Init was never called.
+ */
+HWTEST_F(FaAbilityThreadTest, AaFwk_AbilityThread_DumpAbilityInfoInner_NullImpl_0100, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AaFwk_AbilityThread_DumpAbilityInfoInner_NullImpl_0100 start";
+    AbilityRuntime::FAAbilityThread *abilitythread = new (std::nothrow) AbilityRuntime::FAAbilityThread();
+    ASSERT_NE(abilitythread, nullptr);
+
+    abilitythread->currentAbility_ = std::make_shared<Ability>();
+    ASSERT_NE(abilitythread->currentAbility_, nullptr);
+    abilitythread->abilityImpl_ = nullptr;
+    abilitythread->abilityHandler_ = nullptr;
+
+    std::vector<std::string> params;
+    std::vector<std::string> info;
+    // Should not crash; should skip ability dump and proceed to DumpOtherInfo
+    abilitythread->DumpAbilityInfoInner(params, info);
+    SUCCEED();
+
+    delete abilitythread;
+    GTEST_LOG_(INFO) << "AaFwk_AbilityThread_DumpAbilityInfoInner_NullImpl_0100 end";
+}
+
+/**
+ * @tc.number: AaFwk_AbilityThread_PrepareTerminate_NullImpl_0100
+ * @tc.name: HandlePrepareTerminateAbility with null abilityImpl_ triggers notify
+ * @tc.desc: Test HandlePrepareTerminateAbility notifies waiting thread when abilityImpl_ is null
+ */
+HWTEST_F(FaAbilityThreadTest, AaFwk_AbilityThread_PrepareTerminate_NullImpl_0100, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AaFwk_AbilityThread_PrepareTerminate_NullImpl_0100 start";
+    AbilityRuntime::FAAbilityThread *abilitythread = new (std::nothrow) AbilityRuntime::FAAbilityThread();
+    ASSERT_NE(abilitythread, nullptr);
+
+    abilitythread->abilityImpl_ = nullptr;
+    abilitythread->isPrepareTerminateAbilityDone_.store(false);
+
+    abilitythread->HandlePrepareTerminateAbility();
+
+    EXPECT_TRUE(abilitythread->isPrepareTerminateAbilityDone_.load());
+
+    delete abilitythread;
+    GTEST_LOG_(INFO) << "AaFwk_AbilityThread_PrepareTerminate_NullImpl_0100 end";
+}
+
+/**
+ * @tc.number: AaFwk_AbilityThread_CreateContextDeal_NullInfo_0100
+ * @tc.name: CreateAndInitContextDeal with null abilityInfo
+ * @tc.desc: Test CreateAndInitContextDeal handles null GetAbilityInfo without crash
+ */
+HWTEST_F(FaAbilityThreadTest, AaFwk_AbilityThread_CreateContextDeal_NullInfo_0100, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AaFwk_AbilityThread_CreateContextDeal_NullInfo_0100 start";
+    AbilityRuntime::FAAbilityThread *abilitythread = new (std::nothrow) AbilityRuntime::FAAbilityThread();
+    ASSERT_NE(abilitythread, nullptr);
+
+    auto application = std::make_shared<AppExecFwk::OHOSApplication>();
+    auto abilityRecord = std::make_shared<AppExecFwk::AbilityLocalRecord>(nullptr, nullptr, nullptr, -1);
+    auto abilityObject = std::make_shared<AppExecFwk::AbilityContext>();
+
+    auto contextDeal = abilitythread->CreateAndInitContextDeal(application, abilityRecord, abilityObject);
+    EXPECT_NE(contextDeal, nullptr);
+
+    delete abilitythread;
+    GTEST_LOG_(INFO) << "AaFwk_AbilityThread_CreateContextDeal_NullInfo_0100 end";
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

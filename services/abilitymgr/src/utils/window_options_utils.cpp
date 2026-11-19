@@ -53,7 +53,7 @@ void WindowOptionsUtils::SetWindowPositionAndSize(Want& want,
     bool withAnimation = startOptions.GetWithAnimation();
     auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
     if (!withAnimation && abilityRecord != nullptr &&
-        abilityRecord->GetAbilityInfo().bundleName == want.GetBundle()) {
+        abilityRecord->GetAbilityInfo().bundleName == want.GetBundleNameRef()) {
         want.SetParam(Want::PARAM_RESV_WITH_ANIMATION, withAnimation);
     }
 }
@@ -69,6 +69,9 @@ std::pair<bool, AppExecFwk::SupportWindowMode> WindowOptionsUtils::WindowModeMap
         result.first = true;
         result.second = AppExecFwk::SupportWindowMode::SPLIT;
     } else if (windowMode == MULTI_WINDOW_DISPLAY_SECONDARY) {
+        result.first = true;
+        result.second = AppExecFwk::SupportWindowMode::SPLIT;
+    } else if (windowMode == MULTI_WINDOW_DISPLAY_SPLIT) {
         result.first = true;
         result.second = AppExecFwk::SupportWindowMode::SPLIT;
     } else if (windowMode == MULTI_WINDOW_DISPLAY_FLOATING) {

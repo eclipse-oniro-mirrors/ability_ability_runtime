@@ -112,7 +112,7 @@ void ApplicationCleaner::ClearTempData()
         }
 
         for (const auto &temp : temps) {
-            if (sharedThis->RemoveDir(temp) == false) {
+            if (!sharedThis->RemoveDir(temp)) {
                 TAG_LOGW(AAFwkTag::APPKIT, "path: %{private}s", temp.c_str());
             }
         }

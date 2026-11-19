@@ -28,6 +28,11 @@ WindowManager &WindowManager::GetInstance()
     return windowManager_;
 }
 
+WindowManager &WindowManager::GetInstance(int32_t userId)
+{
+    return GetInstance();
+}
+
 int WindowManager::SetProcessWatermark(int pid, const std::string& watermarkBusinessName, bool isWatermarkEnabled)
 {
     return retCodeSetProcessWatermark;

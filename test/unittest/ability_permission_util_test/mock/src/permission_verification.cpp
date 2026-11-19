@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
-#include "mock_my_flag.h"
 #include "permission_verification.h"
+
+#include "accesstoken_kit.h"
+#include "mock_my_flag.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -66,6 +68,12 @@ bool PermissionVerification::VerifyPrepareTerminatePermission(int32_t tokenId) c
 bool PermissionVerification::VerifyStartSelfUIAbility(int32_t tokenId) const
 {
     return retVerifyStartSelfUIAbility;
+}
+
+bool PermissionVerification::VerifyPermissionByTokenId(const int &tokenId, const std::string &permissionName) const
+{
+    return Security::AccessToken::AccessTokenKit::VerifyAccessToken(tokenId, permissionName, false) ==
+        Security::AccessToken::PermissionState::PERMISSION_GRANTED;
 }
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -39,12 +39,31 @@ void CjEnvironmentCallback::CallConfigurationUpdatedInner(const AppExecFwk::Conf
     }
 }
 
+void CjEnvironmentCallback::CallConfigurationUpdatedInnerV2(const AppExecFwk::Configuration &config,
+    const std::map<int32_t, std::function<void(CConfigurationV2)>> &callbacks)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "methodName = onConfigurationV2");
+    auto cfg = CreateCConfigurationV2(config);
+    for (auto &callback : callbacks) {
+        if (!callback.second) {
+            TAG_LOGE(AAFwkTag::APPKIT, " Invalid cjCallback");
+            break;
+        }
+        callback.second(cfg);
+    }
+    FreeCConfigurationV2(&cfg);
+}
+
 void CjEnvironmentCallback::OnConfigurationUpdated(const AppExecFwk::Configuration &config)
 {
     std::weak_ptr<CjEnvironmentCallback> thisWeakPtr(shared_from_this());
     std::shared_ptr<CjEnvironmentCallback> cjEnvCallback = thisWeakPtr.lock();
     if (cjEnvCallback) {
-        cjEnvCallback->CallConfigurationUpdatedInner(config, onConfigurationUpdatedCallbacks_);
+        if (!onConfigurationUpdatedCallbacksV2_.empty()) {
+            cjEnvCallback->CallConfigurationUpdatedInnerV2(config, onConfigurationUpdatedCallbacksV2_);
+        } else {
+            cjEnvCallback->CallConfigurationUpdatedInner(config, onConfigurationUpdatedCallbacks_);
+        }
     }
 }
 
@@ -88,30 +107,60 @@ int32_t CjEnvironmentCallback::Register(std::function<void(CConfiguration)> cfgC
     return callbackId;
 }
 
+int32_t CjEnvironmentCallback::RegisterV2(std::function<void(CConfigurationV2)> cfgCallback,
+    std::function<void(int32_t)> memCallback, bool isSync)
+{
+    int32_t callbackId = serialNumber_;
+    if (serialNumber_ < INT32_MAX) {
+        serialNumber_++;
+    } else {
+        serialNumber_ = 0;
+    }
+    if (isSync) {
+        return -1;
+    } else {
+        onConfigurationUpdatedCallbacksV2_.emplace(callbackId, cfgCallback);
+        onMemoryLevelCallbacks_.emplace(callbackId, memCallback);
+    }
+    return callbackId;
+}
+
 bool CjEnvironmentCallback::UnRegister(int32_t callbackId, bool isSync)
 {
     TAG_LOGD(AAFwkTag::APPKIT, "callbackId : %{public}d", callbackId);
     if (isSync) {
         return false;
     }
+    bool found = false;
     auto itCfg = onConfigurationUpdatedCallbacks_.find(callbackId);
-    if (itCfg == onConfigurationUpdatedCallbacks_.end()) {
-        TAG_LOGE(AAFwkTag::APPKIT, "callbackId: %{public}d is not in callbacks_", callbackId);
-        return false;
+    if (itCfg != onConfigurationUpdatedCallbacks_.end()) {
+        TAG_LOGD(AAFwkTag::APPKIT, "callbacks_.callbackId : %{public}d", itCfg->first);
+        onConfigurationUpdatedCallbacks_.erase(callbackId);
+        found = true;
     }
-    TAG_LOGD(AAFwkTag::APPKIT, "callbacks_.callbackId : %{public}d", itCfg->first);
+    auto itCfgV2 = onConfigurationUpdatedCallbacksV2_.find(callbackId);
+    if (itCfgV2 != onConfigurationUpdatedCallbacksV2_.end()) {
+        TAG_LOGD(AAFwkTag::APPKIT, "callbacksV2_.callbackId : %{public}d", itCfgV2->first);
+        onConfigurationUpdatedCallbacksV2_.erase(callbackId);
+        found = true;
+    }
     auto itMem = onMemoryLevelCallbacks_.find(callbackId);
-    if (itMem == onMemoryLevelCallbacks_.end()) {
+    if (itMem != onMemoryLevelCallbacks_.end()) {
+        TAG_LOGD(AAFwkTag::APPKIT, "callbacks_.callbackId : %{public}d", itMem->first);
+        onMemoryLevelCallbacks_.erase(callbackId);
+        found = true;
+    }
+    if (!found) {
         TAG_LOGE(AAFwkTag::APPKIT, "callbackId: %{public}d is not in callbacks_", callbackId);
         return false;
     }
-    TAG_LOGD(AAFwkTag::APPKIT, "callbacks_.callbackId : %{public}d", itMem->first);
-    return onConfigurationUpdatedCallbacks_.erase(callbackId) == 1 && onMemoryLevelCallbacks_.erase(callbackId) == 1;
+    return true;
 }
 
 bool CjEnvironmentCallback::IsEmpty() const
 {
-    return onConfigurationUpdatedCallbacks_.empty() && onMemoryLevelCallbacks_.empty();
+    return onConfigurationUpdatedCallbacks_.empty() && onConfigurationUpdatedCallbacksV2_.empty() &&
+        onMemoryLevelCallbacks_.empty();
 }
 }  // namespace AbilityRuntime
 }  // namespace OHOS

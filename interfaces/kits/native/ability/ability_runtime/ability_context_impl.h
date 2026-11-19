@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -29,6 +29,9 @@
 namespace OHOS {
 namespace Rosen {
 enum class WSError;
+}
+namespace Ace {
+struct ModalUIExtensionCallbacks;
 }
 namespace AbilityRuntime {
 class AbilityContextImpl : public AbilityContext {
@@ -69,6 +72,7 @@ public:
     std::shared_ptr<Context> CreateBundleContext(const std::string &bundleName) override;
     std::shared_ptr<Context> CreateModuleContext(const std::string &moduleName) override;
     std::shared_ptr<Context> CreateModuleContext(const std::string &bundleName, const std::string &moduleName) override;
+    std::shared_ptr<Context> CreateModuleContext(const std::string &moduleName, std::shared_ptr<Context> inputContext);
     std::shared_ptr<Global::Resource::ResourceManager> CreateModuleResourceManager(
         const std::string &bundleName, const std::string &moduleName) override;
     int32_t CreateSystemHspModuleResourceManager(const std::string &bundleName,
@@ -96,11 +100,19 @@ public:
         const AAFwk::StartOptions &startOptions, int requestCode, RuntimeTask &&task) override;
     ErrCode StartAbilityForResult(const AAFwk::Want &want, const AAFwk::StartOptions &startOptions,
         int requestCode, RuntimeTask &&task) override;
+    ErrCode StartAbilityForResult(const AAFwk::Want &want, RuntimeTask &&task) override;
+    ErrCode StartAbilityForResultWithAccount(
+        const AAFwk::Want &want, int accountId, RuntimeTask &&task) override;
+    ErrCode StartAbilityForResult(const AAFwk::Want &want, const AAFwk::StartOptions &startOptions,
+        RuntimeTask &&task) override;
+    ErrCode StartAbilityForResultWithAccount(const AAFwk::Want &want, int accountId,
+        const AAFwk::StartOptions &startOptions, RuntimeTask &&task) override;
     ErrCode StartUIServiceExtensionAbility(const AAFwk::Want &want, int32_t accountId = -1) override;
     ErrCode StartServiceExtensionAbility(const Want &want, int32_t accountId = -1) override;
     ErrCode StopServiceExtensionAbility(const Want& want, int32_t accountId = -1) override;
     ErrCode TerminateAbilityWithResult(const AAFwk::Want &want, int resultCode) override;
-    ErrCode BackToCallerAbilityWithResult(const AAFwk::Want &want, int resultCode, int64_t requestCode) override;
+    ErrCode BackToCallerAbilityWithResult(const AAFwk::Want &want, int resultCode, int64_t requestCode,
+        bool isBackToCallerApp = false) override;
     void OnAbilityResult(int requestCode, int resultCode, const AAFwk::Want &resultData) override;
     ErrCode ConnectAbility(const AAFwk::Want &want,
                         const sptr<AbilityConnectCallback> &connectCallback) override;
@@ -121,6 +133,8 @@ public:
     ErrCode MoveUIAbilityToBackground() override;
 
     ErrCode TerminateSelf() override;
+
+    ErrCode StartSelf() override;
 
     ErrCode CloseAbility() override;
 
@@ -252,7 +266,8 @@ public:
 #endif
     ErrCode RequestModalUIExtension(const Want &want) override;
 
-    ErrCode ChangeAbilityVisibility(bool isShow) override;
+    ErrCode ChangeAbilityVisibility(bool isShow,
+        const std::shared_ptr<Rosen::WindowShowParams> &params = nullptr) override;
 
     ErrCode AddFreeInstallObserver(const sptr<AbilityRuntime::IFreeInstallObserver> &observer) override;
 
@@ -260,12 +275,16 @@ public:
 
     ErrCode OpenAtomicService(AAFwk::Want& want, const AAFwk::StartOptions &options, int requestCode,
         RuntimeTask &&task) override;
+    ErrCode OpenAtomicService(AAFwk::Want& want, const AAFwk::StartOptions &options,
+        RuntimeTask &&task) override;
 
     void RegisterAbilityLifecycleObserver(const std::shared_ptr<AppExecFwk::ILifecycleObserver> &observer) override;
 
     void UnregisterAbilityLifecycleObserver(const std::shared_ptr<AppExecFwk::ILifecycleObserver> &observer) override;
 
     void InsertResultCallbackTask(int requestCode, RuntimeTask&& task) override;
+
+    int32_t RegisterResultCallback(RuntimeTask&& task) override;
 
     void RemoveResultCallbackTask(int requestCode) override;
 
@@ -304,9 +323,11 @@ public:
      *
      * @param label the label of this ability.
      * @param icon the icon of this ability.
+     * @param groupId the group id of this ability.
      * @return Returns ERR_OK if success.
      */
-    ErrCode SetAbilityInstanceInfo(const std::string& label, std::shared_ptr<OHOS::Media::PixelMap> icon) override;
+    ErrCode SetAbilityInstanceInfo(const std::string& label, std::shared_ptr<OHOS::Media::PixelMap> icon,
+        const std::string& groupId) override;
 
     /**
      * @brief get current window mode.
@@ -358,6 +379,7 @@ public:
     }
 
     static int32_t TransferRestartWSError(Rosen::WSError srcError);
+    static int32_t TransferSetAbilityInstanceInfoErr(Rosen::WSError srcError);
 #endif
 
     /**
@@ -416,6 +438,8 @@ public:
     ErrCode StartSelfUIAbilityInCurrentProcess(const AAFwk::Want &want, const std::string &specifiedFlag,
         const AAFwk::StartOptions &startOptions, bool hasOptions) override;
 
+    ErrCode StartSelfUIAbilityInChildProcess(const AAFwk::Want &want, const std::string &specifiedFlag) override;
+
 private:
     sptr<IRemoteObject> token_ = nullptr;
     std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo_ = nullptr;
@@ -441,6 +465,9 @@ private:
     std::shared_ptr<AppExecFwk::Configuration> abilityConfiguration_ = nullptr;
     bool isHook_ = false;
     bool hookOff_ = false;
+    static int32_t curRequestCode_;
+    static std::mutex requestCodeMutex_;
+    int32_t GenerateRequestCode();
 
     static void RequestDialogResultJSThreadWorker(uv_work_t* work, int status);
     void OnAbilityResultInner(int requestCode, int resultCode, const AAFwk::Want &resultData);
@@ -448,6 +475,11 @@ private:
     void SetWindowRectangleParams(AAFwk::Want &want);
     void GetFailureInfoByMessage(const std::string &message, int32_t &failureCode,
         std::string &failureMessage, int32_t resultCode);
+#ifdef SUPPORT_SCREEN
+    Ace::ModalUIExtensionCallbacks SetupModalUIExtensionCallbacks(
+        std::shared_ptr<UIExtensionCallback> uiExtensionCallback,
+        std::shared_ptr<std::atomic<bool>> errorFired);
+#endif
 
     std::mutex onRequestResultMutex_;
     std::mutex onAtomicRequestResultMutex_;

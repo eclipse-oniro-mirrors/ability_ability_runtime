@@ -14,6 +14,11 @@
  */
 
 #include <gtest/gtest.h>
+
+#include <atomic>
+#include <chrono>
+#include <thread>
+
 #include "bundlemgr/mock_bundle_manager.h"
 #include "mock_native_token.h"
 #include "ability_manager_errors.h"
@@ -35,7 +40,6 @@
 #include "system_ability_definition.h"
 #include "wants_info.h"
 #include "want_receiver_stub.h"
-#include "want_sender_stub.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -66,7 +70,7 @@ public:
     class CancelReceiver : public AAFwk::WantReceiverStub {
     public:
         static int performReceiveCount;
-        static int sendCount;
+        static std::atomic<int> sendCount;
         void Send(const int32_t resultCode) override;
         void PerformReceive(const AAFwk::Want& want, int resultCode, const std::string& data,
             const AAFwk::WantParams& extras, bool serialized, bool sticky, int sendingUser) override;
@@ -82,7 +86,7 @@ public:
 };
 
 int PendingWantManagerTest::CancelReceiver::performReceiveCount = 0;
-int PendingWantManagerTest::CancelReceiver::sendCount = 0;
+std::atomic<int> PendingWantManagerTest::CancelReceiver::sendCount = 0;
 
 void PendingWantManagerTest::CancelReceiver::Send(const int32_t resultCode)
 {
@@ -795,8 +799,38 @@ HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_3100, TestSize.Level1)
     EXPECT_NE(pendingRecord, nullptr);
     pendingManager_->RegisterCancelListener(pendingRecord, cance);
     bool isSystemApp = false;
+    CancelReceiver::sendCount = 0;
     pendingManager_->CancelWantSender(isSystemApp, pendingRecord);
-    EXPECT_TRUE(CancelReceiver::sendCount == 100);
+    constexpr int MAX_WAIT_TIME_MS = 1000;
+    constexpr int POLL_INTERVAL_MS = 10;
+    for (int elapsed = 0; elapsed < MAX_WAIT_TIME_MS && CancelReceiver::sendCount.load() == 0;
+        elapsed += POLL_INTERVAL_MS) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(POLL_INTERVAL_MS));
+    }
+    EXPECT_TRUE(CancelReceiver::sendCount.load() == 100);
+    EXPECT_TRUE((int)pendingManager_->wantRecords_.size() == 0);
+}
+
+/*
+ * @tc.number    : PendingWantManagerTest_3101
+ * @tc.name      : PendingWantManager CancelWantSenderLocked record not found
+ * @tc.desc      : 1.Cancel a record that is not in wantRecords_, the canceled flag should not be set.
+ */
+HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_3101, TestSize.Level1)
+{
+    Want want;
+    ElementName element("device", "bundleName", "abilityName");
+    want.SetElement(element);
+    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 0);
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    EXPECT_NE(pendingManager_, nullptr);
+    std::shared_ptr<PendingWantKey> key = MakeWantKey(wantSenderInfo);
+    sptr<PendingWantRecord> pendingRecord =
+        new (std::nothrow) PendingWantRecord(pendingManager_, 1, 0, nullptr, key);
+    EXPECT_NE(pendingRecord, nullptr);
+    EXPECT_FALSE(pendingRecord->GetCanceled());
+    pendingManager_->CancelWantSenderLocked(*pendingRecord, true);
+    EXPECT_FALSE(pendingRecord->GetCanceled());
     EXPECT_TRUE((int)pendingManager_->wantRecords_.size() == 0);
 }
 
@@ -985,7 +1019,7 @@ HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_3800, TestSize.Level1)
 {
     pendingManager_ = std::make_shared<PendingWantManager>();
     int32_t pid = 0;
-    pendingManager_->CheckWindowState(pid);
+    pendingManager_->CheckWindowState(pid, 0);
     EXPECT_TRUE(pendingManager_ != nullptr);
 }
 
@@ -1294,7 +1328,7 @@ HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_5300, TestSize.Level1)
     Want want;
 
     auto ret = pendingManager_->PendingWantStartServiceExtension(want, nullptr);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    EXPECT_EQ(ret, ERR_IMPLICIT_START_ABILITY_FAIL);
 }
 
 /*
@@ -1431,7 +1465,7 @@ HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_6200, TestSize.Level1)
     EXPECT_NE(pendingManager_, nullptr);
 
     std::shared_ptr<PendingWantKey> key = MakeWantKey(wantSenderInfo);
-    pendingManager_->HandleAddWantAgentNumber(key);
+    pendingManager_->HandleAddWantAgentNumber(key, 100);
 
     auto it = pendingManager_->wantAgentCount_.find(key->GetBundleName());
     EXPECT_EQ(it->second.currentNumber, 1);
@@ -1441,7 +1475,7 @@ HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_6200, TestSize.Level1)
     ElementName element2("device", bundleName, "abilityName2");
     WantSenderInfo wantSenderInfo2 = MakeWantSenderInfo(want, static_cast<int32_t>(Flags::NO_BUILD_FLAG), 0);
     std::shared_ptr<PendingWantKey> key2 = MakeWantKey(wantSenderInfo2);
-    pendingManager_->HandleAddWantAgentNumber(key2);
+    pendingManager_->HandleAddWantAgentNumber(key2, 100);
 
     auto it2 = pendingManager_->wantAgentCount_.find(key2->GetBundleName());
     EXPECT_EQ(it->second.currentNumber, 290);
@@ -1464,7 +1498,7 @@ HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_6300, TestSize.Level1)
     EXPECT_NE(pendingManager_, nullptr);
 
     std::shared_ptr<PendingWantKey> key = MakeWantKey(wantSenderInfo);
-    pendingManager_->HandleAddWantAgentNumber(key);
+    pendingManager_->HandleAddWantAgentNumber(key, 100);
 
     auto it = pendingManager_->wantAgentCount_.find(key->GetBundleName());
     EXPECT_EQ(it->second.currentNumber, 1);
@@ -1560,6 +1594,28 @@ HWTEST_F(PendingWantManagerTest, PendingWantManagerTest_6700, TestSize.Level1)
     EXPECT_EQ(getWantInfo->GetElement().GetBundleName(), "bundleName");
     EXPECT_EQ(getWantInfo->GetElement().GetAbilityName(), "abilityName");
     EXPECT_EQ(getWantInfo->GetParams().GetStringParam("test_key"), "test_value");
+}
+
+HWTEST_F(PendingWantManagerTest, GetWantSenderLocked_MarkShared_0100, TestSize.Level1)
+{
+    Want want;
+    ElementName element("device", "com.ix.hiMusic", "MusicSAbility");
+    want.SetElement(element);
+    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 0);
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    ASSERT_NE(pendingManager_, nullptr);
+
+    auto sender = pendingManager_->GetWantSenderLocked(1, 1, wantSenderInfo.userId, wantSenderInfo, nullptr);
+    ASSERT_NE(sender, nullptr);
+    EXPECT_EQ(pendingManager_->wantRecords_.size(), 1u);
+    auto record = pendingManager_->wantRecords_.begin()->second;
+    ASSERT_NE(record, nullptr);
+    EXPECT_FALSE(record->GetShared());
+
+    auto sender2 = pendingManager_->GetWantSenderLocked(1, 1, wantSenderInfo.userId, wantSenderInfo, nullptr);
+    ASSERT_NE(sender2, nullptr);
+    EXPECT_EQ(pendingManager_->wantRecords_.size(), 1u);
+    EXPECT_FALSE(record->GetShared());
 }
 }  // namespace AAFwk
 }  // namespace OHOS

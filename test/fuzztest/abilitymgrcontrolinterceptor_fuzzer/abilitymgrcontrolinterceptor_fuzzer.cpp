@@ -71,8 +71,8 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     int32_t userId = static_cast<int32_t>(GetU32Data(data));
     bool boolParam = *data % ENABLE;
     sptr<IRemoteObject> callerToken = GetFuzzAbilityToken();
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param(want, requestCode, userId, boolParam, callerToken, shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(boolParam).CallerToken(callerToken).Build();
     executer->DoProcess(param);
     AppExecFwk::AppRunningControlRuleResult controlRule;
     executer->CheckControl(want, userId, controlRule);

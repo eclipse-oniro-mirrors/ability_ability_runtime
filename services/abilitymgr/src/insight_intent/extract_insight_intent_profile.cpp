@@ -15,7 +15,10 @@
 
 #include "extract_insight_intent_profile.h"
 
+#include <algorithm>
+
 #include "hilog_tag_wrapper.h"
+#include "json_safe_util.h"
 #include "json_util.h"
 
 namespace OHOS {
@@ -43,6 +46,7 @@ const std::string INSIGHT_INTENT_SCHEMA = "schema";
 const std::string INSIGHT_INTENT_ICON = "icon";
 const std::string INSIGHT_INTENT_LLM_DESCRIPTION = "llmDescription";
 const std::string INSIGHT_INTENT_KEYWORDS = "keywords";
+const std::string INSIGHT_INTENT_PERMISSIONS = "permissions";
 const std::string INSIGHT_INTENT_PARAMETERS = "parameters";
 const std::string INSIGHT_INTENT_URI = "uri";
 const std::string INSIGHT_INTENT_PARAM_MAPPING = "paramMappings";
@@ -52,6 +56,7 @@ const std::string INSIGHT_INTENT_NAVIGATION_ID = "navigationId";
 const std::string INSIGHT_INTENT_NAV_DESTINATION_NAME = "navDestinationName";
 const std::string INSIGHT_INTENT_ABILITY_NAME = "abilityName";
 const std::string INSIGHT_INTENT_FUNCTION_NAME = "functionName";
+const std::string INSIGHT_INTENT_FUNCTION_RETURN_TYPE = "functionReturnType";
 const std::string INSIGHT_INTENT_FUNCTION_PARAMS = "functionParamList";
 const std::string INSIGHT_INTENT_PARAM_NAME = "paramName";
 const std::string INSIGHT_INTENT_PARAM_MAPPING_NAME = "paramMappingName";
@@ -67,6 +72,8 @@ const std::string INSIGHT_INTENT_ENTITY_ID = "entityId";
 const std::string INSIGHT_INTENT_ENTITY_CATEGORY = "entityCategory";
 const std::string INSIGHT_INTENT_ENTITY_PARENT_CLASS_NAME = "parentClassName";
 const std::string INSIGHT_INTENT_ENTITY_PARAMETERS = "parameters";
+const std::string INSIGHT_INTENT_ARKTS_MODE = "arkTSMode";
+const std::string INSIGHT_INTENT_ENTITY_SUPPORTED_QUERY_PROPERTIES = "supportedQueryProperties";
 
 enum DecoratorType {
     DECORATOR_LINK = 0,
@@ -96,6 +103,39 @@ const std::map<std::string, ExecuteMode> executeModeMap = {
     {"uiextension", ExecuteMode::UI_EXTENSION_ABILITY},
     {"serviceextension", ExecuteMode::SERVICE_EXTENSION_ABILITY}
 };
+
+bool SetJsonFieldIfNotEmpty(nlohmann::json &jsonObject, const std::string &key, const std::string &value,
+    const std::string &logMsg)
+{
+    if (value.empty()) {
+        return true;
+    }
+    nlohmann::json parsed;
+    if (!SafeParse(value, parsed)) {
+        TAG_LOGE(AAFwkTag::INTENT, "%{public}s", logMsg.c_str());
+        return false;
+    }
+    jsonObject[key] = parsed;
+    return true;
+}
+
+constexpr size_t MAX_PERMISSION_COUNT = 64;
+constexpr const char *PERMISSION_PREFIX = "ohos.permission.";
+
+bool IsValidPermissions(const std::vector<std::string> &permissions)
+{
+    if (permissions.size() > MAX_PERMISSION_COUNT) {
+        TAG_LOGE(AAFwkTag::INTENT, "permissions count exceeds limit: %{public}zu", permissions.size());
+        return false;
+    }
+    for (const auto &permission : permissions) {
+        if (permission.empty() || permission.rfind(PERMISSION_PREFIX, 0) != 0) {
+            TAG_LOGE(AAFwkTag::INTENT, "invalid permission name in profile");
+            return false;
+        }
+    }
+    return true;
+}
 } // namespace
 
 void from_json(const nlohmann::json &jsonObject, LinkIntentParamProfileMapping &paramMapping)
@@ -162,10 +202,18 @@ void from_json(const nlohmann::json &jsonObject, InsightIntentEntityInfo &entity
         entityInfo.parentClassName,
         false,
         g_extraParseResult);
+    AppExecFwk::GetValueIfFindKey<std::vector<std::string>>(jsonObject,
+        jsonObjectEnd,
+        INSIGHT_INTENT_ENTITY_SUPPORTED_QUERY_PROPERTIES,
+        entityInfo.supportedQueryProperties,
+        JsonType::ARRAY,
+        false,
+        g_extraParseResult,
+        ArrayType::STRING);
 
     if (jsonObject.find(INSIGHT_INTENT_ENTITY_PARAMETERS) != jsonObjectEnd) {
         if (jsonObject.at(INSIGHT_INTENT_ENTITY_PARAMETERS).is_object()) {
-            entityInfo.parameters = jsonObject[INSIGHT_INTENT_ENTITY_PARAMETERS].dump();
+            entityInfo.parameters = SafeDump(jsonObject[INSIGHT_INTENT_ENTITY_PARAMETERS]);
         } else {
             TAG_LOGE(AAFwkTag::INTENT, "type error: entity parameters not object");
             g_extraParseResult = ERR_INVALID_VALUE;
@@ -263,6 +311,17 @@ void from_json(const nlohmann::json &jsonObject, ExtractInsightIntentProfileInfo
         false,
         g_extraParseResult,
         ArrayType::STRING);
+    AppExecFwk::GetValueIfFindKey<std::vector<std::string>>(jsonObject,
+        jsonObjectEnd,
+        INSIGHT_INTENT_PERMISSIONS,
+        insightIntentInfo.permissions,
+        JsonType::ARRAY,
+        false,
+        g_extraParseResult,
+        ArrayType::STRING);
+    if (!IsValidPermissions(insightIntentInfo.permissions)) {
+        g_extraParseResult = ERR_INVALID_VALUE;
+    }
     AppExecFwk::BMSJsonUtil::GetStrValueIfFindKey(jsonObject,
         jsonObjectEnd,
         INSIGHT_INTENT_EXAMPLE,
@@ -327,6 +386,12 @@ void from_json(const nlohmann::json &jsonObject, ExtractInsightIntentProfileInfo
         insightIntentInfo.functionName,
         false,
         g_extraParseResult);
+    AppExecFwk::BMSJsonUtil::GetStrValueIfFindKey(jsonObject,
+        jsonObjectEnd,
+        INSIGHT_INTENT_FUNCTION_RETURN_TYPE,
+        insightIntentInfo.functionReturnType,
+        false,
+        g_extraParseResult);
     AppExecFwk::GetValueIfFindKey<std::vector<std::string>>(jsonObject,
         jsonObjectEnd,
         INSIGHT_INTENT_FUNCTION_PARAMS,
@@ -349,10 +414,16 @@ void from_json(const nlohmann::json &jsonObject, ExtractInsightIntentProfileInfo
         insightIntentInfo.formName,
         false,
         g_extraParseResult);
+    AppExecFwk::BMSJsonUtil::GetStrValueIfFindKey(jsonObject,
+        jsonObjectEnd,
+        INSIGHT_INTENT_ARKTS_MODE,
+        insightIntentInfo.arkTSMode,
+        false,
+        g_extraParseResult);
 
     if (jsonObject.find(INSIGHT_INTENT_PARAMETERS) != jsonObjectEnd) {
         if (jsonObject.at(INSIGHT_INTENT_PARAMETERS).is_object()) {
-            insightIntentInfo.parameters =  jsonObject[INSIGHT_INTENT_PARAMETERS].dump();
+            insightIntentInfo.parameters = SafeDump(jsonObject[INSIGHT_INTENT_PARAMETERS]);
         } else {
             TAG_LOGE(AAFwkTag::INTENT, "type error: parameters not object");
             g_extraParseResult = ERR_INVALID_VALUE;
@@ -361,7 +432,7 @@ void from_json(const nlohmann::json &jsonObject, ExtractInsightIntentProfileInfo
 
     if (jsonObject.find(INSIGHT_INTENT_RESULT) != jsonObjectEnd) {
         if (jsonObject.at(INSIGHT_INTENT_RESULT).is_object()) {
-            insightIntentInfo.result =  jsonObject[INSIGHT_INTENT_RESULT].dump();
+            insightIntentInfo.result = SafeDump(jsonObject[INSIGHT_INTENT_RESULT]);
         } else {
             TAG_LOGE(AAFwkTag::INTENT, "type error: result not object");
             g_extraParseResult = ERR_INVALID_VALUE;
@@ -401,12 +472,13 @@ void to_json(nlohmann::json& jsonObject, const InsightIntentEntityInfo &info)
         {INSIGHT_INTENT_ENTITY_DECORETOR_TYPE, info.decoratorType},
         {INSIGHT_INTENT_ENTITY_ID, info.entityId},
         {INSIGHT_INTENT_ENTITY_CATEGORY, info.entityCategory},
-        {INSIGHT_INTENT_ENTITY_PARENT_CLASS_NAME, info.parentClassName}
+        {INSIGHT_INTENT_ENTITY_PARENT_CLASS_NAME, info.parentClassName},
+        {INSIGHT_INTENT_ENTITY_SUPPORTED_QUERY_PROPERTIES, info.supportedQueryProperties},
     };
 
     if (!info.parameters.empty()) {
-        auto parameters = nlohmann::json::parse(info.parameters, nullptr, false);
-        if (parameters.is_discarded()) {
+        nlohmann::json parameters;
+        if (!SafeParse(info.parameters, parameters)) {
             TAG_LOGE(AAFwkTag::INTENT, "discarded entity parameters");
             return;
         }
@@ -434,6 +506,7 @@ void to_json(nlohmann::json& jsonObject, const ExtractInsightIntentProfileInfo& 
         {INSIGHT_INTENT_ICON, info.icon},
         {INSIGHT_INTENT_LLM_DESCRIPTION, info.llmDescription},
         {INSIGHT_INTENT_KEYWORDS, info.keywords},
+        {INSIGHT_INTENT_PERMISSIONS, info.permissions},
         {INSIGHT_INTENT_EXAMPLE, info.example},
         {INSIGHT_INTENT_URI, info.uri},
         {INSIGHT_INTENT_PARAM_MAPPING, info.paramMapping},
@@ -444,29 +517,18 @@ void to_json(nlohmann::json& jsonObject, const ExtractInsightIntentProfileInfo& 
         {INSIGHT_INTENT_ABILITY_NAME, info.abilityName},
         {INSIGHT_INTENT_EXECUTE_MODE, info.executeMode},
         {INSIGHT_INTENT_FUNCTION_NAME, info.functionName},
+        {INSIGHT_INTENT_FUNCTION_RETURN_TYPE, info.functionReturnType},
         {INSIGHT_INTENT_FUNCTION_PARAMS, info.functionParams},
         {INSIGHT_INTENT_FORM_NAME, info.formName},
-        {INSIGHT_INTENT_ENTITES, info.entities}
+        {INSIGHT_INTENT_ENTITES, info.entities},
+        {INSIGHT_INTENT_ARKTS_MODE, info.arkTSMode}
     };
 
-    if (!info.parameters.empty()) {
-        auto parameters = nlohmann::json::parse(info.parameters, nullptr, false);
-        if (parameters.is_discarded()) {
-            TAG_LOGE(AAFwkTag::INTENT, "discarded parameters");
-            return;
-        }
-
-        jsonObject[INSIGHT_INTENT_PARAMETERS] = parameters;
+    if (!SetJsonFieldIfNotEmpty(jsonObject, INSIGHT_INTENT_PARAMETERS, info.parameters, "discarded parameters")) {
+        return;
     }
-
-    if (!info.result.empty()) {
-        auto result = nlohmann::json::parse(info.result, nullptr, false);
-        if (result.is_discarded()) {
-            TAG_LOGE(AAFwkTag::INTENT, "discarded result");
-            return;
-        }
-
-        jsonObject[INSIGHT_INTENT_RESULT] = result;
+    if (!SetJsonFieldIfNotEmpty(jsonObject, INSIGHT_INTENT_RESULT, info.result, "discarded result")) {
+        return;
     }
 }
 
@@ -539,7 +601,7 @@ bool CheckProfileInfo(const ExtractInsightIntentProfileInfo &insightIntent)
     }
 
     for (const auto &entity: insightIntent.entities) {
-        if (entity.className.empty() || entity.entityId.empty()) {
+        if (entity.className.empty() || (entity.entityId.empty() && !entity.isQueryable())) {
             TAG_LOGE(AAFwkTag::INTENT, "entity exist empty param, intentName: %{public}s, "
                 "className: %{public}s, entityId: %{public}s",
                 insightIntent.intentName.c_str(), entity.className.c_str(), entity.entityId.c_str());
@@ -610,6 +672,8 @@ bool TransformToFunctionInfo(const ExtractInsightIntentProfileInfo &insightInten
 {
     info.functionName = insightIntent.functionName;
     TAG_LOGD(AAFwkTag::INTENT, "functionName: %{public}s", info.functionName.c_str());
+    info.functionReturnType = insightIntent.functionReturnType;
+    TAG_LOGD(AAFwkTag::INTENT, "functionReturnType: %{public}s", info.functionReturnType.c_str());
     info.functionParams.assign(insightIntent.functionParams.begin(), insightIntent.functionParams.end());
     for (size_t i = 0; i < info.functionParams.size(); i++) {
         TAG_LOGD(AAFwkTag::INTENT, "functionParams[%{public}zu]: %{public}s", i, info.functionParams[i].c_str());
@@ -632,15 +696,18 @@ bool ExtractInsightIntentProfile::TransformTo(const std::string &profileStr,
     ExtractInsightIntentProfileInfoVec &intentInfos)
 {
     TAG_LOGD(AAFwkTag::INTENT, "transform profileStr: %{public}s", profileStr.c_str());
-    auto jsonObject = nlohmann::json::parse(profileStr, nullptr, false);
-    if (jsonObject.is_discarded()) {
+    nlohmann::json jsonObject;
+    if (!SafeParse(profileStr, jsonObject)) {
         TAG_LOGE(AAFwkTag::INTENT, "discarded jsonObject, profileStr: %{public}s", profileStr.c_str());
         return false;
     }
 
     std::lock_guard<std::mutex> lock(g_extraMutex);
     g_extraParseResult = ERR_OK;
-    intentInfos = jsonObject.get<ExtractInsightIntentProfileInfoVec>();
+    if (!SafeJsonGet(jsonObject, intentInfos, "ExtractInsightIntentProfileInfoVec")) {
+        g_extraParseResult = ERR_OK;
+        return false;
+    }
     if (g_extraParseResult != ERR_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "parse result: %{public}d, profileStr: %{public}s",
             g_extraParseResult, profileStr.c_str());
@@ -668,7 +735,7 @@ bool ExtractInsightIntentProfile::ToJson(const ExtractInsightIntentProfileInfo &
     }
 
     jsonObject[INSIGHT_INTENTS] = nlohmann::json::array({ subJsonObject });
-    TAG_LOGD(AAFwkTag::INTENT, "to json string: %{public}s", jsonObject.dump().c_str());
+    TAG_LOGD(AAFwkTag::INTENT, "to json string: %{public}s", SafeDump(jsonObject, DUMP_LOG_MAX_LEN).c_str());
     return true;
 }
 
@@ -691,15 +758,17 @@ bool ExtractInsightIntentProfile::ProfileInfoFormat(const ExtractInsightIntentPr
     info.example = insightIntent.example;
     info.result = insightIntent.result;
     info.keywords.assign(insightIntent.keywords.begin(), insightIntent.keywords.end());
+    info.permissions.assign(insightIntent.permissions.begin(), insightIntent.permissions.end());
+    info.arkTSMode = insightIntent.arkTSMode;
     info.entities = insightIntent.entities;
     TAG_LOGD(AAFwkTag::INTENT, "entities size: %{public}zu", info.entities.size());
     for (auto iter = info.entities.begin(); iter != info.entities.end(); iter++) {
         TAG_LOGD(AAFwkTag::INTENT, "entity decoratorFile: %{public}s, className: %{public}s, "
             "decoratorType: %{public}s, entityId: %{public}s, entityCategory: %{public}s, "
-            "parentClassName: %{public}s, parameters: %{public}s",
+            "parentClassName: %{public}s, parameters: %{public}s, supportedQueryProperties: %{public}zu",
             (*iter).decoratorFile.c_str(), (*iter).className.c_str(), (*iter).decoratorType.c_str(),
             (*iter).entityId.c_str(), (*iter).entityCategory.c_str(), (*iter).parentClassName.c_str(),
-            (*iter).parameters.c_str());
+            (*iter).parameters.c_str(), (*iter).supportedQueryProperties.size());
     }
 
     info.genericInfo.bundleName = insightIntent.bundleName;

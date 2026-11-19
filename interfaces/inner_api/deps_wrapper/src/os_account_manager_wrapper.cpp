@@ -78,6 +78,17 @@ ErrCode OsAccountManagerWrapper::IsOsAccountExists(const int id, bool &isOsAccou
 #endif // OS_ACCOUNT_PART_ENABLED
 }
 
+ErrCode OsAccountManagerWrapper::GetOsAccountLocalIds(std::vector<int32_t> &ids)
+{
+#ifndef OS_ACCOUNT_PART_ENABLED
+    TAG_LOGD(AAFwkTag::DEFAULT, "Without os account subsystem");
+    return ERR_OK;
+#else // OS_ACCOUNT_PART_ENABLED
+    TAG_LOGD(AAFwkTag::DEFAULT, "os account subsystem");
+    return AccountSA::OsAccountManager::GetOsAccountLocalIds(ids);
+#endif // OS_ACCOUNT_PART_ENABLED
+}
+
 ErrCode OsAccountManagerWrapper::CreateOsAccount(const std::string &name, int32_t &osAccountUserId)
 {
 #ifndef OS_ACCOUNT_PART_ENABLED
@@ -108,13 +119,7 @@ ErrCode OsAccountManagerWrapper::RemoveOsAccount(const int id)
 int32_t OsAccountManagerWrapper::GetCurrentActiveAccountId()
 {
     std::vector<int32_t> accountIds;
-    auto instance = DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance();
-    if (instance == nullptr) {
-        TAG_LOGE(AAFwkTag::DEFAULT, "Get OsAccountManager Failed");
-        return 0;
-    }
-
-    ErrCode ret = instance->QueryActiveOsAccountIds(accountIds);
+    ErrCode ret = QueryActiveOsAccountIds(accountIds);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::DEFAULT, "Query active id failed. ret: %{public}d", ret);
         return 0;

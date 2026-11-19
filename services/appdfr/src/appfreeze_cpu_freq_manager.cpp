@@ -24,6 +24,8 @@
 #include <cstdint>
 #include <dlfcn.h>
 #include <cstdio>
+#include <unistd.h>
+#include <cerrno>
 
 #include "file_ex.h"
 #include "directory_ex.h"
@@ -38,6 +40,7 @@
 namespace OHOS {
 namespace AppExecFwk {
 namespace {
+    constexpr int64_t DEFAULT_CLOCK_TICKS = 100;
     constexpr int64_t HZ_TO_MHZ = 1000;
     constexpr size_t CPU_FREQ_AND_TIME_NUM = 5;
     constexpr int CPU_FREQ_DECIMAL_BASE = 10;
@@ -51,13 +54,12 @@ namespace {
     constexpr const char* const LIB_THREAD_CPU_LOAD_PATH = "libucollection_utility.z.so";
     constexpr uint32_t DEFAULT_CPU_SIZE = 1;
     constexpr const char* const CPU_INFO_PREFIX = "cpu-info-";
+    constexpr double INVALID_DMIPS = -1.0;
 
 }
 ffrt::mutex AppfreezeCpuFreqManager::freezeInfoMutex_;
 int AppfreezeCpuFreqManager::cpuCount_ = 0;
 std::map<std::string, CpuDataProcessor> AppfreezeCpuFreqManager::cpuInfoMap_;
-
-typedef double (*GetThreadCpuLoad)(int);
 
 AppfreezeCpuFreqManager::AppfreezeCpuFreqManager()
 {
@@ -333,8 +335,41 @@ uint64_t AppfreezeCpuFreqManager::GetDeviceRuntime()
     return deviceRuntime;
 }
 
-double AppfreezeCpuFreqManager::GetOptimalCpuTime(int32_t pid)
+GetThreadCpuLoad AppfreezeCpuFreqManager::GetThreadCpuLoadFunc()
 {
+    static std::once_flag onceFlag;
+    static void* threadFuncHandler = nullptr;
+    static GetThreadCpuLoad getThreadCpuLoadFunc = nullptr;
+
+    std::call_once(onceFlag, []() {
+        threadFuncHandler = dlopen(LIB_THREAD_CPU_LOAD_PATH, RTLD_LAZY);
+        if (threadFuncHandler == nullptr) {
+            TAG_LOGE(AAFwkTag::APPDFR, "dlopen failed %{public}s, %{public}s",
+                LIB_THREAD_CPU_LOAD_PATH, dlerror());
+            return;
+        }
+        getThreadCpuLoadFunc = reinterpret_cast<GetThreadCpuLoad>(dlsym(threadFuncHandler, "GetThreadCpuLoad"));
+        char* err = dlerror();
+        if (err != nullptr) {
+            TAG_LOGE(AAFwkTag::APPDFR, "dlsym GetThreadCpuLoad failed: %{public}s", err);
+            dlclose(threadFuncHandler);
+            threadFuncHandler = nullptr;
+            getThreadCpuLoadFunc = nullptr;
+        }
+    });
+
+    return getThreadCpuLoadFunc;
+}
+
+double AppfreezeCpuFreqManager::GetDimps()
+{
+    static double cachedDmips = INVALID_DMIPS;
+    if (cachedDmips > 0) {
+        return cachedDmips;
+    }
+    if (cpuCount_ < AppfreezeUtil::CPU_COUNT_SUBTRACT) {
+        return 0;
+    }
     int maxCpuCount = cpuCount_ - AppfreezeUtil::CPU_COUNT_SUBTRACT;
     std::string cpuFile = CpuSysConfig::GetMaxCoreDimpsPath(maxCpuCount);
     std::string realPath = AppfreezeUtil::FreezePathToRealPath(cpuFile);
@@ -345,36 +380,44 @@ double AppfreezeCpuFreqManager::GetOptimalCpuTime(int32_t pid)
         return 0;
     }
     std::string content;
-    double ret = 0;
     if (!getline(fin, content) || content.empty()) {
         TAG_LOGE(AAFwkTag::APPDFR, "Read info failed, path:%{public}s", cpuFile.c_str());
-        return ret;
+        return 0;
     }
-    double dmips = static_cast<double>(strtoull(content.c_str(), nullptr, CPU_FREQ_DECIMAL_BASE));
+    errno = 0;
+    uint64_t dimpsValue = strtoull(content.c_str(), nullptr, CPU_FREQ_DECIMAL_BASE);
+    if (errno != 0 || dimpsValue == 0) {
+        TAG_LOGE(AAFwkTag::APPDFR, "get dmips failed, errno:%{public}d dimpsValue %{public}" PRIu64 " .",
+            errno, dimpsValue);
+        return 0;
+    }
+    cachedDmips = static_cast<double>(dimpsValue);
+    return cachedDmips;
+}
+
+double AppfreezeCpuFreqManager::GetOptimalCpuTime(int32_t pid)
+{
+    double dmips = GetDimps();
     if (dmips <= 0) {
-        TAG_LOGE(AAFwkTag::APPDFR, "get dmips %{public}lf failed.", dmips);
-        return ret;
+        TAG_LOGE(AAFwkTag::APPDFR, "GetDimps failed, dmips=%{public}lf", dmips);
+        return 0;
     }
-    void* threadFuncHandler = dlopen(LIB_THREAD_CPU_LOAD_PATH, RTLD_LAZY);
-    if (threadFuncHandler == nullptr) {
-        TAG_LOGE(AAFwkTag::APPDFR, "dlopen failed, funcHandler is nullptr.");
-        return ret;
+
+    GetThreadCpuLoad getThreadCpuLoad = GetThreadCpuLoadFunc();
+    if (getThreadCpuLoad == nullptr) {
+        TAG_LOGE(AAFwkTag::APPDFR, "GetThreadCpuLoad function not available");
+        return 0;
     }
-    char* err = nullptr;
-    auto getThreadCpuLoad = reinterpret_cast<GetThreadCpuLoad>(dlsym(threadFuncHandler, "GetThreadCpuLoad"));
-    err = dlerror();
-    if (err != nullptr) {
-        TAG_LOGE(AAFwkTag::APPDFR, "dlsym GetThreadCpuLoad func failed. %{public}s", err);
-    } else {
-        double optimalCpuTime = getThreadCpuLoad(pid);
-        if (optimalCpuTime >= 0) {
-            ret = optimalCpuTime / dmips;
-        }
-        TAG_LOGW(AAFwkTag::APPDFR, "dmips %{public}lf optimalCpuTime %{public}lf", dmips, optimalCpuTime);
+
+    double optimalCpuTime = getThreadCpuLoad(pid);
+    if (optimalCpuTime < 0) {
+        TAG_LOGE(AAFwkTag::APPDFR, "getThreadCpuLoad failed for pid=%{public}d", pid);
+        return 0;
     }
-    dlclose(threadFuncHandler);
-    threadFuncHandler = nullptr;
-    getThreadCpuLoad = nullptr;
+
+    double ret = optimalCpuTime / dmips;
+    TAG_LOGI(AAFwkTag::APPDFR, "dmips=%{public}lf optimalCpuTime=%{public}lf ratio=%{public}lf",
+        dmips, optimalCpuTime, ret);
     return ret;
 }
 
@@ -413,13 +456,35 @@ uint64_t AppfreezeCpuFreqManager::GetInterval(uint64_t warnTime, uint64_t blockT
     return blockTime >= warnTime ? (blockTime - warnTime) : (warnTime - blockTime);
 }
 
+uint64_t AppfreezeCpuFreqManager::ClockTicksToMs(uint64_t cpuTime)
+{
+    auto clockTicks = sysconf(_SC_CLK_TCK);
+    if (clockTicks <= 0) {
+        TAG_LOGE(AAFwkTag::APPDFR, "Get _SC_CLK_TCK fail. errno %{public}d", errno);
+        clockTicks = DEFAULT_CLOCK_TICKS;
+    }
+
+    uint64_t multiplier = AppfreezeUtil::SEC_TO_MILLISEC / clockTicks;
+    if (multiplier == 0 || cpuTime > UINT64_MAX / multiplier) {
+        TAG_LOGE(AAFwkTag::APPDFR, "mul overflow, cpuTime=%{public}" PRIu64 ", multiplier=%{public}" PRIu64
+            ", clockTicks=%{public}ld", cpuTime, multiplier, clockTicks);
+        return 0;
+    }
+
+    auto result = cpuTime * multiplier;
+    return result;
+}
+
 std::string AppfreezeCpuFreqManager::GetConsumeTimeInfo(int32_t pid, CpuConsumeTime warnTimes,
     CpuConsumeTime blockTimes)
 {
     double optimalCpuTime = GetInterval(warnTimes.optimalCpuTime, blockTimes.optimalCpuTime);
     uint64_t processCpuTime = GetInterval(warnTimes.processCpuTime, blockTimes.processCpuTime);
+    processCpuTime = ClockTicksToMs(processCpuTime);
     uint64_t deviceRunTime = GetInterval(warnTimes.deviceRunTime, blockTimes.deviceRunTime);
+    deviceRunTime = ClockTicksToMs(deviceRunTime);
     uint64_t cpuTime = GetInterval(warnTimes.cpuTime, blockTimes.cpuTime);
+    cpuTime = ClockTicksToMs(cpuTime);
     uint64_t duration = GetInterval(warnTimes.cpuFaultTime, blockTimes.cpuFaultTime);
     uint64_t syncWaitTime = duration > cpuTime ? (duration - cpuTime) : 0;
     double supplyAvailableTime = cpuTime - optimalCpuTime;

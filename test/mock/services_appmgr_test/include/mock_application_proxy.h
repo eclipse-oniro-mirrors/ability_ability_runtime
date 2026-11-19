@@ -50,6 +50,7 @@ public:
     MOCK_METHOD3(ScheduleNotifyUnLoadRepairPatch, int32_t(const std::string& bundleName,
         const sptr<IQuickFixCallback>& callback, const int32_t recordId));
     MOCK_METHOD1(ScheduleNotifyAppFault, int32_t(const FaultData &faultData));
+    MOCK_METHOD0(SchedulePreTemplateProcessDeepFrozen, int32_t());
     MOCK_METHOD1(AttachAppDebug, void(bool isDebugFromLocal));
     MOCK_METHOD0(DetachAppDebug, void());
     MOCK_METHOD2(SetAppWaitingDebug, int32_t(const std::string &bundleName, bool isPersist));

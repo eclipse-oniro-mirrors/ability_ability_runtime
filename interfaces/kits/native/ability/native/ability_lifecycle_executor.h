@@ -16,6 +16,8 @@
 #ifndef OHOS_ABILITY_RUNTIME_ABILITY_LIFECYCLE_EXECUTOR_H
 #define OHOS_ABILITY_RUNTIME_ABILITY_LIFECYCLE_EXECUTOR_H
 
+#include <atomic>
+
 namespace OHOS {
 namespace AppExecFwk {
 class AbilityLifecycleExecutor {
@@ -51,7 +53,7 @@ public:
     int GetState() const;
 
 private:
-    AbilityLifecycleExecutor::LifecycleState state_ = UNINITIALIZED;
+    std::atomic<LifecycleState> state_ = LifecycleState::UNINITIALIZED;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

@@ -31,8 +31,9 @@ ohos_fuzztest("UiAbilityLifeCycleManagerBFuzzTest") {
     "${ability_runtime_services_path}/abilitymgr/include/scene_board/",
   ]
 
-  public_configs =
-      [ "${ability_runtime_services_path}/abilitymgr:abilityms_config" ]
+  public_configs = [
+    "${ability_runtime_services_path}/abilitymgr:abilityms_config"
+  ]
 
   sources = [
     "${ability_runtime_services_path}/abilitymgr/src/hidden_start_observer_manager.cpp",
@@ -90,7 +91,7 @@ ohos_fuzztest("UiAbilityLifeCycleManagerBFuzzTest") {
     "window_manager:libwsutils",
     "window_manager:scene_session",
     "window_manager:session_manager_lite",
-    "window_manager:sms",
+    "window_manager:sms"
   ]
 
   if (ability_runtime_dsoftbus_enable) {

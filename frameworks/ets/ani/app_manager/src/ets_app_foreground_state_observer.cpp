@@ -72,8 +72,12 @@ void ETSAppForegroundStateObserver::HandleOnAppStateChanged(const AppStateData &
         AppExecFwk::DetachAniEnv(etsVm_, isAttachThread);
         return;
     }
-    std::lock_guard<std::mutex> lock(etsObserverObjectSetLock_);
-    for (auto &item : etsObserverObjects_) {
+    std::vector<ani_ref> snapshot;
+    {
+        std::lock_guard<std::mutex> lock(etsObserverObjectSetLock_);
+        snapshot = etsObserverObjects_;
+    }
+    for (auto &item : snapshot) {
         if (item != nullptr) {
             CallEtsFunction(env, reinterpret_cast<ani_object>(item), "onAppStateChanged", nullptr, appStateDataObj);
         }
@@ -160,19 +164,13 @@ void ETSAppForegroundStateObserver::RemoveEtsObserverObject(const ani_object &ob
         TAG_LOGE(AAFwkTag::APPMGR, "null observer");
         return;
     }
-    wptr<ETSAppForegroundStateObserver> weakPtr = this;
+    std::lock_guard<std::mutex> lock(etsObserverObjectSetLock_);
     auto it = find_if(etsObserverObjects_.begin(),
         etsObserverObjects_.end(),
-        [weakPtr, &observerObj](ani_ref item) {
-            auto appForegroundStateObserver = weakPtr.promote();
-            if (appForegroundStateObserver == nullptr) {
-                TAG_LOGE(AAFwkTag::APPMGR, "null appForegroundStateObserver");
-                return false;
-            }
-            return appForegroundStateObserver->IsStrictEquals(item, observerObj);
+        [this, &observerObj](ani_ref item) {
+            return IsStrictEquals(item, observerObj);
         });
     if (it != etsObserverObjects_.end()) {
-        std::lock_guard<std::mutex> lock(etsObserverObjectSetLock_);
         AppManagerEts::ReleaseObjectReference(etsVm_, *it);
         etsObserverObjects_.erase(it);
     }

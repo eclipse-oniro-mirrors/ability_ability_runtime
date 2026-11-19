@@ -17,10 +17,12 @@
 
 #include <cstdlib>
 #include <regex>
+#include <unordered_set>
 
 #include "ability_business_error.h"
 #include "ability_delegator_registry.h"
 #include "ability_manager_client.h"
+#include "ability_manager_errors.h"
 #include "ability_recovery.h"
 #include "ability_start_setting.h"
 #include "app_recovery.h"
@@ -42,6 +44,7 @@
 #include "js_data_struct_converter.h"
 #include "js_insight_intent_page.h"
 #include "js_runtime.h"
+#include "path_utils.h"
 #include "js_runtime_utils.h"
 #include "js_utils.h"
 #ifdef SUPPORT_SCREEN
@@ -52,6 +55,7 @@
 #include "ohos_application.h"
 #include "madvise/madvise_utils.h"
 #include "napi_common_configuration.h"
+#include "napi_common_util.h"
 #include "napi_common_want.h"
 #include "napi_remote_object.h"
 #include "page_switch_log.h"
@@ -59,6 +63,12 @@
 #include "string_wrapper.h"
 #include "system_ability_definition.h"
 #include "time_util.h"
+#include "skill/skill_execute_param.h"
+#include "skill/skill_execute_result.h"
+#include "extractor.h"
+
+using Extractor = OHOS::AbilityBase::Extractor;
+using ExtractorUtil = OHOS::AbilityBase::ExtractorUtil;
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -153,18 +163,33 @@ napi_value OnSaveStateCallback(napi_env env, napi_callback_info info)
     return nullptr;
 }
 
+void *DetachNewAbilityContext(napi_env, void *nativeObject, void *)
+{
+    auto origContext = static_cast<std::weak_ptr<AbilityRuntime::AbilityContext> *>(nativeObject);
+    if (origContext == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "origContext is null");
+        return nullptr;
+    }
+    TAG_LOGI(AAFwkTag::UIABILITY, "New detached ability context");
+    auto detachNewContext = new std::weak_ptr<AbilityRuntime::AbilityContext>(*origContext);
+    return detachNewContext;
+}
+
+void DetachFinalizeAbilityContext(void *detachedObject, void *)
+{
+    TAG_LOGI(AAFwkTag::UIABILITY, "Finalizer detached ability context");
+    delete static_cast<std::weak_ptr<AbilityRuntime::AbilityContext> *>(detachedObject);
+}
+
 napi_value AttachJsAbilityContext(napi_env env, void *value, void *)
 {
-    TAG_LOGD(AAFwkTag::UIABILITY, "called");
+    TAG_LOGI(AAFwkTag::UIABILITY, "AttachJsAbilityContext");
     if (value == nullptr) {
         TAG_LOGE(AAFwkTag::UIABILITY, "invalid params");
         return nullptr;
     }
     auto ptr = reinterpret_cast<std::weak_ptr<AbilityRuntime::AbilityContext> *>(value)->lock();
-    if (ptr == nullptr) {
-        TAG_LOGE(AAFwkTag::UIABILITY, "null ptr");
-        return nullptr;
-    }
+    CHECK_POINTER_AND_RETURN(ptr, nullptr);
     std::shared_ptr<NativeReference> systemModule = nullptr;
     int32_t screenMode = ptr->GetScreenMode();
     if (screenMode == AAFwk::IDLE_SCREEN_MODE) {
@@ -181,25 +206,28 @@ napi_value AttachJsAbilityContext(napi_env env, void *value, void *)
     }
     CHECK_POINTER_AND_RETURN(systemModule, nullptr);
     auto contextObj = systemModule->GetNapiValue();
-    auto coerceStatus = napi_coerce_to_native_binding_object(env,
-        contextObj, DetachCallbackFunc, AttachJsAbilityContext, value, nullptr);
-    if (coerceStatus != napi_ok) {
-        TAG_LOGE(AAFwkTag::UIABILITY, "coerceStatus Failed: %{public}d", coerceStatus);
+    if (!CheckTypeForNapiValue(env, contextObj, napi_object)) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "not napi object");
         return nullptr;
     }
-    auto workContext = new (std::nothrow) std::weak_ptr<AbilityRuntime::AbilityContext>(ptr);
-    if (workContext != nullptr) {
-        napi_status status = napi_wrap(env, contextObj, workContext,
-            [](napi_env, void* data, void*) {
-              TAG_LOGD(AAFwkTag::UIABILITY, "finalizer for weak_ptr ability context is called");
-              delete static_cast<std::weak_ptr<AbilityRuntime::AbilityContext> *>(data);
-            },
-            nullptr, nullptr);
-        if (status != napi_ok && workContext != nullptr) {
-            TAG_LOGE(AAFwkTag::UIABILITY, "napi_wrap Failed: %{public}d", status);
-            delete workContext;
-            return nullptr;
-        }
+    auto workContext = new std::weak_ptr<AbilityRuntime::AbilityContext>(ptr);
+    auto status = napi_coerce_to_native_binding_object(
+        env, contextObj, DetachNewAbilityContext, AttachJsAbilityContext, workContext, nullptr);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "coerce ability context failed: %{public}d", status);
+        delete workContext;
+        return nullptr;
+    }
+    napi_add_detached_finalizer(env, contextObj, DetachFinalizeAbilityContext, nullptr);
+    status = napi_wrap(env, contextObj, workContext,
+        [](napi_env, void* data, void*) {
+            TAG_LOGD(AAFwkTag::UIABILITY, "finalizer for weak_ptr ability context is called");
+            delete static_cast<std::weak_ptr<AbilityRuntime::AbilityContext> *>(data);
+        }, nullptr, nullptr);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "wrap ability context failed: %{public}d", status);
+        delete workContext;
+        return nullptr;
     }
     return contextObj;
 }
@@ -214,15 +242,15 @@ void BindContext(napi_env env, std::unique_ptr<NativeReference> contextRef, JsRu
         TAG_LOGE(AAFwkTag::UIABILITY, "get ability native object failed");
         return;
     }
-    auto workContext = new (std::nothrow) std::weak_ptr<AbilityRuntime::AbilityContext>(abilityContext);
-    CHECK_POINTER(workContext);
+    auto workContext = new std::weak_ptr<AbilityRuntime::AbilityContext>(abilityContext);
     auto coerceStatus = napi_coerce_to_native_binding_object(
-        env, contextObj, DetachCallbackFunc, AttachJsAbilityContext, workContext, nullptr);
+        env, contextObj, DetachNewAbilityContext, AttachJsAbilityContext, workContext, nullptr);
     if (coerceStatus != napi_ok) {
-        TAG_LOGE(AAFwkTag::UIABILITY, "coerceStatus Failed: %{public}d", coerceStatus);
+        TAG_LOGE(AAFwkTag::UIABILITY, "coerce ability context failed: %{public}d", coerceStatus);
         delete workContext;
         return;
     }
+    napi_add_detached_finalizer(env, contextObj, DetachFinalizeAbilityContext, nullptr);
     abilityContext->Bind(jsRuntime, contextRef.release());
     napi_status wrapStatus = napi_wrap(
         env, contextObj, workContext,
@@ -232,7 +260,7 @@ void BindContext(napi_env env, std::unique_ptr<NativeReference> contextRef, JsRu
         },
         nullptr, nullptr);
     if (wrapStatus != napi_ok) {
-        TAG_LOGE(AAFwkTag::UIABILITY, "napi_wrap failed");
+        TAG_LOGE(AAFwkTag::UIABILITY, "wrap ability context failed: %{public}d", wrapStatus);
         delete workContext;
     }
 }
@@ -352,7 +380,7 @@ void JsUIAbility::Init(std::shared_ptr<AppExecFwk::AbilityLocalRecord> record,
         }
         srcPath.append("/");
         srcPath.append(abilityInfo->srcEntrance);
-        srcPath.erase(srcPath.rfind("."));
+        RemoveFileExtension(srcPath);
         srcPath.append(".abc");
         TAG_LOGD(AAFwkTag::UIABILITY, "jsAbility srcPath: %{public}s", srcPath.c_str());
     }
@@ -445,27 +473,34 @@ void JsUIAbility::SetAbilityContext(std::shared_ptr<AbilityInfo> abilityInfo,
         TAG_LOGE(AAFwkTag::UIABILITY, "get ability native object failed");
         return;
     }
-    auto workContext = new (std::nothrow) std::weak_ptr<AbilityRuntime::AbilityContext>(abilityContext_);
-    CHECK_POINTER(workContext);
+    auto workContext = new std::weak_ptr<AbilityRuntime::AbilityContext>(abilityContext_);
 
+    // napi_coerce_to_native_binding_object registers detach/attach callbacks for worker thread
+    // transitions. DetachNewAbilityContext creates a NEW weak_ptr copy (does not free the original),
+    // and DetachFinalizeAbilityContext frees that copy. This is complementary to napi_wrap below.
     auto coerceStatus = napi_coerce_to_native_binding_object(
-        env, contextObj, DetachCallbackFunc, AttachJsAbilityContext, workContext, nullptr);
+        env, contextObj, DetachNewAbilityContext, AttachJsAbilityContext, workContext, nullptr);
     if (coerceStatus != napi_ok) {
-        TAG_LOGE(AAFwkTag::UIABILITY, "coerceStatus Failed: %{public}d", coerceStatus);
+        TAG_LOGE(AAFwkTag::UIABILITY, "coerce ability context failed: %{public}d", coerceStatus);
         delete workContext;
         return;
     }
+    napi_add_detached_finalizer(env, contextObj, DetachFinalizeAbilityContext, nullptr);
     abilityContext_->Bind(jsRuntime_, shellContextRef_.get());
     napi_set_named_property(env, obj, "context", contextObj);
     if (abilityRecovery_ != nullptr) {
         abilityRecovery_->SetJsAbility(reinterpret_cast<uintptr_t>(workContext));
     }
+    // napi_wrap registers the finalize callback to free the original workContext on GC.
+    // This coexists with coerce above: coerce uses the native binding slot for worker
+    // detach/attach, while wrap uses the wrap slot for final cleanup. workContext is freed
+    // exactly once here; detached copies are freed by DetachFinalizeAbilityContext.
     napi_status status = napi_wrap(env, contextObj, workContext,
         [](napi_env, void *data, void *hint) {
             delete static_cast<std::weak_ptr<AbilityRuntime::AbilityContext> *>(data);
         }, nullptr, nullptr);
-    if (status != napi_ok && workContext != nullptr) {
-        TAG_LOGE(AAFwkTag::UIABILITY, "napi_wrap Failed: %{public}d", status);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "wrap ability context failed: %{public}d", status);
         delete workContext;
         return;
     }
@@ -493,6 +528,8 @@ void JsUIAbility::OnStart(const Want &want, sptr<AAFwk::SessionInfo> sessionInfo
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::UIABILITY, "ability: %{public}s", GetAbilityName().c_str());
     UIAbility::OnStart(want, sessionInfo);
+    isPrelaunch_ = sessionInfo != nullptr && sessionInfo->isPrelaunch;
+    frameNum_ = sessionInfo != nullptr ? sessionInfo->frameNum : 0;
     if (want.GetBoolParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH, false)) {
         TAG_LOGI(AAFwkTag::UIABILITY, "OnStart: Set game prelaunch flag from want");
         isGamePreLaunch_ = true;
@@ -518,10 +555,18 @@ void JsUIAbility::OnStart(const Want &want, sptr<AAFwk::SessionInfo> sessionInfo
 
     napi_set_named_property(env, obj, "launchWant", jsWant);
     napi_set_named_property(env, obj, "lastRequestWant", jsWant);
-    if (sessionInfo != nullptr && abilityInfo_->launchMode == AppExecFwk::LaunchMode::SPECIFIED) {
-        napi_set_named_property(env, obj, "specifiedId", CreateJsValue(env, sessionInfo->specifiedFlag));
+
+    // Initialize isDestroyed to false
+    napi_value jsIsDestroyed = nullptr;
+    if (napi_get_boolean(env, false, &jsIsDestroyed) == napi_ok) {
+        napi_set_named_property(env, obj, "isDestroyed", jsIsDestroyed);
     }
+
     auto launchParam = GetLaunchParam();
+    if (abilityInfo_->launchMode == AppExecFwk::LaunchMode::SPECIFIED) {
+        napi_set_named_property(env, obj, "specifiedId", CreateJsValue(env, launchParam.specifiedId));
+    }
+
     if (InsightIntentExecuteParam::IsInsightIntentExecute(want)) {
         launchParam.launchReason = AAFwk::LaunchReason::LAUNCHREASON_INSIGHT_INTENT;
     }
@@ -529,16 +574,20 @@ void JsUIAbility::OnStart(const Want &want, sptr<AAFwk::SessionInfo> sessionInfo
         jsWant,
         CreateJsLaunchParam(env, launchParam),
     };
-    std::string methodName = "OnStart";
+
+    // Handle NativeModule: Create NativeAbilityWrapper and call PostAbility
+    HandleNativeModule(env);
 
     auto applicationContext = AbilityRuntime::Context::GetApplicationContext();
     if (applicationContext != nullptr) {
         applicationContext->SetLaunchParameter(want);
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         applicationContext->DispatchOnAbilityWillCreate(ability);
+        DISPATCH_ABILITY_INTEROP(OnAbilityWillCreate, applicationContext, jsRuntime_, ability);
     }
 
     WriteLifecycleSwitchLog("onCreate");
+    std::string methodName = "OnStart";
     AddLifecycleEventBeforeJSCall(FreezeUtil::TimeoutState::FOREGROUND, methodName);
     CallObjectMethod("onCreate", argv, ArraySize(argv));
     AddLifecycleEventAfterJSCall(FreezeUtil::TimeoutState::FOREGROUND, methodName);
@@ -549,17 +598,37 @@ void JsUIAbility::OnStart(const Want &want, sptr<AAFwk::SessionInfo> sessionInfo
         applicationContext->DispatchOnAbilityCreate(ability);
         DISPATCH_ABILITY_INTEROP(OnAbilityCreate, applicationContext, jsRuntime_, ability);
     }
+
+#ifdef SUPPORT_SCREEN
+    if (scene_ == nullptr && sessionInfo != nullptr && sessionInfo->isPrelaunch) {
+        TAG_LOGI(AAFwkTag::UIABILITY, "OnStart: prelaunch, create scene for onWindowStageCreate");
+        if (abilityContext_ == nullptr || sceneListener_ == nullptr) {
+            TAG_LOGE(AAFwkTag::UIABILITY, "null abilityContext or sceneListener_");
+            return;
+        }
+        DoOnForegroundForSceneIsNull(want);
+    }
+#endif
+
     TAG_LOGD(AAFwkTag::UIABILITY, "end");
 }
 
 void JsUIAbility::HandleAbilityDelegatorStart()
 {
-    auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator();
     auto property = std::make_shared<AppExecFwk::ADelegatorAbilityProperty>();
-    if (delegator && CreateProperty(abilityContext_, property)) {
+    if (!CreateProperty(abilityContext_, property)) {
+        return;
+    }
+    property->object_ = jsAbilityObj_;
+    auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator();
+    if (delegator) {
         TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformStart");
-        property->object_ = jsAbilityObj_;
         delegator->PostPerformStart(property);
+    }
+    auto etsDelegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
+        AbilityRuntime::Runtime::Language::ETS);
+    if (etsDelegator && etsDelegator != delegator) {
+        etsDelegator->PostPerformStart(property);
     }
 }
 
@@ -626,7 +695,9 @@ void JsUIAbility::OnStop()
     if (applicationContext != nullptr) {
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         applicationContext->DispatchOnAbilityWillDestroy(ability);
+        DISPATCH_ABILITY_INTEROP(OnAbilityWillDestroy, applicationContext, jsRuntime_, ability);
     }
+
     WriteLifecycleSwitchLog("onDestroy");
     CallObjectMethod("onDestroy");
     OnStopCallback();
@@ -655,7 +726,9 @@ void JsUIAbility::OnStop(AppExecFwk::AbilityTransactionCallbackInfo<> *callbackI
     if (applicationContext != nullptr) {
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         applicationContext->DispatchOnAbilityWillDestroy(ability);
+        DISPATCH_ABILITY_INTEROP(OnAbilityWillDestroy, applicationContext, jsRuntime_, ability);
     }
+
     WriteLifecycleSwitchLog("onDestroy");
     napi_value result = CallObjectMethod("onDestroy", nullptr, 0, true);
     if (!CheckPromise(result)) {
@@ -684,12 +757,33 @@ void JsUIAbility::OnStop(AppExecFwk::AbilityTransactionCallbackInfo<> *callbackI
 
 void JsUIAbility::OnStopCallback()
 {
-    auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator();
+    // Set isDestroyed to true after onDestroy callback completes
+    if (jsAbilityObj_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "null jsAbilityObj_");
+        return;
+    }
+
+    napi_value obj = jsAbilityObj_->GetNapiValue();
+    if (CheckTypeForNapiValue(jsRuntime_.GetNapiEnv(), obj, napi_object)) {
+        napi_value jsIsDestroyed = nullptr;
+        if (napi_get_boolean(jsRuntime_.GetNapiEnv(), true, &jsIsDestroyed) == napi_ok) {
+            napi_set_named_property(jsRuntime_.GetNapiEnv(), obj, "isDestroyed", jsIsDestroyed);
+        }
+    }
+
     auto property = std::make_shared<AppExecFwk::ADelegatorAbilityProperty>();
-    if (delegator && CreateProperty(abilityContext_, property)) {
-        TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformStop");
+    if (CreateProperty(abilityContext_, property)) {
         property->object_ = jsAbilityObj_;
-        delegator->PostPerformStop(property);
+        auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator();
+        if (delegator) {
+            TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformStop");
+            delegator->PostPerformStop(property);
+        }
+        auto etsDelegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
+            AbilityRuntime::Runtime::Language::ETS);
+        if (etsDelegator && etsDelegator != delegator) {
+            etsDelegator->PostPerformStop(property);
+        }
     }
 
     bool ret = ConnectionManager::GetInstance().DisconnectCaller(AbilityContext::token_);
@@ -703,6 +797,10 @@ void JsUIAbility::OnStopCallback()
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         applicationContext->DispatchOnAbilityDestroy(ability);
         DISPATCH_ABILITY_INTEROP(OnAbilityDestroy, applicationContext, jsRuntime_, ability);
+    }
+
+    if (IsWithNative() && applicationContext != nullptr) {
+        applicationContext->DestroyAbility(GetInstanceId());
     }
 }
 
@@ -727,6 +825,7 @@ void JsUIAbility::OnSceneCreated()
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         JsAbilityLifecycleCallbackArgs stage(jsWindowStageObj_);
         applicationContext->DispatchOnWindowStageWillCreate(ability, stage);
+        DISPATCH_WINDOW_INTEROP(OnWindowStageWillCreate, applicationContext, jsRuntime_, ability, stage);
     }
     {
         HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, "onWindowStageCreate");
@@ -737,12 +836,19 @@ void JsUIAbility::OnSceneCreated()
         AddLifecycleEventAfterJSCall(FreezeUtil::TimeoutState::FOREGROUND, methodName);
     }
 
-    auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator();
     auto property = std::make_shared<AppExecFwk::ADelegatorAbilityProperty>();
-    if (delegator && CreateProperty(abilityContext_, property)) {
-        TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformSceneCreated");
+    if (CreateProperty(abilityContext_, property)) {
         property->object_ = jsAbilityObj_;
-        delegator->PostPerformScenceCreated(property);
+        auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator();
+        if (delegator) {
+            TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformSceneCreated");
+            delegator->PostPerformScenceCreated(property);
+        }
+        auto etsDelegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
+            AbilityRuntime::Runtime::Language::ETS);
+        if (etsDelegator && etsDelegator != delegator) {
+            etsDelegator->PostPerformScenceCreated(property);
+        }
     }
 
     applicationContext = AbilityRuntime::Context::GetApplicationContext();
@@ -751,6 +857,15 @@ void JsUIAbility::OnSceneCreated()
         JsAbilityLifecycleCallbackArgs stage(jsWindowStageObj_);
         applicationContext->DispatchOnWindowStageCreate(ability, stage);
         DISPATCH_WINDOW_INTEROP(OnWindowStageCreate, applicationContext, jsRuntime_, ability, stage);
+    }
+
+    if (isPrelaunch_ && frameNum_ < 0) {
+        auto window = scene_->GetMainWindow();
+        if (window != nullptr) {
+            TAG_LOGI(AAFwkTag::UIABILITY, "SetBackgroundForceFlushVsync bundle:%{public}s ability:%{public}s",
+                abilityInfo_->bundleName.c_str(), GetAbilityName().c_str());
+            window->SetBackgroundForceFlushVsync();
+        }
     }
 
     TAG_LOGD(AAFwkTag::UIABILITY, "end");
@@ -775,18 +890,27 @@ void JsUIAbility::OnSceneRestored()
     JsAbilityLifecycleCallbackArgs stage(jsWindowStageObj_);
     if (applicationContext != nullptr) {
         applicationContext->DispatchOnWindowStageWillRestore(ability, stage);
+        DISPATCH_WINDOW_INTEROP(OnWindowStageWillRestore, applicationContext, jsRuntime_, ability, stage);
     }
     CallObjectMethod("onWindowStageRestore", argv, ArraySize(argv));
     if (applicationContext != nullptr) {
         applicationContext->DispatchOnWindowStageRestore(ability, stage);
+        DISPATCH_WINDOW_INTEROP(OnWindowStageRestore, applicationContext, jsRuntime_, ability, stage);
     }
 
-    auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator();
     auto property = std::make_shared<AppExecFwk::ADelegatorAbilityProperty>();
-    if (delegator && CreateProperty(abilityContext_, property)) {
-        TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformScenceRestored");
+    if (CreateProperty(abilityContext_, property)) {
         property->object_ = jsAbilityObj_;
-        delegator->PostPerformScenceRestored(property);
+        auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator();
+        if (delegator) {
+            TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformScenceRestored");
+            delegator->PostPerformScenceRestored(property);
+        }
+        auto etsDelegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
+            AbilityRuntime::Runtime::Language::ETS);
+        if (etsDelegator && etsDelegator != delegator) {
+            etsDelegator->PostPerformScenceRestored(property);
+        }
     }
 }
 
@@ -816,6 +940,7 @@ void JsUIAbility::onSceneDestroyed()
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         JsAbilityLifecycleCallbackArgs stage(jsWindowStageObj_);
         applicationContext->DispatchOnWindowStageWillDestroy(ability, stage);
+        DISPATCH_WINDOW_INTEROP(OnWindowStageWillDestroy, applicationContext, jsRuntime_, ability, stage);
     }
     HandleScope handleScope(jsRuntime_);
     UpdateJsWindowStage(nullptr);
@@ -830,12 +955,19 @@ void JsUIAbility::onSceneDestroyed()
         }
     }
 
-    auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator();
     auto property = std::make_shared<AppExecFwk::ADelegatorAbilityProperty>();
-    if (delegator && CreateProperty(abilityContext_, property)) {
-        TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformScenceDestroyed");
+    if (CreateProperty(abilityContext_, property)) {
         property->object_ = jsAbilityObj_;
-        delegator->PostPerformScenceDestroyed(property);
+        auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator();
+        if (delegator) {
+            TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformScenceDestroyed");
+            delegator->PostPerformScenceDestroyed(property);
+        }
+        auto etsDelegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
+            AbilityRuntime::Runtime::Language::ETS);
+        if (etsDelegator && etsDelegator != delegator) {
+            etsDelegator->PostPerformScenceDestroyed(property);
+        }
     }
 
     applicationContext = AbilityRuntime::Context::GetApplicationContext();
@@ -890,6 +1022,7 @@ void JsUIAbility::CallOnForegroundFunc(const Want &want)
     if (applicationContext != nullptr) {
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         applicationContext->DispatchOnAbilityWillForeground(ability);
+        DISPATCH_ABILITY_INTEROP(OnAbilityWillForeground, applicationContext, jsRuntime_, ability);
     }
 
     WriteLifecycleSwitchLog("onForeground");
@@ -899,12 +1032,19 @@ void JsUIAbility::CallOnForegroundFunc(const Want &want)
     CallObjectMethod("onForeground", &jsWant, 1);
     AddLifecycleEventAfterJSCall(FreezeUtil::TimeoutState::FOREGROUND, methodName);
 
-    auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator();
     auto property = std::make_shared<AppExecFwk::ADelegatorAbilityProperty>();
-    if (delegator && CreateProperty(abilityContext_, property)) {
-        TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformForeground");
+    if (CreateProperty(abilityContext_, property)) {
         property->object_ = jsAbilityObj_;
-        delegator->PostPerformForeground(property);
+        auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator();
+        if (delegator) {
+            TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformForeground");
+            delegator->PostPerformForeground(property);
+        }
+        auto etsDelegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
+            AbilityRuntime::Runtime::Language::ETS);
+        if (etsDelegator && etsDelegator != delegator) {
+            etsDelegator->PostPerformForeground(property);
+        }
     }
 
     applicationContext = AbilityRuntime::Context::GetApplicationContext();
@@ -924,6 +1064,7 @@ void JsUIAbility::OnBackground()
     if (applicationContext != nullptr) {
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         applicationContext->DispatchOnAbilityWillBackground(ability);
+        DISPATCH_ABILITY_INTEROP(OnAbilityWillBackground, applicationContext, jsRuntime_, ability);
     }
     std::string methodName = "OnBackground";
     HandleScope handleScope(jsRuntime_);
@@ -934,12 +1075,19 @@ void JsUIAbility::OnBackground()
 
     UIAbility::OnBackground();
 
-    auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator();
     auto property = std::make_shared<AppExecFwk::ADelegatorAbilityProperty>();
-    if (delegator && CreateProperty(abilityContext_, property)) {
-        TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformBackground");
+    if (CreateProperty(abilityContext_, property)) {
         property->object_ = jsAbilityObj_;
-        delegator->PostPerformBackground(property);
+        auto delegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator();
+        if (delegator) {
+            TAG_LOGD(AAFwkTag::UIABILITY, "call PostPerformBackground");
+            delegator->PostPerformBackground(property);
+        }
+        auto etsDelegator = AppExecFwk::AbilityDelegatorRegistry::GetAbilityDelegator(
+            AbilityRuntime::Runtime::Language::ETS);
+        if (etsDelegator && etsDelegator != delegator) {
+            etsDelegator->PostPerformBackground(property);
+        }
     }
 
     applicationContext = AbilityRuntime::Context::GetApplicationContext();
@@ -995,7 +1143,7 @@ void JsUIAbility::OnDidForeground()
         bool isGamePreLaunch = (goResumeCalledFlag_ == 0) ? isGamePreLaunch_ : false;
         scene_->GoResume(isGamePreLaunch);
         if (isGamePreLaunch) {
-            scene_->GoPause();
+            scene_->GoPause(isGamePreLaunch);
         }
         goResumeCalledFlag_ = 1;
         isGamePreLaunch_ = false;
@@ -1208,12 +1356,16 @@ void JsUIAbility::DoOnForeground(const Want &want)
 
     OnWillForeground();
 
-    TAG_LOGD(AAFwkTag::UIABILITY, "move scene to foreground, sceneFlag_: %{public}d, isGamePreLaunch_: %{public}d",
-        UIAbility::sceneFlag_, isGamePreLaunch_);
+    int32_t requestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 0);
+    int32_t scbRequestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 0);
+    TAG_LOGD(AAFwkTag::UIABILITY, "move scene to foreground, sceneFlag_: %{public}d, isGamePreLaunch_: %{public}d,"
+        "requestId: %{public}d, scbRequestId: %{public}d", UIAbility::sceneFlag_, isGamePreLaunch_,
+        requestId, scbRequestId);
     AddLifecycleEventBeforeJSCall(FreezeUtil::TimeoutState::FOREGROUND, METHOD_NAME);
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, "scene_->GoForeground");
-
-    scene_->GoForeground(UIAbility::sceneFlag_, isGamePreLaunch_);
+    scene_->GoForeground(UIAbility::sceneFlag_, isGamePreLaunch_, requestId, scbRequestId);
+    const_cast<AAFwk::Want &>(want).RemoveParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID);
+    const_cast<AAFwk::Want &>(want).RemoveParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID);
     TAG_LOGD(AAFwkTag::UIABILITY, "end");
 }
 
@@ -1237,11 +1389,16 @@ void JsUIAbility::DoOnForegroundForSceneIsNull(const Want &want)
     Rosen::WMError ret = Rosen::WMError::WM_OK;
     auto sessionToken = GetSessionToken();
     auto identityToken = GetIdentityToken();
+
+    int32_t requestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 0);
+    int32_t scbRequestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 0);
+    TAG_LOGD(AAFwkTag::UIABILITY, "Get requestId: %{public}d, scbRequestId: %{public}d from want",
+        requestId, scbRequestId);
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, "scene_->Init");
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled() && sessionToken != nullptr) {
         abilityContext_->SetWeakSessionToken(sessionToken);
         ret = scene_->Init(displayId, abilityContext_, sceneListener_, option, sessionToken, identityToken,
-            reusingWindow_);
+            reusingWindow_, requestId, scbRequestId);
         std::string navDestinationInfo = want.GetStringParam(Want::ATOMIC_SERVICE_SHARE_ROUTER);
         if (!navDestinationInfo.empty()) {
             TAG_LOGD(AAFwkTag::UIABILITY, "SetNavDestinationInfo :%{public}s", navDestinationInfo.c_str());
@@ -1255,7 +1412,7 @@ void JsUIAbility::DoOnForegroundForSceneIsNull(const Want &want)
             }
         }
     } else {
-        ret = scene_->Init(displayId, abilityContext_, sceneListener_, option);
+        ret = scene_->Init(displayId, abilityContext_, sceneListener_, option, requestId, scbRequestId);
     }
     if (ret != Rosen::WMError::WM_OK) {
         TAG_LOGE(AAFwkTag::UIABILITY, "init window scene failed");
@@ -1295,8 +1452,15 @@ void JsUIAbility::RequestFocus(const Want &want)
     }
     SetInsightIntentParam(want, false);
     AddLifecycleEventBeforeJSCall(FreezeUtil::TimeoutState::FOREGROUND, METHOD_NAME);
-    scene_->GoForeground(UIAbility::sceneFlag_);
-    TAG_LOGI(AAFwkTag::UIABILITY, "end");
+
+    int32_t requestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID, 0);
+    int32_t scbRequestId = want.GetIntParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID, 0);
+    TAG_LOGD(AAFwkTag::UIABILITY, "Get requestId: %{public}d, scbRequestId: %{public}d from want for GoForeground",
+        requestId, scbRequestId);
+    scene_->GoForeground(UIAbility::sceneFlag_, requestId, scbRequestId);
+    const_cast<AAFwk::Want &>(want).RemoveParam(AAFwk::Want::PARAM_RESV_APP_REQUEST_ID);
+    const_cast<AAFwk::Want &>(want).RemoveParam(AAFwk::Want::PARAM_RESV_SCB_REQUEST_ID);
+    TAG_LOGD(AAFwkTag::UIABILITY, "end");
 }
 
 void JsUIAbility::ContinuationRestore(const Want &want)
@@ -1430,7 +1594,9 @@ void JsUIAbility::ExecuteInsightIntentMoveToForeground(const Want &want,
             FreezeUtil::TimeoutState::FOREGROUND, "IntentForeground");
         ability->CallOnForegroundFunc(want);
     };
-    callback->Push(asyncCallback);
+    if (!CheckIsSilentForeground()) {
+        callback->Push(asyncCallback);
+    }
 
     InsightIntentExecutorInfo executeInfo;
     auto ret = GetInsightIntentExecutorInfo(want, executeParam, executeInfo);
@@ -1653,6 +1819,7 @@ int32_t JsUIAbility::OnContinue(WantParams &wantParams, bool &isAsyncOnContinue,
     if (applicationContext != nullptr) {
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         applicationContext->DispatchOnAbilityWillContinue(ability);
+        DISPATCH_ABILITY_INTEROP(OnAbilityWillContinue, applicationContext, jsRuntime_, ability);
     }
     napi_value jsWantParams = OHOS::AppExecFwk::WrapWantParams(env, wantParams);
     napi_value result = CallObjectMethod("onContinue", &jsWantParams, 1, true);
@@ -1730,6 +1897,7 @@ int32_t JsUIAbility::OnContinueAsyncCB(napi_ref jsWantParamsRef, int32_t status,
     if (applicationContext != nullptr) {
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         applicationContext->DispatchOnAbilityContinue(ability);
+        DISPATCH_ABILITY_INTEROP(OnAbilityContinue, applicationContext, jsRuntime_, ability);
     }
 #ifdef SUPPORT_GRAPHICS
     auto value = wantParams.GetParam(SUPPORT_CONTINUE_PAGE_STACK_PROPERTY_NAME);
@@ -1773,6 +1941,7 @@ int32_t JsUIAbility::OnContinueSyncCB(napi_value result, WantParams &wantParams,
     if (applicationContext != nullptr) {
         JsAbilityLifecycleCallbackArgs ability(jsAbilityObj_);
         applicationContext->DispatchOnAbilityContinue(ability);
+        DISPATCH_ABILITY_INTEROP(OnAbilityContinue, applicationContext, jsRuntime_, ability);
     }
     TAG_LOGI(AAFwkTag::UIABILITY, "end");
     return onContinueRes;
@@ -1794,6 +1963,7 @@ int32_t JsUIAbility::OnSaveState(int32_t reason, WantParams &wantParams,
     auto applicationContext = AbilityRuntime::Context::GetApplicationContext();
     if (applicationContext != nullptr) {
         applicationContext->DispatchOnAbilityWillSaveState(ability);
+        DISPATCH_ABILITY_INTEROP(OnAbilityWillSaveState, applicationContext, jsRuntime_, ability);
     }
 
     napi_value jsWantParams = OHOS::AppExecFwk::WrapWantParams(env, wantParams);
@@ -1813,6 +1983,7 @@ int32_t JsUIAbility::OnSaveState(int32_t reason, WantParams &wantParams,
         int32_t status = CallSaveStatePromise(onSaveStateAsyncResult, info);
         if (status == ERR_OK && applicationContext != nullptr) {
             applicationContext->DispatchOnAbilitySaveState(ability);
+            DISPATCH_ABILITY_INTEROP(OnAbilitySaveState, applicationContext, jsRuntime_, ability);
         }
         isAsync = true;
         return status;
@@ -1833,6 +2004,7 @@ int32_t JsUIAbility::OnSaveState(int32_t reason, WantParams &wantParams,
 
     if (applicationContext != nullptr) {
         applicationContext->DispatchOnAbilitySaveState(ability);
+        DISPATCH_ABILITY_INTEROP(OnAbilitySaveState, applicationContext, jsRuntime_, ability);
     }
     AppExecFwk::OnSaveStateResult saveStateResult = {numberResult, wantParams, stateReason};
     callbackInfo->Call(saveStateResult);
@@ -1869,7 +2041,10 @@ void JsUIAbility::OnConfigurationUpdated(const Configuration &configuration)
         }
     }
 
-    TAG_LOGD(AAFwkTag::UIABILITY, "realConfig: %{public}s", realConfig.GetName().c_str());
+    TAG_LOGD(AAFwkTag::UIABILITY,
+             "realConfig: %{public}s full :%{public}s",
+             realConfig.GetName().c_str(),
+             fullConfig->GetName().c_str());
     napi_value napiConfiguration = OHOS::AppExecFwk::WrapConfiguration(env, realConfig);
 
     CallObjectMethod("onConfigurationUpdated", &napiConfiguration, 1);
@@ -1921,7 +2096,6 @@ void JsUIAbility::UpdateContextConfiguration()
 
 void JsUIAbility::OnNewWant(const Want &want)
 {
-    TAG_LOGD(AAFwkTag::UIABILITY, "called");
     UIAbility::OnNewWant(want);
 
 #ifdef SUPPORT_SCREEN
@@ -1954,6 +2128,7 @@ void JsUIAbility::OnNewWant(const Want &want)
     if (applicationContext != nullptr) {
         applicationContext->SetLatestParameter(want);
         applicationContext->DispatchOnWillNewWant(ability);
+        DISPATCH_ABILITY_INTEROP(OnWillNewWant, applicationContext, jsRuntime_, ability);
     }
 
     napi_set_named_property(env, obj, "lastRequestWant", jsWant);
@@ -1974,8 +2149,8 @@ void JsUIAbility::OnNewWant(const Want &want)
     applicationContext = AbilityRuntime::Context::GetApplicationContext();
     if (applicationContext != nullptr) {
         applicationContext->DispatchOnNewWant(ability);
+        DISPATCH_ABILITY_INTEROP(OnNewWant, applicationContext, jsRuntime_, ability);
     }
-    TAG_LOGD(AAFwkTag::UIABILITY, "end");
 }
 
 void JsUIAbility::OnAbilityResult(int requestCode, int resultCode, const Want &resultData)
@@ -2411,16 +2586,18 @@ void JsUIAbility::OnAfterFocusedCommon(bool isFocused)
         return;
     }
     auto applicationContext = abilityContext->GetApplicationContext();
-    if (applicationContext == nullptr || applicationContext->IsAbilityLifecycleCallbackEmpty()) {
-        TAG_LOGD(AAFwkTag::UIABILITY, "null applicationContext or lifecycleCallback");
+    if (applicationContext == nullptr) {
+        TAG_LOGD(AAFwkTag::UIABILITY, "null applicationContext");
         return;
     }
     JsAbilityLifecycleCallbackArgs ability(GetJsAbility());
     JsAbilityLifecycleCallbackArgs stage(GetJsWindowStage());
     if (isFocused) {
         applicationContext->DispatchWindowStageFocus(ability, stage);
+        DISPATCH_WINDOW_INTEROP(WindowStageFocus, applicationContext, jsRuntime_, ability, stage);
     } else {
         applicationContext->DispatchWindowStageUnfocus(ability, stage);
+        DISPATCH_WINDOW_INTEROP(WindowStageUnfocus, applicationContext, jsRuntime_, ability, stage);
     }
 }
 
@@ -2452,6 +2629,245 @@ void JsUIAbility::NotifyWindowDestroy()
     }
 }
 
+namespace {
+std::string ExtractBaseName(const std::string &path)
+{
+    auto slashPos = path.rfind('/');
+    auto dotPos = path.rfind('.');
+    if (slashPos == std::string::npos) {
+        slashPos = 0;
+    } else {
+        slashPos++;
+    }
+    if (dotPos == std::string::npos || dotPos <= slashPos) {
+        return path.substr(slashPos);
+    }
+    return path.substr(slashPos, dotPos - slashPos);
+}
+
+bool IsBlockedSkillKeyName(const std::string &name)
+{
+    static const std::unordered_set<std::string> BLOCKED = {
+        "constructor", "__proto__", "__defineGetter__", "__defineSetter__",
+        "__lookupGetter__", "__lookupSetter__", "toString", "toLocaleString",
+        "valueOf", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable"
+    };
+    return BLOCKED.count(name) > 0;
+}
+} // namespace
+
+napi_value JsUIAbility::LoadSkillFunction(
+    const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param, napi_value &outJsObj)
+{
+    napi_env env = jsRuntime_.GetNapiEnv();
+    napi_value method = nullptr;
+
+    if (!param->scriptPath_.empty()) {
+        if (!IsPathValid(param->scriptPath_)) {
+            TAG_LOGW(AAFwkTag::UIABILITY, "invalid scriptPath");
+            return nullptr;
+        }
+        auto scriptBase = ExtractBaseName(param->scriptPath_);
+        for (const auto &srcEntry : param->srcEntries_) {
+            if (ExtractBaseName(srcEntry) != scriptBase) {
+                continue;
+            }
+            if (TryLoadSkillEntry(srcEntry, param, env, outJsObj, method)) {
+                TAG_LOGI(AAFwkTag::UIABILITY,
+                    "func found via scriptPath match, srcEntry:%{public}s", srcEntry.c_str());
+                return method;
+            }
+        }
+        TAG_LOGW(AAFwkTag::UIABILITY,
+            "scriptPath match failed, fallback to full scan, scriptPath:%{public}s",
+            param->scriptPath_.c_str());
+    }
+
+    for (const auto &srcEntry : param->srcEntries_) {
+        if (TryLoadSkillEntry(srcEntry, param, env, outJsObj, method)) {
+            TAG_LOGI(AAFwkTag::UIABILITY, "func found in srcEntry:%{public}s", srcEntry.c_str());
+            return method;
+        }
+        TAG_LOGW(AAFwkTag::UIABILITY, "func not found:%{public}s in srcEntry:%{public}s",
+            param->functionName_.c_str(), srcEntry.c_str());
+    }
+    return method;
+}
+
+bool JsUIAbility::TryLoadSkillEntry(const std::string &srcEntry,
+    const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param,
+    napi_env env, napi_value &outJsObj, napi_value &method)
+{
+    if (param == nullptr) {
+        TAG_LOGW(AAFwkTag::UIABILITY, "param is null");
+        return false;
+    }
+    if (!IsPathValid(param->moduleName_)) {
+        TAG_LOGW(AAFwkTag::UIABILITY, "invalid moduleName");
+        return false;
+    }
+    if (!param->hapPath_.empty() && !IsPathValid(param->hapPath_)) {
+        TAG_LOGW(AAFwkTag::UIABILITY, "invalid hapPath");
+        return false;
+    }
+    if (IsBlockedSkillKeyName(param->functionName_)) {
+        TAG_LOGW(AAFwkTag::UIABILITY, "blocked skill function name:%{public}s",
+            param->functionName_.c_str());
+        return false;
+    }
+    std::string srcPath(param->moduleName_ + "/" + srcEntry);
+    auto pos = srcPath.rfind('.');
+    if (pos != std::string::npos) {
+        srcPath.erase(pos);
+        srcPath.append(".abc");
+    }
+    if (abilityInfo_ == nullptr || !abilityInfo_->isStageBasedModel) {
+        TAG_LOGW(AAFwkTag::UIABILITY,
+            "skill load requires stage model, srcEntry:%{public}s", srcEntry.c_str());
+        return false;
+    }
+    if (!param->hapPath_.empty()) {
+        bool newCreate = false;
+        std::string loadPath = ExtractorUtil::GetLoadFilePath(param->hapPath_);
+        std::shared_ptr<Extractor> extractor = ExtractorUtil::GetExtractor(loadPath, newCreate);
+        if (extractor == nullptr) {
+            TAG_LOGW(AAFwkTag::UIABILITY, "get extractor failed, hapPath:%{private}s", param->hapPath_.c_str());
+            return false;
+        }
+        auto slashPos = srcPath.find('/');
+        std::string abcPath = (slashPos != std::string::npos) ? srcPath.substr(slashPos + 1) : srcPath;
+        bool isHapCompressed = extractor->IsHapCompress(abcPath);
+        if (isHapCompressed) {
+            TAG_LOGW(AAFwkTag::UIABILITY,
+                "abc is compressed, not allowed, abcPath:%{public}s", abcPath.c_str());
+            return false;
+        }
+    }
+    skillModuleRef_ = jsRuntime_.LoadModule(param->moduleName_, srcPath, param->hapPath_, true, false, srcEntry);
+    if (skillModuleRef_ == nullptr) {
+        TAG_LOGW(AAFwkTag::UIABILITY, "LoadModule failed, path:%{public}s", srcPath.c_str());
+        return false;
+    }
+    outJsObj = skillModuleRef_->GetNapiValue();
+    napi_value keyName = nullptr;
+    napi_create_string_utf8(env, param->functionName_.c_str(), NAPI_AUTO_LENGTH, &keyName);
+    bool hasOwn = false;
+    if (napi_has_own_property(env, outJsObj, keyName, &hasOwn) != napi_ok || !hasOwn) {
+        return false;
+    }
+    method = AppExecFwk::GetPropertyValueByPropertyName(
+        env, outJsObj, param->functionName_.c_str(), napi_valuetype::napi_function);
+    return method != nullptr;
+}
+
+std::vector<napi_value> JsUIAbility::BuildSkillCallArgs(napi_env env,
+    const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param)
+{
+    napi_value info = nullptr;
+    napi_create_object(env, &info);
+    napi_value requestCodeVal = nullptr;
+    napi_create_string_utf8(env, param->requestCode_.c_str(), param->requestCode_.length(), &requestCodeVal);
+    napi_set_named_property(env, info, "requestCode", requestCodeVal);
+    napi_value contextObj = nullptr;
+    if (shellContextRef_ != nullptr) {
+        contextObj = shellContextRef_->GetNapiValue();
+    }
+    napi_set_named_property(env, info, "context", contextObj);
+    if (!param->toolCallId_.empty()) {
+        napi_value toolCallIdVal = nullptr;
+        napi_create_string_utf8(env, param->toolCallId_.c_str(), param->toolCallId_.length(), &toolCallIdVal);
+        napi_set_named_property(env, info, "toolCallId", toolCallIdVal);
+    }
+
+    std::vector<napi_value> args;
+    args.push_back(info);
+    if (param->skillArgs_ != nullptr && !param->skillArgs_->GetParams().empty()) {
+        napi_value wrappedObj = AppExecFwk::WrapWantParams(env, *param->skillArgs_);
+        for (const auto &[key, value] : param->skillArgs_->GetParams()) {
+            auto typeId = AppExecFwk::WantParams::GetDataType(value);
+            auto valStr = AppExecFwk::WantParams::GetStringByType(value, typeId);
+            TAG_LOGI(AAFwkTag::UIABILITY, "skillArg key:%{public}s value:%{public}s",
+                key.c_str(), valStr.c_str());
+            if (IsBlockedSkillKeyName(key)) {
+                TAG_LOGW(AAFwkTag::UIABILITY, "skip blocked skillArg key:%{public}s", key.c_str());
+                continue;
+            }
+            napi_value keyName = nullptr;
+            napi_create_string_utf8(env, key.c_str(), NAPI_AUTO_LENGTH, &keyName);
+            bool hasOwn = false;
+            if (napi_has_own_property(env, wrappedObj, keyName, &hasOwn) != napi_ok || !hasOwn) {
+                TAG_LOGW(AAFwkTag::UIABILITY, "skip non-own skillArg key:%{public}s", key.c_str());
+                continue;
+            }
+            napi_value val = nullptr;
+            napi_get_named_property(env, wrappedObj, key.c_str(), &val);
+            args.push_back(val);
+        }
+    }
+    return args;
+}
+
+void JsUIAbility::ExecuteSkill(const AAFwk::Want &want,
+    const std::shared_ptr<AppExecFwk::SkillExecuteParam> &param)
+{
+    TAG_LOGD(AAFwkTag::UIABILITY, "ExecuteSkill requestCode:%{public}s",
+        param != nullptr ? param->requestCode_.c_str() : "");
+    if (param == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "null param");
+        return;
+    }
+    napi_env env = jsRuntime_.GetNapiEnv();
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "null napi env");
+        ReportSkillError(param->requestCode_, ERR_TIMED_OUT,
+            "napi env unavailable, js runtime not ready");
+        return;
+    }
+    napi_value jsObj = nullptr;
+    napi_value method = LoadSkillFunction(param, jsObj);
+    if (method == nullptr) {
+        std::string errMsg = "skill function '" + param->functionName_ +
+            "' not found in srcEntries: [" + param->SrcEntriesToString() + "]";
+        TAG_LOGE(AAFwkTag::UIABILITY, "%{public}s", errMsg.c_str());
+        ReportSkillError(param->requestCode_, ERR_TIMED_OUT, errMsg);
+        return;
+    }
+    auto args = BuildSkillCallArgs(env, param);
+    napi_value result = nullptr;
+    napi_status status = napi_call_function(env, jsObj, method, args.size(), args.data(), &result);
+    if (status != napi_ok) {
+        std::string errMsg = "napi_call_function status=" + std::to_string(status) +
+            " func=" + param->functionName_;
+        TAG_LOGE(AAFwkTag::UIABILITY, "%{public}s", errMsg.c_str());
+        ReportSkillError(param->requestCode_, ERR_TIMED_OUT, errMsg);
+        return;
+    }
+    bool hasPending = false;
+    napi_is_exception_pending(env, &hasPending);
+    if (hasPending) {
+        TAG_LOGE(AAFwkTag::UIABILITY,
+            "skill function threw exception, func:%{public}s", param->functionName_.c_str());
+        ReportSkillError(param->requestCode_, ERR_TIMED_OUT,
+            "skill function threw exception during execution");
+        return;
+    }
+    AAFwk::AbilityManagerClient::GetInstance()->NotifySkillFunctionInvoked(token_, param->requestCode_);
+    TAG_LOGD(AAFwkTag::UIABILITY,
+        "ExecuteSkill dispatched, waiting completeArkTSScriptInApp, requestCode:%{public}s",
+        param->requestCode_.c_str());
+}
+
+void JsUIAbility::ReportSkillError(const std::string &requestCode, int32_t errCode, const std::string &errMsg)
+{
+    AppExecFwk::SkillExecuteResult result;
+    result.code = errCode;
+    if (!errMsg.empty()) {
+        result.result = std::make_shared<AAFwk::WantParams>();
+        result.result->SetParam(AppExecFwk::SKILL_ERROR_MSG_KEY, AAFwk::String::Box(errMsg));
+    }
+    AAFwk::AbilityManagerClient::GetInstance()->ExecuteSkillDone(token_, requestCode, errCode, result);
+}
+
 void JsUIAbility::RegisterDelayResultCallback(const std::shared_ptr<InsightIntentExecuteParam> &executeParam)
 {
     auto delayResultCallback = [intentId = executeParam->insightIntentId_, token = token_]
@@ -2468,6 +2884,36 @@ void JsUIAbility::RegisterDelayResultCallback(const std::shared_ptr<InsightInten
     bool isDecorator = executeParam->decoratorType_ != static_cast<int8_t>(InsightIntentType::DECOR_NONE);
     InsightIntentDelayResultCallbackMgr::GetInstance().AddDelayResultCallback(
         executeParam->insightIntentId_, {delayResultCallback, isDecorator});
+}
+
+void JsUIAbility::HandleNativeModule(napi_env env)
+{
+    if (!IsWithNative()) {
+        return;
+    }
+
+    TAG_LOGI(AAFwkTag::UIABILITY, "Creating NativeAbilityWrapper for native module");
+
+    // Get JS Ability object
+    if (jsAbilityObj_ == nullptr) {
+        TAG_LOGE(AAFwkTag::UIABILITY, "jsAbilityObj_ is null");
+        return;
+    }
+
+    // Create NativeAbilityWrapper
+    auto wrapper = std::make_shared<AbilityRuntime_NativeAbilityWrapper>();
+    wrapper->instanceId = GetInstanceId();
+    wrapper->abilityName = GetAbilityName();
+    wrapper->env = env;
+    wrapper->jsAbilityObj = jsAbilityObj_;
+
+    // Get ApplicationContext
+    auto appContext = AbilityRuntime::Context::GetApplicationContext();
+    if (appContext != nullptr) {
+        appContext->PostAbility(wrapper->instanceId, wrapper);
+    } else {
+        TAG_LOGE(AAFwkTag::UIABILITY, "ApplicationContext is null");
+    }
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

@@ -23,8 +23,11 @@ int32_t MyFlag::retConnectAgentExtensionAbility = 0;
 int32_t MyFlag::retDisconnectAgentExtensionAbility = 0;
 int32_t MyFlag::retConnectServiceExtensionAbility = 0;
 int32_t MyFlag::retDisconnectServiceExtensionAbility = 0;
+int32_t MyFlag::onAbilityConnectDoneCount = 0;
+int32_t MyFlag::onAbilityDisconnectDoneCount = 0;
 bool MyFlag::isOnAbilityConnectDoneCalled = false;
 bool MyFlag::isOnAbilityDisconnectDoneCalled = false;
+int32_t MyFlag::reportConnectionLeakEventCount = 0;
 
 AgentManagerClient &AgentManagerClient::GetInstance()
 {
@@ -32,29 +35,35 @@ AgentManagerClient &AgentManagerClient::GetInstance()
     return instance;
 }
 
-int32_t AgentManagerClient::ConnectAgentExtensionAbility(const AAFwk::Want &want,
-    const sptr<AAFwk::IAbilityConnection> &connection)
+int32_t AgentManagerClient::ConnectAgentExtensionAbility(const AAFwk::Want &,
+    const sptr<AAFwk::IAbilityConnection> &)
 {
     return MyFlag::retConnectAgentExtensionAbility;
 }
 
-int32_t AgentManagerClient::DisconnectAgentExtensionAbility(const sptr<AAFwk::IAbilityConnection> &connection)
+int32_t AgentManagerClient::DisconnectAgentExtensionAbility(const sptr<AAFwk::IAbilityConnection> &)
 {
     return MyFlag::retDisconnectAgentExtensionAbility;
 }
 
-int32_t AgentManagerClient::ConnectServiceExtensionAbility(const sptr<IRemoteObject> &callerToken,
-    const AAFwk::Want &want, const sptr<AAFwk::IAbilityConnection> &connection)
+int32_t AgentManagerClient::AttributeTaskForA2AReusedConnectionRecord(const AAFwk::Want &,
+    const sptr<AAFwk::IAbilityConnection> &)
+{
+    return ERR_OK;
+}
+
+int32_t AgentManagerClient::ConnectServiceExtensionAbility(const sptr<IRemoteObject> &,
+    const AAFwk::Want &, const sptr<AAFwk::IAbilityConnection> &)
 {
     return MyFlag::retConnectServiceExtensionAbility;
 }
 
-int32_t AgentManagerClient::DisconnectServiceExtensionAbility(const sptr<IRemoteObject> &callerToken,
-    const sptr<AAFwk::IAbilityConnection> &connection)
+int32_t AgentManagerClient::DisconnectServiceExtensionAbility(const sptr<IRemoteObject> &,
+    const sptr<AAFwk::IAbilityConnection> &)
 {
-    (void)callerToken;
-    (void)connection;
     return MyFlag::retDisconnectServiceExtensionAbility;
 }
+
+void AgentManagerClient::RegisterDeathCallback(DeathCallback) {}
 } // namespace AgentRuntime
 } // namespace OHOS

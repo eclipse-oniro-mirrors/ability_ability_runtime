@@ -46,7 +46,12 @@ bool IsArrayForNapiValue(napi_env env, napi_value param, uint32_t &arraySize)
     bool isArray = false;
     arraySize = 0;
 
-    if (napi_is_array(env, param, &isArray) != napi_ok || isArray == false) {
+    if (param == nullptr) {
+        TAG_LOGD(AAFwkTag::JSNAPI, "param is nullptr");
+        return false;
+    }
+
+    if (napi_is_array(env, param, &isArray) != napi_ok || !isArray) {
         return false;
     }
 
@@ -282,6 +287,26 @@ bool UnwrapStringFromJS2(napi_env env, napi_value param, std::string &value)
     delete[] buf;
     buf = nullptr;
     return rev;
+}
+
+bool UnwrapStringFromJSFix(napi_env env, napi_value param, std::string &value)
+{
+    value.clear();
+    size_t size = 0;
+    if (napi_get_value_string_utf8(env, param, nullptr, 0, &size) != napi_ok) {
+        return false;
+    }
+    if (size == 0) {
+        return true;
+    }
+    value.resize(size);
+    size_t written = 0;
+    if (napi_get_value_string_utf8(env, param, value.data(), size + 1, &written) != napi_ok) {
+        value.clear();
+        return false;
+    }
+    value.resize(written);
+    return true;
 }
 
 napi_value WrapArrayInt32ToJS(napi_env env, const std::vector<int> &value)
@@ -569,6 +594,28 @@ bool UnwrapArrayStringFromJS(napi_env env, napi_value param, std::vector<std::st
     return true;
 }
 
+bool UnwrapArrayStringFromJSFix(napi_env env, napi_value param, std::vector<std::string> &value)
+{
+    uint32_t arraySize = 0;
+    if (!IsArrayForNapiValue(env, param, arraySize)) {
+        return false;
+    }
+
+    value.clear();
+    for (uint32_t i = 0; i < arraySize; i++) {
+        napi_value jsValue = nullptr;
+        if (napi_get_element(env, param, i, &jsValue) != napi_ok) {
+            return false;
+        }
+        std::string natValue;
+        if (!UnwrapStringFromJSFix(env, jsValue, natValue)) {
+            return false;
+        }
+        value.push_back(std::move(natValue));
+    }
+    return true;
+}
+
 bool UnwrapArrayComplexFromJSNumber(napi_env env, ComplexArrayData &value, bool isDouble, napi_value jsValue)
 {
     int32_t elementInt32 = 0;
@@ -697,7 +744,7 @@ napi_value GetPropertyValueByPropertyName(
     napi_env env, napi_value jsObject, const char *propertyName, napi_valuetype expectType)
 {
     napi_value value = nullptr;
-    if (IsExistsByPropertyName(env, jsObject, propertyName) == false) {
+    if (!IsExistsByPropertyName(env, jsObject, propertyName)) {
         return nullptr;
     }
 

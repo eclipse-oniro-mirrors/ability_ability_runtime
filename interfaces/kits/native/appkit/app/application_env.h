@@ -56,6 +56,23 @@ int32_t GetAppPreload();
 */
 void ClearAppPreload();
 
+/**
+* @brief Invoke the AppFreeze filter callback registered by AppKit to check whether
+*        a heap dump is allowed for the current process when an OOM event occurs.
+*        Used by JSVM/V8 engines which load libappkit_native.z.so via dlopen.
+*
+* @param pid Process id of the OOM-triggering process.
+* @param needDecreaseQuota Non-zero if the dump quota should be decreased, 0 otherwise.
+* @param eventConfigKey Input/output buffer holding the event config key (xattr name).
+*        On input it selects which engine's config to read (e.g.
+*        "user.event_config.jsvm_heap_log_enable"); on output it is overwritten with
+*        the resolved config value when the callback returns 1. Cannot be null.
+* @param keyBufSize Size of the eventConfigKey buffer in bytes. Must be > 0.
+* @return true if dump is allowed, false if not allowed.
+*/
+bool InvokeAppFreezeFilterCallback(int32_t pid, int32_t needDecreaseQuota,
+                                   char *eventConfigKey, int32_t keyBufSize);
+
 #ifdef __cplusplus
 #if __cplusplus
 }

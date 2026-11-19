@@ -60,6 +60,7 @@ int32_t AbilityKeepAliveService::SetKeepAliveTrue(const KeepAliveInfo &info)
         return AbilityKeepAliveDataManager::GetInstance().InsertKeepAliveData(info);
     }
 
+    // check if the app is already set by a higher priority setter
     if (static_cast<int32_t>(status.setter) <= static_cast<int32_t>(info.setter)) {
         TAG_LOGI(AAFwkTag::KEEP_ALIVE, "app is already set");
         return ERR_OK;
@@ -78,6 +79,8 @@ int32_t AbilityKeepAliveService::CancelKeepAlive(const KeepAliveInfo &info)
     }
 
     if (status.code == ERR_NAME_NOT_FOUND) {
+        TAG_LOGW(AAFwkTag::KEEP_ALIVE, "cancel keep-alive but record not found, bundleName: %{public}s, "
+            "userId: %{public}d", info.bundleName.c_str(), info.userId);
         return ERR_TARGET_BUNDLE_NOT_EXIST;
     }
 
@@ -105,10 +108,7 @@ void AbilityKeepAliveService::GetValidUserId(int32_t &userId)
     if (userId >= 0) {
         return;
     }
-
-    if (userId < 0) {
-        userId = AbilityRuntime::UserController::GetInstance().GetCallerUserId();
-    }
+    userId = AbilityRuntime::UserController::GetInstance().GetCallerUserId();
 }
 
 bool AbilityKeepAliveService::IsKeepAliveApp(const std::string &bundleName, int32_t userId)
@@ -168,7 +168,7 @@ int32_t AbilityKeepAliveService::SetAppServiceExtensionKeepAlive(KeepAliveInfo &
         return ERR_OK;
     }
 
-    AbilityKeepAliveDataManager::GetInstance().DeleteKeepAliveData(info);
+    (void)AbilityKeepAliveDataManager::GetInstance().DeleteKeepAliveData(info);
     return AbilityKeepAliveDataManager::GetInstance().InsertKeepAliveData(info);
 }
 

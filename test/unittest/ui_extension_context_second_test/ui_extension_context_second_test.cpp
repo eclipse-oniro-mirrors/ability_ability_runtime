@@ -1735,5 +1735,514 @@ HWTEST_F(UIExtensionContextTest, CleanupAnimationResources_0100, TestSize.Level1
     context->eventHandler_ = nullptr;
     TAG_LOGI(AAFwkTag::TEST, "CleanupAnimationResources_0100 end");
 }
+
+/**
+ * @tc.number: CleanupAnimationResources_0200
+ * @tc.name: CleanupAnimationResources with null eventHandler
+ * @tc.desc: CleanupAnimationResources when eventHandler is null does not crash.
+ */
+HWTEST_F(UIExtensionContextTest, CleanupAnimationResources_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CleanupAnimationResources_0200 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    context->eventHandler_ = nullptr;
+    int32_t terminateRequestId = 999;
+    // Should not crash when eventHandler is null
+    context->CleanupAnimationResources(terminateRequestId);
+    EXPECT_EQ(context->eventHandler_, nullptr);
+
+    TAG_LOGI(AAFwkTag::TEST, "CleanupAnimationResources_0200 end");
+}
+
+// ==================== ExecuteTerminationWithTimeout Tests ====================
+
+/**
+ * @tc.number: ExecuteTerminationWithTimeout_0100
+ * @tc.name: ExecuteTerminationWithTimeout request not found
+ * @tc.desc: ExecuteTerminationWithTimeout returns early when request not found.
+ */
+HWTEST_F(UIExtensionContextTest, ExecuteTerminationWithTimeout_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteTerminationWithTimeout_0100 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->screenMode_ = AAFwk::EMBEDDED_FULL_SCREEN_MODE;
+
+    // No pending request registered
+    EXPECT_TRUE(context->pendingTerminateRequests_.empty());
+
+    sptr<IRemoteObject> token;
+    int32_t terminateRequestId = 111;
+    // Should not crash - request not found, early return
+    context->ExecuteTerminationWithTimeout(token, terminateRequestId);
+    EXPECT_TRUE(context->pendingTerminateRequests_.empty());
+
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteTerminationWithTimeout_0100 end");
+}
+
+/**
+ * @tc.number: ExecuteTerminationWithTimeout_0200
+ * @tc.name: ExecuteTerminationWithTimeout request already handled
+ * @tc.desc: ExecuteTerminationWithTimeout returns early when request already handled.
+ */
+HWTEST_F(UIExtensionContextTest, ExecuteTerminationWithTimeout_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteTerminationWithTimeout_0200 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->screenMode_ = AAFwk::EMBEDDED_FULL_SCREEN_MODE;
+
+    int32_t terminateRequestId = 222;
+    UIExtensionContext::PendingTerminateRequest request;
+    request.resultCode = 0;
+    request.want = {};
+    request.callback = [](ErrCode) {};
+    request.hasResult = false;
+    request.handled = true;  // Already handled
+    context->pendingTerminateRequests_[terminateRequestId] = request;
+
+    bool callbackExecuted = false;
+    context->pendingTerminateRequests_[terminateRequestId].callback =
+        [&callbackExecuted](ErrCode) { callbackExecuted = true; };
+
+    sptr<IRemoteObject> token;
+    context->ExecuteTerminationWithTimeout(token, terminateRequestId);
+    // Should not invoke callback because request is already handled
+    EXPECT_FALSE(callbackExecuted);
+    // Request should still be in map (not erased for already-handled case)
+    EXPECT_FALSE(context->pendingTerminateRequests_.empty());
+
+    context->pendingTerminateRequests_.clear();
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteTerminationWithTimeout_0200 end");
+}
+
+/**
+ * @tc.number: ExecuteTerminationWithTimeout_0300
+ * @tc.name: ExecuteTerminationWithTimeout with hasResult=false
+ * @tc.desc: ExecuteTerminationWithTimeout executes termination without transfer.
+ */
+HWTEST_F(UIExtensionContextTest, ExecuteTerminationWithTimeout_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteTerminationWithTimeout_0300 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->screenMode_ = AAFwk::EMBEDDED_FULL_SCREEN_MODE;
+    context->eventHandler_ = std::make_shared<AppExecFwk::EventHandler>(AppExecFwk::EventRunner::Create());
+
+    int32_t terminateRequestId = 333;
+    UIExtensionContext::PendingTerminateRequest request;
+    request.resultCode = 0;
+    request.want = {};
+    request.callback = [](ErrCode) {};
+    request.hasResult = false;  // No result to transfer
+    request.handled = false;
+    context->pendingTerminateRequests_[terminateRequestId] = request;
+
+    sptr<IRemoteObject> token;
+    context->ExecuteTerminationWithTimeout(token, terminateRequestId);
+    // Request should be removed after processing
+    EXPECT_TRUE(context->pendingTerminateRequests_.empty());
+
+    context->eventHandler_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteTerminationWithTimeout_0300 end");
+}
+
+/**
+ * @tc.number: ExecuteTerminationWithTimeout_0400
+ * @tc.name: ExecuteTerminationWithTimeout with hasResult=true
+ * @tc.desc: ExecuteTerminationWithTimeout transfers result before termination.
+ */
+HWTEST_F(UIExtensionContextTest, ExecuteTerminationWithTimeout_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteTerminationWithTimeout_0400 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->screenMode_ = AAFwk::EMBEDDED_FULL_SCREEN_MODE;
+    context->eventHandler_ = std::make_shared<AppExecFwk::EventHandler>(AppExecFwk::EventRunner::Create());
+
+    int32_t terminateRequestId = 444;
+    UIExtensionContext::PendingTerminateRequest request;
+    request.resultCode = 100;
+    AAFwk::Want want;
+    request.want = want;
+    request.callback = [](ErrCode) {};
+    request.hasResult = true;  // Has result to transfer
+    request.handled = false;
+    context->pendingTerminateRequests_[terminateRequestId] = request;
+
+    sptr<IRemoteObject> token;
+    context->ExecuteTerminationWithTimeout(token, terminateRequestId);
+    // Request should be removed after processing
+    EXPECT_TRUE(context->pendingTerminateRequests_.empty());
+
+    context->eventHandler_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteTerminationWithTimeout_0400 end");
+}
+
+/**
+ * @tc.number: ExecuteTerminationWithTimeout_0500
+ * @tc.name: ExecuteTerminationWithTimeout with callback invoked
+ * @tc.desc: ExecuteTerminationWithTimeout invokes callback with error code.
+ */
+HWTEST_F(UIExtensionContextTest, ExecuteTerminationWithTimeout_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteTerminationWithTimeout_0500 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->screenMode_ = AAFwk::EMBEDDED_FULL_SCREEN_MODE;
+    context->eventHandler_ = std::make_shared<AppExecFwk::EventHandler>(AppExecFwk::EventRunner::Create());
+
+    int32_t terminateRequestId = 555;
+    ErrCode receivedErrCode = ERR_OK;
+    UIExtensionContext::PendingTerminateRequest request;
+    request.resultCode = 0;
+    request.want = {};
+    request.callback = [&receivedErrCode](ErrCode err) { receivedErrCode = err; };
+    request.hasResult = false;
+    request.handled = false;
+    context->pendingTerminateRequests_[terminateRequestId] = request;
+
+    sptr<IRemoteObject> token;
+    context->ExecuteTerminationWithTimeout(token, terminateRequestId);
+    // Callback should be invoked with actual TerminateAbility result
+    EXPECT_NE(receivedErrCode, ERR_OK);  // Will fail due to invalid token
+    EXPECT_TRUE(context->pendingTerminateRequests_.empty());
+
+    context->eventHandler_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteTerminationWithTimeout_0500 end");
+}
+
+// ==================== TransferAbilityResultToWindow Tests ====================
+
+/**
+ * @tc.number: TransferAbilityResultToWindow_0100
+ * @tc.name: TransferAbilityResultToWindow with invalid token
+ * @tc.desc: TransferAbilityResultToWindow returns error when token is invalid.
+ */
+HWTEST_F(UIExtensionContextTest, TransferAbilityResultToWindow_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "TransferAbilityResultToWindow_0100 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+
+    int32_t resultCode = 100;
+    AAFwk::Want want;
+    auto result = context->TransferAbilityResultToWindow(resultCode, want);
+    // Will fail due to invalid token/AbilityManagerClient
+    EXPECT_NE(result, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "TransferAbilityResultToWindow_0100 end");
+}
+
+// ==================== TerminateSelfWithAnimation failure cleanup Tests ====================
+
+/**
+ * @tc.number: TerminateSelfWithAnimation_0200
+ * @tc.name: TerminateSelfWithAnimation without animation callback
+ * @tc.desc: TerminateSelfWithAnimation falls back when no animation callback registered.
+ */
+HWTEST_F(UIExtensionContextTest, TerminateSelfWithAnimation_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "TerminateSelfWithAnimation_0200 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->screenMode_ = AAFwk::EMBEDDED_FULL_SCREEN_MODE;
+    context->terminateSelfWithAnimationCallback_ = nullptr;  // No animation callback
+
+    ErrCode receivedErr = ERR_OK;
+    TerminateSelfResultCallback callback = [&receivedErr](ErrCode err) { receivedErr = err; };
+
+    context->TerminateSelfWithAnimation(std::move(callback));
+    // Falls back to TerminateSelfInner because no animation callback
+    // TerminateSelfInner processes and removes request
+    EXPECT_TRUE(context->pendingTerminateRequests_.empty());
+
+    TAG_LOGI(AAFwkTag::TEST, "TerminateSelfWithAnimation_0200 end");
+}
+
+/**
+ * @tc.number: TerminateSelfWithAnimation_0300
+ * @tc.name: TerminateSelfWithAnimation verifies hasResult=false
+ * @tc.desc: TerminateSelfWithAnimation creates request with hasResult=false.
+ */
+HWTEST_F(UIExtensionContextTest, TerminateSelfWithAnimation_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "TerminateSelfWithAnimation_0300 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->screenMode_ = AAFwk::EMBEDDED_FULL_SCREEN_MODE;
+
+    TerminateSelfWithAnimationCallback animCallback = [](int32_t) {};
+    context->terminateSelfWithAnimationCallback_ = animCallback;
+    context->eventHandler_ = std::make_shared<AppExecFwk::EventHandler>(AppExecFwk::EventRunner::Create());
+
+    TerminateSelfResultCallback callback = [](ErrCode) {};
+    auto result = context->TerminateSelfWithAnimation(std::move(callback));
+    EXPECT_EQ(result, ERR_OK);
+
+    // Verify hasResult is false
+    EXPECT_FALSE(context->pendingTerminateRequests_.empty());
+    auto& req = context->pendingTerminateRequests_.begin()->second;
+    EXPECT_FALSE(req.hasResult);
+
+    context->pendingTerminateRequests_.clear();
+    context->terminateSelfWithAnimationCallback_ = nullptr;
+    context->eventHandler_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "TerminateSelfWithAnimation_0300 end");
+}
+
+// ==================== TerminateSelfWithResultAndAnimation failure Tests ====================
+
+/**
+ * @tc.number: TerminateSelfWithResultAndAnimation_0200
+ * @tc.name: TerminateSelfWithResultAndAnimation without animation callback
+ * @tc.desc: TerminateSelfWithResultAndAnimation falls back when no callback.
+ */
+HWTEST_F(UIExtensionContextTest, TerminateSelfWithResultAndAnimation_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "TerminateSelfWithResultAndAnimation_0200 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->screenMode_ = AAFwk::EMBEDDED_FULL_SCREEN_MODE;
+    context->terminateSelfWithAnimationCallback_ = nullptr;  // No animation callback
+
+    int32_t resultCode = 200;
+    AAFwk::Want want;
+    bool callbackInvoked = false;
+    ErrCode receivedErr = ERR_OK;
+    TerminateSelfResultCallback callback = [&callbackInvoked, &receivedErr](ErrCode err) {
+        callbackInvoked = true;
+        receivedErr = err;
+    };
+
+    context->TerminateSelfWithResultAndAnimation(resultCode, want, std::move(callback));
+    // Falls back to TerminateSelfInner, processes and removes request
+    EXPECT_TRUE(context->pendingTerminateRequests_.empty());
+
+    TAG_LOGI(AAFwkTag::TEST, "TerminateSelfWithResultAndAnimation_0200 end");
+}
+
+/**
+ * @tc.number: TerminateSelfWithResultAndAnimation_0300
+ * @tc.name: TerminateSelfWithResultAndAnimation verifies result data
+ * @tc.desc: TerminateSelfWithResultAndAnimation stores correct result and want.
+ */
+HWTEST_F(UIExtensionContextTest, TerminateSelfWithResultAndAnimation_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "TerminateSelfWithResultAndAnimation_0300 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->screenMode_ = AAFwk::EMBEDDED_FULL_SCREEN_MODE;
+
+    TerminateSelfWithAnimationCallback animCallback = [](int32_t) {};
+    context->terminateSelfWithAnimationCallback_ = animCallback;
+    context->eventHandler_ = std::make_shared<AppExecFwk::EventHandler>(AppExecFwk::EventRunner::Create());
+
+    int32_t resultCode = 123;
+    AAFwk::Want want;
+    want.SetParam("test_key", 456);
+    TerminateSelfResultCallback callback = [](ErrCode) {};
+
+    context->TerminateSelfWithResultAndAnimation(resultCode, want, std::move(callback));
+
+    EXPECT_FALSE(context->pendingTerminateRequests_.empty());
+    auto& req = context->pendingTerminateRequests_.begin()->second;
+    EXPECT_TRUE(req.hasResult);
+    EXPECT_EQ(req.resultCode, 123);
+
+    context->pendingTerminateRequests_.clear();
+    context->terminateSelfWithAnimationCallback_ = nullptr;
+    context->eventHandler_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "TerminateSelfWithResultAndAnimation_0300 end");
+}
+
+// ==================== TerminateSelfInner additional branch Tests ====================
+
+/**
+ * @tc.number: TerminateSelfInner_0300
+ * @tc.name: TerminateSelfInner request not found
+ * @tc.desc: TerminateSelfInner returns ERR_OK when request not found.
+ */
+HWTEST_F(UIExtensionContextTest, TerminateSelfInner_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "TerminateSelfInner_0300 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->screenMode_ = AAFwk::EMBEDDED_FULL_SCREEN_MODE;
+
+    // No pending request registered
+    int32_t terminateRequestId = 9999;
+    auto result = context->TerminateSelfInner(terminateRequestId);
+    EXPECT_EQ(result, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "TerminateSelfInner_0300 end");
+}
+
+/**
+ * @tc.number: TerminateSelfInner_0400
+ * @tc.name: TerminateSelfInner with hasResult=true
+ * @tc.desc: TerminateSelfInner transfers result when hasResult=true.
+ */
+HWTEST_F(UIExtensionContextTest, TerminateSelfInner_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "TerminateSelfInner_0400 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->screenMode_ = AAFwk::EMBEDDED_FULL_SCREEN_MODE;
+    context->eventHandler_ = std::make_shared<AppExecFwk::EventHandler>(AppExecFwk::EventRunner::Create());
+    context->terminateSelfWithAnimationCallback_ = [](int32_t) {};
+
+    int32_t terminateRequestId = 777;
+    UIExtensionContext::PendingTerminateRequest request;
+    request.resultCode = 100;
+    AAFwk::Want want;
+    want.SetParam("result_key", 789);
+    request.want = want;
+    request.callback = [](ErrCode) {};
+    request.hasResult = true;  // Has result to transfer
+    request.handled = false;
+    context->pendingTerminateRequests_[terminateRequestId] = request;
+
+    auto result = context->TerminateSelfInner(terminateRequestId);
+    // TerminateAbility fails due to invalid token, but transfer was attempted
+    EXPECT_NE(result, ERR_OK);
+    EXPECT_TRUE(context->pendingTerminateRequests_.empty());
+
+    context->eventHandler_ = nullptr;
+    context->terminateSelfWithAnimationCallback_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "TerminateSelfInner_0400 end");
+}
+
+/**
+ * @tc.number: TerminateSelfInner_0500
+ * @tc.name: TerminateSelfInner with null callback
+ * @tc.desc: TerminateSelfInner does not crash when callback is null.
+ */
+HWTEST_F(UIExtensionContextTest, TerminateSelfInner_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "TerminateSelfInner_0500 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->screenMode_ = AAFwk::EMBEDDED_FULL_SCREEN_MODE;
+    context->eventHandler_ = std::make_shared<AppExecFwk::EventHandler>(AppExecFwk::EventRunner::Create());
+    context->terminateSelfWithAnimationCallback_ = [](int32_t) {};
+
+    int32_t terminateRequestId = 888;
+    UIExtensionContext::PendingTerminateRequest request;
+    request.resultCode = 0;
+    request.want = {};
+    request.callback = nullptr;  // Null callback
+    request.hasResult = false;
+    request.handled = false;
+    context->pendingTerminateRequests_[terminateRequestId] = request;
+
+    // Should not crash with null callback
+    context->TerminateSelfInner(terminateRequestId);
+    EXPECT_TRUE(context->pendingTerminateRequests_.empty());
+
+    context->eventHandler_ = nullptr;
+    context->terminateSelfWithAnimationCallback_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "TerminateSelfInner_0500 end");
+}
+
+// ==================== HandleTerminateWithAnimation additional branch Tests ====================
+
+/**
+ * @tc.number: HandleTerminateWithAnimation_0400
+ * @tc.name: HandleTerminateWithAnimation with callback but no eventHandler
+ * @tc.desc: HandleTerminateWithAnimation creates eventHandler when null.
+ */
+HWTEST_F(UIExtensionContextTest, HandleTerminateWithAnimation_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleTerminateWithAnimation_0400 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->screenMode_ = AAFwk::EMBEDDED_FULL_SCREEN_MODE;
+    context->eventHandler_ = nullptr;  // No eventHandler
+
+    int32_t receivedRequestId = 0;
+    TerminateSelfWithAnimationCallback callback =
+        [&receivedRequestId](int32_t requestId) {
+            receivedRequestId = requestId;
+        };
+    context->terminateSelfWithAnimationCallback_ = callback;
+
+    // Create a pending request for TerminateSelfInner fallback
+    int32_t terminateRequestId = 101;
+    UIExtensionContext::PendingTerminateRequest request;
+    request.resultCode = 0;
+    request.want = {};
+    request.callback = [](ErrCode) {};
+    request.hasResult = false;
+    request.handled = false;
+    context->pendingTerminateRequests_[terminateRequestId] = request;
+
+    auto result = context->HandleTerminateWithAnimation(terminateRequestId);
+    // GetOrCreateEventHandler should create a new handler and PostTask should succeed
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(receivedRequestId, terminateRequestId);
+    EXPECT_NE(context->eventHandler_, nullptr);
+
+    // Clean up pending request (timeout task is pending)
+    context->pendingTerminateRequests_.clear();
+    context->eventHandler_ = nullptr;
+    context->terminateSelfWithAnimationCallback_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "HandleTerminateWithAnimation_0400 end");
+}
+
+/**
+ * @tc.number: HandleTerminateWithAnimation_0500
+ * @tc.name: HandleTerminateWithAnimation callback retained after call
+ * @tc.desc: HandleTerminateWithAnimation retains callback for repeated calls.
+ */
+HWTEST_F(UIExtensionContextTest, HandleTerminateWithAnimation_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleTerminateWithAnimation_0500 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->screenMode_ = AAFwk::EMBEDDED_FULL_SCREEN_MODE;
+    context->eventHandler_ = std::make_shared<AppExecFwk::EventHandler>(AppExecFwk::EventRunner::Create());
+
+    int callCount = 0;
+    TerminateSelfWithAnimationCallback callback = [&callCount](int32_t) { callCount++; };
+    context->terminateSelfWithAnimationCallback_ = callback;
+
+    // First call
+    context->HandleTerminateWithAnimation(1);
+    EXPECT_EQ(callCount, 1);
+    EXPECT_NE(context->terminateSelfWithAnimationCallback_, nullptr);
+
+    // Second call - callback should still be available
+    context->HandleTerminateWithAnimation(2);
+    EXPECT_EQ(callCount, 2);
+    EXPECT_NE(context->terminateSelfWithAnimationCallback_, nullptr);
+
+    context->pendingTerminateRequests_.clear();
+    context->eventHandler_ = nullptr;
+    context->terminateSelfWithAnimationCallback_ = nullptr;
+    TAG_LOGI(AAFwkTag::TEST, "HandleTerminateWithAnimation_0500 end");
+}
+
+// ==================== RegisterTerminateSelfWithAnimation additional edge case ====================
+
+/**
+ * @tc.number: RegisterTerminateSelfWithAnimation_0600
+ * @tc.name: RegisterTerminateSelfWithAnimation JUMP_SCREEN_MODE
+ * @tc.desc: RegisterTerminateSelfWithAnimation rejects JUMP_SCREEN_MODE.
+ */
+HWTEST_F(UIExtensionContextTest, RegisterTerminateSelfWithAnimation_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RegisterTerminateSelfWithAnimation_0600 start");
+    auto context = std::make_shared<UIExtensionContext>();
+    ASSERT_NE(context, nullptr);
+    context->screenMode_ = AAFwk::JUMP_SCREEN_MODE;
+    TerminateSelfWithAnimationCallback callback = [](int32_t) {};
+    auto result = context->RegisterTerminateSelfWithAnimation(std::move(callback));
+    EXPECT_EQ(result, ERR_INVALID_OPERATION);
+
+    TAG_LOGI(AAFwkTag::TEST, "RegisterTerminateSelfWithAnimation_0600 end");
+}
 } // namespace AbilityRuntime
 } // namespace OHOS

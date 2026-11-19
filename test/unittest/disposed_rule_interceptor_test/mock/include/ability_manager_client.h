@@ -27,7 +27,7 @@ public:
     AbilityManagerClient();
     virtual ~AbilityManagerClient();
     static std::shared_ptr<AbilityManagerClient> GetInstance();
-    ErrCode StartAbility(const Want& want, int requestCode, int32_t userId);
+    ErrCode StartAbility(const Want& want, int requestCode = -1, int32_t userId = -1);
 };
 }  // namespace AAFwk
 }  // namespace OHOS

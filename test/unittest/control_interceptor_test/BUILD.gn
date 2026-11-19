@@ -21,12 +21,14 @@ ohos_unittest("control_interceptor_test") {
   cflags_cc = []
   include_dirs = [
     "./mock/include",
+    "${ability_runtime_path}/interfaces/inner_api/ability_manager/include",
     "${ability_runtime_path}/services/abilitymgr/include",
     "${ability_runtime_path}/services/common/include",
   ]
 
   sources = [
     "${ability_runtime_services_path}/abilitymgr/src/interceptor/control_interceptor.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/utils/security_audit_report.cpp",
     "mock/src/mock_ability_manager_client.cpp",
     "mock/src/mock_app_control_manager.cpp",
     "mock/src/mock_bundle_mgr_helper.cpp",

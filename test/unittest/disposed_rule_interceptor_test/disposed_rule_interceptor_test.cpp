@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,7 +13,10 @@
  * limitations under the License.
  */
 
+#include <atomic>
+#include <chrono>
 #include <gtest/gtest.h>
+#include <thread>
 
 #include "ability_manager_errors.h"
 #include "bundle_mgr_helper.h"
@@ -198,7 +201,9 @@ HWTEST_F(DisposedRuleInterceptorTest, StartNonBlockRule_001, TestSize.Level1)
     DisposedRuleInterceptor interceptor;
     Want want;
     AppExecFwk::DisposedRule rule;
-    auto ret = interceptor.StartNonBlockRule(want, rule, 100);
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->uid = 100;
+    auto ret = interceptor.StartNonBlockRule(want, rule, abilityInfo);
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "StartNonBlockRule_001 end");
 }
@@ -218,7 +223,9 @@ HWTEST_F(DisposedRuleInterceptorTest, StartNonBlockRule_002, TestSize.Level1)
     AppExecFwk::DisposedRule rule;
     rule.want = std::make_shared<Want>();
     rule.want->SetElementName("", "test.bundleName", "test.abilityName", "test.entry");
-    auto ret = interceptor.StartNonBlockRule(want, rule, 100);
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->uid = 100;
+    auto ret = interceptor.StartNonBlockRule(want, rule, abilityInfo);
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "StartNonBlockRule_002 end");
 }
@@ -239,7 +246,9 @@ HWTEST_F(DisposedRuleInterceptorTest, StartNonBlockRule_003, TestSize.Level1)
     AppExecFwk::DisposedRule rule;
     rule.want = std::make_shared<Want>();
     rule.want->SetElementName("", "test.bundleName321", "test.abilityName", "test.entry");
-    auto ret = interceptor.StartNonBlockRule(want, rule, 100);
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->uid = 100;
+    auto ret = interceptor.StartNonBlockRule(want, rule, abilityInfo);
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "StartNonBlockRule_003 end");
 }
@@ -256,7 +265,8 @@ HWTEST_F(DisposedRuleInterceptorTest, StartNonBlockRule_004, TestSize.Level1)
     auto appMgr = sptr<AppExecFwk::MockAppMgrService>::MakeSptr();
     MyFlag::mockAppMgr_ = appMgr;
 
-    std::shared_ptr<DisposedRuleInterceptor> interceptor = std::make_shared<DisposedRuleInterceptor>();
+    std::shared_ptr<DisposedRuleInterceptor> interceptor =
+        std::make_shared<DisposedRuleInterceptor>(TaskHandlerWrap::CreateQueueHandler("StartNonBlockRule_004"));
     Want want;
     want.SetElementName("", "test.bundleName123", "test.abilityName", "test.entry");
     AppExecFwk::DisposedRule rule;
@@ -265,7 +275,9 @@ HWTEST_F(DisposedRuleInterceptorTest, StartNonBlockRule_004, TestSize.Level1)
     interceptor->disposedObserverMap_.emplace(uid, observer);
     rule.want = std::make_shared<Want>();
     rule.want->SetElementName("", "test.bundleName321", "test.abilityName", "test.entry");
-    auto ret = interceptor->StartNonBlockRule(want, rule, uid);
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->uid = uid;
+    auto ret = interceptor->StartNonBlockRule(want, rule, abilityInfo);
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "StartNonBlockRule_004 end");
 }
@@ -284,13 +296,16 @@ HWTEST_F(DisposedRuleInterceptorTest, StartNonBlockRule_005, TestSize.Level1)
     EXPECT_CALL(*appMgr,  RegisterApplicationStateObserver(_, _))
         .WillOnce(Return(-1));
 
-    std::shared_ptr<DisposedRuleInterceptor> interceptor = std::make_shared<DisposedRuleInterceptor>();
+    std::shared_ptr<DisposedRuleInterceptor> interceptor =
+        std::make_shared<DisposedRuleInterceptor>(TaskHandlerWrap::CreateQueueHandler("StartNonBlockRule_005"));
     Want want;
     want.SetElementName("", "test.bundleName123", "test.abilityName", "test.entry");
     AppExecFwk::DisposedRule rule;
     rule.want = std::make_shared<Want>();
     rule.want->SetElementName("", "test.bundleName321", "test.abilityName", "test.entry");
-    auto ret = interceptor->StartNonBlockRule(want, rule, 100);
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->uid = 100;
+    auto ret = interceptor->StartNonBlockRule(want, rule, abilityInfo);
     EXPECT_EQ(ret, -1);
     TAG_LOGI(AAFwkTag::TEST, "StartNonBlockRule_005 end");
 }
@@ -309,14 +324,17 @@ HWTEST_F(DisposedRuleInterceptorTest, StartNonBlockRule_006, TestSize.Level1)
     EXPECT_CALL(*appMgr,  RegisterApplicationStateObserver(_, _))
         .WillOnce(Return(ERR_OK));
 
-    std::shared_ptr<DisposedRuleInterceptor> interceptor = std::make_shared<DisposedRuleInterceptor>();
+    std::shared_ptr<DisposedRuleInterceptor> interceptor =
+        std::make_shared<DisposedRuleInterceptor>(TaskHandlerWrap::CreateQueueHandler("StartNonBlockRule_006"));
     Want want;
     want.SetElementName("", "test.bundleName123", "test.abilityName", "test.entry");
     AppExecFwk::DisposedRule rule;
     rule.want = std::make_shared<Want>();
     rule.want->SetElementName("", "test.bundleName321", "test.abilityName", "test.entry");
-    auto ret = interceptor->StartNonBlockRule(want, rule, 100);
-    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->uid = 100;
+    auto ret = interceptor->StartNonBlockRule(want, rule, abilityInfo);
+    EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "StartNonBlockRule_006 end");
 }
 
@@ -331,15 +349,20 @@ HWTEST_F(DisposedRuleInterceptorTest, StartNonBlockRule_007, TestSize.Level1)
     TAG_LOGI(AAFwkTag::TEST, "StartNonBlockRule_007 start");
     auto appMgr = sptr<AppExecFwk::MockAppMgrService>::MakeSptr();
     MyFlag::mockAppMgr_ = appMgr;
+    EXPECT_CALL(*appMgr,  RegisterApplicationStateObserver(_, _))
+        .WillOnce(Return(ERR_OK));
 
-    std::shared_ptr<DisposedRuleInterceptor> interceptor = std::make_shared<DisposedRuleInterceptor>();
-    interceptor->taskHandler_ = TaskHandlerWrap::GetFfrtHandler();
+    std::shared_ptr<DisposedRuleInterceptor> interceptor =
+        std::make_shared<DisposedRuleInterceptor>(TaskHandlerWrap::CreateQueueHandler("test_start_non_block_007"));
     Want want;
     want.SetElementName("", "test.bundleName123", "test.abilityName", "test.entry");
     AppExecFwk::DisposedRule rule;
     rule.want = std::make_shared<Want>();
     rule.want->SetElementName("", "test.bundleName321", "test.abilityName", "test.entry");
-    auto ret = interceptor->StartNonBlockRule(want, rule, 100);
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->uid = 100;
+    auto ret = interceptor->StartNonBlockRule(want, rule, abilityInfo);
+    ret = interceptor->StartNonBlockRule(want, rule, abilityInfo);
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "StartNonBlockRule_007 end");
 }
@@ -361,7 +384,8 @@ HWTEST_F(DisposedRuleInterceptorTest, FindNonBlockDisposedRule_001, TestSize.Lev
     rule2.priority = 10;
     std::vector<AppExecFwk::DisposedRule> rules = { rule1, rule2 };
     AppExecFwk::DisposedRule rule;
-    interceptor.FindNonBlockDisposedRule(rules, rule);
+    auto ret = interceptor.FindNonBlockDisposedRule(rules, rule);
+    EXPECT_TRUE(ret);
     EXPECT_EQ(rule.disposedType, AppExecFwk::DisposedType::NON_BLOCK);
     EXPECT_EQ(rule.priority, 10);
     TAG_LOGI(AAFwkTag::TEST, "FindNonBlockDisposedRule_001 end");
@@ -470,7 +494,7 @@ HWTEST_F(DisposedRuleInterceptorTest, CheckControl_001, TestSize.Level1)
     int32_t appCloneIndex = 0;
     AppExecFwk::DisposedRule rule;
     auto ret = interceptor.CheckControl(want, userId, rule, appCloneIndex);
-    EXPECT_EQ(ret, false);
+    EXPECT_EQ(ret, DisposedRuleResult::QUERY_FAILED);
     TAG_LOGI(AAFwkTag::TEST, "CheckControl_001 end");
 }
 
@@ -491,13 +515,13 @@ HWTEST_F(DisposedRuleInterceptorTest, CheckControl_002, TestSize.Level1)
     int32_t appCloneIndex = 0;
     AppExecFwk::DisposedRule rule;
     auto ret = interceptor.CheckControl(want, userId, rule, appCloneIndex);
-    EXPECT_EQ(ret, false);
+    EXPECT_EQ(ret, DisposedRuleResult::QUERY_FAILED);
     TAG_LOGI(AAFwkTag::TEST, "CheckControl_002 end");
 }
 
 /**
  * @tc.name: DisposedRuleInterceptorTest_CheckControl_003
- * @tc.desc: CheckControl
+ * @tc.desc: CheckControl with GetAbilityRunningControlRule failed (cloned app), returns NO_RULE
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -515,13 +539,13 @@ HWTEST_F(DisposedRuleInterceptorTest, CheckControl_003, TestSize.Level1)
     int32_t appCloneIndex = 1;
     AppExecFwk::DisposedRule rule;
     auto ret = interceptor.CheckControl(want, userId, rule, appCloneIndex);
-    EXPECT_EQ(ret, false);
+    EXPECT_EQ(ret, DisposedRuleResult::NO_RULE);
     TAG_LOGI(AAFwkTag::TEST, "CheckControl_003 end");
 }
 
 /**
  * @tc.name: DisposedRuleInterceptorTest_CheckControl_004
- * @tc.desc: CheckControl
+ * @tc.desc: CheckControl with GetAbilityRunningControlRule failed (normal app), returns NO_RULE
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -539,7 +563,7 @@ HWTEST_F(DisposedRuleInterceptorTest, CheckControl_004, TestSize.Level1)
     int32_t appCloneIndex = 0;
     AppExecFwk::DisposedRule rule;
     auto ret = interceptor.CheckControl(want, userId, rule, appCloneIndex);
-    EXPECT_EQ(ret, false);
+    EXPECT_EQ(ret, DisposedRuleResult::NO_RULE);
     TAG_LOGI(AAFwkTag::TEST, "CheckControl_004 end");
 }
 
@@ -563,7 +587,7 @@ HWTEST_F(DisposedRuleInterceptorTest, CheckControl_005, TestSize.Level1)
     int32_t appCloneIndex = 0;
     AppExecFwk::DisposedRule rule;
     auto ret = interceptor.CheckControl(want, userId, rule, appCloneIndex);
-    EXPECT_EQ(ret, false);
+    EXPECT_EQ(ret, DisposedRuleResult::NO_RULE);
     TAG_LOGI(AAFwkTag::TEST, "CheckControl_005 end");
 }
 
@@ -596,7 +620,7 @@ HWTEST_F(DisposedRuleInterceptorTest, CheckControl_006, TestSize.Level1)
     int32_t appCloneIndex = 0;
     AppExecFwk::DisposedRule rule;
     auto ret = interceptor.CheckControl(want, userId, rule, appCloneIndex);
-    EXPECT_EQ(ret, true);
+    EXPECT_EQ(ret, DisposedRuleResult::BLOCK_RULE);
     TAG_LOGI(AAFwkTag::TEST, "CheckControl_006 end");
 }
 
@@ -625,8 +649,589 @@ HWTEST_F(DisposedRuleInterceptorTest, CheckControl_007, TestSize.Level1)
     int32_t appCloneIndex = 0;
     AppExecFwk::DisposedRule rule;
     auto ret = interceptor.CheckControl(want, userId, rule, appCloneIndex);
-    EXPECT_EQ(ret, false);
+    EXPECT_EQ(ret, DisposedRuleResult::NON_BLOCK_RULE);
     TAG_LOGI(AAFwkTag::TEST, "CheckControl_007 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_CheckControl_008
+ * @tc.desc: CheckControl with BLOCK_APPLICATION ALLOWED_LIST rule, both FindBlock and FindNonBlock miss
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, CheckControl_008, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckControl_008 start");
+    MyFlag::bundleMgrHelper_ = AppExecFwk::BundleMgrHelper::GetInstance();
+    auto appControlMgr = new (std::nothrow) AppControlProxy(nullptr);
+    MyFlag::mockAppControlManager_ = appControlMgr;
+    AppExecFwk::DisposedRule rule1;
+    rule1.disposedType = AppExecFwk::DisposedType::BLOCK_APPLICATION;
+    rule1.controlType = AppExecFwk::ControlType::ALLOWED_LIST;
+    rule1.priority = 10;
+    std::vector<AppExecFwk::DisposedRule> rules = { rule1 };
+    MyFlag::mockDisposedRuleList_ = rules;
+    MyFlag::retGetAbilityRunningControlRule_ = ERR_OK;
+
+    DisposedRuleInterceptor interceptor;
+    Want want;
+    int32_t userId = 1001;
+    int32_t appCloneIndex = 0;
+    AppExecFwk::DisposedRule rule;
+    auto ret = interceptor.CheckControl(want, userId, rule, appCloneIndex);
+    EXPECT_EQ(ret, DisposedRuleResult::NO_RULE);
+    TAG_LOGI(AAFwkTag::TEST, "CheckControl_008 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_GenerateTimeoutTaskName_001
+ * @tc.desc: GenerateTimeoutTaskName
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, GenerateTimeoutTaskName_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GenerateTimeoutTaskName_001 start");
+    int32_t uid = 1001;
+    std::string taskName = DisposedRuleInterceptor::GenerateTimeoutTaskName(uid);
+    std::string expected = "unregister timeout observer task1001";
+    EXPECT_EQ(taskName, expected);
+    TAG_LOGI(AAFwkTag::TEST, "GenerateTimeoutTaskName_001 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_GenerateTimeoutTaskName_002
+ * @tc.desc: GenerateTimeoutTaskName with zero uid
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, GenerateTimeoutTaskName_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GenerateTimeoutTaskName_002 start");
+    int32_t uid = 0;
+    std::string taskName = DisposedRuleInterceptor::GenerateTimeoutTaskName(uid);
+    std::string expected = "unregister timeout observer task0";
+    EXPECT_EQ(taskName, expected);
+    TAG_LOGI(AAFwkTag::TEST, "GenerateTimeoutTaskName_002 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_GenerateTimeoutTaskName_003
+ * @tc.desc: GenerateTimeoutTaskName with negative uid
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, GenerateTimeoutTaskName_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GenerateTimeoutTaskName_003 start");
+    int32_t uid = -1;
+    std::string taskName = DisposedRuleInterceptor::GenerateTimeoutTaskName(uid);
+    std::string expected = "unregister timeout observer task-1";
+    EXPECT_EQ(taskName, expected);
+    TAG_LOGI(AAFwkTag::TEST, "GenerateTimeoutTaskName_003 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_GenerateEventTaskName_001
+ * @tc.desc: GenerateEventTaskName
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, GenerateEventTaskName_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GenerateEventTaskName_001 start");
+    int32_t uid = 1001;
+    std::string taskName = DisposedRuleInterceptor::GenerateEventTaskName(uid);
+    std::string expected = "unregister event task1001";
+    EXPECT_EQ(taskName, expected);
+    TAG_LOGI(AAFwkTag::TEST, "GenerateEventTaskName_001 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_GenerateEventTaskName_002
+ * @tc.desc: GenerateEventTaskName with zero uid
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, GenerateEventTaskName_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GenerateEventTaskName_002 start");
+    int32_t uid = 0;
+    std::string taskName = DisposedRuleInterceptor::GenerateEventTaskName(uid);
+    std::string expected = "unregister event task0";
+    EXPECT_EQ(taskName, expected);
+    TAG_LOGI(AAFwkTag::TEST, "GenerateEventTaskName_002 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_ValidateNonBlockRule_001
+ * @tc.desc: ValidateNonBlockRule with null want
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, ValidateNonBlockRule_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ValidateNonBlockRule_001 start");
+    DisposedRuleInterceptor interceptor;
+    Want want;
+    AppExecFwk::DisposedRule rule;
+    auto ret = interceptor.ValidateNonBlockRule(want, rule);
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "ValidateNonBlockRule_001 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_ValidateNonBlockRule_002
+ * @tc.desc: ValidateNonBlockRule with same bundle name
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, ValidateNonBlockRule_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ValidateNonBlockRule_002 start");
+    DisposedRuleInterceptor interceptor;
+    Want want;
+    want.SetElementName("", "com.test.bundle", "ability", "module");
+
+    AppExecFwk::DisposedRule rule;
+    rule.want = std::make_shared<Want>();
+    rule.want->SetElementName("", "com.test.bundle", "ability", "module");
+
+    auto ret = interceptor.ValidateNonBlockRule(want, rule);
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "ValidateNonBlockRule_002 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_ValidateNonBlockRule_003
+ * @tc.desc: ValidateNonBlockRule with different bundle name
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, ValidateNonBlockRule_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ValidateNonBlockRule_003 start");
+    DisposedRuleInterceptor interceptor;
+    Want want;
+    want.SetElementName("", "com.test.bundle", "ability", "module");
+
+    AppExecFwk::DisposedRule rule;
+    rule.want = std::make_shared<Want>();
+    rule.want->SetElementName("", "com.different.bundle", "ability", "module");
+
+    auto ret = interceptor.ValidateNonBlockRule(want, rule);
+    EXPECT_EQ(ret, true);
+    TAG_LOGI(AAFwkTag::TEST, "ValidateNonBlockRule_003 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_FindNonBlockDisposedRule_002
+ * @tc.desc: FindNonBlockDisposedRule with multiple NON_BLOCK rules
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, FindNonBlockDisposedRule_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FindNonBlockDisposedRule_002 start");
+    DisposedRuleInterceptor interceptor;
+    AppExecFwk::DisposedRule rule1;
+    rule1.disposedType = AppExecFwk::DisposedType::BLOCK_APPLICATION;
+    AppExecFwk::DisposedRule rule2;
+    rule2.disposedType = AppExecFwk::DisposedType::NON_BLOCK;
+    rule2.priority = 10;
+    AppExecFwk::DisposedRule rule3;
+    rule3.disposedType = AppExecFwk::DisposedType::NON_BLOCK;
+    rule3.priority = 20;
+    AppExecFwk::DisposedRule rule4;
+    rule4.disposedType = AppExecFwk::DisposedType::NON_BLOCK;
+    rule4.priority = 5;
+    std::vector<AppExecFwk::DisposedRule> rules = { rule1, rule2, rule3, rule4 };
+    AppExecFwk::DisposedRule rule;
+    auto ret = interceptor.FindNonBlockDisposedRule(rules, rule);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(rule.disposedType, AppExecFwk::DisposedType::NON_BLOCK);
+    EXPECT_EQ(rule.priority, 20);
+    TAG_LOGI(AAFwkTag::TEST, "FindNonBlockDisposedRule_002 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_FindNonBlockDisposedRule_003
+ * @tc.desc: FindNonBlockDisposedRule with no NON_BLOCK rules
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, FindNonBlockDisposedRule_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FindNonBlockDisposedRule_003 start");
+    DisposedRuleInterceptor interceptor;
+    AppExecFwk::DisposedRule rule1;
+    rule1.disposedType = AppExecFwk::DisposedType::BLOCK_APPLICATION;
+    rule1.priority = 10;
+    AppExecFwk::DisposedRule rule2;
+    rule2.disposedType = AppExecFwk::DisposedType::BLOCK_ABILITY;
+    rule2.priority = 20;
+    std::vector<AppExecFwk::DisposedRule> rules = { rule1, rule2 };
+    AppExecFwk::DisposedRule rule;
+    auto ret = interceptor.FindNonBlockDisposedRule(rules, rule);
+    EXPECT_FALSE(ret);
+    EXPECT_NE(rule.disposedType, AppExecFwk::DisposedType::NON_BLOCK);
+    EXPECT_EQ(rule.priority, 0);
+    TAG_LOGI(AAFwkTag::TEST, "FindNonBlockDisposedRule_003 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_FindBlockDisposedRule_004
+ * @tc.desc: FindBlockDisposedRule with ALLOWED_LIST and matching element
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, FindBlockDisposedRule_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FindBlockDisposedRule_004 start");
+    DisposedRuleInterceptor interceptor;
+    AppExecFwk::DisposedRule rule1;
+    rule1.disposedType = AppExecFwk::DisposedType::BLOCK_ABILITY;
+    rule1.controlType = AppExecFwk::ControlType::ALLOWED_LIST;
+    rule1.priority = 8;
+    ElementName element1("", "", "test.ability", "test.module");
+    rule1.elementList = { element1 };
+
+    AppExecFwk::DisposedRule rule2;
+    rule2.disposedType = AppExecFwk::DisposedType::BLOCK_ABILITY;
+    rule2.controlType = AppExecFwk::ControlType::ALLOWED_LIST;
+    rule2.priority = 10;
+
+    std::vector<AppExecFwk::DisposedRule> rules = { rule1, rule2 };
+    AppExecFwk::DisposedRule rule;
+    Want want;
+    want.SetElementName("", "", "test.ability", "test.module");
+    auto ret = interceptor.FindBlockDisposedRule(want, rules, rule);
+    EXPECT_EQ(ret, true);
+    TAG_LOGI(AAFwkTag::TEST, "FindBlockDisposedRule_004 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_FindBlockDisposedRule_005
+ * @tc.desc: FindBlockDisposedRule with ALLOWED_LIST and non-matching element
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, FindBlockDisposedRule_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FindBlockDisposedRule_005 start");
+    DisposedRuleInterceptor interceptor;
+    AppExecFwk::DisposedRule rule1;
+    rule1.disposedType = AppExecFwk::DisposedType::BLOCK_ABILITY;
+    rule1.controlType = AppExecFwk::ControlType::ALLOWED_LIST;
+    rule1.priority = 10;
+    ElementName element1("", "", "other.ability", "other.module");
+    rule1.elementList = { element1 };
+
+    std::vector<AppExecFwk::DisposedRule> rules = { rule1 };
+    AppExecFwk::DisposedRule rule;
+    Want want;
+    want.SetElementName("", "", "test.ability", "test.module");
+    auto ret = interceptor.FindBlockDisposedRule(want, rules, rule);
+    EXPECT_EQ(ret, true);
+    EXPECT_EQ(rule.priority, 10);
+    TAG_LOGI(AAFwkTag::TEST, "FindBlockDisposedRule_005 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_FindBlockDisposedRule_006
+ * @tc.desc: FindBlockDisposedRule with BLOCK_APPLICATION and ALLOWED_LIST
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, FindBlockDisposedRule_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "FindBlockDisposedRule_006 start");
+    DisposedRuleInterceptor interceptor;
+    AppExecFwk::DisposedRule rule1;
+    rule1.disposedType = AppExecFwk::DisposedType::BLOCK_APPLICATION;
+    rule1.controlType = AppExecFwk::ControlType::ALLOWED_LIST;
+    rule1.priority = 10;
+
+    std::vector<AppExecFwk::DisposedRule> rules = { rule1 };
+    AppExecFwk::DisposedRule rule;
+    Want want;
+    auto ret = interceptor.FindBlockDisposedRule(want, rules, rule);
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "FindBlockDisposedRule_006 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_UnregisterObserver_001
+ * @tc.desc: UnregisterObserver with null taskHandler
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, UnregisterObserver_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "UnregisterObserver_001 start");
+    auto interceptor = std::make_shared<DisposedRuleInterceptor>(nullptr);
+    int32_t uid = 1001;
+    interceptor->UnregisterObserver(uid);
+    // Verify taskHandler is still null after the call
+    EXPECT_EQ(interceptor->taskHandler_, nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "UnregisterObserver_001 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_UnregisterObserver_002
+ * @tc.desc: UnregisterObserver with non-existent observer
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, UnregisterObserver_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "UnregisterObserver_002 start");
+    auto interceptor =
+        std::make_shared<DisposedRuleInterceptor>(TaskHandlerWrap::CreateQueueHandler("test_unregister_002"));
+    int32_t uid = 1001;
+    interceptor->UnregisterObserver(uid);
+    EXPECT_EQ(interceptor->disposedObserverMap_.size(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "UnregisterObserver_002 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_UnregisterObserver_003
+ * @tc.desc: UnregisterObserver with existing observer and no pending keys
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, UnregisterObserver_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "UnregisterObserver_003 start");
+    auto appMgr = sptr<AppExecFwk::MockAppMgrService>::MakeSptr();
+    MyFlag::mockAppMgr_ = appMgr;
+    EXPECT_CALL(*appMgr,  RegisterApplicationStateObserver(_, _))
+    .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*appMgr, UnregisterApplicationStateObserver(_))
+        .WillOnce(Return(ERR_OK));
+
+    auto interceptor =
+        std::make_shared<DisposedRuleInterceptor>(TaskHandlerWrap::CreateQueueHandler("test_unregister_003"));
+
+    int32_t uid = 100;
+    Want want;
+    want.SetElementName("", "test.bundleName123", "test.abilityName", "test.entry");
+    AppExecFwk::DisposedRule rule;
+    rule.want = std::make_shared<Want>();
+    rule.want->SetElementName("", "test.bundleName321", "test.abilityName", "test.entry");
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->uid = uid;
+    auto ret = interceptor->StartNonBlockRule(want, rule, abilityInfo);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(interceptor->disposedObserverMap_.size(), 1);
+
+    auto iter = interceptor->disposedObserverMap_.find(uid);
+    if (iter != interceptor->disposedObserverMap_.end()) {
+        EXPECT_NE(iter->second, nullptr);
+        bool isEmpty = iter->second->RemoveAbilityKey("", "");
+        EXPECT_EQ(isEmpty, true);
+    }
+
+    interceptor->UnregisterObserver(uid);
+    // Observer should be removed because it has no pending keys
+    EXPECT_EQ(interceptor->disposedObserverMap_.size(), 1);
+    TAG_LOGI(AAFwkTag::TEST, "UnregisterObserver_003 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_UnregisterObserver_004
+ * @tc.desc: UnregisterObserver with existing observer and has pending keys
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, UnregisterObserver_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "UnregisterObserver_004 start");
+    auto appMgr = sptr<AppExecFwk::MockAppMgrService>::MakeSptr();
+    MyFlag::mockAppMgr_ = appMgr;
+    EXPECT_CALL(*appMgr,  RegisterApplicationStateObserver(_, _))
+    .WillOnce(Return(ERR_OK));
+    EXPECT_CALL(*appMgr, UnregisterApplicationStateObserver(_))
+        .WillOnce(Return(ERR_OK));
+
+    auto interceptor =
+        std::make_shared<DisposedRuleInterceptor>(TaskHandlerWrap::CreateQueueHandler("test_unregister_004"));
+
+    int32_t uid = 100;
+    Want want;
+    want.SetElementName("", "test.bundleName123", "test.abilityName", "test.entry");
+    AppExecFwk::DisposedRule rule;
+    rule.want = std::make_shared<Want>();
+    rule.want->SetElementName("", "test.bundleName321", "test.abilityName", "test.entry");
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->uid = uid;
+
+    auto ret = interceptor->StartNonBlockRule(want, rule, abilityInfo);
+    EXPECT_EQ(interceptor->disposedObserverMap_.size(), 1);
+
+    interceptor->UnregisterObserver(uid);
+    // Observer should not be removed because it has pending keys
+    EXPECT_EQ(interceptor->disposedObserverMap_.size(), 1);
+    TAG_LOGI(AAFwkTag::TEST, "UnregisterObserver_004 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_StartNonBlockRule_008
+ * @tc.desc: StartNonBlockRule arms a delayed unregister task under the generated timeout task name,
+ *           and UnregisterObserver cancels the pending timeout task
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, StartNonBlockRule_008, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartNonBlockRule_008 start");
+    auto appMgr = sptr<AppExecFwk::MockAppMgrService>::MakeSptr();
+    MyFlag::mockAppMgr_ = appMgr;
+    EXPECT_CALL(*appMgr, RegisterApplicationStateObserver(_, _))
+        .WillOnce(Return(ERR_OK));
+
+    std::shared_ptr<DisposedRuleInterceptor> interceptor =
+        std::make_shared<DisposedRuleInterceptor>(TaskHandlerWrap::CreateQueueHandler("test_non_block_008"));
+    Want want;
+    want.SetElementName("", "test.bundleName123", "test.abilityName", "test.entry");
+    AppExecFwk::DisposedRule rule;
+    rule.want = std::make_shared<Want>();
+    rule.want->SetElementName("", "test.bundleName321", "test.abilityName", "test.entry");
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    int32_t uid = 100;
+    abilityInfo->applicationInfo.uid = uid;
+    auto ret = interceptor->StartNonBlockRule(want, rule, abilityInfo);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(interceptor->disposedObserverMap_.size(), 1);
+
+    // the delayed timeout task is armed under the generated task name
+    std::string timeoutTaskName = DisposedRuleInterceptor::GenerateTimeoutTaskName(uid);
+    EXPECT_GT(interceptor->taskHandler_->tasks_.count(timeoutTaskName), 0);
+
+    // UnregisterObserver cancels the pending timeout task before submitting the event task
+    interceptor->UnregisterObserver(uid);
+    // wait for the event task and its clear task to settle before inspecting the task map
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    EXPECT_EQ(interceptor->taskHandler_->tasks_.count(timeoutTaskName), 0);
+    TAG_LOGI(AAFwkTag::TEST, "StartNonBlockRule_008 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_StartNonBlockRule_009
+ * @tc.desc: StartNonBlockRule timeout scenario: when no page show happens before the unregister
+ *           timeout, the observer is unregistered and removed from the map automatically
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, StartNonBlockRule_009, TestSize.Level3)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartNonBlockRule_009 start");
+    auto appMgr = sptr<AppExecFwk::MockAppMgrService>::MakeSptr();
+    MyFlag::mockAppMgr_ = appMgr;
+    auto unregisterCount = std::make_shared<std::atomic<int32_t>>(0);
+    EXPECT_CALL(*appMgr, RegisterApplicationStateObserver(_, _))
+        .WillRepeatedly(Return(ERR_OK));
+    EXPECT_CALL(*appMgr, UnregisterApplicationStateObserver(_))
+        .WillRepeatedly(InvokeWithoutArgs([unregisterCount]() {
+            unregisterCount->fetch_add(1);
+            return ERR_OK;
+        }));
+
+    std::shared_ptr<DisposedRuleInterceptor> interceptor =
+        std::make_shared<DisposedRuleInterceptor>(TaskHandlerWrap::CreateQueueHandler("test_non_block_009"));
+    Want want;
+    want.SetElementName("", "test.bundleName123", "test.abilityName", "test.entry");
+    AppExecFwk::DisposedRule rule;
+    rule.want = std::make_shared<Want>();
+    rule.want->SetElementName("", "test.bundleName321", "test.abilityName", "test.entry");
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    int32_t uid = 101;
+    abilityInfo->applicationInfo.uid = uid;
+    auto ret = interceptor->StartNonBlockRule(want, rule, abilityInfo);
+    EXPECT_EQ(ret, ERR_OK);
+    {
+        std::lock_guard<ffrt::mutex> guard(interceptor->observerLock_);
+        EXPECT_EQ(interceptor->disposedObserverMap_.size(), 1);
+    }
+
+    // wait for the unregister timeout(5s) to fire, poll with margin
+    bool mapEmpty = false;
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(9);
+    while (std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::lock_guard<ffrt::mutex> guard(interceptor->observerLock_);
+        if (interceptor->disposedObserverMap_.empty()) {
+            mapEmpty = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(mapEmpty);
+    EXPECT_GE(unregisterCount->load(), 1);
+    TAG_LOGI(AAFwkTag::TEST, "StartNonBlockRule_009 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_StartNonBlockRule_010
+ * @tc.desc: StartNonBlockRule timeout scenario: a repeated StartNonBlockRule for the same uid
+ *           refreshes the unregister timeout, observer survives the first deadline and is
+ *           removed after the refreshed deadline
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, StartNonBlockRule_010, TestSize.Level3)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartNonBlockRule_010 start");
+    auto appMgr = sptr<AppExecFwk::MockAppMgrService>::MakeSptr();
+    MyFlag::mockAppMgr_ = appMgr;
+    auto unregisterCount = std::make_shared<std::atomic<int32_t>>(0);
+    EXPECT_CALL(*appMgr, RegisterApplicationStateObserver(_, _))
+        .WillRepeatedly(Return(ERR_OK));
+    EXPECT_CALL(*appMgr, UnregisterApplicationStateObserver(_))
+        .WillRepeatedly(InvokeWithoutArgs([unregisterCount]() {
+            unregisterCount->fetch_add(1);
+            return ERR_OK;
+        }));
+
+    std::shared_ptr<DisposedRuleInterceptor> interceptor =
+        std::make_shared<DisposedRuleInterceptor>(TaskHandlerWrap::CreateQueueHandler("test_non_block_010"));
+    Want want;
+    want.SetElementName("", "test.bundleName123", "test.abilityName", "test.entry");
+    AppExecFwk::DisposedRule rule;
+    rule.want = std::make_shared<Want>();
+    rule.want->SetElementName("", "test.bundleName321", "test.abilityName", "test.entry");
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    int32_t uid = 102;
+    abilityInfo->applicationInfo.uid = uid;
+    // first registration arms the timeout task at t0
+    auto ret = interceptor->StartNonBlockRule(want, rule, abilityInfo);
+    EXPECT_EQ(ret, ERR_OK);
+
+    // refresh the timeout deadline 2s later, the first deadline is t0+5s
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    ret = interceptor->StartNonBlockRule(want, rule, abilityInfo);
+    EXPECT_EQ(ret, ERR_OK);
+
+    // at t0+5.8s: first deadline has passed, refreshed deadline(t0+7s) not reached
+    std::this_thread::sleep_for(std::chrono::milliseconds(3800));
+    {
+        std::lock_guard<ffrt::mutex> guard(interceptor->observerLock_);
+        EXPECT_EQ(interceptor->disposedObserverMap_.size(), 1);
+    }
+
+    // wait for the refreshed deadline to fire
+    bool mapEmpty = false;
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(6);
+    while (std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::lock_guard<ffrt::mutex> guard(interceptor->observerLock_);
+        if (interceptor->disposedObserverMap_.empty()) {
+            mapEmpty = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(mapEmpty);
+    EXPECT_GE(unregisterCount->load(), 1);
+    TAG_LOGI(AAFwkTag::TEST, "StartNonBlockRule_010 end");
 }
 
 #ifdef SUPPORT_GRAPHICS
@@ -661,10 +1266,32 @@ HWTEST_F(DisposedRuleInterceptorTest, DoProcess_001, TestSize.Level1)
     bool isWithUI = false;
     sptr<IRemoteObject> callerToken = nullptr;
     std::function<bool(void)> shouldDisposedRuleFunc = nullptr;
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, callerToken, shouldDisposedRuleFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(callerToken).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, -1);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_001 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_DoProcess_RemoteDispatch_001
+ * @tc.desc: DoProcess with RemoteDispatchCtx defers to the remote device (no-op)
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, DoProcess_RemoteDispatch_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DoProcess_RemoteDispatch_001 start");
+    DisposedRuleInterceptor interceptor;
+    Want want;
+    int requestCode = 123;
+    int32_t userId = 1001;
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, requestCode, userId).WithUI(false)
+        .CallerToken(nullptr)
+        .Context<AbilityInterceptorParam::RemoteDispatchCtx>({}).Build();
+    auto ret = interceptor.DoProcess(param);
+    EXPECT_EQ(ret, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "DoProcess_RemoteDispatch_001 end");
 }
 
 /**
@@ -701,7 +1328,8 @@ HWTEST_F(DisposedRuleInterceptorTest, DoProcess_002, TestSize.Level1)
     bool isWithUI = true;
     sptr<IRemoteObject> callerToken = nullptr;
     std::function<bool(void)> shouldDisposedRuleFunc = nullptr;
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, callerToken, shouldDisposedRuleFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(callerToken).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, -2);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_002 end");
@@ -741,7 +1369,9 @@ HWTEST_F(DisposedRuleInterceptorTest, DoProcess_003, TestSize.Level1)
     bool isWithUI = true;
     sptr<IRemoteObject> callerToken = nullptr;
     std::function<bool(void)> shouldDisposedRuleFunc = nullptr;
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, callerToken, shouldDisposedRuleFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).Visible(true)
+            .CallerToken(callerToken).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, -1);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_003 end");
@@ -782,7 +1412,8 @@ HWTEST_F(DisposedRuleInterceptorTest, DoProcess_004, TestSize.Level1)
     bool isWithUI = true;
     sptr<IRemoteObject> callerToken = nullptr;
     std::function<bool(void)> shouldDisposedRuleFunc = nullptr;
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, callerToken, shouldDisposedRuleFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(callerToken).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_004 end");
@@ -823,7 +1454,9 @@ HWTEST_F(DisposedRuleInterceptorTest, DoProcess_005, TestSize.Level1)
     bool isWithUI = true;
     sptr<IRemoteObject> callerToken = nullptr;
     std::function<bool(void)> shouldDisposedRuleFunc = nullptr;
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, callerToken, shouldDisposedRuleFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).Visible(true)
+            .CallerToken(callerToken).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, INNER_ERR);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_005 end");
@@ -865,7 +1498,8 @@ HWTEST_F(DisposedRuleInterceptorTest, DoProcess_006, TestSize.Level1)
     bool isWithUI = true;
     sptr<IRemoteObject> callerToken = nullptr;
     std::function<bool(void)> shouldDisposedRuleFunc = nullptr;
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, callerToken, shouldDisposedRuleFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(callerToken).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_006 end");
@@ -891,7 +1525,8 @@ HWTEST_F(DisposedRuleInterceptorTest, DoProcess_007, TestSize.Level1)
     bool isWithUI = true;
     sptr<IRemoteObject> callerToken = nullptr;
     std::function<bool(void)> shouldDisposedRuleFunc = nullptr;
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, callerToken, shouldDisposedRuleFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(callerToken).Build();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_007 end");
@@ -923,9 +1558,10 @@ HWTEST_F(DisposedRuleInterceptorTest, DoProcess_008, TestSize.Level1)
     bool isWithUI = true;
     sptr<IRemoteObject> callerToken = nullptr;
     std::function<bool(void)> shouldDisposedRuleFunc = nullptr;
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, callerToken, shouldDisposedRuleFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(callerToken).Build();
     auto ret = interceptor.DoProcess(param);
-    EXPECT_EQ(ret, RESOLVE_ABILITY_ERR);
+    EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_008 end");
 }
 
@@ -955,11 +1591,89 @@ HWTEST_F(DisposedRuleInterceptorTest, DoProcess_009, TestSize.Level1)
     bool isWithUI = true;
     sptr<IRemoteObject> callerToken = nullptr;
     std::function<bool(void)> shouldDisposedRuleFunc = nullptr;
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, callerToken, shouldDisposedRuleFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(callerToken).Build();
     param.abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
     auto ret = interceptor.DoProcess(param);
     EXPECT_EQ(ret, ERR_OK);
     TAG_LOGI(AAFwkTag::TEST, "DoProcess_009 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_DoProcess_010
+ * @tc.desc: DoProcess with bundleMgrHelper nullptr, CheckControl returns QUERY_FAILED
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, DoProcess_010, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DoProcess_010 start");
+    MyFlag::bundleMgrHelper_ = nullptr;
+    DisposedRuleInterceptor interceptor;
+    Want want;
+    int requestCode = 123;
+    int32_t userId = 1001;
+    bool isWithUI = true;
+    sptr<IRemoteObject> callerToken = nullptr;
+    std::function<bool(void)> shouldDisposedRuleFunc = nullptr;
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(callerToken).Build();
+    auto ret = interceptor.DoProcess(param);
+    EXPECT_EQ(ret, ERR_QUERY_DISPOSED_RULE_FAILED);
+    TAG_LOGI(AAFwkTag::TEST, "DoProcess_010 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_DoProcess_011
+ * @tc.desc: DoProcess with appControlMgr nullptr, CheckControl returns QUERY_FAILED
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, DoProcess_011, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DoProcess_011 start");
+    MyFlag::bundleMgrHelper_ = AppExecFwk::BundleMgrHelper::GetInstance();
+    MyFlag::mockAppControlManager_ = nullptr;
+    DisposedRuleInterceptor interceptor;
+    Want want;
+    int requestCode = 123;
+    int32_t userId = 1001;
+    bool isWithUI = true;
+    sptr<IRemoteObject> callerToken = nullptr;
+    std::function<bool(void)> shouldDisposedRuleFunc = nullptr;
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(callerToken).Build();
+    auto ret = interceptor.DoProcess(param);
+    EXPECT_EQ(ret, ERR_QUERY_DISPOSED_RULE_FAILED);
+    TAG_LOGI(AAFwkTag::TEST, "DoProcess_011 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_DoProcess_012
+ * @tc.desc: DoProcess with GetAbilityRunningControlRule failed, CheckControl returns NO_RULE
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, DoProcess_012, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DoProcess_012 start");
+    MyFlag::bundleMgrHelper_ = AppExecFwk::BundleMgrHelper::GetInstance();
+    auto appControlMgr = new (std::nothrow) AppControlProxy(nullptr);
+    MyFlag::mockAppControlManager_ = appControlMgr;
+    MyFlag::retGetAbilityRunningControlRule_ = -1;
+
+    DisposedRuleInterceptor interceptor;
+    Want want;
+    int requestCode = 123;
+    int32_t userId = 1001;
+    bool isWithUI = true;
+    sptr<IRemoteObject> callerToken = nullptr;
+    std::function<bool(void)> shouldDisposedRuleFunc = nullptr;
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(callerToken).Build();
+    auto ret = interceptor.DoProcess(param);
+    EXPECT_EQ(ret, ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "DoProcess_012 end");
 }
 
 /**
@@ -978,11 +1692,189 @@ HWTEST_F(DisposedRuleInterceptorTest, IsSkipDisposeRule_001, TestSize.Level1)
     bool isWithUI = true;
     sptr<IRemoteObject> callerToken = nullptr;
     std::function<bool(void)> shouldDisposedRuleFunc = nullptr;
-    AbilityInterceptorParam param(want, requestCode, userId, isWithUI, callerToken, shouldDisposedRuleFunc);
-    std::string callerName = "7007";
-    auto ret = interceptor.IsSkipDisposeRule(callerName, param);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI).CallerToken(callerToken).Build();
+    auto ret = interceptor.IsSkipDisposeRule(AppExecFwk::PageJumpMode::PAGE_JUMP_WINDOW_NOT_SHOW, param);
     EXPECT_EQ(ret, false);
     TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_001 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_IsSkipDisposeRule_002
+ * @tc.desc: IsSkipDisposeRule with null processOptions
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, IsSkipDisposeRule_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_002 start");
+    DisposedRuleInterceptor interceptor;
+    Want want;
+    int requestCode = 123;
+    int32_t userId = 1001;
+    bool isWithUI = true;
+    sptr<IRemoteObject> callerToken = nullptr;
+    std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo = nullptr;
+    // Create StartOptions with null processOptions
+    auto startOptions = std::make_shared<StartOptions>();
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI)
+        .CallerToken(callerToken).AbilityInfo(abilityInfo)
+        .Context<AbilityInterceptorParam::DisposedCtx>({0, startOptions.get()}).Build();
+
+    auto ret = interceptor.IsSkipDisposeRule(AppExecFwk::PageJumpMode::PAGE_JUMP_WINDOW_NOT_SHOW, param);
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_002 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_IsSkipDisposeRule_003
+ * @tc.desc: IsSkipDisposeRule returns true when PAGE_JUMP_WINDOW_NOT_SHOW and STARTUP_HIDE
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, IsSkipDisposeRule_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_003 start");
+    DisposedRuleInterceptor interceptor;
+    Want want;
+    int requestCode = 123;
+    int32_t userId = 1001;
+    bool isWithUI = true;
+    sptr<IRemoteObject> callerToken = nullptr;
+    std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo = nullptr;
+
+    // Create StartOptions with valid processOptions
+    auto startOptions = std::make_shared<StartOptions>();
+    auto processOptions = std::make_shared<AAFwk::ProcessOptions>();
+    processOptions->startupVisibility = AAFwk::StartupVisibility::STARTUP_HIDE;
+    startOptions->processOptions = processOptions;
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI)
+        .CallerToken(callerToken).AbilityInfo(abilityInfo)
+        .Context<AbilityInterceptorParam::DisposedCtx>({0, startOptions.get()}).Build();
+
+    auto ret = interceptor.IsSkipDisposeRule(AppExecFwk::PageJumpMode::PAGE_JUMP_WINDOW_NOT_SHOW, param);
+    EXPECT_EQ(ret, true);
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_003 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_IsSkipDisposeRule_004
+ * @tc.desc: IsSkipDisposeRule returns false when PAGE_JUMP_WINDOW_SHOW and STARTUP_HIDE
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, IsSkipDisposeRule_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_004 start");
+    DisposedRuleInterceptor interceptor;
+    Want want;
+    int requestCode = 123;
+    int32_t userId = 1001;
+    bool isWithUI = true;
+    sptr<IRemoteObject> callerToken = nullptr;
+    std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo = nullptr;
+
+    auto startOptions = std::make_shared<StartOptions>();
+    auto processOptions = std::make_shared<AAFwk::ProcessOptions>();
+    processOptions->startupVisibility = AAFwk::StartupVisibility::STARTUP_HIDE;
+    startOptions->processOptions = processOptions;
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI)
+        .CallerToken(callerToken).AbilityInfo(abilityInfo)
+        .Context<AbilityInterceptorParam::DisposedCtx>({0, startOptions.get()}).Build();
+
+    auto ret = interceptor.IsSkipDisposeRule(AppExecFwk::PageJumpMode::PAGE_JUMP_WINDOW_SHOW, param);
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_004 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_IsSkipDisposeRule_005
+ * @tc.desc: IsSkipDisposeRule returns false when PAGE_JUMP_WINDOW_NOT_SHOW and STARTUP_SHOW
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, IsSkipDisposeRule_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_005 start");
+    DisposedRuleInterceptor interceptor;
+    Want want;
+    int requestCode = 123;
+    int32_t userId = 1001;
+    bool isWithUI = true;
+    sptr<IRemoteObject> callerToken = nullptr;
+    std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo = nullptr;
+
+    auto startOptions = std::make_shared<StartOptions>();
+    auto processOptions = std::make_shared<AAFwk::ProcessOptions>();
+    processOptions->startupVisibility = AAFwk::StartupVisibility::STARTUP_SHOW;
+    startOptions->processOptions = processOptions;
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI)
+        .CallerToken(callerToken).AbilityInfo(abilityInfo)
+        .Context<AbilityInterceptorParam::DisposedCtx>({0, startOptions.get()}).Build();
+
+    auto ret = interceptor.IsSkipDisposeRule(AppExecFwk::PageJumpMode::PAGE_JUMP_WINDOW_NOT_SHOW, param);
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_005 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_IsSkipDisposeRule_006
+ * @tc.desc: IsSkipDisposeRule returns false when PAGE_JUMP_WINDOW_SHOW and STARTUP_SHOW
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, IsSkipDisposeRule_006, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_006 start");
+    DisposedRuleInterceptor interceptor;
+    Want want;
+    int requestCode = 123;
+    int32_t userId = 1001;
+    bool isWithUI = true;
+    sptr<IRemoteObject> callerToken = nullptr;
+    std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo = nullptr;
+
+    auto startOptions = std::make_shared<StartOptions>();
+    auto processOptions = std::make_shared<AAFwk::ProcessOptions>();
+    processOptions->startupVisibility = AAFwk::StartupVisibility::STARTUP_SHOW;
+    startOptions->processOptions = processOptions;
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI)
+        .CallerToken(callerToken).AbilityInfo(abilityInfo)
+        .Context<AbilityInterceptorParam::DisposedCtx>({0, startOptions.get()}).Build();
+
+    auto ret = interceptor.IsSkipDisposeRule(AppExecFwk::PageJumpMode::PAGE_JUMP_WINDOW_SHOW, param);
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_006 end");
+}
+
+/**
+ * @tc.name: DisposedRuleInterceptorTest_IsSkipDisposeRule_007
+ * @tc.desc: IsSkipDisposeRule returns false when PAGE_JUMP_WINDOW_NOT_SHOW and UNSPECIFIED
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(DisposedRuleInterceptorTest, IsSkipDisposeRule_007, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_007 start");
+    DisposedRuleInterceptor interceptor;
+    Want want;
+    int requestCode = 123;
+    int32_t userId = 1001;
+    bool isWithUI = true;
+    sptr<IRemoteObject> callerToken = nullptr;
+    std::shared_ptr<AppExecFwk::AbilityInfo> abilityInfo = nullptr;
+
+    auto startOptions = std::make_shared<StartOptions>();
+    auto processOptions = std::make_shared<AAFwk::ProcessOptions>();
+    processOptions->startupVisibility = AAFwk::StartupVisibility::UNSPECIFIED;
+    startOptions->processOptions = processOptions;
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, requestCode, userId).WithUI(isWithUI)
+        .CallerToken(callerToken).AbilityInfo(abilityInfo)
+        .Context<AbilityInterceptorParam::DisposedCtx>({0, startOptions.get()}).Build();
+
+    auto ret = interceptor.IsSkipDisposeRule(AppExecFwk::PageJumpMode::PAGE_JUMP_WINDOW_NOT_SHOW, param);
+    EXPECT_EQ(ret, false);
+    TAG_LOGI(AAFwkTag::TEST, "IsSkipDisposeRule_007 end");
 }
 #endif
 } // namespace AAFwk

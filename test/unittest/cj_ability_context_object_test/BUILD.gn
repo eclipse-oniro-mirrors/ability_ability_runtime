@@ -19,15 +19,19 @@ ohos_unittest("cj_ability_context_object_test") {
   module_out_path =
       "ability_runtime/ability_runtime/cj_ability_context_object_test"
   include_dirs = [
+    "${ability_runtime_path}/interfaces/kits/native/ability/native",
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ability_runtime",
     "${ability_runtime_path}/frameworks/cj/ffi/application_context/include",
     "${ability_runtime_path}/frameworks/cj/ffi",
+    "${ability_runtime_path}/frameworks/cj/ffi/context",
     "${ability_runtime_path}/utils/global/time/include",
     "${ability_runtime_napi_path}/inner/napi_common",
     "${ability_runtime_path}/cj_environment/interfaces/inner_api",
   ]
 
   sources = [
+    "${ability_runtime_path}/frameworks/native/ability/native/ability_runtime/cj_ability_connect_callback_object.cpp",
+    "${ability_runtime_path}/frameworks/native/ability/native/ability_runtime/cj_ability_context.cpp",
     "${ability_runtime_path}/frameworks/native/ability/native/ability_runtime/cj_ability_context_object.cpp",
     "cj_ability_context_object_test.cpp",
   ]
@@ -57,6 +61,7 @@ ohos_unittest("cj_ability_context_object_test") {
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_native_path}/appkit:appkit_native",
     "${ability_runtime_path}/frameworks/cj/ffi:cj_ability_ffi",
+    "${ability_runtime_path}/frameworks/cj/ffi/context:cj_context_ffi",
     "${ability_runtime_path}/frameworks/native/ability/native:continuation_ipc",
     "${ability_runtime_path}/frameworks/native/ability/native:extension_blocklist_config",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
@@ -90,6 +95,7 @@ ohos_unittest("cj_ability_context_object_test") {
     "napi:ace_napi",
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
+    "ace_engine:ace_uicontent",
     "relational_store:native_rdb",
     "resource_management:global_resmgr",
     "samgr:samgr_proxy",

@@ -47,6 +47,7 @@ namespace wantConstant {
     APP_LAUNCH_TRUSTLIST = 'ohos.params.appLaunchTrustList',
     ABILITY_UNIFIED_DATA_KEY = 'ohos.param.ability.udKey',
     UI_EXTENSION_ROOT_TOKEN = 'ohos.param.uiExtension.rootHostToken',
+    AGENT_TASK_ID = 'ohos.aafwk.param.agent.taskId',
   }
 
   export enum Flags {
@@ -62,6 +63,10 @@ namespace wantConstant {
     WINDOW = 0,
     EMBEDDED_FULL = 1,
     EMBEDDED_HALF = 2
+  }
+
+  export enum Action {
+    ACTION_SEND_TO_DATA = 'ohos.want.action.sendToData'
   }
 }
 

@@ -26,29 +26,59 @@ namespace OHOS {
 namespace AbilityRuntime {
 namespace {
 const char *ETS_ANI_LIBNAME = "libinsight_intent_executor_ani.z.so";
-const char *ETS_ANI_CREATE_FUNC = "OHOS_ETS_Insight_Intent_Executor_Create";
-using CreateETSInsightIntentExecutorFunc = InsightIntentExecutor*(*)(OHOS::AbilityRuntime::Runtime &);
-CreateETSInsightIntentExecutorFunc g_etsCreateFunc = nullptr;
-}
+using CreateETSInsightIntentFunc = InsightIntentExecutor *(*)(OHOS::AbilityRuntime::Runtime &);
 
-InsightIntentExecutor *CreateETSInsightIntentExecutor(Runtime &runtime)
+InsightIntentExecutor *CreateEtsInsightIntentBySymbol(
+    Runtime &runtime, const char *funcName, CreateETSInsightIntentFunc &createFunc)
 {
-    if (g_etsCreateFunc != nullptr) {
-        return g_etsCreateFunc(runtime);
+    if (createFunc != nullptr) {
+        return createFunc(runtime);
     }
     auto handle = dlopen(ETS_ANI_LIBNAME, RTLD_LAZY);
     if (handle == nullptr) {
         TAG_LOGE(AAFwkTag::INTENT, "dlopen failed %{public}s, %{public}s", ETS_ANI_LIBNAME, dlerror());
         return nullptr;
     }
-    auto symbol = dlsym(handle, ETS_ANI_CREATE_FUNC);
+    auto symbol = dlsym(handle, funcName);
     if (symbol == nullptr) {
-        TAG_LOGE(AAFwkTag::INTENT, "dlsym failed %{public}s, %{public}s", ETS_ANI_CREATE_FUNC, dlerror());
+        TAG_LOGE(AAFwkTag::INTENT, "dlsym failed %{public}s, %{public}s", funcName, dlerror());
         dlclose(handle);
         return nullptr;
     }
-    g_etsCreateFunc = reinterpret_cast<CreateETSInsightIntentExecutorFunc>(symbol);
-    return g_etsCreateFunc(runtime);
+    createFunc = reinterpret_cast<CreateETSInsightIntentFunc>(symbol);
+    return createFunc(runtime);
+}
+CreateETSInsightIntentFunc g_etsCreateExecutorFunc = nullptr;
+CreateETSInsightIntentFunc g_etsCreateEntryFunc = nullptr;
+CreateETSInsightIntentFunc g_etsCreateFuncFunc = nullptr;
+CreateETSInsightIntentFunc g_etsCreatePageFunc = nullptr;
+CreateETSInsightIntentFunc g_etsCreateQueryEntityFunc = nullptr;
+} // namespace
+
+InsightIntentExecutor *CreateETSInsightIntentExecutor(Runtime &runtime)
+{
+    return CreateEtsInsightIntentBySymbol(runtime, "OHOS_ETS_Insight_Intent_Executor_Create", g_etsCreateExecutorFunc);
+}
+
+InsightIntentExecutor *CreateETSInsightIntentEntry(Runtime &runtime)
+{
+    return CreateEtsInsightIntentBySymbol(runtime, "OHOS_ETS_Insight_Intent_Entry_Create", g_etsCreateEntryFunc);
+}
+
+InsightIntentExecutor *CreateETSInsightIntentFunc(Runtime &runtime)
+{
+    return CreateEtsInsightIntentBySymbol(runtime, "OHOS_ETS_Insight_Intent_Func_Create", g_etsCreateFuncFunc);
+}
+
+InsightIntentExecutor *CreateETSInsightIntentPage(Runtime &runtime)
+{
+    return CreateEtsInsightIntentBySymbol(runtime, "OHOS_ETS_Insight_Intent_Page_Create", g_etsCreatePageFunc);
+}
+
+InsightIntentExecutor *CreateETSInsightIntentQueryEntity(Runtime &runtime)
+{
+    return CreateEtsInsightIntentBySymbol(runtime, "OHOS_ETS_Insight_Intent_QueryEntity_Create",
+        g_etsCreateQueryEntityFunc);
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

@@ -22,6 +22,8 @@ namespace AbilityRuntime {
 
 class InsightIntentExecuteCallbackInterface {
 public:
+    virtual ~InsightIntentExecuteCallbackInterface() = default;
+
 /**
  * @brief Process the InsightIntent execute.
  * @param resultCode, ERR_OK on success, others on failure.

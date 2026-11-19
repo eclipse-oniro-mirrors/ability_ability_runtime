@@ -14,6 +14,8 @@
 import("//build/ohos.gni")
 
 ohos_shared_library("configurationconstant_napi") {
+  branch_protector_ret = "pac_ret"
+
   include_dirs = []
 
   sources = [ "configuration_constant_napi_module.cpp" ]
@@ -24,14 +26,19 @@ ohos_shared_library("configurationconstant_napi") {
     "c_utils:utils",
     "napi:ace_napi",
     "resource_management:global_resmgr",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   relative_install_dir = "module/application"
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 ohos_shared_library("configurationconstant") {
+  branch_protector_ret = "pac_ret"
+
   include_dirs = []
 
   sources = [ "configuration_constant_module.cpp" ]
@@ -42,6 +49,8 @@ ohos_shared_library("configurationconstant") {
     "c_utils:utils",
     "napi:ace_napi",
     "resource_management:global_resmgr",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   defines = [ "ENABLE_ERRCODE" ]
@@ -49,4 +58,5 @@ ohos_shared_library("configurationconstant") {
   relative_install_dir = "module/app/ability"
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

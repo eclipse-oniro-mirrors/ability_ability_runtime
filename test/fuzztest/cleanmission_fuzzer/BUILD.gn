@@ -37,12 +37,14 @@ ohos_fuzztest("CleanMissionFuzzTest") {
     "${ability_runtime_services_path}/abilitymgr:abilityms_config",
   ]
 
-  deps = [ "${ability_runtime_innerkits_path}/ability_manager:ability_manager" ]
+  deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
+  ]
 
   external_deps = [
     "ability_base:want",
     "ability_base:zuri",
-    "ability_runtime:app_manager",
     "c_utils:utils",
     "eventhandler:libeventhandler",
     "ipc:ipc_core",

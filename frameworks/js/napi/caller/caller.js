@@ -58,6 +58,14 @@ class ThrowInvalidParamError extends Error {
   }
 }
 
+class InnerCodeError extends Error {
+  constructor(msg) {
+    let message = ERROR_MSG_INNER_ERROR + ' ' + msg;
+    super(message);
+    this.code = ERROR_CODE_INNER_ERROR;
+  }
+}
+
 class Caller {
   constructor(obj) {
     hilog.sLogI(domainID, TAG, 'Caller::constructor obj is ' + typeof obj);
@@ -111,7 +119,7 @@ class Caller {
         hilog.sLogI(domainID, TAG, 'Caller call msgData sendMessageRequest retval error');
         msgData.reclaim();
         msgReply.reclaim();
-        reject(new BusinessError(ERROR_CODE_INNER_ERROR));
+        reject(new InnerCodeError('Read reply message error. Try again later.'));
         return;
       }
 
@@ -169,7 +177,7 @@ class Caller {
         hilog.sLogI(domainID, TAG, 'Caller callWithResult msgData sendMessageRequest retval error');
         msgData.reclaim();
         msgReply.reclaim();
-        reject(new BusinessError(ERROR_CODE_INNER_ERROR));
+        reject(new InnerCodeError('Read reply message error. Try again later.'));
         return;
       }
 

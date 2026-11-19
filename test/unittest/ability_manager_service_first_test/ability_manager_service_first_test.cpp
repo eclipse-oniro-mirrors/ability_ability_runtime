@@ -13,25 +13,46 @@
  * limitations under the License.
  */
 
+#include <deque>
+#include <functional>
+#include <queue>
+#include <utility>
+
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "mock_my_flag.h"
+#include "mock_task_handler_wrap.h"
+#include "server_constant.h"
+
+#include "direct_boot_test_support.h"
+#include "ffrt.h"
 
 #define private public
 #define protected public
+#include "ability_auto_startup_data_manager.h"
+#include "ability_auto_startup_service.h"
+#include "ability_manager_event_subscriber.h"
 #include "ability_manager_service.h"
+#include "sub_managers_helper.h"
+#include "ui_ability_lifecycle_manager.h"
 #include "ability_connect_manager.h"
+#include "utils/update_caller_info_util.h"
 #include "ui_extension_ability_manager.h"
 #include "common_extension_manager.h"
 #include "ability_connection.h"
 #include "ability_scheduler.h"
 #include "ability_start_setting.h"
+#include "skill/skill_execute_param.h"
 #include "app_utils.h"
+#include "bundle_mgr_helper.h"
 #include "recovery_param.h"
 #undef private
 #undef protected
 #include "ability_manager_errors.h"
+#include "ability_config.h"
 #include "connection_observer_errors.h"
+#include "appexecfwk_errors.h"
 #include "hilog_tag_wrapper.h"
 #include "insight_intent_execute_manager.h"
 #include "insight_intent_execute_param.h"
@@ -47,19 +68,276 @@
 #include "start_ability_utils.h"
 #include "string_wrapper.h"
 #include "utils/window_options_utils.h"
+#include "sandbox_clone_params.h"
+#include "global_constant.h"
+#include "app_mgr_stub.h"
+#include "mock_app_mgr_service.h"
+#include "mock_bundle_manager_service.h"
+#include "interceptor/ability_interceptor_executer.h"
+#include "utils/ability_permission_util.h"
+#include "pending_want_record.h"
+#include "want_sender_interface.h"
+#include "user_controller/user_controller.h"
+
+#define private public
+#include "utils/app_mgr_util.h"
+#undef private
 
 using namespace testing;
 using namespace testing::ext;
 using namespace OHOS::AppExecFwk;
+using namespace OHOS::AbilityRuntime;
 using OHOS::AppExecFwk::AbilityType;
 using OHOS::AppExecFwk::ExtensionAbilityType;
 namespace OHOS {
 namespace AAFwk {
+void SetLocalDebugOtherAppsCall(bool value);
+void SetCustomSandboxCall(bool value);
 namespace {
 const int32_t USER_ID_U100 = 100;
 const int32_t APP_MEMORY_SIZE = 512;
 const std::string COMPONENT_STARTUP_NEW_RULES = "component.startup.newRules";
 }  // namespace
+namespace {
+constexpr int32_t OTHER_USER = 101;
+constexpr uint64_t OTHER_DISPLAY = 1;
+constexpr size_t MAX_TEST_TASKS = 64;
+constexpr int32_t TEST_RETRY_COUNT = 2;
+using UserLockStatus = UserController::UserLockStatus;
+
+class RootSceneToken : public IRemoteStub<IAbilityToken> {};
+
+class RecordingAbilityManager : public AbilityManagerService {
+public:
+    int StartAbility(const Want &want, int32_t userId, int requestCode, uint64_t specifiedFullTokenId) override
+    {
+        launched.push_back(want.GetElement().GetBundleName());
+        launchUsers.push_back(userId);
+        return failedBundle == launched.back() ? INNER_ERR : ERR_OK;
+    }
+
+    std::vector<std::string> launched;
+    std::vector<int32_t> launchUsers;
+    std::string failedBundle;
+};
+
+class StartAbilityFlagInterceptor : public IAbilityInterceptor {
+public:
+    struct RecordedParam {
+        bool isDirectBootStartup;
+        int32_t requestCode;
+        int32_t userId;
+    };
+
+    ErrCode DoProcess(AbilityInterceptorParam &param) override
+    {
+        params.push_back({param.isDirectBootStartup, param.requestCode, param.userId});
+        return handler ? handler(param) : ERR_BLOCK_START_FIRST_BOOT_SCREEN_UNLOCK;
+    }
+
+    std::function<ErrCode(AbilityInterceptorParam &)> handler;
+    std::vector<RecordedParam> params;
+};
+
+class StartAbilityFlagTestContext {
+public:
+    explicit StartAbilityFlagTestContext(
+        std::shared_ptr<AbilityManagerService> abilityManager = std::make_shared<AbilityManagerService>())
+        : oldBundleMgr_(DelayedSingleton<BundleMgrHelper>::GetInstance()->bundleMgr_),
+          oldFlag_(MyFlag::flag_),
+          oldAnimationLoaded_(AppUtils::GetInstance().isStartOptionsWithAnimation_.isLoaded),
+          oldAnimationValue_(AppUtils::GetInstance().isStartOptionsWithAnimation_.value),
+          selfStartGuard_(IPCSkeleton::GetCallingPid(), 0)
+    {
+        MyFlag::flag_ = MyFlag::IS_SA_CALL;
+        auto &animation = AppUtils::GetInstance().isStartOptionsWithAnimation_;
+        animation.isLoaded = true;
+        animation.value = true;
+        sptr<NiceMock<MockBundleManagerService>> bundleMgr = new NiceMock<MockBundleManagerService>();
+        ON_CALL(*bundleMgr, QueryAbilityInfo(_, _, _, _))
+            .WillByDefault([](const Want &want, int32_t, int32_t userId, AbilityInfo &abilityInfo) {
+                abilityInfo.name = want.GetAbilityNameRef();
+                abilityInfo.bundleName = want.GetBundleNameRef();
+                abilityInfo.moduleName = "entry";
+                abilityInfo.type = AbilityType::PAGE;
+                abilityInfo.visible = true;
+                abilityInfo.applicationInfo.name = abilityInfo.bundleName;
+                abilityInfo.applicationInfo.bundleName = abilityInfo.bundleName;
+                abilityInfo.applicationInfo.uid = userId * AppExecFwk::Constants::BASE_USER_RANGE;
+                return true;
+            });
+        DelayedSingleton<BundleMgrHelper>::GetInstance()->bundleMgr_ = bundleMgr;
+        abilityManager_ = std::move(abilityManager);
+        interceptor_ = std::make_shared<StartAbilityFlagInterceptor>();
+        abilityManager_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+        abilityManager_->interceptorExecuter_->AddInterceptor("startAbilityFlag", interceptor_);
+        want_.SetElementName("com.example.directboot", "MainAbility");
+    }
+
+    ~StartAbilityFlagTestContext()
+    {
+        abilityManager_.reset();
+        DelayedSingleton<BundleMgrHelper>::GetInstance()->bundleMgr_ = oldBundleMgr_;
+        MyFlag::flag_ = oldFlag_;
+        auto &animation = AppUtils::GetInstance().isStartOptionsWithAnimation_;
+        animation.isLoaded = oldAnimationLoaded_;
+        animation.value = oldAnimationValue_;
+    }
+
+    std::shared_ptr<AbilityManagerService> abilityManager_;
+    std::shared_ptr<StartAbilityFlagInterceptor> interceptor_;
+    Want want_;
+
+private:
+    sptr<IBundleMgr> oldBundleMgr_;
+    int oldFlag_;
+    bool oldAnimationLoaded_;
+    bool oldAnimationValue_;
+    StartSelfUIAbilityRecordGuard selfStartGuard_;
+};
+
+class HiddenStartWithoutStatusBarContext {
+public:
+    HiddenStartWithoutStatusBarContext()
+        : abilityManager_(DelayedSingleton<AbilityManagerService>::GetInstance()),
+          oldSubManagersHelper_(abilityManager_->subManagersHelper_)
+    {
+        abilityManager_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    }
+
+    ~HiddenStartWithoutStatusBarContext()
+    {
+        abilityManager_->subManagersHelper_ = oldSubManagersHelper_;
+    }
+
+private:
+    std::shared_ptr<AbilityManagerService> abilityManager_;
+    std::shared_ptr<SubManagersHelper> oldSubManagersHelper_;
+};
+} // namespace
+
+class DirectBootTestContext : public DirectBootServiceTestContext {
+public:
+    DirectBootTestContext()
+    {
+        auto &controller = UserController::GetInstance();
+        oldStatus_ = controller.GetUserLockStatus(DIRECT_BOOT_TEST_USER);
+        oldOtherStatus_ = controller.GetUserLockStatus(OTHER_USER);
+        oldForeground_ = controller.GetForegroundUserId(ServerConstant::DEFAULT_DISPLAY_ID);
+        oldOtherDisplayExists_ = controller.IsExistDisplayId(OTHER_DISPLAY);
+        oldOtherForeground_ = controller.GetForegroundUserId(OTHER_DISPLAY);
+        controller.DeleteUserLockStatus(DIRECT_BOOT_TEST_USER);
+        controller.DeleteUserLockStatus(OTHER_USER);
+        controller.SetUserLockStatus(DIRECT_BOOT_TEST_USER, UserLockStatus::USER_LOCKED);
+        controller.SetUserLockStatus(OTHER_USER, UserLockStatus::USER_LOCKED);
+        controller.SetForegroundUserId(DIRECT_BOOT_TEST_USER, ServerConstant::DEFAULT_DISPLAY_ID);
+        controller.SetForegroundUserId(OTHER_USER, OTHER_DISPLAY);
+        Rosen::SessionInfo sessionInfo;
+        sptr<Rosen::ISession> session = new Rosen::Session(sessionInfo);
+        rootSession_ = session->AsObject();
+        abilityManager_ = std::make_shared<RecordingAbilityManager>();
+        startAbilityContext_ = std::make_unique<StartAbilityFlagTestContext>(abilityManager_);
+        startAbilityContext_->abilityManager_.reset();
+        std::weak_ptr<RecordingAbilityManager> manager = abilityManager_;
+        startAbilityContext_->interceptor_->handler = [manager](AbilityInterceptorParam &param) {
+            EXPECT_TRUE(param.isDirectBootStartup);
+            auto abilityManager = manager.lock();
+            return abilityManager ? abilityManager->StartAbility(param.want, param.userId, param.requestCode, 0) :
+                ERR_INVALID_VALUE;
+        };
+        abilityManager_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+        for (int32_t userId : {0, DIRECT_BOOT_TEST_USER, OTHER_USER}) {
+            auto uiManager = std::make_shared<UIAbilityLifecycleManager>(userId);
+            uiManager->rootSceneSession_ = rootSession_;
+            abilityManager_->subManagersHelper_->uiAbilityManagers_[userId] = uiManager;
+        }
+        abilityManager_->abilityAutoStartupService_ = service_;
+        handler_ = std::make_shared<NiceMock<AppExecFwk::MockTaskHandlerWrap>>();
+        ON_CALL(*handler_, SubmitTaskInner(_, _)).WillByDefault(
+            [this](std::function<void()> &&task, const TaskAttribute &) {
+                tasks_.push_back(std::move(task));
+                return std::shared_ptr<InnerTaskHandle>();
+            });
+        abilityManager_->taskHandler_ = handler_;
+        auto &events = AbilityEventMapManager::GetInstance();
+        oldPending_ = events.IsPendingUser(DIRECT_BOOT_TEST_USER);
+        events.RemovePendingUserId(DIRECT_BOOT_TEST_USER);
+    }
+
+    ~DirectBootTestContext()
+    {
+        tasks_.clear();
+        ffrt::wait();
+        abilityManager_.reset();
+        startAbilityContext_.reset();
+        handler_.reset();
+        auto &controller = UserController::GetInstance();
+        RestoreStatus(DIRECT_BOOT_TEST_USER, oldStatus_);
+        RestoreStatus(OTHER_USER, oldOtherStatus_);
+        controller.SetForegroundUserId(oldForeground_, ServerConstant::DEFAULT_DISPLAY_ID);
+        if (oldOtherDisplayExists_) {
+            controller.SetForegroundUserId(oldOtherForeground_, OTHER_DISPLAY);
+        } else {
+            controller.ClearDisplayId(OTHER_DISPLAY);
+        }
+        auto &events = AbilityEventMapManager::GetInstance();
+        events.RemovePendingUserId(DIRECT_BOOT_TEST_USER);
+        if (oldPending_) {
+            events.AddPendingUserId(DIRECT_BOOT_TEST_USER);
+        }
+    }
+
+public:
+    void RestoreStatus(int32_t userId, UserLockStatus status)
+    {
+        auto &controller = UserController::GetInstance();
+        controller.DeleteUserLockStatus(userId);
+        if (status != UserLockStatus::USER_LOCK_STATUS_BUTT) {
+            controller.SetUserLockStatus(userId, status);
+        }
+    }
+
+    void DrainTasks()
+    {
+        size_t count = 0;
+        while (!tasks_.empty() && count++ < MAX_TEST_TASKS) {
+            auto task = std::move(tasks_.front());
+            tasks_.pop_front();
+            task();
+        }
+        EXPECT_TRUE(tasks_.empty()) << "startup queue did not terminate";
+    }
+
+    void StartQueue(const std::vector<AutoStartupInfo> &infos)
+    {
+        std::queue<AutoStartupInfo> queue;
+        for (const auto &info : infos) {
+            queue.push(info);
+        }
+        abilityManager_->StartAutoStartupApps(std::move(queue), DIRECT_BOOT_TEST_USER);
+    }
+
+    void PrepareSceneBoard()
+    {
+        int32_t userId = GetDirectBootTestState().callingUid / AppExecFwk::Constants::BASE_USER_RANGE;
+        auto connect = std::make_shared<CommonExtensionManager>(userId);
+        connect->sceneBoardTokenId_ = DIRECT_BOOT_TEST_CALLER_TOKEN;
+        abilityManager_->subManagersHelper_->commonExtensionManagers_[userId] = connect;
+    }
+
+    sptr<IRemoteObject> rootSession_;
+    std::shared_ptr<RecordingAbilityManager> abilityManager_;
+    std::shared_ptr<NiceMock<AppExecFwk::MockTaskHandlerWrap>> handler_;
+    std::deque<std::function<void()>> tasks_;
+    UserLockStatus oldStatus_;
+    UserLockStatus oldOtherStatus_;
+    int32_t oldForeground_ = 0;
+    int32_t oldOtherForeground_ = 0;
+    bool oldOtherDisplayExists_ = false;
+    bool oldPending_ = false;
+    std::unique_ptr<StartAbilityFlagTestContext> startAbilityContext_;
+};
+
 class AbilityManagerServiceFirstTest : public testing::Test {
 public:
     static void SetUpTestCase();
@@ -248,6 +526,11 @@ HWTEST_F(AbilityManagerServiceFirstTest, CheckStartByCallPermission_002, TestSiz
     abilityRequest_.abilityInfo.type = AbilityType::DATA;
     EXPECT_EQ(abilityMs_->CheckStartByCallPermission(abilityRequest_), RESOLVE_CALL_ABILITY_TYPE_ERR);
     MyFlag::flag_ = 0;
+
+    abilityRequest_.abilityInfo.type = AbilityType::PAGE;
+    MyFlag::isWithNative_ = true;
+    EXPECT_EQ(abilityMs_->CheckStartByCallPermission(abilityRequest_), RESOLVE_CALL_ABILITY_TYPE_ERR);
+    MyFlag::isWithNative_ = false;
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest CheckStartByCallPermission_002 end");
 }
 
@@ -1260,7 +1543,7 @@ HWTEST_F(AbilityManagerServiceFirstTest, UpgradeApp_001, TestSize.Level1)
     int32_t uid = 1;
     std::string exitMsg = "App upgrade.";
     int32_t appIndex = 0;
-    EXPECT_EQ(abilityMs_->UpgradeApp(bundleName, uid, exitMsg, appIndex), ERR_NULL_OBJECT);
+    EXPECT_EQ(abilityMs_->UpgradeApp(bundleName, uid, exitMsg, appIndex), CHECK_PERMISSION_FAILED);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest UpgradeApp_001 end");
 }
 
@@ -1300,7 +1583,7 @@ HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityInnerFreeInstall_001, TestS
     StartAbilityWrapParam param = { want };
     auto result = abilityMs_->StartAbilityInner(param);
     MyFlag::flag_ = 0;
-    EXPECT_EQ(ERR_NULL_INTERCEPTOR_EXECUTER, result);
+    EXPECT_EQ(RESOLVE_ABILITY_ERR, result);
     abilityMs_->OnStop();
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityInnerFreeInstall_001 end");
 }
@@ -1914,7 +2197,7 @@ HWTEST_F(AbilityManagerServiceFirstTest, UninstallApp_0100, TestSize.Level1)
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest UninstallApp_0100 start");
     auto abilityMs = std::make_shared<AbilityManagerService>();
     auto result = abilityMs->UninstallApp("test", USER_ID_U100);
-    EXPECT_EQ(result, ERR_NULL_OBJECT);
+    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest UninstallApp_0100 end");
 }
 
@@ -1929,7 +2212,7 @@ HWTEST_F(AbilityManagerServiceFirstTest, UninstallApp_0200, TestSize.Level1)
     auto abilityMs = std::make_shared<AbilityManagerService>();
     const int32_t index = 0;
     auto result = abilityMs->UninstallApp("test", USER_ID_U100, index);
-    EXPECT_EQ(result, ERR_NULL_OBJECT);
+    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest UninstallApp_0200 end");
 }
 
@@ -1947,7 +2230,7 @@ HWTEST_F(AbilityManagerServiceFirstTest, UninstallAppInner_0100, TestSize.Level1
     std::string exitMsg = "App upgrade.";
     int32_t appIndex = 0;
     auto result = abilityMs->UninstallAppInner(bundleName, uid, appIndex, true, exitMsg);
-    EXPECT_EQ(result, ERR_NULL_OBJECT);
+    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest UninstallAppInner_0100 end");
 }
 
@@ -1965,7 +2248,7 @@ HWTEST_F(AbilityManagerServiceFirstTest, UninstallAppInner_0200, TestSize.Level1
     std::string exitMsg = "App upgrade.";
     int32_t appIndex = 0;
     auto result = abilityMs->UninstallAppInner(bundleName, uid, appIndex, false, exitMsg);
-    EXPECT_EQ(result, ERR_NULL_OBJECT);
+    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest UninstallAppInner_0200 end");
 }
 
@@ -1984,7 +2267,7 @@ HWTEST_F(AbilityManagerServiceFirstTest, UninstallAppInner_0300, TestSize.Level1
     std::string exitMsg = "App upgrade.";
     int32_t appIndex = 0;
     auto result = abilityMs->UninstallAppInner(bundleName, uid, appIndex, false, exitMsg);
-    EXPECT_EQ(result, AAFwk::UNINSTALL_APP_FAILED);
+    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest UninstallAppInner_0300 end");
 }
 
@@ -2003,7 +2286,7 @@ HWTEST_F(AbilityManagerServiceFirstTest, UninstallAppInner_0400, TestSize.Level1
     std::string exitMsg = "App upgrade.";
     int32_t appIndex = 0;
     auto result = abilityMs->UninstallAppInner(bundleName, uid, appIndex, false, exitMsg);
-    EXPECT_EQ(result, AAFwk::UNINSTALL_APP_FAILED);
+    EXPECT_EQ(result, CHECK_PERMISSION_FAILED);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest UninstallAppInner_0400 end");
 }
 
@@ -2224,6 +2507,44 @@ HWTEST_F(AbilityManagerServiceFirstTest, CheckStaticCfgPermission_0002, TestSize
     MyFlag::flag_ = 1;
     int ret = abilityMs->CheckStaticCfgPermission(
         abilityRequest, isStartAsCaller, callerTokenId, isData, isSaCall, isImplicit);
+    EXPECT_EQ(ret, AppExecFwk::Constants::PERMISSION_GRANTED);
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_CheckStaticCfgPermission_SkillCaller_0001
+ * @tc.desc: Test CheckStaticCfgPermission with skill callerTokenId skips SA shortcut
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, CheckStaticCfgPermission_SkillCaller_0001, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    AppExecFwk::AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.permissions.push_back("test.permission");
+    abilityRequest.skillCallerTokenId = 100;
+    MyFlag::flag_ = MyFlag::IS_SA_CALL;
+    int ret = abilityMs->CheckStaticCfgPermission(
+        abilityRequest, false, 0, false, false, false);
+    // SA call still skips permission check, skillCallerTokenId used for tokenId selection
+    EXPECT_EQ(ret, AppExecFwk::Constants::PERMISSION_GRANTED);
+    MyFlag::flag_ = 0;
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_CheckStaticCfgPermission_SkillCaller_0002
+ * @tc.desc: Test CheckStaticCfgPermission with skill callerTokenId uses caller tokenId
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, CheckStaticCfgPermission_SkillCaller_0002, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    AppExecFwk::AbilityRequest abilityRequest;
+    uint32_t callerTokenId = 100;
+    abilityRequest.skillCallerTokenId = callerTokenId;
+    abilityRequest.abilityInfo.applicationInfo.accessTokenId = callerTokenId;
+    MyFlag::flag_ = 0;
+    int ret = abilityMs->CheckStaticCfgPermission(
+        abilityRequest, false, 0, false, false, false);
+    // Same accessTokenId should be granted
     EXPECT_EQ(ret, AppExecFwk::Constants::PERMISSION_GRANTED);
 }
 
@@ -2515,6 +2836,46 @@ HWTEST_F(AbilityManagerServiceFirstTest, KillProcess_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: AbilityManagerServiceFirstTest_KillProcessWithUserId_0100
+ * @tc.desc: Test KillProcessWithUserId when caller is local debug, should bypass permission check
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, KillProcessWithUserId_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest KillProcessWithUserId_0100 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    MyFlag::flag_ = 0;
+    SetLocalDebugOtherAppsCall(true);
+
+    auto result = abilityMs->KillProcess("test");
+    EXPECT_NE(result, ERR_PERMISSION_DENIED);
+
+    SetLocalDebugOtherAppsCall(false);
+    MyFlag::flag_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest KillProcessWithUserId_0100 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_KillProcessWithUserId_0200
+ * @tc.desc: Test KillProcessWithUserId when caller is custom sandbox, should bypass permission check
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, KillProcessWithUserId_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest KillProcessWithUserId_0200 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    MyFlag::flag_ = 0;
+    SetCustomSandboxCall(true);
+
+    auto result = abilityMs->KillProcess("test");
+    EXPECT_NE(result, ERR_PERMISSION_DENIED);
+
+    SetCustomSandboxCall(false);
+    MyFlag::flag_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest KillProcessWithUserId_0200 end");
+}
+
+/**
  * @tc.name: AbilityManagerServiceFirstTest_ExecuteIntent_0100
  * @tc.desc: Test ExecuteIntent without permission.
  * @tc.type: FUNC
@@ -2623,6 +2984,237 @@ HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityByCallWithInsightIntent_010
     auto abilityMs = std::make_shared<AbilityManagerService>();
     auto res = abilityMs->StartAbilityByCallWithInsightIntent(want, callerToken, param);
     EXPECT_EQ(res, RESOLVE_ABILITY_ERR);
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_StartAbilityWithToolCallId_0100
+ * @tc.desc: StartAbility with a valid ohos.aafwk.param.toolCallId, schedule result is the same as baseline.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithToolCallId_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0100 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    ElementName element("", "com.test.demo", "MainAbility", "");
+    want.SetElement(element);
+    const int32_t userId = 1; // U1_USER_ID, not a cross user call
+    const int requestCode = 0;
+    const uint64_t specifiedFullTokenId = 0;
+    MyFlag::flag_ = 1;
+    auto baselineResult = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    // valid toolCallId: only [A-Za-z0-9_-], length 1~256
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string("valid-toolCallId_001"));
+    auto result = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    // boundary: 256 chars is still valid
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string(256, 'a'));
+    auto boundaryResult = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    MyFlag::flag_ = 0;
+    // The target bundle "com.test.demo" cannot be resolved in this UT environment (no bundle manager
+    // mock is linked for this target and the bundle is not installed), so every call below fails
+    // deterministically at the same point (GenerateAbilityRequest -> StartAbilityInfo creation)
+    // with RESOLVE_ABILITY_ERR, before the interceptor chain is reached.
+    // Semantic under test: the StartAbility(Want, userId, requestCode, specifiedFullTokenId) overload
+    // passively ignores ohos.aafwk.param.toolCallId, so a valid toolCallId must not change the result.
+    EXPECT_EQ(baselineResult, RESOLVE_ABILITY_ERR);
+    EXPECT_EQ(result, baselineResult);
+    EXPECT_EQ(boundaryResult, baselineResult);
+    abilityMs->OnStop();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0100 end");
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbility_DefaultDirectBootStartupFalse, TestSize.Level1)
+{
+    StartAbilityFlagTestContext context;
+
+    EXPECT_EQ(context.abilityManager_->StartAbility(context.want_, 1, 42, uint64_t{0}),
+        ERR_BLOCK_START_FIRST_BOOT_SCREEN_UNLOCK);
+    ASSERT_EQ(context.interceptor_->params.size(), 1);
+    EXPECT_FALSE(context.interceptor_->params.front().isDirectBootStartup);
+    EXPECT_EQ(context.interceptor_->params.front().requestCode, 42);
+    EXPECT_EQ(context.interceptor_->params.front().userId, 1);
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbility_WantCannotEnableDirectBootStartup, TestSize.Level1)
+{
+    StartAbilityFlagTestContext context;
+    context.want_.SetParam("isDirectBootStartup", true);
+    context.want_.SetParam("isDirectBoot", true);
+
+    EXPECT_EQ(context.abilityManager_->StartAbility(context.want_, 1, 42, uint64_t{0}),
+        ERR_BLOCK_START_FIRST_BOOT_SCREEN_UNLOCK);
+    ASSERT_EQ(context.interceptor_->params.size(), 1);
+    EXPECT_FALSE(context.interceptor_->params.front().isDirectBootStartup);
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbility_ExplicitDirectBootStartupForwarded, TestSize.Level1)
+{
+    StartAbilityFlagTestContext context;
+    for (bool isDirectBootStartup : {false, true}) {
+        SCOPED_TRACE(isDirectBootStartup);
+        context.interceptor_->params.clear();
+
+        EXPECT_EQ(context.abilityManager_->StartAbility(context.want_, 1, 42, uint64_t{0}, isDirectBootStartup),
+            ERR_BLOCK_START_FIRST_BOOT_SCREEN_UNLOCK);
+        ASSERT_EQ(context.interceptor_->params.size(), 1);
+        EXPECT_EQ(context.interceptor_->params.front().isDirectBootStartup, isDirectBootStartup);
+        EXPECT_EQ(context.interceptor_->params.front().requestCode, 42);
+        EXPECT_EQ(context.interceptor_->params.front().userId, 1);
+    }
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_StartAbilityWithToolCallId_0200
+ * @tc.desc: StartAbility with an illegal char in ohos.aafwk.param.toolCallId, silently ignored and schedule result
+ *           is the same as baseline.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithToolCallId_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0200 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    ElementName element("", "com.test.demo", "MainAbility", "");
+    want.SetElement(element);
+    const int32_t userId = 1; // U1_USER_ID, not a cross user call
+    const int requestCode = 0;
+    const uint64_t specifiedFullTokenId = 0;
+    MyFlag::flag_ = 1;
+    auto baselineResult = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    // invalid toolCallId: contains illegal chars, should be silently ignored
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string("bad id!@#$"));
+    auto result = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    MyFlag::flag_ = 0;
+    // See StartAbilityWithToolCallId_0100: both calls fail identically at Want resolution with
+    // RESOLVE_ABILITY_ERR. An illegal-char toolCallId must be silently ignored (same result as baseline).
+    EXPECT_EQ(baselineResult, RESOLVE_ABILITY_ERR);
+    EXPECT_EQ(result, baselineResult);
+    abilityMs->OnStop();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0200 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_StartAbilityWithToolCallId_0300
+ * @tc.desc: StartAbility with an over-length (more than 256) ohos.aafwk.param.toolCallId, silently ignored and
+ *           schedule result is the same as baseline.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithToolCallId_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0300 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    ElementName element("", "com.test.demo", "MainAbility", "");
+    want.SetElement(element);
+    const int32_t userId = 1; // U1_USER_ID, not a cross user call
+    const int requestCode = 0;
+    const uint64_t specifiedFullTokenId = 0;
+    MyFlag::flag_ = 1;
+    auto baselineResult = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    // invalid toolCallId: length is 257 (> 256), should be silently ignored
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string(257, 'a'));
+    auto result = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    MyFlag::flag_ = 0;
+    // See StartAbilityWithToolCallId_0100: both calls fail identically at Want resolution with
+    // RESOLVE_ABILITY_ERR. An over-length (257 > 256) toolCallId must be silently ignored.
+    EXPECT_EQ(baselineResult, RESOLVE_ABILITY_ERR);
+    EXPECT_EQ(result, baselineResult);
+    abilityMs->OnStop();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0300 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_StartAbilityWithToolCallId_0400
+ * @tc.desc: StartAbility with an empty ohos.aafwk.param.toolCallId (not provided), schedule result is the same as
+ *           baseline.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithToolCallId_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0400 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    Want want;
+    ElementName element("", "com.test.demo", "MainAbility", "");
+    want.SetElement(element);
+    const int32_t userId = 1; // U1_USER_ID, not a cross user call
+    const int requestCode = 0;
+    const uint64_t specifiedFullTokenId = 0;
+    MyFlag::flag_ = 1;
+    auto baselineResult = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    // empty toolCallId means not provided, should be skipped
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string(""));
+    auto result = abilityMs->StartAbility(want, userId, requestCode, specifiedFullTokenId);
+    MyFlag::flag_ = 0;
+    // See StartAbilityWithToolCallId_0100: both calls fail identically at Want resolution with
+    // RESOLVE_ABILITY_ERR. An empty toolCallId means "not provided" and must be skipped.
+    EXPECT_EQ(baselineResult, RESOLVE_ABILITY_ERR);
+    EXPECT_EQ(result, baselineResult);
+    abilityMs->OnStop();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0400 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_StartAbilityWithToolCallId_0500
+ * @tc.desc: The reserved param is stripped at the unified cleanup point (ClearProtectedWantParam,
+ *           reached via every UpdateCallerInfo* entry on every start-scheduling chain), so the
+ *           app side (onCreate/onNewWant etc.) never sees it, whatever value it carried.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithToolCallId_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0500 start");
+    // UpdateCallerInfo(want, nullptr) is the real shell-call path (no caller token) and funnels
+    // through ClearProtectedWantParam, the single cleanup point shared by all start entries.
+    Want want;
+    ElementName element("", "com.test.demo", "MainAbility", "");
+    want.SetElement(element);
+    // valid value: logged, then stripped
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string("valid-toolCallId_001"));
+    UpdateCallerInfoUtil::GetInstance().UpdateCallerInfo(want, nullptr);
+    EXPECT_FALSE(want.HasParameter("ohos.aafwk.param.toolCallId"));
+    // empty value: not logged, still stripped
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string(""));
+    UpdateCallerInfoUtil::GetInstance().UpdateCallerInfo(want, nullptr);
+    EXPECT_FALSE(want.HasParameter("ohos.aafwk.param.toolCallId"));
+    // invalid value: not logged, but still stripped
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string("bad id!"));
+    UpdateCallerInfoUtil::GetInstance().UpdateCallerInfo(want, nullptr);
+    EXPECT_FALSE(want.HasParameter("ohos.aafwk.param.toolCallId"));
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0500 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_StartAbilityWithToolCallId_0600
+ * @tc.desc: The sandbox-clone start entry is scheduling-neutral for the reserved param: the return
+ *           value is identical with/without it, and the cleanup itself is guaranteed downstream
+ *           at the unified ClearProtectedWantParam point every scheduling chain funnels through.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityWithToolCallId_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0600 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    SandboxCloneParams params;
+    params.callerBundleName = "com.caller.bundle";
+    params.callerUid = 1000;
+    params.callerTokenId = 1;
+    params.sandBoxCloneIndex = 2000;
+    // baseline: no reserved param
+    Want baselineWant;
+    auto baselineResult = abilityMs->StartSandboxCloneAbility(baselineWant, params);
+    // with the reserved param (valid / empty / invalid): identical scheduling outcome
+    Want want;
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string("valid-toolCallId_001"));
+    auto validResult = abilityMs->StartSandboxCloneAbility(want, params);
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string(""));
+    auto emptyResult = abilityMs->StartSandboxCloneAbility(want, params);
+    want.SetParam("ohos.aafwk.param.toolCallId", std::string("bad id!"));
+    auto invalidResult = abilityMs->StartSandboxCloneAbility(want, params);
+    EXPECT_EQ(validResult, baselineResult);
+    EXPECT_EQ(emptyResult, baselineResult);
+    EXPECT_EQ(invalidResult, baselineResult);
+    abilityMs->OnStop();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest StartAbilityWithToolCallId_0600 end");
 }
 
 /*
@@ -2904,6 +3496,1451 @@ HWTEST_F(AbilityManagerServiceFirstTest, CheckCallAbilityPermission_004, TestSiz
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest CheckCallAbilityPermission_004 end");
 }
 
+/**
+ * @tc.name: StartSelfUIAbilityInChildProcess_0100
+ * @tc.desc: Test StartSelfUIAbilityInChildProcess with device not supported
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartSelfUIAbilityInChildProcess_0100, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    std::string specifiedFlag = "testFlag";
+    sptr<IRemoteObject> callerToken = nullptr;
+    AppUtils::GetInstance().isSupportNativeUIAbility_.isLoaded = true;
+    AppUtils::GetInstance().isSupportNativeUIAbility_.value = false;
+    auto res = abilityMs_->StartSelfUIAbilityInChildProcess(want, specifiedFlag, callerToken);
+    EXPECT_EQ(res, ERR_CAPABILITY_NOT_SUPPORT);
+}
+
+/**
+ * @tc.name: StartSelfUIAbilityInChildProcess_0200
+ * @tc.desc: Test StartSelfUIAbilityInChildProcess with null callerToken
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartSelfUIAbilityInChildProcess_0200, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    std::string specifiedFlag = "testFlag";
+    sptr<IRemoteObject> callerToken = nullptr;
+    AppUtils::GetInstance().isSupportNativeUIAbility_.isLoaded = true;
+    AppUtils::GetInstance().isSupportNativeUIAbility_.value = true;
+    auto res = abilityMs_->StartSelfUIAbilityInChildProcess(want, specifiedFlag, callerToken);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: StartSelfUIAbilityInChildProcess_0300
+ * @tc.desc: Test StartSelfUIAbilityInChildProcess with empty specifiedFlag
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartSelfUIAbilityInChildProcess_0300, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    Want want;
+    std::string specifiedFlag = "";
+    AppExecFwk::AbilityInfo abilityInfo;
+    AppExecFwk::ApplicationInfo applicationInfo;
+    applicationInfo.accessTokenId = IPCSkeleton::GetCallingTokenID();
+    auto abilityRecord = std::make_shared<AbilityRecord>(want, abilityInfo, applicationInfo);
+    abilityRecord->Init(AbilityRequest());
+    sptr<IRemoteObject> callerToken = abilityRecord->token_;
+    AppUtils::GetInstance().isSupportNativeUIAbility_.isLoaded = true;
+    AppUtils::GetInstance().isSupportNativeUIAbility_.value = true;
+    auto res = abilityMs_->StartSelfUIAbilityInChildProcess(want, specifiedFlag, callerToken);
+    EXPECT_EQ(res, START_UI_ABILITIES_NOT_SUPPORT_IMPLICIT_START);
+}
+
+/**
+ * @tc.name: StartSelfUIAbilityInChildProcess_0400
+ * @tc.desc: Test StartSelfUIAbilityInChildProcess with valid want
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartSelfUIAbilityInChildProcess_0400, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    want.SetParam("testParam", std::string("testValue"));
+    std::string specifiedFlag = "testFlag";
+    AppExecFwk::AbilityInfo abilityInfo;
+    AppExecFwk::ApplicationInfo applicationInfo;
+    applicationInfo.accessTokenId = IPCSkeleton::GetCallingTokenID();
+    auto abilityRecord = std::make_shared<AbilityRecord>(want, abilityInfo, applicationInfo);
+    abilityRecord->Init(AbilityRequest());
+    sptr<IRemoteObject> callerToken = abilityRecord->token_;
+    AppUtils::GetInstance().isSupportNativeUIAbility_.isLoaded = true;
+    AppUtils::GetInstance().isSupportNativeUIAbility_.value = true;
+    auto res = abilityMs_->StartSelfUIAbilityInChildProcess(want, specifiedFlag, callerToken);
+    EXPECT_EQ(res, ERROR_UIABILITY_NOT_BELONG_TO_CALLER);
+}
+
+/**
+ * @tc.name: GetCreatorBundleNameForSandboxClone_0100
+ * @tc.desc: Test GetCreatorBundleNameForSandboxClone with permission and input creator bundle name
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, GetCreatorBundleNameForSandboxClone_0100, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    std::string inputCreatorBundleName = "com.creator.bundle";
+    std::string callerBundleName = "com.caller.bundle";
+    uint32_t callerTokenId = 1;
+    int32_t errCode = ERR_OK;
+
+    // Mock permission check - assuming no permission by default
+    std::string result = abilityMs_->GetCreatorBundleNameForSandboxClone(
+        inputCreatorBundleName, callerBundleName, callerTokenId, errCode);
+
+    // Without permission, should use caller bundle name
+    EXPECT_EQ(result, callerBundleName);
+    EXPECT_EQ(errCode, ERR_OK);
+}
+
+/**
+ * @tc.name: GetCreatorBundleNameForSandboxClone_0200
+ * @tc.desc: Test GetCreatorBundleNameForSandboxClone with empty input creator bundle name
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, GetCreatorBundleNameForSandboxClone_0200, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    std::string inputCreatorBundleName;
+    std::string callerBundleName = "com.caller.bundle";
+    uint32_t callerTokenId = 1;
+    int32_t errCode = ERR_OK;
+
+    std::string result = abilityMs_->GetCreatorBundleNameForSandboxClone(
+        inputCreatorBundleName, callerBundleName, callerTokenId, errCode);
+
+    EXPECT_EQ(result, callerBundleName);
+    EXPECT_EQ(errCode, ERR_OK);
+}
+
+/**
+ * @tc.name: GetCreatorBundleNameForSandboxClone_0300
+ * @tc.desc: Test GetCreatorBundleNameForSandboxClone with empty caller bundle name (error case)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, GetCreatorBundleNameForSandboxClone_0300, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    std::string inputCreatorBundleName;
+    std::string callerBundleName = "";
+    uint32_t callerTokenId = 1;
+    int32_t errCode = ERR_OK;
+
+    std::string result = abilityMs_->GetCreatorBundleNameForSandboxClone(
+        inputCreatorBundleName, callerBundleName, callerTokenId, errCode);
+
+    EXPECT_TRUE(result.empty());
+    EXPECT_EQ(errCode, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: GetCreatorBundleNameForSandboxClone_0400
+ * @tc.desc: Test GetCreatorBundleNameForSandboxClone with input creator bundle name and no permission
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, GetCreatorBundleNameForSandboxClone_0400, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    std::string inputCreatorBundleName = "com.creator.bundle";
+    std::string callerBundleName = "com.caller.bundle";
+    uint32_t callerTokenId = 1;
+    int32_t errCode = ERR_OK;
+
+    std::string result = abilityMs_->GetCreatorBundleNameForSandboxClone(
+        inputCreatorBundleName, callerBundleName, callerTokenId, errCode);
+
+    // Without permission, should use caller bundle name, not the input creator bundle name
+    EXPECT_EQ(result, callerBundleName);
+    EXPECT_EQ(errCode, ERR_OK);
+}
+
+/**
+ * @tc.name: ProcessSandboxCloneLaunch_0100
+ * @tc.desc: Test ProcessSandboxCloneLaunch with null sandboxCloneParams
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_0100, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    std::shared_ptr<SandboxCloneParams> sandboxCloneParams = nullptr;
+    int32_t userId = 100;
+    AppExecFwk::AbilityInfo abilityInfo;
+
+    int32_t result = abilityMs_->ProcessSandboxCloneLaunch(
+        want, sandboxCloneParams, userId, abilityInfo);
+
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_TRUE(abilityInfo.bundleName.empty());
+}
+
+/**
+ * @tc.name: ProcessSandboxCloneLaunch_0200
+ * @tc.desc: Test ProcessSandboxCloneLaunch with sandboxCloneParams but no SANDBOX_CLONE_INDEX parameter
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_0200, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
+    sandboxCloneParams->callerBundleName = "com.caller.bundle";
+    sandboxCloneParams->callerUid = 1000;
+    sandboxCloneParams->callerTokenId = 1;
+    int32_t userId = 100;
+    AppExecFwk::AbilityInfo abilityInfo;
+
+    int32_t result = abilityMs_->ProcessSandboxCloneLaunch(
+        want, sandboxCloneParams, userId, abilityInfo);
+
+    // sandBoxCloneIndex defaults to 0 (not in [2000,3000]) → invalid.
+    EXPECT_EQ(result, ERR_SANDBOX_CLONE_INDEX_INVALID);
+}
+
+/**
+ * @tc.name: ProcessSandboxCloneLaunch_0300
+ * @tc.desc: Test ProcessSandboxCloneLaunch with invalid sandboxCloneIndex (below minimum)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_0300, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
+    sandboxCloneParams->callerBundleName = "com.caller.bundle";
+    sandboxCloneParams->callerUid = 1000;
+    sandboxCloneParams->callerTokenId = 1;
+    sandboxCloneParams->sandBoxCloneIndex = 1999;
+    int32_t userId = 100;
+    AppExecFwk::AbilityInfo abilityInfo;
+
+    int32_t result = abilityMs_->ProcessSandboxCloneLaunch(
+        want, sandboxCloneParams, userId, abilityInfo);
+
+    EXPECT_EQ(result, ERR_SANDBOX_CLONE_INDEX_INVALID);
+}
+
+/**
+ * @tc.name: ProcessSandboxCloneLaunch_0400
+ * @tc.desc: Test ProcessSandboxCloneLaunch with invalid sandboxCloneIndex (above maximum)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_0400, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
+    sandboxCloneParams->callerBundleName = "com.caller.bundle";
+    sandboxCloneParams->callerUid = 1000;
+    sandboxCloneParams->callerTokenId = 1;
+    sandboxCloneParams->sandBoxCloneIndex = 3001;
+    int32_t userId = 100;
+    AppExecFwk::AbilityInfo abilityInfo;
+
+    int32_t result = abilityMs_->ProcessSandboxCloneLaunch(
+        want, sandboxCloneParams, userId, abilityInfo);
+
+    EXPECT_EQ(result, ERR_SANDBOX_CLONE_INDEX_INVALID);
+}
+
+/**
+ * @tc.name: ProcessSandboxCloneLaunch_0500
+ * @tc.desc: Test ProcessSandboxCloneLaunch with empty caller bundle name
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_0500, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    want.SetElementName("com.target.bundle", "TestAbility", "entry");
+    auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
+    sandboxCloneParams->callerBundleName = "";
+    sandboxCloneParams->callerUid = 1000;
+    sandboxCloneParams->callerTokenId = 1;
+    sandboxCloneParams->sandBoxCloneIndex = 2000;
+    int32_t userId = 100;
+    AppExecFwk::AbilityInfo abilityInfo;
+
+    int32_t result = abilityMs_->ProcessSandboxCloneLaunch(
+        want, sandboxCloneParams, userId, abilityInfo);
+
+    // Should fail due to empty caller bundle name
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: ProcessSandboxCloneLaunch_0600
+ * @tc.desc: Test ProcessSandboxCloneLaunch with negative sandboxCloneIndex
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_0600, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
+    sandboxCloneParams->callerBundleName = "com.caller.bundle";
+    sandboxCloneParams->callerUid = 1000;
+    sandboxCloneParams->callerTokenId = 1;
+    sandboxCloneParams->sandBoxCloneIndex = -1;
+    int32_t userId = 100;
+    AppExecFwk::AbilityInfo abilityInfo;
+
+    int32_t result = abilityMs_->ProcessSandboxCloneLaunch(
+        want, sandboxCloneParams, userId, abilityInfo);
+
+    EXPECT_EQ(result, ERR_SANDBOX_CLONE_INDEX_INVALID);
+}
+
+/**
+ * @tc.name: ProcessSandboxCloneLaunch_0700
+ * @tc.desc: Test ProcessSandboxCloneLaunch with sandboxCloneIndex = 0
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ProcessSandboxCloneLaunch_0700, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    auto sandboxCloneParams = std::make_shared<SandboxCloneParams>();
+    sandboxCloneParams->callerBundleName = "com.caller.bundle";
+    sandboxCloneParams->callerUid = 1000;
+    sandboxCloneParams->callerTokenId = 1;
+    sandboxCloneParams->sandBoxCloneIndex = 0;
+    int32_t userId = 100;
+    AppExecFwk::AbilityInfo abilityInfo;
+
+    int32_t result = abilityMs_->ProcessSandboxCloneLaunch(
+        want, sandboxCloneParams, userId, abilityInfo);
+
+    // sandBoxCloneIndex = 0 (not in [2000,3000]) → invalid.
+    EXPECT_EQ(result, ERR_SANDBOX_CLONE_INDEX_INVALID);
+}
+
+/**
+ * @tc.name: StartAbilityForOptionInner_SandboxClone_002
+ * @tc.desc: Test StartAbilityForOptionInner with PARAM_APP_CLONE_INDEX_KEY=2000 (sandbox clone index)
+ *           and null callerToken. Null callerToken means callerRecord is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityForOptionInner_SandboxClone_002, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    MyFlag::flag_ = 1;
+
+    Want want;
+    // 2000 is a sandbox clone index (range [2000, 3000]), not a valid app clone index (range [0, 1000]).
+    want.SetParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY, 2000);
+    StartOptions startOptions;
+    const sptr<IRemoteObject> callerToken = nullptr;
+    int32_t userId = 0;
+    int requestCode = 0;
+    bool isStartAsCaller = false;
+    uint32_t specifyTokenId = 0;
+    bool isImplicit = false;
+
+    auto result = abilityMs_->StartAbilityForOptionInner(want, startOptions, callerToken, false, userId, requestCode,
+        isStartAsCaller, specifyTokenId, isImplicit);
+    EXPECT_EQ(result, ERR_APP_CLONE_INDEX_INVALID);
+    MyFlag::flag_ = 0;
+}
+
+/**
+ * @tc.name: StartAbilityForOptionInner_SandboxClone_003
+ * @tc.desc: Test StartAbilityForOptionInner with non-null unverified callerToken. The
+ *           VerificationAllToken gate (before the sandbox clone block) returns false because
+ *           subManagersHelper_ is null in a fresh service → ERR_INVALID_CALLER. Confirms the
+ *           sandbox clone adaptation does not bypass the existing token verification gate.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityForOptionInner_SandboxClone_003, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    MyFlag::flag_ = 1;
+
+    Want want;
+    StartOptions startOptions;
+    sptr<IRemoteObject> callerToken = MockToken(AbilityType::PAGE);
+    ASSERT_NE(callerToken, nullptr);
+    int32_t userId = 0;
+    int requestCode = 0;
+    bool isStartAsCaller = false;
+    uint32_t specifyTokenId = 0;
+    bool isImplicit = false;
+
+    auto result = abilityMs_->StartAbilityForOptionInner(want, startOptions, callerToken, false, userId, requestCode,
+        isStartAsCaller, specifyTokenId, isImplicit);
+    EXPECT_EQ(result, ERR_INVALID_CALLER);
+    MyFlag::flag_ = 0;
+}
+
+/**
+ * @tc.name: StartAbilityForOptionInner_SandboxClone_004
+ * @tc.desc: Test StartAbilityForOptionInner non-sandbox path with interceptor set and implicit
+ *           start. Confirms the sandbox clone adaptation does not interfere with the implicit
+ *           start path when no sandbox clone is involved, and isWebSandBoxClone is set false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartAbilityForOptionInner_SandboxClone_004, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    MyFlag::flag_ = 1;
+
+    Want want;
+    StartOptions startOptions;
+    const sptr<IRemoteObject> callerToken = nullptr;
+    int32_t userId = 0;
+    int requestCode = 0;
+    bool isStartAsCaller = false;
+    uint32_t specifyTokenId = 0;
+    bool isImplicit = true;
+
+    abilityMs_->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+
+    auto result = abilityMs_->StartAbilityForOptionInner(want, startOptions, callerToken, false, userId, requestCode,
+        isStartAsCaller, specifyTokenId, isImplicit);
+    EXPECT_EQ(result, ERR_IMPLICIT_START_ABILITY_FAIL);
+    MyFlag::flag_ = 0;
+}
+
+/**
+ * @tc.name: StartSandboxCloneAbility_0100
+ * @tc.desc: Test StartSandboxCloneAbility with valid parameters but no CLI tool token
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartSandboxCloneAbility_0100, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    SandboxCloneParams params;
+    params.callerBundleName = "com.caller.bundle";
+    params.callerUid = 1000;
+    params.callerTokenId = 1;
+    params.sandBoxCloneIndex = 2000;
+
+    int32_t result = abilityMs_->StartSandboxCloneAbility(want, params);
+
+    // Should fail due to no CLI tool token
+    EXPECT_EQ(result, ERR_PERMISSION_DENIED);
+}
+
+/**
+ * @tc.name: StartSandboxCloneAbility_0200
+ * @tc.desc: Test StartSandboxCloneAbility without sandBoxCloneIndex in params
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartSandboxCloneAbility_0200, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    SandboxCloneParams params;
+    params.callerBundleName = "com.caller.bundle";
+    params.callerUid = 1000;
+    params.callerTokenId = 1;
+
+    int32_t result = abilityMs_->StartSandboxCloneAbility(want, params);
+
+    // Should fail due to no CLI tool token
+    EXPECT_EQ(result, ERR_PERMISSION_DENIED);
+}
+
+/**
+ * @tc.name: StartSandboxCloneAbility_0300
+ * @tc.desc: Test StartSandboxCloneAbility with invalid sandboxCloneIndex
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, StartSandboxCloneAbility_0300, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+
+    Want want;
+    SandboxCloneParams params;
+    params.callerBundleName = "com.caller.bundle";
+    params.callerUid = 1000;
+    params.callerTokenId = 1;
+    params.sandBoxCloneIndex = 1999;
+
+    int32_t result = abilityMs_->StartSandboxCloneAbility(want, params);
+
+    // Should fail due to no CLI tool token (even before index validation)
+    EXPECT_EQ(result, ERR_PERMISSION_DENIED);
+}
+
+/**
+ * @tc.name: IsWebSandBoxClone_0100
+ * @tc.desc: Test isWebSandBoxClone functionality through AbilityRequest
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, IsWebSandBoxClone_0100, TestSize.Level1)
+{
+    // Test the isWebSandBoxClone flag in AbilityRequest
+    AbilityRequest abilityRequest;
+    abilityRequest.isWebSandBoxClone = true;
+
+    EXPECT_TRUE(abilityRequest.isWebSandBoxClone);
+}
+
+/**
+ * @tc.name: IsWebSandBoxClone_0200
+ * @tc.desc: Test isWebSandBoxClone set to false
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, IsWebSandBoxClone_0200, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    abilityRequest.isWebSandBoxClone = false;
+
+    EXPECT_FALSE(abilityRequest.isWebSandBoxClone);
+}
+
+namespace {
+// In-process mock for AppMgrClient, injected via AppScheduler::appMgrClient_ (reachable because the
+// test TU uses `#define private public`). Overrides the AppMs call the parent-resolution path makes.
+class MockAppMgrClient : public AppMgrClient {
+public:
+    int32_t GetRunningProcessInfoByChildProcessPid(const pid_t childPid,
+        RunningProcessInfo &info) const override
+    {
+        if (MyFlag::mockParentHas_) {
+            info.bundleNames.emplace_back("parent");
+            info.state_ = static_cast<AppProcessState>(MyFlag::mockParentState_);
+            info.accessTokenId_ = MyFlag::mockParentAccessTokenId_;
+        }
+        return 0;
+    }
+};
+} // namespace
+
+static void ResetUnknownCallerBgMock()
+{
+    MyFlag::flag_ = 0;
+    MyFlag::mockParentHas_ = false;
+    MyFlag::mockParentState_ = 0;
+    MyFlag::mockParentAccessTokenId_ = 0;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: ResolveUnknownCallerBackgroundCall
+ * SubFunction: NA
+ * FunctionPoints: resolve background-start permission for an unknown caller process
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ResolveUnknownCallerBackgroundCall_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ResolveUnknownCallerBackgroundCall_001 start");
+    // Calling token itself holds the permission -> allow early.
+    ResetUnknownCallerBgMock();
+    MyFlag::flag_ = 1; // VerifyCallingPermission returns true
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    bool isBackgroundCall = true;
+    EXPECT_EQ(abilityMs_->ResolveUnknownCallerBackgroundCall(1234, isBackgroundCall), ERR_OK);
+    EXPECT_FALSE(isBackgroundCall);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ResolveUnknownCallerBackgroundCall_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: ResolveUnknownCallerBackgroundCall
+ * SubFunction: NA
+ * FunctionPoints: reject when caller has no permission and no resolvable parent/host
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ResolveUnknownCallerBackgroundCall_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ResolveUnknownCallerBackgroundCall_002 start");
+    // No permission, no parent (AppMs unavailable), no host (GetHostTokenId fails) -> reject.
+    ResetUnknownCallerBgMock();
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    bool isBackgroundCall = true;
+    EXPECT_EQ(abilityMs_->ResolveUnknownCallerBackgroundCall(1234, isBackgroundCall), ERR_INVALID_VALUE);
+    EXPECT_TRUE(isBackgroundCall); // untouched on reject
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ResolveUnknownCallerBackgroundCall_002 end");
+}
+
+
+/*
+ * Feature: AbilityManagerService
+ * Function: ResolveUnknownCallerBackgroundCall
+ * SubFunction: NA
+ * FunctionPoints: parent process resolved and is foreground -> allow
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ResolveUnknownCallerBackgroundCall_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ResolveUnknownCallerBackgroundCall_005 start");
+    // Calling token lacks the permission, but the parent (main) app process resolved via AppMs is
+    // foreground -> allow.
+    ResetUnknownCallerBgMock();
+    MyFlag::mockParentHas_ = true;
+    MyFlag::mockParentState_ = static_cast<int>(AppProcessState::APP_STATE_FOREGROUND);
+    MyFlag::mockParentAccessTokenId_ = 9999;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    auto appScheduler = DelayedSingleton<AppScheduler>::GetInstance();
+    ASSERT_NE(appScheduler, nullptr);
+    appScheduler->appMgrClient_ = std::make_unique<MockAppMgrClient>();
+    bool isBackgroundCall = true;
+    EXPECT_EQ(abilityMs_->ResolveUnknownCallerBackgroundCall(1234, isBackgroundCall), ERR_OK);
+    EXPECT_FALSE(isBackgroundCall);
+    appScheduler->appMgrClient_ = std::make_unique<AppMgrClient>(); // restore real client
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ResolveUnknownCallerBackgroundCall_005 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: BlockAllAppStart_NotSupported_001
+ * Function: BlockAllAppStart
+ * FunctionPoints: BlockAllAppStart returns ERR_PERMISSION_DENIED when not supported.
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, BlockAllAppStart_NotSupported_001, TestSize.Level1)
+{
+    auto &cfg = AppUtils::GetInstance().isSupportBlockAllAppStart_;
+    cfg.value = false;
+    cfg.isLoaded = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    EXPECT_EQ(abilityMs_->BlockAllAppStart(true), ERR_PERMISSION_DENIED);
+    cfg.value = false;
+    cfg.isLoaded = false;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: BlockAllAppStart_Supported_001
+ * Function: BlockAllAppStart
+ * FunctionPoints: BlockAllAppStart succeeds when supported and permission granted.
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, BlockAllAppStart_Supported_001, TestSize.Level1)
+{
+    auto &cfg = AppUtils::GetInstance().isSupportBlockAllAppStart_;
+    cfg.value = true;
+    cfg.isLoaded = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    abilityMs_->shouldBlockAllAppStart_ = false;
+    EXPECT_EQ(abilityMs_->BlockAllAppStart(true), ERR_OK);
+    EXPECT_EQ(abilityMs_->shouldBlockAllAppStart_, true);
+    cfg.value = false;
+    cfg.isLoaded = false;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: ShouldBlockAllAppStart_NotSupported_001
+ * Function: ShouldBlockAllAppStart
+ * FunctionPoints: ShouldBlockAllAppStart returns false when not supported.
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ShouldBlockAllAppStart_NotSupported_001, TestSize.Level1)
+{
+    auto &cfg = AppUtils::GetInstance().isSupportBlockAllAppStart_;
+    cfg.value = false;
+    cfg.isLoaded = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    EXPECT_EQ(abilityMs_->ShouldBlockAllAppStart(), false);
+    cfg.value = false;
+    cfg.isLoaded = false;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: ShouldBlockAllAppStart_Supported_001
+ * Function: ShouldBlockAllAppStart
+ * FunctionPoints: ShouldBlockAllAppStart returns the flag when supported.
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ShouldBlockAllAppStart_Supported_001, TestSize.Level1)
+{
+    auto &cfg = AppUtils::GetInstance().isSupportBlockAllAppStart_;
+    cfg.value = true;
+    cfg.isLoaded = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    abilityMs_->shouldBlockAllAppStart_ = true;
+    EXPECT_EQ(abilityMs_->ShouldBlockAllAppStart(), true);
+    cfg.value = false;
+    cfg.isLoaded = false;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: InitInterceptor_BlockAllAppStart_NotSupported_001
+ * Function: InitInterceptor
+ * FunctionPoints: InitInterceptor does not create BlockAllAppStartInterceptor when not supported.
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, InitInterceptor_BlockAllAppStart_NotSupported_001, TestSize.Level1)
+{
+    auto &cfg = AppUtils::GetInstance().isSupportBlockAllAppStart_;
+    cfg.value = false;
+    cfg.isLoaded = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    abilityMs_->InitInterceptor();
+    EXPECT_FALSE(abilityMs_->interceptorExecuter_->HasInterceptor("BlockAllAppStart"));
+    cfg.value = false;
+    cfg.isLoaded = false;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: InitInterceptor_BlockAllAppStart_Supported_001
+ * Function: InitInterceptor
+ * FunctionPoints: InitInterceptor creates BlockAllAppStartInterceptor when supported.
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, InitInterceptor_BlockAllAppStart_Supported_001, TestSize.Level1)
+{
+    auto &cfg = AppUtils::GetInstance().isSupportBlockAllAppStart_;
+    cfg.value = true;
+    cfg.isLoaded = true;
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    abilityMs_->InitInterceptor();
+    EXPECT_TRUE(abilityMs_->interceptorExecuter_->HasInterceptor("BlockAllAppStart"));
+    cfg.value = false;
+    cfg.isLoaded = false;
+}
+
+namespace {
+// IWantSender whose AsObject() returns null, to hit the "obj null" branch of RegisterWantAgentHolder.
+class MockIWantSenderNullObj : public IWantSender {
+public:
+    sptr<IRemoteObject> AsObject() override
+    {
+        return nullptr;
+    }
+};
+
+// MockAppMgrService subclass that records/controls RegisterApplicationStateObserver result.
+class MockAppMgrServiceForWantAgent : public AppExecFwk::MockAppMgrService {
+public:
+    int32_t RegisterApplicationStateObserver(const sptr<AppExecFwk::IApplicationStateObserver> &observer,
+        const std::vector<std::string> &bundleNameList = {}) override
+    {
+        registerCount_++;
+        registeredObserver_ = observer;
+        return registerResult_;
+    }
+    int32_t registerResult_ = 0;
+    int32_t registerCount_ = 0;
+    sptr<AppExecFwk::IApplicationStateObserver> registeredObserver_ = nullptr;
+};
+} // namespace
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RegisterWantAgentHolder
+ * SubFunction: NA
+ * FunctionPoints: RegisterWantAgentHolder handles null target
+ * @tc.name: RegisterWantAgentHolder_001
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, RegisterWantAgentHolder_001, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    EXPECT_NO_FATAL_FAILURE(abilityMs_->RegisterWantAgentHolder(nullptr));
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RegisterWantAgentHolder
+ * SubFunction: NA
+ * FunctionPoints: RegisterWantAgentHolder marks shared for a local record
+ * @tc.name: RegisterWantAgentHolder_002
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, RegisterWantAgentHolder_002, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    sptr<PendingWantRecord> record = new (std::nothrow) PendingWantRecord();
+    ASSERT_NE(record, nullptr);
+    record->SetCreatorPid(-1);
+    sptr<IWantSender> target = record;
+    abilityMs_->RegisterWantAgentHolder(target);
+    EXPECT_TRUE(record->GetShared());
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RegisterWantAgentHolder
+ * SubFunction: NA
+ * FunctionPoints: RegisterWantAgentHolder returns when AsObject is null
+ * @tc.name: RegisterWantAgentHolder_003
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, RegisterWantAgentHolder_003, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    sptr<IWantSender> target = new (std::nothrow) MockIWantSenderNullObj();
+    ASSERT_NE(target, nullptr);
+    EXPECT_NO_FATAL_FAILURE(abilityMs_->RegisterWantAgentHolder(target));
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: InitWantAgentAppStateObserver
+ * SubFunction: NA
+ * FunctionPoints: AppMgr unavailable, observer stays null
+ * @tc.name: InitWantAgentAppStateObserver_001
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, InitWantAgentAppStateObserver_001, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    AppMgrUtil::appMgr_ = nullptr;
+    abilityMs_->InitWantAgentAppStateObserver();
+    EXPECT_EQ(abilityMs_->wantAgentAppStateObserver_, nullptr);
+    AppMgrUtil::appMgr_ = nullptr;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: InitWantAgentAppStateObserver
+ * SubFunction: NA
+ * FunctionPoints: register success, observer created
+ * @tc.name: InitWantAgentAppStateObserver_002
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, InitWantAgentAppStateObserver_002, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    auto mockAppMgr = sptr<MockAppMgrServiceForWantAgent>::MakeSptr();
+    ASSERT_NE(mockAppMgr, nullptr);
+    mockAppMgr->registerResult_ = 0;
+    AppMgrUtil::appMgr_ = mockAppMgr;
+    abilityMs_->InitWantAgentAppStateObserver();
+    EXPECT_NE(abilityMs_->wantAgentAppStateObserver_, nullptr);
+    EXPECT_EQ(mockAppMgr->registerCount_, 1);
+    AppMgrUtil::appMgr_ = nullptr;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: InitWantAgentAppStateObserver
+ * SubFunction: NA
+ * FunctionPoints: register fails, observer reset to null
+ * @tc.name: InitWantAgentAppStateObserver_003
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, InitWantAgentAppStateObserver_003, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    auto mockAppMgr = sptr<MockAppMgrServiceForWantAgent>::MakeSptr();
+    ASSERT_NE(mockAppMgr, nullptr);
+    mockAppMgr->registerResult_ = ERR_INVALID_VALUE;
+    AppMgrUtil::appMgr_ = mockAppMgr;
+    abilityMs_->InitWantAgentAppStateObserver();
+    EXPECT_EQ(abilityMs_->wantAgentAppStateObserver_, nullptr);
+    AppMgrUtil::appMgr_ = nullptr;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: InitWantAgentAppStateObserver
+ * SubFunction: NA
+ * FunctionPoints: idempotent, second call does not re-register
+ * @tc.name: InitWantAgentAppStateObserver_004
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, InitWantAgentAppStateObserver_004, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    auto mockAppMgr = sptr<MockAppMgrServiceForWantAgent>::MakeSptr();
+    ASSERT_NE(mockAppMgr, nullptr);
+    mockAppMgr->registerResult_ = 0;
+    AppMgrUtil::appMgr_ = mockAppMgr;
+    abilityMs_->InitWantAgentAppStateObserver();
+    abilityMs_->InitWantAgentAppStateObserver();
+    EXPECT_NE(abilityMs_->wantAgentAppStateObserver_, nullptr);
+    EXPECT_EQ(mockAppMgr->registerCount_, 1);
+    AppMgrUtil::appMgr_ = nullptr;
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: HandleWantAgentAppDied
+ * SubFunction: NA
+ * FunctionPoints: subManagersHelper_ is null, return directly
+ * @tc.name: HandleWantAgentAppDied_001
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, HandleWantAgentAppDied_001, TestSize.Level1)
+{
+    auto abilityMs_ = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs_, nullptr);
+    EXPECT_NO_FATAL_FAILURE(abilityMs_->HandleWantAgentAppDied("com.test.bundle", 100));
+}
+
+/*
+ * Feature: SubManagersHelper
+ * Function: HandlePendingWantDeathCleanup
+ * SubFunction: NA
+ * FunctionPoints: empty pendingWantManagers_, no crash
+ * @tc.name: HandlePendingWantDeathCleanup_001
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, HandlePendingWantDeathCleanup_001, TestSize.Level1)
+{
+    auto helper = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    ASSERT_NE(helper, nullptr);
+    EXPECT_NO_FATAL_FAILURE(helper->HandlePendingWantDeathCleanup("com.test.bundle", 100));
+}
+
+/*
+ * Feature: SubManagersHelper
+ * Function: HandlePendingWantDeathCleanup
+ * SubFunction: NA
+ * FunctionPoints: iterate managers (null skipped), call DeleteUnsharedRecordsOnDeath
+ * @tc.name: HandlePendingWantDeathCleanup_002
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, HandlePendingWantDeathCleanup_002, TestSize.Level1)
+{
+    auto helper = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    ASSERT_NE(helper, nullptr);
+    helper->pendingWantManagers_[0] = nullptr;
+    helper->pendingWantManagers_[1] = std::make_shared<PendingWantManager>();
+    EXPECT_NO_FATAL_FAILURE(helper->HandlePendingWantDeathCleanup("com.test.bundle", 100));
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_ResolvePickerByTargetType_0100
+ * @tc.desc: Test ResolvePickerByTargetType with targetType not in pickerMap
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ResolvePickerByTargetType_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ResolvePickerByTargetType_0100 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    sptr<SessionInfo> sessionInfo = new (std::nothrow) SessionInfo();
+    ASSERT_NE(sessionInfo, nullptr);
+    std::string targetType = "invalid_target_type_for_test";
+    int32_t userId = USER_ID_U100;
+    auto ret = abilityMs->ResolvePickerByTargetType(sessionInfo, targetType, userId);
+    EXPECT_EQ(ret, ERR_INVALID_EXTENSION_TYPE);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ResolvePickerByTargetType_0100 end");
+}
+
+/**
+ * @tc.name: AbilityManagerServiceFirstTest_ResolvePickerByTargetType_0200
+ * @tc.desc: Test ResolvePickerByTargetType with targetType in pickerMap but bms unavailable
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFirstTest, ResolvePickerByTargetType_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ResolvePickerByTargetType_0200 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    std::string targetType = "test_picker_type";
+    auto& pickerMap = AmsConfigurationParameter::GetInstance().picker_;
+    pickerMap[targetType] = "picker_test";
+    sptr<SessionInfo> sessionInfo = new (std::nothrow) SessionInfo();
+    ASSERT_NE(sessionInfo, nullptr);
+    int32_t userId = USER_ID_U100;
+    auto ret = abilityMs->ResolvePickerByTargetType(sessionInfo, targetType, userId);
+    EXPECT_EQ(ret, ABILITY_SERVICE_NOT_CONNECTED);
+    pickerMap.erase(targetType);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFirstTest ResolvePickerByTargetType_0200 end");
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_DirectBootAdmissionSkipsAfterUnlockGates, TestSize.Level1)
+{
+    DirectBootTestContext context;
+    GetDirectBootTestState().ready = false;
+    EXPECT_FALSE(context.abilityManager_->IsAutoStartupAllowed(DIRECT_BOOT_TEST_USER, false, true));
+    EXPECT_FALSE(context.abilityManager_->IsAutoStartupAllowed(DIRECT_BOOT_TEST_USER, false, false));
+    EXPECT_FALSE(context.abilityManager_->IsAutoStartupAllowed(DIRECT_BOOT_TEST_USER, true, false));
+    GetDirectBootTestState().ready = true;
+    EXPECT_TRUE(context.abilityManager_->IsAutoStartupAllowed(DIRECT_BOOT_TEST_USER, false, true));
+    EXPECT_TRUE(context.abilityManager_->IsAutoStartupAllowed(DIRECT_BOOT_TEST_USER, true, false));
+    EXPECT_FALSE(context.abilityManager_->IsAutoStartupAllowed(DIRECT_BOOT_TEST_USER, false, false));
+    context.service_->AddHandledAutoStartupUsers(DIRECT_BOOT_TEST_USER);
+    AbilityEventMapManager::GetInstance().AddPendingUserId(DIRECT_BOOT_TEST_USER);
+    EXPECT_TRUE(context.abilityManager_->IsAutoStartupAllowed(DIRECT_BOOT_TEST_USER, false, true));
+    EXPECT_FALSE(context.abilityManager_->IsAutoStartupAllowed(DIRECT_BOOT_TEST_USER, false, false));
+    EXPECT_FALSE(context.abilityManager_->IsAutoStartupAllowed(DEFAULT_INVAL_VALUE, false, true));
+    context.abilityManager_->abilityAutoStartupService_.reset();
+    EXPECT_FALSE(context.abilityManager_->IsAutoStartupAllowed(DIRECT_BOOT_TEST_USER, false, true));
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_MixedModesDoNotConsumeAfterUnlockStartup, TestSize.Level1)
+{
+    DirectBootTestContext context;
+    context.Register(context.Target("direct.first"));
+    context.Register(context.Target("afterUnlock", false));
+    context.Register(context.Target("direct.second"));
+    auto &events = AbilityEventMapManager::GetInstance();
+    events.AddPendingUserId(DIRECT_BOOT_TEST_USER);
+    context.abilityManager_->StartAutoStartupApps(DIRECT_BOOT_TEST_USER, false, true);
+    context.DrainTasks();
+    EXPECT_EQ(context.abilityManager_->launched, (std::vector<std::string>{"direct.first", "direct.second"}));
+    EXPECT_TRUE(events.IsPendingUser(DIRECT_BOOT_TEST_USER));
+    EXPECT_FALSE(context.service_->FindHandledAutoStartupUsers(DIRECT_BOOT_TEST_USER));
+    context.abilityManager_->StartAutoStartupApps(DIRECT_BOOT_TEST_USER, false, false);
+    context.DrainTasks();
+    EXPECT_EQ(context.abilityManager_->launched,
+        (std::vector<std::string>{"direct.first", "direct.second", "afterUnlock"}));
+    EXPECT_FALSE(events.IsPendingUser(DIRECT_BOOT_TEST_USER));
+    EXPECT_TRUE(context.service_->FindHandledAutoStartupUsers(DIRECT_BOOT_TEST_USER));
+    context.abilityManager_->StartAutoStartupApps(DIRECT_BOOT_TEST_USER, true, false);
+    context.DrainTasks();
+    EXPECT_EQ(context.abilityManager_->launched,
+        (std::vector<std::string>{"direct.first", "direct.second", "afterUnlock", "afterUnlock"}));
+    EXPECT_TRUE(context.service_->FindHandledAutoStartupUsers(DIRECT_BOOT_TEST_USER));
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_TenTargetsAreLaunchedSequentially, TestSize.Level1)
+{
+    DirectBootTestContext context;
+    std::vector<std::string> expected;
+    for (size_t index = 0; index < 10; ++index) {
+        expected.push_back("direct.queue" + std::to_string(index));
+        context.Register(context.Target(expected.back()));
+    }
+    context.abilityManager_->StartAutoStartupApps(DIRECT_BOOT_TEST_USER, false, true);
+    ASSERT_EQ(context.abilityManager_->launched.size(), 1);
+    EXPECT_EQ(context.abilityManager_->launched.front(), expected.front());
+    context.DrainTasks();
+    EXPECT_EQ(context.abilityManager_->launched, expected);
+    EXPECT_EQ(context.abilityManager_->launchUsers, std::vector<int32_t>(10, DIRECT_BOOT_TEST_USER));
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_HiddenUIStartupTakesPriorityAndRetries, TestSize.Level1)
+{
+    DirectBootTestContext context;
+    HiddenStartWithoutStatusBarContext hiddenStartContext;
+    auto hidden = context.Target("direct.hidden");
+    hidden.isHiddenStart = true;
+    hidden.retryCount = TEST_RETRY_COUNT;
+    auto following = context.Target("direct.following");
+    EXPECT_FALSE(DelayedSingleton<AbilityManagerService>::GetInstance()->IsSupportStatusBarByUserId(
+        DIRECT_BOOT_TEST_USER));
+    EXPECT_CALL(*context.handler_, SubmitTaskInner(_, _)).Times(AnyNumber());
+    EXPECT_CALL(*context.handler_, SubmitTaskInner(_, Field(&TaskAttribute::taskName_, "StartAutoStartupApps")))
+        .Times(TEST_RETRY_COUNT + 2);
+
+    context.StartQueue({hidden, following});
+    EXPECT_TRUE(context.abilityManager_->launched.empty());
+    context.DrainTasks();
+
+    EXPECT_EQ(context.abilityManager_->launched, (std::vector<std::string>{following.bundleName}));
+    EXPECT_EQ(context.abilityManager_->launchUsers, (std::vector<int32_t>{DIRECT_BOOT_TEST_USER}));
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_NonUIQueueItemsUseOrdinaryStartup, TestSize.Level1)
+{
+    DirectBootTestContext context;
+    std::vector<AutoStartupInfo> infos;
+    std::vector<std::string> expected;
+    for (bool hidden : {false, true}) {
+        for (bool directBoot : {false, true}) {
+            auto info = context.Target("direct.nonui" + std::to_string(infos.size()), directBoot);
+            info.abilityTypeName = AbilityRuntime::EXTENSION_TYPE_SERVICE_EXTENSION;
+            info.isHiddenStart = hidden;
+            infos.push_back(info);
+            expected.push_back(info.bundleName);
+        }
+    }
+
+    context.StartQueue(infos);
+    context.DrainTasks();
+
+    EXPECT_EQ(context.abilityManager_->launched, expected);
+    EXPECT_EQ(context.abilityManager_->launchUsers, std::vector<int32_t>(infos.size(), DIRECT_BOOT_TEST_USER));
+    EXPECT_TRUE(context.startAbilityContext_->interceptor_->params.empty());
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_RetryIsBoundedAndDoesNotRepeatSuccessfulItem, TestSize.Level1)
+{
+    DirectBootTestContext context;
+    auto failing = context.Target("direct.failure");
+    auto valid = context.Target("direct.success");
+    failing.retryCount = TEST_RETRY_COUNT;
+    context.Register(failing);
+    context.Register(valid);
+    context.abilityManager_->failedBundle = failing.bundleName;
+    context.StartQueue({failing, valid});
+    context.DrainTasks();
+    EXPECT_EQ(context.abilityManager_->launched,
+        (std::vector<std::string>{"direct.failure", "direct.success", "direct.failure", "direct.failure"}));
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_UnlockDoesNotCancelQueuedRequests, TestSize.Level1)
+{
+    DirectBootTestContext context;
+    auto first = context.Target("direct.before");
+    auto next = context.Target("direct.after");
+    context.Register(first);
+    context.Register(next);
+    context.StartQueue({first, next});
+    UserController::GetInstance().SetUserLockStatus(DIRECT_BOOT_TEST_USER, UserLockStatus::USER_UNLOCKED);
+    context.DrainTasks();
+    EXPECT_EQ(context.abilityManager_->launched, (std::vector<std::string>{"direct.before", "direct.after"}));
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_SceneBoardRejectsInvalidSessionOrHandler, TestSize.Level1)
+{
+    DirectBootTestContext context;
+    context.PrepareSceneBoard();
+    auto manager = context.abilityManager_->subManagersHelper_->uiAbilityManagers_.at(DIRECT_BOOT_TEST_USER);
+    manager->SetRootSceneSession(context.rootSession_);
+    context.abilityManager_->SetRootSceneSession(nullptr);
+    EXPECT_TRUE(context.tasks_.empty());
+    EXPECT_EQ(manager->GetRootSceneSession(), context.rootSession_);
+    sptr<IRemoteObject> invalidSession = new RootSceneToken();
+    context.abilityManager_->SetRootSceneSession(invalidSession);
+    EXPECT_TRUE(context.tasks_.empty());
+    EXPECT_EQ(manager->GetRootSceneSession(), context.rootSession_);
+    context.abilityManager_->taskHandler_.reset();
+    context.abilityManager_->SetRootSceneSession(context.rootSession_);
+    EXPECT_TRUE(context.tasks_.empty());
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_SceneBoardDoesNotCheckDeviceType, TestSize.Level1)
+{
+    DirectBootTestContext context;
+    context.PrepareSceneBoard();
+    for (const auto &device : {"default", "2in1"}) {
+        GetDirectBootTestState().deviceType = device;
+        context.abilityManager_->SetRootSceneSession(context.rootSession_);
+        EXPECT_EQ(context.tasks_.size(), 1);
+        context.DrainTasks();
+    }
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_SceneBoardDoesNotRemapUserZero, TestSize.Level1)
+{
+    DirectBootTestContext context;
+    context.Register(context.Target("direct.foreground"));
+    auto info = context.Target("direct.caller");
+    info.userId = 0;
+    info.setterUserId = 0;
+    GetDirectBootTestState().targets.at(info.bundleName).userId = 0;
+    context.Register(info);
+    GetDirectBootTestState().callingUid = 0;
+    context.PrepareSceneBoard();
+    context.abilityManager_->SetRootSceneSession(context.rootSession_);
+    ASSERT_EQ(context.tasks_.size(), 1);
+    context.DrainTasks();
+    EXPECT_EQ(context.abilityManager_->launched, (std::vector<std::string>{"direct.caller"}));
+    EXPECT_EQ(context.abilityManager_->launchUsers, (std::vector<int32_t>{0}));
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_SceneBoardUsesCallingUserWithoutAccountLookup, TestSize.Level1)
+{
+    DirectBootTestContext context;
+    context.Register(context.Target("direct.foreground"));
+    auto info = context.Target("direct.caller");
+    info.userId = OTHER_USER;
+    info.setterUserId = OTHER_USER;
+    GetDirectBootTestState().targets.at(info.bundleName).userId = OTHER_USER;
+    context.Register(info);
+    GetDirectBootTestState().callingUid = OTHER_USER * 200000 + 12345;
+    context.PrepareSceneBoard();
+    auto foregroundManager = std::make_shared<UIAbilityLifecycleManager>(DIRECT_BOOT_TEST_USER);
+    context.abilityManager_->subManagersHelper_->uiAbilityManagers_[DIRECT_BOOT_TEST_USER] = foregroundManager;
+    GetDirectBootTestState().accountCalls = 0;
+    GetDirectBootTestState().accountFailureCall = 1;
+    context.abilityManager_->SetRootSceneSession(context.rootSession_);
+    EXPECT_EQ(GetDirectBootTestState().accountCalls, 0);
+    EXPECT_EQ(foregroundManager->GetRootSceneSession(), nullptr);
+    EXPECT_EQ(context.abilityManager_->subManagersHelper_->uiAbilityManagers_.at(OTHER_USER)->GetRootSceneSession(),
+        context.rootSession_);
+    ASSERT_EQ(context.tasks_.size(), 1);
+    context.DrainTasks();
+    EXPECT_EQ(context.abilityManager_->launched, (std::vector<std::string>{"direct.caller"}));
+    EXPECT_EQ(context.abilityManager_->launchUsers, (std::vector<int32_t>{OTHER_USER}));
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_SceneBoardRejectsMissingCallingUserManager, TestSize.Level1)
+{
+    DirectBootTestContext context;
+    context.PrepareSceneBoard();
+    context.abilityManager_->subManagersHelper_->uiAbilityManagers_.clear();
+    context.abilityManager_->SetRootSceneSession(context.rootSession_);
+    EXPECT_TRUE(context.tasks_.empty());
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_RepeatedSceneBoardReadySchedulesAgain, TestSize.Level1)
+{
+    DirectBootTestContext context;
+    context.Register(context.Target("direct.scb"));
+    context.PrepareSceneBoard();
+    context.abilityManager_->SetRootSceneSession(context.rootSession_);
+    context.DrainTasks();
+    context.abilityManager_->SetRootSceneSession(context.rootSession_);
+    context.DrainTasks();
+    EXPECT_EQ(context.abilityManager_->launched, (std::vector<std::string>{"direct.scb", "direct.scb"}));
+    UserController::GetInstance().SetUserLockStatus(DIRECT_BOOT_TEST_USER, UserLockStatus::USER_UNLOCKED);
+    context.abilityManager_->SetRootSceneSession(context.rootSession_);
+    context.DrainTasks();
+    EXPECT_EQ(context.abilityManager_->launched, (std::vector<std::string>{"direct.scb", "direct.scb", "direct.scb"}));
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_QueuedSceneBoardTaskDoesNotRetainDestroyedService, TestSize.Level1)
+{
+    DirectBootTestContext context;
+    context.PrepareSceneBoard();
+    context.abilityManager_->SetRootSceneSession(context.rootSession_);
+    ASSERT_EQ(context.tasks_.size(), 1);
+    std::weak_ptr<RecordingAbilityManager> weak = context.abilityManager_;
+    context.abilityManager_.reset();
+    EXPECT_TRUE(weak.expired());
+    context.DrainTasks();
+    EXPECT_EQ(GetDirectBootTestState().tokenQueries, 0);
+}
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_CancelAfterQueryDoesNotChangeQueuedSnapshot, TestSize.Level1)
+{
+    DirectBootTestContext context;
+    auto first = context.Target("direct.first");
+    auto next = context.Target("direct.next");
+    context.Register(first);
+    context.Register(next);
+    context.abilityManager_->StartAutoStartupApps(DIRECT_BOOT_TEST_USER, false, true);
+    ASSERT_EQ(context.abilityManager_->launched, (std::vector<std::string>{"direct.first"}));
+    ASSERT_EQ(context.service_->InnerCancelApplicationAutoStartup(next), ERR_OK);
+    ASSERT_EQ(context.store_->entries.size(), 1);
+    context.DrainTasks();
+    EXPECT_EQ(context.abilityManager_->launched, (std::vector<std::string>{"direct.first", "direct.next"}));
+    context.abilityManager_->launched.clear();
+    context.abilityManager_->StartAutoStartupApps(DIRECT_BOOT_TEST_USER, false, true);
+    context.DrainTasks();
+    EXPECT_EQ(context.abilityManager_->launched, (std::vector<std::string>{"direct.first"}));
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_QueryFailureDoesNotLaunch, TestSize.Level1)
+{
+    DirectBootTestContext context;
+    context.Register(context.Target("direct.query"));
+    context.store_->readResult = DistributedKv::Status::ERROR;
+    context.abilityManager_->StartAutoStartupApps(DIRECT_BOOT_TEST_USER, false, true);
+    EXPECT_TRUE(context.abilityManager_->launched.empty());
+    EXPECT_TRUE(context.tasks_.empty());
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_MissingHandlerDoesNotLaunch, TestSize.Level1)
+{
+    DirectBootTestContext context;
+    auto info = context.Target("direct.handler");
+    context.Register(info);
+    context.abilityManager_->taskHandler_.reset();
+    context.abilityManager_->StartAutoStartupApps(DIRECT_BOOT_TEST_USER, false, true);
+    context.StartQueue({info});
+    EXPECT_TRUE(context.abilityManager_->launched.empty());
+    EXPECT_TRUE(context.tasks_.empty());
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_QueriesOnlyLaunchTargetsForTheSelectedUser, TestSize.Level1)
+{
+    DirectBootTestContext context;
+    auto first = context.Target("direct.user100");
+    auto other = context.Target("direct.user101");
+    other.userId = OTHER_USER;
+    other.setterUserId = OTHER_USER;
+    GetDirectBootTestState().targets[other.bundleName].userId = OTHER_USER;
+    context.Register(first);
+    context.Register(other);
+    context.abilityManager_->StartAutoStartupApps(DIRECT_BOOT_TEST_USER, false, true);
+    context.DrainTasks();
+    EXPECT_EQ(context.abilityManager_->launched, (std::vector<std::string>{first.bundleName}));
+    context.abilityManager_->StartAutoStartupApps(OTHER_USER, false, true);
+    context.DrainTasks();
+    EXPECT_EQ(context.abilityManager_->launched, (std::vector<std::string>{first.bundleName, other.bundleName}));
+    EXPECT_EQ(context.abilityManager_->launchUsers, (std::vector<int32_t>{DIRECT_BOOT_TEST_USER, OTHER_USER}));
+}
+
+namespace {
+class DirectBootKillClient : public AppMgrClient {
+public:
+    MOCK_METHOD(AppMgrResultCode, KillApplication,
+        (const std::string &, bool, int32_t, const std::string &, int32_t), (override));
+};
+
+class DirectBootKillContext : public DirectBootTestContext {
+public:
+    DirectBootKillContext()
+    {
+        auto scheduler = DelayedSingleton<AppScheduler>::GetInstance();
+        oldClient_ = std::move(scheduler->appMgrClient_);
+        auto client = std::make_unique<StrictMock<DirectBootKillClient>>();
+        client_ = client.get();
+        scheduler->appMgrClient_ = std::move(client);
+        abilityManager_->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    }
+
+    ~DirectBootKillContext()
+    {
+        DelayedSingleton<AppScheduler>::GetInstance()->appMgrClient_ = std::move(oldClient_);
+    }
+
+    std::shared_ptr<AbilityRecord> SceneBoardRecord()
+    {
+        AbilityRequest request;
+        request.abilityInfo.bundleName = AbilityConfig::SCENEBOARD_BUNDLE_NAME;
+        request.abilityInfo.name = AbilityConfig::SCENEBOARD_ABILITY_NAME;
+        request.abilityInfo.type = AbilityType::EXTENSION;
+        auto record = AbilityRecord::CreateAbilityRecord(request);
+        if (record != nullptr) {
+            record->SetOwnerMissionUserId(DIRECT_BOOT_TEST_USER);
+        }
+        return record;
+    }
+
+    StrictMock<DirectBootKillClient> *client_ = nullptr;
+    std::unique_ptr<AppMgrClient> oldClient_;
+};
+} // namespace
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_ScbDeathKillsOnlyEnabledDirectBootApps, TestSize.Level1)
+{
+    DirectBootKillContext context;
+    context.Register(context.Target("direct.app"));
+    context.Register(context.Target("normal.app", false));
+    context.Register(context.Target("disabled.app"), false);
+    auto other = context.Target("other.user");
+    other.userId = OTHER_USER;
+    context.Register(other);
+    auto record = context.SceneBoardRecord();
+    ASSERT_NE(record, nullptr);
+    ASSERT_TRUE(record->IsSceneBoard());
+    EXPECT_CALL(*context.client_, KillApplication("direct.app", false, 0,
+        "SceneBoardDiedDirectBoot", DIRECT_BOOT_TEST_USER)).WillOnce(Return(RESULT_OK));
+    context.abilityManager_->OnAbilityDied(record);
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_OtherAbilityDeathDoesNotKillApps, TestSize.Level1)
+{
+    DirectBootKillContext context;
+    context.Register(context.Target("direct.app"));
+    auto record = MockAbilityRecord(AbilityType::EXTENSION);
+    ASSERT_NE(record, nullptr);
+    record->SetOwnerMissionUserId(DIRECT_BOOT_TEST_USER);
+    EXPECT_CALL(*context.client_, KillApplication(_, _, _, _, _)).Times(0);
+    context.abilityManager_->OnAbilityDied(nullptr);
+    context.abilityManager_->OnAbilityDied(record);
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_ScbCleanupDeduplicatesAppsAndSeparatesClones, TestSize.Level1)
+{
+    DirectBootKillContext context;
+    auto first = context.Target("direct.app");
+    context.Register(first);
+    auto second = first;
+    second.abilityName = "SecondAbility";
+    context.Register(second);
+    auto clone = first;
+    clone.appCloneIndex = 1;
+    context.Register(clone);
+    EXPECT_CALL(*context.client_, KillApplication("direct.app", false, 0,
+        "SceneBoardDiedDirectBoot", DIRECT_BOOT_TEST_USER)).WillOnce(Return(RESULT_OK));
+    EXPECT_CALL(*context.client_, KillApplication("direct.app", false, 1,
+        "SceneBoardDiedDirectBoot", DIRECT_BOOT_TEST_USER)).WillOnce(Return(RESULT_OK));
+    context.abilityManager_->KillDirectBootApps(DIRECT_BOOT_TEST_USER);
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_ScbCleanupContinuesAfterKillFailure, TestSize.Level1)
+{
+    DirectBootKillContext context;
+    context.Register(context.Target("first.app"));
+    context.Register(context.Target("second.app"));
+    InSequence sequence;
+    EXPECT_CALL(*context.client_, KillApplication("first.app", false, 0,
+        "SceneBoardDiedDirectBoot", DIRECT_BOOT_TEST_USER)).WillOnce(Return(ERROR_KILL_APPLICATION));
+    EXPECT_CALL(*context.client_, KillApplication("second.app", false, 0,
+        "SceneBoardDiedDirectBoot", DIRECT_BOOT_TEST_USER)).WillOnce(Return(RESULT_OK));
+    context.abilityManager_->KillDirectBootApps(DIRECT_BOOT_TEST_USER);
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_ScbCleanupDoesNotChangeRegistrationAfterUnlock, TestSize.Level1)
+{
+    DirectBootKillContext context;
+    context.Register(context.Target("direct.app"));
+    auto entries = context.store_->entries;
+    auto writes = context.store_->writes;
+    UserController::GetInstance().DeleteUserLockStatus(DIRECT_BOOT_TEST_USER);
+    UserController::GetInstance().SetUserLockStatus(DIRECT_BOOT_TEST_USER, UserLockStatus::USER_UNLOCKED);
+    EXPECT_CALL(*context.client_, KillApplication("direct.app", false, 0,
+        "SceneBoardDiedDirectBoot", DIRECT_BOOT_TEST_USER)).WillOnce(Return(RESULT_OK));
+    context.abilityManager_->KillDirectBootApps(DIRECT_BOOT_TEST_USER);
+    EXPECT_EQ(context.store_->writes, writes);
+    ASSERT_EQ(context.store_->entries.size(), entries.size());
+    for (size_t i = 0; i < entries.size(); ++i) {
+        EXPECT_EQ(context.store_->entries[i].key.ToString(), entries[i].key.ToString());
+        EXPECT_EQ(context.store_->entries[i].value.ToString(), entries[i].value.ToString());
+    }
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_ScbCleanupInvalidContextDoesNotKillApps, TestSize.Level1)
+{
+    DirectBootKillContext context;
+    context.Register(context.Target("direct.app"));
+    EXPECT_CALL(*context.client_, KillApplication(_, _, _, _, _)).Times(0);
+    context.abilityManager_->KillDirectBootApps(-1);
+    context.store_->readResult = DistributedKv::Status::ERROR;
+    context.abilityManager_->KillDirectBootApps(DIRECT_BOOT_TEST_USER);
+    context.abilityManager_->abilityAutoStartupService_.reset();
+    context.abilityManager_->KillDirectBootApps(DIRECT_BOOT_TEST_USER);
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_ScbCleanupUsesExecutionUserForSharedRecords, TestSize.Level1)
+{
+    DirectBootKillContext context;
+    auto info = context.Target("shared.app");
+    info.userId = 0;
+    context.Register(info);
+    EXPECT_CALL(*context.client_, KillApplication("shared.app", false, 0,
+        "SceneBoardDiedDirectBoot", DIRECT_BOOT_TEST_USER)).WillOnce(Return(RESULT_OK));
+    context.abilityManager_->KillDirectBootApps(DIRECT_BOOT_TEST_USER);
+}
+
+HWTEST_F(AbilityManagerServiceFirstTest, DirectBoot_ScbCleanupSkipsInvalidAppIdentity, TestSize.Level1)
+{
+    DirectBootKillContext context;
+    auto info = context.Target("invalid.app");
+    info.appCloneIndex = -1;
+    context.Register(info);
+    info.appCloneIndex = AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX + 1;
+    context.Register(info);
+    info.appCloneIndex = 0;
+    info.bundleName.clear();
+    context.Register(info);
+    EXPECT_CALL(*context.client_, KillApplication(_, _, _, _, _)).Times(0);
+    context.abilityManager_->KillDirectBootApps(DIRECT_BOOT_TEST_USER);
+}
 
 } // namespace AAFwk
 } // namespace OHOS

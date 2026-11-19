@@ -21,7 +21,8 @@
 #include "ffrt.h"
 #include "hilog_tag_wrapper.h"
 #include "startup_util.h"
-
+#include "start_ability_utils.h"
+#include "global_constant.h"
 namespace OHOS {
 namespace AAFwk {
 namespace {
@@ -60,13 +61,13 @@ int32_t OEExtensionUtils::ValidateCaller(
         return ERR_INVALID_CALLER;
     }
 
-    if (want.GetElement().GetBundleName() != abilityInfo.bundleName) {
+    if (want.GetBundleNameRef() != abilityInfo.bundleName) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "want bundleName %{public}s does not match caller bundleName %{public}s",
-            want.GetElement().GetBundleName().c_str(), abilityInfo.bundleName.c_str());
+            want.GetBundleNameRef().c_str(), abilityInfo.bundleName.c_str());
         return INVALID_PARAMETERS_ERR;
     }
 
-    if (want.GetElement().GetAbilityName().empty()) {
+    if (want.GetAbilityNameRef().empty()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "want abilityName is empty");
         return INVALID_PARAMETERS_ERR;
     }
@@ -79,8 +80,9 @@ int32_t OEExtensionUtils::ValidateCaller(
     }
 
     int32_t appIndex = 0;
-    if (!AbilityRuntime::StartupUtil::GetAppIndex(want, appIndex) ||
-        (appIndex != 0 && appIndex != abilityRecord->GetAppIndex())) {
+    if (!StartAbilityUtils::GetAppIndex(want, callerToken, userId, appIndex) ||
+        (appIndex != 0 && appIndex != abilityRecord->GetAppIndex() &&
+         appIndex != AbilityRuntime::GlobalConstant::PC_TABLET_INDEX)) {
         return ERR_APP_CLONE_INDEX_INVALID;
     }
     const_cast<Want &>(want).SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, appIndex);

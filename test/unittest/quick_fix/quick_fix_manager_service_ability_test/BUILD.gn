@@ -28,13 +28,14 @@ ohos_unittest("quick_fix_manager_service_ability_test") {
     "quick_fix_manager_service_ability_test.cpp",
   ]
 
-  deps = []
+  deps = [
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_innerkits_path}/quick_fix:quickfix_manager",
+  ]
 
   configs = [ "${ability_runtime_services_path}/common:common_config" ]
 
   external_deps = [
-    "ability_runtime:app_manager",
-    "ability_runtime:quickfix_manager",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",

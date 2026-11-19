@@ -17,7 +17,6 @@
 #define private public
 #define protected public
 #include "ability_manager_service.h"
-#include "interceptor/ability_jump_interceptor.h"
 #include "interceptor/ecological_rule_interceptor.h"
 #include "interceptor/disposed_rule_interceptor.h"
 #include "interceptor/kiosk_interceptor.h"
@@ -29,6 +28,7 @@
 #include "interceptor/control_interceptor.h"
 #include "interceptor/crowd_test_interceptor.h"
 #include "permission_constants.h"
+#include "start_ability_context.h"
 #include "start_ability_utils.h"
 
 using namespace testing;
@@ -99,9 +99,8 @@ HWTEST_F(AbilityInterceptorTest, CrowdTestInterceptor_001, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     executer->AddInterceptor("CrowdTest", std::make_shared<CrowdTestInterceptor>());
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, true, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(true).CallerToken(nullptr).Build();
     int result = executer->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
 }
@@ -120,9 +119,7 @@ HWTEST_F(AbilityInterceptorTest, CrowdTestInterceptor_002, TestSize.Level1)
     want.SetElement(element);
     int userId = 100;
     executer->AddInterceptor("CrowdTest", std::make_shared<CrowdTestInterceptor>());
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, 0, userId, false, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, userId).WithUI(false).CallerToken(nullptr).Build();
     int result = executer->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
 }
@@ -142,9 +139,8 @@ HWTEST_F(AbilityInterceptorTest, ControlInterceptor_001, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     executer->AddInterceptor("Control", std::make_shared<ControlInterceptor>());
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, true, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(true).CallerToken(nullptr).Build();
     int result = executer->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
 }
@@ -163,9 +159,7 @@ HWTEST_F(AbilityInterceptorTest, ControlInterceptor_002, TestSize.Level1)
     want.SetElement(element);
     int userId = 100;
     executer->AddInterceptor("Control", std::make_shared<ControlInterceptor>());
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, 0, userId, false, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, userId).WithUI(false).CallerToken(nullptr).Build();
     int result = executer->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
 }
@@ -184,9 +178,7 @@ HWTEST_F(AbilityInterceptorTest, ControlInterceptor_003, TestSize.Level1)
     want.SetElement(element);
     int userId = 100;
     executer->AddInterceptor("Control", std::make_shared<ControlInterceptor>());
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, 0, userId, false, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, userId).WithUI(false).CallerToken(nullptr).Build();
     int result = executer->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
 }
@@ -205,9 +197,7 @@ HWTEST_F(AbilityInterceptorTest, ControlInterceptor_004, TestSize.Level1)
     want.SetElement(element);
     int userId = 100;
     executer->AddInterceptor("Control", std::make_shared<ControlInterceptor>());
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, 0, userId, false, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, userId).WithUI(false).CallerToken(nullptr).Build();
     int result = executer->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
 }
@@ -229,9 +219,7 @@ HWTEST_F(AbilityInterceptorTest, ControlInterceptor_005, TestSize.Level1)
     // make appControlRule become nullptr by crowdtest interceptor
     executer->AddInterceptor("CrowdTest", std::make_shared<CrowdTestInterceptor>());
     executer->AddInterceptor("Control", std::make_shared<ControlInterceptor>());
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, 0, userId, false, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param = InterceptorParamBuilder(want, 0, userId).WithUI(false).CallerToken(nullptr).Build();
     int result = executer->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
 }
@@ -251,9 +239,8 @@ HWTEST_F(AbilityInterceptorTest, DisposedRuleInterceptor_001, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     executer->AddInterceptor("DisposedRule", std::make_shared<DisposedRuleInterceptor>());
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, false, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(false).CallerToken(nullptr).Build();
     int result = executer->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
 }
@@ -273,9 +260,8 @@ HWTEST_F(AbilityInterceptorTest, DisposedRuleInterceptor_002, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     executer->AddInterceptor("Disposed", std::make_shared<DisposedRuleInterceptor>());
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, true, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(true).CallerToken(nullptr).Build();
     int result = executer->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
 }
@@ -295,9 +281,8 @@ HWTEST_F(AbilityInterceptorTest, DisposedRuleInterceptor_003, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     executer->AddInterceptor("DisposedRule", std::make_shared<DisposedRuleInterceptor>());
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, true, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(true).CallerToken(nullptr).Build();
     int result = executer->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
 }
@@ -317,9 +302,8 @@ HWTEST_F(AbilityInterceptorTest, DisposedRuleInterceptor_004, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     executer->AddInterceptor("DisposedRule", std::make_shared<DisposedRuleInterceptor>());
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, true, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(true).CallerToken(nullptr).Build();
     int result = executer->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
 }
@@ -339,9 +323,8 @@ HWTEST_F(AbilityInterceptorTest, DisposedRuleInterceptor_005, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     executer->AddInterceptor("DisposedRule", std::make_shared<DisposedRuleInterceptor>());
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, true, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(true).CallerToken(nullptr).Build();
     int result = executer->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
 }
@@ -360,9 +343,8 @@ HWTEST_F(AbilityInterceptorTest, DisposedRuleInterceptor_006, TestSize.Level1)
     want.SetElement(element);
     int requestCode = 0;
     int userId = 100;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, true, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(true).CallerToken(nullptr).Build();
     int result = executer->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
 }
@@ -475,7 +457,9 @@ HWTEST_F(AbilityInterceptorTest, DisposedRuleInterceptor_012, TestSize.Level1)
     std::shared_ptr<DisposedRuleInterceptor> executer = std::make_shared<DisposedRuleInterceptor>();
     Want want;
     AppExecFwk::DisposedRule disposedRule;
-    ErrCode result = executer->StartNonBlockRule(want, disposedRule, 0);
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->uid = 0;
+    ErrCode result = executer->StartNonBlockRule(want, disposedRule, abilityInfo);
     EXPECT_EQ(result, ERR_OK);
 }
 
@@ -492,7 +476,9 @@ HWTEST_F(AbilityInterceptorTest, DisposedRuleInterceptor_013, TestSize.Level1)
     Want want;
     want.SetBundle(bundleName);
     DisposedRule disposedRule;
-    ErrCode result = executer->StartNonBlockRule(want, disposedRule, 0);
+    auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
+    abilityInfo->uid = 0;
+    ErrCode result = executer->StartNonBlockRule(want, disposedRule, abilityInfo);
     EXPECT_EQ(result, ERR_OK);
 }
 
@@ -514,212 +500,6 @@ HWTEST_F(AbilityInterceptorTest, DisposedRuleInterceptor_015, TestSize.Level1)
 }
 
 /**
- * @tc.name: AbilityInterceptorTest_AbilityJumpInterceptor_001
- * @tc.desc: DoProcess
- * @tc.type: FUNC
- * @tc.require: No
- */
-HWTEST_F(AbilityInterceptorTest, AbilityJumpInterceptor_001, TestSize.Level1)
-{
-    std::shared_ptr<AbilityJumpInterceptor> interceptor = std::make_shared<AbilityJumpInterceptor>();
-    Want want;
-    int requestCode = 0;
-    int userId = 100;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, false, nullptr,
-        shouldBlockFunc);
-    int result = interceptor->DoProcess(param);
-    EXPECT_EQ(result, ERR_OK);
-}
-
-/**
- * @tc.name: AbilityInterceptorTest_AbilityJumpInterceptor_002
- * @tc.desc: DoProcess
- * @tc.type: FUNC
- * @tc.require: No
- */
-HWTEST_F(AbilityInterceptorTest, AbilityJumpInterceptor_002, TestSize.Level1)
-{
-    std::shared_ptr<AbilityJumpInterceptor> interceptor = std::make_shared<AbilityJumpInterceptor>();
-    std::string bundleName = "interceptor_callerBundleName";
-    Want want;
-    want.SetBundle(bundleName);
-    int requestCode = 0;
-    int userId = 100;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, true, nullptr,
-        shouldBlockFunc);
-    int result = interceptor->DoProcess(param);
-    EXPECT_EQ(result, ERR_OK);
-}
-
-/**
- * @tc.name: AbilityInterceptorTest_AbilityJumpInterceptor_003
- * @tc.desc: DoProcess
- * @tc.type: FUNC
- * @tc.require: No
- */
-HWTEST_F(AbilityInterceptorTest, AbilityJumpInterceptor_003, TestSize.Level1)
-{
-    std::shared_ptr<AbilityJumpInterceptor> interceptor = std::make_shared<AbilityJumpInterceptor>();
-    Want want;
-    ElementName element("", "com.test.jumpinterceptor", "MainAbility", "entry");
-    want.SetElement(element);
-    int requestCode = 1;
-    int userId = 100;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, true, nullptr,
-        shouldBlockFunc);
-    int result = interceptor->DoProcess(param);
-    EXPECT_EQ(result, ERR_OK);
-}
-
-/**
- * @tc.name: AbilityInterceptorTest_AbilityJumpInterceptor_004
- * @tc.desc: CheckControl
- * @tc.type: FUNC
- * @tc.require: No
- */
-HWTEST_F(AbilityInterceptorTest, AbilityJumpInterceptor_004, TestSize.Level1)
-{
-    std::shared_ptr<AbilityJumpInterceptor> interceptor = std::make_shared<AbilityJumpInterceptor>();
-    std::shared_ptr<AppExecFwk::BundleMgrHelper> bundleMgrHelper = std::make_shared<AppExecFwk::BundleMgrHelper>();
-    Want want;
-    int32_t userId = 10;
-    AppExecFwk::AppJumpControlRule controlRule;
-    bool result = interceptor->CheckControl(bundleMgrHelper, want, userId, controlRule);
-    EXPECT_EQ(result, false);
-}
-
-/**
- * @tc.name: AbilityInterceptorTest_AbilityJumpInterceptor_005
- * @tc.desc: CheckControl
- * @tc.type: FUNC
- * @tc.require: No
- */
-HWTEST_F(AbilityInterceptorTest, AbilityJumpInterceptor_005, TestSize.Level1)
-{
-    std::shared_ptr<AbilityJumpInterceptor> interceptor = std::make_shared<AbilityJumpInterceptor>();
-    std::shared_ptr<AppExecFwk::BundleMgrHelper> bundleMgrHelper = std::make_shared<AppExecFwk::BundleMgrHelper>();
-    std::string bundleName = "interceptor_callerBundleName";
-    Want want;
-    int32_t userId = 10;
-    AppExecFwk::AppJumpControlRule controlRule;
-    bool result = interceptor->CheckControl(bundleMgrHelper, want, userId, controlRule);
-    EXPECT_EQ(result, false);
-}
-
-/**
- * @tc.name: AbilityInterceptorTest_AbilityJumpInterceptor_006
- * @tc.desc: CheckControl
- * @tc.type: FUNC
- * @tc.require: No
- */
-HWTEST_F(AbilityInterceptorTest, AbilityJumpInterceptor_006, TestSize.Level1)
-{
-    std::shared_ptr<AbilityJumpInterceptor> interceptor = std::make_shared<AbilityJumpInterceptor>();
-    std::shared_ptr<AppExecFwk::BundleMgrHelper> bundleMgrHelper = std::make_shared<AppExecFwk::BundleMgrHelper>();
-    std::string bundleName = "interceptor_callerBundleName";
-    Want want;
-    want.SetBundle(bundleName);
-    int32_t userId = 10;
-    AppExecFwk::AppJumpControlRule controlRule;
-    controlRule.callerPkg = "interceptor_callerBundleName";
-    bool result = interceptor->CheckControl(bundleMgrHelper, want, userId, controlRule);
-    EXPECT_EQ(result, false);
-}
-
-/**
- * @tc.name: AbilityInterceptorTest_AbilityJumpInterceptor_007
- * @tc.desc: CheckControl
- * @tc.type: FUNC
- * @tc.require: No
- */
-HWTEST_F(AbilityInterceptorTest, AbilityJumpInterceptor_007, TestSize.Level1)
-{
-    std::shared_ptr<AbilityJumpInterceptor> interceptor = std::make_shared<AbilityJumpInterceptor>();
-    std::shared_ptr<AppExecFwk::BundleMgrHelper> bundleMgrHelper = std::make_shared<AppExecFwk::BundleMgrHelper>();
-    std::string bundleName = "BundleName";
-    Want want;
-    want.SetBundle(bundleName);
-    int32_t userId = 10;
-    AppExecFwk::AppJumpControlRule controlRule;
-    controlRule.callerPkg = "interceptor_callerBundleName";
-    bool result = interceptor->CheckControl(bundleMgrHelper, want, userId, controlRule);
-    EXPECT_EQ(result, false);
-}
-
-/**
- * @tc.name: AbilityInterceptorTest_AbilityJumpInterceptor_008
- * @tc.desc: CheckIfJumpExempt
- * @tc.type: FUNC
- * @tc.require: No
- */
-HWTEST_F(AbilityInterceptorTest, AbilityJumpInterceptor_008, TestSize.Level1)
-{
-    std::shared_ptr<AbilityJumpInterceptor> interceptor = std::make_shared<AbilityJumpInterceptor>();
-    AppExecFwk::AppJumpControlRule controlRule;
-    controlRule.callerPkg = "interceptor_callerBundleName";
-    int32_t userId = 10;
-    bool result = interceptor->CheckIfJumpExempt(controlRule, userId);
-    EXPECT_EQ(result, false);
-}
-
-/**
- * @tc.name: AbilityInterceptorTest_AbilityJumpInterceptor_009
- * @tc.desc: CheckIfJumpExempt
- * @tc.type: FUNC
- * @tc.require: No
- */
-HWTEST_F(AbilityInterceptorTest, AbilityJumpInterceptor_009, TestSize.Level1)
-{
-    std::shared_ptr<AbilityJumpInterceptor> interceptor = std::make_shared<AbilityJumpInterceptor>();
-    AppExecFwk::AppJumpControlRule controlRule;
-    controlRule.targetPkg = "interceptor_callerBundleName";
-    int32_t userId = 10;
-    bool result = interceptor->CheckIfJumpExempt(controlRule, userId);
-    EXPECT_EQ(result, false);
-}
-
-/**
- * @tc.name: AbilityInterceptorTest_AbilityJumpInterceptor_010
- * @tc.desc: CheckIfExemptByBundleName
- * @tc.type: FUNC
- * @tc.require: No
- */
-HWTEST_F(AbilityInterceptorTest, AbilityJumpInterceptor_010, TestSize.Level1)
-{
-    std::shared_ptr<AbilityJumpInterceptor> interceptor = std::make_shared<AbilityJumpInterceptor>();
-    std::string bundleName = "interceptor_callerBundleName";
-    std::string permission = PermissionConstants::PERMISSION_EXEMPT_AS_CALLER;
-    int32_t userId = 10;
-    bool result = interceptor->CheckIfExemptByBundleName(bundleName, permission, userId);
-    EXPECT_EQ(result, false);
-}
-
-/**
- * @tc.name: AbilityInterceptorTest_AbilityJumpInterceptor_011
- * @tc.desc: CheckIfExemptByBundleName
- * @tc.type: FUNC
- * @tc.require: No
- */
-HWTEST_F(AbilityInterceptorTest, AbilityJumpInterceptor_011, TestSize.Level1)
-{
-    std::shared_ptr<AbilityJumpInterceptor> interceptor = std::make_shared<AbilityJumpInterceptor>();
-    std::string bundleName = "interceptor_callerBundleName";
-    Want want;
-    want.SetBundle(bundleName);
-    int32_t abilityuserId = 0;
-    int32_t appIndex = 0;
-    StartAbilityUtils::startAbilityInfo =  StartAbilityInfo::CreateStartExtensionInfo(want,
-            abilityuserId, appIndex);
-    std::string permission = PermissionConstants::PERMISSION_EXEMPT_AS_CALLER;
-    int32_t userId = 10;
-    bool result = interceptor->CheckIfExemptByBundleName(bundleName, permission, userId);
-    EXPECT_EQ(result, false);
-}
-
-/**
  * @tc.name: AbilityInterceptorTest_EcologicalRuleInterceptor_001
  * @tc.desc: DoProcess
  * @tc.type: FUNC
@@ -731,9 +511,8 @@ HWTEST_F(AbilityInterceptorTest, EcologicalRuleInterceptor_001, TestSize.Level1)
     Want want;
     int requestCode = 0;
     int userId = 100;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, false, nullptr,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(false).CallerToken(nullptr).Build();
     ErrCode result = interceptor->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
 }
@@ -753,9 +532,8 @@ HWTEST_F(AbilityInterceptorTest, EcologicalRuleInterceptor_002, TestSize.Level1)
     int requestCode = 0;
     int userId = 100;
     sptr<IRemoteObject> token;
-    auto shouldBlockFunc = []() { return false; };
-    AbilityInterceptorParam param = AbilityInterceptorParam(want, requestCode, userId, true, token,
-        shouldBlockFunc);
+    AbilityInterceptorParam param =
+        InterceptorParamBuilder(want, requestCode, userId).WithUI(true).CallerToken(token).Build();
     ErrCode result = interceptor->DoProcess(param);
     EXPECT_EQ(result, ERR_OK);
 }
@@ -771,7 +549,8 @@ HWTEST_F(AbilityInterceptorTest, EcologicalRuleInterceptor_003, TestSize.Level1)
     std::shared_ptr<EcologicalRuleInterceptor> interceptor = std::make_shared<EcologicalRuleInterceptor>();
     Want want;
     int userId = 100;
-    bool result = interceptor->DoProcess(want, userId);
+    StartAbilityContext ctx;
+    bool result = interceptor->DoProcess(ctx, want, userId);
     EXPECT_EQ(result, true);
 }
 } // namespace AAFwk

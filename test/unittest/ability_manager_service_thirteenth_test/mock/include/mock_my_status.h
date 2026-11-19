@@ -16,8 +16,12 @@
 #ifndef MOCK_MY_STATUS_H
 #define MOCK_MY_STATUS_H
 
+#include <functional>
 #include <string>
+#include <vector>
 
+#include "appmgr/running_process_info.h"
+#include "iremote_object.h"
 #include "scene_board/ui_ability_record.h"
 #include "base_extension_record.h"
 
@@ -32,6 +36,7 @@ public:
     };
 
     bool auIsLaunchEmbededUIAbility_ = true;
+    bool auIsForbidStart_ = false;
     int atkGetTokenTypeFlag_ = 0;
     bool smhGetUIAbilityManagerByUid_ = true;
     bool smhGetUIAbilityManagerByUserId_ = true;
@@ -41,6 +46,7 @@ public:
     bool smhVerificationAllToken_ = true;
     std::shared_ptr<UIAbilityRecord> ualmGetAbilityRecordByToken_ = nullptr;
     int ualmGetSessionIdByAbilityToken_ = 0;
+    bool ualmIsBackToCallerApp_ = false;
     int fimStartFreeInstall_ = ERR_OK;
     int eriQueryAtomicServiceStartupRule_ = ERR_OK;
     std::shared_ptr<AbilityRecord> arGetAbilityRecord_ = nullptr;
@@ -51,6 +57,8 @@ public:
     uint32_t ipcGetCallingTokenID_ = 1;
     uint32_t ipcGetSelfTokenID_ = 1;
     int permPermission_ = 1;
+    int permConnectAgentFromBackground_ = 0;
+    bool permVerifyBlockAllAppStartPermission_ = false;
     bool perJudgeCallerIsAllowedToUseSystemAPI_ = true;
     bool paramGetBoolParameter_ = true;
     std::shared_ptr<BaseExtensionRecord> acmGetUIExtensionBySessionInfo_ = nullptr;
@@ -63,6 +71,38 @@ public:
     int32_t fimConnectExtensionType_ = -1;
     std::string fimConnectLocalDeviceId_;
     int32_t softbusGetLocalNodeDeviceInfo_ = ERR_OK;
+    bool auIsSupportDelayedProcessExit_ = false;
+    bool auIsSupportBlockAllAppStart_ = true;
+    int32_t oeuValidateCallerResult_ = ERR_OK;
+    int32_t oeuValidateCallerUserId_ = 0;
+    std::string oeuValidateCallerHostBundleName_;
+    int32_t amcGetProcessInfoRet_ = ERR_OK;
+    AppExecFwk::AppProcessState amcProcessState_ = AppExecFwk::AppProcessState::APP_STATE_FOREGROUND;
+    // AppScheduler mock: tokens returned by GetAbilityRecordsByProcessID and the call
+    // counter of NotifyAppMgrRecordExitReasonCompability, for kill-info gating tests.
+    std::vector<sptr<IRemoteObject>> asGetAbilityRecordsTokens_;
+    int asNotifyExitReasonCompabilityCount_ = 0;
+    // AppScheduler mock: managed-process (skill attribution) observability.
+    int asRegisterManagedCount_ = 0;
+    std::string asRegisterManagedTaskId_;
+    int32_t asRegisterManagedPid_ = 0;
+    int32_t asRegisterManagedTool_ = 0;
+    int32_t asRegisterManagedCallerUid_ = 0;
+    int32_t asRegisterManagedRet_ = ERR_OK;
+    int64_t asRegisterManagedAttributionId_ = 1;
+    // Synchronous hook fired inside RegisterManagedProcess before the counters update;
+    // lets a test act while the register call is still in flight (deterministic window).
+    std::function<void()> asRegisterManagedHook_ = nullptr;
+    int asUnregisterManagedCount_ = 0;
+    std::string asUnregisterManagedTaskId_;
+    int64_t asUnregisterManagedAttributionId_ = 0;
+    int32_t asUnregisterManagedCallerUid_ = 0;
+    // AccessTokenKit mock: GetHapTokenInfo result for the skill notify path (-1 = keep the
+    // legacy "lookup fails" behavior).
+    int atkGetHapTokenInfoRet_ = -1;
+    std::string atkHapTokenInfoBundleName_;
+    // UIAbilityLifecycleManager mock: record returned by GetUIAbilityRecordBySessionInfo.
+    std::shared_ptr<UIAbilityRecord> ualmGetUIAbilityRecordBySessionInfo_ = nullptr;
 };
 } // namespace AAFwk
 } // namespace OHOS

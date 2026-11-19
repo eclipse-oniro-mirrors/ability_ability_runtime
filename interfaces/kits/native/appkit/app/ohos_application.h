@@ -81,6 +81,8 @@ public:
     virtual void OnConfigurationUpdated(Configuration config,
         AbilityRuntime::SetLevel level = AbilityRuntime::SetLevel::System,
         ConfigUpdateReason reason = ConfigUpdateReason::CONFIG_UPDATE_REASON_DEFAULT);
+    void MarkBrandColorChanged(Configuration &config);
+    void UnMarkBrandColorChanged(Configuration &config);
 
     /**
      *
@@ -152,11 +154,13 @@ public:
      * @brief add the ability stage when a hap first load
      *
      * @param hapModuleInfo
+     * @param preloadAbilityName The ability name for preload scenario
      * @return Returns true on success, false on failure
      */
     bool AddAbilityStage(
         const AppExecFwk::HapModuleInfo &hapModuleInfo,
-        const std::function<void()> &callback, bool &isAsyncCallback);
+        const std::function<void()> &callback, bool &isAsyncCallback,
+        const std::string &preloadAbilityName = "");
 
     /**
      * @brief remove the ability stage when all of the abilities in the hap have been removed
@@ -238,7 +242,9 @@ public:
     void SetAppEnv(const std::vector<AppEnvironment>& appEnvironments);
 
     void AutoStartupDone(const std::shared_ptr<AbilityLocalRecord> &abilityRecord,
-        const std::shared_ptr<AbilityRuntime::AbilityStage> &abilityStage, const std::string &moduleName);
+        const std::shared_ptr<AbilityRuntime::AbilityStage> &abilityStage, const std::string &moduleName,
+        const std::function<void(const std::shared_ptr<AbilityRuntime::Context> &)> &callback,
+        bool &isAsyncCallback);
 
     void AutoStartupDone(const std::shared_ptr<AbilityRuntime::AbilityStage> &abilityStage,
         const AppExecFwk::HapModuleInfo &hapModuleInfo);
@@ -286,6 +292,17 @@ private:
     void PreloadHybridModule(const HapModuleInfo &hapModuleInfo) const;
     void LoadDeduplicatedHarResource(
         const std::shared_ptr<AbilityRuntime::AbilityStageContext> &stageContext);
+    void SetLaunchElementForStage(
+        const std::shared_ptr<AbilityRuntime::AbilityStageContext> &stageContext,
+        const std::shared_ptr<AppExecFwk::HapModuleInfo> &moduleInfo,
+        const std::string &abilityName);
+    std::shared_ptr<AbilityRuntime::AbilityStageContext> CreateAndInitStageContext(
+        const AppExecFwk::HapModuleInfo &hapModuleInfo);
+    bool ExecuteAutoStartupTasks(std::shared_ptr<AbilityRuntime::AbilityStage> abilityStage,
+        const AppExecFwk::HapModuleInfo &hapModuleInfo,
+        const std::function<void()> &callback,
+        bool &isAsyncCallback,
+        const std::shared_ptr<AbilityRuntime::AbilityStageContext> &stageContext);
 
     const std::function<void()> CreateFirstStartupCallbackForRecord(
         std::shared_ptr<AbilityRuntime::AbilityStage> abilityStage,
@@ -310,7 +327,9 @@ private:
 
     void AddAbility(std::shared_ptr<AbilityRuntime::AbilityStage> abilityStage,
         const sptr<IRemoteObject> &token,
-        const std::shared_ptr<AppExecFwk::AbilityLocalRecord> &abilityRecord);
+        const std::shared_ptr<AppExecFwk::AbilityLocalRecord> &abilityRecord,
+        const std::function<void(const std::shared_ptr<AbilityRuntime::Context> &)> &callback,
+        bool &isAsyncCallback);
 
 #ifdef SUPPORT_SCREEN
     void RegisterGetAllUIAbilitiesCallback(

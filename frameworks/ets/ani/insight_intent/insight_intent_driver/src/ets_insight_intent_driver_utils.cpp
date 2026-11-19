@@ -18,9 +18,8 @@
 #include <cstdint>
 
 #include "ability_state.h"
-#include "ani_common_cache_mgr.h"
+#include "ani_common_json_util.h"
 #include "ani_common_util.h"
-#include "ani_common_want.h"
 #include "ani_enum_convert.h"
 #include "hilog_tag_wrapper.h"
 
@@ -112,6 +111,12 @@ ani_object CreateEtsEntityInfo(ani_env *env, const EntityInfoForQuery &info)
     env->Object_SetPropertyByName_Ref(objValue, "entityCategory", AppExecFwk::GetAniString(env, info.entityCategory));
     env->Object_SetPropertyByName_Ref(objValue, "parameters", CreateInsightIntentInfoParam(env, info.parameters));
     env->Object_SetPropertyByName_Ref(objValue, "parentClassName", AppExecFwk::GetAniString(env, info.parentClassName));
+    env->Object_SetPropertyByName_Ref(objValue, "isQueryable", AppExecFwk::CreateBoolean(env, info.isQueryable()));
+    if (!info.supportedQueryProperties.empty()) {
+        ani_object stringArray = nullptr;
+        AppExecFwk::WrapArrayString(env, stringArray, info.supportedQueryProperties);
+        env->Object_SetPropertyByName_Ref(objValue, "supportedQueryProperties", stringArray);
+    }
     return objValue;
 }
 
@@ -449,40 +454,33 @@ ani_object CreateEtsFormInfoForQuery(ani_env *env, const FormInfoForQuery &info)
     return objValue;
 }
 
-bool CreateEmptyRecordObject(ani_env *env, ani_object &recordObject)
-{
-    ani_class recordCls = nullptr;
-    ani_method recordCtorMethod = nullptr;
-    AppExecFwk::AniCommonMethodCacheKey recordCtor = std::make_pair("<ctor>", ":");
-    if (!AppExecFwk::AniCommonCacheMgr::GetCachedClassAndMethod(env, "std.core.Record", recordCtor,
-        recordCls, recordCtorMethod)) {
-        return false;
-    }
-    ani_status status = env->Object_New(recordCls, recordCtorMethod, &recordObject);
-    if (status != ANI_OK) {
-        TAG_LOGE(AAFwkTag::ANI, "Object_New failed: %{public}d", status);
-        return false;
-    }
-    return true;
-}
-
 ani_object CreateInsightIntentInfoParam(ani_env *env, const std::string &paramStr)
 {
     ani_object recordObject;
     if (paramStr.empty()) {
         TAG_LOGE(AAFwkTag::INTENT, "paramStr empty");
-        CreateEmptyRecordObject(env, recordObject);
+        AppExecFwk::CreateEmptyAniRecord(env, recordObject);
         return recordObject;
     }
     nlohmann::json jsonObject = nlohmann::json::parse(paramStr, nullptr, false);
     if (jsonObject.is_discarded()) {
         TAG_LOGE(AAFwkTag::INTENT, "Parse param str fail");
-        CreateEmptyRecordObject(env, recordObject);
+        AppExecFwk::CreateEmptyAniRecord(env, recordObject);
         return recordObject;
     }
 
-    if (!AppExecFwk::CreateRecordObjectFromJson(env, jsonObject, recordObject)) {
+    if (!AppExecFwk::CreateAniRecordFromJson(env, jsonObject, recordObject)) {
         TAG_LOGE(AAFwkTag::INTENT, "failed to create record object from json");
+        return nullptr;
+    }
+    return recordObject;
+}
+
+ani_object CreateInsightIntentInfoWithJson(ani_env *env, const nlohmann::json &jsonObject)
+{
+    ani_object recordObject = nullptr;
+    if (!AppExecFwk::CreateAniRecordFromJson(env, jsonObject, recordObject)) {
+        TAG_LOGE(AAFwkTag::INTENT, "failed to create InsightIntent record object from JSON");
         return nullptr;
     }
     return recordObject;
@@ -505,24 +503,32 @@ ani_object CreateEtsInsightIntentInfoForQueryArray(ani_env *env, const std::vect
         return nullptr;
     }
 
+    // Convert every item first; a single failed item is skipped instead of
+    // dropping all remaining valid items.
+    std::vector<ani_ref> validInfos;
+    validInfos.reserve(infos.size());
+    for (auto &intentInfo : infos) {
+        ani_ref intentInfoRef = CreateEtsInsightIntentInfoForQuery(env, intentInfo);
+        if (intentInfoRef == nullptr) {
+            TAG_LOGE(AAFwkTag::INTENT, "null intentInfoRef, skip corrupt item");
+            continue;
+        }
+        validInfos.emplace_back(intentInfoRef);
+    }
+
     ani_object arrayObj = nullptr;
-    status = env->Object_New(arrayCls, arrayCtor, &arrayObj, infos.size());
+    status = env->Object_New(arrayCls, arrayCtor, &arrayObj, validInfos.size());
     if (status != ANI_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "status : %{public}d", status);
         return arrayObj;
     }
 
     ani_size index = 0;
-    for (auto &intentInfo : infos) {
-        ani_ref intentInfoRef = CreateEtsInsightIntentInfoForQuery(env, intentInfo);
-        if (intentInfoRef == nullptr) {
-            TAG_LOGE(AAFwkTag::INTENT, "null intentInfoRef");
-            break;
-        }
+    for (auto &intentInfoRef : validInfos) {
         status = env->Object_CallMethodByName_Void(arrayObj, "$_set", "iY:", index, intentInfoRef);
         if (status != ANI_OK) {
             TAG_LOGE(AAFwkTag::INTENT, "status : %{public}d", status);
-            break;
+            continue;
         }
         index++;
     }
@@ -662,6 +668,28 @@ ani_object CreateEtsInsightIntentInfoForQuery(ani_env *env, const InsightIntentI
     return objValue;
 }
 
+void SetInsightIntentSubInfo(ani_env *env, ani_object objValue, const InsightIntentInfoForQuery &info)
+{
+    if (info.intentType == INSIGHT_INTENTS_TYPE_LINK) {
+        env->Object_SetPropertyByName_Ref(objValue, "subIntentInfo", CreateEtsLinkInfoForQuery(env, info.linkInfo));
+    } else if (info.intentType == INSIGHT_INTENTS_TYPE_PAGE) {
+        env->Object_SetPropertyByName_Ref(objValue, "subIntentInfo", CreateEtsPageInfoForQuery(env, info.pageInfo));
+    } else if (info.intentType == INSIGHT_INTENTS_TYPE_ENTRY) {
+        env->Object_SetPropertyByName_Ref(
+            objValue, "subIntentInfo", CreateEtsEntryInfoForQuery(env, info.entryInfo));
+    } else if (info.intentType == INSIGHT_INTENTS_TYPE_FUNCTION) {
+        env->Object_SetPropertyByName_Ref(
+            objValue, "subIntentInfo", CreateEtsFunctionInfoForQuery(env, info.functionInfo));
+    } else if (info.intentType == INSIGHT_INTENTS_TYPE_FORM) {
+        env->Object_SetPropertyByName_Ref(objValue, "subIntentInfo", CreateEtsFormInfoForQuery(env, info.formInfo));
+    } else {
+        if (info.isConfig) {
+            env->Object_SetPropertyByName_Ref(
+                objValue, "subIntentInfo", CreateEtsEntryInfoForQuery(env, info.entryInfo));
+        }
+    }
+}
+
 void SetInsightIntentInfo(ani_env *env, ani_object objValue, const InsightIntentInfoForQuery &info)
 {
     env->Object_SetPropertyByName_Ref(objValue, "bundleName", AppExecFwk::GetAniString(env, info.bundleName));
@@ -687,28 +715,14 @@ void SetInsightIntentInfo(ani_env *env, ani_object objValue, const InsightIntent
     ani_object stringArray = nullptr;
     AppExecFwk::WrapArrayString(env, stringArray, info.keywords);
     env->Object_SetPropertyByName_Ref(objValue, "keywords", stringArray);
+    ani_object permissionArray = nullptr;
+    AppExecFwk::WrapArrayString(env, permissionArray, info.permissions);
+    env->Object_SetPropertyByName_Ref(objValue, "permissions", permissionArray);
     if (!info.develoType.empty()) {
         env->Object_SetPropertyByName_Ref(objValue, "developType", AppExecFwk::GetAniString(env, info.develoType));
     }
     env->Object_SetPropertyByName_Ref(objValue, "entities", CreateEtsEntityInfoForArray(env, info.entities));
-    if (info.intentType == INSIGHT_INTENTS_TYPE_LINK) {
-        env->Object_SetPropertyByName_Ref(objValue, "subIntentInfo", CreateEtsLinkInfoForQuery(env, info.linkInfo));
-    } else if (info.intentType == INSIGHT_INTENTS_TYPE_PAGE) {
-        env->Object_SetPropertyByName_Ref(objValue, "subIntentInfo", CreateEtsPageInfoForQuery(env, info.pageInfo));
-    } else if (info.intentType == INSIGHT_INTENTS_TYPE_ENTRY) {
-        env->Object_SetPropertyByName_Ref(
-            objValue, "subIntentInfo", CreateEtsEntryInfoForQuery(env, info.entryInfo));
-    } else if (info.intentType == INSIGHT_INTENTS_TYPE_FUNCTION) {
-        env->Object_SetPropertyByName_Ref(
-            objValue, "subIntentInfo", CreateEtsFunctionInfoForQuery(env, info.functionInfo));
-    } else if (info.intentType == INSIGHT_INTENTS_TYPE_FORM) {
-        env->Object_SetPropertyByName_Ref(objValue, "subIntentInfo", CreateEtsFormInfoForQuery(env, info.formInfo));
-    } else {
-        if (info.isConfig) {
-            env->Object_SetPropertyByName_Ref(
-                objValue, "subIntentInfo", CreateEtsEntryInfoForQuery(env, info.entryInfo));
-        }
-    }
+    SetInsightIntentSubInfo(env, objValue, info);
     if (info.isConfig) {
         env->Object_SetPropertyByName_Ref(
             objValue, "subIntentInfoForConfiguration", CreateEtsConfigIntentInfo(env, info));

@@ -24,30 +24,13 @@
 #include "form_extension.h"
 #include "form_mgr_errors.h"
 #include "form_supply_proxy.h"
+#include "form_want.h"
 #include "hilog_tag_wrapper.h"
 #include "ipc_skeleton.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
 using namespace OHOS::AppExecFwk;
-namespace {
-    const std::vector<const std::string> REMOVE_PARAMS = {
-        Constants::FORM_CONNECT_ID,
-        Constants::ACQUIRE_TYPE,
-        Constants::FORM_SUPPLY_INFO,
-        Constants::PARAM_FORM_HOST_TOKEN,
-        Constants::FORM_COMP_ID,
-        Constants::FORM_DENSITY,
-        Constants::FORM_PROCESS_ON_ADD_SURFACE,
-        Constants::FORM_ALLOW_UPDATE,
-        Constants::PARAM_LAYOUT_WIDTH_KEY,
-        Constants::PARAM_LAYOUT_HEIGHT_KEY,
-        Constants::PARAM_FORM_VIEW_SCALE,
-        Constants::IS_ADD_FORM_BY_HOST,
-        Constants::PARAM_DELETE_BACKGROUND_IMAGE,
-        Constants::PARAM_FORM_COLOR_MODE_KEY
-    };
-}
 
 int FormExtensionProviderClient::AcquireProviderFormInfo(const AppExecFwk::FormJsInfo &formJsInfo, const Want &want,
     const sptr<IRemoteObject> &callerToken)
@@ -105,9 +88,7 @@ void FormExtensionProviderClient::AcquireFormExtensionProviderInfo(const AppExec
     } else {
         Want createWant(want);
         createWant.SetParam(Constants::PARAM_FORM_IDENTITY_KEY, std::to_string(formJsInfo.formId));
-        for (const std::string &param : REMOVE_PARAMS) {
-            createWant.RemoveParam(param);
-        }
+        createWant = FormWant::FilterInternalParams(createWant);
         createWant.SetElement(want.GetElement());
         if (!createWant.HasParameter(Constants::LAUNCH_REASON_KEY)) {
             createWant.SetParam(Constants::LAUNCH_REASON_KEY, Constants::FORM_DEFAULT);
@@ -629,6 +610,12 @@ int FormExtensionProviderClient::NotifyFormLocationUpdate(const int64_t formId, 
     const sptr<IRemoteObject> &callerToken)
 {
     TAG_LOGD(AAFwkTag::FORM_EXT, "called");
+    std::pair<int, int> errorCode = CheckParam(want, callerToken);
+    if (errorCode.first != ERR_OK) {
+        TAG_LOGE(AAFwkTag::FORM_EXT, "CheckParam failed: %{public}d", errorCode.first);
+        return errorCode.second;
+    }
+
     std::shared_ptr<EventHandler> mainHandler = std::make_shared<EventHandler>(EventRunner::GetMainEventRunner());
     std::function<void()> notifyFormLocationExtensionUpdateFunc = [client = sptr<FormExtensionProviderClient>(this),
         formId, want, callerToken]() {

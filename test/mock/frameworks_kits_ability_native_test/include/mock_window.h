@@ -72,11 +72,13 @@ public:
         const Rect& rect = Rect::EMPTY_RECT, int32_t apiVersion = API_VERSION_INVALID) {return WMError::WM_OK;}
     virtual WMError SetLayoutFullScreen(bool status) {return WMError::WM_OK;}
     virtual WMError SetFullScreen(bool status) {return WMError::WM_OK;}
-    virtual WMError Destroy(uint32_t reason = 0) {return WMError::WM_OK;}
+    virtual WMError Destroy(uint32_t reason = 0, bool isFromInnerkits = false) {return WMError::WM_OK;}
     virtual WMError Show(uint32_t reason = 0, bool withAnimation = false,
-        bool withFocus = true) {return WMError::WM_OK;}
+        bool withFocus = true, int32_t requestId = INVALID_REQUEST_ID,
+        int32_t scbRequestId = INVALID_REQUEST_ID) {return WMError::WM_OK;}
     virtual WMError Show(uint32_t reason, bool withAnimation,
-        bool withFocus, bool needAttach) {return WMError::WM_OK;}
+        bool withFocus, bool waitAttach, int32_t requestId = INVALID_REQUEST_ID,
+        int32_t scbRequestId = INVALID_REQUEST_ID) {return WMError::WM_OK;}
     virtual WMError Hide(uint32_t reason = 0, bool withAnimation = false,
         bool isFromInnerkits = true) {return WMError::WM_OK;}
     virtual WMError Hide(uint32_t reason, bool withAnimation,

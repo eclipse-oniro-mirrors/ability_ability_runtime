@@ -41,7 +41,10 @@
 #include "ipc_skeleton.h"
 #include "lifecycle_deal.h"
 #include "lifecycle_state_info.h"
+#include "sandbox_clone_params.h"
 #include "session_info.h"
+#include "start_specified_ability_params.h"
+#include "ui_ability_last_caller_info.h"
 #include "ui_extension_window_command.h"
 #include "uri.h"
 #include "want.h"
@@ -104,14 +107,31 @@ public:
      * foreground the ability.
      *
      */
-    void ForegroundAbility(uint32_t sceneFlag = 0, bool hasLastWant = false);
+    void ForegroundAbility(uint32_t sceneFlag = 0);
     void ForegroundUIExtensionAbility(uint32_t sceneFlag = 0);
 
     /**
      * process request of foregrounding the ability.
      *
+     * @param tokenId the caller token id.
+     * @param options foreground options.
+     * @param isCallBySCB whether the foreground request is initiated by SCB.
      */
-    void ProcessForegroundAbility(uint32_t tokenId, const ForegroundOptions &options = {});
+    void ProcessForegroundAbility(uint32_t tokenId, const ForegroundOptions &options = {},
+        bool isCallBySCB = false);
+    void HandleBackgroundToForeground(const ForegroundOptions &options, bool isCallBySCB);
+
+    /**
+     * Get the real caller info of last UIAbility foreground, replace caller with SCB(launcher)
+     * when the foreground request is initiated by SCB or the caller info is unavailable.
+     *
+     * @param callerUid the caller uid.
+     * @param callerBundleName the caller bundle name.
+     * @param isCallBySCB whether the foreground request is initiated by SCB.
+     * @return the real caller info including uid and bundle name.
+     */
+    AppExecFwk::UiAbilityLastCallerInfo GetRealLastCallerInfo(int32_t callerUid,
+        const std::string &callerBundleName, bool isCallBySCB);
 
      /**
      * post foreground timeout task for ui ability.
@@ -227,6 +247,8 @@ public:
     void UpdateRecoveryInfo(bool hasRecoverInfo);
 
     bool GetRecoveryInfo();
+
+    void EvaluateRecoveryLaunchReason();
 
 #ifdef SUPPORT_SCREEN
     inline bool IsStartingWindow() const
@@ -360,6 +382,28 @@ public:
      *
      */
     Want GetWant() const;
+    std::string GetAbilityName() const;
+    std::string GetBundleName() const;
+    std::string GetModuleName() const;
+    std::string GetStringParam(const std::string &key) const;
+    int GetIntParam(const std::string &key, int defaultValue) const;
+    bool GetBoolParam(const std::string &key, bool defaultValue) const;
+    bool HasParameter(const std::string &key) const;
+
+    inline const std::string &GetInfoAbilityName() const
+    {
+        return abilityInfo_.name;
+    }
+
+    inline const std::string &GetInfoBundleName() const
+    {
+        return abilityInfo_.bundleName;
+    }
+
+    inline const std::string &GetInfoModuleName() const
+    {
+        return abilityInfo_.moduleName;
+    }
 
     /**
      * remove signature info of want.
@@ -519,6 +563,10 @@ public:
     void SetStartSetting(const std::shared_ptr<AbilityStartSetting> &setting);
     std::shared_ptr<AbilityStartSetting> GetStartSetting() const;
 
+    void SetSandboxCloneParams(const std::shared_ptr<SandboxCloneParams> &params);
+    std::shared_ptr<SandboxCloneParams> GetSandboxCloneParams() const;
+    void InitSandboxCloneParams(const AbilityRequest &abilityRequest);
+
     void SetRestarting(const bool isRestart);
     void SetRestarting(const bool isRestart, int32_t canReStartCount);
     int32_t GetRestartCount() const;
@@ -541,6 +589,9 @@ public:
     int32_t GetAppIndex() const;
     void SetWantAppIndex(const int32_t appIndex);
     int32_t GetWantAppIndex() const;
+    void SetWantParam(const std::string &key, int32_t value);
+    void RemoveInsightIntent();
+    void RemoveSkillParam();
     bool IsRestarting() const;
     void SetAppState(const AppState &state);
     AppState GetAppState() const;
@@ -574,18 +625,20 @@ public:
     void NotifyCallersOnTerminate();
     bool IsStartedByCall() const;
     void SetStartedByCall(const bool isFlag);
+    int32_t GetByCallStatus() const;
     void CallRequest();
     bool CallRequestDone(const sptr<IRemoteObject> &callStub) const;
     bool IsStartToBackground() const;
     void SetStartToBackground(const bool flag);
     bool IsStartToForeground() const;
     void SetStartToForeground(const bool flag);
-    bool IsCallerSetProcess() const;
-    void SetCallerSetProcess(const bool flag);
     void SetSessionInfo(sptr<SessionInfo> sessionInfo);
     void UpdateSessionInfo(sptr<IRemoteObject> sessionToken);
+    void FillProcessInfoFromSession(AbilityRuntime::LoadParam &loadParam) const;
     void SetMinimizeReason(bool fromUser);
     void SetSceneFlag(uint32_t sceneFlag);
+    void SetIsFromScreenOffBackground(bool isFromScreenOffBackground);
+    bool IsFromScreenOffBackground() const;
     bool IsMinimizeFromUser() const;
     void SetClearMissionFlag(bool clearMissionFlag);
     bool IsClearMissionFlag();
@@ -595,6 +648,7 @@ public:
     void SetWindowMode(int32_t windowMode);
     void RemoveWindowMode();
     LifeCycleStateInfo lifeCycleStateInfo_;                // target life state info
+    bool isFromScreenOffBackground_ = false;              // mark if background caused by screen off
 
     bool CanRestartRootLauncher();
 
@@ -622,6 +676,7 @@ public:
 
     void SetAttachDebug(const bool isAttachDebug);
     void SetAssertDebug(bool isAssertDebug);
+    void SetDebugApp(bool isDebugApp);
     int32_t CreateModalUIExtension(const Want &want);
 
     AppExecFwk::ElementName GetElementName() const;
@@ -686,6 +741,12 @@ public:
 #ifdef SUPPORT_UPMS
     void GrantUriPermission();
 
+    // Grant FileEntity URIs grouped by their own flag, reusing the generic grant in UriUtils.
+    void GrantFileEntityUriPermission();
+
+    // Grant foreground URI permission (generic URI and FileEntity) for the foreground start.
+    void GrantForegroundUriPermission(uint32_t tokenId, const ForegroundOptions &options);
+
     void GrantUriPermission(const std::vector<std::string> &uriVec, int32_t flag,
         const std::string &targetBundleName, uint32_t callerTokenId);
 #endif // SUPPORT_UPMS
@@ -708,6 +769,16 @@ public:
     bool GetSecurityFlag() const
     {
         return securityFlag_;
+    }
+
+    void SetDlpCustomFlag(int32_t dlpCustomFlag)
+    {
+        dlpCustomFlag_ = dlpCustomFlag;
+    }
+
+    int32_t GetDlpCustomFlag() const
+    {
+        return dlpCustomFlag_;
     }
 
     bool IsPluginAbility() const
@@ -742,41 +813,6 @@ public:
 
     void NotifyAbilityRequestSuccess(const std::string &requestId, const AppExecFwk::ElementName &element);
     void NotifyAbilitiesRequestDone(const std::string &requestKey, int32_t resultCode);
-
-    inline void SetLaunchWant(std::shared_ptr<Want> launchWant)
-    {
-        launchWant_ = launchWant;
-    }
-
-    inline std::shared_ptr<Want> GetLaunchWant() const
-    {
-        return launchWant_;
-    }
-
-    inline void SetLastWant(std::shared_ptr<Want> lastWant)
-    {
-        lastWant_ = lastWant;
-    }
-
-    inline bool HasLastWant() const
-    {
-        return lastWant_ != nullptr;
-    }
-
-    inline void SetBackgroundDrivenFlag(bool isLastWantBackgroundDriven)
-    {
-        isLastWantBackgroundDriven_.store(isLastWantBackgroundDriven);
-    }
-
-    inline void SetOnNewWantSkipScenarios(int32_t scenarios)
-    {
-        scenarios_.store(scenarios);
-    }
-
-    inline int32_t GetOnNewWantSkipScenarios() const
-    {
-        return scenarios_.load();
-    }
 
     inline void SetPreloadStart(bool isPreloadStart)
     {
@@ -925,7 +961,6 @@ protected:
         int32_t byCallCallerSaPid = -1;
     };
     static std::atomic<int64_t> abilityRecordId;
-    std::atomic_bool isCallerSetProcess_ = false;       // new version
     std::atomic_bool backgroundAbilityWindowDelayed_ = false;
     bool isReady_ = false;                            // is ability thread attached?
     bool isWindowStarted_ = false;                     // is window hotstart or coldstart?
@@ -959,16 +994,20 @@ protected:
     bool isRestartApp_ = false; // Only app calling RestartApp can be set to true
     bool isLaunching_ = true;
     bool securityFlag_ = false;
+    int32_t dlpCustomFlag_ = 0;
     bool isHook_ = false;
     bool isPluginAbility_ = false;
     bool isPrelaunch_ = false;
     std::atomic<bool> isGameSAPreLaunch_ = false;
+    std::shared_ptr<SandboxCloneParams> sandboxCloneParams_ = nullptr;
 
     int32_t uiExtensionAbilityId_ = 0;                // uiextension ability id
     int32_t uid_ = 0;
     pid_t pid_ = 0;
     int32_t missionId_ = -1;
     int32_t ownerMissionUserId_ = -1;
+    int32_t scbUid_ = -1;
+    mutable ffrt::mutex scbUidLock_;
     uint32_t extensionProcessMode_ = 0;       // new version
     int32_t appIndex_ = 0;          // new version
     int32_t restartCount_ = -1;
@@ -1001,21 +1040,17 @@ protected:
     std::shared_ptr<CallContainer> callContainer_ = nullptr;       // new version
     std::shared_ptr<Want> connectWant_ = nullptr;
     std::shared_ptr<CallerAbilityInfo> saCallerInfo_ = nullptr;
-    std::shared_ptr<Want> launchWant_ = nullptr;
-    std::shared_ptr<Want> lastWant_ = nullptr;
     std::shared_ptr<UIAbilityProperty> uiAbilityProperty_ = nullptr;
 
     LaunchDebugInfo launchDebugInfo_;
     WindowConfig windowConfig_;
 
-    int64_t startTime_ = 0;                           // records first time of ability start
+    std::atomic_int64_t startTime_ = 0;                           // records first time of ability start
     int64_t restartTime_ = 0;                         // the time of last trying restart
     std::atomic<AbilityState> pendingState_ = AbilityState::INITIAL;    // pending life state
     std::atomic<AbilityVisibilityState> abilityVisibilityState_ = AbilityVisibilityState::INITIAL;
     std::atomic_bool isPrepareTerminateAbilityCalled_ = false;
     std::atomic_bool isPrepareTerminateAbilityDone_ = false;
-    std::atomic_bool isLastWantBackgroundDriven_ = false;
-    std::atomic<int32_t> scenarios_ = 0;
     std::atomic<bool> isPreloaded_ = false;
     std::atomic<bool> isFrozenByPreload_ = false;
     std::atomic<bool> isAbilityConnectionReported_ = false;
@@ -1050,6 +1085,7 @@ protected:
     bool isKillForPermissionUpdate_ = false;
     mutable bool isDumpTimeout_ = false;
     bool isPrepareTerminate_ = false;
+    bool hasRecoverInfo_ = false;
 
 #ifdef SUPPORT_SCREEN
     bool isStartingWindow_ = false;

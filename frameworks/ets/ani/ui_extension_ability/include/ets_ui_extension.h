@@ -148,7 +148,9 @@ private:
     ani_object CreateETSContext(ani_env *env, std::shared_ptr<UIExtensionContext> context, int32_t screenMode);
 
     bool CallObjectMethod(bool withResult, const char *name, const char *signature, ...);
+    ani_object CallObjectMethodRef(const char *name, const char *signature, ...);
     ani_status CallOnDisconnect(const AAFwk::Want &want, bool withResult = false);
+    bool OnGetConfigurationStrategy(const sptr<AAFwk::SessionInfo> &sessionInfo);
     void DestroyWindow(const sptr<AAFwk::SessionInfo> &sessionInfo) override;
     bool ForegroundWindowInitInsightIntentExecutorInfo(const AAFwk::Want &want,
         const sptr<AAFwk::SessionInfo> &sessionInfo, InsightIntentExecutorInfo &executorInfo,
@@ -161,7 +163,7 @@ private:
     std::unique_ptr<AppExecFwk::ETSNativeReference> CreateAppWindowStage(sptr<Rosen::Window> uiWindow,
         sptr<AAFwk::SessionInfo> sessionInfo);
     sptr<Rosen::Window> CreateUIWindow(const std::shared_ptr<UIExtensionContext> context,
-        const sptr<AAFwk::SessionInfo> &sessionInfo);
+        const sptr<AAFwk::SessionInfo> &sessionInfo, const AAFwk::Want &want);
     bool IsEmbeddableStart(int32_t screenMode);
     void ExecuteInsightIntentDone(uint64_t intentId, const InsightIntentExecuteResult &result);
     bool BindNativeMethods();

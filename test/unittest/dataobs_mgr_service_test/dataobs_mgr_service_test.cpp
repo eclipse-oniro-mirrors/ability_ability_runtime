@@ -929,6 +929,104 @@ HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_GetFocusedWindowInfo
     GTEST_LOG_(INFO) << "AaFwk_DataObsMgrServiceTest_GetFocusedWindowInfo_0001 end";
 }
 
+/*
+ * Feature: DataObsMgrService with NotifyProcessObserver
+ * Function: IsFocusedApp
+ * SubFunction: NA
+ * FunctionPoints: DataObsMgrService IsFocusedApp
+ * EnvConditions: NA
+ * CaseDescription: Verify that a system ability caller is allowed.
+ */
+HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_IsFocusedApp_0001, TestSize.Level1)
+{
+    auto dataObsMgrServer = DelayedSingleton<DataObsMgrService>::GetInstance();
+    uint32_t tokenId = Security::AccessToken::DEFAULT_TOKEN_VERSION;
+    auto idInner = reinterpret_cast<Security::AccessToken::AccessTokenIDInner *>(&tokenId);
+    idInner->type = Security::AccessToken::TOKEN_NATIVE;
+
+    EXPECT_TRUE(dataObsMgrServer->IsFocusedApp(tokenId));
+}
+
+/*
+ * Feature: DataObsMgrService with NotifyProcessObserver
+ * Function: IsFocusedApp
+ * SubFunction: NA
+ * FunctionPoints: DataObsMgrService IsFocusedApp
+ * EnvConditions: NA
+ * CaseDescription: Verify that a HAP caller with invalid token information is denied.
+ */
+HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_IsFocusedApp_0002, TestSize.Level1)
+{
+    auto dataObsMgrServer = DelayedSingleton<DataObsMgrService>::GetInstance();
+    uint32_t tokenId = Security::AccessToken::DEFAULT_TOKEN_VERSION;
+    auto idInner = reinterpret_cast<Security::AccessToken::AccessTokenIDInner *>(&tokenId);
+    idInner->type = Security::AccessToken::TOKEN_HAP;
+
+    EXPECT_FALSE(dataObsMgrServer->IsFocusedApp(tokenId));
+}
+
+/*
+ * Feature: DataObsMgrService with NotifyProcessObserver
+ * Function: IsFocusedApp
+ * SubFunction: NA
+ * FunctionPoints: DataObsMgrService IsFocusedApp
+ * EnvConditions: NA
+ * CaseDescription: Verify that a non-SA and non-HAP caller is denied.
+ */
+HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_IsFocusedApp_0003, TestSize.Level1)
+{
+    auto dataObsMgrServer = DelayedSingleton<DataObsMgrService>::GetInstance();
+    uint32_t tokenId = Security::AccessToken::DEFAULT_TOKEN_VERSION;
+    auto idInner = reinterpret_cast<Security::AccessToken::AccessTokenIDInner *>(&tokenId);
+    idInner->type = Security::AccessToken::TOKEN_SHELL;
+
+    EXPECT_FALSE(dataObsMgrServer->IsFocusedApp(tokenId));
+}
+
+/*
+ * Feature: DataObsMgrService with NotifyProcessObserver
+ * Function: NotifyProcessObserver
+ * SubFunction: NA
+ * FunctionPoints: DataObsMgrService NotifyProcessObserver
+ * EnvConditions: NA
+ * CaseDescription: Verify that an untrusted HAP caller is denied before starting the progress ability.
+ */
+HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_NotifyProcessObserver_0001, TestSize.Level1)
+{
+    auto dataObsMgrServer = DelayedSingleton<DataObsMgrService>::GetInstance();
+    auto originalToken = GetSelfTokenID();
+    uint32_t tokenId = Security::AccessToken::DEFAULT_TOKEN_VERSION;
+    auto idInner = reinterpret_cast<Security::AccessToken::AccessTokenIDInner *>(&tokenId);
+    idInner->type = Security::AccessToken::TOKEN_HAP;
+    SetSelfTokenID(tokenId);
+
+    EXPECT_EQ(DATAOBS_PERMISSION_DENY, dataObsMgrServer->NotifyProcessObserver("test_progress_key", nullptr));
+
+    SetSelfTokenID(originalToken);
+}
+
+/*
+ * Feature: DataObsMgrService with NotifyProcessObserver
+ * Function: NotifyProcessObserver
+ * SubFunction: NA
+ * FunctionPoints: DataObsMgrService NotifyProcessObserver
+ * EnvConditions: NA
+ * CaseDescription: Verify that a non-SA and non-HAP caller is denied before starting the progress ability.
+ */
+HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_NotifyProcessObserver_0002, TestSize.Level1)
+{
+    auto dataObsMgrServer = DelayedSingleton<DataObsMgrService>::GetInstance();
+    auto originalToken = GetSelfTokenID();
+    uint32_t tokenId = Security::AccessToken::DEFAULT_TOKEN_VERSION;
+    auto idInner = reinterpret_cast<Security::AccessToken::AccessTokenIDInner *>(&tokenId);
+    idInner->type = Security::AccessToken::TOKEN_SHELL;
+    SetSelfTokenID(tokenId);
+
+    EXPECT_EQ(DATAOBS_PERMISSION_DENY, dataObsMgrServer->NotifyProcessObserver("test_progress_key", nullptr));
+
+    SetSelfTokenID(originalToken);
+}
+
 /**
  * @tc.name: AaFwk_DataObsMgrServiceTest_RegisterObserver_0500
  * @tc.desc: Test dataObsMgrServer RegisterObserver calling from process that possess TOKEN_NATIVE
@@ -995,6 +1093,74 @@ HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_RegisterObserver_051
 
     SetSelfTokenID(originalToken);
     TAG_LOGI(AAFwkTag::DBOBSMGR, "AaFwk_DataObsMgrServiceTest_RegisterObserver_0510 end");
+}
+
+/**
+ * @tc.name: AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0100
+ * @tc.desc: Test RegisterObserver with uri size exceeding threshold, registration still succeeds
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.step:
+ *     1. Define a long Uri whose string size > 256
+ *     2. Call RegisterObserver
+ *     3. Verify return value is SUCCESS (only fault report, no block)
+ */
+HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::DBOBSMGR, "AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0100 start");
+    auto dataObsMgrServer = std::make_shared<DataObsMgrService>();
+    const sptr<MockDataAbilityObserverStub> dataobsAbility(new (std::nothrow) MockDataAbilityObserverStub());
+    std::string longUriStr = "dataability://device_id/com.domainname.dataability.persondata/person/" +
+        std::string(260, 'a');
+    Uri uri(longUriStr);
+    int32_t ret = dataObsMgrServer->RegisterObserver(uri, dataobsAbility);
+    EXPECT_EQ(ret, SUCCESS);
+    testing::Mock::AllowLeak(dataobsAbility);
+    TAG_LOGI(AAFwkTag::DBOBSMGR, "AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0100 end");
+}
+
+/**
+ * @tc.name: AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0200
+ * @tc.desc: Test CheckAndReportUriSizeFault with normal uri size, return SUCCESS
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.step:
+ *     1. Define a normal Uri whose string size <= 256
+ *     2. Call CheckAndReportUriSizeFault
+ *     3. Verify return value is SUCCESS
+ */
+HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::DBOBSMGR, "AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0200 start");
+    auto dataObsMgrServer = std::make_shared<DataObsMgrService>();
+    std::string normalUriStr = "dataability://device_id/com.domainname.dataability.persondata/person/10";
+    Uri uri(normalUriStr);
+    int32_t ret = dataObsMgrServer->CheckAndReportUriSizeFault(uri, 0, __FUNCTION__);
+    EXPECT_EQ(ret, SUCCESS);
+    TAG_LOGI(AAFwkTag::DBOBSMGR, "AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0200 end");
+}
+
+/**
+ * @tc.name: AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0300
+ * @tc.desc: Test RegisterObserverExt with uri size exceeding threshold, registration still succeeds
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.step:
+ *     1. Define a long Uri whose string size > 256
+ *     2. Call RegisterObserverExt
+ *     3. Verify return value is SUCCESS (only fault report, no block)
+ */
+HWTEST_F(DataObsMgrServiceTest, AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::DBOBSMGR, "AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0300 start");
+    auto dataObsMgrServer = std::make_shared<DataObsMgrService>();
+    std::string longUriStr = "dataobs://authority/" + std::string(260, 'b');
+    Uri uri(longUriStr);
+    const sptr<MockDataAbilityObserverStub> dataobsAbility(new (std::nothrow) MockDataAbilityObserverStub());
+    Status ret = dataObsMgrServer->RegisterObserverExt(uri, dataobsAbility, false);
+    EXPECT_EQ(ret, SUCCESS);
+    testing::Mock::AllowLeak(dataobsAbility);
+    TAG_LOGI(AAFwkTag::DBOBSMGR, "AaFwk_DataObsMgrServiceTest_CheckAndReportUriSizeFault_0300 end");
 }
 }  // namespace AAFwk
 }  // namespace OHOS

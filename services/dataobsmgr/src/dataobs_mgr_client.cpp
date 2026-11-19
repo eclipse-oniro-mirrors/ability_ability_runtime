@@ -303,8 +303,7 @@ Status DataObsMgrClient::NotifyChangeExt(const ChangeInfo &changeInfo, DataObsOp
     return dataObsManger->NotifyChangeExt(changeInfo, opt);
 }
 
-Status DataObsMgrClient::NotifyProcessObserver(const std::string &key, const sptr<IRemoteObject> &observer,
-    DataObsOption opt)
+Status DataObsMgrClient::NotifyProcessObserver(const std::string &key, const sptr<IRemoteObject> observer)
 {
     if (key.empty() || observer == nullptr) {
         TAG_LOGE(AAFwkTag::DBOBSMGR, "Null observer, key:%{public}s", key.c_str());
@@ -314,7 +313,7 @@ Status DataObsMgrClient::NotifyProcessObserver(const std::string &key, const spt
     if (errCode != SUCCESS) {
         return DATAOBS_SERVICE_NOT_CONNECTED;
     }
-    return dataObsManger->NotifyProcessObserver(key, observer, opt);
+    return dataObsManger->NotifyProcessObserver(key, observer);
 }
 
 void DataObsMgrClient::ResetService()
@@ -359,7 +358,6 @@ int32_t DataObsMgrClient::TryRegisterObserver(const Uri &uri, sptr<IDataAbilityO
 void DataObsMgrClient::ReRegister()
 {
     decltype(observers_) observers(std::move(observers_));
-    observers_.Clear();
     observers.ForEach([this](const auto &key, const auto &value) {
         for (const auto &val : value) {
             int32_t ret = (val.isExtension)
@@ -374,7 +372,6 @@ void DataObsMgrClient::ReRegister()
         return false;
     });
     decltype(observerExts_) observerExts(std::move(observerExts_));
-    observerExts_.Clear();
     observerExts.ForEach([this](const auto &key, const auto &value) {
         for (const auto &param : value) {
             int32_t ret = RegisterObserverExt(param.uri, key, param.isDescendants);

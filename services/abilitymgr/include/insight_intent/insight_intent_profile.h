@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "insight_intent_execute_param.h"
+#include "nlohmann/json.hpp"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -47,6 +48,7 @@ struct InsightIntentInfo {
     std::vector<std::string> inputParams;
     std::vector<std::string> outputParams;
     std::vector<std::string> keywords;
+    std::vector<std::string> permissions;
     UIAbilityIntentInfo uiAbilityIntentInfo;
     UIExtensionIntentInfo uiExtensionIntentInfo;
     ServiceExtensionIntentInfo serviceExtensionIntentInfo;

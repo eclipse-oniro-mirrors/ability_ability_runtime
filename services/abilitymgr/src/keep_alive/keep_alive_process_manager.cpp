@@ -47,14 +47,20 @@ void CheckStatusBarTask::Cancel()
 
 void CheckStatusBarTask::Run()
 {
-    std::lock_guard<ffrt::mutex> lock(cancelMutex_);
-    if (task_ == nullptr) {
-        TAG_LOGI(AAFwkTag::KEEP_ALIVE, "task is canceled");
-        return;
+    std::function<void()> localTask;
+    {
+        std::lock_guard<ffrt::mutex> lock(cancelMutex_);
+        if (task_ == nullptr) {
+            TAG_LOGI(AAFwkTag::KEEP_ALIVE, "task is canceled");
+            return;
+        }
+        localTask = std::move(task_);
+        task_ = nullptr;
     }
-
     TAG_LOGI(AAFwkTag::KEEP_ALIVE, "run check task");
-    task_();
+    if (localTask) {
+        localTask();
+    }
 }
 
 KeepAliveProcessManager &KeepAliveProcessManager::GetInstance()
@@ -71,7 +77,7 @@ void KeepAliveProcessManager::StartKeepAliveProcessWithMainElement(std::vector<A
     int32_t userId)
 {
     if (!DelayedSingleton<AbilityManagerService>::GetInstance()->IsSceneBoardReady(userId)) {
-        TAG_LOGE(AAFwkTag::KEEP_ALIVE, "SCB not ready, do not start keep-alive apps");
+        TAG_LOGE(AAFwkTag::KEEP_ALIVE, "SCB not ready, do not start keep-alive apps, userId: %{public}d", userId);
         return;
     }
     for (const auto &bundleInfo : bundleInfos) {
@@ -89,7 +95,7 @@ void KeepAliveProcessManager::StartKeepAliveProcessWithMainElementPerBundle(cons
 
     std::string mainElementName;
     if (!MainElementUtils::CheckMainUIAbility(bundleInfo, mainElementName)) {
-        TAG_LOGE(AAFwkTag::KEEP_ALIVE, "bundle has no main uiability");
+        TAG_LOGE(AAFwkTag::KEEP_ALIVE, "bundle has no main uiability, uid: %{public}d", bundleInfo.uid);
         return;
     }
     KeepAliveAbilityInfo info = {
@@ -104,28 +110,46 @@ void KeepAliveProcessManager::StartKeepAliveProcessWithMainElementPerBundle(cons
         bundleInfo.applicationInfo.multiAppMode.multiAppModeType == AppExecFwk::MultiAppModeType::MULTI_INSTANCE;
     auto ret = StartKeepAliveMainAbility(info);
     if (ret == ERR_OK) {
-        TAG_LOGI(AAFwkTag::KEEP_ALIVE, "start ok");
+        TAG_LOGI(AAFwkTag::KEEP_ALIVE, "start ok, bundleName: %{public}s, userId: %{public}d",
+            bundleInfo.name.c_str(), userId);
         AfterStartKeepAliveApp(bundleInfo.name, bundleInfo.applicationInfo.accessTokenId,
             bundleInfo.uid, userId, isMultiInstance);
         return;
     }
 
     TAG_LOGE(AAFwkTag::KEEP_ALIVE, "StartKeepAliveMainAbility failed:%{public}d, retry", ret);
-    ffrt::submit([bundleName = bundleInfo.name, accessTokenId = bundleInfo.applicationInfo.accessTokenId,
-        uid = bundleInfo.uid, userId, info, ret, isMultiInstance]() mutable {
-        for (int tried = 0; tried < MAX_RETRY_TIMES && ret != ERR_OK; tried++) {
-            usleep(RETRY_INTERVAL_MICRO_SECONDS);
-            TAG_LOGI(AAFwkTag::KEEP_ALIVE, "retry attempt:%{public}d", tried + 1);
-            ret = KeepAliveProcessManager::GetInstance().StartKeepAliveMainAbility(info);
-            TAG_LOGI(AAFwkTag::KEEP_ALIVE, "retry result:%{public}d", ret);
-        }
+    auto context = std::make_shared<KeepAliveRetryContext>();
+    context->info = info;
+    context->accessTokenId = bundleInfo.applicationInfo.accessTokenId;
+    context->isMultiInstance = isMultiInstance;
+    context->triedCount = 0;
+    ScheduleRetryTask(context);
+}
+
+void KeepAliveProcessManager::ScheduleRetryTask(std::shared_ptr<KeepAliveRetryContext> context)
+{
+    if (context->triedCount >= MAX_RETRY_TIMES) {
+        TAG_LOGW(AAFwkTag::KEEP_ALIVE, "reach max retry times, failed, bundleName: %{public}s, userId: %{public}d",
+            context->info.bundleName.c_str(), context->info.userId);
+        return;
+    }
+
+    ffrt::task_attr attr;
+    attr.delay(RETRY_INTERVAL_MICRO_SECONDS);
+    ffrt::submit([context]() mutable {
+        TAG_LOGI(AAFwkTag::KEEP_ALIVE, "retry attempt:%{public}d, bundleName: %{public}s, userId: %{public}d",
+            context->triedCount + 1, context->info.bundleName.c_str(), context->info.userId);
+        auto ret = KeepAliveProcessManager::GetInstance().StartKeepAliveMainAbility(context->info);
+        TAG_LOGI(AAFwkTag::KEEP_ALIVE, "retry result:%{public}d, bundleName: %{public}s, userId: %{public}d",
+            ret, context->info.bundleName.c_str(), context->info.userId);
         if (ret != ERR_OK) {
-            TAG_LOGW(AAFwkTag::KEEP_ALIVE, "reach max retry, failed:%{public}d", ret);
+            context->triedCount++;
+            KeepAliveProcessManager::GetInstance().ScheduleRetryTask(context);
             return;
         }
-        KeepAliveProcessManager::GetInstance().AfterStartKeepAliveApp(bundleName, accessTokenId, uid, userId,
-            isMultiInstance);
-    });
+        KeepAliveProcessManager::GetInstance().AfterStartKeepAliveApp(context->info.bundleName,
+            context->accessTokenId, context->info.uid, context->info.userId, context->isMultiInstance);
+        }, attr);
 }
 
 int32_t KeepAliveProcessManager::StartKeepAliveMainAbility(const KeepAliveAbilityInfo &info)
@@ -134,8 +158,8 @@ int32_t KeepAliveProcessManager::StartKeepAliveMainAbility(const KeepAliveAbilit
     want.SetElementName(info.bundleName, info.abilityName);
     want.SetParam(Want::PARAM_APP_CLONE_INDEX_KEY, info.appCloneIndex);
     TAG_LOGI(AAFwkTag::KEEP_ALIVE, "call, bundleName: %{public}s, moduleName: %{public}s, mainElement: %{public}s"
-        " appCloneIndex: %{public}d", info.bundleName.c_str(), info.moduleName.c_str(), info.abilityName.c_str(),
-        info.appCloneIndex);
+        " appCloneIndex: %{public}d, userId: %{public}d", info.bundleName.c_str(), info.moduleName.c_str(),
+        info.abilityName.c_str(), info.appCloneIndex, info.userId);
     StartOptions options;
     if (DelayedSingleton<AbilityManagerService>::GetInstance()->IsSupportStatusBar(info.uid)) {
         options.processOptions = std::make_shared<ProcessOptions>();
@@ -269,13 +293,15 @@ int32_t KeepAliveProcessManager::SetApplicationKeepAlive(const std::string &bund
     CHECK_RET_RETURN_RET(result, "set keep-alive failed");
     IN_PROCESS_CALL_WITHOUT_RET(appMgrClient->SetKeepAliveDkv(bundleName, updateEnable, 0));
     if (!updateEnable && localEnable) {
-        TAG_LOGI(AAFwkTag::KEEP_ALIVE, "unsetting keep-alive");
+        TAG_LOGI(AAFwkTag::KEEP_ALIVE, "unsetting keep-alive, uid: %{public}d", bundleInfo.uid);
         if (!isInner) {
             RemoveCheckStatusBarTask(bundleInfo.uid, true);
         }
         std::vector<AppExecFwk::BundleInfo> bundleInfos{ bundleInfo };
         KeepAliveUtils::NotifyDisableKeepAliveProcesses(bundleInfos, userId);
     }
+    TAG_LOGI(AAFwkTag::KEEP_ALIVE, "SetApplicationKeepAlive success, bundleName: %{public}s, "
+        "userId: %{public}d, updateEnable: %{public}d", bundleName.c_str(), userId, updateEnable);
     return ERR_OK;
 }
 
@@ -405,7 +431,7 @@ int32_t KeepAliveProcessManager::SetAppServiceExtensionKeepAlive(const std::stri
     CHECK_RET_RETURN_RET(result, "permission denied");
 
     CHECK_TRUE_RETURN_RET(bundleName.empty(), INVALID_PARAMETERS_ERR, "input parameter error");
-   
+
     auto bms = AbilityUtil::GetBundleManagerHelper();
     CHECK_POINTER_AND_RETURN(bms, INNER_ERR);
     AppExecFwk::BundleInfo bundleInfo;
@@ -433,6 +459,8 @@ int32_t KeepAliveProcessManager::SetAppServiceExtensionKeepAlive(const std::stri
     result = AbilityKeepAliveService::GetInstance().SetAppServiceExtensionKeepAlive(info, updateEnable);
     CHECK_RET_RETURN_RET(result, "set keep-alive failed");
     IN_PROCESS_CALL_WITHOUT_RET(appMgrClient->SetKeepAliveAppService(bundleName, updateEnable, bundleInfo.uid));
+    TAG_LOGI(AAFwkTag::KEEP_ALIVE, "SetAppServiceExtensionKeepAlive success, bundleName: %{public}s, "
+        "updateEnable: %{public}d, setterId: %{public}d", bundleName.c_str(), updateEnable, info.setterId);
     return ERR_OK;
 }
 
@@ -454,7 +482,7 @@ void KeepAliveProcessManager::StartKeepAliveAppServiceExtensionPerBundle(const A
 {
     auto userId = U1_USER_ID;
     if (!IsKeepAliveBundle(bundleInfo.name, userId)) {
-        TAG_LOGE(AAFwkTag::KEEP_ALIVE, "bundle is not set keep-alive");
+        TAG_LOGE(AAFwkTag::KEEP_ALIVE, "bundle is not set keep-alive, uid: %{public}d", bundleInfo.uid);
         return;
     }
 
@@ -510,7 +538,10 @@ int32_t KeepAliveProcessManager::ClearKeepAliveAppServiceExtension(int32_t userI
 {
     KeepAliveInfo info;
     info.setterId = userId;
-    return AbilityKeepAliveService::GetInstance().ClearKeepAliveAppServiceExtension(info);
+    int32_t ret = AbilityKeepAliveService::GetInstance().ClearKeepAliveAppServiceExtension(info);
+    TAG_LOGI(AAFwkTag::KEEP_ALIVE, "ClearKeepAliveAppServiceExtension finished, userId: %{public}d, ret: %{public}d",
+        userId, ret);
+    return ret;
 }
 
 int32_t KeepAliveProcessManager::CheckPermission()
@@ -550,7 +581,7 @@ int32_t KeepAliveProcessManager::CheckPermissionForEDM()
     return CHECK_PERMISSION_FAILED;
 }
 
-void KeepAliveProcessManager::SaveAppSeriviceRestartAfterUpgrade(const std::string &bundleName, int32_t uid)
+void KeepAliveProcessManager::SaveAppServiceRestartAfterUpgrade(const std::string &bundleName, int32_t uid)
 {
     if (!IsKeepAliveBundle(bundleName, U1_USER_ID)) {
         TAG_LOGE(AAFwkTag::KEEP_ALIVE, "bundle is not set keep-alive");
@@ -570,10 +601,11 @@ void KeepAliveProcessManager::SaveAppSeriviceRestartAfterUpgrade(const std::stri
         return;
     }
 
-    std::lock_guard<std::mutex> lock(restartAfterUpgradeMutex_);
+    std::lock_guard<ffrt::mutex> lock(restartAfterUpgradeMutex_);
     for (const auto& info : infos) {
         if (info.uid_ == uid && info.isKeepAliveAppService) {
             restartAfterUpgradeList_.insert(uid);
+            TAG_LOGI(AAFwkTag::KEEP_ALIVE, "save app service restart after upgrade, uid: %{public}d", uid);
             IN_PROCESS_CALL_WITHOUT_RET(appMgrClient->SetKeepAliveAppService(bundleName, false, uid));
         }
     }
@@ -599,37 +631,39 @@ void KeepAliveProcessManager::SaveKeepAliveAppRestartAfterUpgrade(const std::str
     }
 
     if (isRunning) {
-        std::lock_guard<std::mutex> lock(restartAfterUpgradeMutex_);
-        TAG_LOGD(AAFwkTag::KEEP_ALIVE, "keepAliveApp is running while update. uid: %{public}d", uid);
+        std::lock_guard<ffrt::mutex> lock(restartAfterUpgradeMutex_);
+        TAG_LOGI(AAFwkTag::KEEP_ALIVE, "keepAliveApp is running while update. uid: %{public}d", uid);
         keepAliveRestartAfterUpgradeList_.insert(uid);
     }
 }
 
 bool KeepAliveProcessManager::CheckNeedRestartAfterUpgrade(int32_t uid)
 {
-    std::lock_guard<std::mutex> lock(restartAfterUpgradeMutex_);
+    std::lock_guard<ffrt::mutex> lock(restartAfterUpgradeMutex_);
     auto iter = restartAfterUpgradeList_.find(uid);
     if (iter == restartAfterUpgradeList_.end()) {
         return false;
     }
+    TAG_LOGI(AAFwkTag::KEEP_ALIVE, "remove restart keepAliveAppService uid: %{public}d", uid);
     restartAfterUpgradeList_.erase(iter);
     return true;
 }
 
 bool KeepAliveProcessManager::KeepAliveCheckNeedRestartAfterUpgrade(int32_t uid)
 {
-    std::lock_guard<std::mutex> lock(restartAfterUpgradeMutex_);
+    std::lock_guard<ffrt::mutex> lock(restartAfterUpgradeMutex_);
     auto iter = keepAliveRestartAfterUpgradeList_.find(uid);
     if (iter == keepAliveRestartAfterUpgradeList_.end()) {
         return false;
     }
+    TAG_LOGI(AAFwkTag::KEEP_ALIVE, "remove restart keepAliveApp uid: %{public}d", uid);
     keepAliveRestartAfterUpgradeList_.erase(iter);
     return true;
 }
 
 bool KeepAliveProcessManager::KeepAliveIsRestartAfterUpdate(int32_t uid)
 {
-    std::lock_guard<std::mutex> lock(restartAfterUpgradeMutex_);
+    std::lock_guard<ffrt::mutex> lock(restartAfterUpgradeMutex_);
     return keepAliveRestartAfterUpgradeList_.find(uid) != keepAliveRestartAfterUpgradeList_.end();
 }
 
@@ -637,10 +671,11 @@ void KeepAliveProcessManager::StartKeepAliveAfterAppUpgrade(std::vector<AppExecF
     int32_t uid)
 {
     if (!KeepAliveCheckNeedRestartAfterUpgrade(uid)) {
-        TAG_LOGD(AAFwkTag::KEEP_ALIVE, "keepAlive no need to restart after update. uid: %{public}d", uid);
+        TAG_LOGI(AAFwkTag::KEEP_ALIVE, "keepAliveApp no need to restart after update. uid: %{public}d", uid);
         return;
     }
     int32_t userId = uid / BASE_USER_RANGE;
+    TAG_LOGI(AAFwkTag::KEEP_ALIVE, "start keepAliveApp after update. uid: %{public}d", uid);
     StartKeepAliveProcessWithMainElement(bundleInfos, userId);
 }
 }  // namespace AAFwk

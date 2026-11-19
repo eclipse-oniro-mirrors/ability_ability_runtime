@@ -29,6 +29,7 @@ std::string AgentRuntime::MyFlag::agentCardModuleName;
 std::string AgentRuntime::MyFlag::agentCardAbilityName = "TestAbility";
 bool AgentRuntime::MyFlag::shouldCreateAgentCardAppInfo = true;
 int32_t AgentRuntime::MyFlag::agentCardType = 0;
+std::vector<AgentRuntime::AgentCard> AgentRuntime::MyFlag::agentCardsByBundleName;
 
 namespace AgentRuntime {
 AgentCardMgr &AgentCardMgr::GetInstance()
@@ -50,6 +51,9 @@ int32_t AgentCardMgr::GetAllAgentCards(AgentCardsRawData &cards)
 
 int32_t AgentCardMgr::GetAgentCardsByBundleName(const std::string &bundleName, std::vector<AgentCard> &cards)
 {
+    if (MyFlag::retGetAgentCardsByBundleName == ERR_OK) {
+        cards = MyFlag::agentCardsByBundleName;
+    }
     return MyFlag::retGetAgentCardsByBundleName;
 }
 
@@ -93,6 +97,16 @@ int32_t AgentCardMgr::HandleBundleInstall(const std::string &bundleName, int32_t
 int32_t AgentCardMgr::HandleBundleRemove(const std::string &bundleName, int32_t userId)
 {
     return ERR_OK;
+}
+
+int32_t AgentCardMgr::HandleInstallBackfill(int32_t userId, bool migrationComplete)
+{
+    return ERR_OK;
+}
+
+void AgentCardMgr::BackfillCards()
+{
+    MyFlag::backfillPreInstallCardsCallCount++;
 }
 }  // namespace AgentRuntime
 }  // namespace OHOS

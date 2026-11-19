@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -21,11 +21,13 @@
 #include "accesstoken_kit.h"
 #include "app_scheduler.h"
 #include "ams_configuration_parameter.h"
+#include "event_report.h"
 #include "dialog_session_manager.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
 #include "ipc_skeleton.h"
 #include "global_constant.h"
+#include "exec_options.h"
 #include "permission_verification.h"
 #include "scene_board_judgement.h"
 #include "start_ability_utils.h"
@@ -48,7 +50,16 @@ constexpr const char* COMPONENT_STARTUP_NEW_RULES = "component.startup.newRules"
 constexpr const char* SPECIFIED_ABILITY_FLAG = "ohos.ability.params.specifiedAbilityFlag";
 constexpr const char* SHELL_ASSISTANT_BUNDLENAME = "com.ohos.shell_assistant";
 constexpr const char* UIEXTENSION_TYPE_KEY = "ability.want.params.uiExtensionType";
+const std::string HIDE_SENSITIVE_TYPE = "ohos.media.params.hideSensitiveType";
+constexpr int32_t DEFAULT_HIDE_SENSITIVE_TYPE = 4;
 constexpr int32_t BROKER_UID = 5557;
+
+// Intent and skill param namespaces. These keys are stamped by AMS (never the app) and
+// must round-trip through SCB from the AMS snapshot rather than the SCB-returned copy.
+bool IsIntentOrSkillParam(const std::string &key)
+{
+    return key.rfind("ohos.insightIntent.", 0) == 0 || key.rfind("ohos.skill.executeParam.", 0) == 0;
+}
 }
 
 UpdateCallerInfoUtil &UpdateCallerInfoUtil::GetInstance()
@@ -90,7 +101,6 @@ void UpdateCallerInfoUtil::UpdateCallerInfo(Want& want, const sptr<IRemoteObject
     want.RemoveParam(WANT_PARAMS_APP_RESTART_FLAG);
     want.RemoveParam(IS_SHELL_CALL);
     want.RemoveParam(Want::PARAMS_REAL_CALLER_KEY);
-    want.RemoveParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH);
 
     auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
     if (!abilityRecord) {
@@ -119,6 +129,56 @@ void UpdateCallerInfoUtil::UpdateCallerInfo(Want& want, const sptr<IRemoteObject
     UpdateCallerAbilityName(want, callerAbilityName);
     UpdateCallerAppCloneIndex(want, abilityRecord->GetAppIndex());
     UpdateSignatureInfo(callerBundleName, want);
+}
+
+void UpdateCallerInfoUtil::UpdateCallerInfoByHapTokenId(Want& want, uint32_t callerTokenId)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (callerTokenId == 0) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "UpdateCallerInfoByHapTokenId: invalid tokenId 0");
+        // fail-closed: no proven identity, so no identity at all
+        ClearCallerIdentityParam(want);
+        return;
+    }
+    Security::AccessToken::HapTokenInfo hapInfo;
+    auto ret = Security::AccessToken::AccessTokenKit::GetHapTokenInfo(callerTokenId, hapInfo);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR,
+            "UpdateCallerInfoByHapTokenId: GetHapTokenInfo failed, tokenId=%{public}u", callerTokenId);
+        // fail-closed: no proven identity, so no identity at all
+        ClearCallerIdentityParam(want);
+        return;
+    }
+
+    ClearProtectedWantParam(want);
+    want.RemoveParam(PARAM_RESV_ANCO_CALLER_UID);
+    want.RemoveParam(PARAM_RESV_ANCO_CALLER_BUNDLENAME);
+    want.RemoveParam(Want::PARAM_RESV_CALLER_TOKEN);
+    want.SetParam(Want::PARAM_RESV_CALLER_TOKEN, static_cast<int32_t>(callerTokenId));
+    want.RemoveParam(Want::PARAM_RESV_CALLER_UID);
+    auto bundleMgr = AbilityUtil::GetBundleManagerHelper();
+    if (bundleMgr != nullptr) {
+        int uid = IN_PROCESS_CALL(bundleMgr->GetUidByBundleName(
+            hapInfo.bundleName, hapInfo.userID, hapInfo.instIndex));
+        if (uid >= 0) {
+            want.SetParam(Want::PARAM_RESV_CALLER_UID, uid);
+        } else {
+            TAG_LOGW(AAFwkTag::ABILITYMGR,
+                "UpdateCallerInfoByHapTokenId: GetUidByBundleName failed: %{public}d, skip CALLER_UID", uid);
+        }
+    } else {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "UpdateCallerInfoByHapTokenId: bundleMgr null, skip CALLER_UID");
+    }
+    want.RemoveParam(Want::PARAM_RESV_CALLER_PID);
+    want.SetParam(Want::PARAM_RESV_CALLER_PID, 0);
+    want.RemoveParam(WANT_PARAMS_APP_RESTART_FLAG);
+    want.RemoveParam(IS_SHELL_CALL);
+    want.RemoveParam(Want::PARAMS_REAL_CALLER_KEY);
+
+    UpdateCallerBundleName(want, hapInfo.bundleName);
+    UpdateCallerAbilityName(want, "");
+    UpdateCallerAppCloneIndex(want, hapInfo.instIndex);
+    UpdateSignatureInfo(hapInfo.bundleName, want);
 }
 
 void UpdateCallerInfoUtil::UpdateSignatureInfo(std::string bundleName, Want& want, bool isRemote)
@@ -154,7 +214,6 @@ void UpdateCallerInfoUtil::UpdateAsCallerSourceInfo(Want& want, sptr<IRemoteObje
     want.RemoveParam(IS_SHELL_CALL);
     want.RemoveParam(Want::PARAMS_REAL_CALLER_KEY);
     want.RemoveParam(Want::PARAM_RESV_CALLER_APP_CLONE_INDEX);
-    want.RemoveParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH);
     ClearProtectedWantParam(want);
 #ifdef SUPPORT_SCREEN
     if (UpdateAsCallerInfoFromDialog(want)) {
@@ -258,6 +317,8 @@ void UpdateCallerInfoUtil::UpdateCallerInfoFromToken(Want& want, const sptr<IRem
     auto abilityRecord = Token::GetAbilityRecordByToken(token);
     if (!abilityRecord) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "caller abilityRecord null");
+        // fail-closed: drop any caller-supplied identity instead of trusting it downstream
+        ClearCallerIdentityParam(want);
         return;
     }
     ClearProtectedWantParam(want);
@@ -273,7 +334,6 @@ void UpdateCallerInfoUtil::UpdateCallerInfoFromToken(Want& want, const sptr<IRem
     want.RemoveParam(WANT_PARAMS_APP_RESTART_FLAG);
     want.RemoveParam(IS_SHELL_CALL);
     want.RemoveParam(Want::PARAMS_REAL_CALLER_KEY);
-    want.RemoveParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH);
 
     std::string callerBundleName = abilityRecord->GetAbilityInfo().bundleName;
     want.RemoveParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME);
@@ -292,7 +352,6 @@ void UpdateCallerInfoUtil::UpdateCallerInfoFromToken(Want& want, const sptr<IRem
 void UpdateCallerInfoUtil::UpdateBackToCallerFlag(const sptr<IRemoteObject> &callerToken, Want &want,
     int32_t requestCode, bool backFlag)
 {
-    want.RemoveParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH);
     if (want.HasParameter(CALLER_REQUEST_CODE)) {
         want.RemoveParam(CALLER_REQUEST_CODE);
     }
@@ -317,7 +376,6 @@ void UpdateCallerInfoUtil::UpdateDmsCallerInfo(Want& want, const sptr<IRemoteObj
     int32_t tokenId = static_cast<int32_t>(IPCSkeleton::GetCallingTokenID());
     int32_t callerUid = IPCSkeleton::GetCallingUid();
     ClearProtectedWantParam(want);
-    want.RemoveParam(AbilityRuntime::GlobalConstant::GAME_PRELAUNCH);
 
     auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
     if (!abilityRecord) {
@@ -369,22 +427,114 @@ void UpdateCallerInfoUtil::UpdateCallerAppCloneIndex(Want& want, int32_t appInde
     want.SetParam(Want::PARAM_RESV_CALLER_APP_CLONE_INDEX, appIndex);
 }
 
+void UpdateCallerInfoUtil::CacheCallerInfoFromWant(const Want &want, AbilitySessionInfo &info)
+{
+    info.callerUid = want.GetIntParam(Want::PARAM_RESV_CALLER_UID, 0);
+    info.callerPid = want.GetIntParam(Want::PARAM_RESV_CALLER_PID, 0);
+    info.callerNativeName = want.GetStringParam(Want::PARAM_RESV_CALLER_NATIVE_NAME);
+    info.hasCallerNativeName = want.HasParameter(Want::PARAM_RESV_CALLER_NATIVE_NAME);
+    info.callerAbilityName = want.GetStringParam(Want::PARAM_RESV_CALLER_ABILITY_NAME);
+    info.callerAppId = want.GetStringParam(Want::PARAM_RESV_CALLER_APP_ID);
+    info.callerAppIdentifier = want.GetStringParam(Want::PARAM_RESV_CALLER_APP_IDENTIFIER);
+    info.callerAppCloneIndex = want.GetIntParam(Want::PARAM_RESV_CALLER_APP_CLONE_INDEX, 0);
+    info.taskId = want.GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID);
+    CacheIntentAndSkillParams(want, info);
+}
+
+void UpdateCallerInfoUtil::RestoreCallerInfoToWant(Want &want, const AbilitySessionInfo &info)
+{
+    want.SetParam(Want::PARAM_RESV_CALLER_TOKEN, static_cast<int32_t>(info.callerTokenId));
+    want.SetParam(Want::PARAM_RESV_CALLER_UID, info.callerUid);
+    want.SetParam(Want::PARAM_RESV_CALLER_PID, info.callerPid);
+    want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, info.callerBundleName);
+    if (info.hasCallerNativeName) {
+        want.SetParam(Want::PARAM_RESV_CALLER_NATIVE_NAME, info.callerNativeName);
+    } else {
+        want.RemoveParam(Want::PARAM_RESV_CALLER_NATIVE_NAME);
+    }
+    want.SetParam(Want::PARAM_RESV_CALLER_ABILITY_NAME, info.callerAbilityName);
+    want.SetParam(Want::PARAM_RESV_CALLER_APP_ID, info.callerAppId);
+    want.SetParam(Want::PARAM_RESV_CALLER_APP_IDENTIFIER, info.callerAppIdentifier);
+    want.SetParam(Want::PARAM_RESV_CALLER_APP_CLONE_INDEX, info.callerAppCloneIndex);
+    // No key in the original want: strip whatever the SCB round trip returned.
+    if (info.taskId.empty()) {
+        want.RemoveParam(Want::PARAM_RESV_AGENT_TASK_ID);
+    } else {
+        want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, info.taskId);
+    }
+    RestoreIntentAndSkillParams(want, info);
+}
+
+void UpdateCallerInfoUtil::ClearCallerIdentityParam(Want &want)
+{
+    // Fail-closed cleanup for stamping failure paths: identity params are system-stamped
+    // only, so they are dropped when stamping is not possible. Anco params are DFX-only
+    // and keep their pre-existing passthrough semantics.
+    want.RemoveParam(Want::PARAM_RESV_CALLER_UID);
+    want.RemoveParam(Want::PARAM_RESV_CALLER_PID);
+    want.RemoveParam(Want::PARAM_RESV_CALLER_TOKEN);
+}
+
+void UpdateCallerInfoUtil::CacheIntentAndSkillParams(const Want &want, AbilitySessionInfo &info)
+{
+    // Snapshot every intent and skill param before handing the want to SCB, so the
+    // returned copy can be discarded and the AMS-authored values restored verbatim.
+    const auto &params = want.GetParams().GetParams();
+    for (const auto &[key, value] : params) {
+        if (IsIntentOrSkillParam(key)) {
+            info.intentAndSkillParams.SetParam(key, value);
+        }
+    }
+}
+
+void UpdateCallerInfoUtil::RemoveIntentAndSkillParams(Want &want)
+{
+    auto keys = want.GetParams().KeySet();
+    for (const auto &key : keys) {
+        if (IsIntentOrSkillParam(key)) {
+            TAG_LOGD(AAFwkTag::ABILITYMGR, "remove intent/skill param: %{public}s", key.c_str());
+            want.RemoveParam(key);
+        }
+    }
+}
+
+void UpdateCallerInfoUtil::RestoreIntentAndSkillParams(Want &want, const AbilitySessionInfo &info)
+{
+    // The SCB-returned copy is already stripped by SanitizeWantParams in the stub, so only
+    // the AMS snapshot is written back here.
+    WantParams params = want.GetParams();
+    for (const auto &[key, value] : info.intentAndSkillParams.GetParams()) {
+        params.SetParam(key, value);
+    }
+    want.SetParams(params);
+}
+
 void UpdateCallerInfoUtil::ClearProtectedWantParam(Want &want)
 {
-    if (want.HasParameter(Want::PARAM_RESV_CALLER_NATIVE_NAME)) {
+    // Trace-only reserved param, unified cleanup point: every start-scheduling chain funnels
+    // through one of the Update* entries (and therefore here), so the param is logged once and
+    // stripped for any value before the Want reaches the app side or mission snapshots.
+    const std::string toolCallId = want.GetStringParam("ohos.aafwk.param.toolCallId");
+    if (!toolCallId.empty() && CliTool::IsValidTraceId(toolCallId)) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "start ability with toolCallId: %{public}s", toolCallId.c_str());
+    }
+    want.RemoveParam("ohos.aafwk.param.toolCallId");
+    if (want.HasParameter(HIDE_SENSITIVE_TYPE)) {
         EventInfo eventInfo;
-        eventInfo.bundleName = want.GetElement().GetBundleName();
-        eventInfo.moduleName = want.GetElement().GetModuleName();
-        eventInfo.abilityName = want.GetElement().GetAbilityName();
+        const auto &bundleName = want.GetBundleNameRef();
         int32_t callerUid = IPCSkeleton::GetCallingUid();
         std::string callerBundleName;
         auto bundleMgr = AbilityUtil::GetBundleManagerHelper();
         if (bundleMgr != nullptr) {
             IN_PROCESS_CALL(bundleMgr->GetNameForUid(callerUid, callerBundleName));
         }
-        eventInfo.callerBundleName = callerBundleName.empty() ? std::to_string(callerUid) : callerBundleName;
-        AbilityEventUtil::SendStartAbilityErrorEvent(eventInfo, AAFwk::ERR_NOT_EXPECTED_NATIVE_CALLER_NAME,
-            std::string("no expected caller native name: ") + want.GetStringParam(Want::PARAM_RESV_CALLER_NATIVE_NAME));
+        if (callerBundleName.empty()) {
+            callerBundleName = std::to_string(callerUid);
+        }
+        auto hideSensitiveType = want.GetIntParam(HIDE_SENSITIVE_TYPE, DEFAULT_HIDE_SENSITIVE_TYPE);
+        eventInfo.uri = "HideSensitiveType://" + bundleName + "/" + callerBundleName + "/" +
+            std::to_string(hideSensitiveType);
+        EventReport::SendGrantUriPermissionEvent(EventName::GRANT_URI_PERMISSION, eventInfo);
     }
     want.RemoveParam(Want::PARAM_RESV_CALLER_NATIVE_NAME);
     want.RemoveParam(COMPONENT_STARTUP_NEW_RULES);

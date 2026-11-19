@@ -51,6 +51,8 @@ ohos_shared_library("event_hub_ani_kit") {
     "ipc:ipc_single",
     "runtime_core:ani",
     "runtime_core:ani_helpers",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   innerapi_tags = [ "platformsdk" ]

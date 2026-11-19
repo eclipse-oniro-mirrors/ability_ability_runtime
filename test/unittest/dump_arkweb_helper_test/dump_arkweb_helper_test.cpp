@@ -62,5 +62,50 @@ HWTEST_F(DumpArkWebHelperTest, DumpArkWebHelperTest_001, Function | MediumTest |
     EXPECT_EQ(ret, 0);
     GTEST_LOG_(INFO) << "DumpArkWebHelperTest_001 end";
 }
+
+/**
+ * @tc.number: DumpArkWebHelperTest_002
+ * @tc.name: DumpArkWebJSHeap
+ * @tc.desc: Test whether DumpArkWebJSHeap is called normally.
+ * @tc.type: FUNC
+ */
+HWTEST_F(DumpArkWebHelperTest, DumpArkWebHelperTest_002, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "DumpArkWebHelperTest_002 start";
+    int32_t appPid = 1001;
+    int32_t renderPid = 2002;
+    EXPECT_NO_FATAL_FAILURE(DumpArkWebHelper::DumpArkWebJSHeap(appPid, renderPid, false, false, false));
+    GTEST_LOG_(INFO) << "DumpArkWebHelperTest_002 end";
+}
+
+/**
+ * @tc.number: DumpArkWebHelperTest_003
+ * @tc.name: DumpArkWebJSHeap
+ * @tc.desc: Test whether DumpArkWebJSHeap handles snapshot fd request failure.
+ * @tc.type: FUNC
+ */
+HWTEST_F(DumpArkWebHelperTest, DumpArkWebHelperTest_003, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "DumpArkWebHelperTest_003 start";
+    int32_t appPid = -1;
+    int32_t renderPid = -1;
+    EXPECT_NO_FATAL_FAILURE(DumpArkWebHelper::DumpArkWebJSHeap(appPid, renderPid, true, false, false));
+    GTEST_LOG_(INFO) << "DumpArkWebHelperTest_003 end";
+}
+
+/**
+ * @tc.number: DumpArkWebHelperTest_004
+ * @tc.name: DumpArkWebJSHeap
+ * @tc.desc: Test whether DumpArkWebJSHeap handles raw snapshot fd request failure.
+ * @tc.type: FUNC
+ */
+HWTEST_F(DumpArkWebHelperTest, DumpArkWebHelperTest_004, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "DumpArkWebHelperTest_004 start";
+    int32_t appPid = -1;
+    int32_t renderPid = -1;
+    EXPECT_NO_FATAL_FAILURE(DumpArkWebHelper::DumpArkWebJSHeap(appPid, renderPid, true, false, true));
+    GTEST_LOG_(INFO) << "DumpArkWebHelperTest_004 end";
+}
 }
 }

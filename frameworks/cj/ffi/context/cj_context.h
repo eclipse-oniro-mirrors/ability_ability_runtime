@@ -28,6 +28,7 @@ namespace FfiContext {
 using namespace OHOS::AbilityRuntime;
 
 class CJContext : public FFI::FFIData {
+    DECL_TYPE(CJContext, OHOS::FFI::FFIData)
 public:
     explicit CJContext(std::shared_ptr<AbilityRuntime::Context> context)
         : context_(context) {};

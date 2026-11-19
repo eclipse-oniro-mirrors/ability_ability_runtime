@@ -241,6 +241,16 @@ public:
         preloadModuleName_ = moduleName;
     }
 
+    inline std::string GetPreloadAbilityName() const
+    {
+        return preloadAbilityName_;
+    }
+
+    inline void SetPreloadAbilityName(const std::string& abilityName)
+    {
+        preloadAbilityName_ = abilityName;
+    }
+
     inline std::string GetInstanceKey() const
     {
         return instanceKey_;
@@ -368,6 +378,9 @@ public:
      */
     bool GetDebugFromLocal() const;
 
+    void SetMainProcess(bool isMainProcess);
+    bool GetMainProcess() const;
+
 private:
     bool debugApp_ = false;
     bool jitEnabled_ = false;
@@ -389,7 +402,9 @@ private:
     std::string appRunningUniqueId_;
     std::string instanceKey_;
     std::string preloadModuleName_;
+    std::string preloadAbilityName_; // ability name for preloading specific ability (for image creation)
     bool isDebugFromLocal_;
+    bool isMainProcess_ = true;
     std::shared_ptr<StartupTaskData> startupTaskData_ = nullptr;
 };
 }  // namespace AppExecFwk

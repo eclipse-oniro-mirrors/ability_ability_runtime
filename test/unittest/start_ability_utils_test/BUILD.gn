@@ -33,6 +33,7 @@ ohos_unittest("start_ability_utils_test") {
   ]
 
   sources = [
+    "${ability_runtime_services_path}/abilitymgr/src/extension_query_event_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/start_ability_utils.cpp",
     "mock/src/mock_app_scheduler.cpp",
     "mock/src/mock_bundle_mgr_helper.cpp",
@@ -52,6 +53,7 @@ ohos_unittest("start_ability_utils_test") {
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_path}/utils/server/startup:startup_util",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
@@ -64,7 +66,6 @@ ohos_unittest("start_ability_utils_test") {
     "ability_base:configuration",
     "ability_base:want",
     "ability_base:zuri",
-    "ability_runtime:ability_deps_wrapper",
     "access_token:libaccesstoken_sdk",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
@@ -77,6 +78,7 @@ ohos_unittest("start_ability_utils_test") {
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
+    "samgr:samgr_proxy",
   ]
 }
 

@@ -15,14 +15,11 @@
 
 #include <gtest/gtest.h>
 #include "parcel.h"
-#include "sender_info.h"
-#include "wants_info.h"
 #define private public
 #define protected public
 #include "want_sender_info.h"
 #undef private
 #undef protected
-#include "want_receiver_stub.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -31,31 +28,13 @@ using OHOS::AppExecFwk::ElementName;
 
 namespace OHOS {
 namespace AAFwk {
-#define SLEEP(milli) std::this_thread::sleep_for(std::chrono::seconds(milli))
-namespace {}  // namespace
 class WantSenderInfoTest : public testing::Test {
 public:
     static void SetUpTestCase();
     static void TearDownTestCase();
     void SetUp();
     void TearDown();
-    static constexpr int TEST_WAIT_TIME = 100000;
-    class CancelReceiver : public AAFwk::WantReceiverStub {
-    public:
-        int performReceiveCount = 0;
-        void Send(const int32_t resultCode) override;
-        void PerformReceive(const AAFwk::Want& want, int resultCode, const std::string& data,
-            const AAFwk::WantParams& extras, bool serialized, bool sticky, int sendingUser) override;
-    };
-
-public:
 };
-
-void WantSenderInfoTest::CancelReceiver::Send(const int32_t resultCode)
-{}
-void WantSenderInfoTest::CancelReceiver::PerformReceive(const AAFwk::Want& want, int resultCode,
-    const std::string& data, const AAFwk::WantParams& extras, bool serialized, bool sticky, int sendingUser)
-{}
 
 void WantSenderInfoTest::SetUpTestCase()
 {}

@@ -18,6 +18,12 @@
 
 #include "ability_connect_manager.h"
 
+#include <list>
+#include <mutex>
+#include <ctime>
+#include <tuple>
+#include <unordered_map>
+
 #include "extension_record_manager.h"
 #include "nocopyable.h"
 
@@ -116,6 +122,13 @@ public:
      */
     int32_t GetActiveUIExtensionList(const std::string &bundleName, std::vector<std::string> &extensionList);
 
+    /**
+     * @brief Get extensionList by uid.
+     * @param uid The application uid.
+     * @param extensionList UIExtensionAbility name list.
+     */
+    int32_t GetActiveUIExtensionListByUid(int32_t uid, std::vector<std::string> &extensionList);
+
     void BackgroundAbilityWindowLocked(const std::shared_ptr<BaseExtensionRecord> &abilityRecord,
         const sptr<SessionInfo> &sessionInfo);
 
@@ -139,6 +152,8 @@ public:
     int32_t RegisterPreloadUIExtensionHostClient(const sptr<IRemoteObject> &callerToken);
     int32_t UnRegisterPreloadUIExtensionHostClient(int32_t callerPid) override;
 
+    bool IsUIExtensionStarting(int32_t uid, pid_t pid = -1);
+
 protected:
     int32_t StartAbilityLocked(const AbilityRequest &abilityRequest) override;
     void HandleLoadAbilityOrStartSpecifiedProcess(
@@ -156,6 +171,13 @@ private:
 
     void DoForegroundUIExtension(
         std::shared_ptr<BaseExtensionRecord> abilityRecord, const AbilityRequest &abilityRequest);
+
+    void EnqueueStartServiceReq(const AbilityRequest &abilityRequest, const std::string &serviceUri) override;
+
+    void CompleteStartServiceReq(const std::string &serviceUri) override;
+
+    void RemoveUIExtensionForegroundRequest(const std::string &serviceUri, const struct timespec &cutoffTime,
+        bool hasCutoffTime);
 
     void DoBackgroundAbilityWindow(const std::shared_ptr<BaseExtensionRecord> &abilityRecord,
         const sptr<SessionInfo> &sessionInfo) override;
@@ -177,6 +199,9 @@ private:
     void RemoveUIExtensionAbilityRecord(const std::shared_ptr<BaseExtensionRecord> &abilityRecord) override;
 
     void AddUIExtensionAbilityRecordToTerminatedList(const std::shared_ptr<BaseExtensionRecord> &abilityRecord);
+
+    void AddStartingRecord(int32_t uid, pid_t pid, int64_t recordId, int32_t timeoutMultiple);
+    void RemoveStartingRecord(int32_t uid, pid_t pid, int64_t recordId);
 
     int32_t GetOrCreateExtensionRecord(const AbilityRequest &abilityRequest, bool isCreatedByConnect,
         const std::string &hostBundleName, std::shared_ptr<BaseExtensionRecord> &extensionRecord, bool &isLoaded);
@@ -274,6 +299,18 @@ private:
         PreloadUIExtensionHostClientDiedHandler diedHandler_;
     };
 private:
+    struct UIExtensionForegroundRequest {
+        AbilityRequest abilityRequest;
+        struct timespec enqueueTime = { 0, 0 };
+    };
+
+    struct UIExtensionForegroundRequestQueue {
+        std::list<UIExtensionForegroundRequest> requests;
+    };
+
+    using UIExtensionForegroundRequestMap =
+        std::unordered_map<std::string, std::shared_ptr<UIExtensionForegroundRequestQueue>>;
+
     RecipientMapType uiExtRecipientMap_;
     UIExtensionMapType uiExtensionMap_;
     std::unique_ptr<UIExtensionAbilityConnectManager> uiExtensionAbilityRecordMgr_ = nullptr;
@@ -281,6 +318,10 @@ private:
     std::mutex uiExtensionMapMutex_;
     std::mutex preloadUIExtRecipientMapMutex_;
     std::map<int32_t, sptr<IRemoteObject::DeathRecipient>> preloadUIExtensionHostClientDeathRecipients_;
+    std::mutex startingRecordsMutex_;
+    std::map<std::tuple<int32_t, pid_t, int64_t>, int32_t> startingRecordsMap_;
+    UIExtensionForegroundRequestMap uiExtensionForegroundRequestMap_;
+    std::mutex uiExtensionForegroundRequestMapLock_;
 
     DISALLOW_COPY_AND_MOVE(UIExtensionAbilityManager);
 };

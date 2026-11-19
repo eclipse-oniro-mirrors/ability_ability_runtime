@@ -24,9 +24,13 @@ namespace AbilityRuntime {
 
 class UdmfUtils final {
 public:
-    static int32_t ProcessUdmfKey(const std::string &key, uint32_t targetTokenId);
+    static int32_t ProcessUdmfKey(const std::string &key, uint32_t callerTokenId, uint32_t targetTokenId);
 private:
     static int32_t AddPrivilege(const std::string &key, uint32_t tokenId, const std::string &readPermission);
+    static bool IsUdKeyCreateByCaller(uint32_t callerTokenId, const std::string &key);
+    static bool GetAlterableBundleNameByTokenId(uint32_t tokenId, std::string &bundleName);
+    static bool GetDirByBundleNameAndAppIndex(const std::string &bundleName, int32_t appIndex,
+        std::string &dirName);
 };
 } // AbilityRuntime
 } // OHOS

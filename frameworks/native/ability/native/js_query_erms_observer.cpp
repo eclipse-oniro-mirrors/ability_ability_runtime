@@ -90,7 +90,8 @@ void JsQueryERMSObserver::CallPromise(napi_deferred deferred, const AtomicServic
         napi_resolve_deferred(env_, deferred, result);
         return;
     }
-    napi_value error = CreateJsError(env_, GetJsErrorCodeByNativeError(resultCode));
+    napi_value error = CreateJsErrorByNativeErr(env_, resultCode, "",
+        GetInnerErrorMsg(AbilityInnerErrorMsg::QUERY_ATOMIC_SERVICE_STARTUP_RULE_FAILED));
     napi_reject_deferred(env_, deferred, error);
 }
 

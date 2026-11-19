@@ -293,14 +293,13 @@ HWTEST_F(AppMgrServiceInnerTenthTest, SetAtomicServiceInfo_001, TestSize.Level1)
     TAG_LOGI(AAFwkTag::TEST, "SetAtomicServiceInfo_001 start");
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     AppSpawnStartMsg startMsg = {};
-    startMsg.atomicServiceFlag = false; // Initially false
     BundleType bundleType = BundleType::ATOMIC_SERVICE;
 #ifdef OHOS_ACCOUNT_ENABLED
     appMgrServiceInner->SetAtomicServiceInfo(bundleType, startMsg);
-    EXPECT_TRUE(startMsg.atomicServiceFlag);
+    EXPECT_TRUE(startMsg.flags & (1ULL << StartFlags::ATOMIC_SERVICE));
 #else
     appMgrServiceInner->SetAtomicServiceInfo(bundleType, startMsg);
-    EXPECT_FALSE(startMsg.atomicServiceFlag);
+    EXPECT_FALSE(startMsg.flags & (1ULL << StartFlags::ATOMIC_SERVICE));
 #endif
     TAG_LOGI(AAFwkTag::TEST, "SetAtomicServiceInfo_001 end");
 }
@@ -316,10 +315,9 @@ HWTEST_F(AppMgrServiceInnerTenthTest, SetAtomicServiceInfo_002, TestSize.Level1)
     TAG_LOGI(AAFwkTag::TEST, "SetAtomicServiceInfo_002 start");
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     AppSpawnStartMsg startMsg = {};
-    startMsg.atomicServiceFlag = false; // Initially false
     BundleType bundleType = BundleType::APP;
     appMgrServiceInner->SetAtomicServiceInfo(bundleType, startMsg);
-    EXPECT_FALSE(startMsg.atomicServiceFlag);
+    EXPECT_FALSE(startMsg.flags & (1ULL << StartFlags::ATOMIC_SERVICE));
     TAG_LOGI(AAFwkTag::TEST, "SetAtomicServiceInfo_002 end");
 }
 
@@ -363,6 +361,44 @@ HWTEST_F(AppMgrServiceInnerTenthTest, SetAppInfo_002, TestSize.Level1)
 }
 
 /**
+ * @tc.name: SetAppInfo_ShareUid_001
+ * @tc.desc: Test SetAppInfo pass-through appUid and set shareUid flag when sharedUID is true
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTenthTest, SetAppInfo_ShareUid_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetAppInfo_ShareUid_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    BundleInfo bundleInfo;
+    bundleInfo.appUid = 20010034;
+    bundleInfo.applicationInfo.sharedUID = true;
+    AppSpawnStartMsg startMsg = {};
+    appMgrServiceInner->SetAppInfo(bundleInfo, startMsg);
+    EXPECT_EQ(startMsg.appUid, 20010034);
+    EXPECT_NE(startMsg.flags & (1ULL << AppFlagsIndex::APP_FLAGS_SHAREUID_ENABLED), 0ULL);
+    TAG_LOGI(AAFwkTag::TEST, "SetAppInfo_ShareUid_001 end");
+}
+ 
+/**
+ * @tc.name: SetAppInfo_ShareUid_002
+ * @tc.desc: Test SetAppInfo pass-through appUid and not set shareUid flag when sharedUID is false
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTenthTest, SetAppInfo_ShareUid_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetAppInfo_ShareUid_002 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    BundleInfo bundleInfo;
+    bundleInfo.appUid = 20010034;
+    bundleInfo.applicationInfo.sharedUID = false;
+    AppSpawnStartMsg startMsg = {};
+    appMgrServiceInner->SetAppInfo(bundleInfo, startMsg);
+    EXPECT_EQ(startMsg.appUid, 20010034);
+    EXPECT_EQ(startMsg.flags & (1ULL << AppFlagsIndex::APP_FLAGS_SHAREUID_ENABLED), 0ULL);
+    TAG_LOGI(AAFwkTag::TEST, "SetAppInfo_ShareUid_002 end");
+}
+
+/**
  * @tc.name: SetAppInfo_003
  * @tc.desc: Test SetAppInfo function with apiTargetVersion % API_VERSION_MOD >= API15 but maxChildProcess != 0
  * @tc.type: FUNC
@@ -380,6 +416,61 @@ HWTEST_F(AppMgrServiceInnerTenthTest, SetAppInfo_003, TestSize.Level1)
     EXPECT_EQ(startMsg.maxChildProcess, 3);
     EXPECT_NE(startMsg.maxChildProcess, bundleInfo.applicationInfo.maxChildProcess);
     TAG_LOGI(AAFwkTag::TEST, "SetAppInfo_003 end");
+}
+
+/**
+ * @tc.name: SetAppInfo_AgentId_001
+ * @tc.desc: Test SetAppInfo function: agentId empty when no execCmd permission (default token)
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTenthTest, SetAppInfo_AgentId_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetAppInfo_AgentId_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    BundleInfo bundleInfo;
+    bundleInfo.applicationInfo.accessTokenId = 0;
+    bundleInfo.signatureInfo.appIdentifier = "test_app_identifier";
+    AppSpawnStartMsg startMsg;
+    appMgrServiceInner->SetAppInfo(bundleInfo, startMsg);
+    EXPECT_TRUE(startMsg.agentId.empty());
+    TAG_LOGI(AAFwkTag::TEST, "SetAppInfo_AgentId_001 end");
+}
+
+/**
+ * @tc.name: SetAppInfo_AgentId_002
+ * @tc.desc: Test SetAppInfo function: agentId empty when appIdentifier is empty
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTenthTest, SetAppInfo_AgentId_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetAppInfo_AgentId_002 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    BundleInfo bundleInfo;
+    bundleInfo.applicationInfo.accessTokenId = 0;
+    bundleInfo.signatureInfo.appIdentifier = "";
+    AppSpawnStartMsg startMsg;
+    appMgrServiceInner->SetAppInfo(bundleInfo, startMsg);
+    EXPECT_TRUE(startMsg.agentId.empty());
+    TAG_LOGI(AAFwkTag::TEST, "SetAppInfo_AgentId_002 end");
+}
+
+/**
+ * @tc.name: SetAppInfo_AgentId_003
+ * @tc.desc: Test SetAppInfo function: ownerId unchanged after agentId field added
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTenthTest, SetAppInfo_AgentId_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetAppInfo_AgentId_003 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    BundleInfo bundleInfo;
+    bundleInfo.applicationInfo.accessTokenId = 0;
+    bundleInfo.signatureInfo.appIdentifier = "test_owner_id";
+    AppSpawnStartMsg startMsg;
+    appMgrServiceInner->SetAppInfo(bundleInfo, startMsg);
+    EXPECT_EQ(startMsg.ownerId, "test_owner_id");
+    EXPECT_TRUE(startMsg.agentId.empty());
+    TAG_LOGI(AAFwkTag::TEST, "SetAppInfo_AgentId_003 end");
 }
 
 /**
@@ -580,20 +671,20 @@ HWTEST_F(AppMgrServiceInnerTenthTest, KillApplicationByRecord_001, TestSize.Leve
 }
 
 /**
- * @tc.name: OnChildProcessRemoteDied_001
- * @tc.desc: Test OnChildProcessRemoteDied function
+ * @tc.name: OnChildProcessExited_001
+ * @tc.desc: Test OnChildProcessExited function
  * @tc.type: FUNC
  */
-HWTEST_F(AppMgrServiceInnerTenthTest, OnChildProcessRemoteDied_001, TestSize.Level2)
+HWTEST_F(AppMgrServiceInnerTenthTest, OnChildProcessExited_001, TestSize.Level2)
 {
-    TAG_LOGI(AAFwkTag::TEST, "OnChildProcessRemoteDied_001 start");
+    TAG_LOGI(AAFwkTag::TEST, "OnChildProcessExited_001 start");
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     appMgrServiceInner->appRunningManager_ = std::make_shared<AppRunningManager>();
     AAFwk::MyStatus::GetInstance().resetRunningRecordFunctionFlag();
     EXPECT_EQ(AAFwk::MyStatus::GetInstance().getChildProcessRecordByPidCall_, 0);
-    appMgrServiceInner->OnChildProcessRemoteDied(nullptr);
+    appMgrServiceInner->OnChildProcessExited(0);
     EXPECT_EQ(AAFwk::MyStatus::GetInstance().getChildProcessRecordByPidCall_, 1);
-    TAG_LOGI(AAFwkTag::TEST, "OnChildProcessRemoteDied_001 end");
+    TAG_LOGI(AAFwkTag::TEST, "OnChildProcessExited_001 end");
 }
 
 /**
@@ -730,6 +821,7 @@ HWTEST_F(AppMgrServiceInnerTenthTest, ClearProcessByToken_003, TestSize.Level2)
     AAFwk::MyStatus::GetInstance().resetRunningRecordFunctionFlag();
     auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
     appMgrServiceInner->appRunningManager_ = nullptr;
+    appMgrServiceInner->appQueryHelper_.appRunningManager_ = nullptr;
     sptr<IRemoteObject> token = new MockAppScheduler();
     appMgrServiceInner->ClearProcessByToken(token);
     EXPECT_FALSE(AAFwk::MyStatus::GetInstance().setApplicationClientCalled_);
@@ -2319,6 +2411,71 @@ HWTEST_F(AppMgrServiceInnerTenthTest, QueryRunningSharedBundles_002, TestSize.Le
     EXPECT_EQ(ret, ERR_OK);
     AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = nullptr;
     TAG_LOGI(AAFwkTag::TEST, "QueryRunningSharedBundles_002 end");
+}
+
+/**
+ * @tc.name: GetStoragePath_001
+ * @tc.desc: Test GetStoragePath with normal primary mode path.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTenthTest, GetStoragePath_001, TestSize.Level1)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    std::string hapPath = "/data/app/el1/bundle/public/com.ohos.demo/entry/entry.hap";
+    std::string result = appMgrServiceInner->GetStoragePath(hapPath);
+    EXPECT_EQ(result, "/data/storage/el1/bundle/entry/entry.hap");
+}
+
+/**
+ * @tc.name: GetStoragePath_002
+ * @tc.desc: Test GetStoragePath with clone bundle path in PC dual mode.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTenthTest, GetStoragePath_002, TestSize.Level1)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    std::string hapPath = "/data/app/el1/bundle/public/+clone-10000+com.ohos.demo/entry/entry.hap";
+    std::string result = appMgrServiceInner->GetStoragePath(hapPath);
+    EXPECT_EQ(result, "/data/storage/el1/bundle/entry/entry.hap");
+}
+
+/**
+ * @tc.name: GetStoragePath_003
+ * @tc.desc: Test GetStoragePath with empty path.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTenthTest, GetStoragePath_003, TestSize.Level1)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    std::string hapPath = "";
+    std::string result = appMgrServiceInner->GetStoragePath(hapPath);
+    EXPECT_TRUE(result.empty());
+}
+
+/**
+ * @tc.name: GetStoragePath_004
+ * @tc.desc: Test GetStoragePath with path not starting with ABS_CODE_PATH.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTenthTest, GetStoragePath_004, TestSize.Level1)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    std::string hapPath = "/system/app/com.ohos.demo/entry.hap";
+    std::string result = appMgrServiceInner->GetStoragePath(hapPath);
+    EXPECT_EQ(result, hapPath);
+}
+
+/**
+ * @tc.name: GetStoragePath_005
+ * @tc.desc: Test GetStoragePath with path having no slash after bundle name dir.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTenthTest, GetStoragePath_005, TestSize.Level1)
+{
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    std::string hapPath = "/data/app/el1/bundle/public/com.ohos.demo";
+    std::string result = appMgrServiceInner->GetStoragePath(hapPath);
+    EXPECT_EQ(result, "/data/storage/el1/bundle");
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

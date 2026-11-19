@@ -26,6 +26,7 @@
 #include "ability_manager_constants.h"
 #include "ability_record.h"
 #include "isession_handler_interface.h"
+#include "scene_board/ability_session_info.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -41,7 +42,6 @@ enum class SpecifiedProcessState: u_int8_t {
 };
 
 struct SpecifiedRequest {
-    bool preCreateProcessName = false;
     bool isCold = false;
     SpecifiedProcessState specifiedProcessState = SpecifiedProcessState::STATE_NONE;
     int32_t requestId = 0;
@@ -60,6 +60,7 @@ public:
     virtual ~UIAbilityLifecycleManager() = default;
 
     void SignRestartAppFlag(int32_t uid, const std::string &instanceKey, bool isAppRecovery = false);
+    void SignRestartProcess(int32_t pid);
 
     /**
      * StartUIAbility with request.
@@ -133,6 +134,15 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     int32_t SetGamePreLaunchCompleteTime(int64_t completeTime);
+
+    /**
+     * ExtendGamePreLaunchTimeout, reset the game pre-launch foreground countdown.
+     *
+     * @param pid The process ID of the game pre-launch ability to extend.
+     * @param extendTime The extended time in microseconds for the game pre-launch.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t ExtendGamePreLaunchTimeout(int32_t pid, int64_t extendTime);
     
     /**
      * @brief Cancel game prelaunch and kill the game process.
@@ -149,13 +159,21 @@ public:
     int32_t NotifyCompleteGamePreLaunch(const sptr<IRemoteObject> callerToken);
 
     /**
+     * @brief Complete game SA prelaunch by pid
+     * @param pid Pid of the game SA prelaunch process
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t NotifyCompleteGamePreLaunchByPid(int32_t pid);
+
+    /**
      * MinimizeUIAbility, minimize the special ability by scb.
      *
      * @param abilityRecord, the ability to minimize.
      * @param fromUser, Whether form user.
      * @return Returns ERR_OK on success, others on failure.
      */
-    int MinimizeUIAbility(const std::shared_ptr<AbilityRecord> &abilityRecord, bool fromUser, uint32_t sceneFlag);
+    int MinimizeUIAbility(const std::shared_ptr<AbilityRecord> &abilityRecord, bool fromUser, uint32_t sceneFlag,
+        int32_t backgroundReason = 0);
 
     /**
      * GetUIAbilityRecordBySessionInfo.
@@ -166,7 +184,7 @@ public:
     std::shared_ptr<AbilityRecord> GetUIAbilityRecordBySessionInfo(const sptr<SessionInfo> &sessionInfo);
 
     int32_t BackToCallerAbilityWithResult(std::shared_ptr<AbilityRecord> abilityRecord,
-        int resultCode, const Want *resultWant, int64_t callerRequestCode);
+        int resultCode, const Want &resultWant, int64_t callerRequestCode, bool isBackToCallerApp = false);
 
     /**
      * CloseUIAbility, close the special ability by scb.
@@ -186,6 +204,7 @@ public:
      * @param rootSceneSession Indicates root scene session of SCB.
      */
     void SetRootSceneSession(const sptr<IRemoteObject> &rootSceneSession);
+    sptr<IRemoteObject> GetRootSceneSession() const;
 
     int NotifySCBToStartUIAbility(AbilityRequest &abilityRequest);
 
@@ -193,6 +212,28 @@ public:
         sptr<SessionInfo> &sessionInfo);
 
     int32_t NotifySCBToRecoveryAfterInterception(const AbilityRequest &abilityRequest);
+
+    /**
+     * @brief Store sandbox clone info (callerBundleName, callerTokenId, isWebSandBoxClone) into
+     *        the internal map keyed by requestId, so that it is not exposed in the Want object.
+     * @param requestId The request ID used as the map key.
+     * @param info The sandbox clone info to store.
+     */
+    void StoreAbilitySessionInfo(int32_t requestId, const AbilitySessionInfo &info);
+
+    /**
+     * @brief Retrieve sandbox clone info from the internal map by requestId.
+     * @param requestId The request ID used as the map key.
+     * @param info Output parameter for the sandbox clone info.
+     * @return true if found, false otherwise.
+     */
+    bool GetAbilitySessionInfo(int32_t requestId, AbilitySessionInfo &info) const;
+
+    /**
+     * @brief Remove sandbox clone info from the internal map by requestId.
+     * @param requestId The request ID used as the map key.
+     */
+    void RemoveAbilitySessionInfo(int32_t requestId);
 
     /**
      * @brief handle time out event
@@ -366,7 +407,7 @@ public:
 
     int MoveMissionToFront(int32_t sessionId, std::shared_ptr<StartOptions> startOptions = nullptr);
 
-    bool IsAbilityStarted(AbilityRequest &abilityRequest, std::shared_ptr<AbilityRecord> &targetRecord);
+    bool IsAbilityStarted(const AbilityRequest &abilityRequest, std::shared_ptr<AbilityRecord> &targetRecord);
 
     /**
      * @brief Update session info.
@@ -384,7 +425,8 @@ public:
 
     int32_t TryPrepareTerminateByPids(const std::vector<int32_t>& pids, bool clear);
 
-    int ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow);
+    int ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow,
+        const std::shared_ptr<Rosen::WindowShowParams> &params);
 
     int ChangeUIAbilityVisibilityBySCB(sptr<SessionInfo> sessionInfo, bool isShow);
 
@@ -434,8 +476,6 @@ private:
     int32_t GetReusedStandardPersistentId(const AbilityRequest &abilityRequest, bool &reuse) const;
     int32_t GetReusedCollaboratorPersistentId(const AbilityRequest &abilityRequest, bool &reuse) const;
     std::string GenerateProcessNameForNewProcessMode(const AppExecFwk::AbilityInfo& abilityInfo);
-    void PreCreateProcessName(AbilityRequest &abilityRequest);
-    void UpdateProcessName(const AbilityRequest &abilityRequest, std::shared_ptr<AbilityRecord> &abilityRecord);
     void UpdateAbilityRecordLaunchReason(const AbilityRequest &abilityRequest,
         std::shared_ptr<AbilityRecord> &abilityRecord) const;
     void EraseAbilityRecord(const std::shared_ptr<AbilityRecord> &abilityRecord);
@@ -557,6 +597,7 @@ private:
     std::unordered_map<int64_t, std::shared_ptr<AbilityRecord>> tmpAbilityMap_;
     std::unordered_map<std::shared_ptr<AbilityRecord>, std::list<AbilityRequest>> callRequestCache_;
     std::list<std::shared_ptr<AbilityRecord>> terminateAbilityList_;
+    ffrt::mutex rootSceneSessionLock_;
     sptr<IRemoteObject> rootSceneSession_;
     int32_t requestId_ = 0;
     sptr<ISessionHandler> handler_;
@@ -589,6 +630,9 @@ private:
 
     std::mutex startingPidsMutex_;
     std::vector<pid_t> startingPids_;
+
+    mutable ffrt::mutex abilitySessionInfoMapLock_;
+    std::unordered_map<int32_t, AbilitySessionInfo> abilitySessionInfoMap_;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

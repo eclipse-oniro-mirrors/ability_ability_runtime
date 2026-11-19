@@ -41,7 +41,8 @@ public:
     static ani_object CreateError(ani_env *env, ani_int code, const std::string &msg);
     static ani_object CreateInvalidParamError(ani_env *env, const std::string &message);
     static ani_object CreateNoPermissionError(ani_env *env, const std::string &permission);
-    static ani_object CreateErrorByNativeErr(ani_env *env, int32_t err, const std::string &permission = "");
+    static ani_object CreateErrorByNativeErr(ani_env *env, int32_t err, const std::string &permission = "",
+        const std::string &innerErrMsg = "");
     static ani_object WrapError(ani_env *env, const std::string &msg);
 };
 } // namespace AbilityRuntime

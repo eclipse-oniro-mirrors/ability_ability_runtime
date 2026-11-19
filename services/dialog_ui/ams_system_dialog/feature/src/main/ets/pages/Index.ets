@@ -29,7 +29,9 @@ struct Index {
   onBackPress() {
     try {
       let context = this.getUIContext().getHostContext() as common.UIAbilityContext;
-      context.terminateSelf();
+      if (context) {
+        context.terminateSelf();
+      }
     } catch (err) {
       hilog.error(DOMAIN, TAG, 'Failed to context.terminateSelf. Cause: %{public}s', JSON.stringify(err));
     }

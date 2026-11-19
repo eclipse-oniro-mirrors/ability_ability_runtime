@@ -449,6 +449,36 @@ ErrCode WantAgentClient::GetWantSenderInfo(const sptr<IWantSender> &target, std:
     return NO_ERROR;
 }
 
+void WantAgentClient::RegisterWantAgentHolder(const sptr<IWantSender> &target)
+{
+    if (target == nullptr) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "target null");
+        return;
+    }
+    auto abms = GetAbilityManager();
+    if (abms == nullptr) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "get ability manager fail");
+        return;
+    }
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "write interface token fail");
+        return;
+    }
+    if (!data.WriteRemoteObject(target->AsObject())) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "target write fail");
+        return;
+    }
+    auto error = abms->SendRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::REGISTER_WANT_AGENT_HOLDER),
+        data, reply, option);
+    if (error != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::WANTAGENT, "request error:%{public}d", error);
+    }
+}
+
 sptr<IRemoteObject> WantAgentClient::GetAbilityManager()
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);

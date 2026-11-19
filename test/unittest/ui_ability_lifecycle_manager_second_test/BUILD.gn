@@ -24,6 +24,7 @@ ohos_unittest("ui_ability_lifecycle_manager_second_test") {
     "${ability_runtime_services_path}/appdfr/include",
     "${ability_runtime_services_path}/abilitymgr/include/",
     "${ability_runtime_services_path}/abilitymgr/include/scene_board/",
+    "${ability_runtime_services_path}/abilitymgr/include/utils/",
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/ability_scheduler_mock",
     "mock/include",
   ]
@@ -51,6 +52,7 @@ ohos_unittest("ui_ability_lifecycle_manager_second_test") {
     "${ability_runtime_services_path}/abilitymgr/src/scene_board/status_bar_delegate_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/scene_board/ui_ability_lifecycle_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/oe_extension_utils.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/utils/start_ability_utils.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/timeout_state_utils.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/request_id_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/dms_util.cpp",

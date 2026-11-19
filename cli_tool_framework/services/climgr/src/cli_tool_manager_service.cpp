@@ -1,0 +1,2639 @@
+/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "cli_tool_manager_service.h"
+
+#include <algorithm>
+#include <cctype>
+#include <cerrno>
+#include <cinttypes>
+#include <csignal>
+#include <cstdio>
+#include <cstring>
+#include <set>
+#include <fcntl.h>
+#include <poll.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <thread>
+#include <unistd.h>
+
+#include "ability_manager_client.h"
+#include "ability_manager_errors.h"
+#include "accesstoken_kit.h"
+#include "app_mgr_client.h"
+#include "base_interfaces.h"
+#include "ccm_util.h"
+#include "cli_error_code.h"
+#include "cli_event_report.h"
+#include "cli_hook_interface_proxy.h"
+#include "cli_tool_app_state_observer.h"
+#include "cli_function_data_manager.h"
+#include "event_dispatcher.h"
+#include "exec_result.h"
+#include "function_hook_interface_proxy.h"
+#include "function_info.h"
+#include "hilog_tag_wrapper.h"
+#include "if_system_ability_manager.h"
+#include "ipc_skeleton.h"
+#include "iservice_registry.h"
+#include "parameters.h"
+#include "permission_query_util.h"
+#include "permission_util.h"
+#include "process_manager.h"
+#include "session_record.h"
+#include "task_attribution_manager.h"
+#include "tool_util.h"
+#include "want_params.h"
+#include "want_params_wrapper.h"
+
+namespace OHOS {
+namespace CliTool {
+namespace {
+template <typename OptionsT>
+void SanitizeTraceIds(OptionsT &options)
+{
+    if (!IsValidTraceId(options.toolCallId)) {
+        if (!options.toolCallId.empty()) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "hook-modified toolCallId invalid, dropped, length: %{public}zu",
+                options.toolCallId.length());
+        }
+        options.toolCallId.clear();
+    }
+    if (!IsValidTraceId(options.dmSessionId)) {
+        if (!options.dmSessionId.empty()) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "hook-modified dmSessionId invalid, dropped, length: %{public}zu",
+                options.dmSessionId.length());
+        }
+        options.dmSessionId.clear();
+    }
+}
+
+constexpr const char* PERMISSION_EXEC_CLI_TOOL = "ohos.permission.EXEC_CLI_TOOL";
+constexpr const char* PERMISSION_EXEC_PUBLIC_CLI_TOOL = "ohos.permission.EXEC_PUBLIC_CLI_TOOL";
+constexpr const char* PERMISSION_QUERY_CLI_TOOL = "ohos.permission.QUERY_CLI_TOOL";
+constexpr const char* PERMISSION_QUERY_PUBLIC_CLI_TOOL = "ohos.permission.QUERY_PUBLIC_CLI_TOOL";
+constexpr const char* PERMISSION_REGISTER_CLI_TOOL = "ohos.permission.REGISTER_CLI_TOOL";
+constexpr const char* PERMISSION_ACCESS_FUNCTION = "ohos.permission.ACCESS_FUNCTION";
+constexpr const char* PERMISSION_REGISTER_AGENT_HOOK = "ohos.permission.REGISTER_AGENT_HOOK";
+// Only the exact string "public" opens a tool to QUERY_PUBLIC_CLI_TOOL callers (REQ 20260812019200).
+constexpr const char* TOOL_VISIBILITY_PUBLIC = "public";
+
+constexpr int32_t FOUNDATION_UID = 5523;
+constexpr int32_t COEFFICIENT = 1000;
+constexpr int32_t QUERY_SUCCESS = 0;
+constexpr int32_t QUERY_COMMAND_NOT_EXIST = 1;
+constexpr int32_t QUERY_DB_ERROR = 2;
+constexpr int32_t MAX_QUERY_CMDS_SIZE = 100;
+constexpr int32_t ACTIVE_TIME = 30 * 1000; // 30s
+constexpr int32_t SKILL_TYPE_INDEPENDENT = -1;
+constexpr uint64_t FD_OWNER_TAG = static_cast<uint64_t>(AAFwkTag::CLI_TOOL);
+
+class HookDeathRecipient final : public IRemoteObject::DeathRecipient {
+public:
+    explicit HookDeathRecipient(HookType type) : type_(type) {}
+    ~HookDeathRecipient() override = default;
+    void OnRemoteDied(const wptr<IRemoteObject> &remote) override
+    {
+        auto svc = CliToolManagerService::GetInstance();
+        if (svc != nullptr) {
+            svc->OnHookDied(remote, type_);
+        }
+    }
+private:
+    HookType type_;
+};
+constexpr int32_t BASE_USER_RANGE = 200000; // uid range per user, same as appmgr
+
+int32_t GetCallingUserId()
+{
+    return static_cast<int32_t>(IPCSkeleton::GetCallingUid()) / BASE_USER_RANGE;
+}
+} // namespace
+
+std::mutex g_mutex;
+sptr<CliToolManagerService> CliToolManagerService::instance_ = nullptr;
+std::atomic<int> CliToolManagerService::reapPipeWriteFd_{-1};
+// reapPipeWriteFd_ is read by the static signal handler; it must be lock-free so the handler never takes a lock.
+static_assert(std::atomic<int>::is_always_lock_free,
+    "reapPipeWriteFd_ must be lock-free for signal-context access");
+const bool REGISTER_RESULT = SystemAbility::MakeAndRegisterAbility(CliToolManagerService::GetInstance().GetRefPtr());
+
+sptr<CliToolManagerService> CliToolManagerService::GetInstance()
+{
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (instance_ != nullptr) {
+        return instance_;
+    }
+    instance_ = new (std::nothrow) CliToolManagerService();
+    return instance_;
+}
+
+void CliToolManagerService::HandleProcessTimeout(const std::string &sessionId)
+{
+    auto record = GetSessionRecord(sessionId);
+    if (record == nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL,
+            "HandleProcessTimeout skipped: sessionId=%{public}s not found", sessionId.c_str());
+        return;
+    }
+
+    if (record->sessionType == SessionType::SKILL) {
+        HandleSkillSessionTimeout(sessionId);
+        return;
+    }
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "HandleProcessTimeout: sessionId=%{public}s", sessionId.c_str());
+    record->SetTimeout(true);
+    record->SetState(SessionState::CANCELLING);
+
+    // Set end time for timeout reporting
+    record->SetTerminalResult(0, 0);
+
+    int64_t durationMs = record->GetEndTimeMs() - record->startTime;
+    ReportCliTimeout(record->callerBundleName, record->toolName, durationMs);
+
+    auto oldBackground = record->SetBackground(true);
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "HandleProcessTimeout: sessionId=%{public}s, background=%{public}d",
+        sessionId.c_str(), oldBackground);
+    if (!oldBackground) {
+        CliSessionInfo session;
+        record->BuildSessionInfo(session);
+        InvokeAfterCallTool(session, *record);
+        EventDispatcher::GetInstance().DispatchExecToolReplyEvent(
+            record->callerPid, record->callerUid, record->eventId, ERR_OK, session);
+    }
+
+    EventDispatcher::GetInstance().DispatchErrorEvent(sessionId, "session timed out");
+    if (record->processId > 0) {
+        ProcessManager::GetInstance().Killpg(record->processId);
+    } else {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "HandleProcessTimeout skip Killpg: invalid processId, sessionId=%{public}s",
+            sessionId.c_str());
+    }
+}
+
+void CliToolManagerService::HandleProcessYieldTimeout(const std::string &sessionId)
+{
+    auto record = GetSessionRecord(sessionId);
+    if (record == nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL,
+            "HandleProcessYieldTimeout skipped: sessionId=%{public}s not found", sessionId.c_str());
+        return;
+    }
+    auto oldBackground = record->SetBackground(true);
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "HandleProcessYieldTimeout: sessionId=%{public}s, background=%{public}d",
+        sessionId.c_str(), oldBackground);
+    if (!oldBackground) {
+        CliSessionInfo session;
+        record->BuildSessionInfo(session);
+        InvokeAfterCallTool(session, *record);
+        EventDispatcher::GetInstance().DispatchExecToolReplyEvent(
+            record->callerPid, record->callerUid, record->eventId, ERR_OK, session);
+    }
+}
+
+void CliToolManagerService::HandleOutputClosed(const std::string &sessionId, bool isStdout)
+{
+    auto record = GetSessionRecord(sessionId);
+    if (record == nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL,
+            "HandleOutputClosed skipped: sessionId=%{public}s not found, isStdout=%{public}d",
+            sessionId.c_str(), isStdout);
+        return;
+    }
+    if (isStdout) {
+        record->MarkStdoutClosed();
+    } else {
+        record->MarkStderrClosed();
+    }
+    if (record->HasProcessExited() && record->OutputDrained()) {
+        FinalizeBackgroundSession(record);
+    }
+}
+
+void CliToolManagerService::HandleOutputDrained(const std::string &sessionId)
+{
+    auto record = GetSessionRecord(sessionId);
+    if (record != nullptr && record->HasProcessExited()) {
+        FinalizeBackgroundSession(record);
+    }
+}
+
+void CliToolManagerService::FinalizeBackgroundSession(const std::shared_ptr<SessionRecord> &record)
+{
+    if (record == nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "FinalizeBackgroundSession skipped: record is null");
+        return;
+    }
+    const auto &sessionId = record->sessionId;
+    if (!record->TryClaimCleanup()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL,
+            "FinalizeBackgroundSession skipped: cleanup already started for sessionId=%{public}s",
+            sessionId.c_str());
+        return;
+    }
+
+    auto oldBackground = record->SetBackground(true);
+    if (!oldBackground) {
+        CliSessionInfo session;
+        record->BuildSessionInfo(session);
+        InvokeAfterCallTool(session, *record);
+        EventDispatcher::GetInstance().DispatchExecToolReplyEvent(
+            record->callerPid, record->callerUid, record->eventId, ERR_OK, session);
+    }
+    auto ioMonitor = GetIOMonitor();
+    if (ioMonitor) {
+        ioMonitor->UnregisterSession(sessionId);
+    }
+
+    const int32_t status = record->GetTerminalStatus();
+    EventDispatcher::GetInstance().DispatchExitEvent(sessionId, status);
+    EventDispatcher::GetInstance().ClearSessionSubscribers(sessionId);
+    RemoveSessionRecord(sessionId);
+}
+
+void CliToolManagerService::Init()
+{
+    if (initialized_) {
+        return;
+    }
+
+    isDeveloperMode_ = system::GetBoolParameter("const.security.developermode.state", false);
+    // reaperStarted_ guards against re-spawning a (possibly still joinable) reaper thread.
+    if (!reaperStarted_.exchange(true)) {
+        int pipefd[2] = {-1, -1};
+        if (pipe2(pipefd, O_CLOEXEC | O_NONBLOCK) == 0) {
+            reapPipeReadFd_ = pipefd[0];
+            reapPipeWriteFd_.store(pipefd[1], std::memory_order_release);
+            fdsan_exchange_owner_tag(pipefd[0], 0, FD_OWNER_TAG);
+            fdsan_exchange_owner_tag(pipefd[1], 0, FD_OWNER_TAG);
+        } else {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "reaper pipe2 failed: %{public}s, run without reaper", strerror(errno));
+            reapPipeReadFd_ = -1;
+            reapPipeWriteFd_.store(-1, std::memory_order_release);
+            // No async-signal-unsafe fallback is provided. On pipe failure children
+            // would zombie until OnStop's SIG_IGN + drain; pipe2 failure is extremely unlikely on OHOS Linux.
+        }
+        struct sigaction sa = {};
+        sa.sa_handler = &CliToolManagerService::sigchld_handler;
+        sigemptyset(&sa.sa_mask);
+        sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;  // no SA_NOCLDWAIT: it would suppress the wake we rely on
+        sigaction(SIGCHLD, &sa, nullptr);
+
+        if (reapPipeReadFd_ >= 0) {
+            reaperRunning_.store(true, std::memory_order_release);
+            reaperThread_ = std::thread([this] { ReaperLoop(); });
+        }
+    }
+
+    ioMonitor_ = IOMonitor::Create();
+    if (ioMonitor_ == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "create io monitor failed");
+        initialized_ = true;
+        return;
+    }
+    ioMonitor_->SetOutputCallback([](const std::string &sessionId, bool isStdout, const std::string &data) {
+        auto service = CliToolManagerService::GetInstance();
+        if (service == nullptr) {
+            return;
+        }
+        auto record = service->GetSessionRecord(sessionId);
+        if (record != nullptr) {
+            record->AppendOutput(isStdout, data);
+        }
+        EventDispatcher::GetInstance().DispatchIOEvent(sessionId, isStdout ? "stdout" : "stderr", data);
+    });
+    ioMonitor_->SetInputReplyCallback([](const std::string &sessionId,
+        const std::string &eventId, bool result) {
+        auto service = CliToolManagerService::GetInstance();
+        if (service == nullptr) {
+            return;
+        }
+        auto record = service->GetSessionRecord(sessionId);
+        if (record == nullptr) {
+            TAG_LOGI(AAFwkTag::CLI_TOOL,
+                "Failed ioMonitor Input: session not found %{public}s: %{public}d", eventId.c_str(), result);
+            return;
+        }
+
+        EventDispatcher::GetInstance().DispatchInputReplyEvent(record->callerPid, record->callerUid, eventId,
+            result ? ERR_OK : ERR_CLI_SEND_MESSAGE);
+    });
+    ioMonitor_->SetSessionClosedCallback([](const std::string &sessionId, bool isStdout) {
+        auto service = CliToolManagerService::GetInstance();
+        if (service != nullptr) {
+            service->HandleOutputClosed(sessionId, isStdout);
+        }
+    });
+    ioMonitor_->SetSessionDrainedCallback([](const std::string &sessionId) {
+        auto service = CliToolManagerService::GetInstance();
+        if (service != nullptr) {
+            service->HandleOutputDrained(sessionId);
+        }
+    });
+    if (!ioMonitor_->Start()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "start io monitor failed");
+        ioMonitor_ = nullptr;
+        initialized_ = true;
+        return;
+    }
+    initialized_ = true;
+}
+
+void CliToolManagerService::OnStart()
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "climgr start");
+
+    Init();
+
+    // Publish the service
+    auto cliService = CliToolManagerService::GetInstance();
+    if (cliService == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "cli service is nullptr");
+        return;
+    }
+
+    int32_t ret = CliToolDataManager::GetInstance().EnsureToolsLoaded();
+    if (ret != 0) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "Failed to load tools: %{public}d", ret);
+    } else {
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully loaded tools");
+    }
+
+    ret = CliFunctionDataManager::GetInstance().EnsureFunctionsInitialized();
+    if (ret != 0) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "Failed to initialize functions database: %{public}d", ret);
+    } else {
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully initialized functions database");
+    }
+
+    if (!Publish(cliService)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Publish failed");
+        return;
+    }
+    DelayUnloadTask();
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "climgr start success");
+}
+
+void CliToolManagerService::OnStop()
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "climgr stop");
+    initialized_ = false;
+
+    // Collect active PIDs before clearing sessions.
+    std::vector<pid_t> activePids;
+    std::vector<std::string> detachTaskIds;
+    std::vector<int64_t> detachAttributionIds;
+    std::vector<int32_t> detachUids;
+    {
+        std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
+        for (const auto &[sessionId, record] : sessionRecords_) {
+            if (record == nullptr) {
+                continue;
+            }
+            if (record->processId > 0 && !record->HasProcessExited()) {
+                activePids.emplace_back(record->processId);
+            }
+            // ATTACHED collected here; PENDING relayed to the attach write-back (its compensating
+            // detach is the single finisher — without the relay the registration would leak).
+            CollectDetachRequest(*record, detachTaskIds, detachAttributionIds, detachUids);
+        }
+        sessionRecords_.clear();
+    }
+
+    // Clear event dispatcher
+    EventDispatcher::GetInstance().ClearAll();
+
+    PostDetachRequests(detachTaskIds, detachAttributionIds, detachUids);
+
+    // Stop the reaper: disarm SIGCHLD (SIG_IGN auto-reaps future exits; discarded status is fine —
+    // sessions are cleared, so no FinalizeBackgroundSession is needed), stop/join the loop, close
+    // the pipe. With sessionRecords_ cleared, an in-flight WaitPid finds no record and only runs
+    // AccessTokenKit::DeleteToolTokenByPid (bounded IPC).
+    StopReaper();
+
+    // Kill each active child and clean up its tool token: SIG_IGN (set in StopReaper) auto-reaps
+    // them; WaitPid runs only for DeleteToolTokenByPid (no record, so no FinalizeBackgroundSession).
+    auto &processManager = ProcessManager::GetInstance();
+    for (pid_t pid : activePids) {
+        processManager.Killpg(pid);
+        WaitPid(pid, 0, SIGCHLD);
+    }
+
+    // Backstop: reap any pre-existing zombies SIG_IGN did not retroactively catch (defensive; on OHOS Linux
+    // SIG_IGN reaps existing zombies, so this is normally a no-op) and clean up their tokens.
+    int32_t status = 0;
+    pid_t pid = 0;
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+        WaitPid(pid, status, SIGCHLD);
+    }
+
+    // Swap the monitor out under ioMonitorMutex_ so concurrent in-flight readers never race with the
+    // OnStop clear (plain shared_ptr concurrent read/write is UB). Readers that snapshotted before the
+    // swap keep the object alive via the refcount; Stop() runs outside the lock as before.
+    std::shared_ptr<IOMonitor> ioMonitor;
+    {
+        std::lock_guard<ffrt::mutex> guard(ioMonitorMutex_);
+        ioMonitor = std::move(ioMonitor_);
+    }
+    if (ioMonitor != nullptr) {
+        ioMonitor->Stop();
+    }
+}
+
+int32_t CliToolManagerService::OnIdle(const SystemAbilityOnDemandReason &idlReason)
+{
+    int32_t sessionSize = 0;
+    {
+        std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
+        sessionSize = static_cast<int32_t>(sessionRecords_.size());
+    }
+    int32_t calledCount = interfaceCalledCount_.load();
+    int32_t callerPidSize = GetCallerPidCount();
+    bool hasHook = false;
+    {
+        std::lock_guard<ffrt::mutex> guard(hookMutex_);
+        hasHook = (cliHook_ != nullptr) || (functionHook_ != nullptr);
+    }
+    if (calledCount != 0 || sessionSize != 0 || callerPidSize != 0 || hasHook) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "service busy, calledCount=%{public}d, sessionSize=%{public}d, hasHook=%{public}d",
+            calledCount, sessionSize, hasHook);
+        if (!CancelIdle()) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "Fail to cancel idle");
+        }
+        return -1;
+    }
+    return 0;
+}
+
+void CliToolManagerService::AddSessionRecord(const std::shared_ptr<SessionRecord> &record)
+{
+    std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
+    sessionRecords_[record->sessionId] = record;
+}
+
+int32_t CliToolManagerService::TryAddSessionRecord(const std::shared_ptr<SessionRecord> &record)
+{
+    if (record == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "null record");
+        return ERR_NO_INIT;
+    }
+    auto cliQuantity = CcmUtil::GetInstance().GetCliConcurrencyLimit();
+    std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
+    if (static_cast<int32_t>(sessionRecords_.size()) >= cliQuantity) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Session limit exceeded: %{public}d", cliQuantity);
+        return ERR_SESSION_LIMIT_EXCEEDED;
+    }
+    sessionRecords_[record->sessionId] = record;
+    return ERR_OK;
+}
+
+std::shared_ptr<SessionRecord> CliToolManagerService::GetSessionRecord(const std::string &sessionId)
+{
+    std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
+    auto it = sessionRecords_.find(sessionId);
+    if (it == sessionRecords_.end()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "GetSessionRecord failed: sessionId=%{public}s not found", sessionId.c_str());
+        return nullptr;
+    }
+    if (it->second == nullptr) {
+        // Defensive cleanup (LOG-006-R2): unregister trace ids before erasing a null record.
+        EventDispatcher::GetInstance().UnregisterTraceIds(sessionId);
+        sessionRecords_.erase(it); // for leak
+        return nullptr;
+    }
+    return it->second;
+}
+
+std::vector<std::shared_ptr<SessionRecord>> CliToolManagerService::GetSessionRecords()
+{
+    std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
+    std::vector<std::shared_ptr<SessionRecord>> records;
+    records.reserve(sessionRecords_.size());
+    for (const auto &[sessionId, record] : sessionRecords_) {
+        if (record != nullptr) {
+            records.emplace_back(record);
+        }
+    }
+    return records;
+}
+
+void CliToolManagerService::RemoveSessionRecord(const std::string &sessionId)
+{
+    EventDispatcher::GetInstance().UnregisterTraceIds(sessionId);
+    std::string taskId;
+    int64_t attributionId = 0;
+    int32_t callerUid = -1;
+    {
+        std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
+        auto it = sessionRecords_.find(sessionId);
+        if (it != sessionRecords_.end() && it->second != nullptr) {
+            TryConsumeAttribution(*it->second, taskId, attributionId, callerUid);
+        }
+        sessionRecords_.erase(sessionId);
+    }
+    PostDetachTaskAttribution(taskId, attributionId, callerUid);
+}
+
+void CliToolManagerService::AttachTaskAttribution(const std::shared_ptr<SessionRecord> &record)
+{
+    if (record == nullptr) {
+        return;
+    }
+    // Phase 1 — snapshot under the table lock and mark PENDING. A record that already left
+    // the table (or was attached twice) must not register: no teardown could consume an
+    // ATTACHED written to an off-table record, leaking the attribution to the appmgr backstop.
+    std::string taskId;
+    pid_t anchor = -1;
+    int32_t callerUid = -1;
+    {
+        std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
+        if (record->taskId.empty() || record->attributionState != AttributionState::NONE) {
+            return;
+        }
+        auto it = sessionRecords_.find(record->sessionId);
+        if (it == sessionRecords_.end() || it->second != record) {
+            return;
+        }
+        // Capture the anchor once: the reaper may invalidate record->processId at any moment.
+        anchor = record->processId;
+        if (anchor <= 0) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL,
+                "AttachTaskAttribution skipped: invalid anchor pid, sessionId=%{public}s, taskId=%{public}s",
+                record->sessionId.c_str(), record->taskId.c_str());
+            return;
+        }
+        taskId = record->taskId;
+        callerUid = record->callerUid;
+        record->attributionState = AttributionState::PENDING;
+    }
+    // Phase 2 — sync IPC outside the lock (lock-held long IPC is forbidden).
+    int64_t attributionId = 0;
+    int32_t ret = TaskAttributionManager::GetInstance().AttachProcess(taskId, anchor, callerUid, attributionId);
+    // Phase 3+4 — reconcile the verdict under the lock; a teardown that consumed while the IPC
+    // was in flight leaves this side the single finisher, compensating its own registration.
+    if (WriteBackAttachResult(record, "AttachTaskAttribution", ret == ERR_OK, ret, anchor, taskId,
+        attributionId)) {
+        PostDetachTaskAttribution(taskId, attributionId, callerUid);
+    }
+}
+
+void CliToolManagerService::PostDetachTaskAttribution(const std::string &taskId, int64_t attributionId,
+    int32_t callerUid)
+{
+    if (taskId.empty() || attributionId <= 0) {
+        return;
+    }
+    // The synchronous unregister IPC must not run inline on the reaper/timeout thread.
+    ffrt::submit([taskId, attributionId, callerUid]() {
+        int32_t ret = TaskAttributionManager::GetInstance().DetachProcess(taskId, attributionId, callerUid);
+        if (ret != ERR_OK) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL,
+                "PostDetachTaskAttribution detach ret=%{public}d, "
+                "attributionId=%{public}" PRId64 ", taskId=%{public}s",
+                ret, attributionId, taskId.c_str());
+        }
+    });
+}
+
+bool CliToolManagerService::TryConsumeAttribution(SessionRecord &record, std::string &taskId,
+    int64_t &attributionId, int32_t &callerUid)
+{
+    if (record.attributionState == AttributionState::ATTACHED) {
+        // The unregister key is attributionId, never processId.
+        taskId = record.taskId;
+        attributionId = record.attributionId;
+        callerUid = record.callerUid;
+        record.attributionId = 0;
+        record.attributionState = AttributionState::CONSUMED;
+        return true;
+    }
+    if (record.attributionState == AttributionState::PENDING) {
+        // Relay: the attach IPC is still in flight; its write-back is the single finisher and
+        // compensates its own registration once it returns.
+        record.attributionState = AttributionState::CONSUMED;
+    }
+    return false;
+}
+
+bool CliToolManagerService::WriteBackAttachResult(const std::shared_ptr<SessionRecord> &record,
+    const char *action, bool attributed, int32_t ret, pid_t reportedPid, const std::string &taskId,
+    int64_t attributionId)
+{
+    bool compensate = false;
+    {
+        std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
+        if (record->attributionState == AttributionState::PENDING) {
+            if (attributed) {
+                record->attributionId = attributionId;
+                record->attributionState = AttributionState::ATTACHED;
+                TAG_LOGI(AAFwkTag::CLI_TOOL,
+                    "%{public}s attributed, sessionId=%{public}s, pid=%{public}d, "
+                    "attributionId=%{public}" PRId64 ", taskId=%{public}s",
+                    action, record->sessionId.c_str(), reportedPid, attributionId, taskId.c_str());
+            } else {
+                // FAILED: nothing was registered; taskId is kept for audit, teardown sees FAILED and skips.
+                record->attributionState = AttributionState::FAILED;
+                TAG_LOGW(AAFwkTag::CLI_TOOL,
+                    "%{public}s not attributed, ret=%{public}d, sessionId=%{public}s, taskId=%{public}s",
+                    action, ret, record->sessionId.c_str(), taskId.c_str());
+            }
+        } else {
+            // Relay: a teardown consumed while the IPC was in flight — this side is the single
+            // finisher and must compensate its own registration.
+            compensate = attributed;
+        }
+    }
+    if (compensate) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL,
+            "%{public}s compensating late detach, sessionId=%{public}s, taskId=%{public}s, "
+            "attributionId=%{public}" PRId64,
+            action, record->sessionId.c_str(), taskId.c_str(), attributionId);
+    }
+    return compensate;
+}
+
+void CliToolManagerService::CollectDetachRequest(SessionRecord &record, std::vector<std::string> &taskIds,
+    std::vector<int64_t> &attributionIds, std::vector<int32_t> &uids)
+{
+    std::string taskId;
+    int64_t attributionId = 0;
+    int32_t callerUid = -1;
+    if (TryConsumeAttribution(record, taskId, attributionId, callerUid)) {
+        taskIds.emplace_back(taskId);
+        attributionIds.emplace_back(attributionId);
+        uids.emplace_back(callerUid);
+    }
+}
+
+void CliToolManagerService::PostDetachRequests(const std::vector<std::string> &taskIds,
+    const std::vector<int64_t> &attributionIds, const std::vector<int32_t> &uids)
+{
+    for (size_t i = 0; i < taskIds.size(); ++i) {
+        PostDetachTaskAttribution(taskIds[i], attributionIds[i], uids[i]);
+    }
+}
+
+bool CliToolManagerService::IsSessionOwner(const std::shared_ptr<SessionRecord> &record, const char *action) const
+{
+    if (record == nullptr) {
+        return false;
+    }
+    auto callingPid = IPCSkeleton::GetCallingPid();
+    if (record->callerPid != callingPid) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL,
+            "%{public}s failed: caller pid=%{public}d is not session owner pid=%{public}d, sessionId=%{public}s",
+            action, callingPid, record->callerPid, record->sessionId.c_str());
+        return false;
+    }
+    return true;
+}
+
+std::shared_ptr<IOMonitor> CliToolManagerService::GetIOMonitor()
+{
+    std::lock_guard<ffrt::mutex> guard(ioMonitorMutex_);
+    return ioMonitor_;
+}
+
+void CliToolManagerService::DelayUnloadTask()
+{
+    auto task = []() {
+        auto service = CliToolManagerService::GetInstance();
+        if (service == nullptr) {
+            return;
+        }
+        int32_t sessionSize = 0;
+        {
+            std::lock_guard<ffrt::mutex> guard(service->sessionsMutex_);
+            sessionSize = static_cast<int32_t>(service->sessionRecords_.size());
+        }
+        int32_t calledCount = service->interfaceCalledCount_.load();
+        int32_t callerPidSize = service->GetCallerPidCount();
+        bool hasHook = false;
+        {
+            std::lock_guard<ffrt::mutex> guard(service->hookMutex_);
+            hasHook = (service->cliHook_ != nullptr) || (service->functionHook_ != nullptr);
+        }
+        if (calledCount == 0 && sessionSize == 0 && callerPidSize == 0 && !hasHook) {
+            TAG_LOGI(AAFwkTag::CLI_TOOL, "UnloadSA start");
+            sptr<ISystemAbilityManager> saManager =
+                OHOS::SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+            if (saManager == nullptr) {
+                TAG_LOGE(AAFwkTag::CLI_TOOL, "null saManager");
+                return;
+            }
+            int32_t result = saManager->UnloadSystemAbility(CLI_TOOL_MGR_SERVICE_ID);
+            if (result != ERR_OK) {
+                TAG_LOGE(AAFwkTag::CLI_TOOL, "UnloadSystemAbility ret: %{public}d", result);
+                return;
+            }
+            TAG_LOGI(AAFwkTag::CLI_TOOL, "UnloadSA success");
+        } else {
+            TAG_LOGI(AAFwkTag::CLI_TOOL, "Service still busy (calledCount=%{public}d, sessionSize=%{public}d, "
+                "hasHook=%{public}d), reschedule delay unload task", calledCount, sessionSize, hasHook);
+            service->DelayUnloadTask();
+        }
+    };
+    ffrt::submit(std::move(task), ffrt::task_attr().delay(ACTIVE_TIME * COEFFICIENT));
+}
+
+bool CliToolManagerService::RegisterSessionWithMonitors(const std::shared_ptr<SessionRecord> &record,
+    const ExecOptions &options)
+{
+    auto ioMonitor = GetIOMonitor();
+    if (ioMonitor == nullptr || !ioMonitor->RegisterSession(
+        record->sessionId, record->stdoutPipe[0], record->stderrPipe[0], record->stdinPipe[1])) {
+        // RegisterSession takes ownership only on success. On failure, close the pipe ends held by this service side.
+        fdsan_close_with_tag(record->stdoutPipe[0], FD_OWNER_TAG);
+        fdsan_close_with_tag(record->stderrPipe[0], FD_OWNER_TAG);
+        fdsan_close_with_tag(record->stdinPipe[1], FD_OWNER_TAG);
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ioMonitor registration failed: sessionId=%{public}s, pid=%{public}d",
+            record->sessionId.c_str(), record->processId.load());
+        return false;
+    }
+
+    if (!options.background && options.yieldMs != 0) {
+        PostExecToolTask(options.yieldMs, record->sessionId, false);
+    }
+    if (record->timeoutMs != 0) {
+        PostExecToolTask(record->timeoutMs, record->sessionId, true);
+    }
+    return true;
+}
+
+void CliToolManagerService::UnregisterSessionWithMonitors(const std::string &sessionId)
+{
+    auto ioMonitor = GetIOMonitor();
+    if (ioMonitor) {
+        ioMonitor->UnregisterSession(sessionId);
+    }
+}
+
+int32_t CliToolManagerService::GetAllToolInfos(ToolsRawData &tools)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "GetAllToolInfos called");
+    InterfaceCallCounter counter(interfaceCalledCount_);
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+    bool isFullPermitted = PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_QUERY_CLI_TOOL);
+    if (!isFullPermitted && !PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_QUERY_PUBLIC_CLI_TOOL)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllToolInfos: Permission denied");
+        return ERR_PERMISSION_DENIED;
+    }
+
+    std::vector<ToolInfo> allTools;
+    int32_t ret = CliToolDataManager::GetInstance().GetAllTools(allTools);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllToolInfos: Failed to get tools, ret=%{public}d", ret);
+        return ret;
+    }
+    if (!isFullPermitted) {
+        // In-place filter: drop non-public tools without copying into a second vector.
+        allTools.erase(std::remove_if(allTools.begin(), allTools.end(),
+            [](const ToolInfo &tool) { return tool.visibility != TOOL_VISIBILITY_PUBLIC; }),
+            allTools.end());
+    }
+    ToolsRawData::FromToolInfoVec(allTools, tools);
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::GetAllToolSummaries(std::vector<ToolSummary> &summaries)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "GetAllToolSummaries called");
+    InterfaceCallCounter counter(interfaceCalledCount_);
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+    bool isFullPermitted = PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_QUERY_CLI_TOOL);
+    if (!isFullPermitted && !PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_QUERY_PUBLIC_CLI_TOOL)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllToolSummaries: Permission denied");
+        return ERR_PERMISSION_DENIED;
+    }
+
+    std::vector<ToolInfo> allTools;
+    int32_t ret = CliToolDataManager::GetInstance().GetAllTools(allTools);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllToolSummaries: Failed to get tools, ret=%{public}d", ret);
+        return ret;
+    }
+    summaries.clear();
+    summaries.reserve(allTools.size());
+    for (const auto &tool : allTools) {
+        if (!isFullPermitted && tool.visibility != TOOL_VISIBILITY_PUBLIC) {
+            continue;
+        }
+        ToolSummary summary;
+        summary.name = tool.name;
+        summary.version = tool.version;
+        summary.description = tool.description;
+        summaries.push_back(std::move(summary));
+    }
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::GetToolInfoByName(const std::string &name, ToolInfo &tool)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "GetToolInfoByName called, name='%{public}s'", name.c_str());
+    InterfaceCallCounter counter(interfaceCalledCount_);
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+    bool isFullPermitted = PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_QUERY_CLI_TOOL);
+    if (!isFullPermitted && !PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_QUERY_PUBLIC_CLI_TOOL)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetToolInfoByName: Permission denied");
+        return ERR_PERMISSION_DENIED;
+    }
+
+    int32_t ret = CliToolDataManager::GetInstance().GetToolByName(name, tool);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetToolInfoByName: Failed to get tool, ret=%{public}d", ret);
+        return ret;
+    }
+    if (!isFullPermitted && tool.visibility != TOOL_VISIBILITY_PUBLIC) {
+        // Do not log the tool name: a private tool must stay indistinguishable from an absent one.
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetToolInfoByName: Tool not exist");
+        return ERR_TOOL_NOT_EXIST;
+    }
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::ValidateFoundationCaller(const char *apiName)
+{
+    auto callingUid = IPCSkeleton::GetCallingUid();
+    auto callerToken = IPCSkeleton::GetCallingTokenID();
+    auto tokenType = Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken);
+    if (callingUid != FOUNDATION_UID ||
+        tokenType != Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s: Permission denied, uid=%{public}d, tokenType=%{public}d",
+            apiName, callingUid, static_cast<int32_t>(tokenType));
+        return ERR_PERMISSION_DENIED;
+    }
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::FilterFunctionsForReset(int32_t userId, const std::string &functionNamespace,
+    const std::vector<FunctionInfo> &functionList, std::vector<FunctionInfo> &validFunctions)
+{
+    validFunctions.reserve(functionList.size());
+    for (const auto &function : functionList) {
+        if (!FunctionInfo::Validate(function)) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "Invalid function info, will skip: %{public}s/%{public}s",
+                function.functionNamespace.c_str(), function.functionName.c_str());
+            continue;
+        }
+
+        // Verify namespace matches
+        if (function.functionNamespace != functionNamespace) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctions: Function namespace mismatch: expected=%{public}s,"
+                " got=%{public}s", functionNamespace.c_str(), function.functionNamespace.c_str());
+            return ERR_INVALID_PARAM;
+        }
+        if (function.userId != userId) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctions: userId mismatch: expected=%{public}d, "
+                "got=%{public}d", userId, function.userId);
+            return ERR_INVALID_PARAM;
+        }
+        validFunctions.push_back(function);
+    }
+
+    // An empty result (empty input or every entry skipped) is valid: the data layer
+    // treats it as "delete all existing functions under (userId, namespace)"
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::RegisterFunction(const FunctionInfo &function)
+{
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "RegisterFunction called: %{public}s/%{public}s",
+        function.functionNamespace.c_str(), function.functionName.c_str());
+
+    InterfaceCallCounter counter(interfaceCalledCount_);
+
+    int32_t ret = ValidateFoundationCaller("RegisterFunction");
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
+    if (!FunctionInfo::Validate(function)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "RegisterFunction: FunctionInfo validation failed");
+        return ERR_INVALID_PARAM;
+    }
+
+    // userId is caller-supplied (validated above) and used as-is for both key and record
+    ret = CliFunctionDataManager::GetInstance().RegisterFunction(function);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "RegisterFunction: Failed to register function, ret=%{public}d", ret);
+        return ret;
+    }
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully registered function: %{public}s/%{public}s",
+        function.functionNamespace.c_str(), function.functionName.c_str());
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::BatchRegisterFunctions(const FunctionsRawData &functions,
+    int32_t &successCount)
+{
+    successCount = 0;
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions called: %{public}u bytes",
+        functions.size);
+
+    InterfaceCallCounter counter(interfaceCalledCount_);
+
+    int32_t ret = ValidateFoundationCaller("BatchRegisterFunctions");
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
+    std::vector<FunctionInfo> functionList;
+    FunctionsRawData::ToFunctionInfoVec(functions, functionList);
+    if (functionList.empty()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions: functions vector is empty");
+        return ERR_INVALID_PARAM;
+    }
+
+    std::vector<FunctionInfo> validFunctions;
+    validFunctions.reserve(functionList.size());
+    for (const auto &function : functionList) {
+        if (!FunctionInfo::Validate(function)) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "Invalid function info, will skip: %{public}s/%{public}s",
+                function.functionNamespace.c_str(), function.functionName.c_str());
+        } else {
+            validFunctions.push_back(function);
+        }
+    }
+
+    if (validFunctions.empty()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "No valid functions to register");
+        successCount = 0;
+        return ERR_INVALID_PARAM;
+    }
+
+    ret = CliFunctionDataManager::GetInstance().BatchRegisterFunctions(validFunctions, successCount);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "BatchRegisterFunctions: Failed, ret=%{public}d", ret);
+        return ret;
+    }
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully batch registered functions: success=%{public}d/%{public}zu",
+        successCount, validFunctions.size());
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::GetFunctionInfo(const std::string &functionNamespace,
+    const std::string &functionName, FunctionInfo &function)
+{
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "GetFunctionInfo called: %{public}s/%{public}s",
+        functionNamespace.c_str(), functionName.c_str());
+    InterfaceCallCounter counter(interfaceCalledCount_);
+
+    int32_t ret = PermissionUtil::CheckSystemAndPermission(PERMISSION_ACCESS_FUNCTION);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
+    // Function data is strictly per-user: queries always resolve to the IPC caller's
+    // own user, cross-user access is not supported
+    int32_t queryUserId = GetCallingUserId();
+    ret = CliFunctionDataManager::GetInstance().GetFunctionByName(
+        queryUserId, functionNamespace, functionName, function);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetFunctionInfo: Failed to get function, ret=%{public}d", ret);
+        return ret;
+    }
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully got function: %{public}s/%{public}s",
+        functionNamespace.c_str(), functionName.c_str());
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::UnregisterFunction(int32_t userId, const std::string &functionNamespace,
+    const std::string &functionName)
+{
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "UnregisterFunction called: userId=%{public}d, %{public}s/%{public}s",
+        userId, functionNamespace.c_str(), functionName.c_str());
+    InterfaceCallCounter counter(interfaceCalledCount_);
+
+    int32_t ret = ValidateFoundationCaller("UnregisterFunction");
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
+    if (userId < 0) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterFunction: Invalid userId: %{public}d", userId);
+        return ERR_INVALID_PARAM;
+    }
+
+    ret = CliFunctionDataManager::GetInstance().UnregisterFunction(userId, functionNamespace, functionName);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterFunction: Failed to unregister function, ret=%{public}d", ret);
+        return ret;
+    }
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully unregistered function: %{public}s/%{public}s",
+        functionNamespace.c_str(), functionName.c_str());
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::UnregisterIntentFunctionsByNamespace(int32_t userId,
+    const std::string &functionNamespace)
+{
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespace called: userId=%{public}d, %{public}s",
+        userId, functionNamespace.c_str());
+    InterfaceCallCounter counter(interfaceCalledCount_);
+
+    int32_t ret = ValidateFoundationCaller("UnregisterIntentFunctionsByNamespace");
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
+    if (userId < 0) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespace: Invalid userId: %{public}d", userId);
+        return ERR_INVALID_PARAM;
+    }
+
+    if (functionNamespace.empty()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespace: Invalid namespace");
+        return ERR_INVALID_PARAM;
+    }
+
+    ret = CliFunctionDataManager::GetInstance().UnregisterIntentFunctionsByNamespace(
+        userId, functionNamespace);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespace: Failed, ret=%{public}d", ret);
+        return ret;
+    }
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully unregistered intentFunctions from namespace: %{public}s",
+        functionNamespace.c_str());
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::ResetNamespaceFunctions(int32_t userId, const std::string &functionNamespace,
+    const FunctionsRawData &functions, int32_t &successCount)
+{
+    successCount = 0;
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctions called: userId=%{public}d, %{public}s, %{public}u bytes",
+        userId, functionNamespace.c_str(), functions.size);
+    InterfaceCallCounter counter(interfaceCalledCount_);
+
+    int32_t ret = ValidateFoundationCaller("ResetNamespaceFunctions");
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
+    if (functionNamespace.empty()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctions: Invalid namespace");
+        return ERR_INVALID_PARAM;
+    }
+
+    if (userId < 0) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctions: Invalid userId: %{public}d", userId);
+        return ERR_INVALID_PARAM;
+    }
+
+    std::vector<FunctionInfo> functionList;
+    ret = FunctionsRawData::ToFunctionInfoVec(functions, functionList);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctions: Failed to parse functions, ret=%{public}d", ret);
+        return ret;
+    }
+
+    // An empty list is allowed and degrades the reset to deleting all existing
+    // functions under (userId, functionNamespace)
+
+    // Every function must carry the explicitly targeted userId (Validate ensures it is set)
+    std::vector<FunctionInfo> validFunctions;
+    ret = FilterFunctionsForReset(userId, functionNamespace, functionList, validFunctions);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
+    ret = CliFunctionDataManager::GetInstance().ResetNamespaceFunctions(
+        userId, functionNamespace, validFunctions, successCount);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctions: Failed, ret=%{public}d", ret);
+        return ret;
+    }
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully reset functions for namespace: %{public}s, "
+        "successCount=%{public}d/%{public}zu", functionNamespace.c_str(), successCount, validFunctions.size());
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::GetAllFunctions(FunctionsRawData &functions)
+{
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "GetAllFunctions called");
+    InterfaceCallCounter counter(interfaceCalledCount_);
+
+    int32_t ret = PermissionUtil::CheckSystemAndPermission(PERMISSION_ACCESS_FUNCTION);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
+    // Function data is strictly per-user: queries always resolve to the IPC caller's
+    // own user, cross-user access is not supported
+    int32_t queryUserId = GetCallingUserId();
+    std::vector<FunctionInfo> functionList;
+    ret = CliFunctionDataManager::GetInstance().GetAllFunctions(queryUserId, functionList);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetAllFunctions: Failed to get functions, ret=%{public}d", ret);
+        return ret;
+    }
+
+    ret = FunctionsRawData::FromFunctionInfoVec(functionList, functions);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "FromFunctionInfoVec failed: %{public}d", ret);
+        return ret;
+    }
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully got all functions (raw): %{public}zu", functionList.size());
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::BatchRegisterFunctionsAsync(const FunctionsRawData &functions)
+{
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "BatchRegisterFunctionsAsync called: %{public}u bytes", functions.size);
+    int32_t successCount = 0;
+    int32_t ret = BatchRegisterFunctions(functions, successCount);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "BatchRegisterFunctionsAsync: Failed, ret=%{public}d", ret);
+    } else {
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "BatchRegisterFunctionsAsync: success=%{public}d", successCount);
+    }
+    return ret;
+}
+
+int32_t CliToolManagerService::UnregisterIntentFunctionsByNamespaceAsync(int32_t userId,
+    const std::string &functionNamespace)
+{
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespaceAsync called: userId=%{public}d, %{public}s",
+        userId, functionNamespace.c_str());
+    int32_t ret = UnregisterIntentFunctionsByNamespace(userId, functionNamespace);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "UnregisterIntentFunctionsByNamespaceAsync: Failed, ret=%{public}d", ret);
+    }
+    return ret;
+}
+
+int32_t CliToolManagerService::ResetNamespaceFunctionsAsync(int32_t userId, const std::string &functionNamespace,
+    const FunctionsRawData &functions)
+{
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctionsAsync called: userId=%{public}d, %{public}s, "
+        "%{public}u bytes", userId, functionNamespace.c_str(), functions.size);
+    int32_t successCount = 0;
+    int32_t ret = ResetNamespaceFunctions(userId, functionNamespace, functions, successCount);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctionsAsync: Failed, ret=%{public}d", ret);
+    } else {
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "ResetNamespaceFunctionsAsync: success=%{public}d", successCount);
+    }
+    return ret;
+}
+
+int32_t CliToolManagerService::ValidateExecToolPermissions()
+{
+    if (!PermissionUtil::IsSystemApp()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Not system app");
+        return ERR_NOT_SYSTEM_APP;
+    }
+
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+    if (!PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_EXEC_CLI_TOOL)) {
+        return ERR_PERMISSION_DENIED;
+    }
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::ValidateExecCmdPublicPermissions(bool isShellCommand)
+{
+    bool isSupportExecCmd = CcmUtil::GetInstance().IsSupportExecCmd();
+    if (isShellCommand && !isSupportExecCmd) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ShellCommand Capability not supported");
+        return AAFwk::ERR_CAPABILITY_NOT_SUPPORT;
+    }
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+    bool isExecCliToolPermitted = PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_EXEC_CLI_TOOL);
+    if (!isShellCommand && !isExecCliToolPermitted) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "CliCommand not granted EXEC_CLI_TOOL");
+        return ERR_PERMISSION_DENIED;
+    }
+    if (isShellCommand && !isExecCliToolPermitted &&
+        !PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_EXEC_PUBLIC_CLI_TOOL)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ShellCommand not granted EXEC_CLI_TOOL or EXEC_PUBLIC_CLI_TOOL");
+        return ERR_PERMISSION_DENIED;
+    }
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::ValidateSessionLimit()
+{
+    auto cliQuantity = CcmUtil::GetInstance().GetCliConcurrencyLimit();
+    std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
+    if (static_cast<int32_t>(sessionRecords_.size()) >= cliQuantity) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Session limit exceeded: %{public}d", cliQuantity);
+        return ERR_SESSION_LIMIT_EXCEEDED;
+    }
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::ValidateSessionPermissions()
+{
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+    if (PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_EXEC_CLI_TOOL) ||
+        PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_EXEC_PUBLIC_CLI_TOOL)) {
+        return ERR_OK;
+    }
+    TAG_LOGE(AAFwkTag::CLI_TOOL, "ValidateSessionPermissions: Permission denied");
+    return ERR_PERMISSION_DENIED;
+}
+
+int32_t CliToolManagerService::ValidateAndPrepareTool(const ExecToolParam &param, uint32_t tokenId,
+    ToolInfo &toolInfo, std::string &sandboxConfig, std::string &bundleName, std::string& detail)
+{
+    if (CliToolDataManager::GetInstance().GetToolByName(param.toolName, toolInfo) != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Tool not found");
+        return ERR_TOOL_NOT_EXIST;
+    }
+
+    auto checkPramRet = ToolUtil::ValidateProperties(toolInfo, param, tokenId, detail);
+    if (checkPramRet != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Input schema validation failed");
+        return checkPramRet;
+    }
+
+    if (!ToolUtil::GenerateSandboxConfig(param, tokenId, sandboxConfig, bundleName)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "caller is not hap");
+        return ERR_NOT_HAP;
+    }
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::ValidateAndPrepareCmd(const ExecCmdParam &param, uint32_t tokenId,
+    std::string &sandboxConfig, std::string &bundleName)
+{
+    std::string detail;
+    auto checkPramRet = ToolUtil::ValidateExecOptionsProperties(param.execCmdOptions.AsExecOptions(), detail);
+    if (checkPramRet != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Input execoptions validation failed");
+        return checkPramRet;
+    }
+
+    if (!ToolUtil::GenerateCmdSandboxConfig(param, tokenId, sandboxConfig, bundleName)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "caller is not hap");
+        return ERR_NOT_HAP;
+    }
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::SetupAndStartSession(const ExecToolParam &param, const std::string &eventId,
+    const ToolInfo &toolInfo, const std::string &sandboxConfig, const std::string &bundleName)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL,
+        "Dispatch to CLI path, toolName=%{public}s eventId=%{public}s", param.toolName.c_str(), eventId.c_str());
+
+    std::shared_ptr<SessionRecord> record = CreateSessionRecord(param, eventId);
+    if (record == nullptr) {
+        return ERR_NO_INIT;
+    }
+
+    auto createRet = ProcessManager::GetInstance().CreateChildProcess(
+        param, sandboxConfig, toolInfo, record);
+    if (createRet != ERR_OK) {
+        return createRet;
+    }
+    if (auto limitRet = TryAddSessionRecord(record); limitRet != ERR_OK) {
+        ProcessManager::GetInstance().Killpg(record->processId);
+        return limitRet;
+    }
+    EventDispatcher::GetInstance().RegisterTraceIds(
+        record->sessionId, record->toolCallId, record->dmSessionId);
+
+    if (!RegisterSessionWithMonitors(record, param.options)) {
+        ProcessManager::GetInstance().Killpg(record->processId);
+        RemoveSessionRecord(record->sessionId);
+        return ERR_NO_INIT;
+    }
+
+    AttachTaskAttribution(record);
+
+    if (!bundleName.empty()) {
+        RegisterAppStateObserver(bundleName, record->callerPid);
+    }
+
+    if (param.options.background) {
+        HandleBackgroundSessionReply(record, eventId);
+    }
+
+    return ERR_OK;
+}
+
+void CliToolManagerService::HandleBackgroundSessionReply(
+    const std::shared_ptr<SessionRecord> &record, const std::string &eventId)
+{
+    CliSessionInfo session;
+    record->BuildSessionInfo(session);
+    InvokeAfterCallTool(session, *record);
+    EventDispatcher::GetInstance().DispatchExecToolReplyEvent(
+        record->callerPid, record->callerUid, eventId, ERR_OK, session);
+}
+
+int32_t CliToolManagerService::RegisterCliHook(const sptr<ICliHookInterface> &hook, int32_t activeMethods)
+{
+    InterfaceCallCounter counter(interfaceCalledCount_);
+    auto ret = PermissionUtil::CheckSystemAppAndPermission(PERMISSION_REGISTER_AGENT_HOOK);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    if (!IsDeveloperMode()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "RegisterCliHook rejected: not developer mode");
+        return ERR_NOT_DEVELOPER_MODE;
+    }
+    if (hook == nullptr || hook->AsObject() == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "RegisterCliHook: hook is nullptr");
+        return ERR_INVALID_PARAM;
+    }
+    auto remote = hook->AsObject();
+    std::lock_guard<ffrt::mutex> lock(hookMutex_);
+    if (cliHook_ != nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "RegisterCliHook rejected: already registered");
+        return ERR_HOOK_ALREADY_REGISTERED;
+    }
+    cliHookDeathRecipient_ = sptr<IRemoteObject::DeathRecipient>(new HookDeathRecipient(HookType::CLI));
+    remote->AddDeathRecipient(cliHookDeathRecipient_);
+    cliHook_ = hook;
+    cliHookActiveMethods_ = static_cast<uint32_t>(activeMethods);
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "RegisterCliHook success, activeMethods=%{public}u", cliHookActiveMethods_);
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::UnregisterCliHook(const sptr<ICliHookInterface> &hook)
+{
+    InterfaceCallCounter counter(interfaceCalledCount_);
+    auto ret = PermissionUtil::CheckSystemAppAndPermission(PERMISSION_REGISTER_AGENT_HOOK);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    if (!IsDeveloperMode()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "UnregisterCliHook rejected: not developer mode");
+        return ERR_NOT_DEVELOPER_MODE;
+    }
+    if (hook == nullptr) {
+        return ERR_INVALID_PARAM;
+    }
+    std::lock_guard<ffrt::mutex> lock(hookMutex_);
+    if (cliHook_ != nullptr && cliHook_->AsObject() == hook->AsObject()) {
+        if (cliHookDeathRecipient_ != nullptr) {
+            cliHook_->AsObject()->RemoveDeathRecipient(cliHookDeathRecipient_);
+        }
+        cliHook_ = nullptr;
+        cliHookActiveMethods_ = 0;
+        cliHookDeathRecipient_ = nullptr;
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterCliHook success");
+        return ERR_OK;
+    }
+    return ERR_HOOK_NOT_REGISTERED;
+}
+
+int32_t CliToolManagerService::RegisterFunctionHook(const sptr<IFunctionHookInterface> &hook, int32_t activeMethods)
+{
+    InterfaceCallCounter counter(interfaceCalledCount_);
+    auto ret = PermissionUtil::CheckSystemAppAndPermission(PERMISSION_REGISTER_AGENT_HOOK);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    if (!IsDeveloperMode()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "RegisterFunctionHook rejected: not developer mode");
+        return ERR_NOT_DEVELOPER_MODE;
+    }
+    if (hook == nullptr || hook->AsObject() == nullptr) {
+        return ERR_INVALID_PARAM;
+    }
+    auto remote = hook->AsObject();
+    std::lock_guard<ffrt::mutex> lock(hookMutex_);
+    if (functionHook_ != nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "RegisterFunctionHook rejected: already registered");
+        return ERR_HOOK_ALREADY_REGISTERED;
+    }
+    functionHookDeathRecipient_ = sptr<IRemoteObject::DeathRecipient>(new HookDeathRecipient(HookType::FUNCTION));
+    remote->AddDeathRecipient(functionHookDeathRecipient_);
+    functionHook_ = hook;
+    functionHookActiveMethods_ = static_cast<uint32_t>(activeMethods);
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "RegisterFunctionHook success, activeMethods=%{public}u", functionHookActiveMethods_);
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::UnregisterFunctionHook(const sptr<IFunctionHookInterface> &hook)
+{
+    InterfaceCallCounter counter(interfaceCalledCount_);
+    auto ret = PermissionUtil::CheckSystemAppAndPermission(PERMISSION_REGISTER_AGENT_HOOK);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    if (!IsDeveloperMode()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "UnregisterFunctionHook rejected: not developer mode");
+        return ERR_NOT_DEVELOPER_MODE;
+    }
+    if (hook == nullptr) {
+        return ERR_INVALID_PARAM;
+    }
+    std::lock_guard<ffrt::mutex> lock(hookMutex_);
+    if (functionHook_ != nullptr && functionHook_->AsObject() == hook->AsObject()) {
+        if (functionHookDeathRecipient_ != nullptr) {
+            functionHook_->AsObject()->RemoveDeathRecipient(functionHookDeathRecipient_);
+        }
+        functionHook_ = nullptr;
+        functionHookActiveMethods_ = 0;
+        functionHookDeathRecipient_ = nullptr;
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "UnregisterFunctionHook success");
+        return ERR_OK;
+    }
+    return ERR_HOOK_NOT_REGISTERED;
+}
+
+int32_t CliToolManagerService::BeforeInvokeFunction(InvokeFunctionParam &param)
+{
+    auto ret = PermissionUtil::CheckSystemAndPermission(PERMISSION_ACCESS_FUNCTION);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    if (!IsDeveloperMode()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "BeforeInvokeFunction rejected: not developer mode");
+        return ERR_NOT_DEVELOPER_MODE;
+    }
+    auto hook = CheckFunctionHook(FUNC_HOOK_BEFORE_INVOKE);
+    if (hook == nullptr) {
+        return ERR_OK;
+    }
+    if (!InvokeHookAsync(
+        [hook](InvokeFunctionParam &p) { hook->BeforeInvokeFunction(p); }, param)) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "BeforeInvokeFunction hook timeout, using original param");
+    }
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::AfterInvokeFunction(FunctionResultWrap &functionResultWrap)
+{
+    auto ret = PermissionUtil::CheckSystemAndPermission(PERMISSION_ACCESS_FUNCTION);
+    if (ret != ERR_OK) {
+        return ret;
+    }
+    if (!IsDeveloperMode()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "AfterInvokeFunction rejected: not developer mode");
+        return ERR_NOT_DEVELOPER_MODE;
+    }
+    auto hook = CheckFunctionHook(FUNC_HOOK_AFTER_INVOKE);
+    if (hook == nullptr) {
+        return ERR_OK;
+    }
+    if (!InvokeHookAsync(
+        [hook](FunctionResultWrap &w) { hook->AfterInvokeFunction(w); }, functionResultWrap)) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "AfterInvokeFunction hook timeout, using original result");
+    }
+    return ERR_OK;
+}
+
+void CliToolManagerService::OnHookDied(const wptr<IRemoteObject> &remote, HookType type)
+{
+    auto remoteObj = remote.promote();
+    std::lock_guard<ffrt::mutex> lock(hookMutex_);
+    if (type == HookType::CLI && cliHook_ != nullptr && cliHook_->AsObject() == remoteObj) {
+        cliHook_ = nullptr;
+        cliHookActiveMethods_ = 0;
+        cliHookDeathRecipient_ = nullptr;
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "OnHookDied: cleared cliHook");
+    } else if (type == HookType::FUNCTION && functionHook_ != nullptr && functionHook_->AsObject() == remoteObj) {
+        functionHook_ = nullptr;
+        functionHookActiveMethods_ = 0;
+        functionHookDeathRecipient_ = nullptr;
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "OnHookDied: cleared functionHook");
+    }
+}
+
+bool CliToolManagerService::IsDeveloperMode() const
+{
+    return isDeveloperMode_;
+}
+
+sptr<ICliHookInterface> CliToolManagerService::CheckCliHook(uint32_t flag)
+{
+    if (!IsDeveloperMode()) {
+        return nullptr;
+    }
+    std::lock_guard<ffrt::mutex> lock(hookMutex_);
+    if (cliHook_ == nullptr) {
+        return nullptr;
+    }
+    if (cliHookActiveMethods_ != 0 && !(cliHookActiveMethods_ & flag)) { // hook active and method enabled
+        return nullptr;
+    }
+    return cliHook_;
+}
+
+sptr<IFunctionHookInterface> CliToolManagerService::CheckFunctionHook(uint32_t flag)
+{
+    if (!IsDeveloperMode()) {
+        return nullptr;
+    }
+    std::lock_guard<ffrt::mutex> lock(hookMutex_);
+    if (functionHook_ == nullptr) {
+        return nullptr;
+    }
+    if (functionHookActiveMethods_ != 0 && !(functionHookActiveMethods_ & flag)) {
+        return nullptr;
+    }
+    return functionHook_;
+}
+
+void CliToolManagerService::InvokeBeforeCallTool(ExecToolParam &param)
+{
+    auto hook = CheckCliHook(CLI_HOOK_BEFORE_CALL_TOOL);
+    if (hook == nullptr) {
+        return;
+    }
+    if (!InvokeHookAsync([hook](ExecToolParam &p) { hook->BeforeCallTool(p); }, param)) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "InvokeBeforeCallTool timeout, using original param");
+    }
+}
+
+void CliToolManagerService::InvokeBeforeCallCmd(ExecCmdParam &param)
+{
+    auto hook = CheckCliHook(CLI_HOOK_BEFORE_CALL_CMD);
+    if (hook == nullptr) {
+        return;
+    }
+    if (!InvokeHookAsync([hook](ExecCmdParam &p) { hook->BeforeCallCmd(p); }, param)) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "InvokeBeforeCallCmd timeout, using original param");
+    }
+}
+
+void CliToolManagerService::InvokeAfterCallTool(CliSessionInfo &session, const SessionRecord &record)
+{
+    if (session.result == nullptr) {
+        return;
+    }
+    uint32_t flag = (record.sessionType == SessionType::CLI_CMD) ? CLI_HOOK_AFTER_CALL_CMD : CLI_HOOK_AFTER_CALL_TOOL;
+    auto hook = CheckCliHook(flag);
+    if (hook == nullptr) {
+        return;
+    }
+    ExecResultWrap execResultWrap;
+    execResultWrap.execResult = *session.result;
+    // Stamp the identifiers actually used by the execution (R-3): the session
+    // record carries the post-before-hook values the process ran with.
+    execResultWrap.toolCallId = record.toolCallId;
+    execResultWrap.dmSessionId = record.dmSessionId;
+    if (record.sessionType == SessionType::CLI_CMD) {
+        if (!InvokeHookAsync([hook](ExecResultWrap &w) { hook->AfterCallCmd(w); }, execResultWrap)) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "InvokeAfterCallCmd timeout, using original result");
+        }
+    } else {
+        if (!InvokeHookAsync([hook](ExecResultWrap &w) { hook->AfterCallTool(w); }, execResultWrap)) {
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "InvokeAfterCallTool timeout, using original result");
+        }
+    }
+    *session.result = execResultWrap.execResult;
+}
+
+int32_t CliToolManagerService::TryDispatchSkillSession(const ExecToolParam &param,
+    const std::string &eventId, const ToolInfo &toolInfo, bool &dispatched)
+{
+    dispatched = false;
+    if (!ToolUtil::IsSkillTool(param.toolName)) {
+        return ERR_OK;
+    }
+
+    ExecToolParam skillParam = param;
+    int32_t skillType = 0;
+    auto skillRet = ValidateSkillTypeFromParam(skillParam, skillType);
+    if (skillRet != ERR_OK) {
+        return skillRet;
+    }
+    if (skillType == SKILL_TYPE_INDEPENDENT) {
+        TAG_LOGI(AAFwkTag::CLI_TOOL,
+            "Independent skill, fallback to CLI path, toolName=%{public}s", param.toolName.c_str());
+        return ERR_OK;
+    }
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL,
+        "Dispatch to skill path, toolName=%{public}s eventId=%{public}s",
+        param.toolName.c_str(), eventId.c_str());
+    dispatched = true;
+    int32_t ret = SetupAndStartSkillSession(skillParam, eventId, toolInfo);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL,
+            "Skill dispatch failed, toolName=%{public}s ret=%{public}d", param.toolName.c_str(), ret);
+    }
+    return ret;
+}
+
+int32_t CliToolManagerService::ExecTool(const ExecToolParam &param, const std::string &eventId,
+    const sptr<ICliToolManagerScheduler> &scheduler)
+{
+    InterfaceCallCounter counter(interfaceCalledCount_);
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "ExecTool called: toolName=%{public}s, subcommand=%{public}s",
+        param.toolName.c_str(), param.subcommand.c_str());
+    // Server-side validation of IPC input: untrusted Parcel data must never reach
+    // logs or child-process environments (empty means "not provided" and is valid).
+    if (!IsValidTraceId(param.options.toolCallId) || !IsValidTraceId(param.options.dmSessionId)) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "ExecTool rejected: invalid trace id, length: %{public}zu/%{public}zu",
+            param.options.toolCallId.length(), param.options.dmSessionId.length());
+        return ERR_INVALID_VALUE;
+    }
+
+    std::string bundleName;
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+
+    AppExecFwk::BundleInfo bundleInfo;
+    if (ToolUtil::GetBundleInfoByTokenId(tokenId, bundleInfo)) {
+        bundleName = bundleInfo.name;
+    }
+
+    if (auto ret = ValidateExecToolPermissions(); ret != ERR_OK) {
+        ReportCliExecuteFailed(bundleName, param.toolName, GetFailureReason(ret));
+        return ret;
+    }
+    ExecToolParam actualParam = param;
+    // taskId rides the serialized options tail: snapshot before the hook, re-assert after (read-only).
+    std::string taskId = actualParam.options.taskId;
+    if (!IsValidTraceId(taskId)) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "ExecTool taskId invalid, treated as not provided, length: %{public}zu",
+            taskId.length());
+        taskId.clear();
+    }
+    InvokeBeforeCallTool(actualParam);
+    // Re-sanitize: the before-hook may have modified the options.
+    SanitizeTraceIds(actualParam.options);
+    // Re-assert the authoritative taskId: read-only on the hook face.
+    actualParam.options.taskId = taskId;
+    if (!actualParam.options.toolCallId.empty() || !actualParam.options.dmSessionId.empty()) {
+        TAG_LOGI(AAFwkTag::CLI_TOOL,
+            "ExecTool trace ids: toolCallId=%{public}s, dmSessionId=%{public}s",
+            actualParam.options.toolCallId.c_str(), actualParam.options.dmSessionId.c_str());
+    }
+    int32_t callerPid = IPCSkeleton::GetCallingPid();
+    int32_t callerUid = IPCSkeleton::GetCallingUid();
+    if (!EventDispatcher::GetInstance().SetScheduler(callerPid, callerUid, scheduler)) {
+        ReportCliExecuteFailed(bundleName, actualParam.toolName, GetFailureReason(ERR_NO_INIT));
+        return ERR_NO_INIT;
+    }
+
+    ToolInfo toolInfo;
+    bool dispatched = false;
+    auto skillRet = TryDispatchSkillSession(actualParam, eventId, toolInfo, dispatched);
+    if (skillRet != ERR_OK) {
+        ReportCliExecuteFailed(bundleName, actualParam.toolName, GetFailureReason(skillRet));
+        return skillRet;
+    }
+    if (dispatched) {
+        return ERR_OK;
+    }
+
+    if (auto ret = ValidateSessionLimit(); ret != ERR_OK) {
+        ReportCliExecuteFailed(bundleName, actualParam.toolName, GetFailureReason(ret));
+        return ret;
+    }
+
+    std::string sandboxConfig;
+    std::string detail;
+    auto ret = ValidateAndPrepareTool(actualParam, tokenId, toolInfo, sandboxConfig, bundleName, detail);
+    if (ret != ERR_OK) {
+        ReportCliExecuteFailed(bundleName, actualParam.toolName, GetFailureReason(ret), detail);
+        return ret;
+    }
+
+    ret = SetupAndStartSession(actualParam, eventId, toolInfo, sandboxConfig, bundleName);
+    if (ret != ERR_OK) {
+        ReportCliExecuteFailed(bundleName, actualParam.toolName, GetFailureReason(ret));
+    }
+    return ret;
+}
+
+int32_t CliToolManagerService::ExecCmd(const ExecCmdParam &param, const std::string &eventId,
+    const sptr<ICliToolManagerScheduler> &scheduler, const std::string &subscriptionId)
+{
+    InterfaceCallCounter counter(interfaceCalledCount_);
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "ExecCmd called: cmd=%{private}s", param.cmd.c_str());
+    // Server-side validation of IPC input (see ExecTool).
+    if (!IsValidTraceId(param.execCmdOptions.toolCallId) || !IsValidTraceId(param.execCmdOptions.dmSessionId)) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "ExecCmd rejected: invalid trace id, length: %{public}zu/%{public}zu",
+            param.execCmdOptions.toolCallId.length(), param.execCmdOptions.dmSessionId.length());
+        return ERR_INVALID_VALUE;
+    }
+    if (auto ret = ValidateExecCmdPublicPermissions(param.execCmdOptions.isShellCommand); ret != ERR_OK) {
+        return ret;
+    }
+    if (!param.execCmdOptions.toolCallId.empty() || !param.execCmdOptions.dmSessionId.empty()) {
+        TAG_LOGI(AAFwkTag::CLI_TOOL,
+            "ExecCmd trace ids: toolCallId=%{public}s, dmSessionId=%{public}s",
+            param.execCmdOptions.toolCallId.c_str(), param.execCmdOptions.dmSessionId.c_str());
+    }
+    int32_t callerPid = IPCSkeleton::GetCallingPid();
+    int32_t callerUid = IPCSkeleton::GetCallingUid();
+    if (!EventDispatcher::GetInstance().SetScheduler(callerPid, callerUid, scheduler)) {
+        return ERR_NO_INIT;
+    }
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+    std::string bundleName;
+    AppExecFwk::BundleInfo bundleInfo;
+    if (ToolUtil::GetBundleInfoByTokenId(tokenId, bundleInfo)) {
+        bundleName = bundleInfo.name;
+    }
+    if (auto ret = ValidateSessionLimit(); ret != ERR_OK) {
+        ReportCliExecuteFailed(bundleName, "", GetFailureReason(ret));
+        return ret;
+    }
+
+    // The before-hook is trusted (RegisterCliHook gates PERMISSION_REGISTER_AGENT_HOOK and
+    // developer mode). It may modify cmd but is not expected to change
+    // execCmdOptions.isShellCommand, which would reroute past the permission check above.
+    ExecCmdParam actualParam = param;
+    // taskId discipline mirrors ExecTool: snapshot before the hook, re-assert after (read-only).
+    std::string taskId = actualParam.execCmdOptions.taskId;
+    if (!IsValidTraceId(taskId)) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "ExecCmd taskId invalid, treated as not provided, length: %{public}zu",
+            taskId.length());
+        taskId.clear();
+    }
+    InvokeBeforeCallCmd(actualParam);
+    SanitizeTraceIds(actualParam.execCmdOptions);
+    // Re-assert the authoritative taskId: read-only on the hook face.
+    actualParam.execCmdOptions.taskId = taskId;
+
+    // Tool command mode
+    if (!actualParam.execCmdOptions.isShellCommand) {
+        CmdSessionContext context;
+        context.eventId = eventId;
+        context.subscriptionId = subscriptionId;
+        context.scheduler = scheduler;
+        context.callerPid = callerPid;
+        context.callerUid = callerUid;
+        context.tokenId = tokenId;
+        context.callerBundleName = bundleName;
+        return ExecCmdToolMode(actualParam, std::move(context));
+    }
+
+    // Shell path (original logic)
+    std::string sandboxConfig;
+    if (auto ret = ValidateAndPrepareCmd(actualParam, tokenId, sandboxConfig, bundleName); ret != ERR_OK) {
+        return ret;
+    }
+    // Create session record for shell command
+    auto record = std::make_shared<SessionRecord>();
+    record->callerPid = callerPid;
+    record->callerUid = callerUid;
+    // Capture caller bundle name in the IPC context for later non-IPC paths.
+    record->callerBundleName = bundleName;
+    record->sessionId = ToolUtil::GenerateCliSessionId("shell", record);
+    record->toolName = "shell";
+    record->sessionType = SessionType::CLI_CMD;
+    record->toolCallId = actualParam.execCmdOptions.toolCallId;
+    record->dmSessionId = actualParam.execCmdOptions.dmSessionId;
+    // Hand-built record: write the attribution key explicitly, or it is silently lost.
+    record->taskId = actualParam.execCmdOptions.taskId;
+    record->timeoutMs = actualParam.execCmdOptions.timeout * COEFFICIENT;
+    record->SetState(SessionState::RUNNING);
+    record->SetBackground(actualParam.execCmdOptions.background);
+    record->eventId = eventId;
+    if (auto limitRet = TryAddSessionRecord(record); limitRet != ERR_OK) {
+        return limitRet;
+    }
+    EventDispatcher::GetInstance().RegisterTraceIds(
+        record->sessionId, record->toolCallId, record->dmSessionId);
+    auto subscribeRet = SubscribeSessionInternal(record->sessionId, subscriptionId, scheduler);
+    if (subscribeRet != ERR_OK) {
+        RemoveSessionRecord(record->sessionId);
+        return subscribeRet;
+    }
+    auto createRet = ProcessManager::GetInstance().CreateShellProcess(actualParam,
+        sandboxConfig, record);
+    if (createRet != ERR_OK) {
+        EventDispatcher::GetInstance().UnregisterSubscriber(
+            record->sessionId, subscriptionId, callerPid, callerUid);
+        RemoveSessionRecord(record->sessionId);
+        return createRet;
+    }
+    if (!RegisterSessionWithMonitors(record, actualParam.execCmdOptions.AsExecOptions())) {
+        ProcessManager::GetInstance().Killpg(record->processId);
+        EventDispatcher::GetInstance().UnregisterSubscriber(
+            record->sessionId, subscriptionId, callerPid, callerUid);
+        RemoveSessionRecord(record->sessionId);
+        return ERR_NO_INIT;
+    }
+    AttachTaskAttribution(record);
+    if (!bundleName.empty()) {
+        RegisterAppStateObserver(bundleName, record->callerPid);
+    }
+    if (actualParam.execCmdOptions.background) {
+        HandleBackgroundSessionReply(record, eventId);
+    }
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::ExecCmdToolMode(const ExecCmdParam &param, CmdSessionContext context)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL,
+        "ExecCmdToolMode: cmd=%{private}s, callerPid=%{public}d, callerUid=%{public}d",
+        param.cmd.c_str(), context.callerPid, context.callerUid);
+
+    if (param.cmd.length() > MAX_CMD_LENGTH) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "cmd length %{public}zu exceeds limit %{public}u",
+            param.cmd.length(), MAX_CMD_LENGTH);
+        ReportCliExecuteFailed(context.callerBundleName, "", GetFailureReason(ERR_INVALID_PARAM));
+        return ERR_INVALID_PARAM;
+    }
+
+    // Step 1: Extract toolName, look up tool.
+    std::string toolName = ExecCmdParam::ExtractToolName(param.cmd);
+    if (toolName.empty() || !std::all_of(toolName.begin(), toolName.end(),
+        [](char c) { return std::isalnum(static_cast<unsigned char>(c)) || c == '-' || c == '_'; })) {
+        ReportCliExecuteFailed(context.callerBundleName, toolName,
+            GetFailureReason(ERR_INVALID_PARAM), "invalid_tool_name");
+        return ERR_INVALID_PARAM;
+    }
+
+    ToolInfo toolInfo;
+    if (CliToolDataManager::GetInstance().GetToolByName(toolName, toolInfo) != ERR_OK) {
+        ReportCliExecuteFailed(context.callerBundleName, toolName, GetFailureReason(ERR_TOOL_NOT_EXIST));
+        return ERR_TOOL_NOT_EXIST;
+    }
+
+    // Step 2: Parse command string.
+    ExecToolParam toolParam;
+    std::string detail;
+    auto parseRet = ToolUtil::ParseToolCommand(param.cmd, toolInfo, toolParam, detail);
+    if (parseRet != ERR_OK) {
+        ReportCliExecuteFailed(context.callerBundleName, toolName, GetFailureReason(parseRet), detail);
+        return parseRet;
+    }
+
+    toolParam.options = param.execCmdOptions.AsExecOptions();
+    toolParam.challenge = param.execCmdOptions.challenge;
+
+    // Step 3: Validate exec options and generate sandbox config.
+    // Schema/key/type validation is already done by ParseToolCommand, so skip ValidateAndPrepareTool.
+    auto optionsRet = ToolUtil::ValidateExecOptionsProperties(toolParam.options, detail);
+    if (optionsRet != ERR_OK) {
+        ReportCliExecuteFailed(context.callerBundleName, toolName, GetFailureReason(optionsRet), detail);
+        return optionsRet;
+    }
+
+    std::string sandboxConfig;
+    if (!ToolUtil::GenerateSandboxConfig(toolParam, context.tokenId, sandboxConfig,
+        context.callerBundleName)) {
+        ReportCliExecuteFailed(context.callerBundleName, toolName, GetFailureReason(ERR_NOT_HAP), detail);
+        return ERR_NOT_HAP;
+    }
+
+    // Step 4: Subscribe before process creation (aligned with shell path).
+    return SetupCmdSession(toolParam, toolInfo, sandboxConfig, toolName, context);
+}
+
+int32_t CliToolManagerService::SetupCmdSession(const ExecToolParam &toolParam, const ToolInfo &toolInfo,
+    const std::string &sandboxConfig, const std::string &toolName, const CmdSessionContext &context)
+{
+    auto record = CreateSessionRecord(toolParam, context.eventId);
+    if (record == nullptr) {
+        ReportCliExecuteFailed(context.callerBundleName, toolName, GetFailureReason(ERR_NO_INIT));
+        return ERR_NO_INIT;
+    }
+    record->sessionType = SessionType::CLI_CMD;
+    if (auto limitRet = TryAddSessionRecord(record); limitRet != ERR_OK) {
+        ReportCliExecuteFailed(context.callerBundleName, toolName, GetFailureReason(limitRet));
+        return limitRet;
+    }
+
+    auto subscribeRet = SubscribeSessionInternal(record->sessionId, context.subscriptionId, context.scheduler);
+    if (subscribeRet != ERR_OK) {
+        RemoveSessionRecord(record->sessionId);
+        ReportCliExecuteFailed(context.callerBundleName, toolName, GetFailureReason(subscribeRet));
+        return subscribeRet;
+    }
+
+    auto createRet = ProcessManager::GetInstance().CreateChildProcess(
+        toolParam, sandboxConfig, toolInfo, record);
+    if (createRet != ERR_OK) {
+        EventDispatcher::GetInstance().UnregisterSubscriber(
+            record->sessionId, context.subscriptionId, context.callerPid, context.callerUid);
+        RemoveSessionRecord(record->sessionId);
+        ReportCliExecuteFailed(context.callerBundleName, toolName, GetFailureReason(createRet));
+        return createRet;
+    }
+
+    if (!RegisterSessionWithMonitors(record, toolParam.options)) {
+        ProcessManager::GetInstance().Killpg(record->processId);
+        EventDispatcher::GetInstance().UnregisterSubscriber(
+            record->sessionId, context.subscriptionId, context.callerPid, context.callerUid);
+        RemoveSessionRecord(record->sessionId);
+        ReportCliExecuteFailed(context.callerBundleName, toolName, GetFailureReason(ERR_NO_INIT));
+        return ERR_NO_INIT;
+    }
+
+    AttachTaskAttribution(record);
+
+    if (!context.callerBundleName.empty()) {
+        RegisterAppStateObserver(context.callerBundleName, record->callerPid);
+    }
+
+    if (toolParam.options.background) {
+        HandleBackgroundSessionReply(record, context.eventId);
+    }
+
+    return ERR_OK;
+}
+
+void CliToolManagerService::PostExecToolTask(int64_t time, const std::string &sessionId, bool isTimeout)
+{
+    auto timeoutTask = [sessionId, isTimeout]() {
+        auto service = CliToolManagerService::GetInstance();
+        if (service == nullptr) {
+            return;
+        }
+        if (isTimeout) {
+            service->HandleProcessTimeout(sessionId);
+        } else {
+            service->HandleProcessYieldTimeout(sessionId);
+        }
+    };
+    ffrt::submit(std::move(timeoutTask), ffrt::task_attr().delay(time * COEFFICIENT));
+}
+
+void CliToolManagerService::WaitPid(pid_t pid, int32_t status, int32_t sig)
+{
+    std::shared_ptr<SessionRecord> record = nullptr;
+    std::string detachTaskId;
+    int64_t detachAttributionId = 0;
+    int32_t detachCallerUid = -1;
+    {
+        std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
+        for (auto iter = sessionRecords_.begin(); iter != sessionRecords_.end();) {
+            if (iter->second == nullptr) {
+                std::string sessionId = iter->first;
+                // Registry invariant: keep the trace-id registry consistent with
+                // sessionRecords_ even on the defensive null-record cleanup path.
+                EventDispatcher::GetInstance().UnregisterTraceIds(sessionId);
+                iter = sessionRecords_.erase(iter);
+                TAG_LOGW(AAFwkTag::CLI_TOOL, "delete leak sessionId:%{public}s", sessionId.c_str());
+                continue;
+            }
+            if (pid == iter->second->processId) {
+                record = iter->second;
+                iter->second->processId = -1; // invalidate: reaped pid may be reused by kernel
+                // Consume the attribution inside the lock: exactly one detach per attribution
+                // (ATTACHED consumed here, PENDING relayed to the attach write-back).
+                TryConsumeAttribution(*iter->second, detachTaskId, detachAttributionId, detachCallerUid);
+                break;
+            }
+            ++iter;
+        }
+    }
+    AccessToken::AccessTokenKit::DeleteToolTokenByPid(pid);
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "WaitPid delete tool pid:%{public}d", pid);
+    // Post (never inline) — this runs on the dedicated reaper thread.
+    PostDetachTaskAttribution(detachTaskId, detachAttributionId, detachCallerUid);
+
+    if (record) {
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "WaitPid: found record for pid=%{public}d, toolName=%{public}s",
+            pid, record->toolName.c_str());
+
+        int32_t termSignal = 0;
+        // WIFSIGNALED/WTERMSIG decode the waitpid() status value when the child exited because of a signal.
+        if (WIFSIGNALED(status)) {
+            termSignal = WTERMSIG(status);
+            TAG_LOGI(AAFwkTag::CLI_TOOL, "WaitPid: process killed by signal=%{public}d", termSignal);
+            if (termSignal != 0 && termSignal != SIGTERM && termSignal != SIGHUP && termSignal != SIGCHLD) {
+                ReportCliSignal(record->toolName, termSignal);
+            }
+        }
+
+        record->SetTerminalResult(status, sig);
+        if (record->OutputDrained()) {
+            FinalizeBackgroundSession(record);
+        }
+    } else {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "WaitPid: no record found for pid=%{public}d", pid);
+    }
+}
+
+void CliToolManagerService::sigchld_handler(int32_t /*sig*/)
+{
+    // The handler's sole job is to wake the dedicated reaper thread via a non-blocking pipe write
+    int32_t savedErrno = errno;
+    int fd = reapPipeWriteFd_.load(std::memory_order_acquire);
+    if (fd >= 0) {
+        char wake = 0;
+        (void)write(fd, &wake, 1);  // O_NONBLOCK: never blocks; EINTR/EAGAIN/EWOULDBLOCK tolerated
+    }
+    errno = savedErrno;
+}
+
+void CliToolManagerService::ReaperLoop()
+{
+    int32_t status = 0;
+    pid_t pid = 0;
+    while (reaperRunning_.load(std::memory_order_acquire)) {
+        struct pollfd pfd;
+        pfd.fd = reapPipeReadFd_;
+        pfd.events = POLLIN;
+        pfd.revents = 0;
+        int n = poll(&pfd, 1, REAP_POLL_TIMEOUT_MS);
+        if (n < 0) {
+            continue;  // EINTR or transient error; the waitpid sweep below still runs
+        }
+        if (pfd.revents & POLLIN) {
+            char buf[16];
+            // discard wake bytes
+            while (read(reapPipeReadFd_, buf, sizeof(buf)) > 0) {}
+        }
+        // Drain every reaped child now; cleanup stays on THIS thread (normal context, not a signal handler).
+        while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+            auto inst = CliToolManagerService::GetInstance();
+            if (inst != nullptr) {
+                inst->WaitPid(pid, status, SIGCHLD);
+            }
+        }
+        // pid == 0 (children exist, none exited) or -1/ECHILD (no children): idle back to poll.
+    }
+}
+
+void CliToolManagerService::StopReaper()
+{
+    // Idempotent: no-op if the reaper was never started (or is already stopped).
+    if (!reaperStarted_.exchange(false)) {
+        return;
+    }
+    // (1) Disarm the handler FIRST: SIG_IGN auto-reaps future (and, on Linux, already-zombied) child
+    //     exits with status discarded, and guarantees no wake byte is written to the pipe we are
+    //     about to close. sessionRecords_ is already cleared by OnStop (no FinalizeBackgroundSession
+    //     needed); token cleanup for explicitly-killed active pids is done by the caller after return.
+    struct sigaction sa = {};
+    sa.sa_handler = SIG_IGN;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGCHLD, &sa, nullptr);
+
+    // (2) Stop the loop and wake the reaper out of poll() so it sees reaperRunning_==false and exits promptly.
+    reaperRunning_.store(false, std::memory_order_release);
+    int wakeFd = reapPipeWriteFd_.load(std::memory_order_acquire);
+    if (wakeFd >= 0) {
+        char wake = 0;
+        (void)write(wakeFd, &wake, 1);
+    }
+
+    // (3) Join the reaper. Bounded: once woken, the loop finishes at most the current waitpid drain
+    //     (no records, only bounded DeleteToolTokenByPid IPCs) then exits. The singleton sptr held
+    //     by GetInstance keeps `this` valid throughout.
+    if (reaperThread_.joinable()) {
+        reaperThread_.join();
+    }
+
+    // Both pipe ends are closed here. SIG_IGN was installed above, so the handler is disarmed and cannot write
+    // to a reused fd after close. The reaper thread has already been joined, so the read end is not in use.
+    if (reapPipeReadFd_ >= 0) {
+        fdsan_close_with_tag(reapPipeReadFd_, FD_OWNER_TAG);
+        reapPipeReadFd_ = -1;
+    }
+    int writeFd = reapPipeWriteFd_.exchange(-1, std::memory_order_acq_rel);
+    if (writeFd >= 0) {
+        fdsan_close_with_tag(writeFd, FD_OWNER_TAG);
+    }
+}
+
+void CliToolManagerService::OnProcessDied(const std::string &bundleName, pid_t diedPid)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "OnProcessDied called: bundleName=%{public}s, diedPid=%{public}d",
+        bundleName.c_str(), diedPid);
+    RemoveCallerPid(diedPid);
+    {
+        std::lock_guard<ffrt::mutex> guard(observerMutex_);
+        bundleObservers_.erase(bundleName);
+    }
+    std::vector<pid_t> activePids;
+    std::vector<std::string> removedSessionIds;
+    std::vector<std::string> detachTaskIds;
+    std::vector<int64_t> detachAttributionIds;
+    std::vector<int32_t> detachUids;
+    // Iterate through sessionRecords_ to find matching SessionRecord by callerPid
+    {
+        std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
+        for (auto iter = sessionRecords_.begin(); iter != sessionRecords_.end();) {
+            auto sessionRecord = iter->second;
+            if (sessionRecord == nullptr) {
+                std::string sessionId = iter->first;
+                // Registry invariant: keep the trace-id registry consistent with
+                // sessionRecords_ even on the defensive null-record cleanup path.
+                EventDispatcher::GetInstance().UnregisterTraceIds(sessionId);
+                iter = sessionRecords_.erase(iter);
+                TAG_LOGW(AAFwkTag::CLI_TOOL, "delete leak sessionId:%{public}s", sessionId.c_str());
+                continue;
+            }
+
+            // Check if this session's callerPid matches the diedPid
+            if (sessionRecord->GetCallerPid() != diedPid) {
+                ++iter;
+                continue;
+            }
+
+            if (sessionRecord->processId > 0 && !sessionRecord->HasProcessExited()) {
+                activePids.emplace_back(sessionRecord->processId);
+            }
+            // ATTACHED collected here; PENDING relayed to the attach write-back (same contract as OnStop).
+            CollectDetachRequest(*sessionRecord, detachTaskIds, detachAttributionIds, detachUids);
+            removedSessionIds.emplace_back(iter->first);
+            iter = sessionRecords_.erase(iter);
+        }
+    }
+
+    for (const auto &sessionId : removedSessionIds) {
+        EventDispatcher::GetInstance().UnregisterTraceIds(sessionId);
+    }
+
+    for (pid_t pid : activePids) {
+        ProcessManager::GetInstance().Killpg(pid);
+    }
+
+    PostDetachRequests(detachTaskIds, detachAttributionIds, detachUids);
+}
+
+void CliToolManagerService::RegisterAppStateObserver(const std::string &bundleName, pid_t callerPid)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "RegisterAppStateObserver called: bundleName=%{public}s, callerPid=%{public}d",
+        bundleName.c_str(), callerPid);
+    // Check if observer already exists for this bundle
+    std::lock_guard<ffrt::mutex> guard(observerMutex_);
+    if (bundleObservers_.find(bundleName) != bundleObservers_.end()) {
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "Observer already registered for bundleName=%{public}s", bundleName.c_str());
+        return;
+    }
+
+    // Create observer with callback to OnProcessDied.
+    auto callback = [](const std::string &bundleName, pid_t diedPid) {
+        auto service = CliToolManagerService::GetInstance();
+        if (service != nullptr) {
+            service->OnProcessDied(bundleName, diedPid);
+        }
+    };
+
+    sptr<CliToolAppStateObserver> observer = new CliToolAppStateObserver(bundleName, callback);
+    if (observer == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to create observer for bundleName=%{public}s", bundleName.c_str());
+        return;
+    }
+
+    // Register observer through AppMgrClient
+    AppExecFwk::AppMgrClient appMgrClient;
+    auto ret = appMgrClient.ConnectAppMgrService();
+    if (ret != AppExecFwk::AppMgrResultCode::RESULT_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to connect to AppMgrService");
+        return;
+    }
+
+    std::vector<std::string> bundleNameList = { bundleName };
+    auto registerRet = appMgrClient.RegisterApplicationStateObserver(observer, bundleNameList);
+    if (registerRet != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to register observer for bundleName=%{public}s, ret=%{public}d",
+            bundleName.c_str(), registerRet);
+        return;
+    }
+
+    // Store observer
+    bundleObservers_[bundleName] = observer;
+    AddCallerPid(callerPid);
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully registered observer for bundleName=%{public}s", bundleName.c_str());
+}
+
+std::shared_ptr<SessionRecord> CliToolManagerService::CreateSessionRecord(const ExecToolParam &param,
+    const std::string &eventId)
+{
+    auto record = std::make_shared<SessionRecord>();
+    record->callerPid = IPCSkeleton::GetCallingPid();
+    record->callerUid = IPCSkeleton::GetCallingUid();
+    auto tokenId = static_cast<AccessToken::AccessTokenID>(IPCSkeleton::GetCallingTokenID());
+    AppExecFwk::BundleInfo bundleInfo;
+    if (ToolUtil::GetBundleInfoByTokenId(tokenId, bundleInfo)) {
+        record->callerBundleName = bundleInfo.name;
+    }
+    record->sessionId = ToolUtil::GenerateCliSessionId(param.toolName, record);
+    record->toolName = param.toolName;
+    record->toolCallId = param.options.toolCallId;
+    record->dmSessionId = param.options.dmSessionId;
+    record->taskId = param.options.taskId;
+    record->timeoutMs = param.options.timeout * COEFFICIENT;
+    record->SetState(SessionState::RUNNING);
+    record->SetBackground(param.options.background);
+    record->eventId = eventId;
+    return record;
+}
+
+int32_t CliToolManagerService::ClearSession(const std::string &sessionId)
+{
+    InterfaceCallCounter counter(interfaceCalledCount_);
+    auto ret = ValidateSessionPermissions();
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
+    auto record = GetSessionRecord(sessionId);
+    if (record == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ClearSession failed: sessionId=%{public}s not found", sessionId.c_str());
+        return ERR_CLI_SESSION_NOT_FOUND;
+    }
+    if (!IsSessionOwner(record, "ClearSession")) {
+        return ERR_PERMISSION_DENIED;
+    }
+    if (record->GetState() != SessionState::RUNNING && record->GetState() != SessionState::SPAWNING) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL,
+            "ClearSession failed: sessionId=%{public}s state=%{public}d is not cancellable",
+            sessionId.c_str(), static_cast<int32_t>(record->GetState()));
+        return ERR_CLI_SESSION_NOT_FOUND;
+    }
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "ClearSession: sessionId=%{public}s, pid=%{public}d",
+        sessionId.c_str(), record->processId.load());
+
+    if (record->sessionType == SessionType::SKILL) {
+        // Skill sessions don't have a child process, mark as cancelling and clean up
+        record->SetState(SessionState::CANCELLING);
+        EventDispatcher::GetInstance().DispatchExitEvent(sessionId, 0);
+        EventDispatcher::GetInstance().ClearSessionSubscribers(sessionId);
+        RemoveSessionRecord(sessionId);
+        return ERR_OK;
+    }
+
+    if (record->processId <= 0) {
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "ClearSession: process already exited, sessionId=%{public}s",
+            sessionId.c_str());
+        record->SetState(SessionState::CANCELLING);
+        return ERR_OK;
+    }
+
+    if (!ProcessManager::GetInstance().Killpg(record->processId)) {
+        return ERR_NOT_KILL;
+    }
+    record->SetState(SessionState::CANCELLING);
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::SubscribeSessionInternal(const std::string &sessionId,
+    const std::string &subscriptionId, const sptr<ICliToolManagerScheduler> &scheduler)
+{
+    InterfaceCallCounter counter(interfaceCalledCount_);
+    if (sessionId.empty() || subscriptionId.empty()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL,
+            "SubscribeSession failed: invalid args sessionId=%{public}s, subscriptionId=%{public}s",
+            sessionId.c_str(), subscriptionId.c_str());
+        return ERR_INVALID_PARAM;
+    }
+    auto record = GetSessionRecord(sessionId);
+    if (record == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL,
+            "SubscribeSession failed: sessionId=%{public}s not found, subscriptionId=%{public}s",
+            sessionId.c_str(), subscriptionId.c_str());
+        return ERR_CLI_SESSION_NOT_FOUND;
+    }
+    if (!IsSessionOwner(record, "SubscribeSession")) {
+        return ERR_PERMISSION_DENIED;
+    }
+    CliSessionInfo session;
+    record->BuildSessionInfo(session);
+    if (session.status != "running") {
+        TAG_LOGE(AAFwkTag::CLI_TOOL,
+            "SubscribeSession failed: sessionId=%{public}s status=%{public}s is not subscribable",
+            sessionId.c_str(), session.status.c_str());
+        return ERR_CLI_SESSION_NOT_FOUND;
+    }
+    int32_t callerPid = IPCSkeleton::GetCallingPid();
+    int32_t callerUid = IPCSkeleton::GetCallingUid();
+    if (!EventDispatcher::GetInstance().SetScheduler(callerPid, callerUid, scheduler)) {
+        return ERR_NO_INIT;
+    }
+    if (!EventDispatcher::GetInstance().RegisterSubscriber(
+        sessionId, subscriptionId, callerPid, callerUid)) {
+        return ERR_NO_INIT;
+    }
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::SubscribeSession(const std::string &sessionId, const std::string &subscriptionId,
+    const sptr<ICliToolManagerScheduler> &scheduler)
+{
+    InterfaceCallCounter counter(interfaceCalledCount_);
+    auto ret = ValidateSessionPermissions();
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
+    return SubscribeSessionInternal(sessionId, subscriptionId, scheduler);
+}
+
+int32_t CliToolManagerService::UnsubscribeSession(const std::string &sessionId, const std::string &subscriptionId)
+{
+    InterfaceCallCounter counter(interfaceCalledCount_);
+    auto ret = ValidateExecToolPermissions();
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
+    if (!EventDispatcher::GetInstance().UnregisterSubscriber(
+        sessionId, subscriptionId, IPCSkeleton::GetCallingPid(), IPCSkeleton::GetCallingUid())) {
+        return ERR_NO_INIT;
+    }
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::QuerySession(const std::string &sessionId, CliSessionInfo &session)
+{
+    InterfaceCallCounter counter(interfaceCalledCount_);
+    auto ret = ValidateSessionPermissions();
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
+    auto record = GetSessionRecord(sessionId);
+    if (record == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "QuerySession failed: sessionId=%{public}s not found", sessionId.c_str());
+        return ERR_CLI_SESSION_NOT_FOUND;
+    }
+    if (!IsSessionOwner(record, "QuerySession")) {
+        return ERR_PERMISSION_DENIED;
+    }
+    record->BuildSessionInfo(session);
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::SendMessage(const std::string &sessionId,
+    const std::string &inputText, const std::string &eventId,
+    const sptr<ICliToolManagerScheduler> &scheduler)
+{
+    InterfaceCallCounter counter(interfaceCalledCount_);
+    auto ret = ValidateSessionPermissions();
+    if (ret != ERR_OK) {
+        return ret;
+    }
+
+    auto record = GetSessionRecord(sessionId);
+    if (record == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "SendMessage failed: sessionId=%{public}s not found", sessionId.c_str());
+        return ERR_CLI_SESSION_NOT_FOUND;
+    }
+    if (!IsSessionOwner(record, "SendMessage")) {
+        return ERR_PERMISSION_DENIED;
+    }
+
+    auto ioMonitor = GetIOMonitor();
+    if (ioMonitor == nullptr) {
+        return ERR_CLI_SEND_MESSAGE;
+    }
+
+    // Check session state
+    if (record->GetState() != SessionState::RUNNING) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL,
+            "SendMessage failed: sessionId=%{public}s is not running", record->sessionId.c_str());
+        return ERR_CLI_SEND_MESSAGE;
+    }
+
+    // Skill sessions don't support stdin
+    if (record->sessionType == SessionType::SKILL) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL,
+            "SendMessage failed: sessionId=%{public}s is a skill session (no stdin)", sessionId.c_str());
+        return ERR_CLI_SEND_MESSAGE;
+    }
+
+    int32_t callerPid = IPCSkeleton::GetCallingPid();
+    int32_t callerUid = IPCSkeleton::GetCallingUid();
+    if (!EventDispatcher::GetInstance().SetScheduler(callerPid, callerUid, scheduler)) {
+        return ERR_NO_INIT;
+    }
+    ioMonitor->SendMessage(sessionId, inputText, eventId);
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::BatchQueryPermissionBySubCommand(
+    const std::vector<Command> &cmds,
+    std::vector<CommandPermission> &cmdPermissions)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "BatchQueryPermissionBySubCommand begin, cnt=%{public}zu", cmds.size());
+    InterfaceCallCounter counter(interfaceCalledCount_);
+    if (cmds.empty() || cmds.size() >= MAX_QUERY_CMDS_SIZE) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "cmds is empty or reach limit");
+        return ERR_INVALID_PARAM;
+    }
+
+    auto callerToken = IPCSkeleton::GetCallingTokenID();
+    if (Security::AccessToken::AccessTokenKit::GetTokenTypeFlag(callerToken) !=
+        Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Caller is not SA");
+        return ERR_NOT_SA_CALLER;
+    }
+
+    if (!PermissionUtil::VerifyAccessToken(callerToken, PERMISSION_QUERY_CLI_TOOL)) {
+        return ERR_PERMISSION_DENIED;
+    }
+
+    return PermissionQueryUtil::BatchQueryPermissions(cmds, cmdPermissions);
+}
+
+SkillCallbackAdapter::SkillCallbackAdapter(const std::string &sessionId,
+    int32_t callerPid, int32_t callerUid, const std::string &eventId)
+    : sessionId_(sessionId), callerPid_(callerPid), callerUid_(callerUid), eventId_(eventId)
+{}
+
+void SkillCallbackAdapter::OnExecuteDone(const std::string &requestCode, int32_t resultCode,
+    const AppExecFwk::SkillExecuteResult &result)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL,
+        "SkillCallbackAdapter::OnExecuteDone sessionId:%{public}s code:%{public}d",
+        sessionId_.c_str(), resultCode);
+
+    auto service = CliToolManagerService::GetInstance();
+    if (service == nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "service unavailable for sessionId:%{public}s", sessionId_.c_str());
+        return;
+    }
+
+    auto record = service->GetSessionRecord(sessionId_);
+    if (record == nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL,
+            "OnExecuteDone skipped: sessionId:%{public}s already cleaned", sessionId_.c_str());
+        return;
+    }
+
+    std::string outputText;
+    if (result.result != nullptr) {
+        outputText = result.result->ToString();
+    }
+    record->SetSkillResult(resultCode, outputText);
+    record->SetState(resultCode == ERR_OK ? SessionState::COMPLETED : SessionState::FAILED);
+
+    auto session = ToolUtil::BuildSkillSessionInfo(sessionId_, resultCode, result);
+    service->HandleSkillSessionComplete(sessionId_, callerPid_, callerUid_, eventId_, resultCode, session);
+}
+
+int32_t CliToolManagerService::ValidateSkillTypeFromParam(ExecToolParam &param, int32_t &skillType)
+{
+    ToolUtil::NormalizeSkillParamKeys(param.args);
+    auto bundleName = param.args.GetStringParam("bundleName");
+    auto moduleName = param.args.GetStringParam("moduleName");
+    auto skillName = param.args.GetStringParam("skillName");
+    if (skillName.empty()) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "skillName is required in args");
+        return ERR_INVALID_VALUE;
+    }
+    return ValidateSkillType(bundleName, moduleName, skillName, skillType);
+}
+
+int32_t CliToolManagerService::ValidateSkillType(const std::string &bundleName,
+    const std::string &moduleName, const std::string &skillName, int32_t &skillType)
+{
+    auto queryRet = AAFwk::AbilityManagerClient::GetInstance()->QuerySkillType(
+        bundleName, moduleName, skillName, skillType);
+    if (queryRet != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "querySkillType failed:%{public}d", queryRet);
+        return queryRet;
+    }
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::SetupAndStartSkillSession(const ExecToolParam &param,
+    const std::string &eventId, const ToolInfo &toolInfo)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "SetupAndStartSkillSession: toolName=%{public}s",
+        param.toolName.c_str());
+
+    auto args = param.args;
+    auto bundleName = args.GetStringParam("bundleName");
+    auto moduleName = args.GetStringParam("moduleName");
+    auto skillName = args.GetStringParam("skillName");
+    auto scriptPath = args.GetStringParam("scriptPath");
+    auto funcName = args.GetStringParam("functionName");
+    auto toolCallId = param.options.toolCallId;
+
+    ToolUtil::ExpandArgsJsonString(args);
+    auto skillArgs = ToolUtil::FilterSkillArgs(args);
+
+    auto record = CreateSessionRecord(param, eventId);
+    if (record == nullptr) {
+        return ERR_NO_INIT;
+    }
+    record->sessionType = SessionType::SKILL;
+    if (auto limitRet = TryAddSessionRecord(record); limitRet != ERR_OK) {
+        return limitRet;
+    }
+    EventDispatcher::GetInstance().RegisterTraceIds(
+        record->sessionId, record->toolCallId, record->dmSessionId);
+
+    auto callerTokenId = IPCSkeleton::GetCallingTokenID();
+    auto adaptor = sptr<SkillCallbackAdapter>::MakeSptr(
+        record->sessionId, record->callerPid, record->callerUid, eventId);
+
+    AppExecFwk::SkillExecuteRequest skillRequest;
+    skillRequest.callerTokenId = callerTokenId;
+    skillRequest.bundleName = bundleName;
+    skillRequest.moduleName = moduleName;
+    skillRequest.skillName = skillName;
+    skillRequest.scriptPath = scriptPath;
+    skillRequest.functionName = funcName;
+    skillRequest.skillArgs = skillArgs;
+    skillRequest.toolCallId = toolCallId;
+    // Stamped from the sanitized options; consumed by the AMS-side registration.
+    skillRequest.taskId = record->taskId;
+    // Forensic creator uid; the ownership anchor for the AMS-side registration.
+    skillRequest.callerUid = record->callerUid;
+
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "execSkill before ExecuteInAppSkillWithTokenId");
+    int32_t ret = AAFwk::AbilityManagerClient::GetInstance()->ExecuteInAppSkillWithTokenId(
+        skillRequest, adaptor);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "ExecuteInAppSkillWithTokenId failed:%{public}d", ret);
+        RemoveSessionRecord(record->sessionId);
+        return ret;
+    }
+
+    // Attribution is AMS-owned (cold UIAbility attach / warm dispatch before ExecuteSkill);
+    // a climgr-side attach would double-register and can anchor the wrong pid.
+
+    if (param.options.background) {
+        HandleBackgroundSessionReply(record, eventId);
+    }
+
+    return ERR_OK;
+}
+
+void CliToolManagerService::HandleSkillSessionComplete(const std::string &sessionId,
+    int32_t callerPid, int32_t callerUid, const std::string &eventId, int32_t resultCode,
+    const CliSessionInfo &session)
+{
+    auto record = GetSessionRecord(sessionId);
+    if (record == nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL,
+            "HandleSkillSessionComplete skipped: sessionId:%{public}s not found", sessionId.c_str());
+        return;
+    }
+    if (!record->TryClaimCleanup()) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL,
+            "HandleSkillSessionComplete skipped: already cleaning sessionId:%{public}s", sessionId.c_str());
+        return;
+    }
+
+    auto oldBackground = record->SetBackground(true);
+    if (!oldBackground) {
+        CliSessionInfo hookSession = session;
+        InvokeAfterCallTool(hookSession, *record);
+        EventDispatcher::GetInstance().DispatchExecToolReplyEvent(callerPid, callerUid, eventId, ERR_OK, hookSession);
+    }
+
+    EventDispatcher::GetInstance().DispatchExitEvent(sessionId, 0);
+    EventDispatcher::GetInstance().ClearSessionSubscribers(sessionId);
+    RemoveSessionRecord(sessionId);
+}
+
+void CliToolManagerService::HandleSkillSessionTimeout(const std::string &sessionId)
+{
+    auto record = GetSessionRecord(sessionId);
+    if (record == nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL,
+            "HandleSkillSessionTimeout skipped: sessionId:%{public}s not found", sessionId.c_str());
+        return;
+    }
+
+    record->SetTimeout(true);
+    record->SetState(SessionState::FAILED);
+
+    auto oldBackground = record->SetBackground(true);
+    if (!oldBackground) {
+        CliSessionInfo session;
+        record->BuildSessionInfo(session);
+        InvokeAfterCallTool(session, *record);
+        EventDispatcher::GetInstance().DispatchExecToolReplyEvent(
+            record->callerPid, record->callerUid, record->eventId, ERR_OK, session);
+    }
+
+    EventDispatcher::GetInstance().DispatchErrorEvent(sessionId, "session timed out");
+    EventDispatcher::GetInstance().DispatchExitEvent(sessionId, 0);
+    EventDispatcher::GetInstance().ClearSessionSubscribers(sessionId);
+    RemoveSessionRecord(sessionId);
+}
+
+void CliToolManagerService::RemoveCallerPid(int64_t pid)
+{
+    std::lock_guard<ffrt::mutex> guard(callerPidsMutex_);
+    callerPids.erase(pid);
+}
+
+void CliToolManagerService::AddCallerPid(int64_t pid)
+{
+    std::lock_guard<ffrt::mutex> guard(callerPidsMutex_);
+    callerPids.insert(pid);
+}
+
+int32_t CliToolManagerService::GetCallerPidCount()
+{
+    std::lock_guard<ffrt::mutex> guard(callerPidsMutex_);
+    return static_cast<int32_t>(callerPids.size());
+}
+} // namespace CliTool
+} // namespace OHOS

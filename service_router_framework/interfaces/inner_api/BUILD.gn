@@ -26,12 +26,13 @@ config("srms_fwk_config") {
   include_dirs = [
     "include",
     "${target_gen_dir}",
-    "${ability_runtime_services_path}/common/include",
     "${ability_runtime_path}/interfaces/inner_api/ability_manager/include",
   ]
 }
 
 ohos_source_set("service_router_mgr_proxy") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -57,6 +58,8 @@ ohos_source_set("service_router_mgr_proxy") {
 }
 
 ohos_source_set("service_router_mgr_stub") {
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -85,6 +88,9 @@ ohos_source_set("service_router_mgr_stub") {
 }
 
 ohos_shared_library("srms_fwk") {
+  version_script = "libsrms_fwk.map"
+  branch_protector_ret = "pac_ret"
+
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -101,6 +107,8 @@ ohos_shared_library("srms_fwk") {
   sources += filter_include(output_values, [ "*_proxy.cpp" ])
 
   public_configs = [ ":srms_fwk_config" ]
+
+  include_dirs = [ "${ability_runtime_services_path}/common/include" ]
 
   deps = [ "${ability_runtime_innerkits_path}/ability_manager:ability_manager" ]
   deps += [ ":service_router_mgr_interface" ]
@@ -119,4 +127,5 @@ ohos_shared_library("srms_fwk") {
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

@@ -31,6 +31,7 @@ class EcmaVM;
 } // namespace panda::ecmascript
 namespace panda {
 struct HmsMap;
+struct GCStatistic;
 }
 namespace OHOS {
 namespace AppExecFwk {
@@ -44,7 +45,6 @@ class FileMapper;
 
 namespace JsEnv {
 class JsEnvironment;
-class SourceMapOperator;
 struct ErrorObject;
 struct UncaughtExceptionInfo;
 using UncatchableTask = std::function<void(std::string summary, const JsEnv::ErrorObject errorObject, napi_env env,
@@ -101,6 +101,7 @@ public:
     void ForceFullGC(uint32_t tid) override;
     void DumpHeapSnapshot(uint32_t tid, bool isFullGC, bool isBinary = false) override;
     void DumpHeapSnapshot(uint32_t tid, const OHOS::AbilityRuntime::Runtime::JsHeapDumpParam &param) override;
+    void DumpJsHandleMap() override;
     void AllowCrossThreadExecution() override;
     void GetHeapPrepare() override;
     void NotifyApplicationState(bool isBackground) override;
@@ -127,8 +128,9 @@ public:
     bool LoadRepairPatch(const std::string& hqfFile, const std::string& hapPath) override;
     bool UnLoadRepairPatch(const std::string& hqfFile) override;
     bool NotifyHotReloadPage() override;
-    void RegisterUncaughtExceptionHandler(const JsEnv::UncaughtExceptionInfo& uncaughtExceptionInfo);
-    void RegisterUncatchableExceptionHandler(const JsEnv::UncatchableTask& uncatchableTask);
+    void RegisterUncaughtExceptionHandler(const JsEnv::UncaughtExceptionInfo& uncaughtExceptionInfo,
+        bool isStatic = false);
+    void RegisterUncatchableExceptionHandler(const JsEnv::UncatchableTask& uncatchableTask, bool isStatic = false);
     bool LoadScript(const std::string& path, std::vector<uint8_t>* buffer = nullptr, bool isBundle = false);
     bool LoadScript(const std::string& path, uint8_t* buffer, size_t len, bool isBundle,
         const std::string& srcEntrance = "");
@@ -144,8 +146,8 @@ public:
                               bool isABC = true);
     static std::shared_ptr<AbilityBase::FileMapper> GetSafeData(const std::string& path, std::string& fileFullName);
 
-    void InitSourceMap(const std::shared_ptr<JsEnv::SourceMapOperator> operatorImpl);
-    void InitSourceMap(const std::string hqfFilePath);
+    void InitSourceMap(const std::string bundleName);
+    void HqfInitSourceMap(const std::string hqfFilePath);
     void FreeNativeReference(std::unique_ptr<NativeReference> reference);
     void FreeNativeReference(std::shared_ptr<NativeReference>&& reference);
     void StartProfiler(const DebugOption debugOption) override;
@@ -177,6 +179,8 @@ public:
 
     size_t GetHeapTotalSize();
     size_t GetHeapObjectSize();
+    size_t GetSharedHeapSize();
+    panda::GCStatistic GetGCStatistic();
 
 private:
     void FinishPreload() override;
@@ -193,6 +197,7 @@ private:
     std::string codePath_;
     std::string moduleName_;
     std::unique_ptr<NativeReference> methodRequireNapiRef_;
+    // Keep the reference
     std::unordered_map<std::string, NativeReference*> modules_;
     std::shared_ptr<JsEnv::JsEnvironment> jsEnv_ = nullptr;
     uint32_t instanceId_ = 0;
@@ -204,6 +209,7 @@ private:
 
     static std::atomic<bool> hasInstance;
     DebugOption debugOption_;
+    std::map<std::string, std::shared_ptr<AbilityBase::FileMapper>> safeDataMap_;
 
 private:
     bool CreateJsEnv(const Options& options);
@@ -219,6 +225,8 @@ private:
     void PostPreload(const Options& options);
     void LoadAotFile(const Options& options);
     void SetRequestAotCallback();
+    std::shared_ptr<AbilityBase::FileMapper> GetOrCreateSafeData(std::shared_ptr<AbilityBase::Extractor> extractor,
+        const std::string &modulePath);
 
     std::string GetSystemKitPath();
     std::vector<panda::HmsMap> GetSystemKitsMap(uint32_t version);

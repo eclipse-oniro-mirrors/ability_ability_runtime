@@ -87,11 +87,10 @@ private:
     int GenerateAbilityRequestByAppIndexes(int32_t userId, AbilityRequest &request,
         std::vector<DialogAppInfo> &dialogAppInfos);
 
-    int FindExtensionInfo(const Want &want, int32_t flags, int32_t userId, int32_t appIndex,
-        AppExecFwk::AbilityInfo &abilityInfo);
+    int FindExtensionInfo(const AppExecFwk::ElementName &elementName, int32_t flags, int32_t userId,
+        int32_t appIndex, AppExecFwk::AbilityInfo &abilityInfo);
 
     std::string MatchTypeAndUri(const AAFwk::Want &want);
-    std::shared_ptr<AppExecFwk::BundleMgrHelper> GetBundleManagerHelper();
     std::vector<std::string> SplitStr(const std::string& str, char delimiter);
     int QueryBmsAppInfos(AbilityRequest &request, int32_t userId, std::vector<DialogAppInfo> &dialogAppInfos);
 
@@ -103,8 +102,7 @@ private:
     bool CheckImplicitStartExtensionIsValid(const AbilityRequest &request,
         const AppExecFwk::ExtensionAbilityInfo &extensionInfo);
 
-    bool FilterAbilityList(const Want &want, std::vector<AppExecFwk::AbilityInfo> &abilityInfos,
-        std::vector<AppExecFwk::ExtensionAbilityInfo> extensionInfos, int32_t userId);
+    bool FilterAbilityList(const Want &want, std::vector<AppExecFwk::AbilityInfo> &abilityInfos, int32_t userId);
     sptr<AppExecFwk::IDefaultApp> GetDefaultAppProxy();
 
     void GetEcologicalCallerInfo(const Want &want, ErmsCallerInfo &callerInfo, int32_t userId);
@@ -113,7 +111,15 @@ private:
 
     void AddAbilityInfoToDialogInfos(const AddInfoParam &param, std::vector<DialogAppInfo> &dialogAppInfos);
 
+    void EraseInvisibleAppInfos(const AbilityRequest &request, std::vector<DialogAppInfo> &dialogAppInfos);
+
     bool IsExistDefaultApp(int32_t userId, const std::string &typeName);
+
+    void FilterClonesByPreferredIndex(std::vector<DialogAppInfo> &dialogAppInfos, int32_t userId);
+
+    static void ProcessLinkType(std::vector<AppExecFwk::AbilityInfo> &abilityInfos,
+        const AbilityRequest &request);
+    static bool ShouldPreferDefaultBrowser(const AbilityRequest &request, bool defaultAppExist);
 
     void SetTargetLinkInfo(const std::vector<AppExecFwk::SkillUriForAbilityAndExtension> &skillUri, Want &want);
 
@@ -137,7 +143,6 @@ private:
     bool IsExtensionInWhiteList(AppExecFwk::ExtensionAbilityType type);
     ffrt::mutex identityListLock_;
     std::list<IdentityNode> identityList_;
-    std::shared_ptr<AppExecFwk::BundleMgrHelper> iBundleManagerHelper_;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

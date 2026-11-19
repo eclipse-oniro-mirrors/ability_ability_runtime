@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -181,6 +181,10 @@ class AbilityContext extends Context {
     return this.__context_impl__.backToCallerAbilityWithResult(abilityResult, requestCode);
   }
 
+  backToCallerAppWithResult(abilityResult, requestCode) {
+    return this.__context_impl__.backToCallerAppWithResult(abilityResult, requestCode);
+  }
+
   restoreWindowStage(contentStorage) {
     return this.__context_impl__.restoreWindowStage(contentStorage);
   }
@@ -201,8 +205,8 @@ class AbilityContext extends Context {
     return this.__context_impl__.setMissionWindowIcon(windowIcon);
   }
 
-  setAbilityInstanceInfo(label, callback) {
-    return this.__context_impl__.setAbilityInstanceInfo(label, callback);
+  setAbilityInstanceInfo(label, icon, groupId) {
+    return this.__context_impl__.setAbilityInstanceInfo(label, icon, groupId);
   }
 
   requestDialogService(want, resultCallback) {
@@ -221,8 +225,15 @@ class AbilityContext extends Context {
     return this.__context_impl__.requestModalUIExtension(want, callback);
   }
 
-  showAbility() {
-    return this.__context_impl__.showAbility();
+  requestModalUIExtensionWithAccount(want, accountId, callback) {
+    return this.__context_impl__.requestModalUIExtensionWithAccount(want, accountId, callback);
+  }
+
+  showAbility(params) {
+    if (arguments.length === 0) {
+      return this.__context_impl__.showAbility();
+    }
+    return this.__context_impl__.showAbility(params);
   }
 
   hideAbility() {
@@ -273,8 +284,16 @@ class AbilityContext extends Context {
     return this.__context_impl__.startSelfUIAbilityInCurrentProcess(want, specifiedFlag, options);
   }
 
+  startSelfUIAbilityInChildProcess(want, specifiedFlag) {
+    return this.__context_impl__.startSelfUIAbilityInChildProcess(want, specifiedFlag);
+  }
+
   restartApp(want) {
     return this.__context_impl__.restartApp(want);
+  }
+
+  startSelf() {
+    return this.__context_impl__.startSelf();
   }
 }
 

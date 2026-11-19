@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,6 +17,8 @@
 #define OHOS_ABILITY_RUNTIME_APP_MGR_SERVICE_H
 
 #include <list>
+#include <functional>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -27,6 +29,7 @@
 #include "app_mgr_constants.h"
 #include "app_mgr_service_event_handler.h"
 #include "app_mgr_service_inner.h"
+#include "hyper_snap_error_record.h"
 #include "app_mgr_stub.h"
 #include "app_record_id.h"
 #include "app_running_record.h"
@@ -40,7 +43,9 @@
 #include "system_ability.h"
 #include "task_handler_wrap.h"
 #include "app_jsheap_mem_info.h"
+#include "app_jshandle_map_info.h"
 #include "app_cjheap_mem_info.h"
+#include "mem_dump_callback_interface.h"
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -90,7 +95,13 @@ public:
 
     virtual int32_t DestroyImage(uint64_t checkpointId, sptr<IImageErrorHandler> errorHandler = nullptr) override;
 
+    virtual int32_t GetHyperSnapLastError(int32_t errType, HyperSnapErrorRecord &record) override;
+
     virtual int32_t NotifyTemplateProcessDeepFrozen(int32_t pid) override;
+
+    virtual int32_t PreTemplateProcessDeepFrozen(int32_t pid) override;
+
+    virtual int32_t NotifyTemplateProcessReadyDone() override;
 
     /**
      * ApplicationForegrounded, call ApplicationForegrounded() through proxy object,
@@ -219,6 +230,15 @@ public:
     virtual int GetAllChildrenProcesses(std::vector<ChildProcessInfo> &info) override;
 
     /**
+     * GetSelfChildrenProcesses, call GetSelfChildrenProcesses() through proxy project.
+     * Obtains information about children processes that are running for the calling application.
+     *
+     * @param info, child process info.
+     * @return ERR_OK, return back success, others fail.
+     */
+    virtual int GetSelfChildrenProcesses(std::vector<ChildProcessInfo> &info) override;
+
+    /**
      * IsTerminatingByPid, call IsTerminatingByPid() through proxy project.
      * Obtains information about application processes that are running on the device.
      *
@@ -238,6 +258,19 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int32_t GetProcessRunningInfosByUserId(std::vector<RunningProcessInfo> &info, int32_t userId) override;
+
+    /**
+     * GetProcessRunningInfosByAccessTokenId, call GetProcessRunningInfosByAccessTokenId()
+     * through proxy project. Obtains information about application processes
+     * that are running on the device by accessTokenId.
+     *
+     * @param accessTokenId, accessTokenId.
+     * @param info, Running process information list.
+     *
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t GetProcessRunningInfosByAccessTokenId(uint32_t accessTokenId,
+        std::vector<RunningProcessInfo> &info) override;
 
     /**
      * GetProcessRunningInformation, call GetProcessRunningInformation() through proxy project.
@@ -293,6 +326,15 @@ public:
     virtual int32_t DumpJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info) override;
 
     /**
+     * DumpJsHandleMap, call DumpJsHandleMap() through proxy project.
+     * dump the application's jshandle map info.
+     *
+     * @param info, pid tid
+     * @return ERR_OK ,return back success, others fail.
+     */
+    virtual int32_t DumpJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info) override;
+
+    /**
      * DumpCjHeapMemory, call DumpCJHeapMemory() through proxy project.
      * triggerGC and dump the application's cjheap memory info.
      *
@@ -305,10 +347,22 @@ public:
      * triggerGC and dump application's memory info.
      *
      * @param info The information to be dumped
+     * @param callback The callback to receive dump result
+     * @return ERR_OK ,return back success, others fail.
+     */
+    virtual int32_t DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback) override;
+
+    /**
+     * ReportDumpMemResult, called by app process to report dump result.
+     * AppMgrService will forward the result to hidumper via callback.
+     *
+     * @param callback The callback received from app process
+     * @param resultCode The result code of dump operation
      * @param dumpResult The dump result string
      * @return ERR_OK ,return back success, others fail.
      */
-    virtual int32_t DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult) override;
+    virtual int32_t ReportDumpMemResult(sptr<IMemDumpCallback> callback,
+        const std::string &dumpResult) override;
 
     // the function about service running info
     /**
@@ -365,6 +419,72 @@ public:
      * @return Returns the dump result.
      */
     int Dump(int fd, const std::vector<std::u16string>& args) override;
+
+    /**
+     * @brief Starts a task with the specified task id.
+     * @param taskId Indicates the attribution key of the task.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    int32_t StartTask(const std::string &taskId) override;
+
+    /**
+     * @brief Finishes the task with the specified task id.
+     * @param taskId Indicates the attribution key of the task.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    int32_t FinishTask(const std::string &taskId) override;
+
+    /*
+     * @brief Attributes the target Agent process into the task after a successful
+     *        A2A connect. Best-effort: failures are logged and do NOT fail the
+     *        connect result.
+     * @param taskId Indicates the task id claimed in Want.parameters[ohos.aafwk.param.agent.taskId].
+     * @param callerTokenId Indicates the app's token id captured at the convergence.
+     * @param targetPid Indicates the target Agent process pid (resolved post-connect).
+     * @param attributionId Indicates the server-assigned attribution handle for later
+     *        unregister; 0 on failure.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    int32_t AttributeTaskForA2A(const std::string &taskId, uint32_t callerTokenId,
+        pid_t targetPid, int64_t &attributionId) override;
+
+    /**
+     * @brief Unregisters the A2A attribution previously created by AttributeTaskForA2A.
+     *        Only the Foundation process may call this.
+     * @param taskId Indicates the task id.
+     * @param attributionId Indicates the attribution handle returned by AttributeTaskForA2A.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    int32_t UnregisterTaskForA2A(const std::string &taskId, int64_t attributionId) override;
+
+    /**
+     * @brief Attributes a process into the task owned by the caller and hands back
+     *        the server-assigned attribution id used for later unregistration. Only
+     *        the climgr process (aimgr uid) may call this.
+     * @param taskId Indicates the attribution key of the task.
+     * @param pid Indicates the pid of the managed process to attribute.
+     * @param tool Indicates the tool type of the attribution (AttributionTool value).
+     * @param callerUid Indicates the forensic uid of the original task creator; a
+     *        negative value skips the ownership check.
+     * @param attributionId Outputs the server-assigned attribution id (AttributionId)
+     *        on success, or 0 on any failure.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t tool,
+        int32_t callerUid, int64_t &attributionId) override;
+
+    /**
+     * @brief Removes the attribution record with the given id from the task owned by
+     *        the caller (idempotent). Only the climgr process (aimgr uid) may call this.
+     * @param taskId Indicates the attribution key of the task.
+     * @param attributionId Indicates the id returned by RegisterManagedProcess
+     *        (AttributionId).
+     * @param callerUid Indicates the forensic uid of the original task creator; a
+     *        negative value skips the ownership check.
+     * @return Returns ERR_OK on success; others on failure.
+     */
+    int32_t UnregisterManagedProcess(const std::string &taskId, int64_t attributionId,
+        int32_t callerUid) override;
 
     /**
      * @brief called when the abilityStage's onAcceptWant lifecycle completed.
@@ -560,6 +680,20 @@ public:
     virtual bool IsSharedBundleRunning(const std::string &bundleName, uint32_t versionCode) override;
 
     /**
+     * @brief Query whether the main process of the app (identified by uid) is in debug mode.
+     * @param uid The application uid.
+     * @return Returns true if the main process is in debug mode, false otherwise.
+     */
+    virtual bool IsMainProcessDebug(int32_t uid) override;
+
+    /**
+     * @brief Query whether the corresponding process of the app (identified by abilityInfo) is in attach debug mode.
+     * @param abilityInfo The ability info used to locate the corresponding process.
+     * @return Returns true if the corresponding process is in attach debug mode, false otherwise.
+     */
+    virtual bool IsCorrespondingProcessAttachDebug(const AbilityInfo &abilityInfo) override;
+
+    /**
      * start native process for debugger.
      *
      * @param want param to start a process.
@@ -618,6 +752,14 @@ public:
      * @return Returns true on success, others on failure.
      */
     bool SetAppFreezeFilter(int32_t pid) override;
+
+    /**
+     * @brief Update freeze excluded pid set.
+     * @param isAdd true to add pid, false to remove pid.
+     * @param targetPid The target process id to be added or removed.
+     * @param profilerPid The profiler process id.
+     */
+    void UpdateFreezeExcludedPid(bool isAdd, int32_t targetPid, int32_t profilerPid) override;
 
     /**
      * get memorySize by pid.
@@ -693,6 +835,11 @@ public:
      */
     int32_t UnregisterAppForegroundStateObserver(const sptr<IAppForegroundStateObserver> &observer) override;
 
+    int32_t RegisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer) override;
+    int32_t UnregisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer) override;
+    int32_t RegisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer) override;
+    int32_t UnregisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer) override;
+
 #ifdef SUPPORT_CHILD_PROCESS
     /**
      * Start child process, called by ChildProcessManager.
@@ -738,6 +885,22 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     int32_t UnregisterRenderStateObserver(const sptr<IRenderStateObserver> &observer) override;
+
+    /**
+     * @brief register a child process state observer to receive change.
+     * @param observer the child process state observer to receive notify.
+     *
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t RegisterChildProcessStateObserver(const sptr<IChildProcessStateObserver> &observer) override;
+
+    /**
+     * @brief unregister a child process state observer registered before.
+     * @param observer the child process state observer registered before.
+     *
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t UnregisterChildProcessStateObserver(const sptr<IChildProcessStateObserver> &observer) override;
 
     /**
      * @brief update a render process state.
@@ -814,6 +977,8 @@ public:
 
     int32_t IsProcessCacheSupported(int32_t pid, bool &isSupported) override;
 
+    int32_t IsChildProcessSupported(bool isNative, bool &isSupported) override;
+
     int32_t SetProcessCacheEnable(int32_t pid, bool enable) override;
 
     int32_t LockProcessCache(int32_t pid, bool isLock) override;
@@ -866,6 +1031,13 @@ public:
     int32_t CreateNativeChildProcess(const std::string &libName,
         const sptr<IRemoteObject> &callback, const ChildProcessRequest &request) override;
 #endif // SUPPORT_CHILD_PROCESS
+
+    /**
+     * Get all UIAbility child processes of the calling application.
+     * @param infos Output vector of child process info.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t GetSelfUIAbilityChildProcesses(std::vector<ChildProcessInfo> &infos) override;
 
     /**
      * Register callback to notify native child exit.
@@ -962,6 +1134,16 @@ public:
      */
     virtual int32_t GetAllAbilityInfos(const int32_t pid, std::vector<AppExecFwk::AbilityStateData> &infos) override;
 
+    /**
+     * Notify the state change of a child process.
+     *
+     * @param pid The pid of the child process whose state has changed.
+     * @param state The new state of the child process.
+     * @return ERR_OK on success, server error code otherwise;
+     *         ERROR_SERVICE_NOT_CONNECTED when the service is unavailable.
+     */
+    int32_t NotifyChildProcessState(int32_t pid, int32_t state) override;
+
 private:
     /**
      * Init, Initialize application services.
@@ -1041,6 +1223,7 @@ private:
 
     int Dump(const std::vector<std::u16string>& args, std::string& result);
     int ShowHelp(const std::vector<std::u16string>& args, std::string& result);
+    int DumpTask(const std::vector<std::u16string>& args, std::string& result);
     int DumpIpc(const std::vector<std::u16string>& args, std::string& result);
     int DumpIpcAllStart(std::string& result);
     int DumpIpcAllStop(std::string& result);
@@ -1109,6 +1292,15 @@ private:
     bool IsFinalAppProcess() override;
 
     /**
+     * Query whether the current process is doing snapshot initialization.
+     *
+     * @return Returns true if the current process is doing snapshot initialization,
+     *         false otherwise (completed, failed, not a template process,
+     *         or service unavailable).
+     */
+    bool IsHyperSnapInitializing() override;
+
+    /**
      * Get pids of processes which belong to specific bundle name and support process cache feature.
      *
      * @param bundleName bundle name.
@@ -1125,6 +1317,33 @@ private:
     virtual void PreloadModuleFinished(const int32_t recordId) override;
 
     void SetProcessPrepareExit(int32_t pid) override;
+    
+    /**
+     * @brief set TerminateTimeOut flag.
+     * @param token Ability identify.
+     */
+    void SetTerminateTimeOutFlag(const sptr<IRemoteObject> token) override;
+
+    int32_t EnableDelayedProcessExit(bool enabled) override;
+
+    void CancelDelayedExitTask(int32_t pid) override;
+
+    int32_t RegisterDaemon(const AAFwk::LaunchServiceDescriptor &descriptor) override;
+    int32_t UnregisterDaemon(const AAFwk::LaunchServiceDescriptor &descriptor) override;
+    int32_t StartDaemon(const AAFwk::LaunchServiceDescriptor &descriptor) override;
+    int32_t StopDaemon(const AAFwk::LaunchServiceDescriptor &descriptor) override;
+    int32_t GetLaunchServiceInformation(const AbilityRuntime::LaunchServiceDescriptor &descriptor,
+        AbilityRuntime::LaunchServiceInformation &information) override;
+    int32_t GetAllRegisteredInformation(
+        int32_t userId, std::vector<AbilityRuntime::LaunchServiceInformation> &informations) override;
+    int32_t SetLaunchServicesEnabled(const std::string &bundleName, int32_t userId, int32_t appIndex,
+        const std::vector<uint8_t> &token, bool enable,
+        const sptr<AbilityRuntime::ILaunchServiceOperationCallback> &callback) override;
+
+    int32_t NotifyResidentStartupCompleted() override;
+
+    int32_t RegisterLaunchServiceObserver(const sptr<AbilityRuntime::ILaunchServiceObserver> &observer) override;
+    int32_t UnregisterLaunchServiceObserver(const sptr<AbilityRuntime::ILaunchServiceObserver> &observer) override;
 
     enum DumpIpcKey {
         KEY_DUMP_IPC_START = 0,
@@ -1133,6 +1352,8 @@ private:
     };
 
 private:
+    int32_t RunLaunchServiceTask(const std::function<int32_t(const std::shared_ptr<AppMgrServiceInner> &)> &task);
+
     int DumpIpcAllInner(const AppMgrService::DumpIpcKey key, std::string& result);
     int DumpIpcWithPidInner(const AppMgrService::DumpIpcKey key,
         const std::string& optionPid, std::string& result);
@@ -1145,6 +1366,8 @@ private:
     AppMgrServiceState appMgrServiceState_;
     std::shared_ptr<AppMgrServiceInner> appMgrServiceInner_;
     std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler_;
+    std::mutex launchServiceTaskMutex_;
+    std::shared_ptr<AAFwk::TaskHandlerWrap> launchServiceTaskHandler_;
     std::shared_ptr<AMSEventHandler> eventHandler_;
     sptr<ISystemAbilityManager> systemAbilityMgr_;
     sptr<IAmsMgr> amsMgrScheduler_;

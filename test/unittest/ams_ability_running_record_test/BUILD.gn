@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+# Copyright (c) 2021-2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -35,6 +35,9 @@ ohos_unittest("AmsAbilityRunningRecordTest") {
     "${ability_runtime_services_path}/appmgr/src/app_mgr_event.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_mgr_service_event_handler.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_mgr_service_inner.cpp",
+
+    "${ability_runtime_services_path}/appmgr/src/app_query_helper.cpp",
+    "${ability_runtime_services_path}/appmgr/src/app_pidfd_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_native_spawn_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_preloader.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_refresh_recipient.cpp",
@@ -43,9 +46,12 @@ ohos_unittest("AmsAbilityRunningRecordTest") {
     "${ability_runtime_services_path}/appmgr/src/app_spawn_client.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_state_observer_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/cache_process_manager.cpp",
+    "${ability_runtime_services_path}/appmgr/src/child_process_state_observer_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/exit_resident_process_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/fork_image_info.cpp",
     "${ability_runtime_services_path}/appmgr/src/killing_process_manager.cpp",
+    "${ability_runtime_services_path}/appmgr/src/launch_service_manager.cpp",
+    "${ability_runtime_services_path}/appmgr/src/launch_service_observer_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/multi_user_config_mgr.cpp",
     "${ability_runtime_services_path}/appmgr/src/render_state_observer_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/user_record_manager.cpp",
@@ -59,6 +65,7 @@ ohos_unittest("AmsAbilityRunningRecordTest") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:process_options",
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
@@ -92,6 +99,7 @@ ohos_unittest("AmsAbilityRunningRecordTest") {
     "init:libbeget_proxy",
     "init:libbegetutil",
     "ipc:ipc_core",
+    "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "memmgr:memmgrclient",
     "memory_utils:libmeminfo",
@@ -99,6 +107,7 @@ ohos_unittest("AmsAbilityRunningRecordTest") {
     "resource_schedule_service:ressched_client",
     "samgr:samgr_proxy",
     "json:nlohmann_json_static",
+    "user_auth_framework:userauth_client",
     "window_manager:session_manager_lite",
   ]
 

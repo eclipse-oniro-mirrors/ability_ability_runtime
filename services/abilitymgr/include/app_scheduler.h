@@ -19,6 +19,7 @@
 #include <memory>
 #include <unordered_set>
 
+#include "ui_ability_last_caller_info.h"
 #include "ability_debug_response_interface.h"
 #include "ability_info.h"
 #include "ability_manager_client.h"
@@ -27,6 +28,7 @@
 #include "appmgr/app_mgr_client.h"
 #include "appmgr/app_state_callback_host.h"
 #include "appmgr/start_specified_ability_response_stub.h"
+#include "appmgr/task_state_callback_host.h"
 #include "bundle_info.h"
 #include "fault_data.h"
 #include "iremote_object.h"
@@ -42,6 +44,7 @@ class Configuration;
 }
 namespace AbilityRuntime {
 struct LoadParam;
+struct StartSpecifiedParam;
 }
 namespace AAFwk {
 /**
@@ -211,6 +214,21 @@ public:
 };
 
 /**
+ * @class TaskStateCallbackImpl
+ * TaskStateCallbackImpl implements TaskStateCallbackHost (IPC stub) on the
+ * abilitymgr side. It receives the OnTaskFinished IPC from TaskManagerService
+ * (appmgr) and calls AbilityManagerService directly via DelayedSingleton,
+ * following the same pattern as StartSpecifiedAbilityResponse.
+ */
+class TaskStateCallbackImpl : public AppExecFwk::TaskStateCallbackHost {
+public:
+    TaskStateCallbackImpl() = default;
+    virtual ~TaskStateCallbackImpl() = default;
+
+    void OnTaskFinished(const std::string &taskId, int32_t userId) override;
+};
+
+/**
  * @class AppScheduler
  * AppScheduler , access app manager service.
  */
@@ -266,15 +284,16 @@ public:
      * move ability to foreground.
      *
      * @param token, the token of ability.
+     * @param callerInfo, the caller info including uid and bundle name.
      */
-    void MoveToForeground(const sptr<IRemoteObject> &token);
+    void MoveToForeground(const sptr<IRemoteObject> &token, const AppExecFwk::UiAbilityLastCallerInfo &callerInfo = {});
 
     /**
      * move ability to background.
      *
      * @param token, the token of ability.
      */
-    void MoveToBackground(const sptr<IRemoteObject> &token);
+    void MoveToBackground(const sptr<IRemoteObject> &token, bool isFromScreenOffBackground = false);
 
     /**
      * Update ability state.
@@ -311,6 +330,54 @@ public:
     int32_t SetGameSAPrelaunch(const sptr<IRemoteObject> &token, bool isGameSAPrelaunch);
 
     /**
+     * AttributeProcessForAbility, report task attribution for a start-ability call
+     * (target process already exists) through the app manager service.
+     *
+     * @param taskId, the attribution key of the task.
+     * @param callerUid, the uid of the start caller (system stamped).
+     * @param callerPid, the pid of the start caller (system stamped).
+     * @param targetPid, the pid of the target process.
+     * @param attributionId, the server-assigned handle of the created attribution.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t AttributeProcessForAbility(const std::string &taskId, int32_t callerUid, int32_t callerPid,
+        int32_t targetPid, int64_t &attributionId);
+
+    /**
+     * UnregisterTaskAttribution, remove an attribution by its handle; called
+     * when the attributed ability dies unexpectedly.
+     *
+     * @param taskId, the attribution key of the task.
+     * @param attributionId, the handle returned by AttributeProcessForAbility.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t UnregisterTaskAttribution(const std::string &taskId, int64_t attributionId);
+
+    /**
+     * RegisterManagedProcess, attribute a skill-launched process to a task by key;
+     * forwarded to appmgr over its IPC face.
+     *
+     * @param taskId, the attribution key of the task.
+     * @param pid, the pid of the process to attribute.
+     * @param tool, the AttributionTool wire value of the attribution.
+     * @param callerUid, the forensic creator uid; non-positive is rejected (no anchor).
+     * @param attributionId, outputs the server-assigned handle (> 0) on success.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t RegisterManagedProcess(const std::string &taskId, int32_t pid, int32_t tool,
+        int32_t callerUid, int64_t &attributionId);
+
+    /**
+     * UnregisterManagedProcess, remove a skill-path attribution by its handle.
+     *
+     * @param taskId, the attribution key of the task.
+     * @param attributionId, the handle returned by RegisterManagedProcess.
+     * @param callerUid, the forensic creator uid; non-positive is rejected (no anchor).
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t UnregisterManagedProcess(const std::string &taskId, int64_t attributionId, int32_t callerUid);
+
+    /**
      * KillProcessesByUserId, call KillProcessesByUserId() through proxy object,
      * kill the process by user id.
      * Send appSpawn uninstall debug hap message.
@@ -332,6 +399,8 @@ public:
      */
     int32_t KillProcessesByPids(const std::vector<int32_t> &pids,
         const std::string &reason = "KillProcessesByPids", bool subProcess = false, bool isKillPrecedeStart = false);
+
+    bool CheckProcessAvailable(int32_t pid);
 
     /**
      * Set child and parent relationship
@@ -360,7 +429,7 @@ public:
      * @param bundleName.
      */
     int KillApplication(const std::string &bundleName, bool clearPageStack = false, int32_t appIndex = 0,
-        const std::string &reason = "KillApplication");
+        const std::string &reason = "KillApplication", int32_t userId = -1);
 
     /**
      * ForceKillApplication, force kill the application.
@@ -477,7 +546,7 @@ public:
      * @param requestId request id to callback
      */
     void StartSpecifiedAbility(const AAFwk::Want &want, const AppExecFwk::AbilityInfo &abilityInfo,
-        int32_t requestId = 0, const std::string &customProcess = "", bool isWindowStagePreload = false);
+        const AbilityRuntime::StartSpecifiedParam &param);
 
     /**
      * @brief Get running process information.
@@ -522,6 +591,18 @@ public:
      * @return ERR_OK ,return back success，others fail.
      */
     int GetProcessRunningInfosByUserId(std::vector<AppExecFwk::RunningProcessInfo> &info, int32_t userId);
+
+    /**
+     * GetProcessRunningInfosByAccessTokenId, call GetProcessRunningInfosByAccessTokenId() through proxy project.
+     * Obtains information about application processes that are running on the device by accessTokenId.
+     *
+     * @param accessTokenId, accessTokenId in Application record.
+     * @param info, Running process info.
+     * @return ERR_OK ,return back success，others fail.
+     */
+    int32_t GetProcessRunningInfosByAccessTokenId(uint32_t accessTokenId,
+        std::vector<AppExecFwk::RunningProcessInfo> &info);
+
     std::string ConvertAppState(const AppState &state);
 
     /**
@@ -578,7 +659,8 @@ public:
     virtual int32_t NotifyAppMgrRecordExitReason(int32_t pid, int32_t reason, const std::string &exitMsg);
 
     virtual int32_t NotifyAppMgrRecordExitReasonCompability(
-        int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg);
+        int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg,
+        int32_t reason, int32_t callerPid);
 
     /**
      * Set enable start process flag by userId
@@ -647,6 +729,20 @@ public:
      * @return Returns true if it is an attach debug application, otherwise it returns false.
      */
     bool IsAttachDebug(const std::string &bundleName);
+
+    /**
+     * @brief Query whether the main process of the app (identified by uid) is in debug mode.
+     * @param uid The application uid.
+     * @return Returns true if the main process is in debug mode, false otherwise.
+     */
+    bool IsMainProcessDebug(int32_t uid);
+
+    /**
+     * @brief Query whether the corresponding process of the app (identified by abilityInfo) is in attach debug mode.
+     * @param abilityInfo The ability info used to locate the corresponding process.
+     * @return Returns true if the corresponding process is in attach debug mode, false otherwise.
+     */
+    bool IsCorrespondingProcessAttachDebug(const AppExecFwk::AbilityInfo &abilityInfo);
 
     /**
      * To clear the process by ability token.
@@ -806,6 +902,7 @@ private:
     std::weak_ptr<AppStateCallback> callback_;
     std::unique_ptr<AppExecFwk::AppMgrClient> appMgrClient_;
     sptr<StartSpecifiedAbilityResponse> startSpecifiedAbilityResponse_;
+    sptr<TaskStateCallbackImpl> taskStateCallback_;
     std::mutex lock_;
 };
 }  // namespace AAFwk

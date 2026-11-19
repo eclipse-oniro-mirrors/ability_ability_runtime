@@ -15,6 +15,7 @@
 
 #include "js_worker.h"
 
+#include <atomic>
 #include <cerrno>
 #include <climits>
 #include <cstdlib>
@@ -69,8 +70,7 @@ constexpr char ARK_DEBUGGER_LIB_PATH[] = "libark_inspector.z.so";
 constexpr char ARK_DEBUGGER_LIB_PATH[] = "libark_inspector.z.so";
 #endif
 
-bool g_jsFramework = false;
-std::mutex g_mutex;
+std::atomic<bool> g_jsFramework{false};
 }
 
 void InitWorkerFunc(NativeEngine* nativeEngine)
@@ -97,7 +97,8 @@ void InitWorkerFunc(NativeEngine* nativeEngine)
 #endif
     auto arkNativeEngine = static_cast<ArkNativeEngine*>(nativeEngine);
     // load jsfwk
-    if (g_jsFramework && !arkNativeEngine->ExecuteJsBin("/system/etc/strip.native.min.abc")) {
+    if (g_jsFramework.load(std::memory_order_acquire) &&
+        !arkNativeEngine->ExecuteJsBin("/system/etc/strip.native.min.abc")) {
         TAG_LOGE(AAFwkTag::JSRUNTIME, "load jsFramework failed");
     }
 
@@ -564,7 +565,7 @@ ContainerScope::UpdateCurrent(-1);
 
 void SetJsFramework()
 {
-    g_jsFramework = true;
+    g_jsFramework.store(true, std::memory_order_release);
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

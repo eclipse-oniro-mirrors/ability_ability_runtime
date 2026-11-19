@@ -14,6 +14,7 @@
  */
 
 #include <gtest/gtest.h>
+#include "array_wrapper.h"
 #include "ability_context.h"
 #include "ability_runtime_error_util.h"
 #include <algorithm>
@@ -42,7 +43,6 @@
 #undef protected
 #include "want_params.h"
 #include "want_receiver_stub.h"
-#include "want_sender_stub.h"
 #include "bool_wrapper.h"
 
 using namespace testing::ext;
@@ -1520,5 +1520,284 @@ HWTEST_F(WantAgentHelperTest, CreateLocalWantAgent_0500, TestSize.Level1)
     ErrCode getTypeResult = WantAgentHelper::GetType(wantAgent, operationType);
     EXPECT_EQ(getTypeResult, ERR_OK);
     EXPECT_EQ(operationType, static_cast<int32_t>(WantAgentConstant::OperationType::SEND_COMMON_EVENT));
+}
+
+/**
+ * @tc.name: GetWantFromProxy_0100
+ * @tc.desc: Test GetWantFromProxy with null WantAgent
+ * @tc.type: FUNC
+ */
+HWTEST_F(WantAgentHelperTest, GetWantFromProxy_0100, TestSize.Level1)
+{
+    std::shared_ptr<WantAgent> wantAgent(nullptr);
+    auto want = WantAgentHelper::GetWantFromProxy(wantAgent);
+    EXPECT_EQ(want, nullptr);
+}
+
+/*
+ * @tc.number    : WantAgentHelper_6700
+ * @tc.name      : WantAgentHelper ToStringWithEnvelope
+ * @tc.desc      : Test ToStringWithEnvelope uses WantParamWrapperJson without changing ToString format.
+ */
+HWTEST_F(WantAgentHelperTest, WantAgentHelper_6700, Function | MediumTest | Level1)
+{
+    std::shared_ptr<Want> want = std::make_shared<Want>();
+    ElementName element("device", "bundleName", "abilityNameToJson");
+    want->SetElement(element);
+    WantAgentInfo wantAgentInfo;
+    wantAgentInfo.wants_.emplace_back(want);
+    wantAgentInfo.operationType_ = WantAgentConstant::OperationType::START_ABILITY;
+    wantAgentInfo.requestCode_ = 10;
+    std::shared_ptr<WantParams> wParams = std::make_shared<WantParams>();
+    wParams->SetParam("key", Boolean::Box(true));
+    wantAgentInfo.extraInfo_ = wParams;
+    auto wantAgent = WantAgentHelper::GetWantAgent(wantAgentInfo);
+    ASSERT_NE(wantAgent, nullptr);
+
+    auto legacyString = WantAgentHelper::ToString(wantAgent);
+    auto jsonString = WantAgentHelper::ToStringWithEnvelope(wantAgent);
+    ASSERT_FALSE(legacyString.empty());
+    ASSERT_FALSE(jsonString.empty());
+
+    auto legacyObject = nlohmann::json::parse(legacyString, nullptr, false);
+    auto jsonObject = nlohmann::json::parse(jsonString, nullptr, false);
+    ASSERT_FALSE(legacyObject.is_discarded());
+    ASSERT_FALSE(jsonObject.is_discarded());
+    auto legacyExtraInfo = legacyObject.at("extraInfo").at("extraInfoValue").get<std::string>();
+    auto jsonExtraInfo = jsonObject.at("extraInfo").at("extraInfoValue").get<std::string>();
+    EXPECT_EQ(legacyExtraInfo.find("ohos.want.paramsStringEnvelope"), std::string::npos);
+    EXPECT_NE(jsonExtraInfo.find("ohos.want.paramsStringEnvelope"), std::string::npos);
+    EXPECT_FALSE(WantAgentHelper::HasWantParamsEnvelope(legacyString));
+    EXPECT_TRUE(WantAgentHelper::HasWantParamsEnvelope(jsonString));
+}
+
+/*
+ * @tc.number    : WantAgentHelper_6710
+ * @tc.name      : WantAgentHelper FromStringWithEnvelope
+ * @tc.desc      : Test FromStringWithEnvelope restores WantAgent from WantParamWrapperJson extraInfo.
+ */
+HWTEST_F(WantAgentHelperTest, WantAgentHelper_6710, Function | MediumTest | Level1)
+{
+    std::shared_ptr<Want> want = std::make_shared<Want>();
+    ElementName element("device", "bundleName", "abilityNameFromJson");
+    want->SetElement(element);
+    WantAgentInfo wantAgentInfo;
+    wantAgentInfo.wants_.emplace_back(want);
+    wantAgentInfo.operationType_ = WantAgentConstant::OperationType::START_ABILITY;
+    wantAgentInfo.requestCode_ = 10;
+    std::shared_ptr<WantParams> wParams = std::make_shared<WantParams>();
+    wParams->SetParam("key", Boolean::Box(true));
+    wantAgentInfo.extraInfo_ = wParams;
+    auto wantAgent = WantAgentHelper::GetWantAgent(wantAgentInfo);
+    ASSERT_NE(wantAgent, nullptr);
+
+    auto jsonString = WantAgentHelper::ToStringWithEnvelope(wantAgent);
+    auto restoredWantAgent = WantAgentHelper::FromStringWithEnvelope(jsonString);
+    ASSERT_NE(restoredWantAgent, nullptr);
+
+    auto restoredWant = WantAgentHelper::GetWant(restoredWantAgent);
+    ASSERT_NE(restoredWant, nullptr);
+    auto value = restoredWant->GetParams().GetParam("key");
+    auto boolValue = IBoolean::Query(value);
+    ASSERT_NE(boolValue, nullptr);
+    EXPECT_TRUE(Boolean::Unbox(boolValue));
+}
+
+/*
+ * @tc.number    : WantAgentHelper_6720
+ * @tc.name      : WantAgentHelper ToStringWithEnvelope invalid input
+ * @tc.desc      : Test ToStringWithEnvelope invalid agent branches.
+ */
+HWTEST_F(WantAgentHelperTest, WantAgentHelper_6720, Function | MediumTest | Level1)
+{
+    EXPECT_TRUE(WantAgentHelper::ToStringWithEnvelope(nullptr).empty());
+
+    auto wantAgentWithoutPendingWant = std::make_shared<WantAgent>(std::shared_ptr<PendingWant>(nullptr));
+    EXPECT_TRUE(WantAgentHelper::ToStringWithEnvelope(wantAgentWithoutPendingWant).empty());
+
+    auto pendingWantWithoutTarget = std::make_shared<PendingWant>(sptr<IWantSender>(nullptr));
+    auto wantAgentWithoutInfo = std::make_shared<WantAgent>(pendingWantWithoutTarget);
+    EXPECT_TRUE(WantAgentHelper::ToStringWithEnvelope(wantAgentWithoutInfo).empty());
+}
+
+/*
+ * @tc.number    : WantAgentHelper_6730
+ * @tc.name      : WantAgentHelper FromStringWithEnvelope invalid input
+ * @tc.desc      : Test FromStringWithEnvelope invalid string and malformed field branches.
+ */
+HWTEST_F(WantAgentHelperTest, WantAgentHelper_6730, Function | MediumTest | Level1)
+{
+    EXPECT_EQ(WantAgentHelper::FromStringWithEnvelope(""), nullptr);
+    EXPECT_EQ(WantAgentHelper::FromStringWithEnvelope("{"), nullptr);
+    EXPECT_EQ(WantAgentHelper::FromStringWithEnvelope(R"({"requestCode":"bad","wants":[]})"),
+        nullptr);
+    EXPECT_EQ(WantAgentHelper::FromStringWithEnvelope(R"({"wants":[100]})"), nullptr);
+
+    Want want;
+    ElementName element("device", "bundleName", "abilityNameFromJsonInvalid");
+    want.SetElement(element);
+    const auto originParamSize = want.GetParams().Size();
+    nlohmann::json jsonObject;
+    jsonObject["requestCode"] = 6730;
+    jsonObject["operationType"] = static_cast<int32_t>(WantAgentConstant::OperationType::START_ABILITY);
+    jsonObject["flags"] = static_cast<int32_t>(FLAG_UPDATE_CURRENT);
+    jsonObject["userId"] = -1;
+    jsonObject["appIndex"] = "bad";
+    jsonObject["wants"] = nlohmann::json::array({ want.ToString() });
+    jsonObject["extraInfo"] = { { "extraInfoValue", "invalid want params json" } };
+
+    auto wantAgent = WantAgentHelper::FromStringWithEnvelope(jsonObject.dump());
+    ASSERT_NE(wantAgent, nullptr);
+    auto restoredWant = WantAgentHelper::GetWant(wantAgent);
+    ASSERT_NE(restoredWant, nullptr);
+    EXPECT_EQ(restoredWant->GetParams().Size(), originParamSize);
+
+    jsonObject["requestCode"] = 6731;
+    jsonObject["extraInfo"] = "bad";
+    EXPECT_NE(WantAgentHelper::FromStringWithEnvelope(jsonObject.dump()), nullptr);
+
+    jsonObject["requestCode"] = 6732;
+    jsonObject["extraInfo"] = { { "extraInfoValue", 100 } };
+    EXPECT_NE(WantAgentHelper::FromStringWithEnvelope(jsonObject.dump()), nullptr);
+}
+
+/*
+ * @tc.number    : WantAgentHelper_6740
+ * @tc.name      : WantAgentHelper HasWantParamsEnvelope
+ * @tc.desc      : Test HasWantParamsEnvelope dispatches only when extraInfoValue uses WantParamWrapperJson envelope.
+ */
+HWTEST_F(WantAgentHelperTest, WantAgentHelper_6740, Function | MediumTest | Level1)
+{
+    nlohmann::json jsonObject;
+    jsonObject["extraInfo"] = { { "extraInfoValue", R"( {"ohos.want.paramsStringEnvelope":{}} )" } };
+    EXPECT_FALSE(WantAgentHelper::HasWantParamsEnvelope(jsonObject.dump()));
+
+    jsonObject["extraInfo"] = { { "extraInfoValue", "legacy want params" } };
+    EXPECT_FALSE(WantAgentHelper::HasWantParamsEnvelope(jsonObject.dump()));
+
+    EXPECT_FALSE(WantAgentHelper::HasWantParamsEnvelope(""));
+    EXPECT_FALSE(WantAgentHelper::HasWantParamsEnvelope("{"));
+    EXPECT_FALSE(WantAgentHelper::HasWantParamsEnvelope(R"({"extraInfo":"bad"})"));
+    EXPECT_FALSE(WantAgentHelper::HasWantParamsEnvelope(R"({"extraInfo":{"extraInfoValue":100}})"));
+    EXPECT_FALSE(WantAgentHelper::HasWantParamsEnvelope(R"({"wants":[]})"));
+}
+
+/*
+ * @tc.number    : WantAgentHelper_6750
+ * @tc.name      : WantAgentHelper ToStringWithEnvelope unsupported type policy
+ * @tc.desc      : Test ToStringWithEnvelope forwards the unsupported-type policy to WantParamWrapperJson.
+ *                  Unsupported types cannot survive the IPC round-trip because
+ *                  WantParams::WriteArrayToParcel silently drops arrays whose element
+ *                  type is not one of the recognised scalar or container types.
+ *                  Policy behaviour is therefore tested directly on Serialize, and
+ *                  ToStringWithEnvelope forwarding is verified with supported types only.
+ */
+HWTEST_F(WantAgentHelperTest, WantAgentHelper_6750, Function | MediumTest | Level1)
+{
+    // Part 1: Verify WantParamWrapperJson::Serialize applies the policy to unsupported types.
+    // Array with g_IID_IObject element type is unsupported by the JSON codec.
+    WantParams params;
+    params.SetParam("keep", Boolean::Box(true));
+    sptr<IArray> unsupportedArray = sptr<Array>::MakeSptr(0, g_IID_IObject);
+    ASSERT_NE(unsupportedArray, nullptr);
+    params.SetParam("drop", unsupportedArray);
+
+    std::string strictOut = "unchanged";
+    EXPECT_FALSE(WantParamWrapperJson::Serialize(
+        params, strictOut, WantParamWrapperJson::UnsupportedTypePolicy::FAIL));
+    EXPECT_EQ(strictOut, "unchanged");
+
+    std::string skipOut;
+    ASSERT_TRUE(WantParamWrapperJson::Serialize(
+        params, skipOut, WantParamWrapperJson::UnsupportedTypePolicy::SKIP));
+    EXPECT_NE(skipOut.find("ohos.want.paramsStringEnvelope"), std::string::npos);
+    EXPECT_EQ(skipOut.find("\"drop\""), std::string::npos);
+
+    WantParams parsed;
+    ASSERT_TRUE(WantParamWrapperJson::Parse(skipOut, parsed));
+    auto keep = IBoolean::Query(parsed.GetParam("keep"));
+    ASSERT_NE(keep, nullptr);
+    EXPECT_TRUE(Boolean::Unbox(keep));
+    EXPECT_EQ(parsed.GetParam("drop"), nullptr);
+    EXPECT_EQ(parsed.Size(), 1);
+
+    // Part 2: Verify ToStringWithEnvelope forwards the policy through the IPC round-trip.
+    // Only supported types are used to avoid Parcel marshalling limitations.
+    std::shared_ptr<Want> want = std::make_shared<Want>();
+    ElementName element("device", "bundleName", "abilityNameToJsonPolicy");
+    want->SetElement(element);
+    WantAgentInfo wantAgentInfo;
+    wantAgentInfo.wants_.emplace_back(want);
+    wantAgentInfo.operationType_ = WantAgentConstant::OperationType::START_ABILITY;
+    std::shared_ptr<WantParams> wParams = std::make_shared<WantParams>();
+    wParams->SetParam("key", Boolean::Box(true));
+    wantAgentInfo.extraInfo_ = wParams;
+    auto wantAgent = WantAgentHelper::GetWantAgent(wantAgentInfo);
+    ASSERT_NE(wantAgent, nullptr);
+
+    auto failString = WantAgentHelper::ToStringWithEnvelope(
+        wantAgent, WantParamWrapperJson::UnsupportedTypePolicy::FAIL);
+    auto failObject = nlohmann::json::parse(failString, nullptr, false);
+    ASSERT_FALSE(failObject.is_discarded());
+    EXPECT_NE(failObject.at("extraInfo").at("extraInfoValue").get<std::string>().find(
+        "ohos.want.paramsStringEnvelope"), std::string::npos);
+
+    auto defaultString = WantAgentHelper::ToStringWithEnvelope(wantAgent);
+    auto defaultObject = nlohmann::json::parse(defaultString, nullptr, false);
+    ASSERT_FALSE(defaultObject.is_discarded());
+    WantParams parsedDefault;
+    ASSERT_TRUE(WantParamWrapperJson::Parse(
+        defaultObject.at("extraInfo").at("extraInfoValue").get<std::string>(), parsedDefault));
+    auto keepDefault = IBoolean::Query(parsedDefault.GetParam("key"));
+    ASSERT_NE(keepDefault, nullptr);
+    EXPECT_TRUE(Boolean::Unbox(keepDefault));
+}
+
+/*
+ * @tc.number    : WantAgentHelper_6760
+ * @tc.name      : WantAgentHelper FromStringWithEnvelope unsupported type policy
+ * @tc.desc      : Test FromStringWithEnvelope forwards the unsupported-type policy to WantParamWrapperJson.
+ *                  The IPC round-trip via GetWantAgent/GetWant does not reliably preserve WantParams
+ *                  across PendingWant updates (FLAG_UPDATE_CURRENT). Policy behaviour is therefore
+ *                  tested directly on Parse and ParseExtraInfoEnvelopeFromJson.
+ */
+HWTEST_F(WantAgentHelperTest, WantAgentHelper_6760, Function | MediumTest | Level1)
+{
+    const std::string extraInfoValue = "{\"ohos.want.paramsStringEnvelope\":{"
+        "\"keep\":{\"1\":\"true\"},\"drop\":{\"10\":\"ignored\"}}}";
+
+    // Part 1: Verify WantParamWrapperJson::Parse applies the policy to unsupported typeIds.
+    // typeId "10" (CharSequence) is not supported by the JSON codec.
+    WantParams strictParams;
+    EXPECT_FALSE(WantParamWrapperJson::Parse(
+        extraInfoValue, strictParams, WantParamWrapperJson::UnsupportedTypePolicy::FAIL));
+    EXPECT_EQ(strictParams.Size(), 0);
+
+    WantParams skipParams;
+    ASSERT_TRUE(WantParamWrapperJson::Parse(
+        extraInfoValue, skipParams, WantParamWrapperJson::UnsupportedTypePolicy::SKIP));
+    auto keep = IBoolean::Query(skipParams.GetParam("keep"));
+    ASSERT_NE(keep, nullptr);
+    EXPECT_TRUE(Boolean::Unbox(keep));
+    EXPECT_EQ(skipParams.GetParam("drop"), nullptr);
+    EXPECT_EQ(skipParams.Size(), 1);
+
+    // Part 2: Verify FromStringWithEnvelope forwards the policy via ParseExtraInfoEnvelopeFromJson.
+    nlohmann::json jsonObject;
+    jsonObject["extraInfo"] = { { "extraInfoValue", extraInfoValue } };
+
+    auto strictExtra = WantAgentHelper::ParseExtraInfoEnvelopeFromJson(
+        jsonObject, WantParamWrapperJson::UnsupportedTypePolicy::FAIL);
+    ASSERT_NE(strictExtra, nullptr);
+    EXPECT_EQ(strictExtra->Size(), 0);
+
+    auto skipExtra = WantAgentHelper::ParseExtraInfoEnvelopeFromJson(
+        jsonObject, WantParamWrapperJson::UnsupportedTypePolicy::SKIP);
+    ASSERT_NE(skipExtra, nullptr);
+    auto keepExtra = IBoolean::Query(skipExtra->GetParam("keep"));
+    ASSERT_NE(keepExtra, nullptr);
+    EXPECT_TRUE(Boolean::Unbox(keepExtra));
+    EXPECT_EQ(skipExtra->GetParam("drop"), nullptr);
+    EXPECT_EQ(skipExtra->Size(), 1);
 }
 }  // namespace OHOS::AbilityRuntime::WantAgent

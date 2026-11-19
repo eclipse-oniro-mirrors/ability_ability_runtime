@@ -33,6 +33,9 @@ struct ForkImageInfo {
     int32_t imagePid = -1;
     uint64_t checkpointId = 0;
     int32_t templatePid = -1;
+    bool needDestroyTemplate = false; // Whether to destroy template process after image creation
+    std::string imageName;
+    std::string abilityName;
     std::shared_ptr<AbilityInfo> abilityInfo = nullptr;
     BundleInfo bundleInfo;
     HapModuleInfo hapModuleInfo;

@@ -22,7 +22,9 @@ config("public_ets_environment_config") {
 }
 
 ohos_shared_library("ets_environment") {
+  version_script = "libets_environment.map"
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   public_configs = [ ":public_ets_environment_config" ]
 
@@ -64,6 +66,9 @@ ohos_shared_library("ets_environment") {
     "runtime_core:ani",
     "runtime_core:libarkruntime",
     "runtime_core:common_interfaces_header",
+    "ets_runtime:libark_jsruntime",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -74,4 +79,5 @@ ohos_shared_library("ets_environment") {
   subsystem_name = "ability"
   innerapi_tags = [ "platformsdk" ]
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

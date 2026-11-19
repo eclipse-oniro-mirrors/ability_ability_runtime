@@ -733,5 +733,71 @@ HWTEST_F(EventReportTest, SendReportDataPartitionUsageEvent_0100, TestSize.Level
     EXPECT_EQ(EventReport::ConvertEventName(eventName), "USER_DATA_SIZE");
     EventReport::SendReportDataPartitionUsageEvent(eventName, HISYSEVENT_STATISTIC, eventInfo);
 }
+
+/**
+ * @tc.name: SendSnapshotEvent_0100
+ * @tc.desc: Check SendSnapshotEvent Test with appVersionName
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventReportTest, SendSnapshotEvent_0100, TestSize.Level2)
+{
+    EventName eventName = EventName::SNAPSHOT_REPORT;
+    EXPECT_EQ(EventReport::ConvertEventName(eventName), "SNAPSHOT_REPORT");
+
+    SnapshotInfo snapshotInfo;
+    snapshotInfo.uid = 1001;
+    snapshotInfo.bundleName = "com.example.test";
+    snapshotInfo.appVersionName = "1.0.0";
+    snapshotInfo.snapshotCond = "TestCondition";
+    snapshotInfo.snapshotEvent = "ImageStart";
+    snapshotInfo.snapshotResult = 0;
+    snapshotInfo.snapshotReason = "TestReason";
+
+    EventReport::SendSnapshotEvent(eventName, snapshotInfo);
+}
+
+/**
+ * @tc.name: SendSnapshotEvent_0200
+ * @tc.desc: Check SendSnapshotEvent Test with empty appVersionName
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventReportTest, SendSnapshotEvent_0200, TestSize.Level2)
+{
+    EventName eventName = EventName::SNAPSHOT_REPORT;
+    EXPECT_EQ(EventReport::ConvertEventName(eventName), "SNAPSHOT_REPORT");
+
+    SnapshotInfo snapshotInfo;
+    snapshotInfo.uid = 1002;
+    snapshotInfo.bundleName = "com.example.test2";
+    snapshotInfo.appVersionName = "";
+    snapshotInfo.snapshotCond = "";
+    snapshotInfo.snapshotEvent = "ImageStartError";
+    snapshotInfo.snapshotResult = -1;
+    snapshotInfo.snapshotReason = "ErrorReason";
+
+    EventReport::SendSnapshotEvent(eventName, snapshotInfo);
+}
+
+/**
+ * @tc.name: SendSnapshotEvent_0300
+ * @tc.desc: Check SendSnapshotEvent Test with invalid eventName
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventReportTest, SendSnapshotEvent_0300, TestSize.Level2)
+{
+    EventName eventName = static_cast<EventName>(-1);
+    EXPECT_EQ(EventReport::ConvertEventName(eventName), "INVALIDEVENTNAME");
+
+    SnapshotInfo snapshotInfo;
+    snapshotInfo.uid = 1003;
+    snapshotInfo.bundleName = "com.example.test3";
+    snapshotInfo.appVersionName = "2.0.0";
+    snapshotInfo.snapshotCond = "TestCondition";
+    snapshotInfo.snapshotEvent = "ImageStart";
+    snapshotInfo.snapshotResult = 0;
+    snapshotInfo.snapshotReason = "TestReason";
+
+    EventReport::SendSnapshotEvent(eventName, snapshotInfo);
+}
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -21,6 +21,7 @@
 #include "ability_record.h"
 #include "app_mgr_client.h"
 #include "configuration.h"
+#include "param.h"
 #include "parcel.h"
 #include "securec.h"
 #include "start_specified_ability_params.h"
@@ -45,15 +46,15 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     Want* want = nullptr;
     if (wantParcel.WriteBuffer(data, size)) {
         want = Want::Unmarshalling(wantParcel);
-        if (want) {
+        if (!want) {
             return false;
         }
     }
-    AbilityInfo abilityInfo;
-
-    appMgrClient->StartSpecifiedAbility(*want, abilityInfo);
 
     if (want) {
+        AbilityInfo abilityInfo;
+        AbilityRuntime::StartSpecifiedParam param;
+        appMgrClient->StartSpecifiedAbility(*want, abilityInfo, param);
         delete want;
         want = nullptr;
     }

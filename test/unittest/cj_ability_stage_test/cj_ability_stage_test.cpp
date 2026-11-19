@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,13 +17,17 @@
 #include <securec.h>
 
 #include "cj_ability_stage.h"
+#include "cj_ability_stage_context.h"
 #include "cj_runtime.h"
+#include "context_impl.h"
+#include "ffi_remote_data.h"
 #include "hilog_wrapper.h"
 #include "runtime.h"
 #include "cj_ability_stage_object.h"
 
 using namespace testing;
 using namespace testing::ext;
+using namespace OHOS::FFI;
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -133,6 +137,96 @@ HWTEST_F(CjAbilityStageTest, CjAbilityStageTestOnMemoryLevel_001, TestSize.Level
     EXPECT_NE(cjAbilityStage_, nullptr);
     initCjAbilityStage_->OnMemoryLevel(level);
     EXPECT_NE(initCjAbilityStage_, nullptr);
+}
+
+/**
+ * @tc.name: CjAbilityStageTest_FFICJGetConfigurationV2_001
+ * @tc.desc: Test FFICJGetConfigurationV2 with invalid id, covers null-check branch.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjAbilityStageTest, CjAbilityStageTest_FFICJGetConfigurationV2_001, TestSize.Level1)
+{
+    auto result = FFICJGetConfigurationV2(0);
+    EXPECT_EQ(result.language, nullptr);
+
+    result = FFICJGetConfigurationV2(-1);
+    EXPECT_EQ(result.language, nullptr);
+}
+
+/**
+ * @tc.name: CjAbilityStageTest_FFICJGetConfigurationV2_002
+ * @tc.desc: Test FFICJGetConfigurationV2 with valid context but null configuration,
+ *           covers CJAbilityStageContext::GetConfigurationV2 null-configuration branch.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjAbilityStageTest, CjAbilityStageTest_FFICJGetConfigurationV2_002, TestSize.Level1)
+{
+    auto contextImpl = std::make_shared<ContextImpl>();
+    EXPECT_NE(contextImpl, nullptr);
+
+    auto cjStageContext = FFIData::Create<CJAbilityStageContext>(contextImpl);
+    EXPECT_NE(cjStageContext, nullptr);
+
+    auto result = FFICJGetConfigurationV2(cjStageContext->GetID());
+    EXPECT_EQ(result.language, nullptr);
+}
+
+/**
+ * @tc.name: CjAbilityStageTest_FFICJGetConfigurationV2_003
+ * @tc.desc: Test FFICJGetConfigurationV2 with valid context and configuration,
+ *           covers success path through FillConfigV1Fields conversion.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjAbilityStageTest, CjAbilityStageTest_FFICJGetConfigurationV2_003, TestSize.Level1)
+{
+    auto contextImpl = std::make_shared<ContextImpl>();
+    EXPECT_NE(contextImpl, nullptr);
+
+    auto configuration = std::make_shared<AppExecFwk::Configuration>();
+    EXPECT_NE(configuration, nullptr);
+    configuration->AddItem(AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE, "zh_CN");
+    contextImpl->SetConfiguration(configuration);
+
+    auto cjStageContext = FFIData::Create<CJAbilityStageContext>(contextImpl);
+    EXPECT_NE(cjStageContext, nullptr);
+
+    auto result = FFICJGetConfigurationV2(cjStageContext->GetID());
+    EXPECT_NE(result.language, nullptr);
+    EXPECT_EQ(result.colorMode, -1);
+    EXPECT_EQ(result.direction, -1);
+}
+
+/**
+ * @tc.name: CjAbilityStageTest_CallConvertConfigV2_001
+ * @tc.desc: Test CallConvertConfigV2 with configuration, covers FillConfigV1Fields conversion.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjAbilityStageTest, CjAbilityStageTest_CallConvertConfigV2_001, TestSize.Level1)
+{
+    auto configuration = std::make_shared<AppExecFwk::Configuration>();
+    EXPECT_NE(configuration, nullptr);
+    configuration->AddItem(AAFwk::GlobalConfigurationKey::SYSTEM_LANGUAGE, "en_US");
+
+    auto result = CallConvertConfigV2(configuration);
+    EXPECT_NE(result.language, nullptr);
+    EXPECT_EQ(result.colorMode, -1);
+    EXPECT_EQ(result.direction, -1);
+}
+
+/**
+ * @tc.name: CjAbilityStageTest_GetConfigurationV2_NullContext_001
+ * @tc.desc: Test CJAbilityStageContext::GetConfigurationV2 with null context,
+ *           covers null-context branch.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjAbilityStageTest, CjAbilityStageTest_GetConfigurationV2_NullContext_001, TestSize.Level1)
+{
+    std::weak_ptr<Context> weakContext;
+    auto cjStageContext = FFIData::Create<CJAbilityStageContext>(std::move(weakContext));
+    EXPECT_NE(cjStageContext, nullptr);
+
+    auto result = cjStageContext->GetConfigurationV2();
+    EXPECT_EQ(result.language, nullptr);
 }
 
 }  // namespace AbilityRuntime

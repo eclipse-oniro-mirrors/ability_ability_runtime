@@ -22,6 +22,7 @@
 namespace OHOS {
 namespace AAFwk {
 constexpr int32_t REASON_CALLEE_TERMINATE = 1;
+constexpr int32_t REASON_PRELAUNCH_TIMEOUT = 2;
 CallContainer::CallContainer()
 {}
 
@@ -250,6 +251,32 @@ void CallContainer::NotifyAllCallDisconnect(const AppExecFwk::ElementName &eleme
 
     // Clear all call records after notification
     callRecordMap_.clear();
+}
+
+void CallContainer::NotifyDisconnectOnTimeout(const AppExecFwk::ElementName &element)
+{
+    std::lock_guard lock(callRecordMapLock_);
+    if (callRecordMap_.empty()) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "No call records to notify");
+        return;
+    }
+
+    for (auto it = callRecordMap_.begin(); it != callRecordMap_.end();) {
+        auto &callRecord = it->second;
+        if (callRecord == nullptr || !callRecord->IsPrelaunch()) {
+            ++it;
+            continue;
+        }
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "Notify prelaunch timeout disconnect, recordId:%{public}d, reason:%{public}d",
+            callRecord->GetCallRecordId(), REASON_PRELAUNCH_TIMEOUT);
+        auto callback = callRecord->GetConCallBack();
+        if (callback) {
+            ffrt::submit([callback, element]() {
+                callback->OnAbilityDisconnectDone(element, REASON_PRELAUNCH_TIMEOUT);
+            });
+        }
+        it = callRecordMap_.erase(it);
+    }
 }
 }  // namespace AAFwk
 }  // namesspace OHOS

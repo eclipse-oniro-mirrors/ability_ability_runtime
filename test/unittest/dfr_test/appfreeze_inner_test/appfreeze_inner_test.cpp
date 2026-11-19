@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,6 +14,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <chrono>
 
 #define private public
 #include "appfreeze_inner.h"
@@ -21,6 +22,10 @@
 #undef private
 
 #include "xcollie/watchdog.h"
+#include "dfx_jsnapi.h"
+#include "parameter.h"
+#include "parameters.h"
+#include "ohos_application.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -46,9 +51,7 @@ void AppfreezeInnerTest::SetUpTestCase(void)
 {}
 
 void AppfreezeInnerTest::TearDownTestCase(void)
-{
-    AppfreezeInner::DestroyInstance();
-}
+{}
 
 void AppfreezeInnerTest::SetUp(void)
 {
@@ -135,11 +138,11 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner_IsNeedIgnoreFreezeEvent_001, TestSiz
 }
 
 /**
- * @tc.number: AppfreezeInner__AppfreezeHandle_001
+ * @tc.number: AppfreezeInner_AppfreezeHandle_001
  * @tc.name: AppfreezeHandle
  * @tc.desc: Verify that function AppfreezeHandle.
  */
-HWTEST_F(AppfreezeInnerTest, AppfreezeInner__AppfreezeHandle_001, TestSize.Level1)
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_AppfreezeHandle_001, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "AppfreezeInner__AppfreezeHandle_001 start";
     FaultData faultData;
@@ -149,17 +152,59 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner__AppfreezeHandle_001, TestSize.Level
     faultData.timeoutMarkers = "";
     bool onlyMainThread = true;
     std::shared_ptr<ApplicationInfo> applicationInfo = std::make_shared<ApplicationInfo>();
+    applicationInfo->bundleName = "debug_bundle";
     appfreezeInner->SetApplicationInfo(applicationInfo);
+    OHOS::system::SetParameter("hiviewdfx.appfreeze.filter_bundle_name", "debug_bundle");
     int ret = appfreezeInner->AppfreezeHandle(faultData, onlyMainThread);
-    EXPECT_EQ(ret, 0);
-    appfreezeInner->ReportAppfreezeTask(faultData, onlyMainThread);
-    ret = appfreezeInner->AcquireStack(faultData, onlyMainThread);
-    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(ret, -1);
+    OHOS::system::SetParameter("hiviewdfx.appfreeze.filter_bundle_name", "");
     appfreezeInner->SetAppDebug(true);
     ret = appfreezeInner->AppfreezeHandle(faultData, onlyMainThread);
     appfreezeInner->ReportAppfreezeTask(faultData, onlyMainThread);
     EXPECT_EQ(ret, -1);
     GTEST_LOG_(INFO) << "AppfreezeInner__AppfreezeHandle_001 end";
+}
+
+/**
+ * @tc.number: AppfreezeInner_AppfreezeHandle_002
+ * @tc.name: AppfreezeHandle
+ * @tc.desc: Verify IsProcessDebug branch in AppfreezeHandle.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_AppfreezeHandle_002, TestSize.Level1)
+{
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    EXPECT_NE(applicationInfo, nullptr);
+    applicationInfo->bundleName = "debug_bundle";
+    appfreezeInner->SetApplicationInfo(applicationInfo);
+    OHOS::system::SetParameter("hiviewdfx.appfreeze.filter_bundle_name", "debug_bundle");
+    appfreezeInner->SetAppDebug(false);
+    FaultData faultData;
+    faultData.errorObject.name = AppFreezeType::THREAD_BLOCK_6S;
+    int ret = appfreezeInner->AppfreezeHandle(faultData, true);
+    EXPECT_EQ(ret, -1);
+    OHOS::system::SetParameter("hiviewdfx.appfreeze.filter_bundle_name", "");
+}
+
+/**
+ * @tc.number: AppfreezeInner_AppfreezeHandle_003
+ * @tc.name: AppfreezeHandle
+ * @tc.desc: Verify IsAsanEnabled branch in AppfreezeHandle returns ERR_OK.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_AppfreezeHandle_003, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppfreezeInner_AppfreezeHandle_003 start";
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    EXPECT_NE(applicationInfo, nullptr);
+    applicationInfo->asanEnabled = true;
+    applicationInfo->hwasanEnabled = false;
+    applicationInfo->tsanEnabled = false;
+    appfreezeInner->SetApplicationInfo(applicationInfo);
+    FaultData faultData;
+    faultData.errorObject.name = AppFreezeType::THREAD_BLOCK_6S;
+    faultData.faultType = FaultDataType::APP_FREEZE;
+    int ret = appfreezeInner->AppfreezeHandle(faultData, true);
+    EXPECT_EQ(ret, ERR_OK);
+    GTEST_LOG_(INFO) << "AppfreezeInner_AppfreezeHandle_003 end";
 }
 
 /**
@@ -244,15 +289,43 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner__Dump_002, TestSize.Level1)
 /**
  * @tc.number: AppfreezeInner_AppfreezeHandleOverReportCount_001
  * @tc.name: AppfreezeHandleOverReportCount
- * @tc.desc: Verify that function AppfreezeHandleOverReportCount.
+ * @tc.desc: Verify IsProcessDebug branch in AppfreezeHandleOverReportCount.
  */
 HWTEST_F(AppfreezeInnerTest, AppfreezeInner_AppfreezeHandleOverReportCount_001, TestSize.Level1)
 {
-    bool isSixSecondEvent = true;
+    bool isSixSecondEvent = false;
     appfreezeInner->AppfreezeHandleOverReportCount(isSixSecondEvent);
-    isSixSecondEvent = false;
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    EXPECT_TRUE(applicationInfo != nullptr);
+    applicationInfo->bundleName = "debug_bundle";
+    appfreezeInner->SetApplicationInfo(applicationInfo);
+    OHOS::system::SetParameter("hiviewdfx.appfreeze.filter_bundle_name", "debug_bundle");
+    appfreezeInner->SetAppDebug(false);
+    isSixSecondEvent = true;
     appfreezeInner->AppfreezeHandleOverReportCount(isSixSecondEvent);
-    EXPECT_TRUE(!isSixSecondEvent);
+    OHOS::system::SetParameter("hiviewdfx.appfreeze.filter_bundle_name", "");
+}
+
+/**
+ * @tc.number: AppfreezeInner_AppfreezeHandleOverReportCount_002
+ * @tc.name: AppfreezeHandleOverReportCount
+ * @tc.desc: Verify IsAsanEnabled branch in AppfreezeHandle returns ERR_OK.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_AppfreezeHandleOverReportCount_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppfreezeInner_AppfreezeHandleOverReportCount_002 start";
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    EXPECT_NE(applicationInfo, nullptr);
+    applicationInfo->asanEnabled = true;
+    applicationInfo->hwasanEnabled = false;
+    applicationInfo->tsanEnabled = false;
+    EXPECT_NE(appfreezeInner, nullptr);
+    appfreezeInner->SetApplicationInfo(applicationInfo);
+    bool isSixSecondEvent = false;
+    appfreezeInner->AppfreezeHandleOverReportCount(isSixSecondEvent);
+    isSixSecondEvent = true;
+    appfreezeInner->AppfreezeHandleOverReportCount(isSixSecondEvent);
+    GTEST_LOG_(INFO) << "AppfreezeInner_AppfreezeHandleOverReportCount_002 end";
 }
 
 /**
@@ -323,13 +396,13 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetApplicationInfo_001, TestSize.Lev
 
 /**
  * @tc.number: AppfreezeInner_LogFormat_001
- * @tc.name: LogFormat
+ * @tc.name: LogFormatHeapSize
  */
 HWTEST_F(AppfreezeInnerTest, AppfreezeInner_LogFormat_001, TestSize.Level1)
 {
-    std::string ret = appfreezeInner->LogFormat(0, 0);
+    std::string ret = appfreezeInner->LogFormatHeapSize(0, 0, 0);
     EXPECT_TRUE(!ret.empty());
-    ret = appfreezeInner->LogFormat(123, 123);
+    ret = appfreezeInner->LogFormatHeapSize(123, 123, 123);
     EXPECT_TRUE(!ret.empty());
 }
 
@@ -344,21 +417,11 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetProcessLifeCycle_001, TestSize.Le
     ret = appfreezeInner->GetProcessLifeCycle();
     printf("%s\n", ret.c_str());
     EXPECT_TRUE(appfreezeInner);
-}
-
-/**
- * @tc.number: AppfreezeInner_GetProcessStartTime_001
- * @tc.name: GetProcessStartTime
- */
-HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetProcessStartTime_001, TestSize.Level1)
-{
-    unsigned long long startTime = 0;
-    bool ret = appfreezeInner->GetProcessStartTime(gettid(), startTime);
-    printf("%d\n", ret);
-    startTime = 123456;
-    ret = appfreezeInner->GetProcessStartTime(gettid(), startTime);
-    printf("%d\n", ret);
-    EXPECT_TRUE(appfreezeInner);
+    ret = appfreezeInner->GetProcessLifeCycle();
+    if (!ret.empty()) {
+        EXPECT_NE(ret.find("PROCESS_LIFETIME:"), std::string::npos);
+        EXPECT_EQ(ret.back(), 's');
+    }
 }
 
 /**
@@ -480,6 +543,51 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner_ChangeFaultDateInfo_004, TestSize.Le
 }
 
 /**
+ * @tc.number: AppfreezeInner_GetMainStackDump_001
+ * @tc.name: GetMainStackDump
+ * @tc.desc: Verify that function GetMainStackDump.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetMainStackDump_001, TestSize.Level1)
+{
+    appfreezeInner->lastMainStack_ = "";
+    int pid = -1;
+    std::string ret = appfreezeInner->GetMainStackDump(pid);
+    pid = getpid();
+    appfreezeInner->GetMainStackDump(pid);
+    pid = 1;
+    appfreezeInner->GetMainStackDump(pid);
+    EXPECT_TRUE(!ret.empty());
+}
+
+/**
+ * @tc.number: AppfreezeInner_GetMainStackDump_002
+ * @tc.name: GetMainStackDump
+ * @tc.desc: Verify that function GetMainStackDump.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetMainStackDump_002, TestSize.Level1)
+{
+    appfreezeInner->lastMainStack_ = "";
+    int pid = getpid();
+    std::string firstCall = appfreezeInner->GetMainStackDump(pid);
+    std::string secondCall = appfreezeInner->GetMainStackDump(pid);
+    EXPECT_EQ(firstCall, secondCall);
+}
+
+/**
+ * @tc.number: AppfreezeInner_GetMainStackDump_003
+ * @tc.name: GetMainStackDump
+ * @tc.desc: Verify that function GetMainStackDump.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetMainStackDump_003, TestSize.Level1)
+{
+    appfreezeInner->lastMainStack_ = "";
+    int pid = 999999;
+    std::string ret = appfreezeInner->GetMainStackDump(pid);
+    EXPECT_TRUE(ret.empty());
+    appfreezeInner->GetMainStackDump(pid);
+}
+
+/**
  * @tc.number: AppfreezeInnerTest
  * @tc.name: add test
  * @tc.desc: Verify that function SetMainHandler.
@@ -545,49 +653,22 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInnerTest_GetMainHandlerDump_001, TestSize
 /**
  * @tc.number: AppfreezeInnerTest
  * @tc.name: add test
- * @tc.desc: Verify that function GetProcessStartTime.
- */
-HWTEST_F(AppfreezeInnerTest, AppfreezeInnerTest_GetProcessStartTime_001, TestSize.Level1)
-{
-    pid_t tid = 0;
-    unsigned long long startTime = 0;
-    bool ret = appfreezeInner->GetProcessStartTime(tid, startTime);
-    EXPECT_TRUE(!ret);
-    tid = gettid();
-    startTime = 0;
-    ret = appfreezeInner->GetProcessStartTime(tid, startTime);
-    EXPECT_TRUE(ret);
-    tid = gettid();
-    startTime = 1234;
-    ret = appfreezeInner->GetProcessStartTime(tid, startTime);
-    EXPECT_TRUE(ret);
-    tid = -1234;
-    startTime = 0;
-    ret = appfreezeInner->GetProcessStartTime(tid, startTime);
-    EXPECT_TRUE(!ret);
-    tid = -1234;
-    startTime = 1234;
-    ret = appfreezeInner->GetProcessStartTime(tid, startTime);
-    EXPECT_TRUE(!ret);
-}
-
-/**
- * @tc.number: AppfreezeInnerTest
- * @tc.name: add test
- * @tc.desc: Verify that function LogFormat.
+ * @tc.desc: Verify that function LogFormatHeapSize.
  */
 HWTEST_F(AppfreezeInnerTest, AppfreezeInnerTest_LogFormat_001, TestSize.Level1)
 {
     size_t totalSize = 0;
     size_t objectSize = 0;
-    std::string ret = appfreezeInner->LogFormat(totalSize, objectSize);
-    std::string testValue = "HEAP_TOTAL_SIZE:0,HEAP_OBJECT_SIZE:0,";
+    size_t sharedSize = 0;
+    std::string ret = appfreezeInner->LogFormatHeapSize(totalSize, objectSize, sharedSize);
+    std::string testValue = "HEAP_TOTAL_SIZE:0,HEAP_OBJECT_SIZE:0,HEAP_SHARED_SIZE:0";
     EXPECT_EQ(ret, testValue);
-    ret = appfreezeInner->LogFormat(totalSize, objectSize);
+    ret = appfreezeInner->LogFormatHeapSize(totalSize, objectSize, sharedSize);
     totalSize = 1234;
     objectSize = 1234;
-    ret = appfreezeInner->LogFormat(totalSize, objectSize);
-    testValue = "HEAP_TOTAL_SIZE:1234,HEAP_OBJECT_SIZE:1234,";
+    sharedSize = 1234;
+    ret = appfreezeInner->LogFormatHeapSize(totalSize, objectSize, sharedSize);
+    testValue = "HEAP_TOTAL_SIZE:1234,HEAP_OBJECT_SIZE:1234,HEAP_SHARED_SIZE:1234";
     EXPECT_EQ(ret, testValue);
 }
 
@@ -637,10 +718,10 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInnerTest_GetApplicationInfo_002, TestSize
 }
 
 /**
- * @tc.number: AppfreezeInnerTest
- * @tc.name: add test
- * @tc.desc: TransformHicollieFaultNumber Test.
- */
+* @tc.number: AppfreezeInnerTest
+* @tc.name: add test
+* @tc.desc: TransformHicollieFaultNumber Test.
+*/
 HWTEST_F(AppfreezeInnerTest, AppfreezeInnerTest_TransformHicollieFaultNumber_001, TestSize.Level1)
 {
     const int businessInputBlockType = 7;
@@ -659,5 +740,494 @@ HWTEST_F(AppfreezeInnerTest, AppfreezeInner_ReportLifeCycleAsAppfreeze_001, Test
     appfreezeInner->SetReportLifeCycleAsAppfreeze(false);
     EXPECT_TRUE(!appfreezeInner->GetReportLifeCycleAsAppfreeze());
 }
+
+/**
+ * @tc.number: AppfreezeInner_LogFormatGC_001
+ * @tc.name: LogFormatGC
+ * @tc.desc: Verify that function LogFormatGC.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_LogFormatGC_001, TestSize.Level1)
+{
+    panda::GCStatistic gCStatistic;
+    gCStatistic.count = 10;
+    gCStatistic.maxPause = 100;
+    gCStatistic.minPause = 10;
+    gCStatistic.averagePause = 50;
+    gCStatistic.lastStartTime = 1000;
+    gCStatistic.lastEndTime = 1100;
+    gCStatistic.lastType = "test_type";
+    std::string ret = appfreezeInner->LogFormatGC(gCStatistic);
+    EXPECT_TRUE(!ret.empty());
+    EXPECT_NE(ret.find("count:10"), std::string::npos);
+    EXPECT_NE(ret.find("maxPause:100"), std::string::npos);
+    EXPECT_NE(ret.find("minPause:10"), std::string::npos);
+    EXPECT_NE(ret.find("averagePause:50"), std::string::npos);
+    EXPECT_NE(ret.find("lastStartTime:1000"), std::string::npos);
+    EXPECT_NE(ret.find("lastEndTime:1100"), std::string::npos);
+    EXPECT_NE(ret.find("lastType:test_type"), std::string::npos);
+}
+
+/**
+ * @tc.number: AppfreezeInner_ParseIOValue_001
+ * @tc.name: ParseIOValue
+ * @tc.desc: Verify that function ParseIOValue.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_ParseIOValue_001, TestSize.Level1)
+{
+    appfreezeInner->GetProcessIOStr();
+    std::string ioStr = "read_bytes: 1234\nwrite_bytes: 5678";
+    std::string ret = appfreezeInner->ParseIOValue(ioStr);
+    EXPECT_TRUE(!ret.empty());
+    EXPECT_NE(ret.find("read_bytes"), std::string::npos);
+    EXPECT_NE(ret.find("1234"), std::string::npos);
+    EXPECT_NE(ret.find("write_bytes"), std::string::npos);
+    EXPECT_NE(ret.find("5678"), std::string::npos);
+}
+
+/**
+ * @tc.number: AppfreezeInner_ParseIOValue_002
+ * @tc.name: ParseIOValue with empty string
+ * @tc.desc: Verify that function ParseIOValue with empty string.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_ParseIOValue_002, TestSize.Level1)
+{
+    std::string ioStr = "";
+    std::string ret = appfreezeInner->ParseIOValue(ioStr);
+    EXPECT_TRUE(ret.empty());
+}
+
+/**
+ * @tc.number: AppfreezeInner_ParseIOValue_003
+ * @tc.name: ParseIOValue with invalid format
+ * @tc.desc: Verify that function ParseIOValue with invalid format.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_ParseIOValue_003, TestSize.Level1)
+{
+    std::string ioStr = "invalid_line_without_colon\nanother_invalid_line";
+    std::string ret = appfreezeInner->ParseIOValue(ioStr);
+    EXPECT_TRUE(ret.empty());
+}
+
+/**
+ * @tc.number: AppfreezeInner_ParseIOValue_004
+ * @tc.name: ParseIOValue with empty lines
+ * @tc.desc: Verify that function ParseIOValue with empty lines.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_ParseIOValue_004, TestSize.Level1)
+{
+    std::string ioStr = "\n\nread_bytes: 1234\n\nwrite_bytes: 5678\n";
+    std::string ret = appfreezeInner->ParseIOValue(ioStr);
+    EXPECT_TRUE(!ret.empty());
+}
+
+/**
+ * @tc.number: AppfreezeInner_GetProcessIOStr_001
+ * @tc.name: GetProcessIOStr
+ * @tc.desc: Verify that GetProcessIOStr returns non-empty parsed io info from /proc/self/io.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetProcessIOStr_001, TestSize.Level1)
+{
+    std::string ret = appfreezeInner->GetProcessIOStr();
+    EXPECT_TRUE(appfreezeInner);
+    if (!ret.empty()) {
+        EXPECT_NE(ret.find(":"), std::string::npos);
+    }
+}
+
+/**
+ * @tc.number: AppfreezeInner_GetProcessIOStr_002
+ * @tc.name: GetProcessIOStr repeated
+ * @tc.desc: Verify repeated calls do not leak fd or trigger fdsan abort.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetProcessIOStr_002, TestSize.Level1)
+{
+    EXPECT_TRUE(appfreezeInner);
+    for (int i = 0; i < 10; i++) {
+        std::string ret = appfreezeInner->GetProcessIOStr();
+        if (!ret.empty()) {
+            EXPECT_NE(ret.find(":"), std::string::npos);
+        }
+    }
+}
+
+/**
+ * @tc.number: AppfreezeInner_GetFreezeCurrentTime_001
+ * @tc.name: GetFreezeCurrentTime
+ * @tc.desc: Verify that function GetFreezeCurrentTime.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetFreezeCurrentTime_001, TestSize.Level1)
+{
+    int64_t time1 = appfreezeInner->GetFreezeCurrentTime();
+    EXPECT_TRUE(time1 > 0);
+    usleep(1000);
+    int64_t time2 = appfreezeInner->GetFreezeCurrentTime();
+    EXPECT_TRUE(time2 >= time1);
+    EXPECT_TRUE(time2 - time1 < 10);
+}
+
+/**
+ * @tc.number: AppfreezeInner_IsFreezeTimeInGCPeriod_001
+ * @tc.name: IsFreezeTimeInGCPeriod
+ * @tc.desc: Verify that function IsFreezeTimeInGCPeriod with valid period.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_IsFreezeTimeInGCPeriod_001, TestSize.Level1)
+{
+    uint64_t halfTime = 1000;
+    uint64_t blockTime = 2000;
+    uint64_t lastStartTime = 900;
+    uint64_t lastEndTime = 100;
+    bool ret = appfreezeInner->IsFreezeTimeInGCPeriod(halfTime, blockTime, lastStartTime, lastEndTime);
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.number: AppfreezeInner_IsFreezeTimeInGCPeriod_002
+ * @tc.name: IsFreezeTimeInGCPeriod with no overlap
+ * @tc.desc: Verify that function IsFreezeTimeInGCPeriod
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_IsFreezeTimeInGCPeriod_002, TestSize.Level1)
+{
+    uint64_t halfTime = 1000;
+    uint64_t blockTime = 2000;
+    uint64_t lastStartTime = 3000;
+    uint64_t lastEndTime = 4000;
+    bool ret = appfreezeInner->IsFreezeTimeInGCPeriod(halfTime, blockTime, lastStartTime, lastEndTime);
+    EXPECT_FALSE(ret);
+    ret = appfreezeInner->IsFreezeTimeInGCPeriod(0, 0, 0, 0);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.number: AppfreezeInner_IsFreezeTimeInGCPeriod_003
+ * @tc.name: IsFreezeTimeInGCPeriod with invalid time range
+ * @tc.desc: Verify that function IsFreezeTimeInGCPeriod.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_IsFreezeTimeInGCPeriod_003, TestSize.Level1)
+{
+    uint64_t halfTime = 2000;
+    uint64_t blockTime = 1000;
+    uint64_t lastStartTime = 900;
+    uint64_t lastEndTime = 2100;
+    bool ret = appfreezeInner->IsFreezeTimeInGCPeriod(halfTime, blockTime, lastStartTime, lastEndTime);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.number: AppfreezeInner_IsFreezeTimeInGCPeriod_004
+ * @tc.name: IsFreezeTimeInGCPeriod with invalid GC time range
+ * @tc.desc: Verify that function IsFreezeTimeInGCPeriod with invalid GC time range.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_IsFreezeTimeInGCPeriod_004, TestSize.Level1)
+{
+    uint64_t halfTime = 1000;
+    uint64_t blockTime = 2000;
+    uint64_t lastStartTime = 2100;
+    uint64_t lastEndTime = 900;
+    bool ret = appfreezeInner->IsFreezeTimeInGCPeriod(halfTime, blockTime, lastStartTime, lastEndTime);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.number: AppfreezeInner_CheckBlockInGC_001
+ * @tc.name: CheckBlockInGC with THREAD_BLOCK_6S
+ * @tc.desc: Verify that function CheckBlockInGC with THREAD_BLOCK_6S.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_CheckBlockInGC_001, TestSize.Level1)
+{
+    uint64_t lastStartTime = 1000;
+    uint64_t lastEndTime = 2000;
+    bool ret = appfreezeInner->CheckBlockInGC(AppFreezeType::THREAD_BLOCK_3S, lastStartTime, lastEndTime);
+    EXPECT_FALSE(ret);
+
+    // Simulate: THREAD_BLOCK_3S happened at (now - 100), THREAD_BLOCK_6S happens at now
+    // GC period is [now - 200, now + 100], which contains [now - 100, now]
+    uint64_t now = static_cast<uint64_t>(appfreezeInner->GetFreezeCurrentTime());
+    appfreezeInner->threadBlock3STime_ = now - 100;
+    lastEndTime = now - 400;
+    lastStartTime = now - 200;
+    ret = appfreezeInner->CheckBlockInGC(AppFreezeType::THREAD_BLOCK_6S, lastStartTime, lastEndTime);
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.number: AppfreezeInner_CheckBlockInGC_003
+ * @tc.name: CheckBlockInGC with LIFECYCLE_TIMEOUT
+ * @tc.desc: Verify that function CheckBlockInGC with LIFECYCLE_TIMEOUT.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_CheckBlockInGC_003, TestSize.Level1)
+{
+    uint64_t lastStartTime = 1000;
+    uint64_t lastEndTime = 2000;
+    bool ret = appfreezeInner->CheckBlockInGC(AppFreezeType::LIFECYCLE_HALF_TIMEOUT, lastStartTime, lastEndTime);
+    EXPECT_FALSE(ret);
+
+    uint64_t now = static_cast<uint64_t>(appfreezeInner->GetFreezeCurrentTime());
+    appfreezeInner->lifeCycleHalfTime_ = now - 100;
+    lastEndTime = now - 400;
+    lastStartTime = now - 200;
+    ret = appfreezeInner->CheckBlockInGC(AppFreezeType::LIFECYCLE_TIMEOUT, lastStartTime, lastEndTime);
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.number: AppfreezeInner_CheckBlockInGC_005
+ * @tc.name: CheckBlockInGC with APP_INPUT_BLOCK
+ * @tc.desc: Verify that function CheckBlockInGC with APP_INPUT_BLOCK.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_CheckBlockInGC_005, TestSize.Level1)
+{
+    uint64_t now = static_cast<uint64_t>(appfreezeInner->GetFreezeCurrentTime());
+    // GC period should contain the input block period [now - 8000, now]
+    uint64_t lastStartTime = now - 10000;  // GC starts before input block
+    uint64_t lastEndTime = now - 20000;     // GC ends after input block
+    bool ret = appfreezeInner->CheckBlockInGC(AppFreezeType::APP_INPUT_BLOCK, lastStartTime, lastEndTime);
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.number: AppfreezeInner_CheckBlockInGC_006
+ * @tc.name: CheckBlockInGC with unknown fault name
+ * @tc.desc: Verify that function CheckBlockInGC with unknown fault name.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_CheckBlockInGC_006, TestSize.Level1)
+{
+    uint64_t lastStartTime = 1000;
+    uint64_t lastEndTime = 2000;
+    bool ret = appfreezeInner->CheckBlockInGC("UNKNOWN_FAULT", lastStartTime, lastEndTime);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.number: AppfreezeInner_CheckGCType_001
+ * @tc.name: CheckGCType
+ * @tc.desc: Verify that function CheckGCType.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_CheckGCType_001, TestSize.Level1)
+{
+    bool ret = appfreezeInner->CheckGCType("Shared GC");
+    EXPECT_FALSE(ret);
+    ret = appfreezeInner->CheckGCType("OTHER");
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.number: AppfreezeInner_IsProcessDebug_001
+ * @tc.name: IsProcessDebug
+ * @tc.desc: Verify that function IsProcessDebug.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_IsProcessDebug_001, TestSize.Level1)
+{
+    OHOS::system::SetParameter("hiviewdfx.appfreeze.filter_bundle_name", "");
+    int32_t pid = getpid();
+    bool ret = appfreezeInner->IsProcessDebug(pid, "test_bundle");
+    EXPECT_FALSE(ret);
+    OHOS::system::SetParameter("hiviewdfx.appfreeze.filter_bundle_name", "test_bundle");
+    ret = appfreezeInner->IsProcessDebug(pid, "test_bundle");
+    EXPECT_TRUE(ret);
+    OHOS::system::SetParameter("hiviewdfx.appfreeze.filter_bundle_name", "");
+}
+
+/**
+ * @tc.number: AppfreezeInner_GetBundleNameByApplication_001
+ * @tc.name: GetBundleNameByApplication
+ * @tc.desc: Verify that function GetBundleNameByApplication.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_GetBundleNameByApplication_001, TestSize.Level1)
+{
+    std::string bundleName = appfreezeInner->GetBundleNameByApplication();
+    EXPECT_TRUE(bundleName.empty());
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    applicationInfo->bundleName = "test_bundle";
+    appfreezeInner->SetApplicationInfo(applicationInfo);
+    bundleName = appfreezeInner->GetBundleNameByApplication();
+    EXPECT_EQ(bundleName, "test_bundle");
+}
+
+/**
+ * @tc.number: AppfreezeInner_ChangeFaultDateInfo_LifecycleTimeout_001
+ * @tc.name: ChangeFaultDateInfo lifecycle timeout logic
+ * @tc.desc: Verify LIFECYCLE_HALF_TIMEOUT and LIFECYCLE_TIMEOUT reportLifecycleToFreeze logic.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_ChangeFaultDateInfo_LifecycleTimeout_001, TestSize.Level1)
+{
+    appfreezeInner->SetReportLifeCycleAsAppfreeze(true);
+
+    FaultData halfTimeoutData;
+    halfTimeoutData.errorObject.name = AppFreezeType::LIFECYCLE_HALF_TIMEOUT;
+    appfreezeInner->ChangeFaultDateInfo(halfTimeoutData, "test_half");
+    EXPECT_TRUE(halfTimeoutData.reportLifecycleToFreeze);
+
+    FaultData timeoutData;
+    timeoutData.errorObject.name = AppFreezeType::LIFECYCLE_TIMEOUT;
+    appfreezeInner->SetReportLifeCycleAsAppfreeze(false);
+    appfreezeInner->ChangeFaultDateInfo(timeoutData, "test_timeout");
+    EXPECT_TRUE(!timeoutData.reportLifecycleToFreeze);
+
+    appfreezeInner->SetReportLifeCycleAsAppfreeze(true);
+    FaultData timeoutTrue;
+    timeoutTrue.errorObject.name = AppFreezeType::LIFECYCLE_TIMEOUT;
+    appfreezeInner->ChangeFaultDateInfo(timeoutTrue, "test_get_report_true");
+    EXPECT_TRUE(timeoutTrue.reportLifecycleToFreeze);
+}
+
+/**
+ * @tc.number: AppfreezeInner_SetAppfreezeApplication_001
+ * @tc.name: SetAppfreezeApplication
+ * @tc.desc: Verify that SetAppfreezeApplication works correctly.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_SetAppfreezeApplication_001, TestSize.Level1)
+{
+    appfreezeInner->application_ = nullptr;
+    appfreezeInner->SetAppfreezeApplication(nullptr);
+    EXPECT_TRUE(appfreezeInner->application_ == nullptr);
+
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    EXPECT_TRUE(application != nullptr);
+    appfreezeInner->SetAppfreezeApplication(application);
+    EXPECT_TRUE(appfreezeInner->application_ != nullptr);
+    EXPECT_TRUE(appfreezeInner->application_ == application);
+
+    appfreezeInner->application_ = nullptr;
+}
+
+/**
+ * @tc.number: AppfreezeInner_IsAsanEnabled_001
+ * @tc.name: IsAsanEnabled
+ * @tc.desc: Verify that IsAsanEnabled returns false when applicationInfo is nullptr.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_IsAsanEnabled_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppfreezeInner_IsAsanEnabled_001 start";
+    appfreezeInner->applicationInfo_.reset();
+    bool ret = appfreezeInner->IsAsanEnabled();
+    EXPECT_EQ(ret, false);
+    GTEST_LOG_(INFO) << "AppfreezeInner_IsAsanEnabled_001 end";
+}
+
+/**
+ * @tc.number: AppfreezeInner_IsAsanEnabled_002
+ * @tc.name: IsAsanEnabled
+ * @tc.desc: Verify that IsAsanEnabled returns true when asanEnabled is true.
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_IsAsanEnabled_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppfreezeInner_IsAsanEnabled_002 start";
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    applicationInfo->asanEnabled = true;
+    applicationInfo->hwasanEnabled = false;
+    applicationInfo->tsanEnabled = false;
+    appfreezeInner->SetApplicationInfo(applicationInfo);
+    bool ret = appfreezeInner->IsAsanEnabled();
+    EXPECT_EQ(ret, true);
+    GTEST_LOG_(INFO) << "AppfreezeInner_IsAsanEnabled_002 end";
+}
+
+/**
+ * @tc.name: AppfreezeInner_CheckMainFreezeCallback_001
+ * @tc.desc: Verify non-6S/non-INPUT_BLOCK events are always admitted.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_CheckMainFreezeCallback_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppfreezeInner_CheckMainFreezeCallback_001 start";
+    appfreezeInner->mainFreezeCallbackTime_ = std::chrono::steady_clock::time_point::min();
+    appfreezeInner->mainFreezeRecoveryTime_ = std::chrono::steady_clock::time_point::min();
+    auto now = std::chrono::steady_clock::now();
+    EXPECT_TRUE(appfreezeInner->CheckMainFreezeCallback(AppFreezeType::THREAD_BLOCK_3S, now, true));
+    EXPECT_TRUE(appfreezeInner->CheckMainFreezeCallback(AppFreezeType::LIFECYCLE_TIMEOUT, now, true));
+    EXPECT_EQ(appfreezeInner->mainFreezeCallbackTime_, std::chrono::steady_clock::time_point::min());
+    GTEST_LOG_(INFO) << "AppfreezeInner_CheckMainFreezeCallback_001 end";
+}
+
+/**
+ * @tc.name: AppfreezeInner_CheckMainFreezeCallback_002
+ * @tc.desc: Verify first 6S with startProcessing=true is admitted and consumes the callback.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_CheckMainFreezeCallback_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppfreezeInner_CheckMainFreezeCallback_002 start";
+    appfreezeInner->mainFreezeCallbackTime_ = std::chrono::steady_clock::time_point::min();
+    appfreezeInner->mainFreezeRecoveryTime_ = std::chrono::steady_clock::time_point::min();
+    auto now = std::chrono::steady_clock::now();
+    EXPECT_TRUE(appfreezeInner->CheckMainFreezeCallback(AppFreezeType::THREAD_BLOCK_6S, now, true));
+    EXPECT_NE(appfreezeInner->mainFreezeCallbackTime_, std::chrono::steady_clock::time_point::min());
+    GTEST_LOG_(INFO) << "AppfreezeInner_CheckMainFreezeCallback_002 end";
+}
+
+/**
+ * @tc.name: AppfreezeInner_CheckMainFreezeCallback_003
+ * @tc.desc: Verify startProcessing=false does not consume the callback opportunity.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_CheckMainFreezeCallback_003, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppfreezeInner_CheckMainFreezeCallback_003 start";
+    appfreezeInner->mainFreezeCallbackTime_ = std::chrono::steady_clock::time_point::min();
+    appfreezeInner->mainFreezeRecoveryTime_ = std::chrono::steady_clock::time_point::min();
+    auto now = std::chrono::steady_clock::now();
+    EXPECT_TRUE(appfreezeInner->CheckMainFreezeCallback(AppFreezeType::APP_INPUT_BLOCK, now, false));
+    EXPECT_EQ(appfreezeInner->mainFreezeCallbackTime_, std::chrono::steady_clock::time_point::min());
+    GTEST_LOG_(INFO) << "AppfreezeInner_CheckMainFreezeCallback_003 end";
+}
+
+/**
+ * @tc.name: AppfreezeInner_ResetMainFreezeCallback_001
+ * @tc.desc: Verify ResetMainFreezeCallback allows subsequent callbacks after reset.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_ResetMainFreezeCallback_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppfreezeInner_ResetMainFreezeCallback_001 start";
+    appfreezeInner->mainFreezeCallbackTime_ = std::chrono::steady_clock::time_point::min();
+    appfreezeInner->mainFreezeRecoveryTime_ = std::chrono::steady_clock::time_point::min();
+    auto now = std::chrono::steady_clock::now();
+    ASSERT_TRUE(appfreezeInner->CheckMainFreezeCallback(AppFreezeType::THREAD_BLOCK_6S, now, true));
+    ASSERT_FALSE(appfreezeInner->CheckMainFreezeCallback(AppFreezeType::THREAD_BLOCK_6S,
+        std::chrono::steady_clock::now(), true));
+    appfreezeInner->ResetMainFreezeCallback();
+    auto afterReset = std::chrono::steady_clock::now();
+    EXPECT_TRUE(appfreezeInner->CheckMainFreezeCallback(AppFreezeType::THREAD_BLOCK_6S, afterReset, true));
+    GTEST_LOG_(INFO) << "AppfreezeInner_ResetMainFreezeCallback_001 end";
+}
+
+/**
+ * @tc.name: AppfreezeInner_SetThreadBlockDetectTime_001
+ * @tc.desc: Verify SetThreadBlockDetectTime sets detectTime and deduplicates 3S half events.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_SetThreadBlockDetectTime_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppfreezeInner_SetThreadBlockDetectTime_001 start";
+    appfreezeInner->mainFreezeHalfDetectTime_ = 0;
+    FaultData fault;
+    fault.errorObject.name = AppFreezeType::THREAD_BLOCK_3S;
+    appfreezeInner->SetThreadBlockDetectTime(fault, 1000);
+    EXPECT_EQ(fault.detectTime, 1000u);
+    EXPECT_EQ(appfreezeInner->mainFreezeHalfDetectTime_, 1000u);
+    FaultData second;
+    second.errorObject.name = AppFreezeType::THREAD_BLOCK_3S;
+    appfreezeInner->SetThreadBlockDetectTime(second, 2000);
+    EXPECT_EQ(second.detectTime, 1000u);
+    GTEST_LOG_(INFO) << "AppfreezeInner_SetThreadBlockDetectTime_001 end";
+}
+
+/**
+ * @tc.name: AppfreezeInner_SetThreadBlockDetectTime_002
+ * @tc.desc: Verify SetThreadBlockDetectTime does not deduplicate non-3S events.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppfreezeInnerTest, AppfreezeInner_SetThreadBlockDetectTime_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AppfreezeInner_SetThreadBlockDetectTime_002 start";
+    appfreezeInner->mainFreezeHalfDetectTime_ = 0;
+    FaultData fault;
+    fault.errorObject.name = AppFreezeType::THREAD_BLOCK_6S;
+    appfreezeInner->SetThreadBlockDetectTime(fault, 5000);
+    EXPECT_EQ(fault.detectTime, 5000u);
+    EXPECT_EQ(appfreezeInner->mainFreezeHalfDetectTime_, 0u);
+    GTEST_LOG_(INFO) << "AppfreezeInner_SetThreadBlockDetectTime_002 end";
+}
+
 }  // namespace AppExecFwk
 }  // namespace OHOS

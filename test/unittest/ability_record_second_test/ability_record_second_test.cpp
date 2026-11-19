@@ -29,6 +29,7 @@
 #include "mock_scene_board_judgement.h"
 #include "ability_scheduler_mock.h"
 #include "ability_util.h"
+#include "skill_execute_param.h"
 
 using namespace testing::ext;
 using namespace OHOS::AppExecFwk;
@@ -44,8 +45,12 @@ const std::string TEST_PARAMS_STREAM = "ability.params.stream";
 const std::string UIEXTENSION_ABILITY_ID = "ability.want.params.uiExtensionAbilityId";
 const std::string UIEXTENSION_ROOT_HOST_PID = "ability.want.params.uiExtensionRootHostPid";
 const std::string DEBUG_APP = "debugApp";
+const std::string TEST_AGENT_EXTENSION_HOST_PROXY_KEY = "ohos.agentruntime.params.AgentExtensionHostProxy";
+const std::string TEST_AGENT_ID_KEY = "ohos.agentruntime.params.AgentId";
+const std::string TEST_AGENT_CARD_TYPE_KEY = "ohos.agentruntime.params.AgentCardType";
+const std::string TEST_AGENT_VERIFICATION_NONCE_KEY = "ohos.agentruntime.params.AgentVerificationNonce";
 constexpr int32_t DMS_UID = 5522;
-constexpr int32_t INVALID_USER_ID = 100;
+constexpr int32_t TEST_INVALID_USER_ID = 100;
 }
 
 class AbilityRecordSecondTest : public testing::Test {
@@ -209,7 +214,7 @@ HWTEST_F(AbilityRecordSecondTest, AbilityRecord_GetCurrentAccountId_001, TestSiz
     TAG_LOGE(AAFwkTag::TEST, "AbilityRecord_GetCurrentAccountId_001 start.");
     std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
     auto res = abilityRecord->GetCurrentAccountId();
-    EXPECT_EQ(res, INVALID_USER_ID);
+    EXPECT_EQ(res, TEST_INVALID_USER_ID);
     TAG_LOGE(AAFwkTag::TEST, "AbilityRecord_GetCurrentAccountId_001 end.");
 }
 
@@ -1062,16 +1067,22 @@ HWTEST_F(AbilityRecordSecondTest, AbilityRecord_SetWant_008, TestSize.Level1)
  * SubFunction: SetWant
  * FunctionPoints: NA
  * EnvConditions: NA
- * CaseDescription: Verify AbilityRecord SetWant removes AGENTEXTENSIONHOSTPROXY_KEY
+ * CaseDescription: Verify AbilityRecord SetWant removes AGENT internal want params
  */
 HWTEST_F(AbilityRecordSecondTest, AbilityRecord_SetWant_009, TestSize.Level1)
 {
     std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
     abilityRecord->isLaunching_ = false;
     Want want;
-    want.SetParam("ohos.agentruntime.params.AgentExtensionHostProxy", true);
+    want.SetParam(TEST_AGENT_EXTENSION_HOST_PROXY_KEY, true);
+    want.SetParam(TEST_AGENT_ID_KEY, std::string("testAgent"));
+    want.SetParam(TEST_AGENT_CARD_TYPE_KEY, 1);
+    want.SetParam(TEST_AGENT_VERIFICATION_NONCE_KEY, 1000000000L);
     abilityRecord->SetWant(want);
-    EXPECT_FALSE(abilityRecord->want_.HasParameter("ohos.agentruntime.params.AgentExtensionHostProxy"));
+    EXPECT_FALSE(abilityRecord->want_.HasParameter(TEST_AGENT_EXTENSION_HOST_PROXY_KEY));
+    EXPECT_FALSE(abilityRecord->want_.HasParameter(TEST_AGENT_ID_KEY));
+    EXPECT_FALSE(abilityRecord->want_.HasParameter(TEST_AGENT_CARD_TYPE_KEY));
+    EXPECT_FALSE(abilityRecord->want_.HasParameter(TEST_AGENT_VERIFICATION_NONCE_KEY));
 }
 
 /*
@@ -1158,6 +1169,57 @@ HWTEST_F(AbilityRecordSecondTest, AbilityRecord_SetWant_013, TestSize.Level1)
     // Want should be updated for PAGE ability when isLaunching is false
     EXPECT_FALSE(abilityRecord->want_.HasParameter("oldParam"));
     EXPECT_TRUE(abilityRecord->want_.HasParameter("newParam"));
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: SetWantParam
+ * SubFunction: SetWantParam
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify AbilityRecord SetWantParam sets int32_t parameter under lock
+ */
+HWTEST_F(AbilityRecordSecondTest, AbilityRecord_SetWantParam_001, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    std::string key = "test.param.int";
+    int32_t value = 1;
+    abilityRecord->SetWantParam(key, value);
+    EXPECT_EQ(abilityRecord->want_.GetIntParam(key, 0), value);
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: RemoveSkillParam
+ * SubFunction: RemoveSkillParam
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify AbilityRecord RemoveSkillParam removes skill params from want_
+ */
+HWTEST_F(AbilityRecordSecondTest, AbilityRecord_RemoveSkillParam_001, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    abilityRecord->want_.SetParam(SKILL_EXECUTE_PARAM_SKILL_NAME, std::string("testSkill"));
+    EXPECT_TRUE(abilityRecord->want_.HasParameter(SKILL_EXECUTE_PARAM_SKILL_NAME));
+    abilityRecord->RemoveSkillParam();
+    EXPECT_FALSE(abilityRecord->want_.HasParameter(SKILL_EXECUTE_PARAM_SKILL_NAME));
+}
+
+/*
+ * Feature: AbilityRecord
+ * Function: RemoveSkillParam
+ * SubFunction: RemoveSkillParam
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: Verify RemoveSkillParam is safe when no skill params exist
+ */
+HWTEST_F(AbilityRecordSecondTest, AbilityRecord_RemoveSkillParam_002, TestSize.Level1)
+{
+    std::shared_ptr<AbilityRecord> abilityRecord = GetAbilityRecord();
+    abilityRecord->want_.SetParam("unrelated.param", std::string("keep"));
+    abilityRecord->RemoveSkillParam();
+    EXPECT_FALSE(abilityRecord->want_.HasParameter(SKILL_EXECUTE_PARAM_SKILL_NAME));
+    EXPECT_TRUE(abilityRecord->want_.HasParameter("unrelated.param"));
 }
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -23,18 +23,22 @@
 #include <list>
 #include <string>
 
-#include "base_extension_record.h"
-#include "extension_record_factory.h"
-#include "ui_extension_record.h"
+#include "nlohmann/json.hpp"
 #define private public
+#define protected public
 #define inline
-#include "extension_record.h"
 #include "extension_record_manager.h"
-#define inline
+#undef inline
+#undef protected
 #undef private
+
 #include "ability_fuzz_util.h"
-#include "ipc_skeleton.h"
 #include "ability_record.h"
+#include "base_extension_record.h"
+#include "extension_record.h"
+#include "extension_record_factory.h"
+#include "ipc_skeleton.h"
+#include "ui_extension_record.h"
 
 using namespace OHOS::AAFwk;
 using namespace OHOS::AbilityRuntime;
@@ -65,13 +69,11 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
         std::make_shared<ExtensionRecordManager>(DEFAULT_USER_ID);
     FuzzedDataProvider fdp(data, size);
 
-    int32_t userId = fdp.ConsumeIntegral<int32_t>();
     int32_t extensionRecordId = fdp.ConsumeIntegral<int32_t>();
     int32_t validExtId = extensionRecordManager->GenerateExtensionRecordId(INVALID_EXTENSION_RECORD_ID);
     int32_t pid = fdp.ConsumeIntegral<int32_t>();
     int32_t hostPid = fdp.ConsumeIntegral<int32_t>();
     int32_t recordNum = fdp.ConsumeIntegral<int32_t>();
-    int32_t requestCode = fdp.ConsumeIntegral<int32_t>();
     bool isLoaded = fdp.ConsumeBool();
     bool preloadFlag = fdp.ConsumeBool();
     bool isolationProcess = fdp.ConsumeBool();
@@ -117,8 +119,6 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     AbilityFuzzUtil::GenerateElementName(fdp, element);
 
     UIExtensionSessionInfo uiExtensionSessionInfo;
-    sptr<SessionInfo> sessionInfo = new (std::nothrow) SessionInfo();
-    sptr<SessionInfo> nullSessionInfo = nullptr;
     sptr<IRemoteObject> token;
     sptr<IRemoteObject> nullToken = nullptr;
     sptr<IRemoteObject::DeathRecipient> deathRecipient = nullptr;

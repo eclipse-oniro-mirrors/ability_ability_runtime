@@ -416,14 +416,21 @@ HWTEST_F(StartOptionsUtilsTest, CheckProcessOptionsInner_007, TestSize.Level1)
     MyFlag::GetInstance().isStartOptionsWithProcessOptions_ = true;
     MyFlag::GetInstance().retCheckSpecificSystemAbilityAccessPermission_ = false;
     MyFlag::GetInstance().retCheckCallingTokenId_ = false;
+    MyFlag::GetInstance().setTargetCloneIndexCallCount_ = 0;
+    MyFlag::GetInstance().resolveTargetAppCloneIndexCallCount_ = 0;
+    MyFlag::GetInstance().resolveTargetAppCloneIndexUserId_ = -1;
 
     Want want;
     want.SetElementName("bundle", "ability");
     StartOptions startOptions;
     startOptions.processOptions = std::make_shared<ProcessOptions>();
     startOptions.processOptions->processMode = ProcessMode::NEW_PROCESS_ATTACH_TO_PARENT;
-    auto retCode = StartOptionsUtils::CheckProcessOptionsInner(want, startOptions, nullptr, -1);
+    constexpr int32_t userId = 100;
+    auto retCode = StartOptionsUtils::CheckProcessOptionsInner(want, startOptions, nullptr, userId);
     EXPECT_EQ(retCode, ERR_NOT_SELF_APPLICATION);
+    EXPECT_EQ(MyFlag::GetInstance().resolveTargetAppCloneIndexCallCount_, 1);
+    EXPECT_EQ(MyFlag::GetInstance().resolveTargetAppCloneIndexUserId_, userId);
+    EXPECT_EQ(MyFlag::GetInstance().setTargetCloneIndexCallCount_, 0);
 
     TAG_LOGI(AAFwkTag::TEST, "StartOptionsUtilsTest CheckProcessOptionsInner_007 end");
 }

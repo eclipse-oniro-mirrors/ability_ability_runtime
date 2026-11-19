@@ -26,7 +26,7 @@ constexpr const char *ERR_MSG_NOT_MAINTHREAD = "Caller error. Caller from non-ma
 constexpr const char *ERR_MSG_INVALID_NUM_PARAMS = "Parameter error. The number of parameters is invalid.";
 constexpr const char *NOT_SYSTEM_APP = "The application is not system-app, can not use system-api.";
 constexpr const char *BUSINESS_ERROR_CLASS = "@ohos.base.BusinessError";
-constexpr const char *ERROR_CLASS_NAME = "std.core.Error";
+constexpr const char *ERROR_CLASS_NAME = "escompat.Error";
 constexpr const char* ERROR_MSG_TRANSFER_CLASS_NOT_FOUND = "Unable to find the class for transferring.";
 constexpr int32_t ERROR_CODE_TRANSFER_CLASS_NOT_FOUND = 10200067;
 } // namespace
@@ -35,6 +35,10 @@ void EtsErrorUtil::ThrowError(ani_env *env, ani_object err)
 {
     if (env == nullptr) {
         TAG_LOGE(AAFwkTag::ANI, "null env");
+        return;
+    }
+    if (err == nullptr) {
+        TAG_LOGE(AAFwkTag::ANI, "null err");
         return;
     }
     env->ThrowError(static_cast<ani_error>(err));
@@ -174,16 +178,15 @@ ani_object EtsErrorUtil::CreateNoPermissionError(ani_env *env, const std::string
         env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_PERMISSION_DENIED), GetNoPermissionErrorMsg(permission));
 }
 
-ani_object EtsErrorUtil::CreateErrorByNativeErr(ani_env *env, int32_t err, const std::string &permission)
+ani_object EtsErrorUtil::CreateErrorByNativeErr(
+    ani_env *env, int32_t err, const std::string &permission, const std::string &innerErrMsg)
 {
     if (env == nullptr) {
         TAG_LOGE(AAFwkTag::ANI, "null env");
         return nullptr;
     }
     auto errCode = GetJsErrorCodeByNativeError(err);
-    auto errMsg = (errCode == AbilityErrorCode::ERROR_CODE_PERMISSION_DENIED && !permission.empty())
-                      ? GetNoPermissionErrorMsg(permission)
-                      : GetErrorMsg(errCode);
+    auto errMsg = GetErrorMsgByNativeError(err, innerErrMsg, permission);
     return EtsErrorUtil::CreateError(env, static_cast<int32_t>(errCode), errMsg);
 }
 
@@ -210,7 +213,7 @@ ani_object EtsErrorUtil::WrapError(ani_env *env, const std::string &msg)
         return nullptr;
     }
     ani_method method = nullptr;
-    if ((status = env->Class_FindMethod(cls, "<ctor>", "C{std.core.String}C{std.core.ErrorOptions}:", &method)) !=
+    if ((status = env->Class_FindMethod(cls, "<ctor>", "C{std.core.String}C{escompat.ErrorOptions}:", &method)) !=
         ANI_OK) {
         TAG_LOGE(AAFwkTag::ANI, "Class_FindMethod failed %{public}d", status);
         return nullptr;
@@ -236,7 +239,7 @@ ani_object EtsErrorUtil::CreateError(ani_env *env, ani_int code, const std::stri
         return nullptr;
     }
     ani_method method = nullptr;
-    if ((status = env->Class_FindMethod(cls, "<ctor>", "iC{std.core.Error}:", &method)) != ANI_OK) {
+    if ((status = env->Class_FindMethod(cls, "<ctor>", "iC{escompat.Error}:", &method)) != ANI_OK) {
         TAG_LOGE(AAFwkTag::ANI, "Class_FindMethod failed %{public}d", status);
         return nullptr;
     }

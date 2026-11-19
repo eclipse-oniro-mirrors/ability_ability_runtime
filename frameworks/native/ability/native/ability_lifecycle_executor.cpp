@@ -19,12 +19,12 @@ namespace OHOS {
 namespace AppExecFwk {
 void AbilityLifecycleExecutor::DispatchLifecycleState(const AbilityLifecycleExecutor::LifecycleState &state)
 {
-    state_ = state;
+    state_.store(state, std::memory_order_release);
 }
 
 int AbilityLifecycleExecutor::GetState() const
 {
-    return state_;
+    return static_cast<int>(state_.load(std::memory_order_acquire));
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

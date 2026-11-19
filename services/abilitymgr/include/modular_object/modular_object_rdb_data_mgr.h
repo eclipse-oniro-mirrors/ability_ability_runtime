@@ -68,8 +68,7 @@ class ModularObjectExtensionRdbDataMgr : public std::enable_shared_from_this<Mod
     DECLARE_DELAYED_SINGLETON(ModularObjectExtensionRdbDataMgr)
 
 public:
-    int32_t InsertData(const std::string &key, const std::string &value);
-    int32_t UpdateData(const std::string &key, const std::string &value);
+    int32_t InsertOrUpdateData(const std::string &key, const std::string &value);
     int32_t DeleteData(const std::string &key);
     int32_t QueryData(const std::string &key, std::string &value);
 

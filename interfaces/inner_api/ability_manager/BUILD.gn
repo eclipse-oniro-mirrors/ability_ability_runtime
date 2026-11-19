@@ -25,8 +25,10 @@ config("ability_manager_public_config") {
   ]
   include_dirs = [
     "include/",
+    "${ability_runtime_path}/utils/global/common/include",
     "include/aa_tools",
     "include/insight_intent",
+    "include/skill",
     "include/status_bar_delegate",
     "include/ui_extension",
     "${ability_runtime_path}/interfaces/kits/native/ability/native",
@@ -64,6 +66,17 @@ config("ability_manager_public_config") {
 ohos_shared_library("ability_manager") {
   use_exceptions = true
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
+  sanitize = {
+    integer_overflow = true
+    ubsan = true
+    boundary_sanitize = true
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    cfi_policy = "adaptive"
+    debug = false
+  }
 
   sources = [
     "${ability_runtime_native_path}/ability/native/data_ability_operation.cpp",
@@ -86,8 +99,14 @@ ohos_shared_library("ability_manager") {
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_execute_callback_proxy.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_execute_callback_stub.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_execute_param.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_execute_lite_param.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_execute_result.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_execution_info.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_will_execute_callback_proxy.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_will_execute_callback_stub.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_info_for_query.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/insight_intent/insight_intent_query_entity_param.cpp",
+    "${ability_runtime_native_path}/ability/native/insight_intent_host_client.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/intent_exemption_info.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/keep_alive/keep_alive_info.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/kiosk_status.cpp",
@@ -102,11 +121,17 @@ ohos_shared_library("ability_manager") {
     "${ability_runtime_services_path}/abilitymgr/src/remote_mission_listener_stub.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/remote_on_listener_proxy.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/remote_on_listener_stub.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/request_start_ability_callback_stub.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/rule.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/sa_interceptor_proxy.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/sa_interceptor_stub.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/skill/skill_execute_callback_proxy.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/skill/skill_execute_callback_stub.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/skill/skill_execute_param.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/skill/skill_execute_result.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/start_params_by_SCB.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/start_specified_ability_params.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/sandbox_clone_params.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/system_ability_token_callback_stub.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/ui_extension/preload_ui_extension_execute_callback_proxy.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/ui_extension/preload_ui_extension_execute_callback_stub.cpp",
@@ -121,6 +146,7 @@ ohos_shared_library("ability_manager") {
     "src/aa_tools/ability_start_with_wait_observer_stub.cpp",
     "src/hidden_start_observer_proxy.cpp",
     "src/hidden_start_observer_stub.cpp",
+    "src/native_ability_util.cpp",
     "src/status_bar_delegate/status_bar_delegate_proxy.cpp",
     "src/status_bar_delegate/status_bar_delegate_stub.cpp",
     "src/window_manager_service_handler_proxy.cpp",
@@ -151,6 +177,7 @@ ohos_shared_library("ability_manager") {
     ":start_window_option",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
+    "${ability_runtime_path}/utils/global/common:runtime_utils",
     "${ability_runtime_services_path}/abilitymgr:wantagent_manager",
     "${ability_runtime_services_path}/common:app_util",
   ]
@@ -189,7 +216,7 @@ ohos_shared_library("ability_manager") {
   ]
 
   if (ability_runtime_graphics) {
-    deps += []
+    deps += [ "${ability_runtime_services_path}/common:image_native_bridge" ]
     external_deps += [
       "ability_base:session_info",
       "image_framework:image_native",
@@ -225,6 +252,7 @@ ohos_shared_library("ability_start_options") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   include_dirs = [
     "include/",
@@ -255,10 +283,18 @@ ohos_shared_library("ability_start_options") {
   ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 ohos_shared_library("mission_info") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
 
   sources = [
     "${ability_runtime_services_path}/abilitymgr/src/mission/mission_info.cpp",
@@ -278,18 +314,21 @@ ohos_shared_library("mission_info") {
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
   ]
+  deps = []
   if (ability_runtime_graphics) {
-    external_deps += [ "image_framework:image_native" ]
-    public_external_deps += [ "graphic_2d:color_manager" ]
+    deps += [ "${ability_runtime_services_path}/common:image_native_bridge" ]
   }
 
   cflags_cc = []
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 ohos_shared_library("ability_manager_c") {
+  branch_protector_ret = "pac_ret"
+
   include_dirs = [ "include" ]
   sources = [ "src/ability_manager_client_c.cpp" ]
   libs = []
@@ -298,7 +337,6 @@ ohos_shared_library("ability_manager_c") {
   external_deps = [
     "ability_base:session_info",
     "c_utils:utils",
-    "image_framework:image_native",
     "ipc:ipc_core",
     "ipc:ipc_napi",
     "ipc:ipc_single",
@@ -306,10 +344,18 @@ ohos_shared_library("ability_manager_c") {
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 ohos_shared_library("ability_start_setting") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
 
   sources = [
     "${ability_runtime_services_path}/abilitymgr/src/ability_start_setting.cpp",
@@ -326,13 +372,11 @@ ohos_shared_library("ability_start_setting") {
     "bundle_framework:appexecfwk_core",
     "napi:ace_napi",
   ]
-  if (ability_runtime_graphics) {
-    public_external_deps += [ "graphic_2d:color_manager" ]
-  }
   cflags_cc = []
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 ohos_shared_library("process_options") {
@@ -365,6 +409,7 @@ ohos_shared_library("process_options") {
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 ohos_shared_library("start_window_option") {
@@ -379,6 +424,7 @@ ohos_shared_library("start_window_option") {
     debug = false
   }
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   include_dirs = [
     "include/",
@@ -396,20 +442,30 @@ ohos_shared_library("start_window_option") {
     "napi:ace_napi",
   ]
 
+  deps = []
   if (ability_runtime_graphics &&
       ability_runtime_start_window_options_with_pixelmap) {
     defines = [ "START_WINDOW_OPTIONS_WITH_PIXELMAP" ]
-    external_deps += [ "image_framework:image_native" ]
+    deps += [ "${ability_runtime_services_path}/common:image_native_bridge" ]
   }
 
   cflags_cc = []
+
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 ohos_shared_library("ability_connect_callback_stub") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
 
   defines = [ "AMS_LOG_TAG = \"Ability\"" ]
   defines += [ "AMS_LOG_DOMAIN = 0xD001300" ]
@@ -435,9 +491,6 @@ ohos_shared_library("ability_connect_callback_stub") {
     "ability_base:want",
     "bundle_framework:appexecfwk_base",
   ]
-  if (ability_runtime_graphics) {
-    external_deps += [ "graphic_2d:color_manager" ]
-  }
 
   cflags_cc = []
   innerapi_tags = [

@@ -175,6 +175,29 @@ HWTEST_F(ChildMainThreadFirstTest, HandleLoadNative_0200, TestSize.Level1)
 }
 
 /**
+ * @tc.number: HandleLoadNative_0300
+ * @tc.desc: Test HandleLoadNative works with valid process info and args
+ * @tc.type: FUNC
+ */
+HWTEST_F(ChildMainThreadFirstTest, HandleLoadNative_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleLoadNative_0300 start.");
+    ChildMainThread childMainThread;
+    childMainThread.processInfo_ = std::make_shared<ChildProcessInfo>();
+    childMainThread.processInfo_->srcEntry = "libchildproc.so";
+    childMainThread.processInfo_->entryFunc = "ChildProcessMain";
+    childMainThread.processInfo_->bundleName = "com.ohos.test";
+    childMainThread.processArgs_ = std::make_shared<ChildProcessArgs>();
+    childMainThread.appMgr_ = sptr<MockAppMgrService>(new (std::nothrow) MockAppMgrService());
+
+    childMainThread.HandleLoadNative();
+
+    EXPECT_NE(childMainThread.processInfo_, nullptr);
+    EXPECT_NE(childMainThread.processArgs_, nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "HandleLoadNative_0300 end.");
+}
+
+/**
  * @tc.number: HandleRunNativeProc_0100
  * @tc.desc: Test HandleLoadNative works
  * @tc.type: FUNC
@@ -189,6 +212,27 @@ HWTEST_F(ChildMainThreadFirstTest, HandleRunNativeProc_0100, TestSize.Level1)
     childMainThread.processInfo_ = std::make_shared<ChildProcessInfo>();
     EXPECT_NE(childMainThread.processInfo_, nullptr);
     TAG_LOGI(AAFwkTag::TEST, "HandleRunNativeProc_0100 end.");
+}
+
+/**
+ * @tc.number: HandleRunNativeProc_0200
+ * @tc.desc: Test HandleRunNativeProc works with valid process info
+ * @tc.type: FUNC
+ */
+HWTEST_F(ChildMainThreadFirstTest, HandleRunNativeProc_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleRunNativeProc_0200 start.");
+    ChildMainThread childMainThread;
+    childMainThread.processInfo_ = std::make_shared<ChildProcessInfo>();
+    childMainThread.processInfo_->srcEntry = "libchildproc.so";
+    childMainThread.processInfo_->bundleName = "com.ohos.test";
+    childMainThread.appMgr_ = sptr<MockAppMgrService>(new (std::nothrow) MockAppMgrService());
+    sptr<IRemoteObject> mainProcessCb = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+
+    childMainThread.HandleRunNativeProc(mainProcessCb);
+
+    EXPECT_NE(childMainThread.processInfo_, nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "HandleRunNativeProc_0200 end.");
 }
 
 /**

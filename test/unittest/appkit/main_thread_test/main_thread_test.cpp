@@ -449,6 +449,22 @@ HWTEST_F(MainThreadTest, ScheduleNotifyLoadRepairPatch_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: ScheduleJsHandleMap_0100
+ * @tc.desc: schedule jshadle map.
+ * @tc.type: FUNC
+ * @tc.require: issueI581VW
+ */
+HWTEST_F(MainThreadTest, ScheduleJsHandleMap_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    OHOS::AppExecFwk::JsHandleMapInfo info;
+    info.pid = 1;
+    ASSERT_TRUE(mainThread_ != nullptr);
+    mainThread_->ScheduleJsHandleMap(info);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
  * @tc.name: ScheduleNotifyHotReloadPage_0100
  * @tc.desc: schedule notify ace hot reload page.
  * @tc.type: FUNC
@@ -1609,6 +1625,28 @@ HWTEST_F(MainThreadTest, HandleDumpHeap_0100, TestSize.Level1)
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }
 
+/*
+ * Feature: MainThread
+ * Function: HandleDumpJsHandleMap
+ * SubFunction: NA
+ * FunctionPoints: MainThread HandleDumpJsHandleMap
+ * EnvConditions: NA
+ * CaseDescription: Verify HandleDumpJsHandleMap
+ */
+HWTEST_F(MainThreadTest, HandleDumpJsHandleMap_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    OHOS::AppExecFwk::JsHandleMapInfo info;
+    info.pid = 1;
+    info.tid = 0;
+    ASSERT_NE(mainThread_, nullptr);
+    mainThread_->HandleJsHandleMap(info);
+
+    mainThread_->mainHandler_ = nullptr;
+    mainThread_->HandleJsHandleMap(info);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
 /**
  * @tc.name: ScheduleNotifyLoadRepairPatch_0200
  * @tc.desc: schedule notify load repair patch.
@@ -2061,6 +2099,41 @@ HWTEST_F(MainThreadTest, ProcessEvent_0100, TestSize.Level1)
     mainThread_->mainHandler_->mainThreadObj_ = nullptr;
     mainThread_->mainHandler_->ProcessEvent(event);
     mainThread_->mainHandler_->mainThreadObj_ = mainThreadObj;
+}
+
+/**
+ * @tc.name: ScheduleMem_0100
+ * @tc.desc: Verify ScheduleMem with valid info and callback.
+ * @tc.type: FUNC
+ */
+HWTEST_F(MainThreadTest, ScheduleMem_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    MemDumpInfo info;
+    info.pid = 1;
+    sptr<IMemDumpCallback> callback = nullptr;
+    ASSERT_NE(mainThread_, nullptr);
+    mainThread_->ScheduleMem(info, callback);
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: ScheduleMem_0200
+ * @tc.desc: Verify ScheduleMem with null mainHandler.
+ * @tc.type: FUNC
+ */
+HWTEST_F(MainThreadTest, ScheduleMem_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    ASSERT_NE(mainThread_, nullptr);
+    auto bakHandler = mainThread_->mainHandler_;
+    mainThread_->mainHandler_ = nullptr;
+    MemDumpInfo info;
+    info.pid = 1;
+    sptr<IMemDumpCallback> callback = nullptr;
+    mainThread_->ScheduleMem(info, callback);
+    mainThread_->mainHandler_ = bakHandler;
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
 }
 
 /**
@@ -3023,6 +3096,229 @@ HWTEST_F(MainThreadTest, GetPluginNativeLibPath_0500, TestSize.Level1)
     EXPECT_EQ(appLibPaths["pluginBundleName/validModule"].size(), size_t(1));
     EXPECT_EQ(appLibPaths["pluginBundleName/validModule"][0],
         "/data/storage/el1/bundle/+plugins/libs/arm");
+}
+
+/*
+* Feature: MainThread
+* Function: PreloadModule
+* SubFunction: NA
+* FunctionPoints: PreloadModule with preloadAbilityName
+* EnvConditions: NA
+* CaseDescription: Verify PreloadModule calls AddAbilityStage with preloadAbilityName
+*/
+HWTEST_F(MainThreadTest, PreloadModule_WithPreloadAbilityName_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+
+    // Setup application
+    mainThread_->application_ = std::make_shared<OHOSApplication>();
+    mainThread_->application_->SetRuntime(std::make_unique<AbilityRuntime::MockRuntime>());
+
+    // Prepare BundleInfo
+    BundleInfo bundleInfo;
+    bundleInfo.name = "com.example.test";
+    bundleInfo.bundleName = "com.example.test";
+
+    // Prepare HapModuleInfo for preload
+    HapModuleInfo preloadModuleInfo;
+    preloadModuleInfo.bundleName = "com.example.test";
+    preloadModuleInfo.moduleName = "entry";
+    preloadModuleInfo.mainAbility = "MainAbility";
+    preloadModuleInfo.arkTSMode = AbilityRuntime::CODE_LANGUAGE_ARKTS_1_0;
+    bundleInfo.hapModuleInfos.emplace_back(preloadModuleInfo);
+
+    // Prepare AppLaunchData
+    AppLaunchData appLaunchData;
+    appLaunchData.SetPreloadModuleName("entry");
+    appLaunchData.SetPreloadAbilityName("PreloadTargetAbility");
+
+    // Call PreloadModule
+    mainThread_->PreloadModule(bundleInfo, appLaunchData, preloadModuleInfo,
+        mainThread_->application_->GetRuntime());
+
+    // Verify abilityStage was created with launchElement set
+    auto& abilityStages = mainThread_->application_->abilityStages_;
+    EXPECT_GT(abilityStages.size(), 0u);
+
+    auto it = abilityStages.find("entry");
+    if (it != abilityStages.end()) {
+        auto abilityStage = it->second;
+        auto stageContext = std::static_pointer_cast<AbilityRuntime::AbilityStageContext>(abilityStage->GetContext());
+        ASSERT_NE(stageContext, nullptr);
+
+        auto launchElement = stageContext->GetLaunchElement();
+        EXPECT_EQ(launchElement.GetAbilityName(), "PreloadTargetAbility");
+        EXPECT_EQ(launchElement.GetBundleName(), "com.example.test");
+        EXPECT_EQ(launchElement.GetModuleName(), "entry");
+    }
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/*
+* Feature: MainThread
+* Function: PreloadModule
+* SubFunction: NA
+* FunctionPoints: PreloadModule with empty preloadAbilityName
+* EnvConditions: NA
+* CaseDescription: Verify PreloadModule uses mainAbility when preloadAbilityName is empty
+*/
+HWTEST_F(MainThreadTest, PreloadModule_WithEmptyPreloadAbilityName_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+
+    // Setup application
+    mainThread_->application_ = std::make_shared<OHOSApplication>();
+    mainThread_->application_->SetRuntime(std::make_unique<AbilityRuntime::MockRuntime>());
+
+    // Prepare BundleInfo
+    BundleInfo bundleInfo;
+    bundleInfo.name = "com.example.test";
+    bundleInfo.bundleName = "com.example.test";
+
+    // Prepare HapModuleInfo for preload
+    HapModuleInfo preloadModuleInfo;
+    preloadModuleInfo.bundleName = "com.example.test";
+    preloadModuleInfo.moduleName = "entry";
+    preloadModuleInfo.mainAbility = "MainAbility";
+    preloadModuleInfo.arkTSMode = AbilityRuntime::CODE_LANGUAGE_ARKTS_1_0;
+    bundleInfo.hapModuleInfos.emplace_back(preloadModuleInfo);
+
+    // Prepare AppLaunchData with empty preloadAbilityName
+    AppLaunchData appLaunchData;
+    appLaunchData.SetPreloadModuleName("entry");
+    appLaunchData.SetPreloadAbilityName("");  // Empty - should use mainAbility
+
+    // Call PreloadModule
+    mainThread_->PreloadModule(bundleInfo, appLaunchData, preloadModuleInfo,
+        mainThread_->application_->GetRuntime());
+
+    // Verify abilityStage was created with mainAbility as fallback
+    auto& abilityStages = mainThread_->application_->abilityStages_;
+    EXPECT_GT(abilityStages.size(), 0u);
+
+    auto it = abilityStages.find("entry");
+    if (it != abilityStages.end()) {
+        auto abilityStage = it->second;
+        auto stageContext = std::static_pointer_cast<AbilityRuntime::AbilityStageContext>(abilityStage->GetContext());
+        ASSERT_NE(stageContext, nullptr);
+
+        auto launchElement = stageContext->GetLaunchElement();
+        EXPECT_EQ(launchElement.GetAbilityName(), "MainAbility");  // Should use mainAbility
+        EXPECT_EQ(launchElement.GetBundleName(), "com.example.test");
+        EXPECT_EQ(launchElement.GetModuleName(), "entry");
+    }
+
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
+ * @tc.name: ChangeToLocalPath_0400
+ * @tc.desc: Change the inner path to local path in PC dual mode (clone bundle).
+ * @tc.type: FUNC
+ */
+HWTEST_F(MainThreadTest, ChangeToLocalPath_0400, TestSize.Level1)
+{
+    EXPECT_TRUE(mainThread_ != nullptr);
+    std::string bundleName = "com.ohos.demo";
+    std::string localPath = "/data/app/el1/bundle/public/+clone-10000+com.ohos.demo/";
+    mainThread_->ChangeToLocalPath(bundleName, localPath, localPath);
+    EXPECT_TRUE(localPath == "/data/storage/el1/bundle/");
+}
+
+/**
+ * @tc.name: ChangeToLocalPath_0500
+ * @tc.desc: Change the outer path to local path in PC dual mode (clone bundle).
+ * @tc.type: FUNC
+ */
+HWTEST_F(MainThreadTest, ChangeToLocalPath_0500, TestSize.Level1)
+{
+    EXPECT_TRUE(mainThread_ != nullptr);
+    std::string bundleName = "com.ohos.demo";
+    std::string localPath = "/data/app/el1/bundle/public/+clone-10000+com.example.demo/";
+    mainThread_->ChangeToLocalPath(bundleName, localPath, localPath);
+    EXPECT_TRUE(localPath == "/data/bundles/+clone-10000+com.example.demo/");
+}
+
+/**
+ * @tc.name: ChangeToLocalPath_0600
+ * @tc.desc: Change to local path with vector in PC dual mode (clone bundle).
+ * @tc.type: FUNC
+ */
+HWTEST_F(MainThreadTest, ChangeToLocalPath_0600, TestSize.Level1)
+{
+    EXPECT_TRUE(mainThread_ != nullptr);
+    const std::string bundleName = "com.ohos.demo";
+    const std::vector<std::string> sourceDirs = {
+        "/data/app/el1/bundle/public/+clone-10000+com.ohos.demo/module/entry.hap"
+    };
+    std::vector<std::string> localPath;
+    mainThread_->ChangeToLocalPath(bundleName, sourceDirs, localPath);
+    EXPECT_EQ(localPath.size(), 1);
+    EXPECT_TRUE(localPath[0].find("/data/storage/el1/bundle/") != std::string::npos);
+    EXPECT_TRUE(localPath[0].find("+clone-10000+com.ohos.demo") == std::string::npos);
+}
+
+/**
+ * @tc.name: ChangeToLocalPath_0700
+ * @tc.desc: Change to local path with vector containing empty string (skip branch).
+ * @tc.type: FUNC
+ */
+HWTEST_F(MainThreadTest, ChangeToLocalPath_0700, TestSize.Level1)
+{
+    EXPECT_TRUE(mainThread_ != nullptr);
+    const std::string bundleName = "com.ohos.demo";
+    const std::vector<std::string> sourceDirs = {""};
+    std::vector<std::string> localPath;
+    mainThread_->ChangeToLocalPath(bundleName, sourceDirs, localPath);
+    EXPECT_EQ(localPath.size(), 0u);
+}
+
+/**
+ * @tc.name: GetOverlayPaths_0100
+ * @tc.desc: Get overlay paths with clone bundle path (matched branch).
+ * @tc.type: FUNC
+ */
+HWTEST_F(MainThreadTest, GetOverlayPaths_0100, TestSize.Level1)
+{
+    EXPECT_TRUE(mainThread_ != nullptr);
+    std::vector<OverlayModuleInfo> overlayModuleInfos;
+    OverlayModuleInfo info;
+    info.bundleName = "com.ohos.demo";
+    info.moduleName = "entry";
+    info.hapPath = "/data/app/el1/bundle/public/+clone-10000+com.ohos.demo/entry/entry.hap";
+    info.state = OverlayState::OVERLAY_ENABLE;
+    overlayModuleInfos.emplace_back(info);
+    mainThread_->overlayModuleInfos_ = overlayModuleInfos;
+
+    std::vector<std::string> emptyOverlay;
+    auto result = mainThread_->GetOverlayPaths("com.ohos.demo", emptyOverlay);
+    EXPECT_EQ(result.size(), 1);
+    EXPECT_TRUE(result[0].find("/data/storage/el1/bundle/") != std::string::npos);
+    EXPECT_TRUE(result[0].find("+clone-10000+com.ohos.demo") == std::string::npos);
+}
+
+/**
+ * @tc.name: GetOverlayPaths_0200
+ * @tc.desc: Get overlay paths with non-matching bundle (else branch).
+ * @tc.type: FUNC
+ */
+HWTEST_F(MainThreadTest, GetOverlayPaths_0200, TestSize.Level1)
+{
+    EXPECT_TRUE(mainThread_ != nullptr);
+    std::vector<OverlayModuleInfo> overlayModuleInfos;
+    OverlayModuleInfo info;
+    info.bundleName = "com.ohos.demo";
+    info.moduleName = "entry";
+    info.hapPath = "/data/app/el1/bundle/public/com.example.other/entry/entry.hap";
+    info.state = OverlayState::OVERLAY_ENABLE;
+    overlayModuleInfos.emplace_back(info);
+    mainThread_->overlayModuleInfos_ = overlayModuleInfos;
+
+    std::vector<std::string> emptyOverlay;
+    auto result = mainThread_->GetOverlayPaths("com.ohos.demo", emptyOverlay);
+    EXPECT_EQ(result.size(), 1);
+    EXPECT_TRUE(result[0].find("/data/bundles/com.example.other") != std::string::npos);
 }
 } // namespace AppExecFwk
 } // namespace OHOS

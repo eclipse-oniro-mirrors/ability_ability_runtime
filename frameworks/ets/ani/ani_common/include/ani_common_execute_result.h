@@ -22,8 +22,13 @@
 namespace OHOS {
 namespace AbilityRuntime {
 
-bool UnwrapExecuteResult(ani_env *env, ani_object &param, AppExecFwk::InsightIntentExecuteResult &executeResult);
+bool UnwrapExecuteResult(
+    ani_env *env, ani_object &param, AppExecFwk::InsightIntentExecuteResult &executeResult, bool isDecorator = false);
+
+bool UnwrapInteractionInfoOfExecuteResult(
+    ani_env *env, ani_object &param, AppExecFwk::InsightIntentExecuteResult &executeResult);
 ani_object WrapExecuteResult(ani_env *env, const AppExecFwk::InsightIntentExecuteResult &executeResult);
+ani_object WrapQueryEntityResult(ani_env *env, const AppExecFwk::InsightIntentExecuteResult &executeResult);
 ani_object CreateNullExecuteResult(ani_env *env);
 } // namespace AbilityRuntime
 } // namespace OHOS

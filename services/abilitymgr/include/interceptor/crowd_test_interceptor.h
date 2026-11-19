@@ -24,13 +24,9 @@ class CrowdTestInterceptor : public IAbilityInterceptor {
 public:
     CrowdTestInterceptor() = default;
     ~CrowdTestInterceptor() = default;
-    ErrCode DoProcess(AbilityInterceptorParam param) override;
-    virtual void SetTaskHandler(std::shared_ptr<AAFwk::TaskHandlerWrap> taskHandler) override
-    {
-        return;
-    };
+    ErrCode DoProcess(AbilityInterceptorParam &param) override;
 private:
-    bool CheckCrowdtest(const Want &want, int32_t userId);
+    bool CheckCrowdtest(const StartAbilityContext &ctx, const Want &want, int32_t userId);
 };
 } // namespace AAFwk
 } // namespace OHOS

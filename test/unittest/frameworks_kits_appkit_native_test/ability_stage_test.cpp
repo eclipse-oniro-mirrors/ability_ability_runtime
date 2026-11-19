@@ -268,7 +268,9 @@ HWTEST_F(AbilityStageTest, AppExecFwk_AbilityStage_OnAcceptWant_001, Function | 
     GTEST_LOG_(INFO) << "AppExecFwk_AbilityStage_OnAcceptWant_001 start";
     AAFwk::Want want;
     abilityStage_->OnLaunchFromHyperSnap();
-    abilityStage_->OnAboutToCreateAbility();
+    bool isAsyncCallback = false;
+    std::function<void(const std::shared_ptr<AbilityRuntime::Context> &)> callback;
+    abilityStage_->OnAboutToCreateAbility(isAsyncCallback, callback);
     EXPECT_TRUE(abilityStage_->OnAcceptWant(want).empty());
     bool isAsync = false;
     EXPECT_TRUE(abilityStage_->OnAcceptWant(want, nullptr, isAsync).empty());
@@ -410,8 +412,10 @@ HWTEST_F(AbilityStageTest, AppExecFwk_AbilityStage_OnAboutToCreateAbility_001, F
 {
     GTEST_LOG_(INFO) << "AppExecFwk_AbilityStage_OnAboutToCreateAbility_001 start";
     bool boolValue = false;
+    bool isAsyncCallback = false;
+    std::function<void(const std::shared_ptr<AbilityRuntime::Context> &)> callback;
     if (abilityStage_ != nullptr) {
-        abilityStage_->OnAboutToCreateAbility();
+        abilityStage_->OnAboutToCreateAbility(isAsyncCallback, callback);
         boolValue = true;
     }
     EXPECT_TRUE(boolValue);

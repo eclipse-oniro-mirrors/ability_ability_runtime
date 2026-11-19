@@ -41,7 +41,6 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
     int32_t type;
     vector<AbilityInfo> abilityInfos;
     AbilityInfo info;
-    vector<AppExecFwk::ExtensionAbilityInfo> extInfos;
     AbilityExperienceRule rule;
     FuzzedDataProvider fdp(data, size);
     client->ConnectService();
@@ -53,7 +52,7 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
         AbilityFuzzUtil::GetRandomAbilityInfo(fdp, info);
         abilityInfos.emplace_back(info);
     }
-    client->EvaluateResolveInfos(want, callerInfo, type, abilityInfos, extInfos);
+    client->EvaluateResolveInfos(want, callerInfo, type, abilityInfos);
     AbilityFuzzUtil::GetRandomAbilityExperienceRule(fdp, rule);
     client->QueryStartExperience(want, callerInfo, rule);
 

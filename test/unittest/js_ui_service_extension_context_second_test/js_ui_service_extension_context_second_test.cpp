@@ -37,6 +37,17 @@ namespace OHOS {
 namespace AbilityRuntime {
 namespace {
 const int64_t  COMMECTION_ID = 100;
+
+napi_value MarkDisconnectCallbackInvoked(napi_env env, napi_callback_info info)
+{
+    size_t argc = 0;
+    void* data = nullptr;
+    napi_get_cb_info(env, info, &argc, nullptr, nullptr, &data);
+    if (data != nullptr) {
+        *static_cast<bool*>(data) = true;
+    }
+    return CreateJsUndefined(env);
+}
 }  // namespace
 
 class JsUiServiceExtensionContextSecondTest : public testing::Test {
@@ -71,6 +82,16 @@ void JsUiServiceExtensionContextSecondTest::SetUp()
 
 void JsUiServiceExtensionContextSecondTest::TearDown()
 {
+    {
+        std::lock_guard guard(g_connectsMutex);
+        for (auto &item : g_connects) {
+            if (item.second != nullptr) {
+                item.second->RemoveConnectionObject();
+            }
+        }
+        g_connects.clear();
+        g_serialNumber = 0;
+    }
     if (env_ != nullptr) {
         delete reinterpret_cast<NativeEngine*>(env_);
         env_ = nullptr;
@@ -165,6 +186,44 @@ HWTEST_F(JsUiServiceExtensionContextSecondTest, FindConnection_0100, TestSize.Le
     jsUIServiceExtensionContext.FindConnection(want, connection, connectId, accountId);
     EXPECT_NE(connection, nullptr);
     TAG_LOGI(AAFwkTag::TEST, "FindConnection_0100 end");
+}
+
+/**
+ * @tc.name: HandleOnAbilityDisconnectDone_0400
+ * @tc.desc: A matched connection releases its JS reference and is removed after disconnect.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsUiServiceExtensionContextSecondTest, HandleOnAbilityDisconnectDone_0400, TestSize.Level1)
+{
+    bool callbackInvoked = false;
+    napi_value connectionObject = nullptr;
+    ASSERT_EQ(napi_create_object(env_, &connectionObject), napi_ok);
+    napi_value onDisconnect = nullptr;
+    ASSERT_EQ(napi_create_function(env_, "onDisconnect", NAPI_AUTO_LENGTH,
+        MarkDisconnectCallbackInvoked, &callbackInvoked, &onDisconnect), napi_ok);
+    ASSERT_EQ(napi_set_named_property(env_, connectionObject, "onDisconnect", onDisconnect), napi_ok);
+
+    sptr<JSUIServiceExtensionConnection> connection = new JSUIServiceExtensionConnection(env_);
+    connection->SetJsConnectionObject(connectionObject);
+    connection->SetConnectionId(COMMECTION_ID);
+    AppExecFwk::ElementName element("device", "com.example.uiservice", "UIServiceExtensionAbility");
+    Want want;
+    want.SetElement(element);
+    ConnectionKey key;
+    key.want = want;
+    key.id = COMMECTION_ID;
+    key.accountId = -1;
+    {
+        std::lock_guard guard(g_connectsMutex);
+        g_connects.emplace(key, connection);
+    }
+
+    connection->HandleOnAbilityDisconnectDone(element, ERR_OK);
+
+    EXPECT_TRUE(callbackInvoked);
+    EXPECT_EQ(connection->jsConnectionObject_, nullptr);
+    std::lock_guard guard(g_connectsMutex);
+    EXPECT_TRUE(g_connects.empty());
 }
 
 /**

@@ -16,8 +16,10 @@
 #include "js_insight_intent_driver_utils.h"
 
 #include <cstdint>
+#include <memory>
 
 #include "ability_state.h"
+#include "insight_intent_execute_result.h"
 #include "napi_common_want.h"
 #include "napi_remote_object.h"
 #include "js_runtime.h"
@@ -26,11 +28,43 @@
 
 namespace OHOS {
 namespace AbilityRuntime {
+static void SetInteractionUIJsProperties(napi_env env, napi_value uiObj,
+    const std::shared_ptr<AppExecFwk::InteractionUI> &ui)
+{
+    if (ui->interactionUIType == AppExecFwk::INTERACTION_UI_TYPE_MODAL_UIEXTENSION) {
+        auto modalUI = std::static_pointer_cast<AppExecFwk::InteractionModalUIExtension>(ui);
+        napi_set_named_property(env, uiObj, "bundleName", CreateJsValue(env, modalUI->bundleName));
+        napi_set_named_property(env, uiObj, "abilityName", CreateJsValue(env, modalUI->abilityName));
+        napi_set_named_property(env, uiObj, "moduleName", CreateJsValue(env, modalUI->moduleName));
+        napi_set_named_property(env, uiObj, "uiExtensionType", CreateJsValue(env, modalUI->uiExtensionType));
+        napi_set_named_property(env, uiObj, "uri", CreateJsValue(env, modalUI->uri));
+        if (modalUI->parameters != nullptr) {
+            napi_set_named_property(env, uiObj, "parameters",
+                OHOS::AppExecFwk::CreateJsWantParams(env, *modalUI->parameters));
+        }
+    } else if (ui->interactionUIType == AppExecFwk::INTERACTION_UI_TYPE_TEXT) {
+        auto textUI = std::static_pointer_cast<AppExecFwk::InteractionText>(ui);
+        if (textUI->parameters != nullptr) {
+            napi_set_named_property(env, uiObj, "parameters",
+                OHOS::AppExecFwk::CreateJsWantParams(env, *textUI->parameters));
+        }
+        if (!textUI->buttons.empty()) {
+            napi_set_named_property(env, uiObj, "buttons",
+                CreateNativeArray(env, textUI->buttons));
+        }
+    }
+}
+
 napi_value CreateJsExecuteResult(napi_env env, const AppExecFwk::InsightIntentExecuteResult &result)
 {
     HandleEscape handleEscape(env);
     napi_value objValue = nullptr;
     napi_create_object(env, &objValue);
+
+    if (result.isQueryEntity) {
+        return CreateQueryEntityResult(env, result.queryResults);
+    }
+
     if (result.isDecorator) {
         return result.result ? OHOS::AppExecFwk::CreateJsWantParams(env, *result.result) : objValue;
     }
@@ -44,6 +78,17 @@ napi_value CreateJsExecuteResult(napi_env env, const AppExecFwk::InsightIntentEx
         napi_set_named_property(env, objValue, "uris", CreateNativeArray(env, result.uris));
     }
     napi_set_named_property(env, objValue, "flags", CreateJsValue(env, result.flags));
+    if (result.interactionInfo != nullptr && result.interactionInfo->interactionUI != nullptr) {
+        napi_value infoObj = nullptr;
+        napi_create_object(env, &infoObj);
+        napi_value uiObj = nullptr;
+        napi_create_object(env, &uiObj);
+        napi_set_named_property(env, uiObj, "interactionUIType",
+            CreateJsValue(env, result.interactionInfo->interactionUI->interactionUIType));
+        SetInteractionUIJsProperties(env, uiObj, result.interactionInfo->interactionUI);
+        napi_set_named_property(env, infoObj, "interactionUI", uiObj);
+        napi_set_named_property(env, objValue, "interactionInfo", infoObj);
+    }
     return handleEscape.Escape(objValue);
 }
 
@@ -179,7 +224,11 @@ napi_value CreateJsEntityInfo(napi_env env, const EntityInfoForQuery &info)
     napi_set_named_property(env, objValue, "entityCategory", CreateJsValue(env, info.entityCategory));
     napi_set_named_property(env, objValue, "parameters", CreateInsightIntentInfoParam(env, info.parameters));
     napi_set_named_property(env, objValue, "parentClassName", CreateJsValue(env, info.parentClassName));
-
+    napi_set_named_property(env, objValue, "isQueryable", CreateJsValue(env, info.isQueryable()));
+    if (!info.supportedQueryProperties.empty()) {
+        napi_set_named_property(env, objValue, "supportedQueryProperties",
+            CreateNativeArray(env, info.supportedQueryProperties));
+    }
     return handleEscape.Escape(objValue);
 }
 
@@ -318,6 +367,7 @@ napi_value CreateInsightIntentInfoForQuery(napi_env env, const InsightIntentInfo
     napi_set_named_property(env, objValue, "parameters", CreateInsightIntentInfoParam(env, info.parameters));
     napi_set_named_property(env, objValue, "result", CreateInsightIntentInfoResult(env, info.result));
     napi_set_named_property(env, objValue, "keywords", CreateNativeArray(env, info.keywords));
+    napi_set_named_property(env, objValue, "permissions", CreateNativeArray(env, info.permissions));
     if (!info.develoType.empty()) {
         napi_set_named_property(env, objValue, "developType", CreateJsValue(env, info.develoType));
     }
@@ -389,6 +439,22 @@ napi_value CreateInsightIntentInfoForQueryArray(napi_env env, const std::vector<
     uint32_t index = 0;
     for (const auto &info : infos) {
         napi_set_element(env, arrayValue, index++, CreateInsightIntentInfoForQuery(env, info));
+    }
+    return handleEscape.Escape(arrayValue);
+}
+
+napi_value CreateQueryEntityResult(napi_env env, const std::vector<std::shared_ptr<AAFwk::WantParams>> &queryResults)
+{
+    TAG_LOGD(AAFwkTag::INTENT, "called");
+    HandleEscape handleEscape(env);
+    napi_value arrayValue = nullptr;
+    napi_create_array_with_length(env, queryResults.size(), &arrayValue);
+    uint32_t index = 0;
+    for (const auto &item : queryResults) {
+        if (item == nullptr) {
+            continue;
+        }
+        napi_set_element(env, arrayValue, index++, OHOS::AppExecFwk::CreateJsWantParams(env, *item));
     }
     return handleEscape.Escape(arrayValue);
 }

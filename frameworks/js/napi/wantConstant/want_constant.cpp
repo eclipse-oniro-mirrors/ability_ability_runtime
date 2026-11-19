@@ -33,10 +33,14 @@ napi_value WantConstantInit(napi_env env, napi_value exports)
     napi_value entity = nullptr;
     napi_value Flags = nullptr;
     napi_value showMode = nullptr;
-    napi_create_object(env, &action);
-    napi_create_object(env, &entity);
-    napi_create_object(env, &Flags);
-    napi_create_object(env, &showMode);
+    napi_status actionStatus = napi_create_object(env, &action);
+    napi_status entityStatus = napi_create_object(env, &entity);
+    napi_status flagsStatus = napi_create_object(env, &Flags);
+    napi_status showModeStatus = napi_create_object(env, &showMode);
+    if (actionStatus != napi_ok || entityStatus != napi_ok || flagsStatus != napi_ok || showModeStatus != napi_ok) {
+        TAG_LOGE(AAFwkTag::WANT, "Failed to create JS object");
+        return nullptr;
+    }
 
     SetNamedProperty(env, action, "ohos.want.action.home", "ACTION_HOME");
     SetNamedProperty(env, action, "ohos.want.action.dial", "ACTION_DIAL");
@@ -67,6 +71,7 @@ napi_value WantConstantInit(napi_env env, napi_value exports)
     SetNamedProperty(env, action, "ohos.appAccount.action.auth", "ACTION_APP_ACCOUNT_AUTH");
     SetNamedProperty(env, action, "ohos.want.action.marketDownload", "ACTION_MARKET_DOWNLOAD");
     SetNamedProperty(env, action, "ohos.want.action.marketCrowdTest", "ACTION_MARKET_CROWDTEST");
+    SetNamedProperty(env, action, "ohos.want.action.sendToData", "ACTION_SEND_TO_DATA");
 
     SetNamedProperty(env, entity, "entity.system.default", "ENTITY_DEFAULT");
     SetNamedProperty(env, entity, "entity.system.home", "ENTITY_HOME");
@@ -99,7 +104,10 @@ napi_value WantConstantInit(napi_env env, napi_value exports)
 
 #ifdef ENABLE_ERRCODE
     napi_value params = nullptr;
-    napi_create_object(env, &params);
+    if (napi_create_object(env, &params) != napi_ok) {
+        TAG_LOGE(AAFwkTag::WANT, "Failed to create params JS object");
+        return nullptr;
+    }
 #ifdef WITH_DLP
     SetNamedProperty(env, params, "ohos.dlp.params.sandbox", "DLP_PARAMS_SANDBOX");
     SetNamedProperty(env, params, "ohos.dlp.params.bundleName", "DLP_PARAMS_BUNDLE_NAME");
@@ -134,6 +142,7 @@ napi_value WantConstantInit(napi_env env, napi_value exports)
     SetNamedProperty(env, params, "ohos.param.ability.udKey", "ABILITY_UNIFIED_DATA_KEY");
     SetNamedProperty(env, params, "ohos.params.atomicservice.shareRouter", "ATOMIC_SERVICE_SHARE_ROUTER");
     SetNamedProperty(env, params, "ohos.param.uiExtension.rootHostToken", "UI_EXTENSION_ROOT_TOKEN");
+    SetNamedProperty(env, params, "ohos.aafwk.param.agent.taskId", "AGENT_TASK_ID");
     napi_property_descriptor exportFuncs[] = {
         DECLARE_NAPI_PROPERTY("Action", action),
         DECLARE_NAPI_PROPERTY("Entity", entity),
@@ -146,6 +155,7 @@ napi_value WantConstantInit(napi_env env, napi_value exports)
         DECLARE_NAPI_PROPERTY("Action", action),
         DECLARE_NAPI_PROPERTY("Entity", entity),
         DECLARE_NAPI_PROPERTY("Flags", Flags),
+        DECLARE_NAPI_PROPERTY("ShowMode", showMode),
     };
 #endif // ENABLE_ERRCODE
     napi_define_properties(env, exports, sizeof(exportFuncs) / sizeof(*exportFuncs), exportFuncs);

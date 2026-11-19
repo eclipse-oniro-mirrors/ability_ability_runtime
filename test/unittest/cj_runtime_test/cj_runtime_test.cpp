@@ -22,6 +22,7 @@
 #include "event_runner.h"
 #include "hilog_wrapper.h"
 #include "cj_runtime.h"
+#include "cj_envsetup.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -150,5 +151,50 @@ HWTEST_F(CjRuntimeTest, CjRuntimeRegisterCangjieCallback_001, TestSize.Level2)
     bool ret = CJRuntime::RegisterCangjieCallback();
     EXPECT_TRUE(ret == fileExists);
 }
+
+/**
+ * @tc.name: CJRuntime_RegisterOOMHandler_001
+ * @tc.desc: CjRuntime test for RegisterOOMHandler
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjRuntimeTest, RegisterOOMHandler_001, TestSize.Level1)
+{
+    auto instance = std::make_unique<CJRuntime>();
+    CJEventReportInfo info;
+    info.hapPath = "/data/storage/el2/base/test";
+    info.reportInfoTask = [](const char* domain, const char* event, size_t hiSysEventType,
+        const std::map<std::string, std::string>& params) {};
+    if (instance) {
+        instance->RegisterEventHandler(info);
+    }
+    EXPECT_NE(instance, nullptr);
+}
+
+/**
+ * @tc.name: CJRuntime_RegisterOOMHandler_002
+ * @tc.desc: CjRuntime test for RegisterOOMHandler
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjRuntimeTest, RegisterOOMHandler_002, TestSize.Level1)
+{
+    auto instance = std::make_unique<CJRuntime>();
+    CJEventReportInfo info;
+    instance->RegisterEventHandler(info);
+
+    EXPECT_NE(instance, nullptr);
+}
+
+/**
+ * @tc.name: CJRuntime_SetMainNAPIEnv_001
+ * @tc.desc: CjRuntime test for SetMainNAPIEnv
+ * @tc.type: FUNC
+ */
+HWTEST_F(CjRuntimeTest, CJRuntime_SetMainNAPIEnv_001, TestSize.Level1)
+{
+    int a = 0;
+    CJRuntime::SetMainNAPIEnv(&a);
+    EXPECT_EQ(CJEnv::LoadInstance()->getMainNAPIEnv(), &a);
+}
+
 }  // namespace Runtime
 }  // namespace OHOS

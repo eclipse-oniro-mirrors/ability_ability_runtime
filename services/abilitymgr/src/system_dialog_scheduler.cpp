@@ -62,11 +62,6 @@ const int32_t UI_TIPS_DIALOG_HEIGHT = 135 * 2;
 const int32_t UI_TIPS_DIALOG_HEIGHT_NARROW = 135 * 2;
 const int32_t UI_TIPS_DIALOG_WIDTH_NARROW = 328 * 2;
 
-const int32_t UI_JUMP_INTERCEPTOR_DIALOG_WIDTH = 328 * 2;
-const int32_t UI_JUMP_INTERCEPTOR_DIALOG_HEIGHT = 135 * 2;
-const int32_t UI_JUMP_INTERCEPTOR_DIALOG_HEIGHT_NARROW = 135 * 2;
-const int32_t UI_JUMP_INTERCEPTOR_DIALOG_WIDTH_NARROW = 328 * 2;
-
 const int32_t UI_ANR_DIALOG_WIDTH = 328 * 2;
 const int32_t UI_ANR_DIALOG_HEIGHT = 192 * 2;
 const std::string APP_NAME = "appName";
@@ -90,7 +85,6 @@ const std::string STR_DEFAULT = "default";
 const std::string DIALOG_NAME_ANR = "dialog_anr_service";
 const std::string DIALOG_NAME_TIPS = "dialog_tips_service";
 const std::string DIALOG_SELECTOR_NAME = "dialog_selector_service";
-const std::string DIALOG_JUMP_INTERCEPTOR_NAME = "dialog_jump_interceptor_service";
 
 const std::string BUNDLE_NAME = "bundleName";
 const std::string BUNDLE_NAME_DIALOG = "com.ohos.amsdialog";
@@ -105,7 +99,6 @@ const std::string ABILITY_NAME_APPGALLERY_SELECTOR_DIALOG = "AppSelectorExtensio
 const std::string UIEXTENSION_TYPE_KEY = "ability.want.params.uiExtensionType";
 const std::string UIEXTENSION_SYS_COMMON_UI = "sys/commonUI";
 const std::string CALLER_TOKEN = "callerToken";
-const std::string ABILITY_NAME_JUMP_INTERCEPTOR_DIALOG = "JumpInterceptorDialog";
 const std::string TYPE_ONLY_MATCH_WILDCARD = "reserved/wildcard";
 const std::string ORIENTATION = "orientation";
 
@@ -140,27 +133,6 @@ Want SystemDialogScheduler::GetTipsDialogWant(const sptr<IRemoteObject> &callerT
         want.SetParam(CALLER_TOKEN, callerToken);
     }
     return want;
-}
-
-Want SystemDialogScheduler::GetJumpInterceptorDialogWant(Want &targetWant)
-{
-    TAG_LOGD(AAFwkTag::DIALOG, "start");
-
-    DialogPosition position;
-    GetDialogPositionAndSize(DialogType::DIALOG_JUMP_INTERCEPTOR, position);
-
-    nlohmann::json jsonObj;
-    jsonObj[IS_DEFAULT_SELECTOR] = AppUtils::GetInstance().IsSelectorDialogDefaultPossion();
-    jsonObj["bundleName"] = targetWant.GetElement().GetBundleName();
-    jsonObj["abilityName"] = targetWant.GetElement().GetAbilityName();
-    jsonObj["moduleName"] = targetWant.GetElement().GetModuleName();
-    const std::string params = jsonObj.dump();
-
-    targetWant.SetElementName(BUNDLE_NAME_DIALOG, ABILITY_NAME_JUMP_INTERCEPTOR_DIALOG);
-    targetWant.SetParam(DIALOG_POSITION, GetDialogPositionParams(position));
-    targetWant.SetParam(DIALOG_PARAMS, params);
-    targetWant.GetStringParam(DIALOG_PARAMS);
-    return targetWant;
 }
 
 void SystemDialogScheduler::DialogPortraitPositionAdaptive(
@@ -357,7 +329,7 @@ int SystemDialogScheduler::GetPcSelectorDialogWant(const std::vector<DialogAppIn
     DialogPosition position;
     GetDialogPositionAndSize(DialogType::DIALOG_SELECTOR, position, static_cast<int>(dialogAppInfos.size()));
 
-    std::string params = GetPcSelectorParams(dialogAppInfos, type, userId, requestWant.GetAction());
+    std::string params = GetPcSelectorParams(dialogAppInfos, type, userId, requestWant.GetActionRef());
     requestWant.SetElementName(BUNDLE_NAME_DIALOG, ABILITY_NAME_SELECTOR_DIALOG);
     requestWant.SetParam(DIALOG_POSITION, GetDialogPositionParams(position));
     requestWant.SetParam(DIALOG_PARAMS, params);
@@ -421,7 +393,8 @@ int SystemDialogScheduler::GetSelectorDialogWantCommon(const std::vector<DialogA
             requestWant.SetParam(CALLER_TOKEN, callerToken);
         }
     }
-    if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled() && isCallerStageBasedModel) {
+    if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled() &&
+        isCallerStageBasedModel) {
         auto bundleMgrHelper = AbilityUtil::GetBundleManagerHelper();
         if (bundleMgrHelper == nullptr) {
             TAG_LOGE(AAFwkTag::DIALOG, "bundleMgrHelper null");
@@ -491,12 +464,6 @@ void SystemDialogScheduler::InitDialogPosition(DialogType type, DialogPosition &
             position.height = UI_TIPS_DIALOG_HEIGHT;
             position.width_narrow = UI_TIPS_DIALOG_WIDTH_NARROW;
             position.height_narrow = UI_TIPS_DIALOG_HEIGHT_NARROW;
-            break;
-        case DialogType::DIALOG_JUMP_INTERCEPTOR:
-            position.width = UI_JUMP_INTERCEPTOR_DIALOG_WIDTH;
-            position.height = UI_JUMP_INTERCEPTOR_DIALOG_HEIGHT;
-            position.width_narrow = UI_JUMP_INTERCEPTOR_DIALOG_WIDTH_NARROW;
-            position.height_narrow = UI_JUMP_INTERCEPTOR_DIALOG_HEIGHT_NARROW;
             break;
         default:
             position.width = UI_DEFAULT_WIDTH;

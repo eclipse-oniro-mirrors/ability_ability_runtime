@@ -34,15 +34,27 @@ export default namespace insightIntentDriver {
     uris?: Array<string>;
     flags?: int;
     userId?: int;
+    deviceId?: string;
+    toolCallId?: string;
   }
 
-  interface InsightIntentInfoFilter {
+  export interface InsightIntentInfoFilter {
     intentFlags: int;
     bundleName?: string;
     moduleName?: string;
     intentName?: string;
     userId?: int;
   }
+
+  export interface QueryParam {
+    bundleName: string;
+    moduleName: string;
+    intentName: string;
+    className: string;
+    queryEntityParam: insightIntent.QueryEntityParam;
+    userId?: int;
+  }
+
   enum InsightIntentType {
     LINK = '@InsightIntentLink',
     PAGE = '@InsightIntentPage',
@@ -209,6 +221,8 @@ export default namespace insightIntentDriver {
     readonly entityCategory: string;
     readonly parameters: Record<string, RecordData>;
     readonly parentClassName: string;
+    readonly isQueryable?: boolean;
+    readonly supportedQueryProperties?: string[];
   }
 
   class EntityInfoInner implements EntityInfo {
@@ -217,6 +231,8 @@ export default namespace insightIntentDriver {
     readonly entityCategory: string;
     readonly parameters: Record<string, RecordData>;
     readonly parentClassName: string;
+    readonly isQueryable?: boolean;
+    readonly supportedQueryProperties?: string[];
   }
 
   export native function nativeExecuteSync(param: ExecuteParam,
@@ -231,6 +247,9 @@ export default namespace insightIntentDriver {
   export native function nativeGetInsightIntentInfoByFilterCheck(filter: InsightIntentInfoFilter): void;
   export native function nativeGetInsightIntentInfoByFilter(filter: InsightIntentInfoFilter,
     callback: AsyncCallbackWrapper<Array<InsightIntentInfo>>): void;
+  export native function nativeQueryEntityInfoCheck(param: QueryParam): void;
+  export native function nativeQueryEntityInfo(param: QueryParam,
+    callback: AsyncCallbackWrapper<Array<Record<string, RecordData>>>): void;
 
   export function execute(param: ExecuteParam, callback: AsyncCallback<insightIntent.ExecuteResult>): void {
     let pCallback = new AsyncCallbackWrapper<insightIntent.ExecuteResult>(callback);
@@ -329,5 +348,25 @@ export default namespace insightIntentDriver {
         nativeGetInsightIntentInfoByFilter(filter, asyncCall);
       });
     });
+  }
+
+  export function queryEntityInfo(param: QueryParam): Promise<Array<Record<string, RecordData>>> {
+    nativeQueryEntityInfoCheck(param);
+    let pPromise = new Promise<Array<Record<string, RecordData>>>((
+      resolve: (data: Array<Record<string, RecordData>>) => void,
+      reject: (err: BusinessError) => void) => {
+      let pCallback = new AsyncCallbackWrapper<Array<Record<string, RecordData>>>((
+        err: BusinessError | null, data: Array<Record<string, RecordData>> | undefined) => {
+        if (err == null || err.code == 0) {
+          resolve(data as Array<Record<string, RecordData>>);
+        } else {
+          reject(err);
+        }
+      });
+      taskpool.execute((): void => {
+        nativeQueryEntityInfo(param, pCallback);
+      });
+    });
+    return pPromise;
   }
 }

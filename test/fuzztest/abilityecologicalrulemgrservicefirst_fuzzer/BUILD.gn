@@ -41,6 +41,7 @@ ohos_fuzztest("AbilityEcologicalRuleMgrServiceFirstFuzzTest") {
   sources = [
     "${ability_runtime_services_path}/abilitymgr/src/ecological_rule/ability_ecological_rule_mgr_service.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/ecological_rule/ability_ecological_rule_mgr_service_param.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/extension_query_event_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/interceptor/ecological_rule_interceptor.cpp",
     "${ability_runtime_services_path}/common/src/record_cost_time_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/start_ability_utils.cpp",

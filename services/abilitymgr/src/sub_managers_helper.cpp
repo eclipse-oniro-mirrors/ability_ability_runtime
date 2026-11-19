@@ -27,7 +27,6 @@
 
 namespace OHOS {
 namespace AAFwk {
-constexpr int32_t INVALID_USER_ID = -1;
 
 SubManagersHelper::SubManagersHelper(
     std::shared_ptr<TaskHandlerWrap> taskHandler, std::shared_ptr<AbilityEventHandler> eventHandler)
@@ -439,7 +438,7 @@ std::shared_ptr<MissionListManagerInterface> SubManagersHelper::GetMissionListMa
 {
     int32_t userId = INVALID_USER_ID;
     int32_t getOsAccountRet =
-        DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->GetOsAccountLocalIdFromUid(uid, userId);
+        AppExecFwk::OsAccountManagerWrapper::GetOsAccountLocalIdFromUid(uid, userId);
     if (getOsAccountRet != 0) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "GetOsAccountLocalIdFromUid() failed. ret: %{public}d", getOsAccountRet);
         return nullptr;
@@ -479,7 +478,7 @@ std::shared_ptr<UIAbilityLifecycleManager> SubManagersHelper::GetUIAbilityManage
 {
     int32_t userId = INVALID_USER_ID;
     int32_t getOsAccountRet =
-        DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->GetOsAccountLocalIdFromUid(uid, userId);
+        AppExecFwk::OsAccountManagerWrapper::GetOsAccountLocalIdFromUid(uid, userId);
     if (getOsAccountRet != 0) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "GetOsAccountLocalIdFromUid() failed. ret: %{public}d", getOsAccountRet);
         return nullptr;
@@ -496,7 +495,7 @@ void SubManagersHelper::UninstallApp(const std::string &bundleName, int32_t uid)
 {
     int32_t userId = INVALID_USER_ID;
     int32_t getOsAccountRet =
-        DelayedSingleton<AppExecFwk::OsAccountManagerWrapper>::GetInstance()->GetOsAccountLocalIdFromUid(uid, userId);
+        AppExecFwk::OsAccountManagerWrapper::GetOsAccountLocalIdFromUid(uid, userId);
     if (getOsAccountRet != 0) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "GetOsAccountLocalIdFromUid() failed. ret: %{public}d", getOsAccountRet);
         return;
@@ -647,6 +646,27 @@ std::shared_ptr<MissionListManagerInterface> SubManagersHelper::CreateMissionLis
     }
 
     return nullptr;
+}
+
+void SubManagersHelper::HandlePendingWantDeathCleanup(
+    const std::string &bundleName, int32_t pid)
+{
+    TAG_LOGD(AAFwkTag::WANTAGENT,
+        "death cleanup: bundle=%{public}s, pid=%{public}d",
+        bundleName.c_str(), pid);
+
+    std::vector<std::shared_ptr<PendingWantManager>> managers;
+    {
+        std::lock_guard<ffrt::mutex> lock(managersMutex_);
+        for (auto &[userId, pwm] : pendingWantManagers_) {
+            if (pwm != nullptr) {
+                managers.push_back(pwm);
+            }
+        }
+    }
+    for (auto &pwm : managers) {
+        pwm->DeleteUnsharedRecordsOnDeath(bundleName, pid);
+    }
 }
 }  // namespace AAFwk
 }  // namespace OHOS

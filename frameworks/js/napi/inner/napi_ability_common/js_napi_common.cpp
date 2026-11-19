@@ -127,7 +127,7 @@ napi_value JsNapiCommon::JsConnectAbility(napi_env env, napi_callback_info info,
         errorVal = static_cast<int32_t>(NAPI_ERR_ABILITY_TYPE_INVALID);
     }
 
-    if (errorVal != static_cast<int32_t>(NAPI_ERR_NO_ERROR) || result == false) {
+    if (errorVal != static_cast<int32_t>(NAPI_ERR_NO_ERROR) || !result) {
         if (HandleJsConnectAbilityError(env, connectionCallback, want, errorVal) == CreateJsUndefined(env)) {
             return CreateJsUndefined(env);
         };
@@ -1299,7 +1299,8 @@ void JsNapiCommon::SetJsStartAbilityExecuteCallback(std::shared_ptr<int32_t> &er
         // inherit split mode
         auto windowMode = obj->ability_->GetCurrentWindowMode();
         if (windowMode == AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_PRIMARY ||
-            windowMode == AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_SECONDARY) {
+            windowMode == AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_SECONDARY ||
+            windowMode == AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_SPLIT) {
             paramObj->want.SetParam(Want::PARAM_RESV_WINDOW_MODE, windowMode);
         }
         TAG_LOGD(AAFwkTag::JSNAPI, "window mode is %{public}d", windowMode);

@@ -28,6 +28,8 @@ constexpr uint32_t PROCESS_MODE_TYPE = 1 << static_cast<uint32_t>(AppExecFwk::Ex
 constexpr uint32_t PROCESS_MODE_BUNDLE = 1 << static_cast<uint32_t>(AppExecFwk::ExtensionProcessMode::BUNDLE);
 constexpr uint32_t PROCESS_MODE_RUN_WITH_MAIN_PROCESS =
     1 << static_cast<uint32_t>(AppExecFwk::ExtensionProcessMode::RUN_WITH_MAIN_PROCESS);
+constexpr uint32_t PROCESS_MODE_CALLER_INSTANCE =
+    1 << static_cast<uint32_t>(AppExecFwk::ExtensionProcessMode::CALLER_INSTANCE);
 constexpr uint32_t PROCESS_INNER_MODE_OFFSET = 16;
 constexpr uint32_t PROCESS_MODE_HOST_SPECIFIED = 1 << (PROCESS_INNER_MODE_OFFSET + 0);
 constexpr uint32_t PROCESS_MODE_HOST_INSTANCE = 1 << (PROCESS_INNER_MODE_OFFSET + 1);

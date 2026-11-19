@@ -575,7 +575,7 @@ void JsWantAgent::SetOnGetBundleNameCallback(std::shared_ptr<WantAgent> wantAgen
     auto retCode = std::make_shared<int32_t>(NO_ERROR);
     auto bundleName = std::make_shared<std::string>();
     execute = [wantAgent, retCode, bundleName] () {
-        TAG_LOGI(AAFwkTag::WANTAGENT, "get bundle name callback");
+        TAG_LOGD(AAFwkTag::WANTAGENT, "get bundle name callback");
         *retCode = WantAgentHelper::GetBundleName(wantAgent, *bundleName);
     };
     complete = [retCode, bundleName](napi_env env, NapiAsyncTask &task, int32_t status) {
@@ -1323,6 +1323,10 @@ napi_value JsWantAgent::CreateJsCompletedData(napi_env env, const CompletedDispa
     }
 
     napi_value jsWantAgent = OHOS::AppExecFwk::WrapWantAgent(env, pWantAgent, nullptr);
+    if (jsWantAgent == nullptr) {
+        delete pWantAgent;
+        pWantAgent = nullptr;
+    }
     napi_set_named_property(env, objValue, "info", jsWantAgent);
     napi_set_named_property(env, objValue, "want", CreateJsWant(env, data.GetWant()));
     napi_set_named_property(env, objValue, "finalCode", CreateJsValue(env, data.GetResultCode()));

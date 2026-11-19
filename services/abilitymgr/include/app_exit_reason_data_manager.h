@@ -57,6 +57,19 @@ public:
 
     int32_t DeleteAbilityRecoverInfoBySessionId(const int32_t sessionId);
 
+    /**
+     * @brief Clear all ability recover info after an OTA upgrade. Compares the current system
+     *        fingerprint (multiple const.product.* params) with the marker in the kv store.
+     *        Mirrors BMSEventHandler::IsSystemFingerprintChanged. persist.bms.test-upgrade
+     *        forces the cleanup path for testing.
+     * @return Returns ERR_OK if the check is done; returns error code otherwise.
+     */
+    int32_t ResetRecoverInfoOnOtaUpgrade();
+
+    std::string GetCurSystemFingerprint() const;
+
+    bool IsTestUpgrade() const;
+
     int32_t GetAbilityRecoverInfo(uint32_t accessTokenId,
         const std::string &moduleName, const std::string &abilityName, bool &hasRecoverInfo);
 
@@ -81,6 +94,7 @@ public:
 private:
     DistributedKv::Status GetKvStore();
     bool CheckKvStore();
+    int32_t DeleteAllRecoverInfo();
     DistributedKv::Value ConvertAppExitReasonInfoToValue(
         const std::vector<std::string> &abilityList, const AAFwk::ExitReason &exitReason,
         const AppExecFwk::RunningProcessInfo &processInfo, bool withKillMsg);

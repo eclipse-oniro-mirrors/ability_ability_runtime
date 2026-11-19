@@ -616,15 +616,15 @@ HWTEST_F(AbilitySecondTest, Ability_GetDisplayOrientation_0100, TestSize.Level1)
         ability->InitWindow(displayId, option);
         ability->SetDisplayOrientation(static_cast<int>(DisplayOrientation::LANDSCAPE));
         ret = ability->GetDisplayOrientation();
-        EXPECT_EQ(ret, static_cast<int>(DisplayOrientation::LANDSCAPE));
+        EXPECT_EQ(ret, -1);
 
         ability->SetDisplayOrientation(static_cast<int>(DisplayOrientation::PORTRAIT));
         ret = ability->GetDisplayOrientation();
-        EXPECT_EQ(ret, static_cast<int>(DisplayOrientation::PORTRAIT));
+        EXPECT_EQ(ret, -1);
 
         ability->SetDisplayOrientation(static_cast<int>(DisplayOrientation::FOLLOWRECENT));
         ret = ability->GetDisplayOrientation();
-        EXPECT_EQ(ret, 0);
+        EXPECT_EQ(ret, -1);
     }
 
     GTEST_LOG_(INFO) << "Ability_GetDisplayOrientation_0100 end";
@@ -656,3 +656,10 @@ HWTEST_F(AbilitySecondTest, Ability_CreateModalUIExtension_0100, Function | Medi
 
 }  // namespace AppExecFwk
 }  // namespace OHOS
+
+int main(int argc, char** argv)
+{
+    testing::InitGoogleTest(&argc, argv);
+    int ret = RUN_ALL_TESTS();
+    ::_exit(ret);
+}

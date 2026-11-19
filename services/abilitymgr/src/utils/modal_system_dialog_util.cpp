@@ -25,7 +25,7 @@ namespace {
 constexpr char DEVELOPER_MODE_STATE[] = "const.security.developermode.state";
 constexpr const char* RESOURCE_ID_GENERAL_GET_IT = "general_get_it";
 constexpr const char* RESOURCE_ID_DEVELOPER_DIALOG_TITLE = "lab_developer_mode_tips";
-constexpr const char* RESOURCE_ID_DEVELOPER_DIALOG_CONTENT = "desc_developer_mode_tips";
+constexpr const char* RESOURCE_ID_DEVELOPER_DIALOG_CONTENT = "cont_developer_mode_tips";
 }
 
 bool ModalSystemDialogUtil::CheckDebugAppNotInDeveloperMode(const AppExecFwk::ApplicationInfo &applicationInfo)
@@ -50,6 +50,7 @@ void ModalSystemDialogUtil::ShowDeveloperModeDialog(
     infoObject["title"] = RESOURCE_ID_DEVELOPER_DIALOG_TITLE;
     infoObject["content"] = RESOURCE_ID_DEVELOPER_DIALOG_CONTENT;
     infoObject["button"] = RESOURCE_ID_GENERAL_GET_IT;
+    infoObject["isFormat"] = true;
 
     nlohmann::json param;
     param["extraInfo"] = infoObject;

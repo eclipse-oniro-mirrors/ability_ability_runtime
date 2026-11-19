@@ -45,7 +45,6 @@ ohos_unittest("ability_extension_module_loader_test") {
   external_deps = [
     "ability_base:configuration",
     "ability_base:want",
-    "ability_runtime:runtime",
     "bundle_framework:appexecfwk_base",
     "c_utils:utils",
     "googletest:gmock_main",

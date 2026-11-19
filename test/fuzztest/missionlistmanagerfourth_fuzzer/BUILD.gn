@@ -43,6 +43,7 @@ ohos_fuzztest("MissionListManagerFourthFuzzTest") {
 
   deps = [
     "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/connectionobs_manager:connection_obs_manager",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_services_path}/abilitymgr:abilityms",
     "${ability_runtime_services_path}/abilitymgr:mission_list",
@@ -51,7 +52,6 @@ ohos_fuzztest("MissionListManagerFourthFuzzTest") {
   external_deps = [
     "ability_base:want",
     "ability_base:zuri",
-    "ability_runtime:connection_obs_manager",
     "background_task_mgr:bgtaskmgr_innerkits",
     "bundle_framework:appexecfwk_base",
     "c_utils:utils",

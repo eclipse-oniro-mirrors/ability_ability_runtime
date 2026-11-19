@@ -46,6 +46,15 @@ public:
     int UpdateForm(const int64_t formId, const AppExecFwk::FormProviderData &formProviderData);
 
     /**
+     * @brief Updates the content of a specified JS form with FormProviderInfo.
+     *
+     * @param formId Indicates the ID of the JS form to update.
+     * @param formProviderInfo Indicates the {@code FormProviderInfo} object including isSupportMoreImages.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int UpdateForm(const int64_t formId, const AppExecFwk::FormProviderInfo &formProviderInfo);
+
+    /**
      * @brief Starts a new ability.
      * An ability using the AbilityInfo.AbilityType.SERVICE or AbilityInfo.AbilityType.PAGE template uses this method
      * to start a specific ability. The system locates the target ability from installed abilities based on the value

@@ -25,10 +25,12 @@ ohos_unittest("authorization_result_test") {
 
   configs = [ "${ability_runtime_test_path}/mock/services_abilitymgr_test:aafwk_mock_config" ]
   cflags = []
-  deps = [ "${ability_runtime_native_path}/ability/native:abilitykit_native" ]
+  deps = [
+    "${ability_runtime_native_path}/ability/native:abilitykit_native",
+    "${ability_runtime_native_path}/ability:ability_context_native",
+  ]
 
   external_deps = [
-    "ability_runtime:ability_context_native",
     "access_token:libtoken_callback_sdk",
     "bundle_framework:appexecfwk_base",
     "c_utils:utils",

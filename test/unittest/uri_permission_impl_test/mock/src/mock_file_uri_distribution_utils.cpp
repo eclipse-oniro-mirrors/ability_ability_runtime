@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,6 +16,7 @@
 #include "file_uri_distribution_utils.h"
 
 #include "ability_manager_errors.h"
+#include "ipc_skeleton.h"
 #include "mock_my_flag.h"
 
 namespace OHOS {
@@ -58,7 +59,7 @@ bool FUDUtils::IsPrivilegedSACall()
     return MyFlag::isPrivilegedSACall_;
 }
 
-bool FUDUtils::GetBundleApiTargetVersion(const std::string &bundleName, int32_t &targetApiVersion)
+bool FUDUtils::GetBundleApiTargetVersion(const std::string &bundleName, int32_t userId, int32_t &targetApiVersion)
 {
     return true;
 }
@@ -86,13 +87,14 @@ bool FUDUtils::GetBundleNameByTokenId(uint32_t tokenId, std::string &bundleName)
     return MyFlag::upmsUtilsGetBundleNameByTokenIdRet_;
 }
 
-int32_t FUDUtils::GetAppIdByBundleName(const std::string &bundleName, std::string &appId)
+int32_t FUDUtils::GetAppIdByBundleName(const std::string &bundleName, int32_t userId, std::string &appId)
 {
     appId = MyFlag::upmsUtilsAppId_;
     return MyFlag::upmsUtilsGetAppIdByBundleNameRet_;
 }
 
-int32_t FUDUtils::GetTokenIdByBundleName(const std::string &bundleName, int32_t appIndex, uint32_t &tokenId)
+int32_t FUDUtils::GetTokenIdByBundleName(const std::string &bundleName, int32_t appIndex, int32_t userId,
+                                         uint32_t &tokenId)
 {
     tokenId = MyFlag::upmsUtilsTokenId_;
     return MyFlag::getTokenIdByBundleNameStatus_;
@@ -108,10 +110,25 @@ bool FUDUtils::IsDocsCloudUri(Uri &uri)
     return MyFlag::isDocsCloudUri_;
 }
 
-bool FUDUtils::GenerateFUDAppInfo(FUDAppInfo &info)
+bool FUDUtils::GenerateFUDAppInfo(FUDAppInfo &info, bool supportSA)
 {
+    if (!MyFlag::generateFUDAppInfoResults_.empty()) {
+        auto result = MyFlag::generateFUDAppInfoResults_.front();
+        MyFlag::generateFUDAppInfoResults_.erase(MyFlag::generateFUDAppInfoResults_.begin());
+
+        info.alterBundleName = result.alterBundleName.empty() ?
+            MyFlag::upmsUtilsAlterBundleName_ : result.alterBundleName;
+        info.bundleName = result.bundleName.empty() ?
+            MyFlag::upmsUtilsBundleName_ : result.bundleName;
+        info.userId = result.userId;
+        info.isSA = result.isSA;
+        return result.success;
+    }
+
     info.alterBundleName = MyFlag::upmsUtilsAlterBundleName_;
     info.bundleName = MyFlag::upmsUtilsBundleName_;
+    info.userId = MyFlag::fudAppInfoUserId_;
+    info.isSA = false;
     return MyFlag::fudUtilsGenerateFUDAppInfoRet_;
 }
 
@@ -134,5 +151,44 @@ bool FUDUtils::IsBrokerCaller()
 {
     return false;
 }
-}  // namespace AAFwk
+
+bool FUDUtils::IsSAOrBrokerCall()
+{
+    return MyFlag::isSAOrBrokerCall_ || (MyFlag::IS_SA_CALL & MyFlag::flag_) != 0;
+}
+
+bool FUDUtils::GetUserIdByTokenId(uint32_t tokenId, int32_t &userId)
+{
+    userId = MyFlag::getUserIdByTokenIdUserId_;
+    return MyFlag::getUserIdByTokenIdRet_;
+}
+
+int32_t FUDUtils::ResolveUserIdForSAOrBroker(int32_t userId)
+{
+    if (userId == UPMS_INVALID_USER_ID) {
+        return GetCurrentAccountId();
+    }
+    if (userId >= 0) {
+        return userId;
+    }
+    return UPMS_INVALID_USER_ID;
+}
+
+int32_t FUDUtils::ResolveCurUserId(int32_t userId, int32_t &curUserId)
+{
+    if (IsSAOrBrokerCall()) {
+        curUserId = ResolveUserIdForSAOrBroker(userId);
+        if (curUserId < 0) {
+            return ERR_UPMS_INVALID_USER_ID;
+        }
+    } else if (IsSystemAppCall()) {
+        if (!GetUserIdByTokenId(IPCSkeleton::GetCallingTokenID(), curUserId)) {
+            return ERR_UPMS_INVALID_USER_ID;
+        }
+    } else {
+        return ERR_NOT_SYSTEM_APP;
+    }
+    return ERR_OK;
+}
+} // namespace AAFwk
 }  // namespace OHOS

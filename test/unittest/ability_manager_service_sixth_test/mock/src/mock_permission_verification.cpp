@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "permission_constants.h"
 #include "permission_verification.h"
 
 #include "hilog_tag_wrapper.h"
@@ -106,6 +107,12 @@ bool PermissionVerification::VerifyMissionPermission() const
     return !!(MyFlag::flag_);
 }
 
+bool PermissionVerification::VerifyContinuationNotifyPermission() const
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s enter", __func__);
+    return !!(MyFlag::flag_);
+}
+
 int PermissionVerification::VerifyAppStateObserverPermission() const
 {
     TAG_LOGI(AAFwkTag::TEST, "%{public}s enter", __func__);
@@ -181,7 +188,8 @@ bool PermissionVerification::JudgeStartInvisibleAbility(const uint32_t accessTok
     return !!(MyFlag::flag_);
 }
 
-bool PermissionVerification::JudgeStartAbilityFromBackground(const bool isBackgroundCall) const
+bool PermissionVerification::JudgeStartAbilityFromBackground(const bool isBackgroundCall,
+    const uint32_t specifyTokenId) const
 {
     TAG_LOGI(AAFwkTag::TEST, "%{public}s enter", __func__);
     return !!(MyFlag::flag_);
@@ -283,10 +291,37 @@ bool PermissionVerification::VerifySuperviseKiaServicePermission() const
     return true;
 }
 
+bool PermissionVerification::VerifySAInterceptorPermission() const
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s enter", __func__);
+    return IsSACall() && VerifyCallingPermission(PermissionConstants::PERMISSION_SA_INTERCEPTOR);
+}
+
 bool PermissionVerification::VerifyStartLocalDebug(int32_t tokenId) const
 {
     TAG_LOGI(AAFwkTag::TEST, "%{public}s enter", __func__);
-    return true;
+    return !!(MyFlag::verifyStartLocalDebugFlag_);
+}
+
+bool PermissionVerification::IsLocalDebugOtherAppsCall(const uint32_t specifyTokenId, int32_t targetUserId) const
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s enter", __func__);
+    return !!(MyFlag::localDebugOtherAppsCallFlag_);
+}
+
+bool PermissionVerification::IsCustomSandboxCall(const uint32_t specifyTokenId, int32_t targetUserId) const
+{
+    return false;
+}
+
+bool PermissionVerification::VerifyLocalDebugOtherApps() const
+{
+    return !!(MyFlag::flag_);
+}
+
+bool PermissionVerification::IsAllowLocalDebugOtherApps(bool isDebugFromLocal) const
+{
+    return !!(MyFlag::flag_);
 }
 
 bool PermissionVerification::VerifyStartSelfUIAbility(int tokenId) const
@@ -298,6 +333,17 @@ bool PermissionVerification::VerifyStartSelfUIAbility(int tokenId) const
 bool PermissionVerification::VerifyFusionAccessPermission() const
 {
     TAG_LOGI(AAFwkTag::TEST, "%{public}s enter", __func__);
+    return true;
+}
+
+int PermissionVerification::CheckCallModularObjectExtensionPermission(
+    const VerificationInfo &verificationInfo) const
+{
+    return ERR_OK;
+}
+
+bool PermissionVerification::VerifySupportCrossAppEmbedForOaPermission() const
+{
     return true;
 }
 }  // namespace AAFwk

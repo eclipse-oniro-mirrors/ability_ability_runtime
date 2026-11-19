@@ -19,7 +19,13 @@ ohos_source_set("appmgr_mst_source") {
   cflags_cc = []
   sources = [
     "${ability_runtime_services_path}/appmgr/src/app_mgr_service.cpp",
+    "${ability_runtime_services_path}/appmgr/src/child_process_state_observer_manager.cpp",
     "${ability_runtime_test_path}/mock/services_appmgr_test/src/mock_bundle_manager.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/process_schedule.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/attribution_record.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/common.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/system_load_provider.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/task_priority_judge.cpp",
   ]
 
   defines = [ "AMS_LOG_TAG = \"AppMgrService\"" ]
@@ -38,6 +44,7 @@ ohos_source_set("appmgr_mst_source") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
   deps = [
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
     "${ability_runtime_services_path}/appmgr:libappms",
     "${ability_runtime_services_path}/common:task_handler_wrap",
@@ -51,7 +58,6 @@ ohos_source_set("appmgr_mst_source") {
   external_deps = [
     "ability_base:configuration",
     "ability_base:want",
-    "ability_runtime:ability_deps_wrapper",
     "access_token:libaccesstoken_sdk",
     "appspawn:appspawn_client",
     "common_event_service:cesfwk_core",
@@ -65,6 +71,7 @@ ohos_source_set("appmgr_mst_source") {
     "init:libbegetutil",
     "ipc:ipc_core",
     "json:nlohmann_json_static",
+    "resource_schedule_service:ressched_client",
     "window_manager:libwsutils",
   ]
 

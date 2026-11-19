@@ -607,5 +607,321 @@ HWTEST_F(InsightIntentInfoForQueryTest, MarshallingAndUnmarshalling_CfgEntities_
     delete result;
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
+
+/**
+ * @tc.name: EntityInfoForQuery_IsQueryable_0100
+ * @tc.desc: Test EntityInfoForQuery::isQueryable with matching parentClassName.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, EntityInfoForQuery_IsQueryable_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    EntityInfoForQuery entity;
+    entity.className = TEST_ENTITY_CLASS;
+    entity.entityId = TEST_ENTITY_ID;
+    entity.parentClassName = "insightIntent.AppIntentEntity";
+    EXPECT_TRUE(entity.isQueryable());
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: EntityInfoForQuery_IsQueryable_0200
+ * @tc.desc: Test EntityInfoForQuery::isQueryable with non-matching parentClassName.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, EntityInfoForQuery_IsQueryable_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    EntityInfoForQuery entity;
+    entity.className = TEST_ENTITY_CLASS;
+    entity.entityId = TEST_ENTITY_ID;
+    entity.parentClassName = "other.ParentClass";
+    EXPECT_FALSE(entity.isQueryable());
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: EntityInfoForQuery_IsQueryable_0300
+ * @tc.desc: Test EntityInfoForQuery::isQueryable with empty parentClassName.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, EntityInfoForQuery_IsQueryable_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    EntityInfoForQuery entity;
+    entity.className = TEST_ENTITY_CLASS;
+    entity.entityId = TEST_ENTITY_ID;
+    entity.parentClassName = "";
+    EXPECT_FALSE(entity.isQueryable());
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: InsightIntentInfoForQuery_EntityVector_0100
+ * @tc.desc: Test Marshalling/Unmarshalling with entity vector containing multiple entities.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, InsightIntentInfoForQuery_EntityVector_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    InsightIntentInfoForQuery info;
+    info.bundleName = TEST_BUNDLE_NAME;
+    info.intentType = INSIGHT_INTENTS_TYPE_PAGE;
+    info.pageInfo.uiAbility = TEST_ABILITY_NAME;
+
+    EntityInfoForQuery entity1;
+    entity1.className = "Entity1";
+    entity1.entityId = "id1";
+    entity1.parentClassName = "insightIntent.AppIntentEntity";
+
+    EntityInfoForQuery entity2;
+    entity2.className = "Entity2";
+    entity2.entityId = "id2";
+    entity2.parentClassName = "other.ParentClass";
+
+    info.entities = {entity1, entity2};
+
+    EXPECT_TRUE(info.Marshalling(parcel));
+    auto result = InsightIntentInfoForQuery::Unmarshalling(parcel);
+    ASSERT_NE(result, nullptr);
+    ASSERT_EQ(result->entities.size(), 2U);
+    EXPECT_TRUE(result->entities[0].isQueryable());
+    EXPECT_FALSE(result->entities[1].isQueryable());
+    delete result;
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: ReadFromParcel_0200
+ * @tc.desc: Test ReadFromParcel with length exceeding MAX_IPC_REWDATA_SIZE returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, ReadFromParcel_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    constexpr size_t MAX_IPC_REWDATA_SIZE = 100 * 1024 * 1024;
+    uint32_t oversizedLength = static_cast<uint32_t>(MAX_IPC_REWDATA_SIZE + 1);
+    parcel.WriteUint32(oversizedLength);
+    
+    InsightIntentInfoForQuery info;
+    EXPECT_FALSE(info.ReadFromParcel(parcel));
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: ReadFromParcel_0300
+ * @tc.desc: Test ReadFromParcel with valid length but invalid JSON content
+ *           returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, ReadFromParcel_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    std::string invalid = "not a json";
+    parcel.WriteUint32(static_cast<uint32_t>(invalid.size() + 1));
+    parcel.WriteRawData(invalid.c_str(), invalid.size() + 1);
+
+    InsightIntentInfoForQuery info;
+    EXPECT_FALSE(info.ReadFromParcel(parcel));
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: UnmarshallingVector_0300
+ * @tc.desc: Test UnmarshallingVector with length exceeding MAX_IPC_REWDATA_SIZE returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, UnmarshallingVector_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    constexpr size_t MAX_IPC_REWDATA_SIZE = 100 * 1024 * 1024;
+    uint32_t oversizedLength = static_cast<uint32_t>(MAX_IPC_REWDATA_SIZE + 1);
+    parcel.WriteUint32(oversizedLength);
+    
+    std::vector<InsightIntentInfoForQuery> readInfos;
+    EXPECT_FALSE(InsightIntentInfoForQuery::UnmarshallingVector(parcel, readInfos));
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: UnmarshallingVector_0400
+ * @tc.desc: Test UnmarshallingVector with valid JSON that is not an array
+ *           returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, UnmarshallingVector_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    std::string nonArray = R"({"key":"value"})";
+    parcel.WriteUint32(static_cast<uint32_t>(nonArray.size() + 1));
+    parcel.WriteRawData(nonArray.c_str(), nonArray.size() + 1);
+
+    std::vector<InsightIntentInfoForQuery> readInfos;
+    EXPECT_FALSE(InsightIntentInfoForQuery::UnmarshallingVector(parcel, readInfos));
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: UnmarshallingVector_0500
+ * @tc.desc: Test UnmarshallingVector with invalid JSON string returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, UnmarshallingVector_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    std::string invalid = "not a json";
+    parcel.WriteUint32(static_cast<uint32_t>(invalid.size() + 1));
+    parcel.WriteRawData(invalid.c_str(), invalid.size() + 1);
+
+    std::vector<InsightIntentInfoForQuery> readInfos;
+    EXPECT_FALSE(InsightIntentInfoForQuery::UnmarshallingVector(parcel, readInfos));
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: Marshalling_0300
+ * @tc.desc: Test Marshalling with normal data returns true and passes size check.
+ * @tc.type: FUNC
+ * @tc.require: issueI5NRZJ
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, Marshalling_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    InsightIntentInfoForQuery info;
+    BuildFullIntentInfo(info);
+
+    EXPECT_TRUE(info.Marshalling(parcel));
+
+    auto result = InsightIntentInfoForQuery::Unmarshalling(parcel);
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->bundleName, TEST_BUNDLE_NAME);
+    EXPECT_EQ(result->intentName, TEST_INTENT_NAME);
+    EXPECT_EQ(result->intentType, std::string(INSIGHT_INTENTS_TYPE_PAGE));
+    delete result;
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: MarshallingVector_0400
+ * @tc.desc: Test MarshallingVector with multiple elements returns true and passes size check.
+ * @tc.type: FUNC
+ * @tc.require: issueI5NRZJ
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, MarshallingVector_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    std::vector<InsightIntentInfoForQuery> infos;
+    for (int i = 0; i < 10; i++) {
+        InsightIntentInfoForQuery info;
+        BuildFullIntentInfo(info);
+        info.bundleName = TEST_BUNDLE_NAME + std::to_string(i);
+        info.intentName = TEST_INTENT_NAME + std::to_string(i);
+        infos.push_back(info);
+    }
+
+    EXPECT_TRUE(InsightIntentInfoForQuery::MarshallingVector(parcel, infos));
+
+    std::vector<InsightIntentInfoForQuery> readInfos;
+    EXPECT_TRUE(InsightIntentInfoForQuery::UnmarshallingVector(parcel, readInfos));
+    ASSERT_EQ(readInfos.size(), 10U);
+    for (int i = 0; i < 10; i++) {
+        EXPECT_EQ(readInfos[i].bundleName, TEST_BUNDLE_NAME + std::to_string(i));
+        EXPECT_EQ(readInfos[i].intentName, TEST_INTENT_NAME + std::to_string(i));
+    }
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: MarshallingVector_0500
+ * @tc.desc: Test MarshallingVector with large data size close to limit boundary.
+ * @tc.type: FUNC
+ * @tc.require: issueI5NRZJ
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, MarshallingVector_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    std::vector<InsightIntentInfoForQuery> infos;
+    std::string largeData(2 * 1024, 'x');
+
+    for (int i = 0; i < 10; i++) {
+        InsightIntentInfoForQuery info;
+        info.bundleName = largeData;
+        info.intentType = INSIGHT_INTENTS_TYPE_PAGE;
+        info.pageInfo.uiAbility = TEST_ABILITY_NAME;
+        infos.push_back(info);
+    }
+
+    EXPECT_TRUE(InsightIntentInfoForQuery::MarshallingVector(parcel, infos));
+
+    std::vector<InsightIntentInfoForQuery> readInfos;
+    EXPECT_TRUE(InsightIntentInfoForQuery::UnmarshallingVector(parcel, readInfos));
+    ASSERT_EQ(readInfos.size(), 10U);
+    for (int i = 0; i < 10; i++) {
+        EXPECT_EQ(readInfos[i].bundleName.size(), 2 * 1024U);
+        EXPECT_EQ(readInfos[i].intentType, std::string(INSIGHT_INTENTS_TYPE_PAGE));
+    }
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: UnmarshallingVector_0600
+ * @tc.desc: Test UnmarshallingVector skips a corrupt item and keeps the other valid item.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, UnmarshallingVector_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    std::string validItem = R"({"isConfig":false,"bundleName":"com.test.bundle","moduleName":"entry",)"
+        R"("intentName":"PlayMusic","domain":"testDomain","intentVersion":"1.0",)"
+        R"("displayName":"Play Music","intentType":"@InsightIntentLink",)"
+        R"("linkInfo":{"uri":"https://example.com/play"}})";
+    // inputParams is expected to be an array, so this item makes the parser set g_parseResult to
+    // ERR_INVALID_VALUE while SafeJsonGet still succeeds.
+    std::string corruptItem = R"({"isConfig":true,"inputParams":{}})";
+    std::string jsonStr = "[" + validItem + "," + corruptItem + "]";
+    parcel.WriteUint32(static_cast<uint32_t>(jsonStr.size() + 1));
+    parcel.WriteRawData(jsonStr.c_str(), jsonStr.size() + 1);
+
+    std::vector<InsightIntentInfoForQuery> readInfos;
+    EXPECT_TRUE(InsightIntentInfoForQuery::UnmarshallingVector(parcel, readInfos));
+    ASSERT_EQ(readInfos.size(), 1U);
+    EXPECT_EQ(readInfos[0].bundleName, TEST_BUNDLE_NAME);
+    EXPECT_EQ(readInfos[0].intentName, TEST_INTENT_NAME);
+    EXPECT_EQ(readInfos[0].intentType, std::string(INSIGHT_INTENTS_TYPE_LINK));
+    EXPECT_EQ(readInfos[0].linkInfo.uri, TEST_URI);
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: UnmarshallingVector_0700
+ * @tc.desc: Test UnmarshallingVector returns true with an empty vector when every item is corrupt.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentInfoForQueryTest, UnmarshallingVector_0700, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    MessageParcel parcel;
+    std::string jsonStr = R"([{"inputParams":{}},{"inputParams":{}}])";
+    parcel.WriteUint32(static_cast<uint32_t>(jsonStr.size() + 1));
+    parcel.WriteRawData(jsonStr.c_str(), jsonStr.size() + 1);
+
+    std::vector<InsightIntentInfoForQuery> readInfos;
+    InsightIntentInfoForQuery sentinel;
+    sentinel.bundleName = TEST_BUNDLE_NAME;
+    readInfos.push_back(sentinel);
+    EXPECT_TRUE(InsightIntentInfoForQuery::UnmarshallingVector(parcel, readInfos));
+    EXPECT_TRUE(readInfos.empty());
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
 } // namespace AbilityRuntime
 } // namespace OHOS

@@ -120,19 +120,6 @@ HWTEST_F(FileUriDistributionUtilsTest, IsSystemAppCall_001, TestSize.Level1)
 
 /*
  * Feature: FUDUtils
- * Function: CheckIsSystemAppByBundleName
- * SubFunction: NA
- * FunctionPoints: FUDUtils CheckIsSystemAppByBundleName
- */
-HWTEST_F(FileUriDistributionUtilsTest, CheckIsSystemAppByBundleName_001, TestSize.Level1)
-{
-    std::string bundleName = "";
-    auto testIsSystemApp = FUDUtils::CheckIsSystemAppByBundleName(bundleName);
-    EXPECT_EQ(testIsSystemApp, false);
-}
-
-/*
- * Feature: FUDUtils
  * Function: CheckIsSystemAppByTokenId
  * SubFunction: NA
  * FunctionPoints: FUDUtils CheckIsSystemAppByTokenId
@@ -168,8 +155,9 @@ HWTEST_F(FileUriDistributionUtilsTest, GetTokenIdByBundleName_001, TestSize.Leve
 {
     std::string bundleName = "com.example.test";
     int32_t appIndex = 10;
+    int32_t userId = 100;
     uint32_t tokenId;
-    auto testTokenId = FUDUtils::GetTokenIdByBundleName(bundleName, appIndex, tokenId);
+    auto testTokenId = FUDUtils::GetTokenIdByBundleName(bundleName, appIndex, userId, tokenId);
     EXPECT_EQ(testTokenId, ERR_GET_TARGET_BUNDLE_INFO_FAILED);
 }
 

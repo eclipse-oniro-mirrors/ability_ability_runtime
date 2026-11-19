@@ -254,6 +254,54 @@ HWTEST_F(JsUIServiceExtensionTest, GetSrcPath_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.number: GetSrcPath_0200
+ * @tc.name: GetSrcPath
+ * @tc.desc: JsUIServiceExtension GetSrcPath with normal srcEntrance that has file extension.
+ */
+HWTEST_F(JsUIServiceExtensionTest, GetSrcPath_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetSrcPath_0200 start");
+    jsUIServiceExtension->abilityInfo_->moduleName = "entry";
+    jsUIServiceExtension->abilityInfo_->srcEntrance = "ets/pages/Index.ts";
+    std::string srcPath;
+    jsUIServiceExtension->GetSrcPath(srcPath);
+    EXPECT_EQ(srcPath, "entry/ets/pages/Index.abc");
+    TAG_LOGI(AAFwkTag::TEST, "GetSrcPath_0200 end");
+}
+
+/**
+ * @tc.number: GetSrcPath_0300
+ * @tc.name: GetSrcPath
+ * @tc.desc: JsUIServiceExtension GetSrcPath where folder name contains dot but filename has no extension.
+ */
+HWTEST_F(JsUIServiceExtensionTest, GetSrcPath_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetSrcPath_0300 start");
+    jsUIServiceExtension->abilityInfo_->moduleName = "entry";
+    jsUIServiceExtension->abilityInfo_->srcEntrance = "v1.0/pages/Index";
+    std::string srcPath;
+    jsUIServiceExtension->GetSrcPath(srcPath);
+    EXPECT_EQ(srcPath, "entry/v1.0/pages/Index.abc");
+    TAG_LOGI(AAFwkTag::TEST, "GetSrcPath_0300 end");
+}
+
+/**
+ * @tc.number: GetSrcPath_0400
+ * @tc.name: GetSrcPath
+ * @tc.desc: JsUIServiceExtension GetSrcPath where path has no dot, should not erase and not go out of bounds.
+ */
+HWTEST_F(JsUIServiceExtensionTest, GetSrcPath_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetSrcPath_0400 start");
+    jsUIServiceExtension->abilityInfo_->moduleName = "entry";
+    jsUIServiceExtension->abilityInfo_->srcEntrance = "ets/pages/Index";
+    std::string srcPath;
+    jsUIServiceExtension->GetSrcPath(srcPath);
+    EXPECT_EQ(srcPath, "entry/ets/pages/Index.abc");
+    TAG_LOGI(AAFwkTag::TEST, "GetSrcPath_0400 end");
+}
+
+/**
  * @tc.number: OnConfigurationUpdated_0100
  * @tc.name: OnConfigurationUpdated
  * @tc.desc: JsUIServiceExtension OnConfigurationUpdated

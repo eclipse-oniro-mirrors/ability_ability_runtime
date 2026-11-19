@@ -17,6 +17,7 @@
 #define OHOS_ABILITY_RUNTIME_PERMISSION_VERIFICATION_H
 
 #include <memory>
+#include <string>
 
 namespace OHOS {
 namespace AAFwk {
@@ -48,6 +49,8 @@ public:
     bool VerifyPrepareTerminatePermission(int32_t tokenId) const;
 
     bool VerifyStartSelfUIAbility(int32_t tokenId) const;
+
+    bool VerifyPermissionByTokenId(const int &tokenId, const std::string &permissionName) const;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

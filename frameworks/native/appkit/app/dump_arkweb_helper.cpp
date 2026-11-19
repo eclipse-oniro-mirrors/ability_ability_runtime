@@ -16,7 +16,12 @@
 #include "dump_arkweb_helper.h"
 
 #include <cstdint>
+#include <ctime>
 #include <cstring>
+#include <unistd.h>
+
+#include "dfx_socket_request.h"
+#include "faultloggerd_client.h"
 
 #if defined(NWEB)
 #include "nweb_helper.h"
@@ -40,5 +45,33 @@ int DumpArkWebHelper::DumpArkWeb(const std::string &customArgs, std::string &res
     result.resize(0);
     return -1;
 }
+
+// static
+void DumpArkWebHelper::DumpArkWebJSHeap(int32_t appPid, int32_t renderPid, bool needSnapshot, bool needGC, bool needRaw)
+{
+    int32_t fd = -1;
+    if (needSnapshot) {
+        int32_t type = needRaw ? static_cast<int32_t>(FaultLoggerType::ARKWEB_JS_RAW_SNAPSHOT) :
+                                 static_cast<int32_t>(FaultLoggerType::ARKWEB_JS_HEAP_SNAPSHOT);
+        struct FaultLoggerdRequest request = {};
+        request.pid = appPid;
+        request.type = type;
+        request.tid = renderPid;
+        request.time = static_cast<uint64_t>(time(nullptr));
+        fd = RequestFileDescriptorEx(&request);
+        if (fd < 0) {
+            return;
+        }
+    }
+#if defined(NWEB)
+    OHOS::NWeb::NWebHelper &nWebHelper = OHOS::NWeb::NWebHelper::Instance();
+    nWebHelper.DumpArkWebJSHeap(fd, renderPid, needSnapshot, needGC, needRaw);
+#endif
+    if (fd >= 0) {
+        close(fd);
+        fd = -1;
+    }
+}
+
 }  // namespace AppExecFwk
 }  // namespace OHOS

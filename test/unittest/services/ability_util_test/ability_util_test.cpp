@@ -186,5 +186,23 @@ HWTEST_F(AbilityUtilTest, ProcessWindowMode_0300, TestSize.Level1)
     int32_t getWindowMode = Integer::Unbox(IInteger::Query(want.GetParams().GetParam(Want::PARAM_RESV_WINDOW_MODE)));
     EXPECT_EQ(windowMode, getWindowMode);
 }
+
+/**
+ * @tc.name: ProcessWindowMode_0400
+ * @tc.desc: ProcessWindowMode Test
+ * @tc.type: FUNC
+ * @tc.require: issueI9D3V0
+ */
+HWTEST_F(AbilityUtilTest, ProcessWindowMode_0400, TestSize.Level1)
+{
+    Want want;
+    want.SetParam(Want::PARAM_RESV_WINDOW_MODE, 0);
+    MyFlag::flag_ = 0;
+    uint32_t accessTokenId = 0;
+    int32_t windowMode = AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_SPLIT;
+    AbilityUtil::ProcessWindowMode(want, accessTokenId, windowMode);
+    int32_t getWindowMode = Integer::Unbox(IInteger::Query(want.GetParams().GetParam(Want::PARAM_RESV_WINDOW_MODE)));
+    EXPECT_EQ(windowMode, getWindowMode);
+}
 }  // namespace AAFwk
 }  // namespace OHOS

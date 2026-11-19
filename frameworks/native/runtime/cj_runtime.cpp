@@ -123,6 +123,16 @@ void CJRuntime::RegisterUncaughtExceptionHandler(const CJUncaughtExceptionInfo& 
     cjEnv->registerCJUncaughtExceptionHandler(uncaughtExceptionInfo);
 }
 
+void CJRuntime::RegisterEventHandler(const CJEventReportInfo& reportInfo)
+{
+    auto cjEnv = OHOS::CJEnv::LoadInstance();
+    if (cjEnv == nullptr) {
+        TAG_LOGE(AAFwkTag::CJRUNTIME, "null cjEnv");
+        return;
+    }
+    cjEnv->registerEventHandler(reportInfo);
+}
+
 bool CJRuntime::IsCJAbility(const std::string& info)
 {
     // in cj application, the srcEntry format should be packageName.AbilityClassName.
@@ -166,6 +176,15 @@ void CJRuntime::SetPackageName(std::string srcEntryName)
     // According to the srcEntry rule in the Cangjie application,
     // the last '.' The previous strings were all package names
     packageName_ = srcEntryName.substr(0, srcEntryName.find_last_of("."));
+}
+
+void CJRuntime::SetMainNAPIEnv(void* env)
+{
+    auto runtime = OHOS::CJEnv::LoadInstance();
+    if (!runtime || !runtime->setMainNAPIEnv) {
+        return;
+    }
+    runtime->setMainNAPIEnv(env);
 }
 
 void CJRuntime::SetSanitizerVersion(SanitizerKind kind)

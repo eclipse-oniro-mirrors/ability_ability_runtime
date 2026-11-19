@@ -48,6 +48,7 @@ public:
     MOCK_METHOD2(ScheduleAcceptWant, void(const AAFwk::Want& want, const std::string& moduleName));
     MOCK_METHOD1(SchedulePrepareTerminate, void(const std::string &moduleName));
     MOCK_METHOD2(ScheduleNewProcessRequest, void(const AAFwk::Want& want, const std::string& moduleName));
+    MOCK_METHOD0(SchedulePreTemplateProcessDeepFrozen, int32_t());
     MOCK_METHOD3(ScheduleNotifyLoadRepairPatch, int32_t(const std::string& bundleName,
         const sptr<IQuickFixCallback>& callback, const int32_t recordId));
     MOCK_METHOD2(ScheduleNotifyHotReloadPage, int32_t(const sptr<IQuickFixCallback>& callback, const int32_t recordId));
@@ -74,7 +75,7 @@ public:
     MOCK_METHOD1(VerifyKillProcessPermission, int32_t(const std::string &bundleName));
     MOCK_METHOD0(ScheduleCacheProcess, void());
     MOCK_METHOD1(ScheduleCjHeapMemory, void(OHOS::AppExecFwk::CjHeapDumpInfo &info));
-    MOCK_METHOD2(ScheduleMem, void(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpresult));
+    MOCK_METHOD2(ScheduleMem, void(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback));
     MOCK_METHOD2(OnLoadAbilityFinished, void(uint64_t, int32_t));
 
     bool AddDeathRecipient(const sptr<DeathRecipient> &recipient) override

@@ -1,0 +1,55 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//build/test.gni")
+import("//foundation/ability/ability_runtime/ability_runtime.gni")
+
+ohos_unittest("agent_card_migration_helper_test") {
+  module_out_path = "ability_runtime/ability_runtime/agent_card_migration_helper_test"
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+    blocklist = "../../../cfi_blocklist.txt"
+  }
+
+  sources = [
+    "agent_card_migration_helper_test.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/agent_extension/agent_card_migration_helper.cpp",
+  ]
+
+  include_dirs = [
+    "${ability_runtime_services_path}/abilitymgr/include",
+    "${ability_runtime_services_path}/common/include",
+    "${ability_runtime_innerkits_path}/ability_manager/include",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "json:nlohmann_json_static",
+    "kv_store:distributeddata_inner",
+  ]
+
+  cflags_cc = []
+  configs = []
+}
+
+group("unittest") {
+  testonly = true
+  deps = [ ":agent_card_migration_helper_test" ]
+}

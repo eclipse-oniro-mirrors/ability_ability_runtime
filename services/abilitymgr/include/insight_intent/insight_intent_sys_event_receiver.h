@@ -16,13 +16,19 @@
 #ifndef OHOS_ABILITY_RUNTIME_INSIGHT_INTENT_SYS_EVENT_RECEIVER_H
 #define OHOS_ABILITY_RUNTIME_INSIGHT_INTENT_SYS_EVENT_RECEIVER_H
 
+#include <utility>
+#include <vector>
+
 #include "common_event_data.h"
 #include "common_event_subscriber.h"
 #include "common_event_subscribe_info.h"
+#include "extract_insight_intent_profile.h"
+#include "insight_intent_profile.h"
 #include "task_handler_wrap.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
+struct InsightIntentSaveParam;
 class InsightIntentSysEventReceiver : public EventFwk::CommonEventSubscriber,
     public std::enable_shared_from_this<InsightIntentSysEventReceiver> {
 public:
@@ -31,10 +37,18 @@ public:
 
     void OnReceiveEvent(const EventFwk::CommonEventData &data) override;
 private:
-    void SaveInsightIntentInfos(const std::string &bundleName, const std::string &moduleName,
-        uint32_t versionCode, int32_t userId);
-    void DeleteInsightIntent(const std::string &bundleName, const std::string &moduleName, int32_t userId);
+    bool SaveInsightIntentInfos(const std::string &bundleName, const std::vector<std::string> &moduleNames,
+        const InsightIntentSaveParam &templateParam);
+    bool CollectInsightIntentSaveParam(const std::string &bundleName, const std::string &moduleName,
+        InsightIntentSaveParam &saveParam);
+    void RegisterAllFunctions(const std::vector<std::pair<std::string, uint32_t>> &newBundles,
+        const std::vector<ExtractInsightIntentInfo> &allIntentInfos,
+        const std::vector<InsightIntentInfo> &allConfigInfos, int32_t userId);
+    void DeleteInsightIntent(const std::string &bundleName, const std::string &moduleName, int32_t userId,
+        int32_t appIndex);
     void LoadInsightIntentInfos(int32_t userId = -1);
+    int32_t ResolveLoadUserId(int32_t userId);
+    void BackupAndScheduleRegister(std::vector<std::pair<std::string, uint32_t>> &&newBundles, int32_t userId);
     void DeleteInsightIntentInfoByUserId(int32_t userId);
     void HandleBundleScanFinished();
     void HandleUserSwitched(const EventFwk::CommonEventData &data);

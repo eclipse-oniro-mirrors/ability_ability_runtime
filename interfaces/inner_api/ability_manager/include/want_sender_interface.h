@@ -26,10 +26,6 @@ namespace AAFwk {
 class IWantSender : public OHOS::IRemoteBroker {
 public:
     DECLARE_INTERFACE_DESCRIPTOR(u"ohos.aafwk.WantSender");
-    virtual void Send(SenderInfo &senderInfo) = 0;
-    enum {
-        WANT_SENDER_SEND = 0,
-    };
 };
 }  // namespace AAFwk
 }  // namespace OHOS

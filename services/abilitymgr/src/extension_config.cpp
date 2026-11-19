@@ -66,7 +66,7 @@ std::string ExtensionConfig::GetExtensionConfigPath() const
 
 void ExtensionConfig::LoadExtensionConfiguration()
 {
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "call");
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "load begin");
     nlohmann::json jsonBuf;
     if (!ReadFileInfoJson(GetExtensionConfigPath().c_str(), jsonBuf)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "parse file failed");
@@ -74,6 +74,7 @@ void ExtensionConfig::LoadExtensionConfiguration()
     }
 
     LoadExtensionConfig(jsonBuf);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "load end");
 }
 
 int32_t ExtensionConfig::GetExtensionAutoDisconnectTime(const std::string &extensionTypeName)
@@ -94,23 +95,23 @@ bool ExtensionConfig::IsExtensionStartThirdPartyAppEnable(const std::string &ext
     return EXTENSION_THIRD_PARTY_APP_ENABLE_FLAG_DEFAULT;
 }
 
-bool ExtensionConfig::IsExtensionStartServiceEnable(const std::string &extensionTypeName, const std::string &targetUri)
+bool ExtensionConfig::IsExtensionStartServiceEnable(const std::string &extensionTypeName,
+    const AppExecFwk::ElementName &targetElement)
 {
-    AppExecFwk::ElementName targetElementName;
     std::lock_guard lock(configMapMutex_);
     if (configMap_.find(extensionTypeName) != configMap_.end() &&
         !configMap_[extensionTypeName].serviceEnableFlag) {
         return false;
     }
-    if (!targetElementName.ParseURI(targetUri) ||
+    if (targetElement.GetBundleName().empty() ||
         configMap_.find(extensionTypeName) == configMap_.end()) {
         return EXTENSION_START_SERVICE_ENABLE_FLAG_DEFAULT;
     }
     for (const auto& iter : configMap_[extensionTypeName].serviceBlockedList) {
         AppExecFwk::ElementName iterElementName;
         if (iterElementName.ParseURI(iter) &&
-            iterElementName.GetBundleName() == targetElementName.GetBundleName() &&
-            iterElementName.GetAbilityName() == targetElementName.GetAbilityName()) {
+            iterElementName.GetBundleName() == targetElement.GetBundleName() &&
+            iterElementName.GetAbilityName() == targetElement.GetAbilityName()) {
             return false;
         }
     }
@@ -120,7 +121,7 @@ bool ExtensionConfig::IsExtensionStartServiceEnable(const std::string &extension
 void ExtensionConfig::LoadExtensionConfig(const nlohmann::json &object)
 {
     if (!object.contains(EXTENSION_CONFIG_NAME) || !object.at(EXTENSION_CONFIG_NAME).is_array()) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "extension config null");
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "extension config null");
         return;
     }
 
@@ -142,6 +143,7 @@ void ExtensionConfig::LoadExtensionConfig(const nlohmann::json &object)
         LoadExtensionSAEnable(jsonObject, extensionTypeName);
         LoadScreenUnlockAccess(jsonObject, extensionTypeName);
     }
+    isConfigLoaded_.store(true);
 }
 
 void ExtensionConfig::LoadExtensionAutoDisconnectTime(const nlohmann::json &object,
@@ -149,7 +151,7 @@ void ExtensionConfig::LoadExtensionAutoDisconnectTime(const nlohmann::json &obje
 {
     if (!object.contains(EXTENSION_AUTO_DISCONNECT_TIME) ||
         !object.at(EXTENSION_AUTO_DISCONNECT_TIME).is_number()) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "auto disconnect time config null");
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "auto disconnect time config null");
         return;
     }
     int32_t extensionAutoDisconnectTime = object.at(EXTENSION_AUTO_DISCONNECT_TIME).get<int32_t>();
@@ -186,7 +188,7 @@ void ExtensionConfig::LoadExtensionThirdPartyAppBlockedList(const nlohmann::json
     TAG_LOGD(AAFwkTag::ABILITYMGR, "call.");
     if (!object.contains(EXTENSION_THIRD_PARTY_APP_BLOCKED_FLAG_NAME) ||
         !object.at(EXTENSION_THIRD_PARTY_APP_BLOCKED_FLAG_NAME).is_boolean()) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "third Party config null");
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "third Party config null");
         return;
     }
     bool flag = object.at(EXTENSION_THIRD_PARTY_APP_BLOCKED_FLAG_NAME).get<bool>();
@@ -200,7 +202,7 @@ void ExtensionConfig::LoadExtensionServiceBlockedList(const nlohmann::json &obje
     TAG_LOGD(AAFwkTag::ABILITYMGR, "call.");
     if (!object.contains(EXTENSION_SERVICE_STARTUP_ENABLE_FLAG) ||
         !object.at(EXTENSION_SERVICE_STARTUP_ENABLE_FLAG).is_boolean()) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "service enable config null");
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "service enable config null");
         return;
     }
     bool serviceEnableFlag = object.at(EXTENSION_SERVICE_STARTUP_ENABLE_FLAG).get<bool>();
@@ -211,7 +213,7 @@ void ExtensionConfig::LoadExtensionServiceBlockedList(const nlohmann::json &obje
     }
     if (!object.contains(EXTENSION_SERVICE_BLOCKED_LIST_NAME) ||
         !object.at(EXTENSION_SERVICE_BLOCKED_LIST_NAME).is_array()) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "service config null");
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "service config null");
         return;
     }
     std::unordered_set<std::string> serviceBlockedList;
@@ -234,7 +236,7 @@ bool ExtensionConfig::LoadExtensionAbilityAccess(const nlohmann::json &object, c
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "call.");
     if (!object.contains(ABILITY_ACCESS) || !object.at(ABILITY_ACCESS).is_object()) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "parse ability_access failed");
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "parse ability_access failed");
         configMap_[extensionTypeName].hasAbilityAccess = false;
         return false;
     }
@@ -271,7 +273,7 @@ void ExtensionConfig::LoadExtensionAllowOrBlockedList(const nlohmann::json &obje
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "LoadExtensionAllowOrBlockedList.");
     if (!object.contains(key) || !object.at(key).is_array()) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "%{public}s config null", key.c_str());
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "%{public}s config null", key.c_str());
         return;
     }
     list.clear();
@@ -292,7 +294,7 @@ void ExtensionConfig::LoadExtensionNetworkEnable(const nlohmann::json &object,
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "LoadExtensionNetworkEnable call");
     if (!object.contains(NETWORK_ACCESS_ENABLE_FLAG) || !object.at(NETWORK_ACCESS_ENABLE_FLAG).is_boolean()) {
-        TAG_LOGW(AAFwkTag::ABILITYMGR, "network enable flag null");
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "network enable flag null");
         return;
     }
     bool flag = object.at(NETWORK_ACCESS_ENABLE_FLAG).get<bool>();
@@ -306,7 +308,7 @@ void ExtensionConfig::LoadExtensionSAEnable(const nlohmann::json &object,
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "LoadExtensionSAEnable call");
     if (!object.contains(SA_ACCESS_ENABLE_FLAG) || !object.at(SA_ACCESS_ENABLE_FLAG).is_boolean()) {
-        TAG_LOGW(AAFwkTag::ABILITYMGR, "sa enable flag null");
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "sa enable flag null");
         return;
     }
     bool flag = object.at(SA_ACCESS_ENABLE_FLAG).get<bool>();
@@ -416,29 +418,31 @@ std::optional<bool> ExtensionConfig::GetSingleAccessFlag(const std::string &exte
 }
 
 bool ExtensionConfig::IsExtensionStartThirdPartyAppEnableNew(const std::string &extensionTypeName,
-    const std::string &targetUri)
+    const AppExecFwk::ElementName &targetElement)
 {
-    return IsExtensionAbilityAccessEnable(extensionTypeName, targetUri, [](const AbilityAccessItem &abilityAccess) {
+    return IsExtensionAbilityAccessEnable(extensionTypeName, targetElement, [](const AbilityAccessItem &abilityAccess) {
         return abilityAccess.thirdPartyAppAccessFlag;
     });
 }
 
 bool ExtensionConfig::IsExtensionStartServiceEnableNew(const std::string &extensionTypeName,
-    const std::string &targetUri)
+    const AppExecFwk::ElementName &targetElement)
 {
-    return IsExtensionAbilityAccessEnable(extensionTypeName, targetUri, [](const AbilityAccessItem &abilityAccess) {
+    return IsExtensionAbilityAccessEnable(extensionTypeName, targetElement, [](const AbilityAccessItem &abilityAccess) {
         return abilityAccess.serviceAccessFlag;
     });
 }
 
-bool ExtensionConfig::IsExtensionStartDefaultEnable(const std::string &extensionTypeName, const std::string &targetUri)
+bool ExtensionConfig::IsExtensionStartDefaultEnable(const std::string &extensionTypeName,
+    const AppExecFwk::ElementName &targetElement)
 {
-    return IsExtensionAbilityAccessEnable(extensionTypeName, targetUri, [](const AbilityAccessItem &abilityAccess) {
+    return IsExtensionAbilityAccessEnable(extensionTypeName, targetElement, [](const AbilityAccessItem &abilityAccess) {
         return abilityAccess.defaultAccessFlag;
     });
 }
 
-bool ExtensionConfig::IsExtensionAbilityAccessEnable(const std::string &extensionTypeName, const std::string &targetUri,
+bool ExtensionConfig::IsExtensionAbilityAccessEnable(const std::string &extensionTypeName,
+    const AppExecFwk::ElementName &targetElement,
     std::function<std::optional<bool>(const AbilityAccessItem&)> getAccessFlag)
 {
     AbilityAccessItem abilityAccess;
@@ -455,16 +459,15 @@ bool ExtensionConfig::IsExtensionAbilityAccessEnable(const std::string &extensio
         // flag not configured, allow access
         return true;
     }
-    AppExecFwk::ElementName targetElementName;
-    if (!targetElementName.ParseURI(targetUri)) {
+    if (targetElement.GetBundleName().empty()) {
         return accessFlag.value();
     }
     if (accessFlag.value()) {
         //flag true, deny access in block list
-        return !FindTargetUriInList(targetElementName, abilityAccess.blockList);
+        return !FindTargetUriInList(targetElement, abilityAccess.blockList);
     }
     // flag false, allow access in allow list
-    return FindTargetUriInList(targetElementName, abilityAccess.allowList);
+    return FindTargetUriInList(targetElement, abilityAccess.allowList);
 }
 
 bool ExtensionConfig::FindTargetUriInList(const AppExecFwk::ElementName &targetElementName,
@@ -664,6 +667,11 @@ bool ExtensionConfig::ReadFileInfoJson(const std::string &filePath, nlohmann::js
     }
 
     return true;
+}
+
+bool ExtensionConfig::IsConfigLoaded() const
+{
+    return isConfigLoaded_.load();
 }
 
 bool ExtensionConfig::CheckExtensionUriValid(const std::string &uri)

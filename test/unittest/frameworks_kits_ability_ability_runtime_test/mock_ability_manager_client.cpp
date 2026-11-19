@@ -156,7 +156,7 @@ ErrCode AbilityManagerClient::StartAbilityByUIContentSession(const Want &want, s
 }
 
 ErrCode AbilityManagerClient::StartAbilityOnlyUIAbility(const Want &want, sptr<IRemoteObject> callerToken,
-    uint32_t specifyTokenId)
+    uint32_t specifyTokenId, int32_t userId)
 {
     return ERR_OK;
 }
@@ -183,7 +183,8 @@ ErrCode AbilityManagerClient::PreloadUIExtensionAbility(const Want &want, std::s
     return ERR_OK;
 }
 
-ErrCode AbilityManagerClient::ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow)
+ErrCode AbilityManagerClient::ChangeAbilityVisibility(sptr<IRemoteObject> token, bool isShow,
+    const std::shared_ptr<Rosen::WindowShowParams> &params)
 {
     return MyFlag::GetInstance()->GetChangeAbilityVisibility();
 }
@@ -216,8 +217,9 @@ ErrCode AbilityManagerClient::TerminateAbility(sptr<IRemoteObject> token, int re
 }
 
 ErrCode AbilityManagerClient::BackToCallerAbilityWithResult(const sptr<IRemoteObject> &token, int resultCode,
-    const Want *resultWant, int64_t callerRequestCode)
+    const Want &resultWant, int64_t callerRequestCode, bool isBackToCallerApp)
 {
+    MyFlag::GetInstance()->SetBackToCallerApp(isBackToCallerApp);
     return ERR_OK;
 }
 
@@ -268,7 +270,8 @@ ErrCode AbilityManagerClient::MinimizeUIExtensionAbility(sptr<SessionInfo> exten
     return ERR_OK;
 }
 
-ErrCode AbilityManagerClient::MinimizeUIAbilityBySCB(sptr<SessionInfo> sessionInfo, bool fromUser, uint32_t sceneFlag)
+ErrCode AbilityManagerClient::MinimizeUIAbilityBySCB(sptr<SessionInfo> sessionInfo, bool fromUser, uint32_t sceneFlag,
+    int32_t backgroundReason)
 {
     return ERR_OK;
 }
@@ -391,7 +394,8 @@ void AbilityManagerClient::NotifyCompleteContinuation(const std::string &deviceI
     int32_t sessionId, bool isSuccess)
 {}
 
-ErrCode AbilityManagerClient::ContinueAbility(const std::string &deviceId, int32_t missionId, uint32_t versionCode)
+ErrCode AbilityManagerClient::ContinueAbility(const std::string &deviceId, int32_t missionId,
+    uint32_t versionCode, int32_t userId)
 {
     return ERR_OK;
 }
@@ -401,12 +405,12 @@ ErrCode AbilityManagerClient::NotifyContinuationResult(int32_t missionId, int32_
     return ERR_OK;
 }
 
-ErrCode AbilityManagerClient::LockMissionForCleanup(int32_t missionId)
+ErrCode AbilityManagerClient::LockMissionForCleanup(int32_t missionId, int32_t userId)
 {
     return ERR_OK;
 }
 
-ErrCode AbilityManagerClient::UnlockMissionForCleanup(int32_t missionId)
+ErrCode AbilityManagerClient::UnlockMissionForCleanup(int32_t missionId, int32_t userId)
 {
     return ERR_OK;
 }
@@ -414,12 +418,12 @@ ErrCode AbilityManagerClient::UnlockMissionForCleanup(int32_t missionId)
 void AbilityManagerClient::SetLockedState(int32_t sessionId, bool lockedState)
 {}
 
-ErrCode AbilityManagerClient::RegisterMissionListener(sptr<IMissionListener> listener)
+ErrCode AbilityManagerClient::RegisterMissionListener(sptr<IMissionListener> listener, int32_t userId)
 {
     return ERR_OK;
 }
 
-ErrCode AbilityManagerClient::UnRegisterMissionListener(sptr<IMissionListener> listener)
+ErrCode AbilityManagerClient::UnRegisterMissionListener(sptr<IMissionListener> listener, int32_t userId)
 {
     return ERR_OK;
 }
@@ -449,23 +453,23 @@ ErrCode AbilityManagerClient::UnRegisterMissionListener(const std::string &devic
 }
 
 ErrCode AbilityManagerClient::GetMissionInfos(const std::string& deviceId, int32_t numMax,
-    std::vector<MissionInfo> &missionInfos)
+    std::vector<MissionInfo> &missionInfos, int32_t userId)
 {
     return ERR_OK;
 }
 
 ErrCode AbilityManagerClient::GetMissionInfo(const std::string& deviceId, int32_t missionId,
-    MissionInfo &missionInfo)
+    MissionInfo &missionInfo, int32_t userId)
 {
     return ERR_OK;
 }
 
-ErrCode AbilityManagerClient::CleanMission(int32_t missionId)
+ErrCode AbilityManagerClient::CleanMission(int32_t missionId, int32_t userId)
 {
     return ERR_OK;
 }
 
-ErrCode AbilityManagerClient::CleanAllMissions()
+ErrCode AbilityManagerClient::CleanAllMissions(int32_t userId)
 {
     return ERR_OK;
 }
@@ -480,13 +484,14 @@ ErrCode AbilityManagerClient::MoveMissionToFront(int32_t missionId, const StartO
     return ERR_OK;
 }
 
-ErrCode AbilityManagerClient::MoveMissionsToForeground(const std::vector<int32_t>& missionIds, int32_t topMissionId)
+ErrCode AbilityManagerClient::MoveMissionsToForeground(const std::vector<int32_t>& missionIds, int32_t topMissionId,
+    int32_t userId)
 {
     return ERR_OK;
 }
 
 ErrCode AbilityManagerClient::MoveMissionsToBackground(const std::vector<int32_t>& missionIds,
-    std::vector<int32_t>& result)
+    std::vector<int32_t>& result, int32_t userId)
 {
     return ERR_OK;
 }
@@ -509,7 +514,8 @@ ErrCode AbilityManagerClient::StartAbilityByCall(const Want &want, sptr<IAbility
     return ERR_OK;
 }
 
-ErrCode StartAbilityForPrelaunch(const Want &want, const int32_t frameNum)
+ErrCode AbilityManagerClient::StartAbilityForPrelaunch(const Want &want, const int32_t frameNum,
+    int32_t userId, const sptr<IAbilityConnection> &connect)
 {
     return ERR_OK;
 }
@@ -603,7 +609,7 @@ ErrCode AbilityManagerClient::RegisterSnapshotHandler(sptr<ISnapshotHandler> han
 }
 
 ErrCode AbilityManagerClient::GetMissionSnapshot(const std::string& deviceId, int32_t missionId,
-    MissionSnapshot& snapshot, bool isLowResolution)
+    MissionSnapshot& snapshot, bool isLowResolution, int32_t userId)
 {
     return ERR_OK;
 }
@@ -619,7 +625,7 @@ ErrCode AbilityManagerClient::FinishUserTest(
     return ERR_OK;
 }
 
-ErrCode AbilityManagerClient::GetTopAbility(sptr<IRemoteObject> &token)
+ErrCode AbilityManagerClient::GetTopAbility(sptr<IRemoteObject> &token, int32_t userId)
 {
     return ERR_OK;
 }
@@ -647,19 +653,19 @@ ErrCode AbilityManagerClient::DelegatorDoAbilityBackground(sptr<IRemoteObject> t
 }
 
 ErrCode AbilityManagerClient::SetMissionContinueState(sptr<IRemoteObject> token,
-    const AAFwk::ContinueState &state, sptr<IRemoteObject> sessionToken)
+    const AAFwk::ContinueState &state, sptr<IRemoteObject> sessionToken, int32_t userId)
 {
     return ERR_OK;
 }
 
 #ifdef SUPPORT_SCREEN
-ErrCode AbilityManagerClient::SetMissionLabel(sptr<IRemoteObject> token, const std::string& label)
+ErrCode AbilityManagerClient::SetMissionLabel(sptr<IRemoteObject> token, const std::string& label, int32_t userId)
 {
     return ERR_OK;
 }
 
 ErrCode AbilityManagerClient::SetMissionIcon(
-    sptr<IRemoteObject> abilityToken, std::shared_ptr<OHOS::Media::PixelMap> icon)
+    sptr<IRemoteObject> abilityToken, std::shared_ptr<OHOS::Media::PixelMap> icon, int32_t userId)
 {
     return ERR_OK;
 }
@@ -742,7 +748,8 @@ ErrCode AbilityManagerClient::FreeInstallAbilityFromRemote(const Want &want, spt
     return ERR_OK;
 }
 
-AppExecFwk::ElementName AbilityManagerClient::GetTopAbility(bool isNeedLocalDeviceId)
+AppExecFwk::ElementName AbilityManagerClient::GetTopAbility(bool isNeedLocalDeviceId,
+    int32_t userId)
 {
     return {};
 }
@@ -763,7 +770,7 @@ ErrCode AbilityManagerClient::AddFreeInstallObserver(const sptr<IRemoteObject> c
 }
 
 int32_t AbilityManagerClient::IsValidMissionIds(
-    const std::vector<int32_t> &missionIds, std::vector<MissionValidResult> &results)
+    const std::vector<int32_t> &missionIds, std::vector<MissionValidResult> &results, int32_t userId)
 {
     return 0;
 }
@@ -1039,7 +1046,7 @@ ErrCode AbilityManagerClient::OpenLink(const Want& want, sptr<IRemoteObject> cal
     return ERR_OK;
 }
 
-ErrCode AbilityManagerClient::TerminateMission(int32_t missionId)
+ErrCode AbilityManagerClient::TerminateMission(int32_t missionId, int32_t userId)
 {
     return ERR_OK;
 }
@@ -1074,6 +1081,17 @@ ErrCode AbilityManagerClient::StartSelfUIAbility(const Want &want)
 
 ErrCode AbilityManagerClient::StartSelfUIAbilityWithStartOptions(const Want &want,
     const StartOptions &options)
+{
+    return ERR_OK;
+}
+
+ErrCode AbilityManagerClient::StartSelfUIAbilityWithToken(const Want &want, sptr<IRemoteObject> callerToken)
+{
+    return ERR_OK;
+}
+
+ErrCode AbilityManagerClient::StartSelfUIAbilityWithStartOptionsAndToken(const Want &want,
+    const StartOptions &options, sptr<IRemoteObject> callerToken)
 {
     return ERR_OK;
 }
@@ -1116,6 +1134,38 @@ ErrCode AbilityManagerClient::QueryPreLoadUIExtensionRecord(const AppExecFwk::El
 }
 
 ErrCode AbilityManagerClient::RevokeDelegator(sptr<IRemoteObject> token)
+{
+    return ERR_OK;
+}
+
+ErrCode AbilityManagerClient::StartSelf(sptr<IRemoteObject> token)
+{
+    return ERR_OK;
+}
+
+ErrCode AbilityManagerClient::SetOnNewWantSkipScenarios(sptr<IRemoteObject> callerToken, int32_t scenarios)
+{
+    return ERR_OK;
+}
+
+ErrCode AbilityManagerClient::StartSelfUIAbilityInCurrentProcess(const Want &want,
+    const std::string &specifiedFlag, const AAFwk::StartOptions &startOptions,
+    bool hasOptions, sptr<IRemoteObject> callerToken)
+{
+    return ERR_OK;
+}
+
+ErrCode AbilityManagerClient::NotifyCancelGamePreLaunch(const sptr<IRemoteObject> callerToken)
+{
+    return ERR_OK;
+}
+
+ErrCode AbilityManagerClient::NotifyCompleteGamePreLaunch(const sptr<IRemoteObject> callerToken)
+{
+    return ERR_OK;
+}
+
+ErrCode AbilityManagerClient::NotifyCompleteGamePreLaunchByPid(int32_t pid)
 {
     return ERR_OK;
 }

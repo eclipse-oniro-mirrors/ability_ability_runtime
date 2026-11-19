@@ -38,6 +38,13 @@ struct KeepAliveAbilityInfo {
     std::string abilityName;
 };
 
+struct KeepAliveRetryContext {
+    KeepAliveAbilityInfo info;
+    uint32_t accessTokenId = -1;
+    bool isMultiInstance = false;
+    int triedCount = 0;
+};
+
 class CheckStatusBarTask {
 public:
     CheckStatusBarTask() = delete;
@@ -157,7 +164,7 @@ public:
 
     int32_t ClearKeepAliveAppServiceExtension(int32_t userId);
 
-    void SaveAppSeriviceRestartAfterUpgrade(const std::string &bundleName, int32_t uid);
+    void SaveAppServiceRestartAfterUpgrade(const std::string &bundleName, int32_t uid);
 
     void SaveKeepAliveAppRestartAfterUpgrade(const std::string &bundleName, int32_t uid);
 
@@ -182,10 +189,11 @@ private:
     bool IsRunningAppInStatusBar(const AppExecFwk::BundleInfo &bundleInfo);
     void StartKeepAliveAppServiceExtensionPerBundle(const AppExecFwk::BundleInfo &bundleInfo);
     int32_t StartKeepAliveAppServiceExtensionInner(const KeepAliveAbilityInfo &info);
+    void ScheduleRetryTask(std::shared_ptr<KeepAliveRetryContext> context);
 
     ffrt::mutex checkStatusBarTasksMutex_;
     std::vector<std::shared_ptr<CheckStatusBarTask>> checkStatusBarTasks_;
-    std::mutex restartAfterUpgradeMutex_;
+    ffrt::mutex restartAfterUpgradeMutex_;
     std::set<int32_t> restartAfterUpgradeList_;
     std::set<int32_t> keepAliveRestartAfterUpgradeList_;
 

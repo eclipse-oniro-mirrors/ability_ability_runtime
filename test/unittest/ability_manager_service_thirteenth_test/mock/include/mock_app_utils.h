@@ -133,6 +133,13 @@ public:
     bool IsStartOptionsWithAnimation();
 
     /**
+     * IsSupportBlockAllAppStart, check whether the BlockAllAppStart interceptor is supported.
+     *
+     * @return Whether the BlockAllAppStart interceptor is supported.
+     */
+    bool IsSupportBlockAllAppStart();
+
+    /**
      * IsSupportStartAbilities, check whether the StartUIAbilities API is supported.
      *
      * @return Whether the StartUIAbilities API is supported.
@@ -234,15 +241,6 @@ public:
     std::string GetCacheExtensionTypeList();
 
     /**
-     * IsAllowStartAbilityWithoutCallerToken, check if it allows start ability without caller token.
-     *
-     * @param bundleName The bundle name.
-     * @param abilityName The ability name.
-     * @return Whether it allows start ability without caller token.
-     */
-    bool IsAllowStartAbilityWithoutCallerToken(const std::string& bundleName, const std::string& abilityName);
-
-    /**
      * GetBrokerDelegateBundleName, get broker delegate bundle name.
      *
      * @return Broker delegate bundle name.
@@ -321,6 +319,10 @@ public:
 
     bool IsPreloadApplicationEnabled();
 
+    bool IsForbidStart();
+
+    bool IsSupportDelayedProcessExit();
+
 private:
     /**
      * LoadResidentProcessInExtremeMemory, load resident process in extreme low memory.
@@ -333,12 +335,6 @@ private:
      *
      */
     void LoadAllowNativeChildProcessApps();
-
-    /**
-     * LoadStartAbilityWithoutCallerToken, load start ability without caller token.
-     *
-     */
-    void LoadStartAbilityWithoutCallerToken();
 
     /**
      * IsCacheAbilityEnabled, check cache ability parameter switch.
@@ -382,6 +378,7 @@ private:
     volatile DeviceConfiguration<bool> isLimitMaximumOfRenderProcess_ = {false, true};
     volatile DeviceConfiguration<bool> isGrantPersistUriPermission_ = {false, false};
     volatile DeviceConfiguration<bool> isStartOptionsWithAnimation_ = {false, false};
+    volatile DeviceConfiguration<bool> isSupportBlockAllAppStart_ = {false, false};
     volatile DeviceConfiguration<bool> isMultiProcessModel_ = {false, false};
     volatile DeviceConfiguration<bool> isStartOptionsWithProcessOptions_ = {false, false};
     volatile DeviceConfiguration<bool> enableMoveUIAbilityToBackgroundApi_ = {false, true};
@@ -402,9 +399,6 @@ private:
         allowStartNativeProcessApps_ = {false, {}};
     volatile DeviceConfiguration<int32_t> limitMaximumExtensionsPerProc_ = {false, DEFAULT_MAX_EXT_PER_PROC};
     volatile DeviceConfiguration<int32_t> limitMaximumExtensionsPerDevice_ = {false, DEFAULT_MAX_EXT_PER_DEV};
-    DeviceConfiguration<std::vector<std::pair<std::string, std::string>>>
-        startAbilityWithoutCallerToken_ = {false, {}};
-    std::mutex startAbilityWithoutCallerTokenMutex_;
     DeviceConfiguration<std::string> brokerDelegateBundleName_ = {false, ""};
     volatile DeviceConfiguration<int32_t> collaboratorBrokerUid_ = {false, DEFAULT_INVALID_VALUE};
     volatile DeviceConfiguration<int32_t> collaboratorBrokerReserveUid_ = {false, DEFAULT_INVALID_VALUE};

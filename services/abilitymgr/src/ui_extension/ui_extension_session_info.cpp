@@ -26,9 +26,24 @@ UIExtensionSessionInfo *UIExtensionSessionInfo::Unmarshalling(Parcel &parcel)
         TAG_LOGE(AAFwkTag::ABILITYMGR, "create info failed");
         return nullptr;
     }
-    info->persistentId = parcel.ReadInt32();
-    info->hostWindowId = parcel.ReadUint32();
-    info->uiExtensionUsage = static_cast<AAFwk::UIExtensionUsage>(parcel.ReadUint32());
+    if (!parcel.ReadInt32(info->persistentId)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "read persistentId failed");
+        delete info;
+        return nullptr;
+    }
+    if (!parcel.ReadUint32(info->hostWindowId)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "read hostWindowId failed");
+        delete info;
+        return nullptr;
+    }
+    int32_t intVal = 0;
+    uint32_t uintVal = 0;
+    if (!parcel.ReadUint32(uintVal)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "read uiExtensionUsage failed");
+        delete info;
+        return nullptr;
+    }
+    info->uiExtensionUsage = static_cast<AAFwk::UIExtensionUsage>(uintVal);
     std::unique_ptr<AppExecFwk::ElementName> element(parcel.ReadParcelable<AppExecFwk::ElementName>());
     if (element == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "get element failed");
@@ -36,7 +51,12 @@ UIExtensionSessionInfo *UIExtensionSessionInfo::Unmarshalling(Parcel &parcel)
         return nullptr;
     }
     info->elementName = *element;
-    info->extensionAbilityType = static_cast<AppExecFwk::ExtensionAbilityType>(parcel.ReadInt32());
+    if (!parcel.ReadInt32(intVal)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "read extensionAbilityType failed");
+        delete info;
+        return nullptr;
+    }
+    info->extensionAbilityType = static_cast<AppExecFwk::ExtensionAbilityType>(intVal);
     std::unique_ptr<AppExecFwk::ElementName> hostElement(parcel.ReadParcelable<AppExecFwk::ElementName>());
     if (hostElement == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "get hostElement failed");
@@ -44,7 +64,11 @@ UIExtensionSessionInfo *UIExtensionSessionInfo::Unmarshalling(Parcel &parcel)
         return nullptr;
     }
     info->hostElementName = *hostElement;
-    info->isBlockSubwindow = parcel.ReadBool();
+    if (!parcel.ReadBool(info->isBlockSubwindow)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "read isBlockSubwindow failed");
+        delete info;
+        return nullptr;
+    }
     return info;
 }
 

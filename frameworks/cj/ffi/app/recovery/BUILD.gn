@@ -55,11 +55,15 @@ ohos_shared_library("cj_app_recovery_ffi") {
     "ipc:ipc_core",
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
+    "node:node_header_notice",
   ]
 
   sources = [ "cj_app_recovery.cpp" ]
 
+  version_script = "libcj_app_recovery_ffi.map"
+
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

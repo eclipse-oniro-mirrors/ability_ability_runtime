@@ -23,7 +23,8 @@ namespace AppExecFwk {
 bool ImageProcessStateData::Marshalling(Parcel &parcel) const
 {
     return (parcel.WriteInt32(imagePid) && parcel.WriteUint64(checkpointId) && parcel.WriteInt32(originalPid)
-        && parcel.WriteInt32(uid) && parcel.WriteInt32(state) && parcel.WriteString(bundleName));
+        && parcel.WriteInt32(uid) && parcel.WriteInt32(state) && parcel.WriteString(bundleName)
+        && parcel.WriteString(abilityName));
 }
 
 bool ImageProcessStateData::ReadFromParcel(Parcel &parcel)
@@ -34,6 +35,7 @@ bool ImageProcessStateData::ReadFromParcel(Parcel &parcel)
     uid = parcel.ReadInt32();
     state = parcel.ReadInt32();
     bundleName = parcel.ReadString();
+    abilityName = parcel.ReadString();
     return true;
 }
 

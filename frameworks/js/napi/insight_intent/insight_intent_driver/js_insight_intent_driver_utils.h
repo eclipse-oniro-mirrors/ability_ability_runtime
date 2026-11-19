@@ -19,6 +19,7 @@
 #include "insight_intent_execute_result.h"
 #include "insight_intent_info_for_query.h"
 #include "native_engine/native_engine.h"
+#include "nlohmann/json.hpp"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -43,6 +44,7 @@ napi_value CreateJsEntityInfo(napi_env env, const EntityInfoForQuery &info);
 napi_value CreateEntityInfoForArray(napi_env env, const std::vector<EntityInfoForQuery> &infos);
 napi_value CreateJsConfigPutParams(napi_env env, const std::vector<std::string> &inputParams);
 napi_value CreateInsightIntentConfigEntities(napi_env env, const std::string &entities);
+napi_value CreateQueryEntityResult(napi_env env, const std::vector<std::shared_ptr<AAFwk::WantParams>> &queryResults);
 } // namespace AbilityRuntime
 } // namespace OHOS
 #endif // OHOS_ABILITY_RUNTIME_JS_INSIGHT_INTENT_DRIVER_UTILS_H

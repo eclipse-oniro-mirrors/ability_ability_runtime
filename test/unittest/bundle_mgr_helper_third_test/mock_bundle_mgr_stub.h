@@ -1,0 +1,87 @@
+/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef MOCK_BUNDLE_MGR_STUB_H
+#define MOCK_BUNDLE_MGR_STUB_H
+
+#include <vector>
+#include "bundlemgr/bundle_mgr_interface.h"
+#include "iremote_stub.h"
+
+namespace OHOS {
+namespace AppExecFwk {
+
+class MockBundleMgrStub : public IRemoteStub<IBundleMgr> {
+public:
+    MockBundleMgrStub() = default;
+    ~MockBundleMgrStub() override = default;
+
+    sptr<IRemoteObject> AsObject() override
+    {
+        return this;
+    }
+
+    ErrCode QueryAbilityInfosV9(
+        const Want &want, int32_t flags, int32_t userId, std::vector<AbilityInfo> &abilityInfos) override
+    {
+        abilityInfos = mockAbilityInfos;
+        return mockQueryAbilityInfosV9Ret;
+    }
+
+    ErrCode QueryExtensionAbilityInfosV9(
+        const Want &want, int32_t flags, int32_t userId,
+        std::vector<ExtensionAbilityInfo> &extensionInfos) override
+    {
+        extensionInfos = mockExtensionInfos;
+        return mockQueryExtensionAbilityInfosV9Ret;
+    }
+
+    ErrCode IsApplicationDisableForbidden(const std::string &bundleName, int32_t userId, int32_t appIndex,
+        bool &forbidden) override
+    {
+        mockIsApplicationDisableForbiddenCall++;
+        mockBundleName = bundleName;
+        mockUserId = userId;
+        mockAppIndex = appIndex;
+        forbidden = mockForbidden;
+        return mockIsApplicationDisableForbiddenRet;
+    }
+
+    static ErrCode mockQueryAbilityInfosV9Ret;
+    static std::vector<AbilityInfo> mockAbilityInfos;
+    static ErrCode mockQueryExtensionAbilityInfosV9Ret;
+    static std::vector<ExtensionAbilityInfo> mockExtensionInfos;
+    static ErrCode mockIsApplicationDisableForbiddenRet;
+    static bool mockForbidden;
+    static int32_t mockIsApplicationDisableForbiddenCall;
+    static std::string mockBundleName;
+    static int32_t mockUserId;
+    static int32_t mockAppIndex;
+};
+
+ErrCode MockBundleMgrStub::mockQueryAbilityInfosV9Ret = ERR_OK;
+std::vector<AbilityInfo> MockBundleMgrStub::mockAbilityInfos;
+ErrCode MockBundleMgrStub::mockQueryExtensionAbilityInfosV9Ret = ERR_OK;
+std::vector<ExtensionAbilityInfo> MockBundleMgrStub::mockExtensionInfos;
+ErrCode MockBundleMgrStub::mockIsApplicationDisableForbiddenRet = ERR_OK;
+bool MockBundleMgrStub::mockForbidden = false;
+int32_t MockBundleMgrStub::mockIsApplicationDisableForbiddenCall = 0;
+std::string MockBundleMgrStub::mockBundleName;
+int32_t MockBundleMgrStub::mockUserId = 0;
+int32_t MockBundleMgrStub::mockAppIndex = 0;
+}  // namespace AppExecFwk
+}  // namespace OHOS
+
+#endif  // MOCK_BUNDLE_MGR_STUB_H

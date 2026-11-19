@@ -83,6 +83,7 @@ config("agent_ui_extension_config") {
 }
 
 ohos_shared_library("agent_ui_extension") {
+  version_script = "libagent_ui_extension.map"
   sanitize = {
       integer_overflow = true
       ubsan = true
@@ -93,6 +94,7 @@ ohos_shared_library("agent_ui_extension") {
       debug = false
   }
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   configs = [
       ":agent_ui_extension_config",
@@ -132,6 +134,7 @@ ohos_shared_library("agent_ui_extension") {
       "ipc:ipc_napi",
       "ipc:ipc_single",
       "napi:ace_napi",
+      "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {
@@ -154,6 +157,7 @@ ohos_shared_library("agent_ui_extension_module") {
       debug = false
   }
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
 
   include_dirs = [
       "include",
@@ -181,6 +185,7 @@ ohos_shared_library("agent_ui_extension_module") {
       "ipc:ipc_napi",
       "ipc:ipc_single",
       "napi:ace_napi",
+      "node:node_header_notice",
   ]
 
   if (ability_runtime_graphics) {

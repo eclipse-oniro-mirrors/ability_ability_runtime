@@ -83,9 +83,75 @@ void NapiUncaughtExceptionCallback::operator()(panda::TryCatch& trycatch)
     }
 }
 
+static bool IsCangjieError(napi_env env, napi_value obj)
+{
+    napi_value isCangjieError = nullptr;
+    auto status = napi_get_named_property(env, obj, "isCangjieErrorObject", &isCangjieError);
+    if (status != napi_ok) {
+        return false;
+    }
+    napi_valuetype type;
+    status = napi_typeof(env, isCangjieError, &type);
+    if (status != napi_ok) {
+        return false;
+    }
+    if (type != napi_boolean) {
+        return false;
+    }
+    bool result = false;
+    status = napi_get_value_bool(env, isCangjieError, &result);
+    if (status != napi_ok) {
+        return false;
+    }
+    return result;
+}
+
+static const char CJ_BACKTRACE_LIB[] = "libcj_backtrace.z.so";
+static const char CJ_HAS_BACKTRACE[] = "CJDFX_HasBacktrace";
+static const char CJ_GET_BACKTRACE[] = "CJDFX_GetHybridStack";
+
+static bool GetCangjieHybridStack(std::string& stack,
+    const std::function<bool(std::string&, int&, int&, std::string&)>& translator)
+{
+    auto handle = dlopen(CJ_BACKTRACE_LIB, RTLD_LAZY);
+    if (!handle) {
+        return false;
+    }
+    auto symbol = dlsym(handle, CJ_GET_BACKTRACE);
+    if (!symbol) {
+        dlclose(handle);
+        return false;
+    }
+    auto getHybridStack = reinterpret_cast<bool(*)(std::string*,
+        const std::function<bool(std::string&, int&, int&, std::string&)>*)>(symbol);
+    auto result = getHybridStack(&stack, &translator);
+    dlclose(handle);
+    return result;
+}
+
+static bool HasCangjieHybirdStack()
+{
+    auto handle = dlopen(CJ_BACKTRACE_LIB, RTLD_LAZY);
+    if (!handle) {
+        return false;
+    }
+    auto symbol = dlsym(handle, CJ_HAS_BACKTRACE);
+    if (!symbol) {
+        dlclose(handle);
+        return false;
+    }
+    auto hasHybirdStack = reinterpret_cast<bool (*)()>(symbol);
+    auto result = hasHybirdStack();
+    dlclose(handle);
+    return result;
+}
+
 void NapiUncaughtExceptionCallback::CallbackTask(napi_value& obj)
 {
-    HandleAndLogIfNotJsError(obj);
+    // Static objects cannot be dynamically serialized.
+    if (!isStatic_) {
+        HandleAndLogIfNotJsError(obj);
+    }
     std::string errorMsg = GetNativeStrFromJsTaggedObj(obj, "message");
     AppendExtraInfo(errorMsg);
     std::string errorName = GetNativeStrFromJsTaggedObj(obj, "name");
@@ -108,9 +174,12 @@ void NapiUncaughtExceptionCallback::CallbackTask(napi_value& obj)
         return;
     }
 
-    AppendStackTrace(errorStack, summary);
+    bool isCangjieError = IsCangjieError(env_, obj);
+
+    AppendStackTrace(errorStack, summary, isCangjieError);
     AppendAsyncStack(obj, summary);
     AppendModuleStack(obj, summary);
+    AppendSoLoadFailure(obj, summary);
 
     if (env_ != nullptr) {
         summary += DFXJSNApi::GetExtraJSCrashMessage(reinterpret_cast<NativeEngine*>(env_)->GetEcmaVm());
@@ -121,8 +190,22 @@ void NapiUncaughtExceptionCallback::CallbackTask(napi_value& obj)
     }
 }
 
-void NapiUncaughtExceptionCallback::AppendStackTrace(const std::string& errorStack, std::string& summary)
+void NapiUncaughtExceptionCallback::AppendStackTrace(const std::string& errorStack, std::string& summary,
+    bool isCangjieError)
 {
+    std::string stackTraceStr;
+    if (isCangjieError && HasCangjieHybirdStack()) {
+        summary += "Stacktrace:\n" + errorStack;
+        std::function translator = [this](std::string& url, int& line, int& column, std::string& packageName)-> bool {
+            return DFXJSNApi::SourceMapTranslateUrlPosition(url, line, column, packageName);
+        };
+        GetCangjieHybridStack(stackTraceStr, translator);
+        summary += "HybridStack:\n" + stackTraceStr;
+#ifdef SUPPORT_GRAPHICS
+        GetCurrentUIStackInfo(summary);
+#endif // SUPPORT_GRAPHICS
+        return;
+    }
     if (errorStack.find(BACKTRACE) != std::string::npos) {
         summary += "Stacktrace:\n" + GetFuncNameAndBuildId(errorStack);
 #ifdef SUPPORT_GRAPHICS
@@ -139,7 +222,7 @@ void NapiUncaughtExceptionCallback::AppendStackTrace(const std::string& errorSta
         GetCurrentUIStackInfo(summary);
 #endif // SUPPORT_GRAPHICS
         NativeEngine *engine = reinterpret_cast<NativeEngine*>(env_);
-        std::string stackTraceStr;
+
         engine->GetHybridStackTraceForCrash(env_, stackTraceStr);
         if (!stackTraceStr.empty()) {
             summary += "HybridStack:\n" + stackTraceStr;
@@ -180,6 +263,32 @@ void NapiUncaughtExceptionCallback::AppendModuleStack(const napi_value& obj, std
     }
     
     TAG_LOGD(AAFwkTag::JSENV, "AppendModuleImportStack success, moduleStack: %s", moduleStack.c_str());
+}
+
+void NapiUncaughtExceptionCallback::AppendSoLoadFailure(const napi_value& obj, std::string& summary)
+{
+    std::string soLoadFailureInfo = GetNativeStrFromJsTaggedObj(obj, "nativeModuleErrorInfo");
+    if (soLoadFailureInfo.empty()) {
+        TAG_LOGD(AAFwkTag::JSENV, "So Load Failure info is empty");
+        return;
+    }
+    
+    summary += "NativeModuleErrorInfo:\n";
+    std::istringstream iss(soLoadFailureInfo);
+    std::string line;
+    int index = 1; // The count starts from 1
+    bool isFirstLine = true;
+    while (std::getline(iss, line)) {
+        if (!line.empty()) {
+            if (isFirstLine) {
+                summary += line + "\n";
+                isFirstLine = false;
+            } else {
+                summary += "#" + std::to_string(index++) + " " + line + "\n";
+            }
+        }
+    }
+    TAG_LOGD(AAFwkTag::JSENV, "AppendSoLoadFailure success, soLoadFailureInfo: %s", soLoadFailureInfo.c_str());
 }
 
 void NapiUncaughtExceptionCallback::AppendExtraInfo(std::string& errorMsg)
@@ -230,52 +339,80 @@ void NapiUncaughtExceptionCallback::HandleAndLogIfNotJsError(napi_value obj)
     TAG_LOGE(AAFwkTag::JSENV, "Uncaught exception: %{public}s", strPtr->ToString(vm).c_str());
 }
 
+static void SkipToBacktrace(std::stringstream& ss, const std::string& nativeStack)
+{
+    // Skip header lines until the Backtrace marker is found.
+    // In NO_SOURCEMAP mode the stack has two header lines:
+    //   "Cannot get SourceMap info, dump raw stack:" and "====...Backtrace...===="
+    // In EXECUTED_SUCCESSFULLY mode TranslateBySourceMap may return only one header line:
+    //   "====...Backtrace...===="
+    // Unconditionally skipping two lines loses the first frame in the latter case.
+    bool foundBacktrace = false;
+    std::string tempStr;
+    while (std::getline(ss, tempStr)) {
+        if (tempStr.find(BACKTRACE) != std::string::npos) {
+            foundBacktrace = true;
+            break;
+        }
+    }
+    if (!foundBacktrace) {
+        // The Backtrace marker is absent. Do not silently consume the whole
+        // stream (which would drop every frame); rewind and parse all lines
+        // as raw stack frames instead.
+        ss.clear();
+        ss.str(nativeStack);
+    }
+}
+
+static bool ProcessStackFrame(const std::string& tempStr, std::string& appendInfo)
+{
+    auto splitPos = tempStr.rfind(" ");
+    if (splitPos == std::string::npos) {
+        return false;
+    }
+    HiviewDFX::RegularElfFactory elfFactory(tempStr.substr(splitPos + 1));
+    auto elfFile = elfFactory.Create();
+    size_t pcPos = tempStr.find(" pc ");
+    if (pcPos == std::string::npos) {
+        return false;
+    }
+    std::string pc = tempStr.substr(pcPos += FLAG_PC_POS, FLAG_SPLIT_POS);
+    uint64_t value;
+    auto res = std::from_chars(pc.data(), pc.data() + pc.size(), value, FLAG_SPLIT_POS);
+    if (res.ec != std::errc()) {
+        return false;
+    }
+    std::string funcName;
+    uint64_t funcOffset;
+    HiviewDFX::DfxSymbols::GetFuncNameAndOffsetByPc(value, elfFile, funcName, funcOffset);
+    std::string buildId = elfFile->GetBuildId();
+    if (!funcName.empty()) {
+        appendInfo += tempStr + "(" + funcName;
+        appendInfo += HiviewDFX::StringPrintf("+%" PRId64, funcOffset) + ")";
+        if (!buildId.empty()) {
+            appendInfo += "(" + buildId + ")" + "\n";
+        } else {
+            appendInfo += "\n";
+        }
+    } else if (!buildId.empty()) {
+        appendInfo += tempStr + "(" + buildId + ")" + "\n";
+    } else {
+        appendInfo += tempStr + "\n";
+    }
+    return true;
+}
+
 std::string NapiUncaughtExceptionCallback::GetFuncNameAndBuildId(std::string nativeStack)
 {
     std::stringstream ss(nativeStack);
     std::string tempStr;
     std::string appendInfo;
-    // Filter two lines
-    std::getline(ss, tempStr); // Cannot get SourceMap info, dump raw stack:
-    std::getline(ss, tempStr); // =====================Backtrace========================
+    SkipToBacktrace(ss, nativeStack);
     HiviewDFX::UnwinderConfig::SetEnableMiniDebugInfo(true);
     HiviewDFX::UnwinderConfig::SetEnableLoadSymbolLazily(true);
     while (std::getline(ss, tempStr)) {
-        auto splitPos = tempStr.rfind(" ");
-        if (splitPos == std::string::npos) {
+        if (!ProcessStackFrame(tempStr, appendInfo)) {
             return nativeStack;
-        }
-        HiviewDFX::RegularElfFactory elfFactory(tempStr.substr(splitPos + 1));
-        auto elfFile = elfFactory.Create();
-        std::string pc;
-        size_t pcPos = tempStr.find(" pc ");
-        if (pcPos == std::string::npos) {
-            return nativeStack;
-        }
-        pc = tempStr.substr(pcPos += FLAG_PC_POS, FLAG_SPLIT_POS);
-        uint64_t value;
-        auto res = std::from_chars(pc.data(), pc.data() + pc.size(), value, FLAG_SPLIT_POS);
-        if (res.ec != std::errc()) {
-            return nativeStack;
-        }
-        std::string funcName;
-        uint64_t funcOffset;
-        HiviewDFX::DfxSymbols::GetFuncNameAndOffsetByPc(value, elfFile, funcName, funcOffset);
-        std::string buildId = elfFile->GetBuildId();
-        if (!funcName.empty()) {
-            appendInfo += tempStr + "(" + funcName;
-            appendInfo += HiviewDFX::StringPrintf("+%" PRId64, funcOffset) + ")";
-            if (!buildId.empty()) {
-                appendInfo += "(" + buildId + ")" + "\n";
-            } else {
-                appendInfo += "\n";
-            }
-        } else {
-            if (!buildId.empty()) {
-                appendInfo += tempStr + "(" + buildId + ")" + "\n";
-            } else {
-                appendInfo += tempStr + "\n";
-            }
         }
     }
     return appendInfo;

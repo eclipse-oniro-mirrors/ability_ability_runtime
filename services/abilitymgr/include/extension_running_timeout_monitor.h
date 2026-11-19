@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_EXTENSION_RUNNING_TIMEOUT_MONITOR_H
 #define OHOS_ABILITY_RUNTIME_EXTENSION_RUNNING_TIMEOUT_MONITOR_H
 
+#include <atomic>
 #include <list>
 #include <mutex>
 #include <string>
@@ -86,6 +87,7 @@ private:
     std::mutex monitorMutex_;
     std::unordered_map<int32_t, ExtensionStartInfo> runningExtensions_;
     std::list<ExtensionTimeoutEvent> cachedEvents_;
+    std::atomic<bool> isMonitoring_{false};
 
     static constexpr int32_t HISEVENT_PARAM_COUNT = 7;
     static constexpr int32_t MAX_CACHED_EVENTS = 5;

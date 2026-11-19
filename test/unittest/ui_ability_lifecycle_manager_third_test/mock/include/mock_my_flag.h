@@ -21,6 +21,7 @@ namespace AAFwk {
 class MyFlag {
 public:
     static int flag_;
+    static int ffrtSubmitFlag_;
 };
 } // namespace AAFwk
 } // namespace OHOS

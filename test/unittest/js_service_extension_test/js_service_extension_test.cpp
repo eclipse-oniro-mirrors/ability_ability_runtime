@@ -333,5 +333,53 @@ HWTEST_F(JsServiceExtensionTest, HandleInsightIntent_0100, TestSize.Level1)
     auto ret = jsServiceExtension_->HandleInsightIntent(want);
     EXPECT_TRUE(ret);
 }
+
+/**
+ * @tc.name: GetSrcPath_0100
+ * @tc.desc: Js service extension GetSrcPath with normal srcEntrance that has file extension.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsServiceExtensionTest, GetSrcPath_0100, TestSize.Level1)
+{
+    ASSERT_NE(jsServiceExtension_, nullptr);
+    jsServiceExtension_->abilityInfo_->isModuleJson = true;
+    jsServiceExtension_->abilityInfo_->moduleName = "entry";
+    jsServiceExtension_->abilityInfo_->srcEntrance = "ets/pages/Index.ts";
+    std::string srcPath;
+    jsServiceExtension_->GetSrcPath(srcPath);
+    EXPECT_EQ(srcPath, "entry/ets/pages/Index.abc");
+}
+
+/**
+ * @tc.name: GetSrcPath_0200
+ * @tc.desc: Js service extension GetSrcPath where folder name contains dot but filename has no extension.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsServiceExtensionTest, GetSrcPath_0200, TestSize.Level1)
+{
+    ASSERT_NE(jsServiceExtension_, nullptr);
+    jsServiceExtension_->abilityInfo_->isModuleJson = true;
+    jsServiceExtension_->abilityInfo_->moduleName = "entry";
+    jsServiceExtension_->abilityInfo_->srcEntrance = "v1.0/pages/Index";
+    std::string srcPath;
+    jsServiceExtension_->GetSrcPath(srcPath);
+    EXPECT_EQ(srcPath, "entry/v1.0/pages/Index.abc");
+}
+
+/**
+ * @tc.name: GetSrcPath_0300
+ * @tc.desc: Js service extension GetSrcPath where path has no dot, should not erase and not go out of bounds.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsServiceExtensionTest, GetSrcPath_0300, TestSize.Level1)
+{
+    ASSERT_NE(jsServiceExtension_, nullptr);
+    jsServiceExtension_->abilityInfo_->isModuleJson = true;
+    jsServiceExtension_->abilityInfo_->moduleName = "entry";
+    jsServiceExtension_->abilityInfo_->srcEntrance = "ets/pages/Index";
+    std::string srcPath;
+    jsServiceExtension_->GetSrcPath(srcPath);
+    EXPECT_EQ(srcPath, "entry/ets/pages/Index.abc");
+}
 } // namespace AbilityRuntime
 } // namespace OHOS

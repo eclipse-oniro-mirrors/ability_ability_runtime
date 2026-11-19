@@ -66,7 +66,6 @@ HWTEST_F(AbilityConnectionTest, OnAbilityConnectDone_001, TestSize.Level1)
     int resultCode = 0;
     instance->OnAbilityConnectDone(element, remoteObject, resultCode);
     EXPECT_EQ(instance->remoteObject_, nullptr);
-    EXPECT_LOG_EQ(LOG_WARN, AAFwkTag::CONNECTION, "ability_connection.cpp", 37);
 }
 
 /**
@@ -108,7 +107,6 @@ HWTEST_F(AbilityConnectionTest, OnAbilityConnectDone_003, TestSize.Level1)
     OH_EXPECT_RET({true}, ConnectionManager, DisconnectNonexistentService, const AppExecFwk::ElementName&,
         const sptr<AbilityConnection>);
     instance->OnAbilityConnectDone(element, remoteObject, resultCode);
-    EXPECT_LOG_EQ(LOG_WARN, AAFwkTag::CONNECTION, "ability_connection.cpp", 50);
 }
 
 /**
@@ -194,7 +192,6 @@ HWTEST_F(AbilityConnectionTest, OnAbilityDisconnectDone_003, TestSize.Level1)
     OH_EXPECT_RET({true}, ConnectionManager, RemoveConnection, const sptr<AbilityConnection>);
     instance->OnAbilityDisconnectDone(element, resultCode);
     EXPECT_EQ(instance->connectionState_, AbilityRuntime::CONNECTION_STATE_DISCONNECTED);
-    EXPECT_LOG_EQ(LOG_INFO, AAFwkTag::CONNECTION, "ability_connection.cpp", 83);
     EXPECT_EQ(instance->remoteObject_, nullptr);
 }
 

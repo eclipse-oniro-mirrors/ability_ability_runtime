@@ -23,6 +23,7 @@ constexpr const char* IS_CALL_BY_SCB = "isCallBySCB";
 constexpr int32_t SCENARIO_MOVE_MISSION_TO_FRONT = 0x00000001;
 constexpr int32_t SCENARIO_SHOW_ABILITY = 0x00000002;
 constexpr int32_t SCENARIO_BACK_TO_CALLER_ABILITY_WITH_RESULT = 0x00000004;
+constexpr int32_t SCENARIO_BACK_TO_CALLER_APP_WITH_RESULT = 0x00000008;
 constexpr uint64_t DEFAULT_DISPLAY_ID = 0;
 }  // namespace ServerConstant
 }  // namespace OHOS::AbilityRuntime

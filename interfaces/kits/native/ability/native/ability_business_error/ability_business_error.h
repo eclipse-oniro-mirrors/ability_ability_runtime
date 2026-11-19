@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -89,6 +89,9 @@ enum class AbilityErrorCode {
     
     // the context is not ability context.
     ERR_ABILITY_RUNTIME_EXTERNAL_NOT_ABILITY_CONTEXT = 16000020,
+
+    // the module name does not exist.
+    ERROR_CODE_INVALID_MODULENAME = 16000021,
 
     // free install network abnormal.
     ERROR_CODE_NETWORK_ABNORMAL = 16000051,
@@ -209,6 +212,24 @@ enum class AbilityErrorCode {
     // the target has not been started yet.
     ERROR_CODE_TARGET_NOT_STARTED = 16000201,
 
+    // the specified launch service does not exist.
+    ERROR_CODE_LAUNCH_SERVICE_NOT_FOUND = 16000211,
+
+    // the launch service is already registered.
+    ERROR_CODE_LAUNCH_SERVICE_ALREADY_REGISTERED = 16000212,
+
+    // the launch service is disabled.
+    ERROR_CODE_LAUNCH_SERVICE_DISABLED = 16000213,
+
+    // the launch service is not running.
+    ERROR_CODE_LAUNCH_SERVICE_NOT_RUNNING = 16000214,
+
+    // The approval request for the launch service was rejected.
+    ERROR_CODE_LAUNCH_SERVICE_APPROVAL_REJECTED = 16000215,
+
+    // The specified ID is invalid.
+    ERROR_CODE_LAUNCH_SERVICE_INVALID_ID = 16000216,
+
     // The context is not UIAbilityContext.
     ERROR_CODE_NOT_UI_ABILITY_CONTEXT = 16000086,
 
@@ -218,17 +239,20 @@ enum class AbilityErrorCode {
     // The specified agentId does not exist.
     ERROR_CODE_AGENT_ID_NOT_EXIST = 35600001,
 
+    // The number of AgentCards in the bundle reaches the limit.
+    ERROR_CODE_AGENT_CARD_LIST_OUT_OF_RANGE = 35600008,
+
     // Maximum connections from the same caller have been reached. Please disconnect at least one agent extension
     // beforehand.
     ERROR_CODE_MAX_CONNECTIONS_REACHED = 35600003,
 
-    // The specified agent card version is older than the current version.
+    // The specified AgentCard version is older than the current version.
     ERROR_CODE_AGENT_CARD_VERSION_TOO_OLD = 35600004,
 
-    // The specified agent card version is invalid.
+    // The specified AgentCard version is invalid.
     ERROR_CODE_AGENT_CARD_VERSION_INVALID = 35600005,
 
-    // The specified agent card has already been registered. Use updateAgentCard instead.
+    // The specified AgentCard has already been registered. Use updateAgentCard instead.
     ERROR_CODE_AGENT_CARD_DUPLICATE_REGISTER = 35600006,
 
     // The specified LOW_CODE agent is already active and is not yet completed.
@@ -239,6 +263,9 @@ enum class AbilityErrorCode {
 
     // The caller is not main thread
     ERROR_CODE_MAIN_THREAD = 16000205,
+
+    // The target application is not authorized for startup before the first unlock.
+    ERROR_CODE_APP_NOT_AUTHORIZED_FOR_DIRECT_BOOT = 16000207,
 
     // Setting permissions for resident processes
     ERROR_CODE_NO_RESIDENT_PERMISSION = 16200006,
@@ -275,6 +302,9 @@ enum class AbilityErrorCode {
 
     // can not change keep alive status
     ERROR_CODE_CHANGE_KEEP_ALIVE = 16000203,
+
+    // The target process is protected by an MDM application and cannot be terminated.
+    ERROR_CODE_KILL_PROCESS_KEEP_ALIVE = 16000210,
 
     ERROR_CODE_KIOSK_MODE_NOT_IN_WHITELIST = 16000110,
 
@@ -316,17 +346,106 @@ enum class AbilityErrorCode {
 
     ERROR_CODE_SELF_REDIRECTION_DISALLOWED = 16000136,
 
+    ERROR_CODE_INTENT_CONNECTION_FAILED = 16000137,
+
+    ERROR_CODE_INTENT_DEVICE_DISCONNECTED = 16000138,
+
     ERROR_CODE_SEND_REQUEST_TO_SYSTEM_FAIL = 16000150,
+
+    ERROR_CODE_DELAYED_PROCESS_EXIT_NO_UIABILITY = 16000151,
+
+    ERROR_CODE_DELAYED_PROCESS_EXIT_NOT_PENDING = 16000161,
+
+    ERROR_CODE_DELAYED_PROCESS_EXIT_HAS_OTHER_UIABILITY = 16000162,
+
+    // File type error. File name does not end with .so, .hap, or .hsp.
+    ERROR_CODE_FILE_TYPE_ERROR = 16000163,
+
+    // Failed to parse configuration file.
+    ERROR_CODE_EVICT_CONFIG_PARSE_ERROR = 16000164,
+
+    // The number of registered focused application observers for the current application has reached the upper limit.
+    ERROR_CODE_REGISTERED_FOCUS_OBSERVER_EXCEED_LIMIT = 16000165,
 
     // target bundle is not in u1
     ERROR_CODE_NO_U1 = 16000204,
 
+    // agent task manager: the task already exists.
+    ERROR_CODE_TASK_ALREADY_EXISTS = 16000301,
+
+    // agent task manager: the task does not exist.
+    ERROR_CODE_TASK_NOT_FOUND = 16000302,
+
     ERROR_CODE_BUNDLE_NAME_INVALID = 18500001,
+};
+
+enum class AbilityInnerErrorMsg {
+    SERVICE_UNAVAILABLE,
+    OPERATION_FAILED,
+    MEMORY_ALLOC_FAILED,
+    RESTORE_WINDOW_STAGE_FAILED,
+    WRAP_ABILITY_RESULT_FAILED,
+    INVALID_RET_CODE,
+    CREATE_CALLBACK_FAILED,
+    CALLBACK_NOT_REGISTERED,
+    START_CHILD_PROCESS_FAILED,
+    QUERY_ATOMIC_SERVICE_STARTUP_RULE_FAILED,
+    RESTART_SELF_ATOMIC_SERVICE_FAILED,
+    CONNECT_AGENT_EXTENSION_FAILED,
+    AGENT_EXTENSION_CONNECTION_ENDED,
+    TRANSFER_EXTENSION_DATA_FAILED,
+    UI_WINDOW_NULL,
+    RELOAD_IN_MODAL_RESULT_NULL,
+    OBSERVER_CREATE_FAILED,
+    OBSERVER_NOT_EXIST,
+    REGISTER_OBSERVER_FAILED,
+    UNREGISTER_OBSERVER_FAILED,
+    RESTART_APP_FAILED,
+    CREATE_PROCESS_INFO_ARRAY_FAILED,
+    GET_PROCESS_INFO_FAILED,
+    SET_PROCESS_CACHE_FAILED,
+    UI_ABILITY_OBJ_NULL,
+    QUERY_KEEP_ALIVE_BUNDLES_FAILED,
+    TERMINATE_MISSION_FAILED,
+    SET_KEEP_ALIVE_FAILED,
+    GRANT_URI_PERMISSION_FAILED,
+    GRANT_URI_PERMISSION_BY_KEY_FAILED,
+    GRANT_URI_PERMISSION_AS_CALLER_FAILED,
+    REVOKE_URI_PERMISSION_FAILED,
+    GET_ABILITY_RUNNING_INFOS_FAILED,
+    GET_TOP_ABILITY_FAILED,
+    ACQUIRE_SHARE_DATA_FAILED,
+    GET_DIALOG_SESSION_INFO_FAILED,
+    SEND_DIALOG_RESULT_FAILED,
+    CONNECTION_NOT_FOUND,
+    SEND_DATA_FAILED,
+    LOAD_CONTENT_FAILED,
+    SET_WINDOW_BACKGROUND_COLOR_FAILED,
+    SET_WINDOW_PRIVACY_MODE_FAILED,
+    CREATE_MODAL_UI_EXTENSION_FAILED,
+    TRANSFER_ABILITY_RESULT_FAILED,
+    INVALID_SESSION,
+    UI_SERVICE_PROXY_NOT_FOUND,
+};
+
+enum class AgentManagerErrorOperation {
+    READ_AGENT_CARDS,
+    REGISTER_AGENT_CARD,
+    UPDATE_AGENT_CARD,
+    DELETE_AGENT_CARD,
+    CONNECT_AGENT_EXTENSION,
+    DISCONNECT_AGENT_EXTENSION,
+    DISCONNECT_SERVICE_EXTENSION,
+    COMPLETE_LOW_CODE_AGENT,
 };
 
 std::string GetErrorMsg(const AbilityErrorCode& errCode);
 std::string GetNoPermissionErrorMsg(const std::string& permission);
 AbilityErrorCode GetJsErrorCodeByNativeError(int32_t errCode);
+std::string GetInnerErrorMsg(AbilityInnerErrorMsg innerErrMsg);
+std::string GetErrorMsgByNativeError(int32_t errCode, const std::string& innerErrMsg = "",
+    const std::string& permission = "");
+std::string GetAgentManagerErrorMsg(int32_t errCode, AgentManagerErrorOperation operation);
 }  // namespace AbilityRuntime
 }  // namespace OHOS
 #endif

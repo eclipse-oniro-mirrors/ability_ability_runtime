@@ -40,6 +40,8 @@ constexpr const char *KEEP_ALIVE_BUNDLE_INFO_INNER_CLASS_NAME =
     "@ohos.app.ability.appManager.appManager.KeepAliveBundleInfoInner";
 constexpr const char *ABILITY_FIRST_FRAME_STATE_DATA_CLASS_NAME =
     "application.AbilityFirstFrameStateData.AbilityFirstFrameStateDataInner";
+constexpr const char *FOCUSED_APPLICATION_INFO_CLASS_NAME =
+    "application.FocusedApplicationInfo.FocusedApplicationInfoInner";
 }  // namespace
 
 ani_object WrapAppStateData(ani_env *env, const AppExecFwk::AppStateData &appStateData)
@@ -899,11 +901,11 @@ ani_object CreateKeepAliveInfoArray(ani_env *env, const std::vector<AbilityRunti
         return nullptr;
     }
 
-    ani_object arrayObj;
+    ani_object arrayObj = nullptr;
     status = env->Object_New(arrayCls, arrayCtor, &arrayObj, infos.size());
     if (status != ANI_OK) {
         TAG_LOGE(AAFwkTag::APPMGR, "Object_New array status : %{public}d", status);
-        return arrayObj;
+        return nullptr;
     }
     ani_size index = 0;
     for (auto &info : infos) {
@@ -1000,6 +1002,52 @@ ani_object WrapAbilityFirstFrameStateData(ani_env *env,
     return object;
 }
 #endif
+
+ani_object WrapFocusedApplicationInfo(ani_env *env,
+    const AppExecFwk::FocusedApplicationInfo &focusedApplicationInfo)
+{
+    ani_class cls = nullptr;
+    ani_status status = ANI_ERROR;
+    ani_method method = nullptr;
+    ani_object object = nullptr;
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null env");
+        return nullptr;
+    }
+    if ((status = env->FindClass(FOCUSED_APPLICATION_INFO_CLASS_NAME, &cls)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "status : %{public}d", status);
+        return nullptr;
+    }
+    if (cls == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null cls");
+        return nullptr;
+    }
+    if ((status = env->Class_FindMethod(cls, "<ctor>", ":", &method)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "status : %{public}d", status);
+        return nullptr;
+    }
+    if ((status = env->Object_New(cls, method, &object)) != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "status : %{public}d", status);
+        return nullptr;
+    }
+    if (object == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null object");
+        return nullptr;
+    }
+    status = env->Object_SetFieldByName_Int(object, "focusedUid", focusedApplicationInfo.focusedUid);
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "SetField focusedUid failed: %{public}d", status);
+        return nullptr;
+    }
+    status = env->Object_SetFieldByName_Ref(
+        object, "focusedBundleName",
+        OHOS::AppExecFwk::GetAniString(env, focusedApplicationInfo.focusedBundleName));
+    if (status != ANI_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "SetField focusedBundleName failed: %{public}d", status);
+        return nullptr;
+    }
+    return object;
+}
 
 bool AttachAniEnv(ani_vm *etsVm, ani_env *&env)
 {

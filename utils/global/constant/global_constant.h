@@ -19,6 +19,36 @@
 namespace OHOS::AbilityRuntime {
 namespace GlobalConstant {
 constexpr int32_t MAX_APP_CLONE_INDEX = 1000;
+constexpr int32_t MIN_SANDBOX_CLONE_INDEX = 2000;
+constexpr int32_t MAX_SANDBOX_CLONE_INDEX = 3000;
+
+constexpr int32_t PC_TABLET_INDEX = 10000;
+constexpr int32_t MIN_PC_TABLET_CLONE_INDEX = 10001;
+constexpr int32_t MAX_PC_TABLET_CLONE_INDEX = 11000;
+constexpr int32_t MIN_PC_TABLET_DLP_INDEX = 11001;
+constexpr int32_t MAX_PC_TABLET_DLP_INDEX = 11999;
+constexpr int32_t MIN_PC_TABLET_AI_AGENT_INDEX = 12000;
+constexpr int32_t MAX_PC_TABLET_AI_AGENT_INDEX = 13000;
+
+// Helper functions to determine index type
+constexpr bool IsAppCloneIndex(int32_t index)
+{
+    return (index > 0 && index <= MAX_APP_CLONE_INDEX) ||
+           (index > PC_TABLET_INDEX && index <= MAX_PC_TABLET_CLONE_INDEX);
+}
+
+constexpr bool IsSandboxCloneIndex(int32_t index)
+{
+    return (index >= MIN_SANDBOX_CLONE_INDEX && index <= MAX_SANDBOX_CLONE_INDEX) ||
+           (index >= MIN_PC_TABLET_AI_AGENT_INDEX && index <= MAX_PC_TABLET_AI_AGENT_INDEX);
+}
+
+constexpr bool IsDlpIndex(int32_t index)
+{
+    // DLP indices are those that are neither AppClone nor SandboxClone
+    // AppClone: [0~1000], SandboxClone: [2000~3000], DLP: other non-negative ranges.
+    return index > 0 && index != PC_TABLET_INDEX && !IsAppCloneIndex(index) && !IsSandboxCloneIndex(index);
+}
 
 constexpr int32_t TIMEOUT_UNIT_TIME = 1000;
 constexpr int32_t TIMEOUT_UNIT_TIME_MICRO = 1000 * 1000;
@@ -30,11 +60,13 @@ constexpr const char* LOW_MEMORY_KILL = "LowMemoryKill";
 constexpr const char* PAGE_CONFIG = "ohos.abilityRuntime.pageConfig";
 constexpr const char* GAME_PRELAUNCH = "ohos.params.gamePrelaunch";
 constexpr int32_t GAME_SA_UID = 7800;
+constexpr int32_t FOUNDATION_UID = 5523;
 
 #ifdef SUPPORT_ASAN
 constexpr int32_t COLDSTART_TIMEOUT_MULTIPLE = 15000;
 constexpr int32_t LOAD_TIMEOUT_MULTIPLE = 15000;
 constexpr int32_t FOREGROUND_TIMEOUT_MULTIPLE = 7500;
+constexpr int32_t FOREGROUND_TIMEOUT_MULTIPLE_BETA = 7500;
 constexpr int32_t BACKGROUND_TIMEOUT_MULTIPLE = 4500;
 constexpr int32_t INSIGHT_INTENT_TIMEOUT_MULTIPLE = 15000;
 constexpr int32_t ACTIVE_TIMEOUT_MULTIPLE = 7500;
@@ -43,11 +75,13 @@ constexpr int32_t INACTIVE_TIMEOUT_MULTIPLE = 800;
 constexpr int32_t INACTIVE_TIMEOUT_MULTIPLE_NEW = 800;
 constexpr int32_t DUMP_TIMEOUT_MULTIPLE = 1500;
 constexpr int32_t SHAREDATA_TIMEOUT_MULTIPLE = 7500;
+constexpr int32_t SKILL_EXECUTE_TIMEOUT_MULTIPLE = 15000;
 constexpr int32_t CONCURRENT_START_TIMEOUT = 10;
 #else
 constexpr int32_t COLDSTART_TIMEOUT_MULTIPLE = 10;
 constexpr int32_t LOAD_TIMEOUT_MULTIPLE = 10;
 constexpr int32_t FOREGROUND_TIMEOUT_MULTIPLE = 5;
+constexpr int32_t FOREGROUND_TIMEOUT_MULTIPLE_BETA = 10;
 constexpr int32_t BACKGROUND_TIMEOUT_MULTIPLE = 3;
 constexpr int32_t INSIGHT_INTENT_TIMEOUT_MULTIPLE = 10;
 constexpr int32_t ACTIVE_TIMEOUT_MULTIPLE = 5;
@@ -56,12 +90,17 @@ constexpr int32_t INACTIVE_TIMEOUT_MULTIPLE = 1;
 constexpr int32_t INACTIVE_TIMEOUT_MULTIPLE_NEW = 21;
 constexpr int32_t DUMP_TIMEOUT_MULTIPLE = 1000;
 constexpr int32_t SHAREDATA_TIMEOUT_MULTIPLE = 5;
+constexpr int32_t SKILL_EXECUTE_TIMEOUT_MULTIPLE = 10;
 constexpr int32_t CONCURRENT_START_TIMEOUT = 1;
 constexpr int32_t TYPE_RESERVE = 1;
 constexpr int32_t TYPE_OTHERS = 2;
 #endif
 
 constexpr int32_t MIGRATE_CLIENT_TIMEOUT_MULTIPLE = 3;
+
+// Sandbox clone related parameter
+constexpr const char* SANDBOX_CLONE_INDEX = "ohos.ability.cli.sandBoxCloneIndex";
+constexpr const char* CREATOR_BUNDLE_NAME = "ohos.ability.cli.creatorBundleName";
 
 constexpr int32_t GetLoadTimeOutBase()
 {

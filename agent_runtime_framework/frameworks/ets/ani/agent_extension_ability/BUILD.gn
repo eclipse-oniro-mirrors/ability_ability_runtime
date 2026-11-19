@@ -15,6 +15,7 @@ import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 ohos_shared_library("ets_agent_connection") {
+  version_script = "libets_agent_connection.map"
   branch_protector_ret = "pac_ret"
   sanitize = {
     integer_overflow = true
@@ -35,6 +36,7 @@ ohos_shared_library("ets_agent_connection") {
     "${ability_runtime_path}/frameworks/ets/ani/ani_common/include",
     "${ability_runtime_services_path}/common/include",
     "${agent_runtime_framework_path}/frameworks/native/agent_extension/include",
+    "${agent_runtime_framework_path}/interfaces/inner_api/include",
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
   ]
 
@@ -56,6 +58,7 @@ ohos_shared_library("ets_agent_connection") {
     "${ability_runtime_native_path}/ability/native:ability_business_error",
     "${ability_runtime_native_path}/ability/native:abilitykit_native",
     "${ability_runtime_path}/frameworks/ets/ani/ani_common:ani_common",
+    "${agent_runtime_framework_path}/interfaces/inner_api:agent_fwk",
     "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection:agent_extension_connection",
   ]
 
@@ -76,6 +79,7 @@ ohos_shared_library("ets_agent_connection") {
 }
 
 ohos_shared_library("ets_agent_extension") {
+  version_script = "libets_agent_extension.map"
   sanitize = {
     integer_overflow = true
     ubsan = true
@@ -101,6 +105,10 @@ ohos_shared_library("ets_agent_extension") {
   ]
 
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
+
+  if (ability_runtime_graphics) {
+    defines = [ "SUPPORT_GRAPHICS" ]
+  }
 
   public_configs = []
 
@@ -145,9 +153,18 @@ ohos_shared_library("ets_agent_extension") {
     "hilog:libhilog",
     "ipc:ipc_core",
     "ipc:ipc_napi",
+    "node:node_header_notice",
     "runtime_core:ani",
     "samgr:samgr_proxy",
   ]
+
+  if (ability_runtime_graphics) {
+    external_deps += [
+      "window_manager:libdm",
+      "window_manager:libwm",
+      "window_manager:libwsutils",
+    ]
+  }
 
   subsystem_name = "ability"
   part_name = "ability_runtime"

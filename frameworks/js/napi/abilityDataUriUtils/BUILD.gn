@@ -35,6 +35,8 @@ gen_js_obj("ability_data_uri_utils_abc") {
 }
 
 ohos_shared_library("datauriutils") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "ability_data_uri_utils_module.cpp" ]
 
   deps = [
@@ -42,9 +44,14 @@ ohos_shared_library("datauriutils") {
     ":ability_data_uri_utils_js",
   ]
 
-  external_deps = [ "napi:ace_napi" ]
+  external_deps = [
+    "libuv:uv",
+    "napi:ace_napi",
+    "node:node_header_notice",
+  ]
 
   relative_install_dir = "module/app/ability"
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

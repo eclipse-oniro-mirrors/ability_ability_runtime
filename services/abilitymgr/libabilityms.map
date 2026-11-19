@@ -22,7 +22,6 @@
       *AbilityEventUtil*;
       *AbilityFirstFrameStateObserverManager*;
       *AbilityInterceptorExecuter*;
-      *AbilityJumpInterceptor*;
       *AbilityManagerProxy*;
       *AbilityManagerService*;
       *AbilityManagerStub*;
@@ -34,12 +33,14 @@
       *AbilitySchedulerStub*;
       *AbilityStartWithWaitObserverManager*;
       *AmsConfigurationParameter*;
+      *AMSWantParamFilter*;
       *AppExitReasonDataManager*;
       *AppExitReasonHelper*;
       *ApplicationAnrListener*;
       *AppMgrUtil*;
       *AppScheduler*;
       *AtomicServiceStatusCallback*;
+      *RemoteIntentResultCallback*;
       *BackgroundTaskObserver*;
       *MainElementUtils*;
       *CallContainer*;
@@ -108,7 +109,6 @@
       *WantReceiverStub*;
       *WantReceiverProxy*;
       *WantSenderProxy*;
-      *WantSenderStub*;
       *WantUtils*;
       *WindowOptionsUtils*;
     };

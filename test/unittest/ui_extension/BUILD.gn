@@ -19,5 +19,6 @@ group("unittest") {
     "extension_record_manager_test:unittest",
     "ui_extension_get_host_info_test:unittest",
     "ui_extension_session_info_test:unittest",
+    "ui_extension_test:unittest",
   ]
 }

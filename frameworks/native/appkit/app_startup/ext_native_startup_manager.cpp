@@ -28,11 +28,11 @@ namespace OHOS {
 namespace AbilityRuntime {
 namespace {
 #ifdef APP_USE_ARM64
-constexpr char NATIVE_STARTUP_TASK_DIR[] = "system/lib64/nativestartuptask";
+constexpr char NATIVE_STARTUP_TASK_DIR[] = "/system/lib64/nativestartuptask";
 #elif defined(APP_USE_X86_64)
-constexpr char NATIVE_STARTUP_TASK_DIR[] = "system/lib64/nativestartuptask";
+constexpr char NATIVE_STARTUP_TASK_DIR[] = "/system/lib64/nativestartuptask";
 #else
-constexpr char NATIVE_STARTUP_TASK_DIR[] = "system/lib/nativestartuptask";
+constexpr char NATIVE_STARTUP_TASK_DIR[] = "/system/lib/nativestartuptask";
 #endif
 constexpr char PATH_SEPARATOR[] = "/";
 constexpr char LIB_TYPE[] = ".so";
@@ -230,6 +230,21 @@ int32_t ExtNativeStartupManager::RegisterExtStartupTask(
     }
     std::lock_guard guard(mutex_);
     extNativeStartupTasks_[phase].push_back(extNativeStartupTask);
+    if (phaseFlag_ >= phase) {
+        TAG_LOGD(AAFwkTag::STARTUP, "delayed run task:%{public}s", extNativeStartupTask->GetName().c_str());
+        std::map<std::string, std::shared_ptr<StartupTask>> nativeStartupTasks;
+        std::shared_ptr<StartupTask> startupTask;
+        int32_t res = BuildExtStartupTask(extNativeStartupTask, startupTask);
+        if (res != ERR_OK || startupTask == nullptr) {
+            TAG_LOGE(AAFwkTag::STARTUP, "failed to build task: %{public}d", res);
+            return ERR_STARTUP_INTERNAL_ERROR;
+        }
+        nativeStartupTasks.emplace(startupTask->GetName(), startupTask);
+        auto runTaskInitCallback = [nativeStartupTasks]() {
+            RunNativeStartupTask(nativeStartupTasks);
+        };
+        ffrt::submit(runTaskInitCallback);
+    }
     return ERR_OK;
 }
 
@@ -237,6 +252,7 @@ int32_t ExtNativeStartupManager::RunPhaseTasks(const SchedulerPhase phase)
 {
     TAG_LOGD(AAFwkTag::STARTUP, "call");
     std::lock_guard guard(mutex_);
+    phaseFlag_ = phase;
     auto findRes = extNativeStartupTasks_.find(phase);
     if (findRes == extNativeStartupTasks_.end()) {
         TAG_LOGD(AAFwkTag::STARTUP, "no phase task");

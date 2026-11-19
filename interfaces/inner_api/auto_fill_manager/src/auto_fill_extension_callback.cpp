@@ -25,8 +25,8 @@
 namespace OHOS {
 namespace AbilityRuntime {
 namespace {
-#ifdef SUPPORT_GRAPHICS
 constexpr const char* WANT_PARAMS_VIEW_DATA_KEY = "ohos.ability.params.viewData";
+#ifdef SUPPORT_GRAPHICS
 constexpr const char* WANT_PARAMS_AUTO_FILL_CMD_KEY = "ohos.ability.params.autoFillCmd";
 constexpr const char* WANT_PARAMS_FILL_CONTENT = "ohos.ability.params.fillContent";
 constexpr const char* WANT_PARAMS_CUSTOM_DATA_KEY = "ohos.ability.params.customData";
@@ -300,8 +300,9 @@ void AutoFillExtensionCallback::HandleTimeOut()
 uint32_t AutoFillExtensionCallback::GenerateCallbackId()
 {
     static std::atomic<uint32_t> callbackId(0);
-    ++callbackId;
-    return callbackId.load();
+    uint32_t id = callbackId.fetch_add(1) + 1;
+    // Handle overflow: if id wraps to 0, return 1 instead
+    return (id != 0) ? id : 1;
 }
 
 uint32_t AutoFillExtensionCallback::GetCallbackId() const

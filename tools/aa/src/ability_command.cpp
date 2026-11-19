@@ -17,14 +17,17 @@
 #include <charconv>
 #include <csignal>
 #include <cstdlib>
+#include <functional>
 #include <getopt.h>
 #include <iostream>
 #include <regex>
+#include <unordered_map>
 #include "ability_manager_client.h"
 #include "ability_start_with_wait_observer.h"
 #include "ability_start_with_wait_observer_utils.h"
 #include "ability_tool_convert_util.h"
 #include "app_mgr_client.h"
+#include "event_report.h"
 #include "hilog_tag_wrapper.h"
 #include "iservice_registry.h"
 #include "mission_snapshot.h"
@@ -48,6 +51,7 @@ constexpr int EXTRA_ARGUMENTS_FOR_KEY_VALUE_PAIR = 1;
 constexpr int EXTRA_ARGUMENTS_FOR_NULL_STRING = 0;
 constexpr int OPTION_PARAMETER_VALUE_OFFSET = 1;
 constexpr int SHORT_OPTION_INDEX = 1;
+constexpr const char* PERF_CMD_KEY = "perfCmd";
 
 constexpr int OPTION_PARAMETER_INTEGER = 257;
 constexpr int OPTION_PARAMETER_STRING = 258;
@@ -71,8 +75,8 @@ constexpr int64_t MAX_WAIT_TIME = 15 * 1000 * 1000; // us
 
 const std::string DEVELOPERMODE_STATE = "const.security.developermode.state";
 
-const std::string SHORT_OPTIONS = "ch:d:a:b:e:t:p:s:m:u:A:U:CDESNR";
-const std::string SHORT_OPTION_CHARS = "chdabetpsmuAUCDESNR";
+const std::string SHORT_OPTIONS = "ch:d:a:b:e:t:p:s:m:u:A:U:CDESNRl";
+const std::string SHORT_OPTION_CHARS = "chdabetpsmuAUCDESNRl";
 const std::string RESOLVE_ABILITY_ERR_SOLUTION_ONE =
     "Check if the parameter abilityName of aa -a and the parameter bundleName of -b are correct";
 const std::string RESOLVE_ABILITY_ERR_SOLUTION_TWO =
@@ -155,6 +159,7 @@ constexpr struct option LONG_OPTIONS[] = {
     {"error-info-enhance", no_argument, nullptr, 'E'},
     {"native-debug", no_argument, nullptr, 'N'},
     {"mutil-thread", no_argument, nullptr, 'R'},
+    {"local", no_argument, nullptr, 'l'},
     {"action", required_argument, nullptr, 'A'},
     {"URI", required_argument, nullptr, 'U'},
     {"wait", no_argument, nullptr, 'W'},
@@ -230,10 +235,11 @@ constexpr struct option LONG_OPTIONS_APPDEBUG[] = {
     { "get", no_argument, nullptr, 'g' },
     { nullptr, 0, nullptr, 0 },
 };
-const std::string SHORT_OPTIONS_ATTACH = "hb:";
+const std::string SHORT_OPTIONS_ATTACH = "hb:l";
 constexpr struct option LONG_OPTIONS_ATTACH[] = {
     {"help", no_argument, nullptr, 'h'},
     {"bundle", required_argument, nullptr, 'b'},
+    {"local", no_argument, nullptr, 'l'},
     {nullptr, 0, nullptr, 0},
 };
 const std::string SHORT_OPTIONS_SEND_MEMORY_LEVEL = "hp:l:";
@@ -459,6 +465,7 @@ ErrCode AbilityManagerShellCommand::init()
     return AbilityManagerClient::GetInstance()->Connect();
 }
 
+
 ErrCode AbilityManagerShellCommand::RunAsHelpCommand()
 {
     resultReceiver_.append(HELP_MSG);
@@ -473,7 +480,11 @@ ErrCode AbilityManagerShellCommand::RunAsStartAbility()
     int32_t userId = DEFAULT_INVAL_VALUE;
     ErrCode result = MakeWantFromCmd(want, windowMode, userId);
     if (result == OHOS::ERR_OK) {
-        int windowModeKey = std::atoi(windowMode.c_str());
+        int windowModeKey = 0;
+        auto res = std::from_chars(windowMode.c_str(), windowMode.c_str() + windowMode.size(), windowModeKey);
+        if (res.ec != std::errc() || windowModeKey <= 0) {
+            TAG_LOGD(AAFwkTag::AA_TOOL, "Invalid or non-positive window mode: %{public}s", windowMode.c_str());
+        }
         if (windowModeKey > 0) {
             auto setting = AbilityStartSetting::GetEmptySetting();
             if (setting != nullptr) {
@@ -551,7 +562,7 @@ ErrCode AbilityManagerShellCommand::RunAsDumpsysCommand()
     std::string args;
     for (auto it = argList_.begin(); it != argList_.end(); it++) {
         if (*it == "-c" || *it == "--client") {
-            if (isClient == false) {
+            if (!isClient) {
                 isClient = true;
             } else {
                 result = OHOS::ERR_INVALID_VALUE;
@@ -570,7 +581,7 @@ ErrCode AbilityManagerShellCommand::RunAsDumpsysCommand()
                 resultReceiver_.append(HELP_MSG_DUMPSYS);
                 return result;
             }
-            if (isUserID == false) {
+            if (!isUserID) {
                 isUserID = true;
             } else {
                 result = OHOS::ERR_INVALID_VALUE;
@@ -609,7 +620,7 @@ ErrCode AbilityManagerShellCommand::RunAsDumpsysCommand()
                 return result;
             }
             case 'a': {
-                if (isfirstCommand == false) {
+                if (!isfirstCommand) {
                     isfirstCommand = true;
                 } else {
                     result = OHOS::ERR_INVALID_VALUE;
@@ -621,7 +632,7 @@ ErrCode AbilityManagerShellCommand::RunAsDumpsysCommand()
                 break;
             }
             case 'l': {
-                if (isfirstCommand == false) {
+                if (!isfirstCommand) {
                     isfirstCommand = true;
                 } else {
                     // 'aa dump -i 10 -element -lastpage'
@@ -638,7 +649,7 @@ ErrCode AbilityManagerShellCommand::RunAsDumpsysCommand()
                 break;
             }
             case 'i': {
-                if (isfirstCommand == false) {
+                if (!isfirstCommand) {
                     isfirstCommand = true;
                     int abilityRecordId = DEFAULT_INVAL_VALUE;
                     (void)StrToInt(optarg, abilityRecordId);
@@ -660,7 +671,7 @@ ErrCode AbilityManagerShellCommand::RunAsDumpsysCommand()
                 break;
             }
             case 'e': {
-                if (isfirstCommand == false && optarg == nullptr) {
+                if (!isfirstCommand && optarg == nullptr) {
                     isfirstCommand = true;
                 } else {
                     // 'aa dumpsys -i 10 -element'
@@ -675,7 +686,7 @@ ErrCode AbilityManagerShellCommand::RunAsDumpsysCommand()
                 break;
             }
             case 'p': {
-                if (isfirstCommand == false && optarg == nullptr) {
+                if (!isfirstCommand && optarg == nullptr) {
                     isfirstCommand = true;
                 } else {
                     result = OHOS::ERR_INVALID_VALUE;
@@ -687,7 +698,7 @@ ErrCode AbilityManagerShellCommand::RunAsDumpsysCommand()
                 break;
             }
             case 'r': {
-                if (isfirstCommand == false && optarg == nullptr) {
+                if (!isfirstCommand && optarg == nullptr) {
                     isfirstCommand = true;
                 } else {
                     // 'aa dump -i 10 -render'
@@ -705,7 +716,7 @@ ErrCode AbilityManagerShellCommand::RunAsDumpsysCommand()
                 break;
             }
             case 'd': {
-                if (isfirstCommand == false && optarg == nullptr) {
+                if (!isfirstCommand && optarg == nullptr) {
                     isfirstCommand = true;
                 } else {
                     result = OHOS::ERR_INVALID_VALUE;
@@ -786,28 +797,38 @@ ErrCode AbilityManagerShellCommand::RunAsForceStop()
     auto reason = Reason::REASON_UNKNOWN;
     std::string inputReason = "aa force-stop";
     pid_t pid = 0;
+    int32_t userId = -1;
+    std::unordered_map<std::string, std::function<void(std::string&)>> optHandlers = {
+        {"-p", [&](std::string& v) { pid = ConvertPid(v); }},
+        {"-r", [&](std::string& v) {
+            inputReason = v;
+            reason = AbilityToolConvertUtil::ConvertExitReason(v);
+        }},
+        {"-u", [&](std::string& v) {
+            if (!StrToInt(v, userId)) {
+                TAG_LOGE(AAFwkTag::AA_TOOL, "userId stoi(%{public}s) failed", v.c_str());
+                userId = -1;
+            }
+        }},
+    };
     for (auto index = INDEX_OFFSET; index < argc_; ++index) {
         TAG_LOGD(AAFwkTag::AA_TOOL, "argv_[%{public}d]: %{public}s", index, argv_[index]);
         std::string opt = argv_[index];
-        if (opt == "-p") {
-            index++;
-            if (index <= argc_) {
-                TAG_LOGD(AAFwkTag::AA_TOOL, "argv_[%{public}d]: %{public}s", index, argv_[index]);
-                std::string inputPid = argv_[index];
-                pid = ConvertPid(inputPid);
-            }
-        } else if (opt == "-r") {
-            index++;
-            if (index <= argc_) {
-                TAG_LOGD(AAFwkTag::AA_TOOL, "argv_[%{public}d]: %{public}s", index, argv_[index]);
-                inputReason = argv_[index];
-                reason = AbilityToolConvertUtil::ConvertExitReason(inputReason);
-            }
+        auto it = optHandlers.find(opt);
+        if (it == optHandlers.end()) {
+            continue;
+        }
+        index++;
+        if (index < argc_) {
+            TAG_LOGD(AAFwkTag::AA_TOOL, "argv_[%{public}d]: %{public}s", index, argv_[index]);
+            std::string value = argv_[index];
+            it->second(value);
         }
     }
 
-    TAG_LOGI(AAFwkTag::AA_TOOL, "pid %{public}d, reason %{public}s", pid, inputReason.c_str());
-    if (pid != 0 && reason != Reason::REASON_UNKNOWN) {
+    TAG_LOGI(AAFwkTag::AA_TOOL, "pid %{public}d, reason %{public}s, userId %{public}d", pid, inputReason.c_str(),
+        userId);
+    if (pid > 0 && reason != Reason::REASON_UNKNOWN) {
         ExitReason exitReason = {reason, "aa force-stop"};
         exitReason.killId = HiviewDFX::ProcessKillReason::KillEventId::REASON_AA_FORCE_STOP;
         if (AbilityManagerClient::GetInstance()->RecordProcessExitReason(pid, exitReason) != ERR_OK) {
@@ -816,7 +837,7 @@ ErrCode AbilityManagerShellCommand::RunAsForceStop()
     }
 
     ErrCode result = OHOS::ERR_OK;
-    result = AbilityManagerClient::GetInstance()->KillProcess(bundleName, false, 0, inputReason);
+    result = AbilityManagerClient::GetInstance()->KillProcessWithUserId(bundleName, false, 0, inputReason, userId);
     if (result == OHOS::ERR_OK) {
         TAG_LOGI(AAFwkTag::AA_TOOL, "%{public}s", STRING_FORCE_STOP_OK.c_str());
         resultReceiver_ = STRING_FORCE_STOP_OK + "\n";
@@ -830,7 +851,7 @@ ErrCode AbilityManagerShellCommand::RunAsForceStop()
 
 pid_t AbilityManagerShellCommand::ConvertPid(std::string& inputPid)
 {
-    pid_t pid = 0;
+    pid_t pid = -1;
     auto res = std::from_chars(inputPid.c_str(), inputPid.c_str() + inputPid.size(), pid);
     if (res.ec != std::errc()) {
         TAG_LOGE(AAFwkTag::AA_TOOL, "pid stoi(%{public}s) failed", inputPid.c_str());
@@ -842,13 +863,14 @@ ErrCode AbilityManagerShellCommand::RunAsAttachDebugCommand()
 {
     TAG_LOGD(AAFwkTag::AA_TOOL, "called");
     std::string bundleName = "";
-    ParseBundleName(bundleName);
+    bool isDebugFromLocal = false;
+    ParseBundleName(bundleName, isDebugFromLocal);
     if (bundleName.empty()) {
         resultReceiver_.append(HELP_MSG_ATTACH_APP_DEBUG + "\n");
         return OHOS::ERR_INVALID_VALUE;
     }
 
-    auto result = AbilityManagerClient::GetInstance()->AttachAppDebug(bundleName);
+    auto result = AbilityManagerClient::GetInstance()->AttachAppDebug(bundleName, isDebugFromLocal);
     if (result == INNER_ERR) {
         result = INNER_ERR_DEBUG;
     }
@@ -866,13 +888,14 @@ ErrCode AbilityManagerShellCommand::RunAsDetachDebugCommand()
 {
     TAG_LOGD(AAFwkTag::AA_TOOL, "called");
     std::string bundleName = "";
-    ParseBundleName(bundleName);
+    bool isDebugFromLocal = false;
+    ParseBundleName(bundleName, isDebugFromLocal);
     if (bundleName.empty()) {
         resultReceiver_.append(HELP_MSG_DETACH_APP_DEBUG + "\n");
         return OHOS::ERR_INVALID_VALUE;
     }
 
-    auto result = AbilityManagerClient::GetInstance()->DetachAppDebug(bundleName);
+    auto result = AbilityManagerClient::GetInstance()->DetachAppDebug(bundleName, isDebugFromLocal);
     if (result == OHOS::ERR_OK) {
         resultReceiver_.append(STRING_DETACH_APP_DEBUG_OK + "\n");
         return result;
@@ -1318,6 +1341,34 @@ bool AbilityManagerShellCommand::CheckPerfCmdString(
     return true;
 }
 
+ErrCode AbilityManagerShellCommand::CheckReservedPerfCmd(
+    ParametersString& parametersString, std::string& perfCmd)
+{
+    auto it = parametersString.find(PERF_CMD_KEY);
+    if (it == parametersString.end()) {
+        return OHOS::ERR_OK;
+    }
+    // The perfCmd key is reserved for the -p option; --ps must not inject it unchecked.
+    // Validate it with the same CheckPerfCmdString rule as -p and route it through the
+    // same application path (want.SetParam("perfCmd", perfCmd)).
+    EventInfo info;
+    info.uri = "PerfCmd use";
+    EventReport::SendGrantUriPermissionEvent(EventName::GRANT_URI_PERMISSION, info);
+    std::string value = it->second;
+    parametersString.erase(it);
+    std::string validated;
+    if (!CheckPerfCmdString(value.c_str(), PARAM_LENGTH, validated)) {
+        TAG_LOGE(AAFwkTag::AA_TOOL, "input perfCmd invalid via --ps %{public}s", value.c_str());
+        EventInfo eventInfo;
+        eventInfo.uri = "PerfCmd err";
+        EventReport::SendGrantUriPermissionEvent(EventName::GRANT_URI_PERMISSION, eventInfo);
+        resultReceiver_.append("invalid perfCmd for option --ps\n");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    perfCmd = validated;
+    return OHOS::ERR_OK;
+}
+
 bool AbilityManagerShellCommand::IsLongStartOption(const std::string &argv)
 {
     if (argv.find("--") != 0) {
@@ -1671,7 +1722,7 @@ ErrCode AbilityManagerShellCommand::MakeWantForProcess(Want& want)
     return result;
 }
 
-void AbilityManagerShellCommand::ParseBundleName(std::string &bundleName)
+void AbilityManagerShellCommand::ParseBundleName(std::string &bundleName, bool &isDebugFromLocal)
 {
     int option = -1;
     int counter = 0;
@@ -1698,6 +1749,7 @@ void AbilityManagerShellCommand::ParseBundleName(std::string &bundleName)
             switch (optopt) {
                 case 'b':
                 case 'h':
+                case 'l':
                     break;
                 default: {
                     // 'aa attach/detach' with an unknown option
@@ -1713,6 +1765,10 @@ void AbilityManagerShellCommand::ParseBundleName(std::string &bundleName)
         switch (option) {
             case 'b': {
                 bundleName = optarg;
+                break;
+            }
+            case 'l': {
+                isDebugFromLocal = true;
                 break;
             }
             default:
@@ -1786,6 +1842,7 @@ ErrCode AbilityManagerShellCommand::MakeWantFromCmd(Want& want, std::string& win
     bool isSandboxApp = false;
     bool isNativeDebug = false;
     bool isMultiThread = false;
+    bool isDebugFromLocal = false;
     int windowLeft = 0;
     bool hasWindowLeft = false;
     int windowTop = 0;
@@ -2144,7 +2201,11 @@ ErrCode AbilityManagerShellCommand::MakeWantFromCmd(Want& want, std::string& win
 
                 // save module name
                 if (!CheckPerfCmdString(optarg, PARAM_LENGTH, perfCmd)) {
-                    TAG_LOGE(AAFwkTag::AA_TOOL, "input perfCmd invalid %{public}s", perfCmd.c_str());
+                    TAG_LOGE(AAFwkTag::AA_TOOL, "input perfCmd invalid %{public}s", optarg);
+                    // CheckPerfCmdString may leave the invalid string in perfCmd; clear it so a
+                    // later --ps/--pi/--pb that resets the result cannot apply an unvalidated
+                    // perfCmd via want.SetParam("perfCmd", perfCmd).
+                    perfCmd.clear();
                     result = OHOS::ERR_INVALID_VALUE;
                 }
                 break;
@@ -2172,6 +2233,11 @@ ErrCode AbilityManagerShellCommand::MakeWantFromCmd(Want& want, std::string& win
 
                 // parse option arguments into a key-value map
                 result = ParseParam(parametersString);
+                // --ps must not bypass the perfCmd validation enforced by -p:
+                // a reserved perfCmd key is routed through the same CheckPerfCmdString rule.
+                if (result == OHOS::ERR_OK) {
+                    result = CheckReservedPerfCmd(parametersString, perfCmd);
+                }
 
                 break;
             }
@@ -2311,6 +2377,12 @@ ErrCode AbilityManagerShellCommand::MakeWantFromCmd(Want& want, std::string& win
                 TAG_LOGD(AAFwkTag::AA_TOOL, "isMultiThread");
                 break;
             }
+            case 'l': {
+                // 'aa start -l'
+                // local debug
+                isDebugFromLocal = true;
+                break;
+            }
             case 'u': {
                 // 'aa start -u <user-id>'
                 // save user id
@@ -2371,6 +2443,9 @@ ErrCode AbilityManagerShellCommand::MakeWantFromCmd(Want& want, std::string& win
             }
             if (isNativeDebug) {
                 want.SetParam("nativeDebug", isNativeDebug);
+            }
+            if (isDebugFromLocal) {
+                want.SetParam(DEBUG_FROM, true);
             }
             if (!parametersInteger.empty()) {
                 SetParams(parametersInteger, want);
@@ -2653,7 +2728,9 @@ ErrCode AbilityManagerShellCommand::ParseTestCommandOption(const std::string &op
         params[opt + " " + argKey] = argValue;
     } else if (opt == "-D") {
         params[opt] = DEBUG_VALUE;
-    } else if (opt.at(0) == '-') {
+    } else if (opt == "-l") {
+        params[opt] = DEBUG_VALUE;
+    } else if (!opt.empty() && opt.at(0) == '-') {
         return TestCommandError("error: unknown option: " + opt + "\n");
     }
     return OHOS::ERR_OK;
@@ -2681,20 +2758,29 @@ ErrCode AbilityManagerShellCommand::TestCommandError(const std::string& info)
     return OHOS::ERR_INVALID_VALUE;
 }
 
-ErrCode AbilityManagerShellCommand::StartUserTest(const std::map<std::string, std::string>& params)
+void AbilityManagerShellCommand::BuildUserTestWant(Want& want, const std::map<std::string, std::string>& params)
 {
-    TAG_LOGD(AAFwkTag::AA_TOOL, "enter");
-
-    Want want;
     for (auto param : params) {
         want.SetParam(param.first, param.second);
     }
-
     auto dPos = params.find("-D");
     if (dPos != params.end() && dPos->second.compare(DEBUG_VALUE) == 0) {
         TAG_LOGI(AAFwkTag::AA_TOOL, "Set Debug to want");
         want.SetParam("debugApp", true);
     }
+    auto lPos = params.find("-l");
+    if (lPos != params.end()) {
+        TAG_LOGI(AAFwkTag::AA_TOOL, "Set local debug to want");
+        want.SetParam(DEBUG_FROM, true);
+    }
+}
+
+ErrCode AbilityManagerShellCommand::StartUserTest(const std::map<std::string, std::string>& params)
+{
+    TAG_LOGD(AAFwkTag::AA_TOOL, "enter");
+
+    Want want;
+    BuildUserTestWant(want, params);
 
     sptr<TestObserver> observer = new (std::nothrow) TestObserver();
     if (!observer) {
@@ -2717,12 +2803,14 @@ ErrCode AbilityManagerShellCommand::StartUserTest(const std::map<std::string, st
     std::signal(SIGCHLD, SIG_DFL);
 
     int64_t timeMs = 0;
-    if (!want.GetStringParam("-w").empty()) {
-        try {
-            auto time = std::stoi(want.GetStringParam("-w"));
+    auto timeStr = want.GetStringParam("-w");
+    if (!timeStr.empty()) {
+        int32_t time = 0;
+        auto [ptr, ec] = std::from_chars(timeStr.data(), timeStr.data() + timeStr.size(), time);
+        if (ec == std::errc() && ptr == timeStr.data() + timeStr.size()) {
             timeMs = time > 0 ? time * TIME_RATE_MS : 0;
-        } catch (...) {
-            TAG_LOGE(AAFwkTag::AA_TOOL, "stoi(%{public}s) failed", want.GetStringParam("-w").c_str());
+        } else {
+            TAG_LOGE(AAFwkTag::AA_TOOL, "stoi(%{public}s) failed", timeStr.c_str());
         }
     }
     if (!observer->WaitForFinish(timeMs)) {

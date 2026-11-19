@@ -23,6 +23,8 @@
 #include "dialog_session_manager.h"
 #undef private
 #undef protected
+#include "insight_intent_execute_param.h"
+#include "skill/skill_execute_param.h"
 #include "ability_manager_errors.h"
 #include "hilog_tag_wrapper.h"
 #include "string_wrapper.h"
@@ -37,6 +39,7 @@ namespace AAFwk {
 
 constexpr const char *CALLER_REQUEST_CODE = "ohos.extra.param.key.callerRequestCode";
 constexpr const char *DMS_CALLER_BUNDLE_NAME = "ohos.dms.param.sourceCallerBundleName";
+const std::string HIDE_SENSITIVE_TYPE = "ohos.media.params.hideSensitiveType";
 
 class UpdateCallerInfoUtilTest : public testing::Test {
 public:
@@ -126,6 +129,53 @@ HWTEST_F(UpdateCallerInfoUtilTest, UpdateCallerInfoFromToken_0001, TestSize.Leve
     abilityRecord = nullptr;
     updateCallerUtil->UpdateCallerInfoFromToken(want, callerToken);
     EXPECT_EQ(abilityRecord, nullptr);
+}
+
+/**
+ * @tc.name: UpdateCallerInfoUtilTest_CacheRestoreTaskId_0001
+ * @tc.desc: Task attribution key cached from the original want survives the restore.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, CacheRestoreTaskId_0001, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+    Want originalWant;
+    originalWant.SetParam("ohos.aafwk.param.agent.taskId", std::string("task-ut-773"));
+    originalWant.SetParam(Want::PARAM_RESV_CALLER_UID, 20000001);
+    originalWant.SetParam(Want::PARAM_RESV_CALLER_PID, 100);
+
+    AbilitySessionInfo info;
+    updateCallerUtil.CacheCallerInfoFromWant(originalWant, info);
+    EXPECT_EQ(info.taskId, "task-ut-773");
+    EXPECT_EQ(info.callerUid, 20000001);
+    EXPECT_EQ(info.callerPid, 100);
+
+    // Simulate the SCB-returned want with the key lost on the round trip.
+    Want scbWant;
+    updateCallerUtil.RestoreCallerInfoToWant(scbWant, info);
+    EXPECT_EQ(scbWant.GetStringParam("ohos.aafwk.param.agent.taskId"), "task-ut-773");
+    EXPECT_EQ(scbWant.GetIntParam(Want::PARAM_RESV_CALLER_UID, -1), 20000001);
+    EXPECT_EQ(scbWant.GetIntParam(Want::PARAM_RESV_CALLER_PID, -1), 100);
+}
+
+/**
+ * @tc.name: UpdateCallerInfoUtilTest_CacheRestoreTaskId_0002
+ * @tc.desc: Empty cache strips the key from the SCB-returned want (fail-closed).
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, CacheRestoreTaskId_0002, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+    Want originalWant; // no key: the caller never supplied one
+    AbilitySessionInfo info;
+    updateCallerUtil.CacheCallerInfoFromWant(originalWant, info);
+    EXPECT_TRUE(info.taskId.empty());
+
+    // Simulate a replayed/injected key on the SCB-returned want.
+    Want scbWant;
+    scbWant.SetParam("ohos.aafwk.param.agent.taskId", std::string("task-replay-999"));
+    updateCallerUtil.RestoreCallerInfoToWant(scbWant, info);
+    EXPECT_FALSE(scbWant.HasParameter("ohos.aafwk.param.agent.taskId"));
 }
 
 /**
@@ -664,6 +714,312 @@ HWTEST_F(UpdateCallerInfoUtilTest, UpdateCallerAppCloneIndex_0002, TestSize.Leve
 
     updateCallerUtil->UpdateCallerAppCloneIndex(want, zeroIndex);
     EXPECT_EQ(want.GetIntParam(Want::PARAM_RESV_CALLER_APP_CLONE_INDEX, -1), zeroIndex);
+}
+
+/**
+ * @tc.name: UpdateCallerInfoUtilTest_ClearProtectedWantParam_HideSensitiveType_001
+ * @tc.desc: Test ClearProtectedWantParam with HIDE_SENSITIVE_TYPE parameter
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, ClearProtectedWantParam_HideSensitiveType_001, TestSize.Level1)
+{
+    auto updateCallerUtil = std::make_shared<UpdateCallerInfoUtil>();
+    Want want;
+    want.SetParam(HIDE_SENSITIVE_TYPE, 521);
+    want.SetElementName("com.test.demo", "entry", "TestAbility");
+
+    // ClearProtectedWantParam should trigger event for HIDE_SENSITIVE_TYPE
+    updateCallerUtil->ClearProtectedWantParam(want);
+
+    // Verify the parameter is processed (no exception thrown)
+    EXPECT_EQ(want.GetIntParam(HIDE_SENSITIVE_TYPE, -1), 521);
+}
+
+/**
+ * @tc.name: UpdateCallerInfoUtilTest_ClearProtectedWantParam_HideSensitiveType_002
+ * @tc.desc: Test ClearProtectedWantParam with HIDE_SENSITIVE_TYPE = 4
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, ClearProtectedWantParam_HideSensitiveType_002, TestSize.Level1)
+{
+    auto updateCallerUtil = std::make_shared<UpdateCallerInfoUtil>();
+    Want want;
+    want.SetParam(HIDE_SENSITIVE_TYPE, 4);
+    want.SetElementName("com.test.demo", "entry", "TestAbility");
+
+    // ClearProtectedWantParam should still process the parameter
+    updateCallerUtil->ClearProtectedWantParam(want);
+
+    // Verify the parameter value
+    EXPECT_EQ(want.GetIntParam(HIDE_SENSITIVE_TYPE, -1), 4);
+}
+
+/**
+ * @tc.name: UpdateCallerInfoByHapTokenId_0001
+ * @tc.desc: Test UpdateCallerInfoByHapTokenId with callerTokenId = 0 (boundary, should early-return
+ *           without modifying Want, leaving baseline value untouched)
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, UpdateCallerInfoByHapTokenId_0001, TestSize.Level1)
+{
+    auto updateCallerUtil = std::make_shared<UpdateCallerInfoUtil>();
+    Want want;
+    want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, std::string("baseline_bundle"));
+
+    // Boundary: callerTokenId = 0, function should log warning and early-return
+    updateCallerUtil->UpdateCallerInfoByHapTokenId(want, 0);
+
+    // Want baseline value must remain (early-return path verified)
+    EXPECT_EQ(want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME), "baseline_bundle");
+}
+
+/**
+ * @tc.name: UpdateCallerInfoByHapTokenId_0002
+ * @tc.desc: Test UpdateCallerInfoByHapTokenId with invalid callerTokenId (GetHapTokenInfo fails,
+ *           should early-return without modifying Want)
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, UpdateCallerInfoByHapTokenId_0002, TestSize.Level1)
+{
+    auto updateCallerUtil = std::make_shared<UpdateCallerInfoUtil>();
+    Want want;
+    want.SetParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME, std::string("baseline_bundle"));
+
+    // Invalid callerTokenId (no corresponding HAP token in test env): GetHapTokenInfo returns non-ERR_OK,
+    // function should log error and early-return
+    updateCallerUtil->UpdateCallerInfoByHapTokenId(want, 0xFFFFFFFF);
+
+    // Want baseline value must remain (failure-path early-return verified)
+    EXPECT_EQ(want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME), "baseline_bundle");
+}
+
+/**
+ * @tc.name: FailClosedIdentityCleanup_0003
+ * @tc.desc: Stamping failure paths strip any caller-supplied identity params; anco
+ *           params are DFX-only and keep their pre-existing passthrough.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, FailClosedIdentityCleanup_0003, TestSize.Level1)
+{
+    auto updateCallerUtil = std::make_shared<UpdateCallerInfoUtil>();
+
+    // tokenId == 0: invalid param early-return
+    Want want;
+    want.SetParam(Want::PARAM_RESV_CALLER_UID, 1234);
+    want.SetParam(Want::PARAM_RESV_CALLER_PID, 5678);
+    want.SetParam(Want::PARAM_RESV_CALLER_TOKEN, 9);
+    want.SetParam("ohos.anco.param.callerUid", 4321);
+    want.SetParam("ohos.anco.param.callerBundleName", std::string("forged_bundle"));
+    updateCallerUtil->UpdateCallerInfoByHapTokenId(want, 0);
+    EXPECT_FALSE(want.HasParameter(Want::PARAM_RESV_CALLER_UID));
+    EXPECT_FALSE(want.HasParameter(Want::PARAM_RESV_CALLER_PID));
+    EXPECT_FALSE(want.HasParameter(Want::PARAM_RESV_CALLER_TOKEN));
+    // anco params are not identity for attribution and are left untouched
+    EXPECT_TRUE(want.HasParameter("ohos.anco.param.callerUid"));
+    EXPECT_TRUE(want.HasParameter("ohos.anco.param.callerBundleName"));
+
+    // unresolvable HAP token: GetHapTokenInfo failure early-return
+    Want want2;
+    want2.SetParam(Want::PARAM_RESV_CALLER_UID, 1234);
+    updateCallerUtil->UpdateCallerInfoByHapTokenId(want2, 0xFFFFFFFF);
+    EXPECT_FALSE(want2.HasParameter(Want::PARAM_RESV_CALLER_UID));
+
+    // unresolvable caller token: caller abilityRecord null early-return
+    Want want3;
+    want3.SetParam(Want::PARAM_RESV_CALLER_UID, 1234);
+    updateCallerUtil->UpdateCallerInfoFromToken(want3, nullptr);
+    EXPECT_FALSE(want3.HasParameter(Want::PARAM_RESV_CALLER_UID));
+}
+
+/**
+ * @tc.name: UpdateCallerInfoUtilTest_CacheRestoreTaskId_0003
+ * @tc.desc: The cached taskId wins over a stale SCB-returned value.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, CacheRestoreTaskId_0003, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+    Want originalWant;
+    originalWant.SetParam("ohos.aafwk.param.agent.taskId", std::string("task-cached-55"));
+    AbilitySessionInfo info;
+    updateCallerUtil.CacheCallerInfoFromWant(originalWant, info);
+    EXPECT_EQ(info.taskId, "task-cached-55");
+
+    // SCB round trip returned a different (stale) value: the cache overwrites it.
+    Want scbWant;
+    scbWant.SetParam("ohos.aafwk.param.agent.taskId", std::string("task-stale-66"));
+    updateCallerUtil.RestoreCallerInfoToWant(scbWant, info);
+    EXPECT_EQ(scbWant.GetStringParam("ohos.aafwk.param.agent.taskId"), "task-cached-55");
+}
+
+/**
+ * @tc.name: UpdateCallerInfoUtilTest_CacheRestoreTaskId_0004
+ * @tc.desc: With no key on either side the restore stays clean (no key injected).
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, CacheRestoreTaskId_0004, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+    Want originalWant; // no task key anywhere
+    AbilitySessionInfo info;
+    updateCallerUtil.CacheCallerInfoFromWant(originalWant, info);
+    EXPECT_TRUE(info.taskId.empty());
+
+    Want scbWant; // no key on the round trip either
+    updateCallerUtil.RestoreCallerInfoToWant(scbWant, info);
+    EXPECT_FALSE(scbWant.HasParameter("ohos.aafwk.param.agent.taskId"));
+}
+
+/**
+ * @tc.name: CacheIntentAndSkillParams_0001
+ * @tc.desc: Snapshots insight-intent and skill execute params while skipping unrelated params.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, CacheIntentAndSkillParams_0001, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+    Want want;
+    want.SetElementName("", "com.test.target", "TestAbility", "entry");
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME, std::string("PlayMusic"));
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, std::string("42"));
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_CALLER_UID, 20000001);
+    want.SetParam(AppExecFwk::SKILL_EXECUTE_PARAM_BUNDLE_NAME, std::string("com.test.skill.bundle"));
+    want.SetParam(AppExecFwk::SKILL_EXECUTE_PARAM_SKILL_NAME, std::string("WeatherSkill"));
+    // Dynamic skill args keys share the skill prefix and must be snapshotted too.
+    want.SetParam("ohos.skill.executeParam.args.city", std::string("Beijing"));
+    want.SetParam("ohos.aafwk.param.taskId", std::string("task-1"));
+
+    AbilitySessionInfo info;
+    updateCallerUtil.CacheCallerInfoFromWant(want, info);
+
+    const auto &params = info.intentAndSkillParams.GetParams();
+    EXPECT_EQ(params.count(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME), 1u);
+    EXPECT_EQ(params.count(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID), 1u);
+    EXPECT_EQ(params.count(AppExecFwk::INSIGHT_INTENT_CALLER_UID), 1u);
+    EXPECT_EQ(params.count(AppExecFwk::SKILL_EXECUTE_PARAM_BUNDLE_NAME), 1u);
+    EXPECT_EQ(params.count(AppExecFwk::SKILL_EXECUTE_PARAM_SKILL_NAME), 1u);
+    EXPECT_EQ(params.count("ohos.skill.executeParam.args.city"), 1u);
+    EXPECT_EQ(params.count("ohos.aafwk.param.taskId"), 0u);
+}
+
+/**
+ * @tc.name: CacheIntentAndSkillParams_0002
+ * @tc.desc: A want without system-stamped execute params produces an empty snapshot.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, CacheIntentAndSkillParams_0002, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+    Want want;
+    want.SetElementName("", "com.test.target", "TestAbility", "entry");
+    want.SetParam("ohos.aafwk.param.taskId", std::string("task-1"));
+
+    AbilitySessionInfo info;
+    updateCallerUtil.CacheCallerInfoFromWant(want, info);
+    EXPECT_TRUE(info.intentAndSkillParams.GetParams().empty());
+}
+
+/**
+ * @tc.name: RestoreIntentAndSkillParams_0001
+ * @tc.desc: The AMS snapshot overwrites stale SCB values and drops keys absent from the snapshot.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, RestoreIntentAndSkillParams_0001, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+    Want originalWant;
+    originalWant.SetElementName("", "com.test.target", "TestAbility", "entry");
+    originalWant.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME, std::string("PlayMusic"));
+    originalWant.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, std::string("42"));
+
+    AbilitySessionInfo info;
+    updateCallerUtil.CacheCallerInfoFromWant(originalWant, info);
+
+    // SCB returns stale values for the same keys plus an extra injected key.
+    Want scbWant;
+    scbWant.SetElementName("", "com.test.target", "TestAbility", "entry");
+    scbWant.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME, std::string("forged"));
+    scbWant.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, std::string("999"));
+    scbWant.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_MODE, 1);
+    // The stub boundary (SanitizeWantParams) strips the returned copy before AMS sees it.
+    updateCallerUtil.RemoveIntentAndSkillParams(scbWant);
+
+    updateCallerUtil.RestoreCallerInfoToWant(scbWant, info);
+    EXPECT_EQ(scbWant.GetStringParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME), "PlayMusic");
+    EXPECT_EQ(scbWant.GetStringParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID), "42");
+    EXPECT_FALSE(scbWant.HasParameter(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_MODE));
+}
+
+/**
+ * @tc.name: RestoreIntentAndSkillParams_0002
+ * @tc.desc: With no snapshot the restore strips every injected system param (fail closed).
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, RestoreIntentAndSkillParams_0002, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+    Want originalWant;
+    originalWant.SetElementName("", "com.test.target", "TestAbility", "entry");
+
+    AbilitySessionInfo info;
+    updateCallerUtil.CacheCallerInfoFromWant(originalWant, info);
+    EXPECT_TRUE(info.intentAndSkillParams.GetParams().empty());
+
+    Want scbWant;
+    scbWant.SetElementName("", "com.test.target", "TestAbility", "entry");
+    scbWant.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME, std::string("forged"));
+    scbWant.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, std::string("42"));
+    // The stub boundary (SanitizeWantParams) strips the returned copy before AMS sees it.
+    updateCallerUtil.RemoveIntentAndSkillParams(scbWant);
+
+    updateCallerUtil.RestoreCallerInfoToWant(scbWant, info);
+    EXPECT_FALSE(scbWant.HasParameter(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME));
+    EXPECT_FALSE(scbWant.HasParameter(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID));
+}
+
+/**
+ * @tc.name: RemoveIntentAndSkillParams_0001
+ * @tc.desc: Removes all intent and skill execute params while leaving unrelated params untouched.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, RemoveIntentAndSkillParams_0001, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+    Want want;
+    want.SetElementName("", "com.test.target", "TestAbility", "entry");
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME, std::string("PlayMusic"));
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, std::string("42"));
+    want.SetParam(AppExecFwk::SKILL_EXECUTE_PARAM_SKILL_NAME, std::string("WeatherSkill"));
+    want.SetParam("ohos.skill.executeParam.args.city", std::string("Beijing"));
+    want.SetParam("ohos.aafwk.param.taskId", std::string("task-1"));
+
+    updateCallerUtil.RemoveIntentAndSkillParams(want);
+    EXPECT_FALSE(want.HasParameter(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME));
+    EXPECT_FALSE(want.HasParameter(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID));
+    EXPECT_FALSE(want.HasParameter(AppExecFwk::SKILL_EXECUTE_PARAM_SKILL_NAME));
+    EXPECT_FALSE(want.HasParameter("ohos.skill.executeParam.args.city"));
+    EXPECT_TRUE(want.HasParameter("ohos.aafwk.param.taskId"));
+}
+
+/**
+ * @tc.name: RemoveIntentAndSkillParams_0002
+ * @tc.desc: Partial injection and an empty want are handled without side effects.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, RemoveIntentAndSkillParams_0002, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+
+    Want want;
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, std::string("42"));
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_CALLER_UID, 20000001);
+    updateCallerUtil.RemoveIntentAndSkillParams(want);
+    EXPECT_FALSE(want.HasParameter(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID));
+    EXPECT_FALSE(want.HasParameter(AppExecFwk::INSIGHT_INTENT_CALLER_UID));
+
+    Want emptyWant;
+    updateCallerUtil.RemoveIntentAndSkillParams(emptyWant);
+    EXPECT_FALSE(emptyWant.HasParameter(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID));
 }
 } // namespace AAFwk
 } // namespace OHOS

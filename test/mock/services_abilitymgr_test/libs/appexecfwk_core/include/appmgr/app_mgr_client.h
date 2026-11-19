@@ -61,7 +61,8 @@ public:
      * @param state Ability running state.
      * @return Returns RESULT_OK on success, others on failure.
      */
-    virtual AppMgrResultCode UpdateAbilityState(const sptr<IRemoteObject>& token, const AbilityState state);
+    virtual AppMgrResultCode UpdateAbilityState(const sptr<IRemoteObject>& token, const AbilityState state,
+        bool isFromScreenOffBackground = false);
 
     /**
      * Register Application state callback.
@@ -124,7 +125,7 @@ public:
      * @return ERR_OK, return back success, others fail.
      */
     virtual AppMgrResultCode KillApplication(const std::string& bundleName, bool clearPageStack = false,
-        int32_t appIndex = 0, const std::string& reason = "KillApplication");
+        int32_t appIndex = 0, const std::string& reason = "KillApplication", int32_t userId = -1);
 
     /**
      * ClearUpApplicationData, call ClearUpApplicationData() through proxy project,

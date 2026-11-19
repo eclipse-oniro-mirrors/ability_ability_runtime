@@ -23,7 +23,7 @@ config("cj_ability_public_config") {
   include_dirs = [ "application_context/include" ]
 }
 
-ohos_shared_library("cj_ability_ffi") {
+ohos_source_set("cj_ability_ffi_source") {
   defines = [
     "AMS_LOG_TAG = \"CJ_ABILITY_FFI\"",
     "AMS_LOG_DOMAIN = 0xD001150",
@@ -62,14 +62,17 @@ ohos_shared_library("cj_ability_ffi") {
 
   external_deps = [
     "ability_base:want",
+    "bounds_checking_function:libsec_shared",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "eventhandler:libeventhandler",
     "hilog:libhilog",
     "ipc:ipc_core",
+    "libuv:uv",
     "napi:ace_napi",
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
+    "node:node_header_notice",
   ]
 
   sources = [
@@ -100,6 +103,29 @@ ohos_shared_library("cj_ability_ffi") {
   ]
 
   cflags_cc = cflags
+
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
+}
+
+ohos_shared_library("cj_ability_ffi") {
+  branch_protector_ret = "pac_ret"
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    cfi_policy = "adaptive"
+    debug = false
+  }
+
+  public_configs = [ ":cj_ability_public_config" ]
+
+  deps = [ ":cj_ability_ffi_source" ]
+
+  external_deps = [ "hilog:libhilog" ]
+
+  version_script = "libcj_ability_ffi.map"
 
   subsystem_name = "ability"
   part_name = "ability_runtime"

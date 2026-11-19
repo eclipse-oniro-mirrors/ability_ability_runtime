@@ -17,6 +17,7 @@
 #define MOCK_OHOS_ABILITY_RUNTIME_MOCK_APP_MGR_SERVICE_H
 
 #include "app_malloc_info.h"
+#include "ui_ability_last_caller_info.h"
 #include "app_mgr_stub.h"
 #include "gmock/gmock.h"
 #include "semaphore_ex.h"
@@ -30,7 +31,8 @@ public:
             const std::shared_ptr<AbilityInfo>& abilityInfo, const std::shared_ptr<ApplicationInfo>& appInfo,
             const std::shared_ptr<AAFwk::Want>& want, int32_t abilityRecordId));
     MOCK_METHOD2(TerminateAbility, void(const sptr<IRemoteObject>& token, bool clearMissionFlag));
-    MOCK_METHOD2(UpdateAbilityState, void(const sptr<IRemoteObject>& token, const AbilityState state));
+    MOCK_METHOD4(UpdateAbilityState, void(const sptr<IRemoteObject>& token, const AbilityState state,
+        bool isFromScreenOffBackground, const UiAbilityLastCallerInfo& callerInfo));
     MOCK_METHOD1(AttachApplication, void(const sptr<IRemoteObject>& app));
     MOCK_METHOD1(NotifyMemoryLevel, int(int32_t level));
     MOCK_METHOD1(NotifyProcMemoryLevel, int32_t(const std::map<pid_t, MemoryLevel> &procLevelMap));
@@ -40,8 +42,8 @@ public:
     MOCK_METHOD1(ApplicationTerminated, void(const int32_t recordId));
     MOCK_METHOD1(AbilityCleaned, void(const sptr<IRemoteObject>& token));
     MOCK_METHOD4(UpdateApplicationInfoInstalled, int(const std::string&, const int uid, const std::string&, bool));
-    MOCK_METHOD4(KillApplication, int32_t(const std::string& appName, const bool clearPageStack, int32_t appIndex,
-        const std::string& reason));
+    MOCK_METHOD5(KillApplication, int32_t(const std::string& appName, const bool clearPageStack, int32_t appIndex,
+        const std::string& reason, int32_t userId));
     MOCK_METHOD3(ForceKillApplication, int32_t(const std::string& appName, const int userId, const int appIndex));
     MOCK_METHOD3(KillApplicationWithUserId, int32_t(const std::string& appName, const int userId, const int appIndex));
     MOCK_METHOD1(KillProcessesByAccessTokenId, int32_t(const uint32_t accessTokenId));
@@ -51,6 +53,8 @@ public:
     MOCK_METHOD2(GetRunningProcessesByBundleType, int(const BundleType bundleType,
         std::vector<RunningProcessInfo>& info));
     MOCK_METHOD2(GetProcessRunningInfosByUserId, int(std::vector<RunningProcessInfo>& info, int32_t userId));
+    MOCK_METHOD2(GetProcessRunningInfosByAccessTokenId, int32_t(uint32_t accessTokenId,
+        std::vector<RunningProcessInfo>& info));
     MOCK_METHOD1(GetAllRenderProcesses, int(std::vector<RenderProcessInfo>& info));
     MOCK_METHOD1(GetAllChildrenProcesses, int(std::vector<ChildProcessInfo>&));
     MOCK_METHOD0(GetAmsMgr, sptr<IAmsMgr>());
@@ -60,6 +64,7 @@ public:
     MOCK_METHOD1(ClearUpApplicationDataBySelf, int32_t(int32_t userId));
     MOCK_METHOD1(StartupResidentProcess, void(const std::vector<AppExecFwk::BundleInfo>& bundleInfos));
     MOCK_METHOD1(AddAbilityStageDone, void(const int32_t recordId));
+    MOCK_METHOD0(NotifyTemplateProcessReadyDone, int32_t());
     MOCK_METHOD0(PreStartNWebSpawnProcess, int());
     MOCK_METHOD6(StartRenderProcess, int(const std::string&, int32_t, int32_t, int32_t, pid_t&, bool));
     MOCK_METHOD1(AttachRenderProcess, void(const sptr<IRemoteObject>& renderScheduler));
@@ -116,6 +121,7 @@ public:
     MOCK_METHOD2(UpdateRenderState, int32_t(pid_t renderPid, int32_t state));
 
     MOCK_METHOD0(IsFinalAppProcess, bool());
+    MOCK_METHOD0(IsHyperSnapInitializing, bool());
     MOCK_METHOD1(SetSupportedProcessCacheSelf, int32_t(bool isSupport));
     MOCK_METHOD2(IsProcessCacheSupported, int32_t(int32_t pid, bool &isSupported));
     MOCK_METHOD2(SetProcessCacheEnable, int32_t(int32_t pid, bool enable));
@@ -133,6 +139,7 @@ public:
     MOCK_METHOD4(IsSpecifiedModuleLoaded, int32_t(const AAFwk::Want &, const AbilityInfo &, bool &, bool &));
     MOCK_METHOD1(LaunchAbility, int32_t(sptr<IRemoteObject>));
     MOCK_METHOD1(SetProcessPrepareExit, void(int32_t));
+    MOCK_METHOD1(SetTerminateTimeOutFlag, void(sptr<IRemoteObject>));
     virtual int StartUserTestProcess(
         const AAFwk::Want &want, const sptr<IRemoteObject> &observer, const BundleInfo &bundleInfo, int32_t userId)
     {
@@ -189,6 +196,11 @@ public:
         return false;
     }
 
+    void UpdateFreezeExcludedPid(bool isAdd, int32_t targetPid, int32_t profilerPid)
+    {
+        return;
+    }
+
     int32_t ChangeAppGcState(pid_t pid, int32_t state, uint64_t tid = 0)
     {
         return 0;
@@ -204,7 +216,7 @@ public:
         return 0;
     }
 
-    int32_t DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+    int32_t DumpMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback)
     {
         return 0;
     }
@@ -215,6 +227,12 @@ public:
     }
 
     int32_t DumpCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info)
+    {
+        return 0;
+    }
+
+    int32_t ReportDumpMemResult(sptr<IMemDumpCallback> callback,
+        const std::string &dumpResult)
     {
         return 0;
     }

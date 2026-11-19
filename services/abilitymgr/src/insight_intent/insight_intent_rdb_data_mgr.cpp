@@ -84,8 +84,7 @@ bool InsightIntentRdbDataMgr::IsIntentRdbLoaded()
     }
     std::string createTableSql = "CREATE TABLE IF NOT EXISTS " + intentRdbConfig_.tableName
         + " (INTENT_KEY TEXT NOT NULL PRIMARY KEY, INTENT_VALUE TEXT NOT NULL);";
-    int32_t ret = NativeRdb::E_OK;
-    ret = rdbStore->ExecuteSql(createTableSql);
+    int32_t ret = rdbStore->ExecuteSql(createTableSql);
     if (ret != NativeRdb::E_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "Create rdb table failed, ret:%{public}d", ret);
         return false;
@@ -112,6 +111,38 @@ bool InsightIntentRdbDataMgr::InsertData(const std::string &key, const std::stri
         TAG_LOGE(AAFwkTag::INTENT, "Insert data error ret:%{public}d", ret);
         return false;
     }
+    return true;
+}
+
+bool InsightIntentRdbDataMgr::BatchInsertData(const std::vector<std::pair<std::string, std::string>> &keyValues)
+{
+    std::lock_guard<std::mutex> lock(rdbStoreMutex_);
+    TAG_LOGD(AAFwkTag::INTENT, "BatchInsertData start");
+    if (!IsIntentRdbLoaded()) {
+        TAG_LOGE(AAFwkTag::INTENT, "null IntentRdbStore");
+        return false;
+    }
+
+    if (keyValues.empty()) {
+        return true;
+    }
+
+    std::vector<NativeRdb::ValuesBucket> valuesBuckets;
+    for (const auto &[key, value] : keyValues) {
+        NativeRdb::ValuesBucket valuesBucket;
+        valuesBucket.PutString(INTENT_KEY, key);
+        valuesBucket.PutString(INTENT_VALUE, value);
+        valuesBuckets.emplace_back(valuesBucket);
+    }
+
+    auto [ret, insertNum] = rdbStore_->BatchInsert(intentRdbConfig_.tableName, valuesBuckets,
+        NativeRdb::ConflictResolution::ON_CONFLICT_REPLACE);
+    if (ret != NativeRdb::E_OK) {
+        TAG_LOGE(AAFwkTag::INTENT, "BatchInsert error ret:%{public}d", ret);
+        return false;
+    }
+    TAG_LOGD(AAFwkTag::INTENT, "BatchInsert success, size:%{public}zu insertNum:%{public}d",
+        keyValues.size(), static_cast<int32_t>(insertNum));
     return true;
 }
 
@@ -316,6 +347,7 @@ bool InsightIntentRdbDataMgr::QueryAllData(std::unordered_map<std::string, std::
 void InsightIntentRdbDataMgr::BackupRdb()
 {
     TAG_LOGI(AAFwkTag::INTENT, "%{public}s backup start", intentRdbConfig_.dbName.c_str());
+    std::lock_guard<std::mutex> lock(rdbStoreMutex_);
     if (!IsIntentRdbLoaded()) {
         TAG_LOGE(AAFwkTag::INTENT, "null IntentRdbStore");
         return;

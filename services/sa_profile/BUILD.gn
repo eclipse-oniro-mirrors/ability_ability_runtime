@@ -20,6 +20,7 @@ ohos_sa_profile("ams_sa_profile") {
     "183.json",
     "184.json",
     "185.json",
+    "186.json",
     "501.json",
   ]
 

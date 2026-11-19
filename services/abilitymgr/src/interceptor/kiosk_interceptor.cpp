@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -22,7 +22,7 @@
 
 namespace OHOS {
 namespace AAFwk {
-int KioskInterceptor::DoProcess(AbilityInterceptorParam param)
+int KioskInterceptor::DoProcess(AbilityInterceptorParam &param)
 {
 #ifdef SUPPORT_SCREEN
     if (ImplicitStartProcessor::IsImplicitStartAction(param.want)) {
@@ -30,13 +30,11 @@ int KioskInterceptor::DoProcess(AbilityInterceptorParam param)
         return ERR_OK;
     }
 #endif
-
     auto& kioskManager = KioskManager::GetInstance();
-    if (!kioskManager.IsInKioskMode()) {
-        return ERR_OK;
-    }
-    auto bundleName = param.want.GetElement().GetBundleName();
-    if (!kioskManager.IsInWhiteList(bundleName)) {
+    auto bundleName = param.want.GetBundle();
+    if (kioskManager.ShouldIntercept(bundleName)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "intercept ability start, bundle %{public}s not in kiosk whitelist",
+            bundleName.c_str());
         return ERR_KIOSK_MODE_NOT_IN_WHITELIST;
     }
     return ERR_OK;

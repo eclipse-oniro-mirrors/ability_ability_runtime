@@ -26,8 +26,10 @@
 #include "want.h"
 #include "app_malloc_info.h"
 #include "app_jsheap_mem_info.h"
+#include "app_jshandle_map_info.h"
 #include "app_cjheap_mem_info.h"
 #include "app_mem_dump_info.h"
+#include "mem_dump_callback_interface.h"
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -107,6 +109,16 @@ public:
     virtual void ScheduleJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &info) = 0;
 
     /**
+     * ScheduleJsHandleMap, call ScheduleJsHandleMap() through proxy project,
+     * dump the application's jshandle map info.
+     *
+     * @param info, pid, tid
+     *
+     * @return
+     */
+    virtual void ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info) {}
+
+    /**
      * ScheduleCjHeapMemory, call ScheduleCjHeapMemory() through proxy project,
      * triggerGC and dump the application's cjheap memory info.
      *
@@ -121,11 +133,11 @@ public:
      * triggerGC and dump application's memory info.
      *
      * @param info, pid, tid, needGc, needSnapshot
-     * @param dumpResult The dump result string
+     * @param callback The callback to receive dump result
      *
      * @return
      */
-    virtual void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult) = 0;
+    virtual void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback) = 0;
 
     /**
      * ScheduleLaunchApplication, call ScheduleLaunchApplication() through proxy project,
@@ -364,6 +376,11 @@ public:
 
     virtual void ScheduleUpdateWorkProcessInfo(std::shared_ptr<AppUpdateInfo> updateInfo) {}
 
+    virtual int32_t SchedulePreTemplateProcessDeepFrozen()
+    {
+        return 0;
+    }
+
     enum class Message {
         SCHEDULE_FOREGROUND_APPLICATION_TRANSACTION = 0,
         SCHEDULE_BACKGROUND_APPLICATION_TRANSACTION,
@@ -403,6 +420,8 @@ public:
         SCHEDULE_DUMP_ARKWEB,
         SCHEDULE_UPDATE_WORK_PROCESS_INFO,
         SCHEDULE_MEM_APPLICATION_TRANSACTION,
+        SCHEDULE_JSHANDLE_MAP_APPLICATION_TRANSACTION,
+        SCHEDULE_PRE_TEMPLATE_PROCESS_DEEP_FROZEN,
     };
 };
 }  // namespace AppExecFwk

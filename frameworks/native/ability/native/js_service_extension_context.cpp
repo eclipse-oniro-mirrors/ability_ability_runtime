@@ -18,6 +18,7 @@
 #include <chrono>
 #include <cstdint>
 
+#include "ability_business_error.h"
 #include "ability_manager_client.h"
 #include "ability_runtime/js_caller_complex.h"
 #include "hilog_tag_wrapper.h"
@@ -38,6 +39,9 @@
 #include "open_link/napi_common_open_link_options.h"
 #include "start_options.h"
 #include "hitrace_meter.h"
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+#include "histogram_plugin_macros.h"
+#endif
 #include "uri.h"
 
 namespace OHOS {
@@ -56,8 +60,6 @@ constexpr size_t ARGC_FOUR = 4;
 constexpr const char* ATOMIC_SERVICE_PREFIX = "com.atomicservice.";
 const std::string JSON_KEY_ERR_MSG = "errMsg";
 const std::string KEY_REQUEST_ID = "com.ohos.param.requestId";
-constexpr const int32_t API26 = 26;
-constexpr const int32_t API_VERSION_MOD = 100;
 
 class StartAbilityByCallParameters {
 public:
@@ -142,24 +144,6 @@ public:
         GET_NAPI_INFO_AND_CALL(env, info, JsServiceExtensionContext, OnConnectAbilityWithAccount);
     }
 
-    static napi_value ConnectAbilityWithAccountRestricted(napi_env env, napi_callback_info info)
-    {
-        NapiCallbackInfo napiInfo;
-        JsServiceExtensionContext* jsContext = static_cast<JsServiceExtensionContext*>(
-            GetNapiCallbackInfoAndThis(env, info, napiInfo, nullptr));
-        if (jsContext == nullptr) {
-            return CreateJsUndefined(env);
-        }
-        if (CheckSatisfyTargetAPIVersion(jsContext->context_, API26)) {
-            TAG_LOGE(AAFwkTag::SERVICE_EXT, "connectAbilityWithAccount is not supported for API 26+");
-            ThrowInvalidParamError(env, "connectAbilityWithAccount is not supported for API 26+, "
-                "please use connectServiceExtensionAbilityWithAccount instead.");
-            return CreateJsUndefined(env);
-        }
-
-        GET_NAPI_INFO_AND_CALL(env, info, JsServiceExtensionContext, OnConnectAbilityWithAccount);
-    }
-
     static napi_value TerminateAbility(napi_env env, napi_callback_info info)
     {
         GET_NAPI_INFO_AND_CALL(env, info, JsServiceExtensionContext, OnTerminateAbility);
@@ -172,24 +156,6 @@ public:
 
     static napi_value DisconnectAbility(napi_env env, napi_callback_info info)
     {
-        GET_NAPI_INFO_AND_CALL(env, info, JsServiceExtensionContext, OnDisconnectAbility);
-    }
-
-    static napi_value DisconnectAbilityRestricted(napi_env env, napi_callback_info info)
-    {
-        NapiCallbackInfo napiInfo;
-        JsServiceExtensionContext* jsContext = static_cast<JsServiceExtensionContext*>(
-            GetNapiCallbackInfoAndThis(env, info, napiInfo, nullptr));
-        if (jsContext == nullptr) {
-            return CreateJsUndefined(env);
-        }
-        if (CheckSatisfyTargetAPIVersion(jsContext->context_, API26)) {
-            TAG_LOGE(AAFwkTag::SERVICE_EXT, "disconnectAbility is not supported for API 26+");
-            ThrowInvalidParamError(env, "disconnectAbility is not supported for API 26+, "
-                "please use disconnectServiceExtensionAbility instead.");
-            return CreateJsUndefined(env);
-        }
-
         GET_NAPI_INFO_AND_CALL(env, info, JsServiceExtensionContext, OnDisconnectAbility);
     }
 
@@ -223,6 +189,11 @@ public:
         GET_NAPI_INFO_AND_CALL(env, info, JsServiceExtensionContext, OnRequestModalUIExtension);
     }
 
+    static napi_value RequestModalUIExtensionWithAccount(napi_env env, napi_callback_info info)
+    {
+        GET_NAPI_INFO_AND_CALL(env, info, JsServiceExtensionContext, OnRequestModalUIExtensionWithAccount);
+    }
+
     static napi_value PreStartMission(napi_env env, napi_callback_info info)
     {
         GET_NAPI_INFO_AND_CALL(env, info, JsServiceExtensionContext, OnPreStartMission);
@@ -234,8 +205,6 @@ public:
     }
 
 private:
-    static bool CheckSatisfyTargetAPIVersion(
-        const std::weak_ptr<ServiceExtensionContext>& context, int32_t version);
     std::weak_ptr<ServiceExtensionContext> context_;
     sptr<JsFreeInstallObserver> freeInstallObserver_ = nullptr;
     static void ClearFailedCallConnection(
@@ -717,7 +686,13 @@ private:
         if (!CheckStartAbilityByCallInputParam(env, info, want, accountId)) {
             return CreateJsUndefined(env);
         }
-
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+        if (accountId == DEFAULT_INVAL_VALUE) {
+            HISTOGRAM_BOOLEAN("AbilityKit.ServiceExtensionContext.startAbilityByCall", 1);
+        } else {
+            HISTOGRAM_BOOLEAN("AbilityKit.ServiceExtensionContext.startAbilityByCallWithAccount", 1);
+        }
+#endif
         auto calls = std::make_shared<StartAbilityByCallParameters>();
         napi_value result = nullptr;
         calls->callerCallBack = std::make_shared<CallerCallBack>();
@@ -1064,6 +1039,9 @@ private:
     {
         HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
         TAG_LOGD(AAFwkTag::SERVICE_EXT, "called");
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+    HISTOGRAM_BOOLEAN("AbilityKit.ServiceExtensionContext.connectServiceExtensionAbility", 1);
+#endif
         // Check params count
         if (info.argc < ARGC_TWO) {
             TAG_LOGE(AAFwkTag::SERVICE_EXT, "invalid argc");
@@ -1087,12 +1065,12 @@ private:
         NapiAsyncTask::CompleteCallback complete = [connection, connectId, innerErrorCode](napi_env env,
             NapiAsyncTask& task, int32_t status) {
             if (*innerErrorCode == 0) {
-                TAG_LOGI(AAFwkTag::SERVICE_EXT, "Connect ability success");
+                TAG_LOGI(AAFwkTag::SERVICE_EXT, "Connect succ");
                 task.ResolveWithNoError(env, CreateJsUndefined(env));
                 return;
             }
 
-            TAG_LOGE(AAFwkTag::SERVICE_EXT, "Connect ability failed");
+            TAG_LOGE(AAFwkTag::SERVICE_EXT, "Connect fail");
             int32_t errcode = static_cast<int32_t>(AbilityRuntime::GetJsErrorCodeByNativeError(*innerErrorCode));
             if (errcode) {
                 connection->CallJsFailed(errcode);
@@ -1109,6 +1087,10 @@ private:
     {
         HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
         TAG_LOGI(AAFwkTag::SERVICE_EXT, "ConnectAbilityWithAccount");
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+    HISTOGRAM_BOOLEAN(
+        "AbilityKit.ServiceExtensionContext.connectServiceExtensionAbilityWithAccount", 1);
+#endif
         // Unwrap want, accountId and connection
         AAFwk::Want want;
         int32_t accountId = 0;
@@ -1219,7 +1201,7 @@ private:
                 } else if (*innerErrCode == static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT)) {
                     task.Reject(env, CreateJsError(env, *innerErrCode, "Context is released"));
                 } else if (*innerErrCode == static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER)) {
-                    task.Reject(env, CreateJsError(env, *innerErrCode, "not found connection"));
+                    task.Reject(env, CreateJsError(env, *innerErrCode, "null connection"));
                 } else {
                     task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrCode));
                 }
@@ -1234,7 +1216,7 @@ private:
     void FindConnection(AAFwk::Want& want, sptr<JSServiceExtensionConnection>& connection, int64_t& connectId,
         int32_t &accountId) const
     {
-        TAG_LOGI(AAFwkTag::SERVICE_EXT, "Disconnect ability:%{public}d",
+        TAG_LOGI(AAFwkTag::SERVICE_EXT, "Disconnect:%{public}d",
             static_cast<int32_t>(connectId));
         std::lock_guard guard(g_connectsMutex);
         auto item = std::find_if(g_connects.begin(),
@@ -1256,6 +1238,9 @@ private:
     {
         HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
         TAG_LOGI(AAFwkTag::SERVICE_EXT, "called");
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+    HISTOGRAM_BOOLEAN("AbilityKit.ServiceExtensionContext.startServiceExtensionAbility", 1);
+#endif
         if (info.argc < ARGC_ONE) {
             TAG_LOGE(AAFwkTag::SERVICE_EXT, "invalid argc");
             ThrowTooFewParametersError(env);
@@ -1503,6 +1488,56 @@ private:
         return result;
     }
 
+    napi_value OnRequestModalUIExtensionWithAccount(napi_env env, NapiCallbackInfo& info)
+    {
+        TAG_LOGD(AAFwkTag::SERVICE_EXT, "called");
+        if (info.argc < ARGC_TWO) {
+            ThrowTooFewParametersError(env);
+            return CreateJsUndefined(env);
+        }
+
+        AAFwk::Want want;
+        if (!AppExecFwk::UnwrapWant(env, info.argv[0], want)) {
+            TAG_LOGE(AAFwkTag::SERVICE_EXT, "parse want failed");
+            ThrowInvalidParamError(env, "Parse param want failed, must be a Want.");
+            return CreateJsUndefined(env);
+        }
+
+        int32_t accountId = 0;
+        if (!AppExecFwk::UnwrapInt32FromJS2(env, info.argv[1], accountId)) {
+            TAG_LOGE(AAFwkTag::SERVICE_EXT, "parse accountId failed");
+            ThrowInvalidParamError(env, "Parse param accountId failed, must be a number.");
+            return CreateJsUndefined(env);
+        }
+
+        auto innerErrCode = std::make_shared<ErrCode>(ERR_OK);
+        NapiAsyncTask::ExecuteCallback execute = [serviceContext = context_, want, accountId, innerErrCode]() {
+            auto context = serviceContext.lock();
+            if (!context) {
+                TAG_LOGE(AAFwkTag::APPKIT, "context released");
+                *innerErrCode = static_cast<int>(AbilityErrorCode::ERROR_CODE_INNER);
+                return;
+            }
+            auto abilityMgr = AAFwk::AbilityManagerClient::GetInstance();
+            *innerErrCode = abilityMgr->RequestModalUIExtensionWithAccount(want, accountId);
+        };
+        NapiAsyncTask::CompleteCallback complete = [innerErrCode](napi_env env, NapiAsyncTask& task, int32_t status) {
+            HandleScope handleScope(env);
+            if (*innerErrCode == ERR_OK) {
+                task.Resolve(env, CreateJsUndefined(env));
+            } else {
+                TAG_LOGE(AAFwkTag::APPKIT, "OnRequestModalUIExtensionWithAccount failed %{public}d", *innerErrCode);
+                task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrCode));
+            }
+        };
+
+        napi_value lastParam = (info.argc > ARGC_TWO) ? info.argv[ARGC_TWO] : nullptr;
+        napi_value result = nullptr;
+        NapiAsyncTask::ScheduleHighQos("JSServiceExtensionContext::OnRequestModalUIExtensionWithAccount",
+            env, CreateAsyncTaskWithLastParam(env, lastParam, std::move(execute), std::move(complete), &result));
+        return result;
+    }
+
     bool ParsePreStartMissionArgs(const napi_env &env, const NapiCallbackInfo &info, std::string& bundleName,
         std::string& moduleName, std::string& abilityName, std::string& startTime)
     {
@@ -1615,7 +1650,8 @@ private:
             HandleScope handleScope(env);
             if (!retCode) {
                 TAG_LOGE(AAFwkTag::SERVICE_EXT, "StartAbility failed");
-                task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+                task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::INVALID_RET_CODE)));
                 return;
             }
             if (*retCode == 0) {
@@ -1649,7 +1685,6 @@ private:
 
 napi_value CreateJsServiceExtensionContext(napi_env env, std::shared_ptr<ServiceExtensionContext> context)
 {
-    TAG_LOGD(AAFwkTag::SERVICE_EXT, "called");
     HandleEscape handleEscape(env);
     std::shared_ptr<OHOS::AppExecFwk::AbilityInfo> abilityInfo = nullptr;
     if (context) {
@@ -1672,7 +1707,7 @@ napi_value CreateJsServiceExtensionContext(napi_env env, std::shared_ptr<Service
     BindNativeFunction(
         env, object, "connectServiceExtensionAbility", moduleName, JsServiceExtensionContext::ConnectAbility);
     BindNativeFunction(env, object, "disconnectAbility",
-        moduleName, JsServiceExtensionContext::DisconnectAbilityRestricted);
+        moduleName, JsServiceExtensionContext::DisconnectAbility);
     BindNativeFunction(env, object, "disconnectServiceExtensionAbility",
         moduleName, JsServiceExtensionContext::DisconnectAbility);
     BindNativeFunction(env, object, "startAbilityWithAccount",
@@ -1680,8 +1715,8 @@ napi_value CreateJsServiceExtensionContext(napi_env env, std::shared_ptr<Service
     BindNativeFunction(env, object, "startUIAbilities", moduleName, JsServiceExtensionContext::StartUIAbilities);
     BindNativeFunction(env, object, "startAbilityByCall",
         moduleName, JsServiceExtensionContext::StartAbilityByCall);
-    BindNativeFunction(env, object, "connectAbilityWithAccount", moduleName,
-        JsServiceExtensionContext::ConnectAbilityWithAccountRestricted);
+    BindNativeFunction(
+        env, object, "connectAbilityWithAccount", moduleName, JsServiceExtensionContext::ConnectAbilityWithAccount);
     BindNativeFunction(env, object,
         "connectServiceExtensionAbilityWithAccount", moduleName, JsServiceExtensionContext::ConnectAbilityWithAccount);
     BindNativeFunction(env, object, "startServiceExtensionAbility", moduleName,
@@ -1698,6 +1733,8 @@ napi_value CreateJsServiceExtensionContext(napi_env env, std::shared_ptr<Service
         JsServiceExtensionContext::StartRecentAbility);
     BindNativeFunction(env, object, "requestModalUIExtension", moduleName,
         JsServiceExtensionContext::RequestModalUIExtension);
+    BindNativeFunction(env, object, "requestModalUIExtensionWithAccount", moduleName,
+        JsServiceExtensionContext::RequestModalUIExtensionWithAccount);
     BindNativeFunction(env, object, "preStartMission", moduleName, JsServiceExtensionContext::PreStartMission);
     BindNativeFunction(env, object, "openAtomicService", moduleName, JsServiceExtensionContext::OpenAtomicService);
     return handleEscape.Escape(object);
@@ -1915,25 +1952,6 @@ void JSServiceExtensionConnection::CallJsFailed(int32_t errorCode)
     napi_value argv[] = {CreateJsValue(env_, errorCode)};
     napi_call_function(env_, obj, method, ARGC_ONE, argv, nullptr);
     TAG_LOGD(AAFwkTag::SERVICE_EXT, "end");
-}
-
-bool JsServiceExtensionContext::CheckSatisfyTargetAPIVersion(
-    const std::weak_ptr<ServiceExtensionContext>& context, int32_t version)
-{
-    auto extensionContext = context.lock();
-    if (!extensionContext) {
-        TAG_LOGE(AAFwkTag::SERVICE_EXT, "null context when check api version");
-        return false;
-    }
-
-    auto applicationInfo = extensionContext->GetApplicationInfo();
-    if (!applicationInfo) {
-        TAG_LOGE(AAFwkTag::SERVICE_EXT, "null applicationInfo");
-        return false;
-    }
-
-    TAG_LOGD(AAFwkTag::SERVICE_EXT, "targetAPIVersion: %{public}d", applicationInfo->apiTargetVersion);
-    return applicationInfo->apiTargetVersion % API_VERSION_MOD >= version;
 }
 }  // namespace AbilityRuntime
 }  // namespace OHOS

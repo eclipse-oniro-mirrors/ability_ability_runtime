@@ -34,7 +34,6 @@ ohos_prebuilt_etc("ability_runtime_base_context_abc_etc") {
 generate_static_abc("ability_runtime_application_context_abc") {
   base_url = "./"
   files = [ "./application/ApplicationContext.ets" ]
-
   is_boot_abc = "True"
   device_dst_file =
       "/system/framework/ability_runtime_application_context_abc.abc"
@@ -148,6 +147,22 @@ ohos_prebuilt_etc("ability_runtime_start_options_abc_etc") {
   deps = [ ":ability_runtime_start_options_abc" ]
 }
 
+generate_static_abc("ability_runtime_show_params_abc") {
+  base_url = "./"
+  files = [ "./@ohos.app.ability.ShowParams.ets" ]
+
+  is_boot_abc = "True"
+  device_dst_file = "/system/framework/ability_runtime_show_params_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_show_params_abc_etc") {
+  source = "$target_out_dir/ability_runtime_show_params_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_show_params_abc" ]
+}
+
 generate_static_abc("ability_runtime_want_abc") {
   base_url = "./"
   files = [ "./@ohos.app.ability.Want.ets" ]
@@ -202,8 +217,7 @@ generate_static_abc("ability_runtime_child_process_abc") {
   files = [ "./@ohos.app.ability.ChildProcess.ets" ]
 
   is_boot_abc = "True"
-  device_dst_file =
-      "/system/framework/ability_runtime_child_process_abc.abc"
+  device_dst_file = "/system/framework/ability_runtime_child_process_abc.abc"
 }
 
 ohos_prebuilt_etc("ability_runtime_child_process_abc_etc") {
@@ -231,10 +245,26 @@ ohos_prebuilt_etc("ability_runtime_child_process_args_abc_etc") {
   deps = [ ":ability_runtime_child_process_args_abc" ]
 }
 
+generate_static_abc("ability_runtime_child_process_information_abc") {
+  base_url = "./"
+  files = [ "./application/ChildProcessInformation.ets" ]
+
+  is_boot_abc = "True"
+  device_dst_file =
+      "/system/framework/ability_runtime_child_process_information_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_child_process_information_abc_etc") {
+  source = "$target_out_dir/ability_runtime_child_process_information_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_child_process_information_abc" ]
+}
+
 generate_static_abc("ability_runtime_child_process_manager_abc") {
   base_url = "./"
   files = [ "./@ohos.app.ability.childProcessManager.ets" ]
-
   is_boot_abc = "True"
   device_dst_file =
       "/system/framework/ability_runtime_child_process_manager_abc.abc"
@@ -286,7 +316,8 @@ generate_static_abc("ability_runtime_completionHandler_callback_abc") {
   files = [ "./@ohos.app.ability.CompletionHandlerForAbilityStartCallback.ets" ]
 
   is_boot_abc = "True"
-  device_dst_file = "/system/framework/ability_runtime_completionHandler_callback_abc.abc"
+  device_dst_file =
+      "/system/framework/ability_runtime_completionHandler_callback_abc.abc"
 }
 
 ohos_prebuilt_etc("ability_runtime_completionHandler_callback_abc_etc") {
@@ -296,7 +327,6 @@ ohos_prebuilt_etc("ability_runtime_completionHandler_callback_abc_etc") {
   part_name = "ability_runtime"
   deps = [ ":ability_runtime_completionHandler_callback_abc" ]
 }
-
 
 generate_static_abc("ability_runtime_configuration_constant_abc") {
   base_url = "./"
@@ -550,12 +580,29 @@ ohos_prebuilt_etc("ability_runtime_app_manager_abc_etc") {
   deps = [ ":ability_runtime_app_manager_abc" ]
 }
 
+generate_static_abc("ability_runtime_task_manager_abc") {
+  base_url = "./"
+  files = [ "./@ohos.app.agent.taskManager.ets" ]
+
+  is_boot_abc = "True"
+  device_dst_file = "/system/framework/ability_runtime_task_manager_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_task_manager_abc_etc") {
+  source = "$target_out_dir/ability_runtime_task_manager_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_task_manager_abc" ]
+}
+
 generate_static_abc("ability_runtime_hyper_snap_manager_abc") {
   base_url = "./"
   files = [ "./@ohos.app.ability.hyperSnapManager.ets" ]
 
   is_boot_abc = "True"
-  device_dst_file = "/system/framework/ability_runtime_hyper_snap_manager_abc.abc"
+  device_dst_file =
+      "/system/framework/ability_runtime_hyper_snap_manager_abc.abc"
 }
 
 ohos_prebuilt_etc("ability_runtime_hyper_snap_manager_abc_etc") {
@@ -796,6 +843,23 @@ ohos_prebuilt_etc("ability_delegator_ability_monitor_abc_etc") {
   deps = [ ":ability_delegator_ability_monitor_abc" ]
 }
 
+generate_static_abc("ability_delegator_interop_ability_monitor_abc") {
+  base_url = "."
+  files = [ "./application/InteropAbilityMonitor.ets" ]
+
+  is_boot_abc = "True"
+  device_dst_file =
+      "/system/framework/ability_delegator_interop_ability_monitor_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_delegator_interop_ability_monitor_abc_etc") {
+  source = "$target_out_dir/ability_delegator_interop_ability_monitor_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_delegator_interop_ability_monitor_abc" ]
+}
+
 generate_static_abc("ability_runtime_ability_stage_monitor_abc") {
   base_url = "./"
   files = [ "./application/AbilityStageMonitor.ets" ]
@@ -1018,6 +1082,23 @@ ohos_prebuilt_etc("ability_runtime_insight_intent_context_abc_etc") {
   deps = [ ":ability_runtime_insight_intent_context_abc" ]
 }
 
+generate_static_abc("ability_runtime_insight_intent_decorator_abc") {
+  base_url = "./"
+  files = [ "./@ohos.app.ability.InsightIntentDecorator.ets" ]
+
+  is_boot_abc = "True"
+  device_dst_file =
+      "/system/framework/ability_runtime_insight_intent_decorator_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_insight_intent_decorator_abc_etc") {
+  source = "$target_out_dir/ability_runtime_insight_intent_decorator_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_insight_intent_decorator_abc" ]
+}
+
 generate_static_abc("ability_runtime_insight_intent_driver_abc") {
   base_url = "./"
   files = [ "./@ohos.app.ability.insightIntentDriver.ets" ]
@@ -1037,7 +1118,10 @@ ohos_prebuilt_etc("ability_runtime_insight_intent_driver_abc_etc") {
 
 generate_static_abc("ability_runtime_insight_intent_executor_abc") {
   base_url = "./"
-  files = [ "./@ohos.app.ability.InsightIntentExecutor.ets" ]
+  files = [
+    "./@ohos.app.ability.InsightIntentEntryExecutor.ets",
+    "./@ohos.app.ability.InsightIntentExecutor.ets",
+  ]
 
   is_boot_abc = "True"
   device_dst_file =
@@ -1102,6 +1186,23 @@ ohos_prebuilt_etc("ability_runtime_application_state_change_callback_abc_etc") {
   deps = [ ":ability_runtime_application_state_change_callback_abc" ]
 }
 
+generate_static_abc("ability_runtime_app_process_state_observer_abc") {
+  base_url = "./"
+  files = [ "./@ohos.app.ability.AppProcessStateObserver.ets" ]
+
+  is_boot_abc = "True"
+  device_dst_file =
+      "/system/framework/ability_runtime_app_process_state_observer_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_app_process_state_observer_abc_etc") {
+  source = "$target_out_dir/ability_runtime_app_process_state_observer_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_app_process_state_observer_abc" ]
+}
+
 generate_static_abc("ability_runtime_AbilityRunningInfo_abc") {
   base_url = "./"
   files = [ "./application/AbilityRunningInfo.ets" ]
@@ -1136,21 +1237,23 @@ ohos_prebuilt_etc("ability_runtime_ability_lifecycle_callback_abc_etc") {
   deps = [ ":ability_runtime_ability_lifecycle_callback_abc" ]
 }
 
-generate_static_abc("ability_runtime_ability_system_configuration_updated_callback_abc") {
+generate_static_abc(
+    "ability_runtime_ability_system_configuration_updated_callback_abc") {
   base_url = "./"
   files = [ "./@ohos.app.ability.systemConfiguration.ets" ]
 
   is_boot_abc = "True"
-  device_dst_file =
-      "/system/framework/ability_runtime_ability_system_configuration_updated_callback_abc.abc"
+  device_dst_file = "/system/framework/ability_runtime_ability_system_configuration_updated_callback_abc.abc"
 }
 
-ohos_prebuilt_etc("ability_runtime_ability_system_configuration_updated_callback_abc_etc") {
+ohos_prebuilt_etc(
+    "ability_runtime_ability_system_configuration_updated_callback_abc_etc") {
   source = "$target_out_dir/ability_runtime_ability_system_configuration_updated_callback_abc.abc"
   module_install_dir = "framework"
   subsystem_name = "ability"
   part_name = "ability_runtime"
-  deps = [ ":ability_runtime_ability_system_configuration_updated_callback_abc" ]
+  deps =
+      [ ":ability_runtime_ability_system_configuration_updated_callback_abc" ]
 }
 
 generate_static_abc("ability_runtime_connect_options_abc") {
@@ -1501,7 +1604,8 @@ generate_static_abc("completion_handler_for_atomic_service_abc") {
   files = [ "./@ohos.app.ability.CompletionHandlerForAtomicService.ets" ]
 
   is_boot_abc = "True"
-  device_dst_file = "/system/framework/completion_handler_for_atomic_service_abc.abc"
+  device_dst_file =
+      "/system/framework/completion_handler_for_atomic_service_abc.abc"
 }
 
 ohos_prebuilt_etc("completion_handler_for_atomic_service_abc_etc") {
@@ -1607,6 +1711,42 @@ ohos_prebuilt_etc("application_state_observer_abc_etc") {
   subsystem_name = "ability"
   part_name = "ability_runtime"
   deps = [ ":application_state_observer_abc" ]
+}
+
+generate_static_abc("focused_application_info_abc") {
+  base_url = "./"
+  files = [ "./application/FocusedApplicationInfo.ets" ]
+
+  is_boot_abc = "True"
+  device_dst_file = "/system/framework/focused_application_info_abc.abc"
+}
+
+ohos_prebuilt_etc("focused_application_info_abc_etc") {
+  source = "$target_out_dir/focused_application_info_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":focused_application_info_abc" ]
+}
+
+generate_static_abc("focused_application_observer_abc") {
+  base_url = "./"
+  files = [ "./application/FocusedApplicationObserver.ets" ]
+
+  is_boot_abc = "True"
+  device_dst_file = "/system/framework/focused_application_observer_abc.abc"
+
+  dependencies = [ ":focused_application_info_abc" ]
+  paths_keys = [ "application.FocusedApplicationInfo" ]
+  paths_values = [ "./application/FocusedApplicationInfo.ets" ]
+}
+
+ohos_prebuilt_etc("focused_application_observer_abc_etc") {
+  source = "$target_out_dir/focused_application_observer_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":focused_application_observer_abc" ]
 }
 
 generate_static_abc("appRecovery_abc") {
@@ -1978,6 +2118,23 @@ ohos_prebuilt_etc("ability_runtime_startup_manager_abc_etc") {
   deps = [ ":ability_runtime_startup_manager_abc" ]
 }
 
+generate_static_abc("ability_runtime_app_memory_optimizer_abc") {
+  base_url = "./"
+  files = [ "./@ohos.app.ability.appMemoryOptimizer.ets" ]
+
+  is_boot_abc = "True"
+  device_dst_file =
+      "/system/framework/ability_runtime_app_memory_optimizer_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_app_memory_optimizer_abc_etc") {
+  source = "$target_out_dir/ability_runtime_app_memory_optimizer_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_app_memory_optimizer_abc" ]
+}
+
 generate_static_abc("ability_runtime_startup_task_executor_abc") {
   base_url = "./"
   files = [ "./appstartup/StartupTaskExecutor.ets" ]
@@ -2017,6 +2174,103 @@ generate_static_abc("ability_runtime_kiosk_manager_abc") {
 
   is_boot_abc = "True"
   device_dst_file = "/system/framework/ability_runtime_kiosk_manager_abc.abc"
+}
+
+generate_static_abc("ability_runtime_launch_service_descriptor_abc") {
+  base_url = "./"
+  files = [ "./application/LaunchServiceDescriptor.ets" ]
+  is_boot_abc = "True"
+  device_dst_file =
+      "/system/framework/ability_runtime_launch_service_descriptor_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_launch_service_descriptor_abc_etc") {
+  source = "$target_out_dir/ability_runtime_launch_service_descriptor_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_launch_service_descriptor_abc" ]
+}
+
+generate_static_abc("ability_runtime_launch_service_information_abc") {
+  base_url = "./"
+  files = [ "./application/LaunchServiceInformation.ets" ]
+  is_boot_abc = "True"
+  device_dst_file =
+      "/system/framework/ability_runtime_launch_service_information_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_launch_service_information_abc_etc") {
+  source = "$target_out_dir/ability_runtime_launch_service_information_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_launch_service_information_abc" ]
+}
+
+generate_static_abc("ability_runtime_launch_service_manager_abc") {
+  base_url = "./"
+  files = [ "./@ohos.app.ability.launchServiceManager.ets" ]
+  is_boot_abc = "True"
+  device_dst_file =
+      "/system/framework/ability_runtime_launch_service_manager_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_launch_service_manager_abc_etc") {
+  source = "$target_out_dir/ability_runtime_launch_service_manager_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_launch_service_manager_abc" ]
+}
+
+generate_static_abc("ability_runtime_launch_service_observer_abc") {
+  base_url = "./"
+  files = [ "./application/LaunchServiceObserver.ets" ]
+  is_boot_abc = "True"
+  device_dst_file =
+      "/system/framework/ability_runtime_launch_service_observer_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_launch_service_observer_abc_etc") {
+  source = "$target_out_dir/ability_runtime_launch_service_observer_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_launch_service_observer_abc" ]
+}
+
+generate_static_abc("ability_runtime_launch_service_process_state_data_abc") {
+  base_url = "./"
+  files = [ "./application/LaunchServiceProcessStateData.ets" ]
+  is_boot_abc = "True"
+  device_dst_file =
+      "/system/framework/ability_runtime_launch_service_process_state_data_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_launch_service_process_state_data_abc_etc") {
+  source =
+      "$target_out_dir/ability_runtime_launch_service_process_state_data_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_launch_service_process_state_data_abc" ]
+}
+
+generate_static_abc("ability_runtime_launch_service_state_data_abc") {
+  base_url = "./"
+  files = [ "./application/LaunchServiceStateData.ets" ]
+  is_boot_abc = "True"
+  device_dst_file =
+      "/system/framework/ability_runtime_launch_service_state_data_abc.abc"
+}
+
+ohos_prebuilt_etc("ability_runtime_launch_service_state_data_abc_etc") {
+  source = "$target_out_dir/ability_runtime_launch_service_state_data_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "ability"
+  part_name = "ability_runtime"
+  deps = [ ":ability_runtime_launch_service_state_data_abc" ]
 }
 
 ohos_prebuilt_etc("ability_runtime_kiosk_manager_abc_etc") {
@@ -2100,6 +2354,7 @@ group("ets_packages") {
     ":ability_delegator_ability_monitor_abc_etc",
     ":ability_delegator_application_testRunner_abc_etc",
     ":ability_delegator_args_abc_etc",
+    ":ability_delegator_interop_ability_monitor_abc_etc",
     ":ability_delegator_registry_abc_etc",
     ":ability_first_frame_state_data_abc_etc",
     ":ability_first_frame_state_observer_abc_etc",
@@ -2122,6 +2377,8 @@ group("ets_packages") {
     ":ability_runtime_ability_utils_abc_etc",
     ":ability_runtime_action_extension_ability_abc_etc",
     ":ability_runtime_app_manager_abc_etc",
+    ":ability_runtime_app_memory_optimizer_abc_etc",
+    ":ability_runtime_app_process_state_observer_abc_etc",
     ":ability_runtime_app_state_data_abc_etc",
     ":ability_runtime_application_context_abc_etc",
     ":ability_runtime_application_state_change_callback_abc_etc",
@@ -2140,11 +2397,12 @@ group("ets_packages") {
     ":ability_runtime_caller_callee_abc_etc",
     ":ability_runtime_child_process_abc_etc",
     ":ability_runtime_child_process_args_abc_etc",
+    ":ability_runtime_child_process_information_abc_etc",
     ":ability_runtime_child_process_manager_abc_etc",
     ":ability_runtime_child_process_options_abc_etc",
+    ":ability_runtime_completionHandler_callback_abc_etc",
     ":ability_runtime_completion_handler_abc_etc",
     ":ability_runtime_configuration_abc_etc",
-    ":ability_runtime_completionHandler_callback_abc_etc",
     ":ability_runtime_configuration_constant_abc_etc",
     ":ability_runtime_connect_options_abc_etc",
     ":ability_runtime_context_abc_etc",
@@ -2162,12 +2420,19 @@ group("ets_packages") {
     ":ability_runtime_hyper_snap_manager_abc_etc",
     ":ability_runtime_insight_intent_abc_etc",
     ":ability_runtime_insight_intent_context_abc_etc",
+    ":ability_runtime_insight_intent_decorator_abc_etc",
     ":ability_runtime_insight_intent_driver_abc_etc",
     ":ability_runtime_insight_intent_executor_abc_etc",
     ":ability_runtime_insight_intent_provider_abc_etc",
     ":ability_runtime_interop_ability_lifecycle_callback_abc_etc",
     ":ability_runtime_kiosk_manager_abc_etc",
     ":ability_runtime_kiosk_status_abc_etc",
+    ":ability_runtime_launch_service_descriptor_abc_etc",
+    ":ability_runtime_launch_service_information_abc_etc",
+    ":ability_runtime_launch_service_manager_abc_etc",
+    ":ability_runtime_launch_service_observer_abc_etc",
+    ":ability_runtime_launch_service_process_state_data_abc_etc",
+    ":ability_runtime_launch_service_state_data_abc_etc",
     ":ability_runtime_mission_info_abc_etc",
     ":ability_runtime_mission_listener_abc_etc",
     ":ability_runtime_mission_snapshot_abc_etc",
@@ -2181,6 +2446,7 @@ group("ets_packages") {
     ":ability_runtime_running_multi_instance_info_abc_etc",
     ":ability_runtime_share_extension_ability_abc_etc",
     ":ability_runtime_shell_cmd_result_abc_etc",
+    ":ability_runtime_show_params_abc_etc",
     ":ability_runtime_start_options_abc_etc",
     ":ability_runtime_startup_config_abc_etc",
     ":ability_runtime_startup_config_entry_abc_etc",
@@ -2188,6 +2454,7 @@ group("ets_packages") {
     ":ability_runtime_startup_manager_abc_etc",
     ":ability_runtime_startup_task_abc_etc",
     ":ability_runtime_startup_task_executor_abc_etc",
+    ":ability_runtime_task_manager_abc_etc",
     ":ability_runtime_trigger_info_abc_etc",
     ":ability_runtime_ui_ability_abc_etc",
     ":ability_runtime_ui_ability_context_abc_etc",
@@ -2208,6 +2475,8 @@ group("ets_packages") {
     ":business_ability_router_abc_etc",
     ":completion_handler_for_atomic_service_abc_etc",
     ":errorManager_abc_etc",
+    ":focused_application_info_abc_etc",
+    ":focused_application_observer_abc_etc",
     ":form_extension_ability_etc",
     ":photo_editor_extension_ability_etc",
     ":quick_fix_manager_abc_etc",

@@ -211,8 +211,7 @@ public:
      *
      * @return Returns SUCCESS on success, others on failure.
      */
-    virtual Status NotifyProcessObserver(const std::string &key, const sptr<IRemoteObject> &observer,
-        DataObsOption opt = DataObsOption()) = 0;
+    virtual Status NotifyProcessObserver(const std::string &key, const sptr<IRemoteObject> observer) = 0;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

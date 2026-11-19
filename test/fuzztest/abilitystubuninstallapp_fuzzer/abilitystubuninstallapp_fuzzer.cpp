@@ -48,7 +48,6 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     DelayedSingleton<AbilityManagerService>::GetInstance()->subManagersHelper_->currentUIAbilityManager_ =
         std::make_shared<UIAbilityLifecycleManager>();
     DelayedSingleton<AbilityManagerService>::GetInstance()->OnRemoteRequest(code, parcel, reply, option);
-    DelayedSingleton<AbilityRuntime::AppExitReasonDataManager>::DestroyInstance();
     return true;
 }
 }

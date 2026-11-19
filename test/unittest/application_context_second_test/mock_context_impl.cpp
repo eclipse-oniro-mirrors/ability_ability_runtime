@@ -187,16 +187,5 @@ std::shared_ptr<AppExecFwk::Configuration> MockContextImpl::GetConfiguration() c
     std::shared_ptr<AppExecFwk::Configuration> config = std::make_shared<AppExecFwk::Configuration>();
     return config;
 }
-
-void MockContextImpl::InitPluginExtensionInfo(const std::shared_ptr<AppExecFwk::AbilityInfo> &abilityInfo,
-    const std::string &hostBundleName)
-{
-    return;
-}
-
-std::shared_ptr<AppExecFwk::ExtensionAbilityInfo> MockContextImpl::GetPluginExtensionInfo()
-{
-    return nullptr;
-}
 }  // namespace AbilityRuntime
 }  // namespace OHOS

@@ -38,7 +38,6 @@
 #include "system_ability_definition.h"
 #include "wants_info.h"
 #include "want_receiver_stub.h"
-#include "want_sender_stub.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -477,6 +476,126 @@ HWTEST_F(PendingWantManagerSecondTest, GetWantSenderInfo_NullInfo_0200, TestSize
 }
 
 /**
+ * @tc.name: GetWantSenderInfo_Success_0100
+ * @tc.desc: Test GetWantSenderInfo returns correct info for a valid pending record
+ * @tc.type: FUNC
+ */
+HWTEST_F(PendingWantManagerSecondTest, GetWantSenderInfo_Success_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetWantSenderInfo_Success_0100 start");
+
+    // Arrange
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    ASSERT_NE(pendingManager_, nullptr);
+
+    Want want;
+    ElementName element("device", "com.test.bundle", "TestAbility");
+    want.SetElement(element);
+    want.SetParam("key1", std::string("value1"));
+    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 100);
+    wantSenderInfo.requestCode = 42;
+
+    auto sender = pendingManager_->GetWantSender(1, 1, true, wantSenderInfo, nullptr, 5);
+    ASSERT_NE(sender, nullptr);
+
+    std::shared_ptr<WantSenderInfo> info = std::make_shared<WantSenderInfo>();
+
+    // Act
+    auto result = pendingManager_->GetWantSenderInfo(sender, info);
+
+    // Assert
+    EXPECT_EQ(result, NO_ERROR);
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->requestCode, 42);
+    EXPECT_EQ(info->type, wantSenderInfo.type);
+    EXPECT_EQ(info->flags, static_cast<uint32_t>(wantSenderInfo.flags));
+    EXPECT_EQ(info->userId, 100);
+    EXPECT_EQ(info->appIndex, 5);
+    EXPECT_EQ(info->allWants.size(), 1u);
+
+    TAG_LOGI(AAFwkTag::TEST, "GetWantSenderInfo_Success_0100 end");
+}
+
+/**
+ * @tc.name: GetWantSenderInfo_RecordNotFound_0300
+ * @tc.desc: Test GetWantSenderInfo when the pending record is not found in records map
+ * @tc.type: FUNC
+ */
+HWTEST_F(PendingWantManagerSecondTest, GetWantSenderInfo_RecordNotFound_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetWantSenderInfo_RecordNotFound_0300 start");
+
+    // Arrange
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    ASSERT_NE(pendingManager_, nullptr);
+
+    Want want;
+    ElementName element("device", "com.test.bundle", "TestAbility");
+    want.SetElement(element);
+    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 0);
+
+    // Create a record but manually clear the records map to simulate "record not found"
+    auto sender = pendingManager_->GetWantSender(1, 1, true, wantSenderInfo, nullptr);
+    ASSERT_NE(sender, nullptr);
+    ASSERT_EQ((int)pendingManager_->wantRecords_.size(), 1);
+
+    // Clear the records map so GetPendingWantRecordByCode returns nullptr
+    pendingManager_->wantRecords_.clear();
+
+    std::shared_ptr<WantSenderInfo> info = std::make_shared<WantSenderInfo>();
+
+    // Act
+    auto result = pendingManager_->GetWantSenderInfo(sender, info);
+
+    // Assert - Should return ERR_INVALID_VALUE when record not found
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "GetWantSenderInfo_RecordNotFound_0300 end");
+}
+
+/**
+ * @tc.name: GetWantSenderInfo_MultipleWants_0100
+ * @tc.desc: Test GetWantSenderInfo returns correct allWants for multiple wants
+ * @tc.type: FUNC
+ */
+HWTEST_F(PendingWantManagerSecondTest, GetWantSenderInfo_MultipleWants_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetWantSenderInfo_MultipleWants_0100 start");
+
+    // Arrange
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    ASSERT_NE(pendingManager_, nullptr);
+
+    Want want1;
+    Want want2;
+    ElementName element1("device", "com.test.bundle1", "Ability1");
+    ElementName element2("device", "com.test.bundle1", "Ability2");
+    want1.SetElement(element1);
+    want2.SetElement(element2);
+    std::vector<Want> wants;
+    wants.emplace_back(want1);
+    wants.emplace_back(want2);
+    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(wants, 0, 0);
+    wantSenderInfo.requestCode = 88;
+
+    auto sender = pendingManager_->GetWantSender(1, 1, true, wantSenderInfo, nullptr);
+    ASSERT_NE(sender, nullptr);
+
+    std::shared_ptr<WantSenderInfo> info = std::make_shared<WantSenderInfo>();
+
+    // Act
+    auto result = pendingManager_->GetWantSenderInfo(sender, info);
+
+    // Assert
+    EXPECT_EQ(result, NO_ERROR);
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->requestCode, 88);
+    EXPECT_EQ(info->allWants.size(), 2u);
+
+    TAG_LOGI(AAFwkTag::TEST, "GetWantSenderInfo_MultipleWants_0100 end");
+}
+
+/**
  * @tc.name: Dump_EmptyRecords_0100
  * @tc.desc: Test Dump with no pending want records
  * @tc.type: FUNC
@@ -603,7 +722,7 @@ HWTEST_F(PendingWantManagerSecondTest, HandleAddWantAgentNumber_NullKey_0200, Te
     ASSERT_NE(pendingManager_, nullptr);
 
     // Act
-    pendingManager_->HandleAddWantAgentNumber(nullptr);
+    pendingManager_->HandleAddWantAgentNumber(nullptr, 100);
 
     // Assert - Should not crash
     EXPECT_NE(pendingManager_, nullptr);
@@ -699,7 +818,7 @@ HWTEST_F(PendingWantManagerSecondTest, CheckWindowState_WithValidPid_0100, TestS
     int32_t pid = 1234;
 
     // Act
-    auto result = pendingManager_->CheckWindowState(pid);
+    auto result = pendingManager_->CheckWindowState(pid, 0);
 
     // Assert - Should return false without proper window manager setup
     EXPECT_FALSE(result);
@@ -723,7 +842,7 @@ HWTEST_F(PendingWantManagerSecondTest, CheckWindowState_ZeroPid_0300, TestSize.L
     int32_t pid = 0;
 
     // Act
-    auto result = pendingManager_->CheckWindowState(pid);
+    auto result = pendingManager_->CheckWindowState(pid, 0);
 
     // Assert - Should return false for zero PID
     EXPECT_FALSE(result);
@@ -747,52 +866,12 @@ HWTEST_F(PendingWantManagerSecondTest, CheckWindowState_NegativePid_0300, TestSi
     int32_t pid = -1;
 
     // Act
-    auto result = pendingManager_->CheckWindowState(pid);
+    auto result = pendingManager_->CheckWindowState(pid, 0);
 
     // Assert - Should return false for negative PID
     EXPECT_FALSE(result);
 
     TAG_LOGI(AAFwkTag::TEST, "CheckWindowState_NegativePid_0300 end");
-}
-
-/**
- * @tc.name: MakeWantSenderCanceledLocked_WithCallbacks_0100
- * @tc.desc: Test MakeWantSenderCanceledLocked notifies all registered callbacks
- * @tc.type: FUNC
- */
-HWTEST_F(PendingWantManagerSecondTest, MakeWantSenderCanceledLocked_WithCallbacks_0100, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "MakeWantSenderCanceledLocked_WithCallbacks_0100 start");
-
-    // Arrange
-    pendingManager_ = std::make_shared<PendingWantManager>();
-    ASSERT_NE(pendingManager_, nullptr);
-
-    Want want;
-    ElementName element("device", "bundleName", "abilityName");
-    want.SetElement(element);
-    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 0);
-
-    auto sender = pendingManager_->GetWantSender(1, 1, true, wantSenderInfo, nullptr);
-    ASSERT_NE(sender, nullptr);
-
-    sptr<CancelReceiver> receiver1 = new CancelReceiver();
-    sptr<CancelReceiver> receiver2 = new CancelReceiver();
-
-    pendingManager_->RegisterCancelListener(sender, receiver1);
-    pendingManager_->RegisterCancelListener(sender, receiver2);
-
-    // Reset counters
-    CancelReceiver::sendCount = 0;
-
-    // Act
-    auto record = iface_cast<PendingWantRecord>(sender->AsObject());
-    pendingManager_->MakeWantSenderCanceledLocked(*record);
-
-    // Assert - Both callbacks should be notified
-    EXPECT_EQ(CancelReceiver::sendCount, DEFAULT_COUNT);
-
-    TAG_LOGI(AAFwkTag::TEST, "MakeWantSenderCanceledLocked_WithCallbacks_0100 end");
 }
 
 /**

@@ -23,10 +23,10 @@ class AbilityStage {
   onCreate() { }
   onDestroy() { }
   onAcceptWant(want) {
-    hilog.sLogI(domainID, TAG, 'onAcceptWant, want:' + want.abilityName);
+    hilog.sLogI(domainID, TAG, 'onAcceptWant, want:' + (want ? want.abilityName : 'undefined'));
   }
   onNewProcessRequest(want) {
-    hilog.sLogI(domainID, TAG, 'onNewProcessRequest, want:' + want.abilityName);
+    hilog.sLogI(domainID, TAG, 'onNewProcessRequest, want:' + (want ? want.abilityName : 'undefined'));
   }
   onConfigurationUpdated(config) { }
   onConfigurationUpdate(newConfig) { }

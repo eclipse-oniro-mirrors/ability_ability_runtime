@@ -81,8 +81,9 @@ public:
     {
         GTEST_LOG_(INFO) << "MockJsRuntime::PreloadModule called";
     }
-    std::unique_ptr<NativeReference> LoadModule(
-        const std::string& moduleName, const std::string& modulePath, const std::string& hapPath, bool esmodule = false)
+    std::unique_ptr<NativeReference> LoadModule(const std::string& moduleName, const std::string& modulePath,
+        const std::string& hapPath, bool esmodule = false, bool useCommonChunk = false,
+        const std::string& srcEntrance = "")
     {
         GTEST_LOG_(INFO) << "MockJsRuntime::LoadModule called";
         return nullptr;

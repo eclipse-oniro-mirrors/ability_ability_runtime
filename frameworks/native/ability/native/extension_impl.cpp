@@ -24,11 +24,20 @@
 #include "extension_context.h"
 #include "hilog_tag_wrapper.h"
 #include "ui_extension_wrapper.h"
+#include "ui_extension.h"
 
 
 namespace OHOS {
 namespace AbilityRuntime {
 const std::string JSON_KEY_ERR_MSG = "errMsg";
+namespace {
+void PreHandleExtensionParam(AAFwk::Want &want)
+{
+#ifdef ENABLE_CLONE_FOR_ACCOUNT
+    want.RemoveParam(AAFwk::Want::PARAM_APP_CLONE_INDEX_KEY);
+#endif
+}
+}
 ExtensionImpl::~ExtensionImpl()
 {
     TAG_LOGD(AAFwkTag::EXT, "~ExtensionImpl");
@@ -74,7 +83,8 @@ void ExtensionImpl::HandleExtensionTransaction(const Want &want, const AAFwk::Li
     sptr<AAFwk::SessionInfo> sessionInfo)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    TAG_LOGI(AAFwkTag::EXT, "%{public}s; %{public}d; %{public}d; %{public}d",
+    PreHandleExtensionParam(const_cast<AAFwk::Want &>(want));
+    TAG_LOGI(AAFwkTag::EXT, "%{public}s;%{public}d;%{public}d;%{public}d",
         want.GetElement().GetAbilityName().c_str(), lifecycleState_, targetState.state, targetState.isNewWant);
     if (lifecycleState_ == targetState.state) {
         TAG_LOGE(AAFwkTag::EXT, "lifecycle state equal");
@@ -257,6 +267,7 @@ sptr<IRemoteObject> ExtensionImpl::ConnectExtension(const Want &want)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::EXT, "call");
+    PreHandleExtensionParam(const_cast<AAFwk::Want &>(want));
     if (extension_ == nullptr) {
         TAG_LOGE(AAFwkTag::EXT, "null extension_");
         return nullptr;
@@ -274,6 +285,7 @@ sptr<IRemoteObject> ExtensionImpl::ConnectExtension(const Want &want, bool &isAs
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::EXT, "call");
+    PreHandleExtensionParam(const_cast<AAFwk::Want &>(want));
     FreezeUtil::GetInstance().AddLifecycleEvent(token_, "ExtensionImpl::ConnectExtension");
     if (extension_ == nullptr) {
         TAG_LOGE(AAFwkTag::EXT, "null extension_");
@@ -336,6 +348,7 @@ void ExtensionImpl::DisconnectExtension(const Want &want)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::EXT, "call");
+    PreHandleExtensionParam(const_cast<AAFwk::Want &>(want));
     if (extension_ == nullptr) {
         TAG_LOGE(AAFwkTag::EXT, "null extension_");
         return;
@@ -349,6 +362,7 @@ void ExtensionImpl::DisconnectExtension(const Want &want, bool &isAsyncCallback)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::EXT, "called");
+    PreHandleExtensionParam(const_cast<AAFwk::Want &>(want));
     if (extension_ == nullptr) {
         TAG_LOGE(AAFwkTag::EXT, "null extension_");
         isAsyncCallback = false;
@@ -404,6 +418,7 @@ void ExtensionImpl::CommandExtension(const Want &want, bool restart, int startId
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::EXT, "call");
+    PreHandleExtensionParam(const_cast<AAFwk::Want &>(want));
     if (extension_ == nullptr) {
         TAG_LOGE(AAFwkTag::EXT, "null extension_");
         return;
@@ -423,7 +438,25 @@ bool ExtensionImpl::HandleInsightIntent(const Want &want)
         TAG_LOGE(AAFwkTag::EXT, "null extension_");
         return false;
     }
+    PreHandleExtensionParam(const_cast<AAFwk::Want &>(want));
     auto ret = extension_->HandleInsightIntent(want);
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::EXT, "handle failed");
+        return false;
+    }
+    TAG_LOGD(AAFwkTag::EXT, "ok");
+    return true;
+}
+
+bool ExtensionImpl::HandleExecuteSkill(const Want &want)
+{
+    TAG_LOGD(AAFwkTag::EXT, "call");
+    if (extension_ == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "null extension_");
+        return false;
+    }
+    PreHandleExtensionParam(const_cast<AAFwk::Want &>(want));
+    auto ret = extension_->HandleExecuteSkill(want);
     if (!ret) {
         TAG_LOGE(AAFwkTag::EXT, "handle failed");
         return false;
@@ -440,7 +473,7 @@ void ExtensionImpl::CommandExtensionWindow(const Want &want, const sptr<AAFwk::S
         TAG_LOGE(AAFwkTag::EXT, "null extension_ or sessionInfo");
         return;
     }
-
+    PreHandleExtensionParam(const_cast<AAFwk::Want &>(want));
     TAG_LOGD(AAFwkTag::EXT, "persistentId: %{private}d, componentId: %{public}" PRId64 ", winCmd: %{public}d",
         sessionInfo->persistentId, sessionInfo->uiExtensionComponentId, winCmd);
     extension_->OnCommandWindow(want, sessionInfo, winCmd);
@@ -522,6 +555,27 @@ void ExtensionImpl::Background(const Want &want, sptr<AAFwk::SessionInfo> sessio
 
     extension_->OnBackground();
     lifecycleState_ = AAFwk::ABILITY_STATE_BACKGROUND_NEW;
+}
+
+int ExtensionImpl::CreateModalUIExtension(const AAFwk::Want &want)
+{
+    if (!AAFwk::UIExtensionWrapper::IsUIExtension(extensionType_)) {
+        TAG_LOGE(AAFwkTag::EXT, "Not UIExtension type: %{public}d", static_cast<int>(extensionType_));
+        return ERR_INVALID_VALUE;
+    }
+
+    if (extension_ == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "null extension_");
+        return ERR_INVALID_VALUE;
+    }
+
+    auto uiExtension = std::static_pointer_cast<AbilityRuntime::UIExtension>(extension_);
+    if (uiExtension == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "Failed to cast extension to UIExtension");
+        return ERR_INVALID_VALUE;
+    }
+
+    return uiExtension->CreateModalUIExtension(want);
 }
 
 void ExtensionImpl::ExtensionWindowLifeCycleImpl::AfterForeground()

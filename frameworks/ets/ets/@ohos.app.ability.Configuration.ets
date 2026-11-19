@@ -28,6 +28,7 @@ export interface Configuration {
   mcc?: string;
   mnc?: string;
   locale?: Intl.Locale;
+  hasBrandColorChanged?: boolean;
 }
 
 class ConfigurationImpl implements Configuration {
@@ -43,4 +44,28 @@ class ConfigurationImpl implements Configuration {
   mcc?: string;
   mnc?: string;
   locale?: Intl.Locale;
+  hasBrandColorChanged?: boolean;
+
+  constructor(languageParam: string, colorModeParam:ConfigurationConstant.ColorMode,
+  directionParam: ConfigurationConstant.Direction, screenDensityParam: ConfigurationConstant.ScreenDensity,
+  displayIdParam: long, hasPointerDeviceParam: boolean, fontIdParam: string,
+  fontSizeScaleParam: double, fontWeightScaleParam: double, mccParam: string, mncParam: string,
+  localeParam: Intl.Locale, hasBrandColorChangedParam: boolean) {
+    this.language = languageParam;
+    this.colorMode = colorModeParam;
+    this.direction = directionParam;
+    this.screenDensity = screenDensityParam;
+    this.displayId = displayIdParam;
+    this.hasPointerDevice = hasPointerDeviceParam;
+    this.fontId = fontIdParam;
+    this.fontSizeScale = fontSizeScaleParam;
+    this.fontWeightScale = fontWeightScaleParam;
+    this.mcc = mccParam;
+    this.mnc = mncParam;
+    this.locale = localeParam;
+    this.hasBrandColorChanged = hasBrandColorChangedParam;
+  }
+
+
+
 }

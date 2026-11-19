@@ -43,13 +43,16 @@ ohos_unittest("modal_system_dialog_util_test") {
     "modal_system_dialog_util_test.cpp",
   ]
 
+  deps = [
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
+  ]
+
   external_deps = [
     "ability_base:base",
     "ability_base:configuration",
     "ability_base:want",
     "ability_base:zuri",
-    "ability_runtime:ability_deps_wrapper",
-    "ability_runtime:app_manager",
     "access_token:libaccesstoken_sdk",
     "appspawn:appspawn_client",
     "bundle_framework:appexecfwk_base",

@@ -97,7 +97,7 @@ const std::shared_ptr<AppRunningRecord> AmsAppRecentListModuleTest::CreateAppRun
     abilityInfo->process = appInfo->name;
     BundleInfo bundleInfo;
     HapModuleInfo hapModuleInfo;
-    EXPECT_TRUE(serviceInner_->GetBundleAndHapInfo(*abilityInfo, appInfo, bundleInfo, hapModuleInfo));
+    EXPECT_TRUE(serviceInner_->GetBundleAndHapInfo(*abilityInfo, appInfo, bundleInfo, hapModuleInfo, 0));
     auto appRunningRecord = serviceInner_->appRunningManager_->CheckAppRunningRecordIsExist(
         appInfo->name, abilityInfo->process, abilityInfo->applicationInfo.uid, bundleInfo);
     EXPECT_NE(nullptr, appRunningRecord);

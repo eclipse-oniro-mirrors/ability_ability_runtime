@@ -69,7 +69,7 @@ int32_t StartOptionsUtils::CheckProcessOptionsInner(const Want &want, const Star
         ERR_CAPABILITY_NOT_SUPPORT, "not support process options");
 
     auto element = want.GetElement();
-    CHECK_TRUE_RETURN_RET(element.GetAbilityName().empty() || want.GetAction().compare(ACTION_CHOOSE) == 0,
+    CHECK_TRUE_RETURN_RET(element.GetAbilityName().empty() || want.GetActionRef().compare(ACTION_CHOOSE) == 0,
         ERR_NOT_ALLOW_IMPLICIT_START, "not allow implicit start");
 
     if (PermissionVerification::GetInstance()->CheckSpecificSystemAbilityAccessPermission(FOUNDATION_PROCESS_NAME)
@@ -78,9 +78,9 @@ int32_t StartOptionsUtils::CheckProcessOptionsInner(const Want &want, const Star
         return ERR_OK;
     }
 
-    StartAbilityUtils::SetTargetCloneIndexInSameBundle(want, callerToken);
+    StartAbilityUtils::ResolveTargetAppCloneIndex(want, callerToken, userId);
     int32_t appIndex = 0;
-    appIndex = !StartAbilityUtils::GetAppIndex(want, callerToken, appIndex) ? 0 : appIndex;
+    StartAbilityUtils::GetAppIndex(want, callerToken, userId, appIndex);
     CHECK_TRUE_RETURN_RET(!DelayedSingleton<AbilityManagerService>::GetInstance()->CheckCallingTokenId(
         element.GetBundleName(), userId, appIndex), ERR_NOT_SELF_APPLICATION, "not self application");
 

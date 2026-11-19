@@ -51,6 +51,7 @@ std::unordered_map<int32_t, AbilityRuntime_ErrorCode> g_innerToBusinessErrorApi1
 
 std::unordered_map<int32_t, AbilityRuntime_ErrorCode> g_innerToBusinessErrorApi21Map {
 { OHOS::AAFwk::ERR_ATTACH_ABILITY_THREAD_FAILED, ABILITY_RUNTIME_ERROR_CODE_START_TIMEOUT },
+{ OHOS::AAFwk::ERR_CHECK_CHILD_PROCESS_FAILED, ABILITY_RUNTIME_ERROR_CODE_CHILD_PROCESS_NOT_EXIST },
 };
 
 AbilityRuntime_ErrorCode ConvertToCommonBusinessErrorCode(int32_t abilityManagerErrorCode)

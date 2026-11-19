@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
+#include <atomic>
 #include <gtest/gtest.h>
+#include <limits>
 #include <singleton.h>
 #include <uv.h>
 #include "ability_context.h"
@@ -28,11 +30,16 @@
 #undef private
 #undef protected
 #include "js_runtime_utils.h"
+#include "js_ui_extension_callback.h"
 #include "native_engine/impl/ark/ark_native_engine.h"
 #include "native_engine/impl/ark/ark_native_deferred.h"
 #include "native_engine/native_engine.h"
 #include "js_runtime_lite.h"
 #include "napi_common_want.h"
+#include "js_preload_ui_extension_callback_client.h"
+#include "js_ui_service_proxy.h"
+#include "ui_extension_servicehost_stub_impl.h"
+#include "js_uiservice_uiext_connection.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -51,10 +58,22 @@ const int USLEEPTIME = 100000;
 napi_env env_ = nullptr;
 panda::ecmascript::EcmaVM* vm_ = nullptr;
 
+napi_value MarkCallbackInvoked(napi_env env, napi_callback_info info)
+{
+    size_t argc = 0;
+    void* data = nullptr;
+    napi_get_cb_info(env, info, &argc, nullptr, nullptr, &data);
+    if (data != nullptr) {
+        *static_cast<bool*>(data) = true;
+    }
+    return CreateJsUndefined(env);
+}
+
 class MockDeferred : public NativeDeferred {
 public:
     void Resolve(napi_value data) override
     {
+        settled_ = true;
         resolved_ = true;
         if (nref_ != nullptr) {
             napi_delete_reference(env_, nref_);
@@ -67,10 +86,12 @@ public:
 
     void Reject(napi_value reason) override
     {
+        settled_ = true;
         resolved_ = false;
     }
 
 public:
+    static bool IsSettled() { return settled_; }
     static bool GetLastResolveStatus() { return resolved_; }
     static napi_ref GetLastResolveValue() { return nref_; }
     static void Clear()
@@ -79,10 +100,14 @@ public:
             delete (reinterpret_cast<NativeReference*>(nref_));
             nref_ = nullptr;
         }
+        settled_ = false;
+        resolved_ = false;
     }
+    static bool settled_;
     static bool resolved_;
     static napi_ref nref_;
 };
+bool MockDeferred::settled_ = false;
 bool MockDeferred::resolved_ = false;
 napi_ref MockDeferred::nref_ = nullptr;
 
@@ -111,7 +136,14 @@ public:
     virtual ErrCode DisconnectAbility(const AAFwk::Want &want,
         const sptr<AbilityConnectCallback> &connectCallback) const override
     {
+        disconnectAbilityCount_++;
         return ERR_OK;
+    }
+
+    ErrCode ReportDrawnCompleted() override
+    {
+        reportDrawnCompletedCount_++;
+        return reportDrawnCompletedResult_;
     }
 public:
     static void DoneConnect(int status)
@@ -128,9 +160,14 @@ public:
         callback_->OnAbilityDisconnectDone(element, 0);
     }
     void SetConnectResult(ErrCode code) { connectRet_ = code; }
+    int32_t GetDisconnectAbilityCount() const { return disconnectAbilityCount_.load(); }
+    int32_t GetReportDrawnCompletedCount() const { return reportDrawnCompletedCount_.load(); }
 protected:
     static sptr<AbilityConnectCallback> callback_;
     ErrCode connectRet_ = ERR_OK;
+    ErrCode reportDrawnCompletedResult_ = ERR_OK;
+    mutable std::atomic<int32_t> disconnectAbilityCount_ = 0;
+    std::atomic<int32_t> reportDrawnCompletedCount_ = 0;
 };
 
 sptr<AbilityConnectCallback> MockAbilityContextImpl::callback_;
@@ -149,6 +186,7 @@ public:
     }
     void Connect(napi_value* argv, int32_t argc);
     void Disconnect(napi_value* argv, int32_t argc);
+    void ReportDrawnCompleted(napi_value* argv, int32_t argc);
 public:
     std::shared_ptr<JsUIExtensionContext> jsUIExtensionContext_;
     std::shared_ptr<MockAbilityContextImpl> abilityContextImpl_;
@@ -205,7 +243,7 @@ void UIExtensionContextTest::TearDown()
 void UIExtensionContextTest::Connect(napi_value* argv, int32_t argc)
 {
     GTEST_LOG_(INFO) << "AbilityRuntime_AbilityContext_0100 start";
-    auto func = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
         JsUIExtensionContext::ConnectUIServiceExtension(env, info);
         napi_value result = nullptr;
         napi_get_undefined(env, &result);
@@ -231,7 +269,7 @@ void UIExtensionContextTest::Connect(napi_value* argv, int32_t argc)
 
 void UIExtensionContextTest::Disconnect(napi_value* argv, int32_t argc)
 {
-    auto func = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
         JsUIExtensionContext::DisconnectUIServiceExtension(env, info);
         napi_value result = nullptr;
         napi_get_undefined(env, &result);
@@ -250,6 +288,27 @@ void UIExtensionContextTest::Disconnect(napi_value* argv, int32_t argc)
     napi_status status = napi_call_function(env_, recv, funcValue, argc, argv, &funcResultValue);
     if (status != napi_ok) {
         TAG_LOGE(AAFwkTag::UI_EXT, "call js func failed %{public}d", status);
+    }
+}
+
+void UIExtensionContextTest::ReportDrawnCompleted(napi_value* argv, int32_t argc)
+{
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::ReportDrawnCompleted(env, info);
+    };
+    HandleScope handleScope(env_);
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "reportDrawnCompleted", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_status status = napi_call_function(env_, recv, funcValue, argc, argv, &funcResultValue);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::UI_EXT, "call reportDrawnCompleted failed %{public}d", status);
     }
 }
 
@@ -380,6 +439,95 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_0105, TestSiz
     GTEST_LOG_(INFO) << "AbilityRuntime_UIExtensionContext_0105 end";
 }
 
+/**
+ * @tc.name: AbilityRuntime_UIExtensionContext_DisconnectMissingConnection_0100
+ * @tc.desc: A missing connection is rejected without calling the native disconnect API.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_DisconnectMissingConnection_0100, TestSize.Level1)
+{
+    HandleScope handleScope(env_);
+    TryCatch tryCatch(env_);
+    constexpr int64_t missingConnectionId = std::numeric_limits<int64_t>::max();
+    UIServiceConnection::RemoveUIServiceExtensionConnection(missingConnectionId);
+    sptr<IRemoteObject> remoteObject = nullptr;
+    napi_value proxy = AAFwk::JsUIServiceProxy::CreateJsUIServiceProxy(
+        env_, remoteObject, missingConnectionId, remoteObject);
+    ASSERT_NE(proxy, nullptr);
+    napi_value argv[] = { proxy };
+
+    Disconnect(argv, ARGC_ONE);
+    ArkNativeEngine* engine = reinterpret_cast<ArkNativeEngine*>(env_);
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+    RunNowait(loop);
+
+    EXPECT_FALSE(tryCatch.HasCaught());
+    EXPECT_EQ(abilityContextImpl_->GetDisconnectAbilityCount(), 0);
+    EXPECT_TRUE(MockDeferred::IsSettled());
+    EXPECT_FALSE(MockDeferred::GetLastResolveStatus());
+}
+
+/**
+ * @tc.name: AbilityRuntime_UIExtensionContext_ReportDrawnCompleted_0100
+ * @tc.desc: Calling reportDrawnCompleted without a callback reports too few parameters.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_ReportDrawnCompleted_0100, TestSize.Level1)
+{
+    HandleScope handleScope(env_);
+    TryCatch tryCatch(env_);
+
+    ReportDrawnCompleted(nullptr, ARGC_ZERO);
+
+    EXPECT_TRUE(tryCatch.HasCaught());
+    EXPECT_EQ(abilityContextImpl_->GetReportDrawnCompletedCount(), 0);
+    tryCatch.ClearException();
+    ArkNativeEngine* engine = reinterpret_cast<ArkNativeEngine*>(env_);
+    if (!engine->lastException_.IsEmpty()) {
+        engine->lastException_.Empty();
+    }
+}
+
+/**
+ * @tc.name: AbilityRuntime_UIExtensionContext_ReportDrawnCompleted_0200
+ * @tc.desc: A valid callback invokes the native reportDrawnCompleted API and completes asynchronously.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_ReportDrawnCompleted_0200, TestSize.Level1)
+{
+    HandleScope handleScope(env_);
+    bool callbackInvoked = false;
+    napi_value callback = nullptr;
+    ASSERT_EQ(napi_create_function(env_, "reportDrawnCallback", NAPI_AUTO_LENGTH,
+        MarkCallbackInvoked, &callbackInvoked, &callback), napi_ok);
+    napi_value argv[] = { callback };
+
+    ReportDrawnCompleted(argv, ARGC_ONE);
+    ArkNativeEngine* engine = reinterpret_cast<ArkNativeEngine*>(env_);
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+    RunNowait(loop);
+
+    EXPECT_EQ(abilityContextImpl_->GetReportDrawnCompletedCount(), 1);
+    EXPECT_TRUE(callbackInvoked);
+}
+
+/**
+ * @tc.name: AbilityRuntime_PreloadUIExtensionCallback_NullEnv_0100
+ * @tc.desc: Calling the preload callback client with a null NAPI environment does not crash.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_PreloadUIExtensionCallback_NullEnv_0100, TestSize.Level1)
+{
+    auto callbackClient = std::make_shared<JsPreloadUIExtensionCallbackClient>(nullptr, nullptr);
+    ASSERT_NE(callbackClient, nullptr);
+
+    callbackClient->CallJsPreloadedUIExtensionAbility(1);
+
+    SUCCEED();
+}
+
 HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_0106, TestSize.Level1)
 {
     GTEST_LOG_(INFO) << "AbilityRuntime_UIExtensionContext_0106 start";
@@ -405,6 +553,1158 @@ HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_0107, TestSiz
     jsUIExtensionContext_->InitDisplayId(want);
     auto displayId = want.GetIntParam(AAFwk::Want::PARAM_RESV_DISPLAY_ID, 0);
     EXPECT_EQ(displayId, 0);
+}
+
+// ==================== OnTerminateSelf Tests ====================
+
+// OnTerminateSelf: non-embeddable mode (default screenMode), no callback
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSelf_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_UIExtensionContext_OnTerminateSelf_0100 start";
+    HandleScope handleScope(env_);
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelf(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelf", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = {};
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ZERO, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_ok);
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+
+    GTEST_LOG_(INFO) << "AbilityRuntime_UIExtensionContext_OnTerminateSelf_0100 end";
+}
+
+// OnTerminateSelf: non-embeddable mode with callback
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSelf_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_UIExtensionContext_OnTerminateSelf_0200 start";
+    HandleScope handleScope(env_);
+    TryCatch tryCatch(env_);
+
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelf(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    napi_value callbackObject = nullptr;
+    napi_create_function(env_, "callback", NAPI_AUTO_LENGTH,
+        [](napi_env env, napi_callback_info info) -> napi_value {
+            napi_value result = nullptr;
+            napi_get_undefined(env, &result);
+            return result;
+        }, nullptr, &callbackObject);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelf", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = { callbackObject };
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ONE, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_ok);
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+
+    EXPECT_FALSE(tryCatch.HasCaught());
+    if (tryCatch.HasCaught()) {
+        tryCatch.ClearException();
+    }
+    if (!engine->lastException_.IsEmpty()) {
+        engine->lastException_.Empty();
+    }
+    GTEST_LOG_(INFO) << "AbilityRuntime_UIExtensionContext_OnTerminateSelf_0200 end";
+}
+
+// OnTerminateSelf: embeddable mode (EMBEDDED_FULL_SCREEN_MODE), no callback
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSelf_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_UIExtensionContext_OnTerminateSelf_0300 start";
+    HandleScope handleScope(env_);
+
+    // Set screen mode to embeddable
+    abilityContextImpl_->SetScreenMode(1); // EMBEDDED_FULL_SCREEN_MODE
+
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelf(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelf", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = {};
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ZERO, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_ok);
+
+    // Verify embeddable mode triggered
+    EXPECT_EQ(abilityContextImpl_->GetScreenMode(), 1);
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+
+    GTEST_LOG_(INFO) << "AbilityRuntime_UIExtensionContext_OnTerminateSelf_0300 end";
+}
+
+// OnTerminateSelf: embeddable mode (EMBEDDED_HALF_SCREEN_MODE), with callback
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSelf_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_UIExtensionContext_OnTerminateSelf_0400 start";
+    HandleScope handleScope(env_);
+    TryCatch tryCatch(env_);
+
+    // Set screen mode to embeddable half screen
+    abilityContextImpl_->SetScreenMode(2); // EMBEDDED_HALF_SCREEN_MODE
+
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelf(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    napi_value callbackObject = nullptr;
+    napi_create_function(env_, "callback", NAPI_AUTO_LENGTH,
+        [](napi_env env, napi_callback_info info) -> napi_value {
+            napi_value result = nullptr;
+            napi_get_undefined(env, &result);
+            return result;
+        }, nullptr, &callbackObject);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelf", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = { callbackObject };
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ONE, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_ok);
+
+    EXPECT_EQ(abilityContextImpl_->GetScreenMode(), 2);
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+
+    EXPECT_FALSE(tryCatch.HasCaught());
+    if (tryCatch.HasCaught()) {
+        tryCatch.ClearException();
+    }
+    if (!engine->lastException_.IsEmpty()) {
+        engine->lastException_.Empty();
+    }
+    GTEST_LOG_(INFO) << "AbilityRuntime_UIExtensionContext_OnTerminateSelf_0400 end";
+}
+
+// ==================== HandleTerminateSelfInEmbeddableMode Tests ====================
+
+// HandleTerminateSelfInEmbeddableMode: context is null
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_HandleTerminateSelfEmbeddable_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HandleTerminateSelfEmbeddable_0100 start";
+    HandleScope handleScope(env_);
+    TryCatch tryCatch(env_);
+
+    // Create a JsUIExtensionContext with null context
+    std::shared_ptr<MockAbilityContextImpl> nullContext;
+    auto jsCtx = std::make_shared<JsUIExtensionContext>(nullContext);
+    jsCtx->context_.reset(); // ensure weak_ptr is expired
+
+    NapiCallbackInfo napiInfo;
+    napiInfo.argc = ARGC_ZERO;
+    napi_value result = jsCtx->OnTerminateSelf(env_, napiInfo);
+    EXPECT_NE(result, nullptr);
+
+    // Promise should reject because context is null
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+
+    EXPECT_FALSE(tryCatch.HasCaught());
+    if (tryCatch.HasCaught()) {
+        tryCatch.ClearException();
+    }
+    if (!engine->lastException_.IsEmpty()) {
+        engine->lastException_.Empty();
+    }
+    GTEST_LOG_(INFO) << "HandleTerminateSelfEmbeddable_0100 end";
+}
+
+// HandleTerminateSelfInEmbeddableMode: context valid, screenMode embeddable
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_HandleTerminateSelfEmbeddable_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HandleTerminateSelfEmbeddable_0200 start";
+    HandleScope handleScope(env_);
+
+    // Set embeddable screen mode
+    abilityContextImpl_->SetScreenMode(1); // EMBEDDED_FULL_SCREEN_MODE
+
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelf(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelf", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = {};
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ZERO, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_ok);
+    EXPECT_NE(funcResultValue, nullptr);
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+
+    GTEST_LOG_(INFO) << "HandleTerminateSelfEmbeddable_0200 end";
+}
+
+// ==================== HandleTerminateSelfInNonEmbeddableMode Tests ====================
+
+// HandleTerminateSelfInNonEmbeddableMode: context is null
+HWTEST_F(UIExtensionContextTest, HandleTerminateSelfNonEmbeddable_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HandleTerminateSelfNonEmbeddable_0100 start";
+    HandleScope handleScope(env_);
+    TryCatch tryCatch(env_);
+
+    // Create JsUIExtensionContext with expired weak_ptr
+    std::shared_ptr<MockAbilityContextImpl> tempCtx = std::make_shared<MockAbilityContextImpl>();
+    auto jsCtx = std::make_shared<JsUIExtensionContext>(tempCtx);
+    tempCtx.reset(); // release the shared_ptr, weak_ptr expires
+
+    NapiCallbackInfo napiInfo;
+    napiInfo.argc = ARGC_ZERO;
+    napi_value result = jsCtx->OnTerminateSelf(env_, napiInfo);
+    EXPECT_NE(result, nullptr);
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+
+    EXPECT_FALSE(tryCatch.HasCaught());
+    if (tryCatch.HasCaught()) {
+        tryCatch.ClearException();
+    }
+    if (!engine->lastException_.IsEmpty()) {
+        engine->lastException_.Empty();
+    }
+    GTEST_LOG_(INFO) << "HandleTerminateSelfNonEmbeddable_0100 end";
+}
+
+// HandleTerminateSelfInNonEmbeddableMode: context valid, TerminateSelf succeeds
+HWTEST_F(UIExtensionContextTest, HandleTerminateSelfNonEmbeddable_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HandleTerminateSelfNonEmbeddable_0200 start";
+    HandleScope handleScope(env_);
+    TryCatch tryCatch(env_);
+
+    // Default screenMode is non-embeddable (IDLE_SCREEN_MODE = -1)
+    EXPECT_NE(abilityContextImpl_->GetScreenMode(), 1);
+    EXPECT_NE(abilityContextImpl_->GetScreenMode(), 2);
+
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelf(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelf", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = {};
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ZERO, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_ok);
+    EXPECT_NE(funcResultValue, nullptr);
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+
+    EXPECT_FALSE(tryCatch.HasCaught());
+    if (tryCatch.HasCaught()) {
+        tryCatch.ClearException();
+    }
+    if (!engine->lastException_.IsEmpty()) {
+        engine->lastException_.Empty();
+    }
+    GTEST_LOG_(INFO) << "HandleTerminateSelfNonEmbeddable_0200 end";
+}
+
+// ==================== OnTerminateSelfWithResult Tests ====================
+
+// OnTerminateSelfWithResult: argc == 0, ThrowTooFewParametersError
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSelfWithResult_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "OnTerminateSelfWithResult_0100 start";
+    HandleScope handleScope(env_);
+    TryCatch tryCatch(env_);
+
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelfWithResult(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelfWithResult", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = {};
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ZERO, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_pending_exception);
+
+    EXPECT_TRUE(tryCatch.HasCaught());
+    tryCatch.ClearException();
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    if (!engine->lastException_.IsEmpty()) {
+        engine->lastException_.Empty();
+    }
+    GTEST_LOG_(INFO) << "OnTerminateSelfWithResult_0100 end";
+}
+
+// OnTerminateSelfWithResult: invalid ability result param, ThrowInvalidParamError
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSelfWithResult_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "OnTerminateSelfWithResult_0200 start";
+    HandleScope handleScope(env_);
+    TryCatch tryCatch(env_);
+
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelfWithResult(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    napi_value undef = nullptr;
+    napi_get_undefined(env_, &undef);
+    napi_value argv[] = { undef };
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelfWithResult", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ONE, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_pending_exception);
+
+    EXPECT_TRUE(tryCatch.HasCaught());
+    tryCatch.ClearException();
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    if (!engine->lastException_.IsEmpty()) {
+        engine->lastException_.Empty();
+    }
+    GTEST_LOG_(INFO) << "OnTerminateSelfWithResult_0200 end";
+}
+
+// OnTerminateSelfWithResult: valid result, non-embeddable mode
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSelfWithResult_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "OnTerminateSelfWithResult_0300 start";
+    HandleScope handleScope(env_);
+    TryCatch tryCatch(env_);
+
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelfWithResult(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    // Create ability result: { resultCode: 0, want: {} }
+    napi_value resultObject = nullptr;
+    napi_create_object(env_, &resultObject);
+    napi_value resultCode = nullptr;
+    napi_create_int32(env_, 0, &resultCode);
+    napi_set_named_property(env_, resultObject, "resultCode", resultCode);
+    AAFwk::Want want;
+    napi_value jsWant = AppExecFwk::CreateJsWant(env_, want);
+    napi_set_named_property(env_, resultObject, "want", jsWant);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelfWithResult", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = { resultObject };
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ONE, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_ok);
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+
+    EXPECT_FALSE(tryCatch.HasCaught());
+    if (tryCatch.HasCaught()) {
+        tryCatch.ClearException();
+    }
+    if (!engine->lastException_.IsEmpty()) {
+        engine->lastException_.Empty();
+    }
+    GTEST_LOG_(INFO) << "OnTerminateSelfWithResult_0300 end";
+}
+
+// OnTerminateSelfWithResult: valid result, embeddable mode (EMBEDDED_FULL_SCREEN_MODE)
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSelfWithResult_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "OnTerminateSelfWithResult_0400 start";
+    HandleScope handleScope(env_);
+    TryCatch tryCatch(env_);
+
+    // Set embeddable screen mode
+    abilityContextImpl_->SetScreenMode(1); // EMBEDDED_FULL_SCREEN_MODE
+
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelfWithResult(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    // Create ability result
+    napi_value resultObject = nullptr;
+    napi_create_object(env_, &resultObject);
+    napi_value resultCode = nullptr;
+    napi_create_int32(env_, 0, &resultCode);
+    napi_set_named_property(env_, resultObject, "resultCode", resultCode);
+    AAFwk::Want want;
+    napi_value jsWant = AppExecFwk::CreateJsWant(env_, want);
+    napi_set_named_property(env_, resultObject, "want", jsWant);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelfWithResult", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = { resultObject };
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ONE, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_ok);
+    EXPECT_NE(funcResultValue, nullptr);
+
+    EXPECT_EQ(abilityContextImpl_->GetScreenMode(), 1);
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+
+    EXPECT_FALSE(tryCatch.HasCaught());
+    if (tryCatch.HasCaught()) {
+        tryCatch.ClearException();
+    }
+    if (!engine->lastException_.IsEmpty()) {
+        engine->lastException_.Empty();
+    }
+    GTEST_LOG_(INFO) << "OnTerminateSelfWithResult_0400 end";
+}
+
+// OnTerminateSelfWithResult: valid result, embeddable mode with callback
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSelfWithResult_0500, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "OnTerminateSelfWithResult_0500 start";
+    HandleScope handleScope(env_);
+    TryCatch tryCatch(env_);
+
+    // Set embeddable screen mode
+    abilityContextImpl_->SetScreenMode(2); // EMBEDDED_HALF_SCREEN_MODE
+
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelfWithResult(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    // Create ability result
+    napi_value resultObject = nullptr;
+    napi_create_object(env_, &resultObject);
+    napi_value resultCode = nullptr;
+    napi_create_int32(env_, 0, &resultCode);
+    napi_set_named_property(env_, resultObject, "resultCode", resultCode);
+    AAFwk::Want want;
+    napi_value jsWant = AppExecFwk::CreateJsWant(env_, want);
+    napi_set_named_property(env_, resultObject, "want", jsWant);
+
+    // Create callback
+    napi_value callbackFunc = nullptr;
+    napi_create_function(env_, "callback", NAPI_AUTO_LENGTH,
+        [](napi_env env, napi_callback_info info) -> napi_value {
+            napi_value result = nullptr;
+            napi_get_undefined(env, &result);
+            return result;
+        }, nullptr, &callbackFunc);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelfWithResult", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = { resultObject, callbackFunc };
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_TWO, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_ok);
+
+    EXPECT_EQ(abilityContextImpl_->GetScreenMode(), 2);
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+
+    EXPECT_FALSE(tryCatch.HasCaught());
+    if (tryCatch.HasCaught()) {
+        tryCatch.ClearException();
+    }
+    if (!engine->lastException_.IsEmpty()) {
+        engine->lastException_.Empty();
+    }
+    GTEST_LOG_(INFO) << "OnTerminateSelfWithResult_0500 end";
+}
+
+// OnTerminateSelfWithResult: valid result, non-embeddable mode with callback
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_OnTerminateSelfWithResult_0600, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "OnTerminateSelfWithResult_0600 start";
+    HandleScope handleScope(env_);
+    TryCatch tryCatch(env_);
+
+    // Default non-embeddable mode
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelfWithResult(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    // Create ability result
+    napi_value resultObject = nullptr;
+    napi_create_object(env_, &resultObject);
+    napi_value resultCode = nullptr;
+    napi_create_int32(env_, 0, &resultCode);
+    napi_set_named_property(env_, resultObject, "resultCode", resultCode);
+    AAFwk::Want want;
+    napi_value jsWant = AppExecFwk::CreateJsWant(env_, want);
+    napi_set_named_property(env_, resultObject, "want", jsWant);
+
+    // Create callback
+    napi_value callbackFunc = nullptr;
+    napi_create_function(env_, "callback", NAPI_AUTO_LENGTH,
+        [](napi_env env, napi_callback_info info) -> napi_value {
+            napi_value result = nullptr;
+            napi_get_undefined(env, &result);
+            return result;
+        }, nullptr, &callbackFunc);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelfWithResult", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = { resultObject, callbackFunc };
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_TWO, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_ok);
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+
+    EXPECT_FALSE(tryCatch.HasCaught());
+    if (tryCatch.HasCaught()) {
+        tryCatch.ClearException();
+    }
+    if (!engine->lastException_.IsEmpty()) {
+        engine->lastException_.Empty();
+    }
+    GTEST_LOG_(INFO) << "OnTerminateSelfWithResult_0600 end";
+}
+
+// ==================== HandleTerminateSelfWithResultInEmbeddableMode Tests ====================
+
+// HandleTerminateSelfWithResultInEmbeddableMode: context is null
+HWTEST_F(UIExtensionContextTest, TerminateSelfWithResultEmbeddable_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "TerminateSelfWithResultEmbeddable_0100 start";
+    HandleScope handleScope(env_);
+    TryCatch tryCatch(env_);
+
+    // Create JsUIExtensionContext with expired weak_ptr
+    std::shared_ptr<MockAbilityContextImpl> tempCtx = std::make_shared<MockAbilityContextImpl>();
+    auto jsCtx = std::make_shared<JsUIExtensionContext>(tempCtx);
+    tempCtx.reset();
+
+    // Set embeddable screen mode won't work on expired ptr, but the function will try
+    NapiCallbackInfo napiInfo;
+    napiInfo.argc = ARGC_ZERO;
+
+    // Direct call - context_ is expired so isEmbeddable returns false,
+    // which goes to NonEmbeddableMode. To test embeddable with null context,
+    // we need to have context alive but set to embeddable
+    std::shared_ptr<MockAbilityContextImpl> ctx = std::make_shared<MockAbilityContextImpl>();
+    ctx->SetScreenMode(1); // EMBEDDED_FULL_SCREEN_MODE
+    auto jsCtxEmbeddable = std::make_shared<JsUIExtensionContext>(ctx);
+
+    // Now release the context so it becomes null
+    ctx.reset();
+
+    napi_value result = jsCtxEmbeddable->OnTerminateSelf(env_, napiInfo);
+    EXPECT_NE(result, nullptr);
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+
+    EXPECT_FALSE(tryCatch.HasCaught());
+    if (tryCatch.HasCaught()) {
+        tryCatch.ClearException();
+    }
+    if (!engine->lastException_.IsEmpty()) {
+        engine->lastException_.Empty();
+    }
+    GTEST_LOG_(INFO) << "TerminateSelfWithResultEmbeddable_0100 end";
+}
+
+// HandleTerminateSelfWithResultInEmbeddableMode: context valid, ConvertTo succeeds
+HWTEST_F(UIExtensionContextTest, TerminateSelfWithResultEmbeddable_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "TerminateSelfWithResultEmbeddable_0200 start";
+    HandleScope handleScope(env_);
+    TryCatch tryCatch(env_);
+
+    abilityContextImpl_->SetScreenMode(1); // EMBEDDED_FULL_SCREEN_MODE
+
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelfWithResult(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    // Create ability result
+    napi_value resultObject = nullptr;
+    napi_create_object(env_, &resultObject);
+    napi_value resultCode = nullptr;
+    napi_create_int32(env_, 100, &resultCode);
+    napi_set_named_property(env_, resultObject, "resultCode", resultCode);
+    AAFwk::Want want;
+    napi_value jsWant = AppExecFwk::CreateJsWant(env_, want);
+    napi_set_named_property(env_, resultObject, "want", jsWant);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelfWithResult", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = { resultObject };
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ONE, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_ok);
+    EXPECT_NE(funcResultValue, nullptr);
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+
+    EXPECT_FALSE(tryCatch.HasCaught());
+    if (tryCatch.HasCaught()) {
+        tryCatch.ClearException();
+    }
+    if (!engine->lastException_.IsEmpty()) {
+        engine->lastException_.Empty();
+    }
+    GTEST_LOG_(INFO) << "TerminateSelfWithResultEmbeddable_0200 end";
+}
+
+// ==================== HandleTerminateSelfWithResultInNonEmbeddableMode Tests ====================
+
+// HandleTerminateSelfWithResultInNonEmbeddableMode: basic call
+HWTEST_F(UIExtensionContextTest, TerminateSelfWithResultNonEmbeddable_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "TerminateSelfWithResultNonEmbeddable_0100 start";
+    HandleScope handleScope(env_);
+    TryCatch tryCatch(env_);
+
+    // Default non-embeddable mode
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelfWithResult(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    // Create ability result with non-zero resultCode
+    napi_value resultObject = nullptr;
+    napi_create_object(env_, &resultObject);
+    napi_value resultCode = nullptr;
+    napi_create_int32(env_, -1, &resultCode);
+    napi_set_named_property(env_, resultObject, "resultCode", resultCode);
+    AAFwk::Want want;
+    napi_value jsWant = AppExecFwk::CreateJsWant(env_, want);
+    napi_set_named_property(env_, resultObject, "want", jsWant);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelfWithResult", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = { resultObject };
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ONE, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_ok);
+    EXPECT_NE(funcResultValue, nullptr);
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+
+    EXPECT_FALSE(tryCatch.HasCaught());
+    if (tryCatch.HasCaught()) {
+        tryCatch.ClearException();
+    }
+    if (!engine->lastException_.IsEmpty()) {
+        engine->lastException_.Empty();
+    }
+    GTEST_LOG_(INFO) << "TerminateSelfWithResultNonEmbeddable_0100 end";
+}
+
+// HandleTerminateSelfWithResultInNonEmbeddableMode: with callback param
+HWTEST_F(UIExtensionContextTest, TerminateSelfWithResultNonEmbeddable_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "TerminateSelfWithResultNonEmbeddable_0200 start";
+    HandleScope handleScope(env_);
+    TryCatch tryCatch(env_);
+
+    // Default non-embeddable mode
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelfWithResult(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    // Create ability result
+    napi_value resultObject = nullptr;
+    napi_create_object(env_, &resultObject);
+    napi_value resultCode = nullptr;
+    napi_create_int32(env_, 0, &resultCode);
+    napi_set_named_property(env_, resultObject, "resultCode", resultCode);
+    AAFwk::Want want;
+    napi_value jsWant = AppExecFwk::CreateJsWant(env_, want);
+    napi_set_named_property(env_, resultObject, "want", jsWant);
+
+    // Create callback
+    napi_value callbackFunc = nullptr;
+    napi_create_function(env_, "callback", NAPI_AUTO_LENGTH,
+        [](napi_env env, napi_callback_info info) -> napi_value {
+            napi_value result = nullptr;
+            napi_get_undefined(env, &result);
+            return result;
+        }, nullptr, &callbackFunc);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelfWithResult", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = { resultObject, callbackFunc };
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_TWO, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_ok);
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+    RunNowait(loop);
+
+    EXPECT_FALSE(tryCatch.HasCaught());
+    if (tryCatch.HasCaught()) {
+        tryCatch.ClearException();
+    }
+    if (!engine->lastException_.IsEmpty()) {
+        engine->lastException_.Empty();
+    }
+    GTEST_LOG_(INFO) << "TerminateSelfWithResultNonEmbeddable_0200 end";
+}
+
+// HandleTerminateSelfInEmbeddableMode: context valid, embeddable with callback
+
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_HandleTerminateSelfEmbeddable_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HandleTerminateSelfEmbeddable_0300 start";
+    HandleScope handleScope(env_);
+    TryCatch tryCatch(env_);
+
+    // Set embeddable screen mode
+    abilityContextImpl_->SetScreenMode(1); // EMBEDDED_FULL_SCREEN_MODE
+
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelf(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    // Create callback
+    napi_value callbackFunc = nullptr;
+    napi_create_function(env_, "callback", NAPI_AUTO_LENGTH,
+        [](napi_env env, napi_callback_info info) -> napi_value {
+            napi_value result = nullptr;
+            napi_get_undefined(env, &result);
+            return result;
+        }, nullptr, &callbackFunc);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelf", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = { callbackFunc };
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ONE, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_ok);
+    EXPECT_NE(funcResultValue, nullptr);
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+
+    EXPECT_FALSE(tryCatch.HasCaught());
+    if (tryCatch.HasCaught()) {
+        tryCatch.ClearException();
+    }
+    if (!engine->lastException_.IsEmpty()) {
+        engine->lastException_.Empty();
+    }
+    GTEST_LOG_(INFO) << "HandleTerminateSelfEmbeddable_0300 end";
+}
+
+// ==================== HandleTerminateSelfWithResultInEmbeddableMode: context null path ====================
+
+HWTEST_F(UIExtensionContextTest, TerminateSelfWithResultEmbeddable_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "TerminateSelfWithResultEmbeddable_0300 start";
+    HandleScope handleScope(env_);
+    TryCatch tryCatch(env_);
+
+    // Create context with embeddable mode then release it
+    std::shared_ptr<MockAbilityContextImpl> ctx = std::make_shared<MockAbilityContextImpl>();
+    ctx->SetScreenMode(1); // EMBEDDED_FULL_SCREEN_MODE
+    auto jsCtx = std::make_shared<JsUIExtensionContext>(ctx);
+    ctx.reset(); // release, weak_ptr expires
+
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelfWithResult(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsCtx.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    // Create ability result
+    napi_value resultObject = nullptr;
+    napi_create_object(env_, &resultObject);
+    napi_value resultCode = nullptr;
+    napi_create_int32(env_, 0, &resultCode);
+    napi_set_named_property(env_, resultObject, "resultCode", resultCode);
+    AAFwk::Want want;
+    napi_value jsWant = AppExecFwk::CreateJsWant(env_, want);
+    napi_set_named_property(env_, resultObject, "want", jsWant);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelfWithResult", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = { resultObject };
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ONE, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_ok);
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+
+    // Context is expired, goes through NonEmbeddable path which will also get null context
+    EXPECT_FALSE(tryCatch.HasCaught());
+    if (tryCatch.HasCaught()) {
+        tryCatch.ClearException();
+    }
+    if (!engine->lastException_.IsEmpty()) {
+        engine->lastException_.Empty();
+    }
+    GTEST_LOG_(INFO) << "TerminateSelfWithResultEmbeddable_0300 end";
+}
+
+// ==================== IsTerminating flag Tests ====================
+
+// HandleTerminateSelfInEmbeddableMode: terminateSelf must set the IsTerminating flag synchronously
+HWTEST_F(UIExtensionContextTest, UIExtensionContext_TerminateSelf_SetsTerminating_Embeddable, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "TerminateSelf_SetsTerminating_Embeddable start";
+    HandleScope handleScope(env_);
+
+    abilityContextImpl_->SetScreenMode(1); // EMBEDDED_FULL_SCREEN_MODE
+    EXPECT_FALSE(abilityContextImpl_->IsTerminating());
+
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelf(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelf", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = {};
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ZERO, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_ok);
+
+    // SetTerminating(true) runs synchronously in HandleTerminateSelfInEmbeddableMode before returning
+    EXPECT_TRUE(abilityContextImpl_->IsTerminating());
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+
+    GTEST_LOG_(INFO) << "TerminateSelf_SetsTerminating_Embeddable end";
+}
+
+// HandleTerminateSelfWithResultInEmbeddableMode: terminateSelfWithResult must set the IsTerminating flag
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_TerminateSelfWithResult_SetsTerminating_Embeddable,
+    TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "TerminateSelfWithResult_SetsTerminating_Embeddable start";
+    HandleScope handleScope(env_);
+
+    abilityContextImpl_->SetScreenMode(1); // EMBEDDED_FULL_SCREEN_MODE
+    EXPECT_FALSE(abilityContextImpl_->IsTerminating());
+
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelfWithResult(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    // Create ability result
+    napi_value resultObject = nullptr;
+    napi_create_object(env_, &resultObject);
+    napi_value resultCode = nullptr;
+    napi_create_int32(env_, 100, &resultCode);
+    napi_set_named_property(env_, resultObject, "resultCode", resultCode);
+    AAFwk::Want want;
+    napi_value jsWant = AppExecFwk::CreateJsWant(env_, want);
+    napi_set_named_property(env_, resultObject, "want", jsWant);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelfWithResult", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = { resultObject };
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ONE, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_ok);
+
+    // SetTerminating(true) runs synchronously in HandleTerminateSelfWithResultInEmbeddableMode before returning
+    EXPECT_TRUE(abilityContextImpl_->IsTerminating());
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+
+    GTEST_LOG_(INFO) << "TerminateSelfWithResult_SetsTerminating_Embeddable end";
+}
+
+// HandleTerminateSelfInNonEmbeddableMode: terminateSelf must set the IsTerminating flag.
+// SetTerminating(true) runs in the NapiAsyncTask execute callback (worker thread), so the loop
+// is pumped with a bounded wait until the flag flips.
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_TerminateSelf_SetsTerminating_NonEmbeddable,
+    TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "TerminateSelf_SetsTerminating_NonEmbeddable start";
+    HandleScope handleScope(env_);
+
+    // Default screenMode is non-embeddable (IDLE_SCREEN_MODE)
+    EXPECT_NE(abilityContextImpl_->GetScreenMode(), 1);
+    EXPECT_NE(abilityContextImpl_->GetScreenMode(), 2);
+    EXPECT_FALSE(abilityContextImpl_->IsTerminating());
+
+    napi_callback func = [](napi_env env, napi_callback_info info) -> napi_value {
+        return JsUIExtensionContext::TerminateSelf(env, info);
+    };
+
+    napi_value recv = nullptr;
+    napi_create_object(env_, &recv);
+    napi_status wrapret = napi_wrap(env_, recv, jsUIExtensionContext_.get(),
+        [](napi_env env, void* data, void* hint) {}, nullptr, nullptr);
+    EXPECT_EQ(wrapret, napi_ok);
+
+    napi_value funcValue = nullptr;
+    napi_create_function(env_, "terminateSelf", NAPI_AUTO_LENGTH, func, nullptr, &funcValue);
+    napi_value funcResultValue = nullptr;
+    napi_value argv[] = {};
+    napi_status status = napi_call_function(env_, recv, funcValue, ARGC_ZERO, argv, &funcResultValue);
+    EXPECT_EQ(status, napi_ok);
+
+    // SetTerminating(true) runs on the worker thread inside the execute callback; pump until it takes effect
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    bool isTerminating = false;
+    for (int32_t i = 0; i < 5; ++i) {
+        RunNowait(loop);
+        if (abilityContextImpl_->IsTerminating()) {
+            isTerminating = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(isTerminating);
+
+    GTEST_LOG_(INFO) << "TerminateSelf_SetsTerminating_NonEmbeddable end";
+}
+
+// HandleTerminateSelfInEmbeddableMode: native completion is dispatched through the N-API event loop
+HWTEST_F(UIExtensionContextTest, UIExtensionContext_HandleTerminateSelfEmbeddable_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "HandleTerminateSelfEmbeddable_0400 start";
+    HandleScope handleScope(env_);
+
+    abilityContextImpl_->SetScreenMode(AAFwk::EMBEDDED_FULL_SCREEN_MODE);
+    bool callbackInvoked = false;
+    napi_value callbackFunc = nullptr;
+    ASSERT_EQ(napi_create_function(env_, "callback", NAPI_AUTO_LENGTH, MarkCallbackInvoked,
+        &callbackInvoked, &callbackFunc), napi_ok);
+
+    auto result = jsUIExtensionContext_->HandleTerminateSelfInEmbeddableMode(
+        env_, callbackFunc, abilityContextImpl_);
+    EXPECT_NE(result, nullptr);
+    EXPECT_FALSE(callbackInvoked);
+
+    auto engine = reinterpret_cast<ArkNativeEngine *>(env_);
+    RunNowait(engine->GetUVLoop());
+    EXPECT_TRUE(callbackInvoked);
+    GTEST_LOG_(INFO) << "HandleTerminateSelfEmbeddable_0400 end";
+}
+
+
+// HandleTerminateSelfWithResultInEmbeddableMode: transfer failure is dispatched through the N-API event loop
+HWTEST_F(UIExtensionContextTest, TerminateSelfWithResultEmbeddable_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "TerminateSelfWithResultEmbeddable_0400 start";
+    HandleScope handleScope(env_);
+
+    abilityContextImpl_->SetScreenMode(AAFwk::EMBEDDED_FULL_SCREEN_MODE);
+    bool callbackInvoked = false;
+    napi_value callbackFunc = nullptr;
+    ASSERT_EQ(napi_create_function(env_, "callback", NAPI_AUTO_LENGTH, MarkCallbackInvoked,
+        &callbackInvoked, &callbackFunc), napi_ok);
+
+    AAFwk::Want want;
+    auto result = jsUIExtensionContext_->HandleTerminateSelfWithResultInEmbeddableMode(
+        env_, callbackFunc, abilityContextImpl_, 0, want);
+    EXPECT_NE(result, nullptr);
+    EXPECT_FALSE(callbackInvoked);
+
+    auto engine = reinterpret_cast<ArkNativeEngine *>(env_);
+    RunNowait(engine->GetUVLoop());
+    EXPECT_TRUE(callbackInvoked);
+    GTEST_LOG_(INFO) << "TerminateSelfWithResultEmbeddable_0400 end";
+}
+
+/**
+ * @tc.name: AbilityRuntime_UIExtensionContext_ProcessStartAbilityByTypeComplete_0100
+ * @tc.desc: Test ProcessStartAbilityByTypeComplete with ERROR_CODE_INNER triggers RejectAsyncResult
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_ProcessStartAbilityByTypeComplete_0100,
+    TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ProcessStartAbilityByTypeComplete_0100 start";
+    HandleScope handleScope(env_);
+    napi_deferred deferred = nullptr;
+    napi_value result = nullptr;
+    napi_create_promise(env_, &deferred, &result);
+    ASSERT_NE(deferred, nullptr);
+
+    auto callback = std::make_shared<JsUIExtensionCallback>(env_);
+    callback->SetDeferred(deferred);
+
+    auto innerErrCode = std::make_shared<ErrCode>(
+        static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER));
+    MockDeferred::Clear();
+    JsUIExtensionContext::ProcessStartAbilityByTypeComplete(env_, innerErrCode, callback);
+    EXPECT_TRUE(MockDeferred::IsSettled());
+    EXPECT_FALSE(MockDeferred::GetLastResolveStatus());
+    GTEST_LOG_(INFO) << "ProcessStartAbilityByTypeComplete_0100 end";
+}
+
+/**
+ * @tc.name: AbilityRuntime_UIExtensionContext_DispatchStartAbilityByTypeResult_0100
+ * @tc.desc: Test DispatchStartAbilityByTypeResult with no lastParam returns a promise
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIExtensionContextTest, AbilityRuntime_UIExtensionContext_DispatchStartAbilityByTypeResult_0100,
+    TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "DispatchStartAbilityByTypeResult_0100 start";
+    HandleScope handleScope(env_);
+    NapiCallbackInfo info;
+    info.argc = 0;
+
+    auto callback = std::make_shared<JsUIExtensionCallback>(env_);
+    auto innerErrCode = std::make_shared<ErrCode>(
+        static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER));
+    NapiAsyncTask::ExecuteCallback execute = []() {};
+    auto result = jsUIExtensionContext_->DispatchStartAbilityByTypeResult(
+        env_, info, callback, execute, innerErrCode);
+    ASSERT_NE(result, nullptr);
+    napi_valuetype valueType = napi_undefined;
+    napi_typeof(env_, result, &valueType);
+    EXPECT_EQ(valueType, napi_object);
+
+    ArkNativeEngine* engine = (ArkNativeEngine*)env_;
+    uv_loop_t* loop = engine->GetUVLoop();
+    RunNowait(loop);
+    GTEST_LOG_(INFO) << "DispatchStartAbilityByTypeResult_0100 end";
 }
 }  // namespace AAFwk
 }  // namespace OHOS

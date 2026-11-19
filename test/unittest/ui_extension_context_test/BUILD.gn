@@ -27,6 +27,7 @@ ohos_unittest("ui_extension_context_test") {
     "${ability_runtime_test_path}/mock/frameworks_kits_ability_native_test/include",
     "${ability_runtime_test_path}/mock/services_appmgr_test/include",
     "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_extension_ability",
+    "${ability_runtime_path}/interfaces/kits/native/ability/native/ui_extension_base",
   ]
 
   if (target_cpu == "arm") {
@@ -58,6 +59,17 @@ ohos_unittest("ui_extension_context_test") {
     "ipc:ipc_napi",
     "napi:ace_napi",
   ]
+
+  if (ability_runtime_graphics) {
+    external_deps += [
+      "ace_engine:ace_uicontent",
+      "window_manager:libwm",
+    ]
+    defines = [
+      "SUPPORT_GRAPHICS",
+      "SUPPORT_SCREEN",
+    ]
+  }
 }
 
 group("unittest") {

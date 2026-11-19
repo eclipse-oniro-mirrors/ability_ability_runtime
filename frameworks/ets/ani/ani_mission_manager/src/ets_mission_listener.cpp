@@ -91,12 +91,20 @@ void EtsMissionListener::AddEtsListenerObject(
     std::lock_guard<std::mutex> lock(listenerLock_);
     if (isSync) {
         ani_ref objRef = nullptr;
-        env->GlobalReference_Create(etsListenerObject, &objRef);
+        ani_status status = env->GlobalReference_Create(etsListenerObject, &objRef);
+        if (status != ANI_OK || objRef == nullptr) {
+            TAG_LOGE(AAFwkTag::MISSION, "GlobalReference_Create failed or null objRef, status: %{public}d", status);
+            return;
+        }
         etsListenerObjectMapSync_.emplace(listenerId, reinterpret_cast<ani_object>(objRef));
         return;
     }
     ani_ref objRef = nullptr;
-    env->GlobalReference_Create(etsListenerObject, &objRef);
+    ani_status status = env->GlobalReference_Create(etsListenerObject, &objRef);
+    if (status != ANI_OK || objRef == nullptr) {
+        TAG_LOGE(AAFwkTag::MISSION, "GlobalReference_Create failed or null objRef, status: %{public}d", status);
+        return;
+    }
     etsListenerObjectMap_.emplace(listenerId, reinterpret_cast<ani_object>(objRef));
 }
 

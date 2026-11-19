@@ -50,6 +50,7 @@ public:
 private:
     bool DoWork();
     bool CheckCommand();
+    std::string PrependSystemBinPath(const std::string& cmd);
 private:
     bool isDone_ = false;
     int64_t timeoutSec_ = 0;

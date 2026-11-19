@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,14 +19,19 @@
 #include "auto_fill_manager.h"
 #include "hilog_tag_wrapper.h"
 #include "ipc_skeleton.h"
+#include "js_auto_fill_manager_util.h"
 #include "js_error_utils.h"
+#include "napi_common_util.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
 namespace {
 constexpr int32_t INDEX_ZERO = 0;
 constexpr int32_t INDEX_ONE = 1;
+constexpr int32_t INDEX_TWO = 2;
 constexpr size_t ARGC_ONE = 1;
+constexpr size_t ARGC_TWO = 2;
+constexpr size_t ARGC_THREE = 3;
 } // namespace
 
 void JsAutoFillManager::Finalizer(napi_env env, void *data, void *hint)
@@ -38,6 +43,50 @@ void JsAutoFillManager::Finalizer(napi_env env, void *data, void *hint)
 napi_value JsAutoFillManager::RequestAutoSave(napi_env env, napi_callback_info info)
 {
     GET_NAPI_INFO_AND_CALL(env, info, JsAutoFillManager, OnRequestAutoSave);
+}
+
+static bool ConvertSaveArgs(napi_env env, NapiCallbackInfo &info, AutoFill::AutoFillRequest &request,
+    std::shared_ptr<JsAutoSaveRequestCallback> &saveCallback, bool &hasRequest)
+{
+    if (info.argc == ARGC_TWO) {
+        if (!CheckTypeForNapiValue(env, info.argv[INDEX_ONE], napi_object)) {
+            TAG_LOGE(AAFwkTag::AUTOFILLMGR, "Second parameter error");
+            ThrowInvalidParamError(env, "Parameter error. The second parameter is not of type object");
+            return false;
+        }
+        if (AppExecFwk::IsExistsByPropertyName(env, info.argv[INDEX_ONE], "viewData")) {
+            std::string errorMsg;
+            if (!UnwrapSaveRequest(env, info.argv[INDEX_ONE], request, errorMsg)) {
+                TAG_LOGE(AAFwkTag::AUTOFILLMGR, "failed to parse type");
+                ThrowInvalidParamError(env, errorMsg.c_str());
+                return false;
+            }
+            hasRequest = true;
+        } else {
+            saveCallback->Register(info.argv[INDEX_ONE]);
+        }
+    } else if (info.argc == ARGC_THREE) {
+        if (!CheckTypeForNapiValue(env, info.argv[INDEX_ONE], napi_object)) {
+            TAG_LOGE(AAFwkTag::AUTOFILLMGR, "Second parameter error");
+            ThrowInvalidParamError(env, "Parameter error. The second parameter is not of type object");
+            return false;
+        }
+        std::string errorMsg;
+        if (!UnwrapSaveRequest(env, info.argv[INDEX_ONE], request, errorMsg)) {
+            TAG_LOGE(AAFwkTag::AUTOFILLMGR, "failed to parse type");
+            ThrowInvalidParamError(env, errorMsg.c_str());
+            return false;
+        }
+        hasRequest = true;
+
+        if (!CheckTypeForNapiValue(env, info.argv[INDEX_TWO], napi_object)) {
+            TAG_LOGE(AAFwkTag::AUTOFILLMGR, "Third parameter error");
+            ThrowInvalidParamError(env, "Parameter error. The third parameter is not of type object");
+            return false;
+        }
+        saveCallback->Register(info.argv[INDEX_TWO]);
+    }
+    return true;
 }
 
 napi_value JsAutoFillManager::OnRequestAutoSave(napi_env env, NapiCallbackInfo &info)
@@ -53,19 +102,17 @@ napi_value JsAutoFillManager::OnRequestAutoSave(napi_env env, NapiCallbackInfo &
     napi_value instanceIdValue = nullptr;
     if (napi_get_named_property(env, info.argv[INDEX_ZERO], "instanceId_", &instanceIdValue) != napi_ok) {
         TAG_LOGE(AAFwkTag::AUTOFILLMGR, "get function by name failed");
-        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_PARAM),
-            "Parameter error. Get instance id failed.");
+        ThrowInvalidParamError(env, "Parameter error. Get instance id failed");
         return CreateJsUndefined(env);
     }
     int32_t instanceId = -1;
     if (!ConvertFromJsValue(env, instanceIdValue, instanceId)) {
         TAG_LOGE(AAFwkTag::AUTOFILLMGR, "failed to parse type");
-        ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_PARAM),
-            "Parameter error. Parse instance id failed.");
+        ThrowInvalidParamError(env, "Parameter error. Parse instance id failed");
         return CreateJsUndefined(env);
     }
 
-    auto saveCallback = GetCallbackByInstanceId(instanceId);
+    auto saveCallback = GetSaveCallbackByInstanceId(instanceId);
     if (saveCallback != nullptr) {
         TAG_LOGE(AAFwkTag::AUTOFILLMGR, "there are other requests in progress");
         ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
@@ -80,21 +127,17 @@ napi_value JsAutoFillManager::OnRequestAutoSave(napi_env env, NapiCallbackInfo &
         return CreateJsUndefined(env);
     }
 
-    if (info.argc != ARGC_ONE) {
-        if (!CheckTypeForNapiValue(env, info.argv[INDEX_ONE], napi_object)) {
-            TAG_LOGE(AAFwkTag::AUTOFILLMGR, "Second parameter error");
-            ThrowError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_PARAM),
-                "Parameter error. The second parameter is not of type callback.");
-            return CreateJsUndefined(env);
-        }
-        saveCallback->Register(info.argv[INDEX_ONE]);
+    AutoFill::AutoFillRequest request;
+    bool hasRequest = false;
+    if (!ConvertSaveArgs(env, info, request, saveCallback, hasRequest)) {
+        return CreateJsUndefined(env);
     }
-    OnRequestAutoSaveInner(env, instanceId, saveCallback);
+    OnRequestAutoSaveInner(env, instanceId, request, saveCallback, hasRequest);
     return CreateJsUndefined(env);
 }
 
-void JsAutoFillManager::OnRequestAutoSaveInner(napi_env env, int32_t instanceId,
-    const std::shared_ptr<JsAutoSaveRequestCallback> &saveRequestCallback)
+void JsAutoFillManager::OnRequestAutoSaveInner(napi_env env, int32_t instanceId, AutoFill::AutoFillRequest &request,
+    const std::shared_ptr<JsAutoSaveRequestCallback> &saveRequestCallback, const bool hasRequest)
 {
 #ifdef SUPPORT_GRAPHICS
     auto uiContent = Ace::UIContent::GetUIContent(instanceId);
@@ -103,26 +146,29 @@ void JsAutoFillManager::OnRequestAutoSaveInner(napi_env env, int32_t instanceId,
         ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
         return;
     }
-    if (uiContent->CheckNeedAutoSave()) {
-        AutoFill::AutoFillRequest request;
-        uiContent->DumpViewData(request.viewData, request.autoFillType);
-        request.autoFillCommand = AutoFill::AutoFillCommand::SAVE;
-        AbilityRuntime::AutoFill::AutoFillResult result;
-        auto ret = AutoFillManager::GetInstance().RequestAutoSave(uiContent, request, saveRequestCallback, result);
-        if (ret != ERR_OK) {
-            TAG_LOGE(AAFwkTag::AUTOFILLMGR, "RequestAutoSave error[%{public}d]", ret);
-            ThrowError(env, GetJsErrorCodeByNativeError(ret));
+    if (!hasRequest) {
+        if (!uiContent->CheckNeedAutoSave()) {
+            TAG_LOGE(AAFwkTag::AUTOFILLMGR, "no need auto save");
             return;
         }
-        std::lock_guard<std::mutex> lock(mutexLock_);
-        saveRequestObject_.emplace(instanceId, saveRequestCallback);
+        uiContent->DumpViewData(request.viewData, request.autoFillType);
     }
+    request.autoFillCommand = AutoFill::AutoFillCommand::SAVE;
+    AbilityRuntime::AutoFill::AutoFillResult result;
+    auto ret = AutoFillManager::GetInstance().RequestAutoSave(uiContent, request, saveRequestCallback, result);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::AUTOFILLMGR, "RequestAutoSave error[%{public}d]", ret);
+        ThrowError(env, GetJsErrorCodeByNativeError(ret));
+        return;
+    }
+    std::lock_guard<std::mutex> lock(saveMutex_);
+    saveRequestObject_.emplace(instanceId, saveRequestCallback);
 #endif // SUPPORT_GRAPHICS
 }
 
-std::shared_ptr<JsAutoSaveRequestCallback> JsAutoFillManager::GetCallbackByInstanceId(int32_t instanceId)
+std::shared_ptr<JsAutoSaveRequestCallback> JsAutoFillManager::GetSaveCallbackByInstanceId(int32_t instanceId)
 {
-    std::lock_guard<std::mutex> lock(mutexLock_);
+    std::lock_guard<std::mutex> lock(saveMutex_);
     auto iter = saveRequestObject_.find(instanceId);
     if (iter != saveRequestObject_.end()) {
         return iter->second.lock();
@@ -132,13 +178,143 @@ std::shared_ptr<JsAutoSaveRequestCallback> JsAutoFillManager::GetCallbackByInsta
 
 void JsAutoFillManager::OnRequestAutoSaveDone(int32_t instanceId)
 {
-    std::lock_guard<std::mutex> lock(mutexLock_);
+    std::lock_guard<std::mutex> lock(saveMutex_);
     auto iter = saveRequestObject_.find(instanceId);
     if (iter != saveRequestObject_.end()) {
         saveRequestObject_.erase(iter);
     }
 }
 
+napi_value JsAutoFillManager::RequestAutoFill(napi_env env, napi_callback_info info)
+{
+    GET_NAPI_INFO_AND_CALL(env, info, JsAutoFillManager, OnRequestAutoFill);
+}
+
+static bool ConvertFillArgs(napi_env env, NapiCallbackInfo &info, AutoFill::AutoFillRequest &request,
+    std::shared_ptr<JsAutoFillRequestCallback> &fillCallback)
+{
+    if (info.argc == ARGC_TWO) {
+        if (!CheckTypeForNapiValue(env, info.argv[INDEX_ONE], napi_object)) {
+            TAG_LOGE(AAFwkTag::AUTOFILLMGR, "Second parameter error");
+            ThrowInvalidParamError(env, "Parameter error. The second parameter is not of type object");
+            return false;
+        }
+        std::string errorMsg;
+        if (!UnwrapFillRequest(env, info.argv[INDEX_ONE], request, errorMsg)) {
+            TAG_LOGE(AAFwkTag::AUTOFILLMGR, "failed to parse type");
+            ThrowInvalidParamError(env, errorMsg.c_str());
+            return false;
+        }
+    } else if (info.argc == ARGC_THREE) {
+        if (!CheckTypeForNapiValue(env, info.argv[INDEX_ONE], napi_object)) {
+            TAG_LOGE(AAFwkTag::AUTOFILLMGR, "Second parameter error");
+            ThrowInvalidParamError(env, "Parameter error. The second parameter is not of type object");
+            return false;
+        }
+        std::string errorMsg;
+        if (!UnwrapFillRequest(env, info.argv[INDEX_ONE], request, errorMsg)) {
+            TAG_LOGE(AAFwkTag::AUTOFILLMGR, "failed to parse type");
+            ThrowInvalidParamError(env, errorMsg.c_str());
+            return false;
+        }
+
+        if (!CheckTypeForNapiValue(env, info.argv[INDEX_TWO], napi_object)) {
+            TAG_LOGE(AAFwkTag::AUTOFILLMGR, "Third parameter error");
+            ThrowInvalidParamError(env, "Parameter error. The third parameter is not of type object");
+            return false;
+        }
+        fillCallback->Register(info.argv[INDEX_TWO]);
+    }
+    return true;
+}
+
+napi_value JsAutoFillManager::OnRequestAutoFill(napi_env env, NapiCallbackInfo &info)
+{
+    TAG_LOGD(AAFwkTag::AUTOFILLMGR, "called");
+    HandleScope handleScope(env);
+    if (info.argc < ARGC_ONE) {
+        TAG_LOGE(AAFwkTag::AUTOFILLMGR, "invalid argc");
+        ThrowTooFewParametersError(env);
+        return CreateJsUndefined(env);
+    }
+
+    napi_value instanceIdValue = nullptr;
+    if (napi_get_named_property(env, info.argv[INDEX_ZERO], "instanceId_", &instanceIdValue) != napi_ok) {
+        TAG_LOGE(AAFwkTag::AUTOFILLMGR, "get function by name failed");
+        ThrowInvalidParamError(env, "Parameter error. Get instance id failed");
+        return CreateJsUndefined(env);
+    }
+    int32_t instanceId = -1;
+    if (!ConvertFromJsValue(env, instanceIdValue, instanceId)) {
+        TAG_LOGE(AAFwkTag::AUTOFILLMGR, "failed to parse type");
+        ThrowInvalidParamError(env, "Parameter error. Parse instance id failed");
+        return CreateJsUndefined(env);
+    }
+
+    auto fillCallback = GetFillCallbackByInstanceId(instanceId);
+    if (fillCallback != nullptr) {
+        TAG_LOGE(AAFwkTag::AUTOFILLMGR, "there are other requests in progress");
+        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        return CreateJsUndefined(env);
+    }
+
+    auto autoFillMangerFunc = [this](const int32_t arg) { this->OnRequestAutoFillDone(arg); };
+    fillCallback = std::make_shared<JsAutoFillRequestCallback>(env, instanceId, autoFillMangerFunc);
+    if (fillCallback == nullptr) {
+        TAG_LOGE(AAFwkTag::AUTOFILLMGR, "null fillCallback");
+        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        return CreateJsUndefined(env);
+    }
+
+    AutoFill::AutoFillRequest request;
+    if (!ConvertFillArgs(env, info, request, fillCallback)) {
+        return CreateJsUndefined(env);
+    }
+    OnRequestAutoFillInner(env, instanceId, request, fillCallback);
+    return CreateJsUndefined(env);
+}
+
+void JsAutoFillManager::OnRequestAutoFillInner(napi_env env, int32_t instanceId, AutoFill::AutoFillRequest &request,
+    const std::shared_ptr<JsAutoFillRequestCallback> &fillRequestCallback)
+{
+#ifdef SUPPORT_GRAPHICS
+    auto uiContent = Ace::UIContent::GetUIContent(instanceId);
+    if (uiContent == nullptr) {
+        TAG_LOGE(AAFwkTag::AUTOFILLMGR, "null uiContent");
+        ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+        return;
+    }
+    request.autoFillCommand = AutoFill::AutoFillCommand::FILL;
+    AbilityRuntime::AutoFill::AutoFillResult result;
+    auto ret = AutoFillManager::GetInstance().RequestAutoFill(uiContent, request, fillRequestCallback, result);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::AUTOFILLMGR, "RequestAutoFill error[%{public}d]", ret);
+        ThrowError(env, GetJsErrorCodeByNativeError(ret));
+        return;
+    }
+    std::lock_guard<std::mutex> lock(fillMutex_);
+    fillRequestObject_.emplace(instanceId, fillRequestCallback);
+#endif // SUPPORT_GRAPHICS
+}
+
+std::shared_ptr<JsAutoFillRequestCallback> JsAutoFillManager::GetFillCallbackByInstanceId(int32_t instanceId)
+{
+    std::lock_guard<std::mutex> lock(fillMutex_);
+    auto iter = fillRequestObject_.find(instanceId);
+    if (iter != fillRequestObject_.end()) {
+        return iter->second.lock();
+    }
+    return nullptr;
+}
+
+void JsAutoFillManager::OnRequestAutoFillDone(int32_t instanceId)
+{
+    std::lock_guard<std::mutex> lock(fillMutex_);
+    auto iter = fillRequestObject_.find(instanceId);
+    if (iter != fillRequestObject_.end()) {
+        fillRequestObject_.erase(iter);
+    }
+}
 
 void SetAutoFillTypePropertyPartTwo(napi_env env, napi_value objValue)
 {
@@ -254,6 +430,26 @@ napi_value CreateJsPopupPlacement(napi_env env)
     return handleEscape.Escape(objValue);
 }
 
+napi_value CreateJsAutoFillTriggerType(napi_env env)
+{
+    TAG_LOGD(AAFwkTag::AUTOFILLMGR, "called");
+    HandleEscape handleEscape(env);
+    napi_value objValue = nullptr;
+    napi_status createStatus = napi_create_object(env, &objValue);
+    if (createStatus != napi_ok || objValue == nullptr) {
+        TAG_LOGE(AAFwkTag::AUTOFILLMGR, "napi_create_reference failed, %{public}d", createStatus);
+        return nullptr;
+    }
+
+    napi_set_named_property(env, objValue, "AUTO_REQUEST",
+        CreateJsValue(env, AutoFill::AutoFillTriggerType::AUTO_REQUEST));
+    napi_set_named_property(env, objValue, "MANUAL_REQUEST",
+        CreateJsValue(env, AutoFill::AutoFillTriggerType::MANUAL_REQUEST));
+    napi_set_named_property(env, objValue, "PASTE_REQUEST",
+        CreateJsValue(env, AutoFill::AutoFillTriggerType::PASTE_REQUEST));
+    return handleEscape.Escape(objValue);
+}
+
 napi_value JsAutoFillManagerInit(napi_env env, napi_value exportObj)
 {
     TAG_LOGD(AAFwkTag::AUTOFILLMGR, "called");
@@ -269,8 +465,11 @@ napi_value JsAutoFillManagerInit(napi_env env, napi_value exportObj)
 
     napi_set_named_property(env, exportObj, "PopupPlacement", CreateJsPopupPlacement(env));
 
+    napi_set_named_property(env, exportObj, "AutoFillTriggerType", CreateJsAutoFillTriggerType(env));
+
     const char *moduleName = "JsAutoFillManager";
     BindNativeFunction(env, exportObj, "requestAutoSave", moduleName, JsAutoFillManager::RequestAutoSave);
+    BindNativeFunction(env, exportObj, "requestAutoFill", moduleName, JsAutoFillManager::RequestAutoFill);
 
     return CreateJsUndefined(env);
 }

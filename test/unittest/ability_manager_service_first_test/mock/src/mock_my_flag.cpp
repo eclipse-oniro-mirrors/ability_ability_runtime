@@ -15,8 +15,19 @@
 
 #include "mock_my_flag.h"
 
+#include "native_ability_util.h"
+
 namespace OHOS {
 namespace AAFwk {
 int MyFlag::flag_ = 0;
+bool MyFlag::isWithNative_ = false;
+bool MyFlag::mockParentHas_ = false;
+int MyFlag::mockParentState_ = 0;
+unsigned int MyFlag::mockParentAccessTokenId_ = 0;
+
+bool NativeAbilityMetaData::IsWithNative(const AppExecFwk::AbilityInfo& abilityInfo)
+{
+    return MyFlag::isWithNative_;
+}
 } // namespace AAFwk
 } // namespace OHOS

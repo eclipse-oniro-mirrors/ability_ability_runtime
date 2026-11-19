@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -97,6 +97,34 @@ HWTEST_F(AutoStartupInfoTest, Marshalling_100, TestSize.Level1)
     bool result = autoStartupInfo->Marshalling(parcel);
     EXPECT_TRUE(result);
     GTEST_LOG_(INFO) << "Marshalling_100 end";
+}
+
+/**
+ * Feature: AutoStartupInfo
+ * Function: Marshalling
+ * FunctionPoints: Mixed startup modes do not consume the next parcelable or following argument.
+ */
+HWTEST_F(AutoStartupInfoTest, BootAppParcelBoundary, TestSize.Level1)
+{
+    AutoStartupInfo boot;
+    boot.bundleName = "com.example.boot";
+    boot.isDirectBoot = true;
+    boot.isHiddenStart = true;
+    AutoStartupInfo ordinary;
+    ordinary.bundleName = "com.example.ordinary";
+    Parcel parcel;
+    ASSERT_TRUE(boot.Marshalling(parcel));
+    ASSERT_TRUE(ordinary.Marshalling(parcel));
+    ASSERT_TRUE(parcel.WriteInt32(101));
+    AutoStartupInfo first;
+    AutoStartupInfo second;
+    ASSERT_TRUE(first.ReadFromParcel(parcel));
+    ASSERT_TRUE(second.ReadFromParcel(parcel));
+    EXPECT_TRUE(first.isDirectBoot);
+    EXPECT_TRUE(first.isHiddenStart);
+    EXPECT_FALSE(second.isDirectBoot);
+    EXPECT_EQ(second.bundleName, ordinary.bundleName);
+    EXPECT_EQ(parcel.ReadInt32(), 101);
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

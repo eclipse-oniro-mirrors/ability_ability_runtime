@@ -61,22 +61,6 @@ public:
         return E_OK;
     }
 
-    virtual int32_t NotifyMtpMounted(const std::string &id, const std::string &path,
- 	    const std::string &desc, const std::string &uuid, const std::string &fstype) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t NotifyMtpUnmounted(const std::string &id, const bool isBadRemove) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t IsUsbFuseByType(const std::string &fsType, bool &enabled) override
-    {
-        return E_OK;
-    }
-
     virtual int32_t GetFreeSizeOfVolume(const std::string &volumeUuid, int64_t &freeSize) override
     {
         return E_OK;
@@ -89,6 +73,12 @@ public:
 
     virtual int32_t SetDirEncryptionPolicy(uint32_t userId,
         const std::string &dirPath, uint32_t level) override
+    {
+        return E_OK;
+    }
+
+    virtual int32_t SetDirEncryptionPolicyWithKeyDesc(const std::string &dirPath, uint32_t level,
+ 	                                                  const std::string &keyDesc) override
     {
         return E_OK;
     }
@@ -145,96 +135,6 @@ public:
     }
 
     virtual int32_t GetCurrentBundleStats(BundleStats &bundleStats, uint32_t statFlag) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t NotifyVolumeCreated(const VolumeCore& vc) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t NotifyVolumeMounted(const VolumeInfoStr &volumeInfoStr) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t NotifyVolumeDamaged(const VolumeInfoStr &volumeInfoStr) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t NotifyVolumeStateChanged(const std::string &volumeId, uint32_t state) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t Mount(const std::string &volumeId) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t Unmount(const std::string &volumeId) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t TryToFix(const std::string &volumeId) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t GetAllVolumes(std::vector<VolumeExternal> &vecOfVol) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t NotifyDiskCreated(const Disk& disk) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t NotifyDiskDestroyed(const std::string &diskId) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t Partition(const std::string &diskId, int32_t type) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t GetAllDisks(std::vector<Disk> &vecOfDisk) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t GetVolumeByUuid(const std::string &fsUuid, VolumeExternal &vc) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t GetVolumeById(const std::string &volumeId, VolumeExternal &vc) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t SetVolumeDescription(const std::string &fsUuid, const std::string &description) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t Format(const std::string &volumeId, const std::string &fsType) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t GetDiskById(const std::string &diskId, Disk &disk) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t QueryUsbIsInUse(const std::string &diskPath, bool &isInUse)
     {
         return E_OK;
     }
@@ -309,7 +209,7 @@ public:
         return E_OK;
     }
 
-    virtual int32_t SetRecoverKey(const std::vector<uint8_t> &key) override
+    virtual int32_t SetRecoverKey(const std::vector<uint8_t> &key, bool needMountPath) override
     {
         return E_OK;
     }
@@ -410,6 +310,11 @@ public:
         return E_OK;
     }
 
+    virtual int32_t UMountDisShareFile(const std::vector<std::string> &distributeDirs)
+    {
+        return E_OK;
+    }
+
     virtual int32_t InactiveUserPublicDirKey(uint32_t userId) override
     {
         return E_OK;
@@ -426,11 +331,6 @@ public:
     }
 
     virtual int32_t UnregisterUeceActivationCallback() override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t CreateUserDir(const std::string &path, mode_t mode, uid_t uid, gid_t gid) override
     {
         return E_OK;
     }
@@ -480,63 +380,32 @@ public:
         return E_OK;
     }
 
-    virtual int32_t ClearSecondMountPoint(uint32_t userId, const std::string &bundleName) override
+    virtual int32_t MountDlpFuse(const std::string &dstPath, int32_t &fuseFd) override
     {
         return E_OK;
     }
 
-    virtual int32_t Encrypt(const std::string &volumeId, const std::string &password) override
+    virtual int32_t UMountDlpFuse(const std::string &dstPath) override
     {
         return E_OK;
     }
 
-    virtual int32_t GetCryptProgressById(const std::string &volumeId, int32_t &progress) override
+    virtual int32_t MountCloudDiskFuse(int32_t userId, const std::string &path, int32_t &fuseFd) override
     {
         return E_OK;
     }
 
-    virtual int32_t NotifyEncryptVolumeStateChanged(const VolumeInfoStr &volumeInfoStr) override
+    virtual int32_t UMountCloudDiskFuse(int32_t userId, const std::string &path) override
     {
         return E_OK;
     }
 
-    virtual int32_t GetCryptUuidById(const std::string &volumeId, std::string &uuid) override
+    virtual int32_t MountUdmfClipFuse(int32_t userId, const std::string &path, int32_t &fuseFd) override
     {
         return E_OK;
     }
 
-    virtual int32_t BindRecoverKeyToPasswd(const std::string &volumeId,
-                                            const std::string &pazzword,
-                                            const std::string &recoverKey) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t UpdateCryptPasswd(const std::string &volumeId,
-                                    const std::string &pazzword,
-                                    const std::string &newPazzword) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t ResetCryptPasswd(const std::string &volumeId,
-                                    const std::string &recoverKey,
-                                    const std::string &newPazzword) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t VerifyCryptPasswd(const std::string &volumeId, const std::string &pazzword) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t Unlock(const std::string &volumeId, const std::string &pazzword) override
-    {
-        return E_OK;
-    }
-
-    virtual int32_t Decrypt(const std::string &volumeId, const std::string &pazzword) override
+    virtual int32_t UMountUdmfClipFuse(int32_t userId, const std::string &path) override
     {
         return E_OK;
     }

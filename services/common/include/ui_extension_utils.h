@@ -62,6 +62,7 @@ inline std::unordered_set<AppExecFwk::ExtensionAbilityType> GetUiExtensionSet()
         AppExecFwk::ExtensionAbilityType::SYSPICKER_FILEPICKER,
         AppExecFwk::ExtensionAbilityType::AUTO_FILL_SMART,
         AppExecFwk::ExtensionAbilityType::LIVEVIEW_LOCKSCREEN,
+        AppExecFwk::ExtensionAbilityType::LIVEVIEW_CARD,
         AppExecFwk::ExtensionAbilityType::SYSPICKER_PHOTOEDITOR,
         AppExecFwk::ExtensionAbilityType::PHOTO_EDITOR,
         AppExecFwk::ExtensionAbilityType::SYSPICKER_AUDIOPICKER,
@@ -71,7 +72,8 @@ inline std::unordered_set<AppExecFwk::ExtensionAbilityType> GetUiExtensionSet()
         AppExecFwk::ExtensionAbilityType::AWC_WEBPAGE,
         AppExecFwk::ExtensionAbilityType::AWC_NEWSFEED,
         AppExecFwk::ExtensionAbilityType::LIVE_FORM,
-        AppExecFwk::ExtensionAbilityType::EMBEDDED_CASHIER
+        AppExecFwk::ExtensionAbilityType::EMBEDDED_CASHIER,
+        AppExecFwk::ExtensionAbilityType::UKEY_AUTH
     };
 }
 
@@ -124,6 +126,7 @@ inline bool IsSystemCallerNeeded(const AppExecFwk::ExtensionAbilityType type)
         AppExecFwk::ExtensionAbilityType::PHOTO_EDITOR,
         AppExecFwk::ExtensionAbilityType::INSIGHT_INTENT_UI,
         AppExecFwk::ExtensionAbilityType::LIVEVIEW_LOCKSCREEN,
+        AppExecFwk::ExtensionAbilityType::LIVEVIEW_CARD,
         AppExecFwk::ExtensionAbilityType::SHARE,
         AppExecFwk::ExtensionAbilityType::ACTION,
         AppExecFwk::ExtensionAbilityType::STATUS_BAR_VIEW,

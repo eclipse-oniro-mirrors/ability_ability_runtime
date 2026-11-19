@@ -73,6 +73,7 @@ private:
         const std::map<int32_t, std::shared_ptr<NativeReference>> &callbacks);
     void CallMemoryLevelInner(const std::string &methodName, const int level,
         const std::map<int32_t, std::shared_ptr<NativeReference>> &callbacks);
+    void FreeNativeReference(std::shared_ptr<NativeReference>&& reference);
 };
 }  // namespace AbilityRuntime
 }  // namespace OHOS

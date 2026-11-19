@@ -456,7 +456,7 @@ void EtsUIServiceExtension::OnCommand(const AAFwk::Want &want, bool restart, int
 bool EtsUIServiceExtension::CreateWindowIfNeeded()
 {
 #ifdef SUPPORT_GRAPHICS
-    if (firstRequest_ == false) {
+    if (!firstRequest_) {
         return true;
     }
     firstRequest_ = false;

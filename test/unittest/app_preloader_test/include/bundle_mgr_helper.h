@@ -45,7 +45,7 @@ public:
         if (userId == UID_CHECK_INVALID_NUM) {
             return ERR_INVALID_NUM_ARGS_ERROR;
         }
-            
+        want.SetElementName(bundleName, "MainAbility");    
         return ERR_OK;
     }
 
@@ -96,6 +96,32 @@ public:
         return true;
     }
 
+    ErrCode GetCloneBundleInfo(const std::string &bundleName, int32_t flags, int32_t appCloneIndex,
+        BundleInfo &bundleInfo, int32_t userId)
+    {
+        if (userId == UID_CHECK_BUNDLE_INFO) {
+            return ERR_INVALID_NUM_ARGS_ERROR;
+        }
+        bundleInfo.applicationInfo.uid = appCloneIndex + 10000;
+        return ERR_OK;
+    }
+
+    ErrCode QueryCloneAbilityInfo(const ElementName &element, int32_t flags, int32_t appCloneIndex,
+        AbilityInfo &abilityInfo, int32_t userId)
+    {
+        if (userId == UID_CHECK_FALSE) {
+            return ERR_INVALID_NUM_ARGS_ERROR;
+        }
+        abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+        abilityInfo.isStageBasedModel = true;
+        abilityInfo.name = element.GetAbilityName();
+        abilityInfo.bundleName = element.GetBundleName();
+        abilityInfo.applicationName = element.GetBundleName();
+        abilityInfo.applicationInfo.name = abilityInfo.applicationName;
+        abilityInfo.applicationInfo.uid = appCloneIndex + 10000;
+        return ERR_OK;
+    }
+
     bool GetHapModuleInfo(const AbilityInfo &abilityInfo, int32_t userId, HapModuleInfo &hapModuleInfo)
     {
         switch (userId) {
@@ -110,6 +136,27 @@ public:
                 break;
         }
         return true;
+    }
+
+    bool QueryExtensionAbilityInfos(const Want &want, const int32_t &flag, const int32_t &userId,
+        std::vector<ExtensionAbilityInfo> &extensionInfos)
+    {
+        ExtensionAbilityInfo extensionInfo;
+        extensionInfos.emplace_back(extensionInfo);
+        return true;
+    }
+
+    ErrCode GetSandboxExtAbilityInfos(const Want &want, int32_t appIndex, int32_t flags,
+        int32_t userId, std::vector<ExtensionAbilityInfo> &extensionInfos)
+    {
+        ExtensionAbilityInfo extensionInfo;
+        extensionInfos.emplace_back(extensionInfo);
+        return ERR_OK;
+    }
+
+    ErrCode GetDualModeBundleInfo(const std::string &bundleName, int32_t userId, int32_t &appIndex)
+    {
+        return ERR_OK;
     }
 };
 }  // namespace AppExecFwk

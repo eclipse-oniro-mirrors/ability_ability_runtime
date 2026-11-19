@@ -19,11 +19,13 @@
 #include <cstdint>
 #include <fuzzer/FuzzedDataProvider.h>
 
-#include "ability_fuzz_util.h"
+#define private public
 #include "ability_keep_alive_service.h"
+#include "keep_alive_process_manager.h"
+#undef private
+#include "ability_fuzz_util.h"
 #include "ability_util.h"
 #include "app_mgr_client.h"
-#include "keep_alive_process_manager.h"
 #include "parameters.h"
 #include "permission_verification.h"
 
@@ -32,21 +34,28 @@ using namespace OHOS::AppExecFwk;
 
 namespace OHOS {
 namespace {
-constexpr size_t STRING_MAX_LENGTH = 128;
 }
 bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size)
 {
-    std::vector<AppExecFwk::BundleInfo> bundleInfos;
-    BundleInfo info;
-    int32_t userId;
     FuzzedDataProvider fdp(data, size);
-    size_t arraySize = fdp.ConsumeIntegralInRange<size_t>(0, STRING_MAX_LENGTH);
-    for (size_t i = 0; i < arraySize; ++i) {
-        AbilityFuzzUtil::GetRandomBundleInfo(fdp, info);
-        bundleInfos.emplace_back(info);
-    }
-    userId = fdp.ConsumeIntegral<int32_t>();
+    BundleInfo info;
+    AbilityFuzzUtil::GetRandomBundleInfo(fdp, info);
+    int32_t userId = fdp.ConsumeIntegral<int32_t>();
+    std::string bundleName = fdp.ConsumeRandomLengthString(64);
+    bool updateEnable = fdp.ConsumeBool();
+    bool isByEDM = fdp.ConsumeBool();
+    bool isInner = fdp.ConsumeBool();
+    KeepAliveAbilityInfo abilityInfo;
+    std::vector<BundleInfo> bundleInfos = {info};
     KeepAliveProcessManager::GetInstance().StartKeepAliveProcessWithMainElement(bundleInfos, userId);
+    KeepAliveProcessManager::GetInstance().StartKeepAliveAppServiceExtensionPerBundle(info);
+    KeepAliveProcessManager::GetInstance().StartKeepAliveAppServiceExtension(bundleInfos);
+    KeepAliveProcessManager::GetInstance().StartKeepAliveAppServiceExtensionInner(abilityInfo);
+    KeepAliveProcessManager::GetInstance().ClearKeepAliveAppServiceExtension(userId);
+    KeepAliveProcessManager::GetInstance().CheckPermission();
+    KeepAliveProcessManager::GetInstance().CheckPermissionForEDM();
+    KeepAliveProcessManager::GetInstance().SetApplicationKeepAlive(bundleName, userId, updateEnable, isByEDM, isInner);
+    KeepAliveProcessManager::GetInstance().SetAppServiceExtensionKeepAlive(bundleName, updateEnable, isByEDM, isByEDM);
     return true;
 }
 }

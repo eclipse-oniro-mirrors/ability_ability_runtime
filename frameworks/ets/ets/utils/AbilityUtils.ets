@@ -12,8 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { BusinessError, AsyncCallback } from '@ohos.base';
+import { BusinessError, AsyncCallback, RecordData } from '@ohos.base';
 import hilog from '@ohos.hilog'
+import insightIntent from '@ohos.app.ability.insightIntent';
 
 const DOMAIN_ID = 0xD001300;
 const TAG = 'AbilityUtils';
@@ -69,11 +70,59 @@ export class AbilityUtils {
     return false;
   }
 
-  public static createBusinessError(code: int, message: string) {
+  public static createBusinessError(code: int, message: string): BusinessError {
     let err = new BusinessError();
     err.code = code;
     err.name = 'Error';
     err.message = message;
     return err;
+  }
+
+  public static isPromise(obj: Any): boolean {
+    return obj instanceof Promise;
+  }
+}
+
+export class InsightIntentFunctionUtils {
+  public nativeExecutor: long = 0;
+
+  public native nativeOnExecuteResult(data: Record<string, RecordData>): void;
+  public native nativeOnExecuteError(err: Error): void;
+
+  public callPromise(p: Promise<Any>): void {
+    p.then((result: Any): void => {
+      let record: Record<string, RecordData> = new Record<string, RecordData>();
+      record['methodResult'] = result as RecordData;
+      this.nativeOnExecuteResult(record);
+    }).catch((err: Error): void => {
+      this.nativeOnExecuteError(err);
+    });
+  }
+}
+
+export class IntentResultWrapper {
+  public static toRecord<T>(intentResult: insightIntent.IntentResult<T>): Record<string, RecordData> {
+    let record: Record<string, RecordData> = new Record<string, RecordData>();
+    record['code'] = intentResult.code;
+    if (intentResult.result !== undefined) {
+      record['result'] = intentResult.result as RecordData;
+    }
+    if (intentResult.interactionInfo !== undefined) {
+      record['interactionInfo'] = intentResult.interactionInfo as RecordData;
+    }
+    return record;
+  }
+
+  public static fromRecord<T>(record: Record<string, RecordData>): insightIntent.IntentResult<T> {
+    let intentResult: insightIntent.IntentResult<T> = {
+      code: record['code'] as int
+    };
+    if (record['result'] !== undefined) {
+      intentResult.result = record['result'] as T;
+    }
+    if (record['interactionInfo'] !== undefined) {
+      intentResult.interactionInfo = record['interactionInfo'] as insightIntent.InteractionInfo;
+    }
+    return intentResult;
   }
 }

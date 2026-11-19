@@ -52,10 +52,13 @@ using Dlp = Security::DlpPermission::DlpPermissionKit;
         TAG_LOGE(AAFwkTag::ABILITYMGR, "caller null");
         return true;
     }
-    if (abilityRecord->GetAppIndex() <= AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
+    int32_t appIndex = abilityRecord->GetAppIndex();
+    if (appIndex == 0 || appIndex == AbilityRuntime::GlobalConstant::PC_TABLET_INDEX ||
+        AbilityRuntime::GlobalConstant::IsAppCloneIndex(appIndex) ||
+        AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(appIndex)) {
         return true;
     }
-    if (abilityRecord->GetApplicationInfo().bundleName == want.GetElement().GetBundleName()) {
+    if (abilityRecord->GetApplicationInfo().bundleName == want.GetBundle()) {
         return true;
     }
     int32_t uid = abilityRecord->GetApplicationInfo().uid;
@@ -77,14 +80,16 @@ using Dlp = Security::DlpPermission::DlpPermissionKit;
 {
 #ifdef WITH_DLP
     int32_t dlpIndex = want.GetIntParam(AbilityRuntime::ServerConstant::DLP_INDEX, 0);
-    if (dlpIndex <= AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX && dlpIndex != 0) {
+    if ((dlpIndex != 0 && dlpIndex != AbilityRuntime::GlobalConstant::PC_TABLET_INDEX) &&
+        (AbilityRuntime::GlobalConstant::IsAppCloneIndex(dlpIndex) ||
+         AbilityRuntime::GlobalConstant::IsSandboxCloneIndex(dlpIndex))) {
         return false;
     }
 
     if (callerToken != nullptr) {
         auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
         if (abilityRecord != nullptr &&
-            abilityRecord->GetAppIndex() > AbilityRuntime::GlobalConstant::MAX_APP_CLONE_INDEX) {
+            AbilityRuntime::GlobalConstant::IsDlpIndex(abilityRecord->GetAppIndex())) {
             return true;
         }
     }

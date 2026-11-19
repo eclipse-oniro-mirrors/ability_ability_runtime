@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { AbilityConstant, application, ConfigurationConstant, errorManager, UIAbility, Want } from '@kit.AbilityKit';
+import { AbilityConstant, application, Configuration, ConfigurationConstant, errorManager, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { BusinessError } from '@kit.BasicServicesKit';
@@ -59,12 +59,20 @@ function restartApp() {
 }
 
 export default class EntryAbility extends UIAbility {
+  private colorMode: ConfigurationConstant.ColorMode = ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET;
+  private mainWindow: window.Window | null = null;
+
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);
     hilog.info(DOMAIN, TAG, '%{public}s', 'Ability onCreate');
     restartWant = want;
     const INSIGHT_INTENT_DEBUG = 'ai_insightintent_debug'
-    const settingStatus: string = settings.getValueSync(this.context, INSIGHT_INTENT_DEBUG, 'default', settings.domainName.USER_SECURITY);
+    let settingStatus = 'default';
+    try {
+      settingStatus = settings.getValueSync(this.context, INSIGHT_INTENT_DEBUG, 'default', settings.domainName.USER_SECURITY);
+    } catch (err) {
+      hilog.error(DOMAIN, TAG, 'Failed to getValueSync. Cause: %{public}s', JSON.stringify(err));
+    }
     if (settingStatus !== 'true') {
       try {
         this.context.terminateSelf();
@@ -93,6 +101,7 @@ export default class EntryAbility extends UIAbility {
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
+    this.colorMode = this.context.config.colorMode;
     windowStage.loadContent('pages/Index', (err) => {
       if (err.code) {
         hilog.error(DOMAIN, TAG, 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
@@ -101,24 +110,52 @@ export default class EntryAbility extends UIAbility {
       hilog.info(DOMAIN, TAG, 'Succeeded in loading the content.');
       try {
         windowStage.getMainWindow((err, data) => {
-          data.setWindowLayoutFullScreen(true).then(() => {
-            hilog.info(DOMAIN, TAG, 'Succeeded in setting the window layout to full-screen mode.');
-          }).catch((err:BusinessError) => {
-            hilog.error(DOMAIN, TAG, 'Failed to set the window layout to full-screen mode. Cause: %{public}s', JSON.stringify(err));
-          })
-          data.setWindowSystemBarProperties({
-            navigationBarColor: '#F1F3F5',
-            statusBarColor: '#F1F3F5'
-          }).then(() => {
-            hilog.info(DOMAIN, TAG, 'Succeeded in setting the system bar properties.');
-          }).catch((err: BusinessError) => {
-            hilog.error(DOMAIN, TAG, 'Failed to set the system bar properties. Cause: %{public}s', JSON.stringify(err));
-          })
+          if (err && err.code !== 0) {
+            hilog.error(DOMAIN, TAG, 'Failed to get main window. code=%{public}d, Cause: %{public}s',
+              err.code, JSON.stringify(err.message ?? err));
+            return;
+          }
+          this.mainWindow = data;
+          this.applyAppearance(data);
         });
       } catch (err) {
         hilog.error(DOMAIN, TAG, 'Failed to getMainWindow. Cause: %{public}s', JSON.stringify(err));
       }
     });
+  }
+
+  getMainPageColor(): string {
+    return this.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK ? '#FF151515' : '#F1F3F5';
+  }
+
+  applyAppearance(data: window.Window): void {
+    data.setWindowLayoutFullScreen(true).then(() => {
+      hilog.info(DOMAIN, TAG, 'Succeeded in setting the window layout to full-screen mode.');
+    }).catch((err: BusinessError) => {
+      hilog.error(DOMAIN, TAG, 'Failed to set the window layout to full-screen mode. Cause: %{public}s', JSON.stringify(err));
+    });
+    const pageColor = this.getMainPageColor();
+    try {
+      data.setWindowBackgroundColor(pageColor);
+    } catch (err) {
+      hilog.error(DOMAIN, TAG, 'setWindowBackgroundColor failed. Cause: %{public}s', JSON.stringify(err));
+    }
+    data.setWindowSystemBarProperties({
+      navigationBarColor: '#00000000',
+      statusBarColor: '#00000000'
+    }).then(() => {
+      hilog.info(DOMAIN, TAG, 'Succeeded in setting the system bar properties.');
+    }).catch((err: BusinessError) => {
+      hilog.error(DOMAIN, TAG, 'Failed to set the system bar properties. Cause: %{public}s', JSON.stringify(err));
+    });
+  }
+
+  onConfigurationUpdate(newConfig: Configuration): void {
+    super.onConfigurationUpdate(newConfig);
+    this.colorMode = newConfig.colorMode;
+    if (this.mainWindow) {
+      this.applyAppearance(this.mainWindow);
+    }
   }
 
   onWindowStageDestroy(): void {

@@ -61,10 +61,10 @@ ohos_unittest("cj_ability_stage_test") {
     "${ability_runtime_native_path}/ability/native:configuration_helper",
     "${ability_runtime_native_path}/ability/native:uiabilitykit_native",
     "${ability_runtime_native_path}/appkit:app_context",
-    "${ability_runtime_native_path}/appkit:application_image_observer_manager",
     "${ability_runtime_native_path}/appkit:appkit_delegator",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_native_path}/appkit:appkit_native",
+    "${ability_runtime_native_path}/appkit:application_image_observer_manager",
     "${ability_runtime_path}/cj_environment/frameworks/cj_environment:cj_environment",
     "${ability_runtime_path}/frameworks/cj/ffi:cj_ability_ffi",
   ]
@@ -73,10 +73,7 @@ ohos_unittest("cj_ability_stage_test") {
     "ability_base:base",
     "ability_base:configuration",
     "ability_base:want",
-    "ability_runtime:runtime",
     "bundle_framework:appexecfwk_base",
-    "bundle_framework:appexecfwk_base",
-    "bundle_framework:appexecfwk_core",
     "bundle_framework:appexecfwk_core",
     "bundle_framework:cj_bundle_manager_ffi",
     "c_utils:utils",
@@ -86,8 +83,8 @@ ohos_unittest("cj_ability_stage_test") {
     "form_fwk:fmskit_native",
     "googletest:gmock_main",
     "googletest:gtest_main",
-    "hilog:libhilog",
     "hichecker:libhichecker",
+    "hilog:libhilog",
     "hitrace:hitrace_meter",
     "init:libbegetutil",
     "ipc:ipc_core",
@@ -95,8 +92,8 @@ ohos_unittest("cj_ability_stage_test") {
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
     "resource_management:global_resmgr",
-    "samgr:samgr_proxy",
     "runtime_core:ani",
+    "samgr:samgr_proxy",
   ]
 
   if (ability_runtime_graphics) {

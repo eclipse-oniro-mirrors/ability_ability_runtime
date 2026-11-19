@@ -42,8 +42,11 @@ ohos_unittest("foreground_app_connection_test") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
 
+  deps = [
+    "${ability_runtime_innerkits_path}/foreground_app_obs_manager:foreground_app_obs_manager",
+  ]
+
   external_deps = [
-    "ability_runtime:foreground_app_obs_manager",
     "access_token:libnativetoken",
     "access_token:libtoken_setproc",
     "bundle_framework:appexecfwk_base",

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,8 +14,10 @@
  */
 
 #include "app_mgr_stub.h"
+#include "launch_service_operation_callback.h"
 
 #include "ability_info.h"
+#include "hyper_snap_error_record.h"
 #include "ability_manager_errors.h"
 #include "app_jsheap_mem_info.h"
 #include "app_cjheap_mem_info.h"
@@ -34,6 +36,9 @@
 #include "ipc_skeleton.h"
 #include "ipc_types.h"
 #include "iremote_object.h"
+#include "launch_service_info.h"
+#include "launch_service_observer.h"
+#include "mem_dump_callback_interface.h"
 #include "memory_level_info.h"
 #include "running_process_info.h"
 #include "want.h"
@@ -43,6 +48,7 @@ namespace AppExecFwk {
 constexpr int32_t CYCLE_LIMIT = 1000;
 constexpr int32_t MAX_PROCESS_STATE_COUNT = 1000;
 constexpr int32_t MAX_BACKGROUND_APP_COUNT = 1000;
+constexpr int32_t MAX_PROCESS_INFO_COUNT = 1024;
 
 AppMgrStub::AppMgrStub() {}
 
@@ -97,6 +103,10 @@ int32_t AppMgrStub::OnRemoteRequestInner(uint32_t code, MessageParcel &data,
     if (retCode != INVALID_FD) {
         return retCode;
     }
+    retCode = OnRemoteRequestInnerNinth(code, data, reply, option);
+    if (retCode != INVALID_FD) {
+        return retCode;
+    }
     TAG_LOGD(AAFwkTag::APPMGR, "AppMgrStub::OnRemoteRequest end");
     return IPCObjectStub::OnRemoteRequest(code, data, reply, option);
 }
@@ -129,6 +139,8 @@ int32_t AppMgrStub::OnRemoteRequestInnerFirst(uint32_t code, MessageParcel &data
             return HandleNotifyProcMemoryLevel(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::APP_GET_RUNNING_PROCESSES_BY_USER_ID):
             return HandleGetProcessRunningInfosByUserId(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::GET_PROCESS_RUNNING_INFOS_BY_ACCESS_TOKEN_ID):
+            return HandleGetProcessRunningInfosByAccessTokenId(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::APP_ADD_ABILITY_STAGE_INFO_DONE):
             return HandleAddAbilityStageDone(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::STARTUP_RESIDENT_PROCESS):
@@ -187,8 +199,12 @@ int32_t AppMgrStub::OnRemoteRequestInnerSecond(uint32_t code, MessageParcel &dat
             return HandleDumpCjHeapMemory(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::DUMP_MEM_PROCESS):
             return HandleDumpMem(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::REPORT_DUMP_MEM_RESULT):
+            return HandleReportDumpMemResult(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::GET_RUNNING_MULTIAPP_INFO_BY_BUNDLENAME):
             return HandleGetRunningMultiAppInfoByBundleName(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::IS_MAIN_PROCESS_DEBUG):
+            return HandleIsMainProcessDebug(data, reply);
     }
     return INVALID_FD;
 }
@@ -223,6 +239,8 @@ int32_t AppMgrStub::OnRemoteRequestInnerThird(uint32_t code, MessageParcel &data
             return HandleUpdateConfigurationMultiUser(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::GET_CONFIGURATION_BY_USERID):
             return HandleGetConfigurationByUserId(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::DUMP_JSHANDLE_MAP_PROCESS):
+            return HandleDumpJsHandleMap(data, reply);
     }
     return INVALID_FD;
 }
@@ -239,6 +257,8 @@ int32_t AppMgrStub::OnRemoteRequestInnerFourth(uint32_t code, MessageParcel &dat
             return HandleNotifyFaultBySA(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::SET_APPFREEZE_FILTER):
             return HandleSetAppFreezeFilter(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::UPDATE_FREEZE_EXCLUDED_PID):
+            return HandleUpdateFreezeExcludedPid(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::GET_BUNDLE_NAME_BY_PID):
             return HandleGetBundleNameByPid(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::GET_RUNNING_PROCESS_INFO_BY_PID):
@@ -257,6 +277,8 @@ int32_t AppMgrStub::OnRemoteRequestInnerFourth(uint32_t code, MessageParcel &dat
             return HandleSignRestartProcess(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::GET_ALL_ABILITY_INFOS):
             return HandleGetAllAbilityInfos(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::NOTIFY_CHILD_PROCESS_STATE):
+            return HandleNotifyChildProcessState(data, reply);
     }
     return INVALID_FD;
 }
@@ -321,6 +343,8 @@ int32_t AppMgrStub::OnRemoteRequestInnerSixth(uint32_t code, MessageParcel &data
     #endif // SUPPORT_CHILD_PROCESS
         case static_cast<uint32_t>(AppMgrInterfaceCode::IS_FINAL_APP_PROCESS):
             return HandleIsFinalAppProcess(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::IS_HYPER_SNAP_INITIALIZING):
+            return HandleIsHyperSnapInitializing(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::APP_CLEAR_UP_APPLICATION_DATA_BY_SELF):
             return HandleClearUpApplicationDataBySelf(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_RENDER_STATUS_OBSERVER):
@@ -388,6 +412,8 @@ int32_t AppMgrStub::OnRemoteRequestInnerSeventh(uint32_t code, MessageParcel &da
     #ifdef SUPPORT_CHILD_PROCESS
         case static_cast<uint32_t>(AppMgrInterfaceCode::GET_ALL_CHILDREN_PROCESSES):
             return HandleGetAllChildrenProcesses(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::GET_SELF_CHILDREN_PROCESSES):
+            return HandleGetSelfChildrenProcesses(data, reply);
     #endif // SUPPORT_CHILD_PROCESS
         case static_cast<uint32_t>(AppMgrInterfaceCode::GET_SUPPORTED_PROCESS_CACHE_PIDS):
             return HandleGetSupportedProcessCachePids(data, reply);
@@ -397,6 +423,8 @@ int32_t AppMgrStub::OnRemoteRequestInnerSeventh(uint32_t code, MessageParcel &da
             return HandleCheckIsKiaProcess(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::KILL_APP_SELF_WITH_INSTANCE_KEY):
             return HandleKillAppSelfWithInstanceKey(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::GET_SELF_UIABILITY_CHILD_PROCESSES):
+            return HandleGetSelfUIAbilityChildProcesses(data, reply);
     }
     return INVALID_FD;
 }
@@ -439,10 +467,88 @@ int32_t AppMgrStub::OnRemoteRequestInnerEighth(uint32_t code, MessageParcel &dat
             return HandleDestroyImage(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::NOTIFY_TEMPLATE_PROCESS_DEEP_FROZEN):
             return HandleNotifyTemplateProcessDeepFrozen(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::PRE_TEMPLATE_PROCESS_DEEP_FROZEN):
+            return HandlePreTemplateProcessDeepFrozen(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::NOTIFY_TEMPLATE_PROCESS_READY_DONE):
+            return HandleNotifyTemplateProcessReadyDone(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::GET_HYPER_SNAP_LAST_ERROR):
+            return HandleGetHyperSnapLastError(data, reply);
         case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_IMAGE_PROCESS_STATE_OBSERVER):
             return HandleRegisterImageProcessStateObserver(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::IS_CHILD_PROCESS_SUPPORTED):
+            return HandleIsChildProcessSupported(data, reply);
+    }
+    return INVALID_FD;
+}
+
+int32_t AppMgrStub::OnRemoteRequestInnerNinth(uint32_t code, MessageParcel &data,
+    MessageParcel &reply, MessageOption &option)
+{
+    switch (static_cast<uint32_t>(code)) {
         case static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_IMAGE_PROCESS_STATE_OBSERVER):
             return HandleUnregisterImageProcessStateObserver(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::SET_TERMINATE_TIMEOUT_FLAG):
+            return HandleSetTerminateTimeOutFlag(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::ENABLE_DELAYED_PROCESS_EXIT):
+            return HandleEnableDelayedProcessExit(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::CANCEL_DELAYED_EXIT_TASK):
+            return HandleCancelDelayedExitTask(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::IS_CORRESPONDING_PROCESS_ATTACH_DEBUG):
+            return HandleIsCorrespondingProcessAttachDebug(data, reply);
+    }
+    return OnRemoteRequestLaunchService(code, data, reply);
+}
+
+int32_t AppMgrStub::OnRemoteRequestLaunchService(uint32_t code, MessageParcel &data, MessageParcel &reply)
+{
+    switch (code) {
+        case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_LAUNCH_SERVICE):
+            return HandleRegisterDaemon(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_LAUNCH_SERVICE):
+            return HandleUnregisterDaemon(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::START_LAUNCH_SERVICE):
+            return HandleStartDaemon(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::STOP_LAUNCH_SERVICE):
+            return HandleStopDaemon(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::GET_LAUNCH_SERVICE_INFORMATION):
+            return HandleGetLaunchServiceInformation(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::GET_ALL_REGISTERED_INFORMATION):
+            return HandleGetAllRegisteredInformation(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::SET_LAUNCH_SERVICES_ENABLED):
+            return HandleSetLaunchServicesEnabled(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_LAUNCH_SERVICE_OBSERVER):
+            return HandleRegisterLaunchServiceObserver(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::NOTIFY_RESIDENT_STARTUP_COMPLETED):
+            if (!reply.WriteInt32(NotifyResidentStartupCompleted())) {
+                return AAFwk::ERR_WRITE_RESULT_CODE_FAILED;
+            }
+            return NO_ERROR;
+        case static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_LAUNCH_SERVICE_OBSERVER):
+            return HandleUnregisterLaunchServiceObserver(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::START_TASK):
+            return HandleStartTask(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::FINISH_TASK):
+            return HandleFinishTask(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_PROCESS_LIFECYCLE_OBSERVER):
+            return HandleRegisterProcessLifecycleObserver(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_PROCESS_LIFECYCLE_OBSERVER):
+            return HandleUnregisterProcessLifecycleObserver(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_FOCUSED_APPLICATION_OBSERVER):
+            return HandleRegisterFocusedApplicationObserver(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_FOCUSED_APPLICATION_OBSERVER):
+            return HandleUnregisterFocusedApplicationObserver(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_CHILD_PROCESS_STATE_OBSERVER):
+            return HandleRegisterChildProcessStateObserver(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_CHILD_PROCESS_STATE_OBSERVER):
+            return HandleUnregisterChildProcessStateObserver(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::ATTRIBUTE_TASK_FOR_A2A):
+            return HandleAttributeTaskForA2A(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_TASK_FOR_A2A):
+            return HandleUnregisterTaskForA2A(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::REGISTER_MANAGED_PROCESS):
+            return HandleRegisterManagedProcess(data, reply);
+        case static_cast<uint32_t>(AppMgrInterfaceCode::UNREGISTER_MANAGED_PROCESS):
+            return HandleUnregisterManagedProcess(data, reply);
     }
     return INVALID_FD;
 }
@@ -453,6 +559,7 @@ int32_t AppMgrStub::HandleAttachApplication(MessageParcel &data, MessageParcel &
     sptr<IRemoteObject> client = data.ReadRemoteObject();
     if (client == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "remote object null");
+        return ERR_INVALID_VALUE;
     }
     AttachApplication(client);
     return NO_ERROR;
@@ -548,6 +655,58 @@ int32_t AppMgrStub::HandleNotifyTemplateProcessDeepFrozen(MessageParcel &data, M
     return NO_ERROR;
 }
 
+int32_t AppMgrStub::HandlePreTemplateProcessDeepFrozen(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    int32_t pid = data.ReadInt32();
+    auto result = PreTemplateProcessDeepFrozen(pid);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write result failed.");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleNotifyTemplateProcessReadyDone(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    auto result = NotifyTemplateProcessReadyDone();
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write result failed.");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleGetHyperSnapLastError(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    int32_t errType = data.ReadInt32();
+
+    HyperSnapErrorRecord record;
+    auto result = GetHyperSnapLastError(errType, record);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write result failed.");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    
+    if (result != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "GetHyperSnapLastError failed with result: %{public}d", result);
+        return NO_ERROR;
+    }
+
+    if (!reply.WriteParcelable(&record)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write record failed.");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    TAG_LOGD(AAFwkTag::APPMGR, "GetHyperSnapLastError success, code: %{public}d", static_cast<int32_t>(record.code));
+    return NO_ERROR;
+}
+
 int32_t AppMgrStub::HandleApplicationForegrounded(MessageParcel &data, MessageParcel &reply)
 {
     HITRACE_METER(HITRACE_TAG_APP);
@@ -612,6 +771,144 @@ int32_t AppMgrStub::HandleClearUpApplicationDataBySelf(MessageParcel &data, Mess
     int32_t userId = data.ReadInt32();
     int32_t result = ClearUpApplicationDataBySelf(userId);
     reply.WriteInt32(result);
+    return NO_ERROR;
+}
+
+namespace {
+int32_t ReadDaemonDescriptor(MessageParcel &data, AAFwk::LaunchServiceDescriptor &descriptor)
+{
+    if (!data.ReadString(descriptor.bundleName) || !data.ReadString(descriptor.moduleName) ||
+        !data.ReadString(descriptor.serviceName) || !data.ReadInt32(descriptor.userId) ||
+        !data.ReadInt32(descriptor.appIndex)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "read daemon descriptor failed");
+        return ERR_INVALID_VALUE;
+    }
+    if (!descriptor.IsValid()) {
+        return ERR_INVALID_VALUE;
+    }
+    return ERR_OK;
+}
+
+int32_t HandleDaemonResult(MessageParcel &reply, int32_t result)
+{
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write daemon result failed");
+        return AAFwk::ERR_WRITE_RESULT_CODE_FAILED;
+    }
+    return NO_ERROR;
+}
+
+template <typename Operation>
+int32_t HandleDaemonRequest(MessageParcel &data, MessageParcel &reply, Operation operation)
+{
+    AAFwk::LaunchServiceDescriptor descriptor;
+    auto result = ReadDaemonDescriptor(data, descriptor);
+    return HandleDaemonResult(reply, result == ERR_OK ? operation(descriptor) : result);
+}
+} // namespace
+
+int32_t AppMgrStub::HandleRegisterDaemon(MessageParcel &data, MessageParcel &reply)
+{
+    return HandleDaemonRequest(data, reply, [this](const auto &descriptor) { return RegisterDaemon(descriptor); });
+}
+
+int32_t AppMgrStub::HandleUnregisterDaemon(MessageParcel &data, MessageParcel &reply)
+{
+    return HandleDaemonRequest(data, reply, [this](const auto &descriptor) { return UnregisterDaemon(descriptor); });
+}
+
+int32_t AppMgrStub::HandleStartDaemon(MessageParcel &data, MessageParcel &reply)
+{
+    return HandleDaemonRequest(data, reply, [this](const auto &descriptor) { return StartDaemon(descriptor); });
+}
+
+int32_t AppMgrStub::HandleStopDaemon(MessageParcel &data, MessageParcel &reply)
+{
+    return HandleDaemonRequest(data, reply, [this](const auto &descriptor) { return StopDaemon(descriptor); });
+}
+
+int32_t AppMgrStub::HandleGetLaunchServiceInformation(MessageParcel &data, MessageParcel &reply)
+{
+    std::unique_ptr<AbilityRuntime::LaunchServiceDescriptor> descriptor(
+        data.ReadParcelable<AbilityRuntime::LaunchServiceDescriptor>());
+    if (descriptor == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+    AbilityRuntime::LaunchServiceInformation information;
+    int32_t result = GetLaunchServiceInformation(*descriptor, information);
+    if (!reply.WriteInt32(result)) {
+        return ERR_INVALID_VALUE;
+    }
+    if (result == ERR_OK && !reply.WriteParcelable(&information)) {
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleGetAllRegisteredInformation(MessageParcel &data, MessageParcel &reply)
+{
+    int32_t userId = 0;
+    if (!data.ReadInt32(userId)) {
+        return ERR_INVALID_VALUE;
+    }
+    std::vector<AbilityRuntime::LaunchServiceInformation> informations;
+    int32_t result = GetAllRegisteredInformation(userId, informations);
+    if (!reply.WriteInt32(result)) {
+        return ERR_INVALID_VALUE;
+    }
+    if (result != ERR_OK) {
+        return NO_ERROR;
+    }
+    if (!reply.WriteInt32(static_cast<int32_t>(informations.size()))) {
+        return ERR_INVALID_VALUE;
+    }
+    for (const auto &information : informations) {
+        if (!reply.WriteParcelable(&information)) {
+            return ERR_INVALID_VALUE;
+        }
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleSetLaunchServicesEnabled(MessageParcel &data, MessageParcel &reply)
+{
+    std::string bundleName;
+    int32_t userId = 0;
+    int32_t appIndex = 0;
+    std::vector<uint8_t> token;
+    bool enable = false;
+    if (!data.ReadString(bundleName) || !data.ReadInt32(userId) || !data.ReadInt32(appIndex) ||
+        !data.ReadUInt8Vector(&token) || !data.ReadBool(enable)) {
+        return ERR_INVALID_VALUE;
+    }
+    auto callback = iface_cast<AbilityRuntime::ILaunchServiceOperationCallback>(data.ReadRemoteObject());
+    if (callback == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+    return HandleDaemonResult(reply, SetLaunchServicesEnabled(bundleName, userId, appIndex, token, enable, callback));
+}
+
+int32_t AppMgrStub::HandleRegisterLaunchServiceObserver(MessageParcel &data, MessageParcel &reply)
+{
+    auto observer = iface_cast<AbilityRuntime::ILaunchServiceObserver>(data.ReadRemoteObject());
+    if (observer == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+    if (!reply.WriteInt32(RegisterLaunchServiceObserver(observer))) {
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleUnregisterLaunchServiceObserver(MessageParcel &data, MessageParcel &reply)
+{
+    auto observer = iface_cast<AbilityRuntime::ILaunchServiceObserver>(data.ReadRemoteObject());
+    if (observer == nullptr) {
+        return ERR_INVALID_VALUE;
+    }
+    if (!reply.WriteInt32(UnregisterLaunchServiceObserver(observer))) {
+        return ERR_INVALID_VALUE;
+    }
     return NO_ERROR;
 }
 
@@ -720,6 +1017,26 @@ int32_t AppMgrStub::HandleGetProcessRunningInfosByUserId(MessageParcel &data, Me
     return NO_ERROR;
 }
 
+int32_t AppMgrStub::HandleGetProcessRunningInfosByAccessTokenId(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    uint32_t accessTokenId = data.ReadUint32();
+    std::vector<RunningProcessInfo> info;
+    auto result = GetProcessRunningInfosByAccessTokenId(accessTokenId, info);
+    int32_t writeSize = std::min(static_cast<int32_t>(info.size()), MAX_PROCESS_INFO_COUNT);
+    reply.WriteInt32(writeSize);
+    for (int32_t i = 0; i < writeSize; ++i) {
+        if (!reply.WriteParcelable(&info[i])) {
+            return ERR_INVALID_VALUE;
+        }
+    }
+    if (!reply.WriteInt32(result)) {
+        return ERR_INVALID_VALUE;
+    }
+    TAG_LOGD(AAFwkTag::APPMGR, "AppMgrStub::HandleGetProcessRunningInfosByAccessTokenId end");
+    return NO_ERROR;
+}
+
 int32_t AppMgrStub::HandleGetAllRenderProcesses(MessageParcel &data, MessageParcel &reply)
 {
     HITRACE_METER(HITRACE_TAG_APP);
@@ -744,6 +1061,30 @@ int32_t AppMgrStub::HandleGetAllChildrenProcesses(MessageParcel &data, MessagePa
     std::vector<ChildProcessInfo> info;
     auto result = GetAllChildrenProcesses(info);
     reply.WriteInt32(info.size());
+    for (auto &it : info) {
+        if (!reply.WriteParcelable(&it)) {
+            TAG_LOGE(AAFwkTag::APPMGR, "Write ChildProcessInfo faild, child pid=%{public}d", it.pid);
+            return ERR_INVALID_VALUE;
+        }
+    }
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write result faild");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+#endif // SUPPORT_CHILD_PROCESS
+
+#ifdef SUPPORT_CHILD_PROCESS
+int32_t AppMgrStub::HandleGetSelfChildrenProcesses(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::vector<ChildProcessInfo> info;
+    auto result = GetSelfChildrenProcesses(info);
+    if (!reply.WriteInt32(info.size())) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write ChildProcessInfo size faild");
+        return ERR_INVALID_VALUE;
+    }
     for (auto &it : info) {
         if (!reply.WriteParcelable(&it)) {
             TAG_LOGE(AAFwkTag::APPMGR, "Write ChildProcessInfo faild, child pid=%{public}d", it.pid);
@@ -850,6 +1191,23 @@ int32_t AppMgrStub::HandleDumpJsHeapMemory(MessageParcel &data, MessageParcel &r
     return NO_ERROR;
 }
 
+int32_t AppMgrStub::HandleDumpJsHandleMap(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "AppMgrStub::HandleDumpJsHandleMap.");
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::unique_ptr<JsHandleMapInfo> info(data.ReadParcelable<JsHandleMapInfo>());
+    if (info == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "AppMgrStub read JsHandleMapInfo error");
+        return ERR_INVALID_VALUE;
+    }
+    auto result = DumpJsHandleMap(*info);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write result error");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
 int32_t AppMgrStub::HandleDumpCjHeapMemory(MessageParcel &data, MessageParcel &reply)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "AppMgrStub::HandleDumpCjHeapMemory.");
@@ -876,12 +1234,26 @@ int32_t AppMgrStub::HandleDumpMem(MessageParcel &data, MessageParcel &reply)
         TAG_LOGE(AAFwkTag::APPMGR, "AppMgrStub read configuration error");
         return ERR_INVALID_VALUE;
     }
-    std::string dumpResult;
-    auto result = DumpMem(*info, dumpResult);
-    if (!reply.WriteString(dumpResult)) {
-        TAG_LOGE(AAFwkTag::APPMGR, "write dumpResult error");
+    bool hasCallback = data.ReadBool();
+    sptr<IMemDumpCallback> callback = nullptr;
+    if (hasCallback) {
+        sptr<IRemoteObject> remoteCallback = data.ReadRemoteObject();
+        callback = iface_cast<IMemDumpCallback>(remoteCallback);
+    }
+    auto result = DumpMem(*info, callback);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write result error");
         return ERR_INVALID_VALUE;
     }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleReportDumpMemResult(MessageParcel &data, MessageParcel &reply)
+{
+    sptr<IRemoteObject> remoteCallback = data.ReadRemoteObject();
+    sptr<IMemDumpCallback> callback = iface_cast<IMemDumpCallback>(remoteCallback);
+    std::string dumpResult = data.ReadString();
+    auto result = ReportDumpMemResult(callback, dumpResult);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::APPMGR, "write result error");
         return ERR_INVALID_VALUE;
@@ -1058,6 +1430,7 @@ int32_t AppMgrStub::HandleScheduleAcceptWantDone(MessageParcel &data, MessagePar
     }
     auto flag = data.ReadString();
 
+    want->AdoptAllLegacyFd(AAFwk::FdTraversalMode::RECURSIVE);
     ScheduleAcceptWantDone(recordId, *want, flag);
     delete want;
     return NO_ERROR;
@@ -1073,6 +1446,7 @@ int32_t AppMgrStub::HandleScheduleNewProcessRequestDone(MessageParcel &data, Mes
     }
     auto flag = data.ReadString();
 
+    want->AdoptAllLegacyFd(AAFwk::FdTraversalMode::RECURSIVE);
     ScheduleNewProcessRequestDone(recordId, *want, flag);
     delete want;
     return NO_ERROR;
@@ -1409,6 +1783,32 @@ int32_t AppMgrStub::HandleIsSharedBundleRunning(MessageParcel &data, MessageParc
     return NO_ERROR;
 }
 
+int32_t AppMgrStub::HandleIsMainProcessDebug(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    int32_t uid = data.ReadInt32();
+    bool result = IsMainProcessDebug(uid);
+    if (!reply.WriteBool(result)) {
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleIsCorrespondingProcessAttachDebug(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::unique_ptr<AbilityInfo> abilityInfo(data.ReadParcelable<AbilityInfo>());
+    if (abilityInfo == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "abilityInfo is nullptr");
+        return ERR_INVALID_VALUE;
+    }
+    bool result = IsCorrespondingProcessAttachDebug(*abilityInfo);
+    if (!reply.WriteBool(result)) {
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
 int32_t AppMgrStub::HandleStartNativeProcessForDebugger(MessageParcel &data, MessageParcel &reply)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
@@ -1518,6 +1918,15 @@ int32_t AppMgrStub::HandleSetAppFreezeFilter(MessageParcel &data, MessageParcel 
         TAG_LOGE(AAFwkTag::APPMGR, "reply write failed.");
         return ERR_INVALID_VALUE;
     }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleUpdateFreezeExcludedPid(MessageParcel &data, MessageParcel &reply)
+{
+    bool isAdd = data.ReadBool();
+    int32_t targetPid = data.ReadInt32();
+    int32_t profilerPid = data.ReadInt32();
+    UpdateFreezeExcludedPid(isAdd, targetPid, profilerPid);
     return NO_ERROR;
 }
 
@@ -1658,6 +2067,66 @@ int32_t AppMgrStub::HandleUnregisterAppForegroundStateObserver(MessageParcel &da
         return ERR_INVALID_VALUE;
     }
     int32_t result = UnregisterAppForegroundStateObserver(callback);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Fail to write result.");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleRegisterProcessLifecycleObserver(MessageParcel &data, MessageParcel &reply)
+{
+    auto callback = iface_cast<AppExecFwk::IProcessLifecycleObserver>(data.ReadRemoteObject());
+    if (callback == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Callback is null.");
+        return ERR_INVALID_VALUE;
+    }
+    int32_t result = RegisterProcessLifecycleObserver(callback);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Fail to write result.");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleUnregisterProcessLifecycleObserver(MessageParcel &data, MessageParcel &reply)
+{
+    auto callback = iface_cast<AppExecFwk::IProcessLifecycleObserver>(data.ReadRemoteObject());
+    if (callback == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Callback is null.");
+        return ERR_INVALID_VALUE;
+    }
+    int32_t result = UnregisterProcessLifecycleObserver(callback);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Fail to write result.");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleRegisterFocusedApplicationObserver(MessageParcel &data, MessageParcel &reply)
+{
+    auto callback = iface_cast<AppExecFwk::IFocusedApplicationObserver>(data.ReadRemoteObject());
+    if (callback == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Callback is null.");
+        return ERR_INVALID_VALUE;
+    }
+    int32_t result = RegisterFocusedApplicationObserver(callback);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Fail to write result.");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+ 
+int32_t AppMgrStub::HandleUnregisterFocusedApplicationObserver(MessageParcel &data, MessageParcel &reply)
+{
+    auto callback = iface_cast<AppExecFwk::IFocusedApplicationObserver>(data.ReadRemoteObject());
+    if (callback == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Callback is null.");
+        return ERR_INVALID_VALUE;
+    }
+    int32_t result = UnregisterFocusedApplicationObserver(callback);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::APPMGR, "Fail to write result.");
         return ERR_INVALID_VALUE;
@@ -1827,6 +2296,16 @@ int32_t AppMgrStub::HandleIsFinalAppProcess(MessageParcel &data, MessageParcel &
     return NO_ERROR;
 }
 
+int32_t AppMgrStub::HandleIsHyperSnapInitializing(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    if (!reply.WriteBool(IsHyperSnapInitializing())) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Fail to write bool result.");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
 int32_t AppMgrStub::HandleRegisterRenderStateObserver(MessageParcel &data, MessageParcel &reply)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");
@@ -1852,6 +2331,38 @@ int32_t AppMgrStub::HandleUnregisterRenderStateObserver(MessageParcel &data, Mes
         return ERR_INVALID_VALUE;
     }
     int32_t result = UnregisterRenderStateObserver(callback);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Fail to write result.");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleRegisterChildProcessStateObserver(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    auto callback = iface_cast<AppExecFwk::IChildProcessStateObserver>(data.ReadRemoteObject());
+    if (callback == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Callback is null.");
+        return ERR_INVALID_VALUE;
+    }
+    int32_t result = RegisterChildProcessStateObserver(callback);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Fail to write result.");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleUnregisterChildProcessStateObserver(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    auto callback = iface_cast<AppExecFwk::IChildProcessStateObserver>(data.ReadRemoteObject());
+    if (callback == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Callback is null.");
+        return ERR_INVALID_VALUE;
+    }
+    int32_t result = UnregisterChildProcessStateObserver(callback);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::APPMGR, "Fail to write result.");
         return ERR_INVALID_VALUE;
@@ -1997,6 +2508,23 @@ int32_t AppMgrStub::HandleIsProcessCacheSupported(MessageParcel &data, MessagePa
     return NO_ERROR;
 }
 
+int32_t AppMgrStub::HandleIsChildProcessSupported(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "HandleIsChildProcessSupported called");
+    bool isNative = data.ReadBool();
+    bool isSupported = false;
+    auto ret = IsChildProcessSupported(isNative, isSupported);
+    if (!reply.WriteBool(isSupported)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write isSupported error.");
+        return AAFwk::ERR_WRITE_BOOL_FAILED;
+    }
+    if (!reply.WriteInt32(ret)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write ret error.");
+        return AAFwk::ERR_WRITE_RESULT_CODE_FAILED;
+    }
+    return NO_ERROR;
+}
+
 int32_t AppMgrStub::HandleSetProcessCacheEnable(MessageParcel &data, MessageParcel &reply)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "HandleSetProcessCacheEnable called");
@@ -2079,6 +2607,28 @@ int32_t AppMgrStub::HandleCreateNativeChildProcess(MessageParcel &data, MessageP
     return NO_ERROR;
 }
 #endif // SUPPORT_CHILD_PROCESS
+
+int32_t AppMgrStub::HandleGetSelfUIAbilityChildProcesses(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::vector<ChildProcessInfo> infos;
+    auto result = GetSelfUIAbilityChildProcesses(infos);
+    if (!reply.WriteInt32(infos.size())) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write ChildProcessInfo size failed");
+        return ERR_INVALID_VALUE;
+    }
+    for (auto &it : infos) {
+        if (!reply.WriteParcelable(&it)) {
+            TAG_LOGE(AAFwkTag::APPMGR, "Write ChildProcessInfo failed, pid=%{public}d", it.pid);
+            return ERR_INVALID_VALUE;
+        }
+    }
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Write result failed");
+        return ERR_INVALID_VALUE;
+    }
+    return NO_ERROR;
+}
 
 int32_t AppMgrStub::HandleNotifyProcessDependedOnWeb(MessageParcel &data, MessageParcel &reply)
 {
@@ -2378,12 +2928,23 @@ int32_t AppMgrStub::HandlePreloadExtension(MessageParcel &data, MessageParcel &r
     return NO_ERROR;
 }
 
-
 int32_t AppMgrStub::HandleSetProcessPrepareExit(MessageParcel &data, MessageParcel &reply)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "HandleSetProcessPrepareExit call");
     pid_t pid = data.ReadInt32();
     SetProcessPrepareExit(pid);
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleSetTerminateTimeOutFlag(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "HandleSetTerminateTimeOutFlag call");
+    sptr<IRemoteObject> token = data.ReadRemoteObject();
+    if (token == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "token is nullptr");
+        return ERR_INVALID_VALUE;
+    }
+    SetTerminateTimeOutFlag(token);
     return NO_ERROR;
 }
 
@@ -2413,5 +2974,119 @@ int32_t AppMgrStub::HandleGetAllAbilityInfos(MessageParcel &data, MessageParcel 
     }
     return NO_ERROR;
 }
+
+int32_t AppMgrStub::HandleNotifyChildProcessState(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "HandleNotifyChildProcessState call");
+    int32_t pid = data.ReadInt32();
+    int32_t state = data.ReadInt32();
+    auto result = NotifyChildProcessState(pid, state);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write result fail");
+        return AAFwk::ERR_WRITE_RESULT_CODE_FAILED;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleEnableDelayedProcessExit(MessageParcel &data, MessageParcel &reply)
+{
+    bool enabled = data.ReadBool();
+    auto result = EnableDelayedProcessExit(enabled);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write result fail");
+        return AAFwk::ERR_WRITE_RESULT_CODE_FAILED;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleCancelDelayedExitTask(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "HandleCancelDelayedExitTask call");
+    pid_t pid = data.ReadInt32();
+    CancelDelayedExitTask(pid);
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleStartTask(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::string taskId = Str16ToStr8(data.ReadString16());
+    auto result = StartTask(taskId);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write result fail");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleFinishTask(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::string taskId = Str16ToStr8(data.ReadString16());
+    auto result = FinishTask(taskId);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write result fail");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleAttributeTaskForA2A(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::string taskId = Str16ToStr8(data.ReadString16());
+    uint32_t callerTokenId = static_cast<uint32_t>(data.ReadUint32());
+    pid_t targetPid = data.ReadInt32();
+    int64_t attributionId = 0;
+    int32_t result = AttributeTaskForA2A(taskId, callerTokenId, targetPid, attributionId);
+    reply.WriteInt32(result);
+    reply.WriteInt64(attributionId);
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleUnregisterTaskForA2A(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::string taskId = Str16ToStr8(data.ReadString16());
+    int64_t attributionId = data.ReadInt64();
+    int32_t result = UnregisterTaskForA2A(taskId, attributionId);
+    reply.WriteInt32(result);
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleRegisterManagedProcess(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::string taskId = Str16ToStr8(data.ReadString16());
+    int32_t pid = data.ReadInt32();
+    int32_t tool = data.ReadInt32();
+    int32_t callerUid = data.ReadInt32();
+    int64_t attributionId = 0;
+    auto result = RegisterManagedProcess(taskId, pid, tool, callerUid, attributionId);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write result fail");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    if (!reply.WriteInt64(attributionId)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write attributionId fail");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    return NO_ERROR;
+}
+
+int32_t AppMgrStub::HandleUnregisterManagedProcess(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    std::string taskId = Str16ToStr8(data.ReadString16());
+    int64_t attributionId = data.ReadInt64();
+    int32_t callerUid = data.ReadInt32();
+    auto result = UnregisterManagedProcess(taskId, attributionId, callerUid);
+    if (!reply.WriteInt32(result)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write result fail");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    return NO_ERROR;
+}
+
 }  // namespace AppExecFwk
 }  // namespace OHOS

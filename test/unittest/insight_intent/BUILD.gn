@@ -15,6 +15,8 @@ group("unittest") {
   testonly = true
 
   deps = [
+    "ets_insight_intent_tool_call_id_test:unittest",
+    "function_call_convert_test:unittest",
     "insight_intent_execute_callback_stub_test:unittest",
     "insight_intent_execute_manager_second_test:unittest",
     "insight_intent_execute_manager_test:unittest",
@@ -32,5 +34,6 @@ group("unittest") {
     "js_insight_intent_utils_test:unittest",
     "insight_intent_info_for_query_test:unittest",
     "insight_intent_sys_event_receiver_test:unittest",
+    "insight_intent_query_param_test:unittest",
   ]
 }

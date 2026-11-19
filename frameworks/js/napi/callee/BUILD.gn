@@ -34,6 +34,8 @@ gen_js_obj("callee_abc") {
 }
 
 ohos_shared_library("callee_napi") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "callee_module.cpp" ]
 
   deps = [
@@ -41,9 +43,14 @@ ohos_shared_library("callee_napi") {
     ":callee_js",
   ]
 
-  external_deps = [ "napi:ace_napi" ]
+  external_deps = [
+    "napi:ace_napi",
+    "node:node_header_notice",
+    "libuv:uv",
+  ]
 
   relative_install_dir = "module/application"
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

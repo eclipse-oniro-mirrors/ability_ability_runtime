@@ -19,6 +19,9 @@
 #include "ability_manager_errors.h"
 #include "ability_runtime_error_util.h"
 #include "hilog_tag_wrapper.h"
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+#include "histogram_plugin_macros.h"
+#endif
 #include "ipc_skeleton.h"
 #include "js_error_utils.h"
 #include "napi_common_util.h"
@@ -63,7 +66,8 @@ static void ResolveGrantUriPermissionTask(napi_env env, NapiAsyncTask &task, int
         task.Reject(env, CreateJsErrorByNativeErr(env, errCode, "ohos.permission.PROXY_AUTHORIZATION_URI"));
         return;
     }
-    task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+    task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+        GetInnerErrorMsg(AbilityInnerErrorMsg::GRANT_URI_PERMISSION_FAILED)));
     return;
 }
 
@@ -81,7 +85,8 @@ static void ResolveGrantUriPermissionWithAppIndexTask(napi_env env, NapiAsyncTas
         task.Reject(env, CreateJsErrorByNativeErr(env, errCode, "ohos.permission.PROXY_AUTHORIZATION_URI"));
         return;
     }
-    task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+    task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+        GetInnerErrorMsg(AbilityInnerErrorMsg::GRANT_URI_PERMISSION_FAILED)));
     return;
 }
 
@@ -97,7 +102,8 @@ static void ResolveRevokeUriPermissionTask(napi_env env, NapiAsyncTask &task, in
         task.Reject(env, CreateJsErrorByNativeErr(env, errCode));
         return;
     }
-    task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+    task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+        GetInnerErrorMsg(AbilityInnerErrorMsg::REVOKE_URI_PERMISSION_FAILED)));
     return;
 }
 
@@ -114,7 +120,8 @@ static void ResolveRevokeUriPermissionWithAppIndexTask(napi_env env, NapiAsyncTa
         task.Reject(env, CreateJsErrorByNativeErr(env, errCode));
         return;
     }
-    task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+    task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+        GetInnerErrorMsg(AbilityInnerErrorMsg::REVOKE_URI_PERMISSION_FAILED)));
     return;
 }
 
@@ -126,7 +133,8 @@ static void ResolveGrantUriPermissionByKeyAsCallerTask(napi_env env, NapiAsyncTa
         task.ResolveWithNoError(env, CreateJsUndefined(env));
         return;
     }
-    task.Reject(env, CreateJsErrorByNativeErr(env, errCode, "ohos.permission.GRANT_URI_PERMISSION_AS_CALLER"));
+    task.Reject(env, CreateJsErrorByNativeErr(env, errCode, "ohos.permission.GRANT_URI_PERMISSION_AS_CALLER",
+        GetInnerErrorMsg(AbilityInnerErrorMsg::GRANT_URI_PERMISSION_AS_CALLER_FAILED)));
     return;
 }
 
@@ -138,7 +146,8 @@ static void ResolveGrantUriPermissionByKeyTask(napi_env env, NapiAsyncTask &task
         task.ResolveWithNoError(env, CreateJsUndefined(env));
         return;
     }
-    task.Reject(env, CreateJsErrorByNativeErr(env, errCode, ""));
+    task.Reject(env, CreateJsErrorByNativeErr(env, errCode, "",
+        GetInnerErrorMsg(AbilityInnerErrorMsg::GRANT_URI_PERMISSION_BY_KEY_FAILED)));
     return;
 }
 
@@ -317,6 +326,9 @@ private:
     napi_value OnGrantUriPermission(napi_env env, NapiCallbackInfo& info)
     {
         TAG_LOGD(AAFwkTag::URIPERMMGR, "start");
+    #ifdef HIVIEWDFX_RUNTIME_API_METRICS
+        HISTOGRAM_BOOLEAN("AbilityKit.uriPermissionManager.grantUriPermission", 1);
+    #endif
         HandleEscape handleEscape(env);
         UriPermissionParam param;
         if (!ParseGrantUriPermissionParams(env, info, param)) {

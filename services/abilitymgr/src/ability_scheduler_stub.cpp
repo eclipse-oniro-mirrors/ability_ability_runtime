@@ -150,6 +150,8 @@ int AbilitySchedulerStub::OnRemoteRequestInnerThird(
             return ShareDataInner(data, reply);
         case SCHEDULE_ONEXECUTE_INTENT:
             return OnExecuteIntentInner(data, reply);
+        case SCHEDULE_EXECUTE_SKILL:
+            return ExecuteSkillInner(data, reply);
         case CREATE_MODAL_UI_EXTENSION:
             return CreateModalUIExtensionInner(data, reply);
         case UPDATE_SESSION_TOKEN:
@@ -721,6 +723,18 @@ int AbilitySchedulerStub::OnExecuteIntentInner(MessageParcel &data, MessageParce
         return ERR_INVALID_VALUE;
     }
     OnExecuteIntent(*want);
+    return NO_ERROR;
+}
+
+int AbilitySchedulerStub::ExecuteSkillInner(MessageParcel &data, MessageParcel &reply)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "execute skill stub");
+    std::shared_ptr<Want> want(data.ReadParcelable<Want>());
+    if (want == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "null want");
+        return ERR_INVALID_VALUE;
+    }
+    ExecuteSkill(*want);
     return NO_ERROR;
 }
 

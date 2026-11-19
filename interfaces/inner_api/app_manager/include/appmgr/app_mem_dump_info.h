@@ -25,14 +25,28 @@ enum class MemDumpType : uint32_t {
     INVALID = 0,
     NATIVE = 1,
     JSVM = 2,
+    KMP_KOTLIN = 3,
+    ARKWEB_JS = 4,
+    ARKTS_HEAP = 5,
+    // Thread stack leak detection. DumpMem with this type runs asynchronously:
+    // it scans /proc/self/smaps for orphan thread stack regions, unwinds the
+    // leaked stacks, and reports the result via the IMemDumpCallback callback
+    // (NOT via the synchronous dumpResult out-parameter used by other types).
+    // Callers must wait for the callback and cannot rely on a sync return.
+    THREAD_STACK_LEAK = 6,
 };
 
 struct MemDumpInfo : public Parcelable {
     MemDumpType dumpType = MemDumpType::INVALID;
     bool needLeakobj = false;
+    bool needRaw = false;
     uint32_t pid = 0;
     uint32_t tid = 0;
-    bool isSync = true;
+    uint32_t renderPid = 0;
+    bool isSync = false;
+    bool mayReportToOEM = false;
+    bool needDump = true;
+    bool needGc = false;
     virtual bool Marshalling(Parcel &parcel) const override;
     static MemDumpInfo *Unmarshalling(Parcel &parcel);
 };

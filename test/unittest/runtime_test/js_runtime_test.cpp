@@ -114,6 +114,58 @@ HWTEST_F(JsRuntimeTest, JsperfProfilerCommandParse_100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: JsperfProfilerCommandParse_200
+ * @tc.desc: JsRuntime test for JsperfProfilerCommandParse with INT_MAX boundary.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsperfProfilerCommandParse_200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "JsperfProfilerCommandParse_200 start");
+    auto jsRuntime = std::make_shared<AbilityRuntime::JsRuntime>();
+    constexpr int32_t defaultVal = 500;
+    constexpr int32_t intMax = 2147483647;
+    std::string command = "jsperf 2147483647";
+    ASSERT_EQ(jsRuntime->JsperfProfilerCommandParse(command, defaultVal), intMax);
+    jsRuntime.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    TAG_LOGI(AAFwkTag::TEST, "JsperfProfilerCommandParse_200 end");
+}
+
+/**
+ * @tc.name: JsperfProfilerCommandParse_201
+ * @tc.desc: JsRuntime test for JsperfProfilerCommandParse with INT_MAX + 1 overflow.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsperfProfilerCommandParse_201, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "JsperfProfilerCommandParse_201 start");
+    auto jsRuntime = std::make_shared<AbilityRuntime::JsRuntime>();
+    constexpr int32_t defaultVal = 500;
+    std::string command = "jsperf 2147483648";
+    ASSERT_EQ(jsRuntime->JsperfProfilerCommandParse(command, defaultVal), defaultVal);
+    jsRuntime.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    TAG_LOGI(AAFwkTag::TEST, "JsperfProfilerCommandParse_201 end");
+}
+
+/**
+ * @tc.name: JsperfProfilerCommandParse_202
+ * @tc.desc: JsRuntime test for JsperfProfilerCommandParse with very large number overflow.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsperfProfilerCommandParse_202, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "JsperfProfilerCommandParse_202 start");
+    auto jsRuntime = std::make_shared<AbilityRuntime::JsRuntime>();
+    constexpr int32_t defaultVal = 500;
+    std::string command = "jsperf 99999999999999999999";
+    ASSERT_EQ(jsRuntime->JsperfProfilerCommandParse(command, defaultVal), defaultVal);
+    jsRuntime.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    TAG_LOGI(AAFwkTag::TEST, "JsperfProfilerCommandParse_202 end");
+}
+
+/**
  * @tc.name: JsRuntimeTestCreate_0100
  * @tc.desc: JsRuntime Test for Create
  * @tc.type: FUNC
@@ -279,6 +331,130 @@ HWTEST_F(JsRuntimeTest, JsRuntimeDumpHeapSnapshotTest_0100, TestSize.Level2)
 }
 
 /**
+ * @tc.name: JsRuntimeDumpJsHandleMapTest_0100
+ * @tc.desc: JsRuntime test for DumpJsHandleMap with default-constructed runtime (no jsEnv_).
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsRuntimeDumpJsHandleMapTest_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0100 start");
+    std::unique_ptr<JsRuntime> jsRuntime = std::make_unique<AbilityRuntime::JsRuntime>();
+    ASSERT_NE(jsRuntime, nullptr);
+    EXPECT_EQ(jsRuntime->GetEcmaVm(), nullptr);
+    jsRuntime->DumpJsHandleMap();
+    EXPECT_EQ(jsRuntime->GetEcmaVm(), nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0100 end");
+}
+
+/**
+ * @tc.name: JsRuntimeDumpJsHandleMapTest_0200
+ * @tc.desc: JsRuntime test for DumpJsHandleMap when jsEnv_ is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsRuntimeDumpJsHandleMapTest_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0200 start");
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    ASSERT_NE(jsRuntime, nullptr);
+    jsRuntime->jsEnv_ = nullptr;
+    EXPECT_EQ(jsRuntime->GetEcmaVm(), nullptr);
+    jsRuntime->DumpJsHandleMap();
+    EXPECT_EQ(jsRuntime->GetEcmaVm(), nullptr);
+    jsRuntime.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0200 end");
+}
+
+/**
+ * @tc.name: JsRuntimeDumpJsHandleMapTest_0300
+ * @tc.desc: JsRuntime test for DumpJsHandleMap when jsEnv_ exists but vm_ is nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsRuntimeDumpJsHandleMapTest_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0300 start");
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    ASSERT_NE(jsRuntime, nullptr);
+    jsRuntime->jsEnv_ = std::make_shared<JsEnv::JsEnvironment>();
+    jsRuntime->jsEnv_->vm_ = nullptr;
+    EXPECT_EQ(jsRuntime->GetEcmaVm(), nullptr);
+    jsRuntime->DumpJsHandleMap();
+    EXPECT_EQ(jsRuntime->GetEcmaVm(), nullptr);
+    jsRuntime.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0300 end");
+}
+
+/**
+ * @tc.name: JsRuntimeDumpJsHandleMapTest_0400
+ * @tc.desc: JsRuntime test for DumpJsHandleMap with valid VM.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsRuntimeDumpJsHandleMapTest_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0400 start");
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    ASSERT_NE(jsRuntime, nullptr);
+    jsRuntime->jsEnv_ = std::make_shared<JsEnv::JsEnvironment>();
+    panda::RuntimeOption pandaOption;
+    jsRuntime->jsEnv_->vm_ = panda::JSNApi::CreateJSVM(pandaOption);
+    ASSERT_NE(jsRuntime->jsEnv_->vm_, nullptr);
+    EXPECT_NE(jsRuntime->GetEcmaVm(), nullptr);
+    jsRuntime->DumpJsHandleMap();
+    EXPECT_NE(jsRuntime->GetEcmaVm(), nullptr);
+    panda::JSNApi::DestroyJSVM(jsRuntime->jsEnv_->vm_);
+    jsRuntime->jsEnv_->vm_ = nullptr;
+    jsRuntime.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0400 end");
+}
+
+/**
+ * @tc.name: JsRuntimeDumpJsHandleMapTest_0500
+ * @tc.desc: JsRuntime test for DumpJsHandleMap called through Runtime base class pointer.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsRuntimeDumpJsHandleMapTest_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0500 start");
+    std::unique_ptr<Runtime> runtime = std::make_unique<JsRuntime>();
+    ASSERT_NE(runtime, nullptr);
+    auto* jsRuntime = static_cast<JsRuntime*>(runtime.get());
+    EXPECT_EQ(jsRuntime->GetEcmaVm(), nullptr);
+    runtime->DumpJsHandleMap();
+    EXPECT_EQ(jsRuntime->GetEcmaVm(), nullptr);
+    runtime.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0500 end");
+}
+
+/**
+ * @tc.name: JsRuntimeDumpJsHandleMapTest_0600
+ * @tc.desc: JsRuntime test for DumpJsHandleMap with JsRuntime created by Create().
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsRuntimeDumpJsHandleMapTest_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0600 start");
+    Runtime::Options options;
+    options.bundleName = TEST_BUNDLE_NAME;
+    options.codePath = TEST_CODE_PATH;
+    options.loadAce = false;
+    options.isBundle = true;
+    options.preload = false;
+    std::shared_ptr<AppExecFwk::EventRunner> eventRunner = AppExecFwk::EventRunner::Create(TEST_ABILITY_NAME);
+    options.eventRunner = eventRunner;
+    auto jsRuntime = JsRuntime::Create(options);
+    ASSERT_NE(jsRuntime, nullptr);
+    EXPECT_NE(jsRuntime->GetEcmaVm(), nullptr);
+    jsRuntime->DumpJsHandleMap();
+    EXPECT_NE(jsRuntime->GetEcmaVm(), nullptr);
+    jsRuntime.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    TAG_LOGI(AAFwkTag::TEST, "DumpJsHandleMap_0600 end");
+}
+
+/**
  * @tc.name: JsRuntimeGetHeapTotalSizeTest_0100
  * @tc.desc: JsRuntime test for GetHeapTotalSize.
  * @tc.type: FUNC
@@ -304,6 +480,34 @@ HWTEST_F(JsRuntimeTest, JsRuntimeGetHeapObjectSizeTest_0100, TestSize.Level2)
     size_t ret = jsRuntime->GetHeapObjectSize();
     EXPECT_TRUE(ret >= 0);
     TAG_LOGI(AAFwkTag::TEST, "GetHeapObjectSize end");
+}
+
+/**
+ * @tc.name: JsRuntimeGetSharedHeapSizeTest_0100
+ * @tc.desc: JsRuntime test for GetSharedHeapSize.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsRuntimeGetSharedHeapSize_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetSharedHeapSize start");
+    std::unique_ptr<JsRuntime> jsRuntime = std::make_unique<AbilityRuntime::JsRuntime>();
+    size_t ret = jsRuntime->GetSharedHeapSize();
+    EXPECT_TRUE(ret >= 0);
+    TAG_LOGI(AAFwkTag::TEST, "GetSharedHeapSize end");
+}
+
+/**
+ * @tc.name: JsRuntimeGetGCStatisticTest_0100
+ * @tc.desc: JsRuntime test for GetGCStatistic.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, JsRuntimeGetGCStatistic_0100, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetGCStatistic start");
+    std::unique_ptr<JsRuntime> jsRuntime = std::make_unique<AbilityRuntime::JsRuntime>();
+    EXPECT_TRUE(jsRuntime != nullptr);
+    auto ret = jsRuntime->GetGCStatistic();
+    TAG_LOGI(AAFwkTag::TEST, "GetGCStatistic end");
 }
 
 /**
@@ -1207,34 +1411,6 @@ HWTEST_F(JsRuntimeTest, InitLoop_0100, TestSize.Level1)
 }
 
 /**
- * @tc.name: InitSourceMap_0100
- * @tc.desc: JsRuntime test for InitSourceMap.
- * @tc.type: FUNC
- */
-HWTEST_F(JsRuntimeTest, InitSourceMap_0100, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "InitSourceMap_0100 start");
-
-    auto jsRuntime = std::make_unique<AbilityRuntime::JsRuntime>();
-    auto operatorObj = std::make_shared<JsEnv::SourceMapOperator>("");
-    jsRuntime->InitSourceMap(operatorObj);
-    ASSERT_NE(jsRuntime, nullptr);
-    jsRuntime.reset();
-    TAG_LOGI(AAFwkTag::TEST, "InitSourceMap_0100 end");
-}
-
-HWTEST_F(JsRuntimeTest, InitSourceMap_0200, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "InitSourceMap_0200 start");
-
-    auto mapObj = std::make_shared<JsEnv::SourceMap>();
-    bool hasFile = false;
-    mapObj->Init(hasFile, TEST_HAP_PATH);
-    EXPECT_FALSE(hasFile);
-    TAG_LOGI(AAFwkTag::TEST, "InitSourceMap_0200 end");
-}
-
-/**
  * @tc.name: Deinitialize_0100
  * @tc.desc: JsRuntime test for Deinitialize.
  * @tc.type: FUNC
@@ -1429,6 +1605,166 @@ HWTEST_F(JsRuntimeTest, DumpHeapSnapshot_0600, TestSize.Level1)
     jsRuntime->DumpHeapSnapshot(tid, param);
     EXPECT_TRUE(jsRuntime != nullptr);
     TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot end");
+}
+
+/**
+ * @tc.name: DumpHeapSnapshot_0700
+ * @tc.desc: JsRuntime test for DumpHeapSnapshot with JsHeapDumpParam, only isFullGC is true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, DumpHeapSnapshot_0700, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_0700 start");
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    uint32_t tid = 100;
+    OHOS::AbilityRuntime::Runtime::JsHeapDumpParam param;
+    param.isFullGC = true;
+    param.isBinary = false;
+    param.isClearNodeIdCache = false;
+    param.isProcDump = false;
+    jsRuntime->DumpHeapSnapshot(tid, param);
+    EXPECT_TRUE(jsRuntime != nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_0700 end");
+}
+
+/**
+ * @tc.name: DumpHeapSnapshot_0800
+ * @tc.desc: JsRuntime test for DumpHeapSnapshot with JsHeapDumpParam, only isBinary is true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, DumpHeapSnapshot_0800, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_0800 start");
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    uint32_t tid = 200;
+    OHOS::AbilityRuntime::Runtime::JsHeapDumpParam param;
+    param.isFullGC = false;
+    param.isBinary = true;
+    param.isClearNodeIdCache = false;
+    param.isProcDump = false;
+    jsRuntime->DumpHeapSnapshot(tid, param);
+    EXPECT_TRUE(jsRuntime != nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_0800 end");
+}
+
+/**
+ * @tc.name: DumpHeapSnapshot_0900
+ * @tc.desc: JsRuntime test for DumpHeapSnapshot with JsHeapDumpParam, only isClearNodeIdCache is true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, DumpHeapSnapshot_0900, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_0900 start");
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    uint32_t tid = 300;
+    OHOS::AbilityRuntime::Runtime::JsHeapDumpParam param;
+    param.isFullGC = false;
+    param.isBinary = false;
+    param.isClearNodeIdCache = true;
+    param.isProcDump = false;
+    jsRuntime->DumpHeapSnapshot(tid, param);
+    EXPECT_TRUE(jsRuntime != nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_0900 end");
+}
+
+/**
+ * @tc.name: DumpHeapSnapshot_1000
+ * @tc.desc: JsRuntime test for DumpHeapSnapshot with JsHeapDumpParam, only isProcDump is true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, DumpHeapSnapshot_1000, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_1000 start");
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    uint32_t tid = 400;
+    OHOS::AbilityRuntime::Runtime::JsHeapDumpParam param;
+    param.isFullGC = false;
+    param.isBinary = false;
+    param.isClearNodeIdCache = false;
+    param.isProcDump = true;
+    jsRuntime->DumpHeapSnapshot(tid, param);
+    EXPECT_TRUE(jsRuntime != nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_1000 end");
+}
+
+/**
+ * @tc.name: DumpHeapSnapshot_1100
+ * @tc.desc: JsRuntime test for DumpHeapSnapshot with JsHeapDumpParam, isFullGC and isBinary both true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, DumpHeapSnapshot_1100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_1100 start");
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    uint32_t tid = 500;
+    OHOS::AbilityRuntime::Runtime::JsHeapDumpParam param;
+    param.isFullGC = true;
+    param.isBinary = true;
+    param.isClearNodeIdCache = false;
+    param.isProcDump = false;
+    jsRuntime->DumpHeapSnapshot(tid, param);
+    EXPECT_TRUE(jsRuntime != nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_1100 end");
+}
+
+/**
+ * @tc.name: DumpHeapSnapshot_1200
+ * @tc.desc: JsRuntime test for DumpHeapSnapshot with JsHeapDumpParam, isFullGC and isProcDump both true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, DumpHeapSnapshot_1200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_1200 start");
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    uint32_t tid = 600;
+    OHOS::AbilityRuntime::Runtime::JsHeapDumpParam param;
+    param.isFullGC = true;
+    param.isBinary = false;
+    param.isClearNodeIdCache = false;
+    param.isProcDump = true;
+    jsRuntime->DumpHeapSnapshot(tid, param);
+    EXPECT_TRUE(jsRuntime != nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_1200 end");
+}
+
+/**
+ * @tc.name: DumpHeapSnapshot_1300
+ * @tc.desc: JsRuntime test for DumpHeapSnapshot with JsHeapDumpParam, tid is 0.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, DumpHeapSnapshot_1300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_1300 start");
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    uint32_t tid = 0;
+    OHOS::AbilityRuntime::Runtime::JsHeapDumpParam param;
+    param.isFullGC = false;
+    param.isBinary = false;
+    param.isClearNodeIdCache = false;
+    param.isProcDump = false;
+    jsRuntime->DumpHeapSnapshot(tid, param);
+    EXPECT_TRUE(jsRuntime != nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_1300 end");
+}
+
+/**
+ * @tc.name: DumpHeapSnapshot_1400
+ * @tc.desc: JsRuntime test for DumpHeapSnapshot with JsHeapDumpParam, tid is UINT32_MAX.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, DumpHeapSnapshot_1400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_1400 start");
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    uint32_t tid = UINT32_MAX;
+    OHOS::AbilityRuntime::Runtime::JsHeapDumpParam param;
+    param.isFullGC = true;
+    param.isBinary = true;
+    param.isClearNodeIdCache = true;
+    param.isProcDump = true;
+    jsRuntime->DumpHeapSnapshot(tid, param);
+    EXPECT_TRUE(jsRuntime != nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_1400 end");
 }
 
 /**
@@ -2015,6 +2351,192 @@ HWTEST_F(JsRuntimeTest, JsRuntimeTestSetOrUpdateLibPath_0100, TestSize.Level2)
     JsRuntime::SetOrUpdateLibPath(appLibPaths);
     EXPECT_NE(appLibPaths.size(), 0);
     TAG_LOGI(AAFwkTag::TEST, "SetOrUpdateLibPath_0100 end");
+}
+
+/**
+ * @tc.name: DumpHeapSnapshot_1500
+ * @tc.desc: JsRuntime test for DumpHeapSnapshot with languageEnv dynamic.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, DumpHeapSnapshot_1500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_1500 start");
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    uint32_t tid = 1;
+    OHOS::AbilityRuntime::Runtime::JsHeapDumpParam param;
+    param.languageEnv = OHOS::AbilityRuntime::CODE_LANGUAGE_ARKTS_1_0;
+    jsRuntime->DumpHeapSnapshot(tid, param);
+    EXPECT_TRUE(jsRuntime != nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_1500 end");
+}
+
+/**
+ * @tc.name: DumpHeapSnapshot_1600
+ * @tc.desc: JsRuntime test for DumpHeapSnapshot with languageEnv static.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, DumpHeapSnapshot_1600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_1600 start");
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    uint32_t tid = 1;
+    OHOS::AbilityRuntime::Runtime::JsHeapDumpParam param;
+    param.languageEnv = OHOS::AbilityRuntime::CODE_LANGUAGE_ARKTS_1_2;
+    jsRuntime->DumpHeapSnapshot(tid, param);
+    EXPECT_TRUE(jsRuntime != nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_1600 end");
+}
+
+/**
+ * @tc.name: DumpHeapSnapshot_1700
+ * @tc.desc: JsRuntime test for DumpHeapSnapshot with languageEnv hybrid.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, DumpHeapSnapshot_1700, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_1700 start");
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    uint32_t tid = 1;
+    OHOS::AbilityRuntime::Runtime::JsHeapDumpParam param;
+    param.languageEnv = OHOS::AbilityRuntime::CODE_LANGUAGE_ARKTS_HYBRID;
+    jsRuntime->DumpHeapSnapshot(tid, param);
+    EXPECT_TRUE(jsRuntime != nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_1700 end");
+}
+
+/**
+ * @tc.name: DumpHeapSnapshot_1800
+ * @tc.desc: JsRuntime test for DumpHeapSnapshot with unknown languageEnv.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, DumpHeapSnapshot_1800, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_1800 start");
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    uint32_t tid = 1;
+    OHOS::AbilityRuntime::Runtime::JsHeapDumpParam param;
+    param.languageEnv = "unknown";
+    jsRuntime->DumpHeapSnapshot(tid, param);
+    EXPECT_TRUE(jsRuntime != nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "DumpHeapSnapshot_1800 end");
+}
+
+/**
+ * @tc.name: LoadSystemModule_0200
+ * @tc.desc: LoadSystemModule returns nullptr when methodRequireNapiRef_ is null.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, LoadSystemModule_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "LoadSystemModule_0200 start");
+
+    auto savedRef = std::move(jsRuntimePtr->methodRequireNapiRef_);
+    jsRuntimePtr->methodRequireNapiRef_ = nullptr;
+    std::string moduleName = "TestSystemModule";
+    auto ref = jsRuntimePtr->LoadSystemModule(moduleName, nullptr, 0);
+    EXPECT_EQ(ref, nullptr);
+    jsRuntimePtr->methodRequireNapiRef_ = std::move(savedRef);
+
+    TAG_LOGI(AAFwkTag::TEST, "LoadSystemModule_0200 end");
+}
+
+/**
+ * @tc.name: InitSourceMap_0100
+ * @tc.desc: JsRuntime test for InitSourceMap with jsEnv_ nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, InitSourceMap_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "InitSourceMap_0100 start");
+
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    ASSERT_NE(jsRuntime, nullptr);
+    jsRuntime->jsEnv_ = nullptr;
+    std::string bundleName = TEST_BUNDLE_NAME;
+    jsRuntime->InitSourceMap(bundleName);
+    // jsEnv_ is nullptr, CHECK_POINTER returns early, no crash
+    jsRuntime.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    TAG_LOGI(AAFwkTag::TEST, "InitSourceMap_0100 end");
+}
+
+/**
+ * @tc.name: InitSourceMap_0200
+ * @tc.desc: JsRuntime test for InitSourceMap with empty bundleName.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, InitSourceMap_0200, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "InitSourceMap_0200 start");
+
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    ASSERT_NE(jsRuntime, nullptr);
+    jsRuntime->jsEnv_ = std::make_shared<JsEnv::JsEnvironment>();
+    std::string bundleName = "";
+    jsRuntime->InitSourceMap(bundleName);
+    // empty bundleName, GetHapPathList returns empty, no crash
+    jsRuntime.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    TAG_LOGI(AAFwkTag::TEST, "InitSourceMap_0200 end");
+}
+
+/**
+ * @tc.name: InitSourceMap_0300
+ * @tc.desc: JsRuntime test for InitSourceMap with valid bundleName.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, InitSourceMap_0300, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "InitSourceMap_0300 start");
+
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    ASSERT_NE(jsRuntime, nullptr);
+    jsRuntime->jsEnv_ = std::make_shared<JsEnv::JsEnvironment>();
+    std::string bundleName = TEST_BUNDLE_NAME;
+    jsRuntime->InitSourceMap(bundleName);
+    // valid bundleName but no real hap files in test env, ffrt task runs safely
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    jsRuntime.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    TAG_LOGI(AAFwkTag::TEST, "InitSourceMap_0300 end");
+}
+
+/**
+ * @tc.name: HqfInitSourceMap_0100
+ * @tc.desc: JsRuntime test for HqfInitSourceMap with invalid hqfFilePath.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, HqfInitSourceMap_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HqfInitSourceMap_0100 start");
+
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    ASSERT_NE(jsRuntime, nullptr);
+    std::string hqfFilePath = "/invalid/path/test.hqf";
+    jsRuntime->HqfInitSourceMap(hqfFilePath);
+    // GetFileBuffer fails with invalid path, returns early, no crash
+    jsRuntime.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    TAG_LOGI(AAFwkTag::TEST, "HqfInitSourceMap_0100 end");
+}
+
+/**
+ * @tc.name: HqfInitSourceMap_0200
+ * @tc.desc: JsRuntime test for HqfInitSourceMap with empty hqfFilePath.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsRuntimeTest, HqfInitSourceMap_0200, TestSize.Level2)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HqfInitSourceMap_0200 start");
+
+    auto jsRuntime = std::make_unique<JsRuntime>();
+    ASSERT_NE(jsRuntime, nullptr);
+    std::string hqfFilePath = "";
+    jsRuntime->HqfInitSourceMap(hqfFilePath);
+    // empty path, GetFileBuffer fails, returns early, no crash
+    jsRuntime.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    TAG_LOGI(AAFwkTag::TEST, "HqfInitSourceMap_0200 end");
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

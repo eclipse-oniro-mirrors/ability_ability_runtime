@@ -214,7 +214,6 @@ HWTEST_F(AppRunningProcessesInfoTest, UpdateAppRunningRecord_001, TestSize.Level
     appInfo->name = GetTestAppName();
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     EXPECT_TRUE(service_ != nullptr);
@@ -316,7 +315,6 @@ HWTEST_F(AppRunningProcessesInfoTest, UpdateAppRunningRecord_004, TestSize.Level
     appInfo->name = GetTestAppName();
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     EXPECT_TRUE(service_ != nullptr);
@@ -348,7 +346,6 @@ HWTEST_F(AppRunningProcessesInfoTest, UpdateAppRunningRecord_005, TestSize.Level
     appInfo->name = GetTestAppName();
     BundleInfo bundleInfo;
     bundleInfo.appId = "com.ohos.test.helloworld_code123";
-    bundleInfo.jointUserId = "joint456";
     HapModuleInfo hapModuleInfo;
     hapModuleInfo.moduleName = "module789";
     EXPECT_TRUE(service_ != nullptr);

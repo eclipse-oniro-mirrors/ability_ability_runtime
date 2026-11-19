@@ -43,6 +43,7 @@ struct ChangeInfo {
     uint32_t size_ = 0;
     VBuckets valueBuckets_ = {};
     static constexpr int LIST_MAX_COUNT = 3000;
+    static constexpr uint32_t MAX_DATA_SIZE = 200 * 1024;
 };
 } // namespace AAFwk
 } // namespace OHOS

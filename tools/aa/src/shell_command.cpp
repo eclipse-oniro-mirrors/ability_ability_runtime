@@ -29,6 +29,7 @@ ShellCommand::ShellCommand(int argc, char* argv[], std::string name)
     name_ = name;
 
     if (argc < MIN_ARGUMENT_NUMBER || argc > MAX_ARGUMENT_NUMBER) {
+        TAG_LOGE(AAFwkTag::AA_TOOL, "Invalid argument count: %{public}d", argc);
         cmd_ = "help";
         return;
     }
@@ -87,8 +88,8 @@ std::string ShellCommand::ExecCommand()
         resultReceiver_ = "error: failed to execute your command.\n";
     }
 
-    return resultReceiver_;
     TAG_LOGD(AAFwkTag::AA_TOOL, "end");
+    return resultReceiver_;
 }
 
 std::string ShellCommand::GetCommandErrorMsg() const

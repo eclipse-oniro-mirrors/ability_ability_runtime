@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,6 +31,7 @@ public:
         std::shared_ptr<OHOS::AppExecFwk::AbilityInfo> abilityInfo)
         : context_(context), abilityInfo_(abilityInfo) {}
     int32_t GetConfiguration(CConfiguration* cConfig);
+    int32_t GetConfigurationV2(CConfigurationV2* cConfig);
     int32_t GetCurrentHapModuleInfo(RetHapModuleInfoV2* hapInfo);
     int32_t GetExtAbilityInfo(RetExtensionAbilityInfoV2* retInfo);
     std::weak_ptr<ExtensionContext> context_;
@@ -57,6 +58,22 @@ int32_t CJExtensionContextImpl::GetConfiguration(CConfiguration* cConfig)
         return ERR_INVALID_INSTANCE_CODE;
     }
     *cConfig = CreateCConfiguration(*configuration);
+    return SUCCESS_CODE;
+}
+
+int32_t CJExtensionContextImpl::GetConfigurationV2(CConfigurationV2* cConfig)
+{
+    auto context = context_.lock();
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "context is nullptr");
+        return ERR_INVALID_INSTANCE_CODE;
+    }
+    auto configuration = context->GetConfiguration();
+    if (configuration == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "GetConfiguration return nullptr");
+        return ERR_INVALID_INSTANCE_CODE;
+    }
+    *cConfig = CreateCConfigurationV2(*configuration);
     return SUCCESS_CODE;
 }
 
@@ -120,6 +137,20 @@ CJ_EXPORT int32_t FFICJExtCtxGetConfig(int64_t id, void* paramConfig)
         return ERR_INVALID_INSTANCE_CODE;
     }
     return cjContext->impl_->GetConfiguration(static_cast<CConfiguration*>(paramConfig));
+}
+
+CJ_EXPORT int32_t FFICJExtCtxGetConfigV2(int64_t id, void* paramConfig)
+{
+    if (paramConfig == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "input param paramConfig is nullptr");
+        return ERR_INVALID_INSTANCE_CODE;
+    }
+    auto cjContext = OHOS::FFI::FFIData::GetData<CJExtensionContext>(id);
+    if (cjContext == nullptr) {
+        TAG_LOGE(AAFwkTag::CONTEXT, "GetCJExtensionContext failed, context is nullptr");
+        return ERR_INVALID_INSTANCE_CODE;
+    }
+    return cjContext->impl_->GetConfigurationV2(static_cast<CConfigurationV2*>(paramConfig));
 }
 
 CJ_EXPORT int32_t FFICJExtCtxGetExtAbilityInfo(int64_t id, void* retInfo)

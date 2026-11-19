@@ -25,6 +25,8 @@ constexpr int64_t EXTENSION_LIMIT_INTERVAL_MS = 1000; // 1s
 const std::vector<int32_t> EXTENSION_TIERS = { 50, 100, 200 };
 constexpr int64_t REPORT_LIMIT_INTERVAL_MS = 5000; // 5s
 constexpr int32_t REPORT_MAX_LIMIT = 1;
+constexpr int64_t MODULAR_OBJECT_LIMIT_INTERVAL_MS = 1000; // 1s
+constexpr int32_t MODULAR_OBJECT_MAX_LIMIT = 20;
 }
 
 RateLimiter &RateLimiter::GetInstance()
@@ -69,6 +71,13 @@ bool RateLimiter::CheckReportLimit(int32_t uid, int32_t triggeredTier)
     }
     timestamps.emplace_back(currentTimeMillis);
     return false;
+}
+
+bool RateLimiter::CheckModularObjectLimit(int32_t uid)
+{
+    CleanCallMap();
+    return CheckSingleLimit(uid, modularObjectCallMap_, modularObjectCallMapLock_,
+        MODULAR_OBJECT_LIMIT_INTERVAL_MS, MODULAR_OBJECT_MAX_LIMIT);
 }
 
 void RateLimiter::CleanNestedCallMap(
@@ -131,6 +140,7 @@ void RateLimiter::CleanCallMap()
     
     CleanSingleCallMap(extensionCallMap_, extensionCallMapLock_, EXTENSION_LIMIT_INTERVAL_MS);
     CleanNestedCallMap(tierReportCallMap_, tierReportCallMapLock_, REPORT_LIMIT_INTERVAL_MS);
+    CleanSingleCallMap(modularObjectCallMap_, modularObjectCallMapLock_, MODULAR_OBJECT_LIMIT_INTERVAL_MS);
 }
 
 void RateLimiter::CleanSingleCallMap(std::unordered_map<int32_t, std::vector<int64_t>>& callMap,

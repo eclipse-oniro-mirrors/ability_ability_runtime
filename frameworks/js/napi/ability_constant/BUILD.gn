@@ -15,6 +15,9 @@ import("//build/ohos.gni")
 import("//foundation/ability/ability_runtime/ability_runtime.gni")
 
 ohos_shared_library("abilityconstant_napi") {
+  branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
+
   include_dirs = [
     "${ability_runtime_innerkits_path}/ability_manager/include",
     "${ability_runtime_services_path}/common/include",
@@ -31,14 +34,20 @@ ohos_shared_library("abilityconstant_napi") {
     "ipc:ipc_core",
     "json:nlohmann_json_static",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
   public_external_deps = [ "ability_base:want" ]
   relative_install_dir = "module/application"
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }
 
 ohos_shared_library("abilityconstant") {
+  branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
+
   include_dirs = [
     "${ability_runtime_innerkits_path}/ability_manager/include",
     "${ability_runtime_services_path}/common/include",
@@ -55,6 +64,8 @@ ohos_shared_library("abilityconstant") {
     "ipc:ipc_core",
     "json:nlohmann_json_static",
     "napi:ace_napi",
+    "libuv:uv",
+    "node:node_header_notice",
   ]
   public_external_deps = [ "ability_base:want" ]
   defines = [ "ENABLE_ERRCODE" ]
@@ -62,4 +73,5 @@ ohos_shared_library("abilityconstant") {
   relative_install_dir = "module/app/ability"
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [ "//foundation/ability/ability_runtime/services/common:size_optimize_config" ]
 }

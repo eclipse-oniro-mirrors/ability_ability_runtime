@@ -63,6 +63,15 @@ void ExtensionRunningTimeoutMonitor::OnExtensionStarted(int32_t extensionRecordI
         "recordId: %{public}d, type: %{public}s, bundle: %{public}s, ability: %{public}s",
         extensionRecordId, extensionTypeName.c_str(), bundleName.c_str(), abilityName.c_str());
 
+    int32_t configuredTimeout = DelayedSingleton<ExtensionConfig>::GetInstance()->
+        GetExtensionRunningTimeoutTime(extensionTypeName);
+    if (configuredTimeout <= 0) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR,
+            "timeout not configured or <= 0 for type %{public}s, skip tracking",
+            extensionTypeName.c_str());
+        return;
+    }
+
     auto now = std::chrono::steady_clock::now();
     auto startTimeMillis =
         std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
@@ -94,14 +103,8 @@ void ExtensionRunningTimeoutMonitor::OnExtensionTerminated(int32_t extensionReco
         runningExtensions_.erase(it);
     }
 
-    // Get configured timeout for this extension type
     int32_t configuredTimeout = DelayedSingleton<ExtensionConfig>::GetInstance()->
         GetExtensionRunningTimeoutTime(startInfo.extensionTypeName);
-    if (configuredTimeout <= 0) {
-        TAG_LOGD(AAFwkTag::ABILITYMGR, "no timeout configured for type %{public}s, skip",
-            startInfo.extensionTypeName.c_str());
-        return;
-    }
 
     auto now = std::chrono::steady_clock::now();
     auto nowMillis = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
@@ -137,12 +140,14 @@ void ExtensionRunningTimeoutMonitor::OnExtensionTerminated(int32_t extensionReco
 void ExtensionRunningTimeoutMonitor::StartMonitor()
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "start extension running timeout monitor");
+    isMonitoring_.store(true);
     SubmitPeriodicTask();
 }
 
 void ExtensionRunningTimeoutMonitor::StopMonitor()
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "stop extension running timeout monitor");
+    isMonitoring_.store(false);
     auto taskHandler = TaskHandlerWrap::GetFfrtHandler();
     if (taskHandler != nullptr) {
         taskHandler->CancelTask(PERIODIC_TASK_NAME);
@@ -160,8 +165,20 @@ void ExtensionRunningTimeoutMonitor::SubmitPeriodicTask()
     auto task = []() {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "extension timeout periodic task triggered");
         auto monitor = DelayedSingleton<ExtensionRunningTimeoutMonitor>::GetInstance();
+        if (monitor == nullptr) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "failed to get extension monitor instance");
+            return;
+        }
+        if (!monitor->isMonitoring_.load()) {
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "monitor not running, skip periodic cycle");
+            return;
+        }
         monitor->CheckAliveExtensions();
         monitor->ReportTimeoutEvents();
+        if (!monitor->isMonitoring_.load()) {
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "monitor not running after cycle, skip reschedule");
+            return;
+        }
         monitor->SubmitPeriodicTask();
     };
     taskHandler->SubmitTask(task, PERIODIC_TASK_NAME, REPORT_INTERVAL_MS);
@@ -189,10 +206,14 @@ void ExtensionRunningTimeoutMonitor::ReportTimeoutEvents()
     std::vector<int32_t> cnts;
 
     for (const auto &event : eventsToReport) {
+        size_t checkpoint = extensionTypePtrs.size();
         if (!CopyStringParam(event.extensionTypeName, stringBuffers, extensionTypePtrs) ||
             !CopyStringParam(event.bundleName, stringBuffers, bundleNamePtrs) ||
             !CopyStringParam(event.abilityName, stringBuffers, abilityNamePtrs)) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "strcpy_s failed for event string");
+            extensionTypePtrs.resize(checkpoint);
+            bundleNamePtrs.resize(checkpoint);
+            abilityNamePtrs.resize(checkpoint);
             continue;
         }
         runningDurations.push_back(event.runningDuration);
@@ -221,27 +242,19 @@ void ExtensionRunningTimeoutMonitor::CheckAliveExtensions()
 {
     TAG_LOGI(AAFwkTag::ABILITYMGR, "check alive extensions for timeout violations");
 
-    // Copy the running extensions map to avoid holding mutex during slow checks
-    std::unordered_map<int32_t, ExtensionStartInfo> aliveCopy;
-    {
-        std::lock_guard<std::mutex> lock(monitorMutex_);
-        aliveCopy = runningExtensions_;
-    }
-
     auto now = std::chrono::steady_clock::now();
     auto nowMillis = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 
-    std::vector<ExtensionTimeoutEvent> pendingEvents;
-    for (auto &[recordId, startInfo] : aliveCopy) {
+    std::lock_guard<std::mutex> lock(monitorMutex_);
+    for (auto it = runningExtensions_.begin(); it != runningExtensions_.end();) {
+        auto &[recordId, startInfo] = *it;
         int32_t configuredTimeout = DelayedSingleton<ExtensionConfig>::GetInstance()->
             GetExtensionRunningTimeoutTime(startInfo.extensionTypeName);
-        if (configuredTimeout <= 0) {
-            continue;
-        }
 
         int64_t runningDurationMs = nowMillis - startInfo.startTimeMillis;
         int64_t runningDurationSec = runningDurationMs / 1000;
         if (runningDurationSec <= configuredTimeout) {
+            ++it;
             continue;
         }
 
@@ -256,14 +269,9 @@ void ExtensionRunningTimeoutMonitor::CheckAliveExtensions()
         event.runningDuration = runningDurationSec;
         event.stillAlive = true;
         event.cnt = 1;
-        pendingEvents.push_back(event);
-    }
 
-    if (!pendingEvents.empty()) {
-        std::lock_guard<std::mutex> lock(monitorMutex_);
-        for (auto &event : pendingEvents) {
-            AddOrUpdateTimeoutEvent(event);
-        }
+        AddOrUpdateTimeoutEvent(event);
+        it = runningExtensions_.erase(it);
     }
 }
 

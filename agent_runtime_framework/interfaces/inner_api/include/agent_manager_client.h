@@ -16,17 +16,17 @@
 #ifndef OHOS_AGENT_RUNTIME_AGENT_MANAGER_CLIENT_H
 #define OHOS_AGENT_RUNTIME_AGENT_MANAGER_CLIENT_H
 
-#include <condition_variable>
 #include <functional>
-#include <memory>
+#include <vector>
 
 #include "iagent_manager.h"
 
 namespace OHOS {
 namespace AgentRuntime {
 using ClearProxyCallback = std::function<void(const wptr<IRemoteObject>&)>;
+using DeathCallback = std::function<void()>;
 
-class AgentManagerClient final : public std::enable_shared_from_this<AgentManagerClient> {
+class AgentManagerClient final {
 public:
     AgentManagerClient() = default;
     virtual ~AgentManagerClient() = default;
@@ -41,6 +41,16 @@ public:
      */
     void OnLoadSystemAbilityFail();
 
+    /**
+     * @brief Registers a callback fired once when the agent manager service (subfoundation)
+     * dies. Subscribers drop in-process connection state that the normal disconnect-done chain
+     * cannot reach: the AgentServiceConnection that forwards OnAbilityDisconnectDone to the
+     * caller lives in the dead process, so app-side registries (AgentConnectionManager,
+     * JS-layer g_agentConnects) are never notified. Callbacks fire outside mutex_ on the
+     * binder death thread.
+     */
+    void RegisterDeathCallback(DeathCallback callback);
+
     int32_t GetAllAgentCards(std::vector<AgentCard> &cards);
     int32_t GetAgentCardsByBundleName(const std::string &bundleName, std::vector<AgentCard> &cards);
     int32_t GetAgentCardByAgentId(const std::string &bundleName, const std::string &agentId, AgentCard &card);
@@ -53,6 +63,12 @@ public:
         const sptr<AAFwk::IAbilityConnection> &connection);
 
     int32_t DisconnectAgentExtensionAbility(const sptr<AAFwk::IAbilityConnection> &connection);
+
+    int32_t ConnectAgentExtensionAbilityForCli(const AAFwk::Want &want,
+        const sptr<AAFwk::IAbilityConnection> &connection, const std::string &callerIdentity);
+
+    int32_t DisconnectAgentExtensionAbilityForCli(const sptr<AAFwk::IAbilityConnection> &connection,
+        const std::string &callerIdentity);
 
     /**
      * @brief Connects a service extension ability on behalf of the given caller token.
@@ -71,12 +87,38 @@ public:
      */
     int32_t NotifyLowCodeAgentComplete(const std::string &agentId);
 
+    int32_t GetAgentCardTypeForConnect(AAFwk::Want &want, int32_t &cardType);
+
+    int32_t VerifyAgentConnectRequest(const AAFwk::Want &want,
+        const sptr<AAFwk::IAbilityConnection> &connection, std::string &callerIdentity);
+
+    int32_t VerifyAgentDisconnectRequests(const std::vector<AAFwk::Want> &wants,
+        const sptr<AAFwk::IAbilityConnection> &connection, std::string &callerIdentity);
+
+    /**
+     * @brief Best-effort, oneway notification that a connect request hit an already-connected
+     *        AgentConnection on the caller side (reused connection). The service resolves the
+     *        tracked AgentServiceConnection and forwards to AMS so AMS can attribute the task
+     *        id onto the same ConnectionRecord. Failures are logged and do NOT affect the
+     *        connect result.
+     * @param want Indicates the original connect want (carries agentId / taskId params).
+     * @param connection Indicates the existing AgentConnection (IAbilityConnection) registered
+     *        with the service on the first connect.
+     * @return Returns ERR_OK on success (best-effort); others on local/proxy failure.
+     */
+    int32_t AttributeTaskForA2AReusedConnectionRecord(const AAFwk::Want &want,
+        const sptr<AAFwk::IAbilityConnection> &connection);
+
 private:
     sptr<IAgentManager> GetAgentMgrProxy();
-    void ClearProxy();
+    // Clears the cached proxy only if it holds the died remote (stale notifications ignored).
+    void ClearProxyIfMatch(const wptr<IRemoteObject> &remote);
     bool LoadAgentMgrService();
     void SetAgentMgr(const sptr<IRemoteObject> &remoteObject);
     sptr<IAgentManager> GetAgentMgr();
+    // Caller must hold registerMutex_. Returns false only for a dead proxy (must not be
+    // cached); stubs return true without registering.
+    bool RegisterDeathRecipient(const sptr<IRemoteObject> &remoteObject);
 
     class AgentManagerServiceDeathRecipient : public IRemoteObject::DeathRecipient {
     public:
@@ -89,11 +131,14 @@ private:
     };
 
 private:
-    std::condition_variable loadSaCondition_;
-    std::mutex loadSaMutex_;
-    bool loadSaFinished_;
     std::mutex mutex_;
+    // Serializes load + registration (one recipient per remote); never taken inside mutex_.
+    std::mutex registerMutex_;
+    // Remote with a registered death recipient, guarded by registerMutex_. Only these are
+    // protected by the stale-callback guard; others cannot be proven live.
+    wptr<IRemoteObject> registeredRemote_;
     sptr<IAgentManager> agentMgr_ = nullptr;
+    std::vector<DeathCallback> deathCallbacks_;
 };
 } // namespace AgentRuntime
 } // namespace OHOS

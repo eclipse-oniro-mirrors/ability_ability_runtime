@@ -137,11 +137,11 @@ HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_BackToCallerAbilityWithRes
     int64_t callerRequestCode = 0;
 
     EXPECT_CALL(*mock_, SendRequest(_, _, _, _)).WillOnce(Return(INVALID_PARAMETERS_ERR));
-    EXPECT_EQ(proxy_->BackToCallerAbilityWithResult(token, resultCode, &resultWant, callerRequestCode),
+    EXPECT_EQ(proxy_->BackToCallerAbilityWithResult(token, resultCode, resultWant, callerRequestCode),
         INVALID_PARAMETERS_ERR);
 
     EXPECT_CALL(*mock_, SendRequest(_, _, _, _)).WillOnce(Return(NO_ERROR));
-    EXPECT_EQ(proxy_->BackToCallerAbilityWithResult(token, resultCode, &resultWant, callerRequestCode),
+    EXPECT_EQ(proxy_->BackToCallerAbilityWithResult(token, resultCode, resultWant, callerRequestCode),
         NO_ERROR);
 
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerProxy_BackToCallerAbilityWithResult_0100 end");

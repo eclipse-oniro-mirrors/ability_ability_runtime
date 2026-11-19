@@ -14,6 +14,7 @@
  */
 
 #include "form_runtime/js_form_extension.h"
+#include "form_runtime/form_binding_data_utils.h"
 
 #include "ability_info.h"
 #include "connection_manager.h"
@@ -31,6 +32,9 @@
 #include "napi_common_want.h"
 #include <type_traits>
 #include <vector>
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+#include "histogram_plugin_macros.h"
+#endif
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -38,6 +42,9 @@ using namespace OHOS::AppExecFwk;
 const int ON_EVENT_PARAMS_SIZE = 2;
 const int ARGC_TWO = 2;
 const int ARGC_THREE = 3;
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+constexpr bool HISTOGRAM_BOOLEAN_SAMPLE = true;
+#endif
 
 napi_value AttachFormExtensionContext(napi_env env, void* value, void*)
 {
@@ -116,8 +123,8 @@ void JsFormExtension::Init(const std::shared_ptr<AbilityLocalRecord> &record,
     HandleScope handleScope(jsRuntime_);
     auto env = jsRuntime_.GetNapiEnv();
 
-    jsObj_ = jsRuntime_.LoadModule(
-        moduleName, srcPath, abilityInfo_->hapPath, abilityInfo_->compileMode == CompileMode::ES_MODULE);
+    jsObj_ = jsRuntime_.LoadModule(moduleName, srcPath, abilityInfo_->hapPath,
+        abilityInfo_->compileMode == CompileMode::ES_MODULE, false, abilityInfo_->srcEntrance);
     if (jsObj_ == nullptr) {
         TAG_LOGE(AAFwkTag::FORM_EXT, "null jsObj");
         return;
@@ -197,6 +204,9 @@ OHOS::AppExecFwk::FormProviderInfo JsFormExtension::OnCreate(const OHOS::AAFwk::
         return formProviderInfo;
     }
     AppExecFwk::FormProviderData formData = AppExecFwk::FormProviderData(formDataStr);
+
+    formProviderInfo.SetSupportMoreImages(GetIsSupportMoreImages(env, nativeResult));
+
     formProviderInfo.SetFormData(formData);
 
     napi_value nativeProxies = nullptr;
@@ -375,7 +385,7 @@ void JsFormExtension::GetSrcPath(std::string &srcPath)
     if (!Extension::abilityInfo_->srcEntrance.empty()) {
         srcPath.append(Extension::abilityInfo_->moduleName + "/");
         srcPath.append(Extension::abilityInfo_->srcEntrance);
-        srcPath.erase(srcPath.rfind('.'));
+        RemoveFileExtension(srcPath);
         srcPath.append(".abc");
     }
 }
@@ -539,6 +549,9 @@ bool JsFormExtension::ConvertFormDataProxy(napi_env env, napi_value jsValue, For
 
 void JsFormExtension::OnFormLocationChanged(const int64_t formId, const int32_t formLocation)
 {
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+    HISTOGRAM_BOOLEAN("Form.ExtensionAbility.onFormLocationChanged", HISTOGRAM_BOOLEAN_SAMPLE);
+#endif
     TAG_LOGI(AAFwkTag::FORM_EXT, "Card position changes, location: %{public}d, formId: %{public}" PRId64, formLocation, formId);
     FormExtension::OnFormLocationChanged(formId, formLocation);
  
@@ -553,6 +566,9 @@ void JsFormExtension::OnFormLocationChanged(const int64_t formId, const int32_t 
 
 void JsFormExtension::OnSizeChanged(int64_t formId, int32_t newDimension, const Rect &newRect)
 {
+#ifdef HIVIEWDFX_RUNTIME_API_METRICS
+    HISTOGRAM_BOOLEAN("Form.ExtensionAbility.onSizeChanged", HISTOGRAM_BOOLEAN_SAMPLE);
+#endif
     TAG_LOGI(AAFwkTag::FORM_EXT, "Form size changed, formId: %{public}" PRId64, formId);
     FormExtension::OnSizeChanged(formId, newDimension, newRect);
  

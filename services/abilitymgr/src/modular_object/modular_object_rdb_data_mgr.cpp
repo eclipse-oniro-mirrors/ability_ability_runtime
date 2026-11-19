@@ -18,6 +18,7 @@
 
 #include "modular_object_rdb_data_mgr.h"
 #include "modular_object_rdb_storage_mgr.h"
+#include "app_utils.h"
 #include "hilog_tag_wrapper.h"
 #include "scope_guard.h"
 #include "utils/hmsf_utils.h"
@@ -65,6 +66,11 @@ std::shared_ptr<NativeRdb::RdbStore> ModularObjectExtensionRdbDataMgr::GetRdbSto
 
 int32_t ModularObjectExtensionRdbDataMgr::IsDatabaseReady()
 {
+    if (AAFwk::AppUtils::GetInstance().IsBopdOrRescueMode()) {
+        TAG_LOGW(AAFwkTag::EXT, "Skip Mod database operation in bopd or rescue mode");
+        return NativeRdb::E_ERROR;
+    }
+
     auto store = GetRdbStore();
     if (store == nullptr) {
         return NativeRdb::E_ERROR;
@@ -81,7 +87,7 @@ int32_t ModularObjectExtensionRdbDataMgr::IsDatabaseReady()
     return NativeRdb::E_OK;
 }
 
-int32_t ModularObjectExtensionRdbDataMgr::InsertData(const std::string& key, const std::string& value)
+int32_t ModularObjectExtensionRdbDataMgr::InsertOrUpdateData(const std::string& key, const std::string& value)
 {
     std::lock_guard<std::mutex> lock(rdbStoreMutex_);
     if (IsDatabaseReady() != NativeRdb::E_OK) {
@@ -94,28 +100,7 @@ int32_t ModularObjectExtensionRdbDataMgr::InsertData(const std::string& key, con
     int64_t rowId = -1;
     int32_t ret = InsertWithRetry(rdbStore_, rowId, bucket);
     if (ret != NativeRdb::E_OK) {
-        TAG_LOGE(AAFwkTag::EXT, "Insert data error ret:%{public}d", ret);
-        return ret;
-    }
-    return NativeRdb::E_OK;
-}
-
-int32_t ModularObjectExtensionRdbDataMgr::UpdateData(const std::string& key, const std::string& value)
-{
-    std::lock_guard<std::mutex> lock(rdbStoreMutex_);
-    if (IsDatabaseReady() != NativeRdb::E_OK) {
-        return NativeRdb::E_ERROR;
-    }
-
-    NativeRdb::AbsRdbPredicates pred(config_.tableName);
-    pred.EqualTo(MOE_KEY, key);
-    NativeRdb::ValuesBucket bucket;
-    bucket.PutString(MOE_VALUE, value);
-
-    int32_t rowAffected = 0;
-    int32_t ret = rdbStore_->Update(rowAffected, bucket, pred);
-    if (ret != NativeRdb::E_OK) {
-        TAG_LOGE(AAFwkTag::EXT, "Update data error ret:%{public}d", ret);
+        TAG_LOGE(AAFwkTag::EXT, "InsertOrUpdate data error ret:%{public}d", ret);
         return ret;
     }
     return NativeRdb::E_OK;
@@ -156,8 +141,8 @@ int32_t ModularObjectExtensionRdbDataMgr::QueryData(const std::string &key, std:
 
     auto ret = resultSet->GoToFirstRow();
     if (ret != NativeRdb::E_OK) {
-        TAG_LOGW(AAFwkTag::EXT, "GoToFirstRow failed, ret: %{public}d", ret);
-        return ret;
+        TAG_LOGI(AAFwkTag::EXT, "GoToFirstRow failed, ret: %{public}d", ret);
+        return NativeRdb::E_OK;
     }
     ret = resultSet->GetString(VALUE_INDEX, value);
     if (ret != NativeRdb::E_OK) {

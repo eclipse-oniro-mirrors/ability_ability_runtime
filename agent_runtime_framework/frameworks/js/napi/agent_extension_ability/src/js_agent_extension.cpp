@@ -16,21 +16,30 @@
 #include "js_agent_extension.h"
 
 #include "ability_business_error.h"
+#include "ability_handler.h"
 #include "agent_extension.h"
 #include "agent_extension_connection_constants.h"
 #include "agent_extension_context.h"
 #include "agent_manager_client.h"
 #include "configuration_utils.h"
 #include "connection_manager.h"
+#include "display_util.h"
 #include "hilog_tag_wrapper.h"
+#include "hitrace_meter.h"
 #include "js_agent_connector_proxy.h"
 #include "js_agent_extension_context.h"
 #include "js_agent_extension_stub_impl.h"
 #include "js_extension_common.h"
 #include "js_extension_context.h"
 #include "js_runtime_utils.h"
+#include "napi_common_configuration.h"
 #include "napi_common_want.h"
 #include "runtime.h"
+
+#ifdef SUPPORT_GRAPHICS
+#include "iservice_registry.h"
+#include "system_ability_definition.h"
+#endif
 
 #ifdef WINDOWS_PLATFORM
 #define JS_EXPORT __declspec(dllexport)
@@ -43,6 +52,12 @@ namespace AgentRuntime {
 namespace {
 constexpr size_t ARGC_ONE = 1;
 constexpr size_t ARGC_TWO = 2;
+
+void RemoveAgentWantParams(AAFwk::Want &want)
+{
+    want.RemoveParam(AGENT_CARD_TYPE_KEY);
+    want.RemoveParam(AGENT_VERIFICATION_NONCE_KEY);
+}
 }
 using namespace OHOS::AbilityRuntime;
 using namespace OHOS::AppExecFwk;
@@ -53,9 +68,14 @@ napi_value AttachAgentExtensionContext(napi_env env, void *value, void *)
         TAG_LOGW(AAFwkTag::SER_ROUTER, "null value");
         return nullptr;
     }
-    auto ptr = reinterpret_cast<std::weak_ptr<AgentExtensionContext> *>(value)->lock();
-    if (ptr == nullptr) {
+    auto context = reinterpret_cast<std::weak_ptr<Context> *>(value)->lock();
+    if (context == nullptr) {
         TAG_LOGW(AAFwkTag::SER_ROUTER, "null ptr");
+        return nullptr;
+    }
+    auto ptr = Context::ConvertTo<AgentExtensionContext>(context);
+    if (ptr == nullptr) {
+        TAG_LOGW(AAFwkTag::SER_ROUTER, "context is not AgentExtensionContext");
         return nullptr;
     }
     napi_value object = CreateJsAgentExtensionContext(env, ptr);
@@ -68,14 +88,19 @@ napi_value AttachAgentExtensionContext(napi_env env, void *value, void *)
     auto contextObj = sysModule->GetNapiValue();
     napi_coerce_to_native_binding_object(
         env, contextObj, DetachCallbackFunc, AttachAgentExtensionContext, value, nullptr);
-    auto workContext = new (std::nothrow) std::weak_ptr<AgentExtensionContext>(ptr);
+    SetJsAgentExtensionContext(env, contextObj, ptr);
+    auto workContext = new (std::nothrow) std::weak_ptr<Context>(context);
+    if (workContext == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null workContext");
+        return nullptr;
+    }
     auto res = napi_wrap(env, contextObj, workContext,
         [](napi_env, void *data, void *) {
             TAG_LOGD(AAFwkTag::SER_ROUTER, "Finalizer for weak_ptr app service extension context is called");
-            delete static_cast<std::weak_ptr<AgentExtensionContext> *>(data);
+            delete static_cast<std::weak_ptr<Context> *>(data);
         },
         nullptr, nullptr);
-    if (res != napi_ok && workContext != nullptr) {
+    if (res != napi_ok) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "napi_wrap failed:%{public}d", res);
         delete workContext;
         return nullptr;
@@ -96,10 +121,7 @@ JsAgentExtension::~JsAgentExtension()
     jsRuntime_.FreeNativeReference(std::move(shellContextRef_));
 
     for (auto& item : hostProxyMap_) {
-        auto &jsProxyObject = item.second;
-        if (jsProxyObject != nullptr) {
-            jsRuntime_.FreeNativeReference(std::move(jsProxyObject));
-        }
+        ReleaseHostProxyReference(item.second);
     }
 }
 
@@ -154,23 +176,41 @@ void JsAgentExtension::Init(const std::shared_ptr<AbilityLocalRecord> &record,
             context->SetConfiguration(std::make_shared<Configuration>(*appConfig));
         }
     }
+    ListenWMS();
 }
 
 void JsAgentExtension::OnStart(const AAFwk::Want &want)
 {
     Extension::OnStart(want);
-    TAG_LOGI(AAFwkTag::SER_ROUTER, "call");
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "call");
+
     auto context = GetContext();
+    if (context != nullptr) {
+#ifdef SUPPORT_GRAPHICS
+        int32_t displayId = AAFwk::DisplayUtil::GetDefaultDisplayId();
+        displayId = want.GetIntParam(Want::PARAM_RESV_DISPLAY_ID, displayId);
+        TAG_LOGD(AAFwkTag::SER_ROUTER, "displayId %{public}d", displayId);
+        auto configUtils = std::make_shared<ConfigurationUtils>();
+        if (!HasScreenDensityBeenSet(context->GetResourceManager())) {
+            TAG_LOGD(AAFwkTag::SER_ROUTER, "call InitDisplayConfig");
+            configUtils->InitDisplayConfig(displayId, context->GetConfiguration(), context->GetResourceManager());
+        }
+#endif //SUPPORT_GRAPHICS
+    }
+
     HandleScope handleScope(jsRuntime_);
     napi_env env = jsRuntime_.GetNapiEnv();
     // display config has changed, need update context.config
     if (context != nullptr) {
         JsExtensionContext::ConfigurationUpdated(env, shellContextRef_, context->GetConfiguration());
     }
-    napi_value napiWant = OHOS::AppExecFwk::WrapWant(env, want);
+    napi_value napiWant = WrapWant(env, want);
+    if (napiWant == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null napiWant");
+        return;
+    }
     napi_value argv[] = {napiWant};
     CallObjectMethod("onCreate", argv, ARGC_ONE);
-    TAG_LOGD(AAFwkTag::SER_ROUTER, "ok");
 }
 
 void JsAgentExtension::OnStop()
@@ -186,13 +226,30 @@ void JsAgentExtension::OnStop()
             TAG_LOGD(AAFwkTag::SER_ROUTER, "The agent extension connection is not disconnected.");
         }
     }
+#ifdef SUPPORT_GRAPHICS
+    TAG_LOGI(AAFwkTag::SER_ROUTER, "UnregisterDisplayInfoChangedListener");
+    if (context == nullptr || context->GetToken() == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null context");
+        return;
+    }
+    Rosen::WindowManager::GetInstance()
+        .UnregisterDisplayInfoChangedListener(context->GetToken(), displayListener_);
+    if (saStatusChangeListener_) {
+        auto saMgr = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+        if (saMgr) {
+            saMgr->UnSubscribeSystemAbility(WINDOW_MANAGER_SERVICE_ID, saStatusChangeListener_);
+        } else {
+            TAG_LOGW(AAFwkTag::SER_ROUTER, "OnStop SaMgr null");
+        }
+    }
+#endif //SUPPORT_GRAPHICS
     TAG_LOGD(AAFwkTag::SER_ROUTER, "ok");
 }
 
 sptr<IRemoteObject> JsAgentExtension::OnConnect(const AAFwk::Want &want,
     AppExecFwk::AbilityTransactionCallbackInfo<sptr<IRemoteObject>> *callbackInfo, bool &isAsyncCallback)
 {
-    TAG_LOGI(AAFwkTag::SER_ROUTER, "call");
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "call");
     HandleScope handleScope(jsRuntime_);
     Extension::OnConnect(want);
     napi_env env = jsRuntime_.GetNapiEnv();
@@ -214,7 +271,8 @@ sptr<IRemoteObject> JsAgentExtension::OnConnect(const AAFwk::Want &want,
     if (extensionStub_ != nullptr) {
         stubObject = extensionStub_->AsObject();
     }
-    if (hostProxyMap_.find(hostProxy) != hostProxyMap_.end()) {
+    auto hostProxyKey = BuildAgentRemoteObjectKey(hostProxy);
+    if (hostProxyMap_.find(hostProxyKey) != hostProxyMap_.end()) {
         TAG_LOGI(AAFwkTag::SER_ROUTER, "hostProxy exist");
         return stubObject;
     }
@@ -223,17 +281,23 @@ sptr<IRemoteObject> JsAgentExtension::OnConnect(const AAFwk::Want &want,
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null hostProxyNref");
         return nullptr;
     }
-    napi_value jsHostProxy = reinterpret_cast<NativeReference*>(hostProxyNref)->GetNapiValue();
+    auto hostProxyRef = std::unique_ptr<NativeReference>(reinterpret_cast<NativeReference*>(hostProxyNref));
+    napi_value jsHostProxy = hostProxyRef->GetNapiValue();
+    if (jsHostProxy == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null jsHostProxy");
+        ReleaseHostProxyReference(hostProxyRef);
+        return nullptr;
+    }
     napi_value argv[] = {napiWant, jsHostProxy};
     CallObjectMethod("onConnect", argv, ARGC_TWO);
-    hostProxyMap_[hostProxy] = std::unique_ptr<NativeReference>(reinterpret_cast<NativeReference*>(hostProxyNref));
+    hostProxyMap_[hostProxyKey] = std::move(hostProxyRef);
     return stubObject;
 }
 
 void JsAgentExtension::OnDisconnect(const AAFwk::Want &want,
     AppExecFwk::AbilityTransactionCallbackInfo<> *callbackInfo, bool &isAsyncCallback)
 {
-    TAG_LOGI(AAFwkTag::SER_ROUTER, "call");
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "call");
     HandleScope handleScope(jsRuntime_);
     Extension::OnDisconnect(want);
     napi_env env = jsRuntime_.GetNapiEnv();
@@ -248,20 +312,27 @@ void JsAgentExtension::OnDisconnect(const AAFwk::Want &want,
         return;
     }
     napi_value jsHostProxy = nullptr;
-    auto iter = hostProxyMap_.find(hostProxy);
+    std::unique_ptr<NativeReference> hostProxyNref;
+    auto iter = hostProxyMap_.find(BuildAgentRemoteObjectKey(hostProxy));
     if (iter != hostProxyMap_.end()) {
-        auto &hostProxyNref = iter->second;
+        hostProxyNref = std::move(iter->second);
+        hostProxyMap_.erase(iter);
         if (hostProxyNref != nullptr) {
             jsHostProxy = hostProxyNref->GetNapiValue();
         }
     }
     if (jsHostProxy == nullptr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null jsHostProxy");
+        ReleaseHostProxyReference(hostProxyNref);
         return;
+    }
+    void *nativeProxy = nullptr;
+    if (napi_unwrap(env, jsHostProxy, &nativeProxy) == napi_ok && nativeProxy != nullptr) {
+        static_cast<JsAgentConnectorProxy *>(nativeProxy)->Invalidate();
     }
     napi_value argv[] = { napiWant, jsHostProxy };
     CallObjectMethod("onDisconnect", argv, ARGC_TWO);
-    hostProxyMap_.erase(iter);
+    ReleaseHostProxyReference(hostProxyNref);
 }
 
 int32_t JsAgentExtension::OnSendData(const sptr<IRemoteObject> &hostProxy, const std::string &data)
@@ -341,12 +412,13 @@ int32_t JsAgentExtension::OnAgentInvoked(const std::string &agentId)
 
 void JsAgentExtension::HandleSendData(sptr<IRemoteObject> hostProxy, const std::string &data)
 {
+    HandleScope handleScope(jsRuntime_);
     if (hostProxy == nullptr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null hostProxy");
         return;
     }
     napi_value jsHostProxy = nullptr;
-    auto iter = hostProxyMap_.find(hostProxy);
+    auto iter = hostProxyMap_.find(BuildAgentRemoteObjectKey(hostProxy));
     if (iter != hostProxyMap_.end()) {
         auto &hostProxyNref = iter->second;
         if (hostProxyNref != nullptr) {
@@ -365,12 +437,13 @@ void JsAgentExtension::HandleSendData(sptr<IRemoteObject> hostProxy, const std::
 
 void JsAgentExtension::HandleAuthorize(sptr<IRemoteObject> hostProxy, const std::string &data)
 {
+    HandleScope handleScope(jsRuntime_);
     if (hostProxy == nullptr) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "null hostProxy");
         return;
     }
     napi_value jsHostProxy = nullptr;
-    auto iter = hostProxyMap_.find(hostProxy);
+    auto iter = hostProxyMap_.find(BuildAgentRemoteObjectKey(hostProxy));
     if (iter != hostProxyMap_.end()) {
         auto &hostProxyNref = iter->second;
         if (hostProxyNref != nullptr) {
@@ -389,6 +462,7 @@ void JsAgentExtension::HandleAuthorize(sptr<IRemoteObject> hostProxy, const std:
 
 void JsAgentExtension::HandleAgentInvoked(const std::string &agentId)
 {
+    HandleScope handleScope(jsRuntime_);
     napi_env env = jsRuntime_.GetNapiEnv();
     napi_value argv[] = { AbilityRuntime::CreateJsValue(env, agentId) };
     CallObjectMethod("onAgentInvoked", argv, ARGC_ONE);
@@ -433,7 +507,7 @@ napi_value JsAgentExtension::CallObjectMethod(const char* name, napi_value const
 napi_value JsAgentExtension::WrapWant(napi_env env, const AAFwk::Want &want)
 {
     AAFwk::Want jsWant = want;
-    jsWant.RemoveParam(AGENTEXTENSIONHOSTPROXY_KEY);
+    RemoveAgentWantParams(jsWant);
     napi_value napiWant = OHOS::AppExecFwk::WrapWant(env, jsWant);
     return napiWant;
 }
@@ -445,6 +519,27 @@ sptr<IRemoteObject> JsAgentExtension::GetHostProxyFromWant(const AAFwk::Want &wa
         return nullptr;
     }
     return want.GetRemoteObject(AGENTEXTENSIONHOSTPROXY_KEY);
+}
+
+void JsAgentExtension::ReleaseHostProxyReference(std::unique_ptr<NativeReference> &hostProxyRef)
+{
+    if (hostProxyRef == nullptr) {
+        return;
+    }
+    napi_env env = jsRuntime_.GetNapiEnv();
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null napi env");
+        jsRuntime_.FreeNativeReference(std::move(hostProxyRef));
+        return;
+    }
+    napi_ref ref = reinterpret_cast<napi_ref>(hostProxyRef.get());
+    napi_status status = napi_delete_reference(env, ref);
+    if (status != napi_ok) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "napi_delete_reference failed %{public}d", status);
+        jsRuntime_.FreeNativeReference(std::move(hostProxyRef));
+        return;
+    }
+    hostProxyRef.release();
 }
 
 void JsAgentExtension::BindContext(napi_env env, napi_value obj, std::shared_ptr<AAFwk::Want> want)
@@ -479,23 +574,27 @@ void JsAgentExtension::BindContext(napi_env env, napi_value obj, std::shared_ptr
         TAG_LOGE(AAFwkTag::SER_ROUTER, "get context native obj failed");
         return;
     }
-    auto workContext = new (std::nothrow) std::weak_ptr<AgentExtensionContext>(context);
-    napi_coerce_to_native_binding_object(
-        env, contextObj, DetachCallbackFunc, AttachAgentExtensionContext, workContext, nullptr);
-    TAG_LOGD(AAFwkTag::SER_ROUTER, "Bind");
-    context->Bind(jsRuntime_, shellContextRef_.get());
-    napi_set_named_property(env, obj, "context", contextObj);
-
+    auto workContext = new (std::nothrow) std::weak_ptr<Context>(std::static_pointer_cast<Context>(context));
+    if (workContext == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null workContext");
+        return;
+    }
     auto res = napi_wrap(env, contextObj, workContext,
         [](napi_env, void* data, void*) {
-            delete static_cast<std::weak_ptr<AgentExtensionContext>*>(data);
+            delete static_cast<std::weak_ptr<Context>*>(data);
         },
         nullptr, nullptr);
-    if (res != napi_ok && workContext != nullptr) {
+    if (res != napi_ok) {
         TAG_LOGE(AAFwkTag::SER_ROUTER, "napi_wrap failed:%{public}d", res);
         delete workContext;
         return;
     }
+    napi_coerce_to_native_binding_object(
+        env, contextObj, DetachCallbackFunc, AttachAgentExtensionContext, workContext, nullptr);
+    SetJsAgentExtensionContext(env, contextObj, context);
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "Bind");
+    context->Bind(jsRuntime_, shellContextRef_.get());
+    napi_set_named_property(env, obj, "context", contextObj);
     TAG_LOGD(AAFwkTag::SER_ROUTER, "end");
 }
 
@@ -505,10 +604,168 @@ void JsAgentExtension::GetSrcPath(std::string &srcPath)
     if (!Extension::abilityInfo_->srcEntrance.empty()) {
         srcPath.append(Extension::abilityInfo_->moduleName + "/");
         srcPath.append(Extension::abilityInfo_->srcEntrance);
-        srcPath.erase(srcPath.rfind('.'));
+        RemoveFileExtension(srcPath);
         srcPath.append(".abc");
     }
 }
+
+void JsAgentExtension::OnConfigurationUpdated(const AppExecFwk::Configuration& configuration)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    Extension::OnConfigurationUpdated(configuration);
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "call");
+    auto context = GetContext();
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null context");
+        return;
+    }
+
+    auto configUtils = std::make_shared<ConfigurationUtils>();
+    configUtils->UpdateGlobalConfig(configuration, context->GetResourceManager());
+    auto contextConfig = context->GetConfiguration();
+    if (contextConfig != nullptr) {
+        TAG_LOGD(AAFwkTag::SER_ROUTER, "Config dump: %{public}s", contextConfig->GetName().c_str());
+        std::vector<std::string> changeKeyV;
+        contextConfig->CompareDifferent(changeKeyV, configuration);
+        if (!changeKeyV.empty()) {
+            contextConfig->Merge(changeKeyV, configuration);
+        }
+        TAG_LOGD(AAFwkTag::SER_ROUTER, "Config dump after merge: %{public}s", contextConfig->GetName().c_str());
+    }
+    ConfigurationUpdated();
+}
+
+void JsAgentExtension::ConfigurationUpdated()
+{
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "called");
+    HandleScope handleScope(jsRuntime_);
+    napi_env env = jsRuntime_.GetNapiEnv();
+    auto context = GetContext();
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null context");
+        return;
+    }
+    // Notify extension context
+    auto fullConfig = GetContext()->GetConfiguration();
+    if (!fullConfig) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null configuration");
+        return;
+    }
+
+    napi_value napiConfiguration = OHOS::AppExecFwk::WrapConfiguration(env, *fullConfig);
+    CallObjectMethod("onConfigurationUpdate", &napiConfiguration, ARGC_ONE);
+    JsExtensionContext::ConfigurationUpdated(env, shellContextRef_, fullConfig);
+}
+
+bool JsAgentExtension::HasScreenDensityBeenSet(std::shared_ptr<Global::Resource::ResourceManager> resourceManager)
+{
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "call HasScreenDensityBeenSet");
+    std::unique_ptr<Global::Resource::ResConfig> resConfig(Global::Resource::CreateResConfig());
+    if (resConfig == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null resConfig");
+        return false;
+    }
+    if (resourceManager == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null resourceManager");
+        return false;
+    }
+    resourceManager->GetResConfig(*resConfig);
+    return resConfig->GetScreenDensityDpi() != Global::Resource::ScreenDensity::SCREEN_DENSITY_NOT_SET;
+}
+
+void JsAgentExtension::ListenWMS()
+{
+#ifdef SUPPORT_GRAPHICS
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "RegisterDisplayListener");
+    auto abilityManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (abilityManager == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null SaMgr");
+        return;
+    }
+
+    auto jsAgentExtension = std::static_pointer_cast<JsAgentExtension>(shared_from_this());
+    displayListener_ = sptr<JsAgentExtensionDisplayListener>::MakeSptr(jsAgentExtension);
+    if (displayListener_ == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null displayListener");
+        return;
+    }
+
+    auto context = GetContext();
+    if (context == nullptr || context->GetToken() == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null context");
+        return;
+    }
+
+    saStatusChangeListener_ =
+        sptr<SystemAbilityStatusChangeListener>::MakeSptr(displayListener_, context->GetToken());
+    if (saStatusChangeListener_ == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null saStatusChangeListener");
+        return;
+    }
+
+    auto ret = abilityManager->SubscribeSystemAbility(WINDOW_MANAGER_SERVICE_ID, saStatusChangeListener_);
+    if (ret != 0) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "subscribe system ability error:%{public}d.", ret);
+    }
+#endif
+}
+
+#ifdef SUPPORT_GRAPHICS
+void JsAgentExtension::SystemAbilityStatusChangeListener::OnAddSystemAbility(int32_t systemAbilityId,
+    const std::string& deviceId)
+{
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "systemAbilityId: %{public}d add", systemAbilityId);
+    if (systemAbilityId == WINDOW_MANAGER_SERVICE_ID) {
+        TAG_LOGI(AAFwkTag::SER_ROUTER, "RegisterDisplayInfoChangedListener");
+        Rosen::WindowManager::GetInstance().RegisterDisplayInfoChangedListener(token_, tmpDisplayListener_);
+    }
+}
+
+void JsAgentExtension::OnDisplayInfoChange(const sptr<IRemoteObject>& token, Rosen::DisplayId displayId,
+    float density, Rosen::DisplayOrientation orientation)
+{
+    TAG_LOGI(AAFwkTag::SER_ROUTER, "displayId: %{public}" PRIu64, displayId);
+    auto context = GetContext();
+    if (context == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null context");
+        return;
+    }
+
+    auto contextConfig = context->GetConfiguration();
+    if (contextConfig == nullptr) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "null contextConfig");
+        return;
+    }
+
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "Config dump: %{public}s", contextConfig->GetName().c_str());
+    bool configChanged = false;
+    auto configUtils = std::make_shared<ConfigurationUtils>();
+    configUtils->UpdateDisplayConfig(displayId, contextConfig, context->GetResourceManager(), configChanged);
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "Config dump after update: %{public}s", contextConfig->GetName().c_str());
+
+    if (configChanged) {
+        auto weakJsAgentExtension = weak_from_this();
+        auto task = [weakJsAgentExtension]() {
+            auto extensionSptr = weakJsAgentExtension.lock();
+            if (!extensionSptr) {
+                TAG_LOGE(AAFwkTag::SER_ROUTER, "null extensionSptr");
+                return;
+            }
+            auto jsAgentExtension = std::static_pointer_cast<JsAgentExtension>(extensionSptr);
+            if (!jsAgentExtension) {
+                TAG_LOGE(AAFwkTag::SER_ROUTER, "null jsAgentExtension");
+                return;
+            }
+            jsAgentExtension->ConfigurationUpdated();
+        };
+        if (handler_ != nullptr) {
+            handler_->PostTask(task, "JsAgentExtension:OnChange");
+        }
+    }
+
+    TAG_LOGD(AAFwkTag::SER_ROUTER, "finished");
+}
+#endif
 
 extern "C" JS_EXPORT AgentExtension* OHOS_CreateJsAgentExtension(const std::unique_ptr<Runtime> &runtime)
 {

@@ -38,7 +38,6 @@
 #include "system_ability_definition.h"
 #include "wants_info.h"
 #include "want_receiver_stub.h"
-#include "want_sender_stub.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -773,71 +772,6 @@ HWTEST_F(PendingWantRecordTest, PendingWantRecordTest_2600, TestSize.Level1)
 }
 
 /*
- * @tc.number    : PendingWantRecordTest_IsBundleNotExistForUser0_0100
- * @tc.name      : IsBundleNotExistForUser0
- * @tc.desc      : 1. userId != 0, return false
- */
-HWTEST_F(PendingWantRecordTest, IsBundleNotExistForUser0_0100, TestSize.Level1)
-{
-    Want want;
-    ElementName element("device", "com.example.notexist", "TestAbility");
-    want.SetElement(element);
-    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 100);
-    std::shared_ptr<PendingWantKey> key = MakeWantKey(wantSenderInfo);
-    key->SetUserId(100);
-    std::shared_ptr<PendingWantRecord> pendingWantRecord =
-        std::make_shared<PendingWantRecord>(pendingManager_, 1, 0, nullptr, key);
-    EXPECT_NE(pendingWantRecord, nullptr);
-
-    bool result = pendingWantRecord->IsBundleNotExistForUser0(want);
-    EXPECT_FALSE(result);
-}
-
-/*
- * @tc.number    : IsBundleNotExistForUser0_NullKey_0100
- * @tc.name      : IsBundleNotExistForUser0
- * @tc.desc      : key_ is nullptr, should return false
- */
-HWTEST_F(PendingWantRecordTest, IsBundleNotExistForUser0_NullKey_0100, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "IsBundleNotExistForUser0_NullKey_0100 start");
-    Want want;
-    ElementName element("device", "com.ix.hiMusic", "MusicSAbility");
-    want.SetElement(element);
-
-    pendingManager_ = std::make_shared<PendingWantManager>();
-    std::shared_ptr<PendingWantRecord> pendingWantRecord =
-        std::make_shared<PendingWantRecord>(pendingManager_, 1, 0, nullptr, nullptr);
-
-    bool result = pendingWantRecord->IsBundleNotExistForUser0(want);
-    EXPECT_EQ(result, false);
-    TAG_LOGI(AAFwkTag::TEST, "IsBundleNotExistForUser0_NullKey_0100 end");
-}
-
-/*
- * @tc.number    : IsBundleNotExistForUser0_NonZeroUser_0100
- * @tc.name      : IsBundleNotExistForUser0
- * @tc.desc      : userId is not 0, should return false without query
- */
-HWTEST_F(PendingWantRecordTest, IsBundleNotExistForUser0_NonZeroUser_0100, TestSize.Level1)
-{
-    TAG_LOGI(AAFwkTag::TEST, "IsBundleNotExistForUser0_NonZeroUser_0100 start");
-    Want want;
-    ElementName element("device", "com.ix.hiMusic", "MusicSAbility");
-    want.SetElement(element);
-
-    pendingManager_ = std::make_shared<PendingWantManager>();
-    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 100);
-    std::shared_ptr<PendingWantKey> key = MakeWantKey(wantSenderInfo);
-    std::shared_ptr<PendingWantRecord> pendingWantRecord =
-        std::make_shared<PendingWantRecord>(pendingManager_, 1, 0, nullptr, key);
-
-    bool result = pendingWantRecord->IsBundleNotExistForUser0(want);
-    EXPECT_EQ(result, false);
-    TAG_LOGI(AAFwkTag::TEST, "IsBundleNotExistForUser0_NonZeroUser_0100 end");
-}
-
-/*
  * @tc.number    : PendingWantRecordTest_0100
  * @tc.name      : ExecuteOperation
  * @tc.desc      : check Starts a service extension
@@ -885,31 +819,119 @@ HWTEST_F(PendingWantRecordTest, ExecuteOperation_0200, TestSize.Level1)
 }
 
 /*
- * @tc.number    : Send_0100
- * @tc.name      : Send
- * @tc.desc      : 1.Send, normal call scenario
+ * @tc.number    : ExecuteOperation_0300
+ * @tc.name      : ExecuteOperation
+ * @tc.desc      : ExecuteOperation with key userId == 0 (legacy/upgrade) should be treated as
+ *                 unspecified (-1) and run START_ABILITY
  */
-HWTEST_F(PendingWantRecordTest, Send_0100, TestSize.Level1)
+HWTEST_F(PendingWantRecordTest, ExecuteOperation_0300, TestSize.Level1)
 {
-    TAG_LOGI(AAFwkTag::TEST, "Send_0100 start");
-
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteOperation_0300 start");
     Want want;
     ElementName element("device", "com.ix.hiMusic", "MusicSAbility");
     want.SetElement(element);
-    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, (int32_t)Flags::CONSTANT_FLAG, 0,
-        (int32_t)OperationType::START_ABILITY);
+
     pendingManager_ = std::make_shared<PendingWantManager>();
     EXPECT_NE(pendingManager_, nullptr);
+    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 0);
     std::shared_ptr<PendingWantKey> key = MakeWantKey(wantSenderInfo);
+    key->SetType(static_cast<int32_t>(OperationType::START_ABILITY));
+    key->SetUserId(0);
     std::shared_ptr<PendingWantRecord> pendingWantRecord =
         std::make_shared<PendingWantRecord>(pendingManager_, 1, 0, nullptr, key);
     EXPECT_NE(pendingWantRecord, nullptr);
 
     SenderInfo info;
-    pendingWantRecord->Send(info);
-    EXPECT_TRUE(info.resolvedType == key->GetRequestResolvedType());
+    pendingWantRecord->ExecuteOperation(pendingManager_, info, want);
+    EXPECT_EQ(key->GetUserId(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteOperation_0300 end");
+}
 
-    TAG_LOGI(AAFwkTag::TEST, "Send_0100 end");
+/*
+ * @tc.number    : ExecuteOperation_0400
+ * @tc.name      : ExecuteOperation
+ * @tc.desc      : ExecuteOperation with key userId > 0 should pass the real userId through
+ *                 START_SERVICE
+ */
+HWTEST_F(PendingWantRecordTest, ExecuteOperation_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteOperation_0400 start");
+    Want want;
+    ElementName element("device", "com.ix.hiMusic", "MusicSAbility");
+    want.SetElement(element);
+
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    EXPECT_NE(pendingManager_, nullptr);
+    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 100);
+    std::shared_ptr<PendingWantKey> key = MakeWantKey(wantSenderInfo);
+    key->SetType(static_cast<int32_t>(OperationType::START_SERVICE));
+    key->SetUserId(100);
+    std::shared_ptr<PendingWantRecord> pendingWantRecord =
+        std::make_shared<PendingWantRecord>(pendingManager_, 1, 0, nullptr, key);
+    EXPECT_NE(pendingWantRecord, nullptr);
+
+    SenderInfo info;
+    pendingWantRecord->ExecuteOperation(pendingManager_, info, want);
+    EXPECT_EQ(key->GetUserId(), 100);
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteOperation_0400 end");
+}
+
+/*
+ * @tc.number    : ExecuteOperation_0500
+ * @tc.name      : ExecuteOperation
+ * @tc.desc      : ExecuteOperation with key userId 0 and START_ABILITIES with non-empty
+ *                 allWantsInfos should be treated as unspecified (-1)
+ */
+HWTEST_F(PendingWantRecordTest, ExecuteOperation_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteOperation_0500 start");
+    Want want;
+    ElementName element("device", "com.ix.hiMusic", "MusicSAbility");
+    want.SetElement(element);
+
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    EXPECT_NE(pendingManager_, nullptr);
+    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 0);
+    std::shared_ptr<PendingWantKey> key = MakeWantKey(wantSenderInfo);
+    key->SetType(static_cast<int32_t>(OperationType::START_ABILITIES));
+    key->SetUserId(0);
+    std::shared_ptr<PendingWantRecord> pendingWantRecord =
+        std::make_shared<PendingWantRecord>(pendingManager_, 1, 0, nullptr, key);
+    EXPECT_NE(pendingWantRecord, nullptr);
+
+    SenderInfo info;
+    pendingWantRecord->ExecuteOperation(pendingManager_, info, want);
+    EXPECT_EQ(key->GetUserId(), 0);
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteOperation_0500 end");
+}
+
+/*
+ * @tc.number    : ExecuteOperation_0600
+ * @tc.name      : ExecuteOperation
+ * @tc.desc      : ExecuteOperation with key userId -1 (already unspecified) should keep
+ *                 going through START_FOREGROUND_SERVICE path without crash.
+ */
+HWTEST_F(PendingWantRecordTest, ExecuteOperation_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteOperation_0600 start");
+    Want want;
+    ElementName element("device", "com.ix.hiMusic", "MusicSAbility");
+    want.SetElement(element);
+
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    EXPECT_NE(pendingManager_, nullptr);
+    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, -1);
+    std::shared_ptr<PendingWantKey> key = MakeWantKey(wantSenderInfo);
+    key->SetType(static_cast<int32_t>(OperationType::START_FOREGROUND_SERVICE));
+    key->SetUserId(-1);
+    std::shared_ptr<PendingWantRecord> pendingWantRecord =
+        std::make_shared<PendingWantRecord>(pendingManager_, 1, 0, nullptr, key);
+    EXPECT_NE(pendingWantRecord, nullptr);
+
+    SenderInfo info;
+    pendingWantRecord->ExecuteOperation(pendingManager_, info, want);
+    EXPECT_EQ(key->GetUserId(), -1);
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteOperation_0600 end");
 }
 
 /*
@@ -1032,6 +1054,42 @@ HWTEST_F(PendingWantRecordTest, BuildSendWant_ConstantFlag_0100, TestSize.Level1
     EXPECT_TRUE(info.resolvedType == key->GetRequestResolvedType());
 
     TAG_LOGI(AAFwkTag::TEST, "BuildSendWant_ConstantFlag_0100 end");
+}
+
+/*
+ * @tc.number    : BuildSendWant_ConstantFlag_RejectSenderWantParams_0100
+ * @tc.name      : BuildSendWant
+ * @tc.desc      : CONSTANT_FLAG 时 TriggerInfo.want 参数不生效（trigger_info.h 文档承诺）
+ */
+HWTEST_F(PendingWantRecordTest, BuildSendWant_ConstantFlag_RejectSenderWantParams_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "BuildSendWant_ConstantFlag_RejectSenderWantParams_0100 start");
+
+    Want want;
+    ElementName element("device", "com.ix.hiMusic", "MusicSAbility");
+    want.SetElement(element);
+    want.SetParam("original_key", std::string("original_value"));
+
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    EXPECT_NE(pendingManager_, nullptr);
+    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, (int32_t)Flags::CONSTANT_FLAG, 0);
+    std::shared_ptr<PendingWantKey> key = MakeWantKey(wantSenderInfo);
+    std::shared_ptr<PendingWantRecord> pendingWantRecord =
+        std::make_shared<PendingWantRecord>(pendingManager_, 1, 0, nullptr, key);
+    EXPECT_NE(pendingWantRecord, nullptr);
+
+    SenderInfo info;
+    Want senderWant;
+    info.want.SetParam("sender_extra", std::string("should_not_be_merged"));
+
+    pendingWantRecord->BuildSendWant(info, senderWant);
+
+    // CONSTANT_FLAG: senderInfo.want 参数不应被合并到结果 want
+    EXPECT_TRUE(senderWant.GetParams().GetParam("sender_extra") == nullptr);
+    // 原 want 的参数保持不变
+    EXPECT_EQ(senderWant.GetParams().GetStringParam("original_key"), "original_value");
+
+    TAG_LOGI(AAFwkTag::TEST, "BuildSendWant_ConstantFlag_RejectSenderWantParams_0100 end");
 }
 
 /*
@@ -1353,6 +1411,257 @@ HWTEST_F(PendingWantRecordTest, ExecuteOperation_EmptyAllWantsInfos_START_ABILIT
     EXPECT_EQ(result, ERR_INVALID_VALUE);
 
     TAG_LOGI(AAFwkTag::TEST, "ExecuteOperation_EmptyAllWantsInfos_START_ABILITIES_0100 end");
+}
+
+/*
+ * @tc.number    : SetPublisherUid_GetPublisherUid_0100
+ * @tc.name      : SetPublisherUid/GetPublisherUid
+ * @tc.desc      : 1.Default publisherUid_ is 0, set to specific uid values
+ */
+HWTEST_F(PendingWantRecordTest, SetPublisherUid_GetPublisherUid_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetPublisherUid_GetPublisherUid_0100 start");
+
+    Want want;
+    ElementName element("device", "com.ix.hiMusic", "MusicSAbility");
+    want.SetElement(element);
+    WantSenderInfo wantSenderInfo = MakeWantSenderInfo(want, 0, 0);
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    EXPECT_NE(pendingManager_, nullptr);
+    std::shared_ptr<PendingWantKey> key = MakeWantKey(wantSenderInfo);
+    std::shared_ptr<PendingWantRecord> pendingWantRecord =
+        std::make_shared<PendingWantRecord>(pendingManager_, 1, 0, nullptr, key);
+    EXPECT_NE(pendingWantRecord, nullptr);
+
+    EXPECT_EQ(pendingWantRecord->GetPublisherUid(), 0);
+    pendingWantRecord->SetPublisherUid(100);
+    EXPECT_EQ(pendingWantRecord->GetPublisherUid(), 100);
+    pendingWantRecord->SetPublisherUid(200);
+    EXPECT_EQ(pendingWantRecord->GetPublisherUid(), 200);
+
+    TAG_LOGI(AAFwkTag::TEST, "SetPublisherUid_GetPublisherUid_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, SetCreatorPid_GetCreatorPid_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetCreatorPid_GetCreatorPid_0100 start");
+    std::shared_ptr<PendingWantRecord> record = std::make_shared<PendingWantRecord>();
+    ASSERT_NE(record, nullptr);
+    EXPECT_EQ(record->GetCreatorPid(), 0);
+    record->SetCreatorPid(1234);
+    EXPECT_EQ(record->GetCreatorPid(), 1234);
+    record->SetCreatorPid(-1);
+    EXPECT_EQ(record->GetCreatorPid(), -1);
+    TAG_LOGI(AAFwkTag::TEST, "SetCreatorPid_GetCreatorPid_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, SetShared_GetShared_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetShared_GetShared_0100 start");
+    std::shared_ptr<PendingWantRecord> record = std::make_shared<PendingWantRecord>();
+    ASSERT_NE(record, nullptr);
+    EXPECT_FALSE(record->GetShared());
+    record->SetShared(true);
+    EXPECT_TRUE(record->GetShared());
+    record->SetShared(false);
+    EXPECT_FALSE(record->GetShared());
+    TAG_LOGI(AAFwkTag::TEST, "SetShared_GetShared_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, SetIsThirdParty_GetIsThirdParty_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "SetIsThirdParty_GetIsThirdParty_0100 start");
+    std::shared_ptr<PendingWantRecord> record = std::make_shared<PendingWantRecord>();
+    ASSERT_NE(record, nullptr);
+    EXPECT_FALSE(record->GetIsThirdParty());
+    record->SetIsThirdParty(true);
+    EXPECT_TRUE(record->GetIsThirdParty());
+    record->SetIsThirdParty(false);
+    EXPECT_FALSE(record->GetIsThirdParty());
+    TAG_LOGI(AAFwkTag::TEST, "SetIsThirdParty_GetIsThirdParty_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, MarkSharedIfNeeded_SamePid_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "MarkSharedIfNeeded_SamePid_0100 start");
+    std::shared_ptr<PendingWantRecord> record = std::make_shared<PendingWantRecord>();
+    ASSERT_NE(record, nullptr);
+    record->SetCreatorPid(100);
+    record->MarkSharedIfNeeded(100);
+    EXPECT_FALSE(record->GetShared());
+    TAG_LOGI(AAFwkTag::TEST, "MarkSharedIfNeeded_SamePid_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, MarkSharedIfNeeded_DiffPid_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "MarkSharedIfNeeded_DiffPid_0100 start");
+    std::shared_ptr<PendingWantRecord> record = std::make_shared<PendingWantRecord>();
+    ASSERT_NE(record, nullptr);
+    record->SetCreatorPid(100);
+    record->MarkSharedIfNeeded(200);
+    EXPECT_TRUE(record->GetShared());
+    TAG_LOGI(AAFwkTag::TEST, "MarkSharedIfNeeded_DiffPid_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, MarkSharedIfNeeded_AlreadyShared_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "MarkSharedIfNeeded_AlreadyShared_0100 start");
+    std::shared_ptr<PendingWantRecord> record = std::make_shared<PendingWantRecord>();
+    ASSERT_NE(record, nullptr);
+    record->SetCreatorPid(100);
+    record->SetShared(true);
+    record->MarkSharedIfNeeded(300);
+    EXPECT_TRUE(record->GetShared());
+    TAG_LOGI(AAFwkTag::TEST, "MarkSharedIfNeeded_AlreadyShared_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, DeleteUnsharedRecordsOnDeath_DeleteUnshared_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_DeleteUnshared_0100 start");
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    ASSERT_NE(pendingManager_, nullptr);
+
+    std::shared_ptr<PendingWantKey> key = std::make_shared<PendingWantKey>();
+    key->SetBundleName("com.test.bundle");
+    key->SetCode(1);
+    sptr<PendingWantRecord> record = new PendingWantRecord(pendingManager_, 1, 0, nullptr, key);
+    ASSERT_NE(record, nullptr);
+    record->SetCreatorPid(1000);
+    record->SetShared(false);
+    record->SetIsThirdParty(true);
+    pendingManager_->wantRecords_.insert(std::make_pair(key, record));
+
+    pendingManager_->DeleteUnsharedRecordsOnDeath("com.test.bundle", 1000);
+
+    EXPECT_EQ(pendingManager_->wantRecords_.size(), 0u);
+    EXPECT_TRUE(record->GetCanceled());
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_DeleteUnshared_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, DeleteUnsharedRecordsOnDeath_KeepShared_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_KeepShared_0100 start");
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    ASSERT_NE(pendingManager_, nullptr);
+
+    std::shared_ptr<PendingWantKey> key = std::make_shared<PendingWantKey>();
+    key->SetBundleName("com.test.bundle");
+    key->SetCode(1);
+    sptr<PendingWantRecord> record = new PendingWantRecord(pendingManager_, 1, 0, nullptr, key);
+    ASSERT_NE(record, nullptr);
+    record->SetCreatorPid(1000);
+    record->SetShared(true);
+    record->SetIsThirdParty(true);
+    pendingManager_->wantRecords_.insert(std::make_pair(key, record));
+
+    pendingManager_->DeleteUnsharedRecordsOnDeath("com.test.bundle", 1000);
+
+    EXPECT_EQ(pendingManager_->wantRecords_.size(), 1u);
+    EXPECT_FALSE(record->GetCanceled());
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_KeepShared_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, DeleteUnsharedRecordsOnDeath_KeepNonThirdParty_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_KeepNonThirdParty_0100 start");
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    ASSERT_NE(pendingManager_, nullptr);
+
+    std::shared_ptr<PendingWantKey> key = std::make_shared<PendingWantKey>();
+    key->SetBundleName("com.test.bundle");
+    key->SetCode(1);
+    sptr<PendingWantRecord> record = new PendingWantRecord(pendingManager_, 1, 0, nullptr, key);
+    ASSERT_NE(record, nullptr);
+    record->SetCreatorPid(1000);
+    record->SetShared(false);
+    record->SetIsThirdParty(false);
+    pendingManager_->wantRecords_.insert(std::make_pair(key, record));
+
+    pendingManager_->DeleteUnsharedRecordsOnDeath("com.test.bundle", 1000);
+
+    EXPECT_EQ(pendingManager_->wantRecords_.size(), 1u);
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_KeepNonThirdParty_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, DeleteUnsharedRecordsOnDeath_KeepDiffBundle_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_KeepDiffBundle_0100 start");
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    ASSERT_NE(pendingManager_, nullptr);
+
+    std::shared_ptr<PendingWantKey> key = std::make_shared<PendingWantKey>();
+    key->SetBundleName("com.other.bundle");
+    key->SetCode(1);
+    sptr<PendingWantRecord> record = new PendingWantRecord(pendingManager_, 1, 0, nullptr, key);
+    ASSERT_NE(record, nullptr);
+    record->SetCreatorPid(1000);
+    record->SetShared(false);
+    record->SetIsThirdParty(true);
+    pendingManager_->wantRecords_.insert(std::make_pair(key, record));
+
+    pendingManager_->DeleteUnsharedRecordsOnDeath("com.test.bundle", 1000);
+
+    EXPECT_EQ(pendingManager_->wantRecords_.size(), 1u);
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_KeepDiffBundle_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, DeleteUnsharedRecordsOnDeath_KeepDiffPid_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_KeepDiffPid_0100 start");
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    ASSERT_NE(pendingManager_, nullptr);
+
+    std::shared_ptr<PendingWantKey> key = std::make_shared<PendingWantKey>();
+    key->SetBundleName("com.test.bundle");
+    key->SetCode(1);
+    sptr<PendingWantRecord> record = new PendingWantRecord(pendingManager_, 1, 0, nullptr, key);
+    ASSERT_NE(record, nullptr);
+    record->SetCreatorPid(1000);
+    record->SetShared(false);
+    record->SetIsThirdParty(true);
+    pendingManager_->wantRecords_.insert(std::make_pair(key, record));
+
+    pendingManager_->DeleteUnsharedRecordsOnDeath("com.test.bundle", 999);
+
+    EXPECT_EQ(pendingManager_->wantRecords_.size(), 1u);
+    EXPECT_FALSE(record->GetCanceled());
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_KeepDiffPid_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, DeleteUnsharedRecordsOnDeath_NullRecord_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_NullRecord_0100 start");
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    ASSERT_NE(pendingManager_, nullptr);
+
+    std::shared_ptr<PendingWantKey> key = std::make_shared<PendingWantKey>();
+    key->SetBundleName("com.test.bundle");
+    key->SetCode(1);
+    sptr<PendingWantRecord> nullRecord = nullptr;
+    pendingManager_->wantRecords_.insert(std::make_pair(key, nullRecord));
+
+    EXPECT_NO_FATAL_FAILURE(pendingManager_->DeleteUnsharedRecordsOnDeath("com.test.bundle", 1000));
+    EXPECT_EQ(pendingManager_->wantRecords_.size(), 1u);
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_NullRecord_0100 end");
+}
+
+HWTEST_F(PendingWantRecordTest, DeleteUnsharedRecordsOnDeath_NullKey_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_NullKey_0100 start");
+    pendingManager_ = std::make_shared<PendingWantManager>();
+    ASSERT_NE(pendingManager_, nullptr);
+
+    std::shared_ptr<PendingWantKey> nullKey = nullptr;
+    sptr<PendingWantRecord> record = new PendingWantRecord(pendingManager_, 1, 0, nullptr, nullptr);
+    ASSERT_NE(record, nullptr);
+    record->SetCreatorPid(1000);
+    record->SetShared(false);
+    record->SetIsThirdParty(true);
+    pendingManager_->wantRecords_.insert(std::make_pair(nullKey, record));
+
+    EXPECT_NO_FATAL_FAILURE(pendingManager_->DeleteUnsharedRecordsOnDeath("com.test.bundle", 1000));
+    EXPECT_EQ(pendingManager_->wantRecords_.size(), 1u);
+    TAG_LOGI(AAFwkTag::TEST, "DeleteUnsharedRecordsOnDeath_NullKey_0100 end");
 }
 
 }  // namespace AAFwk

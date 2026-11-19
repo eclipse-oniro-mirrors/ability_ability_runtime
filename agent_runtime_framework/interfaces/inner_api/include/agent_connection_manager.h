@@ -17,8 +17,8 @@
 #define OHOS_AGENT_RUNTIME_AGENT_CONNECTION_MANAGER_H
 
 #include <chrono>
-#include <map>
 #include <mutex>
+#include <utility>
 #include <vector>
 
 #include "ability_connect_callback.h"
@@ -83,48 +83,11 @@ struct AgentConnectionInfo {
         auto now = std::chrono::steady_clock::now().time_since_epoch();
         connectingTime = std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
     }
-
-    /**
-     * @brief Comparison operator for map key ordering.
-     *
-     * Compares by: agentId -> agentExtProxy -> connectingTime -> connectReceiver
-     * (bundleName -> moduleName -> abilityName)
-     *
-     * @param that The other AgentConnectionInfo to compare with.
-     * @return Returns true if this is less than that.
-     */
-    inline bool operator<(const AgentConnectionInfo &that) const
-    {
-        if (agentId < that.agentId) {
-            return true;
-        }
-        if (agentExtProxy < that.agentExtProxy) {
-            return true;
-        }
-        if (connectingTime < that.connectingTime) {
-            return true;
-        }
-        if (connectReceiver.GetBundleName() < that.connectReceiver.GetBundleName()) {
-            return true;
-        }
-        if (connectReceiver.GetBundleName() == that.connectReceiver.GetBundleName() &&
-            connectReceiver.GetModuleName() < that.connectReceiver.GetModuleName()) {
-            return true;
-        }
-        if (connectReceiver.GetBundleName() == that.connectReceiver.GetBundleName() &&
-            connectReceiver.GetModuleName() == that.connectReceiver.GetModuleName() &&
-            connectReceiver.GetAbilityName() < that.connectReceiver.GetAbilityName()) {
-            return true;
-        }
-        if (connectReceiver.GetBundleName() == that.connectReceiver.GetBundleName() &&
-            connectReceiver.GetModuleName() == that.connectReceiver.GetModuleName() &&
-            connectReceiver.GetAbilityName() == that.connectReceiver.GetAbilityName() &&
-            !(connectReceiver == that.connectReceiver)) {
-            return true;
-        }
-        return false;
-    }
 };
+
+using AgentConnectionRecord =
+    std::pair<AgentConnectionInfo, std::vector<sptr<AbilityRuntime::AbilityConnectCallback>>>;
+using AgentConnectionList = std::vector<AgentConnectionRecord>;
 
 /**
  * @class AgentConnection
@@ -160,6 +123,9 @@ public:
      * @param resultCode ERR_OK on success, others on failure.
      */
     void OnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode) override;
+
+    // Atomic snapshot under agentMutex_: state + remote + resultCode in one critical section.
+    bool SnapshotConnectedState(sptr<IRemoteObject> &remoteObject, int32_t &resultCode);
 
 private:
     std::mutex agentMutex_;
@@ -204,6 +170,20 @@ public:
     ErrCode ConnectAgentExtensionAbility(const AAFwk::Want &want,
         const sptr<AbilityRuntime::AbilityConnectCallback> &connectCallback);
     /**
+     * @brief Best-effort task-id attribution for a reused agent connection. Looks up the
+     *        existing AgentConnection by (agentId, want) in the inner-API store and forwards
+     *        to AgentManagerClient::AttributeTaskForA2AReusedConnectionRecord (oneway). Called by
+     *        the JS layer when ResolveExistingAgentConnection short-circuits before
+     *        ConnectAbilityInner is reached. The want MUST carry AGENTID_KEY and
+     *        AGENTEXTENSIONHOSTPROXY_KEY for FindConnectionLocked to match.
+     * @param want Indicates the connect want (must have AGENTID_KEY + AGENTEXTENSIONHOSTPROXY_KEY).
+     */
+    void AttributeTaskForA2AReusedConnection(const AAFwk::Want &want);
+    ErrCode ReuseLowCodeAgentExtensionAbility(const AAFwk::Want &want,
+        const sptr<AbilityRuntime::AbilityConnectCallback> &connectCallback);
+    void ReplayLowCodeConnectDoneIfReady(const AAFwk::Want &want,
+        const sptr<AbilityRuntime::AbilityConnectCallback> &connectCallback);
+    /**
      * @brief Disconnect from an AgentExtensionAbility.
      *
      * @param connection The connection to disconnect.
@@ -232,11 +212,23 @@ public:
     bool DisconnectNonexistentService(const AppExecFwk::ElementName &element,
         const sptr<AgentConnection> &connection);
 
+    /**
+     * @brief Handle agent manager service (subfoundation) death: clear every in-process
+     * AgentConnection so reconnects after restart don't hit stale "duplicated" entries.
+     * Fires OnAbilityDisconnectDone(DIED) on each AgentConnection, which cascades to the
+     * JSAgentConnection registered as a callback on each AgentConnection, thereby also
+     * clearing the JS-layer g_agentConnects registry.
+     */
+    void OnAgentMgrDied();
+
 private:
     /**
-     * @brief Private constructor for singleton.
+     * @brief Private constructor for singleton. Registers a death callback with AgentManagerClient
+     * so that when subfoundation dies, app-side connection registries are cleared (the normal
+     * disconnect-done chain can't reach them — the forwarding AgentServiceConnection lives in the
+     * dead process). Runs exactly once via the thread-safe static in GetInstance().
      */
-    AgentConnectionManager() = default;
+    AgentConnectionManager();
 
     /**
      * @brief Check if two connect receivers are equal.
@@ -263,8 +255,18 @@ private:
      * @return Returns true if matches, false otherwise.
      */
     bool MatchConnection(const std::string &agentId, const AAFwk::Want &connectReceiver,
-        const std::map<AgentConnectionInfo,
-        std::vector<sptr<AbilityRuntime::AbilityConnectCallback>>>::value_type &connection);
+        const AgentConnectionRecord &connection);
+    bool MatchLowCodeReuseConnection(const AAFwk::Want &connectReceiver,
+        const AgentConnectionRecord &connection);
+    AgentConnectionList::iterator FindConnectionLocked(const std::string &agentId, const AAFwk::Want &want);
+    ErrCode HandleExistingConnectionLocked(AgentConnectionList::iterator connectionIter,
+        const AAFwk::Want &want, const sptr<AbilityRuntime::AbilityConnectCallback> &connectCallback,
+        bool &handled, bool &replayConnect, sptr<IRemoteObject> &replayRemote, int &replayCode,
+        AppExecFwk::ElementName &replayElement);
+    sptr<AgentConnection> FindLowCodeReuseConnectionLocked(const AAFwk::Want &want,
+        const sptr<AbilityRuntime::AbilityConnectCallback> &connectCallback);
+    ErrCode ValidateAgentConnectRequest(const AAFwk::Want &want,
+        const sptr<AbilityRuntime::AbilityConnectCallback> &connectCallback, std::string &agentId) const;
     /**
      * @brief Create a new connection to the agent extension.
      *
@@ -274,6 +276,13 @@ private:
      */
     ErrCode CreateConnection(const AAFwk::Want &want,
         const sptr<AbilityRuntime::AbilityConnectCallback> &connectCallback);
+    // Reserve a CONNECTING placeholder under the caller's connectionsLock_ (closes the
+    // find-then-create TOCTOU); caller issues the IPC lock-free via DoConnectAgentExtension.
+    sptr<AgentConnection> CreateConnectionLocked(const AAFwk::Want &want,
+        const sptr<AbilityRuntime::AbilityConnectCallback> &connectCallback);
+    // Issue ConnectAgentExtensionAbility lock-free (caller must NOT hold connectionsLock_; it is a
+    // synchronous IPC). Erases the placeholder on failure.
+    ErrCode DoConnectAgentExtension(const AAFwk::Want &want, const sptr<AgentConnection> &agentConnection);
     /**
      * @brief Check if a connection has timed out during connecting state.
      *
@@ -292,8 +301,11 @@ private:
         const sptr<AbilityRuntime::AbilityConnectCallback> &connectCallback);
 
 private:
-    std::mutex connectionsLock_;
-    std::map<AgentConnectionInfo, std::vector<sptr<AbilityRuntime::AbilityConnectCallback>>> agentConnections_;
+    // recursive_mutex: the disconnect path fires OnAbilityDisconnectDone under the lock; ETS
+    // onDisconnect runs synchronously and may re-enter this manager same-thread. The connect path
+    // keeps its (synchronous) IPC out of the lock.
+    std::recursive_mutex connectionsLock_;
+    AgentConnectionList agentConnections_;
 };
 } // namespace AgentRuntime
 } // namespace OHOS

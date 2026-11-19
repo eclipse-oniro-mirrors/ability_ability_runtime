@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_EXTENSION_CONFIG_H
 #define OHOS_ABILITY_RUNTIME_EXTENSION_CONFIG_H
 
+#include <atomic>
 #include <map>
 #include <mutex>
 #include <nlohmann/json.hpp>
@@ -73,14 +74,18 @@ public:
     int32_t GetExtensionAutoDisconnectTime(const std::string &extensionTypeName);
     int32_t GetExtensionRunningTimeoutTime(const std::string &extensionTypeName);
     bool IsExtensionStartThirdPartyAppEnable(const std::string &extensionTypeName);
-    bool IsExtensionStartServiceEnable(const std::string &extensionTypeName, const std::string &targetUri);
+    bool IsExtensionStartServiceEnable(
+        const std::string &extensionTypeName, const AppExecFwk::ElementName &targetElement);
     bool HasAbilityAccess(const std::string &extensionTypeName);
     bool HasThridPartyAppAccessFlag(const std::string &extensionTypeName);
     bool HasServiceAccessFlag(const std::string &extensionTypeName);
     bool HasDefaultAccessFlag(const std::string &extensionTypeName);
-    bool IsExtensionStartThirdPartyAppEnableNew(const std::string &extensionTypeName, const std::string &targetUri);
-    bool IsExtensionStartServiceEnableNew(const std::string &extensionTypeName, const std::string &targetUri);
-    bool IsExtensionStartDefaultEnable(const std::string &extensionTypeName, const std::string &targetUri);
+    bool IsExtensionStartThirdPartyAppEnableNew(
+        const std::string &extensionTypeName, const AppExecFwk::ElementName &targetElement);
+    bool IsExtensionStartServiceEnableNew(
+        const std::string &extensionTypeName, const AppExecFwk::ElementName &targetElement);
+    bool IsExtensionStartDefaultEnable(
+        const std::string &extensionTypeName, const AppExecFwk::ElementName &targetElement);
     bool IsExtensionNetworkEnable(const std::string &extensionTypeName);
     bool IsExtensionSAEnable(const std::string &extensionTypeName);
     bool IsScreenUnlockIntercept(const std::string &extensionTypeName, bool isSystemApp,
@@ -96,6 +101,7 @@ public:
     bool HasScreenUnlockAccessConfig(const std::string &extensionTypeName);
     bool HasScreenUnlockAccessAllowList(const std::string &extensionTypeName);
     bool HasScreenUnlockAccessBlockList(const std::string &extensionTypeName);
+    bool IsConfigLoaded() const;
 private:
     void LoadExtensionConfig(const nlohmann::json &object);
     bool ReadFileInfoJson(const std::string &filePath, nlohmann::json &jsonBuf);
@@ -116,7 +122,8 @@ private:
 
     std::optional<bool> GetSingleAccessFlag(const std::string &extensionTypeName,
         std::function<std::optional<bool>(const AbilityAccessItem&)> getAccessFlag);
-    bool IsExtensionAbilityAccessEnable(const std::string &extensionTypeName, const std::string &targetUri,
+    bool IsExtensionAbilityAccessEnable(const std::string &extensionTypeName,
+        const AppExecFwk::ElementName &targetElement,
         std::function<std::optional<bool>(const AbilityAccessItem&)> getAccessFlag);
     bool FindTargetUriInList(const AppExecFwk::ElementName &targetElementName, std::unordered_set<std::string> &list);
     std::string FormatAccessFlag(const std::optional<bool> &flag);
@@ -124,6 +131,7 @@ private:
 
     std::unordered_map<std::string, ExtensionConfigItem> configMap_;
     std::mutex configMapMutex_;
+    std::atomic<bool> isConfigLoaded_ = false;
 };
 } // OHOS
 } // AAFwk

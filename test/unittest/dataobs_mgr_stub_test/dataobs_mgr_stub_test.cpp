@@ -179,6 +179,39 @@ HWTEST_F(DataObsManagerStubTest, AaFwk_DataObsManagerStubTest_NotifyChange_0100,
 
 /*
  * Feature: DataObsManagerStub
+ * Function: NotifyProcessObserver
+ * SubFunction: NA
+ * FunctionPoints: DataObsManagerStub NotifyProcessObserver
+ * EnvConditions: NA
+ * CaseDescription: Verify NotifyProcessObserver unmarshals key and observer without DataObsOption.
+ */
+HWTEST_F(DataObsManagerStubTest, AaFwk_DataObsManagerStubTest_NotifyProcessObserver_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "AaFwk_DataObsManagerStubTest_NotifyProcessObserver_0100 start";
+    const int testVal1 = static_cast<int>(NO_ERROR);
+    const Status testVal2 = static_cast<Status>(TEST_RETVAL_ONREMOTEREQUEST);
+    std::shared_ptr<MockDataObsMgrStub> dataobs = std::make_shared<MockDataObsMgrStub>();
+    sptr<IRemoteObject> observer(new (std::nothrow) MockDataObsMgrStub());
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    ASSERT_TRUE(data.WriteInterfaceToken(DataObsManagerProxy::GetDescriptor()));
+    ASSERT_TRUE(data.WriteString("test_progress_key"));
+    ASSERT_TRUE(data.WriteRemoteObject(observer));
+    EXPECT_CALL(*dataobs, NotifyProcessObserver(testing::_, testing::_)).Times(1)
+        .WillOnce(testing::Return(testVal2));
+
+    const int retval1 = dataobs->OnRemoteRequest(IDataObsMgr::NOTIFY_PROCESS, data, reply, option);
+    const int retval2 = reply.ReadInt32();
+
+    EXPECT_EQ(testVal1, retval1);
+    EXPECT_EQ(testVal2, retval2);
+    GTEST_LOG_(INFO) << "AaFwk_DataObsManagerStubTest_NotifyProcessObserver_0100 end";
+}
+
+/*
+ * Feature: DataObsManagerStub
  * Function: RegisterObserverExtInner
  * SubFunction: NA
  * FunctionPoints: DataObsManagerStub RegisterObserverExtInner

@@ -140,7 +140,7 @@ IdleNotifyStatusCallback IdleTime::GetIdleNotifyFunc()
         }
 
         sharedThis->SetNeedStop(needStop);
-        if (needStop == false) {
+        if (!needStop) {
             sharedThis->Start();
         }
     };

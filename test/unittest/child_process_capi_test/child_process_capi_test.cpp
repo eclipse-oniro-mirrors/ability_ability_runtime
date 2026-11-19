@@ -329,5 +329,83 @@ HWTEST_F(ChildProcessCapiTest, OH_Ability_KillChildProcess_001, TestSize.Level2)
     EXPECT_EQ(ret, NCP_ERR_INVALID_PID);
     GTEST_LOG_(INFO) << "OH_Ability_KillChildProcess_001 end";
 }
+
+/**
+ * @tc.number: OH_Ability_AcquireChildProcessInfos_001
+ * @tc.desc: Test API OH_Ability_AcquireChildProcessInfos with invalid params
+ * @tc.type: FUNC
+ */
+HWTEST_F(ChildProcessCapiTest, OH_Ability_AcquireChildProcessInfos_001, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "OH_Ability_AcquireChildProcessInfos_001 begin";
+    uint32_t count = 0;
+    auto ret = OH_Ability_AcquireChildProcessInfos(nullptr, &count);
+    EXPECT_EQ(ret, NCP_ERR_INVALID_PARAM);
+
+    OH_AbilityRuntime_ChildProcessInfosHandle infos = nullptr;
+    ret = OH_Ability_AcquireChildProcessInfos(&infos, nullptr);
+    EXPECT_EQ(ret, NCP_ERR_INVALID_PARAM);
+    GTEST_LOG_(INFO) << "OH_Ability_AcquireChildProcessInfos_001 end";
+}
+
+/**
+ * @tc.number: OH_Ability_AcquireChildProcessInfos_002
+ * @tc.desc: Test API OH_Ability_AcquireChildProcessInfos normal call and release
+ * @tc.type: FUNC
+ */
+HWTEST_F(ChildProcessCapiTest, OH_Ability_AcquireChildProcessInfos_002, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "OH_Ability_AcquireChildProcessInfos_002 begin";
+    OH_AbilityRuntime_ChildProcessInfosHandle infos = nullptr;
+    uint32_t count = 0;
+    auto ret = OH_Ability_AcquireChildProcessInfos(&infos, &count);
+    if (ret == NCP_NO_ERROR) {
+        EXPECT_EQ(count, 0);
+        EXPECT_EQ(infos, nullptr);
+    } else {
+        EXPECT_EQ(ret, NCP_ERR_INTERNAL);
+    }
+    OH_AbilityRuntime_ReleaseChildProcessInfos(&infos);
+    EXPECT_EQ(infos, nullptr);
+    GTEST_LOG_(INFO) << "OH_Ability_AcquireChildProcessInfos_002 end";
+}
+
+/**
+ * @tc.number: OH_Ability_AcquireChildProcessInfos_003
+ * @tc.desc: Test child process info accessor functions with nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(ChildProcessCapiTest, OH_Ability_AcquireChildProcessInfos_003, TestSize.Level2)
+{
+    GTEST_LOG_(INFO) << "OH_Ability_AcquireChildProcessInfos_003 begin";
+    int32_t pid = 0;
+    auto ret = OH_AbilityRuntime_ChildProcessInfo_GetPid(nullptr, &pid);
+    EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+
+    int32_t parentPid = 0;
+    ret = OH_AbilityRuntime_ChildProcessInfo_GetParentPid(nullptr, &parentPid);
+    EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+
+    char processName[32] = {0};
+    uint32_t requiredSize = 0;
+    ret = OH_AbilityRuntime_ChildProcessInfo_GetProcessName(nullptr, processName, 32, &requiredSize);
+    EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+
+    OH_AbilityRuntime_ChildProcessInfoHandle outInfo = nullptr;
+    ret = OH_AbilityRuntime_GetChildProcessInfoByIndex(nullptr, 0, &outInfo);
+    EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+
+    OH_AbilityRuntime_ChildProcessInfosHandle infos = nullptr;
+    ret = OH_AbilityRuntime_GetChildProcessInfoByIndex(infos, 0, &outInfo);
+    EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+
+    ret = OH_AbilityRuntime_GetChildProcessInfoByIndex(infos, 0, nullptr);
+    EXPECT_EQ(ret, ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID);
+
+    OH_AbilityRuntime_ReleaseChildProcessInfos(nullptr);
+    OH_AbilityRuntime_ReleaseChildProcessInfos(&infos);
+    EXPECT_EQ(infos, nullptr);
+    GTEST_LOG_(INFO) << "OH_Ability_AcquireChildProcessInfos_003 end";
+}
 }  // namespace AbilityRuntime
 }  // namespace OHOS

@@ -26,6 +26,8 @@
       *JsStartupConfig*;
       *MainHandlerDumper*;
       *MainThread*;
+      *IsNeedLoadLibrary*;
+      *IsFormRenderService*;
       *OHOSApplication*;
       *OnCompletedCallback*;
       *StartupConfig*;
@@ -39,6 +41,7 @@
       *ExtNativeStartupTask*;
       *GetAppPreload*;
       *ClearAppPreload*;
+      *InvokeAppFreezeFilterCallback*;
     };
     extern "C" {
       Ffi*;

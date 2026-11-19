@@ -17,6 +17,7 @@ import("//foundation/ability/ability_runtime/ability_runtime.gni")
 config("child_process_manager_config") {
   visibility = [ ":*" ]
   include_dirs = [
+    "${ability_runtime_ndk_path}",
     "${ability_runtime_ndk_path}/ability/ability_runtime/child_process",
     "include",
   ]
@@ -27,6 +28,8 @@ config("child_process_manager_config") {
 }
 
 ohos_shared_library("child_process_manager") {
+  branch_protector_ret = "pac_ret"
+
   include_dirs = [
     "${ability_runtime_path}/frameworks/ets/ani/child_process_manager/include",
     "${ability_runtime_path}/frameworks/ets/ani/ani_common/include",
@@ -58,8 +61,10 @@ ohos_shared_library("child_process_manager") {
     "init:libbegetutil",
     "ipc:ipc_capi",
     "ipc:ipc_core",
+    "libuv:uv",
     "napi:ace_napi",
     "samgr:samgr_proxy",
+    "node:node_header_notice",
   ]
 
   defines = []

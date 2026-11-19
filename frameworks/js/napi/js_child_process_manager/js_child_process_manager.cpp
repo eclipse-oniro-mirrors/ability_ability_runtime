@@ -17,6 +17,7 @@
 
 #include <unistd.h>
 
+#include "ability_business_error.h"
 #include "child_process_manager.h"
 #include "child_process_manager_error_utils.h"
 #include "hilog_tag_wrapper.h"
@@ -52,6 +53,33 @@ void ProcessSrcEntry(std::string &srcEntry, bool &isStaticChildProcess)
         isStaticChildProcess = false;
     }
 }
+
+napi_value CreateJsChildProcessInfo(napi_env env, const AppExecFwk::ChildProcessInfo &info)
+{
+    HandleEscape handleEscape(env);
+    napi_value object = nullptr;
+    napi_create_object(env, &object);
+    if (object == nullptr) {
+        TAG_LOGE(AAFwkTag::PROCESSMGR, "null obj");
+        return nullptr;
+    }
+    napi_set_named_property(env, object, "pid", CreateJsValue(env, info.pid));
+    napi_set_named_property(env, object, "parentPid", CreateJsValue(env, info.hostPid));
+    napi_set_named_property(env, object, "processName", CreateJsValue(env, info.processName));
+    return handleEscape.Escape(object);
+}
+
+napi_value CreateJsChildProcessInfoArray(napi_env env, const std::vector<AppExecFwk::ChildProcessInfo> &infos)
+{
+    HandleEscape handleEscape(env);
+    napi_value arrayValue = nullptr;
+    napi_create_array_with_length(env, infos.size(), &arrayValue);
+    uint32_t index = 0;
+    for (const auto &info : infos) {
+        napi_set_element(env, arrayValue, index++, CreateJsChildProcessInfo(env, info));
+    }
+    return handleEscape.Escape(arrayValue);
+}
 }
 
 class JsChildProcessManager {
@@ -78,6 +106,21 @@ public:
     static napi_value StartNativeChildProcess(napi_env env, napi_callback_info info)
     {
         GET_CB_INFO_AND_CALL(env, info, JsChildProcessManager, OnStartNativeChildProcess);
+    }
+
+    static napi_value IsArkChildProcessSupported(napi_env env, napi_callback_info info)
+    {
+        GET_CB_INFO_AND_CALL(env, info, JsChildProcessManager, OnIsArkChildProcessSupported);
+    }
+
+    static napi_value IsNativeChildProcessSupported(napi_env env, napi_callback_info info)
+    {
+        GET_CB_INFO_AND_CALL(env, info, JsChildProcessManager, OnIsNativeChildProcessSupported);
+    }
+
+    static napi_value GetChildProcessInfos(napi_env env, napi_callback_info info)
+    {
+        GET_CB_INFO_AND_CALL(env, info, JsChildProcessManager, OnGetChildProcessInfos);
     }
 
 private:
@@ -162,7 +205,8 @@ private:
             [pid, innerErrorCode](napi_env env, NapiAsyncTask &task, int32_t status) {
             if (!pid || !innerErrorCode) {
                 TAG_LOGE(AAFwkTag::PROCESSMGR, "null innerErrorCode or pid");
-                task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+                task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::START_CHILD_PROCESS_FAILED)));
                 return;
             }
             if (*innerErrorCode == ChildProcessManagerErrorCode::ERR_OK) {
@@ -264,6 +308,56 @@ private:
         return result;
     }
 
+    napi_value OnIsArkChildProcessSupported(napi_env env, size_t argc, napi_value* argv)
+    {
+        TAG_LOGI(AAFwkTag::PROCESSMGR, "called");
+        bool isSupported = ChildProcessManager::GetInstance().IsArkChildProcessSupported();
+        TAG_LOGD(AAFwkTag::PROCESSMGR, "result:%{public}d", isSupported);
+        return CreateJsValue(env, isSupported);
+    }
+
+    napi_value OnIsNativeChildProcessSupported(napi_env env, size_t argc, napi_value* argv)
+    {
+        TAG_LOGI(AAFwkTag::PROCESSMGR, "called");
+        bool isSupported = ChildProcessManager::GetInstance().IsNativeChildProcessSupported();
+        TAG_LOGD(AAFwkTag::PROCESSMGR, "result:%{public}d", isSupported);
+        return CreateJsValue(env, isSupported);
+    }
+
+    napi_value OnGetChildProcessInfos(napi_env env, size_t argc, napi_value* argv)
+    {
+        TAG_LOGI(AAFwkTag::PROCESSMGR, "called");
+        auto innerErrorCode = std::make_shared<ChildProcessManagerErrorCode>(
+            ChildProcessManagerErrorCode::ERR_OK);
+        auto childInfos = std::make_shared<std::vector<AppExecFwk::ChildProcessInfo>>();
+        NapiAsyncTask::ExecuteCallback execute = [innerErrorCode, childInfos]() {
+            if (!innerErrorCode || !childInfos) {
+                TAG_LOGE(AAFwkTag::PROCESSMGR, "null innerErrorCode or childInfos");
+                return;
+            }
+            *innerErrorCode = ChildProcessManager::GetInstance().AcquireChildProcesses(*childInfos);
+        };
+        NapiAsyncTask::CompleteCallback complete =
+            [innerErrorCode, childInfos](napi_env env, NapiAsyncTask &task, int32_t status) {
+            if (!innerErrorCode || !childInfos) {
+                TAG_LOGE(AAFwkTag::PROCESSMGR, "null innerErrorCode or childInfos");
+                task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    GetErrorMsg(AbilityErrorCode::ERROR_CODE_INNER)));
+                return;
+            }
+            if (*innerErrorCode == ChildProcessManagerErrorCode::ERR_OK) {
+                task.ResolveWithNoError(env, CreateJsChildProcessInfoArray(env, *childInfos));
+            } else {
+                task.Reject(env, CreateJsError(env,
+                    ChildProcessManagerErrorUtil::GetAbilityErrorCode(*innerErrorCode)));
+            }
+        };
+        napi_value result = nullptr;
+        NapiAsyncTask::ScheduleHighQos("JsChildProcessManager::OnGetChildProcessInfos",
+            env, CreateAsyncTaskWithLastParam(env, nullptr, std::move(execute), std::move(complete), &result));
+        return result;
+    }
+
     bool ParseArgsAndOptions(const napi_env &env, napi_value* argv, size_t argc, AppExecFwk::ChildProcessArgs &args,
         AppExecFwk::ChildProcessOptions &options)
     {
@@ -307,7 +401,8 @@ private:
             [pid, innerErrorCode](napi_env env, NapiAsyncTask &task, int32_t status) {
             if (!pid || !innerErrorCode) {
                 TAG_LOGE(AAFwkTag::PROCESSMGR, "null pid or innerErrorCode");
-                task.Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+                task.Reject(env, CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INNER),
+                    GetInnerErrorMsg(AbilityInnerErrorMsg::START_CHILD_PROCESS_FAILED)));
                 return;
             }
             if (*innerErrorCode == ChildProcessManagerErrorCode::ERR_OK) {
@@ -338,6 +433,12 @@ napi_value JsChildProcessManagerInit(napi_env env, napi_value exportObj)
     BindNativeFunction(env, exportObj, "startArkChildProcess", moduleName, JsChildProcessManager::StartArkChildProcess);
     BindNativeFunction(env, exportObj, "startNativeChildProcess", moduleName,
         JsChildProcessManager::StartNativeChildProcess);
+    BindNativeFunction(env, exportObj, "isArkChildProcessSupported", moduleName,
+        JsChildProcessManager::IsArkChildProcessSupported);
+    BindNativeFunction(env, exportObj, "isNativeChildProcessSupported", moduleName,
+        JsChildProcessManager::IsNativeChildProcessSupported);
+    BindNativeFunction(env, exportObj, "getChildProcessInfos", moduleName,
+        JsChildProcessManager::GetChildProcessInfos);
     return CreateJsUndefined(env);
 }
 }  // namespace AbilityRuntime

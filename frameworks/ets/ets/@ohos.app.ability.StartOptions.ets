@@ -21,6 +21,7 @@ import window from '@ohos.window';
 
 export default class StartOptions {
   windowMode?: int;
+  splitRatio?: window.SplitRatioPreference;
   displayId?: long;
   withAnimation?: boolean;
   windowLeft?: int;
@@ -40,4 +41,5 @@ export default class StartOptions {
   completionHandler?: CompletionHandler;
   hideStartWindow?: boolean;
   windowCreateParams?: window.WindowCreateParams;
+  preferDefaultBrowser?: boolean;
 }

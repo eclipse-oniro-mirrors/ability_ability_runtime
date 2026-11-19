@@ -181,7 +181,9 @@ HWTEST_F(DataAbilityRecordTest, AaFwk_DataAbilityRecord_WaitForLoaded_002, TestS
     system_clock::duration timeout = 800ms;
 
     EXPECT_EQ(dataAbilityRecord->StartLoading(), ERR_OK);
+    mutex.lock();
     EXPECT_EQ(dataAbilityRecord->WaitForLoaded(mutex, timeout), ERR_TIMED_OUT);
+    mutex.unlock();
 
     TAG_LOGI(AAFwkTag::TEST, "AaFwk_DataAbilityRecord_WaitForLoaded_002 end.");
 }

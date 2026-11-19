@@ -36,6 +36,11 @@ export interface IntentGrout {
   string: IntentInfo[]
 }
 
+interface MaterialResult {
+  bundleName: string;
+  materialItems: IntentInfo[];
+}
+
 @Component
 export struct IntentContent {
   @Consume('articlePathStack') articlePathStack: NavPathStack;
@@ -45,9 +50,43 @@ export struct IntentContent {
   @State groupMaterial: Record<string, IntentInfo[]> = {};
   context = this.getUIContext().getHostContext();
   @State pixelMap: image.PixelMap | ResourceStr | DrawableDescriptor | undefined = undefined;
+  private isCompActive: boolean = true;
+  private createdPixelMaps: image.PixelMap[] = [];
 
   aboutToAppear() {
     this.getInfos();
+  }
+
+  aboutToDisappear() {
+    this.isCompActive = false;
+    this.releasePixelMaps();
+  }
+
+  private async releasePixelMaps(): Promise<void> {
+    for (const pm of this.createdPixelMaps) {
+      try {
+        await pm.release();
+      } catch (err) {
+        hilog.error(DOMAIN, TAG, 'release pixelMap failed: %{public}s', JSON.stringify(err));
+      }
+    }
+    this.createdPixelMaps = [];
+  }
+
+  private async trackPixelMap(pm: image.PixelMap | null | undefined): Promise<image.PixelMap | undefined> {
+    if (!pm) {
+      return undefined;
+    }
+    if (!this.isCompActive) {
+      try {
+        await pm.release();
+      } catch (err) {
+        hilog.error(DOMAIN, TAG, 'release pixelMap failed: %{public}s', JSON.stringify(err));
+      }
+      return undefined;
+    }
+    this.createdPixelMaps.push(pm);
+    return pm;
   }
 
   onBackPress() {
@@ -57,7 +96,9 @@ export struct IntentContent {
   terminateSelf() {
     try {
       let context = this.getUIContext().getHostContext() as common.UIAbilityContext;
-      context.terminateSelf();
+      if (context) {
+        context.terminateSelf();
+      }
     } catch (err) {
       hilog.error(DOMAIN, TAG, 'Failed to context.terminateSelf. Cause: %{public}s', JSON.stringify(err));
     }
@@ -67,6 +108,11 @@ export struct IntentContent {
     try {
       insightIntentDriver.getAllInsightIntentInfo(insightIntentDriver.GetInsightIntentFlag.GET_FULL_INSIGHT_INTENT)
         .then((data) => {
+          if (!this.isCompActive) {
+            hilog.info(DOMAIN, TAG, 'component destroyed, skip getInfos result');
+            return;
+          }
+          hilog.info(DOMAIN, TAG, `getAllInsightIntentInfo success: found ${data.length} total intents`);
           this.listMaterial = data as IntentInfo[];
           this.intermediateGroupMaterial = this.listMaterial
             .filter(item => item.developType != insightIntentDriver.DevelopType.CONFIGURATION)
@@ -87,17 +133,38 @@ export struct IntentContent {
                 const materialItems = this.intermediateGroupMaterial[bundleName];
                 for (const key of Object.keys(materialItems)) {
                   const iconImg = await this.getAllIntentIcon(materialItems[key].icon, bundleName);
+                  if (!this.isCompActive) {
+                    return null;
+                  }
                   materialItems[key].iconImg = iconImg;
                   const appName = await this.setAppName(materialItems[0]);
-                  this.groupMaterial[appName] = materialItems;
+                  materialItems[key].bundleNameCN = appName;
                 }
+                const materialResult: MaterialResult = { bundleName, materialItems };
+                return materialResult;
               }
             } catch (err) {
               hilog.error(DOMAIN, TAG, 'getApplicationInfo failed. Cause: %{public}s', JSON.stringify(err));
             }
+            return null;
           });
-          Promise.all(promises).then(() => {
+          Promise.all(promises).then((results: Array<MaterialResult | null>) => {
+            if (!this.isCompActive) {
+              return;
+            }
+            results.forEach((result: MaterialResult | null) => {
+              if (result && result.bundleName && result.materialItems) {
+                this.groupMaterial[result.bundleName] = result.materialItems;
+              }
+            });
             this.groupMaterial = jsClone(this.groupMaterial);
+            Object.keys(this.groupMaterial).forEach((bundleName: string) => {
+              const intents = this.groupMaterial[bundleName];
+              hilog.info(DOMAIN, TAG, `Bundle: ${bundleName}, AppName: ${intents[0].bundleNameCN}, Intents: ${intents.length}`);
+              intents.forEach((intent: IntentInfo, index: number) => {
+                hilog.info(DOMAIN, TAG, `  [${index + 1}] IntentName: ${intent.intentName}, Type: ${intent.intentType}, DisplayName: ${intent.displayName}, Module: ${intent.moduleName}`);
+              });
+            });
           });
         }).catch((err: BusinessError) => {
           hilog.error(DOMAIN, TAG, 'getAllInsightIntentInfo errCode: %{public}d', err.code);
@@ -120,6 +187,15 @@ export struct IntentContent {
       hilog.error(DOMAIN, TAG, 'createBundleContext failed. Cause: %{public}s', JSON.stringify(error));
     }
     return bundleNameCN;
+  }
+
+  getDisplayName(bundleName: string): string {
+    const materialItems = this.groupMaterial[bundleName];
+    if (!materialItems || materialItems.length === 0) {
+      return bundleName;
+    }
+    const appName = materialItems[0].bundleNameCN;
+    return appName;
   }
 
   @Builder
@@ -190,7 +266,7 @@ export struct IntentContent {
           hilog.error(DOMAIN, TAG, 'callback getMediaByName failed. Cause: %{public}s', JSON.stringify(error));
         })
         const value: Uint8Array = await valuePromise;
-        pixelMap = await this.uint8ArrayToImage(value) ?? undefined;
+        pixelMap = await this.trackPixelMap(await this.uint8ArrayToImage(value));
 
       } catch (err) {
         hilog.error(DOMAIN, TAG, 'Failed to getAllIntentIcon', JSON.stringify(err));
@@ -312,10 +388,9 @@ export struct IntentContent {
 
       Scroll(this.scroller) {
         Column() {
-          ForEach(Object.keys(this.groupMaterial), (bundleNameCN: string) => {
-            Text(JSON.stringify(this.groupMaterial.bundleNameCN))
-            this.IntentBlock(bundleNameCN, this.groupMaterial[bundleNameCN])
-          }, (bundleNameCN: string) => bundleNameCN)
+          ForEach(Object.keys(this.groupMaterial), (bundleName: string) => {
+            this.IntentBlock(this.getDisplayName(bundleName), this.groupMaterial[bundleName])
+          }, (bundleName: string) => bundleName)
 
         }
       }

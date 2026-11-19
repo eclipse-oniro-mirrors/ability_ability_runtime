@@ -36,6 +36,7 @@
 #include "mock_scene_board_judgement.h"
 #include "mock_ability_connect_callback.h"
 #include "sender_info.h"
+#include "want_receiver_stub_impl_mock.h"
 #include "session/host/include/session.h"
 #include "ui_ability_lifecycle_manager.h"
 
@@ -115,8 +116,6 @@ public:
     {
         iRemoteObjectFlags_ = iRemoteObjectFlags;
     };
-
-    void Send(SenderInfo& senderInfo) override {};
 
     int32_t GetasObjectfunctionFrequency() const
     {
@@ -206,7 +205,10 @@ void AbilityManagerServiceElevenTest::TearDownTestCase() {}
 
 void AbilityManagerServiceElevenTest::SetUp() {}
 
-void AbilityManagerServiceElevenTest::TearDown() {}
+void AbilityManagerServiceElevenTest::TearDown()
+{
+    MyFlag::flag_ = 0;
+}
 
 /*
  * Feature: RegisterOffListener_0001
@@ -258,6 +260,30 @@ HWTEST_F(AbilityManagerServiceElevenTest, RegisterOnListener_0001, TestSize.Leve
     MyFlag::flag_ = 0;
 
     GTEST_LOG_(INFO) << "RegisterOnListener_0001 end";
+}
+
+/*
+ * Feature: RegisterOnListener_0002
+ * Function: RegisterOnListener
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService RegisterOnListener
+ * EnvConditions: permission flag toggled
+ * CaseDescription: Test ContinuationNotifyPermission
+ */
+HWTEST_F(AbilityManagerServiceElevenTest, RegisterOnListener_0002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RegisterOnListener_0002 start";
+
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    sptr<MockIRemoteOnListener> listener = new (std::nothrow) MockIRemoteOnListener();
+    ASSERT_NE(listener, nullptr);
+    MyFlag::flag_ = 1;
+    auto result = abilityMs->RegisterOnListener("test", listener);
+    EXPECT_NE(result, CHECK_PERMISSION_FAILED);
+    MyFlag::flag_ = 0;
+
+    GTEST_LOG_(INFO) << "RegisterOnListener_0002 end";
 }
 
 /*
@@ -611,6 +637,110 @@ HWTEST_F(AbilityManagerServiceElevenTest, CancelWantSender_0004, TestSize.Level1
     EXPECT_EQ(sender->GetasObjectfunctionFrequency(), asObjectfunctionFrequency);
 
     GTEST_LOG_(INFO) << "CancelWantSender_0004 end";
+}
+
+namespace {
+constexpr int32_t CANCEL_LISTENER_TEST_USER_ID = 100;
+
+void InitCancelListenerTestEnv(std::shared_ptr<AbilityManagerService> &abilityMs, sptr<IWantSender> &sender)
+{
+    abilityMs->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    auto pendingWantManager = std::make_shared<PendingWantManager>(nullptr);
+    abilityMs->subManagersHelper_->currentPendingWantManager_ = pendingWantManager;
+    abilityMs->subManagersHelper_->pendingWantManagers_.emplace(CANCEL_LISTENER_TEST_USER_ID, pendingWantManager);
+
+    WantSenderInfo wantSenderInfo;
+    wantSenderInfo.userId = CANCEL_LISTENER_TEST_USER_ID;
+    AAFwk::Want want;
+    AAFwk::Operation operation;
+    operation.SetBundleName("com.ohos.settings");
+    want.SetOperation(operation);
+    WantsInfo wantsInfo;
+    wantsInfo.want = want;
+    wantsInfo.resolvedTypes = want.GetType();
+    wantSenderInfo.allWants.emplace_back(wantsInfo);
+
+    MyFlag::flag_ = MyFlag::FLAG::IS_SA_CALL;
+    sender = abilityMs->GetWantSender(wantSenderInfo, nullptr, -1);
+    MyFlag::flag_ = 0;
+}
+}
+
+/*
+ * Feature: RegisterCancelListener_001
+ * Function: RegisterCancelListener
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService RegisterCancelListener permission control
+ */
+HWTEST_F(AbilityManagerServiceElevenTest, RegisterCancelListener_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "RegisterCancelListener_001 start";
+
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    sptr<IWantSender> sender = nullptr;
+    InitCancelListenerTestEnv(abilityMs, sender);
+    ASSERT_NE(sender, nullptr);
+    auto record = static_cast<PendingWantRecord *>(sender.GetRefPtr());
+    ASSERT_NE(record, nullptr);
+    sptr<IWantReceiver> receiver = new (std::nothrow) AAFwk::WantReceiverStubImplMock();
+    ASSERT_NE(receiver, nullptr);
+    EXPECT_EQ(record->GetCancelCallbacks().size(), 0u);
+
+    // caller is neither sa nor system app: rejected
+    MyFlag::flag_ = MyFlag::FLAG::IS_NOT_SYSTEM_APP_CALL;
+    abilityMs->RegisterCancelListener(sender, receiver);
+    EXPECT_EQ(record->GetCancelCallbacks().size(), 0u);
+
+    // caller is system app: allowed
+    MyFlag::flag_ = 0;
+    abilityMs->RegisterCancelListener(sender, receiver);
+    EXPECT_EQ(record->GetCancelCallbacks().size(), 1u);
+
+    // caller is sa: allowed
+    MyFlag::flag_ = MyFlag::FLAG::IS_SA_CALL;
+    abilityMs->RegisterCancelListener(sender, receiver);
+    EXPECT_EQ(record->GetCancelCallbacks().size(), 2u);
+
+    GTEST_LOG_(INFO) << "RegisterCancelListener_001 end";
+}
+
+/*
+ * Feature: UnregisterCancelListener_001
+ * Function: UnregisterCancelListener
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService UnregisterCancelListener permission control
+ */
+HWTEST_F(AbilityManagerServiceElevenTest, UnregisterCancelListener_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "UnregisterCancelListener_001 start";
+
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    sptr<IWantSender> sender = nullptr;
+    InitCancelListenerTestEnv(abilityMs, sender);
+    ASSERT_NE(sender, nullptr);
+    auto record = static_cast<PendingWantRecord *>(sender.GetRefPtr());
+    ASSERT_NE(record, nullptr);
+    sptr<IWantReceiver> receiver = new (std::nothrow) AAFwk::WantReceiverStubImplMock();
+    ASSERT_NE(receiver, nullptr);
+
+    // register with system app caller
+    MyFlag::flag_ = 0;
+    abilityMs->RegisterCancelListener(sender, receiver);
+    EXPECT_EQ(record->GetCancelCallbacks().size(), 1u);
+
+    // unregister from a caller that is neither sa nor system app: rejected
+    MyFlag::flag_ = MyFlag::FLAG::IS_NOT_SYSTEM_APP_CALL;
+    abilityMs->UnregisterCancelListener(sender, receiver);
+    EXPECT_EQ(record->GetCancelCallbacks().size(), 1u);
+
+    // unregister with system app caller: allowed
+    MyFlag::flag_ = 0;
+    abilityMs->UnregisterCancelListener(sender, receiver);
+    EXPECT_EQ(record->GetCancelCallbacks().size(), 0u);
+
+    GTEST_LOG_(INFO) << "UnregisterCancelListener_001 end";
 }
 
 /*
@@ -1447,12 +1577,14 @@ HWTEST_F(AbilityManagerServiceElevenTest, SetBackgroundCall_002, TestSize.Level1
 HWTEST_F(AbilityManagerServiceElevenTest, SetResidentProcessEnabled_001, TestSize.Level1)
 {
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceElevenTest SetResidentProcessEnabled_001 start");
+    MyFlag::flag_ = 0;
     auto abilityMs = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs, nullptr);
     std::string bundleName = "";
     bool enable = false;
+    MyFlag::flag_ = MyFlag::FLAG::IS_SA_CALL;
     int result = abilityMs->SetResidentProcessEnabled(bundleName, enable);
-    EXPECT_EQ(result, INNER_ERR);
+    EXPECT_EQ(result, INVALID_PARAMETERS_ERR);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceElevenTest SetResidentProcessEnabled_001 end");
 }
 
@@ -1484,6 +1616,26 @@ HWTEST_F(AbilityManagerServiceElevenTest, GetUidByCloneBundleInfo_001, TestSize.
     EXPECT_EQ(result, uid);
 
     GTEST_LOG_(INFO) << "GetUidByCloneBundleInfo_001 end";
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: NotifySkillFunctionInvoked
+ * SubFunction: NA
+ * FunctionPoints: null token rejection
+ * EnvConditions: token is nullptr
+ * CaseDescription: Verify NotifySkillFunctionInvoked rejects null token before any further work
+ */
+HWTEST_F(AbilityManagerServiceElevenTest, NotifySkillFunctionInvoked_0001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "NotifySkillFunctionInvoked_0001 start";
+
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    EXPECT_NE(abilityMs, nullptr);
+    auto result = abilityMs->NotifySkillFunctionInvoked(nullptr, "requestCode_0001");
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+
+    GTEST_LOG_(INFO) << "NotifySkillFunctionInvoked_0001 end";
 }
 } // namespace AAFwk
 } // namespace OHOS

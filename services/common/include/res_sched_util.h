@@ -51,7 +51,7 @@ class ResSchedUtil final {
 public:
     static ResSchedUtil &GetInstance();
     void ReportAbilityStartInfoToRSS(const AbilityInfo &abilityInfo, int32_t pid, bool isColdStart,
-        bool supportWarmSmartGC, int32_t preloadMode);
+        bool supportWarmSmartGC, int32_t preloadMode, bool isSuggestCache);
     void ReportPreloadApplicationToRSS(const std::shared_ptr<AbilityInfo>& abilityInfo, int32_t preloadMode);
     void ReportAbilityAssociatedStartInfoToRSS(
         const AbilityInfo &abilityInfo, int64_t resSchedType, int32_t callerUid, int32_t callerPid);
@@ -75,6 +75,8 @@ public:
     void ReportSubHealtyPerfInfoToRSS();
     void ReportForkAllEventToRSS(int32_t imagePid, int32_t orginalPid,
         std::shared_ptr<AbilityInfo> abilityInfo, int32_t forkAllState);
+    void ReportGameClickToRSS(const std::string &bundleName, int32_t pid, int32_t uid);
+    void ReportTemplateProcessReadyToRSS(int32_t pid, int32_t uid, const std::string &bundleName);
 private:
     ResSchedUtil() = default;
     ~ResSchedUtil() = default;

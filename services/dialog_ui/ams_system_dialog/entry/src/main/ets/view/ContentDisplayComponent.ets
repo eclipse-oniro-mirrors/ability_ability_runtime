@@ -53,18 +53,18 @@ export struct ContentDisplayComponent {
     }
 
     getTargetsToDisplay() {
-        const targetInfoArraySplit: Array<Array<TargetInfo>> = this.splitArray(this.targetInfoArray)
+        const targetInfoArraySplit: TargetInfo[][] = this.splitArray(this.targetInfoArray)
         this.targetInfoArraySplit = this.fillUpTheGapsForOneLine(targetInfoArraySplit);
         if (this.isChange) {
             this.scrollerHeight = (this.panelHeight - this.titleHeight < this
-                .singleRowHeight * this.targetInfoArraySplit.length ? this
-                .panelHeight - this.titleHeight : this.singleRowHeight * this.targetInfoArraySplit.length) + 16;
+                .singleRowHeight * this.targetInfoArraySplit.length ? this.panelHeight - this.titleHeight
+                : this.singleRowHeight * this.targetInfoArraySplit.length) + 16;
             this.realHeight = this.titleHeight + this.scrollerHeight;
         }
     }
 
     splitArray(arr: Array<TargetInfo>): Array<Array<TargetInfo>> {
-        let arraySplit: Array<Array<TargetInfo>> = [];
+        let arraySplit: TargetInfo[][] = [];
         if (this.maxLengthOneLine === 0) {
             arraySplit.push(arr);
             return arraySplit
@@ -80,8 +80,8 @@ export struct ContentDisplayComponent {
         }
         let subArrayListRemainder = arr.length % this.maxLengthOneLine;
         if (subArrayListRemainder !== 0) {
-            arraySplit.push(arr.slice(index * this.maxLengthOneLine, index * this.maxLengthOneLine +
-                subArrayListRemainder))
+            arraySplit.push(
+                arr.slice(index * this.maxLengthOneLine, index * this.maxLengthOneLine + subArrayListRemainder))
         }
         return arraySplit;
     }
@@ -138,9 +138,10 @@ export struct ContentDisplayComponent {
         .alignItems(HorizontalAlign.Start)
         .onAreaChange((oldValue: Area, newValue: Area) => {
             if (oldValue.height !== newValue.height) {
-                this.scrollerHeight = (this.panelHeight - this.titleHeight < this.singleRowHeight *
-                    this.targetInfoArraySplit.length ? this.panelHeight - this.titleHeight : this.singleRowHeight *
-                    this.targetInfoArraySplit.length) + 16;
+                this.scrollerHeight = 
+                    (this.panelHeight - this.titleHeight < 
+                    this.singleRowHeight * this.targetInfoArraySplit.length ? this.panelHeight - 
+                    this.titleHeight : this.singleRowHeight * this.targetInfoArraySplit.length) + 16;
                 this.realHeight = this.titleHeight + this.scrollerHeight;
             }
         })

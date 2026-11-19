@@ -1,0 +1,67 @@
+/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package OHOS.CliTool;
+
+import ICliToolData;
+import ICliToolManagerScheduler;
+import ICliHookInterface;
+import IFunctionHookInterface;
+sequenceable CliSessionInfo..OHOS.CliTool.CliSessionInfo;
+sequenceable ExecCmdParam..OHOS.CliTool.ExecCmdParam;
+sequenceable ExecToolParam..OHOS.CliTool.ExecToolParam;
+sequenceable OHOS.CliTool.ToolSummary;
+sequenceable ToolInfo..OHOS.CliTool.ToolInfo;
+rawdata ToolInfo..OHOS.CliTool.ToolsRawData;
+sequenceable FunctionInfo..OHOS.CliTool.FunctionInfo;
+rawdata FunctionInfo..OHOS.CliTool.FunctionsRawData;
+sequenceable WantParams..OHOS.AAFwk.WantParams;
+sequenceable InvokeFunctionResult..OHOS.CliTool.InvokeFunctionResult;
+sequenceable InvokeFunctionParam..OHOS.CliTool.InvokeFunctionParam;
+sequenceable FunctionResultWrap..OHOS.CliTool.FunctionResultWrap;
+
+interface ICliToolManager {
+    void GetAllToolSummaries([out] ToolSummary[] summaries);
+    void GetToolInfoByName([in] String name, [out] ToolInfo tool);
+    void GetAllToolInfos([out] ToolsRawData tools);
+    void ExecTool([in] ExecToolParam param, [in] String eventId, [in] ICliToolManagerScheduler scheduler);
+    void ExecCmd([in] ExecCmdParam param, [in] String eventId, [in] ICliToolManagerScheduler scheduler, [in] String subscriptionId);
+    void SubscribeSession([in] String sessionId, [in] String subscriptionId, [in] ICliToolManagerScheduler scheduler);
+    void UnsubscribeSession([in] String sessionId, [in] String subscriptionId);
+    void ClearSession([in] String sessionId);
+    void QuerySession([in] String sessionId, [out] CliSessionInfo session);
+    void SendMessage([in] String sessionId, [in] String inputText, [in] String eventId,
+        [in] ICliToolManagerScheduler scheduler);
+    void BatchQueryPermissionBySubCommand([in] List<Command> cmds, [out] List<CommandPermission> cmdPermissions);
+    void RegisterFunction([in] FunctionInfo function);
+    void BatchRegisterFunctions([in] FunctionsRawData functions, [out] int successCount);
+    void GetFunctionInfo([in] String functionNamespace, [in] String functionName,
+        [out] FunctionInfo function);
+    void UnregisterFunction([in] int userId, [in] String functionNamespace, [in] String functionName);
+    void UnregisterIntentFunctionsByNamespace([in] int userId, [in] String functionNamespace);
+    void ResetNamespaceFunctions([in] int userId, [in] String functionNamespace,
+        [in] FunctionsRawData functions, [out] int successCount);
+    void GetAllFunctions([out] FunctionsRawData functions);
+    [oneway] void BatchRegisterFunctionsAsync([in] FunctionsRawData functions);
+    [oneway]void UnregisterIntentFunctionsByNamespaceAsync([in] int userId, [in] String functionNamespace);
+    [oneway]void ResetNamespaceFunctionsAsync([in] int userId, [in] String functionNamespace,
+        [in] FunctionsRawData functions);
+    void RegisterCliHook([in] ICliHookInterface hook, [in] int activeMethods);
+    void UnregisterCliHook([in] ICliHookInterface hook);
+    void RegisterFunctionHook([in] IFunctionHookInterface hook, [in] int activeMethods);
+    void UnregisterFunctionHook([in] IFunctionHookInterface hook);
+    void BeforeInvokeFunction([inout] InvokeFunctionParam param);
+    void AfterInvokeFunction([inout] FunctionResultWrap functionResultWrap);
+}

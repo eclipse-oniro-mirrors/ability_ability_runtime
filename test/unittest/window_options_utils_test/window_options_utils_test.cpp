@@ -155,6 +155,23 @@ HWTEST_F(WindowOptionsUtilsTest, WindowModeMap_004, TestSize.Level1)
 
 /*
  * Feature: WindowOptionsUtils
+ * Function: WindowModeMap
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService WindowModeMap
+ */
+HWTEST_F(WindowOptionsUtilsTest, WindowModeMap_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "WindowOptionsUtilsTest WindowModeMap_005 start");
+    WindowOptionsUtils  Window_;
+    int32_t windowMode = MULTI_WINDOW_DISPLAY_SPLIT;
+    auto result = Window_.WindowModeMap(windowMode);
+    EXPECT_TRUE(result.first);
+    EXPECT_EQ(result.second, AppExecFwk::SupportWindowMode::SPLIT);
+    TAG_LOGI(AAFwkTag::TEST, "WindowOptionsUtilsTest WindowModeMap_005 end");
+}
+
+/*
+ * Feature: WindowOptionsUtils
  * Function: SetWindowPositionAndSize
  * SubFunction: NA
  * FunctionPoints: AbilityManagerService SetWindowPositionAndSize

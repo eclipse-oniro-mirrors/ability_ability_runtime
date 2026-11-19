@@ -100,8 +100,8 @@ struct PhonePage {
     }
 
     refreshTarget() {
-        this.targetInfoArraylevel2 =
-            TargetManager.getAvailableTargets(storage.get(localStorageKeyConstants.CALLER_WANT)??{});
+        this.targetInfoArraylevel2 = 
+                TargetManager.getAvailableTargets(storage.get(localStorageKeyConstants.CALLER_WANT) ?? {});
         this.getTargetsToDisplay();
     }
 
@@ -124,17 +124,18 @@ struct PhonePage {
                     this.panelTopPadding = (displayData.height / displayData.densityPixels - this.statusBarHeight) *
                         (this.isLandscape ? 0.1 : 0.2) + this.statusBarHeight;
                 }
-                this.panelHeight =
+                this.panelHeight = 
                     displayData.height / displayData.densityPixels - this.statusBarHeight - this.panelTopPadding;
             } else {
                 this.maxLengthOneLine = TargetsUpperLimitOneLine.BREAKPOINT_4_COLUMN;
                 this.panelTopPadding = 8;
-                this.panelHeight =
+                this.panelHeight = 
                     displayData.height / displayData.densityPixels - this.statusBarHeight - this.panelTopPadding;
             }
             if (!this.level2Page) {
-                this.targetInfoArray = TargetManager.removePartialTargetListIfExceedsMax
-                (this.targetInfoArraylevel2, 2 * this.maxLengthOneLine);
+                this.targetInfoArray = 
+                    TargetManager.removePartialTargetListIfExceedsMax(
+                        this.targetInfoArraylevel2, 2 * this.maxLengthOneLine);
             }
         })
     }
@@ -169,8 +170,8 @@ struct PhonePage {
             this.targetInfoArray = this.targetInfoArraylevel2;
             return;
         }
-        this.targetInfoArray = TargetManager.removePartialTargetListIfExceedsMax
-        (this.targetInfoArraylevel2, this.maxLengthOneLine * 2);
+        this.targetInfoArray = 
+            TargetManager.removePartialTargetListIfExceedsMax(this.targetInfoArraylevel2, this.maxLengthOneLine * 2);
     }
 
     openTipsDialogAndReport(): void {
@@ -188,7 +189,7 @@ struct PhonePage {
             alignment: this.dialogAlign,
             offset: { dx: 0, dy: DeviceInfoUtil.isTable() ? 0 : this.tipsDialogBottomOffset },
             cancel: () => {
-                const session: UIExtensionContentSession =
+                const session: UIExtensionContentSession = 
                     storage.get(localStorageKeyConstants.SESSION) as UIExtensionContentSession;
                 session.terminateSelf();
                 storage.clear();
@@ -209,8 +210,8 @@ struct PhonePage {
             }
             .type(PanelType.CUSTOM)
             .customHeight(this.level2Page ? this.realHeight > this.panelHeight ? this.panelHeight : this.realHeight :
-                this.titleHeight + this.rowHeight * (this.targetInfoArray.length > this.maxLengthOneLine ? 2 : 1) +
-                this.rowTopPadding)
+                this.titleHeight + 
+                this.rowHeight * (this.targetInfoArray.length > this.maxLengthOneLine ? 2 : 1) + this.rowTopPadding)
             .backgroundColor($r('sys.color.ohos_id_color_panel_bg'))
             .dragBar(false)
             .width(this.maxLengthOneLine === TargetsUpperLimitOneLine.BREAKPOINT_4_COLUMN ? '100%' : 480)

@@ -109,8 +109,6 @@ public:
         iRemoteObjectFlags_ = iRemoteObjectFlags;
     };
 
-    void Send(SenderInfo& senderInfo) override {};
-
 private:
     sptr<IRemoteObject> iRemoteObjectFlags_ = nullptr;
 };
@@ -440,6 +438,22 @@ HWTEST_F(AbilityManagerProxyFifthTest, ContinueAbility_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: ContinueAbility_0200
+ * @tc.desc: Test the ContinueAbility with userId
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxyFifthTest, ContinueAbility_0200, TestSize.Level1)
+{
+    std::string deviceId = "001";
+    int32_t missionId = 2;
+    uint32_t versionCode = 3;
+    int32_t userId = 100;
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _)).WillOnce(Return(NO_ERROR));
+    auto res = proxy_->ContinueAbility(deviceId, missionId, versionCode, userId);
+    EXPECT_EQ(res, ZERO);
+}
+
+/**
  * @tc.name: StartContinuation_0100
  * @tc.desc: Test the StartContinuation
  * @tc.type: FUNC
@@ -450,7 +464,7 @@ HWTEST_F(AbilityManagerProxyFifthTest, StartContinuation_0100, TestSize.Level1)
     sptr<IRemoteObject> abilityToken = nullptr;
     int32_t status = 1;
     auto res1 = proxy_->StartContinuation(want, abilityToken, status);
-    EXPECT_EQ(res1, INNER_ERR);
+    EXPECT_EQ(res1, ERR_NATIVE_IPC_PARCEL_FAILED);
 
     sptr<IRemoteObject> abilityToken2 = new IRemoteObjectMocker();
     EXPECT_CALL(*mock_, SendRequest(_, _, _, _)).WillOnce(Return(INVALID_PARAMETERS_ERR));
@@ -826,6 +840,21 @@ HWTEST_F(AbilityManagerProxyFifthTest, ExecuteIntent_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: ExecuteIntentForDistributed_0100
+ * @tc.desc: Test the ExecuteIntentForDistributed
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxyFifthTest, ExecuteIntentForDistributed_0100, TestSize.Level1)
+{
+    Want want;
+    std::string deviceId;
+    uint64_t requestCode = 1;
+    uint64_t specifiedFullTokenId = 1;
+    auto res = proxy_->ExecuteIntentForDistributed(want, deviceId, requestCode, specifiedFullTokenId);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/**
  * @tc.name: IsAbilityControllerStart_0100
  * @tc.desc: Test the IsAbilityControllerStart
  * @tc.type: FUNC
@@ -907,6 +936,70 @@ HWTEST_F(AbilityManagerProxyFifthTest, OpenFile_0100, TestSize.Level1)
     EXPECT_CALL(*mock_, SendRequest(_, _, _, _)).WillOnce(Return(INVALID_PARAMETERS_ERR));
     auto res1 = proxy_->OpenFile(uri, flag);
     EXPECT_EQ(res1, INVALID_PARAMETERS_ERR);
+}
+
+/**
+ * @tc.name: StartSelfUIAbilityInChildProcess_0100
+ * @tc.desc: Test StartSelfUIAbilityInChildProcess with normal parameters
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxyFifthTest, StartSelfUIAbilityInChildProcess_0100, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    std::string specifiedFlag = "testFlag";
+    sptr<IRemoteObject> callerToken = nullptr;
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _)).WillOnce(Return(NO_ERROR));
+    auto res = proxy_->StartSelfUIAbilityInChildProcess(want, specifiedFlag, callerToken);
+    EXPECT_EQ(res, ZERO);
+}
+
+/**
+ * @tc.name: StartSelfUIAbilityInChildProcess_0200
+ * @tc.desc: Test StartSelfUIAbilityInChildProcess with error return
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxyFifthTest, StartSelfUIAbilityInChildProcess_0200, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    std::string specifiedFlag = "testFlag";
+    sptr<IRemoteObject> callerToken = nullptr;
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _)).WillOnce(Return(INVALID_PARAMETERS_ERR));
+    auto res = proxy_->StartSelfUIAbilityInChildProcess(want, specifiedFlag, callerToken);
+    EXPECT_EQ(res, INVALID_PARAMETERS_ERR);
+}
+
+/**
+ * @tc.name: StartSelfUIAbilityInChildProcess_0300
+ * @tc.desc: Test StartSelfUIAbilityInChildProcess with callerToken
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxyFifthTest, StartSelfUIAbilityInChildProcess_0300, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    std::string specifiedFlag = "testFlag";
+    sptr<IRemoteObject> callerToken = new IRemoteObjectMocker();
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _)).WillOnce(Return(NO_ERROR));
+    auto res = proxy_->StartSelfUIAbilityInChildProcess(want, specifiedFlag, callerToken);
+    EXPECT_EQ(res, ZERO);
+}
+
+/**
+ * @tc.name: StartSelfUIAbilityInChildProcess_0400
+ * @tc.desc: Test StartSelfUIAbilityInChildProcess with empty specifiedFlag
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerProxyFifthTest, StartSelfUIAbilityInChildProcess_0400, TestSize.Level1)
+{
+    Want want;
+    want.SetElementName("com.test.bundle", "TestAbility");
+    std::string specifiedFlag = "";
+    sptr<IRemoteObject> callerToken = nullptr;
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _)).WillOnce(Return(NO_ERROR));
+    auto res = proxy_->StartSelfUIAbilityInChildProcess(want, specifiedFlag, callerToken);
+    EXPECT_EQ(res, ZERO);
 }
 } // namespace AAFwk
 } // namespace OHOS

@@ -19,6 +19,7 @@ config("appmgr_sdk_config") {
     "include/appmgr",
     "${ability_runtime_path}/interfaces/kits/native/ability/native",
     "${ability_runtime_innerkits_path}/ability_manager/include",
+    "${ability_runtime_innerkits_path}/daemon_service_manager/include",
   ]
   defines = []
   if (ability_command_for_test) {
@@ -26,6 +27,9 @@ config("appmgr_sdk_config") {
   }
   if (ability_runtime_child_process) {
     defines += [ "SUPPORT_CHILD_PROCESS" ]
+  }
+  if (background_task_mgr_continuous_task_enable) {
+    defines += [ "BGTASKMGR_CONTINUOUS_TASK_ENABLE" ]
   }
 }
 
@@ -38,10 +42,24 @@ config("appmgr_core_config") {
   if (ability_runtime_child_process) {
     defines += [ "SUPPORT_CHILD_PROCESS" ]
   }
+  if (background_task_mgr_continuous_task_enable) {
+    defines += [ "BGTASKMGR_CONTINUOUS_TASK_ENABLE" ]
+  }
 }
 
 ohos_shared_library("app_manager") {
   branch_protector_ret = "pac_ret"
+  branch_protector_frt = "bti"
+  sanitize = {
+    integer_overflow = true
+    ubsan = true
+    boundary_sanitize = true
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    cfi_policy = "adaptive"
+    debug = false
+  }
 
   include_dirs = [
     "${ability_runtime_path}/interfaces/kits/native/appkit/dfr",
@@ -54,10 +72,12 @@ ohos_shared_library("app_manager") {
   ]
 
   sources = [
+    "${ability_runtime_services_path}/appdfr/src/app_recovery_mgr.cpp",
+    "${ability_runtime_services_path}/appdfr/src/appfreeze_binder_collector.cpp",
     "${ability_runtime_services_path}/appdfr/src/appfreeze_cpu_freq_manager.cpp",
     "${ability_runtime_services_path}/appdfr/src/appfreeze_event_report.cpp",
+    "${ability_runtime_services_path}/appdfr/src/appfreeze_info.cpp",
     "${ability_runtime_services_path}/appdfr/src/appfreeze_manager.cpp",
-    "${ability_runtime_services_path}/appdfr/src/app_recovery_mgr.cpp",
     "${ability_runtime_services_path}/appdfr/src/appfreeze_util.cpp",
     "${ability_runtime_services_path}/appdfr/src/cpu_data_processor.cpp",
     "${ability_runtime_services_path}/appdfr/src/cpu_sys_config.cpp",
@@ -78,13 +98,17 @@ ohos_shared_library("app_manager") {
     "src/appmgr/app_debug_listener_stub.cpp",
     "src/appmgr/app_foreground_state_observer_proxy.cpp",
     "src/appmgr/app_foreground_state_observer_stub.cpp",
-    "src/appmgr/app_mem_dump_info.cpp",
+    "src/appmgr/app_jshandle_map_info.cpp",
     "src/appmgr/app_jsheap_mem_info.cpp",
     "src/appmgr/app_launch_data.cpp",
     "src/appmgr/app_malloc_info.cpp",
+    "src/appmgr/app_mem_dump_info.cpp",
     "src/appmgr/app_mgr_client.cpp",
     "src/appmgr/app_mgr_proxy.cpp",
     "src/appmgr/app_mgr_stub.cpp",
+    "${ability_runtime_innerkits_path}/daemon_service_manager/src/launch_service_info.cpp",
+    "${ability_runtime_innerkits_path}/daemon_service_manager/src/launch_service_observer.cpp",
+    "${ability_runtime_innerkits_path}/daemon_service_manager/src/launch_service_operation_callback.cpp",
     "src/appmgr/app_process_data.cpp",
     "src/appmgr/app_record_id.cpp",
     "src/appmgr/app_running_status_proxy.cpp",
@@ -100,15 +124,22 @@ ohos_shared_library("app_manager") {
     "src/appmgr/application_state_observer_stub.cpp",
     "src/appmgr/background_app_info.cpp",
     "src/appmgr/child_process_info.cpp",
+    "src/appmgr/child_process_state_data.cpp",
+    "src/appmgr/child_process_state_observer_proxy.cpp",
+    "src/appmgr/child_process_state_observer_stub.cpp",
     "src/appmgr/child_scheduler_proxy.cpp",
     "src/appmgr/child_scheduler_stub.cpp",
     "src/appmgr/configuration_observer_proxy.cpp",
     "src/appmgr/configuration_observer_stub.cpp",
     "src/appmgr/configuration_policy.cpp",
     "src/appmgr/fault_data.cpp",
-    "src/appmgr/image_process_state_data.cpp",
+    "src/appmgr/focused_application_info.cpp",
+    "src/appmgr/focused_application_observer_proxy.cpp",
+    "src/appmgr/focused_application_observer_stub.cpp",
+    "src/appmgr/hyper_snap_error_record.cpp",
     "src/appmgr/image_error_handler_proxy.cpp",
     "src/appmgr/image_error_handler_stub.cpp",
+    "src/appmgr/image_process_state_data.cpp",
     "src/appmgr/image_process_state_observer_proxy.cpp",
     "src/appmgr/image_process_state_observer_stub.cpp",
     "src/appmgr/kia_interceptor_proxy.cpp",
@@ -116,6 +147,8 @@ ohos_shared_library("app_manager") {
     "src/appmgr/load_ability_callback_manager.cpp",
     "src/appmgr/load_ability_callback_proxy.cpp",
     "src/appmgr/load_ability_callback_stub.cpp",
+    "src/appmgr/mem_dump_callback_proxy.cpp",
+    "src/appmgr/mem_dump_callback_stub.cpp",
     "src/appmgr/memory_level_info.cpp",
     "src/appmgr/native_child_notify_proxy.cpp",
     "src/appmgr/native_child_notify_stub.cpp",
@@ -125,6 +158,8 @@ ohos_shared_library("app_manager") {
     "src/appmgr/process_bind_data.cpp",
     "src/appmgr/process_data.cpp",
     "src/appmgr/process_info.cpp",
+    "src/appmgr/process_lifecycle_observer_proxy.cpp",
+    "src/appmgr/process_lifecycle_observer_stub.cpp",
     "src/appmgr/process_memory_state.cpp",
     "src/appmgr/profile.cpp",
     "src/appmgr/quick_fix_callback_proxy.cpp",
@@ -140,6 +175,8 @@ ohos_shared_library("app_manager") {
     "src/appmgr/start_specified_ability_response_proxy.cpp",
     "src/appmgr/start_specified_ability_response_stub.cpp",
     "src/appmgr/system_memory_attr.cpp",
+    "src/appmgr/task_state_callback_host.cpp",
+    "src/appmgr/task_state_callback_proxy.cpp",
   ]
 
   public_configs = [
@@ -161,18 +198,19 @@ ohos_shared_library("app_manager") {
     "${ability_runtime_path}/utils/server/startup:startup_util",
     "${ability_runtime_services_path}/common:app_util",
     "${ability_runtime_services_path}/common:hisysevent_report",
+    "${ability_runtime_services_path}/common:task_handler_wrap",
   ]
 
   external_deps = [
+    "ability_base:session_info",
     "c_utils:utils",
+    "eventhandler:libeventhandler",
     "faultloggerd:libdfx_dumpcatcher",
     "faultloggerd:libfaultloggerd",
     "ffrt:libffrt",
     "hicollie:libhicollie",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
-    "eventhandler:libeventhandler",
-    "ability_base:session_info",
     "hitrace:hitrace_meter",
     "hitrace:libhitracechain",
     "init:libbegetutil",
@@ -185,6 +223,8 @@ ohos_shared_library("app_manager") {
     "ability_base:session_info",
     "ability_base:want",
     "bundle_framework:appexecfwk_base",
+
+    # used in push service
     "image_framework:image_native",
     "relational_store:native_rdb",
   ]
@@ -204,6 +244,14 @@ ohos_shared_library("app_manager") {
   if (ability_runtime_hitrace_enable) {
     external_deps += [ "hitrace:libhitracechain" ]
     defines += [ "ABILITY_RUNTIME_HITRACE_ENABLE" ]
+  }
+
+  if (ability_runtime_app_no_response_dialog) {
+    defines += [ "APP_NO_RESPONSE_DIALOG" ]
+  }
+
+  if (app_mgr_service_hicollie_enable) {
+    defines += [ "APP_MGR_SERVICE_HICOLLIE_ENABLE" ]
   }
 
   innerapi_tags = [ "platformsdk" ]
@@ -230,9 +278,9 @@ ohos_shared_library("app_state_data") {
     "${ability_runtime_services_path}/common/include",
   ]
 
-  sources = [ 
+  sources = [
+    "${ability_runtime_path}/utils/global/common/src/ui_extension_wrapper.cpp",
     "src/appmgr/app_state_data.cpp",
-    "${ability_runtime_path}/utils/global/common/src/ui_extension_wrapper.cpp"
   ]
 
   defines = [ "AMS_LOG_TAG = \"AppexecfwkCore\"" ]
@@ -252,4 +300,7 @@ ohos_shared_library("app_state_data") {
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "ability"
   part_name = "ability_runtime"
+  configs = [
+    "//foundation/ability/ability_runtime/services/common:size_optimize_config",
+  ]
 }

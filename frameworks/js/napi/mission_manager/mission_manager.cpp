@@ -124,7 +124,11 @@ private:
             return CreateJsValue(env, missionListenerId_);
         }
 
-        missionListener_ = new JsMissionListener(env);
+        missionListener_ = sptr<JsMissionListener>(new (std::nothrow) JsMissionListener(env));
+        if (missionListener_ == nullptr) {
+            ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
+            return CreateJsUndefined(env);
+        }
         auto ret = AbilityManagerClient::GetInstance()->RegisterMissionListener(missionListener_);
         if (ret == 0) {
             missionListener_->AddJsListenerObject(missionListenerId_, argv[0]);

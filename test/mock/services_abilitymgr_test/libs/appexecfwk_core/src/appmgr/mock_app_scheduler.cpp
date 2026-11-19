@@ -22,6 +22,16 @@
 
 namespace OHOS {
 namespace AAFwk {
+
+namespace {
+int32_t g_verifyKillProcessPermissionResult = ERR_OK;
+}
+
+void SetVerifyKillProcessPermissionResult(int32_t result)
+{
+    g_verifyKillProcessPermissionResult = result;
+}
+
 AppScheduler::AppScheduler()
 {
     TAG_LOGI(AAFwkTag::TEST, " Test AppScheduler::AppScheduler()");
@@ -57,12 +67,13 @@ int AppScheduler::TerminateAbility(const sptr<IRemoteObject>& token, bool isClea
     return ERR_OK;
 }
 
-void AppScheduler::MoveToForeground(const sptr<IRemoteObject>& token)
+void AppScheduler::MoveToForeground(const sptr<IRemoteObject>& token,
+    const AppExecFwk::UiAbilityLastCallerInfo& callerInfo)
 {
     TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::MoveToForeground()");
 }
 
-void AppScheduler::MoveToBackground(const sptr<IRemoteObject>& token)
+void AppScheduler::MoveToBackground(const sptr<IRemoteObject>& token, bool isFromScreenOffBackground)
 {
     TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::MoveToBackground()");
 }
@@ -104,7 +115,7 @@ void AppScheduler::OnAbilityRequestDone(const sptr<IRemoteObject>& token, const 
 }
 
 int AppScheduler::KillApplication(const std::string& bundleName, bool clearPageStack, int32_t appIndex,
-    const std::string& reason)
+    const std::string& reason, int32_t userId)
 {
     TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::KillApplication()");
     return ERR_OK;
@@ -205,11 +216,11 @@ bool AppScheduler::IsMemorySizeSufficient() const
 int32_t AppScheduler::VerifyKillProcessPermission(const std::string &bundleName) const
 {
     TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::VerifyKillProcessPermission()");
-    return ERR_OK;
+    return g_verifyKillProcessPermissionResult;
 }
 
-void AppScheduler::StartSpecifiedAbility(const AAFwk::Want&, const AppExecFwk::AbilityInfo&, int32_t,
-    const std::string&, bool)
+void AppScheduler::StartSpecifiedAbility(const AAFwk::Want&, const AppExecFwk::AbilityInfo&,
+    const AbilityRuntime::StartSpecifiedParam&)
 {}
 
 int AppScheduler::StartUserTest(
@@ -233,7 +244,8 @@ int32_t AppScheduler::NotifyAppMgrRecordExitReason(int32_t pid, int32_t reason, 
 }
 
 int32_t AppScheduler::NotifyAppMgrRecordExitReasonCompability(
-    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg)
+    int32_t pid, int32_t killId, const std::string &killMsg, const std::string &innerMsg,
+    int32_t reason, int32_t callerPid)
 {
     return 0;
 }
@@ -267,5 +279,12 @@ int32_t AppScheduler::RegisterAbilityDebugResponse(const sptr<AppExecFwk::IAbili
 {
     return 0;
 }
+
+bool AppScheduler::CheckProcessAvailable(int32_t pid)
+{
+    return true;
+}
+
+void TaskStateCallbackImpl::OnTaskFinished(const std::string &taskId, int32_t userId) {}
 }  // namespace AAFwk
 }  // namespace OHOS

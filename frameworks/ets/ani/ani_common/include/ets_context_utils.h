@@ -46,6 +46,7 @@ ani_object NativeCreateSystemHspModuleResourceManager(ani_env *env, ani_object a
 ani_object CreateContextObject(ani_env* env, ani_class contextClass, std::shared_ptr<Context> nativeContext);
 ani_boolean ContextType(ani_env *env, ani_object self, ani_object contextType);
 void SetEventHubContext(ani_env *aniEnv, ani_ref eventHubRef, ani_long nativeContextLong);
+void BindNativeFunction(ani_env *aniEnv);
 
 class EtsBaseContext final {
 public:

@@ -66,7 +66,7 @@ public:
      *
      * @return Returns ERR_OK on success, others on failure.
      */
-    ErrCode LockMissionForCleanup(int32_t missionId);
+    ErrCode LockMissionForCleanup(int32_t missionId, int32_t userId = -1);
 
     /**
      * @brief Unlock specified mission.
@@ -74,7 +74,7 @@ public:
      *
      * @return Returns ERR_OK on success, others on failure.
      */
-    ErrCode UnlockMissionForCleanup(int32_t missionId);
+    ErrCode UnlockMissionForCleanup(int32_t missionId, int32_t userId = -1);
 
         /**
      * @brief Register mission listener to ability mgr.
@@ -82,7 +82,7 @@ public:
      *
      * @return Returns ERR_OK on success, others on failure.
      */
-    ErrCode RegisterMissionListener(sptr<IMissionListener> listener);
+    ErrCode RegisterMissionListener(sptr<IMissionListener> listener, int32_t userId = -1);
 
     /**
      * @brief UnRegister mission listener from ability mgr.
@@ -90,7 +90,7 @@ public:
      *
      * @return Returns ERR_OK on success, others on failure.
      */
-    ErrCode UnRegisterMissionListener(sptr<IMissionListener> listener);
+    ErrCode UnRegisterMissionListener(sptr<IMissionListener> listener, int32_t userId = -1);
 
     /**
      * @brief Register mission listener to ability manager service.
@@ -118,7 +118,8 @@ public:
      *
      * @return Returns ERR_OK on success, others on failure.
      */
-    ErrCode GetMissionInfos(const std::string &deviceId, int32_t numMax, std::vector<MissionInfo> &missionInfos);
+    ErrCode GetMissionInfos(const std::string &deviceId, int32_t numMax, std::vector<MissionInfo> &missionInfos,
+        int32_t userId = -1);
 
     /**
      * @brief Get mission info by id.
@@ -128,7 +129,8 @@ public:
      *
      * @return Returns ERR_OK on success, others on failure.
      */
-    ErrCode GetMissionInfo(const std::string &deviceId, int32_t missionId, MissionInfo &missionInfo);
+    ErrCode GetMissionInfo(const std::string &deviceId, int32_t missionId, MissionInfo &missionInfo,
+        int32_t userId = -1);
 
     /**
      * @brief Get the Mission Snapshot Info object
@@ -139,7 +141,7 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     ErrCode GetMissionSnapshot(const std::string &deviceId, int32_t missionId,
-        MissionSnapshot &snapshot, bool isLowResolution = false);
+        MissionSnapshot &snapshot, bool isLowResolution = false, int32_t userId = -1);
 
     /**
      * @brief Clean mission by id.
@@ -147,14 +149,14 @@ public:
      *
      * @return Returns ERR_OK on success, others on failure.
      */
-    ErrCode CleanMission(int32_t missionId);
+    ErrCode CleanMission(int32_t missionId, int32_t userId = -1);
 
     /**
      * @brief Clean all missions in system.
      *
      * @return Returns ERR_OK on success, others on failure.
      */
-    ErrCode CleanAllMissions();
+    ErrCode CleanAllMissions(int32_t userId = -1);
 
     /**
      * @brief Move a mission to front.
@@ -179,7 +181,8 @@ public:
      * @param topMissionId Indicate which mission will be moved to top, if set to -1, missions' order won't change
      * @return Returns ERR_OK on success, others on failure.
      */
-    ErrCode MoveMissionsToForeground(const std::vector<int32_t> &missionIds, int32_t topMissionId);
+    ErrCode MoveMissionsToForeground(const std::vector<int32_t> &missionIds, int32_t topMissionId,
+        int32_t userId = -1);
 
     /**
      * Move missions to background
@@ -187,7 +190,8 @@ public:
      * @param result The result of move missions to background, and the array is sorted by zOrder
      * @return Returns ERR_OK on success, others on failure.
      */
-    ErrCode MoveMissionsToBackground(const std::vector<int32_t> &missionIds, std::vector<int32_t> &result);
+    ErrCode MoveMissionsToBackground(const std::vector<int32_t> &missionIds, std::vector<int32_t> &result,
+        int32_t userId = -1);
 
     /**
      * @brief Get mission id by ability token.
@@ -222,7 +226,7 @@ public:
      * @return Returns ERR_OK if success.
      */
     ErrCode SetMissionContinueState(sptr<IRemoteObject> token, const AAFwk::ContinueState &state,
-        sptr<IRemoteObject> sessionToken);
+        sptr<IRemoteObject> sessionToken, int32_t userId = -1);
 
 #ifdef SUPPORT_SCREEN
     /**
@@ -232,7 +236,7 @@ public:
      * @param label Indicate the label showed of the ability in recent missions.
      * @return Returns ERR_OK on success, others on failure.
      */
-    ErrCode SetMissionLabel(sptr<IRemoteObject> abilityToken, const std::string &label);
+    ErrCode SetMissionLabel(sptr<IRemoteObject> abilityToken, const std::string &label, int32_t userId = -1);
 
     /**
      * Set mission icon of this ability.
@@ -242,7 +246,7 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     ErrCode SetMissionIcon(sptr<IRemoteObject> abilityToken,
-        std::shared_ptr<OHOS::Media::PixelMap> icon);
+        std::shared_ptr<OHOS::Media::PixelMap> icon, int32_t userId = -1);
 
     /**
      * Called to update mission snapshot.
@@ -259,7 +263,8 @@ public:
      * @param results Output parameters, return results up to 20 query results.
      * @return Returns ERR_OK on success, others on failure.
      */
-    int32_t IsValidMissionIds(const std::vector<int32_t> &missionIds, std::vector<MissionValidResult> &results);
+    int32_t IsValidMissionIds(const std::vector<int32_t> &missionIds, std::vector<MissionValidResult> &results,
+        int32_t userId = -1);
 
     /**
      * Open atomic service window prior to finishing free install.
@@ -279,7 +284,7 @@ public:
      * @param missionId, The mission id of the UIAbility need to be terminated.
      * @return Returns ERR_OK on success, others on failure.
      */
-    ErrCode TerminateMission(int32_t missionId);
+    ErrCode TerminateMission(int32_t missionId, int32_t userId = -1);
 private:
     class MissionMgrDeathRecipient : public IRemoteObject::DeathRecipient {
     public:

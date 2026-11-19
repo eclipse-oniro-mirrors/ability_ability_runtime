@@ -44,7 +44,7 @@ ModularObjectEventReceiver::ModularObjectEventReceiver(const EventFwk::CommonEve
 
 void ModularObjectEventReceiver::OnReceiveEvent(const EventFwk::CommonEventData &data)
 {
-    const std::string action = data.GetWant().GetAction();
+    const std::string action = data.GetWant().GetActionRef();
     TAG_LOGI(AAFwkTag::EXT, "received event action: %{public}s", action.c_str());
 
     if (action == EventFwk::CommonEventSupport::COMMON_EVENT_USER_SWITCHED) {
@@ -90,11 +90,17 @@ void ModularObjectEventReceiver::LoadModularObjectExtensionInfos(int32_t userId)
             DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->QueryVersion(key, versionCode);
         GetModularObjectExtensionInfos(bundleInfo, infos);
         if (hasRecord && bundleInfo.versionCode != versionCode) {
-            DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->InsertData(
+            auto ret = DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->InsertOrUpdateData(
                 key, infos, bundleInfo.versionCode);
+            if (ret != NativeRdb::E_OK) {
+                TAG_LOGE(AAFwkTag::EXT, "InsertOrUpdateData failed, key:%{public}s ret:%{public}d", key.c_str(), ret);
+            }
         } else if (!hasRecord && !infos.empty()) {
-            DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->InsertData(
+            auto ret = DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->InsertOrUpdateData(
                 key, infos, bundleInfo.versionCode);
+            if (ret != NativeRdb::E_OK) {
+                TAG_LOGE(AAFwkTag::EXT, "InsertOrUpdateData failed, key:%{public}s ret:%{public}d", key.c_str(), ret);
+            }
         }
         infos.clear();
     }
@@ -105,6 +111,7 @@ void ModularObjectEventReceiver::HandleEventUserSwitched(const EventFwk::CommonE
     int32_t userId = data.GetCode();
     if (userId < 0) {
         TAG_LOGE(AAFwkTag::EXT, "invalid switched userId: %{public}d", userId);
+        return;
     }
 
     std::lock_guard<std::mutex> lock(userIdMutex_);
@@ -122,7 +129,7 @@ void ModularObjectEventReceiver::HandleEventUserSwitched(const EventFwk::CommonE
 
 void ModularObjectEventReceiver::HandleBundleScanFinished(const EventFwk::CommonEventData &data)
 {
-    uint32_t userId = AppExecFwk::OsAccountManagerWrapper::GetCurrentActiveAccountId();
+    int32_t userId = AppExecFwk::OsAccountManagerWrapper::GetCurrentActiveAccountId();
     if (userId == 0) {
         TAG_LOGI(AAFwkTag::EXT, "use MAIN_USER_ID(%{public}d) instead of current userId: (%{public}d)",
             MAIN_USER_ID, userId);
@@ -135,8 +142,8 @@ void ModularObjectEventReceiver::HandleBundleScanFinished(const EventFwk::Common
 
 void ModularObjectEventReceiver::HandleBundleInstall(const EventFwk::CommonEventData &data)
 {
-    const AAFwk::Want& want = data.GetWant();
-    std::string bundleName = want.GetElement().GetBundleName();
+    const auto &want = data.GetWant();
+    const auto &bundleName = want.GetBundleNameRef();
     TAG_LOGI(AAFwkTag::EXT, "handle common event package add, bundleName: %{public}s", bundleName.c_str());
     if (bundleName.empty()) {
         TAG_LOGE(AAFwkTag::EXT, "bundle name is empty");
@@ -156,8 +163,8 @@ void ModularObjectEventReceiver::HandleBundleInstall(const EventFwk::CommonEvent
 
 void ModularObjectEventReceiver::HandleBundleRemoved(const EventFwk::CommonEventData &data)
 {
-    const AAFwk::Want& want = data.GetWant();
-    std::string bundleName = want.GetElement().GetBundleName();
+    const auto &want = data.GetWant();
+    const auto &bundleName = want.GetBundleNameRef();
     TAG_LOGI(AAFwkTag::EXT, "handle common event package remove, bundleName: %{public}s", bundleName.c_str());
     if (bundleName.empty()) {
         TAG_LOGE(AAFwkTag::EXT, "bundle name is empty");
@@ -177,8 +184,8 @@ void ModularObjectEventReceiver::HandleBundleRemoved(const EventFwk::CommonEvent
 
 void ModularObjectEventReceiver::HandleBundleChanged(const EventFwk::CommonEventData &data)
 {
-    const AAFwk::Want& want = data.GetWant();
-    std::string bundleName = want.GetElement().GetBundleName();
+    const auto &want = data.GetWant();
+    const auto &bundleName = want.GetBundleNameRef();
     TAG_LOGI(AAFwkTag::EXT, "handle common event package changed, bundleName: %{public}s", bundleName.c_str());
     if (bundleName.empty()) {
         TAG_LOGE(AAFwkTag::EXT, "bundle name is empty");
@@ -219,7 +226,7 @@ void ModularObjectEventReceiver::InsertModularObjectExtensionInfo(
         return;
     }
     std::string key = GenerateModularObjectKey(userId, bundleName, appIndex);
-    DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->InsertData(
+    DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->InsertOrUpdateData(
         key, infos, bundleInfo.versionCode);
 }
 
@@ -246,7 +253,7 @@ void ModularObjectEventReceiver::UpdateModularObjectExtensionInfos(const std::st
         DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->DeleteData(key);
         return;
     }
-    DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->UpdateData(
+    DelayedSingleton<ModularObjectExtensionRdbStorageMgr>::GetInstance()->InsertOrUpdateData(
         key, infos, bundleInfo.versionCode);
 }
 

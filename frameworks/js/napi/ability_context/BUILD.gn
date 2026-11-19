@@ -35,6 +35,8 @@ gen_js_obj("ability_context_abc") {
 }
 
 ohos_shared_library("abilitycontext_napi") {
+  branch_protector_ret = "pac_ret"
+
   sources = [ "ability_context_module.cpp" ]
 
   cflags = [
@@ -63,7 +65,11 @@ ohos_shared_library("abilitycontext_napi") {
     ":ability_context_js",
   ]
 
-  external_deps = [ "napi:ace_napi" ]
+  external_deps = [
+    "libuv:uv",
+    "napi:ace_napi",
+    "node:node_header_notice",
+  ]
 
   relative_install_dir = "module/application"
   subsystem_name = "ability"

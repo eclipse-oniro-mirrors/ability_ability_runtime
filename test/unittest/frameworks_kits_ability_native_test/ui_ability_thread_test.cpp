@@ -1381,6 +1381,124 @@ HWTEST_F(UIAbilityThreadTest, AbilityRuntime_ScheduleAbilityRequestSuccess_0200,
     GTEST_LOG_(INFO) << "AbilityRuntime_ScheduleAbilityRequestSuccess_0200 end";
 }
 
+/**
+ * @tc.number: AbilityRuntime_InitNativeThread_0100
+ * @tc.name: InitNativeThread
+ * @tc.desc: Test InitNativeThread function when abilityInfo is nullptr
+ */
+HWTEST_F(UIAbilityThreadTest, AbilityRuntime_InitNativeThread_0100, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_InitNativeThread_0100 start";
+    auto abilityThread = std::make_shared<AbilityRuntime::UIAbilityThread>();
+    std::shared_ptr<AbilityInfo> abilityInfo = nullptr;
+    auto ret = abilityThread->InitNativeThread(abilityInfo);
+    EXPECT_EQ(ret, false);
+    GTEST_LOG_(INFO) << "AbilityRuntime_InitNativeThread_0100 end";
+}
+
+/**
+ * @tc.number: AbilityRuntime_InitNativeThread_0200
+ * @tc.name: InitNativeThread
+ * @tc.desc: Test InitNativeThread function when appContext is nullptr (no application context instance)
+ */
+HWTEST_F(UIAbilityThreadTest, AbilityRuntime_InitNativeThread_0200, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_InitNativeThread_0200 start";
+    auto abilityThread = std::make_shared<AbilityRuntime::UIAbilityThread>();
+    std::shared_ptr<AbilityInfo> abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->name = "MockUIAbility";
+    abilityInfo->type = AbilityType::PAGE;
+    auto ret = abilityThread->InitNativeThread(abilityInfo);
+    EXPECT_TRUE(ret);
+    GTEST_LOG_(INFO) << "AbilityRuntime_InitNativeThread_0200 end";
+}
+
+/**
+ * @tc.number: AbilityRuntime_InitNativeThread_0300
+ * @tc.name: InitNativeThread
+ * @tc.desc: Test InitNativeThread function when abilityInfo has no native module (withNativeModule is false)
+ */
+HWTEST_F(UIAbilityThreadTest, AbilityRuntime_InitNativeThread_0300, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_InitNativeThread_0300 start";
+    auto abilityThread = std::make_shared<AbilityRuntime::UIAbilityThread>();
+    std::shared_ptr<AbilityInfo> abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->name = "MockUIAbility";
+    abilityInfo->type = AbilityType::PAGE;
+    sptr<IRemoteObject> token = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    auto abilityRecord = std::make_shared<AbilityLocalRecord>(abilityInfo, token, nullptr, 0);
+    std::shared_ptr<EventRunner> mainRunner = EventRunner::Create(abilityInfo->name);
+    abilityThread->Attach(application, abilityRecord, mainRunner, nullptr);
+    auto ret = abilityThread->InitNativeThread(abilityInfo);
+    EXPECT_EQ(ret, true);
+    GTEST_LOG_(INFO) << "AbilityRuntime_InitNativeThread_0300 end";
+}
+
+/**
+ * @tc.number: AbilityRuntime_InitNativeThread_0400
+ * @tc.name: InitNativeThread
+ * @tc.desc: Test InitNativeThread function when currentAbility_ and abilityImpl_ are both nullptr
+ */
+HWTEST_F(UIAbilityThreadTest, AbilityRuntime_InitNativeThread_0400, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_InitNativeThread_0400 start";
+    auto abilityThread = std::make_shared<AbilityRuntime::UIAbilityThread>();
+    std::shared_ptr<AbilityInfo> abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->name = "MockUIAbility";
+    abilityInfo->type = AbilityType::PAGE;
+    sptr<IRemoteObject> token = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    auto abilityRecord = std::make_shared<AbilityLocalRecord>(abilityInfo, token, nullptr, 0);
+    std::shared_ptr<EventRunner> mainRunner = EventRunner::Create(abilityInfo->name);
+    abilityThread->Attach(application, abilityRecord, mainRunner, nullptr);
+    abilityThread->currentAbility_ = nullptr;
+    abilityThread->abilityImpl_ = nullptr;
+    auto ret = abilityThread->InitNativeThread(abilityInfo);
+    EXPECT_EQ(ret, true);
+    GTEST_LOG_(INFO) << "AbilityRuntime_InitNativeThread_0400 end";
+}
+
+/**
+ * @tc.number: AbilityRuntime_InitNativeThread_0500
+ * @tc.name: InitNativeThread
+ * @tc.desc: Test InitNativeThread function when currentAbility_ and abilityImpl_ are not nullptr
+ */
+HWTEST_F(UIAbilityThreadTest, AbilityRuntime_InitNativeThread_0500, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "AbilityRuntime_InitNativeThread_0500 start";
+    auto abilityThread = std::make_shared<AbilityRuntime::UIAbilityThread>();
+    std::shared_ptr<AbilityInfo> abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->name = "MockUIAbility";
+    abilityInfo->type = AbilityType::PAGE;
+    sptr<IRemoteObject> token = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    auto abilityRecord = std::make_shared<AbilityLocalRecord>(abilityInfo, token, nullptr, 0);
+    std::shared_ptr<EventRunner> mainRunner = EventRunner::Create(abilityInfo->name);
+    abilityThread->Attach(application, abilityRecord, mainRunner, nullptr);
+    abilityThread->currentAbility_ = std::make_shared<AbilityRuntime::UIAbility>();
+    abilityThread->abilityImpl_ = std::make_shared<AbilityRuntime::UIAbilityImpl>();
+    EXPECT_NE(abilityThread->currentAbility_, nullptr);
+    EXPECT_NE(abilityThread->abilityImpl_, nullptr);
+    auto ret = abilityThread->InitNativeThread(abilityInfo);
+    EXPECT_EQ(ret, true);
+    GTEST_LOG_(INFO) << "AbilityRuntime_InitNativeThread_0500 end";
+}
+
+/**
+ * @tc.number: AbilityRuntime_AttachInner_0100
+ * @tc.name: AttachInner
+ * @tc.desc: Test AttachInner function with valid parameters
+ */
+HWTEST_F(UIAbilityThreadTest, AbilityRuntime_AttachInner_0100, Function | MediumTest | Level1)
+{
+    auto abilityThread = std::make_shared<AbilityRuntime::UIAbilityThread>();
+    abilityThread->abilityImpl_ = nullptr;
+    auto abilityRecord = std::make_shared<AbilityLocalRecord>(nullptr, nullptr, nullptr, 0);
+    abilityThread->AttachInner(nullptr, abilityRecord, nullptr);
+    EXPECT_NE(abilityThread->abilityImpl_, nullptr);
+}
+
 #ifdef SUPPORT_SCREEN
 /**
  * @tc.number: AbilityRuntime_GetUIAbility_0100

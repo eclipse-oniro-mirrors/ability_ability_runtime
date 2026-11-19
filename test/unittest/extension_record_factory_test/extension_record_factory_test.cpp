@@ -101,27 +101,6 @@ HWTEST_F(ExtensionRecordFactoryTest, PreCheck_0200, TestSize.Level1)
 }
 
 /*
- * Feature: PreCheck_0300
- * Function: PreCheck
- * SubFunction: NA
- */
-HWTEST_F(ExtensionRecordFactoryTest, PreCheck_0300, TestSize.Level1)
-{
-    auto extensionRecordFactory = std::make_shared<AbilityRuntime::ExtensionRecordFactory>();
-    EXPECT_NE(extensionRecordFactory, nullptr);
-    AAFwk::AbilityRequest abilityRequest;
-    std::string hostBundleName = "com.example.unittest";
-    abilityRequest.extensionType = AppExecFwk::ExtensionAbilityType::EMBEDDED_UI;
-    abilityRequest.appInfo.bundleName = "com.example.unittest";
-    abilityRequest.abilityInfo.name = "MainAbility";
-    abilityRequest.isTargetPlugin = true;
-    abilityRequest.hostBundleName = hostBundleName;
-    abilityRequest.abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::EMBEDDED_UI;
-    int32_t result = extensionRecordFactory->PreCheck(abilityRequest, hostBundleName);
-    EXPECT_EQ(result, ERR_OK);
-}
-
-/*
  * Feature: GetExtensionProcessMode_0100
  * Function: GetExtensionProcessMode
  * SubFunction: NA
@@ -131,23 +110,6 @@ HWTEST_F(ExtensionRecordFactoryTest, GetExtensionProcessMode_0100, TestSize.Leve
     auto extensionRecordFactory = std::make_shared<AbilityRuntime::ExtensionRecordFactory>();
     EXPECT_NE(extensionRecordFactory, nullptr);
     AAFwk::AbilityRequest abilityRequest01;
-    bool boolParam = false;
-    EXPECT_NE(extensionRecordFactory->GetExtensionProcessMode(abilityRequest01, boolParam), ERR_OK);
-    boolParam = true;
-    EXPECT_NE(extensionRecordFactory->GetExtensionProcessMode(abilityRequest01, boolParam), ERR_OK);
-}
-
-/*
- * Feature: GetExtensionProcessMode_0200
- * Function: GetExtensionProcessMode
- * SubFunction: NA
- */
-HWTEST_F(ExtensionRecordFactoryTest, GetExtensionProcessMode_0200, TestSize.Level1)
-{
-    auto extensionRecordFactory = std::make_shared<AbilityRuntime::ExtensionRecordFactory>();
-    EXPECT_NE(extensionRecordFactory, nullptr);
-    AAFwk::AbilityRequest abilityRequest01;
-    abilityRequest01.want.SetParam(AAFwk::Want::DESTINATION_PLUGIN_ABILITY, true);
     bool boolParam = false;
     EXPECT_NE(extensionRecordFactory->GetExtensionProcessMode(abilityRequest01, boolParam), ERR_OK);
     boolParam = true;

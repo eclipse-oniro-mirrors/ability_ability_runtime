@@ -34,6 +34,11 @@ public:
 private:
     void CreateDebugRecord(
         const AAFwk::AbilityRequest &abilityRequest, std::shared_ptr<AAFwk::BaseExtensionRecord> abilityRecord);
+    int32_t EmbeddedUIPreCheck(const AAFwk::AbilityRequest &abilityRequest, const std::string &hostBundleName);
+    bool CheckAllowCrossUserEmbeddedUI(const AAFwk::AbilityRequest &abilityRequest, const std::string &hostBundleName);
+    int32_t CheckHostBundleName(const AAFwk::AbilityRequest &abilityRequest, const std::string &hostBundleName);
+    bool IsInAllowList(const std::vector<AppExecFwk::ExtensionAbilityInfo> &extensionInfos,
+        const std::string &extensionName, const std::string &callerAppIdentifier);
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

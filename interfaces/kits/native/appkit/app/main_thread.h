@@ -22,6 +22,7 @@
 
 #include "ability_record_mgr.h"
 #include "app_jsheap_mem_info.h"
+#include "app_jshandle_map_info.h"
 #include "app_cjheap_mem_info.h"
 #include "app_malloc_info.h"
 #include "app_mgr_interface.h"
@@ -35,6 +36,7 @@
 #include "inner_event.h"
 #include "ipc_singleton.h"
 #include "js_runtime.h"
+#include "mem_dump_callback_interface.h"
 #include "native_engine/native_engine.h"
 #include "overlay_event_subscriber.h"
 #include "resource_manager.h"
@@ -224,6 +226,14 @@ public:
 
     /**
      *
+     * @brief dump the application's jshandle map info.
+     *
+     * @param info, pid, tid, needGc, needSnapshot.
+     */
+    void ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info) override;
+
+    /**
+     *
      * @brief triggerGC and dump the application's cjheap memory info.
      *
      * @param info, pid, needGc, needSnapshot.
@@ -235,9 +245,9 @@ public:
      * @brief triggerGC and dump application's memory info.
      *
      * @param info, pid, tid, needGc, needSnapshot.
-     * @param dumpResult The dump result string
+     * @param callback The callback to receive dump result
      */
-    void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult) override;
+    void ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback) override;
 
     /**
      *
@@ -350,9 +360,12 @@ public:
         const sptr<IQuickFixCallback> &callback, const int32_t recordId) override;
 
     int32_t ScheduleNotifyAppFault(const FaultData &faultData) override;
+    int32_t SchedulePreTemplateProcessDeepFrozen() override;
 #ifdef CJ_FRONTEND
     CJUncaughtExceptionInfo CreateCjExceptionInfo(const std::string &bundleName, uint32_t versionCode,
-        const std::string &hapPath);
+        const std::string &hapPath, const std::string &appRunningId);
+    CJEventReportInfo CreateCjEventReportInfo(const std::string &bundleName, uint32_t versionCode,
+        const std::string &hapPath, std::string &appRunningId);
 #endif
     EtsEnv::ETSUncaughtExceptionInfo CreateEtsExceptionInfo(const std::string &bundleName, uint32_t versionCode,
         const std::string &hapPath, std::string &appRunningId, int32_t pid, std::string &processName);
@@ -438,14 +451,16 @@ private:
 
     void HandleJsHeapMemory(const OHOS::AppExecFwk::JsHeapDumpInfo &info);
 
+    void HandleJsHandleMap(const OHOS::AppExecFwk::JsHandleMapInfo &info);
+
     void HandleCjHeapMemory(const OHOS::AppExecFwk::CjHeapDumpInfo &info);
 
-    void HandleMem(const OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult);
+    void HandleMem(const OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback);
 
     void HandleSchedulePrepareTerminate(const std::string &moduleName);
 
-    void PreloadModule(const AppExecFwk::HapModuleInfo &entryHapModuleInfo,
-        const std::unique_ptr<AbilityRuntime::Runtime>& runtime);
+    void PreloadModule(const BundleInfo &bundleInfo, const AppLaunchData &appLaunchData,
+        const AppExecFwk::HapModuleInfo &entryHapModuleInfo, const std::unique_ptr<AbilityRuntime::Runtime> &runtime);
 
     void ProcessMainAbility(const AbilityInfo &info, const std::unique_ptr<AbilityRuntime::Runtime>& runtime);
 
@@ -695,6 +710,7 @@ private:
     static void HandleSignal(int signal, siginfo_t *siginfo, void *context);
 
     void NotifyAppFault(const FaultData &faultData);
+    void NotifyPreTemplateProcessDeepFrozen();
 
     void OnOverlayChanged(const EventFwk::CommonEventData &data,
         const std::shared_ptr<Global::Resource::ResourceManager> &resourceManager, const std::string &bundleName,
@@ -739,6 +755,14 @@ private:
     int32_t OnAttachLocalDebug(bool isDebugFromLocal);
 
     void HandleConfigByPlugin(Configuration &config, BundleInfo &bundleInfo);
+
+    void DelayedReportNotifyFFRTToRss();
+    void NotifyFFRTSnapshot(int32_t snapshotState);
+
+    void BeforeHandleRequest() override;
+
+    std::mutex needNotifyFFRTNewIpcMutex_;
+    bool needToNotifyFFRTForNewIpc_ = false;
 
 #if defined(NWEB) && defined(NWEB_GRAPHIC)
     void HandleNWebPreload();

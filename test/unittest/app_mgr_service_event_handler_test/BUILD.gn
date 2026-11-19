@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+# Copyright (c) 2021-2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -35,6 +35,9 @@ ohos_unittest("AMSEventHandlerTest") {
     "${ability_runtime_services_path}/appmgr/src/app_mgr_event.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_mgr_service_event_handler.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_mgr_service_inner.cpp",
+
+    "${ability_runtime_services_path}/appmgr/src/app_query_helper.cpp",
+    "${ability_runtime_services_path}/appmgr/src/app_pidfd_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_native_spawn_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_preloader.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_refresh_recipient.cpp",
@@ -44,14 +47,23 @@ ohos_unittest("AMSEventHandlerTest") {
     "${ability_runtime_services_path}/appmgr/src/app_spawn_client.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_state_observer_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/cache_process_manager.cpp",
+    "${ability_runtime_services_path}/appmgr/src/child_process_state_observer_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/exit_resident_process_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/fork_image_info.cpp",
     "${ability_runtime_services_path}/appmgr/src/killing_process_manager.cpp",
+    "${ability_runtime_services_path}/appmgr/src/launch_service_manager.cpp",
+    "${ability_runtime_services_path}/appmgr/src/launch_service_observer_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/module_running_record.cpp",
     "${ability_runtime_services_path}/appmgr/src/multi_user_config_mgr.cpp",
     "${ability_runtime_services_path}/appmgr/src/remote_client_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/render_record.cpp",
     "${ability_runtime_services_path}/appmgr/src/render_state_observer_manager.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/attribution_record.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/common.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/process_schedule.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/system_load_provider.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/task_priority_judge.cpp",
+    "${ability_runtime_services_path}/appmgr/src/task_mgr/task_manager_service.cpp",
     "${ability_runtime_services_path}/appmgr/src/user_record_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/window_focus_changed_listener.cpp",
     "${ability_runtime_services_path}/appmgr/src/window_visibility_changed_listener.cpp",
@@ -65,7 +77,10 @@ ohos_unittest("AMSEventHandlerTest") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/ability_manager:process_options",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
+    "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_native_path}/appkit:appkit_manager_helper",
     "${ability_runtime_path}/utils/global/common:runtime_utils",
     "${ability_runtime_path}/utils/global/freeze:freeze_util",
@@ -80,7 +95,6 @@ ohos_unittest("AMSEventHandlerTest") {
 
   external_deps = [
     "ability_base:want",
-    "ability_runtime:ability_deps_wrapper",
     "access_token:libaccesstoken_sdk",
     "appspawn:appspawn_client",
     "bundle_framework:appexecfwk_base",
@@ -98,6 +112,8 @@ ohos_unittest("AMSEventHandlerTest") {
     "init:libbeget_proxy",
     "init:libbegetutil",
     "ipc:ipc_core",
+    "ipc:ipc_single",
+    "json:nlohmann_json_static",
     "kv_store:distributeddata_inner",
     "kv_store:distributeddata_mgr",
     "memmgr:memmgrclient",
@@ -106,7 +122,7 @@ ohos_unittest("AMSEventHandlerTest") {
     "resource_schedule_service:ressched_client",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
-    "json:nlohmann_json_static",
+    "user_auth_framework:userauth_client",
     "window_manager:session_manager_lite",
   ]
   if (os_dlp_part_enabled) {

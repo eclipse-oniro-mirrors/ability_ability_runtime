@@ -28,7 +28,7 @@ using namespace OHOS::AppExecFwk;
 namespace OHOS {
 namespace AAFwk {
 namespace {
-const char* START_OPTIONS_WITH_ANIMATION = "persist.sys.abilityms.start_options_with_animation";
+const char* SUPPORT_BLOCK_ALL_APP_START = "persist.sys.abilityms.support_block_all_app_start";
 }  // namespace
 class AbilityManagerServiceSeventhTest : public testing::Test {
 public:
@@ -60,8 +60,8 @@ HWTEST_F(AbilityManagerServiceSeventhTest, BlockAllAppStart_001, TestSize.Level1
     EXPECT_NE(abilityMs_, nullptr);
     PermissionVerification::flag = PermissionVerification::FLAG::IS_SA_CALL;
     PermissionVerification::hasBlockAllAppStartPermission = true;
-    AppUtils::isStartOptionsWithAnimation_ = true;
-    EXPECT_EQ(AppUtils::GetInstance().IsStartOptionsWithAnimation(), true);
+    AppUtils::isSupportBlockAllAppStart_ = true;
+    EXPECT_EQ(AppUtils::GetInstance().IsSupportBlockAllAppStart(), true);
     EXPECT_EQ(PermissionVerification::GetInstance()->VerifyBlockAllAppStartPermission(), true);
     auto retCode = abilityMs_->BlockAllAppStart(true);
     EXPECT_EQ(retCode, ERR_OK);
@@ -81,8 +81,8 @@ HWTEST_F(AbilityManagerServiceSeventhTest, BlockAllAppStart_002, TestSize.Level1
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSeventhTest BlockAllAppStart_002 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
-    AppUtils::isStartOptionsWithAnimation_ = false;
-    EXPECT_EQ(AppUtils::GetInstance().IsStartOptionsWithAnimation(), false);
+    AppUtils::isSupportBlockAllAppStart_ = false;
+    EXPECT_EQ(AppUtils::GetInstance().IsSupportBlockAllAppStart(), false);
     auto retCode = abilityMs_->BlockAllAppStart(true);
     EXPECT_EQ(retCode, ERR_PERMISSION_DENIED);
     EXPECT_EQ(abilityMs_->shouldBlockAllAppStart_, false);
@@ -101,8 +101,8 @@ HWTEST_F(AbilityManagerServiceSeventhTest, BlockAllAppStart_003, TestSize.Level1
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSeventhTest BlockAllAppStart_003 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
-    AppUtils::isStartOptionsWithAnimation_ = true;
-    EXPECT_EQ(AppUtils::GetInstance().IsStartOptionsWithAnimation(), true);
+    AppUtils::isSupportBlockAllAppStart_ = true;
+    EXPECT_EQ(AppUtils::GetInstance().IsSupportBlockAllAppStart(), true);
     PermissionVerification::flag = PermissionVerification::FLAG::IS_SA_CALL;
     PermissionVerification::hasBlockAllAppStartPermission = false;
     EXPECT_EQ(PermissionVerification::GetInstance()->VerifyBlockAllAppStartPermission(), false);
@@ -126,8 +126,8 @@ HWTEST_F(AbilityManagerServiceSeventhTest, BlockAllAppStart_004, TestSize.Level1
     EXPECT_NE(abilityMs_, nullptr);
     PermissionVerification::flag = PermissionVerification::FLAG::IS_SA_CALL;
     PermissionVerification::hasBlockAllAppStartPermission = true;
-    AppUtils::isStartOptionsWithAnimation_ = true;
-    EXPECT_EQ(AppUtils::GetInstance().IsStartOptionsWithAnimation(), true);
+    AppUtils::isSupportBlockAllAppStart_ = true;
+    EXPECT_EQ(AppUtils::GetInstance().IsSupportBlockAllAppStart(), true);
     EXPECT_EQ(PermissionVerification::GetInstance()->VerifyBlockAllAppStartPermission(), true);
     auto retCode = abilityMs_->BlockAllAppStart(false);
     EXPECT_EQ(retCode, ERR_OK);
@@ -147,8 +147,8 @@ HWTEST_F(AbilityManagerServiceSeventhTest, ShouldBlockAllAppStart_001, TestSize.
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSeventhTest ShouldBlockAllAppStart_001 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
-    AppUtils::isStartOptionsWithAnimation_ = true;
-    EXPECT_EQ(AppUtils::GetInstance().IsStartOptionsWithAnimation(), true);
+    AppUtils::isSupportBlockAllAppStart_ = true;
+    EXPECT_EQ(AppUtils::GetInstance().IsSupportBlockAllAppStart(), true);
     abilityMs_->shouldBlockAllAppStart_ = true;
     EXPECT_EQ(abilityMs_->ShouldBlockAllAppStart(), true);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSeventhTest ShouldBlockAllAppStart_001 end");
@@ -166,8 +166,8 @@ HWTEST_F(AbilityManagerServiceSeventhTest, ShouldBlockAllAppStart_002, TestSize.
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSeventhTest ShouldBlockAllAppStart_002 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
-    AppUtils::isStartOptionsWithAnimation_ = false;
-    EXPECT_EQ(AppUtils::GetInstance().IsStartOptionsWithAnimation(), false);
+    AppUtils::isSupportBlockAllAppStart_ = false;
+    EXPECT_EQ(AppUtils::GetInstance().IsSupportBlockAllAppStart(), false);
     EXPECT_EQ(abilityMs_->ShouldBlockAllAppStart(), false);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSeventhTest ShouldBlockAllAppStart_002 end");
 }
@@ -184,8 +184,8 @@ HWTEST_F(AbilityManagerServiceSeventhTest, ShouldBlockAllAppStart_003, TestSize.
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSeventhTest ShouldBlockAllAppStart_003 start");
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
     EXPECT_NE(abilityMs_, nullptr);
-    AppUtils::isStartOptionsWithAnimation_ = true;
-    EXPECT_EQ(AppUtils::GetInstance().IsStartOptionsWithAnimation(), true);
+    AppUtils::isSupportBlockAllAppStart_ = true;
+    EXPECT_EQ(AppUtils::GetInstance().IsSupportBlockAllAppStart(), true);
     abilityMs_->shouldBlockAllAppStart_ = false;
     EXPECT_EQ(abilityMs_->ShouldBlockAllAppStart(), false);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSeventhTest ShouldBlockAllAppStart_003 end");

@@ -62,6 +62,7 @@ private:
     bool GetCallLocalRecord(const AppExecFwk::ElementName &elementName,
         std::shared_ptr<LocalCallRecord> &localCallRecord, int32_t accountId);
     void OnSingletonCallStubDied(const wptr<IRemoteObject> &remote);
+    void OnMultipleCallStubDied(const wptr<IRemoteObject> &remote);
     int32_t GetCurrentUserId();
     int32_t GetValidUserId(int32_t accountId);
     bool IsCallBackCalled(const std::vector<std::shared_ptr<CallerCallBack>> &callers) const;
@@ -95,8 +96,11 @@ public:
 
     void OnRemoteStateChanged(const AppExecFwk::ElementName &element, int32_t abilityState) override;
 private:
+    std::shared_ptr<LocalCallRecord> GetLocalCallRecord();
+    std::shared_ptr<LocalCallContainer> GetContainer();
     std::shared_ptr<LocalCallRecord> localCallRecord_;
     std::weak_ptr<LocalCallContainer> container_;
+    std::mutex mutex_;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

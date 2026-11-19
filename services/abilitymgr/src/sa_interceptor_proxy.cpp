@@ -51,9 +51,11 @@ int32_t SAInterceptorProxy::OnCheckStarting(const std::string &params, Rule &rul
     }
 
     std::unique_ptr<Rule> value(reply.ReadParcelable<Rule>());
-    if (value != nullptr) {
-        rule = *value;
+    if (value == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "read rule failed");
+        return AAFwk::ERR_SA_INTERCEPTOR_READ_PARAMS_FAILED;
     }
+    rule = *value;
     return result;
 }
 }  // namespace AbilityRuntime

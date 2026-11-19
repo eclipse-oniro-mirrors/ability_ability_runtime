@@ -37,6 +37,7 @@
 #include "parameters.h"
 #include "running_process_info.h"
 #include "start_ability_utils.h"
+#include "user_controller.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -46,9 +47,27 @@ using OHOS::AppExecFwk::AbilityType;
 using OHOS::AAFwk::AbilityPermissionUtil;
 using OHOS::AppExecFwk::MockAppMgrImpl;
 
+namespace {
+uint32_t grantedDirectBootToken = 0;
+uint32_t lastVerifiedDirectBootToken = 0;
+std::string lastVerifiedPermission;
+int32_t directBootPermissionChecks = 0;
+}
+
+namespace OHOS::Security::AccessToken {
+int AccessTokenKit::VerifyAccessToken(AccessTokenID tokenID, const std::string &permissionName, bool crossIpc)
+{
+    lastVerifiedDirectBootToken = tokenID;
+    lastVerifiedPermission = permissionName;
+    ++directBootPermissionChecks;
+    return tokenID != INVALID_TOKENID && tokenID == grantedDirectBootToken &&
+        permissionName == AAFwk::PermissionConstants::PERMISSION_ALLOW_DIRECT_BOOT ?
+        PERMISSION_GRANTED : PERMISSION_DENIED;
+}
+}
+
 namespace OHOS {
 namespace AAFwk {
-bool AppUtils::isAllowStartAbilityWithoutCallerToken = false;
 bool AppUtils::isSupportMultiInstance = false;
 bool AppUtils::isStartOptionsWithAnimation = false;
 bool AppUtils::isPrepareTerminateEnabled = false;
@@ -71,6 +90,10 @@ bool BundleMgrHelper::isNullBundleMgrInstance = false;
 int32_t BundleMgrHelper::retGetNameForUid = 0;
 BundleInfo BundleMgrHelper::retBundleInfo;
 bool BundleMgrHelper::retGetBundleInfo = 0;
+BundleInfo BundleMgrHelper::retCloneBundleInfo;
+ErrCode BundleMgrHelper::retGetCloneBundleInfo = ERR_INVALID_VALUE;
+int32_t BundleMgrHelper::cloneQueryCount = 0;
+int32_t BundleMgrHelper::lastCloneIndex = -1;
 } // namespace AppExecFwk
 
 namespace AbilityRuntime {
@@ -78,7 +101,6 @@ using namespace AAFwk;
 
 namespace {
 constexpr const char* IS_DELEGATOR_CALL = "isDelegatorCall";
-constexpr const char* SETTINGS = "settings";
 constexpr char INSIGHT_INTENT_EXECUTE_PARAM_NAME[] = "ohos.insightIntent.executeParam.name";
 } // namespace
 
@@ -93,7 +115,6 @@ public:
 void AbilityPermissionUtilTest::SetUpTestCase(void)
 {
     MyFlag::flag_ = 0;
-    AppUtils::isAllowStartAbilityWithoutCallerToken = false;
     BundleMgrHelper::isNullBundleMgrInstance = false;
     BundleMgrHelper::retGetNameForUid = 0;
     BundleMgrHelper::retGetBundleInfo = 0;
@@ -106,7 +127,23 @@ void AbilityPermissionUtilTest::SetUpTestCase(void)
 }
 
 void AbilityPermissionUtilTest::TearDownTestCase(void) {}
-void AbilityPermissionUtilTest::SetUp() {}
+void AbilityPermissionUtilTest::SetUp()
+{
+    grantedDirectBootToken = 0;
+    lastVerifiedDirectBootToken = 0;
+    lastVerifiedPermission.clear();
+    directBootPermissionChecks = 0;
+    BundleMgrHelper::isNullBundleMgrInstance = false;
+    BundleMgrHelper::retGetBundleInfo = false;
+    BundleMgrHelper::retBundleInfo = {};
+    BundleMgrHelper::retCloneBundleInfo = {};
+    BundleMgrHelper::retGetCloneBundleInfo = ERR_INVALID_VALUE;
+    BundleMgrHelper::cloneQueryCount = 0;
+    BundleMgrHelper::lastCloneIndex = -1;
+    // Reset UserController mock status before each test
+    AbilityRuntime::UserController::GetInstance().SetMockUserLockStatus(
+        AbilityRuntime::UserController::UserLockStatus::USER_LOCK_STATUS_BUTT);
+}
 void AbilityPermissionUtilTest::TearDown() {}
 
 /**
@@ -777,24 +814,6 @@ HWTEST_F(AbilityPermissionUtilTest, IsDominateScreen_0500, TestSize.Level2)
 }
 
 /**
- * @tc.name: IsDominateScreen_0600
- * @tc.desc: IsDominateScreen_0600 Test
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(AbilityPermissionUtilTest, IsDominateScreen_0600, TestSize.Level2)
-{
-    TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_0600 start");
-
-    AppUtils::isAllowStartAbilityWithoutCallerToken = true;
-    Want want;
-    bool isPendingWantCaller = false;
-    bool ret = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, isPendingWantCaller);
-    EXPECT_FALSE(ret);
-    TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_0600 end");
-}
-
-/**
  * @tc.name: IsDominateScreen_0700
  * @tc.desc: IsDominateScreen_0700 Test
  * @tc.type: FUNC
@@ -828,66 +847,6 @@ HWTEST_F(AbilityPermissionUtilTest, IsDominateScreen_0800, TestSize.Level2)
     bool ret = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, isPendingWantCaller);
     EXPECT_FALSE(ret);
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_0800 end");
-}
-
-/**
- * @tc.name: IsDominateScreen_0900
- * @tc.desc: IsDominateScreen_0900 Test
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(AbilityPermissionUtilTest, IsDominateScreen_0900, TestSize.Level2)
-{
-    TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_0900 start");
-
-    AppUtils::isAllowStartAbilityWithoutCallerToken = true;
-    BundleMgrHelper::isNullBundleMgrInstance = true;
-    Want want;
-    want.SetElementName(SETTINGS, SETTINGS);
-    bool isPendingWantCaller = false;
-    bool ret = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, isPendingWantCaller);
-    EXPECT_FALSE(ret);
-    TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_0900 end");
-}
-
-/**
- * @tc.name: IsDominateScreen_1000
- * @tc.desc: IsDominateScreen_1000 Test
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(AbilityPermissionUtilTest, IsDominateScreen_1000, TestSize.Level2)
-{
-    TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_1000 start");
-
-    AppUtils::isAllowStartAbilityWithoutCallerToken = true;
-    BundleMgrHelper::retGetNameForUid = -1;
-    Want want;
-    want.SetElementName(SETTINGS, SETTINGS);
-    bool isPendingWantCaller = false;
-    bool ret = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, isPendingWantCaller);
-    EXPECT_FALSE(ret);
-    TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_1000 end");
-}
-
-/**
- * @tc.name: IsDominateScreen_1100
- * @tc.desc: IsDominateScreen_1100 Test
- * @tc.type: FUNC
- * @tc.require: NA
- */
-HWTEST_F(AbilityPermissionUtilTest, IsDominateScreen_1100, TestSize.Level2)
-{
-    TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_1100 start");
-
-    AppUtils::isAllowStartAbilityWithoutCallerToken = true;
-    BundleMgrHelper::retBundleInfo.applicationInfo.needAppDetail = true;
-    Want want;
-    want.SetElementName(SETTINGS, SETTINGS);
-    bool isPendingWantCaller = false;
-    bool ret = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, isPendingWantCaller);
-    EXPECT_FALSE(ret);
-    TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_1100 end");
 }
 
 /**
@@ -928,23 +887,57 @@ HWTEST_F(AbilityPermissionUtilTest, IsDominateScreen_1300, TestSize.Level2)
 }
 
 /**
- * @tc.name: IsDominateScreen_1400
- * @tc.desc: IsDominateScreen_1400 Test
- * @tc.type: FUNC
- * @tc.require: NA
+ * @tc.name: GetClosestHapTokenId_0100
+ * @tc.desc: a hap token id is unresolved without the ATM service -> ERR_INVALID_VALUE, out-param 0
  */
-HWTEST_F(AbilityPermissionUtilTest, IsDominateScreen_1400, TestSize.Level2)
+HWTEST_F(AbilityPermissionUtilTest, GetClosestHapTokenId_0100, TestSize.Level2)
 {
-    TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_1400 start");
+    uint32_t tokenId = 0x12345; // a hap token id
+    uint32_t hapTokenId = 0;
+    // Resolution now goes through the access_token kit (IPC); with no ATM service in the
+    // unit-test env it fail-closes to ERR_INVALID_VALUE and zeroes the out-param.
+    EXPECT_EQ(AbilityPermissionUtil::GetInstance().GetClosestHapTokenId(tokenId, hapTokenId), ERR_INVALID_VALUE);
+    EXPECT_EQ(hapTokenId, 0);
+}
 
-    AppUtils::isAllowStartAbilityWithoutCallerToken = true;
-    BundleMgrHelper::retGetBundleInfo = -1;
-    Want want;
-    want.SetElementName(SETTINGS, SETTINGS);
-    bool isPendingWantCaller = false;
-    bool ret = AbilityPermissionUtil::GetInstance().IsDominateScreen(want, isPendingWantCaller);
-    EXPECT_FALSE(ret);
-    TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil IsDominateScreen_1400 end");
+/**
+ * @tc.name: GetClosestHapTokenId_0200
+ * @tc.desc: tokenId 0 (invalid) -> ERR_INVALID_VALUE, out-param zeroed
+ */
+HWTEST_F(AbilityPermissionUtilTest, GetClosestHapTokenId_0200, TestSize.Level2)
+{
+    uint32_t tokenId = 0;
+    uint32_t hapTokenId = 1; // ensure it gets overwritten
+    EXPECT_EQ(AbilityPermissionUtil::GetInstance().GetClosestHapTokenId(tokenId, hapTokenId), ERR_INVALID_VALUE);
+    EXPECT_EQ(hapTokenId, 0);
+}
+
+/**
+ * @tc.name: GetClosestHapTokenId_0300
+ * @tc.desc: a non-hap token (0x800000 bit) takes the access_token kit path; with no ATM service
+ *          (or an unresolvable token) it fails
+ */
+HWTEST_F(AbilityPermissionUtilTest, GetClosestHapTokenId_0300, TestSize.Level2)
+{
+    uint32_t tokenId = 0x800123; // 0x800000 bit set -> non-hap
+    uint32_t hapTokenId = 0;
+    EXPECT_EQ(AbilityPermissionUtil::GetInstance().GetClosestHapTokenId(tokenId, hapTokenId), ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: GetClosestHapTokenId_0400
+ * @tc.desc: the actual calling token is unresolvable without the ATM service -> ERR_INVALID_VALUE,
+ *           out-param zeroed (env-independent: any calling token fail-closes without the service)
+ */
+HWTEST_F(AbilityPermissionUtilTest, GetClosestHapTokenId_0400, TestSize.Level2)
+{
+    MyFlag::flag_ = 0;
+    PermissionVerification::retVerifyStartSelfUIAbility = false;
+    uint32_t callingTokenId = IPCSkeleton::GetCallingTokenID();
+    uint32_t hapTokenId = 1;
+    int32_t hapRet = AbilityPermissionUtil::GetInstance().GetClosestHapTokenId(callingTokenId, hapTokenId);
+    EXPECT_EQ(hapRet, ERR_INVALID_VALUE);
+    EXPECT_EQ(hapTokenId, 0);
 }
 
 /**
@@ -1427,5 +1420,201 @@ HWTEST_F(AbilityPermissionUtilTest, NeedCheckStatusBar_0900, TestSize.Level1)
     EXPECT_EQ(ret, false);
     TAG_LOGI(AAFwkTag::TEST, "AbilityPermissionUtil NeedCheckStatusBar_0900 end");
 }
+
+/**
+ * @tc.name: CheckStartUIAbilityByUserLockStatus_0100
+ * @tc.desc: bundleName is empty, should return true
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(AbilityPermissionUtilTest, CheckStartUIAbilityByUserLockStatus_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckStartUIAbilityByUserLockStatus_0100 start");
+    std::string emptyBundleName = "";
+    auto ret = AbilityPermissionUtil::GetInstance().CheckStartUIAbilityByUserLockStatus(emptyBundleName);
+    EXPECT_EQ(ret, true);
+    TAG_LOGI(AAFwkTag::TEST, "CheckStartUIAbilityByUserLockStatus_0100 end");
+}
+
+/**
+ * @tc.name: CheckStartUIAbilityByUserLockStatus_0200
+ * @tc.desc: user unlocked, should return true for all apps
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(AbilityPermissionUtilTest, CheckStartUIAbilityByUserLockStatus_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckStartUIAbilityByUserLockStatus_0200 start");
+
+    AbilityRuntime::UserController::GetInstance().SetMockUserLockStatus(
+        AbilityRuntime::UserController::UserLockStatus::USER_UNLOCKED);
+    std::string bundleName = "com.example.test";
+    auto ret = AbilityPermissionUtil::GetInstance().CheckStartUIAbilityByUserLockStatus(bundleName);
+    EXPECT_EQ(ret, true);
+    TAG_LOGI(AAFwkTag::TEST, "CheckStartUIAbilityByUserLockStatus_0200 end");
+}
+
+/**
+ * @tc.name: CheckStartUIAbilityByUserLockStatus_0300
+ * @tc.desc: user locked + system app, should return true
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(AbilityPermissionUtilTest, CheckStartUIAbilityByUserLockStatus_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckStartUIAbilityByUserLockStatus_0300 start");
+    AbilityRuntime::UserController::GetInstance().SetMockUserLockStatus(
+        AbilityRuntime::UserController::UserLockStatus::USER_LOCKED);
+    BundleMgrHelper::retGetBundleInfo = true;
+    BundleMgrHelper::retBundleInfo.applicationInfo.isSystemApp = true;
+    BundleMgrHelper::retBundleInfo.applicationInfo.name = "systemApp";
+    BundleMgrHelper::retBundleInfo.applicationInfo.bundleName = "com.example.system";
+    std::string bundleName = "com.example.system";
+    auto ret = AbilityPermissionUtil::GetInstance().CheckStartUIAbilityByUserLockStatus(bundleName);
+    EXPECT_EQ(ret, true);
+    BundleMgrHelper::retBundleInfo.applicationInfo.isSystemApp = false;
+    TAG_LOGI(AAFwkTag::TEST, "CheckStartUIAbilityByUserLockStatus_0300 end");
+}
+
+/**
+ * @tc.name: CheckStartUIAbilityByUserLockStatus_0400
+ * @tc.desc: user locked + bms is null, should return false (fail closed)
+ * @tc.type: FUNC
+ * @tc.require: NA
+ */
+HWTEST_F(AbilityPermissionUtilTest, CheckStartUIAbilityByUserLockStatus_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckStartUIAbilityByUserLockStatus_0400 start");
+    AbilityRuntime::UserController::GetInstance().SetMockUserLockStatus(
+        AbilityRuntime::UserController::UserLockStatus::USER_LOCKED);
+    BundleMgrHelper::isNullBundleMgrInstance = true;
+    std::string bundleName = "com.example.test";
+    auto ret = AbilityPermissionUtil::GetInstance().CheckStartUIAbilityByUserLockStatus(bundleName);
+    EXPECT_EQ(ret, false);
+    BundleMgrHelper::isNullBundleMgrInstance = false;
+    TAG_LOGI(AAFwkTag::TEST, "CheckStartUIAbilityByUserLockStatus_0400 end");
+}
+HWTEST_F(AbilityPermissionUtilTest, DirectBoot_MainAppPermissionGranted, TestSize.Level1)
+{
+    UserController::GetInstance().SetMockUserLockStatus(UserController::UserLockStatus::USER_LOCKED);
+    BundleMgrHelper::retGetBundleInfo = true;
+    BundleMgrHelper::retBundleInfo.applicationInfo.accessTokenId = 12345;
+    grantedDirectBootToken = 12345;
+
+    EXPECT_TRUE(AbilityPermissionUtil::GetInstance().CheckStartUIAbilityByUserLockStatus("com.example.directboot"));
+    EXPECT_EQ(lastVerifiedDirectBootToken, 12345u);
+    EXPECT_EQ(lastVerifiedPermission, PermissionConstants::PERMISSION_ALLOW_DIRECT_BOOT);
+    EXPECT_EQ(directBootPermissionChecks, 1);
+    EXPECT_EQ(BundleMgrHelper::cloneQueryCount, 0);
+}
+
+HWTEST_F(AbilityPermissionUtilTest, DirectBoot_MainAppPermissionDenied, TestSize.Level1)
+{
+    UserController::GetInstance().SetMockUserLockStatus(UserController::UserLockStatus::USER_LOCKED);
+    BundleMgrHelper::retGetBundleInfo = true;
+    BundleMgrHelper::retBundleInfo.applicationInfo.accessTokenId = 12345;
+    grantedDirectBootToken = 54321;
+
+    EXPECT_FALSE(AbilityPermissionUtil::GetInstance().CheckStartUIAbilityByUserLockStatus("com.example.directboot"));
+    EXPECT_EQ(lastVerifiedDirectBootToken, 12345u);
+    EXPECT_EQ(directBootPermissionChecks, 1);
+}
+
+HWTEST_F(AbilityPermissionUtilTest, DirectBoot_InvalidTargetTokenRejected, TestSize.Level1)
+{
+    UserController::GetInstance().SetMockUserLockStatus(UserController::UserLockStatus::USER_LOCKED);
+    BundleMgrHelper::retGetBundleInfo = true;
+    BundleMgrHelper::retBundleInfo.applicationInfo.accessTokenId = Security::AccessToken::INVALID_TOKENID;
+
+    EXPECT_FALSE(AbilityPermissionUtil::GetInstance().CheckStartUIAbilityByUserLockStatus("com.example.directboot"));
+    EXPECT_EQ(lastVerifiedDirectBootToken, Security::AccessToken::INVALID_TOKENID);
+    EXPECT_EQ(lastVerifiedPermission, PermissionConstants::PERMISSION_ALLOW_DIRECT_BOOT);
+    EXPECT_EQ(directBootPermissionChecks, 1);
+}
+
+HWTEST_F(AbilityPermissionUtilTest, DirectBoot_BundleQueryFailureRejected, TestSize.Level1)
+{
+    UserController::GetInstance().SetMockUserLockStatus(UserController::UserLockStatus::USER_LOCKED);
+    BundleMgrHelper::retGetBundleInfo = false;
+    BundleMgrHelper::retBundleInfo.applicationInfo.isSystemApp = true;
+    BundleMgrHelper::retBundleInfo.applicationInfo.accessTokenId = 12345;
+    grantedDirectBootToken = 12345;
+
+    EXPECT_FALSE(AbilityPermissionUtil::GetInstance().CheckStartUIAbilityByUserLockStatus("com.example.directboot"));
+    EXPECT_EQ(directBootPermissionChecks, 0);
+    EXPECT_EQ(BundleMgrHelper::cloneQueryCount, 0);
+}
+
+HWTEST_F(AbilityPermissionUtilTest, DirectBoot_MainPermissionUsedWithoutCloneQuery, TestSize.Level1)
+{
+    UserController::GetInstance().SetMockUserLockStatus(UserController::UserLockStatus::USER_LOCKED);
+    BundleMgrHelper::retGetBundleInfo = true;
+    BundleMgrHelper::retBundleInfo.applicationInfo.accessTokenId = 12345;
+    BundleMgrHelper::retCloneBundleInfo.applicationInfo.accessTokenId = 54321;
+    grantedDirectBootToken = 12345;
+
+    EXPECT_TRUE(AbilityPermissionUtil::GetInstance().CheckStartUIAbilityByUserLockStatus("com.example.directboot"));
+    EXPECT_EQ(lastVerifiedDirectBootToken, 12345u);
+    EXPECT_EQ(BundleMgrHelper::cloneQueryCount, 0);
+    EXPECT_EQ(directBootPermissionChecks, 1);
+}
+
+HWTEST_F(AbilityPermissionUtilTest, DirectBoot_CloneDataDoesNotOverrideMainPermission, TestSize.Level1)
+{
+    UserController::GetInstance().SetMockUserLockStatus(UserController::UserLockStatus::USER_LOCKED);
+    BundleMgrHelper::retGetBundleInfo = true;
+    BundleMgrHelper::retBundleInfo.applicationInfo.accessTokenId = 12345;
+    BundleMgrHelper::retGetCloneBundleInfo = ERR_OK;
+    BundleMgrHelper::retCloneBundleInfo.applicationInfo.accessTokenId = 54321;
+    grantedDirectBootToken = 54321;
+
+    EXPECT_FALSE(AbilityPermissionUtil::GetInstance().CheckStartUIAbilityByUserLockStatus("com.example.directboot"));
+    EXPECT_EQ(lastVerifiedDirectBootToken, 12345u);
+    EXPECT_EQ(BundleMgrHelper::cloneQueryCount, 0);
+    EXPECT_EQ(directBootPermissionChecks, 1);
+}
+
+HWTEST_F(AbilityPermissionUtilTest, DirectBoot_MainQueryFailureDoesNotUseClonePermission, TestSize.Level1)
+{
+    UserController::GetInstance().SetMockUserLockStatus(UserController::UserLockStatus::USER_LOCKED);
+    BundleMgrHelper::retGetCloneBundleInfo = ERR_OK;
+    BundleMgrHelper::retCloneBundleInfo.applicationInfo.accessTokenId = 54321;
+    grantedDirectBootToken = 54321;
+
+    EXPECT_FALSE(AbilityPermissionUtil::GetInstance().CheckStartUIAbilityByUserLockStatus("com.example.directboot"));
+    EXPECT_EQ(BundleMgrHelper::cloneQueryCount, 0);
+    EXPECT_EQ(directBootPermissionChecks, 0);
+}
+
+HWTEST_F(AbilityPermissionUtilTest, DirectBoot_NullHelperSkipsPermissionAndCloneQuery, TestSize.Level1)
+{
+    UserController::GetInstance().SetMockUserLockStatus(UserController::UserLockStatus::USER_LOCKED);
+    BundleMgrHelper::isNullBundleMgrInstance = true;
+
+    EXPECT_TRUE(AbilityPermissionUtil::GetInstance().CheckStartUIAbilityByUserLockStatus("com.example.directboot"));
+    EXPECT_EQ(BundleMgrHelper::cloneQueryCount, 0);
+    EXPECT_EQ(directBootPermissionChecks, 0);
+}
+
+HWTEST_F(AbilityPermissionUtilTest, DirectBoot_SystemAppSkipsPermissionAndCloneQuery, TestSize.Level1)
+{
+    UserController::GetInstance().SetMockUserLockStatus(UserController::UserLockStatus::USER_LOCKED);
+    BundleMgrHelper::retGetBundleInfo = true;
+    BundleMgrHelper::retBundleInfo.applicationInfo.isSystemApp = true;
+
+    EXPECT_TRUE(AbilityPermissionUtil::GetInstance().CheckStartUIAbilityByUserLockStatus("com.example.system"));
+    EXPECT_EQ(BundleMgrHelper::cloneQueryCount, 0);
+    EXPECT_EQ(directBootPermissionChecks, 0);
+}
+
+HWTEST_F(AbilityPermissionUtilTest, DirectBoot_UnlockedSkipsPermissionAndCloneQuery, TestSize.Level1)
+{
+    UserController::GetInstance().SetMockUserLockStatus(UserController::UserLockStatus::USER_UNLOCKED);
+
+    EXPECT_TRUE(AbilityPermissionUtil::GetInstance().CheckStartUIAbilityByUserLockStatus("com.example.directboot"));
+    EXPECT_EQ(BundleMgrHelper::cloneQueryCount, 0);
+    EXPECT_EQ(directBootPermissionChecks, 0);
+}
+
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -82,9 +82,11 @@ HWTEST_F(UdmfUtilsTest, AddPrivilege_002, TestSize.Level1)
 HWTEST_F(UdmfUtilsTest, ProcessUdmfKey_001, TestSize.Level1)
 {
     std::string key = "udmfKey";
+    uint32_t callerTokenId = 100001;
     uint32_t targetTokenId = 100001;
-    auto ret = UdmfUtils::ProcessUdmfKey(key, targetTokenId);
-    EXPECT_EQ(ret, ERR_OK);
+    UDMF::UdmfClient::keyAuthority = "com.example.owner";
+    auto ret = UdmfUtils::ProcessUdmfKey(key, callerTokenId, targetTokenId);
+    EXPECT_EQ(ret, AAFwk::ERR_UPMS_KEY_IS_NOT_CREATE_BY_CALLER);
 }
 
 /*
@@ -95,10 +97,27 @@ HWTEST_F(UdmfUtilsTest, ProcessUdmfKey_001, TestSize.Level1)
 HWTEST_F(UdmfUtilsTest, ProcessUdmfKey_002, TestSize.Level1)
 {
     std::string key = "udmfKey";
+    uint32_t callerTokenId = 100001;
     uint32_t targetTokenId = 100001;
+    UDMF::UdmfClient::keyAuthority = "";
+    auto ret = UdmfUtils::ProcessUdmfKey(key, callerTokenId, targetTokenId);
+    EXPECT_EQ(ret, AAFwk::ERR_UPMS_KEY_IS_NOT_CREATE_BY_CALLER);
+}
+
+/*
+ * Feature: UdmfUtilsTest
+ * Function: ProcessUdmfKey_003
+ * SubFunction: NA
+ */
+HWTEST_F(UdmfUtilsTest, ProcessUdmfKey_003, TestSize.Level1)
+{
+    std::string key = "udmfKey";
+    uint32_t callerTokenId = 100001;
+    uint32_t targetTokenId = 100001;
+    UDMF::UdmfClient::keyAuthority = "com.example.owner";
     UDMF::UdmfClient::addPrivilegeRet_ = AAFwk::INNER_ERR;
-    auto ret = UdmfUtils::ProcessUdmfKey(key, targetTokenId);
-    EXPECT_EQ(ret, AAFwk::ERR_UPMS_ADD_PRIVILEGED_FAILED);
+    auto ret = UdmfUtils::ProcessUdmfKey(key, callerTokenId, targetTokenId);
+    EXPECT_EQ(ret, AAFwk::ERR_UPMS_KEY_IS_NOT_CREATE_BY_CALLER);
 }
 } // namespace AAFwk
 } // namespace OHOS

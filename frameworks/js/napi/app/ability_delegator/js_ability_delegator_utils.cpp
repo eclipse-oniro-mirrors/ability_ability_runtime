@@ -66,6 +66,10 @@ napi_value CreateJsAbilityDelegator(napi_env env)
     BindNativeFunction(env, objValue, "removeAbilityStageMonitorSync",
                        moduleName, JSAbilityDelegator::RemoveAbilityStageMonitorSync);
     BindNativeFunction(env, objValue, "setMockList", moduleName, JSAbilityDelegator::SetMockList);
+    BindNativeFunction(env, objValue, "addInteropAbilityMonitorSync", moduleName,
+        JSAbilityDelegator::AddInteropAbilityMonitorSync);
+    BindNativeFunction(env, objValue, "removeInteropAbilityMonitorSync", moduleName,
+        JSAbilityDelegator::RemoveInteropAbilityMonitorSync);
     return handleEscape.Escape(objValue);
 }
 

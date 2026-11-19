@@ -15,6 +15,7 @@
 
 #include "ani_common_want.h"
 #include "ani_common_cache_mgr.h"
+#include "ani_common_json_util.h"
 #include "ani_common_util.h"
 #include "remote_object_taihe_ani.h"
 #include "array_wrapper.h"
@@ -1078,102 +1079,6 @@ bool InnerWrapWantParamsArray(
     }
 }
 
-bool InnerCreateArrayRecordFromJson(ani_env *env, const nlohmann::json &jsonArray, ani_object &arrayObject)
-{
-    ani_size index = 0;
-    for (const auto &item : jsonArray) {
-        ani_object elementValue = nullptr;
-
-        if (item.is_object()) {
-            if (!CreateRecordObjectFromJson(env, item, elementValue)) {
-                TAG_LOGE(AAFwkTag::ANI, "failed to create object element");
-                continue;
-            }
-        } else if (item.is_array()) {
-            if (!CreateArrayFromJson(env, item, elementValue)) {
-                TAG_LOGE(AAFwkTag::ANI, "failed to create array element");
-                continue;
-            }
-        } else if (item.is_string()) {
-            elementValue = GetAniString(env, item.get<std::string>());
-        } else if (item.is_boolean()) {
-            if (!InnerCreateBooleanObject(env, item.get<bool>(), elementValue)) {
-                TAG_LOGE(AAFwkTag::ANI, "failed to create boolean element");
-                continue;
-            }
-        } else if (item.is_number()) {
-            if (!InnerCreateDoubleObject(env, item.get<double>(), elementValue)) {
-                TAG_LOGE(AAFwkTag::ANI, "failed to create double element");
-                continue;
-            }
-        }
-
-        if (elementValue != nullptr) {
-            ani_status status = env->Object_CallMethodByName_Void(arrayObject, "$_set",
-                "iY:", index, elementValue);
-            if (status != ANI_OK) {
-                TAG_LOGE(AAFwkTag::ANI, "failed to set array element, status: %{public}d", status);
-                return false;
-            }
-        }
-        index++;
-    }
-    return true;
-}
-
-bool InnerFillRecordFromJson(ani_env *env, const nlohmann::json &jsonObject, ani_object &recordObject)
-{
-    for (const auto &item : jsonObject.items()) {
-        const std::string &key = item.key();
-        const nlohmann::json &value = item.value();
-        ani_string aniKey = GetAniString(env, key);
-        if (aniKey == nullptr) {
-            TAG_LOGE(AAFwkTag::ANI, "failed to create key string: %{public}s", key.c_str());
-            continue;
-        }
-
-        ani_object aniValue = nullptr;
-        if (value.is_object()) {
-            if (!CreateRecordObjectFromJson(env, value, aniValue)) {
-                TAG_LOGE(AAFwkTag::ANI,
-                    "failed to create nested record object for key: %{public}s", key.c_str());
-                continue;
-            }
-        } else if (value.is_string()) {
-            aniValue = GetAniString(env, value.get<std::string>());
-        } else if (value.is_boolean()) {
-            if (!InnerCreateBooleanObject(env, value.get<bool>(), aniValue)) {
-                TAG_LOGE(AAFwkTag::ANI, "failed to create boolean object for key: %{public}s", key.c_str());
-                continue;
-            }
-        } else if (value.is_number()) {
-            if (!InnerCreateDoubleObject(env, value.get<double>(), aniValue)) {
-                TAG_LOGE(AAFwkTag::ANI, "failed to create double object for key: %{public}s", key.c_str());
-                continue;
-            }
-        } else if (value.is_array()) {
-            if (!CreateArrayFromJson(env, value, aniValue)) {
-                TAG_LOGE(AAFwkTag::ANI,
-                    "failed to create array object for key: %{public}s", key.c_str());
-                continue;
-            }
-        } else {
-            TAG_LOGW(AAFwkTag::ANI, "unsupported json type for key: %{public}s", key.c_str());
-            continue;
-        }
-
-        if (aniValue == nullptr) {
-            TAG_LOGE(AAFwkTag::ANI, "null value object for key: %{public}s", key.c_str());
-            continue;
-        }
-
-        if (!InnerSetRecord(env, recordObject, aniKey, aniValue)) {
-            TAG_LOGE(AAFwkTag::ANI, "failed to set record for key: %{public}s", key.c_str());
-            return false;
-        }
-    }
-    return true;
-}
 }
 
 ani_object WrapWant(ani_env *env, const AAFwk::Want &want)
@@ -1268,55 +1173,6 @@ ani_ref WrapWantParamsFD(ani_env *env, const AAFwk::WantParams &wantParams)
         fds.SetParam(it->first, intValue);
     }
     return WrapWantParams(env, fds);
-}
-
-bool CreateArrayFromJson(ani_env *env, const nlohmann::json &jsonArray, ani_object &arrayObject)
-{
-    if (!jsonArray.is_array()) {
-        TAG_LOGE(AAFwkTag::ANI, "json is not array");
-        return false;
-    }
-
-    ani_class arrayCls = nullptr;
-    ani_status status = env->FindClass("std.core.Array", &arrayCls);
-    if (status != ANI_OK || arrayCls == nullptr) {
-        TAG_LOGE(AAFwkTag::ANI, "failed to find array class, status: %{public}d", status);
-        return false;
-    }
-
-    ani_method arrayCtor = nullptr;
-    status = env->Class_FindMethod(arrayCls, "<ctor>", "i:", &arrayCtor);
-    if (status != ANI_OK || arrayCtor == nullptr) {
-        TAG_LOGE(AAFwkTag::ANI, "failed to find array constructor, status: %{public}d", status);
-        return false;
-    }
-
-    status = env->Object_New(arrayCls, arrayCtor, &arrayObject, jsonArray.size());
-    if (status != ANI_OK || arrayObject == nullptr) {
-        TAG_LOGE(AAFwkTag::ANI, "failed to create array object, status: %{public}d", status);
-        return false;
-    }
-
-    if (!InnerCreateArrayRecordFromJson(env, jsonArray, arrayObject)) {
-        TAG_LOGE(AAFwkTag::ANI, "failed to create array record object from json");
-        return false;
-    }
-
-    return true;
-}
-
-bool CreateRecordObjectFromJson(ani_env *env, const nlohmann::json &jsonObject, ani_object &recordObject)
-{
-    if (env == nullptr) {
-        TAG_LOGE(AAFwkTag::INTENT, "null env");
-        return false;
-    }
-    if (!InnerCreateRecordObject(env, recordObject)) {
-        TAG_LOGE(AAFwkTag::ANI, "failed to create record object");
-        return false;
-    }
-
-    return InnerFillRecordFromJson(env, jsonObject, recordObject);
 }
 
 ani_ref WrapWantParams(ani_env *env, const AAFwk::WantParams &wantParams)

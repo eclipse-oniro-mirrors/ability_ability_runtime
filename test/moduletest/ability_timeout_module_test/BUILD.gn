@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025 Huawei Device Co., Ltd.
+# Copyright (c) 2022-2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -23,6 +23,7 @@ ohos_moduletest("ability_timeout_module_test") {
     "${ability_runtime_test_path}/moduletest/mock/include",
     "${ability_runtime_path}/interfaces/kits/native/ability/native/distributed_ability_runtime",
     "${ability_runtime_innerkits_path}/dataobs_manager/include",
+    "${agent_runtime_framework_path}/interfaces/kits/native/agent_extension/connection/include",
   ]
 
   sources = [ "ability_timeout_module_test.cpp" ]
@@ -30,13 +31,13 @@ ohos_moduletest("ability_timeout_module_test") {
     "${ability_runtime_services_path}/abilitymgr/src/ability_bundle_event_callback.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/ability_cache_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/ability_manager_service.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/ams_want_param_filter.cpp",
+    "${ability_runtime_services_path}/abilitymgr/src/background_user_extension_monitor.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/app_exit_reason_data_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/assert_fault_callback_death_mgr.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/assert_fault_proxy.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/exit_info_data_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/scene_board/ui_ability_lifecycle_manager.cpp",
-    "${ability_runtime_services_path}/abilitymgr/src/start_ability_handler.cpp",
-    "${ability_runtime_services_path}/abilitymgr/src/start_ability_handler/start_ability_sandbox_savefile.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/sub_managers_helper.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/ability_event_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/timeout_state_utils.cpp",
@@ -58,6 +59,7 @@ ohos_moduletest("ability_timeout_module_test") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
   deps = [
+    "${ability_runtime_innerkits_path}/daemon_service_manager:daemon_service_manager",
     "${ability_runtime_innerkits_path}/ability_manager:ability_start_setting",
     "${ability_runtime_innerkits_path}/ability_manager:process_options",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",

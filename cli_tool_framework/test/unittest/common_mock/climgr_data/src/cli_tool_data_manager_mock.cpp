@@ -1,0 +1,188 @@
+/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ */
+
+#include "cli_tool_data_manager_mock.h"
+
+#include "../include/cli_tool_data_manager.h"
+#include "cli_error_code.h"
+#include "tool_info.h"
+#include "function_info.h"
+
+namespace OHOS {
+namespace CliTool {
+int32_t CliToolDataManagerMock::getToolByNameResult = ERR_TOOL_NOT_EXIST;
+bool CliToolDataManagerMock::toolHasSubCommand = false;
+bool CliToolDataManagerMock::toolIsLockScreenExecEnabled = false;
+std::string CliToolDataManagerMock::subCommandName = "build";
+std::vector<std::string> CliToolDataManagerMock::toolPermissions = {};
+std::vector<std::string> CliToolDataManagerMock::subCommandPermissions = {};
+int32_t CliToolDataManagerMock::getAllToolsResult = ERR_OK;
+std::vector<ToolInfo> CliToolDataManagerMock::allTools = {};
+std::string CliToolDataManagerMock::toolVisibility = "private";
+
+void CliToolDataManagerMock::Reset()
+{
+    getToolByNameResult = ERR_TOOL_NOT_EXIST;
+    toolHasSubCommand = false;
+    toolIsLockScreenExecEnabled = false;
+    subCommandName = "build";
+    toolPermissions.clear();
+    subCommandPermissions.clear();
+    getAllToolsResult = ERR_OK;
+    allTools.clear();
+    toolVisibility = "private";
+}
+
+// CliFunctionDataManagerMock
+int32_t CliFunctionDataManagerMock::registerFunctionResult = ERR_OK;
+int32_t CliFunctionDataManagerMock::unregisterFunctionResult = ERR_OK;
+int32_t CliFunctionDataManagerMock::getFunctionResult = ERR_OK;
+int32_t CliFunctionDataManagerMock::getAllFunctionsResult = ERR_OK;
+int32_t CliFunctionDataManagerMock::unregisterByNamespaceResult = ERR_OK;
+int32_t CliFunctionDataManagerMock::resetNamespaceFunctionsResult = ERR_OK;
+int32_t CliFunctionDataManagerMock::resetNamespaceFunctionsSuccessCount = 0;
+
+void CliFunctionDataManagerMock::Reset()
+{
+    registerFunctionResult = ERR_OK;
+    unregisterFunctionResult = ERR_OK;
+    getFunctionResult = ERR_OK;
+    getAllFunctionsResult = ERR_OK;
+    unregisterByNamespaceResult = ERR_OK;
+    resetNamespaceFunctionsResult = ERR_OK;
+    resetNamespaceFunctionsSuccessCount = 0;
+}
+
+CliToolDataManager::CliToolDataManager() noexcept = default;
+
+CliToolDataManager::~CliToolDataManager() = default;
+
+CliToolDataManager &CliToolDataManager::GetInstance()
+{
+    static CliToolDataManager instance;
+    return instance;
+}
+
+int32_t CliToolDataManager::EnsureToolsLoaded()
+{
+    return ERR_OK;
+}
+
+int32_t CliToolDataManager::GetAllTools(std::vector<ToolInfo> &tools)
+{
+    if (CliToolDataManagerMock::getAllToolsResult != ERR_OK) {
+        return CliToolDataManagerMock::getAllToolsResult;
+    }
+    tools = CliToolDataManagerMock::allTools;
+    return ERR_OK;
+}
+
+int32_t CliToolDataManager::GetAllToolsRawData(ToolsRawData &tools)
+{
+    if (CliToolDataManagerMock::getAllToolsResult != ERR_OK) {
+        return CliToolDataManagerMock::getAllToolsResult;
+    }
+    ToolsRawData::FromToolInfoVec(CliToolDataManagerMock::allTools, tools);
+    return ERR_OK;
+}
+
+int32_t CliToolDataManager::QueryToolSummaries(std::vector<ToolSummary> &summaries)
+{
+    summaries.clear();
+    return ERR_OK;
+}
+
+int32_t CliToolDataManager::JsonArrayToTools(const std::string &, std::vector<ToolInfo> &tools)
+{
+    tools.clear();
+    return ERR_OK;
+}
+
+int32_t CliToolDataManager::GetToolByName(const std::string &name, ToolInfo &toolInfo)
+{
+    if (CliToolDataManagerMock::getToolByNameResult != ERR_OK) {
+        return CliToolDataManagerMock::getToolByNameResult;
+    }
+    toolInfo.name = name;
+    toolInfo.version = "1.0.0";
+    toolInfo.description = "mock tool";
+    toolInfo.executablePath = "/system/bin/mock";
+    toolInfo.requirePermissions = CliToolDataManagerMock::toolPermissions;
+    toolInfo.inputSchema = "{}";
+    toolInfo.outputSchema = "{}";
+    toolInfo.hasSubCommand = CliToolDataManagerMock::toolHasSubCommand;
+    toolInfo.isLockScreenExecutionAllowed = CliToolDataManagerMock::toolIsLockScreenExecEnabled;
+    toolInfo.visibility = CliToolDataManagerMock::toolVisibility;
+    if (toolInfo.hasSubCommand) {
+        SubCommandInfo subCommand;
+        subCommand.description = "mock subcommand";
+        subCommand.requirePermissions = CliToolDataManagerMock::subCommandPermissions;
+        subCommand.inputSchema = "{}";
+        subCommand.outputSchema = "{}";
+        toolInfo.subcommands[CliToolDataManagerMock::subCommandName] = subCommand;
+    }
+    return ERR_OK;
+}
+
+// CliFunctionDataManager mock implementations
+CliFunctionDataManager::CliFunctionDataManager() noexcept = default;
+
+CliFunctionDataManager::~CliFunctionDataManager() = default;
+
+CliFunctionDataManager &CliFunctionDataManager::GetInstance()
+{
+    static CliFunctionDataManager instance;
+    return instance;
+}
+
+int32_t CliFunctionDataManager::RegisterFunction(const FunctionInfo &)
+{
+    return CliFunctionDataManagerMock::registerFunctionResult;
+}
+
+int32_t CliFunctionDataManager::GetFunctionByName(int32_t, const std::string &, const std::string &, FunctionInfo &)
+{
+    return CliFunctionDataManagerMock::getFunctionResult;
+}
+
+int32_t CliFunctionDataManager::UnregisterFunction(int32_t, const std::string &, const std::string &)
+{
+    return CliFunctionDataManagerMock::unregisterFunctionResult;
+}
+
+int32_t CliFunctionDataManager::UnregisterIntentFunctionsByNamespace(int32_t, const std::string &)
+{
+    return CliFunctionDataManagerMock::unregisterByNamespaceResult;
+}
+
+int32_t CliFunctionDataManager::GetAllFunctions(int32_t, std::vector<FunctionInfo> &functions)
+{
+    functions.clear();
+    return CliFunctionDataManagerMock::getAllFunctionsResult;
+}
+
+int32_t CliFunctionDataManager::BatchRegisterFunctions(const std::vector<FunctionInfo> &functions,
+    int32_t &successCount)
+{
+    successCount = functions.size();
+    return ERR_OK;
+}
+
+int32_t CliFunctionDataManager::EnsureFunctionsInitialized()
+{
+    return ERR_OK;
+}
+
+int32_t CliFunctionDataManager::ResetNamespaceFunctions(int32_t, const std::string &,
+    const std::vector<FunctionInfo> &functions, int32_t &successCount)
+{
+    successCount = CliFunctionDataManagerMock::resetNamespaceFunctionsSuccessCount > 0 ?
+        CliFunctionDataManagerMock::resetNamespaceFunctionsSuccessCount :
+        static_cast<int32_t>(functions.size());
+    return CliFunctionDataManagerMock::resetNamespaceFunctionsResult;
+}
+
+} // namespace CliTool
+} // namespace OHOS

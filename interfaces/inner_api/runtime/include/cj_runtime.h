@@ -29,6 +29,7 @@ using AppLibPathVec = std::vector<std::string>;
 
 namespace OHOS {
 struct CJUncaughtExceptionInfo;
+struct CJEventReportInfo;
 namespace AbilityRuntime {
 
 class CJRuntime : public Runtime {
@@ -40,6 +41,7 @@ public:
     static void SetSanitizerVersion(SanitizerKind kind);
     static bool RegisterCangjieCallback();
     static void SetPackageName(std::string srcEntryName);
+    static void SetMainNAPIEnv(void* env);
     ~CJRuntime() override = default;
 
     Language GetLanguage() const override
@@ -79,6 +81,7 @@ public:
     void AllowCrossThreadExecution() override {};
     void GetHeapPrepare() override {};
     void RegisterUncaughtExceptionHandler(const CJUncaughtExceptionInfo& uncaughtExceptionInfo);
+    void RegisterEventHandler(const CJEventReportInfo& reportInfo);
 
 private:
     bool StartDebugger();

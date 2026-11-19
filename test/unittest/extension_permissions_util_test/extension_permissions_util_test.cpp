@@ -314,6 +314,40 @@ HWTEST_F(ExtensionPermissionsUtilTest, CheckSAPermission_016, TestSize.Level1)
  * Feature: ExtensionPermissionsUtil
  * Function: CheckSAPermission
  * SubFunction: NA
+ * FunctionPoints: AbilityManagerService CheckSAPermission
+ */
+HWTEST_F(ExtensionPermissionsUtilTest, CheckSAPermission_017, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckSAPermission_017 start");
+
+    MyFlag::flag_ = 1;
+    MyFlag::hasPerm_ = true;
+    EXPECT_TRUE(ExtensionPermissionsUtil::CheckSAPermission(ExtensionAbilityType::AGENT));
+    MyFlag::flag_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckSAPermission_017 end");
+}
+
+/*
+ * Feature: ExtensionPermissionsUtil
+ * Function: CheckSAPermission
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService CheckSAPermission
+ */
+HWTEST_F(ExtensionPermissionsUtilTest, CheckSAPermission_018, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckSAPermission_018 start");
+
+    MyFlag::flag_ = MyFlag::FLAG::IS_SHELL_CALL;
+    MyFlag::hasPerm_ = false;
+    EXPECT_FALSE(ExtensionPermissionsUtil::CheckSAPermission(ExtensionAbilityType::AGENT));
+    MyFlag::flag_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckSAPermission_018 end");
+}
+
+/*
+ * Feature: ExtensionPermissionsUtil
+ * Function: CheckSAPermission
+ * SubFunction: NA
  * FunctionPoints: AbilityManagerService CheckSAPermissionMore
  */
 HWTEST_F(ExtensionPermissionsUtilTest, CheckSAPermissionMore_001, TestSize.Level1)
@@ -413,6 +447,51 @@ HWTEST_F(ExtensionPermissionsUtilTest, CheckSAPermissionMore_007, TestSize.Level
     MyFlag::hasPerm_ = false;
     EXPECT_TRUE(ExtensionPermissionsUtil::CheckSAPermissionMore(ExtensionAbilityType::VPN));
     TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckSAPermissionMore_007 end");
+}
+/*
+ * Feature: ExtensionPermissionsUtil
+ * Function: CheckCallerPermission
+ * SubFunction: NA
+ * FunctionPoints: ukeyAuth caller permission denied
+ */
+HWTEST_F(ExtensionPermissionsUtilTest, CheckCallerPermission_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckCallerPermission_001 start");
+    MyFlag::flag_ = 0;
+    MyFlag::hasPerm_ = false;
+    EXPECT_FALSE(ExtensionPermissionsUtil::CheckCallerPermission(ExtensionAbilityType::UKEY_AUTH));
+    TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckCallerPermission_001 end");
+}
+
+/*
+ * Feature: ExtensionPermissionsUtil
+ * Function: CheckCallerPermission
+ * SubFunction: NA
+ * FunctionPoints: ukeyAuth caller permission granted
+ */
+HWTEST_F(ExtensionPermissionsUtilTest, CheckCallerPermission_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckCallerPermission_002 start");
+    MyFlag::flag_ = 0;
+    MyFlag::hasPerm_ = true;
+    EXPECT_TRUE(ExtensionPermissionsUtil::CheckCallerPermission(ExtensionAbilityType::UKEY_AUTH));
+    MyFlag::flag_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckCallerPermission_002 end");
+}
+
+/*
+ * Feature: ExtensionPermissionsUtil
+ * Function: CheckCallerPermission
+ * SubFunction: NA
+ * FunctionPoints: extension types without a dedicated caller rule are bypassed
+ */
+HWTEST_F(ExtensionPermissionsUtilTest, CheckCallerPermission_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckCallerPermission_003 start");
+    MyFlag::flag_ = 0;
+    MyFlag::hasPerm_ = false;
+    EXPECT_TRUE(ExtensionPermissionsUtil::CheckCallerPermission(ExtensionAbilityType::VPN));
+    TAG_LOGI(AAFwkTag::TEST, "ExtensionPermissionsUtilTest CheckCallerPermission_003 end");
 }
 } // namespace AAFwk
 } // namespace OHOS

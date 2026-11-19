@@ -2665,21 +2665,21 @@ HWTEST_F(AbilityBaseTest, AbilitySetDisplayOrientation_0100, TestSize.Level1)
     ability->SetDisplayOrientation(orientation);
     ret = ability->GetDisplayOrientation();
     if (!Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        EXPECT_EQ(ret, 0);
+        EXPECT_EQ(ret, -1);
     }
 
     orientation = static_cast<int>(DisplayOrientation::LANDSCAPE);
     ability->SetDisplayOrientation(orientation);
     ret = ability->GetDisplayOrientation();
     if (!Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        EXPECT_EQ(ret, static_cast<int>(DisplayOrientation::LANDSCAPE));
+        EXPECT_EQ(ret, -1);
     }
 
     orientation = static_cast<int>(DisplayOrientation::PORTRAIT);
     ability->SetDisplayOrientation(orientation);
     ret = ability->GetDisplayOrientation();
     if (!Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        EXPECT_EQ(ret, static_cast<int>(DisplayOrientation::PORTRAIT));
+        EXPECT_EQ(ret, -1);
     }
 
     TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);

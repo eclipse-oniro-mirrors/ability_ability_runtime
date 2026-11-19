@@ -44,6 +44,8 @@ public:
     static void HandleSigChild(int32_t signo);
     bool IsChildProcess();
     bool IsChildProcessBySelfFork();
+    bool IsArkChildProcessSupported();
+    bool IsNativeChildProcessSupported();
     ChildProcessManagerErrorCode StartChildProcessBySelfFork(const std::string &srcEntry, pid_t &pid,
         bool isStaticChildProcess = false);
     ChildProcessManagerErrorCode StartChildProcessByAppSpawnFork(const std::string &srcEntry, pid_t &pid,
@@ -76,6 +78,8 @@ public:
     std::string GetModuleNameFromSrcEntry(const std::string &srcEntry);
     void SetApplication(std::shared_ptr<AppExecFwk::OHOSApplication> application);
     ChildProcessManagerErrorCode KillChildProcessByPid(int32_t pid);
+
+    ChildProcessManagerErrorCode AcquireChildProcesses(std::vector<AppExecFwk::ChildProcessInfo> &infos);
 
 private:
     ChildProcessManager();

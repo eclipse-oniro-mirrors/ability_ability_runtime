@@ -56,9 +56,9 @@ int32_t SandboxManagerKit::StartAccessingPolicy(const std::vector<PolicyInfo> &p
     return startAccessingPolicyRet_;
 }
 
-int32_t SandboxManagerKit::UnSetAllPolicyByToken(uint32_t tokenId, uint64_t timestamp)
+int32_t SandboxManagerKit::UnSetAllPolicyByTokenAsync(uint32_t tokenId, uint64_t timestamp)
 {
-    return unSetAllPolicyByTokenRet_;
+    return unSetAllPolicyByTokenAsyncRet_;
 }
 
 void SandboxManagerKit::Init()
@@ -69,7 +69,7 @@ void SandboxManagerKit::Init()
     persistPolicyRet_ = 0;
     unSetPolicyRet_ = 0;
     startAccessingPolicyRet_ = 0;
-    unSetAllPolicyByTokenRet_ = 0;
+    unSetAllPolicyByTokenAsyncRet_ = 0;
     setPolicyResult_.clear();
     checkPolicyResult_.clear();
     checkPersistPolicyResult_.clear();
@@ -81,7 +81,7 @@ int32_t SandboxManagerKit::checkPersistPolicyRet_ = 0;
 int32_t SandboxManagerKit::persistPolicyRet_ = 0;
 int32_t SandboxManagerKit::unSetPolicyRet_ = 0;
 int32_t SandboxManagerKit::startAccessingPolicyRet_ = 0;
-int32_t SandboxManagerKit::unSetAllPolicyByTokenRet_ = 0;
+int32_t SandboxManagerKit::unSetAllPolicyByTokenAsyncRet_ = 0;
 std::vector<uint32_t> SandboxManagerKit::setPolicyResult_ = {};
 std::vector<bool> SandboxManagerKit::checkPolicyResult_ = {};
 std::vector<bool> SandboxManagerKit::checkPersistPolicyResult_ = {};

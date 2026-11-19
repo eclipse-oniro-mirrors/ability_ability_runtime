@@ -59,7 +59,7 @@ public:
         return 0;
     }
 
-    int32_t NotifyMoveMissionToBackground(int32_t missionId, int32_t userId)
+    int32_t NotifyMoveMissionToBackground(int32_t missionId, int32_t userId, bool isFromScreenOffBackground)
     {
         return 0;
     }

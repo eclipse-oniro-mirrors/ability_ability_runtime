@@ -20,7 +20,6 @@
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "js_environment_impl.h"
-#include "source_map_operator.h"
 #include "uncaught_exception_callback.h"
 
 namespace OHOS {
@@ -50,11 +49,6 @@ public:
         return engine_;
     }
 
-    std::shared_ptr<SourceMapOperator> GetSourceMapOperator() const
-    {
-        return sourceMapOperator_;
-    }
-
     panda::ecmascript::EcmaVM* GetVM() const
     {
         return vm_;
@@ -64,8 +58,6 @@ public:
 
     void InitWorkerModule(std::shared_ptr<WorkerInfo> workerInfo);
 
-    void InitSourceMap(const std::shared_ptr<JsEnv::SourceMapOperator> operatorObj);
-
     void InitSyscapModule();
 
     void PostTask(const std::function<void()>& task, const std::string& name = "", int64_t delayTime = 0);
@@ -74,9 +66,11 @@ public:
 
     void RemoveTask(const std::string& name);
 
-    void RegisterUncaughtExceptionHandler(const JsEnv::UncaughtExceptionInfo& uncaughtExceptionInfo);
+    void RegisterUncaughtExceptionHandler(const JsEnv::UncaughtExceptionInfo& uncaughtExceptionInfo,
+        bool isStatic = false);
 
-    void RegisterUncatchableExceptionHandler(const JsEnv::UncatchableTask& uncatchableTask);
+    void RegisterUncatchableExceptionHandler(const JsEnv::UncatchableTask& uncatchableTask,
+        bool isStatic = false);
 
     bool LoadScript(const std::string& path, std::vector<uint8_t>* buffer = nullptr, bool isBundle = false);
 
@@ -122,7 +116,6 @@ private:
     std::unique_ptr<JsEnvironmentImpl> impl_ = nullptr;
     NativeEngine* engine_ = nullptr;
     panda::ecmascript::EcmaVM* vm_ = nullptr;
-    std::shared_ptr<SourceMapOperator> sourceMapOperator_ = nullptr;
     bool debugMode_ = false;
 };
 } // namespace JsEnv

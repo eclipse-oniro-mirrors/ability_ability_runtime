@@ -44,6 +44,7 @@ bool LaunchParam::ReadFromParcel(Parcel &parcel)
     lastExitDetailInfo = *detailInfo;
     launchUptime = parcel.ReadInt64();
     launchUTCTime = parcel.ReadInt64();
+    specifiedId = parcel.ReadString();
     return true;
 }
 
@@ -92,6 +93,11 @@ bool LaunchParam::Marshalling(Parcel &parcel) const
     // write launchUTCTime
     if (!parcel.WriteInt64(launchUTCTime)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write launchUTCTime failed");
+        return false;
+    }
+    // write specifiedId
+    if (!parcel.WriteString(specifiedId)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write specifiedId failed");
         return false;
     }
     return true;

@@ -324,6 +324,8 @@ public:
      */
     void CallRequest() override;
 
+    void ExecuteSkill(const Want &want) override;
+
     /**
      * @brief Performs batch operations on the database
      * @param operations Indicates a list of database operations on the database.

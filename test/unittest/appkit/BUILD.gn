@@ -17,6 +17,7 @@ group("unittest") {
   testonly = true
 
   deps = [
+    "main_thread_frist_test:unittest",
     "ohos_application_first_test:unittest",
     "ohos_application_test:unittest",
   ]
@@ -24,6 +25,7 @@ group("unittest") {
     deps += [
       "child_main_thread_first_test:unittest",
       "child_main_thread_test:unittest",
+      "child_process_api_test:unittest",
     ]
   }
 }

@@ -131,8 +131,7 @@ public:
      *
      * @return Returns SUCCESS on success, others on failure.
      */
-    virtual Status NotifyProcessObserver(const std::string &key, const sptr<IRemoteObject> &observer,
-        DataObsOption opt = DataObsOption()) override;
+    virtual Status NotifyProcessObserver(const std::string &key, const sptr<IRemoteObject> observer) override;
 
 private:
     bool WriteInterfaceToken(MessageParcel &data);

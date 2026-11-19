@@ -113,7 +113,8 @@ static void grantUriPermissionCallbackSync([[maybe_unused]]ani_env *env,
     int32_t errCode = AAFwk::UriPermissionManagerClient::GetInstance().GrantUriPermission(uriVec, flagId,
         targetBundleName, appCloneIndex);
     if (errCode != ERR_OK) {
-        etsErrCode = EtsErrorUtil::CreateErrorByNativeErr(env, errCode);
+        etsErrCode = EtsErrorUtil::CreateErrorByNativeErr(env, errCode, "",
+            GetInnerErrorMsg(AbilityInnerErrorMsg::GRANT_URI_PERMISSION_FAILED));
     }
     
     AppExecFwk::AsyncCallback(env, callback, etsErrCode, nullptr);
@@ -150,7 +151,8 @@ static void revokeUriPermissionCallbackSync([[maybe_unused]]ani_env *env,
     int32_t errCode = AAFwk::UriPermissionManagerClient::GetInstance().RevokeUriPermissionManually(uriVec,
         targetBundleName, appCloneIndex);
     if (errCode != ERR_OK) {
-        etsErrCode = EtsErrorUtil::CreateErrorByNativeErr(env, errCode);
+        etsErrCode = EtsErrorUtil::CreateErrorByNativeErr(env, errCode, "",
+            GetInnerErrorMsg(AbilityInnerErrorMsg::REVOKE_URI_PERMISSION_FAILED));
     }
     AppExecFwk::AsyncCallback(env, callback, etsErrCode, nullptr);
 }
@@ -181,7 +183,8 @@ static void grantUriPermissionByKeyCallbackSync([[maybe_unused]]ani_env *env,
     if (errCode != ERR_OK) {
         result = ERR_FAILURE;
         TAG_LOGE(AAFwkTag::DELEGATOR, "GrantUriPermissionByKey failed status: %{public}d", errCode);
-        etsErrCode = EtsErrorUtil::CreateErrorByNativeErr(env, errCode);
+        etsErrCode = EtsErrorUtil::CreateErrorByNativeErr(env, errCode, "",
+            GetInnerErrorMsg(AbilityInnerErrorMsg::GRANT_URI_PERMISSION_BY_KEY_FAILED));
         AppExecFwk::AsyncCallback(env, callback, etsErrCode, CreateDouble(env, result));
         return;
     }
@@ -214,7 +217,8 @@ static void grantUriPermissionByKeyAsCallerCallbackSync([[maybe_unused]]ani_env 
         uriStr, flag, callerTokenId, targetTokenId);
     if (errCode != ERR_OK) {
         result = ERR_FAILURE;
-        etsErrCode = EtsErrorUtil::CreateErrorByNativeErr(env, errCode);
+        etsErrCode = EtsErrorUtil::CreateErrorByNativeErr(env, errCode, "",
+            GetInnerErrorMsg(AbilityInnerErrorMsg::GRANT_URI_PERMISSION_AS_CALLER_FAILED));
     }
     AppExecFwk::AsyncCallback(env, callback, etsErrCode, CreateDouble(env, result));
 }

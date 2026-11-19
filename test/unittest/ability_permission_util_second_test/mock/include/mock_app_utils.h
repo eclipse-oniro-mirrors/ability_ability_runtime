@@ -72,7 +72,6 @@ public:
     bool IsRequireBigMemoryProcess(const std::string &bundleName);
     int32_t GetLimitMaximumExtensionsPerDevice();
     std::string GetCacheExtensionTypeList();
-    bool IsAllowStartAbilityWithoutCallerToken(const std::string& bundleName, const std::string& abilityName);
     std::string GetBrokerDelegateBundleName();
     int32_t GetCollaboratorBrokerUID();
     int32_t GetCollaboratorBrokerReserveUID();
@@ -89,7 +88,6 @@ public:
 private:
     void LoadResidentProcessInExtremeMemory();
     void LoadAllowNativeChildProcessApps();
-    void LoadStartAbilityWithoutCallerToken();
     bool IsCacheAbilityEnabled();
     void LoadCacheAbilityList();
     void LoadProcessProhibitedFromRestarting();
@@ -127,9 +125,6 @@ private:
         allowStartNativeProcessApps_ = {false, {}};
     volatile DeviceConfiguration<int32_t> limitMaximumExtensionsPerProc_ = {false, DEFAULT_MAX_EXT_PER_PROC};
     volatile DeviceConfiguration<int32_t> limitMaximumExtensionsPerDevice_ = {false, DEFAULT_MAX_EXT_PER_DEV};
-    DeviceConfiguration<std::vector<std::pair<std::string, std::string>>>
-        startAbilityWithoutCallerToken_ = {false, {}};
-    std::mutex startAbilityWithoutCallerTokenMutex_;
     DeviceConfiguration<std::string> brokerDelegateBundleName_ = {false, ""};
     volatile DeviceConfiguration<int32_t> collaboratorBrokerUid_ = {false, DEFAULT_INVALID_VALUE};
     volatile DeviceConfiguration<int32_t> collaboratorBrokerReserveUid_ = {false, DEFAULT_INVALID_VALUE};

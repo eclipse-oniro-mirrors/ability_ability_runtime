@@ -99,9 +99,11 @@ public:
      * @brief Notify when notify app to background.
      * @param missionId missionId.
      * @param userId, the user id.
+     * @param isFromScreenOffBackground whether the background is caused by screen off.
      * @return 0 when notify move mission to background success or else failed.
      */
-    virtual int32_t NotifyMoveMissionToBackground(int32_t missionId, int32_t userId = CURRENT_USER_ID) = 0;
+    virtual int32_t NotifyMoveMissionToBackground(int32_t missionId, int32_t userId = CURRENT_USER_ID,
+        bool isFromScreenOffBackground = false) = 0;
 
     /**
      * @brief Notify when notify app to foreground.

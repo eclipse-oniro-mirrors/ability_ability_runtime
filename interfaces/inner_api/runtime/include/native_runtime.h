@@ -18,6 +18,7 @@
 
 #include <string>
 #include "extension_ability.h"
+#include "runtime.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -25,6 +26,8 @@ class NativeRuntime {
 public:
     static bool LoadModule(const std::string& bundleModuleName, const std::string& fileName,
         const std::string& abilityName, AbilityRuntime_ExtensionInstance& instance);
+    static void StartDebugMode(const Runtime::DebugOption &dOption, const std::string &bundleName);
+    static void StopDebugMode();
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

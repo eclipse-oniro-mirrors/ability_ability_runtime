@@ -116,6 +116,7 @@ bool ServiceExtension::GetInsightIntentExecutorInfo(const Want &want,
 
     const WantParams &wantParams = want.GetParams();
     executorInfo.srcEntry = wantParams.GetStringParam(AppExecFwk::INSIGHT_INTENT_SRC_ENTRY);
+    executorInfo.decoratorClass = wantParams.GetStringParam(AppExecFwk::INSIGHT_INTENT_DECORATOR_CLASS);
     executorInfo.hapPath = abilityInfo_->hapPath;
     executorInfo.esmodule = abilityInfo_->compileMode == AppExecFwk::CompileMode::ES_MODULE;
     executorInfo.token = context->GetToken();

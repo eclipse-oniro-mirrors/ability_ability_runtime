@@ -18,6 +18,8 @@
 #include "ability_foreground_state_observer_stub.h"
 #include "app_foreground_state_observer_stub.h"
 #include "application_state_observer_stub.h"
+#include "process_lifecycle_observer_stub.h"
+#include "focused_application_observer_stub.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
 #include "image_process_state_observer_stub.h"
@@ -36,6 +38,8 @@ constexpr int OBSERVER_SINGLE_STEP_LOG = 10;
 constexpr int OBSERVER_UID_COUNT_LOG = 3;
 constexpr int OBSERVER_AMOUNT_COUNT_LOG = 70;
 constexpr int32_t RESOURCE_MANAGER_UID = 1096;
+constexpr int32_t ERR_REGISTERED_FOCUS_OBSERVER_EXCEED_LIMIT = 16000165;
+constexpr int32_t FOCUSED_APPLICATION_OBSERVER_LIMIT = 10;
 constexpr const char* DEVELOPER_MODE_STATE = "const.security.developermode.state";
 } // namespace
 AppStateObserverManager::AppStateObserverManager()
@@ -218,6 +222,122 @@ int32_t AppStateObserverManager::UnregisterAppForegroundStateObserver(const sptr
     return ERR_INVALID_VALUE;
 }
 
+int32_t AppStateObserverManager::RegisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    if (observer == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null observer");
+        return ERR_INVALID_VALUE;
+    }
+    auto callingUid = IPCSkeleton::GetCallingUid();
+    pid_t callingPid = IPCSkeleton::GetCallingPid();
+    std::lock_guard lockRegister(processLifecycleObserverLock_);
+    for (const auto &[it, info] : processLifecycleObserverMap_) {
+        if (it != nullptr && it->AsObject() == observer->AsObject()) {
+            TAG_LOGW(AAFwkTag::APPMGR, "observer exist");
+            return ERR_INVALID_VALUE;
+        }
+    }
+    int32_t count = 0;
+    for (const auto &[it, info] : processLifecycleObserverMap_) {
+        if (info.first == callingUid) {
+            count++;
+        }
+    }
+    if (count >= MAX_PROCESS_LIFECYCLE_OBSERVER_PER_APP) {
+        TAG_LOGE(AAFwkTag::APPMGR, "exceed limit, uid:%{public}d count:%{public}d", callingUid, count);
+        return ERR_PROCESS_LIFECYCLE_OBSERVER_EXCEED_LIMIT;
+    }
+    processLifecycleObserverMap_.emplace(observer, std::make_pair(callingUid, callingPid));
+    AddObserverDeathRecipient(observer, ObserverType::PROCESS_LIFECYCLE_OBSERVER);
+    return ERR_OK;
+}
+
+int32_t AppStateObserverManager::UnregisterProcessLifecycleObserver(const sptr<IProcessLifecycleObserver> &observer)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    if (observer == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null observer");
+        return ERR_INVALID_VALUE;
+    }
+    std::lock_guard lockUnregister(processLifecycleObserverLock_);
+    for (const auto &[it, info] : processLifecycleObserverMap_) {
+        if (it != nullptr && it->AsObject() == observer->AsObject()) {
+            processLifecycleObserverMap_.erase(it);
+            RemoveObserverDeathRecipient(observer);
+            return ERR_OK;
+        }
+    }
+    return ERR_INVALID_VALUE;
+}
+
+int32_t AppStateObserverManager::RegisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    if (observer == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null observer");
+        return ERR_INVALID_VALUE;
+    }
+    if (AAFwk::PermissionVerification::GetInstance()->VerifyAppStateObserverPermission() == ERR_PERMISSION_DENIED) {
+        TAG_LOGE(AAFwkTag::APPMGR, "verification failed");
+        return ERR_PERMISSION_DENIED;
+    }
+    auto callingUid = IPCSkeleton::GetCallingUid();
+    std::lock_guard lockRegister(focusedApplicationObserverLock_);
+    bool exist = false;
+    for (const auto &[it, uid] : focusedApplicationObserverMap_) {
+        if (it != nullptr && it->AsObject() == observer->AsObject()) {
+            exist = true;
+            break;
+        }
+    }
+    if (exist) {
+        TAG_LOGW(AAFwkTag::APPMGR, "observer exist");
+        return ERR_INVALID_VALUE;
+    }
+    int32_t sameUidCount = 0;
+    for (const auto &[it, uid] : focusedApplicationObserverMap_) {
+        if (uid == callingUid) {
+            sameUidCount++;
+        }
+    }
+    if (sameUidCount >= FOCUSED_APPLICATION_OBSERVER_LIMIT) {
+        TAG_LOGE(AAFwkTag::APPMGR, "focus observer count reach upper limit, uid: %{public}d", callingUid);
+        return ERR_REGISTERED_FOCUS_OBSERVER_EXCEED_LIMIT;
+    }
+    focusedApplicationObserverMap_.emplace(observer, callingUid);
+    AddObserverDeathRecipient(observer, ObserverType::FOCUSED_APPLICATION_OBSERVER);
+    AddObserverCount(callingUid);
+    return ERR_OK;
+}
+ 
+int32_t AppStateObserverManager::UnregisterFocusedApplicationObserver(const sptr<IFocusedApplicationObserver> &observer)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    if (observer == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null observer");
+        return ERR_INVALID_VALUE;
+    }
+    if (AAFwk::PermissionVerification::GetInstance()->VerifyAppStateObserverPermission() == ERR_PERMISSION_DENIED) {
+        TAG_LOGE(AAFwkTag::APPMGR, "verification failed");
+        return ERR_PERMISSION_DENIED;
+    }
+    std::lock_guard lockUnregister(focusedApplicationObserverLock_);
+    for (const auto &[it, uid] : focusedApplicationObserverMap_) {
+        if (it != nullptr && it->AsObject() == observer->AsObject()) {
+            DecreaseObserverCount(uid);
+            focusedApplicationObserverMap_.erase(it);
+            RemoveObserverDeathRecipient(observer);
+            return ERR_OK;
+        }
+    }
+    return ERR_INVALID_VALUE;
+}
+
 int32_t AppStateObserverManager::RegisterAbilityForegroundStateObserver(
     const sptr<IAbilityForegroundStateObserver> &observer)
 {
@@ -342,14 +462,31 @@ void AppStateObserverManager::OnProcessDied(const std::shared_ptr<AppRunningReco
         return;
     }
 
-    auto task = [weak = weak_from_this(), appRecord]() {
+    if (!appRecord) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null appRecord");
+        return;
+    }
+
+    auto data = WrapProcessData(appRecord);
+    if (data == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "WrapProcessData failed");
+        return;
+    }
+    auto applicationInfo = appRecord->GetApplicationInfo();
+    BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
+    TAG_LOGD(AAFwkTag::APPMGR, "Process died, bundle:%{public}s, pid:%{public}d, uid:%{public}d, renderUid:%{public}d,"
+        " exitReason:%{public}d, exitMsg:%{public}s, pm:%{public}d",
+        data->bundleName.c_str(), data->pid, data->uid, data->renderUid, data->exitReason, data->exitMsg.c_str(),
+        data->preloadMode);
+
+    auto task = [weak = weak_from_this(), data, bundleType]() {
         auto self = weak.lock();
         if (self == nullptr) {
             TAG_LOGE(AAFwkTag::APPMGR, "null self");
             return;
         }
         TAG_LOGD(AAFwkTag::APPMGR, "OnProcessDied come.");
-    self->HandleOnAppProcessDied(appRecord);
+        self->HandleOnAppProcessDied(data, bundleType);
     };
     handler_->SubmitTask(task);
 }
@@ -395,21 +532,39 @@ void AppStateObserverManager::OnChildProcessDied(std::shared_ptr<ChildProcessRec
 #endif // SUPPORT_CHILD_PROCESS
 
 void AppStateObserverManager::OnProcessStateChanged(
-    const std::shared_ptr<AppRunningRecord> &appRecord, bool isFromWindowFocusChanged, bool isByCall)
+    const std::shared_ptr<AppRunningRecord> &appRecord, bool isFromWindowFocusChanged, bool isByCall,
+    bool isFromScreenOffBackground)
 {
     if (handler_ == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "null handler");
         return;
     }
 
-    auto task = [weak = weak_from_this(), appRecord, isFromWindowFocusChanged, isByCall]() {
+    if (appRecord == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null appRecord");
+        return;
+    }
+
+    auto data = WrapProcessData(appRecord, isFromWindowFocusChanged, isFromScreenOffBackground);
+    if (data == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "WrapProcessData failed");
+        return;
+    }
+    if (data->bundleName == XIAOYI_BUNDLE_NAME && data->extensionType == ExtensionAbilityType::SERVICE) {
+        TAG_LOGI(AAFwkTag::APPMGR, "change processType to NORMAL");
+        data->processType = ProcessType::NORMAL;
+    }
+    auto applicationInfo = appRecord->GetApplicationInfo();
+    BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
+
+    auto task = [weak = weak_from_this(), data, bundleType, isByCall]() {
         auto self = weak.lock();
         if (self == nullptr) {
             TAG_LOGE(AAFwkTag::APPMGR, "null self");
             return;
         }
         TAG_LOGD(AAFwkTag::APPMGR, "OnProcessStateChanged come.");
-        self->HandleOnProcessStateChanged(appRecord, isFromWindowFocusChanged, isByCall);
+        self->HandleOnProcessStateChanged(data, bundleType, isByCall);
     };
     handler_->SubmitTask(task);
 }
@@ -459,13 +614,41 @@ void AppStateObserverManager::OnProcessCreated(const std::shared_ptr<AppRunningR
         return;
     }
 
-    auto task = [weak = weak_from_this(), appRecord, isPreload]() {
+    if (!appRecord) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null appRecord");
+        return;
+    }
+
+    auto data = WrapProcessData(appRecord);
+    if (data == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "WrapProcessData failed");
+        return;
+    }
+    data->isPreload = isPreload || appRecord->GetPreloadMode() == PreloadMode::PRE_LAUNCH;
+    data->isPreloadModule = appRecord->GetPreloadMode() == PreloadMode::PRE_MAKE
+        || appRecord->GetPreloadMode() == PreloadMode::PRELOAD_MODULE
+        || appRecord->GetPreloadMode() == PreloadMode::PRE_LAUNCH;
+    data->preloadMode = static_cast<int32_t>(appRecord->GetPreloadMode());
+    if (data->bundleName == XIAOYI_BUNDLE_NAME && data->extensionType == ExtensionAbilityType::SERVICE) {
+        TAG_LOGI(AAFwkTag::APPMGR, "change processType to NORMAL");
+        data->processType = ProcessType::NORMAL;
+    }
+    TAG_LOGI(AAFwkTag::APPMGR,
+        "b:%{public}s pid:%{public}d u:%{public}d pt:%{public}d et:%{public}d pName:%{public}s ru:%{public}d "
+        "tMode:%{public}d cPid:%{public}d cU:%{public}d pm:%{public}d",
+        data->bundleName.c_str(), data->pid, data->uid, data->processType, data->extensionType,
+        data->processName.c_str(), data->renderUid, data->isTestMode, data->callerPid, data->callerUid,
+        data->preloadMode);
+    auto applicationInfo = appRecord->GetApplicationInfo();
+    BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
+
+    auto task = [weak = weak_from_this(), data, bundleType]() {
         auto self = weak.lock();
         if (self == nullptr) {
             TAG_LOGE(AAFwkTag::APPMGR, "null self");
             return;
         }
-        self->HandleOnAppProcessCreated(appRecord, isPreload);
+        self->HandleOnProcessCreated(data, bundleType);
     };
     handler_->SubmitTask(task);
 }
@@ -477,14 +660,29 @@ void AppStateObserverManager::OnProcessReused(const std::shared_ptr<AppRunningRe
         return;
     }
 
-    auto task = [weak = weak_from_this(), appRecord]() {
+    if (!appRecord) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null appRecord");
+        return;
+    }
+
+    auto data = WrapProcessData(appRecord);
+    if (data == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "WrapProcessData failed");
+        return;
+    }
+    auto applicationInfo = appRecord->GetApplicationInfo();
+    BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
+    TAG_LOGD(AAFwkTag::APPMGR, "Process Resued, bundle:%{public}s, pid:%{public}d, uid:%{public}d",
+        data->bundleName.c_str(), data->pid, data->uid);
+
+    auto task = [weak = weak_from_this(), data, bundleType]() {
         auto self = weak.lock();
         if (self == nullptr) {
             TAG_LOGE(AAFwkTag::APPMGR, "null self");
             return;
         }
         TAG_LOGD(AAFwkTag::APPMGR, "OnProcessReused come.");
-        self->HandleOnProcessResued(appRecord);
+        self->HandleOnProcessResued(data, bundleType);
     };
     handler_->SubmitTask(task);
 }
@@ -562,16 +760,16 @@ void AppStateObserverManager::HandleOnAppStarted(const std::shared_ptr<AppRunnin
     data.isSpecifyTokenId = appRecord->GetAssignTokenId() > 0 ? true : false;
     TAG_LOGD(AAFwkTag::APPMGR, "HandleOnAppStarted, bundle:%{public}s, uid:%{public}d, state:%{public}d",
         data.bundleName.c_str(), data.uid, data.state);
+    auto applicationInfo = appRecord->GetApplicationInfo();
+    BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
+    AppStateFilter appStateFilter {FilterCallback::ON_APP_STARTED,
+        GetFilterTypeFromBundleType(bundleType),
+        GetFilterTypeFromApplicationState(static_cast<ApplicationState>(data.state)),
+        FilterProcessStateType::NONE, FilterAbilityStateType::NONE};
     auto appStateObserverMapCopy = GetAppStateObserverMapCopy();
     for (auto it = appStateObserverMapCopy.begin(); it != appStateObserverMapCopy.end(); ++it) {
         const auto &bundleNames = it->second.bundleNames;
         auto iter = std::find(bundleNames.begin(), bundleNames.end(), data.bundleName);
-        auto applicationInfo = appRecord->GetApplicationInfo();
-        BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
-        AppStateFilter appStateFilter {FilterCallback::ON_APP_STARTED,
-            GetFilterTypeFromBundleType(bundleType),
-            GetFilterTypeFromApplicationState(static_cast<ApplicationState>(data.state)),
-            FilterProcessStateType::NONE, FilterAbilityStateType::NONE};
         if ((bundleNames.empty() || iter != bundleNames.end()) && it->first != nullptr &&
             it->second.appStateFilter.Match(appStateFilter)) {
             it->first->OnAppStarted(data);
@@ -590,16 +788,16 @@ void AppStateObserverManager::HandleOnAppStopped(const std::shared_ptr<AppRunnin
     AppStateData data = WrapAppStateData(appRecord, ApplicationState::APP_STATE_TERMINATED);
     TAG_LOGD(AAFwkTag::APPMGR, "HandleOnAppStopped, bundle:%{public}s, uid:%{public}d, state:%{public}d",
         data.bundleName.c_str(), data.uid, data.state);
+    auto applicationInfo = appRecord->GetApplicationInfo();
+    BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
+    AppStateFilter appStateFilter {FilterCallback::ON_APP_STOPPED,
+        GetFilterTypeFromBundleType(bundleType),
+        GetFilterTypeFromApplicationState(static_cast<ApplicationState>(data.state)),
+        FilterProcessStateType::NONE, FilterAbilityStateType::NONE};
     auto appStateObserverMapCopy = GetAppStateObserverMapCopy();
     for (auto it = appStateObserverMapCopy.begin(); it != appStateObserverMapCopy.end(); ++it) {
         const auto &bundleNames = it->second.bundleNames;
         auto iter = std::find(bundleNames.begin(), bundleNames.end(), data.bundleName);
-        auto applicationInfo = appRecord->GetApplicationInfo();
-        BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
-        AppStateFilter appStateFilter {FilterCallback::ON_APP_STOPPED,
-            GetFilterTypeFromBundleType(bundleType),
-            GetFilterTypeFromApplicationState(static_cast<ApplicationState>(data.state)),
-            FilterProcessStateType::NONE, FilterAbilityStateType::NONE};
         if ((bundleNames.empty() || iter != bundleNames.end()) && it->first != nullptr &&
             it->second.appStateFilter.Match(appStateFilter)) {
             it->first->OnAppStopped(data);
@@ -633,6 +831,13 @@ void AppStateObserverManager::HandleAppStateChanged(const std::shared_ptr<AppRun
             TAG_LOGD(AAFwkTag::APPMGR, "name:%{public}s, uid:%{public}d, state:%{public}d, notify:%{public}d, "
                 "preloadMode:%{public}d",
                 data.bundleName.c_str(), data.uid, data.state, needNotifyApp, data.preloadMode);
+            FilterBundleType filterBundleType = GetFilterTypeFromBundleType(bundleType);
+            FilterAppStateType filterAppStateType =
+                GetFilterTypeFromApplicationState(static_cast<ApplicationState>(data.state));
+            AppStateFilter foregroundChangedFilter {FilterCallback::ON_FOREGROUND_APPLICATION_CHANGED,
+                filterBundleType, filterAppStateType, FilterProcessStateType::NONE, FilterAbilityStateType::NONE};
+            AppStateFilter appStateChangedFilter {FilterCallback::ON_APP_STATE_CHANGED,
+                filterBundleType, filterAppStateType, FilterProcessStateType::NONE, FilterAbilityStateType::NONE};
             auto appStateObserverMapCopy = GetAppStateObserverMapCopy();
             for (auto it = appStateObserverMapCopy.begin(); it != appStateObserverMapCopy.end(); ++it) {
                 const auto &bundleNames = it->second.bundleNames;
@@ -640,20 +845,12 @@ void AppStateObserverManager::HandleAppStateChanged(const std::shared_ptr<AppRun
                 bool valid = (bundleNames.empty() || iter != bundleNames.end()) && it->first != nullptr;
                 valid = valid && !PreventNotify(state, it->second.uid, isByCall);
                 if (valid) {
-                    AppStateFilter appStateFilter {FilterCallback::ON_FOREGROUND_APPLICATION_CHANGED,
-                        GetFilterTypeFromBundleType(bundleType),
-                        GetFilterTypeFromApplicationState(static_cast<ApplicationState>(data.state)),
-                        FilterProcessStateType::NONE, FilterAbilityStateType::NONE};
-                    if (it->second.appStateFilter.Match(appStateFilter)) {
+                    if (it->second.appStateFilter.Match(foregroundChangedFilter)) {
                         it->first->OnForegroundApplicationChanged(data);
                     }
                 }
                 if (valid && needNotifyApp) {
-                    AppStateFilter appStateFilter {FilterCallback::ON_APP_STATE_CHANGED,
-                        GetFilterTypeFromBundleType(bundleType),
-                        GetFilterTypeFromApplicationState(static_cast<ApplicationState>(data.state)),
-                        FilterProcessStateType::NONE, FilterAbilityStateType::NONE};
-                    if (it->second.appStateFilter.Match(appStateFilter)) {
+                    if (it->second.appStateFilter.Match(appStateChangedFilter)) {
                         it->first->OnAppStateChanged(data);
                     }
                 }
@@ -664,17 +861,39 @@ void AppStateObserverManager::HandleAppStateChanged(const std::shared_ptr<AppRun
         AppStateData data = WrapAppStateData(appRecord, state, isFromWindowFocusChanged);
         TAG_LOGD(AAFwkTag::APPMGR, "OnApplicationStateChanged, name:%{public}s, uid:%{public}d, state:%{public}d, "
             "preloadMode:%{public}d", data.bundleName.c_str(), data.uid, data.state, data.preloadMode);
+        AppStateFilter appStateFilter {FilterCallback::ON_APPLICATION_STATE_CHANGED,
+            GetFilterTypeFromBundleType(bundleType),
+            GetFilterTypeFromApplicationState(static_cast<ApplicationState>(data.state)),
+            FilterProcessStateType::NONE, FilterAbilityStateType::NONE};
         auto appStateObserverMapCopy = GetAppStateObserverMapCopy();
         for (auto it = appStateObserverMapCopy.begin(); it != appStateObserverMapCopy.end(); ++it) {
             const auto &bundleNames = it->second.bundleNames;
             auto iter = std::find(bundleNames.begin(), bundleNames.end(), data.bundleName);
-            AppStateFilter appStateFilter {FilterCallback::ON_APPLICATION_STATE_CHANGED,
-                GetFilterTypeFromBundleType(bundleType),
-                GetFilterTypeFromApplicationState(static_cast<ApplicationState>(data.state)),
-                FilterProcessStateType::NONE, FilterAbilityStateType::NONE};
             if ((bundleNames.empty() || iter != bundleNames.end()) && it->first != nullptr &&
                 it->second.appStateFilter.Match(appStateFilter)) {
                 it->first->OnApplicationStateChanged(data);
+            }
+        }
+    }
+}
+
+void AppStateObserverManager::NotifyAppStateObservers(const AbilityStateData &abilityStateData,
+    bool isAbility, const AppStateFilter &appStateFilter)
+{
+    auto appStateObserverMapCopy = GetAppStateObserverMapCopy();
+    for (auto it = appStateObserverMapCopy.begin(); it != appStateObserverMapCopy.end(); ++it) {
+        const auto &bundleNames = it->second.bundleNames;
+        auto iter = std::find(bundleNames.begin(), bundleNames.end(), abilityStateData.bundleName);
+        if ((!bundleNames.empty() && iter == bundleNames.end()) || it->first == nullptr) {
+            continue;
+        }
+        if (isAbility) {
+            if (it->second.appStateFilter.Match(appStateFilter)) {
+                it->first->OnAbilityStateChanged(abilityStateData);
+            }
+        } else {
+            if (it->second.appStateFilter.Match(appStateFilter)) {
+                it->first->OnExtensionStateChanged(abilityStateData);
             }
         }
     }
@@ -685,41 +904,29 @@ void AppStateObserverManager::HandleStateChangedNotifyObserver(
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     TAG_LOGD(AAFwkTag::APPMGR,
-        "Handle state change, module:%{public}s, bundle:%{public}s, ability:%{public}s, state:%{public}d,"
-        "pid:%{public}d ,uid:%{public}d, abilityType:%{public}d, isAbility:%{public}d, callerBundleName:%{public}s,"
-        "callerAbilityName:%{public}s, isAtomicService:%{public}d, callerUid:%{public}d, callerPid:%{public}d"
-        "pleloadMode:%{public}d",
+        "Handle state change, module:%{public}s, bundle:%{public}s, ability:%{public}s, state:%{public}d, "
+        "pid:%{public}d ,uid:%{public}d, abilityType:%{public}d, isAbility:%{public}d, callerBundleName:%{public}s, "
+        "callerAbilityName:%{public}s, isAtomicService:%{public}d, callerUid:%{public}d, callerPid:%{public}d, "
+        "preloadMode:%{public}d, lastUIAbilityCallerUid:%{public}d",
         abilityStateData.moduleName.c_str(), abilityStateData.bundleName.c_str(),
         abilityStateData.abilityName.c_str(), abilityStateData.abilityState, abilityStateData.pid, abilityStateData.uid,
         abilityStateData.abilityType, isAbility, abilityStateData.callerBundleName.c_str(),
         abilityStateData.callerAbilityName.c_str(), abilityStateData.isAtomicService, abilityStateData.callerUid,
-        abilityStateData.callerPid, abilityStateData.preloadMode);
-    auto appStateObserverMapCopy = GetAppStateObserverMapCopy();
-    for (auto it = appStateObserverMapCopy.begin(); it != appStateObserverMapCopy.end(); ++it) {
-        const auto &bundleNames = it->second.bundleNames;
-        auto iter = std::find(bundleNames.begin(), bundleNames.end(), abilityStateData.bundleName);
-        if ((!bundleNames.empty() && iter == bundleNames.end()) || it->first == nullptr) {
-            continue;
-        }
-        if (isAbility) {
-            AppStateFilter appStateFilter {FilterCallback::ON_ABILITY_STATE_CHANGED,
-                GetFilterTypeFromBundleType(bundleType),
-                FilterAppStateType::NONE, FilterProcessStateType::NONE,
-                GetFilterTypeFromAbilityState(static_cast<AbilityState>(abilityStateData.abilityState))};
-            if (it->second.appStateFilter.Match(appStateFilter)) {
-                it->first->OnAbilityStateChanged(abilityStateData);
-            }
-        } else {
-            AppStateFilter appStateFilter {FilterCallback::ON_EXTENSION_STATE_CHANGED,
-                GetFilterTypeFromBundleType(bundleType),
-                FilterAppStateType::NONE, FilterProcessStateType::NONE,
-                GetFilterTypeFromExtensionState(static_cast<ExtensionState>(abilityStateData.abilityState))};
-            if (it->second.appStateFilter.Match(appStateFilter)) {
-                it->first->OnExtensionStateChanged(abilityStateData);
-            }
-        }
+        abilityStateData.callerPid, abilityStateData.preloadMode, abilityStateData.lastUIAbilityCallerUid);
+    FilterBundleType filterBundleType = GetFilterTypeFromBundleType(bundleType);
+    AppStateFilter appStateFilter;
+    if (isAbility) {
+        appStateFilter = {FilterCallback::ON_ABILITY_STATE_CHANGED,
+            filterBundleType,
+            FilterAppStateType::NONE, FilterProcessStateType::NONE,
+            GetFilterTypeFromAbilityState(static_cast<AbilityState>(abilityStateData.abilityState))};
+    } else {
+        appStateFilter = {FilterCallback::ON_EXTENSION_STATE_CHANGED,
+            filterBundleType,
+            FilterAppStateType::NONE, FilterProcessStateType::NONE,
+            GetFilterTypeFromExtensionState(static_cast<ExtensionState>(abilityStateData.abilityState))};
     }
-
+    NotifyAppStateObservers(abilityStateData, isAbility, appStateFilter);
     if ((abilityStateData.abilityState == static_cast<int32_t>(AbilityState::ABILITY_STATE_FOREGROUND) ||
             abilityStateData.abilityState == static_cast<int32_t>(AbilityState::ABILITY_STATE_BACKGROUND)) &&
         isAbility && !isFromWindowFocusChanged) {
@@ -732,59 +939,33 @@ void AppStateObserverManager::HandleStateChangedNotifyObserver(
     }
 }
 
-void AppStateObserverManager::HandleOnAppProcessCreated(const std::shared_ptr<AppRunningRecord> &appRecord,
-    bool isPreload)
+void AppStateObserverManager::HandleOnAppProcessCreated(const std::shared_ptr<ProcessData> &data, BundleType bundleType)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    if (!appRecord) {
-        TAG_LOGE(AAFwkTag::APPMGR, "null appRecord");
-        return;
-    }
-    ProcessData data = WrapProcessData(appRecord);
-    data.isPreload = isPreload || appRecord->GetPreloadMode() == PreloadMode::PRE_LAUNCH;
-    data.isPreloadModule = appRecord->GetPreloadMode() == PreloadMode::PRE_MAKE
-        || appRecord->GetPreloadMode() == PreloadMode::PRELOAD_MODULE
-        || appRecord->GetPreloadMode() == PreloadMode::PRE_LAUNCH;
-    data.preloadMode = static_cast<int32_t>(appRecord->GetPreloadMode());
-    if (data.bundleName == XIAOYI_BUNDLE_NAME && data.extensionType == ExtensionAbilityType::SERVICE) {
-        TAG_LOGI(AAFwkTag::APPMGR, "change processType to NORMAL");
-        data.processType = ProcessType::NORMAL;
-    }
-    TAG_LOGI(AAFwkTag::APPMGR,
-        "b:%{public}s pid:%{public}d u:%{public}d pt:%{public}d et:%{public}d pName:%{public}s ru:%{public}d "
-        "tMode:%{public}d cPid:%{public}d cU:%{public}d pm:%{public}d",
-        data.bundleName.c_str(), data.pid, data.uid, data.processType, data.extensionType, data.processName.c_str(),
-        data.renderUid, data.isTestMode, data.callerPid, data.callerUid, data.preloadMode);
-    auto applicationInfo = appRecord->GetApplicationInfo();
-    BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
     HandleOnProcessCreated(data, bundleType);
 }
 
-void AppStateObserverManager::HandleOnProcessResued(const std::shared_ptr<AppRunningRecord> &appRecord)
+void AppStateObserverManager::HandleOnProcessResued(const std::shared_ptr<ProcessData> &data, BundleType bundleType)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    if (!appRecord) {
-        TAG_LOGE(AAFwkTag::APPMGR, "null appRecord");
+    if (data == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null data");
         return;
     }
-    ProcessData data = WrapProcessData(appRecord);
     TAG_LOGD(AAFwkTag::APPMGR, "Process Resued, bundle:%{public}s, pid:%{public}d, uid:%{public}d",
-        data.bundleName.c_str(), data.pid, data.uid);
-
+        data->bundleName.c_str(), data->pid, data->uid);
     auto appStateObserverMapCopy = GetAppStateObserverMapCopy();
     for (auto it = appStateObserverMapCopy.begin(); it != appStateObserverMapCopy.end(); ++it) {
         const auto &bundleNames = it->second.bundleNames;
-        auto iter = std::find(bundleNames.begin(), bundleNames.end(), data.bundleName);
-        auto applicationInfo = appRecord->GetApplicationInfo();
-        BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
+        auto iter = std::find(bundleNames.begin(), bundleNames.end(), data->bundleName);
         AppStateFilter appStateFilter {FilterCallback::ON_PROCESS_REUSED,
             GetFilterTypeFromBundleType(bundleType), FilterAppStateType::NONE,
-            GetFilterTypeFromAppProcessState(static_cast<AppProcessState>(data.state)),
+            GetFilterTypeFromAppProcessState(static_cast<AppProcessState>(data->state)),
             FilterAbilityStateType::NONE};
         if ((bundleNames.empty() || iter != bundleNames.end()) && it->first != nullptr &&
             it->second.appStateFilter.Match(appStateFilter)) {
-            it->first->OnProcessReused(data);
-        }
+            it->first->OnProcessReused(*data);
+}
     }
 }
 
@@ -796,12 +977,12 @@ void AppStateObserverManager::HandleOnRenderProcessCreated(const std::shared_ptr
         TAG_LOGE(AAFwkTag::APPMGR, "null renderRecord");
         return;
     }
-    ProcessData data = WrapRenderProcessData(renderRecord);
-    data.isPreload = isPreload;
+    auto data = std::make_shared<ProcessData>(WrapRenderProcessData(renderRecord));
+    data->isPreload = isPreload;
     TAG_LOGD(AAFwkTag::APPMGR,
         "RenderProcess Create, bundle:%{public}s, pid:%{public}d, uid:%{public}d, processType:%{public}d, "
         "processName:%{public}s, renderUid:%{public}d",
-        data.bundleName.c_str(), data.pid, data.uid, data.processType, data.processName.c_str(), data.renderUid);
+        data->bundleName.c_str(), data->pid, data->uid, data->processType, data->processName.c_str(), data->renderUid);
     BundleType bundleType = BundleType::APP;
     auto hostRecord = renderRecord->GetHostRecord();
     if (hostRecord) {
@@ -819,15 +1000,15 @@ void AppStateObserverManager::HandleOnChildProcessCreated(std::shared_ptr<ChildP
         TAG_LOGE(AAFwkTag::APPMGR, "null childRecord");
         return;
     }
-    ProcessData data;
-    if (WrapChildProcessData(data, childRecord) != ERR_OK) {
+    auto data = std::make_shared<ProcessData>();
+    if (WrapChildProcessData(*data, childRecord) != ERR_OK) {
         TAG_LOGE(AAFwkTag::APPMGR, "WrapChildProcessData failed");
         return;
     }
     TAG_LOGD(AAFwkTag::APPMGR,
         "ChildProcess Create, bundleName:%{public}s, pid:%{public}d, uid:%{public}d, "
         "processType:%{public}d, processName:%{public}s",
-        data.bundleName.c_str(), data.pid, data.uid, data.processType, data.processName.c_str());
+        data->bundleName.c_str(), data->pid, data->uid, data->processType, data->processName.c_str());
     BundleType bundleType = BundleType::APP;
     auto hostRecord = childRecord->GetHostRecord();
     if (hostRecord) {
@@ -838,54 +1019,54 @@ void AppStateObserverManager::HandleOnChildProcessCreated(std::shared_ptr<ChildP
 }
 #endif // SUPPORT_CHILD_PROCESS
 
-void AppStateObserverManager::HandleOnProcessCreated(const ProcessData &data, BundleType bundleType)
+void AppStateObserverManager::HandleOnProcessCreated(const std::shared_ptr<ProcessData> &data, BundleType bundleType)
 {
+    if (data == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null data");
+        return;
+    }
     auto appStateObserverMapCopy = GetAppStateObserverMapCopy();
     for (auto it = appStateObserverMapCopy.begin(); it != appStateObserverMapCopy.end(); ++it) {
         const auto &bundleNames = it->second.bundleNames;
-        auto iter = std::find(bundleNames.begin(), bundleNames.end(), data.bundleName);
+        auto iter = std::find(bundleNames.begin(), bundleNames.end(), data->bundleName);
         AppStateFilter appStateFilter {FilterCallback::ON_PROCESS_CREATED,
             GetFilterTypeFromBundleType(bundleType), FilterAppStateType::NONE,
-            GetFilterTypeFromAppProcessState(static_cast<AppProcessState>(data.state)),
+            GetFilterTypeFromAppProcessState(static_cast<AppProcessState>(data->state)),
             FilterAbilityStateType::NONE};
         if ((bundleNames.empty() || iter != bundleNames.end()) && it->first != nullptr &&
             it->second.appStateFilter.Match(appStateFilter)) {
-            it->first->OnProcessCreated(data);
-        }
+            it->first->OnProcessCreated(*data);
+}
     }
+    DispatchProcessLifecycleCreated(*data);
 }
 
 void AppStateObserverManager::HandleOnProcessStateChanged(
-    const std::shared_ptr<AppRunningRecord> &appRecord, bool isFromWindowFocusChanged, bool isByCall)
+    const std::shared_ptr<ProcessData> &data, BundleType bundleType, bool isByCall)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    if (!appRecord) {
-        TAG_LOGE(AAFwkTag::APPMGR, "null appRecord");
+    if (data == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null data");
         return;
-    }
-    ProcessData data = WrapProcessData(appRecord, isFromWindowFocusChanged);
-    if (data.bundleName == XIAOYI_BUNDLE_NAME && data.extensionType == ExtensionAbilityType::SERVICE) {
-        TAG_LOGI(AAFwkTag::APPMGR, "change processType to NORMAL");
-        data.processType = ProcessType::NORMAL;
     }
     TAG_LOGD(AAFwkTag::APPMGR,
         "bundle:%{public}s, pid:%{public}d, uid:%{public}d, state:%{public}d, "
-        "isContinuousTask:%{public}d, gpuPid:%{public}d, preloadMode:%{public}d",
-        data.bundleName.c_str(), data.pid, data.uid, data.state, data.isContinuousTask, data.gpuPid, data.preloadMode);
+        "isContinuousTask:%{public}d, gpuPid:%{public}d, preloadMode:%{public}d, isFromScreenOffBackground:%{public}d, "
+        "callerUid:%{public}d",
+        data->bundleName.c_str(), data->pid, data->uid, data->state, data->isContinuousTask, data->gpuPid,
+        data->preloadMode, data->isFromScreenOffBackground, data->callerUid);
+    AppStateFilter appStateFilter {FilterCallback::ON_PROCESS_STATE_CHANGED,
+        GetFilterTypeFromBundleType(bundleType), FilterAppStateType::NONE,
+        GetFilterTypeFromAppProcessState(static_cast<AppProcessState>(data->state)),
+        FilterAbilityStateType::NONE};
     auto appStateObserverMapCopy = GetAppStateObserverMapCopy();
+    ApplicationState state = static_cast<ApplicationState>(data->state);
     for (auto it = appStateObserverMapCopy.begin(); it != appStateObserverMapCopy.end(); ++it) {
         const auto &bundleNames = it->second.bundleNames;
-        auto iter = std::find(bundleNames.begin(), bundleNames.end(), data.bundleName);
-        auto applicationInfo = appRecord->GetApplicationInfo();
-        BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
-        AppStateFilter appStateFilter {FilterCallback::ON_PROCESS_STATE_CHANGED,
-            GetFilterTypeFromBundleType(bundleType), FilterAppStateType::NONE,
-            GetFilterTypeFromAppProcessState(static_cast<AppProcessState>(data.state)),
-            FilterAbilityStateType::NONE};
+        auto iter = std::find(bundleNames.begin(), bundleNames.end(), data->bundleName);
         if ((bundleNames.empty() || iter != bundleNames.end()) && it->first != nullptr &&
-            it->second.appStateFilter.Match(appStateFilter) &&
-            !PreventNotify(appRecord->GetState(), it->second.uid, isByCall)) {
-            it->first->OnProcessStateChanged(data);
+            it->second.appStateFilter.Match(appStateFilter) && !PreventNotify(state, it->second.uid, isByCall)) {
+            it->first->OnProcessStateChanged(*data);
         }
     }
 }
@@ -897,24 +1078,28 @@ void AppStateObserverManager::HandleOnWindowShow(const std::shared_ptr<AppRunnin
         TAG_LOGE(AAFwkTag::APPMGR, "app record is null");
         return;
     }
-    ProcessData data = WrapProcessData(appRecord);
+    auto data = WrapProcessData(appRecord);
+    if (!data) {
+        TAG_LOGE(AAFwkTag::APPMGR, "data is null");
+        return;
+    }
     TAG_LOGD(AAFwkTag::APPMGR,
         "bundle:%{public}s, pid:%{public}d, uid:%{public}d, state:%{public}d, "
         "isContinuousTask:%{public}d, gpuPid:%{public}d",
-        data.bundleName.c_str(), data.pid, data.uid, data.state, data.isContinuousTask, data.gpuPid);
+        data->bundleName.c_str(), data->pid, data->uid, data->state, data->isContinuousTask, data->gpuPid);
+    auto applicationInfo = appRecord->GetApplicationInfo();
+    BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
+    AppStateFilter appStateFilter {FilterCallback::ON_WINDOW_SHOW,
+        GetFilterTypeFromBundleType(bundleType), FilterAppStateType::NONE,
+        GetFilterTypeFromAppProcessState(static_cast<AppProcessState>(data->state)),
+        FilterAbilityStateType::NONE};
     auto appStateObserverMapCopy = GetAppStateObserverMapCopy();
     for (auto it = appStateObserverMapCopy.begin(); it != appStateObserverMapCopy.end(); ++it) {
         const auto &bundleNames = it->second.bundleNames;
-        auto iter = std::find(bundleNames.begin(), bundleNames.end(), data.bundleName);
-        auto applicationInfo = appRecord->GetApplicationInfo();
-        BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
-        AppStateFilter appStateFilter {FilterCallback::ON_WINDOW_SHOW,
-            GetFilterTypeFromBundleType(bundleType), FilterAppStateType::NONE,
-            GetFilterTypeFromAppProcessState(static_cast<AppProcessState>(data.state)),
-            FilterAbilityStateType::NONE};
+        auto iter = std::find(bundleNames.begin(), bundleNames.end(), data->bundleName);
         if ((bundleNames.empty() || iter != bundleNames.end()) && it->first != nullptr &&
             it->second.appStateFilter.Match(appStateFilter)) {
-            it->first->OnWindowShow(data);
+            it->first->OnWindowShow(*data);
         }
     }
 }
@@ -926,42 +1111,35 @@ void AppStateObserverManager::HandleOnWindowHidden(const std::shared_ptr<AppRunn
         TAG_LOGE(AAFwkTag::APPMGR, "app record is null");
         return;
     }
-    ProcessData data = WrapProcessData(appRecord);
+    auto data = WrapProcessData(appRecord);
+    if (!data) {
+        TAG_LOGE(AAFwkTag::APPMGR, "data is null");
+        return;
+    }
     TAG_LOGD(AAFwkTag::APPMGR,
         "bundle:%{public}s, pid:%{public}d, uid:%{public}d, state:%{public}d, "
         "isContinuousTask:%{public}d, gpuPid:%{public}d",
-        data.bundleName.c_str(), data.pid, data.uid, data.state, data.isContinuousTask, data.gpuPid);
+        data->bundleName.c_str(), data->pid, data->uid, data->state, data->isContinuousTask, data->gpuPid);
+    auto applicationInfo = appRecord->GetApplicationInfo();
+    BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
+    AppStateFilter appStateFilter {FilterCallback::ON_WINDOW_HIDDEN,
+        GetFilterTypeFromBundleType(bundleType), FilterAppStateType::NONE,
+        GetFilterTypeFromAppProcessState(static_cast<AppProcessState>(data->state)),
+        FilterAbilityStateType::NONE};
     auto appStateObserverMapCopy = GetAppStateObserverMapCopy();
     for (auto it = appStateObserverMapCopy.begin(); it != appStateObserverMapCopy.end(); ++it) {
         const auto &bundleNames = it->second.bundleNames;
-        auto iter = std::find(bundleNames.begin(), bundleNames.end(), data.bundleName);
-        auto applicationInfo = appRecord->GetApplicationInfo();
-        BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
-        AppStateFilter appStateFilter {FilterCallback::ON_WINDOW_HIDDEN,
-            GetFilterTypeFromBundleType(bundleType), FilterAppStateType::NONE,
-            GetFilterTypeFromAppProcessState(static_cast<AppProcessState>(data.state)),
-            FilterAbilityStateType::NONE};
+        auto iter = std::find(bundleNames.begin(), bundleNames.end(), data->bundleName);
         if ((bundleNames.empty() || iter != bundleNames.end()) && it->first != nullptr &&
             it->second.appStateFilter.Match(appStateFilter)) {
-            it->first->OnWindowHidden(data);
+            it->first->OnWindowHidden(*data);
         }
     }
 }
 
-void AppStateObserverManager::HandleOnAppProcessDied(const std::shared_ptr<AppRunningRecord> &appRecord)
+void AppStateObserverManager::HandleOnAppProcessDied(const std::shared_ptr<ProcessData> &data, BundleType bundleType)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    if (!appRecord) {
-        TAG_LOGE(AAFwkTag::APPMGR, "null appRecord");
-        return;
-    }
-    ProcessData data = WrapProcessData(appRecord);
-    TAG_LOGD(AAFwkTag::APPMGR, "Process died, bundle:%{public}s, pid:%{public}d, uid:%{public}d, renderUid:%{public}d,"
-        " exitReason:%{public}d, exitMsg:%{public}s, pm:%{public}d",
-        data.bundleName.c_str(), data.pid, data.uid, data.renderUid, data.exitReason, data.exitMsg.c_str(),
-        data.preloadMode);
-    auto applicationInfo = appRecord->GetApplicationInfo();
-    BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
     HandleOnProcessDied(data, bundleType);
 }
 
@@ -972,10 +1150,10 @@ void AppStateObserverManager::HandleOnRenderProcessDied(const std::shared_ptr<Re
         TAG_LOGE(AAFwkTag::APPMGR, "null renderRecord");
         return;
     }
-    ProcessData data = WrapRenderProcessData(renderRecord);
+    auto data = std::make_shared<ProcessData>(WrapRenderProcessData(renderRecord));
     TAG_LOGD(AAFwkTag::APPMGR,
         "Render Process died, bundle:%{public}s, pid:%{public}d, uid:%{public}d, renderUid:%{public}d",
-        data.bundleName.c_str(), data.pid, data.uid, data.renderUid);
+        data->bundleName.c_str(), data->pid, data->uid, data->renderUid);
     BundleType bundleType = BundleType::APP;
     auto hostRecord = renderRecord->GetHostRecord();
     if (hostRecord) {
@@ -993,15 +1171,15 @@ void AppStateObserverManager::HandleOnChildProcessDied(std::shared_ptr<ChildProc
         TAG_LOGE(AAFwkTag::APPMGR, "null childRecord");
         return;
     }
-    ProcessData data;
-    if (WrapChildProcessData(data, childRecord) != ERR_OK) {
+    auto data = std::make_shared<ProcessData>();
+    if (WrapChildProcessData(*data, childRecord) != ERR_OK) {
         TAG_LOGE(AAFwkTag::APPMGR, "WrapChildProcessData failed");
         return;
     }
     TAG_LOGD(AAFwkTag::APPMGR,
         "ChildProcess died, bundleName:%{public}s, pid:%{public}d, uid:%{public}d, "
         "processType:%{public}d, processName:%{public}s",
-        data.bundleName.c_str(), data.pid, data.uid, data.processType, data.processName.c_str());
+        data->bundleName.c_str(), data->pid, data->uid, data->processType, data->processName.c_str());
     BundleType bundleType = BundleType::APP;
     auto hostRecord = childRecord->GetHostRecord();
     if (hostRecord) {
@@ -1012,56 +1190,68 @@ void AppStateObserverManager::HandleOnChildProcessDied(std::shared_ptr<ChildProc
 }
 #endif // SUPPORT_CHILD_PROCESS
 
-void AppStateObserverManager::HandleOnProcessDied(const ProcessData &data, BundleType bundleType)
+void AppStateObserverManager::HandleOnProcessDied(const std::shared_ptr<ProcessData> &data, BundleType bundleType)
 {
+    if (data == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null data");
+        return;
+    }
     auto appStateObserverMapCopy = GetAppStateObserverMapCopy();
     for (auto it = appStateObserverMapCopy.begin(); it != appStateObserverMapCopy.end(); ++it) {
         const auto &bundleNames = it->second.bundleNames;
-        auto iter = std::find(bundleNames.begin(), bundleNames.end(), data.bundleName);
+        auto iter = std::find(bundleNames.begin(), bundleNames.end(), data->bundleName);
         AppStateFilter appStateFilter {FilterCallback::ON_PROCESS_DIED,
             GetFilterTypeFromBundleType(bundleType), FilterAppStateType::NONE,
-            GetFilterTypeFromAppProcessState(static_cast<AppProcessState>(data.state)),
+            GetFilterTypeFromAppProcessState(static_cast<AppProcessState>(data->state)),
             FilterAbilityStateType::NONE};
         if ((bundleNames.empty() || iter != bundleNames.end()) && it->first != nullptr &&
             it->second.appStateFilter.Match(appStateFilter)) {
-            it->first->OnProcessDied(data);
-        }
+            it->first->OnProcessDied(*data);
+}
     }
+    DispatchProcessLifecycleDied(*data);
 }
 
-ProcessData AppStateObserverManager::WrapProcessData(
-    const std::shared_ptr<AppRunningRecord> &appRecord, bool isFromWindowFocusChanged)
+std::shared_ptr<ProcessData> AppStateObserverManager::WrapProcessData(
+    const std::shared_ptr<AppRunningRecord> &appRecord, bool isFromWindowFocusChanged, bool isFromScreenOffBackground)
 {
-    ProcessData processData;
-    processData.bundleName = appRecord->GetBundleName();
-    processData.pid = appRecord->GetPid();
-    processData.uid = appRecord->GetUid();
+    if (appRecord == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null appRecord");
+        return nullptr;
+    }
+    auto processData = std::make_shared<ProcessData>();
+    processData->bundleName = appRecord->GetBundleName();
+    processData->pid = appRecord->GetPid();
+    processData->uid = appRecord->GetUid();
     auto applicationInfo = appRecord->GetApplicationInfo();
     if (applicationInfo) {
-        processData.accessTokenId = applicationInfo->accessTokenId;
+        processData->accessTokenId = applicationInfo->accessTokenId;
     }
-    processData.state = static_cast<AppProcessState>(appRecord->GetState());
-    processData.isContinuousTask = appRecord->IsContinuousTask();
-    processData.isKeepAlive = appRecord->IsKeepAliveApp() || appRecord->IsKeepAliveAppService();
-    processData.isFocused = appRecord->GetFocusFlag();
-    processData.requestProcCode = appRecord->GetRequestProcCode();
-    processData.processChangeReason = static_cast<int32_t>(appRecord->GetProcessChangeReason());
-    processData.processName = appRecord->GetProcessName();
-    processData.extensionType = appRecord->GetExtensionType();
-    processData.processType = appRecord->GetProcessType();
+    processData->state = static_cast<AppProcessState>(appRecord->GetState());
+    processData->isContinuousTask = appRecord->IsContinuousTask();
+    processData->isKeepAlive = appRecord->IsKeepAliveApp() || appRecord->IsKeepAliveAppService();
+    processData->isFocused = appRecord->GetFocusFlag();
+    processData->requestProcCode = appRecord->GetRequestProcCode();
+    processData->processChangeReason = static_cast<int32_t>(appRecord->GetProcessChangeReason());
+    processData->processName = appRecord->GetProcessName();
+    processData->extensionType = appRecord->GetExtensionType();
+    processData->processType = appRecord->GetProcessType();
     if (appRecord->GetUserTestInfo() != nullptr && system::GetBoolParameter(DEVELOPER_MODE_STATE, false)) {
-        processData.isTestMode = true;
+        processData->isTestMode = true;
     }
-    processData.exitReason = appRecord->GetExitReason();
-    processData.exitMsg = appRecord->GetExitMsg();
-    processData.gpuPid = appRecord->GetGPUPid();
-    processData.callerPid = appRecord->GetCallerPid();
-    processData.callerUid = appRecord->GetCallerUid();
-    processData.killReason = appRecord->GetKillReason();
-    processData.isFromWindowFocusChanged = isFromWindowFocusChanged;
-    processData.preloadMode = static_cast<int32_t>(appRecord->GetPreloadMode());
-    processData.imageProcessType = static_cast<int32_t>(appRecord->GetImageProcessType());
-    processData.isPreloadUIExtension = appRecord->GetUIExtensionPreloadState();
+    processData->exitReason = appRecord->GetExitReason();
+    processData->exitMsg = appRecord->GetExitMsg();
+    processData->gpuPid = appRecord->GetGPUPid();
+    processData->callerPid = appRecord->GetCallerPid();
+    processData->callerUid = appRecord->GetCallerUid();
+    processData->callerBundleName = appRecord->GetCallerBundleName();
+    processData->killReason = appRecord->GetKillReason();
+    processData->isFromWindowFocusChanged = isFromWindowFocusChanged;
+    processData->isFromScreenOffBackground = isFromScreenOffBackground;
+    processData->preloadMode = static_cast<int32_t>(appRecord->GetPreloadMode());
+    processData->imageProcessType = static_cast<int32_t>(appRecord->GetImageProcessType());
+    processData->isPreloadUIExtension = appRecord->GetUIExtensionPreloadState();
+    processData->byCallStatus = appRecord->GetStartedByCallStatus();
     return processData;
 }
 
@@ -1093,6 +1283,7 @@ int32_t AppStateObserverManager::WrapChildProcessData(ProcessData &processData,
     processData.childUid = childRecord->GetUid();
     processData.processName = childRecord->GetProcessName();
     processData.processType = childRecord->GetProcessType();
+    processData.state = childRecord->GetState();
     return ERR_OK;
 }
 #endif // SUPPORT_CHILD_PROCESS
@@ -1187,6 +1378,10 @@ void AppStateObserverManager::AddObserverDeathRecipient(const sptr<IRemoteBroker
             deathRecipient = new (std::nothrow) AbilityForegroundStateObserverRecipient(deathRecipientFunc);
         } else if (type == ObserverType::IMAGE_PROCESS_STATE_OBSERVER) {
             deathRecipient = new (std::nothrow) ImageProcessStateObserverRecipient(deathRecipientFunc);
+        } else if (type == ObserverType::PROCESS_LIFECYCLE_OBSERVER) {
+            deathRecipient = new (std::nothrow) ProcessLifecycleObserverRecipient(deathRecipientFunc);
+        } else if (type == ObserverType::FOCUSED_APPLICATION_OBSERVER) {
+            deathRecipient = new (std::nothrow) FocusedApplicationObserverRecipient(deathRecipientFunc);
         } else {
             TAG_LOGW(AAFwkTag::APPMGR, "null ObserverType");
             return;
@@ -1282,6 +1477,52 @@ ImageProcessObserverMap AppStateObserverManager::GetImageProcessObserverMapCopy(
     return imageProcessStateObserverMap_;
 }
 
+ProcessLifecycleObserverMap AppStateObserverManager::GetProcessLifecycleObserverMapCopy()
+{
+    std::lock_guard lock(processLifecycleObserverLock_);
+    return processLifecycleObserverMap_;
+}
+
+void AppStateObserverManager::DispatchProcessLifecycleCreated(const ProcessData &data)
+{
+    auto observerMap = GetProcessLifecycleObserverMapCopy();
+    for (const auto &[observer, info] : observerMap) {
+        if (observer == nullptr) {
+            continue;
+        }
+        if (info.first != data.uid) {
+            continue;
+        }
+        if (info.second == data.pid) {
+            continue;
+        }
+        observer->OnProcessCreated(data);
+    }
+}
+
+void AppStateObserverManager::DispatchProcessLifecycleDied(const ProcessData &data)
+{
+    auto observerMap = GetProcessLifecycleObserverMapCopy();
+    for (const auto &[observer, info] : observerMap) {
+        if (observer == nullptr) {
+            continue;
+        }
+        if (info.first != data.uid) {
+            continue;
+        }
+        if (info.second == data.pid) {
+            continue;
+        }
+        observer->OnProcessDied(data);
+    }
+}
+
+FocusedApplicationObserverMap AppStateObserverManager::GetFocusedApplicationObserverMapCopy()
+{
+    std::lock_guard lock(focusedApplicationObserverLock_);
+    return focusedApplicationObserverMap_;
+}
+
 void AppStateObserverManager::OnObserverDied(const wptr<IRemoteObject> &remote, const ObserverType &type)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
@@ -1304,6 +1545,12 @@ void AppStateObserverManager::OnObserverDied(const wptr<IRemoteObject> &remote, 
     } else if (type == ObserverType::IMAGE_PROCESS_STATE_OBSERVER) {
         sptr<IImageProcessStateObserver> observer = iface_cast<IImageProcessStateObserver>(object);
         UnregisterImageProcessStateObserver(observer);
+    } else if (type == ObserverType::PROCESS_LIFECYCLE_OBSERVER) {
+        sptr<IProcessLifecycleObserver> observer = iface_cast<IProcessLifecycleObserver>(object);
+        UnregisterProcessLifecycleObserver(observer);
+    } else if (type == ObserverType::FOCUSED_APPLICATION_OBSERVER) {
+        sptr<IFocusedApplicationObserver> observer = iface_cast<IFocusedApplicationObserver>(object);
+        UnregisterFocusedApplicationObserver(observer);
     } else {
         TAG_LOGW(AAFwkTag::APPMGR, "null ObserverType");
         return;
@@ -1324,6 +1571,8 @@ AppStateData AppStateObserverManager::WrapAppStateData(const std::shared_ptr<App
         || appRecord->GetPreloadMode() == PreloadMode::PRE_LAUNCH;
     appStateData.preloadMode = static_cast<int32_t>(appRecord->GetPreloadMode());
     appStateData.callerUid = appRecord->GetCallerUid();
+    appStateData.lastUIAbilityCallerUid = appRecord->GetLastUIAbilityCallerUid();
+    appStateData.lastUIAbilityCallerName = appRecord->GetLastUIAbilityCallerName();
     appStateData.isFromWindowFocusChanged = isFromWindowFocusChanged;
     if (appRecord->GetApplicationInfo() != nullptr) {
         appStateData.accessTokenId = static_cast<uint32_t>(appRecord->GetApplicationInfo()->accessTokenId);
@@ -1338,20 +1587,16 @@ AppStateData AppStateObserverManager::WrapAppStateData(const std::shared_ptr<App
             }
         }
     }
-    std::shared_ptr<RemoteClientManager> remoteClientManager = std::make_shared<RemoteClientManager>();
-    auto bundleMgr = remoteClientManager->GetBundleManagerHelper();
-    std::string callerBundleName;
-    if (bundleMgr != nullptr &&
-        IN_PROCESS_CALL(bundleMgr->GetNameForUid(appRecord->GetCallerUid(), callerBundleName)) == ERR_OK) {
-        appStateData.callerBundleName = callerBundleName;
-    } else {
-        appStateData.callerBundleName = "";
-    }
+    appStateData.callerBundleName = appRecord->GetCallerBundleName();
     appStateData.appIndex = appRecord->GetAppIndex();
-    TAG_LOGD(AAFwkTag::APPMGR, "Handle state change, bundle:%{public}s, state:%{public}d, pid:%{public}d,"
-        "uid:%{public}d, isFocused:%{public}d, callerBUndleName: %{public}s, appIndex:%{public}d, callerUid:%{public}d",
-        appStateData.bundleName.c_str(), appStateData.state, appStateData.pid, appStateData.uid,
-        appStateData.isFocused, appStateData.callerBundleName.c_str(), appStateData.appIndex, appStateData.callerUid);
+    appStateData.byCallStatus = appRecord->GetStartedByCallStatus();
+    TAG_LOGD(AAFwkTag::APPMGR,
+             "Handle state change, bundle:%{public}s, state:%{public}d, pid:%{public}d,"
+             "uid:%{public}d, isFocused:%{public}d, callerBUndleName: %{public}s, appIndex:%{public}d, "
+             "callerUid:%{public}d, lastUIAbilityCallerUid:%{public}d",
+             appStateData.bundleName.c_str(), appStateData.state, appStateData.pid, appStateData.uid,
+             appStateData.isFocused, appStateData.callerBundleName.c_str(), appStateData.appIndex,
+             appStateData.callerUid, appStateData.lastUIAbilityCallerUid);
     return appStateData;
 }
 
@@ -1460,16 +1705,16 @@ void AppStateObserverManager::HandleOnAppCacheStateChanged(const std::shared_ptr
     data.isSpecifyTokenId = appRecord->GetAssignTokenId() > 0 ? true : false;
     TAG_LOGD(AAFwkTag::APPMGR, "HandleOnAppCacheStateChanged, bundle:%{public}s, uid:%{public}d, state:%{public}d",
         data.bundleName.c_str(), data.uid, data.state);
+    auto applicationInfo = appRecord->GetApplicationInfo();
+    BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
+    AppStateFilter appStateFilter {FilterCallback::ON_APP_CACHE_STATE_CHANGED,
+        GetFilterTypeFromBundleType(bundleType),
+        GetFilterTypeFromApplicationState(static_cast<ApplicationState>(data.state)),
+        FilterProcessStateType::NONE, FilterAbilityStateType::NONE};
     auto appStateObserverMapCopy = GetAppStateObserverMapCopy();
     for (auto it = appStateObserverMapCopy.begin(); it != appStateObserverMapCopy.end(); ++it) {
         const auto &bundleNames = it->second.bundleNames;
         auto iter = std::find(bundleNames.begin(), bundleNames.end(), data.bundleName);
-        auto applicationInfo = appRecord->GetApplicationInfo();
-        BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
-        AppStateFilter appStateFilter {FilterCallback::ON_APP_CACHE_STATE_CHANGED,
-            GetFilterTypeFromBundleType(bundleType),
-            GetFilterTypeFromApplicationState(static_cast<ApplicationState>(data.state)),
-            FilterProcessStateType::NONE, FilterAbilityStateType::NONE};
         if ((bundleNames.empty() || iter != bundleNames.end()) && it->first != nullptr &&
             it->second.appStateFilter.Match(appStateFilter)) {
             it->first->OnAppCacheStateChanged(data);
@@ -1575,27 +1820,32 @@ void AppStateObserverManager::HandleOnKeepAliveStateChanged(const std::shared_pt
         TAG_LOGE(AAFwkTag::APPMGR, "null appRecord");
         return;
     }
-    ProcessData data = WrapProcessData(appRecord);
+    auto data = WrapProcessData(appRecord);
+    if (!data) {
+        TAG_LOGE(AAFwkTag::APPMGR, "data is null");
+        return;
+    }
     TAG_LOGI(AAFwkTag::APPMGR,
         "bundle:%{public}s, pid:%{public}d, uid:%{public}d, processType:%{public}d, "
         "extensionType:%{public}d, processName:%{public}s, renderUid:%{public}d, isTestMode:%{public}d, "
         "callerPid:%{public}d, callerUid:%{public}d, isKeepAlive:%{public}d",
-        data.bundleName.c_str(), data.pid, data.uid, data.processType, data.extensionType, data.processName.c_str(),
-        data.renderUid, data.isTestMode, data.callerPid, data.callerUid, data.isKeepAlive);
+        data->bundleName.c_str(), data->pid, data->uid, data->processType, data->extensionType,
+        data->processName.c_str(), data->renderUid, data->isTestMode, data->callerPid, data->callerUid,
+        data->isKeepAlive);
 
+    auto applicationInfo = appRecord->GetApplicationInfo();
+    BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
+    AppStateFilter appStateFilter {FilterCallback::ON_KEEPALIVE_STATE_CHANGED,
+        GetFilterTypeFromBundleType(bundleType), FilterAppStateType::NONE,
+        GetFilterTypeFromAppProcessState(static_cast<AppProcessState>(data->state)),
+        FilterAbilityStateType::NONE};
     auto appStateObserverMapCopy = GetAppStateObserverMapCopy();
     for (auto it = appStateObserverMapCopy.begin(); it != appStateObserverMapCopy.end(); ++it) {
         const auto &bundleNames = it->second.bundleNames;
-        auto iter = std::find(bundleNames.begin(), bundleNames.end(), data.bundleName);
-        auto applicationInfo = appRecord->GetApplicationInfo();
-        BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
-        AppStateFilter appStateFilter {FilterCallback::ON_KEEPALIVE_STATE_CHANGED,
-            GetFilterTypeFromBundleType(bundleType), FilterAppStateType::NONE,
-            GetFilterTypeFromAppProcessState(static_cast<AppProcessState>(data.state)),
-            FilterAbilityStateType::NONE};
+        auto iter = std::find(bundleNames.begin(), bundleNames.end(), data->bundleName);
         if ((bundleNames.empty() || iter != bundleNames.end()) && it->first != nullptr &&
             it->second.appStateFilter.Match(appStateFilter)) {
-            it->first->OnKeepAliveStateChanged(data);
+            it->first->OnKeepAliveStateChanged(*data);
         }
     }
 }
@@ -1643,15 +1893,15 @@ void AppStateObserverManager::HandleOnProcessPreForegroundChanged(std::shared_pt
     TAG_LOGI(AAFwkTag::APPMGR,
         "HandleOnProcessPreForegroundChanged, pid:%{public}d, bundle:%{public}s, uid:%{public}d, isPreFore:%{public}d",
         preloadProcessData.pid, bundleName.c_str(), preloadProcessData.uid, preloadProcessData.isPreForeground);
+    auto applicationInfo = appRecord->GetApplicationInfo();
+    BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
+    AppStateFilter appStateFilter {FilterCallback::ON_PROCESS_PREFOREGROUND_CHANGED,
+        GetFilterTypeFromBundleType(bundleType), FilterAppStateType::ALL,
+        FilterProcessStateType::ALL, FilterAbilityStateType::ALL};
     auto appStateObserverMapCopy = GetAppStateObserverMapCopy();
     for (auto it = appStateObserverMapCopy.begin(); it != appStateObserverMapCopy.end(); ++it) {
         const auto &bundleNames = it->second.bundleNames;
         auto iter = std::find(bundleNames.begin(), bundleNames.end(), bundleName);
-        auto applicationInfo = appRecord->GetApplicationInfo();
-        BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
-        AppStateFilter appStateFilter {FilterCallback::ON_PROCESS_PREFOREGROUND_CHANGED,
-            GetFilterTypeFromBundleType(bundleType), FilterAppStateType::ALL,
-            FilterProcessStateType::ALL, FilterAbilityStateType::ALL};
         if ((bundleNames.empty() || iter != bundleNames.end()) && it->first != nullptr &&
             it->second.appStateFilter.Match(appStateFilter)) {
             it->first->OnProcessPreForegroundChanged(preloadProcessData);
@@ -1691,23 +1941,28 @@ void AppStateObserverManager::HandleOnProcessTypeChanged(const std::shared_ptr<A
         TAG_LOGE(AAFwkTag::APPMGR, "null appRecord");
         return;
     }
-    ProcessData data = WrapProcessData(appRecord);
+    auto data = WrapProcessData(appRecord);
+    if (!data) {
+        TAG_LOGE(AAFwkTag::APPMGR, "data is null");
+        return;
+    }
     TAG_LOGD(AAFwkTag::APPMGR,
         "bundle:%{public}s, pid:%{public}d, uid:%{public}d, state:%{public}d, "
         "isContinuousTask:%{public}d, gpuPid:%{public}d, processType:%{public}d",
-        data.bundleName.c_str(), data.pid, data.uid, data.state, data.isContinuousTask, data.gpuPid, data.processType);
+        data->bundleName.c_str(), data->pid, data->uid, data->state, data->isContinuousTask, data->gpuPid,
+        data->processType);
+    auto applicationInfo = appRecord->GetApplicationInfo();
+    BundleType bundleType = applicationInfo != nullptr ? applicationInfo->bundleType : BundleType::APP;
+    AppStateFilter appStateFilter {FilterCallback::ON_PROCESS_TYPE_CHANGED,
+        GetFilterTypeFromBundleType(bundleType), FilterAppStateType::ALL,
+        FilterProcessStateType::ALL, FilterAbilityStateType::ALL};
     auto appStateObserverMapCopy = GetAppStateObserverMapCopy();
     for (auto it = appStateObserverMapCopy.begin(); it != appStateObserverMapCopy.end(); ++it) {
         const auto &bundleNames = it->second.bundleNames;
-        auto iter = std::find(bundleNames.begin(), bundleNames.end(), data.bundleName);
-        BundleType bundleType = appRecord->GetApplicationInfo() != nullptr ?
-            appRecord->GetApplicationInfo()->bundleType : BundleType::APP;
-        AppStateFilter appStateFilter {FilterCallback::ON_PROCESS_TYPE_CHANGED,
-            GetFilterTypeFromBundleType(bundleType), FilterAppStateType::ALL,
-            FilterProcessStateType::ALL, FilterAbilityStateType::ALL};
+        auto iter = std::find(bundleNames.begin(), bundleNames.end(), data->bundleName);
         if ((bundleNames.empty() || iter != bundleNames.end()) && it->first != nullptr &&
             it->second.appStateFilter.Match(appStateFilter)) {
-            it->first->OnProcessTypeChanged(data);
+            it->first->OnProcessTypeChanged(*data);
         }
     }
 }
@@ -1726,6 +1981,7 @@ std::shared_ptr<ImageProcessStateData> AppStateObserverManager::WrapImageProcess
     data->uid = imageInfo->baseAppRecord->GetUid();
     data->state = static_cast<int32_t>(state);
     data->bundleName = imageInfo->baseAppRecord->GetBundleName();
+    data->abilityName = imageInfo->abilityName;
     return data;
 }
 
@@ -1853,6 +2109,45 @@ void AppStateObserverManager::HandleOnPreForkAllWorkProcess(std::shared_ptr<Imag
     for (auto it = imageProcessStateObserverMapCopy.begin(); it != imageProcessStateObserverMapCopy.end(); ++it) {
         if (it->first) {
             it->first->OnPreForkAllWorkProcess(*data);
+        }
+    }
+}
+
+void AppStateObserverManager::NotifyFocusedApplicationChanged(const FocusedApplicationInfo &focusedApplicationInfo)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    if (handler_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null handler");
+        return;
+    }
+
+    auto task = [weak = weak_from_this(), focusedApplicationInfo]() {
+        auto self = weak.lock();
+        if (self == nullptr) {
+            TAG_LOGE(AAFwkTag::APPMGR, "null self");
+            return;
+        }
+        TAG_LOGD(AAFwkTag::APPMGR, "NotifyFocusedApplicationChanged come.");
+        self->HandleNotifyFocusedApplicationChanged(focusedApplicationInfo);
+    };
+    AAFwk::TaskAttribute taskAttribute{
+        .taskName_ = "NotifyFocusedApplicationChanged",
+        .taskQos_ = AAFwk::TaskQoS::USER_INTERACTIVE
+    };
+    handler_->SubmitTask(task, taskAttribute);
+}
+
+void AppStateObserverManager::HandleNotifyFocusedApplicationChanged(
+    const FocusedApplicationInfo &focusedApplicationInfo)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::APPMGR,
+        "focusedUid:%{public}d, focusedBundleName:%{public}s",
+        focusedApplicationInfo.focusedUid, focusedApplicationInfo.focusedBundleName.c_str());
+    auto focusedApplicationObserverMap = GetFocusedApplicationObserverMapCopy();
+    for (const auto &entry : focusedApplicationObserverMap) {
+        if (entry.first != nullptr) {
+            entry.first->OnFocusedApplicationChanged(focusedApplicationInfo);
         }
     }
 }

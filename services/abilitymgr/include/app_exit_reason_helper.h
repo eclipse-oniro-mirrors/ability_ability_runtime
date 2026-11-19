@@ -33,17 +33,9 @@ struct RecordExitReasonParams {
     ExitReasonCompability exitReason;
     AppExecFwk::RunningProcessInfo processInfo;
     bool fromKillWithReason = false;
+    int32_t callerPid = DEFAULT_INVAL_VALUE;
 };
 
-struct AppReasonInfo {
-    int32_t userId = -1;
-    std::string bundleName = "";
-    int32_t appIndex = -1;
-
-    AppReasonInfo() = default;
-    AppReasonInfo(int32_t userId, const std::string &bundleName, int32_t appIndex)
-        : userId(userId), bundleName(bundleName), appIndex(appIndex) {}
-};
 class AppExitReasonHelper {
 public:
     explicit AppExitReasonHelper(std::shared_ptr<SubManagersHelper> subManagersHelper);
@@ -57,21 +49,20 @@ public:
         const AppExecFwk::RunningProcessInfo &processInfo, bool withKillMsg);
     int32_t RecordProcessExitReason(const int32_t pid, const ExitReason &exitReason, bool fromKillWithReason);
     int32_t RecordProcessExitReason(int32_t pid, int32_t uid, const ExitReason &exitReason);
-    int32_t RecordUIAbilityExitReason(const pid_t pid, const std::string &abilityName, const ExitReason &exitReason);
+    int32_t RecordUIAbilityExitReason(const pid_t pid, const std::string &abilityName, const ExitReason &exitReason,
+        int32_t callerPid = DEFAULT_INVAL_VALUE, bool isLastAbilityOfProcess = true);
+    int32_t RecordKillCallerInfo(const pid_t pid, int32_t callerPid);
     int32_t RecordProcessExitReasonForTimeout(const AppExecFwk::AbilityInfo &abilityInfo, const ExitReason &exitReason,
         const std::vector<std::string> &abilityList, const AppExecFwk::RunningProcessInfo &processInfo);
     int32_t AddAppExitReason(const std::string &bundleName, int32_t pid, int32_t uid, int32_t appIndex,
-        const ExitReasonCompability &exitReason);
+        const ExitReasonCompability &exitReason, int32_t callerPid);
     int32_t AddBundleExitReason(const std::string &bundleName, int32_t userId, int32_t appIndex,
-        const ExitReasonCompability &exitReason);
-    int32_t RecordAppWithReason(int32_t pid, int32_t uid, const ExitReasonCompability &exitReason);
-    void RecordAppsWithReasonByUserId(int32_t userId, const ExitReasonCompability &exitReason,
+        const ExitReasonCompability &exitReason, int32_t callerPid);
+    int32_t RecordAppWithReason(int32_t pid, int32_t uid, const ExitReasonCompability &exitReason, int32_t callerPid);
+    void RecordAppsWithReasonByProcessInfoList(const ExitReasonCompability &exitReason,
         const std::vector<AppExecFwk::RunningProcessInfo> &processInfoList);
     void RecordInvalidKillId(int32_t pid, const ExitReasonCompability &params,
-        const std::string &bundleName = "", int32_t userId = 0);
-    int32_t RecordAppWithReasonByAccessTokenId(int32_t userId, uint32_t accessTokenId,
-        const ExitReasonCompability &exitReasonCompability,
-        const std::vector<AppExecFwk::RunningProcessInfo> &processInfoList);
+        const std::string &bundleName = "", int32_t userId = 0, int32_t callerPid = DEFAULT_INVAL_VALUE);
 
 private:
     int32_t RecordProcessExitReason(const int32_t pid, const std::string bundleName, const int32_t uid,
@@ -83,12 +74,12 @@ private:
     bool IsExitReasonValid(const ExitReason &exitReason);
     int32_t GetActiveAbilityListWithPid(int32_t uid, std::vector<std::string> &abilityList, int32_t pid);
     void GetRunningProcessInfo(int32_t pid, int32_t userId, const std::string &bundleName,
-        AppExecFwk::RunningProcessInfo &processInfo);
+        AppExecFwk::RunningProcessInfo &processInfo, int32_t appIndex = DEFAULT_INVAL_VALUE);
     int32_t AddProcessExitReason(const RecordExitReasonParams &params);
     std::vector<AppExecFwk::RunningProcessInfo> GetRunningProcessInfos(int32_t userId, const std::string &bundleName);
 
-    int32_t RecordAppWithReasonInner(const AppReasonInfo &appInfo, const ExitReasonCompability &exitReasonCompability,
-        const AppExecFwk::RunningProcessInfo &processInfo);
+    int32_t RecordAppWithReasonInner(const ExitReasonCompability &exitReasonCompability,
+        const AppExecFwk::RunningProcessInfo &processInfo, int32_t callerPid);
 
     std::shared_ptr<SubManagersHelper> subManagersHelper_;
 };

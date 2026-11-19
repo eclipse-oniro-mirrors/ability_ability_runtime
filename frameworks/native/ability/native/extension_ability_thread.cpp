@@ -25,6 +25,7 @@
 #include "js_start_abilities_observer.h"
 #include "ui_extension_wrapper.h"
 #include "start_abilities_observer.h"
+#include "skill/skill_execute_param.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -44,6 +45,7 @@ constexpr static char AGENT_UI_EXTENSION[] = "AgentUIExtensionAbility";
 constexpr static char AUTO_FILL_EXTENSION[] = "AutoFillExtensionAbility";
 #endif  // SUPPORT_AUTO_FILL
 constexpr static char EMBEDDED_UI_EXTENSION[] = "EmbeddedUIExtensionAbility";
+constexpr static char UKEY_AUTH_EXTENSION[] = "UkeyAuthExtensionAbility";
 constexpr static char PHOTO_EDITOR_EXTENSION[] = "PhotoEditorExtensionAbility";
 constexpr static char VPN_EXTENSION[] = "VpnExtension";
 #endif
@@ -63,6 +65,7 @@ constexpr static char CALLER_INFO_QUERY_EXTENSION[] = "CallerInfoQueryExtension"
 constexpr static char ASSET_ACCELERATION_EXTENSION[] = "AssetAccelerationExtension";
 constexpr static char SELECTION_EXTENSION[] = "SelectionExtensionAbility";
 constexpr static char CONTENT_EMBED_EXTENSION[] = "ContentEmbedExtension";
+constexpr static char MODULAR_OBJECT_EXTENSION[] = "ModularObjectExtension";
 }
 
 const std::map<AppExecFwk::ExtensionAbilityType, std::string> UI_EXTENSION_NAME_MAP = {
@@ -75,6 +78,7 @@ const std::map<AppExecFwk::ExtensionAbilityType, std::string> UI_EXTENSION_NAME_
     { AppExecFwk::ExtensionAbilityType::AUTO_FILL_SMART, AUTO_FILL_EXTENSION },
 #endif  // SUPPORT_AUTO_FILL
     { AppExecFwk::ExtensionAbilityType::EMBEDDED_UI, EMBEDDED_UI_EXTENSION },
+    { AppExecFwk::ExtensionAbilityType::UKEY_AUTH, UKEY_AUTH_EXTENSION },
     { AppExecFwk::ExtensionAbilityType::PHOTO_EDITOR, PHOTO_EDITOR_EXTENSION },
     { AppExecFwk::ExtensionAbilityType::FORM_EDIT, FORM_EDIT_EXTENSION },
     { AppExecFwk::ExtensionAbilityType::LIVE_FORM, LIVE_FORM_EXTENSION }
@@ -82,6 +86,7 @@ const std::map<AppExecFwk::ExtensionAbilityType, std::string> UI_EXTENSION_NAME_
 };
 
 std::shared_ptr<AppExecFwk::EventRunner> ExtensionAbilityThread::contentEmbedEventRunner_ = nullptr;
+std::mutex ExtensionAbilityThread::contentEmbedMutex_;
 
 ExtensionAbilityThread::ExtensionAbilityThread() : extensionImpl_(nullptr), currentExtension_(nullptr) {}
 
@@ -183,6 +188,8 @@ void ExtensionAbilityThread::CreateExtensionAbilityName(
 #endif // SUPPORT_GRAPHICS
     else if (abilityInfo->extensionAbilityType == AppExecFwk::ExtensionAbilityType::CONTENT_EMBED) {
         abilityName = CONTENT_EMBED_EXTENSION;
+    } else if (abilityInfo->extensionAbilityType == AppExecFwk::ExtensionAbilityType::MODULAR_OBJECT) {
+        abilityName = MODULAR_OBJECT_EXTENSION;
     }
 }
 
@@ -240,17 +247,14 @@ void ExtensionAbilityThread::HandleAttach(const std::shared_ptr<AppExecFwk::OHOS
         TAG_LOGE(AAFwkTag::EXT, "null abilityInfo");
         return;
     }
+
+    // 1.new AbilityHandler - original per-type logic
     if (abilityInfo->extensionAbilityType == AppExecFwk::ExtensionAbilityType::CONTENT_EMBED) {
         HandleNativeExtensionAttach(abilityRecord, abilityName);
     } else {
         HandleNormalExtensionAttach(abilityRecord, mainRunner, abilityName);
     }
- 
-    if (abilityHandler_ == nullptr) {
-        TAG_LOGE(AAFwkTag::EXT, "Failed to create abilityHandler_");
-        return;
-    }
- 
+
     // 2.new ability
     auto extension = AppExecFwk::AbilityLoader::GetInstance().GetExtensionByName(abilityName,
         abilityInfo->arkTSMode);
@@ -259,6 +263,19 @@ void ExtensionAbilityThread::HandleAttach(const std::shared_ptr<AppExecFwk::OHOS
         return;
     }
     currentExtension_.reset(extension);
+
+    // 3.Override with extension-provided handler if available (e.g. ModularObject)
+    auto customHandler = currentExtension_->GetAbilityHandler(abilityInfo);
+    if (customHandler != nullptr) {
+        TAG_LOGD(AAFwkTag::EXT, "Using extension-provided abilityHandler");
+        abilityHandler_ = customHandler;
+    }
+
+    if (abilityHandler_ == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "Failed to create abilityHandler_");
+        return;
+    }
+
     token_ = abilityRecord->GetToken();
     abilityRecord->SetAbilityThread(this);
     HandleAttachInner(application, abilityRecord);
@@ -269,24 +286,23 @@ void ExtensionAbilityThread::HandleNativeExtensionAttach(
     const std::string &abilityName)
 {
     TAG_LOGD(AAFwkTag::EXT, "HandleNativeExtensionAttach");
-    if (contentEmbedEventRunner_ != nullptr) {
+    {
+        std::lock_guard<std::mutex> lock(contentEmbedMutex_);
+        if (contentEmbedEventRunner_ == nullptr) {
+            contentEmbedEventRunner_ = AppExecFwk::EventRunner::Create(abilityName + "_CONTENT_EMBED");
+        }
         runner_ = contentEmbedEventRunner_;
-        abilityHandler_ = std::make_shared<AppExecFwk::AbilityHandler>(runner_);
-        TAG_LOGD(AAFwkTag::EXT, "Reusing existing Content Embed EventRunner");
-    } else {
-        runner_ = AppExecFwk::EventRunner::Create(abilityName + "_CONTENT_EMBED");
-        if (runner_ == nullptr) {
-            TAG_LOGE(AAFwkTag::EXT, "Failed to create Content Embed EventRunner");
-            return;
-        }
-        abilityHandler_ = std::make_shared<AppExecFwk::AbilityHandler>(runner_);
-        if (abilityHandler_ == nullptr) {
-            TAG_LOGE(AAFwkTag::EXT, "Failed to create Content Embed AbilityHandler");
-            return;
-        }
-        contentEmbedEventRunner_ = runner_;
-        TAG_LOGI(AAFwkTag::EXT, "Created new Content Embed EventRunner");
     }
+    if (runner_ == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "Failed to create Content Embed EventRunner");
+        return;
+    }
+    abilityHandler_ = std::make_shared<AppExecFwk::AbilityHandler>(runner_);
+    if (abilityHandler_ == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "Failed to create Content Embed AbilityHandler");
+        return;
+    }
+    TAG_LOGI(AAFwkTag::EXT, "Content Embed EventRunner ready");
 }
  
 void ExtensionAbilityThread::HandleNormalExtensionAttach(
@@ -353,6 +369,7 @@ void ExtensionAbilityThread::HandleConnectExtension(const Want &want)
         TAG_LOGE(AAFwkTag::EXT, "null extensionImpl_");
         return;
     }
+
     bool isAsyncCallback = false;
     sptr<IRemoteObject> service = extensionImpl_->ConnectExtension(want, isAsyncCallback);
     if (!isAsyncCallback) {
@@ -405,6 +422,22 @@ void ExtensionAbilityThread::HandleInsightIntent(const Want &want)
     auto ret = extensionImpl_->HandleInsightIntent(want);
     if (!ret) {
         TAG_LOGE(AAFwkTag::EXT, "HandleInsightIntent failed");
+        return;
+    }
+    TAG_LOGD(AAFwkTag::EXT, "End");
+}
+
+void ExtensionAbilityThread::HandleExecuteSkill(const Want &want)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::EXT, "Begin");
+    if (extensionImpl_ == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "null extensionImpl_");
+        return;
+    }
+    auto ret = extensionImpl_->HandleExecuteSkill(want);
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::EXT, "HandleExecuteSkill failed");
         return;
     }
     TAG_LOGD(AAFwkTag::EXT, "End");
@@ -529,6 +562,8 @@ void ExtensionAbilityThread::ScheduleCommandAbility(const Want &want, bool resta
     ScheduleCommandAbilityInner(want, restart, startId);
     if (AppExecFwk::InsightIntentExecuteParam::IsInsightIntentExecute(want)) {
         ScheduleInsightIntentInner(want);
+    } else if (AppExecFwk::SkillExecuteParam::IsSkillExecute(want)) {
+        ScheduleSkillExecuteInner(want);
     }
     TAG_LOGD(AAFwkTag::EXT, "End");
 }
@@ -565,6 +600,29 @@ void ExtensionAbilityThread::ScheduleInsightIntentInner(const Want &want)
     if (!ret) {
         TAG_LOGE(AAFwkTag::EXT, "PostTask error");
     }
+}
+
+void ExtensionAbilityThread::ScheduleSkillExecuteInner(const Want &want)
+{
+    wptr<ExtensionAbilityThread> weak = this;
+    auto task = [weak, want]() {
+        auto abilityThread = weak.promote();
+        if (abilityThread == nullptr) {
+            TAG_LOGE(AAFwkTag::EXT, "null AbilityThread");
+            return;
+        }
+        abilityThread->HandleExecuteSkill(want);
+    };
+    bool ret = abilityHandler_->PostTask(task, AppExecFwk::EventQueue::Priority::HIGH);
+    if (!ret) {
+        TAG_LOGE(AAFwkTag::EXT, "PostTask error");
+    }
+}
+
+void ExtensionAbilityThread::ExecuteSkill(const Want &want)
+{
+    TAG_LOGD(AAFwkTag::EXT, "ExecuteSkill called");
+    ScheduleSkillExecuteInner(want);
 }
 
 void ExtensionAbilityThread::ScheduleCommandAbilityWindow(
@@ -770,6 +828,16 @@ void ExtensionAbilityThread::DumpOtherInfo(std::vector<std::string> &info)
     dumpInfo = "";
     runner->DumpRunnerInfo(dumpInfo);
     info.push_back(dumpInfo);
+}
+
+int ExtensionAbilityThread::CreateModalUIExtension(const Want &want)
+{
+    if (extensionImpl_ == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "null extensionImpl_");
+        return ERR_INVALID_VALUE;
+    }
+
+    return extensionImpl_->CreateModalUIExtension(want);
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

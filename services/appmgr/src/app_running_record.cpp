@@ -20,6 +20,8 @@
 #include "ability_window_configuration.h"
 #include "app_running_record.h"
 #include "app_utils.h"
+#include "bundle_mgr_helper.h"
+#include "in_process_call_wrapper.h"
 #include "render_record.h"
 #include "app_mgr_service_inner.h"
 #include "app_state_observer_manager.h"
@@ -34,6 +36,7 @@
 #include "app_mgr_service_const.h"
 #include "app_mgr_service_dump_error_code.h"
 #include "cache_process_manager.h"
+#include "global_constant.h"
 #include "hisysevent_report.h"
 #ifdef SUPPORT_SCREEN
 #include "window_visibility_info.h"
@@ -50,6 +53,8 @@ constexpr int64_t MICROSECONDS = 1000000;    // MICROSECONDS mean 10^6 millias s
 constexpr int32_t MAX_RESTART_COUNT = 3;
 constexpr int32_t RESTART_INTERVAL_TIME = 120000;
 constexpr int32_t HALF_TIMEOUT = 2;
+constexpr int32_t DEFAULT_KILL_ID = -1;
+// SCB（大桌面 / SceneBoard）的 bundle name，用于 SCB 发起前台时 last-caller 兜底记录与保活判断。
 constexpr const char* LAUNCHER_NAME = "com.ohos.sceneboard";
 constexpr const char *EVENT_KEY_VERSION_NAME = "VERSION_NAME";
 constexpr const char *EVENT_KEY_VERSION_CODE = "VERSION_CODE";
@@ -122,6 +127,31 @@ int32_t AppRunningRecord::GetCallerUid() const
 void AppRunningRecord::SetCallerUid(int32_t uid)
 {
     callerUid_ = uid;
+    {
+        std::lock_guard<ffrt::mutex> lock(callerBundleNameLock_);
+        callerBundleName_ = "";
+    }
+    if (uid >= 0) {
+        auto bundleMgrHelper = DelayedSingleton<BundleMgrHelper>::GetInstance();
+        std::string bundleName;
+        if (bundleMgrHelper != nullptr &&
+            IN_PROCESS_CALL(bundleMgrHelper->GetNameForUid(uid, bundleName)) == ERR_OK) {
+            std::lock_guard<ffrt::mutex> lock(callerBundleNameLock_);
+            callerBundleName_ = bundleName;
+        }
+    }
+}
+
+std::string AppRunningRecord::GetCallerBundleName() const
+{
+    std::lock_guard<ffrt::mutex> lock(callerBundleNameLock_);
+    return callerBundleName_;
+}
+
+void AppRunningRecord::SetCallerBundleName(const std::string &name)
+{
+    std::lock_guard<ffrt::mutex> lock(callerBundleNameLock_);
+    callerBundleName_ = name;
 }
 
 int32_t AppRunningRecord::GetCallerTokenId() const
@@ -132,6 +162,30 @@ int32_t AppRunningRecord::GetCallerTokenId() const
 void AppRunningRecord::SetCallerTokenId(int32_t tokenId)
 {
     callerTokenId_ = tokenId;
+}
+
+int32_t AppRunningRecord::GetLastUIAbilityCallerUid() const
+{
+    std::lock_guard<ffrt::mutex> lock(lastUIAbilityCallerLock_);
+    return lastUIAbilityCallerUid_;
+}
+
+void AppRunningRecord::SetLastUIAbilityCallerUid(int32_t uid)
+{
+    std::lock_guard<ffrt::mutex> lock(lastUIAbilityCallerLock_);
+    lastUIAbilityCallerUid_ = uid;
+}
+
+std::string AppRunningRecord::GetLastUIAbilityCallerName() const
+{
+    std::lock_guard<ffrt::mutex> lock(lastUIAbilityCallerLock_);
+    return lastUIAbilityCallerName_;
+}
+
+void AppRunningRecord::SetLastUIAbilityCallerName(const std::string &name)
+{
+    std::lock_guard<ffrt::mutex> lock(lastUIAbilityCallerLock_);
+    lastUIAbilityCallerName_ = name;
 }
 
 bool AppRunningRecord::IsLauncherApp() const
@@ -147,26 +201,6 @@ int32_t AppRunningRecord::GetRecordId() const
 const std::string &AppRunningRecord::GetName() const
 {
     return mainAppName_;
-}
-
-const std::string &AppRunningRecord::GetSignCode() const
-{
-    return signCode_;
-}
-
-void AppRunningRecord::SetSignCode(const std::string &signCode)
-{
-    signCode_ = signCode;
-}
-
-const std::string &AppRunningRecord::GetJointUserId() const
-{
-    return jointUserId_;
-}
-
-void AppRunningRecord::SetJointUserId(const std::string &jointUserId)
-{
-    jointUserId_ = jointUserId;
 }
 
 const std::string &AppRunningRecord::GetProcessName() const
@@ -206,6 +240,14 @@ const std::string &AppRunningRecord::GetCustomProcessFlag() const
 int32_t AppRunningRecord::GetUid() const
 {
     return mainUid_;
+}
+
+uint32_t AppRunningRecord::GetAccessTokenId() const
+{
+    if (appInfo_ != nullptr) {
+        return appInfo_->accessTokenId;
+    }
+    return 0;
 }
 
 void AppRunningRecord::SetUid(const int32_t uid)
@@ -408,9 +450,11 @@ void AppRunningRecord::LaunchApplication(const Configuration &config)
     launchData.SetAppPreloadMode(preloadMode_);
     launchData.SetNWebPreload(isAllowedNWebPreload_);
     launchData.SetPreloadModuleName(preloadModuleName_);
+    launchData.SetPreloadAbilityName(preloadAbilityName_);
     launchData.SetDebugFromLocal(isDebugFromLocal_);
     launchData.SetStartupTaskData(startupTaskData_);
     launchData.SetImageProcessType(static_cast<int32_t>(imageProcessType_));
+    launchData.SetMainProcess(isMainProcess_);
 
     TAG_LOGD(AAFwkTag::APPMGR, "%{public}s called,app is %{public}s.", __func__, GetName().c_str());
     AddAppLifecycleEvent("AppRunningRecord::LaunchApplication");
@@ -664,6 +708,14 @@ void AppRunningRecord::ScheduleTrimMemory()
 
 void AppRunningRecord::ScheduleMemoryLevel(int32_t level, bool isShellCall)
 {
+    auto state = makeImageState_.load(std::memory_order_relaxed);
+    if (state == MakeImageState::MAKE_PRELOAD_START
+        || state == MakeImageState::MAKE_PRELOAD_FINISH
+        || state == MakeImageState::MAKE_IMAGE_START) {
+        TAG_LOGI(AAFwkTag::APPMGR, "skip memory level schedule, makeImageState is %{public}d",
+            static_cast<int32_t>(state));
+        return;
+    }
     if (appLifeCycleDeal_) {
         appLifeCycleDeal_->ScheduleMemoryLevel(level, isShellCall);
     }
@@ -683,6 +735,13 @@ void AppRunningRecord::ScheduleJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &in
     }
 }
 
+void AppRunningRecord::ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
+{
+    if (appLifeCycleDeal_) {
+        appLifeCycleDeal_->ScheduleJsHandleMap(info);
+    }
+}
+
 void AppRunningRecord::ScheduleCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info)
 {
     if (appLifeCycleDeal_) {
@@ -690,10 +749,10 @@ void AppRunningRecord::ScheduleCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &in
     }
 }
 
-void AppRunningRecord::ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+void AppRunningRecord::ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback)
 {
     if (appLifeCycleDeal_) {
-        appLifeCycleDeal_->ScheduleMem(info, dumpResult);
+        appLifeCycleDeal_->ScheduleMem(info, callback);
     }
 }
 
@@ -789,7 +848,23 @@ void AppRunningRecord::StateChangedNotifyObserver(const std::shared_ptr<AbilityR
         TAG_LOGE(AAFwkTag::APPMGR, "null abilityInfo");
         return;
     }
+    AbilityStateData abilityStateData = BuildAbilityStateData(ability, state, isAbility);
+    BundleType bundleType = AppExecFwk::BundleType::APP;
+    auto applicationInfo = GetApplicationInfo();
+    if (applicationInfo) {
+        bundleType = applicationInfo->bundleType;
+    }
+    auto serviceInner = appMgrServiceInner_.lock();
+    if (serviceInner) {
+        serviceInner->StateChangedNotifyObserver(abilityStateData, isAbility, isFromWindowFocusChanged, bundleType);
+    }
+}
+
+AbilityStateData AppRunningRecord::BuildAbilityStateData(
+    const std::shared_ptr<AbilityRunningRecord> &ability, int32_t state, bool isAbility)
+{
     AbilityStateData abilityStateData;
+    auto abilityInfo = ability->GetAbilityInfo();
     abilityStateData.bundleName = abilityInfo->applicationInfo.bundleName;
     abilityStateData.moduleName = abilityInfo->moduleName;
     abilityStateData.abilityName = ability->GetName();
@@ -811,6 +886,11 @@ void AppRunningRecord::StateChangedNotifyObserver(const std::shared_ptr<AbilityR
         abilityStateData.callerUid = ability->GetWant()->GetIntParam(Want::PARAM_RESV_CALLER_UID, -1);
         abilityStateData.callerPid = ability->GetWant()->GetIntParam(Want::PARAM_RESV_CALLER_PID, -1);
     }
+    {
+        std::lock_guard<ffrt::mutex> lock(lastUIAbilityCallerLock_);
+        abilityStateData.lastUIAbilityCallerUid = lastUIAbilityCallerUid_;
+        abilityStateData.lastUIAbilityCallerName = lastUIAbilityCallerName_;
+    }
     if (applicationInfo && applicationInfo->bundleType == AppExecFwk::BundleType::ATOMIC_SERVICE) {
         abilityStateData.isAtomicService = true;
     }
@@ -821,11 +901,7 @@ void AppRunningRecord::StateChangedNotifyObserver(const std::shared_ptr<AbilityR
     }
     abilityStateData.processType = static_cast<int32_t>(processType_);
     abilityStateData.preloadMode = static_cast<int32_t>(preloadMode_);
-    BundleType bundleType = applicationInfo ? applicationInfo->bundleType : AppExecFwk::BundleType::APP;
-    auto serviceInner = appMgrServiceInner_.lock();
-    if (serviceInner) {
-        serviceInner->StateChangedNotifyObserver(abilityStateData, isAbility, isFromWindowFocusChanged, bundleType);
-    }
+    return abilityStateData;
 }
 
 std::shared_ptr<ModuleRunningRecord> AppRunningRecord::GetModuleRunningRecordByToken(
@@ -905,7 +981,8 @@ bool AppRunningRecord::UpdateAbilityFocusState(const sptr<IRemoteObject> &token,
     }
 }
 
-void AppRunningRecord::UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state)
+void AppRunningRecord::UpdateAbilityState(const sptr<IRemoteObject> &token, const AbilityState state,
+    bool isFromScreenOffBackground, const UiAbilityLastCallerInfo &callerInfo)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "state is :%{public}d", static_cast<int32_t>(state));
     auto abilityRecord = GetAbilityRunningRecordByToken(token);
@@ -924,22 +1001,45 @@ void AppRunningRecord::UpdateAbilityState(const sptr<IRemoteObject> &token, cons
     }
 
     if (state == AbilityState::ABILITY_STATE_FOREGROUND) {
-        AbilityForeground(abilityRecord);
+        AbilityForeground(abilityRecord, callerInfo);
     } else if (state == AbilityState::ABILITY_STATE_BACKGROUND) {
-        AbilityBackground(abilityRecord);
+        AbilityBackground(abilityRecord, isFromScreenOffBackground);
     } else {
         TAG_LOGW(AAFwkTag::APPMGR, "wrong state");
     }
 }
 
-void AppRunningRecord::AbilityForeground(const std::shared_ptr<AbilityRunningRecord> &ability)
+bool AppRunningRecord::HandleForegroundStateChange(const std::shared_ptr<AbilityRunningRecord> &ability)
+{
+    if (GetState() != ApplicationState::APP_STATE_FOREGROUND
+        || pendingState_ == ApplicationPendingState::BACKGROUNDING) {
+        return false;
+    }
+    // Just change ability to foreground if current application state is foreground or focus.
+    auto moduleRecord = GetModuleRunningRecordByToken(ability->GetToken());
+    if (moduleRecord == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null moduleRecord");
+        return true;
+    }
+    moduleRecord->OnAbilityStateChanged(ability, AbilityState::ABILITY_STATE_FOREGROUND);
+    StateChangedNotifyObserver(
+        ability, static_cast<int32_t>(AbilityState::ABILITY_STATE_FOREGROUND), true, false);
+    auto serviceInner = appMgrServiceInner_.lock();
+    if (serviceInner) {
+        serviceInner->OnAppStateChanged(shared_from_this(), GetState(), false, false, false);
+    }
+    return true;
+}
+
+void AppRunningRecord::AbilityForeground(const std::shared_ptr<AbilityRunningRecord> &ability,
+    const UiAbilityLastCallerInfo &callerInfo)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     if (!ability) {
         TAG_LOGE(AAFwkTag::APPMGR, "null ability");
         return;
     }
-
+    SetIsFromScreenOffBackground(false);
     AbilityState curAbilityState = ability->GetState();
     if (curAbilityState != AbilityState::ABILITY_STATE_READY &&
         curAbilityState != AbilityState::ABILITY_STATE_BACKGROUND) {
@@ -947,26 +1047,18 @@ void AppRunningRecord::AbilityForeground(const std::shared_ptr<AbilityRunningRec
         return;
     }
 
+    TAG_LOGI(AAFwkTag::APPMGR, "AbilityForeground set caller info, callerUid:%{public}d, "
+        "callerBundleName:%{public}s", callerInfo.callerUid, callerInfo.callerBundleName.c_str());
+    {
+        std::lock_guard<ffrt::mutex> lock(lastUIAbilityCallerLock_);
+        lastUIAbilityCallerUid_ = callerInfo.callerUid;
+        lastUIAbilityCallerName_ = callerInfo.callerBundleName;
+    }
+
     TAG_LOGI(AAFwkTag::APPMGR, "appState: %{public}d, pState: %{public}d, %{public}s/%{public}s",
         GetState(), pendingState_, mainBundleName_.c_str(), ability->GetName().c_str());
     // We need schedule application to foregrounded when current application state is ready or background running.
-    if (GetState() == ApplicationState::APP_STATE_FOREGROUND
-        && pendingState_ != ApplicationPendingState::BACKGROUNDING) {
-        // Just change ability to foreground if current application state is foreground or focus.
-        auto moduleRecord = GetModuleRunningRecordByToken(ability->GetToken());
-        if (moduleRecord == nullptr) {
-            TAG_LOGE(AAFwkTag::APPMGR, "null moduleRecord");
-            return;
-        }
-
-        moduleRecord->OnAbilityStateChanged(ability, AbilityState::ABILITY_STATE_FOREGROUND);
-        StateChangedNotifyObserver(
-            ability, static_cast<int32_t>(AbilityState::ABILITY_STATE_FOREGROUND), true, false);
-
-        auto serviceInner = appMgrServiceInner_.lock();
-        if (serviceInner) {
-            serviceInner->OnAppStateChanged(shared_from_this(), GetState(), false, false, false);
-        }
+    if (HandleForegroundStateChange(ability)) {
         return;
     }
     if (GetState() == ApplicationState::APP_STATE_READY
@@ -986,7 +1078,8 @@ void AppRunningRecord::AbilityForeground(const std::shared_ptr<AbilityRunningRec
     }
 }
 
-void AppRunningRecord::AbilityBackground(const std::shared_ptr<AbilityRunningRecord> &ability)
+void AppRunningRecord::AbilityBackground(const std::shared_ptr<AbilityRunningRecord> &ability,
+    bool isFromScreenOffBackground)
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
     if (!ability) {
@@ -1026,6 +1119,10 @@ void AppRunningRecord::AbilityBackground(const std::shared_ptr<AbilityRunningRec
             foregroundSize++;
             break;
         }
+    }
+    
+    if (foregroundSize == 0 && (mainBundleName_ != LAUNCHER_NAME || IsAllowScbProcessMoveToBackground())) {
+        isFromScreenOffBackground_ = isFromScreenOffBackground;
     }
 
     // Then schedule application background when all ability is not foreground.
@@ -1105,7 +1202,7 @@ bool AppRunningRecord::AbilityUnfocused(const std::shared_ptr<AbilityRunningReco
 
 void AppRunningRecord::PopForegroundingAbilityTokens()
 {
-    TAG_LOGI(AAFwkTag::PROCESSMGR, "ability size: %{public}d",
+    TAG_LOGI(AAFwkTag::PROCESSMGR, "absize: %{public}d",
         static_cast<int32_t>(foregroundingAbilityTokens_.size()));
     for (auto iter = foregroundingAbilityTokens_.begin(); iter != foregroundingAbilityTokens_.end();) {
         auto ability = GetAbilityRunningRecordByToken(*iter);
@@ -1161,7 +1258,9 @@ void AppRunningRecord::AbilityTerminated(const sptr<IRemoteObject> &token)
     auto abilityRecord = moduleRecord->GetAbilityByTerminateLists(token);
     if (abilityRecord != nullptr && abilityRecord->GetAbilityInfo() != nullptr) {
         isExtensionDebug = (abilityRecord->GetAbilityInfo()->type == AppExecFwk::AbilityType::EXTENSION) &&
-                           (isAttachDebug_ || isDebugApp_);
+            abilityRecord->GetAbilityInfo()->extensionAbilityType != AppExecFwk::ExtensionAbilityType::AGENT &&
+            abilityRecord->GetAbilityInfo()->extensionAbilityType != AppExecFwk::ExtensionAbilityType::AGENT_UI &&
+            (isAttachDebug_ || isDebugApp_);
     }
     TAG_LOGD(AAFwkTag::APPMGR, "Extension debug is [%{public}s]", isExtensionDebug ? "true" : "false");
 
@@ -1178,25 +1277,47 @@ void AppRunningRecord::AbilityTerminated(const sptr<IRemoteObject> &token)
     }
     auto state = static_cast<int>(GetSupportProcessCacheState());
     auto appInfo = appRecord->GetApplicationInfo();
-    auto hisyseventReport = std::make_shared<AAFwk::HisyseventReport>(4);
-    hisyseventReport->InsertParam(EVENT_KEY_VERSION_CODE, appInfo->versionCode);
-    hisyseventReport->InsertParam(EVENT_KEY_VERSION_NAME, appInfo->versionName);
-    hisyseventReport->InsertParam(EVENT_KEY_BUNDLE_NAME, appInfo->bundleName);
-    hisyseventReport->InsertParam(EVENT_KEY_SUPPORT_STATE, state);
-    hisyseventReport->Report("AAFWK", "CACHE_SUPPORT_STATE", HISYSEVENT_BEHAVIOR);
+    if (appInfo != nullptr) {
+        auto hisyseventReport = std::make_shared<AAFwk::HisyseventReport>(4);
+        hisyseventReport->InsertParam(EVENT_KEY_VERSION_CODE, appInfo->versionCode);
+        hisyseventReport->InsertParam(EVENT_KEY_VERSION_NAME, appInfo->versionName);
+        hisyseventReport->InsertParam(EVENT_KEY_BUNDLE_NAME, appInfo->bundleName);
+        hisyseventReport->InsertParam(EVENT_KEY_SUPPORT_STATE, state);
+        hisyseventReport->Report("AAFWK", "CACHE_SUPPORT_STATE", HISYSEVENT_BEHAVIOR);
+    } else {
+        TAG_LOGE(AAFwkTag::APPMGR, "appInfo nullptr");
+    }
     if (moduleRecord->GetAbilities().empty() && (!IsKeepAliveApp()
         || AAFwk::UIExtensionWrapper::IsUIExtension(GetExtensionType())
         || !ExitResidentProcessManager::GetInstance().IsMemorySizeSufficient()) && !needCache) {
         RemoveModuleRecord(moduleRecord, isExtensionDebug);
     }
-
-    auto moduleRecordList = GetAllModuleRecord();
-    if (moduleRecordList.empty() && (!IsKeepAliveApp()
+    bool isLastUIAbility = (abilityRecord != nullptr && abilityRecord->GetAbilityInfo() != nullptr &&
+        abilityRecord->GetAbilityInfo()->type == AppExecFwk::AbilityType::PAGE);
+    if (!IsAlreadyHaveAbility() && (!IsKeepAliveApp()
         || AAFwk::UIExtensionWrapper::IsUIExtension(GetExtensionType())
         || !ExitResidentProcessManager::GetInstance().IsMemorySizeSufficient()) && !isExtensionDebug
         && !needCache) {
-        ScheduleTerminate();
+        ScheduleTerminateByDelayed(isLastUIAbility);
     }
+}
+
+void AppRunningRecord::ScheduleTerminateByDelayed(bool isLastUIAbility)
+{
+    if (IsDelayedProcessExitEnabled() && isLastUIAbility) {
+        TAG_LOGD(AAFwkTag::APPMGR, "ScheduleTerminateByDelayed");
+        auto delayedExitTime = AbilityRuntime::GlobalConstant::PREPARE_TERMINATE_TIMEOUT_TIME;
+        std::string taskName = std::string("DELAY_EXIT_UI_PROCESS_") + std::to_string(GetRecordId());
+        auto terminateTask = [weakThis = weak_from_this()]() {
+            auto self = weakThis.lock();
+            if (self) {
+                self->ScheduleTerminate();
+            }
+        };
+        PostTask(taskName, delayedExitTime, terminateTask);
+        return;
+    }
+    ScheduleTerminate();
 }
 
 std::list<std::shared_ptr<ModuleRunningRecord>> AppRunningRecord::GetAllModuleRecord() const
@@ -1402,12 +1523,18 @@ bool AppRunningRecord::IsLastAbilityRecord(const sptr<IRemoteObject> &token)
         return false;
     }
 
+    int32_t abilitySize = 0;
     auto moduleRecordList = GetAllModuleRecord();
-    if (moduleRecordList.size() == 1) {
-        return moduleRecord->IsLastAbilityRecord(token);
+    for (auto moduleRecord : moduleRecordList) {
+        if (moduleRecord) {
+            abilitySize += moduleRecord->GetAbilitySize();
+        }
+        if (abilitySize > 1) {
+            return false;
+        }
     }
 
-    return false;
+    return abilitySize == 1;
 }
 
 bool AppRunningRecord::ExtensionAbilityRecordExists()
@@ -1440,7 +1567,9 @@ bool AppRunningRecord::IsLastPageAbilityRecord(const sptr<IRemoteObject> &token)
     auto moduleRecordList = GetAllModuleRecord();
     for (auto moduleRecord : moduleRecordList) {
         if (moduleRecord) {
-            pageAbilitySize += moduleRecord->GetPageAbilitySize();
+            // terminating siblings are excluded so that concurrently cleaned sessions still
+            // judge the last one correctly; the queried token itself always counts
+            pageAbilitySize += moduleRecord->GetActivePageAbilitySize(token);
         }
         if (pageAbilitySize > 1) {
             return false;
@@ -1664,7 +1793,7 @@ void AppRunningRecord::SetStartupTaskData(const AAFwk::Want &want)
     if (wantParams.HasParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME)) {
         startupTaskData_->insightIntentName = wantParams.GetStringParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME);
     }
-    TAG_LOGD(AAFwkTag::APPMGR, "uri: %{public}s, action: %{public}s, intentName: %{public}s",
+    TAG_LOGD(AAFwkTag::APPMGR, "uri: %{private}s, action: %{public}s, intentName: %{public}s",
         startupTaskData_->uri.c_str(), startupTaskData_->action.c_str(),
         startupTaskData_->insightIntentName.c_str());
 }
@@ -2006,7 +2135,8 @@ void AppRunningRecord::GetSplitModeAndFloatingMode(bool &isSplitScreenMode, bool
                 isFloatingWindowMode = true;
             }
             if (windowMode == AAFwk::AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_PRIMARY ||
-                windowMode == AAFwk::AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_SECONDARY) {
+                windowMode == AAFwk::AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_SECONDARY ||
+                windowMode == AAFwk::AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_SPLIT) {
                 isSplitScreenMode = true;
             }
         }
@@ -2127,6 +2257,16 @@ int32_t AppRunningRecord::NotifyAppFault(const FaultData &faultData)
         return ERR_INVALID_VALUE;
     }
     return appLifeCycleDeal_->NotifyAppFault(faultData);
+}
+
+int32_t AppRunningRecord::PreTemplateProcessDeepFrozen()
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "called");
+    if (!appLifeCycleDeal_) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null appLifeCycleDeal_");
+        return ERR_INVALID_VALUE;
+    }
+    return appLifeCycleDeal_->PreTemplateProcessDeepFrozen();
 }
 
 bool AppRunningRecord::IsAbilitiesBackground()
@@ -2345,21 +2485,25 @@ ProcessType AppRunningRecord::GetProcessType() const
 
 std::map<pid_t, std::weak_ptr<AppRunningRecord>> AppRunningRecord::GetChildAppRecordMap() const
 {
+    std::lock_guard lock(childAppRecordMapLock_);
     return childAppRecordMap_;
 }
 
 void AppRunningRecord::AddChildAppRecord(pid_t pid, std::shared_ptr<AppRunningRecord> appRecord)
 {
+    std::lock_guard lock(childAppRecordMapLock_);
     childAppRecordMap_[pid] = appRecord;
 }
 
 void AppRunningRecord::RemoveChildAppRecord(pid_t pid)
 {
+    std::lock_guard lock(childAppRecordMapLock_);
     childAppRecordMap_.erase(pid);
 }
 
 void AppRunningRecord::ClearChildAppRecordMap()
 {
+    std::lock_guard lock(childAppRecordMapLock_);
     childAppRecordMap_.clear();
 }
 
@@ -2533,6 +2677,16 @@ std::string AppRunningRecord::GetPreloadModuleName() const
     return preloadModuleName_;
 }
 
+void AppRunningRecord::SetPreloadAbilityName(const std::string &abilityName)
+{
+    preloadAbilityName_ = abilityName;
+}
+
+std::string AppRunningRecord::GetPreloadAbilityName() const
+{
+    return preloadAbilityName_;
+}
+
 void AppRunningRecord::SetPreloadState(PreloadState state)
 {
     preloadState_ = state;
@@ -2560,12 +2714,12 @@ bool AppRunningRecord::IsPreloaded() const
 
 void AppRunningRecord::SetMakeImageState(MakeImageState state)
 {
-    makeImageState_ = state;
+    makeImageState_.store(state, std::memory_order_relaxed);
 }
 
 MakeImageState AppRunningRecord::GetMakeImageState() const
 {
-    return makeImageState_;
+    return makeImageState_.load(std::memory_order_relaxed);
 }
 
 void AppRunningRecord::SetIsCreateFromImage(bool flag)
@@ -2650,52 +2804,95 @@ bool AppRunningRecord::isNativeStart() const
 
 void AppRunningRecord::SetExitReason(int32_t reason)
 {
+    std::lock_guard<ffrt::mutex> lock(exitReasonLock_);
     exitReason_ = reason;
 }
 
 int32_t AppRunningRecord::GetExitReason() const
 {
+    std::lock_guard<ffrt::mutex> lock(exitReasonLock_);
     return exitReason_;
 }
 
 void AppRunningRecord::SetExitMsg(const std::string &exitMsg)
 {
+    std::lock_guard<ffrt::mutex> lock(exitMsgLock_);
     exitMsg_ = exitMsg;
 }
 
 std::string AppRunningRecord::GetExitMsg() const
 {
+    std::lock_guard<ffrt::mutex> lock(exitMsgLock_);
     return exitMsg_;
 }
 
 void AppRunningRecord::SetKillId(int32_t killId)
 {
+    std::lock_guard<ffrt::mutex> lock(killInfoLock_);
     killId_ = killId;
 }
 
 int32_t AppRunningRecord::GetKillId() const
 {
+    std::lock_guard<ffrt::mutex> lock(killInfoLock_);
     return killId_;
 }
 
 void AppRunningRecord::SetKillMsg(const std::string &killMsg)
 {
+    std::lock_guard<ffrt::mutex> lock(killInfoLock_);
     killMsg_ = killMsg;
 }
 
 std::string AppRunningRecord::GetKillMsg() const
 {
+    std::lock_guard<ffrt::mutex> lock(killInfoLock_);
     return killMsg_;
+}
+
+bool AppRunningRecord::SetKillReasonIfAbsent(int32_t killId, const std::string &killMsg)
+{
+    std::lock_guard<ffrt::mutex> lock(killInfoLock_);
+    if (killId_ != DEFAULT_KILL_ID) {
+        TAG_LOGD(AAFwkTag::APPMGR,
+            "SetKillReasonIfAbsent refused, killId already set: %{public}d, incoming: %{public}d",
+            killId_, killId);
+        return false;
+    }
+    killId_ = killId;
+    killMsg_ = killMsg;
+    return true;
 }
 
 void AppRunningRecord::SetInnerMsg(const std::string &innerMsg)
 {
+    std::lock_guard<ffrt::mutex> lock(innerMsgLock_);
     innerMsg_ = innerMsg;
 }
 
 std::string AppRunningRecord::GetInnerMsg() const
 {
+    std::lock_guard<ffrt::mutex> lock(innerMsgLock_);
     return innerMsg_;
+}
+
+void AppRunningRecord::SetKillCallerInfo(int32_t killCallerPid, const std::string &killCallerProcessName)
+{
+    std::lock_guard<ffrt::mutex> lock(killCallerLock_);
+    killCallerPid_ = killCallerPid;
+    killCallerProcessName_ = killCallerProcessName;
+}
+
+int32_t AppRunningRecord::GetKillCallerPid() const
+{
+    std::lock_guard<ffrt::mutex> lock(killCallerLock_);
+    return killCallerPid_;
+}
+
+std::string AppRunningRecord::GetKillCallerProcessName() const
+{
+    std::lock_guard<ffrt::mutex> lock(killCallerLock_);
+    return killCallerProcessName_;
 }
 
 int AppRunningRecord::DumpIpcStart(std::string& result)
@@ -2863,12 +3060,12 @@ bool AppRunningRecord::IsAttachedToStatusBar()
 
 void AppRunningRecord::SetProcessCacheBlocked(bool isBlocked)
 {
-    processCacheBlocked = isBlocked;
+    processCacheBlocked_.store(isBlocked);
 }
 
 bool AppRunningRecord::GetProcessCacheBlocked()
 {
-    return processCacheBlocked;
+    return processCacheBlocked_.load();
 }
 
 void AppRunningRecord::SetProcessCacheLocked(bool isLock)

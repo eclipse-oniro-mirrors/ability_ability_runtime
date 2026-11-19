@@ -24,6 +24,7 @@
 #include "ipc_types.h"
 #include "iremote_object.h"
 #include "app_scheduler_const.h"
+#include "mem_dump_callback_interface.h"
 
 namespace OHOS {
 namespace AppExecFwk {
@@ -175,6 +176,27 @@ void AppSchedulerProxy::ScheduleJsHeapMemory(OHOS::AppExecFwk::JsHeapDumpInfo &i
     }
 }
 
+void AppSchedulerProxy::ScheduleJsHandleMap(OHOS::AppExecFwk::JsHandleMapInfo &info)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "AppSchedulerProxy::ScheduleJsHandleMap start");
+    uint32_t operation = static_cast<uint32_t>(IAppScheduler::Message::SCHEDULE_JSHANDLE_MAP_APPLICATION_TRANSACTION);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_ASYNC);
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "AppSchedulerProxy !WriteInterfaceToken.");
+        return;
+    }
+    if (!data.WriteParcelable(&info)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write info failed");
+        return;
+    }
+    int32_t ret = SendTransactCmd(operation, data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::APPMGR, "SendRequest is failed, error code: %{public}d", ret);
+    }
+}
+
 void AppSchedulerProxy::ScheduleCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &info)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "AppSchedulerProxy::ScheduleCjHeapMemory start");
@@ -197,13 +219,13 @@ void AppSchedulerProxy::ScheduleCjHeapMemory(OHOS::AppExecFwk::CjHeapDumpInfo &i
     }
 }
 
-void AppSchedulerProxy::ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult)
+void AppSchedulerProxy::ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, sptr<IMemDumpCallback> callback)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "AppSchedulerProxy::ScheduleMem start");
     uint32_t operation = static_cast<uint32_t>(IAppScheduler::Message::SCHEDULE_MEM_APPLICATION_TRANSACTION);
     MessageParcel data;
     MessageParcel reply;
-    MessageOption option(info.isSync ? MessageOption::TF_SYNC : MessageOption::TF_ASYNC);
+    MessageOption option(MessageOption::TF_ASYNC);
     if (!WriteInterfaceToken(data)) {
         TAG_LOGE(AAFwkTag::APPMGR, "AppSchedulerProxy !WriteInterfaceToken.");
         return;
@@ -212,13 +234,21 @@ void AppSchedulerProxy::ScheduleMem(OHOS::AppExecFwk::MemDumpInfo &info, std::st
         TAG_LOGE(AAFwkTag::APPMGR, "write pid failed");
         return;
     }
+    if (callback != nullptr) {
+        if (!data.WriteBool(true) || !data.WriteRemoteObject(callback->AsObject())) {
+            TAG_LOGE(AAFwkTag::APPMGR, "write callback failed");
+            return;
+        }
+    } else {
+        if (!data.WriteBool(false)) {
+            TAG_LOGE(AAFwkTag::APPMGR, "write callback flag failed");
+            return;
+        }
+    }
     int32_t ret = SendTransactCmd(operation, data, reply, option);
     if (ret != NO_ERROR) {
         TAG_LOGE(AAFwkTag::APPMGR, "SendRequest is failed, error code: %{public}d", ret);
         return;
-    }
-    if (info.isSync) {
-        dumpResult = reply.ReadString();
     }
 }
 
@@ -1031,6 +1061,22 @@ void AppSchedulerProxy::OnLoadAbilityFinished(uint64_t callbackId, int32_t pid)
     if (ret != NO_ERROR) {
         TAG_LOGW(AAFwkTag::APPMGR, "SendRequest is wrong, error code: %{public}d", ret);
     }
+}
+int32_t AppSchedulerProxy::SchedulePreTemplateProcessDeepFrozen()
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_ASYNC);
+    if (!WriteInterfaceToken(data)) {
+        return ERR_INVALID_DATA;
+    }
+    int32_t ret = SendTransactCmd(
+        static_cast<uint32_t>(IAppScheduler::Message::SCHEDULE_PRE_TEMPLATE_PROCESS_DEEP_FROZEN), data, reply, option);
+    if (ret != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Send request failed with error code: %{public}d", ret);
+        return ret;
+    }
+    return ERR_OK;
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

@@ -28,9 +28,7 @@ namespace AbilityRuntime {
 class ModularObjectExtensionRdbStorageMgr : public std::enable_shared_from_this<ModularObjectExtensionRdbStorageMgr> {
     DECLARE_DELAYED_SINGLETON(ModularObjectExtensionRdbStorageMgr)
 public:
-    int32_t InsertData(const std::string &key, const std::vector<AAFwk::ModularObjectExtensionInfo> &infos,
-        uint32_t versionCode);
-    int32_t UpdateData(const std::string &key, const std::vector<AAFwk::ModularObjectExtensionInfo> &infos,
+    int32_t InsertOrUpdateData(const std::string &key, const std::vector<AAFwk::ModularObjectExtensionInfo> &infos,
         uint32_t versionCode);
     int32_t DeleteData(const std::string &key);
     int32_t QueryData(const std::string &key, std::vector<AAFwk::ModularObjectExtensionInfo> &infos);

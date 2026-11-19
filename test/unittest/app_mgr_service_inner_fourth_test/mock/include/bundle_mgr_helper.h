@@ -37,14 +37,19 @@ public:
         GetDependentBundleInfoFlag flag = GetDependentBundleInfoFlag::GET_APP_CROSS_HSP_BUNDLE_INFO);
     ErrCode GetBundleInfoV9(
         const std::string &bundleName, int32_t flags, BundleInfo &bundleInfo, int32_t userId);
+    ErrCode GetUidByBundleName(const std::string &bundleName, int32_t userId, int32_t appCloneIndex);
     bool QueryDataGroupInfos(const std::string &bundleName, int32_t userId, std::vector<DataGroupInfo> &infos);
     bool RegisterBundleEventCallback(const sptr<IBundleEventCallback> &bundleEventCallback);
     bool GetBundleInfos(
         const BundleFlag flag, std::vector<BundleInfo> &bundleInfos, int32_t userId = Constants::UNSPECIFIED_USERID);
     bool GetHapModuleInfo(const AbilityInfo &abilityInfo, int32_t userId, HapModuleInfo &hapModuleInfo);
+    ErrCode GetDualModeBundleInfo(const std::string &bundleName, int32_t userId, int32_t &appIndex);
 
     static bool hapModuleInfo_;
     static bool dataGroupInfos_;
+    static ErrCode getBundleInfoV9Result_;
+    static int32_t mockUid_;
+    static std::string bundleVersionName_;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

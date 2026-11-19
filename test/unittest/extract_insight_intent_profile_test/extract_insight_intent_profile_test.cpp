@@ -1862,6 +1862,28 @@ HWTEST_F(ExtractInsightIntentProfileTest, TransformTo_Link_Missing_Uri_0100, Tes
     EXPECT_EQ(result, false);
 }
 
+/**
+ * @tc.number: TransformTo_Link_Entity_Missing_EntityId_NotQueryable_0100
+ * @tc.name: TransformTo for entity empty entityId and not queryable
+ * @tc.desc: Test TransformTo hit CheckProfileInfo line560 branch.
+ */
+HWTEST_F(ExtractInsightIntentProfileTest, TransformTo_Link_Entity_Missing_EntityId_NotQueryable_0100, TestSize.Level0)
+{
+    TAG_LOGI(AAFwkTag::TEST, "TransformTo_Link_Entity_Missing_EntityId_NotQueryable_0100 called.");
+    auto jsonObject = nlohmann::json::parse(profileJsonStr, nullptr, false);
+    ASSERT_FALSE(jsonObject.is_discarded());
+    jsonObject["extractInsightIntents"][0]["entities"][1]["entityId"] = "";
+    jsonObject["extractInsightIntents"][0]["entities"][1]["parentClassName"] = "base";
+
+    ExtractInsightIntentProfileInfoVec infos;
+    bool result = ExtractInsightIntentProfile::TransformTo(jsonObject.dump(), infos);
+    EXPECT_EQ(result, false);
+
+    jsonObject["extractInsightIntents"][0]["entities"][1]["parentClassName"] = "insightIntent.AppIntentEntity";
+    result = ExtractInsightIntentProfile::TransformTo(jsonObject.dump(), infos);
+    EXPECT_EQ(result, true);
+}
+
 // ========== @InsightIntentPage 测试用例 ==========
 
 /**

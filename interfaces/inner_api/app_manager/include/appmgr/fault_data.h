@@ -74,6 +74,7 @@ struct FaultData : public Parcelable {
     bool WriteContent(Parcel &parcel) const;
     bool ReadLeakContent(Parcel &parcel);
     bool WriteLeakContent(Parcel &parcel) const;
+    bool WriteApplicationContent(Parcel &parcel) const;
     static FaultData *Unmarshalling(Parcel &parcel);
     // error object
     ErrorObject errorObject;
@@ -101,7 +102,11 @@ struct FaultData : public Parcelable {
     bool isInForeground;
     bool isEnableMainThreadSample;
     bool reportLifecycleToFreeze = false;
+    bool abilityPendingBackground = false;
     std::string applicationHeapInfo;
+    std::string applicationGCInfo;
+    std::string applicationIOInfo;
+    bool isBlockInGc = false;
     std::string processLifeTime;
     int32_t markedId = 0;
     int32_t processedId = 0;
@@ -109,6 +114,10 @@ struct FaultData : public Parcelable {
     LeakObject leakObject;
     std::string callbackLog;
     AppTelemetryLeakType atLeakType;
+    std::string gpuHookSize;
+    std::string heaviestStack;
+    int64_t ipcLatency = 0;
+    std::string logValidity;
 };
 
 /**
@@ -145,10 +154,15 @@ struct AppFaultDataBySA : public Parcelable {
     bool isInForeground;
     bool isEnableMainThreadSample;
     bool reportLifecycleToFreeze = false;
+    bool abilityPendingBackground = false;
     std::string applicationHeapInfo;
+    std::string applicationGCInfo;
+    std::string applicationIOInfo;
+    bool isBlockInGc = false;
     std::string processLifeTime;
     LeakObject leakObject;
     AppTelemetryLeakType atLeakType;
+    std::string gpuHookSize;
 };
 }  // namespace AppExecFwk
 }  // namespace OHOS

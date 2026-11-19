@@ -54,5 +54,10 @@ bool PermissionVerification::VerifyCallingPermission(
 {
     return MyStatus::GetInstance().isVerifyCallingPermission_;
 }
+
+bool PermissionVerification::IsAllowLocalDebugOtherApps(bool isDebugFromLocal) const
+{
+    return false;
+}
 } // namespace AAFwk
 } // namespace OHOS

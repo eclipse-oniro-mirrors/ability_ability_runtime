@@ -40,12 +40,15 @@ ohos_unittest("connect_server_manager_test") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
 
+  deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/connect_server_manager:connect_server_manager",
+    "${ability_runtime_innerkits_path}/runtime:runtime",
+    "${ability_runtime_native_path}/ability/native:abilitykit_native",
+  ]
+
   external_deps = [
     "ability_base:want",
-    "ability_runtime:ability_manager",
-    "ability_runtime:abilitykit_native",
-    "ability_runtime:connect_server_manager",
-    "ability_runtime:runtime",
     "c_utils:utils",
     "googletest:gmock_main",
     "hilog:libhilog",

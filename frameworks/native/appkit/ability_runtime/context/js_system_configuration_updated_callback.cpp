@@ -125,6 +125,7 @@ bool JsSystemConfigurationUpdatedCallback::HasJsMethodExist(napi_env env, std::s
         TAG_LOGE(AAFwkTag::APPKIT, "env or callback null");
         return false;
     }
+    HandleScope handleScope(env);
     napi_value jsCallback = callback->GetNapiValue();
     bool isExist = false;
     napi_has_named_property(env, jsCallback, methodName, &isExist);

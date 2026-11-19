@@ -28,8 +28,12 @@ ohos_unittest("auto_fill_request_callback_interface_test") {
   sources = [ "auto_fill_request_callback_interface_test.cpp" ]
 
   deps = [
+    "${ability_runtime_innerkits_path}/ability_manager:ability_manager",
+    "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/ability/native:ability_business_error",
+    "${ability_runtime_native_path}/ability/native:abilitykit_native",
+    "${ability_runtime_native_path}/ability:ability_context_native",
   ]
 
   configs = [ "${ability_runtime_services_path}/common:common_config" ]
@@ -39,11 +43,6 @@ ohos_unittest("auto_fill_request_callback_interface_test") {
     "ability_base:configuration",
     "ability_base:view_data",
     "ability_base:want",
-    "ability_runtime:ability_context_native",
-    "ability_runtime:ability_manager",
-    "ability_runtime:abilitykit_native",
-    "ability_runtime:app_manager",
-    "ability_runtime:runtime",
     "accessibility:accessibility_common",
     "bundle_framework:appexecfwk_base",
     "c_utils:utils",

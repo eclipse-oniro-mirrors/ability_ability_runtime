@@ -52,6 +52,25 @@ int FormExtensionContext::UpdateForm(const int64_t formId, const AppExecFwk::For
     return AppExecFwk::FormMgr::GetInstance().UpdateForm(formId, formProviderData);
 }
 
+int FormExtensionContext::UpdateForm(const int64_t formId, const AppExecFwk::FormProviderInfo &formProviderInfo)
+{
+    TAG_LOGD(AAFwkTag::APPKIT, "Update form, formId: %{public}" PRId64 ".", formId);
+    if (formId <= 0) {
+        TAG_LOGE(AAFwkTag::APPKIT, "formId not be negative or zero");
+        return ERR_APPEXECFWK_FORM_INVALID_PARAM;
+    }
+    if (AppExecFwk::FormMgr::GetRecoverStatus() == AppExecFwk::Constants::IN_RECOVERING) {
+        TAG_LOGE(AAFwkTag::APPKIT, "update failed");
+        return ERR_APPEXECFWK_FORM_IN_RECOVER;
+    }
+    if (formProviderInfo.GetFormData().GetDataString().empty()) {
+        TAG_LOGE(AAFwkTag::APPKIT, "form data empty");
+        return ERR_APPEXECFWK_FORM_INVALID_PARAM;
+    }
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, "AppExecFwk::FormMgr::GetInstance().UpdateForm");
+    return AppExecFwk::FormMgr::GetInstance().UpdateForm(formId, formProviderInfo);
+}
+
 ErrCode FormExtensionContext::StartAbility(const AAFwk::Want &want) const
 {
     TAG_LOGD(AAFwkTag::APPKIT, "Start ability");
