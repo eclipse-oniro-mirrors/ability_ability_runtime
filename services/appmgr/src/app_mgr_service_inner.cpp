@@ -3417,7 +3417,6 @@ void AppMgrServiceInner::ApplicationTerminated(const int32_t recordId)
     KillChildProcess(appRecord);
     KillAttachedChildProcess(appRecord);
 #endif // SUPPORT_CHILD_PROCESS
-    SubSpawnManager::GetInstance().OnAppProcessDied(appRecord->GetPid());
     appRecord->SetState(ApplicationState::APP_STATE_TERMINATED);
     AppfreezeManager::GetInstance()->ClearAppfreezeTasks(
         appRecord->GetPid(), appRecord->GetUid(), appRecord->GetRecordId());
@@ -3426,6 +3425,9 @@ void AppMgrServiceInner::ApplicationTerminated(const int32_t recordId)
     appRecord->SetProcessChangeReason(ProcessChangeReason::REASON_APP_TERMINATED);
     OnAppStateChanged(appRecord, ApplicationState::APP_STATE_TERMINATED, false, false, false);
     appRunningManager_->RemoveAppRunningRecordById(recordId);
+    if (!appRunningManager_->CheckAppRunningRecordIsExistByUid(appRecord->GetUid())) {
+        SubSpawnManager::GetInstance().OnAppProcessDied(appRecord->GetUid());
+    }
     AAFwk::EventInfo eventInfo;
     auto applicationInfo = appRecord->GetApplicationInfo();
     if (!applicationInfo) {
@@ -6738,7 +6740,9 @@ void AppMgrServiceInner::ClearAppRunningData(const std::shared_ptr<AppRunningRec
     KillChildProcess(appRecord);
     KillAttachedChildProcess(appRecord);
 #endif // SUPPORT_CHILD_PROCESS
-    SubSpawnManager::GetInstance().OnAppProcessDied(appRecord->GetPid());
+    if (!appRunningManager_->CheckAppRunningRecordIsExistByUid(appRecord->GetUid())) {
+        SubSpawnManager::GetInstance().OnAppProcessDied(appRecord->GetUid());
+    }
 
     SendProcessExitEvent(appRecord);
 
@@ -11069,13 +11073,13 @@ int32_t AppMgrServiceInner::StartChildProcessImpl(const std::shared_ptr<ChildPro
             }
             startMsg.bundleName = appRecord->GetBundleName();
             pid_t subSpawnChildPid = SubSpawnManager::GetInstance().StartChildViaSubSpawn(
-                appRecord->GetPid(), appRecord->GetUid(), startMsg);
+                appRecord->GetUid(), startMsg);
             if (subSpawnChildPid > 0) {
                 childPid = subSpawnChildPid;
                 childProcessRecord->SetPid(subSpawnChildPid);
                 childProcessRecord->SetUid(startMsg.uid);
                 appRecord->AddChildProcessRecord(subSpawnChildPid, childProcessRecord);
-                SubSpawnManager::GetInstance().OnChildProcessCreated(appRecord->GetPid(), subSpawnChildPid);
+                SubSpawnManager::GetInstance().OnChildProcessCreated(appRecord->GetUid(), subSpawnChildPid);
                 AppPidFdManager::GetInstance().AddWatcher(subSpawnChildPid, PidFdType::CHILD);
                 DelayedSingleton<AppStateObserverManager>::GetInstance()
                     ->OnChildProcessCreated(childProcessRecord);
@@ -11305,8 +11309,11 @@ void AppMgrServiceInner::OnChildProcessDied(std::shared_ptr<ChildProcessRecord> 
         RemoveChildProcessIsolationUid(childProcessRecord->GetUid());
         childProcessRecord->SetState(AppProcessState::APP_STATE_TERMINATED);
         DelayedSingleton<AppStateObserverManager>::GetInstance()->OnChildProcessDied(childProcessRecord);
-        SubSpawnManager::GetInstance().OnChildProcessExited(childProcessRecord->GetHostPid(),
-            childProcessRecord->GetPid());
+        auto hostRecord = childProcessRecord->GetHostRecord();
+        if (hostRecord) {
+            SubSpawnManager::GetInstance().OnChildProcessExited(hostRecord->GetUid(),
+                childProcessRecord->GetPid());
+        }
     }
 }
 

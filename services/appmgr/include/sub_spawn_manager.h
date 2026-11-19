@@ -38,18 +38,18 @@ public:
 
     bool ShouldUseSubSpawn(const std::vector<std::string> &preloadSoList, bool isolationMode);
 
-    pid_t StartChildViaSubSpawn(pid_t appPid, int32_t uid, const AppSpawnStartMsg &startMsg);
+    pid_t StartChildViaSubSpawn(int32_t uid, const AppSpawnStartMsg &startMsg);
 
-    void AsyncCreateSubSpawn(pid_t appPid, int32_t uid, const std::string &bundleName,
+    void AsyncCreateSubSpawn(int32_t uid, const std::string &bundleName,
                              const AppSpawnStartMsg &startMsg);
 
     void OnSubSpawnExited(pid_t subSpawnPid);
 
-    void OnChildProcessCreated(pid_t appPid, pid_t childPid);
+    void OnChildProcessCreated(int32_t uid, pid_t childPid);
 
-    void OnChildProcessExited(pid_t appPid, pid_t childPid);
+    void OnChildProcessExited(int32_t uid, pid_t childPid);
 
-    void OnAppProcessDied(pid_t appPid);
+    void OnAppProcessDied(int32_t uid);
 
     bool IsSubSpawn(pid_t pid);
 
@@ -62,14 +62,14 @@ private:
 
     void StartIdleTimer(const std::shared_ptr<SubSpawnRecord> &record);
     void CancelIdleTimer(const std::shared_ptr<SubSpawnRecord> &record);
-    void HandleIdleTimeout(pid_t appPid);
+    void HandleIdleTimeout(int32_t uid);
 
     std::string QuerySocketNameByUid(int32_t uid);
 
-    pid_t DoCreateSubSpawn(pid_t appPid, int32_t uid, const std::string &bundleName,
+    pid_t DoCreateSubSpawn(int32_t uid, const std::string &bundleName,
                            const AppSpawnStartMsg &startMsg);
 
-    std::map<pid_t /*appPid*/, std::shared_ptr<SubSpawnRecord>> subSpawnMap_;
+    std::map<int32_t /*uid*/, std::shared_ptr<SubSpawnRecord>> subSpawnMap_;
     std::map<pid_t /*subSpawnPid*/, std::shared_ptr<SubSpawnRecord>> pidToRecordMap_;
     std::mutex mutex_;
 };

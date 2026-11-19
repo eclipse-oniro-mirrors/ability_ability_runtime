@@ -29,7 +29,6 @@ namespace OHOS {
 namespace AppExecFwk {
 
 enum class SubSpawnState : int32_t {
-    IDLE,
     CREATING,
     READY,
     TERMINATING,
@@ -54,12 +53,11 @@ enum class SubSpawnErrorCode : int32_t {
 
 class SubSpawnRecord {
 public:
-    static std::shared_ptr<SubSpawnRecord> CreateSubSpawnRecord(pid_t appPid, int32_t uid,
+    static std::shared_ptr<SubSpawnRecord> CreateSubSpawnRecord(int32_t uid,
         const std::string &bundleName, const AppSpawnStartMsg &startMsg);
 
     pid_t GetSubSpawnPid() const;
     void SetSubSpawnPid(pid_t pid);
-    pid_t GetAppPid() const;
     int32_t GetUid() const;
     std::string GetBundleName() const;
 
@@ -92,19 +90,18 @@ public:
     int32_t GetExitSignal() const;
 
 private:
-    SubSpawnRecord(pid_t appPid, int32_t uid, const std::string &bundleName,
+    SubSpawnRecord(int32_t uid, const std::string &bundleName,
         const AppSpawnStartMsg &startMsg);
     DISALLOW_COPY_AND_MOVE(SubSpawnRecord);
 
     pid_t subSpawnPid_ = 0;
-    pid_t appPid_ = 0;
     int32_t uid_ = 0;
     std::string bundleName_;
     std::string socketName_;
     std::set<pid_t> childPids_;
     bool idleTimerActive_ = false;
     std::atomic<bool> createdNotified_ {false};
-    std::atomic<SubSpawnState> state_ {SubSpawnState::IDLE};
+    std::atomic<SubSpawnState> state_ {SubSpawnState::CREATING};
     std::chrono::system_clock::time_point startTime_;
     AppSpawnStartMsg startMsg_;
     std::string killReason_;

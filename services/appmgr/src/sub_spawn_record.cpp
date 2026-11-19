@@ -20,24 +20,23 @@
 namespace OHOS {
 namespace AppExecFwk {
 
-std::shared_ptr<SubSpawnRecord> SubSpawnRecord::CreateSubSpawnRecord(pid_t appPid, int32_t uid,
+std::shared_ptr<SubSpawnRecord> SubSpawnRecord::CreateSubSpawnRecord(int32_t uid,
     const std::string &bundleName, const AppSpawnStartMsg &startMsg)
 {
-    if (appPid <= 0 || bundleName.empty()) {
-        TAG_LOGE(AAFwkTag::APPMGR, "Invalid appPid or bundleName");
+    if (uid <= 0 || bundleName.empty()) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Invalid uid or bundleName");
         return nullptr;
     }
-    return std::shared_ptr<SubSpawnRecord>(new (std::nothrow) SubSpawnRecord(appPid, uid, bundleName, startMsg));
+    return std::shared_ptr<SubSpawnRecord>(new (std::nothrow) SubSpawnRecord(uid, bundleName, startMsg));
 }
 
-SubSpawnRecord::SubSpawnRecord(pid_t appPid, int32_t uid, const std::string &bundleName,
+SubSpawnRecord::SubSpawnRecord(int32_t uid, const std::string &bundleName,
     const AppSpawnStartMsg &startMsg)
-    : appPid_(appPid), uid_(uid), bundleName_(bundleName), startTime_(std::chrono::system_clock::now()),
+    : uid_(uid), bundleName_(bundleName), startTime_(std::chrono::system_clock::now()),
       startMsg_(startMsg) {}
 
 pid_t SubSpawnRecord::GetSubSpawnPid() const { return subSpawnPid_; }
 void SubSpawnRecord::SetSubSpawnPid(pid_t pid) { subSpawnPid_ = pid; }
-pid_t SubSpawnRecord::GetAppPid() const { return appPid_; }
 int32_t SubSpawnRecord::GetUid() const { return uid_; }
 std::string SubSpawnRecord::GetBundleName() const { return bundleName_; }
 

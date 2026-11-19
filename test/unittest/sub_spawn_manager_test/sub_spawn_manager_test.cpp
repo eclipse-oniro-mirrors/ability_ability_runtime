@@ -93,7 +93,7 @@ HWTEST_F(SubSpawnManagerTest, OnSubSpawnExited_001, TestSize.Level1)
 
 /**
  * @tc.name: OnChildProcessCreated_001
- * @tc.desc: Test OnChildProcessCreated with unknown appPid does not crash
+ * @tc.desc: Test OnChildProcessCreated with unknown uid does not crash
  */
 HWTEST_F(SubSpawnManagerTest, OnChildProcessCreated_001, TestSize.Level1)
 {
@@ -103,7 +103,7 @@ HWTEST_F(SubSpawnManagerTest, OnChildProcessCreated_001, TestSize.Level1)
 
 /**
  * @tc.name: OnChildProcessExited_001
- * @tc.desc: Test OnChildProcessExited with unknown appPid does not crash
+ * @tc.desc: Test OnChildProcessExited with unknown uid does not crash
  */
 HWTEST_F(SubSpawnManagerTest, OnChildProcessExited_001, TestSize.Level1)
 {
@@ -113,7 +113,7 @@ HWTEST_F(SubSpawnManagerTest, OnChildProcessExited_001, TestSize.Level1)
 
 /**
  * @tc.name: OnAppProcessDied_001
- * @tc.desc: Test OnAppProcessDied with unknown appPid does not crash
+ * @tc.desc: Test OnAppProcessDied with unknown uid does not crash
  */
 HWTEST_F(SubSpawnManagerTest, OnAppProcessDied_001, TestSize.Level1)
 {
@@ -130,13 +130,13 @@ HWTEST_F(SubSpawnManagerTest, StartChildViaSubSpawn_001, TestSize.Level1)
     AppSpawnStartMsg startMsg;
     startMsg.procName = "test";
     startMsg.uid = 10000;
-    pid_t result = SubSpawnManager::GetInstance().StartChildViaSubSpawn(99999, 10000, startMsg);
+    pid_t result = SubSpawnManager::GetInstance().StartChildViaSubSpawn(10000, startMsg);
     EXPECT_LE(result, 0);
 }
 
 /**
  * @tc.name: HandleIdleTimeout_001
- * @tc.desc: Test HandleIdleTimeout with unknown appPid does not crash
+ * @tc.desc: Test HandleIdleTimeout with unknown uid does not crash
  */
 HWTEST_F(SubSpawnManagerTest, HandleIdleTimeout_001, TestSize.Level1)
 {
@@ -151,9 +151,8 @@ HWTEST_F(SubSpawnManagerTest, HandleIdleTimeout_001, TestSize.Level1)
 HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_Create_001, TestSize.Level1)
 {
     AppSpawnStartMsg startMsg;
-    auto record = SubSpawnRecord::CreateSubSpawnRecord(1000, 20000, "com.test.app", startMsg);
+    auto record = SubSpawnRecord::CreateSubSpawnRecord(20000, "com.test.app", startMsg);
     EXPECT_NE(record, nullptr);
-    EXPECT_EQ(record->GetAppPid(), 1000);
     EXPECT_EQ(record->GetUid(), 20000);
     EXPECT_EQ(record->GetBundleName(), "com.test.app");
 }
@@ -165,8 +164,8 @@ HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_Create_001, TestSize.Level1)
 HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_Create_002, TestSize.Level1)
 {
     AppSpawnStartMsg startMsg;
-    EXPECT_EQ(SubSpawnRecord::CreateSubSpawnRecord(0, 20000, "com.test.app", startMsg), nullptr);
-    EXPECT_EQ(SubSpawnRecord::CreateSubSpawnRecord(1000, 20000, "", startMsg), nullptr);
+    EXPECT_EQ(SubSpawnRecord::CreateSubSpawnRecord(0, "com.test.app", startMsg), nullptr);
+    EXPECT_EQ(SubSpawnRecord::CreateSubSpawnRecord(20000, "", startMsg), nullptr);
 }
 
 /**
@@ -176,14 +175,11 @@ HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_Create_002, TestSize.Level1)
 HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_State_001, TestSize.Level1)
 {
     AppSpawnStartMsg startMsg;
-    auto record = SubSpawnRecord::CreateSubSpawnRecord(1000, 20000, "com.test.app", startMsg);
+    auto record = SubSpawnRecord::CreateSubSpawnRecord(20000, "com.test.app", startMsg);
     ASSERT_NE(record, nullptr);
     EXPECT_FALSE(record->IsReady());
-    EXPECT_FALSE(record->IsCreating());
-    EXPECT_FALSE(record->IsTerminating());
-    record->SetState(SubSpawnState::CREATING);
     EXPECT_TRUE(record->IsCreating());
-    EXPECT_FALSE(record->IsReady());
+    EXPECT_FALSE(record->IsTerminating());
     record->SetState(SubSpawnState::READY);
     EXPECT_TRUE(record->IsReady());
     EXPECT_FALSE(record->IsCreating());
@@ -199,7 +195,7 @@ HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_State_001, TestSize.Level1)
 HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_ChildPids_001, TestSize.Level1)
 {
     AppSpawnStartMsg startMsg;
-    auto record = SubSpawnRecord::CreateSubSpawnRecord(1000, 20000, "com.test.app", startMsg);
+    auto record = SubSpawnRecord::CreateSubSpawnRecord(20000, "com.test.app", startMsg);
     ASSERT_NE(record, nullptr);
     EXPECT_EQ(record->GetChildProcessCount(), 0u);
     EXPECT_FALSE(record->HasChildProcesses());
@@ -221,7 +217,7 @@ HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_ChildPids_001, TestSize.Level1)
 HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_Diagnostics_001, TestSize.Level1)
 {
     AppSpawnStartMsg startMsg;
-    auto record = SubSpawnRecord::CreateSubSpawnRecord(1000, 20000, "com.test.app", startMsg);
+    auto record = SubSpawnRecord::CreateSubSpawnRecord(20000, "com.test.app", startMsg);
     ASSERT_NE(record, nullptr);
     EXPECT_EQ(record->GetKillReason(), "");
     EXPECT_EQ(record->GetExitSignal(), -1);
@@ -238,7 +234,7 @@ HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_Diagnostics_001, TestSize.Level1)
 HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_CreatedNotified_001, TestSize.Level1)
 {
     AppSpawnStartMsg startMsg;
-    auto record = SubSpawnRecord::CreateSubSpawnRecord(1000, 20000, "com.test.app", startMsg);
+    auto record = SubSpawnRecord::CreateSubSpawnRecord(20000, "com.test.app", startMsg);
     ASSERT_NE(record, nullptr);
     EXPECT_FALSE(record->IsCreatedNotified());
     record->SetCreatedNotified(true);
