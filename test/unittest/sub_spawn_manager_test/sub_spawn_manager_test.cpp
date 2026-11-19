@@ -178,8 +178,11 @@ HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_State_001, TestSize.Level1)
     auto record = SubSpawnRecord::CreateSubSpawnRecord(20000, "com.test.app", startMsg);
     ASSERT_NE(record, nullptr);
     EXPECT_FALSE(record->IsReady());
-    EXPECT_TRUE(record->IsCreating());
+    EXPECT_FALSE(record->IsCreating());
     EXPECT_FALSE(record->IsTerminating());
+    record->SetState(SubSpawnState::CREATING);
+    EXPECT_TRUE(record->IsCreating());
+    EXPECT_FALSE(record->IsReady());
     record->SetState(SubSpawnState::READY);
     EXPECT_TRUE(record->IsReady());
     EXPECT_FALSE(record->IsCreating());

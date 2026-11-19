@@ -157,6 +157,7 @@ void SubSpawnManager::AsyncCreateSubSpawn(int32_t uid,
             TAG_LOGE(AAFwkTag::APPMGR, "Failed to create SubSpawnRecord for uid:%{public}d", uid);
             return;
         }
+        record->SetState(SubSpawnState::CREATING);
         subSpawnMap_[uid] = record;
     }
 

@@ -29,6 +29,7 @@ namespace OHOS {
 namespace AppExecFwk {
 
 enum class SubSpawnState : int32_t {
+    NONE,
     CREATING,
     READY,
     TERMINATING,
@@ -101,7 +102,7 @@ private:
     std::set<pid_t> childPids_;
     bool idleTimerActive_ = false;
     std::atomic<bool> createdNotified_ {false};
-    std::atomic<SubSpawnState> state_ {SubSpawnState::CREATING};
+    std::atomic<SubSpawnState> state_ {SubSpawnState::NONE};
     std::chrono::system_clock::time_point startTime_;
     AppSpawnStartMsg startMsg_;
     std::string killReason_;
