@@ -1297,6 +1297,11 @@ bool AppRunningRecord::IsAllAbilityReadyToCleanedByUserRequest()
     return false;
 }
 
+bool AppRunningRecord::IsAllAbilityReadyToCleanedByClearSession()
+{
+    return false;
+}
+
 void AppRunningRecord::SetUserRequestCleaning()
 {
     isUserRequestCleaning_ = true;

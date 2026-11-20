@@ -3526,5 +3526,94 @@ HWTEST_F(AmsAppRunningRecordTest, SetIsCreateFromImage_ShouldReturnTrueWhenInput
     appRecord->SetIsCreateFromImage(inputState);
     EXPECT_EQ(appRecord->GetIsCreateFromImage(), inputState);
 }
+
+/**
+ * @tc.name: IsAllAbilityReadyToCleanedByClearSession_001
+ * @tc.desc: verify ModuleRunningRecord IsAllAbilityReadyToCleanedByClearSession with PAGE ability
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsAppRunningRecordTest, IsAllAbilityReadyToCleanedByClearSession_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "IsAllAbilityReadyToCleanedByClearSession_001 start.";
+    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->name = GetTestAppName();
+    appInfo->bundleName = GetTestAppName();
+
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->name = GetTestAbilityName();
+    abilityInfo->type = AbilityType::PAGE;
+
+    std::shared_ptr<ModuleRunningRecord> moduleRecord = std::make_shared<ModuleRunningRecord>(appInfo, nullptr);
+    auto abilityRecord = std::make_shared<AbilityRunningRecord>(abilityInfo, GetMockToken(), 0);
+
+    abilityRecord->SetClearSessionStatus();
+    abilityRecord->state_ = AbilityState::ABILITY_STATE_CONNECTED;
+    moduleRecord->abilities_.emplace(GetMockToken(), abilityRecord);
+    EXPECT_FALSE(moduleRecord->IsAllAbilityReadyToCleanedByClearSession());
+
+    moduleRecord->abilities_.clear();
+    abilityRecord->SetClearSessionStatus();
+    abilityRecord->state_ = AbilityState::ABILITY_STATE_BACKGROUND;
+    moduleRecord->abilities_.emplace(GetMockToken(), abilityRecord);
+    EXPECT_TRUE(moduleRecord->IsAllAbilityReadyToCleanedByClearSession());
+
+    moduleRecord->abilities_.clear();
+    abilityRecord->state_ = AbilityState::ABILITY_STATE_TERMINATED;
+    moduleRecord->abilities_.emplace(GetMockToken(), abilityRecord);
+    EXPECT_TRUE(moduleRecord->IsAllAbilityReadyToCleanedByClearSession());
+    GTEST_LOG_(INFO) << "IsAllAbilityReadyToCleanedByClearSession_001 end.";
+}
+
+/**
+ * @tc.name: IsAllAbilityReadyToCleanedByClearSession_002
+ * @tc.desc: verify ModuleRunningRecord returns false when PAGE ability has no clearSession flag,
+ *           and returns true when only non-PAGE abilities exist
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsAppRunningRecordTest, IsAllAbilityReadyToCleanedByClearSession_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "IsAllAbilityReadyToCleanedByClearSession_002 start.";
+    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->name = GetTestAppName();
+    appInfo->bundleName = GetTestAppName();
+
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->name = GetTestAbilityName();
+    abilityInfo->type = AbilityType::PAGE;
+
+    std::shared_ptr<ModuleRunningRecord> moduleRecord = std::make_shared<ModuleRunningRecord>(appInfo, nullptr);
+    auto abilityRecord = std::make_shared<AbilityRunningRecord>(abilityInfo, GetMockToken(), 0);
+
+    abilityRecord->state_ = AbilityState::ABILITY_STATE_BACKGROUND;
+    moduleRecord->abilities_.emplace(GetMockToken(), abilityRecord);
+    EXPECT_FALSE(moduleRecord->IsAllAbilityReadyToCleanedByClearSession());
+
+    moduleRecord->abilities_.clear();
+    auto extAbilityInfo = std::make_shared<AbilityInfo>();
+    extAbilityInfo->name = GetTestAbilityName();
+    extAbilityInfo->type = AbilityType::EXTENSION;
+    auto extAbilityRecord = std::make_shared<AbilityRunningRecord>(extAbilityInfo, GetMockToken(), 0);
+    moduleRecord->abilities_.emplace(GetMockToken(), extAbilityRecord);
+    EXPECT_TRUE(moduleRecord->IsAllAbilityReadyToCleanedByClearSession());
+    GTEST_LOG_(INFO) << "IsAllAbilityReadyToCleanedByClearSession_002 end.";
+}
+
+/**
+ * @tc.name: IsAllAbilityReadyToCleanedByClearSession_003
+ * @tc.desc: verify AppRunningRecord returns false when no PAGE ability exists in process
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsAppRunningRecordTest, IsAllAbilityReadyToCleanedByClearSession_003, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "IsAllAbilityReadyToCleanedByClearSession_003 start.";
+    std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
+    appInfo->name = GetTestAppName();
+    appInfo->bundleName = GetTestAppName();
+    auto appRunningRecord = std::make_shared<AppRunningRecord>(appInfo, 0, "processName");
+    ASSERT_NE(appRunningRecord, nullptr);
+
+    EXPECT_FALSE(appRunningRecord->IsAllAbilityReadyToCleanedByClearSession());
+    GTEST_LOG_(INFO) << "IsAllAbilityReadyToCleanedByClearSession_003 end.";
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

@@ -176,6 +176,7 @@ public:
     bool IsAbilitiesBackgrounded();
 
     bool IsAllAbilityReadyToCleanedByUserRequest();
+    bool IsAllAbilityReadyToCleanedByClearSession();
 
     void SetLoaded()
     {

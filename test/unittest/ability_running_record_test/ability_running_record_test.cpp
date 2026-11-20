@@ -461,5 +461,36 @@ HWTEST_F(AbilityRunningRecordTest, IsSceneBoard_002, TestSize.Level1)
     EXPECT_FALSE(record->IsSceneBoard());
     TAG_LOGD(AAFwkTag::TEST, "IsSceneBoard_002 end.");
 }
+
+/**
+ * @tc.name: SetClearSessionStatus_001
+ * @tc.desc: Test IsClearSession default value is false
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityRunningRecordTest, SetClearSessionStatus_001, TestSize.Level1)
+{
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->name = GetTestAbilityInfoName();
+    abilityInfo->bundleName = GetTestBundleName();
+    auto record = std::make_shared<AbilityRunningRecord>(abilityInfo, nullptr, 1);
+    ASSERT_NE(record, nullptr);
+    EXPECT_FALSE(record->IsClearSession());
+}
+
+/**
+ * @tc.name: SetClearSessionStatus_002
+ * @tc.desc: Test IsClearSession returns true after SetClearSessionStatus
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityRunningRecordTest, SetClearSessionStatus_002, TestSize.Level1)
+{
+    auto abilityInfo = std::make_shared<AbilityInfo>();
+    abilityInfo->name = GetTestAbilityInfoName();
+    abilityInfo->bundleName = GetTestBundleName();
+    auto record = std::make_shared<AbilityRunningRecord>(abilityInfo, nullptr, 1);
+    ASSERT_NE(record, nullptr);
+    record->SetClearSessionStatus();
+    EXPECT_TRUE(record->IsClearSession());
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

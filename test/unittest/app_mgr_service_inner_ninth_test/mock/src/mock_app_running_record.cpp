@@ -1390,6 +1390,11 @@ bool AppRunningRecord::IsAllAbilityReadyToCleanedByUserRequest()
     return AAFwk::MyStatus::GetInstance().isAllAbilityReadyToCleanedByUserRequest_;
 }
 
+bool AppRunningRecord::IsAllAbilityReadyToCleanedByClearSession()
+{
+    return false;
+}
+
 void AppRunningRecord::SetUserRequestCleaning()
 {
     AAFwk::MyStatus::GetInstance().setUserRequestCleaningCalled_ = true;

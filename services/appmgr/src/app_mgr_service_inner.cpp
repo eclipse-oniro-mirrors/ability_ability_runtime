@@ -273,6 +273,11 @@ constexpr const char* RENDER_PROCESS_TYPE = "render";
 constexpr const char* GPU_PROCESS_NAME = ":gpu";
 constexpr const char* GPU_PROCESS_TYPE = "gpu";
 constexpr const char* KILL_REASON_USER_REQUEST = "User Request";
+constexpr const char* KILL_REASON_LOW_MEMORY = "LowMemoryKill";
+constexpr const char* MEMMGR_POOL_MEMORY_PREPARE = "resourceschedule.memmgr.pool.memory.prepare";
+constexpr int32_t LOW_MEM_THRESHOLD = 10;
+constexpr int64_t LOW_MEM_KILL_COOLDOWN_MS = 10000;
+
 const std::chrono::hours REPORT_INTERVAL{6};
 const int32_t REPORT_THRESHOLD = 10;
 const std::string TOKEN_ID = "TOKEN_ID";
@@ -518,6 +523,9 @@ std::pair<int, std::string> GetEventTypeAndMsg(int32_t eventId)
     return result;
 }
 }  // namespace
+
+std::atomic<int32_t> AppMgrServiceInner::memoryPoolValue_{0};
+std::atomic<int64_t> AppMgrServiceInner::lastLowMemKillTimeMs_{0};
 
 using OHOS::AppExecFwk::Constants::PERMISSION_GRANTED;
 using OHOS::AppExecFwk::Constants::PERMISSION_NOT_GRANTED;
@@ -4972,6 +4980,7 @@ void AppMgrServiceInner::UpdateAbilityState(const sptr<IRemoteObject> &token, co
     }
     appRecord->UpdateAbilityState(token, state, isFromScreenOffBackground, callerInfo);
     CheckCleanAbilityByUserRequest(appRecord, abilityRecord, state);
+    CheckCleanAbilityByLowMem(appRecord, abilityRecord, state);
 }
 
 void AppMgrServiceInner::UpdateExtensionState(const sptr<IRemoteObject> &token, const ExtensionState state)
@@ -6853,6 +6862,18 @@ void AppMgrServiceInner::PrepareTerminate(const sptr<IRemoteObject> &token, bool
         return;
     }
     appRunningManager_->PrepareTerminate(token, clearMissionFlag);
+    if (!clearMissionFlag) {
+        return;
+    }
+    auto appRecord = GetAppRunningRecordByAbilityToken(token);
+    if (!appRecord) {
+        return;
+    }
+    auto abilityRecord = appRecord->GetAbilityRunningRecordByToken(token);
+    if (!abilityRecord) {
+        return;
+    }
+    CheckCleanAbilityByLowMem(appRecord, abilityRecord, abilityRecord->GetState());
 }
 
 void AppMgrServiceInner::HandleTerminateApplicationTimeOut(std::shared_ptr<AppRunningRecord> appRecord)
@@ -8971,6 +8992,13 @@ void AppMgrServiceInner::AddWatchParameter()
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::APPMGR, "watch parameter %{public}s fail with %{public}d",
             AAFwk::GlobalConfigurationKey::INPUT_POINTER_DEVICE, ret);
+    }
+    int32_t memValue = GetIntParameter(MEMMGR_POOL_MEMORY_PREPARE, 0);
+    memoryPoolValue_.store(memValue);
+    ret = WatchParameter(MEMMGR_POOL_MEMORY_PREPARE, HandleMemoryPoolPrepareCallback, context);
+    if (ret != 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "watch parameter %{public}s fail with %{public}d",
+            MEMMGR_POOL_MEMORY_PREPARE, ret);
     }
 }
 
@@ -12449,6 +12477,101 @@ void AppMgrServiceInner::CheckCleanAbilityByUserRequest(const std::shared_ptr<Ap
     }
     TAG_LOGI(AAFwkTag::APPMGR, "clean ability set up bg, force kill, pid:%{public}d", pid);
     KillProcessByPid(pid, KILL_REASON_USER_REQUEST);
+}
+
+void AppMgrServiceInner::HandleMemoryPoolPrepareCallback(const char *key, const char *value, void *context)
+{
+    if (key == nullptr || value == nullptr) {
+        return;
+    }
+    if (strcmp(key, MEMMGR_POOL_MEMORY_PREPARE) != 0) {
+        return;
+    }
+    int32_t memValue = GetIntParameter(MEMMGR_POOL_MEMORY_PREPARE, 0);
+    int32_t oldValue = memoryPoolValue_.exchange(memValue);
+    if (oldValue >= LOW_MEM_THRESHOLD || memValue < LOW_MEM_THRESHOLD) {
+        return;
+    }
+    TAG_LOGI(AAFwkTag::APPMGR, "memory pool transition to low mem: %{public}d", memValue);
+    auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+    if (nowMs - lastLowMemKillTimeMs_.load() < LOW_MEM_KILL_COOLDOWN_MS) {
+        TAG_LOGI(AAFwkTag::APPMGR, "low mem kill cooldown, skip");
+        return;
+    }
+    lastLowMemKillTimeMs_.store(nowMs);
+    auto weak = static_cast<std::weak_ptr<AppMgrServiceInner>*>(context);
+    if (weak == nullptr) {
+        return;
+    }
+    auto appMgrInner = weak->lock();
+    if (appMgrInner == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "manager service inner null");
+        return;
+    }
+    ffrt::submit([appMgrInner]() {
+        appMgrInner->KillProcessesByLowMem();
+    }, ffrt::task_attr().name("KillProcessesByLowMem"));
+}
+
+bool AppMgrServiceInner::IsLowMem() const
+{
+    return memoryPoolValue_.load() >= LOW_MEM_THRESHOLD;
+}
+
+void AppMgrServiceInner::CheckCleanAbilityByLowMem(const std::shared_ptr<AppRunningRecord> &appRecord,
+    const std::shared_ptr<AbilityRunningRecord> &abilityRecord, const AbilityState state)
+{
+    if (!appRecord || !abilityRecord) {
+        return;
+    }
+    if (!IsLowMem()) {
+        return;
+    }
+    if (state != AbilityState::ABILITY_STATE_BACKGROUND) {
+        return;
+    }
+    if (abilityRecord->GetAbilityInfo() && abilityRecord->GetAbilityInfo()->type != AppExecFwk::AbilityType::PAGE) {
+        return;
+    }
+    if (appRecord->IsKeepAliveApp()) {
+        return;
+    }
+    if (!appRecord->IsAllAbilityReadyToCleanedByClearSession()) {
+        return;
+    }
+    pid_t pid = 0;
+    if (appRecord->GetPriorityObject()) {
+        pid = appRecord->GetPid();
+    }
+    TAG_LOGI(AAFwkTag::APPMGR, "low mem clean ability, force kill, pid:%{public}d", pid);
+    KillProcessByPid(pid, KILL_REASON_LOW_MEMORY);
+}
+
+void AppMgrServiceInner::KillProcessesByLowMem()
+{
+    TAG_LOGI(AAFwkTag::APPMGR, "call");
+    if (!appRunningManager_) {
+        TAG_LOGE(AAFwkTag::APPMGR, "appRunningManager_ is nullptr");
+        return;
+    }
+    for (const auto &item : appRunningManager_->GetAppRunningRecordMap()) {
+        const auto &appRecord = item.second;
+        if (!appRecord || !appRecord->GetSpawned() || appRecord->IsKeepAliveApp()) {
+            continue;
+        }
+        if (appRecord->IsAllAbilityReadyToCleanedByClearSession()) {
+            pid_t pid = appRecord->GetPid();
+            TAG_LOGI(AAFwkTag::APPMGR, "low mem kill process, pid:%{public}d, bundle:%{public}s",
+                pid, appRecord->GetBundleName().c_str());
+            KillProcessByPid(pid, KILL_REASON_LOW_MEMORY);
+        } else if (appRecord->IsTerminating() && appRecord->GetAbilities().empty()) {
+            pid_t pid = appRecord->GetPid();
+            TAG_LOGI(AAFwkTag::APPMGR, "low mem kill terminating empty process, pid:%{public}d, bundle:%{public}s",
+                pid, appRecord->GetBundleName().c_str());
+            KillProcessByPid(pid, KILL_REASON_LOW_MEMORY);
+        }
+    }
 }
 
 bool AppMgrServiceInner::IsKilledForUpgradeWeb(const std::string &bundleName) const

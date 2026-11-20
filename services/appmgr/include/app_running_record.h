@@ -1181,6 +1181,7 @@ public:
     void SetUserRequestCleaning();
     bool IsUserRequestCleaning() const;
     bool IsAllAbilityReadyToCleanedByUserRequest();
+    bool IsAllAbilityReadyToCleanedByClearSession();
     bool IsProcessAttached() const;
     // records whether uiability has launched before.
     void SetUIAbilityLaunched(bool hasLaunched);

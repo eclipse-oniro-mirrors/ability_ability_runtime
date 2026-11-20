@@ -942,6 +942,9 @@ void AppRunningManager::PrepareTerminate(const sptr<IRemoteObject> &token, bool 
     auto abilityRecord = appRecord->GetAbilityRunningRecordByToken(token);
     if (abilityRecord) {
         abilityRecord->SetTerminating();
+        if (clearMissionFlag) {
+            abilityRecord->SetClearSessionStatus();
+        }
     }
 
     // set app record terminating when close last page ability
