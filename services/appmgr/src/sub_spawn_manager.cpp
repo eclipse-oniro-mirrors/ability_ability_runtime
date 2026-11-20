@@ -27,12 +27,6 @@
 namespace OHOS {
 namespace AppExecFwk {
 
-extern "C" {
-char *GetSubSpawnSocketName(int uid);
-int AppSpawnClientInitSubspawn(const char *socketName, AppSpawnClientHandle *handle);
-bool IsSupportSubSpawn(void);
-}
-
 namespace {
 constexpr const char* SUBSPAWN_PROCESS_NAME_SUFFIX = ":subspawn";
 constexpr const char* IDLE_TIMER_PREFIX = "SubSpawnIdle_";
