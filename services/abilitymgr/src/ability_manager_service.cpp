@@ -2712,10 +2712,16 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
     StartAbilityContext ctx;
     auto eventInfo = BuildEventInfo(want, userId);
     if (startOptions.windowCreateParams_ != nullptr) {
+        sptr<Rosen::WindowCreateParams> windowCreateParams =
+            new (std::nothrow) Rosen::WindowCreateParams(*startOptions.windowCreateParams_);
+        if (windowCreateParams == nullptr) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "create windowCreateParams failed");
+            return ERR_INVALID_VALUE;
+        }
         auto verifyRet = Rosen::MockSessionManagerService::GetInstance()
-            .VerifyParamsForStartAbilityToBottom(*startOptions.windowCreateParams_);
+            .VerifyParamsForStartAbilityToBottom(windowCreateParams);
         if (verifyRet != ERR_OK) {
-            TAG_LOGI(AAFwkTag::ABILITYMGR, "VerifyParamsForStartAbilityToBottom failed: %{public}d", verifyRet);
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "VerifyParamsForStartAbilityToBottom failed: %{public}d", verifyRet);
             AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, static_cast<int>(verifyRet),
                 "VerifyParamsForStartAbilityToBottom failed");
             return static_cast<int>(verifyRet);
