@@ -8648,26 +8648,29 @@ void AppMgrServiceInner::AttachRenderProcess(const pid_t pid, const sptr<IRender
         TAG_LOGE(AAFwkTag::APPMGR, "invalid render process pid:%{public}d", pid);
         return;
     }
-    if (eventHandler_) {
-        eventHandler_->RemoveEvent(AMSEventHandler::RENDER_ATTACH_TIMEOUT_MSG, pid);
-    }
     if (!scheduler) {
         TAG_LOGE(AAFwkTag::APPMGR, "render scheduler null");
         return;
     }
-
     if (!appRunningManager_) {
         TAG_LOGE(AAFwkTag::APPMGR, "appRunningManager_ null");
         return;
     }
-
+    if (eventHandler_) {
+        eventHandler_->RemoveEvent(AMSEventHandler::RENDER_ATTACH_TIMEOUT_MSG, pid);
+    }
+    std::shared_ptr<RenderRecord> renderRecord;
     auto appRecord = appRunningManager_->GetAppRunningRecordByRenderPid(pid);
     if (!appRecord) {
         TAG_LOGE(AAFwkTag::APPMGR, "no appRecord, pid:%{public}d", pid);
+        HandleRenderProcessAttachFailed(pid);
         return;
     }
-
-    auto renderRecord = appRecord->GetRenderRecordByPid(pid);
+    {
+        std::lock_guard<ffrt::mutex> lock(pendingRenderRecordMapLock_);
+        pendingRenderRecordMap_.erase(pid);
+    }
+    renderRecord = appRecord->GetRenderRecordByPid(pid);
     if (!renderRecord) {
         TAG_LOGE(AAFwkTag::APPMGR, "no renderRecord, pid:%{public}d", pid);
         return;
@@ -8680,7 +8683,12 @@ void AppMgrServiceInner::AttachRenderProcess(const pid_t pid, const sptr<IRender
     renderRecord->SetScheduler(scheduler);
 
     TAG_LOGI(AAFwkTag::APPMGR, "attachRenderProcess_%{public}d, notify fd", pid);
-    // notify fd to render process
+    NotifyBrowserFdToRenderProcess(appRecord, renderRecord, scheduler);
+}
+
+void AppMgrServiceInner::NotifyBrowserFdToRenderProcess(const std::shared_ptr<AppRunningRecord> &appRecord,
+    const std::shared_ptr<RenderRecord> &renderRecord, const sptr<IRenderScheduler> &scheduler)
+{
     if (appRecord->GetBrowserHost() != nullptr && renderRecord->GetProcessType() == ProcessType::GPU) {
         TAG_LOGD(AAFwkTag::APPMGR, "GPU has host remote object");
         scheduler->NotifyBrowserFd(renderRecord->GetIpcFd(),
@@ -8688,6 +8696,24 @@ void AppMgrServiceInner::AttachRenderProcess(const pid_t pid, const sptr<IRender
     } else {
         scheduler->NotifyBrowserFd(renderRecord->GetIpcFd(),
             renderRecord->GetSharedFd(), renderRecord->GetCrashFd(), nullptr);
+    }
+}
+
+void AppMgrServiceInner::HandleRenderProcessAttachFailed(pid_t pid)
+{
+    std::shared_ptr<RenderRecord> renderRecord;
+    {
+        std::lock_guard<ffrt::mutex> lock(pendingRenderRecordMapLock_);
+        auto it = pendingRenderRecordMap_.find(pid);
+        if (it != pendingRenderRecordMap_.end()) {
+            renderRecord = it->second;
+            pendingRenderRecordMap_.erase(it);
+        }
+    }
+    if (renderRecord) {
+        TAG_LOGI(AAFwkTag::APPMGR, "found renderRecord in pending map, kill process, pid:%{public}d", pid);
+        KillProcessByPid(pid, "AttachRenderProcessFailed");
+        OnRenderProcessDied(renderRecord);
     }
 }
 
@@ -8817,6 +8843,10 @@ int AppMgrServiceInner::StartRenderProcessImpl(const std::shared_ptr<RenderRecor
         isPreload);
     DelayedSingleton<AppStateObserverManager>::GetInstance()->OnRenderProcessCreated(renderRecord, isPreload);
     PostRenderAttachTimeoutTask(renderRecord);
+    {
+        std::lock_guard<ffrt::mutex> lock(pendingRenderRecordMapLock_);
+        pendingRenderRecordMap_.emplace(pid, renderRecord);
+    }
     return 0;
 }
 
@@ -13081,6 +13111,10 @@ void AppMgrServiceInner::PostPreloadAttachTimeoutTask(std::shared_ptr<AppRunning
 void AppMgrServiceInner::HandleRenderAttachTimeout(int64_t pid)
 {
     TAG_LOGW(AAFwkTag::APPMGR,"Render process attach timeout, pid: %{public}" PRId64 "", pid);
+    {
+        std::lock_guard<ffrt::mutex> lock(pendingRenderRecordMapLock_);
+        pendingRenderRecordMap_.erase(pid);
+    }
     CHECK_POINTER_AND_RETURN_LOG(appRunningManager_, "appRunningManager_ is null");
     auto appRecord = appRunningManager_->GetAppRunningRecordByRenderPid(pid);
     CHECK_POINTER_AND_RETURN_LOG(appRecord, "appRecord is null");

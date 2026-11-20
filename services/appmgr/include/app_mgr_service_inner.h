@@ -2637,6 +2637,9 @@ private:
     int32_t PreCheckStartProcess(const std::string &bundleName, int32_t uid, int32_t appIndex);
     void InsertUninstallOrUpgradeUidSet(int32_t uid);
     void RemoveUninstallOrUpgradeUidSet(int32_t uid);
+    void HandleRenderProcessAttachFailed(pid_t pid);
+    void NotifyBrowserFdToRenderProcess(const std::shared_ptr<AppRunningRecord> &appRecord,
+        const std::shared_ptr<RenderRecord> &renderRecord, const sptr<IRenderScheduler> &scheduler);
     bool IsUninstallingOrUpgrading(int32_t uid);
     void SendProcessKillEvent(std::shared_ptr<AppRunningRecord> appRecord);
     void HandleForegroundAbilityDied(const std::vector<sptr<IRemoteObject>>& abilityTokens,
@@ -2724,6 +2727,7 @@ private:
     std::once_flag launchServicesBootFlag_;
     std::shared_ptr<LaunchServiceManager> launchServiceManager_;
     std::unordered_set<std::string> nwebPreloadSet_ {};
+    std::unordered_map<pid_t, std::shared_ptr<RenderRecord>> pendingRenderRecordMap_;
 
     std::vector<AppStateCallbackWithUserId> appStateCallbacks_;
     std::vector<ConfigurationObserverWithUserId> configurationObservers_;
@@ -2756,6 +2760,7 @@ private:
     std::mutex uiExtensionBindReleationsLock_;
     ffrt::mutex uninstallOrUpgradeUidSetLock_;
     ffrt::mutex exitMasterProcessRoleLock_;
+    ffrt::mutex pendingRenderRecordMapLock_;
     std::shared_mutex startProcessLock_;
     bool isInitAppWaitingDebugListExecuted_ = false;
 

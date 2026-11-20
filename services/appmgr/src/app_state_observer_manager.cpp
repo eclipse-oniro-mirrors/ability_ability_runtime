@@ -1276,13 +1276,8 @@ int32_t AppStateObserverManager::WrapChildProcessData(ProcessData &processData,
         TAG_LOGE(AAFwkTag::APPMGR, "null childRecord");
         return ERR_INVALID_VALUE;
     }
-    auto hostRecord = childRecord->GetHostRecord();
-    if (!hostRecord) {
-        TAG_LOGE(AAFwkTag::APPMGR, "null hostRecord");
-        return ERR_INVALID_VALUE;
-    }
-    processData.bundleName = hostRecord->GetBundleName();
-    processData.uid = hostRecord->GetUid();
+    processData.bundleName = childRecord->GetHostBundleName();
+    processData.uid = childRecord->GetHostUid();
     processData.hostPid = childRecord->GetHostPid();
     processData.pid = childRecord->GetPid();
     processData.childUid = childRecord->GetUid();

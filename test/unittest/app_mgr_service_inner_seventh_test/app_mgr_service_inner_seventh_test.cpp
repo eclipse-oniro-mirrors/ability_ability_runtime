@@ -3856,6 +3856,283 @@ HWTEST_F(AppMgrServiceInnerSeventhTest, GetBackgroundAppInfo_012, TestSize.Level
 }
 
 /**
+* @tc.name: HandleRenderProcessAttachFailed_001
+* @tc.desc: test HandleRenderProcessAttachFailed when pending render record does not exist
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, HandleRenderProcessAttachFailed_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleRenderProcessAttachFailed_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    const pid_t pid = 1;
+    appMgrServiceInner->HandleRenderProcessAttachFailed(pid);
+    EXPECT_EQ(appMgrServiceInner->pendingRenderRecordMap_.find(pid), appMgrServiceInner->pendingRenderRecordMap_.end());
+    TAG_LOGI(AAFwkTag::TEST, "HandleRenderProcessAttachFailed_001 end");
+}
+
+/**
+* @tc.name: HandleRenderProcessAttachFailed_002
+* @tc.desc: test HandleRenderProcessAttachFailed when pending render record exists
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, HandleRenderProcessAttachFailed_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleRenderProcessAttachFailed_002 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    const pid_t pid = 1;
+    pid_t hostPid = 1;
+    std::string renderParam = "111";
+    FdGuard ipcFd(-1);
+    FdGuard sharedFd(-1);
+    FdGuard crashFd(-1);
+    std::shared_ptr<AppRunningRecord> appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
+    std::shared_ptr<RenderRecord> renderRecord = std::make_shared<RenderRecord>(hostPid, renderParam,
+        std::move(ipcFd), std::move(sharedFd), std::move(crashFd), appRecord);
+    
+    {
+        std::lock_guard<ffrt::mutex> lock(appMgrServiceInner->pendingRenderRecordMapLock_);
+        appMgrServiceInner->pendingRenderRecordMap_[pid] = renderRecord;
+    }
+    appMgrServiceInner->HandleRenderProcessAttachFailed(pid);
+    EXPECT_EQ(appMgrServiceInner->pendingRenderRecordMap_.find(pid), appMgrServiceInner->pendingRenderRecordMap_.end());
+    TAG_LOGI(AAFwkTag::TEST, "HandleRenderProcessAttachFailed_002 end");
+}
+
+/**
+* @tc.name: NotifyBrowserFdToRenderProcess_001
+* @tc.desc: test NotifyBrowserFdToRenderProcess with GPU process and browser host
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, NotifyBrowserFdToRenderProcess_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyBrowserFdToRenderProcess_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().getBrowserHostCall_ = 0;
+    
+    std::shared_ptr<AppRunningRecord> appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
+    appRecord->SetBrowserHost(MyRemoteObject::GetInstance());
+    
+    pid_t hostPid = 1;
+    std::string renderParam = "111";
+    FdGuard ipcFd(-1);
+    FdGuard sharedFd(-1);
+    FdGuard crashFd(-1);
+    std::shared_ptr<RenderRecord> renderRecord = std::make_shared<RenderRecord>(hostPid, renderParam,
+        std::move(ipcFd), std::move(sharedFd), std::move(crashFd), appRecord);
+    renderRecord->processType_ = ProcessType::GPU;
+    
+    sptr<IRenderScheduler> renderScheduler = new MyRenderScheduler();
+    appMgrServiceInner->NotifyBrowserFdToRenderProcess(appRecord, renderRecord, renderScheduler);
+    EXPECT_GE(AAFwk::MyStatus::GetInstance().getBrowserHostCall_, 1);
+    TAG_LOGI(AAFwkTag::TEST, "NotifyBrowserFdToRenderProcess_001 end");
+}
+
+/**
+* @tc.name: NotifyBrowserFdToRenderProcess_002
+* @tc.desc: test NotifyBrowserFdToRenderProcess without browser host
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, NotifyBrowserFdToRenderProcess_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyBrowserFdToRenderProcess_002 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().getBrowserHostCall_ = 0;
+    
+    std::shared_ptr<AppRunningRecord> appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
+    appRecord->SetBrowserHost(nullptr);
+    
+    pid_t hostPid = 1;
+    std::string renderParam = "111";
+    FdGuard ipcFd(-1);
+    FdGuard sharedFd(-1);
+    FdGuard crashFd(-1);
+    std::shared_ptr<RenderRecord> renderRecord = std::make_shared<RenderRecord>(hostPid, renderParam,
+        std::move(ipcFd), std::move(sharedFd), std::move(crashFd), appRecord);
+    renderRecord->processType_ = ProcessType::GPU;
+    
+    sptr<IRenderScheduler> renderScheduler = new MyRenderScheduler();
+    appMgrServiceInner->NotifyBrowserFdToRenderProcess(appRecord, renderRecord, renderScheduler);
+    EXPECT_EQ(AAFwk::MyStatus::GetInstance().getBrowserHostCall_, 1);
+    TAG_LOGI(AAFwkTag::TEST, "NotifyBrowserFdToRenderProcess_002 end");
+}
+
+/**
+* @tc.name: NotifyBrowserFdToRenderProcess_003
+* @tc.desc: test NotifyBrowserFdToRenderProcess with non-GPU process type
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, NotifyBrowserFdToRenderProcess_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyBrowserFdToRenderProcess_003 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().getBrowserHostCall_ = 0;
+    
+    std::shared_ptr<AppRunningRecord> appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
+    appRecord->SetBrowserHost(MyRemoteObject::GetInstance());
+    
+    pid_t hostPid = 1;
+    std::string renderParam = "111";
+    FdGuard ipcFd(-1);
+    FdGuard sharedFd(-1);
+    FdGuard crashFd(-1);
+    std::shared_ptr<RenderRecord> renderRecord = std::make_shared<RenderRecord>(hostPid, renderParam,
+        std::move(ipcFd), std::move(sharedFd), std::move(crashFd), appRecord);
+    renderRecord->processType_ = ProcessType::NORMAL;
+    
+    sptr<IRenderScheduler> renderScheduler = new MyRenderScheduler();
+    appMgrServiceInner->NotifyBrowserFdToRenderProcess(appRecord, renderRecord, renderScheduler);
+    EXPECT_EQ(AAFwk::MyStatus::GetInstance().getBrowserHostCall_, 1);
+    TAG_LOGI(AAFwkTag::TEST, "NotifyBrowserFdToRenderProcess_003 end");
+}
+
+/**
+* @tc.name: HandleRenderAttachTimeout_001
+* @tc.desc: test HandleRenderAttachTimeout when appRunningManager is null
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, HandleRenderAttachTimeout_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleRenderAttachTimeout_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrServiceInner->appRunningManager_ = nullptr;
+    const pid_t pid = 1;
+    
+    {
+        std::lock_guard<ffrt::mutex> lock(appMgrServiceInner->pendingRenderRecordMapLock_);
+        std::shared_ptr<AppRunningRecord> appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
+        pid_t hostPid = 1;
+        std::string renderParam = "111";
+        FdGuard ipcFd(-1);
+        FdGuard sharedFd(-1);
+        FdGuard crashFd(-1);
+        std::shared_ptr<RenderRecord> renderRecord = std::make_shared<RenderRecord>(hostPid, renderParam,
+            std::move(ipcFd), std::move(sharedFd), std::move(crashFd), appRecord);
+        appMgrServiceInner->pendingRenderRecordMap_[pid] = renderRecord;
+    }
+    
+    appMgrServiceInner->HandleRenderAttachTimeout(pid);
+    EXPECT_EQ(appMgrServiceInner->pendingRenderRecordMap_.find(pid), appMgrServiceInner->pendingRenderRecordMap_.end());
+    TAG_LOGI(AAFwkTag::TEST, "HandleRenderAttachTimeout_001 end");
+}
+
+/**
+* @tc.name: HandleRenderAttachTimeout_002
+* @tc.desc: test HandleRenderAttachTimeout when appRecord is null
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, HandleRenderAttachTimeout_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleRenderAttachTimeout_002 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByRenderPid_ = nullptr;
+    const pid_t pid = 1;
+    
+    {
+        std::lock_guard<ffrt::mutex> lock(appMgrServiceInner->pendingRenderRecordMapLock_);
+        std::shared_ptr<AppRunningRecord> appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
+        pid_t hostPid = 1;
+        std::string renderParam = "111";
+        FdGuard ipcFd(-1);
+        FdGuard sharedFd(-1);
+        FdGuard crashFd(-1);
+        std::shared_ptr<RenderRecord> renderRecord = std::make_shared<RenderRecord>(hostPid, renderParam,
+            std::move(ipcFd), std::move(sharedFd), std::move(crashFd), appRecord);
+        appMgrServiceInner->pendingRenderRecordMap_[pid] = renderRecord;
+    }
+    
+    appMgrServiceInner->HandleRenderAttachTimeout(pid);
+    EXPECT_EQ(appMgrServiceInner->pendingRenderRecordMap_.find(pid), appMgrServiceInner->pendingRenderRecordMap_.end());
+    TAG_LOGI(AAFwkTag::TEST, "HandleRenderAttachTimeout_002 end");
+}
+
+/**
+* @tc.name: HandleRenderAttachTimeout_003
+* @tc.desc: test HandleRenderAttachTimeout when renderRecord is null
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, HandleRenderAttachTimeout_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleRenderAttachTimeout_003 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByRenderPid_ = std::make_shared<AppRunningRecord>(nullptr, 0, "");
+    AAFwk::MyStatus::GetInstance().getRenderRecordByPid_ = nullptr;
+    const pid_t pid = 1;
+    
+    {
+        std::lock_guard<ffrt::mutex> lock(appMgrServiceInner->pendingRenderRecordMapLock_);
+        std::shared_ptr<AppRunningRecord> appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
+        pid_t hostPid = 1;
+        std::string renderParam = "111";
+        FdGuard ipcFd(-1);
+        FdGuard sharedFd(-1);
+        FdGuard crashFd(-1);
+        std::shared_ptr<RenderRecord> renderRecord = std::make_shared<RenderRecord>(hostPid, renderParam,
+            std::move(ipcFd), std::move(sharedFd), std::move(crashFd), appRecord);
+        appMgrServiceInner->pendingRenderRecordMap_[pid] = renderRecord;
+    }
+    
+    appMgrServiceInner->HandleRenderAttachTimeout(pid);
+    EXPECT_EQ(appMgrServiceInner->pendingRenderRecordMap_.find(pid), appMgrServiceInner->pendingRenderRecordMap_.end());
+    TAG_LOGI(AAFwkTag::TEST, "HandleRenderAttachTimeout_003 end");
+}
+
+/**
+* @tc.name: HandleRenderAttachTimeout_004
+* @tc.desc: test HandleRenderAttachTimeout with valid renderRecord
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, HandleRenderAttachTimeout_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleRenderAttachTimeout_004 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    std::shared_ptr<AppRunningRecord> appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
+    AAFwk::MyStatus::GetInstance().getAppRunningRecordByRenderPid_ = appRecord;
+    
+    pid_t hostPid = 1;
+    std::string renderParam = "111";
+    {
+        FdGuard ipcFd(-1);
+        FdGuard sharedFd(-1);
+        FdGuard crashFd(-1);
+        std::shared_ptr<RenderRecord> renderRecord = std::make_shared<RenderRecord>(hostPid, renderParam,
+            std::move(ipcFd), std::move(sharedFd), std::move(crashFd), appRecord);
+        AAFwk::MyStatus::GetInstance().getRenderRecordByPid_ = renderRecord;
+    }
+    const pid_t pid = 1;
+    
+    {
+        std::lock_guard<ffrt::mutex> lock(appMgrServiceInner->pendingRenderRecordMapLock_);
+        FdGuard pendingIpcFd(-1);
+        FdGuard pendingSharedFd(-1);
+        FdGuard pendingCrashFd(-1);
+        std::shared_ptr<RenderRecord> pendingRenderRecord = std::make_shared<RenderRecord>(hostPid, renderParam,
+            std::move(pendingIpcFd), std::move(pendingSharedFd), std::move(pendingCrashFd), appRecord);
+        appMgrServiceInner->pendingRenderRecordMap_[pid] = pendingRenderRecord;
+    }
+    
+    appMgrServiceInner->HandleRenderAttachTimeout(pid);
+    EXPECT_EQ(appMgrServiceInner->pendingRenderRecordMap_.find(pid), appMgrServiceInner->pendingRenderRecordMap_.end());
+    TAG_LOGI(AAFwkTag::TEST, "HandleRenderAttachTimeout_004 end");
+}
+
+/**
+* @tc.name: HandleRenderAttachTimeout_005
+* @tc.desc: test HandleRenderAttachTimeout when pendingRenderRecordMap is empty
+* @tc.type: FUNC
+*/
+HWTEST_F(AppMgrServiceInnerSeventhTest, HandleRenderAttachTimeout_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleRenderAttachTimeout_005 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    const pid_t pid = 1;
+    appMgrServiceInner->pendingRenderRecordMap_.clear();
+    
+    appMgrServiceInner->HandleRenderAttachTimeout(pid);
+    EXPECT_EQ(appMgrServiceInner->pendingRenderRecordMap_.find(pid), appMgrServiceInner->pendingRenderRecordMap_.end());
+    TAG_LOGI(AAFwkTag::TEST, "HandleRenderAttachTimeout_005 end");
+}
+
+/**
  * @tc.name: CheckAppProvisionType_0100
  * @tc.desc: test CheckAppProvisionType
  * @tc.type: FUNC
