@@ -69,69 +69,19 @@ public:
     static DialogSessionManager &GetInstance();
     ~DialogSessionManager() = default;
 
-    /**
-     * @brief Get dialog session information by session ID
-     * @param dialogSessionId The unique identifier of the dialog session to retrieve.
-     * @return sptr<DialogSessionInfo> Smart pointer to the dialog session information,
-     *         returns nullptr if the session ID cannot be found.
-     */
     sptr<DialogSessionInfo> GetDialogSessionInfo(const std::string &dialogSessionId) const;
 
-    /**
-     * @brief Retrieves caller information for a specified dialog session.
-     * @param dialogSessionId The unique identifier of the dialog session to retrieve.
-     * @return std::shared_ptr<DialogCallerInfo> Shared pointer to caller info if found,
-     *         nullptr if the session ID cannot be found.
-     */
     std::shared_ptr<DialogCallerInfo> GetDialogCallerInfo(const std::string &dialogSessionId) const;
 
-    /**
-     * @brief Retrieves the startup session information based on the provided dialog session ID.
-     * @param dialogSessionId The unique identifier of the dialog session to retrieve.
-     * @return std::shared_ptr<StartupSessionInfo> Shared pointer to the StartupSessionInfo
-     *         if found, nullptr if the session ID cannot be found.
-     */
     std::shared_ptr<StartupSessionInfo> GetStartupSessionInfo(const std::string &dialogSessionId) const;
 
-    /**
-     * @brief Processes and sends the result of a dialog session to the caller.
-     * @param want The Want object containing target ability information
-     * @param dialogSessionId The unique identifier of the dialog session to retrieve.
-     * @param isAllowed Boolean flag indicating whether user granted permission.
-     * @return int ERR_OK on success, or specific error codes for failure cases.
-     */
     int SendDialogResult(const Want &want, const std::string &dialogSessionId, bool isAllowed);
 
-    /**
-     * @brief Creates a modal dialog for ability jumping with specified parameters.
-     * @param abilityRequest The AbilityRequest object containing target ability information.
-     * @param userId The user ID under which the ability operation is performed.
-     * @param replaceWant The Want object specifying replacement parameters for the jump.
-     * @return int ERR_OK on success, or specific error codes for failure cases.
-     */
     int CreateJumpModalDialog(AbilityRequest &abilityRequest, int32_t userId, const Want &replaceWant);
 
-    /**
-     * @brief Creates a modal dialog for implicit ability selection with selector functionality.
-     * @param abilityRequest The AbilityRequest object containing target ability information.
-     * @param want The Want object containing target ability information
-     * @param userId The user ID under which the ability operation is performed.
-     * @param dialogAppInfos Output parameter containing collected application information.
-     * @param needGrantUriPermission Flag indicating whether URI permission granting is required.
-     * @return int ERR_OK on success, or specific error codes for failure cases.
-     */
     int CreateImplicitSelectorModalDialog(AbilityRequest &abilityRequest, const Want &want, int32_t userId,
         std::vector<DialogAppInfo> &dialogAppInfos, bool needGrantUriPermission = false);
 
-    /**
-     * @brief Creates a modal dialog for application clone selection during ability invocation.
-     * @param abilityRequest The AbilityRequest object containing target ability information.
-     * @param want The original invocation parameters for the clone operation.
-     * @param userId The user ID under which the ability operation is performed.
-     * @param dialogAppInfos Output parameter containing collected application information.
-     * @param replaceWant Optional string parameter specifying the replacement Want for ecological scenarios.
-     * @return int ERR_OK on success, or specific error codes for failure cases.
-     */
     int CreateCloneSelectorModalDialog(AbilityRequest &abilityRequest, const Want &want, int32_t userId,
         std::vector<DialogAppInfo> &dialogAppInfos, const std::string &replaceWant);
 

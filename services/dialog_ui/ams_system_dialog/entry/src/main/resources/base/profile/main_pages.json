@@ -3,9 +3,9 @@
     "pages/selectorPhoneDialog",
     "pages/selectorPcDialog",
     "pages/switchUserDialog",
+    "pages/PhonePage",
     "pages/tipsDialog",
     "pages/jumpInterceptorDialog",
-    "pages/PhonePage",
     "pages/assertFaultDialog",
     "pages/permissionConfirmDialog"
   ]

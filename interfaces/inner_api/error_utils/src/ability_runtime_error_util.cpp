@@ -153,7 +153,7 @@ const std::map<int32_t, std::string> ERROR_MSG_MAP = {
     { ERR_ABILITY_RUNTIME_EXTERNAL_WANTAGENT_CANCELED,
         "The WantAgent has been canceled." },
     { ERR_ABILITY_RUNTIME_EXTERNAL_INVALID_MODULENAME,
-        "Invalid moduleName." },
+        "The module does not exist." },
     { ERR_ABILITY_RUNTIME_EXTERNAL_PROCESS_LIFECYCLE_OBSERVER_EXCEED_LIMIT,
         "The number of process lifecycle observers exceeds the upper limit." },
 };

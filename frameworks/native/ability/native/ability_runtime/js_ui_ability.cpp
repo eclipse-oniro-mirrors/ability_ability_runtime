@@ -170,20 +170,20 @@ void *DetachNewAbilityContext(napi_env, void *nativeObject, void *)
         TAG_LOGE(AAFwkTag::UIABILITY, "origContext is null");
         return nullptr;
     }
-    TAG_LOGI(AAFwkTag::UIABILITY, "New detached ability context");
+    TAG_LOGI(AAFwkTag::UIABILITY, "detach a ctx");
     auto detachNewContext = new std::weak_ptr<AbilityRuntime::AbilityContext>(*origContext);
     return detachNewContext;
 }
 
 void DetachFinalizeAbilityContext(void *detachedObject, void *)
 {
-    TAG_LOGI(AAFwkTag::UIABILITY, "Finalizer detached ability context");
+    TAG_LOGI(AAFwkTag::UIABILITY, "Final a ctx");
     delete static_cast<std::weak_ptr<AbilityRuntime::AbilityContext> *>(detachedObject);
 }
 
 napi_value AttachJsAbilityContext(napi_env env, void *value, void *)
 {
-    TAG_LOGI(AAFwkTag::UIABILITY, "AttachJsAbilityContext");
+    TAG_LOGI(AAFwkTag::UIABILITY, "atta js a ctx");
     if (value == nullptr) {
         TAG_LOGE(AAFwkTag::UIABILITY, "invalid params");
         return nullptr;

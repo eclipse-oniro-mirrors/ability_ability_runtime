@@ -34,8 +34,7 @@ void MultiAppUtils::GetRunningMultiAppIndex(const std::string &bundleName, int32
     }
     auto ret = IN_PROCESS_CALL(appMgr->GetRunningMultiAppInfoByBundleName(bundleName, runningMultiAppInfo));
     if (ret != ERR_OK) {
-        TAG_LOGW(AAFwkTag::ABILITYMGR, "getAppInfo failed, bundle:%{public}s",
-            bundleName.c_str());
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "fail: %{public}s", bundleName.c_str());
     }
     for (auto &item : runningMultiAppInfo.runningAppClones) {
         if (item.uid == uid) {

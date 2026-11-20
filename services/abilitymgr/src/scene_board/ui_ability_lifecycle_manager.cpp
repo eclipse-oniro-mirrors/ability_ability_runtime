@@ -71,9 +71,9 @@ constexpr int DEFAULT_DMS_MISSION_ID = -1;
 constexpr const char* PARAM_SPECIFIED_PROCESS_FLAG = "ohoSpecifiedProcessFlag";
 constexpr const char* DMS_PROCESS_NAME = "distributedsched";
 constexpr const char* DMS_PERSISTENT_ID = "ohos.dms.persistentId";
+constexpr const char* PARAM_DIALOG_SESSION_ID = "ohos.ability.param.sessionId";
 constexpr const char* IS_SHELL_CALL = "isShellCall";
 constexpr const char* SPECIFIED_PROCESS_CALLER_PROCESS = "ohoSpecifiedProcessCallerProcess";
-constexpr const char* PARAM_DIALOG_SESSION_ID = "ohos.ability.param.sessionId";
 constexpr const char* BACKGROUND_DELAY_TIME = "persist.sys.abilityms.backgroundDelayTime";
 constexpr int32_t DEFAULT_BACKGROUND_DELAY_TIME = 6 * 1000 * 1000;
 #ifdef SUPPORT_ASAN

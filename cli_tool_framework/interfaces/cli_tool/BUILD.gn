@@ -38,6 +38,7 @@ config("cli_tool_client_config") {
     "include",
     "${ability_runtime_innerkits_path}/ability_manager/include",
     "${cli_tool_framework_path}/interfaces/function/include",
+    "${ability_runtime_services_path}/common/include",
     "${target_gen_dir}",
   ]
 }
@@ -51,8 +52,6 @@ ohos_shared_library("cli_tool_client") {
   }
   branch_protector_ret = "pac_ret"
   configs = [ "${ability_runtime_services_path}/common:optimize_config" ]
-
-  include_dirs = [ "${ability_runtime_services_path}/common/include" ]
 
   public_configs = [ ":cli_tool_client_config" ]
 
