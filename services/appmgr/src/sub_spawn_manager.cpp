@@ -15,17 +15,14 @@
 
 #include "sub_spawn_manager.h"
 
-#include <csignal>
-#include <unistd.h>
-
 #include "app_pidfd_manager.h"
 #include "app_state_observer_manager.h"
+#include "appspawn.h"
 #include "child_process_info.h"
 #include "ffrt_inner.h"
 #include "hilog_tag_wrapper.h"
 #include "singleton.h"
 #include "task_handler_wrap.h"
-#include "appspawn.h"
 
 namespace OHOS {
 namespace AppExecFwk {
