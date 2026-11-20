@@ -19,6 +19,7 @@
 #include "hilog_tag_wrapper.h"
 #include "common_utils.h"
 #include "obs_permission_verifier.h"
+#include "obs_token_quota.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -56,6 +57,13 @@ int DataObsMgrInnerPref::HandleRegisterObserver(const Uri &uri, struct ObserverN
         }
     }
 
+    // All per-URI checks passed; reserve one global per-token quota slot last, so failure
+    // paths above never need to roll the quota back.
+    if (!ObsTokenQuota::GetInstance().TryAcquire(observerNode.tokenId_)) {
+        TAG_LOGE(AAFwkTag::DBOBSMGR, "token quota exceeded, uri:%{public}s, token:%{public}u",
+            CommonUtils::Anonymous(uri.ToString()).c_str(), observerNode.tokenId_);
+        return DATAOBS_SERVICE_OBS_LIMMIT;
+    }
     obsPair->second.push_back(observerNode);
 
     AddObsDeathRecipient(observerNode.observer_);
@@ -87,7 +95,9 @@ int DataObsMgrInnerPref::HandleUnregisterObserver(const Uri &uri, struct Observe
             AAFwkTag::DBOBSMGR, "uris no obs:%{public}s", CommonUtils::Anonymous(uri.ToString()).c_str());
         return NO_OBS_FOR_URI;
     }
-    obsPair->second.remove(*obs);
+    // Release the quota slot held by the registered node before dropping it.
+    ObsTokenQuota::GetInstance().Release(obs->tokenId_);
+    obsPair->second.erase(obs);
     if (obsPair->second.empty()) {
         observers_.erase(obsPair);
     }
@@ -211,6 +221,7 @@ void DataObsMgrInnerPref::RemoveObs(sptr<IRemoteObject> dataObserver)
         for (auto it = obsList.begin(); it != obsList.end(); it++) {
             if ((*it).observer_->AsObject() == dataObserver) {
                 TAG_LOGD(AAFwkTag::DBOBSMGR, "erase");
+                ObsTokenQuota::GetInstance().Release((*it).tokenId_);
                 obsList.erase(it);
                 break;
             }

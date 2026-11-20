@@ -21,10 +21,24 @@
 #include "dataobs_mgr_errors.h"
 #include "hilog_tag_wrapper.h"
 #include "common_utils.h"
+#include "obs_token_quota.h"
 
 namespace OHOS {
 namespace AAFwk {
 using namespace DataShare;
+
+namespace {
+// Give quota slots back for every removed entry token. Callers hold nodeMutex_ while
+// calling this, matching the inner-mutex-then-quota-mutex lock order.
+void ReleaseQuotaTokens(const std::vector<uint32_t> &removedTokens)
+{
+    auto &quota = ObsTokenQuota::GetInstance();
+    for (uint32_t tokenId : removedTokens) {
+        quota.Release(tokenId);
+    }
+}
+}  // namespace
+
 DataObsMgrInnerExt::DataObsMgrInnerExt() : root_(std::make_shared<Node>("root")) {}
 
 DataObsMgrInnerExt::~DataObsMgrInnerExt() {}
@@ -50,11 +64,18 @@ Status DataObsMgrInnerExt::HandleRegisterObserver(Uri &uri, sptr<IDataAbilityObs
     }
     Entry entry = Entry(dataObserver, info.userId, info.tokenId, deathRecipientRef, isDescendants);
     entry.pid = info.pid;
+    // Reserve the per-token quota slot before insertion; roll it back if the trie rejects
+    // the entry, so register failures never leak quota.
+    if (!ObsTokenQuota::GetInstance().TryAcquire(entry.tokenId)) {
+        RemoveObsDeathRecipient(dataObserver->AsObject());
+        return DATAOBS_SERVICE_OBS_LIMMIT;
+    }
     if (root_ != nullptr && !root_->AddObserver(path, 0, entry)) {
         TAG_LOGE(AAFwkTag::DBOBSMGR,
             "subscribers:%{public}s num maxed",
             CommonUtils::Anonymous(uri.ToString()).c_str());
         RemoveObsDeathRecipient(dataObserver->AsObject());
+        ObsTokenQuota::GetInstance().Release(entry.tokenId);
         return DATAOBS_SERVICE_OBS_LIMMIT;
     }
     TAG_LOGI(AAFwkTag::DBOBSMGR, "subscribers:%{public}s p:%{public}d Id:%{public}" PRId64,
@@ -76,10 +97,12 @@ Status DataObsMgrInnerExt::HandleUnregisterObserver(Uri &uri, sptr<IDataAbilityO
         TAG_LOGE(AAFwkTag::DBOBSMGR, "path size:%{public}zu invalid", path.size());
         return DATAOBS_INVALID_URI;
     }
+    std::vector<uint32_t> removedTokens;
     if (root_ != nullptr) {
-        root_->RemoveObserver(path, 0, dataObserver);
+        root_->RemoveObserver(path, 0, dataObserver, removedTokens);
     }
     RemoveObsDeathRecipient(dataObserver->AsObject());
+    ReleaseQuotaTokens(removedTokens);
     return SUCCESS;
 }
 
@@ -90,10 +113,12 @@ Status DataObsMgrInnerExt::HandleUnregisterObserver(sptr<IDataAbilityObserver> d
         return DATA_OBSERVER_IS_NULL;
     }
     std::lock_guard<ffrt::mutex> lock(nodeMutex_);
+    std::vector<uint32_t> removedTokens;
     if (root_ != nullptr) {
-        root_->RemoveObserver(dataObserver);
+        root_->RemoveObserver(dataObserver, removedTokens);
     }
     RemoveObsDeathRecipient(dataObserver->AsObject(), true);
+    ReleaseQuotaTokens(removedTokens);
     return SUCCESS;
 }
 
@@ -211,10 +236,12 @@ void DataObsMgrInnerExt::OnCallBackDied(const wptr<IRemoteObject> &remote)
         return;
     }
     std::lock_guard<ffrt::mutex> lock(nodeMutex_);
+    std::vector<uint32_t> removedTokens;
     if (root_ != nullptr) {
-        root_->RemoveObserver(dataObserver);
+        root_->RemoveObserver(dataObserver, removedTokens);
     }
     RemoveObsDeathRecipient(dataObserver, true);
+    ReleaseQuotaTokens(removedTokens);
 }
 
 DataObsMgrInnerExt::Node::Node(const std::string &name) : name_(name) {}
@@ -308,51 +335,56 @@ bool DataObsMgrInnerExt::Node::AddObserver(const std::vector<std::string> &path,
 }
 
 bool DataObsMgrInnerExt::Node::RemoveObserver(const std::vector<std::string> &path, uint32_t index,
-    sptr<IDataAbilityObserver> dataObserver)
+    sptr<IDataAbilityObserver> dataObserver, std::vector<uint32_t> &removedTokens)
 {
     if (index == path.size()) {
-        entrys_.remove_if([dataObserver](const Entry &entry) {
+        entrys_.remove_if([dataObserver, &removedTokens](const Entry &entry) {
             if (entry.observer->AsObject() != dataObserver->AsObject()) {
                 return false;
             }
             entry.deathRecipientRef->ref--;
+            removedTokens.push_back(entry.tokenId);
             TAG_LOGI(AAFwkTag::DBOBSMGR, "p:%{public}d Id:%{public}" PRId64, entry.pid, entry.entryId);
             return true;
         });
         return entrys_.empty() && childrens_.empty();
     }
     auto child = childrens_.find(path[index]);
-    if (child != childrens_.end() && child->second->RemoveObserver(path, ++index, dataObserver)) {
+    if (child != childrens_.end() &&
+        child->second->RemoveObserver(path, ++index, dataObserver, removedTokens)) {
         childrens_.erase(child);
     }
     return entrys_.empty() && childrens_.empty();
 }
 
 // remove observer of all users
-bool DataObsMgrInnerExt::Node::RemoveObserver(sptr<IRemoteObject> dataObserver)
+bool DataObsMgrInnerExt::Node::RemoveObserver(sptr<IRemoteObject> dataObserver,
+    std::vector<uint32_t> &removedTokens)
 {
     for (auto child = childrens_.begin(); child != childrens_.end();) {
-        if (child->second->RemoveObserver(dataObserver)) {
+        if (child->second->RemoveObserver(dataObserver, removedTokens)) {
             child = childrens_.erase(child);
         } else {
             child++;
         }
     }
-    entrys_.remove_if([dataObserver](const Entry &entry) {
+    entrys_.remove_if([dataObserver, &removedTokens](const Entry &entry) {
         if (entry.observer->AsObject() != dataObserver) {
             return false;
         }
         entry.deathRecipientRef->ref--;
+        removedTokens.push_back(entry.tokenId);
         TAG_LOGI(AAFwkTag::DBOBSMGR, "p:%{public}d Id:%{public}" PRId64, entry.pid, entry.entryId);
         return true;
     });
     return entrys_.empty() && childrens_.empty();
 }
 
-inline bool DataObsMgrInnerExt::Node::RemoveObserver(sptr<IDataAbilityObserver> dataObserver)
+inline bool DataObsMgrInnerExt::Node::RemoveObserver(sptr<IDataAbilityObserver> dataObserver,
+    std::vector<uint32_t> &removedTokens)
 {
     auto obs = dataObserver->AsObject();
-    return obs != nullptr && RemoveObserver(obs);
+    return obs != nullptr && RemoveObserver(obs, removedTokens);
 }
 
 } // namespace AAFwk

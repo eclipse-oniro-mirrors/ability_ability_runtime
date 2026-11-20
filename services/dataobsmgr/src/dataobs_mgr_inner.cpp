@@ -21,6 +21,7 @@
 #include "hilog_tag_wrapper.h"
 #include "common_utils.h"
 #include "obs_permission_verifier.h"
+#include "obs_token_quota.h"
 #include <string>
 namespace OHOS {
 namespace AAFwk {
@@ -58,6 +59,13 @@ int DataObsMgrInner::HandleRegisterObserver(const Uri &uri, struct ObserverNode 
         }
     }
 
+    // All per-URI checks passed; reserve one global per-token quota slot last, so failure
+    // paths above never need to roll the quota back.
+    if (!ObsTokenQuota::GetInstance().TryAcquire(observerNode.tokenId_)) {
+        TAG_LOGE(AAFwkTag::DBOBSMGR, "token quota exceeded, uri:%{public}s, token:%{public}u",
+            CommonUtils::Anonymous(uri.ToString()).c_str(), observerNode.tokenId_);
+        return DATAOBS_SERVICE_OBS_LIMMIT;
+    }
     obsPair->second.push_back(observerNode);
     TAG_LOGI(AAFwkTag::DBOBSMGR, "uri:%{public}s p:%{public}d Id:%{public}" PRId64,
         CommonUtils::Anonymous(uri.ToString()).c_str(), observerNode.pid_, observerNode.nodeId_);
@@ -93,7 +101,11 @@ int DataObsMgrInner::HandleUnregisterObserver(const Uri &uri, struct ObserverNod
     }
     TAG_LOGI(AAFwkTag::DBOBSMGR, "uri:%{public}s p:%{public}d Id:%{public}" PRId64,
         CommonUtils::Anonymous(uri.ToString()).c_str(), observerNode.pid_, observerNode.nodeId_);
-    obsPair->second.remove(*obs);
+    // Release the quota slot held by the registered node (it may carry the first-caller
+    // token on the FromExtension channel, not the unregister caller's token).
+    uint32_t releasedToken = obs->tokenId_;
+    obsPair->second.erase(obs);
+    ObsTokenQuota::GetInstance().Release(releasedToken);
     if (obsPair->second.empty()) {
         observers_.erase(obsPair);
     }
@@ -224,6 +236,7 @@ void DataObsMgrInner::RemoveObs(sptr<IRemoteObject> dataObserver)
         for (auto it = obsList.begin(); it != obsList.end(); it++) {
             if ((*it).observer_->AsObject() == dataObserver) {
                 TAG_LOGI(AAFwkTag::DBOBSMGR, "rm p:%{public}d", (*it).pid_);
+                ObsTokenQuota::GetInstance().Release((*it).tokenId_);
                 obsList.erase(it);
                 break;
             }
