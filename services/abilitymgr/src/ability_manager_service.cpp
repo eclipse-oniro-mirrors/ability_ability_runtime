@@ -426,6 +426,7 @@ constexpr const char* DMS_API_VERSION = "dmsApiVersion";
 constexpr const char* DMS_IS_CALLER_BACKGROUND = "dmsIsCallerBackGround";
 constexpr const char* DMS_PROCESS_NAME = "distributedsched";
 constexpr const char* DMS_MISSION_ID = "dmsMissionId";
+constexpr const char* DMS_USER_ID = "ohos.dms.srcUserId";
 constexpr const char* BOOTEVENT_APPFWK_READY = "bootevent.appfwk.ready";
 constexpr const char* BOOTEVENT_BOOT_COMPLETED = "bootevent.boot.completed";
 constexpr const char* BOOTEVENT_BOOT_ANIMATION_STARTED = "bootevent.bootanimation.started";
@@ -6076,7 +6077,16 @@ int AbilityManagerService::SendResultToAbility(int32_t requestCode, int32_t resu
     }
     std::shared_ptr<AbilityRecord> abilityRecord = nullptr;
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        auto uiAbilityManager = GetCurrentUIAbilityManager();
+        int32_t foregroundUserId = AbilityRuntime::UserController::GetInstance().GetForegroundUserId(
+            AbilityRuntime::ServerConstant::DEFAULT_DISPLAY_ID);
+        int32_t targetUserId = resultWant.GetIntParam(DMS_USER_ID, foregroundUserId);
+        resultWant.RemoveParam(DMS_USER_ID);
+        if (targetUserId < 0) {
+            targetUserId = foregroundUserId;
+        }
+        auto uiAbilityManager = GetUIAbilityManagerByUserId(targetUserId);
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "foregroundUserId:%{public}d, targetUserId:%{public}d, missionId:%{public}d",
+            foregroundUserId, targetUserId, missionId);
         CHECK_POINTER_AND_RETURN(uiAbilityManager, ERR_INVALID_VALUE);
         abilityRecord = uiAbilityManager->GetAbilityRecordsById(missionId);
     } else {
