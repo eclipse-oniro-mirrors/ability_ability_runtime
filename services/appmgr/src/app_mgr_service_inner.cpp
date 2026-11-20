@@ -11742,20 +11742,7 @@ bool AppMgrServiceInner::CheckProcessAvailable(const std::shared_ptr<AppRunningR
             result, pid);
         return true;
     }
-    TAG_LOGD(AAFwkTag::APPMGR, "QueryProcessStateWithCallback sent, waiting result, pid:%{public}d", pid);
-
-    if (!callback->WaitForResult(PROCESS_AVAILABLE_QUERY_TIMEOUT_MS)) {
-        TAG_LOGE(AAFwkTag::APPMGR, "QueryProcessStateWithCallback timeout, pid:%{public}d, use default", pid);
-        return true;
-    }
-
-    if (!callback->IsAvailable()) {
-        TAG_LOGD(AAFwkTag::APPMGR, "process pid:%{public}d is not available, prepare exit and kill", pid);
-        SetProcessPrepareExit(pid);
-        KillProcessByPid(pid, "LowMemoryKill");
-        return false;
-    }
-    TAG_LOGD(AAFwkTag::APPMGR, "process pid:%{public}d is available, proceed reuse", pid);
+    TAG_LOGD(AAFwkTag::APPMGR, "QueryProcessStateWithCallback sent, pid:%{public}d", pid);
     return true;
 }
 
