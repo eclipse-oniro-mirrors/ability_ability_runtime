@@ -21,6 +21,7 @@
 
 #include "global_constant.h"
 #include "hilog_tag_wrapper.h"
+#include "event_report.h"
 #include "insight_intent_db_cache.h"
 #include "insight_intent_execute_manager.h"
 #include "dialog_session_manager.h"
@@ -150,6 +151,85 @@ HWTEST_F(AbilityManagerServiceThirteenthTest, ConnectAbilityCommon_001, TestSize
     EXPECT_TRUE(status.fimConnectLocalDeviceId_.empty());
 }
 #endif // SUPPORT_RECORDER_DSOFTBUS
+
+/*
+ * Feature: AbilityManagerService
+ * Name: ReportConnectWithInvalidCaller_001
+ * Function: ReportConnectWithInvalidCaller
+ * SubFunction: NA
+ * FunctionPoints: Verify caller info is populated when reporting an invalid(stale) caller context.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, ReportConnectWithInvalidCaller_001, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    status.ipcGetCallingUid_ = 2333;
+
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    auto eventInfo = std::make_shared<EventInfo>();
+    ASSERT_NE(eventInfo, nullptr);
+    eventInfo->bundleName = "com.test.target";
+    eventInfo->abilityName = "TargetExtAbility";
+
+    abilityMs->ReportConnectWithInvalidCaller(eventInfo);
+
+    EXPECT_EQ(eventInfo->callerUid, 2333);
+    EXPECT_EQ(eventInfo->callerPid, 2333);
+    EXPECT_EQ(eventInfo->errReason, "connect with invalid(stale) caller token");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: ReportConnectWithInvalidCaller_002
+ * Function: ReportConnectWithInvalidCaller
+ * SubFunction: NA
+ * FunctionPoints: Verify null eventInfo is guarded and does not crash.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, ReportConnectWithInvalidCaller_002, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    abilityMs->ReportConnectWithInvalidCaller(nullptr);
+
+    EXPECT_TRUE(true);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: ConnectAbilityCommon_InvalidCaller_ReportOnly_001
+ * Function: ConnectAbilityCommon
+ * SubFunction: ReportConnectWithInvalidCaller
+ * FunctionPoints: Verify ConnectAbilityCommon reports an invalid caller context without blocking
+ *   the connection (unlike StartAbility which returns ERR_APP_CONTROLLED for an invalid caller).
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, ConnectAbilityCommon_InvalidCaller_ReportOnly_001, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    bool savedTokenFlag = status.smhVerificationAllToken_;
+    status.smhVerificationAllToken_ = false;
+    status.perJudgeCallerIsAllowedToUseSystemAPI_ = true;
+
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    abilityMs->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
+
+    Want want;
+    ElementName element("", "com.test.demo", "MainAbility");
+    want.SetElement(element);
+    auto connect = sptr<InsightIntentExecuteConnection>::MakeSptr();
+    auto callerToken = MockToken(AbilityType::PAGE);
+    ASSERT_NE(callerToken, nullptr);
+
+    auto ret = abilityMs->ConnectAbilityCommon(
+        want, connect, callerToken, ExtensionAbilityType::SERVICE, DEFAULT_INVAL_VALUE, false);
+    // "report only, not blocking": must not return the caller-validity blocking codes
+    // that StartAbility(2097204)/ConnectUIExtensionAbility(2097205) return for an invalid caller.
+    EXPECT_NE(ret, ERR_APP_CONTROLLED);
+    EXPECT_NE(ret, ERR_INVALID_CALLER);
+
+    status.smhVerificationAllToken_ = savedTokenFlag;
+}
 
 /*
  * Feature: AbilityManagerService

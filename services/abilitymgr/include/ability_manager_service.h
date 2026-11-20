@@ -3265,6 +3265,7 @@ private:
     bool CheckCrossUser(const int32_t userId, AppExecFwk::ExtensionAbilityType extensionType);
     void SendExtensionReport(EventInfo &eventInfo, int32_t errCode, bool isService = false);
     void SendIntentReport(EventInfo &eventInfo, int32_t errCode, const std::string &intentName);
+    void ReportConnectWithInvalidCaller(const std::shared_ptr<EventInfo> &eventInfo);
     /**
      * dumpsys info
      *
