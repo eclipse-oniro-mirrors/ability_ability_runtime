@@ -27,7 +27,6 @@
 #include "load_ability_callback_manager.h"
 #include "js_runtime.h"
 #include "native_lib_util.h"
-#include "native_lib_path_util.h"
 #include "native_runtime.h"
 #include "sys_mgr_client.h"
 #include "system_ability_definition.h"
@@ -456,8 +455,29 @@ void ChildMainThread::UpdateNativeChildLibModuleName(const AppLibPathMap &appLib
 void ChildMainThread::GetNativeLibPath(const BundleInfo &bundleInfo, const HspList &hspList,
     AppLibPathMap &appLibPaths)
 {
-    GetDefaultNamespacePaths(bundleInfo, appLibPaths);
-    GetModuleSoPaths(bundleInfo, hspList, appLibPaths);
+    std::string nativeLibraryPath = bundleInfo.applicationInfo.nativeLibraryPath;
+    if (!nativeLibraryPath.empty()) {
+        if (nativeLibraryPath.back() == '/') {
+            nativeLibraryPath.pop_back();
+        }
+        std::string libPath = LOCAL_CODE_PATH;
+        libPath += (libPath.back() == '/') ? nativeLibraryPath : "/" + nativeLibraryPath;
+        TAG_LOGI(AAFwkTag::APPKIT, "napi lib path = %{public}s", libPath.c_str());
+        appLibPaths["default"].emplace_back(libPath);
+    }
+
+    for (auto &hapInfo : bundleInfo.hapModuleInfos) {
+        TAG_LOGD(AAFwkTag::APPKIT,
+            "moduleName: %{public}s, isLibIsolated: %{public}d, compressNativeLibs: %{public}d",
+            hapInfo.moduleName.c_str(), hapInfo.isLibIsolated, hapInfo.compressNativeLibs);
+        GetHapSoPath(hapInfo, appLibPaths, hapInfo.hapPath.find(ABS_CODE_PATH));
+    }
+
+    for (auto &hspInfo : hspList) {
+        TAG_LOGD(AAFwkTag::APPKIT, "bundle:%s, module:%s, nativeLibraryPath:%s", hspInfo.bundleName.c_str(),
+            hspInfo.moduleName.c_str(), hspInfo.nativeLibraryPath.c_str());
+        GetHspNativeLibPath(hspInfo, appLibPaths, hspInfo.hapPath.find(ABS_CODE_PATH) != 0u);
+    }
 }
 
 void ChildMainThread::OnLoadAbilityFinished(uint64_t callbackId, int32_t pid)

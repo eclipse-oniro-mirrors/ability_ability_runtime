@@ -968,7 +968,6 @@ ohos_shared_library("appkit_child") {
     "${ability_runtime_innerkits_path}/child_process_manager:child_process_manager",
     "${ability_runtime_innerkits_path}/runtime:runtime",
     "${ability_runtime_native_path}/appkit:app_context",
-    "${ability_runtime_services_path}/common:app_util",
   ]
 
   external_deps = [

@@ -20,7 +20,6 @@
 
 namespace OHOS {
 namespace AppExecFwk {
-
 std::string GetLibPath(const std::string &hapPath, bool isPreInstallApp)
 {
     std::string libPath = AbilityBase::Constants::LOCAL_CODE_PATH;
