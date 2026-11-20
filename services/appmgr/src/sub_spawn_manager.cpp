@@ -20,6 +20,7 @@
 
 #include "app_pidfd_manager.h"
 #include "app_state_observer_manager.h"
+#include "child_process_info.h"
 #include "ffrt_inner.h"
 #include "hilog_tag_wrapper.h"
 #include "singleton.h"
@@ -50,14 +51,23 @@ SubSpawnManager &SubSpawnManager::GetInstance()
     return instance;
 }
 
-bool SubSpawnManager::ShouldUseSubSpawn(const std::vector<std::string> &preloadSoList, bool isolationMode)
+bool SubSpawnManager::ShouldUseSubSpawn(int32_t childProcessType,
+    const std::vector<std::string> &preloadSoList, const std::string &nativeLibraryPath, bool isolationMode)
 {
+    if (childProcessType != CHILD_PROCESS_TYPE_NATIVE_ARGS) {
+        TAG_LOGD(AAFwkTag::APPMGR, "ShouldUseSubSpawn: not native args child, type:%{public}d", childProcessType);
+        return false;
+    }
     if (!IsSupportSubSpawn()) {
         TAG_LOGD(AAFwkTag::APPMGR, "ShouldUseSubSpawn: device not support");
         return false;
     }
     if (preloadSoList.empty()) {
         TAG_LOGD(AAFwkTag::APPMGR, "ShouldUseSubSpawn: preloadSoList empty");
+        return false;
+    }
+    if (nativeLibraryPath.empty()) {
+        TAG_LOGD(AAFwkTag::APPMGR, "ShouldUseSubSpawn: nativeLibraryPath empty");
         return false;
     }
     if (!isolationMode) {

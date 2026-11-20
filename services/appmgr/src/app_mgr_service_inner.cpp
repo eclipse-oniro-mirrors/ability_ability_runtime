@@ -11069,8 +11069,13 @@ int32_t AppMgrServiceInner::StartChildProcessImpl(const std::shared_ptr<ChildPro
         auto appInfo = appRecord->GetApplicationInfo();
         const auto &preloadSoList = appInfo ? appInfo->nativeChildProcessPreloadSoList :
             std::vector<std::string>();
+        std::string nativeLibraryPath;
+        if (appInfo) {
+            nativeLibraryPath = appInfo->nativeLibraryPath;
+        }
         if (SubSpawnManager::GetInstance().ShouldUseSubSpawn(
-                preloadSoList, options.isolationMode)) {
+                childProcessRecord->GetChildProcessType(), preloadSoList, nativeLibraryPath,
+                options.isolationMode)) {
             startMsg.preloadSoList = preloadSoList;
             if (appInfo) {
                 startMsg.appLibPath = GetDefaultAppLibPath(appInfo->nativeLibraryPath);

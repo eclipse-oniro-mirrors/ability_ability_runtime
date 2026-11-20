@@ -17,6 +17,7 @@
 #include <vector>
 #include <string>
 
+#include "child_process_info.h"
 #include "sub_spawn_manager.h"
 #include "sub_spawn_record.h"
 
@@ -39,7 +40,8 @@ public:
 HWTEST_F(SubSpawnManagerTest, ShouldUseSubSpawn_001, TestSize.Level1)
 {
     std::vector<std::string> emptyList;
-    EXPECT_FALSE(SubSpawnManager::GetInstance().ShouldUseSubSpawn(emptyList, true));
+    EXPECT_FALSE(SubSpawnManager::GetInstance().ShouldUseSubSpawn(
+        CHILD_PROCESS_TYPE_NATIVE_ARGS, emptyList, "libs/arm64", true));
 }
 
 /**
@@ -49,7 +51,8 @@ HWTEST_F(SubSpawnManagerTest, ShouldUseSubSpawn_001, TestSize.Level1)
 HWTEST_F(SubSpawnManagerTest, ShouldUseSubSpawn_002, TestSize.Level1)
 {
     std::vector<std::string> soList = {"libentry.so"};
-    EXPECT_FALSE(SubSpawnManager::GetInstance().ShouldUseSubSpawn(soList, false));
+    EXPECT_FALSE(SubSpawnManager::GetInstance().ShouldUseSubSpawn(
+        CHILD_PROCESS_TYPE_NATIVE_ARGS, soList, "libs/arm64", false));
 }
 
 /**
@@ -59,7 +62,34 @@ HWTEST_F(SubSpawnManagerTest, ShouldUseSubSpawn_002, TestSize.Level1)
 HWTEST_F(SubSpawnManagerTest, ShouldUseSubSpawn_003, TestSize.Level1)
 {
     std::vector<std::string> emptyList;
-    EXPECT_FALSE(SubSpawnManager::GetInstance().ShouldUseSubSpawn(emptyList, false));
+    EXPECT_FALSE(SubSpawnManager::GetInstance().ShouldUseSubSpawn(
+        CHILD_PROCESS_TYPE_NATIVE_ARGS, emptyList, "", false));
+}
+
+/**
+ * @tc.name: ShouldUseSubSpawn_004
+ * @tc.desc: Test ShouldUseSubSpawn returns false when child process type is not native args
+ */
+HWTEST_F(SubSpawnManagerTest, ShouldUseSubSpawn_004, TestSize.Level1)
+{
+    std::vector<std::string> soList = {"libentry.so"};
+    EXPECT_FALSE(SubSpawnManager::GetInstance().ShouldUseSubSpawn(
+        CHILD_PROCESS_TYPE_JS, soList, "libs/arm64", true));
+    EXPECT_FALSE(SubSpawnManager::GetInstance().ShouldUseSubSpawn(
+        CHILD_PROCESS_TYPE_NATIVE, soList, "libs/arm64", true));
+    EXPECT_FALSE(SubSpawnManager::GetInstance().ShouldUseSubSpawn(
+        CHILD_PROCESS_TYPE_ARK, soList, "libs/arm64", true));
+}
+
+/**
+ * @tc.name: ShouldUseSubSpawn_005
+ * @tc.desc: Test ShouldUseSubSpawn returns false when nativeLibraryPath is empty
+ */
+HWTEST_F(SubSpawnManagerTest, ShouldUseSubSpawn_005, TestSize.Level1)
+{
+    std::vector<std::string> soList = {"libentry.so"};
+    EXPECT_FALSE(SubSpawnManager::GetInstance().ShouldUseSubSpawn(
+        CHILD_PROCESS_TYPE_NATIVE_ARGS, soList, "", true));
 }
 
 /**

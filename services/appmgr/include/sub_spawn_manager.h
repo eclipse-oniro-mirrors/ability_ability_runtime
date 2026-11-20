@@ -36,7 +36,8 @@ class SubSpawnManager {
 public:
     static SubSpawnManager &GetInstance();
 
-    bool ShouldUseSubSpawn(const std::vector<std::string> &preloadSoList, bool isolationMode);
+    bool ShouldUseSubSpawn(int32_t childProcessType, const std::vector<std::string> &preloadSoList,
+        const std::string &nativeLibraryPath, bool isolationMode);
 
     pid_t StartChildViaSubSpawn(int32_t uid, const AppSpawnStartMsg &startMsg);
 
