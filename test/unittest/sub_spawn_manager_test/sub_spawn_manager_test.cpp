@@ -245,7 +245,7 @@ HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_ChildPids_001, TestSize.Level1)
 
 /**
  * @tc.name: SubSpawnRecord_Diagnostics_001
- * @tc.desc: Test SubSpawnRecord kill reason and exit signal
+ * @tc.desc: Test SubSpawnRecord kill reason default empty and set
  */
 HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_Diagnostics_001, TestSize.Level1)
 {
@@ -253,11 +253,8 @@ HWTEST_F(SubSpawnManagerTest, SubSpawnRecord_Diagnostics_001, TestSize.Level1)
     auto record = SubSpawnRecord::CreateSubSpawnRecord(20000, "com.test.app", startMsg);
     ASSERT_NE(record, nullptr);
     EXPECT_EQ(record->GetKillReason(), "");
-    EXPECT_EQ(record->GetExitSignal(), -1);
     record->SetKillReason("app_died");
-    record->SetExitSignal(9);
     EXPECT_EQ(record->GetKillReason(), "app_died");
-    EXPECT_EQ(record->GetExitSignal(), 9);
 }
 
 /**

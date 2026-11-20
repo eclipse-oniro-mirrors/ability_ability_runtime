@@ -354,6 +354,9 @@ void SubSpawnManager::OnSubSpawnExited(pid_t subSpawnPid)
     } else {
         TAG_LOGD(AAFwkTag::APPMGR, "skip died notify, created not sent, pid:%{public}d", subSpawnPid);
     }
+    if (record->GetKillReason().empty()) {
+        record->SetKillReason("external kill");
+    }
     TAG_LOGI(AAFwkTag::APPMGR, "subspawn exited, pid:%{public}d, uid:%{public}d, killReason:%{public}s",
         subSpawnPid, record->GetUid(), record->GetKillReason().c_str());
 }

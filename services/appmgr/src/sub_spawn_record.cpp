@@ -65,8 +65,6 @@ const AppSpawnStartMsg &SubSpawnRecord::GetStartMsg() const { return startMsg_; 
 
 void SubSpawnRecord::SetKillReason(const std::string &reason) { killReason_ = reason; }
 std::string SubSpawnRecord::GetKillReason() const { return killReason_; }
-void SubSpawnRecord::SetExitSignal(int32_t signal) { exitSignal_ = signal; }
-int32_t SubSpawnRecord::GetExitSignal() const { return exitSignal_; }
 
 } // namespace AppExecFwk
 } // namespace OHOS

@@ -87,8 +87,6 @@ public:
 
     void SetKillReason(const std::string &reason);
     std::string GetKillReason() const;
-    void SetExitSignal(int32_t signal);
-    int32_t GetExitSignal() const;
 
 private:
     SubSpawnRecord(int32_t uid, const std::string &bundleName,
@@ -106,7 +104,6 @@ private:
     std::chrono::system_clock::time_point startTime_;
     AppSpawnStartMsg startMsg_;
     std::string killReason_;
-    int32_t exitSignal_ = -1;
 };
 
 } // namespace AppExecFwk
