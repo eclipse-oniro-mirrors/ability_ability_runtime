@@ -9688,6 +9688,13 @@ int AbilityManagerService::KillProcess(const std::string &bundleName, bool clear
 int AbilityManagerService::KillProcessWithUserId(const std::string &bundleName, bool clearPageStack, int32_t appIndex,
     const std::string& reason, int32_t userId)
 {
+    return KillProcessWithUserIdInner(bundleName, clearPageStack, appIndex, reason, userId);
+}
+
+int32_t AbilityManagerService::KillProcessWithUserIdInner(const std::string &bundleName, bool clearPageStack,
+    int32_t appIndex, const std::string &reason, int32_t userId, bool isForceStop, int32_t recordPid,
+    int32_t exitReason, int32_t callerPid)
+{
     TAG_LOGI(AAFwkTag::ABILITYMGR, "Kill process, bundleName: %{public}s, clearPageStack: %{public}d"
         "callingUid: %{public}d, callingPid: %{public}d  appindex %{public}d", bundleName.c_str(), clearPageStack,
         IPCSkeleton::GetCallingUid(), IPCSkeleton::GetCallingPid(), appIndex);
@@ -9740,6 +9747,15 @@ int AbilityManagerService::KillProcessWithUserId(const std::string &bundleName, 
         TAG_LOGE(AAFwkTag::ABILITYMGR, "no kill alive process");
         return KILL_PROCESS_KEEP_ALIVE;
     }
+    if (isForceStop) {
+        // all gates passed: report/stamp right before the kill; best effort, never blocks the kill
+        if (appExitReasonHelper_ != nullptr) {
+            appExitReasonHelper_->ReportForceStopKillId(bundleName, appIndex, userId, originUserId, recordPid,
+                exitReason, callerPid);
+        } else {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "report force stop killId failed, appExitReasonHelper null");
+        }
+    }
     int ret = DelayedSingleton<AppScheduler>::GetInstance()->KillApplication(
         bundleName, clearPageStack, appIndex, reason, originUserId);
     return ret == ERR_OK ? ERR_OK : KILL_PROCESS_FAILED;
@@ -9753,6 +9769,33 @@ int32_t AbilityManagerService::KillCollaboratorProcess(int32_t collaboratorType,
         return ERR_PERMISSION_DENIED;
     }
     return KillProcessForCollaborator(collaboratorType, bundleName, userId);
+}
+
+int32_t AbilityManagerService::ForceStopProcess(const std::string &bundleName, const std::string &reason,
+    int32_t userId, int32_t exitReason, int32_t recordPid)
+{
+    // check permission first
+    if (!AAFwk::PermissionVerification::GetInstance()->CheckPermissionForForceStopProcess(userId)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "ForceStopProcess permission verification fail");
+        return ERR_PERMISSION_DENIED;
+    }
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "ForceStopProcess, bundleName: %{public}s, userId: %{public}d, "
+        "exitReason: %{public}d, recordPid: %{public}d, callingPid: %{public}d",
+        bundleName.c_str(), userId, exitReason, recordPid, IPCSkeleton::GetCallingPid());
+    if (bundleName.empty()) {
+        return ERR_INVALID_VALUE;
+    }
+    if (exitReason < REASON_MIN || exitReason > REASON_MAX) {
+        exitReason = static_cast<int32_t>(Reason::REASON_UNKNOWN);
+    }
+    // the declared exit reason value is preserved end-to-end; the full-record KV persistence
+    // (declared reason + killId) is gated in ForPid by valid -p AND valid -r, while the killId
+    // alone is persisted in every scenario; the kill reason text and the PROCESS_KILL event
+    // killId are unaffected
+    // killId is fixed server-side (SEC-01); callerPid is captured at the transaction boundary,
+    // the report/stamp runs inside the common body right before the kill, after all gates
+    return KillProcessWithUserIdInner(bundleName, false, 0, reason, userId, true, recordPid, exitReason,
+        IPCSkeleton::GetCallingPid());
 }
 
 int32_t AbilityManagerService::KillProcessForCollaborator(int32_t collaboratorType,

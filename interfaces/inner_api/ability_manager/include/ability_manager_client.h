@@ -1213,7 +1213,8 @@ public:
      * @param clearPageStack true to also clear mission/page-stack records of the app.
      * @param appIndex Clone application index; 0 means the base application.
      * @param reason Kill reason string recorded in exit statistics.
-     * @param userId The user id to kill process for, -1 means use caller's userId.
+     * @param userId The user id to kill process for; -1 (default) means all users of the
+     *        bundle, other values mean only the processes of the specified user.
      * @return ERR_OK on success; ERR_PERMISSION_DENIED without permission;
      *         GET_BUNDLE_INFO_FAILED when the bundle cannot be resolved;
      *         KILL_PROCESS_KEEP_ALIVE for persistent apps; KILL_PROCESS_FAILED on failure.
@@ -1232,6 +1233,27 @@ public:
      */
     ErrCode KillCollaboratorProcess(int32_t collaboratorType,
         const std::string &bundleName, int32_t userId);
+
+    /**
+     * Force stop the application with a fixed kill id for cli tool, only used by aa force-stop.
+     * The kill id is fixed to REASON_AA_FORCE_STOP on the server side and cannot be forged by callers.
+     * Only shell callers or debug tool callers admitted by IsLocalDebugOtherAppsCall /
+     * IsCustomSandboxCall (developer mode + permission, with the cross-user check when an
+     * explicit target user is given) are admitted; SA calls are not exempt.
+     *
+     * @param bundleName Bundle name of the application to force stop.
+     * @param reason Kill reason string recorded in exit statistics.
+     * @param userId The user id to force stop process for; -1 (default) means all users of
+     *        the bundle, other values mean only the processes of the specified user.
+     * @param exitReason User declared exit reason, invalid value is normalized to REASON_UNKNOWN.
+     * @param recordPid Record scope, >0 means only the specified pid, others mean all processes of the bundle.
+     * @return ERR_OK on success; ERR_PERMISSION_DENIED without permission;
+     *         ERR_INVALID_VALUE when bundleName is empty;
+     *         GET_BUNDLE_INFO_FAILED when the bundle cannot be resolved;
+     *         KILL_PROCESS_KEEP_ALIVE for persistent apps; KILL_PROCESS_FAILED on failure.
+     */
+    ErrCode ForceStopProcess(const std::string &bundleName, const std::string &reason, int32_t userId = -1,
+        int32_t exitReason = static_cast<int32_t>(Reason::REASON_UNKNOWN), int32_t recordPid = -1);
 
     #ifdef ABILITY_COMMAND_FOR_TEST
     /**

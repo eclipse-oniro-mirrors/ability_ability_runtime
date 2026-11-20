@@ -47,6 +47,7 @@ void LocalDebugOtherAppsCallTest::SetUp()
     MyStatus::GetInstance().getBoolParameter_ = false;
     MyStatus::GetInstance().isVerifyAccessToken_ = 1; // PERMISSION_DENIED by default
     MyStatus::GetInstance().ipcGetCallingUid_ = 1; // uid 1 -> non-sandbox user by default
+    MyStatus::GetInstance().atkGetTokenTypeFlag_ = 0; // 0: TOKEN_HAP -> non-shell/non-SA by default
 }
 
 void LocalDebugOtherAppsCallTest::TearDown()
@@ -54,6 +55,7 @@ void LocalDebugOtherAppsCallTest::TearDown()
     MyStatus::GetInstance().getBoolParameter_ = false;
     MyStatus::GetInstance().isVerifyAccessToken_ = 1; // PERMISSION_DENIED by default
     MyStatus::GetInstance().ipcGetCallingUid_ = 1; // uid 1 -> non-sandbox user by default
+    MyStatus::GetInstance().atkGetTokenTypeFlag_ = 0; // 0: TOKEN_HAP -> non-shell/non-SA by default
 }
 
 constexpr uint32_t SPECIFY_TOKEN_ID = 100;
@@ -341,6 +343,123 @@ HWTEST_F(LocalDebugOtherAppsCallTest, IsCrossUserForSandboxCall_0400, TestSize.L
     bool result = PermissionVerification::GetInstance()->IsCrossUserForSandboxCall(SAME_USER_ID);
     EXPECT_FALSE(result);
     TAG_LOGI(AAFwkTag::TEST, "IsCrossUserForSandboxCall_0400 end");
+}
+
+/**
+ * @tc.name: CheckPermissionForForceStopProcess_0100
+ * @tc.desc: shell caller is admitted even without developer mode and without debug permissions
+ * @tc.type: FUNC
+ */
+HWTEST_F(LocalDebugOtherAppsCallTest, CheckPermissionForForceStopProcess_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckPermissionForForceStopProcess_0100 start");
+    MyStatus::GetInstance().getBoolParameter_ = false;
+    MyStatus::GetInstance().isVerifyAccessToken_ = 1; // PERMISSION_DENIED
+    MyStatus::GetInstance().atkGetTokenTypeFlag_ =
+        static_cast<int>(Security::AccessToken::ATokenTypeEnum::TOKEN_SHELL);
+    bool result = PermissionVerification::GetInstance()->CheckPermissionForForceStopProcess(TARGET_USER_ID);
+    EXPECT_TRUE(result);
+    TAG_LOGI(AAFwkTag::TEST, "CheckPermissionForForceStopProcess_0100 end");
+}
+
+/**
+ * @tc.name: CheckPermissionForForceStopProcess_0200
+ * @tc.desc: not in developer mode, non-shell caller with permission granted should be denied
+ * @tc.type: FUNC
+ */
+HWTEST_F(LocalDebugOtherAppsCallTest, CheckPermissionForForceStopProcess_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckPermissionForForceStopProcess_0200 start");
+    MyStatus::GetInstance().getBoolParameter_ = false;
+    MyStatus::GetInstance().isVerifyAccessToken_ =
+        Security::AccessToken::PermissionState::PERMISSION_GRANTED;
+    bool result = PermissionVerification::GetInstance()->CheckPermissionForForceStopProcess(TARGET_USER_ID);
+    EXPECT_FALSE(result);
+    TAG_LOGI(AAFwkTag::TEST, "CheckPermissionForForceStopProcess_0200 end");
+}
+
+/**
+ * @tc.name: CheckPermissionForForceStopProcess_0300
+ * @tc.desc: in developer mode but permission denied, non-shell caller should be denied
+ * @tc.type: FUNC
+ */
+HWTEST_F(LocalDebugOtherAppsCallTest, CheckPermissionForForceStopProcess_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckPermissionForForceStopProcess_0300 start");
+    MyStatus::GetInstance().getBoolParameter_ = true;
+    MyStatus::GetInstance().isVerifyAccessToken_ = 1; // PERMISSION_DENIED
+    bool result = PermissionVerification::GetInstance()->CheckPermissionForForceStopProcess(TARGET_USER_ID);
+    EXPECT_FALSE(result);
+    TAG_LOGI(AAFwkTag::TEST, "CheckPermissionForForceStopProcess_0300 end");
+}
+
+/**
+ * @tc.name: CheckPermissionForForceStopProcess_0400
+ * @tc.desc: in developer mode with debug permission granted, debug tool caller is admitted
+ * @tc.type: FUNC
+ */
+HWTEST_F(LocalDebugOtherAppsCallTest, CheckPermissionForForceStopProcess_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckPermissionForForceStopProcess_0400 start");
+    MyStatus::GetInstance().getBoolParameter_ = true;
+    MyStatus::GetInstance().isVerifyAccessToken_ =
+        Security::AccessToken::PermissionState::PERMISSION_GRANTED;
+    bool result = PermissionVerification::GetInstance()->CheckPermissionForForceStopProcess(TARGET_USER_ID);
+    EXPECT_TRUE(result);
+    TAG_LOGI(AAFwkTag::TEST, "CheckPermissionForForceStopProcess_0400 end");
+}
+
+/**
+ * @tc.name: CheckPermissionForForceStopProcess_0500
+ * @tc.desc: SA call is not exempt, should be denied even in developer mode
+ * @tc.type: FUNC
+ */
+HWTEST_F(LocalDebugOtherAppsCallTest, CheckPermissionForForceStopProcess_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckPermissionForForceStopProcess_0500 start");
+    MyStatus::GetInstance().getBoolParameter_ = true;
+    MyStatus::GetInstance().isVerifyAccessToken_ = 1; // PERMISSION_DENIED
+    MyStatus::GetInstance().atkGetTokenTypeFlag_ =
+        static_cast<int>(Security::AccessToken::ATokenTypeEnum::TOKEN_NATIVE);
+    bool result = PermissionVerification::GetInstance()->CheckPermissionForForceStopProcess(TARGET_USER_ID);
+    EXPECT_FALSE(result);
+    TAG_LOGI(AAFwkTag::TEST, "CheckPermissionForForceStopProcess_0500 end");
+}
+
+/**
+ * @tc.name: CheckPermissionForForceStopProcess_0600
+ * @tc.desc: sandbox caller with permission granted but explicit target user differs from
+ *           caller sandbox user, cross-user operation should be denied
+ * @tc.type: FUNC
+ */
+HWTEST_F(LocalDebugOtherAppsCallTest, CheckPermissionForForceStopProcess_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckPermissionForForceStopProcess_0600 start");
+    MyStatus::GetInstance().getBoolParameter_ = true;
+    MyStatus::GetInstance().isVerifyAccessToken_ =
+        Security::AccessToken::PermissionState::PERMISSION_GRANTED;
+    MyStatus::GetInstance().ipcGetCallingUid_ = SANDBOX_USER_UID;
+    bool result = PermissionVerification::GetInstance()->CheckPermissionForForceStopProcess(TARGET_USER_ID);
+    EXPECT_TRUE(result);
+    TAG_LOGI(AAFwkTag::TEST, "CheckPermissionForForceStopProcess_0600 end");
+}
+
+/**
+ * @tc.name: CheckPermissionForForceStopProcess_0700
+ * @tc.desc: sandbox caller with permission granted and targetUserId is -1 (no cross-user
+ *           check), debug tool caller is admitted
+ * @tc.type: FUNC
+ */
+HWTEST_F(LocalDebugOtherAppsCallTest, CheckPermissionForForceStopProcess_0700, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckPermissionForForceStopProcess_0700 start");
+    MyStatus::GetInstance().getBoolParameter_ = true;
+    MyStatus::GetInstance().isVerifyAccessToken_ =
+        Security::AccessToken::PermissionState::PERMISSION_GRANTED;
+    MyStatus::GetInstance().ipcGetCallingUid_ = SANDBOX_USER_UID;
+    bool result = PermissionVerification::GetInstance()->CheckPermissionForForceStopProcess(-1);
+    EXPECT_TRUE(result);
+    TAG_LOGI(AAFwkTag::TEST, "CheckPermissionForForceStopProcess_0700 end");
 }
 }  // namespace AAFwk
 }  // namespace OHOS

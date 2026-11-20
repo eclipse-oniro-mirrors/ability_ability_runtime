@@ -25,6 +25,7 @@ public:
     bool getBoolParameter_ = false;
     int isVerifyAccessToken_ = 1; // PERMISSION_DENIED by default
     int ipcGetCallingUid_ = 1; // uid 1 -> non-sandbox user by default
+    int atkGetTokenTypeFlag_ = 0; // 0: TOKEN_HAP -> non-shell/non-SA by default
 private:
     MyStatus() = default;
 };

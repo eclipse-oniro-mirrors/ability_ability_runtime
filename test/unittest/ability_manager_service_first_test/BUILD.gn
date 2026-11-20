@@ -62,6 +62,7 @@ ohos_unittest("ability_manager_service_first_test") {
     "${ability_runtime_test_path}/mock/auto_startup_mock/src/direct_boot_test_support.cpp",
     "${ability_runtime_test_path}/unittest/multi_app_utils_test/src/mock_app_mgr_service.cpp",
     "ability_manager_service_first_test.cpp",
+    "mock/src/mock_app_mgr_util.cpp",
     "mock/src/mock_auto_startup_parameters.cpp",
     "mock/src/mock_my_flag.cpp",
     "mock/src/mock_permission_verification.cpp",

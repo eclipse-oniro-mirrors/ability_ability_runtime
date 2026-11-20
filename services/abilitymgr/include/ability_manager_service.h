@@ -1054,11 +1054,57 @@ public:
      * Kill the process immediately with a specified userId.
      *
      * @param bundleName.
-     * @param userId The user id to kill process for, -1 means use caller's userId.
+     * @param userId The user id to kill process for; -1 (default) means all users of the
+     *        bundle, other values mean only the processes of the specified user.
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int KillProcessWithUserId(const std::string &bundleName, bool clearPageStack = false,
         int32_t appIndex = -1, const std::string& reason = "Abilityms::KillProcess", int32_t userId = -1) override;
+
+    /**
+     * Force stop the application with a fixed kill id for cli tool, only used by aa force-stop.
+     * The kill id is fixed to REASON_AA_FORCE_STOP on the server side.
+     * Only shell callers or debug tool callers admitted by IsLocalDebugOtherAppsCall /
+     * IsCustomSandboxCall (developer mode + permission, with the cross-user check when an
+     * explicit target user is given) are admitted; SA calls are not exempt.
+     *
+     * @param bundleName bundle name of the application to force stop.
+     * @param reason kill reason text.
+     * @param userId The user id to force stop process for; -1 (default) means all users of
+     *        the bundle, other values mean only the processes of the specified user.
+     * @param exitReason user declared exit reason, normalized to REASON_UNKNOWN when invalid;
+     *        the declared reason lands only when recordPid is a valid -p, other scenarios
+     *        record REASON_NORMAL (the same as pre-change), and the kill id is always
+     *        persisted and obtainable by the app (killReason detail).
+     * @param recordPid record scope, >0 means only the specified pid, others mean all processes.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t ForceStopProcess(const std::string &bundleName, const std::string &reason, int32_t userId,
+        int32_t exitReason, int32_t recordPid) override;
+
+    /**
+     * @brief Common body of KillProcessWithUserId and ForceStopProcess: kill permission, clone
+     *        resolution, collaborator and keep-alive checks, the force stop exit reason
+     *        report/stamp (right before the kill) and the kill itself.
+     * @param bundleName bundle name of the application to kill.
+     * @param clearPageStack true to also clear mission/page-stack records of the app.
+     * @param appIndex clone application index.
+     * @param reason kill reason string recorded in exit statistics.
+     * @param userId the user id to kill process for; -1 (default) means all users of the
+     *        bundle, other values mean only the processes of the specified user.
+     * @param isForceStop true when called from ForceStopProcess, the exit reason report and the
+     *        kill id/caller stamping run after all gates and right before the kill.
+     * @param recordPid force stop stamping scope, >0 means only the specified pid.
+     * @param exitReason force stop declared exit reason, normalized by the caller.
+     * @param callerPid the pid of the force stop caller, captured at the transaction boundary;
+     *        MUST be provided when isForceStop is true (the appmgr side cannot obtain the real
+     *        caller pid itself), otherwise the kill caller attribution silently degrades to an
+     *        invalid pid.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t KillProcessWithUserIdInner(const std::string &bundleName, bool clearPageStack, int32_t appIndex,
+        const std::string &reason, int32_t userId, bool isForceStop = false, int32_t recordPid = -1,
+        int32_t exitReason = static_cast<int32_t>(Reason::REASON_UNKNOWN), int32_t callerPid = 0);
 
     /**
      * Uninstall app
@@ -2947,7 +2993,7 @@ protected:
     int32_t GetCollaboratorType(const std::string &codePath) const;
 
     int32_t KillProcessForCollaborator(int32_t collaboratorType, const std::string &bundleName, int32_t userId);
-    
+
     /**
      * Check if Caller is allowed to start AppServiceExtension(Stage).
      *

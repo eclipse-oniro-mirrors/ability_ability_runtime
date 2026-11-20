@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -74,6 +74,8 @@ public:
         const std::string& reason));
     MOCK_METHOD5(KillProcessWithUserId, int(const std::string& bundleName, const bool clearPageStack, int32_t appIndex,
         const std::string& reason, int32_t userId));
+    MOCK_METHOD5(ForceStopProcess, int32_t(const std::string& bundleName, const std::string& reason, int32_t userId,
+        int32_t exitReason, int32_t recordPid));
     MOCK_METHOD2(UninstallApp, int(const std::string& bundleName, int32_t uid));
     MOCK_METHOD3(UninstallApp, int32_t(const std::string& bundleName, int32_t uid, int32_t appIndex));
 

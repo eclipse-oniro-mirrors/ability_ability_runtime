@@ -1021,7 +1021,8 @@ public:
      * Kill the process immediately with a specified userId.
      *
      * @param bundleName.
-     * @param userId The user id to kill process for, -1 means use caller's userId.
+     * @param userId The user id to kill process for; -1 (default) means all users of the
+     *        bundle, other values mean only the processes of the specified user.
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int KillProcessWithUserId(const std::string &bundleName, bool clearPageStack = false,
@@ -1040,6 +1041,27 @@ public:
      */
     virtual int32_t KillCollaboratorProcess(int32_t collaboratorType,
         const std::string &bundleName, int32_t userId)
+    {
+        return 0;
+    }
+
+    /**
+     * Force stop the application with a fixed kill id for cli tool, only used by aa force-stop.
+     * The kill id is fixed to REASON_AA_FORCE_STOP on the server side and cannot be forged by callers.
+     * Only shell callers or debug tool callers admitted by IsLocalDebugOtherAppsCall /
+     * IsCustomSandboxCall (developer mode + permission, with the cross-user check when an
+     * explicit target user is given) are admitted; SA calls are not exempt.
+     *
+     * @param bundleName bundle name of the application to force stop.
+     * @param reason kill reason text, recorded to the kill reason of the process record.
+     * @param userId The user id to force stop process for; -1 (default) means all users of
+     *        the bundle, other values mean only the processes of the specified user.
+     * @param exitReason user declared exit reason, invalid value is normalized to REASON_UNKNOWN.
+     * @param recordPid record scope, >0 means only the specified pid, others mean all processes of the bundle.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t ForceStopProcess(const std::string &bundleName, const std::string &reason, int32_t userId = -1,
+        int32_t exitReason = static_cast<int32_t>(Reason::REASON_UNKNOWN), int32_t recordPid = -1)
     {
         return 0;
     }

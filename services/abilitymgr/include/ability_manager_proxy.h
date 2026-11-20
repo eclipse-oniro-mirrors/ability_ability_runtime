@@ -744,7 +744,8 @@ public:
      * Kill the process immediately with a specified userId.
      *
      * @param bundleName.
-     * @param userId The user id to kill process for, -1 means use caller's userId.
+     * @param userId The user id to kill process for; -1 (default) means all users of the
+     *        bundle, other values mean only the processes of the specified user.
      * @return Returns ERR_OK on success, others on failure.
      */
     virtual int KillProcessWithUserId(const std::string &bundleName, bool clearPageStack = false,
@@ -752,6 +753,20 @@ public:
 
     virtual int32_t KillCollaboratorProcess(int32_t collaboratorType,
         const std::string &bundleName, int32_t userId) override;
+
+    /**
+     * Force stop the application with a fixed kill id for cli tool, only used by aa force-stop.
+     *
+     * @param bundleName bundle name of the application to force stop.
+     * @param reason kill reason text.
+     * @param userId The user id to force stop process for; -1 (default) means all users of
+     *        the bundle, other values mean only the processes of the specified user.
+     * @param exitReason user declared exit reason.
+     * @param recordPid record scope, >0 means only the specified pid, others mean all processes.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t ForceStopProcess(const std::string &bundleName, const std::string &reason, int32_t userId,
+        int32_t exitReason, int32_t recordPid) override;
 
     #ifdef ABILITY_COMMAND_FOR_TEST
     /**

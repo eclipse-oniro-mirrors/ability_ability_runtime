@@ -168,7 +168,7 @@ HWTEST_F(OhosAaCommandForceStopTest, Ohos_Aa_Command_Force_Stop_0700, Function |
 /**
  * @tc.number: Ohos_Aa_Command_Force_Stop_0800
  * @tc.name: ExecCommand
- * @tc.desc: Verify force-stop with a valid TOOL_CALL_ID env passes the tracing id in the KillProcess reason.
+ * @tc.desc: Verify force-stop with a valid TOOL_CALL_ID env passes the tracing id in the ForceStopProcess reason.
  */
 HWTEST_F(OhosAaCommandForceStopTest, Ohos_Aa_Command_Force_Stop_0800, Function | MediumTest | Level1)
 {
@@ -192,9 +192,9 @@ HWTEST_F(OhosAaCommandForceStopTest, Ohos_Aa_Command_Force_Stop_0800, Function |
     auto mockAbilityManagerStub = sptr<MockAbilityManagerStub>(new MockAbilityManagerStub());
     ASSERT_NE(mockAbilityManagerStub, nullptr);
     std::string capturedReason;
-    EXPECT_CALL(*mockAbilityManagerStub, KillProcess(_, _, _, _))
+    EXPECT_CALL(*mockAbilityManagerStub, ForceStopProcess(_, _, _, _, _))
         .Times(1)
-        .WillOnce(DoAll(SaveArg<3>(&capturedReason), Return(0)));
+        .WillOnce(DoAll(SaveArg<1>(&capturedReason), Return(0)));
     managerClientPtr->proxy_ = static_cast<IAbilityManager*>(mockAbilityManagerStub);
 
     cmd.ExecCommand();
@@ -235,9 +235,9 @@ HWTEST_F(OhosAaCommandForceStopTest, Ohos_Aa_Command_Force_Stop_0900, Function |
     auto mockAbilityManagerStub = sptr<MockAbilityManagerStub>(new MockAbilityManagerStub());
     ASSERT_NE(mockAbilityManagerStub, nullptr);
     std::string capturedReason;
-    EXPECT_CALL(*mockAbilityManagerStub, KillProcess(_, _, _, _))
+    EXPECT_CALL(*mockAbilityManagerStub, ForceStopProcess(_, _, _, _, _))
         .Times(1)
-        .WillOnce(DoAll(SaveArg<3>(&capturedReason), Return(0)));
+        .WillOnce(DoAll(SaveArg<1>(&capturedReason), Return(0)));
     managerClientPtr->proxy_ = static_cast<IAbilityManager*>(mockAbilityManagerStub);
 
     cmd.ExecCommand();
@@ -278,9 +278,9 @@ HWTEST_F(OhosAaCommandForceStopTest, Ohos_Aa_Command_Force_Stop_1100, Function |
     auto mockAbilityManagerStub = sptr<MockAbilityManagerStub>(new MockAbilityManagerStub());
     ASSERT_NE(mockAbilityManagerStub, nullptr);
     std::string capturedReason;
-    EXPECT_CALL(*mockAbilityManagerStub, KillProcess(_, _, _, _))
+    EXPECT_CALL(*mockAbilityManagerStub, ForceStopProcess(_, _, _, _, _))
         .Times(1)
-        .WillOnce(DoAll(SaveArg<3>(&capturedReason), Return(0)));
+        .WillOnce(DoAll(SaveArg<1>(&capturedReason), Return(0)));
     managerClientPtr->proxy_ = static_cast<IAbilityManager*>(mockAbilityManagerStub);
 
     cmd.ExecCommand();
@@ -299,7 +299,7 @@ HWTEST_F(OhosAaCommandForceStopTest, Ohos_Aa_Command_Force_Stop_1100, Function |
 /**
  * @tc.number: Ohos_Aa_Command_Force_Stop_1300
  * @tc.name: ExecCommand
- * @tc.desc: Verify force-stop rejects the removed --tool-call-id option without calling KillProcess.
+ * @tc.desc: Verify force-stop rejects the removed --tool-call-id option without calling ForceStopProcess.
  */
 HWTEST_F(OhosAaCommandForceStopTest, Ohos_Aa_Command_Force_Stop_1300, Function | MediumTest | Level1)
 {
@@ -322,7 +322,7 @@ HWTEST_F(OhosAaCommandForceStopTest, Ohos_Aa_Command_Force_Stop_1300, Function |
     auto managerClientPtr = AbilityManagerClient::GetInstance();
     auto mockAbilityManagerStub = sptr<MockAbilityManagerStub>(new MockAbilityManagerStub());
     ASSERT_NE(mockAbilityManagerStub, nullptr);
-    EXPECT_CALL(*mockAbilityManagerStub, KillProcess(_, _, _, _)).Times(0);
+    EXPECT_CALL(*mockAbilityManagerStub, ForceStopProcess(_, _, _, _, _)).Times(0);
     managerClientPtr->proxy_ = static_cast<IAbilityManager*>(mockAbilityManagerStub);
 
     std::string result = cmd.ExecCommand();
@@ -363,9 +363,9 @@ HWTEST_F(OhosAaCommandForceStopTest, Ohos_Aa_Command_Force_Stop_1400, Function |
     auto mockAbilityManagerStub = sptr<MockAbilityManagerStub>(new MockAbilityManagerStub());
     ASSERT_NE(mockAbilityManagerStub, nullptr);
     std::string capturedReason;
-    EXPECT_CALL(*mockAbilityManagerStub, KillProcess(_, _, _, _))
+    EXPECT_CALL(*mockAbilityManagerStub, ForceStopProcess(_, _, _, _, _))
         .Times(1)
-        .WillOnce(DoAll(SaveArg<3>(&capturedReason), Return(0)));
+        .WillOnce(DoAll(SaveArg<1>(&capturedReason), Return(0)));
     managerClientPtr->proxy_ = static_cast<IAbilityManager*>(mockAbilityManagerStub);
 
     cmd.ExecCommand();
@@ -406,9 +406,9 @@ HWTEST_F(OhosAaCommandForceStopTest, Ohos_Aa_Command_Force_Stop_1500, Function |
     auto mockAbilityManagerStub = sptr<MockAbilityManagerStub>(new MockAbilityManagerStub());
     ASSERT_NE(mockAbilityManagerStub, nullptr);
     std::string capturedReason;
-    EXPECT_CALL(*mockAbilityManagerStub, KillProcess(_, _, _, _))
+    EXPECT_CALL(*mockAbilityManagerStub, ForceStopProcess(_, _, _, _, _))
         .Times(1)
-        .WillOnce(DoAll(SaveArg<3>(&capturedReason), Return(0)));
+        .WillOnce(DoAll(SaveArg<1>(&capturedReason), Return(0)));
     managerClientPtr->proxy_ = static_cast<IAbilityManager*>(mockAbilityManagerStub);
 
     cmd.ExecCommand();

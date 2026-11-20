@@ -39,6 +39,9 @@ public:
         const std::vector<std::string> &abilityList, const AAFwk::ExitReason &exitReason,
         const AppExecFwk::RunningProcessInfo &processInfo, bool withKillMsg);
 
+    int32_t UpdateAppKillId(const std::string &bundleName, uint32_t accessTokenId,
+        const std::vector<std::string> &abilityList, int32_t killId);
+
     int32_t GetAppExitReason(const std::string &bundleName, uint32_t accessTokenId, const std::string &abilityName,
         bool &isSetReason, AAFwk::ExitReason &exitReason, AppExecFwk::RunningProcessInfo &processInfo,
         int64_t &time_stamp, bool &withKillMsg, bool cleanFlag = true);

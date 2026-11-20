@@ -18,11 +18,13 @@
 #include "accesstoken_kit.h"
 #include "app_exit_reason_data_manager.h"
 #include "app_mgr_util.h"
+#include "app_scheduler.h"
 #include "bundle_mgr_helper.h"
 #include "exit_info_data_manager.h"
 #include "hitrace_meter.h"
 #include "os_account_manager_wrapper.h"
 #include "scene_board_judgement.h"
+#include "xcollie/process_kill_reason.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -222,7 +224,7 @@ int32_t AppExitReasonHelper::RecordProcessExitReasonForTimeout(const AppExecFwk:
 }
 
 int32_t AppExitReasonHelper::RecordProcessExitReason(const int32_t pid, const ExitReason &exitReason,
-    bool fromKillWithReason)
+    bool fromKillWithReason, int32_t callerPid)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     AppExecFwk::ApplicationInfo application;
@@ -246,7 +248,25 @@ int32_t AppExitReasonHelper::RecordProcessExitReason(const int32_t pid, const Ex
     }
 
     return RecordProcessExitReason(pid, bundleName, application.uid, application.accessTokenId, exitReason,
-        processInfo, fromKillWithReason);
+        processInfo, fromKillWithReason, callerPid);
+}
+
+int32_t AppExitReasonHelper::RecordAppKillId(const std::string &bundleName, int32_t uid, int32_t pid,
+    uint32_t accessTokenId, int32_t killId)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "called RecordAppKillId");
+    // kill-id-only record of THIS force stop event: a minimal field set that keeps the
+    // lastExitReason the app reads identical to pre-change (REASON_NORMAL) while the new
+    // killReason stays obtainable on its next launch
+    std::vector<std::string> abilityLists;
+    if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
+        GetActiveAbilityListFromUIAbilityManager(uid, abilityLists, pid);
+    } else {
+        GetActiveAbilityList(uid, abilityLists, pid);
+    }
+    return DelayedSingleton<AbilityRuntime::AppExitReasonDataManager>::GetInstance()->UpdateAppKillId(
+        bundleName, accessTokenId, abilityLists, killId);
 }
 
 int32_t AppExitReasonHelper::RecordAppExitReason(const std::string &bundleName, int32_t uid, int32_t appIndex,
@@ -282,7 +302,7 @@ int32_t AppExitReasonHelper::RecordProcessExitReason(int32_t pid, int32_t uid, c
 
 int32_t AppExitReasonHelper::RecordProcessExitReason(const int32_t pid, const std::string bundleName,
     const int32_t uid, const uint32_t accessTokenId, const ExitReason &exitReason,
-    const AppExecFwk::RunningProcessInfo &processInfo, bool fromKillWithReason)
+    const AppExecFwk::RunningProcessInfo &processInfo, bool fromKillWithReason, int32_t callerPid)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (!IsExitReasonValid(exitReason)) {
@@ -309,7 +329,7 @@ int32_t AppExitReasonHelper::RecordProcessExitReason(const int32_t pid, const st
         ExitReasonCompability exitReasonCompability(exitReason);
         int32_t ret = DelayedSingleton<AppScheduler>::GetInstance()->NotifyAppMgrRecordExitReasonCompability(
             pid, exitReasonCompability.killId, exitReasonCompability.killMsg,
-            exitReasonCompability.innerMsg, exitReasonCompability.reason, DEFAULT_INVAL_VALUE);
+            exitReasonCompability.innerMsg, exitReasonCompability.reason, callerPid);
         if (ret != ERR_OK) {
             TAG_LOGW(AAFwkTag::ABILITYMGR, "notify compability failed: %{public}d", ret);
         }
@@ -644,6 +664,133 @@ void AppExitReasonHelper::RecordInvalidKillId(int32_t pid, const ExitReasonCompa
     }
     DelayedSingleton<AppScheduler>::GetInstance()->NotifyAppMgrRecordExitReasonCompability(
         pid, INVALID_KILLID, params.killMsg, params.innerMsg, params.reason, callerPid);
+}
+
+void AppExitReasonHelper::ReportForceStopKillId(const std::string &bundleName, int32_t appIndex,
+    int32_t userId, int32_t originUserId, int32_t recordPid, int32_t exitReason, int32_t callerPid)
+{
+    // report the exit reason of THIS force-stop event and stamp kill id + caller info right
+    // before the kill, so a rejected kill never leaves records behind. The exit reason record is
+    // fully rewritten with the latest event (reason/exitMsg/killId/process info via the existing
+    // pre-register chain), never mixing with previous kill records; the caller info is recorded
+    // to the process record only, the event content is unchanged
+    auto processInfoList = CollectForceStopProcessInfos(bundleName, userId, originUserId);
+    // no running process found: nothing to record, the kill flow continues as usual (an empty
+    // list must never end the flow); the report follows the kill scope (bundle + resolved
+    // appIndex + users)
+    if (processInfoList.empty()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "no running process of bundle %{public}s to record",
+            bundleName.c_str());
+        return;
+    }
+    // resolve recordPid against the collected list before deriving persistKV: a recordPid that
+    // matches no process (stale pid, foreign app, already dead) cannot scope the report, so an
+    // invalid -p is demoted to killId-only stamping for every matched process and behaves like
+    // no -p, never losing the kill id
+    if (recordPid > 0) {
+        bool pidMatched = false;
+        for (const auto &info : processInfoList) {
+            if (info.pid_ == recordPid) {
+                pidMatched = true;
+                break;
+            }
+        }
+        if (!pidMatched) {
+            TAG_LOGW(AAFwkTag::ABILITYMGR, "recordPid %{public}d matches no process of bundle %{public}s,"
+                " fall back to killId-only stamp", recordPid, bundleName.c_str());
+            recordPid = -1;
+        }
+    }
+    // the declared reason lands only when the (resolved) -p and -r are both valid; other
+    // scenarios record REASON_NORMAL (the same default the signal-death path recorded
+    // pre-change) while the kill id is always persisted. Decided once here, loop-invariant
+    bool persistKV = recordPid > 0 && exitReason != static_cast<int32_t>(Reason::REASON_UNKNOWN);
+    for (const auto &info : processInfoList) {
+        ReportForceStopKillIdForPid(info.pid_, bundleName, appIndex, recordPid, exitReason, callerPid, persistKV);
+    }
+}
+
+std::vector<AppExecFwk::RunningProcessInfo> AppExitReasonHelper::CollectForceStopProcessInfos(
+    const std::string &bundleName, int32_t userId, int32_t originUserId)
+{
+    std::vector<AppExecFwk::RunningProcessInfo> processInfoList;
+    auto appMgr = AppMgrUtil::GetAppMgr();
+    if (appMgr == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "collect force stop process infos failed, appMgr null");
+        return processInfoList;
+    }
+    if (originUserId != -1) {
+        IN_PROCESS_CALL(appMgr->GetRunningProcessInformation(bundleName, userId, processInfoList));
+        return processInfoList;
+    }
+    // the kill scope is all users (userId == -1 || GetUserId() == userId in
+    // ProcessExitByBundleNameAndAppIndex), so the report enumerates per active os account
+    // to cover every user the kill reaches
+    std::vector<int32_t> activeUserIds;
+    if (AppExecFwk::OsAccountManagerWrapper::QueryActiveOsAccountIds(activeUserIds) != ERR_OK) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "query active os account ids failed");
+    }
+    for (const auto &activeUserId : activeUserIds) {
+        std::vector<AppExecFwk::RunningProcessInfo> userList;
+        IN_PROCESS_CALL(appMgr->GetRunningProcessInformation(bundleName, activeUserId, userList));
+        processInfoList.insert(processInfoList.end(), userList.begin(), userList.end());
+    }
+    return processInfoList;
+}
+
+void AppExitReasonHelper::ReportForceStopKillIdForPid(int32_t pid, const std::string &bundleName,
+    int32_t appIndex, int32_t recordPid, int32_t exitReason, int32_t callerPid, bool persistKV)
+{
+    if (pid <= 0 || (recordPid > 0 && pid != recordPid)) {
+        return;
+    }
+    // align with the kill scope match (main bundleName == bundleName && GetAppIndex() ==
+    // appIndex in app_running_manager): RunningProcessInfo.appCloneIndex is only filled for
+    // APP_CLONE mode and stays -1 for MULTI_INSTANCE/DLP, so reverse-look up the record-level
+    // main application info (same source as GetAppIndex()) to cover all multi-instance forms;
+    // the bundleName check also keeps plugin (APP_PLUGIN) host records out, whose pool hit
+    // comes from a mounted plugin bundle while the kill matches the main bundle only; the
+    // report is best effort and not atomic with the kill, a failed lookup (usually the record
+    // is gone / process dying, other failures possible) is skipped and never blocks the kill
+    AppExecFwk::ApplicationInfo application;
+    bool debug = false;
+    auto appInfoRet = IN_PROCESS_CALL(DelayedSingleton<AppScheduler>::GetInstance()->
+        GetApplicationInfoByProcessID(pid, application, debug));
+    if (appInfoRet != ERR_OK || application.bundleName != bundleName ||
+        application.appIndex != appIndex) {
+        return;
+    }
+    // every force stop writes a fresh self-contained record of THIS event (the declared
+    // reason, or REASON_UNKNOWN when absent/invalid, plus exitMsg "aa force-stop", the kill
+    // id and the active ability list), so the record content never mixes with previous
+    // events; the stamp inside the record chain carries the real caller pid (captured at the
+    // transaction boundary, appmgr cannot obtain the real force-stop caller itself)
+    int32_t killId = HiviewDFX::ProcessKillReason::KillEventId::REASON_AA_FORCE_STOP;
+    int32_t persistRet = ERR_OK;
+    if (persistKV) {
+        AAFwk::ExitReason exitReasonData(static_cast<Reason>(exitReason), "aa force-stop");
+        exitReasonData.killId = killId;
+        // full record of THIS event: the declared reason lands, and the stamp inside the
+        // record chain carries the real caller pid (captured at the transaction boundary,
+        // appmgr cannot obtain the real force-stop caller itself)
+        persistRet = RecordProcessExitReason(pid, exitReasonData, false, callerPid);
+    } else {
+        // killId-only: stamp the in-memory record first (killReason), then insert a minimal
+        // {reason: REASON_NORMAL, kill_id, ability_list, pid: -1, uid: -1} record — the same
+        // lastExitReason the app reads pre-change, with the new killReason obtainable on its
+        // next launch
+        auto stampRet = DelayedSingleton<AppScheduler>::GetInstance()->NotifyAppMgrRecordExitReasonCompability(
+            pid, killId, "", "", exitReason, callerPid);
+        if (stampRet != ERR_OK) {
+            TAG_LOGW(AAFwkTag::ABILITYMGR, "stamp kill id failed, pid: %{public}d, ret: %{public}d",
+                pid, stampRet);
+        }
+        persistRet = RecordAppKillId(bundleName, application.uid, pid, application.accessTokenId, killId);
+    }
+    if (persistRet != ERR_OK) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "report exit reason failed, pid: %{public}d, ret: %{public}d",
+            pid, persistRet);
+    }
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

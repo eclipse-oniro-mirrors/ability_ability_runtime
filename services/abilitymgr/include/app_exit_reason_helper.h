@@ -47,7 +47,10 @@ public:
     int32_t RecordProcessExtensionExitReason(
         const int32_t pid, const std::string &bundleName, const ExitReason &exitReason,
         const AppExecFwk::RunningProcessInfo &processInfo, bool withKillMsg);
-    int32_t RecordProcessExitReason(const int32_t pid, const ExitReason &exitReason, bool fromKillWithReason);
+    int32_t RecordProcessExitReason(const int32_t pid, const ExitReason &exitReason, bool fromKillWithReason,
+        int32_t callerPid = DEFAULT_INVAL_VALUE);
+    int32_t RecordAppKillId(const std::string &bundleName, int32_t uid, int32_t pid,
+        uint32_t accessTokenId, int32_t killId);
     int32_t RecordProcessExitReason(int32_t pid, int32_t uid, const ExitReason &exitReason);
     int32_t RecordUIAbilityExitReason(const pid_t pid, const std::string &abilityName, const ExitReason &exitReason,
         int32_t callerPid = DEFAULT_INVAL_VALUE, bool isLastAbilityOfProcess = true);
@@ -64,10 +67,53 @@ public:
     void RecordInvalidKillId(int32_t pid, const ExitReasonCompability &params,
         const std::string &bundleName = "", int32_t userId = 0, int32_t callerPid = DEFAULT_INVAL_VALUE);
 
+    /**
+     * @brief Report the exit reason of THIS force stop event for every matched process and stamp
+     *        kill id/caller info right before the kill, best effort: all failures are logged and
+     *        never block the kill. The report scope aligns with the kill scope: bundle + resolved
+     *        appIndex (per-pid reverse lookup, covering all multi-instance forms) + users
+     *        (originUserId -1 means all users, enumerated per active os account).
+     * @param bundleName bundle name of the application to report.
+     * @param appIndex resolved application index of the kill scope.
+     * @param userId the resolved user id of the caller.
+     * @param originUserId the original user id, -1 means the kill crosses all users.
+     * @param recordPid force stop stamping scope, >0 means only the specified pid.
+     * @param exitReason the declared exit reason, normalized by the caller.
+     * @param callerPid the pid of the force stop caller, captured at the transaction boundary.
+     */
+    void ReportForceStopKillId(const std::string &bundleName, int32_t appIndex, int32_t userId,
+        int32_t originUserId, int32_t recordPid, int32_t exitReason, int32_t callerPid);
+
+    /**
+     * @brief Enumerate the running process records of the force stop kill scope: per active os
+     *        account when originUserId is -1 (the kill crosses all users), the resolved user
+     *        otherwise. An empty result means nothing to report, never an error.
+     * @param bundleName bundle name of the application to report.
+     * @param userId the resolved user id of the caller.
+     * @param originUserId the original user id, -1 means the kill crosses all users.
+     * @return The running process infos of the kill scope.
+     */
+    static std::vector<AppExecFwk::RunningProcessInfo> CollectForceStopProcessInfos(
+        const std::string &bundleName, int32_t userId, int32_t originUserId);
+
+    /**
+     * @brief Report the exit reason of one force stop event for one candidate process and stamp
+     *        kill id/caller info, best effort: all failures are logged and never block the kill.
+     * @param pid pid of the candidate process record.
+     * @param bundleName bundle name of the application to report.
+     * @param appIndex resolved application index of the kill scope.
+     * @param recordPid force stop stamping scope, >0 means only the specified pid.
+     * @param exitReason the declared exit reason, normalized by the caller.
+     * @param callerPid the pid of the force stop caller, captured at the transaction boundary.
+     */
+    void ReportForceStopKillIdForPid(int32_t pid, const std::string &bundleName, int32_t appIndex,
+        int32_t recordPid, int32_t exitReason, int32_t callerPid, bool persistKV);
+
 private:
     int32_t RecordProcessExitReason(const int32_t pid, const std::string bundleName, const int32_t uid,
         const uint32_t accessTokenId, const ExitReason &exitReason,
-        const AppExecFwk::RunningProcessInfo &processInfo, bool fromKillWithReason);
+        const AppExecFwk::RunningProcessInfo &processInfo, bool fromKillWithReason,
+        int32_t callerPid = DEFAULT_INVAL_VALUE);
     void GetActiveAbilityList(int32_t uid, std::vector<std::string> &abilityLists, const int32_t pid);
     void GetActiveAbilityListFromUIAbilityManager(int32_t uid, std::vector<std::string> &abilityLists,
         const int32_t pid);

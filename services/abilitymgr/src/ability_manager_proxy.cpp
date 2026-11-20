@@ -2418,6 +2418,44 @@ int32_t AbilityManagerProxy::KillCollaboratorProcess(int32_t collaboratorType,
     return reply.ReadInt32();
 }
 
+int32_t AbilityManagerProxy::ForceStopProcess(const std::string &bundleName, const std::string &reason,
+    int32_t userId, int32_t exitReason, int32_t recordPid)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+
+    if (!WriteInterfaceToken(data)) {
+        return INNER_ERR;
+    }
+    if (!data.WriteString16(Str8ToStr16(bundleName))) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "bundleName write fail");
+        return ERR_INVALID_VALUE;
+    }
+    if (!data.WriteString16(Str8ToStr16(reason))) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "reason write fail");
+        return ERR_INVALID_VALUE;
+    }
+    if (!data.WriteInt32(userId)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "userId write fail");
+        return ERR_INVALID_VALUE;
+    }
+    if (!data.WriteInt32(exitReason)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "exitReason write fail");
+        return ERR_INVALID_VALUE;
+    }
+    if (!data.WriteInt32(recordPid)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "recordPid write fail");
+        return ERR_INVALID_VALUE;
+    }
+    int error = SendRequest(AbilityManagerInterfaceCode::FORCE_STOP_PROCESS, data, reply, option);
+    if (error != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "request error:%{public}d", error);
+        return error;
+    }
+    return reply.ReadInt32();
+}
+
 void AbilityManagerProxy::ScheduleClearRecoveryPageStack()
 {
     MessageParcel data;

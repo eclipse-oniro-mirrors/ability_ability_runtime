@@ -749,6 +749,17 @@ bool PermissionVerification::IsCustomSandboxCall(const uint32_t specifyTokenId, 
     return false;
 }
 
+bool PermissionVerification::CheckPermissionForForceStopProcess(int32_t targetUserId) const
+{
+    // ForceStopProcess serves only the aa force-stop source: shell callers or debug tool callers
+    // admitted by IsLocalDebugOtherAppsCall/IsCustomSandboxCall (developer mode + permission,
+    // with the cross-user check when an explicit target user is given); SA calls are not exempt
+    auto isShellCall = IsShellCall();
+    auto isLocalDebugCall = IsLocalDebugOtherAppsCall(0, targetUserId);
+    auto isCustomSandboxCall = IsCustomSandboxCall(0, targetUserId);
+    return isShellCall || isLocalDebugCall || isCustomSandboxCall;
+}
+
 bool PermissionVerification::IsCrossUserForSandboxCall(int32_t targetUserId) const
 {
     if (targetUserId < 0) {

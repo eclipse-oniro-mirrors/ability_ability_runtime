@@ -24,6 +24,11 @@ int AccessTokenKit::VerifyAccessToken(AccessTokenID tokenID, const std::string &
 {
     return AAFwk::MyStatus::GetInstance().isVerifyAccessToken_;
 }
+
+ATokenTypeEnum AccessTokenKit::GetTokenTypeFlag(AccessTokenID tokenID)
+{
+    return static_cast<ATokenTypeEnum>(AAFwk::MyStatus::GetInstance().atkGetTokenTypeFlag_);
+}
 }  // namespace AccessToken
 }  // namespace Security
 }  // namespace OHOS
