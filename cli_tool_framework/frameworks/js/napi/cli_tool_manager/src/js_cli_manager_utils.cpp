@@ -349,6 +349,12 @@ bool UnwrapExecCmdOptions(napi_env env, napi_value obj, ExecCmdOptions &options,
     }
     UnwrapBoolProperty(env, obj, "isShellCommand", options.isShellCommand);
     UnwrapStringProperty(env, obj, "challenge", options.challenge);
+    UnwrapStringProperty(env, obj, "subjectId", options.subjectId);
+    if (options.subjectId.size() > MAX_CMD_LENGTH) {
+        msg = "subjectId exceeds " + std::to_string(MAX_CMD_LENGTH) + "-byte limit";
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "%{public}s", msg.c_str());
+        return false;
+    }
     // Optional trace identifiers: absent / undefined / null means not provided;
     // a present value must satisfy the shared trace-id rule (1~256 [A-Za-z0-9_-]).
     std::string traceMsg;
@@ -649,6 +655,8 @@ napi_value CreateJsExecCmdParam(napi_env env, const ExecCmdParam &param)
         AppExecFwk::WrapBoolToJS(env, param.execCmdOptions.isShellCommand));
     napi_set_named_property(env, jsOpts, "challenge",
         AppExecFwk::WrapStringToJS(env, param.execCmdOptions.challenge));
+    napi_set_named_property(env, jsOpts, "subjectId",
+        AppExecFwk::WrapStringToJS(env, param.execCmdOptions.subjectId));
     // Trace identifiers: only surfaced when provided so the before-hook can
     // observe them (read-only for the hook; modifications do not propagate).
     if (!param.execCmdOptions.toolCallId.empty()) {

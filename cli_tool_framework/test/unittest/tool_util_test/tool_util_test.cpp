@@ -54,6 +54,8 @@ using namespace OHOS::CliTool;
 namespace OHOS {
 namespace CliTool {
 namespace {
+const std::string TEST_SUBJECT_ID = "test_agent_subject_id";
+
 AAFwk::WantParams ConvertToWantParams(const std::map<std::string, std::string> &args)
 {
     AAFwk::WantParams params;
@@ -2191,6 +2193,63 @@ HWTEST_F(ToolUtilTest, GenerateCmdSandboxConfig_0400, TestSize.Level1)
     EXPECT_FALSE(result);
 
     GTEST_LOG_(INFO) << "ToolUtil_GenerateCmdSandboxConfig_0400 end";
+}
+
+/**
+ * @tc.name: ToolUtil_GenerateCmdSandboxConfig_SubjectId_0100
+ * @tc.desc: Verify subjectId is included in the shell sandbox configuration.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, GenerateCmdSandboxConfig_SubjectId_0100, TestSize.Level1)
+{
+    using json = nlohmann::json;
+    CliToolTest::AccessTokenKitMock::getTokenTypeFlagIsHap = true;
+    CliToolTest::AccessTokenKitMock::getHapTokenInfoRet = 0;
+    CliToolTest::AccessTokenKitMock::hapBundleName = "com.test.agent";
+    CliToolTest::AccessTokenKitMock::hapInstIndex = 0;
+    CliToolTest::AccessTokenKitMock::hapUserID = 100;
+    AppExecFwk::BundleMgrHelper::getBundleInfoResult = 0;
+    AppExecFwk::BundleMgrHelper::gid = 2000;
+    AppExecFwk::BundleMgrHelper::bundleName = "com.test.agent";
+
+    ExecCmdParam param;
+    param.execCmdOptions.subjectId = TEST_SUBJECT_ID;
+    std::string sandboxConfig;
+    std::string bundleName;
+    ASSERT_TRUE(ToolUtil::GenerateCmdSandboxConfig(param, 12345, sandboxConfig, bundleName));
+
+    auto config = json::parse(sandboxConfig, nullptr, false);
+    ASSERT_FALSE(config.is_discarded());
+    ASSERT_TRUE(config.contains("subjectId"));
+    EXPECT_EQ(config["subjectId"].get<std::string>(), TEST_SUBJECT_ID);
+}
+
+/**
+ * @tc.name: ToolUtil_GenerateCmdSandboxConfig_SubjectId_0200
+ * @tc.desc: Verify an empty subjectId does not prevent sandbox configuration generation.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolUtilTest, GenerateCmdSandboxConfig_SubjectId_0200, TestSize.Level1)
+{
+    using json = nlohmann::json;
+    CliToolTest::AccessTokenKitMock::getTokenTypeFlagIsHap = true;
+    CliToolTest::AccessTokenKitMock::getHapTokenInfoRet = 0;
+    CliToolTest::AccessTokenKitMock::hapBundleName = "com.test.agent";
+    CliToolTest::AccessTokenKitMock::hapInstIndex = 0;
+    CliToolTest::AccessTokenKitMock::hapUserID = 100;
+    AppExecFwk::BundleMgrHelper::getBundleInfoResult = 0;
+    AppExecFwk::BundleMgrHelper::gid = 2000;
+    AppExecFwk::BundleMgrHelper::bundleName = "com.test.agent";
+
+    ExecCmdParam param;
+    std::string sandboxConfig;
+    std::string bundleName;
+    ASSERT_TRUE(ToolUtil::GenerateCmdSandboxConfig(param, 12345, sandboxConfig, bundleName));
+
+    auto config = json::parse(sandboxConfig, nullptr, false);
+    ASSERT_FALSE(config.is_discarded());
+    ASSERT_TRUE(config.contains("subjectId"));
+    EXPECT_EQ(config["subjectId"].get<std::string>(), "");
 }
 
 // ---- GenerateSandboxConfig: ForCli callerIdentity env injection (issue-16055) ----

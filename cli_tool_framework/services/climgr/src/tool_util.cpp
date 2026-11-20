@@ -245,6 +245,7 @@ bool ToolUtil::GenerateCmdSandboxConfig(const ExecCmdParam &param, AccessToken::
     config["bundleName"] = bundleInfo.name;
     config["type"] = "shell";
     config["policy"] = param.execCmdOptions.policy;
+    config["subjectId"] = param.execCmdOptions.subjectId;
     if (param.execCmdOptions.workDir != "") {
         config["workdir"] = param.execCmdOptions.workDir;
     }

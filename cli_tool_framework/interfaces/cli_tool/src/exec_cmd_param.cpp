@@ -19,6 +19,15 @@
 
 namespace OHOS {
 namespace CliTool {
+bool ExecCmdOptions::MarshallingTail(Parcel &parcel) const
+{
+    if (!parcel.WriteString(subjectId)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Write subjectId failed.");
+        return false;
+    }
+    return true;
+}
+
 bool ExecCmdOptions::Marshalling(Parcel &parcel) const
 {
     if (!parcel.WriteString(workDir)) {
@@ -65,6 +74,9 @@ bool ExecCmdOptions::Marshalling(Parcel &parcel) const
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Write taskId failed.");
         return false;
     }
+    if (!MarshallingTail(parcel)) {
+        return false;
+    }
     return true;
 }
 
@@ -85,28 +97,34 @@ ExecCmdOptions *ExecCmdOptions::Unmarshalling(Parcel &parcel)
     // Options tails, not message tail: valid for same-image upgrades only (mixed deploy mis-aligns).
     result->isShellCommand = true;
     if (!parcel.ReadBool(result->isShellCommand)) {
-        TAG_LOGD(AAFwkTag::CLI_TOOL, "isShellCommand not present, using default(true).");
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "isShellCommand not present, using default(true).");
         return result;
     }
     result->challenge = "";
     if (!parcel.ReadString(result->challenge)) {
-        TAG_LOGD(AAFwkTag::CLI_TOOL, "challenge not present, using default(\"\").");
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "challenge not present, using default(\"\").");
         return result;
     }
     // Trace identifiers: tolerant tail reads, default "" (not provided).
     result->toolCallId = "";
     if (!parcel.ReadString(result->toolCallId)) {
-        TAG_LOGD(AAFwkTag::CLI_TOOL, "toolCallId not present, using default(\"\").");
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "toolCallId not present, using default(\"\").");
         return result;
     }
     result->dmSessionId = "";
     if (!parcel.ReadString(result->dmSessionId)) {
-        TAG_LOGD(AAFwkTag::CLI_TOOL, "dmSessionId not present, using default(\"\").");
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "dmSessionId not present, using default(\"\").");
+        return result;
     }
     // Attribution key: tolerant tail read, default "" (not provided).
     result->taskId = "";
     if (!parcel.ReadString(result->taskId)) {
-        TAG_LOGD(AAFwkTag::CLI_TOOL, "taskId not present, using default(\"\").");
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "taskId not present, using default(\"\").");
+        return result;
+    }
+    result->subjectId = "";
+    if (!parcel.ReadString(result->subjectId)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "subjectId not present, using default(\"\").");
     }
     return result;
 }
