@@ -52,8 +52,6 @@ public:
 
     void OnAppProcessDied(int32_t uid);
 
-    bool IsSubSpawn(pid_t pid);
-
 private:
     SubSpawnManager();
     ~SubSpawnManager();

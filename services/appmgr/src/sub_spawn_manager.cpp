@@ -426,12 +426,6 @@ void SubSpawnManager::OnAppProcessDied(int32_t uid)
         uid, record->GetKillReason().c_str());
 }
 
-bool SubSpawnManager::IsSubSpawn(pid_t pid)
-{
-    std::lock_guard<std::mutex> lock(mutex_);
-    return pidToRecordMap_.find(pid) != pidToRecordMap_.end();
-}
-
 void SubSpawnManager::StartIdleTimer(const std::shared_ptr<SubSpawnRecord> &record)
 {
     if (!record || record->IsIdleTimerActive()) {

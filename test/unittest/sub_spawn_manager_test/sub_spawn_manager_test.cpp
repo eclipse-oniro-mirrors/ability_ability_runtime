@@ -93,25 +93,6 @@ HWTEST_F(SubSpawnManagerTest, ShouldUseSubSpawn_005, TestSize.Level1)
 }
 
 /**
- * @tc.name: IsSubSpawn_001
- * @tc.desc: Test IsSubSpawn returns false for unknown pid
- */
-HWTEST_F(SubSpawnManagerTest, IsSubSpawn_001, TestSize.Level1)
-{
-    EXPECT_FALSE(SubSpawnManager::GetInstance().IsSubSpawn(99999));
-}
-
-/**
- * @tc.name: IsSubSpawn_002
- * @tc.desc: Test IsSubSpawn returns false for invalid pid
- */
-HWTEST_F(SubSpawnManagerTest, IsSubSpawn_002, TestSize.Level1)
-{
-    EXPECT_FALSE(SubSpawnManager::GetInstance().IsSubSpawn(0));
-    EXPECT_FALSE(SubSpawnManager::GetInstance().IsSubSpawn(-1));
-}
-
-/**
  * @tc.name: OnSubSpawnExited_001
  * @tc.desc: Test OnSubSpawnExited with unknown pid does not crash
  */
