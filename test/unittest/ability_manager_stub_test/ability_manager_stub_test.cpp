@@ -1837,7 +1837,7 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartAbilityForOptionsInner_
  * EnvConditions: NA
  * CaseDescription: Verify the uid gate rejects non-softbus_service callers before parcel parsing.
  */
-HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartUIAbilityWithDisplayIdPassthroughInner_RejectNonSoftbus_001, TestSize.Level1)
+HWTEST_F(AbilityManagerStubTest, StartUIAbilityPassthroughInner_RejectNonSoftbus_001, TestSize.Level1)
 {
     MessageParcel data;
     MessageParcel reply;
@@ -1852,9 +1852,10 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartUIAbilityWithDisplayIdP
  * SubFunction: NA
  * FunctionPoints: AbilityManagerStub StartUIAbilityWithDisplayIdPassthroughInner
  * EnvConditions: NA
- * CaseDescription: Verify the uid gate fires before parcel parsing; a non-softbus caller is rejected even when the parcel carries a valid Want/StartOptions.
+ * CaseDescription: Verify the uid gate fires before parcel parsing; a non-softbus caller is
+ *                 rejected even when the parcel carries a valid Want/StartOptions.
  */
-HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_StartUIAbilityWithDisplayIdPassthroughInner_RejectNonSoftbus_002, TestSize.Level1)
+HWTEST_F(AbilityManagerStubTest, StartUIAbilityPassthroughInner_RejectNonSoftbus_002, TestSize.Level1)
 {
     MessageParcel data;
     MessageParcel reply;

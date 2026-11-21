@@ -506,7 +506,8 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityWithDisplayIdPassthrough
     const sptr<IRemoteObject> callerToken;
     int32_t userId = 0;
     int requestCode = 0;
-    auto result = abilityMs->StartUIAbilityWithDisplayIdPassthrough(want, startOptions, callerToken, userId, requestCode);
+    auto result = abilityMs->StartUIAbilityWithDisplayIdPassthrough(want, startOptions, callerToken,
+        userId, requestCode);
     EXPECT_NE(result, ERR_OK);
 }
 
@@ -527,7 +528,8 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityWithDisplayIdPassthrough
     const sptr<IRemoteObject> callerToken;
     int32_t userId = 0;
     int requestCode = 0;
-    auto result = abilityMs->StartUIAbilityWithDisplayIdPassthrough(want, startOptions, callerToken, userId, requestCode);
+    auto result = abilityMs->StartUIAbilityWithDisplayIdPassthrough(want, startOptions, callerToken,
+        userId, requestCode);
     EXPECT_NE(result, ERR_OK);
 }
 
@@ -614,7 +616,7 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityWithDisplayIdPassthrough
  *                 so ReadParcelable<StartOptions> returns nullptr, covering the
  *                 `if (startOptions == nullptr)` branch.
  */
-HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityWithDisplayIdPassthroughInner_StartOptionsNull_001, TestSize.Level1)
+HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityPassthroughInner_StartOptionsNull_001, TestSize.Level1)
 {
     IPCSkeleton::SetCallingUid(4700);
     auto abilityMs = std::make_shared<AbilityManagerService>();
@@ -635,7 +637,7 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityWithDisplayIdPassthrough
  * CaseDescription: With uid mocked to 4700, a valid Want, StartOptions, and WriteBool(true) followed by a
  *                 callerToken, the `if (data.ReadBool())` true branch is covered (ReadRemoteObject executed).
  */
-HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityWithDisplayIdPassthroughInner_WithCallerToken_001, TestSize.Level1)
+HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityPassthroughInner_WithCallerToken_001, TestSize.Level1)
 {
     IPCSkeleton::SetCallingUid(4700);
     auto abilityMs = std::make_shared<AbilityManagerService>();
