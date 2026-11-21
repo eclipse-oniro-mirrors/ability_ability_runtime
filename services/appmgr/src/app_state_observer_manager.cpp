@@ -1225,7 +1225,7 @@ void AppStateObserverManager::OnSubSpawnProcessCreated(pid_t pid, const std::str
     data->uid = uid;
     data->processName = processName;
     data->processType = ProcessType::CHILD;
-    HandleOnProcessCreated(*data, BundleType::APP);
+    HandleOnProcessCreated(data, BundleType::APP);
 }
 
 void AppStateObserverManager::OnSubSpawnProcessDied(pid_t pid, const std::string &bundleName,
@@ -1241,7 +1241,7 @@ void AppStateObserverManager::OnSubSpawnProcessDied(pid_t pid, const std::string
     data->uid = uid;
     data->processName = processName;
     data->processType = ProcessType::CHILD;
-    HandleOnProcessDied(*data, BundleType::APP);
+    HandleOnProcessDied(data, BundleType::APP);
 }
 
 std::shared_ptr<ProcessData> AppStateObserverManager::WrapProcessData(
