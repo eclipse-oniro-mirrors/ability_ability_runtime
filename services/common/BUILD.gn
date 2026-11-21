@@ -359,6 +359,7 @@ ohos_shared_library("app_util") {
     "src/event_report.cpp",
     "src/hitrace_chain_utils.cpp",
     "src/json_utils.cpp",
+    "src/native_lib_path_util.cpp",
     "src/param_update/ability_cloud_push_manager.cpp",
     "src/param_update/ability_cloud_push_reader.cpp",
     "src/param_update/ability_cloud_push_sign_tools.cpp",
@@ -373,6 +374,7 @@ ohos_shared_library("app_util") {
   ]
 
   external_deps = [
+    "ability_base:extractortool",
     "bundle_framework:appexecfwk_base",
     "bounds_checking_function:libsec_shared",
     "c_utils:utils",
@@ -435,6 +437,7 @@ ohos_static_library("app_util_static") {
     "src/event_report.cpp",
     "src/hitrace_chain_utils.cpp",
     "src/json_utils.cpp",
+    "src/native_lib_path_util.cpp",
     "src/param_update/ability_cloud_push_manager.cpp",
     "src/param_update/ability_cloud_push_reader.cpp",
     "src/param_update/ability_cloud_push_sign_tools.cpp",
@@ -464,6 +467,7 @@ ohos_static_library("app_util_static") {
     "ipc:ipc_single",
     "json:nlohmann_json_static",
     "samgr:samgr_proxy",
+    "ability_base:extractortool",
     "ability_base:want",
     "common_event_service:cesfwk_innerkits",
     "openssl:libcrypto_shared",

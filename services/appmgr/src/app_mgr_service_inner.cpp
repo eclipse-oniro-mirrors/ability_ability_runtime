@@ -82,6 +82,8 @@
 #include "os_account_manager.h"
 #include "app_native_spawn_manager.h"
 #include "app_pidfd_manager.h"
+#include "sub_spawn_manager.h"
+#include "native_lib_path_util.h"
 #ifdef SUPPORT_SCREEN
 #include "locale_config.h"
 #endif
@@ -3431,6 +3433,11 @@ void AppMgrServiceInner::ApplicationTerminated(const int32_t recordId)
     appRecord->SetProcessChangeReason(ProcessChangeReason::REASON_APP_TERMINATED);
     OnAppStateChanged(appRecord, ApplicationState::APP_STATE_TERMINATED, false, false, false);
     appRunningManager_->RemoveAppRunningRecordById(recordId);
+    if (!appRunningManager_->CheckAppRunningRecordIsExistByUid(appRecord->GetUid())) {
+        SubSpawnManager::GetInstance().OnAppProcessDied(appRecord->GetUid());
+    } else {
+        TAG_LOGD(AAFwkTag::APPMGR, "keep subspawn, other live process with uid:%{public}d", appRecord->GetUid());
+    }
     AAFwk::EventInfo eventInfo;
     auto applicationInfo = appRecord->GetApplicationInfo();
     if (!applicationInfo) {
@@ -6744,6 +6751,11 @@ void AppMgrServiceInner::ClearAppRunningData(const std::shared_ptr<AppRunningRec
     KillChildProcess(appRecord);
     KillAttachedChildProcess(appRecord);
 #endif // SUPPORT_CHILD_PROCESS
+    if (!appRunningManager_->CheckAppRunningRecordIsExistByUid(appRecord->GetUid())) {
+        SubSpawnManager::GetInstance().OnAppProcessDied(appRecord->GetUid());
+    } else {
+        TAG_LOGD(AAFwkTag::APPMGR, "keep subspawn, other live process with uid:%{public}d", appRecord->GetUid());
+    }
 
     SendProcessExitEvent(appRecord);
 
@@ -11112,6 +11124,38 @@ int32_t AppMgrServiceInner::StartChildProcessImpl(const std::shared_ptr<ChildPro
     }
     {
         std::lock_guard<ffrt::mutex> lock(startChildProcessLock_);
+        auto appInfo = appRecord->GetApplicationInfo();
+        const auto &preloadSoList = appInfo ? appInfo->nativeChildProcessPreloadSoList :
+            std::vector<std::string>();
+        std::string nativeLibraryPath;
+        if (appInfo) {
+            nativeLibraryPath = appInfo->nativeLibraryPath;
+        }
+        if (SubSpawnManager::GetInstance().ShouldUseSubSpawn(
+                childProcessRecord->GetChildProcessType(), preloadSoList, nativeLibraryPath,
+                options.isolationMode)) {
+            startMsg.preloadSoList = preloadSoList;
+            if (appInfo) {
+                startMsg.appLibPath = GetDefaultAppLibPath(appInfo->nativeLibraryPath);
+            }
+            startMsg.bundleName = appRecord->GetBundleName();
+            pid_t subSpawnChildPid = SubSpawnManager::GetInstance().StartChildViaSubSpawn(
+                appRecord->GetUid(), startMsg);
+            if (subSpawnChildPid > 0) {
+                childPid = subSpawnChildPid;
+                childProcessRecord->SetPid(subSpawnChildPid);
+                childProcessRecord->SetUid(startMsg.uid);
+                appRecord->AddChildProcessRecord(subSpawnChildPid, childProcessRecord);
+                SubSpawnManager::GetInstance().OnChildProcessCreated(appRecord->GetUid(), subSpawnChildPid);
+                AppPidFdManager::GetInstance().AddWatcher(subSpawnChildPid, PidFdType::CHILD);
+                DelayedSingleton<AppStateObserverManager>::GetInstance()
+                    ->OnChildProcessCreated(childProcessRecord);
+                PostChildProcessAttachTimeoutTask(childProcessRecord);
+                TAG_LOGI(AAFwkTag::APPMGR, "child started via subspawn, pid:%{public}d", subSpawnChildPid);
+                return ERR_OK;
+            }
+            TAG_LOGW(AAFwkTag::APPMGR, "subspawn not available, fallback to nativespawn");
+        }
         ErrCode errCode = spawnClient->StartProcess(startMsg, pid);
         if (FAILED(errCode)) {
             if (options.isolationMode && options.isolationUid) {
@@ -11332,6 +11376,15 @@ void AppMgrServiceInner::OnChildProcessDied(std::shared_ptr<ChildProcessRecord> 
         RemoveChildProcessIsolationUid(childProcessRecord->GetUid());
         childProcessRecord->SetState(AppProcessState::APP_STATE_TERMINATED);
         DelayedSingleton<AppStateObserverManager>::GetInstance()->OnChildProcessDied(childProcessRecord);
+        auto hostRecord = childProcessRecord->GetHostRecord();
+        if (hostRecord) {
+            SubSpawnManager::GetInstance().OnChildProcessExited(hostRecord->GetUid(),
+                childProcessRecord->GetPid());
+        } else {
+            TAG_LOGD(AAFwkTag::APPMGR,
+                "host record gone, skip subspawn child count update, childPid:%{public}d",
+                childProcessRecord->GetPid());
+        }
     }
 }
 

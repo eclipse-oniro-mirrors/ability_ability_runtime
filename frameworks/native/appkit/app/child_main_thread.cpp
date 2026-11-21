@@ -430,7 +430,13 @@ void ChildMainThread::UpdateNativeChildLibModuleName(const AppLibPathMap &appLib
             auto ret = access(nativeLibPath.c_str(), F_OK);
             if (ret == 0) {
                 nativeLibModuleName_ = libPathPair.first;
-                nativeModuleMgr->SetAppLibPath(libPathPair.first, libPathPair.second, isSystemApp);
+                std::string existingNsName;
+                if (nativeModuleMgr->GetLdNamespaceName(libPathPair.first, existingNsName)) {
+                    TAG_LOGD(AAFwkTag::APPKIT, "namespace already exists: %{public}s, skip SetAppLibPath",
+                        existingNsName.c_str());
+                } else {
+                    nativeModuleMgr->SetAppLibPath(libPathPair.first, libPathPair.second, isSystemApp);
+                }
                 TAG_LOGI(AAFwkTag::APPKIT, "Find native lib in app module: %{public}s--%{public}s",
                     libPathPair.first.c_str(), nativeLibPath.c_str());
                 return;

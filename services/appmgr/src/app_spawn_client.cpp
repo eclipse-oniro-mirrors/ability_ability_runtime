@@ -52,6 +52,45 @@ constexpr const char* JITPERMISSIONSLIST_PERMISSIONS_NAME = "permissions";
 constexpr const char* UNINSTALL_BUNDLE_NAME = "uninstallDebugHapMsg";
 constexpr const char* IPCGROUPINFOLIST_IPCGROUPID = "ipcGroupId";
 constexpr const char* IPCGROUPINFOLIST_GID = "ipcGroupGid";
+
+std::string SerializePreloadSoList(const std::vector<std::string>& soPaths,
+    const std::string& libPath)
+{
+    TAG_LOGD(AAFwkTag::APPMGR, "SerializePreloadSoList: libPath=%{private}s, soCount=%{public}zu",
+        libPath.c_str(), soPaths.size());
+    nlohmann::json jsonArray = nlohmann::json::array();
+    std::vector<std::string> absSoPaths;
+    for (const auto& soPath : soPaths) {
+        if (soPath.empty()) {
+            TAG_LOGE(AAFwkTag::APPMGR, "invalid so path (empty)");
+            continue;
+        }
+        if (soPath.find("..") != std::string::npos) {
+            TAG_LOGE(AAFwkTag::APPMGR, "invalid so path (traversal): %{public}s", soPath.c_str());
+            continue;
+        }
+        if (soPath[0] == '/') {
+            TAG_LOGE(AAFwkTag::APPMGR, "invalid so path (absolute): %{public}s", soPath.c_str());
+            continue;
+        }
+        std::string absSoPath = libPath + "/" + soPath;
+        TAG_LOGD(AAFwkTag::APPMGR, "soPath=%{private}s -> absSoPath=%{private}s",
+            soPath.c_str(), absSoPath.c_str());
+        absSoPaths.push_back(absSoPath);
+    }
+    if (!absSoPaths.empty()) {
+        nlohmann::json entry;
+        entry["libPath"] = nlohmann::json::array({libPath});
+        entry["so"] = absSoPaths;
+        entry["ns"] = "default";
+        jsonArray.push_back(entry);
+        TAG_LOGD(AAFwkTag::APPMGR, "grouped: libPath=%{private}s, soCount=%{public}zu",
+            libPath.c_str(), absSoPaths.size());
+    }
+    std::string result = jsonArray.dump();
+    TAG_LOGD(AAFwkTag::APPMGR, "SerializePreloadSoList result: %{private}s", result.c_str());
+    return result;
+}
 }
 AppSpawnClient::AppSpawnClient(bool isNWebSpawn)
 {
@@ -471,6 +510,16 @@ int32_t AppSpawnClient::AppspawnSetExtMsgMore(const AppSpawnStartMsg &startMsg, 
             return ret;
         }
         TAG_LOGD(AAFwkTag::APPMGR, "Send JIT Permission: %{public}s", jitPermissionsStr.c_str());
+    }
+
+    if (!startMsg.preloadSoList.empty()) {
+        std::string preloadSoListJson = SerializePreloadSoList(startMsg.preloadSoList, startMsg.appLibPath);
+        ret = AppSpawnReqMsgAddStringInfo(reqHandle, MSG_EXT_NAME_SUBSPAWN_PRELOAD, preloadSoListJson.c_str());
+        if (ret) {
+            TAG_LOGE(AAFwkTag::APPMGR, "SubspawnPreload add fail, ret: %{public}d", ret);
+            return ret;
+        }
+        TAG_LOGD(AAFwkTag::APPMGR, "Send SubspawnPreload success");
     }
 
     return AppspawnSetExtMsgSec(startMsg, reqHandle);

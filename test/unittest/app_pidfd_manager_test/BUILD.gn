@@ -32,6 +32,8 @@ ohos_unittest("app_pidfd_manager_test") {
 
   sources = [
     "${ability_runtime_services_path}/appmgr/src/app_pidfd_manager.cpp",
+    "${ability_runtime_services_path}/appmgr/src/sub_spawn_manager.cpp",
+    "${ability_runtime_services_path}/appmgr/src/sub_spawn_record.cpp",
     "${ability_runtime_test_path}/mock/task_handler_wrap_mock/src/mock_task_handler_wrap.cpp",
     "app_pidfd_manager_test.cpp",
   ]

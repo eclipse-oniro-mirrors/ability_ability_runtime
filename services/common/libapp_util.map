@@ -20,6 +20,9 @@
       *AppUtils*;
       *ContinueRadar*;
       *EventReport*;
+      *GetDefaultAppLibPath*;
+      *GetDefaultNamespacePaths*;
+      *GetModuleSoPaths*;
       *JsonUtils*;
       *RateLimiter*;
       *RecordCostTimeUtil*;

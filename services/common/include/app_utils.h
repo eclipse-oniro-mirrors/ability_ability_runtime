@@ -401,6 +401,7 @@ public:
      * @return Whether system is in bopd or rescue mode.
      */
     bool IsBopdOrRescueMode();
+
 private:
     /**
      * LoadResidentProcessInExtremeMemory, load resident process in extreme low memory.
