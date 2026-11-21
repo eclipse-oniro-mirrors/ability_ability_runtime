@@ -44,5 +44,5 @@ void TraverseLibrarySupportDirectory(
     const std::string &appLibPathKey,
     AppLibPathMap &appLibPaths);
 }  // namespace AppExecFwk
-} // namespace OHOS
+}  // namespace OHOS
 #endif  // OHOS_ABILITY_RUNTIME_NATIVE_LIB_UTIL_H
