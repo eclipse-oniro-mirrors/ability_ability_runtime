@@ -47,6 +47,7 @@ constexpr uint32_t IDMS_CALLBACK_ON_FREE_INSTALL_DONE = 0;
 constexpr uint32_t UPDATE_ATOMOIC_SERVICE_TASK_TIMER = 24 * 60 * 60 * 1000; /* 24h */
 constexpr const char* KEY_IS_APP_RUNNING = "com.ohos.param.isAppRunning";
 constexpr const char* FOUNDATION_PROCESS_NAME = "foundation";
+constexpr const char* SUBFOUNDATION_PROCESS_NAME = "subfoundation";
 
 void HandleDMSCallback(int32_t resultCode, const FreeInstallInfo &info)
 {
@@ -144,7 +145,10 @@ int FreeInstallManager::StartFreeInstall(const Want &want, int32_t userId, int r
             info.want.GetStringParam(Want::PARAM_RESV_START_TIME));
         return GET_ABILITY_SERVICE_FAILED;
     }
-    if (!PermissionVerification::GetInstance()->CheckSpecificSystemAbilityAccessPermission(FOUNDATION_PROCESS_NAME)) {
+    bool isTrustedProcess =
+        PermissionVerification::GetInstance()->CheckSpecificSystemAbilityAccessPermission(FOUNDATION_PROCESS_NAME) ||
+        PermissionVerification::GetInstance()->CheckSpecificSystemAbilityAccessPermission(SUBFOUNDATION_PROCESS_NAME);
+    if (!isTrustedProcess) {
         info.want.SetParam(PARAM_FREEINSTALL_UID, IPCSkeleton::GetCallingUid());
     }
     int result = SetAppRunningState(info.want);
