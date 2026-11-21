@@ -45,7 +45,7 @@ public:
 
     ErrCode VerifyParamsForStartAbilityToBottom(const sptr<WindowCreateParams>& windowCreateParams);
 
-    sptr<ISceneSessionManagerLite> GetSceneSessionManagerLiteBySA(int32_t userId);
+    ISceneSessionManagerLite* GetSceneSessionManagerLiteBySA(int32_t userId) { return nullptr; }
 };
 
 } // namespace Rosen

@@ -15,8 +15,6 @@
 
 #include "mock_session_manager_service.h"
 
-#include "scene_session_manager_lite_interface.h"
-
 namespace OHOS {
 namespace Rosen {
 
@@ -26,11 +24,6 @@ ErrCode MockSessionManagerService::VerifyParamsForStartAbilityToBottom(
     const sptr<WindowCreateParams>& windowCreateParams)
 {
     return verifyParamsResult_;
-}
-
-sptr<ISceneSessionManagerLite> MockSessionManagerService::GetSceneSessionManagerLiteBySA(int32_t userId)
-{
-    return nullptr;
 }
 
 } // namespace Rosen
