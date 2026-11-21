@@ -364,6 +364,7 @@ group("unittest") {
       "dataobs_mgr_inner_test:unittest",
       "dataobs_mgr_obs_verify_test:unittest",
       "dataobs_mgr_proxy_test:unittest",
+      "dataobs_mgr_quota_test:unittest",
       "dataobs_mgr_service_dump_test:unittest",
       "dataobs_mgr_service_second_test:unittest",
       "dataobs_mgr_service_test:unittest",

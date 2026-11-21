@@ -23,6 +23,7 @@
 #include <map>
 #include <set>
 #include <mutex>
+#include <vector>
 #include "cpp/mutex.h"
 
 #include "data_ability_observer_interface.h"
@@ -93,10 +94,13 @@ private:
         void GetObs(const std::vector<std::string> &path, uint32_t index, NotifyInfo &info,
             int32_t userId, ObsMap &obsMap, std::set<DataObsMgrInnerExt::Node *> &nodeLogSet);
         bool AddObserver(const std::vector<std::string> &path, uint32_t index, const Entry &entry);
+        // removedTokens collects the tokenId of every entry removed from the subtree, so the
+        // caller can give the per-token quota slots back after tree pruning.
         bool RemoveObserver(const std::vector<std::string> &path, uint32_t index,
-            sptr<IDataAbilityObserver> dataObserver);
-        inline bool RemoveObserver(sptr<IDataAbilityObserver> dataObserver);
-        bool RemoveObserver(sptr<IRemoteObject> dataObserver);
+            sptr<IDataAbilityObserver> dataObserver, std::vector<uint32_t> &removedTokens);
+        inline bool RemoveObserver(sptr<IDataAbilityObserver> dataObserver,
+            std::vector<uint32_t> &removedTokens);
+        bool RemoveObserver(sptr<IRemoteObject> dataObserver, std::vector<uint32_t> &removedTokens);
         bool IsLimit(const Entry &entry);
 
     private:
