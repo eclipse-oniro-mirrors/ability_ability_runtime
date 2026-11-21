@@ -41,14 +41,6 @@ class ConnectionStateManager : public std::enable_shared_from_this<ConnectionSta
     DECLARE_DELAYED_SINGLETON(ConnectionStateManager)
 public:
     /**
-     * Get process name of a pid.
-     *
-     * @param pid target pid.
-     * @return process name of target pid.
-     */
-    static std::string GetProcessNameByPid(int32_t pid);
-
-    /**
      * init manager.
      *
      */

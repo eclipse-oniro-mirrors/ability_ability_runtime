@@ -567,7 +567,7 @@ void ConnectionRecord::AttachCallerInfo(std::shared_ptr<IndirectCallerInfo> indi
         callerTokenId_ = indirectCallerInfo->tokenId;
         callerUid_ = indirectCallerInfo->callerUid;
         callerPid_ = indirectCallerInfo->callerPid;
-        callerName_ = ConnectionStateManager::GetProcessNameByPid(callerPid_);
+        callerName_ = std::to_string(callerPid_);
         TAG_LOGD(AAFwkTag::CONNECTION, "callerTokenId_:%{public}u, callerUid_:%{public}d, callerPid_:%{public}d, "
             "callerName_:%{public}s", callerTokenId_, callerUid_, callerPid_, callerName_.c_str());
         return;
@@ -634,7 +634,7 @@ void ConnectionRecord::SetDirectCallerInfo()
 
     directCallerUid_ = static_cast<int32_t>(IPCSkeleton::GetCallingUid());
     directCallerPid_ = static_cast<int32_t>(IPCSkeleton::GetCallingPid());
-    directCallerName_ = ConnectionStateManager::GetProcessNameByPid(directCallerPid_);
+    directCallerName_ = std::to_string(directCallerPid_);
 
     TAG_LOGD(AAFwkTag::CONNECTION, "directCallerTokenId_:%{public}u, directCallerUid_:%{public}d, "
         "directCallerPid_:%{public}d, directCallerName_:%{public}s", directCallerTokenId_, directCallerUid_,

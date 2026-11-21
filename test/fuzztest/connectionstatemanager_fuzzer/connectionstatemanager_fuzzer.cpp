@@ -210,7 +210,6 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
 
     // fuzz for ConnectionStateManager
     auto connectionStateManager = std::make_shared<ConnectionStateManager>();
-    connectionStateManager->GetProcessNameByPid(int32Param);
     connectionStateManager->Init();
     connectionStateManager->RegisterObserver(observer);
     connectionStateManager->UnregisterObserver(observer);

@@ -45,11 +45,6 @@ ConnectionStateManager::ConnectionStateManager() {}
 
 ConnectionStateManager::~ConnectionStateManager() {}
 
-std::string ConnectionStateManager::GetProcessNameByPid(int32_t pid)
-{
-    return std::to_string(pid);
-}
-
 void ConnectionStateManager::Init(const std::shared_ptr<TaskHandlerWrap> &handler)
 {
     if (!observerController_) {
