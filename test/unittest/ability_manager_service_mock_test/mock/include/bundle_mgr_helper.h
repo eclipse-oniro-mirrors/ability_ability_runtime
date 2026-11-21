@@ -52,7 +52,6 @@ public:
         ExtensionAbilityInfo &extensionInfo);
 
     static bool mockExtensionInfoSuccess;
-    static bool mockDualModeAppIndexZero;
 
 private:
     DECLARE_DELAYED_SINGLETON(BundleMgrHelper)

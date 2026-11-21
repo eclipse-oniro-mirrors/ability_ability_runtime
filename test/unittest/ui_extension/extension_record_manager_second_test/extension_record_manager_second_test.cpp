@@ -14,6 +14,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <algorithm>
 #include <thread>
 #include <chrono>
 
@@ -2359,7 +2360,9 @@ HWTEST_F(BackgroundUserExtensionMonitorTest, BackgroundUserExtension_ConcurrentA
     for (auto &t : threads) {
         t.join();
     }
-    EXPECT_EQ(monitor->cachedEvents_.size(), static_cast<size_t>(threadCount));
+    size_t expectedSize = std::min(static_cast<size_t>(threadCount),
+        static_cast<size_t>(monitor->MAX_CACHED_EVENTS));
+    EXPECT_EQ(monitor->cachedEvents_.size(), expectedSize);
 
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
