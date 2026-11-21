@@ -22,6 +22,7 @@
 #include "mock_permission_verification.h"
 #include "mock_my_flag.h"
 #include "mock_parameters.h"
+#include "mock_session_manager_service.h"
 #include "ability_manager_service.h"
 #include "insight_intent_execute_manager.h"
 #include "modal_system_dialog/modal_system_dialog_ui_extension.h"
@@ -665,12 +666,13 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityPassthroughInner_WithCal
  * Feature: AbilityManagerService
  * Function: StartAbilityForOptionInner
  * FunctionPoints: VerifyParamsForStartAbilityToBottom ERR_OK path
- * CaseDescription: With windowCreateParams_ set (positionZ=nullptr), VerifyParamsForStartAbilityToBottom
- *                 returns ERR_OK, the start flow continues. Without a BMS mock the downstream resolution
- *                 fails, covering the `windowCreateParams_ != nullptr` + `verifyRet == ERR_OK` branches.
+ * CaseDescription: With windowCreateParams_ set and mock returning ERR_OK, the start flow continues.
+ *                 Without a BMS mock the downstream resolution fails, covering the
+ *                 `windowCreateParams_ != nullptr` + `verifyRet == ERR_OK` branches.
  */
 HWTEST_F(AbilityManagerServiceFourthTest, StartAbilityForOptionInner_VerifyParamsOk_001, TestSize.Level1)
 {
+    Rosen::MockSessionManagerService::verifyParamsResult_ = ERR_OK;
     auto abilityMs = std::make_shared<AbilityManagerService>();
     Want want;
     want.SetElementName("test.bundleName", "test.abilityName");
@@ -684,23 +686,22 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartAbilityForOptionInner_VerifyParam
 /*
  * Feature: AbilityManagerService
  * Function: StartAbilityForOptionInner
- * FunctionPoints: VerifyParamsForStartAbilityToBottom permission-denied path
- * CaseDescription: With windowCreateParams_ set and positionZ=TOP, and the test process lacking
- *                 PERMISSION_CONTROL_DEVICE, VerifyParamsForStartAbilityToBottom returns 201,
- *                 covering the `verifyRet != ERR_OK` → return 201 branch.
+ * FunctionPoints: VerifyParamsForStartAbilityToBottom error path
+ * CaseDescription: With windowCreateParams_ set and mock returning 201, the
+ *                 `verifyRet != ERR_OK` branch is entered and 201 is returned.
  */
 HWTEST_F(AbilityManagerServiceFourthTest, StartAbilityForOptionInner_VerifyParamsFailed_001, TestSize.Level1)
 {
+    Rosen::MockSessionManagerService::verifyParamsResult_ = 201;
     auto abilityMs = std::make_shared<AbilityManagerService>();
     Want want;
     want.SetElementName("test.bundleName", "test.abilityName");
     StartOptions startOptions;
     startOptions.windowCreateParams_ = std::make_shared<Rosen::WindowCreateParams>();
-    startOptions.windowCreateParams_->positionZ =
-        std::make_shared<int32_t>(static_cast<int32_t>(Rosen::WindowPosition::TOP));
     const sptr<IRemoteObject> callerToken;
     auto result = abilityMs->StartAbilityForOptionInner(want, startOptions, callerToken, false, 0, 0);
     EXPECT_EQ(result, 201);
+    Rosen::MockSessionManagerService::verifyParamsResult_ = ERR_OK;
 }
 
 

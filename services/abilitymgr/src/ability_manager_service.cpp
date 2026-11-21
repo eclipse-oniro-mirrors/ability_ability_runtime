@@ -2713,11 +2713,7 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
     auto eventInfo = BuildEventInfo(want, userId);
     if (startOptions.windowCreateParams_ != nullptr) {
         sptr<Rosen::WindowCreateParams> windowCreateParams =
-            new (std::nothrow) Rosen::WindowCreateParams(*startOptions.windowCreateParams_);
-        if (windowCreateParams == nullptr) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "create windowCreateParams failed");
-            return ERR_INVALID_VALUE;
-        }
+            new Rosen::WindowCreateParams(*startOptions.windowCreateParams_);
         auto verifyRet = Rosen::MockSessionManagerService::GetInstance()
             .VerifyParamsForStartAbilityToBottom(windowCreateParams);
         if (verifyRet != ERR_OK) {
