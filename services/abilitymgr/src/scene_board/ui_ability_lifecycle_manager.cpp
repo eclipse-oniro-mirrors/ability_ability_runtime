@@ -674,16 +674,15 @@ int UIAbilityLifecycleManager::AttachAbilityThread(const sptr<IAbilityScheduler>
     const sptr<IRemoteObject> &token)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    if (!IsContainsAbility(token)) {
-        TAG_LOGW(AAFwkTag::ABILITYMGR, "Not in running list");
-        return ERR_INVALID_VALUE;
-    }
+    CHECK_TRUE_RETURN_RET(!IsContainsAbility(token), ERR_INVALID_VALUE, "Not in running list");
     auto abilityRecord = std::static_pointer_cast<UIAbilityRecord>(Token::GetAbilityRecordByToken(token));
     CHECK_POINTER_AND_RETURN(abilityRecord, ERR_INVALID_VALUE);
     abilityRecord->SetPid(IPCSkeleton::GetCallingPid());
     int32_t processAttachResult = DoProcessAttachment(abilityRecord);
 
     std::lock_guard<ffrt::mutex> guard(sessionLock_);
+    // Re-check under sessionLock_ to close the TOCTOU window of IsContainsAbility.
+    CHECK_TRUE_RETURN_RET(!IsContainsAbilityInner(token), ERR_INVALID_VALUE, "Check not in running list");
     TAG_LOGI(AAFwkTag::ABILITYMGR, "lifecycle name: %{public}s", abilityRecord->GetAbilityInfo().name.c_str());
     // Report the stashed cold-start attribution now that the pid is set.
     ReportPendingTaskAttribution(abilityRecord);

@@ -108,8 +108,21 @@ bool AbilityEcologicalRuleMgrServiceClient::CheckConnectService()
 
 void AbilityEcologicalRuleMgrServiceClient::OnRemoteSaDied(const wptr<IRemoteObject> &object)
 {
+    TAG_LOGI(AAFwkTag::ECOLOGICAL_RULE, "OnRemoteSaDied come.");
     std::lock_guard<std::mutex> autoLock(proxyLock_);
-    ecologicalRuleMgrServiceProxy_ = ConnectService();
+    if (ecologicalRuleMgrServiceProxy_ == nullptr) {
+        return;
+    }
+    auto serviceRemote = ecologicalRuleMgrServiceProxy_->AsObject();
+    if ((serviceRemote != nullptr) && (serviceRemote == object.promote())) {
+        if (deathRecipient_ != nullptr) {
+            serviceRemote->RemoveDeathRecipient(deathRecipient_);
+        }
+        ecologicalRuleMgrServiceProxy_ = nullptr;
+    }
+    // Do not call ConnectService() here: it performs samgr IPC (GetSystemAbilityManager /
+    // CheckSystemAbility) that may block, which must not run while holding proxyLock_.
+    // The proxy is reconnected lazily on the next CheckConnectService() call.
 }
 
 int32_t AbilityEcologicalRuleMgrServiceClient::EvaluateResolveInfos(const AAFwk::Want &want,
