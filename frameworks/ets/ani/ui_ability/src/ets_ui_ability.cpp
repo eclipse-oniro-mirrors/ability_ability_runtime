@@ -1261,6 +1261,22 @@ void EtsUIAbility::AbilityContinuationOrRecover(const Want &want)
         NotifyContinuationResult(want, true);
         return;
     }
+    if (want.GetBoolParam(Want::PARAM_ABILITY_RECOVERY_RESTART, false) && abilityRecovery_ != nullptr &&
+        abilityContext_ != nullptr && abilityContext_->GetEtsContentStorage() != nullptr) {
+        std::string pageStack = abilityRecovery_->GetSavedPageStack(AppExecFwk::StateReason::DEVELOPER_REQUEST);
+        auto env = etsRuntime_.GetAniEnv();
+        auto mainWindow = scene_ != nullptr ? scene_->GetMainWindow() : nullptr;
+        if (env == nullptr || mainWindow == nullptr) {
+            TAG_LOGE(AAFwkTag::UIABILITY, "null env or mainWindow");
+            OnSceneRestored();
+            return;
+        }
+        auto localStorageRef = reinterpret_cast<ani_ref>(abilityContext_->GetEtsContentStorage());
+        mainWindow->AniSetUIContent(pageStack, env, reinterpret_cast<ani_object>(localStorageRef),
+            Rosen::BackupAndRestoreType::APP_RECOVERY);
+        OnSceneRestored();
+        return;
+    }
     if (ShouldDefaultRecoverState(want) && abilityRecovery_ != nullptr && scene_ != nullptr) {
         TAG_LOGD(AAFwkTag::UIABILITY, "need restore");
         std::string pageStack = abilityRecovery_->GetSavedPageStack(AppExecFwk::StateReason::DEVELOPER_REQUEST);

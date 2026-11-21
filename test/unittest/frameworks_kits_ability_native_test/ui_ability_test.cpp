@@ -1617,6 +1617,35 @@ HWTEST_F(UIAbilityBaseTest, UIAbility_ShouldRecoverState_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: UIAbility_ShouldRecoverState_0200
+ * @tc.desc: UIAbility ShouldRecoverState test with ets content storage only (static ANI mode).
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(UIAbilityBaseTest, UIAbility_ShouldRecoverState_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s start.", __func__);
+    std::shared_ptr<AbilityRuntime::UIAbility> ability = std::make_shared<AbilityRuntime::UIAbility>();
+    ASSERT_NE(ability, nullptr);
+    auto abilityRecovery = std::make_shared<AbilityRecovery>();
+    ability->EnableAbilityRecovery(abilityRecovery, false);
+    auto abilityContext = std::make_shared<AbilityRuntime::AbilityContextImpl>();
+    ability->AttachAbilityContext(abilityContext);
+
+    AAFwk::Want want;
+    want.SetParam(Want::PARAM_ABILITY_RECOVERY_RESTART, true);
+    EXPECT_FALSE(ability->ShouldRecoverState(want));
+
+    int storage = 0;
+    ASSERT_EQ(abilityContext->RestoreWindowStage(&storage), ERR_OK);
+    EXPECT_FALSE(ability->ShouldRecoverState(want));
+
+    AAFwk::Want wantNoRecovery;
+    EXPECT_FALSE(ability->ShouldRecoverState(wantNoRecovery));
+    TAG_LOGI(AAFwkTag::TEST, "%{public}s end.", __func__);
+}
+
+/**
  * @tc.name: UIAbility_ShouldDefaultRecoverState_0200
  * @tc.desc: UIAbility ShouldDefaultRecoverState test.
  * @tc.type: FUNC
