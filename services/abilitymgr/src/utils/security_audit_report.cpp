@@ -15,6 +15,8 @@
 
 #include "security_audit_report.h"
 
+#include <chrono>
+
 #include "ability_manager_errors.h"
 #include "hilog_tag_wrapper.h"
 #include "interceptor/ability_interceptor_interface.h"
@@ -31,7 +33,6 @@ namespace {
 #ifdef ABILITYMS_SECURITY_GUARD_ENABLE
 constexpr int64_t EDM_BLOCKED_START_EVENT_ID = 0x18000104;
 constexpr const char *EVENT_VERSION = "1.0";
-constexpr const char *EDM_BLOCKED_START_EVENT_ERROR_MESSAGE = "start ability blocked by EDM rule";
 #endif
 }
 
@@ -39,17 +40,26 @@ void SecurityAuditReport::ReportEdmBlockedStart(const AbilityInterceptorParam &p
 {
 #ifdef ABILITYMS_SECURITY_GUARD_ENABLE
     using namespace Security::SecurityGuard;
-    nlohmann::json content;
-    content["bundleName"] = param.want.GetBundleNameRef();
-    content["moduleName"] = param.want.GetModuleNameRef();
-    content["abilityName"] = param.want.GetAbilityNameRef();
-    content["userId"] = param.userId;
-    content["appIndex"] = param.want.GetIntParam(Want::PARAM_APP_CLONE_INDEX_KEY, 0);
-    content["callerBundleName"] = param.want.GetStringParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME);
-    content["isPreload"] = param.IsPreloadStartAbility();
-    content["errCode"] = ERR_EDM_APP_CONTROLLED;
-    content["errMsg"] = EDM_BLOCKED_START_EVENT_ERROR_MESSAGE;
-    auto eventInfo = std::make_shared<EventInfo>(EDM_BLOCKED_START_EVENT_ID, EVENT_VERSION, content.dump());
+    auto timeStamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    nlohmann::json content = nlohmann::json {
+        { "bundleName", param.want.GetBundleNameRef() },
+        { "isPreload", param.IsPreloadStartAbility() },
+        { "timestamp_utc", timeStamp },
+    };
+    nlohmann::json metadata = nlohmann::json {
+        { "version", "" },
+        { "date", "" },
+        { "deviceId", "" },
+        { "userId", 0 },
+        { "eventType", 0 },
+    };
+    nlohmann::json contentJson = nlohmann::json {
+        { "content", content },
+        { "eventId", EDM_BLOCKED_START_EVENT_ID },
+        { "metadata", metadata },
+    };
+    auto eventInfo = std::make_shared<EventInfo>(EDM_BLOCKED_START_EVENT_ID, EVENT_VERSION, contentJson.dump());
     auto ret = NativeDataCollectKit::ReportSecurityInfoAsync(eventInfo);
     TAG_LOGW(AAFwkTag::ABILITYMGR,
         "ReportEdmBlockedStart bundle:%{public}s, isPreload:%{public}d, ret:%{public}d",
