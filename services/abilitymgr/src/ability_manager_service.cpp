@@ -1559,6 +1559,12 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
     if (!param.isStartAsCaller || param.isImplicit) {
         param.want.RemoveParam("ability.params.picker.erms.policy");
     }
+    // The only SCB-originated StartAbility-family entry (StartSpecifiedAbilityBySCB, marked by
+    // isBySCB) replays the window-archived want; that channel never declares task attribution,
+    // so the archived key dies here and the stash armed downstream fails closed at the callback.
+    if (param.isBySCB) {
+        param.want.RemoveParam(Want::PARAM_RESV_AGENT_TASK_ID);
+    }
     if (!AAFwk::PermissionVerification::GetInstance()->JudgeCallerIsAllowedToUseSystemAPI()) {
         param.want.RemoveParam(WINDOW_PARAMS_SUGGESTION_SOURCE);
         param.want.RemoveParam(WINDOW_PARAMS_APP_LABEL);
@@ -3747,6 +3753,9 @@ int AbilityManagerService::StartUIAbilityBySCB(sptr<SessionInfo> sessionInfo, Ab
         CHECK_POINTER_AND_RETURN(uiAbilityManager, ERR_INVALID_VALUE);
         if (uiAbilityManager->GetUIAbilityRecordBySessionInfo(sessionInfo) == nullptr) {
             TAG_LOGI(AAFwkTag::ABILITYMGR, "first time open");
+            // Stale pre-start session with no free-install task: no stash, so the
+            // window-returned task key is not consumed (anti-replay by design).
+            sessionInfo->want.RemoveParam(Want::PARAM_RESV_AGENT_TASK_ID);
             return StartUIAbilityByPreInstallInner(sessionInfo, 0, params, isColdStart);
         }
         return StartUIAbilityBySCBDefault(sessionInfo, params, isColdStart);
@@ -3760,6 +3769,8 @@ int AbilityManagerService::StartUIAbilityBySCB(sptr<SessionInfo> sessionInfo, Ab
             return taskInfo.resultCode;
         }
         TAG_LOGI(AAFwkTag::ABILITYMGR, "free install succeeds");
+        // Same handoff as StartUIAbilityByPreInstall: the task's original want is the carrier.
+        UpdateCallerInfoUtil::GetInstance().RestoreAgentTaskIdParam(taskInfo.want, sessionInfo->want);
         return StartUIAbilityByPreInstallInner(sessionInfo, taskInfo.specifyTokenId, params, isColdStart);
     }
 
@@ -3807,6 +3818,10 @@ int AbilityManagerService::StartUIAbilityBySCBDefault(sptr<SessionInfo> sessionI
     // Restore cached caller info to want so SCB-returned IPC values don't override the originals.
     if (hasCachedInfo) {
         UpdateCallerInfoUtil::GetInstance().RestoreCallerInfoToWant(sessionInfo->want, abilitySessionInfo);
+    } else {
+        // No stash for this callback: never consume the window-returned task key
+        // (relays/replays die here; SCB-held copies are not authoritative).
+        sessionInfo->want.RemoveParam(Want::PARAM_RESV_AGENT_TASK_ID);
     }
     if (abilitySessionInfo.isWebSandBoxClone) {
         sessionInfo->want.RemoveParam(AbilityRuntime::ServerConstant::DLP_INDEX);
@@ -10366,6 +10381,14 @@ void AbilityManagerService::OnTaskFinished(const std::string &taskId, int32_t us
     }
     TAG_LOGI(AAFwkTag::ABILITYMGR,
         "task finished callback, taskId=%{public}s, userId=%{public}d", taskId.c_str(), userId);
+    // Task ids are globally namespaced, so clean every user's bookkeeping;
+    // a surviving stale handle would dedupe id reuse forever.
+    auto uiAbilityManagers = GetUIAbilityManagers();
+    for (auto &item : uiAbilityManagers) {
+        if (item.second != nullptr) {
+            item.second->CleanTaskAttributionsByTaskId(taskId);
+        }
+    }
     auto manager = GetConnectManagerByUserId(userId, AppExecFwk::ExtensionAbilityType::AGENT);
     if (manager == nullptr) {
         TAG_LOGW(AAFwkTag::ABILITYMGR,
@@ -18686,6 +18709,8 @@ int32_t AbilityManagerService::StartUIAbilityByPreInstall(const FreeInstallInfo 
         sessionInfo = it->second;
         CHECK_POINTER_AND_RETURN(sessionInfo, ERR_INVALID_VALUE);
         (sessionInfo->want).SetElement(want.GetElement());
+        // Hand the key back from the original want; no key strips (fail-closed)
+        UpdateCallerInfoUtil::GetInstance().RestoreAgentTaskIdParam(want, sessionInfo->want);
     }
 
     if (sessionInfo->isMinimizedDuringFreeInstall) {

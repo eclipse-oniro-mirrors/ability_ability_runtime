@@ -20,13 +20,13 @@ ohos_unittest("ui_ability_lifecycle_manager_test") {
   module_out_path = module_output_path
 
   include_dirs = [
+    "mock/include",
     "${ability_runtime_path}/interfaces/kits/native/appkit/ability_bundle_manager_helper",
     "${ability_runtime_path}/interfaces/inner_api/ability_manager/include/status_bar_delegate",
     "${ability_runtime_services_path}/appdfr/include",
     "${ability_runtime_services_path}/abilitymgr/include/",
     "${ability_runtime_services_path}/abilitymgr/include/scene_board/",
     "${ability_runtime_test_path}/mock/services_abilitymgr_test/libs/ability_scheduler_mock",
-    "mock/include",
   ]
 
   public_configs =
@@ -52,6 +52,7 @@ ohos_unittest("ui_ability_lifecycle_manager_test") {
     "${ability_runtime_services_path}/abilitymgr/src/utils/dms_util.cpp",
     "${ability_runtime_services_path}/common/src/event_report.cpp",
     "mock/include/ipc_skeleton.cpp",
+    "mock/src/mock_app_scheduler.cpp",
     "ui_ability_lifecycle_manager_test.cpp",
   ]
 

@@ -237,6 +237,8 @@ public:
      */
     void RemoveAbilitySessionInfo(int32_t requestId);
 
+    size_t CleanTaskAttributionsByTaskId(const std::string &taskId);
+
     /**
      * @brief handle time out event
      *

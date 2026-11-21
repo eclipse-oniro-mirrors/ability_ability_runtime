@@ -40,6 +40,8 @@ public:
     void UpdateDmsCallerInfo(Want& want, const sptr<IRemoteObject> &callerToken);
     void CacheCallerInfoFromWant(const Want &want, AbilitySessionInfo &info);
     void RestoreCallerInfoToWant(Want &want, const AbilitySessionInfo &info);
+    // Key from an authoritative want restores; absent key strips (anti-replay).
+    void RestoreAgentTaskIdParam(const Want &srcWant, Want &dstWant);
 
 private:
     UpdateCallerInfoUtil() = default;

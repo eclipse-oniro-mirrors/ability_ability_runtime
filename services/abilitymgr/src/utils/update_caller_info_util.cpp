@@ -465,6 +465,17 @@ void UpdateCallerInfoUtil::RestoreCallerInfoToWant(Want &want, const AbilitySess
     RestoreIntentAndSkillParams(want, info);
 }
 
+void UpdateCallerInfoUtil::RestoreAgentTaskIdParam(const Want &srcWant, Want &dstWant)
+{
+    // Authoritative want decides: present key restores, absent key strips.
+    auto taskId = srcWant.GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID);
+    if (taskId.empty()) {
+        dstWant.RemoveParam(Want::PARAM_RESV_AGENT_TASK_ID);
+    } else {
+        dstWant.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, taskId);
+    }
+}
+
 void UpdateCallerInfoUtil::ClearCallerIdentityParam(Want &want)
 {
     // Fail-closed cleanup for stamping failure paths: identity params are system-stamped

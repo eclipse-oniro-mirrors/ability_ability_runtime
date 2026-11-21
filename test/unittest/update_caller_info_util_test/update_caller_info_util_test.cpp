@@ -1002,6 +1002,49 @@ HWTEST_F(UpdateCallerInfoUtilTest, RemoveIntentAndSkillParams_0001, TestSize.Lev
 }
 
 /**
+ * @tc.name: RestoreAgentTaskIdParam_0001
+ * @tc.desc: The authoritative want hands the key back to the stripped SCB-roundtrip want.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, RestoreAgentTaskIdParam_0001, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+    Want authoritativeWant;
+    authoritativeWant.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-preinstall-ut"));
+    // the SCB-roundtrip copy: element backfilled, key stripped
+    Want scbWant;
+    scbWant.SetElementName("", "com.test.target", "TestAbility", "entry");
+    EXPECT_FALSE(scbWant.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+
+    updateCallerUtil.RestoreAgentTaskIdParam(authoritativeWant, scbWant);
+    EXPECT_TRUE(scbWant.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+    EXPECT_EQ(scbWant.GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID), "task-preinstall-ut");
+    scbWant.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("stale-injected"));
+    updateCallerUtil.RestoreAgentTaskIdParam(authoritativeWant, scbWant);
+    EXPECT_EQ(scbWant.GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID), "task-preinstall-ut");
+}
+
+/**
+ * @tc.name: RestoreAgentTaskIdParam_0002
+ * @tc.desc: A key-free authoritative want strips injected keys (fail-closed).
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, RestoreAgentTaskIdParam_0002, TestSize.Level1)
+{
+    auto& updateCallerUtil = UpdateCallerInfoUtil::GetInstance();
+    Want authoritativeWant;
+    Want injectedWant;
+    injectedWant.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("injected-by-relay"));
+
+    updateCallerUtil.RestoreAgentTaskIdParam(authoritativeWant, injectedWant);
+    EXPECT_FALSE(injectedWant.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+
+    Want cleanWant;
+    updateCallerUtil.RestoreAgentTaskIdParam(authoritativeWant, cleanWant);
+    EXPECT_FALSE(cleanWant.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+}
+
+/**
  * @tc.name: RemoveIntentAndSkillParams_0002
  * @tc.desc: Partial injection and an empty want are handled without side effects.
  * @tc.type: FUNC

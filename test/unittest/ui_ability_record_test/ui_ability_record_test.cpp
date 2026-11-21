@@ -668,7 +668,7 @@ HWTEST_F(UIAbilityRecordTest, NotifyCallersOnPrelaunchTimeout_0100, TestSize.Lev
 }
 /**
  * @tc.name: TaskAttributionBookkeeping_0001
- * @tc.desc: AddTaskAttribution ignores an exact duplicate (taskId, handle) pair.
+ * @tc.desc: The first attribution for a taskId is bookkept and reported by HasTaskAttribution.
  * @tc.type: FUNC
  */
 HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0001, TestSize.Level1)
@@ -677,18 +677,18 @@ HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0001, TestSize.Level1)
     auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
     ASSERT_NE(abilityRecord, nullptr);
 
-    abilityRecord->AddTaskAttribution("task-1", 42);
+    EXPECT_FALSE(abilityRecord->HasTaskAttribution("task-1"));
     abilityRecord->AddTaskAttribution("task-1", 42);
 
     const auto &attributions = abilityRecord->GetTaskAttributions();
     ASSERT_EQ(attributions.size(), static_cast<size_t>(1));
-    EXPECT_EQ(attributions.front().first, "task-1");
-    EXPECT_EQ(attributions.front().second, 42);
+    EXPECT_EQ(attributions.at("task-1"), 42);
+    EXPECT_TRUE(abilityRecord->HasTaskAttribution("task-1"));
 }
 
 /**
  * @tc.name: TaskAttributionBookkeeping_0002
- * @tc.desc: Distinct (taskId, handle) pairs coexist in the bookkeeping vector.
+ * @tc.desc: One attribution handle per taskId: a record can hold distinct tasks in parallel.
  * @tc.type: FUNC
  */
 HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0002, TestSize.Level1)
@@ -698,16 +698,20 @@ HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0002, TestSize.Level1)
     ASSERT_NE(abilityRecord, nullptr);
 
     abilityRecord->AddTaskAttribution("task-1", 42);
-    abilityRecord->AddTaskAttribution("task-1", 43);
-    abilityRecord->AddTaskAttribution("task-2", 42);
+    abilityRecord->AddTaskAttribution("task-2", 43);
 
     const auto &attributions = abilityRecord->GetTaskAttributions();
-    EXPECT_EQ(attributions.size(), static_cast<size_t>(3));
+    EXPECT_EQ(attributions.size(), static_cast<size_t>(2));
+    EXPECT_EQ(attributions.at("task-1"), 42);
+    EXPECT_EQ(attributions.at("task-2"), 43);
+    EXPECT_TRUE(abilityRecord->HasTaskAttribution("task-1"));
+    EXPECT_TRUE(abilityRecord->HasTaskAttribution("task-2"));
+    EXPECT_FALSE(abilityRecord->HasTaskAttribution("task-3"));
 }
 
 /**
  * @tc.name: TaskAttributionBookkeeping_0003
- * @tc.desc: Same taskId with different handles coexist in insertion order.
+ * @tc.desc: A duplicate add for the same taskId is a no-op: the first handle stays.
  * @tc.type: FUNC
  */
 HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0003, TestSize.Level1)
@@ -720,16 +724,13 @@ HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0003, TestSize.Level1)
     abilityRecord->AddTaskAttribution("task-1", 43);
 
     const auto &attributions = abilityRecord->GetTaskAttributions();
-    ASSERT_EQ(attributions.size(), static_cast<size_t>(2));
-    EXPECT_EQ(attributions[0].first, "task-1");
-    EXPECT_EQ(attributions[0].second, 42);
-    EXPECT_EQ(attributions[1].first, "task-1");
-    EXPECT_EQ(attributions[1].second, 43);
+    ASSERT_EQ(attributions.size(), static_cast<size_t>(1));
+    EXPECT_EQ(attributions.at("task-1"), 42);
 }
 
 /**
  * @tc.name: TaskAttributionBookkeeping_0004
- * @tc.desc: Same handle attributed to different taskIds coexist in insertion order.
+ * @tc.desc: The same handle attributed to different taskIds coexists (keyed by taskId).
  * @tc.type: FUNC
  */
 HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0004, TestSize.Level1)
@@ -743,15 +744,13 @@ HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0004, TestSize.Level1)
 
     const auto &attributions = abilityRecord->GetTaskAttributions();
     ASSERT_EQ(attributions.size(), static_cast<size_t>(2));
-    EXPECT_EQ(attributions[0].first, "task-a");
-    EXPECT_EQ(attributions[1].first, "task-b");
-    EXPECT_EQ(attributions[0].second, 7);
-    EXPECT_EQ(attributions[1].second, 7);
+    EXPECT_EQ(attributions.at("task-a"), 7);
+    EXPECT_EQ(attributions.at("task-b"), 7);
 }
 
 /**
  * @tc.name: TaskAttributionBookkeeping_0005
- * @tc.desc: A mixed sequence keeps content and order; only exact duplicates are ignored.
+ * @tc.desc: A mixed sequence ends with exactly one entry per distinct taskId.
  * @tc.type: FUNC
  */
 HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0005, TestSize.Level1)
@@ -762,17 +761,14 @@ HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0005, TestSize.Level1)
 
     abilityRecord->AddTaskAttribution("task-1", 1);
     abilityRecord->AddTaskAttribution("task-2", 2);
-    abilityRecord->AddTaskAttribution("task-1", 2);
-    abilityRecord->AddTaskAttribution("task-1", 1); // exact duplicate of the 1st
-    abilityRecord->AddTaskAttribution("task-2", 2); // exact duplicate of the 2nd
+    abilityRecord->AddTaskAttribution("task-1", 3); // duplicate taskId: first handle stays
     abilityRecord->AddTaskAttribution("task-3", 1);
 
     const auto &attributions = abilityRecord->GetTaskAttributions();
-    ASSERT_EQ(attributions.size(), static_cast<size_t>(4));
-    EXPECT_EQ(attributions[0], (std::make_pair(std::string("task-1"), static_cast<int64_t>(1))));
-    EXPECT_EQ(attributions[1], (std::make_pair(std::string("task-2"), static_cast<int64_t>(2))));
-    EXPECT_EQ(attributions[2], (std::make_pair(std::string("task-1"), static_cast<int64_t>(2))));
-    EXPECT_EQ(attributions[3], (std::make_pair(std::string("task-3"), static_cast<int64_t>(1))));
+    ASSERT_EQ(attributions.size(), static_cast<size_t>(3));
+    EXPECT_EQ(attributions.at("task-1"), 1);
+    EXPECT_EQ(attributions.at("task-2"), 2);
+    EXPECT_EQ(attributions.at("task-3"), 1);
 }
 
 /**
@@ -787,17 +783,63 @@ HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0006, TestSize.Level1)
     ASSERT_NE(abilityRecord, nullptr);
 
     abilityRecord->AddTaskAttribution("", 0);
-    abilityRecord->AddTaskAttribution("", -1);
     abilityRecord->AddTaskAttribution("task-neg", -100);
 
     const auto &attributions = abilityRecord->GetTaskAttributions();
-    ASSERT_EQ(attributions.size(), static_cast<size_t>(3));
-    EXPECT_EQ(attributions[0].first, "");
-    EXPECT_EQ(attributions[0].second, 0);
-    EXPECT_EQ(attributions[1].first, "");
-    EXPECT_EQ(attributions[1].second, -1);
-    EXPECT_EQ(attributions[2].first, "task-neg");
-    EXPECT_EQ(attributions[2].second, -100);
+    ASSERT_EQ(attributions.size(), static_cast<size_t>(2));
+    EXPECT_EQ(attributions.at(""), 0);
+    EXPECT_EQ(attributions.at("task-neg"), -100);
+    EXPECT_TRUE(abilityRecord->HasTaskAttribution(""));
+    EXPECT_TRUE(abilityRecord->HasTaskAttribution("task-neg"));
+}
+
+/**
+ * @tc.name: TaskAttributionBookkeeping_0007
+ * @tc.desc: HasTaskAttribution keys on the taskId string, not on the handle.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0007, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+
+    abilityRecord->AddTaskAttribution("task-chain", 100);
+    abilityRecord->AddTaskAttribution("task-chain-other", 100);
+
+    const auto &attributions = abilityRecord->GetTaskAttributions();
+    ASSERT_EQ(attributions.size(), static_cast<size_t>(2));
+    EXPECT_EQ(attributions.at("task-chain"), 100);
+    EXPECT_TRUE(abilityRecord->HasTaskAttribution("task-chain"));
+    EXPECT_FALSE(abilityRecord->HasTaskAttribution("task-chain-2"));
+}
+
+/**
+ * @tc.name: TaskAttributionBookkeeping_0008
+ * @tc.desc: Cleanup removes exactly the finished task's entry; removal is idempotent.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0008, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+
+    abilityRecord->AddTaskAttribution("task-finished", 101);
+    abilityRecord->AddTaskAttribution("task-alive", 102);
+
+    EXPECT_EQ(abilityRecord->RemoveTaskAttributionByTaskId("task-finished"), static_cast<size_t>(1));
+    EXPECT_FALSE(abilityRecord->HasTaskAttribution("task-finished"));
+    EXPECT_TRUE(abilityRecord->HasTaskAttribution("task-alive"));
+    EXPECT_EQ(abilityRecord->GetTaskAttributions().at("task-alive"), 102);
+    EXPECT_EQ(abilityRecord->RemoveTaskAttributionByTaskId("task-finished"), static_cast<size_t>(0));
+    EXPECT_EQ(abilityRecord->RemoveTaskAttributionByTaskId("task-never-was"), static_cast<size_t>(0));
+    EXPECT_EQ(abilityRecord->RemoveTaskAttributionByTaskId(""), static_cast<size_t>(0));
+    EXPECT_TRUE(abilityRecord->HasTaskAttribution("task-alive"));
+
+    abilityRecord->AddTaskAttribution("task-finished", 9001);
+    EXPECT_TRUE(abilityRecord->HasTaskAttribution("task-finished"));
+    EXPECT_EQ(abilityRecord->GetTaskAttributions().at("task-finished"), 9001);
 }
 
 /**

@@ -29,3 +29,25 @@ bool GetBoolParameter(const std::string& key, bool def)
 }
 } // namespace system
 } // namespace OHOS
+
+// Host harness: the real sys-param service is unreachable, so the C-style
+// GetParameter returns the caller's default (keeping param-driven code on its
+// documented fallback) and emulates the enabled device default of the startup
+// new-rules switch expected by CheckNewRuleSwitchState tests.
+extern "C" int GetParameter(const char *key, const char *def, char *value, unsigned int len)
+{
+    if (key == nullptr || value == nullptr || len == 0 || key[0] == '\0') {
+        return -1;
+    }
+    std::string ret = (strcmp(key, "component.startup.newRules") == 0) ? "true"
+        : ((def == nullptr) ? "" : std::string(def));
+    auto copyLen = static_cast<size_t>(ret.size());
+    if (copyLen >= len) {
+        copyLen = len - 1;
+    }
+    for (size_t i = 0; i < copyLen; i++) {
+        value[i] = ret[i];
+    }
+    value[copyLen] = '\0';
+    return static_cast<int>(ret.size());
+}

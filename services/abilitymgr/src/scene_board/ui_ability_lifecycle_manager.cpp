@@ -99,11 +99,27 @@ auto g_deleteLifecycleEventTask = [](const sptr<Token> &token) {
     FreezeUtil::GetInstance().DeleteLifecycleEvent(token->AsObject());
 };
 
-// Shared report core: register then append, dedup exact (taskId, handle) pairs.
+// Shared report core. Duplicates (same task, same record/process) are dropped
+// without renewal: a duplicate changes no server state. Stale entries are
+// cleared on task finish, so reused ids / re-created records report again.
 void ReportTaskAttributionForContext(const std::string &taskId, int32_t callerUid, int32_t callerPid,
     const UIAbilityRecordPtr &uiAbilityRecord)
 {
     if (taskId.empty() || uiAbilityRecord == nullptr || uiAbilityRecord->GetPid() <= 0) {
+        return;
+    }
+    if (uiAbilityRecord->HasTaskAttribution(taskId)) {
+        // Known race (observed, not gated): cleanup is oneway, so an id reused
+        // in the in-flight window hits a stale entry and the new task's first
+        // report is dropped; it self-heals on the next key-carrying activation.
+        // Logged attributionId/recordId tell this from a true duplicate.
+        const auto &attributions = uiAbilityRecord->GetTaskAttributions();
+        auto it = attributions.find(taskId);
+        int64_t storedAttributionId = (it != attributions.end()) ? it->second : -1;
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "duplicate task attribution skipped, taskId: %{public}s, "
+            "attributionId: %{public}" PRId64 ", recordId: %{public}" PRId64 ", pid: %{public}d",
+            taskId.c_str(), storedAttributionId, uiAbilityRecord->GetAbilityRecordId(),
+            uiAbilityRecord->GetPid());
         return;
     }
     int64_t attributionId = 0;
@@ -481,9 +497,8 @@ UIAbilityRecordPtr UIAbilityLifecycleManager::HandleAbilityRecordReused(
     }
     abilityRequest.want.RemoveParam(Want::PARAMS_REAL_CALLER_KEY);
 
-    // Warm start (target process already exists) never reaches the appmgr load hook, so the
-    // attribution is reported here; identity is the system-stamped reserved params. A
-    // pre-attach reuse stashes into the pending map instead of dropping the key.
+    // Warm reuse never reaches the appmgr load hook, so report here;
+    // pre-attach reuses stash into the pending map instead.
     if (uiAbilityRecord->GetPid() > 0) {
         ReportTaskAttribution(abilityRequest, uiAbilityRecord);
     } else if (abilityRequest.want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID)) {
@@ -878,6 +893,9 @@ void UIAbilityLifecycleManager::CacheAbilitySessionInfo(sptr<SessionInfo> &sessi
     AbilitySessionInfo info;
     info.specifyTokenId = abilityRequest.specifyTokenId;
     UpdateCallerInfoUtil::GetInstance().CacheCallerInfoFromWant(abilityRequest.want, info);
+    // Stash for the SCB callback: StartUIAbilityBySCBDefault restores the caller
+    // info and the task key from this cache (window-returned values are not consumed);
+    // a callback with no stash does not consume the task key either.
     if (abilityRequest.isWebSandBoxClone) {
         sessionInfo->want.SetParam(AbilityRuntime::ServerConstant::DLP_INDEX,
             abilityRequest.abilityInfo.applicationInfo.appIndex);
@@ -3772,6 +3790,41 @@ std::vector<UIAbilityRecordPtr> UIAbilityLifecycleManager::GetAbilityRecordsByNa
 {
     std::lock_guard<ffrt::mutex> guard(sessionLock_);
     return GetAbilityRecordsByNameInner(element, appIndex);
+}
+
+size_t UIAbilityLifecycleManager::CleanTaskAttributionsByTaskId(const std::string &taskId)
+{
+    if (taskId.empty()) {
+        return 0;
+    }
+    size_t removed = 0;
+    std::lock_guard<ffrt::mutex> guard(sessionLock_);
+    auto cleanRecord = [&taskId, &removed](const UIAbilityRecordPtr &record) {
+        if (record != nullptr) {
+            removed += record->RemoveTaskAttributionByTaskId(taskId);
+        }
+    };
+    for (const auto &item : sessionAbilityMap_) {
+        cleanRecord(item.second);
+    }
+    for (const auto &item : lowMemKillAbilityMap_) {
+        cleanRecord(item.second);
+    }
+    for (const auto &item : tmpAbilityMap_) {
+        cleanRecord(item.second);
+    }
+    for (const auto &item : terminateAbilityList_) {
+        cleanRecord(item);
+    }
+    for (const auto &item : reuseWindowRecords_) {
+        cleanRecord(item);
+    }
+    if (removed > 0) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR,
+            "stale UIAbility attributions cleaned by finished taskId=%{public}s, removed=%{public}zu",
+            taskId.c_str(), removed);
+    }
+    return removed;
 }
 
 std::vector<UIAbilityRecordPtr> UIAbilityLifecycleManager::GetAbilityRecordsByNameInner(
