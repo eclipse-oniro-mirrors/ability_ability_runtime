@@ -206,7 +206,6 @@ ohos_unittest("ability_manager_service_fourteenth_test") {
     "${ability_runtime_services_path}/abilitymgr/src/utils/app_mgr_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/dms_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/dump_utils.cpp",
-    "${ability_runtime_services_path}/abilitymgr/src/utils/exit_reason_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/extension_permissions_util.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/hidden_start_utils.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/utils/keep_alive_utils.cpp",

@@ -200,7 +200,8 @@ int32_t AppExitReasonDataManager::DeleteAppExitReason(const std::string &bundleN
     return DeleteAppExitReason(bundleName, accessTokenId);
 }
 
-int32_t AppExitReasonDataManager::DeleteAppExitReason(const std::string &bundleName, uint32_t accessTokenId)
+int32_t AppExitReasonDataManager::DeleteAppExitReason(const std::string &bundleName, uint32_t accessTokenId,
+    int32_t uid)
 {
     auto accessTokenIdStr = std::to_string(accessTokenId);
     if (bundleName.empty() || accessTokenId == Security::AccessToken::INVALID_TOKENID) {
@@ -351,7 +352,6 @@ int32_t AppExitReasonDataManager::RecordSignalReason(int32_t pid, int32_t uid, i
         TAG_LOGE(AAFwkTag::ABILITYMGR, "not found, pid: %{public}d, uid: %{public}d", pid, uid);
         return AAFwk::ERR_GET_EXIT_INFO_FAILED;
     }
-    auto ret = 0;
     AAFwk::ExitReason exitReason = {};
     exitReason.reason = AAFwk::REASON_NORMAL;
     exitReason.subReason = signal;
@@ -362,13 +362,12 @@ int32_t AppExitReasonDataManager::RecordSignalReason(int32_t pid, int32_t uid, i
             return 0;
         }
     }
-    ret = SetAppExitReason(cacheInfo.bundleName, accessTokenId, cacheInfo.abilityNames, exitReason,
-        cacheInfo.exitInfo, false);
-    if (ret != 0) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "SetAppExitReason failed, ret: %{public}d", ret);
-        return AAFwk::ERR_RECORD_SIGNAL_REASON_FAILED;
+    if (cacheInfo.abilityNames.empty()) {
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "empty abilityNames");
+        return 0;
     }
-    return ret;
+    return SetAppExitReason(cacheInfo.bundleName, accessTokenId, cacheInfo.abilityNames, exitReason,
+        cacheInfo.exitInfo, false);
 }
 
 DistributedKv::Value AppExitReasonDataManager::ConvertAppExitReasonInfoToValue(

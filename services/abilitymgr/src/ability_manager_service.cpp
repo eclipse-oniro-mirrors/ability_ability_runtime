@@ -16,6 +16,7 @@
 #include "ability_manager_service.h"
 
 #include <dlfcn.h>
+#include <nlohmann/json.hpp>
 #include <set>
 #include <sys/epoll.h>
 #include <unordered_map>
@@ -39,6 +40,7 @@
 #include "app_mgr_util.h"
 #include "app_recovery_mgr.h"
 #include "application_util.h"
+#include "appspawn.h"
 #include "assert_fault_callback_death_mgr.h"
 #include "collaborator_util.h"
 #include "concurrent_task_client.h"
@@ -142,7 +144,6 @@
 #include "utils/agent_caller_identity_util.h"
 #include "utils/ability_permission_util.h"
 #include "utils/dump_utils.h"
-#include "utils/exit_reason_util.h"
 #include "utils/extension_permissions_util.h"
 #include "utils/modal_system_dialog_util.h"
 #include "utils/update_caller_info_util.h"
@@ -317,6 +318,7 @@ const std::unordered_set<std::string> COMMON_PICKER_TYPE = {
     "share", "action", "navigation", "mail", "finance", "flight", "express", "photoEditor"
 };
 std::atomic<bool> g_isDmsAlive = false;
+constexpr int32_t PIPE_MSG_READ_BUFFER = 1024;
 constexpr const char* APPSPAWN_STARTED = "startup.service.ctl.appspawn.pid";
 constexpr const char* APP_LINKING_ONLY = "appLinkingOnly";
 constexpr const char* SCREENCONFIG_SCREENMODE = "ohos.verticalpanel.screenconfig.screenmode";
@@ -630,6 +632,85 @@ std::function<bool(int32_t)> AbilityManagerService::MakeBlockAllEscapeCheck(cons
     };
 }
 
+static void ProcessSignalData(void *token, uint32_t event)
+{
+    int32_t rFd = *(reinterpret_cast<int32_t*>(token));
+    // read data from appspawn
+    char buffer[PIPE_MSG_READ_BUFFER] = {0};
+    std::string readResult = "";
+    int32_t count = read(rFd, buffer, PIPE_MSG_READ_BUFFER - 1);
+    if (count == -1) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "read pipe failed");
+    } else if (count == 0) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write end closed");
+        fdsan_close_with_tag(rFd, static_cast<uint32_t>(AAFwkTag::ABILITYMGR));
+    } else {
+        int32_t pid = -1;
+        int32_t signal = -1;
+        int32_t uid = 0;
+        std::string bundleName = "";
+        std::string bufferStr = buffer;
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "buffer read: %{public}s", bufferStr.c_str());
+        nlohmann::json jsonObject = nlohmann::json::parse(bufferStr, nullptr, false);
+        if (jsonObject.is_discarded()) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "parse json string failed");
+            return;
+        }
+        if (!jsonObject.contains("pid") || !jsonObject.contains("signal") || !jsonObject.contains("uid")
+            || !jsonObject.contains("bundleName")) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "info lost!");
+            return;
+        }
+        pid = jsonObject["pid"];
+        signal = jsonObject["signal"];
+        uid = jsonObject["uid"];
+        bundleName = jsonObject["bundleName"];
+        if (signal == 0) {
+            TAG_LOGD(AAFwkTag::ABILITYMGR, "ignore signal 0, pid: %{public}d", pid);
+            return;
+        }
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "To update reason detail info because of SIGNAL");
+        if (DelayedSingleton<AbilityRuntime::AppExitReasonDataManager>::GetInstance()->RecordSignalReason(
+            pid, uid, signal, bundleName) != 0) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "RecordSignalReason failed");
+        }
+    }
+}
+
+static void AppSpawnStartCallback(const char *key, const char *value, void *context)
+{
+    auto weak = static_cast<std::weak_ptr<AbilityManagerService>*>(context);
+    if (weak == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "context null");
+        return;
+    }
+    auto abilityMgrService = weak->lock();
+    if (abilityMgrService == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "AbilityManagerService null");
+        return;
+    }
+    int32_t rFd = 0;
+    int32_t wFd = 0;
+    abilityMgrService->GetAppSpawnFdsWithLock(rFd, wFd);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "rFd is: %{public}d, wFd is: %{public}d", rFd, wFd);
+    if (rFd < 0 || wFd < 0) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "invalid appspawn msg pipe fd");
+        return;
+    }
+    // send fd
+    int32_t ret = SpawnListenFdSet(wFd);
+    if (ret != 0) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "send fd to appspawn failed, ret: %{public}d", ret);
+        abilityMgrService->CloseAppSpawnMsgPipe();
+        return;
+    }
+    // set flag
+    ret = SpawnListenCloseSet();
+    if (ret != 0) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "SpawnListenCloseSet failed");
+    }
+}
+
 void AbilityManagerService::InitAppSpawnMsgPipe()
 {
     int32_t pipeFd[2];
@@ -643,7 +724,7 @@ void AbilityManagerService::InitAppSpawnMsgPipe()
     fdsan_exchange_owner_tag(wFd_, 0, static_cast<uint32_t>(AAFwkTag::ABILITYMGR));
     *ptrRFd_ = rFd_;
     appSpawnContext_ = shared_from_this();
-    int32_t ret = WatchParameter(APPSPAWN_STARTED, ExitReasonUtil::AppSpawnStartCallback, &appSpawnContext_);
+    int32_t ret = WatchParameter(APPSPAWN_STARTED, AppSpawnStartCallback, &appSpawnContext_);
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "watch parameter ret: %{public}d", ret);
         CloseAppSpawnMsgPipe();
@@ -651,7 +732,7 @@ void AbilityManagerService::InitAppSpawnMsgPipe()
     }
     ffrt_qos_t taskQos = 0;
     ret = ffrt_epoll_ctl(taskQos, EPOLL_CTL_ADD, rFd_, EPOLLIN, static_cast<void*>(ptrRFd_.get()),
-    ExitReasonUtil::ProcessSignalData);
+    ProcessSignalData);
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "ffrt_epoll_ctl failed, ret: %{public}d", ret);
         CloseAppSpawnMsgPipe();
@@ -662,7 +743,7 @@ void AbilityManagerService::InitAppSpawnMsgPipe()
 
 void AbilityManagerService::CloseAppSpawnMsgPipe()
 {
-    RemoveParameterWatcher(APPSPAWN_STARTED, ExitReasonUtil::AppSpawnStartCallback, &appSpawnContext_);
+    RemoveParameterWatcher(APPSPAWN_STARTED, AppSpawnStartCallback, &appSpawnContext_);
     std::lock_guard<ffrt::mutex> lock(appSpawnPipeMutex_);
     if (ptrRFd_ != nullptr) {
         *ptrRFd_ = -1;
@@ -13177,6 +13258,10 @@ AppExecFwk::ElementName AbilityManagerService::GetTopAbility(bool isNeedLocalDev
     auto abilityRecord = Token::GetAbilityRecordByToken(token);
     if (abilityRecord == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "%{public}s abilityRecord null", __func__);
+        return elementName;
+    }
+    if (!JudgeSelfCalled(abilityRecord) && !AAFwk::PermissionVerification::GetInstance()->IsSACall()) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "caller not token owner");
         return elementName;
     }
     elementName = abilityRecord->GetElementName();
