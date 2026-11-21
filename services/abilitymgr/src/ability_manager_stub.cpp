@@ -2368,8 +2368,7 @@ int AbilityManagerStub::StartUIAbilityWithDisplayIdPassthroughInner(MessageParce
 {
     if (IPCSkeleton::GetCallingUid() != SOFTBUS_SERVICE_UID) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "not softbus_service call, uid:%{public}d", IPCSkeleton::GetCallingUid());
-        reply.WriteInt32(ERR_PERMISSION_DENIED);
-        return NO_ERROR;
+        return ERR_PERMISSION_DENIED;
     }
     std::shared_ptr<Want> want(data.ReadParcelable<Want>());
     if (want == nullptr) {

@@ -1842,8 +1842,7 @@ HWTEST_F(AbilityManagerStubTest, StartUIAbilityPassthroughInner_RejectNonSoftbus
     MessageParcel data;
     MessageParcel reply;
     auto res = stub_->StartUIAbilityWithDisplayIdPassthroughInner(data, reply);
-    EXPECT_EQ(res, NO_ERROR);
-    EXPECT_EQ(reply.ReadInt32(), ERR_PERMISSION_DENIED);
+    EXPECT_EQ(res, ERR_PERMISSION_DENIED);
 }
 
 /*
@@ -1868,8 +1867,7 @@ HWTEST_F(AbilityManagerStubTest, StartUIAbilityPassthroughInner_RejectNonSoftbus
     data.WriteInt32(0);
     data.WriteInt32(0);
     auto res = stub_->StartUIAbilityWithDisplayIdPassthroughInner(data, reply);
-    EXPECT_EQ(res, NO_ERROR);
-    EXPECT_EQ(reply.ReadInt32(), ERR_PERMISSION_DENIED);
+    EXPECT_EQ(res, ERR_PERMISSION_DENIED);
 }
 
 /*
