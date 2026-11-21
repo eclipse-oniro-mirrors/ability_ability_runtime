@@ -1075,7 +1075,7 @@ ErrCode AbilityContextImpl::SetMissionContinueState(const AAFwk::ContinueState &
     auto abilityCallback = abilityCallback_.lock();
     if (abilityCallback) {
         abilityCallback->SetContinueState(static_cast<int32_t>(state));
-        TAG_LOGI(AAFwkTag::CONTEXT, "SetContinueState, state: %{public}d.", state);
+        TAG_LOGI(AAFwkTag::CONTEXT, "state: %{public}d", state);
     }
     return ERR_OK;
 }

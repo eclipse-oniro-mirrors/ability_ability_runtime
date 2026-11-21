@@ -493,7 +493,7 @@ static void DoGlobalCallback(napi_env env, napi_value exception, std::string ins
         }
     }
     if (exception == nullptr) {
-        TAG_LOGI(AAFwkTag::JSNAPI, "excepton is nullptr");
+        TAG_LOGI(AAFwkTag::JSNAPI, "null exception");
         return;
     }
     std::string name = GetContent(env, exception, "name");
@@ -531,7 +531,7 @@ static void DoMainThreadOnException(napi_env env, std::string name, std::string 
         return;
     }
     if (!observerList.count(env)) {
-        TAG_LOGI(AAFwkTag::JSNAPI, "the thread not on error");
+        TAG_LOGI(AAFwkTag::JSNAPI, "thread not on error");
         return;
     }
 
@@ -550,7 +550,7 @@ static void DoMainThreadOnUnhandleException(napi_env env, std::string summary)
         return;
     }
     if (!observerList.count(env)) {
-        TAG_LOGI(AAFwkTag::JSNAPI, "the thread not on error");
+        TAG_LOGI(AAFwkTag::JSNAPI, "thread not on error");
         return;
     }
 
@@ -569,11 +569,11 @@ static void DoWorkThreadCallback(napi_env env, napi_value exception)
         return;
     }
     if (exception == nullptr) {
-        TAG_LOGI(AAFwkTag::JSNAPI, "excepton is nullptr");
+        TAG_LOGI(AAFwkTag::JSNAPI, "null exception");
         return;
     }
     if (!observerList.count(env)) {
-        TAG_LOGI(AAFwkTag::JSNAPI, "the thread not on error");
+        TAG_LOGI(AAFwkTag::JSNAPI, "thread not on error");
         return;
     }
     std::string name = GetContent(env, exception, "name");
