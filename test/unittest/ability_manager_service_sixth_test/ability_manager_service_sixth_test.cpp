@@ -3139,5 +3139,63 @@ HWTEST_F(AppServiceProxyTest, BackgroundStart_001, TestSize.Level1)
     EXPECT_EQ(ERR_OK, service_->CheckCallAbilityPermission(request_, false));
     EXPECT_TRUE(g_appServicePermissionState.verification.isBackgroundCall);
 }
+
+/*
+ * Feature: AbilityManagerService
+ * Function: HandlePromotePriorityParam
+ * SubFunction: NA
+ * FunctionPoints: permission verification failed, promotePriority is false.
+ */
+HWTEST_F(AbilityManagerServiceSixthTest, HandlePromotePriorityParam_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandlePromotePriorityParam_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    Want want;
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.accessTokenId = 12345;
+    abilityRequest.appInfo.uid = 10000;
+
+    MyFlag::flag_ = 1;
+    want.SetParam("ohos.param.promoteBackgroundProcessPriority", false);
+    abilityMs->HandlePromotePriorityParam(abilityRequest, want, ExtensionAbilityType::SERVICE);
+    EXPECT_FALSE(abilityRequest.promotePriority);
+
+    want.SetParam("ohos.param.promoteBackgroundProcessPriority", true);
+    abilityMs->HandlePromotePriorityParam(abilityRequest, want, ExtensionAbilityType::UI);
+    EXPECT_FALSE(abilityRequest.promotePriority);
+
+    MyFlag::flag_ = 0;
+    abilityMs->HandlePromotePriorityParam(abilityRequest, want, ExtensionAbilityType::SERVICE);
+    EXPECT_FALSE(abilityRequest.promotePriority);
+    TAG_LOGI(AAFwkTag::TEST, "HandlePromotePriorityParam_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: HandlePromotePriorityParam
+ * SubFunction: NA
+ * FunctionPoints: permission verification passed, promotePriority is true.
+ */
+HWTEST_F(AbilityManagerServiceSixthTest, HandlePromotePriorityParam_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandlePromotePriorityParam_002 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    MyFlag::flag_ = 1;
+
+    Want want;
+    want.SetParam("ohos.param.promoteBackgroundProcessPriority", true);
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.accessTokenId = 12345;
+    abilityRequest.appInfo.uid = 10000;
+
+    abilityMs->HandlePromotePriorityParam(abilityRequest, want, ExtensionAbilityType::SERVICE);
+    EXPECT_TRUE(abilityRequest.promotePriority);
+
+    MyFlag::flag_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "HandlePromotePriorityParam_002 end");
+}
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -101,6 +101,15 @@ bool LoadParam::MarshallingTwo(Parcel &parcel) const
     if (!parcel.WriteInt32(requestId)) {
         return false;
     }
+    if (!parcel.WriteBool(promotePriority)) {
+        return false;
+    }
+    if (!parcel.WriteInt32(callerUid)) {
+        return false;
+    }
+    if (!parcel.WriteInt32(callerPid)) {
+        return false;
+    }
     return true;
 }
 
@@ -140,6 +149,9 @@ bool LoadParam::ReadFromParcel(Parcel &parcel)
     reusePid = parcel.ReadInt32();
     processMode = parcel.ReadInt32();
     requestId = parcel.ReadInt32();
+    promotePriority = parcel.ReadBool();
+    callerUid = parcel.ReadInt32();
+    callerPid = parcel.ReadInt32();
     return true;
 }
 

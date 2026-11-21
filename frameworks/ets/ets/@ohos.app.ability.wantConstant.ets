@@ -48,6 +48,7 @@ namespace wantConstant {
     ABILITY_UNIFIED_DATA_KEY = 'ohos.param.ability.udKey',
     UI_EXTENSION_ROOT_TOKEN = 'ohos.param.uiExtension.rootHostToken',
     AGENT_TASK_ID = 'ohos.aafwk.param.agent.taskId',
+    BACKGROUND_PROCESS_PROMOTE_PRIORITY = 'ohos.param.promoteBackgroundProcessPriority',
   }
 
   export enum Flags {

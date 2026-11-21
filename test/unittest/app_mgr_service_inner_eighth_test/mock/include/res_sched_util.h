@@ -43,6 +43,15 @@ enum class LoadingStage : int32_t {
     PRE_LAUNCH_BEGIN,
 };
 
+struct ExtensionPromoteInfo {
+    int32_t callerUid = -1;
+    int32_t callerPid = -1;
+    int32_t targetUid = -1;
+    int32_t targetPid = -1;
+    std::string targetBundleName;
+    int32_t extensionType = 0;
+};
+
 class ResSchedUtil {
 public:
     ResSchedUtil() = default;
@@ -65,6 +74,7 @@ public:
     MOCK_METHOD(void, PromotePriorityToRSS,
         (int32_t callerUid, int32_t callerPid, const std::string &targetBundleName,
         int32_t targetUid, int32_t targetPid), ());
+    MOCK_METHOD(void, PromoteExtensionPriorityToRSS, (const ExtensionPromoteInfo &info), ());
     MOCK_METHOD(std::string, GetThawReasonByAbilityType, (const AbilityInfo &abilityInfo), ());
     MOCK_METHOD(void, GetAllFrozenPidsFromRSS, (std::unordered_set<int32_t> &frozenPids), ());
     MOCK_METHOD(bool, CheckShouldForceKillProcess, (int32_t pid, const std::string& bundleName), ());

@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_RES_SCHED_UTIL_H
 #define OHOS_ABILITY_RUNTIME_RES_SCHED_UTIL_H
 
+#include <string>
 #include <unordered_set>
 
 #include "nocopyable.h"
@@ -47,6 +48,15 @@ enum class LoadingStage : int32_t {
     PRE_LAUNCH_BEGIN,
 };
 
+struct ExtensionPromoteInfo {
+    int32_t callerUid = -1;
+    int32_t callerPid = -1;
+    int32_t targetUid = -1;
+    int32_t targetPid = -1;
+    std::string targetBundleName;
+    int32_t extensionType = 0;
+};
+
 class ResSchedUtil final {
 public:
     static ResSchedUtil &GetInstance();
@@ -62,6 +72,7 @@ public:
         const std::string& abilityName, const std::string& moduleName, bool isPreloadUIExtension);
     void PromotePriorityToRSS(int32_t callerUid, int32_t callerPid, const std::string &targetBundleName,
         int32_t targetUid, int32_t targetPid);
+    void PromoteExtensionPriorityToRSS(const ExtensionPromoteInfo &info);
     std::string GetThawReasonByAbilityType(const AbilityInfo &abilityInfo);
     void GetAllFrozenPidsFromRSS(std::unordered_set<int32_t> &frozenPids);
     bool CheckShouldForceKillProcess(int32_t pid, const std::string& bundleName);

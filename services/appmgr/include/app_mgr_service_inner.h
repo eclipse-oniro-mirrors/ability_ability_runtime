@@ -2348,6 +2348,10 @@ private:
     void ReportUIExtensionProcColdStartToRss(const std::shared_ptr<AbilityInfo>& abilityInfo,
         const std::shared_ptr<AAFwk::Want>& want, bool isPreloadUIExtension);
 
+    void ReportPromotePriorityToRss(const std::shared_ptr<AppRunningRecord>& appRecord,
+        const std::shared_ptr<AbilityInfo>& abilityInfo, const std::shared_ptr<ApplicationInfo>& appInfo,
+        const std::shared_ptr<AbilityRuntime::LoadParam>& loadParam);
+
 private:
     /**
      * ClearUpApplicationData, clear the application data.

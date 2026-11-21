@@ -767,6 +767,9 @@ private:
         std::shared_ptr<BaseExtensionRecord> &targetService, const std::string &serviceKey);
     void SetServiceAfterNewCreate(const AbilityRequest &abilityRequest, BaseExtensionRecord &targetService);
 
+    void HandlePromotePriority(
+        std::shared_ptr<BaseExtensionRecord> &targetService, const AbilityRequest &abilityRequest);
+
     /**
      * GetConnectRecordListFromMap.
      *

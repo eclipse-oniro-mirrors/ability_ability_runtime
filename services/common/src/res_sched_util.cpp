@@ -257,6 +257,27 @@ void ResSchedUtil::PromotePriorityToRSS(int32_t callerUid, int32_t callerPid, co
 #endif
 }
 
+void ResSchedUtil::PromoteExtensionPriorityToRSS(const ExtensionPromoteInfo &info)
+{
+#ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE
+    TAG_LOGD(AAFwkTag::DEFAULT,
+        "PromoteExtensionPriorityToRSS---caller:%{public}d_%{public}d target:%{public}s_%{public}d_%{public}d "
+        "extensionType:%{public}d",
+        info.callerUid, info.callerPid, info.targetBundleName.c_str(), info.targetUid, info.targetPid,
+        info.extensionType);
+    uint32_t resType = ResourceSchedule::ResType::RES_TYPE_EXTENSION_START_PERF;
+    std::unordered_map<std::string, std::string> eventParams {
+        { "callerUid", std::to_string(info.callerUid) },
+        { "callerPid", std::to_string(info.callerPid) },
+        { "targetUid", std::to_string(info.targetUid) },
+        { "targetPid", std::to_string(info.targetPid) },
+        { "targetBundleName", info.targetBundleName },
+        { "extensionType", std::to_string(info.extensionType) },
+    };
+    ResourceSchedule::ResSchedClient::GetInstance().ReportData(resType, 0, eventParams);
+#endif
+}
+
 void ResSchedUtil::GetAllFrozenPidsFromRSS(std::unordered_set<int32_t> &frozenPids)
 {
 #ifdef RESOURCE_SCHEDULE_SERVICE_ENABLE

@@ -2480,12 +2480,16 @@ void AppMgrServiceInner::LoadAbility(std::shared_ptr<AbilityInfo> abilityInfo, s
         LoadAbilityNoAppRecord(appRecord, loadParam->isShellCall, appInfo, abilityInfo, processName,
             specifiedProcessFlag, bundleInfo, hapModuleInfo, want, appExistFlag, false,
             AppExecFwk::PreloadMode::PRESS_DOWN, loadParam->token, customProcessFlag, loadParam->isStartupHide);
+        if (appRecord != nullptr) {
+            ReportPromotePriorityToRss(appRecord, abilityInfo, appInfo, loadParam);
+        }
         if (ProcessKia(isKia, appRecord, watermarkBusinessName, isWatermarkEnabled) != ERR_OK) {
             TAG_LOGE(AAFwkTag::APPMGR, "ProcessKia failed");
             return;
         }
     } else {
         isProcessReuse = true;
+        ReportPromotePriorityToRss(appRecord, abilityInfo, appInfo, loadParam);
         ReportAbilityStartInfoForSpecified(appRecord, *abilityInfo);
         HandleExistingAppRecordAfterFound(appRecord, abilityInfo, hapModuleInfo, want, isProcCache, loadParam);
         if (AAFwk::UIExtensionWrapper::IsUIExtension(abilityInfo->extensionAbilityType)) {
@@ -2530,6 +2534,22 @@ void AppMgrServiceInner::ReportUIExtensionProcColdStartToRss(const std::shared_p
         AAFwk::ResSchedUtil::GetInstance().ReportUIExtensionProcColdStartToRss(extensionAbilityType,
             hostPid, hostBundleName, bundleName, abilityName, moduleName, isPreloadUIExtension);
     }
+}
+
+void AppMgrServiceInner::ReportPromotePriorityToRss(const std::shared_ptr<AppRunningRecord>& appRecord,
+    const std::shared_ptr<AbilityInfo>& abilityInfo, const std::shared_ptr<ApplicationInfo>& appInfo,
+    const std::shared_ptr<AbilityRuntime::LoadParam>& loadParam)
+{
+    if (!loadParam->promotePriority ||
+        abilityInfo->extensionAbilityType != AppExecFwk::ExtensionAbilityType::SERVICE) {
+        return;
+    }
+    AAFwk::ExtensionPromoteInfo info {
+        loadParam->callerUid, loadParam->callerPid,
+        appInfo->uid, appRecord->GetPid(), appInfo->bundleName,
+        static_cast<int32_t>(abilityInfo->extensionAbilityType)
+    };
+    AAFwk::ResSchedUtil::GetInstance().PromoteExtensionPriorityToRSS(info);
 }
 
 void AppMgrServiceInner::AfterLoadAbility(std::shared_ptr<AppRunningRecord> appRecord,

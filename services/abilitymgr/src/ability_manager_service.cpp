@@ -4909,6 +4909,27 @@ bool AbilityManagerService::CheckWorkSchedulerPermission(const sptr<IRemoteObjec
     return true;
 }
 
+void AbilityManagerService::HandlePromotePriorityParam(
+    AbilityRequest &abilityRequest, const Want &want, AppExecFwk::ExtensionAbilityType extensionType)
+{
+    if (extensionType != AppExecFwk::ExtensionAbilityType::SERVICE ||
+        !want.GetBoolParam(Want::PARAM_PROMOTE_BACKGROUND_PROCESS_PRIORITY, false)) {
+        return;
+    }
+    bool callerHasPermission = PermissionVerification::GetInstance()->VerifyCallingPermission(
+        PermissionConstants::PERMISSION_PROMOTE_BACKGROUND_PROCESS_PRIORITY);
+    bool targetHasPermission = PermissionVerification::GetInstance()->VerifyPermissionByTokenId(
+        static_cast<int>(abilityRequest.appInfo.accessTokenId),
+        PermissionConstants::PERMISSION_SUPPORT_HIGH_PRIORITY_STARTUP);
+    abilityRequest.promotePriority = callerHasPermission && targetHasPermission;
+    if (!abilityRequest.promotePriority) {
+        TAG_LOGW(AAFwkTag::SERVICE_EXT,
+            "callerHasPermission:%{public}d, targetHasPermission:%{public}d, targetUid:%{public}d",
+            static_cast<int32_t>(callerHasPermission), static_cast<int32_t>(targetHasPermission),
+            abilityRequest.appInfo.uid);
+    }
+}
+
 int32_t AbilityManagerService::StartExtensionAbilityInner(const Want &want, const sptr<IRemoteObject> &callerToken,
     int32_t userId, AppExecFwk::ExtensionAbilityType extensionType, bool checkSystemCaller, bool isImplicit,
     bool isDlp, bool isStartAsCaller, uint32_t skillCallerTokenId)
@@ -5011,6 +5032,7 @@ int32_t AbilityManagerService::StartExtensionAbilityInner(const Want &want, cons
 
     abilityRequest.skillCallerTokenId = skillCallerTokenId;
     abilityRequest.userId = validUserId;
+    HandlePromotePriorityParam(abilityRequest, want, extensionType);
     if (!HandleExecuteSAInterceptor(want, callerToken, abilityRequest, result)) {
         TAG_LOGE(AAFwkTag::SERVICE_EXT, "HandleExecuteSAInterceptor failed");
         if (extensionType == AppExecFwk::ExtensionAbilityType::UI_SERVICE) {
@@ -6867,6 +6889,7 @@ int32_t AbilityManagerService::ConnectLocalAbility(const Want &want, const int32
     }
 
     abilityRequest.userId = validUserId;
+    HandlePromotePriorityParam(abilityRequest, want, extensionType);
     if (!HandleExecuteSAInterceptor(want, callerToken, abilityRequest, result)) {
         return result;
     }
