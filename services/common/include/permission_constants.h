@@ -86,6 +86,8 @@ constexpr const char* PERMISSION_FUSION_ACCESS = "ohos.permission.ACCESS_AMS_FRO
 constexpr const char* PERMISSION_CUSTOM_SANDBOX = "ohos.permission.CUSTOM_SANDBOX";
 constexpr const char* PERMISSION_FILE_ACCESS_PERSIST = "ohos.permission.FILE_ACCESS_PERSIST";
 constexpr const char* PERMISSION_SUPPORT_APP_SERVICE_EXTENSION = "ohos.permission.SUPPORT_APP_SERVICE_EXTENSION";
+constexpr const char* PERMISSION_SUPPORT_APP_SERVICE_EXTENSION_ADVANCED =
+    "ohos.permission.SUPPORT_APP_SERVICE_EXTENSION_ADVANCED";
 constexpr const char* PERMISSION_MANAGE_EDM_POLICY = "ohos.permission.MANAGE_EDM_POLICY";
 constexpr const char* PERMISSION_SWITCH_KIOSK_MODE = "ohos.permission.SWITCH_KIOSK_MODE";
 constexpr const char* PERMISSION_TRIGGER_LOCAL_WANTAGENT = "ohos.permission.TRIGGER_LOCAL_WANTAGENT";

@@ -881,6 +881,17 @@ bool AppUtils::IsSupportAppServiceExtension()
     return isSupportAppServiceExtension_.value;
 }
 
+bool AppUtils::IsAppServiceFullCapability()
+{
+    std::lock_guard lock(appServiceFullCapabilityMutex_);
+    if (!appServiceFullCapability_.isLoaded) {
+        appServiceFullCapability_.value = system::GetBoolParameter(
+            "const.abilityms.app_service_full_capability", false);
+        appServiceFullCapability_.isLoaded = true;
+    }
+    return appServiceFullCapability_.value;
+}
+
 bool AppUtils::IsPreloadApplicationEnabled()
 {
     if (!isPreloadApplicationEnabled_.isLoaded) {

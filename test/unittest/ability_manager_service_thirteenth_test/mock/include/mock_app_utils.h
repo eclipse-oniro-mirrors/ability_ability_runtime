@@ -289,6 +289,8 @@ public:
      */
     bool IsSupportAppServiceExtension();
 
+    bool IsAppServiceFullCapability();
+
     /**
      * IsPrepareTerminateEnabled, check if it supports prepare terminate.
      *

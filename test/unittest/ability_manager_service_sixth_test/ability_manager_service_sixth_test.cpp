@@ -14,6 +14,9 @@
  */
 
 #include <gtest/gtest.h>
+#include <memory>
+#include <mutex>
+#include "bundle_mgr_proxy.h"
 
 #define private public
 #define protected public
@@ -21,6 +24,7 @@
 #include "ability_record.h"
 #include "app_utils.h"
 #include "bundle_mgr_helper.h"
+#include "extension_record/base_extension_record.h"
 #include "dialog_session/dialog_session_manager.h"
 #include "mission_list_manager.h"
 #include "ui_ability_lifecycle_manager.h"
@@ -106,6 +110,94 @@ public:
     AbilityRequest abilityRequest_{};
     Want want_{};
     AbilityStartSetting abilityStartSetting_;
+};
+
+class AppServiceAllowListBundleManager : public AppExecFwk::BundleMgrProxy {
+public:
+    AppServiceAllowListBundleManager() : BundleMgrProxy(nullptr) {}
+
+    ErrCode GetSignatureInfoByBundleName(const std::string &bundleName,
+        AppExecFwk::SignatureInfo &info) override
+    {
+        queriedCaller_ = bundleName;
+        info.appIdentifier = "caller-signature";
+        return ERR_OK;
+    }
+
+    bool GetBundleInfo(const std::string &, const AppExecFwk::BundleFlag,
+        AppExecFwk::BundleInfo &info, int32_t) override
+    {
+        AppExecFwk::ExtensionAbilityInfo extension;
+        extension.name = "AppService";
+        extension.type = AppExecFwk::ExtensionAbilityType::APP_SERVICE;
+        if (allowed_) {
+            extension.appIdentifierAllowList = {"caller-signature"};
+        }
+        info.extensionInfos = {extension};
+        return true;
+    }
+
+    std::string queriedCaller_;
+    bool allowed_ = false;
+};
+
+class AppServiceProxyTest : public testing::Test {
+public:
+    void SetUp() override
+    {
+        service_ = std::make_shared<AbilityManagerService>();
+        service_->isParamStartAbilityEnable_ = false;
+        oldFlag_ = MyFlag::flag_;
+        oldParameterValue_ = OHOS::system::GetBoolParameter("", false);
+        MyFlag::flag_ = MyFlag::IS_SA_CALL;
+        g_appServicePermissionState = {};
+        g_appServicePermissionState.enabled = true;
+        g_appServicePermissionState.targetTokenId = targetToken;
+        caller_.tokenId = callerToken;
+        caller_.callerUid = callerUid;
+        callerBundleName_ = "com.example.appservice.caller";
+        request_.appInfo.accessTokenId = targetToken;
+        request_.uid = caller_.callerUid;
+        request_.abilityInfo.visible = false;
+        request_.abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::APP_SERVICE;
+        auto &utils = AppUtils::GetInstance();
+        oldLoaded_ = utils.isSupportAppServiceExtension_.isLoaded;
+        oldValue_ = utils.isSupportAppServiceExtension_.value;
+        oldFull_ = utils.appServiceFullCapability_;
+        utils.isSupportAppServiceExtension_.isLoaded = true;
+        utils.isSupportAppServiceExtension_.value = true;
+        bundleHelper_ = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
+        ASSERT_NE(bundleHelper_, nullptr);
+        oldBundleMgr_ = bundleHelper_->bundleMgr_;
+    }
+    void TearDown() override
+    {
+        MyFlag::flag_ = oldFlag_;
+        g_appServicePermissionState = {};
+        auto &utils = AppUtils::GetInstance();
+        utils.isSupportAppServiceExtension_.isLoaded = oldLoaded_;
+        utils.isSupportAppServiceExtension_.value = oldValue_;
+        utils.appServiceFullCapability_ = oldFull_;
+        OHOS::system::SetBoolParameter("", oldParameterValue_);
+        if (bundleHelper_ != nullptr) {
+            bundleHelper_->bundleMgr_ = oldBundleMgr_;
+        }
+        service_.reset();
+    }
+    static constexpr uint32_t callerToken = 111;
+    static constexpr uint32_t targetToken = 222;
+    static constexpr int32_t callerUid = 20001001;
+    std::shared_ptr<AbilityManagerService> service_;
+    IndirectCallerInfo caller_;
+    std::string callerBundleName_;
+    AbilityRequest request_;
+    int oldFlag_ = 0;
+    bool oldLoaded_ = false;
+    bool oldValue_ = false;
+    bool oldParameterValue_ = false;
+    DeviceConfiguration<bool> oldFull_ = {false, false};
+    std::shared_ptr<AppExecFwk::BundleMgrHelper> bundleHelper_;
+    sptr<AppExecFwk::IBundleMgr> oldBundleMgr_;
 };
 
 AbilityRequest AbilityManagerServiceSixthTest::GenerateAbilityRequest(const std::string& deviceName,
@@ -2853,6 +2945,199 @@ HWTEST_F(AbilityManagerServiceSixthTest, SetRemoteIntentTimeout_001, TestSize.Le
     abilityMs->RemoveIntentTimeout(insightIntentId);
     EXPECT_EQ(abilityMs->remoteTaskHandles_.size(), 0);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest SetRemoteIntentTimeout_001 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: CheckCallServiceExtensionPermission
+ * FunctionPoints: Verified application supplies the caller identity for permission checks.
+ */
+HWTEST_F(AppServiceProxyTest, IndirectIdentity_001, TestSize.Level1)
+{
+    request_.specifiedFullTokenId = 333;
+    ASSERT_EQ(ERR_OK, service_->CheckCallServiceExtensionPermission(request_, caller_.tokenId));
+    EXPECT_EQ(callerToken, g_appServicePermissionState.verification.specifyTokenId);
+    EXPECT_EQ(targetToken, g_appServicePermissionState.verification.accessTokenId);
+    EXPECT_FALSE(g_appServicePermissionState.verification.visible);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: CheckCallServiceExtensionPermission
+ * FunctionPoints: Existing identity selection is retained without the AppService proxy context.
+ */
+HWTEST_F(AppServiceProxyTest, IndirectIdentity_002, TestSize.Level1)
+{
+    request_.specifiedFullTokenId = 333;
+    request_.skillCallerTokenId = 444;
+    ASSERT_EQ(ERR_OK, service_->CheckCallServiceExtensionPermission(request_));
+    EXPECT_EQ(333U, g_appServicePermissionState.verification.specifyTokenId);
+    EXPECT_EQ(444U, g_appServicePermissionState.verification.skillCallerTokenId);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: CheckCallAppServiceExtensionPermission
+ * FunctionPoints: A failed application access check cannot fall back to the SA identity.
+ */
+HWTEST_F(AppServiceProxyTest, IndirectIdentity_003, TestSize.Level1)
+{
+    g_appServicePermissionState.result = ABILITY_VISIBLE_FALSE_DENY_REQUEST;
+    EXPECT_EQ(ABILITY_VISIBLE_FALSE_DENY_REQUEST,
+        service_->CheckCallAppServiceExtensionPermission(request_, nullptr, true, &caller_, callerBundleName_));
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: CheckCallAppServiceExtensionPermission
+ * FunctionPoints: A new-permission-only target is accepted with a verified caller.
+ */
+HWTEST_F(AppServiceProxyTest, ComponentPermission_001, TestSize.Level1)
+{
+    g_appServicePermissionState.advancedPermission = true;
+    EXPECT_EQ(ERR_OK,
+        service_->CheckCallAppServiceExtensionPermission(request_, nullptr, true, &caller_, callerBundleName_));
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: CheckCallAppServiceExtensionPermission
+ * FunctionPoints: The old permission remains sufficient.
+ */
+HWTEST_F(AppServiceProxyTest, ComponentPermission_002, TestSize.Level1)
+{
+    g_appServicePermissionState.oldPermission = true;
+    EXPECT_EQ(ERR_OK,
+        service_->CheckCallAppServiceExtensionPermission(request_, nullptr, true, &caller_, callerBundleName_));
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: CheckCallAppServiceExtensionPermission
+ * FunctionPoints: An SA proxy cannot bypass the target component permission.
+ */
+HWTEST_F(AppServiceProxyTest, ComponentPermission_003, TestSize.Level1)
+{
+    EXPECT_EQ(TARGET_ABILITY_NOT_SERVICE,
+        service_->CheckCallAppServiceExtensionPermission(request_, nullptr, true, &caller_, callerBundleName_));
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: CheckCallAppServiceExtensionPermission
+ * FunctionPoints: A running target still requires its component permission.
+ */
+HWTEST_F(AppServiceProxyTest, ComponentPermission_004, TestSize.Level1)
+{
+    auto target = std::make_shared<BaseExtensionRecord>(request_.want, request_.abilityInfo, request_.appInfo);
+    target->SetAbilityState(AbilityState::ACTIVE);
+    request_.uid += 1;
+    EXPECT_EQ(TARGET_ABILITY_NOT_SERVICE,
+        service_->CheckCallAppServiceExtensionPermission(request_, target, true, &caller_, callerBundleName_));
+    g_appServicePermissionState.advancedPermission = true;
+    EXPECT_EQ(ERR_OK,
+        service_->CheckCallAppServiceExtensionPermission(request_, target, true, &caller_, callerBundleName_));
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: CheckCallAppServiceExtensionPermission
+ * FunctionPoints: The proxy cannot use the old native-SA early return to bypass the base capability.
+ */
+HWTEST_F(AppServiceProxyTest, Capability_001, TestSize.Level1)
+{
+    AppUtils::GetInstance().isSupportAppServiceExtension_.value = false;
+    g_appServicePermissionState.advancedPermission = true;
+    EXPECT_EQ(ERR_CAPABILITY_NOT_SUPPORT,
+        service_->CheckCallAppServiceExtensionPermission(request_, nullptr, true, &caller_, callerBundleName_));
+    EXPECT_EQ(ERR_OK, service_->CheckCallAppServiceExtensionPermission(request_, nullptr, false));
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: IsAppServiceFullCapability
+ * FunctionPoints: The full capability is independent and cached for the service lifetime.
+ */
+HWTEST_F(AppServiceProxyTest, FullCapability_001, TestSize.Level1)
+{
+    auto &utils = AppUtils::GetInstance();
+    utils.appServiceFullCapability_.isLoaded = false;
+    OHOS::system::SetBoolParameter("", false);
+    EXPECT_FALSE(utils.IsAppServiceFullCapability());
+    OHOS::system::SetBoolParameter("", true);
+    EXPECT_FALSE(utils.IsAppServiceFullCapability());
+    utils.appServiceFullCapability_.isLoaded = false;
+    EXPECT_TRUE(utils.IsAppServiceFullCapability());
+    utils.isSupportAppServiceExtension_.value = false;
+    EXPECT_TRUE(utils.IsAppServiceFullCapability());
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: CheckCallAppServiceExtensionPermission
+ * FunctionPoints: The allow list uses the indirect application or the original caller ability as appropriate.
+ */
+HWTEST_F(AppServiceProxyTest, CallerAllowList_001, TestSize.Level1)
+{
+    auto bundleMgr = sptr<AppServiceAllowListBundleManager>::MakeSptr();
+    bundleHelper_->bundleMgr_ = bundleMgr;
+    request_.uid = caller_.callerUid + 1;
+    request_.abilityInfo.name = "AppService";
+    request_.abilityInfo.bundleName = "com.example.appservice.target";
+    g_appServicePermissionState.advancedPermission = true;
+    EXPECT_EQ(ERR_TARGET_NOT_STARTED,
+        service_->CheckCallAppServiceExtensionPermission(request_, nullptr, true, &caller_, callerBundleName_));
+    EXPECT_EQ(callerBundleName_, bundleMgr->queriedCaller_);
+    EXPECT_EQ(ERR_TARGET_NOT_IN_APP_IDENTIFIER_ALLOW_LIST,
+        service_->CheckCallAppServiceExtensionPermission(request_, nullptr, false, &caller_, callerBundleName_));
+    bundleMgr->allowed_ = true;
+    EXPECT_EQ(ERR_OK,
+        service_->CheckCallAppServiceExtensionPermission(request_, nullptr, true, &caller_, callerBundleName_));
+
+    MyFlag::flag_ = 0;
+    request_.uid = IPCSkeleton::GetCallingUid() == callerUid ? callerUid + 1 : callerUid;
+    EXPECT_EQ(ERR_TARGET_NOT_STARTED,
+        service_->CheckCallAppServiceExtensionPermission(request_, nullptr, true));
+    AbilityRequest callerRequest;
+    callerRequest.appInfo.bundleName = "com.example.appservice.directcaller";
+    auto callerRecord = AbilityRecord::CreateAbilityRecord(callerRequest);
+    ASSERT_NE(callerRecord, nullptr);
+    request_.callerToken = callerRecord->GetToken();
+    ASSERT_NE(request_.callerToken, nullptr);
+    EXPECT_EQ(ERR_OK, service_->CheckCallAppServiceExtensionPermission(request_, nullptr, true));
+    EXPECT_EQ(callerRequest.appInfo.bundleName, bundleMgr->queriedCaller_);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: CheckCallAbilityPermission
+ * FunctionPoints: The full-capability switch controls the AppService exemption from background-call classification.
+ */
+HWTEST_F(AppServiceProxyTest, BackgroundStart_001, TestSize.Level1)
+{
+    MyFlag::flag_ = MyFlag::IS_SHELL_CALL;
+    OHOS::system::SetBoolParameter("", false);
+    AbilityRequest callerRequest;
+    callerRequest.abilityInfo.type = AppExecFwk::AbilityType::EXTENSION;
+    callerRequest.abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::APP_SERVICE;
+    auto callerRecord = AbilityRecord::CreateAbilityRecord(callerRequest);
+    ASSERT_NE(callerRecord, nullptr);
+    callerRecord->SetAbilityState(AbilityState::BACKGROUND);
+    request_.callerToken = callerRecord->GetToken();
+    ASSERT_NE(request_.callerToken, nullptr);
+    auto &fullCapability = AppUtils::GetInstance().appServiceFullCapability_;
+    fullCapability.isLoaded = true;
+    fullCapability.value = true;
+    EXPECT_EQ(ERR_OK, service_->CheckCallAbilityPermission(request_, false));
+    EXPECT_FALSE(g_appServicePermissionState.verification.isBackgroundCall);
+    fullCapability.value = false;
+    EXPECT_EQ(ERR_OK, service_->CheckCallAbilityPermission(request_, false));
+    EXPECT_TRUE(g_appServicePermissionState.verification.isBackgroundCall);
+
+    fullCapability.value = true;
+    callerRecord->abilityInfo_.extensionAbilityType = AppExecFwk::ExtensionAbilityType::UI_SERVICE;
+    EXPECT_EQ(ERR_OK, service_->CheckCallAbilityPermission(request_, false));
+    EXPECT_TRUE(g_appServicePermissionState.verification.isBackgroundCall);
 }
 }  // namespace AAFwk
 }  // namespace OHOS

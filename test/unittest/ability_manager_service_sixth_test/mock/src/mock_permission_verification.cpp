@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 - 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 - 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -18,6 +18,7 @@
 
 #include "hilog_tag_wrapper.h"
 #include "mock_my_flag.h"
+#include "permission_constants.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -25,6 +26,18 @@ namespace AAFwk {
 bool PermissionVerification::VerifyPermissionByTokenId(const int &tokenId, const std::string &permissionName) const
 {
     TAG_LOGI(AAFwkTag::TEST, "%{public}s enter", __func__);
+    if (g_appServicePermissionState.enabled) {
+        if (static_cast<uint32_t>(tokenId) != g_appServicePermissionState.targetTokenId) {
+            return false;
+        }
+        if (permissionName == PermissionConstants::PERMISSION_SUPPORT_APP_SERVICE_EXTENSION) {
+            return g_appServicePermissionState.oldPermission;
+        }
+        if (permissionName == PermissionConstants::PERMISSION_SUPPORT_APP_SERVICE_EXTENSION_ADVANCED) {
+            return g_appServicePermissionState.advancedPermission;
+        }
+        return false;
+    }
     return !!(MyFlag::flag_);
 }
 
@@ -159,12 +172,20 @@ int PermissionVerification::CheckCallServiceAbilityPermission(
 int PermissionVerification::CheckCallAbilityPermission(const VerificationInfo &verificationInfo,
     bool isCallByShortcut) const
 {
+    if (g_appServicePermissionState.enabled) {
+        g_appServicePermissionState.verification = verificationInfo;
+        return g_appServicePermissionState.result;
+    }
     TAG_LOGI(AAFwkTag::TEST, "%{public}s enter", __func__);
     return MyFlag::flag_;
 }
 
 int PermissionVerification::CheckCallServiceExtensionPermission(const VerificationInfo &verificationInfo) const
 {
+    if (g_appServicePermissionState.enabled) {
+        g_appServicePermissionState.verification = verificationInfo;
+        return g_appServicePermissionState.result;
+    }
     TAG_LOGI(AAFwkTag::TEST, "%{public}s enter", __func__);
     return MyFlag::flag_;
 }

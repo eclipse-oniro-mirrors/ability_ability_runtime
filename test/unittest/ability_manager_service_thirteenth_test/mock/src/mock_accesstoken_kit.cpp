@@ -35,6 +35,13 @@ int AccessTokenKit::GetHapTokenInfo(AccessTokenID tokenID, HapTokenInfo &hapInfo
     // Configurable for tests that exercise the app-notify path (e.g. skill launch
     // completion); the default keeps the legacy "lookup fails" behavior.
     auto &status = AAFwk::MyStatus::GetInstance();
+    status.atkQueriedTokenId_ = tokenID;
+    if (status.atkGetHapTokenInfo_ != -1) {
+        if (status.atkGetHapTokenInfo_ == 0) {
+            hapInfo = status.atkHapTokenInfo_;
+        }
+        return status.atkGetHapTokenInfo_;
+    }
     if (status.atkGetHapTokenInfoRet_ == 0) {
         hapInfo.bundleName = status.atkHapTokenInfoBundleName_;
     }
@@ -43,7 +50,9 @@ int AccessTokenKit::GetHapTokenInfo(AccessTokenID tokenID, HapTokenInfo &hapInfo
 
 int AccessTokenKit::VerifyAccessToken(AccessTokenID tokenID, const std::string &permissionName, bool crossIpc)
 {
-    return -1;
+    auto &status = AAFwk::MyStatus::GetInstance();
+    status.atkVerifiedTokenId_ = tokenID;
+    return status.atkVerifyAccessToken_;
 }
 
 void AccessTokenKit::GetPermissionManagerInfo(PermissionGrantInfo &info)

@@ -250,6 +250,11 @@ bool AppUtils::IsSupportAppServiceExtension()
     return true;
 }
 
+bool AppUtils::IsAppServiceFullCapability()
+{
+    return MyStatus::GetInstance().auIsAppServiceFullCapability_;
+}
+
 bool AppUtils::IsSupportStartAbilities()
 {
     return MyStatus::GetInstance().isSupportStartAbilities_;

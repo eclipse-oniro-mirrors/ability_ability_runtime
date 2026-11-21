@@ -585,8 +585,14 @@ HWTEST_F(AppUtilsTest, IsSupportAppServiceExtension_0100, TestSize.Level2)
 {
     TAG_LOGI(AAFwkTag::TEST, "IsSupportAppServiceExtension_0100 called.");
     auto &appUtils = AAFwk::AppUtils::GetInstance();
+    bool oldLoaded = appUtils.isSupportAppServiceExtension_.isLoaded;
+    bool oldValue = appUtils.isSupportAppServiceExtension_.value;
+    appUtils.isSupportAppServiceExtension_.isLoaded = true;
+    appUtils.isSupportAppServiceExtension_.value = false;
     bool result = appUtils.IsSupportAppServiceExtension();
     EXPECT_FALSE(result);
+    appUtils.isSupportAppServiceExtension_.isLoaded = oldLoaded;
+    appUtils.isSupportAppServiceExtension_.value = oldValue;
 }
 
 /**
