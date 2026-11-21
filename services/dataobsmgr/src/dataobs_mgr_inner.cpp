@@ -64,6 +64,13 @@ int DataObsMgrInner::HandleRegisterObserver(const Uri &uri, struct ObserverNode 
     if (!ObsTokenQuota::GetInstance().TryAcquire(observerNode.tokenId_)) {
         TAG_LOGE(AAFwkTag::DBOBSMGR, "token quota exceeded, uri:%{public}s, token:%{public}u",
             CommonUtils::Anonymous(uri.ToString()).c_str(), observerNode.tokenId_);
+        // Roll back the try_emplace so a failed quota check on a fresh URI does not leave an
+        // empty list node behind in observers_ (otherwise repeated failed registrations could
+        // grow the map without bound). The list can only be empty here when try_emplace just
+        // inserted the entry; existing entries always contain at least one observer.
+        if (obsPair->second.empty()) {
+            observers_.erase(obsPair);
+        }
         return DATAOBS_SERVICE_OBS_LIMMIT;
     }
     obsPair->second.push_back(observerNode);

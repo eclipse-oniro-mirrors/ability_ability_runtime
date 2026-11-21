@@ -345,5 +345,242 @@ HWTEST_F(DataObsMgrQuotaTest, DataObsMgr_QuotaShared_0100, TestSize.Level1)
     EXPECT_EQ(ext->HandleRegisterObserver(extExtra, observer, extraInfo, false),
         DATAOBS_SERVICE_OBS_LIMMIT);
 }
+
+/*
+ * Feature: DataObsMgrInner
+ * Function: Register observer quota
+ * SubFunction: HandleRegisterObserver
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: A failed registration on a fresh URI must not leave an empty node in
+ * observers_; otherwise repeated failed registrations could grow the map without bound.
+ * Verified indirectly via HandleNotifyChange: an erased URI returns NO_OBS_FOR_URI, while
+ * a leaked empty node would return NO_ERROR.
+ */
+HWTEST_F(DataObsMgrQuotaTest, DataObsMgrInner_QuotaFailureNoLeak_0100, TestSize.Level1)
+{
+    auto inner = std::make_shared<DataObsMgrInner>();
+    ASSERT_TRUE(inner != nullptr);
+    auto observer = CreateObserver();
+    // Exhaust the per-token quota.
+    for (uint32_t i = 0; i < ObsTokenQuota::TOKEN_OBSERVER_TOTAL_MAX; i++) {
+        Uri uri("dataability://com.ohos.unittest.noleak/uri" + std::to_string(i));
+        EXPECT_EQ(inner->HandleRegisterObserver(uri, ObserverNode(observer, USER_TEST, TOKEN_INNER_TEST, 0)),
+            NO_ERROR);
+    }
+    // A registration on a brand-new URI fails at the quota check. The empty node inserted by
+    // try_emplace must be rolled back so observers_ does not accumulate empty entries.
+    Uri leakUri("dataability://com.ohos.unittest.noleak/leak");
+    EXPECT_EQ(
+        inner->HandleRegisterObserver(leakUri, ObserverNode(observer, USER_TEST, TOKEN_INNER_TEST, 0)),
+        DATAOBS_SERVICE_OBS_LIMMIT);
+    EXPECT_EQ(inner->HandleNotifyChange(leakUri, USER_TEST, "", false, 0), NO_OBS_FOR_URI);
+}
+
+/*
+ * Feature: DataObsMgrInner
+ * Function: Observer death callback
+ * SubFunction: OnCallBackDied
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: When an observer binder dies, OnCallBackDied removes every entry for that
+ * observer across all URIs and releases the corresponding per-token quota slots.
+ */
+HWTEST_F(DataObsMgrQuotaTest, DataObsMgrInner_OnCallBackDied_0100, TestSize.Level1)
+{
+    auto inner = std::make_shared<DataObsMgrInner>();
+    ASSERT_TRUE(inner != nullptr);
+    auto observer = CreateObserver();
+    constexpr uint32_t registered = 3;
+    for (uint32_t i = 0; i < registered; i++) {
+        Uri uri("dataability://com.ohos.unittest.died/uri" + std::to_string(i));
+        EXPECT_EQ(inner->HandleRegisterObserver(uri, ObserverNode(observer, USER_TEST, TOKEN_INNER_TEST, 0)),
+            NO_ERROR);
+    }
+    EXPECT_EQ(ObsTokenQuota::GetInstance().GetCount(TOKEN_INNER_TEST), registered);
+    // Simulate observer binder death.
+    auto remoteObj = observer->AsObject();
+    ASSERT_TRUE(remoteObj != nullptr);
+    wptr<IRemoteObject> remoteWeak(remoteObj);
+    inner->OnCallBackDied(remoteWeak);
+    EXPECT_EQ(ObsTokenQuota::GetInstance().GetCount(TOKEN_INNER_TEST), 0);
+}
+
+/*
+ * Feature: DataObsMgrInnerPref
+ * Function: Observer death callback
+ * SubFunction: OnCallBackDied
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: The preferences channel releases quota slots on observer death as well.
+ */
+HWTEST_F(DataObsMgrQuotaTest, DataObsMgrInnerPref_OnCallBackDied_0100, TestSize.Level1)
+{
+    auto pref = std::make_shared<DataObsMgrInnerPref>();
+    ASSERT_TRUE(pref != nullptr);
+    auto observer = CreateObserver();
+    constexpr uint32_t registered = 3;
+    for (uint32_t i = 0; i < registered; i++) {
+        Uri uri("preferences://com.ohos.unittest.died/key" + std::to_string(i));
+        EXPECT_EQ(pref->HandleRegisterObserver(uri, ObserverNode(observer, USER_TEST, TOKEN_PREF_TEST, 0)),
+            NO_ERROR);
+    }
+    EXPECT_EQ(ObsTokenQuota::GetInstance().GetCount(TOKEN_PREF_TEST), registered);
+    auto remoteObj = observer->AsObject();
+    ASSERT_TRUE(remoteObj != nullptr);
+    wptr<IRemoteObject> remoteWeak(remoteObj);
+    pref->OnCallBackDied(remoteWeak);
+    EXPECT_EQ(ObsTokenQuota::GetInstance().GetCount(TOKEN_PREF_TEST), 0);
+}
+
+/*
+ * Feature: DataObsMgrInnerExt
+ * Function: Observer death callback
+ * SubFunction: OnCallBackDied
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: The trie channel releases quota slots on observer death across all URIs.
+ */
+HWTEST_F(DataObsMgrQuotaTest, DataObsMgrInnerExt_OnCallBackDied_0100, TestSize.Level1)
+{
+    auto ext = std::make_shared<DataObsMgrInnerExt>();
+    ASSERT_TRUE(ext != nullptr);
+    auto observer = CreateObserver();
+    constexpr uint32_t registered = 3;
+    for (uint32_t i = 0; i < registered; i++) {
+        Uri uri("datashare://com.ohos.unittest.died/seg" + std::to_string(i));
+        ObserverInfo info(TOKEN_EXT_TEST, 0, 0, USER_TEST, false);
+        EXPECT_EQ(ext->HandleRegisterObserver(uri, observer, info, false), SUCCESS);
+    }
+    EXPECT_EQ(ObsTokenQuota::GetInstance().GetCount(TOKEN_EXT_TEST), registered);
+    auto remoteObj = observer->AsObject();
+    ASSERT_TRUE(remoteObj != nullptr);
+    wptr<IRemoteObject> remoteWeak(remoteObj);
+    ext->OnCallBackDied(remoteWeak);
+    EXPECT_EQ(ObsTokenQuota::GetInstance().GetCount(TOKEN_EXT_TEST), 0);
+}
+
+/*
+ * Feature: DataObsMgrInner
+ * Function: Unregister observer quota
+ * SubFunction: HandleUnregisterObserver
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: The unregister find predicate matches only on the observer binder object,
+ * ignoring tokenId_. This is the FromExtension contract: an observer registered under the
+ * first-caller token must be released by the stored token, not the unregister caller's token.
+ * If this contract breaks, FromExtension quota silently leaks.
+ */
+HWTEST_F(DataObsMgrQuotaTest, DataObsMgrInner_UnregisterReleasesStoredToken_0100, TestSize.Level1)
+{
+    auto inner = std::make_shared<DataObsMgrInner>();
+    ASSERT_TRUE(inner != nullptr);
+    auto observer = CreateObserver();
+    Uri uri("dataability://com.ohos.unittest.token/uri");
+    // Register under TOKEN_INNER_TEST (simulating a stored first-caller token).
+    EXPECT_EQ(inner->HandleRegisterObserver(uri, ObserverNode(observer, USER_TEST, TOKEN_INNER_TEST, 0)),
+        NO_ERROR);
+    EXPECT_EQ(ObsTokenQuota::GetInstance().GetCount(TOKEN_INNER_TEST), 1);
+    EXPECT_EQ(ObsTokenQuota::GetInstance().GetCount(TOKEN_INNER_OTHER), 0);
+    // Unregister under TOKEN_INNER_OTHER (simulating the provider calling unregister with its
+    // own token). The stored TOKEN_INNER_TEST slot must be released, not TOKEN_INNER_OTHER.
+    EXPECT_EQ(inner->HandleUnregisterObserver(uri, ObserverNode(observer, USER_TEST, TOKEN_INNER_OTHER, 0)),
+        NO_ERROR);
+    EXPECT_EQ(ObsTokenQuota::GetInstance().GetCount(TOKEN_INNER_TEST), 0);
+    EXPECT_EQ(ObsTokenQuota::GetInstance().GetCount(TOKEN_INNER_OTHER), 0);
+}
+
+/*
+ * Feature: DataObsMgrInnerPref
+ * Function: Unregister observer quota
+ * SubFunction: HandleUnregisterObserver
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: The preferences channel shares the same FromExtension contract: unregister
+ * releases the stored token, not the unregister caller's token.
+ */
+HWTEST_F(DataObsMgrQuotaTest, DataObsMgrInnerPref_UnregisterReleasesStoredToken_0100, TestSize.Level1)
+{
+    auto pref = std::make_shared<DataObsMgrInnerPref>();
+    ASSERT_TRUE(pref != nullptr);
+    auto observer = CreateObserver();
+    Uri uri("preferences://com.ohos.unittest.token/key");
+    EXPECT_EQ(pref->HandleRegisterObserver(uri, ObserverNode(observer, USER_TEST, TOKEN_PREF_TEST, 0)),
+        NO_ERROR);
+    EXPECT_EQ(ObsTokenQuota::GetInstance().GetCount(TOKEN_PREF_TEST), 1);
+    EXPECT_EQ(ObsTokenQuota::GetInstance().GetCount(TOKEN_INNER_OTHER), 0);
+    EXPECT_EQ(pref->HandleUnregisterObserver(uri, ObserverNode(observer, USER_TEST, TOKEN_INNER_OTHER, 0)),
+        NO_ERROR);
+    EXPECT_EQ(ObsTokenQuota::GetInstance().GetCount(TOKEN_PREF_TEST), 0);
+    EXPECT_EQ(ObsTokenQuota::GetInstance().GetCount(TOKEN_INNER_OTHER), 0);
+}
+
+/*
+ * Feature: DataObsMgrInnerPref
+ * Function: Register observer quota
+ * SubFunction: HandleRegisterObserver
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: A failed registration on a fresh URI must not leave an empty node in
+ * observers_ (preferences channel). Verified via HandleNotifyChange: an erased URI returns
+ * NO_OBS_FOR_URI, while a leaked empty node would return NO_ERROR.
+ */
+HWTEST_F(DataObsMgrQuotaTest, DataObsMgrInnerPref_QuotaFailureNoLeak_0100, TestSize.Level1)
+{
+    auto pref = std::make_shared<DataObsMgrInnerPref>();
+    ASSERT_TRUE(pref != nullptr);
+    auto observer = CreateObserver();
+    for (uint32_t i = 0; i < ObsTokenQuota::TOKEN_OBSERVER_TOTAL_MAX; i++) {
+        Uri uri("preferences://com.ohos.unittest.noleakpref/key" + std::to_string(i));
+        EXPECT_EQ(pref->HandleRegisterObserver(uri, ObserverNode(observer, USER_TEST, TOKEN_PREF_TEST, 0)),
+            NO_ERROR);
+    }
+    // A registration on a brand-new URI fails at the quota check. The empty node inserted by
+    // try_emplace must be rolled back so observers_ does not accumulate empty entries.
+    Uri leakUri("preferences://com.ohos.unittest.noleakpref/leak");
+    EXPECT_EQ(
+        pref->HandleRegisterObserver(leakUri, ObserverNode(observer, USER_TEST, TOKEN_PREF_TEST, 0)),
+        DATAOBS_SERVICE_OBS_LIMMIT);
+    // HandleNotifyChange requires a query string; the observerKey is the part before '?'.
+    // With the rollback the key is absent → NO_OBS_FOR_URI; without it the empty node → NO_ERROR.
+    Uri notifyUri("preferences://com.ohos.unittest.noleakpref/leak?x=y");
+    EXPECT_EQ(pref->HandleNotifyChange(notifyUri, USER_TEST, 0), NO_OBS_FOR_URI);
+}
+
+/*
+ * Feature: DataObsMgrInner
+ * Function: Register observer quota
+ * SubFunction: HandleRegisterObserver
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: When TryAcquire fails on a URI that already has observers, the existing
+ * entries must not be erased. Only empty (freshly try_emplace'd) nodes are rolled back.
+ */
+HWTEST_F(DataObsMgrQuotaTest, DataObsMgrInner_QuotaFailurePreservesExisting_0100, TestSize.Level1)
+{
+    auto inner = std::make_shared<DataObsMgrInner>();
+    ASSERT_TRUE(inner != nullptr);
+    auto observer = CreateObserver();
+    // Register one observer on existingUri, then exhaust the remaining quota on other URIs.
+    Uri existingUri("dataability://com.ohos.unittest.existing/uri0");
+    EXPECT_EQ(inner->HandleRegisterObserver(existingUri, ObserverNode(observer, USER_TEST, TOKEN_INNER_TEST, 0)),
+        NO_ERROR);
+    for (uint32_t i = 1; i < ObsTokenQuota::TOKEN_OBSERVER_TOTAL_MAX; i++) {
+        Uri uri("dataability://com.ohos.unittest.existing/uri" + std::to_string(i));
+        EXPECT_EQ(inner->HandleRegisterObserver(uri, ObserverNode(observer, USER_TEST, TOKEN_INNER_TEST, 0)),
+            NO_ERROR);
+    }
+    EXPECT_EQ(ObsTokenQuota::GetInstance().GetCount(TOKEN_INNER_TEST),
+        ObsTokenQuota::TOKEN_OBSERVER_TOTAL_MAX);
+    // A second observer on the existing URI fails at the quota check. The URI already has
+    // content from the first observer; the rollback must NOT erase the existing entry.
+    auto observer2 = CreateObserver();
+    EXPECT_EQ(
+        inner->HandleRegisterObserver(existingUri, ObserverNode(observer2, USER_TEST, TOKEN_INNER_TEST, 0)),
+        DATAOBS_SERVICE_OBS_LIMMIT);
+    // The existing observer's entry is still there: HandleNotifyChange returns NO_ERROR
+    // (would return NO_OBS_FOR_URI if the entry had been erased).
+    EXPECT_EQ(inner->HandleNotifyChange(existingUri, USER_TEST, "", false, 0), NO_ERROR);
+}
 }  // namespace AAFwk
 }  // namespace OHOS
