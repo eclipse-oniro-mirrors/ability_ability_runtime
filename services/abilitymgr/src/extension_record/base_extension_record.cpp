@@ -337,6 +337,20 @@ pid_t BaseExtensionRecord::GetClientPid() const
     return clientPid_;
 }
 
+bool BaseExtensionRecord::GetPromotePriorityInfo(int32_t &callerUid, int32_t &callerPid)
+{
+    callerUid = promoteCallerUid_;
+    callerPid = promoteCallerPid_;
+    return promotePriority_;
+}
+
+void BaseExtensionRecord::SetPromotePriorityInfo(bool promotePriority, int32_t callerUid, int32_t callerPid)
+{
+    promotePriority_ = promotePriority;
+    promoteCallerUid_ = callerUid;
+    promoteCallerPid_ = callerPid;
+}
+
 void BaseExtensionRecord::SetIsInProcess(bool isInProcess)
 {
     isInProcess_ = isInProcess;

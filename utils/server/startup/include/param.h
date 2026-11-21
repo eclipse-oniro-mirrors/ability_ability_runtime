@@ -65,6 +65,9 @@ struct LoadParam : public Parcelable {
     pid_t reusePid = -1;
     int32_t processMode = 0;
     int32_t requestId = 0;
+    bool promotePriority = false;
+    int32_t callerUid = -1;
+    int32_t callerPid = -1;
 };
 
 struct StartSpecifiedParam : public Parcelable {

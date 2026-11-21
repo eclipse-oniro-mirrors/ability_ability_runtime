@@ -194,6 +194,10 @@ public:
      */
     size_t CleanTaskAttributionsByTaskId(const std::string &taskId);
 
+    bool GetPromotePriorityInfo(int32_t &callerUid, int32_t &callerPid);
+
+    void SetPromotePriorityInfo(bool promotePriority, int32_t callerUid, int32_t callerPid);
+
 private:
     void DumpUIExtensionRootHostInfo(std::vector<std::string> &info) const;
 
@@ -210,6 +214,9 @@ private:
     std::string requestId_;
     mutable ffrt::mutex taskAttributionsMutex_;
     std::map<int32_t, std::vector<AgentTaskAttribution>> taskAttributions_;
+    bool promotePriority_ = false;
+    int32_t promoteCallerUid_ = -1;
+    int32_t promoteCallerPid_ = -1;
 };
 } // namespace AAFwk
 } // namespace OHOS

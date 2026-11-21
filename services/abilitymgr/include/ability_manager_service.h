@@ -1535,6 +1535,9 @@ public:
         bool isStartAsCaller = false,
         uint32_t skillCallerTokenId = 0);
 
+    void HandlePromotePriorityParam(
+        AbilityRequest &abilityRequest, const Want &want, AppExecFwk::ExtensionAbilityType extensionType);
+
     int RequestModalUIExtensionInner(Want want);
 
     int PreloadUIExtensionAbilityInner(const Want &want, std::string &bundleName,

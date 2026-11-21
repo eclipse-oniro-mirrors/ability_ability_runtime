@@ -40,6 +40,7 @@
 #include "init_reboot.h"
 #include "insight_intent_execute_param.h"
 #include "int_wrapper.h"
+#include "ipc_skeleton.h"
 #include "multi_instance_utils.h"
 #include "modular_object_manager.h"
 #include "modular_object_utils.h"
@@ -1660,6 +1661,7 @@ void AbilityConnectManager::LoadAbility(const std::shared_ptr<BaseExtensionRecor
     loadParam.isPreloadUIExtension = isPreloadUIExtension;
     loadParam.loadTimeout = loadTimeoutFinal;
     SetExtensionLoadParam(loadParam, abilityRecord);
+    loadParam.promotePriority = abilityRecord->GetPromotePriorityInfo(loadParam.callerUid, loadParam.callerPid);
     AbilityRuntime::FreezeUtil::GetInstance().AddLifecycleEvent(loadParam.token, "AbilityConnectManager::LoadAbility");
     HandleLoadAbilityOrStartSpecifiedProcess(loadParam, abilityRecord);
 }
@@ -3798,7 +3800,31 @@ void AbilityConnectManager::GetOrCreateServiceRecord(const AbilityRequest &abili
                 newAbilityInfo.name);
         }
     }
+    HandlePromotePriority(targetService, abilityRequest);
     TAG_LOGD(AAFwkTag::EXT, "service map add, serviceKey: %{public}s", serviceKey.c_str());
+}
+
+void AbilityConnectManager::HandlePromotePriority(
+    std::shared_ptr<BaseExtensionRecord> &targetService, const AbilityRequest &abilityRequest)
+{
+    if (!abilityRequest.promotePriority || targetService == nullptr) {
+        return;
+    }
+    int32_t callerUid = IPCSkeleton::GetCallingUid();
+    int32_t callerPid = IPCSkeleton::GetCallingPid();
+    targetService->SetPromotePriorityInfo(abilityRequest.promotePriority, callerUid, callerPid);
+    if (targetService->GetPid() <= 0) {
+        return;
+    }
+    ExtensionPromoteInfo info {
+        callerUid,
+        callerPid,
+        targetService->GetUid(),
+        targetService->GetPid(),
+        targetService->GetAbilityInfo().bundleName,
+        static_cast<int32_t>(targetService->GetAbilityInfo().extensionAbilityType)
+    };
+    ResSchedUtil::GetInstance().PromoteExtensionPriorityToRSS(info);
 }
 
 int32_t AbilityConnectManager::HandleExtensionSetup(const AbilityRequest &abilityRequest,

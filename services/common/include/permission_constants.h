@@ -105,6 +105,9 @@ constexpr const char* PERMISSION_CONTINUATION_NOTIFY = "ohos.permission.CONTINUA
 constexpr const char* PERMISSION_EXECUTE_DISTRIBUTED_INTENT = "ohos.permission.EXECUTE_DISTRIBUTED_INTENT";
 constexpr const char* PERMISSION_ALLOW_USE_BM = "ohos.permission.ALLOW_USE_BM";
 constexpr const char* PERMISSION_SA_INTERCEPTOR = "ohos.permission.REGISTER_SA_INTERCEPTOR";
+constexpr const char* PERMISSION_PROMOTE_BACKGROUND_PROCESS_PRIORITY =
+    "ohos.permission.PROMOTE_BACKGROUND_PROCESS_PRIORITY";
+constexpr const char* PERMISSION_SUPPORT_HIGH_PRIORITY_STARTUP = "ohos.permission.SUPPORT_HIGH_PRIORITY_STARTUP";
 } // namespace PermissionConstants
 } // namespace AAFwk
 } // namespace OHOS
