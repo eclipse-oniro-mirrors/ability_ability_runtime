@@ -31,6 +31,8 @@ ohos_unittest("launch_service_test") {
   sources = [
     "${ability_runtime_innerkits_path}/daemon_service_manager/src/launch_service_operation_callback.cpp",
     "${ability_runtime_services_path}/appmgr/src/app_pidfd_manager.cpp",
+    "${ability_runtime_services_path}/appmgr/src/sub_spawn_manager.cpp",
+    "${ability_runtime_services_path}/appmgr/src/sub_spawn_record.cpp",
     "${ability_runtime_services_path}/appmgr/src/launch_service_manager.cpp",
     "${ability_runtime_services_path}/appmgr/src/launch_service_observer_manager.cpp",
     "launch_service_info_test.cpp",
