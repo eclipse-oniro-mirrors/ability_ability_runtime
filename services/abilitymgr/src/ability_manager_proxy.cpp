@@ -497,6 +497,56 @@ int AbilityManagerProxy::StartAbility(const Want &want, const StartOptions &star
     return reply.ReadInt32();
 }
 
+int AbilityManagerProxy::StartUIAbilityWithDisplayIdPassthrough(const Want &want, const StartOptions &startOptions,
+    const sptr<IRemoteObject> &callerToken, int32_t userId, int requestCode)
+{
+    if (AppUtils::GetInstance().IsForbidStart()) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "forbid start: %{public}s", want.GetElement().GetBundleName().c_str());
+        return INNER_ERR;
+    }
+    Ability_MANAGER_HITRACE_CHAIN_NAME("StartUIAbilityWithDisplayIdPassthrough", HITRACE_FLAG_INCLUDE_ASYNC);
+    int error;
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!WriteInterfaceToken(data)) {
+        return INNER_ERR;
+    }
+    if (!data.WriteParcelable(&want)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "want write fail");
+        return ERR_NATIVE_IPC_PARCEL_FAILED;
+    }
+    if (!data.WriteParcelable(&startOptions)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "writeParcelable fail");
+        return ERR_NATIVE_IPC_PARCEL_FAILED;
+    }
+    if (callerToken) {
+        if (!data.WriteBool(true) || !data.WriteRemoteObject(callerToken)) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "flag and callerToken write fail");
+            return ERR_NATIVE_IPC_PARCEL_FAILED;
+        }
+    } else {
+        if (!data.WriteBool(false)) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "flag write fail");
+            return ERR_NATIVE_IPC_PARCEL_FAILED;
+        }
+    }
+    if (!data.WriteInt32(userId)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "userId write fail");
+        return ERR_NATIVE_IPC_PARCEL_FAILED;
+    }
+    if (!data.WriteInt32(requestCode)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "requestCode write fail");
+        return ERR_NATIVE_IPC_PARCEL_FAILED;
+    }
+    error = SendRequest(AbilityManagerInterfaceCode::START_UI_ABILITY_WITH_DISPLAY_ID_PASSTHROUGH, data, reply, option);
+    if (error != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "request error:%{public}d", error);
+        return error;
+    }
+    return reply.ReadInt32();
+}
+
 int AbilityManagerProxy::StartAbilityAsCaller(const Want &want, const sptr<IRemoteObject> &callerToken,
     sptr<IRemoteObject> asCallerSourceToken, int32_t userId, int requestCode)
 {

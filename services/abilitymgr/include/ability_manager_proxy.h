@@ -192,6 +192,25 @@ public:
         int requestCode = DEFAULT_INVAL_VALUE) override;
 
     /**
+     * Starts a new ability with specific start options, restricted to softbus_service (uid 4700).
+     * The displayId in startOptions is passed through unchanged. Marshals the request to the
+     * service which verifies the caller uid and reuses the existing StartAbilityForOption path.
+     *
+     * @param want the want of the ability to start.
+     * @param startOptions Indicates the options used to start (displayId transparent).
+     * @param callerToken caller ability token.
+     * @param userId Designation User ID.
+     * @param requestCode the resultCode of the ability to start.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int StartUIAbilityWithDisplayIdPassthrough(
+        const Want &want,
+        const StartOptions &startOptions,
+        const sptr<IRemoteObject> &callerToken,
+        int32_t userId = DEFAULT_INVAL_VALUE,
+        int requestCode = DEFAULT_INVAL_VALUE) override;
+
+    /**
      * Starts a new ability using the original caller information.
      *
      * @param want the want of the ability to start.

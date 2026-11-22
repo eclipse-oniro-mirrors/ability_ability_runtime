@@ -247,6 +247,20 @@ ErrCode AbilityManagerClient::StartAbility(const Want &want, const StartOptions 
     return abms->StartAbility(want, startOptions, callerToken, userId, requestCode);
 }
 
+ErrCode AbilityManagerClient::StartUIAbilityWithDisplayIdPassthrough(const Want &want, const StartOptions &startOptions,
+    sptr<IRemoteObject> callerToken, int requestCode, int32_t userId)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto abms = GetAbilityManager();
+    CHECK_POINTER_RETURN_NOT_CONNECTED(abms);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "Passthrough ability:%{public}s/%{public}s, userId:%{public}d, "
+        "requestCode:%{public}d, displayId:%{public}d",
+        want.GetBundle().c_str(),
+        want.GetElement().GetAbilityName().c_str(), userId, requestCode, startOptions.GetDisplayID());
+    HandleDlpApp(const_cast<Want &>(want));
+    return abms->StartUIAbilityWithDisplayIdPassthrough(want, startOptions, callerToken, userId, requestCode);
+}
+
 ErrCode AbilityManagerClient::StartAbilityAsCaller(
     const Want &want, sptr<IRemoteObject> callerToken,
     sptr<IRemoteObject> asCallerSourceToken, int requestCode, int32_t userId)

@@ -393,6 +393,27 @@ public:
         int32_t userId = DEFAULT_INVAL_VALUE);
 
     /**
+     * Start an ability with start options through the softbus_service-restricted path.
+     *
+     * The server verifies the caller uid is SOFTBUS_SERVICE_UID (4700); the displayId carried
+     * in startOptions is passed through unchanged and the existing StartAbilityForOption path
+     * is reused. Intended for softbus_service only.
+     *
+     * @param want The want of the ability to start.
+     * @param startOptions The options used to start (displayId is transparent).
+     * @param callerToken Token of the calling ability; may be nullptr for SA callers.
+     * @param requestCode Request code propagated to the target; DEFAULT_INVAL_VALUE means none.
+     * @param userId Target user id; DEFAULT_INVAL_VALUE means the caller's current user.
+     * @return ERR_OK on success; ERR_PERMISSION_DENIED for non-softbus callers; start errors.
+     */
+    ErrCode StartUIAbilityWithDisplayIdPassthrough(
+        const Want &want,
+        const StartOptions &startOptions,
+        sptr<IRemoteObject> callerToken,
+        int requestCode = DEFAULT_INVAL_VALUE,
+        int32_t userId = DEFAULT_INVAL_VALUE);
+
+    /**
      * Start an ability attributing the call to the ORIGINAL caller identified by
      * asCallerSourceToken (used when a middleman app re-starts on behalf of its caller, e.g.
      * cross-device continuation). System-app callers only. The caller info (uid/pid/tokenId) in

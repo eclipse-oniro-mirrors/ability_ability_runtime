@@ -22,6 +22,7 @@
 #include "fd_guard.h"
 #include "hilog_tag_wrapper.h"
 #include "hitrace_meter.h"
+#include "ipc_skeleton.h"
 #include "insight_intent_execute_param.h"
 #include "insight_intent_execute_lite_param.h"
 #include "insight_intent_execute_manager.h"
@@ -47,6 +48,7 @@ const std::u16string extensionDescriptor = u"ohos.aafwk.ExtensionManager";
 constexpr int32_t CYCLE_LIMIT = 1000;
 constexpr int32_t INDEX_ONE = 1;
 constexpr int32_t MAX_KILL_PROCESS_PID_COUNT = 100;
+constexpr int32_t SOFTBUS_SERVICE_UID = 4700;
 constexpr int32_t MAX_UPDATE_CONFIG_SIZE = 100;
 constexpr int32_t MAX_WANT_LIST_SIZE = 4;
 constexpr const char* WINDOW_PARAMS_SUGGESTION_SOURCE = "ohos.multiwindow.suggestionSource";
@@ -252,6 +254,9 @@ int AbilityManagerStub::OnRemoteRequestInnerFourth(uint32_t code, MessageParcel 
     }
     if (interfaceCode == AbilityManagerInterfaceCode::START_ABILITY_FOR_OPTIONS) {
         return StartAbilityForOptionsInner(data, reply);
+    }
+    if (interfaceCode == AbilityManagerInterfaceCode::START_UI_ABILITY_WITH_DISPLAY_ID_PASSTHROUGH) {
+        return StartUIAbilityWithDisplayIdPassthroughInner(data, reply);
     }
     if (interfaceCode == AbilityManagerInterfaceCode::START_SYNC_MISSIONS) {
         return StartSyncRemoteMissionsInner(data, reply);
@@ -2358,6 +2363,37 @@ int AbilityManagerStub::StartAbilityForOptionsInner(MessageParcel &data, Message
     int32_t userId = data.ReadInt32();
     int requestCode = data.ReadInt32();
     int32_t result = StartAbility(*want, *startOptions, callerToken, userId, requestCode);
+    reply.WriteInt32(result);
+    delete startOptions;
+    return NO_ERROR;
+}
+
+int AbilityManagerStub::StartUIAbilityWithDisplayIdPassthroughInner(MessageParcel &data, MessageParcel &reply)
+{
+    if (IPCSkeleton::GetCallingUid() != SOFTBUS_SERVICE_UID) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "not softbus_service call, uid:%{public}d", IPCSkeleton::GetCallingUid());
+        return ERR_PERMISSION_DENIED;
+    }
+    std::shared_ptr<Want> want(data.ReadParcelable<Want>());
+    if (want == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "want null");
+        return ERR_INVALID_VALUE;
+    }
+    SanitizeWantParams(*want);
+    want->AdoptAllLegacyFd(FdTraversalMode::RECURSIVE);
+    StartOptions *startOptions = data.ReadParcelable<StartOptions>();
+    if (startOptions == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "startOptions null");
+        return ERR_INVALID_VALUE;
+    }
+    ProcessOptions::SanitizeSystemFields(startOptions->processOptions);
+    sptr<IRemoteObject> callerToken = nullptr;
+    if (data.ReadBool()) {
+        callerToken = data.ReadRemoteObject();
+    }
+    int32_t userId = data.ReadInt32();
+    int requestCode = data.ReadInt32();
+    int32_t result = StartUIAbilityWithDisplayIdPassthrough(*want, *startOptions, callerToken, userId, requestCode);
     reply.WriteInt32(result);
     delete startOptions;
     return NO_ERROR;

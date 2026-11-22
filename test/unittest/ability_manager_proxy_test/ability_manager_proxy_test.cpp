@@ -138,6 +138,96 @@ HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_002, TestSize.Level1)
 }
 
 /*
+ * Feature: AbilityManagerProxy
+ * Function: StartUIAbilityWithDisplayIdPassthrough
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerProxy StartUIAbilityWithDisplayIdPassthrough
+ * EnvConditions: NA
+ * CaseDescription: Verify the proxy marshals the softbus passthrough request with a null callerToken
+ *                 (WriteBool(false) branch) and sends START_UI_ABILITY_WITH_DISPLAY_ID_PASSTHROUGH.
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_StartUIAbilityWithDisplayIdPassthrough_001, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+    const Want want;
+    StartOptions startOptions;
+    sptr<IRemoteObject> callerToken = nullptr;
+    auto res = proxy_->StartUIAbilityWithDisplayIdPassthrough(want, startOptions, callerToken, USER_ID, 0);
+    EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::START_UI_ABILITY_WITH_DISPLAY_ID_PASSTHROUGH),
+        mock_->code_);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerProxy
+ * Function: StartUIAbilityWithDisplayIdPassthrough
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerProxy StartUIAbilityWithDisplayIdPassthrough
+ * EnvConditions: NA
+ * CaseDescription: Verify the proxy marshals with a non-null callerToken (WriteBool(true) +
+ *                 WriteRemoteObject branch).
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_StartUIAbilityWithDisplayIdPassthrough_002, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+    const Want want;
+    StartOptions startOptions;
+    sptr<IRemoteObject> callerToken = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    auto res = proxy_->StartUIAbilityWithDisplayIdPassthrough(want, startOptions, callerToken, USER_ID, 0);
+    EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::START_UI_ABILITY_WITH_DISPLAY_ID_PASSTHROUGH),
+        mock_->code_);
+    EXPECT_EQ(res, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerProxy
+ * Function: StartUIAbilityWithDisplayIdPassthrough
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerProxy StartUIAbilityWithDisplayIdPassthrough
+ * EnvConditions: NA
+ * CaseDescription: Verify the proxy returns the SendRequest error when IPC fails (error != NO_ERROR branch).
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_StartUIAbilityWithDisplayIdPassthrough_003, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeErrorSendRequest));
+    const Want want;
+    StartOptions startOptions;
+    sptr<IRemoteObject> callerToken = nullptr;
+    auto res = proxy_->StartUIAbilityWithDisplayIdPassthrough(want, startOptions, callerToken, USER_ID, 0);
+    EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::START_UI_ABILITY_WITH_DISPLAY_ID_PASSTHROUGH),
+        mock_->code_);
+    EXPECT_NE(res, NO_ERROR);
+}
+
+/*
+ * Feature: AbilityManagerProxy
+ * Function: StartUIAbilityWithDisplayIdPassthrough
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerProxy StartUIAbilityWithDisplayIdPassthrough
+ * EnvConditions: NA
+ * CaseDescription: A Want serialization failure (param exceeds parcel max capacity) stops IPC and
+ *                 returns ERR_NATIVE_IPC_PARCEL_FAILED, covering the `if (!data.WriteParcelable(&want))` branch.
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_StartUIAbilityWithDisplayIdPassthrough_004, TestSize.Level1)
+{
+    MessageParcel parcel;
+    Want want;
+    ASSERT_TRUE(want.Marshalling(parcel));
+    want.SetParam("largeResult", std::string(parcel.GetMaxCapacity(), 'a'));
+    StartOptions startOptions;
+    sptr<IRemoteObject> callerToken = nullptr;
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _)).Times(0);
+    auto res = proxy_->StartUIAbilityWithDisplayIdPassthrough(want, startOptions, callerToken, USER_ID, 0);
+    EXPECT_EQ(res, ERR_NATIVE_IPC_PARCEL_FAILED);
+}
+
+/*
  * Feature: AbilityManagerService
  * Function: TerminateAbility
  * SubFunction: NA
