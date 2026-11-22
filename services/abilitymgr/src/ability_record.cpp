@@ -1406,7 +1406,11 @@ void AbilityRecord::SendResult(bool isSandboxApp, uint32_t tokeId, bool schedule
         abilityInfo_.name.c_str(), tokeId, static_cast<int32_t>(schedulerdied), result->requestCode_);
 #ifdef SUPPORT_UPMS
     if (!schedulerdied) {
-        GrantUriPermission(result->resultWant_, abilityInfo_.applicationInfo.bundleName, isSandboxApp, tokeId, false);
+        Want grantWant = result->resultWant_;
+        grantWant.RemoveParam(Want::PARAM_RESV_CALLER_BUNDLE_NAME);
+        grantWant.RemoveParam(Want::PARAM_RESV_CALLER_TOKEN);
+        grantWant.RemoveParam(Want::PARAM_RESV_CALLER_UID);
+        GrantUriPermission(grantWant, abilityInfo_.applicationInfo.bundleName, isSandboxApp, tokeId, false);
     }
 #endif // SUPPORT_UPMS
     if (result->requestCode_ != -1) {
