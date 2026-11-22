@@ -34,6 +34,15 @@ using namespace testing::ext;
 using OHOS::DelayedSingleton;
 
 namespace OHOS {
+namespace EventFwk {
+bool CommonEventManager::SubscribeCommonEvent(const std::shared_ptr<CommonEventSubscriber>& subscriber)
+{
+    return subscriber != nullptr;
+}
+} // namespace EventFwk
+} // namespace OHOS
+
+namespace OHOS {
 namespace AbilityRuntime {
 namespace {
 const int RESULT_CODE = 8521225;

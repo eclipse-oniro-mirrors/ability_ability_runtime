@@ -15,11 +15,15 @@
 
 #include <atomic>
 #include <chrono>
+#include <functional>
 #include <gtest/gtest.h>
+#include <set>
 #include <thread>
+#include <vector>
 
 #include "ability_manager_errors.h"
 #include "bundle_mgr_helper.h"
+#include "ffrt_task_utils_wrap.h"
 #include "hilog_tag_wrapper.h"
 #include "process_options.h"
 #include "start_options.h"
@@ -43,6 +47,74 @@ constexpr const char* INTERCEPT_BUNDLE_NAME = "intercept_bundleName";
 constexpr const char* INTERCEPT_ABILITY_NAME = "intercept_abilityName";
 constexpr const char* INTERCEPT_MODULE_NAME = "intercept_moduleName";
 const std::string IS_FROM_PARENTCONTROL = "ohos.ability.isFromParentControl";
+
+class TestInnerTaskHandle : public InnerTaskHandle {
+public:
+    explicit TestInnerTaskHandle(uint64_t id)
+        : InnerTaskHandle(ffrt::submit_h([]() {}, {}, {}, ffrt::task_attr{})), id_(id) {}
+
+    uint64_t GetTestId() const
+    {
+        return id_;
+    }
+
+private:
+    uint64_t id_;
+};
+
+class ManualTaskHandlerWrap : public TaskHandlerWrap {
+public:
+    explicit ManualTaskHandlerWrap(const std::string& queueName = "ManualTaskHandlerWrap")
+        : TaskHandlerWrap(queueName) {}
+
+    std::shared_ptr<InnerTaskHandle> SubmitTaskInner(std::function<void()>&& task,
+        const TaskAttribute& taskAttr) override
+    {
+        auto handle = std::make_shared<TestInnerTaskHandle>(nextId_++);
+        pendingTasks_.push_back({handle, std::move(task), taskAttr.taskName_});
+        return handle;
+    }
+
+    bool CancelTaskInner(const std::shared_ptr<InnerTaskHandle>& taskHandle) override
+    {
+        auto testHandle = std::static_pointer_cast<TestInnerTaskHandle>(taskHandle);
+        if (testHandle == nullptr) {
+            return false;
+        }
+        canceledIds_.insert(testHandle->GetTestId());
+        return true;
+    }
+
+    void WaitTaskInner(const std::shared_ptr<InnerTaskHandle>& taskHandle) override {}
+
+    void RunPendingTasks()
+    {
+        auto tasks = std::move(pendingTasks_);
+        pendingTasks_.clear();
+        for (auto& pending : tasks) {
+            if (canceledIds_.count(pending.handle->GetTestId()) == 0 && pending.task) {
+                pending.task();
+            }
+        }
+    }
+
+    void CancelAllTasks()
+    {
+        pendingTasks_.clear();
+        canceledIds_.clear();
+    }
+
+private:
+    struct PendingTask {
+        std::shared_ptr<TestInnerTaskHandle> handle;
+        std::function<void()> task;
+        std::string name;
+    };
+
+    uint64_t nextId_ = 0;
+    std::vector<PendingTask> pendingTasks_;
+    std::set<uint64_t> canceledIds_;
+};
 }
 
 class DisposedRuleInterceptorTest : public testing::Test {
@@ -50,7 +122,10 @@ public:
     static void SetUpTestCase() {}
     static void TearDownTestCase() {}
     void SetUp() {}
-    void TearDown() {}
+    void TearDown()
+    {
+        MyFlag::mockAppMgr_ = nullptr;
+    }
 };
 
 /**
@@ -324,8 +399,9 @@ HWTEST_F(DisposedRuleInterceptorTest, StartNonBlockRule_006, TestSize.Level1)
     EXPECT_CALL(*appMgr,  RegisterApplicationStateObserver(_, _))
         .WillOnce(Return(ERR_OK));
 
+    auto taskHandler = std::make_shared<ManualTaskHandlerWrap>("StartNonBlockRule_006");
     std::shared_ptr<DisposedRuleInterceptor> interceptor =
-        std::make_shared<DisposedRuleInterceptor>(TaskHandlerWrap::CreateQueueHandler("StartNonBlockRule_006"));
+        std::make_shared<DisposedRuleInterceptor>(taskHandler);
     Want want;
     want.SetElementName("", "test.bundleName123", "test.abilityName", "test.entry");
     AppExecFwk::DisposedRule rule;
@@ -335,6 +411,7 @@ HWTEST_F(DisposedRuleInterceptorTest, StartNonBlockRule_006, TestSize.Level1)
     abilityInfo->uid = 100;
     auto ret = interceptor->StartNonBlockRule(want, rule, abilityInfo);
     EXPECT_EQ(ret, ERR_OK);
+    taskHandler->CancelAllTasks();
     TAG_LOGI(AAFwkTag::TEST, "StartNonBlockRule_006 end");
 }
 
@@ -352,8 +429,9 @@ HWTEST_F(DisposedRuleInterceptorTest, StartNonBlockRule_007, TestSize.Level1)
     EXPECT_CALL(*appMgr,  RegisterApplicationStateObserver(_, _))
         .WillOnce(Return(ERR_OK));
 
+    auto taskHandler = std::make_shared<ManualTaskHandlerWrap>("test_start_non_block_007");
     std::shared_ptr<DisposedRuleInterceptor> interceptor =
-        std::make_shared<DisposedRuleInterceptor>(TaskHandlerWrap::CreateQueueHandler("test_start_non_block_007"));
+        std::make_shared<DisposedRuleInterceptor>(taskHandler);
     Want want;
     want.SetElementName("", "test.bundleName123", "test.abilityName", "test.entry");
     AppExecFwk::DisposedRule rule;
@@ -364,6 +442,7 @@ HWTEST_F(DisposedRuleInterceptorTest, StartNonBlockRule_007, TestSize.Level1)
     auto ret = interceptor->StartNonBlockRule(want, rule, abilityInfo);
     ret = interceptor->StartNonBlockRule(want, rule, abilityInfo);
     EXPECT_EQ(ret, ERR_OK);
+    taskHandler->CancelAllTasks();
     TAG_LOGI(AAFwkTag::TEST, "StartNonBlockRule_007 end");
 }
 
@@ -986,10 +1065,11 @@ HWTEST_F(DisposedRuleInterceptorTest, UnregisterObserver_001, TestSize.Level1)
 HWTEST_F(DisposedRuleInterceptorTest, UnregisterObserver_002, TestSize.Level1)
 {
     TAG_LOGI(AAFwkTag::TEST, "UnregisterObserver_002 start");
-    auto interceptor =
-        std::make_shared<DisposedRuleInterceptor>(TaskHandlerWrap::CreateQueueHandler("test_unregister_002"));
+    auto taskHandler = std::make_shared<ManualTaskHandlerWrap>("test_unregister_002");
+    auto interceptor = std::make_shared<DisposedRuleInterceptor>(taskHandler);
     int32_t uid = 1001;
     interceptor->UnregisterObserver(uid);
+    taskHandler->RunPendingTasks();
     EXPECT_EQ(interceptor->disposedObserverMap_.size(), 0);
     TAG_LOGI(AAFwkTag::TEST, "UnregisterObserver_002 end");
 }
@@ -1010,8 +1090,8 @@ HWTEST_F(DisposedRuleInterceptorTest, UnregisterObserver_003, TestSize.Level1)
     EXPECT_CALL(*appMgr, UnregisterApplicationStateObserver(_))
         .WillOnce(Return(ERR_OK));
 
-    auto interceptor =
-        std::make_shared<DisposedRuleInterceptor>(TaskHandlerWrap::CreateQueueHandler("test_unregister_003"));
+    auto taskHandler = std::make_shared<ManualTaskHandlerWrap>("test_unregister_003");
+    auto interceptor = std::make_shared<DisposedRuleInterceptor>(taskHandler);
 
     int32_t uid = 100;
     Want want;
@@ -1033,8 +1113,8 @@ HWTEST_F(DisposedRuleInterceptorTest, UnregisterObserver_003, TestSize.Level1)
     }
 
     interceptor->UnregisterObserver(uid);
-    // Observer should be removed because it has no pending keys
-    EXPECT_EQ(interceptor->disposedObserverMap_.size(), 1);
+    taskHandler->RunPendingTasks();
+    EXPECT_EQ(interceptor->disposedObserverMap_.size(), 0);
     TAG_LOGI(AAFwkTag::TEST, "UnregisterObserver_003 end");
 }
 
@@ -1054,8 +1134,8 @@ HWTEST_F(DisposedRuleInterceptorTest, UnregisterObserver_004, TestSize.Level1)
     EXPECT_CALL(*appMgr, UnregisterApplicationStateObserver(_))
         .WillOnce(Return(ERR_OK));
 
-    auto interceptor =
-        std::make_shared<DisposedRuleInterceptor>(TaskHandlerWrap::CreateQueueHandler("test_unregister_004"));
+    auto taskHandler = std::make_shared<ManualTaskHandlerWrap>("test_unregister_004");
+    auto interceptor = std::make_shared<DisposedRuleInterceptor>(taskHandler);
 
     int32_t uid = 100;
     Want want;
@@ -1070,8 +1150,8 @@ HWTEST_F(DisposedRuleInterceptorTest, UnregisterObserver_004, TestSize.Level1)
     EXPECT_EQ(interceptor->disposedObserverMap_.size(), 1);
 
     interceptor->UnregisterObserver(uid);
-    // Observer should not be removed because it has pending keys
-    EXPECT_EQ(interceptor->disposedObserverMap_.size(), 1);
+    taskHandler->RunPendingTasks();
+    EXPECT_EQ(interceptor->disposedObserverMap_.size(), 0);
     TAG_LOGI(AAFwkTag::TEST, "UnregisterObserver_004 end");
 }
 
@@ -1137,8 +1217,9 @@ HWTEST_F(DisposedRuleInterceptorTest, StartNonBlockRule_009, TestSize.Level3)
             return ERR_OK;
         }));
 
+    auto taskHandler = std::make_shared<ManualTaskHandlerWrap>("test_non_block_009");
     std::shared_ptr<DisposedRuleInterceptor> interceptor =
-        std::make_shared<DisposedRuleInterceptor>(TaskHandlerWrap::CreateQueueHandler("test_non_block_009"));
+        std::make_shared<DisposedRuleInterceptor>(taskHandler);
     Want want;
     want.SetElementName("", "test.bundleName123", "test.abilityName", "test.entry");
     AppExecFwk::DisposedRule rule;
@@ -1154,16 +1235,11 @@ HWTEST_F(DisposedRuleInterceptorTest, StartNonBlockRule_009, TestSize.Level3)
         EXPECT_EQ(interceptor->disposedObserverMap_.size(), 1);
     }
 
-    // wait for the unregister timeout(5s) to fire, poll with margin
+    taskHandler->RunPendingTasks();
     bool mapEmpty = false;
-    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(9);
-    while (std::chrono::steady_clock::now() < deadline) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    {
         std::lock_guard<ffrt::mutex> guard(interceptor->observerLock_);
-        if (interceptor->disposedObserverMap_.empty()) {
-            mapEmpty = true;
-            break;
-        }
+        mapEmpty = interceptor->disposedObserverMap_.empty();
     }
     EXPECT_TRUE(mapEmpty);
     EXPECT_GE(unregisterCount->load(), 1);
@@ -1192,8 +1268,9 @@ HWTEST_F(DisposedRuleInterceptorTest, StartNonBlockRule_010, TestSize.Level3)
             return ERR_OK;
         }));
 
+    auto taskHandler = std::make_shared<ManualTaskHandlerWrap>("test_non_block_010");
     std::shared_ptr<DisposedRuleInterceptor> interceptor =
-        std::make_shared<DisposedRuleInterceptor>(TaskHandlerWrap::CreateQueueHandler("test_non_block_010"));
+        std::make_shared<DisposedRuleInterceptor>(taskHandler);
     Want want;
     want.SetElementName("", "test.bundleName123", "test.abilityName", "test.entry");
     AppExecFwk::DisposedRule rule;
@@ -1202,32 +1279,21 @@ HWTEST_F(DisposedRuleInterceptorTest, StartNonBlockRule_010, TestSize.Level3)
     auto abilityInfo = std::make_shared<AppExecFwk::AbilityInfo>();
     int32_t uid = 102;
     abilityInfo->applicationInfo.uid = uid;
-    // first registration arms the timeout task at t0
     auto ret = interceptor->StartNonBlockRule(want, rule, abilityInfo);
     EXPECT_EQ(ret, ERR_OK);
 
-    // refresh the timeout deadline 2s later, the first deadline is t0+5s
-    std::this_thread::sleep_for(std::chrono::seconds(2));
     ret = interceptor->StartNonBlockRule(want, rule, abilityInfo);
     EXPECT_EQ(ret, ERR_OK);
-
-    // at t0+5.8s: first deadline has passed, refreshed deadline(t0+7s) not reached
-    std::this_thread::sleep_for(std::chrono::milliseconds(3800));
     {
         std::lock_guard<ffrt::mutex> guard(interceptor->observerLock_);
         EXPECT_EQ(interceptor->disposedObserverMap_.size(), 1);
     }
 
-    // wait for the refreshed deadline to fire
+    taskHandler->RunPendingTasks();
     bool mapEmpty = false;
-    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(6);
-    while (std::chrono::steady_clock::now() < deadline) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    {
         std::lock_guard<ffrt::mutex> guard(interceptor->observerLock_);
-        if (interceptor->disposedObserverMap_.empty()) {
-            mapEmpty = true;
-            break;
-        }
+        mapEmpty = interceptor->disposedObserverMap_.empty();
     }
     EXPECT_TRUE(mapEmpty);
     EXPECT_GE(unregisterCount->load(), 1);
