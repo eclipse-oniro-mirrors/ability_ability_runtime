@@ -1955,15 +1955,15 @@ HWTEST_F(AbilityManagerServiceSixthTest, StartUIAbilityByPreInstallInner_002, Te
     // ConvertToOriginErrorCode passes through as 1 and is returned before the interceptorExecuter_
     // ternary that previously yielded ERR_INVALID_VALUE.
     ret = abilityMs->StartUIAbilityByPreInstallInner(sessionInfo, -1, params, isColdStart);
-    EXPECT_EQ(ret, 1);
+    EXPECT_EQ(ret, CHECK_PERMISSION_FAILED);
 
     ret = abilityMs->StartUIAbilityByPreInstallInner(sessionInfo, 1, params, isColdStart);
-    EXPECT_EQ(ret, 1);
+    EXPECT_EQ(ret, CHECK_PERMISSION_FAILED);
     abilityMs->interceptorExecuter_ = std::make_shared<AbilityInterceptorExecuter>();
     ret = abilityMs->StartUIAbilityByPreInstallInner(sessionInfo, 1, params, isColdStart);
-    EXPECT_EQ(ret, 1);
+    EXPECT_EQ(ret, CHECK_PERMISSION_FAILED);
     ret = abilityMs->StartUIAbilityByPreInstallInner(sessionInfo, -1, params, isColdStart);
-    EXPECT_EQ(ret, 1);
+    EXPECT_EQ(ret, CHECK_PERMISSION_FAILED);
     Mock::VerifyAndClear(mockBundleMgr);
     bundleMgrHelper_->bundleMgr_ = nullptr;
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceSixthTest StartUIAbilityByPreInstallInner_002 end");

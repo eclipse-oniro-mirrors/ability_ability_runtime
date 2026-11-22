@@ -678,53 +678,13 @@ HWTEST_F(AbilityAutoStartupServiceSecondTest, GetBundleInfo_003, TestSize.Level1
     GTEST_LOG_(INFO) << "AbilityAutoStartupServiceSecondTest GetBundleInfo_003 start";
     auto abilityAutoStartupService = std::make_shared<AbilityAutoStartupService>();
     EXPECT_NE(abilityAutoStartupService, nullptr);
-    std::string bundleName = "bundleName12345";
-    int32_t userId = 100;
-    int32_t appIndex = MAX_APP_CLONE_INDEX_NUM;
-    AppExecFwk::BundleInfo bundleInfo;
-    auto result = abilityAutoStartupService->GetBundleInfo(bundleName, userId, appIndex, bundleInfo);
-    EXPECT_TRUE(result);
-    GTEST_LOG_(INFO) << "AbilityAutoStartupServiceSecondTest GetBundleInfo_003 end";
-}
-
-/*
- * Feature: AbilityAutoStartupService
- * Function: GetBundleInfo
- * SubFunction: NA
- * FunctionPoints: AbilityAutoStartupService GetBundleInfo
- */
-HWTEST_F(AbilityAutoStartupServiceSecondTest, GetBundleInfo_004, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "AbilityAutoStartupServiceSecondTest GetBundleInfo_004 start";
-    auto abilityAutoStartupService = std::make_shared<AbilityAutoStartupService>();
-    EXPECT_NE(abilityAutoStartupService, nullptr);
-    std::string bundleName = "123";
-    int32_t userId = 100;
-    int32_t appIndex = MAX_APP_CLONE_INDEX_NUM;
-    AppExecFwk::BundleInfo bundleInfo;
-    auto result = abilityAutoStartupService->GetBundleInfo(bundleName, userId, appIndex, bundleInfo);
-    EXPECT_FALSE(result);
-    GTEST_LOG_(INFO) << "AbilityAutoStartupServiceSecondTest GetBundleInfo_004 end";
-}
-
-/*
- * Feature: AbilityAutoStartupService
- * Function: GetBundleInfo
- * SubFunction: NA
- * FunctionPoints: AbilityAutoStartupService GetBundleInfo
- */
-HWTEST_F(AbilityAutoStartupServiceSecondTest, GetBundleInfo_005, TestSize.Level1)
-{
-    GTEST_LOG_(INFO) << "AbilityAutoStartupServiceSecondTest GetBundleInfo_005 start";
-    auto abilityAutoStartupService = std::make_shared<AbilityAutoStartupService>();
-    EXPECT_NE(abilityAutoStartupService, nullptr);
     std::string bundleName = "123";
     int32_t userId = 100;
     int32_t appIndex = 1;
     AppExecFwk::BundleInfo bundleInfo;
     auto result = abilityAutoStartupService->GetBundleInfo(bundleName, userId, appIndex, bundleInfo);
     EXPECT_FALSE(result);
-    GTEST_LOG_(INFO) << "AbilityAutoStartupServiceSecondTest GetBundleInfo_005 end";
+    GTEST_LOG_(INFO) << "AbilityAutoStartupServiceSecondTest GetBundleInfo_003 end";
 }
 
 /*

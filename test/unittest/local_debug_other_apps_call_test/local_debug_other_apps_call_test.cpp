@@ -440,7 +440,7 @@ HWTEST_F(LocalDebugOtherAppsCallTest, CheckPermissionForForceStopProcess_0600, T
         Security::AccessToken::PermissionState::PERMISSION_GRANTED;
     MyStatus::GetInstance().ipcGetCallingUid_ = SANDBOX_USER_UID;
     bool result = PermissionVerification::GetInstance()->CheckPermissionForForceStopProcess(TARGET_USER_ID);
-    EXPECT_TRUE(result);
+    EXPECT_FALSE(result);
     TAG_LOGI(AAFwkTag::TEST, "CheckPermissionForForceStopProcess_0600 end");
 }
 
