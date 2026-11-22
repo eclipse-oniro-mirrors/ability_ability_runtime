@@ -53,6 +53,7 @@
 #include "permission_query_util.h"
 #include "permission_util.h"
 #include "process_manager.h"
+#include "proc_scanner.h"
 #include "session_record.h"
 #include "task_attribution_manager.h"
 #include "tool_util.h"
@@ -393,8 +394,10 @@ void CliToolManagerService::OnStop()
     TAG_LOGI(AAFwkTag::CLI_TOOL, "climgr stop");
     initialized_ = false;
 
-    // Collect active PIDs before clearing sessions.
-    std::vector<pid_t> activePids;
+    // Collect the active kill targets (sandbox anchors) before clearing sessions: every kill
+    // keys on the anchor pid alone (Killpg revert), so the resolved command pid is no longer
+    // collected — the attribution chain is commandPid's only remaining producer/reader.
+    std::vector<pid_t> activeTargets;
     std::vector<std::string> detachTaskIds;
     std::vector<int64_t> detachAttributionIds;
     std::vector<int32_t> detachUids;
@@ -405,7 +408,7 @@ void CliToolManagerService::OnStop()
                 continue;
             }
             if (record->processId > 0 && !record->HasProcessExited()) {
-                activePids.emplace_back(record->processId);
+                activeTargets.emplace_back(record->processId);
             }
             // ATTACHED collected here; PENDING relayed to the attach write-back (its compensating
             // detach is the single finisher — without the relay the registration would leak).
@@ -427,10 +430,11 @@ void CliToolManagerService::OnStop()
 
     // Kill each active child and clean up its tool token: SIG_IGN (set in StopReaper) auto-reaps
     // them; WaitPid runs only for DeleteToolTokenByPid (no record, so no FinalizeBackgroundSession).
+    // WaitPid still keys on the sandbox pid: only the anchor is a direct child of climgr.
     auto &processManager = ProcessManager::GetInstance();
-    for (pid_t pid : activePids) {
-        processManager.Killpg(pid);
-        WaitPid(pid, 0, SIGCHLD);
+    for (pid_t processId : activeTargets) {
+        processManager.Killpg(processId);
+        WaitPid(processId, 0, SIGCHLD);
     }
 
     // Backstop: reap any pre-existing zombies SIG_IGN did not retroactively catch (defensive; on OHOS Linux
@@ -580,15 +584,170 @@ void CliToolManagerService::AttachTaskAttribution(const std::shared_ptr<SessionR
         callerUid = record->callerUid;
         record->attributionState = AttributionState::PENDING;
     }
-    // Phase 2 — sync IPC outside the lock (lock-held long IPC is forbidden).
+    // Phase 2 — async resolution + registration. The real command process is a grandchild:
+    // claw_sandbox (the anchor) forks it after unshare(CLONE_NEWPID), so the anchor is only a
+    // monitor. Resolving the command pid polls /proc for up to the discovery window and must
+    // never run inline — it would delay the execTool/execCmd IPC reply (BR-3: no timing impact).
+    ffrt::submit([record, taskId, anchor, callerUid]() {
+        auto service = CliToolManagerService::GetInstance();
+        if (service == nullptr) {
+            return;
+        }
+        service->ResolveCommandAndAttach(record, taskId, anchor, callerUid);
+    });
+}
+
+void CliToolManagerService::ResolveCommandAndAttach(const std::shared_ptr<SessionRecord> &record,
+    const std::string &taskId, pid_t anchor, int32_t callerUid)
+{
+    if (record == nullptr || anchor <= 0) {
+        return;
+    }
+    // Chain start: read the seams ONCE and freeze them into the state, so later mutations
+    // (e.g. a test restoring the production window mid-run) cannot retime a chain in flight.
+    auto state = std::make_shared<DiscoveryState>();
+    state->record = record;
+    state->taskId = taskId;
+    state->anchor = anchor;
+    state->callerUid = callerUid;
+    state->pollMs = std::max(commandDiscoveryPollMs_.load(std::memory_order_relaxed), 1);
+    int32_t timeoutMs = std::max(commandDiscoveryTimeoutMs_.load(std::memory_order_relaxed), 0);
+    state->deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+    state->observedAlive = false;
+    // First round runs immediately (no delay): the command child is usually forked long
+    // before the first poll interval would have elapsed.
+    PollCommandDiscovery(state);
+}
+
+void CliToolManagerService::PollCommandDiscovery(std::shared_ptr<DiscoveryState> state)
+{
+    // One discovery round, in the historical order: pending-check => FindCommandProcess =>
+    // deadline-check => liveness gate => delayed resubmit. The anchor was forked by climgr
+    // microseconds before this chain started: it is alive by construction, so a
+    // first-observation DEAD verdict is an observation artifact (on hidepid=2 systems aimgr
+    // without the readproc gid cannot even see the root-owned sandbox), never a real death —
+    // only an observed ALIVE->DEAD transition may abort. Not-yet-seen-alive or UNKNOWN
+    // (unreadable /proc) rounds keep polling: never conclude death from an untrustworthy
+    // observation; the deadline then lapses into the unresolved, no-registration outcome
+    // below. Every non-terminal round resubmits through ResubmitCommandDiscovery with an
+    // ffrt delay instead of sleeping on the worker.
+    const std::shared_ptr<SessionRecord> &record = state->record;
+    // Round start guard: a teardown that consumed the PENDING state wins the race (nothing
+    // registered, nothing to compensate) — terminal, no further rounds are submitted.
+    if (!IsAttributionPending(record)) {
+        return;
+    }
+    pid_t commandPid = ProcScanner::FindCommandProcess(state->anchor);
+    if (commandPid > 0) {
+        // Child visible: hand the resolved pid to the shared terminal (attach IPC, or the
+        // relay write-back when a teardown raced in while the IPC was in flight).
+        FinishCommandAttribution(state, commandPid);
+        return;
+    }
+    if (std::chrono::steady_clock::now() >= state->deadline) {
+        // Window lapsed with no visible child: the shared terminal concludes with the
+        // no-registration outcome (PENDING -> FAILED, zero IPC) — an unresolved command pid
+        // is never registered, not even on the anchor (ISSUE-4: the anchor is only the
+        // sandbox monitor; in the exec-in-place form nothing attributable survives either).
+        FinishCommandAttribution(state, commandPid);
+        return;
+    }
+    // Liveness gate: the abort guard first, arming last — the guard reads only the flag
+    // armed by EARLIER rounds (an ALIVE verdict can never satisfy the DEAD gate), so this
+    // order keeps the two steps provably independent and the flow a pure guard chain.
+    ProcLiveness liveness = ProcScanner::CheckLiveness(state->anchor);
+    if (liveness == ProcLiveness::DEAD && state->observedAlive) {
+        // Observed alive first, gone afterwards: the anchor really exited before any command
+        // child became visible. In the pid-ns form the command child (if it ever existed)
+        // died with the monitor or was reparented beyond ppid reach; in the exec-in-place
+        // form the anchor WAS the command. Nothing attributable survives, so do NOT create
+        // the registration at all: the reaper teardown consumes the PENDING state with zero
+        // IPC — timelier than registering a dead pid only to post a compensating unregister.
+        TAG_LOGI(AAFwkTag::CLI_TOOL,
+            "anchor exited before command discovery, skip attach, sessionId=%{public}s, "
+            "anchorPid=%{public}d",
+            record->sessionId.c_str(), state->anchor);
+        return;
+    }
+    // Arm for the later rounds, now that the gate has spoken: sticky on ALIVE only — an
+    // UNKNOWN verdict must not disarm a previously observed-alive anchor.
+    state->observedAlive = state->observedAlive || (liveness == ProcLiveness::ALIVE);
+    ResubmitCommandDiscovery(state);
+}
+
+void CliToolManagerService::ResubmitCommandDiscovery(const std::shared_ptr<DiscoveryState> &state)
+{
+    // Delay-resubmit instead of sleep_for: a blind /proc or an exec-in-place anchor (no child
+    // ever appears) must not park an ffrt worker for the whole window — sibling tasks in this
+    // process (PostDetachTaskAttribution detach IPC, DelayUnloadTask, timeout scheduling)
+    // share the same worker pool. The chain state rides the shared_ptr; the singleton is
+    // re-fetched inside the task because the service may unload between rounds.
+    ffrt::submit([state]() {
+        auto service = CliToolManagerService::GetInstance();
+        if (service == nullptr) {
+            return;
+        }
+        service->PollCommandDiscovery(state);
+    }, ffrt::task_attr().delay(static_cast<uint64_t>(state->pollMs) * COEFFICIENT));
+}
+
+void CliToolManagerService::FinishCommandAttribution(std::shared_ptr<DiscoveryState> state, pid_t commandPid)
+{
+    const std::shared_ptr<SessionRecord> &record = state->record;
+    if (commandPid <= 0) {
+        // Unresolved (window lapsed, no visible child): register NOTHING — not even on the
+        // anchor. The anchor is only the sandbox monitor, so an anchor registration would
+        // attribute the wrong process (ISSUE-4: maintainer ruling — an invalid commandPid
+        // means climgr does not report/register attribution at all; the exec-in-place form
+        // now deliberately ends unattributed). The record must still leave PENDING so
+        // teardowns stop relaying: conclude it through the shared write-back — under
+        // sessionsMutex_, PENDING -> FAILED with zero IPC. When a teardown (the
+        // TryConsumeAttribution relay) already consumed the PENDING state, the write-back's
+        // relay branch computes compensate = attributed = false and this finisher does
+        // nothing. That locked PENDING re-check — shared with TryConsumeAttribution, the
+        // only other code allowed to transition out of PENDING — is the single-finisher
+        // guarantee: exactly one side observes PENDING and settles the lifecycle.
+        TAG_LOGI(AAFwkTag::CLI_TOOL,
+            "command process unresolved, no attribution registered, sessionId=%{public}s, "
+            "anchorPid=%{public}d",
+            record->sessionId.c_str(), state->anchor);
+        WriteBackAttachResult(record, "AttachTaskAttribution", false, ERR_OK, commandPid, state->taskId, 0);
+        return;
+    }
+    // Resolved: cache the valid command pid only — the -1 sentinel means "never resolved",
+    // and storing the raw verdict would blur that contract (nothing else consumes the field
+    // anymore: kill paths key on the anchor pid, so this store is the sole remaining use).
+    record->commandPid.store(commandPid, std::memory_order_relaxed);
+    TAG_LOGI(AAFwkTag::CLI_TOOL,
+        "command process resolved, sessionId=%{public}s, anchorPid=%{public}d, commandPid=%{public}d",
+        record->sessionId.c_str(), state->anchor, commandPid);
+    if (!IsAttributionPending(record)) {
+        // Teardown consumed the PENDING state while polling; nothing was registered.
+        return;
+    }
+    // Sync IPC outside any lock (lock-held long IPC is forbidden).
     int64_t attributionId = 0;
-    int32_t ret = TaskAttributionManager::GetInstance().AttachProcess(taskId, anchor, callerUid, attributionId);
+    int32_t ret = TaskAttributionManager::GetInstance().AttachProcess(state->taskId, commandPid,
+        state->callerUid, attributionId);
     // Phase 3+4 — reconcile the verdict under the lock; a teardown that consumed while the IPC
     // was in flight leaves this side the single finisher, compensating its own registration.
-    if (WriteBackAttachResult(record, "AttachTaskAttribution", ret == ERR_OK, ret, anchor, taskId,
+    if (WriteBackAttachResult(record, "AttachTaskAttribution", ret == ERR_OK, ret, commandPid, state->taskId,
         attributionId)) {
-        PostDetachTaskAttribution(taskId, attributionId, callerUid);
+        PostDetachTaskAttribution(state->taskId, attributionId, state->callerUid);
     }
+}
+
+bool CliToolManagerService::IsAttributionPending(const std::shared_ptr<SessionRecord> &record)
+{
+    if (record == nullptr) {
+        return false;
+    }
+    std::lock_guard<ffrt::mutex> guard(sessionsMutex_);
+    auto it = sessionRecords_.find(record->sessionId);
+    if (it == sessionRecords_.end() || it->second != record) {
+        return false;
+    }
+    return record->attributionState == AttributionState::PENDING;
 }
 
 void CliToolManagerService::PostDetachTaskAttribution(const std::string &taskId, int64_t attributionId,
@@ -646,8 +805,12 @@ bool CliToolManagerService::WriteBackAttachResult(const std::shared_ptr<SessionR
                     action, record->sessionId.c_str(), reportedPid, attributionId, taskId.c_str());
             } else {
                 // FAILED: nothing was registered; taskId is kept for audit, teardown sees FAILED and skips.
+                // INFO level, no branching on ret: both finisher outcomes (unresolved
+                // discovery, failed attach IPC) are expected terminal states, not warning
+                // class — keep which finisher fired and with what ret visible for field
+                // troubleshooting.
                 record->attributionState = AttributionState::FAILED;
-                TAG_LOGW(AAFwkTag::CLI_TOOL,
+                TAG_LOGI(AAFwkTag::CLI_TOOL,
                     "%{public}s not attributed, ret=%{public}d, sessionId=%{public}s, taskId=%{public}s",
                     action, ret, record->sessionId.c_str(), taskId.c_str());
             }
@@ -1998,26 +2161,26 @@ void CliToolManagerService::WaitPid(pid_t pid, int32_t status, int32_t sig)
     // Post (never inline) — this runs on the dedicated reaper thread.
     PostDetachTaskAttribution(detachTaskId, detachAttributionId, detachCallerUid);
 
-    if (record) {
-        TAG_LOGI(AAFwkTag::CLI_TOOL, "WaitPid: found record for pid=%{public}d, toolName=%{public}s",
-            pid, record->toolName.c_str());
-
-        int32_t termSignal = 0;
-        // WIFSIGNALED/WTERMSIG decode the waitpid() status value when the child exited because of a signal.
-        if (WIFSIGNALED(status)) {
-            termSignal = WTERMSIG(status);
-            TAG_LOGI(AAFwkTag::CLI_TOOL, "WaitPid: process killed by signal=%{public}d", termSignal);
-            if (termSignal != 0 && termSignal != SIGTERM && termSignal != SIGHUP && termSignal != SIGCHLD) {
-                ReportCliSignal(record->toolName, termSignal);
-            }
-        }
-
-        record->SetTerminalResult(status, sig);
-        if (record->OutputDrained()) {
-            FinalizeBackgroundSession(record);
-        }
-    } else {
+    if (record == nullptr) {
         TAG_LOGW(AAFwkTag::CLI_TOOL, "WaitPid: no record found for pid=%{public}d", pid);
+        return;
+    }
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "WaitPid: found record for pid=%{public}d, toolName=%{public}s",
+        pid, record->toolName.c_str());
+
+    int32_t termSignal = 0;
+    // WIFSIGNALED/WTERMSIG decode the waitpid() status value when the child exited because of a signal.
+    if (WIFSIGNALED(status)) {
+        termSignal = WTERMSIG(status);
+        TAG_LOGI(AAFwkTag::CLI_TOOL, "WaitPid: process killed by signal=%{public}d", termSignal);
+        if (termSignal != 0 && termSignal != SIGTERM && termSignal != SIGHUP && termSignal != SIGCHLD) {
+            ReportCliSignal(record->toolName, termSignal);
+        }
+    }
+
+    record->SetTerminalResult(status, sig);
+    if (record->OutputDrained()) {
+        FinalizeBackgroundSession(record);
     }
 }
 
@@ -2113,7 +2276,9 @@ void CliToolManagerService::OnProcessDied(const std::string &bundleName, pid_t d
         std::lock_guard<ffrt::mutex> guard(observerMutex_);
         bundleObservers_.erase(bundleName);
     }
-    std::vector<pid_t> activePids;
+    // Active kill targets (sandbox anchors): every kill keys on the anchor pid alone (Killpg
+    // revert) — the resolved command pid is no longer collected (same as OnStop).
+    std::vector<pid_t> activeTargets;
     std::vector<std::string> removedSessionIds;
     std::vector<std::string> detachTaskIds;
     std::vector<int64_t> detachAttributionIds;
@@ -2140,7 +2305,7 @@ void CliToolManagerService::OnProcessDied(const std::string &bundleName, pid_t d
             }
 
             if (sessionRecord->processId > 0 && !sessionRecord->HasProcessExited()) {
-                activePids.emplace_back(sessionRecord->processId);
+                activeTargets.emplace_back(sessionRecord->processId);
             }
             // ATTACHED collected here; PENDING relayed to the attach write-back (same contract as OnStop).
             CollectDetachRequest(*sessionRecord, detachTaskIds, detachAttributionIds, detachUids);
@@ -2153,8 +2318,8 @@ void CliToolManagerService::OnProcessDied(const std::string &bundleName, pid_t d
         EventDispatcher::GetInstance().UnregisterTraceIds(sessionId);
     }
 
-    for (pid_t pid : activePids) {
-        ProcessManager::GetInstance().Killpg(pid);
+    for (pid_t processId : activeTargets) {
+        ProcessManager::GetInstance().Killpg(processId);
     }
 
     PostDetachRequests(detachTaskIds, detachAttributionIds, detachUids);

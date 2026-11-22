@@ -44,6 +44,7 @@ ohos_unittest("cli_tool_mgr_service_test") {
     "${cli_tool_framework_path}/services/common/include",
     "${cli_tool_framework_path}/test/unittest/cli_tool_mgr_service_test/mock/include",
     "${cli_tool_framework_path}/test/unittest/common_mock/climgr_data/include",
+    "${cli_tool_framework_path}/test/unittest/common_mock/test_helper/include",
   ]
 
   sources = [
@@ -55,6 +56,7 @@ ohos_unittest("cli_tool_mgr_service_test") {
     "${cli_tool_framework_path}/services/climgr/src/io_monitor.cpp",
     "${cli_tool_framework_path}/services/climgr/src/permission_query_util.cpp",
     "${cli_tool_framework_path}/services/climgr/src/process_manager.cpp",
+    "${cli_tool_framework_path}/services/climgr/src/proc_scanner.cpp",
     "${cli_tool_framework_path}/services/climgr/src/session_record.cpp",
     "${cli_tool_framework_path}/services/climgr/src/task_attribution_manager.cpp",
     "${cli_tool_framework_path}/services/climgr/src/tool_util.cpp",
@@ -86,6 +88,7 @@ ohos_unittest("cli_tool_mgr_service_test") {
     "access_token:libnativetoken",
     "access_token:libtoken_setproc",
     "access_token:libtokenid_sdk",
+    "bounds_checking_function:libsec_shared",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
