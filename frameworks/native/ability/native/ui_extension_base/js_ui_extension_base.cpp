@@ -764,6 +764,7 @@ sptr<Rosen::WindowOption> JsUIExtensionBase::CreateWindowOption(const sptr<AAFwk
     option->SetUIExtensionUsage(static_cast<uint32_t>(sessionInfo->uiExtensionUsage));
     option->SetDensity(sessionInfo->density);
     option->SetDpiFollowStrategy(static_cast<Rosen::DpiFollowStrategy>(sessionInfo->dpiFollowStrategy));
+    option->SetCallerPersistentId(sessionInfo->callerPersistentId);
     if (context_->isNotAllow != -1) {
         bool isNotAllow = context_->isNotAllow == 1 ? true : false;
         TAG_LOGD(AAFwkTag::UI_EXT, "isNotAllow: %{public}d", isNotAllow);
@@ -837,8 +838,42 @@ bool JsUIExtensionBase::HandleSessionCreate(const AAFwk::Want &want, const sptr<
             return false;
         }
         uiWindow->UpdateExtensionConfig(sharedWant);
+        auto parentOption = CreateWindowOption(sessionInfo, want);
+        if (parentOption == nullptr) {
+            return false;
+        }
+        RefreshContentSessionParent(componentId, sessionInfo);
+        auto ret = uiWindow->UpdateExtensionParent(parentOption);
+        if (ret != Rosen::WMError::WM_OK) {
+            TAG_LOGW(AAFwkTag::UI_EXT, "UpdateExtensionParent failed, ret: %{public}d", static_cast<int32_t>(ret));
+        }
     }
     return true;
+}
+
+void JsUIExtensionBase::RefreshContentSessionParent(uint64_t componentId, const sptr<AAFwk::SessionInfo> &info)
+{
+    auto sessionIt = contentSessions_.find(componentId);
+    if (sessionIt == contentSessions_.end() || sessionIt->second == nullptr) {
+        TAG_LOGW(AAFwkTag::UI_EXT, "parent proxy refresh skipped, content session not found, "
+            "compId: %{public}" PRIu64, componentId);
+        return;
+    }
+    HandleScope handleScope(jsRuntime_);
+    napi_env env = jsRuntime_.GetNapiEnv();
+    if (env == nullptr) {
+        TAG_LOGW(AAFwkTag::UI_EXT, "parent proxy refresh skipped, null env");
+        return;
+    }
+    napi_value contentSession = sessionIt->second->GetNapiValue();
+    void* nativeObject = nullptr;
+    napi_unwrap(env, contentSession, &nativeObject);
+    auto* contentSessionPtr = static_cast<JsUIExtensionContentSession*>(nativeObject);
+    if (contentSessionPtr == nullptr) {
+        TAG_LOGW(AAFwkTag::UI_EXT, "parent proxy refresh skipped, unwrap failed");
+        return;
+    }
+    contentSessionPtr->DoUpdateExtensionParent(info);
 }
 
 void JsUIExtensionBase::ForegroundWindow(const AAFwk::Want &want, const sptr<AAFwk::SessionInfo> &sessionInfo)

@@ -120,6 +120,17 @@ public:
     std::shared_ptr<AAFwk::BaseExtensionRecord> GetAbilityRecordBySessionInfo(
         const sptr<AAFwk::SessionInfo> &sessionInfo);
 
+    /**
+     * @brief Check whether the session info marks a migration update request.
+     *
+     * A request is a migration update when originalCallerInfo.callerToken is non-null and
+     * originalCallerInfo.persistentId is valid.
+     *
+     * @param sessionInfo The session info to check.
+     * @return true for migration update request.
+     */
+    bool IsMigrationUpdateRequest(const sptr<AAFwk::SessionInfo> &sessionInfo) const;
+
     std::shared_ptr<AAFwk::AbilityRecord> GetUIExtensionRootHostInfo(const sptr<IRemoteObject> token);
 
     sptr<IRemoteObject> GetUIExtensionRootHostToken(const sptr<IRemoteObject> token);
@@ -198,6 +209,10 @@ private:
 
     int32_t GetOrCreateExtensionRecordInner(const AAFwk::AbilityRequest &abilityRequest,
         const std::string &hostBundleName, std::shared_ptr<ExtensionRecord> &extensionRecord, bool &isLoaded);
+    bool ValidateMigrationUpdateAgainstRecord(const std::shared_ptr<AAFwk::BaseExtensionRecord> &abilityRecord,
+        const sptr<AAFwk::SessionInfo> &sessionInfo);
+    int32_t AcquireExtensionRecord(const AAFwk::AbilityRequest &abilityRequest, const std::string &hostBundleName,
+        bool isAgentUI, int32_t callerUid, std::shared_ptr<ExtensionRecord> &extensionRecord, bool &isLoaded);
 
     int32_t GetExtensionRecord(const int32_t extensionRecordId, const std::string &hostBundleName,
         std::shared_ptr<ExtensionRecord> &extensionRecord, bool &isLoaded);

@@ -658,5 +658,42 @@ HWTEST_F(UIExtensionAbilityManagerThirdTest, RegisterPreloadUIExtensionHostClien
 
     EXPECT_EQ(connectManager->UnRegisterPreloadUIExtensionHostClient(callerPid), ERR_OK);
 }
+
+/*
+ * Feature: UIExtensionAbilityManager
+ * Function: BackgroundAbilityWindowLocked
+ * CaseDescription: Verify a background request does not overwrite the record session info
+ */
+HWTEST_F(UIExtensionAbilityManagerThirdTest, BackgroundAbilityWindowLocked_NoRecordWrite_001, TestSize.Level1)
+{
+    auto connectManager = std::make_shared<UIExtensionAbilityManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::SYS_COMMON_UI;
+    auto abilityRecord = BaseExtensionRecord::CreateBaseExtensionRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    const std::string recordUri = "ui_extension_record_no_record_write";
+    abilityRecord->SetURI(recordUri);
+    abilityRecord->SetAbilityState(AbilityState::BACKGROUNDING);
+
+    auto originalSessionInfo = sptr<SessionInfo>::MakeSptr();
+    ASSERT_NE(originalSessionInfo, nullptr);
+    originalSessionInfo->persistentId = 1;
+    originalSessionInfo->hostWindowId = 7;
+    abilityRecord->SetSessionInfo(originalSessionInfo);
+
+    auto backgroundSessionInfo = sptr<SessionInfo>::MakeSptr();
+    ASSERT_NE(backgroundSessionInfo, nullptr);
+    backgroundSessionInfo->persistentId = 1;
+    backgroundSessionInfo->hostWindowId = 0;
+
+    connectManager->BackgroundAbilityWindowLocked(abilityRecord, backgroundSessionInfo);
+
+    auto currentSessionInfo = abilityRecord->GetSessionInfo();
+    ASSERT_NE(currentSessionInfo, nullptr);
+    EXPECT_EQ(currentSessionInfo.GetRefPtr(), originalSessionInfo.GetRefPtr());
+    EXPECT_EQ(currentSessionInfo->hostWindowId, 7);
+}
+
 }  // namespace AAFwk
 }  // namespace OHOS

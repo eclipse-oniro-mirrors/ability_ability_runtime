@@ -16,6 +16,7 @@ group("unittest") {
 
   deps = [
     "extension_record_manager_second_test:unittest",
+    "extension_record_manager_third_test:unittest",
     "extension_record_manager_test:unittest",
     "ui_extension_get_host_info_test:unittest",
     "ui_extension_session_info_test:unittest",

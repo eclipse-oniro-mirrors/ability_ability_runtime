@@ -702,6 +702,7 @@ sptr<Rosen::WindowOption> EtsUIExtensionBase::CreateWindowOption(const sptr<AAFw
     option->SetUIExtensionUsage(static_cast<uint32_t>(sessionInfo->uiExtensionUsage));
     option->SetDensity(sessionInfo->density);
     option->SetDpiFollowStrategy(static_cast<Rosen::DpiFollowStrategy>(sessionInfo->dpiFollowStrategy));
+    option->SetCallerPersistentId(sessionInfo->callerPersistentId);
     if (context_->isNotAllow != -1) {
         bool isNotAllow = context_->isNotAllow == 1 ? true : false;
         TAG_LOGD(AAFwkTag::UI_EXT, "isNotAllow: %{public}d", isNotAllow);
@@ -767,6 +768,17 @@ bool EtsUIExtensionBase::HandleSessionCreate(const AAFwk::Want &want, const sptr
             return false;
         }
         uiWindow->UpdateExtensionConfig(sharedWant);
+        auto parentOption = CreateWindowOption(sessionInfo, want);
+        if (parentOption == nullptr) {
+            return false;
+        }
+        if (etsUiExtContentSession_ != nullptr) {
+            etsUiExtContentSession_->DoUpdateExtensionParent(sessionInfo);
+        }
+        auto ret = uiWindow->UpdateExtensionParent(parentOption);
+        if (ret != Rosen::WMError::WM_OK) {
+            TAG_LOGW(AAFwkTag::UI_EXT, "UpdateExtensionParent failed, ret: %{public}d", static_cast<int32_t>(ret));
+        }
     }
     return true;
 }

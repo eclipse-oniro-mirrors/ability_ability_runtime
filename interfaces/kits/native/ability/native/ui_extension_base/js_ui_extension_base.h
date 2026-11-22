@@ -193,6 +193,7 @@ protected:
     bool ForegroundWindowWithInsightIntent(const AAFwk::Want &want, const sptr<AAFwk::SessionInfo> &sessionInfo,
         bool needForeground);
     bool HandleSessionCreate(const AAFwk::Want &want, const sptr<AAFwk::SessionInfo> &sessionInfo);
+    void RefreshContentSessionParent(uint64_t componentId, const sptr<AAFwk::SessionInfo> &info);
     void OnInsightIntentExecuteDone(const sptr<AAFwk::SessionInfo> &sessionInfo,
         const AppExecFwk::InsightIntentExecuteResult &result);
     void PostInsightIntentExecuted(const sptr<AAFwk::SessionInfo> &sessionInfo,

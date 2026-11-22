@@ -164,6 +164,8 @@ private:
         sptr<AAFwk::SessionInfo> sessionInfo);
     sptr<Rosen::Window> CreateUIWindow(const std::shared_ptr<UIExtensionContext> context,
         const sptr<AAFwk::SessionInfo> &sessionInfo, const AAFwk::Want &want);
+    sptr<Rosen::WindowOption> CreateWindowOption(const std::shared_ptr<UIExtensionContext> context,
+        const sptr<AAFwk::SessionInfo> &sessionInfo, const AAFwk::Want &want);
     bool IsEmbeddableStart(int32_t screenMode);
     void ExecuteInsightIntentDone(uint64_t intentId, const InsightIntentExecuteResult &result);
     bool BindNativeMethods();
