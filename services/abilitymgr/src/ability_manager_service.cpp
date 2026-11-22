@@ -16,7 +16,6 @@
 #include "ability_manager_service.h"
 
 #include <dlfcn.h>
-#include <nlohmann/json.hpp>
 #include <set>
 #include <sys/epoll.h>
 #include <unordered_map>
@@ -143,10 +142,10 @@
 #include "agent_extension/agent_card_migration_helper.h"
 #include "utils/agent_caller_identity_util.h"
 #include "utils/ability_permission_util.h"
-#include "utils/dump_utils.h"
 #include "utils/extension_permissions_util.h"
-#include "utils/modal_system_dialog_util.h"
+#include "utils/dump_utils.h"
 #include "utils/update_caller_info_util.h"
+#include "utils/modal_system_dialog_util.h"
 #include "utils/want_utils.h"
 #include "utils/window_options_utils.h"
 #include "utils/udmf_utils.h"
@@ -329,8 +328,8 @@ constexpr int32_t INSTALL_TYPE_UPGRADE = 2;
 constexpr int64_t CLEAR_USER_LOCKED_BUNDLE_LIST_KEY_DELAY_TIME = 60 * 1000; // 60s
 constexpr const char* VPN_PERMISSION_IF = "libnet_vpn_permission_if.z.so";
 constexpr const char* INTENT_USER_ID = "ohos.insightIntent.userId";
-constexpr const char* START_SELF_UI_ABILITY_IN_CHILD_PROCESS_FLAG = "startSelfUIAbilityInChildProcessFlag";
 constexpr const char* DMS_CALLER_APP_ID = "ohos.dms.param.sourceCallerAppId";
+constexpr const char* START_SELF_UI_ABILITY_IN_CHILD_PROCESS_FLAG = "startSelfUIAbilityInChildProcessFlag";
 constexpr const char* WINDOW_PARAMS_SUGGESTION_SOURCE = "ohos.multiwindow.suggestionSource";
 constexpr const char* WINDOW_PARAMS_APP_LABEL = "ohos.multiwindow.appLabel";
 constexpr const char* WINDOW_PARAMS_SOURCE_BUNDLENAME = "ohos.multiwindow.sourceBundleName";
@@ -634,11 +633,11 @@ std::function<bool(int32_t)> AbilityManagerService::MakeBlockAllEscapeCheck(cons
 
 static void ProcessSignalData(void *token, uint32_t event)
 {
-    int32_t rFd = *(reinterpret_cast<int32_t*>(token));
+    int rFd = *(reinterpret_cast<int*>(token));
     // read data from appspawn
     char buffer[PIPE_MSG_READ_BUFFER] = {0};
     std::string readResult = "";
-    int32_t count = read(rFd, buffer, PIPE_MSG_READ_BUFFER - 1);
+    int count = read(rFd, buffer, PIPE_MSG_READ_BUFFER - 1);
     if (count == -1) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "read pipe failed");
     } else if (count == 0) {
@@ -731,8 +730,7 @@ void AbilityManagerService::InitAppSpawnMsgPipe()
         return;
     }
     ffrt_qos_t taskQos = 0;
-    ret = ffrt_epoll_ctl(taskQos, EPOLL_CTL_ADD, rFd_, EPOLLIN, static_cast<void*>(ptrRFd_.get()),
-    ProcessSignalData);
+    ret = ffrt_epoll_ctl(taskQos, EPOLL_CTL_ADD, rFd_, EPOLLIN, static_cast<void*>(ptrRFd_.get()), ProcessSignalData);
     if (ret != 0) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "ffrt_epoll_ctl failed, ret: %{public}d", ret);
         CloseAppSpawnMsgPipe();
@@ -2165,7 +2163,7 @@ int32_t AbilityManagerService::ProcessLaunchReasonAndController(const StartAbili
     TAG_LOGD(AAFwkTag::ABILITYMGR, "Call ProcessLaunchReasonAndController");
 
     uint32_t callerTokenId = 0;
-    if(param.specifyTokenId > 0) {
+    if (param.specifyTokenId > 0) {
         callerTokenId = param.specifyTokenId;
         TAG_LOGD(AAFwkTag::ABILITYMGR, "StartAbilityForAppCloneSelector use param.specifyTokenId");
     } else if (param.callerToken != nullptr) {

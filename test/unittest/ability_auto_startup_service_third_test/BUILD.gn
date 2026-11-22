@@ -58,7 +58,6 @@ ohos_unittest("ability_auto_startup_service_third_test") {
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "eventhandler:libeventhandler",
-    "selinux_adapter:librestorecon",
     "ffrt:libffrt",
     "googletest:gmock_main",
     "googletest:gtest_main",
@@ -69,7 +68,6 @@ ohos_unittest("ability_auto_startup_service_third_test") {
     "ipc:ipc_core",
     "kv_store:distributeddata_inner",
     "safwk:api_cache_manager",
-    "selinux_adapter:librestorecon",
     "window_manager:libdm",
     "window_manager:libwsutils",
   ]

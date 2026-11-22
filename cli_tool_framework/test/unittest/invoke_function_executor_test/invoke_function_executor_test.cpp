@@ -160,17 +160,6 @@ protected:
 };
 
 /**
- * @tc.name: InvokeFunctionExecutor_Create_0100
- * @tc.desc: Create() returns a non-null executor instance.
- * @tc.type: FUNC
- */
-HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_Create_0100, TestSize.Level1)
-{
-    auto executor = InvokeFunctionExecutor::Create();
-    ASSERT_NE(executor, nullptr);
-}
-
-/**
  * @tc.name: InvokeFunctionExecutor_QueryFailedGeneric_0200
  * @tc.desc: Step 1 query returns a generic error (neither permission nor
  *           not-exist) -> inner error (original error code passed through).

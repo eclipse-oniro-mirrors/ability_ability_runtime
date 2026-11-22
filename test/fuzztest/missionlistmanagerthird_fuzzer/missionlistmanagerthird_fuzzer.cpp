@@ -58,7 +58,7 @@ uint32_t GetU32Data(const char* ptr)
 MissionAbilityRecordPtr GetFuzzAbilityRecord()
 {
     sptr<Token> token = nullptr;
-    AbilityRequest abilityRequest;
+    AbilityRequest abilityRequest{};
     abilityRequest.appInfo.bundleName = "com.example.fuzzTest";
     abilityRequest.abilityInfo.name = "MainAbility";
     abilityRequest.abilityInfo.type = AbilityType::DATA;
