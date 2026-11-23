@@ -73,7 +73,15 @@
 
 **SDD适用**：可在Plan阶段及Plan之后的阶段使用。
 
+### 2.5 Special-Projects：专项知识
 
+**文档路径**：abilitykit_sdd/special-projects
+
+**文档内容**：编译构建、文档撰写等专项基础知识库，作为 standards/08-constraints.md 中相关 HARD 规则的支撑上下文。
+
+**文档适用**：按任务类型触发检索。涉及编译/构建/BUILD.gn 配置/重构公共头文件/修改公共接口/新增源文件到测试 target 时，须检索 special-projects/build/build-guide.md 确认构建规范、依赖模式和调试策略；涉及文档撰写/修改时，须检索 special-projects/doc-writing/doc-writing-guide.md 确认结构模板和风格规则。
+
+**SDD适用**：可在Plan阶段及Plan之后的阶段（Coding/Verify）按任务类型触发使用。
 
 ## 3.编码、验证、检视及上库规则
 
@@ -85,7 +93,9 @@
 
 1）编码前严格读取abilitykit_sdd/standards所有规则后开始编码，编码及后续修改不得出现违反规则的实现。
 
-2）所有业务代码修改都需要包含测试用例的同步编写和生成，其中ArkTS 接口的XTS可参考[ArkTS XTS 生成Skill](https://gitcode.com/openharmony-ai-testdesign/oh-test-skills/tree/main/ohos-test-design/skills-refactor/ohos-test-arkts-xts-generation)生成，CAPI接口的XTS可参考[CAPI XTS 生成Skill](https://gitcode.com/openharmony-ai-testdesign/oh-test-skills/tree/main/ohos-test-design/skills-refactor/ohos-test-capi-xts-generation)
+2）涉及编译/构建/BUILD.gn 配置/重构公共头文件/修改公共接口/新增源文件到测试 target 时，须额外检索 abilitykit_sdd/special-projects/build/build-guide.md 确认构建规范、依赖模式和调试策略。
+
+3）所有业务代码修改都需要包含测试用例的同步编写和生成，其中ArkTS 接口的XTS可参考[ArkTS XTS 生成Skill](https://gitcode.com/openharmony-ai-testdesign/oh-test-skills/tree/main/ohos-test-design/skills-refactor/ohos-test-arkts-xts-generation)生成，CAPI接口的XTS可参考[CAPI XTS 生成Skill](https://gitcode.com/openharmony-ai-testdesign/oh-test-skills/tree/main/ohos-test-design/skills-refactor/ohos-test-capi-xts-generation)
 
 ### 3.2 功能验证：Verify
 
