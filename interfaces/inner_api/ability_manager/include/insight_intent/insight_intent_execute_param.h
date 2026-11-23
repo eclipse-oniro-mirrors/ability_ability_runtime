@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 
+#include "iremote_object.h"
 #include "parcel.h"
 #include "want.h"
 
@@ -177,6 +178,8 @@ public:
     std::string callerBundleName_;
     std::string callerTokenId_;
     int32_t callerUid_ = 0;
+
+    sptr<IRemoteObject> callerAbilityToken_ {nullptr};
 };
 } // namespace AppExecFwk
 } // namespace OHOS

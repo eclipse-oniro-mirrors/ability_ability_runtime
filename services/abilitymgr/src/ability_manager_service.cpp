@@ -16583,6 +16583,7 @@ int32_t AbilityManagerService::ExecuteIntent(uint64_t key, const sptr<IRemoteObj
     AbilityRuntime::ExecuteIntentCommonOptions options(ignoreAbilityName, infos, key);
     options.extractInfo = std::move(extractInfo);
     options.configInfo = std::move(configInfo);
+    options.callerAbilityToken = paramPtr->callerAbilityToken_;
     return ExecuteIntentCommon(callerToken, paramPtr, callerBundlename, options);
 }
 

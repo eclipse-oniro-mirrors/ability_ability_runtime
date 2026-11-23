@@ -4721,6 +4721,16 @@ int32_t AbilityManagerStub::ExecuteIntentInner(MessageParcel &data, MessageParce
         TAG_LOGE(AAFwkTag::ABILITYMGR, "param null");
         return ERR_INVALID_VALUE;
     }
+    if (data.GetReadableBytes() > 0) {
+        bool hasCallerAbilityToken = data.ReadBool();
+        if (hasCallerAbilityToken) {
+            param->callerAbilityToken_ = data.ReadRemoteObject();
+            if (param->callerAbilityToken_ == nullptr) {
+                TAG_LOGE(AAFwkTag::ABILITYMGR, "null callerAbilityToken");
+                return ERR_INVALID_VALUE;
+            }
+        }
+    }
     auto result = ExecuteIntent(key, callerToken, *param);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");

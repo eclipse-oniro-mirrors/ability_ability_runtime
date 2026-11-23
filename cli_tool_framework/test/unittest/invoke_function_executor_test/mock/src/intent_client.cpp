@@ -17,6 +17,8 @@
 
 #include "errors.h"
 #include "insight_intent_execute_result.h"
+#include "remote_object_wrapper.h"
+#include "want_params_wrapper.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -31,6 +33,18 @@ int32_t IntentClient::ExecuteIntentByFunctionCall(const ExecuteIntentParam &para
 {
     executeCalled_ = true;
     lastWantParam_ = param.wantParam;
+    lastCallerAbilityToken_ = nullptr;
+    sptr<IInterface> tokenValue = lastWantParam_.GetParam(AppExecFwk::INSIGHT_INTENT_CALLER_TOKEN);
+    if (tokenValue != nullptr) {
+        AAFwk::IWantParams *iwp = AAFwk::IWantParams::Query(tokenValue);
+        if (iwp != nullptr) {
+            AAFwk::WantParams tokenWrap = AAFwk::WantParamWrapper::Unbox(iwp);
+            sptr<IInterface> remoteObjVal = tokenWrap.GetParam(AAFwk::VALUE_PROPERTY);
+            AAFwk::IRemoteObjectWrap *iRemoteObj = AAFwk::IRemoteObjectWrap::Query(remoteObjVal);
+            lastCallerAbilityToken_ = AAFwk::RemoteObjectWrap::UnBox(iRemoteObj);
+        }
+    }
+    lastWantParam_.Remove(AppExecFwk::INSIGHT_INTENT_CALLER_TOKEN);
     if (mockStatus_ != ERR_OK) {
         return mockStatus_;  // simulate a synchronous execute failure (IPC/auth/etc.)
     }

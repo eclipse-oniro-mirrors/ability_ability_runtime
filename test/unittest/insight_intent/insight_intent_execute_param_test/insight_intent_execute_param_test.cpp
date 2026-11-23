@@ -656,6 +656,79 @@ HWTEST_F(InsightIntentExecuteParamTest, TaskId_UnmarshallingLegacyParcel_0100, T
     TAG_LOGI(AAFwkTag::TEST, "end.");
 }
 
+
+/**
+ * @tc.name: CallerAbilityToken_UnmarshallingLegacyParcel_0100
+ * @tc.desc: the parcelable never carries the caller ability token (it rides the IPC
+ *           message-level tail instead); a parcel without a token parses successfully
+ *           and callerAbilityToken_ keeps the default null value.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, CallerAbilityToken_UnmarshallingLegacyParcel_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    Parcel parcel;
+    parcel.WriteString16(Str8ToStr16(TEST_BUNDLE_NANE));
+    parcel.WriteString16(Str8ToStr16(TEST_MODULE_NANE));
+    parcel.WriteString16(Str8ToStr16(TEST_ABILITY_NANE));
+    parcel.WriteString16(Str8ToStr16(TEST_INSIGHT_INTENT_NANE));
+    WantParams insightIntentParam;
+    parcel.WriteParcelable(&insightIntentParam);
+    parcel.WriteInt32(0);
+    parcel.WriteUint64(100);
+    parcel.WriteInt32(AppExecFwk::INVALID_DISPLAY_ID);
+    std::vector<std::string> uris;
+    parcel.WriteStringVector(uris);
+    parcel.WriteInt32(0);
+    parcel.WriteInt32(-1);
+    parcel.WriteInt8(0);
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    std::vector<std::string> methodParams;
+    parcel.WriteStringVector(methodParams);
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteBool(false);
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteString16(Str8ToStr16(""));
+    parcel.WriteInt32(0);
+
+    InsightIntentExecuteParam unmarshalledParam;
+    EXPECT_EQ(unmarshalledParam.ReadFromParcel(parcel), true);
+    EXPECT_EQ(unmarshalledParam.callerAbilityToken_, nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+/**
+ * @tc.name: CallerAbilityToken_MarshallingAbsent_0100
+ * @tc.desc: without a context the token stays null across a round trip; the token is
+ *           conveyed by the IPC proxy as a message-level tail, not by the parcelable
+ *           (BR-1: behavior unchanged when no context is provided).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, CallerAbilityToken_MarshallingAbsent_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "begin.");
+    InsightIntentExecuteParam originalParam;
+    originalParam.bundleName_ = TEST_BUNDLE_NANE;
+    originalParam.insightIntentParam_ = std::make_shared<WantParams>();
+
+    Parcel parcel;
+    EXPECT_EQ(originalParam.Marshalling(parcel), true);
+
+    InsightIntentExecuteParam unmarshalledParam;
+    EXPECT_EQ(unmarshalledParam.ReadFromParcel(parcel), true);
+    EXPECT_EQ(unmarshalledParam.callerAbilityToken_, nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "end.");
+}
+
+
 /**
  * @tc.name: ToolCallId_UnmarshallingLegacyParcel_0100
  * @tc.desc: verify a legacy parcel without the toolCallId tail field is parsed successfully.

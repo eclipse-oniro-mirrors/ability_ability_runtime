@@ -23,10 +23,13 @@
 #include "function_info.h"
 #include "function_result_wrap.h"
 #include "hilog_tag_wrapper.h"
+#include "insight_intent/insight_intent_execute_param.h"
 #include "intent_client.h"
 #include "invoke_function_callback_client.h"
 #include "invoke_function_param.h"
+#include "remote_object_wrapper.h"
 #include "string_wrapper.h"
+#include "want_params_wrapper.h"
 
 namespace OHOS {
 namespace CliTool {
@@ -148,6 +151,13 @@ void InvokeFunctionExecutor::DoExecute(const InvokeFunctionParam &param)
     execParam.bundleName = hookParam.functionNamespace;
     execParam.intentName = hookParam.functionName;
     execParam.wantParam = hookParams;
+    if (param.invokeOptions.callerAbilityToken != nullptr) {
+        AAFwk::WantParams tokenWrap;
+        tokenWrap.SetParam(AAFwk::VALUE_PROPERTY,
+            AAFwk::RemoteObjectWrap::Box(param.invokeOptions.callerAbilityToken));
+        execParam.wantParam.SetParam(AppExecFwk::INSIGHT_INTENT_CALLER_TOKEN,
+            AAFwk::WantParamWrapper::Box(tokenWrap));
+    }
     // Authoritative injection point (ADR-8): re-assert the re-validated values
     // before the intent call; the NAPI pre-injection is only the transport leg.
     if (!toolCallId.empty()) {

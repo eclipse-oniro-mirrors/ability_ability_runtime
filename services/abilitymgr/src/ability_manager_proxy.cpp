@@ -5996,6 +5996,15 @@ int32_t AbilityManagerProxy::ExecuteIntent(uint64_t key,  const sptr<IRemoteObje
         return INNER_ERR;
     }
 
+    if (!data.WriteBool(param.callerAbilityToken_ != nullptr)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write callerAbilityToken flag fail");
+        return INNER_ERR;
+    }
+    if (param.callerAbilityToken_ != nullptr && !data.WriteRemoteObject(param.callerAbilityToken_)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write callerAbilityToken fail");
+        return INNER_ERR;
+    }
+
     TAG_LOGI(AAFwkTag::ABILITYMGR, "send execute intent.");
     int32_t error = SendRequest(AbilityManagerInterfaceCode::EXECUTE_INTENT, data, reply, option);
     if (error != NO_ERROR) {

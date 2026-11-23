@@ -98,6 +98,7 @@ ohos_shared_library("ani_common") {
     "${ability_runtime_innerkits_path}/ability_manager:ability_start_options",
     "${ability_runtime_innerkits_path}/ability_manager:process_options",
     "${ability_runtime_innerkits_path}/ability_manager:start_window_option",
+    "${ability_runtime_innerkits_path}/ani_base_context:ani_base_context",
     "${ability_runtime_innerkits_path}/app_manager",
     "${ability_runtime_innerkits_path}/error_utils:ability_runtime_error_util",
     "${ability_runtime_innerkits_path}/runtime",
