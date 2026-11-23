@@ -1067,7 +1067,7 @@ HWTEST_F(AbilityTerminateTest, AaFwk_IAbilityManager_TerminateUIExtensionAbility
 /**
  * @tc.number: AaFwk_IAbilityManager_SendResultToAbility_0100
  * @tc.name: SendResultToAbility
- * @tc.desc: test SendResultToAbility function
+ * @tc.desc: test SendResultToAbility
  */
 HWTEST_F(AbilityTerminateTest, AaFwk_IAbilityManager_SendResultToAbility_0100, Function | MediumTest | Level1)
 {
