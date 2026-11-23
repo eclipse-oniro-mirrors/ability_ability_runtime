@@ -29,7 +29,7 @@
 #include "snapshot.h"
 #include "wm_animation_common.h"
 #ifdef SUPPORT_SCREEN
-#include "pixel_map_bridge.h"
+#include "pixel_map.h"
 #endif //SUPPORT_SCREEN
 
 namespace OHOS {
@@ -2273,7 +2273,7 @@ void AbilityManagerProxy::UpdateMissionSnapShot(const sptr<IRemoteObject> &token
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write token fail");
         return;
     }
-    if (!PixelMapBridge::GetInstance().WritePixelMapToParcel(pixelMap.get(), &data)) {
+    if (!data.WriteParcelable(pixelMap.get())) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write pixelMap fail");
         return;
     }
@@ -3806,7 +3806,7 @@ int AbilityManagerProxy::SetMissionIcon(const sptr<IRemoteObject> &token,
         return ERR_INVALID_VALUE;
     }
 
-    if (!PixelMapBridge::GetInstance().WritePixelMapToParcel(icon.get(), &data)) {
+    if (!data.WriteParcelable(icon.get())) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write icon fail");
         return ERR_INVALID_VALUE;
     }

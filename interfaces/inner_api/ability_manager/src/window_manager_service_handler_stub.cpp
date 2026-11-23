@@ -18,7 +18,7 @@
 
 #include "ability_manager_errors.h"
 #include "hilog_tag_wrapper.h"
-#include "pixel_map_bridge.h"
+#include "pixel_map.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -116,14 +116,12 @@ int WindowManagerServiceHandlerStub::StartingWindowCold(MessageParcel &data, Mes
         TAG_LOGE(AAFwkTag::ABILITYMGR, "read info failed");
         return ERR_AAFWK_PARCEL_FAIL;
     }
-    auto &bridge = PixelMapBridge::GetInstance();
-    Media::PixelMap *rawPtr = bridge.ReadPixelMapFromParcel(&data);
-    if (rawPtr == nullptr) {
+    std::shared_ptr<Media::PixelMap> pixelMap
+        = std::shared_ptr<Media::PixelMap>(data.ReadParcelable<Media::PixelMap>());
+    if (pixelMap == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "read pixelMap failed");
         return ERR_AAFWK_PARCEL_FAIL;
     }
-    std::shared_ptr<Media::PixelMap> pixelMap(rawPtr,
-        [&bridge](Media::PixelMap *p) { bridge.DestroyPixelMap(p); });
     auto bgColor = data.ReadUint32();
     StartingWindow(info, pixelMap, bgColor);
     return ERR_OK;
@@ -137,14 +135,12 @@ int WindowManagerServiceHandlerStub::StartingWindowHot(MessageParcel &data, Mess
         TAG_LOGE(AAFwkTag::ABILITYMGR, "read info failed");
         return ERR_AAFWK_PARCEL_FAIL;
     }
-    auto &bridge = PixelMapBridge::GetInstance();
-    Media::PixelMap *rawPtr = bridge.ReadPixelMapFromParcel(&data);
-    if (rawPtr == nullptr) {
+    std::shared_ptr<Media::PixelMap> pixelMap
+        = std::shared_ptr<Media::PixelMap>(data.ReadParcelable<Media::PixelMap>());
+    if (pixelMap == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "Failed to read pixelMap");
         return ERR_AAFWK_PARCEL_FAIL;
     }
-    std::shared_ptr<Media::PixelMap> pixelMap(rawPtr,
-        [&bridge](Media::PixelMap *p) { bridge.DestroyPixelMap(p); });
     StartingWindow(info, pixelMap);
     return ERR_OK;
 }
