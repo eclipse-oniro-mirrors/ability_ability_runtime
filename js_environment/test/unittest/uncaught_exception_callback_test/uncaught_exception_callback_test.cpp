@@ -19,6 +19,7 @@
 
 #include "uncaught_exception_callback.h"
 #include "fp_unwinder.h"
+#include "unwinder.h"
 #include "js_runtime.h"
 #include "securec.h"
 #include "string_printf.h"
@@ -26,11 +27,13 @@
 
 namespace OHOS {
 namespace JsEnv {
-static const std::string LIB_UNWIND_SO_NAME = "libunwind.so";
-static const std::string LIB_UNWIND_Z_SO_NAME = "libunwind.z.so";
 static const int MAX_STACK_SIZE = 16;
 static const int LOG_BUF_LEN = 1024;
-using UnwBackTraceFunc = int (*)(void**, int);
+#if defined(__aarch64__)
+static const std::string FIRST_FRAME_SYMBOL = "OHOS::JsEnv::GetPcs";
+#else
+static const std::string FIRST_FRAME_SYMBOL = "OHOS::HiviewDFX::Unwinder::UnwindLocal";
+#endif
 using namespace testing::ext;
 class NapiUncaughtExceptionCallbackTest : public testing::Test {
 public:
@@ -318,21 +321,18 @@ bool GetPcs(size_t &size, uintptr_t* pcs)
         size = OHOS::HiviewDFX::FpUnwinder::GetPtr()->UnwindSafe(pc, fp, pcs, MAX_STACK_SIZE);
     }
 #else
-    static UnwBackTraceFunc unwBackTrace = nullptr;
-    if (!unwBackTrace) {
-        void *handle = dlopen(LIB_UNWIND_SO_NAME.c_str(), RTLD_NOW);
-        if (handle == nullptr) {
-            handle = dlopen(LIB_UNWIND_Z_SO_NAME.c_str(), RTLD_NOW);
-            if (handle == nullptr) {
-                return false;
-            }
-        }
-        unwBackTrace = reinterpret_cast<UnwBackTraceFunc>(dlsym(handle, "unw_backtrace"));
-        if (unwBackTrace == nullptr) {
-            return false;
-        }
+    OHOS::HiviewDFX::Unwinder unwinder;
+    if (!unwinder.UnwindLocal(false, false, MAX_STACK_SIZE, 0)) {
+        return false;
     }
-    size = unwBackTrace(reinterpret_cast<void**>(pcs), MAX_STACK_SIZE);
+    const auto &unwindPcs = unwinder.GetPcs();
+    size = unwindPcs.size();
+    if (size > static_cast<size_t>(MAX_STACK_SIZE)) {
+        size = static_cast<size_t>(MAX_STACK_SIZE);
+    }
+    for (size_t i = 0; i < size; i++) {
+        pcs[i] = unwindPcs[i];
+    }
 #endif
     return true;
 }
@@ -389,7 +389,7 @@ HWTEST_F(NapiUncaughtExceptionCallbackTest, GetFuncNameAndBuildIdTest_0100, Test
     stack << "Cannot get SourceMap info, dump raw stack:\n";
     Backtrace(stack);
     std::string stackinfo = NapiUncaughtExceptionCallback::GetFuncNameAndBuildId(stack.str());
-    ASSERT_EQ(stackinfo.find("OHOS::JsEnv::GetPcs") != std::string::npos, true);
+    ASSERT_EQ(stackinfo.find(FIRST_FRAME_SYMBOL) != std::string::npos, true);
     GTEST_LOG_(INFO) << "GetFuncNameAndBuildIdTest_0100 end" << stackinfo.c_str();
 }
 
@@ -407,7 +407,7 @@ HWTEST_F(NapiUncaughtExceptionCallbackTest, GetFuncNameAndBuildIdTest_0200, Test
     std::ostringstream stack;
     Backtrace(stack);
     std::string stackinfo = NapiUncaughtExceptionCallback::GetFuncNameAndBuildId(stack.str());
-    ASSERT_EQ(stackinfo.find("OHOS::JsEnv::GetPcs") != std::string::npos, true);
+    ASSERT_EQ(stackinfo.find(FIRST_FRAME_SYMBOL) != std::string::npos, true);
     GTEST_LOG_(INFO) << "GetFuncNameAndBuildIdTest_0200 end" << stackinfo.c_str();
 }
 
@@ -431,12 +431,12 @@ HWTEST_F(NapiUncaughtExceptionCallbackTest, GetFuncNameAndBuildIdTest_0300, Test
     std::string resultTwoHeader = NapiUncaughtExceptionCallback::GetFuncNameAndBuildId(withPrefix.str());
 
     // Both should contain the test function name (first frame preserved)
-    ASSERT_EQ(resultOneHeader.find("OHOS::JsEnv::GetPcs") != std::string::npos, true);
-    ASSERT_EQ(resultTwoHeader.find("OHOS::JsEnv::GetPcs") != std::string::npos, true);
+    ASSERT_EQ(resultOneHeader.find(FIRST_FRAME_SYMBOL) != std::string::npos, true);
+    ASSERT_EQ(resultTwoHeader.find(FIRST_FRAME_SYMBOL) != std::string::npos, true);
 
     // The first frame line should be the same in both results
     auto GetFirstFrameLine = [](const std::string& s) -> std::string {
-        size_t pos = s.find("#00");
+        size_t pos = s.find('#');
         if (pos == std::string::npos) {
             return "";
         }
@@ -465,7 +465,7 @@ HWTEST_F(NapiUncaughtExceptionCallbackTest, GetFuncNameAndBuildIdTest_0400, Test
     std::ostringstream stack;
     BacktraceWithoutHeader(stack);
     std::string stackinfo = NapiUncaughtExceptionCallback::GetFuncNameAndBuildId(stack.str());
-    ASSERT_EQ(stackinfo.find("OHOS::JsEnv::GetPcs") != std::string::npos, true);
+    ASSERT_EQ(stackinfo.find(FIRST_FRAME_SYMBOL) != std::string::npos, true);
     GTEST_LOG_(INFO) << "GetFuncNameAndBuildIdTest_0400 end" << stackinfo.c_str();
 }
 

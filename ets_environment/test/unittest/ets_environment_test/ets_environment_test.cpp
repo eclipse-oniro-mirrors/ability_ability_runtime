@@ -24,6 +24,14 @@
 #undef private
 
 #include "mock_ani_env.h"
+#include "ets/runtime/integrate/ets_ani_expo.h"
+
+namespace ark::ets {
+void ETSAni::RegisterETSUncaughtExceptionHandler(ETSUncaughtExceptionCallback callback)
+{
+    (void)callback;
+}
+} // namespace ark::ets
 
 using namespace testing;
 using namespace testing::ext;

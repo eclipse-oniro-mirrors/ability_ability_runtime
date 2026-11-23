@@ -91,8 +91,9 @@ HWTEST_F(HybridJsModuleReaderTest, GetPresetAppHapPathTest_0100, TestSize.Level0
 {
     HybridJsModuleReader HybridJsModuleReader("HybridJsModuleReader", "");
     bool needFindPluginHsp = true;
-    std::string hapPath = HybridJsModuleReader.GetPresetAppHapPath("", "", needFindPluginHsp);
-    EXPECT_TRUE(hapPath.empty());
+    std::string hapPath = HybridJsModuleReader.GetPresetAppHapPath("bundleName/unittest_hybrid_module", "",
+        needFindPluginHsp);
+    EXPECT_EQ(hapPath, "bundleName/unittest_hybrid_module");
 }
 
 /**
@@ -104,8 +105,9 @@ HWTEST_F(HybridJsModuleReaderTest, GetPresetAppHapPathTest_0200, TestSize.Level0
 {
     HybridJsModuleReader HybridJsModuleReader("HybridJsModuleReader", "/data/storage/el1/test.hsp");
     bool needFindPluginHsp = true;
-    std::string hapPath = HybridJsModuleReader.GetPresetAppHapPath("", "", needFindPluginHsp);
-    EXPECT_TRUE(hapPath.empty());
+    std::string hapPath = HybridJsModuleReader.GetPresetAppHapPath("/data/storage/el1/unittest_hybrid_module.hsp",
+        "", needFindPluginHsp);
+    EXPECT_EQ(hapPath, "/data/storage/el1/unittest_hybrid_module.hsp");
 }
 }  // namespace AAFwk
 }  // namespace OHOS

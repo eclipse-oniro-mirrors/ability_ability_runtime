@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 
 #include "hilog_tag_wrapper.h"
+#include "ipc_skeleton.h"
 #include "mock_skill_execute_callback_stub.h"
 #include "skill/skill_execute_callback_proxy.h"
 #include "skill_execute_result.h"
@@ -24,6 +25,9 @@ using namespace testing::ext;
 using namespace testing;
 namespace OHOS {
 namespace AAFwk {
+namespace {
+constexpr int32_t FOUNDATION_UID = 5523;
+}
 
 class SkillExecuteCallbackProxyTest : public testing::Test {
 public:
@@ -38,9 +42,13 @@ void SkillExecuteCallbackProxyTest::SetUpTestCase(void)
 void SkillExecuteCallbackProxyTest::TearDownTestCase(void)
 {}
 void SkillExecuteCallbackProxyTest::SetUp()
-{}
+{
+    IPCSkeleton::SetCallingUid(FOUNDATION_UID);
+}
 void SkillExecuteCallbackProxyTest::TearDown()
-{}
+{
+    IPCSkeleton::SetCallingUid(0);
+}
 
 /**
  * @tc.name: OnExecuteDone_0100

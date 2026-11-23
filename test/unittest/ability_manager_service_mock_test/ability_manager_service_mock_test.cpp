@@ -55,7 +55,6 @@ void AbilityManagerServiceMockTest::TearDownTestCase() {}
 void AbilityManagerServiceMockTest::SetUp()
 {
     AppExecFwk::BundleMgrHelper::mockExtensionInfoSuccess = false;
-    AppExecFwk::BundleMgrHelper::mockDualModeAppIndexZero = false;
 }
     
 void AbilityManagerServiceMockTest::TearDown() {}
@@ -468,7 +467,6 @@ HWTEST_F(AbilityManagerServiceMockTest, PreloadUIExtensionAbilityInner_0100, Tes
     Want want;
     want.SetElementName(bundleName, abilityName_);
     AppExecFwk::BundleMgrHelper::mockExtensionInfoSuccess = true;
-    AppExecFwk::BundleMgrHelper::mockDualModeAppIndexZero = true;
     abilityMs->subManagersHelper_ = nullptr;
     int32_t preloadId = 1;
     int32_t userId = 1;
