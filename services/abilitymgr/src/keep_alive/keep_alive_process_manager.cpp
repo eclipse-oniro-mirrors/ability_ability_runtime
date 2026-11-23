@@ -89,7 +89,7 @@ void KeepAliveProcessManager::StartKeepAliveProcessWithMainElementPerBundle(cons
     int32_t userId)
 {
     if (!IsKeepAliveBundle(bundleInfo.name, userId)) {
-        TAG_LOGE(AAFwkTag::KEEP_ALIVE, "bundle is not set keep-alive");
+        TAG_LOGE(AAFwkTag::KEEP_ALIVE, "not keep-alive");
         return;
     }
 

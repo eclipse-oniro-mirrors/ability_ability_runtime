@@ -357,7 +357,7 @@ void AutoFillExtensionCallback::SendAutoFillSuccess(const AAFwk::Want &want)
 
 void AutoFillExtensionCallback::SendAutoFillFailed(int32_t errCode, const AAFwk::Want &want)
 {
-    TAG_LOGI(AAFwkTag::AUTOFILLMGR, "SendAutoFillFailed");
+    TAG_LOGI(AAFwkTag::AUTOFILLMGR, "SendAFFailed");
     std::lock_guard<std::mutex> lock(requestCallbackMutex_);
     if (fillCallback_ != nullptr) {
         std::string fillContent = want.GetStringParam(WANT_PARAMS_FILL_CONTENT);
@@ -375,7 +375,7 @@ void AutoFillExtensionCallback::SendAutoFillFailed(int32_t errCode, const AAFwk:
 
 void AutoFillExtensionCallback::CloseUIExtension()
 {
-    TAG_LOGI(AAFwkTag::AUTOFILLMGR, "CloseUIExtension");
+    TAG_LOGI(AAFwkTag::AUTOFILLMGR, "CloseUIExt");
     Ace::UIContent* uiContent = nullptr;
     {
         std::lock_guard<std::mutex> lock(closeMutex_);

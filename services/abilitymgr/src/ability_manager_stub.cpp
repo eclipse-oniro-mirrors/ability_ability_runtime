@@ -81,7 +81,7 @@ void AbilityManagerStub::SanitizeWantParams(Want &want)
     }
 
     if (!PermissionVerification::GetInstance()->JudgeCallerIsAllowedToUseSystemAPI()) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "third-party want remove multiwindow params");
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "3rd want rm multiwindow");
         want.RemoveParam(WINDOW_PARAMS_SUGGESTION_SOURCE);
         want.RemoveParam(WINDOW_PARAMS_APP_LABEL);
         want.RemoveParam(WINDOW_PARAMS_SOURCE_BUNDLENAME);

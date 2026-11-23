@@ -1598,8 +1598,7 @@ ErrCode AbilityManagerClient::DelegatorDoAbilityBackground(sptr<IRemoteObject> t
 ErrCode AbilityManagerClient::SetMissionContinueState(sptr<IRemoteObject> token,
     const AAFwk::ContinueState &state, sptr<IRemoteObject> sessionToken, int32_t userId)
 {
-    TAG_LOGI(AAFwkTag::ABILITYMGR,
-        "SetMissionContinueState called. state: %{public}d", state);
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "state:%{public}d", state);
 #ifdef SUPPORT_SCREEN
     if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled() && sessionToken) {
         auto sceneSessionManager = SessionManagerLite::GetInstance(userId).GetSceneSessionManagerLiteProxy();

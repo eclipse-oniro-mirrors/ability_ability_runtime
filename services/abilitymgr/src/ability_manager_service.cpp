@@ -3672,7 +3672,7 @@ int AbilityManagerService::StartUIAbilityBySCB(sptr<SessionInfo> sessionInfo, Ab
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     XCOLLIE_TIMER_LESS(__PRETTY_FUNCTION__);
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "call, sceneFlag:%{public}u, restart: %{public}d",
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "sceneFg:%{public}u,restart:%{public}d",
         params.sceneFlag, params.isRestart);
     if (sessionInfo == nullptr || sessionInfo->sessionToken == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "sessionInfo null");
@@ -5365,7 +5365,7 @@ void AbilityManagerService::SetAutoFillElementName(const sptr<SessionInfo> &exte
     } else if (extensionSessionInfo->want.GetStringParam(UIEXTENSION_TYPE_KEY) == AUTO_FILL_SMART_TYPE) {
         SplitStr(KEY_SMART_AUTO_FILL_ABILITY, "/", argList);
     } else {
-        TAG_LOGW(AAFwkTag::ABILITYMGR, "not autofill");
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "not autofill");
         return;
     }
 
@@ -6276,7 +6276,7 @@ bool AbilityManagerService::CheckIsRemote(const std::string& deviceId)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     if (deviceId.empty()) {
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "checkIsRemote:deviceId empty");
+        TAG_LOGI(AAFwkTag::ABILITYMGR, "devId empty");
         return false;
     }
     std::string localDeviceId;
@@ -6456,7 +6456,7 @@ int AbilityManagerService::MinimizeUIAbilityBySCB(const sptr<SessionInfo> &sessi
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     XCOLLIE_TIMER_LESS(__PRETTY_FUNCTION__);
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "called, sceneFlag:%{public}u, backgroundReason:%{public}d", sceneFlag,
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "sceneFlag:%{public}u, bgReason:%{public}d", sceneFlag,
         backgroundReason);
     if (sessionInfo == nullptr || sessionInfo->sessionToken == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "sessionInfo null");
@@ -9299,7 +9299,7 @@ void AbilityManagerService::OnAbilityRequestDone(const sptr<IRemoteObject> &toke
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     auto abilityRecord = Token::GetAbilityRecordByToken(token);
     CHECK_POINTER(abilityRecord);
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "OnAbilityRequestDone %{public}s-%{public}s state:%{public}d",
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "ReqDone %{public}s-%{public}s st:%{public}d",
         abilityRecord->GetAbilityInfo().bundleName.c_str(), abilityRecord->GetAbilityInfo().name.c_str(), state);
     auto userId = abilityRecord->GetApplicationInfo().uid / BASE_USER_RANGE;
 

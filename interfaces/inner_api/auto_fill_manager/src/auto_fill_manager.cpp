@@ -140,7 +140,7 @@ void AutoFillManager::UpdateCustomPopupUIExtension(uint32_t autoFillSessionId, c
     TAG_LOGD(AAFwkTag::AUTOFILLMGR, "called");
     auto extensionCallback = GetAutoFillExtensionCallback(autoFillSessionId);
     if (extensionCallback == nullptr) {
-        TAG_LOGE(AAFwkTag::AUTOFILLMGR, "null extensionCallback");
+        TAG_LOGE(AAFwkTag::AUTOFILLMGR, "null extcb");
         return;
     }
     extensionCallback->UpdateCustomPopupUIExtension(viewData);
@@ -151,7 +151,7 @@ void AutoFillManager::CloseUIExtension(uint32_t autoFillSessionId)
     TAG_LOGD(AAFwkTag::AUTOFILLMGR, "called");
     auto extensionCallback = GetAutoFillExtensionCallback(autoFillSessionId);
     if (extensionCallback == nullptr) {
-        TAG_LOGE(AAFwkTag::AUTOFILLMGR, "null extensionCallback");
+        TAG_LOGE(AAFwkTag::AUTOFILLMGR, "null extcb");
         return;
     }
     extensionCallback->CloseUIExtension();
@@ -297,7 +297,7 @@ void AutoFillManager::SetTimeOutEvent(uint32_t eventId)
         TAG_LOGI(AAFwkTag::AUTOFILLMGR, "execute HandleTimeout, eventId: %{public}d", eventId);
         auto extensionCallback = GetInstance().GetAutoFillExtensionCallback(eventId);
         if (extensionCallback == nullptr) {
-            TAG_LOGE(AAFwkTag::AUTOFILLMGR, "null extensionCallback");
+            TAG_LOGE(AAFwkTag::AUTOFILLMGR, "null extcb");
             return;
         }
         extensionCallback->HandleTimeOut();
@@ -360,7 +360,7 @@ std::shared_ptr<AutoFillExtensionCallback> AutoFillManager::GetAutoFillExtension
     std::lock_guard<std::mutex> lock(extensionCallbacksMutex_);
     auto iter = extensionCallbacks_.find(callbackId);
     if (iter == extensionCallbacks_.end()) {
-        TAG_LOGE(AAFwkTag::AUTOFILLMGR, "not find, callbackId: %{public}u", callbackId);
+        TAG_LOGE(AAFwkTag::AUTOFILLMGR, "not find cbId:%{public}u", callbackId);
         return nullptr;
     }
     return iter->second;
@@ -368,7 +368,7 @@ std::shared_ptr<AutoFillExtensionCallback> AutoFillManager::GetAutoFillExtension
 
 void AutoFillManager::RemoveAutoFillExtensionCallback(uint32_t callbackId)
 {
-    TAG_LOGI(AAFwkTag::AUTOFILLMGR, "remove callbackId: %{public}u", callbackId);
+    TAG_LOGI(AAFwkTag::AUTOFILLMGR, "rm cbId:%{public}u", callbackId);
     std::lock_guard<std::mutex> lock(extensionCallbacksMutex_);
     extensionCallbacks_.erase(callbackId);
 }

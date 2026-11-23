@@ -167,7 +167,7 @@ int FreeInstallManager::StartFreeInstall(const Want &want, int32_t userId, int r
     std::string callingAppId = info.want.GetStringParam(PARAM_FREEINSTALL_APPID);
     std::vector<std::string> callingBundleNames = info.want.GetStringArrayParam(PARAM_FREEINSTALL_BUNDLENAMES);
     if (callingAppId.empty() && callingBundleNames.empty()) {
-        TAG_LOGI(AAFwkTag::FREE_INSTALL, "callingAppId and callingBundleNames empty");
+        TAG_LOGI(AAFwkTag::FREE_INSTALL, "calling empty");
     }
     info.want.RemoveParam(PARAM_FREEINSTALL_APPID);
     info.want.RemoveParam(PARAM_FREEINSTALL_BUNDLENAMES);
@@ -281,7 +281,7 @@ void FreeInstallManager::NotifyDmsCallback(const Want &want, int resultCode)
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     std::lock_guard<ffrt::mutex> autoLock(distributedFreeInstallLock_);
     if (dmsFreeInstallCbs_.empty()) {
-        TAG_LOGE(AAFwkTag::FREE_INSTALL, "null dms callback");
+        TAG_LOGE(AAFwkTag::FREE_INSTALL, "null dms cb");
         return;
     }
 
@@ -345,7 +345,7 @@ void FreeInstallManager::NotifyFreeInstallResult(int32_t recordId, const Want &w
 
 void FreeInstallManager::HandleOnFreeInstallSuccess(int32_t recordId, FreeInstallInfo &freeInstallInfo, bool isAsync)
 {
-    TAG_LOGI(AAFwkTag::FREE_INSTALL, "install success");
+    TAG_LOGI(AAFwkTag::FREE_INSTALL, "install ok");
     freeInstallInfo.isInstalled = true;
 
     if (isAsync) {
@@ -673,7 +673,7 @@ void FreeInstallManager::OnInstallFinished(int32_t recordId, int resultCode, con
     int32_t userId, bool isAsync)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    TAG_LOGI(AAFwkTag::FREE_INSTALL, "resultCode: %{public}d", resultCode);
+    TAG_LOGI(AAFwkTag::FREE_INSTALL, "rc: %{public}d", resultCode);
 
     if (!InsightIntentExecuteParam::IsInsightIntentExecute(want)) {
         NotifyDmsCallback(want, resultCode);
@@ -794,7 +794,7 @@ int FreeInstallManager::SetAppRunningState(Want &want)
     }
 
     bool isAppRunning = appMgr->GetAppRunningStateByBundleName(want.GetBundleNameRef());
-    TAG_LOGI(AAFwkTag::FREE_INSTALL, "isAppRunning:%{public}d", static_cast<int>(isAppRunning));
+    TAG_LOGI(AAFwkTag::FREE_INSTALL, "isAppRun:%{public}d", static_cast<int>(isAppRunning));
     want.SetParam(KEY_IS_APP_RUNNING, isAppRunning);
     return ERR_OK;
 }

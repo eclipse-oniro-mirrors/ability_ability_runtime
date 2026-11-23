@@ -48,12 +48,12 @@ void TaskHandle::Sync() const
 {
     auto handler = handler_.lock();
     if (!status_ || !handler || !innerTaskHandle_) {
-        TAG_LOGI(AAFwkTag::DEFAULT, "Invalid status");
+        TAG_LOGI(AAFwkTag::DEFAULT, "invalid");
         return;
     }
     auto &status = *status_;
     if (status == TaskStatus::FINISHED || status == TaskStatus::CANCELED) {
-        TAG_LOGI(AAFwkTag::DEFAULT, "Invalid status");
+        TAG_LOGI(AAFwkTag::DEFAULT, "invalid");
         return;
     }
     handler->WaitTaskInner(innerTaskHandle_);
