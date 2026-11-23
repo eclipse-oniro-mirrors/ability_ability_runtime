@@ -26,6 +26,7 @@
 #include "extension_ability_info.h"
 #include "global_constant.h"
 #include "hilog_tag_wrapper.h"
+#include "ipc_skeleton.h"
 #include "mock_my_flag.h"
 #include "mock_my_status.h"
 #include "server_constant.h"
@@ -1113,6 +1114,53 @@ HWTEST_F(StartAbilityUtilsTest, RemoveAtomicServiceShareRouterIfNeeded_009, Test
     EXPECT_TRUE(want.HasParameter(Want::ATOMIC_SERVICE_SHARE_ROUTER));
     AAFwk::MyFlag::retVerifyAccessTokenId_ = 0;
     TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest RemoveAtomicServiceShareRouterIfNeeded_009 end");
+}
+
+/**
+ * @tc.name: GetVouchedCallerTokenId_001
+ * @tc.desc: non-AsCaller start must use the proven IPC identity, ignoring the forgeable Want param
+ * @tc.type: FUNC
+ */
+HWTEST_F(StartAbilityUtilsTest, GetVouchedCallerTokenId_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest GetVouchedCallerTokenId_001 start");
+    Want want;
+    // caller token forged by the client to borrow another token's permissions
+    want.SetParam(Want::PARAM_RESV_CALLER_TOKEN, 987654321);
+
+    uint32_t tokenId = StartAbilityUtils::GetVouchedCallerTokenId(want, false);
+
+    EXPECT_EQ(tokenId, IPCSkeleton::GetCallingTokenID());
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest GetVouchedCallerTokenId_001 end");
+}
+
+/**
+ * @tc.name: GetVouchedCallerTokenId_002
+ * @tc.desc: AsCaller start keeps the server-vouched Want param (rewritten by UpdateAsCallerSourceInfo)
+ * @tc.type: FUNC
+ */
+HWTEST_F(StartAbilityUtilsTest, GetVouchedCallerTokenId_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest GetVouchedCallerTokenId_002 start");
+    Want want;
+    want.SetParam(Want::PARAM_RESV_CALLER_TOKEN, 5678);
+
+    EXPECT_EQ(StartAbilityUtils::GetVouchedCallerTokenId(want, true), 5678u);
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest GetVouchedCallerTokenId_002 end");
+}
+
+/**
+ * @tc.name: GetVouchedCallerTokenId_003
+ * @tc.desc: AsCaller start without the vouched param falls back to 0
+ * @tc.type: FUNC
+ */
+HWTEST_F(StartAbilityUtilsTest, GetVouchedCallerTokenId_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest GetVouchedCallerTokenId_003 start");
+    Want want;
+
+    EXPECT_EQ(StartAbilityUtils::GetVouchedCallerTokenId(want, true), 0u);
+    TAG_LOGI(AAFwkTag::TEST, "StartAbilityUtilsTest GetVouchedCallerTokenId_003 end");
 }
 }  // namespace AAFwk
 }  // namespace OHOS

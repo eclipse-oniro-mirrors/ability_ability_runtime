@@ -1699,7 +1699,7 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
         param.callerToken, false);
     // Remove ATOMIC_SERVICE_SHARE_ROUTER if target is not atomic service or caller doesn't have permission
     if (param.startAbilityCtx.startAbilityInfo != nullptr) {
-        int32_t callerTokenId = param.want.GetIntParam(Want::PARAM_RESV_CALLER_TOKEN, 0);
+        uint32_t callerTokenId = StartAbilityUtils::GetVouchedCallerTokenId(param.want, param.isStartAsCaller);
         StartAbilityUtils::RemoveAtomicServiceShareRouterIfNeeded(param.want,
             param.startAbilityCtx.startAbilityInfo->abilityInfo, callerTokenId);
     }
@@ -2831,7 +2831,7 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
     StartAbilityUtils::ResolveAndCacheStartAbilityInfo(ctx, want, validUserId, appIndex, callerToken);
     // Remove ATOMIC_SERVICE_SHARE_ROUTER if target is not atomic service or caller doesn't have permission
     if (ctx.startAbilityInfo != nullptr) {
-        int32_t callerTokenId = want.GetIntParam(Want::PARAM_RESV_CALLER_TOKEN, 0);
+        uint32_t callerTokenId = StartAbilityUtils::GetVouchedCallerTokenId(want, isStartAsCaller);
         StartAbilityUtils::RemoveAtomicServiceShareRouterIfNeeded(const_cast<Want &>(want),
             ctx.startAbilityInfo->abilityInfo, callerTokenId);
     }

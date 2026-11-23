@@ -502,6 +502,19 @@ std::string StartAbilityUtils::GenerateAsCallerForAncoSessionId()
     return asCallerForAncoSessionId;
 }
 
+uint32_t StartAbilityUtils::GetVouchedCallerTokenId(const Want &want, bool isStartAsCaller)
+{
+    if (isStartAsCaller) {
+        // AsCaller entries are system-app gated and the caller identity param was already
+        // rewritten server-side by UpdateAsCallerSourceInfo, so the Want param is vouched.
+        return static_cast<uint32_t>(want.GetIntParam(Want::PARAM_RESV_CALLER_TOKEN, 0));
+    }
+    // The client-supplied Want param is forgeable: any app can set it to another token's id
+    // and borrow that token's permissions. Use the proven IPC calling identity instead
+    // (the same source UpdateCallerInfo writes into the Want afterwards).
+    return IPCSkeleton::GetCallingTokenID();
+}
+
 void StartAbilityUtils::RemoveAtomicServiceShareRouterIfNeeded(Want &want,
     const AppExecFwk::AbilityInfo &targetAbilityInfo, uint32_t callerTokenId)
 {

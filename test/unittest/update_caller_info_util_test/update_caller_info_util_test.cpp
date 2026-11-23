@@ -505,6 +505,36 @@ HWTEST_F(UpdateCallerInfoUtilTest, UpdateDmsCallerInfo_0001, TestSize.Level1)
 }
 
 /**
+ * @tc.name: UpdateCallerInfoUtilTest_UpdateDmsCallerInfo_0002
+ * @tc.desc: UpdateDmsCallerInfo must strip the forgeable caller identity reserved params;
+ *           this is the unified cleanup point for all remote dispatch paths (start/by-call/connect)
+ * @tc.type: FUNC
+ */
+HWTEST_F(UpdateCallerInfoUtilTest, UpdateDmsCallerInfo_0002, TestSize.Level1)
+{
+    std::shared_ptr<UpdateCallerInfoUtil> updateCallerUtil = std::make_shared<UpdateCallerInfoUtil>();
+    ASSERT_NE(updateCallerUtil, nullptr);
+    Want want;
+    // caller identity params forged by the client must not cross devices
+    want.SetParam(Want::PARAM_RESV_CALLER_TOKEN, 987654321);
+    want.SetParam(Want::PARAM_RESV_CALLER_UID, 1024);
+    want.SetParam(Want::PARAM_RESV_CALLER_PID, 2048);
+    want.SetParam(std::string(OHOS::AAFwk::DMS_CALLER_BUNDLE_NAME), std::string("clientForgedBundle"));
+    sptr<IRemoteObject> callerToken = nullptr;
+    std::shared_ptr<AbilityRecord> abilityRecord = MockAbilityRecord(AbilityType::PAGE);
+    ASSERT_NE(abilityRecord, nullptr);
+    callerToken = abilityRecord->GetToken();
+
+    updateCallerUtil->UpdateDmsCallerInfo(want, callerToken);
+
+    EXPECT_FALSE(want.HasParameter(Want::PARAM_RESV_CALLER_TOKEN));
+    EXPECT_FALSE(want.HasParameter(Want::PARAM_RESV_CALLER_UID));
+    EXPECT_FALSE(want.HasParameter(Want::PARAM_RESV_CALLER_PID));
+    // DMS caller info is rewritten from the server-side record, not kept from the client
+    EXPECT_TRUE(want.HasParameter(OHOS::AAFwk::DMS_CALLER_BUNDLE_NAME));
+}
+
+/**
  * @tc.name: UpdateCallerInfoUtilTest_UpdateByIndirectCallerInfo_0001
  * @tc.desc: Test UpdateByIndirectCallerInfo with nullptr indirectCallerInfo (should not modify parameters)
  * @tc.type: FUNC
