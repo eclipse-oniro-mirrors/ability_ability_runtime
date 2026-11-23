@@ -97,10 +97,13 @@ sptr<ModalSystemAssertUIExtension::AssertDialogConnection> ModalSystemAssertUIEx
 bool ModalSystemAssertUIExtension::CreateModalUIExtension(const AAFwk::Want &want)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "called");
-    std::unique_lock<std::mutex> lockAssertResult(assertResultMutex_);
-    if (reqeustCount_++ != 0) {
-        TAG_LOGD(AAFwkTag::ABILITYMGR, "Task busy, waiting for processing.");
-        assertResultCV_.wait(lockAssertResult);
+    {
+        std::unique_lock<std::mutex> lockAssertResult(assertResultMutex_);
+        if (isBusy_) {
+            TAG_LOGD(AAFwkTag::ABILITYMGR, "Task busy, waiting for processing.");
+        }
+        assertResultCV_.wait(lockAssertResult, [this] { return !isBusy_; });
+        isBusy_ = true;
     }
     auto callback = GetConnection();
     if (callback == nullptr) {
@@ -161,24 +164,22 @@ bool ModalSystemAssertUIExtension::DisconnectSystemUI()
 void ModalSystemAssertUIExtension::TryNotifyOneWaitingThreadInner()
 {
     std::unique_lock<std::mutex> lockAssertResult(assertResultMutex_);
-    if (--reqeustCount_ > 0) {
-        TAG_LOGD(AAFwkTag::ABILITYMGR, "Notify waiting Thread count is %{public}d.", reqeustCount_);
-        assertResultCV_.notify_one();
-        return;
-    }
-    reqeustCount_ = 0;
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "Counter reset to 0.");
+    isBusy_ = false;
+    assertResultCV_.notify_one();
 }
 
 void ModalSystemAssertUIExtension::TryNotifyOneWaitingThread()
 {
     auto handler = AAFwk::TaskHandlerWrap::GetFfrtHandler();
-    if (handler != nullptr) {
-        auto notifyTask = [] () {
-            ModalSystemAssertUIExtension::GetInstance().TryNotifyOneWaitingThreadInner();
-        };
-        handler->SubmitTask(notifyTask, "TryNotifyOneWaitingThread");
+    if (handler == nullptr) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "ffrt handler null, notify synchronously");
+        TryNotifyOneWaitingThreadInner();
+        return;
     }
+    auto notifyTask = [] () {
+        ModalSystemAssertUIExtension::GetInstance().TryNotifyOneWaitingThreadInner();
+    };
+    handler->SubmitTask(notifyTask, "TryNotifyOneWaitingThread");
 }
 
 void ModalSystemAssertUIExtension::AssertDialogConnection::SetReqeustAssertDialogWant(const AAFwk::Want &want)
@@ -192,6 +193,8 @@ void ModalSystemAssertUIExtension::AssertDialogConnection::OnAbilityConnectDone(
     TAG_LOGD(AAFwkTag::ABILITYMGR, "called");
     if (remote == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null remote");
+        notifyOnDisconnect_.store(false);
+        ModalSystemAssertUIExtension::GetInstance().TryNotifyOneWaitingThread();
         return;
     }
 
@@ -216,14 +219,20 @@ void ModalSystemAssertUIExtension::AssertDialogConnection::OnAbilityConnectDone(
     auto ret = remote->SendRequest(code, data, reply, option);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "show dialog failed");
+        notifyOnDisconnect_.store(false);
+        ModalSystemAssertUIExtension::GetInstance().TryNotifyOneWaitingThread();
         return;
     }
+    notifyOnDisconnect_.store(true);
 }
 
 void ModalSystemAssertUIExtension::AssertDialogConnection::OnAbilityDisconnectDone(
     const AppExecFwk::ElementName &element, int resultCode)
 {
     TAG_LOGD(AAFwkTag::ABILITYMGR, "called");
+    if (!notifyOnDisconnect_.exchange(false)) {
+        return;
+    }
     ModalSystemAssertUIExtension::GetInstance().TryNotifyOneWaitingThread();
 }
 } // namespace AbilityRuntime

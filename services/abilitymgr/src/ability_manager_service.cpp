@@ -1118,14 +1118,9 @@ int32_t AbilityManagerService::StartAbilityByOEExt(const Want &want,
     return StartAbilityInner(startAbilityWrapParam);
 }
 
-int AbilityManagerService::StartAbilityByUIContentSession(const Want &want, const sptr<IRemoteObject> &callerToken,
-    const sptr<SessionInfo> &sessionInfo, int32_t userId, int requestCode)
+int AbilityManagerService::CheckUIContentSessionCaller(const sptr<IRemoteObject> &callerToken,
+    const sptr<SessionInfo> &sessionInfo)
 {
-    if (AppUtils::GetInstance().IsForbidStart()) {
-        TAG_LOGW(AAFwkTag::ABILITYMGR, "forbid start: %{public}s", want.GetBundleNameRef().c_str());
-        return INNER_ERR;
-    }
-    XCOLLIE_TIMER_LESS_IGNORE(__PRETTY_FUNCTION__, !want.GetDeviceIdRef().empty());
     if (!callerToken || !sessionInfo) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "callerToken or sessionInfo null");
         return ERR_INVALID_VALUE;
@@ -1152,6 +1147,21 @@ int AbilityManagerService::StartAbilityByUIContentSession(const Want &want, cons
     if (token != sessionInfo->callerToken) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "callerToken unequal to top ability token");
         return NOT_TOP_ABILITY;
+    }
+    return ERR_OK;
+}
+
+int AbilityManagerService::StartAbilityByUIContentSession(const Want &want, const sptr<IRemoteObject> &callerToken,
+    const sptr<SessionInfo> &sessionInfo, int32_t userId, int requestCode)
+{
+    if (AppUtils::GetInstance().IsForbidStart()) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "forbid start: %{public}s", want.GetBundleNameRef().c_str());
+        return INNER_ERR;
+    }
+    XCOLLIE_TIMER_LESS_IGNORE(__PRETTY_FUNCTION__, !want.GetDeviceIdRef().empty());
+    int32_t ret = CheckUIContentSessionCaller(callerToken, sessionInfo);
+    if (ret != ERR_OK) {
+        return ret;
     }
     AbilityUtil::RemoveInstanceKey(const_cast<Want &>(want));
     return StartAbility(want, callerToken, userId, requestCode);
@@ -1165,33 +1175,9 @@ int AbilityManagerService::StartAbilityByUIContentSession(const Want &want, cons
         return INNER_ERR;
     }
     XCOLLIE_TIMER_LESS_IGNORE(__PRETTY_FUNCTION__, !want.GetDeviceIdRef().empty());
-    if (!callerToken || !sessionInfo) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "callerToken or sessionInfo null");
-        return ERR_INVALID_VALUE;
-    }
-    sptr<IRemoteObject> token;
-#ifdef SUPPORT_SCREEN
-    if (Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {
-        Rosen::FocusChangeInfo focusChangeInfo;
-        Rosen::WindowManager::GetInstance().GetFocusWindowInfo(focusChangeInfo);
-        token = focusChangeInfo.abilityToken_;
-    } else {
-        if (!GetWMSHandler()) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "wmsHandler_ null");
-            return ERR_INVALID_VALUE;
-        }
-        GetWMSHandler()->GetFocusWindow(token);
-    }
-#endif // SUPPORT_SCREEN
-
-    if (!token) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "token null");
-        return ERR_INVALID_VALUE;
-    }
-
-    if (token != sessionInfo->callerToken) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "callerToken unequal to top ability token");
-        return NOT_TOP_ABILITY;
+    int32_t ret = CheckUIContentSessionCaller(callerToken, sessionInfo);
+    if (ret != ERR_OK) {
+        return ret;
     }
     return StartAbility(want, startOptions, callerToken, userId, requestCode);
 }

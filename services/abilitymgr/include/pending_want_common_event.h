@@ -16,6 +16,8 @@
 #ifndef OHOS_ABILITY_RUNTIME_PENDING_WANT_COMMON_EVENT_H
 #define OHOS_ABILITY_RUNTIME_PENDING_WANT_COMMON_EVENT_H
 
+#include <mutex>
+
 #include "common_event_data.h"
 #include "common_event_subscriber.h"
 #include "want.h"
@@ -40,6 +42,7 @@ private:
     Want want_;
     WantParams wantParams_;
     sptr<IWantReceiver> finishedReceiver_;
+    std::mutex mutex_;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

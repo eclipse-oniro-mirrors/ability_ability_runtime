@@ -57,8 +57,9 @@ void ModalSystemDialogUtil::ShowDeveloperModeDialog(
 
     std::string paramStr = param.dump();
     auto connection = std::make_shared<ModalSystemDialogUIExtension>();
-    if (connection && connection->CreateModalUIExtension(paramStr)) {
+    if (!connection->CreateModalUIExtension(paramStr)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "create modal ui extension failed");
+        return;
     }
 }
 
