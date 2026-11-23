@@ -18,9 +18,12 @@
 #include "ability_manager_errors.h"
 #define private public
 #define protected public
+// Mock app_scheduler.h must be included first: it shares the real header's
+// include guard, so whichever resolves first wins the TU (mock dir is first).
+#include "app_scheduler.h"
+#include "app_scheduler_stub_probe.h"
 #include "ability_record.h"
 #include "ability_start_setting.h"
-#include "app_scheduler.h"
 #include "app_utils.h"
 #include "scene_board/ui_ability_lifecycle_manager.h"
 #undef protected
@@ -9830,8 +9833,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionReusePreAt
 
 /**
  * @tc.name: StartUIAbility_TaskAttributionReusePidReadyDropped_0400
- * @tc.desc: A warm reuse with a live pid reports immediately; with the appmgr service
- *           unreachable in UT the report is dropped (no accounting, no residue).
+ * @tc.desc: Warm reuse with a live pid reports immediately; the default failing stub drops it.
  * @tc.type: FUNC
  */
 HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionReusePidReadyDropped_0400, TestSize.Level1)
@@ -9862,10 +9864,186 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionReusePidRe
     AbilityRuntime::StartParamsBySCB params;
     bool isColdStart = false;
 
+    AppSchedulerStubReset();
     EXPECT_EQ(mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart), ERR_OK);
-    // report attempted and dropped: neither accounted nor left pending
+    // report attempted and dropped: neither accounted nor left pending.
+    EXPECT_EQ(AppSchedulerStub().attributeCalls, 1);
     EXPECT_TRUE(record->GetTaskAttributions().empty());
     EXPECT_TRUE(record->GetPendingTaskAttributions().empty());
+    AppSchedulerStubReset();
+}
+
+/**
+ * @tc.name: StartUIAbility_TaskAttributionDuplicateReportSkipped_0500
+ * @tc.desc: A duplicate report for an attributed task is dropped before any registration.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionDuplicateReportSkipped_0500, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 63;
+
+    AbilityRequest createRequest;
+    createRequest.abilityInfo.name = "MainAbility";
+    createRequest.abilityInfo.bundleName = "com.example.unittest";
+    createRequest.abilityInfo.moduleName = "entry";
+    createRequest.sessionInfo = sessionInfo;
+    auto record = UIAbilityRecord::CreateAbilityRecord(createRequest);
+    ASSERT_NE(record, nullptr);
+    record->SetPid(4323);
+    record->AddTaskAttribution("task-warm-dup-ut", 77);
+    mgr->sessionAbilityMap_.emplace(63, record);
+
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo = createRequest.abilityInfo;
+    abilityRequest.want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-warm-dup-ut"));
+    abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_UID, 5001);
+    abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_PID, 6001);
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    // registration succeeds if attempted: broken dedup shows in attributeCalls
+    AppSchedulerStubReset();
+    AppSchedulerStub().attributeSucceeds = true;
+    EXPECT_EQ(mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart), ERR_OK);
+    // skipped before any registration; keep-alive is intentionally not renewed
+    EXPECT_EQ(AppSchedulerStub().attributeCalls, 0);
+    const auto &attributions = record->GetTaskAttributions();
+    ASSERT_EQ(attributions.size(), static_cast<size_t>(1));
+    EXPECT_EQ(attributions.at("task-warm-dup-ut"), 77);
+    EXPECT_TRUE(record->GetPendingTaskAttributions().empty());
+    EXPECT_TRUE(record->HasTaskAttribution("task-warm-dup-ut"));
+    AppSchedulerStubReset();
+}
+
+/**
+ * @tc.name: StartUIAbility_TaskAttributionFirstReportAccounted_0600
+ * @tc.desc: A fresh task's first report registers and accounts the server handle.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionFirstReportAccounted_0600, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 64;
+
+    AbilityRequest createRequest;
+    createRequest.abilityInfo.name = "MainAbility";
+    createRequest.abilityInfo.bundleName = "com.example.unittest";
+    createRequest.abilityInfo.moduleName = "entry";
+    createRequest.sessionInfo = sessionInfo;
+    auto record = UIAbilityRecord::CreateAbilityRecord(createRequest);
+    ASSERT_NE(record, nullptr);
+    record->SetPid(4325);
+    mgr->sessionAbilityMap_.emplace(64, record);
+
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo = createRequest.abilityInfo;
+    abilityRequest.want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-warm-first-ut"));
+    abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_UID, 5001);
+    abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_PID, 6001);
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    AppSchedulerStubReset();
+    AppSchedulerStub().attributeSucceeds = true;
+    EXPECT_EQ(mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart), ERR_OK);
+    EXPECT_EQ(AppSchedulerStub().attributeCalls, 1);
+    const auto &attributions = record->GetTaskAttributions();
+    ASSERT_EQ(attributions.size(), static_cast<size_t>(1));
+    EXPECT_EQ(attributions.at("task-warm-first-ut"), 4701);
+    AppSchedulerStubReset();
+}
+
+/**
+ * @tc.name: CleanTaskAttributionsByTaskId_RemovesOnlyFinishedTask_0100
+ * @tc.desc: Cleanup removes the finished task's entries from all containers; others survive.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CleanTaskAttributionsByTaskId_RemovesOnlyFinishedTask_0100, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 65;
+
+    AbilityRequest createRequest;
+    createRequest.abilityInfo.name = "MainAbility";
+    createRequest.abilityInfo.bundleName = "com.example.unittest";
+    createRequest.abilityInfo.moduleName = "entry";
+    createRequest.sessionInfo = sessionInfo;
+
+    auto sessionRecord = UIAbilityRecord::CreateAbilityRecord(createRequest);
+    ASSERT_NE(sessionRecord, nullptr);
+    sessionRecord->AddTaskAttribution("task-finished-ut", 11);
+    sessionRecord->AddTaskAttribution("task-alive-ut", 12);
+    mgr->sessionAbilityMap_.emplace(65, sessionRecord);
+
+    AbilityRequest terminateRequest = createRequest;
+    terminateRequest.abilityInfo.name = "SecondAbility";
+    auto terminatingRecord = UIAbilityRecord::CreateAbilityRecord(terminateRequest);
+    ASSERT_NE(terminatingRecord, nullptr);
+    terminatingRecord->AddTaskAttribution("task-finished-ut", 21);
+    mgr->terminateAbilityList_.push_back(terminatingRecord);
+
+    EXPECT_EQ(mgr->CleanTaskAttributionsByTaskId("task-finished-ut"), static_cast<size_t>(2));
+    EXPECT_FALSE(sessionRecord->HasTaskAttribution("task-finished-ut"));
+    EXPECT_TRUE(sessionRecord->HasTaskAttribution("task-alive-ut"));
+    EXPECT_FALSE(terminatingRecord->HasTaskAttribution("task-finished-ut"));
+    EXPECT_EQ(mgr->CleanTaskAttributionsByTaskId(""), static_cast<size_t>(0));
+    EXPECT_EQ(mgr->CleanTaskAttributionsByTaskId("task-unknown-ut"), static_cast<size_t>(0));
+    EXPECT_TRUE(sessionRecord->HasTaskAttribution("task-alive-ut"));
+}
+
+/**
+ * @tc.name: StartUIAbility_TaskAttributionTaskIdReuseAfterFinish_0700
+ * @tc.desc: After cleanup a finished task's id can be reused and reports with a fresh handle.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionTaskIdReuseAfterFinish_0700, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    sessionInfo->persistentId = 66;
+
+    AbilityRequest createRequest;
+    createRequest.abilityInfo.name = "MainAbility";
+    createRequest.abilityInfo.bundleName = "com.example.unittest";
+    createRequest.abilityInfo.moduleName = "entry";
+    createRequest.sessionInfo = sessionInfo;
+    auto record = UIAbilityRecord::CreateAbilityRecord(createRequest);
+    ASSERT_NE(record, nullptr);
+    record->SetPid(4327);
+    record->AddTaskAttribution("task-reuse-ut", 77);
+    mgr->sessionAbilityMap_.emplace(66, record);
+
+    EXPECT_EQ(mgr->CleanTaskAttributionsByTaskId("task-reuse-ut"), static_cast<size_t>(1));
+    EXPECT_FALSE(record->HasTaskAttribution("task-reuse-ut"));
+
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo = createRequest.abilityInfo;
+    abilityRequest.want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-reuse-ut"));
+    abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_UID, 5001);
+    abilityRequest.want.SetParam(Want::PARAM_RESV_CALLER_PID, 6001);
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+
+    AppSchedulerStubReset();
+    AppSchedulerStub().attributeSucceeds = true;
+    EXPECT_EQ(mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart), ERR_OK);
+    EXPECT_EQ(AppSchedulerStub().attributeCalls, 1);
+    const auto &attributions = record->GetTaskAttributions();
+    ASSERT_EQ(attributions.size(), static_cast<size_t>(1));
+    EXPECT_EQ(attributions.at("task-reuse-ut"), 4701);
+    AppSchedulerStubReset();
 }
 
 /**
@@ -10101,6 +10279,284 @@ HWTEST_F(UIAbilityLifecycleManagerTest, ManagerTeardown_TaskAttributionReleasedA
     reuseRecord.reset();
     mgr.reset();
     SUCCEED();
+}
+
+/**
+ * @tc.name: NotifySCBToStartUIAbility_TaskAttributionKeyRoundTripsToSCB_0100
+ * @tc.desc: The SCB-bound want keeps the key; the callback consumes it only via the stash restore.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifySCBToStartUIAbility_TaskAttributionKeyRoundTripsToSCB_0100,
+    TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    sptr<MockBackToCallerSession> rootSession = new MockBackToCallerSession(Rosen::SessionInfo());
+    mgr->SetRootSceneSession(rootSession);
+    sptr<SessionInfo> activation;
+    EXPECT_CALL(*rootSession, PendingSessionActivation(_))
+        .WillOnce(DoAll(SaveArg<0>(&activation), Return(Rosen::WSError::WS_OK)));
+
+    AbilityRequest request;
+    request.abilityInfo.name = "MainAbility";
+    request.abilityInfo.bundleName = "com.example.unittest";
+    request.abilityInfo.moduleName = "entry";
+    request.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    request.abilityInfo.launchMode = AppExecFwk::LaunchMode::STANDARD;
+    request.want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-scb-roundtrip-ut"));
+    request.want.SetParam(Want::PARAM_RESV_CALLER_UID, 3001);
+    request.want.SetParam(Want::PARAM_RESV_CALLER_PID, 4001);
+
+    EXPECT_EQ(mgr->NotifySCBToStartUIAbility(request), ERR_OK);
+    ASSERT_NE(activation, nullptr);
+    EXPECT_TRUE(activation->want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+    EXPECT_EQ(activation->want.GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID), "task-scb-roundtrip-ut");
+    AbilitySessionInfo cachedInfo;
+    EXPECT_TRUE(mgr->GetAbilitySessionInfo(activation->requestId, cachedInfo));
+    EXPECT_EQ(cachedInfo.taskId, "task-scb-roundtrip-ut");
+    EXPECT_EQ(cachedInfo.callerUid, 3001);
+    EXPECT_EQ(cachedInfo.callerPid, 4001);
+    EXPECT_TRUE(request.want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+    mgr->RemoveAbilitySessionInfo(activation->requestId);
+}
+
+/**
+ * @tc.name: NotifySCBToStartUIAbility_TaskAttributionNoKeyUnchanged_0200
+ * @tc.desc: A key-less start puts no key into the SCB-bound want or the stash.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifySCBToStartUIAbility_TaskAttributionNoKeyUnchanged_0200,
+    TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    sptr<MockBackToCallerSession> rootSession = new MockBackToCallerSession(Rosen::SessionInfo());
+    mgr->SetRootSceneSession(rootSession);
+    sptr<SessionInfo> activation;
+    EXPECT_CALL(*rootSession, PendingSessionActivation(_))
+        .WillOnce(DoAll(SaveArg<0>(&activation), Return(Rosen::WSError::WS_OK)));
+
+    AbilityRequest request;
+    request.abilityInfo.name = "MainAbility";
+    request.abilityInfo.bundleName = "com.example.unittest";
+    request.abilityInfo.moduleName = "entry";
+    request.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    request.abilityInfo.launchMode = AppExecFwk::LaunchMode::STANDARD;
+    request.want.SetParam(Want::PARAM_RESV_CALLER_UID, 3002);
+    request.want.SetParam(Want::PARAM_RESV_CALLER_PID, 4002);
+
+    EXPECT_EQ(mgr->NotifySCBToStartUIAbility(request), ERR_OK);
+    ASSERT_NE(activation, nullptr);
+    EXPECT_FALSE(activation->want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+    AbilitySessionInfo cachedInfo;
+    EXPECT_TRUE(mgr->GetAbilitySessionInfo(activation->requestId, cachedInfo));
+    EXPECT_TRUE(cachedInfo.taskId.empty());
+    mgr->RemoveAbilitySessionInfo(activation->requestId);
+}
+
+/**
+ * @tc.name: NotifySCBToRecoveryAfterInterception_TaskAttributionKeyRoundTripsToSCB_0100
+ * @tc.desc: Recovery keeps the key in the SCB want and writes no stash;
+ *           the callback's key is dropped by the consumption-side normalization.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest,
+    NotifySCBToRecoveryAfterInterception_TaskAttributionKeyRoundTripsToSCB_0100, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    sptr<MockBackToCallerSession> rootSession = new MockBackToCallerSession(Rosen::SessionInfo());
+    mgr->SetRootSceneSession(rootSession);
+    sptr<SessionInfo> activation;
+    EXPECT_CALL(*rootSession, PendingSessionActivation(_))
+        .WillOnce(DoAll(SaveArg<0>(&activation), Return(Rosen::WSError::WS_OK)));
+
+    AbilityRequest request;
+    request.abilityInfo.name = "MainAbility";
+    request.abilityInfo.bundleName = "com.example.unittest";
+    request.abilityInfo.moduleName = "entry";
+    request.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    request.abilityInfo.launchMode = AppExecFwk::LaunchMode::STANDARD;
+    request.want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-recovery-roundtrip-ut"));
+    request.want.SetParam(Want::PARAM_RESV_CALLER_UID, 5001);
+    request.want.SetParam(Want::PARAM_RESV_CALLER_PID, 6001);
+
+    EXPECT_EQ(mgr->NotifySCBToRecoveryAfterInterception(request), ERR_OK);
+    ASSERT_NE(activation, nullptr);
+    EXPECT_TRUE(activation->want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+    EXPECT_EQ(activation->want.GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID), "task-recovery-roundtrip-ut");
+    AbilitySessionInfo cachedInfo;
+    EXPECT_FALSE(mgr->GetAbilitySessionInfo(activation->requestId, cachedInfo));
+}
+
+/**
+ * @tc.name: CallAbilityLocked_TaskAttributionKeyRoundTripsToSCB_0100
+ * @tc.desc: ByCall keeps the context in the record's pending stash; the key round-trips.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, CallAbilityLocked_TaskAttributionKeyRoundTripsToSCB_0100, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    sptr<MockBackToCallerSession> rootSession = new MockBackToCallerSession(Rosen::SessionInfo());
+    mgr->SetRootSceneSession(rootSession);
+    sptr<SessionInfo> activation;
+    EXPECT_CALL(*rootSession, PendingSessionActivation(_))
+        .WillOnce(DoAll(SaveArg<0>(&activation), Return(Rosen::WSError::WS_OK)));
+
+    AbilityRequest request;
+    request.abilityInfo.name = "MainAbility";
+    request.abilityInfo.bundleName = "com.example.unittest";
+    request.abilityInfo.moduleName = "entry";
+    request.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    request.abilityInfo.launchMode = AppExecFwk::LaunchMode::STANDARD;
+    request.callType = AbilityCallType::CALL_REQUEST_TYPE;
+    request.connect = new UIAbilityLifecycleManagerTestStub();
+    request.want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-bycall-roundtrip-ut"));
+    request.want.SetParam(Want::PARAM_RESV_CALLER_UID, 9001);
+    request.want.SetParam(Want::PARAM_RESV_CALLER_PID, 9101);
+
+    std::string errMsg;
+    EXPECT_EQ(mgr->CallAbilityLocked(request, errMsg), ERR_OK);
+    ASSERT_NE(activation, nullptr);
+    EXPECT_TRUE(activation->want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+    EXPECT_EQ(activation->want.GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID), "task-bycall-roundtrip-ut");
+    ASSERT_EQ(mgr->tmpAbilityMap_.size(), static_cast<size_t>(1));
+    auto record = mgr->tmpAbilityMap_.begin()->second;
+    ASSERT_NE(record, nullptr);
+    const auto &pending = record->GetPendingTaskAttributions();
+    ASSERT_EQ(pending.size(), static_cast<size_t>(1));
+    EXPECT_EQ(pending.at("task-bycall-roundtrip-ut").callerUid, 9001);
+    EXPECT_EQ(pending.at("task-bycall-roundtrip-ut").callerPid, 9101);
+    EXPECT_TRUE(request.want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+}
+
+/**
+ * @tc.name: NotifySCBToPreStartUIAbility_TaskAttributionKeyRoundTripsToSCB_0100
+ * @tc.desc: Pre-start lets the key round-trip; the free-install task want stays authoritative.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, NotifySCBToPreStartUIAbility_TaskAttributionKeyRoundTripsToSCB_0100,
+    TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    sptr<MockBackToCallerSession> rootSession = new MockBackToCallerSession(Rosen::SessionInfo());
+    mgr->SetRootSceneSession(rootSession);
+    sptr<SessionInfo> activation;
+    EXPECT_CALL(*rootSession, PendingSessionActivation(_))
+        .WillOnce(DoAll(SaveArg<0>(&activation), Return(Rosen::WSError::WS_OK)));
+
+    AbilityRequest request;
+    request.abilityInfo.name = "MainAbility";
+    request.abilityInfo.bundleName = "com.example.unittest";
+    request.abilityInfo.moduleName = "entry";
+    request.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    request.want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-prestart-roundtrip-ut"));
+    request.want.SetParam(Want::PARAM_RESV_CALLER_UID, 9201);
+    request.want.SetParam(Want::PARAM_RESV_CALLER_PID, 9301);
+
+    sptr<SessionInfo> sessionInfo;
+    EXPECT_EQ(mgr->NotifySCBToPreStartUIAbility(request, sessionInfo), ERR_OK);
+    ASSERT_NE(activation, nullptr);
+    EXPECT_TRUE(activation->want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+    EXPECT_EQ(activation->want.GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID), "task-prestart-roundtrip-ut");
+    EXPECT_TRUE(request.want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+}
+
+/**
+ * @tc.name: BackToCallerAbilityWithResult_TaskAttributionKeyRelayed_0100
+ * @tc.desc: The relayed copy keeps the record's key; replay dies at the consumption side.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, BackToCallerAbilityWithResult_TaskAttributionKeyRelayed_0100,
+    TestSize.Level1)
+{
+    auto manager = std::make_shared<UIAbilityLifecycleManager>();
+    sptr<MockBackToCallerSession> session = new MockBackToCallerSession(Rosen::SessionInfo());
+    sptr<SessionInfo> currentSession = new SessionInfo();
+    currentSession->sessionToken = session;
+
+    auto caller = InitAbilityRecord();
+    ASSERT_NE(caller, nullptr);
+    sptr<SessionInfo> callerSession = new SessionInfo();
+    callerSession->sessionToken = new Rosen::Session(Rosen::SessionInfo());
+    callerSession->want.SetElementName("", "com.example.unittest", "MainAbility", "entry");
+    callerSession->want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-relay-ut"));
+    caller->SetSessionInfo(callerSession);
+
+    sptr<SessionInfo> activation;
+    EXPECT_CALL(*session, PendingSessionActivation(_))
+        .WillOnce(DoAll(SaveArg<0>(&activation), Return(Rosen::WSError::WS_OK)));
+
+    EXPECT_EQ(manager->BackToCallerAbilityWithResultLocked(currentSession, caller), ERR_OK);
+    ASSERT_NE(activation, nullptr);
+    EXPECT_TRUE(activation->want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+    EXPECT_EQ(activation->want.GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID), "task-relay-ut");
+    EXPECT_TRUE(callerSession->want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+}
+
+/**
+ * @tc.name: MoveAbilityToFront_TaskAttributionKeyRelayed_0100
+ * @tc.desc: The move-to-front relay keeps the key; replay dies at the consumption side.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, MoveAbilityToFront_TaskAttributionKeyRelayed_0100, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    sptr<MockBackToCallerSession> rootSession = new MockBackToCallerSession(Rosen::SessionInfo());
+    mgr->SetRootSceneSession(rootSession);
+    sptr<SessionInfo> activation;
+    EXPECT_CALL(*rootSession, PendingSessionActivation(_))
+        .WillOnce(DoAll(SaveArg<0>(&activation), Return(Rosen::WSError::WS_OK)));
+
+    AbilityRequest abilityRequest;
+    abilityRequest.want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-movefront-ut"));
+    abilityRequest.sessionInfo = new SessionInfo();
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    SpecifiedRequest specifiedRequest(0, abilityRequest);
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(specifiedRequest.abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+
+    EXPECT_EQ(mgr->MoveAbilityToFront(specifiedRequest, abilityRecord, nullptr), ERR_OK);
+    ASSERT_NE(activation, nullptr);
+    EXPECT_TRUE(activation->want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+    EXPECT_EQ(activation->want.GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID), "task-movefront-ut");
+    EXPECT_TRUE(specifiedRequest.abilityRequest.want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+}
+
+/**
+ * @tc.name: RevokeDelegator_TaskAttributionKeyRelayed_0100
+ * @tc.desc: The revoke-delegator relay keeps the key; replay dies at the consumption side.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, RevokeDelegator_TaskAttributionKeyRelayed_0100,
+    TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    sptr<MockBackToCallerSession> rootSession = new MockBackToCallerSession(Rosen::SessionInfo());
+    mgr->SetRootSceneSession(rootSession);
+    sptr<SessionInfo> activation;
+    EXPECT_CALL(*rootSession, PendingSessionActivation(_))
+        .WillOnce(DoAll(SaveArg<0>(&activation), Return(Rosen::WSError::WS_OK)));
+
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.accessTokenId = IPCSkeleton::GetCallingTokenID();
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    abilityRequest.sessionInfo = new SessionInfo();
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    // RevokeDelegator entry requirements: foregrounding and hooked
+    abilityRecord->isAbilityForegrounding_ = true;
+    abilityRecord->SetIsHook(true);
+    auto launchWant = std::make_shared<Want>();
+    launchWant->SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-revoke-ut"));
+    abilityRecord->SetLaunchWant(launchWant);
+
+    EXPECT_EQ(mgr->RevokeDelegator(abilityRecord->GetToken()), ERR_OK);
+    ASSERT_NE(activation, nullptr);
+    EXPECT_TRUE(activation->want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+    EXPECT_EQ(activation->want.GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID), "task-revoke-ut");
+    EXPECT_TRUE(launchWant->HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
 }
 
 }  // namespace AAFwk

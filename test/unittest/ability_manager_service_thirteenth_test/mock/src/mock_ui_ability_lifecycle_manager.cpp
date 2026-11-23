@@ -840,5 +840,10 @@ void UIAbilityLifecycleManager::RemoveAbilitySessionInfo(int32_t requestId)
         abilitySessionInfoMap_.erase(it);
     }
 }
+
+size_t UIAbilityLifecycleManager::CleanTaskAttributionsByTaskId(const std::string &taskId)
+{
+    return 0;
+}
 }  // namespace AAFwk
 }  // namespace OHOS

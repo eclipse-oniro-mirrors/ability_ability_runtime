@@ -488,6 +488,15 @@ public:
         int32_t appIndex);
 
     /**
+     * @brief Remove a finished task's stale attribution bookkeeping from every
+     *        record so a reused task id reports again (not deduped forever).
+     *        Acquires sessionLock_ internally; do NOT call while holding sessionLock_.
+     * @param taskId Task id of the finished task
+     * @return Number of removed bookkeeping entries
+     */
+    size_t CleanTaskAttributionsByTaskId(const std::string &taskId);
+
+    /**
      * @brief Get ability record by token (thread-safe).
      *        Acquires sessionLock_ internally; do NOT call while holding sessionLock_
      *        (use GetAbilityRecordByTokenLocked instead).

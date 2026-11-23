@@ -2150,5 +2150,130 @@ HWTEST_F(AbilityManagerServiceFourteenthTest, OnTaskFinished_002, TestSize.Level
     SUCCEED();
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest OnTaskFinished_002 end");
 }
+
+/**
+ * @tc.name: StartUIAbilityByPreInstall_TaskAttributionKeyRestored_0100
+ * @tc.desc: Free-install completion restores the key from the task's original want.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, StartUIAbilityByPreInstall_TaskAttributionKeyRestored_0100,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest StartUIAbilityByPreInstall_Restore begin");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    FreeInstallInfo taskInfo;
+    taskInfo.isFreeInstallFinished = true;
+    taskInfo.isInstalled = true;
+    taskInfo.isStartUIAbilityBySCBCalled = true;
+    taskInfo.want.SetElementName("", "com.test.preinstall", "MainAbility", "entry");
+    taskInfo.want.SetParam(KEY_SESSION_ID, std::string("preinstall-restore-ut"));
+    taskInfo.want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-preinstall-restore-ut"));
+
+    // the SCB-held pre-start copy round-trips a stale value; the task want is authoritative
+    sptr<SessionInfo> sessionInfo = new SessionInfo();
+    sessionInfo->want = taskInfo.want;
+    sessionInfo->want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("stale-window-value"));
+    abilityMs->preStartSessionMap_["preinstall-restore-ut"] = sessionInfo;
+
+    abilityMs->StartUIAbilityByPreInstall(taskInfo);
+    EXPECT_TRUE(sessionInfo->want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+    EXPECT_EQ(sessionInfo->want.GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID), "task-preinstall-restore-ut");
+
+    // fail-closed: a key-free original strips a key the relay may have injected
+    FreeInstallInfo cleanTask;
+    cleanTask.isFreeInstallFinished = true;
+    cleanTask.isInstalled = true;
+    cleanTask.isStartUIAbilityBySCBCalled = true;
+    cleanTask.want.SetElementName("", "com.test.preinstall", "MainAbility", "entry");
+    cleanTask.want.SetParam(KEY_SESSION_ID, std::string("preinstall-restore-ut2"));
+    sptr<SessionInfo> injectedSession = new SessionInfo();
+    injectedSession->want = cleanTask.want;
+    injectedSession->want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("injected-by-relay"));
+    abilityMs->preStartSessionMap_["preinstall-restore-ut2"] = injectedSession;
+
+    abilityMs->StartUIAbilityByPreInstall(cleanTask);
+    EXPECT_FALSE(injectedSession->want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+
+    abilityMs->preStartSessionMap_.clear();
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest StartUIAbilityByPreInstall_Restore end");
+}
+
+/**
+ * @tc.name: StartUIAbilityBySCBDefault_NoStash_TaskKeyNotConsumed_0100
+ * @tc.desc: A callback with no stash never consumes the window-returned task key;
+ *           relays/replays die at this consumption-side normalization point.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, StartUIAbilityBySCBDefault_NoStash_TaskKeyNotConsumed_0100,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest StartUIAbilityBySCBDefault_NoStash begin");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    sptr<SessionInfo> sessionInfo = new SessionInfo();
+    sessionInfo->want.SetElementName("", "com.test.nostash", "MainAbility", "entry");
+    sessionInfo->want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-relay-replay-ut"));
+    sessionInfo->requestId = 424242; // no AbilitySessionInfo stashed for this callback
+
+    AbilityRuntime::StartParamsBySCB params;
+    bool isColdStart = false;
+    abilityMs->StartUIAbilityBySCBDefault(sessionInfo, params, isColdStart);
+    // no stash: the window-returned key is dropped before any downstream use
+    EXPECT_FALSE(sessionInfo->want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest StartUIAbilityBySCBDefault_NoStash end");
+}
+
+/*
+ * @tc.name: StartAbilityInner_SCBReplay_TaskKeyNotDeclared_0100
+ * @tc.desc: The SCB-originated StartAbility-family entry (isBySCB) replays the window-archived
+ *           want of a specified session; that channel never declares task attribution, so the
+ *           archived key is dropped at the entry (the stash armed downstream fails closed).
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, StartAbilityInner_SCBReplay_TaskKeyNotDeclared_0100,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest StartAbilityInner_SCBReplay begin");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    // the wrap param StartSpecifiedAbilityBySCB builds: the want comes from the window archive
+    // and may carry the task key of the first launch
+    StartAbilityWrapParam param;
+    param.want.SetElementName("", "com.test.scb.replay", "SpecifiedAbility", "entry");
+    param.want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-scb-replay-ut"));
+    param.isBySCB = true;
+
+    // the outcome is irrelevant: the entry contract under test is the key normalization
+    (void)abilityMs->StartAbilityInner(param);
+    EXPECT_FALSE(param.want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest StartAbilityInner_SCBReplay end");
+}
+
+/*
+ * @tc.name: StartAbilityInner_NonSCB_TaskKeyKept_0100
+ * @tc.desc: A normal (non-SCB) startAbility keeps the task key in the want: the creator's
+ *           attribution declaration must survive the entry normalization.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, StartAbilityInner_NonSCB_TaskKeyKept_0100,
+    TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest StartAbilityInner_NonSCB begin");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    StartAbilityWrapParam param;
+    param.want.SetElementName("", "com.test.creator", "MainAbility", "entry");
+    param.want.SetParam(Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-creator-ut"));
+
+    (void)abilityMs->StartAbilityInner(param);
+    EXPECT_TRUE(param.want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
+    EXPECT_EQ(param.want.GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID), "task-creator-ut");
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest StartAbilityInner_NonSCB end");
+}
 } // namespace AAFwk
 } // namespace OHOS

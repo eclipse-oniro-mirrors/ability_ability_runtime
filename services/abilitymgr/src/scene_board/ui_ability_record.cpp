@@ -32,7 +32,7 @@ UIAbilityRecord::UIAbilityRecord(const Want &want, const AppExecFwk::AbilityInfo
     : AbilityRecord(want, abilityInfo, applicationInfo, requestCode) {}
 
 namespace {
-void UnregisterTaskAttributions(const std::vector<std::pair<std::string, int64_t>> &attributions)
+void UnregisterTaskAttributions(const std::map<std::string, int64_t> &attributions)
 {
     for (const auto &item : attributions) {
         int32_t result = DelayedSingleton<AppScheduler>::GetInstance()->UnregisterTaskAttribution(
@@ -56,7 +56,7 @@ UIAbilityRecord::~UIAbilityRecord()
     if (taskAttributions_.empty()) {
         return;
     }
-    std::vector<std::pair<std::string, int64_t>> attributions = std::move(taskAttributions_);
+    std::map<std::string, int64_t> attributions = std::move(taskAttributions_);
     TAG_LOGI(AAFwkTag::ABILITYMGR, "post async task to release %{public}zu task attributions",
         attributions.size());
     ffrt::submit([attributions = std::move(attributions)]() {
