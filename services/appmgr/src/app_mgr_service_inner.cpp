@@ -4275,11 +4275,26 @@ int32_t AppMgrServiceInner::ClearUpApplicationDataByUserId(const std::string &bu
         TAG_LOGW(
             AAFwkTag::APPMGR, "fail, bundleName:%{public}s", bundleName.c_str());
     }
+    // 6.notify abilityms the application data is cleared, so the recover info and exit reason
+    // records are removed and the window stack recovery flag is cleared.
+    NotifyAppDataCleared(userId, bundleName, tokenId);
     int targetUid = IN_PROCESS_CALL(bundleMgrHelper->GetUidByBundleName(bundleName, userId, appCloneIndex));
     NotifyAppStatusByCallerUid(bundleName, tokenId, userId, callerUid, targetUid,
         EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_DATA_CLEARED);
     TAG_LOGI(AAFwkTag::APPMGR, "clear");
     return ERR_OK;
+}
+
+void AppMgrServiceInner::NotifyAppDataCleared(int32_t userId, const std::string &bundleName,
+    uint32_t accessTokenId)
+{
+    TAG_LOGI(AAFwkTag::APPMGR, "bundleName:%{public}s userId:%{public}d", bundleName.c_str(), userId);
+    std::lock_guard<ffrt::mutex> lock(appStateCallbacksLock_);
+    for (const auto &item : appStateCallbacks_) {
+        if (item.callback != nullptr) {
+            item.callback->NotifyAppDataCleared(userId, bundleName, accessTokenId);
+        }
+    }
 }
 
 int32_t AppMgrServiceInner::GetAllRunningProcesses(std::vector<RunningProcessInfo> &info)

@@ -20,6 +20,7 @@
 #define private public
 #define protected public
 #include "app_exit_reason_data_manager.h"
+#include "app_utils.h"
 #include "mock_single_kv_store.h"
 #undef private
 #undef protected
@@ -562,6 +563,100 @@ HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_ConvertAppExitRe
     ASSERT_TRUE(jsonObject[JSON_KEY_EXIT_MSG].is_string());
     auto exitMsg = jsonObject.at(JSON_KEY_EXIT_MSG).get<std::string>();
     EXPECT_EQ(exitMsg, exitReason.exitMsg);
+}
+
+/* *
+ * @tc.name: AppExitReasonDataManager_GetRecoverSessionIdsByTokenId_001
+ * @tc.desc: GetRecoverSessionIdsByTokenId with a valid recover info record
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_GetRecoverSessionIdsByTokenId_001,
+    TestSize.Level1)
+{
+    std::shared_ptr<MockSingleKvStore> kvStorePtr = std::make_shared<MockSingleKvStore>();
+    nlohmann::json recoverInfoJson = nlohmann::json {
+        { "recover_info_list", { MODULE_NAME + ABILITY_NAME } },
+        { "session_id_list", { SESSION_ID, SESSION_ID + 1 } },
+    };
+    kvStorePtr->hasGetValue_ = true;
+    kvStorePtr->getValue_ = DistributedKv::Value(recoverInfoJson.dump());
+    kvStorePtr->Get_ = DistributedKv::Status::SUCCESS;
+    DelayedSingleton<AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = kvStorePtr;
+
+    std::vector<int32_t> sessionIds;
+    auto result = DelayedSingleton<AppExitReasonDataManager>::GetInstance()->GetRecoverSessionIdsByTokenId(
+        ACCESS_TOKEN_ID, sessionIds);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(sessionIds.size(), static_cast<size_t>(2));
+    if (sessionIds.size() == static_cast<size_t>(2)) {
+        EXPECT_EQ(sessionIds[0], SESSION_ID);
+        EXPECT_EQ(sessionIds[1], SESSION_ID + 1);
+    }
+    DelayedSingleton<AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = nullptr;
+}
+
+/* *
+ * @tc.name: AppExitReasonDataManager_GetRecoverSessionIdsByTokenId_002
+ * @tc.desc: GetRecoverSessionIdsByTokenId when the record is not found
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_GetRecoverSessionIdsByTokenId_002,
+    TestSize.Level1)
+{
+    std::shared_ptr<MockSingleKvStore> kvStorePtr = std::make_shared<MockSingleKvStore>();
+    kvStorePtr->Get_ = DistributedKv::Status::KEY_NOT_FOUND;
+    DelayedSingleton<AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = kvStorePtr;
+
+    std::vector<int32_t> sessionIds;
+    auto result = DelayedSingleton<AppExitReasonDataManager>::GetInstance()->GetRecoverSessionIdsByTokenId(
+        ACCESS_TOKEN_ID, sessionIds);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    EXPECT_TRUE(sessionIds.empty());
+    DelayedSingleton<AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = nullptr;
+}
+
+/* *
+ * @tc.name: AppExitReasonDataManager_GetRecoverSessionIdsByTokenId_003
+ * @tc.desc: GetRecoverSessionIdsByTokenId when the kv store is unavailable
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_GetRecoverSessionIdsByTokenId_003,
+    TestSize.Level1)
+{
+    // Make CheckKvStore fail fast via the bopd/rescue mode branch: it returns false before the
+    // kvStorePtr_ check and the re-init retries, so no kvStore and no storeId corruption is needed.
+    auto &appUtils = AAFwk::AppUtils::GetInstance();
+    appUtils.isBopdOrRescueMode_.value = true;
+    appUtils.isBopdOrRescueMode_.isLoaded = true;
+    std::vector<int32_t> sessionIds;
+    auto result = DelayedSingleton<AppExitReasonDataManager>::GetInstance()->GetRecoverSessionIdsByTokenId(
+        ACCESS_TOKEN_ID, sessionIds);
+    EXPECT_EQ(result, ERR_NO_INIT);
+    EXPECT_TRUE(sessionIds.empty());
+    appUtils.isBopdOrRescueMode_.value = false;
+    appUtils.isBopdOrRescueMode_.isLoaded = false;
+}
+
+/* *
+ * @tc.name: AppExitReasonDataManager_GetRecoverSessionIdsByTokenId_004
+ * @tc.desc: GetRecoverSessionIdsByTokenId when the record value is not valid json
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppExitReasonDataManagerTest, AppExitReasonDataManager_GetRecoverSessionIdsByTokenId_004,
+    TestSize.Level1)
+{
+    std::shared_ptr<MockSingleKvStore> kvStorePtr = std::make_shared<MockSingleKvStore>();
+    kvStorePtr->hasGetValue_ = true;
+    kvStorePtr->getValue_ = DistributedKv::Value("test_value");
+    kvStorePtr->Get_ = DistributedKv::Status::SUCCESS;
+    DelayedSingleton<AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = kvStorePtr;
+
+    std::vector<int32_t> sessionIds;
+    auto result = DelayedSingleton<AppExitReasonDataManager>::GetInstance()->GetRecoverSessionIdsByTokenId(
+        ACCESS_TOKEN_ID, sessionIds);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_TRUE(sessionIds.empty());
+    DelayedSingleton<AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = nullptr;
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

@@ -183,6 +183,11 @@ void AppScheduler::RecordAppExitSignalReason(int32_t pid, int32_t uid, int32_t s
     TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::RecordAppExitSignalReason()");
 }
 
+void AppScheduler::NotifyAppDataCleared(int32_t userId, const std::string &bundleName, uint32_t accessTokenId)
+{
+    TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::NotifyAppDataCleared()");
+}
+
 void AppScheduler::UpdateAbilityState(const sptr<IRemoteObject>& token, const AppExecFwk::AbilityState state)
 {
     TAG_LOGI(AAFwkTag::TEST, "Test AppScheduler::UpdateAbilityState()");

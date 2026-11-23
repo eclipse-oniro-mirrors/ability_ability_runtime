@@ -2540,6 +2540,17 @@ private:
      */
     void NotifyAppStatusByCallerUid(const std::string &bundleName, const int32_t tokenId, const int32_t userId,
         const int32_t callerUid, const int32_t targetUid, const std::string &eventData);
+
+    /**
+     * Notify the registered app state callbacks that the application data is cleared, so
+     * abilityms removes the recover info and exit reason records and notifies the window
+     * to clear the stack recovery flag.
+     *
+     * @param userId Indicates the user ID of the application whose data is cleared.
+     * @param bundleName Indicates the bundle name of the application.
+     * @param accessTokenId Indicates the access token ID of the application.
+     */
+    void NotifyAppDataCleared(int32_t userId, const std::string &bundleName, uint32_t accessTokenId);
     void UpdateAllProviderConfig(const std::shared_ptr<AppRunningRecord> &appRecord);
     void SendHiSysEvent(int32_t innerEventId, std::shared_ptr<AppRunningRecord> appRecord);
     int FinishUserTestLocked(

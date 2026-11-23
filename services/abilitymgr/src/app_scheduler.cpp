@@ -360,6 +360,13 @@ void AppScheduler::RecordAppExitSignalReason(int32_t pid, int32_t uid, int32_t s
     callback->RecordAppExitSignalReason(pid, uid, signal, bundleName);
 }
 
+void AppScheduler::NotifyAppDataCleared(int32_t userId, const std::string &bundleName, uint32_t accessTokenId)
+{
+    auto callback = callback_.lock();
+    CHECK_POINTER(callback);
+    callback->NotifyAppDataCleared(userId, bundleName, accessTokenId);
+}
+
 int AppScheduler::KillApplication(const std::string &bundleName, bool clearPageStack, int32_t appIndex,
     const std::string &reason, int32_t userId)
 {

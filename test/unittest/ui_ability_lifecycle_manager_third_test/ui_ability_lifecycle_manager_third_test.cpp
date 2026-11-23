@@ -50,6 +50,12 @@
 #include "mock_app_mgr_service.h"
 #include "mock_my_flag.h"
 #include "mock_permission_verification.h"
+#define private public
+#define protected public
+#include "app_exit_reason_data_manager.h"
+#include "mock_single_kv_store.h"
+#undef protected
+#undef private
 
 using namespace testing;
 using namespace testing::ext;
@@ -2336,5 +2342,327 @@ HWTEST_F(UIAbilityLifecycleManagerThirdTest, NotifyStartupExceptionBySCB_Prelaun
     EXPECT_EQ(PrelaunchTimeoutConnection::disconnectDoneCount, 1);
     EXPECT_EQ(mgr->tmpAbilityMap_.size(), 0);
 }
+
+namespace {
+constexpr uint32_t NOTIFY_TEST_ACCESS_TOKEN_ID = 123456;
+const std::string NOTIFY_TEST_BUNDLE_NAME = "com.example.notifytest";
+const std::string NOTIFY_TEST_MODULE_NAME = "entry";
+const std::string NOTIFY_TEST_ABILITY_NAME = "MainAbility";
+
+UIAbilityRecordPtr MakeDiedAbilityRecord(int32_t persistentId, AppExecFwk::LaunchMode launchMode)
+{
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.bundleName = NOTIFY_TEST_BUNDLE_NAME;
+    abilityRequest.abilityInfo.name = NOTIFY_TEST_ABILITY_NAME;
+    abilityRequest.abilityInfo.moduleName = NOTIFY_TEST_MODULE_NAME;
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+    abilityRequest.abilityInfo.launchMode = launchMode;
+    abilityRequest.abilityInfo.applicationInfo.accessTokenId = NOTIFY_TEST_ACCESS_TOKEN_ID;
+    abilityRequest.appInfo.accessTokenId = NOTIFY_TEST_ACCESS_TOKEN_ID;
+    abilityRequest.sessionInfo = new SessionInfo();
+    abilityRequest.sessionInfo->persistentId = persistentId;
+    return UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+}
+
+std::shared_ptr<MockSingleKvStore> MakeKvStoreWithExitReason(AAFwk::Reason reason,
+    const std::vector<std::string> &abilityList, const std::string &recoverInfo, bool hasRecoverInfo)
+{
+    auto kvStore = std::make_shared<MockSingleKvStore>();
+    nlohmann::json exitReasonJson = nlohmann::json {
+        { "reason", reason },
+        { "exit_msg", "test kill" },
+        { "kill_msg", "" },
+        { "time_stamp", static_cast<int64_t>(1) },
+        { "ability_list", abilityList },
+    };
+    DistributedKv::Entry exitReasonEntry;
+    exitReasonEntry.key = std::to_string(NOTIFY_TEST_ACCESS_TOKEN_ID);
+    exitReasonEntry.value = DistributedKv::Value(exitReasonJson.dump());
+    std::vector<DistributedKv::Entry> allEntries;
+    allEntries.push_back(exitReasonEntry);
+    EXPECT_CALL(*kvStore, GetEntries(_, _)).WillRepeatedly(
+        DoAll(SetArgReferee<1>(allEntries), Return(DistributedKv::Status::SUCCESS)));
+
+    if (hasRecoverInfo) {
+        nlohmann::json recoverInfoJson = nlohmann::json {
+            { "recover_info_list", { recoverInfo } },
+            { "session_id_list", { 1 } },
+        };
+        DistributedKv::Value recoverValue(recoverInfoJson.dump());
+        EXPECT_CALL(*kvStore, Get(_, _)).WillRepeatedly(
+            DoAll(SetArgReferee<1>(recoverValue), Return(DistributedKv::Status::SUCCESS)));
+    } else {
+        EXPECT_CALL(*kvStore, Get(_, _)).WillRepeatedly(Return(DistributedKv::Status::KEY_NOT_FOUND));
+    }
+    return kvStore;
+}
+} // namespace
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_NotifyStackRecoverFromDied_0100
+ * @tc.desc: resource control kill with recover info, notify window with persistentId and isStackRecover true
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, NotifyStackRecoverFromDied_0100, TestSize.Level1)
+{
+    auto mockSceneSessionManagerLite = new (std::nothrow) Rosen::MockSceneSessionManagerLite();
+    Rosen::SessionManagerLite::GetInstance().sceneSessionManagerLiteProxy_ = mockSceneSessionManagerLite;
+    EXPECT_CALL(*mockSceneSessionManagerLite, NotifyStackRecoverFromAMS(1, true)).Times(1)
+        .WillOnce(Return(Rosen::WSError::WS_OK));
+
+    auto kvStore = MakeKvStoreWithExitReason(AAFwk::REASON_RESOURCE_CONTROL,
+        { NOTIFY_TEST_ABILITY_NAME }, NOTIFY_TEST_MODULE_NAME + NOTIFY_TEST_ABILITY_NAME, true);
+    DelayedSingleton<AbilityRuntime::AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = kvStore;
+
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto abilityRecord = MakeDiedAbilityRecord(1, AppExecFwk::LaunchMode::SINGLETON);
+    ASSERT_NE(abilityRecord, nullptr);
+    mgr->NotifyStackRecoverFromDied(abilityRecord);
+    DelayedSingleton<AbilityRuntime::AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = nullptr;
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_NotifyStackRecoverFromDied_0200
+ * @tc.desc: resource control kill without recover info, no notify
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, NotifyStackRecoverFromDied_0200, TestSize.Level1)
+{
+    auto mockSceneSessionManagerLite = new (std::nothrow) Rosen::MockSceneSessionManagerLite();
+    Rosen::SessionManagerLite::GetInstance().sceneSessionManagerLiteProxy_ = mockSceneSessionManagerLite;
+    EXPECT_CALL(*mockSceneSessionManagerLite, NotifyStackRecoverFromAMS(_, _)).Times(0);
+
+    auto kvStore = MakeKvStoreWithExitReason(AAFwk::REASON_RESOURCE_CONTROL,
+        { NOTIFY_TEST_ABILITY_NAME }, "", false);
+    DelayedSingleton<AbilityRuntime::AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = kvStore;
+
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto abilityRecord = MakeDiedAbilityRecord(1, AppExecFwk::LaunchMode::SINGLETON);
+    ASSERT_NE(abilityRecord, nullptr);
+    mgr->NotifyStackRecoverFromDied(abilityRecord);
+    DelayedSingleton<AbilityRuntime::AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = nullptr;
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_NotifyStackRecoverFromDied_0300
+ * @tc.desc: non control kill reason (JS_ERROR) with recover info, no notify
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, NotifyStackRecoverFromDied_0300, TestSize.Level1)
+{
+    auto mockSceneSessionManagerLite = new (std::nothrow) Rosen::MockSceneSessionManagerLite();
+    Rosen::SessionManagerLite::GetInstance().sceneSessionManagerLiteProxy_ = mockSceneSessionManagerLite;
+    EXPECT_CALL(*mockSceneSessionManagerLite, NotifyStackRecoverFromAMS(_, _)).Times(0);
+
+    auto kvStore = MakeKvStoreWithExitReason(AAFwk::REASON_JS_ERROR,
+        { NOTIFY_TEST_ABILITY_NAME }, NOTIFY_TEST_MODULE_NAME + NOTIFY_TEST_ABILITY_NAME, true);
+    DelayedSingleton<AbilityRuntime::AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = kvStore;
+
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto abilityRecord = MakeDiedAbilityRecord(1, AppExecFwk::LaunchMode::SINGLETON);
+    ASSERT_NE(abilityRecord, nullptr);
+    mgr->NotifyStackRecoverFromDied(abilityRecord);
+    DelayedSingleton<AbilityRuntime::AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = nullptr;
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_NotifyStackRecoverFromDied_0400
+ * @tc.desc: exit reason record exists but the died ability is not in the ability list, no notify
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, NotifyStackRecoverFromDied_0400, TestSize.Level1)
+{
+    auto mockSceneSessionManagerLite = new (std::nothrow) Rosen::MockSceneSessionManagerLite();
+    Rosen::SessionManagerLite::GetInstance().sceneSessionManagerLiteProxy_ = mockSceneSessionManagerLite;
+    EXPECT_CALL(*mockSceneSessionManagerLite, NotifyStackRecoverFromAMS(_, _)).Times(0);
+
+    auto kvStore = MakeKvStoreWithExitReason(AAFwk::REASON_RESOURCE_CONTROL,
+        { "OtherAbility" }, NOTIFY_TEST_MODULE_NAME + NOTIFY_TEST_ABILITY_NAME, true);
+    DelayedSingleton<AbilityRuntime::AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = kvStore;
+
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto abilityRecord = MakeDiedAbilityRecord(1, AppExecFwk::LaunchMode::SINGLETON);
+    ASSERT_NE(abilityRecord, nullptr);
+    mgr->NotifyStackRecoverFromDied(abilityRecord);
+    DelayedSingleton<AbilityRuntime::AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = nullptr;
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_NotifyStackRecoverFromDied_0500
+ * @tc.desc: performance control kill with recover info, notify window
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, NotifyStackRecoverFromDied_0500, TestSize.Level1)
+{
+    auto mockSceneSessionManagerLite = new (std::nothrow) Rosen::MockSceneSessionManagerLite();
+    Rosen::SessionManagerLite::GetInstance().sceneSessionManagerLiteProxy_ = mockSceneSessionManagerLite;
+    EXPECT_CALL(*mockSceneSessionManagerLite, NotifyStackRecoverFromAMS(1, true)).Times(1)
+        .WillOnce(Return(Rosen::WSError::WS_OK));
+
+    auto kvStore = MakeKvStoreWithExitReason(AAFwk::REASON_PERFORMANCE_CONTROL,
+        { NOTIFY_TEST_ABILITY_NAME }, NOTIFY_TEST_MODULE_NAME + NOTIFY_TEST_ABILITY_NAME, true);
+    DelayedSingleton<AbilityRuntime::AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = kvStore;
+
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto abilityRecord = MakeDiedAbilityRecord(1, AppExecFwk::LaunchMode::SINGLETON);
+    ASSERT_NE(abilityRecord, nullptr);
+    mgr->NotifyStackRecoverFromDied(abilityRecord);
+    DelayedSingleton<AbilityRuntime::AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = nullptr;
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_NotifyStackRecoverFromDied_0600
+ * @tc.desc: standard launch mode queries exit reason and recover info with persistentId suffix
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, NotifyStackRecoverFromDied_0600, TestSize.Level1)
+{
+    auto mockSceneSessionManagerLite = new (std::nothrow) Rosen::MockSceneSessionManagerLite();
+    Rosen::SessionManagerLite::GetInstance().sceneSessionManagerLiteProxy_ = mockSceneSessionManagerLite;
+    EXPECT_CALL(*mockSceneSessionManagerLite, NotifyStackRecoverFromAMS(2, true)).Times(1)
+        .WillOnce(Return(Rosen::WSError::WS_OK));
+
+    std::string suffixedAbilityName = NOTIFY_TEST_ABILITY_NAME + std::to_string(2);
+    auto kvStore = MakeKvStoreWithExitReason(AAFwk::REASON_RESOURCE_CONTROL,
+        { suffixedAbilityName }, NOTIFY_TEST_MODULE_NAME + suffixedAbilityName, true);
+    DelayedSingleton<AbilityRuntime::AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = kvStore;
+
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto abilityRecord = MakeDiedAbilityRecord(2, AppExecFwk::LaunchMode::STANDARD);
+    ASSERT_NE(abilityRecord, nullptr);
+    mgr->NotifyStackRecoverFromDied(abilityRecord);
+    DelayedSingleton<AbilityRuntime::AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = nullptr;
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_NotifyStackRecoverFromDied_0700
+ * @tc.desc: died record without session info, no notify and no crash
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, NotifyStackRecoverFromDied_0700, TestSize.Level1)
+{
+    auto mockSceneSessionManagerLite = new (std::nothrow) Rosen::MockSceneSessionManagerLite();
+    Rosen::SessionManagerLite::GetInstance().sceneSessionManagerLiteProxy_ = mockSceneSessionManagerLite;
+    EXPECT_CALL(*mockSceneSessionManagerLite, NotifyStackRecoverFromAMS(_, _)).Times(0);
+
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    Want want;
+    AppExecFwk::AbilityInfo abilityInfo;
+    abilityInfo.bundleName = NOTIFY_TEST_BUNDLE_NAME;
+    AppExecFwk::ApplicationInfo appInfo;
+    auto abilityRecord = std::make_shared<UIAbilityRecord>(want, abilityInfo, appInfo, 0);
+    ASSERT_NE(abilityRecord, nullptr);
+    mgr->NotifyStackRecoverFromDied(abilityRecord);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_NotifyStackRecoverFromDied_0800
+ * @tc.desc: null died record, no notify and no crash
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, NotifyStackRecoverFromDied_0800, TestSize.Level1)
+{
+    auto mockSceneSessionManagerLite = new (std::nothrow) Rosen::MockSceneSessionManagerLite();
+    Rosen::SessionManagerLite::GetInstance().sceneSessionManagerLiteProxy_ = mockSceneSessionManagerLite;
+    EXPECT_CALL(*mockSceneSessionManagerLite, NotifyStackRecoverFromAMS(_, _)).Times(0);
+
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    mgr->NotifyStackRecoverFromDied(nullptr);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_NotifyStackRecoverFromDied_0900
+ * @tc.desc: kv store unavailable, no notify and no crash
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, NotifyStackRecoverFromDied_0900, TestSize.Level1)
+{
+    auto mockSceneSessionManagerLite = new (std::nothrow) Rosen::MockSceneSessionManagerLite();
+    Rosen::SessionManagerLite::GetInstance().sceneSessionManagerLiteProxy_ = mockSceneSessionManagerLite;
+    EXPECT_CALL(*mockSceneSessionManagerLite, NotifyStackRecoverFromAMS(_, _)).Times(0);
+
+    DelayedSingleton<AbilityRuntime::AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = nullptr;
+
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    auto abilityRecord = MakeDiedAbilityRecord(1, AppExecFwk::LaunchMode::SINGLETON);
+    ASSERT_NE(abilityRecord, nullptr);
+    mgr->NotifyStackRecoverFromDied(abilityRecord);
+    DelayedSingleton<AbilityRuntime::AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = nullptr;
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_HandleAppDataCleared_0100
+ * @tc.desc: recover info exists, notify window to clear flag for each session and remove records
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, HandleAppDataCleared_0100, TestSize.Level1)
+{
+    auto mockSceneSessionManagerLite = new (std::nothrow) Rosen::MockSceneSessionManagerLite();
+    Rosen::SessionManagerLite::GetInstance().sceneSessionManagerLiteProxy_ = mockSceneSessionManagerLite;
+    EXPECT_CALL(*mockSceneSessionManagerLite, NotifyStackRecoverFromAMS(1, false)).Times(1)
+        .WillOnce(Return(Rosen::WSError::WS_OK));
+    EXPECT_CALL(*mockSceneSessionManagerLite, NotifyStackRecoverFromAMS(2, false)).Times(1)
+        .WillOnce(Return(Rosen::WSError::WS_OK));
+
+    auto kvStore = std::make_shared<MockSingleKvStore>();
+    nlohmann::json recoverInfoJson = nlohmann::json {
+        { "recover_info_list", { NOTIFY_TEST_MODULE_NAME + NOTIFY_TEST_ABILITY_NAME } },
+        { "session_id_list", { 1, 2 } },
+    };
+    DistributedKv::Value recoverValue(recoverInfoJson.dump());
+    EXPECT_CALL(*kvStore, Get(_, _)).WillRepeatedly(
+        DoAll(SetArgReferee<1>(recoverValue), Return(DistributedKv::Status::SUCCESS)));
+    std::vector<DistributedKv::Entry> allEntries;
+    EXPECT_CALL(*kvStore, GetEntries(_, _)).WillRepeatedly(
+        DoAll(SetArgReferee<1>(allEntries), Return(DistributedKv::Status::SUCCESS)));
+    EXPECT_CALL(*kvStore, Delete(_)).Times(AtLeast(1))
+        .WillRepeatedly(Return(DistributedKv::Status::SUCCESS));
+    DelayedSingleton<AbilityRuntime::AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = kvStore;
+
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    mgr->HandleAppDataCleared(NOTIFY_TEST_BUNDLE_NAME, NOTIFY_TEST_ACCESS_TOKEN_ID);
+    DelayedSingleton<AbilityRuntime::AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = nullptr;
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_HandleAppDataCleared_0200
+ * @tc.desc: no recover info record, no notify and no crash
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, HandleAppDataCleared_0200, TestSize.Level1)
+{
+    auto mockSceneSessionManagerLite = new (std::nothrow) Rosen::MockSceneSessionManagerLite();
+    Rosen::SessionManagerLite::GetInstance().sceneSessionManagerLiteProxy_ = mockSceneSessionManagerLite;
+    EXPECT_CALL(*mockSceneSessionManagerLite, NotifyStackRecoverFromAMS(_, _)).Times(0);
+
+    auto kvStore = std::make_shared<MockSingleKvStore>();
+    EXPECT_CALL(*kvStore, Get(_, _)).WillRepeatedly(Return(DistributedKv::Status::KEY_NOT_FOUND));
+    std::vector<DistributedKv::Entry> allEntries;
+    EXPECT_CALL(*kvStore, GetEntries(_, _)).WillRepeatedly(
+        DoAll(SetArgReferee<1>(allEntries), Return(DistributedKv::Status::SUCCESS)));
+    DelayedSingleton<AbilityRuntime::AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = kvStore;
+
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    mgr->HandleAppDataCleared(NOTIFY_TEST_BUNDLE_NAME, NOTIFY_TEST_ACCESS_TOKEN_ID);
+    DelayedSingleton<AbilityRuntime::AppExitReasonDataManager>::GetInstance()->kvStorePtr_ = nullptr;
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_HandleAppDataCleared_0300
+ * @tc.desc: invalid bundleName or accessTokenId, no notify and no crash
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, HandleAppDataCleared_0300, TestSize.Level1)
+{
+    auto mockSceneSessionManagerLite = new (std::nothrow) Rosen::MockSceneSessionManagerLite();
+    Rosen::SessionManagerLite::GetInstance().sceneSessionManagerLiteProxy_ = mockSceneSessionManagerLite;
+    EXPECT_CALL(*mockSceneSessionManagerLite, NotifyStackRecoverFromAMS(_, _)).Times(0);
+
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    mgr->HandleAppDataCleared("", NOTIFY_TEST_ACCESS_TOKEN_ID);
+    mgr->HandleAppDataCleared(NOTIFY_TEST_BUNDLE_NAME, 0);
+    SUCCEED();
+}
+
 }  // namespace AAFwk
 }  // namespace OHOS

@@ -6701,6 +6701,66 @@ HWTEST_F(AppServiceConnectTest, CallerIdentity_001, TestSize.Level1)
     EXPECT_EQ(CALLER_TOKEN, status.atkQueriedTokenId_);
 }
 
+namespace {
+constexpr char DATA_CLEARED_TEST_BUNDLE[] = "com.test.datacleared";
+constexpr uint32_t DATA_CLEARED_TEST_TOKEN_ID = 123456;
+constexpr int32_t DATA_CLEARED_TEST_USER_ID = 100;
+}
+
+class TestDataClearedCallbackHost : public AppExecFwk::AppStateCallbackHost {
+public:
+    void NotifyAppDataCleared(int32_t userId, const std::string &bundleName, uint32_t accessTokenId) override
+    {
+        called_ = true;
+        userId_ = userId;
+        bundleName_ = bundleName;
+        accessTokenId_ = accessTokenId;
+    }
+
+    void Reset()
+    {
+        called_ = false;
+        userId_ = -1;
+        bundleName_ = "";
+        accessTokenId_ = 0;
+    }
+
+    bool called_ = false;
+    int32_t userId_ = -1;
+    std::string bundleName_ = "";
+    uint32_t accessTokenId_ = 0;
+};
+
+/*
+ * Feature: AbilityManagerService
+ * Name: NotifyAppDataCleared_001
+ * Function: NotifyAppDataCleared
+ * SubFunction: NA
+ * FunctionPoints: Verify the notification routes to the manager of the user and invokes
+ *                 HandleAppDataCleared.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, NotifyAppDataCleared_001, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    status.ualmHandleAppDataClearedCalled_ = false;
+    status.ualmHandleAppDataClearedBundle_ = "";
+    status.ualmHandleAppDataClearedTokenId_ = 0;
+    status.smhGetUIAbilityManagerByUserId_ = true;
+
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    abilityMs->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    ASSERT_NE(abilityMs->subManagersHelper_, nullptr);
+    abilityMs->subManagersHelper_->currentUIAbilityManager_ = std::make_shared<UIAbilityLifecycleManager>(
+        DATA_CLEARED_TEST_USER_ID);
+
+    abilityMs->NotifyAppDataCleared(DATA_CLEARED_TEST_USER_ID, DATA_CLEARED_TEST_BUNDLE,
+        DATA_CLEARED_TEST_TOKEN_ID);
+    EXPECT_TRUE(status.ualmHandleAppDataClearedCalled_);
+    EXPECT_EQ(status.ualmHandleAppDataClearedBundle_, DATA_CLEARED_TEST_BUNDLE);
+    EXPECT_EQ(status.ualmHandleAppDataClearedTokenId_, DATA_CLEARED_TEST_TOKEN_ID);
+}
+
 /*
  * Feature: AbilityManagerService
  * Function: ConnectLocalAbility
@@ -6783,5 +6843,115 @@ HWTEST_F(AppServiceConnectTest, ExistingCaller_001, TestSize.Level1)
     EXPECT_EQ(0U, status.atkQueriedTokenId_);
     EXPECT_EQ(0U, status.atkVerifiedTokenId_);
 }
+
+/*
+ * Feature: AbilityManagerService
+ * Name: NotifyAppDataCleared_002
+ * Function: NotifyAppDataCleared
+ * SubFunction: NA
+ * FunctionPoints: Verify the notification with no manager of the user does not invoke
+ *                 HandleAppDataCleared and does not crash.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, NotifyAppDataCleared_002, TestSize.Level1)
+{
+    auto &status = MyStatus::GetInstance();
+    status.ualmHandleAppDataClearedCalled_ = false;
+
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    // No subManagersHelper_ is set: the routing finds no manager for the user.
+    abilityMs->NotifyAppDataCleared(DATA_CLEARED_TEST_USER_ID, DATA_CLEARED_TEST_BUNDLE,
+        DATA_CLEARED_TEST_TOKEN_ID);
+    EXPECT_FALSE(status.ualmHandleAppDataClearedCalled_);
+}
+
+/*
+ * Feature: AppStateCallbackHost
+ * Name: HandleNotifyAppDataCleared_001
+ * Function: HandleNotifyAppDataCleared
+ * SubFunction: NA
+ * FunctionPoints: Verify the host deserializes a valid parcel and dispatches to
+ *                 NotifyAppDataCleared with the parsed values.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, HandleNotifyAppDataCleared_001, TestSize.Level1)
+{
+    TestDataClearedCallbackHost host;
+    MessageParcel data;
+    MessageParcel reply;
+    ASSERT_TRUE(data.WriteInt32(DATA_CLEARED_TEST_USER_ID));
+    ASSERT_TRUE(data.WriteString(DATA_CLEARED_TEST_BUNDLE));
+    ASSERT_TRUE(data.WriteUint32(DATA_CLEARED_TEST_TOKEN_ID));
+
+    auto result = host.HandleNotifyAppDataCleared(data, reply);
+    EXPECT_EQ(result, NO_ERROR);
+    EXPECT_TRUE(host.called_);
+    EXPECT_EQ(host.userId_, DATA_CLEARED_TEST_USER_ID);
+    EXPECT_EQ(host.bundleName_, DATA_CLEARED_TEST_BUNDLE);
+    EXPECT_EQ(host.accessTokenId_, DATA_CLEARED_TEST_TOKEN_ID);
+}
+
+/*
+ * Feature: AppStateCallbackHost
+ * Name: HandleNotifyAppDataCleared_002
+ * Function: HandleNotifyAppDataCleared
+ * SubFunction: NA
+ * FunctionPoints: Verify the host rejects an invalid userId and does not dispatch.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, HandleNotifyAppDataCleared_002, TestSize.Level1)
+{
+    TestDataClearedCallbackHost host;
+    MessageParcel data;
+    MessageParcel reply;
+    ASSERT_TRUE(data.WriteInt32(-1));
+    ASSERT_TRUE(data.WriteString(DATA_CLEARED_TEST_BUNDLE));
+    ASSERT_TRUE(data.WriteUint32(DATA_CLEARED_TEST_TOKEN_ID));
+
+    auto result = host.HandleNotifyAppDataCleared(data, reply);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    EXPECT_FALSE(host.called_);
+}
+
+/*
+ * Feature: AppStateCallbackHost
+ * Name: HandleNotifyAppDataCleared_003
+ * Function: HandleNotifyAppDataCleared
+ * SubFunction: NA
+ * FunctionPoints: Verify the host rejects an empty bundleName and does not dispatch.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, HandleNotifyAppDataCleared_003, TestSize.Level1)
+{
+    TestDataClearedCallbackHost host;
+    MessageParcel data;
+    MessageParcel reply;
+    ASSERT_TRUE(data.WriteInt32(DATA_CLEARED_TEST_USER_ID));
+    ASSERT_TRUE(data.WriteString(""));
+    ASSERT_TRUE(data.WriteUint32(DATA_CLEARED_TEST_TOKEN_ID));
+
+    auto result = host.HandleNotifyAppDataCleared(data, reply);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    EXPECT_FALSE(host.called_);
+}
+
+/*
+ * Feature: AppStateCallbackHost
+ * Name: HandleNotifyAppDataCleared_004
+ * Function: HandleNotifyAppDataCleared
+ * SubFunction: NA
+ * FunctionPoints: Verify the host rejects a zero accessTokenId and does not dispatch.
+ */
+HWTEST_F(AbilityManagerServiceThirteenthTest, HandleNotifyAppDataCleared_004, TestSize.Level1)
+{
+    TestDataClearedCallbackHost host;
+    MessageParcel data;
+    MessageParcel reply;
+    ASSERT_TRUE(data.WriteInt32(DATA_CLEARED_TEST_USER_ID));
+    ASSERT_TRUE(data.WriteString(DATA_CLEARED_TEST_BUNDLE));
+    ASSERT_TRUE(data.WriteUint32(0));
+
+    auto result = host.HandleNotifyAppDataCleared(data, reply);
+    EXPECT_EQ(result, ERR_INVALID_VALUE);
+    EXPECT_FALSE(host.called_);
+}
+
 } // namespace AAFwk
 } // namespace OHOS

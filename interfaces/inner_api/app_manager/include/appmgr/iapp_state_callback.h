@@ -121,6 +121,16 @@ public:
      */
     virtual void RecordAppExitSignalReason(int32_t pid, int32_t uid, int32_t signal, std::string &bundleName) {}
 
+    /**
+     * @brief Notify abilityms the application data is cleared, so the recover info and exit
+     *        reason records of the application are removed and the window is notified to clear
+     *        the stack recovery flag.
+     * @param userId userId Designation User ID.
+     * @param bundleName app bundleName.
+     * @param accessTokenId app accessTokenId.
+     */
+    virtual void NotifyAppDataCleared(int32_t userId, const std::string &bundleName, uint32_t accessTokenId) {}
+
     enum class Message {
         TRANSACT_ON_APP_STATE_CHANGED = 0,
         TRANSACT_ON_ABILITY_REQUEST_DONE,
@@ -133,6 +143,7 @@ public:
         TRANSACT_ON_CACHE_EXIT_INFO,
         TRANSACT_ON_RECORD_APP_EXIT_SIGNAL_REASON,
         TRANSACT_ON_NOTIFY_TERMINATE_ABILITY,
+        TRANSACT_ON_NOTIFY_APP_DATA_CLEARED,
     };
 };
 }  // namespace AppExecFwk

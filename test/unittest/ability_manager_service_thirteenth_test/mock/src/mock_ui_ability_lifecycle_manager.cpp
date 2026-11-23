@@ -36,6 +36,14 @@ bool UIAbilityLifecycleManager::IsBundleStarting(pid_t pid)
     return false;
 }
 
+void UIAbilityLifecycleManager::HandleAppDataCleared(const std::string &bundleName, uint32_t accessTokenId)
+{
+    auto &status = MyStatus::GetInstance();
+    status.ualmHandleAppDataClearedCalled_ = true;
+    status.ualmHandleAppDataClearedBundle_ = bundleName;
+    status.ualmHandleAppDataClearedTokenId_ = accessTokenId;
+}
+
 void UIAbilityLifecycleManager::AddStartingPid(pid_t pid)
 {
 }
