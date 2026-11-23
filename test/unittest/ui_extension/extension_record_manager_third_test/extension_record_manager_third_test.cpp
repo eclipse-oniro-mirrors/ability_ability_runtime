@@ -189,6 +189,7 @@ HWTEST_F(ExtensionRecordManagerThirdTest, OrdinaryStartStillCreatesRecord_0100, 
     request.appInfo.bundleName = HOST_BUNDLE;
     request.abilityInfo.name = "MainAbility";
     request.abilityInfo.type = AppExecFwk::AbilityType::EXTENSION;
+    request.abilityInfo.extensionAbilityType = AppExecFwk::ExtensionAbilityType::SYS_COMMON_UI;
     auto session = sptr<AAFwk::SessionInfo>::MakeSptr();
     session->uiExtensionComponentId = COMPONENT_ID;
     session->persistentId = PERSISTENT_ID;
