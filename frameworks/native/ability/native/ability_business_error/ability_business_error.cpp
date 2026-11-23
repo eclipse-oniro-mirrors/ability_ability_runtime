@@ -29,6 +29,8 @@ constexpr const char* ERROR_MSG_PERMISSION_DENIED = "The application does not ha
 constexpr const char* ERROR_MSG_NOT_SYSTEM_APP = "The application is not system-app, can not use system-api.";
 constexpr const char* ERROR_MSG_INVALID_PARAM = "Invalid input parameter.";
 constexpr const char* ERROR_MSG_CAPABILITY_NOT_SUPPORT = "Capability not support.";
+constexpr const char* ERROR_MSG_EMULATOR_NOT_SUPPORTED =
+    "The capability is not supported on the emulator at this time.";
 constexpr const char* ERROR_MSG_INNER = "Internal error.";
 constexpr const char* ERROR_MSG_RESOLVE_ABILITY = "The specified ability does not exist.";
 constexpr const char* ERROR_MSG_INVALID_ABILITY_TYPE = "Incorrect ability type.";
@@ -373,6 +375,7 @@ static std::unordered_map<AbilityErrorCode, const char*> ERR_CODE_MAP = {
     { AbilityErrorCode::ERROR_CODE_NOT_SYSTEM_APP, ERROR_MSG_NOT_SYSTEM_APP },
     { AbilityErrorCode::ERROR_CODE_INVALID_PARAM, ERROR_MSG_INVALID_PARAM },
     { AbilityErrorCode::ERROR_CODE_CAPABILITY_NOT_SUPPORT, ERROR_MSG_CAPABILITY_NOT_SUPPORT },
+    { AbilityErrorCode::ERROR_CODE_EMULATOR_NOT_SUPPORTED, ERROR_MSG_EMULATOR_NOT_SUPPORTED },
     { AbilityErrorCode::ERROR_CODE_INNER, ERROR_MSG_INNER },
     { AbilityErrorCode::ERROR_CODE_FILE_TYPE_ERROR, ERROR_MSG_FILE_TYPE_ERROR },
     { AbilityErrorCode::ERROR_CODE_EVICT_CONFIG_PARSE_ERROR, ERROR_MSG_EVICT_CONFIG_PARSE_ERROR },
@@ -561,6 +564,7 @@ static std::unordered_map<int32_t, AbilityErrorCode> INNER_TO_JS_ERROR_CODE_MAP 
     {ERR_LAUNCH_SERVICE_NOT_REGISTERED, AbilityErrorCode::ERROR_CODE_LAUNCH_SERVICE_NOT_FOUND},
     {ERR_LAUNCH_SERVICE_TIMEOUT, AbilityErrorCode::ERROR_CODE_INNER},
     {ERR_LAUNCH_SERVICE_OBSERVER_LIMIT, AbilityErrorCode::ERROR_CODE_REGISTERED_FOCUS_OBSERVER_EXCEED_LIMIT},
+    {ERR_EMULATOR_NOT_SUPPORTED, AbilityErrorCode::ERROR_CODE_EMULATOR_NOT_SUPPORTED},
     {ERR_NOT_ALLOW_IMPLICIT_START, AbilityErrorCode::ERROR_CODE_RESOLVE_ABILITY},
     {ERR_START_OPTIONS_CHECK_FAILED, AbilityErrorCode::ERROR_START_OPTIONS_CHECK_FAILED},
     {ERR_ABILITY_ALREADY_RUNNING, AbilityErrorCode::ERROR_ABILITY_ALREADY_RUNNING},
