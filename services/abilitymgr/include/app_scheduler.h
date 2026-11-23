@@ -164,6 +164,8 @@ public:
      * @param signal Signal number that caused the process to exit.
      * @param bundleName Bundle name of the exited application.
      */
+    virtual void RecordAppExitSignalReason(int32_t pid, int32_t uid, int32_t signal, std::string &bundleName) {}
+
     /**
      * @brief Notify abilityms the application data is cleared, so the recover info and exit
      *        reason records of the application are removed and the window is notified to clear
@@ -174,8 +176,6 @@ public:
      * @param accessTokenId app accessTokenId.
      */
     virtual void NotifyAppDataCleared(int32_t userId, const std::string &bundleName, uint32_t accessTokenId) {}
-
-    virtual void RecordAppExitSignalReason(int32_t pid, int32_t uid, int32_t signal, std::string &bundleName) {}
 };
 
 class StartSpecifiedAbilityResponse : public AppExecFwk::StartSpecifiedAbilityResponseStub {

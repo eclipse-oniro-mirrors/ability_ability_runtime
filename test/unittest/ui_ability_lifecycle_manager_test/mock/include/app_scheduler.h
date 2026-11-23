@@ -165,6 +165,17 @@ public:
      * @param bundleName Bundle name of the exited application.
      */
     virtual void RecordAppExitSignalReason(int32_t pid, int32_t uid, int32_t signal, std::string &bundleName) {}
+
+    /**
+     * @brief Notify abilityms the application data is cleared, so the recover info and exit
+     *        reason records of the application are removed and the window is notified to clear
+     *        the stack recovery flag.
+     *
+     * @param userId userId Designation User ID.
+     * @param bundleName app bundleName.
+     * @param accessTokenId app accessTokenId.
+     */
+    virtual void NotifyAppDataCleared(int32_t userId, const std::string &bundleName, uint32_t accessTokenId) {}
 };
 
 class StartSpecifiedAbilityResponse : public AppExecFwk::StartSpecifiedAbilityResponseStub {
