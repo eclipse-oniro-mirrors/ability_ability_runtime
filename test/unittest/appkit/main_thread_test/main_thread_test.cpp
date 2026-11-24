@@ -2080,6 +2080,44 @@ HWTEST_F(MainThreadTest, CheckMainThreadIsAlive_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: StopWatchdog_0100
+ * @tc.desc: Verify StopWatchdog resets watchdog and can be called repeatedly.
+ * @tc.type: FUNC
+ */
+HWTEST_F(MainThreadTest, StopWatchdog_0100, TestSize.Level1)
+{
+    ASSERT_NE(mainThread_, nullptr);
+    mainThread_->watchdog_ = std::make_shared<Watchdog>();
+    EXPECT_NE(mainThread_->GetWatchdog(), nullptr);
+
+    mainThread_->StopWatchdog();
+    EXPECT_EQ(mainThread_->GetWatchdog(), nullptr);
+
+    mainThread_->StopWatchdog();
+    EXPECT_EQ(mainThread_->GetWatchdog(), nullptr);
+}
+
+/**
+ * @tc.name: GetWatchdog_0100
+ * @tc.desc: Verify the watchdog snapshot remains valid after the member is reset.
+ * @tc.type: FUNC
+ */
+HWTEST_F(MainThreadTest, GetWatchdog_0100, TestSize.Level1)
+{
+    ASSERT_NE(mainThread_, nullptr);
+    auto watchdog = std::make_shared<Watchdog>();
+    mainThread_->watchdog_ = watchdog;
+
+    auto snapshot = mainThread_->GetWatchdog();
+    EXPECT_EQ(snapshot, watchdog);
+
+    mainThread_->StopWatchdog();
+    EXPECT_EQ(mainThread_->GetWatchdog(), nullptr);
+    ASSERT_NE(snapshot, nullptr);
+    snapshot->SetBackgroundStatus(false);
+}
+
+/**
  * @tc.name: ProcessEvent_0100
  * @tc.desc: Main handler process event.
  * @tc.type: FUNC
