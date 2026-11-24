@@ -99,19 +99,31 @@
 
 3）所有业务代码修改都需要包含测试用例的同步编写和生成，其中ArkTS 接口的XTS可参考[ArkTS XTS 生成Skill](https://gitcode.com/openharmony-ai-testdesign/oh-test-skills/tree/main/ohos-test-design/skills-refactor/ohos-test-arkts-xts-generation)生成，CAPI接口的XTS可参考[CAPI XTS 生成Skill](https://gitcode.com/openharmony-ai-testdesign/oh-test-skills/tree/main/ohos-test-design/skills-refactor/ohos-test-capi-xts-generation)
 
+3）**InnerAPI 自动 UT 生成**（触发判定：变更涉及位于 `interfaces/inner_api/` 且无 d.ts/NAPI 适配层的 C++ 接口，消费方为命令行工具或系统 SA——按新增/变更的 client/proxy 公开方法逐个判定）：
+
+   - **生成时机在本阶段（与代码同步编写）**：自动加载 `abilitykit_sdd/suits/ohos-innerapi-ut-gen` skill，按其步骤生成**专用 UT 目标**（mock 基础设施 + 每方法至少三类用例：null proxy / 失败传播 / 成功转发 + BUILD.gn）并完成 ninja 编译验证；
+   - **模式约束**：必须采用该 skill 的「client .cpp 编入测试 + samgr 链 shadow（iservice_registry.h 同名替换）」专用目标模式——自包含单一宏视图，规避跨库虚调用 CFI 陷阱；禁止依赖"测试二进制内 mock + 真实 .so 内分发"的跨 DSO 模式（__cfi_check 会拦截，本仓已实证）；测试目标的 `defines` 必须与被测库 TU 的 define 集合对齐（防止 vtable 槽位错位）；
+   - **执行归 3.2 Verify**：生成的专用 UT 目标与其他 UT 一起纳入模拟器执行集，结果按 skill 要求回填测试目录下的 `ut_report.md`；
+   - **mock 维护**：若该 InnerAPI 接口新增了虚函数（带默认体或纯虚），需同步为既有完整接口 mock（如 `mock_iabilitymanager.h`）补齐 override，保持 mock 完整性。
+
 ### 3.2 功能验证：Verify
 
-**触发条件**：完成编码且变更模块编译通过后**自动触发**（无需等待用户显式要求；SDD 流程中由 Verify 阶段承接）；用户主动要求验证时可随时提前触发。在模拟器验证执行完成后，需要提醒用户进行真机复测。
+**触发条件**：完成编码后**自动触发**（无需等待用户显式要求；SDD 流程中由 Verify 阶段承接）；用户主动要求验证时可随时提前触发。
 
-**执行规则**：使用 abilitykit_sdd/suits/simulator_use Skill进行系统编译、UT及XTS测试用例编译、系统烧录和测试，输出测试报告。自动触发时优先走 simulator_use 的**模式 B（增量热替换验证）**：只构建变更库并热替换到既有镜像（含 UT 执行与 IPC 冒烟），全量镜像构建仅在模式 B 前置不满足时使用。
+**定位**：模拟器验证（模式 B：构建变更库 → 热替换 → UT + IPC 冒烟 + 原路径回归）是 Verify 的**默认必做环节与整个交付循环的组成部分**，不是可条件跳过的探测项；**不设降级决策树**——跑不起来就修，直到跑通。在模拟器验证执行完成后，需要提醒用户进行真机复测。
 
-**自动触发前置探测矩阵**（逐项判定，降级路径必须显式登记移交，禁止冒充通过）：
+**执行规则**：使用 abilitykit_sdd/suits/simulator_use Skill进行系统编译、UT及XTS测试用例编译、系统烧录和测试，输出测试报告（UT 集合包含 3.1 第 3 条由 ohos-innerapi-ut-gen 生成的专用目标，结果回填其测试目录下 ut_report.md）。优先走 simulator_use 的**模式 B（增量热替换验证）**：只构建变更库并热替换到既有镜像（含 UT 执行与 IPC 冒烟），全量镜像构建仅在模式 B 前置不满足时使用。
 
-| 探测项 | 通过 → | 不通过 → |
-|--------|--------|----------|
-| 变更模块编译（ninja 窄目标） | 进入部署 | 先修编译；编译不过则阻断验证 |
-| 构建环境健康（`simulator_use/scripts/preflight_env.py --check`） | 继续 | 自动执行自愈（`--fix`，幂等）后重试一次 |
-| QEMU 可启动且 hdc 可连 | 变更库热替换 → UT + IPC 冒烟 + 原路径回归 → 测试报告 + 提醒真机复测 | 降级编译级/结构检查 + 移交登记（3.1 自测试反伪规则同口径） |
+**遇障处置（修复优先——以下都是把验证跑起来的手段，按故障类型对号入座依次尝试）**：
+
+| 故障类型 | 处置 |
+|----------|------|
+| 构建图/环境级故障（ninja 报 `multiple rules generate`、gn regen 报旧绝对路径、CMake 缓存拒绝构建等，error 不在本次修改文件） | ① `simulator_use/scripts/preflight_env.py --check` 诊断 → ② `--fix` 自愈（幂等，重跑一次）→ ③ out/ 生成物级修复（构建图重复边去重、状态文件时序修正等，零源码改动）→ ④ 重试构建；仍失败则带 check/fix 输出继续排查或上报用户，**不以降级收尾** |
+| 代码编译错误（error 落在本次修改文件） | 修代码后重试（P8-2.19：区分 error/warning，逐条定位） |
+| QEMU 起不来 / hdc 连不上 | 按 simulator_use 排障规程处理直至跑通：环境诊断（`qemu_run.sh diagnose --verbose`）、容器/无 KVM 用 `--accel tcg`、串口日志（serial.log）定位启动阶段、崩溃按 faultlog 栈定位；栈落在独立库 → 规则 13 vtable 部署闭包补推后重启宿主再验 |
+| UT / IPC 冒烟用例失败 | 按问题闭环回 Coding 小循环修（用例缺陷修用例、代码缺陷修代码，P8-2.11 先归属判定），修复后全量复跑 |
+
+**降级例外（唯一路径）**：仅在**用户明确同意放弃模拟器验证**时，才降级为编译级/结构检查 + 移交登记（反伪口径：登记降级原因、已尝试的修复手段与用户确认记录）。禁止未经用户确认以环境故障/构建故障为由自行降级。
 
 ### 3.3 代码检视：Review
 
