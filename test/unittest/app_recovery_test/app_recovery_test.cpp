@@ -69,6 +69,7 @@ void AppRecoveryUnitTest::SetUp()
     AppRecovery::GetInstance().mainHandler_ = testHandler_;
     AppRecovery::GetInstance().applicationInfo_ = applicationInfo_;
     AppRecovery::GetInstance().want_ = nullptr;
+    AppRecovery::GetInstance().recovering_ = false;
 }
 
 void AppRecoveryUnitTest::TearDown()
@@ -1033,6 +1034,30 @@ HWTEST_F(AppRecoveryUnitTest, ScheduleRecoverApp_010, TestSize.Level1)
     AppRecovery::GetInstance().restartFlag_ = RestartFlag::ALWAYS_RESTART;
     bool ret = AppRecovery::GetInstance().ScheduleRecoverApp(StateReason::APP_FREEZE);
     EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.name:  TryRecoverApp_003
+ * @tc.desc:  TryRecoverApp should ignore the duplicate request. The first call sets recovering_ to true,
+ *            and the second call is short-circuited by the recovering_ idempotent guard, returning true
+ *            without triggering save/recover again. recovering_ stays true.
+ * @tc.type: FUNC
+ * @tc.require: I5UL6H
+ */
+HWTEST_F(AppRecoveryUnitTest, TryRecoverApp_003, TestSize.Level1)
+{
+    AppRecovery::GetInstance().EnableAppRecovery(RestartFlag::ALWAYS_RESTART, SaveOccasionFlag::SAVE_WHEN_ERROR,
+        SaveModeFlag::SAVE_WITH_FILE);
+    EXPECT_TRUE(AppRecovery::GetInstance().AddAbility(ability_, abilityInfo_, token_));
+    EXPECT_FALSE(AppRecovery::GetInstance().recovering_.load());
+
+    bool firstRet = AppRecovery::GetInstance().TryRecoverApp(StateReason::APP_FREEZE);
+    EXPECT_TRUE(firstRet);
+    EXPECT_TRUE(AppRecovery::GetInstance().recovering_.load());
+
+    bool secondRet = AppRecovery::GetInstance().TryRecoverApp(StateReason::APP_FREEZE);
+    EXPECT_TRUE(secondRet);
+    EXPECT_TRUE(AppRecovery::GetInstance().recovering_.load());
 }
 }  // namespace AppExecFwk
 }  // namespace OHOS

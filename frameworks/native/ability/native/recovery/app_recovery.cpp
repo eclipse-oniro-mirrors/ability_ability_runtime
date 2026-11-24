@@ -353,12 +353,22 @@ bool AppRecovery::ScheduleRecoverApp(StateReason reason)
 
 bool AppRecovery::TryRecoverApp(StateReason reason)
 {
+    // A single crash may be reported through more than one error callback, which would otherwise
+    // save state and request recovery multiple times. Only the first request is handled.
+    if (recovering_.exchange(true)) {
+        TAG_LOGW(AAFwkTag::RECOVERY, "recovery already in progress, ignore duplicate request");
+        return true;
+    }
     if (isEnable_) {
         ScheduleSaveAppState(reason);
         DisallowCrossThreadExecutionInRecovery();
         PersistAppState();
     }
-    return ScheduleRecoverApp(reason);
+    bool ret = ScheduleRecoverApp(reason);
+    if (!ret) {
+        recovering_.store(false);
+    }
+    return ret;
 }
 
 void AppRecovery::DoRecoverApp(StateReason reason)
