@@ -500,6 +500,7 @@ public:
         const InsightIntentExecuteResult &result));
     MOCK_METHOD3(GetUIExtensionRootHostInfo, int32_t(const sptr<IRemoteObject> token, UIExtensionHostInfo &hostInfo,
         int32_t userId));
+    MOCK_METHOD2(GetUIExtensionRootHostInfoById, int32_t(int32_t abilityRecordId, UIExtensionHostInfo &hostInfo));
     MOCK_METHOD1(GetAutoStartupStatusForSelf, int32_t(bool &isAutoStartEnabled));
     MOCK_METHOD4(StartAbilityByOEExt, int32_t(const Want&, sptr<IRemoteObject>, int32_t, const std::string&));
     MOCK_METHOD1(StartSelf, int(sptr<IRemoteObject> token));

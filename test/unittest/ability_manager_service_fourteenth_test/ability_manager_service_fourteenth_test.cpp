@@ -22,6 +22,7 @@
 #include "hilog_tag_wrapper.h"
 #include "rate_limiter.h"
 #include "sub_managers_helper.h"
+#include "ui_extension_ability_manager.h"
 #include "mission_list_manager.h"
 #include "scene_board_judgement.h"
 #include "call_record.h"
@@ -2274,6 +2275,95 @@ HWTEST_F(AbilityManagerServiceFourteenthTest, StartAbilityInner_NonSCB_TaskKeyKe
     EXPECT_TRUE(param.want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
     EXPECT_EQ(param.want.GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID), "task-creator-ut");
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest StartAbilityInner_NonSCB end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: GetUIExtensionRootHostInfoById_0100
+ * Function: GetUIExtensionRootHostInfoById
+ * SubFunction: NA
+ * FunctionPoints: non-SA caller is rejected before any record lookup
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, GetUIExtensionRootHostInfoById_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest GetUIExtensionRootHostInfoById_0100 start");
+    MyStatus::GetInstance().permPermission_ = 0;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    abilityMs->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+
+    UIExtensionHostInfo hostInfo;
+    EXPECT_EQ(abilityMs->GetUIExtensionRootHostInfoById(0, hostInfo), ERR_PERMISSION_DENIED);
+    EXPECT_EQ(abilityMs->GetUIExtensionRootHostInfoById(-1, hostInfo), ERR_PERMISSION_DENIED);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest GetUIExtensionRootHostInfoById_0100 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: GetUIExtensionRootHostInfoById_0200
+ * Function: GetUIExtensionRootHostInfoById
+ * SubFunction: NA
+ * FunctionPoints: SA caller with a negative record id is rejected as an invalid value
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, GetUIExtensionRootHostInfoById_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest GetUIExtensionRootHostInfoById_0200 start");
+    MyStatus::GetInstance().permPermission_ = 1;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    abilityMs->subManagersHelper_ = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+
+    UIExtensionHostInfo hostInfo;
+    EXPECT_EQ(abilityMs->GetUIExtensionRootHostInfoById(-1, hostInfo), ERR_INVALID_VALUE);
+    EXPECT_EQ(abilityMs->GetUIExtensionRootHostInfoById(INT32_MIN, hostInfo), ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest GetUIExtensionRootHostInfoById_0200 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: GetUIExtensionRootHostInfoById_0300
+ * Function: GetUIExtensionRootHostInfoById
+ * SubFunction: NA
+ * FunctionPoints: SA caller with no UIExtension manager registered returns ERR_INVALID_VALUE
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, GetUIExtensionRootHostInfoById_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest GetUIExtensionRootHostInfoById_0300 start");
+    MyStatus::GetInstance().permPermission_ = 1;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    auto helper = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    ASSERT_NE(helper, nullptr);
+    abilityMs->subManagersHelper_ = helper;
+
+    UIExtensionHostInfo hostInfo;
+    EXPECT_EQ(abilityMs->GetUIExtensionRootHostInfoById(12025, hostInfo), ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest GetUIExtensionRootHostInfoById_0300 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: GetUIExtensionRootHostInfoById_0400
+ * Function: GetUIExtensionRootHostInfoById
+ * SubFunction: NA
+ * FunctionPoints: a manager without the requested record cannot resolve a host and returns ERR_INVALID_VALUE
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, GetUIExtensionRootHostInfoById_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest GetUIExtensionRootHostInfoById_0400 start");
+    MyStatus::GetInstance().permPermission_ = 1;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    auto helper = std::make_shared<SubManagersHelper>(nullptr, nullptr);
+    ASSERT_NE(helper, nullptr);
+    auto connectManager = std::make_shared<UIExtensionAbilityManager>(0);
+    ASSERT_NE(connectManager, nullptr);
+    helper->uiExtensionAbilityManagers_.emplace(0, connectManager);
+    abilityMs->subManagersHelper_ = helper;
+
+    UIExtensionHostInfo hostInfo;
+    EXPECT_EQ(abilityMs->GetUIExtensionRootHostInfoById(12025, hostInfo), ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest GetUIExtensionRootHostInfoById_0400 end");
 }
 } // namespace AAFwk
 } // namespace OHOS
