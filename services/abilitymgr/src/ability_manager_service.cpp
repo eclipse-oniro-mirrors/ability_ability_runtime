@@ -4646,7 +4646,7 @@ void AbilityManagerService::ReportAbilityStartInfoToRSS(const AppExecFwk::Abilit
                     preloadMode = static_cast<int32_t>(info.preloadMode_);
                 }
                 isSuggestCache = info.isCached;
-                bool supportWarmSmartGC = (isSuggestCache ||
+                supportWarmSmartGC = (isSuggestCache ||
                     info.preloadMode_ == AppExecFwk::PreloadMode::PRE_MAKE ||
                     info.preloadMode_ == AppExecFwk::PreloadMode::PRELOAD_MODULE);
                 TAG_LOGI(AAFwkTag::ABILITYMGR, "SmartGC: Process %{public}d report to RSS, start type: %{public}d, isCached: %{public}d, supportWarmGC: %{public}d",
@@ -11149,6 +11149,10 @@ bool AbilityManagerService::IsRamConstrainedDevice()
     unsigned int len = sizeof(valueGetBuf);
     int ret = GetParameter(key, def, valueGet, len);
     if ((ret != GET_PARAMETER_OTHER) && (ret != GET_PARAMETER_INCORRECT)) {
+        if (valueGet == nullptr) {
+            TAG_LOGW(AAFwkTag::ABILITYMGR, "valueGet null");
+            return false;
+        }
         int value = atoi(valueGet);
         if (value) {
             return true;
@@ -11969,7 +11973,8 @@ int AbilityManagerService::GetExtensionRunningInfos(int upperLimit, std::vector<
         AbilityConnectManager::ServiceMapType serviceMap;
         auto ret = GetServiceMapByUserId(serviceMap, *iter);
         if (ret != ERR_OK) {
-            return ret;
+            TAG_LOGW(AAFwkTag::ABILITYMGR, "GetServiceMapByUserId failed, ret:%{public}d", ret);
+            continue;
         }
         AbilityConnectManager::GetExtensionRunningInfos(serviceMap, upperLimit, info, *iter, isPerm);
         iter++;
@@ -15560,7 +15565,8 @@ int32_t AbilityManagerService::QueryAllAutoStartupApplications(std::vector<AutoS
     while (iter != userIds.end()) {
         int32_t result = abilityAutoStartupService_->QueryAllAutoStartupApplications(infoList, *iter);
         if (result != ERR_OK) {
-            return result;
+            TAG_LOGW(AAFwkTag::ABILITYMGR, "QueryAllAutoStartupApplications failed, ret:%{public}d", result);
+            continue;
         }
         iter++;
     }

@@ -676,7 +676,7 @@ void DataAbilityManager::ReportDataAbilityAcquired(const sptr<IRemoteObject> &cl
             caller.callerName = abilityRecord->GetAbilityInfo().bundleName;
         }
     } else {
-        caller.callerName = ConnectionStateManager::GetProcessNameByPid(caller.callerPid);
+        caller.callerName = std::to_string(caller.callerPid);
     }
 
     DelayedSingleton<ConnectionStateManager>::GetInstance()->AddDataAbilityConnection(caller, record);
