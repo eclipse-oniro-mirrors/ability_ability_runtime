@@ -2269,7 +2269,7 @@ void AppMgrServiceInner::LoadAbility(std::shared_ptr<AbilityInfo> abilityInfo, s
             return;
         }
         std::shared_ptr<AppRunningRecord> appRecord =
-            appRunningManager_->GetValidAppRunningRecordByPid(loadParam->selfPid);
+            appRunningManager_->GetAppRunningRecordByPid(loadParam->selfPid);
         if (appRecord == nullptr) {
             TAG_LOGW(AAFwkTag::APPMGR, "appRecord not found by pid %{public}d", loadParam->selfPid);
             NotifyStartProcessFailed(loadParam->token);
