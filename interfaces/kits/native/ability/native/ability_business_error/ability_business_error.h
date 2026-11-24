@@ -36,6 +36,9 @@ enum class AbilityErrorCode {
     // capability not support.
     ERROR_CODE_CAPABILITY_NOT_SUPPORT = 801,
 
+    // capability not supported on emulator.
+    ERROR_CODE_EMULATOR_NOT_SUPPORTED = 804,
+
     // common inner error.
     ERROR_CODE_INNER = 16000050,
 

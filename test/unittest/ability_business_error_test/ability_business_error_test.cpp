@@ -87,6 +87,34 @@ HWTEST_F(AbilityBusinessErrorTest, GetErrorMsg_3560000X, TestSize.Level2)
 }
 
 /**
+ * @tc.name: GetErrorMsg_EmulatorNotSupported
+ * @tc.desc: Verify ERROR_CODE_EMULATOR_NOT_SUPPORTED maps to the emulator capability message.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(AbilityBusinessErrorTest, GetErrorMsg_EmulatorNotSupported, TestSize.Level2)
+{
+    EXPECT_EQ(GetErrorMsg(AbilityErrorCode::ERROR_CODE_EMULATOR_NOT_SUPPORTED),
+        "The capability is not supported on the emulator at this time.");
+}
+
+/**
+ * @tc.name: GetEmulatorNotSupportedErrorCode
+ * @tc.desc: Verify ERR_EMULATOR_NOT_SUPPORTED converts to the emulator public error code and message.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(AbilityBusinessErrorTest, GetEmulatorNotSupportedErrorCode, TestSize.Level2)
+{
+    EXPECT_EQ(static_cast<int32_t>(GetJsErrorCodeByNativeError(AAFwk::ERR_EMULATOR_NOT_SUPPORTED)),
+        804);
+    EXPECT_EQ(GetJsErrorCodeByNativeError(AAFwk::ERR_EMULATOR_NOT_SUPPORTED),
+        AbilityErrorCode::ERROR_CODE_EMULATOR_NOT_SUPPORTED);
+    EXPECT_EQ(GetErrorMsgByNativeError(AAFwk::ERR_EMULATOR_NOT_SUPPORTED),
+        "The capability is not supported on the emulator at this time.");
+}
+
+/**
  * @tc.name: GetJsErrorCodeByNativeError_0100
  * @tc.desc: GetJsErrorCodeByNativeError_0100 Test
  * @tc.type: FUNC

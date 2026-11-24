@@ -1557,6 +1557,13 @@ void AbilityManagerService::CheckExtensionRateLimit(const Want &want)
 int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
 {
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+#ifdef EMULATOR_BUILD
+    if (AbilityUtil::IsStartFreeInstall(param.want)) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "installation-free start is not supported on emulator, ability:%{public}s",
+            param.want.GetAbilityNameRef().c_str());
+        return ERR_EMULATOR_NOT_SUPPORTED;
+    }
+#endif
     if (!param.isStartAsCaller || param.isImplicit) {
         param.want.RemoveParam("ability.params.picker.erms.policy");
     }
@@ -1805,6 +1812,14 @@ int AbilityManagerService::StartAbilityInner(StartAbilityWrapParam &param)
     if (isStartFreeInstallByWant || selfFreeInstallEnable) {
         TAG_LOGD(AAFwkTag::ABILITYMGR, "selfFreeInstallEnable: %{public}d, isStartFreeInstallByWant: %{public}d",
             selfFreeInstallEnable, isStartFreeInstallByWant);
+#ifdef EMULATOR_BUILD
+        if (selfFreeInstallEnable) {
+            TAG_LOGW(AAFwkTag::ABILITYMGR,
+                "installation-free start is not supported on emulator, ability:%{public}s",
+                param.want.GetAbilityNameRef().c_str());
+            return ERR_EMULATOR_NOT_SUPPORTED;
+        }
+#endif
         Want localWant;
         auto freeInstallResult = PreStartFreeInstall(param.want, param.callerToken, param.specifyTokenId,
             param.isStartAsCaller, localWant);
@@ -2433,6 +2448,11 @@ int AbilityManagerService::StartAbilityDetails(const Want &want, const AbilitySt
     int result = ERR_OK;
 
     if (AbilityUtil::IsStartFreeInstall(want)) {
+#ifdef EMULATOR_BUILD
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "installation-free start is not supported on emulator, ability:%{public}s",
+            want.GetAbilityNameRef().c_str());
+        return ERR_EMULATOR_NOT_SUPPORTED;
+#endif
         if (CheckIfOperateRemote(want) || freeInstallManager_ == nullptr) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "can not start remote free install");
             AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, ERR_FREE_INSTALL_REMOTE_WANT,
@@ -2839,6 +2859,11 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
     int result = ERR_OK;
 
     if (AbilityUtil::IsStartFreeInstall(want)) {
+#ifdef EMULATOR_BUILD
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "installation-free start is not supported on emulator, ability:%{public}s",
+            want.GetAbilityNameRef().c_str());
+        return ERR_EMULATOR_NOT_SUPPORTED;
+#endif
         if (CheckIfOperateRemote(want) || freeInstallManager_ == nullptr) {
             TAG_LOGE(AAFwkTag::ABILITYMGR, "not allow remote free install");
             AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, ERR_INVALID_VALUE, "not allow remote free install");
@@ -3642,6 +3667,11 @@ int32_t AbilityManagerService::OpenAtomicService(AAFwk::Want& want, const StartO
         TAG_LOGW(AAFwkTag::ABILITYMGR, "forbid start: %{public}s", want.GetBundleNameRef().c_str());
         return INNER_ERR;
     }
+#ifdef EMULATOR_BUILD
+    TAG_LOGW(AAFwkTag::ABILITYMGR, "openAtomicService is not supported on emulator, bundle:%{public}s",
+        want.GetBundleNameRef().c_str());
+    return ERR_EMULATOR_NOT_SUPPORTED;
+#endif
     want.SetParam(AAFwk::SCREEN_MODE_KEY, AAFwk::ScreenMode::JUMP_SCREEN_MODE);
     return StartUIAbilityForOptionWrap(want, options, callerToken, false, userId, requestCode);
 }
@@ -19094,6 +19124,13 @@ ErrCode AbilityManagerService::OpenLink(const Want& want, sptr<IRemoteObject> ca
 ErrCode AbilityManagerService::OpenLinkInner(const Want& want, sptr<IRemoteObject> callerToken,
     int32_t userId, int32_t requestCode, bool removeInsightIntentFlag, bool hideFailureTipDialog)
 {
+#ifdef EMULATOR_BUILD
+    if (want.GetBoolParam(APP_LINKING_ONLY, false)) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "app linking is not supported on emulator, uri:%{public}s",
+            want.GetUriString().c_str());
+        return ERR_EMULATOR_NOT_SUPPORTED;
+    }
+#endif
     if (AppUtils::GetInstance().IsForbidStart()) {
         TAG_LOGW(AAFwkTag::ABILITYMGR, "forbid start: %{public}s", want.GetBundleNameRef().c_str());
         return INNER_ERR;
@@ -19139,7 +19176,12 @@ ErrCode AbilityManagerService::OpenLinkInner(const Want& want, sptr<IRemoteObjec
     TAG_LOGD(AAFwkTag::ABILITYMGR, "openLink not specific app or atomicService. AppLinkingOnly: %{public}d",
         curAppLinkingOnlyFlag);
     if (curAppLinkingOnlyFlag) {
+#ifdef EMULATOR_BUILD
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "app linking is not supported on emulator");
+        return ERR_EMULATOR_NOT_SUPPORTED;
+#else
         return RESOLVE_ABILITY_ERR;
+#endif
     }
     OPEN_LINK_START_ABILITY(convertedWant, callerToken, userId, requestCode, removeInsightIntentFlag,
         hideFailureTipDialog, true);
@@ -19148,6 +19190,11 @@ ErrCode AbilityManagerService::OpenLinkInner(const Want& want, sptr<IRemoteObjec
 int32_t AbilityManagerService::OpenLinkFreeInstallAtomicService(StartAbilityWrapParam &param,
     const Want &originalWant)
 {
+#ifdef EMULATOR_BUILD
+    TAG_LOGW(AAFwkTag::ABILITYMGR, "installation-free atomic service is not supported on emulator, uri:%{public}s",
+        originalWant.GetUriString().c_str());
+    return ERR_EMULATOR_NOT_SUPPORTED;
+#endif
     if (freeInstallManager_ == nullptr) {
         TAG_LOGI(AAFwkTag::ABILITYMGR, "freeInstallManager_ nullptr. start ability by default");
         OPEN_LINK_START_ABILITY(originalWant, param.callerToken, param.userId, param.requestCode,

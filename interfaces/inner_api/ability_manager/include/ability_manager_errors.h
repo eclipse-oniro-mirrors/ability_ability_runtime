@@ -1247,6 +1247,11 @@ enum {
     ERR_CHECK_CHILD_PROCESS_FAILED = 2099506,
 
     /**
+     * Result(2099507) for the capability is not supported on the emulator build.
+     */
+    ERR_EMULATOR_NOT_SUPPORTED = 2099507,
+
+    /**
      * Native error(3000000) for target bundle not exist.
      */
     ERR_CODE_NOT_EXIST = 3000000,
