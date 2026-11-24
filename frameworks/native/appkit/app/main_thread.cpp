@@ -328,10 +328,28 @@ MainThread::MainThread()
 MainThread::~MainThread()
 {
     TAG_LOGD(AAFwkTag::APPKIT, "called");
-    if (watchdog_ != nullptr && !watchdog_->IsStopWatchdog()) {
-        watchdog_->Stop();
-        watchdog_ = nullptr;
+    StopWatchdog();
+}
+
+std::shared_ptr<Watchdog> MainThread::GetWatchdog() const
+{
+    std::lock_guard<std::mutex> lock(watchdogMutex_);
+    return watchdog_;
+}
+
+void MainThread::StopWatchdog()
+{
+    std::shared_ptr<Watchdog> watchdog;
+    {
+        std::lock_guard<std::mutex> lock(watchdogMutex_);
+        watchdog.swap(watchdog_);
     }
+
+    if (watchdog == nullptr || watchdog->IsStopWatchdog()) {
+        return;
+    }
+
+    watchdog->Stop();
 }
 
 /**
@@ -524,7 +542,7 @@ bool MainThread::ScheduleForegroundApplication()
     if (!mainHandler_->PostTask(task, "MainThread:ForegroundApplication")) {
         TAG_LOGE(AAFwkTag::APPKIT, "PostTask task failed");
     }
-    auto tmpWatchdog = watchdog_;
+    auto tmpWatchdog = GetWatchdog();
     if (tmpWatchdog == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "null Watch dog");
     } else {
@@ -555,13 +573,12 @@ void MainThread::ScheduleBackgroundApplication()
         TAG_LOGE(AAFwkTag::APPKIT, "PostTask task failed");
     }
 
-    auto tmpWatchdog = watchdog_;
+    auto tmpWatchdog = GetWatchdog();
     if (tmpWatchdog == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "null Watch dog");
         return;
     }
     tmpWatchdog->SetBackgroundStatus(true);
-    tmpWatchdog = nullptr;
 }
 
 /**
@@ -894,10 +911,9 @@ void MainThread::ScheduleLaunchAbility(const AbilityInfo &info, const sptr<IRemo
     std::shared_ptr<AbilityInfo> abilityInfo = std::make_shared<AbilityInfo>(info);
     auto abilityRecord = std::make_shared<AbilityLocalRecord>(abilityInfo, token, want, abilityRecordId);
     abilityRecord->SetSkipAbilityStageLifecycle(skipAbilityStageLifecycle);
-    auto tmpWatchdog = watchdog_;
+    auto tmpWatchdog = GetWatchdog();
     if (tmpWatchdog != nullptr) {
         tmpWatchdog->SetBgWorkingThreadStatus(IsBgWorkingThread(info));
-        tmpWatchdog = nullptr;
     }
     std::string entry = "MainThread::ScheduleLaunchAbility";
     FreezeUtil::GetInstance().AddLifecycleEvent(token, entry);
@@ -1044,10 +1060,7 @@ void MainThread::HandleTerminateApplicationLocal()
         return;
     }
 
-    if (watchdog_ != nullptr && !watchdog_->IsStopWatchdog()) {
-        watchdog_->Stop();
-        watchdog_ = nullptr;
-    }
+    StopWatchdog();
 
     int ret = runner->Stop();
     if (ret != ERR_OK) {
@@ -1669,10 +1682,12 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
         return;
     }
 
-    if (appLaunchData.GetDebugApp() && watchdog_ != nullptr && !watchdog_->IsStopWatchdog()) {
-        SetAppDebug(AbilityRuntime::AppFreezeState::AppFreezeFlag::DEBUG_LAUNCH_MODE, true);
-        watchdog_->Stop();
-        watchdog_.reset();
+    if (appLaunchData.GetDebugApp()) {
+        auto tmpWatchdog = GetWatchdog();
+        if (tmpWatchdog != nullptr && !tmpWatchdog->IsStopWatchdog()) {
+            SetAppDebug(AbilityRuntime::AppFreezeState::AppFreezeFlag::DEBUG_LAUNCH_MODE, true);
+            StopWatchdog();
+        }
     }
 
     auto appInfo = appLaunchData.GetApplicationInfo();
@@ -1694,11 +1709,10 @@ void MainThread::HandleLaunchApplication(const AppLaunchData &appLaunchData, con
         TAG_LOGE(AAFwkTag::APPKIT, "get bundleInfo failed");
         return;
     }
-    auto tmpWatchdog = watchdog_;
+    auto tmpWatchdog = GetWatchdog();
     bool isSystemApp = bundleInfo.applicationInfo.isSystemApp;
     if (tmpWatchdog != nullptr) {
         tmpWatchdog->SetBundleInfo(bundleName, appInfo.versionName, isSystemApp);
-        tmpWatchdog = nullptr;
     }
 
     bool moduelJson = false;
@@ -3160,10 +3174,7 @@ void MainThread::HandleTerminateApplication(bool isLastProcess)
         return;
     }
 
-    if (watchdog_ != nullptr && !watchdog_->IsStopWatchdog()) {
-        watchdog_->Stop();
-        watchdog_ = nullptr;
-    }
+    StopWatchdog();
 
     int ret = runner->Stop();
     if (ret != ERR_OK) {
@@ -3258,9 +3269,10 @@ void MainThread::Init(const std::shared_ptr<EventRunner> &runner)
     TAG_LOGD(AAFwkTag::APPKIT, "Start");
     mainHandler_ = std::make_shared<MainHandler>(runner, this);
     bool isRescueMode = (system::GetParameter("soc.boot.mode", "") == "rescue");
+    std::shared_ptr<Watchdog> watchdog = nullptr;
     if (!isRescueMode) {
         TAG_LOGE(AAFwkTag::APPKIT, "is not in rescue mode");
-        watchdog_ = std::make_shared<Watchdog>();
+        watchdog = std::make_shared<Watchdog>();
     }
 
     //since kernel use lazy fpu, but MainThread use fpu frequently
@@ -3287,7 +3299,9 @@ void MainThread::Init(const std::shared_ptr<EventRunner> &runner)
 
     if (!isRescueMode) {
         TAG_LOGE(AAFwkTag::APPKIT, "is not in rescue mode");
-        watchdog_->Init(mainHandler_);
+        watchdog->Init(mainHandler_);
+        std::lock_guard<std::mutex> lock(watchdogMutex_);
+        watchdog_ = std::move(watchdog);
     }
 
     AppExecFwk::AppfreezeInner::GetInstance()->SetMainHandler(mainHandler_);
@@ -3865,7 +3879,7 @@ void MainThread::ScheduleNewProcessRequest(const AAFwk::Want &want, const std::s
 
 void MainThread::CheckMainThreadIsAlive()
 {
-    auto tmpWatchdog = watchdog_;
+    auto tmpWatchdog = GetWatchdog();
     if (tmpWatchdog == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "null Watch dog");
         return;
@@ -3873,7 +3887,6 @@ void MainThread::CheckMainThreadIsAlive()
 
     tmpWatchdog->SetAppMainThreadState(true);
     tmpWatchdog->AllowReportEvent();
-    tmpWatchdog = nullptr;
 }
 #endif  // ABILITY_LIBRARY_LOADER
 
@@ -4402,13 +4415,12 @@ int32_t MainThread::ScheduleDumpArkWeb(const std::string &customArgs, std::strin
  */
 void MainThread::SetWatchdogBackgroundStatus(bool status)
 {
-    auto tmpWatchdog = watchdog_;
+    auto tmpWatchdog = GetWatchdog();
     if (tmpWatchdog == nullptr) {
         TAG_LOGE(AAFwkTag::APPKIT, "null Watch dog");
         return;
     }
     tmpWatchdog->SetBackgroundStatus(status);
-    tmpWatchdog = nullptr;
 }
 
 /**

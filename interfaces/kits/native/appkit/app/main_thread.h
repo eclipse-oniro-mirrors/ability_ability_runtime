@@ -729,6 +729,9 @@ private:
 
     int32_t ChangeAppGcState(int32_t state, uint64_t tid = 0);
 
+    std::shared_ptr<Watchdog> GetWatchdog() const;
+    void StopWatchdog();
+
     void HandleCacheProcess();
 
     bool IsBgWorkingThread(const AbilityInfo &info);
@@ -798,6 +801,7 @@ private:
     std::shared_ptr<ApplicationImpl> applicationImpl_ = nullptr;
     static std::shared_ptr<MainHandler> mainHandler_;
     std::shared_ptr<AbilityRecordMgr> abilityRecordMgr_ = nullptr;
+    mutable std::mutex watchdogMutex_;
     std::shared_ptr<Watchdog> watchdog_ = nullptr;
     std::shared_ptr<AbilityRuntime::ExtensionConfigMgr> extensionConfigMgr_ = nullptr;
     MainThreadState mainThreadState_ = MainThreadState::INIT;
