@@ -318,7 +318,7 @@ public:
         int requestCode = DEFAULT_INVAL_VALUE) = 0;
 
     /**
-     * Starts a new ability with specific start options, restricted to softbus_service (uid 4700).
+     * Starts a new ability with specific start options, restricted to softbus_service.
      *
      * The displayId carried in startOptions is passed through unchanged (no processing).
      * On the service side the caller uid must be SOFTBUS_SERVICE_UID, otherwise

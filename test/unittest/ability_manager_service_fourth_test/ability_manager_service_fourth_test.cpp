@@ -563,7 +563,7 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartAbilityForOptionInner_Passthrough
  * Feature: AbilityManagerStub
  * Function: StartUIAbilityWithDisplayIdPassthroughInner
  * FunctionPoints: AbilityManagerStub StartUIAbilityWithDisplayIdPassthroughInner
- * CaseDescription: With the caller uid mocked to SOFTBUS_SERVICE_UID (4700), the uid gate passes and the
+ * CaseDescription: With the caller uid mocked to SOFTBUS_SERVICE_UID, the uid gate passes and the
  *                 handler reads the parcel and dispatches to StartUIAbilityWithDisplayIdPassthrough. This
  *                 covers the code path after the uid check (parcel parsing + virtual dispatch). Without a
  *                 BMS mock the downstream start cannot resolve an ability, but the result is NOT a
@@ -571,7 +571,7 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartAbilityForOptionInner_Passthrough
  */
 HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityWithDisplayIdPassthroughInner_SoftbusUid_001, TestSize.Level1)
 {
-    IPCSkeleton::SetCallingUid(4700); // SOFTBUS_SERVICE_UID
+    IPCSkeleton::SetCallingUid(1024); // SOFTBUS_SERVICE_UID
     auto abilityMs = std::make_shared<AbilityManagerService>();
     MessageParcel data;
     MessageParcel reply;
@@ -594,12 +594,12 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityWithDisplayIdPassthrough
  * Feature: AbilityManagerStub
  * Function: StartUIAbilityWithDisplayIdPassthroughInner
  * FunctionPoints: want null branch
- * CaseDescription: With uid mocked to 4700 the uid gate passes; an empty parcel makes
+ * CaseDescription: With uid mocked to SOFTBUS_SERVICE_UID the uid gate passes; an empty parcel makes
  *                 ReadParcelable<Want> return nullptr, covering the `if (want == nullptr)` branch.
  */
 HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityWithDisplayIdPassthroughInner_WantNull_001, TestSize.Level1)
 {
-    IPCSkeleton::SetCallingUid(4700);
+    IPCSkeleton::SetCallingUid(1024);
     auto abilityMs = std::make_shared<AbilityManagerService>();
     MessageParcel data;
     MessageParcel reply;
@@ -612,13 +612,13 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityWithDisplayIdPassthrough
  * Feature: AbilityManagerStub
  * Function: StartUIAbilityWithDisplayIdPassthroughInner
  * FunctionPoints: startOptions null branch
- * CaseDescription: With uid mocked to 4700 and a valid Want written, the parcel has no StartOptions,
+ * CaseDescription: With uid mocked to SOFTBUS_SERVICE_UID and a valid Want written, the parcel has no StartOptions,
  *                 so ReadParcelable<StartOptions> returns nullptr, covering the
  *                 `if (startOptions == nullptr)` branch.
  */
 HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityPassthroughInner_StartOptionsNull_001, TestSize.Level1)
 {
-    IPCSkeleton::SetCallingUid(4700);
+    IPCSkeleton::SetCallingUid(1024);
     auto abilityMs = std::make_shared<AbilityManagerService>();
     MessageParcel data;
     MessageParcel reply;
@@ -634,12 +634,12 @@ HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityPassthroughInner_StartOp
  * Feature: AbilityManagerStub
  * Function: StartUIAbilityWithDisplayIdPassthroughInner
  * FunctionPoints: callerToken present branch (data.ReadBool() == true)
- * CaseDescription: With uid mocked to 4700, a valid Want, StartOptions, and WriteBool(true) followed by a
- *                 callerToken, the `if (data.ReadBool())` true branch is covered (ReadRemoteObject executed).
+ * CaseDescription: With uid mocked to SOFTBUS_SERVICE_UID, a valid Want, StartOptions, and WriteBool(true) followed
+ *                  by a callerToken, the `if (data.ReadBool())` true branch is covered (ReadRemoteObject executed).
  */
 HWTEST_F(AbilityManagerServiceFourthTest, StartUIAbilityPassthroughInner_WithCallerToken_001, TestSize.Level1)
 {
-    IPCSkeleton::SetCallingUid(4700);
+    IPCSkeleton::SetCallingUid(1024);
     auto abilityMs = std::make_shared<AbilityManagerService>();
     MessageParcel data;
     MessageParcel reply;

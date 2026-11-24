@@ -192,7 +192,7 @@ public:
         int requestCode = DEFAULT_INVAL_VALUE) override;
 
     /**
-     * Starts a new ability with specific start options, restricted to softbus_service (uid 4700).
+     * Starts a new ability with specific start options, restricted to softbus_service.
      * The displayId in startOptions is passed through unchanged. Marshals the request to the
      * service which verifies the caller uid and reuses the existing StartAbilityForOption path.
      *

@@ -395,7 +395,7 @@ public:
     /**
      * Start an ability with start options through the softbus_service-restricted path.
      *
-     * The server verifies the caller uid is SOFTBUS_SERVICE_UID (4700); the displayId carried
+     * The server verifies the caller uid is SOFTBUS_SERVICE_UID; the displayId carried
      * in startOptions is passed through unchanged and the existing StartAbilityForOption path
      * is reused. Intended for softbus_service only.
      *
