@@ -267,7 +267,7 @@ std::chrono::system_clock::time_point AppRunningRecord::GetPreloadAttachTimeoutS
 
 bool AppRunningRecord::ShouldSkipTimeout() const
 {
-    return isDebugApp_ || isNativeDebug_ || isAttachDebug_;
+    return isDebugApp_.load() || isNativeDebug_ || isAttachDebug_.load();
 }
 
 int32_t AppRunningRecord::GetUserId() const
@@ -287,7 +287,7 @@ void AppRunningRecord::SetState(const ApplicationState state)
         return;
     }
     if (state == ApplicationState::APP_STATE_FOREGROUND || state == ApplicationState::APP_STATE_BACKGROUND) {
-        restartResidentProcCount_ = MAX_RESTART_COUNT;
+        restartResidentProcCount_.store(MAX_RESTART_COUNT);
     }
     std::string foreTag = "ForeApp:";
     if (state == ApplicationState::APP_STATE_FOREGROUND) {
@@ -439,7 +439,7 @@ void AppRunningRecord::LaunchApplication(const Configuration &config)
     launchData.SetUserTestInfo(userTestRecord_);
     launchData.SetAppIndex(appIndex_);
     launchData.SetInstanceKey(instanceKey_);
-    launchData.SetDebugApp(isDebugApp_);
+    launchData.SetDebugApp(isDebugApp_.load());
     launchData.SetPerfCmd(perfCmd_);
     launchData.SetErrorInfoEnhance(isErrorInfoEnhance_);
     launchData.SetMultiThread(isMultiThread_);
@@ -793,7 +793,7 @@ void AppRunningRecord::AddModule(std::shared_ptr<ApplicationInfo> appInfo,
     std::lock_guard<ffrt::mutex> hapModulesLock(hapModulesLock_);
     const auto &iter = hapModules_.find(appInfo->bundleName);
     if (iter != hapModules_.end()) {
-        moduleRecord = GetModuleRecordByModuleName(appInfo->bundleName, hapModuleInfo.moduleName);
+        moduleRecord = GetModuleRecordByModuleNameLocked(appInfo->bundleName, hapModuleInfo.moduleName);
         if (!moduleRecord) {
             moduleRecord = std::make_shared<ModuleRunningRecord>(appInfo, eventHandler_);
             iter->second.push_back(moduleRecord);
@@ -824,6 +824,13 @@ std::shared_ptr<ModuleRunningRecord> AppRunningRecord::GetModuleRecordByModuleNa
     const std::string &bundleName, const std::string &moduleName)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");
+    std::lock_guard<ffrt::mutex> lock(hapModulesLock_);
+    return GetModuleRecordByModuleNameLocked(bundleName, moduleName);
+}
+
+std::shared_ptr<ModuleRunningRecord> AppRunningRecord::GetModuleRecordByModuleNameLocked(
+    const std::string &bundleName, const std::string &moduleName)
+{
     auto moduleRecords = hapModules_.find(bundleName);
     if (moduleRecords != hapModules_.end()) {
         for (auto &iter : moduleRecords->second) {
@@ -1260,7 +1267,7 @@ void AppRunningRecord::AbilityTerminated(const sptr<IRemoteObject> &token)
         isExtensionDebug = (abilityRecord->GetAbilityInfo()->type == AppExecFwk::AbilityType::EXTENSION) &&
             abilityRecord->GetAbilityInfo()->extensionAbilityType != AppExecFwk::ExtensionAbilityType::AGENT &&
             abilityRecord->GetAbilityInfo()->extensionAbilityType != AppExecFwk::ExtensionAbilityType::AGENT_UI &&
-            (isAttachDebug_ || isDebugApp_);
+            (isAttachDebug_.load() || isDebugApp_.load());
     }
     TAG_LOGD(AAFwkTag::APPMGR, "Extension debug is [%{public}s]", isExtensionDebug ? "true" : "false");
 
@@ -1477,7 +1484,7 @@ void AppRunningRecord::SetEventHandler(const std::shared_ptr<AMSEventHandler> &h
 
 bool AppRunningRecord::IsLastAbilityByFlag(sptr<IRemoteObject> token, bool clearMissionFlag)
 {
-    if (clearMissionFlag || isPrepareExit_) {
+    if (clearMissionFlag || isPrepareExit_.load()) {
         return IsLastPageAbilityRecord(token);
     }
     return IsLastAbilityRecord(token);
@@ -1704,17 +1711,17 @@ bool AppRunningRecord::GetTheModuleInfoNeedToUpdated(const std::string bundleNam
 
 void AppRunningRecord::SetRestartResidentProcCount(int count)
 {
-    restartResidentProcCount_ = count;
+    restartResidentProcCount_.store(count);
 }
 
 void AppRunningRecord::DecRestartResidentProcCount()
 {
-    restartResidentProcCount_--;
+    restartResidentProcCount_.fetch_sub(1);
 }
 
 int AppRunningRecord::GetRestartResidentProcCount() const
 {
-    return restartResidentProcCount_;
+    return restartResidentProcCount_.load();
 }
 
 bool AppRunningRecord::CanRestartResidentProc()
@@ -1724,7 +1731,7 @@ bool AppRunningRecord::CanRestartResidentProc()
     t.tv_nsec = 0;
     clock_gettime(CLOCK_MONOTONIC, &t);
     int64_t systemTimeMillis = static_cast<int64_t>(((t.tv_sec) * NANOSECONDS + t.tv_nsec) / MICROSECONDS);
-    if ((restartResidentProcCount_ >= 0) || ((systemTimeMillis - restartTimeMillis_) > RESTART_INTERVAL_TIME)) {
+    if ((restartResidentProcCount_.load() >= 0) || ((systemTimeMillis - restartTimeMillis_) > RESTART_INTERVAL_TIME)) {
         return true;
     }
     return false;
@@ -2059,11 +2066,13 @@ std::map<int32_t, std::shared_ptr<RenderRecord>> AppRunningRecord::GetRenderReco
 
 void AppRunningRecord::SetStartMsg(const AppSpawnStartMsg &msg)
 {
+    std::lock_guard<ffrt::mutex> lock(startMsgLock_);
     startMsg_ = msg;
 }
 
 AppSpawnStartMsg AppRunningRecord::GetStartMsg()
 {
+    std::lock_guard<ffrt::mutex> lock(startMsgLock_);
     return startMsg_;
 }
 
@@ -2079,12 +2088,12 @@ bool AppRunningRecord::IsDebug()
 void AppRunningRecord::SetDebugApp(bool isDebugApp)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "value is %{public}d", isDebugApp);
-    isDebugApp_ = isDebugApp;
+    isDebugApp_.store(isDebugApp);
 }
 
 bool AppRunningRecord::IsDebugApp()
 {
-    return isDebugApp_;
+    return isDebugApp_.load();
 }
 
 void AppRunningRecord::SetNativeDebug(bool isNativeDebug)
@@ -2509,11 +2518,13 @@ void AppRunningRecord::ClearChildAppRecordMap()
 
 void AppRunningRecord::SetParentAppRecord(std::shared_ptr<AppRunningRecord> appRecord)
 {
+    std::lock_guard<ffrt::mutex> lock(parentAppRecordLock_);
     parentAppRecord_ = appRecord;
 }
 
 std::shared_ptr<AppRunningRecord> AppRunningRecord::GetParentAppRecord()
 {
+    std::lock_guard<ffrt::mutex> lock(parentAppRecordLock_);
     return parentAppRecord_.lock();
 }
 
@@ -2536,19 +2547,19 @@ int32_t AppRunningRecord::ChangeAppGcState(int32_t state, uint64_t tid, bool ipc
 void AppRunningRecord::SetAttachDebug(bool isAttachDebug, bool isDebugFromLocal)
 {
     TAG_LOGD(AAFwkTag::APPMGR, "called");
-    isAttachDebug_ = isAttachDebug;
+    isAttachDebug_.store(isAttachDebug);
     isDebugFromLocal_ = isDebugFromLocal;
 
     if (appLifeCycleDeal_ == nullptr) {
         TAG_LOGE(AAFwkTag::APPMGR, "null appLifeCycleDeal_");
         return;
     }
-    isAttachDebug_ ? appLifeCycleDeal_->AttachAppDebug(isDebugFromLocal_) : appLifeCycleDeal_->DetachAppDebug();
+    isAttachDebug_.load() ? appLifeCycleDeal_->AttachAppDebug(isDebugFromLocal_) : appLifeCycleDeal_->DetachAppDebug();
 }
 
 bool AppRunningRecord::IsAttachDebug() const
 {
-    return isAttachDebug_;
+    return isAttachDebug_.load();
 }
 
 void AppRunningRecord::SetApplicationPendingState(ApplicationPendingState pendingState)
@@ -2789,7 +2800,7 @@ bool AppRunningRecord::IsAssertionPause() const
 
 bool AppRunningRecord::IsDebugging() const
 {
-    return isDebugApp_ || isAssertPause_;
+    return isDebugApp_.load() || isAssertPause_;
 }
 
 void AppRunningRecord::SetNativeStart(bool isNativeStart)
@@ -3146,12 +3157,12 @@ bool AppRunningRecord::HasUIAbilityLaunched()
 
 void AppRunningRecord::SetProcessCaching(bool isCaching)
 {
-    isCaching_ = isCaching;
+    isCaching_.store(isCaching);
 }
 
 bool AppRunningRecord::IsCaching()
 {
-    return isCaching_;
+    return isCaching_.load();
 }
 
 void AppRunningRecord::AddAppLifecycleEvent(const std::string &msg)

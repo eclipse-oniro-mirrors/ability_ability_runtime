@@ -2303,6 +2303,10 @@ bool AppRunningManager::IsAppProcessesAllCached(const std::string &bundleName, i
 
 int32_t AppRunningManager::UpdateConfigurationDelayed(const std::shared_ptr<AppRunningRecord>& appRecord)
 {
+    if (appRecord == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "appRecord is null");
+        return ERR_INVALID_VALUE;
+    }
     std::lock_guard guard(updateConfigurationDelayedLock_);
     int32_t result = ERR_OK;
     auto it = updateConfigurationDelayedMap_.find(appRecord->GetRecordId());

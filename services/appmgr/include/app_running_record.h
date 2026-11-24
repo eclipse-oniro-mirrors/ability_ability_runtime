@@ -1283,21 +1283,21 @@ public:
 
     inline void SetMasterProcess(bool isMasterProcess)
     {
-        isMasterProcess_ = isMasterProcess;
+        isMasterProcess_.store(isMasterProcess);
     }
 
     inline bool IsMasterProcess() const
     {
-        return isMasterProcess_;
+        return isMasterProcess_.load();
     }
 
     inline void SetPrepareExit()
     {
-        isPrepareExit_ = true;
+        isPrepareExit_.store(true);
     }
     inline bool IsPrepareExit() const
     {
-        return isPrepareExit_;
+        return isPrepareExit_.load();
     }
 
     inline void SetTimeStamp(int64_t timeStamp)
@@ -1354,15 +1354,18 @@ public:
 
     inline void EnableDelayedProcessExit(bool enabled)
     {
-        delayedProcessExitEnabled_ = enabled;
+        delayedProcessExitEnabled_.store(enabled);
     }
 
     inline bool IsDelayedProcessExitEnabled() const
     {
-        return delayedProcessExitEnabled_;
+        return delayedProcessExitEnabled_.load();
     }
 
 private:
+    std::shared_ptr<ModuleRunningRecord> GetModuleRecordByModuleNameLocked(
+        const std::string &bundleName, const std::string &moduleName);
+
     /**
      * SearchTheModuleInfoNeedToUpdated, Get an uninitialized abilityStage data.
      *
@@ -1527,7 +1530,7 @@ private:
     std::atomic_int32_t rssValue_ = 0;
     int32_t killId_ = -1;
     int32_t killCallerPid_ = -1;
-    int32_t restartResidentProcCount_ = 0;
+    std::atomic_int32_t restartResidentProcCount_ = 0;
     pid_t gpuPid_ = 0;
     int32_t byCallStatus_ = 0;
 
@@ -1550,12 +1553,12 @@ private:
 
     bool isLauncherApp_;
     bool isAllowedNWebPreload_ = false;
-    bool isAttachDebug_ = false;
+    std::atomic_bool isAttachDebug_ = false;
     bool isAttachedToStatusBar = false;
     bool isAssertPause_ = false;
-    bool isCaching_ = false;
+    std::atomic_bool isCaching_ = false;
     bool isContinuousTask_ = false;    // Only continuesTask processes can be set to true, please choose carefully
-    bool isDebugApp_ = false;
+    std::atomic_bool isDebugApp_ = false;
     bool isDebugFromLocal_ = false;
     bool isDependedOnArkWeb_ = false;
     bool isEmptyKeepAliveApp_ = false;  // Only empty resident processes can be set to true, please choose carefully
@@ -1569,14 +1572,14 @@ private:
     bool isKia_ = false;
     bool isMainElementRunning_ = false;
     std::atomic_bool isMainProcess_ = true; // Only MainProcess can be keepalive
-    bool isMasterProcess_ = false; // Only MasterProcess can be keepalive
+    std::atomic_bool isMasterProcess_ = false; // Only MasterProcess can be keepalive
     bool isMultiThread_ = false;
     bool isNativeDebug_ = false;
     bool isNativeStart_ = false;
     bool isNeedLimitPrio_ = false;
     bool isNeedPreloadModule_ = false;
-    bool delayedProcessExitEnabled_ = false;
-    bool isPrepareExit_ = false;
+    std::atomic_bool delayedProcessExitEnabled_ = false;
+    std::atomic_bool isPrepareExit_ = false;
     std::atomic_bool isRestartApp_ = false; // Only app calling RestartApp can be set to true
     bool isSingleton_ = false;
     bool isStageBasedModel_ = false;
@@ -1606,6 +1609,8 @@ private:
     mutable ffrt::mutex killCallerLock_;
     mutable ffrt::mutex supportMultiProcessDeviceFeatureLock_;
     mutable ffrt::mutex hapModulesLock_;
+    mutable ffrt::mutex parentAppRecordLock_;
+    mutable ffrt::mutex startMsgLock_;
     mutable std::mutex specifiedMutex_;
     mutable std::shared_mutex processTypeLock_;
 };

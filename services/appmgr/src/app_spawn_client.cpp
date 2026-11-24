@@ -130,6 +130,7 @@ AppSpawnClient::~AppSpawnClient()
 ErrCode AppSpawnClient::OpenConnection()
 {
     HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
+    std::lock_guard<std::mutex> lock(connectionLock_);
     if (state_ == SpawnConnectionState::STATE_CONNECTED) {
         return 0;
     }
@@ -157,6 +158,7 @@ ErrCode AppSpawnClient::OpenConnection()
 void AppSpawnClient::CloseConnection()
 {
     TAG_LOGD(AAFwkTag::APPMGR, "call");
+    std::lock_guard<std::mutex> lock(connectionLock_);
     if (state_ == SpawnConnectionState::STATE_CONNECTED) {
         AppSpawnClientDestroy(handle_);
     }
@@ -165,11 +167,13 @@ void AppSpawnClient::CloseConnection()
 
 SpawnConnectionState AppSpawnClient::QueryConnectionState() const
 {
+    std::lock_guard<std::mutex> lock(connectionLock_);
     return state_;
 }
 
 AppSpawnClientHandle AppSpawnClient::GetAppSpawnClientHandle() const
 {
+    std::lock_guard<std::mutex> lock(connectionLock_);
     if (state_ == SpawnConnectionState::STATE_CONNECTED) {
         return handle_;
     }

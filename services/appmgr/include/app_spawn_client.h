@@ -19,6 +19,7 @@
 #include <array>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <string>
 #include <unistd.h>
@@ -297,6 +298,7 @@ private:
     std::string serviceName_ = APPSPAWN_SERVER_NAME;
     AppSpawnClientHandle handle_ = nullptr;
     SpawnConnectionState state_ = SpawnConnectionState::STATE_NOT_CONNECT;
+    mutable std::mutex connectionLock_;
 
 #ifdef SUPPORT_CHILD_PROCESS
     int32_t SetDefaultMsgIdentity(const AppSpawnStartMsg &startMsg, AppSpawnReqMsgHandle reqHandle);
