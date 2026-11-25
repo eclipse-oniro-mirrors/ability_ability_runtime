@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,6 +17,7 @@
 #define private public
 #define protected public
 #include "cache_process_manager.h"
+#include "app_utils.h"
 #undef private
 #undef protected
 #include "mock_app_mgr_service_inner.h"
@@ -31,6 +32,7 @@ namespace AppExecFwk {
 const std::string ABILITY_RECORD_NAME = "Ability_Name_Z";
 const std::string DEFAULT_BUNDLE_NAME = "com.tdd.cacheprocessmanager";
 const int32_t DEFAULT_UID = 101010;
+constexpr int32_t DEFAULT_API_LEVEL = 12;
 
 class CacheProcessManagerTest : public testing::Test {
 public:
@@ -38,7 +40,8 @@ public:
     static void TearDownTestCase();
     void SetUp() override;
     void TearDown() override;
-    std::shared_ptr<AppRunningRecord> MockAppRecord(int apiLevel = 12);
+    std::shared_ptr<AppRunningRecord> MockAppRecord(int apiLevel = DEFAULT_API_LEVEL,
+        const std::string &bundleName = DEFAULT_BUNDLE_NAME);
     int recordId = 0;
 };
 
@@ -55,10 +58,10 @@ void CacheProcessManagerTest::SetUp()
 void CacheProcessManagerTest::TearDown()
 {}
 
-std::shared_ptr<AppRunningRecord> CacheProcessManagerTest::MockAppRecord(int apiLevel)
+std::shared_ptr<AppRunningRecord> CacheProcessManagerTest::MockAppRecord(int apiLevel, const std::string &bundleName)
 {
     std::shared_ptr<ApplicationInfo> appInfo = std::make_shared<ApplicationInfo>();
-    appInfo->bundleName = DEFAULT_BUNDLE_NAME;
+    appInfo->bundleName = bundleName;
     appInfo->uid = DEFAULT_UID;
     appInfo->accessTokenId = 1;
     appInfo->apiTargetVersion = apiLevel;
@@ -538,6 +541,161 @@ HWTEST_F(CacheProcessManagerTest, CacheProcessManager_IsAppContainsSrvExt_0100, 
     EXPECT_TRUE(abilityRunningRecord != nullptr);
     
     EXPECT_EQ(cacheProcMgr->IsAppContainsSrvExt(appRunningRecord), false);
+}
+class CacheProcessManagerOverseaTest : public CacheProcessManagerTest {
+public:
+    static constexpr int32_t TEST_MAX_PROC_CACHE_NUM = 2;
+    static constexpr const char *testAssistantBundleName = "com.example.fusionassistant";
+
+    void SetUp() override
+    {
+        auto &appUtils = AAFwk::AppUtils::GetInstance();
+        originalBrokerDelegateBundleName_ = appUtils.brokerDelegateBundleName_;
+        appUtils.brokerDelegateBundleName_ = {true, testAssistantBundleName};
+        cacheProcMgr_ = std::make_shared<CacheProcessManager>();
+        cacheProcMgr_->maxProcCacheNum_ = TEST_MAX_PROC_CACHE_NUM;
+        cacheProcMgr_->warmStartProcesEnable_ = false;
+        cacheProcMgr_->shouldCheckApi = true;
+        cacheProcMgr_->shouldCheckSupport = true;
+    }
+
+    void TearDown() override
+    {
+        AAFwk::AppUtils::GetInstance().brokerDelegateBundleName_ = originalBrokerDelegateBundleName_;
+    }
+
+    std::shared_ptr<AppRunningRecord> MockEligibleRecord(const std::string &bundleName = testAssistantBundleName)
+    {
+        auto appRecord = MockAppRecord(DEFAULT_API_LEVEL, bundleName);
+        appRecord->SetUIAbilityLaunched(true);
+        appRecord->SetSupportedProcessCache(true);
+        appRecord->SetEnableProcessCache(true);
+        return appRecord;
+    }
+
+    std::shared_ptr<CacheProcessManager> cacheProcMgr_;
+    AAFwk::DeviceConfiguration<std::string> originalBrokerDelegateBundleName_;
+};
+
+/**
+ * @tc.name: OverseasAssistantSupportsCache
+ * @tc.desc: The overseas assistant can use process cache when all normal conditions are satisfied.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CacheProcessManagerOverseaTest, OverseasAssistantSupportsCache, TestSize.Level1)
+{
+    cacheProcMgr_->isOversea_ = true;
+    auto appRecord = MockEligibleRecord();
+    ASSERT_EQ(appRecord->GetBundleName(), testAssistantBundleName);
+    EXPECT_TRUE(cacheProcMgr_->IsAppShouldCache(appRecord));
+}
+
+/**
+ * @tc.name: NonOverseasAssistantRejectsCache
+ * @tc.desc: The configured assistant remains excluded from process cache outside overseas regions.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CacheProcessManagerOverseaTest, NonOverseasAssistantRejectsCache, TestSize.Level1)
+{
+    cacheProcMgr_->isOversea_ = false;
+    auto appRecord = MockEligibleRecord();
+    EXPECT_FALSE(cacheProcMgr_->IsAppShouldCache(appRecord));
+}
+
+/**
+ * @tc.name: OtherApplicationsKeepCacheEligibility
+ * @tc.desc: The region does not change the cache eligibility of other applications.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CacheProcessManagerOverseaTest, OtherApplicationsKeepCacheEligibility, TestSize.Level1)
+{
+    auto appRecord = MockEligibleRecord(DEFAULT_BUNDLE_NAME);
+    cacheProcMgr_->isOversea_ = false;
+    EXPECT_TRUE(cacheProcMgr_->IsAppShouldCache(appRecord));
+    cacheProcMgr_->isOversea_ = true;
+    EXPECT_TRUE(cacheProcMgr_->IsAppShouldCache(appRecord));
+}
+
+/**
+ * @tc.name: OverseasAssistantRequiresSupportDeclaration
+ * @tc.desc: The enabled declaration check rejects an unspecified or unsupported overseas assistant.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CacheProcessManagerOverseaTest, OverseasAssistantRequiresSupportDeclaration, TestSize.Level1)
+{
+    cacheProcMgr_->isOversea_ = true;
+    auto appRecord = MockEligibleRecord();
+    appRecord->procCacheSupportState_ = SupportProcessCacheState::UNSPECIFIED;
+    EXPECT_FALSE(cacheProcMgr_->IsAppShouldCache(appRecord));
+    appRecord->SetSupportedProcessCache(false);
+    EXPECT_FALSE(cacheProcMgr_->IsAppShouldCache(appRecord));
+}
+
+/**
+ * @tc.name: OverseasAssistantFollowsCommonSupportPolicy
+ * @tc.desc: Disabling the declaration check permits unspecified support for the overseas assistant and other apps.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CacheProcessManagerOverseaTest, OverseasAssistantFollowsCommonSupportPolicy, TestSize.Level1)
+{
+    cacheProcMgr_->isOversea_ = true;
+    cacheProcMgr_->shouldCheckSupport = false;
+    auto assistant = MockEligibleRecord();
+    auto otherApp = MockEligibleRecord(DEFAULT_BUNDLE_NAME);
+    assistant->procCacheSupportState_ = SupportProcessCacheState::UNSPECIFIED;
+    otherApp->procCacheSupportState_ = SupportProcessCacheState::UNSPECIFIED;
+    EXPECT_TRUE(cacheProcMgr_->IsAppShouldCache(assistant));
+    EXPECT_TRUE(cacheProcMgr_->IsAppShouldCache(otherApp));
+    assistant->SetSupportedProcessCache(false);
+    EXPECT_FALSE(cacheProcMgr_->IsAppShouldCache(assistant));
+    assistant->SetSupportedProcessCache(true);
+    EXPECT_TRUE(cacheProcMgr_->IsAppShouldCache(assistant));
+}
+
+/**
+ * @tc.name: OverseasAssistantHonorsCacheBlock
+ * @tc.desc: Temporary process cache blocking still applies to the overseas assistant.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CacheProcessManagerOverseaTest, OverseasAssistantHonorsCacheBlock, TestSize.Level1)
+{
+    cacheProcMgr_->isOversea_ = true;
+    auto appRecord = MockEligibleRecord();
+    appRecord->SetProcessCacheBlocked(true);
+    EXPECT_FALSE(cacheProcMgr_->IsAppShouldCache(appRecord));
+}
+
+/**
+ * @tc.name: OverseasAssistantRequiresUIForWarmStart
+ * @tc.desc: Warm start cache still requires a launched UI ability for the overseas assistant.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CacheProcessManagerOverseaTest, OverseasAssistantRequiresUIForWarmStart, TestSize.Level1)
+{
+    cacheProcMgr_->isOversea_ = true;
+    cacheProcMgr_->maxProcCacheNum_ = 0;
+    cacheProcMgr_->warmStartProcesEnable_ = true;
+    auto appRecord = MockEligibleRecord();
+    appRecord->SetUIAbilityLaunched(false);
+    EXPECT_FALSE(cacheProcMgr_->IsAppShouldCache(appRecord));
+    appRecord->SetUIAbilityLaunched(true);
+    EXPECT_TRUE(cacheProcMgr_->IsAppShouldCache(appRecord));
+}
+
+/**
+ * @tc.name: OverseasAssistantHonorsCacheEnableState
+ * @tc.desc: Overseas eligibility does not force process cache to be enabled.
+ * @tc.type: FUNC
+ */
+HWTEST_F(CacheProcessManagerOverseaTest, OverseasAssistantHonorsCacheEnableState, TestSize.Level1)
+{
+    cacheProcMgr_->isOversea_ = true;
+    auto appRecord = MockEligibleRecord();
+    appRecord->SetEnableProcessCache(false);
+    EXPECT_FALSE(cacheProcMgr_->IsAppShouldCache(appRecord));
+    appRecord->SetEnableProcessCache(true);
+    cacheProcMgr_->maxProcCacheNum_ = 0;
+    EXPECT_FALSE(cacheProcMgr_->IsAppShouldCache(appRecord));
 }
 } // namespace AppExecFwk
 } // namespace OHOS

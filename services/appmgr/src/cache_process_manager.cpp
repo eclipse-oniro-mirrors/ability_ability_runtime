@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -33,6 +33,7 @@ const std::string RESOURCE_WARM_START_PROCESS_ENABLE = "persist.resourceschedule
 const std::string MAX_ALLOWED_CACHE_NUM = "const.resourceschedule.max_cached_process_nums";
 const std::string PROCESS_CACHE_API_CHECK_CONFIG = "persist.sys.abilityms.processCacheApiCheck";
 const std::string PROCESS_CACHE_SET_SUPPORT_CHECK_CONFIG = "persist.sys.abilityms.processCacheSetSupportCheck";
+const std::string IS_OVERSEA_CONFIG = "const.cust.is_oversea";
 constexpr int32_t API12 = 12;
 constexpr int32_t API_VERSION_MOD = 100;
 constexpr int32_t DEFAULT_ALLOWED_CACHE_NUM = 64;
@@ -50,6 +51,7 @@ CacheProcessManager::CacheProcessManager()
     maxProcCacheNum_ = OHOS::system::GetIntParameter<int>(MAX_PROC_CACHE_NUM, 0);
     shouldCheckApi = OHOS::system::GetBoolParameter(PROCESS_CACHE_API_CHECK_CONFIG, true);
     shouldCheckSupport = OHOS::system::GetBoolParameter(PROCESS_CACHE_SET_SUPPORT_CHECK_CONFIG, true);
+    isOversea_ = OHOS::system::GetBoolParameter(IS_OVERSEA_CONFIG, false);
     warmStartProcesEnable_ = OHOS::system::GetBoolParameter(RESOURCE_WARM_START_PROCESS_ENABLE, false);
     allowedCacheNum_ = OHOS::system::GetIntParameter<int>(MAX_ALLOWED_CACHE_NUM, DEFAULT_ALLOWED_CACHE_NUM);
     if (maxProcCacheNum_ > 0) {
@@ -377,7 +379,7 @@ bool CacheProcessManager::IsAppSupportProcessCacheInnerFirst(const std::shared_p
         TAG_LOGI(AAFwkTag::APPMGR, "precheck failed");
         return false;
     }
-    if (appRecord->GetBundleName() == AAFwk::AppUtils::GetInstance().GetBrokerDelegateBundleName()) {
+    if (!isOversea_ && appRecord->GetBundleName() == AAFwk::AppUtils::GetInstance().GetBrokerDelegateBundleName()) {
         TAG_LOGD(AAFwkTag::APPMGR, "shell assistant, not support.");
         return false;
     }
