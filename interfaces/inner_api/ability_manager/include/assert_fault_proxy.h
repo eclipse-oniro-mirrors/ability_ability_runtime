@@ -16,6 +16,7 @@
 #ifndef OHOS_ABILITY_RUNTIME_ASSERT_FAULT_PROXY_H
 #define OHOS_ABILITY_RUNTIME_ASSERT_FAULT_PROXY_H
 
+#include <atomic>
 #include <chrono>
 #include <mutex>
 #include <queue>
@@ -78,6 +79,7 @@ private:
 
     private:
         AAFwk::Want want_;
+        std::atomic<bool> notifyOnDisconnect_{ true };
     };
 
 private:
@@ -85,7 +87,7 @@ private:
     void TryNotifyOneWaitingThread();
     void TryNotifyOneWaitingThreadInner();
 
-    int32_t reqeustCount_ = 0;
+    bool isBusy_ = false;
     sptr<AssertDialogConnection> GetConnection();
     sptr<AssertDialogConnection> dialogConnectionCallback_;
     std::mutex assertResultMutex_;

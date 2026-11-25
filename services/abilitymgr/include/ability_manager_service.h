@@ -3109,6 +3109,14 @@ private:
     int GetTopAbilityInner(sptr<IRemoteObject> &token, uint64_t displayId, int32_t userId);
 
     /**
+     * @brief Check the caller of StartAbilityByUIContentSession is the top ability.
+     * @param callerToken caller ability token.
+     * @param sessionInfo the information of UIExtensionContentSession.
+     * @return Returns ERR_OK if the caller is the top ability, others on failure.
+     */
+    int CheckUIContentSessionCaller(const sptr<IRemoteObject> &callerToken, const sptr<SessionInfo> &sessionInfo);
+
+    /**
      * @brief Restart app with window preserved via ISession for AppRecovery.
      * @param want The restart want (already validated by ScheduleRecoverAbility).
      * @param record The ability record of the app being recovered.

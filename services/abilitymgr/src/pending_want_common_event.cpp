@@ -23,19 +23,28 @@ PendingWantCommonEvent::PendingWantCommonEvent()
 
 void PendingWantCommonEvent::SetWantParams(const WantParams &wantParams)
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     wantParams_ = wantParams;
 }
 
 void PendingWantCommonEvent::SetFinishedReceiver(const sptr<IWantReceiver> &finishedReceiver)
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     finishedReceiver_ = finishedReceiver;
 }
 
 void PendingWantCommonEvent::OnReceiveEvent(const EventFwk::CommonEventData &data)
 {
-    if (finishedReceiver_ != nullptr) {
+    sptr<IWantReceiver> finishedReceiver = nullptr;
+    WantParams wantParams;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        finishedReceiver = finishedReceiver_;
+        wantParams = wantParams_;
+    }
+    if (finishedReceiver != nullptr) {
         TAG_LOGI(AAFwkTag::WANTAGENT, "begin");
-        finishedReceiver_->PerformReceive(data.GetWant(), data.GetCode(), "", wantParams_, false, false, 0);
+        finishedReceiver->PerformReceive(data.GetWant(), data.GetCode(), "", wantParams, false, false, 0);
     }
 }
 }  // namespace AAFwk
