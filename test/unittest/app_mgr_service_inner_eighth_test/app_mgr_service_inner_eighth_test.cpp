@@ -1614,6 +1614,84 @@ HWTEST_F(AppMgrServiceInnerEighthTest, GetChildProcessInfoEx_008, TestSize.Level
 }
 
 /**
+ * @tc.name: GetChildProcessInfoEx_009
+ * @tc.desc: test GetChildProcessInfoEx with DLP sandbox appIndex, must query sandbox bundle info
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, GetChildProcessInfoEx_009, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetChildProcessInfoEx_009 start");
+    auto &status = AAFwk::MyStatus::GetInstance();
+    const auto savedAccountResult = status.getOsAccountLocalIdFromUid_;
+    const auto savedBundleHelper = status.getBundleManagerHelper_;
+    const auto savedCloneResult = status.getCloneBundleInfo_;
+    const auto savedBundleResult = status.getBundleInfoV9_;
+    const auto savedSandboxResult = status.getSandboxBundleInfo_;
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().getOsAccountLocalIdFromUid_ = ERR_OK;
+
+    ChildProcessRequest request;
+    request.childProcessType = CHILD_PROCESS_TYPE_NATIVE;
+    std::shared_ptr<ChildProcessRecord> childProcessRecord =
+        std::make_shared<ChildProcessRecord>(0, request, nullptr);
+    std::shared_ptr<AppRunningRecord> appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
+    appRecord->SetAppIndex(1001);
+    ChildProcessInfo info;
+    AAFwk::MyStatus::GetInstance().getBundleManagerHelper_ = std::make_shared<BundleMgrHelper>();
+    AAFwk::MyStatus::GetInstance().getCloneBundleInfo_ = ERR_INVALID_VALUE;
+    AAFwk::MyStatus::GetInstance().getBundleInfoV9_ = ERR_INVALID_VALUE;
+    AAFwk::MyStatus::GetInstance().getSandboxBundleInfo_ = ERR_OK;
+    auto ret = appMgrServiceInner->GetChildProcessInfoEx(childProcessRecord, appRecord, info);
+    EXPECT_EQ(ret, ERR_OK);
+    AAFwk::MyStatus::GetInstance().getSandboxBundleInfo_ = ERR_INVALID_VALUE;
+    EXPECT_EQ(appMgrServiceInner->GetChildProcessInfoEx(childProcessRecord, appRecord, info), ERR_INVALID_VALUE);
+    status.getOsAccountLocalIdFromUid_ = savedAccountResult;
+    status.getBundleManagerHelper_ = savedBundleHelper;
+    status.getCloneBundleInfo_ = savedCloneResult;
+    status.getBundleInfoV9_ = savedBundleResult;
+    status.getSandboxBundleInfo_ = savedSandboxResult;
+    TAG_LOGI(AAFwkTag::TEST, "GetChildProcessInfoEx_009 end");
+}
+
+/**
+ * @tc.name: GetChildProcessInfoEx_010
+ * @tc.desc: test GetChildProcessInfoEx with PC tablet appIndex, keep querying clone bundle info
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerEighthTest, GetChildProcessInfoEx_010, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetChildProcessInfoEx_010 start");
+    auto &status = AAFwk::MyStatus::GetInstance();
+    const auto savedAccountResult = status.getOsAccountLocalIdFromUid_;
+    const auto savedBundleHelper = status.getBundleManagerHelper_;
+    const auto savedCloneResult = status.getCloneBundleInfo_;
+    const auto savedBundleResult = status.getBundleInfoV9_;
+    const auto savedSandboxResult = status.getSandboxBundleInfo_;
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    AAFwk::MyStatus::GetInstance().getOsAccountLocalIdFromUid_ = ERR_OK;
+
+    ChildProcessRequest request;
+    request.childProcessType = CHILD_PROCESS_TYPE_NATIVE;
+    std::shared_ptr<ChildProcessRecord> childProcessRecord =
+        std::make_shared<ChildProcessRecord>(0, request, nullptr);
+    std::shared_ptr<AppRunningRecord> appRecord = std::make_shared<AppRunningRecord>(nullptr, 0, "");
+    appRecord->SetAppIndex(10000);
+    ChildProcessInfo info;
+    AAFwk::MyStatus::GetInstance().getBundleManagerHelper_ = std::make_shared<BundleMgrHelper>();
+    AAFwk::MyStatus::GetInstance().getCloneBundleInfo_ = ERR_OK;
+    AAFwk::MyStatus::GetInstance().getSandboxBundleInfo_ = ERR_INVALID_VALUE;
+    AAFwk::MyStatus::GetInstance().getBundleInfoV9_ = ERR_INVALID_VALUE;
+    auto ret = appMgrServiceInner->GetChildProcessInfoEx(childProcessRecord, appRecord, info);
+    EXPECT_EQ(ret, ERR_OK);
+    status.getOsAccountLocalIdFromUid_ = savedAccountResult;
+    status.getBundleManagerHelper_ = savedBundleHelper;
+    status.getCloneBundleInfo_ = savedCloneResult;
+    status.getBundleInfoV9_ = savedBundleResult;
+    status.getSandboxBundleInfo_ = savedSandboxResult;
+    TAG_LOGI(AAFwkTag::TEST, "GetChildProcessInfoEx_010 end");
+}
+
+/**
  * @tc.name: AttachChildProcess_001
  * @tc.desc: test AttachChildProcess_001
  * @tc.type: FUNC

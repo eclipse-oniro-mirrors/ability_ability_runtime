@@ -11295,10 +11295,18 @@ int32_t AppMgrServiceInner::GetChildProcessInfoEx(const std::shared_ptr<ChildPro
         TAG_LOGE(AAFwkTag::APPMGR, "GetOsAccountLocalIdFromUid failed,errcode=%{public}d", errCode);
         return errCode;
     }
+    int32_t appIndex = appRecord->GetAppIndex();
     BundleInfo bundleInfo;
-    if (IN_PROCESS_CALL(bundleMgrHelper->GetCloneBundleInfo(appRecord->GetBundleName(),
-        BUNDLE_INFO_FLAG_WITH_HAP_APP_METADATA, appRecord->GetAppIndex(), bundleInfo, userId) != ERR_OK)) {
-        TAG_LOGE(AAFwkTag::APPMGR, "GetCloneBundleInfo fail");
+    int32_t bundleMgrResult = ERR_OK;
+    if (AbilityRuntime::GlobalConstant::IsDlpIndex(appIndex)) {
+        bundleMgrResult = IN_PROCESS_CALL(bundleMgrHelper->GetSandboxBundleInfo(appRecord->GetBundleName(),
+            appIndex, userId, bundleInfo));
+    } else {
+        bundleMgrResult = IN_PROCESS_CALL(bundleMgrHelper->GetCloneBundleInfo(appRecord->GetBundleName(),
+            BUNDLE_INFO_FLAG_WITH_HAP_APP_METADATA, appIndex, bundleInfo, userId));
+    }
+    if (bundleMgrResult != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "Get bundle info fail");
         return ERR_INVALID_VALUE;
     }
     info.bundleInfo = std::make_shared<BundleInfo>(bundleInfo);
