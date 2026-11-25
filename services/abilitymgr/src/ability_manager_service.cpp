@@ -125,10 +125,6 @@
 #endif
 #include "status_bar_delegate_interface.h"
 #include "string_wrapper.h"
-#include "array_wrapper.h"
-#include "remote_object_wrapper.h"
-#include "want_params_wrapper.h"
-#include "long_wrapper.h"
 #include "support_system_ability_permission.h"
 #include "time_util.h"
 #include "tokenid_kit.h"
@@ -16063,47 +16059,6 @@ void AbilityManagerService::HandleTaskIdAttribution(const std::shared_ptr<Insigh
     TAG_LOGI(AAFwkTag::INTENT, "task id attribution accepted, taskId: %{public}s", taskId.c_str());
 }
 
-int32_t AbilityManagerService::ResolveFunctionCallParam(WantParams &cleanedWantParam,
-    sptr<IRemoteObject> &callerAbilityToken, uint64_t &intentId)
-{
-    // Read and strip the caller ability token (WantParamWrapper envelope); it resolves
-    // launch attribution in StartAbilityInner (ADR-9) and must not leak into the target.
-    sptr<IRemoteObject> rawCallerToken = nullptr;
-    sptr<IInterface> tokenValue = cleanedWantParam.GetParam(AppExecFwk::INSIGHT_INTENT_CALLER_TOKEN);
-    if (tokenValue != nullptr) {
-        AAFwk::IWantParams *iwp = AAFwk::IWantParams::Query(tokenValue);
-        if (iwp != nullptr) {
-            AAFwk::WantParams tokenWrap = AAFwk::WantParamWrapper::Unbox(iwp);
-            sptr<IInterface> remoteObjVal = tokenWrap.GetParam(AAFwk::VALUE_PROPERTY);
-            AAFwk::IRemoteObjectWrap *iRemoteObj = AAFwk::IRemoteObjectWrap::Query(remoteObjVal);
-            rawCallerToken = AAFwk::RemoteObjectWrap::UnBox(iRemoteObj);
-        }
-    }
-    cleanedWantParam.Remove(AppExecFwk::INSIGHT_INTENT_CALLER_TOKEN);
-
-    // Read and strip the pre-registered record id (boxed Long in wantParam); 0 means
-    // the system path / no pre-registration, so a fresh record is allocated.
-    intentId = 0;
-    sptr<IInterface> recordIdValue = cleanedWantParam.GetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_RECORD_ID);
-    if (recordIdValue != nullptr) {
-        AAFwk::ILong *iLong = AAFwk::ILong::Query(recordIdValue);
-        if (iLong != nullptr) {
-            intentId = static_cast<uint64_t>(AAFwk::Long::Unbox64(iLong));
-        }
-    }
-    cleanedWantParam.Remove(AppExecFwk::INSIGHT_INTENT_EXECUTE_RECORD_ID);
-
-    // Resolve the caller token ownership (ADR-10): system / SA may pass or omit it,
-    // third-party callers must pass their own token or be rejected.
-    callerAbilityToken = nullptr;
-    int32_t resolveRet = ResolveCallerAbilityToken(rawCallerToken, callerAbilityToken);
-    if (resolveRet != ERR_OK) {
-        TAG_LOGE(AAFwkTag::INTENT, "ResolveCallerAbilityToken failed: %{public}d", resolveRet);
-        return resolveRet;
-    }
-    return ERR_OK;
-}
-
 int32_t AbilityManagerService::DispatchFunctionCallExecute(uint64_t key,
     const sptr<IRemoteObject> &callerToken, const std::string &callerBundleName,
     const sptr<IRemoteObject> &callerAbilityToken,
@@ -16126,32 +16081,32 @@ int32_t AbilityManagerService::DispatchFunctionCallExecute(uint64_t key,
 }
 
 int32_t AbilityManagerService::ExecuteIntentByFunctionCall(uint64_t key,
-    const sptr<IRemoteObject> &callerToken, const std::string &bundleName,
-    const std::string &intentName, const WantParams &wantParam)
+    const sptr<IRemoteObject> &callerToken, const FunctionCallExecuteParam &funcCallParam)
 {
-    WantParams cleanedWantParam = wantParam;
+    WantParams cleanedWantParam = funcCallParam.wantParam;
     sptr<IRemoteObject> callerAbilityToken = nullptr;
-    uint64_t intentId = 0;
-    int32_t resolveRet = ResolveFunctionCallParam(cleanedWantParam, callerAbilityToken, intentId);
+    int32_t resolveRet = ResolveCallerAbilityToken(funcCallParam.callerAbilityToken, callerAbilityToken);
     if (resolveRet != ERR_OK) {
         return resolveRet;
     }
+    uint64_t intentId = static_cast<uint64_t>(funcCallParam.intentId);
 
     const auto toolCallId = cleanedWantParam.GetStringParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID);
     const auto taskId = cleanedWantParam.GetStringParam(AppExecFwk::INSIGHT_INTENT_TASK_ID);
     TAG_LOGI(AAFwkTag::INTENT, "called, bundleName: %{public}s, intentName: %{public}s, "
         "toolCallId: %{public}s, taskId: %{public}s, wantParam: %{public}s",
-        bundleName.c_str(), intentName.c_str(), toolCallId.c_str(), taskId.c_str(),
+        funcCallParam.bundleName.c_str(), funcCallParam.intentName.c_str(), toolCallId.c_str(), taskId.c_str(),
         cleanedWantParam.ToString().c_str());
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
-    if (bundleName.empty() || intentName.empty()) {
+    if (funcCallParam.bundleName.empty() || funcCallParam.intentName.empty()) {
         TAG_LOGE(AAFwkTag::INTENT, "invalid params, bundleName or intentName empty");
         return ERR_INVALID_VALUE;
     }
 
     int32_t callerUserId = AbilityRuntime::UserController::GetInstance().GetCallerUserId();
     AbilityRuntime::InsightIntentParamParser::ParseResult parseResult;
-    int32_t ret = PrepareFunctionCallParam(bundleName, intentName, cleanedWantParam, callerUserId, parseResult);
+    int32_t ret = PrepareFunctionCallParam(funcCallParam.bundleName, funcCallParam.intentName,
+        cleanedWantParam, callerUserId, parseResult);
     if (ret != ERR_OK) {
         return ret;
     }
@@ -16188,28 +16143,28 @@ int32_t AbilityManagerService::ExecuteIntentByFunctionCall(uint64_t key,
     return DispatchFunctionCallExecute(key, callerToken, callerBundleName, callerAbilityToken, parseResult);
 }
 
-std::string AbilityManagerService::GetInsightIntentCallerBundleName(uint64_t intentId)
+ErrCode AbilityManagerService::GetInsightIntentCallerBundleName(int32_t intentId, std::string &callerBundleName)
 {
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "called, intentId: %{public}" PRIu64, intentId);
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "called, intentId: %{public}d", intentId);
     // Restricted to system applications and SA: querying insight intent execution
     // state must not be exposed to arbitrary third-party processes or shell.
     if (!PermissionVerification::GetInstance()->IsSystemAppCall() &&
         !PermissionVerification::GetInstance()->IsSACall()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "non-system caller is not allowed to query");
-        return "";
+        return ERR_NOT_SYSTEM_APP;
     }
 
     auto executeManager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
     if (executeManager == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null execute manager");
-        return "";
+        return INNER_ERR;
     }
-    return executeManager->GetInsightIntentCallerBundleName(intentId);
+    return executeManager->GetInsightIntentCallerBundleName(static_cast<uint64_t>(intentId), callerBundleName);
 }
 
-int32_t AbilityManagerService::RemoveIntentRecord(uint64_t intentId)
+int32_t AbilityManagerService::RemoveIntentRecord(int32_t intentId)
 {
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "called, intentId: %{public}" PRIu64, intentId);
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "called, intentId: %{public}d", intentId);
     auto executeManager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
     if (executeManager == nullptr) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null execute manager");
@@ -16217,10 +16172,11 @@ int32_t AbilityManagerService::RemoveIntentRecord(uint64_t intentId)
     }
     // System app / SA drop any record; a third-party caller only its own pre-check
     // record (ownership enforced against the caller token id).
+    uint64_t recordKey = static_cast<uint64_t>(intentId);
     int32_t ret = (PermissionVerification::GetInstance()->IsSystemAppCall() ||
         PermissionVerification::GetInstance()->IsSACall())
-        ? executeManager->RemoveExecuteIntent(intentId)
-        : executeManager->RemoveExecuteRecordIfCaller(intentId);
+        ? executeManager->RemoveExecuteIntent(recordKey)
+        : executeManager->RemoveExecuteRecordIfCaller(recordKey);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "remove execute record failed: %{public}d", ret);
     }
@@ -16228,7 +16184,7 @@ int32_t AbilityManagerService::RemoveIntentRecord(uint64_t intentId)
 }
 
 int32_t AbilityManagerService::PreRegisterIntentRecord(const std::string &bundleName,
-    const std::string &intentName, uint64_t &intentId)
+    const std::string &intentName, int32_t &intentId)
 {
     TAG_LOGD(AAFwkTag::INTENT, "called, bundleName: %{public}s, intentName: %{public}s",
         bundleName.c_str(), intentName.c_str());
@@ -16264,12 +16220,14 @@ int32_t AbilityManagerService::PreRegisterIntentRecord(const std::string &bundle
     }
     ExecuteParam execParam;
     execParam.callerBundleName = InsightIntentGetcallerBundleName();
-    ret = executeManager->RegisterExecuteRecord(0, nullptr, bundleName, execParam, intentId);
+    uint64_t recordKey = 0;
+    ret = executeManager->RegisterExecuteRecord(0, nullptr, bundleName, execParam, recordKey);
     if (ret != ERR_OK) {
         TAG_LOGE(AAFwkTag::INTENT, "register execute record failed: %{public}d", ret);
         return ret;
     }
-    TAG_LOGI(AAFwkTag::INTENT, "pre-check passed, registered intentId: %{public}" PRIu64, intentId);
+    intentId = static_cast<int32_t>(recordKey);
+    TAG_LOGI(AAFwkTag::INTENT, "pre-check passed, registered intentId: %{public}" PRIu64, recordKey);
     return ERR_OK;
 }
 

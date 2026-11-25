@@ -491,10 +491,10 @@ public:
     MOCK_METHOD2(AttachAppDebug, int32_t(const std::string &bundleName, bool isDebugFromLocal));
     MOCK_METHOD2(DetachAppDebug, int32_t(const std::string &bundleName, bool isDebugFromLocal));
     MOCK_METHOD1(IsAbilityControllerStart, bool(const Want& want));
-    MOCK_METHOD1(GetInsightIntentCallerBundleName, std::string(uint64_t intentId));
+    MOCK_METHOD2(GetInsightIntentCallerBundleName, ErrCode(int32_t intentId, std::string &callerBundleName));
     MOCK_METHOD3(PreRegisterIntentRecord, int32_t(const std::string &bundleName,
-        const std::string &intentName, uint64_t &intentId));
-    MOCK_METHOD1(RemoveIntentRecord, int32_t(uint64_t intentId));
+        const std::string &intentName, int32_t &intentId));
+    MOCK_METHOD1(RemoveIntentRecord, int32_t(int32_t intentId));
     MOCK_METHOD3(ExecuteIntent, int32_t(uint64_t key, const sptr<IRemoteObject> &callerToken,
         const InsightIntentExecuteParam &param));
     MOCK_METHOD4(ExecuteUIAbilityForegroundIntentWithSpecifyTokenId,

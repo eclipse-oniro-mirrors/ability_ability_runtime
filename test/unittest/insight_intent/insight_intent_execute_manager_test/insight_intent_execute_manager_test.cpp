@@ -581,7 +581,9 @@ HWTEST_F(InsightIntentExecuteManagerTest, RegisterExecuteRecord_0100, TestSize.L
     EXPECT_NE(intentId, 0);
 
     // A live PENDING_CONSENT record exposes its caller bundle.
-    EXPECT_EQ(manager->GetInsightIntentCallerBundleName(intentId), "caller.bundle");
+    std::string callerBundleName;
+    EXPECT_EQ(manager->GetInsightIntentCallerBundleName(intentId, callerBundleName), ERR_OK);
+    EXPECT_EQ(callerBundleName, "caller.bundle");
 
     TAG_LOGI(AAFwkTag::TEST, "RegisterExecuteRecord_0100 end.");
 }
@@ -614,7 +616,9 @@ HWTEST_F(InsightIntentExecuteManagerTest, AcquireExecuteRecord_0100, TestSize.Le
     // Promote PENDING_CONSENT -> EXECUTING.
     auto ret = manager->AcquireExecuteRecord(1005, callerToken, paramPtr, execParam);
     EXPECT_EQ(ret, ERR_OK);
-    EXPECT_EQ(manager->GetInsightIntentCallerBundleName(intentId), "caller.bundle");
+    std::string callerBundleName;
+    EXPECT_EQ(manager->GetInsightIntentCallerBundleName(intentId, callerBundleName), ERR_OK);
+    EXPECT_EQ(callerBundleName, "caller.bundle");
 
     // Reuse the EXECUTING record idempotently.
     ret = manager->AcquireExecuteRecord(1005, callerToken, paramPtr, execParam);
@@ -703,7 +707,9 @@ HWTEST_F(InsightIntentExecuteManagerTest, AcquireExecuteRecord_0400, TestSize.Le
     EXPECT_EQ(manager->AcquireExecuteRecord(2001, callerToken, paramPtr, execParam), ERR_OK);
     EXPECT_NE(paramPtr->insightIntentId_, 0);
     // A fresh record starts in EXECUTING and exposes its caller bundle.
-    EXPECT_EQ(manager->GetInsightIntentCallerBundleName(paramPtr->insightIntentId_), "caller.bundle");
+    std::string callerBundleName;
+    EXPECT_EQ(manager->GetInsightIntentCallerBundleName(paramPtr->insightIntentId_, callerBundleName), ERR_OK);
+    EXPECT_EQ(callerBundleName, "caller.bundle");
 
     TAG_LOGI(AAFwkTag::TEST, "AcquireExecuteRecord_0400 end.");
 }
@@ -783,7 +789,8 @@ HWTEST_F(InsightIntentExecuteManagerTest, GetInsightIntentCallerBundleName_0100,
     auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
     ASSERT_NE(manager, nullptr);
 
-    EXPECT_EQ(manager->GetInsightIntentCallerBundleName(99999999), "");
+    std::string callerBundleName;
+    EXPECT_EQ(manager->GetInsightIntentCallerBundleName(99999999, callerBundleName), ERR_CODE_INVALID_ID);
 
     TAG_LOGI(AAFwkTag::TEST, "GetInsightIntentCallerBundleName_0100 end.");
 }
@@ -804,14 +811,16 @@ HWTEST_F(InsightIntentExecuteManagerTest, GetInsightIntentCallerBundleName_0200,
     execParam.callerBundleName = "caller.bundle";
     uint64_t intentId = 0;
     ASSERT_EQ(manager->RegisterExecuteRecord(0, nullptr, "test.bundle", execParam, intentId), ERR_OK);
-    ASSERT_EQ(manager->GetInsightIntentCallerBundleName(intentId), "caller.bundle");
+    std::string callerBundleName;
+    ASSERT_EQ(manager->GetInsightIntentCallerBundleName(intentId, callerBundleName), ERR_OK);
+    EXPECT_EQ(callerBundleName, "caller.bundle");
 
     // Move PENDING_CONSENT -> EXECUTING -> EXECUTE_DONE; stale records return empty.
     ASSERT_EQ(manager->UpdateRecordState(intentId, InsightIntentExecuteState::PENDING_CONSENT,
         InsightIntentExecuteState::EXECUTING), ERR_OK);
     ASSERT_EQ(manager->UpdateRecordState(intentId, InsightIntentExecuteState::EXECUTING,
         InsightIntentExecuteState::EXECUTE_DONE), ERR_OK);
-    EXPECT_EQ(manager->GetInsightIntentCallerBundleName(intentId), "");
+    EXPECT_EQ(manager->GetInsightIntentCallerBundleName(intentId, callerBundleName), ERR_CODE_INVALID_ID);
 
     TAG_LOGI(AAFwkTag::TEST, "GetInsightIntentCallerBundleName_0200 end.");
 }
@@ -898,10 +907,12 @@ HWTEST_F(InsightIntentExecuteManagerTest, RemoveExecuteRecordIfCaller_0100, Test
     execParam.callerBundleName = "caller.bundle";
     uint64_t intentId = 0;
     ASSERT_EQ(manager->RegisterExecuteRecord(0, nullptr, "test.bundle", execParam, intentId), ERR_OK);
-    ASSERT_EQ(manager->GetInsightIntentCallerBundleName(intentId), "caller.bundle");
+    std::string callerBundleName;
+    ASSERT_EQ(manager->GetInsightIntentCallerBundleName(intentId, callerBundleName), ERR_OK);
+    EXPECT_EQ(callerBundleName, "caller.bundle");
 
     EXPECT_EQ(manager->RemoveExecuteRecordIfCaller(intentId), ERR_OK);
-    EXPECT_EQ(manager->GetInsightIntentCallerBundleName(intentId), "");
+    EXPECT_EQ(manager->GetInsightIntentCallerBundleName(intentId, callerBundleName), ERR_CODE_INVALID_ID);
 
     TAG_LOGI(AAFwkTag::TEST, "RemoveExecuteRecordIfCaller_0100 end.");
 }

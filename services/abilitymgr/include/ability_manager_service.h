@@ -2339,14 +2339,14 @@ public:
     int32_t ExecuteIntentForDistributed(const Want &want, const std::string &srcDeviceId,
         uint64_t requestCode, uint64_t specifiedFullTokenId = 0) override;
     int32_t ExecuteIntentByFunctionCall(uint64_t key, const sptr<IRemoteObject> &callerToken,
-        const std::string &bundleName, const std::string &intentName, const WantParams &wantParam) override;
+        const FunctionCallExecuteParam &param) override;
 
-    std::string GetInsightIntentCallerBundleName(uint64_t intentId) override;
+    ErrCode GetInsightIntentCallerBundleName(int32_t intentId, std::string &callerBundleName) override;
 
-    int32_t RemoveIntentRecord(uint64_t intentId) override;
+    int32_t RemoveIntentRecord(int32_t intentId) override;
 
     int32_t PreRegisterIntentRecord(const std::string &bundleName, const std::string &intentName,
-        uint64_t &intentId) override;
+        int32_t &intentId) override;
 
     /**
      * @brief Execute UIAbility foreground intent with specified token id.
@@ -3981,10 +3981,6 @@ private:
         const WantParams &wantParam, int32_t callerUserId,
         AbilityRuntime::InsightIntentParamParser::ParseResult &parseResult);
     void HandleTaskIdAttribution(const std::shared_ptr<InsightIntentExecuteParam> &param);
-    // 从 wantParam 剥离 caller token 与预注册 record id，并解析 caller ability
-    // token (ResolveCallerAbilityToken)。仅供 ExecuteIntentByFunctionCall 调用。
-    int32_t ResolveFunctionCallParam(WantParams &cleanedWantParam,
-        sptr<IRemoteObject> &callerAbilityToken, uint64_t &intentId);
     // 组装 ExecuteIntentCommonOptions 并派发到 ExecuteIntentCommon。
     int32_t DispatchFunctionCallExecute(uint64_t key, const sptr<IRemoteObject> &callerToken,
         const std::string &callerBundleName, const sptr<IRemoteObject> &callerAbilityToken,

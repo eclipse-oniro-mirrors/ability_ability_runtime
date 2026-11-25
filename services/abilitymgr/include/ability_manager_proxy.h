@@ -1624,9 +1624,9 @@ public:
      * @return Returns ERR_OK on success, others on failure.
      */
     int32_t ExecuteIntentByFunctionCall(uint64_t key, const sptr<IRemoteObject> &callerToken,
-        const std::string &bundleName, const std::string &intentName, const WantParams &wantParam) override;
+        const FunctionCallExecuteParam &param) override;
 
-    std::string GetInsightIntentCallerBundleName(uint64_t intentId) override;
+    ErrCode GetInsightIntentCallerBundleName(int32_t intentId, std::string &callerBundleName) override;
 
     /**
      * @brief Execute intent with specified token id.

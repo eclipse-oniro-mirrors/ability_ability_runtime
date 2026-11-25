@@ -24,6 +24,7 @@
 #include "iremote_object.h"
 #include "refbase.h"
 #include "want_params.h"
+#include "function_call_execute_param.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -64,7 +65,7 @@ public:
      *         when ACCESS_PUBLIC_FUNCTION is absent.
      */
     int32_t PreRegisterIntentRecord(const std::string &bundleName, const std::string &intentName,
-        uint64_t &intentId);
+        int32_t &intentId);
 
     /**
      * @brief Remove the pre-registered insight intent execute record identified
@@ -73,7 +74,7 @@ public:
      * @param intentId The execute record id returned by PreRegisterIntentRecord.
      * @return Returns ERR_OK on success, others on failure.
      */
-    int32_t RemoveIntentRecord(uint64_t intentId);
+    int32_t RemoveIntentRecord(int32_t intentId);
 
 private:
     IntentClient() = default;
@@ -83,7 +84,7 @@ private:
     void ResetRemote(wptr<IRemoteObject> remote);
 
     int32_t SendExecuteRequest(uint32_t code, uint64_t key, const sptr<IRemoteObject> &callerToken,
-        const std::string &bundleName, const std::string &intentName, const WantParams &wantParam);
+        const AppExecFwk::FunctionCallExecuteParam &param);
 
     class DeathRecipient : public IRemoteObject::DeathRecipient {
     public:

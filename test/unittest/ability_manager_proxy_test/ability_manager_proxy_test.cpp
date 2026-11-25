@@ -4708,7 +4708,8 @@ HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_GetInsightIntentCallerBund
         .Times(1)
         .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
 
-    EXPECT_EQ(proxy_->GetInsightIntentCallerBundleName(100), "");
+    std::string callerBundleName;
+    EXPECT_EQ(proxy_->GetInsightIntentCallerBundleName(100, callerBundleName), ERR_OK);
     EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::GET_INSIGHT_INTENT_CALLER_BUNDLE_NAME), mock_->code_);
 }
 
@@ -4725,7 +4726,8 @@ HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_GetInsightIntentCallerBund
         .Times(1)
         .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeErrorSendRequest));
 
-    EXPECT_EQ(proxy_->GetInsightIntentCallerBundleName(100), "");
+    std::string callerBundleName;
+    EXPECT_EQ(proxy_->GetInsightIntentCallerBundleName(100, callerBundleName), UNKNOWN_ERROR);
     EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::GET_INSIGHT_INTENT_CALLER_BUNDLE_NAME), mock_->code_);
 }
 

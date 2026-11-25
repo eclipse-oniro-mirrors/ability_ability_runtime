@@ -57,14 +57,20 @@ private:
         }
 
         auto sharedResult = std::make_shared<std::string>();
-        NapiAsyncTask::ExecuteCallback execute = [sharedResult, instanceId]() {
-            *sharedResult = AAFwk::AbilityManagerClient::GetInstance()->GetInsightIntentCallerBundleName(
-                static_cast<uint64_t>(instanceId));
+        auto innerErrCode = std::make_shared<ErrCode>(ERR_OK);
+        NapiAsyncTask::ExecuteCallback execute = [sharedResult, innerErrCode, instanceId]() {
+            *innerErrCode = AAFwk::AbilityManagerClient::GetInstance()->GetInsightIntentCallerBundleName(
+                instanceId, *sharedResult);
         };
 
-        NapiAsyncTask::CompleteCallback complete = [sharedResult](napi_env env, NapiAsyncTask &task, int32_t status) {
+        NapiAsyncTask::CompleteCallback complete =
+            [sharedResult, innerErrCode](napi_env env, NapiAsyncTask &task, int32_t status) {
             HandleScope handleScope(env);
-            task.Resolve(env, CreateJsValue(env, *sharedResult));
+            if (*innerErrCode == ERR_OK) {
+                task.Resolve(env, CreateJsValue(env, *sharedResult));
+            } else {
+                task.Reject(env, CreateJsErrorByNativeErr(env, *innerErrCode));
+            }
         };
 
         napi_value lastParam = (info.argc > ARGC_ONE) ? info.argv[ARGC_ONE] : nullptr;

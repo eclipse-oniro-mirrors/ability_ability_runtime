@@ -52,7 +52,15 @@ public:
                 EtsErrorUtil::CreateErrorByNativeErr(env, AAFwk::INNER_ERR), nullptr);
             return;
         }
-        std::string callerBundleName = amsClient->GetInsightIntentCallerBundleName(static_cast<uint64_t>(instanceId));
+        std::string callerBundleName;
+        int32_t errCode = amsClient->GetInsightIntentCallerBundleName(
+            static_cast<int32_t>(instanceId), callerBundleName);
+        if (errCode != ERR_OK) {
+            TAG_LOGE(AAFwkTag::INTENT, "get caller bundle name failed: %{public}d", errCode);
+            AppExecFwk::AsyncCallback(env, callback,
+                EtsErrorUtil::CreateErrorByNativeErr(env, errCode), nullptr);
+            return;
+        }
         AppExecFwk::AsyncCallback(env, callback,
             EtsErrorUtil::CreateError(env, AbilityErrorCode::ERROR_OK),
             reinterpret_cast<ani_object>(AppExecFwk::GetAniString(env, callerBundleName)));

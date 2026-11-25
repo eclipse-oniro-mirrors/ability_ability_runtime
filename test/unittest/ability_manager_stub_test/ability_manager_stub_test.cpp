@@ -6610,10 +6610,10 @@ public:
     bool called = false;
 
     int32_t ExecuteIntentByFunctionCall(uint64_t key, const sptr<IRemoteObject> &callerToken,
-        const std::string &bundleName, const std::string &intentName, const WantParams &wantParam) override
+        const AppExecFwk::FunctionCallExecuteParam &param) override
     {
         called = true;
-        capturedWantParam = wantParam;
+        capturedWantParam = param.wantParam;
         return 0;
     }
 };
@@ -6632,10 +6632,10 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_ExecuteIntentByFunctionCall_
     sptr<IRemoteObject> token = sptr<AppExecFwk::MockAbilityToken>(new (std::nothrow) AppExecFwk::MockAbilityToken());
     data.WriteUint64(1);
     data.WriteRemoteObject(token);
-    data.WriteString("test.bundleName");
-    data.WriteString("PlayMusic");
-    WantParams wantParam;
-    data.WriteParcelable(&wantParam);
+    AppExecFwk::FunctionCallExecuteParam funcParam;
+    funcParam.bundleName = "test.bundleName";
+    funcParam.intentName = "PlayMusic";
+    data.WriteParcelable(&funcParam);
     auto res = stub->ExecuteIntentByFunctionCallInner(data, reply);
     EXPECT_EQ(res, NO_ERROR);
     EXPECT_TRUE(capture->called);
@@ -6656,12 +6656,12 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_ExecuteIntentByFunctionCall_
     sptr<IRemoteObject> token = sptr<AppExecFwk::MockAbilityToken>(new (std::nothrow) AppExecFwk::MockAbilityToken());
     data.WriteUint64(1);
     data.WriteRemoteObject(token);
-    data.WriteString("test.bundleName");
-    data.WriteString("PlayMusic");
-    WantParams wantParam;
-    wantParam.SetParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID, String::Box("tc-003"));
-    wantParam.SetParam("city", String::Box("Shanghai"));
-    data.WriteParcelable(&wantParam);
+    AppExecFwk::FunctionCallExecuteParam funcParam;
+    funcParam.bundleName = "test.bundleName";
+    funcParam.intentName = "PlayMusic";
+    funcParam.wantParam.SetParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID, String::Box("tc-003"));
+    funcParam.wantParam.SetParam("city", String::Box("Shanghai"));
+    data.WriteParcelable(&funcParam);
     auto res = stub->ExecuteIntentByFunctionCallInner(data, reply);
     EXPECT_EQ(res, NO_ERROR);
     EXPECT_TRUE(capture->called);
@@ -6997,12 +6997,14 @@ HWTEST_F(AbilityManagerStubTest, GetInsightIntentCallerBundleNameInner_0100, Tes
 {
     MessageParcel data;
     MessageParcel reply;
-    uint64_t intentId = 100;
-    ASSERT_TRUE(data.WriteUint64(intentId));
+    int32_t intentId = 100;
+    ASSERT_TRUE(data.WriteInt32(intentId));
 
-    EXPECT_CALL(*stub_, GetInsightIntentCallerBundleName(intentId)).WillOnce(Return("caller.bundle"));
+    EXPECT_CALL(*stub_, GetInsightIntentCallerBundleName(intentId, _))
+        .WillOnce(DoAll(SetArgReferee<1>("caller.bundle"), Return(ERR_OK)));
 
     EXPECT_EQ(stub_->GetInsightIntentCallerBundleNameInner(data, reply), NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
     EXPECT_EQ(reply.ReadString(), "caller.bundle");
 }
 
@@ -7025,7 +7027,7 @@ HWTEST_F(AbilityManagerStubTest, PreRegisterIntentRecordInner_0100, TestSize.Lev
 
     EXPECT_EQ(stub_->PreRegisterIntentRecordInner(data, reply), NO_ERROR);
     EXPECT_EQ(reply.ReadInt32(), ERR_OK);
-    EXPECT_EQ(reply.ReadUint64(), 123);
+    EXPECT_EQ(reply.ReadInt32(), 123);
 }
 
 /*
@@ -7073,8 +7075,8 @@ HWTEST_F(AbilityManagerStubTest, RemoveIntentRecordInner_0100, TestSize.Level1)
 {
     MessageParcel data;
     MessageParcel reply;
-    uint64_t intentId = 100;
-    ASSERT_TRUE(data.WriteUint64(intentId));
+    int32_t intentId = 100;
+    ASSERT_TRUE(data.WriteInt32(intentId));
 
     EXPECT_CALL(*stub_, RemoveIntentRecord(intentId)).WillOnce(Return(ERR_OK));
 
@@ -7095,15 +7097,17 @@ HWTEST_F(AbilityManagerStubTest, GetInsightIntentCallerBundleName_OnRemoteReques
     MessageParcel reply;
     MessageOption option;
     WriteInterfaceToken(data);
-    uint64_t intentId = 100;
-    ASSERT_TRUE(data.WriteUint64(intentId));
+    int32_t intentId = 100;
+    ASSERT_TRUE(data.WriteInt32(intentId));
 
-    EXPECT_CALL(*stub_, GetInsightIntentCallerBundleName(intentId)).WillOnce(Return("caller.bundle"));
+    EXPECT_CALL(*stub_, GetInsightIntentCallerBundleName(intentId, _))
+        .WillOnce(DoAll(SetArgReferee<1>("caller.bundle"), Return(ERR_OK)));
 
     int res = stub_->OnRemoteRequest(
         static_cast<uint32_t>(AbilityManagerInterfaceCode::GET_INSIGHT_INTENT_CALLER_BUNDLE_NAME),
         data, reply, option);
     EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
     EXPECT_EQ(reply.ReadString(), "caller.bundle");
 }
 
@@ -7131,7 +7135,7 @@ HWTEST_F(AbilityManagerStubTest, PreRegisterIntentRecord_OnRemoteRequest_0100, T
         data, reply, option);
     EXPECT_EQ(res, NO_ERROR);
     EXPECT_EQ(reply.ReadInt32(), ERR_OK);
-    EXPECT_EQ(reply.ReadUint64(), 123);
+    EXPECT_EQ(reply.ReadInt32(), 123);
 }
 
 /*
@@ -7147,8 +7151,8 @@ HWTEST_F(AbilityManagerStubTest, RemoveIntentRecord_OnRemoteRequest_0100, TestSi
     MessageParcel reply;
     MessageOption option;
     WriteInterfaceToken(data);
-    uint64_t intentId = 100;
-    ASSERT_TRUE(data.WriteUint64(intentId));
+    int32_t intentId = 100;
+    ASSERT_TRUE(data.WriteInt32(intentId));
 
     EXPECT_CALL(*stub_, RemoveIntentRecord(intentId)).WillOnce(Return(ERR_OK));
 

@@ -2515,10 +2515,12 @@ public:
      * @brief Query the caller bundle name of the insight intent execution
      * identified by the given intent id. Restricted to system applications / SA.
      * @param intentId The insight intent execute id to query.
-     * @return Returns the caller bundle name, or an empty string if the intent id
-     *         does not map to a live execute record.
+     * @param callerBundleName Output caller bundle name of the live record.
+     * @return Returns ERR_OK on success; ERR_CODE_INVALID_ID when the intent id
+     *         does not map to a live execute record; ERR_NOT_SYSTEM_APP for
+     *         non-system / non-SA callers; INNER_ERR on IPC/service errors.
      */
-    std::string GetInsightIntentCallerBundleName(uint64_t intentId);
+    ErrCode GetInsightIntentCallerBundleName(int32_t intentId, std::string &callerBundleName);
 
     /**
      * @brief Open a file by uri through the registered reserve-type collaborator

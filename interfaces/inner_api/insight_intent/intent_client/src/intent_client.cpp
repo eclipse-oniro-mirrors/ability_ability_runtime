@@ -24,6 +24,10 @@
 
 #include "ability_manager_errors.h"
 #include "ability_manager_ipc_interface_code.h"
+#include "insight_intent_execute_param.h"
+#include "long_wrapper.h"
+#include "remote_object_wrapper.h"
+#include "want_params_wrapper.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -79,7 +83,7 @@ void IntentClient::DeathRecipient::OnRemoteDied(const wptr<IRemoteObject> &remot
 }
 
 int32_t IntentClient::SendExecuteRequest(uint32_t code, uint64_t key, const sptr<IRemoteObject> &callerToken,
-    const std::string &bundleName, const std::string &intentName, const WantParams &wantParam)
+    const AppExecFwk::FunctionCallExecuteParam &param)
 {
     auto remote = GetAbilityManagerRemote();
     if (remote == nullptr) {
@@ -101,16 +105,8 @@ int32_t IntentClient::SendExecuteRequest(uint32_t code, uint64_t key, const sptr
         TAG_LOGE(AAFwkLogTag::INTENT, "write callerToken failed");
         return INNER_ERR;
     }
-    if (!data.WriteString(bundleName)) {
-        TAG_LOGE(AAFwkLogTag::INTENT, "write bundleName failed");
-        return INNER_ERR;
-    }
-    if (!data.WriteString(intentName)) {
-        TAG_LOGE(AAFwkLogTag::INTENT, "write intentName failed");
-        return INNER_ERR;
-    }
-    if (!data.WriteParcelable(&wantParam)) {
-        TAG_LOGE(AAFwkLogTag::INTENT, "write wantParam failed");
+    if (!data.WriteParcelable(&param)) {
+        TAG_LOGE(AAFwkLogTag::INTENT, "write param failed");
         return INNER_ERR;
     }
     int32_t err = remote->SendRequest(code, data, reply, option);
@@ -128,22 +124,55 @@ int32_t IntentClient::ExecuteIntentByFunctionCall(const ExecuteIntentParam &para
         return ERR_INVALID_VALUE;
     }
 
+    // Strip the caller ability token and the pre-registered execute record id from
+    // the business WantParams; they are system parameters and must be carried as
+    // dedicated IPC fields instead of leaking into the target Want.
+    WantParams cleanedWant = param.wantParam;
+    sptr<IRemoteObject> rawCallerToken = nullptr;
+    sptr<IInterface> tokenValue = cleanedWant.GetParam(AppExecFwk::INSIGHT_INTENT_CALLER_TOKEN);
+    if (tokenValue != nullptr) {
+        AAFwk::IWantParams *iwp = AAFwk::IWantParams::Query(tokenValue);
+        if (iwp != nullptr) {
+            AAFwk::WantParams tokenWrap = AAFwk::WantParamWrapper::Unbox(iwp);
+            sptr<IInterface> remoteObjVal = tokenWrap.GetParam(AAFwk::VALUE_PROPERTY);
+            AAFwk::IRemoteObjectWrap *iRemoteObj = AAFwk::IRemoteObjectWrap::Query(remoteObjVal);
+            rawCallerToken = AAFwk::RemoteObjectWrap::UnBox(iRemoteObj);
+        }
+    }
+    cleanedWant.Remove(AppExecFwk::INSIGHT_INTENT_CALLER_TOKEN);
+
+    int32_t intentId = 0;
+    sptr<IInterface> recordIdValue = cleanedWant.GetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_RECORD_ID);
+    if (recordIdValue != nullptr) {
+        AAFwk::ILong *iLong = AAFwk::ILong::Query(recordIdValue);
+        if (iLong != nullptr) {
+            intentId = static_cast<int32_t>(AAFwk::Long::Unbox64(iLong));
+        }
+    }
+    cleanedWant.Remove(AppExecFwk::INSIGHT_INTENT_EXECUTE_RECORD_ID);
+
+    AppExecFwk::FunctionCallExecuteParam funcParam;
+    funcParam.bundleName = param.bundleName;
+    funcParam.intentName = param.intentName;
+    funcParam.wantParam = cleanedWant;
+    funcParam.callerAbilityToken = rawCallerToken;
+    funcParam.intentId = intentId;
+
     auto hostClient = AbilityRuntime::InsightIntentHostClient::GetInstance();
     uint64_t key = hostClient->AddInsightIntentExecute(param.callback);
 
     int32_t err = SendExecuteRequest(
         static_cast<uint32_t>(AbilityManagerInterfaceCode::EXECUTE_INTENT_BY_FUNCTION_CALL),
-        key, hostClient, param.bundleName, param.intentName, param.wantParam);
+        key, hostClient, funcParam);
     if (err != ERR_OK) {
         hostClient->RemoveInsightIntentExecute(key);
     }
     return err;
 }
 
-int32_t IntentClient::RemoveIntentRecord(uint64_t intentId)
+int32_t IntentClient::RemoveIntentRecord(int32_t intentId)
 {
-    TAG_LOGD(AAFwkLogTag::INTENT, "called, intentId: %{public}llu",
-        static_cast<unsigned long long>(intentId));
+    TAG_LOGD(AAFwkLogTag::INTENT, "called, intentId: %{public}d", intentId);
     auto remote = GetAbilityManagerRemote();
     if (remote == nullptr) {
         TAG_LOGE(AAFwkLogTag::INTENT, "service not connected");
@@ -156,7 +185,7 @@ int32_t IntentClient::RemoveIntentRecord(uint64_t intentId)
         TAG_LOGE(AAFwkLogTag::INTENT, "write interface token failed");
         return INNER_ERR;
     }
-    if (!data.WriteUint64(intentId)) {
+    if (!data.WriteInt32(intentId)) {
         TAG_LOGE(AAFwkLogTag::INTENT, "write intentId failed");
         return INNER_ERR;
     }
@@ -174,7 +203,7 @@ int32_t IntentClient::RemoveIntentRecord(uint64_t intentId)
 }
 
 int32_t IntentClient::PreRegisterIntentRecord(const std::string &bundleName, const std::string &intentName,
-    uint64_t &intentId)
+    int32_t &intentId)
 {
     intentId = 0;
     auto remote = GetAbilityManagerRemote();
@@ -204,7 +233,7 @@ int32_t IntentClient::PreRegisterIntentRecord(const std::string &bundleName, con
         return err;
     }
     int32_t result = reply.ReadInt32();
-    intentId = reply.ReadUint64();
+    intentId = reply.ReadInt32();
     return result;
 }
 

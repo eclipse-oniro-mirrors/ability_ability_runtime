@@ -202,7 +202,7 @@ ErrCode IntentPreprocessor::ShowConsentDialog()
     want.SetParam(CONSENT_PARAM_TARGET_BUNDLE_NAME, std::vector<std::string> { targetBundleName_ });
     want.SetParam(CONSENT_PARAM_CALLER_APP_INDEX, 0);
     want.SetParam(CONSENT_PARAM_TARGET_APP_INDEX, std::vector<int> { 0 });
-    want.SetParam(CONSENT_PARAM_INTENT_ID, static_cast<int32_t>(intentId_));
+    want.SetParam(CONSENT_PARAM_INTENT_ID, intentId_);
 
     auto self = shared_from_this();
     Ace::ModalUIExtensionCallbacks callbacks;
@@ -270,7 +270,7 @@ void IntentPreprocessor::Settle(bool granted)
     if (settled_.exchange(true)) {
         return;
     }
-    uint64_t decidedId = granted ? intentId_ : 0;
+    int32_t decidedId = granted ? intentId_ : 0;
     if (!granted) {
         // Drop the pre-registered record so a declined or dismissed dialog does
         // not linger until eviction.

@@ -604,21 +604,25 @@ int32_t InsightIntentExecuteManager::GetCallerBundleName(uint64_t intentId, std:
     return ERR_OK;
 }
 
-std::string InsightIntentExecuteManager::GetInsightIntentCallerBundleName(uint64_t intentId) const
+int32_t InsightIntentExecuteManager::GetInsightIntentCallerBundleName(uint64_t intentId,
+    std::string &callerBundleName) const
 {
     std::lock_guard<ffrt::mutex> lock(mutex_);
     auto it = records_.find(intentId);
     if (it == records_.end() || it->second == nullptr) {
-        return "";
+        TAG_LOGE(AAFwkTag::INTENT, "record not found, id: %{public}" PRIu64, intentId);
+        return ERR_CODE_INVALID_ID;
     }
     // Only a live invocation (waiting for user consent or actively executing)
-    // exposes its caller. Stale EXECUTE_DONE / REMOTE_DIED entries return empty.
+    // exposes its caller. Stale EXECUTE_DONE / REMOTE_DIED entries are invalid.
     auto state = it->second->state;
     if (state != InsightIntentExecuteState::PENDING_CONSENT &&
         state != InsightIntentExecuteState::EXECUTING) {
-        return "";
+        TAG_LOGW(AAFwkTag::INTENT, "record not live, id: %{public}" PRIu64, intentId);
+        return ERR_CODE_INVALID_ID;
     }
-    return it->second->callerBundleName;
+    callerBundleName = it->second->callerBundleName;
+    return ERR_OK;
 }
 
 int32_t InsightIntentExecuteManager::UpdateRecordState(uint64_t intentId, InsightIntentExecuteState expected,

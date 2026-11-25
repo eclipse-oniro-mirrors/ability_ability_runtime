@@ -154,9 +154,10 @@ public:
 
     int32_t GetCallerBundleName(uint64_t intentId, std::string &callerBundleName) const;
 
-    // Returns the caller bundle name of a live (PENDING_CONSENT / EXECUTING) record,
-    // or an empty string otherwise.
-    std::string GetInsightIntentCallerBundleName(uint64_t intentId) const;
+    // Returns the caller bundle name of a live (PENDING_CONSENT / EXECUTING)
+    // record. ERR_OK on success; ERR_CODE_INVALID_ID when the id does not belong
+    // to a live insight intent execute record.
+    int32_t GetInsightIntentCallerBundleName(uint64_t intentId, std::string &callerBundleName) const;
 
     // CAS-style state transition: moves the record to `next` only when it currently
     // sits in `expected`. Returns ERR_OK when the transition happened.

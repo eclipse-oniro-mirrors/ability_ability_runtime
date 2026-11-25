@@ -45,7 +45,7 @@ public:
     // Settled with the authorization decision. When granted=true, intentId is
     // the pre-registered execute record id the caller must reuse to execute;
     // when granted=false the record has already been cleaned up and intentId is 0.
-    using DecideCallback = std::function<void(bool granted, uint64_t intentId)>;
+    using DecideCallback = std::function<void(bool granted, int32_t intentId)>;
 
     // Sole public entry. Returns synchronously whether the pre-processing
     // pipeline started (pre-registration / consent dialog mount succeeded).
@@ -73,7 +73,7 @@ private:
     std::shared_ptr<AbilityContext> context_;
     std::string targetBundleName_;
     std::string targetIntentName_;
-    uint64_t intentId_ = 0;
+    int32_t intentId_ = 0;
     int32_t sessionId_ = 0;
     std::atomic<bool> settled_{ false };
     DecideCallback onDecided_;

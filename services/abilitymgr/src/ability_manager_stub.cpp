@@ -4783,22 +4783,20 @@ int32_t AbilityManagerStub::ExecuteIntentByFunctionCallInner(MessageParcel &data
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null callerToken");
         return ERR_INVALID_VALUE;
     }
-    std::string bundleName = data.ReadString();
-    if (bundleName.empty()) {
+    std::unique_ptr<FunctionCallExecuteParam> param(data.ReadParcelable<FunctionCallExecuteParam>());
+    if (param == nullptr) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "param null");
+        return ERR_INVALID_VALUE;
+    }
+    if (param->bundleName.empty()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "bundleName empty");
         return ERR_INVALID_VALUE;
     }
-    std::string intentName = data.ReadString();
-    if (intentName.empty()) {
+    if (param->intentName.empty()) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "intentName empty");
         return ERR_INVALID_VALUE;
     }
-    std::unique_ptr<WantParams> wantParam(data.ReadParcelable<WantParams>());
-    if (wantParam == nullptr) {
-        TAG_LOGE(AAFwkTag::ABILITYMGR, "wantParam null");
-        return ERR_INVALID_VALUE;
-    }
-    auto result = ExecuteIntentByFunctionCall(key, callerToken, bundleName, intentName, *wantParam);
+    auto result = ExecuteIntentByFunctionCall(key, callerToken, *param);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");
         return ERR_INVALID_VALUE;
@@ -4808,10 +4806,15 @@ int32_t AbilityManagerStub::ExecuteIntentByFunctionCallInner(MessageParcel &data
 
 int32_t AbilityManagerStub::GetInsightIntentCallerBundleNameInner(MessageParcel &data, MessageParcel &reply)
 {
-    uint64_t intentId = data.ReadUint64();
-    std::string callerBundleName = GetInsightIntentCallerBundleName(intentId);
-    if (!reply.WriteString(callerBundleName)) {
+    int32_t intentId = data.ReadInt32();
+    std::string callerBundleName;
+    int32_t result = GetInsightIntentCallerBundleName(intentId, callerBundleName);
+    if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");
+        return ERR_INVALID_VALUE;
+    }
+    if (!reply.WriteString(callerBundleName)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write caller bundle name fail");
         return ERR_INVALID_VALUE;
     }
     return NO_ERROR;
@@ -4829,13 +4832,13 @@ int32_t AbilityManagerStub::PreRegisterIntentRecordInner(MessageParcel &data, Me
         TAG_LOGE(AAFwkTag::ABILITYMGR, "intentName empty");
         return ERR_INVALID_VALUE;
     }
-    uint64_t intentId = 0;
+    int32_t intentId = 0;
     int32_t result = PreRegisterIntentRecord(bundleName, intentName, intentId);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");
         return ERR_INVALID_VALUE;
     }
-    if (!reply.WriteUint64(intentId)) {
+    if (!reply.WriteInt32(intentId)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write intentId fail");
         return ERR_INVALID_VALUE;
     }
@@ -4844,7 +4847,7 @@ int32_t AbilityManagerStub::PreRegisterIntentRecordInner(MessageParcel &data, Me
 
 int32_t AbilityManagerStub::RemoveIntentRecordInner(MessageParcel &data, MessageParcel &reply)
 {
-    uint64_t intentId = data.ReadUint64();
+    int32_t intentId = data.ReadInt32();
     auto result = RemoveIntentRecord(intentId);
     if (!reply.WriteInt32(result)) {
         TAG_LOGE(AAFwkTag::ABILITYMGR, "write result fail");

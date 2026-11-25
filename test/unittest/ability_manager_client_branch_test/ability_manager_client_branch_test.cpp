@@ -3502,8 +3502,11 @@ HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_GetUIExtensionRoot
  */
 HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_GetInsightIntentCallerBundleName_0100, TestSize.Level1)
 {
-    EXPECT_CALL(*mock_, GetInsightIntentCallerBundleName(100)).WillOnce(Return("caller.bundle"));
-    EXPECT_EQ(client_->GetInsightIntentCallerBundleName(100), "caller.bundle");
+    EXPECT_CALL(*mock_, GetInsightIntentCallerBundleName(100, _))
+        .WillOnce(DoAll(SetArgReferee<1>("caller.bundle"), Return(ERR_OK)));
+    std::string callerBundleName;
+    EXPECT_EQ(client_->GetInsightIntentCallerBundleName(100, callerBundleName), ERR_OK);
+    EXPECT_EQ(callerBundleName, "caller.bundle");
 }
 
 }  // namespace AAFwk
