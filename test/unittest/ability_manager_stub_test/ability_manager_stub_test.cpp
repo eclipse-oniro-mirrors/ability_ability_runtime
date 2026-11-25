@@ -1022,6 +1022,9 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_GetElementNameByTokenInner_0
 {
     MessageParcel data;
     MessageParcel reply;
+    sptr<IRemoteObject> token = sptr<AppExecFwk::MockAbilityToken>(new (std::nothrow) AppExecFwk::MockAbilityToken());
+    data.WriteRemoteObject(token);
+    data.WriteBool(false);
     auto res = stub_->GetElementNameByTokenInner(data, reply);
     EXPECT_EQ(res, NO_ERROR);
 }
