@@ -74,6 +74,13 @@ public:
     bool hasSubCommand = false;
     std::map<std::string, SubCommandInfo> subcommands;
     bool isLockScreenExecutionAllowed = false;  // Allow execution when screen is locked
+    // Declares whether the tool supports cooperative cancellation (cancelSession). The
+    // declaration is independent of the subcommand-level ones: it only governs sessions
+    // without a subcommand dimension (execTool invoked on the tool itself), and an
+    // undeclared subcommand stays false rather than inheriting this value. Serialized at
+    // the tail of the Parcel stream (after supportedDevices) for IPC compatibility
+    // (OH-ARCH-IPC-SAF).
+    bool cancelable = false;
     // Internal visibility of the tool: only the exact string "public" opens it to
     // third-party queries; default and fallback value is "private". Not exposed to NAPI.
     std::string visibility = "private";

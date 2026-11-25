@@ -4164,5 +4164,636 @@ HWTEST_F(ToolInfoTest, ToolsRawData_RoundTrip_0100, TestSize.Level1)
     GTEST_LOG_(INFO) << "ToolsRawData_RoundTrip_0100 end";
 }
 
+// ==================== ToolInfo Cancelable Tests (REQ 20261029538734) ====================
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_Cancelable_0100
+ * @tc.desc: TC-1 (AC-2.1/R-1) Only subcommand-level declarations: a declared subcommand
+ *           keeps its own value, an undeclared one stays false (independent semantics,
+ *           no tool-level inheritance)
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_Cancelable_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Cancelable_0100 start";
+
+    // Tool level is not declared; run declares true; version declares nothing.
+    nlohmann::json json = R"({
+        "name": "ohos-cancel_subonly",
+        "version": "1.0.0",
+        "description": "Only subcommands declare cancellation",
+        "executablePath": "/bin/cancel_subonly",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "hasSubCommand": true,
+        "subcommands": {
+            "run": {
+                "description": "Cancelable run",
+                "requirePermissions": [],
+                "inputSchema": {"type": "object"},
+                "outputSchema": {"type": "string"},
+                "cancelable": true
+            },
+            "version": {
+                "description": "Undeclared subcommand",
+                "requirePermissions": [],
+                "inputSchema": {"type": "object"},
+                "outputSchema": {"type": "string"}
+            }
+        }
+    })"_json;
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(json, tool);
+
+    EXPECT_TRUE(result);
+    EXPECT_FALSE(tool.cancelable);
+    ASSERT_EQ(tool.subcommands.size(), 2u);
+    EXPECT_TRUE(tool.subcommands["run"].cancelable);
+    EXPECT_FALSE(tool.subcommands["version"].cancelable);
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Cancelable_0100 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_Cancelable_0200
+ * @tc.desc: TC-2 (AC-2.1/ADR-1) Only the tool level is declared true; undeclared subcommands
+ *           stay false (declarations are independent, no backfill from the tool level)
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_Cancelable_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Cancelable_0200 start";
+
+    nlohmann::json json = R"({
+        "name": "ohos-cancel_toolonly",
+        "version": "1.0.0",
+        "description": "Only the tool declares cancellation",
+        "executablePath": "/bin/cancel_toolonly",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "hasSubCommand": true,
+        "cancelable": true,
+        "subcommands": {
+            "run": {
+                "description": "Undeclared, does not inherit the tool level",
+                "requirePermissions": [],
+                "inputSchema": {"type": "object"},
+                "outputSchema": {"type": "string"}
+            },
+            "install": {
+                "description": "Undeclared, does not inherit the tool level",
+                "requirePermissions": [],
+                "inputSchema": {"type": "object"},
+                "outputSchema": {"type": "string"}
+            }
+        }
+    })"_json;
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(json, tool);
+
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(tool.cancelable);
+    ASSERT_EQ(tool.subcommands.size(), 2u);
+    EXPECT_FALSE(tool.subcommands["run"].cancelable);
+    EXPECT_FALSE(tool.subcommands["install"].cancelable);
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Cancelable_0200 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_Cancelable_0300
+ * @tc.desc: TC-3 (AC-2.1/spec rule 6) Declarations are independent of a tool-level true: a
+ *           subcommand explicit false stays false, an undeclared sibling stays false too
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_Cancelable_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Cancelable_0300 start";
+
+    nlohmann::json json = R"({
+        "name": "ohos-cancel_overload",
+        "version": "1.0.0",
+        "description": "Subcommand declarations independent of the tool level",
+        "executablePath": "/bin/cancel_overload",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "hasSubCommand": true,
+        "cancelable": true,
+        "subcommands": {
+            "run": {
+                "description": "Explicitly not cancelable",
+                "requirePermissions": [],
+                "inputSchema": {"type": "object"},
+                "outputSchema": {"type": "string"},
+                "cancelable": false
+            },
+            "version": {
+                "description": "Undeclared, does not inherit the tool level",
+                "requirePermissions": [],
+                "inputSchema": {"type": "object"},
+                "outputSchema": {"type": "string"}
+            }
+        }
+    })"_json;
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(json, tool);
+
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(tool.cancelable);
+    ASSERT_EQ(tool.subcommands.size(), 2u);
+    EXPECT_FALSE(tool.subcommands["run"].cancelable);
+    EXPECT_FALSE(tool.subcommands["version"].cancelable);
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Cancelable_0300 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_Cancelable_0400
+ * @tc.desc: TC-4 (AC-2.1/ADR-1) A subcommand-level explicit true stands on its own next to a
+ *           tool-level explicit false; an undeclared sibling stays false (no inheritance)
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_Cancelable_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Cancelable_0400 start";
+
+    nlohmann::json json = R"({
+        "name": "ohos-cancel_subwins",
+        "version": "1.0.0",
+        "description": "Subcommand explicit true overrides a false tool level",
+        "executablePath": "/bin/cancel_subwins",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "hasSubCommand": true,
+        "cancelable": false,
+        "subcommands": {
+            "run": {
+                "description": "Explicitly cancelable",
+                "requirePermissions": [],
+                "inputSchema": {"type": "object"},
+                "outputSchema": {"type": "string"},
+                "cancelable": true
+            },
+            "install": {
+                "description": "Undeclared, stays false",
+                "requirePermissions": [],
+                "inputSchema": {"type": "object"},
+                "outputSchema": {"type": "string"}
+            }
+        }
+    })"_json;
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(json, tool);
+
+    EXPECT_TRUE(result);
+    EXPECT_FALSE(tool.cancelable);
+    ASSERT_EQ(tool.subcommands.size(), 2u);
+    EXPECT_TRUE(tool.subcommands["run"].cancelable);
+    EXPECT_FALSE(tool.subcommands["install"].cancelable);
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Cancelable_0400 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_Cancelable_0500
+ * @tc.desc: TC-5 (R-2) ParseFromJson fails on a non-boolean tool-level cancelable (the
+ *           build-time whitelist is the first gate, parsing is the second)
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_Cancelable_0500, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Cancelable_0500 start";
+
+    auto baseJson = R"({
+        "name": "ohos-cancel_badtool",
+        "version": "1.0.0",
+        "description": "Tool with a mistyped tool-level cancelable",
+        "executablePath": "/bin/cancel_badtool",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {}
+    })"_json;
+
+    ToolInfo tool;
+
+    auto stringJson = baseJson;
+    stringJson["cancelable"] = "true";
+    EXPECT_FALSE(ToolInfo::ParseFromJson(stringJson, tool));
+
+    auto numberJson = baseJson;
+    numberJson["cancelable"] = 1;
+    EXPECT_FALSE(ToolInfo::ParseFromJson(numberJson, tool));
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Cancelable_0500 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_Cancelable_0600
+ * @tc.desc: TC-6 (R-2) ParseFromJson fails on a non-boolean subcommand-level cancelable;
+ *           the failure propagates through the ToolInfo-level subcommand parse loop
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_Cancelable_0600, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Cancelable_0600 start";
+
+    auto baseJson = R"({
+        "name": "ohos-cancel_badsub",
+        "version": "1.0.0",
+        "description": "Tool with a mistyped subcommand-level cancelable",
+        "executablePath": "/bin/cancel_badsub",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "hasSubCommand": true,
+        "subcommands": {
+            "run": {
+                "description": "Subcommand with a mistyped value",
+                "requirePermissions": [],
+                "inputSchema": {"type": "object"},
+                "outputSchema": {"type": "string"},
+                "cancelable": "yes"
+            }
+        }
+    })"_json;
+
+    ToolInfo tool;
+    EXPECT_FALSE(ToolInfo::ParseFromJson(baseJson, tool));
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Cancelable_0600 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_Cancelable_0700
+ * @tc.desc: TC-7 (AC-1.2/INV-2) Default false when the field is missing everywhere (config.json
+ *           written before the field existed); a subcommandless tool defaults to false too
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_Cancelable_0700, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Cancelable_0700 start";
+
+    nlohmann::json json = R"({
+        "name": "ohos-cancel_legacy",
+        "version": "1.0.0",
+        "description": "Legacy config value without the cancellation keys",
+        "executablePath": "/bin/cancel_legacy",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "hasSubCommand": true,
+        "subcommands": {
+            "run": {
+                "description": "Legacy subcommand",
+                "requirePermissions": [],
+                "inputSchema": {"type": "object"},
+                "outputSchema": {"type": "string"}
+            }
+        }
+    })"_json;
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(json, tool);
+
+    EXPECT_TRUE(result);
+    EXPECT_FALSE(tool.cancelable);
+    ASSERT_EQ(tool.subcommands.size(), 1u);
+    EXPECT_FALSE(tool.subcommands["run"].cancelable);
+
+    // Subcommandless tools (no hasSubCommand section) default to false as well.
+    nlohmann::json noSubJson = R"({
+        "name": "ohos-cancel_nosub",
+        "version": "1.0.0",
+        "description": "Subcommandless legacy tool",
+        "executablePath": "/bin/cancel_nosub",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {}
+    })"_json;
+
+    ToolInfo noSubTool;
+    result = ToolInfo::ParseFromJson(noSubJson, noSubTool);
+
+    EXPECT_TRUE(result);
+    EXPECT_FALSE(noSubTool.cancelable);
+    EXPECT_TRUE(noSubTool.subcommands.empty());
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_Cancelable_0700 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseToJson_Cancelable_0100
+ * @tc.desc: TC-8 (AC-2.1/INV-2) ParseToJson emits the key unconditionally with the declared
+ *           value or the false default, and carries the subcommand declared value in the
+ *           nested subcommands JSON
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_Cancelable_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_Cancelable_0100 start";
+
+    ToolInfo declared;
+    declared.name = "ohos-cancel_jsonout";
+    declared.cancelable = true;
+    declared.hasSubCommand = true;
+    SubCommandInfo declaredSub;
+    declaredSub.description = "Declared value";
+    declaredSub.cancelable = true;
+    declared.subcommands["run"] = declaredSub;
+
+    nlohmann::json json = declared.ParseToJson();
+
+    EXPECT_TRUE(json.contains("cancelable"));
+    EXPECT_TRUE(json["cancelable"].is_boolean());
+    EXPECT_EQ(json["cancelable"], true);
+    EXPECT_TRUE(json["subcommands"]["run"].contains("cancelable"));
+    EXPECT_EQ(json["subcommands"]["run"]["cancelable"], true);
+
+    // Default values are emitted as well: the key never disappears from a stored value.
+    ToolInfo defaults;
+    defaults.name = "ohos-cancel_defaultout";
+
+    nlohmann::json defaultsJson = defaults.ParseToJson();
+
+    EXPECT_TRUE(defaultsJson.contains("cancelable"));
+    EXPECT_TRUE(defaultsJson["cancelable"].is_boolean());
+    EXPECT_EQ(defaultsJson["cancelable"], false);
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_Cancelable_0100 end";
+}
+
+/**
+ * @tc.name: ToolInfo_Cancelable_RoundTripJson_0100
+ * @tc.desc: TC-9 (AC-1.2/INV-2) KVStore legacy value round trip: a stored value without the
+ *           keys parses back all-false; re-serializing adds the self-describing keys with
+ *           false, and a second parse keeps the same values (no migration, no drift)
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_Cancelable_RoundTripJson_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_Cancelable_RoundTripJson_0100 start";
+
+    // Legacy KVStore value written by an earlier version: no cancelable keys at all.
+    nlohmann::json legacyJson = R"({
+        "name": "ohos-cancel_kvlegacy",
+        "version": "1.0.0",
+        "description": "Stored by an earlier version without the cancellation keys",
+        "executablePath": "/bin/cancel_kvlegacy",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "hasSubCommand": true,
+        "subcommands": {
+            "run": {
+                "description": "Legacy subcommand",
+                "requirePermissions": [],
+                "inputSchema": {"type": "object"},
+                "outputSchema": {"type": "string"}
+            }
+        }
+    })"_json;
+
+    ToolInfo tool;
+    ASSERT_TRUE(ToolInfo::ParseFromJson(legacyJson, tool));
+    EXPECT_FALSE(tool.cancelable);
+    EXPECT_FALSE(tool.subcommands["run"].cancelable);
+
+    // Re-serializing makes the value self-describing: the new keys exist and are false.
+    nlohmann::json dumpedJson = tool.ParseToJson();
+    EXPECT_TRUE(dumpedJson.contains("cancelable"));
+    EXPECT_EQ(dumpedJson["cancelable"], false);
+    EXPECT_TRUE(dumpedJson["subcommands"]["run"].contains("cancelable"));
+    EXPECT_EQ(dumpedJson["subcommands"]["run"]["cancelable"], false);
+
+    // Parsing the new form yields the same values (stable across write/read cycles).
+    ToolInfo reparsed;
+    ASSERT_TRUE(ToolInfo::ParseFromJson(dumpedJson, reparsed));
+    EXPECT_FALSE(reparsed.cancelable);
+    EXPECT_FALSE(reparsed.subcommands["run"].cancelable);
+
+    GTEST_LOG_(INFO) << "ToolInfo_Cancelable_RoundTripJson_0100 end";
+}
+
+/**
+ * @tc.name: ToolInfo_Cancelable_RoundTripJson_0200
+ * @tc.desc: TC-10 (AC-2.1/AC-2.2) JSON round trip keeps the declared values: the undeclared
+ *           subcommand stays false next to a tool-level true (independent semantics), the
+ *           explicit false stays false
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_Cancelable_RoundTripJson_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_Cancelable_RoundTripJson_0200 start";
+
+    // Tool level true; run undeclared (stays false, no inheritance); install explicitly false.
+    nlohmann::json originalJson = R"({
+        "name": "ohos-cancel_effective",
+        "version": "1.0.0",
+        "description": "Declared-value round trip",
+        "executablePath": "/bin/cancel_effective",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "hasSubCommand": true,
+        "cancelable": true,
+        "subcommands": {
+            "run": {
+                "description": "Undeclared, does not inherit the tool level",
+                "requirePermissions": [],
+                "inputSchema": {"type": "object"},
+                "outputSchema": {"type": "string"}
+            },
+            "install": {
+                "description": "Explicitly not cancelable",
+                "requirePermissions": [],
+                "inputSchema": {"type": "object"},
+                "outputSchema": {"type": "string"},
+                "cancelable": false
+            }
+        }
+    })"_json;
+
+    ToolInfo tool;
+    ASSERT_TRUE(ToolInfo::ParseFromJson(originalJson, tool));
+    EXPECT_TRUE(tool.cancelable);
+    EXPECT_FALSE(tool.subcommands["run"].cancelable);
+    EXPECT_FALSE(tool.subcommands["install"].cancelable);
+
+    // SubCommandInfo stores the declared value, so the serialized form carries it forward.
+    nlohmann::json dumpedJson = tool.ParseToJson();
+    EXPECT_EQ(dumpedJson["cancelable"], true);
+    EXPECT_EQ(dumpedJson["subcommands"]["run"]["cancelable"], false);
+    EXPECT_EQ(dumpedJson["subcommands"]["install"]["cancelable"], false);
+
+    ToolInfo reparsed;
+    ASSERT_TRUE(ToolInfo::ParseFromJson(dumpedJson, reparsed));
+    EXPECT_TRUE(reparsed.cancelable);
+    EXPECT_FALSE(reparsed.subcommands["run"].cancelable);
+    EXPECT_FALSE(reparsed.subcommands["install"].cancelable);
+
+    GTEST_LOG_(INFO) << "ToolInfo_Cancelable_RoundTripJson_0200 end";
+}
+
+/**
+ * @tc.name: ToolInfo_Cancelable_RoundTripParcel_0100
+ * @tc.desc: TC-11 (OH-ARCH-IPC-SAF/INV-2) Parcel round trip preserves the declared and
+ *           default values; the new field rides at the tail of the stream, symmetric in
+ *           Marshalling/Unmarshalling
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_Cancelable_RoundTripParcel_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_Cancelable_RoundTripParcel_0100 start";
+
+    // Group 1: declared values survive the parcel round trip.
+    ToolInfo declared;
+    declared.name = "ohos-cancel_parcel";
+    declared.version = "1.0.0";
+    declared.description = "Parcel round trip with declared values";
+    declared.executablePath = "/bin/cancel_parcel";
+    declared.inputSchema = "{}";
+    declared.outputSchema = "{}";
+    declared.hasSubCommand = true;
+    declared.cancelable = true;
+    SubCommandInfo cancelableSub;
+    cancelableSub.description = "Cancelable subcommand";
+    cancelableSub.inputSchema = "{}";
+    cancelableSub.outputSchema = "{}";
+    cancelableSub.cancelable = true;
+    declared.subcommands["run"] = cancelableSub;
+    SubCommandInfo notCancelableSub;
+    notCancelableSub.description = "Not cancelable subcommand";
+    notCancelableSub.inputSchema = "{}";
+    notCancelableSub.outputSchema = "{}";
+    notCancelableSub.cancelable = false;
+    declared.subcommands["install"] = notCancelableSub;
+
+    Parcel parcel;
+    ASSERT_TRUE(declared.Marshalling(parcel));
+    parcel.RewindRead(0);
+    ToolInfo *result = ToolInfo::Unmarshalling(parcel);
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->name, "ohos-cancel_parcel");
+    EXPECT_TRUE(result->cancelable);
+    ASSERT_EQ(result->subcommands.size(), 2u);
+    EXPECT_TRUE(result->subcommands["run"].cancelable);
+    EXPECT_FALSE(result->subcommands["install"].cancelable);
+    delete result;
+
+    // Group 2: default values stay false through the parcel round trip.
+    ToolInfo defaults;
+    defaults.name = "ohos-cancel_default";
+    defaults.version = "1.0.0";
+    defaults.description = "Parcel round trip with default values";
+    defaults.executablePath = "/bin/cancel_default";
+    defaults.inputSchema = "{}";
+    defaults.outputSchema = "{}";
+
+    Parcel defaultsParcel;
+    ASSERT_TRUE(defaults.Marshalling(defaultsParcel));
+    defaultsParcel.RewindRead(0);
+    ToolInfo *defaultsResult = ToolInfo::Unmarshalling(defaultsParcel);
+    ASSERT_NE(defaultsResult, nullptr);
+    EXPECT_FALSE(defaultsResult->cancelable);
+    delete defaultsResult;
+
+    GTEST_LOG_(INFO) << "ToolInfo_Cancelable_RoundTripParcel_0100 end";
+}
+
+/**
+ * @tc.name: ToolInfo_Cancelable_RoundTripRawData_0100
+ * @tc.desc: TC-12 (AC-2.1/INV-2) RawData round trip preserves the declared values (an
+ *           undeclared subcommand stays false next to a tool-level true); a legacy blob
+ *           without the keys parses back to the false defaults
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_Cancelable_RoundTripRawData_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_Cancelable_RoundTripRawData_0100 start";
+
+    // Round trip with declared values (SA packaging channel).
+    nlohmann::json originalJson = R"({
+        "name": "ohos-cancel_rawdata",
+        "version": "1.0.0",
+        "description": "RawData round trip with declared values",
+        "executablePath": "/bin/cancel_rawdata",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "hasSubCommand": true,
+        "cancelable": true,
+        "subcommands": {
+            "run": {
+                "description": "Undeclared, does not inherit the tool level",
+                "requirePermissions": [],
+                "inputSchema": {"type": "object"},
+                "outputSchema": {"type": "string"}
+            }
+        }
+    })"_json;
+
+    ToolInfo tool;
+    ASSERT_TRUE(ToolInfo::ParseFromJson(originalJson, tool));
+    EXPECT_FALSE(tool.subcommands["run"].cancelable);
+
+    std::vector<ToolInfo> original = {tool};
+    ToolsRawData rawData;
+    ToolsRawData::FromToolInfoVec(original, rawData);
+
+    std::vector<ToolInfo> parsed;
+    EXPECT_EQ(ToolsRawData::ToToolInfoVec(rawData, parsed), ERR_OK);
+    ASSERT_EQ(parsed.size(), 1u);
+    EXPECT_TRUE(parsed[0].cancelable);
+    ASSERT_EQ(parsed[0].subcommands.size(), 1u);
+    EXPECT_FALSE(parsed[0].subcommands["run"].cancelable);
+
+    // Legacy blob written by an earlier version: item JSON carries no new keys.
+    nlohmann::json legacyJson = R"({
+        "name": "ohos-cancel_rawlegacy",
+        "version": "1.0.0",
+        "description": "Legacy blob without the cancellation keys",
+        "executablePath": "/bin/cancel_rawlegacy",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "hasSubCommand": true,
+        "subcommands": {
+            "run": {
+                "description": "Legacy subcommand",
+                "requirePermissions": [],
+                "inputSchema": {"type": "object"},
+                "outputSchema": {"type": "string"}
+            }
+        }
+    })"_json;
+    std::string dumped = legacyJson.dump();
+    uint32_t count = 1;
+    uint32_t strLen = static_cast<uint32_t>(dumped.length());
+    std::string blob(reinterpret_cast<const char *>(&count), sizeof(count));
+    blob.append(reinterpret_cast<const char *>(&strLen), sizeof(strLen));
+    blob.append(dumped);
+    ToolsRawData legacyRawData;
+    legacyRawData.ownedData = blob;
+    legacyRawData.data = legacyRawData.ownedData.data();
+    legacyRawData.size = legacyRawData.ownedData.size();
+    legacyRawData.isMalloc = false;
+    std::vector<ToolInfo> legacyTools;
+    EXPECT_EQ(ToolsRawData::ToToolInfoVec(legacyRawData, legacyTools), ERR_OK);
+    ASSERT_EQ(legacyTools.size(), 1u);
+    EXPECT_FALSE(legacyTools[0].cancelable);
+    ASSERT_EQ(legacyTools[0].subcommands.size(), 1u);
+    EXPECT_FALSE(legacyTools[0].subcommands["run"].cancelable);
+
+    GTEST_LOG_(INFO) << "ToolInfo_Cancelable_RoundTripRawData_0100 end";
+}
+
 } // namespace CliTool
 } // namespace OHOS

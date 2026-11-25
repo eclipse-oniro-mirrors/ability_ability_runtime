@@ -41,6 +41,7 @@ public:
     static int32_t retSubscribeSession;
     static int32_t retUnsubscribeSession;
     static int32_t retClearSession;
+    static int32_t retCancelSession;
     static int32_t retQuerySession;
     static int32_t retSendMessage;
     static int32_t retBatchQueryPermission;
@@ -67,6 +68,9 @@ public:
     static std::string lastEventId;
     static std::string lastSubscriptionId;
     static std::string lastTaskId;
+    // CancelSession forward capture (REQ 20261029538734).
+    static std::string lastCancelSessionId;
+    static int32_t lastCancelSignal;
     static std::vector<ToolInfo> toolInfos;
     static std::vector<FunctionInfo> functionInfos;
     static std::vector<ToolSummary> summaries;

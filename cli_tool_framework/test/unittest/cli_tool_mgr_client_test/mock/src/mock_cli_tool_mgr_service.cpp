@@ -30,6 +30,7 @@ int32_t CliToolMgrClientFlag::retExecCmd = ERR_OK;
 int32_t CliToolMgrClientFlag::retSubscribeSession = ERR_OK;
 int32_t CliToolMgrClientFlag::retUnsubscribeSession = ERR_OK;
 int32_t CliToolMgrClientFlag::retClearSession = ERR_OK;
+int32_t CliToolMgrClientFlag::retCancelSession = ERR_OK;
 int32_t CliToolMgrClientFlag::retQuerySession = ERR_OK;
 int32_t CliToolMgrClientFlag::retSendMessage = ERR_OK;
 int32_t CliToolMgrClientFlag::retBatchQueryPermission = ERR_OK;
@@ -56,6 +57,8 @@ sptr<IRemoteObject> CliToolMgrClientFlag::cliToolMgr = nullptr;
 std::string CliToolMgrClientFlag::lastEventId;
 std::string CliToolMgrClientFlag::lastSubscriptionId;
 std::string CliToolMgrClientFlag::lastTaskId;
+std::string CliToolMgrClientFlag::lastCancelSessionId;
+int32_t CliToolMgrClientFlag::lastCancelSignal = 0;
 std::vector<ToolInfo> CliToolMgrClientFlag::toolInfos;
 std::vector<FunctionInfo> CliToolMgrClientFlag::functionInfos;
 std::vector<ToolSummary> CliToolMgrClientFlag::summaries;
@@ -83,6 +86,7 @@ void CliToolMgrClientFlag::Reset()
     retSubscribeSession = ERR_OK;
     retUnsubscribeSession = ERR_OK;
     retClearSession = ERR_OK;
+    retCancelSession = ERR_OK;
     retQuerySession = ERR_OK;
     retSendMessage = ERR_OK;
     retBatchQueryPermission = ERR_OK;
@@ -109,6 +113,8 @@ void CliToolMgrClientFlag::Reset()
     lastEventId.clear();
     lastSubscriptionId.clear();
     lastTaskId.clear();
+    lastCancelSessionId.clear();
+    lastCancelSignal = 0;
     toolInfos.clear();
     functionInfos.clear();
     summaries.clear();
@@ -257,6 +263,13 @@ int32_t MockCliToolMgrService::UnsubscribeSession(const std::string &, const std
 int32_t MockCliToolMgrService::ClearSession(const std::string &)
 {
     return CliToolMgrClientFlag::retClearSession;
+}
+
+int32_t MockCliToolMgrService::CancelSession(const std::string &sessionId, int32_t signal)
+{
+    CliToolMgrClientFlag::lastCancelSessionId = sessionId;
+    CliToolMgrClientFlag::lastCancelSignal = signal;
+    return CliToolMgrClientFlag::retCancelSession;
 }
 
 int32_t MockCliToolMgrService::QuerySession(const std::string &, CliSessionInfo &session)

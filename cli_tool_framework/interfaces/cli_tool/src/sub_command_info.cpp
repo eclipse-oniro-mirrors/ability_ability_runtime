@@ -46,6 +46,12 @@ bool SubCommandInfo::Marshalling(Parcel &parcel) const
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write eventSchemas");
         return false;
     }
+    // New field appended at the tail of the parcel stream for IPC compatibility
+    // (OH-ARCH-IPC-SAF): existing field order stays untouched.
+    if (!parcel.WriteBool(cancelable)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write cancelable");
+        return false;
+    }
     return true;
 }
 
@@ -84,6 +90,12 @@ SubCommandInfo *SubCommandInfo::Unmarshalling(Parcel &parcel)
     }
     if (!parcel.ReadString(subCmd->eventSchemas)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read eventSchemas");
+        delete subCmd;
+        return nullptr;
+    }
+    // Symmetric with Marshalling: the new field is read at the tail of the stream.
+    if (!parcel.ReadBool(subCmd->cancelable)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read cancelable");
         delete subCmd;
         return nullptr;
     }
@@ -162,6 +174,16 @@ bool SubCommandInfo::ParseFromJson(const nlohmann::json &json, SubCommandInfo &s
         subCmd.eventSchemas = json["eventSchemas"].dump();
     }
 
+    // cancelable is optional and defaults to false; the declaration is this subcommand's
+    // own and never inherits the tool-level flag (independent semantics, no backfill).
+    if (json.contains("cancelable")) {
+        if (!json["cancelable"].is_boolean()) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: cancelable is not a boolean");
+            return false;
+        }
+        subCmd.cancelable = json["cancelable"];
+    }
+
     return true;
 }
 
@@ -196,6 +218,9 @@ nlohmann::json SubCommandInfo::ParseToJson() const
             json["eventSchemas"] = eventSchemas;
         }
     }
+    // The key is written unconditionally so a KVStore value stays self-describing: legacy
+    // data without this key parses back with the false default, no migration needed.
+    json["cancelable"] = cancelable;
 
     return json;
 }

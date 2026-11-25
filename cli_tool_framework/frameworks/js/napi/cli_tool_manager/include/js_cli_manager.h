@@ -78,6 +78,15 @@ public:
     static napi_value ClearSession(napi_env env, napi_callback_info info);
 
     /**
+     * @brief Native method for cancel session by session id.
+     *
+     * @param env The N-API environment.
+     * @param info The N-API callback info.
+     * @return Returns the N-API value.
+     */
+    static napi_value CancelSession(napi_env env, napi_callback_info info);
+
+    /**
      * @brief Native method for query session by session id.
      *
      * @param env The N-API environment.
@@ -168,6 +177,16 @@ private:
     napi_value OnClearSession(napi_env env, size_t argc, napi_value *argv);
 
     /**
+     * @brief Implementation for cancel session by session id.
+     *
+     * @param env The N-API environment.
+     * @param argc The argument count.
+     * @param argv The argument values.
+     * @return Returns the N-API value.
+     */
+    napi_value OnCancelSession(napi_env env, size_t argc, napi_value *argv);
+
+    /**
      * @brief Implementation for query session by session id.
      *
      * @param env The N-API environment.
@@ -221,6 +240,14 @@ private:
 
     napi_value OnUnregisterCliHook(napi_env env, size_t argc, napi_value *argv);
 };
+
+/**
+ * @brief Create JavaScript CancellationSignal enum object.
+ *
+ * @param env The N-API environment.
+ * @return Returns the JavaScript object representing CancellationSignal enum.
+ */
+napi_value CreateJsCancellationSignal(napi_env env);
 
 /**
  * @brief Initialize the JSCliManager module.

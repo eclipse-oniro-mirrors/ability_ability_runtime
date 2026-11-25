@@ -1942,5 +1942,177 @@ HWTEST_F(SubCommandInfoTest, SubCommandInfo_Validate_1800, TestSize.Level1)
     GTEST_LOG_(INFO) << "SubCommandInfo_Validate_1800 end";
 }
 
+// ==================== SubCommandInfo Cancelable Tests (REQ 20261029538734) ====================
+
+/**
+ * @tc.name: SubCommandInfo_ParseFromJson_Cancelable_0100
+ * @tc.desc: TC-1 (AC-2.1/R-1) ParseFromJson reads an explicit subcommand-level declaration,
+ *           both true and false
+ * @tc.type: FUNC
+ */
+HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseFromJson_Cancelable_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseFromJson_Cancelable_0100 start";
+
+    nlohmann::json declaredTrue = R"({
+        "description": "Subcommand declaring cancellation support",
+        "requirePermissions": [],
+        "inputSchema": {"type": "object"},
+        "outputSchema": {"type": "string"},
+        "cancelable": true
+    })"_json;
+
+    SubCommandInfo supportsSubCmd;
+    bool result = SubCommandInfo::ParseFromJson(declaredTrue, supportsSubCmd);
+
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(supportsSubCmd.cancelable);
+
+    nlohmann::json declaredFalse = R"({
+        "description": "Subcommand explicitly rejecting cancellation",
+        "requirePermissions": [],
+        "inputSchema": {"type": "object"},
+        "outputSchema": {"type": "string"},
+        "cancelable": false
+    })"_json;
+
+    SubCommandInfo rejectsSubCmd;
+    result = SubCommandInfo::ParseFromJson(declaredFalse, rejectsSubCmd);
+
+    EXPECT_TRUE(result);
+    EXPECT_FALSE(rejectsSubCmd.cancelable);
+
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseFromJson_Cancelable_0100 end";
+}
+
+/**
+ * @tc.name: SubCommandInfo_ParseFromJson_Cancelable_0200
+ * @tc.desc: TC-2 (AC-2.2/INV-2) ParseFromJson without cancelable keeps the false default;
+ *           the missing key is not an error for a legacy config value
+ * @tc.type: FUNC
+ */
+HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseFromJson_Cancelable_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseFromJson_Cancelable_0200 start";
+
+    // Legacy value form: a config.json written before the field existed carries no key.
+    nlohmann::json legacyJson = R"({
+        "description": "Legacy subcommand without cancelable",
+        "requirePermissions": [],
+        "inputSchema": {"type": "object"},
+        "outputSchema": {"type": "string"}
+    })"_json;
+
+    SubCommandInfo subCmd;
+    EXPECT_FALSE(subCmd.cancelable);
+    bool result = SubCommandInfo::ParseFromJson(legacyJson, subCmd);
+
+    EXPECT_TRUE(result);
+    EXPECT_FALSE(subCmd.cancelable);
+
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseFromJson_Cancelable_0200 end";
+}
+
+/**
+ * @tc.name: SubCommandInfo_ParseFromJson_Cancelable_0300
+ * @tc.desc: TC-3 (R-2) ParseFromJson rejects a non-boolean cancelable (only boolean values
+ *           are accepted; the build-time whitelist is the first gate, parsing is the second)
+ * @tc.type: FUNC
+ */
+HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseFromJson_Cancelable_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseFromJson_Cancelable_0300 start";
+
+    auto baseJson = R"({
+        "description": "Subcommand with mistyped cancelable",
+        "requirePermissions": [],
+        "inputSchema": {"type": "object"},
+        "outputSchema": {"type": "string"}
+    })"_json;
+
+    SubCommandInfo subCmd;
+
+    auto stringJson = baseJson;
+    stringJson["cancelable"] = "true";
+    EXPECT_FALSE(SubCommandInfo::ParseFromJson(stringJson, subCmd));
+
+    auto numberJson = baseJson;
+    numberJson["cancelable"] = 1;
+    EXPECT_FALSE(SubCommandInfo::ParseFromJson(numberJson, subCmd));
+
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseFromJson_Cancelable_0300 end";
+}
+
+/**
+ * @tc.name: SubCommandInfo_ParseToJson_Cancelable_0100
+ * @tc.desc: TC-4 (AC-2.1/INV-2) ParseToJson emits the cancelable key unconditionally, with
+ *           the declared value or the false default, so a stored value stays self-describing
+ * @tc.type: FUNC
+ */
+HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseToJson_Cancelable_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseToJson_Cancelable_0100 start";
+
+    SubCommandInfo declared;
+    declared.description = "Declared subcommand";
+    declared.cancelable = true;
+
+    nlohmann::json declaredJson = declared.ParseToJson();
+
+    EXPECT_TRUE(declaredJson.contains("cancelable"));
+    EXPECT_TRUE(declaredJson["cancelable"].is_boolean());
+    EXPECT_EQ(declaredJson["cancelable"], true);
+
+    // Default-constructed value: the key is still present with the false default.
+    SubCommandInfo defaults;
+    EXPECT_FALSE(defaults.cancelable);
+
+    nlohmann::json defaultsJson = defaults.ParseToJson();
+
+    EXPECT_TRUE(defaultsJson.contains("cancelable"));
+    EXPECT_TRUE(defaultsJson["cancelable"].is_boolean());
+    EXPECT_EQ(defaultsJson["cancelable"], false);
+
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseToJson_Cancelable_0100 end";
+}
+
+/**
+ * @tc.name: SubCommandInfo_Cancelable_RoundTripParcel_0100
+ * @tc.desc: TC-5 (OH-ARCH-IPC-SAF/INV-2) Marshalling/Unmarshalling round trip preserves the
+ *           declared value and the false default (the new field rides at the tail of the stream)
+ * @tc.type: FUNC
+ */
+HWTEST_F(SubCommandInfoTest, SubCommandInfo_Cancelable_RoundTripParcel_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SubCommandInfo_Cancelable_RoundTripParcel_0100 start";
+
+    // Group 1: declared value survives the parcel round trip.
+    SubCommandInfo declared;
+    declared.description = "Declared subcommand";
+    declared.cancelable = true;
+
+    Parcel parcel;
+    ASSERT_TRUE(declared.Marshalling(parcel));
+    parcel.RewindRead(0);
+    SubCommandInfo *result = SubCommandInfo::Unmarshalling(parcel);
+    ASSERT_NE(result, nullptr);
+    EXPECT_TRUE(result->cancelable);
+    delete result;
+
+    // Group 2: default value stays false through the parcel round trip.
+    SubCommandInfo defaults;
+    defaults.description = "Default subcommand";
+
+    Parcel defaultsParcel;
+    ASSERT_TRUE(defaults.Marshalling(defaultsParcel));
+    defaultsParcel.RewindRead(0);
+    SubCommandInfo *defaultsResult = SubCommandInfo::Unmarshalling(defaultsParcel);
+    ASSERT_NE(defaultsResult, nullptr);
+    EXPECT_FALSE(defaultsResult->cancelable);
+    delete defaultsResult;
+
+    GTEST_LOG_(INFO) << "SubCommandInfo_Cancelable_RoundTripParcel_0100 end";
+}
+
 } // namespace CliTool
 } // namespace OHOS

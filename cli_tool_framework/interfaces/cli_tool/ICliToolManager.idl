@@ -64,4 +64,8 @@ interface ICliToolManager {
     void UnregisterFunctionHook([in] IFunctionHookInterface hook);
     void BeforeInvokeFunction([inout] InvokeFunctionParam param);
     void AfterInvokeFunction([inout] FunctionResultWrap functionResultWrap);
+    // New IPC methods MUST be appended at the tail: the IDL toolchain assigns transaction
+    // codes by declaration order, so inserting in the middle shifts every subsequent code
+    // and breaks compatibility with already-released clients/services.
+    void CancelSession([in] String sessionId, [in] int signal);
 }

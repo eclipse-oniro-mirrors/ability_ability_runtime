@@ -608,6 +608,16 @@ ErrCode CliToolMGRClient::ClearSession(const std::string &sessionId)
     return proxy->ClearSession(sessionId);
 }
 
+ErrCode CliToolMGRClient::CancelSession(const std::string &sessionId, int32_t signal)
+{
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "connect failed");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+    return proxy->CancelSession(sessionId, signal);
+}
+
 ErrCode CliToolMGRClient::QuerySession(const std::string &sessionId, CliSessionInfo &session)
 {
     auto proxy = GetCliToolMgrProxy();

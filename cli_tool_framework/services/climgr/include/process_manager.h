@@ -47,6 +47,10 @@ public:
 
     bool Killpg(pid_t pid) const;
 
+    // Direct delivery (kill(pid, sig)) to the tool process resolved as commandPid.
+    // Returns ERR_OK on success, ERR_CLI_SEND_SIGNAL otherwise.
+    int32_t SendSignalToProcess(pid_t pid, int32_t sig) const;
+
 private:
     ProcessManager() = default;
     ~ProcessManager() = default;

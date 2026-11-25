@@ -135,6 +135,21 @@ enum {
      * Result (35700023): Hook not registered. Nothing to unregister.
      */
     ERR_HOOK_NOT_REGISTERED = 35700023,
+
+    /*
+     * Result (35700024): Tool does not support cooperative cancel.
+     */
+    ERR_CLI_NOT_SUPPORT_CANCEL = 35700024,
+
+    /*
+     * Result (35700025): Fail to send cancel signal.
+     */
+    ERR_CLI_SEND_SIGNAL = 35700025,
+
+    /*
+     * Result (35700026): The caller is not the session owner (cancelSession only).
+     */
+    ERR_CLI_NOT_SESSION_OWNER = 35700026,
 };
 
 } // namespace CliTool
