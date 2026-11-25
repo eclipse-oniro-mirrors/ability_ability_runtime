@@ -703,6 +703,55 @@ HWTEST_F(AmsMgrStubTest, HandleSetGameSAPrelaunch_004, TestSize.Level1)
 }
 
 /**
+ * @tc.name: HandleNotifyGamePrelaunchForeground_001
+ * @tc.desc: HandleNotifyGamePrelaunchForeground with valid token.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrStubTest, HandleNotifyGamePrelaunchForeground_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleNotifyGamePrelaunchForeground_001 start.");
+    EXPECT_NE(mockAmsMgrScheduler_, nullptr);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    WriteInterfaceToken(data);
+
+    sptr<IRemoteObject> token = new (std::nothrow) MockAbilityToken();
+    EXPECT_NE(token, nullptr);
+    data.WriteRemoteObject(token);
+
+    EXPECT_CALL(*mockAmsMgrScheduler_, NotifyGamePrelaunchForeground(_)).Times(1);
+    auto result = mockAmsMgrScheduler_->OnRemoteRequest(
+        static_cast<uint32_t>(IAmsMgr::Message::NOTIFY_GAME_PRELAUNCH_FOREGROUND), data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+    TAG_LOGI(AAFwkTag::TEST, "HandleNotifyGamePrelaunchForeground_001 end.");
+}
+
+/**
+ * @tc.name: HandleNotifyGamePrelaunchForeground_002
+ * @tc.desc: HandleNotifyGamePrelaunchForeground with null token.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrStubTest, HandleNotifyGamePrelaunchForeground_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "HandleNotifyGamePrelaunchForeground_002 start.");
+    EXPECT_NE(mockAmsMgrScheduler_, nullptr);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    WriteInterfaceToken(data);
+
+    sptr<IRemoteObject> token = nullptr;
+    data.WriteRemoteObject(token);
+
+    EXPECT_CALL(*mockAmsMgrScheduler_, NotifyGamePrelaunchForeground(_)).Times(1);
+    auto result = mockAmsMgrScheduler_->OnRemoteRequest(
+        static_cast<uint32_t>(IAmsMgr::Message::NOTIFY_GAME_PRELAUNCH_FOREGROUND), data, reply, option);
+    EXPECT_EQ(result, NO_ERROR);
+    TAG_LOGI(AAFwkTag::TEST, "HandleNotifyGamePrelaunchForeground_002 end.");
+}
+
+/**
  * @tc.name: HandleAttributeProcessForAbility_001
  * @tc.desc: HandleAttributeProcessForAbility dispatches params and writes back the handle.
  * @tc.type: FUNC

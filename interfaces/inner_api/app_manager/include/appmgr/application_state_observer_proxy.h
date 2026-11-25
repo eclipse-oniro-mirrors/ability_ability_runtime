@@ -170,6 +170,16 @@ public:
      */
     virtual void OnProcessTypeChanged(const ProcessData &processData) override;
 
+    /**
+     * Will be called when a game prelaunched to the foreground lifecycle is started to the
+     * foreground display again, for example the user clicks the icon to launch the preloaded
+     * game. The appStateData carries the GAME_PRELAUNCH preload mode, and this is notified
+     * only once per game prelaunch.
+     *
+     * @param appStateData Application state data.
+     */
+    virtual void OnGamePrelaunchForegroundStateChanged(const AppStateData &appStateData) override;
+
 private:
     bool WriteInterfaceToken(MessageParcel &data);
     static inline BrokerDelegator<ApplicationStateObserverProxy> delegator_;

@@ -192,6 +192,20 @@ void AmsMgrScheduler::UpdateExtensionState(const sptr<IRemoteObject> &token, con
     });
 }
 
+void AmsMgrScheduler::NotifyGamePrelaunchForeground(const sptr<IRemoteObject> &token)
+{
+    if (!IsReady()) {
+        return;
+    }
+
+    if (amsMgrServiceInner_->VerifyRequestPermission() != ERR_OK) {
+        TAG_LOGE(AAFwkTag::APPMGR, "verification failed");
+        return;
+    }
+    // Execute synchronously: the GAME_PRELAUNCH check, otherwise the notification would be lost.
+    amsMgrServiceInner_->NotifyGamePrelaunchForeground(token);
+}
+
 void AmsMgrScheduler::TerminateAbility(const sptr<IRemoteObject> &token, bool clearMissionFlag)
 {
     if (!IsReady()) {

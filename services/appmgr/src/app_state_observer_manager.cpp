@@ -1967,6 +1967,60 @@ void AppStateObserverManager::HandleOnProcessTypeChanged(const std::shared_ptr<A
     }
 }
 
+void AppStateObserverManager::OnGamePrelaunchForegroundChanged(const std::shared_ptr<AppRunningRecord> &appRecord)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGI(AAFwkTag::APPMGR, "OnGamePrelaunchForegroundChanged");
+    if (!appRecord) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null appRecord");
+        return;
+    }
+    if (handler_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null handler");
+        return;
+    }
+    // Snapshot the app state data before submitting the task, so fields such as preloadMode
+    // reflect the state at the moment the preloaded game is started to the foreground display
+    // again instead of the task execution time.
+    AppStateData data = WrapAppStateData(appRecord, ApplicationState::APP_STATE_FOREGROUND);
+    BundleType bundleType = BundleType::APP;
+    auto applicationInfo = appRecord->GetApplicationInfo();
+    if (applicationInfo != nullptr) {
+        bundleType = applicationInfo->bundleType;
+    }
+    auto task = [weak = weak_from_this(), data, bundleType]() {
+        auto self = weak.lock();
+        if (self == nullptr) {
+            TAG_LOGE(AAFwkTag::APPMGR, "null self");
+            return;
+        }
+        TAG_LOGD(AAFwkTag::APPMGR, "OnGamePrelaunchForegroundChanged task.");
+        self->HandleOnGamePrelaunchForegroundChanged(data, bundleType);
+    };
+    handler_->SubmitTask(task);
+}
+
+void AppStateObserverManager::HandleOnGamePrelaunchForegroundChanged(const AppStateData &data,
+    const BundleType bundleType)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGI(AAFwkTag::APPMGR,
+        "HandleOnGamePrelaunchForegroundChanged, bundle:%{public}s, pid:%{public}d, state:%{public}d, "
+        "preloadMode:%{public}d", data.bundleName.c_str(), data.pid, data.state, data.preloadMode);
+    AppStateFilter appStateFilter {FilterCallback::ON_GAME_PRELAUNCH_FOREGROUND_STATE_CHANGED,
+        GetFilterTypeFromBundleType(bundleType), FilterAppStateType::ALL,
+        FilterProcessStateType::ALL, FilterAbilityStateType::NONE};
+    auto appStateObserverMapCopy = GetAppStateObserverMapCopy();
+    for (auto it = appStateObserverMapCopy.begin(); it != appStateObserverMapCopy.end(); ++it) {
+        const auto &bundleNames = it->second.bundleNames;
+        auto iter = std::find(bundleNames.begin(), bundleNames.end(), data.bundleName);
+        if ((bundleNames.empty() || iter != bundleNames.end()) && it->first != nullptr &&
+            it->second.appStateFilter.Match(appStateFilter)) {
+            it->first->OnGamePrelaunchForegroundStateChanged(data);
+        }
+    }
+}
+
 std::shared_ptr<ImageProcessStateData> AppStateObserverManager::WrapImageProcessStateData(
     std::shared_ptr<ForkImageInfo> imageInfo, ImageProcessState state)
 {

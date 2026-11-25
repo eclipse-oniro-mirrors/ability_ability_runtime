@@ -103,6 +103,8 @@ int32_t AmsMgrStub::OnRemoteRequestInnerFirst(uint32_t code, MessageParcel &data
             return HandleKillProcessByAbilityToken(data, reply);
         case static_cast<uint32_t>(IAmsMgr::Message::SET_GAME_SA_PRELAUNCH):
             return HandleSetGameSAPrelaunch(data, reply);
+        case static_cast<uint32_t>(IAmsMgr::Message::NOTIFY_GAME_PRELAUNCH_FOREGROUND):
+            return HandleNotifyGamePrelaunchForeground(data, reply);
         case static_cast<uint32_t>(IAmsMgr::Message::ATTRIBUTE_PROCESS_FOR_ABILITY):
             return HandleAttributeProcessForAbility(data, reply);
         case static_cast<uint32_t>(IAmsMgr::Message::UNREGISTER_TASK_ATTRIBUTION):
@@ -401,6 +403,14 @@ ErrCode AmsMgrStub::HandleSetGameSAPrelaunch(MessageParcel &data, MessageParcel 
         TAG_LOGE(AAFwkTag::APPMGR, "Failed to write result");
         return ERR_INVALID_VALUE;
     }
+    return NO_ERROR;
+}
+
+ErrCode AmsMgrStub::HandleNotifyGamePrelaunchForeground(MessageParcel &data, MessageParcel &reply)
+{
+    HITRACE_METER(HITRACE_TAG_APP);
+    sptr<IRemoteObject> token = data.ReadRemoteObject();
+    NotifyGamePrelaunchForeground(token);
     return NO_ERROR;
 }
 

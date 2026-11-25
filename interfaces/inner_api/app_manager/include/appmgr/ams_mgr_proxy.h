@@ -71,6 +71,16 @@ public:
         bool isFromScreenOffBackground = false, const UiAbilityLastCallerInfo &callerInfo = {}) override;
 
     /**
+     * NotifyGamePrelaunchForeground, call NotifyGamePrelaunchForeground() through the proxy object,
+     * notify that a game prelaunched to the foreground lifecycle is started to the foreground
+     * display again. Only once per game prelaunch.
+     *
+     * @param token, the unique identification to the ability.
+     * @return
+     */
+    virtual void NotifyGamePrelaunchForeground(const sptr<IRemoteObject> &token) override;
+
+    /**
      * UpdateExtensionState, call UpdateExtensionState() through the proxy object, update the extension status.
      *
      * @param token, the unique identification to update the extension.

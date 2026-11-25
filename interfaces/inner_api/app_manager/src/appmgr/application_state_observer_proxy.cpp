@@ -483,5 +483,27 @@ void ApplicationStateObserverProxy::OnProcessTypeChanged(const ProcessData &proc
     }
     TAG_LOGD(AAFwkTag::APPMGR, "end");
 }
+
+void ApplicationStateObserverProxy::OnGamePrelaunchForegroundStateChanged(const AppStateData &appStateData)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_ASYNC);
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write interface token failed.");
+        return;
+    }
+    if (!data.WriteParcelable(&appStateData)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "write appStateData failed");
+        return;
+    }
+    int32_t ret = SendTransactCmd(
+        static_cast<uint32_t>(IApplicationStateObserver::Message::TRANSACT_ON_GAME_PRELAUNCH_FOREGROUND_STATE_CHANGED),
+        data, reply, option);
+    if (ret != NO_ERROR && ret != ERR_INVALID_STUB) {
+        TAG_LOGW(AAFwkTag::APPMGR, "SendRequest is wrong, error code: %{public}d, bundleName:%{public}s.",
+            ret, appStateData.bundleName.c_str());
+    }
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

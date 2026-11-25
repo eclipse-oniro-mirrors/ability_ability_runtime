@@ -73,6 +73,8 @@ int ApplicationStateObserverStub::OnRemoteRequest(
             return HandleOnProcessPreForegroundChanged(data, reply);
         case Message::TRANSACT_ON_PROCESS_TYPE_CHANGED:
             return HandleOnProcessTypeChanged(data, reply);
+        case Message::TRANSACT_ON_GAME_PRELAUNCH_FOREGROUND_STATE_CHANGED:
+            return HandleOnGamePrelaunchForegroundStateChanged(data, reply);
     }
     TAG_LOGW(AAFwkTag::APPMGR, "ApplicationStateObserverStub::OnRemoteRequest, default case, need check");
     return IPCObjectStub::OnRemoteRequest(code, data, reply, option);
@@ -142,6 +144,9 @@ void ApplicationStateObserverStub::OnProcessPreForegroundChanged(const PreloadPr
 {}
 
 void ApplicationStateObserverStub::OnProcessTypeChanged(const ProcessData &processData)
+{}
+
+void ApplicationStateObserverStub::OnGamePrelaunchForegroundStateChanged(const AppStateData &appStateData)
 {}
 
 int32_t ApplicationStateObserverStub::HandleOnForegroundApplicationChanged(MessageParcel &data, MessageParcel &reply)
@@ -405,6 +410,19 @@ int32_t ApplicationStateObserverStub::HandleOnProcessPreForegroundChanged(Messag
     }
 
     OnProcessPreForegroundChanged(*preloadProcessData);
+    return NO_ERROR;
+}
+
+int32_t ApplicationStateObserverStub::HandleOnGamePrelaunchForegroundStateChanged(
+    MessageParcel &data, MessageParcel &reply)
+{
+    std::unique_ptr<AppStateData> processData(data.ReadParcelable<AppStateData>());
+    if (!processData) {
+        TAG_LOGE(AAFwkTag::APPMGR, "ReadParcelable<AppStateData> failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    OnGamePrelaunchForegroundStateChanged(*processData);
     return NO_ERROR;
 }
 

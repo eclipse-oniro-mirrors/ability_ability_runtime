@@ -118,6 +118,7 @@ public:
     void OnKeepAliveStateChanged(const std::shared_ptr<AppRunningRecord> &appRecord);
     void OnProcessPreForegroundChanged(std::shared_ptr<AppRunningRecord> appRecord);
     void OnProcessTypeChanged(const std::shared_ptr<AppRunningRecord> &appRecord);
+    void OnGamePrelaunchForegroundChanged(const std::shared_ptr<AppRunningRecord> &appRecord);
     void OnImageProcessStateChanged(std::shared_ptr<ForkImageInfo> imageInfo, ImageProcessState state);
     void OnForkAllWorkProcessFailed(std::shared_ptr<ForkImageInfo> imageInfo, int32_t errCode);
     void OnPreForkAllWorkProcess(std::shared_ptr<ForkImageInfo> imageInfo);
@@ -182,6 +183,7 @@ private:
     void HandleOnKeepAliveStateChanged(const std::shared_ptr<AppRunningRecord> &appRecord);
     void HandleOnProcessPreForegroundChanged(std::shared_ptr<AppRunningRecord> appRecord);
     void HandleOnProcessTypeChanged(const std::shared_ptr<AppRunningRecord> &appRecord);
+    void HandleOnGamePrelaunchForegroundChanged(const AppStateData &data, const BundleType bundleType);
     bool PreventNotify(ApplicationState state, int32_t observerUid, bool isByCall);
     void HandleOnImageProcessStateChanged(std::shared_ptr<ImageProcessStateData> data);
     void HandleOnForkAllWorkProcessFailed(std::shared_ptr<ImageProcessStateData> data, int32_t errCode);
