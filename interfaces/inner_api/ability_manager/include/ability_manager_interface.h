@@ -2154,13 +2154,69 @@ public:
       * @param callerToken The caller ability token.
       * @param bundleName The target bundle name.
       * @param intentName The insight intent name.
-      * @param wantParam The execution arguments.
+      * @param wantParam The execution arguments; may carry the pre-registered
+      *                  record id (INSIGHT_INTENT_EXECUTE_RECORD_ID, stripped by AMS).
       * @return Returns ERR_OK on success, others on failure.
       */
     virtual int32_t ExecuteIntentByFunctionCall(uint64_t key, const sptr<IRemoteObject> &callerToken,
         const std::string &bundleName, const std::string &intentName, const WantParams &wantParam)
     {
         return 0;
+    }
+
+    /**
+     * @brief Query the caller bundle name of the insight intent execution
+     *        identified by the given intent id.
+     *
+     * The record must be live (PENDING_CONSENT / EXECUTING); stale or missing
+     * records return an empty string. Used by the privacy-center consent path to
+     * identify who originated a given agent invocation. Only system applications
+     * and SA are allowed to query.
+     *
+     * @param intentId The insight intent execute id to query.
+     * @return Returns the caller bundle name, or an empty string if the intent id
+     *         does not belong to a live insight intent call.
+     */
+    virtual std::string GetInsightIntentCallerBundleName(uint64_t intentId)
+    {
+        return "";
+    }
+
+    /**
+     * @brief Remove the pre-registered execute record identified by intentId.
+     *
+     * System apps / SA may remove any record; a third-party caller only the one it
+     * pre-registered (caller token id must match the calling token).
+     *
+     * @param intentId The insight intent execute id to remove.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t RemoveIntentRecord(uint64_t intentId)
+    {
+        return ERR_OK;
+    }
+
+    /**
+     * @brief Authorization pre-check and record pre-registration for the
+     *        invokePublicFunction caller. It runs the third-party gate (exported
+     *        visibility + ACCESS_PUBLIC_FUNCTION) so an unauthorized or
+     *        invisible target fails before the consent dialog is mounted
+     *        (anti-dialog-bombing), then pre-registers an insight-intent execute
+     *        record (PENDING_CONSENT) so the consent dialog can resolve the
+     *        invoking bundle through GetInsightIntentCallerBundleName.
+     *
+     * @param bundleName The target function namespace (target bundle name).
+     * @param intentName The target insight intent (function) name.
+     * @param intentId Output execute record id for the pre-registered invocation;
+     *                 valid (non-zero) only when ERR_OK is returned.
+     * @return Returns ERR_OK on success, INTENT_NOT_EXIST when the target is
+     *         missing or not open to third-party callers, ERR_PERMISSION_DENIED
+     *         when ACCESS_PUBLIC_FUNCTION is absent.
+     */
+    virtual int32_t PreRegisterIntentRecord(const std::string &bundleName, const std::string &intentName,
+        uint64_t &intentId)
+    {
+        return ERR_OK;
     }
 
     /**

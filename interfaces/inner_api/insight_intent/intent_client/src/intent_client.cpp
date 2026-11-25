@@ -78,7 +78,7 @@ void IntentClient::DeathRecipient::OnRemoteDied(const wptr<IRemoteObject> &remot
     IntentClient::GetInstance().ResetRemote(remote);
 }
 
-int32_t IntentClient::SendExecuteRequest(uint64_t key, const sptr<IRemoteObject> &callerToken,
+int32_t IntentClient::SendExecuteRequest(uint32_t code, uint64_t key, const sptr<IRemoteObject> &callerToken,
     const std::string &bundleName, const std::string &intentName, const WantParams &wantParam)
 {
     auto remote = GetAbilityManagerRemote();
@@ -113,9 +113,7 @@ int32_t IntentClient::SendExecuteRequest(uint64_t key, const sptr<IRemoteObject>
         TAG_LOGE(AAFwkLogTag::INTENT, "write wantParam failed");
         return INNER_ERR;
     }
-    int32_t err = remote->SendRequest(
-        static_cast<uint32_t>(AbilityManagerInterfaceCode::EXECUTE_INTENT_BY_FUNCTION_CALL),
-        data, reply, option);
+    int32_t err = remote->SendRequest(code, data, reply, option);
     if (err != 0) {
         TAG_LOGE(AAFwkLogTag::INTENT, "send request failed: %{public}d", err);
         return err;
@@ -133,11 +131,81 @@ int32_t IntentClient::ExecuteIntentByFunctionCall(const ExecuteIntentParam &para
     auto hostClient = AbilityRuntime::InsightIntentHostClient::GetInstance();
     uint64_t key = hostClient->AddInsightIntentExecute(param.callback);
 
-    int32_t err = SendExecuteRequest(key, hostClient, param.bundleName, param.intentName, param.wantParam);
+    int32_t err = SendExecuteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::EXECUTE_INTENT_BY_FUNCTION_CALL),
+        key, hostClient, param.bundleName, param.intentName, param.wantParam);
     if (err != ERR_OK) {
         hostClient->RemoveInsightIntentExecute(key);
     }
     return err;
+}
+
+int32_t IntentClient::RemoveIntentRecord(uint64_t intentId)
+{
+    TAG_LOGD(AAFwkLogTag::INTENT, "called, intentId: %{public}llu",
+        static_cast<unsigned long long>(intentId));
+    auto remote = GetAbilityManagerRemote();
+    if (remote == nullptr) {
+        TAG_LOGE(AAFwkLogTag::INTENT, "service not connected");
+        return ABILITY_SERVICE_NOT_CONNECTED;
+    }
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!data.WriteInterfaceToken(Str8ToStr16(PERMISSION_DESC))) {
+        TAG_LOGE(AAFwkLogTag::INTENT, "write interface token failed");
+        return INNER_ERR;
+    }
+    if (!data.WriteUint64(intentId)) {
+        TAG_LOGE(AAFwkLogTag::INTENT, "write intentId failed");
+        return INNER_ERR;
+    }
+    int32_t err = remote->SendRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::REMOVE_INTENT_RECORD), data, reply, option);
+    if (err != 0) {
+        TAG_LOGE(AAFwkLogTag::INTENT, "send request failed: %{public}d", err);
+        return err;
+    }
+    int32_t ret = reply.ReadInt32();
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkLogTag::INTENT, "remove execute record failed: %{public}d", ret);
+    }
+    return ret;
+}
+
+int32_t IntentClient::PreRegisterIntentRecord(const std::string &bundleName, const std::string &intentName,
+    uint64_t &intentId)
+{
+    intentId = 0;
+    auto remote = GetAbilityManagerRemote();
+    if (remote == nullptr) {
+        TAG_LOGE(AAFwkLogTag::INTENT, "service not connected");
+        return ABILITY_SERVICE_NOT_CONNECTED;
+    }
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!data.WriteInterfaceToken(Str8ToStr16(PERMISSION_DESC))) {
+        TAG_LOGE(AAFwkLogTag::INTENT, "write interface token failed");
+        return INNER_ERR;
+    }
+    if (!data.WriteString(bundleName)) {
+        TAG_LOGE(AAFwkLogTag::INTENT, "write bundleName failed");
+        return INNER_ERR;
+    }
+    if (!data.WriteString(intentName)) {
+        TAG_LOGE(AAFwkLogTag::INTENT, "write intentName failed");
+        return INNER_ERR;
+    }
+    int32_t err = remote->SendRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::PRE_REGISTER_INTENT_RECORD), data, reply, option);
+    if (err != 0) {
+        TAG_LOGE(AAFwkLogTag::INTENT, "send request failed: %{public}d", err);
+        return err;
+    }
+    int32_t result = reply.ReadInt32();
+    intentId = reply.ReadUint64();
+    return result;
 }
 
 } // namespace AAFwk

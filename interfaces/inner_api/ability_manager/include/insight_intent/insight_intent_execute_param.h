@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -94,6 +94,12 @@ constexpr size_t INSIGHT_INTENT_TASK_ID_MAX_LEN = 256;
 constexpr char INSIGHT_INTENT_CALLER_BUNDLE_NAME[] = "ohos.insightIntent.executeParam.callerBundleName";
 constexpr char INSIGHT_INTENT_CALLER_TOKEN_ID[] = "ohos.insightIntent.executeParam.callerTokenId";
 constexpr char INSIGHT_INTENT_CALLER_UID[] = "ohos.insightIntent.executeParam.callerUid";
+// Caller ability token carried through wantParam; the AMS reads and strips it so it
+// never leaks into the target Want (resolves launch attribution in StartAbilityInner).
+constexpr char INSIGHT_INTENT_CALLER_TOKEN[] = "ohos.insightIntent.callerToken";
+// Pre-registered execute record id boxed as a Long in wantParam; the AMS reads and
+// strips it before the target intent is generated (keeps ExecuteIntentByFunctionCall at 5 args).
+constexpr char INSIGHT_INTENT_EXECUTE_RECORD_ID[] = "ohos.insightIntent.executeRecordId";
 
 constexpr int32_t INVALID_DISPLAY_ID = -1;
 constexpr char METHOD_PARAM_SEPARATOR = '\x1f';

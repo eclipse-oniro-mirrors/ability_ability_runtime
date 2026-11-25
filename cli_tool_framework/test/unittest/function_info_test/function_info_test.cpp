@@ -62,6 +62,7 @@ HWTEST_F(FunctionInfoTest, FunctionInfo_DefaultConstructor_0100, TestSize.Level1
     EXPECT_TRUE(function.inputSchema.empty());
     EXPECT_TRUE(function.outputSchema.empty());
     EXPECT_EQ(function.functionType, FunctionType::INTENT_FUNCTION);
+    EXPECT_FALSE(function.visible);
 
     TAG_LOGI(AAFwkTag::TEST, "FunctionInfo_DefaultConstructor_0100 end");
 }
@@ -386,6 +387,7 @@ HWTEST_F(FunctionInfoTest, FunctionInfo_Marshalling_Unmarshalling_RoundTrip_0100
     original.inputSchema = R"({"type": "object", "properties": {"input": {"type": "string"}}})";
     original.outputSchema = R"({"type": "string"})";
     original.functionType = FunctionType::INTENT_FUNCTION;
+    original.visible = true;
 
     Parcel parcel;
     ASSERT_TRUE(original.Marshalling(parcel));
@@ -401,6 +403,7 @@ HWTEST_F(FunctionInfoTest, FunctionInfo_Marshalling_Unmarshalling_RoundTrip_0100
     EXPECT_EQ(result->inputSchema, original.inputSchema);
     EXPECT_EQ(result->outputSchema, original.outputSchema);
     EXPECT_EQ(result->functionType, original.functionType);
+    EXPECT_EQ(result->visible, original.visible);
 
     delete result;
 

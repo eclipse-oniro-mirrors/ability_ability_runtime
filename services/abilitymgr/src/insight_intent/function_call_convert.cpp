@@ -98,6 +98,22 @@ bool IsQualifiedEntry(const AbilityRuntime::ExtractInsightIntentGenericInfo &gen
     return false;
 }
 
+// Returns true when the Entry executeMode contains a FG UIAbility, filling outAbility.
+bool IsFgEntry(const AbilityRuntime::ExtractInsightIntentGenericInfo &generic, std::string &outAbility)
+{
+    if (generic.currentType != AbilityRuntime::InfoType::Entry) {
+        return false;
+    }
+    const auto &entry = generic.get<AbilityRuntime::InsightIntentEntryInfo>();
+    for (auto mode : entry.executeMode) {
+        if (mode == AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND) {
+            outAbility = entry.abilityName;
+            return true;
+        }
+    }
+    return false;
+}
+
 std::string GetInputSchemaFromGeneric(const AbilityRuntime::ExtractInsightIntentInfo &info)
 {
     switch (info.genericInfo.currentType) {
@@ -160,6 +176,9 @@ bool ConvertFromExtractIntentInfo(const std::vector<AbilityRuntime::ExtractInsig
         func.inputSchema = GetInputSchemaFromGeneric(info);
         func.outputSchema = info.result;
         func.functionType = FunctionType::INTENT_FUNCTION;
+        // The intent's exported flag is the source of truth for third-party visibility; the
+        // cliFunction layer names the same semantic `visible` (public/private).
+        func.visible = info.exported;
         AddInsightIntentOptions(func, MakeDefaultsFromGeneric(info));
         functions.emplace_back(std::move(func));
     }
@@ -180,6 +199,9 @@ bool ConvertFromConfigIntent(const std::vector<AbilityRuntime::InsightIntentInfo
         func.functionNamespace = info.bundleName;
         func.description = info.displayDescription;
         func.functionType = FunctionType::INTENT_FUNCTION;
+        // The intent's exported flag is the source of truth for third-party visibility; the
+        // cliFunction layer names the same semantic `visible` (public/private).
+        func.visible = info.exported;
 
         if (!info.inputParams.empty()) {
             nlohmann::json inputSchema;
@@ -284,12 +306,17 @@ void IntentFilterUtil::FilterConfig(std::vector<AbilityRuntime::InsightIntentInf
         bool isBgUiAbility = !ui.abilityName.empty() &&
             std::find(ui.supportExecuteMode.begin(), ui.supportExecuteMode.end(),
                 AppExecFwk::ExecuteMode::UI_ABILITY_BACKGROUND) != ui.supportExecuteMode.end();
+        bool isFgUiAbility = !ui.abilityName.empty() &&
+            std::find(ui.supportExecuteMode.begin(), ui.supportExecuteMode.end(),
+                AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND) != ui.supportExecuteMode.end();
         if (isBgUiAbility) {
             key.abilityName = ui.abilityName;
         } else if (!se.abilityName.empty()) {
             key.abilityName = se.abilityName;
+        } else if (isFgUiAbility) {
+            key.abilityName = ui.abilityName;
         } else {
-            TAG_LOGW(AAFwkTag::CLI_TOOL, "config intent dropped: not BG UIAbility or SE, "
+            TAG_LOGW(AAFwkTag::CLI_TOOL, "config intent dropped: not BG UIAbility, SE or FG UIAbility, "
                 "intentName:%{public}s moduleName:%{public}s uiAbility:%{public}s seAbility:%{public}s",
                 info.intentName.c_str(), info.moduleName.c_str(),
                 ui.abilityName.c_str(), se.abilityName.c_str());
@@ -320,10 +347,18 @@ void IntentFilterUtil::FilterGeneric(std::vector<AbilityRuntime::ExtractInsightI
             continue;
         }
         RegisterSortKey key { generic.moduleName, "" };
-        if (generic.currentType != AbilityRuntime::InfoType::Function &&
-            generic.currentType != AbilityRuntime::InfoType::Page &&
-            generic.currentType != AbilityRuntime::InfoType::Link &&
-            !IsQualifiedEntry(generic, key.abilityName)) {
+        bool isBasicType = generic.currentType == AbilityRuntime::InfoType::Function ||
+            generic.currentType == AbilityRuntime::InfoType::Page ||
+            generic.currentType == AbilityRuntime::InfoType::Link;
+        bool isQualified = isBasicType || IsQualifiedEntry(generic, key.abilityName);
+        if (!isQualified) {
+            std::string fgAbility;
+            if (IsFgEntry(generic, fgAbility)) {
+                key.abilityName = fgAbility;
+                isQualified = true;
+            }
+        }
+        if (!isQualified) {
             TAG_LOGW(AAFwkTag::CLI_TOOL, "generic intent dropped: not Function/Page/Link or qualified Entry, "
                 "intentName:%{public}s moduleName:%{public}s decoratorType:%{public}s",
                 generic.intentName.c_str(), generic.moduleName.c_str(), generic.decoratorType.c_str());

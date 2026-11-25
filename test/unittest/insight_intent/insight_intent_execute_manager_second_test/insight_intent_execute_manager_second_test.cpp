@@ -2498,7 +2498,8 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, SetTargetPid_RegisterAttribution
     ASSERT_NE(callToken, nullptr);
     std::string bundleName = "test.bundle.setpid.reattr";
     manager->AddRecord(key, callToken, bundleName, intentId,
-        ExecuteParam{.callerBundleName = "caller.bundle"}, "ohos_task_id_setpid_reattr", 1245);
+        ExecuteParam{.callerBundleName = "caller.bundle"}, "ohos_task_id_setpid_reattr",
+        InsightIntentExecuteState::EXECUTING, 1245);
     ASSERT_EQ(manager->records_.count(intentId), 1);
 
     pid_t pid = 12345;
@@ -2681,7 +2682,8 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, RemoveExecuteIntent_Unregister_0
 
     uint64_t intentId = 0;
     manager->AddRecord(100, callToken, "test.bundle.remove2", intentId,
-        ExecuteParam{.callerBundleName = "caller.bundle"}, "ohos_task_id_remove2", 1245);
+        ExecuteParam{.callerBundleName = "caller.bundle"}, "ohos_task_id_remove2",
+        InsightIntentExecuteState::EXECUTING, 1245);
     ASSERT_EQ(manager->records_.count(intentId), 1);
     manager->SetTargetPid(intentId, 5678);
     EXPECT_EQ(manager->records_[intentId]->targetPid, 5678);
@@ -2798,7 +2800,8 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, RegisterAttributedProcess_Positi
     sptr<IRemoteObject> callToken = new AppExecFwk::MockAbilityToken();
     ASSERT_NE(callToken, nullptr);
     manager->AddRecord(key, callToken, "test.bundle.positive", intentId,
-        ExecuteParam{.callerBundleName = "caller.bundle"}, taskId, 1245);
+        ExecuteParam{.callerBundleName = "caller.bundle"}, taskId,
+        InsightIntentExecuteState::EXECUTING, 1245);
     ASSERT_EQ(manager->records_.count(intentId), 1);
 
     manager->SetTargetPid(intentId, pid);

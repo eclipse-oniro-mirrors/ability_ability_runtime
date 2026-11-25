@@ -6083,6 +6083,29 @@ int32_t AbilityManagerProxy::ExecuteIntentByFunctionCall(uint64_t key, const spt
     return reply.ReadInt32();
 }
 
+std::string AbilityManagerProxy::GetInsightIntentCallerBundleName(uint64_t intentId)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "called");
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    if (!WriteInterfaceToken(data)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write token fail");
+        return "";
+    }
+    if (!data.WriteUint64(intentId)) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "write intentId fail");
+        return "";
+    }
+    int32_t error = SendRequest(
+        AbilityManagerInterfaceCode::GET_INSIGHT_INTENT_CALLER_BUNDLE_NAME, data, reply, option);
+    if (error != NO_ERROR) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "request err:%{public}d", error);
+        return "";
+    }
+    return reply.ReadString();
+}
+
 int32_t AbilityManagerProxy::ExecuteUIAbilityForegroundIntentWithSpecifyTokenId(const Want &want,
     const sptr<IRemoteObject> &callerAbilityToken, const InsightIntentExecuteLiteParam &param,
     uint64_t specifiedFullTokenId)

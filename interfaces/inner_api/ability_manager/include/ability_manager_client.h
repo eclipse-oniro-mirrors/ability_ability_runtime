@@ -2512,6 +2512,15 @@ public:
     bool IsAbilityControllerStart(const Want &want);
 
     /**
+     * @brief Query the caller bundle name of the insight intent execution
+     * identified by the given intent id. Restricted to system applications / SA.
+     * @param intentId The insight intent execute id to query.
+     * @return Returns the caller bundle name, or an empty string if the intent id
+     *         does not map to a live execute record.
+     */
+    std::string GetInsightIntentCallerBundleName(uint64_t intentId);
+
+    /**
      * @brief Open a file by uri through the registered reserve-type collaborator
      * (application collocation file access). Requires a collaborator registered;
      * returns -1 otherwise. Internal use.

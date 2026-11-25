@@ -1626,6 +1626,8 @@ public:
     int32_t ExecuteIntentByFunctionCall(uint64_t key, const sptr<IRemoteObject> &callerToken,
         const std::string &bundleName, const std::string &intentName, const WantParams &wantParam) override;
 
+    std::string GetInsightIntentCallerBundleName(uint64_t intentId) override;
+
     /**
      * @brief Execute intent with specified token id.
      * @param want The want carrying the card params and intent execution info.

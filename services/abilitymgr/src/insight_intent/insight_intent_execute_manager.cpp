@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,6 +24,7 @@
 #include "ability_config.h"
 #include "ability_util.h"
 #include "ability_manager_errors.h"
+#include "accesstoken_kit.h"
 #include "distributed_ability_runtime/distributed_client.h"
 #include "extract_insight_intent_profile.h"
 #include "ffrt.h"
@@ -47,6 +48,7 @@ using AppExecFwk::ParamType;
 namespace {
 constexpr size_t INSIGHT_INTENT_EXECUTE_RECORDS_MAX_SIZE = 256;
 constexpr char EXECUTE_INSIGHT_INTENT_PERMISSION[] = "ohos.permission.EXECUTE_INSIGHT_INTENT";
+constexpr char ACCESS_PUBLIC_FUNCTION_PERMISSION[] = "ohos.permission.ACCESS_PUBLIC_FUNCTION";
 constexpr char PERMISSION_GET_BUNDLE_INFO_PRIVILEGED[] = "ohos.permission.GET_BUNDLE_INFO_PRIVILEGED";
 constexpr const char *KEY_INTERACTION_INFO = "interactionInfo";
 constexpr int32_t OPERATION_DURATION = 10000;
@@ -148,6 +150,9 @@ InsightIntentExecuteManager::~InsightIntentExecuteManager() = default;
 int32_t InsightIntentExecuteManager::CheckAndUpdateParam(uint64_t key, const sptr<IRemoteObject> &callerToken,
     const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param, const ExecuteParam &execParam)
 {
+    // System entry (invokeFunction / ExecuteIntent): keeps the original fail-closed
+    // system-API gate. CheckCallerPermission returns ERR_NOT_SYSTEM_APP for a
+    // non-system caller, which is the contract this entry must not break.
     std::string targetBundleName = (param != nullptr) ? param->bundleName_ : "";
     int32_t result = CheckCallerPermission(execParam.specifiedFullTokenId, execParam.callerBundleName,
         targetBundleName);
@@ -162,21 +167,111 @@ int32_t InsightIntentExecuteManager::CheckAndUpdateParam(uint64_t key, const spt
         TAG_LOGE(AAFwkTag::INTENT, "null param");
         return ERR_INVALID_VALUE;
     }
-
     if (param->bundleName_.empty() || param->moduleName_.empty() ||
         (!execParam.ignoreAbilityName && param->abilityName_.empty()) || param->insightIntentName_.empty()) {
         TAG_LOGE(AAFwkTag::INTENT, "invalid param");
         return ERR_INVALID_VALUE;
     }
-    uint64_t intentId = 0;
-    result = AddRecord(key, callerToken, param->bundleName_, intentId, execParam, param->taskId_,
-        param->callerUid_);
+    return AcquireExecuteRecord(key, callerToken, param, execParam);
+}
+
+int32_t InsightIntentExecuteManager::CheckAndUpdatePublicParam(uint64_t key, const sptr<IRemoteObject> &callerToken,
+    const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param, const ExecuteParam &execParam)
+{
+    // Public invoke entry (invokePublicFunction): the target intent must be
+    // exported and the caller must hold ACCESS_PUBLIC_FUNCTION, then the caller
+    // must present consent evidence (automation control access). These run before
+    // the shared validation + record acquisition below.
+    std::string targetBundleName = (param != nullptr) ? param->bundleName_ : "";
+    std::string targetModuleName = (param != nullptr) ? param->moduleName_ : "";
+    std::string targetIntentName = (param != nullptr) ? param->insightIntentName_ : "";
+    int32_t targetUserId = (param != nullptr) ? param->userId_ : 0;
+    int32_t result = CheckExportedIntentCallerPermission(
+        targetBundleName, targetModuleName, targetIntentName, targetUserId);
     if (result != ERR_OK) {
         return result;
     }
+    result = CheckConsentGranted(targetBundleName);
+    if (result != ERR_OK) {
+        return result;
+    }
+    if (!execParam.isDistributed && callerToken == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "null callerToken");
+        return ERR_INVALID_VALUE;
+    }
+    if (param == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "null param");
+        return ERR_INVALID_VALUE;
+    }
+    if (param->bundleName_.empty() || param->moduleName_.empty() ||
+        (!execParam.ignoreAbilityName && param->abilityName_.empty()) || param->insightIntentName_.empty()) {
+        TAG_LOGE(AAFwkTag::INTENT, "invalid param");
+        return ERR_INVALID_VALUE;
+    }
+    return AcquireExecuteRecord(key, callerToken, param, execParam);
+}
 
-    param->insightIntentId_ = intentId;
-    return ERR_OK;
+int32_t InsightIntentExecuteManager::AcquireExecuteRecord(uint64_t key, const sptr<IRemoteObject> &callerToken,
+    const std::shared_ptr<AppExecFwk::InsightIntentExecuteParam> &param,
+    const ExecuteParam &execParam)
+{
+    TAG_LOGD(AAFwkTag::INTENT, "called, key: %{public}" PRIu64 ", intentId: %{public}" PRIu64,
+        key, param->insightIntentId_);
+    if (param->insightIntentId_ == 0) {
+        // Fresh record: AddRecord allocates a new id and stamps it into param->insightIntentId_.
+        return AddRecord(key, callerToken, param->bundleName_, param->insightIntentId_, execParam, param->taskId_,
+            InsightIntentExecuteState::EXECUTING, param->callerUid_);
+    }
+    // Reuse the record pre-registered by PreRegisterIntentRecord: same bundle and
+    // PENDING_CONSENT (promote) or EXECUTING (reuse); any other state is rejected.
+    std::lock_guard<ffrt::mutex> lock(mutex_);
+    auto it = records_.find(param->insightIntentId_);
+    if (it == records_.end() || it->second == nullptr ||
+        it->second->bundleName != param->bundleName_) {
+        TAG_LOGE(AAFwkTag::INTENT, "specified intentId not usable: %{public}" PRIu64,
+            param->insightIntentId_);
+        return ERR_INVALID_VALUE;
+    }
+    // Ownership gate: only the caller that pre-registered the record (the IPC caller
+    // token id captured at AddRecord time) may promote or reuse it. Prevents a
+    // third-party caller from consuming a consent record it does not own.
+    if (it->second->callerTokenId != IPCSkeleton::GetCallingTokenID()) {
+        TAG_LOGE(AAFwkTag::INTENT, "caller token mismatch, deny reuse, intentId: %{public}" PRIu64,
+            param->insightIntentId_);
+        return ERR_PERMISSION_DENIED;
+    }
+    if (it->second->state == InsightIntentExecuteState::PENDING_CONSENT) {
+        // Promote the pre-registered record and fill key/taskId/callerToken that
+        // were not available at pre-check time.
+        it->second->state = InsightIntentExecuteState::EXECUTING;
+        it->second->key = key;
+        it->second->taskId = param->taskId_;
+        it->second->callerUid = param->callerUid_;
+        if (it->second->callerToken == nullptr && callerToken != nullptr) {
+            it->second->callerToken = callerToken;
+            it->second->deathRecipient = sptr<InsightIntentExecuteRecipient>::MakeSptr(param->insightIntentId_);
+            callerToken->AddDeathRecipient(it->second->deathRecipient);
+        }
+        TAG_LOGI(AAFwkTag::INTENT, "promoted pre-registered record to EXECUTING, id: %{public}" PRIu64,
+            param->insightIntentId_);
+        return ERR_OK;
+    }
+    if (it->second->state == InsightIntentExecuteState::EXECUTING) {
+        return ERR_OK;
+    }
+    TAG_LOGE(AAFwkTag::INTENT, "record in unexpected state: %{public}d, id: %{public}" PRIu64,
+        static_cast<int>(it->second->state), param->insightIntentId_);
+    return ERR_INVALID_VALUE;
+}
+
+int32_t InsightIntentExecuteManager::RegisterExecuteRecord(uint64_t key, const sptr<IRemoteObject> &callerToken,
+    const std::string &bundleName, const ExecuteParam &execParam, uint64_t &intentId)
+{
+    TAG_LOGD(AAFwkTag::INTENT, "called, bundleName: %{public}s", bundleName.c_str());
+    // Park in PENDING_CONSENT: queryable while the consent dialog shows, consumed only
+    // after UpdateRecordState moves it to EXECUTING.
+    return AddRecord(key, callerToken, bundleName, intentId, execParam, "",
+        InsightIntentExecuteState::PENDING_CONSENT);
 }
 
 int32_t InsightIntentExecuteManager::CheckAndUpdateWant(Want &want, ExecuteMode executeMode, int32_t userId,
@@ -261,16 +356,17 @@ int32_t InsightIntentExecuteManager::UpdateEntryDecoratorParams(Want &want, Exec
 
 int32_t InsightIntentExecuteManager::AddRecord(uint64_t key, const sptr<IRemoteObject> &callerToken,
     const std::string &bundleName, uint64_t &intentId, const ExecuteParam &execParam, const std::string &taskId,
-    int32_t callerUid)
+    InsightIntentExecuteState initialState, int32_t callerUid)
 {
     std::lock_guard<ffrt::mutex> lock(mutex_);
     intentId = ++intentIdCount_;
     auto record = std::make_shared<InsightIntentExecuteRecord>();
     record->key = key;
-    record->state = InsightIntentExecuteState::EXECUTING;
+    record->state = initialState;
     record->callerToken = callerToken;
     record->bundleName = bundleName;
     record->callerBundleName = execParam.callerBundleName;
+    record->callerTokenId = IPCSkeleton::GetCallingTokenID();
     record->isDistributed = execParam.isDistributed;
     record->deviceId = execParam.srcDeviceId;
     record->requestCode = execParam.requestCode;
@@ -318,6 +414,37 @@ int32_t InsightIntentExecuteManager::RemoveExecuteIntent(uint64_t intentId)
     // unregister must live here as the single point: by this moment most
     // failures happened before SetTargetPid (attributionId 0 -> helper no-op,
     // the attribution was never registered), which is the expected safe net.
+    UnregisterAttributedProcess(taskId, attributionId, callerUid);
+    return ERR_OK;
+}
+
+int32_t InsightIntentExecuteManager::RemoveExecuteRecordIfCaller(uint64_t intentId)
+{
+    TAG_LOGD(AAFwkTag::INTENT, "called, intentId: %{public}" PRIu64, intentId);
+    // Ownership gate: drop only the record the caller pre-registered (caller token
+    // id must match the token id captured at AddRecord time).
+    uint32_t callerTokenId = IPCSkeleton::GetCallingTokenID();
+    std::string taskId;
+    int64_t attributionId = 0;
+    int32_t callerUid = 0;
+    {
+        std::lock_guard<ffrt::mutex> lock(mutex_);
+        auto it = records_.find(intentId);
+        if (it == records_.end() || it->second == nullptr) {
+            return ERR_OK;  // already cleaned / never existed
+        }
+        if (it->second->callerTokenId != callerTokenId) {
+            TAG_LOGE(AAFwkTag::INTENT, "caller token mismatch, deny remove, intentId: %{public}" PRIu64,
+                intentId);
+            return ERR_PERMISSION_DENIED;
+        }
+        taskId = it->second->taskId;
+        attributionId = it->second->attributionId;
+        callerUid = it->second->callerUid;
+        records_.erase(intentId);
+        TAG_LOGI(AAFwkTag::INTENT, "caller removed own record, intentId: %{public}" PRIu64
+            ", records_ size: %{public}zu", intentId, records_.size());
+    }
     UnregisterAttributedProcess(taskId, attributionId, callerUid);
     return ERR_OK;
 }
@@ -428,7 +555,6 @@ int32_t InsightIntentExecuteManager::ExecuteIntentDone(uint64_t intentId, int32_
     UnregisterAttributedProcess(taskId, attributionId, recordCallerUid);
     return ret;
 }
-
 int32_t InsightIntentExecuteManager::RemoteDied(uint64_t intentId)
 {
     std::lock_guard<ffrt::mutex> lock(mutex_);
@@ -475,6 +601,42 @@ int32_t InsightIntentExecuteManager::GetCallerBundleName(uint64_t intentId, std:
         return ERR_INVALID_VALUE;
     }
     callerBundleName = result->second->callerBundleName;
+    return ERR_OK;
+}
+
+std::string InsightIntentExecuteManager::GetInsightIntentCallerBundleName(uint64_t intentId) const
+{
+    std::lock_guard<ffrt::mutex> lock(mutex_);
+    auto it = records_.find(intentId);
+    if (it == records_.end() || it->second == nullptr) {
+        return "";
+    }
+    // Only a live invocation (waiting for user consent or actively executing)
+    // exposes its caller. Stale EXECUTE_DONE / REMOTE_DIED entries return empty.
+    auto state = it->second->state;
+    if (state != InsightIntentExecuteState::PENDING_CONSENT &&
+        state != InsightIntentExecuteState::EXECUTING) {
+        return "";
+    }
+    return it->second->callerBundleName;
+}
+
+int32_t InsightIntentExecuteManager::UpdateRecordState(uint64_t intentId, InsightIntentExecuteState expected,
+    InsightIntentExecuteState next)
+{
+    std::lock_guard<ffrt::mutex> lock(mutex_);
+    auto it = records_.find(intentId);
+    if (it == records_.end() || it->second == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "record not found, intentId: %{public}" PRIu64, intentId);
+        return ERR_INVALID_VALUE;
+    }
+    if (it->second->state != expected) {
+        TAG_LOGW(AAFwkTag::INTENT, "state mismatch, intentId: %{public}" PRIu64
+            ", expect: %{public}d, actual: %{public}d", intentId, static_cast<int>(expected),
+            static_cast<int>(it->second->state));
+        return ERR_INVALID_OPERATION;
+    }
+    it->second->state = next;
     return ERR_OK;
 }
 
@@ -835,6 +997,101 @@ int32_t InsightIntentExecuteManager::CheckCallerPermission(uint64_t specifiedFul
             EXECUTE_INSIGHT_INTENT_PERMISSION);
         return ERR_PERMISSION_DENIED;
     }
+    return ERR_OK;
+}
+
+int32_t InsightIntentExecuteManager::CheckExportedIntentCallerPermission(const std::string &targetBundleName,
+    const std::string &targetModuleName, const std::string &targetIntentName, int32_t userId)
+{
+    bool exported = GetInsightIntentExported(targetBundleName, targetModuleName, targetIntentName, userId);
+    if (!exported) {
+        TAG_LOGE(AAFwkTag::INTENT, "target intent not exported for third-party caller, bundle:%{public}s, "
+            "module:%{public}s, intent:%{public}s, userId:%{public}d", targetBundleName.c_str(),
+            targetModuleName.c_str(), targetIntentName.c_str(), userId);
+        return INTENT_NOT_EXIST;
+    }
+
+    bool isCallingPerm = PermissionVerification::GetInstance()->VerifyCallingPermission(
+        ACCESS_PUBLIC_FUNCTION_PERMISSION);
+    if (!isCallingPerm) {
+        TAG_LOGE(AAFwkTag::INTENT,
+            "permission %{public}s verification failed",
+            ACCESS_PUBLIC_FUNCTION_PERMISSION);
+        return ERR_PERMISSION_DENIED;
+    }
+    return ERR_OK;
+}
+
+bool InsightIntentExecuteManager::GetInsightIntentExported(const std::string &targetBundleName,
+    const std::string &targetModuleName, const std::string &targetIntentName, int32_t userId)
+{
+    if (targetBundleName.empty() || targetModuleName.empty() || targetIntentName.empty()) {
+        TAG_LOGW(AAFwkTag::INTENT, "GetInsightIntentExported invalid param, bundle:%{public}s, module:%{public}s, "
+            "intent:%{public}s", targetBundleName.c_str(), targetModuleName.c_str(), targetIntentName.c_str());
+        return false;
+    }
+    AbilityRuntime::IntentKey key{targetBundleName, targetModuleName, targetIntentName, userId};
+    auto cache = DelayedSingleton<AbilityRuntime::InsightIntentDbCache>::GetInstance();
+    if (cache == nullptr) {
+        TAG_LOGW(AAFwkTag::INTENT, "GetInsightIntentExported null cache");
+        return false;
+    }
+    TAG_LOGD(AAFwkTag::INTENT, "GetInsightIntentExported query, bundle:%{public}s, module:%{public}s, "
+        "intent:%{public}s, userId:%{public}d", targetBundleName.c_str(), targetModuleName.c_str(),
+        targetIntentName.c_str(), userId);
+    // Dual-mode storage (mirrors GetInsightIntentExecuteInfo): config info first,
+    // then the full extract info as a fallback.
+    AbilityRuntime::InsightIntentInfo configInfo;
+    cache->GetConfigInsightIntentInfo(key, configInfo);
+    if (!configInfo.bundleName.empty()) {
+        TAG_LOGD(AAFwkTag::INTENT, "GetInsightIntentExported config hit, exported:%{public}d",
+            configInfo.exported ? 1 : 0);
+        return configInfo.exported;
+    }
+    TAG_LOGW(AAFwkTag::INTENT, "GetInsightIntentExported config miss, fallback to extract, bundle:%{public}s, "
+        "module:%{public}s, intent:%{public}s", targetBundleName.c_str(), targetModuleName.c_str(),
+        targetIntentName.c_str());
+    AbilityRuntime::ExtractInsightIntentInfo extractInfo;
+    cache->GetInsightIntentInfo(key, extractInfo);
+    TAG_LOGD(AAFwkTag::INTENT, "GetInsightIntentExported extract fallback, exported:%{public}d",
+        extractInfo.exported ? 1 : 0);
+    return extractInfo.exported;
+}
+
+int32_t InsightIntentExecuteManager::CheckConsentGranted(const std::string &targetBundleName)
+{
+    // Mirror the client TryAutomationControlShortcut decision on the server so a
+    // direct IPC caller cannot bypass the consent dialog: the automation-control
+    // access state (NO_POPUP_NEEDED_GRANTED) is the only objective grant evidence.
+    // Applies to every public-entry caller, system app and third-party alike.
+    auto controllerTokenId = static_cast<Security::AccessToken::AccessTokenID>(IPCSkeleton::GetCallingTokenID());
+    Security::AccessToken::HapTokenInfo callerHapInfo;
+    if (Security::AccessToken::AccessTokenKit::GetHapTokenInfo(controllerTokenId, callerHapInfo) !=
+        Security::AccessToken::RET_SUCCESS) {
+        TAG_LOGE(AAFwkTag::INTENT, "get caller hap token info failed, token:%{public}u", controllerTokenId);
+        return ERR_PERMISSION_DENIED;
+    }
+    Security::AccessToken::AccessTokenID targetTokenId =
+        Security::AccessToken::AccessTokenKit::GetHapTokenID(callerHapInfo.userID, targetBundleName, 0);
+    if (targetTokenId == Security::AccessToken::INVALID_TOKENID) {
+        TAG_LOGE(AAFwkTag::INTENT, "target token id invalid, bundle:%{public}s", targetBundleName.c_str());
+        return ERR_PERMISSION_DENIED;
+    }
+    std::vector<Security::AccessToken::AccessTokenID> targetList{targetTokenId};
+    std::vector<Security::AccessToken::AutomationControlAccessDecision> decisions;
+    int32_t checkRet = Security::AccessToken::AccessTokenKit::CheckAutomationControlAccess(
+        controllerTokenId, targetList, decisions);
+    if (checkRet != Security::AccessToken::RET_SUCCESS || decisions.size() != 1) {
+        TAG_LOGE(AAFwkTag::INTENT, "check automation control access failed, ret:%{public}d", checkRet);
+        return ERR_PERMISSION_DENIED;
+    }
+    if (decisions[0] != Security::AccessToken::AutomationControlAccessDecision::NO_POPUP_NEEDED_GRANTED) {
+        TAG_LOGE(AAFwkTag::INTENT, "caller not granted, decision:%{public}d",
+            static_cast<int32_t>(decisions[0]));
+        return ERR_PERMISSION_DENIED;
+    }
+    TAG_LOGI(AAFwkTag::INTENT, "caller automation control granted, target:%{public}s",
+        targetBundleName.c_str());
     return ERR_OK;
 }
 

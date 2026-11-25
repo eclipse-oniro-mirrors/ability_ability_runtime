@@ -560,5 +560,423 @@ HWTEST_F(InsightIntentExecuteManagerTest, GenerateWant_ToolCallIdRoundTrip_0700,
     EXPECT_EQ(received.toolCallId_, "tc-fm");
 }
 
+/**
+ * @tc.name: RegisterExecuteRecord_0100
+ * @tc.desc: Pre-register a PENDING_CONSENT record; the returned id is non-zero and
+ *           its caller bundle is queryable while the consent dialog is pending.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerTest, RegisterExecuteRecord_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RegisterExecuteRecord_0100 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    ExecuteParam execParam;
+    execParam.callerBundleName = "caller.bundle";
+    uint64_t intentId = 0;
+    auto ret = manager->RegisterExecuteRecord(0, nullptr, "test.bundle", execParam, intentId);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_NE(intentId, 0);
+
+    // A live PENDING_CONSENT record exposes its caller bundle.
+    EXPECT_EQ(manager->GetInsightIntentCallerBundleName(intentId), "caller.bundle");
+
+    TAG_LOGI(AAFwkTag::TEST, "RegisterExecuteRecord_0100 end.");
+}
+
+/**
+ * @tc.name: AcquireExecuteRecord_0100
+ * @tc.desc: Promote a pre-registered PENDING_CONSENT record to EXECUTING on the
+ *           first acquire, then reuse the EXECUTING record idempotently.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerTest, AcquireExecuteRecord_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AcquireExecuteRecord_0100 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    ExecuteParam execParam;
+    execParam.callerBundleName = "caller.bundle";
+    uint64_t intentId = 0;
+    ASSERT_EQ(manager->RegisterExecuteRecord(0, nullptr, "test.bundle", execParam, intentId), ERR_OK);
+
+    AppExecFwk::InsightIntentExecuteParam param;
+    param.bundleName_ = "test.bundle";
+    param.insightIntentId_ = intentId;
+    param.taskId_ = "task-1";
+    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
+    sptr<IRemoteObject> callerToken = nullptr;
+
+    // Promote PENDING_CONSENT -> EXECUTING.
+    auto ret = manager->AcquireExecuteRecord(1005, callerToken, paramPtr, execParam);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(manager->GetInsightIntentCallerBundleName(intentId), "caller.bundle");
+
+    // Reuse the EXECUTING record idempotently.
+    ret = manager->AcquireExecuteRecord(1005, callerToken, paramPtr, execParam);
+    EXPECT_EQ(ret, ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "AcquireExecuteRecord_0100 end.");
+}
+
+/**
+ * @tc.name: AcquireExecuteRecord_0200
+ * @tc.desc: A specified intentId whose bundle does not match the pre-registered
+ *           record is rejected with ERR_INVALID_VALUE.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerTest, AcquireExecuteRecord_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AcquireExecuteRecord_0200 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    ExecuteParam execParam;
+    execParam.callerBundleName = "caller.bundle";
+    uint64_t intentId = 0;
+    ASSERT_EQ(manager->RegisterExecuteRecord(0, nullptr, "test.bundle", execParam, intentId), ERR_OK);
+
+    AppExecFwk::InsightIntentExecuteParam param;
+    param.bundleName_ = "other.bundle";
+    param.insightIntentId_ = intentId;
+    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
+    sptr<IRemoteObject> callerToken = nullptr;
+
+    EXPECT_EQ(manager->AcquireExecuteRecord(1006, callerToken, paramPtr, execParam), ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "AcquireExecuteRecord_0200 end.");
+}
+
+/**
+ * @tc.name: AcquireExecuteRecord_0300
+ * @tc.desc: A specified intentId that does not map to any record is rejected with
+ *           ERR_INVALID_VALUE.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerTest, AcquireExecuteRecord_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AcquireExecuteRecord_0300 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    ExecuteParam execParam;
+    AppExecFwk::InsightIntentExecuteParam param;
+    param.bundleName_ = "test.bundle";
+    param.insightIntentId_ = 99999999;
+    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
+    sptr<IRemoteObject> callerToken = nullptr;
+
+    EXPECT_EQ(manager->AcquireExecuteRecord(1007, callerToken, paramPtr, execParam), ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "AcquireExecuteRecord_0300 end.");
+}
+
+/**
+ * @tc.name: AcquireExecuteRecord_0400
+ * @tc.desc: A zero intentId allocates a fresh EXECUTING record via AddRecord and
+ *           stamps the new id back onto the param.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerTest, AcquireExecuteRecord_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AcquireExecuteRecord_0400 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    ExecuteParam execParam;
+    execParam.callerBundleName = "caller.bundle";
+
+    AppExecFwk::InsightIntentExecuteParam param;
+    param.bundleName_ = "test.bundle";
+    param.insightIntentId_ = 0;
+    param.taskId_ = "task-1";
+    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
+    sptr<IRemoteObject> callerToken = nullptr;
+
+    EXPECT_EQ(manager->AcquireExecuteRecord(2001, callerToken, paramPtr, execParam), ERR_OK);
+    EXPECT_NE(paramPtr->insightIntentId_, 0);
+    // A fresh record starts in EXECUTING and exposes its caller bundle.
+    EXPECT_EQ(manager->GetInsightIntentCallerBundleName(paramPtr->insightIntentId_), "caller.bundle");
+
+    TAG_LOGI(AAFwkTag::TEST, "AcquireExecuteRecord_0400 end.");
+}
+
+/**
+ * @tc.name: AcquireExecuteRecord_0500
+ * @tc.desc: A specified intentId whose record sits in EXECUTE_DONE is rejected
+ *           with ERR_INVALID_VALUE instead of being reused.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerTest, AcquireExecuteRecord_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AcquireExecuteRecord_0500 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    ExecuteParam execParam;
+    execParam.callerBundleName = "caller.bundle";
+    uint64_t intentId = 0;
+    ASSERT_EQ(manager->RegisterExecuteRecord(0, nullptr, "test.bundle", execParam, intentId), ERR_OK);
+    ASSERT_EQ(manager->UpdateRecordState(intentId, InsightIntentExecuteState::PENDING_CONSENT,
+        InsightIntentExecuteState::EXECUTING), ERR_OK);
+    ASSERT_EQ(manager->UpdateRecordState(intentId, InsightIntentExecuteState::EXECUTING,
+        InsightIntentExecuteState::EXECUTE_DONE), ERR_OK);
+
+    AppExecFwk::InsightIntentExecuteParam param;
+    param.bundleName_ = "test.bundle";
+    param.insightIntentId_ = intentId;
+    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
+    sptr<IRemoteObject> callerToken = nullptr;
+
+    EXPECT_EQ(manager->AcquireExecuteRecord(2002, callerToken, paramPtr, execParam), ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "AcquireExecuteRecord_0500 end.");
+}
+
+/**
+ * @tc.name: AcquireExecuteRecord_0600
+ * @tc.desc: A specified intentId whose caller already died (REMOTE_DIED) is
+ *           rejected with ERR_INVALID_VALUE instead of being reused.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerTest, AcquireExecuteRecord_0600, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AcquireExecuteRecord_0600 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    ExecuteParam execParam;
+    execParam.callerBundleName = "caller.bundle";
+    uint64_t intentId = 0;
+    ASSERT_EQ(manager->RegisterExecuteRecord(0, nullptr, "test.bundle", execParam, intentId), ERR_OK);
+    ASSERT_EQ(manager->RemoteDied(intentId), ERR_OK);
+
+    AppExecFwk::InsightIntentExecuteParam param;
+    param.bundleName_ = "test.bundle";
+    param.insightIntentId_ = intentId;
+    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
+    sptr<IRemoteObject> callerToken = nullptr;
+
+    EXPECT_EQ(manager->AcquireExecuteRecord(2003, callerToken, paramPtr, execParam), ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "AcquireExecuteRecord_0600 end.");
+}
+
+/**
+ * @tc.name: GetInsightIntentCallerBundleName_0100
+ * @tc.desc: A missing / unknown intentId returns an empty caller bundle name.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerTest, GetInsightIntentCallerBundleName_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetInsightIntentCallerBundleName_0100 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    EXPECT_EQ(manager->GetInsightIntentCallerBundleName(99999999), "");
+
+    TAG_LOGI(AAFwkTag::TEST, "GetInsightIntentCallerBundleName_0100 end.");
+}
+
+/**
+ * @tc.name: GetInsightIntentCallerBundleName_0200
+ * @tc.desc: A stale (EXECUTE_DONE) record no longer exposes its caller bundle.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerTest, GetInsightIntentCallerBundleName_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetInsightIntentCallerBundleName_0200 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    ExecuteParam execParam;
+    execParam.callerBundleName = "caller.bundle";
+    uint64_t intentId = 0;
+    ASSERT_EQ(manager->RegisterExecuteRecord(0, nullptr, "test.bundle", execParam, intentId), ERR_OK);
+    ASSERT_EQ(manager->GetInsightIntentCallerBundleName(intentId), "caller.bundle");
+
+    // Move PENDING_CONSENT -> EXECUTING -> EXECUTE_DONE; stale records return empty.
+    ASSERT_EQ(manager->UpdateRecordState(intentId, InsightIntentExecuteState::PENDING_CONSENT,
+        InsightIntentExecuteState::EXECUTING), ERR_OK);
+    ASSERT_EQ(manager->UpdateRecordState(intentId, InsightIntentExecuteState::EXECUTING,
+        InsightIntentExecuteState::EXECUTE_DONE), ERR_OK);
+    EXPECT_EQ(manager->GetInsightIntentCallerBundleName(intentId), "");
+
+    TAG_LOGI(AAFwkTag::TEST, "GetInsightIntentCallerBundleName_0200 end.");
+}
+
+/**
+ * @tc.name: UpdateRecordState_0100
+ * @tc.desc: A CAS-style transition succeeds when the record sits in the expected state.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerTest, UpdateRecordState_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "UpdateRecordState_0100 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    ExecuteParam execParam;
+    uint64_t intentId = 0;
+    ASSERT_EQ(manager->RegisterExecuteRecord(0, nullptr, "test.bundle", execParam, intentId), ERR_OK);
+
+    EXPECT_EQ(manager->UpdateRecordState(intentId, InsightIntentExecuteState::PENDING_CONSENT,
+        InsightIntentExecuteState::EXECUTING), ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "UpdateRecordState_0100 end.");
+}
+
+/**
+ * @tc.name: UpdateRecordState_0200
+ * @tc.desc: Transition fails with ERR_INVALID_OPERATION when the current state
+ *           does not match the expected one.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerTest, UpdateRecordState_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "UpdateRecordState_0200 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    ExecuteParam execParam;
+    uint64_t intentId = 0;
+    ASSERT_EQ(manager->RegisterExecuteRecord(0, nullptr, "test.bundle", execParam, intentId), ERR_OK);
+
+    // Already EXECUTING, expecting PENDING_CONSENT again must fail.
+    ASSERT_EQ(manager->UpdateRecordState(intentId, InsightIntentExecuteState::PENDING_CONSENT,
+        InsightIntentExecuteState::EXECUTING), ERR_OK);
+    EXPECT_EQ(manager->UpdateRecordState(intentId, InsightIntentExecuteState::PENDING_CONSENT,
+        InsightIntentExecuteState::EXECUTING), ERR_INVALID_OPERATION);
+
+    TAG_LOGI(AAFwkTag::TEST, "UpdateRecordState_0200 end.");
+}
+
+/**
+ * @tc.name: UpdateRecordState_0300
+ * @tc.desc: Transition on an unknown intentId fails with ERR_INVALID_VALUE.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerTest, UpdateRecordState_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "UpdateRecordState_0300 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    EXPECT_EQ(manager->UpdateRecordState(99999999, InsightIntentExecuteState::PENDING_CONSENT,
+        InsightIntentExecuteState::EXECUTING), ERR_INVALID_VALUE);
+
+    TAG_LOGI(AAFwkTag::TEST, "UpdateRecordState_0300 end.");
+}
+
+/**
+ * @tc.name: RemoveExecuteRecordIfCaller_0100
+ * @tc.desc: The caller removes its own pre-registered record (matching token id).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerTest, RemoveExecuteRecordIfCaller_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RemoveExecuteRecordIfCaller_0100 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    ExecuteParam execParam;
+    execParam.callerBundleName = "caller.bundle";
+    uint64_t intentId = 0;
+    ASSERT_EQ(manager->RegisterExecuteRecord(0, nullptr, "test.bundle", execParam, intentId), ERR_OK);
+    ASSERT_EQ(manager->GetInsightIntentCallerBundleName(intentId), "caller.bundle");
+
+    EXPECT_EQ(manager->RemoveExecuteRecordIfCaller(intentId), ERR_OK);
+    EXPECT_EQ(manager->GetInsightIntentCallerBundleName(intentId), "");
+
+    TAG_LOGI(AAFwkTag::TEST, "RemoveExecuteRecordIfCaller_0100 end.");
+}
+
+/**
+ * @tc.name: RemoveExecuteRecordIfCaller_0200
+ * @tc.desc: Removing an unknown intentId is a no-op that returns ERR_OK.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerTest, RemoveExecuteRecordIfCaller_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RemoveExecuteRecordIfCaller_0200 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    EXPECT_EQ(manager->RemoveExecuteRecordIfCaller(99999999), ERR_OK);
+
+    TAG_LOGI(AAFwkTag::TEST, "RemoveExecuteRecordIfCaller_0200 end.");
+}
+
+/**
+ * @tc.name: GetInsightIntentExported_0100
+ * @tc.desc: Empty target identifiers short-circuit to not-exported without
+ *           touching the intent cache.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerTest, GetInsightIntentExported_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "GetInsightIntentExported_0100 begin.");
+
+    EXPECT_FALSE(InsightIntentExecuteManager::GetInsightIntentExported("", "", "", 0));
+    EXPECT_FALSE(InsightIntentExecuteManager::GetInsightIntentExported("test.bundle", "", "TestIntent", 0));
+
+    TAG_LOGI(AAFwkTag::TEST, "GetInsightIntentExported_0100 end.");
+}
+
+/**
+ * @tc.name: CheckExportedIntentCallerPermission_0100
+ * @tc.desc: A non-exported (missing) target is reported as INTENT_NOT_EXIST so
+ *           its existence is not leaked to third-party callers.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerTest, CheckExportedIntentCallerPermission_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckExportedIntentCallerPermission_0100 begin.");
+
+    EXPECT_EQ(InsightIntentExecuteManager::CheckExportedIntentCallerPermission("", "", "", 0),
+        INTENT_NOT_EXIST);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckExportedIntentCallerPermission_0100 end.");
+}
+
+/**
+ * @tc.name: CheckAndUpdatePublicParam_0100
+ * @tc.desc: A public invoke whose target intent is not exported (empty target)
+ *           is rejected with INTENT_NOT_EXIST before any record is acquired.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerTest, CheckAndUpdatePublicParam_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdatePublicParam_0100 begin.");
+
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(manager, nullptr);
+
+    AppExecFwk::InsightIntentExecuteParam param;
+    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
+    sptr<IRemoteObject> callerToken = nullptr;
+
+    ExecuteParam execParam;
+    EXPECT_EQ(manager->CheckAndUpdatePublicParam(0, callerToken, paramPtr, execParam), INTENT_NOT_EXIST);
+
+    TAG_LOGI(AAFwkTag::TEST, "CheckAndUpdatePublicParam_0100 end.");
+}
+
 } // namespace AAFwk
 } // namespace OHOS

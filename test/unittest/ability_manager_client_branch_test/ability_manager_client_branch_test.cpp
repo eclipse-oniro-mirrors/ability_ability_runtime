@@ -3492,5 +3492,19 @@ HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_GetUIExtensionRoot
     EXPECT_EQ(ret, INNER_ERR);
     GTEST_LOG_(INFO) << "GetUIExtensionRootHostInfoById_0600 end ret=" << ret;
 }
+
+/*
+ * Feature: AbilityManagerClient
+ * Function: GetInsightIntentCallerBundleName
+ * SubFunction: NA
+ * FunctionPoints: forward the intent id and return the caller bundle name
+ * CaseDescription: Verify the normal path forwards to the proxy
+ */
+HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_GetInsightIntentCallerBundleName_0100, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, GetInsightIntentCallerBundleName(100)).WillOnce(Return("caller.bundle"));
+    EXPECT_EQ(client_->GetInsightIntentCallerBundleName(100), "caller.bundle");
+}
+
 }  // namespace AAFwk
 }  // namespace OHOS

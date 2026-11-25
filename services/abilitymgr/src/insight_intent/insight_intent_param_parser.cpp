@@ -39,7 +39,6 @@ constexpr const char *INSIGHT_INTENT_OPT_URIS = "uris";
 constexpr const char *INSIGHT_INTENT_OPT_FLAGS = "flags";
 
 constexpr int DECIMAL_BASE = 10;
-constexpr int32_t DEFAULT_USER_ID = -1;
 
 bool ParseInt(const std::string &str, int base, int32_t &out)
 {
@@ -166,8 +165,14 @@ int32_t InsightIntentParamParser::Build(const std::string &bundleName, const std
     param->bundleName_ = bundleName;
     param->insightIntentName_ = intentName;
     param->insightIntentParam_ = std::make_shared<AAFwk::WantParams>(wantParam);
-    param->userId_ = DEFAULT_USER_ID;
+    // Backfill the real caller userId (never -1): the exported visibility lookup
+    // and cross-user checks downstream key off param->userId_, and a hard-coded
+    // DEFAULT_USER_ID(-1) would mis-resolve the DB key for non-default users
+    // (e.g. 101/102), turning an exported intent invisible to third-party callers.
+    param->userId_ = callerUserId;
     param->displayId_ = AppExecFwk::INVALID_DISPLAY_ID;
+    TAG_LOGD(AAFwkTag::INTENT, "Build param, bundle:%{public}s, intent:%{public}s, callerUserId:%{public}d",
+        bundleName.c_str(), intentName.c_str(), callerUserId);
 
     std::string optModuleName = options->GetStringParam(INSIGHT_INTENT_OPT_MODULE_NAME);
     param->moduleName_ = optModuleName.empty() ? matched.moduleName : optModuleName;

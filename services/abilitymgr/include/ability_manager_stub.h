@@ -327,6 +327,9 @@ private:
     int32_t ExecuteIntentInner(MessageParcel &data, MessageParcel &reply);
     int32_t ExecuteIntentForDistributedInner(MessageParcel &data, MessageParcel &reply);
     int32_t ExecuteIntentByFunctionCallInner(MessageParcel &data, MessageParcel &reply);
+    int32_t GetInsightIntentCallerBundleNameInner(MessageParcel &data, MessageParcel &reply);
+    int32_t PreRegisterIntentRecordInner(MessageParcel &data, MessageParcel &reply);
+    int32_t RemoveIntentRecordInner(MessageParcel &data, MessageParcel &reply);
     int32_t ExecuteUIAbilityForegroundIntentWithSpecifyTokenIdInner(MessageParcel &data, MessageParcel &reply);
 
     int32_t QueryEntityInner(MessageParcel &data, MessageParcel &reply);
