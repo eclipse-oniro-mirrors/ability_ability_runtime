@@ -1419,11 +1419,6 @@ public:
         return ERR_INVALID_OPERATION;
     }
 
-    virtual int32_t NotifyResidentStartupCompleted()
-    {
-        return ERR_OK;
-    }
-
     virtual int32_t RegisterLaunchServiceObserver(const sptr<AbilityRuntime::ILaunchServiceObserver> &observer)
     {
         return ERR_OK;

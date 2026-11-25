@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 #include <memory>
 #include "launch_service_info.h"
+#include "daemon_service_info.h"
 
 using namespace testing::ext;
 
@@ -34,6 +35,33 @@ LaunchServiceDescriptor CreateValidDescriptor()
     return value;
 }
 } // namespace
+
+/**
+ * @tc.name: StateDataMarshalling_001
+ * @tc.desc: Verify all registration states round trip and invalid states fail.
+ * @tc.type: FUNC
+ */
+HWTEST_F(LaunchServiceInfoTest, StateDataMarshalling_001, TestSize.Level1)
+{
+    for (auto state : {LaunchServiceState::NOT_REGISTERED, LaunchServiceState::ENABLED, LaunchServiceState::DISABLED}) {
+        LaunchServiceStateData value;
+        value.descriptor = CreateValidDescriptor();
+        value.state = state;
+        Parcel parcel;
+        ASSERT_TRUE(value.Marshalling(parcel));
+        std::unique_ptr<LaunchServiceStateData> result(LaunchServiceStateData::Unmarshalling(parcel));
+        ASSERT_NE(result, nullptr);
+        EXPECT_EQ(result->state, state);
+        EXPECT_EQ(result->descriptor.bundleName, value.descriptor.bundleName);
+    }
+    LaunchServiceStateData invalid;
+    invalid.descriptor = CreateValidDescriptor();
+    invalid.state = static_cast<LaunchServiceState>(3);
+    Parcel parcel;
+    EXPECT_FALSE(invalid.Marshalling(parcel));
+    Parcel empty;
+    EXPECT_EQ(LaunchServiceStateData::Unmarshalling(empty), nullptr);
+}
 
 /**
  * @tc.name: DescriptorMarshalling_001
@@ -237,6 +265,23 @@ HWTEST_F(LaunchServiceInfoTest, ProcessStateDataMarshalling_002, TestSize.Level1
     value.state = static_cast<LaunchServiceProcessState>(2);
     Parcel invalidState;
     EXPECT_FALSE(value.Marshalling(invalidState));
+}
+
+/**
+ * @tc.name: DaemonDescriptorIdentity_001
+ * @tc.desc: Accept boundary-length fields and default user; reject empty, oversized or negative identity fields.
+ * @tc.type: FUNC
+ */
+HWTEST_F(LaunchServiceInfoTest, DaemonDescriptorIdentity_001, TestSize.Level1)
+{
+    AAFwk::LaunchServiceDescriptor descriptor {"bundle", "entry", "worker", -1, 0};
+    EXPECT_TRUE(descriptor.IsValid());
+    EXPECT_TRUE(AAFwk::LaunchServiceDescriptor::IsValidIdentity(std::string(512, 'b'), "m", "s", 0, 0));
+    EXPECT_FALSE(AAFwk::LaunchServiceDescriptor::IsValidIdentity(std::string(513, 'b'), "m", "s", 0, 0));
+    EXPECT_FALSE(AAFwk::LaunchServiceDescriptor::IsValidIdentity("b", "", "s", 0, 0));
+    EXPECT_FALSE(AAFwk::LaunchServiceDescriptor::IsValidIdentity("b", "m", "", 0, 0));
+    EXPECT_FALSE(AAFwk::LaunchServiceDescriptor::IsValidIdentity("b", "m", "s", -2, 0));
+    EXPECT_FALSE(AAFwk::LaunchServiceDescriptor::IsValidIdentity("b", "m", "s", 0, -1));
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

@@ -60,7 +60,6 @@ ohos_moduletest("running_infos_module_test") {
     cflags += [ "-DBINDER_IPC_32BIT" ]
   }
   deps = [
-    "${ability_runtime_innerkits_path}/daemon_service_manager:daemon_service_manager",
     "${ability_runtime_innerkits_path}/ability_manager:ability_start_setting",
     "${ability_runtime_innerkits_path}/ability_manager:process_options",
     "${cli_tool_framework_path}/interfaces/cli_tool:cli_tool_client",

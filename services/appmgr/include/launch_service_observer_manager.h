@@ -53,7 +53,6 @@ private:
         sptr<IRemoteObject::DeathRecipient> deathRecipient;
         int32_t userId = 0;
         int32_t callerUid = INVALID_CALLER_UID;
-        uint32_t registrationCount = 1;
         std::mutex mutex;
         bool active = true;
     };

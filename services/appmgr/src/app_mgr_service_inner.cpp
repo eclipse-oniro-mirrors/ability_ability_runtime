@@ -13111,6 +13111,22 @@ int32_t AppMgrServiceInner::ExitMasterProcessRole()
     return ERR_OK;
 }
 
+void AppMgrServiceInner::DispatchLaunchServiceProcessExitCleanup(pid_t pid)
+{
+    auto handler = GetLaunchServiceTaskHandler();
+    if (handler == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null launch service handler, pid:%{public}d", pid);
+        return;
+    }
+    auto task = [inner = shared_from_this(), pid]() {
+        inner->OnLaunchServiceProcessExited(pid);
+    };
+    handler->SubmitTask(task, AAFwk::TaskAttribute{
+        .taskName_ = "OnLaunchServiceProcessExitedTask",
+        .taskQos_ = AAFwk::TaskQoS::USER_INTERACTIVE
+    });
+}
+
 void AppMgrServiceInner::OnLaunchServiceProcessExited(pid_t pid)
 {
     GetLaunchServiceManager()->HandleLaunchServiceProcessDied(pid);

@@ -59,11 +59,6 @@ DaemonServiceManagerClient &DaemonServiceManagerClient::GetInstance()
     return instance;
 }
 
-int32_t DaemonServiceManagerClient::NotifyResidentStartupCompleted()
-{
-    return InvokeAppMgr([](const auto &proxy) { return proxy->NotifyResidentStartupCompleted(); });
-}
-
 int32_t DaemonServiceManagerClient::Register(const LaunchServiceDescriptor &descriptor)
 {
     const auto appMgrDescriptor = ConvertDescriptor(descriptor);

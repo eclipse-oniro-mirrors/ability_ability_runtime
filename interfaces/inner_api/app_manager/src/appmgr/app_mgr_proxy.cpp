@@ -3536,22 +3536,6 @@ int32_t AppMgrProxy::SetLaunchServicesEnabled(const std::string &bundleName, int
     return reply.ReadInt32(result) ? result : ERR_INVALID_VALUE;
 }
 
-int32_t AppMgrProxy::NotifyResidentStartupCompleted()
-{
-    MessageParcel data;
-    MessageParcel reply;
-    MessageOption option(MessageOption::TF_SYNC);
-    if (!WriteInterfaceToken(data)) {
-        return ERR_INVALID_VALUE;
-    }
-    auto result = SendRequest(AppMgrInterfaceCode::NOTIFY_RESIDENT_STARTUP_COMPLETED, data, reply, option);
-    if (result != NO_ERROR) {
-        return result;
-    }
-    int32_t serviceResult = ERR_INVALID_VALUE;
-    return reply.ReadInt32(serviceResult) ? serviceResult : ERR_INVALID_VALUE;
-}
-
 int32_t AppMgrProxy::RegisterLaunchServiceObserver(const sptr<AbilityRuntime::ILaunchServiceObserver> &observer)
 {
     if (observer == nullptr || observer->AsObject() == nullptr) {

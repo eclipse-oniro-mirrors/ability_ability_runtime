@@ -53,7 +53,7 @@ void LaunchServiceOperationCallback::ResultState::Complete(int32_t result)
     std::function<void(int32_t)> callback;
     {
         std::lock_guard<std::mutex> lock(mutex);
-        callback = std::move(completion);
+        callback.swap(completion);
     }
     if (callback) {
         callback(result);

@@ -505,7 +505,7 @@ void CleanupObservers(ani_vm *vm)
     } else {
         observer->Disable(nullptr);
     }
-    for (size_t index = 0; index < count; ++index) {
+    if (count > 0) {
         DaemonServiceManagerClient::GetInstance().UnregisterObserver(observer);
     }
 }
@@ -738,7 +738,8 @@ int32_t RemoveLaunchServiceObserver(ani_env *env, ani_vm *vm, int32_t observerId
             return ERR_OK;
         }
         observer = it->second;
-        int32_t ret = DaemonServiceManagerClient::GetInstance().UnregisterObserver(observer);
+        int32_t ret = observer->GetObserverCount() == 1 ?
+            DaemonServiceManagerClient::GetInstance().UnregisterObserver(observer) : ERR_OK;
         if (ret != ERR_OK) {
             return ret;
         }
@@ -785,7 +786,8 @@ ani_int OnLaunchServiceObserver(ani_env *env, ani_object observerObject)
         EtsErrorUtil::ThrowError(env, AbilityErrorCode::ERROR_CODE_INNER);
         return 0;
     }
-    int32_t ret = DaemonServiceManagerClient::GetInstance().RegisterObserver(observer);
+    int32_t ret = needRegister ?
+        DaemonServiceManagerClient::GetInstance().RegisterObserver(observer) : ERR_OK;
     if (ret != ERR_OK) {
         auto failedObserver = observer;
         observer->RemoveObserver(env, observerId);

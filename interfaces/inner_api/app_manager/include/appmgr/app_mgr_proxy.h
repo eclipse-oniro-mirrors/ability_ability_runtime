@@ -1095,7 +1095,6 @@ public:
     int32_t SetLaunchServicesEnabled(const std::string &bundleName, int32_t userId, int32_t appIndex,
         const std::vector<uint8_t> &token, bool enable,
         const sptr<AbilityRuntime::ILaunchServiceOperationCallback> &callback) override;
-    int32_t NotifyResidentStartupCompleted() override;
 
     int32_t RegisterLaunchServiceObserver(const sptr<AbilityRuntime::ILaunchServiceObserver> &observer) override;
     int32_t UnregisterLaunchServiceObserver(const sptr<AbilityRuntime::ILaunchServiceObserver> &observer) override;

@@ -28,7 +28,6 @@ class DaemonServiceManagerClient final {
 public:
     static DaemonServiceManagerClient &GetInstance();
 
-    int32_t NotifyResidentStartupCompleted();
     int32_t Register(const LaunchServiceDescriptor &descriptor);
     int32_t Unregister(const LaunchServiceDescriptor &descriptor);
     int32_t Start(const LaunchServiceDescriptor &descriptor);

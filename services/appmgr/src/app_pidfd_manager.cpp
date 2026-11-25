@@ -37,7 +37,6 @@
 
 namespace {
 const char *TASK_ON_CHILD_PROCESS_EXITED = "OnChildProcessExitedTask";
-constexpr const char *TASK_ON_LAUNCH_SERVICE_EXITED = "OnLaunchServiceProcessExitedTask";
 } // namespace
 
 namespace OHOS {
@@ -49,10 +48,7 @@ AppPidFdManager &AppPidFdManager::GetInstance()
     return manager;
 }
 
-AppPidFdManager::AppPidFdManager()
-    : launchServiceTaskHandler_(AAFwk::TaskHandlerWrap::CreateQueueHandler(
-        "launch_service_pidfd_task_queue", AAFwk::TaskQoS::USER_INTERACTIVE))
-{}
+AppPidFdManager::AppPidFdManager() {}
 
 AppPidFdManager::~AppPidFdManager()
 {
@@ -178,6 +174,25 @@ void AppPidFdManager::OnSubSpawnPidfdEvent(void *data, uint32_t event)
     GetInstance().OnPidfdFired(pid, PidFdType::SUBSPAWN);
 }
 
+int32_t AppPidFdManager::IsWatchedProcessAlive(pid_t pid)
+{
+    if (pid <= 0) {
+        TAG_LOGE(AAFwkTag::APPMGR, "invalid pid");
+        return ESRCH;
+    }
+    int32_t pidfd = -1;
+    {
+        std::lock_guard<std::mutex> lock(mapMutex_);
+        auto it = pidfdMap_.find(pid);
+        if (it != pidfdMap_.end()) {
+            pidfd = it->second.pidfd;
+            int ret = syscall(SYS_pidfd_send_signal, pidfd, 0, nullptr, 0);
+            return (ret == 0 ? 0 : errno);
+        }
+    }
+    return ESRCH;
+}
+
 bool AppPidFdManager::KillWatchedProcess(pid_t pid)
 {
     if (pid <= 0) {
@@ -263,16 +278,22 @@ void AppPidFdManager::OnPidfdFired(pid_t pid, PidFdType type)
 void AppPidFdManager::DispatchCleanup(pid_t pid, PidFdType type)
 {
     auto inner = appMgrServiceInner_.lock();
-    auto handler = type == PidFdType::LAUNCH_SERVICE ? launchServiceTaskHandler_ : taskHandler_.lock();
-    if (!inner || !handler) {
-        TAG_LOGE(AAFwkTag::APPMGR, "null inner or handler, pid:%{public}d", pid);
+    if (!inner) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null inner, pid:%{public}d", pid);
+        return;
+    }
+    if (type == PidFdType::LAUNCH_SERVICE) {
+        inner->DispatchLaunchServiceProcessExitCleanup(pid);
+        return;
+    }
+    auto handler = taskHandler_.lock();
+    if (!handler) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null handler, pid:%{public}d", pid);
         return;
     }
     auto task = [inner, pid, type]() {
         if (type == PidFdType::RENDER) {
             inner->OnRenderProcessExited(pid);
-        } else if (type == PidFdType::LAUNCH_SERVICE) {
-            inner->OnLaunchServiceProcessExited(pid);
         } else if (type == PidFdType::SUBSPAWN) {
             SubSpawnManager::GetInstance().OnSubSpawnExited(pid);
         } else {
@@ -282,8 +303,7 @@ void AppPidFdManager::DispatchCleanup(pid_t pid, PidFdType type)
         }
     };
     handler->SubmitTask(task, AAFwk::TaskAttribute{
-        .taskName_ = type == PidFdType::LAUNCH_SERVICE ? TASK_ON_LAUNCH_SERVICE_EXITED :
-            TASK_ON_CHILD_PROCESS_EXITED,
+        .taskName_ = TASK_ON_CHILD_PROCESS_EXITED,
         .taskQos_ = AAFwk::TaskQoS::USER_INTERACTIVE
     });
 }

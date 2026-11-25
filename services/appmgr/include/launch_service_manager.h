@@ -85,7 +85,6 @@ private:
         std::chrono::steady_clock::time_point startTime = std::chrono::steady_clock::now();
     };
     int32_t CheckLaunchServiceStartLocked(const LaunchServiceKey &key, AAFwk::LaunchServiceDescriptor &descriptor);
-    int32_t CheckLaunchServiceWatcher(const LaunchServiceKey &key, int32_t pid, bool watching);
     std::function<void(int32_t)> CreateLaunchServicesEnabledCompletion(const std::string &bundleName, int32_t userId,
         int32_t appIndex, bool enable, std::function<void(int32_t)> completion);
     int32_t StartLaunchService(const LaunchServiceKey &key, const LaunchService &service, uint32_t restartCount = 0,

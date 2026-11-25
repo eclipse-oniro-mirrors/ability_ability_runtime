@@ -99,7 +99,7 @@ constexpr int32_t HIPROFILER_UID = 3063;
 constexpr int32_t REPORT_TEMPLATE_PROCESS_READY_DELAY_TIME = 2000;
 constexpr int32_t LAUNCH_SERVICE_TASK_TIMEOUT_MS = 5000;
 constexpr int32_t MAX_APP_INDEX = 1000;
-constexpr const char *TASK_START_LAUNCH_SERVICES_AFTER_RESIDENT = "StartLaunchServicesAfterResident";
+constexpr const char *TASK_START_LAUNCH_SERVICES_AFTER_IAM = "StartLaunchServicesAfterIAM";
 
 namespace {
 #define CHECK_CALLER_IS_SYSTEM_APP                                                             \
@@ -130,6 +130,7 @@ constexpr int32_t USER_UID = 2000;
 constexpr const char* HIVIEW_PROCESS_NAME = "hiview";
 constexpr const char* DEBUG_FROM = "ohos.param.debugFrom";
 constexpr const char* DEVELOPER_MODE_STATE = "const.security.developermode.state";
+constexpr const char* LAUNCH_SERVICE_PC_MODE_SWITCH_PARAM = "const.window.support_window_pcmode_switch";
 constexpr const char* LAUNCH_SERVICE_MAIN_MODE_PARAM = "const.sceneboard.mainmode";
 constexpr const char* LAUNCH_SERVICE_PC_MODE_PARAM = "persist.sceneboard.ispcmode";
 constexpr const char* ALLOW_LAUNCH_SERVICE_ON_NON_DUAL_MODE_DEVICE_PARAM =
@@ -139,11 +140,12 @@ constexpr const char* DEBUGGABLE_STATE = "const.debuggable";
 
 bool IsDaemonDeviceSupported()
 {
-    if (system::GetParameter(LAUNCH_SERVICE_MAIN_MODE_PARAM, "").empty() &&
-        system::GetParameter(LAUNCH_SERVICE_PC_MODE_PARAM, "").empty()) {
+    if (!system::GetBoolParameter(LAUNCH_SERVICE_PC_MODE_SWITCH_PARAM, false)) {
         return system::GetBoolParameter(ALLOW_LAUNCH_SERVICE_ON_NON_DUAL_MODE_DEVICE_PARAM, false);
     }
-    return system::GetBoolParameter(LAUNCH_SERVICE_PC_MODE_PARAM, false);
+    auto mainMode = system::GetParameter(LAUNCH_SERVICE_MAIN_MODE_PARAM, "");
+    return (mainMode == "0" || mainMode == "1") &&
+        system::GetBoolParameter(LAUNCH_SERVICE_PC_MODE_PARAM, false);
 }
 
 bool VerifyRegisterDaemonPermission()
@@ -244,6 +246,9 @@ void AppMgrService::OnStart()
     }
     if (!AddSystemAbilityListener(URI_PERMISSION_MGR_SERVICE_ID)) {
         TAG_LOGE(AAFwkTag::APPMGR, "failed to add upms listener");
+    }
+    if (!AddSystemAbilityListener(SUBSYS_USERIAM_SYS_ABILITY_USERAUTH)) {
+        TAG_LOGE(AAFwkTag::APPMGR, "failed to add IAM listener");
     }
     TAG_LOGI(AAFwkTag::APPMGR, "start service success");
     PerfProfile::GetInstance().SetAmsLoadEndTime(GetTickCount());
@@ -393,6 +398,7 @@ ErrCode AppMgrService::Init()
         if (launchServiceTaskHandler_ == nullptr) {
             return ERR_INVALID_OPERATION;
         }
+        appMgrServiceInner_->SetLaunchServiceTaskHandler(launchServiceTaskHandler_);
     }
     taskHandler_ = AAFwk::TaskHandlerWrap::CreateConcurrentQueueHandler("app_mgr_task_queue",
         DEFAULT_CONCURRENT_NUMBER);
@@ -2017,6 +2023,12 @@ void AppMgrService::OnAddSystemAbility(int32_t systemAbilityId, const std::strin
         TAG_LOGE(AAFwkTag::APPMGR, "not ready");
         return;
     }
+    if (systemAbilityId == SUBSYS_USERIAM_SYS_ABILITY_USERAUTH) {
+        if (ScheduleLaunchServicesAfterIAMReady() != ERR_OK) {
+            TAG_LOGE(AAFwkTag::APPMGR, "failed to schedule launch services after IAM ready");
+        }
+        return;
+    }
     if (systemAbilityId == URI_PERMISSION_MGR_SERVICE_ID) {
         AAFwk::UriPermissionManagerClient::GetInstance().SetUriPermServiceStarted();
     }
@@ -3108,11 +3120,8 @@ int32_t AppMgrService::SetLaunchServicesEnabled(const std::string &bundleName, i
     return handle ? ERR_OK : AAFwk::ABILITY_SERVICE_NOT_CONNECTED;
 }
 
-int32_t AppMgrService::NotifyResidentStartupCompleted()
+int32_t AppMgrService::ScheduleLaunchServicesAfterIAMReady()
 {
-    if (IPCSkeleton::GetCallingPid() != getprocpid()) {
-        return AAFwk::CHECK_PERMISSION_FAILED;
-    }
     if (!IsReady()) {
         return AAFwk::ABILITY_SERVICE_NOT_CONNECTED;
     }
@@ -3124,15 +3133,13 @@ int32_t AppMgrService::NotifyResidentStartupCompleted()
     if (launchHandler == nullptr) {
         return AAFwk::ABILITY_SERVICE_NOT_CONNECTED;
     }
-    auto task = [inner = appMgrServiceInner_, launchHandler]() {
-        auto handle = launchHandler->SubmitTask([inner]() { inner->StartLaunchServicesAfterBoot(); });
-        if (!handle) {
-            TAG_LOGE(AAFwkTag::APPMGR, "submit boot launch service task failed");
-        }
-    };
-    auto handle = taskHandler_->SubmitTask(task,
+    auto task = [inner = appMgrServiceInner_]() { inner->StartLaunchServicesAfterBoot(); };
+    auto handle = launchHandler->SubmitTask(task,
         AAFwk::TaskAttribute{
-            .taskName_ = TASK_START_LAUNCH_SERVICES_AFTER_RESIDENT, .taskQos_ = AAFwk::TaskQoS::USER_INTERACTIVE});
+            .taskName_ = TASK_START_LAUNCH_SERVICES_AFTER_IAM, .taskQos_ = AAFwk::TaskQoS::USER_INTERACTIVE});
+    if (!handle) {
+        TAG_LOGE(AAFwkTag::APPMGR, "submit boot launch service task failed");
+    }
     return handle ? ERR_OK : AAFwk::ABILITY_SERVICE_NOT_CONNECTED;
 }
 

@@ -76,6 +76,7 @@ public:
      * transient pidfd. Returns false if the process is already gone.
      */
     bool KillWatchedProcess(pid_t pid);
+    int32_t IsWatchedProcessAlive(pid_t pid);
 
 private:
     AppPidFdManager();
@@ -106,7 +107,6 @@ private:
     std::mutex mapMutex_;
     std::weak_ptr<AppMgrServiceInner> appMgrServiceInner_;
     std::weak_ptr<AAFwk::TaskHandlerWrap> taskHandler_;
-    std::shared_ptr<AAFwk::TaskHandlerWrap> launchServiceTaskHandler_;
 
     DISALLOW_COPY_AND_MOVE(AppPidFdManager);
 };

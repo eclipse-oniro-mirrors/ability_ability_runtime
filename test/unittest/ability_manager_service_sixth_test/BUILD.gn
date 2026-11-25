@@ -86,7 +86,6 @@ ohos_unittest("ability_manager_service_sixth_test") {
     "${ability_runtime_innerkits_path}/ability_manager:start_window_option",
     "${ability_runtime_innerkits_path}/app_manager:app_manager",
     "${ability_runtime_innerkits_path}/connectionobs_manager:connection_obs_manager",
-    "${ability_runtime_innerkits_path}/daemon_service_manager:daemon_service_manager",
     "${ability_runtime_innerkits_path}/deps_wrapper:ability_deps_wrapper",
     "${ability_runtime_innerkits_path}/foreground_app_obs_manager:foreground_app_obs_manager",
     "${ability_runtime_innerkits_path}/session_handler:session_handler",
