@@ -3453,5 +3453,44 @@ HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_BackToCallerAbilit
     EXPECT_EQ(result, ERR_OK);
 }
 
+/**
+ * @tc.name: AbilityManagerClient_GetUIExtensionRootHostInfoById_0500
+ * @tc.desc: a failed transport request is returned to the caller unchanged instead of being swallowed.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_GetUIExtensionRootHostInfoById_0500, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetUIExtensionRootHostInfoById_0500 start";
+    client_->proxy_ = new AbilityManagerProxy(mock_);
+    EXPECT_CALL(*mock_, SendRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::GET_UI_EXTENSION_HOST_INFO_BY_ID), _, _, _))
+        .WillOnce(Return(INNER_ERR));
+
+    UIExtensionHostInfo hostInfo;
+    auto ret = client_->GetUIExtensionRootHostInfoById(HOST_INFO_RECORD_ID, hostInfo);
+    EXPECT_EQ(ret, INNER_ERR);
+    GTEST_LOG_(INFO) << "GetUIExtensionRootHostInfoById_0500 end ret=" << ret;
+}
+
+/**
+ * @tc.name: AbilityManagerClient_GetUIExtensionRootHostInfoById_0600
+ * @tc.desc: a reply that carries no UIExtensionHostInfo parcelable is rejected with INNER_ERR.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_GetUIExtensionRootHostInfoById_0600, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "GetUIExtensionRootHostInfoById_0600 start";
+    client_->proxy_ = new AbilityManagerProxy(mock_);
+    EXPECT_CALL(*mock_, SendRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::GET_UI_EXTENSION_HOST_INFO_BY_ID), _, _, _))
+        .WillOnce(Invoke([](uint32_t, MessageParcel &, MessageParcel &reply, MessageOption &) {
+            return reply.WriteInt32(ERR_OK) ? 0 : -1;
+        }));
+
+    UIExtensionHostInfo hostInfo;
+    auto ret = client_->GetUIExtensionRootHostInfoById(HOST_INFO_RECORD_ID, hostInfo);
+    EXPECT_EQ(ret, INNER_ERR);
+    GTEST_LOG_(INFO) << "GetUIExtensionRootHostInfoById_0600 end ret=" << ret;
+}
 }  // namespace AAFwk
 }  // namespace OHOS
