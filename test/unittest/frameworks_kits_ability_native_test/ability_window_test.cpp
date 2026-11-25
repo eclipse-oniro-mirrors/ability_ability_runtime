@@ -90,7 +90,7 @@ HWTEST_F(AbilityWindowTest, Ability_Window_InitWindow_0100, TestSize.Level1)
     std::shared_ptr<AbilityRuntime::AbilityContext> abilityContextImpl = std::make_shared<AbilityContextImpl>();
     sptr<Rosen::IWindowLifeCycle> listener = nullptr;
     int32_t displayId = 0;
-    sptr<Rosen::WindowOption> option = nullptr;
+    auto option = sptr<Rosen::WindowOption>::MakeSptr();
     bool isPrivacy = false;
     EXPECT_TRUE(abilityWindow_ != nullptr);
     bool result = abilityWindow_->InitWindow(abilityContextImpl, listener, displayId, option, isPrivacy);
@@ -111,7 +111,7 @@ HWTEST_F(AbilityWindowTest, Ability_Window_InitWindow_0200, TestSize.Level1)
     std::shared_ptr<AbilityRuntime::AbilityContext> abilityContextImpl = std::make_shared<AbilityContextImpl>();
     sptr<IWindowLifeCycle> listener = nullptr;
     int32_t displayId = 0;
-    sptr<WindowOption> option = nullptr;
+    auto option = sptr<WindowOption>::MakeSptr();
     bool isPrivacy = true;
     EXPECT_TRUE(abilityWindow_ != nullptr);
     abilityWindow_->windowScene_ = std::make_shared<WindowScene>();

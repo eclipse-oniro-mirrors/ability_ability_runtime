@@ -1586,14 +1586,15 @@ HWTEST_F(AbilityPermissionUtilTest, DirectBoot_MainQueryFailureDoesNotUseClonePe
     EXPECT_EQ(directBootPermissionChecks, 0);
 }
 
-HWTEST_F(AbilityPermissionUtilTest, DirectBoot_NullHelperSkipsPermissionAndCloneQuery, TestSize.Level1)
+HWTEST_F(AbilityPermissionUtilTest, DirectBoot_NullHelperRejectedBeforePermissionAndCloneQuery, TestSize.Level1)
 {
     UserController::GetInstance().SetMockUserLockStatus(UserController::UserLockStatus::USER_LOCKED);
     BundleMgrHelper::isNullBundleMgrInstance = true;
 
-    EXPECT_TRUE(AbilityPermissionUtil::GetInstance().CheckStartUIAbilityByUserLockStatus("com.example.directboot"));
+    EXPECT_FALSE(AbilityPermissionUtil::GetInstance().CheckStartUIAbilityByUserLockStatus("com.example.directboot"));
     EXPECT_EQ(BundleMgrHelper::cloneQueryCount, 0);
     EXPECT_EQ(directBootPermissionChecks, 0);
+    BundleMgrHelper::isNullBundleMgrInstance = false;
 }
 
 HWTEST_F(AbilityPermissionUtilTest, DirectBoot_SystemAppSkipsPermissionAndCloneQuery, TestSize.Level1)
