@@ -5103,6 +5103,271 @@ HWTEST_F(CliToolManagerServiceTest, FunctionInterfaces_0100, TestSize.Level1)
 }
 
 /**
+ * @tc.name: CliToolManagerService_GetPublicFunctions_0100
+ * @tc.desc: Test GetPublicFunctions filters out non-visible functions
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetPublicFunctions_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetPublicFunctions_0100 start");
+
+    FunctionInfo funcVisible;
+    funcVisible.functionName = "visible_func";
+    funcVisible.functionNamespace = "test_ns";
+    funcVisible.userId = 0;
+    funcVisible.visible = true;
+
+    FunctionInfo funcHidden;
+    funcHidden.functionName = "hidden_func";
+    funcHidden.functionNamespace = "test_ns";
+    funcHidden.userId = 0;
+    funcHidden.visible = false;
+
+    CliFunctionDataManagerMock::mockFunctions = {funcVisible, funcHidden};
+
+    FunctionsRawData rawData;
+    int32_t ret = service_->GetPublicFunctions(rawData);
+
+    EXPECT_EQ(ret, ERR_OK);
+    std::vector<FunctionInfo> result;
+    FunctionsRawData::ToFunctionInfoVec(rawData, result);
+    EXPECT_EQ(result.size(), 1u);
+    EXPECT_EQ(result[0].functionName, "visible_func");
+
+    CliFunctionDataManagerMock::Reset();
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetPublicFunctions_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_GetPublicFunctions_0200
+ * @tc.desc: Test GetPublicFunctions with permission denied
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetPublicFunctions_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetPublicFunctions_0200 start");
+
+    PermissionUtilMock::accessPublicFunctionPermitted = false;
+
+    FunctionsRawData rawData;
+    int32_t ret = service_->GetPublicFunctions(rawData);
+
+    EXPECT_EQ(ret, ERR_PERMISSION_DENIED);
+
+    PermissionUtilMock::Reset();
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetPublicFunctions_0200 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_GetPublicFunctions_0300
+ * @tc.desc: Test GetPublicFunctions with data manager failure
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetPublicFunctions_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetPublicFunctions_0300 start");
+
+    CliFunctionDataManagerMock::getAllFunctionsResult = ERR_NO_INIT;
+
+    FunctionsRawData rawData;
+    int32_t ret = service_->GetPublicFunctions(rawData);
+
+    EXPECT_EQ(ret, ERR_NO_INIT);
+
+    CliFunctionDataManagerMock::Reset();
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetPublicFunctions_0300 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_GetFunctionInfo_0300
+ * @tc.desc: Test GetFunctionInfo rejected for non-system callers (system API only)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetFunctionInfo_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetFunctionInfo_0300 start");
+
+    // Third-party caller (non-system app, non-SA): GetFunctionInfo is a system API,
+    // CheckSystemAndPermission must reject it before any data access.
+    IPCSkeleton::callingFullTokenId = 1;
+    IPCSkeleton::callingTokenId = TOKEN_HAP;
+
+    FunctionInfo retrieved;
+    int32_t ret = service_->GetFunctionInfo("test_ns", "any_func", retrieved);
+
+    EXPECT_EQ(ret, ERR_NOT_SYSTEM_APP);
+
+    IPCSkeleton::Reset();
+    CliFunctionDataManagerMock::Reset();
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetFunctionInfo_0300 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_GetFunctionInfo_0400
+ * @tc.desc: Test GetFunctionInfo system caller with a function not open to third-party apps
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetFunctionInfo_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetFunctionInfo_0400 start");
+
+    // Default fixture caller is a system app; system apps may query any function
+    // regardless of its open-to-third-party (visible) state -- behavior unchanged.
+    FunctionInfo func;
+    func.functionName = "hidden_func";
+    func.functionNamespace = "test_ns";
+    func.userId = 0;
+    func.visible = false;
+    CliFunctionDataManagerMock::mockFunctionInfo = func;
+    CliFunctionDataManagerMock::getFunctionResult = ERR_OK;
+
+    FunctionInfo retrieved;
+    int32_t ret = service_->GetFunctionInfo("test_ns", "hidden_func", retrieved);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(retrieved.functionName, "hidden_func");
+
+    CliFunctionDataManagerMock::Reset();
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetFunctionInfo_0400 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_GetFunctionInfo_0500
+ * @tc.desc: Test GetFunctionInfo with data manager failure propagated
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetFunctionInfo_0500, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetFunctionInfo_0500 start");
+
+    // Default fixture caller is a system app; data manager failure is propagated.
+    CliFunctionDataManagerMock::getFunctionResult = ERR_NO_INIT;
+
+    FunctionInfo retrieved;
+    int32_t ret = service_->GetFunctionInfo("test_ns", "any_func", retrieved);
+
+    EXPECT_EQ(ret, ERR_NO_INIT);
+
+    CliFunctionDataManagerMock::Reset();
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetFunctionInfo_0500 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_GetPublicFunctionInfo_0100
+ * @tc.desc: Test GetPublicFunctionInfo success with a function open to third-party apps
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetPublicFunctionInfo_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetPublicFunctionInfo_0100 start");
+
+    FunctionInfo func;
+    func.functionName = "visible_func";
+    func.functionNamespace = "test_ns";
+    func.userId = 0;
+    func.visible = true;
+    CliFunctionDataManagerMock::mockFunctionInfo = func;
+    CliFunctionDataManagerMock::getFunctionResult = ERR_OK;
+
+    // Third-party caller holding the ACL permission may query functions open to
+    // third-party apps.
+    IPCSkeleton::callingFullTokenId = 1;
+    IPCSkeleton::callingTokenId = TOKEN_HAP;
+
+    FunctionInfo retrieved;
+    int32_t ret = service_->GetPublicFunctionInfo("test_ns", "visible_func", retrieved);
+
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(retrieved.functionName, "visible_func");
+    EXPECT_TRUE(retrieved.visible);
+
+    IPCSkeleton::Reset();
+    CliFunctionDataManagerMock::Reset();
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetPublicFunctionInfo_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_GetPublicFunctionInfo_0200
+ * @tc.desc: Test GetPublicFunctionInfo with permission denied
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetPublicFunctionInfo_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetPublicFunctionInfo_0200 start");
+
+    PermissionUtilMock::accessPublicFunctionPermitted = false;
+
+    FunctionInfo retrieved;
+    int32_t ret = service_->GetPublicFunctionInfo("test_ns", "any_func", retrieved);
+
+    EXPECT_EQ(ret, ERR_PERMISSION_DENIED);
+
+    PermissionUtilMock::Reset();
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetPublicFunctionInfo_0200 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_GetPublicFunctionInfo_0300
+ * @tc.desc: Test GetPublicFunctionInfo with a function not open to third-party apps
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetPublicFunctionInfo_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetPublicFunctionInfo_0300 start");
+
+    FunctionInfo func;
+    func.functionName = "hidden_func";
+    func.functionNamespace = "test_ns";
+    func.userId = 0;
+    func.visible = false;
+    CliFunctionDataManagerMock::mockFunctionInfo = func;
+    CliFunctionDataManagerMock::getFunctionResult = ERR_OK;
+
+    IPCSkeleton::callingFullTokenId = 1;
+    IPCSkeleton::callingTokenId = TOKEN_HAP;
+
+    FunctionInfo retrieved;
+    int32_t ret = service_->GetPublicFunctionInfo("test_ns", "hidden_func", retrieved);
+
+    // Not open to third-party apps is indistinguishable from "does not exist".
+    EXPECT_EQ(ret, ERR_FUNCTION_NOT_EXIST);
+
+    IPCSkeleton::Reset();
+    CliFunctionDataManagerMock::Reset();
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetPublicFunctionInfo_0300 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_GetPublicFunctionInfo_0400
+ * @tc.desc: Test GetPublicFunctionInfo with data manager failure propagated
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetPublicFunctionInfo_0400, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetPublicFunctionInfo_0400 start");
+
+    CliFunctionDataManagerMock::getFunctionResult = ERR_NO_INIT;
+
+    FunctionInfo retrieved;
+    int32_t ret = service_->GetPublicFunctionInfo("test_ns", "any_func", retrieved);
+
+    EXPECT_EQ(ret, ERR_NO_INIT);
+
+    CliFunctionDataManagerMock::Reset();
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetPublicFunctionInfo_0400 end");
+}
+
+/**
  * @tc.name: CliToolManagerService_PostExecToolTask_0100
  * @tc.desc: Test PostExecToolTask routes isTimeout=true to HandleProcessTimeout on the ffrt worker
  * @tc.type: FUNC
@@ -6293,6 +6558,11 @@ public:
     ErrCode ResetNamespaceFunctions(int32_t, const std::string &, const FunctionsRawData &,
         int32_t &) override { return ERR_OK; }
     ErrCode GetAllFunctions(FunctionsRawData &) override { return ERR_OK; }
+    ErrCode GetPublicFunctions(FunctionsRawData &) override { return ERR_OK; }
+    ErrCode GetPublicFunctionInfo(const std::string &, const std::string &, FunctionInfo &) override
+    {
+        return ERR_OK;
+    }
     ErrCode BatchRegisterFunctionsAsync(const FunctionsRawData &) override { return ERR_OK; }
     ErrCode UnregisterIntentFunctionsByNamespaceAsync(int32_t, const std::string &) override
     {

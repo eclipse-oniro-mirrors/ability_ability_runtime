@@ -27,9 +27,10 @@ ohos_unittest("invoke_function_executor_test") {
   module_out_path = module_output_path
 
   # "mock/include" MUST come before the real interfaces/cli_tool/include so the
-  # trimmed mock CliToolMGRClient shadows the real one; interfaces/cli_tool/include
-  # is still needed for cli_error_code.h (no mock), and interfaces/function/include
-  # for function_info.h (no mock).
+  # trimmed mock CliToolMGRClient / IntentClient / IntentPreprocessor shadow
+  # the real ones; interfaces/cli_tool/include is still needed for
+  # cli_error_code.h (no mock), and interfaces/function/include for
+  # function_info.h (no mock).
   include_dirs = [
     "mock/include",
     "${cli_tool_framework_path}/frameworks/js/napi/function_manager/include",
@@ -45,10 +46,15 @@ ohos_unittest("invoke_function_executor_test") {
 
   sources = [
     "invoke_function_executor_test.cpp",
+    "mock/src/intent_preprocessor.cpp",
     "mock/src/intent_client.cpp",
     "mock/src/cli_tool_mgr_client.cpp",
+    "${cli_tool_framework_path}/frameworks/js/napi/function_manager/src/consent_gate.cpp",
+    "${cli_tool_framework_path}/frameworks/js/napi/function_manager/src/function_executor.cpp",
+    "${cli_tool_framework_path}/frameworks/js/napi/function_manager/src/function_executor_factory.cpp",
+    "${cli_tool_framework_path}/frameworks/js/napi/function_manager/src/function_invoker.cpp",
+    "${cli_tool_framework_path}/frameworks/js/napi/function_manager/src/intent_function_executor.cpp",
     "${cli_tool_framework_path}/frameworks/js/napi/function_manager/src/invoke_function_callback_client.cpp",
-    "${cli_tool_framework_path}/frameworks/js/napi/function_manager/src/invoke_function_executor.cpp",
     "${cli_tool_framework_path}/interfaces/cli_tool/src/invoke_function_result.cpp",
     "${cli_tool_framework_path}/interfaces/cli_tool/src/invoke_function_param.cpp",
     "${cli_tool_framework_path}/interfaces/cli_tool/src/exec_options.cpp",
@@ -59,8 +65,8 @@ ohos_unittest("invoke_function_executor_test") {
   configs = [ "//build/config/compiler:exceptions" ]
 
   deps = [
-    # FunctionInfo is a Parcelable whose vtable (key function Marshalling) lives
-    # in this source set; DoExecute constructs a local FunctionInfo.
+    # FunctionInfo is a Parcelable whose vtable (key function Marshalling)
+    # lives in this source set.
     "${cli_tool_framework_path}/interfaces/function:function_info",
     "${ability_runtime_path}/utils/global/common:runtime_utils",
   ]

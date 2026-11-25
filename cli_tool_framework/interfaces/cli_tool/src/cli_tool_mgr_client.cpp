@@ -286,6 +286,38 @@ ErrCode CliToolMGRClient::GetAllFunctions(std::vector<FunctionInfo> &functions)
     return FunctionsRawData::ToFunctionInfoVec(rawData, functions);
 }
 
+ErrCode CliToolMGRClient::GetPublicFunctions(std::vector<FunctionInfo> &functions)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "GetPublicFunctions called");
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+    FunctionsRawData rawData;
+    int32_t ret = proxy->GetPublicFunctions(rawData);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetPublicFunctions failed: %{public}d", ret);
+        return ret;
+    }
+    return FunctionsRawData::ToFunctionInfoVec(rawData, functions);
+}
+
+ErrCode CliToolMGRClient::GetPublicFunctionInfo(const std::string &functionNamespace,
+    const std::string &functionName, FunctionInfo &function)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "GetPublicFunctionInfo: %{public}s/%{public}s",
+        functionNamespace.c_str(), functionName.c_str());
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    auto proxy = GetCliToolMgrProxy();
+    if (proxy == nullptr) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "proxy is null");
+        return GET_CLI_TOOL_MGR_SERVICE_FAILED;
+    }
+    return proxy->GetPublicFunctionInfo(functionNamespace, functionName, function);
+}
+
 ErrCode CliToolMGRClient::BatchRegisterFunctionsAsync(const std::vector<FunctionInfo> &functions)
 {
     TAG_LOGI(AAFwkTag::CLI_TOOL, "BatchRegisterFunctionsAsync: %{public}zu functions", functions.size());

@@ -39,6 +39,16 @@ ErrCode CliToolMGRClient::GetFunctionInfo(const std::string &bundleName, const s
     return ERR_OK;
 }
 
+ErrCode CliToolMGRClient::GetPublicFunctionInfo(const std::string &functionNamespace,
+    const std::string &functionName, FunctionInfo &function)
+{
+    if (mockPublicStatus_ != ERR_OK) {
+        return static_cast<ErrCode>(mockPublicStatus_);  // simulate public query failure
+    }
+    function.functionType = mockFunctionType_;
+    return ERR_OK;
+}
+
 ErrCode CliToolMGRClient::BeforeInvokeFunction(InvokeFunctionParam &param)
 {
     if (!mockHookModify_) {

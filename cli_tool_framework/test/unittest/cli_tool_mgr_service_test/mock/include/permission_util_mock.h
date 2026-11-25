@@ -31,6 +31,8 @@ public:
     // fallback behavior the existing suites rely on; Reset() restores them.
     static bool queryCliToolPermitted;
     static bool queryPublicCliToolPermitted;
+    static bool accessFunctionPermitted;
+    static bool accessPublicFunctionPermitted;
 
     static void Reset();
 };

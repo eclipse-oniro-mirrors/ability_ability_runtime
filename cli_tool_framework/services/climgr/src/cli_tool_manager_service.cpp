@@ -123,6 +123,7 @@ constexpr const char* PERMISSION_QUERY_CLI_TOOL = "ohos.permission.QUERY_CLI_TOO
 constexpr const char* PERMISSION_QUERY_PUBLIC_CLI_TOOL = "ohos.permission.QUERY_PUBLIC_CLI_TOOL";
 constexpr const char* PERMISSION_REGISTER_CLI_TOOL = "ohos.permission.REGISTER_CLI_TOOL";
 constexpr const char* PERMISSION_ACCESS_FUNCTION = "ohos.permission.ACCESS_FUNCTION";
+constexpr const char* PERMISSION_ACCESS_PUBLIC_FUNCTION = "ohos.permission.ACCESS_PUBLIC_FUNCTION";
 constexpr const char* PERMISSION_REGISTER_AGENT_HOOK = "ohos.permission.REGISTER_AGENT_HOOK";
 // Only the exact string "public" opens a tool to QUERY_PUBLIC_CLI_TOOL callers (REQ 20260812019200).
 constexpr const char* TOOL_VISIBILITY_PUBLIC = "public";
@@ -1372,6 +1373,72 @@ int32_t CliToolManagerService::GetAllFunctions(FunctionsRawData &functions)
         return ret;
     }
     TAG_LOGI(AAFwkTag::CLI_TOOL, "Successfully got all functions (raw): %{public}zu", functionList.size());
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::GetPublicFunctions(FunctionsRawData &functions)
+{
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "GetPublicFunctions called");
+    InterfaceCallCounter counter(interfaceCalledCount_);
+
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+    if (!PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_ACCESS_PUBLIC_FUNCTION)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetPublicFunctions: permission denied");
+        return ERR_PERMISSION_DENIED;
+    }
+
+    int32_t queryUserId = GetCallingUserId();
+    std::vector<FunctionInfo> functionList;
+    int32_t ret = CliFunctionDataManager::GetInstance().GetAllFunctions(queryUserId, functionList);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetPublicFunctions: Failed to get functions, ret=%{public}d", ret);
+        return ret;
+    }
+
+    functionList.erase(std::remove_if(functionList.begin(), functionList.end(),
+        [](const FunctionInfo &f) { return !f.visible; }), functionList.end());
+
+    ret = FunctionsRawData::FromFunctionInfoVec(functionList, functions);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetPublicFunctions: FromFunctionInfoVec failed: %{public}d", ret);
+        return ret;
+    }
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "GetPublicFunctions: got %{public}zu public functions", functionList.size());
+    return ERR_OK;
+}
+
+int32_t CliToolManagerService::GetPublicFunctionInfo(const std::string &functionNamespace,
+    const std::string &functionName, FunctionInfo &function)
+{
+    TAG_LOGD(AAFwkTag::CLI_TOOL, "GetPublicFunctionInfo called: %{public}s/%{public}s",
+        functionNamespace.c_str(), functionName.c_str());
+    InterfaceCallCounter counter(interfaceCalledCount_);
+
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+    if (!PermissionUtil::VerifyAccessToken(tokenId, PERMISSION_ACCESS_PUBLIC_FUNCTION)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetPublicFunctionInfo: permission denied");
+        return ERR_PERMISSION_DENIED;
+    }
+
+    // Function data is strictly per-user: queries always resolve to the IPC caller's
+    // own user, cross-user access is not supported
+    int32_t queryUserId = GetCallingUserId();
+    int32_t ret = CliFunctionDataManager::GetInstance().GetFunctionByName(
+        queryUserId, functionNamespace, functionName, function);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetPublicFunctionInfo: Failed to get function, ret=%{public}d", ret);
+        return ret;
+    }
+
+    // Only functions open to third-party applications (visible=true) can be obtained;
+    // the error is indistinguishable from "function does not exist" to avoid leaking existence
+    if (!function.visible) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "GetPublicFunctionInfo: function is not open to third-party apps");
+        return ERR_FUNCTION_NOT_EXIST;
+    }
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "GetPublicFunctionInfo: Successfully got public function: %{public}s/%{public}s",
+        functionNamespace.c_str(), functionName.c_str());
     return ERR_OK;
 }
 

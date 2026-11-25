@@ -27,6 +27,8 @@ bool PermissionUtilMock::execPublicCliToolPermitted = true;
 bool PermissionUtilMock::registerAgentHookPermitted = true;
 bool PermissionUtilMock::queryCliToolPermitted = true;
 bool PermissionUtilMock::queryPublicCliToolPermitted = true;
+bool PermissionUtilMock::accessFunctionPermitted = true;
+bool PermissionUtilMock::accessPublicFunctionPermitted = true;
 
 void PermissionUtilMock::Reset()
 {
@@ -35,6 +37,8 @@ void PermissionUtilMock::Reset()
     registerAgentHookPermitted = true;
     queryCliToolPermitted = true;
     queryPublicCliToolPermitted = true;
+    accessFunctionPermitted = true;
+    accessPublicFunctionPermitted = true;
 }
 
 bool PermissionUtil::VerifyAccessToken(Security::AccessToken::AccessTokenID, const std::string &requirePermission)
@@ -53,6 +57,12 @@ bool PermissionUtil::VerifyAccessToken(Security::AccessToken::AccessTokenID, con
     }
     if (requirePermission == "ohos.permission.QUERY_PUBLIC_CLI_TOOL") {
         return PermissionUtilMock::queryPublicCliToolPermitted;
+    }
+    if (requirePermission == "ohos.permission.ACCESS_FUNCTION") {
+        return PermissionUtilMock::accessFunctionPermitted;
+    }
+    if (requirePermission == "ohos.permission.ACCESS_PUBLIC_FUNCTION") {
+        return PermissionUtilMock::accessPublicFunctionPermitted;
     }
     return true;
 }

@@ -22,7 +22,7 @@
 #include "insight_intent_callback_interface.h"
 #include "insight_intent_execute_result.h"
 
-#include "invoke_function_executor.h"
+#include "invoke_session.h"
 
 namespace OHOS {
 namespace CliTool {
@@ -32,9 +32,9 @@ namespace CliTool {
  *
  * Receives the function reply on a binder thread, wins (or yields) the shared
  * completed flag against the timeout/failure paths, and delivers a pure-C++
- * InvokeFunctionResult via the injected callback. Does NOT depend on napi or on
- * InvokeFunctionExecutor, so it can be unit-tested by injecting a callback and
- * an atomic flag directly.
+ * InvokeFunctionResult via the injected callback. Does NOT depend on napi or
+ * on FunctionExecutor/FunctionInvoker, so it can be unit-tested by injecting
+ * a callback and an atomic flag directly.
  *
  * Race-guard contract: the shared `completed` flag is the single arbiter across
  * this callback, the executor's ReportError path, and the timeout task; only the
