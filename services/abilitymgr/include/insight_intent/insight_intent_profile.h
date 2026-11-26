@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -64,6 +64,10 @@ struct InsightIntentInfo {
     std::string displayDescription;
     std::string bundleName;
     std::string moduleName;
+    // Exported visibility of an insight intent. When `false` (default) the intent is
+    // visible only to system applications; when `true` it is additionally exposed to
+    // third-party agents. The field is declarative and never constitutes a permission gate.
+    bool exported = false;
 };
 
 class InsightIntentProfile {

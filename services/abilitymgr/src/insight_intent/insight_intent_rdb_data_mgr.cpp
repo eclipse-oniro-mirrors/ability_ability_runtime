@@ -108,7 +108,7 @@ bool InsightIntentRdbDataMgr::InsertData(const std::string &key, const std::stri
     valuesBucket.PutString(INTENT_VALUE, value);
     auto ret = InsertWithRetry(rdbStore_, rowId, valuesBucket);
     if (ret != NativeRdb::E_OK) {
-        TAG_LOGE(AAFwkTag::INTENT, "Insert data error ret:%{public}d", ret);
+        TAG_LOGE(AAFwkTag::INTENT, "Insert data error ret:%{public}d, key:%{private}s", ret, key.c_str());
         return false;
     }
     return true;
@@ -138,7 +138,7 @@ bool InsightIntentRdbDataMgr::BatchInsertData(const std::vector<std::pair<std::s
     auto [ret, insertNum] = rdbStore_->BatchInsert(intentRdbConfig_.tableName, valuesBuckets,
         NativeRdb::ConflictResolution::ON_CONFLICT_REPLACE);
     if (ret != NativeRdb::E_OK) {
-        TAG_LOGE(AAFwkTag::INTENT, "BatchInsert error ret:%{public}d", ret);
+        TAG_LOGE(AAFwkTag::INTENT, "BatchInsert error ret:%{public}d, size:%{public}zu", ret, keyValues.size());
         return false;
     }
     TAG_LOGD(AAFwkTag::INTENT, "BatchInsert success, size:%{public}zu insertNum:%{public}d",
@@ -172,7 +172,7 @@ bool InsightIntentRdbDataMgr::UpdateData(const std::string &key, const std::stri
         ret = rdbStore_->Update(rowId, valuesBucket, absRdbPredicates);
     }
     if (ret != NativeRdb::E_OK) {
-        TAG_LOGE(AAFwkTag::INTENT, "Update data error ret:%{public}d", ret);
+        TAG_LOGE(AAFwkTag::INTENT, "Update data error ret:%{public}d, key:%{private}s", ret, key.c_str());
         return false;
     }
     return true;
@@ -201,7 +201,7 @@ bool InsightIntentRdbDataMgr::DeleteDataBeginWithKey(const std::string &key)
         ret = rdbStore_->Delete(rowId, absRdbPredicates);
     }
     if (ret != NativeRdb::E_OK) {
-        TAG_LOGE(AAFwkTag::INTENT, "Delete data error ret:%{public}d", ret);
+        TAG_LOGE(AAFwkTag::INTENT, "Delete data error ret:%{public}d, key:%{private}s", ret, key.c_str());
         return false;
     }
     return true;
@@ -230,7 +230,7 @@ bool InsightIntentRdbDataMgr::DeleteData(const std::string &key)
         ret = rdbStore_->Delete(rowId, absRdbPredicates);
     }
     if (ret != NativeRdb::E_OK) {
-        TAG_LOGE(AAFwkTag::INTENT, "Delete data error ret:%{public}d", ret);
+        TAG_LOGE(AAFwkTag::INTENT, "Delete data error ret:%{public}d, key:%{private}s", ret, key.c_str());
         return false;
     }
     return true;
@@ -255,13 +255,13 @@ bool InsightIntentRdbDataMgr::QueryData(const std::string &key, std::string &val
     ScopeGuard stateGuard([&] { absSharedResultSet->Close(); });
     auto ret = absSharedResultSet->GoToFirstRow();
     if (ret != NativeRdb::E_OK) {
-        TAG_LOGW(AAFwkTag::INTENT, "GoToFirstRow failed, ret: %{public}d", ret);
+        TAG_LOGW(AAFwkTag::INTENT, "GoToFirstRow failed, ret: %{public}d, key:%{private}s", ret, key.c_str());
         return false;
     }
 
     ret = absSharedResultSet->GetString(INTENT_VALUE_INDEX, value);
     if (ret != NativeRdb::E_OK) {
-        TAG_LOGE(AAFwkTag::INTENT, "QueryData failed, ret: %{public}d", ret);
+        TAG_LOGE(AAFwkTag::INTENT, "QueryData failed, ret: %{public}d, key:%{private}s", ret, key.c_str());
         return false;
     }
 

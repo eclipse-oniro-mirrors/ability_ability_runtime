@@ -54,6 +54,7 @@ group("ani_packages") {
     "${ability_runtime_path}/frameworks/ets/ani/featureAbility:featureability_ani",
     "${ability_runtime_path}/frameworks/ets/ani/hyper_snap_manager:hyper_snap_manager_ani",
     "${ability_runtime_path}/frameworks/ets/ani/insight_intent/insight_intent_driver:insight_intent_driver_ani_kit",
+    "${ability_runtime_path}/frameworks/ets/ani/insight_intent/insight_intent_execute_manager:insight_intent_execute_manager_ani_kit",
     "${ability_runtime_path}/frameworks/ets/ani/insight_intent/insight_intent_provider:insight_intent_provider_ani_kit",
     "${ability_runtime_path}/frameworks/ets/ani/kiosk_manager:kiosk_manager_ani_kit",
     "${ability_runtime_path}/frameworks/ets/ani/launch_service_manager:launch_service_manager_ani",

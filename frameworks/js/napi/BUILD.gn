@@ -78,6 +78,7 @@ group("napi_packages") {
     "${ability_runtime_napi_path}/insight_intent/insight_intent_decorator:insightintentdecorator_napi",
     "${ability_runtime_napi_path}/insight_intent/insight_intent_driver:insightintentdriver_napi",
     "${ability_runtime_napi_path}/insight_intent/insight_intent_entry_executor:insightintententryexecutor_napi",
+    "${ability_runtime_napi_path}/insight_intent/insight_intent_execute_manager:insightintentexecutemanager_napi",
     "${ability_runtime_napi_path}/insight_intent/insight_intent_executor:insightintentexecutor_napi",
     "${ability_runtime_napi_path}/insight_intent/insight_intent_provider:insightintentprovider_napi",
     "${ability_runtime_napi_path}/insight_intent_context:insightintentcontext_napi",

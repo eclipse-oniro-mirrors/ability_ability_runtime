@@ -4695,5 +4695,41 @@ HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_BackToCallerAbilityWithRes
     EXPECT_EQ(result, ERR_OK);
 }
 
+/*
+ * Feature: AbilityManagerService
+ * Function: GetInsightIntentCallerBundleName
+ * SubFunction: NA
+ * FunctionPoints: marshal intentId, send the query request and read back the reply
+ * CaseDescription: Verify the request code and the empty reply on the mocked remote
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_GetInsightIntentCallerBundleName_0100, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeSendRequest));
+
+    std::string callerBundleName;
+    EXPECT_EQ(proxy_->GetInsightIntentCallerBundleName(100, callerBundleName), ERR_OK);
+    EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::GET_INSIGHT_INTENT_CALLER_BUNDLE_NAME), mock_->code_);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetInsightIntentCallerBundleName
+ * SubFunction: NA
+ * FunctionPoints: marshal intentId, send the query request and read back the reply
+ * CaseDescription: Verify an empty result is returned when SendRequest fails
+ */
+HWTEST_F(AbilityManagerProxyTest, AbilityManagerProxy_GetInsightIntentCallerBundleName_0200, TestSize.Level1)
+{
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Invoke(mock_.GetRefPtr(), &AbilityManagerStubMock::InvokeErrorSendRequest));
+
+    std::string callerBundleName;
+    EXPECT_EQ(proxy_->GetInsightIntentCallerBundleName(100, callerBundleName), UNKNOWN_ERROR);
+    EXPECT_EQ(static_cast<uint32_t>(AbilityManagerInterfaceCode::GET_INSIGHT_INTENT_CALLER_BUNDLE_NAME), mock_->code_);
+}
+
 } // namespace AAFwk
 } // namespace OHOS

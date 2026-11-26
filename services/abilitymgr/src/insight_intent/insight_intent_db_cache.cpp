@@ -31,6 +31,7 @@ bool InsightIntentDbCache::ResolveDualMode(IntentKey &key)
     }
     auto bundleMgrHelper = DelayedSingleton<AppExecFwk::BundleMgrHelper>::GetInstance();
     if (bundleMgrHelper == nullptr) {
+        TAG_LOGW(AAFwkTag::INTENT, "ResolveDualMode null bundleMgrHelper, bundle:%{public}s", key.bundleName.c_str());
         return false;
     }
     AppExecFwk::BundleInfo bundleInfo;
@@ -38,6 +39,8 @@ bool InsightIntentDbCache::ResolveDualMode(IntentKey &key)
         static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_HAP_MODULE),
         bundleInfo, key.userId));
     if (ret != ERR_OK) {
+        TAG_LOGW(AAFwkTag::INTENT, "ResolveDualMode GetBundleInfoV9 failed, bundle:%{public}s, userId:%{public}d, "
+            "ret:%{public}d", key.bundleName.c_str(), key.userId, ret);
         return false;
     }
     auto policy = bundleInfo.deviceModeDistributionPolicy;
@@ -46,6 +49,8 @@ bool InsightIntentDbCache::ResolveDualMode(IntentKey &key)
          policy == AppExecFwk::DeviceModeDistributionPolicy::PARTIAL_COMPATIBLE_DIFFERENT_PACKAGE ||
          policy == AppExecFwk::DeviceModeDistributionPolicy::FULL_COMPATIBLE_DIFFERENT_PACKAGE);
     if (!isDifferentPackage) {
+        TAG_LOGD(AAFwkTag::INTENT, "ResolveDualMode not different package, bundle:%{public}s, appIndex:%{public}d",
+            key.bundleName.c_str(), key.appIndex);
         return true;
     }
     int32_t preferredAppIndex = 0;
@@ -369,26 +374,37 @@ void InsightIntentDbCache::GetConfigInsightIntentInfoByName(IntentKey key,
 void InsightIntentDbCache::GetInsightIntentInfo(IntentKey key, ExtractInsightIntentInfo &info)
 {
     if (!ResolveDualMode(key)) {
+        TAG_LOGW(AAFwkTag::INTENT, "GetInsightIntentInfo ResolveDualMode failed, bundle:%{public}s, userId:%{public}d",
+            key.bundleName.c_str(), key.userId);
         return;
     }
     if (DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->
         LoadInsightIntentInfo(key, info) != ERR_OK) {
-        TAG_LOGW(AAFwkTag::INTENT, "GetInsightIntentInfo failed");
+        TAG_LOGW(AAFwkTag::INTENT, "GetInsightIntentInfo failed, bundle:%{public}s, module:%{public}s, "
+            "intent:%{public}s", key.bundleName.c_str(), key.moduleName.c_str(), key.intentName.c_str());
         return;
     }
+    TAG_LOGD(AAFwkTag::INTENT, "GetInsightIntentInfo done, bundle:%{public}s, intent:%{public}s, exported:%{public}d, "
+        "appIndex:%{public}d", key.bundleName.c_str(), key.intentName.c_str(), info.exported ? 1 : 0, key.appIndex);
 }
 
 void InsightIntentDbCache::GetConfigInsightIntentInfo(IntentKey key, InsightIntentInfo &info)
 {
     if (!ResolveDualMode(key)) {
+        TAG_LOGW(AAFwkTag::INTENT, "GetConfigInsightIntentInfo ResolveDualMode failed, bundle:%{public}s, "
+            "userId:%{public}d", key.bundleName.c_str(), key.userId);
         return;
     }
     if (DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->
         LoadConfigInsightIntentInfo(key, info)
         != ERR_OK) {
-        TAG_LOGW(AAFwkTag::INTENT, "GetConfigInsightIntentInfo failed");
+        TAG_LOGW(AAFwkTag::INTENT, "GetConfigInsightIntentInfo failed, bundle:%{public}s, module:%{public}s, "
+            "intent:%{public}s", key.bundleName.c_str(), key.moduleName.c_str(), key.intentName.c_str());
         return;
     }
+    TAG_LOGD(AAFwkTag::INTENT, "GetConfigInsightIntentInfo done, bundle:%{public}s, intent:%{public}s, "
+        "exported:%{public}d, appIndex:%{public}d", key.bundleName.c_str(), key.intentName.c_str(),
+        info.exported ? 1 : 0, key.appIndex);
 }
 
 void InsightIntentDbCache::BackupRdb()

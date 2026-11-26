@@ -6610,10 +6610,10 @@ public:
     bool called = false;
 
     int32_t ExecuteIntentByFunctionCall(uint64_t key, const sptr<IRemoteObject> &callerToken,
-        const std::string &bundleName, const std::string &intentName, const WantParams &wantParam) override
+        const AppExecFwk::FunctionCallExecuteParam &param) override
     {
         called = true;
-        capturedWantParam = wantParam;
+        capturedWantParam = param.wantParam;
         return 0;
     }
 };
@@ -6632,10 +6632,10 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_ExecuteIntentByFunctionCall_
     sptr<IRemoteObject> token = sptr<AppExecFwk::MockAbilityToken>(new (std::nothrow) AppExecFwk::MockAbilityToken());
     data.WriteUint64(1);
     data.WriteRemoteObject(token);
-    data.WriteString("test.bundleName");
-    data.WriteString("PlayMusic");
-    WantParams wantParam;
-    data.WriteParcelable(&wantParam);
+    AppExecFwk::FunctionCallExecuteParam funcParam;
+    funcParam.bundleName = "test.bundleName";
+    funcParam.intentName = "PlayMusic";
+    data.WriteParcelable(&funcParam);
     auto res = stub->ExecuteIntentByFunctionCallInner(data, reply);
     EXPECT_EQ(res, NO_ERROR);
     EXPECT_TRUE(capture->called);
@@ -6656,12 +6656,12 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_ExecuteIntentByFunctionCall_
     sptr<IRemoteObject> token = sptr<AppExecFwk::MockAbilityToken>(new (std::nothrow) AppExecFwk::MockAbilityToken());
     data.WriteUint64(1);
     data.WriteRemoteObject(token);
-    data.WriteString("test.bundleName");
-    data.WriteString("PlayMusic");
-    WantParams wantParam;
-    wantParam.SetParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID, String::Box("tc-003"));
-    wantParam.SetParam("city", String::Box("Shanghai"));
-    data.WriteParcelable(&wantParam);
+    AppExecFwk::FunctionCallExecuteParam funcParam;
+    funcParam.bundleName = "test.bundleName";
+    funcParam.intentName = "PlayMusic";
+    funcParam.wantParam.SetParam(AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID, String::Box("tc-003"));
+    funcParam.wantParam.SetParam("city", String::Box("Shanghai"));
+    data.WriteParcelable(&funcParam);
     auto res = stub->ExecuteIntentByFunctionCallInner(data, reply);
     EXPECT_EQ(res, NO_ERROR);
     EXPECT_TRUE(capture->called);
@@ -6983,6 +6983,183 @@ HWTEST_F(AbilityManagerStubTest, BackToCallerAbilityWithResult_FalseFlag, TestSi
         }));
 
     EXPECT_EQ(stub_->BackToCallerInner(data, reply), NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: GetInsightIntentCallerBundleNameInner
+ * SubFunction: NA
+ * FunctionPoints: unmarshal intentId and marshal the caller bundle name back
+ * CaseDescription: Verify the query reply round trips a non-empty caller bundle name
+ */
+HWTEST_F(AbilityManagerStubTest, GetInsightIntentCallerBundleNameInner_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    int32_t intentId = 100;
+    ASSERT_TRUE(data.WriteInt32(intentId));
+
+    EXPECT_CALL(*stub_, GetInsightIntentCallerBundleName(intentId, _))
+        .WillOnce(DoAll(SetArgReferee<1>("caller.bundle"), Return(ERR_OK)));
+
+    EXPECT_EQ(stub_->GetInsightIntentCallerBundleNameInner(data, reply), NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+    EXPECT_EQ(reply.ReadString(), "caller.bundle");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: PreRegisterIntentRecordInner
+ * SubFunction: NA
+ * FunctionPoints: unmarshal bundleName/intentName, marshal result + output intentId back
+ * CaseDescription: Verify the pre-registration reply round trips the result and output id
+ */
+HWTEST_F(AbilityManagerStubTest, PreRegisterIntentRecordInner_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    ASSERT_TRUE(data.WriteString("test.bundle"));
+    ASSERT_TRUE(data.WriteString("TestIntent"));
+
+    EXPECT_CALL(*stub_, PreRegisterIntentRecord("test.bundle", "TestIntent", _))
+        .WillOnce(DoAll(SetArgReferee<2>(123), Return(ERR_OK)));
+
+    EXPECT_EQ(stub_->PreRegisterIntentRecordInner(data, reply), NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+    EXPECT_EQ(reply.ReadInt32(), 123);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: PreRegisterIntentRecordInner
+ * SubFunction: NA
+ * FunctionPoints: empty bundleName is rejected before dispatch
+ * CaseDescription: Verify an empty bundleName fails with ERR_INVALID_VALUE
+ */
+HWTEST_F(AbilityManagerStubTest, PreRegisterIntentRecordInner_0200, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    ASSERT_TRUE(data.WriteString(""));
+    ASSERT_TRUE(data.WriteString("TestIntent"));
+
+    EXPECT_EQ(stub_->PreRegisterIntentRecordInner(data, reply), ERR_INVALID_VALUE);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: PreRegisterIntentRecordInner
+ * SubFunction: NA
+ * FunctionPoints: empty intentName is rejected before dispatch
+ * CaseDescription: Verify an empty intentName fails with ERR_INVALID_VALUE
+ */
+HWTEST_F(AbilityManagerStubTest, PreRegisterIntentRecordInner_0300, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    ASSERT_TRUE(data.WriteString("test.bundle"));
+    ASSERT_TRUE(data.WriteString(""));
+
+    EXPECT_EQ(stub_->PreRegisterIntentRecordInner(data, reply), ERR_INVALID_VALUE);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: RemoveIntentRecordInner
+ * SubFunction: NA
+ * FunctionPoints: unmarshal intentId and marshal the remove result back
+ * CaseDescription: Verify the remove reply round trips the result code
+ */
+HWTEST_F(AbilityManagerStubTest, RemoveIntentRecordInner_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    int32_t intentId = 100;
+    ASSERT_TRUE(data.WriteInt32(intentId));
+
+    EXPECT_CALL(*stub_, RemoveIntentRecord(intentId)).WillOnce(Return(ERR_OK));
+
+    EXPECT_EQ(stub_->RemoveIntentRecordInner(data, reply), NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: OnRemoteRequest -> GetInsightIntentCallerBundleNameInner
+ * SubFunction: NA
+ * FunctionPoints: route GET_INSIGHT_INTENT_CALLER_BUNDLE_NAME to the query Inner method
+ * CaseDescription: Verify the IPC code routes to the Inner method and round trips the reply
+ */
+HWTEST_F(AbilityManagerStubTest, GetInsightIntentCallerBundleName_OnRemoteRequest_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    WriteInterfaceToken(data);
+    int32_t intentId = 100;
+    ASSERT_TRUE(data.WriteInt32(intentId));
+
+    EXPECT_CALL(*stub_, GetInsightIntentCallerBundleName(intentId, _))
+        .WillOnce(DoAll(SetArgReferee<1>("caller.bundle"), Return(ERR_OK)));
+
+    int res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::GET_INSIGHT_INTENT_CALLER_BUNDLE_NAME),
+        data, reply, option);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+    EXPECT_EQ(reply.ReadString(), "caller.bundle");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: OnRemoteRequest -> PreRegisterIntentRecordInner
+ * SubFunction: NA
+ * FunctionPoints: route PRE_REGISTER_INTENT_RECORD to the pre-register Inner method
+ * CaseDescription: Verify the IPC code routes to the Inner method and round trips result + id
+ */
+HWTEST_F(AbilityManagerStubTest, PreRegisterIntentRecord_OnRemoteRequest_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    WriteInterfaceToken(data);
+    ASSERT_TRUE(data.WriteString("test.bundle"));
+    ASSERT_TRUE(data.WriteString("TestIntent"));
+
+    EXPECT_CALL(*stub_, PreRegisterIntentRecord("test.bundle", "TestIntent", _))
+        .WillOnce(DoAll(SetArgReferee<2>(123), Return(ERR_OK)));
+
+    int res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::PRE_REGISTER_INTENT_RECORD),
+        data, reply, option);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+    EXPECT_EQ(reply.ReadInt32(), 123);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: OnRemoteRequest -> RemoveIntentRecordInner
+ * SubFunction: NA
+ * FunctionPoints: route REMOVE_INTENT_RECORD to the remove Inner method
+ * CaseDescription: Verify the IPC code routes to the Inner method and round trips the result
+ */
+HWTEST_F(AbilityManagerStubTest, RemoveIntentRecord_OnRemoteRequest_0100, TestSize.Level1)
+{
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option;
+    WriteInterfaceToken(data);
+    int32_t intentId = 100;
+    ASSERT_TRUE(data.WriteInt32(intentId));
+
+    EXPECT_CALL(*stub_, RemoveIntentRecord(intentId)).WillOnce(Return(ERR_OK));
+
+    int res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::REMOVE_INTENT_RECORD),
+        data, reply, option);
+    EXPECT_EQ(res, NO_ERROR);
     EXPECT_EQ(reply.ReadInt32(), ERR_OK);
 }
 

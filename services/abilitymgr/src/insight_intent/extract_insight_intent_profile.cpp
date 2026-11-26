@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -74,6 +74,7 @@ const std::string INSIGHT_INTENT_ENTITY_PARENT_CLASS_NAME = "parentClassName";
 const std::string INSIGHT_INTENT_ENTITY_PARAMETERS = "parameters";
 const std::string INSIGHT_INTENT_ARKTS_MODE = "arkTSMode";
 const std::string INSIGHT_INTENT_ENTITY_SUPPORTED_QUERY_PROPERTIES = "supportedQueryProperties";
+const std::string INSIGHT_INTENT_EXPORTED = "exported";
 
 enum DecoratorType {
     DECORATOR_LINK = 0,
@@ -135,6 +136,14 @@ bool IsValidPermissions(const std::vector<std::string> &permissions)
         }
     }
     return true;
+}
+
+const std::string EXECUTE_MODE_UI_EXTENSION = "uiextension";
+
+bool IsUIExtensionIntent(const ExtractInsightIntentProfileInfo &insightIntent)
+{
+    return std::find(insightIntent.executeMode.begin(), insightIntent.executeMode.end(),
+        EXECUTE_MODE_UI_EXTENSION) != insightIntent.executeMode.end();
 }
 } // namespace
 
@@ -421,6 +430,15 @@ void from_json(const nlohmann::json &jsonObject, ExtractInsightIntentProfileInfo
         false,
         g_extraParseResult);
 
+    if (jsonObject.find(INSIGHT_INTENT_EXPORTED) != jsonObjectEnd) {
+        const auto &exportedJson = jsonObject.at(INSIGHT_INTENT_EXPORTED);
+        if (!exportedJson.is_boolean()) {
+            TAG_LOGW(AAFwkTag::INTENT, "type error: exported not bool, fallback to false");
+        } else {
+            insightIntentInfo.exported = exportedJson.get<bool>();
+        }
+    }
+
     if (jsonObject.find(INSIGHT_INTENT_PARAMETERS) != jsonObjectEnd) {
         if (jsonObject.at(INSIGHT_INTENT_PARAMETERS).is_object()) {
             insightIntentInfo.parameters = SafeDump(jsonObject[INSIGHT_INTENT_PARAMETERS]);
@@ -521,7 +539,8 @@ void to_json(nlohmann::json& jsonObject, const ExtractInsightIntentProfileInfo& 
         {INSIGHT_INTENT_FUNCTION_PARAMS, info.functionParams},
         {INSIGHT_INTENT_FORM_NAME, info.formName},
         {INSIGHT_INTENT_ENTITES, info.entities},
-        {INSIGHT_INTENT_ARKTS_MODE, info.arkTSMode}
+        {INSIGHT_INTENT_ARKTS_MODE, info.arkTSMode},
+        {INSIGHT_INTENT_EXPORTED, info.exported}
     };
 
     if (!SetJsonFieldIfNotEmpty(jsonObject, INSIGHT_INTENT_PARAMETERS, info.parameters, "discarded parameters")) {
@@ -761,6 +780,10 @@ bool ExtractInsightIntentProfile::ProfileInfoFormat(const ExtractInsightIntentPr
     info.permissions.assign(insightIntent.permissions.begin(), insightIntent.permissions.end());
     info.arkTSMode = insightIntent.arkTSMode;
     info.entities = insightIntent.entities;
+    DecoratorType decoratorType = StringToEnum(insightIntent.decoratorType);
+    if (decoratorType != DecoratorType::DECORATOR_FORM && !IsUIExtensionIntent(insightIntent)) {
+        info.exported = insightIntent.exported;
+    }
     TAG_LOGD(AAFwkTag::INTENT, "entities size: %{public}zu", info.entities.size());
     for (auto iter = info.entities.begin(); iter != info.entities.end(); iter++) {
         TAG_LOGD(AAFwkTag::INTENT, "entity decoratorFile: %{public}s, className: %{public}s, "

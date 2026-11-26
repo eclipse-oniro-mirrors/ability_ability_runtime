@@ -252,3 +252,40 @@ HWTEST_F(FunctionCallConvertTest, ConvertFromExtractIntentInfo_OverDepthLimit_Re
     ASSERT_EQ(functions.size(), 1u);
     EXPECT_NE(functions[0].inputSchema.find("ohos.insightIntent.options"), std::string::npos);
 }
+
+HWTEST_F(FunctionCallConvertTest, ConvertFromConfigIntent_ExportedMappedToVisible, TestSize.Level1)
+{
+    std::vector<InsightIntentInfo> configInfos;
+    auto info = MakeConfigIntent("com.test.demo", "entry", "QueryWeather");
+    info.exported = true;
+    configInfos.push_back(info);
+
+    std::vector<FunctionInfo> functions;
+    EXPECT_TRUE(ConvertFromConfigIntent(configInfos, functions));
+    ASSERT_EQ(functions.size(), 1u);
+    EXPECT_TRUE(functions[0].visible);
+}
+
+HWTEST_F(FunctionCallConvertTest, ConvertFromConfigIntent_DefaultVisibleFalse, TestSize.Level1)
+{
+    std::vector<InsightIntentInfo> configInfos;
+    configInfos.push_back(MakeConfigIntent("com.test.demo", "entry", "QueryWeather"));
+
+    std::vector<FunctionInfo> functions;
+    EXPECT_TRUE(ConvertFromConfigIntent(configInfos, functions));
+    ASSERT_EQ(functions.size(), 1u);
+    EXPECT_FALSE(functions[0].visible);
+}
+
+HWTEST_F(FunctionCallConvertTest, ConvertFromExtractIntentInfo_ExportedMappedToVisible, TestSize.Level1)
+{
+    std::vector<ExtractInsightIntentInfo> intentInfos;
+    auto info = MakeLinkIntent("com.test.demo", "entry", "OpenLink");
+    info.exported = true;
+    intentInfos.push_back(info);
+
+    std::vector<FunctionInfo> functions;
+    EXPECT_TRUE(ConvertFromExtractIntentInfo(intentInfos, functions));
+    ASSERT_EQ(functions.size(), 1u);
+    EXPECT_TRUE(functions[0].visible);
+}

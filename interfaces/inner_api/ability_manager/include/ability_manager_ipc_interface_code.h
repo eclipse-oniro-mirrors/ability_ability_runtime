@@ -818,18 +818,30 @@ enum class AbilityManagerInterfaceCode {
 
     // kill collaborator process
     KILL_COLLABORATOR_PROCESS = 6190,
- 
+
     // complete game prelaunch by pid
     COMPLETE_GAME_PRELAUNCH_BY_PID = 6191,
 
     // get ui extension root host info by ability record id
     GET_UI_EXTENSION_HOST_INFO_BY_ID = 6192,
 
-    // start ui ability with displayId passthrough, restricted to softbus_service
+// start ui ability with displayId passthrough, restricted to softbus_service
     START_UI_ABILITY_WITH_DISPLAY_ID_PASSTHROUGH = 6193,
+
+    // pre-register the insight intent execute record for the invokePublicFunction
+    // caller (exported visibility + ACCESS_PUBLIC_FUNCTION) before the consent dialog
+    PRE_REGISTER_INTENT_RECORD = 6194,
 
     // force stop process with kill id for cli tool
     FORCE_STOP_PROCESS = 6195,
+
+    // remove the pre-registered insight intent execute record when the
+    // third-party consent dialog is declined / dismissed (no grant)
+    REMOVE_INTENT_RECORD = 6196,
+
+    // query the caller bundle name of the insight intent execution with the
+    // given intent id (privacy-center ownership verification)
+    GET_INSIGHT_INTENT_CALLER_BUNDLE_NAME = 6197,
 };
 }  // namespace AAFwk
 }  // namespace OHOS

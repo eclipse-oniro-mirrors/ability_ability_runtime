@@ -2339,7 +2339,14 @@ public:
     int32_t ExecuteIntentForDistributed(const Want &want, const std::string &srcDeviceId,
         uint64_t requestCode, uint64_t specifiedFullTokenId = 0) override;
     int32_t ExecuteIntentByFunctionCall(uint64_t key, const sptr<IRemoteObject> &callerToken,
-        const std::string &bundleName, const std::string &intentName, const WantParams &wantParam) override;
+        const FunctionCallExecuteParam &param) override;
+
+    ErrCode GetInsightIntentCallerBundleName(int32_t intentId, std::string &callerBundleName) override;
+
+    int32_t RemoveIntentRecord(int32_t intentId) override;
+
+    int32_t PreRegisterIntentRecord(const std::string &bundleName, const std::string &intentName,
+        int32_t &intentId) override;
 
     /**
      * @brief Execute UIAbility foreground intent with specified token id.
@@ -3960,13 +3967,24 @@ private:
     int32_t SetAppRecoveryFlag(const sptr<IRemoteObject>& token, int flag) override;
     int32_t ExecuteIntentCommon(const sptr<IRemoteObject> &callerToken,
         const std::shared_ptr<InsightIntentExecuteParam> &param, const std::string &callerBundleName,
-        AbilityRuntime::ExecuteIntentCommonOptions &options);
+        AbilityRuntime::ExecuteIntentCommonOptions &options, bool recordAcquired = false);
+    // Resolve the caller ability token carried by the function-call execution
+    // entry (ADR-10). System app / SA: the passed token is used as-is, an absent
+    // token resolves to null. Third-party: the token must be non-null and belong
+    // to the calling uid, otherwise ERR_PERMISSION_DENIED. Only invoked from
+    // ExecuteIntentByFunctionCall (not the pre-check / generic execute paths).
+    int32_t ResolveCallerAbilityToken(const sptr<IRemoteObject> &inToken,
+        sptr<IRemoteObject> &outToken);
     void SetRemoteIntentTimeout(uint64_t insightIntentId);
     // 清理 wantParam 残留意图参数 + 意图候选匹配 + parser.Build 组装执行参数。
     int32_t PrepareFunctionCallParam(const std::string &bundleName, const std::string &intentName,
         const WantParams &wantParam, int32_t callerUserId,
         AbilityRuntime::InsightIntentParamParser::ParseResult &parseResult);
     void HandleTaskIdAttribution(const std::shared_ptr<InsightIntentExecuteParam> &param);
+    // 组装 ExecuteIntentCommonOptions 并派发到 ExecuteIntentCommon。
+    int32_t DispatchFunctionCallExecute(uint64_t key, const sptr<IRemoteObject> &callerToken,
+        const std::string &callerBundleName, const sptr<IRemoteObject> &callerAbilityToken,
+        const AbilityRuntime::InsightIntentParamParser::ParseResult &parseResult);
     void GetCallerUidAndToken(const std::string &bundleName, int32_t userId,
         int32_t &callerUid, uint32_t &accessToken);
     bool IsDmsSameAPP(const AbilityRequest &abilityRequest);

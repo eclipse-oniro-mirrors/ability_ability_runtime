@@ -79,6 +79,19 @@ InsightIntentInfo MakeConfigFormOnly(const std::string &bundle, const std::strin
     info.formIntentInfo.formName = "form";
     return info;
 }
+
+InsightIntentInfo MakeConfigFgUiAbility(const std::string &bundle, const std::string &module,
+    const std::string &intent, const std::string &ability, bool exported)
+{
+    InsightIntentInfo info;
+    info.bundleName = bundle;
+    info.moduleName = module;
+    info.intentName = intent;
+    info.uiAbilityIntentInfo.abilityName = ability;
+    info.uiAbilityIntentInfo.supportExecuteMode = {AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND};
+    info.exported = exported;
+    return info;
+}
 } // namespace
 
 class InsightIntentFilterUtilTest : public Test {};
@@ -91,14 +104,15 @@ HWTEST_F(InsightIntentFilterUtilTest, FilterGeneric_EmptyInput_NoChange, TestSiz
     EXPECT_TRUE(items.empty());
 }
 
-HWTEST_F(InsightIntentFilterUtilTest, FilterGeneric_FgUiAbilityDropped, TestSize.Level1)
+HWTEST_F(InsightIntentFilterUtilTest, FilterGeneric_FgUiAbilityKept, TestSize.Level1)
 {
     std::vector<ExtractInsightIntentInfo> items = {
         MakeFgUiAbilityIntent("bundle", "entry", "intent", "MainAbility"),
     };
     IntentFilterUtil filter;
     filter.FilterGeneric(items);
-    EXPECT_TRUE(items.empty());
+    EXPECT_EQ(items.size(), 1u);
+    EXPECT_EQ(items[0].genericInfo.moduleName, "entry");
 }
 
 HWTEST_F(InsightIntentFilterUtilTest, FilterGeneric_BgUiAbilityKept, TestSize.Level1)
@@ -139,4 +153,54 @@ HWTEST_F(InsightIntentFilterUtilTest, FilterConfig_FormOnlyDropped, TestSize.Lev
     IntentFilterUtil filter;
     filter.FilterConfig(items);
     EXPECT_TRUE(items.empty());
+}
+
+HWTEST_F(InsightIntentFilterUtilTest, FilterConfig_FgUiAbilityExportedKept, TestSize.Level1)
+{
+    std::vector<InsightIntentInfo> items = {
+        MakeConfigFgUiAbility("bundle", "entry", "intent", "MainAbility", true),
+    };
+    IntentFilterUtil filter;
+    filter.FilterConfig(items);
+    EXPECT_EQ(items.size(), 1u);
+    EXPECT_EQ(items[0].moduleName, "entry");
+    EXPECT_TRUE(items[0].exported);
+}
+
+HWTEST_F(InsightIntentFilterUtilTest, FilterConfig_FgUiAbilityNotExportedKept, TestSize.Level1)
+{
+    std::vector<InsightIntentInfo> items = {
+        MakeConfigFgUiAbility("bundle", "entry", "intent", "MainAbility", false),
+    };
+    IntentFilterUtil filter;
+    filter.FilterConfig(items);
+    EXPECT_EQ(items.size(), 1u);
+    EXPECT_EQ(items[0].moduleName, "entry");
+    EXPECT_FALSE(items[0].exported);
+}
+
+HWTEST_F(InsightIntentFilterUtilTest, FilterGeneric_FgEntryExportedKept, TestSize.Level1)
+{
+    std::vector<ExtractInsightIntentInfo> items = {
+        MakeFgUiAbilityIntent("bundle", "entry", "intent", "MainAbility"),
+    };
+    items[0].exported = true;
+    IntentFilterUtil filter;
+    filter.FilterGeneric(items);
+    EXPECT_EQ(items.size(), 1u);
+    EXPECT_EQ(items[0].genericInfo.moduleName, "entry");
+    EXPECT_TRUE(items[0].exported);
+}
+
+HWTEST_F(InsightIntentFilterUtilTest, FilterGeneric_FgEntryNotExportedKept, TestSize.Level1)
+{
+    std::vector<ExtractInsightIntentInfo> items = {
+        MakeFgUiAbilityIntent("bundle", "entry", "intent", "MainAbility"),
+    };
+    items[0].exported = false;
+    IntentFilterUtil filter;
+    filter.FilterGeneric(items);
+    EXPECT_EQ(items.size(), 1u);
+    EXPECT_EQ(items[0].genericInfo.moduleName, "entry");
+    EXPECT_FALSE(items[0].exported);
 }

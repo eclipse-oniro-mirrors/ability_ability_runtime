@@ -41,6 +41,7 @@
 #include "iacquire_share_data_callback_interface.h"
 #include "insight_intent/insight_intent_execute_param.h"
 #include "insight_intent/insight_intent_execute_lite_param.h"
+#include "insight_intent/function_call_execute_param.h"
 #include "insight_intent/insight_intent_execute_result.h"
 #include "skill/skill_execute_param.h"
 #include "skill/skill_execute_result.h"
@@ -103,6 +104,7 @@ using KeepAliveInfo = AbilityRuntime::KeepAliveInfo;
 using AutoStartupInfo = AbilityRuntime::AutoStartupInfo;
 using InsightIntentExecuteParam = AppExecFwk::InsightIntentExecuteParam;
 using InsightIntentExecuteLiteParam = AppExecFwk::InsightIntentExecuteLiteParam;
+using FunctionCallExecuteParam = AppExecFwk::FunctionCallExecuteParam;
 using InsightIntentExecuteResult = AppExecFwk::InsightIntentExecuteResult;
 using InsightIntentQueryParam = AppExecFwk::InsightIntentQueryParam;
 using SkillExecuteParam = AppExecFwk::SkillExecuteParam;
@@ -2152,15 +2154,72 @@ public:
       *
       * @param key The callback key for result notification.
       * @param callerToken The caller ability token.
-      * @param bundleName The target bundle name.
-      * @param intentName The insight intent name.
-      * @param wantParam The execution arguments.
+      * @param param The function-call execution parameters (target bundle/intent,
+      *              business arguments, the caller ability token and the
+      *              pre-registered execute record id).
       * @return Returns ERR_OK on success, others on failure.
       */
     virtual int32_t ExecuteIntentByFunctionCall(uint64_t key, const sptr<IRemoteObject> &callerToken,
-        const std::string &bundleName, const std::string &intentName, const WantParams &wantParam)
+        const FunctionCallExecuteParam &param)
     {
         return 0;
+    }
+
+    /**
+     * @brief Query the caller bundle name of the insight intent execution
+     *        identified by the given intent id.
+     *
+     * The record must be live (PENDING_CONSENT / EXECUTING). Used by the
+     * privacy-center consent path to identify who originated a given agent
+     * invocation. Only system applications and SA are allowed to query.
+     *
+     * @param intentId The insight intent execute id to query.
+     * @param callerBundleName Output caller bundle name of the live record.
+     * @return Returns ERR_OK on success; ERR_CODE_INVALID_ID when the intent id
+     *         does not belong to a live insight intent call; ERR_NOT_SYSTEM_APP
+     *         when the caller is neither a system app nor an SA; INNER_ERR on
+     *         service errors.
+     */
+    virtual ErrCode GetInsightIntentCallerBundleName(int32_t intentId, std::string &callerBundleName)
+    {
+        return ERR_INVALID_VALUE;
+    }
+
+    /**
+     * @brief Remove the pre-registered execute record identified by intentId.
+     *
+     * System apps / SA may remove any record; a third-party caller only the one it
+     * pre-registered (caller token id must match the calling token).
+     *
+     * @param intentId The insight intent execute id to remove.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    virtual int32_t RemoveIntentRecord(int32_t intentId)
+    {
+        return ERR_OK;
+    }
+
+    /**
+     * @brief Authorization pre-check and record pre-registration for the
+     *        invokePublicFunction caller. It runs the third-party gate (exported
+     *        visibility + ACCESS_PUBLIC_FUNCTION) so an unauthorized or
+     *        invisible target fails before the consent dialog is mounted
+     *        (anti-dialog-bombing), then pre-registers an insight-intent execute
+     *        record (PENDING_CONSENT) so the consent dialog can resolve the
+     *        invoking bundle through GetInsightIntentCallerBundleName.
+     *
+     * @param bundleName The target function namespace (target bundle name).
+     * @param intentName The target insight intent (function) name.
+     * @param intentId Output execute record id for the pre-registered invocation;
+     *                 valid (non-zero) only when ERR_OK is returned.
+     * @return Returns ERR_OK on success, INTENT_NOT_EXIST when the target is
+     *         missing or not open to third-party callers, ERR_PERMISSION_DENIED
+     *         when ACCESS_PUBLIC_FUNCTION is absent.
+     */
+    virtual int32_t PreRegisterIntentRecord(const std::string &bundleName, const std::string &intentName,
+        int32_t &intentId)
+    {
+        return ERR_OK;
     }
 
     /**

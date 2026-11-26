@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -21,6 +21,7 @@
 
 #include "insight_intent_execute_param.h"
 #include "insight_intent_profile.h"
+#include "iremote_object.h"
 #include "nlohmann/json.hpp"
 namespace OHOS {
 namespace AbilityRuntime {
@@ -182,6 +183,7 @@ struct ExtractInsightIntentInfo {
     std::string result;
     std::string example;
     std::string arkTSMode;
+    bool exported = false;
 
     ExtractInsightIntentInfo() = default;
 };
@@ -226,6 +228,7 @@ struct ExtractInsightIntentProfileInfo {
     std::string functionReturnType;
     std::string formName;
     std::string arkTSMode;
+    bool exported = false;
 };
 
 struct ExtractInsightIntentProfileInfoVec {
@@ -241,6 +244,11 @@ struct ExecuteIntentCommonOptions {
     std::string srcDeviceId;
     uint64_t requestCode = 0;
     uint64_t specifiedFullTokenId = 0;
+    // Caller ability token resolved at the function-call execution entry
+    // (ResolveCallerAbilityToken). Threaded to StartAbilityWithInsightIntent /
+    // StartAbilityByCallWithInsightIntent for launch attribution in
+    // StartAbilityInner. null for system callers that omit a token.
+    sptr<IRemoteObject> callerAbilityToken = nullptr;
     ExecuteIntentCommonOptions(bool ignoreAbilityName, const ExtractInsightIntentGenericInfo &infos,
         uint64_t key): ignoreAbilityName(ignoreAbilityName), infos(infos), key(key){};
 };

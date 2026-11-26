@@ -14,9 +14,11 @@
 {
   global:
     extern "C++" {
-      /* IntentClient: the two entry points the sole consumer calls (non-virtual class) */
+      /* IntentClient: the entry points consumers call (non-virtual class) */
       OHOS::AAFwk::IntentClient::GetInstance*;
       OHOS::AAFwk::IntentClient::ExecuteIntentByFunctionCall*;
+      OHOS::AAFwk::IntentClient::PreRegisterIntentRecord*;
+      OHOS::AAFwk::IntentClient::RemoveIntentRecord*;
       /* InsightIntentExecuteResult: passed by value as a Parcelable (ctor/dtor,
          the one method the consumer calls, and virtual-base metadata) */
       OHOS::AppExecFwk::InsightIntentExecuteResult::InsightIntentExecuteResult*;

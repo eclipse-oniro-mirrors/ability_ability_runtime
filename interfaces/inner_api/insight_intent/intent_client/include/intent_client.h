@@ -24,6 +24,7 @@
 #include "iremote_object.h"
 #include "refbase.h"
 #include "want_params.h"
+#include "function_call_execute_param.h"
 
 namespace OHOS {
 namespace AAFwk {
@@ -48,6 +49,33 @@ public:
      */
     int32_t ExecuteIntentByFunctionCall(const ExecuteIntentParam &param);
 
+    /**
+     * @brief Pre-register the insight intent execute record for the
+     *        invokePublicFunction caller (third-party). The AMS resolves the
+     *        target intent module by {bundleName, intentName}, checks the
+     *        exported visibility flag and ACCESS_PUBLIC_FUNCTION, then
+     *        pre-registers a PENDING_CONSENT record and returns its id for the
+     *        consent dialog to query.
+     * @param bundleName The target function namespace (bundle name).
+     * @param intentName The target insight intent (function) name.
+     * @param intentId Output execute record id pre-registered by AMS; non-zero
+     *                 only when ERR_OK is returned.
+     * @return Returns ERR_OK on success, INTENT_NOT_EXIST when the target is
+     *         missing or not open to third-party callers, ERR_PERMISSION_DENIED
+     *         when ACCESS_PUBLIC_FUNCTION is absent.
+     */
+    int32_t PreRegisterIntentRecord(const std::string &bundleName, const std::string &intentName,
+        int32_t &intentId);
+
+    /**
+     * @brief Remove the pre-registered insight intent execute record identified
+     *        by intentId. Called when the consent dialog is declined or dismissed
+     *        (no grant) so the PENDING_CONSENT record does not linger.
+     * @param intentId The execute record id returned by PreRegisterIntentRecord.
+     * @return Returns ERR_OK on success, others on failure.
+     */
+    int32_t RemoveIntentRecord(int32_t intentId);
+
 private:
     IntentClient() = default;
 
@@ -55,8 +83,8 @@ private:
 
     void ResetRemote(wptr<IRemoteObject> remote);
 
-    int32_t SendExecuteRequest(uint64_t key, const sptr<IRemoteObject> &callerToken,
-        const std::string &bundleName, const std::string &intentName, const WantParams &wantParam);
+    int32_t SendExecuteRequest(uint32_t code, uint64_t key, const sptr<IRemoteObject> &callerToken,
+        const AppExecFwk::FunctionCallExecuteParam &param);
 
     class DeathRecipient : public IRemoteObject::DeathRecipient {
     public:

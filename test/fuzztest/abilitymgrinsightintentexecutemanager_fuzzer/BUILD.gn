@@ -83,6 +83,8 @@ ohos_fuzztest("AbilityMgrInsightIntentExecuteManagerFuzzTest") {
   external_deps = [
     "ability_base:want",
     "ability_base:zuri",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libtokenid_sdk",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "bundle_framework:libappexecfwk_common",

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "ability_business_error.h"
+#include "ability_manager_errors.h"
 #include "hilog_tag_wrapper.h"
 #include "insight_intent_execute_result.h"
 #include "ani_common_execute_result.h"
