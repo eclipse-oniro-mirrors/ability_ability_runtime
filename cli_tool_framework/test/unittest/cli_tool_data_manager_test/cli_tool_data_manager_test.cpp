@@ -1435,5 +1435,84 @@ HWTEST_F(CliToolDataManagerTest, CliToolDataManager_EnsureToolsLoaded_004, TestS
     TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_EnsureToolsLoaded_004 end");
 }
 
+// ==================== isLongRunning Loading Tests ====================
+
+/**
+ * @tc.name: CliToolDataManager_GetToolByName_IsLongRunning_001
+ * @tc.desc: TC (AC-1.1/AC-2.1~2.3/VM-1/VM-2) isLongRunning survives config load through
+ *           KVStore: independent tool-level and subcommand-level declarations (no inheritance)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolDataManagerTest, CliToolDataManager_GetToolByName_IsLongRunning_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_GetToolByName_IsLongRunning_001 start");
+
+    nlohmann::json json = {
+        {"name", "ohos-long_kv_tool"},
+        {"version", "1.0.0"},
+        {"description", "KV long running tool"},
+        {"executablePath", "/bin/long_kv_tool"},
+        {"requirePermissions", nlohmann::json::array()},
+        {"inputSchema", nlohmann::json::object()},
+        {"outputSchema", nlohmann::json::object()},
+        {"isLongRunning", true},
+        {"hasSubCommand", true},
+        {"subcommands", {
+            {"run", {
+                {"description", "Long run"},
+                {"requirePermissions", nlohmann::json::array()},
+                {"inputSchema", nlohmann::json::object()},
+                {"outputSchema", nlohmann::json::object()},
+                {"isLongRunning", false},
+            }},
+            {"watch", {
+                {"description", "Watch undeclared stays false"},
+                {"requirePermissions", nlohmann::json::array()},
+                {"inputSchema", nlohmann::json::object()},
+                {"outputSchema", nlohmann::json::object()},
+            }},
+        }},
+    };
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    mockStore->SetMockData("ohos-long_kv_tool", json.dump());
+    CliToolDataManager::GetInstance().kvStorePtr_ = mockStore;
+
+    ToolInfo tool;
+    EXPECT_EQ(CliToolDataManager::GetInstance().GetToolByName("ohos-long_kv_tool", tool), ERR_OK);
+    EXPECT_EQ(tool.name, "ohos-long_kv_tool");
+    EXPECT_TRUE(tool.isLongRunning);
+    ASSERT_EQ(tool.subcommands.size(), 2u);
+    // Subcommand declares its own false (independent of the tool-level true)
+    EXPECT_FALSE(tool.subcommands["run"].isLongRunning);
+    // Undeclared subcommand stays false (no inheritance from tool-level true)
+    EXPECT_FALSE(tool.subcommands["watch"].isLongRunning);
+
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_GetToolByName_IsLongRunning_001 end");
+}
+
+/**
+ * @tc.name: CliToolDataManager_GetToolByName_IsLongRunning_002
+ * @tc.desc: TC (AC-1.2/VM-3/INV-1) Legacy config without isLongRunning loads unchanged
+ *           and exposes false
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolDataManagerTest, CliToolDataManager_GetToolByName_IsLongRunning_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_GetToolByName_IsLongRunning_002 start");
+
+    auto mockStore = std::make_shared<MockSingleKvStore>();
+    mockStore->SetMockData("ohos-legacy_kv_tool", BuildToolJson("ohos-legacy_kv_tool"));
+    CliToolDataManager::GetInstance().kvStorePtr_ = mockStore;
+
+    ToolInfo tool;
+    EXPECT_EQ(CliToolDataManager::GetInstance().GetToolByName("ohos-legacy_kv_tool", tool), ERR_OK);
+    EXPECT_EQ(tool.name, "ohos-legacy_kv_tool");
+    EXPECT_FALSE(tool.isLongRunning);
+    EXPECT_FALSE(tool.hasSubCommand);
+
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "CliToolDataManager_GetToolByName_IsLongRunning_002 end");
+}
+
 } // namespace CliTool
 } // namespace OHOS

@@ -5,6 +5,7 @@
   "executablePath": "/system/bin/cli_tool/executable/ohos-example",
   "hasSubCommand": true,
   "cancelable": true,
+  "isLongRunning": false,
   "requirePermissions": [],
   "inputSchema": {
     "type": "object",
@@ -18,6 +19,7 @@
     "run": {
       "description": "Run example tool, execute and return results",
       "requirePermissions": [],
+      "isLongRunning": false,
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -64,6 +66,7 @@
     "version": {
       "description": "Display version information",
       "requirePermissions": [],
+      "isLongRunning": false,
       "inputSchema": {
         "type": "object",
         "properties": {}
@@ -91,6 +94,7 @@
         "properties": {}
       },
       "requirePermissions": [],
+      "isLongRunning": true,
       "outputSchema": {
         "type": "object",
         "description": "Execution result",

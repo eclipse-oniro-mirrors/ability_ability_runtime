@@ -743,6 +743,10 @@ napi_value CreateJsSubCommandInfo(napi_env env, const SubCommandInfo &subcmd)
     // declared, independent of the tool-level flag)
     napi_value jsCancelable = AppExecFwk::WrapBoolToJS(env, subcmd.cancelable);
     napi_set_named_property(env, jsObj, "cancelable", jsCancelable);
+    // Set isLongRunning (subcommand-level declaration value; false when not declared,
+    // no inheritance from the tool-level declaration).
+    napi_value jsIsLongRunning = AppExecFwk::WrapBoolToJS(env, subcmd.isLongRunning);
+    napi_set_named_property(env, jsObj, "isLongRunning", jsIsLongRunning);
 
     return jsObj;
 }
@@ -890,6 +894,11 @@ napi_value CreateJsToolInfo(napi_env env, const ToolInfo &tool)
     // the subcommand-level value is carried by the corresponding SubCommandInfo object)
     napi_value jsCancelable = AppExecFwk::WrapBoolToJS(env, tool.cancelable);
     napi_set_named_property(env, jsObj, "cancelable", jsCancelable);
+    // Set isLongRunning (tool-level declaration value; a subcommand exposes its own
+    // independent declaration on the subcommand object). Declaration only: does not change
+    // execTool timeout.
+    napi_value jsIsLongRunning = AppExecFwk::WrapBoolToJS(env, tool.isLongRunning);
+    napi_set_named_property(env, jsObj, "isLongRunning", jsIsLongRunning);
 
     return jsObj;
 }

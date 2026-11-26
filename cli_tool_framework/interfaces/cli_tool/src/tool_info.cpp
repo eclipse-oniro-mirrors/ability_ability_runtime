@@ -150,6 +150,7 @@ bool ToolInfo::Marshalling(Parcel &parcel) const
            parcel.WriteBool(isLockScreenExecutionAllowed) &&
            parcel.WriteString(visibility) &&
            parcel.WriteStringVector(supportedDevices) &&
+           parcel.WriteBool(isLongRunning) &&
            parcel.WriteBool(cancelable);
 }
 
@@ -175,6 +176,7 @@ ToolInfo *ToolInfo::Unmarshalling(Parcel &parcel)
         !parcel.ReadBool(tool->isLockScreenExecutionAllowed) ||
         !parcel.ReadString(tool->visibility) ||
         !parcel.ReadStringVector(&tool->supportedDevices) ||
+        !parcel.ReadBool(tool->isLongRunning) ||
         !parcel.ReadBool(tool->cancelable)) {
         delete tool;
         return nullptr;
@@ -433,6 +435,15 @@ bool ToolInfo::ParseFromJson(const nlohmann::json &json, ToolInfo &tool)
     // cancelable declarations are independent: an undeclared subcommand stays false and
     // never falls back to the tool level (removed after review: no two-level inheritance).
 
+    // isLongRunning is optional; when absent it stays false (short-running by default)
+    if (json.contains("isLongRunning")) {
+        if (!json["isLongRunning"].is_boolean()) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: isLongRunning is not a boolean");
+            return false;
+        }
+        tool.isLongRunning = json["isLongRunning"];
+    }
+
     // visibility is optional; parsing (exact value-domain validation with conservative
     // fallback per R-7) is extracted into ParseVisibility to keep the nesting depth of
     // this function within the code style limit.
@@ -494,6 +505,7 @@ nlohmann::json ToolInfo::ParseToJson() const
     j["cancelable"] = cancelable;
     j["visibility"] = visibility;
     j["supportedDevices"] = supportedDevices;
+    j["isLongRunning"] = isLongRunning;
 
     return j;
 }

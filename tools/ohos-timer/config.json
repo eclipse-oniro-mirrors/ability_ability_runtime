@@ -4,6 +4,7 @@
   "description": "Timer tool example with subcommands, run declares subcommand-level cancelable and handles SIGINT/SIGTERM",
   "executablePath": "/system/bin/cli_tool/executable/ohos-timer",
   "hasSubCommand": true,
+  "isLongRunning": true,
   "requirePermissions": [],
   "inputSchema": {
     "type": "object",
@@ -20,6 +21,7 @@
       "description": "Run the timer; declares subcommand-level cancelable so the framework routes cancelSession signals to it",
       "requirePermissions": [],
       "cancelable": true,
+      "isLongRunning": true,
       "inputSchema": {
         "type": "object",
         "description": "Run subcommand input parameters",
@@ -94,6 +96,7 @@
     "version": {
       "description": "Display version information; cancelable is deliberately not declared here, so this subcommand does not support cancel (defaults to false, no tool-level inheritance)",
       "requirePermissions": [],
+      "isLongRunning": false,
       "inputSchema": {
         "type": "object",
         "description": "Version subcommand input parameters",
