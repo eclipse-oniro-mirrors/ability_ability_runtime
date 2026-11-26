@@ -17,6 +17,9 @@ namespace CliTool {
 class CliToolDataManagerMock {
 public:
     static int32_t getToolByNameResult;
+    // Last name GetToolByName was queried with: lets tests assert the exact lookup key
+    // (e.g. trailing-whitespace trimming) instead of only the return value.
+    static std::string lastQueriedName;
     static bool toolHasSubCommand;
     static bool toolIsLockScreenExecEnabled;
     // Cooperative-cancel fixtures (REQ 20261029538734): GetToolByName exposes these as the

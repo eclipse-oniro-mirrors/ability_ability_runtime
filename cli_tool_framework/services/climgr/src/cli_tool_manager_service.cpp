@@ -82,6 +82,41 @@ void SanitizeTraceIds(OptionsT &options)
     }
 }
 
+// Full standard whitespace set (space, tab, newline, CR, FF, VT) shared by the shell-cancel
+// tokenizers: ExtractSecondToken splits tokens on it, TrimTrailingWhitespace strips it from
+// token tails, so abnormal inputs (trailing line breaks, mixed separators) resolve the same
+// token a plain single-space command would; other control characters are not separators.
+constexpr const char* WHITESPACE = " \t\n\r\f\v";
+
+// Second whitespace-delimited token of cmd (subcommand candidate); empty if absent.
+// Deliberately lenient: an unregistered candidate falls back to the tool-level declaration
+// (the subcommand dimension is unknown, not declared-false), unlike SnapshotCancelable.
+std::string ExtractSecondToken(const std::string &cmd)
+{
+    auto first = cmd.find_first_not_of(WHITESPACE);
+    if (first == std::string::npos) {
+        return "";
+    }
+    auto second = cmd.find_first_not_of(WHITESPACE, cmd.find_first_of(WHITESPACE, first));
+    if (second == std::string::npos) {
+        return "";
+    }
+    auto end = cmd.find_first_of(WHITESPACE, second);
+    return (end == std::string::npos) ? cmd.substr(second) : cmd.substr(second, end - second);
+}
+
+// Trailing whitespace (the shared WHITESPACE set) trimmed from an extracted token.
+// Shell commands commonly end with a line ending, and without the trim the token
+// "tool\n" fails the registry lookup (KV keys are exact, no trim), so the cancel snapshot
+// would silently fall to best-effort true and bypass a registered tool's cancelable=false
+// declaration. Whitespace inside the token is NOT touched: "tool\nbuild" is two shell
+// commands and deliberately stays unresolvable.
+void TrimTrailingWhitespace(std::string &token)
+{
+    auto end = token.find_last_not_of(WHITESPACE);
+    token = (end == std::string::npos) ? "" : token.substr(0, end + 1);
+}
+
 constexpr const char* PERMISSION_EXEC_CLI_TOOL = "ohos.permission.EXEC_CLI_TOOL";
 constexpr const char* PERMISSION_EXEC_PUBLIC_CLI_TOOL = "ohos.permission.EXEC_PUBLIC_CLI_TOOL";
 constexpr const char* PERMISSION_QUERY_CLI_TOOL = "ohos.permission.QUERY_CLI_TOOL";
@@ -2491,25 +2526,6 @@ bool CliToolManagerService::SnapshotCancelable(const std::string &toolName,
     return toolInfo.cancelable;
 }
 
-namespace {
-// Second whitespace-delimited token of cmd (subcommand candidate); empty if absent.
-// Deliberately lenient: an unregistered candidate falls back to the tool-level declaration
-// (the subcommand dimension is unknown, not declared-false), unlike SnapshotCancelable.
-std::string ExtractSecondToken(const std::string &cmd)
-{
-    auto first = cmd.find_first_not_of(" \t");
-    if (first == std::string::npos) {
-        return "";
-    }
-    auto second = cmd.find_first_not_of(" \t", cmd.find_first_of(" \t", first));
-    if (second == std::string::npos) {
-        return "";
-    }
-    auto end = cmd.find_first_of(" \t", second);
-    return (end == std::string::npos) ? cmd.substr(second) : cmd.substr(second, end - second);
-}
-} // namespace
-
 bool CliToolManagerService::SnapshotShellCancelable(const std::string &cmd) const
 {
     // execCmd (shell mode) sessions: resolve the command against the tool registry first.
@@ -2518,6 +2534,11 @@ bool CliToolManagerService::SnapshotShellCancelable(const std::string &cmd) cons
     // taken); anything else (arbitrary shell command, unresolvable input) has no
     // declaration to consult and returns true (best-effort cooperative cancel).
     std::string toolName = ExecCmdParam::ExtractToolName(cmd);
+    // Tool-name dimension of the same whitespace normalization the subcommand side applies:
+    // a trailing line ending is stripped so "tool\n" resolves to the registered "tool".
+    // (ExecCmdToolMode rejects such names via its charset whitelist instead; here a failed
+    // resolution would silently widen cancel eligibility.)
+    TrimTrailingWhitespace(toolName);
     if (toolName.empty()) {
         return true;
     }
@@ -2538,23 +2559,6 @@ bool CliToolManagerService::SnapshotShellCancelable(const std::string &cmd) cons
     return toolInfo.cancelable;
 }
 
-bool CliToolManagerService::IsCancelable(const std::shared_ptr<SessionRecord> &record) const
-{
-    if (record == nullptr) {
-        return false;
-    }
-    // SKILL sessions have no child process to signal, so cooperative cancel is rejected by
-    // definition. All other session kinds (execTool, execCmd shell mode) are governed by
-    // the creation-time snapshot: registered tools keep their declared value whichever
-    // exec path was taken; unresolvable shell commands are best-effort true.
-    if (record->sessionType == SessionType::SKILL) {
-        return false;
-    }
-    // Read the snapshot taken at session creation: tool config hot-updates during the session
-    // lifetime do not affect existing sessions' cancel eligibility (dev-spec 6.2).
-    return record->cancelable;
-}
-
 int32_t CliToolManagerService::CheckCancelEligibility(const std::shared_ptr<SessionRecord> &record,
     const std::string &sessionId, int32_t signal) const
 {
@@ -2568,7 +2572,7 @@ int32_t CliToolManagerService::CheckCancelEligibility(const std::shared_ptr<Sess
             sessionId.c_str(), static_cast<int32_t>(record->GetState()));
         return ERR_CLI_SESSION_NOT_FOUND;
     }
-    if (!IsCancelable(record)) {
+    if (!record->IsCancelable()) {
         TAG_LOGE(AAFwkTag::CLI_TOOL,
             "CancelSession failed: sessionId=%{public}s tool=%{public}s does not support cancel",
             sessionId.c_str(), record->toolName.c_str());
@@ -2617,8 +2621,19 @@ pid_t CliToolManagerService::ResolveCommandPid(const std::shared_ptr<SessionReco
         pid_t anchor = record->processId.load(std::memory_order_relaxed);
         while (commandPid <= 0) {
             commandPid = ProcScanner::FindCommandProcess(anchor);
-            if (commandPid > 0 || std::chrono::steady_clock::now() >= deadline
-                || ProcScanner::CheckLiveness(anchor) == ProcLiveness::DEAD) {
+            if (commandPid > 0) {
+                break;
+            }
+            if (std::chrono::steady_clock::now() >= deadline) {
+                TAG_LOGW(AAFwkTag::CLI_TOOL,
+                    "Command process discovery timed out, sessionId=%{public}s processId:%{public}d",
+                    sessionId.c_str(), anchor);
+                break;
+            }
+            if (ProcScanner::CheckLiveness(anchor) == ProcLiveness::DEAD) {
+                TAG_LOGW(AAFwkTag::CLI_TOOL,
+                    "Command process discovery stopped: anchor exited, sessionId=%{public}s processId:%{public}d",
+                    sessionId.c_str(), anchor);
                 break;
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(pollMs));
