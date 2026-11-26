@@ -15,6 +15,12 @@
 
 #include "mock_my_flag.h"
 
+extern "C" __attribute__((weak)) int Restorecon(const char *path)
+{
+    (void)path;
+    return 0;
+}
+
 namespace OHOS {
 namespace AAFwk {
 int MyFlag::flag_ = 0;

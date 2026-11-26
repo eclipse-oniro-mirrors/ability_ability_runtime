@@ -27,6 +27,8 @@
 #include "insight_intent_execute_lite_param.h"
 #undef private
 #undef protected
+#include "insight_intent_execute_manager.h"
+
 #include "ability_manager_errors.h"
 #include "bundle_mgr_helper.h"
 #include "start_ability_utils.h"
@@ -827,5 +829,47 @@ HWTEST_F(AbilityManagerServiceMockTest, IsInsightIntentCall_0200, TestSize.Level
     want.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, std::string("invalid"));
     EXPECT_FALSE(abilityMs->IsInsightIntentCall(want, ""));
 }
+
+/**
+ * @tc.name: IsInsightIntentCall_RecordNotFound_0300
+ * @tc.desc: A numeric intent id without a record returns false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceMockTest, IsInsightIntentCall_RecordNotFound_0300, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    Want want;
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, std::string("999999"));
+    EXPECT_FALSE(abilityMs->IsInsightIntentCall(want, "com.test.bundle"));
+}
+
+/**
+ * @tc.name: CheckStaticCfgPermission_InsightIntentCall_0100
+ * @tc.desc: Static cfg permission check is skipped for an insight intent call.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceMockTest, CheckStaticCfgPermission_InsightIntentCall_0100, TestSize.Level1)
+{
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    auto param = std::make_shared<AppExecFwk::InsightIntentExecuteParam>();
+    param->bundleName_ = "com.test.bundle";
+    param->moduleName_ = "entry";
+    param->abilityName_ = "MainAbility";
+    param->insightIntentName_ = "PlayMusic";
+    ExecuteParam execParam;
+    execParam.isDistributed = true;
+    ASSERT_EQ(manager->CheckAndUpdateParam(301, nullptr, param, execParam), ERR_OK);
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    AppExecFwk::AbilityRequest request;
+    request.want.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID,
+        std::to_string(param->insightIntentId_));
+    request.abilityInfo.bundleName = "com.test.bundle";
+    EXPECT_EQ(abilityMs->CheckStaticCfgPermission(request, false, 0),
+        AppExecFwk::Constants::PERMISSION_GRANTED);
+    EXPECT_EQ(manager->RemoveExecuteIntent(param->insightIntentId_), ERR_OK);
+}
+
 }
 }

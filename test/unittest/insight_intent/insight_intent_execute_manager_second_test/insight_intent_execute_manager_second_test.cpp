@@ -25,8 +25,10 @@
 #include "insight_intent_execute_callback_stub.h"
 #include "insight_intent_execute_manager.h"
 #include "insight_intent_execute_param.h"
+#include "insight_intent_will_execute_callback_proxy.h"
 #include "insight_intent_query_param.h"
 #include "extract_insight_intent_profile.h"
+#include "iremote_stub.h"
 #include "mock_ability_token.h"
 #include "string_wrapper.h"
 #include "want.h"
@@ -53,6 +55,34 @@ public:
     uint64_t lastKey = 0;
     int32_t lastResultCode = 0;
     int32_t lastInnerErr = 0;
+};
+
+class InsightIntentWillExecuteCallbackMock : public OHOS::IRemoteStub<OHOS::AAFwk::IInsightIntentWillExecuteCallback> {
+public:
+    void OnWillInsightIntentExecute(const OHOS::AppExecFwk::InsightIntentExecutionInfo &info) override
+    {
+        callbackCount++;
+        lastInfo = info;
+    }
+
+    int32_t OnRemoteRequest(uint32_t code, OHOS::MessageParcel &data, OHOS::MessageParcel &reply,
+        OHOS::MessageOption &option) override
+    {
+        if (code != OHOS::AAFwk::IInsightIntentWillExecuteCallback::ON_WILL_INSIGHT_INTENT_EXECUTE) {
+            return -1;
+        }
+        data.ReadInterfaceToken();
+        auto info = data.ReadParcelable<OHOS::AppExecFwk::InsightIntentExecutionInfo>();
+        if (info == nullptr) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        OnWillInsightIntentExecute(*info);
+        delete info;
+        return OHOS::ERR_OK;
+    }
+
+    int32_t callbackCount = 0;
+    OHOS::AppExecFwk::InsightIntentExecutionInfo lastInfo;
 };
 
 bool WaitUntil(const std::function<bool()> &predicate, int32_t timeoutMs)
@@ -2815,6 +2845,178 @@ HWTEST_F(InsightIntentExecuteManagerSecondTest, RegisterAttributedProcess_Positi
     EXPECT_EQ(ret, ERR_OK);
     EXPECT_EQ(manager->records_.count(intentId), 0);
     TAG_LOGI(AAFwkTag::TEST, "RegisterAttributedProcess_Positive_0100 end.");
+}
+
+/**
+ * @tc.name: GenerateWant_DecoratorClassSrcEntrance_0800
+ * @tc.desc: Empty srcEntry with a decoratorClass falls back to the SRC_ENTRANCE parameter.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, GenerateWant_DecoratorClassSrcEntrance_0800, TestSize.Level1)
+{
+    AppExecFwk::InsightIntentExecuteParam param;
+    param.bundleName_ = "test.bundleName";
+    param.moduleName_ = "test.entry";
+    param.abilityName_ = "test.abilityName";
+    param.insightIntentName_ = "test.decoratorClassIntent";
+    param.executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND;
+    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
+    AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
+    AbilityRuntime::ExtractInsightIntentInfo extractInfo;
+    Want want;
+    want.SetParam(AppExecFwk::INSIGHT_INTENT_SRC_ENTRANCE, std::string("test.srcEntrance"));
+
+    auto ret = InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, extractInfo, want);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(want.GetStringParam(AppExecFwk::INSIGHT_INTENT_SRC_ENTRY), "test.srcEntrance");
+    EXPECT_EQ(want.GetStringParam(AppExecFwk::INSIGHT_INTENT_DECORATOR_CLASS), "test.DecoratorClass");
+    EXPECT_EQ(want.GetStringParam(AppExecFwk::INSIGHT_INTENT_ARKTS_MODE), "test.ArkTSMode");
+}
+
+/**
+ * @tc.name: GenerateWant_DecoratorClassWithoutSrcEntrance_0801
+ * @tc.desc: Empty srcEntry and empty SRC_ENTRANCE keep the intent valid without setting srcEntry.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, GenerateWant_DecoratorClassWithoutSrcEntrance_0801, TestSize.Level1)
+{
+    AppExecFwk::InsightIntentExecuteParam param;
+    param.bundleName_ = "test.bundleName";
+    param.moduleName_ = "test.entry";
+    param.abilityName_ = "test.abilityName";
+    param.insightIntentName_ = "test.decoratorClassIntent";
+    param.executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND;
+    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
+    AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
+    AbilityRuntime::ExtractInsightIntentInfo extractInfo;
+    Want want;
+
+    auto ret = InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, extractInfo, want);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(want.GetStringParam(AppExecFwk::INSIGHT_INTENT_SRC_ENTRY).empty());
+    EXPECT_EQ(want.GetStringParam(AppExecFwk::INSIGHT_INTENT_DECORATOR_CLASS), "test.DecoratorClass");
+}
+
+/**
+ * @tc.name: GenerateWant_NonEmptyDecoratorType_0802
+ * @tc.desc: A non-empty decoratorType must not trigger the free-install on-demand fallback.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, GenerateWant_NonEmptyDecoratorType_0802, TestSize.Level1)
+{
+    AppExecFwk::InsightIntentExecuteParam param;
+    param.bundleName_ = "test.bundleName";
+    param.moduleName_ = "test.entry";
+    param.abilityName_ = "test.abilityName";
+    param.insightIntentName_ = "";
+    param.executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND;
+    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
+    AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
+    decoratorInfo.decoratorType = AbilityRuntime::INSIGHT_INTENTS_DECORATOR_TYPE_LINK;
+    AbilityRuntime::ExtractInsightIntentInfo extractInfo;
+    Want want;
+
+    auto ret = InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, extractInfo, want);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(want.GetStringParam(Want::PARAM_RESV_START_TIME).empty());
+    EXPECT_EQ(want.GetFlags() & Want::FLAG_INSTALL_ON_DEMAND, 0u);
+}
+
+/**
+ * @tc.name: WillExecuteCallback_RegisterNotifyUnregister_0100
+ * @tc.desc: A registered callback receives the execution info and stops receiving after unregister.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, WillExecuteCallback_RegisterNotifyUnregister_0100, TestSize.Level1)
+{
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    sptr<InsightIntentWillExecuteCallbackMock> callback = new InsightIntentWillExecuteCallbackMock();
+    ASSERT_NE(callback, nullptr);
+    const pid_t pid = 43210;
+    ASSERT_EQ(manager->RegisterWillInsightIntentExecuteCallback(pid, callback->AsObject()), ERR_OK);
+    AppExecFwk::InsightIntentExecutionInfo info;
+    info.intentName = "PlayMusic";
+    info.callerBundleName = "caller.bundle";
+    info.callerTokenId = "1001";
+    info.callerUid = 2001;
+    manager->NotifyInsightIntentWillExecute(pid, info);
+    EXPECT_EQ(callback->callbackCount, 1);
+    EXPECT_EQ(callback->lastInfo.intentName, "PlayMusic");
+    EXPECT_EQ(callback->lastInfo.callerBundleName, "caller.bundle");
+    EXPECT_EQ(callback->lastInfo.callerUid, 2001);
+    EXPECT_EQ(manager->UnregisterWillInsightIntentExecuteCallback(pid), ERR_OK);
+    manager->NotifyInsightIntentWillExecute(pid, info);
+    EXPECT_EQ(callback->callbackCount, 1);
+}
+
+/**
+ * @tc.name: WillExecuteCallback_Remove_0200
+ * @tc.desc: RemoveInsightIntentWillExecuteCallback removes the registered callback without delivering again.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, WillExecuteCallback_Remove_0200, TestSize.Level1)
+{
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    sptr<InsightIntentWillExecuteCallbackMock> callback = new InsightIntentWillExecuteCallbackMock();
+    ASSERT_NE(callback, nullptr);
+    const pid_t pid = 43211;
+    ASSERT_EQ(manager->RegisterWillInsightIntentExecuteCallback(pid, callback->AsObject()), ERR_OK);
+    manager->RemoveInsightIntentWillExecuteCallback(pid);
+    AppExecFwk::InsightIntentExecutionInfo info;
+    info.intentName = "PlayMusic";
+    manager->NotifyInsightIntentWillExecute(pid, info);
+    EXPECT_EQ(callback->callbackCount, 0);
+    EXPECT_EQ(manager->UnregisterWillInsightIntentExecuteCallback(pid), ERR_OK);
+}
+
+/**
+ * @tc.name: SetInsightIntentExecutionInfo_0100
+ * @tc.desc: Execution info is stored on the matching intent record only.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, SetInsightIntentExecutionInfo_0100, TestSize.Level1)
+{
+    auto manager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    uint64_t intentId = 0;
+    sptr<IRemoteObject> callerToken = nullptr;
+    ASSERT_EQ(manager->AddRecord(1001, callerToken, "test.bundle", intentId, ExecuteParam{}), ERR_OK);
+    AppExecFwk::InsightIntentExecutionInfo info;
+    info.intentName = "PlayMusic";
+    info.callerBundleName = "caller.bundle";
+    info.callerTokenId = "1001";
+    info.callerUid = 2001;
+    manager->SetInsightIntentExecutionInfo(intentId, info);
+    ASSERT_EQ(manager->records_.count(intentId), 1);
+    EXPECT_EQ(manager->records_[intentId]->executionInfo.intentName, "PlayMusic");
+    EXPECT_EQ(manager->records_[intentId]->executionInfo.callerBundleName, "caller.bundle");
+    EXPECT_EQ(manager->records_[intentId]->executionInfo.callerUid, 2001);
+    EXPECT_EQ(manager->RemoveExecuteIntent(intentId), ERR_OK);
+}
+
+/**
+ * @tc.name: GenerateWant_CallerIdentity_0900
+ * @tc.desc: GenerateWant writes caller bundle/token/uid into the generated want.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteManagerSecondTest, GenerateWant_CallerIdentity_0900, TestSize.Level1)
+{
+    AppExecFwk::InsightIntentExecuteParam param;
+    param.bundleName_ = "test.bundleName";
+    param.moduleName_ = "test.entry";
+    param.abilityName_ = "test.abilityName";
+    param.insightIntentName_ = "PlayMusic";
+    param.executeMode_ = AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND;
+    param.callerBundleName_ = "caller.bundle";
+    param.callerTokenId_ = "1001";
+    param.callerUid_ = 2001;
+    auto paramPtr = std::make_shared<AppExecFwk::InsightIntentExecuteParam>(param);
+    AbilityRuntime::ExtractInsightIntentGenericInfo decoratorInfo;
+    AbilityRuntime::ExtractInsightIntentInfo extractInfo;
+    Want want;
+    ASSERT_EQ(InsightIntentExecuteManager::GenerateWant(paramPtr, decoratorInfo, extractInfo, want), ERR_OK);
+    EXPECT_EQ(want.GetStringParam(AppExecFwk::INSIGHT_INTENT_CALLER_BUNDLE_NAME), "caller.bundle");
+    EXPECT_EQ(want.GetStringParam(AppExecFwk::INSIGHT_INTENT_CALLER_TOKEN_ID), "1001");
+    EXPECT_EQ(want.GetIntParam(AppExecFwk::INSIGHT_INTENT_CALLER_UID, 0), 2001);
 }
 
 } // namespace AAFwk

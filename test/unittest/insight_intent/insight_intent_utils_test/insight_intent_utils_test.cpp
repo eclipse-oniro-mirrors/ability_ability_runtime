@@ -562,5 +562,43 @@ HWTEST_F(InsightIntentUtilsTest, ConvertConfigInsightIntentInfo_0300, TestSize.L
     EXPECT_EQ(queryInfo.formIntentInfo.formName, "MusicForm");
     EXPECT_EQ(queryInfo.cfgEntities, "cfgEntity");
 }
+/**
+ * @tc.name: Permissions_ConvertExtractInsightIntentInfo_0100
+ * @tc.desc: ConvertExtractInsightIntentInfo copies permissions to the query info.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentUtilsTest, Permissions_ConvertExtractInsightIntentInfo_0100, TestSize.Level1)
+{
+    AbilityRuntime::InsightIntentUtils utils;
+    InsightIntentInfoForQuery queryInfo;
+    auto intentInfo = TEST_INSIGHT_INTENT_INFO;
+    intentInfo.permissions = {"ohos.permission.READ", "ohos.permission.WRITE"};
+    auto result = utils.ConvertExtractInsightIntentInfo(intentInfo, queryInfo, false);
+    EXPECT_EQ(result, ERR_OK);
+    ASSERT_EQ(queryInfo.permissions.size(), 2);
+    EXPECT_EQ(queryInfo.permissions[0], "ohos.permission.READ");
+    EXPECT_EQ(queryInfo.permissions[1], "ohos.permission.WRITE");
+}
+
+/**
+ * @tc.name: Permissions_ConvertConfigInsightIntentInfo_0100
+ * @tc.desc: ConvertConfigInsightIntentInfo copies permissions to the query info.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentUtilsTest, Permissions_ConvertConfigInsightIntentInfo_0100, TestSize.Level1)
+{
+    AbilityRuntime::InsightIntentUtils utils;
+    InsightIntentInfoForQuery queryInfo;
+    InsightIntentInfo intentInfo;
+    intentInfo.bundleName = "bundle.cfg";
+    intentInfo.moduleName = "entry";
+    intentInfo.intentName = "PlayMedia";
+    intentInfo.permissions = {"ohos.permission.READ"};
+    auto result = utils.ConvertConfigInsightIntentInfo(intentInfo, queryInfo, false);
+    EXPECT_EQ(result, ERR_OK);
+    ASSERT_EQ(queryInfo.permissions.size(), 1);
+    EXPECT_EQ(queryInfo.permissions[0], "ohos.permission.READ");
+}
+
 } // namespace AAFwk
 } // namespace OHOS

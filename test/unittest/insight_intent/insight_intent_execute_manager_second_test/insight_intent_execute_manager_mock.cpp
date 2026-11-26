@@ -42,6 +42,16 @@ uint32_t InsightIntentUtils::GetSrcEntry(const AppExecFwk::ElementName &elementN
     const AppExecFwk::ExecuteMode &executeMode, std::string &srcEntry, std::string *arkTSMode, int32_t userId,
     std::string *decoratorClass)
 {
+    if (intentName == "test.decoratorClassIntent") {
+        srcEntry.clear();
+        if (arkTSMode != nullptr) {
+            *arkTSMode = "test.ArkTSMode";
+        }
+        if (decoratorClass != nullptr) {
+            *decoratorClass = "test.DecoratorClass";
+        }
+        return ERR_OK;
+    }
     if (executeMode == AppExecFwk::ExecuteMode::UI_ABILITY_FOREGROUND) {
         if (intentName.empty()) {
             return ERRIGHT_INVALID_COMPONRNT;
