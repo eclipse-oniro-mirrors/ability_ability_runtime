@@ -260,6 +260,10 @@ void ModuleRunningRecord::LaunchPendingAbilities()
         TAG_LOGE(AAFwkTag::APPMGR, "abilities_ is empty");
         return;
     }
+    if (appLifeCycleDeal_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "null appLifeCycleDeal_");
+        return;
+    }
 
     for (const auto &item : abilities_) {
         const auto &ability = item.second;
