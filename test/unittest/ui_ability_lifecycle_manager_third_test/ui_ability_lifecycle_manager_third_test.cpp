@@ -44,6 +44,7 @@
 #include "status_bar_delegate_interface.h"
 #include "scene_board/status_bar_delegate_manager.h"
 #include "server_constant.h"
+#include "start_options.h"
 #include "start_window_option.h"
 #include "wm_animation_common.h"
 #define private public
@@ -1214,6 +1215,235 @@ HWTEST_F(UIAbilityLifecycleManagerThirdTest, MoveMissionToFront_005, TestSize.Le
         sessionInfo->windowCreateParams.get());
     ASSERT_NE(sessionInfo->windowCreateParams, nullptr);
     EXPECT_EQ(sessionInfo->windowCreateParams.get(), startOptions->windowCreateParams_.get());
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_MoveMissionToFront_00600
+ * @tc.desc: MoveMissionToFront with null startOptions takes the else branch: the want display id
+ *           is reset to -1 and processOptions/startWindowOption are cleared
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, MoveMissionToFront_006, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(uiAbilityLifecycleManager, nullptr);
+
+    int32_t sessionId = 1;
+
+    Rosen::SessionInfo info;
+    auto testSession = sptr<PendingActivationTestSession>::MakeSptr(info);
+    ASSERT_NE(testSession, nullptr);
+    uiAbilityLifecycleManager->rootSceneSession_ = testSession->AsObject();
+
+    AbilityRequest abilityRequest;
+    auto abilityRecord = std::make_shared<UIAbilityRecord>(
+        abilityRequest.want, abilityRequest.abilityInfo, abilityRequest.appInfo, abilityRequest.requestCode);
+    auto sessionInfo = sptr<AAFwk::SessionInfo>::MakeSptr();
+    // Non-null options: the else branch must clear them on the shared info and on the clone.
+    auto processOptions = std::make_shared<ProcessOptions>();
+    sessionInfo->processOptions = processOptions;
+    sessionInfo->startWindowOption = std::make_shared<AAFwk::StartWindowOption>();
+    abilityRecord->sessionInfo_ = sessionInfo;
+
+    uiAbilityLifecycleManager->sessionAbilityMap_ = {
+        {sessionId, abilityRecord}
+    };
+
+    EXPECT_EQ(uiAbilityLifecycleManager->MoveMissionToFront(sessionId, nullptr), ERR_OK);
+
+    ASSERT_NE(testSession->lastSessionInfo_, nullptr);
+    // startOptions == nullptr: the display id is explicitly reset to -1.
+    EXPECT_EQ(sessionInfo->want.GetIntParam(Want::PARAM_RESV_DISPLAY_ID, -999), -1);
+    EXPECT_EQ(testSession->lastSessionInfo_->want.GetIntParam(Want::PARAM_RESV_DISPLAY_ID, -999), -1);
+    // No startOptions fields are copied into the want.
+    EXPECT_EQ(testSession->lastSessionInfo_->want.GetIntParam(Want::PARAM_RESV_WINDOW_MODE, -1), -1);
+    // processOptions / startWindowOption are cleared on both the shared info and the clone.
+    EXPECT_EQ(sessionInfo->processOptions, nullptr);
+    EXPECT_EQ(sessionInfo->startWindowOption, nullptr);
+    EXPECT_EQ(testSession->lastSessionInfo_->processOptions, nullptr);
+    EXPECT_EQ(testSession->lastSessionInfo_->startWindowOption, nullptr);
+    EXPECT_TRUE(testSession->lastSessionInfo_->canStartAbilityFromBackground);
+    EXPECT_EQ(testSession->lastSessionInfo_->scenarios, ServerConstant::SCENARIO_MOVE_MISSION_TO_FRONT);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_MoveMissionToFront_00700
+ * @tc.desc: MoveMissionToFront substitutes displayId == 0 with the default display id (resolved
+ *           before the lock) and propagates the other startOptions fields into the want
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, MoveMissionToFront_007, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(uiAbilityLifecycleManager, nullptr);
+
+    int32_t sessionId = 1;
+    auto startOptions = std::make_shared<StartOptions>();
+    startOptions->windowMode_ = AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_PRIMARY;
+    // displayId 0 asks the manager to substitute the default display id.
+    startOptions->displayId_ = 0;
+    startOptions->SetSplitRatioPreference(7);
+
+    Rosen::SessionInfo info;
+    auto testSession = sptr<PendingActivationTestSession>::MakeSptr(info);
+    ASSERT_NE(testSession, nullptr);
+    uiAbilityLifecycleManager->rootSceneSession_ = testSession->AsObject();
+
+    AbilityRequest abilityRequest;
+    auto abilityRecord = std::make_shared<UIAbilityRecord>(
+        abilityRequest.want, abilityRequest.abilityInfo, abilityRequest.appInfo, abilityRequest.requestCode);
+    auto sessionInfo = sptr<AAFwk::SessionInfo>::MakeSptr();
+    sessionInfo->want.RemoveParam(Want::PARAM_RESV_DISPLAY_ID);
+    abilityRecord->sessionInfo_ = sessionInfo;
+
+    uiAbilityLifecycleManager->sessionAbilityMap_ = {
+        {sessionId, abilityRecord}
+    };
+
+    EXPECT_EQ(uiAbilityLifecycleManager->MoveMissionToFront(sessionId, startOptions), ERR_OK);
+
+    ASSERT_NE(testSession->lastSessionInfo_, nullptr);
+    // Self-consistent: the substitution equals whatever DisplayUtil resolves in this UT
+    // environment (the value itself may legitimately be -1 without a real display).
+    int32_t defaultDisplayId = DisplayUtil::GetDefaultDisplayId();
+    EXPECT_EQ(sessionInfo->want.GetIntParam(Want::PARAM_RESV_DISPLAY_ID, -999), defaultDisplayId);
+    EXPECT_EQ(testSession->lastSessionInfo_->want.GetIntParam(Want::PARAM_RESV_DISPLAY_ID, -999),
+        defaultDisplayId);
+    // Other startOptions fields are propagated into the want / the sessionInfo.
+    EXPECT_EQ(testSession->lastSessionInfo_->want.GetIntParam(Want::PARAM_RESV_WINDOW_MODE, -1),
+        AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_PRIMARY);
+    EXPECT_EQ(testSession->lastSessionInfo_->splitRatioPreference, 7);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_MoveMissionToFront_00800
+ * @tc.desc: MoveMissionToFront keeps a non-zero startOptions display id instead of substituting
+ *           the default display id
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, MoveMissionToFront_008, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(uiAbilityLifecycleManager, nullptr);
+
+    int32_t sessionId = 1;
+    auto startOptions = std::make_shared<StartOptions>();
+    startOptions->windowMode_ = AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_PRIMARY;
+    startOptions->displayId_ = 123;
+
+    Rosen::SessionInfo info;
+    auto testSession = sptr<PendingActivationTestSession>::MakeSptr(info);
+    ASSERT_NE(testSession, nullptr);
+    uiAbilityLifecycleManager->rootSceneSession_ = testSession->AsObject();
+
+    AbilityRequest abilityRequest;
+    auto abilityRecord = std::make_shared<UIAbilityRecord>(
+        abilityRequest.want, abilityRequest.abilityInfo, abilityRequest.appInfo, abilityRequest.requestCode);
+    auto sessionInfo = sptr<AAFwk::SessionInfo>::MakeSptr();
+    sessionInfo->want.RemoveParam(Want::PARAM_RESV_DISPLAY_ID);
+    abilityRecord->sessionInfo_ = sessionInfo;
+
+    uiAbilityLifecycleManager->sessionAbilityMap_ = {
+        {sessionId, abilityRecord}
+    };
+
+    EXPECT_EQ(uiAbilityLifecycleManager->MoveMissionToFront(sessionId, startOptions), ERR_OK);
+
+    ASSERT_NE(testSession->lastSessionInfo_, nullptr);
+    // A non-zero display id is kept as-is, not overwritten with the default display id.
+    EXPECT_EQ(sessionInfo->want.GetIntParam(Want::PARAM_RESV_DISPLAY_ID, -999), 123);
+    EXPECT_EQ(testSession->lastSessionInfo_->want.GetIntParam(Want::PARAM_RESV_DISPLAY_ID, -999), 123);
+    EXPECT_NE(DisplayUtil::GetDefaultDisplayId(), 123);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_MoveMissionToFront_00900
+ * @tc.desc: MoveMissionToFront with a session id absent from the map returns ERR_INVALID_VALUE
+ *           without touching the record or activating any session
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, MoveMissionToFront_009, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(uiAbilityLifecycleManager, nullptr);
+
+    int32_t sessionId = 1;
+    int32_t invalidSessionId = 999;
+    auto startOptions = std::make_shared<StartOptions>();
+    startOptions->windowMode_ = AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_PRIMARY;
+    startOptions->displayId_ = 123;
+
+    Rosen::SessionInfo info;
+    auto testSession = sptr<PendingActivationTestSession>::MakeSptr(info);
+    ASSERT_NE(testSession, nullptr);
+    uiAbilityLifecycleManager->rootSceneSession_ = testSession->AsObject();
+
+    AbilityRequest abilityRequest;
+    auto abilityRecord = std::make_shared<UIAbilityRecord>(
+        abilityRequest.want, abilityRequest.abilityInfo, abilityRequest.appInfo, abilityRequest.requestCode);
+    auto sessionInfo = sptr<AAFwk::SessionInfo>::MakeSptr();
+    abilityRecord->sessionInfo_ = sessionInfo;
+
+    uiAbilityLifecycleManager->sessionAbilityMap_ = {
+        {sessionId, abilityRecord}
+    };
+
+    // No record matches invalidSessionId: rejected before any want mutation or activation.
+    EXPECT_EQ(uiAbilityLifecycleManager->MoveMissionToFront(invalidSessionId, startOptions),
+        ERR_INVALID_VALUE);
+    EXPECT_EQ(testSession->lastSessionInfo_, nullptr);
+    EXPECT_EQ(sessionInfo->want.GetIntParam(Want::PARAM_RESV_DISPLAY_ID, -999), -999);
+    EXPECT_EQ(sessionInfo->want.GetIntParam(Want::PARAM_RESV_WINDOW_MODE, -1), -1);
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_MoveMissionToFront_01000
+ * @tc.desc: MoveMissionToFront from a non-system caller removes PARAM_RESV_WINDOW_FOCUSED from
+ *           the want instead of overwriting it with the startOptions value
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, MoveMissionToFront_010, TestSize.Level1)
+{
+    auto uiAbilityLifecycleManager = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(uiAbilityLifecycleManager, nullptr);
+
+    int32_t sessionId = 1;
+    auto startOptions = std::make_shared<StartOptions>();
+    startOptions->windowMode_ = AbilityWindowConfiguration::MULTI_WINDOW_DISPLAY_PRIMARY;
+    startOptions->displayId_ = 123;
+    startOptions->SetWindowFocused(false);
+
+    Rosen::SessionInfo info;
+    auto testSession = sptr<PendingActivationTestSession>::MakeSptr(info);
+    ASSERT_NE(testSession, nullptr);
+    uiAbilityLifecycleManager->rootSceneSession_ = testSession->AsObject();
+
+    AbilityRequest abilityRequest;
+    auto abilityRecord = std::make_shared<UIAbilityRecord>(
+        abilityRequest.want, abilityRequest.abilityInfo, abilityRequest.appInfo, abilityRequest.requestCode);
+    auto sessionInfo = sptr<AAFwk::SessionInfo>::MakeSptr();
+    // A pre-existing focused param distinguishes the removal done for a non-system caller from
+    // the overwrite with startOptions->GetWindowFocused() done for a system caller.
+    sessionInfo->want.SetParam(Want::PARAM_RESV_WINDOW_FOCUSED, true);
+    abilityRecord->sessionInfo_ = sessionInfo;
+
+    uiAbilityLifecycleManager->sessionAbilityMap_ = {
+        {sessionId, abilityRecord}
+    };
+
+    // The UT caller carries no IPC calling token, so it is not treated as a system app.
+    ASSERT_FALSE(PermissionVerification::GetInstance()->IsSystemAppCall());
+
+    EXPECT_EQ(uiAbilityLifecycleManager->MoveMissionToFront(sessionId, startOptions), ERR_OK);
+
+    ASSERT_NE(testSession->lastSessionInfo_, nullptr);
+    // Non-system caller: PARAM_RESV_WINDOW_FOCUSED is removed from both the shared info and
+    // the clone delivered to PendingSessionActivation.
+    EXPECT_FALSE(sessionInfo->want.HasParameter(Want::PARAM_RESV_WINDOW_FOCUSED));
+    EXPECT_FALSE(testSession->lastSessionInfo_->want.HasParameter(Want::PARAM_RESV_WINDOW_FOCUSED));
+    EXPECT_FALSE(testSession->lastSessionInfo_->want.GetBoolParam(Want::PARAM_RESV_WINDOW_FOCUSED, false));
+    // The caller-identity branch does not affect the display id handling.
+    EXPECT_EQ(testSession->lastSessionInfo_->want.GetIntParam(Want::PARAM_RESV_DISPLAY_ID, -999), 123);
 }
 
 /**
@@ -2977,6 +3207,35 @@ HWTEST_F(UIAbilityLifecycleManagerThirdTest, ChangeAbilityVisibility_Stress_001,
     }
     writerRunning.store(false);
     writerThread.join();
+}
+
+/**
+ * @tc.name: UIAbilityLifecycleManager_ChangeAbilityVisibility_0600
+ * @tc.desc: ChangeAbilityVisibility returns ERR_INVALID_VALUE when the record exists but carries
+ *           no sessionInfo (sessionInfo null-check inside the lock)
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerThirdTest, ChangeAbilityVisibility_005, TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    ASSERT_NE(mgr, nullptr);
+
+    AbilityRequest abilityRequest;
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.bundleName = "com.example.unittest";
+    // Keep the caller-self check passing so the sessionInfo null-check branch is reached.
+    abilityRequest.appInfo.accessTokenId = IPCSkeleton::GetCallingTokenID();
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    // The record is registered, but no SessionInfo is attached to it.
+    abilityRecord->sessionInfo_ = nullptr;
+
+    int32_t sessionId = 1;
+    mgr->sessionAbilityMap_.emplace(sessionId, abilityRecord);
+    auto token = abilityRecord->GetToken()->AsObject();
+    ASSERT_NE(token, nullptr);
+
+    EXPECT_EQ(mgr->ChangeAbilityVisibility(token, true, nullptr), ERR_INVALID_VALUE);
 }
 }  // namespace AAFwk
 }  // namespace OHOS
