@@ -28,6 +28,9 @@ int32_t MyFlag::onAbilityDisconnectDoneCount = 0;
 bool MyFlag::isOnAbilityConnectDoneCalled = false;
 bool MyFlag::isOnAbilityDisconnectDoneCalled = false;
 int32_t MyFlag::reportConnectionLeakEventCount = 0;
+int32_t MyFlag::attributeTaskForA2AReusedConnectionRecordCount = 0;
+AAFwk::Want MyFlag::lastAttributeTaskWant;
+sptr<AAFwk::IAbilityConnection> MyFlag::lastAttributeTaskConnection;
 
 AgentManagerClient &AgentManagerClient::GetInstance()
 {
@@ -46,9 +49,12 @@ int32_t AgentManagerClient::DisconnectAgentExtensionAbility(const sptr<AAFwk::IA
     return MyFlag::retDisconnectAgentExtensionAbility;
 }
 
-int32_t AgentManagerClient::AttributeTaskForA2AReusedConnectionRecord(const AAFwk::Want &,
-    const sptr<AAFwk::IAbilityConnection> &)
+int32_t AgentManagerClient::AttributeTaskForA2AReusedConnectionRecord(const AAFwk::Want &want,
+    const sptr<AAFwk::IAbilityConnection> &connection)
 {
+    MyFlag::attributeTaskForA2AReusedConnectionRecordCount++;
+    MyFlag::lastAttributeTaskWant = want;
+    MyFlag::lastAttributeTaskConnection = connection;
     return ERR_OK;
 }
 

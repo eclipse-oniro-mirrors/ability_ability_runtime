@@ -121,6 +121,9 @@ void AgentConnectionManagerTest::SetUp(void)
     MyFlag::isOnAbilityConnectDoneCalled = false;
     MyFlag::isOnAbilityDisconnectDoneCalled = false;
     MyFlag::reportConnectionLeakEventCount = 0;
+    MyFlag::attributeTaskForA2AReusedConnectionRecordCount = 0;
+    MyFlag::lastAttributeTaskWant = Want();
+    MyFlag::lastAttributeTaskConnection = nullptr;
 }
 
 void AgentConnectionManagerTest::TearDown(void)
@@ -1831,6 +1834,112 @@ HWTEST_F(AgentConnectionManagerTest, ConnectAbilityInner_ShouldCoalesceDuplicate
     EXPECT_EQ(AgentConnectionManager::GetInstance().agentConnections_.size(), static_cast<size_t>(1));
     EXPECT_EQ(AgentConnectionManager::GetInstance().agentConnections_.begin()->second.size(),
         static_cast<size_t>(2));
+}
+
+/**
+* @tc.name  : AttributeTaskForA2AReusedConnection_ShouldSkip_WhenAgentIdIsEmpty
+* @tc.number: AttributeTaskForA2AReusedConnection_001
+* @tc.desc  : An empty agentId must skip attribution without reaching AgentManagerClient.
+*/
+HWTEST_F(AgentConnectionManagerTest, AttributeTaskForA2AReusedConnection_001, TestSize.Level1)
+{
+    sptr<IRemoteObject> hostProxy = sptr<MockIRemoteObject>::MakeSptr();
+    Want want = BuildAgentConnectionWant("attributeAgent", hostProxy);
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+    ASSERT_EQ(AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback), ERR_OK);
+    ASSERT_EQ(AgentConnectionManager::GetInstance().agentConnections_.size(), static_cast<size_t>(1));
+
+    Want noAgentIdWant = BuildAgentConnectionWant("", hostProxy);
+    noAgentIdWant.SetParam(AAFwk::Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-attribute-001"));
+    AgentConnectionManager::GetInstance().AttributeTaskForA2AReusedConnection(noAgentIdWant);
+    EXPECT_EQ(MyFlag::attributeTaskForA2AReusedConnectionRecordCount, 0);
+}
+
+/**
+* @tc.name  : AttributeTaskForA2AReusedConnection_ShouldSkip_WhenTaskIdIsEmpty
+* @tc.number: AttributeTaskForA2AReusedConnection_002
+* @tc.desc  : An empty taskId must skip attribution without reaching AgentManagerClient.
+*/
+HWTEST_F(AgentConnectionManagerTest, AttributeTaskForA2AReusedConnection_002, TestSize.Level1)
+{
+    sptr<IRemoteObject> hostProxy = sptr<MockIRemoteObject>::MakeSptr();
+    Want want = BuildAgentConnectionWant("attributeAgent", hostProxy);
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+    ASSERT_EQ(AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback), ERR_OK);
+    ASSERT_EQ(AgentConnectionManager::GetInstance().agentConnections_.size(), static_cast<size_t>(1));
+
+    // want without PARAM_RESV_AGENT_TASK_ID: taskId is empty.
+    AgentConnectionManager::GetInstance().AttributeTaskForA2AReusedConnection(want);
+    EXPECT_EQ(MyFlag::attributeTaskForA2AReusedConnectionRecordCount, 0);
+}
+
+/**
+* @tc.name  : AttributeTaskForA2AReusedConnection_ShouldSkip_WhenConnectionNotFound
+* @tc.number: AttributeTaskForA2AReusedConnection_003
+* @tc.desc  : A want whose agentId matches no stored connection must skip attribution.
+*/
+HWTEST_F(AgentConnectionManagerTest, AttributeTaskForA2AReusedConnection_003, TestSize.Level1)
+{
+    sptr<IRemoteObject> hostProxy = sptr<MockIRemoteObject>::MakeSptr();
+    Want storedWant = BuildAgentConnectionWant("attributeAgent", hostProxy);
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+    ASSERT_EQ(AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(storedWant, callback), ERR_OK);
+    ASSERT_EQ(AgentConnectionManager::GetInstance().agentConnections_.size(), static_cast<size_t>(1));
+
+    Want otherAgentWant = BuildAgentConnectionWant("unknownAgent", hostProxy);
+    otherAgentWant.SetParam(AAFwk::Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-attribute-003"));
+    AgentConnectionManager::GetInstance().AttributeTaskForA2AReusedConnection(otherAgentWant);
+    EXPECT_EQ(MyFlag::attributeTaskForA2AReusedConnectionRecordCount, 0);
+}
+
+/**
+* @tc.name  : AttributeTaskForA2AReusedConnection_ShouldSkip_WhenAgentExtProxyDiffers
+* @tc.number: AttributeTaskForA2AReusedConnection_004
+* @tc.desc  : A want whose AGENTEXTENSIONHOSTPROXY_KEY differs from the stored connection must skip
+*             attribution (FindConnectionLocked misses on the proxy identity).
+*/
+HWTEST_F(AgentConnectionManagerTest, AttributeTaskForA2AReusedConnection_004, TestSize.Level1)
+{
+    sptr<IRemoteObject> hostProxy = sptr<MockIRemoteObject>::MakeSptr();
+    sptr<IRemoteObject> otherProxy = sptr<MockIRemoteObject>::MakeSptr();
+    Want storedWant = BuildAgentConnectionWant("attributeAgent", hostProxy);
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+    ASSERT_EQ(AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(storedWant, callback), ERR_OK);
+    ASSERT_EQ(AgentConnectionManager::GetInstance().agentConnections_.size(), static_cast<size_t>(1));
+
+    Want mismatchWant = BuildAgentConnectionWant("attributeAgent", otherProxy);
+    mismatchWant.SetParam(AAFwk::Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-attribute-004"));
+    AgentConnectionManager::GetInstance().AttributeTaskForA2AReusedConnection(mismatchWant);
+    EXPECT_EQ(MyFlag::attributeTaskForA2AReusedConnectionRecordCount, 0);
+}
+
+/**
+* @tc.name  : AttributeTaskForA2AReusedConnection_ShouldForward_WhenConnectionFound
+* @tc.number: AttributeTaskForA2AReusedConnection_005
+* @tc.desc  : With agentId, taskId and a matching stored connection, the want and the stored
+*             AgentConnection must be forwarded to AgentManagerClient exactly once.
+*/
+HWTEST_F(AgentConnectionManagerTest, AttributeTaskForA2AReusedConnection_005, TestSize.Level1)
+{
+    sptr<IRemoteObject> hostProxy = sptr<MockIRemoteObject>::MakeSptr();
+    Want want = BuildAgentConnectionWant("attributeAgent", hostProxy);
+    want.SetParam(AAFwk::Want::PARAM_RESV_AGENT_TASK_ID, std::string("task-attribute-005"));
+    MyFlag::retConnectAgentExtensionAbility = ERR_OK;
+    sptr<MockAbilityConnectCallback> callback = new MockAbilityConnectCallback();
+    ASSERT_EQ(AgentConnectionManager::GetInstance().ConnectAgentExtensionAbility(want, callback), ERR_OK);
+    ASSERT_EQ(AgentConnectionManager::GetInstance().agentConnections_.size(), static_cast<size_t>(1));
+
+    MyFlag::attributeTaskForA2AReusedConnectionRecordCount = 0;
+    AgentConnectionManager::GetInstance().AttributeTaskForA2AReusedConnection(want);
+    EXPECT_EQ(MyFlag::attributeTaskForA2AReusedConnectionRecordCount, 1);
+    EXPECT_EQ(MyFlag::lastAttributeTaskWant.GetStringParam(AAFwk::Want::PARAM_RESV_AGENT_TASK_ID),
+        "task-attribute-005");
+    EXPECT_EQ(MyFlag::lastAttributeTaskConnection.GetRefPtr(),
+        AgentConnectionManager::GetInstance().agentConnections_.begin()->first.agentConnection.GetRefPtr());
 }
 } // namespace AgentRuntime
 } // namespace OHOS

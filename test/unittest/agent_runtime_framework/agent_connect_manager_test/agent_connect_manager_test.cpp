@@ -61,6 +61,26 @@ public:
     {}
 };
 
+// A non-null connection whose AsObject() is null: exercises GetConnectionIdentityRemote's null
+// branch inside GetServiceConnectionForTracked.
+class NullRemoteAbilityConnection : public AAFwk::AbilityConnectionStub {
+public:
+    NullRemoteAbilityConnection() = default;
+    ~NullRemoteAbilityConnection() override = default;
+
+    void OnAbilityConnectDone(
+        const AppExecFwk::ElementName &element, const sptr<IRemoteObject> &remoteObject, int resultCode) override
+    {}
+
+    void OnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode) override
+    {}
+
+    sptr<IRemoteObject> AsObject() override
+    {
+        return nullptr;
+    }
+};
+
 sptr<MockAbilityConnection> MakeConnection()
 {
     return sptr<MockAbilityConnection>::MakeSptr();
@@ -2719,6 +2739,39 @@ HWTEST_F(AgentConnectManagerTest, GetServiceConnectionForTrackedReturnsNullAfter
 
     mgr.ReleaseTrackedConnection(conn);
     EXPECT_EQ(mgr.GetServiceConnectionForTracked(conn), nullptr);
+}
+
+/**
+ * @tc.name      GetServiceConnectionForTrackedReturnsNullWhenCallerAsObjectIsNull
+ * @tc.desc      A non-null connection whose AsObject() is null yields a null service connection
+ *               (GetConnectionIdentityRemote null guard).
+ */
+HWTEST_F(AgentConnectManagerTest, GetServiceConnectionForTrackedReturnsNullWhenCallerAsObjectIsNull, TestSize.Level1)
+{
+    auto conn = sptr<NullRemoteAbilityConnection>::MakeSptr();
+    ASSERT_NE(conn, nullptr);
+    EXPECT_EQ(AgentConnectManager::GetInstance().GetServiceConnectionForTracked(conn), nullptr);
+}
+
+/**
+ * @tc.name      GetServiceConnectionForTrackedReturnsWrapperDistinctFromCaller
+ * @tc.desc      When the stored record has a null serviceConnection, the returned wrapper is a new
+ *               AgentServiceConnection object, not the raw caller connection itself.
+ */
+HWTEST_F(AgentConnectManagerTest, GetServiceConnectionForTrackedReturnsWrapperDistinctFromCaller, TestSize.Level1)
+{
+    auto &mgr = AgentConnectManager::GetInstance();
+    auto conn = MakeConnection();
+    auto request = MakeStandardRequest(conn, CALLER_UID, "agent-1", DefaultHostKey(), NONCE_A);
+    ASSERT_EQ(mgr.RegisterStandardAgentConnection(request), ERR_OK);
+    // Force the CreateServiceConnection fallback: stored serviceConnection is null.
+    mgr.trackedConnections_[conn->AsObject()].serviceConnection = nullptr;
+
+    auto result = mgr.GetServiceConnectionForTracked(conn);
+    ASSERT_NE(result, nullptr);
+    // Compare raw pointers: operator!= between sptrs of different element types is ambiguous
+    // (each argument needs a user-defined conversion to a different overload).
+    EXPECT_NE(result.GetRefPtr(), conn.GetRefPtr());
 }
 
 /**

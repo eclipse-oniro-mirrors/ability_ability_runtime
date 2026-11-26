@@ -27,6 +27,7 @@
 #include "system_ability_definition.h"
 #include "uri_permission_manager_client.h"
 #undef private
+#include "process_lifecycle_observer_stub.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -36,6 +37,15 @@ namespace AppExecFwk {
 namespace {
 constexpr int32_t FOUNDATION_UID = 5523;
 }
+
+class ProcessLifecycleObserver : public ProcessLifecycleObserverStub {
+public:
+    ProcessLifecycleObserver() = default;
+    ~ProcessLifecycleObserver() override = default;
+
+    void OnProcessCreated(const ProcessData &processData) override {}
+    void OnProcessDied(const ProcessData &processData) override {}
+};
 class AppMgrServiceThirdTest : public testing::Test {
 public:
     static void SetUpTestCase();
@@ -838,6 +848,118 @@ HWTEST_F(AppMgrServiceThirdTest, UnregisterImageProcessStateObserver_ShouldRetur
         std::make_shared<AMSEventHandler>(appMgrService->taskHandler_, appMgrService->appMgrServiceInner_);
     auto ret = appMgrService->UnregisterImageProcessStateObserver(observer);
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: RegisterProcessLifecycleObserver_ShouldReturnInvalidOperationWhenNotReady
+ * @tc.desc: RegisterProcessLifecycleObserver.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceThirdTest, RegisterProcessLifecycleObserver_ShouldReturnInvalidOperationWhenNotReady,
+    TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    ASSERT_NE(appMgrService, nullptr);
+    sptr<IProcessLifecycleObserver> observer = nullptr;
+    auto ret = appMgrService->RegisterProcessLifecycleObserver(observer);
+    EXPECT_EQ(ret, ERR_INVALID_OPERATION);
+}
+
+/**
+ * @tc.name: RegisterProcessLifecycleObserver_ShouldReturnERR_INVALID_VALUEWhenObserverIsNullptr
+ * @tc.desc: RegisterProcessLifecycleObserver.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceThirdTest, RegisterProcessLifecycleObserver_ShouldReturnERR_INVALID_VALUEWhenObserverIsNullptr,
+    TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    ASSERT_NE(appMgrService, nullptr);
+    sptr<IProcessLifecycleObserver> observer = nullptr;
+    appMgrService->taskHandler_ = taskHandler_;
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrService->SetInnerService(appMgrServiceInner);
+    appMgrService->eventHandler_ =
+        std::make_shared<AMSEventHandler>(appMgrService->taskHandler_, appMgrService->appMgrServiceInner_);
+    auto ret = appMgrService->RegisterProcessLifecycleObserver(observer);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: RegisterProcessLifecycleObserver_ShouldReturnERROKWhenObserverIsValid
+ * @tc.desc: RegisterProcessLifecycleObserver.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceThirdTest, RegisterProcessLifecycleObserver_ShouldReturnERROKWhenObserverIsValid, TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    ASSERT_NE(appMgrService, nullptr);
+    sptr<IProcessLifecycleObserver> observer = new (std::nothrow) ProcessLifecycleObserver();
+    ASSERT_NE(observer, nullptr);
+    appMgrService->taskHandler_ = taskHandler_;
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrService->SetInnerService(appMgrServiceInner);
+    appMgrService->eventHandler_ =
+        std::make_shared<AMSEventHandler>(appMgrService->taskHandler_, appMgrService->appMgrServiceInner_);
+    auto ret = appMgrService->RegisterProcessLifecycleObserver(observer);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: UnregisterProcessLifecycleObserver_ShouldReturnInvalidOperationWhenNotReady
+ * @tc.desc: UnregisterProcessLifecycleObserver.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceThirdTest, UnregisterProcessLifecycleObserver_ShouldReturnInvalidOperationWhenNotReady,
+    TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    ASSERT_NE(appMgrService, nullptr);
+    sptr<IProcessLifecycleObserver> observer = nullptr;
+    auto ret = appMgrService->UnregisterProcessLifecycleObserver(observer);
+    EXPECT_EQ(ret, ERR_INVALID_OPERATION);
+}
+
+/**
+ * @tc.name: UnregisterProcessLifecycleObserver_ShouldReturnERR_INVALID_VALUEWhenObserverIsNullptr
+ * @tc.desc: UnregisterProcessLifecycleObserver.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceThirdTest, UnregisterProcessLifecycleObserver_ShouldReturnERR_INVALID_VALUEWhenObserverIsNullptr,
+    TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    ASSERT_NE(appMgrService, nullptr);
+    sptr<IProcessLifecycleObserver> observer = nullptr;
+    appMgrService->taskHandler_ = taskHandler_;
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrService->SetInnerService(appMgrServiceInner);
+    appMgrService->eventHandler_ =
+        std::make_shared<AMSEventHandler>(appMgrService->taskHandler_, appMgrService->appMgrServiceInner_);
+    auto ret = appMgrService->UnregisterProcessLifecycleObserver(observer);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: UnregisterProcessLifecycleObserver_ShouldReturnERROKWhenObserverIsRegistered
+ * @tc.desc: UnregisterProcessLifecycleObserver.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceThirdTest, UnregisterProcessLifecycleObserver_ShouldReturnERROKWhenObserverIsRegistered,
+    TestSize.Level1)
+{
+    auto appMgrService = std::make_shared<AppMgrService>();
+    ASSERT_NE(appMgrService, nullptr);
+    sptr<IProcessLifecycleObserver> observer = new (std::nothrow) ProcessLifecycleObserver();
+    ASSERT_NE(observer, nullptr);
+    appMgrService->taskHandler_ = taskHandler_;
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    appMgrService->SetInnerService(appMgrServiceInner);
+    appMgrService->eventHandler_ =
+        std::make_shared<AMSEventHandler>(appMgrService->taskHandler_, appMgrService->appMgrServiceInner_);
+    EXPECT_EQ(appMgrService->RegisterProcessLifecycleObserver(observer), ERR_OK);
+    auto ret = appMgrService->UnregisterProcessLifecycleObserver(observer);
+    EXPECT_EQ(ret, ERR_OK);
 }
 
 } // namespace AppExecFwk
