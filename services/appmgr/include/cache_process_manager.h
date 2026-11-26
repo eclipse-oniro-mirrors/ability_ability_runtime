@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -70,6 +70,7 @@ private:
     int32_t maxProcCacheNum_ = 0;
     int32_t allowedCacheNum_ = 0;
     bool warmStartProcesEnable_ = false;
+    bool isOversea_ = false;
     bool shouldCheckApi = true;
     // whether the feature should check setSupportedProcessCache value or not
     bool shouldCheckSupport = true;
