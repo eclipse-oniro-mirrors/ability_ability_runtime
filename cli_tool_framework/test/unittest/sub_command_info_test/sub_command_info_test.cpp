@@ -2114,5 +2114,154 @@ HWTEST_F(SubCommandInfoTest, SubCommandInfo_Cancelable_RoundTripParcel_0100, Tes
     GTEST_LOG_(INFO) << "SubCommandInfo_Cancelable_RoundTripParcel_0100 end";
 }
 
+// ==================== SubCommandInfo isLongRunning Tests ====================
+
+/**
+ * @tc.name: SubCommandInfo_ParseFromJson_IsLongRunning_0100
+ * @tc.desc: TC (AC-2.1/VM-2) Subcommand-level isLongRunning declaration is parsed; absent stays false
+ * @tc.type: FUNC
+ */
+HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseFromJson_IsLongRunning_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseFromJson_IsLongRunning_0100 start";
+
+    nlohmann::json longJson = R"({
+        "description": "Long running subcommand",
+        "requirePermissions": [],
+        "inputSchema": {"type": "object"},
+        "outputSchema": {"type": "string"},
+        "isLongRunning": true
+    })"_json;
+
+    SubCommandInfo longSubCmd;
+    ASSERT_TRUE(SubCommandInfo::ParseFromJson(longJson, longSubCmd));
+    EXPECT_TRUE(longSubCmd.isLongRunning);
+
+    nlohmann::json defaultJson = R"({
+        "description": "Default short running subcommand",
+        "requirePermissions": [],
+        "inputSchema": {"type": "object"},
+        "outputSchema": {"type": "string"}
+    })"_json;
+
+    SubCommandInfo defaultSubCmd;
+    ASSERT_TRUE(SubCommandInfo::ParseFromJson(defaultJson, defaultSubCmd));
+    EXPECT_FALSE(defaultSubCmd.isLongRunning);
+
+    nlohmann::json explicitFalseJson = R"({
+        "description": "Explicit false subcommand",
+        "requirePermissions": [],
+        "inputSchema": {"type": "object"},
+        "outputSchema": {"type": "string"},
+        "isLongRunning": false
+    })"_json;
+
+    SubCommandInfo explicitFalseSubCmd;
+    ASSERT_TRUE(SubCommandInfo::ParseFromJson(explicitFalseJson, explicitFalseSubCmd));
+    EXPECT_FALSE(explicitFalseSubCmd.isLongRunning);
+
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseFromJson_IsLongRunning_0100 end";
+}
+
+/**
+ * @tc.name: SubCommandInfo_ParseFromJson_IsLongRunning_0200
+ * @tc.desc: TC (R-1) Non-boolean isLongRunning is rejected by ParseFromJson
+ * @tc.type: FUNC
+ */
+HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseFromJson_IsLongRunning_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseFromJson_IsLongRunning_0200 start";
+
+    nlohmann::json json = R"({
+        "description": "Bad type subcommand",
+        "requirePermissions": [],
+        "inputSchema": {"type": "object"},
+        "outputSchema": {"type": "string"},
+        "isLongRunning": "yes"
+    })"_json;
+
+    SubCommandInfo subCmd;
+    EXPECT_FALSE(SubCommandInfo::ParseFromJson(json, subCmd));
+
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseFromJson_IsLongRunning_0200 end";
+}
+
+/**
+ * @tc.name: SubCommandInfo_ParseToJson_IsLongRunning_0100
+ * @tc.desc: TC (VM-4/INV-3) isLongRunning is unconditionally serialized (true and false)
+ * @tc.type: FUNC
+ */
+HWTEST_F(SubCommandInfoTest, SubCommandInfo_ParseToJson_IsLongRunning_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseToJson_IsLongRunning_0100 start";
+
+    SubCommandInfo longSubCmd;
+    longSubCmd.description = "Long subcommand";
+    longSubCmd.inputSchema = "{}";
+    longSubCmd.outputSchema = "{}";
+    longSubCmd.isLongRunning = true;
+
+    nlohmann::json longJson = longSubCmd.ParseToJson();
+    ASSERT_TRUE(longJson.contains("isLongRunning"));
+    EXPECT_EQ(longJson["isLongRunning"], true);
+
+    SubCommandInfo shortSubCmd;
+    shortSubCmd.description = "Short subcommand";
+    shortSubCmd.inputSchema = "{}";
+    shortSubCmd.outputSchema = "{}";
+
+    nlohmann::json shortJson = shortSubCmd.ParseToJson();
+    ASSERT_TRUE(shortJson.contains("isLongRunning"));
+    EXPECT_EQ(shortJson["isLongRunning"], false);
+
+    GTEST_LOG_(INFO) << "SubCommandInfo_ParseToJson_IsLongRunning_0100 end";
+}
+
+/**
+ * @tc.name: SubCommandInfo_Marshalling_Unmarshalling_IsLongRunning_0100
+ * @tc.desc: TC (VM-4/INV-1/INV-3) isLongRunning survives a Parcel round trip, default reads false
+ * @tc.type: FUNC
+ */
+HWTEST_F(SubCommandInfoTest, SubCommandInfo_Marshalling_Unmarshalling_IsLongRunning_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "SubCommandInfo_Marshalling_Unmarshalling_IsLongRunning_0100 start";
+
+    SubCommandInfo original;
+    original.description = "Parcel long running subcommand";
+    original.requirePermissions = {"ohos.permission.INTERNET"};
+    original.inputSchema = R"({"type": "object"})";
+    original.outputSchema = R"({"type": "string"})";
+    original.isLongRunning = true;
+
+    Parcel parcel;
+    ASSERT_TRUE(original.Marshalling(parcel));
+
+    parcel.RewindRead(0);
+    SubCommandInfo *result = SubCommandInfo::Unmarshalling(parcel);
+
+    ASSERT_NE(result, nullptr);
+    EXPECT_TRUE(result->isLongRunning);
+
+    delete result;
+
+    SubCommandInfo defaultSubCmd;
+    defaultSubCmd.description = "Parcel default subcommand";
+    defaultSubCmd.inputSchema = "{}";
+    defaultSubCmd.outputSchema = "{}";
+
+    Parcel defaultParcel;
+    ASSERT_TRUE(defaultSubCmd.Marshalling(defaultParcel));
+
+    defaultParcel.RewindRead(0);
+    SubCommandInfo *defaultResult = SubCommandInfo::Unmarshalling(defaultParcel);
+
+    ASSERT_NE(defaultResult, nullptr);
+    EXPECT_FALSE(defaultResult->isLongRunning);
+
+    delete defaultResult;
+
+    GTEST_LOG_(INFO) << "SubCommandInfo_Marshalling_Unmarshalling_IsLongRunning_0100 end";
+}
+
 } // namespace CliTool
 } // namespace OHOS

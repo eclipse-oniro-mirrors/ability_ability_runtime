@@ -91,6 +91,7 @@
         "properties": {}
       },
       "requirePermissions": [],
+      "isLongRunning": true,
       "outputSchema": {
         "type": "object",
         "description": "Execution result",

@@ -20,6 +20,7 @@
       "description": "Run the timer; declares subcommand-level cancelable so the framework routes cancelSession signals to it",
       "requirePermissions": [],
       "cancelable": true,
+      "isLongRunning": true,
       "inputSchema": {
         "type": "object",
         "description": "Run subcommand input parameters",

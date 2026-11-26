@@ -48,6 +48,10 @@ bool SubCommandInfo::Marshalling(Parcel &parcel) const
     }
     // New field appended at the tail of the parcel stream for IPC compatibility
     // (OH-ARCH-IPC-SAF): existing field order stays untouched.
+    if (!parcel.WriteBool(isLongRunning)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write isLongRunning");
+        return false;
+    }
     if (!parcel.WriteBool(cancelable)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to write cancelable");
         return false;
@@ -94,6 +98,11 @@ SubCommandInfo *SubCommandInfo::Unmarshalling(Parcel &parcel)
         return nullptr;
     }
     // Symmetric with Marshalling: the new field is read at the tail of the stream.
+    if (!parcel.ReadBool(subCmd->isLongRunning)) {
+        TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read isLongRunning");
+        delete subCmd;
+        return nullptr;
+    }
     if (!parcel.ReadBool(subCmd->cancelable)) {
         TAG_LOGE(AAFwkTag::CLI_TOOL, "Failed to read cancelable");
         delete subCmd;
@@ -184,6 +193,16 @@ bool SubCommandInfo::ParseFromJson(const nlohmann::json &json, SubCommandInfo &s
         subCmd.cancelable = json["cancelable"];
     }
 
+    // isLongRunning is optional; when absent it stays false (short-running by default).
+    // Independent of the tool-level declaration: no inheritance is applied.
+    if (json.contains("isLongRunning")) {
+        if (!json["isLongRunning"].is_boolean()) {
+            TAG_LOGE(AAFwkTag::CLI_TOOL, "ParseFromJson failed: isLongRunning is not a boolean");
+            return false;
+        }
+        subCmd.isLongRunning = json["isLongRunning"];
+    }
+
     return true;
 }
 
@@ -221,6 +240,7 @@ nlohmann::json SubCommandInfo::ParseToJson() const
     // The key is written unconditionally so a KVStore value stays self-describing: legacy
     // data without this key parses back with the false default, no migration needed.
     json["cancelable"] = cancelable;
+    json["isLongRunning"] = isLongRunning;
 
     return json;
 }

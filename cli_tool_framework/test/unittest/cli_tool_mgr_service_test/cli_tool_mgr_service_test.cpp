@@ -1168,6 +1168,58 @@ HWTEST_F(CliToolManagerServiceTest, GetToolInfoByName_Permission_0100, TestSize.
 }
 
 /**
+ * @tc.name: CliToolManagerService_GetToolInfoByName_IsLongRunning_0100
+ * @tc.desc: TC (AC-1.1/AC-2.1/VM-5) GetToolInfoByName passes isLongRunning through unchanged
+ *           (tool-level and subcommand-level values from the data manager)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetToolInfoByName_IsLongRunning_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetToolInfoByName_IsLongRunning_0100 start");
+
+    CliToolDataManagerMock::getToolByNameResult = ERR_OK;
+    CliToolDataManagerMock::toolIsLongRunning = true;
+    CliToolDataManagerMock::toolHasSubCommand = true;
+    CliToolDataManagerMock::subCommandIsLongRunning = false;
+
+    ToolInfo tool;
+    int32_t result = service_->GetToolInfoByName("ohos-long_mock_tool", tool);
+
+    ASSERT_EQ(result, ERR_OK);
+    EXPECT_EQ(tool.name, "ohos-long_mock_tool");
+    EXPECT_TRUE(tool.isLongRunning);
+    ASSERT_EQ(tool.subcommands.size(), 1u);
+    EXPECT_FALSE(tool.subcommands[CliToolDataManagerMock::subCommandName].isLongRunning);
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetToolInfoByName_IsLongRunning_0100 end");
+}
+
+/**
+ * @tc.name: CliToolManagerService_GetToolInfoByName_IsLongRunning_0200
+ * @tc.desc: TC (AC-1.2/INV-1) GetToolInfoByName keeps isLongRunning false for legacy tools
+ *           (data manager mock defaults: no long-running declaration)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, GetToolInfoByName_IsLongRunning_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetToolInfoByName_IsLongRunning_0200 start");
+
+    CliToolDataManagerMock::getToolByNameResult = ERR_OK;
+    // toolIsLongRunning / subCommandIsLongRunning stay false (Reset defaults)
+
+    ToolInfo tool;
+    int32_t result = service_->GetToolInfoByName("ohos-legacy_mock_tool", tool);
+
+    ASSERT_EQ(result, ERR_OK);
+    EXPECT_FALSE(tool.isLongRunning);
+    if (tool.hasSubCommand) {
+        EXPECT_FALSE(tool.subcommands[CliToolDataManagerMock::subCommandName].isLongRunning);
+    }
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_GetToolInfoByName_IsLongRunning_0200 end");
+}
+
+/**
  * @tc.name: CliToolManagerService_QueryPermission_Required_0100
  * @tc.desc: Test that query methods require ohos.permission.QUERY_CLI_TOOL permission
  * @tc.type: FUNC

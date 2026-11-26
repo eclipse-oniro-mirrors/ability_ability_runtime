@@ -4795,5 +4795,408 @@ HWTEST_F(ToolInfoTest, ToolInfo_Cancelable_RoundTripRawData_0100, TestSize.Level
     GTEST_LOG_(INFO) << "ToolInfo_Cancelable_RoundTripRawData_0100 end";
 }
 
+// ==================== ToolInfo isLongRunning Tests ====================
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_IsLongRunning_0100
+ * @tc.desc: TC (AC-1.1/VM-1) Tool-level isLongRunning declaration is parsed and exposed
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_IsLongRunning_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_IsLongRunning_0100 start";
+
+    nlohmann::json json = R"({
+        "name": "ohos-long_tool",
+        "version": "1.0.0",
+        "description": "Long running tool",
+        "executablePath": "/bin/long_tool",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "isLongRunning": true
+    })"_json;
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(json, tool);
+
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(tool.isLongRunning);
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_IsLongRunning_0100 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_IsLongRunning_0200
+ * @tc.desc: TC (AC-1.2/VM-3/INV-1) Legacy config without isLongRunning loads as short-running
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_IsLongRunning_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_IsLongRunning_0200 start";
+
+    nlohmann::json json = R"({
+        "name": "ohos-legacy_tool",
+        "version": "1.0.0",
+        "description": "Legacy tool without isLongRunning",
+        "executablePath": "/bin/legacy_tool",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {}
+    })"_json;
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(json, tool);
+
+    EXPECT_TRUE(result);
+    EXPECT_FALSE(tool.isLongRunning);
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_IsLongRunning_0200 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_IsLongRunning_0300
+ * @tc.desc: TC (R-1) Non-boolean isLongRunning is rejected by ParseFromJson
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_IsLongRunning_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_IsLongRunning_0300 start";
+
+    auto baseJson = R"({
+        "name": "ohos-bad_type_tool",
+        "version": "1.0.0",
+        "description": "Tool with non-boolean isLongRunning",
+        "executablePath": "/bin/bad_type_tool",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {}
+    })"_json;
+
+    auto stringJson = baseJson;
+    stringJson["isLongRunning"] = "yes";
+    ToolInfo tool;
+    EXPECT_FALSE(ToolInfo::ParseFromJson(stringJson, tool));
+
+    auto numberJson = baseJson;
+    numberJson["isLongRunning"] = 1;
+    EXPECT_FALSE(ToolInfo::ParseFromJson(numberJson, tool));
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_IsLongRunning_0300 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_IsLongRunning_Priority_0100
+ * @tc.desc: TC (AC-2.1/VM-2) Only subcommand-level declaration: declared sub is true, undeclared is false
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_IsLongRunning_Priority_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_IsLongRunning_Priority_0100 start";
+
+    nlohmann::json json = R"({
+        "name": "ohos-sub_only_tool",
+        "version": "1.0.0",
+        "description": "Only subcommand declares isLongRunning",
+        "executablePath": "/bin/sub_only_tool",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "hasSubCommand": true,
+        "subcommands": {
+            "run": {
+                "description": "Run long task",
+                "requirePermissions": [],
+                "inputSchema": {},
+                "outputSchema": {},
+                "isLongRunning": true
+            },
+            "version": {
+                "description": "Show version",
+                "requirePermissions": [],
+                "inputSchema": {},
+                "outputSchema": {}
+            }
+        }
+    })"_json;
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(json, tool);
+
+    ASSERT_TRUE(result);
+    EXPECT_FALSE(tool.isLongRunning);
+    EXPECT_TRUE(tool.subcommands["run"].isLongRunning);
+    EXPECT_FALSE(tool.subcommands["version"].isLongRunning);
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_IsLongRunning_Priority_0100 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_IsLongRunning_Priority_0200
+ * @tc.desc: TC (AC-2.3/VM-2) Tool-level declaration does not propagate: undeclared subcommands
+ *           stay false (independent declarations, no inheritance)
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_IsLongRunning_Priority_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_IsLongRunning_Priority_0200 start";
+
+    nlohmann::json json = R"({
+        "name": "ohos-tool_only_tool",
+        "version": "1.0.0",
+        "description": "Only tool declares isLongRunning",
+        "executablePath": "/bin/tool_only_tool",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "isLongRunning": true,
+        "hasSubCommand": true,
+        "subcommands": {
+            "run": {
+                "description": "Run task",
+                "requirePermissions": [],
+                "inputSchema": {},
+                "outputSchema": {}
+            },
+            "version": {
+                "description": "Show version",
+                "requirePermissions": [],
+                "inputSchema": {},
+                "outputSchema": {}
+            }
+        }
+    })"_json;
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(json, tool);
+
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(tool.isLongRunning);
+    EXPECT_FALSE(tool.subcommands["run"].isLongRunning);
+    EXPECT_FALSE(tool.subcommands["version"].isLongRunning);
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_IsLongRunning_Priority_0200 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_IsLongRunning_Priority_0300
+ * @tc.desc: TC (AC-2.2/VM-2) Independent declarations: subcommand-level false stays false
+ *           alongside tool-level true
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_IsLongRunning_Priority_0300, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_IsLongRunning_Priority_0300 start";
+
+    nlohmann::json json = R"({
+        "name": "ohos-sub_override_tool",
+        "version": "1.0.0",
+        "description": "Independent subcommand false next to tool true",
+        "executablePath": "/bin/sub_override_tool",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "isLongRunning": true,
+        "hasSubCommand": true,
+        "subcommands": {
+            "run": {
+                "description": "Run task",
+                "requirePermissions": [],
+                "inputSchema": {},
+                "outputSchema": {},
+                "isLongRunning": false
+            }
+        }
+    })"_json;
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(json, tool);
+
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(tool.isLongRunning);
+    EXPECT_FALSE(tool.subcommands["run"].isLongRunning);
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_IsLongRunning_Priority_0300 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseFromJson_IsLongRunning_Priority_0400
+ * @tc.desc: TC (AC-2.2/VM-2) Independent declarations: subcommand-level true stays true
+ *           alongside tool-level false
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseFromJson_IsLongRunning_Priority_0400, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_IsLongRunning_Priority_0400 start";
+
+    nlohmann::json json = R"({
+        "name": "ohos-sub_true_tool",
+        "version": "1.0.0",
+        "description": "Independent subcommand true next to tool false",
+        "executablePath": "/bin/sub_true_tool",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "hasSubCommand": true,
+        "subcommands": {
+            "run": {
+                "description": "Run long task",
+                "requirePermissions": [],
+                "inputSchema": {},
+                "outputSchema": {},
+                "isLongRunning": true
+            },
+            "version": {
+                "description": "Show version",
+                "requirePermissions": [],
+                "inputSchema": {},
+                "outputSchema": {},
+                "isLongRunning": false
+            }
+        }
+    })"_json;
+
+    ToolInfo tool;
+    bool result = ToolInfo::ParseFromJson(json, tool);
+
+    ASSERT_TRUE(result);
+    EXPECT_FALSE(tool.isLongRunning);
+    EXPECT_TRUE(tool.subcommands["run"].isLongRunning);
+    EXPECT_FALSE(tool.subcommands["version"].isLongRunning);
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseFromJson_IsLongRunning_Priority_0400 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseToJson_IsLongRunning_0100
+ * @tc.desc: TC (VM-4/INV-3) isLongRunning survives a ParseToJson/ParseFromJson round trip,
+ *           tool level keeps declaration value and subcommand level keeps its own value
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_IsLongRunning_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_IsLongRunning_0100 start";
+
+    nlohmann::json json = R"({
+        "name": "ohos-roundtrip_ltr",
+        "version": "1.0.0",
+        "description": "Round trip isLongRunning",
+        "executablePath": "/bin/roundtrip_ltr",
+        "requirePermissions": [],
+        "inputSchema": {},
+        "outputSchema": {},
+        "isLongRunning": true,
+        "hasSubCommand": true,
+        "subcommands": {
+            "run": {
+                "description": "Run task",
+                "requirePermissions": [],
+                "inputSchema": {},
+                "outputSchema": {},
+                "isLongRunning": false
+            },
+            "watch": {
+                "description": "Watch task",
+                "requirePermissions": [],
+                "inputSchema": {},
+                "outputSchema": {}
+            }
+        }
+    })"_json;
+
+    ToolInfo tool;
+    ASSERT_TRUE(ToolInfo::ParseFromJson(json, tool));
+    // "watch" is undeclared and stays false (no inheritance from the tool-level true)
+    EXPECT_FALSE(tool.subcommands["watch"].isLongRunning);
+
+    nlohmann::json serialized = tool.ParseToJson();
+    ASSERT_TRUE(serialized.contains("isLongRunning"));
+    EXPECT_EQ(serialized["isLongRunning"], true);
+    ASSERT_TRUE(serialized.contains("subcommands"));
+    EXPECT_EQ(serialized["subcommands"]["run"]["isLongRunning"], false);
+    EXPECT_EQ(serialized["subcommands"]["watch"]["isLongRunning"], false);
+
+    ToolInfo reparsed;
+    ASSERT_TRUE(ToolInfo::ParseFromJson(serialized, reparsed));
+    EXPECT_TRUE(reparsed.isLongRunning);
+    EXPECT_FALSE(reparsed.subcommands["run"].isLongRunning);
+    EXPECT_FALSE(reparsed.subcommands["watch"].isLongRunning);
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_IsLongRunning_0100 end";
+}
+
+/**
+ * @tc.name: ToolInfo_ParseToJson_IsLongRunning_0200
+ * @tc.desc: TC (VM-4/INV-1) isLongRunning is unconditionally serialized as false by default
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_ParseToJson_IsLongRunning_0200, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_IsLongRunning_0200 start";
+
+    ToolInfo tool;
+    tool.name = "ohos-default_ltr";
+    tool.version = "1.0.0";
+    tool.description = "Default short running";
+    tool.executablePath = "/bin/default_ltr";
+    tool.inputSchema = "{}";
+    tool.outputSchema = "{}";
+
+    nlohmann::json serialized = tool.ParseToJson();
+
+    ASSERT_TRUE(serialized.contains("isLongRunning"));
+    EXPECT_EQ(serialized["isLongRunning"], false);
+
+    GTEST_LOG_(INFO) << "ToolInfo_ParseToJson_IsLongRunning_0200 end";
+}
+
+/**
+ * @tc.name: ToolInfo_Marshalling_IsLongRunning_0100
+ * @tc.desc: TC (VM-4/INV-3) isLongRunning survives a Parcel Marshalling/Unmarshalling round trip
+ * @tc.type: FUNC
+ */
+HWTEST_F(ToolInfoTest, ToolInfo_Marshalling_IsLongRunning_0100, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "ToolInfo_Marshalling_IsLongRunning_0100 start";
+
+    ToolInfo original;
+    original.name = "ohos-parcel_ltr";
+    original.version = "1.0.0";
+    original.description = "Parcel round trip isLongRunning";
+    original.executablePath = "/bin/parcel_ltr";
+    original.inputSchema = "{}";
+    original.outputSchema = "{}";
+    original.eventSchemas = "{}";
+    original.isLongRunning = true;
+    original.hasSubCommand = true;
+    SubCommandInfo longSubCmd;
+    longSubCmd.description = "Long subcommand";
+    longSubCmd.inputSchema = "{}";
+    longSubCmd.outputSchema = "{}";
+    longSubCmd.isLongRunning = true;
+    original.subcommands["run"] = longSubCmd;
+    SubCommandInfo shortSubCmd;
+    shortSubCmd.description = "Short subcommand";
+    shortSubCmd.inputSchema = "{}";
+    shortSubCmd.outputSchema = "{}";
+    original.subcommands["version"] = shortSubCmd;
+
+    Parcel parcel;
+    ASSERT_TRUE(original.Marshalling(parcel));
+
+    parcel.RewindRead(0);
+    ToolInfo *result = ToolInfo::Unmarshalling(parcel);
+
+    ASSERT_NE(result, nullptr);
+    EXPECT_TRUE(result->isLongRunning);
+    ASSERT_EQ(result->subcommands.size(), 2u);
+    EXPECT_TRUE(result->subcommands["run"].isLongRunning);
+    EXPECT_FALSE(result->subcommands["version"].isLongRunning);
+
+    delete result;
+
+    GTEST_LOG_(INFO) << "ToolInfo_Marshalling_IsLongRunning_0100 end";
+}
+
 } // namespace CliTool
 } // namespace OHOS

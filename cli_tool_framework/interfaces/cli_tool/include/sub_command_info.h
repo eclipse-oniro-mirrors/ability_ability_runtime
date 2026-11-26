@@ -40,6 +40,11 @@ public:
     // The value is this subcommand's own declaration only: it is independent of the
     // tool-level flag, and an undeclared subcommand stays false (no inheritance).
     bool cancelable = false;
+    // Whether this subcommand is long-running. Independent subcommand-level declaration:
+    // when absent it stays false (short-running by default) and does not inherit the
+    // tool-level declaration.
+    // Declaration only: does not change the timeout behavior of execTool.
+    bool isLongRunning = false;
 
     SubCommandInfo() = default;
     ~SubCommandInfo() = default;
