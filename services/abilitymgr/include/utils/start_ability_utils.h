@@ -117,6 +117,13 @@ struct StartAbilityUtils {
     static void RemoveAtomicServiceShareRouterIfNeeded(Want &want, const AppExecFwk::AbilityInfo &targetAbilityInfo,
         uint32_t callerTokenId);
     /**
+     * Resolve the server-proven caller token id for permission gates on the start paths.
+     * AsCaller flows keep the Want param (system-app gated and rewritten by UpdateAsCallerSourceInfo);
+     * every other flow must use the real IPC calling identity, because the client-supplied
+     * Want param is forgeable and would let a caller borrow another token's permissions.
+     */
+    static uint32_t GetVouchedCallerTokenId(const Want &want, bool isStartAsCaller);
+    /**
      * Resolve and cache the target and caller ability info for the current start operation into ctx.
      */
     static void ResolveAndCacheStartAbilityInfo(StartAbilityContext &ctx, const Want &want, int32_t validUserId,

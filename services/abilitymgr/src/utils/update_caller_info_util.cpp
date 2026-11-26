@@ -376,6 +376,11 @@ void UpdateCallerInfoUtil::UpdateDmsCallerInfo(Want& want, const sptr<IRemoteObj
     int32_t tokenId = static_cast<int32_t>(IPCSkeleton::GetCallingTokenID());
     int32_t callerUid = IPCSkeleton::GetCallingUid();
     ClearProtectedWantParam(want);
+    // Client-supplied caller identity params are forgeable; DMS carries the caller identity
+    // via DMS_CALLER_* params written below, so strip them before the Want crosses devices.
+    // Unified cleanup point: covers StartRemoteAbility / StartRemoteAbilityByCall /
+    // ConnectRemoteAbility and any future UpdateDmsCallerInfo caller.
+    ClearCallerIdentityParam(want);
 
     auto abilityRecord = Token::GetAbilityRecordByToken(callerToken);
     if (!abilityRecord) {
