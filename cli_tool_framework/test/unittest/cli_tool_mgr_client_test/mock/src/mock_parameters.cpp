@@ -17,6 +17,11 @@
 
 #include "mock_cli_tool_mgr_client_flag.h"
 
+#include <string>
+
+#include "cli_error_code.h"
+#include "ipc_skeleton.h"
+
 namespace OHOS {
 namespace system {
 bool GetBoolParameter(const std::string &key, bool def)

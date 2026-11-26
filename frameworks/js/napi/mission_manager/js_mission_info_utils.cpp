@@ -32,146 +32,146 @@
 
 namespace OHOS {
 namespace AbilityRuntime {
-napi_value CreateJsMissionInfo(napi_env menv, const AAFwk::MissionInfo &missionInfo)
+napi_value CreateJsMissionInfo(napi_env env, const AAFwk::MissionInfo &missionInfo)
 {
-    HandleEscape handleEscape(menv);
+    HandleEscape handleEscape(env);
     napi_value objValue = nullptr;
-    napi_create_object(menv, &objValue);
+    napi_create_object(env, &objValue);
 
-    napi_set_named_property(menv, objValue, "missionId", CreateJsValue(menv, missionInfo.id));
-    napi_set_named_property(menv, objValue, "runningState", CreateJsValue(menv, missionInfo.runningState));
-    napi_set_named_property(menv, objValue, "lockedState", CreateJsValue(menv, missionInfo.lockedState));
-    napi_set_named_property(menv, objValue, "continuable", CreateJsValue(menv, missionInfo.continuable));
-    napi_set_named_property(menv, objValue, "timestamp", CreateJsValue(menv, missionInfo.time));
-    napi_set_named_property(menv, objValue, "want", CreateJsWant(menv, missionInfo.want));
-    napi_set_named_property(menv, objValue, "label", CreateJsValue(menv, missionInfo.label));
-    napi_set_named_property(menv, objValue, "iconPath", CreateJsValue(menv, missionInfo.iconPath));
+    napi_set_named_property(env, objValue, "missionId", CreateJsValue(env, missionInfo.id));
+    napi_set_named_property(env, objValue, "runningState", CreateJsValue(env, missionInfo.runningState));
+    napi_set_named_property(env, objValue, "lockedState", CreateJsValue(env, missionInfo.lockedState));
+    napi_set_named_property(env, objValue, "continuable", CreateJsValue(env, missionInfo.continuable));
+    napi_set_named_property(env, objValue, "timestamp", CreateJsValue(env, missionInfo.time));
+    napi_set_named_property(env, objValue, "want", CreateJsWant(env, missionInfo.want));
+    napi_set_named_property(env, objValue, "label", CreateJsValue(env, missionInfo.label));
+    napi_set_named_property(env, objValue, "iconPath", CreateJsValue(env, missionInfo.iconPath));
     return handleEscape.Escape(objValue);
 }
 
-napi_value CreateJsWant(napi_env menv, const AAFwk::Want &want)
+napi_value CreateJsWant(napi_env env, const AAFwk::Want &want)
 {
-    HandleEscape handleEscape(menv);
+    HandleEscape handleEscape(env);
     napi_value objValue = nullptr;
-    napi_create_object(menv, &objValue);
+    napi_create_object(env, &objValue);
 
-    napi_set_named_property(menv, objValue, "deviceId", CreateJsValue(menv, want.GetElement().GetDeviceID()));
-    napi_set_named_property(menv, objValue, "bundleName", CreateJsValue(menv, want.GetElement().GetBundleName()));
-    napi_set_named_property(menv, objValue, "abilityName", CreateJsValue(menv, want.GetElement().GetAbilityName()));
-    napi_set_named_property(menv, objValue, "uri", CreateJsValue(menv, want.GetUriString()));
-    napi_set_named_property(menv, objValue, "type", CreateJsValue(menv, want.GetType()));
-    napi_set_named_property(menv, objValue, "flags", CreateJsValue(menv, want.GetFlags()));
-    napi_set_named_property(menv, objValue, "action", CreateJsValue(menv, want.GetAction()));
-    napi_set_named_property(menv, objValue, "parameters", CreateJsWantParams(menv, want.GetParams()));
-    napi_set_named_property(menv, objValue, "entities", CreateNativeArray(menv, want.GetEntities()));
+    napi_set_named_property(env, objValue, "deviceId", CreateJsValue(env, want.GetElement().GetDeviceID()));
+    napi_set_named_property(env, objValue, "bundleName", CreateJsValue(env, want.GetElement().GetBundleName()));
+    napi_set_named_property(env, objValue, "abilityName", CreateJsValue(env, want.GetElement().GetAbilityName()));
+    napi_set_named_property(env, objValue, "uri", CreateJsValue(env, want.GetUriString()));
+    napi_set_named_property(env, objValue, "type", CreateJsValue(env, want.GetType()));
+    napi_set_named_property(env, objValue, "flags", CreateJsValue(env, want.GetFlags()));
+    napi_set_named_property(env, objValue, "action", CreateJsValue(env, want.GetAction()));
+    napi_set_named_property(env, objValue, "parameters", CreateJsWantParams(env, want.GetParams()));
+    napi_set_named_property(env, objValue, "entities", CreateNativeArray(env, want.GetEntities()));
     return handleEscape.Escape(objValue);
 }
 
-napi_value CreateJsWantParams(napi_env menv, const AAFwk::WantParams &wantParams)
+napi_value CreateJsWantParams(napi_env env, const AAFwk::WantParams &wantParams)
 {
-    HandleEscape handleEscape(menv);
+    HandleEscape handleEscape(env);
     napi_value object = nullptr;
-    napi_create_object(menv, &object);
+    napi_create_object(env, &object);
     const std::map<std::string, sptr<AAFwk::IInterface>> paramList = wantParams.GetParams();
     for (auto iter = paramList.begin(); iter != paramList.end(); iter++) {
         if (AAFwk::IString::Query(iter->second) != nullptr) {
             InnerWrapJsWantParams<AAFwk::IString, AAFwk::String, std::string>(
-                menv, object, iter->first, wantParams);
+                env, object, iter->first, wantParams);
         } else if (AAFwk::IBoolean::Query(iter->second) != nullptr) {
             InnerWrapJsWantParams<AAFwk::IBoolean, AAFwk::Boolean, bool>(
-                menv, object, iter->first, wantParams);
+                env, object, iter->first, wantParams);
         } else if (AAFwk::IShort::Query(iter->second) != nullptr) {
             InnerWrapJsWantParams<AAFwk::IShort, AAFwk::Short, short>(
-                menv, object, iter->first, wantParams);
+                env, object, iter->first, wantParams);
         } else if (AAFwk::IInteger::Query(iter->second) != nullptr) {
             InnerWrapJsWantParams<AAFwk::IInteger, AAFwk::Integer, int>(
-                menv, object, iter->first, wantParams);
+                env, object, iter->first, wantParams);
         } else if (AAFwk::ILong::Query(iter->second) != nullptr) {
             InnerWrapJsWantParams<AAFwk::ILong, AAFwk::Long, int64_t>(
-                menv, object, iter->first, wantParams);
+                env, object, iter->first, wantParams);
         } else if (AAFwk::IFloat::Query(iter->second) != nullptr) {
             InnerWrapJsWantParams<AAFwk::IFloat, AAFwk::Float, float>(
-                menv, object, iter->first, wantParams);
+                env, object, iter->first, wantParams);
         } else if (AAFwk::IDouble::Query(iter->second) != nullptr) {
             InnerWrapJsWantParams<AAFwk::IDouble, AAFwk::Double, double>(
-                menv, object, iter->first, wantParams);
+                env, object, iter->first, wantParams);
         } else if (AAFwk::IChar::Query(iter->second) != nullptr) {
             InnerWrapJsWantParams<AAFwk::IChar, AAFwk::Char, char>(
-                menv, object, iter->first, wantParams);
+                env, object, iter->first, wantParams);
         } else if (AAFwk::IByte::Query(iter->second) != nullptr) {
             InnerWrapJsWantParams<AAFwk::IByte, AAFwk::Byte, int>(
-                menv, object, iter->first, wantParams);
+                env, object, iter->first, wantParams);
         } else if (AAFwk::IArray::Query(iter->second) != nullptr) {
             AAFwk::IArray *ao = AAFwk::IArray::Query(iter->second);
             if (ao != nullptr) {
                 sptr<AAFwk::IArray> array(ao);
-                WrapJsWantParamsArray(menv, object, iter->first, array);
+                WrapJsWantParamsArray(env, object, iter->first, array);
             }
         } else if (AAFwk::IWantParams::Query(iter->second) != nullptr) {
-            InnerWrapJsWantParamsWantParams(menv, object, iter->first, wantParams);
+            InnerWrapJsWantParamsWantParams(env, object, iter->first, wantParams);
         }
     }
     return handleEscape.Escape(object);
 }
 
-napi_value CreateJsMissionInfoArray(napi_env menv, const std::vector<AAFwk::MissionInfo> &missionInfos)
+napi_value CreateJsMissionInfoArray(napi_env env, const std::vector<AAFwk::MissionInfo> &missionInfos)
 {
-    HandleEscape handleEscape(menv);
+    HandleEscape handleEscape(env);
     napi_value arrayValue = nullptr;
-    napi_create_array_with_length(menv, missionInfos.size(), &arrayValue);
+    napi_create_array_with_length(env, missionInfos.size(), &arrayValue);
     uint32_t index = 0;
     for (const auto &missionInfo : missionInfos) {
-        napi_set_element(menv, arrayValue, index++, CreateJsMissionInfo(menv, missionInfo));
+        napi_set_element(env, arrayValue, index++, CreateJsMissionInfo(env, missionInfo));
     }
     TAG_LOGD(AAFwkTag::MISSION, "end");
     return handleEscape.Escape(arrayValue);
 }
 
 bool InnerWrapJsWantParamsWantParams(
-    napi_env menv, napi_value object, const std::string &key, const AAFwk::WantParams &wantParams)
+    napi_env env, napi_value object, const std::string &key, const AAFwk::WantParams &wantParams)
 {
     TAG_LOGD(AAFwkTag::MISSION, "enter");
     auto value = wantParams.GetParam(key);
     AAFwk::IWantParams *o = AAFwk::IWantParams::Query(value);
     if (o != nullptr) {
         AAFwk::WantParams wp = AAFwk::WantParamWrapper::Unbox(o);
-        napi_set_named_property(menv, object, key.c_str(), CreateJsWantParams(menv, wp));
+        napi_set_named_property(env, object, key.c_str(), CreateJsWantParams(env, wp));
         return true;
     }
     TAG_LOGD(AAFwkTag::MISSION, "end");
     return false;
 }
 
-bool WrapJsWantParamsArray(napi_env menv, napi_value object, const std::string &key, sptr<AAFwk::IArray> &ao)
+bool WrapJsWantParamsArray(napi_env env, napi_value object, const std::string &key, sptr<AAFwk::IArray> &ao)
 {
     TAG_LOGI(AAFwkTag::MISSION, "key=%{public}s", key.c_str());
     if (AAFwk::Array::IsStringArray(ao)) {
         return InnerWrapWantParamsArray<AAFwk::IString, AAFwk::String, std::string>(
-            menv, object, key, ao);
+            env, object, key, ao);
     } else if (AAFwk::Array::IsBooleanArray(ao)) {
         return InnerWrapWantParamsArray<AAFwk::IBoolean, AAFwk::Boolean, bool>(
-            menv, object, key, ao);
+            env, object, key, ao);
     } else if (AAFwk::Array::IsShortArray(ao)) {
         return InnerWrapWantParamsArray<AAFwk::IShort, AAFwk::Short, short>(
-            menv, object, key, ao);
+            env, object, key, ao);
     } else if (AAFwk::Array::IsIntegerArray(ao)) {
         return InnerWrapWantParamsArray<AAFwk::IInteger, AAFwk::Integer, int>(
-            menv, object, key, ao);
+            env, object, key, ao);
     } else if (AAFwk::Array::IsLongArray(ao)) {
         return InnerWrapWantParamsArray<AAFwk::ILong, AAFwk::Long, int64_t>(
-            menv, object, key, ao);
+            env, object, key, ao);
     } else if (AAFwk::Array::IsFloatArray(ao)) {
         return InnerWrapWantParamsArray<AAFwk::IFloat, AAFwk::Float, float>(
-            menv, object, key, ao);
+            env, object, key, ao);
     } else if (AAFwk::Array::IsByteArray(ao)) {
         return InnerWrapWantParamsArray<AAFwk::IByte, AAFwk::Byte, int>(
-            menv, object, key, ao);
+            env, object, key, ao);
     } else if (AAFwk::Array::IsCharArray(ao)) {
         return InnerWrapWantParamsArray<AAFwk::IChar, AAFwk::Char, char>(
-            menv, object, key, ao);
+            env, object, key, ao);
     } else if (AAFwk::Array::IsDoubleArray(ao)) {
         return InnerWrapWantParamsArray<AAFwk::IDouble, AAFwk::Double, double>(
-            menv, object, key, ao);
+            env, object, key, ao);
     } else {
         return false;
     }
