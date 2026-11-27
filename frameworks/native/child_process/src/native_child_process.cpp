@@ -33,6 +33,7 @@ using namespace OHOS::AbilityRuntime;
 namespace {
 constexpr size_t MAX_KEY_SIZE = 20;
 constexpr size_t MAX_FD_SIZE = 16;
+constexpr size_t MAX_ENTRY_PARAMS_SIZE = 150 * 1024; // 150KB
 constexpr int32_t MAX_PROCESS_NAME_LENGTH = 64;
 std::mutex g_callbackStubMutex;
 std::mutex g_callbackSerialMutex;
@@ -52,7 +53,6 @@ Ability_NativeChildProcess_ErrCode OH_Ability_DestroyChildProcessConfigs(Ability
         return NCP_ERR_INVALID_PARAM;
     }
     delete configs;
-    configs = nullptr;
     return NCP_NO_ERROR;
 }
 
@@ -184,6 +184,10 @@ Ability_NativeChildProcess_ErrCode ConvertNativeChildProcessArgs(NativeChildProc
     }
     childArgs.fds = fds;
     if (args.entryParams != nullptr && *(args.entryParams) != '\0') {
+        if (strlen(args.entryParams) > MAX_ENTRY_PARAMS_SIZE) {
+            TAG_LOGE(AAFwkTag::PROCESSMGR, "entryParams exceeds 150KB");
+            return NCP_ERR_INVALID_PARAM;
+        }
         std::string entryParams(args.entryParams);
         childArgs.entryParams = entryParams;
     }

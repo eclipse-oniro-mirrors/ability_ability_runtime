@@ -7,6 +7,8 @@
 #include "modular_object_dispatcher.h"
 
 #include <memory>
+#include <mutex>
+#include <set>
 #include <string>
 
 #include "hilog_tag_wrapper.h"
@@ -57,6 +59,31 @@ AbilityRuntime_ErrorCode CopyStringToBuffer(const std::string& src, char* dst, u
 }
 } // namespace
 
+namespace {
+// Tracks live dispatcher handles so that use of a released handle can be diagnosed
+// with PARAM_INVALID instead of undefined behavior (use-after-free).
+std::mutex g_dispatcherMutex;
+std::set<const OH_AbilityRuntime_ModularObjectDispatcher*> g_liveDispatchers;
+
+void RegisterDispatcher(const OH_AbilityRuntime_ModularObjectDispatcher* dispatcher)
+{
+    std::lock_guard<std::mutex> guard(g_dispatcherMutex);
+    g_liveDispatchers.insert(dispatcher);
+}
+
+void UnregisterDispatcher(const OH_AbilityRuntime_ModularObjectDispatcher* dispatcher)
+{
+    std::lock_guard<std::mutex> guard(g_dispatcherMutex);
+    g_liveDispatchers.erase(dispatcher);
+}
+
+bool IsDispatcherAlive(const OH_AbilityRuntime_ModObjDispatcherHandle dispatcher)
+{
+    std::lock_guard<std::mutex> guard(g_dispatcherMutex);
+    return dispatcher != nullptr && g_liveDispatchers.count(dispatcher) > 0;
+}
+} // namespace
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -87,6 +114,7 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_CreateMainServiceIns
     if (dispatcher->proxy != nullptr && dispatcher->deathRecipient != nullptr) {
         dispatcher->proxy->AddDeathRecipient(dispatcher->deathRecipient);
     }
+    RegisterDispatcher(dispatcher);
     *ppModObjDispatcher = dispatcher;
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
@@ -100,13 +128,23 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_CreateSubInstance(
         TAG_LOGE(AAFwkTag::EXT, "CreateSubInstance: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
+    if (!IsDispatcherAlive(mainServiceDispatcher)) {
+        TAG_LOGE(AAFwkTag::EXT, "CreateSubInstance: mainServiceDispatcher not alive");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
     auto* dispatcher = new (std::nothrow) OH_AbilityRuntime_ModularObjectDispatcher();
     if (dispatcher == nullptr) {
         TAG_LOGE(AAFwkTag::EXT, "Failed to allocate ModObjDispatcher sub-instance");
         return ABILITY_RUNTIME_ERROR_CODE_INTERNAL;
     }
+    if (subProxy->remote == nullptr) {
+        TAG_LOGE(AAFwkTag::EXT, "CreateSubInstance: subProxy remote is nullptr");
+        delete dispatcher;
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
     dispatcher->proxy = subProxy->remote;
     dispatcher->metadataManager = mainServiceDispatcher->metadataManager;
+    RegisterDispatcher(dispatcher);
     *ppModObjDispatcher = dispatcher;
     return ABILITY_RUNTIME_ERROR_CODE_NO_ERROR;
 }
@@ -121,6 +159,7 @@ void OH_AbilityRuntime_ModObjDispatcher_Release(OH_AbilityRuntime_ModObjDispatch
         dispatcher->proxy->RemoveDeathRecipient(dispatcher->deathRecipient);
     }
     dispatcher->deathRecipient = nullptr;
+    UnregisterDispatcher(dispatcher);
     delete dispatcher;
     *ppModObjDispatcher = nullptr;
 }
@@ -130,6 +169,10 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_HasTypeDescriptor(
 {
     if (pModObjDispatcher == nullptr || pctinfo == nullptr || pModObjDispatcher->metadataManager == nullptr) {
         TAG_LOGE(AAFwkTag::EXT, "HasTypeDescriptor: invalid param");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    if (!IsDispatcherAlive(pModObjDispatcher)) {
+        TAG_LOGE(AAFwkTag::EXT, "HasTypeDescriptor: dispatcher not alive");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto ret = pModObjDispatcher->metadataManager->EnsureLoaded(pModObjDispatcher->proxy);
@@ -147,6 +190,10 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_GetTypeDescriptor(
     if (pModObjDispatcher == nullptr || ppTypeDescriptor == nullptr || pModObjDispatcher->metadataManager == nullptr
         || *ppTypeDescriptor != nullptr) {
         TAG_LOGE(AAFwkTag::EXT, "GetTypeDescriptor: invalid param");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    if (!IsDispatcherAlive(pModObjDispatcher)) {
+        TAG_LOGE(AAFwkTag::EXT, "GetTypeDescriptor: dispatcher not alive");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     auto ret = pModObjDispatcher->metadataManager->EnsureLoaded(pModObjDispatcher->proxy);
@@ -173,6 +220,10 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_QueryMainServiceInte
         TAG_LOGE(AAFwkTag::EXT, "QueryMemIDsOfNames: invalid param");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
+    if (!IsDispatcherAlive(pModObjDispatcher)) {
+        TAG_LOGE(AAFwkTag::EXT, "QueryMemIDsOfNames: dispatcher not alive");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
     auto ret = pModObjDispatcher->metadataManager->EnsureLoaded(pModObjDispatcher->proxy);
     if (ret != ABILITY_RUNTIME_ERROR_CODE_NO_ERROR) {
         TAG_LOGE(AAFwkTag::EXT, "QueryMemIDsOfNames: EnsureLoaded failed, ret=%{public}d", ret);
@@ -190,6 +241,10 @@ AbilityRuntime_ErrorCode OH_AbilityRuntime_ModObjDispatcher_CallMethod(
     if (pModObjDispatcher == nullptr || pInputParams == nullptr || pResult == nullptr
         || pModObjDispatcher->metadataManager == nullptr || pMethodErrCode == nullptr) {
         TAG_LOGE(AAFwkTag::EXT, "CallMethod: invalid param");
+        return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
+    }
+    if (!IsDispatcherAlive(pModObjDispatcher)) {
+        TAG_LOGE(AAFwkTag::EXT, "CallMethod: dispatcher not alive");
         return ABILITY_RUNTIME_ERROR_CODE_PARAM_INVALID;
     }
     if (pModObjDispatcher->proxy == nullptr) {

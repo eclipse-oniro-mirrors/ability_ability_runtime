@@ -165,6 +165,7 @@ Ability_ChildProcessConfigs* OH_Ability_CreateChildProcessConfigs();
  *
  * @param configs Pointer to the child process configs object to be destroyed.
  * After this call, the pointer becomes invalid and must not be used.
+ * Set the pointer to nullptr after calling this function to avoid a double free.
  * @return Returns {@link NCP_NO_ERROR} if the operation is successful.
  *         Returns {@link NCP_ERR_INVALID_PARAM} if the input parameters are invalid.
  * @since 20
@@ -444,6 +445,8 @@ Ability_NativeChildProcess_ErrCode OH_Ability_StartNativeChildProcessWithConfigs
  * @brief Child process get self NativeChildProcess_Args.
  *
  * @return Returns a pointer to the arguments passed to current child process.\n
+ * The returned pointer is owned by the framework. Do not free or modify it, and it remains valid
+ * for the lifetime of the child process.\n
  * For details, see {@link NativeChildProcess_Args}.
  * @since 17
  */
