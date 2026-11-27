@@ -9760,8 +9760,8 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionColdStartS
     ASSERT_NE(record, nullptr);
     const auto &pending = record->GetPendingTaskAttributions();
     ASSERT_EQ(pending.size(), static_cast<size_t>(1));
-    EXPECT_EQ(pending.at("task-cold-ut").callerUid, 3001);
-    EXPECT_EQ(pending.at("task-cold-ut").callerPid, 4001);
+    EXPECT_EQ(pending.at("task-cold-ut").front().callerUid, 3001);
+    EXPECT_EQ(pending.at("task-cold-ut").front().callerPid, 4001);
 }
 
 /**
@@ -9827,8 +9827,8 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionReusePreAt
     EXPECT_FALSE(isColdStart);
     const auto &pending = record->GetPendingTaskAttributions();
     ASSERT_EQ(pending.size(), static_cast<size_t>(1));
-    EXPECT_EQ(pending.at("task-warm-ut").callerUid, 5001);
-    EXPECT_EQ(pending.at("task-warm-ut").callerPid, 6001);
+    EXPECT_EQ(pending.at("task-warm-ut").front().callerUid, 5001);
+    EXPECT_EQ(pending.at("task-warm-ut").front().callerPid, 6001);
 }
 
 /**
@@ -9874,11 +9874,12 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionReusePidRe
 }
 
 /**
- * @tc.name: StartUIAbility_TaskAttributionDuplicateReportSkipped_0500
- * @tc.desc: A duplicate report for an attributed task is dropped before any registration.
+ * @tc.name: StartUIAbility_TaskAttributionReopenReportedAgain_0500
+ * @tc.desc: A re-open of an already-attributed task reports again: the registration
+ *           is attempted (keep-alive renewal) and a second handle is accounted.
  * @tc.type: FUNC
  */
-HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionDuplicateReportSkipped_0500, TestSize.Level1)
+HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionReopenReportedAgain_0500, TestSize.Level1)
 {
     auto mgr = std::make_shared<UIAbilityLifecycleManager>();
     Rosen::SessionInfo info;
@@ -9894,7 +9895,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionDuplicateR
     auto record = UIAbilityRecord::CreateAbilityRecord(createRequest);
     ASSERT_NE(record, nullptr);
     record->SetPid(4323);
-    record->AddTaskAttribution("task-warm-dup-ut", 77);
+    record->AddTaskAttribution("task-warm-dup-ut", 77); // first open already reported
     mgr->sessionAbilityMap_.emplace(63, record);
 
     AbilityRequest abilityRequest;
@@ -9905,17 +9906,18 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionDuplicateR
     AbilityRuntime::StartParamsBySCB params;
     bool isColdStart = false;
 
-    // registration succeeds if attempted: broken dedup shows in attributeCalls
     AppSchedulerStubReset();
     AppSchedulerStub().attributeSucceeds = true;
     EXPECT_EQ(mgr->StartUIAbility(abilityRequest, sessionInfo, params, isColdStart), ERR_OK);
-    // skipped before any registration; keep-alive is intentionally not renewed
-    EXPECT_EQ(AppSchedulerStub().attributeCalls, 0);
+    // re-open reported again: registration attempted, keep-alive renewed
+    EXPECT_EQ(AppSchedulerStub().attributeCalls, 1);
     const auto &attributions = record->GetTaskAttributions();
     ASSERT_EQ(attributions.size(), static_cast<size_t>(1));
-    EXPECT_EQ(attributions.at("task-warm-dup-ut"), 77);
+    ASSERT_EQ(attributions.at("task-warm-dup-ut").size(), static_cast<size_t>(2));
+    EXPECT_EQ(attributions.at("task-warm-dup-ut").front(), 77);
+    EXPECT_EQ(attributions.at("task-warm-dup-ut").back(), 4701);
     EXPECT_TRUE(record->GetPendingTaskAttributions().empty());
-    EXPECT_TRUE(record->HasTaskAttribution("task-warm-dup-ut"));
+    EXPECT_TRUE(record->GetTaskAttributions().count("task-warm-dup-ut"));
     AppSchedulerStubReset();
 }
 
@@ -9956,7 +9958,8 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionFirstRepor
     EXPECT_EQ(AppSchedulerStub().attributeCalls, 1);
     const auto &attributions = record->GetTaskAttributions();
     ASSERT_EQ(attributions.size(), static_cast<size_t>(1));
-    EXPECT_EQ(attributions.at("task-warm-first-ut"), 4701);
+    ASSERT_EQ(attributions.at("task-warm-first-ut").size(), static_cast<size_t>(1));
+    EXPECT_EQ(attributions.at("task-warm-first-ut").front(), 4701);
     AppSchedulerStubReset();
 }
 
@@ -9993,12 +9996,12 @@ HWTEST_F(UIAbilityLifecycleManagerTest, CleanTaskAttributionsByTaskId_RemovesOnl
     mgr->terminateAbilityList_.push_back(terminatingRecord);
 
     EXPECT_EQ(mgr->CleanTaskAttributionsByTaskId("task-finished-ut"), static_cast<size_t>(2));
-    EXPECT_FALSE(sessionRecord->HasTaskAttribution("task-finished-ut"));
-    EXPECT_TRUE(sessionRecord->HasTaskAttribution("task-alive-ut"));
-    EXPECT_FALSE(terminatingRecord->HasTaskAttribution("task-finished-ut"));
+    EXPECT_FALSE(sessionRecord->GetTaskAttributions().count("task-finished-ut"));
+    EXPECT_TRUE(sessionRecord->GetTaskAttributions().count("task-alive-ut"));
+    EXPECT_FALSE(terminatingRecord->GetTaskAttributions().count("task-finished-ut"));
     EXPECT_EQ(mgr->CleanTaskAttributionsByTaskId(""), static_cast<size_t>(0));
     EXPECT_EQ(mgr->CleanTaskAttributionsByTaskId("task-unknown-ut"), static_cast<size_t>(0));
-    EXPECT_TRUE(sessionRecord->HasTaskAttribution("task-alive-ut"));
+    EXPECT_TRUE(sessionRecord->GetTaskAttributions().count("task-alive-ut"));
 }
 
 /**
@@ -10026,7 +10029,7 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionTaskIdReus
     mgr->sessionAbilityMap_.emplace(66, record);
 
     EXPECT_EQ(mgr->CleanTaskAttributionsByTaskId("task-reuse-ut"), static_cast<size_t>(1));
-    EXPECT_FALSE(record->HasTaskAttribution("task-reuse-ut"));
+    EXPECT_FALSE(record->GetTaskAttributions().count("task-reuse-ut"));
 
     AbilityRequest abilityRequest;
     abilityRequest.abilityInfo = createRequest.abilityInfo;
@@ -10042,7 +10045,8 @@ HWTEST_F(UIAbilityLifecycleManagerTest, StartUIAbility_TaskAttributionTaskIdReus
     EXPECT_EQ(AppSchedulerStub().attributeCalls, 1);
     const auto &attributions = record->GetTaskAttributions();
     ASSERT_EQ(attributions.size(), static_cast<size_t>(1));
-    EXPECT_EQ(attributions.at("task-reuse-ut"), 4701);
+    ASSERT_EQ(attributions.at("task-reuse-ut").size(), static_cast<size_t>(1));
+    EXPECT_EQ(attributions.at("task-reuse-ut").front(), 4701);
     AppSchedulerStubReset();
 }
 
@@ -10076,8 +10080,8 @@ HWTEST_F(UIAbilityLifecycleManagerTest, GenerateAbilityRecord_TaskAttributionRet
     EXPECT_EQ(ret, record);
     const auto &pending = record->GetPendingTaskAttributions();
     ASSERT_EQ(pending.size(), static_cast<size_t>(1));
-    EXPECT_EQ(pending.at("task-retarget-ut").callerUid, 7001);
-    EXPECT_EQ(pending.at("task-retarget-ut").callerPid, 8001);
+    EXPECT_EQ(pending.at("task-retarget-ut").front().callerUid, 7001);
+    EXPECT_EQ(pending.at("task-retarget-ut").front().callerPid, 8001);
 }
 
 /**
@@ -10130,9 +10134,9 @@ HWTEST_F(UIAbilityLifecycleManagerTest, AttachAbilityThread_TaskAttributionConsu
 
     auto record = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
     ASSERT_NE(record, nullptr);
-    record->SetPendingTaskAttribution("task-attach-ut", 9001, 1001);
+    record->AddPendingTaskAttribution("task-attach-ut", 9001, 1001);
     // empty key: gated inside the report core, but still consumed on clear
-    record->SetPendingTaskAttribution("", 9002, 1002);
+    record->AddPendingTaskAttribution("", 9002, 1002);
     auto token = record->GetToken();
     mgr->sessionAbilityMap_.emplace(57, record);
 
@@ -10142,6 +10146,47 @@ HWTEST_F(UIAbilityLifecycleManagerTest, AttachAbilityThread_TaskAttributionConsu
     EXPECT_TRUE(record->GetPendingTaskAttributions().empty());
     // report dropped (appmgr service unreachable in UT): no accounting
     EXPECT_TRUE(record->GetTaskAttributions().empty());
+}
+
+/**
+ * @tc.name: AttachAbilityThread_TaskAttributionMultiplePendingReported_0200
+ * @tc.desc: Several stashed activations of one task id each report once at attach:
+ *           every genuine pre-attach start refreshes the keep-alive and is counted,
+ *           matching the warm path's report-per-activation semantics.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, AttachAbilityThread_TaskAttributionMultiplePendingReported_0200,
+    TestSize.Level1)
+{
+    auto mgr = std::make_shared<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.sessionInfo = new SessionInfo();
+    abilityRequest.sessionInfo->persistentId = 67;
+
+    auto record = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(record, nullptr);
+    // two activations of one task id plus one of another: none may be collapsed
+    record->AddPendingTaskAttribution("task-attach-multi-ut", 9001, 1001);
+    record->AddPendingTaskAttribution("task-attach-multi-ut", 9002, 1002);
+    record->AddPendingTaskAttribution("task-attach-other-ut", 9003, 1003);
+    auto token = record->GetToken();
+    mgr->sessionAbilityMap_.emplace(67, record);
+
+    AppSchedulerStubReset();
+    AppSchedulerStub().attributeSucceeds = true;
+    auto result = mgr->AttachAbilityThread(nullptr, token->AsObject());
+    EXPECT_EQ(result, ERR_OK);
+    // every stashed activation reported exactly once
+    EXPECT_EQ(AppSchedulerStub().attributeCalls, 3);
+    EXPECT_TRUE(record->GetPendingTaskAttributions().empty());
+    const auto &attributions = record->GetTaskAttributions();
+    ASSERT_EQ(attributions.size(), static_cast<size_t>(2));
+    ASSERT_EQ(attributions.at("task-attach-multi-ut").size(), static_cast<size_t>(2));
+    EXPECT_EQ(attributions.at("task-attach-multi-ut").front(), 4701);
+    EXPECT_EQ(attributions.at("task-attach-multi-ut").back(), 4702);
+    ASSERT_EQ(attributions.at("task-attach-other-ut").size(), static_cast<size_t>(1));
+    EXPECT_EQ(attributions.at("task-attach-other-ut").front(), 4703);
+    AppSchedulerStubReset();
 }
 
 /**
@@ -10422,8 +10467,8 @@ HWTEST_F(UIAbilityLifecycleManagerTest, CallAbilityLocked_TaskAttributionKeyRoun
     ASSERT_NE(record, nullptr);
     const auto &pending = record->GetPendingTaskAttributions();
     ASSERT_EQ(pending.size(), static_cast<size_t>(1));
-    EXPECT_EQ(pending.at("task-bycall-roundtrip-ut").callerUid, 9001);
-    EXPECT_EQ(pending.at("task-bycall-roundtrip-ut").callerPid, 9101);
+    EXPECT_EQ(pending.at("task-bycall-roundtrip-ut").front().callerUid, 9001);
+    EXPECT_EQ(pending.at("task-bycall-roundtrip-ut").front().callerPid, 9101);
     EXPECT_TRUE(request.want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID));
 }
 

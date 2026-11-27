@@ -25,6 +25,9 @@ namespace AAFwk {
 class UIAbilityRecord;
 
 // Caller identity stashed for the attach-time attribution report, keyed by task id.
+// A task id maps to every stashed activation (a list): repeated key-carrying starts
+// before the ability thread attached must each report once, so they are appended
+// instead of displacing each other.
 struct PendingTaskAttribution {
     int32_t callerUid = -1;
     int32_t callerPid = -1;
@@ -170,41 +173,50 @@ public:
         return isByOeExt_;
     }
 
-    // One handle per (record, task id); duplicates dropped by the caller;
-    // removed by task-finished cleanup or the destructor (sessionLock_).
+    // All handles per (record, task id): every genuine key-carrying startAbility
+    // reports again (refreshing the task-flow keep-alive and open counts), so a
+    // task id maps to every handle it produced. Duplicates of SCB-replayed wants
+    // never reach here (key stripped upstream). Removed by task-finished cleanup
+    // or the destructor (sessionLock_).
     inline void AddTaskAttribution(const std::string &taskId, int64_t attributionId)
     {
-        taskAttributions_.emplace(taskId, attributionId);
+        taskAttributions_[taskId].emplace_back(attributionId);
     }
 
-    // Duplicate-report gate: a hit drops the report before any IPC.
-    inline bool HasTaskAttribution(const std::string &taskId) const
-    {
-        return taskAttributions_.find(taskId) != taskAttributions_.end();
-    }
-
-    // Task-finished cleanup: lets a reused task id report again (sessionLock_).
+    // Task-finished cleanup: drops the finished task's handles so a reused id
+    // starts with clean bookkeeping (sessionLock_). Returns handles removed.
+    // Bookkeeping queries observe GetTaskAttributions() directly (every entry
+    // means the record reported for that task id at least once).
     inline size_t RemoveTaskAttributionByTaskId(const std::string &taskId)
     {
-        return taskAttributions_.erase(taskId);
+        auto it = taskAttributions_.find(taskId);
+        if (it == taskAttributions_.end()) {
+            return 0;
+        }
+        size_t removed = it->second.size();
+        taskAttributions_.erase(it);
+        return removed;
     }
 
-    inline const std::map<std::string, int64_t> &GetTaskAttributions() const
+    inline const std::map<std::string, std::vector<int64_t>> &GetTaskAttributions() const
     {
         return taskAttributions_;
     }
 
-    // Cold-start attribution contexts keyed by task id (one per task, parallel tasks
-    // do not displace each other), reported at ability-thread attach. Guard with
+    // Cold-start attribution contexts keyed by task id: every key-carrying start
+    // before the ability thread attached stashes its own caller identity (the
+    // same task id appends — parallel tasks and repeated activations do not
+    // displace each other), reported at ability-thread attach. Guard with
     // sessionLock_.
-    inline void SetPendingTaskAttribution(const std::string &taskId, int32_t callerUid, int32_t callerPid)
+    inline void AddPendingTaskAttribution(const std::string &taskId, int32_t callerUid, int32_t callerPid)
     {
-        PendingTaskAttribution &pending = pendingTaskAttributions_[taskId];
+        PendingTaskAttribution pending;
         pending.callerUid = callerUid;
         pending.callerPid = callerPid;
+        pendingTaskAttributions_[taskId].emplace_back(std::move(pending));
     }
 
-    inline const std::map<std::string, PendingTaskAttribution> &GetPendingTaskAttributions() const
+    inline const std::map<std::string, std::vector<PendingTaskAttribution>> &GetPendingTaskAttributions() const
     {
         return pendingTaskAttributions_;
     }
@@ -225,8 +237,8 @@ private:
     std::atomic_int32_t scenarios_ = 0;
     std::shared_ptr<Want> launchWant_;
     std::shared_ptr<Want> lastWant_;
-    std::map<std::string, int64_t> taskAttributions_;
-    std::map<std::string, PendingTaskAttribution> pendingTaskAttributions_;
+    std::map<std::string, std::vector<int64_t>> taskAttributions_;
+    std::map<std::string, std::vector<PendingTaskAttribution>> pendingTaskAttributions_;
 };
 }  // namespace AAFwk
 }  // namespace OHOS

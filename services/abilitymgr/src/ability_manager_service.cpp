@@ -10404,7 +10404,8 @@ void AbilityManagerService::OnTaskFinished(const std::string &taskId, int32_t us
     TAG_LOGI(AAFwkTag::ABILITYMGR,
         "task finished callback, taskId=%{public}s, userId=%{public}d", taskId.c_str(), userId);
     // Task ids are globally namespaced, so clean every user's bookkeeping;
-    // a surviving stale handle would dedupe id reuse forever.
+    // surviving stale handles would be unregistered again at record destruction
+    // and let per-task handle lists grow without bound.
     auto uiAbilityManagers = GetUIAbilityManagers();
     for (auto &item : uiAbilityManagers) {
         if (item.second != nullptr) {

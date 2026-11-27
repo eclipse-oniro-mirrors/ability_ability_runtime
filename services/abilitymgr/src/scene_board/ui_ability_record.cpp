@@ -32,19 +32,21 @@ UIAbilityRecord::UIAbilityRecord(const Want &want, const AppExecFwk::AbilityInfo
     : AbilityRecord(want, abilityInfo, applicationInfo, requestCode) {}
 
 namespace {
-void UnregisterTaskAttributions(const std::map<std::string, int64_t> &attributions)
+void UnregisterTaskAttributions(const std::map<std::string, std::vector<int64_t>> &attributions)
 {
     for (const auto &item : attributions) {
-        int32_t result = DelayedSingleton<AppScheduler>::GetInstance()->UnregisterTaskAttribution(
-            item.first, item.second);
-        if (result != ERR_OK) {
-            TAG_LOGW(AAFwkTag::ABILITYMGR, "task attribution unregister failed, taskId: %{public}s, "
-                "attributionId: %{public}" PRId64 ", result: %{public}d",
-                item.first.c_str(), item.second, result);
-            continue;
+        for (int64_t attributionId : item.second) {
+            int32_t result = DelayedSingleton<AppScheduler>::GetInstance()->UnregisterTaskAttribution(
+                item.first, attributionId);
+            if (result != ERR_OK) {
+                TAG_LOGW(AAFwkTag::ABILITYMGR, "task attribution unregister failed, taskId: %{public}s, "
+                    "attributionId: %{public}" PRId64 ", result: %{public}d",
+                    item.first.c_str(), attributionId, result);
+                continue;
+            }
+            TAG_LOGI(AAFwkTag::ABILITYMGR, "task attribution unregistered, taskId: %{public}s, "
+                "attributionId: %{public}" PRId64, item.first.c_str(), attributionId);
         }
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "task attribution unregistered, taskId: %{public}s, "
-            "attributionId: %{public}" PRId64, item.first.c_str(), item.second);
     }
 }
 } // namespace
@@ -56,9 +58,13 @@ UIAbilityRecord::~UIAbilityRecord()
     if (taskAttributions_.empty()) {
         return;
     }
-    std::map<std::string, int64_t> attributions = std::move(taskAttributions_);
+    std::map<std::string, std::vector<int64_t>> attributions = std::move(taskAttributions_);
+    size_t handleCount = 0;
+    for (const auto &item : attributions) {
+        handleCount += item.second.size();
+    }
     TAG_LOGI(AAFwkTag::ABILITYMGR, "post async task to release %{public}zu task attributions",
-        attributions.size());
+        handleCount);
     ffrt::submit([attributions = std::move(attributions)]() {
         UnregisterTaskAttributions(attributions);
     }, ffrt::task_attr().timeout(AbilityRuntime::GlobalConstant::DEFAULT_FFRT_TASK_TIMEOUT));

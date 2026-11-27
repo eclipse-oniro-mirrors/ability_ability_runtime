@@ -520,11 +520,12 @@ public:
         int32_t appIndex);
 
     /**
-     * @brief Remove a finished task's stale attribution bookkeeping from every
-     *        record so a reused task id reports again (not deduped forever).
+     * @brief Remove a finished task's attribution bookkeeping from every
+     *        record so a reused task id starts with clean bookkeeping and the
+     *        destructor releases no stale handles.
      *        Acquires sessionLock_ internally; do NOT call while holding sessionLock_.
      * @param taskId Task id of the finished task
-     * @return Number of removed bookkeeping entries
+     * @return Number of removed bookkeeping handles
      */
     size_t CleanTaskAttributionsByTaskId(const std::string &taskId);
 
