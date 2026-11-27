@@ -125,6 +125,20 @@ public:
     bool OutputDrained() const;
 
     /**
+     * @brief Cooperative-cancel eligibility of this session, read from the cancelable
+     *        snapshot taken at CreateSessionRecord (dev-spec 6.2: tool config hot-updates
+     *        during the session lifetime do not affect existing sessions).
+     *
+     * SKILL sessions (no child process to signal) never support cancel. All other session
+     * kinds (execTool, execCmd shell mode) are governed by the creation-time snapshot:
+     * registered tools keep their declared value whichever exec path was taken;
+     * unresolvable shell commands are best-effort true.
+     *
+     * @return true when this session supports cooperative cancel.
+     */
+    bool IsCancelable() const;
+
+    /**
      * @brief Atomically claim responsibility for cleaning this session.
      *
      * @return true if this caller is the first cleanup owner, false if cleanup has already been claimed.

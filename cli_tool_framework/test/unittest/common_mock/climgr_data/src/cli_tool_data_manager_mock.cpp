@@ -13,6 +13,7 @@
 namespace OHOS {
 namespace CliTool {
 int32_t CliToolDataManagerMock::getToolByNameResult = ERR_TOOL_NOT_EXIST;
+std::string CliToolDataManagerMock::lastQueriedName = "";
 bool CliToolDataManagerMock::toolHasSubCommand = false;
 bool CliToolDataManagerMock::toolIsLockScreenExecEnabled = false;
 bool CliToolDataManagerMock::toolCancelable = false;
@@ -29,6 +30,7 @@ std::string CliToolDataManagerMock::toolVisibility = "private";
 void CliToolDataManagerMock::Reset()
 {
     getToolByNameResult = ERR_TOOL_NOT_EXIST;
+    lastQueriedName.clear();
     toolHasSubCommand = false;
     toolIsLockScreenExecEnabled = false;
     toolCancelable = false;
@@ -110,6 +112,7 @@ int32_t CliToolDataManager::JsonArrayToTools(const std::string &, std::vector<To
 
 int32_t CliToolDataManager::GetToolByName(const std::string &name, ToolInfo &toolInfo)
 {
+    CliToolDataManagerMock::lastQueriedName = name;
     if (CliToolDataManagerMock::getToolByNameResult != ERR_OK) {
         return CliToolDataManagerMock::getToolByNameResult;
     }

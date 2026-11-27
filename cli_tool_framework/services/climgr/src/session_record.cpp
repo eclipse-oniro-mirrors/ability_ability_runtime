@@ -95,6 +95,20 @@ bool SessionRecord::OutputDrained() const
         stderrClosed_.load(std::memory_order_acquire);
 }
 
+bool SessionRecord::IsCancelable() const
+{
+    // SKILL sessions have no child process to signal, so cooperative cancel is rejected by
+    // definition. All other session kinds (execTool, execCmd shell mode) are governed by
+    // the creation-time snapshot: registered tools keep their declared value whichever
+    // exec path was taken; unresolvable shell commands are best-effort true.
+    if (sessionType == SessionType::SKILL) {
+        return false;
+    }
+    // Read the snapshot taken at session creation: tool config hot-updates during the session
+    // lifetime do not affect an existing session's cancel eligibility (dev-spec 6.2).
+    return cancelable;
+}
+
 bool SessionRecord::TryClaimCleanup()
 {
     bool expected = false;

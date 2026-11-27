@@ -2607,6 +2607,64 @@ HWTEST_F(CliToolManagerServiceTest, SnapshotShellCancelable_0100, TestSize.Level
 }
 
 /**
+ * @tc.name: CliToolManagerService_SnapshotShellCancelable_0200
+ * @tc.desc: Test the shell-mode snapshot against abnormal inputs: line endings and mixed
+ *           whitespace runs after (or between) the tool and subcommand tokens resolve the
+ *           same subcommand a plain single-space command would; degenerate inputs stay
+ *           best-effort true
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliToolManagerServiceTest, SnapshotShellCancelable_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SnapshotShellCancelable_0200 start");
+
+    CliToolDataManagerMock::getToolByNameResult = ERR_OK;
+    CliToolDataManagerMock::toolHasSubCommand = true;
+    CliToolDataManagerMock::toolCancelable = false;
+    CliToolDataManagerMock::subCommandCancelable = true;
+    CliToolDataManagerMock::subCommandName = "build";
+
+    // Abnormal whitespace around the subcommand token: trailing line endings (a shell
+    // command commonly ends with \n or \r\n), a newline instead of a space after the
+    // subcommand, tab runs, and leading whitespace before the tool name all still
+    // resolve the registered subcommand, so its declaration (true) governs.
+    EXPECT_TRUE(service_->SnapshotShellCancelable("cancel_tool build\n"));
+    EXPECT_TRUE(service_->SnapshotShellCancelable("cancel_tool build\r\n"));
+    EXPECT_TRUE(service_->SnapshotShellCancelable("cancel_tool build\n--verbose"));
+    EXPECT_TRUE(service_->SnapshotShellCancelable("cancel_tool\tbuild\t--verbose"));
+    EXPECT_TRUE(service_->SnapshotShellCancelable(" \t cancel_tool \t build"));
+
+    // The subcommand declaration still wins over the tool level under abnormal spacing.
+    CliToolDataManagerMock::subCommandCancelable = false;
+    CliToolDataManagerMock::toolCancelable = true;
+    EXPECT_FALSE(service_->SnapshotShellCancelable("cancel_tool\tbuild\r\n"));
+    EXPECT_FALSE(service_->SnapshotShellCancelable("cancel_tool build\f\v"));
+
+    // Tool-name dimension (CC-001): a trailing line ending must not break registry
+    // resolution, so the tool-level declaration (false here) governs instead of falling
+    // to best-effort true. The mock records the queried key to prove the lookup used the
+    // trimmed name; whitespace inside the token ("tool\nbuild" = two shell commands)
+    // stays unresolvable.
+    CliToolDataManagerMock::toolCancelable = false;
+    CliToolDataManagerMock::subCommandCancelable = true;
+    EXPECT_FALSE(service_->SnapshotShellCancelable("cancel_tool\n"));
+    EXPECT_EQ(CliToolDataManagerMock::lastQueriedName, "cancel_tool");
+    EXPECT_FALSE(service_->SnapshotShellCancelable("cancel_tool\r\n"));
+    EXPECT_EQ(CliToolDataManagerMock::lastQueriedName, "cancel_tool");
+    CliToolDataManagerMock::getToolByNameResult = ERR_TOOL_NOT_EXIST;
+    EXPECT_TRUE(service_->SnapshotShellCancelable("cancel_tool\nbuild"));
+
+    // Degenerate inputs stay best-effort true: empty, whitespace-only (any mix), single
+    // bare tool token (no subcommand dimension, tool level undeclared-value path).
+    CliToolDataManagerMock::getToolByNameResult = ERR_TOOL_NOT_EXIST;
+    EXPECT_TRUE(service_->SnapshotShellCancelable(""));
+    EXPECT_TRUE(service_->SnapshotShellCancelable(" \t\r\n\f\v"));
+    EXPECT_TRUE(service_->SnapshotShellCancelable("\n"));
+
+    TAG_LOGI(AAFwkTag::TEST, "CliToolManagerService_SnapshotShellCancelable_0200 end");
+}
+
+/**
  * @tc.name: CliToolManagerService_CancelSession_1100
  * @tc.desc: Test CancelSession with a real anchor+tool topology whose tool ignores the
  *           signals: the direct delivery succeeds (ERR_OK), the resolution is cached, and

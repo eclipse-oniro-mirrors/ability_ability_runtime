@@ -374,18 +374,6 @@ private:
     int32_t CheckCancelSessionOwner(const std::shared_ptr<SessionRecord> &record) const;
 
     /**
-     * @brief Cooperative-cancel eligibility of a session, read from the cancelable snapshot
-     *        taken at CreateSessionRecord (dev-spec 6.2: tool config hot-updates during the
-     *        session lifetime do not affect existing sessions).
-     *
-     * SKILL sessions (no child process to signal) never support cancel. execCmd sessions
-     * have no ToolInfo declaration to consult; their snapshot (true for "shell" sessions,
-     * the registered tool declaration for tool-mode sessions) decides. Otherwise the
-     * creation-time snapshot decides.
-     */
-    bool IsCancelable(const std::shared_ptr<SessionRecord> &record) const;
-
-    /**
      * @brief CancelSession eligibility checks: owner, state, cancelable snapshot, signal
      *        whitelist and processId validity. Call after the record lookup in CancelSession.
      *

@@ -310,5 +310,39 @@ HWTEST_F(SessionRecordTest, SessionRecord_Cancelable_0100, TestSize.Level1)
     record.cancelable = false;
     EXPECT_FALSE(record.cancelable);
 }
+
+/**
+ * @tc.name: SessionRecord_IsCancelable_0100
+ * @tc.desc: Test IsCancelable: SKILL sessions never support cancel regardless of the
+ *           snapshot; other session kinds (CLI, CLI_CMD) follow the creation-time
+ *           cancelable snapshot
+ * @tc.type: FUNC
+ */
+HWTEST_F(SessionRecordTest, SessionRecord_IsCancelable_0100, TestSize.Level1)
+{
+    SessionRecord record;
+    // Default: CLI session with the false snapshot.
+    EXPECT_FALSE(record.IsCancelable());
+
+    // CLI sessions follow the snapshot.
+    record.cancelable = true;
+    EXPECT_TRUE(record.IsCancelable());
+    record.cancelable = false;
+    EXPECT_FALSE(record.IsCancelable());
+
+    // SKILL sessions never support cancel, even with a true snapshot.
+    record.sessionType = SessionType::SKILL;
+    record.cancelable = true;
+    EXPECT_FALSE(record.IsCancelable());
+    record.cancelable = false;
+    EXPECT_FALSE(record.IsCancelable());
+
+    // CLI_CMD (execCmd/shell) sessions follow the snapshot like CLI ones.
+    record.sessionType = SessionType::CLI_CMD;
+    record.cancelable = true;
+    EXPECT_TRUE(record.IsCancelable());
+    record.cancelable = false;
+    EXPECT_FALSE(record.IsCancelable());
+}
 } // namespace CliTool
 } // namespace OHOS
