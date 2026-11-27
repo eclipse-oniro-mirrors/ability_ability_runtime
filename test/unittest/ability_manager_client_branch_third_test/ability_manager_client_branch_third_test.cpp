@@ -1602,5 +1602,57 @@ HWTEST_F(AbilityManagerClientBranchThirdTest, NotifySkillFunctionInvoked_0100, T
     EXPECT_EQ(ret, ABILITY_SERVICE_NOT_CONNECTED);
 }
 
+/**
+ * @tc.name: GetDynamicAgentCardsForMigration_0100
+ * @tc.desc: Test GetDynamicAgentCardsForMigration with proxy not connected
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, GetDynamicAgentCardsForMigration_0100, TestSize.Level1)
+{
+    client_->proxy_ = nullptr;
+    EXPECT_CALL(Rosen::SceneBoardJudgement::GetInstance(), MockIsSceneBoardEnabled())
+        .WillRepeatedly(testing::Return(false));
+    EXPECT_CALL(*mockSystemAbility_, GetSystemAbility(testing::_)).WillRepeatedly(Return(nullptr));
+    SystemAbilityManagerClient::GetInstance().systemAbilityManager_ = mockSystemAbility_;
+
+    std::string jsonStr;
+    auto ret = client_->GetDynamicAgentCardsForMigration(jsonStr);
+    EXPECT_EQ(ret, ABILITY_SERVICE_NOT_CONNECTED);
+}
+
+/**
+ * @tc.name: GetDynamicAgentCardsForMigration_0200
+ * @tc.desc: Test GetDynamicAgentCardsForMigration with proxy connected and output returned
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, GetDynamicAgentCardsForMigration_0200, TestSize.Level1)
+{
+    client_->proxy_ = mock_;
+    std::string jsonStr;
+    std::string mockJsonStr = "{\"dynamicAgentCards\":[]}";
+    EXPECT_CALL(*mock_, GetDynamicAgentCardsForMigration(_))
+        .Times(1)
+        .WillOnce(testing::DoAll(testing::SetArgReferee<0>(mockJsonStr), testing::Return(ERR_OK)));
+    auto ret = client_->GetDynamicAgentCardsForMigration(jsonStr);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(jsonStr, mockJsonStr);
+}
+
+/**
+ * @tc.name: GetDynamicAgentCardsForMigration_0300
+ * @tc.desc: Test GetDynamicAgentCardsForMigration with proxy returns error
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, GetDynamicAgentCardsForMigration_0300, TestSize.Level1)
+{
+    client_->proxy_ = mock_;
+    std::string jsonStr;
+    EXPECT_CALL(*mock_, GetDynamicAgentCardsForMigration(_))
+        .Times(1)
+        .WillOnce(Return(ERR_INVALID_VALUE));
+    auto ret = client_->GetDynamicAgentCardsForMigration(jsonStr);
+    EXPECT_EQ(ret, ERR_INVALID_VALUE);
+}
+
 }  // namespace AAFwk
 }  // namespace OHOS

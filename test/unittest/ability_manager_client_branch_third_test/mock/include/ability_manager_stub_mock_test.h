@@ -444,6 +444,7 @@ public:
         const std::string &, int32_t &));
     MOCK_METHOD2(ExecuteInAppSkillWithTokenId, int32_t(const AppExecFwk::SkillExecuteRequest &,
         const sptr<ISkillExecuteCallback> &));
+    MOCK_METHOD1(GetDynamicAgentCardsForMigration, int32_t(std::string &));
 };  // namespace AAFwk
 }   // namespace OHOS
 }
