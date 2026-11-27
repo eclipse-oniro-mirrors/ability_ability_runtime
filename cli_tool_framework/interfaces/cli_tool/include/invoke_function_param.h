@@ -15,12 +15,15 @@
 
 #ifndef OHOS_CLI_TOOL_INVOKE_FUNCTION_PARAM_H
 #define OHOS_CLI_TOOL_INVOKE_FUNCTION_PARAM_H
+#include <string>
+
+#include "iremote_object.h"
 #include "parcel.h"
 #include "want_params.h"
-#include "string"
 namespace OHOS::CliTool {
 struct InvokeOptions {
     std::string context;
+    sptr<IRemoteObject> callerAbilityToken {nullptr};
     // Trace identifiers for log correlation; empty means "not provided".
     std::string toolCallId;
     std::string dmSessionId;

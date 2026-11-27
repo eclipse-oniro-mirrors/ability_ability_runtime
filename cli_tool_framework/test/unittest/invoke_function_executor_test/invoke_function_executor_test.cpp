@@ -23,11 +23,13 @@
 
 #include "cli_error_code.h"
 #include "cli_tool_mgr_client.h"
+#include "ability_manager_errors.h"
 #include "errors.h"
 #include "function_info.h"
-#include "insight_intent_execute_param.h"
+#include "insight_intent/insight_intent_execute_param.h"
 #include "intent_client.h"
 #include "invoke_function_executor.h"
+#include "ipc_object_stub.h"
 #include "string_wrapper.h"
 #include "want_params.h"
 
@@ -95,6 +97,7 @@ protected:
         intentClient.mockStatus_ = ERR_OK;
         intentClient.executeCalled_ = false;
         intentClient.lastWantParam_ = AAFwk::WantParams();
+        intentClient.lastCallerAbilityToken_ = nullptr;
     }
 
     // Build a callback that records the single outcome into a shared capture.
@@ -477,6 +480,37 @@ HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_ToolCallIdEmptyCompa
     EXPECT_TRUE(capture->result.result.success);
     EXPECT_FALSE(AAFwk::IntentClient::GetInstance().lastWantParam_.HasParam(
         AppExecFwk::INSIGHT_INTENT_TOOL_CALL_ID));
+}
+
+/**
+ * @tc.name: InvokeFunctionExecutor_CallerTokenPassthrough_1300
+ * @tc.desc: the context-derived caller ability token in InvokeOptions reaches
+ *           IntentClient unchanged (BR-4 transport leg).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_CallerTokenPassthrough_1300, TestSize.Level1)
+{
+    sptr<IRemoteObject> token = sptr<IPCObjectStub>(new (std::nothrow) IPCObjectStub(u"test.CallerToken"));
+    ASSERT_NE(token, nullptr);
+    auto param = MakeParam();
+    param.invokeOptions.callerAbilityToken = token;
+    auto capture = RunParam(param);
+    ASSERT_TRUE(WaitForResult(capture));
+    EXPECT_TRUE(capture->result.result.success);
+    EXPECT_EQ(AAFwk::IntentClient::GetInstance().lastCallerAbilityToken_, token);
+}
+
+/**
+ * @tc.name: InvokeFunctionExecutor_NoContextCompat_1500
+ * @tc.desc: without options.context no token is conveyed and the legacy flow runs.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InvokeFunctionExecutorTest, InvokeFunctionExecutor_NoContextCompat_1500, TestSize.Level1)
+{
+    auto capture = Run();
+    ASSERT_TRUE(WaitForResult(capture));
+    EXPECT_TRUE(capture->result.result.success);
+    EXPECT_EQ(AAFwk::IntentClient::GetInstance().lastCallerAbilityToken_, nullptr);
 }
 
 } // namespace

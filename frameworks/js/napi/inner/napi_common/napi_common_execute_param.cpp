@@ -15,6 +15,7 @@
 
 #include "napi_common_execute_param.h"
 
+#include "ability_context.h"
 #include "hilog_tag_wrapper.h"
 #include "napi_common_util.h"
 #include "napi_common_want.h"
@@ -22,13 +23,48 @@
 namespace OHOS {
 namespace AbilityRuntime {
 using namespace OHOS::AppExecFwk;
-bool UnwrapExecuteParam(napi_env env, napi_value param, InsightIntentExecuteParam &executeParam)
-{
-    if (!IsTypeForNapiValue(env, param, napi_object)) {
-        TAG_LOGE(AAFwkTag::JSNAPI, "invalid params");
-        return false;
-    }
+namespace {
+constexpr const char *CONTEXT_PROPERTY_NAME = "context";
 
+std::shared_ptr<AbilityContext> GetAbilityContextFromJsValue(napi_env env, napi_value contextValue)
+{
+    void *wrapped = nullptr;
+    napi_status ret = napi_unwrap(env, contextValue, &wrapped);
+    if (ret != napi_ok || wrapped == nullptr) {
+        TAG_LOGE(AAFwkTag::JSNAPI, "unwrap ability context failed");
+        return nullptr;
+    }
+    auto weakContext = static_cast<std::weak_ptr<AbilityContext> *>(wrapped);
+    return (weakContext != nullptr) ? weakContext->lock() : nullptr;
+}
+
+void UnwrapExecuteParamContext(napi_env env, napi_value param,
+    AppExecFwk::InsightIntentExecuteParam &executeParam)
+{
+    if (!IsExistsByPropertyName(env, param, CONTEXT_PROPERTY_NAME)) {
+        return;
+    }
+    napi_value contextValue = nullptr;
+    napi_get_named_property(env, param, CONTEXT_PROPERTY_NAME, &contextValue);
+    napi_valuetype contextValueType = napi_undefined;
+    if (napi_typeof(env, contextValue, &contextValueType) != napi_ok ||
+        contextValueType == napi_undefined || contextValueType == napi_null) {
+        return;
+    }
+    auto abilityContext = GetAbilityContextFromJsValue(env, contextValue);
+    if (abilityContext == nullptr) {
+        TAG_LOGW(AAFwkTag::JSNAPI, "resolve context object failed");
+        return;
+    }
+    executeParam.callerAbilityToken_ = abilityContext->GetToken();
+    if (executeParam.callerAbilityToken_ == nullptr) {
+        TAG_LOGW(AAFwkTag::JSNAPI, "get caller token from context failed");
+    }
+}
+
+bool UnwrapRequiredStringParams(napi_env env, napi_value param,
+    AppExecFwk::InsightIntentExecuteParam &executeParam)
+{
     std::string bundleName {""};
     if (!UnwrapStringByPropertyName(env, param, "bundleName", bundleName)) {
         TAG_LOGE(AAFwkTag::JSNAPI, "Wrong argument type bundleName");
@@ -56,7 +92,12 @@ bool UnwrapExecuteParam(napi_env env, napi_value param, InsightIntentExecutePara
         return false;
     }
     executeParam.insightIntentName_ = insightIntentName;
+    return true;
+}
 
+bool UnwrapIntentAndTraceParams(napi_env env, napi_value param,
+    AppExecFwk::InsightIntentExecuteParam &executeParam)
+{
     napi_value napiIntentParam = GetPropertyValueByPropertyName(env, param, "insightIntentParam", napi_object);
     if (napiIntentParam == nullptr) {
         TAG_LOGE(AAFwkTag::JSNAPI, "null or non-object napiIntentParam");
@@ -90,16 +131,26 @@ bool UnwrapExecuteParam(napi_env env, napi_value param, InsightIntentExecutePara
         return false;
     }
     executeParam.insightIntentParam_ = wp;
+    return true;
+}
 
+bool UnwrapExecuteModeParam(napi_env env, napi_value param,
+    AppExecFwk::InsightIntentExecuteParam &executeParam)
+{
     int32_t executeMode = 0;
     if (!UnwrapInt32ByPropertyName(env, param, "executeMode", executeMode)) {
         TAG_LOGE(AAFwkTag::JSNAPI, "Wrong argument type executeMode");
         return false;
     }
     executeParam.executeMode_ = executeMode;
+    return true;
+}
 
+bool UnwrapDisplayAndOptionalParams(napi_env env, napi_value param,
+    AppExecFwk::InsightIntentExecuteParam &executeParam)
+{
     int32_t displayId = INVALID_DISPLAY_ID;
-    if (executeMode == ExecuteMode::UI_ABILITY_FOREGROUND &&
+    if (executeParam.executeMode_ == ExecuteMode::UI_ABILITY_FOREGROUND &&
         UnwrapInt32ByPropertyName(env, param, "displayId", displayId)) {
         if (displayId < 0) {
             TAG_LOGE(AAFwkTag::JSNAPI, "invalid displayId");
@@ -132,8 +183,27 @@ bool UnwrapExecuteParam(napi_env env, napi_value param, InsightIntentExecutePara
         }
         executeParam.userId_ = userId;
     }
-
     return true;
+}
+} // namespace
+
+bool UnwrapExecuteParam(napi_env env, napi_value param, InsightIntentExecuteParam &executeParam)
+{
+    if (!IsTypeForNapiValue(env, param, napi_object)) {
+        TAG_LOGE(AAFwkTag::JSNAPI, "invalid params");
+        return false;
+    }
+    if (!UnwrapRequiredStringParams(env, param, executeParam)) {
+        return false;
+    }
+    if (!UnwrapIntentAndTraceParams(env, param, executeParam)) {
+        return false;
+    }
+    if (!UnwrapExecuteModeParam(env, param, executeParam)) {
+        return false;
+    }
+    UnwrapExecuteParamContext(env, param, executeParam);
+    return UnwrapDisplayAndOptionalParams(env, param, executeParam);
 }
 }  // namespace AbilityRuntime
 }  // namespace OHOS

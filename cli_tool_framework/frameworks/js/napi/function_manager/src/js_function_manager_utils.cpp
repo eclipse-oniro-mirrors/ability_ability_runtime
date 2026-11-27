@@ -15,6 +15,7 @@
 
 #include "js_function_manager_utils.h"
 
+#include "ability_context.h"
 #include "exec_options.h"
 #include "function_info.h"
 #include "hilog_tag_wrapper.h"
@@ -267,12 +268,50 @@ void UnwrapInvokeFunctionParam(napi_env env, napi_value jsObj, InvokeFunctionPar
     }
 }
 
+sptr<IRemoteObject> GetCallerTokenFromOptionsContext(napi_env env, napi_value contextValue)
+{
+    if (contextValue == nullptr) {
+        return nullptr;
+    }
+    void *wrapped = nullptr;
+    if (napi_unwrap(env, contextValue, &wrapped) != napi_ok || wrapped == nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "context is not a napi-bound ability context");
+        return nullptr;
+    }
+    auto weakAbilityContext = static_cast<std::weak_ptr<AbilityContext> *>(wrapped);
+    auto abilityContext = (weakAbilityContext != nullptr) ? weakAbilityContext->lock() : nullptr;
+    if (abilityContext == nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "lock ability context failed");
+        return nullptr;
+    }
+    return abilityContext->GetToken();
+}
+
+void UnwrapInvokeOptionsContext(napi_env env, napi_value options, InvokeOptions &invokeOptions)
+{
+    napi_value contextValue = nullptr;
+    napi_get_named_property(env, options, "context", &contextValue);
+    if (contextValue == nullptr) {
+        return;
+    }
+    napi_valuetype contextType = napi_undefined;
+    if (napi_typeof(env, contextValue, &contextType) != napi_ok ||
+        contextType == napi_undefined || contextType == napi_null) {
+        return;  // context field absent / null: nothing to extract
+    }
+    invokeOptions.callerAbilityToken = GetCallerTokenFromOptionsContext(env, contextValue);
+    if (invokeOptions.callerAbilityToken == nullptr) {
+        TAG_LOGW(AAFwkTag::CLI_TOOL, "get caller token from options.context failed");
+    }
+}
+
 bool UnwrapInvokeOptions(napi_env env, napi_value options, InvokeOptions& invokeOptions, std::string& msg)
 {
     OptionsKind kind = GetOptionsKind(env, options, msg);
     if (kind != OptionsKind::OBJECT) {
         return kind == OptionsKind::ABSENT;
     }
+    UnwrapInvokeOptionsContext(env, options, invokeOptions);
     return UnwrapOptionalTraceId(env, options, "toolCallId", invokeOptions.toolCallId, msg) &&
         UnwrapOptionalTraceId(env, options, "dmSessionId", invokeOptions.dmSessionId, msg) &&
         UnwrapOptionalTraceId(env, options, "taskId", invokeOptions.taskId, msg);

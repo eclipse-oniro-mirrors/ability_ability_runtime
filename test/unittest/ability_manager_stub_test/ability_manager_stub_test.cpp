@@ -6607,13 +6607,25 @@ namespace {
 class ExecuteIntentByFunctionCallCapturingStub : public AbilityManagerStubImplMock {
 public:
     WantParams capturedWantParam;
+    sptr<IRemoteObject> capturedCallerAbilityToken;
     bool called = false;
+    bool executeIntentCalled = false;
+    sptr<IRemoteObject> executeIntentCallerAbilityToken;
 
     int32_t ExecuteIntentByFunctionCall(uint64_t key, const sptr<IRemoteObject> &callerToken,
         const AppExecFwk::FunctionCallExecuteParam &param) override
     {
         called = true;
         capturedWantParam = param.wantParam;
+        capturedCallerAbilityToken = param.callerAbilityToken;
+        return 0;
+    }
+
+    int32_t ExecuteIntent(uint64_t key, const sptr<IRemoteObject> &callerToken,
+        const InsightIntentExecuteParam &param) override
+    {
+        executeIntentCalled = true;
+        executeIntentCallerAbilityToken = param.callerAbilityToken_;
         return 0;
     }
 };
@@ -6669,6 +6681,141 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_ExecuteIntentByFunctionCall_
     EXPECT_EQ(capture->capturedWantParam.GetStringParam("city"), "Shanghai");
     EXPECT_EQ(data.GetReadableBytes(), 0u);
 }
+
+/*
+ * Function: ExecuteIntentByFunctionCallInner
+ * CaseDescription: the FunctionCallExecuteParam parcelable carries the caller ability
+ * token as a dedicated field.
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_ExecuteIntentByFunctionCall_WithToken_0300, TestSize.Level1)
+{
+    auto stub = sptr<AbilityManagerStubImplMock>(new ExecuteIntentByFunctionCallCapturingStub());
+    auto capture = static_cast<ExecuteIntentByFunctionCallCapturingStub*>(stub.GetRefPtr());
+    MessageParcel data;
+    MessageParcel reply;
+    sptr<IRemoteObject> token = sptr<AppExecFwk::MockAbilityToken>(new (std::nothrow) AppExecFwk::MockAbilityToken());
+    data.WriteUint64(1);
+    data.WriteRemoteObject(token);
+    AppExecFwk::FunctionCallExecuteParam funcParam;
+    funcParam.bundleName = "test.bundleName";
+    funcParam.intentName = "PlayMusic";
+    funcParam.callerAbilityToken = token;
+    data.WriteParcelable(&funcParam);
+    auto res = stub->ExecuteIntentByFunctionCallInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_TRUE(capture->called);
+    EXPECT_EQ(capture->capturedCallerAbilityToken, token);
+    EXPECT_EQ(data.GetReadableBytes(), 0u);
+}
+
+/*
+ * Function: ExecuteIntentByFunctionCallInner
+ * CaseDescription: a request without the token field keeps it null.
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_ExecuteIntentByFunctionCall_WithoutToken_0400, TestSize.Level1)
+{
+    auto stub = sptr<AbilityManagerStubImplMock>(new ExecuteIntentByFunctionCallCapturingStub());
+    auto capture = static_cast<ExecuteIntentByFunctionCallCapturingStub*>(stub.GetRefPtr());
+    MessageParcel data;
+    MessageParcel reply;
+    sptr<IRemoteObject> token = sptr<AppExecFwk::MockAbilityToken>(new (std::nothrow) AppExecFwk::MockAbilityToken());
+    data.WriteUint64(1);
+    data.WriteRemoteObject(token);
+    AppExecFwk::FunctionCallExecuteParam funcParam;
+    funcParam.bundleName = "test.bundleName";
+    funcParam.intentName = "PlayMusic";
+    data.WriteParcelable(&funcParam);
+    auto res = stub->ExecuteIntentByFunctionCallInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_TRUE(capture->called);
+    EXPECT_EQ(capture->capturedCallerAbilityToken, nullptr);
+    EXPECT_EQ(data.GetReadableBytes(), 0u);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: ExecuteIntentInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService ExecuteIntentInner
+ * EnvConditions: message contains the optional tail [bool][remote object] after the parcelable
+ * CaseDescription: the context-derived caller ability token is restored from the tail
+ * into param.callerAbilityToken_ before ExecuteIntent is invoked.
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_ExecuteIntentInner_WithCallerAbilityToken_002, TestSize.Level1)
+{
+    auto stub = sptr<ExecuteIntentByFunctionCallCapturingStub>(new ExecuteIntentByFunctionCallCapturingStub());
+    auto capture = static_cast<ExecuteIntentByFunctionCallCapturingStub *>(stub.GetRefPtr());
+    MessageParcel data;
+    MessageParcel reply;
+    sptr<IRemoteObject> token = sptr<AppExecFwk::MockAbilityToken>(new (std::nothrow) AppExecFwk::MockAbilityToken());
+    data.WriteUint64(1);
+    data.WriteRemoteObject(token);
+    InsightIntentExecuteParam param;
+    param.insightIntentParam_ = std::make_shared<WantParams>();
+    data.WriteParcelable(&param);
+    data.WriteBool(true);
+    data.WriteRemoteObject(token);
+    auto res = stub->ExecuteIntentInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_TRUE(capture->executeIntentCalled);
+    EXPECT_EQ(capture->executeIntentCallerAbilityToken, token);
+    EXPECT_EQ(data.GetReadableBytes(), 0u);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: ExecuteIntentInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService ExecuteIntentInner
+ * EnvConditions: legacy message without the tail field
+ * CaseDescription: a legacy request (no context provided) parses with a null token.
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_ExecuteIntentInner_WithoutCallerAbilityToken_003, TestSize.Level1)
+{
+    auto stub = sptr<ExecuteIntentByFunctionCallCapturingStub>(new ExecuteIntentByFunctionCallCapturingStub());
+    auto capture = static_cast<ExecuteIntentByFunctionCallCapturingStub *>(stub.GetRefPtr());
+    MessageParcel data;
+    MessageParcel reply;
+    sptr<IRemoteObject> token = sptr<AppExecFwk::MockAbilityToken>(new (std::nothrow) AppExecFwk::MockAbilityToken());
+    data.WriteUint64(1);
+    data.WriteRemoteObject(token);
+    InsightIntentExecuteParam param;
+    param.insightIntentParam_ = std::make_shared<WantParams>();
+    data.WriteParcelable(&param);
+    auto res = stub->ExecuteIntentInner(data, reply);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_TRUE(capture->executeIntentCalled);
+    EXPECT_EQ(capture->executeIntentCallerAbilityToken, nullptr);
+    EXPECT_EQ(data.GetReadableBytes(), 0u);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Function: ExecuteIntentInner
+ * SubFunction: NA
+ * FunctionPoints: AbilityManagerService ExecuteIntentInner
+ * EnvConditions: tail announces a token that fails to restore
+ * CaseDescription: a tail flag without a restorable remote object is rejected as a
+ * deserialization failure (null-check rule).
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_ExecuteIntentInner_TokenRestoreFailure_004, TestSize.Level1)
+{
+    auto stub = sptr<ExecuteIntentByFunctionCallCapturingStub>(new ExecuteIntentByFunctionCallCapturingStub());
+    auto capture = static_cast<ExecuteIntentByFunctionCallCapturingStub *>(stub.GetRefPtr());
+    MessageParcel data;
+    MessageParcel reply;
+    sptr<IRemoteObject> token = sptr<AppExecFwk::MockAbilityToken>(new (std::nothrow) AppExecFwk::MockAbilityToken());
+    data.WriteUint64(1);
+    data.WriteRemoteObject(token);
+    InsightIntentExecuteParam param;
+    param.insightIntentParam_ = std::make_shared<WantParams>();
+    data.WriteParcelable(&param);
+    data.WriteBool(true);
+    auto res = stub->ExecuteIntentInner(data, reply);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+    EXPECT_FALSE(capture->executeIntentCalled);
+}
+
 
 /*
  * Feature: AbilityManagerService

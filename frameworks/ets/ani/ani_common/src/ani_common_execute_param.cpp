@@ -15,6 +15,8 @@
 
 #include "ani_common_execute_param.h"
 
+#include "ani_base_context.h"
+#include "context.h"
 #include "hilog_tag_wrapper.h"
 #include "ani_common_util.h"
 #include "ani_common_want.h"
@@ -24,17 +26,38 @@ namespace OHOS {
 namespace AbilityRuntime {
 using namespace OHOS::AppExecFwk;
 
-bool UnwrapExecuteParam(ani_env *env, ani_object param, AppExecFwk::InsightIntentExecuteParam &executeParam)
-{
-    if (env == nullptr) {
-        TAG_LOGE(AAFwkTag::INTENT, "null env");
-        return false;
-    }
-    if (param == nullptr) {
-        TAG_LOGE(AAFwkTag::INTENT, "null param");
-        return false;
-    }
+namespace {
+constexpr const char *CONTEXT_PROPERTY_NAME = "context";
 
+void UnwrapExecuteParamContext(ani_env *env, ani_object param,
+    AppExecFwk::InsightIntentExecuteParam &executeParam)
+{
+    if (!IsExistsProperty(env, param, CONTEXT_PROPERTY_NAME)) {
+        return;
+    }
+    ani_ref contextRef = nullptr;
+    ani_boolean isUndefined = false;
+    if (!GetPropertyRef(env, param, CONTEXT_PROPERTY_NAME, contextRef, isUndefined) || isUndefined) {
+        return;
+    }
+    ani_boolean isNull = false;
+    if (contextRef == nullptr || env->Reference_IsNull(contextRef, &isNull) != ANI_OK || isNull) {
+        return;
+    }
+    auto context = OHOS::AbilityRuntime::GetStageModeContext(env, static_cast<ani_object>(contextRef));
+    if (context == nullptr) {
+        TAG_LOGW(AAFwkTag::INTENT, "resolve context object failed");
+        return;
+    }
+    executeParam.callerAbilityToken_ = context->GetToken();
+    if (executeParam.callerAbilityToken_ == nullptr) {
+        TAG_LOGW(AAFwkTag::INTENT, "get caller token from context failed");
+    }
+}
+
+bool UnwrapRequiredStringParams(ani_env *env, ani_object param,
+    AppExecFwk::InsightIntentExecuteParam &executeParam)
+{
     std::string bundleName {""};
     if (!GetStringProperty(env, param, "bundleName", bundleName)) {
         TAG_LOGE(AAFwkTag::INTENT, "Wrong argument type bundleName");
@@ -62,7 +85,12 @@ bool UnwrapExecuteParam(ani_env *env, ani_object param, AppExecFwk::InsightInten
         return false;
     }
     executeParam.insightIntentName_ = insightIntentName;
+    return true;
+}
 
+bool UnwrapIntentAndTraceParams(ani_env *env, ani_object param,
+    AppExecFwk::InsightIntentExecuteParam &executeParam)
+{
     if (IsExistsProperty(env, param, "deviceId")) {
         std::string deviceId {""};
         if (!GetStringProperty(env, param, "deviceId", deviceId)) {
@@ -93,7 +121,12 @@ bool UnwrapExecuteParam(ani_env *env, ani_object param, AppExecFwk::InsightInten
         return false;
     }
     executeParam.insightIntentParam_ = wp;
+    return true;
+}
 
+bool UnwrapExecuteModeParam(ani_env *env, ani_object param,
+    AppExecFwk::InsightIntentExecuteParam &executeParam)
+{
     int32_t executeMode = 0;
     ani_ref executeModeRef = nullptr;
     if (!GetRefProperty(env, param, "executeMode", executeModeRef) != ANI_OK) {
@@ -103,10 +136,15 @@ bool UnwrapExecuteParam(ani_env *env, ani_object param, AppExecFwk::InsightInten
     AAFwk::AniEnumConvertUtil::EnumConvert_EtsToNative(env,
         static_cast<ani_enum_item>(executeModeRef), executeMode);
     executeParam.executeMode_ = executeMode;
+    return true;
+}
 
+bool UnwrapDisplayAndOptionalParams(ani_env *env, ani_object param,
+    AppExecFwk::InsightIntentExecuteParam &executeParam)
+{
     ani_long displayIdD = 0;
     int32_t displayId = INVALID_DISPLAY_ID;
-    if (executeMode == ExecuteMode::UI_ABILITY_FOREGROUND &&
+    if (executeParam.executeMode_ == ExecuteMode::UI_ABILITY_FOREGROUND &&
         IsExistsProperty(env, param, "displayId")) {
         if (GetLongPropertyObject(env, param, "displayId", displayIdD)) {
             displayId = static_cast<int32_t>(displayIdD);
@@ -142,8 +180,31 @@ bool UnwrapExecuteParam(ani_env *env, ani_object param, AppExecFwk::InsightInten
         }
         executeParam.userId_ = userId;
     }
-
     return true;
+}
+} // namespace
+
+bool UnwrapExecuteParam(ani_env *env, ani_object param, AppExecFwk::InsightIntentExecuteParam &executeParam)
+{
+    if (env == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "null env");
+        return false;
+    }
+    if (param == nullptr) {
+        TAG_LOGE(AAFwkTag::INTENT, "null param");
+        return false;
+    }
+    if (!UnwrapRequiredStringParams(env, param, executeParam)) {
+        return false;
+    }
+    if (!UnwrapIntentAndTraceParams(env, param, executeParam)) {
+        return false;
+    }
+    if (!UnwrapExecuteModeParam(env, param, executeParam)) {
+        return false;
+    }
+    UnwrapExecuteParamContext(env, param, executeParam);
+    return UnwrapDisplayAndOptionalParams(env, param, executeParam);
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

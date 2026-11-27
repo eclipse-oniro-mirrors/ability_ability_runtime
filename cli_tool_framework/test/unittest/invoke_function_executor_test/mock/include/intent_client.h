@@ -20,6 +20,8 @@
 #include <string>
 
 #include "insight_intent_callback_interface.h"
+#include "insight_intent/insight_intent_execute_param.h"
+#include "iremote_object.h"
 #include "want_params.h"
 
 namespace OHOS {
@@ -49,6 +51,7 @@ public:
     // test fixture SetUp) so tests can assert the reserved-key injection.
     bool executeCalled_ = false;
     WantParams lastWantParam_;
+    sptr<IRemoteObject> lastCallerAbilityToken_;
 };
 
 } // namespace AAFwk
