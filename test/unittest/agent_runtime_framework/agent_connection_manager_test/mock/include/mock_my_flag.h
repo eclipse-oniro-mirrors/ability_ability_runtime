@@ -18,6 +18,9 @@
 
 #include <cstdint>
 
+#include "ability_connect_callback_interface.h"
+#include "want.h"
+
 namespace OHOS {
 namespace AgentRuntime {
 class MyFlag {
@@ -32,6 +35,11 @@ public:
     static bool isOnAbilityDisconnectDoneCalled;
     // Counts ConnectionManager::ReportConnectionLeakEvent invocations (leak-gating coverage).
     static int32_t reportConnectionLeakEventCount;
+    // Counts AgentManagerClient::AttributeTaskForA2AReusedConnectionRecord invocations and
+    // captures the last request for argument-forwarding checks.
+    static int32_t attributeTaskForA2AReusedConnectionRecordCount;
+    static AAFwk::Want lastAttributeTaskWant;
+    static sptr<AAFwk::IAbilityConnection> lastAttributeTaskConnection;
 };
 }  // namespace AgentRuntime
 }  // namespace OHOS
