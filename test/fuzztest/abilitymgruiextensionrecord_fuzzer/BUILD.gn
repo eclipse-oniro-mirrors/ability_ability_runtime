@@ -64,6 +64,7 @@ ohos_fuzztest("AbilityMgrUiExtensionRecordFuzzTest") {
   ]
 
   external_deps = [
+    "ability_base:session_info",
     "ability_base:want",
     "ability_base:zuri",
     "c_utils:utils",
