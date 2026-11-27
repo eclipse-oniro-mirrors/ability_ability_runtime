@@ -959,5 +959,103 @@ HWTEST_F(DumpRuntimeHelperTest, DumpNativeHeap_0100, Function | MediumTest | Lev
     EXPECT_NE(application, nullptr);
     GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpNativeHeap_0100 end";
 }
+
+/**
+ * @tc.number: DumpJsvmGc_0100
+ * @tc.name: DumpJsvmGc
+ * @tc.desc: Test whether DumpJsvmGc is called normally with null handle.
+ * @tc.type: FUNC
+ */
+HWTEST_F(DumpRuntimeHelperTest, DumpJsvmGc_0100, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpJsvmGc_0100 start";
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    EXPECT_NE(application, nullptr);
+    auto helper = std::make_shared<DumpRuntimeHelper>(application);
+    helper->DumpJsvmGc(nullptr, 1);
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpJsvmGc_0100 end";
+}
+
+/**
+ * @tc.number: DumpJsvmSnapshot_0100
+ * @tc.name: DumpJsvmSnapshot
+ * @tc.desc: Test whether DumpJsvmSnapshot is called normally with null handle.
+ * @tc.type: FUNC
+ */
+HWTEST_F(DumpRuntimeHelperTest, DumpJsvmSnapshot_0100, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpJsvmSnapshot_0100 start";
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    EXPECT_NE(application, nullptr);
+    auto helper = std::make_shared<DumpRuntimeHelper>(application);
+    OHOS::AppExecFwk::MemDumpInfo info;
+    info.tid = 1;
+    info.needRaw = false;
+    helper->DumpJsvmSnapshot(nullptr, info);
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpJsvmSnapshot_0100 end";
+}
+
+/**
+ * @tc.number: DumpJsvmHeap_0100
+ * @tc.name: DumpJsvmHeap
+ * @tc.desc: Test DumpJsvmHeap with needGc=true (GC path).
+ * @tc.type: FUNC
+ */
+HWTEST_F(DumpRuntimeHelperTest, DumpJsvmHeap_0100, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpJsvmHeap_0100 start";
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    EXPECT_NE(application, nullptr);
+    OHOS::AppExecFwk::MemDumpInfo info;
+    info.pid = 1;
+    info.tid = 1;
+    info.needGc = true;
+    info.needRaw = false;
+    auto helper = std::make_shared<DumpRuntimeHelper>(application);
+    helper->DumpJsvmHeap(info);
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpJsvmHeap_0100 end";
+}
+
+/**
+ * @tc.number: DumpJsvmHeap_0200
+ * @tc.name: DumpJsvmHeap
+ * @tc.desc: Test DumpJsvmHeap with needRaw=true (raw snapshot path).
+ * @tc.type: FUNC
+ */
+HWTEST_F(DumpRuntimeHelperTest, DumpJsvmHeap_0200, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpJsvmHeap_0200 start";
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    EXPECT_NE(application, nullptr);
+    OHOS::AppExecFwk::MemDumpInfo info;
+    info.pid = 1;
+    info.tid = 1;
+    info.needGc = false;
+    info.needRaw = true;
+    auto helper = std::make_shared<DumpRuntimeHelper>(application);
+    helper->DumpJsvmHeap(info);
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpJsvmHeap_0200 end";
+}
+
+/**
+ * @tc.number: DumpJsvmHeap_0300
+ * @tc.name: DumpJsvmHeap
+ * @tc.desc: Test DumpJsvmHeap with needGc=false and needRaw=false (normal snapshot path).
+ * @tc.type: FUNC
+ */
+HWTEST_F(DumpRuntimeHelperTest, DumpJsvmHeap_0300, Function | MediumTest | Level1)
+{
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpJsvmHeap_0300 start";
+    std::shared_ptr<OHOSApplication> application = std::make_shared<OHOSApplication>();
+    EXPECT_NE(application, nullptr);
+    OHOS::AppExecFwk::MemDumpInfo info;
+    info.pid = 1;
+    info.tid = 1;
+    info.needGc = false;
+    info.needRaw = false;
+    auto helper = std::make_shared<DumpRuntimeHelper>(application);
+    helper->DumpJsvmHeap(info);
+    GTEST_LOG_(INFO) << "DumpRuntimeHelperTest DumpJsvmHeap_0300 end";
+}
 }
 }

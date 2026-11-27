@@ -148,6 +148,8 @@ private:
     void DumpKmpGc(int32_t fd);
     void DumpKmpSnapshot(int32_t fd, bool mayReportToOEM);
     void DumpJsvmHeap(const OHOS::AppExecFwk::MemDumpInfo &info);
+    void DumpJsvmGc(void *jsvmHandle, uint32_t tid);
+    void DumpJsvmSnapshot(void *jsvmHandle, const OHOS::AppExecFwk::MemDumpInfo &info);
     void DumpArkwebJsHeap(const OHOS::AppExecFwk::MemDumpInfo &info);
     static constexpr int32_t THREAD_NAME_MAX_LEN = 16;
     void DumpArktsHeapSize(const OHOS::AppExecFwk::MemDumpInfo &info, std::string &dumpResult);
