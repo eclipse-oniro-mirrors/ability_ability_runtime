@@ -378,7 +378,7 @@ void JsAutoFillExtension::OnCommandWindow(
         TAG_LOGE(AAFwkTag::AUTOFILL_EXT, "null sessionInfo");
         return;
     }
-    TAG_LOGD(AAFwkTag::AUTOFILL_EXT, "Begin. persistentId: %{private}d, winCmd: %{public}d",
+    TAG_LOGD(AAFwkTag::AUTOFILL_EXT, "Begin. persistentId: %{public}d, winCmd: %{public}d",
         sessionInfo->persistentId, winCmd);
     Extension::OnCommandWindow(want, sessionInfo, winCmd);
     switch (winCmd) {
@@ -511,28 +511,15 @@ bool JsAutoFillExtension::HandleAutoFillCreate(const AAFwk::Want &want, const sp
     auto obj = sessionInfo->sessionToken;
     std::shared_ptr<AAFwk::Want> sharedWant = std::make_shared<AAFwk::Want>(want);
     if (uiWindowMap_.find(obj) == uiWindowMap_.end()) {
-        sptr<Rosen::WindowOption> option = new Rosen::WindowOption();
         auto context = GetContext();
-        if (context == nullptr || context->GetAbilityInfo() == nullptr) {
+        if (context == nullptr) {
             TAG_LOGE(AAFwkTag::AUTOFILL_EXT, "null context");
             return false;
         }
-        option->SetWindowName(context->GetBundleName() + context->GetAbilityInfo()->name);
-        option->SetWindowType(Rosen::WindowType::WINDOW_TYPE_UI_EXTENSION);
-        option->SetWindowSessionType(Rosen::WindowSessionType::EXTENSION_SESSION);
-        option->SetParentId(sessionInfo->hostWindowId);
-        option->SetRealParentId(sessionInfo->realHostWindowId);
-        option->SetParentWindowType(static_cast<Rosen::WindowType>(sessionInfo->parentWindowType));
-        option->SetUIExtensionUsage(static_cast<uint32_t>(sessionInfo->uiExtensionUsage));
-        option->SetDensity(sessionInfo->density);
-        option->SetDpiFollowStrategy(static_cast<Rosen::DpiFollowStrategy>(sessionInfo->dpiFollowStrategy));
-        option->SetDisplayId(sessionInfo->displayId);
-        if (context->isNotAllow != -1) {
-            bool isNotAllow = context->isNotAllow == 1 ? true : false;
-            TAG_LOGD(AAFwkTag::AUTOFILL_EXT, "isNotAllow: %{public}d", isNotAllow);
-            option->SetConstrainedModal(isNotAllow);
+        auto option = CreateWindowOption(sessionInfo, want);
+        if (option == nullptr) {
+            return false;
         }
-        option->SetCallerPid(want.GetIntParam(AAFwk::Want::PARAM_RESV_CALLER_PID, -1));
         sptr<Rosen::Window> uiWindow;
         {
             HITRACE_METER_NAME(HITRACE_TAG_APP, "Rosen::Window::Create");
@@ -563,9 +550,78 @@ bool JsAutoFillExtension::HandleAutoFillCreate(const AAFwk::Want &want, const sp
             TAG_LOGE(AAFwkTag::AUTOFILL_EXT, "null uiWindow");
             return false;
         }
-        uiWindow->UpdateExtensionConfig(sharedWant);        
+        uiWindow->UpdateExtensionConfig(sharedWant);
+        auto parentOption = CreateWindowOption(sessionInfo, want);
+        if (parentOption == nullptr) {
+            return false;
+        }
+        RefreshAutoFillSession(obj, sessionInfo);
+        auto ret = uiWindow->UpdateExtensionParent(parentOption);
+        if (ret != Rosen::WMError::WM_OK) {
+            TAG_LOGW(AAFwkTag::AUTOFILL_EXT, "UpdateExtensionParent failed, ret: %{public}d",
+                static_cast<int32_t>(ret));
+        }
     }
     return true;
+}
+
+sptr<Rosen::WindowOption> JsAutoFillExtension::CreateWindowOption(const sptr<AAFwk::SessionInfo> &sessionInfo,
+    const AAFwk::Want &want)
+{
+    auto context = GetContext();
+    if (context == nullptr || context->GetAbilityInfo() == nullptr) {
+        TAG_LOGE(AAFwkTag::AUTOFILL_EXT, "null context");
+        return nullptr;
+    }
+    auto option = sptr<Rosen::WindowOption>::MakeSptr();
+    if (option == nullptr) {
+        TAG_LOGE(AAFwkTag::AUTOFILL_EXT, "null option");
+        return nullptr;
+    }
+    option->SetWindowName(context->GetBundleName() + context->GetAbilityInfo()->name);
+    option->SetWindowType(Rosen::WindowType::WINDOW_TYPE_UI_EXTENSION);
+    option->SetWindowSessionType(Rosen::WindowSessionType::EXTENSION_SESSION);
+    option->SetParentId(sessionInfo->hostWindowId);
+    option->SetRealParentId(sessionInfo->realHostWindowId);
+    option->SetParentWindowType(static_cast<Rosen::WindowType>(sessionInfo->parentWindowType));
+    option->SetUIExtensionUsage(static_cast<uint32_t>(sessionInfo->uiExtensionUsage));
+    option->SetDensity(sessionInfo->density);
+    option->SetDpiFollowStrategy(static_cast<Rosen::DpiFollowStrategy>(sessionInfo->dpiFollowStrategy));
+    option->SetDisplayId(sessionInfo->displayId);
+    option->SetCallerPersistentId(sessionInfo->callerPersistentId);
+    if (context->isNotAllow != -1) {
+        bool isNotAllow = context->isNotAllow == 1 ? true : false;
+        TAG_LOGD(AAFwkTag::AUTOFILL_EXT, "isNotAllow: %{public}d", isNotAllow);
+        option->SetConstrainedModal(isNotAllow);
+    }
+    option->SetCallerPid(want.GetIntParam(AAFwk::Want::PARAM_RESV_CALLER_PID, -1));
+    return option;
+}
+
+void JsAutoFillExtension::RefreshAutoFillSession(const sptr<IRemoteObject> &obj,
+    const sptr<AAFwk::SessionInfo> &info)
+{
+    auto context = GetContext();
+    if (context != nullptr) {
+        auto cachedInfo = sptr<AAFwk::SessionInfo>::MakeSptr(*info);
+        if (cachedInfo != nullptr) {
+            cachedInfo->originalCallerInfo.callerToken = nullptr;
+            context->SetSessionInfo(cachedInfo);
+        }
+    }
+    HandleScope handleScope(jsRuntime_);
+    napi_env env = jsRuntime_.GetNapiEnv();
+    auto sessionIt = contentSessions_.find(obj);
+    if (env == nullptr || sessionIt == contentSessions_.end() || sessionIt->second == nullptr) {
+        return;
+    }
+    napi_value contentSession = sessionIt->second->GetNapiValue();
+    void* nativeObject = nullptr;
+    napi_unwrap(env, contentSession, &nativeObject);
+    auto* contentSessionPtr = static_cast<JsUIExtensionContentSession*>(nativeObject);
+    if (contentSessionPtr != nullptr) {
+        contentSessionPtr->DoUpdateExtensionParent(info);
+    }
 }
 
 void JsAutoFillExtension::ForegroundWindow(const AAFwk::Want &want, const sptr<AAFwk::SessionInfo> &sessionInfo)

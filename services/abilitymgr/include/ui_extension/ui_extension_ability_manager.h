@@ -156,6 +156,9 @@ public:
 
 protected:
     int32_t StartAbilityLocked(const AbilityRequest &abilityRequest) override;
+
+    sptr<SessionInfo> RecordLatestSessionInfo(const std::shared_ptr<BaseExtensionRecord> &targetService,
+        const sptr<SessionInfo> &sessionInfo);
     void HandleLoadAbilityOrStartSpecifiedProcess(
         const AbilityRuntime::LoadParam &loadParam, const std::shared_ptr<BaseExtensionRecord> &abilityRecord) override;
     int RemoveUIExtensionBySessionInfoToken(sptr<IRemoteObject> token) override;
@@ -173,6 +176,8 @@ private:
         std::shared_ptr<BaseExtensionRecord> abilityRecord, const AbilityRequest &abilityRequest);
 
     void EnqueueStartServiceReq(const AbilityRequest &abilityRequest, const std::string &serviceUri) override;
+
+    std::shared_ptr<BaseExtensionRecord> GetLiveRecordForReplay(const sptr<SessionInfo> &sessionInfo);
 
     void CompleteStartServiceReq(const std::string &serviceUri) override;
 

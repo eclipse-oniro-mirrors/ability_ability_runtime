@@ -277,7 +277,7 @@ void EtsAutoFillExtension::OnCommandWindow(
         TAG_LOGE(AAFwkTag::AUTOFILL_EXT, "null sessionInfo");
         return;
     }
-    TAG_LOGD(AAFwkTag::AUTOFILL_EXT, "Begin. persistentId: %{private}d, winCmd: %{public}d",
+    TAG_LOGD(AAFwkTag::AUTOFILL_EXT, "Begin. persistentId: %{public}d, winCmd: %{public}d",
         sessionInfo->persistentId, winCmd);
     Extension::OnCommandWindow(want, sessionInfo, winCmd);
     switch (winCmd) {
@@ -451,6 +451,7 @@ bool EtsAutoFillExtension::CreateSessionAndReference(sptr<AAFwk::SessionInfo> se
         return false;
     }
     contentSessions_.emplace(sessionInfo->sessionToken, ref);
+    etsUiExtContentSession_ = etsUiExtContentSession;
     return true;
 }
 
@@ -461,28 +462,10 @@ bool EtsAutoFillExtension::CreateNewWindow(sptr<AAFwk::SessionInfo> sessionInfo,
         TAG_LOGE(AAFwkTag::AUTOFILL_EXT, "null sharedWant");
         return false;
     }
-    sptr<Rosen::WindowOption> option = new Rosen::WindowOption();
-    auto context = GetContext();
-    if (context == nullptr || context->GetAbilityInfo() == nullptr) {
-        TAG_LOGE(AAFwkTag::AUTOFILL_EXT, "null context");
+    auto option = CreateWindowOption(sessionInfo, *sharedWant);
+    if (option == nullptr) {
         return false;
     }
-    option->SetWindowName(context->GetBundleName() + context->GetAbilityInfo()->name);
-    option->SetWindowType(Rosen::WindowType::WINDOW_TYPE_UI_EXTENSION);
-    option->SetWindowSessionType(Rosen::WindowSessionType::EXTENSION_SESSION);
-    option->SetParentId(sessionInfo->hostWindowId);
-    option->SetRealParentId(sessionInfo->realHostWindowId);
-    option->SetParentWindowType(static_cast<Rosen::WindowType>(sessionInfo->parentWindowType));
-    option->SetUIExtensionUsage(static_cast<uint32_t>(sessionInfo->uiExtensionUsage));
-    option->SetDensity(sessionInfo->density);
-    option->SetDpiFollowStrategy(static_cast<Rosen::DpiFollowStrategy>(sessionInfo->dpiFollowStrategy));
-    option->SetDisplayId(sessionInfo->displayId);
-    if (context->isNotAllow != -1) {
-        bool isNotAllow = context->isNotAllow == 1 ? true : false;
-        TAG_LOGD(AAFwkTag::AUTOFILL_EXT, "isNotAllow: %{public}d", isNotAllow);
-        option->SetConstrainedModal(isNotAllow);
-    }
-    option->SetCallerPid(sharedWant->GetIntParam(AAFwk::Want::PARAM_RESV_CALLER_PID, -1));
     sptr<Rosen::Window> uiWindow;
     {
         HITRACE_METER_NAME(HITRACE_TAG_APP, "Rosen::Window::Create");
@@ -498,12 +481,70 @@ bool EtsAutoFillExtension::CreateNewWindow(sptr<AAFwk::SessionInfo> sessionInfo,
         return false;
     }
     CallEtsOnRequest(*sharedWant, sessionInfo, uiWindow);
+    OnWindowCreated(sessionInfo, obj, uiWindow);
+    return true;
+}
+
+void EtsAutoFillExtension::OnWindowCreated(const sptr<AAFwk::SessionInfo> &sessionInfo,
+    const sptr<IRemoteObject> &obj, const sptr<Rosen::Window> &uiWindow)
+{
     uiWindowMap_[obj] = uiWindow;
+    auto context = GetContext();
+    if (context == nullptr) {
+        return;
+    }
     context->SetSessionInfo(sessionInfo);
 #ifdef SUPPORT_GRAPHICS
     context->SetWindow(uiWindow);
 #endif // SUPPORT_GRAPHICS
-    return true;
+}
+
+sptr<Rosen::WindowOption> EtsAutoFillExtension::CreateWindowOption(const sptr<AAFwk::SessionInfo> &sessionInfo,
+    const AAFwk::Want &want)
+{
+    auto context = GetContext();
+    if (context == nullptr || context->GetAbilityInfo() == nullptr) {
+        TAG_LOGE(AAFwkTag::AUTOFILL_EXT, "null context");
+        return nullptr;
+    }
+    auto option = sptr<Rosen::WindowOption>::MakeSptr();
+    if (option == nullptr) {
+        TAG_LOGE(AAFwkTag::AUTOFILL_EXT, "null option");
+        return nullptr;
+    }
+    option->SetWindowName(context->GetBundleName() + context->GetAbilityInfo()->name);
+    option->SetWindowType(Rosen::WindowType::WINDOW_TYPE_UI_EXTENSION);
+    option->SetWindowSessionType(Rosen::WindowSessionType::EXTENSION_SESSION);
+    option->SetParentId(sessionInfo->hostWindowId);
+    option->SetRealParentId(sessionInfo->realHostWindowId);
+    option->SetParentWindowType(static_cast<Rosen::WindowType>(sessionInfo->parentWindowType));
+    option->SetUIExtensionUsage(static_cast<uint32_t>(sessionInfo->uiExtensionUsage));
+    option->SetDensity(sessionInfo->density);
+    option->SetDpiFollowStrategy(static_cast<Rosen::DpiFollowStrategy>(sessionInfo->dpiFollowStrategy));
+    option->SetDisplayId(sessionInfo->displayId);
+    option->SetCallerPersistentId(sessionInfo->callerPersistentId);
+    if (context->isNotAllow != -1) {
+        bool isNotAllow = context->isNotAllow == 1 ? true : false;
+        TAG_LOGD(AAFwkTag::AUTOFILL_EXT, "isNotAllow: %{public}d", isNotAllow);
+        option->SetConstrainedModal(isNotAllow);
+    }
+    option->SetCallerPid(want.GetIntParam(AAFwk::Want::PARAM_RESV_CALLER_PID, -1));
+    return option;
+}
+
+void EtsAutoFillExtension::RefreshAutoFillSession(const sptr<AAFwk::SessionInfo> &info)
+{
+    auto context = GetContext();
+    if (context != nullptr) {
+        auto cachedInfo = sptr<AAFwk::SessionInfo>::MakeSptr(*info);
+        if (cachedInfo != nullptr) {
+            cachedInfo->originalCallerInfo.callerToken = nullptr;
+            context->SetSessionInfo(cachedInfo);
+        }
+    }
+    if (etsUiExtContentSession_ != nullptr) {
+        etsUiExtContentSession_->DoUpdateExtensionParent(info);
+    }
 }
 
 bool EtsAutoFillExtension::HandleAutoFillCreate(const AAFwk::Want &want, sptr<AAFwk::SessionInfo> sessionInfo)
@@ -521,6 +562,16 @@ bool EtsAutoFillExtension::HandleAutoFillCreate(const AAFwk::Want &want, sptr<AA
             return false;
         }
         uiWindow->UpdateExtensionConfig(sharedWant);
+        auto parentOption = CreateWindowOption(sessionInfo, want);
+        if (parentOption == nullptr) {
+            return false;
+        }
+        RefreshAutoFillSession(sessionInfo);
+        auto ret = uiWindow->UpdateExtensionParent(parentOption);
+        if (ret != Rosen::WMError::WM_OK) {
+            TAG_LOGW(AAFwkTag::AUTOFILL_EXT, "UpdateExtensionParent failed, ret: %{public}d",
+                static_cast<int32_t>(ret));
+        }
         return true;
     }
     return CreateNewWindow(sessionInfo, obj, sharedWant);
@@ -609,6 +660,7 @@ void EtsAutoFillExtension::DestroyWindow(sptr<AAFwk::SessionInfo> sessionInfo)
     foregroundWindows_.erase(obj);
     contentSessions_.erase(obj);
     callbacks_.erase(obj);
+    etsUiExtContentSession_ = nullptr;
 }
 
 bool EtsAutoFillExtension::CallObjectMethod(bool withResult, const char *name, const char *signature, ...)
@@ -725,6 +777,7 @@ void EtsAutoFillExtension::CallEtsOnRequest(const AAFwk::Want &want, sptr<AAFwk:
         return;
     }
     contentSessions_.emplace(sessionInfo->sessionToken, ref);
+    etsUiExtContentSession_ = etsUiExtContentSession;
     ProcessRequest(want, sessionInfo, uiWindow, nativeContentSession);
 }
 

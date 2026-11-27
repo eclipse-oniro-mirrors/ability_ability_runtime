@@ -495,11 +495,15 @@ void UIExtensionAbilityManager::DoBackgroundAbilityWindow(const std::shared_ptr<
     CHECK_POINTER(sessionInfo);
     auto abilitystateStr = abilityRecord->ConvertAbilityState(abilityRecord->GetAbilityState());
     TAG_LOGI(AAFwkTag::ABILITYMGR, "%{public}s/%{public}s, persistentId:%{public}d, "
-        "abilityState:%{public}s, pendingState:%{public}d",
+        "abilityState:%{public}s, pendingState:%{public}d, "
+        "sessionInfo: compId: %{public}" PRIu64 ", hostWindowId: %{public}u, realHostWindowId: %{public}d",
         abilityRecord->GetInfoBundleName().c_str(),
         abilityRecord->GetInfoAbilityName().c_str(),
         sessionInfo->persistentId, abilitystateStr.c_str(),
-        static_cast<int32_t>(abilityRecord->GetPendingState()));
+        static_cast<int32_t>(abilityRecord->GetPendingState()),
+        sessionInfo->uiExtensionComponentId,
+        sessionInfo->hostWindowId,
+        sessionInfo->realHostWindowId);
     abilityRecord->SetPendingState(AbilityState::BACKGROUND);
     if (abilityRecord->IsAbilityState(AbilityState::FOREGROUND)) {
         MoveToBackground(abilityRecord);
@@ -655,6 +659,21 @@ int32_t UIExtensionAbilityManager::UnRegisterPreloadUIExtensionHostClient(int32_
     return ERR_OK;
 }
 
+sptr<SessionInfo> UIExtensionAbilityManager::RecordLatestSessionInfo(
+    const std::shared_ptr<BaseExtensionRecord> &targetService, const sptr<SessionInfo> &sessionInfo)
+{
+    if (sessionInfo == nullptr) {
+        return nullptr;
+    }
+    auto latest = sptr<SessionInfo>::MakeSptr(*sessionInfo);
+    if (latest == nullptr) {
+        return nullptr;
+    }
+    latest->originalCallerInfo.callerToken = nullptr;
+    targetService->SetSessionInfo(latest);
+    return latest;
+}
+
 int32_t UIExtensionAbilityManager::StartAbilityLocked(const AbilityRequest &abilityRequest)
 {
     if (AppUtils::GetInstance().IsForbidStart()) {
@@ -705,16 +724,20 @@ int32_t UIExtensionAbilityManager::StartAbilityLocked(const AbilityRequest &abil
         targetService->SetLaunchReasonMessage(value);
     }
 
+    AbilityRequest effectiveRequest = abilityRequest;
+    effectiveRequest.sessionInfo = RecordLatestSessionInfo(targetService, abilityRequest.sessionInfo);
+    CHECK_POINTER_AND_RETURN(effectiveRequest.sessionInfo, ERR_INVALID_VALUE);
+    targetService->SetWant(abilityRequest.want);
+
     targetService->AddCallerRecord(abilityRequest.callerToken, abilityRequest.requestCode, abilityRequest.want);
     targetService->SetLaunchReason(LaunchReason::LAUNCHREASON_START_EXTENSION);
     targetService->DoBackgroundAbilityWindowDelayed(false);
-    targetService->SetSessionInfo(abilityRequest.sessionInfo);
 
-    if (abilityRequest.sessionInfo && abilityRequest.sessionInfo->sessionToken) {
-        auto &remoteObj = abilityRequest.sessionInfo->sessionToken;
+    if (effectiveRequest.sessionInfo->sessionToken) {
+        auto &remoteObj = effectiveRequest.sessionInfo->sessionToken;
         {
             std::lock_guard guard(uiExtensionMapMutex_);
-            uiExtensionMap_[remoteObj] = UIExtWindowMapValType(targetService, abilityRequest.sessionInfo);
+            uiExtensionMap_[remoteObj] = UIExtWindowMapValType(targetService, effectiveRequest.sessionInfo);
         }
         AddUIExtWindowDeathRecipient(remoteObj);
         targetService->AddUIExtensionLaunchTimestamp();
@@ -747,7 +770,7 @@ int32_t UIExtensionAbilityManager::StartAbilityLocked(const AbilityRequest &abil
     } else {
         AddStartingRecord(abilityRequest.uid, targetService->GetPid(),
             targetService->GetAbilityRecordId(), GetForegroundTimeoutMultiple(targetService));
-        DoForegroundUIExtension(targetService, abilityRequest);
+        DoForegroundUIExtension(targetService, effectiveRequest);
     }
     return ERR_OK;
 }
@@ -896,6 +919,21 @@ void UIExtensionAbilityManager::EnqueueStartServiceReq(const AbilityRequest &abi
         connectTimeout);
 }
 
+std::shared_ptr<BaseExtensionRecord> UIExtensionAbilityManager::GetLiveRecordForReplay(
+    const sptr<SessionInfo> &sessionInfo)
+{
+    if (sessionInfo == nullptr) {
+        return nullptr;
+    }
+    if (uiExtensionAbilityRecordMgr_ != nullptr) {
+        auto record = uiExtensionAbilityRecordMgr_->GetAbilityRecordBySessionInfo(sessionInfo);
+        if (record != nullptr) {
+            return record;
+        }
+    }
+    return GetUIExtensionBySessionFromServiceMap(sessionInfo);
+}
+
 void UIExtensionAbilityManager::CompleteStartServiceReq(const std::string &serviceUri)
 {
     std::shared_ptr<UIExtensionForegroundRequestQueue> requestQueue;
@@ -911,15 +949,24 @@ void UIExtensionAbilityManager::CompleteStartServiceReq(const std::string &servi
         }
     }
 
-    if (requestQueue) {
-        TAG_LOGI(AAFwkTag::UI_EXT, "complete UI extension foreground requests: %{public}zu, uri: %{public}s",
-            requestQueue->requests.size(), serviceUri.c_str());
-        for (const auto &request : requestQueue->requests) {
-            auto ret = StartAbilityLocked(request.abilityRequest);
-            if (ret != ERR_OK) {
-                TAG_LOGW(AAFwkTag::UI_EXT, "StartAbilityLocked failed: %{public}d, uri: %{public}s",
-                    ret, serviceUri.c_str());
+    if (!requestQueue) {
+        return;
+    }
+    TAG_LOGI(AAFwkTag::UI_EXT, "complete UI extension foreground requests: %{public}zu, uri: %{public}s",
+        requestQueue->requests.size(), serviceUri.c_str());
+    for (const auto &request : requestQueue->requests) {
+        AbilityRequest replayRequest = request.abilityRequest;
+        auto liveRecord = GetLiveRecordForReplay(request.abilityRequest.sessionInfo);
+        if (liveRecord != nullptr) {
+            auto latestSessionInfo = liveRecord->GetSessionInfo();
+            if (latestSessionInfo != nullptr) {
+                replayRequest.sessionInfo = latestSessionInfo;
             }
+        }
+        auto ret = StartAbilityLocked(replayRequest);
+        if (ret != ERR_OK) {
+            TAG_LOGW(AAFwkTag::UI_EXT, "StartAbilityLocked failed: %{public}d, uri: %{public}s",
+                ret, serviceUri.c_str());
         }
     }
 }

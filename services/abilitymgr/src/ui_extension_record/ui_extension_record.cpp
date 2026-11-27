@@ -37,7 +37,19 @@ void UIExtensionRecord::Update(const AAFwk::AbilityRequest &abilityRequest)
         TAG_LOGE(AAFwkTag::ABILITYMGR, "null abilityRecord_");
         return;
     }
-    abilityRecord_->SetSessionInfo(abilityRequest.sessionInfo);
+    if (abilityRequest.sessionInfo == nullptr) {
+        return;
+    }
+    if (abilityRequest.sessionInfo->originalCallerInfo.callerToken == nullptr) {
+        abilityRecord_->SetSessionInfo(abilityRequest.sessionInfo);
+        return;
+    }
+    auto latest = sptr<AAFwk::SessionInfo>::MakeSptr(*abilityRequest.sessionInfo);
+    if (latest == nullptr) {
+        return;
+    }
+    latest->originalCallerInfo.callerToken = nullptr;
+    abilityRecord_->SetSessionInfo(latest);
 }
 
 void UIExtensionRecord::HandleNotifyUIExtensionTimeout(ErrorCode code)

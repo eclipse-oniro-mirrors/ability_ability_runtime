@@ -757,11 +757,45 @@ bool JsUIExtension::HandleSessionCreate(const AAFwk::Want &want, const sptr<AAFw
             return false;
         }
         uiWindow->UpdateExtensionConfig(sharedWant);
+        auto parentOption = CreateWindowOption(GetContext(), sessionInfo, want);
+        if (parentOption == nullptr) {
+            return false;
+        }
+        RefreshContentSessionParent(compId, sessionInfo);
+        auto ret = uiWindow->UpdateExtensionParent(parentOption);
+        if (ret != Rosen::WMError::WM_OK) {
+            TAG_LOGW(AAFwkTag::UI_EXT, "UpdateExtensionParent failed, ret: %{public}d", static_cast<int32_t>(ret));
+        }
     }
     return true;
 }
 
-sptr<Rosen::Window> JsUIExtension::CreateUIWindow(const std::shared_ptr<UIExtensionContext> context,
+void JsUIExtension::RefreshContentSessionParent(uint64_t compId, const sptr<AAFwk::SessionInfo> &info)
+{
+    auto sessionIt = contentSessions_.find(compId);
+    if (sessionIt == contentSessions_.end() || sessionIt->second == nullptr) {
+        TAG_LOGW(AAFwkTag::UI_EXT, "parent proxy refresh skipped, content session not found, "
+            "compId: %{public}" PRIu64, compId);
+        return;
+    }
+    HandleScope handleScope(jsRuntime_);
+    napi_env env = jsRuntime_.GetNapiEnv();
+    if (env == nullptr) {
+        TAG_LOGW(AAFwkTag::UI_EXT, "parent proxy refresh skipped, null env");
+        return;
+    }
+    napi_value contentSession = sessionIt->second->GetNapiValue();
+    void* nativeObject = nullptr;
+    napi_unwrap(env, contentSession, &nativeObject);
+    auto* contentSessionPtr = static_cast<JsUIExtensionContentSession*>(nativeObject);
+    if (contentSessionPtr == nullptr) {
+        TAG_LOGW(AAFwkTag::UI_EXT, "parent proxy refresh skipped, unwrap failed");
+        return;
+    }
+    contentSessionPtr->DoUpdateExtensionParent(info);
+}
+
+sptr<Rosen::WindowOption> JsUIExtension::CreateWindowOption(const std::shared_ptr<UIExtensionContext> context,
     const sptr<AAFwk::SessionInfo> &sessionInfo, const AAFwk::Want &want)
 {
     if (context == nullptr || context->GetAbilityInfo() == nullptr) {
@@ -783,6 +817,7 @@ sptr<Rosen::Window> JsUIExtension::CreateUIWindow(const std::shared_ptr<UIExtens
     option->SetDensity(sessionInfo->density);
     option->SetDpiFollowStrategy(static_cast<Rosen::DpiFollowStrategy>(sessionInfo->dpiFollowStrategy));
     option->SetDisplayId(sessionInfo->displayId);
+    option->SetCallerPersistentId(sessionInfo->callerPersistentId);
     if (context->isNotAllow != -1) {
         bool isNotAllow = context->isNotAllow == 1 ? true : false;
         TAG_LOGD(AAFwkTag::UI_EXT, "isNotAllow: %{public}d", isNotAllow);
@@ -799,6 +834,16 @@ sptr<Rosen::Window> JsUIExtension::CreateUIWindow(const std::shared_ptr<UIExtens
     }
     option->SetStartModalExtensionTimeStamp(launchTimestamp);
     option->SetCallerPid(want.GetIntParam(AAFwk::Want::PARAM_RESV_CALLER_PID, -1));
+    return option;
+}
+
+sptr<Rosen::Window> JsUIExtension::CreateUIWindow(const std::shared_ptr<UIExtensionContext> context,
+    const sptr<AAFwk::SessionInfo> &sessionInfo, const AAFwk::Want &want)
+{
+    auto option = CreateWindowOption(context, sessionInfo, want);
+    if (option == nullptr) {
+        return nullptr;
+    }
     HITRACE_METER_NAME(HITRACE_TAG_APP, "Rosen::Window::Create");
     return Rosen::Window::Create(option, GetContext(), sessionInfo->sessionToken);
 }

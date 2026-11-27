@@ -185,6 +185,9 @@ private:
     bool ForegroundWindowWithInsightIntent(
         const AAFwk::Want &want, const sptr<AAFwk::SessionInfo> &sessionInfo, bool needForeground) override;
     bool HandleSessionCreate(const AAFwk::Want &want, const sptr<AAFwk::SessionInfo> &sessionInfo) override;
+    void RefreshContentSessionParent(uint64_t compId, const sptr<AAFwk::SessionInfo> &info);
+    sptr<Rosen::WindowOption> CreateWindowOption(const std::shared_ptr<UIExtensionContext> context,
+        const sptr<AAFwk::SessionInfo> &sessionInfo, const AAFwk::Want &want);
     void PostInsightIntentExecuted(const sptr<AAFwk::SessionInfo> &sessionInfo,
         const AppExecFwk::InsightIntentExecuteResult &result, bool needForeground);
     std::unique_ptr<NativeReference> CreateAppWindowStage(sptr<Rosen::Window> uiWindow,

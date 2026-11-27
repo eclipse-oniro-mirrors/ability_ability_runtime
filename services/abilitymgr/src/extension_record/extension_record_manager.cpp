@@ -15,6 +15,8 @@
 
 #include "extension_record_manager.h"
 
+#include <cstdint>
+
 #include "ability_util.h"
 #include "app_utils.h"
 #include "global_constant.h"
@@ -216,10 +218,25 @@ int32_t ExtensionRecordManager::GetOrCreateExtensionRecord(const AAFwk::AbilityR
     const std::string &hostBundleName, std::shared_ptr<AAFwk::BaseExtensionRecord> &abilityRecord, bool &isLoaded)
 {
     CHECK_POINTER_AND_RETURN(abilityRequest.sessionInfo, ERR_INVALID_VALUE);
+    if (abilityRequest.sessionInfo->originalCallerInfo.callerToken != nullptr &&
+        abilityRequest.sessionInfo->originalCallerInfo.persistentId == 0) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR, "migration credential without persistentId, rejected");
+        return ERR_INVALID_VALUE;
+    }
+    bool isMigration = IsMigrationUpdateRequest(abilityRequest.sessionInfo);
     abilityRecord = GetAbilityRecordBySessionInfo(abilityRequest.sessionInfo);
     if (abilityRecord != nullptr) {
+        if (isMigration && !ValidateMigrationUpdateAgainstRecord(abilityRecord, abilityRequest.sessionInfo)) {
+            return ERR_INVALID_VALUE;
+        }
         isLoaded = true;
         return ERR_OK;
+    }
+    if (isMigration) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR,
+            "migration update: record not found by componentId, persistentId: %{public}d, rejected",
+            abilityRequest.sessionInfo->persistentId);
+        return ERR_INVALID_VALUE;
     }
 
     // Check AGENT_UI launch limit before creating new record
@@ -234,31 +251,62 @@ int32_t ExtensionRecordManager::GetOrCreateExtensionRecord(const AAFwk::AbilityR
     }
 
     std::shared_ptr<ExtensionRecord> extensionRecord = nullptr;
-    TAG_LOGD(AAFwkTag::ABILITYMGR, "Check Preload Extension Record.");
-    auto hostPid = IPCSkeleton::GetCallingPid();
-    auto result = IsPreloadExtensionRecord(abilityRequest, hostPid, extensionRecord, isLoaded);
-    if (result) {
-        auto wantEle = abilityRequest.want.GetElement();
-        std::string abilityName = wantEle.GetAbilityName();
-        std::string bundleName = wantEle.GetBundleName();
-        std::string moduleName = wantEle.GetModuleNameRef();
-        auto extensionRecordMapKey = std::make_tuple(abilityName, bundleName, moduleName, hostPid);
-        RemovePreloadUIExtensionRecord(extensionRecordMapKey);
-        HandlePreloadUIExtensionLoaded(extensionRecord);
-    } else {
-        int32_t ret = GetOrCreateExtensionRecordInner(abilityRequest, hostBundleName, extensionRecord, isLoaded);
-        if (ret != ERR_OK) {
-            TAG_LOGE(AAFwkTag::ABILITYMGR, "GetOrCreateExtensionRecordInner error");
-            return ret;
-        }
-        // Add AGENT_UI launch record after new record created
-        if (isAgentUI && extensionRecord != nullptr && !isLoaded) {
-            AddAgentUILaunchRecord(callerUid, abilityRequest.abilityInfo.bundleName,
-                extensionRecord->extensionRecordId_);
-        }
+    int32_t ret = AcquireExtensionRecord(abilityRequest, hostBundleName, isAgentUI, callerUid,
+        extensionRecord, isLoaded);
+    if (ret != ERR_OK) {
+        return ret;
     }
     if (extensionRecord != nullptr) {
         abilityRecord = extensionRecord->abilityRecord_;
+    }
+    return ERR_OK;
+}
+
+bool ExtensionRecordManager::ValidateMigrationUpdateAgainstRecord(
+    const std::shared_ptr<AAFwk::BaseExtensionRecord> &abilityRecord,
+    const sptr<AAFwk::SessionInfo> &sessionInfo)
+{
+    if (abilityRecord->IsTerminating()) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR,
+            "migration update: record terminating, persistentId: %{public}d, rejected",
+            sessionInfo->persistentId);
+        return false;
+    }
+    auto recordSessionInfo = abilityRecord->GetSessionInfo();
+    if (recordSessionInfo == nullptr ||
+        recordSessionInfo->persistentId != sessionInfo->originalCallerInfo.persistentId) {
+        TAG_LOGW(AAFwkTag::ABILITYMGR,
+            "migration update: persistentId mismatch, declared: %{public}d, recorded: %{public}d, rejected",
+            sessionInfo->originalCallerInfo.persistentId,
+            recordSessionInfo == nullptr ? 0 : recordSessionInfo->persistentId);
+        return false;
+    }
+    return true;
+}
+
+int32_t ExtensionRecordManager::AcquireExtensionRecord(const AAFwk::AbilityRequest &abilityRequest,
+    const std::string &hostBundleName, bool isAgentUI, int32_t callerUid,
+    std::shared_ptr<ExtensionRecord> &extensionRecord, bool &isLoaded)
+{
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "Check Preload Extension Record.");
+    auto hostPid = IPCSkeleton::GetCallingPid();
+    if (IsPreloadExtensionRecord(abilityRequest, hostPid, extensionRecord, isLoaded)) {
+        auto wantEle = abilityRequest.want.GetElement();
+        auto extensionRecordMapKey = std::make_tuple(wantEle.GetAbilityName(), wantEle.GetBundleName(),
+            wantEle.GetModuleNameRef(), hostPid);
+        RemovePreloadUIExtensionRecord(extensionRecordMapKey);
+        HandlePreloadUIExtensionLoaded(extensionRecord);
+        return ERR_OK;
+    }
+    int32_t ret = GetOrCreateExtensionRecordInner(abilityRequest, hostBundleName, extensionRecord, isLoaded);
+    if (ret != ERR_OK) {
+        TAG_LOGE(AAFwkTag::ABILITYMGR, "GetOrCreateExtensionRecordInner error");
+        return ret;
+    }
+    // Add AGENT_UI launch record after new record created
+    if (isAgentUI && extensionRecord != nullptr && !isLoaded) {
+        AddAgentUILaunchRecord(callerUid, abilityRequest.abilityInfo.bundleName,
+            extensionRecord->extensionRecordId_);
     }
     return ERR_OK;
 }
@@ -292,6 +340,13 @@ std::shared_ptr<AAFwk::BaseExtensionRecord> ExtensionRecordManager::GetAbilityRe
         }
     }
     return nullptr;
+}
+
+bool ExtensionRecordManager::IsMigrationUpdateRequest(const sptr<AAFwk::SessionInfo> &sessionInfo) const
+{
+    return sessionInfo != nullptr &&
+        sessionInfo->originalCallerInfo.callerToken != nullptr &&
+        sessionInfo->originalCallerInfo.persistentId != 0;
 }
 
 bool ExtensionRecordManager::IsHostSpecifiedProcessValid(const AAFwk::AbilityRequest &abilityRequest,

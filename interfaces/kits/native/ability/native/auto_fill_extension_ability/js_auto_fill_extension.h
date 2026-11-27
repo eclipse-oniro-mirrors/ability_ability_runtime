@@ -131,6 +131,9 @@ private:
 
     void OnCommandWindowDone(const sptr<AAFwk::SessionInfo> &sessionInfo, AAFwk::WindowCommand winCmd) override;
     bool HandleAutoFillCreate(const AAFwk::Want &want, const sptr<AAFwk::SessionInfo> &sessionInfo);
+    void RefreshAutoFillSession(const sptr<IRemoteObject> &obj, const sptr<AAFwk::SessionInfo> &info);
+    sptr<Rosen::WindowOption> CreateWindowOption(const sptr<AAFwk::SessionInfo> &sessionInfo,
+        const AAFwk::Want &want);
     void CallJsOnRequest(const AAFwk::Want &want, const sptr<AAFwk::SessionInfo> &sessionInfo,
         const sptr<Rosen::Window> &uiWindow);
     void RegisterTransferComponentDataListener(const sptr<Rosen::Window> &uiWindow);
