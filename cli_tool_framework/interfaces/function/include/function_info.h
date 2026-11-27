@@ -51,7 +51,7 @@ public:
      *          can query and invoke it
      * Default is false (deny-by-default): missing or invalid config results in not open.
      */
-    bool visible;
+    bool visible = false;
 
     FunctionInfo() : functionType(FunctionType::INTENT_FUNCTION), userId(-1), visible(false) {}
     ~FunctionInfo() override = default;

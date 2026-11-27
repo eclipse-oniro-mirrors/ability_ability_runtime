@@ -311,6 +311,167 @@ HWTEST_F(CliFunctionDataManagerTest, FunctionInfo_ParseFromJson_ParseToJson_Roun
 }
 
 /**
+ * @tc.name: FunctionInfo_ParseFromJson_Visible_001
+ * @tc.desc: Test parsing JSON with visible=true
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, FunctionInfo_ParseFromJson_Visible_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FunctionInfo_ParseFromJson_Visible_001 start");
+
+    nlohmann::json json = R"({
+        "functionName": "visible_function",
+        "functionNamespace": "visible_ns",
+        "functionType": 0,
+        "version": "1.0",
+        "description": "",
+        "visible": true
+    })"_json;
+
+    FunctionInfo function;
+    bool result = FunctionInfo::ParseFromJson(json, function);
+
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(function.visible);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FunctionInfo_ParseFromJson_Visible_001 end");
+}
+
+/**
+ * @tc.name: FunctionInfo_ParseFromJson_Visible_002
+ * @tc.desc: Test parsing JSON without visible field defaults to false (not visible)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, FunctionInfo_ParseFromJson_Visible_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FunctionInfo_ParseFromJson_Visible_002 start");
+
+    nlohmann::json json = R"({
+        "functionName": "default_function",
+        "functionNamespace": "default_ns",
+        "functionType": 0,
+        "version": "1.0",
+        "description": ""
+    })"_json;
+
+    FunctionInfo function;
+    bool result = FunctionInfo::ParseFromJson(json, function);
+
+    ASSERT_TRUE(result);
+    EXPECT_FALSE(function.visible);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FunctionInfo_ParseFromJson_Visible_002 end");
+}
+
+/**
+ * @tc.name: FunctionInfo_ParseFromJson_Visible_003
+ * @tc.desc: Test parsing JSON with non-boolean visible field defaults to not visible
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, FunctionInfo_ParseFromJson_Visible_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FunctionInfo_ParseFromJson_Visible_003 start");
+
+    nlohmann::json json = R"({
+        "functionName": "invalid_vis_function",
+        "functionNamespace": "invalid_vis_ns",
+        "functionType": 0,
+        "version": "1.0",
+        "description": "",
+        "visible": "not_a_boolean"
+    })"_json;
+
+    FunctionInfo function;
+    bool result = FunctionInfo::ParseFromJson(json, function);
+
+    EXPECT_TRUE(result);
+    EXPECT_FALSE(function.visible);
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FunctionInfo_ParseFromJson_Visible_003 end");
+}
+
+/**
+ * @tc.name: FunctionInfo_ParseFromJson_ParseToJson_RoundTrip_Visible_001
+ * @tc.desc: Test visible round trip through ParseFromJson and ParseToJson
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, FunctionInfo_ParseFromJson_ParseToJson_RoundTrip_Visible_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FunctionInfo_ParseFromJson_ParseToJson_RoundTrip_Visible_001 start");
+
+    nlohmann::json originalJson = R"({
+        "functionName": "roundtrip_vis_function",
+        "functionNamespace": "roundtrip_vis_ns",
+        "functionType": 0,
+        "version": "1.0",
+        "description": "",
+        "visible": true
+    })"_json;
+
+    FunctionInfo function;
+    ASSERT_TRUE(FunctionInfo::ParseFromJson(originalJson, function));
+    EXPECT_TRUE(function.visible);
+
+    nlohmann::json resultJson = function.ParseToJson();
+    EXPECT_TRUE(resultJson["visible"].get<bool>());
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FunctionInfo_ParseFromJson_ParseToJson_RoundTrip_Visible_001 end");
+}
+
+/**
+ * @tc.name: FunctionInfo_Validate_Visible_001
+ * @tc.desc: Test Validate with visible=true and visible=false (both valid)
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, FunctionInfo_Validate_Visible_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FunctionInfo_Validate_Visible_001 start");
+
+    FunctionInfo function;
+    function.functionName = "valid_function";
+    function.functionNamespace = "valid_ns";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+    function.userId = 0;
+    function.visible = true;
+
+    EXPECT_TRUE(FunctionInfo::Validate(function));
+
+    function.visible = false;
+    EXPECT_TRUE(FunctionInfo::Validate(function));
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FunctionInfo_Validate_Visible_001 end");
+}
+
+/**
+ * @tc.name: FunctionInfo_Marshalling_Visible_001
+ * @tc.desc: Test Marshalling and Unmarshalling with visible=true
+ * @tc.type: FUNC
+ */
+HWTEST_F(CliFunctionDataManagerTest, FunctionInfo_Marshalling_Visible_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FunctionInfo_Marshalling_Visible_001 start");
+
+    FunctionInfo function;
+    function.functionName = "marshall_vis_function";
+    function.functionNamespace = "marshall_vis_ns";
+    function.functionType = FunctionType::INTENT_FUNCTION;
+    function.userId = 0;
+    function.visible = true;
+
+    Parcel parcel;
+    ASSERT_TRUE(function.Marshalling(parcel));
+
+    parcel.RewindRead(0);
+    FunctionInfo *result = FunctionInfo::Unmarshalling(parcel);
+    ASSERT_NE(result, nullptr);
+    EXPECT_TRUE(result->visible);
+
+    delete result;
+
+    TAG_LOGI(AAFwkTag::CLI_TOOL, "FunctionInfo_Marshalling_Visible_001 end");
+}
+
+/**
  * @tc.name: FunctionInfo_ParseFromJson_004
  * @tc.desc: Test parsing JSON with invalid userId type
  * @tc.type: FUNC

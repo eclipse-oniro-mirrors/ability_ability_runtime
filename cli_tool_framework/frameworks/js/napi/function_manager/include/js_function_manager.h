@@ -16,10 +16,17 @@
 #ifndef OHOS_FUNCTION_JS_FUNCTION_MANAGER_H
 #define OHOS_FUNCTION_JS_FUNCTION_MANAGER_H
 
+#include <memory>
+
 #include "native_engine/native_engine.h"
 
 namespace OHOS {
+namespace AbilityRuntime {
+class AbilityContext;
+}
 namespace CliTool {
+
+struct InvokeFunctionParam;
 
 /**
  * @class JSFunctionManager
@@ -50,6 +57,8 @@ public:
      */
     static napi_value QueryFunctions(napi_env env, napi_callback_info info);
 
+    static napi_value QueryPublicFunctions(napi_env env, napi_callback_info info);
+
     /**
      * @brief Native method for invoking a function.
      *
@@ -58,6 +67,15 @@ public:
      * @return Returns the N-API value.
      */
     static napi_value InvokeFunction(napi_env env, napi_callback_info info);
+
+    /**
+     * @brief Native method for invoking a public function (open to third-party apps).
+     *
+     * @param env The N-API environment.
+     * @param info The N-API callback info.
+     * @return Returns the N-API value.
+     */
+    static napi_value InvokePublicFunction(napi_env env, napi_callback_info info);
 
     static napi_value RegisterFunctionHook(napi_env env, napi_callback_info info);
 
@@ -74,6 +92,8 @@ private:
      */
     napi_value OnQueryFunctions(napi_env env, size_t argc, napi_value *argv);
 
+    napi_value OnQueryPublicFunctions(napi_env env, size_t argc, napi_value *argv);
+
     /**
      * @brief Implementation for invoking a function.
      *
@@ -83,6 +103,24 @@ private:
      * @return Returns the N-API value.
      */
     napi_value OnInvokeFunction(napi_env env, size_t argc, napi_value *argv);
+
+    napi_value OnInvokePublicFunction(napi_env env, size_t argc, napi_value *argv);
+
+    /**
+     * @brief Shared promise/tsfn/invoker start logic for invokeFunction and
+     *        invokePublicFunction. isPublicInvoke selects the public query and
+     *        consent path inside FunctionInvoker.
+     *
+     * @param env The N-API environment.
+     * @param param The parsed invocation parameters.
+     * @param isPublicInvoke Whether to use the public (third-party) path.
+     * @param abilityContext The caller's UIAbilityContext resolved from
+     *        options.context; its token is threaded to the service side for
+     *        launch attribution (null when absent).
+     * @return Returns the N-API promise value.
+     */
+    napi_value StartInvokeFunction(napi_env env, const InvokeFunctionParam &param, bool isPublicInvoke,
+        std::shared_ptr<AbilityRuntime::AbilityContext> abilityContext);
 
     napi_value OnRegisterFunctionHook(napi_env env, size_t argc, napi_value *argv);
 

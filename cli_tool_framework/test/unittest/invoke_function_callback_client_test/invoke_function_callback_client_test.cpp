@@ -23,7 +23,7 @@
 #include "cli_error_code.h"
 #include "insight_intent_execute_result.h"
 #include "invoke_function_callback_client.h"
-#include "invoke_function_executor.h"
+#include "invoke_session.h"
 #include "string_wrapper.h"
 
 using namespace testing::ext;

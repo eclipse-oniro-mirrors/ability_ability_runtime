@@ -154,6 +154,24 @@ public:
     ErrCode GetAllFunctions(std::vector<FunctionInfo> &functions);
 
     /**
+     * @brief Get public functions (functions open to third-party apps)
+     * @param functions Output vector of FunctionInfo (open to third-party apps only)
+     * @return ErrCode ERR_OK on success
+     */
+    ErrCode GetPublicFunctions(std::vector<FunctionInfo> &functions);
+
+    /**
+     * @brief Get a public function (open to third-party apps) by namespace and name;
+     *        functions not open to third-party apps return ERR_FUNCTION_NOT_EXIST
+     * @param functionNamespace Function namespace
+     * @param functionName Function name
+     * @param function Output FunctionInfo
+     * @return ErrCode ERR_OK on success
+     */
+    ErrCode GetPublicFunctionInfo(const std::string &functionNamespace, const std::string &functionName,
+        FunctionInfo &function);
+
+    /**
      * @brief Batch register functions (one-way, fire-and-forget, no successCount)
      * @param functions Vector of FunctionInfo to register
      * @return ErrCode ERR_OK if the request was sent; service-side result is not reported

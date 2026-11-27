@@ -44,6 +44,11 @@ public:
     ErrCode GetFunctionInfo(const std::string &bundleName, const std::string &functionName,
         FunctionInfo &function);
 
+    // Public path counterpart used by invokePublicFunction: simulates the service-side
+    // ACCESS_PUBLIC_FUNCTION permission + open-to-third-party (visible) checks.
+    ErrCode GetPublicFunctionInfo(const std::string &functionNamespace,
+        const std::string &functionName, FunctionInfo &function);
+
     // Simulates a registered before-hook rewriting the trace identifiers. The
     // rewrite covers both hook surfaces: the echo field (invokeOptions) and the
     // reserved transport key in args -- the channel the executor captures the
@@ -55,6 +60,9 @@ public:
     ErrCode AfterInvokeFunction(FunctionResultWrap &functionResultWrap);
 
     int32_t mockStatus_ = 0;
+    // Public path query status; defaults to ERR_OK so the public path behaves like the
+    // system path unless a test explicitly simulates 201/35600060 rejections.
+    int32_t mockPublicStatus_ = 0;
     FunctionType mockFunctionType_ = FunctionType::INTENT_FUNCTION;
 
     // Before-hook knobs (reset by the test fixture SetUp).

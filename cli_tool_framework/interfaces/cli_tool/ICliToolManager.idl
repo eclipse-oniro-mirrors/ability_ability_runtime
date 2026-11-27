@@ -68,4 +68,7 @@ interface ICliToolManager {
     // codes by declaration order, so inserting in the middle shifts every subsequent code
     // and breaks compatibility with already-released clients/services.
     void CancelSession([in] String sessionId, [in] int signal);
+    void GetPublicFunctions([out] FunctionsRawData functions);
+    void GetPublicFunctionInfo([in] String functionNamespace, [in] String functionName,
+        [out] FunctionInfo function);
 }

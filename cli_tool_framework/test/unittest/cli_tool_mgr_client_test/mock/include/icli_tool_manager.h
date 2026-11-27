@@ -56,6 +56,9 @@ public:
     virtual int32_t ResetNamespaceFunctions(int32_t userId, const std::string &functionNamespace,
         const FunctionsRawData &functions, int32_t &successCount) = 0;
     virtual int32_t GetAllFunctions(FunctionsRawData &functions) = 0;
+    virtual int32_t GetPublicFunctions(FunctionsRawData &functions) = 0;
+    virtual int32_t GetPublicFunctionInfo(const std::string &functionNamespace,
+        const std::string &functionName, FunctionInfo &function) = 0;
     virtual int32_t BatchRegisterFunctionsAsync(const FunctionsRawData &functions) = 0;
     virtual int32_t UnregisterIntentFunctionsByNamespaceAsync(int32_t userId,
         const std::string &functionNamespace) = 0;
