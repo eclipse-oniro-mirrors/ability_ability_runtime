@@ -77,7 +77,7 @@ static constexpr const char* const OOM_QUOTA_XATTR_NAME = "user.oomdump.quota";
 static constexpr const char* const RUNNING_ID_NAME = "user.runningId";
 static constexpr const char* const PROPERTY2C = "user.oomdumptelemetry.quota";
 static constexpr const char* const TELEMETRY_ENABLE_PROPERTY = "user.oomdumptelemetry.enable";
-static constexpr const char* const HIAPPEVENT_PATH = "/data/storage/el2/base/cache/hiappevent";
+static constexpr const char* const WATCHER_CONFIG_PATH = "/data/storage/el2/base/files/watcherConfig";
 static constexpr const char* const OOM_QUOTA_PATH = "/data/storage/el2/base/cache/rawheap";
 static constexpr const char* const JS_HEAP_LOGTYPE = "user.event_config.js_heap_logtype";
 static constexpr const char* const EVENT_RAWHEAP = "event_rawheap";
@@ -1179,7 +1179,7 @@ bool DumpRuntimeHelper::CreateDir(const std::string &path)
 
 bool DumpRuntimeHelper::Check2DOOMDumpQuota(uint32_t oomDumpMaxQuota, uint32_t oomDumpProcessMaxQuota)
 {
-    if (!CheckAppListenedEvents(HIAPPEVENT_PATH)) {
+    if (!CheckAppListenedEvents(WATCHER_CONFIG_PATH)) {
         TAG_LOGI(AAFwkTag::APPKIT, "Not subscribe oom event.");
         return false;
     }
