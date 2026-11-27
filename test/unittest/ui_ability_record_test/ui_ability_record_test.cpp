@@ -668,7 +668,7 @@ HWTEST_F(UIAbilityRecordTest, NotifyCallersOnPrelaunchTimeout_0100, TestSize.Lev
 }
 /**
  * @tc.name: TaskAttributionBookkeeping_0001
- * @tc.desc: The first attribution for a taskId is bookkept and reported by HasTaskAttribution.
+ * @tc.desc: The first attribution for a taskId is bookkept in the handle map.
  * @tc.type: FUNC
  */
 HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0001, TestSize.Level1)
@@ -677,18 +677,19 @@ HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0001, TestSize.Level1)
     auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
     ASSERT_NE(abilityRecord, nullptr);
 
-    EXPECT_FALSE(abilityRecord->HasTaskAttribution("task-1"));
+    EXPECT_FALSE(abilityRecord->GetTaskAttributions().count("task-1"));
     abilityRecord->AddTaskAttribution("task-1", 42);
 
     const auto &attributions = abilityRecord->GetTaskAttributions();
     ASSERT_EQ(attributions.size(), static_cast<size_t>(1));
-    EXPECT_EQ(attributions.at("task-1"), 42);
-    EXPECT_TRUE(abilityRecord->HasTaskAttribution("task-1"));
+    ASSERT_EQ(attributions.at("task-1").size(), static_cast<size_t>(1));
+    EXPECT_EQ(attributions.at("task-1").front(), 42);
+    EXPECT_TRUE(abilityRecord->GetTaskAttributions().count("task-1"));
 }
 
 /**
  * @tc.name: TaskAttributionBookkeeping_0002
- * @tc.desc: One attribution handle per taskId: a record can hold distinct tasks in parallel.
+ * @tc.desc: Distinct taskIds are bookkept in parallel, one handle list each.
  * @tc.type: FUNC
  */
 HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0002, TestSize.Level1)
@@ -702,16 +703,19 @@ HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0002, TestSize.Level1)
 
     const auto &attributions = abilityRecord->GetTaskAttributions();
     EXPECT_EQ(attributions.size(), static_cast<size_t>(2));
-    EXPECT_EQ(attributions.at("task-1"), 42);
-    EXPECT_EQ(attributions.at("task-2"), 43);
-    EXPECT_TRUE(abilityRecord->HasTaskAttribution("task-1"));
-    EXPECT_TRUE(abilityRecord->HasTaskAttribution("task-2"));
-    EXPECT_FALSE(abilityRecord->HasTaskAttribution("task-3"));
+    ASSERT_EQ(attributions.at("task-1").size(), static_cast<size_t>(1));
+    ASSERT_EQ(attributions.at("task-2").size(), static_cast<size_t>(1));
+    EXPECT_EQ(attributions.at("task-1").front(), 42);
+    EXPECT_EQ(attributions.at("task-2").front(), 43);
+    EXPECT_TRUE(abilityRecord->GetTaskAttributions().count("task-1"));
+    EXPECT_TRUE(abilityRecord->GetTaskAttributions().count("task-2"));
+    EXPECT_FALSE(abilityRecord->GetTaskAttributions().count("task-3"));
 }
 
 /**
  * @tc.name: TaskAttributionBookkeeping_0003
- * @tc.desc: A duplicate add for the same taskId is a no-op: the first handle stays.
+ * @tc.desc: A repeated attribution for the same taskId appends a second handle:
+ *           a genuine re-open in the same task flow must be bookkept again.
  * @tc.type: FUNC
  */
 HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0003, TestSize.Level1)
@@ -725,7 +729,9 @@ HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0003, TestSize.Level1)
 
     const auto &attributions = abilityRecord->GetTaskAttributions();
     ASSERT_EQ(attributions.size(), static_cast<size_t>(1));
-    EXPECT_EQ(attributions.at("task-1"), 42);
+    ASSERT_EQ(attributions.at("task-1").size(), static_cast<size_t>(2));
+    EXPECT_EQ(attributions.at("task-1").front(), 42);
+    EXPECT_EQ(attributions.at("task-1").back(), 43);
 }
 
 /**
@@ -744,13 +750,15 @@ HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0004, TestSize.Level1)
 
     const auto &attributions = abilityRecord->GetTaskAttributions();
     ASSERT_EQ(attributions.size(), static_cast<size_t>(2));
-    EXPECT_EQ(attributions.at("task-a"), 7);
-    EXPECT_EQ(attributions.at("task-b"), 7);
+    ASSERT_EQ(attributions.at("task-a").size(), static_cast<size_t>(1));
+    ASSERT_EQ(attributions.at("task-b").size(), static_cast<size_t>(1));
+    EXPECT_EQ(attributions.at("task-a").front(), 7);
+    EXPECT_EQ(attributions.at("task-b").front(), 7);
 }
 
 /**
  * @tc.name: TaskAttributionBookkeeping_0005
- * @tc.desc: A mixed sequence ends with exactly one entry per distinct taskId.
+ * @tc.desc: A mixed sequence keeps every handle of every distinct taskId.
  * @tc.type: FUNC
  */
 HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0005, TestSize.Level1)
@@ -761,14 +769,18 @@ HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0005, TestSize.Level1)
 
     abilityRecord->AddTaskAttribution("task-1", 1);
     abilityRecord->AddTaskAttribution("task-2", 2);
-    abilityRecord->AddTaskAttribution("task-1", 3); // duplicate taskId: first handle stays
+    abilityRecord->AddTaskAttribution("task-1", 3); // same taskId re-open: second handle
     abilityRecord->AddTaskAttribution("task-3", 1);
 
     const auto &attributions = abilityRecord->GetTaskAttributions();
     ASSERT_EQ(attributions.size(), static_cast<size_t>(3));
-    EXPECT_EQ(attributions.at("task-1"), 1);
-    EXPECT_EQ(attributions.at("task-2"), 2);
-    EXPECT_EQ(attributions.at("task-3"), 1);
+    ASSERT_EQ(attributions.at("task-1").size(), static_cast<size_t>(2));
+    EXPECT_EQ(attributions.at("task-1").front(), 1);
+    EXPECT_EQ(attributions.at("task-1").back(), 3);
+    ASSERT_EQ(attributions.at("task-2").size(), static_cast<size_t>(1));
+    EXPECT_EQ(attributions.at("task-2").front(), 2);
+    ASSERT_EQ(attributions.at("task-3").size(), static_cast<size_t>(1));
+    EXPECT_EQ(attributions.at("task-3").front(), 1);
 }
 
 /**
@@ -787,15 +799,17 @@ HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0006, TestSize.Level1)
 
     const auto &attributions = abilityRecord->GetTaskAttributions();
     ASSERT_EQ(attributions.size(), static_cast<size_t>(2));
-    EXPECT_EQ(attributions.at(""), 0);
-    EXPECT_EQ(attributions.at("task-neg"), -100);
-    EXPECT_TRUE(abilityRecord->HasTaskAttribution(""));
-    EXPECT_TRUE(abilityRecord->HasTaskAttribution("task-neg"));
+    ASSERT_EQ(attributions.at("").size(), static_cast<size_t>(1));
+    EXPECT_EQ(attributions.at("").front(), 0);
+    ASSERT_EQ(attributions.at("task-neg").size(), static_cast<size_t>(1));
+    EXPECT_EQ(attributions.at("task-neg").front(), -100);
+    EXPECT_TRUE(abilityRecord->GetTaskAttributions().count(""));
+    EXPECT_TRUE(abilityRecord->GetTaskAttributions().count("task-neg"));
 }
 
 /**
  * @tc.name: TaskAttributionBookkeeping_0007
- * @tc.desc: HasTaskAttribution keys on the taskId string, not on the handle.
+ * @tc.desc: The handle map keys on the taskId string, not on the handle.
  * @tc.type: FUNC
  */
 HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0007, TestSize.Level1)
@@ -809,14 +823,15 @@ HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0007, TestSize.Level1)
 
     const auto &attributions = abilityRecord->GetTaskAttributions();
     ASSERT_EQ(attributions.size(), static_cast<size_t>(2));
-    EXPECT_EQ(attributions.at("task-chain"), 100);
-    EXPECT_TRUE(abilityRecord->HasTaskAttribution("task-chain"));
-    EXPECT_FALSE(abilityRecord->HasTaskAttribution("task-chain-2"));
+    ASSERT_EQ(attributions.at("task-chain").size(), static_cast<size_t>(1));
+    EXPECT_EQ(attributions.at("task-chain").front(), 100);
+    EXPECT_TRUE(abilityRecord->GetTaskAttributions().count("task-chain"));
+    EXPECT_FALSE(abilityRecord->GetTaskAttributions().count("task-chain-2"));
 }
 
 /**
  * @tc.name: TaskAttributionBookkeeping_0008
- * @tc.desc: Cleanup removes exactly the finished task's entry; removal is idempotent.
+ * @tc.desc: Cleanup removes exactly the finished task's handles; removal is idempotent.
  * @tc.type: FUNC
  */
 HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0008, TestSize.Level1)
@@ -829,17 +844,41 @@ HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0008, TestSize.Level1)
     abilityRecord->AddTaskAttribution("task-alive", 102);
 
     EXPECT_EQ(abilityRecord->RemoveTaskAttributionByTaskId("task-finished"), static_cast<size_t>(1));
-    EXPECT_FALSE(abilityRecord->HasTaskAttribution("task-finished"));
-    EXPECT_TRUE(abilityRecord->HasTaskAttribution("task-alive"));
-    EXPECT_EQ(abilityRecord->GetTaskAttributions().at("task-alive"), 102);
+    EXPECT_FALSE(abilityRecord->GetTaskAttributions().count("task-finished"));
+    EXPECT_TRUE(abilityRecord->GetTaskAttributions().count("task-alive"));
+    ASSERT_EQ(abilityRecord->GetTaskAttributions().at("task-alive").size(), static_cast<size_t>(1));
+    EXPECT_EQ(abilityRecord->GetTaskAttributions().at("task-alive").front(), 102);
     EXPECT_EQ(abilityRecord->RemoveTaskAttributionByTaskId("task-finished"), static_cast<size_t>(0));
     EXPECT_EQ(abilityRecord->RemoveTaskAttributionByTaskId("task-never-was"), static_cast<size_t>(0));
     EXPECT_EQ(abilityRecord->RemoveTaskAttributionByTaskId(""), static_cast<size_t>(0));
-    EXPECT_TRUE(abilityRecord->HasTaskAttribution("task-alive"));
+    EXPECT_TRUE(abilityRecord->GetTaskAttributions().count("task-alive"));
 
     abilityRecord->AddTaskAttribution("task-finished", 9001);
-    EXPECT_TRUE(abilityRecord->HasTaskAttribution("task-finished"));
-    EXPECT_EQ(abilityRecord->GetTaskAttributions().at("task-finished"), 9001);
+    EXPECT_TRUE(abilityRecord->GetTaskAttributions().count("task-finished"));
+    ASSERT_EQ(abilityRecord->GetTaskAttributions().at("task-finished").size(), static_cast<size_t>(1));
+    EXPECT_EQ(abilityRecord->GetTaskAttributions().at("task-finished").front(), 9001);
+}
+
+/**
+ * @tc.name: TaskAttributionBookkeeping_0009
+ * @tc.desc: Cleanup drops every accumulated handle of the finished task id.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, TaskAttributionBookkeeping_0009, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+
+    // re-open in the same task flow: two handles accumulated under one id
+    abilityRecord->AddTaskAttribution("task-reopen", 11);
+    abilityRecord->AddTaskAttribution("task-reopen", 12);
+    abilityRecord->AddTaskAttribution("task-other", 13);
+
+    EXPECT_EQ(abilityRecord->RemoveTaskAttributionByTaskId("task-reopen"), static_cast<size_t>(2));
+    EXPECT_FALSE(abilityRecord->GetTaskAttributions().count("task-reopen"));
+    EXPECT_TRUE(abilityRecord->GetTaskAttributions().count("task-other"));
+    EXPECT_EQ(abilityRecord->GetTaskAttributions().size(), static_cast<size_t>(1));
 }
 
 /**
@@ -853,20 +892,21 @@ HWTEST_F(UIAbilityRecordTest, PendingTaskAttribution_0001, TestSize.Level1)
     auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
     ASSERT_NE(abilityRecord, nullptr);
 
-    abilityRecord->SetPendingTaskAttribution("task-a", 11, 21);
-    abilityRecord->SetPendingTaskAttribution("task-b", 12, 22);
+    abilityRecord->AddPendingTaskAttribution("task-a", 11, 21);
+    abilityRecord->AddPendingTaskAttribution("task-b", 12, 22);
 
     const auto &pending = abilityRecord->GetPendingTaskAttributions();
     ASSERT_EQ(pending.size(), static_cast<size_t>(2));
-    EXPECT_EQ(pending.at("task-a").callerUid, 11);
-    EXPECT_EQ(pending.at("task-a").callerPid, 21);
-    EXPECT_EQ(pending.at("task-b").callerUid, 12);
-    EXPECT_EQ(pending.at("task-b").callerPid, 22);
+    EXPECT_EQ(pending.at("task-a").front().callerUid, 11);
+    EXPECT_EQ(pending.at("task-a").front().callerPid, 21);
+    EXPECT_EQ(pending.at("task-b").front().callerUid, 12);
+    EXPECT_EQ(pending.at("task-b").front().callerPid, 22);
 }
 
 /**
  * @tc.name: PendingTaskAttribution_0002
- * @tc.desc: Re-stashing the same taskId keeps only the latest caller identity.
+ * @tc.desc: Re-stashing the same taskId appends a second activation context: every
+ *           pre-attach start must report once at attach, none is displaced.
  * @tc.type: FUNC
  */
 HWTEST_F(UIAbilityRecordTest, PendingTaskAttribution_0002, TestSize.Level1)
@@ -875,13 +915,41 @@ HWTEST_F(UIAbilityRecordTest, PendingTaskAttribution_0002, TestSize.Level1)
     auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
     ASSERT_NE(abilityRecord, nullptr);
 
-    abilityRecord->SetPendingTaskAttribution("task-a", 11, 21);
-    abilityRecord->SetPendingTaskAttribution("task-a", 12, 22);
+    abilityRecord->AddPendingTaskAttribution("task-a", 11, 21);
+    abilityRecord->AddPendingTaskAttribution("task-a", 12, 22);
 
     const auto &pending = abilityRecord->GetPendingTaskAttributions();
     ASSERT_EQ(pending.size(), static_cast<size_t>(1));
-    EXPECT_EQ(pending.at("task-a").callerUid, 12);
-    EXPECT_EQ(pending.at("task-a").callerPid, 22);
+    ASSERT_EQ(pending.at("task-a").size(), static_cast<size_t>(2));
+    // stash order preserved: first context, then the re-stash
+    EXPECT_EQ(pending.at("task-a").front().callerUid, 11);
+    EXPECT_EQ(pending.at("task-a").front().callerPid, 21);
+    EXPECT_EQ(pending.at("task-a").back().callerUid, 12);
+    EXPECT_EQ(pending.at("task-a").back().callerPid, 22);
+}
+
+/**
+ * @tc.name: PendingTaskAttribution_0004
+ * @tc.desc: Mixed stash sequence keeps every activation context of every task id.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityRecordTest, PendingTaskAttribution_0004, TestSize.Level1)
+{
+    AbilityRequest abilityRequest;
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+
+    abilityRecord->AddPendingTaskAttribution("task-1", 11, 21);
+    abilityRecord->AddPendingTaskAttribution("task-2", 12, 22);
+    abilityRecord->AddPendingTaskAttribution("task-1", 13, 23); // same task, second activation
+
+    const auto &pending = abilityRecord->GetPendingTaskAttributions();
+    ASSERT_EQ(pending.size(), static_cast<size_t>(2));
+    ASSERT_EQ(pending.at("task-1").size(), static_cast<size_t>(2));
+    EXPECT_EQ(pending.at("task-1").front().callerUid, 11);
+    EXPECT_EQ(pending.at("task-1").back().callerUid, 13);
+    ASSERT_EQ(pending.at("task-2").size(), static_cast<size_t>(1));
+    EXPECT_EQ(pending.at("task-2").front().callerPid, 22);
 }
 
 /**
@@ -896,14 +964,14 @@ HWTEST_F(UIAbilityRecordTest, PendingTaskAttribution_0003, TestSize.Level1)
     ASSERT_NE(abilityRecord, nullptr);
     EXPECT_TRUE(abilityRecord->GetPendingTaskAttributions().empty());
 
-    abilityRecord->SetPendingTaskAttribution("task-a", 11, 21);
+    abilityRecord->AddPendingTaskAttribution("task-a", 11, 21);
     abilityRecord->ClearPendingTaskAttributions();
     EXPECT_TRUE(abilityRecord->GetPendingTaskAttributions().empty());
 
-    abilityRecord->SetPendingTaskAttribution("task-b", 12, 22);
+    abilityRecord->AddPendingTaskAttribution("task-b", 12, 22);
     const auto &pending = abilityRecord->GetPendingTaskAttributions();
     ASSERT_EQ(pending.size(), static_cast<size_t>(1));
-    EXPECT_EQ(pending.at("task-b").callerUid, 12);
+    EXPECT_EQ(pending.at("task-b").front().callerUid, 12);
 }
 
 /**

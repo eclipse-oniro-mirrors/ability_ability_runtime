@@ -99,27 +99,20 @@ auto g_deleteLifecycleEventTask = [](const sptr<Token> &token) {
     FreezeUtil::GetInstance().DeleteLifecycleEvent(token->AsObject());
 };
 
-// Shared report core. Duplicates (same task, same record/process) are dropped
-// without renewal: a duplicate changes no server state. Stale entries are
-// cleared on task finish, so reused ids / re-created records report again.
+// Shared report core. Every key-carrying activation reports: a re-open inside the
+// same task flow must refresh the server-side keep-alive timer and open counts, so
+// duplicates are NOT deduped here. False reports are prevented upstream: only a
+// genuine caller startAbility carries the task key through the SCB callback (the
+// anti-replay normalization strips the key from replayed/archived wants), and stale
+// entries are cleared on task finish, so reused ids start with clean bookkeeping.
+// Known boundary (tracked as a follow-up): the server caps attributions per task
+// (TASK_MAX_ATTRIBUTIONS_PER_TASK, thousand-scale); once saturated it rejects further
+// registrations and the keep-alive stops refreshing — saturation semantics are pending
+// a product-side ruling, see RegisterManagedProcessInner.
 void ReportTaskAttributionForContext(const std::string &taskId, int32_t callerUid, int32_t callerPid,
     const UIAbilityRecordPtr &uiAbilityRecord)
 {
     if (taskId.empty() || uiAbilityRecord == nullptr || uiAbilityRecord->GetPid() <= 0) {
-        return;
-    }
-    if (uiAbilityRecord->HasTaskAttribution(taskId)) {
-        // Known race (observed, not gated): cleanup is oneway, so an id reused
-        // in the in-flight window hits a stale entry and the new task's first
-        // report is dropped; it self-heals on the next key-carrying activation.
-        // Logged attributionId/recordId tell this from a true duplicate.
-        const auto &attributions = uiAbilityRecord->GetTaskAttributions();
-        auto it = attributions.find(taskId);
-        int64_t storedAttributionId = (it != attributions.end()) ? it->second : -1;
-        TAG_LOGI(AAFwkTag::ABILITYMGR, "duplicate task attribution skipped, taskId: %{public}s, "
-            "attributionId: %{public}" PRId64 ", recordId: %{public}" PRId64 ", pid: %{public}d",
-            taskId.c_str(), storedAttributionId, uiAbilityRecord->GetAbilityRecordId(),
-            uiAbilityRecord->GetPid());
         return;
     }
     int64_t attributionId = 0;
@@ -149,18 +142,24 @@ void ReportTaskAttribution(const AbilityRequest &abilityRequest, const UIAbility
 }
 
 // Cold-start report: consumes the stashed contexts once the pid is known at attach.
+// Every stashed activation reports once — a task id may carry several stashed
+// contexts (repeated pre-attach starts), matching the warm path semantics.
 void ReportPendingTaskAttribution(const UIAbilityRecordPtr &uiAbilityRecord)
 {
     if (uiAbilityRecord == nullptr || uiAbilityRecord->GetPid() <= 0 ||
         uiAbilityRecord->GetPendingTaskAttributions().empty()) {
         return;
     }
-    TAG_LOGI(AAFwkTag::ABILITYMGR, "report pending task attributions, count: %{public}zu",
-        uiAbilityRecord->GetPendingTaskAttributions().size());
+    size_t pendingCount = 0;
     for (const auto &entry : uiAbilityRecord->GetPendingTaskAttributions()) {
-        ReportTaskAttributionForContext(entry.first, entry.second.callerUid, entry.second.callerPid,
-            uiAbilityRecord);
+        for (const auto &pending : entry.second) {
+            ReportTaskAttributionForContext(entry.first, pending.callerUid, pending.callerPid,
+                uiAbilityRecord);
+            pendingCount++;
+        }
     }
+    TAG_LOGI(AAFwkTag::ABILITYMGR, "pending task attributions reported, tasks: %{public}zu, "
+        "activations: %{public}zu", uiAbilityRecord->GetPendingTaskAttributions().size(), pendingCount);
     uiAbilityRecord->ClearPendingTaskAttributions();
 }
 }
@@ -339,7 +338,7 @@ int UIAbilityLifecycleManager::StartUIAbility(AbilityRequest &abilityRequest, sp
     CHECK_POINTER_AND_RETURN(uiAbilityRecord, ERR_INVALID_VALUE);
     // Cold start: stash the context and report it at ability-thread attach (pid ready).
     if (isColdStart && abilityRequest.want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID)) {
-        uiAbilityRecord->SetPendingTaskAttribution(
+        uiAbilityRecord->AddPendingTaskAttribution(
             abilityRequest.want.GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID),
             abilityRequest.want.GetIntParam(Want::PARAM_RESV_CALLER_UID, -1),
             abilityRequest.want.GetIntParam(Want::PARAM_RESV_CALLER_PID, -1));
@@ -502,7 +501,7 @@ UIAbilityRecordPtr UIAbilityLifecycleManager::HandleAbilityRecordReused(
     if (uiAbilityRecord->GetPid() > 0) {
         ReportTaskAttribution(abilityRequest, uiAbilityRecord);
     } else if (abilityRequest.want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID)) {
-        uiAbilityRecord->SetPendingTaskAttribution(
+        uiAbilityRecord->AddPendingTaskAttribution(
             abilityRequest.want.GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID),
             abilityRequest.want.GetIntParam(Want::PARAM_RESV_CALLER_UID, -1),
             abilityRequest.want.GetIntParam(Want::PARAM_RESV_CALLER_PID, -1));
@@ -563,7 +562,7 @@ UIAbilityRecordPtr UIAbilityLifecycleManager::GenerateAbilityRecord(AbilityReque
             if (uiAbilityRecord->GetPid() > 0) {
                 ReportTaskAttribution(abilityRequest, uiAbilityRecord);
             } else if (abilityRequest.want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID)) {
-                uiAbilityRecord->SetPendingTaskAttribution(
+                uiAbilityRecord->AddPendingTaskAttribution(
                     abilityRequest.want.GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID),
                     abilityRequest.want.GetIntParam(Want::PARAM_RESV_CALLER_UID, -1),
                     abilityRequest.want.GetIntParam(Want::PARAM_RESV_CALLER_PID, -1));
@@ -2142,7 +2141,7 @@ int UIAbilityLifecycleManager::CallAbilityLocked(const AbilityRequest &abilityRe
     if (uiAbilityRecord->GetPid() > 0) {
         ReportTaskAttribution(abilityRequest, uiAbilityRecord);
     } else if (abilityRequest.want.HasParameter(Want::PARAM_RESV_AGENT_TASK_ID)) {
-        uiAbilityRecord->SetPendingTaskAttribution(
+        uiAbilityRecord->AddPendingTaskAttribution(
             abilityRequest.want.GetStringParam(Want::PARAM_RESV_AGENT_TASK_ID),
             abilityRequest.want.GetIntParam(Want::PARAM_RESV_CALLER_UID, -1),
             abilityRequest.want.GetIntParam(Want::PARAM_RESV_CALLER_PID, -1));

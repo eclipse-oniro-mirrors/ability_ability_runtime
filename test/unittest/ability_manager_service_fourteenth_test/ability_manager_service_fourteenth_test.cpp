@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include <gtest/gtest.h>
+#include <unistd.h>
 #include "mock_my_status.h"
 
 #define private public
@@ -39,6 +40,25 @@ namespace {
 constexpr int32_t EXTENSION_MAX_LIMIT = 50;
 constexpr int32_t GAME_SA_UID = 7800;
 constexpr const char* DMS_CALLER_APP_ID = "ohos.dms.param.sourceCallerAppId";
+// Rate-limit window of RateLimiter::CheckExtensionLimit is 1s and the first tier is
+// EXTENSION_MAX_LIMIT, so the test loop must land 50+ calls inside one window. On
+// slow or shared environments (e.g. TCG emulator under host load) a single burst
+// can straddle the window; retry with a budget instead of asserting a one-shot
+// burst, so transient slowness is tolerated while a real rate-limit regression
+// (limit never reached inside the budget) still fails the test.
+constexpr int32_t RATE_RETRY_MAX_ROUNDS = 10;
+constexpr int32_t RATE_WINDOW_FLUSH_MS = 1200;
+
+// One burst of EXTENSION_MAX_LIMIT + 1 calls. Caller checks the rate limiter
+// right after the burst (stamps are still inside the window) and sleeps for
+// RATE_WINDOW_FLUSH_MS only when a retry is needed, so the next burst starts
+// from a clean window.
+void BurstExtensionRateLimit(const std::shared_ptr<AbilityManagerService> &ams, const Want &want)
+{
+    for (int i = 0; i < EXTENSION_MAX_LIMIT + 1; ++i) {
+        ams->CheckExtensionRateLimit(want);
+    }
+}
 }
 class AbilityManagerServiceFourteenthTest : public testing::Test {
 public:
@@ -1339,13 +1359,17 @@ HWTEST_F(AbilityManagerServiceFourteenthTest, CheckExtensionRateLimit_002, TestS
     Want want;
     ElementName element("", "com.acts.testCheckExtensionRateLimit", "TestAbility");
     want.SetElement(element);
-    for (int i = 0; i < EXTENSION_MAX_LIMIT + 1; i++) {
-        abilityMs_->CheckExtensionRateLimit(want);
-    }
-
+    // retry until one burst lands inside a single 1s window (or the budget is up)
     auto &rateLimiter = RateLimiter::GetInstance();
-    auto isLimit = rateLimiter.CheckExtensionLimit(uid);
-    EXPECT_EQ(isLimit.limited, true);
+    bool limited = false;
+    for (int round = 0; round < RATE_RETRY_MAX_ROUNDS && !limited; ++round) {
+        BurstExtensionRateLimit(abilityMs_, want);
+        limited = rateLimiter.CheckExtensionLimit(uid).limited;
+        if (!limited) {
+            usleep(RATE_WINDOW_FLUSH_MS * 1000);
+        }
+    }
+    EXPECT_EQ(limited, true);
 
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest CheckExtensionRateLimit_002 end");
 }
@@ -1369,13 +1393,18 @@ HWTEST_F(AbilityManagerServiceFourteenthTest, CheckExtensionRateLimit_003, TestS
     Want want;
     ElementName element("", "com.acts.testCheckExtensionRateLimit", "TestAbility");
     want.SetElement(element);
-    for (int i = 0; i < EXTENSION_MAX_LIMIT + 1; i++) {
-        abilityMs_->CheckExtensionRateLimit(want);
-    }
-
+    // retry until the burst lands inside one 1s window (report window is 5s, so a
+    // burst that triggered the limit is still reported when checked right after)
     auto &rateLimiter = RateLimiter::GetInstance();
-    auto isLimit = rateLimiter.CheckReportLimit(uid, 50);
-    EXPECT_EQ(isLimit, true);
+    bool reported = false;
+    for (int round = 0; round < RATE_RETRY_MAX_ROUNDS && !reported; ++round) {
+        BurstExtensionRateLimit(abilityMs_, want);
+        reported = rateLimiter.CheckReportLimit(uid, 50);
+        if (!reported) {
+            usleep(RATE_WINDOW_FLUSH_MS * 1000);
+        }
+    }
+    EXPECT_EQ(reported, true);
 
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest CheckExtensionRateLimit_003 end");
 }
