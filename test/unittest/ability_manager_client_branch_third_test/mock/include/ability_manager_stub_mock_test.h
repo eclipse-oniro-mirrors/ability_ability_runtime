@@ -437,6 +437,8 @@ public:
     MOCK_METHOD(void, CompleteFirstFrameDrawing, (const sptr<IRemoteObject> &abilityToken), (override));
     MOCK_METHOD(void, CompleteFirstFrameDrawing, (int32_t sessionId), (override));
 #endif
+    MOCK_METHOD(int32_t, AddKioskApplicationList, (const std::vector<std::string> &appList), (override));
+    MOCK_METHOD(int32_t, DeleteKioskApplicationList, (const std::vector<std::string> &appList), (override));
     MOCK_METHOD(int32_t, GetUserLockedBundleList, (int32_t, std::unordered_set<std::string> &), (override));
     MOCK_METHOD4(ExecuteSkillDone, int32_t(const sptr<IRemoteObject> &, const std::string &,
         int32_t, const AppExecFwk::SkillExecuteResult &));
